@@ -185,7 +185,7 @@ export const DASHBOARD_ROUTES = {
     href: "/dashboard/invitations",
     kind: "queue",
     environments: STAFF_ONLY,
-    permission: "followup.view",
+    permissionAny: ["followup.view", "review.write"],
     // 电联只发起邀约；时间、老师与家长确认在这里按状态接续，不创建虚构的日历待办。
     createSurface: "derived",
     nav: { labelKey: "invitations", group: "subjectOperations" },

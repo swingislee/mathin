@@ -23,6 +23,9 @@ interface InvitationDbRow {
   activity_id: string | null;
   assessor_id: string | null;
   proposed_time_text: string;
+  parent_time_options?: string[];
+  assessor_time_options?: string[];
+  scheduled_at?: string | null;
   location_text: string;
   summary: string;
   updated_at: string;
@@ -162,7 +165,7 @@ export async function listInvitationCoordination(
   const supabase = await createClient();
   let invitationQuery = supabase
     .from("lead_invitation_threads")
-    .select("id,lead_id,kind,state,activity_id,assessor_id,proposed_time_text,location_text,summary,updated_at")
+    .select("id,lead_id,kind,state,activity_id,assessor_id,proposed_time_text,parent_time_options,assessor_time_options,scheduled_at,location_text,summary,updated_at")
     .order("updated_at", { ascending: false })
     .limit(500);
   if (filters.queue === "closed") {
@@ -174,7 +177,26 @@ export async function listInvitationCoordination(
   } else {
     invitationQuery = invitationQuery.eq("state", filters.queue);
   }
-  const invitationResult = await invitationQuery.returns<InvitationDbRow[]>();
+  let invitationResult = await invitationQuery.returns<InvitationDbRow[]>();
+  if (invitationResult.error?.code === "PGRST204"
+      || invitationResult.error?.code === "42703"
+      || invitationResult.error?.message?.includes("parent_time_options")) {
+    let legacyQuery = supabase
+      .from("lead_invitation_threads")
+      .select("id,lead_id,kind,state,activity_id,assessor_id,proposed_time_text,location_text,summary,updated_at")
+      .order("updated_at", { ascending: false })
+      .limit(500);
+    if (filters.queue === "closed") {
+      legacyQuery = legacyQuery.in("state", ["completed", "cancelled"]);
+    } else if (filters.queue === "coordination") {
+      legacyQuery = filters.stage === "all"
+        ? legacyQuery.in("state", [...INVITATION_COORDINATION_STATES])
+        : legacyQuery.eq("state", filters.stage);
+    } else {
+      legacyQuery = legacyQuery.eq("state", filters.queue);
+    }
+    invitationResult = await legacyQuery.returns<InvitationDbRow[]>();
+  }
   if (invitationResult.error) {
     if (relationUnavailable(invitationResult.error)) return [];
     throw new Error(invitationResult.error.message);
@@ -254,7 +276,10 @@ export async function listInvitationCoordination(
       activityScheduledAt: activity?.scheduled_at ?? null,
       assessorId: invitation.assessor_id,
       assessorName: invitation.assessor_id ? assessorById.get(invitation.assessor_id) ?? "" : "",
-      proposedTimeText: invitation.proposed_time_text,
+      legacyTimeText: invitation.proposed_time_text,
+      parentTimeOptions: invitation.parent_time_options ?? [],
+      assessorTimeOptions: invitation.assessor_time_options ?? [],
+      scheduledAt: invitation.scheduled_at ?? null,
       locationText: invitation.location_text || activity?.location || "",
       summary: invitation.summary,
       updatedAt: invitation.updated_at,

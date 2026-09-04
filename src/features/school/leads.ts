@@ -61,6 +61,9 @@ interface LeadInvitationDbRow {
   activity_id: string | null;
   assessor_id: string | null;
   proposed_time_text: string;
+  parent_time_options?: string[];
+  assessor_time_options?: string[];
+  scheduled_at?: string | null;
   location_text: string;
   updated_at: string;
 }
@@ -137,7 +140,7 @@ export async function listLeadPool(
   const suggestedStudentIds = [...new Set(rows
     .map((row) => row.suggested_student_id)
     .filter((id): id is string => Boolean(id)))];
-  const [sourceResult, interestResult, communicationResult, invitationResult, ownerResult, studentResult] = await Promise.all([
+  const [sourceResult, interestResult, communicationResult, initialInvitationResult, ownerResult, studentResult] = await Promise.all([
     supabase
       .from("lead_source_records")
       .select("id,lead_id,submitted_at,acquisition_method,promoter,location_text,source_marked_duplicate,created_at")
@@ -161,7 +164,7 @@ export async function listLeadPool(
       .returns<LeadCommunicationDbRow[]>(),
     supabase
       .from("lead_invitation_threads")
-      .select("id,lead_id,kind,state,activity_id,assessor_id,proposed_time_text,location_text,updated_at")
+      .select("id,lead_id,kind,state,activity_id,assessor_id,proposed_time_text,parent_time_options,assessor_time_options,scheduled_at,location_text,updated_at")
       .in("lead_id", leadIds)
       .not("state", "in", "(completed,cancelled)")
       .order("updated_at", { ascending: false })
@@ -174,6 +177,19 @@ export async function listLeadPool(
       ? supabase.from("students").select("id,name").in("id", suggestedStudentIds).is("deleted_at", null)
       : Promise.resolve({ data: [], error: null }),
   ]);
+  let invitationResult = initialInvitationResult;
+  if (invitationResult.error?.code === "PGRST204"
+      || invitationResult.error?.code === "42703"
+      || invitationResult.error?.message?.includes("parent_time_options")) {
+    invitationResult = await supabase
+      .from("lead_invitation_threads")
+      .select("id,lead_id,kind,state,activity_id,assessor_id,proposed_time_text,location_text,updated_at")
+      .in("lead_id", leadIds)
+      .not("state", "in", "(completed,cancelled)")
+      .order("updated_at", { ascending: false })
+      .limit(5_000)
+      .returns<LeadInvitationDbRow[]>();
+  }
   if (sourceResult.error) throw new Error(sourceResult.error.message);
   if (interestResult.error) throw new Error(interestResult.error.message);
   if (communicationResult.error) throw new Error(communicationResult.error.message);
@@ -283,7 +299,10 @@ export async function listLeadPool(
           activityScheduledAt: invitationActivity?.scheduled_at ?? null,
           assessorId: invitation.assessor_id,
           assessorName: invitation.assessor_id ? invitationAssessors.get(invitation.assessor_id) ?? "" : "",
-          proposedTimeText: invitation.proposed_time_text,
+          legacyTimeText: invitation.proposed_time_text,
+          parentTimeOptions: invitation.parent_time_options ?? [],
+          assessorTimeOptions: invitation.assessor_time_options ?? [],
+          scheduledAt: invitation.scheduled_at ?? null,
           locationText: invitation.location_text,
           updatedAt: invitation.updated_at,
         } : null,

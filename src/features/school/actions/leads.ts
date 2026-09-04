@@ -7,6 +7,8 @@ import {
   INVITATION_STATES,
   invitationDraftIsComplete,
   invitationStatesForKind,
+  isAssessmentTimeOption,
+  MAX_ASSESSMENT_TIME_OPTIONS,
   type InvitationDraft,
 } from "../invitation-contract";
 import { authorizedClient, nullableRpcArg } from "./guards";
@@ -14,6 +16,9 @@ import { COMMON_CODES, parse, text, uuid } from "./schemas";
 
 const LEAD_CONTACT_OUTCOMES = ["unreachable", "connected", "declined", "invalid_number"] as const;
 const LEAD_INTEREST_LEVELS = ["A", "B", "C"] as const;
+const timeOptions = z.array(z.string().refine(isAssessmentTimeOption))
+  .max(MAX_ASSESSMENT_TIME_OPTIONS)
+  .refine((values) => new Set(values).size === values.length);
 
 const assignLeadsSchema = z.object({
   leadIds: z.array(uuid).min(1).max(100).refine((ids) => new Set(ids).size === ids.length),
@@ -25,7 +30,9 @@ const invitationDraftSchema = z.object({
   state: z.enum(INVITATION_STATES),
   activityId: uuid.nullable(),
   assessorId: uuid.nullable(),
-  proposedTimeText: text(200),
+  parentTimeOptions: timeOptions,
+  assessorTimeOptions: timeOptions,
+  scheduledAt: z.string().datetime({ offset: true }).nullable(),
   locationText: text(200),
 });
 
@@ -45,6 +52,13 @@ const leadContactSchema = z.object({
     if (value.outcome !== "connected"
         || !invitationStatesForKind(value.invitation.kind).includes(value.invitation.state)
         || !invitationDraftIsComplete(value.invitation)) {
+      context.addIssue({ code: "custom", message: "INVALID_INVITATION" });
+    }
+    if (value.invitation.kind !== "assessment_1v1" && (
+      value.invitation.parentTimeOptions.length > 0
+      || value.invitation.assessorTimeOptions.length > 0
+      || value.invitation.scheduledAt
+    )) {
       context.addIssue({ code: "custom", message: "INVALID_INVITATION" });
     }
   }
@@ -81,7 +95,7 @@ export async function recordLeadContactAction(
     const value = parse(leadContactSchema, { leadId, ...input });
     const { supabase } = await authorizedClient("followup.write");
     const invitation = value.invitation;
-    const { error } = await supabase.rpc("record_lead_contact_v2", {
+    const { error } = await supabase.rpc("record_lead_contact_v3", {
       p_lead_id: value.leadId,
       p_outcome: value.outcome,
       p_note: value.note,
@@ -91,7 +105,9 @@ export async function recordLeadContactAction(
       p_invitation_state: nullableRpcArg(invitation?.state ?? null),
       p_activity_id: nullableRpcArg(invitation?.activityId ?? null),
       p_assessor_id: nullableRpcArg(invitation?.assessorId ?? null),
-      p_proposed_time_text: invitation?.proposedTimeText ?? "",
+      p_parent_time_options: invitation?.parentTimeOptions ?? [],
+      p_assessor_time_options: invitation?.assessorTimeOptions ?? [],
+      p_scheduled_at: nullableRpcArg(invitation?.scheduledAt ?? null),
       p_location_text: invitation?.locationText ?? "",
     });
     if (error) throw new Error(error.message);

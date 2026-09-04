@@ -8,11 +8,17 @@ import {
   INVITATION_STATES,
   invitationDraftIsComplete,
   invitationStatesForKind,
+  isAssessmentTimeOption,
+  MAX_ASSESSMENT_TIME_OPTIONS,
   type InvitationChannel,
   type InvitationDraft,
 } from "../invitation-contract";
 import { authorizedClient, nullableRpcArg } from "./guards";
 import { COMMON_CODES, parse, text, uuid } from "./schemas";
+
+const timeOptions = z.array(z.string().refine(isAssessmentTimeOption))
+  .max(MAX_ASSESSMENT_TIME_OPTIONS)
+  .refine((values) => new Set(values).size === values.length);
 
 const updateInvitationSchema = z.object({
   invitationId: uuid,
@@ -20,7 +26,9 @@ const updateInvitationSchema = z.object({
   state: z.enum(INVITATION_STATES),
   activityId: uuid.nullable(),
   assessorId: uuid.nullable(),
-  proposedTimeText: text(200),
+  parentTimeOptions: timeOptions,
+  assessorTimeOptions: timeOptions,
+  scheduledAt: z.string().datetime({ offset: true }).nullable(),
   locationText: text(200),
   channel: z.enum(INVITATION_CHANNELS),
   note: text(2000),
@@ -32,6 +40,13 @@ const updateInvitationSchema = z.object({
   }
   if (value.kind === "activity" && !value.activityId) {
     context.addIssue({ code: "custom", message: "ACTIVITY_REQUIRED" });
+  }
+  if (value.kind !== "assessment_1v1" && (
+    value.parentTimeOptions.length > 0
+    || value.assessorTimeOptions.length > 0
+    || value.scheduledAt
+  )) {
+    context.addIssue({ code: "custom", message: "INVALID_INVITATION" });
   }
 });
 
@@ -47,13 +62,15 @@ export async function updateLeadInvitationAction(
   try {
     const value = parse(updateInvitationSchema, { invitationId, ...input });
     const { supabase } = await authorizedClient("followup.write");
-    const { error } = await supabase.rpc("update_lead_invitation", {
+    const { error } = await supabase.rpc("update_lead_invitation_v2", {
       p_invitation_id: value.invitationId,
       p_kind: value.kind,
       p_state: value.state,
       p_activity_id: nullableRpcArg(value.activityId),
       p_assessor_id: nullableRpcArg(value.assessorId),
-      p_proposed_time_text: value.proposedTimeText,
+      p_parent_time_options: value.parentTimeOptions,
+      p_assessor_time_options: value.assessorTimeOptions,
+      p_scheduled_at: nullableRpcArg(value.scheduledAt),
       p_location_text: value.locationText,
       p_channel: value.channel,
       p_note: value.note,
@@ -69,6 +86,35 @@ export async function updateLeadInvitationAction(
       "LEAD_UNASSIGNED",
       "LEAD_CLOSED",
       "FORBIDDEN_SCOPE",
+      "NOT_FOUND",
+      ...COMMON_CODES,
+    ]);
+  }
+}
+
+const assessorAvailabilitySchema = z.object({
+  invitationId: uuid,
+  assessorTimeOptions: timeOptions,
+});
+
+export async function updateAssessorAvailabilityAction(
+  invitationId: string,
+  assessorTimeOptions: string[],
+): Promise<ActionResult> {
+  try {
+    const value = parse(assessorAvailabilitySchema, { invitationId, assessorTimeOptions });
+    const { supabase } = await authorizedClient("review.write");
+    const { error } = await supabase.rpc("set_invitation_assessor_availability", {
+      p_invitation_id: value.invitationId,
+      p_assessor_time_options: value.assessorTimeOptions,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, [
+      "INVITATION_CLOSED",
+      "ASSESSOR_SCOPE",
+      "INVALID_INVITATION",
       "NOT_FOUND",
       ...COMMON_CODES,
     ]);

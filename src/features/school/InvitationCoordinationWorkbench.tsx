@@ -2,7 +2,7 @@
 
 import { Check, ChevronDown, ChevronRight, Copy, LoaderCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useAction } from "@/components/action-form";
 import { Badge } from "@/components/ui/badge";
@@ -13,20 +13,29 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
-import { updateLeadInvitationAction, type UpdateInvitationInput } from "./actions/invitations";
+import {
+  updateAssessorAvailabilityAction,
+  updateLeadInvitationAction,
+  type UpdateInvitationInput,
+} from "./actions/invitations";
 import { DashboardTableColumnHeader, DashboardTableShell } from "./dashboard-page";
 import { InvitationDraftFields } from "./InvitationDraftFields";
 import {
-  invitationDraftIsComplete,
+  ASSESSMENT_TIME_ZONE,
+  assessmentAvailabilityIntersection,
+  assessmentTimeOptionToInstant,
+  invitationWorkStep,
+  parseAssessmentTimeOption,
   type InvitationActivityOption,
   type InvitationAssessorOption,
   type InvitationChannel,
   type InvitationCoordinationStage,
   type InvitationCoordinationRow,
   type InvitationDraft,
+  type InvitationQueue,
   type InvitationQueueCounts,
-  type InvitationState,
 } from "./invitation-contract";
+import { zonedDateTimeToInstant } from "./schedule";
 
 const CHANNELS = ["phone", "wechat", "in_person", "other"] as const;
 
@@ -50,8 +59,21 @@ function arrangementText(
   formatAt: (value: string) => string,
 ): string {
   if (row.kind === "assessment_1v1") {
+    const overlapCount = assessmentAvailabilityIntersection(
+      row.parentTimeOptions,
+      row.assessorTimeOptions,
+    ).length;
+    const availability = row.scheduledAt
+      ? t("availabilityConfirmed", { time: formatAt(row.scheduledAt) })
+      : row.parentTimeOptions.length + row.assessorTimeOptions.length > 0
+        ? t("availabilityCounts", {
+            parent: row.parentTimeOptions.length,
+            assessor: row.assessorTimeOptions.length,
+            overlap: overlapCount,
+          })
+        : row.legacyTimeText || t("timePending");
     return [
-      row.proposedTimeText || t("timePending"),
+      availability,
       row.assessorName || t("assessorPending"),
       row.locationText || t("locationPending"),
     ].join(" · ");
@@ -66,12 +88,43 @@ function arrangementText(
   return t("waitingActivityArrangement");
 }
 
+function sameOptions(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+function draftMatchesRow(draft: InvitationDraft, row: InvitationCoordinationRow): boolean {
+  return draft.kind === row.kind
+    && draft.state === row.state
+    && draft.activityId === row.activityId
+    && draft.assessorId === row.assessorId
+    && sameOptions(draft.parentTimeOptions, row.parentTimeOptions)
+    && sameOptions(draft.assessorTimeOptions, row.assessorTimeOptions)
+    && draft.scheduledAt === row.scheduledAt
+    && draft.locationText === row.locationText;
+}
+
+function rowMatchesView(
+  row: InvitationCoordinationRow,
+  queue: InvitationQueue,
+  stage: InvitationCoordinationStage | null,
+): boolean {
+  if (queue === "confirmed") return row.state === "confirmed";
+  if (queue === "waiting_activity") return row.state === "waiting_activity";
+  if (queue === "closed") return row.state === "completed" || row.state === "cancelled";
+  if (row.state !== "coordinating_time" && row.state !== "awaiting_teacher" && row.state !== "awaiting_parent") {
+    return false;
+  }
+  return !stage || stage === "all" || row.state === stage;
+}
+
 function InvitationEditor({
   row,
   activities,
   assessors,
   locale,
   formatAt,
+  currentUserId,
+  canManageInvitation,
   onSaved,
 }: {
   row: InvitationCoordinationRow;
@@ -79,6 +132,8 @@ function InvitationEditor({
   assessors: InvitationAssessorOption[];
   locale: string;
   formatAt: (value: string) => string;
+  currentUserId: string;
+  canManageInvitation: boolean;
   onSaved: (row: InvitationCoordinationRow, input: UpdateInvitationInput) => void;
 }) {
   const t = useTranslations("school.invitations");
@@ -88,12 +143,16 @@ function InvitationEditor({
     state: row.state,
     activityId: row.activityId,
     assessorId: row.assessorId,
-    proposedTimeText: row.proposedTimeText,
+    parentTimeOptions: row.parentTimeOptions,
+    assessorTimeOptions: row.assessorTimeOptions,
+    scheduledAt: row.scheduledAt,
     locationText: row.locationText,
   });
   const [channel, setChannel] = useState<InvitationChannel>("wechat");
   const [note, setNote] = useState("");
   const [cancelOpen, setCancelOpen] = useState(false);
+  const submittedInputRef = useRef<UpdateInvitationInput | null>(null);
+  const assessorEditing = !canManageInvitation && row.assessorId === currentUserId;
   const updateRun = useAction(updateLeadInvitationAction, {
     successMessage: t("saveSuccess"),
     errorMessage: {
@@ -106,29 +165,115 @@ function InvitationEditor({
       default: t("saveFailed"),
     },
     onSuccess: () => {
-      const input = { ...draft, channel, note };
+      const input = submittedInputRef.current;
+      if (!input) return;
+      submittedInputRef.current = null;
+      setDraft({
+        kind: input.kind,
+        state: input.state,
+        activityId: input.activityId,
+        assessorId: input.assessorId,
+        parentTimeOptions: input.parentTimeOptions,
+        assessorTimeOptions: input.assessorTimeOptions,
+        scheduledAt: input.scheduledAt,
+        locationText: input.locationText,
+      });
       onSaved(row, input);
       setNote("");
       setCancelOpen(false);
       router.refresh();
     },
   });
-  const submit = (stateOverride?: InvitationState) => {
-    const next = stateOverride ? { ...draft, state: stateOverride } : draft;
-    updateRun.run(row.id, { ...next, channel, note });
+  const assessorRun = useAction(updateAssessorAvailabilityAction, {
+    successMessage: t("assessorAvailabilitySaveSuccess"),
+    errorMessage: {
+      ASSESSOR_SCOPE: t("assessorScopeError"),
+      INVITATION_CLOSED: t("alreadyClosed"),
+      INVALID_INVITATION: t("invalidDraft"),
+      default: t("saveFailed"),
+    },
+    onSuccess: () => {
+      const hasOverlap = assessmentAvailabilityIntersection(
+        draft.parentTimeOptions,
+        draft.assessorTimeOptions,
+      ).length > 0;
+      const nextState = hasOverlap
+        ? "awaiting_parent" as const
+        : draft.parentTimeOptions.length > 0
+          ? "coordinating_time" as const
+          : draft.state;
+      setDraft((current) => ({ ...current, state: nextState }));
+      onSaved(row, { ...draft, state: nextState, channel: "other", note: "" });
+      router.refresh();
+    },
+  });
+  const pending = updateRun.pending || assessorRun.pending;
+  const submitSupport = (nextDraft: InvitationDraft) => {
+    const input = { ...nextDraft, channel, note };
+    submittedInputRef.current = input;
+    updateRun.run(row.id, input);
+  };
+  const copyText = (value: string) => {
+    void copyWithFallback(value)
+      .then(() => toast.success(t("copySuccess")))
+      .catch(() => toast.error(t("copyFailed")));
+  };
+  const sharedOptions = assessmentAvailabilityIntersection(
+    draft.parentTimeOptions,
+    draft.assessorTimeOptions,
+  );
+  const exactSharedOptions = sharedOptions.flatMap((option) => {
+    const instant = assessmentTimeOptionToInstant(option);
+    return instant ? [{ option, instant }] : [];
+  });
+  const broadSharedCount = sharedOptions.length - exactSharedOptions.length;
+  const workStep = invitationWorkStep(draft);
+  const selectedActivity = draft.activityId
+    ? activities.find((activity) => activity.id === draft.activityId)
+    : undefined;
+  const assessorName = draft.assessorId
+    ? assessors.find((assessor) => assessor.userId === draft.assessorId)?.displayName ?? t("assessorPending")
+    : t("assessorPending");
+  const optionFormatter = useMemo(() => new Intl.DateTimeFormat(locale, {
+    weekday: "short",
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    timeZone: ASSESSMENT_TIME_ZONE,
+  }), [locale]);
+  const optionDayFormatter = useMemo(() => new Intl.DateTimeFormat(locale, {
+    weekday: "short",
+    month: "numeric",
+    day: "numeric",
+    timeZone: ASSESSMENT_TIME_ZONE,
+  }), [locale]);
+  const optionListFormatter = useMemo(() => new Intl.ListFormat(locale, {
+    style: "short",
+    type: "conjunction",
+  }), [locale]);
+  const formatOption = (option: string) => {
+    const instant = assessmentTimeOptionToInstant(option);
+    if (instant) return optionFormatter.format(new Date(instant));
+    const parsed = parseAssessmentTimeOption(option);
+    if (!parsed) return option;
+    const [year, month, day] = parsed.dayKey.split("-").map(Number);
+    const dayInstant = zonedDateTimeToInstant({ year, month: month - 1, day }, ASSESSMENT_TIME_ZONE);
+    return `${optionDayFormatter.format(dayInstant)} · ${t("availabilityAfterSchoolSlot")}`;
+  };
+  const compactOptions = (options: readonly string[]) => {
+    const visible = optionListFormatter.format(options.slice(0, 5).map(formatOption));
+    return options.length > 5
+      ? t("availabilityMoreCount", { options: visible, count: options.length - 5 })
+      : visible;
   };
   const currentArrangement = arrangementText({
     ...row,
     ...draft,
-    activityTitle: draft.activityId
-      ? activities.find((activity) => activity.id === draft.activityId)?.title ?? ""
-      : "",
-    activityScheduledAt: draft.activityId
-      ? activities.find((activity) => activity.id === draft.activityId)?.scheduledAt ?? null
-      : null,
-    assessorName: draft.assessorId
-      ? assessors.find((assessor) => assessor.userId === draft.assessorId)?.displayName ?? ""
-      : "",
+    activityTitle: selectedActivity?.title ?? "",
+    activityScheduledAt: selectedActivity?.scheduledAt ?? null,
+    assessorName: draft.assessorId ? assessorName : "",
   }, t, formatAt);
   const relayText = t("relayTemplate", {
     name: row.leadName,
@@ -136,90 +281,322 @@ function InvitationEditor({
     arrangement: currentArrangement,
     state: t(`state_${draft.state}`),
   });
-  const draftComplete = invitationDraftIsComplete(draft);
+  const teacherRequestText = t("teacherRequestTemplate", {
+    name: row.leadName,
+    grade: row.gradeText || t("gradePending"),
+    assessor: assessorName,
+    options: compactOptions(draft.parentTimeOptions),
+  });
+  const selectedTimeText = draft.scheduledAt ? formatAt(draft.scheduledAt) : "";
+  const parentConfirmationText = t("parentConfirmationTemplate", {
+    name: row.leadName,
+    time: selectedTimeText,
+    assessor: assessorName,
+    location: draft.locationText || t("locationToConfirm"),
+  });
+  const activityConfirmationText = t("activityConfirmationTemplate", {
+    name: row.leadName,
+    activity: selectedActivity?.title ?? t("activityPending"),
+    time: selectedActivity ? formatAt(selectedActivity.scheduledAt) : "",
+    location: draft.locationText || selectedActivity?.location || t("locationToConfirm"),
+  });
+  const dirty = !draftMatchesRow(draft, row);
+  const teacherHandoffNeedsSave = dirty || row.state !== "awaiting_teacher" || Boolean(note.trim());
+  const candidateNeedsSave = dirty || row.state !== "awaiting_parent" || Boolean(note.trim());
+
+  const supportActionContent = (() => {
+    const header = (title: string, hint: string) => (
+      <div>
+        <p className="text-sm font-medium text-ink">{title}</p>
+        <p className="mt-1 text-[11px] leading-5 text-muted">{hint}</p>
+      </div>
+    );
+    if (workStep === "collect_arrangement") {
+      return (
+        <>
+          {header(t("workTitle_collect_arrangement"), t("workHint_collect_arrangement"))}
+          <div className="grid gap-1.5 text-[11px]">
+            <p className="flex items-center justify-between gap-3"><span className="text-muted">{t("workFactParent")}</span><span className="text-right text-ink">{draft.parentTimeOptions.length > 0 ? t("availabilitySlotCount", { count: draft.parentTimeOptions.length }) : t("notRecorded")}</span></p>
+            <p className="flex items-center justify-between gap-3"><span className="text-muted">{t("workFactAssessor")}</span><span className="text-right text-ink">{draft.assessorId ? assessorName : t("notRecorded")}</span></p>
+          </div>
+          <Button type="button" size="sm" className="h-9 w-full" disabled={pending || (!dirty && !note.trim())} onClick={() => submitSupport({ ...draft, state: "coordinating_time" })}>
+            {pending ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" /> : <Check className="size-4" />}
+            {t("saveKnownFacts")}
+          </Button>
+        </>
+      );
+    }
+    if (workStep === "waiting_assessor") {
+      return (
+        <>
+          {header(t("workTitle_waiting_assessor"), t("workHint_waiting_assessor"))}
+          <p className="border-l-2 border-moon pl-3 text-[11px] leading-5 text-ink">{compactOptions(draft.parentTimeOptions)}</p>
+          <Button
+            type="button"
+            size="sm"
+            className="h-9 w-full"
+            disabled={pending}
+            onClick={() => {
+              copyText(teacherRequestText);
+              if (teacherHandoffNeedsSave) submitSupport({ ...draft, state: "awaiting_teacher" });
+            }}
+          >
+            {pending ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" /> : <Copy className="size-4" />}
+            {teacherHandoffNeedsSave ? t("saveAndCopyTeacher") : t("copyTeacherRequest")}
+          </Button>
+        </>
+      );
+    }
+    if (workStep === "resolve_time_conflict") {
+      return (
+        <>
+          {header(t("workTitle_resolve_time_conflict"), t("workHint_resolve_time_conflict"))}
+          <p className="text-[11px] text-ink">{t("availabilityCounts", {
+            parent: draft.parentTimeOptions.length,
+            assessor: draft.assessorTimeOptions.length,
+            overlap: 0,
+          })}</p>
+          <Button type="button" size="sm" className="h-9 w-full" disabled={pending || (!dirty && !note.trim())} onClick={() => submitSupport({ ...draft, state: "coordinating_time", scheduledAt: null })}>
+            {pending ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" /> : <Check className="size-4" />}
+            {t("saveTimeAdjustment")}
+          </Button>
+        </>
+      );
+    }
+    if (workStep === "choose_shared_time") {
+      return (
+        <>
+          {header(t("workTitle_choose_shared_time"), t("workHint_choose_shared_time"))}
+          <div className="flex flex-wrap gap-1.5">
+            {exactSharedOptions.map(({ option, instant }) => (
+              <Button key={option} type="button" size="sm" variant="secondary" className="h-8 rounded-lg px-2.5 text-[11px]" disabled={pending} onClick={() => setDraft({ ...draft, scheduledAt: instant })}>
+                {formatOption(option)}
+              </Button>
+            ))}
+          </div>
+          {broadSharedCount > 0 ? <p className="text-[11px] leading-5 text-amber-700">{t("workRangeNeedsDetail", { count: broadSharedCount })}</p> : null}
+          {exactSharedOptions.length === 0 ? <p className="text-[11px] leading-5 text-muted">{t("workNoExactSharedTime")}</p> : null}
+        </>
+      );
+    }
+    if (workStep === "confirm_with_parent") {
+      const alreadyWaiting = !candidateNeedsSave && row.state === "awaiting_parent";
+      return (
+        <>
+          {header(t("workTitle_confirm_with_parent"), t("workHint_confirm_with_parent"))}
+          <div className="border-l-2 border-rose pl-3">
+            <p className="text-sm font-medium text-ink">{selectedTimeText}</p>
+            <p className="mt-0.5 text-[11px] text-muted">{assessorName} · {draft.locationText || t("locationToConfirm")}</p>
+          </div>
+          {exactSharedOptions.length > 1 ? (
+            <div className="flex flex-wrap gap-1">
+              {exactSharedOptions.map(({ option, instant }) => (
+                <Button
+                  key={option}
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className={cn("h-7 rounded-lg px-2 text-[10px]", draft.scheduledAt === instant && "bg-moon/35 text-ink")}
+                  aria-pressed={draft.scheduledAt === instant}
+                  disabled={pending}
+                  onClick={() => setDraft({ ...draft, scheduledAt: instant })}
+                >
+                  {formatOption(option)}
+                </Button>
+              ))}
+            </div>
+          ) : null}
+          {alreadyWaiting ? (
+            <>
+              <Button type="button" size="sm" className="h-9 w-full" disabled={pending} onClick={() => submitSupport({ ...draft, state: "confirmed" })}>
+                {pending ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" /> : <Check className="size-4" />}
+                {t("parentConfirmed")}
+              </Button>
+              <Button type="button" size="sm" variant="secondary" className="h-8 w-full" disabled={pending} onClick={() => copyText(parentConfirmationText)}>
+                <Copy className="size-3.5" />
+                {t("copyParentConfirmation")}
+              </Button>
+              {note.trim() ? (
+                <Button type="button" size="sm" variant="ghost" className="h-8 w-full" disabled={pending} onClick={() => submitSupport({ ...draft, state: "awaiting_parent" })}>
+                  {t("recordAndWait")}
+                </Button>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <Button
+                type="button"
+                size="sm"
+                className="h-9 w-full"
+                disabled={pending}
+                onClick={() => {
+                  copyText(parentConfirmationText);
+                  submitSupport({ ...draft, state: "awaiting_parent" });
+                }}
+              >
+                {pending ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" /> : <Copy className="size-4" />}
+                {t("saveCandidateAndCopy")}
+              </Button>
+              <Button type="button" size="sm" variant="secondary" className="h-8 w-full" disabled={pending} onClick={() => submitSupport({ ...draft, state: "confirmed" })}>
+                <Check className="size-3.5" />
+                {t("parentConfirmedDirect")}
+              </Button>
+            </>
+          )}
+          <Button type="button" size="sm" variant="ghost" className="h-7 w-full text-[11px]" disabled={pending} onClick={() => setDraft({ ...draft, state: "coordinating_time", scheduledAt: null })}>
+            {t("chooseAnotherTime")}
+          </Button>
+        </>
+      );
+    }
+    if (workStep === "choose_activity") {
+      return <>{header(t("workTitle_choose_activity"), t("workHint_choose_activity"))}</>;
+    }
+    if (workStep === "confirm_activity") {
+      const alreadyWaiting = !dirty && row.state === "awaiting_parent";
+      return (
+        <>
+          {header(t("workTitle_confirm_activity"), t("workHint_confirm_activity"))}
+          {selectedActivity ? (
+            <div className="border-l-2 border-moon pl-3">
+              <p className="text-sm font-medium text-ink">{selectedActivity.title}</p>
+              <p className="mt-0.5 text-[11px] text-muted">{formatAt(selectedActivity.scheduledAt)} · {draft.locationText || selectedActivity.location || t("locationToConfirm")}</p>
+            </div>
+          ) : null}
+          {alreadyWaiting ? (
+            <>
+              <Button type="button" size="sm" className="h-9 w-full" disabled={pending} onClick={() => submitSupport({ ...draft, state: "confirmed" })}>
+                {pending ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" /> : <Check className="size-4" />}
+                {t("parentConfirmed")}
+              </Button>
+              <Button type="button" size="sm" variant="secondary" className="h-8 w-full" disabled={pending} onClick={() => copyText(activityConfirmationText)}>
+                <Copy className="size-3.5" />
+                {t("copyParentConfirmation")}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button type="button" size="sm" className="h-9 w-full" disabled={pending} onClick={() => { copyText(activityConfirmationText); submitSupport({ ...draft, state: "awaiting_parent" }); }}>
+                {pending ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" /> : <Copy className="size-4" />}
+                {t("saveActivityAndCopy")}
+              </Button>
+              <Button type="button" size="sm" variant="secondary" className="h-8 w-full" disabled={pending} onClick={() => submitSupport({ ...draft, state: "confirmed" })}>
+                <Check className="size-3.5" />
+                {t("parentConfirmedDirect")}
+              </Button>
+            </>
+          )}
+        </>
+      );
+    }
+    if (workStep === "waiting_activity") {
+      return (
+        <>
+          {header(t("workTitle_waiting_activity"), t("workHint_waiting_activity"))}
+          <Button type="button" size="sm" className="h-9 w-full" disabled={pending || (!dirty && !note.trim())} onClick={() => submitSupport({ ...draft, state: "waiting_activity" })}>
+            {pending ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" /> : <Check className="size-4" />}
+            {t("saveKnownFacts")}
+          </Button>
+        </>
+      );
+    }
+    return (
+      <>
+        {header(t("workTitle_confirmed"), t("workHint_confirmed"))}
+        <div className="border-l-2 border-leaf-deep pl-3">
+          <p className="text-sm font-medium text-ink">{currentArrangement}</p>
+        </div>
+        <Button type="button" size="sm" className="h-9 w-full" disabled={pending} onClick={() => copyText(relayText)}>
+          <Copy className="size-4" />
+          {t("copyRelay")}
+        </Button>
+        {draft.kind === "assessment_1v1" ? (
+          <Button type="button" size="sm" variant="ghost" className="h-8 w-full" disabled={pending} onClick={() => setDraft({ ...draft, state: "coordinating_time", scheduledAt: null })}>
+            {t("recoordinate")}
+          </Button>
+        ) : null}
+      </>
+    );
+  })();
 
   return (
     <div className="px-2 py-1">
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <InvitationDraftFields
           value={draft}
           activities={activities}
           assessors={assessors}
           locale={locale}
-          disabled={updateRun.pending}
+          disabled={pending || (!assessorEditing && workStep === "confirmed")}
           allowNone={false}
           variant="workflow"
+          editingScope={assessorEditing ? "assessor" : "full"}
           onChange={(value) => { if (value) setDraft(value); }}
         />
 
         <section className="space-y-3 border-line xl:border-l xl:pl-5">
-          <p className="flex items-center gap-2 text-xs font-medium text-ink">
-            <span className="flex size-5 items-center justify-center rounded-full bg-rose/20 text-[11px] text-rose">3</span>
-            {t("communicationSection")}
-          </p>
-          <div className="grid grid-cols-4 gap-1" role="group" aria-label={t("channelLabel")}>
-            {CHANNELS.map((value) => (
+          {assessorEditing ? (
+            <>
+              <p className="text-sm font-medium text-ink">{t("assessorAvailabilityTitle")}</p>
+              <p className="text-[11px] leading-5 text-muted">{t("assessorAvailabilityHint")}</p>
+              <p className="text-[11px] text-ink">{sharedOptions.length > 0
+                ? t("assessorOverlapFound", { count: sharedOptions.length })
+                : t("assessorOverlapPending")}</p>
               <Button
-                key={value}
                 type="button"
                 size="sm"
-                variant="ghost"
-                className={cn(
-                  "h-8 min-w-0 rounded-lg px-1.5 text-[11px]",
-                  channel === value && "bg-moon/35 text-ink",
-                )}
-                aria-pressed={channel === value}
-                disabled={updateRun.pending}
-                onClick={() => setChannel(value)}
+                className="h-9 w-full"
+                disabled={pending || sameOptions(draft.assessorTimeOptions, row.assessorTimeOptions)}
+                onClick={() => assessorRun.run(row.id, draft.assessorTimeOptions)}
               >
-                {channel === value ? <Check className="size-3" /> : null}
-                <span className="truncate">{t(`channel_${value}`)}</span>
+                {pending ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" /> : <Check className="size-4" />}
+                {sharedOptions.length > 0 ? t("saveAssessorAvailabilityWithOverlap") : t("saveAssessorAvailability")}
               </Button>
-            ))}
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor={`invitation-note-${row.id}`} className="text-[11px] text-muted">{t("noteLabel")}</Label>
-            <Textarea
-              id={`invitation-note-${row.id}`}
-              value={note}
-              disabled={updateRun.pending}
-              rows={3}
-              maxLength={2000}
-              className="min-h-20 resize-y rounded-xl px-3 py-2 text-xs"
-              placeholder={t("notePlaceholder")}
-              aria-label={t("noteFor", { name: row.leadName })}
-              onChange={(event) => setNote(event.target.value)}
-            />
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            className="h-9 w-full"
-            disabled={updateRun.pending || !draftComplete}
-            onClick={() => submit()}
-          >
-            {updateRun.pending ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" /> : <Check className="size-4" />}
-            {note.trim() ? t("saveProgress") : t("saveArrangement")}
-          </Button>
-          <div className="flex items-center justify-between gap-1">
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              className="h-7 px-2 text-[11px]"
-              title={relayText}
-              disabled={updateRun.pending}
-              onClick={() => copyWithFallback(relayText)
-                .then(() => toast.success(t("copySuccess")))
-                .catch(() => toast.error(t("copyFailed")))}
-            >
-              <Copy className="size-3.5" />
-              {t("copyRelay")}
-            </Button>
-            <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-[11px]" disabled={updateRun.pending} onClick={() => setCancelOpen(true)}>
-              {t("cancelInvitation")}
-            </Button>
-          </div>
+            </>
+          ) : (
+            <>
+              <p className="text-[10px] uppercase tracking-[0.12em] text-muted">{t("currentWorkAction")}</p>
+              {supportActionContent}
+              {workStep !== "confirmed" ? (
+                <div className="space-y-2 border-t border-line pt-3">
+                  <Label htmlFor={`invitation-note-${row.id}`} className="text-[11px] text-muted">{t("communicationOptional")}</Label>
+                  <div className="grid grid-cols-4 gap-1" role="group" aria-label={t("channelLabel")}>
+                    {CHANNELS.map((value) => (
+                      <Button
+                        key={value}
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className={cn("h-7 min-w-0 rounded-lg px-1 text-[10px]", channel === value && "bg-moon/35 text-ink")}
+                        aria-pressed={channel === value}
+                        disabled={pending}
+                        onClick={() => setChannel(value)}
+                      >
+                        {channel === value ? <Check className="size-3" /> : null}
+                        <span className="truncate">{t(`channel_${value}`)}</span>
+                      </Button>
+                    ))}
+                  </div>
+                  <Textarea
+                    id={`invitation-note-${row.id}`}
+                    value={note}
+                    disabled={pending}
+                    rows={1}
+                    maxLength={2000}
+                    className="min-h-9 resize-y rounded-xl px-3 py-2 text-xs"
+                    placeholder={t("notePlaceholder")}
+                    aria-label={t("noteFor", { name: row.leadName })}
+                    onChange={(event) => setNote(event.target.value)}
+                  />
+                </div>
+              ) : null}
+              <div className="flex justify-end border-t border-line pt-2">
+                <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-[11px]" disabled={pending} onClick={() => setCancelOpen(true)}>
+                  {t("cancelInvitation")}
+                </Button>
+              </div>
+            </>
+          )}
         </section>
       </div>
 
@@ -243,8 +620,8 @@ function InvitationEditor({
         description={t("cancelDescription", { name: row.leadName })}
         confirmLabel={t("cancelInvitation")}
         cancelLabel={t("keepInvitation")}
-        pending={updateRun.pending}
-        onConfirm={() => submit("cancelled")}
+        pending={pending}
+        onConfirm={() => submitSupport({ ...draft, state: "cancelled" })}
       />
     </div>
   );
@@ -255,22 +632,34 @@ export function InvitationCoordinationWorkbench({
   activities,
   assessors,
   locale,
+  queue,
   coordinationStage,
   stageCounts,
   searchQuery,
+  currentUserId,
+  canManageInvitation,
 }: {
   rows: InvitationCoordinationRow[];
   activities: InvitationActivityOption[];
   assessors: InvitationAssessorOption[];
   locale: string;
+  queue: InvitationQueue;
   coordinationStage: InvitationCoordinationStage | null;
   stageCounts: InvitationQueueCounts["stages"];
   searchQuery?: string;
+  currentUserId: string;
+  canManageInvitation: boolean;
 }) {
   const t = useTranslations("school.invitations");
   const router = useRouter();
-  const [sessionRows, setSessionRows] = useState(rows);
+  const [rowOverrides, setRowOverrides] = useState<Record<string, InvitationCoordinationRow>>({});
   const [activeId, setActiveId] = useState<string | null>(() => rows[0]?.id ?? null);
+  const sessionRows = rows
+    .map((row) => {
+      const override = rowOverrides[row.id];
+      return override && override.updatedAt >= row.updatedAt ? override : row;
+    })
+    .filter((row) => rowMatchesView(row, queue, coordinationStage));
   const dateTimeFormatter = useMemo(() => new Intl.DateTimeFormat(locale, {
     dateStyle: "short",
     timeStyle: "short",
@@ -291,24 +680,27 @@ export function InvitationCoordinationWorkbench({
     const savedAt = new Date().toISOString();
     const activity = input.activityId ? activities.find((item) => item.id === input.activityId) : undefined;
     const assessor = input.assessorId ? assessors.find((item) => item.userId === input.assessorId) : undefined;
-    setSessionRows((current) => current.map((item) => item.id === row.id ? {
-      ...item,
-      ...input,
-      activityTitle: activity?.title ?? "",
-      activityScheduledAt: activity?.scheduledAt ?? null,
-      assessorName: assessor?.displayName ?? "",
-      summary: input.note.trim() || item.summary,
-      updatedAt: savedAt,
-      events: [{
-        id: `session-${Date.now()}`,
-        fromState: item.state,
-        toState: input.state,
-        channel: input.channel,
-        note: input.note,
-        recordedByName: t("currentOperator"),
-        occurredAt: savedAt,
-      }, ...item.events].slice(0, 3),
-    } : item));
+    setRowOverrides((current) => {
+      const item = current[row.id] ?? row;
+      return { ...current, [row.id]: {
+        ...item,
+        ...input,
+        activityTitle: activity?.title ?? "",
+        activityScheduledAt: activity?.scheduledAt ?? null,
+        assessorName: assessor?.displayName ?? "",
+        summary: input.note.trim() || item.summary,
+        updatedAt: savedAt,
+        events: [{
+          id: `session-${Date.now()}`,
+          fromState: item.state,
+          toState: input.state,
+          channel: input.channel,
+          note: input.note,
+          recordedByName: t("currentOperator"),
+          occurredAt: savedAt,
+        }, ...item.events].slice(0, 3),
+      } };
+    });
   };
 
   return (
@@ -346,6 +738,13 @@ export function InvitationCoordinationWorkbench({
           {sessionRows.map((row) => {
             const closed = row.state === "completed" || row.state === "cancelled";
             const active = !closed && activeId === row.id;
+            const rowWorkStep = invitationWorkStep(row);
+            const rowAction = rowWorkStep === "closed"
+              ? t(`state_${row.state}`)
+              : t(`workTitle_${rowWorkStep}`);
+            const rowActionHint = rowWorkStep === "closed"
+              ? t(`task_${row.state}`)
+              : t(`workHint_${rowWorkStep}`);
             return (
               <Fragment key={row.id}>
                 <TableRow
@@ -365,8 +764,8 @@ export function InvitationCoordinationWorkbench({
                     <p className="mt-0.5 pl-5 text-[11px] text-muted">{row.gradeText || t("gradePending")}{row.ownerName ? ` · ${row.ownerName}` : ""}</p>
                   </TableCell>
                   <TableCell className="max-w-[22rem] px-2 py-2">
-                    <Badge variant="outline" className="border-moon/60 bg-moon/15">{t(`state_${row.state}`)}</Badge>
-                    <p className="mt-1 truncate text-[11px] text-muted" title={t(`task_${row.state}`)}>{t(`task_${row.state}`)}</p>
+                    <Badge variant="outline" className="border-moon/60 bg-moon/15">{rowAction}</Badge>
+                    <p className="mt-1 truncate text-[11px] text-muted" title={rowActionHint}>{rowActionHint}</p>
                   </TableCell>
                   <TableCell className="max-w-[38rem] px-2 py-2">
                     <div className="flex min-w-0 items-center gap-2">
@@ -386,6 +785,8 @@ export function InvitationCoordinationWorkbench({
                         assessors={assessors}
                         locale={locale}
                         formatAt={formatAt}
+                        currentUserId={currentUserId}
+                        canManageInvitation={canManageInvitation}
                         onSaved={onSaved}
                       />
                     </TableCell>

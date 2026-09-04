@@ -14,6 +14,7 @@ import { DashboardTableShell } from "./dashboard-page";
 import { InvitationDraftFields } from "./InvitationDraftFields";
 import {
   invitationDraftIsComplete,
+  invitationWorkStep,
   type InvitationActivityOption,
   type InvitationAssessorOption,
   type InvitationDraft,
@@ -98,6 +99,7 @@ function ContactEntryRow({
   locale: string;
 }) {
   const t = useTranslations("school.leads");
+  const invitationT = useTranslations("school.invitations");
   const rowRef = useRef<HTMLTableRowElement>(null);
   const submittedInputRef = useRef<LeadContactInput | null>(null);
   const [outcome, setOutcome] = useState<LeadContactOutcome | "">("");
@@ -156,8 +158,15 @@ function ContactEntryRow({
     lead.acquisitionMethod,
     lead.sourceCount > 1 ? t("sourceCount", { count: lead.sourceCount }) : "",
   ].filter(Boolean).join(" · ");
+  const invitationStepLabel = (draft: InvitationDraft) => {
+    const step = invitationWorkStep(draft);
+    return step === "closed" ? invitationT(`state_${draft.state}`) : invitationT(`workTitle_${step}`);
+  };
 
-  const inputFor = (nextOutcome: LeadContactOutcome): LeadContactInput => {
+  const inputFor = (
+    nextOutcome: LeadContactOutcome,
+    invitationOverride: InvitationDraft | null = invitation,
+  ): LeadContactInput => {
     const nextReachable = nextOutcome === "connected" || nextOutcome === "declined";
     return {
       outcome: nextOutcome,
@@ -170,13 +179,16 @@ function ContactEntryRow({
             : null
         : null,
       interestLevel: nextReachable && interestLevel ? interestLevel : null,
-      invitation: nextOutcome === "connected" ? invitation : null,
+      invitation: nextOutcome === "connected" ? invitationOverride : null,
     };
   };
 
-  const submit = (nextOutcome: LeadContactOutcome | "" = outcome) => {
+  const submit = (
+    nextOutcome: LeadContactOutcome | "" = outcome,
+    invitationOverride: InvitationDraft | null = invitation,
+  ) => {
     if (!nextOutcome) return;
-    const input = inputFor(nextOutcome);
+    const input = inputFor(nextOutcome, invitationOverride);
     if (input.invitation && !invitationDraftIsComplete(input.invitation)) return;
     submittedInputRef.current = input;
     contactRun.run(lead.id, input);
@@ -228,6 +240,10 @@ function ContactEntryRow({
       accessibleLabel: t(`interest_${value}`),
     })),
   ];
+  const confirmableInvitation = invitation?.state === "awaiting_parent"
+    && invitationDraftIsComplete({ ...invitation, state: "confirmed" })
+    ? { ...invitation, state: "confirmed" as const }
+    : null;
 
   return (
     <TableRow
@@ -347,7 +363,7 @@ function ContactEntryRow({
                   <div className="flex items-center gap-1 text-[11px] text-muted">
                     <span>{t("invitationFact")}</span>
                     <Badge variant="outline" className="px-1.5 py-0 text-[10px] font-normal leading-4 text-ink">
-                      {t(`invitationKind_${lead.activeInvitation.kind}`)} · {t(`invitationState_${lead.activeInvitation.state}`)}
+                      {t(`invitationKind_${lead.activeInvitation.kind}`)} · {invitationStepLabel(lead.activeInvitation)}
                     </Badge>
                   </div>
                 ) : null}
@@ -410,23 +426,38 @@ function ContactEntryRow({
                   ? invitation
                     ? t("contactDestinationWithInvitation", {
                         status: t(`status_${destination}`),
-                        queue: t(`invitationState_${invitation.state}`),
+                        queue: invitationStepLabel(invitation),
                       })
                     : t("contactDestination", { status: t(`status_${destination}`) })
                   : t("contactDestinationPending")}
               </p>
-              <Button
-                type="button"
-                size="sm"
-                className="h-8 whitespace-nowrap"
-                disabled={contactRun.pending || !canSubmit}
-                onClick={() => submit()}
-              >
-                {contactRun.pending
-                  ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" />
-                  : <Check className="size-4" />}
-                {t("saveContactRow")}
-              </Button>
+              <div className="flex flex-wrap justify-end gap-1.5">
+                {confirmableInvitation ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="h-8 whitespace-nowrap"
+                    disabled={contactRun.pending}
+                    onClick={() => submit("connected", confirmableInvitation)}
+                  >
+                    <Check className="size-4" />
+                    {t("saveContactAndConfirmInvitation")}
+                  </Button>
+                ) : null}
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-8 whitespace-nowrap"
+                  disabled={contactRun.pending || !canSubmit}
+                  onClick={() => submit()}
+                >
+                  {contactRun.pending
+                    ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" />
+                    : <Check className="size-4" />}
+                  {confirmableInvitation ? t("saveContactAwaitParent") : t("saveContactRow")}
+                </Button>
+              </div>
             </div>
           </div>
         ) : outcome ? (
@@ -491,6 +522,7 @@ export function LeadFirstContactWorkbench({
           activeInvitation: input.invitation ? {
             id: lead.activeInvitation?.id ?? `session-${lead.id}`,
             ...input.invitation,
+            legacyTimeText: "",
             activityTitle: input.invitation.activityId
               ? activities.find((activity) => activity.id === input.invitation?.activityId)?.title ?? ""
               : "",

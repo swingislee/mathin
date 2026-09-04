@@ -16,11 +16,16 @@ import {
   type LeadPoolRow,
 } from "@/features/school/lead-contract";
 import {
+  assessmentAvailabilityIntersection,
+  assessmentTimeOptionForInstant,
+  assessmentTimeOptionToInstant,
   defaultInvitationState,
   invitationCoordinationStageFrom,
   invitationDraftIsComplete,
   invitationQueueFrom,
+  invitationStateFromFacts,
   invitationStatesForKind,
+  invitationWorkStep,
 } from "@/features/school/invitation-contract";
 
 const root = process.cwd();
@@ -91,7 +96,7 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(contact).toContain("insert into public.lead_communications");
   });
 
-  it("moves invitation coordination out of the contact status and keeps a natural-language handoff history", () => {
+  it("moves invitation coordination out of contact status and keeps structured two-sided availability", () => {
     const migration = read(
       "supabase",
       "migrations",
@@ -100,6 +105,12 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     const page = read("src", "app", "[locale]", "dashboard", "invitations", "page.tsx");
     const workbench = read("src", "features", "school", "InvitationCoordinationWorkbench.tsx");
     const draftFields = read("src", "features", "school", "InvitationDraftFields.tsx");
+    const availabilityGrid = read("src", "features", "school", "AssessmentAvailabilityGrid.tsx");
+    const availabilityMigration = read(
+      "supabase",
+      "migrations",
+      "20260903001500_school_ops_invitation_availability_grid.sql",
+    );
 
     expect(migration).toContain("create table public.lead_invitation_threads");
     expect(migration).toContain("create table public.lead_invitation_events");
@@ -110,6 +121,11 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(migration).toContain("create or replace function public.update_lead_invitation");
     expect(migration).toContain("p_invitation_state");
     expect(migration).not.toContain("p_next_action_at");
+    expect(availabilityMigration).toContain("parent_time_options text[]");
+    expect(availabilityMigration).toContain("assessor_time_options text[]");
+    expect(availabilityMigration).toContain("create or replace function public.record_lead_contact_v3");
+    expect(availabilityMigration).toContain("create or replace function public.set_invitation_assessor_availability");
+    expect(availabilityMigration).toContain("after_school");
     expect(page).toContain("InvitationCoordinationWorkbench");
     expect(page).toContain("DashboardCommandTabs");
     expect(page).toContain("listInvitationQueueCounts");
@@ -120,8 +136,14 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(workbench).toContain("sticky left-0 top-0");
     expect(workbench).toContain("DashboardTableColumnHeader");
     expect(workbench).toContain("replaceCoordinationStage");
+    expect(workbench).toContain("const rowWorkStep = invitationWorkStep(row)");
+    expect(workbench).toContain("rowMatchesView");
     expect(draftFields).toContain('"assessment_1v1", "activity", "waiting_activity"');
-    expect(draftFields).toContain("invitationStatesForKind");
+    expect(draftFields).toContain("invitationStateFromFacts");
+    expect(draftFields).not.toContain("stateChoices.map");
+    expect(draftFields).toContain("AssessmentAvailabilityGrid");
+    expect(availabilityGrid).toContain("grid-cols-[5.5rem_repeat(7");
+    expect(availabilityGrid).toContain("ASSESSMENT_SLOT_DEFINITIONS");
   });
 
   it("separates dense seed management from the inline first-contact entry table", () => {
@@ -181,6 +203,8 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(workbench).toContain("displayedOutcome === value");
     expect(workbench).toContain("showSavedDetails");
     expect(workbench).toContain("savedWechatFact");
+    expect(workbench).toContain("confirmableInvitation");
+    expect(workbench).toContain("saveContactAndConfirmInvitation");
     expect(workbench).toContain("lead.activeInvitation");
     expect(workbench).toContain("InvitationDraftFields");
     expect(workbench).toContain("savedInterest");
@@ -209,7 +233,7 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(contract).not.toContain("@/lib/supabase/server");
     expect(actions).toContain('authorizedClient("student.assign")');
     expect(actions).toContain('authorizedClient("followup.write")');
-    expect(actions).toContain('supabase.rpc("record_lead_contact_v2"');
+    expect(actions).toContain('supabase.rpc("record_lead_contact_v3"');
     expect(actions).toContain("p_invitation_state");
     expect(query).toContain('.from("lead_communications")');
     expect(query).toContain('.from("lead_invitation_threads")');
@@ -238,7 +262,9 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
       state: "coordinating_time",
       activityId: null,
       assessorId: null,
-      proposedTimeText: "",
+      parentTimeOptions: [],
+      assessorTimeOptions: [],
+      scheduledAt: null,
       locationText: "",
     })).toBe(true);
     expect(invitationDraftIsComplete({
@@ -246,7 +272,9 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
       state: "awaiting_teacher",
       activityId: null,
       assessorId: null,
-      proposedTimeText: "周六下午",
+      parentTimeOptions: ["2026-09-05@after_school"],
+      assessorTimeOptions: [],
+      scheduledAt: null,
       locationText: "",
     })).toBe(false);
     expect(invitationDraftIsComplete({
@@ -254,9 +282,78 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
       state: "awaiting_parent",
       activityId: null,
       assessorId: "00000000-0000-0000-0000-000000000001",
-      proposedTimeText: "周六下午",
+      parentTimeOptions: ["2026-09-05@14:00"],
+      assessorTimeOptions: ["2026-09-05@14:00"],
+      scheduledAt: null,
       locationText: "一号教室",
     })).toBe(true);
+    expect(invitationDraftIsComplete({
+      kind: "assessment_1v1",
+      state: "confirmed",
+      activityId: null,
+      assessorId: "00000000-0000-0000-0000-000000000001",
+      parentTimeOptions: ["2026-09-05@14:00"],
+      assessorTimeOptions: ["2026-09-05@14:00"],
+      scheduledAt: "2026-09-05T06:00:00.000Z",
+      locationText: "一号教室",
+    })).toBe(true);
+    expect(assessmentAvailabilityIntersection(
+      ["2026-09-05@after_school", "2026-09-05@14:00"],
+      ["2026-09-05@14:00", "2026-09-05@16:00"],
+    )).toEqual(["2026-09-05@14:00"]);
+    expect(assessmentTimeOptionForInstant("2026-09-05T06:00:00.000Z")).toBe("2026-09-05@14:00");
+    expect(assessmentTimeOptionForInstant("2026-09-05T08:30:00.000Z")).toBeNull();
+    expect(assessmentTimeOptionToInstant("2026-09-05@14:00")).toBe("2026-09-05T06:00:00.000Z");
+    expect(assessmentTimeOptionToInstant("2026-09-05@after_school")).toBeNull();
+    expect(invitationStateFromFacts({
+      kind: "assessment_1v1",
+      state: "coordinating_time",
+      activityId: null,
+      assessorId: "00000000-0000-0000-0000-000000000001",
+      parentTimeOptions: ["2026-09-05@14:00"],
+      assessorTimeOptions: [],
+      scheduledAt: null,
+      locationText: "",
+    })).toBe("awaiting_teacher");
+  });
+
+  it("derives the one action shown to learning support from recorded facts", () => {
+    const base = {
+      kind: "assessment_1v1" as const,
+      state: "coordinating_time" as const,
+      activityId: null,
+      assessorId: null,
+      parentTimeOptions: [] as string[],
+      assessorTimeOptions: [] as string[],
+      scheduledAt: null,
+      locationText: "",
+    };
+    expect(invitationWorkStep(base)).toBe("collect_arrangement");
+    expect(invitationWorkStep({
+      ...base,
+      assessorId: "00000000-0000-0000-0000-000000000001",
+      parentTimeOptions: ["2026-09-05@14:00"],
+    })).toBe("waiting_assessor");
+    expect(invitationWorkStep({
+      ...base,
+      assessorId: "00000000-0000-0000-0000-000000000001",
+      parentTimeOptions: ["2026-09-05@14:00"],
+      assessorTimeOptions: ["2026-09-05@16:00"],
+    })).toBe("resolve_time_conflict");
+    expect(invitationWorkStep({
+      ...base,
+      assessorId: "00000000-0000-0000-0000-000000000001",
+      parentTimeOptions: ["2026-09-05@14:00"],
+      assessorTimeOptions: ["2026-09-05@14:00"],
+    })).toBe("choose_shared_time");
+    expect(invitationWorkStep({
+      ...base,
+      state: "awaiting_parent",
+      assessorId: "00000000-0000-0000-0000-000000000001",
+      parentTimeOptions: ["2026-09-05@14:00"],
+      assessorTimeOptions: ["2026-09-05@14:00"],
+      scheduledAt: "2026-09-05T06:00:00.000Z",
+    })).toBe("confirm_with_parent");
   });
 
   it("separates the coordination work queue from its current blocker", () => {

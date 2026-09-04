@@ -21,7 +21,7 @@ import {
   parseInvitationFilters,
 } from "@/features/school/invitations";
 import type { InvitationCoordinationStage, InvitationQueue } from "@/features/school/invitation-contract";
-import { requirePerm } from "@/lib/auth";
+import { getMyPerms, requireAnyPerm } from "@/lib/auth";
 
 const QUEUES = [
   "coordination",
@@ -39,7 +39,9 @@ export default async function InvitationsPage({
 }) {
   const [{ locale }, rawSearchParams] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
-  await requirePerm(locale, "followup.view");
+  const user = await requireAnyPerm(locale, ["followup.view", "review.write"]);
+  const permissions = await getMyPerms(user.id);
+  const canManageInvitation = permissions.has("followup.write");
   const filters = parseInvitationFilters(rawSearchParams);
   const [t, rows, options, counts] = await Promise.all([
     getTranslations("school.invitations"),
@@ -120,9 +122,12 @@ export default async function InvitationsPage({
           activities={options.activities}
           assessors={options.assessors}
           locale={locale}
+          queue={filters.queue}
           coordinationStage={filters.queue === "coordination" ? filters.stage : null}
           stageCounts={counts.stages}
           searchQuery={filters.q}
+          currentUserId={user.id}
+          canManageInvitation={canManageInvitation}
         />
       ) : <DashboardEmptyCard>{t(emptyKey)}</DashboardEmptyCard>}
     </DashboardPage>
