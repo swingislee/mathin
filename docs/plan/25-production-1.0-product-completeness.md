@@ -147,7 +147,7 @@ command_or_runbook, artifact_url_or_path, artifact_hash, failure_ticket
 | --- | --- | --- | --- | --- |
 | 规划/变更治理 | M3 | M4 | R1-0 已冻结实际 owner 与证据位置；2026-08-14 增加 R1-Live Gate，后续持续维护索引并在 Production 1.0 汇总审批 | 0/Live/18 |
 | 机构配置/场地/Feature Flag | M3 | M4 | R1-1 已完成旧设置中心与版本化开关；`DEV-ORG-1`、`DEV-DASH-1` 与 `DEV-DASH-2` 已把机构资料、校区/教室、机构级学年/日历/排课默认、能力发布、职能导航、个人优先/全部表格班级视图、10 条课件资源分页及统一表格/分隔语义部署到生产。兼容双写、固定账号 Playwright、完整 migration 回滚/零残留演练及机器 postflight 通过。M4 仍需生产页面人工验收、正式角色旅程、兼容合同退休和完整发布门 | 1/DEV-ORG-1/DEV-DASH-1/DEV-DASH-2/15/18 |
-| Jobs/通知/文件/集成 | M3 | M4 | R1-2 已完成 durable job/dead-letter/重放、第一方通知、TUS/文件策略、webhook 防重放与开发环境验证；`DEV-WEB-PUSH-1` 已完成本机关闭态数据/应用/Worker/监控底座和定向机器验证，正推进 `PUSH-P5` 生产暗部署，员工测试仍未授权，权威安全/共享电脑/重试/监控与 Gate 见 [`employee-desktop-web-push.md`](employee-desktop-web-push.md)。M4 仍需生产 Worker 激活、选中并验收的外部渠道、容量、告警恢复和 14 天 RC | 2/14/16/17/DEV-WEB-PUSH-1 |
+| Jobs/通知/文件/集成 | M3 | M4 | R1-2 已完成 durable job/dead-letter/重放、第一方通知、TUS/文件策略、webhook 防重放与开发环境验证；`DEV-WEB-PUSH-1 / PUSH-P5` 已完成生产关闭态 schema/app/Worker 文件/监控底座和独立 postflight，feature、integration、cohort 与 Worker 仍为安全关闭，员工测试未授权。权威安全/共享电脑/重试/监控与 Gate 见 [`employee-desktop-web-push.md`](employee-desktop-web-push.md)。M4 仍需 `PUSH-G5`、生产 Worker 激活、选中并验收的外部渠道、容量、告警恢复和 14 天 RC | 2/14/16/17/DEV-WEB-PUSH-1 |
 | 账户/Auth/同意/支持 | M3 | M4 | R1-3 已完成版本化同意、MFA/会话、权利请求、员工邀请、封禁/恢复和审计支持；R1-Live 先建立正式管理员/教师并验证恢复。`POST-LIVE-AUTH-01` 第一阶段已部署传统设置页式统一账号中心，提供头像/显示名称/语言、只读登录 identity、密码、MFA、会话与恢复；真实姓名、岗位、学生及家庭信息继续由业务档案维护，provider 绑定留待后续 | 3/Live/12/14/16/17/18 |
 | Work-items/审批 | M3 | M4 | R1-4 已完成混合投影、持久协同、独立审批、动态逾期、幂等/通知与开发规模 PERF-04；M4 仍需正式 E2E、生产候选负载和 RC 指标 | 4/14/17 |
 | 学生门户 | M3 | M4 | R1-5 已完成本人课务/考勤/请假补课/作业/视频/成果/逐题学情/通知、草稿隔离、跨学生拒绝与 zh/en 开发环境旅程；M4 仍需 R1-14 正式 Playwright、R1-16 独立生产、R1-17 RC 与 R1-18 发布证据 | 5/14/16/17/18 |
@@ -555,7 +555,7 @@ R1-16 的只读 preflight 位于 `docs/manifests/r1-production-deployment.exampl
 | 视觉 | 小王子为全站基础；场景/内容/工作区三级强度；Notebook=旅途笔记 | 产品+设计负责人 | 已定 | decided |
 | 语言 | UI 永久 zh/en；缺英文长内容时显式回退 | 产品+内容负责人 | 已定 | decided |
 | 财务 | 1.0 安全关闭；未来启用必须以新迁移打开发布门并重新通过完整账务门 | 产品+财务负责人 | R1-8 | closed for 1.0 |
-| 通知 | 站内通知为硬门；员工 Web Push 已进入 `DEV-WEB-PUSH-1` 实现与暗部署轨，但在专题 `PUSH-G5` 通过前保持 feature flag off、integration disabled、cohort 空、Worker 服务未激活，不得进入员工测试。未选定/未验收的邮件、SMS、微信和 Webhook 渠道继续关闭 | 平台+运维负责人 | R1-2/DEV-WEB-PUSH-1 | implementation, fail-closed |
+| 通知 | 站内通知为硬门；员工 Web Push 的 `DEV-WEB-PUSH-1 / PUSH-P5` 生产暗部署已完成。在专题 `PUSH-G5` 通过前继续保持 feature flag off、integration disabled/secret null、cohort 空、subscription/delivery/job=0、Worker 服务未激活，不得进入员工测试。未选定/未验收的邮件、SMS、微信和 Webhook 渠道继续关闭 | 平台+运维负责人 | R1-2/DEV-WEB-PUSH-1 | P5 deployed, fail-closed；employee test not authorized |
 | 遥测 | 第一方最小事件；不采集非必要未成年人 PII；第三方 SDK 默认不接入 | 产品+隐私负责人 | R1-13 | decided default |
 | Work-items | 领域真相+领域投影+有限持久协同项；审批独立 | 学校产品+数据库负责人 | 已定 | decided |
 | E2E | Playwright；临时浏览脚本不进入发布证据 | QA/发布负责人 | R1-14 | decided |
@@ -576,7 +576,7 @@ R1-0 已完成责任角色到 `swingislee` 的映射。增加人员或发生交�
 | Story 无完整章节 | 路由存在；无完整独立章节内容目录 | 对外 1.0 缺一模块 | 内容+产品 | R1-10 |
 | R1-9 来源实物证据未完成 | P6-AIX-2 开发库证据与 v4 只读导出/对象校验核心、受控 runner 已通过；批准副本配置、外部 provenance、真实 1305 行 inventory、Storage/H5 审计与非执行者复核仍 pending | Production 1.0 release 清单可能缺对象或 snapshot 漂移；不影响 R1-Live 所选课次已读验证 | 产品+课程研发+QA/发布 | R1-Live 后恢复 R1-9，并在 R1-18 前重跑最终证据 |
 | 英文正文缺失 | `content/en` 仅 README | `/en` 可能空白或混排 | 内容+前端 | R1-9～12 |
-| 平台运行内核尚无生产验收 | R1-2 已完成 Job/通知/文件/集成的开发库断言、空库重放、Worker 单次运行和 zh/en 浏览器验证（M3）；`DEV-WEB-PUSH-1` 已在本机实现通知专用 Service Worker、加密设备订阅、Web Push sender、重试/TTL/熔断和聚合监控，关闭态 migration 与浏览器定向验证通过，生产暗部署仍 pending | 当前机器证据不能证明生产 Push 服务可达、共享电脑隔离、独立告警、容量、最终成功率或员工已看到通知 | 平台+运维+安全+QA | DEV-WEB-PUSH-1/R1-14/16/17 |
+| 平台运行内核尚无完整生产验收 | R1-2 已完成 Job/通知/文件/集成的开发库断言、空库重放、Worker 单次运行和 zh/en 浏览器验证（M3）；`DEV-WEB-PUSH-1 / PUSH-P5` 已把通知专用 Service Worker、加密设备订阅、Web Push sender、重试/TTL/熔断和聚合监控以关闭态部署生产，migration、ledger、备份、原子 release 和暗态 postflight 通过 | P5 机器证据仍不能证明生产 Push 服务可达、共享电脑隔离、独立告警、容量、最终成功率或员工已看到通知；这些继续阻断 `PUSH-G5` 和员工测试 | 平台+运维+安全+QA | DEV-WEB-PUSH-1/R1-14/16/17 |
 | 全站视觉强度合同刚固定 | doc 05 曾把工作区排除在星球主题外 | 公开站与后台品牌断裂或装饰侵入控件 | 设计+前端 | R1-12 |
 | 机构配置尚无生产验收 | R1-1 已完成显式默认、版本/RLS/回滚和开发环境验证（M3） | 开发合同不等于生产配置、正式角色旅程和发布初始化正确 | 产品+数据库+发布 | R1-15～18 |
 | 账户安全尚无生产验收 | R1-3 已完成账户/同意/支持的空库重放、负向断言与开发浏览器验证（M3） | 开发门控不证明正式唯一管理员、生产 MFA=100%、速率限制与恢复演练 | 安全+发布+QA | R1-14/16/17/18 |

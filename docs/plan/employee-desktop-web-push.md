@@ -4,15 +4,15 @@
 >
 > **工作项**：`DEV-WEB-PUSH-1`
 >
-> **当前状态**：`IMPLEMENTATION IN PROGRESS / LOCAL DARK RUNTIME VERIFIED / PUSH-P5 PENDING / EMPLOYEE TEST NOT AUTHORIZED`
+> **当前状态**：`PUSH-P5 COMPLETE / PRODUCTION DARK DEPLOYMENT VERIFIED / EMPLOYEE TEST NOT AUTHORIZED`
 >
-> **当前施工目标**：连续推进 `PUSH-P0`～`PUSH-P5`，以生产三层开关全部关闭、无订阅、无 Web Push 投递的暗部署完成为本轮终点。普通产品裁决、测试排期和外部告警出口等未决项进入 §10.1 问题账本，不阻断代码开发；会造成越权、泄密、误投递、旧业务回归或生产目标不明的硬问题仍必须 fail-closed。
+> **当前施工目标**：`PUSH-P5` 已以生产三层开关全部关闭、无订阅、无 Web Push 投递的暗部署完成。下一步只推进 `PUSH-G5` 员工测试入口条件：补齐安全、共享电脑、真实 Edge/Chrome、生产 Push 网络、独立告警和首批人员/设备范围；在 Gate 全部通过并再次获得明确人工确认前，不配置 secret、不启动 Worker、不启用通道/开关、不写 tester cohort。
 >
 > **员工测试入口**：只有本文 §11 的 `PUSH-G5 · EMPLOYEE-TEST-ENTRY` 全部为 `PASS`，产品负责人登记首批员工与设备范围并明确确认“进入员工测试”后，状态才可改为 `EMPLOYEE TEST ACTIVE`。开发完成、机器检查通过、生产暗部署或通知在单台开发机弹出，均不能提前进入员工测试。
 >
 > **阶段关系**：本工作项属于 doc 04 §5.2 的独立开发轨，不改变 `R1-Live-2` 当前施工阶段，也不替代 Gate 2 的正式教师点名、持久再读和权限对照。功能在生产默认关闭；未通过本专题 Gate 时，既有站内铃铛继续作为唯一已承诺的通知入口。
 >
-> **核对日期**：2026-09-03；依据当前 `notifications` / `notification_deliveries`、durable job、`ChangeBell`、平台运行面板、生产运维合同，以及 Push API、Service Worker、Web Push 和 Edge 企业策略官方文档。
+> **核对日期**：2026-09-04；生产暗部署依据候选 `bea3d111…`、release `20260904-012426`、migration ledger `244 / 20260903000760_employee_web_push_dark_monitoring`、写前备份、回滚演练和独立暗态 postflight；员工测试条件仍依据本专题 §11。
 
 ## 1. 目标、首发范围与产品边界
 
@@ -333,7 +333,7 @@ delivery: queued → sending → sent
 | `PUSH-ISSUE-06` 本机 Vitest 子进程权限 | `CLOSED` | `G5-BLOCK / DEV-CONTINUE` | 沙箱内 `spawn EPERM` 仍是 runner 限制；2026-09-03 已在获批的沙箱外 runner 直接运行定向文件 | `tests/web-push-production.test.ts` 9/9 通过；后续代码变化按受影响范围重跑 |
 | `PUSH-ISSUE-07` Web Push 发送库锁定 | `CLOSED` | `G5-BLOCK / DEV-CONTINUE` | 初次安装受 pnpm store/审批服务影响；不手工伪造 lockfile，Worker 保持动态加载和关闭态 | 2026-09-03 已锁定 `web-push@3.6.7`，`package.json` 与 `pnpm-lock.yaml` 同步，定向合同通过 |
 | `PUSH-ISSUE-08` 生成数据库类型 | `OPEN` | `G5-BLOCK / DEV-CONTINUE` | `src/lib/database.types.ts` 正由其他工作项修改，本地 schema 也含尚未冻结的后续 migration；当前 Web Push 代码使用窄化 RPC 边界，不覆盖并发改动 | 并发工作项收口后从完整候选 schema 重新生成，`pnpm db:types:check` 通过且无非本批漂移 |
-| `PUSH-ISSUE-09` 生产基线导航双语缺键 | `OPEN` | `FOLLOW-UP` | 基于 production current `8c50b48…` 的候选暗态 Playwright 页面可用且 2/2 通过，但日志确认 `school.nav.adaptReview`、`school.nav.preparationReview` 在 zh/en 均为既有 `MISSING_MESSAGE`；本批不夹带无关导航修复 | 独立补齐两组双语键并验证 production current 对应导航，`operational_errors` 不再新增该签名 |
+| `PUSH-ISSUE-09` 生产基线导航双语缺键 | `CLOSED` | `FOLLOW-UP` | 生产基线 `4d20bc85…` 已独立移除两项过期复盘导航；Web Push 候选在该基线上重建并通过双语键、导航合同和 production build | release `20260904-012426` 已包含该基线，发布后 journal error 无新增 |
 
 ### 10.2 当前实现与证据检查点
 
@@ -344,7 +344,7 @@ delivery: queued → sending → sent
 | `PUSH-P2` | 通知专用 SW、显式权限、逐设备 UI、登出撤销、点击再鉴权和 zh/en 已实现；固定员工账号暗态 Playwright 证明 permission request=0、SW registration=0、开启按钮禁用 | HTTPS 真机允许/拒绝/撤销、标签关闭与账号切换旅程 | `NOT AUTHORIZED` |
 | `PUSH-P3` | Worker sender、加密/HMAC、响应分类、Retry-After/full jitter、TTL、404/410 清密文、熔断和聚合 Dashboard 已实现；`web-push@3.6.7` 已锁定，Vitest 9/9、暗态 Playwright 2/2 通过 | provider 故障注入、容量、独立告警演练和生产 Worker 激活前检查 | `NOT AUTHORIZED` |
 | `PUSH-P4` | 尚未建立固定 HTTPS 非生产 Push 目标 | 完整 E2/E3、Edge/Chrome 真机、共享电脑与回退演练 | `NOT AUTHORIZED` |
-| `PUSH-P5` | 发布 runbook 与不可变 release 的 Worker 打包合同已落地；生产仍未变更 | 冻结干净候选，生产只读 preflight/备份/rehearsal/formal/app 暗发布/postflight | `NOT AUTHORIZED` |
+| `PUSH-P5` | **COMPLETE**：候选 `bea3d111…` 已发布为 production release `20260904-012426`；两条 migration 正式提交，ledger/head=`244 / 20260903000760_employee_web_push_dark_monitoring`。feature=false、integration disabled/secret null、cohort/subscription/delivery/job=`0`，Worker inactive；备份、rehearsal、业务/Storage/错误不变量和公网健康 postflight 通过 | 无；保留写前备份与 previous `4d20bc85…`，后续转入 `PUSH-G5` | `NOT AUTHORIZED` |
 
 ## 11. `PUSH-G5 · EMPLOYEE-TEST-ENTRY`
 
