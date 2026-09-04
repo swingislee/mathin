@@ -1,7 +1,7 @@
 "use server";
 
 // ---------------------------------------------------------------------------
-// 点名（P4B-5 §5.5）：花名册逐人四态 upsert；有账号且该 session 有其 user
+// 点名（P4B-5 §5.5）：花名册逐人四态按主键拆分新增/修正；有账号且该 session 有其 user
 // 事件的默认预填 present，其余默认 absent，抽屉里都可手动改。请假/调课同属点名域。
 // ---------------------------------------------------------------------------
 
@@ -12,58 +12,33 @@ import { authorizedClient } from "./guards";
 import { COMMON_CODES, parse, text, uuid } from "./schemas";
 import type { AttendanceDrawerRow, SessionChangeOptions } from "./types";
 
+type UntypedRpc = (name: string, args?: Record<string, unknown>) => PromiseLike<{
+  data: unknown;
+  error: { message: string } | null;
+}>;
+
+function rpc(supabase: { rpc: unknown }): UntypedRpc {
+  return supabase.rpc as UntypedRpc;
+}
+
+const attendanceDrawerRowsSchema = z.array(z.object({
+  studentId: uuid,
+  studentName: z.string(),
+  status: z.enum(ATTENDANCE_STATUSES),
+  note: z.string(),
+  marked: z.boolean(),
+  historyMismatch: z.boolean(),
+})).max(200);
+
 export async function getAttendanceDrawerData(sessionId: string): Promise<ActionResult<AttendanceDrawerRow[]>> {
   try {
     const id = parse(uuid, sessionId);
     const { supabase } = await authorizedClient("attendance.mark");
-
-    const { data: session, error: sessionError } = await supabase
-      .from("class_sessions")
-      .select("classroom_id")
-      .eq("id", id)
-      .maybeSingle<{ classroom_id: string }>();
-    if (sessionError) throw new Error(sessionError.message);
-    if (!session) throw new Error("NOT_FOUND");
-
-    const [{ data: rosterRows, error: rosterError }, { data: existingRows, error: existingError }, { data: eventRows, error: eventError }] =
-      await Promise.all([
-        supabase
-          .from("enrollments")
-          .select("student_id,students(name,user_id)")
-          .eq("classroom_id", session.classroom_id)
-          .eq("status", "active")
-          .returns<Array<{ student_id: string; students: { name: string; user_id: string | null } | null }>>(),
-        supabase
-          .from("session_attendance")
-          .select("student_id,status,note")
-          .eq("session_id", id)
-          .returns<Array<{ student_id: string; status: AttendanceStatus; note: string }>>(),
-        supabase
-          .from("session_events")
-          .select("user_id")
-          .eq("session_id", id)
-          .returns<Array<{ user_id: string }>>(),
-      ]);
-    if (rosterError) throw new Error(rosterError.message);
-    if (existingError) throw new Error(existingError.message);
-    if (eventError) throw new Error(eventError.message);
-
-    const existingByStudent = new Map((existingRows ?? []).map((row) => [row.student_id, row]));
-    const participatedUserIds = new Set((eventRows ?? []).map((row) => row.user_id));
-
-    const rows = (rosterRows ?? []).map((row) => {
-      const existing = existingByStudent.get(row.student_id);
-      const userId = row.students?.user_id ?? null;
-      const defaultStatus: AttendanceStatus = userId && participatedUserIds.has(userId) ? "present" : "absent";
-      return {
-        studentId: row.student_id,
-        studentName: row.students?.name ?? "-",
-        status: existing?.status ?? defaultStatus,
-        note: existing?.note ?? "",
-        marked: Boolean(existing),
-      };
+    const { data, error } = await rpc(supabase)("get_session_attendance_roster_v2", {
+      p_session_id: id,
     });
-    return { ok: true, data: rows };
+    if (error) throw new Error(error.message);
+    return { ok: true, data: parse(attendanceDrawerRowsSchema, data) as AttendanceDrawerRow[] };
   } catch (error) {
     return actionError<AttendanceDrawerRow[]>(error, ["NOT_FOUND", ...COMMON_CODES]);
   }
@@ -88,16 +63,35 @@ export async function saveAttendanceAction(
     const value = parse(saveAttendanceSchema, { sessionId, records });
     const { supabase } = await authorizedClient("attendance.mark");
     if (value.records.length === 0) return { ok: true };
-    const { error } = await supabase.from("session_attendance").upsert(
-      value.records.map((record) => ({
+
+    // INSERT RLS 要求学生属于课次锚点名单；历史 mismatch 行仍允许经 UPDATE 修正。
+    // 先识别已存在主键，再把新增与更新分开，避免 ON CONFLICT 仍先触发 INSERT policy。
+    const { data: existingRows, error: existingError } = await supabase
+      .from("session_attendance")
+      .select("student_id")
+      .eq("session_id", value.sessionId)
+      .in("student_id", value.records.map((record) => record.studentId))
+      .returns<Array<{ student_id: string }>>();
+    if (existingError) throw new Error(existingError.message);
+    const existingStudentIds = new Set((existingRows ?? []).map((row) => row.student_id));
+    const newRecords = value.records.filter((record) => !existingStudentIds.has(record.studentId));
+    const existingRecords = value.records.filter((record) => existingStudentIds.has(record.studentId));
+    const writes = [
+      ...(newRecords.length > 0 ? [supabase.from("session_attendance").insert(newRecords.map((record) => ({
         session_id: value.sessionId,
         student_id: record.studentId,
         status: record.status,
         note: record.note,
-      })),
-      { onConflict: "session_id,student_id" },
-    );
-    if (error) throw new Error(error.message);
+      })))] : []),
+      ...existingRecords.map((record) => supabase
+        .from("session_attendance")
+        .update({ status: record.status, note: record.note })
+        .eq("session_id", value.sessionId)
+        .eq("student_id", record.studentId)),
+    ];
+    const writeResults = await Promise.all(writes);
+    const writeError = writeResults.find((result) => result.error)?.error;
+    if (writeError) throw new Error(writeError.message);
 
     // P4I-15：点名保存后顺带把课后"点名"任务标记完成（若仍待处理），并对每个缺勤学生
     // 生成 absence_check 支持任务（record_attendance_absence 内部 on conflict 幂等，
@@ -141,12 +135,23 @@ export async function amendAttendanceStatusAction(
   try {
     const value = parse(amendAttendanceStatusSchema, { sessionId, record });
     const { supabase } = await authorizedClient("attendance.mark");
-    const { error } = await supabase.from("session_attendance").upsert({
-      session_id: value.sessionId,
-      student_id: value.record.studentId,
-      status: value.record.status,
-      note: value.record.note,
-    }, { onConflict: "session_id,student_id" });
+    const { data: existing, error: existingError } = await supabase
+      .from("session_attendance")
+      .select("student_id")
+      .eq("session_id", value.sessionId)
+      .eq("student_id", value.record.studentId)
+      .maybeSingle<{ student_id: string }>();
+    if (existingError) throw new Error(existingError.message);
+    const payload = { status: value.record.status, note: value.record.note };
+    const { error } = existing
+      ? await supabase.from("session_attendance").update(payload)
+        .eq("session_id", value.sessionId)
+        .eq("student_id", value.record.studentId)
+      : await supabase.from("session_attendance").insert({
+        session_id: value.sessionId,
+        student_id: value.record.studentId,
+        ...payload,
+      });
     if (error) throw new Error(error.message);
 
     if (value.record.status === "absent") {

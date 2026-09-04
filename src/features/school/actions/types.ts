@@ -56,6 +56,7 @@ export interface AttendanceDrawerRow {
   status: AttendanceStatus;
   note: string;
   marked: boolean;
+  historyMismatch?: boolean;
 }
 
 export interface SessionChangeOptions {

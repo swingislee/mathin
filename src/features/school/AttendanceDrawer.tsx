@@ -98,7 +98,11 @@ export function AttendanceDrawer({
                 <li key={row.studentId} className="rounded-xl border border-line bg-card p-2.5">
                   <div className="flex items-center gap-2">
                     <span className="min-w-0 flex-1 truncate text-sm font-medium">{row.studentName}</span>
-                    {row.marked && <span className="text-[11px] text-muted">{t("attendanceRecorded")}</span>}
+                    {row.historyMismatch ? (
+                      <span className="text-[11px] text-rose">{t("rosterCompositeAnomaly", { count: 1 })}</span>
+                    ) : row.marked ? (
+                      <span className="text-[11px] text-muted">{t("attendanceRecorded")}</span>
+                    ) : null}
                   </div>
                   <div className="mt-2 grid grid-cols-4 gap-1">
                     {ATTENDANCE_STATUSES.map((status) => (

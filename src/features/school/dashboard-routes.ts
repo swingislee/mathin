@@ -323,6 +323,14 @@ export const DASHBOARD_ROUTES = {
     creationOwner: "classes",
     parent: "classes",
   },
+  sessions: {
+    // 教师当天的课次操作队列；课次本身仍由班级创建，不另造集合级创建入口。
+    href: "/dashboard/sessions",
+    kind: "queue",
+    environments: STAFF_ONLY,
+    createSurface: "none",
+    parent: "classes",
+  },
   sessionDetail: {
     // 课次从多个入口进入，需要稳定的顶层 canonical 详情 URL；但创建责任属于班级（§5.13）。
     hrefPattern: "/dashboard/sessions/[sessionId]",

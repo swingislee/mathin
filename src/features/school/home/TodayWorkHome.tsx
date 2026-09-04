@@ -15,6 +15,11 @@ import { WorkItemActions } from "@/features/school/stage/WorkItemActions";
 import { WorkItemGroup } from "@/features/school/stage/WorkItemGroup";
 import { WorkItemList } from "@/features/school/stage/WorkItemList";
 import type { WorkItemRow } from "@/features/school/stage/types";
+import { TeacherTodaySessions } from "@/features/school/TeacherTodaySessions";
+import {
+  getTodaySessionOperations,
+  type TodaySessionOperationsData,
+} from "@/features/school/teacher-session-operations";
 import {
   formatWorkItemReason,
   listWorkCoordinationCandidates,
@@ -41,7 +46,7 @@ import {
 
 // 四个工作分区在宽屏下并排成列（最多 4 列），而不是各自占满整行——避免每张
 // 工作卡横向铺满整个视口、内容却只占一小块的观感问题（P4I-8 真实试用反馈）。
-function WorkColumn({ title, children }: { title: string; children: ReactNode }) {
+function WorkColumn({ title, children }: { title: ReactNode; children: ReactNode }) {
   return (
     <section className="flex min-w-0 flex-col gap-3">
       <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-muted">{title}</h2>
@@ -61,6 +66,14 @@ async function safeListWorkCoordinationCandidates(): Promise<WorkCoordinationCan
 async function safeGetStaffHomeWeekSummaryData(): Promise<StaffHomeWeekSummaryData | null> {
   try {
     return await getStaffHomeWeekSummaryData();
+  } catch {
+    return null;
+  }
+}
+
+async function safeGetTodaySessionOperations(now: Date): Promise<TodaySessionOperationsData | null> {
+  try {
+    return await getTodaySessionOperations(now);
   } catch {
     return null;
   }
@@ -195,19 +208,20 @@ export async function TodayWorkHome({
   items: WorkItemRow[];
   perms: ReadonlySet<PermissionKey>;
 }) {
-  const [schoolT, t, tClasses, hubT, overviewT, candidates] = await Promise.all([
+  const now = new Date();
+  const [schoolT, t, tClasses, hubT, overviewT, candidates, todaySessionData] = await Promise.all([
     getTranslations("school"),
     getTranslations("school.work"),
     getTranslations("school.classes"),
     getTranslations("school.home.staffHub"),
     getTranslations("school.home.overview"),
     safeListWorkCoordinationCandidates(),
+    safeGetTodaySessionOperations(now),
   ]);
 
   const canManageWorkItems = perms.has("work_item.manage");
   const hasManagementScope = hasStaffHomeManagementScope(perms);
 
-  const now = new Date();
   const spotlightGroups = selectSpotlightGroups(items);
   const { mine, oversight } = partitionByOwnership(items);
   const todaySchedule = selectTodaySchedule(items, now);
@@ -321,8 +335,22 @@ export async function TodayWorkHome({
             />
           </WorkColumn>
 
-          <WorkColumn title={t("todayTitle")}>
-            {todaySchedule.length > 0 ? (
+          <WorkColumn title={(
+            <Link href="/dashboard/sessions" className="inline-flex items-center gap-1 transition-colors hover:text-ink">
+              {t("todayTitle")}
+              <ArrowUpRight className="size-3" aria-hidden />
+            </Link>
+          )}>
+            {todaySessionData ? (
+              <TeacherTodaySessions
+                sessions={todaySessionData.sessions}
+                timeZone={todaySessionData.timeZone}
+                locale={locale}
+                canMarkAttendance={perms.has("attendance.mark")}
+                returnTo="/dashboard?view=work"
+                compact
+              />
+            ) : todaySchedule.length > 0 ? (
               <ul className="divide-y divide-line rounded-2xl border border-line bg-card">
                 {todaySchedule.map((entry) => (
                   <li key={entry.groupKey}>

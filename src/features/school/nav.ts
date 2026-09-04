@@ -104,7 +104,7 @@ export const PARENT_NAV_ITEMS: readonly SchoolNavItem[] = (["home", "children", 
  * （`/dashboard/courseware/lectures/[lectureId]` 不需要这条——它本身就在 courseware 前缀下。）
  */
 const OBJECT_ROUTE_FALLBACKS: readonly { prefix: string; navHref: string }[] = [
-  { prefix: "/dashboard/sessions/", navHref: "/dashboard/classes" },
+  { prefix: "/dashboard/sessions", navHref: "/dashboard/classes" },
 ];
 
 export function resolveActiveNavHref(pathname: string, nav: readonly SchoolNavItem[]): string | null {
