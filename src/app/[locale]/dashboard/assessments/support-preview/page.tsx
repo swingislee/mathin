@@ -8,5 +8,5 @@ export default async function SupportAssessmentPreviewPage({
   if (process.env.NODE_ENV === "production") notFound();
 
   const { locale } = await params;
-  redirect(`/${locale}/dashboard/assessments?desk=support`);
+  redirect(`/${locale}/dashboard/assessments`);
 }

@@ -102,7 +102,7 @@ describe("DEV-SCHOOL-OPS-1 Phase 2 assessment-session worktable", () => {
       "20260904000220_school_ops_assessment_route_and_bands.sql",
     );
     const page = read("src", "app", "[locale]", "dashboard", "assessments", "page.tsx");
-    const queue = read("src", "features", "school", "TeacherAssessmentQueue.tsx");
+    const queue = read("src", "features", "school", "AssessmentUnifiedWorkbench.tsx");
     const actions = read("src", "features", "school", "assessment-workbench-actions.ts");
     const query = read("src", "features", "school", "assessment-workbench-data.ts");
     const routes = read("src", "features", "school", "dashboard-routes.ts");
@@ -137,10 +137,11 @@ describe("DEV-SCHOOL-OPS-1 Phase 2 assessment-session worktable", () => {
     expect(correctionMigration).toContain("status = 'attended'");
     expect(correctionMigration).toContain("not public.has_perm(v_uid, 'review.write')");
     expect(correctionMigration).toContain("v_activity_kind <> 'assessment_1v1'");
-    expect(page).toContain("TeacherAssessmentQueue");
-    expect(page).toContain("SupportAssessmentPreview");
+    expect(page).toContain("AssessmentUnifiedWorkbench");
+    expect(page).not.toContain("TeacherAssessmentQueue");
+    expect(page).not.toContain("SupportAssessmentPreview");
     expect(page).not.toContain("AssessmentAggregateWorkbench");
-    expect(page).toContain("DashboardCommandTabs");
+    expect(queue).toContain("DashboardCommandPanel");
     expect(queue).toContain("sticky left-0 top-0");
     expect(queue).toContain("TeacherAssessmentEntryButton");
     expect(queue).toContain("assessmentWorkbenchStage");
@@ -181,7 +182,9 @@ describe("DEV-SCHOOL-OPS-1 Phase 2 assessment-session worktable", () => {
       gradeText: "",
       scheduledAt: recorded ? "2026-09-05T02:00:00.000Z" : "2026-09-04T09:00:00.000Z",
       location: "一号教室",
+      assessorId: null,
       assessorName: "测评老师",
+      assessorSource: recorded ? "actual" : "assigned",
       background: "家长关注计算思路",
       participationStatus: recorded ? "attended" : "booked",
       assessmentStartedAt: recorded ? "2026-09-05T02:15:00.000Z" : null,
@@ -195,19 +198,21 @@ describe("DEV-SCHOOL-OPS-1 Phase 2 assessment-session worktable", () => {
         parentConcerns: "学习习惯",
         teacherRecommendation: "适合 A 班",
         recommendedClass: "A",
+        teacherObservation: "表达清楚，需要加强审题。",
         updatedAt: "2026-09-05T03:00:00.000Z",
       } : null,
+      questionSummary: null,
       route: null,
       updatedAt: recorded ? "2026-09-05T03:00:00.000Z" : "2026-09-04T08:00:00.000Z",
     });
     const rows = [makeRow("pending", false), makeRow("recorded", true)];
 
-    expect(assessmentWorkbenchCounts(rows)).toEqual({ pending: 1, in_progress: 0, completed: 1, all: 2 });
+    expect(assessmentWorkbenchCounts(rows)).toEqual({ pending: 1, in_progress: 0, feedback: 1, handled: 0, all: 2 });
     expect(assessmentWorkbenchRowsForView(rows, { queue: "pending" }, "zh").map((row) => row.id))
       .toEqual(["pending"]);
-    expect(assessmentWorkbenchRowsForView(rows, { queue: "completed", q: "审题" }, "zh").map((row) => row.id))
+    expect(assessmentWorkbenchRowsForView(rows, { queue: "feedback", q: "审题" }, "zh").map((row) => row.id))
       .toEqual([]);
-    expect(assessmentWorkbenchRowsForView(rows, { queue: "completed", q: "贝贝" }, "zh").map((row) => row.id))
+    expect(assessmentWorkbenchRowsForView(rows, { queue: "feedback", q: "贝贝" }, "zh").map((row) => row.id))
       .toEqual(["recorded"]);
   });
 });
