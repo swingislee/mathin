@@ -1,6 +1,6 @@
 # DEV-WEB-PUSH-1 · PUSH-P5 生产暗部署写前证据
 
-> **当前结论（2026-09-04）**：`NEW CANDIDATE READ-ONLY PREFLIGHT PASSED / FRESH BACKUP AND REHEARSAL REQUIRED / PRODUCTION UNCHANGED / EMPLOYEE TEST NOT AUTHORIZED`。产品负责人完成桌面提醒 UI 人工验收后，候选更新为 `c2ff15cf1539d46296a353b21c877c50dc7d2546`；上一候选的备份与 rehearsal 仍是有效附加恢复证据，但不能作为新候选的最终写前门。
+> **当前结论（2026-09-04）**：`READY FOR EXPLICITLY AUTHORIZED EXECUTION / PRODUCTION APP AND SCHEMA UNCHANGED / EMPLOYEE TEST NOT AUTHORIZED`。生产先并发发布了无关的课程资源导航修复 `4d20bc853611965d06ab7ba3517e6b0f417a6a8e`，Web Push 候选已在该基线上刷新为 `bea3d1113fc24ed97672a63866a801135972329b`；绑定新候选/新生产基线的新鲜 PostgreSQL 备份、两条 migration 的完整 rollback rehearsal 和独立零残留检查均已通过。实际 app 发布、schema 正式提交、Web Push/Worker/员工测试仍未授权或执行。
 >
 > **历史结论（`f5cd95e…`）**：`READY FOR EXPLICITLY AUTHORIZED EXECUTION / PRODUCTION UNCHANGED / EMPLOYEE TEST NOT AUTHORIZED`。2026-09-03～2026-09-04 已完成当时候选冻结、Xiaomi 生产只读 preflight、新鲜 PostgreSQL 写前备份、两条 additive migration 的完整回滚与独立零残留检查。实际 app 原子发布、schema formal 和联合 postflight 未执行；当前生产仍运行原 release，Web Push feature/integration/cohort/subscription/delivery/job 均未建立或启用。
 
@@ -28,6 +28,16 @@
 - Web Push 暗态无半应用：feature/integration row=`0/0`，subscription/rollout table=`absent/absent`，候选 RPC=`0`，Web Push delivery/job=`0/0`。生产仍未变更。
 - 上一候选备份 `mathin-db-prechange-20260903T155605Z-employee-web-push-f5cd95e08a68` 的 5 项 `sha256sum -c` 全部通过，已验证 TOC=`4571` 行；manifest 绑定 `f5cd95e…` 且不含 `c2ff15cf…`。因此它只作为附加恢复点保留，新候选进入写态前必须创建绑定 `c2ff15cf…` 的新鲜 PostgreSQL 备份，并用相同 migration 原文重跑完整 rollback/独立零残留 rehearsal。
 - 前两次远端 preflight 编排分别因 Bash 引号和环境行解析在 `docker exec/psql` 前退出；没有数据库访问或生产写入。最终命令以 transaction read-only=`on` 完整返回。宿主机没有 `pg_restore`，TOC 行数改为读取已经 SHA 校验的 `database.toc`，没有降低备份校验范围。
+
+## 2026-09-04 · 生产基线并发刷新后的写前重演
+
+- 生产 `current` 在首次授权后的写前 guard 前已由另一个任务切换到 release `20260904-005152` / commit `4d20bc853611965d06ab7ba3517e6b0f417a6a8e`。guard 在备份目录创建和 `pg_dump` 前停止，因此没有把针对旧基线 `8c50b48…` 的授权套用到新基线。只读审查确认该生产提交仅移除课程资源中的旧复盘导航；将它并入 Web Push 候选后得到精确候选 `bea3d1113fc24ed97672a63866a801135972329b`，相对新 production current 只含 Web Push 变更。
+- 新候选定向 ESLint、双语键 `6360 × 2`、Web Push/账号安全/课程资源导航相关 Vitest `27/27` 和 production build 通过。两条 migration 规范化 SHA-256 仍为 `c2154485d4af9621bd2cbb70a600b0a8ad415a69dc6763287b3cd1fd7be521ab` / `eb4a0e6e6863efaf23db38604d1ea92a01cbd2f49b761caa69cddc59550ce29c`。
+- 用户随后精确授权：仅为 candidate `bea3d111…`、production baseline `4d20bc85…` 创建新鲜 PostgreSQL 写前备份，并执行两条 Web Push migration 的 rollback/零残留 rehearsal；授权不包含 app 发布、schema 正式提交、Web Push/Worker 启用或员工测试。首次备份调用的旧字符串 guard 错报 `CURRENT_COMMIT_DRIFT`，在目录创建和 `pg_dump` 前退出；只读核对确认 current 未漂移且没有 `.partial`，随后改用 JSON 解析 release commit。
+- 新鲜 PostgreSQL-only 备份已原子转正为 `/mnt/openlist-disk/Backups/Mathin/mathin-db-prechange-20260904T011041Z-employee-web-push-bea3d1113fc2/`，manifest 精确绑定 candidate=`bea3d1113fc24ed97672a63866a801135972329b`、production current=`4d20bc853611965d06ab7ba3517e6b0f417a6a8e`、database fingerprint=`10e3f97e32b018403c9074efa4e258d699530a487c47de89b5d307ab7ff21a0c`。dump bytes=`313081330`，TOC lines=`4587`，dump SHA-256=`98c6763bf8ffa11eab81bf4fcf4cffea7b565948976517782d6d7de8060598c0`，`SHA256SUMS` SHA-256=`42b5e02f6de4570dbdec6f67bf2a4aad61ac94a64c69c82b941639eabbaf2bb3`；独立 `sha256sum -c` 的 5 项均通过，无 `.partial` 残留、未执行 retention prune。
+- 以 candidate Git archive 的三份 LF 原文和 `supabase_admin` 在 `SERIALIZABLE` 单事务内执行 runtime migration、ledger insert、monitoring migration、ledger insert 与 `web_push_assertions.sql`。事务内断言通过：feature/channel=`false/false`，candidate ledger=`2`，subscription/rollout/web_push delivery/job=`0/0/0/0`，业务、Storage 与 operational error 基线不变；随后显式 `ROLLBACK`。
+- 新连接严格只读检查得到 ledger/head=`242 / 20260903000700_courseware_page_insertions`、candidate ledger/table/function/column/constraint/index/feature/integration/delivery/job 均=`0`；写前/写后完整快照（含业务计数、Storage、错误基线、被替换函数定义、约束和 ACL 指纹）完全一致。唯一 rehearsal staging 已清理；新备份再次通过 5 项 SHA 校验。production current 仍为 `4d20bc85…`，`mathin.service=active`，loopback/Caddy health=`ok`。
+- 当前只完成新候选的写前 Gate；下一步仍需针对 `bea3d111…` 的生产 app 原子发布和两条 schema 正式提交取得新的明确授权。进入员工测试的显式门仍未满足。
 
 ## 已登记但不阻断关闭态 P5 的问题
 
