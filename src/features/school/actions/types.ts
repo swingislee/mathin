@@ -99,9 +99,11 @@ export interface UpdateStudentInput {
   phone: string;
   wechat: string;
   school: string;
+  publicSchoolClass: string;
   grade: number | null;
   region: string;
   source: string;
+  marketActivity: string;
   parentName: string;
   parentRelation: string;
   parentPhone: string;
