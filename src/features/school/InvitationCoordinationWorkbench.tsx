@@ -578,7 +578,7 @@ function InvitationEditor({
           activities={activities}
           assessors={assessors}
           locale={locale}
-          disabled={pending || (!assessorEditing && workStep === "confirmed")}
+          disabled={pending || (!assessorEditing && row.state === "confirmed" && !dirty)}
           allowNone={false}
           variant="workflow"
           editingScope={assessorEditing ? "assessor" : "full"}
@@ -791,12 +791,15 @@ export function InvitationCoordinationWorkbench({
             const closed = row.state === "completed" || row.state === "cancelled";
             const active = !closed && activeId === row.id;
             const rowWorkStep = invitationWorkStep(row);
+            const rowAssessorName = row.assessorName || t("assessorPending");
             const rowAction = rowWorkStep === "closed"
               ? t(`state_${row.state}`)
               : t(`workTitle_${rowWorkStep}`);
             const rowActionHint = rowWorkStep === "closed"
               ? t(`task_${row.state}`)
-              : t(`workHint_${rowWorkStep}`);
+              : rowWorkStep === "waiting_assessor_response"
+                ? t("workHint_waiting_assessor_response", { assessor: rowAssessorName })
+                : t(`workHint_${rowWorkStep}`);
             return (
               <Fragment key={row.id}>
                 <TableRow

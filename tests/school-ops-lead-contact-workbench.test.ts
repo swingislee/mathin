@@ -139,6 +139,8 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(workbench).toContain("DashboardTableColumnHeader");
     expect(workbench).toContain("replaceCoordinationStage");
     expect(workbench).toContain("const rowWorkStep = invitationWorkStep(row)");
+    expect(workbench.match(/t\("workHint_waiting_assessor_response", \{ assessor:/g)).toHaveLength(2);
+    expect(workbench).toContain('row.state === "confirmed" && !dirty');
     expect(workbench).toContain("rowMatchesView");
     expect(draftFields).toContain('"assessment_1v1", "activity", "waiting_activity"');
     expect(draftFields).not.toContain("invitationStateFromFacts");
