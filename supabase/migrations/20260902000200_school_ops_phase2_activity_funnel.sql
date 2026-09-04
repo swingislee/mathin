@@ -244,7 +244,7 @@ begin
   values (
     sid,
     uid,
-    '创建销售机会：' || activity_title || '；下一动作：' || btrim(p_next_action),
+    '建立课程意向：' || activity_title || '；下一动作：' || btrim(p_next_action),
     'activity',
     p_next_action_at
   );
@@ -317,7 +317,7 @@ begin
   values (
     sid,
     uid,
-    '销售机会状态：' || p_stage ||
+    '课程意向进展：' || p_stage ||
       case when btrim(coalesce(p_next_action, '')) <> ''
         then '；下一动作：' || btrim(p_next_action)
         else ''

@@ -4079,7 +4079,7 @@
     },
     "leads": {
       "title": "Lead seed pool",
-      "intro": "External lists remain unconfirmed lead seeds first. A student is created or linked only after assignment and phone confirmation. Interest selections do not imply a visit, opportunity, or enrollment.",
+      "intro": "External lists remain unconfirmed lead seeds first. A student is created or linked only after assignment and phone confirmation. Source interest selections do not imply a visit, confirmed course interest, or enrollment.",
       "scopeLabel": "Lead scope",
       "scopeUnassigned": "Awaiting assignment",
       "scopeFirstContact": "My first calls",
@@ -4690,7 +4690,7 @@
         "interestLayer": "Source and interests",
         "interestLayerHint": "Selections remain source interest labels. Submission time, location, and promoter are preserved as source-quality facts and do not imply attendance or enrollment.",
         "notCreated": "Explicitly not created",
-        "notCreatedHint": "Students, households, guardians, visits, sales opportunities, orders, enrollments, and payments.",
+        "notCreatedHint": "Students, households, guardians, visits, course interests, orders, enrollments, and payments.",
         "previewTitle": "Source preview",
         "previewDescription": "Review the familiar table shape first. Server match results appear in the last column.",
         "rows": "Rows",
