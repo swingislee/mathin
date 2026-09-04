@@ -1,16 +1,22 @@
 import "server-only";
 
 import { z } from "zod";
-import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import {
   resolveTeacherMicrocoursePageBindingUrls,
-  type TeacherMicrocourseBinding,
 } from "@/features/teacher-microcourses/data";
 import {
   teacherMicrocoursePageDocSchema,
-  type TeacherMicrocoursePageDoc,
 } from "@/features/teacher-microcourses/page-doc";
 import { createClient } from "@/lib/supabase/server";
+import type {
+  PublicClassTeachingCourseware,
+  PublicClassTeachingPage,
+} from "./public-class-teaching-contract";
+
+export type {
+  PublicClassTeachingCourseware,
+  PublicClassTeachingPage,
+} from "./public-class-teaching-contract";
 
 type RpcClient = Awaited<ReturnType<typeof createClient>>;
 type UntypedRpc = (name: string, args?: Record<string, unknown>) => Promise<{
@@ -41,24 +47,6 @@ const bundleSchema = z.object({
     bindings: z.array(bindingSchema),
   })),
 });
-
-export interface PublicClassTeachingPage {
-  pageDocId: string;
-  pageNo: number;
-  title: string;
-  revisionId: string;
-  aspect: string;
-  doc: TeacherMicrocoursePageDoc;
-  bindings: TeacherMicrocourseBinding[];
-  bindingUrls: ResolvedBindingUrls;
-}
-
-export interface PublicClassTeachingCourseware {
-  releaseId: string | null;
-  frozen: boolean;
-  ready: boolean;
-  pages: PublicClassTeachingPage[];
-}
 
 /**
  * Candidate and live presentation share one exact server read model. Before

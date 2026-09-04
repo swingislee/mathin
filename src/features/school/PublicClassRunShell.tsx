@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   ArrowLeft,
+  BadgeCheck,
   BookOpenCheck,
   Check,
   CircleAlert,
@@ -28,7 +29,7 @@ import {
   startPublicClassRunAction,
 } from "./public-class-actions";
 import type { PublicClassSegment, PublicClassWorkbenchData } from "./public-class";
-import type { PublicClassTeachingCourseware } from "./public-class-teaching";
+import type { PublicClassTeachingCourseware } from "./public-class-teaching-contract";
 import { PublicClassRosterView } from "./PublicClassWorkspace";
 
 export type PublicClassLiveMode = "host" | "assessment" | "roster";
@@ -262,9 +263,10 @@ function HostRunSurface({
         {program.map(({ segment, courseware }) => {
           const optionalTalk = segment.kind === "parent_talk" && !segment.microcourseLectureId;
           const ok = courseware.ready || optionalTalk;
+          const checkpointCount = segment.teachingCheckpointPageIds.length;
           return <div key={segment.id} className="flex items-start gap-3 py-3">
             <span className={cn("mt-0.5 grid size-7 shrink-0 place-items-center rounded-full", ok ? "bg-leaf/15 text-leaf-deep" : "bg-crater/10 text-crater")}>{ok ? <Check className="size-4" /> : <BookOpenCheck className="size-4" />}</span>
-            <div className="min-w-0 flex-1"><p className="text-sm font-medium text-ink">{segment.title}</p><p className="mt-0.5 text-xs leading-5 text-muted">{courseware.ready ? t("candidateCoursewareReady", { count: courseware.pages.length }) : optionalTalk ? t("spokenTalkReady") : t("candidateCoursewareMissing")}</p></div>
+            <div className="min-w-0 flex-1"><p className="text-sm font-medium text-ink">{segment.title}</p><p className="mt-0.5 text-xs leading-5 text-muted">{courseware.ready ? `${t("candidateCoursewareReady", { count: courseware.pages.length })}${segment.kind === "trial_lesson" ? ` · ${t("candidateCheckpointCount", { count: checkpointCount })}` : ""}` : optionalTalk ? t("spokenTalkReady") : t("candidateCoursewareMissing")}</p></div>
             <Badge variant="outline">{t(`kind_${segment.kind}`)}</Badge>
           </div>;
         })}
@@ -279,7 +281,7 @@ function HostRunSurface({
       </div>
       <div className="mt-6 flex flex-wrap items-center gap-2">
         <Button size="sm" disabled={pending || !canTeach || !ready} onClick={onStart}>{pending ? <LoaderCircle className="size-4 animate-spin" /> : <MonitorPlay className="size-4" />}{t("startPublicClass")}</Button>
-        <Link href={`/dashboard/activities/${data.activity.id}?view=prepare`} className={buttonVariants({ size: "sm", variant: "secondary" })}>{t("backToPreparation")}</Link>
+        <Link href={`/dashboard/activities/${data.activity.id}?view=teaching`} className={buttonVariants({ size: "sm", variant: "secondary" })}>{t("backToPreparation")}</Link>
       </div>
       {!ready ? <p className="mt-3 flex items-start gap-2 text-xs leading-5 text-amber-700"><CircleAlert className="mt-0.5 size-3.5 shrink-0" />{t("runNotReadyHint")}</p> : null}
       {!canTeach ? <p className="mt-3 flex items-start gap-2 text-xs leading-5 text-muted"><CircleAlert className="mt-0.5 size-3.5 shrink-0" />{t("candidateReadOnlyHint")}</p> : null}
@@ -296,7 +298,13 @@ function HostRunSurface({
       mode="preview"
       className="min-h-0 flex-1 border-0 shadow-none"
       layoutId={`public-class-run-${data.activity.id}`}
-      items={pages.map((page) => ({ id: page.pageDocId, title: `${page.segment.title} · ${page.pageNo}. ${page.title}` }))}
+      items={pages.map((page) => ({
+        id: page.pageDocId,
+        title: `${page.segment.title} · ${page.pageNo}. ${page.title}`,
+        leading: page.segment.teachingCheckpointPageIds.includes(page.pageDocId)
+          ? <span className="grid size-7 shrink-0 place-items-center rounded-full bg-leaf/20 text-leaf-deep" title={t("activeTeachingCheckpoint")}><BadgeCheck className="size-4" /></span>
+          : undefined,
+      }))}
       selectedIndex={selectedIndex}
       onSelectedIndexChange={onSelectedIndexChange}
       directoryLabel={t("runProgramPages")}
@@ -304,7 +312,7 @@ function HostRunSurface({
       previousLabel={t("previousPage")}
       nextLabel={t("nextPage")}
       selectedPageLabel={t("pageIndicator", { current: selectedIndex + 1, total: pages.length })}
-      railStatus={<div className="flex flex-wrap items-center gap-1.5"><Badge variant="outline">{t("frozenForTeaching")}</Badge>{selectedPage?.segment.kind === "parent_talk" && assessmentSegment ? <Badge variant="secondary"><GitBranch className="mr-1 size-3" />{t("assessmentRunningInParallel")}</Badge> : null}</div>}
+      railStatus={<div className="flex flex-wrap items-center gap-1.5"><Badge variant="outline">{t("frozenForTeaching")}</Badge>{selectedPage?.segment.teachingCheckpointPageIds.includes(selectedPage.pageDocId) ? <Badge variant="secondary"><BadgeCheck className="mr-1 size-3" />{t("activeTeachingCheckpoint")}</Badge> : null}{selectedPage?.segment.kind === "parent_talk" && assessmentSegment ? <Badge variant="secondary"><GitBranch className="mr-1 size-3" />{t("assessmentRunningInParallel")}</Badge> : null}</div>}
       previewAspect={selectedPage ? pageAspect(selectedPage.aspect) : 4 / 3}
       preview={selectedPage ? <StagePreview doc={selectedPage.doc} bindingUrls={selectedPage.bindingUrls} stageMode={selectedPage.aspect === "4:3" ? "board43" : "natural"} className="size-full" /> : <div className="grid size-full place-items-center text-sm text-muted">{t("candidateNoPreview")}</div>}
     />

@@ -12,6 +12,7 @@ import {
   PUBLIC_CLASS_VIEWS,
   type PublicClassView,
 } from "@/features/school/public-class";
+import { getPublicClassTeachingCourseware } from "@/features/school/public-class-teaching";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
 
 const ACTIVITY_WORKSPACE_PERMISSIONS = ["activity.register", "review.write", "followup.view"] as const;
@@ -40,28 +41,48 @@ export default async function ActivityDetailPage({
   if (activity.kind === "public_class") {
     const publicClass = await getPublicClassWorkbench(activityId);
     if (!publicClass) notFound();
-    const requestedView = typeof query.view === "string" ? query.view : "prepare";
+    const assignedToSegment = publicClass.segments.some((segment) =>
+      segment.primaryTeacherId === user.id || segment.assistantTeacherId === user.id
+    );
+    const assignedPresentation = publicClass.segments.some((segment) =>
+      segment.kind !== "group_assessment"
+      && (segment.primaryTeacherId === user.id || segment.assistantTeacherId === user.id)
+    );
+    const canManagePublicClass = permissions.has("activity.manage");
+    const canRecord = assignedToSegment
+      || canManagePublicClass
+      || permissions.has("activity.register")
+      || permissions.has("review.write");
+    const defaultView: PublicClassView = assignedPresentation
+      ? "teaching"
+      : canRecord
+        ? "onsite"
+        : "review";
+    const requestedView = typeof query.view === "string" ? query.view : defaultView;
     const legacyViewAliases: Record<string, PublicClassView> = {
-      arrangement: "prepare",
+      prepare: "teaching",
+      arrangement: "onsite",
       roster: "live",
-      print: "prepare",
+      print: "onsite",
       conversion: "review",
     };
     const normalizedView = legacyViewAliases[requestedView] ?? requestedView;
-    const activeView: PublicClassView = PUBLIC_CLASS_VIEWS.includes(normalizedView as PublicClassView)
+    let activeView: PublicClassView = PUBLIC_CLASS_VIEWS.includes(normalizedView as PublicClassView)
       ? normalizedView as PublicClassView
-      : "prepare";
+      : defaultView;
+    if (activeView === "teaching" && !canRecord) activeView = "review";
     const requestedSegmentId = typeof query.segment === "string" ? query.segment : null;
     const activeSegmentId = publicClass.segments.some((segment) => segment.id === requestedSegmentId)
       ? requestedSegmentId
       : publicClass.segments[0]?.id ?? null;
-    const assignedToSegment = publicClass.segments.some((segment) =>
-      segment.primaryTeacherId === user.id || segment.assistantTeacherId === user.id
-    );
-    const canRecord = assignedToSegment
-      || permissions.has("activity.manage")
-      || permissions.has("activity.register")
-      || permissions.has("review.write");
+    const teachingProgram = activeView === "teaching"
+      ? await Promise.all(publicClass.segments
+        .filter((segment) => segment.kind !== "group_assessment")
+        .map(async (segment) => ({
+          segment,
+          courseware: await getPublicClassTeachingCourseware(segment.id),
+        })))
+      : [];
     const publicClassDateTime = new Intl.DateTimeFormat(locale, {
       timeZone,
       dateStyle: "medium",
@@ -82,14 +103,16 @@ export default async function ActivityDetailPage({
     >
       <PublicClassWorkspace
         data={publicClass}
+        teachingProgram={teachingProgram}
         locale={locale}
         activeView={activeView}
         activeSegmentId={activeSegmentId}
-        canManage={permissions.has("activity.manage")}
+        canManage={canManagePublicClass}
         canRecord={canRecord}
         canLinkClass={permissions.has("class.manage")}
         canUseCourseware={canRecord && (permissions.has("course.view") || permissions.has("courseware.microcourse.author"))}
         canAuthorMicrocourse={canRecord && permissions.has("courseware.microcourse.author")}
+        canPrepareTeaching={assignedPresentation || canManagePublicClass}
         currentUserId={user.id}
       />
     </ObjectWorkspace>;

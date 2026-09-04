@@ -38,6 +38,7 @@ describe("DEV-SCHOOL-OPS-1 public-class workbench", () => {
   it("runs the whole public class once while keeping agenda blocks internal", () => {
     const migration = read("supabase", "migrations", "20260904000290_public_class_run_continuity.sql");
     const workspace = read("src", "features", "school", "PublicClassWorkspace.tsx");
+    const preparation = read("src", "features", "school", "PublicClassTeachingPreparation.tsx");
     const teaching = read("src", "features", "school", "PublicClassRunShell.tsx");
     const livePage = read("src", "app", "[locale]", "activity", "[activityId]", "live", "page.tsx");
     const legacyLivePage = read("src", "app", "[locale]", "activity", "[activityId]", "segment", "[segmentId]", "live", "page.tsx");
@@ -48,17 +49,35 @@ describe("DEV-SCHOOL-OPS-1 public-class workbench", () => {
     expect(migration).toContain("public.end_public_class_segment_teaching");
     expect(migration).toContain("kind in ('trial_lesson', 'parent_talk')");
     expect(migration).not.toContain("insert into public.class_sessions");
-    expect(workspace).toContain('value: "prepare"');
+    expect(workspace).toContain('value: "teaching"');
+    expect(workspace).toContain('value: "onsite"');
     expect(workspace).toContain('value: "live"');
     expect(workspace).toContain('value: "review"');
-    expect(workspace).toContain("splitAfterLesson");
+    expect(workspace).not.toContain("programMapTitle");
     expect(workspace).not.toContain("SegmentFlowStep");
+    expect(preparation).toContain("CoursewareWorkbench");
+    expect(preparation).toContain("StagePreview");
+    expect(preparation).toContain("savePublicClassTeachingCheckpointsAction");
     expect(teaching).toContain("startPublicClassRunAction");
     expect(teaching).toContain("endPublicClassRunAction");
     expect(teaching).toContain("CoursewareWorkbench");
     expect(teaching).toContain("PublicClassRosterView");
     expect(livePage).toContain("Promise.all(presentationSegments.map");
     expect(legacyLivePage).toContain("activity/${activityId}/live");
+  });
+
+  it("keeps teacher courseware preparation separate from support materials", () => {
+    const migration = read("supabase", "migrations", "20260904000300_public_class_teaching_preparation.sql");
+    const workspace = read("src", "features", "school", "PublicClassWorkspace.tsx");
+    const preparation = read("src", "features", "school", "PublicClassTeachingPreparation.tsx");
+
+    expect(migration).toContain("create table public.public_class_teaching_checkpoints");
+    expect(migration).toContain("replace_public_class_teaching_checkpoints");
+    expect(migration).not.toContain("insert into public.class_sessions");
+    expect(workspace).toContain("OnsitePreparationView");
+    expect(workspace).toContain("PrintView");
+    expect(preparation).toContain("teachingCheckpointPageIds");
+    expect(preparation).toContain("addTeachingCheckpoint");
   });
 
   it("reuses the secured location read model instead of filtering protected room columns", () => {

@@ -66,6 +66,7 @@ const PUBLIC_CLASS_CODES = [
   "PUBLIC_CLASS_TEACHING_NOT_STARTED",
   "PUBLIC_CLASS_COURSEWARE_REQUIRED",
   "PUBLIC_CLASS_COURSEWARE_NOT_READY",
+  "INVALID_PUBLIC_CLASS_CHECKPOINT",
   "PAGE_TRACK_NOT_READY",
   ...COMMON_CODES,
 ] as const;
@@ -186,6 +187,33 @@ export async function endPublicClassRunAction(
     const { supabase } = await staffRpcClient();
     const { error } = await rpc<null>(supabase, "end_public_class_run", {
       p_activity_id: id,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, PUBLIC_CLASS_CODES);
+  }
+}
+
+const teachingCheckpointsSchema = z.object({
+  segmentId: uuid,
+  pageDocIds: z.array(uuid).max(200),
+}).strict().superRefine((value, context) => {
+  if (new Set(value.pageDocIds).size !== value.pageDocIds.length) {
+    context.addIssue({ code: "custom", path: ["pageDocIds"], message: "Duplicate page" });
+  }
+});
+
+export async function savePublicClassTeachingCheckpointsAction(input: {
+  segmentId: string;
+  pageDocIds: string[];
+}): Promise<ActionResult> {
+  try {
+    const value = parse(teachingCheckpointsSchema, input);
+    const { supabase } = await staffRpcClient();
+    const { error } = await rpc<null>(supabase, "replace_public_class_teaching_checkpoints", {
+      p_segment_id: value.segmentId,
+      p_page_doc_ids: value.pageDocIds,
     });
     if (error) throw new Error(error.message);
     return { ok: true };

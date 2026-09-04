@@ -8,7 +8,7 @@ export const DEFAULT_PUBLIC_CLASS_PRINT_BACKGROUND = "/illustrations/public-clas
 export const PUBLIC_CLASS_SEGMENT_KINDS = ["trial_lesson", "group_assessment", "parent_talk"] as const;
 export type PublicClassSegmentKind = (typeof PUBLIC_CLASS_SEGMENT_KINDS)[number];
 export type PublicClassPresence = "expected" | "attended" | "late" | "absent" | "not_applicable";
-export const PUBLIC_CLASS_VIEWS = ["prepare", "live", "review"] as const;
+export const PUBLIC_CLASS_VIEWS = ["teaching", "onsite", "live", "review"] as const;
 export type PublicClassView = (typeof PUBLIC_CLASS_VIEWS)[number];
 
 export interface PublicClassParticipantRecord {
@@ -63,6 +63,7 @@ export interface PublicClassSegment {
   microcourseAuthorId: string | null;
   teachingStartedAt: string | null;
   teachingEndedAt: string | null;
+  teachingCheckpointPageIds: string[];
   printBackgroundPath: string | null;
 }
 
@@ -193,6 +194,7 @@ interface CampusDbRow { id: string; name: string }
 interface ClassroomDbRow { id: string; name: string }
 interface ClassroomLinkDbRow { classroom_id: string }
 interface ClassroomParticipantDbRow { classroom_id: string; registration_id: string }
+interface TeachingCheckpointDbRow { segment_id: string; page_doc_id: string; position: number }
 interface FamilyDbRow { id: string }
 interface CourseDbRow { id: string; family_id: string; title: string }
 interface LectureDbRow {
@@ -233,6 +235,13 @@ export async function getPublicClassWorkbench(activityId: string): Promise<Publi
   const recordRows = rows(recordResult);
   const linkRows = rows(linkResult);
   const candidateRows = rows(candidateResult);
+  const checkpointResult = segmentRows.length
+    ? await from<TeachingCheckpointDbRow[]>(supabase, "public_class_teaching_checkpoints")
+      .select("segment_id,page_doc_id,position")
+      .in("segment_id", segmentRows.map((segment) => segment.id))
+      .order("position", { ascending: true })
+    : { data: [], error: null };
+  const checkpointRows = rows(checkpointResult);
 
   const studentIds = registrations.flatMap((item) => item.student_id ? [item.student_id] : []);
   const leadIds = registrations.flatMap((item) => item.lead_id ? [item.lead_id] : []);
@@ -359,6 +368,9 @@ export async function getPublicClassWorkbench(activityId: string): Promise<Publi
         microcourseAuthorId: segment.microcourse_id ? microcourseById.get(segment.microcourse_id)?.author_id ?? null : null,
         teachingStartedAt: segment.teaching_started_at,
         teachingEndedAt: segment.teaching_ended_at,
+        teachingCheckpointPageIds: checkpointRows
+          .filter((checkpoint) => checkpoint.segment_id === segment.id)
+          .map((checkpoint) => checkpoint.page_doc_id),
         printBackgroundPath: segment.print_background_path,
       };
     }),

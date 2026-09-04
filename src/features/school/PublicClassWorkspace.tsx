@@ -6,13 +6,11 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
-  CircleCheck,
   ClipboardCheck,
   FileDown,
   GitBranch,
   GraduationCap,
   LoaderCircle,
-  MapPin,
   MonitorPlay,
   Pencil,
   Plus,
@@ -65,6 +63,8 @@ import type {
   PublicClassView,
   PublicClassWorkbenchData,
 } from "./public-class";
+import type { PublicClassTeachingCourseware } from "./public-class-teaching-contract";
+import { PublicClassTeachingPreparation } from "./PublicClassTeachingPreparation";
 import {
   DashboardCommandActions,
   DashboardCommandPanel,
@@ -108,6 +108,7 @@ function formatDateTime(locale: string, value: string) {
 
 export function PublicClassWorkspace({
   data,
+  teachingProgram,
   locale,
   activeView,
   activeSegmentId,
@@ -116,9 +117,11 @@ export function PublicClassWorkspace({
   canLinkClass,
   canUseCourseware,
   canAuthorMicrocourse,
+  canPrepareTeaching,
   currentUserId,
 }: {
   data: PublicClassWorkbenchData;
+  teachingProgram: Array<{ segment: PublicClassSegment; courseware: PublicClassTeachingCourseware }>;
   locale: string;
   activeView: PublicClassView;
   activeSegmentId: string | null;
@@ -127,6 +130,7 @@ export function PublicClassWorkspace({
   canLinkClass: boolean;
   canUseCourseware: boolean;
   canAuthorMicrocourse: boolean;
+  canPrepareTeaching: boolean;
   currentUserId: string;
 }) {
   const t = useTranslations("school.publicClass");
@@ -171,7 +175,8 @@ export function PublicClassWorkspace({
 
   const baseHref = `/dashboard/activities/${data.activity.id}`;
   const tabs = [
-    { value: "prepare", label: t("viewPrepare"), href: `${baseHref}?view=prepare` },
+    { value: "teaching", label: t("viewTeachingPreparation"), href: `${baseHref}?view=teaching` },
+    { value: "onsite", label: t("viewOnsitePreparation"), href: `${baseHref}?view=onsite` },
     { value: "live", label: t("viewLive"), href: `${baseHref}?view=live${selectedSegment ? `&segment=${selectedSegment.id}` : ""}` },
     { value: "review", label: t("viewReview"), href: `${baseHref}?view=review` },
   ];
@@ -190,35 +195,47 @@ export function PublicClassWorkspace({
         <DashboardCommandTabs ariaLabel={t("workspaceViews")} activeValue={activeView} items={tabs} />
       </DashboardCommandState>
       <DashboardCommandActions>
-        {activeView === "prepare" ? <>
-          <Link href={`${baseHref}?view=prepare#print-materials`} className={buttonVariants({ size: "sm", variant: "secondary" })}>
+        {activeView === "onsite" ? <>
+          <Link href={`${baseHref}?view=onsite#print-materials`} className={buttonVariants({ size: "sm", variant: "secondary" })}>
             <FileDown className="size-4" />{t("printMaterials")}
           </Link>
           {canManage ? <Button size="sm" variant="secondary" onClick={() => setEditingSegment("new")}>
             <Plus className="size-4" />{t("addProgramBlock")}
           </Button> : null}
         </> : null}
-        {activeView !== "review" && canRecord ? <Link
-          href={`/activity/${data.activity.id}/live`}
+        {activeView === "teaching" && canPrepareTeaching ? <Link
+          href={`/activity/${data.activity.id}/live?mode=host`}
           className={buttonVariants({ size: "sm" })}
         >
           <MonitorPlay className="size-4" />
           {runState === "live" ? t("returnToLiveRun") : runState === "ended" ? t("reviewCompletedRun") : t("enterRunCandidate")}
         </Link> : null}
+        {activeView === "onsite" && canRecord ? <Link
+          href={`/activity/${data.activity.id}/live?mode=roster`}
+          className={buttonVariants({ size: "sm" })}
+        >
+          <UsersRound className="size-4" />{t("enterOnsiteWorkspace")}
+        </Link> : null}
       </DashboardCommandActions>
     </DashboardCommandPanel>
 
-    {activeView === "prepare" ? <>
-      <PreparationView
+    {activeView === "teaching" ? <PublicClassTeachingPreparation
+      key={teachingProgram.map(({ segment }) => `${segment.id}:${segment.teachingCheckpointPageIds.join(",")}`).join("|")}
+      data={data}
+      program={teachingProgram}
+      canPrepare={canPrepareTeaching}
+      canUseCourseware={canUseCourseware}
+      canAuthorMicrocourse={canAuthorMicrocourse}
+      currentUserId={currentUserId}
+      onCourseware={setCoursewareSegment}
+    /> : null}
+    {activeView === "onsite" ? <>
+      <OnsitePreparationView
         data={data}
         locale={locale}
         canManage={canManage}
-        canUseCourseware={canUseCourseware}
-        canAuthorMicrocourse={canAuthorMicrocourse}
-        currentUserId={currentUserId}
         pending={pending}
         onEdit={setEditingSegment}
-        onCourseware={setCoursewareSegment}
         run={run}
       />
       <div id="print-materials" className="scroll-mt-24"><PrintView data={data} /></div>
@@ -262,72 +279,27 @@ export function PublicClassWorkspace({
   </div>;
 }
 
-function PreparationView({
+function OnsitePreparationView({
   data,
   locale,
   canManage,
-  canUseCourseware,
-  canAuthorMicrocourse,
-  currentUserId,
   pending,
   onEdit,
-  onCourseware,
   run,
 }: {
   data: PublicClassWorkbenchData;
   locale: string;
   canManage: boolean;
-  canUseCourseware: boolean;
-  canAuthorMicrocourse: boolean;
-  currentUserId: string;
   pending: boolean;
   onEdit: (segment: PublicClassSegment) => void;
-  onCourseware: (segment: PublicClassSegment) => void;
   run: Run;
 }) {
   const t = useTranslations("school.publicClass");
-  const trialLessons = data.segments.filter((segment) => segment.kind === "trial_lesson");
-  const parentTalks = data.segments.filter((segment) => segment.kind === "parent_talk");
-  const assessments = data.segments.filter((segment) => segment.kind === "group_assessment");
-  return <div className="space-y-5">
-    <DashboardSection title={t("programMapTitle")} description={t("programMapHint")}>
-      <div className="border-y border-line py-5">
-        <div className="overflow-x-auto pb-1">
-          <div className="min-w-[52rem]">
-            <p className="mb-3 text-xs font-medium text-muted">{t("everyoneLane")}</p>
-            <ProgramSequence segments={trialLessons} locale={locale} emptyLabel={t("noTrialLesson")} />
-            <div className="my-4 flex items-center gap-3 text-xs text-muted">
-              <span className="h-px flex-1 bg-line" />
-              <GitBranch className="size-4 text-crater" />
-              <span className="font-medium text-ink">{t("splitAfterLesson")}</span>
-              <span className="h-px flex-1 bg-line" />
-            </div>
-            <div className="grid grid-cols-2 divide-x divide-line">
-              <div className="pr-5">
-                <p className="mb-3 flex items-center gap-2 text-xs font-medium text-muted"><Presentation className="size-4" />{t("guardianLane")}</p>
-                <ProgramSequence segments={parentTalks} locale={locale} emptyLabel={t("noParentTalk")} compact />
-              </div>
-              <div className="pl-5">
-                <p className="mb-3 flex items-center gap-2 text-xs font-medium text-muted"><ClipboardCheck className="size-4" />{t("studentLane")}</p>
-                <ProgramSequence segments={assessments} locale={locale} emptyLabel={t("noGroupAssessment")} compact />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </DashboardSection>
-
-    <DashboardSection title={t("preparationTitle")} description={t("preparationHint")}>
-      <div className="divide-y divide-line border-y border-line">
+  return <DashboardSection title={t("onsitePreparationTitle")} description={t("onsitePreparationHint")}>
+      <div className="divide-y divide-line">
         {data.segments.map((segment, index) => {
           const place = segmentPlace(segment);
-          const hasCourseware = Boolean(segment.microcourseLectureId);
-          const editorHref = `/dashboard/activities/${data.activity.id}/segments/${segment.id}/microcourse`;
-          const canEditProject = canAuthorMicrocourse
-            && segment.microcourseId !== null
-            && segment.microcourseAuthorId === currentUserId
-            && !segment.teachingStartedAt;
-          return <article key={segment.id} className="grid gap-3 px-2 py-3 @3xl/page:grid-cols-[minmax(17rem,1.1fr)_minmax(18rem,1fr)_minmax(15rem,0.9fr)_auto] @3xl/page:items-center">
+          return <article key={segment.id} className="grid gap-3 px-2 py-3 @3xl/page:grid-cols-[minmax(17rem,1.1fr)_minmax(20rem,1fr)_minmax(15rem,0.9fr)_auto] @3xl/page:items-center">
             <div className="flex min-w-0 items-start gap-3">
               <span className="grid size-8 shrink-0 place-items-center rounded-full bg-moon/20 text-crater"><SegmentKindIcon kind={segment.kind} className="size-4" /></span>
               <div className="min-w-0">
@@ -336,21 +308,14 @@ function PreparationView({
               </div>
             </div>
             <div className="min-w-0 text-xs">
-              <p className="text-muted">{t("roomAndStaff")}</p>
-              <p className={cn("mt-1 truncate", place ? "text-ink" : "text-amber-700")}>{place || t("roomUnassigned")} · {segment.primaryTeacherName || t("teacherUnassigned")}{segment.assistantTeacherName ? ` · ${segment.assistantTeacherName}` : ""}</p>
+              <p className="text-muted">{t("onsiteRoom")}</p>
+              <p className={cn("mt-1 truncate", place ? "text-ink" : "text-amber-700")}>{place || t("roomUnassigned")}</p>
             </div>
             <div className="min-w-0 text-xs">
-              <p className="text-muted">{segment.kind === "group_assessment" ? t("recordingSurface") : t("coursewareAndPreparation")}</p>
-              {segment.kind === "group_assessment"
-                ? <p className="mt-1 truncate text-ink">{t("assessmentSurfaceReady")}</p>
-                : <p className={cn("mt-1 truncate", hasCourseware ? "text-ink" : "text-amber-700")}>{hasCourseware ? `${segment.microcourseCourseTitle} · ${segment.microcourseLectureTitle}` : t("coursewareUnassigned")}</p>}
+              <p className="text-muted">{t("onsiteStaff")}</p>
+              <p className={cn("mt-1 truncate", segment.primaryTeacherName ? "text-ink" : "text-amber-700")}>{segment.primaryTeacherName || t("teacherUnassigned")}{segment.assistantTeacherName ? ` · ${segment.assistantTeacherName}` : ""}</p>
             </div>
             <div className="flex justify-end gap-1">
-              {segment.kind !== "group_assessment" && canUseCourseware && !segment.teachingStartedAt
-                ? canEditProject
-                  ? <Link href={editorHref} className={buttonVariants({ size: "sm", variant: "ghost" })}><Pencil className="size-3.5" />{t("continueEditing")}</Link>
-                  : <Button size="sm" variant="ghost" onClick={() => onCourseware(segment)}><BookOpenCheck className="size-3.5" />{hasCourseware ? t("changeCourseware") : t("chooseOrCreateCourseware")}</Button>
-                : null}
               {canManage ? <Button size="sm" variant="ghost" onClick={() => onEdit(segment)}><Pencil className="size-3.5" />{t("editSegment")}</Button> : null}
               {canManage && data.segments.length > 1 ? <Button size="sm" variant="ghost" className="size-8 p-0" aria-label={t("deleteSegment")} disabled={pending} onClick={() => run(() => deletePublicClassSegmentAction(segment.id), t("segmentDeleted"))}><Trash2 className="size-3.5 text-rose" /></Button> : null}
             </div>
@@ -358,44 +323,7 @@ function PreparationView({
         })}
         {data.segments.length === 0 ? <p className="py-12 text-center text-sm text-muted">{t("noSegments")}</p> : null}
       </div>
-    </DashboardSection>
-  </div>;
-}
-
-function ProgramSequence({
-  segments,
-  locale,
-  emptyLabel,
-  compact = false,
-}: {
-  segments: PublicClassSegment[];
-  locale: string;
-  emptyLabel: string;
-  compact?: boolean;
-}) {
-  if (segments.length === 0) return <div className="rounded-xl border border-dashed border-line px-4 py-4 text-center text-xs text-muted">{emptyLabel}</div>;
-  return <div className="flex items-stretch gap-2">
-    {segments.map((segment, index) => <Fragment key={segment.id}>
-      {index > 0 ? <span className="grid shrink-0 place-items-center text-muted"><ArrowRight className="size-4" /></span> : null}
-      <ProgramNode segment={segment} locale={locale} compact={compact} />
-    </Fragment>)}
-  </div>;
-}
-
-function ProgramNode({ segment, locale, compact }: { segment: PublicClassSegment; locale: string; compact: boolean }) {
-  const t = useTranslations("school.publicClass");
-  const place = segmentPlace(segment);
-  return <div className="min-w-0 flex-1 rounded-xl border border-line bg-card px-3 py-3 shadow-sm">
-    <div className="flex min-w-0 items-center gap-2">
-      <span className="grid size-7 shrink-0 place-items-center rounded-full bg-moon/25 text-crater"><SegmentKindIcon kind={segment.kind} className="size-3.5" /></span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-ink">{segment.title}</p>
-        <p className="mt-0.5 truncate text-[11px] text-muted">{new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Shanghai" }).format(new Date(segment.scheduledAt))} · {t("minutes", { count: segment.durationMin })}</p>
-      </div>
-      {segment.microcourseLectureId ? <CircleCheck className="size-4 shrink-0 text-leaf-deep" /> : null}
-    </div>
-    {!compact ? <p className={cn("mt-2 truncate text-[11px]", place ? "text-muted" : "text-amber-700")}><MapPin className="mr-1 inline size-3" />{place || t("roomUnassigned")}</p> : null}
-  </div>;
+  </DashboardSection>;
 }
 
 function LiveRunOverview({

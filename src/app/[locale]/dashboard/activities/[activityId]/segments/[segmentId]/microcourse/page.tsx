@@ -25,7 +25,7 @@ export default async function PublicClassMicrocoursePage({
   if (!data || !segment?.microcourseId) notFound();
   const editor = await getTeacherMicrocourseEditor(segment.microcourseId);
   if (!editor.canEdit || editor.originPublicClassSegmentId !== segment.id) notFound();
-  const returnHref = `/dashboard/activities/${activityId}?view=prepare`;
+  const returnHref = `/dashboard/activities/${activityId}?view=teaching`;
 
   return (
     <DashboardPage

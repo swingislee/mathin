@@ -36,7 +36,7 @@ export function PublicClassPrintView({
   return <>
     <div className="print:hidden">
       <div className="mb-4 flex flex-wrap items-center gap-2 border-y border-line bg-card px-3 py-3">
-        <Link href={`/dashboard/activities/${data.activity.id}?view=prepare#print-materials`} className={buttonVariants({ variant: "ghost", size: "sm" })}><ArrowLeft className="size-4" />{t("backToPrint")}</Link>
+        <Link href={`/dashboard/activities/${data.activity.id}?view=onsite#print-materials`} className={buttonVariants({ variant: "ghost", size: "sm" })}><ArrowLeft className="size-4" />{t("backToPrint")}</Link>
         <div className="h-5 w-px bg-line" />
         {PUBLIC_CLASS_PRINT_KINDS.map((value) => <Link key={value} href={`${baseHref}?kind=${value}&segment=${segment.id}`} className={buttonVariants({ variant: value === kind ? "primary" : "secondary", size: "sm" })}>{t(`print_${value}`)}</Link>)}
         <div className="h-5 w-px bg-line" />
