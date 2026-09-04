@@ -51,6 +51,7 @@ const STAFF_NAV_KEYS: readonly DashboardRouteKey[] = [
   "followups",
   "coordination",
   "finance",
+  "managementAnalytics",
   "classes",
   "academicYears",
   "schedule",

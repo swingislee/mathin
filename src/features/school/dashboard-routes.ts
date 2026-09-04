@@ -464,6 +464,15 @@ export const DASHBOARD_ROUTES = {
     // 招生、转化、续费与退费属于同一条学生生命周期，因此财务入口跟随学科运营。
     nav: { labelKey: "finance", group: "subjectOperations" },
   },
+  managementAnalytics: {
+    // Phase 6 管理分析只汇总可追溯业务事实；当前没有普通创建行为。
+    href: "/dashboard/management-analytics",
+    kind: "tool",
+    environments: STAFF_ONLY,
+    permission: "report.view.all",
+    createSurface: "none",
+    nav: { labelKey: "managementAnalytics", group: "subjectOperations" },
+  },
 
   // ── 组织管理 ────────────────────────────────────────────────────────────
   organization: {
