@@ -1,3 +1,4 @@
+import { CircleAlert } from "lucide-react";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -9,7 +10,10 @@ import {
   ClassroomRisks,
   ClassroomSummary,
 } from "@/features/school/ClassroomAsidePanels";
+import { ClassroomEditor } from "@/features/school/ClassroomEditor";
 import { ClassroomSettingsSheet } from "@/features/school/ClassroomSettingsSheet";
+import { ClassroomStaffDialog } from "@/features/school/ClassroomStaffDialog";
+import type { MofaxiaoClassRosterReviewIssue } from "@/features/school/actions/types";
 import {
   getClassroomDetailForScope,
   getClassroomOperationalEvents,
@@ -54,10 +58,24 @@ import {
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TABS = ["sessions", "students", "readiness", "records"] as const;
+const ROSTER_REPAIR_ISSUES = ["course", "teacher", "room", "schedule"] as const satisfies readonly MofaxiaoClassRosterReviewIssue[];
 type Tab = (typeof TABS)[number];
 
 function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
+}
+
+function parseRosterRepairIssues(value: string | string[] | undefined): MofaxiaoClassRosterReviewIssue[] {
+  const candidate = first(value);
+  if (!candidate) return [];
+  const allowed = new Set<string>(ROSTER_REPAIR_ISSUES);
+  return [...new Set(candidate.split(",").filter((issue): issue is MofaxiaoClassRosterReviewIssue => allowed.has(issue)))];
+}
+
+function preserveRosterRepair(href: string, issues: readonly MofaxiaoClassRosterReviewIssue[]): string {
+  if (issues.length === 0) return href;
+  const separator = href.includes("?") ? "&" : "?";
+  return `${href}${separator}repair=${encodeURIComponent(issues.join(","))}`;
 }
 
 export default async function ClassDetailPage({
@@ -90,8 +108,9 @@ async function ClassDetailBody({
   const [{ classId }, rawSearchParams, { user, environment }] = await Promise.all([params, searchParams, requireDashboardEnvironment(locale, ["staff"])]);
   if (!UUID_PATTERN.test(classId)) notFound();
 
-  const [t, classroom, perms, allWorkItems, roomOptions, timeZone, scheduleDefaults] = await Promise.all([
+  const [t, tImport, classroom, perms, allWorkItems, roomOptions, timeZone, scheduleDefaults] = await Promise.all([
     getTranslations("school.classes"),
+    getTranslations("school.classRosterImport"),
     getClassroomDetailForScope(classId),
     getMyPerms(user.id),
     listMyWorkItems(),
@@ -116,7 +135,14 @@ async function ClassDetailBody({
   // 五处进入。tabHref 与抽屉的 closeHref 都必须把来源带上，否则用户切一次 Tab、
   // 或者关一次课次抽屉，返回就悄悄退回班级列表。
   const returnTo = parseReturnTo({ returnTo: rawSearchParams.returnTo, environment });
-  const tabHref = (tab: Tab) => preserveReturnTo(`/dashboard/classes/${classId}?tab=${tab}`, returnTo);
+  const requestedRepairIssues = parseRosterRepairIssues(rawSearchParams.repair);
+  const isRosterRepair = requestedRepairIssues.length > 0
+    && Boolean(returnTo?.startsWith("/dashboard/classes/import/roster"));
+  const repairIssues = isRosterRepair ? requestedRepairIssues : [];
+  const tabHref = (tab: Tab) => preserveReturnTo(
+    preserveRosterRepair(`/dashboard/classes/${classId}?tab=${tab}`, repairIssues),
+    returnTo,
+  );
   const closeHref = tabHref(activeTab);
   const staffOptions = isManagementView ? await listStaffOptions() : [];
 
@@ -166,7 +192,7 @@ async function ClassDetailBody({
         objectBar={<ObjectBar
           title={classroom.name}
           backHref={returnTo ?? "/dashboard/classes"}
-          backLabel={t("back")}
+          backLabel={t(isRosterRepair ? "backToRosterImport" : "back")}
           context={contextItems}
           status={lifecycleStatus}
         />}
@@ -195,6 +221,37 @@ async function ClassDetailBody({
         */}
         <DashboardContentGrid>
           <DashboardMainColumn>
+            {isRosterRepair ? (
+              <section data-roster-repair-context role="status" className="rounded-2xl border border-amber-500/35 bg-amber-500/5 p-5">
+                <div className="flex items-start gap-3">
+                  <CircleAlert className="mt-0.5 size-5 shrink-0 text-amber-700 dark:text-amber-300" aria-hidden />
+                  <div className="min-w-0">
+                    <h2 className="text-base font-medium text-ink">{t("importRepairTitle")}</h2>
+                    <p className="mt-1 text-sm leading-6 text-muted">{t("importRepairDescription")}</p>
+                  </div>
+                </div>
+                <ul className="mt-4 grid gap-2">
+                  {repairIssues.map((issue) => (
+                    <li key={issue} className="rounded-xl border border-line bg-card px-3 py-2.5 text-sm">
+                      <p className="font-medium text-ink">{tImport(`classIssue_${issue}`)}</p>
+                      <p className="mt-0.5 text-xs leading-5 text-muted">
+                        {issue === "course" ? t("importRepairCourse", { course: classroom.courseTitle ?? t("freeClass") }) : null}
+                        {issue === "teacher" ? t("importRepairTeacher", { teacher: classroom.primaryTeacherName ?? t("noPrimaryTeacher") }) : null}
+                        {issue === "room" ? t("importRepairRoom", { room: classroom.defaultRoomName ?? t("roomTbd") }) : null}
+                        {issue === "schedule" ? t("importRepairSchedule", { count: classroom.sessions.length }) : null}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+                {isManagementView && (repairIssues.includes("teacher") || repairIssues.includes("room")) ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {repairIssues.includes("room") ? <ClassroomEditor classroom={classroom} roomOptions={roomOptions} /> : null}
+                    {repairIssues.includes("teacher") ? <ClassroomStaffDialog classroomId={classroom.id} staffAssignments={classroom.staffAssignments} staffOptions={staffOptions} /> : null}
+                  </div>
+                ) : null}
+                <p className="mt-3 text-xs leading-5 text-muted">{t("importRepairHint")}</p>
+              </section>
+            ) : null}
             {activeTab === "sessions" && (
               <SessionGroupList
                 classroomId={classroom.id}

@@ -79,6 +79,19 @@ function filenameLabel(fileName: string): string {
   return fileName.replace(/\.xlsx$/i, "").slice(0, 160);
 }
 
+function classRepairHref(
+  batchId: string,
+  classroomId: string,
+  reviewIssues: MofaxiaoClassRosterImportBatchResult["createdClasses"][number]["reviewIssues"],
+): string {
+  const query = new URLSearchParams({
+    tab: "sessions",
+    repair: reviewIssues.join(","),
+    returnTo: `/dashboard/classes/import/roster?batch=${batchId}`,
+  });
+  return `/dashboard/classes/${classroomId}?${query.toString()}`;
+}
+
 function StudentPicker({
   options,
   selectedId,
@@ -141,6 +154,7 @@ function StudentPicker({
 }
 
 export function MofaxiaoClassRosterImportPanel({
+  initialBatch,
   recentBatches,
   targetClasses,
   students,
@@ -148,6 +162,7 @@ export function MofaxiaoClassRosterImportPanel({
   canCreateStudents,
   canCreateClasses,
 }: {
+  initialBatch: MofaxiaoClassRosterImportBatchResult | null;
   recentBatches: MofaxiaoClassRosterImportBatchSummary[];
   targetClasses: ClassRosterTargetOption[];
   students: ClassRosterStudentOption[];
@@ -166,7 +181,7 @@ export function MofaxiaoClassRosterImportPanel({
   const [reading, setReading] = useState(false);
   const [classMappings, setClassMappings] = useState<Record<string, string>>({});
   const [decisions, setDecisions] = useState<Record<string, DecisionState>>({});
-  const [batch, setBatch] = useState<MofaxiaoClassRosterImportBatchResult | null>(null);
+  const [batch, setBatch] = useState<MofaxiaoClassRosterImportBatchResult | null>(initialBatch);
   const [idempotencyKey, setIdempotencyKey] = useState(newId);
 
   const resetServerBatch = () => {
@@ -347,6 +362,7 @@ export function MofaxiaoClassRosterImportPanel({
   const formatAt = (value: string) => new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
   const batchErrorRows = batch?.rows.filter((row) => row.status === "error" || row.status === "duplicate") ?? [];
   const createdClasses = batch?.createdClasses ?? [];
+  const reviewClasses = createdClasses.filter((item) => item.reviewIssues.length > 0);
 
   return (
     <div className="space-y-10">
@@ -503,15 +519,15 @@ export function MofaxiaoClassRosterImportPanel({
           {batch.status === "completed" ? (
             <div className="mt-5 space-y-4 border-t border-line pt-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="flex items-center gap-2 text-sm text-leaf-deep"><CheckCircle2 size={16} />{t("completed", { inserted: batch.inserted, created: batch.createdStudents, duplicates: batch.dup, skipped: batch.skipped, classes: createdClasses.length })}</p>
+                <p className="flex items-center gap-2 text-sm text-leaf-deep"><CheckCircle2 size={16} />{t("completed", { inserted: batch.inserted, created: batch.createdStudents, duplicates: batch.dup, skipped: batch.skipped, classes: createdClasses.length, review: reviewClasses.length })}</p>
                 <Link href="/dashboard/classes" className={buttonVariants({ size: "sm" })}>{t("openClasses")}<ArrowRight size={15} /></Link>
               </div>
-              {createdClasses.length > 0 ? (
+              {reviewClasses.length > 0 ? (
                 <div className="rounded-xl border border-amber-500/35 bg-amber-500/5 p-4">
-                  <p className="flex items-center gap-2 text-sm font-medium text-ink"><CircleAlert size={16} className="text-amber-700 dark:text-amber-300" />{t("createdClassReminderTitle", { count: createdClasses.length })}</p>
+                  <p className="flex items-center gap-2 text-sm font-medium text-ink"><CircleAlert size={16} className="text-amber-700 dark:text-amber-300" />{t("createdClassReminderTitle", { count: reviewClasses.length })}</p>
                   <p className="mt-1 text-xs leading-5 text-muted">{t("createdClassReminderDescription")}</p>
                   <ul className="mt-3 grid gap-2">
-                    {createdClasses.map((item) => <li key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line bg-card px-3 py-2 text-xs"><span><span className="font-medium text-ink">{item.name}</span><span className="ml-2 text-rose">{item.reviewIssues.map((issue) => t(`classIssue_${issue}`)).join("、")}</span></span><Link href={`/dashboard/classes/${item.id}`} className={buttonVariants({ variant: "secondary", size: "sm" })}>{t("repairClass")}<ArrowRight size={14} /></Link></li>)}
+                    {reviewClasses.map((item) => <li key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line bg-card px-3 py-2 text-xs"><span><span className="font-medium text-ink">{item.name}</span><span className="ml-2 text-rose">{item.reviewIssues.map((issue) => t(`classIssue_${issue}`)).join("、")}</span></span><Link href={classRepairHref(batch.batchId, item.id, item.reviewIssues)} className={buttonVariants({ variant: "secondary", size: "sm" })}>{t("repairClass")}<ArrowRight size={14} /></Link></li>)}
                   </ul>
                 </div>
               ) : null}
@@ -525,7 +541,7 @@ export function MofaxiaoClassRosterImportPanel({
           <DashboardTableShell>
             <Table className="w-full min-w-[64rem] text-sm">
               <TableHeader><TableRow><TableHead>{t("createdAt")}</TableHead><TableHead>{t("batchLabel")}</TableHead><TableHead>{t("statusLabel")}</TableHead><TableHead>{t("sourceMemberships")}</TableHead><TableHead>{t("duplicateRows")}</TableHead><TableHead>{t("skippedRows")}</TableHead><TableHead>{t("errorRows")}</TableHead><TableHead>{t("insertedRows")}</TableHead><TableHead>{t("batchId")}</TableHead><TableHead /></TableRow></TableHeader>
-              <TableBody>{recentBatches.map((item) => <TableRow key={item.batchId}><TableCell className="whitespace-nowrap">{formatAt(item.createdAt)}</TableCell><TableCell>{item.batchLabel || item.fileName}</TableCell><TableCell><Badge variant={item.status === "completed" ? "secondary" : item.errors > 0 ? "danger" : "outline"}>{t(`batchStatus_${item.status}`)}</Badge></TableCell><TableCell>{item.total}</TableCell><TableCell>{item.duplicates}</TableCell><TableCell>{item.skipped}</TableCell><TableCell className={item.errors > 0 ? "text-rose" : undefined}>{item.errors}</TableCell><TableCell>{item.inserted}</TableCell><TableCell className="font-mono text-xs text-muted">{item.batchId.slice(0, 8)}</TableCell><TableCell className="text-right">{item.status === "validated" ? <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => openBatchRun.run(item.batchId)}>{t("openBatch")}</Button> : null}</TableCell></TableRow>)}</TableBody>
+              <TableBody>{recentBatches.map((item) => <TableRow key={item.batchId}><TableCell className="whitespace-nowrap">{formatAt(item.createdAt)}</TableCell><TableCell>{item.batchLabel || item.fileName}</TableCell><TableCell><Badge variant={item.status === "completed" ? "secondary" : item.errors > 0 ? "danger" : "outline"}>{t(`batchStatus_${item.status}`)}</Badge></TableCell><TableCell>{item.total}</TableCell><TableCell>{item.duplicates}</TableCell><TableCell>{item.skipped}</TableCell><TableCell className={item.errors > 0 ? "text-rose" : undefined}>{item.errors}</TableCell><TableCell>{item.inserted}</TableCell><TableCell className="font-mono text-xs text-muted">{item.batchId.slice(0, 8)}</TableCell><TableCell className="text-right"><Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => openBatchRun.run(item.batchId)}>{t(item.status === "completed" ? "viewBatch" : "openBatch")}</Button></TableCell></TableRow>)}</TableBody>
             </Table>
           </DashboardTableShell>
         )}
