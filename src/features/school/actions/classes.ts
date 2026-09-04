@@ -14,7 +14,12 @@ import { getSessionCoursewareTemplate } from "../courses";
 import { resolveCourseware, type OverlaySlot } from "../courseware-overlay";
 import { authorizedClient, nullableRpcArg } from "./guards";
 import { COMMON_CODES, dateOnly, datetime, intInRange, parse, requiredText, searchQuery, text, uuid } from "./schemas";
-import type { BuildClassInput, StudentSearchResult } from "./types";
+import type {
+  BuildClassInput,
+  CompleteClassroomSetupInput,
+  CompleteClassroomSetupResult,
+  StudentSearchResult,
+} from "./types";
 import type {
   ClassBuildCourseCandidate,
   ClassBuildCourseDetail,
@@ -430,6 +435,72 @@ export async function buildClass(input: BuildClassInput): Promise<string> {
       });
   if (rpcError) throw new Error(rpcError.message);
   return parse(uuid, cid);
+}
+
+const completeClassroomSetupSchema = z.object({
+  classroomId: uuid,
+  name: requiredText(100),
+  capacity: intInRange(1, 500).nullable(),
+  courseId: uuid,
+  roomId: uuid,
+  primaryTeacherId: uuid,
+  expectedSessionCount: z.number().int().nonnegative().max(200),
+  sessions: z.array(z.object({
+    lectureId: uuid,
+    no: intInRange(1, 999),
+    name: requiredText(100),
+    scheduledAt: datetime,
+    durationMin: intInRange(1, 600),
+    closedDayReason: text(500).default(""),
+  })).max(200),
+}).strict();
+
+const CLASSROOM_SETUP_CODES = [
+  "CLASSROOM_NOT_FOUND",
+  "CLASSROOM_TRASHED",
+  "CLASSROOM_SETUP_STALE",
+  "CLASSROOM_HAS_SESSIONS",
+  "COURSE_NOT_AVAILABLE",
+  "INVALID_CLASSROOM_TERM",
+  "INVALID_STAFF",
+  "INVALID_ROOM",
+  "INVALID_SCHEDULE",
+  "CLOSED_DAY_CONFIRMATION_REQUIRED",
+  "FORBIDDEN_SCOPE",
+  ...COMMON_CODES,
+] as const;
+
+export async function completeClassroomSetupAction(
+  input: CompleteClassroomSetupInput,
+): Promise<ActionResult<CompleteClassroomSetupResult>> {
+  try {
+    const value = parse(completeClassroomSetupSchema, input);
+    const { supabase } = await authorizedClient("class.manage");
+    const { data, error } = await rpc(supabase)("complete_classroom_setup_v2", {
+      p_classroom_id: value.classroomId,
+      p_name: value.name,
+      p_capacity: value.capacity,
+      p_course_id: value.courseId,
+      p_room_id: value.roomId,
+      p_primary_teacher_id: value.primaryTeacherId,
+      p_sessions: value.sessions.map((session) => ({
+        lecture_id: session.lectureId,
+        scheduled_at: session.scheduledAt,
+        duration_min: session.durationMin,
+        closed_day_reason: session.closedDayReason,
+      })),
+      p_expected_session_count: value.expectedSessionCount,
+    });
+    if (error) throw new Error(error.message);
+    const result = z.object({
+      classroomId: uuid,
+      createdSessions: z.number().int().nonnegative(),
+      totalSessions: z.number().int().nonnegative(),
+    }).parse(data);
+    return { ok: true, data: result };
+  } catch (error) {
+    return actionError<CompleteClassroomSetupResult>(error, CLASSROOM_SETUP_CODES);
+  }
 }
 
 const enrollSchema = z.object({ classroomId: uuid, studentId: uuid, remark: text(500) });

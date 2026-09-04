@@ -1,6 +1,8 @@
 import "server-only";
 
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import type { ClassroomImportSetupContext } from "./classroom-setup-contract";
 import {
   MOFAXIAO_CLASS_ROSTER_IMPORT_TEMPLATE_VERSION,
   type ClassRosterSavedMapping,
@@ -86,6 +88,30 @@ export async function loadMofaxiaoClassRosterImportBatch(
   // URL must leave the import workspace usable; the recent-batch list remains authoritative.
   if (error || !data) return null;
   return data as MofaxiaoClassRosterImportBatchResult;
+}
+
+const classroomImportSetupContextSchema = z.object({
+  sourceSystem: z.string(),
+  sourceClassKey: z.string(),
+  sourceLabel: z.string(),
+  sourceContext: z.record(z.string(), z.unknown()),
+  reviewIssues: z.array(z.enum(["course", "teacher", "room", "schedule"])),
+  completedAt: z.string().nullable(),
+});
+
+export async function loadClassroomImportSetupContext(
+  classroomId: string,
+): Promise<ClassroomImportSetupContext | null> {
+  const supabase = await createClient();
+  const runRpc = (supabase.rpc as unknown as (
+    name: string,
+    args: Record<string, unknown>,
+  ) => Promise<{ data: unknown; error: { message: string } | null }>).bind(supabase);
+  const { data, error } = await runRpc("get_classroom_import_setup_context_v2", {
+    p_classroom_id: classroomId,
+  });
+  if (error) throw new Error(error.message);
+  return data === null ? null : classroomImportSetupContextSchema.parse(data);
 }
 
 export async function listClassRosterTargetOptions(): Promise<ClassRosterTargetOption[]> {

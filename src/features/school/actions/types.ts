@@ -33,6 +33,23 @@ export interface BuildClassInput {
   sessions: BuildClassSession[];
 }
 
+export interface CompleteClassroomSetupInput {
+  classroomId: string;
+  name: string;
+  capacity: number | null;
+  courseId: string;
+  roomId: string;
+  primaryTeacherId: string;
+  expectedSessionCount: number;
+  sessions: BuildClassSession[];
+}
+
+export interface CompleteClassroomSetupResult {
+  classroomId: string;
+  createdSessions: number;
+  totalSessions: number;
+}
+
 export interface AttendanceDrawerRow {
   studentId: string;
   studentName: string;

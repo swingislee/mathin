@@ -104,6 +104,7 @@ export interface ClassroomDetail {
   offeringType: ClassroomOfferingType;
   operationalStatus: ClassroomOperationalStatus;
   trashedAt: string | null;
+  primaryTeacherId: string | null;
   primaryTeacherName: string | null;
   learningSupportNames: string[];
   staffAssignments: StaffAssignmentSummary[];
@@ -305,6 +306,7 @@ export async function getClassroomDetailForScope(id: string): Promise<ClassroomD
     : "registrar";
 
   const primaryTeacherName = assignments.find((row) => row.responsibility === "primary_teacher")?.profiles?.display_name ?? null;
+  const primaryTeacherId = assignments.find((row) => row.responsibility === "primary_teacher")?.user_id ?? null;
   const learningSupportNames = assignments
     .filter((row) => row.responsibility === "learning_support")
     .map((row) => row.profiles?.display_name)
@@ -356,6 +358,7 @@ export async function getClassroomDetailForScope(id: string): Promise<ClassroomD
     offeringType: classroom.offering_type,
     operationalStatus: classroom.operational_status,
     trashedAt: classroom.trashed_at,
+    primaryTeacherId,
     primaryTeacherName,
     learningSupportNames,
     staffAssignments,
