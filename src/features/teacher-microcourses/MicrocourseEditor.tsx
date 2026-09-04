@@ -41,9 +41,17 @@ interface PersistedPageDraft {
   revisionNo: number;
 }
 
+interface MicrocourseEditorContext {
+  title: string;
+  returnHref: string;
+  badgeLabel: string;
+  saveLabel: string;
+}
+
 /** One teacher authoring shell backed exclusively by CoursewareCompositionWorkbench. */
-export function MicrocourseEditor({ session, editor, canTeach }: {
-  session: { id: string; title: string; classroomId: string; coursewareFrozenAt: string | null };
+export function MicrocourseEditor({ session, context, editor, canTeach }: {
+  session?: { id: string; title: string; classroomId: string; coursewareFrozenAt: string | null };
+  context?: MicrocourseEditorContext;
   editor: EditorData;
   canTeach: boolean;
 }) {
@@ -140,7 +148,7 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
       setMessage(t("actionFailed", { code: metadataResult.code }));
       return;
     }
-    if (canTeach && !session.coursewareFrozenAt && !editor.selectedForSession && pages.length > 0) {
+    if (session && canTeach && !session.coursewareFrozenAt && !editor.selectedForSession && pages.length > 0) {
       const selectionResult = await selectTeacherMicrocourseVariantAction({
         sessionId: session.id,
         microcourseId: editor.id,
@@ -151,7 +159,7 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
       }
     }
     setMessage(t("sessionDraftSaved"));
-    router.push(`/dashboard/sessions/${session.id}?stage=pre`);
+    router.push(context?.returnHref ?? `/dashboard/sessions/${session?.id}?stage=pre`);
   });
   const submit = () => startTransition(async () => {
     if (!await persistCurrentPage()) return;
@@ -226,16 +234,16 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="truncate text-base font-medium">{t("workspaceTitle")}</h2>
-              <Badge variant="secondary">{editor.selectedForSession ? t("selectedForClass") : t("sessionDraft")}</Badge>
+              <Badge variant="secondary">{context?.badgeLabel ?? (editor.selectedForSession ? t("selectedForClass") : t("sessionDraft"))}</Badge>
             </div>
-            <p className="mt-0.5 truncate text-xs text-muted">{title ? `${title} · ${session.title}` : session.title}</p>
+            <p className="mt-0.5 truncate text-xs text-muted">{title ? `${title} · ${context?.title ?? session?.title ?? ""}` : context?.title ?? session?.title ?? ""}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" variant="ghost" size="sm" aria-expanded={detailsOpen} onClick={() => setDetailsOpen((open) => !open)}>
               {detailsOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
               {detailsOpen ? t("collapseDetails") : t("editDetails")}
             </Button>
-            <Button type="button" size="sm" disabled={pending || !title.trim()} onClick={saveForSession}><Save className="size-4" />{t(canTeach && !session.coursewareFrozenAt ? "saveForSessionAndReturn" : "saveDraftAndReturn")}</Button>
+            <Button type="button" size="sm" disabled={pending || !title.trim()} onClick={saveForSession}><Save className="size-4" />{context?.saveLabel ?? t(session && canTeach && !session.coursewareFrozenAt ? "saveForSessionAndReturn" : "saveDraftAndReturn")}</Button>
           </div>
         </div>
         {detailsOpen ? (

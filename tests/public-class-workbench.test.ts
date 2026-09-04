@@ -17,17 +17,40 @@ describe("DEV-SCHOOL-OPS-1 public-class workbench", () => {
     expect(migration).not.toContain("class_session_id");
   });
 
-  it("links activity segments directly to the existing microcourse catalog", () => {
-    const migration = read("supabase", "migrations", "20260904000240_public_class_event_workbench.sql");
+  it("lets a segment select or author reusable microcourse content in context", () => {
+    const migration = read("supabase", "migrations", "20260904000280_public_class_teaching_flow.sql");
     const workspace = read("src", "features", "school", "PublicClassWorkspace.tsx");
+    const editorPage = read("src", "app", "[locale]", "dashboard", "activities", "[activityId]", "segments", "[segmentId]", "microcourse", "page.tsx");
 
     expect(migration).toContain("microcourse_course_id");
     expect(migration).toContain("microcourse_lecture_id");
     expect(migration).toContain("link_public_class_segment_microcourse");
-    expect(migration).toContain("family.slug = 'teacher-microcourses'");
-    expect(workspace).toContain("openMicrocourseSystem");
-    expect(workspace).toContain("/dashboard/courses/");
+    expect(migration).toContain("create_public_class_microcourse_project");
+    expect(migration).not.toContain("insert into public.classrooms");
+    expect(workspace).toContain("chooseExistingCourseware");
+    expect(workspace).toContain("createCoursewareHere");
+    expect(workspace).toContain("disabled={!option.ready}");
+    expect(editorPage).toContain("MicrocourseEditor");
+    expect(editorPage).toContain("saveCoursewareAndReturn");
     expect(workspace).not.toContain("/dashboard/sessions/");
+  });
+
+  it("provides a real candidate-to-teaching-to-record path without a temporary class", () => {
+    const migration = read("supabase", "migrations", "20260904000280_public_class_teaching_flow.sql");
+    const workspace = read("src", "features", "school", "PublicClassWorkspace.tsx");
+    const teaching = read("src", "features", "school", "PublicClassTeachingShell.tsx");
+    const livePage = read("src", "app", "[locale]", "activity", "[activityId]", "segment", "[segmentId]", "live", "page.tsx");
+
+    expect(migration).toContain("teaching_snapshot");
+    expect(migration).toContain("start_public_class_segment_teaching");
+    expect(migration).toContain("end_public_class_segment_teaching");
+    expect(migration).not.toContain("insert into public.class_sessions");
+    expect(workspace).toContain("flowCandidate");
+    expect(workspace).toContain("flowTeaching");
+    expect(workspace).toContain("flowRecord");
+    expect(teaching).toContain("startPublicClassSegmentTeachingAction");
+    expect(teaching).toContain("CoursewareWorkbench");
+    expect(livePage).toContain("getPublicClassTeachingCourseware");
   });
 
   it("reuses the secured location read model instead of filtering protected room columns", () => {

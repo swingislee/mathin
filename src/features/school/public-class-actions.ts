@@ -59,6 +59,14 @@ const PUBLIC_CLASS_CODES = [
   "INVALID_PUBLIC_CLASS_RECORD",
   "INVALID_PUBLIC_CLASS_CANDIDATE",
   "INVALID_MICROCOURSE_SELECTION",
+  "MICROCOURSE_ALREADY_EXISTS",
+  "MICROCOURSE_FAMILY_MISSING",
+  "PUBLIC_CLASS_TEACHING_STARTED",
+  "PUBLIC_CLASS_TEACHING_ENDED",
+  "PUBLIC_CLASS_TEACHING_NOT_STARTED",
+  "PUBLIC_CLASS_COURSEWARE_REQUIRED",
+  "PUBLIC_CLASS_COURSEWARE_NOT_READY",
+  "PAGE_TRACK_NOT_READY",
   ...COMMON_CODES,
 ] as const;
 
@@ -86,6 +94,71 @@ export async function savePublicClassSegmentAction(
     return { ok: true, data: { segmentId: data } };
   } catch (error) {
     return actionError(error, ["SAVE_FAILED", ...PUBLIC_CLASS_CODES]);
+  }
+}
+
+const createMicrocourseSchema = z.object({
+  segmentId: uuid,
+  courseTitle: requiredText(100),
+  lectureTitle: requiredText(120),
+  grade: intInRange(1, 9),
+}).strict();
+
+export async function createPublicClassMicrocourseProjectAction(input: {
+  segmentId: string;
+  courseTitle: string;
+  lectureTitle: string;
+  grade: number;
+}): Promise<ActionResult<{ courseId: string; lectureId: string; microcourseId: string }>> {
+  try {
+    const value = parse(createMicrocourseSchema, input);
+    const { supabase } = await staffRpcClient();
+    const { data, error } = await rpc<{
+      courseId: string;
+      lectureId: string;
+      microcourseId: string;
+    }>(supabase, "create_public_class_microcourse_project", {
+      p_segment_id: value.segmentId,
+      p_course_title: value.courseTitle,
+      p_lecture_title: value.lectureTitle,
+      p_grade: value.grade,
+    });
+    if (error || !data?.microcourseId) throw new Error(error?.message ?? "SAVE_FAILED");
+    return { ok: true, data };
+  } catch (error) {
+    return actionError(error, ["SAVE_FAILED", ...PUBLIC_CLASS_CODES]);
+  }
+}
+
+export async function startPublicClassSegmentTeachingAction(
+  segmentId: string,
+): Promise<ActionResult> {
+  try {
+    const id = parse(uuid, segmentId);
+    const { supabase } = await staffRpcClient();
+    const { error } = await rpc<null>(supabase, "start_public_class_segment_teaching", {
+      p_segment_id: id,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, PUBLIC_CLASS_CODES);
+  }
+}
+
+export async function endPublicClassSegmentTeachingAction(
+  segmentId: string,
+): Promise<ActionResult> {
+  try {
+    const id = parse(uuid, segmentId);
+    const { supabase } = await staffRpcClient();
+    const { error } = await rpc<null>(supabase, "end_public_class_segment_teaching", {
+      p_segment_id: id,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, PUBLIC_CLASS_CODES);
   }
 }
 
@@ -156,7 +229,7 @@ export async function linkPublicClassSegmentMicrocourseAction(input: {
       (item) => Boolean(item.courseId) === Boolean(item.lectureId),
       { message: "course and lecture must be selected together" },
     ), input);
-    const { supabase } = await authorizedClient("activity.manage");
+    const { supabase } = await staffRpcClient();
     const { error } = await rpc<null>(supabase, "link_public_class_segment_microcourse", {
       p_segment_id: value.segmentId,
       p_course_id: value.courseId,

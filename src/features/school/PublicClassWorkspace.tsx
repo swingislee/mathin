@@ -8,7 +8,6 @@ import {
   ChevronDown,
   ChevronRight,
   ClipboardCheck,
-  ExternalLink,
   FileDown,
   GraduationCap,
   LoaderCircle,
@@ -23,7 +22,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import { Fragment, useState, useTransition } from "react";
+import { Fragment, useMemo, useState, useTransition, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -47,6 +46,7 @@ import type { ActionResult } from "@/lib/action-result";
 import { cn } from "@/lib/utils";
 import {
   deletePublicClassSegmentAction,
+  createPublicClassMicrocourseProjectAction,
   linkPublicClassroomAction,
   linkPublicClassSegmentMicrocourseAction,
   savePublicClassParticipantRecordAction,
@@ -113,6 +113,8 @@ export function PublicClassWorkspace({
   canRecord,
   canLinkClass,
   canUseCourseware,
+  canAuthorMicrocourse,
+  currentUserId,
 }: {
   data: PublicClassWorkbenchData;
   locale: string;
@@ -122,6 +124,8 @@ export function PublicClassWorkspace({
   canRecord: boolean;
   canLinkClass: boolean;
   canUseCourseware: boolean;
+  canAuthorMicrocourse: boolean;
+  currentUserId: string;
 }) {
   const t = useTranslations("school.publicClass");
   const router = useRouter();
@@ -175,7 +179,10 @@ export function PublicClassWorkspace({
       data={data}
       locale={locale}
       canManage={canManage}
+      canOpenTeaching={canRecord}
       canUseCourseware={canUseCourseware}
+      canAuthorMicrocourse={canAuthorMicrocourse}
+      currentUserId={currentUserId}
       pending={pending}
       onEdit={setEditingSegment}
       onCourseware={setCoursewareSegment}
@@ -203,8 +210,9 @@ export function PublicClassWorkspace({
     /> : null}
     {coursewareSegment ? <MicrocourseDialog
       segment={coursewareSegment}
+      activityId={data.activity.id}
       options={data.microcourseOptions}
-      familyId={data.microcourseFamilyId}
+      canCreate={canAuthorMicrocourse}
       pending={pending}
       close={() => setCoursewareSegment(null)}
       run={run}
@@ -216,7 +224,10 @@ function ArrangementView({
   data,
   locale,
   canManage,
+  canOpenTeaching,
   canUseCourseware,
+  canAuthorMicrocourse,
+  currentUserId,
   pending,
   onEdit,
   onCourseware,
@@ -225,7 +236,10 @@ function ArrangementView({
   data: PublicClassWorkbenchData;
   locale: string;
   canManage: boolean;
+  canOpenTeaching: boolean;
   canUseCourseware: boolean;
+  canAuthorMicrocourse: boolean;
+  currentUserId: string;
   pending: boolean;
   onEdit: (segment: PublicClassSegment) => void;
   onCourseware: (segment: PublicClassSegment) => void;
@@ -237,67 +251,121 @@ function ArrangementView({
       {data.segments.map((segment, index) => {
         const Icon = segmentIcon(segment.kind);
         const place = segmentPlace(segment);
-        const coursewareHref = segment.microcourseFamilyId && segment.microcourseCourseId
-          ? `/dashboard/courses/${segment.microcourseFamilyId}/microcourses/${segment.microcourseCourseId}?course=${segment.microcourseCourseId}${segment.microcourseLectureId ? `&lecture=${segment.microcourseLectureId}` : ""}`
-          : null;
-        return <article key={segment.id} className="grid gap-3 px-3 py-4 @3xl/page:grid-cols-[minmax(0,1.3fr)_minmax(18rem,1fr)_auto] @3xl/page:items-center">
-          <div className="flex min-w-0 items-start gap-3">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-line bg-moon/20 text-crater">
-              <Icon className="size-4" />
-            </span>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs tabular-nums text-muted">{String(index + 1).padStart(2, "0")}</span>
-                <h3 className="font-medium text-ink">{segment.title}</h3>
-                <Badge variant="outline">{t(`kind_${segment.kind}`)}</Badge>
+        const hasCourseware = Boolean(segment.microcourseLectureId);
+        const teaching = Boolean(segment.teachingStartedAt && !segment.teachingEndedAt);
+        const ended = Boolean(segment.teachingEndedAt);
+        const liveHref = `/activity/${data.activity.id}/segment/${segment.id}/live`;
+        const rosterHref = `/dashboard/activities/${data.activity.id}?view=roster&segment=${segment.id}`;
+        const editorHref = `/dashboard/activities/${data.activity.id}/segments/${segment.id}/microcourse`;
+        const canEditProject = canAuthorMicrocourse
+          && segment.microcourseId !== null
+          && segment.microcourseAuthorId === currentUserId
+          && !segment.teachingStartedAt;
+        return <article key={segment.id} className="px-3 py-4">
+          <div className="grid gap-3 @3xl/page:grid-cols-[minmax(0,1.35fr)_minmax(20rem,1fr)_auto] @3xl/page:items-center">
+            <div className="flex min-w-0 items-start gap-3">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-line bg-moon/20 text-crater">
+                <Icon className="size-4" />
+              </span>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs tabular-nums text-muted">{String(index + 1).padStart(2, "0")}</span>
+                  <h3 className="font-medium text-ink">{segment.title}</h3>
+                  <Badge variant="outline">{t(`kind_${segment.kind}`)}</Badge>
+                  {teaching ? <Badge variant="secondary">{t("teachingInProgress")}</Badge> : ended ? <Badge variant="secondary">{t("teachingCompleted")}</Badge> : null}
+                </div>
+                <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+                  <span className="inline-flex items-center gap-1"><CalendarClock className="size-3.5" />{formatDateTime(locale, segment.scheduledAt)} · {t("minutes", { count: segment.durationMin })}</span>
+                  <span className={cn("inline-flex items-center gap-1", !place && "text-amber-700")}><MapPin className="size-3.5" />{place || t("roomUnassigned")}</span>
+                </p>
               </div>
-              <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
-                <span className="inline-flex items-center gap-1"><CalendarClock className="size-3.5" />{formatDateTime(locale, segment.scheduledAt)} · {t("minutes", { count: segment.durationMin })}</span>
-                <span className={cn("inline-flex items-center gap-1", !place && "text-amber-700")}><MapPin className="size-3.5" />{place || t("roomUnassigned")}</span>
-              </p>
             </div>
-          </div>
-          <div className="grid gap-2 text-xs sm:grid-cols-2">
-            <div className="min-w-0 border-l border-line pl-3">
-              <p className="text-muted">{t("teachingStaff")}</p>
-              <p className="mt-1 truncate text-ink">
-                {segment.primaryTeacherName || t("teacherUnassigned")}
-                {segment.assistantTeacherName ? ` · ${segment.assistantTeacherName}` : ""}
-              </p>
+            <div className="grid gap-2 text-xs sm:grid-cols-2">
+              <div className="min-w-0 border-l border-line pl-3">
+                <p className="text-muted">{t("teachingStaff")}</p>
+                <p className="mt-1 truncate text-ink">{segment.primaryTeacherName || t("teacherUnassigned")}{segment.assistantTeacherName ? ` · ${segment.assistantTeacherName}` : ""}</p>
+              </div>
+              <div className="min-w-0 border-l border-line pl-3">
+                <p className="text-muted">{t("courseware")}</p>
+                <p className={cn("mt-1 truncate", hasCourseware ? "text-ink" : "text-amber-700")}>
+                  {hasCourseware ? `${segment.microcourseCourseTitle} · ${segment.microcourseLectureTitle}` : t("coursewareUnassigned")}
+                </p>
+              </div>
             </div>
-            <div className="min-w-0 border-l border-line pl-3">
-              <p className="text-muted">{t("courseware")}</p>
-              <p className={cn("mt-1 truncate", segment.microcourseLectureTitle ? "text-ink" : "text-amber-700")}>
-                {segment.microcourseLectureTitle
-                  ? `${segment.microcourseCourseTitle} · ${segment.microcourseLectureTitle}`
-                  : t("coursewareUnassigned")}
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-wrap justify-end gap-1.5">
-            {canUseCourseware && coursewareHref ? <Link href={coursewareHref} className={buttonVariants({ size: "sm", variant: "secondary" })}>
-              <ExternalLink className="size-3.5" />{t("openMicrocourse")}
-            </Link> : null}
-            {canManage ? <>
-              <Button size="sm" variant="ghost" onClick={() => onCourseware(segment)}><BookOpenCheck className="size-3.5" />{t("chooseCourseware")}</Button>
+            {canManage ? <div className="flex justify-end gap-1">
               <Button size="sm" variant="ghost" onClick={() => onEdit(segment)}><Pencil className="size-3.5" />{t("editSegment")}</Button>
-              {data.segments.length > 1 ? <Button
-                size="sm"
-                variant="ghost"
-                className="size-8 p-0"
-                aria-label={t("deleteSegment")}
-                disabled={pending}
-                onClick={() => run(() => deletePublicClassSegmentAction(segment.id), t("segmentDeleted"))}
-              ><Trash2 className="size-3.5 text-rose" /></Button> : null}
-            </> : null}
-            <Link href={`/dashboard/activities/${data.activity.id}?view=roster&segment=${segment.id}`} className={buttonVariants({ size: "sm" })}>
-              {t("enterRoster")}<ArrowRight className="size-3.5" />
-            </Link>
+              {data.segments.length > 1 ? <Button size="sm" variant="ghost" className="size-8 p-0" aria-label={t("deleteSegment")} disabled={pending} onClick={() => run(() => deletePublicClassSegmentAction(segment.id), t("segmentDeleted"))}><Trash2 className="size-3.5 text-rose" /></Button> : null}
+            </div> : null}
+          </div>
+
+          <div className="mt-4 overflow-x-auto rounded-xl bg-moon/10 px-3 py-3">
+            <ol className="relative grid min-w-[44rem] grid-cols-4 gap-2 before:absolute before:left-[12.5%] before:right-[12.5%] before:top-3 before:h-px before:bg-line">
+              <SegmentFlowStep
+                number={1}
+                state={hasCourseware ? "complete" : "current"}
+                title={t("flowCourseware")}
+                detail={hasCourseware ? segment.microcourseLectureTitle || t("coursewareSelected") : t("flowCoursewareHint")}
+                action={canUseCourseware && !segment.teachingStartedAt
+                  ? canEditProject
+                    ? <Link href={editorHref} className={buttonVariants({ size: "sm", variant: "ghost" })}><Pencil className="size-3.5" />{t("continueEditing")}</Link>
+                    : <Button size="sm" variant="ghost" onClick={() => onCourseware(segment)}><BookOpenCheck className="size-3.5" />{hasCourseware ? t("changeCourseware") : t("chooseOrCreateCourseware")}</Button>
+                  : null}
+              />
+              <SegmentFlowStep
+                number={2}
+                state={segment.teachingStartedAt ? "complete" : hasCourseware ? "current" : "upcoming"}
+                title={t("flowCandidate")}
+                detail={hasCourseware ? t("flowCandidateHint") : t("flowAfterCourseware")}
+                action={canOpenTeaching && hasCourseware && !segment.teachingStartedAt
+                  ? <Link href={liveHref} className={buttonVariants({ size: "sm", variant: "ghost" })}>{t("enterCandidate")}</Link>
+                  : null}
+              />
+              <SegmentFlowStep
+                number={3}
+                state={ended ? "complete" : teaching ? "current" : "upcoming"}
+                title={t("flowTeaching")}
+                detail={ended ? t("teachingCompleted") : teaching ? t("teachingInProgress") : t("startFromCandidate")}
+                action={canOpenTeaching && teaching ? <Link href={liveHref} className={buttonVariants({ size: "sm", variant: "ghost" })}>{t("returnToTeaching")}</Link> : null}
+              />
+              <SegmentFlowStep
+                number={4}
+                state={ended ? "current" : "upcoming"}
+                title={t("flowRecord")}
+                detail={ended ? t("flowRecordNow") : t("flowRecordHint")}
+                action={<Link href={rosterHref} className={buttonVariants({ size: "sm", variant: ended ? "primary" : "ghost" })}>{t("enterRoster")}<ArrowRight className="size-3.5" /></Link>}
+              />
+            </ol>
           </div>
         </article>;
       })}
     </div>
   </DashboardSection>;
+}
+
+function SegmentFlowStep({
+  number,
+  state,
+  title,
+  detail,
+  action,
+}: {
+  number: number;
+  state: "complete" | "current" | "upcoming";
+  title: string;
+  detail: string;
+  action: ReactNode;
+}) {
+  return <li className="relative z-10 flex min-w-0 flex-col items-center px-1 text-center">
+    <span className={cn(
+      "grid size-6 place-items-center rounded-full border text-[11px] font-semibold tabular-nums",
+      state === "complete" && "border-leaf/40 bg-leaf/20 text-leaf-deep",
+      state === "current" && "border-crater/60 bg-card text-crater ring-4 ring-card",
+      state === "upcoming" && "border-line bg-card text-muted",
+    )}>{state === "complete" ? <Check className="size-3.5" /> : number}</span>
+    <p className={cn("mt-2 text-xs font-medium", state === "upcoming" ? "text-muted" : "text-ink")}>{title}</p>
+    <p className="mt-0.5 max-w-44 truncate text-[11px] text-muted">{detail}</p>
+    <div className="mt-1 min-h-8">{action}</div>
+  </li>;
 }
 
 function SegmentDialog({
@@ -401,68 +469,131 @@ function SegmentDialog({
 
 function MicrocourseDialog({
   segment,
+  activityId,
   options,
-  familyId,
+  canCreate,
   pending,
   close,
   run,
 }: {
   segment: PublicClassSegment;
+  activityId: string;
   options: PublicClassWorkbenchData["microcourseOptions"];
-  familyId: string | null;
+  canCreate: boolean;
   pending: boolean;
   close: () => void;
   run: Run;
 }) {
   const t = useTranslations("school.publicClass");
+  const router = useRouter();
+  const [creating, startCreating] = useTransition();
   const [query, setQuery] = useState("");
+  const [courseTitle, setCourseTitle] = useState(segment.microcourseCourseTitle ?? segment.title);
+  const [lectureTitle, setLectureTitle] = useState(segment.title);
+  const [grade, setGrade] = useState("1");
   const current = segment.microcourseCourseId && segment.microcourseLectureId
     ? `${segment.microcourseCourseId}:${segment.microcourseLectureId}`
     : NONE;
   const [selection, setSelection] = useState(current);
+  const selectedOption = options.find((item) => `${item.courseId}:${item.lectureId}` === selection);
   const filtered = options.filter((option) => `${option.courseTitle} ${option.lectureTitle}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
+  const groups = useMemo(() => {
+    const byCourse = new Map<string, { id: string; title: string; lectures: typeof filtered }>();
+    for (const option of filtered) {
+      const group = byCourse.get(option.courseId) ?? { id: option.courseId, title: option.courseTitle, lectures: [] };
+      group.lectures.push(option);
+      byCourse.set(option.courseId, group);
+    }
+    return [...byCourse.values()];
+  }, [filtered]);
   const save = () => {
-    const option = options.find((item) => `${item.courseId}:${item.lectureId}` === selection);
     run(() => linkPublicClassSegmentMicrocourseAction({
       segmentId: segment.id,
-      courseId: option?.courseId ?? null,
-      lectureId: option?.lectureId ?? null,
+      courseId: selectedOption?.courseId ?? null,
+      lectureId: selectedOption?.lectureId ?? null,
     }), t("coursewareSaved"), close);
   };
+  const create = () => startCreating(async () => {
+    const result = await createPublicClassMicrocourseProjectAction({
+      segmentId: segment.id,
+      courseTitle,
+      lectureTitle,
+      grade: Number(grade),
+    });
+    if (!result.ok) {
+      toast.error(result.code === "MICROCOURSE_ALREADY_EXISTS"
+        ? t("microcourseAlreadyExists")
+        : t("actionFailed", { code: result.code }));
+      return;
+    }
+    toast.success(t("microcourseCreated"));
+    router.push(`/dashboard/activities/${activityId}/segments/${segment.id}/microcourse`);
+    router.refresh();
+  });
   return <Dialog open onOpenChange={(open) => { if (!open) close(); }}>
-    <DialogContent className="max-w-2xl">
+    <DialogContent className="max-w-3xl">
       <DialogHeader>
-        <DialogTitle>{t("chooseCoursewareFor", { title: segment.title })}</DialogTitle>
-        <DialogDescription>{t("microcourseReuseHint")}</DialogDescription>
+        <DialogTitle>{t("arrangeCoursewareFor", { title: segment.title })}</DialogTitle>
+        <DialogDescription>{t("coursewareChoiceHint")}</DialogDescription>
       </DialogHeader>
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
-        <Input className="pl-9" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("searchMicrocourse")} />
+      <div className={cn("grid min-h-0 gap-5", canCreate && "lg:grid-cols-[minmax(0,1.25fr)_minmax(17rem,0.75fr)]")}>
+        <section className="min-w-0">
+          <div>
+            <h3 className="text-sm font-medium text-ink">{t("chooseExistingCourseware")}</h3>
+            <p className="mt-1 text-xs leading-5 text-muted">{t("chooseExistingHint")}</p>
+          </div>
+          <div className="relative mt-3">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
+            <Input className="pl-9" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("searchMicrocourse")} />
+          </div>
+          <div className="mt-3 max-h-80 overflow-y-auto border-y border-line">
+            <button type="button" onClick={() => setSelection(NONE)} className={cn("flex w-full items-center gap-3 px-3 py-3 text-left text-sm hover:bg-moon/10", selection === NONE && "bg-moon/15")}>
+              <span className="flex size-5 items-center justify-center">{selection === NONE && <Check className="size-4" />}</span>
+              <span>{t("noCourseware")}</span>
+            </button>
+            {groups.map((group) => <div key={group.id} className="border-t border-line first:border-t-0">
+              <p className="bg-moon/10 px-3 py-2 text-xs font-medium text-muted">{group.title}</p>
+              {group.lectures.map((option) => {
+                const value = `${option.courseId}:${option.lectureId}`;
+                return <button key={value} type="button" disabled={!option.ready} onClick={() => setSelection(value)} className={cn("flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-moon/10 disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:bg-transparent", selection === value && "bg-moon/15")}>
+                  <span className="flex size-5 items-center justify-center">{selection === value && <Check className="size-4" />}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm text-ink">{t("lectureLabel", { no: option.lectureNo, title: option.lectureTitle })}</span>
+                  <Badge variant={option.ready ? "secondary" : "outline"}>{option.ready ? t("published") : t("draft")}</Badge>
+                </button>;
+              })}
+            </div>)}
+            {groups.length === 0 ? <p className="px-4 py-10 text-center text-sm text-muted">{t("noMatchingCourseware")}</p> : null}
+          </div>
+          <div className="mt-3 flex justify-end">
+            <Button disabled={pending || creating || (selection !== NONE && !selectedOption?.ready)} onClick={save}>{pending && <LoaderCircle className="size-4 animate-spin" />}{t("useSelection")}</Button>
+          </div>
+        </section>
+
+        {canCreate ? <section className="border-t border-line pt-4 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
+          <div>
+            <h3 className="text-sm font-medium text-ink">{t("createCoursewareHere")}</h3>
+            <p className="mt-1 text-xs leading-5 text-muted">{t("createCoursewareHint")}</p>
+          </div>
+          <div className="mt-4 grid gap-3">
+            <Label className="grid gap-1.5 text-xs text-muted">{t("microcourseTitle")}
+              <Input value={courseTitle} onChange={(event) => setCourseTitle(event.target.value)} maxLength={100} />
+            </Label>
+            <Label className="grid gap-1.5 text-xs text-muted">{t("firstLectureTitle")}
+              <Input value={lectureTitle} onChange={(event) => setLectureTitle(event.target.value)} maxLength={120} />
+            </Label>
+            <Label className="grid gap-1.5 text-xs text-muted">{t("applicableGrade")}
+              <Select value={grade} onValueChange={setGrade}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{Array.from({ length: 9 }, (_, index) => index + 1).map((value) => <SelectItem key={value} value={String(value)}>{t("gradeValue", { grade: value })}</SelectItem>)}</SelectContent>
+              </Select>
+            </Label>
+          </div>
+          <Button className="mt-4 w-full" variant="secondary" disabled={creating || pending || !courseTitle.trim() || !lectureTitle.trim()} onClick={create}>
+            {creating ? <LoaderCircle className="size-4 animate-spin" /> : <Plus className="size-4" />}{t("createAndEdit")}
+          </Button>
+        </section> : null}
       </div>
-      <div className="max-h-80 divide-y divide-line overflow-y-auto border-y border-line">
-        <button type="button" onClick={() => setSelection(NONE)} className={cn("flex w-full items-center gap-3 px-3 py-3 text-left text-sm hover:bg-moon/10", selection === NONE && "bg-moon/15")}>
-          <span className="flex size-5 items-center justify-center">{selection === NONE && <Check className="size-4" />}</span>
-          <span>{t("noCourseware")}</span>
-        </button>
-        {filtered.map((option) => {
-          const value = `${option.courseId}:${option.lectureId}`;
-          return <button key={value} type="button" onClick={() => setSelection(value)} className={cn("flex w-full items-center gap-3 px-3 py-3 text-left hover:bg-moon/10", selection === value && "bg-moon/15")}>
-            <span className="flex size-5 items-center justify-center">{selection === value && <Check className="size-4" />}</span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium text-ink">{option.courseTitle}</span>
-              <span className="mt-0.5 block truncate text-xs text-muted">{t("lectureLabel", { no: option.lectureNo, title: option.lectureTitle })}</span>
-            </span>
-            <Badge variant={option.ready ? "secondary" : "outline"}>{option.ready ? t("published") : t("draft")}</Badge>
-          </button>;
-        })}
-      </div>
-      <DialogFooter className="sm:justify-between">
-        <div>{familyId ? <Link href={`/dashboard/courses/${familyId}`} className={buttonVariants({ variant: "ghost" })}><Plus className="size-4" />{t("openMicrocourseSystem")}</Link> : null}</div>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={close}>{t("cancel")}</Button>
-          <Button disabled={pending} onClick={save}>{pending && <LoaderCircle className="size-4 animate-spin" />}{t("useSelection")}</Button>
-        </div>
-      </DialogFooter>
+      <DialogFooter><Button variant="ghost" onClick={close}>{t("cancel")}</Button></DialogFooter>
     </DialogContent>
   </Dialog>;
 }

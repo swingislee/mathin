@@ -49,7 +49,8 @@ const workflowSchema = z.object({
 
 export const teacherMicrocourseSummarySchema = z.object({
   id: uuid,
-  sourceSessionId: uuid,
+  sourceSessionId: uuid.nullable(),
+  originPublicClassSegmentId: uuid.nullable().optional(),
   authorId: uuid,
   authorName: z.string(),
   variantName: z.string(),
@@ -187,7 +188,7 @@ function normalizeBindings(bindings: readonly z.infer<typeof bindingSchema>[]): 
 }
 
 /** Resolve every page in one DB lookup, one signed-URL batch and one H5 manifest pass. */
-async function resolvePageBindingUrls(
+export async function resolveTeacherMicrocoursePageBindingUrls(
   pages: readonly { pageDocId: string; bindings: readonly TeacherMicrocourseBinding[] }[],
 ): Promise<Map<string, ResolvedBindingUrls>> {
   const result = new Map(pages.map((page) => [page.pageDocId, {} as ResolvedBindingUrls]));
@@ -307,7 +308,7 @@ export async function getTeacherMicrocourseEditor(microcourseId: string): Promis
   if (error) throw new Error(error.message);
   const editor = editorSchema.parse(data);
   const normalizedPages = editor.pages.map((page) => ({ ...page, bindings: normalizeBindings(page.bindings) }));
-  const bindingUrlsByPage = await resolvePageBindingUrls(normalizedPages);
+  const bindingUrlsByPage = await resolveTeacherMicrocoursePageBindingUrls(normalizedPages);
   const pages = normalizedPages.map((page): TeacherMicrocoursePage => ({
     ...page,
     bindingUrls: bindingUrlsByPage.get(page.pageDocId) ?? {},
@@ -473,7 +474,7 @@ export async function getTeacherMicrocourseReview(reviewCycleId: string): Promis
     })),
   }).parse(data);
   const normalizedPages = review.pages.map((page) => ({ ...page, bindings: normalizeBindings(page.bindings) }));
-  const bindingUrlsByPage = await resolvePageBindingUrls(normalizedPages);
+  const bindingUrlsByPage = await resolveTeacherMicrocoursePageBindingUrls(normalizedPages);
   const pages = normalizedPages.map((page): TeacherMicrocoursePage => ({
     ...page,
     bindingUrls: bindingUrlsByPage.get(page.pageDocId) ?? {},

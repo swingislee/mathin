@@ -81,7 +81,9 @@ export default async function ActivityDetailPage({
         canManage={permissions.has("activity.manage")}
         canRecord={canRecord}
         canLinkClass={permissions.has("class.manage")}
-        canUseCourseware={permissions.has("course.view") || permissions.has("courseware.microcourse.author")}
+        canUseCourseware={canRecord && (permissions.has("course.view") || permissions.has("courseware.microcourse.author"))}
+        canAuthorMicrocourse={canRecord && permissions.has("courseware.microcourse.author")}
+        currentUserId={user.id}
       />
     </ObjectWorkspace>;
   }

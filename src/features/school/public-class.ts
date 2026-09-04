@@ -59,6 +59,10 @@ export interface PublicClassSegment {
   microcourseLectureId: string | null;
   microcourseLectureTitle: string | null;
   microcourseFamilyId: string | null;
+  microcourseId: string | null;
+  microcourseAuthorId: string | null;
+  teachingStartedAt: string | null;
+  teachingEndedAt: string | null;
   printBackgroundPath: string | null;
 }
 
@@ -150,6 +154,9 @@ interface SegmentDbRow {
   assistant_teacher_id: string | null;
   microcourse_course_id: string | null;
   microcourse_lecture_id: string | null;
+  microcourse_id: string | null;
+  teaching_started_at: string | null;
+  teaching_ended_at: string | null;
   print_background_path: string | null;
 }
 interface RegistrationDbRow {
@@ -196,6 +203,7 @@ interface LectureDbRow {
   status: string;
   current_release_id: string | null;
 }
+interface MicrocourseDbRow { id: string; author_id: string }
 
 export async function getPublicClassWorkbench(activityId: string): Promise<PublicClassWorkbenchData | null> {
   const supabase = await createClient();
@@ -204,7 +212,7 @@ export async function getPublicClassWorkbench(activityId: string): Promise<Publi
       .select("id,kind,title,scheduled_at,location,capacity,remark,public_class_print_background_path")
       .eq("id", activityId).is("deleted_at", null).limit(1),
     from<SegmentDbRow[]>(supabase, "public_class_segments")
-      .select("id,kind,title,scheduled_at,duration_min,room_id,location,position,primary_teacher_id,assistant_teacher_id,microcourse_course_id,microcourse_lecture_id,print_background_path")
+      .select("id,kind,title,scheduled_at,duration_min,room_id,location,position,primary_teacher_id,assistant_teacher_id,microcourse_course_id,microcourse_lecture_id,microcourse_id,teaching_started_at,teaching_ended_at,print_background_path")
       .eq("activity_id", activityId).order("scheduled_at", { ascending: true }).order("position", { ascending: true }),
     from<RegistrationDbRow[]>(supabase, "activity_registrations")
       .select("id,student_id,lead_id,status,outcome")
@@ -233,6 +241,7 @@ export async function getPublicClassWorkbench(activityId: string): Promise<Publi
   const roomIds = [...new Set(segmentRows.flatMap((item) => item.room_id ? [item.room_id] : []))];
   const courseIds = [...new Set(segmentRows.flatMap((item) => item.microcourse_course_id ? [item.microcourse_course_id] : []))];
   const lectureIds = [...new Set(segmentRows.flatMap((item) => item.microcourse_lecture_id ? [item.microcourse_lecture_id] : []))];
+  const microcourseIds = [...new Set(segmentRows.flatMap((item) => item.microcourse_id ? [item.microcourse_id] : []))];
   const linkedClassroomIds = [...new Set(linkRows.map((item) => item.classroom_id))];
 
   const [studentResult, leadResult, profileResult, roomResult, linkedClassroomResult, familyResult, allStaffResult, activeRoomOptions, classroomOptionResult] = await Promise.all([
@@ -263,10 +272,11 @@ export async function getPublicClassWorkbench(activityId: string): Promise<Publi
   const microcourseFamilyId = families[0]?.id ?? null;
 
   const campusIds = [...new Set([...currentRooms, ...allRooms].map((room) => room.campus_id))];
-  const [campusResult, selectedCourseResult, selectedLectureResult, microcourseCourseResult] = await Promise.all([
+  const [campusResult, selectedCourseResult, selectedLectureResult, selectedMicrocourseResult, microcourseCourseResult] = await Promise.all([
     campusIds.length ? from<CampusDbRow[]>(supabase, "campuses").select("id,name").in("id", campusIds) : Promise.resolve({ data: [], error: null }),
     courseIds.length ? from<CourseDbRow[]>(supabase, "courses").select("id,family_id,title").in("id", courseIds) : Promise.resolve({ data: [], error: null }),
     lectureIds.length ? from<LectureDbRow[]>(supabase, "course_lectures").select("id,course_id,no,name,status,current_release_id").in("id", lectureIds) : Promise.resolve({ data: [], error: null }),
+    microcourseIds.length ? from<MicrocourseDbRow[]>(supabase, "teacher_microcourses").select("id,author_id").in("id", microcourseIds) : Promise.resolve({ data: [], error: null }),
     microcourseFamilyId
       ? from<CourseDbRow[]>(supabase, "courses").select("id,family_id,title").eq("family_id", microcourseFamilyId).eq("course_kind", "microcourse").is("trashed_at", null).order("updated_at", { ascending: false }).limit(200)
       : Promise.resolve({ data: [], error: null }),
@@ -274,6 +284,7 @@ export async function getPublicClassWorkbench(activityId: string): Promise<Publi
   const campuses = rows(campusResult);
   const selectedCourses = rows(selectedCourseResult);
   const selectedLectures = rows(selectedLectureResult);
+  const selectedMicrocourses = rows(selectedMicrocourseResult);
   const microcourseCourses = rows(microcourseCourseResult);
   const optionCourseIds = microcourseCourses.map((course) => course.id);
   const microcourseLectureResult = optionCourseIds.length
@@ -290,6 +301,7 @@ export async function getPublicClassWorkbench(activityId: string): Promise<Publi
   const classroomById = new Map([...linkedClassrooms, ...classroomOptions].map((item) => [item.id, item.name]));
   const courseById = new Map([...selectedCourses, ...microcourseCourses].map((item) => [item.id, item]));
   const lectureById = new Map([...selectedLectures, ...microcourseLectures].map((item) => [item.id, item]));
+  const microcourseById = new Map(selectedMicrocourses.map((item) => [item.id, item]));
   const recordsByRegistration = new Map<string, PublicClassParticipantRecord[]>();
   for (const record of recordRows) {
     const entries = recordsByRegistration.get(record.registration_id) ?? [];
@@ -343,6 +355,10 @@ export async function getPublicClassWorkbench(activityId: string): Promise<Publi
         microcourseLectureId: segment.microcourse_lecture_id,
         microcourseLectureTitle: lecture?.name ?? null,
         microcourseFamilyId: course?.family_id ?? null,
+        microcourseId: segment.microcourse_id,
+        microcourseAuthorId: segment.microcourse_id ? microcourseById.get(segment.microcourse_id)?.author_id ?? null : null,
+        teachingStartedAt: segment.teaching_started_at,
+        teachingEndedAt: segment.teaching_ended_at,
         printBackgroundPath: segment.print_background_path,
       };
     }),
