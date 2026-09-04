@@ -119,8 +119,24 @@ const ACTIVITY_ERROR_CODES = [
 
 export async function createActivityAction(input: ActivityInput): Promise<ActionResult> {
   try {
+    const value = parse(activityInputSchema, input);
     const supabase = await authorizedActivityClient("activity.manage");
-    const { error } = await supabase.rpc("create_activity", activityRpcArgs(input));
+    const { error } = value.kind === "public_class"
+      ? await rpc(supabase)("create_public_class_event", {
+          p_title: value.title,
+          p_scheduled_at: value.scheduledAt,
+          p_location: value.location,
+          p_capacity: value.capacity ?? undefined,
+          p_remark: value.remark,
+          p_segments: [{
+            kind: "trial_lesson",
+            title: value.title,
+            scheduled_at: value.scheduledAt,
+            duration_min: value.durationMin ?? 60,
+            location: value.location,
+          }],
+        })
+      : await supabase.rpc("create_activity", activityRpcArgs(value));
     if (error) throw new Error(error.message);
     return { ok: true };
   } catch (error) {

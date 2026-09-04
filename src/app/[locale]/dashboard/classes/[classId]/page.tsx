@@ -25,6 +25,8 @@ import {
   type TeachingReadinessRow,
 } from "@/features/school/classes";
 import { OperationalRecordsPanel } from "@/features/school/OperationalRecordsPanel";
+import { PublicClassSourcePanel } from "@/features/school/PublicClassSourcePanel";
+import { listPublicClassesForClassroom } from "@/features/school/public-class";
 import { RosterPanel } from "@/features/school/RosterPanel";
 import { SessionGroupList } from "@/features/school/SessionGroupList";
 import { SessionManagementDrawer } from "@/features/school/SessionManagementDrawer";
@@ -154,10 +156,11 @@ async function ClassDetailBody({
 
   // teachingReadiness 不只是"教学准备" tab 自己用——设置 Sheet 的启用班级风险确认（任何 tab 都可能打开
   // 设置）也依赖它，所以只要是管理视角就加载，不能像 rosterSignals/operationalEvents 那样按 tab 懒加载。
-  const [rosterSignals, teachingReadiness, operationalEvents] = await Promise.all([
+  const [rosterSignals, teachingReadiness, operationalEvents, publicClassSources] = await Promise.all([
     activeTab === "students" ? getClassroomRosterSignals(classId) : Promise.resolve(new Map<string, RosterSignals>()),
     isManagementView ? getClassroomTeachingReadiness(classroom.coursewareTrack, classroom.sessions) : Promise.resolve([] as TeachingReadinessRow[]),
     activeTab === "records" && canViewClassroom ? getClassroomOperationalEvents(classId) : Promise.resolve([] as OperationalEventRow[]),
+    listPublicClassesForClassroom(classId),
   ]);
 
   // doc23 §9：身份行只保留"这是哪个班"——课程版本、年级、主讲、学辅。
@@ -270,6 +273,7 @@ async function ClassDetailBody({
             <ClassroomNextSession next={groups.next} returnTo={tabHref(activeTab)} />
             {isManagementView && <ClassroomRisks needsAttention={groups.needsAttention} returnTo={tabHref(activeTab)} />}
             <ClassroomResponsibility assignments={classroom.staffAssignments} />
+            <PublicClassSourcePanel activities={publicClassSources} locale={locale} />
           </DashboardAside>
         </DashboardContentGrid>
       </ObjectWorkspace>

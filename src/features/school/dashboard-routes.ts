@@ -261,6 +261,15 @@ export const DASHBOARD_ROUTES = {
     creationOwner: "activities",
     parent: "activities",
   },
+  activityPrint: {
+    hrefPattern: "/dashboard/activities/[activityId]/print",
+    kind: "workflow",
+    shellMode: "panel",
+    environments: STAFF_ONLY,
+    permissionAny: ["activity.register", "review.write", "followup.view"],
+    createSurface: "derived",
+    parent: "activityDetail",
+  },
   // ── 教学 ────────────────────────────────────────────────────────────────
   academicYears: {
     // 学年是教学领域的顶层对象；页面同时承载教学日历和唯一的新班时长默认值。
