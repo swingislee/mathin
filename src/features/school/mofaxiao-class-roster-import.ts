@@ -36,6 +36,10 @@ export interface ParsedMofaxiaoRosterClass {
   teacher: string;
   weekday: string;
   time: string;
+  startDate: string | null;
+  startTime: string;
+  endTime: string;
+  durationMin: number | null;
   students: ParsedMofaxiaoRosterStudent[];
 }
 
@@ -112,6 +116,54 @@ function parseGrade(value: string): number | null {
     ["七年级", 7], ["八年级", 8], ["九年级", 9],
   ]);
   return words.get(compact) ?? null;
+}
+
+export interface ParsedMofaxiaoRosterSchedule {
+  startDate: string | null;
+  startTime: string;
+  endTime: string;
+  durationMin: number | null;
+}
+
+function validCalendarDate(year: number, month: number, day: number): string | null {
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (
+    date.getUTCFullYear() !== year
+    || date.getUTCMonth() !== month - 1
+    || date.getUTCDate() !== day
+  ) return null;
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+/** Split `9.12开课10:20-12:20` into its scheduling date and time range. */
+export function parseMofaxiaoRosterSchedule(
+  value: string,
+  schoolYear = 2026,
+): ParsedMofaxiaoRosterSchedule {
+  const compact = value.normalize("NFKC").replace(/[\s\u3000]+/g, "");
+  const dateMatch = compact.match(/^(\d{1,2})[./-](\d{1,2})(?:日)?开课/u);
+  const timeMatch = compact.match(/(\d{1,2}):(\d{2})[-~～—–至](\d{1,2}):(\d{2})/u);
+  const startDate = dateMatch
+    ? validCalendarDate(schoolYear, Number(dateMatch[1]), Number(dateMatch[2]))
+    : null;
+  if (!timeMatch) return { startDate, startTime: "", endTime: "", durationMin: null };
+
+  const startHour = Number(timeMatch[1]);
+  const startMinute = Number(timeMatch[2]);
+  const endHour = Number(timeMatch[3]);
+  const endMinute = Number(timeMatch[4]);
+  if (
+    startHour > 23 || startMinute > 59
+    || endHour > 23 || endMinute > 59
+  ) return { startDate, startTime: "", endTime: "", durationMin: null };
+
+  const durationMin = endHour * 60 + endMinute - startHour * 60 - startMinute;
+  return {
+    startDate,
+    startTime: `${String(startHour).padStart(2, "0")}:${String(startMinute).padStart(2, "0")}`,
+    endTime: `${String(endHour).padStart(2, "0")}:${String(endMinute).padStart(2, "0")}`,
+    durationMin: durationMin > 0 && durationMin <= 600 ? durationMin : null,
+  };
 }
 
 function parseStudentCell(rawValue: string): { name: string; sourceNote: string; needsReview: boolean } {
@@ -204,6 +256,7 @@ export function parseMofaxiaoClassRosterWorkbook(
     const teacher = textOf(row[start + 4]);
     const weekday = textOf(row[start + 5]);
     const time = textOf(row[start + 6]);
+    const schedule = parseMofaxiaoRosterSchedule(time, 2026);
     const baseKey = rosterClassBaseKey({ campus, system, gradeText: first, seasonText, classType, room, teacher, weekday, time });
     const occurrence = (keyCounts.get(baseKey) ?? 0) + 1;
     keyCounts.set(baseKey, occurrence);
@@ -239,6 +292,10 @@ export function parseMofaxiaoClassRosterWorkbook(
       teacher,
       weekday,
       time,
+      startDate: schedule.startDate,
+      startTime: schedule.startTime,
+      endTime: schedule.endTime,
+      durationMin: schedule.durationMin,
       students,
     });
   }
@@ -419,7 +476,7 @@ function canonicalRosterSeriesName(value: string): string {
   return compact;
 }
 
-/** Build the fixed 【系列】年级季节班型｜校区老师星期时间 class shell. */
+/** Build the fixed 【系列】年级季节班型|校区老师星期开始时间 class shell. */
 export function buildMofaxiaoRosterDefaultClass(
   source: ParsedMofaxiaoRosterClass,
   schoolYear = 2026,
@@ -432,8 +489,14 @@ export function buildMofaxiaoRosterDefaultClass(
   const campusName = canonicalRosterCampusName(source.campus);
   const teacherInitials = teacherInitialsForClassName(source.teacher) || "待定老师";
   const weekday = compactNamePart(source.weekday, "待定星期");
-  const time = compactNamePart(source.time, "待定时间");
-  const name = `【${system}】${gradeText}${seasonText}${classType}｜${campusName}${teacherInitials}${weekday}${time}`.slice(0, 100);
+  const parsedSchedule = parseMofaxiaoRosterSchedule(source.time, schoolYear);
+  const startDate = source.startDate ?? parsedSchedule.startDate;
+  const startTime = source.startTime || parsedSchedule.startTime;
+  const endTime = source.endTime || parsedSchedule.endTime;
+  const durationMin = source.durationMin ?? parsedSchedule.durationMin;
+  const time = startTime && endTime ? `${startTime}-${endTime}` : source.time.trim();
+  const nameTime = startTime || "待定时间";
+  const name = `【${system}】${gradeText}${seasonText}${classType}|${campusName}${teacherInitials}${weekday}${nameTime}`.slice(0, 100);
   return {
     name,
     system,
@@ -449,7 +512,11 @@ export function buildMofaxiaoRosterDefaultClass(
     teacherName: source.teacher.trim(),
     teacherInitials,
     weekday: source.weekday.trim(),
-    time: source.time.trim(),
+    time,
+    startDate,
+    startTime,
+    endTime,
+    durationMin,
   };
 }
 
