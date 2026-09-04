@@ -2,7 +2,7 @@
 
 import { Check } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,13 +11,92 @@ import { cn } from "@/lib/utils";
 import { AssessmentAvailabilityGrid } from "./AssessmentAvailabilityGrid";
 import {
   defaultInvitationState,
+  INVITATION_KINDS,
+  INVITATION_STATES,
   invitationDraftIsComplete,
   invitationStateFromFacts,
+  normalizeAssessmentTimeOptions,
   type InvitationActivityOption,
   type InvitationAssessorOption,
   type InvitationDraft,
   type InvitationKind,
 } from "./invitation-contract";
+
+interface StoredInvitationDrafts {
+  version: 1;
+  selectedKind: InvitationKind | null;
+  drafts: Partial<Record<InvitationKind, InvitationDraft>>;
+}
+
+export function invitationDraftSessionKey(
+  scope: "contact" | "coordination",
+  recordId: string,
+  revision: string,
+): string {
+  return `mathin:school:invitation-draft:v1:${scope}:${recordId}:${revision}`;
+}
+
+export function clearInvitationDraftSession(key: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.removeItem(key);
+  } catch {
+    // 浏览器关闭会话存储时仍保留正常编辑能力。
+  }
+}
+
+function parseStoredDraft(value: unknown): InvitationDraft | null {
+  if (!value || typeof value !== "object") return null;
+  const draft = value as Record<string, unknown>;
+  if (!INVITATION_KINDS.includes(draft.kind as InvitationKind)) return null;
+  if (!INVITATION_STATES.includes(draft.state as InvitationDraft["state"])) return null;
+  if (draft.activityId !== null && typeof draft.activityId !== "string") return null;
+  if (draft.assessorId !== null && typeof draft.assessorId !== "string") return null;
+  if (!Array.isArray(draft.parentTimeOptions) || !draft.parentTimeOptions.every((item) => typeof item === "string")) return null;
+  if (!Array.isArray(draft.assessorTimeOptions) || !draft.assessorTimeOptions.every((item) => typeof item === "string")) return null;
+  if (draft.scheduledAt !== null && typeof draft.scheduledAt !== "string") return null;
+  if (typeof draft.locationText !== "string") return null;
+  return {
+    kind: draft.kind as InvitationKind,
+    state: draft.state as InvitationDraft["state"],
+    activityId: draft.activityId as string | null,
+    assessorId: draft.assessorId as string | null,
+    parentTimeOptions: normalizeAssessmentTimeOptions(draft.parentTimeOptions),
+    assessorTimeOptions: normalizeAssessmentTimeOptions(draft.assessorTimeOptions),
+    scheduledAt: draft.scheduledAt as string | null,
+    locationText: draft.locationText,
+  };
+}
+
+function readStoredDrafts(key: string): StoredInvitationDrafts | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(key);
+    if (!raw) return null;
+    const value = JSON.parse(raw) as Record<string, unknown>;
+    if (!value || value.version !== 1 || !value.drafts || typeof value.drafts !== "object") return null;
+    const selectedKind = value.selectedKind === null || INVITATION_KINDS.includes(value.selectedKind as InvitationKind)
+      ? value.selectedKind as InvitationKind | null
+      : null;
+    const drafts = Object.fromEntries(INVITATION_KINDS.flatMap((kind) => {
+      const draft = parseStoredDraft((value.drafts as Record<string, unknown>)[kind]);
+      return draft?.kind === kind ? [[kind, draft]] : [];
+    })) as Partial<Record<InvitationKind, InvitationDraft>>;
+    return { version: 1, selectedKind, drafts };
+  } catch {
+    clearInvitationDraftSession(key);
+    return null;
+  }
+}
+
+function writeStoredDrafts(key: string, value: StoredInvitationDrafts): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // 浏览器关闭会话存储时仍保留正常编辑能力。
+  }
+}
 
 function blankDraft(kind: InvitationKind): InvitationDraft {
   return {
@@ -41,6 +120,7 @@ export function InvitationDraftFields({
   allowNone = true,
   variant = "inline",
   editingScope = "full",
+  draftStorageKey,
   onChange,
 }: {
   value: InvitationDraft | null;
@@ -51,6 +131,7 @@ export function InvitationDraftFields({
   allowNone?: boolean;
   variant?: "inline" | "workflow";
   editingScope?: "full" | "assessor";
+  draftStorageKey?: string;
   onChange: (value: InvitationDraft | null) => void;
 }) {
   const t = useTranslations("school.invitations");
@@ -58,12 +139,33 @@ export function InvitationDraftFields({
   const draftCacheRef = useRef<Partial<Record<InvitationKind, InvitationDraft>>>(
     value ? { [value.kind]: value } : {},
   );
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+  useEffect(() => {
+    if (!draftStorageKey) return;
+    const stored = readStoredDrafts(draftStorageKey);
+    if (!stored) return;
+    draftCacheRef.current = { ...draftCacheRef.current, ...stored.drafts };
+    const restored = stored.selectedKind ? stored.drafts[stored.selectedKind] ?? null : null;
+    if (restored || allowNone) onChangeRef.current(restored);
+  }, [allowNone, draftStorageKey]);
+  const persistDrafts = (selectedKind: InvitationKind | null) => {
+    if (!draftStorageKey) return;
+    writeStoredDrafts(draftStorageKey, {
+      version: 1,
+      selectedKind,
+      drafts: draftCacheRef.current,
+    });
+  };
   const emit = (next: InvitationDraft) => {
     const emitted = workflow ? next : {
       ...next,
       state: invitationStateFromFacts(next),
     };
     draftCacheRef.current[emitted.kind] = emitted;
+    persistDrafts(emitted.kind);
     onChange(emitted);
   };
   const dateTimeFormatter = useMemo(() => new Intl.DateTimeFormat(locale, {
@@ -74,6 +176,7 @@ export function InvitationDraftFields({
   const chooseKind = (kind: InvitationKind | null) => {
     if (value) draftCacheRef.current[value.kind] = value;
     if (!kind) {
+      persistDrafts(null);
       onChange(null);
       return;
     }

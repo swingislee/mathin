@@ -19,7 +19,11 @@ import {
   type UpdateInvitationInput,
 } from "./actions/invitations";
 import { DashboardTableColumnHeader, DashboardTableShell } from "./dashboard-page";
-import { InvitationDraftFields } from "./InvitationDraftFields";
+import {
+  clearInvitationDraftSession,
+  InvitationDraftFields,
+  invitationDraftSessionKey,
+} from "./InvitationDraftFields";
 import {
   ASSESSMENT_TIME_ZONE,
   assessmentAvailabilityIntersection,
@@ -152,6 +156,7 @@ function InvitationEditor({
   const [note, setNote] = useState("");
   const [cancelOpen, setCancelOpen] = useState(false);
   const submittedInputRef = useRef<UpdateInvitationInput | null>(null);
+  const draftStorageKey = invitationDraftSessionKey("coordination", row.id, row.updatedAt);
   const assessorEditing = !canManageInvitation && row.assessorId === currentUserId;
   const updateRun = useAction(updateLeadInvitationAction, {
     successMessage: () => {
@@ -176,6 +181,7 @@ function InvitationEditor({
       const input = submittedInputRef.current;
       if (!input) return;
       submittedInputRef.current = null;
+      clearInvitationDraftSession(draftStorageKey);
       setDraft({
         kind: input.kind,
         state: input.state,
@@ -201,6 +207,7 @@ function InvitationEditor({
       default: t("saveFailed"),
     },
     onSuccess: () => {
+      clearInvitationDraftSession(draftStorageKey);
       const hasOverlap = assessmentAvailabilityIntersection(
         draft.parentTimeOptions,
         draft.assessorTimeOptions,
@@ -575,6 +582,7 @@ function InvitationEditor({
           allowNone={false}
           variant="workflow"
           editingScope={assessorEditing ? "assessor" : "full"}
+          draftStorageKey={draftStorageKey}
           onChange={(value) => { if (value) setDraft(value); }}
         />
 

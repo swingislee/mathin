@@ -144,6 +144,8 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(draftFields).not.toContain("stateChoices.map");
     expect(draftFields).toContain("AssessmentAvailabilityGrid");
     expect(draftFields).toContain("draftCacheRef.current");
+    expect(draftFields).toContain("window.sessionStorage.setItem");
+    expect(draftFields).toContain("clearInvitationDraftSession");
     expect(availabilityGrid).toContain("grid-cols-[5.5rem_repeat(7");
     expect(availabilityGrid).toContain("ASSESSMENT_SLOT_DEFINITIONS");
     expect(availabilityGrid).toContain('side === "direct"');

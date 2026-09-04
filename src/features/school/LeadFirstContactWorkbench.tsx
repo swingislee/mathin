@@ -11,7 +11,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { recordLeadContactAction, type LeadContactInput } from "./actions/leads";
 import { DashboardTableShell } from "./dashboard-page";
-import { InvitationDraftFields } from "./InvitationDraftFields";
+import {
+  clearInvitationDraftSession,
+  InvitationDraftFields,
+  invitationDraftSessionKey,
+} from "./InvitationDraftFields";
 import {
   invitationDraftIsComplete,
   invitationWorkStep,
@@ -107,6 +111,11 @@ function ContactEntryRow({
   const [interestLevel, setInterestLevel] = useState<LeadInterestLevel | "">("");
   const [invitation, setInvitation] = useState<InvitationDraft | null>(null);
   const [note, setNote] = useState("");
+  const draftStorageKey = invitationDraftSessionKey(
+    "contact",
+    lead.id,
+    `${lead.contactCount}:${lead.lastContactAt ?? "new"}`,
+  );
 
   useEffect(() => {
     if (!active) return;
@@ -131,6 +140,7 @@ function ContactEntryRow({
     onSuccess: () => {
       const savedInput = submittedInputRef.current;
       submittedInputRef.current = null;
+      clearInvitationDraftSession(draftStorageKey);
       reset();
       if (savedInput) onSaved(lead.id, savedInput);
     },
@@ -418,6 +428,7 @@ function ContactEntryRow({
                 assessors={assessors}
                 locale={locale}
                 disabled={contactRun.pending}
+                draftStorageKey={draftStorageKey}
                 onChange={setInvitation}
               />
             ) : null}
