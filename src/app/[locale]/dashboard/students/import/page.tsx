@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { DashboardPage } from "@/features/school/dashboard-page";
+import { listRecentLeadImportBatches } from "@/features/school/lead-imports";
 import { listRecentMofaxiaoStudentImportBatches } from "@/features/school/student-imports";
 import { StudentImportSourceTabs } from "@/features/school/StudentImportSourceTabs";
 import { requirePerm } from "@/lib/auth";
@@ -27,8 +28,11 @@ export default async function ImportStudentsPage({ params }: { params: Promise<{
 
 async function ImportWorkspace({ locale }: { locale: string }) {
   await requirePerm(locale, "student.import");
-  const mofaxiaoBatches = await listRecentMofaxiaoStudentImportBatches();
-  return <StudentImportSourceTabs mofaxiaoBatches={mofaxiaoBatches} />;
+  const [leadBatches, mofaxiaoBatches] = await Promise.all([
+    listRecentLeadImportBatches(),
+    listRecentMofaxiaoStudentImportBatches(),
+  ]);
+  return <StudentImportSourceTabs leadBatches={leadBatches} mofaxiaoBatches={mofaxiaoBatches} />;
 }
 
 function ImportWorkspaceSkeleton() {

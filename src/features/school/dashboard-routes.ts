@@ -172,6 +172,15 @@ export const DASHBOARD_ROUTES = {
   },
 
   // ── 学员服务 ────────────────────────────────────────────────────────────
+  leads: {
+    href: "/dashboard/leads",
+    kind: "queue",
+    environments: STAFF_ONLY,
+    permission: "followup.view",
+    // 种子由外部名单和后续接触事实产生；导入时不创建学生身份。
+    createSurface: "derived",
+    nav: { labelKey: "leads", group: "subjectOperations" },
+  },
   followups: {
     href: "/dashboard/followups",
     kind: "queue",
@@ -186,7 +195,7 @@ export const DASHBOARD_ROUTES = {
     kind: "collection",
     environments: STAFF_ONLY,
     permissionAny: STUDENTS_PERMS,
-    // 单个学生只建立最小线索档案 → NewStudentDialog；完整资料在详情页维护（§5.5）。
+    // 仅在身份已确认时才直接建立学生；完整资料在详情页维护（§5.5）。
     createSurface: "dialog",
     nav: { labelKey: "students", group: "subjectOperations" },
   },
