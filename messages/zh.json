@@ -3670,7 +3670,7 @@
       "state_waiting_activity": "待活动投放",
       "state_completed": "已到访／已交接",
       "state_cancelled": "邀约已取消",
-      "stateManualHint": "按实际沟通可直接跳步",
+      "stateManualHint": "按数字键 1–4 快速切换；可按实际沟通直接跳步",
       "arrangementFactsLabel": "当前已知安排",
       "currentTaskLabel": "当前要推进",
       "task_coordinating_time": "先在星期表中登记家长可行范围，再指定测评老师。",

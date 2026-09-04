@@ -3670,7 +3670,7 @@
       "state_waiting_activity": "Awaiting activity placement",
       "state_completed": "Arrived / handed off",
       "state_cancelled": "Invitation cancelled",
-      "stateManualHint": "Jump to the step that matches the conversation",
+      "stateManualHint": "Press number keys 1–4 to switch; jump to the step that matches the conversation",
       "arrangementFactsLabel": "Known arrangement",
       "currentTaskLabel": "Move forward now",
       "task_coordinating_time": "Mark the parent's workable range in the weekly grid, then assign an assessor.",

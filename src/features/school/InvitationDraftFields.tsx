@@ -1,6 +1,6 @@
 "use client";
 
-import { Check } from "lucide-react";
+import { Check, Keyboard } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
@@ -407,8 +407,8 @@ export function InvitationDraftFields({
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <p className="text-[11px] font-medium text-muted">{t("stateLabel")}</p>
         <p className="flex items-center gap-1.5 text-[10px] text-muted">
-          <span className="font-mono text-ink">⌨ 1–4</span>
-          <span>· {t("stateManualHint")}</span>
+          <Keyboard className="size-3 text-ink" aria-hidden="true" />
+          <span>{t("stateManualHint")}</span>
         </p>
       </div>
       <div
