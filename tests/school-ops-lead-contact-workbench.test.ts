@@ -21,6 +21,7 @@ import {
   assessmentTimeOptionForInstant,
   assessmentTimeOptionToInstant,
   defaultInvitationState,
+  invitationCanHaveNextContactReminder,
   invitationCoordinationStageFrom,
   invitationDraftIsComplete,
   invitationQueueFrom,
@@ -113,6 +114,11 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
       "migrations",
       "20260903001500_school_ops_invitation_availability_grid.sql",
     );
+    const reminderMigration = read(
+      "supabase",
+      "migrations",
+      "20260904000420_school_ops_optional_contact_reminders.sql",
+    );
 
     expect(migration).toContain("create table public.lead_invitation_threads");
     expect(migration).toContain("create table public.lead_invitation_events");
@@ -129,6 +135,12 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(availabilityMigration).toContain("create or replace function public.record_lead_contact_v3");
     expect(availabilityMigration).toContain("create or replace function public.set_invitation_assessor_availability");
     expect(availabilityMigration).toContain("after_school");
+    expect(reminderMigration).toContain("create or replace function public.set_lead_contact_reminder");
+    expect(reminderMigration).toContain("create or replace function public.record_lead_contact_v4");
+    expect(reminderMigration).toContain("create or replace function public.update_lead_invitation_v3");
+    expect(reminderMigration).toContain("'invitation_followup'");
+    expect(reminderMigration).toContain("p_remind_at is not null and p_remind_at <= now()");
+    expect(reminderMigration).toContain("lead_invitation_threads_close_reminder");
     expect(page).toContain("InvitationCoordinationWorkbench");
     expect(page).toContain("DashboardCommandTabs");
     expect(page).toContain("listInvitationQueueCounts");
@@ -150,6 +162,8 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(draftFields).toContain("stateChoices.map");
     expect(draftFields).toContain("selectInvitationProgress");
     expect(draftFields).toContain("AssessmentAvailabilityGrid");
+    expect(draftFields).toContain("NextContactReminderField");
+    expect(draftFields).toContain("invitationCanHaveNextContactReminder");
     expect(draftFields).toContain("draftCacheRef.current");
     expect(draftFields).toContain("window.sessionStorage.setItem");
     expect(draftFields).toContain("clearInvitationDraftSession");
@@ -235,7 +249,8 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(workbench).not.toContain("MessageSquarePlus");
     expect(workbench).not.toContain("deferSubmit");
     expect(workbench).not.toContain("<Select");
-    expect(workbench).not.toContain("DateTimePicker");
+    expect(workbench).toContain("NextContactReminderField");
+    expect(workbench).toContain("setLeadContactReminderAction");
     expect(workbench).not.toContain('t("nextAction")');
     expect(table).not.toContain("recordLeadContactAction");
     expect(table).not.toContain("Dialog");
@@ -246,11 +261,12 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(contract).not.toContain("@/lib/supabase/server");
     expect(actions).toContain('authorizedClient("student.assign")');
     expect(actions).toContain('authorizedClient("followup.write")');
-    expect(actions).toContain('supabase.rpc("record_lead_contact_v3"');
+    expect(actions).toContain('supabase.rpc("record_lead_contact_v4"');
+    expect(actions).toContain('supabase.rpc("set_lead_contact_reminder"');
     expect(actions).toContain("p_invitation_state");
     expect(query).toContain('.from("lead_communications")');
     expect(query).toContain('.from("lead_invitation_threads")');
-    expect(query).not.toContain('.from("lead_next_actions")');
+    expect(query).toContain('.from("lead_next_actions")');
   });
 
   it("previews the same automatic contact pools as the database rule", () => {
@@ -264,6 +280,11 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(defaultInvitationState("assessment_1v1")).toBe("coordinating_time");
     expect(defaultInvitationState("activity")).toBe("awaiting_parent");
     expect(defaultInvitationState("waiting_activity")).toBe("waiting_activity");
+    expect(invitationCanHaveNextContactReminder({ state: "coordinating_time" })).toBe(true);
+    expect(invitationCanHaveNextContactReminder({ state: "awaiting_teacher" })).toBe(true);
+    expect(invitationCanHaveNextContactReminder({ state: "awaiting_parent" })).toBe(true);
+    expect(invitationCanHaveNextContactReminder({ state: "waiting_activity" })).toBe(true);
+    expect(invitationCanHaveNextContactReminder({ state: "confirmed" })).toBe(false);
     expect(invitationStatesForKind("assessment_1v1")).toEqual([
       "coordinating_time",
       "awaiting_teacher",
@@ -485,6 +506,7 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
       wechatAdded: null,
       visitCommitted: null,
       interestLevel: null,
+      nextContactAt: null,
       activeInvitation: null,
       ...overrides,
     });

@@ -28,6 +28,7 @@ import {
   ASSESSMENT_TIME_ZONE,
   assessmentAvailabilityIntersection,
   assessmentTimeOptionToInstant,
+  invitationCanHaveNextContactReminder,
   invitationDraftIsComplete,
   invitationWorkStep,
   parseAssessmentTimeOption,
@@ -40,6 +41,7 @@ import {
   type InvitationQueue,
   type InvitationQueueCounts,
 } from "./invitation-contract";
+import { isFutureNextContactReminder } from "./NextContactReminderField";
 import { zonedDateTimeToInstant } from "./schedule";
 
 const CHANNELS = ["phone", "wechat", "in_person", "other"] as const;
@@ -105,7 +107,8 @@ function draftMatchesRow(draft: InvitationDraft, row: InvitationCoordinationRow)
     && sameOptions(draft.parentTimeOptions, row.parentTimeOptions)
     && sameOptions(draft.assessorTimeOptions, row.assessorTimeOptions)
     && draft.scheduledAt === row.scheduledAt
-    && draft.locationText === row.locationText;
+    && draft.locationText === row.locationText
+    && (draft.nextContactAt ?? null) === row.nextContactAt;
 }
 
 function rowMatchesView(
@@ -152,6 +155,7 @@ function InvitationEditor({
     assessorTimeOptions: row.assessorTimeOptions,
     scheduledAt: row.scheduledAt,
     locationText: row.locationText,
+    nextContactAt: row.nextContactAt,
   });
   const [channel, setChannel] = useState<InvitationChannel>("wechat");
   const [note, setNote] = useState("");
@@ -177,6 +181,8 @@ function InvitationEditor({
       INVITATION_CLOSED: t("alreadyClosed"),
       LEAD_CLOSED: t("leadClosed"),
       LEAD_UNASSIGNED: t("leadUnassigned"),
+      REMINDER_NOT_FUTURE: t("nextContactReminderPast"),
+      REMINDER_NOT_ALLOWED: t("nextContactReminderNotAllowed"),
       default: t("saveFailed"),
     },
     onSuccess: () => {
@@ -193,6 +199,7 @@ function InvitationEditor({
         assessorTimeOptions: input.assessorTimeOptions,
         scheduledAt: input.scheduledAt,
         locationText: input.locationText,
+        nextContactAt: input.nextContactAt ?? null,
       });
       onSaved(row, input);
       setNote("");
@@ -230,8 +237,15 @@ function InvitationEditor({
   });
   const pending = updateRun.pending || assessorRun.pending;
   const submitSupport = (nextDraft: InvitationDraft) => {
-    if (nextDraft.state === "confirmed") setAutoFlowFailed(false);
-    const input = { ...nextDraft, channel, note };
+    const normalizedDraft = invitationCanHaveNextContactReminder(nextDraft)
+      ? { ...nextDraft, nextContactAt: nextDraft.nextContactAt ?? null }
+      : { ...nextDraft, nextContactAt: null };
+    if (!isFutureNextContactReminder(normalizedDraft.nextContactAt)) {
+      toast.error(t("nextContactReminderPast"));
+      return;
+    }
+    if (normalizedDraft.state === "confirmed") setAutoFlowFailed(false);
+    const input = { ...normalizedDraft, channel, note };
     submittedInputRef.current = input;
     updateRun.run(row.id, input);
   };
@@ -779,6 +793,7 @@ export function InvitationCoordinationWorkbench({
         activityTitle: activity?.title ?? "",
         activityScheduledAt: activity?.scheduledAt ?? null,
         assessorName: assessor?.displayName ?? "",
+        nextContactAt: input.nextContactAt ?? null,
         summary: input.note.trim() || item.summary,
         updatedAt: savedAt,
         events: [{
@@ -867,6 +882,11 @@ export function InvitationCoordinationWorkbench({
                       <p className="truncate text-ink" title={arrangementText(row, t, formatAt)}>{arrangementText(row, t, formatAt)}</p>
                     </div>
                     {row.summary ? <p className="mt-1 truncate text-[11px] text-muted" title={row.summary}>{row.summary}</p> : null}
+                    {row.nextContactAt ? (
+                      <p className="mt-1 truncate text-[11px] text-rose" title={formatAt(row.nextContactAt)}>
+                        {t("nextContactReminderScheduled", { time: formatAt(row.nextContactAt) })}
+                      </p>
+                    ) : null}
                   </TableCell>
                   <TableCell className="whitespace-nowrap px-2 py-2 text-muted">{formatAt(row.updatedAt)}</TableCell>
                 </TableRow>

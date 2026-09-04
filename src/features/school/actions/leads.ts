@@ -5,6 +5,7 @@ import { actionError, type ActionResult } from "@/lib/action-result";
 import {
   INVITATION_KINDS,
   INVITATION_STATES,
+  invitationCanHaveNextContactReminder,
   invitationDraftIsComplete,
   invitationStatesForKind,
   isAssessmentTimeOption,
@@ -12,7 +13,7 @@ import {
   type InvitationDraft,
 } from "../invitation-contract";
 import { authorizedClient, nullableRpcArg } from "./guards";
-import { COMMON_CODES, parse, text, uuid } from "./schemas";
+import { COMMON_CODES, datetime, parse, text, uuid } from "./schemas";
 
 const LEAD_CONTACT_OUTCOMES = ["unreachable", "connected", "declined", "invalid_number"] as const;
 const LEAD_INTEREST_LEVELS = ["A", "B", "C"] as const;
@@ -34,6 +35,7 @@ const invitationDraftSchema = z.object({
   assessorTimeOptions: timeOptions,
   scheduledAt: z.string().datetime({ offset: true }).nullable(),
   locationText: text(200),
+  nextContactAt: datetime.nullable().default(null),
 });
 
 const leadContactSchema = z.object({
@@ -43,6 +45,7 @@ const leadContactSchema = z.object({
   wechatAdded: z.boolean().nullable(),
   interestLevel: z.enum(LEAD_INTEREST_LEVELS).nullable(),
   invitation: invitationDraftSchema.nullable(),
+  nextContactAt: datetime.nullable().default(null),
 }).superRefine((value, context) => {
   if (["unreachable", "invalid_number"].includes(value.outcome)
       && value.wechatAdded === true) {
@@ -61,6 +64,18 @@ const leadContactSchema = z.object({
     )) {
       context.addIssue({ code: "custom", message: "INVALID_INVITATION" });
     }
+    if ((value.invitation.nextContactAt ?? null) !== value.nextContactAt) {
+      context.addIssue({ code: "custom", message: "INVALID_INVITATION" });
+    }
+  }
+  const reminderAllowed = value.outcome === "unreachable"
+    || value.outcome === "declined"
+    || Boolean(value.invitation && invitationCanHaveNextContactReminder(value.invitation));
+  if (value.nextContactAt && !reminderAllowed) {
+    context.addIssue({ code: "custom", message: "REMINDER_NOT_ALLOWED" });
+  }
+  if (value.nextContactAt && new Date(value.nextContactAt).getTime() <= Date.now()) {
+    context.addIssue({ code: "custom", message: "REMINDER_NOT_FUTURE" });
   }
 });
 
@@ -70,7 +85,17 @@ export type LeadContactInput = {
   wechatAdded: boolean | null;
   interestLevel: (typeof LEAD_INTEREST_LEVELS)[number] | null;
   invitation: InvitationDraft | null;
+  nextContactAt: string | null;
 };
+
+const leadReminderSchema = z.object({
+  leadId: uuid,
+  nextContactAt: datetime.nullable(),
+}).superRefine((value, context) => {
+  if (value.nextContactAt && new Date(value.nextContactAt).getTime() <= Date.now()) {
+    context.addIssue({ code: "custom", message: "REMINDER_NOT_FUTURE" });
+  }
+});
 
 export async function assignLeadsAction(leadIds: string[], staffUserId: string): Promise<ActionResult<{ count: number }>> {
   try {
@@ -95,7 +120,7 @@ export async function recordLeadContactAction(
     const value = parse(leadContactSchema, { leadId, ...input });
     const { supabase } = await authorizedClient("followup.write");
     const invitation = value.invitation;
-    const { error } = await supabase.rpc("record_lead_contact_v3", {
+    const { error } = await supabase.rpc("record_lead_contact_v4", {
       p_lead_id: value.leadId,
       p_outcome: value.outcome,
       p_note: value.note,
@@ -109,6 +134,7 @@ export async function recordLeadContactAction(
       p_assessor_time_options: invitation?.assessorTimeOptions ?? [],
       p_scheduled_at: nullableRpcArg(invitation?.scheduledAt ?? null),
       p_location_text: invitation?.locationText ?? "",
+      p_next_contact_at: nullableRpcArg(value.nextContactAt),
     });
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -120,6 +146,35 @@ export async function recordLeadContactAction(
       "INVALID_INVITATION",
       "ACTIVITY_NOT_FOUND",
       "ASSESSOR_UNAVAILABLE",
+      "NOT_FOUND",
+      "REMINDER_NOT_FUTURE",
+      "REMINDER_NOT_ALLOWED",
+      ...COMMON_CODES,
+    ]);
+  }
+}
+
+export async function setLeadContactReminderAction(
+  leadId: string,
+  nextContactAt: string | null,
+): Promise<ActionResult> {
+  try {
+    const value = parse(leadReminderSchema, { leadId, nextContactAt });
+    const { supabase } = await authorizedClient("followup.write");
+    const { error } = await supabase.rpc("set_lead_contact_reminder", {
+      p_lead_id: value.leadId,
+      p_remind_at: nullableRpcArg(value.nextContactAt),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, [
+      "REMINDER_NOT_FUTURE",
+      "REMINDER_NOT_ALLOWED",
+      "INITIAL_CONTACT_PENDING",
+      "LEAD_UNASSIGNED",
+      "LEAD_CLOSED",
+      "FORBIDDEN_SCOPE",
       "NOT_FOUND",
       ...COMMON_CODES,
     ]);

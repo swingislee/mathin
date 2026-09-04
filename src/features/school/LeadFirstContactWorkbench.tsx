@@ -9,7 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { recordLeadContactAction, type LeadContactInput } from "./actions/leads";
+import {
+  recordLeadContactAction,
+  setLeadContactReminderAction,
+  type LeadContactInput,
+} from "./actions/leads";
 import { DashboardTableShell } from "./dashboard-page";
 import {
   clearInvitationDraftSession,
@@ -18,11 +22,16 @@ import {
 } from "./InvitationDraftFields";
 import {
   invitationDraftIsComplete,
+  invitationCanHaveNextContactReminder,
   invitationWorkStep,
   type InvitationActivityOption,
   type InvitationAssessorOption,
   type InvitationDraft,
 } from "./invitation-contract";
+import {
+  isFutureNextContactReminder,
+  NextContactReminderField,
+} from "./NextContactReminderField";
 import {
   deriveLeadContactDestination,
   type LeadContactOutcome,
@@ -40,6 +49,64 @@ const QUICK_SUBMIT_OUTCOMES: readonly LeadContactOutcome[] = ["unreachable", "in
 const ACQUISITION_TIME_ZONE = "Asia/Shanghai";
 
 type TernaryChoice = "" | "yes" | "no";
+
+function leadCanHaveReminder(lead: LeadPoolRow): boolean {
+  if (lead.activeInvitation) return invitationCanHaveNextContactReminder(lead.activeInvitation);
+  return lead.status === "uncontacted" || lead.status === "nurture";
+}
+
+function SavedLeadReminderControl({
+  lead,
+  disabled,
+  onSaved,
+}: {
+  lead: LeadPoolRow;
+  disabled: boolean;
+  onSaved: (leadId: string, nextContactAt: string | null) => void;
+}) {
+  const t = useTranslations("school.invitations");
+  const submittedRef = useRef<string | null>(lead.nextContactAt);
+  const [nextContactAt, setNextContactAt] = useState<string | null>(lead.nextContactAt);
+  const reminderRun = useAction(setLeadContactReminderAction, {
+    successMessage: t("nextContactReminderSaved"),
+    errorMessage: {
+      REMINDER_NOT_FUTURE: t("nextContactReminderPast"),
+      REMINDER_NOT_ALLOWED: t("nextContactReminderNotAllowed"),
+      default: t("nextContactReminderSaveFailed"),
+    },
+    onSuccess: () => onSaved(lead.id, submittedRef.current),
+  });
+  const valid = isFutureNextContactReminder(nextContactAt);
+  const dirty = nextContactAt !== lead.nextContactAt;
+
+  return (
+    <div className="mt-2 flex flex-wrap items-end gap-2 border-t border-line pt-2">
+      <NextContactReminderField
+        id={`saved-lead-reminder-${lead.id}`}
+        value={nextContactAt}
+        disabled={disabled || reminderRun.pending}
+        className="min-w-64 max-w-sm flex-1"
+        onChange={setNextContactAt}
+      />
+      <Button
+        type="button"
+        size="sm"
+        variant="secondary"
+        className="mb-5 h-8 whitespace-nowrap"
+        disabled={disabled || reminderRun.pending || !dirty || !valid}
+        onClick={() => {
+          submittedRef.current = nextContactAt;
+          reminderRun.run(lead.id, nextContactAt);
+        }}
+      >
+        {reminderRun.pending
+          ? <LoaderCircle className="size-3.5 animate-spin motion-reduce:animate-none" />
+          : <Check className="size-3.5" />}
+        {t("saveNextContactReminder")}
+      </Button>
+    </div>
+  );
+}
 
 function DirectChoiceGroup<T extends string>({
   label,
@@ -89,6 +156,7 @@ function ContactEntryRow({
   active,
   onActivate,
   onSaved,
+  onReminderSaved,
   activities,
   assessors,
   locale,
@@ -98,6 +166,7 @@ function ContactEntryRow({
   active: boolean;
   onActivate: (leadId: string) => void;
   onSaved: (leadId: string, input: LeadContactInput) => void;
+  onReminderSaved: (leadId: string, nextContactAt: string | null) => void;
   activities: InvitationActivityOption[];
   assessors: InvitationAssessorOption[];
   locale: string;
@@ -110,6 +179,7 @@ function ContactEntryRow({
   const [wechatState, setWechatState] = useState<TernaryChoice>("");
   const [interestLevel, setInterestLevel] = useState<LeadInterestLevel | "">("");
   const [invitation, setInvitation] = useState<InvitationDraft | null>(null);
+  const [nextContactAt, setNextContactAt] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const draftStorageKey = invitationDraftSessionKey(
     "contact",
@@ -128,6 +198,7 @@ function ContactEntryRow({
     setWechatState("");
     setInterestLevel("");
     setInvitation(null);
+    setNextContactAt(null);
     setNote("");
   };
   const contactRun = useAction(recordLeadContactAction, {
@@ -135,6 +206,8 @@ function ContactEntryRow({
     errorMessage: {
       LEAD_UNASSIGNED: t("contactNeedsOwner"),
       LEAD_CLOSED: t("contactClosed"),
+      REMINDER_NOT_FUTURE: invitationT("nextContactReminderPast"),
+      REMINDER_NOT_ALLOWED: invitationT("nextContactReminderNotAllowed"),
       default: t("contactFailed"),
     },
     onSuccess: () => {
@@ -152,9 +225,17 @@ function ContactEntryRow({
     ? deriveLeadContactDestination(outcome)
     : null;
   const canSubmit = !invitation || invitationDraftIsComplete(invitation);
+  const draftReminderAt = outcome === "declined"
+    ? nextContactAt
+    : invitation && invitationCanHaveNextContactReminder(invitation)
+      ? invitation.nextContactAt ?? null
+      : null;
+  const reminderValid = isFutureNextContactReminder(draftReminderAt);
   const displayedOutcome = outcome || lead.lastContactOutcome;
   const savedReachable = lead.lastContactOutcome === "connected" || lead.lastContactOutcome === "declined";
-  const showSavedDetails = Boolean(lead.lastContactOutcome && (savedReachable || lead.lastContactNote));
+  const showSavedDetails = Boolean(
+    lead.lastContactOutcome && (savedReachable || lead.lastContactNote || lead.nextContactAt),
+  );
   const savedWechatFact = lead.wechatAdded === true
     ? t("wechatAddedShort")
     : lead.wechatAdded === false
@@ -190,6 +271,13 @@ function ContactEntryRow({
         : null,
       interestLevel: nextReachable && interestLevel ? interestLevel : null,
       invitation: nextOutcome === "connected" ? invitationOverride : null,
+      nextContactAt: nextOutcome === "declined"
+        ? nextContactAt
+        : nextOutcome === "connected"
+          && invitationOverride
+          && invitationCanHaveNextContactReminder(invitationOverride)
+            ? invitationOverride.nextContactAt ?? null
+            : null,
     };
   };
 
@@ -199,7 +287,8 @@ function ContactEntryRow({
   ) => {
     if (!nextOutcome) return;
     const input = inputFor(nextOutcome, invitationOverride);
-    if (input.invitation && !invitationDraftIsComplete(input.invitation)) return;
+    if ((input.invitation && !invitationDraftIsComplete(input.invitation))
+        || !isFutureNextContactReminder(input.nextContactAt)) return;
     submittedInputRef.current = input;
     contactRun.run(lead.id, input);
   };
@@ -211,10 +300,18 @@ function ContactEntryRow({
       setWechatState("");
       setInterestLevel("");
       setInvitation(null);
+      setNextContactAt(null);
     } else if (nextOutcome === "declined") {
       setInvitation(null);
     }
-    if (QUICK_SUBMIT_OUTCOMES.includes(nextOutcome)) submit(nextOutcome);
+    if (QUICK_SUBMIT_OUTCOMES.includes(nextOutcome)) {
+      const input = {
+        ...inputFor(nextOutcome, null),
+        nextContactAt: null,
+      };
+      submittedInputRef.current = input;
+      contactRun.run(lead.id, input);
+    }
   };
 
   const handleRowKeyDown = (event: React.KeyboardEvent<HTMLTableRowElement>) => {
@@ -252,7 +349,7 @@ function ContactEntryRow({
   ];
   const confirmableInvitation = invitation?.state === "awaiting_parent"
     && invitationDraftIsComplete({ ...invitation, state: "confirmed" })
-    ? { ...invitation, state: "confirmed" as const }
+    ? { ...invitation, state: "confirmed" as const, nextContactAt: null }
     : null;
   const directConfirmedInvitation = invitation?.state === "confirmed"
     && invitationDraftIsComplete(invitation);
@@ -387,6 +484,11 @@ function ContactEntryRow({
                 </div>
               </>
             ) : null}
+            {lead.nextContactAt ? (
+              <Badge variant="outline" className="px-1.5 py-0 text-[10px] font-normal leading-4 text-rose">
+                {invitationT("nextContactReminderScheduled", { time: formatAt(lead.nextContactAt) })}
+              </Badge>
+            ) : null}
             <p
               className={cn(
                 "min-w-52 flex-1 text-[11px] leading-4 text-ink",
@@ -433,6 +535,16 @@ function ContactEntryRow({
               />
             ) : null}
 
+            {outcome === "declined" ? (
+              <NextContactReminderField
+                id={`lead-next-contact-${lead.id}`}
+                value={nextContactAt}
+                disabled={contactRun.pending}
+                className="max-w-xs"
+                onChange={setNextContactAt}
+              />
+            ) : null}
+
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-[11px] leading-4 text-muted" aria-live="polite">
                 {destination
@@ -462,7 +574,7 @@ function ContactEntryRow({
                   type="button"
                   size="sm"
                   className="h-8 whitespace-nowrap"
-                  disabled={contactRun.pending || !canSubmit}
+                  disabled={contactRun.pending || !canSubmit || !reminderValid}
                   onClick={() => submit()}
                 >
                   {contactRun.pending
@@ -479,6 +591,13 @@ function ContactEntryRow({
           </div>
         ) : outcome ? (
           <p className="mt-2 text-[11px] text-muted">{t("contactDraftPending")}</p>
+        ) : null}
+        {active && !outcome && lead.lastContactOutcome && leadCanHaveReminder(lead) ? (
+          <SavedLeadReminderControl
+            lead={lead}
+            disabled={contactRun.pending}
+            onSaved={onReminderSaved}
+          />
         ) : null}
       </TableCell>
     </TableRow>
@@ -536,6 +655,7 @@ export function LeadFirstContactWorkbench({
           lastContactNote: input.note,
           wechatAdded: input.wechatAdded,
           interestLevel: input.interestLevel,
+          nextContactAt: input.nextContactAt,
           activeInvitation: input.invitation ? {
             id: lead.activeInvitation?.id ?? `session-${lead.id}`,
             ...input.invitation,
@@ -550,7 +670,20 @@ export function LeadFirstContactWorkbench({
               ? assessors.find((assessor) => assessor.userId === input.invitation?.assessorId)?.displayName ?? ""
               : "",
             updatedAt: savedAt,
+            nextContactAt: input.invitation.nextContactAt ?? input.nextContactAt ?? null,
           } : lead.activeInvitation,
+        }
+      : lead));
+  };
+
+  const updateSessionReminder = (leadId: string, nextContactAt: string | null) => {
+    setSessionLeads((current) => current.map((lead) => lead.id === leadId
+      ? {
+          ...lead,
+          nextContactAt,
+          activeInvitation: lead.activeInvitation
+            ? { ...lead.activeInvitation, nextContactAt }
+            : null,
         }
       : lead));
   };
@@ -587,6 +720,7 @@ export function LeadFirstContactWorkbench({
                 active={lead.id === resolvedActiveLeadId}
                 onActivate={setActiveLeadId}
                 onSaved={recordAndAdvance}
+                onReminderSaved={updateSessionReminder}
                 activities={activities}
                 assessors={assessors}
                 locale={locale}

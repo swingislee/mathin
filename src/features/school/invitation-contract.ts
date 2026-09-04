@@ -17,6 +17,12 @@ export const INVITATION_COORDINATION_STATES = [
   "awaiting_teacher",
   "awaiting_parent",
 ] as const;
+export const INVITATION_REMINDER_STATES = [
+  "coordinating_time",
+  "awaiting_teacher",
+  "awaiting_parent",
+  "waiting_activity",
+] as const;
 export const ASSESSMENT_TIME_ZONE = "Asia/Shanghai";
 export const ASSESSMENT_SLOT_DEFINITIONS = [
   { key: "09:50", hour: 9, minute: 50 },
@@ -63,6 +69,7 @@ export interface InvitationDraft {
   assessorTimeOptions: string[];
   scheduledAt: string | null;
   locationText: string;
+  nextContactAt?: string | null;
 }
 
 export interface InvitationSummary extends InvitationDraft {
@@ -72,6 +79,7 @@ export interface InvitationSummary extends InvitationDraft {
   activityScheduledAt: string | null;
   assessorName: string;
   updatedAt: string;
+  nextContactAt: string | null;
 }
 
 export interface InvitationActivityOption {
@@ -122,6 +130,14 @@ export function defaultInvitationState(kind: InvitationKind): InvitationState {
   if (kind === "assessment_1v1") return "coordinating_time";
   if (kind === "activity") return "awaiting_parent";
   return "waiting_activity";
+}
+
+export function invitationCanHaveNextContactReminder(
+  draft: Pick<InvitationDraft, "state">,
+): boolean {
+  return INVITATION_REMINDER_STATES.includes(
+    draft.state as (typeof INVITATION_REMINDER_STATES)[number],
+  );
 }
 
 export function invitationStatesForKind(kind: InvitationKind): readonly InvitationState[] {
@@ -200,6 +216,7 @@ export function applyDirectAssessmentTime(
     parentTimeOptions: normalizeAssessmentTimeOptions([...draft.parentTimeOptions, option]),
     assessorTimeOptions: normalizeAssessmentTimeOptions([...draft.assessorTimeOptions, option]),
     scheduledAt,
+    nextContactAt: targetState === "confirmed" ? null : draft.nextContactAt ?? null,
   };
 }
 
@@ -208,9 +225,17 @@ export function selectInvitationProgress(
   state: InvitationState,
 ): InvitationDraft {
   if (!invitationStatesForKind(draft.kind).includes(state)) return draft;
-  if (draft.kind !== "assessment_1v1") return { ...draft, state };
+  if (draft.kind !== "assessment_1v1") {
+    return {
+      ...draft,
+      state,
+      nextContactAt: INVITATION_REMINDER_STATES.includes(
+        state as (typeof INVITATION_REMINDER_STATES)[number],
+      ) ? draft.nextContactAt ?? null : null,
+    };
+  }
   if (state === "coordinating_time" || state === "awaiting_teacher") {
-    return { ...draft, state, scheduledAt: null };
+    return { ...draft, state, scheduledAt: null, nextContactAt: draft.nextContactAt ?? null };
   }
   const sharedInstants = assessmentAvailabilityIntersection(
     draft.parentTimeOptions,
@@ -228,6 +253,7 @@ export function selectInvitationProgress(
       : sharedInstants.length === 1
         ? sharedInstants[0]
         : null,
+    nextContactAt: state === "confirmed" ? null : draft.nextContactAt ?? null,
   };
 }
 

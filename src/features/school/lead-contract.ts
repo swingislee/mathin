@@ -71,5 +71,6 @@ export interface LeadPoolRow {
   wechatAdded: boolean | null;
   visitCommitted: boolean | null;
   interestLevel: LeadInterestLevel | null;
+  nextContactAt: string | null;
   activeInvitation: InvitationSummary | null;
 }

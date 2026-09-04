@@ -2,7 +2,7 @@
 
 import { Check, Keyboard } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,7 @@ import {
   defaultInvitationState,
   INVITATION_KINDS,
   INVITATION_STATES,
+  invitationCanHaveNextContactReminder,
   invitationDraftIsComplete,
   invitationStatesForKind,
   normalizeAssessmentTimeOptions,
@@ -23,6 +24,7 @@ import {
   type InvitationKind,
   type InvitationState,
 } from "./invitation-contract";
+import { NextContactReminderField } from "./NextContactReminderField";
 
 interface StoredInvitationDrafts {
   version: 1;
@@ -72,6 +74,9 @@ function parseStoredDraft(value: unknown): InvitationDraft | null {
   if (!Array.isArray(draft.assessorTimeOptions) || !draft.assessorTimeOptions.every((item) => typeof item === "string")) return null;
   if (draft.scheduledAt !== null && typeof draft.scheduledAt !== "string") return null;
   if (typeof draft.locationText !== "string") return null;
+  if (draft.nextContactAt !== undefined
+      && draft.nextContactAt !== null
+      && typeof draft.nextContactAt !== "string") return null;
   return {
     kind: draft.kind as InvitationKind,
     state: draft.state as InvitationDraft["state"],
@@ -81,6 +86,7 @@ function parseStoredDraft(value: unknown): InvitationDraft | null {
     assessorTimeOptions: normalizeAssessmentTimeOptions(draft.assessorTimeOptions),
     scheduledAt: draft.scheduledAt as string | null,
     locationText: draft.locationText,
+    nextContactAt: typeof draft.nextContactAt === "string" ? draft.nextContactAt : null,
   };
 }
 
@@ -124,6 +130,7 @@ function blankDraft(kind: InvitationKind): InvitationDraft {
     assessorTimeOptions: [],
     scheduledAt: null,
     locationText: "",
+    nextContactAt: null,
   };
 }
 
@@ -153,6 +160,7 @@ export function InvitationDraftFields({
   onConfirmedReady?: (value: InvitationDraft) => void;
 }) {
   const t = useTranslations("school.invitations");
+  const reminderId = useId();
   const workflow = variant === "workflow";
   const draftCacheRef = useRef<Partial<Record<InvitationKind, InvitationDraft>>>(
     value ? { [value.kind]: value } : {},
@@ -492,6 +500,16 @@ export function InvitationDraftFields({
             <p className="text-[11px] font-medium text-muted">{t("arrangementFactsLabel")}</p>
           ) : null}
           {arrangementFields}
+
+          {invitationCanHaveNextContactReminder(value) && editingScope !== "assessor" ? (
+            <NextContactReminderField
+              id={`invitation-next-contact-${reminderId}`}
+              value={value.nextContactAt}
+              disabled={disabled}
+              className={workflow ? "max-w-sm" : "max-w-xs"}
+              onChange={(nextContactAt) => update("nextContactAt", nextContactAt)}
+            />
+          ) : null}
 
           {!workflow && !invitationDraftIsComplete(value) ? (
             <p className="text-[11px] leading-4 text-amber-700" role="status">{t("draftIncomplete")}</p>

@@ -59,6 +59,11 @@ interface ActivityDbRow {
   location: string;
 }
 
+interface LeadNextActionDbRow {
+  lead_id: string;
+  due_at: string;
+}
+
 function pickParam(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
@@ -208,7 +213,7 @@ export async function listInvitationCoordination(
   const activityIds = [...new Set(invitations.map((row) => row.activity_id).filter((id): id is string => Boolean(id)))];
   const assessorIds = [...new Set(invitations.map((row) => row.assessor_id).filter((id): id is string => Boolean(id)))];
   const invitationIds = invitations.map((row) => row.id);
-  const [leadResult, activityResult, assessorResult, eventResult] = await Promise.all([
+  const [leadResult, activityResult, assessorResult, eventResult, reminderResult] = await Promise.all([
     supabase
       .from("leads")
       .select("id,provisional_student_name,phone,grade_hint,grade_text,owner_id")
@@ -227,11 +232,19 @@ export async function listInvitationCoordination(
       .order("occurred_at", { ascending: false })
       .limit(5_000)
       .returns<InvitationEventDbRow[]>(),
+    supabase
+      .from("lead_next_actions")
+      .select("lead_id,due_at")
+      .in("lead_id", leadIds)
+      .eq("status", "open")
+      .eq("kind", "invitation_followup")
+      .returns<LeadNextActionDbRow[]>(),
   ]);
   if (leadResult.error) throw new Error(leadResult.error.message);
   if (activityResult.error) throw new Error(activityResult.error.message);
   if (assessorResult.error) throw new Error(assessorResult.error.message);
   if (eventResult.error) throw new Error(eventResult.error.message);
+  if (reminderResult.error) throw new Error(reminderResult.error.message);
 
   const leads = leadResult.data ?? [];
   const ownerIds = [...new Set(leads.map((row) => row.owner_id).filter((id): id is string => Boolean(id)))];
@@ -246,6 +259,7 @@ export async function listInvitationCoordination(
   const activityById = new Map((activityResult.data ?? []).map((row) => [row.id, row]));
   const assessorById = new Map((assessorResult.data ?? []).map((row) => [row.id, row.display_name]));
   const profileById = new Map((profileResult.data ?? []).map((row) => [row.id, row.display_name]));
+  const reminderByLead = new Map((reminderResult.data ?? []).map((row) => [row.lead_id, row.due_at]));
   const eventsByInvitation = new Map<string, InvitationEventDbRow[]>();
   for (const event of eventResult.data ?? []) {
     const rows = eventsByInvitation.get(event.invitation_id) ?? [];
@@ -283,6 +297,7 @@ export async function listInvitationCoordination(
       locationText: invitation.location_text || activity?.location || "",
       summary: invitation.summary,
       updatedAt: invitation.updated_at,
+      nextContactAt: reminderByLead.get(lead.id) ?? null,
       events: (eventsByInvitation.get(invitation.id) ?? []).map((event) => ({
         id: event.id,
         fromState: event.from_state,
