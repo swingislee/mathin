@@ -146,7 +146,12 @@ export function ActivitiesManager({
                       <Button size="sm" variant="ghost" onClick={() => setEditing(activity)}>{t("edit")}</Button>
                       <Button size="sm" variant="ghost" className="text-rose" aria-label={t("delete")} disabled={pending} onClick={() => setDeleteTarget(activity)}><Trash2 size={15} /></Button>
                     </> : null}
-                    <Link href={`/dashboard/activities/${activity.id}`} className={buttonVariants({ size: "sm", variant: "secondary" })}>
+                    {activity.kind === "public_class" ? (
+                      <Link href={`/dashboard/activities/${activity.id}?view=onsite`} className={buttonVariants({ size: "sm", variant: "secondary" })}>
+                        {t("openActivityPreparation")}
+                      </Link>
+                    ) : null}
+                    <Link href={`/dashboard/activities/${activity.id}${activity.kind === "public_class" ? "?view=teaching" : ""}`} className={buttonVariants({ size: "sm", variant: "secondary" })}>
                       {t("openWorkspace")}<ArrowRight size={15} />
                     </Link>
                   </div>

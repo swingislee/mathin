@@ -34,9 +34,40 @@ describe("DEV-SCHOOL-OPS-1 public-class workbench", () => {
     expect(coursePicker).toContain("catalog?: readonly ClassBuildCourseDetail[]");
     expect(workspace).not.toContain("MicrocourseDialog");
     expect(workspace).not.toContain("searchMicrocourse");
+    expect(preparation).toContain("MicrocourseWorkspaceButton");
+    expect(preparation).not.toContain("CreateMicrocourseDialog");
     expect(editorPage).toContain("MicrocourseEditor");
+    expect(editorPage).toContain("MicrocourseStartPanel");
     expect(editorPage).toContain("saveCoursewareAndReturn");
     expect(workspace).not.toContain("/dashboard/sessions/");
+  });
+
+  it("adapts public-class persistence into the exact formal preparation components", () => {
+    const migration = read("supabase", "migrations", "20260904000410_public_class_shared_teaching_workspace.sql");
+    const preparation = read("src", "features", "school", "PublicClassTeachingPreparation.tsx");
+    const preparationData = read("src", "features", "school", "public-class-preparation.ts");
+    const formalFlow = read("src", "features", "school", "SessionPreparationFlow.tsx");
+    const formalLessonPlan = read("src", "features", "school", "SessionLessonPlanEditor.tsx");
+    const startPanel = read("src", "features", "teacher-microcourses", "MicrocourseStartPanel.tsx");
+
+    expect(migration).toContain("create table public.public_class_segment_preparations");
+    expect(migration).toContain("save_public_class_preparation_artifacts");
+    expect(migration).toContain("save_public_class_lesson_plan");
+    expect(migration).toContain("create_public_class_microcourse_draft");
+    expect(preparationData).toContain("getPublicClassPreparations");
+    expect(formalFlow).toContain("export function TeachingPreparationFlow");
+    expect(formalFlow).toContain("export function SessionPreparationFlow");
+    expect(formalLessonPlan).toContain("export function TeachingLessonPlanEditor");
+    expect(formalLessonPlan).toContain("export function SessionLessonPlanEditor");
+    expect(preparation).toContain("<TeachingPreparationFlow");
+    expect(preparation).toContain("<TeachingLessonPlanWorkspace");
+    expect(preparation).toContain("previewHeaderLeading={previewHeaderLeading}");
+    expect(preparation).not.toContain("teachingPreparationTitle");
+    expect(preparation).not.toContain("teachingPreparationHint");
+    expect(startPanel).toContain('kind: "session"');
+    expect(startPanel).toContain('kind: "public-class"');
+    expect(startPanel).toContain("createTeacherMicrocourseAction");
+    expect(startPanel).toContain("createPublicClassMicrocourseProjectAction");
   });
 
   it("runs the whole public class once while keeping agenda blocks internal", () => {
@@ -54,7 +85,7 @@ describe("DEV-SCHOOL-OPS-1 public-class workbench", () => {
     expect(migration).toContain("kind in ('trial_lesson', 'parent_talk')");
     expect(migration).not.toContain("insert into public.class_sessions");
     expect(workspace).toContain("StageNavigation");
-    expect(workspace).toContain("ObjectTabs");
+    expect(workspace).not.toContain("ObjectTabs");
     expect(workspace).toContain('value: "pre"');
     expect(workspace).toContain('value: "live"');
     expect(workspace).toContain('value: "post"');
@@ -105,6 +136,18 @@ describe("DEV-SCHOOL-OPS-1 public-class workbench", () => {
     expect(sharedCourseware).toContain("learningChecksReadOnly");
   });
 
+  it("keeps activity logistics in the activity row and teaching inside the workbench", () => {
+    const manager = read("src", "features", "school", "ActivitiesManager.tsx");
+    const workspace = read("src", "features", "school", "PublicClassWorkspace.tsx");
+
+    expect(manager).toContain("?view=onsite");
+    expect(manager).toContain("openActivityPreparation");
+    expect(manager).toContain("?view=teaching");
+    expect(workspace).not.toContain("ObjectTabs");
+    expect(workspace).not.toContain("objectTabTeaching");
+    expect(workspace).not.toContain("objectTabLogistics");
+  });
+
   it("reuses the secured location read model instead of filtering protected room columns", () => {
     const data = read("src", "features", "school", "public-class.ts");
 
@@ -137,9 +180,12 @@ describe("DEV-SCHOOL-OPS-1 public-class workbench", () => {
 
   it("offers printable sign-in sheets, chest badges, and desk cards from the same roster", () => {
     const print = read("src", "features", "school", "PublicClassPrintView.tsx");
+    const printContract = read("src", "features", "school", "public-class-print-contract.ts");
     const page = read("src", "app", "[locale]", "dashboard", "activities", "[activityId]", "print", "page.tsx");
 
-    expect(print).toContain('["signin", "badge", "desk"]');
+    expect(printContract).toContain('["signin", "badge", "desk"]');
+    expect(page).toContain('from "@/features/school/public-class-print-contract"');
+    expect(page).not.toMatch(/PUBLIC_CLASS_PRINT_KINDS[\s\S]*from "@\/features\/school\/PublicClassPrintView"/);
     expect(print).toContain("window.print()");
     expect(print).toContain("public-class-print-root");
     expect(page).toContain("getPublicClassWorkbench");

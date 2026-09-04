@@ -13,6 +13,7 @@ import {
   type PublicClassView,
 } from "@/features/school/public-class";
 import { getPublicClassTeachingCourseware } from "@/features/school/public-class-teaching";
+import { getPublicClassPreparations } from "@/features/school/public-class-preparation";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
 
 const ACTIVITY_WORKSPACE_PERMISSIONS = ["activity.register", "review.write", "followup.view"] as const;
@@ -75,12 +76,17 @@ export default async function ActivityDetailPage({
     const activeSegmentId = publicClass.segments.some((segment) => segment.id === requestedSegmentId)
       ? requestedSegmentId
       : publicClass.segments[0]?.id ?? null;
+    const presentationSegments = publicClass.segments
+      .filter((segment) => segment.kind !== "group_assessment");
+    const preparations = activeView === "teaching"
+      ? await getPublicClassPreparations(presentationSegments.map((segment) => segment.id))
+      : {};
     const teachingProgram = activeView === "teaching"
-      ? await Promise.all(publicClass.segments
-        .filter((segment) => segment.kind !== "group_assessment")
+      ? await Promise.all(presentationSegments
         .map(async (segment) => ({
           segment,
           courseware: await getPublicClassTeachingCourseware(segment.id),
+          preparation: preparations[segment.id],
         })))
       : [];
     const publicClassDateTime = new Intl.DateTimeFormat(locale, {

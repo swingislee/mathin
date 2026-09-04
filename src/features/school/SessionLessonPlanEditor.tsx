@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "@/i18n/navigation";
+import type { ActionResult } from "@/lib/action-result";
 import { cn } from "@/lib/utils";
 import {
   saveSessionLessonPlanAction,
@@ -22,6 +23,7 @@ import {
 import type {
   LessonPlanStatus,
   SessionLessonPlan,
+  TeachingLessonPlan,
 } from "./teacher-preparation-contract";
 
 type SaveState = "saved" | "saving" | "error" | "conflict";
@@ -61,12 +63,39 @@ function StatusBadge({ status }: { status: LessonPlanStatus }) {
   );
 }
 
-export function SessionLessonPlanEditor({
+export interface LessonPlanSaveResult {
+  lessonPlanId: string;
+  revision: number;
+  status: "draft";
+  updatedAt: string;
+}
+
+export interface TeachingLessonPlanSaveInput {
+  targetId: string;
+  templateVersion: TeachingLessonPlan["templateVersion"];
+  content: unknown[];
+  baseRevision: number;
+}
+
+const saveFormalLessonPlan = ({ targetId, ...input }: TeachingLessonPlanSaveInput) =>
+  saveSessionLessonPlanAction({ sessionId: targetId, ...input });
+const submitFormalLessonPlan = ({ targetId, revision }: { targetId: string; revision: number }) =>
+  submitSessionLessonPlanAction({ sessionId: targetId, revision });
+const withdrawFormalLessonPlan = ({ targetId }: { targetId: string }) =>
+  withdrawSessionLessonPlanAction({ sessionId: targetId });
+
+export function TeachingLessonPlanEditor({
   lessonPlan,
   readOnly,
+  saveLessonPlan,
+  submitLessonPlan,
+  withdrawLessonPlan,
 }: {
-  lessonPlan: SessionLessonPlan;
+  lessonPlan: TeachingLessonPlan;
   readOnly: boolean;
+  saveLessonPlan: (input: TeachingLessonPlanSaveInput) => Promise<ActionResult<LessonPlanSaveResult>>;
+  submitLessonPlan?: (input: { targetId: string; revision: number }) => Promise<ActionResult<{ reviewRevision: number }>>;
+  withdrawLessonPlan?: (input: { targetId: string }) => Promise<ActionResult<{ revision: number }>>;
 }) {
   const t = useTranslations("school.session");
   const locale = useLocale() === "zh" ? "zh" : "en";
@@ -98,8 +127,8 @@ export function SessionLessonPlanEditor({
     const sequence = sequenceRef.current;
     const content = documentRef.current;
     setSaveState("saving");
-    const request = saveSessionLessonPlanAction({
-      sessionId: lessonPlan.sessionId,
+    const request = saveLessonPlan({
+      targetId: lessonPlan.targetId,
       templateVersion: lessonPlan.templateVersion,
       content,
       baseRevision: revisionRef.current,
@@ -121,7 +150,7 @@ export function SessionLessonPlanEditor({
     });
     savingRef.current = request;
     return request;
-  }, [lessonPlan.sessionId, lessonPlan.templateVersion, readOnly]);
+  }, [lessonPlan.targetId, lessonPlan.templateVersion, readOnly, saveLessonPlan]);
 
   const schedule = useCallback(() => {
     documentRef.current = editor.document;
@@ -143,14 +172,15 @@ export function SessionLessonPlanEditor({
   }, [flush]);
 
   const submit = async () => {
+    if (!submitLessonPlan) return;
     setSubmitting(true);
     if (!(await flush())) {
       toast.error(t("lessonPlanSaveFailed"));
       setSubmitting(false);
       return;
     }
-    const result = await submitSessionLessonPlanAction({
-      sessionId: lessonPlan.sessionId,
+    const result = await submitLessonPlan({
+      targetId: lessonPlan.targetId,
       revision: revisionRef.current,
     });
     if (result.ok) {
@@ -164,8 +194,9 @@ export function SessionLessonPlanEditor({
   };
 
   const withdraw = async () => {
+    if (!withdrawLessonPlan) return;
     setWithdrawing(true);
-    const result = await withdrawSessionLessonPlanAction({ sessionId: lessonPlan.sessionId });
+    const result = await withdrawLessonPlan({ targetId: lessonPlan.targetId });
     if (result.ok) {
       revisionRef.current = result.data.revision;
       setStatus("draft");
@@ -197,12 +228,12 @@ export function SessionLessonPlanEditor({
           {saveState === "saving" ? <LoaderCircle size={12} className="mr-1 inline animate-spin motion-reduce:animate-none" /> : null}
           {readOnly ? t("prepArchiveReadOnly") : saveLabel}
         </span>
-        {!readOnly && status === "pending" ? (
+        {!readOnly && status === "pending" && withdrawLessonPlan ? (
           <Button type="button" size="sm" variant="secondary" className="h-7 shrink-0 px-2 text-[11px]" disabled={withdrawing || submitting} onClick={() => void withdraw()}>
             {withdrawing ? <LoaderCircle size={14} className="animate-spin motion-reduce:animate-none" /> : <Undo2 size={14} />}
             {t("lessonPlanWithdrawReview")}
           </Button>
-        ) : !readOnly ? (
+        ) : !readOnly && submitLessonPlan ? (
           <Button type="button" size="sm" className="h-7 shrink-0 px-2 text-[11px]" disabled={submitting || withdrawing || saveState === "conflict"} onClick={() => void submit()}>
             {submitting ? <LoaderCircle size={14} className="animate-spin motion-reduce:animate-none" /> : <Send size={14} />}
             {t("lessonPlanSubmitShort")}
@@ -219,6 +250,29 @@ export function SessionLessonPlanEditor({
         />
       </div>
     </div>
+  );
+}
+
+/** Formal-session persistence adapter for the shared BlockNote workspace. */
+export function SessionLessonPlanEditor({
+  lessonPlan,
+  readOnly,
+}: {
+  lessonPlan: SessionLessonPlan;
+  readOnly: boolean;
+}) {
+  const sharedPlan: TeachingLessonPlan = {
+    ...lessonPlan,
+    targetId: lessonPlan.sessionId,
+  };
+  return (
+    <TeachingLessonPlanEditor
+      lessonPlan={sharedPlan}
+      readOnly={readOnly}
+      saveLessonPlan={saveFormalLessonPlan}
+      submitLessonPlan={submitFormalLessonPlan}
+      withdrawLessonPlan={withdrawFormalLessonPlan}
+    />
   );
 }
 

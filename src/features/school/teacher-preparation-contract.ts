@@ -9,14 +9,18 @@ export const LESSON_PLAN_TEMPLATE_VERSION = "mathin-teaching-plan-v1";
 
 export type LessonPlanStatus = "draft" | "pending" | "approved" | "changes_requested";
 
-export interface SessionLessonPlan {
+export interface TeachingLessonPlan {
   id: string | null;
-  sessionId: string;
+  targetId: string;
   templateVersion: typeof LESSON_PLAN_TEMPLATE_VERSION;
   content: unknown[];
   status: LessonPlanStatus;
   revision: number;
   updatedAt: string | null;
+}
+
+export interface SessionLessonPlan extends Omit<TeachingLessonPlan, "targetId"> {
+  sessionId: string;
 }
 
 export interface LessonPageNote {

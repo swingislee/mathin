@@ -6,9 +6,10 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import type { PublicClassSegment, PublicClassWorkbenchData } from "./public-class";
-
-export const PUBLIC_CLASS_PRINT_KINDS = ["signin", "badge", "desk"] as const;
-export type PublicClassPrintKind = (typeof PUBLIC_CLASS_PRINT_KINDS)[number];
+import {
+  PUBLIC_CLASS_PRINT_KINDS,
+  type PublicClassPrintKind,
+} from "./public-class-print-contract";
 
 function formatSession(locale: string, segment: PublicClassSegment) {
   return new Intl.DateTimeFormat(locale, {

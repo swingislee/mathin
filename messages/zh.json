@@ -2778,6 +2778,7 @@
       "actions": "操作",
       "participationCounts": "名单 {booked} · 到场 {attended}",
       "openWorkspace": "进入工作台",
+      "openActivityPreparation": "活动准备",
       "funnelBooked": "有效名单",
       "funnelAttended": "已到场",
       "funnelAssessed": "已填测评",

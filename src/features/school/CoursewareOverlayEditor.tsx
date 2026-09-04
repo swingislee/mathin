@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
@@ -103,6 +103,7 @@ export function CoursewareOverlayEditor({
   learningChecksConfigured,
   learningChecksReadOnly: requestedLearningChecksReadOnly,
   saveLearningChecks: saveLearningChecksOverride,
+  previewHeaderLeading,
   initialPageId,
   readOnly: baseReadOnly = false,
   structureReadOnly: baseStructureReadOnly = baseReadOnly,
@@ -127,6 +128,8 @@ export function CoursewareOverlayEditor({
    */
   learningChecksReadOnly?: boolean;
   saveLearningChecks?: (items: CoursewareLearningCheckDraft[]) => Promise<ActionResult>;
+  /** Occurrence-specific switchers belong in the shared preview titlebar. */
+  previewHeaderLeading?: ReactNode;
   initialPageId?: string;
   readOnly?: boolean;
   structureReadOnly?: boolean;
@@ -505,6 +508,7 @@ export function CoursewareOverlayEditor({
         previousLabel={ts("coursewarePreviousPage")}
         nextLabel={ts("coursewareNextPage")}
         toolbarTargetId={!readOnly && selectedPage?.type === "doc" ? toolbarTargetId : undefined}
+        previewHeaderLeading={previewHeaderLeading}
         selectedPageLabel={selectedPage ? safeSelectedIndex + 1 + " / " + resolvedPages.length + " · " + selectedPage.title : t("previewEmpty")}
         previewActions={(
           <>

@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "@/i18n/navigation";
+import type { ActionResult } from "@/lib/action-result";
 import { compressHomeworkImage } from "@/lib/media/compress-image";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -43,6 +44,34 @@ import type {
 const MAX_FILE_BYTES = 12 * 1024 * 1024;
 const ACCEPT = "image/*,application/pdf,.doc,.docx";
 type PrepStage = "study" | "design" | "rehearsal";
+type PreparationStatusMode = "review" | "presence";
+
+export interface TeachingPreparationArtifactsDraft {
+  solutionNotes: string;
+  solutionFiles: PrepArtifactFile[];
+  lessonPlanFiles: PrepArtifactFile[];
+  rehearsalVideoUrl: string;
+}
+
+interface TeachingPreparationFlowProps {
+  scopeId: string;
+  storageRoot?: string;
+  initial: SessionPreparationArtifacts;
+  solutionRecords: SolutionRecord[];
+  solutionPageLabels: Record<string, string>;
+  solutionPagePreviews: SolutionRecordPagePreview[];
+  lessonPlanEditor: ReactNode;
+  lessonPlanPresent?: boolean;
+  saveArtifacts: (draft: TeachingPreparationArtifactsDraft) => Promise<ActionResult>;
+  saveReviewer?: (reviewerId: string) => Promise<ActionResult>;
+  renderReviewActions?: (kind: PrepArtifactKind) => ReactNode;
+  initialStage?: PrepStage;
+  readOnly?: boolean;
+  reviewerReadOnly?: boolean;
+  canReview?: boolean;
+  showReviewer?: boolean;
+  statusMode?: PreparationStatusMode;
+}
 
 function extension(file: File): string {
   if (file.type === "image/jpeg") return "jpg";
@@ -56,17 +85,22 @@ function PrepStageTrigger({
   value,
   label,
   review,
+  present = false,
+  statusMode = "review",
 }: {
   value: PrepStage;
   label: string;
   review?: PrepArtifactReview;
+  present?: boolean;
+  statusMode?: PreparationStatusMode;
 }) {
   const t = useTranslations("school.session");
-  const completed = review?.status === "approved";
+  const completed = statusMode === "presence" ? present : review?.status === "approved";
   const stateLabel = completed ? t("prepFlowCompletedShort")
-    : review?.status === "pending" ? t("prepReviewPending")
-      : review?.status === "changes_requested" ? t("prepReviewChangesRequested")
-        : t("prepFlowIncompleteShort");
+    : statusMode === "presence" ? t("prepFlowIncompleteShort")
+      : review?.status === "pending" ? t("prepReviewPending")
+        : review?.status === "changes_requested" ? t("prepReviewChangesRequested")
+          : t("prepFlowIncompleteShort");
   const stateIcon = completed
     ? <CheckCircle2 size={15} className="text-leaf-deep" aria-hidden />
     : review?.status === "pending"
@@ -92,8 +126,19 @@ function PrepStageTrigger({
   );
 }
 
-function ReviewStatus({ review, present }: { review?: PrepArtifactReview; present: boolean }) {
+function ReviewStatus({
+  review,
+  present,
+  statusMode = "review",
+}: {
+  review?: PrepArtifactReview;
+  present: boolean;
+  statusMode?: PreparationStatusMode;
+}) {
   const t = useTranslations("school.session");
+  if (statusMode === "presence") {
+    return <Badge variant={present ? "secondary" : "outline"}>{t(present ? "prepFlowCompletedShort" : "prepFlowIncompleteShort")}</Badge>;
+  }
   if (!present) return <Badge variant="outline">{t("prepReviewNotSubmitted")}</Badge>;
   if (!review) return <Badge variant="secondary">{t("prepReviewSubmitting")}</Badge>;
   if (review.status === "approved") {
@@ -103,29 +148,25 @@ function ReviewStatus({ review, present }: { review?: PrepArtifactReview; presen
   return <Badge variant="secondary">{t("prepReviewPending")}</Badge>;
 }
 
-export function SessionPreparationFlow({
-  sessionId,
+export function TeachingPreparationFlow({
+  scopeId,
+  storageRoot = scopeId,
   initial,
   solutionRecords,
   solutionPageLabels,
   solutionPagePreviews,
   lessonPlanEditor,
+  lessonPlanPresent = false,
+  saveArtifacts,
+  saveReviewer,
+  renderReviewActions,
   initialStage = "study",
   readOnly = false,
   reviewerReadOnly = readOnly,
   canReview = false,
-}: {
-  sessionId: string;
-  initial: SessionPreparationArtifacts;
-  solutionRecords: SolutionRecord[];
-  solutionPageLabels: Record<string, string>;
-  solutionPagePreviews: SolutionRecordPagePreview[];
-  lessonPlanEditor: ReactNode;
-  initialStage?: PrepStage;
-  readOnly?: boolean;
-  reviewerReadOnly?: boolean;
-  canReview?: boolean;
-}) {
+  showReviewer = true,
+  statusMode = "review",
+}: TeachingPreparationFlowProps) {
   const t = useTranslations("school.session");
   const router = useRouter();
   const [activeStage, setActiveStage] = useState<PrepStage>(initialStage);
@@ -176,7 +217,7 @@ export function SessionPreparationFlow({
       }));
     }
     saveQueue.current = saveQueue.current.then(async () => {
-      const result = await saveSessionPreparationArtifactsAction({ sessionId, ...next });
+      const result = await saveArtifacts(next);
       if (!result.ok) {
         if (saveRevision.current === revision) {
           setSaveState("error");
@@ -222,7 +263,7 @@ export function SessionPreparationFlow({
       for (const source of sources) {
         const file = await compressHomeworkImage(source);
         if (file.size > MAX_FILE_BYTES) throw new Error("FILE_TOO_LARGE");
-        const path = `${sessionId}/${kind}/${newId()}.${extension(file)}`;
+        const path = `${storageRoot}/${kind}/${newId()}.${extension(file)}`;
         const { error } = await supabase.storage.from("prep-artifacts").upload(path, file, {
           cacheControl: "3600",
           contentType: file.type || undefined,
@@ -263,11 +304,11 @@ export function SessionPreparationFlow({
   };
 
   const chooseReviewer = async (nextReviewerId: string) => {
-    if (reviewerReadOnly || reviewerSaving || nextReviewerId === reviewerId) return;
+    if (!saveReviewer || reviewerReadOnly || reviewerSaving || nextReviewerId === reviewerId) return;
     const previousReviewerId = reviewerId;
     setReviewerId(nextReviewerId);
     setReviewerSaving(true);
-    const result = await setSessionPreparationReviewerAction({ sessionId, reviewerId: nextReviewerId });
+    const result = await saveReviewer(nextReviewerId);
     setReviewerSaving(false);
     if (!result.ok) {
       setReviewerId(previousReviewerId);
@@ -299,6 +340,9 @@ export function SessionPreparationFlow({
   const selectedReviewerName = initial.reviewerCandidates.find((candidate) => candidate.userId === reviewerId)?.displayName
     ?? (reviewerId === initial.reviewerId ? initial.reviewerName : null);
   const reviewerHint = reviewerLocked ? t("prepReviewerSupervisorHint") : t("prepReviewerPhaseOneHint");
+  const studyPresent = Boolean(solutionNotes.trim() || solutionFiles.length > 0 || solutionRecords.length > 0);
+  const designPresent = lessonPlanPresent || lessonPlanFiles.length > 0;
+  const rehearsalPresent = Boolean(rehearsalVideoUrl.trim());
 
   return (
     <Tabs
@@ -308,13 +352,16 @@ export function SessionPreparationFlow({
       data-prep-flow-switcher
       data-active-stage={activeStage}
     >
-      <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_7.75rem] gap-1 rounded-xl bg-line/40 p-1">
+      <div className={cn(
+        "grid shrink-0 gap-1 rounded-xl bg-line/40 p-1",
+        showReviewer ? "grid-cols-[minmax(0,1fr)_7.75rem]" : "grid-cols-1",
+      )}>
         <TabsList className="grid h-auto grid-cols-3 gap-1 bg-transparent p-0" aria-label={t("prepFlowTitle")}>
-          <PrepStageTrigger value="study" label={t("prepFlowStudyShort")} review={reviews.solution} />
-          <PrepStageTrigger value="design" label={t("prepFlowDesignShort")} review={reviews.lesson_plan} />
-          <PrepStageTrigger value="rehearsal" label={t("prepFlowRehearseShort")} review={reviews.rehearsal_video} />
+          <PrepStageTrigger value="study" label={t("prepFlowStudyShort")} review={reviews.solution} present={studyPresent} statusMode={statusMode} />
+          <PrepStageTrigger value="design" label={t("prepFlowDesignShort")} review={reviews.lesson_plan} present={designPresent} statusMode={statusMode} />
+          <PrepStageTrigger value="rehearsal" label={t("prepFlowRehearseShort")} review={reviews.rehearsal_video} present={rehearsalPresent} statusMode={statusMode} />
         </TabsList>
-        <div className="min-w-0" data-preparation-reviewer-selector>
+        {showReviewer ? <div className="min-w-0" data-preparation-reviewer-selector>
           <Select
             value={reviewerId ?? undefined}
             onValueChange={(value) => void chooseReviewer(value)}
@@ -342,7 +389,7 @@ export function SessionPreparationFlow({
               ))}
             </SelectContent>
           </Select>
-        </div>
+        </div> : null}
       </div>
 
       <TabsContent value="study" className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1">
@@ -353,7 +400,7 @@ export function SessionPreparationFlow({
               <p className="text-sm font-medium text-ink">1. {t("prepFlowStudyTitle")}</p>
               <p className="mt-0.5 text-xs leading-5 text-muted">{t("prepFlowStudyBody")}</p>
             </div>
-            <ReviewStatus review={reviews.solution} present={solutionFiles.length > 0 || solutionRecords.length > 0} />
+            <ReviewStatus review={reviews.solution} present={studyPresent} statusMode={statusMode} />
           </header>
           <Textarea className="mt-2 min-h-24 text-xs" value={solutionNotes} readOnly={readOnly} onChange={(event) => setSolutionNotes(event.target.value)} maxLength={5000} rows={4} placeholder={t("solutionRecordPlaceholder")} />
           {!readOnly ? (
@@ -368,7 +415,7 @@ export function SessionPreparationFlow({
           {fileList("solution", solutionFiles)}
           <div className="mt-2">
             <SessionSolutionArchive
-              sessionId={sessionId}
+              sessionId={scopeId}
               records={solutionRecords}
               files={solutionFiles}
               review={reviews.solution}
@@ -378,7 +425,7 @@ export function SessionPreparationFlow({
             />
           </div>
           {canReview && reviews.solution?.status === "pending"
-            ? <PreparationReviewActions sessionId={sessionId} artifactKind="solution" />
+            ? renderReviewActions?.("solution")
             : null}
           {reviews.solution?.status === "changes_requested" && reviews.solution.reviewNote ? <p className="mt-2 text-xs text-rose">{reviews.solution.reviewNote}</p> : null}
         </article>
@@ -409,7 +456,7 @@ export function SessionPreparationFlow({
             </article>
             <div className="min-h-[36rem] flex-1">{lessonPlanEditor}</div>
             {canReview && reviews.lesson_plan?.status === "pending"
-              ? <PreparationReviewActions sessionId={sessionId} artifactKind="lesson_plan" />
+              ? renderReviewActions?.("lesson_plan")
               : null}
           </div>
         </TabsContent>
@@ -423,7 +470,7 @@ export function SessionPreparationFlow({
               <p className="text-sm font-medium text-ink">3. {t("prepFlowRehearseTitle")}</p>
               <p className="mt-0.5 text-xs leading-5 text-muted">{t("prepFlowRehearseBody")}</p>
             </div>
-            <ReviewStatus review={reviews.rehearsal_video} present={Boolean(rehearsalVideoUrl)} />
+            <ReviewStatus review={reviews.rehearsal_video} present={rehearsalPresent} statusMode={statusMode} />
           </header>
           <div className="mt-3 grid gap-1 text-xs text-muted">
             <span className="flex items-center gap-1"><Link2 size={13} />{t("rehearsalVideoLinkTitle")}</span>
@@ -462,7 +509,7 @@ export function SessionPreparationFlow({
             </span>
           </div>
           {canReview && reviews.rehearsal_video?.status === "pending"
-            ? <PreparationReviewActions sessionId={sessionId} artifactKind="rehearsal_video" />
+            ? renderReviewActions?.("rehearsal_video")
             : null}
           {reviews.rehearsal_video?.status === "changes_requested" && reviews.rehearsal_video.reviewNote ? <p className="mt-2 text-xs text-rose">{reviews.rehearsal_video.reviewNote}</p> : null}
         </article>
@@ -473,5 +520,54 @@ export function SessionPreparationFlow({
         {readOnly ? t("prepArchiveReadOnly") : saveLabel}
       </p>
     </Tabs>
+  );
+}
+
+/**
+ * Formal-session adapter. The visual preparation workflow above is shared by
+ * every teaching occurrence; this wrapper only supplies session persistence,
+ * reviewer assignment, and review actions.
+ */
+export function SessionPreparationFlow({
+  sessionId,
+  initial,
+  solutionRecords,
+  solutionPageLabels,
+  solutionPagePreviews,
+  lessonPlanEditor,
+  initialStage = "study",
+  readOnly = false,
+  reviewerReadOnly = readOnly,
+  canReview = false,
+}: {
+  sessionId: string;
+  initial: SessionPreparationArtifacts;
+  solutionRecords: SolutionRecord[];
+  solutionPageLabels: Record<string, string>;
+  solutionPagePreviews: SolutionRecordPagePreview[];
+  lessonPlanEditor: ReactNode;
+  initialStage?: PrepStage;
+  readOnly?: boolean;
+  reviewerReadOnly?: boolean;
+  canReview?: boolean;
+}) {
+  return (
+    <TeachingPreparationFlow
+      scopeId={sessionId}
+      initial={initial}
+      solutionRecords={solutionRecords}
+      solutionPageLabels={solutionPageLabels}
+      solutionPagePreviews={solutionPagePreviews}
+      lessonPlanEditor={lessonPlanEditor}
+      saveArtifacts={(draft) => saveSessionPreparationArtifactsAction({ sessionId, ...draft })}
+      saveReviewer={(reviewerId) => setSessionPreparationReviewerAction({ sessionId, reviewerId })}
+      renderReviewActions={(kind) => (
+        <PreparationReviewActions sessionId={sessionId} artifactKind={kind} />
+      )}
+      initialStage={initialStage}
+      readOnly={readOnly}
+      reviewerReadOnly={reviewerReadOnly}
+      canReview={canReview}
+    />
   );
 }

@@ -60,6 +60,7 @@ import type {
   PublicClassWorkbenchData,
 } from "./public-class";
 import type { PublicClassTeachingCourseware } from "./public-class-teaching-contract";
+import type { PublicClassPreparationData } from "./public-class-preparation";
 import { PublicClassTeachingPreparation } from "./PublicClassTeachingPreparation";
 import {
   DashboardCommandActions,
@@ -68,7 +69,7 @@ import {
   DashboardSection,
   DashboardTableShell,
 } from "./dashboard-page";
-import { ObjectTabs, StageNavigation } from "./object-workspace";
+import { StageNavigation } from "./object-workspace";
 import { TeachingPostworkSection, TeachingPostworkStatus } from "./TeachingPostworkSurface";
 
 const NONE = "__none__";
@@ -117,7 +118,11 @@ export function PublicClassWorkspace({
   currentUserId,
 }: {
   data: PublicClassWorkbenchData;
-  teachingProgram: Array<{ segment: PublicClassSegment; courseware: PublicClassTeachingCourseware }>;
+  teachingProgram: Array<{
+    segment: PublicClassSegment;
+    courseware: PublicClassTeachingCourseware;
+    preparation: PublicClassPreparationData;
+  }>;
   locale: string;
   activeView: PublicClassView;
   activeSegmentId: string | null;
@@ -173,21 +178,15 @@ export function PublicClassWorkspace({
     { value: "live", label: sessionT("stage_live"), href: `${baseHref}?view=live${selectedSegment ? `&segment=${selectedSegment.id}` : ""}` },
     { value: "post", label: sessionT("stage_post"), href: `${baseHref}?view=review` },
   ];
-  const preparationViews = [
-    { value: "teaching", label: t("viewTeachingPreparation"), href: `${baseHref}?view=teaching` },
-    { value: "onsite", label: t("viewOnsitePreparation"), href: `${baseHref}?view=onsite` },
-  ];
-
   return <div className="space-y-5">
     <DashboardCommandPanel>
       <DashboardCommandState>
         <div className="flex min-w-0 flex-wrap items-center gap-2">
+          {activeView === "onsite" ? (
+            <span className="px-1 text-sm font-medium text-ink">{t("viewOnsitePreparation")}</span>
+          ) : (
           <StageNavigation ariaLabel={sessionT("stageNavLabel")} activeValue={activeStage} items={stageItems} />
-          {activeStage === "pre" ? (
-            <div className="border-l border-line pl-2">
-              <ObjectTabs ariaLabel={t("workspaceViews")} activeValue={activeView} items={preparationViews} />
-            </div>
-          ) : null}
+          )}
         </div>
       </DashboardCommandState>
       <DashboardCommandActions>

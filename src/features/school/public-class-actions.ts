@@ -2,9 +2,15 @@
 
 import { z } from "zod";
 import { actionError, type ActionResult } from "@/lib/action-result";
+import type { Json } from "@/lib/database.types";
 import { authorizedClient, staffRpcClient } from "./actions/guards";
 import { COMMON_CODES, datetime, intInRange, parse, requiredText, text, uuid } from "./actions/schemas";
 import { PUBLIC_CLASS_SEGMENT_KINDS } from "./public-class";
+import {
+  lessonPlanContentSchema,
+  LESSON_PLAN_TEMPLATE_VERSION,
+} from "./teacher-preparation-contract";
+import type { PrepArtifactFile } from "./session-preparation-artifacts";
 
 type RpcClient = { rpc: unknown };
 function rpc<T>(client: RpcClient, name: string, args: Record<string, unknown>) {
@@ -67,6 +73,7 @@ const PUBLIC_CLASS_CODES = [
   "PUBLIC_CLASS_COURSEWARE_REQUIRED",
   "PUBLIC_CLASS_COURSEWARE_NOT_READY",
   "INVALID_PUBLIC_CLASS_CHECKPOINT",
+  "PUBLIC_CLASS_PREPARATION_LOCKED",
   "PAGE_TRACK_NOT_READY",
   ...COMMON_CODES,
 ] as const;
@@ -100,16 +107,26 @@ export async function savePublicClassSegmentAction(
 
 const createMicrocourseSchema = z.object({
   segmentId: uuid,
-  courseTitle: requiredText(100),
-  lectureTitle: requiredText(120),
+  variantName: requiredText(120),
+  title: requiredText(100),
+  description: text(2_000),
   grade: intInRange(1, 9),
+  courseSeason: z.number().int().min(1).max(4).nullable(),
+  classType: text(40),
+  primaryTopicSlug: requiredText(80),
+  keywords: z.array(requiredText(80)).max(20),
 }).strict();
 
 export async function createPublicClassMicrocourseProjectAction(input: {
   segmentId: string;
-  courseTitle: string;
-  lectureTitle: string;
+  variantName: string;
+  title: string;
+  description: string;
   grade: number;
+  courseSeason: number | null;
+  classType: string;
+  primaryTopicSlug: string;
+  keywords: string[];
 }): Promise<ActionResult<{ courseId: string; lectureId: string; microcourseId: string }>> {
   try {
     const value = parse(createMicrocourseSchema, input);
@@ -118,11 +135,16 @@ export async function createPublicClassMicrocourseProjectAction(input: {
       courseId: string;
       lectureId: string;
       microcourseId: string;
-    }>(supabase, "create_public_class_microcourse_project", {
+    }>(supabase, "create_public_class_microcourse_draft", {
       p_segment_id: value.segmentId,
-      p_course_title: value.courseTitle,
-      p_lecture_title: value.lectureTitle,
+      p_variant_name: value.variantName,
+      p_title: value.title,
+      p_description: value.description,
       p_grade: value.grade,
+      p_course_season: value.courseSeason,
+      p_class_type: value.classType,
+      p_primary_topic_slug: value.primaryTopicSlug,
+      p_keywords: value.keywords,
     });
     if (error || !data?.microcourseId) throw new Error(error?.message ?? "SAVE_FAILED");
     return { ok: true, data };
@@ -219,6 +241,94 @@ export async function savePublicClassTeachingCheckpointsAction(input: {
     return { ok: true };
   } catch (error) {
     return actionError(error, PUBLIC_CLASS_CODES);
+  }
+}
+
+const prepArtifactFileSchema = z.object({
+  path: requiredText(500),
+  name: requiredText(200),
+  size: intInRange(0, 12 * 1024 * 1024),
+  type: text(120),
+}).strict();
+
+const publicClassPreparationArtifactsSchema = z.object({
+  segmentId: uuid,
+  solutionNotes: text(5_000),
+  solutionFiles: z.array(prepArtifactFileSchema).max(10),
+  lessonPlanFiles: z.array(prepArtifactFileSchema).max(10),
+  rehearsalVideoUrl: text(1_000),
+}).strict();
+
+export async function savePublicClassPreparationArtifactsAction(input: {
+  segmentId: string;
+  solutionNotes: string;
+  solutionFiles: PrepArtifactFile[];
+  lessonPlanFiles: PrepArtifactFile[];
+  rehearsalVideoUrl: string;
+}): Promise<ActionResult> {
+  try {
+    const value = parse(publicClassPreparationArtifactsSchema, input);
+    const { supabase } = await staffRpcClient();
+    const { error } = await rpc<null>(supabase, "save_public_class_preparation_artifacts", {
+      p_segment_id: value.segmentId,
+      p_solution_notes: value.solutionNotes,
+      p_solution_files: value.solutionFiles as unknown as Json,
+      p_lesson_plan_files: value.lessonPlanFiles as unknown as Json,
+      p_rehearsal_video_url: value.rehearsalVideoUrl,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, PUBLIC_CLASS_CODES);
+  }
+}
+
+const publicClassLessonPlanSchema = z.object({
+  segmentId: uuid,
+  templateVersion: z.literal(LESSON_PLAN_TEMPLATE_VERSION),
+  content: lessonPlanContentSchema,
+  baseRevision: intInRange(0, 2_147_483_647),
+}).strict();
+
+export async function savePublicClassLessonPlanAction(input: {
+  segmentId: string;
+  templateVersion: typeof LESSON_PLAN_TEMPLATE_VERSION;
+  content: unknown[];
+  baseRevision: number;
+}): Promise<ActionResult<{
+  lessonPlanId: string;
+  revision: number;
+  status: "draft";
+  updatedAt: string;
+}>> {
+  try {
+    const value = parse(publicClassLessonPlanSchema, input);
+    const { supabase } = await staffRpcClient();
+    const { data, error } = await rpc<Array<{
+      lesson_plan_id: string;
+      revision: number;
+      status: "draft";
+      updated_at: string;
+    }>>(supabase, "save_public_class_lesson_plan", {
+      p_segment_id: value.segmentId,
+      p_template_version: value.templateVersion,
+      p_content: value.content as Json,
+      p_base_revision: value.baseRevision,
+    });
+    if (error) throw new Error(error.message);
+    const row = data?.[0];
+    if (!row) throw new Error("SAVE_FAILED");
+    return {
+      ok: true,
+      data: {
+        lessonPlanId: row.lesson_plan_id,
+        revision: row.revision,
+        status: row.status,
+        updatedAt: row.updated_at,
+      },
+    };
+  } catch (error) {
+    return actionError(error, ["SAVE_FAILED", "VERSION_CONFLICT", ...PUBLIC_CLASS_CODES]);
   }
 }
 

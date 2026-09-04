@@ -138,7 +138,7 @@ export function MicrocourseVariantSwitcher({
           <DialogTitle>{t("createBlankVariant")}</DialogTitle>
           <DialogDescription>{t("startDescription")}</DialogDescription>
         </DialogHeader>
-        <MicrocourseStartPanel sessionId={session.id} sessionTitle={session.title} topics={topics} />
+        <MicrocourseStartPanel source={{ kind: "session", sessionId: session.id }} initialTitle={session.title} topics={topics} />
       </DialogContent>
     </Dialog>
 

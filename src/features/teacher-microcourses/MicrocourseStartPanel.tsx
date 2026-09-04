@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { DashboardSection } from "@/features/school/dashboard-page";
+import { createPublicClassMicrocourseProjectAction } from "@/features/school/public-class-actions";
 import { useRouter } from "@/i18n/navigation";
 import { createTeacherMicrocourseAction } from "./actions";
 import type { TeacherMicrocourseTopic } from "./data";
@@ -16,19 +17,21 @@ import type { TeacherMicrocourseTopic } from "./data";
 const NONE = "__none__";
 
 export function MicrocourseStartPanel({
-  sessionId,
-  sessionTitle,
+  source,
+  initialTitle,
   topics,
 }: {
-  sessionId: string;
-  sessionTitle: string;
+  source:
+    | { kind: "session"; sessionId: string }
+    | { kind: "public-class"; activityId: string; segmentId: string };
+  initialTitle: string;
   topics: TeacherMicrocourseTopic[];
 }) {
   const t = useTranslations("teacherMicrocourses");
   const locale = useLocale();
   const router = useRouter();
   const [variantName, setVariantName] = useState(t("defaultVariantName"));
-  const [title, setTitle] = useState(sessionTitle);
+  const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState("");
   const [grade, setGrade] = useState(1);
   const [courseSeason, setCourseSeason] = useState<number | null>(null);
@@ -39,8 +42,7 @@ export function MicrocourseStartPanel({
   const [pending, startTransition] = useTransition();
 
   const create = () => startTransition(async () => {
-    const result = await createTeacherMicrocourseAction({
-      sourceSessionId: sessionId,
+    const draft = {
       variantName,
       title,
       description,
@@ -49,12 +51,17 @@ export function MicrocourseStartPanel({
       classType,
       primaryTopicSlug: topic,
       keywords: keywords.split(/[，,]/).map((item) => item.trim()).filter(Boolean),
-    });
+    };
+    const result = source.kind === "session"
+      ? await createTeacherMicrocourseAction({ sourceSessionId: source.sessionId, ...draft })
+      : await createPublicClassMicrocourseProjectAction({ segmentId: source.segmentId, ...draft });
     if (!result.ok) {
       setMessage(t("actionFailed", { code: result.code }));
       return;
     }
-    router.replace(`/dashboard/sessions/${sessionId}/microcourse?variant=${result.data.microcourseId}`);
+    router.replace(source.kind === "session"
+      ? `/dashboard/sessions/${source.sessionId}/microcourse?variant=${result.data.microcourseId}`
+      : `/dashboard/activities/${source.activityId}/segments/${source.segmentId}/microcourse`);
   });
 
   return (

@@ -66,7 +66,7 @@ async function TeacherMicrocourseContent({
     listTeacherMicrocourseTopics(),
   ]);
   if (variants.length === 0 && !session.canCreate) notFound();
-  if (variants.length === 0) return <MicrocourseStartPanel sessionId={sessionId} sessionTitle={session.title} topics={topics} />;
+  if (variants.length === 0) return <MicrocourseStartPanel source={{ kind: "session", sessionId }} initialTitle={session.title} topics={topics} />;
   const requested = Array.isArray(query.variant) ? query.variant[0] : query.variant;
   const activeVariant = variants.find((variant) => variant.id === requested)
     ?? variants.find((variant) => variant.selectedForSession)

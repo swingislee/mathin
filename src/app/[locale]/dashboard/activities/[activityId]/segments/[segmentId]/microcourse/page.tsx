@@ -3,7 +3,8 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { DashboardPage } from "@/features/school/dashboard-page";
 import { getPublicClassWorkbench } from "@/features/school/public-class";
 import { MicrocourseEditor } from "@/features/teacher-microcourses/MicrocourseEditor";
-import { getTeacherMicrocourseEditor } from "@/features/teacher-microcourses/data";
+import { MicrocourseStartPanel } from "@/features/teacher-microcourses/MicrocourseStartPanel";
+import { getTeacherMicrocourseEditor, listTeacherMicrocourseTopics } from "@/features/teacher-microcourses/data";
 import { requirePerm } from "@/lib/auth";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -22,10 +23,29 @@ export default async function PublicClassMicrocoursePage({
     getPublicClassWorkbench(activityId),
   ]);
   const segment = data?.segments.find((item) => item.id === segmentId);
-  if (!data || !segment?.microcourseId) notFound();
+  if (!data || !segment) notFound();
+  const returnHref = `/dashboard/activities/${activityId}?view=teaching`;
+
+  if (!segment.microcourseId) {
+    const topics = await listTeacherMicrocourseTopics();
+    return (
+      <DashboardPage
+        title={t("microcourseEditorTitle")}
+        description={t("microcourseEditorDescription", { activity: data.activity.title, segment: segment.title })}
+        backHref={returnHref}
+        backLabel={t("backToArrangement")}
+      >
+        <MicrocourseStartPanel
+          source={{ kind: "public-class", activityId, segmentId }}
+          initialTitle={segment.title}
+          topics={topics}
+        />
+      </DashboardPage>
+    );
+  }
+
   const editor = await getTeacherMicrocourseEditor(segment.microcourseId);
   if (!editor.canEdit || editor.originPublicClassSegmentId !== segment.id) notFound();
-  const returnHref = `/dashboard/activities/${activityId}?view=teaching`;
 
   return (
     <DashboardPage

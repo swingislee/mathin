@@ -1,11 +1,11 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { PublicClassPrintView } from "@/features/school/PublicClassPrintView";
+import { getPublicClassWorkbench } from "@/features/school/public-class";
 import {
   PUBLIC_CLASS_PRINT_KINDS,
-  PublicClassPrintView,
   type PublicClassPrintKind,
-} from "@/features/school/PublicClassPrintView";
-import { getPublicClassWorkbench } from "@/features/school/public-class";
+} from "@/features/school/public-class-print-contract";
 import { DashboardPage } from "@/features/school/dashboard-page";
 import { requireAnyPerm } from "@/lib/auth";
 

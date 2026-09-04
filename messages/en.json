@@ -2778,6 +2778,7 @@
       "actions": "Actions",
       "participationCounts": "{booked} on roster · {attended} attended",
       "openWorkspace": "Open workspace",
+      "openActivityPreparation": "Event prep",
       "funnelBooked": "Active roster",
       "funnelAttended": "Attended",
       "funnelAssessed": "Assessment entered",

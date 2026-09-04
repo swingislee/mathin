@@ -16,7 +16,8 @@ import {
 } from "./object-workspace";
 import { cn } from "@/lib/utils";
 import { Link } from "@/i18n/navigation";
-import { Presentation, Sparkles } from "lucide-react";
+import { Presentation } from "lucide-react";
+import { MicrocourseWorkspaceButton } from "@/features/teacher-microcourses/MicrocourseWorkspaceButton";
 import { NotificationFocus } from "@/features/events/NotificationFocus";
 import { SessionPrepCompleteAction, SessionPrepCopyAction } from "./SessionPrepActions";
 import { AttendanceDrawer } from "./AttendanceDrawer";
@@ -175,13 +176,10 @@ export async function SessionWorkspaceBody({
             {stage === "pre" && detail.state === "scheduled" && (detail.capabilities.canPrepare || canAuthorMicrocourse) ? (
               <div className="flex flex-wrap items-center justify-end gap-2">
               {canAuthorMicrocourse ? (
-                <Link
+                <MicrocourseWorkspaceButton
                   href={`/dashboard/sessions/${detail.id}/microcourse`}
-                  className={cn(buttonVariants({ size: "sm", variant: "secondary" }), "gap-2")}
-                >
-                  <Sparkles size={15} />
-                  {t("editCourseware")}
-                </Link>
+                  label={t("editCourseware")}
+                />
               ) : null}
               {detail.capabilities.canPrepare ? <>
                 <Link

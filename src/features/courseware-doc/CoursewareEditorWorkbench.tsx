@@ -251,6 +251,7 @@ export interface CoursewarePreviewWorkbenchProps {
   previousLabel: string;
   nextLabel: string;
   toolbarTargetId?: string;
+  previewHeaderLeading?: ReactNode;
   selectedPageLabel?: string;
   previewActions?: ReactNode;
   railStatus?: ReactNode;
@@ -687,6 +688,7 @@ function CoursewarePreviewMode({
   previousLabel,
   nextLabel,
   toolbarTargetId,
+  previewHeaderLeading,
   selectedPageLabel,
   previewActions,
   railStatus,
@@ -756,6 +758,7 @@ function CoursewarePreviewMode({
         ariaLabel: previewLabel,
         header: <div className="flex min-h-11 items-center gap-2 px-3 py-1.5">
           <span className="shrink-0 text-xs font-medium text-muted">{previewLabel}</span>
+          {previewHeaderLeading}
           {selectedPageLabel ? <span className="min-w-0 flex-1 truncate text-right text-xs text-muted">{selectedPageLabel}</span> : <span className="flex-1" />}
           {previewActions}
           <Button
