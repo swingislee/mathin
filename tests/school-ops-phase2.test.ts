@@ -100,6 +100,10 @@ describe("DEV-SCHOOL-OPS-1 Phase 2 assessment-session worktable", () => {
     const actions = read("src", "features", "school", "assessment-workbench-actions.ts");
     const query = read("src", "features", "school", "assessment-workbench-data.ts");
     const routes = read("src", "features", "school", "dashboard-routes.ts");
+    const activityProjection = query.slice(
+      query.indexOf("const ACTIVITY_COLUMNS"),
+      query.indexOf("export async function listAssessmentWorkbenchRows"),
+    );
 
     expect(migration).toContain("activity_registrations_subject_check");
     expect(migration).toContain("assessment_results_subject_check");
@@ -116,6 +120,8 @@ describe("DEV-SCHOOL-OPS-1 Phase 2 assessment-session worktable", () => {
     expect(query).toContain('import "server-only"');
     expect(query).toContain('.eq("state", "confirmed")');
     expect(query).toContain('source_invitation_id');
+    expect(activityProjection).toContain('].join(",");');
+    expect(query).toContain(".select(ACTIVITY_COLUMNS)");
     expect(actions).toContain("save_invitation_assessment_row");
     expect(actions).toContain("save_invitation_assessment_route");
     expect(actions.match(/const result = value\.invitationId/g)).toHaveLength(2);

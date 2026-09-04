@@ -113,22 +113,26 @@ const INVITATION_COLUMNS = [
   "assessor:profiles!lead_invitation_threads_assessor_id_fkey(display_name)",
 ].join(",");
 
+const ACTIVITY_COLUMNS = [
+  "id",
+  "title",
+  "scheduled_at",
+  "location",
+  "source_invitation_id",
+  [
+    "activity_registrations(",
+    "id,student_id,lead_id,status,outcome,updated_at,",
+    "students(id,name,phone,parent_phone,grade,remark),",
+    "leads(id,provisional_student_name,phone,grade_hint,grade_text,student_id)",
+    ")",
+  ].join(""),
+].join(",");
+
 export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbenchRow[]> {
   const supabase = await createClient();
   const [activityResult, confirmedInvitationResult] = await Promise.all([
     from(supabase)("activities")
-      .select([
-        "id",
-        "title",
-        "scheduled_at",
-        "location",
-        "source_invitation_id",
-        "activity_registrations(",
-        "id,student_id,lead_id,status,outcome,updated_at,",
-        "students(id,name,phone,parent_phone,grade,remark),",
-        "leads(id,provisional_student_name,phone,grade_hint,grade_text,student_id)",
-        ")",
-      ].join(""))
+      .select(ACTIVITY_COLUMNS)
       .eq("kind", "assessment_1v1")
       .is("deleted_at", null)
       .order("scheduled_at", { ascending: true })
