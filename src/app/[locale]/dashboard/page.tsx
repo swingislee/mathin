@@ -1,7 +1,8 @@
 import { setRequestLocale } from "next-intl/server";
 import { ParentHome } from "@/features/school/home/ParentHome";
+import { StaffFactOverviewHome } from "@/features/school/home/StaffFactOverviewHome";
 import { StudentHome } from "@/features/school/home/StudentHome";
-import { TodayWorkHome } from "@/features/school/home/TodayWorkHome";
+import { normalizeOverviewGrain } from "@/features/school/home/staff-overview-contract";
 import { getActiveEnvironment, getProfile, requireUser } from "@/lib/auth";
 
 // 首屏按角色分派到三个自包含的 server component（P4G-7：原 1243 行巨石拆分）。
@@ -16,20 +17,34 @@ export default async function DashboardPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ focus?: string | string[] }>;
+  searchParams: Promise<{
+    focus?: string | string[];
+    period?: string | string[];
+  }>;
 }) {
   const [{ locale }, rawSearchParams] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
   const focusTarget = typeof rawSearchParams.focus === "string" && rawSearchParams.focus.length <= 200
     ? rawSearchParams.focus
     : undefined;
+  const period = normalizeOverviewGrain(typeof rawSearchParams.period === "string" ? rawSearchParams.period : undefined);
   const user = await requireUser(locale);
   const profile = await getProfile(user.id);
   if (!profile) return <StudentHome locale={locale} user={user} profile={profile} />;
 
   const active = await getActiveEnvironment(user.id);
 
-  if (active === "staff") return <TodayWorkHome locale={locale} user={user} profile={profile} focusTarget={focusTarget} />;
+  if (active === "staff") {
+    return (
+      <StaffFactOverviewHome
+        locale={locale}
+        user={user}
+        profile={profile}
+        focusTarget={focusTarget}
+        grain={period}
+      />
+    );
+  }
   if (active === "family") return <ParentHome locale={locale} user={user} profile={profile} />;
   return <StudentHome locale={locale} user={user} profile={profile} />;
 }
