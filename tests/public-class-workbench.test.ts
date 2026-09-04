@@ -30,6 +30,22 @@ describe("DEV-SCHOOL-OPS-1 public-class workbench", () => {
     expect(workspace).not.toContain("/dashboard/sessions/");
   });
 
+  it("reuses the secured location read model instead of filtering protected room columns", () => {
+    const data = read("src", "features", "school", "public-class.ts");
+
+    expect(data).toContain("listActiveRoomOptionsV2()");
+    expect(data).not.toContain('.eq("status", "active").order("name"');
+  });
+
+  it("keeps route constants on the server side of the React Server Components boundary", () => {
+    const page = read("src", "app", "[locale]", "dashboard", "activities", "[activityId]", "page.tsx");
+    const data = read("src", "features", "school", "public-class.ts");
+
+    expect(data).toContain("export const PUBLIC_CLASS_VIEWS");
+    expect(page).toContain('from "@/features/school/public-class"');
+    expect(page).not.toMatch(/PUBLIC_CLASS_VIEWS[\s\S]*from "@\/features\/school\/PublicClassWorkspace"/);
+  });
+
   it("keeps one roster with role-aware records for every segment", () => {
     const migration = read("supabase", "migrations", "20260904000240_public_class_event_workbench.sql");
     const workspace = read("src", "features", "school", "PublicClassWorkspace.tsx");

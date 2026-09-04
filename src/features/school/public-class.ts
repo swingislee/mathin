@@ -1,12 +1,15 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { listActiveRoomOptionsV2 } from "./organization-locations";
 
 export const DEFAULT_PUBLIC_CLASS_PRINT_BACKGROUND = "/illustrations/public-class-print-background-v1.png";
 
 export const PUBLIC_CLASS_SEGMENT_KINDS = ["trial_lesson", "group_assessment", "parent_talk"] as const;
 export type PublicClassSegmentKind = (typeof PUBLIC_CLASS_SEGMENT_KINDS)[number];
 export type PublicClassPresence = "expected" | "attended" | "late" | "absent" | "not_applicable";
+export const PUBLIC_CLASS_VIEWS = ["arrangement", "roster", "print", "conversion"] as const;
+export type PublicClassView = (typeof PUBLIC_CLASS_VIEWS)[number];
 
 export interface PublicClassParticipantRecord {
   id: string;
@@ -232,7 +235,7 @@ export async function getPublicClassWorkbench(activityId: string): Promise<Publi
   const lectureIds = [...new Set(segmentRows.flatMap((item) => item.microcourse_lecture_id ? [item.microcourse_lecture_id] : []))];
   const linkedClassroomIds = [...new Set(linkRows.map((item) => item.classroom_id))];
 
-  const [studentResult, leadResult, profileResult, roomResult, linkedClassroomResult, familyResult, allStaffResult, allRoomResult, classroomOptionResult] = await Promise.all([
+  const [studentResult, leadResult, profileResult, roomResult, linkedClassroomResult, familyResult, allStaffResult, activeRoomOptions, classroomOptionResult] = await Promise.all([
     studentIds.length ? from<StudentDbRow[]>(supabase, "students").select("id,name,grade").in("id", studentIds) : Promise.resolve({ data: [], error: null }),
     leadIds.length ? from<LeadDbRow[]>(supabase, "leads").select("id,provisional_student_name,phone,grade_hint,grade_text").in("id", leadIds) : Promise.resolve({ data: [], error: null }),
     profileIds.length ? from<ProfileDbRow[]>(supabase, "profiles").select("id,display_name").in("id", profileIds) : Promise.resolve({ data: [], error: null }),
@@ -240,7 +243,7 @@ export async function getPublicClassWorkbench(activityId: string): Promise<Publi
     linkedClassroomIds.length ? from<ClassroomDbRow[]>(supabase, "classrooms").select("id,name").in("id", linkedClassroomIds) : Promise.resolve({ data: [], error: null }),
     from<FamilyDbRow[]>(supabase, "course_families").select("id").eq("slug", "teacher-microcourses").limit(1),
     from<ProfileDbRow[]>(supabase, "profiles").select("id,display_name").eq("is_active", true).in("role", ["staff", "admin"]).order("display_name", { ascending: true }).limit(300),
-    from<RoomDbRow[]>(supabase, "campus_rooms").select("id,name,capacity,campus_id").eq("status", "active").order("name", { ascending: true }).limit(300),
+    listActiveRoomOptionsV2(),
     from<ClassroomDbRow[]>(supabase, "classrooms").select("id,name").is("archived_at", null).is("trashed_at", null).order("name", { ascending: true }).limit(300),
   ]);
   const students = rows(studentResult);
@@ -250,7 +253,12 @@ export async function getPublicClassWorkbench(activityId: string): Promise<Publi
   const linkedClassrooms = rows(linkedClassroomResult);
   const families = rows(familyResult);
   const allStaff = rows(allStaffResult);
-  const allRooms = rows(allRoomResult);
+  const allRooms: RoomDbRow[] = activeRoomOptions.map((room) => ({
+    id: room.id,
+    name: room.name,
+    capacity: room.capacity,
+    campus_id: room.campusId,
+  }));
   const classroomOptions = rows(classroomOptionResult);
   const microcourseFamilyId = families[0]?.id ?? null;
 

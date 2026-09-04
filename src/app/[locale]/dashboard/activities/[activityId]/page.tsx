@@ -6,12 +6,12 @@ import { ACTIVITY_WORKSPACE_NODES, type ActivityWorkspaceNode } from "@/features
 import { getActivity } from "@/features/school/activities";
 import { getOrganizationTimezoneV2 } from "@/features/school/organization-locations";
 import { ObjectBar, ObjectWorkspace } from "@/features/school/object-workspace";
+import { PublicClassWorkspace } from "@/features/school/PublicClassWorkspace";
 import {
-  PublicClassWorkspace,
+  getPublicClassWorkbench,
   PUBLIC_CLASS_VIEWS,
   type PublicClassView,
-} from "@/features/school/PublicClassWorkspace";
-import { getPublicClassWorkbench } from "@/features/school/public-class";
+} from "@/features/school/public-class";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
 
 const ACTIVITY_WORKSPACE_PERMISSIONS = ["activity.register", "review.write", "followup.view"] as const;

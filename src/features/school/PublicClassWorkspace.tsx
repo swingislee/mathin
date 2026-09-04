@@ -60,6 +60,7 @@ import type {
   PublicClassPresence,
   PublicClassSegment,
   PublicClassSegmentKind,
+  PublicClassView,
   PublicClassWorkbenchData,
 } from "./public-class";
 import {
@@ -71,9 +72,6 @@ import {
   DashboardTableShell,
   StatusStrip,
 } from "./dashboard-page";
-
-export const PUBLIC_CLASS_VIEWS = ["arrangement", "roster", "print", "conversion"] as const;
-export type PublicClassView = (typeof PUBLIC_CLASS_VIEWS)[number];
 
 const NONE = "__none__";
 
