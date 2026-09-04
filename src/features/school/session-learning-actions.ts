@@ -6,6 +6,11 @@ import { authorizedClient } from "@/features/school/actions/guards";
 import { COMMON_CODES, parse, requiredText, uuid } from "@/features/school/actions/schemas";
 import { LEARNING_CHECK_STATUSES } from "./session-learning-contract";
 
+type UntypedRpc = (
+  name: string,
+  args: Record<string, unknown>,
+) => Promise<{ data: unknown; error: { message: string } | null }>;
+
 const replaceChecksSchema = z.object({
   sessionId: uuid,
   items: z.array(z.object({
@@ -52,6 +57,45 @@ export async function markSessionLearningChecksAction(input: {
       p_session_id: value.sessionId,
       p_check_id: value.checkId,
       p_student_ids: value.studentIds,
+      p_status: value.status,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["NOT_FOUND", "STUDENT_NOT_ENROLLED", "FORBIDDEN", ...COMMON_CODES]);
+  }
+}
+
+const markLearningMatrixSchema = z.object({
+  sessionId: uuid,
+  cells: z.array(z.object({
+    checkId: uuid,
+    studentId: uuid,
+  })).min(1).max(200),
+  status: z.enum(LEARNING_CHECK_STATUSES),
+}).superRefine((value, context) => {
+  const keys = value.cells.map((cell) => `${cell.checkId}:${cell.studentId}`);
+  if (new Set(keys).size !== keys.length) {
+    context.addIssue({ code: "custom", path: ["cells"], message: "Duplicate cell" });
+  }
+});
+
+/** One atomic persistence interface for either orientation of the shared matrix. */
+export async function markSessionLearningMatrixAction(input: {
+  sessionId: string;
+  cells: Array<{ checkId: string; studentId: string }>;
+  status: (typeof LEARNING_CHECK_STATUSES)[number];
+}): Promise<ActionResult> {
+  try {
+    const value = parse(markLearningMatrixSchema, input);
+    const { supabase } = await authorizedClient("attendance.mark");
+    const callRpc = (supabase.rpc as unknown as UntypedRpc).bind(supabase);
+    const { error } = await callRpc("mark_session_learning_matrix_cells", {
+      p_session_id: value.sessionId,
+      p_cells: value.cells.map((cell) => ({
+        check_id: cell.checkId,
+        student_id: cell.studentId,
+      })),
       p_status: value.status,
     });
     if (error) throw new Error(error.message);

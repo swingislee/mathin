@@ -32,6 +32,7 @@ const trialCoursewareUnlockMigration = read("supabase/migrations/20260903000500_
 const learningSeatOrderMigration = read("supabase/migrations/20260731001000_r1_learning_check_seat_order.sql");
 const learningSeatLayoutMigration = read("supabase/migrations/20260731001200_r1_learning_check_seat_layout.sql");
 const learningFillBulkMigration = read("supabase/migrations/20260825000700_classroom_learning_fill_bulk.sql");
+const learningMatrixMigration = read("supabase/migrations/20260904000270_classroom_learning_matrix.sql");
 
 describe("R1 classroom continuity contracts", () => {
   it("bridges active enrollments and claimed student accounts into live classroom membership", () => {
@@ -256,6 +257,7 @@ describe("R1 classroom continuity contracts", () => {
     const controlMenus = read("src/features/classroom/live/ClassroomControlMenus.tsx");
     const video = read("src/features/classroom/live/VideoStage.tsx");
     const panel = read("src/features/school/SessionLearningCheckPanel.tsx");
+    const matrix = read("src/features/school/LearningCheckMatrixEntry.tsx");
     const quickEntryGrid = read("src/features/school/LearningCheckQuickEntryGrid.tsx");
     const fillRail = read("src/features/school/LearningFillRail.tsx");
     const statusIcons = read("src/features/school/LearningCheckStatusIcon.tsx");
@@ -278,27 +280,30 @@ describe("R1 classroom continuity contracts", () => {
     expect(continuityMigration).toContain("create table public.session_learning_checks");
     expect(continuityMigration).toContain("create table public.session_learning_check_results");
     expect(continuityMigration).toContain("mark_session_learning_check");
-    expect(panel).toContain("LEARNING_CHECK_STATUSES.map");
-    expect(panel).toContain("mark([student.id], candidate)");
-    expect(panel).toContain("<LearningFillRail");
-    expect(panel).toContain("learningUncheckedStudentIds");
+    expect(panel).toContain("<LearningCheckMatrixEntry");
+    expect(matrix).toContain("LEARNING_CHECK_STATUSES.map");
+    expect(matrix).toContain("onStatusChange(cell, status)");
+    expect(matrix).toContain("<LearningFillRail");
+    expect(matrix).toContain("uncheckedCells");
     expect(panel).not.toContain("batchMode");
     expect(panel).not.toContain("studentSelection");
     expect(panel).toContain("data-learning-check-toolbar");
-    expect(panel).toContain("data-learning-check-strip");
-    expect(panel).toContain("data-ipad-roster-grid");
+    expect(matrix).toContain("data-learning-matrix-pivots");
+    expect(matrix).toContain('value="by-question"');
+    expect(matrix).toContain('value="by-student"');
+    expect(matrix).toContain("data-learning-matrix-grid");
     expect(panel).toContain("z-[80] flex h-dvh max-h-none");
     expect(LEARNING_SEAT_COLUMNS).toBe(4);
     expect(LEARNING_SEAT_ROWS).toBe(5);
-    expect(panel).toContain("data-learning-seat-columns={LEARNING_SEAT_COLUMNS}");
+    expect(matrix).toContain("data-learning-seat-columns={LEARNING_SEAT_COLUMNS}");
     expect(quickEntryGrid).toContain("repeat(${LEARNING_SEAT_COLUMNS}");
     expect(panel).not.toContain("grid-cols-5");
     expect(panel).toContain("data-learning-seat-index");
     expect(panel).toContain("data-learning-empty-seat");
-    expect(panel).toContain('data-learning-seat-layer="background"');
-    expect(panel).toContain('data-learning-seat-layer="student"');
-    expect(panel).toContain("gridColumnStart: (seatPosition % LEARNING_SEAT_COLUMNS) + 1");
-    expect(panel).toContain("gridRowStart: Math.floor(seatPosition / LEARNING_SEAT_COLUMNS) + 1");
+    expect(panel).toContain('"data-learning-seat-layer": "background"');
+    expect(panel).toContain('"data-learning-seat-layer": "student"');
+    expect(panel).toContain("gridColumnStart: (visualSeatPosition % LEARNING_SEAT_COLUMNS) + 1");
+    expect(panel).toContain("gridRowStart: Math.floor(visualSeatPosition / LEARNING_SEAT_COLUMNS) + 1");
     expect(quickEntryGrid).toContain("auto-rows-[minmax(0,1fr)] overflow-y-hidden");
     expect(quickEntryGrid).toContain("auto-rows-[minmax(7.75rem,1fr)] overflow-y-auto pr-1");
     expect(quickEntryGrid).toContain("overflow-y-auto pr-1");
@@ -318,10 +323,10 @@ describe("R1 classroom continuity contracts", () => {
     expect(panel).toContain("dragStartSeatSlotsRef.current");
     expect(panel).toContain("setDragOffset");
     expect(panel).not.toContain("learningStatusShort_");
-    expect(panel).toContain('t("learningStatus_" + status)');
+    expect(panel).toContain('t("learningStatus_" + cell.status)');
     expect(fillRail).toContain('data-learning-fill-width="112"');
     expect(fillRail).toContain('t("learningStatus_" + status)');
-    expect(panel).toContain("data-learning-current-status={status}");
+    expect(matrix).toContain("data-learning-current-status={cell.status}");
     expect(quickEntryGrid).toContain('visualStatus === "unchecked" ? "bg-line/80" : statusStyle.dot');
     expect(quickEntryGrid).toContain("auto-rows-[2.75rem]");
     expect(quickEntryGrid).toContain("h-11 min-h-0");
@@ -354,6 +359,10 @@ describe("R1 classroom continuity contracts", () => {
     expect(learningFillBulkMigration).toContain("distinct_count <> submitted_count");
     expect(learningFillBulkMigration).toContain("result_row.student_id = any(p_student_ids)");
     expect(learningFillBulkMigration).toContain("from unnest(p_student_ids) submitted(student_id)");
+    expect(learningActions).toContain('"mark_session_learning_matrix_cells"');
+    expect(learningMatrixMigration).toContain("create or replace function public.mark_session_learning_matrix_cells");
+    expect(learningMatrixMigration).toContain("jsonb_to_recordset(p_cells)");
+    expect(learningMatrixMigration).toContain("on conflict(check_id, student_id) do update");
   });
 
   it("fills only unchecked, assessable students", () => {

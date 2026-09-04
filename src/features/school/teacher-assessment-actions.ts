@@ -9,6 +9,7 @@ import { ASSESSMENT_BANDS } from "./activity-workflow-contract";
 import {
   TEACHER_ASSESSMENT_OUTCOMES,
   type TeacherAssessmentOutcome,
+  type TeacherAssessmentQuestionFillResult,
   type TeacherAssessmentSummary,
 } from "./teacher-assessment-contract";
 
@@ -51,6 +52,15 @@ const observationInputSchema = z.object({
   observation: text(3000),
 });
 
+const questionFillInputSchema = z.object({
+  registrationId: uuid,
+  questionIds: z.array(uuid).min(1).max(200).refine(
+    (questionIds) => new Set(questionIds).size === questionIds.length,
+    "Question ids must be unique",
+  ),
+  outcome: z.enum(TEACHER_ASSESSMENT_OUTCOMES),
+});
+
 const ERROR_CODES = [
   "VALIDATION",
   "FORBIDDEN",
@@ -73,6 +83,12 @@ const ERROR_CODES = [
 function summaryFrom(data: unknown): TeacherAssessmentSummary {
   const parsed = summarySchema.parse(data);
   return parsed as TeacherAssessmentSummary;
+}
+
+function questionFillResultFrom(data: unknown): TeacherAssessmentQuestionFillResult {
+  return summarySchema.extend({
+    questionIds: z.array(z.string().uuid()),
+  }).parse(data) as TeacherAssessmentQuestionFillResult;
 }
 
 export async function startInvitationTeacherAssessmentAction(
@@ -149,6 +165,46 @@ export async function saveTeacherAssessmentObservationAction(input: {
     return { ok: true };
   } catch (error) {
     return actionError(error, ERROR_CODES);
+  }
+}
+
+export async function fillTeacherAssessmentQuestionsAction(input: {
+  registrationId: string;
+  questionIds: string[];
+  outcome: TeacherAssessmentOutcome;
+}): Promise<ActionResult<TeacherAssessmentQuestionFillResult>> {
+  try {
+    const value = parse(questionFillInputSchema, input);
+    const supabase = await authorizedClient();
+    const result = await rpc(supabase)("fill_teacher_assessment_questions", {
+      p_registration_id: value.registrationId,
+      p_question_ids: value.questionIds,
+      p_outcome: value.outcome,
+    });
+    if (result.error) throw new Error(result.error.message);
+    return { ok: true, data: questionFillResultFrom(result.data) };
+  } catch (error) {
+    return actionError<TeacherAssessmentQuestionFillResult>(error, ERROR_CODES);
+  }
+}
+
+export async function undoTeacherAssessmentQuestionFillAction(input: {
+  registrationId: string;
+  questionIds: string[];
+  outcome: TeacherAssessmentOutcome;
+}): Promise<ActionResult<TeacherAssessmentQuestionFillResult>> {
+  try {
+    const value = parse(questionFillInputSchema, input);
+    const supabase = await authorizedClient();
+    const result = await rpc(supabase)("undo_teacher_assessment_question_fill", {
+      p_registration_id: value.registrationId,
+      p_question_ids: value.questionIds,
+      p_outcome: value.outcome,
+    });
+    if (result.error) throw new Error(result.error.message);
+    return { ok: true, data: questionFillResultFrom(result.data) };
+  } catch (error) {
+    return actionError<TeacherAssessmentQuestionFillResult>(error, ERROR_CODES);
   }
 }
 

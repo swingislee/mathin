@@ -2,45 +2,53 @@
 
 import { Armchair, ClipboardCheck, GripVertical, LoaderCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useRef, useState, useTransition, type KeyboardEvent, type PointerEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  type HTMLAttributes,
+  type KeyboardEvent,
+  type PointerEvent,
+} from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { LearningCheckStatusIcon } from "./LearningCheckStatusIcon";
 import {
-  LearningCheckQuickEntryCard,
-  LearningCheckQuickEntryGrid,
-} from "./LearningCheckQuickEntryGrid";
-import { LearningFillRail } from "./LearningFillRail";
+  LearningCheckMatrixEntry,
+  type LearningCheckMatrixCell,
+  type LearningCheckMatrixOrientation,
+} from "./LearningCheckMatrixEntry";
 import { amendAttendanceStatusAction } from "./actions/attendance";
 import type { AttendanceDrawerRow } from "./actions/types";
 import { ATTENDANCE_STATUS_LED, ATTENDANCE_STATUS_TONE } from "./attendance-visual";
 import { ATTENDANCE_STATUSES, type AttendanceStatus } from "./learning";
-import { markSessionLearningChecksAction, saveClassroomStudentSeatLayoutAction } from "./session-learning-actions";
+import { markSessionLearningMatrixAction, saveClassroomStudentSeatLayoutAction } from "./session-learning-actions";
 import {
   buildLearningSeatSlots,
-  LEARNING_CHECK_STATUSES,
   LEARNING_SEAT_COLUMNS,
   learningCheckIdAfterPageChange,
   learningCheckIdForPage,
   learningResultKey,
   learningSeatAssignments,
-  learningUncheckedStudentIds,
   moveLearningStudentToSeat,
   type LearningCheckStatus,
   type LearningSeatSlot,
+  type SessionLearningCheck,
   type SessionLearningSetup,
   type SessionLearningStudent,
 } from "./session-learning-contract";
 import { LEARNING_CHECK_STATUS_STYLE } from "./session-learning-visual";
 
 interface LearningFillUndo {
-  checkId: string;
-  studentIds: string[];
+  cells: Array<{ checkId: string; studentId: string }>;
   status: Exclude<LearningCheckStatus, "unchecked">;
 }
+
+type ClassroomLearningCell = LearningCheckMatrixCell<SessionLearningStudent, SessionLearningCheck>;
 
 const LEARNING_FILL_TOAST_OPTIONS = { position: "top-center" as const };
 
@@ -132,11 +140,7 @@ export function SessionLearningCheckPanel({
   onSeatOrderChange?: (assignments: Array<{ studentId: string; position: number }>) => void;
 }) {
   const t = useTranslations("school.session");
-  const quickEntryChoices = useMemo(() => LEARNING_CHECK_STATUSES.map((status) => ({
-    value: status,
-    visualStatus: status,
-    label: t("learningStatus_" + status),
-  })), [t]);
+  const [matrixOrientation, setMatrixOrientation] = useState<LearningCheckMatrixOrientation>("by-question");
   const [manualSelection, setManualSelection] = useState<{
     pageDocId: string | null;
     checkId: string | null;
@@ -167,7 +171,7 @@ export function SessionLearningCheckPanel({
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
   const [seatOrderSaving, setSeatOrderSaving] = useState(false);
   const [fillUndo, setFillUndo] = useState<LearningFillUndo | null>(null);
-  const [savingStudentIds, setSavingStudentIds] = useState<Set<string>>(() => new Set());
+  const [savingCellKeys, setSavingCellKeys] = useState<Set<string>>(() => new Set());
   const [pending, startTransition] = useTransition();
   const orderedStudents = useMemo(
     () => seatSlots.filter((student): student is SessionLearningStudent => student !== null),
@@ -177,6 +181,10 @@ export function SessionLearningCheckPanel({
     () => [...orderedStudents].sort((left, right) => left.id.localeCompare(right.id)),
     [orderedStudents],
   );
+  const [activeStudentId, setActiveStudentId] = useState<string | null>(() => setup.students[0]?.id ?? null);
+  const resolvedActiveStudentId = orderedStudents.some((student) => student.id === activeStudentId)
+    ? activeStudentId
+    : orderedStudents[0]?.id ?? null;
   const seatPositionByStudentId = useMemo(() => new Map(
     seatSlots.flatMap((student, position) => student ? [[student.id, position] as const] : []),
   ), [seatSlots]);
@@ -199,18 +207,9 @@ export function SessionLearningCheckPanel({
       row.marked && (row.status === "absent" || row.status === "leave") ? [studentId] : []
     )),
   ), [attendanceByStudent]);
-  const assessableStudents = useMemo(
-    () => orderedStudents.filter((student) => !fillExcludedStudentIds.has(student.id)),
-    [fillExcludedStudentIds, orderedStudents],
-  );
-  const uncheckedStudentIds = useMemo(
-    () => activeCheck
-      ? learningUncheckedStudentIds(orderedStudents, activeCheck.id, results, fillExcludedStudentIds)
-      : [],
-    [activeCheck, fillExcludedStudentIds, orderedStudents, results],
-  );
-  const checkedCount = assessableStudents.length - uncheckedStudentIds.length;
-  const canUndoFill = Boolean(activeCheck && fillUndo?.checkId === activeCheck.id);
+  const canUndoFill = Boolean(fillUndo?.cells.some((cell) => (
+    (results.get(learningResultKey(cell.checkId, cell.studentId)) ?? "unchecked") === fillUndo.status
+  )));
 
   useEffect(() => {
     if (!activeCheckSummaryId) return;
@@ -220,41 +219,40 @@ export function SessionLearningCheckPanel({
   if (setup.checks.length === 0) return null;
 
   const mark = (
-    studentIds: string[],
+    cells: Array<{ checkId: string; studentId: string }>,
     status: LearningCheckStatus,
-    onSuccess?: (savedStudentIds: string[]) => void,
+    onSuccess?: (savedCells: Array<{ checkId: string; studentId: string }>) => void,
   ) => {
-    if (!activeCheck || studentIds.length === 0) return;
-    const targetStudentIds = studentIds.filter((studentId) => !savingStudentIds.has(studentId));
-    if (targetStudentIds.length === 0) return;
-    const previous = new Map(targetStudentIds.map((studentId) => {
-      const key = learningResultKey(activeCheck.id, studentId);
+    const targetCells = cells.filter((cell) => !savingCellKeys.has(learningResultKey(cell.checkId, cell.studentId)));
+    if (targetCells.length === 0) return;
+    const targetKeys = targetCells.map((cell) => learningResultKey(cell.checkId, cell.studentId));
+    const previous = new Map(targetCells.map((cell) => {
+      const key = learningResultKey(cell.checkId, cell.studentId);
       return [key, results.get(key) ?? "unchecked"] as const;
     }));
-    setSavingStudentIds((current) => new Set([...current, ...targetStudentIds]));
+    setSavingCellKeys((current) => new Set([...current, ...targetKeys]));
     setResults((current) => {
       const next = new Map(current);
-      for (const studentId of targetStudentIds) {
-        const key = learningResultKey(activeCheck.id, studentId);
+      for (const cell of targetCells) {
+        const key = learningResultKey(cell.checkId, cell.studentId);
         if (status === "unchecked") next.delete(key);
         else next.set(key, status);
       }
       return next;
     });
     if (ephemeral) {
-      setSavingStudentIds((current) => {
+      setSavingCellKeys((current) => {
         const next = new Set(current);
-        for (const studentId of targetStudentIds) next.delete(studentId);
+        for (const key of targetKeys) next.delete(key);
         return next;
       });
-      onSuccess?.(targetStudentIds);
+      onSuccess?.(targetCells);
       return;
     }
     startTransition(async () => {
-      const result = await markSessionLearningChecksAction({
+      const result = await markSessionLearningMatrixAction({
         sessionId,
-        checkId: activeCheck.id,
-        studentIds: targetStudentIds,
+        cells: targetCells,
         status,
       });
       if (!result.ok) {
@@ -268,37 +266,47 @@ export function SessionLearningCheckPanel({
         });
         toast.error(t("learningSaveFailed", { code: result.code }));
       } else {
-        onSuccess?.(targetStudentIds);
+        onSuccess?.(targetCells);
       }
-      setSavingStudentIds((current) => {
+      setSavingCellKeys((current) => {
         const next = new Set(current);
-        for (const studentId of targetStudentIds) next.delete(studentId);
+        for (const key of targetKeys) next.delete(key);
         return next;
       });
     });
   };
 
-  const fillUncheckedStudents = (status: Exclude<LearningCheckStatus, "unchecked">) => {
-    if (!activeCheck || uncheckedStudentIds.length === 0) return;
-    const checkId = activeCheck.id;
-    mark(uncheckedStudentIds, status, (savedStudentIds) => {
-      setFillUndo({ checkId, studentIds: savedStudentIds, status });
-      toast.success(t("learningFillSaved", { count: savedStudentIds.length }), LEARNING_FILL_TOAST_OPTIONS);
+  const fillUncheckedCells = (
+    cells: ClassroomLearningCell[],
+    status: Exclude<LearningCheckStatus, "unchecked">,
+  ) => {
+    const targetCells = cells.map((cell) => ({
+      checkId: cell.question.id,
+      studentId: cell.student.id,
+    }));
+    if (targetCells.length === 0) return;
+    const filledOrientation = matrixOrientation;
+    mark(targetCells, status, (savedCells) => {
+      setFillUndo({ cells: savedCells, status });
+      toast.success(t(
+        filledOrientation === "by-question" ? "learningFillSaved" : "learningQuestionFillSaved",
+        { count: savedCells.length },
+      ), LEARNING_FILL_TOAST_OPTIONS);
     });
   };
 
   const undoLastFill = () => {
-    if (!activeCheck || !fillUndo || fillUndo.checkId !== activeCheck.id) return;
-    const undoStudentIds = fillUndo.studentIds.filter((studentId) => (
-      (results.get(learningResultKey(activeCheck.id, studentId)) ?? "unchecked") === fillUndo.status
+    if (!fillUndo) return;
+    const undoCells = fillUndo.cells.filter((cell) => (
+      (results.get(learningResultKey(cell.checkId, cell.studentId)) ?? "unchecked") === fillUndo.status
     ));
-    if (undoStudentIds.length === 0) {
+    if (undoCells.length === 0) {
       setFillUndo(null);
       return;
     }
-    mark(undoStudentIds, "unchecked", (savedStudentIds) => {
+    mark(undoCells, "unchecked", (savedCells) => {
       setFillUndo(null);
-      toast.success(t("learningFillUndone", { count: savedStudentIds.length }), LEARNING_FILL_TOAST_OPTIONS);
+      toast.success(t("learningFillUndone", { count: savedCells.length }), LEARNING_FILL_TOAST_OPTIONS);
     });
   };
 
@@ -493,7 +501,7 @@ export function SessionLearningCheckPanel({
       </DialogTrigger>
       {/* `w-full` 避免 Windows 经典滚动条下 `100vw` 多出的约 15px。 */}
       <DialogContent className="z-[80] flex h-dvh max-h-none w-full max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 p-0 sm:rounded-none [&>button]:right-2.5 [&>button]:top-2.5">
-        <DialogHeader className="shrink-0 space-y-0 border-b border-line px-2 pb-1 pr-11 pt-1.5 text-left">
+        <DialogHeader className="shrink-0 space-y-0 border-b border-line px-2 py-1.5 pr-11 text-left">
           <div className="flex min-h-8 min-w-0 items-center gap-2" data-learning-check-toolbar>
             <DialogTitle className="flex shrink-0 items-center gap-1.5 text-sm">
               <ClipboardCheck size={16} />{t("learningPanelTitle")}
@@ -504,238 +512,224 @@ export function SessionLearningCheckPanel({
               </span>
             )}
             <div className="flex min-w-0 flex-1 items-center gap-2 border-l border-line pl-2">
-              <span className="min-w-0 truncate text-xs font-medium text-ink">{activeCheck?.title}</span>
-              <span className="shrink-0 text-[11px] tabular-nums text-muted">{t("learningCheckedCount", { checked: checkedCount, total: orderedStudents.length })}</span>
-              <span className="hidden h-1 w-16 shrink-0 overflow-hidden rounded-full bg-line/70 sm:block">
-                <span
-                  className="block h-full rounded-full bg-leaf transition-[width] duration-200 motion-reduce:transition-none"
-                  style={{ width: `${orderedStudents.length > 0 ? (checkedCount / orderedStudents.length) * 100 : 0}%` }}
-                />
-              </span>
               {(pending || seatOrderSaving) && <LoaderCircle size={13} className="shrink-0 animate-spin text-muted motion-reduce:animate-none" />}
               {seatOrderSaving && <span className="hidden shrink-0 text-[11px] text-muted md:inline">{t("learningSeatOrderSaving")}</span>}
             </div>
-            <Button
-              size="sm"
-              variant={seatEditMode ? "primary" : "secondary"}
-              disabled={seatOrderSaving}
-              aria-pressed={seatEditMode}
-              className="hidden min-h-8 shrink-0 px-2.5 text-xs sm:inline-flex"
-              onClick={() => {
-                if (draggingStudentIdRef.current) finishDragging(true);
-                setSeatEditMode((enabled) => !enabled);
-              }}
-            >
-              <GripVertical size={14} />
-              {seatEditMode ? t("learningSeatEditStop") : t("learningSeatEditStart")}
-            </Button>
-          </div>
-          <div className="flex gap-1 overflow-x-auto pb-0.5 pt-1" data-learning-check-strip>
-            {setup.checks.map((check, index) => (
+            {matrixOrientation === "by-question" ? (
               <Button
-                key={check.id}
                 size="sm"
-                variant={check.id === activeCheck?.id ? "primary" : "secondary"}
-                className="min-h-8 shrink-0 px-2.5 py-1 text-[11px]"
+                variant={seatEditMode ? "primary" : "secondary"}
+                disabled={seatOrderSaving}
+                aria-pressed={seatEditMode}
+                className="hidden min-h-8 shrink-0 px-2.5 text-xs sm:inline-flex"
                 onClick={() => {
-                  setManualSelection({ pageDocId: activePageDocId, checkId: check.id });
+                  if (draggingStudentIdRef.current) finishDragging(true);
+                  setSeatEditMode((enabled) => !enabled);
                 }}
               >
-                {index + 1}. {check.title}
+                <GripVertical size={14} />
+                {seatEditMode ? t("learningSeatEditStop") : t("learningSeatEditStart")}
               </Button>
-            ))}
+            ) : null}
           </div>
         </DialogHeader>
 
-        <main className="flex min-h-0 flex-1 flex-col overflow-hidden p-1 sm:flex-row" data-learning-responsive-layout="mobile-list-desktop-seats">
-          <div className="flex min-h-0 flex-1 flex-col divide-y divide-line overflow-y-auto sm:hidden" data-learning-mobile-list>
-            {orderedStudents.map((student) => {
-              const status = activeCheck
-                ? results.get(learningResultKey(activeCheck.id, student.id)) ?? "unchecked"
-                : "unchecked";
-              const saving = savingStudentIds.has(student.id);
-              const statusStyle = LEARNING_CHECK_STATUS_STYLE[status];
+        <main className="flex min-h-0 flex-1 flex-col overflow-hidden p-1" data-learning-responsive-layout="shared-matrix-mobile-list-desktop-grid">
+          <LearningCheckMatrixEntry
+            students={stableSeatStudents.map((student) => ({
+              id: student.id,
+              label: student.name,
+              slot: seatPositionByStudentId.get(student.id) ?? 0,
+              data: student,
+            }))}
+            questions={setup.checks.map((check, index) => ({
+              id: check.id,
+              label: check.title,
+              slot: index,
+              data: check,
+            }))}
+            orientation={matrixOrientation}
+            onOrientationChange={(nextOrientation) => {
+              if (nextOrientation === "by-student") {
+                if (draggingStudentIdRef.current) finishDragging(true);
+                setSeatEditMode(false);
+              }
+              setMatrixOrientation(nextOrientation);
+            }}
+            activeStudentId={resolvedActiveStudentId}
+            activeQuestionId={activeCheck?.id ?? null}
+            onActiveStudentChange={setActiveStudentId}
+            onActiveQuestionChange={(checkId) => {
+              setManualSelection({ pageDocId: activePageDocId, checkId });
+            }}
+            statusFor={(studentId, checkId) => (
+              results.get(learningResultKey(checkId, studentId)) ?? "unchecked"
+            )}
+            onStatusChange={(cell, status) => mark([{
+              checkId: cell.question.id,
+              studentId: cell.student.id,
+            }], status)}
+            isCellPending={(cell) => savingCellKeys.has(learningResultKey(cell.question.id, cell.student.id))}
+            isCellBulkEligible={(cell) => !fillExcludedStudentIds.has(cell.student.id)}
+            gridRef={seatGridRef}
+            getCardProps={(cell) => ({
+              "data-learning-student-id": cell.student.id,
+              "data-learning-check-id": cell.question.id,
+              "data-learning-seat-index": cell.student.slot,
+              "data-learning-seat-layer": "student",
+            } as HTMLAttributes<HTMLElement>)}
+            getCardStyle={(cell) => {
+              if (matrixOrientation !== "by-question") return undefined;
+              const seatPosition = cell.student.slot ?? 0;
+              const visualSeatPosition = draggingStudentId === cell.student.id
+                ? dragOriginSeatPosition ?? seatPosition
+                : seatPosition;
+              return {
+                gridColumnStart: (visualSeatPosition % LEARNING_SEAT_COLUMNS) + 1,
+                gridRowStart: Math.floor(visualSeatPosition / LEARNING_SEAT_COLUMNS) + 1,
+                transform: draggingStudentId === cell.student.id && dragOffset
+                  ? `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0)`
+                  : undefined,
+              };
+            }}
+            getCardClassName={(cell) => {
+              if (matrixOrientation !== "by-question") return undefined;
+              const seatPosition = cell.student.slot ?? 0;
+              return cn(
+                draggingStudentId === cell.student.id && "z-30 opacity-85 shadow-lg transition-none will-change-transform",
+                dragOverSeatPosition === seatPosition && draggingStudentId !== cell.student.id && "ring-2 ring-crater/35",
+              );
+            }}
+            renderCardHeader={(cell) => {
+              const student = cell.student.data;
+              const check = cell.question.data;
+              const saving = savingCellKeys.has(learningResultKey(check.id, student.id));
+              const statusStyle = LEARNING_CHECK_STATUS_STYLE[cell.status];
+              if (matrixOrientation === "by-student") {
+                return (
+                  <div className="flex min-h-8 min-w-0 items-center gap-1 px-2">
+                    <span className="w-6 shrink-0 text-center font-mono text-[10px] text-muted">{(cell.question.slot ?? 0) + 1}</span>
+                    <span className="min-w-0 flex-1 truncate text-xs font-medium text-ink">{check.title}</span>
+                    {cell.status !== "unchecked" ? (
+                      <span className={cn("shrink-0 text-[10px] font-medium", statusStyle.icon)}>
+                        {t("learningStatus_" + cell.status)}
+                      </span>
+                    ) : null}
+                    {saving ? <LoaderCircle size={13} className="shrink-0 animate-spin text-muted motion-reduce:animate-none" /> : null}
+                  </div>
+                );
+              }
+              const seatPosition = cell.student.slot ?? 0;
               return (
-                <article
-                  key={student.id}
-                  className={cn(
-                    "flex min-h-12 shrink-0 items-center gap-1 px-1.5 transition-colors",
-                    statusStyle.card,
-                  )}
-                  data-learning-mobile-row
-                  data-learning-student-id={student.id}
-                  data-learning-current-status={status}
-                >
-                  {attendanceIntegrated && (
+                <div className="flex min-h-8 items-center gap-0.5 px-1">
+                  {attendanceIntegrated ? (
                     <AttendanceStatusLight
                       studentName={student.name}
                       row={attendanceByStudent.get(student.id)}
                       saving={attendanceSavingStudentIds.has(student.id)}
                       onChange={(attendanceStatus) => markAttendance(student, attendanceStatus)}
                     />
-                  )}
-                  <span className="w-20 min-w-0 shrink-0 truncate px-1 text-xs font-medium">{student.name}</span>
-                  <div className="grid min-w-0 flex-1 grid-cols-6 gap-0.5" role="group" aria-label={student.name}>
-                    {LEARNING_CHECK_STATUSES.map((candidate) => (
-                      <button
-                        key={candidate}
-                        type="button"
-                        disabled={saving}
-                        aria-pressed={status === candidate}
-                        aria-label={t("learningStatus_" + candidate)}
-                        title={t("learningStatus_" + candidate)}
-                        onClick={() => mark([student.id], candidate)}
-                        className={cn(
-                          "grid h-10 min-w-0 place-items-center rounded-md border p-0 outline-none transition-[color,background-color,border-color,box-shadow,transform] focus-visible:ring-2 focus-visible:ring-crater active:scale-95 disabled:opacity-55",
-                          status === candidate
-                            ? LEARNING_CHECK_STATUS_STYLE[candidate].active
-                            : cn("border-transparent bg-paper/45 text-muted", LEARNING_CHECK_STATUS_STYLE[candidate].idle),
-                        )}
-                      >
-                        {saving && status === candidate
-                          ? <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" />
-                          : <LearningCheckStatusIcon
-                              status={candidate}
-                              size={16}
-                              className={cn(
-                                "shrink-0",
-                                status === candidate ? "text-current opacity-80" : LEARNING_CHECK_STATUS_STYLE[candidate].icon,
-                              )}
-                            />}
-                      </button>
-                    ))}
+                  ) : null}
+                  <div className="flex h-8 min-w-0 flex-1 items-center gap-1 px-1 text-left">
+                    <span className="min-w-0 truncate text-xs font-medium">{student.name}</span>
+                    {cell.status !== "unchecked" ? (
+                      <span className={cn("shrink-0 text-[10px] font-medium", statusStyle.icon)}>
+                        {t("learningStatus_" + cell.status)}
+                      </span>
+                    ) : null}
+                    {saving ? <LoaderCircle size={13} className="shrink-0 animate-spin text-muted motion-reduce:animate-none" /> : null}
                   </div>
-                </article>
+                  {seatEditMode ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      disabled={seatOrderSaving}
+                      aria-label={t("learningSeatOrderHandle", { name: student.name })}
+                      title={t("learningSeatOrderHint")}
+                      className="h-8 w-10 shrink-0 touch-none cursor-grab gap-0 p-0 text-muted active:cursor-grabbing"
+                      onPointerDown={(event) => handleDragPointerDown(event, student.id)}
+                      onPointerMove={handleDragPointerMove}
+                      onPointerUp={() => finishDragging(false)}
+                      onPointerCancel={() => finishDragging(true)}
+                      onKeyDown={(event) => handleOrderKeyDown(event, student.id)}
+                    >
+                      <GripVertical size={14} />
+                      <span className="text-[9px] tabular-nums" aria-hidden="true">
+                        {String(seatPosition + 1).padStart(2, "0")}
+                      </span>
+                    </Button>
+                  ) : null}
+                </div>
               );
-            })}
-          </div>
-          <LearningCheckQuickEntryGrid
-            ref={seatGridRef}
-            itemCount={seatSlots.length}
-            className="hidden sm:grid"
-            data-learning-seat-grid
-            data-learning-seat-columns={LEARNING_SEAT_COLUMNS}
-            data-ipad-roster-grid
-          >
-            {seatSlots.map((student, seatPosition) => (
-              <article
-                key={`seat-${seatPosition}`}
-                data-learning-seat-index={seatPosition}
-                data-learning-seat-layer="background"
-                data-learning-empty-seat={student ? undefined : ""}
-                aria-label={student ? undefined : t("learningEmptySeatNumber", { number: seatPosition + 1 })}
-                aria-hidden={student ? true : undefined}
-                style={{
-                  gridColumnStart: (seatPosition % LEARNING_SEAT_COLUMNS) + 1,
-                  gridRowStart: Math.floor(seatPosition / LEARNING_SEAT_COLUMNS) + 1,
-                }}
-                className={cn(
-                  "relative flex min-h-0 min-w-0 flex-col items-center justify-center rounded-xl border p-2 text-center text-muted transition-[border-color,background-color,box-shadow]",
-                  student
-                    ? "pointer-events-none border-transparent bg-transparent"
-                    : "border-dashed border-line/80 bg-card/25",
-                  draggingStudentId && dragOverSeatPosition === seatPosition && "border-crater bg-moon/35 ring-2 ring-crater/30",
-                )}
-              >
-                {!student && (
-                  <>
-                    <span className="absolute left-2 top-2 text-[9px] tabular-nums opacity-70" aria-hidden="true">
-                      {String(seatPosition + 1).padStart(2, "0")}
-                    </span>
-                    <Armchair size={20} className="mb-1 opacity-45" aria-hidden="true" />
-                    <span className="text-[11px] font-medium">{t("learningEmptySeat")}</span>
-                    <span className="mt-0.5 text-[9px] opacity-70">{t("learningEmptySeatDrop")}</span>
-                  </>
-                )}
-              </article>
-            ))}
-            {stableSeatStudents.map((student) => {
-              const seatPosition = seatPositionByStudentId.get(student.id) ?? 0;
-              const visualSeatPosition = draggingStudentId === student.id
-                ? dragOriginSeatPosition ?? seatPosition
-                : seatPosition;
-              const status = activeCheck
-                ? results.get(learningResultKey(activeCheck.id, student.id)) ?? "unchecked"
-                : "unchecked";
-              const saving = savingStudentIds.has(student.id);
-              const statusStyle = LEARNING_CHECK_STATUS_STYLE[status];
+            }}
+            renderMobileHeader={(cell) => {
+              const student = cell.student.data;
+              if (matrixOrientation === "by-student") {
+                return (
+                  <div className="flex min-w-0 items-center gap-2 px-1">
+                    <span className="w-6 shrink-0 text-center font-mono text-[10px] text-muted">{(cell.question.slot ?? 0) + 1}</span>
+                    <span className="min-w-0 flex-1 truncate text-xs font-medium text-ink">{cell.question.label}</span>
+                    {cell.status !== "unchecked" ? (
+                      <span className={cn("shrink-0 text-[10px] font-medium", LEARNING_CHECK_STATUS_STYLE[cell.status].icon)}>
+                        {t("learningStatus_" + cell.status)}
+                      </span>
+                    ) : null}
+                  </div>
+                );
+              }
               return (
-                <LearningCheckQuickEntryCard
-                  key={student.id}
-                  visualStatus={status}
-                  selectedValue={status}
-                  choices={quickEntryChoices}
-                  choiceGroupLabel={student.name}
-                  disabled={saving}
-                  onChoice={(candidate) => mark([student.id], candidate)}
-                  data-learning-student-id={student.id}
-                  data-learning-seat-index={seatPosition}
-                  data-learning-seat-layer="student"
-                  data-learning-current-status={status}
-                  style={{
-                    gridColumnStart: (visualSeatPosition % LEARNING_SEAT_COLUMNS) + 1,
-                    gridRowStart: Math.floor(visualSeatPosition / LEARNING_SEAT_COLUMNS) + 1,
-                    transform: draggingStudentId === student.id && dragOffset
-                      ? `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0)`
-                      : undefined,
-                  }}
-                  className={cn(
-                    draggingStudentId === student.id && "z-30 opacity-85 shadow-lg transition-none will-change-transform",
-                    dragOverSeatPosition === seatPosition && draggingStudentId !== student.id && "ring-2 ring-crater/35",
-                  )}
-                  header={(
-                    <div className="flex min-h-8 items-center gap-0.5 px-1">
-                      {attendanceIntegrated && (
-                        <AttendanceStatusLight
-                          studentName={student.name}
-                          row={attendanceByStudent.get(student.id)}
-                          saving={attendanceSavingStudentIds.has(student.id)}
-                          onChange={(attendanceStatus) => markAttendance(student, attendanceStatus)}
-                        />
-                      )}
-                      <div className="flex h-8 min-w-0 flex-1 items-center gap-1 px-1 text-left">
-                        <span className="min-w-0 truncate text-xs font-medium">{student.name}</span>
-                        {status !== "unchecked" && (
-                          <span className={cn("shrink-0 text-[10px] font-medium", statusStyle.icon)}>
-                            {t("learningStatus_" + status)}
-                          </span>
-                        )}
-                        {saving && <LoaderCircle size={13} className="shrink-0 animate-spin text-muted motion-reduce:animate-none" />}
-                      </div>
-                      {seatEditMode && (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          disabled={seatOrderSaving}
-                          aria-label={t("learningSeatOrderHandle", { name: student.name })}
-                          title={t("learningSeatOrderHint")}
-                          className="h-8 w-10 shrink-0 touch-none cursor-grab gap-0 p-0 text-muted active:cursor-grabbing"
-                          onPointerDown={(event) => handleDragPointerDown(event, student.id)}
-                          onPointerMove={handleDragPointerMove}
-                          onPointerUp={() => finishDragging(false)}
-                          onPointerCancel={() => finishDragging(true)}
-                          onKeyDown={(event) => handleOrderKeyDown(event, student.id)}
-                        >
-                          <GripVertical size={14} />
-                          <span className="text-[9px] tabular-nums" aria-hidden="true">
-                            {String(seatPosition + 1).padStart(2, "0")}
-                          </span>
-                        </Button>
-                      )}
-                    </div>
-                  )}
-                />
+                <div className="flex min-w-0 items-center gap-1">
+                  {attendanceIntegrated ? (
+                    <AttendanceStatusLight
+                      studentName={student.name}
+                      row={attendanceByStudent.get(student.id)}
+                      saving={attendanceSavingStudentIds.has(student.id)}
+                      onChange={(attendanceStatus) => markAttendance(student, attendanceStatus)}
+                    />
+                  ) : null}
+                  <span className="min-w-0 flex-1 truncate px-1 text-xs font-medium text-ink">{student.name}</span>
+                  {cell.status !== "unchecked" ? (
+                    <span className={cn("shrink-0 text-[10px] font-medium", LEARNING_CHECK_STATUS_STYLE[cell.status].icon)}>
+                      {t("learningStatus_" + cell.status)}
+                    </span>
+                  ) : null}
+                </div>
               );
-            })}
-          </LearningCheckQuickEntryGrid>
-          <LearningFillRail
-            remainingCount={uncheckedStudentIds.length}
-            totalCount={assessableStudents.length}
-            pending={pending}
-            canUndo={canUndoFill}
-            onFill={fillUncheckedStudents}
-            onUndo={undoLastFill}
+            }}
+            getSlotProps={({ orientation, position, occupied }) => {
+              if (orientation !== "by-question") return { "aria-hidden": true };
+              return {
+                "data-learning-seat-index": position,
+                "data-learning-seat-layer": "background",
+                "data-learning-empty-seat": occupied ? undefined : "",
+                "aria-label": occupied ? undefined : t("learningEmptySeatNumber", { number: position + 1 }),
+                "aria-hidden": occupied ? true : undefined,
+              } as HTMLAttributes<HTMLElement>;
+            }}
+            getSlotClassName={({ orientation, position }) => (
+              orientation === "by-question" && draggingStudentId && dragOverSeatPosition === position
+                ? "border-crater bg-moon/35 ring-2 ring-crater/30"
+                : undefined
+            )}
+            renderSlotBackground={({ orientation, position, occupied }) => (
+              orientation === "by-question" && !occupied ? (
+                <>
+                  <span className="absolute left-2 top-2 text-[9px] tabular-nums opacity-70" aria-hidden="true">
+                    {String(position + 1).padStart(2, "0")}
+                  </span>
+                  <Armchair size={20} className="mb-1 opacity-45" aria-hidden="true" />
+                  <span className="text-[11px] font-medium">{t("learningEmptySeat")}</span>
+                  <span className="mt-0.5 text-[9px] opacity-70">{t("learningEmptySeatDrop")}</span>
+                </>
+              ) : undefined
+            )}
+            fill={{
+              pending,
+              canUndo: canUndoFill,
+              onFill: fillUncheckedCells,
+              onUndo: undoLastFill,
+            }}
           />
         </main>
       </DialogContent>

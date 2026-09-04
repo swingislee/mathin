@@ -14,6 +14,10 @@ export interface TeacherAssessmentSummary {
   completedAt?: string | null;
 }
 
+export interface TeacherAssessmentQuestionFillResult extends TeacherAssessmentSummary {
+  questionIds: string[];
+}
+
 export interface TeacherAssessmentQuestionResult {
   outcome: TeacherAssessmentOutcome | null;
   score: number | null;

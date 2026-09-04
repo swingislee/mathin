@@ -15,7 +15,7 @@ import {
   useMemo,
   useRef,
   useState,
-  type KeyboardEvent as ReactKeyboardEvent,
+  type HTMLAttributes,
 } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -27,8 +27,10 @@ import { cn } from "@/lib/utils";
 import {
   bindTeacherAssessmentPaperAction,
   completeTeacherAssessmentAction,
+  fillTeacherAssessmentQuestionsAction,
   saveTeacherAssessmentObservationAction,
   saveTeacherAssessmentQuestionAction,
+  undoTeacherAssessmentQuestionFillAction,
 } from "./teacher-assessment-actions";
 import {
   quickScoreForOutcome,
@@ -40,16 +42,10 @@ import {
   type TeacherAssessmentWorkbenchData,
 } from "./teacher-assessment-contract";
 import {
-  LearningCheckQuickEntryCard,
-  LearningCheckQuickEntryGrid,
-  type LearningCheckQuickChoice,
-} from "./LearningCheckQuickEntryGrid";
-import {
-  LEARNING_CHECK_STATUSES,
-  LEARNING_SEAT_CAPACITY,
-  LEARNING_SEAT_COLUMNS,
-  type LearningCheckStatus,
-} from "./session-learning-contract";
+  LearningCheckMatrixEntry,
+  type LearningCheckMatrixCell,
+} from "./LearningCheckMatrixEntry";
+import type { LearningCheckStatus } from "./session-learning-contract";
 import { LEARNING_CHECK_STATUS_STYLE } from "./session-learning-visual";
 import {
   DashboardCommandActions,
@@ -61,16 +57,12 @@ import {
   DashboardTableShell,
 } from "./dashboard-page";
 
-type SaveState = "idle" | "saving" | "saved" | "error";
+type SaveState = "idle" | "queued" | "saving" | "saved" | "error";
 
-const OUTCOME_SHORTCUTS: Record<string, LearningCheckStatus> = {
-  "0": "unchecked",
-  "1": "explained",
-  "2": "independent",
-  "3": "prompted",
-  "4": "imitated",
-  "5": "incomplete",
-};
+interface AssessmentFillUndo {
+  questionIds: string[];
+  outcome: TeacherAssessmentOutcome;
+}
 
 export function TeacherAssessmentWorkbench({ data }: { data: TeacherAssessmentWorkbenchData }) {
   const t = useTranslations("school.teacherAssessment");
@@ -197,6 +189,8 @@ function QuestionWorkbench({
   const [observation, setObservation] = useState(data.teacherObservation);
   const [observationState, setObservationState] = useState<SaveState>("idle");
   const [completing, setCompleting] = useState(false);
+  const [fillPending, setFillPending] = useState(false);
+  const [fillUndo, setFillUndo] = useState<AssessmentFillUndo | null>(null);
   const timersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const sequencesRef = useRef(new Map<string, number>());
   const observationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -223,7 +217,10 @@ function QuestionWorkbench({
         toast.error(t("questionSaveFailed", { question: question.questionNo }));
         return;
       }
-      setSaveStates((current) => ({ ...current, [question.id]: "saved" }));
+      setSaveStates((current) => ({
+        ...current,
+        [question.id]: timersRef.current.has(question.id) ? "queued" : "saved",
+      }));
       setSummary((current) => ({
         ...result.data,
         completedAt: result.data.completedAt === undefined ? current.completedAt : result.data.completedAt,
@@ -239,7 +236,7 @@ function QuestionWorkbench({
       saveQuestion(question);
       return;
     }
-    setSaveStates((current) => ({ ...current, [question.id]: "idle" }));
+    setSaveStates((current) => ({ ...current, [question.id]: "queued" }));
     const timer = setTimeout(() => {
       timersRef.current.delete(question.id);
       saveQuestion(question);
@@ -304,27 +301,178 @@ function QuestionWorkbench({
     }), false);
   }, [replaceQuestion]);
 
-  const onWorkspaceKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    const target = event.target as HTMLElement;
-    if (target.closest("input, textarea, button, [role='dialog'], [role='listbox']")) return;
-    const outcome = OUTCOME_SHORTCUTS[event.key];
-    if (outcome) {
-      event.preventDefault();
-      const question = questionsRef.current[activeIndex];
-      if (question) chooseOutcome(question, outcome);
-      return;
-    }
-    if (event.key === "ArrowDown" || event.key === "Enter") {
-      event.preventDefault();
-      setActiveIndex((current) => Math.min(current + 1, questionsRef.current.length - 1));
-    }
-    if (event.key === "ArrowUp") {
-      event.preventDefault();
-      setActiveIndex((current) => Math.max(current - 1, 0));
-    }
+  const questionSavePending = Object.values(saveStates).some((state) => state === "queued" || state === "saving");
+  const canUndoFill = Boolean(
+    !summary.completedAt
+    && fillUndo
+    && fillUndo.questionIds.some((questionId) => (
+      questions.find((question) => question.id === questionId)?.result?.outcome === fillUndo.outcome
+    )),
+  );
+
+  const fillUnansweredQuestions = (
+    cells: Array<LearningCheckMatrixCell<null, TeacherAssessmentQuestion>>,
+    status: Exclude<LearningCheckStatus, "unchecked">,
+  ) => {
+    if (fillPending || questionSavePending) return;
+    const outcome: TeacherAssessmentOutcome = status;
+    const requestedQuestionIds = new Set(cells.map((cell) => cell.question.id));
+    const targets = questionsRef.current.filter((question) => (
+      requestedQuestionIds.has(question.id) && !question.result?.outcome
+    ));
+    if (targets.length === 0) return;
+    const questionIds = targets.map((question) => question.id);
+    const targetIds = new Set(questionIds);
+    const previousResults = new Map(targets.map((question) => [question.id, question.result] as const));
+    const optimisticQuestions = questionsRef.current.map((question) => targetIds.has(question.id)
+      ? {
+          ...question,
+          result: {
+            outcome,
+            score: quickScoreForOutcome(question, outcome),
+            note: question.result?.note ?? "",
+            updatedAt: new Date().toISOString(),
+          },
+        }
+      : question);
+
+    questionsRef.current = optimisticQuestions;
+    setQuestions(optimisticQuestions);
+    setSummary((current) => teacherAssessmentSummary(paper, optimisticQuestions, current.completedAt));
+    setFillPending(true);
+    setSaveStates((current) => ({
+      ...current,
+      ...Object.fromEntries(questionIds.map((questionId) => [questionId, "saving" as const])),
+    }));
+
+    void fillTeacherAssessmentQuestionsAction({
+      registrationId: data.registrationId,
+      questionIds,
+      outcome,
+    }).then((result) => {
+      setFillPending(false);
+      if (!result.ok) {
+        const restoredQuestions = questionsRef.current.map((question) => (
+          targetIds.has(question.id) && question.result?.outcome === outcome
+            ? { ...question, result: previousResults.get(question.id) ?? null }
+            : question
+        ));
+        questionsRef.current = restoredQuestions;
+        setQuestions(restoredQuestions);
+        setSummary((current) => teacherAssessmentSummary(paper, restoredQuestions, current.completedAt));
+        setSaveStates((current) => ({
+          ...current,
+          ...Object.fromEntries(questionIds.map((questionId) => [questionId, "idle" as const])),
+        }));
+        toast.error(t("fillFailed"));
+        return;
+      }
+
+      const filledIds = new Set(result.data.questionIds);
+      const reconciledQuestions = questionsRef.current.map((question) => (
+        targetIds.has(question.id) && !filledIds.has(question.id)
+          ? { ...question, result: previousResults.get(question.id) ?? null }
+          : question
+      ));
+      questionsRef.current = reconciledQuestions;
+      setQuestions(reconciledQuestions);
+      setSummary(result.data);
+      setSaveStates((current) => ({
+        ...current,
+        ...Object.fromEntries(questionIds.map((questionId) => [
+          questionId,
+          filledIds.has(questionId) ? "saved" as const : "idle" as const,
+        ])),
+      }));
+      setFillUndo(result.data.questionIds.length > 0
+        ? { questionIds: result.data.questionIds, outcome }
+        : null);
+      if (result.data.questionIds.length > 0) {
+        toast.success(t("fillSaved", { count: result.data.questionIds.length }));
+      }
+    });
   };
 
-  const anySaving = observationState === "saving" || Object.values(saveStates).some((state) => state === "saving");
+  const undoLastQuestionFill = () => {
+    if (!fillUndo || fillPending || questionSavePending || summary.completedAt) return;
+    const eligibleQuestions = questionsRef.current.filter((question) => (
+      fillUndo.questionIds.includes(question.id) && question.result?.outcome === fillUndo.outcome
+    ));
+    if (eligibleQuestions.length === 0) {
+      setFillUndo(null);
+      return;
+    }
+    const questionIds = eligibleQuestions.map((question) => question.id);
+    const targetIds = new Set(questionIds);
+    const previousResults = new Map(eligibleQuestions.map((question) => [question.id, question.result] as const));
+    const optimisticQuestions = questionsRef.current.map((question) => targetIds.has(question.id)
+      ? {
+          ...question,
+          result: {
+            outcome: null,
+            score: null,
+            note: question.result?.note ?? "",
+            updatedAt: new Date().toISOString(),
+          },
+        }
+      : question);
+
+    questionsRef.current = optimisticQuestions;
+    setQuestions(optimisticQuestions);
+    setSummary((current) => teacherAssessmentSummary(paper, optimisticQuestions, current.completedAt));
+    setFillPending(true);
+    setSaveStates((current) => ({
+      ...current,
+      ...Object.fromEntries(questionIds.map((questionId) => [questionId, "saving" as const])),
+    }));
+
+    void undoTeacherAssessmentQuestionFillAction({
+      registrationId: data.registrationId,
+      questionIds,
+      outcome: fillUndo.outcome,
+    }).then((result) => {
+      setFillPending(false);
+      if (!result.ok) {
+        const restoredQuestions = questionsRef.current.map((question) => targetIds.has(question.id)
+          ? { ...question, result: previousResults.get(question.id) ?? null }
+          : question);
+        questionsRef.current = restoredQuestions;
+        setQuestions(restoredQuestions);
+        setSummary((current) => teacherAssessmentSummary(paper, restoredQuestions, current.completedAt));
+        setSaveStates((current) => ({
+          ...current,
+          ...Object.fromEntries(questionIds.map((questionId) => [questionId, "saved" as const])),
+        }));
+        toast.error(t("fillUndoFailed"));
+        return;
+      }
+
+      const restoredIds = new Set(result.data.questionIds);
+      const reconciledQuestions = questionsRef.current.map((question) => (
+        targetIds.has(question.id) && !restoredIds.has(question.id)
+          ? { ...question, result: previousResults.get(question.id) ?? null }
+          : question
+      ));
+      questionsRef.current = reconciledQuestions;
+      setQuestions(reconciledQuestions);
+      setSummary(result.data);
+      setSaveStates((current) => ({
+        ...current,
+        ...Object.fromEntries(questionIds.map((questionId) => [
+          questionId,
+          restoredIds.has(questionId) ? "saved" as const : "idle" as const,
+        ])),
+      }));
+      setFillUndo(null);
+      const firstRestoredIndex = reconciledQuestions.findIndex((question) => restoredIds.has(question.id));
+      if (firstRestoredIndex >= 0) setActiveIndex(firstRestoredIndex);
+      if (result.data.questionIds.length > 0) {
+        toast.success(t("fillUndone", { count: result.data.questionIds.length }));
+      }
+    });
+  };
+
+  const anySaving = observationState === "saving" || questionSavePending || fillPending;
   const complete = summary.answeredCount === summary.questionCount;
   const pageMeta = `${grade} · ${paper.title} · ${t("version", { version: paper.versionNo })}`;
 
@@ -408,148 +556,49 @@ function QuestionWorkbench({
         </DashboardCommandPanel>
       )}
     >
-      <div
-        className="flex min-h-0 flex-1 flex-col outline-none"
-        tabIndex={0}
-        onKeyDown={onWorkspaceKeyDown}
-        aria-label={t("workspaceLabel")}
-      >
+      <div className="flex min-h-0 flex-1 flex-col">
         <div className="mb-1 flex min-w-0 items-center justify-between gap-3 text-[11px] text-muted">
           <p className="truncate">{schedule}{data.location ? ` · ${data.location}` : ""}{data.background ? ` · ${data.background}` : ""}</p>
           <p className="hidden shrink-0 md:block">{t("keyboardHint")}</p>
         </div>
 
-        <DesktopQuestionGrid
-          questions={questions}
-          activeIndex={activeIndex}
-          saveStates={saveStates}
-          onActivate={setActiveIndex}
-          onOutcome={chooseOutcome}
-          onScore={updateScore}
-          onNote={updateNote}
-          onRetry={saveQuestion}
-        />
-        <MobileQuestionList
-          questions={questions}
-          activeIndex={activeIndex}
-          saveStates={saveStates}
-          onActivate={setActiveIndex}
-          onOutcome={chooseOutcome}
-          onScore={updateScore}
-          onNote={updateNote}
-          onRetry={saveQuestion}
-        />
-      </div>
-    </DashboardPage>
-  );
-}
-
-interface QuestionListProps {
-  questions: TeacherAssessmentQuestion[];
-  activeIndex: number;
-  saveStates: Record<string, SaveState>;
-  onActivate: (index: number) => void;
-  onOutcome: (question: TeacherAssessmentQuestion, status: LearningCheckStatus) => void;
-  onScore: (question: TeacherAssessmentQuestion, value: string) => void;
-  onNote: (question: TeacherAssessmentQuestion, note: string) => void;
-  onRetry: (question: TeacherAssessmentQuestion) => void;
-}
-
-function DesktopQuestionGrid(props: QuestionListProps) {
-  const t = useTranslations("school.teacherAssessment");
-  const choices = useMemo<LearningCheckQuickChoice<LearningCheckStatus>[]>(() =>
-    LEARNING_CHECK_STATUSES.map((status, index) => ({
-      value: status,
-      visualStatus: status,
-      label: t(`outcome_${status}`),
-      shortcut: status === "unchecked" ? "0" : String(index + 1),
-    })), [t]);
-  const slotCount = Math.max(
-    LEARNING_SEAT_CAPACITY,
-    Math.ceil(props.questions.length / LEARNING_SEAT_COLUMNS) * LEARNING_SEAT_COLUMNS,
-  );
-  const slots = useMemo(
-    () => Array.from({ length: slotCount }, (_, index) => props.questions[index] ?? null),
-    [props.questions, slotCount],
-  );
-  const activeQuestion = props.questions[props.activeIndex] ?? null;
-
-  return (
-    <div className="hidden min-h-0 flex-1 flex-col sm:flex" data-teacher-assessment-layout="shared-learning-check-4x5">
-      {activeQuestion ? (
-        <div
-          className="mb-1 grid shrink-0 grid-cols-[minmax(0,1fr)_6rem_minmax(12rem,0.85fr)] items-center gap-2 border-b border-line/70 pb-1"
-          data-teacher-assessment-active-editor
-        >
-          <p className="min-w-0 truncate text-xs text-ink" title={[activeQuestion.prompt, activeQuestion.knowledgePoint].filter(Boolean).join(" · ")}>
-            <span className="font-medium">{t("questionTitle", { question: activeQuestion.questionNo })}</span>
-            {activeQuestion.knowledgePoint ? <span className="text-muted"> · {activeQuestion.knowledgePoint}</span> : null}
-            <span className="text-muted"> · {activeQuestion.prompt || t("questionFallback", { question: activeQuestion.questionNo })}</span>
-          </p>
-          <div className="flex min-w-0 items-center gap-1">
-            <Input
-              type="number"
-              inputMode="numeric"
-              min={0}
-              max={activeQuestion.maxScore}
-              value={activeQuestion.result?.score ?? ""}
-              disabled={!activeQuestion.result?.outcome}
-              aria-label={t("questionScore", { question: activeQuestion.questionNo })}
-              className="h-8 min-w-0 px-2 text-right font-mono text-xs"
-              onChange={(event) => props.onScore(activeQuestion, event.target.value)}
-            />
-            <span className="shrink-0 font-mono text-[10px] text-muted">/{activeQuestion.maxScore}</span>
-          </div>
-          <Input
-            value={activeQuestion.result?.note ?? ""}
-            maxLength={1000}
-            className="h-8 min-w-0 px-2 text-xs"
-            placeholder={t("notePlaceholder")}
-            aria-label={t("questionNote", { question: activeQuestion.questionNo })}
-            onChange={(event) => props.onNote(activeQuestion, event.target.value)}
-          />
-        </div>
-      ) : null}
-
-      <LearningCheckQuickEntryGrid
-        itemCount={slots.length}
-        data-teacher-assessment-question-grid
-        data-learning-seat-columns={LEARNING_SEAT_COLUMNS}
-      >
-        {slots.map((question, slotIndex) => {
-          if (!question) {
-            return (
-              <span
-                key={`empty-question-slot-${slotIndex}`}
-                className="relative min-h-0 rounded-xl border border-dashed border-line/70 bg-card/20"
-                aria-hidden
-              >
-                <span className="absolute left-2 top-1.5 font-mono text-[9px] text-muted/55">
-                  {String(slotIndex + 1).padStart(2, "0")}
-                </span>
-              </span>
-            );
-          }
-          const outcome = question.result?.outcome ?? null;
-          const visualStatus: LearningCheckStatus = outcome ?? "unchecked";
-          const visualStyle = LEARNING_CHECK_STATUS_STYLE[visualStatus];
-          const saveState = props.saveStates[question.id] ?? "idle";
-          const questionIndex = slotIndex;
-          return (
-            <LearningCheckQuickEntryCard
-              key={question.id}
-              visualStatus={visualStatus}
-              selectedValue={visualStatus}
-              choices={choices}
-              choiceGroupLabel={t("questionTitle", { question: question.questionNo })}
-              disabled={saveState === "saving"}
-              onChoice={(nextOutcome) => props.onOutcome(question, nextOutcome)}
-              onClick={() => props.onActivate(questionIndex)}
-              data-teacher-assessment-question={question.questionNo}
-              data-learning-current-status={visualStatus}
-              aria-current={props.activeIndex === questionIndex ? "true" : undefined}
-              className={props.activeIndex === questionIndex ? "ring-2 ring-crater/40 ring-inset" : undefined}
-              header={(
+        <div className="flex min-h-0 flex-1 flex-col" data-teacher-assessment-entry-surface>
+          <LearningCheckMatrixEntry
+            students={[{
+              id: data.registrationId,
+              label: grade,
+              data: null,
+            }]}
+            questions={questions.map((question, index) => ({
+              id: question.id,
+              label: t("questionTitle", { question: question.questionNo }),
+              slot: index,
+              data: question,
+            }))}
+            orientation="by-student"
+            activeStudentId={data.registrationId}
+            activeQuestionId={questions[activeIndex]?.id ?? null}
+            onActiveStudentChange={() => undefined}
+            onActiveQuestionChange={(questionId) => {
+              const index = questions.findIndex((question) => question.id === questionId);
+              if (index >= 0) setActiveIndex(index);
+            }}
+            statusFor={(_studentId, questionId) => (
+              questions.find((question) => question.id === questionId)?.result?.outcome ?? "unchecked"
+            )}
+            onStatusChange={(cell, status) => chooseOutcome(cell.question.data, status)}
+            isCellPending={(cell) => (
+              fillPending || saveStates[cell.question.id] === "saving"
+            )}
+            mobileChoiceDisplay="label"
+            getCardProps={(cell) => ({
+              "data-teacher-assessment-question": cell.question.data.questionNo,
+            } as HTMLAttributes<HTMLElement>)}
+            renderCardHeader={(cell) => {
+              const question = cell.question.data;
+              const outcome = question.result?.outcome ?? null;
+              const visualStyle = LEARNING_CHECK_STATUS_STYLE[cell.status];
+              return (
                 <div className="flex min-h-8 items-center gap-1 px-1" data-teacher-assessment-question-header>
                   <span className="w-6 shrink-0 text-center font-mono text-[10px] text-muted">{question.questionNo}</span>
                   <span className="min-w-0 flex-1 truncate text-xs font-medium text-ink" title={[question.knowledgePoint, question.prompt].filter(Boolean).join(" · ")}>
@@ -564,103 +613,109 @@ function DesktopQuestionGrid(props: QuestionListProps) {
                   <span className="shrink-0 font-mono text-[9px] text-muted">
                     {question.result?.score ?? "–"}/{question.maxScore}
                   </span>
-                  <QuestionSaveState state={saveState} onRetry={() => props.onRetry(question)} />
+                  <QuestionSaveState state={saveStates[question.id] ?? "idle"} onRetry={() => saveQuestion(question)} />
                 </div>
-              )}
-            />
-          );
-        })}
-      </LearningCheckQuickEntryGrid>
-    </div>
-  );
-}
-
-function MobileQuestionList(props: QuestionListProps) {
-  const t = useTranslations("school.teacherAssessment");
-  return (
-    <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-line sm:hidden">
-      {props.questions.map((question, index) => (
-        <section
-          key={question.id}
-          className={cn("border-b border-line p-3 last:border-b-0", props.activeIndex === index && "bg-moon/10")}
-          onClick={() => props.onActivate(index)}
-        >
-          <div className="flex min-w-0 items-start justify-between gap-2">
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-ink">{t("questionTitle", { question: question.questionNo })}</p>
-              <p className="mt-0.5 text-xs leading-5 text-muted">{question.prompt || t("questionFallback", { question: question.questionNo })}</p>
-              {question.knowledgePoint ? <p className="mt-0.5 text-[11px] text-muted">{question.knowledgePoint}</p> : null}
-            </div>
-            <QuestionSaveState state={props.saveStates[question.id] ?? "idle"} onRetry={() => props.onRetry(question)} />
-          </div>
-          <div className="mt-2" onClick={(event) => event.stopPropagation()}>
-            <OutcomeButtons question={question} onSelect={(outcome) => props.onOutcome(question, outcome)} />
-          </div>
-          <div className="mt-2 grid grid-cols-[6rem_minmax(0,1fr)] gap-2" onClick={(event) => event.stopPropagation()}>
-            <div className="flex items-center gap-1">
-              <Input
-                type="number"
-                inputMode="numeric"
-                min={0}
-                max={question.maxScore}
-                value={question.result?.score ?? ""}
-                disabled={!question.result?.outcome}
-                aria-label={t("questionScore", { question: question.questionNo })}
-                className="h-8 min-w-0 px-2 text-right font-mono text-xs"
-                onChange={(event) => props.onScore(question, event.target.value)}
-              />
-              <span className="font-mono text-[10px] text-muted">/{question.maxScore}</span>
-            </div>
-            <Textarea
-              value={question.result?.note ?? ""}
-              maxLength={1000}
-              className="min-h-8 resize-y py-1.5 text-xs"
-              placeholder={t("notePlaceholder")}
-              aria-label={t("questionNote", { question: question.questionNo })}
-              onChange={(event) => props.onNote(question, event.target.value)}
-            />
-          </div>
-        </section>
-      ))}
-    </div>
-  );
-}
-
-function OutcomeButtons({
-  question,
-  onSelect,
-  compact = false,
-}: {
-  question: TeacherAssessmentQuestion;
-  onSelect: (status: LearningCheckStatus) => void;
-  compact?: boolean;
-}) {
-  const t = useTranslations("school.teacherAssessment");
-  return (
-    <div className={cn("grid grid-cols-3 gap-1", compact && "gap-0.5")}>
-      {LEARNING_CHECK_STATUSES.map((status, index) => {
-        const selected = (question.result?.outcome ?? "unchecked") === status;
-        const statusStyle = LEARNING_CHECK_STATUS_STYLE[status];
-        return (
-          <Button
-            key={status}
-            type="button"
-            variant="secondary"
-            size="sm"
-            aria-pressed={selected}
-            title={`${status === "unchecked" ? 0 : index + 1} · ${t(`outcome_${status}`)}`}
-            className={cn(
-              compact ? "h-6 min-w-0 rounded-md px-1 text-[10px]" : "h-8 min-w-0 rounded-lg px-1 text-[11px]",
-              selected && statusStyle.active,
-            )}
-            onClick={() => onSelect(status)}
-          >
-            <span className="font-mono text-[9px] opacity-70">{status === "unchecked" ? 0 : index + 1}</span>
-            <span className="truncate">{t(`outcomeShort_${status}`)}</span>
-          </Button>
-        );
-      })}
-    </div>
+              );
+            }}
+            renderMobileHeader={(cell) => {
+              const question = cell.question.data;
+              return (
+                <div className="flex min-w-0 items-start justify-between gap-2 px-1">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-ink">{t("questionTitle", { question: question.questionNo })}</p>
+                    <p className="mt-0.5 text-xs leading-5 text-muted">{question.prompt || t("questionFallback", { question: question.questionNo })}</p>
+                    {question.knowledgePoint ? <p className="mt-0.5 text-[11px] text-muted">{question.knowledgePoint}</p> : null}
+                  </div>
+                  <QuestionSaveState state={saveStates[question.id] ?? "idle"} onRetry={() => saveQuestion(question)} />
+                </div>
+              );
+            }}
+            renderMobileDetails={(cell) => {
+              const question = cell.question.data;
+              return (
+                <div className="grid grid-cols-[6rem_minmax(0,1fr)] gap-2 px-1">
+                  <div className="flex items-center gap-1">
+                    <Input
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      max={question.maxScore}
+                      value={question.result?.score ?? ""}
+                      disabled={fillPending || !question.result?.outcome}
+                      aria-label={t("questionScore", { question: question.questionNo })}
+                      className="h-8 min-w-0 px-2 text-right font-mono text-xs"
+                      onChange={(event) => updateScore(question, event.target.value)}
+                    />
+                    <span className="font-mono text-[10px] text-muted">/{question.maxScore}</span>
+                  </div>
+                  <Textarea
+                    value={question.result?.note ?? ""}
+                    disabled={fillPending}
+                    maxLength={1000}
+                    className="min-h-8 resize-y py-1.5 text-xs"
+                    placeholder={t("notePlaceholder")}
+                    aria-label={t("questionNote", { question: question.questionNo })}
+                    onChange={(event) => updateNote(question, event.target.value)}
+                  />
+                </div>
+              );
+            }}
+            renderActiveEditor={({ activeQuestion }) => {
+              const question = activeQuestion?.data;
+              if (!question) return null;
+              return (
+                <div
+                  className="mb-1 hidden shrink-0 grid-cols-[minmax(0,1fr)_6rem_minmax(12rem,0.85fr)] items-center gap-2 border-b border-line/70 pb-1 sm:grid"
+                  data-teacher-assessment-active-editor
+                >
+                  <p className="min-w-0 truncate text-xs text-ink" title={[question.prompt, question.knowledgePoint].filter(Boolean).join(" · ")}>
+                    <span className="font-medium">{t("questionTitle", { question: question.questionNo })}</span>
+                    {question.knowledgePoint ? <span className="text-muted"> · {question.knowledgePoint}</span> : null}
+                    <span className="text-muted"> · {question.prompt || t("questionFallback", { question: question.questionNo })}</span>
+                  </p>
+                  <div className="flex min-w-0 items-center gap-1">
+                    <Input
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      max={question.maxScore}
+                      value={question.result?.score ?? ""}
+                      disabled={fillPending || !question.result?.outcome}
+                      aria-label={t("questionScore", { question: question.questionNo })}
+                      className="h-8 min-w-0 px-2 text-right font-mono text-xs"
+                      onChange={(event) => updateScore(question, event.target.value)}
+                    />
+                    <span className="shrink-0 font-mono text-[10px] text-muted">/{question.maxScore}</span>
+                  </div>
+                  <Input
+                    value={question.result?.note ?? ""}
+                    disabled={fillPending}
+                    maxLength={1000}
+                    className="h-8 min-w-0 px-2 text-xs"
+                    placeholder={t("notePlaceholder")}
+                    aria-label={t("questionNote", { question: question.questionNo })}
+                    onChange={(event) => updateNote(question, event.target.value)}
+                  />
+                </div>
+              );
+            }}
+            fill={{
+              pending: fillPending || questionSavePending,
+              canUndo: canUndoFill,
+              onFill: fillUnansweredQuestions,
+              onUndo: undoLastQuestionFill,
+              labels: (remainingCount) => ({
+                rail: t("fillRail"),
+                remaining: t("fillRemaining", { count: remainingCount }),
+                complete: t("fillComplete"),
+                action: (status) => t("fillAction", { count: remainingCount, status }),
+                undo: t("fillUndo"),
+              }),
+            }}
+          />
+        </div>
+      </div>
+    </DashboardPage>
   );
 }
 
@@ -675,7 +730,7 @@ function SummaryBadge({ label, value }: { label: string; value: string }) {
 
 function QuestionSaveState({ state, onRetry }: { state: SaveState; onRetry: () => void }) {
   const t = useTranslations("school.teacherAssessment");
-  if (state === "saving") return <LoaderCircle className="mx-auto size-3 animate-spin text-muted" aria-label={t("saving")} />;
+  if (state === "queued" || state === "saving") return <LoaderCircle className="mx-auto size-3 animate-spin text-muted" aria-label={t("saving")} />;
   if (state === "saved") return <CircleCheck className="mx-auto size-3 text-leaf-deep" aria-label={t("saved")} />;
   if (state === "error") {
     return (

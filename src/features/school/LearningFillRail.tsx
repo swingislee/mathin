@@ -15,6 +15,14 @@ const FILL_STATUSES = LEARNING_CHECK_STATUSES.filter(
   (status): status is Exclude<LearningCheckStatus, "unchecked"> => status !== "unchecked",
 );
 
+export interface LearningFillRailLabels {
+  rail: string;
+  remaining: string;
+  complete: string;
+  action: (status: string) => string;
+  undo: string;
+}
+
 export function LearningFillRail({
   remainingCount,
   totalCount,
@@ -22,6 +30,7 @@ export function LearningFillRail({
   canUndo,
   onFill,
   onUndo,
+  labels,
 }: {
   remainingCount: number;
   totalCount: number;
@@ -29,18 +38,21 @@ export function LearningFillRail({
   canUndo: boolean;
   onFill: (status: Exclude<LearningCheckStatus, "unchecked">) => void;
   onUndo: () => void;
+  labels?: LearningFillRailLabels;
 }) {
   const t = useTranslations("school.session");
   const completedCount = Math.max(0, totalCount - remainingCount);
   const progress = totalCount > 0 ? completedCount / totalCount : 1;
   const progressOffset = 100 - progress * 100;
   const progressLabel = remainingCount > 0
-    ? t("learningFillRemaining", { count: remainingCount })
-    : t("learningFillComplete");
+    ? labels?.remaining ?? t("learningFillRemaining", { count: remainingCount })
+    : labels?.complete ?? t("learningFillComplete");
+  const railLabel = labels?.rail ?? t("learningFillRail");
+  const undoLabel = labels?.undo ?? t("learningFillUndo");
 
   return (
     <aside
-      aria-label={t("learningFillRail")}
+      aria-label={railLabel}
       className="order-first mb-1 flex w-full shrink-0 items-center border-b border-line pb-1 sm:order-none sm:mb-0 sm:ml-1 sm:w-28 sm:flex-col sm:items-stretch sm:border-b-0 sm:border-l sm:py-1 sm:pb-0 sm:pl-1"
       data-learning-fill-rail
       data-learning-fill-width="112"
@@ -76,11 +88,12 @@ export function LearningFillRail({
             : <Check aria-hidden size={17} className="text-leaf" />}
       </div>
 
-      <div className="ml-1 flex min-w-0 flex-1 gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:ml-0 sm:mt-1 sm:flex-none sm:flex-col sm:gap-1 sm:overflow-visible" role="toolbar" aria-label={t("learningFillRail")}>
+      <div className="ml-1 flex min-w-0 flex-1 gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:ml-0 sm:mt-1 sm:flex-none sm:flex-col sm:gap-1 sm:overflow-visible" role="toolbar" aria-label={railLabel}>
         {FILL_STATUSES.map((status) => {
-          const label = t("learningFillAction", {
+          const statusLabel = t("learningStatus_" + status);
+          const label = labels?.action(statusLabel) ?? t("learningFillAction", {
             count: remainingCount,
-            status: t("learningStatus_" + status),
+            status: statusLabel,
           });
           return (
             <Button
@@ -111,14 +124,14 @@ export function LearningFillRail({
         variant="ghost"
         size="sm"
         disabled={!canUndo || pending}
-        aria-label={t("learningFillUndo")}
-        title={t("learningFillUndo")}
+        aria-label={undoLabel}
+        title={undoLabel}
         onClick={onUndo}
         className="ml-0.5 size-10 shrink-0 justify-center gap-2 rounded-lg border border-transparent p-0 text-xs font-medium text-muted hover:bg-moon/30 hover:text-ink sm:ml-0 sm:mt-auto sm:h-11 sm:w-full sm:justify-start sm:px-2"
         data-learning-fill-undo
       >
         <Undo2 aria-hidden size={18} className="shrink-0" />
-        <span className="sr-only min-w-0 text-left leading-tight sm:not-sr-only">{t("learningFillUndo")}</span>
+        <span className="sr-only min-w-0 text-left leading-tight sm:not-sr-only">{undoLabel}</span>
       </Button>
     </aside>
   );

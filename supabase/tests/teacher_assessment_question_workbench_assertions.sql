@@ -83,8 +83,27 @@ begin
   end;
   if not rejected then raise exception 'TEACHER_ASSESSMENT_ALLOWED_INCOMPLETE'; end if;
 
-  result := public.save_teacher_assessment_question(
-    registration_id, second_question_id, 'incomplete', 0::smallint, 'Time ended'
+  result := public.fill_teacher_assessment_questions(
+    registration_id, array[first_question_id, second_question_id], 'incomplete'
+  );
+  if result ->> 'answeredCount' <> '2'
+     or jsonb_array_length(result -> 'questionIds') <> 1
+     or not ((result -> 'questionIds') ? second_question_id::text)
+     or ((result -> 'questionIds') ? first_question_id::text) then
+    raise exception 'TEACHER_ASSESSMENT_BULK_FILL_INVALID';
+  end if;
+
+  result := public.undo_teacher_assessment_question_fill(
+    registration_id, array[first_question_id, second_question_id], 'incomplete'
+  );
+  if result ->> 'answeredCount' <> '1'
+     or jsonb_array_length(result -> 'questionIds') <> 1
+     or not ((result -> 'questionIds') ? second_question_id::text) then
+    raise exception 'TEACHER_ASSESSMENT_BULK_UNDO_INVALID';
+  end if;
+
+  result := public.fill_teacher_assessment_questions(
+    registration_id, array[second_question_id], 'incomplete'
   );
   result := public.complete_teacher_assessment(registration_id);
   if result ->> 'score' <> '6' or result ->> 'suggestedBand' <> 'a' then

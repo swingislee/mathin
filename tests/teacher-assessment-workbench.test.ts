@@ -86,6 +86,23 @@ describe("teacher question assessment workbench", () => {
     expect(migration).toContain("score between 0 and 10000");
   });
 
+  it("fills only unanswered questions through one atomic RPC and supports one-step undo", () => {
+    const actions = read("src", "features", "school", "teacher-assessment-actions.ts");
+    const migration = read(
+      "supabase",
+      "migrations",
+      "20260904000260_teacher_assessment_bulk_fill.sql",
+    );
+
+    expect(actions).toContain('"fill_teacher_assessment_questions"');
+    expect(actions).toContain('"undo_teacher_assessment_question_fill"');
+    expect(actions).toContain("z.array(uuid).min(1).max(200)");
+    expect(migration).toContain("create or replace function public.fill_teacher_assessment_questions");
+    expect(migration).toContain("create or replace function public.undo_teacher_assessment_question_fill");
+    expect(migration).toContain("if v_existing_outcome is null then");
+    expect(migration).toContain("result.outcome = p_outcome");
+  });
+
   it("keeps the classroom learning-check ratings with explained as the highest level", () => {
     const contract = read("src", "features", "school", "teacher-assessment-contract.ts");
     const statusMigration = read(
@@ -101,25 +118,32 @@ describe("teacher question assessment workbench", () => {
     expect(statusMigration).toContain("when 'not_tested' then 'incomplete'");
   });
 
-  it("reuses the classroom 4 × 5 quick-entry component on tablet and desktop", () => {
+  it("uses the same students × questions matrix as classroom entry instead of maintaining a second renderer", () => {
     const workbench = read("src", "features", "school", "TeacherAssessmentWorkbench.tsx");
     const classroomPanel = read("src", "features", "school", "SessionLearningCheckPanel.tsx");
+    const matrix = read("src", "features", "school", "LearningCheckMatrixEntry.tsx");
     const quickEntryGrid = read("src", "features", "school", "LearningCheckQuickEntryGrid.tsx");
     const page = read("src", "app", "[locale]", "dashboard", "assessments", "[registrationId]", "page.tsx");
     const aggregate = read("src", "features", "school", "AssessmentAggregateWorkbench.tsx");
     const routes = read("src", "features", "school", "dashboard-routes.ts");
 
-    expect(workbench).toContain("<LearningCheckQuickEntryGrid");
-    expect(workbench).toContain("<LearningCheckQuickEntryCard");
-    expect(classroomPanel).toContain("<LearningCheckQuickEntryGrid");
-    expect(classroomPanel).toContain("<LearningCheckQuickEntryCard");
+    expect(workbench).toContain("<LearningCheckMatrixEntry");
+    expect(classroomPanel).toContain("<LearningCheckMatrixEntry");
+    expect(workbench).not.toContain("<LearningCheckQuickEntryGrid");
+    expect(classroomPanel).not.toContain("<LearningCheckQuickEntryGrid");
+    expect(matrix).toContain("<LearningCheckQuickEntryGrid");
+    expect(matrix).toContain("<LearningCheckQuickEntryCard");
+    expect(matrix).toContain("<LearningFillRail");
+    expect(matrix).toContain('"by-question" | "by-student"');
+    expect(matrix).toContain("data-learning-matrix-orientation={orientation}");
+    expect(matrix).toContain("fill.onFill(uncheckedCells, status)");
     expect(quickEntryGrid).toContain("LEARNING_SEAT_CAPACITY");
     expect(quickEntryGrid).toContain("LEARNING_SEAT_COLUMNS");
     expect(quickEntryGrid).toContain("grid-cols-3 auto-rows-[2.75rem]");
-    expect(workbench).toContain('data-teacher-assessment-layout="shared-learning-check-4x5"');
     expect(workbench).toContain("data-teacher-assessment-active-editor");
-    expect(workbench).toContain("sm:hidden");
-    expect(workbench).toContain("OUTCOME_SHORTCUTS");
+    expect(workbench).toContain("data-teacher-assessment-entry-surface");
+    expect(matrix).toContain("sm:hidden");
+    expect(matrix).toContain("STATUS_SHORTCUTS");
     expect(workbench).toContain("notePlaceholder");
     expect(workbench).not.toContain("questionCount: 19");
     expect(workbench).not.toContain("totalScore: 150");
