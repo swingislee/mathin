@@ -2901,7 +2901,7 @@
       "modeAssessment": "Assessment",
       "modeRoster": "Roster",
       "endPublicClass": "End this run",
-      "liveAssessmentHint": "Assessors record against this run's roster. Once an assessment paper is linked, this surface will reuse the per-question matrix.",
+      "liveAssessmentHint": "Assessors use this run's roster to record student performance, learning observations, and recommendations continuously.",
       "liveRosterFullHint": "Support staff handle attendance, walk-ins, and guardian details in this run without maintaining another roster.",
       "runStarted": "The public class has started and all teaching courseware for this run was frozen together.",
       "runEnded": "This public class has ended. On-site records and post-class routing remain editable.",

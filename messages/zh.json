@@ -2901,7 +2901,7 @@
       "modeAssessment": "学生测评",
       "modeRoster": "名单现场",
       "endPublicClass": "结束本场",
-      "liveAssessmentHint": "测评教师直接在本场名单中登记；后续绑定测评卷后，这里将复用逐题矩阵录入。",
+      "liveAssessmentHint": "测评教师使用本场名单连续登记学生的测评表现、学情与老师建议。",
       "liveRosterFullHint": "学辅在同一场中处理到场、临时情况和家长信息，不需要维护另一张名单。",
       "runStarted": "公开课已开始，本场使用的全部授课课件已一起冻结。",
       "runEnded": "本场公开课已结束，可以继续补充现场记录和课后去向。",
