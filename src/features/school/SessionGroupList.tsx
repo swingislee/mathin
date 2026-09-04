@@ -51,6 +51,11 @@ async function SessionRowItem({ classroomId, session, quickManageHref, returnTo 
   );
 }
 
+function sessionDrawerHref(returnTo: string, sessionId: string): string {
+  const separator = returnTo.includes("?") ? "&" : "?";
+  return `${returnTo}${separator}session=${encodeURIComponent(sessionId)}`;
+}
+
 async function SessionGroupSection({ titleKey, count, classroomId, sessions, collapsible, returnTo }: {
   titleKey: string;
   count: number;
@@ -66,7 +71,7 @@ async function SessionGroupSection({ titleKey, count, classroomId, sessions, col
       key={session.id}
       classroomId={classroomId}
       session={session}
-      quickManageHref={`/dashboard/classes/${classroomId}?tab=sessions&session=${session.id}`}
+      quickManageHref={sessionDrawerHref(returnTo, session.id)}
       returnTo={returnTo}
     />)}
   </ul>;
@@ -125,7 +130,7 @@ export async function SessionGroupList({
             <div>
               <h3 className="text-xs font-medium uppercase text-muted">{t("groupNext")}</h3>
               <ul className="mt-2 divide-y divide-line">
-                <SessionRowItem classroomId={classroomId} session={groups.next} quickManageHref={`/dashboard/classes/${classroomId}?tab=sessions&session=${groups.next.id}`} returnTo={returnTo} />
+                <SessionRowItem classroomId={classroomId} session={groups.next} quickManageHref={sessionDrawerHref(returnTo, groups.next.id)} returnTo={returnTo} />
               </ul>
             </div>
           )}

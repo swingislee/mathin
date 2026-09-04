@@ -6,6 +6,7 @@ import {
   type ClassRosterSavedMapping,
   type ClassRosterStudentOption,
   type ClassRosterTargetOption,
+  type MofaxiaoClassRosterImportBatchResult,
   type MofaxiaoClassRosterImportBatchSummary,
 } from "./actions/types";
 
@@ -68,6 +69,23 @@ export async function listRecentMofaxiaoClassRosterImportBatches(
     createdAt: row.created_at,
     completedAt: row.completed_at,
   }));
+}
+
+export async function loadMofaxiaoClassRosterImportBatch(
+  batchId: string,
+): Promise<MofaxiaoClassRosterImportBatchResult | null> {
+  const supabase = await createClient();
+  const runRpc = (supabase.rpc as unknown as (
+    name: string,
+    args: Record<string, unknown>,
+  ) => Promise<{ data: unknown; error: { message: string } | null }>).bind(supabase);
+  const { data, error } = await runRpc("get_mofaxiao_class_roster_import_batch", {
+    p_batch_id: batchId,
+  });
+  // `batch` is optional navigation context. A stale, expired, or inaccessible
+  // URL must leave the import workspace usable; the recent-batch list remains authoritative.
+  if (error || !data) return null;
+  return data as MofaxiaoClassRosterImportBatchResult;
 }
 
 export async function listClassRosterTargetOptions(): Promise<ClassRosterTargetOption[]> {

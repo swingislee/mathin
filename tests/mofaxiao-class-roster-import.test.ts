@@ -235,6 +235,9 @@ describe("魔法校班级学员花名册导入", () => {
     const read = (...segments: string[]) => fs.readFileSync(path.join(root, ...segments), "utf8");
     const action = read("src", "features", "school", "actions", "mofaxiao-class-roster-imports.ts");
     const panel = read("src", "features", "school", "MofaxiaoClassRosterImportPanel.tsx");
+    const rosterPage = read("src", "app", "[locale]", "dashboard", "classes", "import", "roster", "page.tsx");
+    const classPage = read("src", "app", "[locale]", "dashboard", "classes", "[classId]", "page.tsx");
+    const sessionList = read("src", "features", "school", "SessionGroupList.tsx");
     const optionReader = read("src", "features", "school", "class-roster-imports.ts");
     const routes = read("src", "features", "school", "dashboard-routes.ts");
     const migration = read("supabase", "migrations", "20260903000800_mofaxiao_class_roster_import.sql");
@@ -255,6 +258,14 @@ describe("魔法校班级学员花名册导入", () => {
     expect(panel).toContain("defaultMofaxiaoRosterStudentDecision(view.match, canCreateStudents)");
     expect(panel).toContain("preferred?.id ?? (canCreateClasses ? CREATE_DEFAULT_CLASS : \"\")");
     expect(panel).toContain('"bg-rose/5 hover:bg-rose/10"');
+    expect(panel).toContain("reviewClasses = createdClasses.filter");
+    expect(panel).toContain("classRepairHref(batch.batchId, item.id, item.reviewIssues)");
+    expect(panel).toContain("returnTo: `/dashboard/classes/import/roster?batch=${batchId}`");
+    expect(rosterPage).toContain("loadMofaxiaoClassRosterImportBatch(initialBatchId)");
+    expect(classPage).toContain("data-roster-repair-context");
+    expect(classPage).toContain('backLabel={t(isRosterRepair ? "backToRosterImport" : "back")}');
+    expect(classPage).toContain("preserveRosterRepair");
+    expect(sessionList).toContain("sessionDrawerHref(returnTo, session.id)");
     expect(action).toContain('p_source_system: "mofaxiao"');
     expect(optionReader).toContain('.rpc("list_mofaxiao_class_roster_target_options")');
     expect(optionReader).not.toContain('.from("classrooms")');
