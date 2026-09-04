@@ -187,6 +187,9 @@ describe("DEV-SCHOOL-OPS-1 public-class workbench", () => {
     expect(page).toContain('from "@/features/school/public-class-print-contract"');
     expect(page).not.toMatch(/PUBLIC_CLASS_PRINT_KINDS[\s\S]*from "@\/features\/school\/PublicClassPrintView"/);
     expect(print).toContain("window.print()");
+    expect(print).toContain("data-public-class-print-background");
+    expect(print).toContain("print-color-adjust: exact");
+    expect(print).not.toContain("backgroundImage:");
     expect(print).toContain("public-class-print-root");
     expect(page).toContain("getPublicClassWorkbench");
     expect(fs.existsSync(path.join(root, "public", "illustrations", "public-class-print-background-v1.png"))).toBe(true);

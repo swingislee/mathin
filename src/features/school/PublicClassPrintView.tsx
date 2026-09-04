@@ -57,7 +57,14 @@ export function PublicClassPrintView({
         @page { size: A4 portrait; margin: 10mm; }
         body * { visibility: hidden !important; }
         .public-class-print-root, .public-class-print-root * { visibility: visible !important; }
-        .public-class-print-root { position: absolute; inset: 0 auto auto 0; width: 100%; min-height: 100%; }
+        .public-class-print-root {
+          position: absolute;
+          inset: 0 auto auto 0;
+          width: 100%;
+          min-height: 100%;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
         .public-class-print-card { break-inside: avoid; }
       }
     `}</style>
@@ -97,6 +104,20 @@ function SignInSheet({ data, locale, segment }: { data: PublicClassWorkbenchData
   </section>;
 }
 
+function PrintCardBackground({ src }: { src: string }) {
+  if (!src) return null;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- a real image node is required so browsers print it even when background graphics are disabled
+    <img
+      src={src}
+      alt=""
+      aria-hidden
+      className="pointer-events-none absolute inset-0 size-full object-cover"
+      data-public-class-print-background
+    />
+  );
+}
+
 function NameBadges({
   data,
   segment,
@@ -113,9 +134,9 @@ function NameBadges({
     {participants.map((participant) => <article
       key={participant.registrationId}
       className="public-class-print-card relative flex h-[60mm] overflow-hidden border border-slate-300 bg-white"
-      style={{ backgroundImage: `url(${background})`, backgroundPosition: "center", backgroundSize: "cover" }}
     >
-      <div className="m-auto w-[72%] bg-white/90 px-3 py-3 text-center">
+      <PrintCardBackground src={background} />
+      <div className="relative z-10 m-auto w-[72%] bg-white/90 px-3 py-3 text-center">
         <p className="text-[11px] tracking-[0.16em] text-slate-500">{data.activity.title}</p>
         <p className="mt-2 text-3xl font-bold tracking-wider">{participant.name}</p>
         <p className="mt-2 text-sm text-slate-600">{participant.gradeText || (participant.grade ? t("gradeValue", { grade: participant.grade }) : t("gradePending"))} · {segment.title}</p>
@@ -141,14 +162,10 @@ function DeskCards({
       {[false, true].map((flipped) => <div
         key={String(flipped)}
         className="relative flex h-1/2 overflow-hidden"
-        style={{
-          backgroundImage: `url(${background})`,
-          backgroundPosition: "center",
-          backgroundSize: "cover",
-          transform: flipped ? "rotate(180deg)" : undefined,
-        }}
+        style={{ transform: flipped ? "rotate(180deg)" : undefined }}
       >
-        <div className="m-auto w-[76%] bg-white/90 px-3 py-2 text-center">
+        <PrintCardBackground src={background} />
+        <div className="relative z-10 m-auto w-[76%] bg-white/90 px-3 py-2 text-center">
           <p className="text-[10px] tracking-[0.14em] text-slate-500">{data.activity.title}</p>
           <p className="mt-1 text-3xl font-bold tracking-wider">{participant.name}</p>
           <p className="mt-1 text-xs text-slate-600">{participant.gradeText || (participant.grade ? t("gradeValue", { grade: participant.grade }) : "")} · {segment.title}</p>
