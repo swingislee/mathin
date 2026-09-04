@@ -1,6 +1,6 @@
 "use client";
 
-import { LoaderCircle, Settings } from "lucide-react";
+import { LoaderCircle, Settings, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { useAction } from "@/components/action-form";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import {
   archiveClassroomAction,
@@ -39,11 +39,13 @@ export function ClassroomSettingsSheet({
   staffOptions,
   teachingReadiness,
   roomOptions,
+  setupHref,
 }: {
   classroom: ClassroomDetail;
   staffOptions: StaffOption[];
   teachingReadiness: TeachingReadinessRow[];
   roomOptions: RoomOptionV2[];
+  setupHref: string;
 }) {
   const t = useTranslations("school.classes");
   const router = useRouter();
@@ -105,6 +107,9 @@ export function ClassroomSettingsSheet({
           <section className="grid gap-2">
             <h3 className="text-xs font-medium uppercase text-muted">{t("settingsBasicInfo")}</h3>
             <div className="flex flex-wrap gap-2">
+              <Link href={setupHref} onClick={() => setOpen(false)} className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                <Sparkles size={15} />{t("openTeachingSetup")}
+              </Link>
               <ClassroomEditor classroom={classroom} roomOptions={roomOptions} />
               <ClassroomStaffDialog classroomId={classroom.id} staffAssignments={classroom.staffAssignments} staffOptions={staffOptions} />
               <ConsumeRuleDialog classroomId={classroom.id} />

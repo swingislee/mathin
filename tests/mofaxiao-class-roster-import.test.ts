@@ -262,10 +262,12 @@ describe("魔法校班级学员花名册导入", () => {
     expect(panel).toContain("classRepairHref(batch.batchId, item.id, item.reviewIssues)");
     expect(panel).toContain("returnTo: `/dashboard/classes/import/roster?batch=${batchId}`");
     expect(rosterPage).toContain("loadMofaxiaoClassRosterImportBatch(initialBatchId)");
-    expect(classPage).toContain("data-roster-repair-context");
+    expect(classPage).toContain("<ClassroomSetupWorkspace");
+    expect(classPage).toContain('activeTab === "setup"');
     expect(classPage).toContain('backLabel={t(isRosterRepair ? "backToRosterImport" : "back")}');
     expect(classPage).toContain("preserveRosterRepair");
     expect(sessionList).toContain("sessionDrawerHref(returnTo, session.id)");
+    expect(panel).toContain('tab: "setup"');
     expect(action).toContain('p_source_system: "mofaxiao"');
     expect(optionReader).toContain('.rpc("list_mofaxiao_class_roster_target_options")');
     expect(optionReader).not.toContain('.from("classrooms")');

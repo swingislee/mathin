@@ -1,4 +1,3 @@
-import { CircleAlert } from "lucide-react";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -10,10 +9,10 @@ import {
   ClassroomRisks,
   ClassroomSummary,
 } from "@/features/school/ClassroomAsidePanels";
-import { ClassroomEditor } from "@/features/school/ClassroomEditor";
 import { ClassroomSettingsSheet } from "@/features/school/ClassroomSettingsSheet";
-import { ClassroomStaffDialog } from "@/features/school/ClassroomStaffDialog";
+import { ClassroomSetupWorkspace } from "@/features/school/ClassroomSetupWorkspace";
 import type { MofaxiaoClassRosterReviewIssue } from "@/features/school/actions/types";
+import { loadClassroomImportSetupContext } from "@/features/school/class-roster-imports";
 import {
   getClassroomDetailForScope,
   getClassroomOperationalEvents,
@@ -57,7 +56,7 @@ import {
 } from "@/features/school/organization-locations";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const TABS = ["sessions", "students", "readiness", "records"] as const;
+const TABS = ["setup", "sessions", "students", "readiness", "records"] as const;
 const ROSTER_REPAIR_ISSUES = ["course", "teacher", "room", "schedule"] as const satisfies readonly MofaxiaoClassRosterReviewIssue[];
 type Tab = (typeof TABS)[number];
 
@@ -108,9 +107,8 @@ async function ClassDetailBody({
   const [{ classId }, rawSearchParams, { user, environment }] = await Promise.all([params, searchParams, requireDashboardEnvironment(locale, ["staff"])]);
   if (!UUID_PATTERN.test(classId)) notFound();
 
-  const [t, tImport, classroom, perms, allWorkItems, roomOptions, timeZone, scheduleDefaults] = await Promise.all([
+  const [t, classroom, perms, allWorkItems, roomOptions, timeZone, scheduleDefaults] = await Promise.all([
     getTranslations("school.classes"),
-    getTranslations("school.classRosterImport"),
     getClassroomDetailForScope(classId),
     getMyPerms(user.id),
     listMyWorkItems(),
@@ -123,14 +121,6 @@ async function ClassDetailBody({
   const isManagementView = classroom.capabilities.canManageClassroom;
   const isTeachingView = classroom.capabilities.canPrepareTeaching;
   const canViewClassroom = classroom.capabilities.canViewClassroom;
-  const defaultTab: Tab = isManagementView || isTeachingView ? "sessions" : "students";
-  const requestedTab = first(rawSearchParams.tab);
-  const activeTab: Tab = TABS.includes(requestedTab as Tab) ? (requestedTab as Tab) : defaultTab;
-
-  const requestedSessionId = first(rawSearchParams.session);
-  const activeSession = requestedSessionId && UUID_PATTERN.test(requestedSessionId)
-    ? classroom.sessions.find((session) => session.id === requestedSessionId) ?? null
-    : null;
   // doc24 §6：班级从班级列表、今日工作、课表、课程使用情况、学生档案的"在读班级"
   // 五处进入。tabHref 与抽屉的 closeHref 都必须把来源带上，否则用户切一次 Tab、
   // 或者关一次课次抽屉，返回就悄悄退回班级列表。
@@ -139,12 +129,24 @@ async function ClassDetailBody({
   const isRosterRepair = requestedRepairIssues.length > 0
     && Boolean(returnTo?.startsWith("/dashboard/classes/import/roster"));
   const repairIssues = isRosterRepair ? requestedRepairIssues : [];
+  const visibleTabs: readonly Tab[] = isManagementView ? TABS : TABS.filter((tab) => tab !== "setup");
+  const defaultTab: Tab = isManagementView || isTeachingView ? "sessions" : "students";
+  const requestedTab = first(rawSearchParams.tab);
+  const activeTab: Tab = visibleTabs.includes(requestedTab as Tab) ? (requestedTab as Tab) : defaultTab;
+
+  const requestedSessionId = first(rawSearchParams.session);
+  const activeSession = requestedSessionId && UUID_PATTERN.test(requestedSessionId)
+    ? classroom.sessions.find((session) => session.id === requestedSessionId) ?? null
+    : null;
   const tabHref = (tab: Tab) => preserveReturnTo(
     preserveRosterRepair(`/dashboard/classes/${classId}?tab=${tab}`, repairIssues),
     returnTo,
   );
   const closeHref = tabHref(activeTab);
   const staffOptions = isManagementView ? await listStaffOptions() : [];
+  const importSetupContext = isManagementView && activeTab === "setup"
+    ? await loadClassroomImportSetupContext(classId)
+    : null;
 
   const classroomSessionIds = new Set(classroom.sessions.map((session) => session.id));
   const sessionWorkItems = allWorkItems.filter((item) => item.primaryObjectType === "session" && classroomSessionIds.has(item.primaryObjectId));
@@ -200,7 +202,7 @@ async function ClassDetailBody({
           <DashboardCommandPanel>
             <DashboardCommandState>
               <ObjectTabs
-                items={TABS.map((tab) => ({ value: tab, label: t(`tab_${tab}`), href: tabHref(tab) }))}
+                items={visibleTabs.map((tab) => ({ value: tab, label: t(`tab_${tab}`), href: tabHref(tab) }))}
                 activeValue={activeTab}
                 ariaLabel={t("tabsLabel")}
               />
@@ -208,7 +210,7 @@ async function ClassDetailBody({
             {(primaryAction || isManagementView) ? (
               <DashboardCommandActions>
                 {primaryAction}
-                {isManagementView ? <ClassroomSettingsSheet classroom={classroom} staffOptions={staffOptions} teachingReadiness={teachingReadiness} roomOptions={roomOptions} /> : null}
+                {isManagementView ? <ClassroomSettingsSheet classroom={classroom} staffOptions={staffOptions} teachingReadiness={teachingReadiness} roomOptions={roomOptions} setupHref={tabHref("setup")} /> : null}
               </DashboardCommandActions>
             ) : null}
           </DashboardCommandPanel>
@@ -221,36 +223,16 @@ async function ClassDetailBody({
         */}
         <DashboardContentGrid>
           <DashboardMainColumn>
-            {isRosterRepair ? (
-              <section data-roster-repair-context role="status" className="rounded-2xl border border-amber-500/35 bg-amber-500/5 p-5">
-                <div className="flex items-start gap-3">
-                  <CircleAlert className="mt-0.5 size-5 shrink-0 text-amber-700 dark:text-amber-300" aria-hidden />
-                  <div className="min-w-0">
-                    <h2 className="text-base font-medium text-ink">{t("importRepairTitle")}</h2>
-                    <p className="mt-1 text-sm leading-6 text-muted">{t("importRepairDescription")}</p>
-                  </div>
-                </div>
-                <ul className="mt-4 grid gap-2">
-                  {repairIssues.map((issue) => (
-                    <li key={issue} className="rounded-xl border border-line bg-card px-3 py-2.5 text-sm">
-                      <p className="font-medium text-ink">{tImport(`classIssue_${issue}`)}</p>
-                      <p className="mt-0.5 text-xs leading-5 text-muted">
-                        {issue === "course" ? t("importRepairCourse", { course: classroom.courseTitle ?? t("freeClass") }) : null}
-                        {issue === "teacher" ? t("importRepairTeacher", { teacher: classroom.primaryTeacherName ?? t("noPrimaryTeacher") }) : null}
-                        {issue === "room" ? t("importRepairRoom", { room: classroom.defaultRoomName ?? t("roomTbd") }) : null}
-                        {issue === "schedule" ? t("importRepairSchedule", { count: classroom.sessions.length }) : null}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-                {isManagementView && (repairIssues.includes("teacher") || repairIssues.includes("room")) ? (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {repairIssues.includes("room") ? <ClassroomEditor classroom={classroom} roomOptions={roomOptions} /> : null}
-                    {repairIssues.includes("teacher") ? <ClassroomStaffDialog classroomId={classroom.id} staffAssignments={classroom.staffAssignments} staffOptions={staffOptions} /> : null}
-                  </div>
-                ) : null}
-                <p className="mt-3 text-xs leading-5 text-muted">{t("importRepairHint")}</p>
-              </section>
+            {activeTab === "setup" && isManagementView ? (
+              <ClassroomSetupWorkspace
+                classroom={classroom}
+                staffOptions={staffOptions}
+                roomOptions={roomOptions}
+                defaultDurationMinutes={scheduleDefaults.defaultDurationMinutes}
+                timeZone={timeZone}
+                importContext={importSetupContext}
+                returnTo={isRosterRepair ? returnTo : null}
+              />
             ) : null}
             {activeTab === "sessions" && (
               <SessionGroupList

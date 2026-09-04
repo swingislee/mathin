@@ -85,7 +85,7 @@ function classRepairHref(
   reviewIssues: MofaxiaoClassRosterImportBatchResult["createdClasses"][number]["reviewIssues"],
 ): string {
   const query = new URLSearchParams({
-    tab: "sessions",
+    tab: "setup",
     repair: reviewIssues.join(","),
     returnTo: `/dashboard/classes/import/roster?batch=${batchId}`,
   });
