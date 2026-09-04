@@ -1,6 +1,8 @@
 # DEV-WEB-PUSH-1 · PUSH-P5 生产暗部署写前证据
 
-> **结论**：`READY FOR EXPLICITLY AUTHORIZED EXECUTION / PRODUCTION UNCHANGED / EMPLOYEE TEST NOT AUTHORIZED`。2026-09-03～2026-09-04 已完成最终候选冻结、Xiaomi 生产只读 preflight、新鲜 PostgreSQL 写前备份、两条 additive migration 的完整回滚与独立零残留检查。实际 app 原子发布、schema formal 和联合 postflight 尚未执行；当前生产仍运行原 release，Web Push feature/integration/cohort/subscription/delivery/job 均未建立或启用。
+> **当前结论（2026-09-04）**：`NEW CANDIDATE READ-ONLY PREFLIGHT PASSED / FRESH BACKUP AND REHEARSAL REQUIRED / PRODUCTION UNCHANGED / EMPLOYEE TEST NOT AUTHORIZED`。产品负责人完成桌面提醒 UI 人工验收后，候选更新为 `c2ff15cf1539d46296a353b21c877c50dc7d2546`；上一候选的备份与 rehearsal 仍是有效附加恢复证据，但不能作为新候选的最终写前门。
+>
+> **历史结论（`f5cd95e…`）**：`READY FOR EXPLICITLY AUTHORIZED EXECUTION / PRODUCTION UNCHANGED / EMPLOYEE TEST NOT AUTHORIZED`。2026-09-03～2026-09-04 已完成当时候选冻结、Xiaomi 生产只读 preflight、新鲜 PostgreSQL 写前备份、两条 additive migration 的完整回滚与独立零残留检查。实际 app 原子发布、schema formal 和联合 postflight 未执行；当前生产仍运行原 release，Web Push feature/integration/cohort/subscription/delivery/job 均未建立或启用。
 
 | 字段 | 值 |
 | --- | --- |
@@ -15,6 +17,17 @@
 | `rollback_rehearsal` | 以 Git archive LF 原文和 `supabase_admin` 在 `SERIALIZABLE` 事务执行两条 migration、ledger insert、`web_push_assertions.sql` 与业务/Storage 不变量后 rollback；新连接确认 ledger/head=`242/00700`、candidate row=`0`、候选对象/集成=`0`、所有冻结计数及错误基线不变 |
 | `candidate_validation` | 冻结 lockfile 安装通过；Bash syntax、受影响 ESLint、TypeScript、双语键、定向 Vitest 9/9、固定员工/管理员暗态 Playwright 2/2、两次 production build 通过。Playwright 证明 permission request=`0`、Service Worker registration=`0`、开启按钮禁用、8 项 Web Push 指标=`0`、integration disabled |
 | `failure_ticket` | 首次 migration archive staging 因 PowerShell 对远端变量转义错误，在远端目录/上传前失败；只读检查确认零残留，随后改用 UTF-8 base64 远端脚本并成功上传。首次生产 app publish 调用被执行安全门拒绝，理由是需要用户再次明确批准真实生产重启与切换；未绕过、未执行 app/schema 写入 |
+
+## 2026-09-04 · UI 验收后的候选刷新
+
+- `candidate_commit=c2ff15cf1539d46296a353b21c877c50dc7d2546`，候选工作树干净；相对 production current `8c50b48a8c4d69c6bad3fb3858bfd008dfa5b800` 只包含 `DEV-WEB-PUSH-1` 的三个提交。两条 migration 规范化 SHA-256 仍为 `c2154485…21ab` / `eb4a0e6e…e29c`，没有 schema 原文变化。
+- 候选定向 ESLint、TypeScript、Vitest 17/17、暗态 Playwright 2/2、双语键 `6360 × 2` 与 production build 通过；产品负责人已确认账号设置二级菜单与铃铛标题栏桌面提醒开关布局通过。
+- 2026-09-04T08:55:29+08:00 前完成新鲜只读 preflight：执行主机 `WHITEHOUSE`，本地 Supabase origin=`http://127.0.0.1:35421` 且 loopback listener 存在；SSH `xiaomi → 192.168.5.183`，远端主机=`xiaomi`，生产应用/Supabase origin=`https://mathin.club` / `https://supabase.mathin.club`，数据库指纹仍为 `10e3f97e…21a0c`。
+- production current/previous 仍为 `20260903-115645` / `8c50b48…` 与 `20260903-100016` / `750bd607…`；`mathin.service=active`、`NRestarts=0`、`ExecMainStatus=0`，loopback/Caddy/公网 health 正常，Supabase Auth gateway 无 key 返回预期 `401`，最近 60 分钟 journal error 行=`0`。`mathin-jobs.service=not-found/inactive`，deploy/backup lock 均空闲，service/backup disk=`47%/27%`。
+- 严格 `REPEATABLE READ READ ONLY` 数据库快照通过：ledger/head=`242 / 20260903000700_courseware_page_insertions`，候选 ledger row=`0`；profiles/students/classrooms/sessions=`14/10/5/38`，notifications/deliveries/jobs=`193/193/3`，pending/running/dead=`3/0/0`；未来两小时课次和其他 active DB connection 均=`0`。Storage objects/bytes=`126428/51632996423`，`operational_errors=1959`、latest=`2026-09-02T08:25:03.669Z`，与上一 preflight 完全一致。
+- Web Push 暗态无半应用：feature/integration row=`0/0`，subscription/rollout table=`absent/absent`，候选 RPC=`0`，Web Push delivery/job=`0/0`。生产仍未变更。
+- 上一候选备份 `mathin-db-prechange-20260903T155605Z-employee-web-push-f5cd95e08a68` 的 5 项 `sha256sum -c` 全部通过，已验证 TOC=`4571` 行；manifest 绑定 `f5cd95e…` 且不含 `c2ff15cf…`。因此它只作为附加恢复点保留，新候选进入写态前必须创建绑定 `c2ff15cf…` 的新鲜 PostgreSQL 备份，并用相同 migration 原文重跑完整 rollback/独立零残留 rehearsal。
+- 前两次远端 preflight 编排分别因 Bash 引号和环境行解析在 `docker exec/psql` 前退出；没有数据库访问或生产写入。最终命令以 transaction read-only=`on` 完整返回。宿主机没有 `pg_restore`，TOC 行数改为读取已经 SHA 校验的 `database.toc`，没有降低备份校验范围。
 
 ## 已登记但不阻断关闭态 P5 的问题
 
