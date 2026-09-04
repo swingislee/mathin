@@ -1856,6 +1856,8 @@
         "periodAriaLabel": "统计周期",
         "period_week": "按周",
         "period_month": "按月",
+        "dataNoteTrigger": "查看数据口径与来源",
+        "dataNoteTitle": "数据口径与来源",
         "currentPeriod": "本期截至",
         "previousPeriod": "上期同期",
         "scope": "数据范围",

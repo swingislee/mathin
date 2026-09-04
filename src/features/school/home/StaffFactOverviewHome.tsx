@@ -1,19 +1,20 @@
 import type { ReactNode } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { getTranslations } from "next-intl/server";
-import { Badge } from "@/components/ui/badge";
 import { NotificationFocus } from "@/features/events/NotificationFocus";
 import {
+  DashboardCommandActions,
   DashboardCommandPanel,
   DashboardCommandState,
   DashboardCommandTabs,
-  DashboardPage,
 } from "@/features/school/dashboard-page";
+import { ObjectBar, ObjectWorkspace } from "@/features/school/object-workspace";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import type { HomeProps } from "./shared";
 import { staffHomeHref } from "./staff-home-contract";
 import { StaffHomeViewTabs } from "./StaffHomeViewTabs";
+import { StaffOverviewDataNote } from "./StaffOverviewDataNote";
 import {
   getStaffOverviewData,
   type StaffOverviewBusinessFact,
@@ -642,6 +643,7 @@ function gradeCapacityRows(
 
 export async function StaffFactOverviewHome({
   locale,
+  profile,
   focusTarget,
   grain,
   workItemCount,
@@ -650,7 +652,8 @@ export async function StaffFactOverviewHome({
   grain: StaffOverviewGrain;
   workItemCount: number;
 }) {
-  const [t, hubT, data] = await Promise.all([
+  const [schoolT, t, hubT, data] = await Promise.all([
+    getTranslations("school"),
     getTranslations("school.home.overview"),
     getTranslations("school.home.staffHub"),
     getStaffOverviewData({ grain }),
@@ -664,6 +667,11 @@ export async function StaffFactOverviewHome({
     minute: "2-digit",
     timeZone: data.timeZone,
   }).format(new Date(data.generatedAt));
+  const dateLine = new Intl.DateTimeFormat(locale, {
+    dateStyle: "full",
+    timeZone: data.timeZone,
+  }).format(new Date(data.generatedAt));
+  const greeting = schoolT("home.staffGreeting", { name: profile?.displayName || "" });
   const sourceNames = (sources: StaffOverviewSourceKey[]) => sources.map((source) => t(`source_${source}`)).join(t("listSeparator"));
   const limitedSources = Array.from(new Set([...data.unavailableSources, ...data.truncatedSources]));
   const sourceDetail = [
@@ -691,22 +699,13 @@ export async function StaffFactOverviewHome({
   };
 
   return (
-    <DashboardPage
-      title={t("title")}
-      eyebrow={t("eyebrow")}
-      meta={(
-        <>
-          <span>{t("currentPeriod")} {currentRange}</span>
-          <span aria-hidden>·</span>
-          <span>{t("previousPeriod")} {previousRange}</span>
-          <span aria-hidden>·</span>
-          <span>{t("generatedAt")} {generatedAt}</span>
-          <Badge variant={limitedSources.length > 0 ? "outline" : "secondary"} title={sourceDetail || t("allSourcesAvailable")}>
-            {limitedSources.length > 0 ? t("dataLimitedShort", { count: limitedSources.length }) : t("dataReadyShort")}
-          </Badge>
-        </>
+    <ObjectWorkspace
+      objectBar={(
+        <ObjectBar
+          title={greeting}
+          context={[{ value: hubT("overviewView") }, { value: dateLine }]}
+        />
       )}
-      density="compact"
       commandPanel={(
         <DashboardCommandPanel className="min-h-12 py-1.5">
           <DashboardCommandState>
@@ -721,12 +720,25 @@ export async function StaffFactOverviewHome({
             <span aria-hidden className="hidden h-6 w-px bg-line @xl/page:block" />
             <DashboardCommandTabs items={periodTabs} activeValue={grain} ariaLabel={t("periodAriaLabel")} />
           </DashboardCommandState>
+          <DashboardCommandActions>
+            <StaffOverviewDataNote
+              triggerLabel={t("dataNoteTrigger")}
+              title={t("dataNoteTitle")}
+              rows={[
+                { label: t("currentPeriod"), value: currentRange },
+                { label: t("previousPeriod"), value: previousRange },
+                { label: t("generatedAt"), value: generatedAt },
+              ]}
+              status={limitedSources.length > 0 ? t("dataLimitedShort", { count: limitedSources.length }) : t("dataReadyShort")}
+              statusDetail={sourceDetail || t("allSourcesAvailable")}
+              limited={limitedSources.length > 0}
+            />
+          </DashboardCommandActions>
         </DashboardCommandPanel>
       )}
-      bodyClassName="pb-3"
-      contentClassName="min-h-0"
+      density="compact"
     >
-      <div className="space-y-2">
+      <div className="min-h-0 space-y-2 pb-3">
         <NotificationFocus target={focusTarget} />
 
         <BusinessFactBand
@@ -797,6 +809,6 @@ export async function StaffFactOverviewHome({
           </div>
         </div>
       </div>
-    </DashboardPage>
+    </ObjectWorkspace>
   );
 }

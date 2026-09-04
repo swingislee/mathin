@@ -21,7 +21,9 @@ test("staff homepage prioritizes per-person business and class capacity across s
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await loginWithFixedAccount(page, admin, "/zh/dashboard");
-  await expect(page.getByRole("heading", { name: "业务数据总览", exact: true })).toBeVisible();
+  const sharedHomeTitle = page.getByRole("heading", { level: 1 });
+  await expect(sharedHomeTitle).toHaveText(/^你好，/);
+  const sharedHomeTitleText = await sharedHomeTitle.textContent();
   await expect(page.getByRole("navigation", { name: "首页视图" }).getByRole("link", { name: "数据总览", exact: true }))
     .toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("navigation", { name: "统计周期" }).getByRole("link", { name: "按周" }))
@@ -31,9 +33,17 @@ test("staff homepage prioritizes per-person business and class capacity across s
   await expect(page.getByRole("heading", { name: "按年级", exact: true })).toBeVisible();
   await expectPrimarySectionsInViewport(page);
   await expectNoPageOverflow(page);
+  await page.getByRole("button", { name: "查看数据口径与来源", exact: true }).click();
+  const dataNote = page.getByRole("dialog", { name: "数据口径与来源", exact: true });
+  await expect(dataNote.getByRole("heading", { name: "数据口径与来源", exact: true })).toBeVisible();
+  await expect(dataNote.getByText("本期截至", { exact: true })).toBeVisible();
+  await expect(dataNote.getByText("上期同期", { exact: true })).toBeVisible();
+  await expect(dataNote.getByText("生成时间", { exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
 
   await page.getByRole("navigation", { name: "首页视图" }).getByRole("link", { name: /^今日工作/ }).click();
   await expect(page).toHaveURL(/\/zh\/dashboard\?view=work$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(sharedHomeTitleText ?? "");
   await expect(page.getByRole("heading", { name: "本周关键数据", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "我的工作", exact: true })).toBeVisible();
 
@@ -55,7 +65,7 @@ test("staff homepage prioritizes per-person business and class capacity across s
 
   await page.setViewportSize({ width: 1024, height: 768 });
   await page.reload({ waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("heading", { name: "业务数据总览", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^你好，/);
   await expectNoPageOverflow(page);
 
   await page.setViewportSize({ width: 390, height: 844 });
@@ -71,7 +81,7 @@ test("staff homepage prioritizes per-person business and class capacity across s
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/en/dashboard?view=overview&period=month");
-  await expect(page.getByRole("heading", { name: "Business data overview", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^Hello,/);
   await expect(page.getByRole("heading", { name: "Learning-support full cycle", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Teacher participation and enrollment", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Class capacity facts", exact: true })).toBeVisible();
@@ -98,5 +108,5 @@ test("teacher starts from today's work and can open the full data overview", asy
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByRole("navigation", { name: "首页视图" }).getByRole("link", { name: "数据总览", exact: true }).click();
   await expect(page).toHaveURL(/\/zh\/dashboard\?view=overview&period=week$/);
-  await expect(page.getByRole("heading", { name: "业务数据总览", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^你好，/);
 });

@@ -1856,6 +1856,8 @@
         "periodAriaLabel": "Reporting period",
         "period_week": "Weekly",
         "period_month": "Monthly",
+        "dataNoteTrigger": "View data scope and sources",
+        "dataNoteTitle": "Data scope and sources",
         "currentPeriod": "Current period through",
         "previousPeriod": "Previous period, same progress",
         "scope": "Data scope",

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { DashboardPageBody } from "@/features/school/dashboard-page/DashboardPageBody";
 import { DashboardPageChrome } from "@/features/school/dashboard-page/DashboardPageChrome";
+import type { DashboardPageDensity } from "@/features/school/dashboard-page/dashboard-page.types";
 import { cn } from "@/lib/utils";
 
 /**
@@ -31,6 +32,7 @@ export function ObjectWorkspace({
   statusStrip,
   children,
   scroll = "ambient",
+  density = "default",
   className,
 }: {
   objectBar: ReactNode;
@@ -42,6 +44,7 @@ export function ObjectWorkspace({
   statusStrip?: ReactNode;
   children: ReactNode;
   scroll?: "ambient" | "internal";
+  density?: DashboardPageDensity;
   className?: string;
 }) {
   const chrome = (
@@ -74,7 +77,7 @@ export function ObjectWorkspace({
   return (
     <div data-object-workspace="ambient" className={cn("@container/workspace w-full min-w-0", className)}>
       {chrome}
-      <DashboardPageBody density="default">
+      <DashboardPageBody density={density}>
         {children}
         {statusStrip}
       </DashboardPageBody>
