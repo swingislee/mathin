@@ -87,6 +87,7 @@ describe("narrow classroom layout", () => {
   it("uses a dense mobile learning list while preserving the spatial seat grid from tablet upward", () => {
     const shell = source("src/features/classroom/live/LiveShell.tsx");
     const panel = source("src/features/school/SessionLearningCheckPanel.tsx");
+    const quickEntryGrid = source("src/features/school/LearningCheckQuickEntryGrid.tsx");
     const fillRail = source("src/features/school/LearningFillRail.tsx");
     const roster = source("src/features/classroom/live/ClassroomRosterGrid.tsx");
 
@@ -96,7 +97,9 @@ describe("narrow classroom layout", () => {
     expect(panel).toContain("data-learning-mobile-list");
     expect(panel).toContain("data-learning-mobile-row");
     expect(panel).toContain('className="hidden min-h-8 shrink-0 px-2.5 text-xs sm:inline-flex"');
-    expect(panel).toContain('"hidden min-h-0 min-w-0 flex-1 gap-0.5 sm:grid"');
+    expect(panel).toContain("<LearningCheckQuickEntryGrid");
+    expect(panel).toContain('className="hidden sm:grid"');
+    expect(quickEntryGrid).toContain('"grid min-h-0 min-w-0 flex-1 gap-0.5"');
     expect(fillRail).toContain('data-learning-fill-layout="mobile-row-desktop-rail"');
     expect(fillRail).toContain("sm:flex-col");
     expect(roster).toContain('data-roster-density="44px-rows-2px-gap"');

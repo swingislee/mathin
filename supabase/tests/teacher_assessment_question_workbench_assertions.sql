@@ -48,13 +48,13 @@ begin
     paper_version_id, position, question_no, prompt, knowledge_point, max_score, quick_scores
   ) values (
     version_id, 1, '1', 'First question', 'Number sense', 6,
-    '{"independent":6,"prompted":4,"partial":2,"unable":0,"not_tested":null}'::jsonb
+    '{"explained":6,"independent":6,"prompted":4,"imitated":2,"incomplete":0}'::jsonb
   ) returning id into first_question_id;
   insert into public.assessment_paper_questions(
     paper_version_id, position, question_no, prompt, knowledge_point, max_score, quick_scores
   ) values (
     version_id, 2, '2', 'Second question', 'Reasoning', 4,
-    '{"independent":4,"prompted":3,"partial":2,"unable":0,"not_tested":null}'::jsonb
+    '{"explained":4,"independent":4,"prompted":3,"imitated":2,"incomplete":0}'::jsonb
   ) returning id into second_question_id;
   update public.assessment_paper_versions
      set status = 'published', published_at = now()
@@ -62,7 +62,7 @@ begin
 
   perform public.bind_teacher_assessment_paper(registration_id, version_id);
   result := public.save_teacher_assessment_question(
-    registration_id, first_question_id, 'independent', 6::smallint, 'Clear reasoning'
+    registration_id, first_question_id, 'explained', 6::smallint, 'Clear reasoning'
   );
   if result ->> 'answeredCount' <> '1'
      or result ->> 'questionCount' <> '2'
@@ -84,7 +84,7 @@ begin
   if not rejected then raise exception 'TEACHER_ASSESSMENT_ALLOWED_INCOMPLETE'; end if;
 
   result := public.save_teacher_assessment_question(
-    registration_id, second_question_id, 'not_tested', null::smallint, 'Time ended'
+    registration_id, second_question_id, 'incomplete', 0::smallint, 'Time ended'
   );
   result := public.complete_teacher_assessment(registration_id);
   if result ->> 'score' <> '6' or result ->> 'suggestedBand' <> 'a' then

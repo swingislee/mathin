@@ -256,6 +256,7 @@ describe("R1 classroom continuity contracts", () => {
     const controlMenus = read("src/features/classroom/live/ClassroomControlMenus.tsx");
     const video = read("src/features/classroom/live/VideoStage.tsx");
     const panel = read("src/features/school/SessionLearningCheckPanel.tsx");
+    const quickEntryGrid = read("src/features/school/LearningCheckQuickEntryGrid.tsx");
     const fillRail = read("src/features/school/LearningFillRail.tsx");
     const statusIcons = read("src/features/school/LearningCheckStatusIcon.tsx");
     const learningSetup = read("src/features/school/session-learning.ts");
@@ -290,7 +291,7 @@ describe("R1 classroom continuity contracts", () => {
     expect(LEARNING_SEAT_COLUMNS).toBe(4);
     expect(LEARNING_SEAT_ROWS).toBe(5);
     expect(panel).toContain("data-learning-seat-columns={LEARNING_SEAT_COLUMNS}");
-    expect(panel).toContain("repeat(${LEARNING_SEAT_COLUMNS}");
+    expect(quickEntryGrid).toContain("repeat(${LEARNING_SEAT_COLUMNS}");
     expect(panel).not.toContain("grid-cols-5");
     expect(panel).toContain("data-learning-seat-index");
     expect(panel).toContain("data-learning-empty-seat");
@@ -298,9 +299,9 @@ describe("R1 classroom continuity contracts", () => {
     expect(panel).toContain('data-learning-seat-layer="student"');
     expect(panel).toContain("gridColumnStart: (seatPosition % LEARNING_SEAT_COLUMNS) + 1");
     expect(panel).toContain("gridRowStart: Math.floor(seatPosition / LEARNING_SEAT_COLUMNS) + 1");
-    expect(panel).toContain("auto-rows-[minmax(0,1fr)] overflow-y-hidden");
-    expect(panel).toContain("auto-rows-[minmax(7.75rem,1fr)] overflow-y-auto pr-1");
-    expect(panel).toContain("overflow-y-auto pr-1");
+    expect(quickEntryGrid).toContain("auto-rows-[minmax(0,1fr)] overflow-y-hidden");
+    expect(quickEntryGrid).toContain("auto-rows-[minmax(7.75rem,1fr)] overflow-y-auto pr-1");
+    expect(quickEntryGrid).toContain("overflow-y-auto pr-1");
     expect(panel).toContain("Armchair");
     expect(panel).toContain("GripVertical");
     expect(panel).toContain("AttendanceStatusLight");
@@ -321,10 +322,10 @@ describe("R1 classroom continuity contracts", () => {
     expect(fillRail).toContain('data-learning-fill-width="112"');
     expect(fillRail).toContain('t("learningStatus_" + status)');
     expect(panel).toContain("data-learning-current-status={status}");
-    expect(panel).toContain('status === "unchecked" ? "bg-line/80" : statusStyle.dot');
-    expect(panel).toContain("auto-rows-[2.75rem]");
-    expect(panel).toContain("h-11 min-h-0");
-    expect(panel).toContain("flex-col overflow-hidden rounded-xl");
+    expect(quickEntryGrid).toContain('visualStatus === "unchecked" ? "bg-line/80" : statusStyle.dot');
+    expect(quickEntryGrid).toContain("auto-rows-[2.75rem]");
+    expect(quickEntryGrid).toContain("h-11 min-h-0");
+    expect(quickEntryGrid).toContain("flex-col overflow-hidden rounded-xl");
     expect(panel).toContain("saveClassroomStudentSeatLayoutAction");
     expect(panel).toContain("learningCheckIdForPage");
     expect(panel).toContain("onSummaryChange");

@@ -6,6 +6,7 @@ import {
   CircleCheck,
   CircleDashed,
   LoaderCircle,
+  MessageSquareText,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import {
@@ -31,7 +32,6 @@ import {
 } from "./teacher-assessment-actions";
 import {
   quickScoreForOutcome,
-  TEACHER_ASSESSMENT_OUTCOMES,
   teacherAssessmentSummary,
   type TeacherAssessmentOutcome,
   type TeacherAssessmentPaperOption,
@@ -39,6 +39,18 @@ import {
   type TeacherAssessmentSummary,
   type TeacherAssessmentWorkbenchData,
 } from "./teacher-assessment-contract";
+import {
+  LearningCheckQuickEntryCard,
+  LearningCheckQuickEntryGrid,
+  type LearningCheckQuickChoice,
+} from "./LearningCheckQuickEntryGrid";
+import {
+  LEARNING_CHECK_STATUSES,
+  LEARNING_SEAT_CAPACITY,
+  LEARNING_SEAT_COLUMNS,
+  type LearningCheckStatus,
+} from "./session-learning-contract";
+import { LEARNING_CHECK_STATUS_STYLE } from "./session-learning-visual";
 import {
   DashboardCommandActions,
   DashboardCommandFilters,
@@ -51,12 +63,13 @@ import {
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
-const OUTCOME_SHORTCUTS: Record<string, TeacherAssessmentOutcome> = {
-  "1": "independent",
-  "2": "prompted",
-  "3": "partial",
-  "4": "unable",
-  "5": "not_tested",
+const OUTCOME_SHORTCUTS: Record<string, LearningCheckStatus> = {
+  "0": "unchecked",
+  "1": "explained",
+  "2": "independent",
+  "3": "prompted",
+  "4": "imitated",
+  "5": "incomplete",
 };
 
 export function TeacherAssessmentWorkbench({ data }: { data: TeacherAssessmentWorkbenchData }) {
@@ -248,20 +261,22 @@ function QuestionWorkbench({
     queueSave(changed, immediate);
   }, [paper, queueSave, summary.completedAt]);
 
-  const chooseOutcome = useCallback((question: TeacherAssessmentQuestion, outcome: TeacherAssessmentOutcome) => {
+  const chooseOutcome = useCallback((question: TeacherAssessmentQuestion, status: LearningCheckStatus) => {
+    const outcome: TeacherAssessmentOutcome | null = status === "unchecked" ? null : status;
     replaceQuestion(question.id, (current) => {
-      const selected = current.result?.outcome === outcome;
       return {
         ...current,
         result: {
-          outcome: selected ? null : outcome,
-          score: selected ? null : quickScoreForOutcome(current, outcome),
+          outcome,
+          score: outcome ? quickScoreForOutcome(current, outcome) : null,
           note: current.result?.note ?? "",
           updatedAt: new Date().toISOString(),
         },
       };
     }, true);
-    setActiveIndex((current) => Math.min(current + 1, questionsRef.current.length - 1));
+    if (outcome) {
+      setActiveIndex((current) => Math.min(current + 1, questionsRef.current.length - 1));
+    }
   }, [replaceQuestion]);
 
   const updateScore = useCallback((question: TeacherAssessmentQuestion, value: string) => {
@@ -404,7 +419,7 @@ function QuestionWorkbench({
           <p className="hidden shrink-0 md:block">{t("keyboardHint")}</p>
         </div>
 
-        <DesktopQuestionTable
+        <DesktopQuestionGrid
           questions={questions}
           activeIndex={activeIndex}
           saveStates={saveStates}
@@ -434,87 +449,136 @@ interface QuestionListProps {
   activeIndex: number;
   saveStates: Record<string, SaveState>;
   onActivate: (index: number) => void;
-  onOutcome: (question: TeacherAssessmentQuestion, outcome: TeacherAssessmentOutcome) => void;
+  onOutcome: (question: TeacherAssessmentQuestion, status: LearningCheckStatus) => void;
   onScore: (question: TeacherAssessmentQuestion, value: string) => void;
   onNote: (question: TeacherAssessmentQuestion, note: string) => void;
   onRetry: (question: TeacherAssessmentQuestion) => void;
 }
 
-function DesktopQuestionTable(props: QuestionListProps) {
+function DesktopQuestionGrid(props: QuestionListProps) {
   const t = useTranslations("school.teacherAssessment");
+  const choices = useMemo<LearningCheckQuickChoice<LearningCheckStatus>[]>(() =>
+    LEARNING_CHECK_STATUSES.map((status, index) => ({
+      value: status,
+      visualStatus: status,
+      label: t(`outcome_${status}`),
+      shortcut: status === "unchecked" ? "0" : String(index + 1),
+    })), [t]);
+  const slotCount = Math.max(
+    LEARNING_SEAT_CAPACITY,
+    Math.ceil(props.questions.length / LEARNING_SEAT_COLUMNS) * LEARNING_SEAT_COLUMNS,
+  );
+  const slots = useMemo(
+    () => Array.from({ length: slotCount }, (_, index) => props.questions[index] ?? null),
+    [props.questions, slotCount],
+  );
+  const activeQuestion = props.questions[props.activeIndex] ?? null;
+
   return (
-    <DashboardTableShell className="hidden min-h-0 flex-1 md:block">
-      <Table className="min-w-[690px] table-fixed text-[11px]" containerClassName="h-full overflow-auto">
-        <TableHeader>
-          <TableRow className="hover:bg-transparent">
-            <TableHead className="sticky top-0 z-20 h-7 w-10 bg-card px-1 text-center">{t("numberColumn")}</TableHead>
-            <TableHead className="sticky top-0 z-20 h-7 w-[22%] bg-card px-1">{t("questionColumn")}</TableHead>
-            <TableHead className="sticky top-0 z-20 h-7 w-[35%] bg-card px-1">{t("resultColumn")}</TableHead>
-            <TableHead className="sticky top-0 z-20 h-7 w-20 bg-card px-1">{t("scoreColumn")}</TableHead>
-            <TableHead className="sticky top-0 z-20 h-7 bg-card px-1">{t("noteColumn")}</TableHead>
-            <TableHead className="sticky top-0 z-20 h-7 w-7 bg-card px-0" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {props.questions.map((question, index) => (
-            <TableRow
+    <div className="hidden min-h-0 flex-1 flex-col sm:flex" data-teacher-assessment-layout="shared-learning-check-4x5">
+      {activeQuestion ? (
+        <div
+          className="mb-1 grid shrink-0 grid-cols-[minmax(0,1fr)_6rem_minmax(12rem,0.85fr)] items-center gap-2 border-b border-line/70 pb-1"
+          data-teacher-assessment-active-editor
+        >
+          <p className="min-w-0 truncate text-xs text-ink" title={[activeQuestion.prompt, activeQuestion.knowledgePoint].filter(Boolean).join(" · ")}>
+            <span className="font-medium">{t("questionTitle", { question: activeQuestion.questionNo })}</span>
+            {activeQuestion.knowledgePoint ? <span className="text-muted"> · {activeQuestion.knowledgePoint}</span> : null}
+            <span className="text-muted"> · {activeQuestion.prompt || t("questionFallback", { question: activeQuestion.questionNo })}</span>
+          </p>
+          <div className="flex min-w-0 items-center gap-1">
+            <Input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={activeQuestion.maxScore}
+              value={activeQuestion.result?.score ?? ""}
+              disabled={!activeQuestion.result?.outcome}
+              aria-label={t("questionScore", { question: activeQuestion.questionNo })}
+              className="h-8 min-w-0 px-2 text-right font-mono text-xs"
+              onChange={(event) => props.onScore(activeQuestion, event.target.value)}
+            />
+            <span className="shrink-0 font-mono text-[10px] text-muted">/{activeQuestion.maxScore}</span>
+          </div>
+          <Input
+            value={activeQuestion.result?.note ?? ""}
+            maxLength={1000}
+            className="h-8 min-w-0 px-2 text-xs"
+            placeholder={t("notePlaceholder")}
+            aria-label={t("questionNote", { question: activeQuestion.questionNo })}
+            onChange={(event) => props.onNote(activeQuestion, event.target.value)}
+          />
+        </div>
+      ) : null}
+
+      <LearningCheckQuickEntryGrid
+        itemCount={slots.length}
+        data-teacher-assessment-question-grid
+        data-learning-seat-columns={LEARNING_SEAT_COLUMNS}
+      >
+        {slots.map((question, slotIndex) => {
+          if (!question) {
+            return (
+              <span
+                key={`empty-question-slot-${slotIndex}`}
+                className="relative min-h-0 rounded-xl border border-dashed border-line/70 bg-card/20"
+                aria-hidden
+              >
+                <span className="absolute left-2 top-1.5 font-mono text-[9px] text-muted/55">
+                  {String(slotIndex + 1).padStart(2, "0")}
+                </span>
+              </span>
+            );
+          }
+          const outcome = question.result?.outcome ?? null;
+          const visualStatus: LearningCheckStatus = outcome ?? "unchecked";
+          const visualStyle = LEARNING_CHECK_STATUS_STYLE[visualStatus];
+          const saveState = props.saveStates[question.id] ?? "idle";
+          const questionIndex = slotIndex;
+          return (
+            <LearningCheckQuickEntryCard
               key={question.id}
-              data-active={props.activeIndex === index ? "true" : undefined}
-              className={cn("h-7 cursor-default", props.activeIndex === index && "bg-moon/15 hover:bg-moon/15")}
-              onClick={() => props.onActivate(index)}
-            >
-              <TableCell className="h-7 px-1 py-0 text-center font-mono text-[10px] text-muted">{question.questionNo}</TableCell>
-              <TableCell className="h-7 px-1 py-0">
-                <p className="truncate text-[11px] text-ink" title={[question.prompt, question.knowledgePoint].filter(Boolean).join(" · ")}>
-                  {question.prompt || t("questionFallback", { question: question.questionNo })}
-                  {question.knowledgePoint ? <span className="text-muted"> · {question.knowledgePoint}</span> : null}
-                </p>
-              </TableCell>
-              <TableCell className="h-7 px-1 py-0" onClick={(event) => event.stopPropagation()}>
-                <OutcomeButtons question={question} onSelect={(outcome) => props.onOutcome(question, outcome)} compact />
-              </TableCell>
-              <TableCell className="h-7 px-1 py-0" onClick={(event) => event.stopPropagation()}>
-                <div className="flex items-center gap-0.5">
-                  <Input
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    max={question.maxScore}
-                    value={question.result?.score ?? ""}
-                    disabled={!question.result?.outcome || question.result.outcome === "not_tested"}
-                    aria-label={t("questionScore", { question: question.questionNo })}
-                    className="h-6 min-w-0 rounded-md px-1 text-right font-mono text-[11px]"
-                    onChange={(event) => props.onScore(question, event.target.value)}
-                  />
-                  <span className="shrink-0 font-mono text-[9px] text-muted">/{question.maxScore}</span>
+              visualStatus={visualStatus}
+              selectedValue={visualStatus}
+              choices={choices}
+              choiceGroupLabel={t("questionTitle", { question: question.questionNo })}
+              disabled={saveState === "saving"}
+              onChoice={(nextOutcome) => props.onOutcome(question, nextOutcome)}
+              onClick={() => props.onActivate(questionIndex)}
+              data-teacher-assessment-question={question.questionNo}
+              data-learning-current-status={visualStatus}
+              aria-current={props.activeIndex === questionIndex ? "true" : undefined}
+              className={props.activeIndex === questionIndex ? "ring-2 ring-crater/40 ring-inset" : undefined}
+              header={(
+                <div className="flex min-h-8 items-center gap-1 px-1" data-teacher-assessment-question-header>
+                  <span className="w-6 shrink-0 text-center font-mono text-[10px] text-muted">{question.questionNo}</span>
+                  <span className="min-w-0 flex-1 truncate text-xs font-medium text-ink" title={[question.knowledgePoint, question.prompt].filter(Boolean).join(" · ")}>
+                    {question.knowledgePoint || question.prompt || t("questionFallback", { question: question.questionNo })}
+                  </span>
+                  {outcome ? (
+                    <span className={cn("shrink-0 text-[10px] font-medium", visualStyle.icon)}>
+                      {t(`outcomeShort_${outcome}`)}
+                    </span>
+                  ) : null}
+                  {question.result?.note ? <MessageSquareText className="size-3 shrink-0 text-muted" aria-hidden /> : null}
+                  <span className="shrink-0 font-mono text-[9px] text-muted">
+                    {question.result?.score ?? "–"}/{question.maxScore}
+                  </span>
+                  <QuestionSaveState state={saveState} onRetry={() => props.onRetry(question)} />
                 </div>
-              </TableCell>
-              <TableCell className="h-7 px-1 py-0" onClick={(event) => event.stopPropagation()}>
-                <Input
-                  value={question.result?.note ?? ""}
-                  maxLength={1000}
-                  className="h-6 rounded-md px-1.5 text-[11px]"
-                  placeholder={t("notePlaceholder")}
-                  aria-label={t("questionNote", { question: question.questionNo })}
-                  onFocus={() => props.onActivate(index)}
-                  onChange={(event) => props.onNote(question, event.target.value)}
-                />
-              </TableCell>
-              <TableCell className="h-7 px-0 py-0 text-center">
-                <QuestionSaveState state={props.saveStates[question.id] ?? "idle"} onRetry={() => props.onRetry(question)} />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </DashboardTableShell>
+              )}
+            />
+          );
+        })}
+      </LearningCheckQuickEntryGrid>
+    </div>
   );
 }
 
 function MobileQuestionList(props: QuestionListProps) {
   const t = useTranslations("school.teacherAssessment");
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-line md:hidden">
+    <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-line sm:hidden">
       {props.questions.map((question, index) => (
         <section
           key={question.id}
@@ -540,7 +604,7 @@ function MobileQuestionList(props: QuestionListProps) {
                 min={0}
                 max={question.maxScore}
                 value={question.result?.score ?? ""}
-                disabled={!question.result?.outcome || question.result.outcome === "not_tested"}
+                disabled={!question.result?.outcome}
                 aria-label={t("questionScore", { question: question.questionNo })}
                 className="h-8 min-w-0 px-2 text-right font-mono text-xs"
                 onChange={(event) => props.onScore(question, event.target.value)}
@@ -568,34 +632,31 @@ function OutcomeButtons({
   compact = false,
 }: {
   question: TeacherAssessmentQuestion;
-  onSelect: (outcome: TeacherAssessmentOutcome) => void;
+  onSelect: (status: LearningCheckStatus) => void;
   compact?: boolean;
 }) {
   const t = useTranslations("school.teacherAssessment");
   return (
-    <div className={cn("grid grid-cols-5 gap-1", compact && "gap-0.5")}>
-      {TEACHER_ASSESSMENT_OUTCOMES.map((outcome, index) => {
-        const selected = question.result?.outcome === outcome;
+    <div className={cn("grid grid-cols-3 gap-1", compact && "gap-0.5")}>
+      {LEARNING_CHECK_STATUSES.map((status, index) => {
+        const selected = (question.result?.outcome ?? "unchecked") === status;
+        const statusStyle = LEARNING_CHECK_STATUS_STYLE[status];
         return (
           <Button
-            key={outcome}
+            key={status}
             type="button"
             variant="secondary"
             size="sm"
             aria-pressed={selected}
-            title={`${index + 1} · ${t(`outcome_${outcome}`)}`}
+            title={`${status === "unchecked" ? 0 : index + 1} · ${t(`outcome_${status}`)}`}
             className={cn(
               compact ? "h-6 min-w-0 rounded-md px-1 text-[10px]" : "h-8 min-w-0 rounded-lg px-1 text-[11px]",
-              selected && outcome === "independent" && "border-leaf-deep bg-leaf/45 text-ink",
-              selected && outcome === "prompted" && "border-crater bg-moon/55 text-ink",
-              selected && outcome === "partial" && "border-crater bg-crater/20 text-ink",
-              selected && outcome === "unable" && "border-rose/60 bg-rose/15 text-rose",
-              selected && outcome === "not_tested" && "border-muted/50 bg-line/70 text-ink",
+              selected && statusStyle.active,
             )}
-            onClick={() => onSelect(outcome)}
+            onClick={() => onSelect(status)}
           >
-            <span className="font-mono text-[9px] opacity-70">{index + 1}</span>
-            <span className="truncate">{t(`outcomeShort_${outcome}`)}</span>
+            <span className="font-mono text-[9px] opacity-70">{status === "unchecked" ? 0 : index + 1}</span>
+            <span className="truncate">{t(`outcomeShort_${status}`)}</span>
           </Button>
         );
       })}

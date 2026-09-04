@@ -9,6 +9,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { LearningCheckStatusIcon } from "./LearningCheckStatusIcon";
+import {
+  LearningCheckQuickEntryCard,
+  LearningCheckQuickEntryGrid,
+} from "./LearningCheckQuickEntryGrid";
 import { LearningFillRail } from "./LearningFillRail";
 import { amendAttendanceStatusAction } from "./actions/attendance";
 import type { AttendanceDrawerRow } from "./actions/types";
@@ -27,7 +31,6 @@ import {
   moveLearningStudentToSeat,
   type LearningCheckStatus,
   type LearningSeatSlot,
-  LEARNING_SEAT_CAPACITY,
   type SessionLearningSetup,
   type SessionLearningStudent,
 } from "./session-learning-contract";
@@ -129,6 +132,11 @@ export function SessionLearningCheckPanel({
   onSeatOrderChange?: (assignments: Array<{ studentId: string; position: number }>) => void;
 }) {
   const t = useTranslations("school.session");
+  const quickEntryChoices = useMemo(() => LEARNING_CHECK_STATUSES.map((status) => ({
+    value: status,
+    visualStatus: status,
+    label: t("learningStatus_" + status),
+  })), [t]);
   const [manualSelection, setManualSelection] = useState<{
     pageDocId: string | null;
     checkId: string | null;
@@ -601,15 +609,10 @@ export function SessionLearningCheckPanel({
               );
             })}
           </div>
-          <div
+          <LearningCheckQuickEntryGrid
             ref={seatGridRef}
-            className={cn(
-              "hidden min-h-0 min-w-0 flex-1 gap-0.5 sm:grid",
-              seatSlots.length > LEARNING_SEAT_CAPACITY
-                ? "auto-rows-[minmax(7.75rem,1fr)] overflow-y-auto pr-1"
-                : "auto-rows-[minmax(0,1fr)] overflow-y-hidden",
-            )}
-            style={{ gridTemplateColumns: `repeat(${LEARNING_SEAT_COLUMNS}, minmax(0, 1fr))` }}
+            itemCount={seatSlots.length}
+            className="hidden sm:grid"
             data-learning-seat-grid
             data-learning-seat-columns={LEARNING_SEAT_COLUMNS}
             data-ipad-roster-grid
@@ -657,11 +660,18 @@ export function SessionLearningCheckPanel({
               const saving = savingStudentIds.has(student.id);
               const statusStyle = LEARNING_CHECK_STATUS_STYLE[status];
               return (
-                <article
+                <LearningCheckQuickEntryCard
                   key={student.id}
+                  visualStatus={status}
+                  selectedValue={status}
+                  choices={quickEntryChoices}
+                  choiceGroupLabel={student.name}
+                  disabled={saving}
+                  onChoice={(candidate) => mark([student.id], candidate)}
                   data-learning-student-id={student.id}
                   data-learning-seat-index={seatPosition}
                   data-learning-seat-layer="student"
+                  data-learning-current-status={status}
                   style={{
                     gridColumnStart: (visualSeatPosition % LEARNING_SEAT_COLUMNS) + 1,
                     gridRowStart: Math.floor(visualSeatPosition / LEARNING_SEAT_COLUMNS) + 1,
@@ -670,90 +680,55 @@ export function SessionLearningCheckPanel({
                       : undefined,
                   }}
                   className={cn(
-                    "relative z-10 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border transition-[border-color,background-color,box-shadow,opacity,transform]",
-                    statusStyle.card,
                     draggingStudentId === student.id && "z-30 opacity-85 shadow-lg transition-none will-change-transform",
                     dragOverSeatPosition === seatPosition && draggingStudentId !== student.id && "ring-2 ring-crater/35",
                   )}
-                >
-                  <div className={cn(
-                    "h-0.5 shrink-0 rounded-t-xl transition-colors",
-                    status === "unchecked" ? "bg-line/80" : statusStyle.dot,
-                  )}
-                    data-learning-current-status={status}
-                  />
-                  <div className="flex min-h-8 items-center gap-0.5 px-1">
-                    {attendanceIntegrated && (
-                      <AttendanceStatusLight
-                        studentName={student.name}
-                        row={attendanceByStudent.get(student.id)}
-                        saving={attendanceSavingStudentIds.has(student.id)}
-                        onChange={(attendanceStatus) => markAttendance(student, attendanceStatus)}
-                      />
-                    )}
-                    <div className="flex h-8 min-w-0 flex-1 items-center gap-1 px-1 text-left">
-                      <span className="min-w-0 truncate text-xs font-medium">{student.name}</span>
-                      {status !== "unchecked" && (
-                        <span className={cn("shrink-0 text-[10px] font-medium", statusStyle.icon)}>
-                          {t("learningStatus_" + status)}
-                        </span>
-                      )}
-                      {saving && <LoaderCircle size={13} className="shrink-0 animate-spin text-muted motion-reduce:animate-none" />}
-                    </div>
-                    {seatEditMode && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        disabled={seatOrderSaving}
-                        aria-label={t("learningSeatOrderHandle", { name: student.name })}
-                        title={t("learningSeatOrderHint")}
-                        className="h-8 w-10 shrink-0 touch-none cursor-grab gap-0 p-0 text-muted active:cursor-grabbing"
-                        onPointerDown={(event) => handleDragPointerDown(event, student.id)}
-                        onPointerMove={handleDragPointerMove}
-                        onPointerUp={() => finishDragging(false)}
-                        onPointerCancel={() => finishDragging(true)}
-                        onKeyDown={(event) => handleOrderKeyDown(event, student.id)}
-                      >
-                        <GripVertical size={14} />
-                        <span className="text-[9px] tabular-nums" aria-hidden="true">
-                          {String(seatPosition + 1).padStart(2, "0")}
-                        </span>
-                      </Button>
-                    )}
-                  </div>
-                  <div className="grid min-h-0 flex-1 grid-cols-3 auto-rows-[2.75rem] content-center gap-0.5 px-1">
-                    {LEARNING_CHECK_STATUSES.map((candidate) => (
-                      <button
-                        key={candidate}
-                        type="button"
-                        disabled={saving}
-                        aria-pressed={status === candidate}
-                        aria-label={t("learningStatus_" + candidate)}
-                        title={t("learningStatus_" + candidate)}
-                        onClick={() => mark([student.id], candidate)}
-                        className={cn(
-                          "grid h-11 min-h-0 place-items-center rounded-lg border p-0 outline-none transition-[color,background-color,border-color,box-shadow,transform] focus-visible:ring-2 focus-visible:ring-crater focus-visible:ring-offset-1 focus-visible:ring-offset-card active:scale-95 disabled:opacity-55",
-                          status === candidate
-                            ? LEARNING_CHECK_STATUS_STYLE[candidate].active
-                            : cn("border-transparent bg-paper/55 text-muted", LEARNING_CHECK_STATUS_STYLE[candidate].idle),
-                        )}
-                      >
-                        <LearningCheckStatusIcon
-                          status={candidate}
-                          size={17}
-                          className={cn(
-                            "shrink-0",
-                            status === candidate ? "text-current opacity-80" : LEARNING_CHECK_STATUS_STYLE[candidate].icon,
-                          )}
+                  header={(
+                    <div className="flex min-h-8 items-center gap-0.5 px-1">
+                      {attendanceIntegrated && (
+                        <AttendanceStatusLight
+                          studentName={student.name}
+                          row={attendanceByStudent.get(student.id)}
+                          saving={attendanceSavingStudentIds.has(student.id)}
+                          onChange={(attendanceStatus) => markAttendance(student, attendanceStatus)}
                         />
-                      </button>
-                    ))}
-                  </div>
-                </article>
+                      )}
+                      <div className="flex h-8 min-w-0 flex-1 items-center gap-1 px-1 text-left">
+                        <span className="min-w-0 truncate text-xs font-medium">{student.name}</span>
+                        {status !== "unchecked" && (
+                          <span className={cn("shrink-0 text-[10px] font-medium", statusStyle.icon)}>
+                            {t("learningStatus_" + status)}
+                          </span>
+                        )}
+                        {saving && <LoaderCircle size={13} className="shrink-0 animate-spin text-muted motion-reduce:animate-none" />}
+                      </div>
+                      {seatEditMode && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          disabled={seatOrderSaving}
+                          aria-label={t("learningSeatOrderHandle", { name: student.name })}
+                          title={t("learningSeatOrderHint")}
+                          className="h-8 w-10 shrink-0 touch-none cursor-grab gap-0 p-0 text-muted active:cursor-grabbing"
+                          onPointerDown={(event) => handleDragPointerDown(event, student.id)}
+                          onPointerMove={handleDragPointerMove}
+                          onPointerUp={() => finishDragging(false)}
+                          onPointerCancel={() => finishDragging(true)}
+                          onKeyDown={(event) => handleOrderKeyDown(event, student.id)}
+                        >
+                          <GripVertical size={14} />
+                          <span className="text-[9px] tabular-nums" aria-hidden="true">
+                            {String(seatPosition + 1).padStart(2, "0")}
+                          </span>
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                />
               );
             })}
-          </div>
+          </LearningCheckQuickEntryGrid>
           <LearningFillRail
             remainingCount={uncheckedStudentIds.length}
             totalCount={assessableStudents.length}

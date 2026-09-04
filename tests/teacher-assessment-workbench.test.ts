@@ -35,14 +35,14 @@ function question(
     knowledgePoint: "Number sense",
     maxScore,
     quickScores: {
+      explained: maxScore,
       independent: maxScore,
       prompted: Math.round(maxScore * 0.7),
-      partial: Math.round(maxScore * 0.4),
-      unable: 0,
-      not_tested: null,
+      imitated: Math.round(maxScore * 0.4),
+      incomplete: 0,
     },
     result: score === null ? null : {
-      outcome: "independent",
+      outcome: "explained",
       score,
       note: "",
       updatedAt: "2026-09-04T00:00:00.000Z",
@@ -63,8 +63,8 @@ describe("teacher question assessment workbench", () => {
       suggestedBand: "g_plus",
       completedAt: undefined,
     });
-    expect(quickScoreForOutcome(questions[2], "independent")).toBe(8);
-    expect(quickScoreForOutcome(questions[2], "not_tested")).toBeNull();
+    expect(quickScoreForOutcome(questions[2], "explained")).toBe(8);
+    expect(quickScoreForOutcome(questions[2], "incomplete")).toBe(0);
   });
 
   it("persists an immutable paper version and one result per registration question", () => {
@@ -86,15 +86,39 @@ describe("teacher question assessment workbench", () => {
     expect(migration).toContain("score between 0 and 10000");
   });
 
-  it("uses a dense tablet/desktop table and a separate mobile entry layout", () => {
+  it("keeps the classroom learning-check ratings with explained as the highest level", () => {
+    const contract = read("src", "features", "school", "teacher-assessment-contract.ts");
+    const statusMigration = read(
+      "supabase",
+      "migrations",
+      "20260904000250_teacher_assessment_learning_check_statuses.sql",
+    );
+
+    expect(contract).toContain("LEARNING_CHECK_RATED_STATUSES");
+    expect(statusMigration).toContain("'explained', 'independent', 'prompted', 'imitated', 'incomplete'");
+    expect(statusMigration).toContain("when 'partial' then 'imitated'");
+    expect(statusMigration).toContain("when 'unable' then 'incomplete'");
+    expect(statusMigration).toContain("when 'not_tested' then 'incomplete'");
+  });
+
+  it("reuses the classroom 4 × 5 quick-entry component on tablet and desktop", () => {
     const workbench = read("src", "features", "school", "TeacherAssessmentWorkbench.tsx");
+    const classroomPanel = read("src", "features", "school", "SessionLearningCheckPanel.tsx");
+    const quickEntryGrid = read("src", "features", "school", "LearningCheckQuickEntryGrid.tsx");
     const page = read("src", "app", "[locale]", "dashboard", "assessments", "[registrationId]", "page.tsx");
     const aggregate = read("src", "features", "school", "AssessmentAggregateWorkbench.tsx");
     const routes = read("src", "features", "school", "dashboard-routes.ts");
 
-    expect(workbench).toContain('className="hidden min-h-0 flex-1 md:block"');
-    expect(workbench).toContain("md:hidden");
-    expect(workbench).toContain('"h-7 cursor-default"');
+    expect(workbench).toContain("<LearningCheckQuickEntryGrid");
+    expect(workbench).toContain("<LearningCheckQuickEntryCard");
+    expect(classroomPanel).toContain("<LearningCheckQuickEntryGrid");
+    expect(classroomPanel).toContain("<LearningCheckQuickEntryCard");
+    expect(quickEntryGrid).toContain("LEARNING_SEAT_CAPACITY");
+    expect(quickEntryGrid).toContain("LEARNING_SEAT_COLUMNS");
+    expect(quickEntryGrid).toContain("grid-cols-3 auto-rows-[2.75rem]");
+    expect(workbench).toContain('data-teacher-assessment-layout="shared-learning-check-4x5"');
+    expect(workbench).toContain("data-teacher-assessment-active-editor");
+    expect(workbench).toContain("sm:hidden");
     expect(workbench).toContain("OUTCOME_SHORTCUTS");
     expect(workbench).toContain("notePlaceholder");
     expect(workbench).not.toContain("questionCount: 19");

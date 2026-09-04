@@ -1,12 +1,7 @@
 import type { AssessmentBand, StoredAssessmentBand } from "./activity-workflow-contract";
+import { LEARNING_CHECK_RATED_STATUSES } from "./session-learning-contract";
 
-export const TEACHER_ASSESSMENT_OUTCOMES = [
-  "independent",
-  "prompted",
-  "partial",
-  "unable",
-  "not_tested",
-] as const;
+export const TEACHER_ASSESSMENT_OUTCOMES = LEARNING_CHECK_RATED_STATUSES;
 
 export type TeacherAssessmentOutcome = (typeof TEACHER_ASSESSMENT_OUTCOMES)[number];
 

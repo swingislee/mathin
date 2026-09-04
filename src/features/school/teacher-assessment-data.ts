@@ -27,11 +27,11 @@ const thresholdsSchema = z.object({
 });
 
 const quickScoresSchema = z.object({
+  explained: z.number().nullable(),
   independent: z.number().nullable(),
   prompted: z.number().nullable(),
-  partial: z.number().nullable(),
-  unable: z.number().nullable(),
-  not_tested: z.number().nullable(),
+  imitated: z.number().nullable(),
+  incomplete: z.number().nullable(),
 });
 
 const paperOptionSchema = z.object({

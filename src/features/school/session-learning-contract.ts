@@ -1,9 +1,13 @@
-export const LEARNING_CHECK_STATUSES = [
+export const LEARNING_CHECK_RATED_STATUSES = [
   "explained",
   "independent",
   "prompted",
   "imitated",
   "incomplete",
+] as const;
+
+export const LEARNING_CHECK_STATUSES = [
+  ...LEARNING_CHECK_RATED_STATUSES,
   "unchecked",
 ] as const;
 
