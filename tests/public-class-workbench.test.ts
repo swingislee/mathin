@@ -55,8 +55,10 @@ describe("DEV-SCHOOL-OPS-1 public-class workbench", () => {
     expect(workspace).toContain('value: "review"');
     expect(workspace).not.toContain("programMapTitle");
     expect(workspace).not.toContain("SegmentFlowStep");
-    expect(preparation).toContain("CoursewareWorkbench");
-    expect(preparation).toContain("StagePreview");
+    expect(preparation).toContain("CoursewareOverlayEditor");
+    expect(preparation).toContain("data-shared-formal-preparation-surface");
+    expect(preparation).not.toContain("CoursewareWorkbench");
+    expect(preparation).not.toContain("StagePreview");
     expect(preparation).toContain("savePublicClassTeachingCheckpointsAction");
     expect(teaching).toContain("startPublicClassRunAction");
     expect(teaching).toContain("endPublicClassRunAction");
@@ -70,6 +72,8 @@ describe("DEV-SCHOOL-OPS-1 public-class workbench", () => {
     const migration = read("supabase", "migrations", "20260904000300_public_class_teaching_preparation.sql");
     const workspace = read("src", "features", "school", "PublicClassWorkspace.tsx");
     const preparation = read("src", "features", "school", "PublicClassTeachingPreparation.tsx");
+    const formalPreparation = read("src", "features", "school", "SessionPrepPanel.tsx");
+    const sharedCourseware = read("src", "features", "school", "CoursewareOverlayEditor.tsx");
 
     expect(migration).toContain("create table public.public_class_teaching_checkpoints");
     expect(migration).toContain("replace_public_class_teaching_checkpoints");
@@ -77,7 +81,10 @@ describe("DEV-SCHOOL-OPS-1 public-class workbench", () => {
     expect(workspace).toContain("OnsitePreparationView");
     expect(workspace).toContain("PrintView");
     expect(preparation).toContain("teachingCheckpointPageIds");
-    expect(preparation).toContain("addTeachingCheckpoint");
+    expect(preparation).toContain("CoursewareOverlayEditor");
+    expect(formalPreparation).toContain("CoursewareOverlayEditor");
+    expect(sharedCourseware).toContain("saveLearningChecksOverride");
+    expect(sharedCourseware).toContain("learningChecksReadOnly");
   });
 
   it("reuses the secured location read model instead of filtering protected room columns", () => {

@@ -49,6 +49,7 @@ import { StagePreview } from "@/features/courseware-studio/StagePreview";
 import type { CoursewareDoc } from "@/features/courseware-doc/document";
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import type { Difficulty } from "@/features/games/types";
+import type { ActionResult } from "@/lib/action-result";
 import { newId } from "@/lib/uuid";
 import { saveCoursewareOverlay } from "./actions/courseware";
 import { healOverlay, isOverlayRef, resolveCourseware, type CoursewareTemplatePage, type OverlaySlot } from "./courseware-overlay";
@@ -64,7 +65,7 @@ import type { CoursewareLearningCheckPage, SessionLearningCheck } from "./sessio
 
 type SaveState = "saved" | "saving" | "dirty" | "error";
 type LearningCheckSaveState = "saved" | "saving" | "error";
-type LearningCheckItem = { title: string; sourcePageId: string | null };
+export type CoursewareLearningCheckDraft = { title: string; sourcePageId: string | null };
 
 const PAGE_ICONS = { image: ImageIcon, video: Film, game: Gamepad2, board: PenLine, doc: BookOpen } as const;
 
@@ -77,7 +78,7 @@ function initialLearningCheckItems(
   pages: CoursewareLearningCheckPage[],
   locked: boolean,
   configured: boolean,
-): LearningCheckItem[] {
+): CoursewareLearningCheckDraft[] {
   const currentPageIds = new Set(pages.map((page) => page.pageDocId));
   if (configured || checks.length > 0 || locked) {
     return checks
@@ -100,13 +101,16 @@ export function CoursewareOverlayEditor({
   initialLearningChecks,
   learningChecksLocked,
   learningChecksConfigured,
+  learningChecksReadOnly: requestedLearningChecksReadOnly,
+  saveLearningChecks: saveLearningChecksOverride,
   initialPageId,
   readOnly: baseReadOnly = false,
   structureReadOnly: baseStructureReadOnly = baseReadOnly,
   frozen = false,
   canUnlockFrozen = false,
 }: {
-  classroomId: string;
+  /** Required only when this workspace allows adding uploaded media. */
+  classroomId?: string;
   sessionId: string;
   template: CoursewareTemplatePage[];
   initialOverlay: OverlaySlot[];
@@ -117,6 +121,12 @@ export function CoursewareOverlayEditor({
   initialLearningChecks: SessionLearningCheck[];
   learningChecksLocked: boolean;
   learningChecksConfigured: boolean;
+  /**
+   * Learning-check selection is shared by formal sessions and other teaching
+   * runs. It is intentionally independent from courseware/annotation editing.
+   */
+  learningChecksReadOnly?: boolean;
+  saveLearningChecks?: (items: CoursewareLearningCheckDraft[]) => Promise<ActionResult>;
   initialPageId?: string;
   readOnly?: boolean;
   structureReadOnly?: boolean;
@@ -132,6 +142,8 @@ export function CoursewareOverlayEditor({
   const frozenEditActive = frozen && canUnlockFrozen && frozenUnlocked;
   const readOnly = baseReadOnly && !frozenEditActive;
   const structureReadOnly = baseStructureReadOnly && !frozenEditActive;
+  const baseLearningChecksReadOnly = requestedLearningChecksReadOnly ?? baseReadOnly;
+  const learningChecksReadOnly = baseLearningChecksReadOnly && !frozenEditActive;
   const effectiveLearningChecksLocked = learningChecksLocked && !frozenEditActive;
   const [overlay, setOverlay] = useState<OverlaySlot[]>(() => healOverlay(template, initialOverlay));
   const [saveState, setSaveState] = useState<SaveState>("saved");
@@ -148,8 +160,12 @@ export function CoursewareOverlayEditor({
   const [difficulty, setDifficulty] = useState<Difficulty>("easy");
   const [sudokuVariantId, setSudokuVariantId] = useState<SudokuVariantId>(DEFAULT_SUDOKU_VARIANT_ID);
   const [seed, setSeed] = useState(() => defaultGameSeed(games[0]?.id ?? ""));
-  const [learningChecks, setLearningChecks] = useState<LearningCheckItem[]>(() =>
+  const [learningChecks, setLearningChecks] = useState<CoursewareLearningCheckDraft[]>(() =>
     initialLearningCheckItems(initialLearningChecks, learningCheckPages, effectiveLearningChecksLocked, learningChecksConfigured));
+  const learningCheckPageIds = useMemo(
+    () => new Set(learningCheckPages.map((page) => page.pageDocId)),
+    [learningCheckPages],
+  );
   const coursewareDefaultLearningChecks = useMemo(
     () => learningCheckPages.filter((page) => page.learningCheckEnabled)
       .map((page) => ({ title: page.title, sourcePageId: page.pageDocId })),
@@ -160,7 +176,7 @@ export function CoursewareOverlayEditor({
   const savedLearningChecksRef = useRef(learningChecks);
   const learningCheckRevision = useRef(0);
   const learningCheckSaveQueue = useRef<Promise<void>>(Promise.resolve());
-  const restoreUndoRef = useRef<LearningCheckItem[] | null>(null);
+  const restoreUndoRef = useRef<CoursewareLearningCheckDraft[] | null>(null);
   const [restoreUndoAvailable, setRestoreUndoAvailable] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -226,6 +242,10 @@ export function CoursewareOverlayEditor({
 
   const addFiles = async (files: FileList | null) => {
     if (structureReadOnly) return;
+    if (!classroomId) {
+      setSaveState("error");
+      return;
+    }
     if (!files || files.length === 0) return;
     setUploading(true);
     try {
@@ -256,7 +276,7 @@ export function CoursewareOverlayEditor({
   };
 
   const saveLearningChecks = (
-    next: LearningCheckItem[],
+    next: CoursewareLearningCheckDraft[],
     callbacks?: { onFailure?: () => void },
   ) => {
     learningChecksRef.current = next;
@@ -265,7 +285,9 @@ export function CoursewareOverlayEditor({
     setLearningCheckSaveState("saving");
     learningCheckSaveQueue.current = learningCheckSaveQueue.current.then(async () => {
       try {
-        const result = await replaceSessionLearningChecksAction({ sessionId, items: next });
+        const result = saveLearningChecksOverride
+          ? await saveLearningChecksOverride(next)
+          : await replaceSessionLearningChecksAction({ sessionId, items: next });
         if (!result.ok) throw new Error(result.code);
         savedLearningChecksRef.current = next;
         if (revision === learningCheckRevision.current) setLearningCheckSaveState("saved");
@@ -282,7 +304,7 @@ export function CoursewareOverlayEditor({
   };
 
   const toggleLearningCheck = (page: Extract<CoursewareTemplatePage, { type: "doc" }>) => {
-    if (readOnly || effectiveLearningChecksLocked) return;
+    if (learningChecksReadOnly || effectiveLearningChecksLocked) return;
     restoreUndoRef.current = null;
     setRestoreUndoAvailable(false);
     const current = learningChecksRef.current;
@@ -293,7 +315,7 @@ export function CoursewareOverlayEditor({
   };
 
   const restoreLearningCheckDefaults = () => {
-    if (readOnly || effectiveLearningChecksLocked || learningCheckDefaultsActive) return;
+    if (learningChecksReadOnly || effectiveLearningChecksLocked || learningCheckDefaultsActive) return;
     const previous = [...learningChecksRef.current];
     restoreUndoRef.current = previous;
     setRestoreUndoAvailable(true);
@@ -306,7 +328,7 @@ export function CoursewareOverlayEditor({
   };
 
   const undoRestoreLearningCheckDefaults = () => {
-    if (readOnly || effectiveLearningChecksLocked || !restoreUndoRef.current) return;
+    if (learningChecksReadOnly || effectiveLearningChecksLocked || !restoreUndoRef.current) return;
     const previous = restoreUndoRef.current;
     restoreUndoRef.current = null;
     setRestoreUndoAvailable(false);
@@ -342,7 +364,7 @@ export function CoursewareOverlayEditor({
         aria-pressed={selectedForCheck}
         aria-label={ts(selectedForCheck ? "learningCheckQuickRemove" : "learningCheckQuickAdd")}
         title={ts(selectedForCheck ? "learningCheckQuickRemove" : "learningCheckQuickAdd")}
-        disabled={readOnly || effectiveLearningChecksLocked}
+        disabled={learningChecksReadOnly || effectiveLearningChecksLocked}
         onClick={(event) => {
           event.stopPropagation();
           toggleLearningCheck(page);
@@ -363,7 +385,7 @@ export function CoursewareOverlayEditor({
       return {
         id: "ref-" + slot.ref,
         title: page?.title || t("templatePage"),
-        leading: page?.type === "doc"
+        leading: page?.type === "doc" && learningCheckPageIds.has(page.docId)
           ? checkMarker(page)
           : <span className="grid size-7 shrink-0 place-items-center text-muted"><Icon size={15} aria-hidden /></span>,
         trailing: structureReadOnly ? undefined : (
@@ -385,7 +407,7 @@ export function CoursewareOverlayEditor({
     return {
       id: displayPage.id,
       title: displayPage.title,
-      leading: displayPage.type === "doc"
+      leading: displayPage.type === "doc" && learningCheckPageIds.has(displayPage.docId)
         ? checkMarker(displayPage)
         : <span className="grid size-7 shrink-0 place-items-center text-muted"><Icon size={15} aria-hidden /></span>,
       titleContent: structureReadOnly || templatePage ? (
@@ -476,7 +498,9 @@ export function CoursewareOverlayEditor({
         items={previewItems}
         selectedIndex={safeSelectedIndex}
         onSelectedIndexChange={setSelectedIndex}
-        directoryLabel={structureReadOnly ? ts("coursewareArchivePageRailTitle") : ts("coursewarePageRailTitle")}
+        directoryLabel={learningChecksReadOnly || effectiveLearningChecksLocked
+          ? ts("coursewareArchivePageRailTitle")
+          : ts("coursewarePageRailTitle")}
         previewLabel={t("visualPreview")}
         previousLabel={ts("coursewarePreviousPage")}
         nextLabel={ts("coursewareNextPage")}
@@ -570,11 +594,11 @@ export function CoursewareOverlayEditor({
         )}
         railStatus={(
           <>
-            {!readOnly ? <span className={"shrink-0 text-[11px] " + (learningCheckSaveState === "error" ? "text-rose" : "text-muted")}>{learningCheckSaveLabel}</span> : null}
+            {!learningChecksReadOnly ? <span className={"shrink-0 text-[11px] " + (learningCheckSaveState === "error" ? "text-rose" : "text-muted")}>{learningCheckSaveLabel}</span> : null}
             <span className="shrink-0 text-xs tabular-nums text-muted">{learningChecks.filter((item) => item.sourcePageId).length} / {resolvedPages.length}</span>
           </>
         )}
-        railFooter={!readOnly && !effectiveLearningChecksLocked ? (
+        railFooter={!learningChecksReadOnly && !effectiveLearningChecksLocked ? (
           <div className="flex items-center gap-1">
             <Button
               type="button"
