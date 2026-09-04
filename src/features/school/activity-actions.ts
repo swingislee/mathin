@@ -33,7 +33,7 @@ const activityResultSchema = z.object({
 const activityAssessmentSchema = z.object({
   registrationId: uuid,
   assessmentBand: z.enum(STORED_ASSESSMENT_BANDS).nullable(),
-  score: intInRange(0, 100).nullable(),
+  score: intInRange(0, 10_000).nullable(),
   strengths: text(2_000),
   focusAreas: text(2_000),
   parentConcerns: text(2_000),

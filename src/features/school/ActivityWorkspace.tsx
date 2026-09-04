@@ -437,7 +437,7 @@ function AssessmentRow({
       aria-label={t("scoreShort")}
       type="number"
       min={0}
-      max={100}
+      max={10000}
       value={assessmentAutosave.draft.score ?? ""}
       disabled={disabled}
       onChange={(event) => update("score", event.target.value === "" ? null : Number(event.target.value))}

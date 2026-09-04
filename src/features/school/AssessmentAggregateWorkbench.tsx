@@ -36,6 +36,7 @@ import {
   type StoredAssessmentBand,
 } from "./activity-workflow-contract";
 import { DashboardTableShell } from "./dashboard-page";
+import { TeacherAssessmentEntryButton } from "./TeacherAssessmentEntryButton";
 
 type SaveState = "idle" | "dirty" | "saving" | "saved" | "error";
 
@@ -135,7 +136,7 @@ export function AssessmentAggregateWorkbench({
             <TableHead className="sticky top-0 z-20 h-9 w-28 bg-card px-2">{t("attendanceColumn")}</TableHead>
             <TableHead className="sticky top-0 z-20 h-9 w-72 bg-card px-2">{t("quickEntryColumn")}</TableHead>
             <TableHead className="sticky top-0 z-20 h-9 bg-card px-2">{t("recordColumn")}</TableHead>
-            <TableHead className="sticky top-0 z-20 h-9 w-24 bg-card px-2">{t("saveColumn")}</TableHead>
+            <TableHead className="sticky top-0 z-20 h-9 w-32 bg-card px-2">{t("saveColumn")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -309,14 +310,22 @@ function AssessmentEntryRows({
             {detailSummary || row.background || t("openForDetails")}
           </p>
         </TableCell>
-        <TableCell className="px-2 py-2">
-          <AutosaveState
-            state={saveState}
-            retry={() => {
-              if (assessmentAutosave.state === "error") assessmentAutosave.retry();
-              if (routeAutosave.state === "error") routeAutosave.retry();
-            }}
-          />
+        <TableCell className="px-2 py-2" onClick={(event) => event.stopPropagation()}>
+          <div className="flex flex-col items-start gap-1">
+            <AutosaveState
+              state={saveState}
+              retry={() => {
+                if (assessmentAutosave.state === "error") assessmentAutosave.retry();
+                if (routeAutosave.state === "error") routeAutosave.retry();
+              }}
+            />
+            {canAssess ? (
+              <TeacherAssessmentEntryButton
+                registrationId={registrationId}
+                invitationId={row.invitationId}
+              />
+            ) : null}
+          </div>
         </TableCell>
       </TableRow>
       {active ? (

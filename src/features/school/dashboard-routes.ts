@@ -199,6 +199,15 @@ export const DASHBOARD_ROUTES = {
     createSurface: "derived",
     nav: { labelKey: "assessments", group: "subjectOperations" },
   },
+  assessmentDetail: {
+    hrefPattern: "/dashboard/assessments/[registrationId]",
+    kind: "workflow",
+    shellMode: "panel",
+    environments: STAFF_ONLY,
+    permission: "review.write",
+    createSurface: "derived",
+    parent: "assessments",
+  },
   followups: {
     href: "/dashboard/followups",
     kind: "queue",
