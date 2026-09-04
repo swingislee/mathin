@@ -61,6 +61,7 @@ describe("R1-3 account security contracts", () => {
     expect(security).toContain('value="identities"');
     expect(security).toContain('value="security"');
     expect(security).toContain('value="privacy"');
+    expect(security).toContain('value="desktopNotifications"');
     expect(security).toContain('storage.from("profile-avatars").upload');
     expect(security).toContain('<Button type="button" variant="secondary" size="sm" disabled>');
     expect(accountData).toContain('recoveryAvailable: false');

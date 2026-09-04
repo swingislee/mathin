@@ -3,7 +3,6 @@ import { Suspense } from "react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { AccountSecurityPanel } from "@/features/account/AccountSecurityPanel";
 import { getAccountCenterSnapshot } from "@/features/account/account-security";
-import { DesktopNotificationControls } from "@/features/events/DesktopNotificationControls";
 import { DashboardPage } from "@/features/school/dashboard-page";
 import { DashboardListSkeleton } from "@/features/school/list-skeleton";
 import { getProfile, requireUser } from "@/lib/auth";
@@ -13,13 +12,10 @@ async function AccountSecurityBody({ locale, required }: { locale: string; requi
   const profile = await getProfile(user.id);
   if (!profile) throw new Error("PROFILE_NOT_FOUND");
   const snapshot = await getAccountCenterSnapshot(user, profile);
-  return <div className="grid gap-6">
-    <AccountSecurityPanel
-      snapshot={snapshot}
-      initialSection={required === "mfa" ? "security" : required === "consent" ? "privacy" : "profile"}
-    />
-    {profile.role === "staff" || profile.role === "admin" ? <DesktopNotificationControls variant="full" /> : null}
-  </div>;
+  return <AccountSecurityPanel
+    snapshot={snapshot}
+    initialSection={required === "mfa" ? "security" : required === "consent" ? "privacy" : "profile"}
+  />;
 }
 
 export default async function AccountSecurityPage({

@@ -21,6 +21,9 @@ test.describe("employee Web Push dark runtime", () => {
       });
     });
     await loginWithFixedAccount(page, principal, "/zh/dashboard/account-security");
+    const desktopNotificationsTab = page.getByRole("tab", { name: "桌面提醒", exact: true });
+    await expect(desktopNotificationsTab).toBeVisible();
+    await desktopNotificationsTab.click();
     await expect(page.getByRole("heading", { name: "桌面提醒", exact: true })).toBeVisible();
     await expect(page.getByText("浏览器或 Windows 已关闭通知，请在系统设置中允许后再试。", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "在这台电脑开启", exact: true })).toBeDisabled();
@@ -35,6 +38,11 @@ test.describe("employee Web Push dark runtime", () => {
     expect(browserState.permissionRequestCount).toBe(0);
     expect(browserState.registrationCount).toBe(0);
 
+    await page.getByRole("button", { name: /待办与通知/ }).click();
+    const desktopNotificationsSwitch = page.getByRole("switch", { name: "桌面提醒", exact: true });
+    await expect(desktopNotificationsSwitch).toBeVisible();
+    await expect(desktopNotificationsSwitch).toBeDisabled();
+
     const workerResponse = await request.get("/notification-sw.js");
     expect(workerResponse.ok()).toBe(true);
     const workerSource = await workerResponse.text();
@@ -42,6 +50,7 @@ test.describe("employee Web Push dark runtime", () => {
     expect(workerSource).not.toContain('self.addEventListener("fetch"');
 
     await page.goto("/en/dashboard/account-security");
+    await page.getByRole("tab", { name: "Desktop notifications", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Desktop notifications", exact: true })).toBeVisible();
     await expect(page.getByText("Notifications are blocked by the browser or Windows. Allow them in system settings and try again.", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Enable on this computer", exact: true })).toBeDisabled();
