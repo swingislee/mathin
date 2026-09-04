@@ -126,6 +126,11 @@ export interface StaffOverviewData {
   truncatedSources: StaffOverviewSourceKey[];
 }
 
+export interface StaffHomeWeekSummaryData {
+  businessFacts: StaffOverviewBusinessFact[];
+  snapshot: Pick<StaffOverviewSnapshot, "activeClasses" | "remainingSeats">;
+}
+
 interface PeriodLeadRow {
   id: string;
   created_at: string;
@@ -253,6 +258,119 @@ function emptyCapacityTotals(): ClassroomCapacityTotals {
     minimumOpenGap: 0,
     healthyDelta: 0,
     remainingSeats: 0,
+  };
+}
+
+/** 今日工作只读取交叉摘要需要的五类事实，避免为五个数字装载完整人员归属与待办目录。 */
+export async function getStaffHomeWeekSummaryData({
+  now = new Date(),
+}: {
+  now?: Date;
+} = {}): Promise<StaffHomeWeekSummaryData> {
+  const [supabase, timeZone] = await Promise.all([createClient(), getOrganizationTimezoneV2()]);
+  const window = buildStaffOverviewWindow("week", now, timeZone);
+  const rangeStart = window.previousStart.toISOString();
+  const rangeEnd = window.currentCutoff.toISOString();
+  const [activitiesResult, assessmentsResult, periodEnrollmentsResult, activeEnrollmentsResult, classroomsResult] = await Promise.all([
+    supabase
+      .from("activities")
+      .select("id,scheduled_at,activity_registrations(id,status,student_id)")
+      .is("deleted_at", null)
+      .gte("scheduled_at", rangeStart)
+      .lt("scheduled_at", rangeEnd)
+      .limit(READ_LIMIT)
+      .returns<ActivityPeriodRow[]>(),
+    supabase
+      .from("assessment_results")
+      .select("id,activity_registration_id,assessed_by,student_id,created_at")
+      .gte("created_at", rangeStart)
+      .lt("created_at", rangeEnd)
+      .limit(READ_LIMIT)
+      .returns<AssessmentPeriodRow[]>(),
+    supabase
+      .from("enrollments")
+      .select("id,classroom_id,student_id,joined_at")
+      .gte("joined_at", rangeStart)
+      .lt("joined_at", rangeEnd)
+      .limit(READ_LIMIT)
+      .returns<EnrollmentPeriodRow[]>(),
+    supabase
+      .from("enrollments")
+      .select("classroom_id,student_id")
+      .eq("status", "active")
+      .limit(READ_LIMIT)
+      .returns<ActiveEnrollmentRow[]>(),
+    supabase
+      .from("classrooms")
+      .select("id,grade,capacity")
+      .eq("purpose", "production")
+      .eq("operational_status", "active")
+      .is("archived_at", null)
+      .is("trashed_at", null)
+      .limit(READ_LIMIT)
+      .returns<ClassroomRow[]>(),
+  ]);
+
+  const exact = <T,>(result: QueryRowsResult<T>) => !result.error && (result.data?.length ?? 0) < READ_LIMIT;
+  const activities = activitiesResult.data ?? [];
+  const assessments = assessmentsResult.data ?? [];
+  const periodEnrollments = periodEnrollmentsResult.data ?? [];
+  const activeEnrollments = activeEnrollmentsResult.data ?? [];
+  const classrooms = classroomsResult.data ?? [];
+  const comparisons: Record<"arrivals" | "assessments" | "enrollments", StaffOverviewComparison | null> = {
+    arrivals: exact(activitiesResult)
+      ? aggregateStaffOverviewEvents(
+        activities.flatMap((activity) => activity.activity_registrations
+          .filter((registration) => registration.status === "attended")
+          .map((registration) => ({ id: registration.id, at: activity.scheduled_at }))),
+        window,
+        timeZone,
+      )
+      : null,
+    assessments: exact(assessmentsResult)
+      ? aggregateStaffOverviewEvents(
+        assessments.map((assessment) => ({ id: assessment.id, at: assessment.created_at })),
+        window,
+        timeZone,
+      )
+      : null,
+    enrollments: exact(periodEnrollmentsResult)
+      ? aggregateStaffOverviewEvents(
+        periodEnrollments.map((enrollment) => ({ id: enrollment.id, at: enrollment.joined_at })),
+        window,
+        timeZone,
+      )
+      : null,
+  };
+  const businessFacts = (["arrivals", "assessments", "enrollments"] as const).map((key): StaffOverviewBusinessFact => ({
+    key,
+    current: comparisons[key]?.current ?? null,
+    previous: comparisons[key]?.previous ?? null,
+    trend: comparisons[key]?.trend ?? null,
+  }));
+
+  const capacityAvailable = exact(classroomsResult) && exact(activeEnrollmentsResult);
+  const activeClassIds = new Set(classrooms.map((classroom) => classroom.id));
+  const enrollmentsByClassroom = new Map<string, number>();
+  for (const enrollment of activeEnrollments) {
+    if (!activeClassIds.has(enrollment.classroom_id)) continue;
+    enrollmentsByClassroom.set(enrollment.classroom_id, (enrollmentsByClassroom.get(enrollment.classroom_id) ?? 0) + 1);
+  }
+  const capacityTotals = capacityAvailable
+    ? summarizeClassroomCapacity(classrooms.map((classroom) => ({
+      classroomId: classroom.id,
+      grade: classroom.grade,
+      classroomCapacity: classroom.capacity,
+      enrolledSeats: enrollmentsByClassroom.get(classroom.id) ?? 0,
+    })))
+    : null;
+
+  return {
+    businessFacts,
+    snapshot: {
+      activeClasses: exact(classroomsResult) ? classrooms.length : null,
+      remainingSeats: capacityTotals?.remainingSeats ?? null,
+    },
   };
 }
 

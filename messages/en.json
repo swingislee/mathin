@@ -1801,6 +1801,13 @@
       "refundQueueHint": "Refund requests are waiting for approval.",
       "goApproveRefunds": "Review",
       "staffGreeting": "Hello, {name}",
+      "staffHub": {
+        "viewAriaLabel": "Home view",
+        "workView": "Today's work",
+        "overviewView": "Data overview",
+        "weekSummaryTitle": "Key data this week",
+        "openOverview": "Open full overview"
+      },
       "sectionSchool": "School overview",
       "sectionTeaching": "My teaching",
       "sectionSales": "Leads & follow-ups",

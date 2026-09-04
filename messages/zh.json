@@ -1801,6 +1801,13 @@
       "refundQueueHint": "有退费申请等待审批。",
       "goApproveRefunds": "去审批",
       "staffGreeting": "你好，{name}",
+      "staffHub": {
+        "viewAriaLabel": "首页视图",
+        "workView": "今日工作",
+        "overviewView": "数据总览",
+        "weekSummaryTitle": "本周关键数据",
+        "openOverview": "查看完整总览"
+      },
       "sectionSchool": "全校概览",
       "sectionTeaching": "我的教学",
       "sectionSales": "招生与跟进",

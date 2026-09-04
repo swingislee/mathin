@@ -12,6 +12,8 @@ import {
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import type { HomeProps } from "./shared";
+import { staffHomeHref } from "./staff-home-contract";
+import { StaffHomeViewTabs } from "./StaffHomeViewTabs";
 import {
   getStaffOverviewData,
   type StaffOverviewBusinessFact,
@@ -58,7 +60,7 @@ function factDifference(fact: Pick<StaffOverviewBusinessFact, "current" | "previ
 }
 
 function periodHref(grain: StaffOverviewGrain): string {
-  return `/dashboard?period=${grain}`;
+  return staffHomeHref("overview", grain);
 }
 
 function rangeLabel(locale: string, timeZone: string, start: string, cutoff: string): string {
@@ -642,12 +644,15 @@ export async function StaffFactOverviewHome({
   locale,
   focusTarget,
   grain,
+  workItemCount,
 }: HomeProps & {
   focusTarget?: string;
   grain: StaffOverviewGrain;
+  workItemCount: number;
 }) {
-  const [t, data] = await Promise.all([
+  const [t, hubT, data] = await Promise.all([
     getTranslations("school.home.overview"),
+    getTranslations("school.home.staffHub"),
     getStaffOverviewData({ grain }),
   ]);
   const currentRange = rangeLabel(locale, data.timeZone, data.currentStart, data.currentCutoff);
@@ -705,6 +710,15 @@ export async function StaffFactOverviewHome({
       commandPanel={(
         <DashboardCommandPanel className="min-h-12 py-1.5">
           <DashboardCommandState>
+            <StaffHomeViewTabs
+              activeView="overview"
+              period={grain}
+              workItemCount={workItemCount}
+              ariaLabel={hubT("viewAriaLabel")}
+              workLabel={hubT("workView")}
+              overviewLabel={hubT("overviewView")}
+            />
+            <span aria-hidden className="hidden h-6 w-px bg-line @xl/page:block" />
             <DashboardCommandTabs items={periodTabs} activeValue={grain} ariaLabel={t("periodAriaLabel")} />
           </DashboardCommandState>
         </DashboardCommandPanel>
