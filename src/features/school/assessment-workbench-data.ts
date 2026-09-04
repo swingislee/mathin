@@ -49,6 +49,8 @@ interface ActivityDbRow {
     lead_id: string | null;
     status: AssessmentWorkbenchRow["participationStatus"];
     outcome: string;
+    assessment_started_at: string | null;
+    assessment_completed_at: string | null;
     updated_at: string;
     students: StudentSubjectRow | null;
     leads: LeadSubjectRow | null;
@@ -121,7 +123,7 @@ const ACTIVITY_COLUMNS = [
   "source_invitation_id",
   [
     "activity_registrations(",
-    "id,student_id,lead_id,status,outcome,updated_at,",
+    "id,student_id,lead_id,status,outcome,assessment_started_at,assessment_completed_at,updated_at,",
     "students(id,name,phone,parent_phone,grade,remark),",
     "leads(id,provisional_student_name,phone,grade_hint,grade_text,student_id)",
     ")",
@@ -230,6 +232,8 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
       assessorName: invitation.assessor?.display_name ?? "",
       background: invitation.summary,
       participationStatus: "booked",
+      assessmentStartedAt: null,
+      assessmentCompletedAt: null,
       assessment: null,
       route: null,
       updatedAt: invitation.updated_at,
@@ -262,6 +266,8 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
           || "",
         background: invitation?.summary || registration.outcome || student?.remark || "",
         participationStatus: registration.status,
+        assessmentStartedAt: registration.assessment_started_at,
+        assessmentCompletedAt: registration.assessment_completed_at,
         assessment,
         route,
         updatedAt: assessment?.updatedAt || route?.updatedAt || registration.updated_at,

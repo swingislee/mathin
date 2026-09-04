@@ -1,14 +1,15 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, Clock3 } from "lucide-react";
+import { ArrowLeftRight, ChevronDown, ChevronRight, Clock3 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import {
   ACTIVITY_ROUTES,
@@ -17,6 +18,7 @@ import {
 } from "./activity-workflow-contract";
 import {
   DashboardCommandFilters,
+  DashboardCommandActions,
   DashboardCommandPanel,
   DashboardCommandState,
   DashboardEmptyCard,
@@ -200,8 +202,15 @@ function queueFor(row: SupportAssessmentRow): Exclude<SupportQueue, "all"> {
   return row.route ? "handled" : "pending";
 }
 
-export function SupportAssessmentPreview({ locale }: { locale: string }) {
+export function SupportAssessmentPreview({
+  locale,
+  canSwitchToTeacher = false,
+}: {
+  locale: string;
+  canSwitchToTeacher?: boolean;
+}) {
   const t = useTranslations("school.supportAssessment");
+  const hubT = useTranslations("school.assessmentHub");
   const assessmentT = useTranslations("school.assessments");
   const teacherT = useTranslations("school.teacherAssessment");
   const sessionT = useTranslations("school.session");
@@ -257,7 +266,8 @@ export function SupportAssessmentPreview({ locale }: { locale: string }) {
 
   return (
     <DashboardPage
-      title={t("title")}
+      title={hubT("title")}
+      eyebrow={hubT("supportDesk")}
       description={t("intro")}
       meta={t("localPreview")}
       density="compact"
@@ -286,6 +296,17 @@ export function SupportAssessmentPreview({ locale }: { locale: string }) {
               aria-label={t("searchPlaceholder")}
             />
           </DashboardCommandFilters>
+          {canSwitchToTeacher ? (
+            <DashboardCommandActions>
+              <Link
+                href="/dashboard/assessments?desk=teacher"
+                className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "h-9 px-3 text-xs")}
+              >
+                <ArrowLeftRight className="size-3.5" />
+                {hubT("switchToTeacher")}
+              </Link>
+            </DashboardCommandActions>
+          ) : null}
         </DashboardCommandPanel>
       )}
     >

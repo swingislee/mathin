@@ -139,7 +139,7 @@ describe("teacher question assessment workbench", () => {
     const matrix = read("src", "features", "school", "LearningCheckMatrixEntry.tsx");
     const quickEntryGrid = read("src", "features", "school", "LearningCheckQuickEntryGrid.tsx");
     const page = read("src", "app", "[locale]", "dashboard", "assessments", "[registrationId]", "page.tsx");
-    const aggregate = read("src", "features", "school", "AssessmentAggregateWorkbench.tsx");
+    const queue = read("src", "features", "school", "TeacherAssessmentQueue.tsx");
     const routes = read("src", "features", "school", "dashboard-routes.ts");
 
     expect(workbench).toContain("<LearningCheckMatrixEntry");
@@ -163,7 +163,9 @@ describe("teacher question assessment workbench", () => {
     expect(workbench).not.toContain("questionCount: 19");
     expect(workbench).not.toContain("totalScore: 150");
     expect(page).toContain("getTeacherAssessmentWorkbenchData");
-    expect(aggregate).toContain("TeacherAssessmentEntryButton");
+    expect(queue).toContain("TeacherAssessmentEntryButton");
+    expect(queue).not.toContain("saveAssessmentWorkbenchRowAction");
+    expect(queue).not.toContain("saveAssessmentWorkbenchRouteAction");
     expect(routes).toContain('hrefPattern: "/dashboard/assessments/[registrationId]"');
     expect(routes).toContain('shellMode: "panel"');
   });

@@ -19,11 +19,14 @@ describe("support assessment handoff preview", () => {
     expect(preview).not.toContain("TeacherAssessmentWorkbench");
   });
 
-  it("exposes the acceptance page only to a signed-in local staff environment", () => {
+  it("keeps one canonical assessment route instead of a competing preview page", () => {
     const route = source("src/app/[locale]/dashboard/assessments/support-preview/page.tsx");
+    const canonical = source("src/app/[locale]/dashboard/assessments/page.tsx");
 
     expect(route).toContain('process.env.NODE_ENV === "production"');
-    expect(route).toContain('requireDashboardEnvironment(locale, ["staff"])');
-    expect(route).toContain("<SupportAssessmentPreview locale={locale}");
+    expect(route).toContain('redirect(`/${locale}/dashboard/assessments?desk=support`)');
+    expect(canonical).toContain("<TeacherAssessmentQueue");
+    expect(canonical).toContain("<SupportAssessmentPreview");
+    expect(canonical).toContain('requestedDesk === "support"');
   });
 });
