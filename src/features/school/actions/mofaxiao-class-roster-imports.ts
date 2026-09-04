@@ -10,7 +10,7 @@ import {
   type MofaxiaoClassRosterImportBatchResult,
   type PreviewMofaxiaoClassRosterImportInput,
 } from "./types";
-import { COMMON_CODES, intInRange, parse, requiredText, text, uuid } from "./schemas";
+import { COMMON_CODES, dateOnly, intInRange, parse, requiredText, text, uuid } from "./schemas";
 
 const sha256 = z.string().regex(/^[a-f0-9]{64}$/);
 const rosterDecision = z.enum(["link_existing", "create_student", "skip"]);
@@ -31,6 +31,10 @@ const defaultClassSchema = z.object({
   teacherInitials: requiredText(40).regex(/^(?:[A-Z0-9]+|待定老师)$/).optional(),
   weekday: text(40),
   time: text(80),
+  startDate: dateOnly.nullable().optional(),
+  startTime: text(5).regex(/^(?:(?:[01]\d|2[0-3]):[0-5]\d)?$/).optional(),
+  endTime: text(5).regex(/^(?:(?:[01]\d|2[0-3]):[0-5]\d)?$/).optional(),
+  durationMin: intInRange(1, 600).nullable().optional(),
 }).strict();
 
 const mofaxiaoClassRosterRowSchema = z.object({

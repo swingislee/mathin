@@ -6,6 +6,7 @@ import {
   defaultMofaxiaoRosterStudentDecision,
   listMofaxiaoRosterClassCandidates,
   matchMofaxiaoRosterStudent,
+  parseMofaxiaoRosterSchedule,
   parseMofaxiaoClassRosterWorkbook,
   preferredMofaxiaoRosterClassCandidate,
   teacherInitialsForClassName,
@@ -31,7 +32,7 @@ describe("魔法校班级学员花名册导入", () => {
           row({ 29: "紫辰" }),
           row({ 29: "思维体系" }),
           row({
-            29: "一年级", 30: "秋季", 31: "A+", 32: "Z312", 33: "张灿", 34: "周六", 35: "10:00-12:00",
+            29: "一年级", 30: "秋季", 31: "A+", 32: "Z312", 33: "张灿", 34: "周六", 35: "9.12开课10:00-12:00",
             40: "陈天欣", 41: "周张绾宜（王）", 42: "王博煊待定", 43: "李梓涵（暑期备注）",
           }),
         ],
@@ -39,13 +40,37 @@ describe("魔法校班级学员花名册导入", () => {
     ]);
 
     expect(parsed).toMatchObject({ sheetName: "26年暑秋在读学员", schoolYear: 2026, season: 2, memberships: 4 });
-    expect(parsed.classes[0]).toMatchObject({ campus: "紫辰", system: "思维体系", grade: 1, teacher: "张灿" });
+    expect(parsed.classes[0]).toMatchObject({
+      campus: "紫辰",
+      system: "思维体系",
+      grade: 1,
+      teacher: "张灿",
+      startDate: "2026-09-12",
+      startTime: "10:00",
+      endTime: "12:00",
+      durationMin: 120,
+    });
     expect(parsed.classes[0].students).toEqual([
       expect.objectContaining({ sourceCell: "AO3", rawName: "陈天欣", name: "陈天欣", phone: "18255178761", needsReview: false }),
       expect.objectContaining({ sourceCell: "AP3", rawName: "周张绾宜（王）", name: "周张绾宜", sourceNote: "王", needsReview: true }),
       expect.objectContaining({ sourceCell: "AQ3", rawName: "王博煊待定", name: "王博煊", sourceNote: "待定", needsReview: true }),
       expect.objectContaining({ sourceCell: "AR3", rawName: "李梓涵（暑期备注）", name: "李梓涵", sourceNote: "暑期备注", needsReview: true }),
     ]);
+  });
+
+  it("把几号开课拆为自动排课起始日，班级时段只保留纯时间", () => {
+    expect(parseMofaxiaoRosterSchedule("    9.13开课   13:50-16:20", 2026)).toEqual({
+      startDate: "2026-09-13",
+      startTime: "13:50",
+      endTime: "16:20",
+      durationMin: 150,
+    });
+    expect(parseMofaxiaoRosterSchedule("16:10-18:10", 2026)).toEqual({
+      startDate: null,
+      startTime: "16:10",
+      endTime: "18:10",
+      durationMin: 120,
+    });
   });
 
   it("手机号只在姓名相同后参与匹配，不会把共用号码的兄弟姐妹并成一人", () => {
@@ -157,11 +182,11 @@ describe("魔法校班级学员花名册导入", () => {
       data: [
         row({ 29: "培优体系" }),
         row({ 29: "紫辰" }),
-        row({ 29: "三年级", 30: "秋季", 31: "A+", 33: "薛立志", 34: "周三", 35: "17:00-19:30", 40: "张若雨" }),
+        row({ 29: "三年级", 30: "秋季", 31: "A+", 33: "薛立志", 34: "周六", 35: "9.12开课17:00-19:30", 40: "张若雨" }),
       ],
     }]).classes[0];
     const base: ClassRosterTargetOption = {
-      id: "e-b", name: "【科学思维】三年级秋季A+|紫辰XLZ周三17:00", grade: 3, termId: "term",
+      id: "e-b", name: "【科学思维】三年级秋季A+|紫辰XLZ周六17:00", grade: 3, termId: "term",
       schoolYear: 2026, season: 2, courseTitle: "E系列数学三年级秋季B[全国版]",
       courseFamilySlug: "xueersi-e-primary-math-cn", courseClassType: "B", campusName: "", roomName: "",
       primaryTeacherNames: ["薛立志"], capacity: 20, activeEnrollmentCount: 0,
@@ -173,23 +198,27 @@ describe("魔法校班级学员花名册导入", () => {
       { ...base, id: "aix-a", courseTitle: "爱学习 A+ 全国版数学 · 三年级秋季", courseFamilySlug: "aixuexi-primary-math", courseClassType: "A+" },
     ]).map((candidate) => candidate.id)).toEqual(["e-b"]);
     expect(preferredMofaxiaoRosterClassCandidate(source, [base])?.id).toBe("e-b");
-    expect(preferredMofaxiaoRosterClassCandidate(source, [{ ...base, name: "【培优思维】三年级秋季A+|紫辰XLZ周三17:00" }])?.id).toBe("e-b");
-    expect(preferredMofaxiaoRosterClassCandidate(source, [{ ...base, name: "三年级秋季A+周三17:00", campusName: "紫辰阁" }])?.id).toBe("e-b");
-    expect(preferredMofaxiaoRosterClassCandidate(source, [{ ...base, name: "三年级秋季A+周三17:00", campusName: "利港" }])).toBeNull();
-    expect(preferredMofaxiaoRosterClassCandidate({ ...source, weekday: "周六", time: "9.12开课10:00-12:00" }, [base])).toBeNull();
+    expect(preferredMofaxiaoRosterClassCandidate(source, [{ ...base, name: "【培优思维】三年级秋季A+|紫辰XLZ周六17:00" }])?.id).toBe("e-b");
+    expect(preferredMofaxiaoRosterClassCandidate(source, [{ ...base, name: "三年级秋季A+周六17:00", campusName: "紫辰阁" }])?.id).toBe("e-b");
+    expect(preferredMofaxiaoRosterClassCandidate(source, [{ ...base, name: "三年级秋季A+周六17:00", campusName: "利港" }])).toBeNull();
+    expect(preferredMofaxiaoRosterClassCandidate({ ...source, weekday: "周三" }, [base])).toBeNull();
 
     expect(teacherInitialsForClassName("薛立志")).toBe("XLZ");
     expect(teacherInitialsForClassName("袁理娟")).toBe("YLJ");
     expect(teacherInitialsForClassName("张灿")).toBe("ZC");
     expect(teacherInitialsForClassName("XLZ")).toBe("XLZ");
     expect(buildMofaxiaoRosterDefaultClass(source)).toEqual(expect.objectContaining({
-      name: "【科学思维】三年级秋季A+｜紫辰阁XLZ周三17:00-19:30",
+      name: "【科学思维】三年级秋季A+|紫辰阁XLZ周六17:00",
       system: "科学思维",
       classType: "A+",
       courseClassType: "B",
       campusName: "紫辰阁",
       teacherName: "薛立志",
       teacherInitials: "XLZ",
+      startDate: "2026-09-12",
+      startTime: "17:00",
+      endTime: "19:30",
+      durationMin: 150,
       schoolYear: 2026,
       season: 2,
     }));
@@ -214,6 +243,7 @@ describe("魔法校班级学员花名册导入", () => {
     const namingMigration = read("supabase", "migrations", "20260903001300_mofaxiao_e_series_science_class_naming.sql");
     const classTypeMigration = read("supabase", "migrations", "20260903001400_mofaxiao_roster_class_type_course_mapping.sql");
     const termScopeMigration = read("supabase", "migrations", "20260903001600_mofaxiao_roster_organization_term_scope.sql");
+    const namingScheduleMigration = read("supabase", "migrations", "20260903001700_mofaxiao_roster_class_name_schedule.sql");
     const applySection = migration.slice(
       migration.indexOf("create or replace function public.apply_mofaxiao_class_roster_import"),
       migration.indexOf("revoke all on function public.get_mofaxiao_class_roster_import_batch"),
@@ -267,6 +297,14 @@ describe("魔法校班级学员花名册导入", () => {
     expect(termScopeMigration).toContain("term.year = v_school_year");
     expect(termScopeMigration).toContain("MOFAXIAO_ROSTER_PREVIEW_STILL_CAMPUS_SCOPED");
     expect(termScopeMigration).toContain("MOFAXIAO_ROSTER_APPLY_STILL_CAMPUS_SCOPED");
+    expect(action).toContain("startDate: dateOnly.nullable().optional()");
+    expect(namingScheduleMigration).toContain("'|' || v_campus || v_teacher || v_weekday || v_time");
+    expect(namingScheduleMigration).not.toContain("'｜' || v_campus");
+    expect(namingScheduleMigration).toContain("build_mofaxiao_roster_sessions");
+    expect(namingScheduleMigration).toContain("public.get_effective_calendar_day_v2");
+    expect(namingScheduleMigration).toContain("p_sessions => v_sessions");
+    expect(namingScheduleMigration).toContain("v_calendar #>> '{entry,scheduleMode}' = 'mapped'");
+    expect(namingScheduleMigration).toContain("MOFAXIAO_ROSTER_SCHEDULE_STILL_ALWAYS_PENDING");
     for (const forbiddenWrite of [
       "insert into public.classrooms",
       "insert into public.class_sessions",

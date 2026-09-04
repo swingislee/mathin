@@ -357,6 +357,10 @@ export interface MofaxiaoClassRosterDefaultClass {
   teacherInitials?: string;
   weekday: string;
   time: string;
+  startDate?: string | null;
+  startTime?: string;
+  endTime?: string;
+  durationMin?: number | null;
 }
 
 export type MofaxiaoClassRosterReviewIssue = "course" | "teacher" | "room" | "schedule";
