@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, CircleAlert, LoaderCircle, Sparkles } from "lucide-react";
+import { AlertTriangle, CheckCircle2, CircleAlert, LoaderCircle, RotateCcw, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useAction } from "@/components/action-form";
 import { Badge } from "@/components/ui/badge";
@@ -31,7 +31,7 @@ import { DashboardTableShell } from "./dashboard-page";
 import { formatRoomLocation } from "./location-format";
 import type { RoomOptionV2 } from "./organization-locations";
 import { RoomPicker } from "./RoomPicker";
-import { calendarDayKey } from "./schedule";
+import { calendarDayKey, dateTimeInputToInstant, zonedDateTimeInputValue } from "./schedule";
 import { generateSchedulePreview } from "./schedule-preview";
 import type { TeachingCalendarEntryV2 } from "./teaching-calendar";
 import { CoursePicker } from "./teaching-operations/CoursePicker";
@@ -67,6 +67,7 @@ export function ClassroomSetupWorkspace({
   returnTo: string | null;
 }) {
   const t = useTranslations("school.classSetup");
+  const classBuildT = useTranslations("school.classBuild");
   const router = useRouter();
   const importedDefaults = useMemo(() => importedClassScheduleDefaults(importContext), [importContext]);
   const initialStartDate = importedDefaults.startDate ?? calendarDayKey(new Date(), timeZone);
@@ -91,6 +92,7 @@ export function ClassroomSetupWorkspace({
   const [calendarLoadFailed, setCalendarLoadFailed] = useState(false);
   const [conflicts, setConflicts] = useState<ClassBuildScheduleConflict[]>([]);
   const [conflictsLoading, setConflictsLoading] = useState(false);
+  const [scheduleOverrides, setScheduleOverrides] = useState<Record<string, string>>({});
 
   const needsSchedule = classroom.sessions.length === 0;
   const capacityNumber = capacity === "" ? null : Number(capacity);
@@ -157,9 +159,9 @@ export function ClassroomSetupWorkspace({
   }, [calendarEntries, calendarReady, course, durationMin, needsSchedule, roomCampusId, scheduleInputsValid, startDate, time, timeZone, weekdays]);
 
   const conflictSlots = useMemo(() => preview.map((item) => ({
-    scheduledAt: item.scheduledAt.toISOString(),
+    scheduledAt: scheduleOverrides[item.lectureId] ?? item.scheduledAt.toISOString(),
     durationMin: item.durationMin,
-  })), [preview]);
+  })), [preview, scheduleOverrides]);
 
   useEffect(() => {
     if (!needsSchedule || !primaryTeacherId || !roomId || conflictSlots.length === 0) return;
@@ -205,6 +207,22 @@ export function ClassroomSetupWorkspace({
     return next;
   });
 
+  const updateScheduleOverride = (lectureId: string, value: string, automaticAt: Date) => {
+    const instant = value ? dateTimeInputToInstant(value, timeZone) : null;
+    setScheduleOverrides((current) => ({
+      ...current,
+      [lectureId]: instant?.toISOString() ?? automaticAt.toISOString(),
+    }));
+  };
+
+  const resetScheduleOverride = (lectureId: string) => setScheduleOverrides((current) => {
+    const next = { ...current };
+    delete next[lectureId];
+    return next;
+  });
+
+  const resetAllScheduleOverrides = () => setScheduleOverrides({});
+
   const scheduleReady = !needsSchedule || Boolean(
     course
       && course.lectures.length > 0
@@ -241,7 +259,7 @@ export function ClassroomSetupWorkspace({
         lectureId: session.lectureId,
         no: session.no,
         name: session.name,
-        scheduledAt: session.scheduledAt.toISOString(),
+        scheduledAt: scheduleOverrides[session.lectureId] ?? session.scheduledAt.toISOString(),
         durationMin: session.durationMin,
       })) : [],
     });
@@ -320,7 +338,14 @@ export function ClassroomSetupWorkspace({
       </section>
 
       <section className="space-y-4 border-t border-line pt-5">
-        <div><h3 className="font-medium text-ink">{t("scheduleSection")}</h3><p className="mt-1 text-sm text-muted">{t(needsSchedule ? "scheduleSectionHint" : "existingScheduleHint", { count: classroom.sessions.length })}</p></div>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div><h3 className="font-medium text-ink">{t("scheduleSection")}</h3><p className="mt-1 text-sm text-muted">{t(needsSchedule ? "scheduleSectionHint" : "existingScheduleHint", { count: classroom.sessions.length })}</p></div>
+          {preview.some((session) => scheduleOverrides[session.lectureId] !== undefined) ? (
+            <Button type="button" size="sm" variant="secondary" onClick={resetAllScheduleOverrides}>
+              <RotateCcw className="size-4" />{classBuildT("restoreBatchSchedule")}
+            </Button>
+          ) : null}
+        </div>
         {needsSchedule ? (
           <>
             <div className="grid gap-4 md:grid-cols-3">
@@ -346,8 +371,28 @@ export function ClassroomSetupWorkspace({
             {preview.length > 0 ? (
               <DashboardTableShell className="max-h-96 overflow-auto">
                 <Table>
-                  <TableHeader><TableRow><TableHead className="w-16">{t("order")}</TableHead><TableHead>{t("lecture")}</TableHead><TableHead>{t("scheduledAt")}</TableHead></TableRow></TableHeader>
-                  <TableBody>{preview.map((session, index) => <TableRow key={session.lectureId}><TableCell className="font-mono text-xs text-muted">{index + 1}</TableCell><TableCell>{session.name}</TableCell><TableCell>{new Intl.DateTimeFormat(undefined, { timeZone, dateStyle: "medium", timeStyle: "short" }).format(session.scheduledAt)}</TableCell></TableRow>)}</TableBody>
+                  <TableHeader><TableRow><TableHead className="w-16">{t("order")}</TableHead><TableHead>{t("lecture")}</TableHead><TableHead>{t("scheduledAt")}</TableHead><TableHead className="w-28" /></TableRow></TableHeader>
+                  <TableBody>{preview.map((session, index) => (
+                    <TableRow key={session.lectureId}>
+                      <TableCell className="font-mono text-xs text-muted">{index + 1}</TableCell>
+                      <TableCell><span className="block">{session.name}</span><span className="text-xs text-muted">{classBuildT("sourceLectureNo", { no: session.no })}</span></TableCell>
+                      <TableCell>
+                        <DateTimePicker
+                          mode="datetime"
+                          value={zonedDateTimeInputValue(new Date(scheduleOverrides[session.lectureId] ?? session.scheduledAt.toISOString()), timeZone)}
+                          onValueChange={(value) => updateScheduleOverride(session.lectureId, value, session.scheduledAt)}
+                          className="h-8 max-w-60 text-xs"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        {scheduleOverrides[session.lectureId] !== undefined ? (
+                          <Button type="button" size="sm" variant="ghost" onClick={() => resetScheduleOverride(session.lectureId)}>
+                            <RotateCcw className="size-3.5" />{classBuildT("useBatchTime")}
+                          </Button>
+                        ) : <span className="text-xs text-muted">{classBuildT("batchTime")}</span>}
+                      </TableCell>
+                    </TableRow>
+                  ))}</TableBody>
                 </Table>
               </DashboardTableShell>
             ) : null}
