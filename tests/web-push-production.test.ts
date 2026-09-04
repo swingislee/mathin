@@ -119,6 +119,21 @@ describe("employee desktop Web Push production foundation", () => {
     expect(serviceWorker).not.toContain("importScripts");
   });
 
+  it("keeps desktop notification management in account navigation and a single bell-header switch", () => {
+    const accountPage = read("src/app/[locale]/dashboard/account-security/page.tsx");
+    const accountPanel = read("src/features/account/AccountSecurityPanel.tsx");
+    const bell = read("src/features/events/ChangeBell.tsx");
+    const controls = read("src/features/events/DesktopNotificationControls.tsx");
+
+    expect(accountPage).not.toContain("DesktopNotificationControls");
+    expect(accountPanel).toContain('value="desktopNotifications"');
+    expect(accountPanel).toContain('<DesktopNotificationControls variant="full" />');
+    expect(bell.match(/<DesktopNotificationControls/g)).toHaveLength(1);
+    expect(bell.indexOf('<DesktopNotificationControls variant="toggle" />'))
+      .toBeLessThan(bell.indexOf("<Tabs defaultValue="));
+    expect(controls).toContain('role="switch"');
+  });
+
   it("keeps the worker fail-closed and loads the provider only after channel checks", () => {
     const worker = read("scripts/r1-job-worker.mjs");
     const deploy = read("scripts/ops/deploy-mathin-linux.sh");

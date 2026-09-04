@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import {
+  BellRing,
   BriefcaseBusiness,
   CheckCircle2,
   Download,
@@ -36,6 +37,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DesktopNotificationControls } from "@/features/events/DesktopNotificationControls";
 import { Link, useRouter } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { revokeAllMyWebPushSubscriptionsAction } from "@/features/events/web-push-actions";
@@ -61,7 +63,7 @@ type Factor = {
   status: "verified" | "unverified";
   created_at: string;
 };
-type AccountSection = "profile" | "identities" | "security" | "privacy";
+type AccountSection = "profile" | "identities" | "security" | "privacy" | "desktopNotifications";
 type AvatarDraft =
   | { kind: "keep" }
   | { kind: "remove" }
@@ -132,6 +134,7 @@ export function AccountSecurityPanel({
 }) {
   const locale = useLocale();
   const t = useTranslations("account.security");
+  const desktopNotificationT = useTranslations("changes.desktopNotifications");
   const router = useRouter();
   const [section, setSection] = useState<AccountSection>(initialSection);
   const [displayName, setDisplayName] = useState(snapshot.profile.displayName);
@@ -151,6 +154,7 @@ export function AccountSecurityPanel({
   const [requestScope, setRequestScope] = useState("account");
   const [requestReason, setRequestReason] = useState("");
   const isAdmin = snapshot.profile.role === "admin";
+  const desktopNotificationsEligible = snapshot.profile.role === "staff" || isAdmin;
 
   useEffect(() => () => {
     if (avatarDraft.kind === "upload") URL.revokeObjectURL(avatarDraft.previewUrl);
@@ -420,6 +424,11 @@ export function AccountSecurityPanel({
                 <Icon className="size-4 shrink-0" aria-hidden />{label}
               </TabsTrigger>
             ))}
+            {desktopNotificationsEligible ? (
+              <TabsTrigger value="desktopNotifications" className="w-full justify-start rounded-none border-b-2 border-transparent bg-transparent px-3 py-3 text-left shadow-none data-[state=active]:border-rose data-[state=active]:bg-rose/5 data-[state=active]:shadow-none lg:border-b-0 lg:border-l-2">
+                <BellRing className="size-4 shrink-0" aria-hidden />{desktopNotificationT("title")}
+              </TabsTrigger>
+            ) : null}
           </TabsList>
         </div>
       </aside>
@@ -526,6 +535,12 @@ export function AccountSecurityPanel({
             {snapshot.exports.length > 0 ? <div className="mt-6 border-t border-line pt-5"><h4 className="text-sm font-medium text-ink">{t("exportsTitle")}</h4><ul className="mt-2 divide-y divide-line border-y border-line">{snapshot.exports.map((artifact) => <li key={artifact.id} className="py-4"><div className="flex flex-wrap items-center gap-2 text-sm"><span className="font-medium">{t("exportJson")}</span><span className="text-xs text-muted">{t(`exportStatus_${artifact.status}`)} · {t("exportSize", { size: Math.max(1, Math.ceil(artifact.sizeBytes / 1024)) })}</span><Button type="button" className="ml-auto" size="sm" variant="secondary" disabled={artifact.status !== "ready" || downloadRun.pending} onClick={() => downloadRun.run(artifact.id)}>{downloadRun.pending ? <LoaderCircle className="size-4 animate-spin" /> : <Download className="size-4" />}{t("downloadExport")}</Button></div><p className="mt-2 break-all font-mono text-[11px] text-muted">{t("exportHash", { hash: artifact.artifactHash })}</p><p className="mt-1 text-xs text-muted">{t("exportExpires", { date: new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(artifact.expiresAt)) })} · {t("exportDownloads", { count: artifact.downloadCount })}</p></li>)}</ul></div> : null}
           </SettingSection>
         </TabsContent>
+
+        {desktopNotificationsEligible ? (
+          <TabsContent value="desktopNotifications" className="m-0">
+            <DesktopNotificationControls variant="full" />
+          </TabsContent>
+        ) : null}
       </div>
       </Tabs>
     </>

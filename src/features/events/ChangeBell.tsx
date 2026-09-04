@@ -147,7 +147,10 @@ export function ChangeBell({
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-[min(94vw,420px)] p-0">
-        <div className="border-b border-line px-4 py-3 font-medium">{t("title")}</div>
+        <div className="flex min-h-14 items-center justify-between gap-3 border-b border-line px-4 py-3">
+          <span className="font-medium">{t("title")}</span>
+          {desktopNotificationsEligible ? <DesktopNotificationControls variant="toggle" /> : null}
+        </div>
         <Tabs defaultValue={workItems.length > 0 ? "tasks" : "notifications"}>
           <TabsList className="mx-3 mt-3 grid grid-cols-2">
             <TabsTrigger value="tasks">{t("tasks", { count: totalWorkItems })}</TabsTrigger>
@@ -206,7 +209,6 @@ export function ChangeBell({
             )}
           </TabsContent>
         </Tabs>
-        {desktopNotificationsEligible ? <DesktopNotificationControls /> : null}
       </PopoverContent>
     </Popover>
   );

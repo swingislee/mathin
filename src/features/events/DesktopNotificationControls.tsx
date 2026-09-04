@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import {
   getMyWebPushSnapshotAction,
   reconcileMyWebPushSubscriptionAction,
@@ -43,9 +44,9 @@ async function currentBrowserSubscription(): Promise<PushSubscription | null> {
 }
 
 export function DesktopNotificationControls({
-  variant = "compact",
+  variant = "toggle",
 }: {
-  variant?: "compact" | "full";
+  variant?: "toggle" | "full";
 }) {
   const t = useTranslations("changes.desktopNotifications");
   const locale = useLocale() === "en" ? "en" : "zh";
@@ -204,8 +205,44 @@ export function DesktopNotificationControls({
 
   if (capability && !capability.roleEligible) return null;
 
+  if (variant === "toggle") {
+    const active = Boolean(currentDevice);
+
+    return (
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        role="switch"
+        aria-checked={active}
+        aria-label={t("title")}
+        disabled={pending || (!active && !canEnable)}
+        title={unavailableReason}
+        className="h-8 shrink-0 gap-2 rounded-lg px-2 text-xs font-medium text-muted hover:text-ink"
+        onClick={() => active && currentDevice ? revoke(currentDevice) : enable()}
+      >
+        <span>{t("title")}</span>
+        <span
+          aria-hidden
+          className={cn(
+            "relative h-5 w-9 shrink-0 rounded-full bg-muted/30 p-0.5 transition-colors",
+            active && "bg-rose",
+          )}
+        >
+          <span
+            className={cn(
+              "block size-4 rounded-full bg-card shadow-sm transition-transform",
+              active && "translate-x-4",
+            )}
+          />
+        </span>
+        {message ? <span className="sr-only" role="status" aria-live="polite">{message}</span> : null}
+      </Button>
+    );
+  }
+
   return (
-    <section className={variant === "compact" ? "border-t border-line px-4 py-3" : "grid gap-4"}>
+    <section className="grid gap-4">
       <div className="flex items-start gap-3">
         <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-full bg-moon/45 text-ink" aria-hidden>
           <BellRing size={16} />
@@ -216,7 +253,7 @@ export function DesktopNotificationControls({
         </div>
       </div>
 
-      {!currentDevice && capability?.roleEligible && variant === "full" ? (
+      {!currentDevice && capability?.roleEligible ? (
         <div className="grid gap-3 sm:grid-cols-2">
           <Label className="grid gap-1.5">
             <span>{t("deviceLabel")}</span>
@@ -252,33 +289,31 @@ export function DesktopNotificationControls({
         )}
       </div>
 
-      {variant === "full" ? <p className="text-xs text-muted">{t("backgroundHint")}</p> : null}
+      <p className="text-xs text-muted">{t("backgroundHint")}</p>
       {message ? <p role="status" aria-live="polite" className="mt-2 text-xs text-muted">{message}</p> : null}
 
-      {variant === "full" ? (
-        <div className="grid gap-2">
-          <h3 className="flex items-center gap-2 text-sm font-medium"><MonitorCog size={16} />{t("devicesTitle")}</h3>
-          {devices.length === 0 ? <p className="text-sm text-muted">{t("noDevices")}</p> : (
-            <ul className="divide-y divide-line rounded-2xl border border-line bg-card/60">
-              {devices.map((device) => (
-                <li key={device.id} className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{device.deviceLabel}{device.id === currentSubscriptionId ? ` · ${t("thisDevice")}` : ""}</p>
-                    <p className="mt-1 text-xs text-muted">
-                      {t(device.deviceMode)} · {device.browserFamily}/{device.platformFamily} · {t(`status_${device.status}`)}
-                    </p>
-                  </div>
-                  {device.status === "active" ? (
-                    <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => revoke(device)}>
-                      {t("revokeDevice")}
-                    </Button>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      ) : null}
+      <div className="grid gap-2">
+        <h3 className="flex items-center gap-2 text-sm font-medium"><MonitorCog size={16} />{t("devicesTitle")}</h3>
+        {devices.length === 0 ? <p className="text-sm text-muted">{t("noDevices")}</p> : (
+          <ul className="divide-y divide-line rounded-2xl border border-line bg-card/60">
+            {devices.map((device) => (
+              <li key={device.id} className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium">{device.deviceLabel}{device.id === currentSubscriptionId ? ` · ${t("thisDevice")}` : ""}</p>
+                  <p className="mt-1 text-xs text-muted">
+                    {t(device.deviceMode)} · {device.browserFamily}/{device.platformFamily} · {t(`status_${device.status}`)}
+                  </p>
+                </div>
+                {device.status === "active" ? (
+                  <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => revoke(device)}>
+                    {t("revokeDevice")}
+                  </Button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </section>
   );
 }
