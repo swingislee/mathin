@@ -46,6 +46,10 @@ describe("班级开课设置工作面", () => {
     expect(workspace).toContain("generateSchedulePreview");
     expect(workspace).toContain("getClassBuildConflictsAction");
     expect(workspace).toContain("completeClassroomSetupAction");
+    expect(workspace).toContain("dateTimeInputToInstant");
+    expect(workspace).toContain('mode="datetime"');
+    expect(workspace).toContain("scheduleOverrides[session.lectureId]");
+    expect(workspace).toContain('classBuildT("restoreBatchSchedule")');
     expect(action).toContain('"complete_classroom_setup_v2"');
     expect(migration).toContain("create or replace function public.complete_classroom_setup_v2");
     expect(migration).toContain("for update");
