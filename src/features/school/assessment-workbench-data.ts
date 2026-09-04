@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
-import type { ActivityRouteKind, AssessmentBand } from "./activity-workflow-contract";
+import type { ActivityRouteKind, StoredAssessmentBand } from "./activity-workflow-contract";
 import type {
   AssessmentWorkbenchAssessment,
   AssessmentWorkbenchRoute,
@@ -58,7 +58,7 @@ interface ActivityDbRow {
 interface AssessmentDbRow {
   id: string;
   activity_registration_id: string;
-  assessment_band: AssessmentBand | null;
+  assessment_band: StoredAssessmentBand | null;
   score: number | null;
   strengths: string;
   focus_areas: string;

@@ -6,6 +6,7 @@ import {
   assessmentWorkbenchRowsForView,
   type AssessmentWorkbenchRow,
 } from "@/features/school/assessment-workbench-contract";
+import { ASSESSMENT_BANDS } from "@/features/school/activity-workflow-contract";
 
 const root = process.cwd();
 const read = (...segments: string[]) => fs.readFileSync(path.join(root, ...segments), "utf8");
@@ -95,6 +96,11 @@ describe("DEV-SCHOOL-OPS-1 Phase 2 assessment-session worktable", () => {
       "migrations",
       "20260904000210_school_ops_assessment_lead_rls_nonrecursive.sql",
     );
+    const correctionMigration = read(
+      "supabase",
+      "migrations",
+      "20260904000220_school_ops_assessment_route_and_bands.sql",
+    );
     const page = read("src", "app", "[locale]", "dashboard", "assessments", "page.tsx");
     const workbench = read("src", "features", "school", "AssessmentAggregateWorkbench.tsx");
     const actions = read("src", "features", "school", "assessment-workbench-actions.ts");
@@ -124,7 +130,13 @@ describe("DEV-SCHOOL-OPS-1 Phase 2 assessment-session worktable", () => {
     expect(query).toContain(".select(ACTIVITY_COLUMNS)");
     expect(actions).toContain("save_invitation_assessment_row");
     expect(actions).toContain("save_invitation_assessment_route");
+    expect(actions).toContain("save_assessment_workbench_route");
+    expect(actions).not.toContain('rpc(supabase)("save_activity_route"');
     expect(actions.match(/const result = value\.invitationId/g)).toHaveLength(2);
+    expect(correctionMigration).toContain("save_assessment_workbench_route");
+    expect(correctionMigration).toContain("status = 'attended'");
+    expect(correctionMigration).toContain("not public.has_perm(v_uid, 'review.write')");
+    expect(correctionMigration).toContain("v_activity_kind <> 'assessment_1v1'");
     expect(page).toContain("AssessmentAggregateWorkbench");
     expect(page).toContain("DashboardCommandTabs");
     expect(workbench).toContain("sessionRows");
@@ -137,6 +149,26 @@ describe("DEV-SCHOOL-OPS-1 Phase 2 assessment-session worktable", () => {
     expect(workbench).toContain("mountedRef.current = true");
     expect(workbench).not.toContain("lockInvitation");
     expect(routes).toContain('href: "/dashboard/assessments"');
+  });
+
+  it("orders the selectable assessment levels from low to high and retains the old value as read-only history", () => {
+    const migration = read(
+      "supabase",
+      "migrations",
+      "20260904000220_school_ops_assessment_route_and_bands.sql",
+    );
+    const workbench = read("src", "features", "school", "AssessmentAggregateWorkbench.tsx");
+    const activityWorkspace = read("src", "features", "school", "ActivityWorkspace.tsx");
+    const zh = read("messages", "zh.json");
+    const en = read("messages", "en.json");
+
+    expect(ASSESSMENT_BANDS).toEqual(["x_plus", "g_plus", "a", "a_plus", "s", "c"]);
+    expect(migration).toContain("'below_a', 'x_plus', 'g_plus', 'a', 'a_plus', 's', 'c'");
+    expect(migration).toContain("p_assessment_band = 'below_a'");
+    expect(workbench).toContain('value="below_a" disabled');
+    expect(activityWorkspace).toContain('value="below_a" disabled');
+    expect(zh).toContain('"band_c": "C"');
+    expect(en).toContain('"band_c": "C"');
   });
 
   it("keeps a saved assessment row in the current session while queue counts remain derivable", () => {

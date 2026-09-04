@@ -27,6 +27,7 @@ import {
   type ActivityRouteKind,
   type ActivityWorkspaceNode,
   type AssessmentBand,
+  type StoredAssessmentBand,
 } from "./activity-workflow-contract";
 import type { ActivityRegistration, ActivityRow } from "./activities";
 import {
@@ -42,7 +43,7 @@ type ParticipationStatus = ActivityRegistration["status"];
 type SaveState = "idle" | "dirty" | "saving" | "saved" | "error";
 
 interface AssessmentDraft {
-  assessmentBand: AssessmentBand | null;
+  assessmentBand: StoredAssessmentBand | null;
   score: number | null;
   strengths: string;
   focusAreas: string;
@@ -426,6 +427,9 @@ function AssessmentRow({
       <SelectTrigger className="h-9 w-full"><SelectValue /></SelectTrigger>
       <SelectContent>
         <SelectItem value="none">{t("notEntered")}</SelectItem>
+        {assessmentAutosave.draft.assessmentBand === "below_a" ? (
+          <SelectItem value="below_a" disabled>{t("band_below_a")}</SelectItem>
+        ) : null}
         {ASSESSMENT_BANDS.map((band) => <SelectItem key={band} value={band}>{t(`band_${band}`)}</SelectItem>)}
       </SelectContent>
     </Select></TableCell>

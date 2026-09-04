@@ -4,7 +4,12 @@ import { z } from "zod";
 import { actionError, type ActionResult } from "@/lib/action-result";
 import { getMyPerms } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { ACTIVITY_ROUTES, ASSESSMENT_BANDS, type ActivityRouteKind, type AssessmentBand } from "./activity-workflow-contract";
+import {
+  ACTIVITY_ROUTES,
+  STORED_ASSESSMENT_BANDS,
+  type ActivityRouteKind,
+  type StoredAssessmentBand,
+} from "./activity-workflow-contract";
 import { intInRange, parse, text, uuid } from "./actions/schemas";
 
 const rowReferenceSchema = z.object({
@@ -13,7 +18,7 @@ const rowReferenceSchema = z.object({
 }).refine((value) => Boolean(value.invitationId || value.registrationId), "ROW_REFERENCE_REQUIRED");
 
 const assessmentInputSchema = rowReferenceSchema.and(z.object({
-  assessmentBand: z.enum(ASSESSMENT_BANDS).nullable(),
+  assessmentBand: z.enum(STORED_ASSESSMENT_BANDS).nullable(),
   score: intInRange(0, 100).nullable(),
   strengths: text(2_000),
   focusAreas: text(2_000),
@@ -30,7 +35,7 @@ const routeInputSchema = rowReferenceSchema.and(z.object({
 export interface AssessmentWorkbenchSaveInput {
   invitationId: string | null;
   registrationId: string | null;
-  assessmentBand: AssessmentBand | null;
+  assessmentBand: StoredAssessmentBand | null;
   score: number | null;
   strengths: string;
   focusAreas: string;
@@ -134,7 +139,7 @@ export async function saveAssessmentWorkbenchRouteAction(
           p_route: value.route,
           p_note: value.note,
         })
-      : await rpc(supabase)("save_activity_route", {
+      : await rpc(supabase)("save_assessment_workbench_route", {
           p_registration_id: value.registrationId,
           p_route: value.route,
           p_note: value.note,

@@ -28,13 +28,19 @@ import type {
   AssessmentWorkbenchRoute,
   AssessmentWorkbenchRow,
 } from "./assessment-workbench-contract";
-import { ACTIVITY_ROUTES, ASSESSMENT_BANDS, type ActivityRouteKind, type AssessmentBand } from "./activity-workflow-contract";
+import {
+  ACTIVITY_ROUTES,
+  ASSESSMENT_BANDS,
+  type ActivityRouteKind,
+  type AssessmentBand,
+  type StoredAssessmentBand,
+} from "./activity-workflow-contract";
 import { DashboardTableShell } from "./dashboard-page";
 
 type SaveState = "idle" | "dirty" | "saving" | "saved" | "error";
 
 interface AssessmentDraft {
-  assessmentBand: AssessmentBand | null;
+  assessmentBand: StoredAssessmentBand | null;
   score: number | null;
   strengths: string;
   focusAreas: string;
@@ -277,6 +283,9 @@ function AssessmentEntryRows({
               <SelectTrigger className="h-8 text-xs" aria-label={t("assessmentBand")}><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">{t("bandPending")}</SelectItem>
+                {assessmentAutosave.draft.assessmentBand === "below_a" ? (
+                  <SelectItem value="below_a" disabled>{t("band_below_a")}</SelectItem>
+                ) : null}
                 {ASSESSMENT_BANDS.map((band) => <SelectItem key={band} value={band}>{t(`band_${band}`)}</SelectItem>)}
               </SelectContent>
             </Select>

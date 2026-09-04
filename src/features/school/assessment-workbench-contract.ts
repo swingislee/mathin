@@ -1,4 +1,4 @@
-import type { ActivityRouteKind, AssessmentBand } from "./activity-workflow-contract";
+import type { ActivityRouteKind, StoredAssessmentBand } from "./activity-workflow-contract";
 
 export const ASSESSMENT_WORKBENCH_QUEUES = ["pending", "recorded", "all"] as const;
 
@@ -6,7 +6,7 @@ export type AssessmentWorkbenchQueue = (typeof ASSESSMENT_WORKBENCH_QUEUES)[numb
 
 export interface AssessmentWorkbenchAssessment {
   id: string;
-  assessmentBand: AssessmentBand | null;
+  assessmentBand: StoredAssessmentBand | null;
   score: number | null;
   strengths: string;
   focusAreas: string;

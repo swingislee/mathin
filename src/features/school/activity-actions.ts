@@ -6,9 +6,9 @@ import { getMyPerms } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import {
   ACTIVITY_ROUTES,
-  ASSESSMENT_BANDS,
+  STORED_ASSESSMENT_BANDS,
   type ActivityRouteKind,
-  type AssessmentBand,
+  type StoredAssessmentBand,
 } from "./activity-workflow-contract";
 import { ACTIVITY_KINDS, type ActivityKind } from "./activity-kinds";
 import { COMMON_CODES, datetime, intInRange, parse, requiredText, searchQuery, text, uuid } from "./actions/schemas";
@@ -32,7 +32,7 @@ const activityResultSchema = z.object({
 
 const activityAssessmentSchema = z.object({
   registrationId: uuid,
-  assessmentBand: z.enum(ASSESSMENT_BANDS).nullable(),
+  assessmentBand: z.enum(STORED_ASSESSMENT_BANDS).nullable(),
   score: intInRange(0, 100).nullable(),
   strengths: text(2_000),
   focusAreas: text(2_000),
@@ -59,7 +59,7 @@ export interface ActivityInput {
 
 export interface ActivityAssessmentInput {
   registrationId: string;
-  assessmentBand: AssessmentBand | null;
+  assessmentBand: StoredAssessmentBand | null;
   score: number | null;
   strengths: string;
   focusAreas: string;
