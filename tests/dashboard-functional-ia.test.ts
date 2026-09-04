@@ -12,6 +12,7 @@ describe("dashboard functional information architecture", () => {
       ["home", null],
       ["leads", "subjectOperations"],
       ["invitations", "subjectOperations"],
+      ["assessments", "subjectOperations"],
       ["students", "subjectOperations"],
       ["activities", "subjectOperations"],
       ["followups", "subjectOperations"],

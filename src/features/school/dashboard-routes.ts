@@ -190,6 +190,15 @@ export const DASHBOARD_ROUTES = {
     createSurface: "derived",
     nav: { labelKey: "invitations", group: "subjectOperations" },
   },
+  assessments: {
+    href: "/dashboard/assessments",
+    kind: "queue",
+    environments: STAFF_ONLY,
+    permissionAny: ["review.write", "followup.view"],
+    // 已确认的 1 对 1 邀约自动进入这里；首次录入才物化到访事实，不要求提前建 Student。
+    createSurface: "derived",
+    nav: { labelKey: "assessments", group: "subjectOperations" },
+  },
   followups: {
     href: "/dashboard/followups",
     kind: "queue",
