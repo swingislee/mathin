@@ -162,6 +162,38 @@ export async function endPublicClassSegmentTeachingAction(
   }
 }
 
+export async function startPublicClassRunAction(
+  activityId: string,
+): Promise<ActionResult> {
+  try {
+    const id = parse(uuid, activityId);
+    const { supabase } = await staffRpcClient();
+    const { error } = await rpc<null>(supabase, "start_public_class_run", {
+      p_activity_id: id,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, PUBLIC_CLASS_CODES);
+  }
+}
+
+export async function endPublicClassRunAction(
+  activityId: string,
+): Promise<ActionResult> {
+  try {
+    const id = parse(uuid, activityId);
+    const { supabase } = await staffRpcClient();
+    const { error } = await rpc<null>(supabase, "end_public_class_run", {
+      p_activity_id: id,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, PUBLIC_CLASS_CODES);
+  }
+}
+
 export async function deletePublicClassSegmentAction(segmentId: string): Promise<ActionResult> {
   try {
     const id = parse(uuid, segmentId);

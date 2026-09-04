@@ -35,22 +35,30 @@ describe("DEV-SCHOOL-OPS-1 public-class workbench", () => {
     expect(workspace).not.toContain("/dashboard/sessions/");
   });
 
-  it("provides a real candidate-to-teaching-to-record path without a temporary class", () => {
-    const migration = read("supabase", "migrations", "20260904000280_public_class_teaching_flow.sql");
+  it("runs the whole public class once while keeping agenda blocks internal", () => {
+    const migration = read("supabase", "migrations", "20260904000290_public_class_run_continuity.sql");
     const workspace = read("src", "features", "school", "PublicClassWorkspace.tsx");
-    const teaching = read("src", "features", "school", "PublicClassTeachingShell.tsx");
-    const livePage = read("src", "app", "[locale]", "activity", "[activityId]", "segment", "[segmentId]", "live", "page.tsx");
+    const teaching = read("src", "features", "school", "PublicClassRunShell.tsx");
+    const livePage = read("src", "app", "[locale]", "activity", "[activityId]", "live", "page.tsx");
+    const legacyLivePage = read("src", "app", "[locale]", "activity", "[activityId]", "segment", "[segmentId]", "live", "page.tsx");
 
-    expect(migration).toContain("teaching_snapshot");
-    expect(migration).toContain("start_public_class_segment_teaching");
-    expect(migration).toContain("end_public_class_segment_teaching");
+    expect(migration).toContain("start_public_class_run");
+    expect(migration).toContain("end_public_class_run");
+    expect(migration).toContain("public.start_public_class_segment_teaching");
+    expect(migration).toContain("public.end_public_class_segment_teaching");
+    expect(migration).toContain("kind in ('trial_lesson', 'parent_talk')");
     expect(migration).not.toContain("insert into public.class_sessions");
-    expect(workspace).toContain("flowCandidate");
-    expect(workspace).toContain("flowTeaching");
-    expect(workspace).toContain("flowRecord");
-    expect(teaching).toContain("startPublicClassSegmentTeachingAction");
+    expect(workspace).toContain('value: "prepare"');
+    expect(workspace).toContain('value: "live"');
+    expect(workspace).toContain('value: "review"');
+    expect(workspace).toContain("splitAfterLesson");
+    expect(workspace).not.toContain("SegmentFlowStep");
+    expect(teaching).toContain("startPublicClassRunAction");
+    expect(teaching).toContain("endPublicClassRunAction");
     expect(teaching).toContain("CoursewareWorkbench");
-    expect(livePage).toContain("getPublicClassTeachingCourseware");
+    expect(teaching).toContain("PublicClassRosterView");
+    expect(livePage).toContain("Promise.all(presentationSegments.map");
+    expect(legacyLivePage).toContain("activity/${activityId}/live");
   });
 
   it("reuses the secured location read model instead of filtering protected room columns", () => {
@@ -101,7 +109,7 @@ describe("DEV-SCHOOL-OPS-1 public-class workbench", () => {
 
     expect(classPage).toContain("listPublicClassesForClassroom");
     expect(classPage).toContain("PublicClassSourcePanel");
-    expect(panel).toContain("?view=conversion");
+    expect(panel).toContain("?view=review");
     expect(migration).toContain("registration.student_id is not null");
     expect(migration).not.toContain("insert into public.enrollments");
   });

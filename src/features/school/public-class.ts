@@ -8,7 +8,7 @@ export const DEFAULT_PUBLIC_CLASS_PRINT_BACKGROUND = "/illustrations/public-clas
 export const PUBLIC_CLASS_SEGMENT_KINDS = ["trial_lesson", "group_assessment", "parent_talk"] as const;
 export type PublicClassSegmentKind = (typeof PUBLIC_CLASS_SEGMENT_KINDS)[number];
 export type PublicClassPresence = "expected" | "attended" | "late" | "absent" | "not_applicable";
-export const PUBLIC_CLASS_VIEWS = ["arrangement", "roster", "print", "conversion"] as const;
+export const PUBLIC_CLASS_VIEWS = ["prepare", "live", "review"] as const;
 export type PublicClassView = (typeof PUBLIC_CLASS_VIEWS)[number];
 
 export interface PublicClassParticipantRecord {

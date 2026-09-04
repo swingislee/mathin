@@ -3,15 +3,17 @@
 import {
   ArrowRight,
   BookOpenCheck,
-  CalendarClock,
   Check,
   ChevronDown,
   ChevronRight,
+  CircleCheck,
   ClipboardCheck,
   FileDown,
+  GitBranch,
   GraduationCap,
   LoaderCircle,
   MapPin,
+  MonitorPlay,
   Pencil,
   Plus,
   Presentation,
@@ -22,7 +24,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import { Fragment, useMemo, useState, useTransition, type ReactNode } from "react";
+import { Fragment, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -85,10 +87,10 @@ function recordFor(participant: PublicClassParticipant, segmentId: string): Publ
   return participant.records.find((record) => record.segmentId === segmentId) ?? null;
 }
 
-function segmentIcon(kind: PublicClassSegmentKind) {
-  if (kind === "group_assessment") return ClipboardCheck;
-  if (kind === "parent_talk") return Presentation;
-  return BookOpenCheck;
+function SegmentKindIcon({ kind, className }: { kind: PublicClassSegmentKind; className?: string }) {
+  if (kind === "group_assessment") return <ClipboardCheck className={className} />;
+  if (kind === "parent_talk") return <Presentation className={className} />;
+  return <BookOpenCheck className={className} />;
 }
 
 function segmentPlace(segment: PublicClassSegment) {
@@ -133,9 +135,28 @@ export function PublicClassWorkspace({
   const [editingSegment, setEditingSegment] = useState<PublicClassSegment | "new" | null>(null);
   const [coursewareSegment, setCoursewareSegment] = useState<PublicClassSegment | null>(null);
   const participantCount = data.participants.filter((item) => item.status !== "cancelled").length;
-  const selectedSegment = data.segments.find((item) => item.id === activeSegmentId) ?? data.segments[0] ?? null;
-  const readySegments = data.segments.filter((item) => item.microcourseLectureId).length;
+  const assessmentSegment = data.segments.find((item) => item.kind === "group_assessment") ?? null;
+  const selectedSegment = data.segments.find((item) => item.id === activeSegmentId)
+    ?? assessmentSegment
+    ?? data.segments[0]
+    ?? null;
+  const presentationSegments = data.segments.filter((item) => item.kind !== "group_assessment");
+  const readySegments = presentationSegments.filter((item) => item.microcourseLectureId).length;
   const roomPending = data.segments.filter((item) => !item.roomId && !item.location).length;
+  const startedSegments = presentationSegments.filter((item) => item.teachingStartedAt);
+  const runState = startedSegments.length === 0
+    ? "preparing"
+    : startedSegments.every((item) => item.teachingEndedAt)
+      ? "ended"
+      : "live";
+  const recordedParticipants = data.participants.filter((participant) => participant.records.some((record) => (
+    record.studentPresence !== "expected"
+    || record.guardianPresence === "attended"
+    || Boolean(record.learningObservation.trim())
+    || Boolean(record.assessmentSummary.trim())
+    || Boolean(record.parentFeedback.trim())
+    || Boolean(record.recommendation.trim())
+  ))).length;
 
   const run: Run = (action, success, after) => startTransition(async () => {
     const result = await action();
@@ -150,54 +171,75 @@ export function PublicClassWorkspace({
 
   const baseHref = `/dashboard/activities/${data.activity.id}`;
   const tabs = [
-    { value: "arrangement", label: t("viewArrangement"), href: `${baseHref}?view=arrangement` },
-    { value: "roster", label: t("viewRoster"), href: `${baseHref}?view=roster${selectedSegment ? `&segment=${selectedSegment.id}` : ""}` },
-    { value: "print", label: t("viewPrint"), href: `${baseHref}?view=print` },
-    ...(canLinkClass ? [{ value: "conversion", label: t("viewConversion"), href: `${baseHref}?view=conversion` }] : []),
+    { value: "prepare", label: t("viewPrepare"), href: `${baseHref}?view=prepare` },
+    { value: "live", label: t("viewLive"), href: `${baseHref}?view=live${selectedSegment ? `&segment=${selectedSegment.id}` : ""}` },
+    { value: "review", label: t("viewReview"), href: `${baseHref}?view=review` },
   ];
 
   return <div className="space-y-5">
     <StatusStrip items={[
-      { label: t("segmentCount"), value: data.segments.length },
       { label: t("participantCount"), value: participantCount },
-      { label: t("coursewareReady"), value: `${readySegments}/${data.segments.length}` },
+      { label: t("runStatus"), value: t(`runStatus_${runState}`) },
+      { label: t("coursewareReady"), value: `${readySegments}/${presentationSegments.length}` },
       { label: t("roomPending"), value: roomPending },
+      { label: t("recordedParticipants"), value: `${recordedParticipants}/${participantCount}` },
     ]} />
 
     <DashboardCommandPanel>
       <DashboardCommandState>
         <DashboardCommandTabs ariaLabel={t("workspaceViews")} activeValue={activeView} items={tabs} />
       </DashboardCommandState>
-      {canManage && activeView === "arrangement" ? <DashboardCommandActions>
-        <Button size="sm" onClick={() => setEditingSegment("new")}>
-          <Plus className="size-4" />{t("addSegment")}
-        </Button>
-      </DashboardCommandActions> : null}
+      <DashboardCommandActions>
+        {activeView === "prepare" ? <>
+          <Link href={`${baseHref}?view=prepare#print-materials`} className={buttonVariants({ size: "sm", variant: "secondary" })}>
+            <FileDown className="size-4" />{t("printMaterials")}
+          </Link>
+          {canManage ? <Button size="sm" variant="secondary" onClick={() => setEditingSegment("new")}>
+            <Plus className="size-4" />{t("addProgramBlock")}
+          </Button> : null}
+        </> : null}
+        {activeView !== "review" && canRecord ? <Link
+          href={`/activity/${data.activity.id}/live`}
+          className={buttonVariants({ size: "sm" })}
+        >
+          <MonitorPlay className="size-4" />
+          {runState === "live" ? t("returnToLiveRun") : runState === "ended" ? t("reviewCompletedRun") : t("enterRunCandidate")}
+        </Link> : null}
+      </DashboardCommandActions>
     </DashboardCommandPanel>
 
-    {activeView === "arrangement" ? <ArrangementView
-      data={data}
-      locale={locale}
-      canManage={canManage}
-      canOpenTeaching={canRecord}
-      canUseCourseware={canUseCourseware}
-      canAuthorMicrocourse={canAuthorMicrocourse}
-      currentUserId={currentUserId}
-      pending={pending}
-      onEdit={setEditingSegment}
-      onCourseware={setCoursewareSegment}
-      run={run}
-    /> : null}
-    {activeView === "roster" ? <RosterView
-      data={data}
-      locale={locale}
-      segment={selectedSegment}
-      canRecord={canRecord}
-      pending={pending}
-      run={run}
-    /> : null}
-    {activeView === "print" ? <PrintView data={data} /> : null}
-    {activeView === "conversion" && canLinkClass ? <ConversionView data={data} pending={pending} run={run} /> : null}
+    {activeView === "prepare" ? <>
+      <PreparationView
+        data={data}
+        locale={locale}
+        canManage={canManage}
+        canUseCourseware={canUseCourseware}
+        canAuthorMicrocourse={canAuthorMicrocourse}
+        currentUserId={currentUserId}
+        pending={pending}
+        onEdit={setEditingSegment}
+        onCourseware={setCoursewareSegment}
+        run={run}
+      />
+      <div id="print-materials" className="scroll-mt-24"><PrintView data={data} /></div>
+    </> : null}
+    {activeView === "live" ? <>
+      <LiveRunOverview data={data} runState={runState} />
+      <div id="onsite-records" className="scroll-mt-24">
+        <PublicClassRosterView
+          data={data}
+          locale={locale}
+          segment={selectedSegment}
+          canRecord={canRecord}
+          pending={pending}
+          run={run}
+        />
+      </div>
+    </> : null}
+    {activeView === "review" ? <>
+      <ReviewOverview data={data} recordedParticipants={recordedParticipants} />
+      {canLinkClass ? <ConversionView data={data} pending={pending} run={run} /> : null}
+    </> : null}
 
     {editingSegment ? <SegmentDialog
       activity={data.activity}
@@ -220,11 +262,10 @@ export function PublicClassWorkspace({
   </div>;
 }
 
-function ArrangementView({
+function PreparationView({
   data,
   locale,
   canManage,
-  canOpenTeaching,
   canUseCourseware,
   canAuthorMicrocourse,
   currentUserId,
@@ -236,7 +277,6 @@ function ArrangementView({
   data: PublicClassWorkbenchData;
   locale: string;
   canManage: boolean;
-  canOpenTeaching: boolean;
   canUseCourseware: boolean;
   canAuthorMicrocourse: boolean;
   currentUserId: string;
@@ -246,126 +286,208 @@ function ArrangementView({
   run: Run;
 }) {
   const t = useTranslations("school.publicClass");
-  return <DashboardSection title={t("arrangementTitle")} description={t("activityNotClassHint")}>
-    <div className="divide-y divide-line border-y border-line">
-      {data.segments.map((segment, index) => {
-        const Icon = segmentIcon(segment.kind);
-        const place = segmentPlace(segment);
-        const hasCourseware = Boolean(segment.microcourseLectureId);
-        const teaching = Boolean(segment.teachingStartedAt && !segment.teachingEndedAt);
-        const ended = Boolean(segment.teachingEndedAt);
-        const liveHref = `/activity/${data.activity.id}/segment/${segment.id}/live`;
-        const rosterHref = `/dashboard/activities/${data.activity.id}?view=roster&segment=${segment.id}`;
-        const editorHref = `/dashboard/activities/${data.activity.id}/segments/${segment.id}/microcourse`;
-        const canEditProject = canAuthorMicrocourse
-          && segment.microcourseId !== null
-          && segment.microcourseAuthorId === currentUserId
-          && !segment.teachingStartedAt;
-        return <article key={segment.id} className="px-3 py-4">
-          <div className="grid gap-3 @3xl/page:grid-cols-[minmax(0,1.35fr)_minmax(20rem,1fr)_auto] @3xl/page:items-center">
-            <div className="flex min-w-0 items-start gap-3">
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-line bg-moon/20 text-crater">
-                <Icon className="size-4" />
-              </span>
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs tabular-nums text-muted">{String(index + 1).padStart(2, "0")}</span>
-                  <h3 className="font-medium text-ink">{segment.title}</h3>
-                  <Badge variant="outline">{t(`kind_${segment.kind}`)}</Badge>
-                  {teaching ? <Badge variant="secondary">{t("teachingInProgress")}</Badge> : ended ? <Badge variant="secondary">{t("teachingCompleted")}</Badge> : null}
-                </div>
-                <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
-                  <span className="inline-flex items-center gap-1"><CalendarClock className="size-3.5" />{formatDateTime(locale, segment.scheduledAt)} · {t("minutes", { count: segment.durationMin })}</span>
-                  <span className={cn("inline-flex items-center gap-1", !place && "text-amber-700")}><MapPin className="size-3.5" />{place || t("roomUnassigned")}</span>
-                </p>
+  const trialLessons = data.segments.filter((segment) => segment.kind === "trial_lesson");
+  const parentTalks = data.segments.filter((segment) => segment.kind === "parent_talk");
+  const assessments = data.segments.filter((segment) => segment.kind === "group_assessment");
+  return <div className="space-y-5">
+    <DashboardSection title={t("programMapTitle")} description={t("programMapHint")}>
+      <div className="border-y border-line py-5">
+        <div className="overflow-x-auto pb-1">
+          <div className="min-w-[52rem]">
+            <p className="mb-3 text-xs font-medium text-muted">{t("everyoneLane")}</p>
+            <ProgramSequence segments={trialLessons} locale={locale} emptyLabel={t("noTrialLesson")} />
+            <div className="my-4 flex items-center gap-3 text-xs text-muted">
+              <span className="h-px flex-1 bg-line" />
+              <GitBranch className="size-4 text-crater" />
+              <span className="font-medium text-ink">{t("splitAfterLesson")}</span>
+              <span className="h-px flex-1 bg-line" />
+            </div>
+            <div className="grid grid-cols-2 divide-x divide-line">
+              <div className="pr-5">
+                <p className="mb-3 flex items-center gap-2 text-xs font-medium text-muted"><Presentation className="size-4" />{t("guardianLane")}</p>
+                <ProgramSequence segments={parentTalks} locale={locale} emptyLabel={t("noParentTalk")} compact />
+              </div>
+              <div className="pl-5">
+                <p className="mb-3 flex items-center gap-2 text-xs font-medium text-muted"><ClipboardCheck className="size-4" />{t("studentLane")}</p>
+                <ProgramSequence segments={assessments} locale={locale} emptyLabel={t("noGroupAssessment")} compact />
               </div>
             </div>
-            <div className="grid gap-2 text-xs sm:grid-cols-2">
-              <div className="min-w-0 border-l border-line pl-3">
-                <p className="text-muted">{t("teachingStaff")}</p>
-                <p className="mt-1 truncate text-ink">{segment.primaryTeacherName || t("teacherUnassigned")}{segment.assistantTeacherName ? ` · ${segment.assistantTeacherName}` : ""}</p>
-              </div>
-              <div className="min-w-0 border-l border-line pl-3">
-                <p className="text-muted">{t("courseware")}</p>
-                <p className={cn("mt-1 truncate", hasCourseware ? "text-ink" : "text-amber-700")}>
-                  {hasCourseware ? `${segment.microcourseCourseTitle} · ${segment.microcourseLectureTitle}` : t("coursewareUnassigned")}
-                </p>
-              </div>
-            </div>
-            {canManage ? <div className="flex justify-end gap-1">
-              <Button size="sm" variant="ghost" onClick={() => onEdit(segment)}><Pencil className="size-3.5" />{t("editSegment")}</Button>
-              {data.segments.length > 1 ? <Button size="sm" variant="ghost" className="size-8 p-0" aria-label={t("deleteSegment")} disabled={pending} onClick={() => run(() => deletePublicClassSegmentAction(segment.id), t("segmentDeleted"))}><Trash2 className="size-3.5 text-rose" /></Button> : null}
-            </div> : null}
           </div>
+        </div>
+      </div>
+    </DashboardSection>
 
-          <div className="mt-4 overflow-x-auto rounded-xl bg-moon/10 px-3 py-3">
-            <ol className="relative grid min-w-[44rem] grid-cols-4 gap-2 before:absolute before:left-[12.5%] before:right-[12.5%] before:top-3 before:h-px before:bg-line">
-              <SegmentFlowStep
-                number={1}
-                state={hasCourseware ? "complete" : "current"}
-                title={t("flowCourseware")}
-                detail={hasCourseware ? segment.microcourseLectureTitle || t("coursewareSelected") : t("flowCoursewareHint")}
-                action={canUseCourseware && !segment.teachingStartedAt
-                  ? canEditProject
-                    ? <Link href={editorHref} className={buttonVariants({ size: "sm", variant: "ghost" })}><Pencil className="size-3.5" />{t("continueEditing")}</Link>
-                    : <Button size="sm" variant="ghost" onClick={() => onCourseware(segment)}><BookOpenCheck className="size-3.5" />{hasCourseware ? t("changeCourseware") : t("chooseOrCreateCourseware")}</Button>
-                  : null}
-              />
-              <SegmentFlowStep
-                number={2}
-                state={segment.teachingStartedAt ? "complete" : hasCourseware ? "current" : "upcoming"}
-                title={t("flowCandidate")}
-                detail={hasCourseware ? t("flowCandidateHint") : t("flowAfterCourseware")}
-                action={canOpenTeaching && hasCourseware && !segment.teachingStartedAt
-                  ? <Link href={liveHref} className={buttonVariants({ size: "sm", variant: "ghost" })}>{t("enterCandidate")}</Link>
-                  : null}
-              />
-              <SegmentFlowStep
-                number={3}
-                state={ended ? "complete" : teaching ? "current" : "upcoming"}
-                title={t("flowTeaching")}
-                detail={ended ? t("teachingCompleted") : teaching ? t("teachingInProgress") : t("startFromCandidate")}
-                action={canOpenTeaching && teaching ? <Link href={liveHref} className={buttonVariants({ size: "sm", variant: "ghost" })}>{t("returnToTeaching")}</Link> : null}
-              />
-              <SegmentFlowStep
-                number={4}
-                state={ended ? "current" : "upcoming"}
-                title={t("flowRecord")}
-                detail={ended ? t("flowRecordNow") : t("flowRecordHint")}
-                action={<Link href={rosterHref} className={buttonVariants({ size: "sm", variant: ended ? "primary" : "ghost" })}>{t("enterRoster")}<ArrowRight className="size-3.5" /></Link>}
-              />
-            </ol>
-          </div>
-        </article>;
-      })}
+    <DashboardSection title={t("preparationTitle")} description={t("preparationHint")}>
+      <div className="divide-y divide-line border-y border-line">
+        {data.segments.map((segment, index) => {
+          const place = segmentPlace(segment);
+          const hasCourseware = Boolean(segment.microcourseLectureId);
+          const editorHref = `/dashboard/activities/${data.activity.id}/segments/${segment.id}/microcourse`;
+          const canEditProject = canAuthorMicrocourse
+            && segment.microcourseId !== null
+            && segment.microcourseAuthorId === currentUserId
+            && !segment.teachingStartedAt;
+          return <article key={segment.id} className="grid gap-3 px-2 py-3 @3xl/page:grid-cols-[minmax(17rem,1.1fr)_minmax(18rem,1fr)_minmax(15rem,0.9fr)_auto] @3xl/page:items-center">
+            <div className="flex min-w-0 items-start gap-3">
+              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-moon/20 text-crater"><SegmentKindIcon kind={segment.kind} className="size-4" /></span>
+              <div className="min-w-0">
+                <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-ink"><span className="text-xs tabular-nums text-muted">{String(index + 1).padStart(2, "0")}</span>{segment.title}<Badge variant="outline">{t(`kind_${segment.kind}`)}</Badge></p>
+                <p className="mt-1 text-xs text-muted">{formatDateTime(locale, segment.scheduledAt)} · {t("minutes", { count: segment.durationMin })}</p>
+              </div>
+            </div>
+            <div className="min-w-0 text-xs">
+              <p className="text-muted">{t("roomAndStaff")}</p>
+              <p className={cn("mt-1 truncate", place ? "text-ink" : "text-amber-700")}>{place || t("roomUnassigned")} · {segment.primaryTeacherName || t("teacherUnassigned")}{segment.assistantTeacherName ? ` · ${segment.assistantTeacherName}` : ""}</p>
+            </div>
+            <div className="min-w-0 text-xs">
+              <p className="text-muted">{segment.kind === "group_assessment" ? t("recordingSurface") : t("coursewareAndPreparation")}</p>
+              {segment.kind === "group_assessment"
+                ? <p className="mt-1 truncate text-ink">{t("assessmentSurfaceReady")}</p>
+                : <p className={cn("mt-1 truncate", hasCourseware ? "text-ink" : "text-amber-700")}>{hasCourseware ? `${segment.microcourseCourseTitle} · ${segment.microcourseLectureTitle}` : t("coursewareUnassigned")}</p>}
+            </div>
+            <div className="flex justify-end gap-1">
+              {segment.kind !== "group_assessment" && canUseCourseware && !segment.teachingStartedAt
+                ? canEditProject
+                  ? <Link href={editorHref} className={buttonVariants({ size: "sm", variant: "ghost" })}><Pencil className="size-3.5" />{t("continueEditing")}</Link>
+                  : <Button size="sm" variant="ghost" onClick={() => onCourseware(segment)}><BookOpenCheck className="size-3.5" />{hasCourseware ? t("changeCourseware") : t("chooseOrCreateCourseware")}</Button>
+                : null}
+              {canManage ? <Button size="sm" variant="ghost" onClick={() => onEdit(segment)}><Pencil className="size-3.5" />{t("editSegment")}</Button> : null}
+              {canManage && data.segments.length > 1 ? <Button size="sm" variant="ghost" className="size-8 p-0" aria-label={t("deleteSegment")} disabled={pending} onClick={() => run(() => deletePublicClassSegmentAction(segment.id), t("segmentDeleted"))}><Trash2 className="size-3.5 text-rose" /></Button> : null}
+            </div>
+          </article>;
+        })}
+        {data.segments.length === 0 ? <p className="py-12 text-center text-sm text-muted">{t("noSegments")}</p> : null}
+      </div>
+    </DashboardSection>
+  </div>;
+}
+
+function ProgramSequence({
+  segments,
+  locale,
+  emptyLabel,
+  compact = false,
+}: {
+  segments: PublicClassSegment[];
+  locale: string;
+  emptyLabel: string;
+  compact?: boolean;
+}) {
+  if (segments.length === 0) return <div className="rounded-xl border border-dashed border-line px-4 py-4 text-center text-xs text-muted">{emptyLabel}</div>;
+  return <div className="flex items-stretch gap-2">
+    {segments.map((segment, index) => <Fragment key={segment.id}>
+      {index > 0 ? <span className="grid shrink-0 place-items-center text-muted"><ArrowRight className="size-4" /></span> : null}
+      <ProgramNode segment={segment} locale={locale} compact={compact} />
+    </Fragment>)}
+  </div>;
+}
+
+function ProgramNode({ segment, locale, compact }: { segment: PublicClassSegment; locale: string; compact: boolean }) {
+  const t = useTranslations("school.publicClass");
+  const place = segmentPlace(segment);
+  return <div className="min-w-0 flex-1 rounded-xl border border-line bg-card px-3 py-3 shadow-sm">
+    <div className="flex min-w-0 items-center gap-2">
+      <span className="grid size-7 shrink-0 place-items-center rounded-full bg-moon/25 text-crater"><SegmentKindIcon kind={segment.kind} className="size-3.5" /></span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-ink">{segment.title}</p>
+        <p className="mt-0.5 truncate text-[11px] text-muted">{new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Shanghai" }).format(new Date(segment.scheduledAt))} · {t("minutes", { count: segment.durationMin })}</p>
+      </div>
+      {segment.microcourseLectureId ? <CircleCheck className="size-4 shrink-0 text-leaf-deep" /> : null}
     </div>
+    {!compact ? <p className={cn("mt-2 truncate text-[11px]", place ? "text-muted" : "text-amber-700")}><MapPin className="mr-1 inline size-3" />{place || t("roomUnassigned")}</p> : null}
+  </div>;
+}
+
+function LiveRunOverview({
+  data,
+  runState,
+}: {
+  data: PublicClassWorkbenchData;
+  runState: "preparing" | "live" | "ended";
+}) {
+  const t = useTranslations("school.publicClass");
+  const trialCount = data.segments.filter((segment) => segment.kind === "trial_lesson").length;
+  const assessment = data.segments.find((segment) => segment.kind === "group_assessment");
+  const talk = data.segments.find((segment) => segment.kind === "parent_talk");
+  const roles = [
+    {
+      mode: "host",
+      icon: MonitorPlay,
+      title: t("hostWorkspace"),
+      detail: t("hostWorkspaceHint", { count: trialCount }),
+      meta: t(`runStatus_${runState}`),
+    },
+    {
+      mode: "assessment",
+      icon: ClipboardCheck,
+      title: t("assessmentWorkspace"),
+      detail: assessment ? t("assessmentWorkspaceHint", { title: assessment.title }) : t("noGroupAssessment"),
+      meta: assessment ? segmentPlace(assessment) || t("roomUnassigned") : "—",
+    },
+    {
+      mode: "roster",
+      icon: UsersRound,
+      title: t("supportWorkspace"),
+      detail: t("supportWorkspaceHint"),
+      meta: t("participantCountValue", { count: data.participants.filter((item) => item.status !== "cancelled").length }),
+    },
+  ] as const;
+  return <DashboardSection title={t("liveRunTitle")} description={t("liveRunHint")}>
+    <div className="grid border-y border-line @3xl/page:grid-cols-3 @3xl/page:divide-x @3xl/page:divide-line">
+      {roles.map(({ mode, icon: Icon, title, detail, meta }) => <Link
+        key={mode}
+        href={`/activity/${data.activity.id}/live?mode=${mode}`}
+        className="group flex min-w-0 items-start gap-3 border-b border-line px-3 py-4 last:border-b-0 hover:bg-moon/10 @3xl/page:border-b-0"
+      >
+        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-moon/20 text-crater"><Icon className="size-4" /></span>
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center justify-between gap-2"><span className="font-medium text-ink">{title}</span><ArrowRight className="size-4 shrink-0 text-muted transition-transform group-hover:translate-x-0.5" /></span>
+          <span className="mt-1 block text-xs leading-5 text-muted">{detail}</span>
+          <span className="mt-2 block truncate text-[11px] text-crater">{meta}</span>
+        </span>
+      </Link>)}
+    </div>
+    {talk && assessment ? <p className="mt-3 flex items-center gap-2 text-xs text-muted"><GitBranch className="size-4 text-crater" />{t("parallelLiveHint", { talk: talk.title, assessment: assessment.title })}</p> : null}
   </DashboardSection>;
 }
 
-function SegmentFlowStep({
-  number,
-  state,
-  title,
-  detail,
-  action,
-}: {
-  number: number;
-  state: "complete" | "current" | "upcoming";
-  title: string;
-  detail: string;
-  action: ReactNode;
-}) {
-  return <li className="relative z-10 flex min-w-0 flex-col items-center px-1 text-center">
-    <span className={cn(
-      "grid size-6 place-items-center rounded-full border text-[11px] font-semibold tabular-nums",
-      state === "complete" && "border-leaf/40 bg-leaf/20 text-leaf-deep",
-      state === "current" && "border-crater/60 bg-card text-crater ring-4 ring-card",
-      state === "upcoming" && "border-line bg-card text-muted",
-    )}>{state === "complete" ? <Check className="size-3.5" /> : number}</span>
-    <p className={cn("mt-2 text-xs font-medium", state === "upcoming" ? "text-muted" : "text-ink")}>{title}</p>
-    <p className="mt-0.5 max-w-44 truncate text-[11px] text-muted">{detail}</p>
-    <div className="mt-1 min-h-8">{action}</div>
-  </li>;
+function ReviewOverview({ data, recordedParticipants }: { data: PublicClassWorkbenchData; recordedParticipants: number }) {
+  const t = useTranslations("school.publicClass");
+  const active = data.participants.filter((participant) => participant.status !== "cancelled");
+  const assessmentId = data.segments.find((segment) => segment.kind === "group_assessment")?.id;
+  const talkId = data.segments.find((segment) => segment.kind === "parent_talk")?.id;
+  return <DashboardSection
+    title={t("reviewTitle")}
+    description={t("reviewHint")}
+    actions={<span className="text-xs text-muted">{t("recordedParticipantsValue", { recorded: recordedParticipants, total: active.length })}</span>}
+  >
+    <DashboardTableShell>
+      <Table className="min-w-[52rem] table-fixed text-xs">
+        <TableHeader><TableRow>
+          <TableHead className="h-9 w-56 px-2">{t("participant")}</TableHead>
+          <TableHead className="h-9 w-28 px-2">{t("attendanceResult")}</TableHead>
+          <TableHead className="h-9 px-2">{t("assessmentSummary")}</TableHead>
+          <TableHead className="h-9 px-2">{t("parentFeedback")}</TableHead>
+          <TableHead className="h-9 px-2">{t("recommendation")}</TableHead>
+        </TableRow></TableHeader>
+        <TableBody>
+          {active.map((participant) => {
+            const assessmentRecord = assessmentId ? recordFor(participant, assessmentId) : null;
+            const talkRecord = talkId ? recordFor(participant, talkId) : null;
+            const attended = participant.status === "attended" || participant.records.some((record) => record.studentPresence === "attended" || record.studentPresence === "late");
+            return <TableRow key={participant.registrationId}>
+              <TableCell className="px-2 py-2"><p className="font-medium text-ink">{participant.name}</p><p className="mt-0.5 truncate text-[11px] text-muted">{participant.gradeText || (participant.grade ? t("gradeValue", { grade: participant.grade }) : t("gradePending"))}</p></TableCell>
+              <TableCell className="px-2 py-2"><Badge variant={attended ? "secondary" : "outline"}>{attended ? t("presence_attended") : t("presence_expected")}</Badge></TableCell>
+              <TableCell className="truncate px-2 py-2 text-muted">{assessmentRecord?.assessmentSummary || assessmentRecord?.learningObservation || "—"}</TableCell>
+              <TableCell className="truncate px-2 py-2 text-muted">{talkRecord?.parentFeedback || assessmentRecord?.parentFeedback || "—"}</TableCell>
+              <TableCell className="truncate px-2 py-2 text-muted">{assessmentRecord?.recommendation || talkRecord?.recommendation || "—"}</TableCell>
+            </TableRow>;
+          })}
+          {active.length === 0 ? <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted">{t("emptyRoster")}</TableCell></TableRow> : null}
+        </TableBody>
+      </Table>
+    </DashboardTableShell>
+  </DashboardSection>;
 }
 
 function SegmentDialog({
@@ -598,7 +720,7 @@ function MicrocourseDialog({
   </Dialog>;
 }
 
-function RosterView({
+export function PublicClassRosterView({
   data,
   locale,
   segment,
@@ -626,7 +748,7 @@ function RosterView({
       <div className="flex gap-2 overflow-x-auto pb-1">
         {data.segments.map((item) => <Link
           key={item.id}
-          href={`/dashboard/activities/${data.activity.id}?view=roster&segment=${item.id}`}
+          href={`/dashboard/activities/${data.activity.id}?view=live&segment=${item.id}#onsite-records`}
           className={cn(buttonVariants({ size: "sm", variant: item.id === segment.id ? "primary" : "secondary" }), "shrink-0")}
         >{t(`kind_${item.kind}`)} · {new Intl.DateTimeFormat(locale, { weekday: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Shanghai" }).format(new Date(item.scheduledAt))}</Link>)}
       </div>

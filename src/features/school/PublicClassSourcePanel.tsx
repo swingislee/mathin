@@ -18,7 +18,7 @@ export async function PublicClassSourcePanel({
     <p className="mt-1 text-xs text-muted">{t("classSourceHint")}</p>
     <ul className="mt-3 space-y-3">
       {activities.map((activity) => <li key={activity.activityId} className="border-l-2 border-crater/30 pl-3">
-        <Link href={`/dashboard/activities/${activity.activityId}?view=conversion`} className="group block min-w-0">
+        <Link href={`/dashboard/activities/${activity.activityId}?view=review`} className="group block min-w-0">
           <span className="flex items-center gap-1.5 text-sm font-medium text-ink group-hover:text-crater">
             <span className="min-w-0 flex-1 truncate">{activity.title}</span><ExternalLink className="size-3.5 shrink-0" />
           </span>

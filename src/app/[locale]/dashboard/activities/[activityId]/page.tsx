@@ -40,10 +40,17 @@ export default async function ActivityDetailPage({
   if (activity.kind === "public_class") {
     const publicClass = await getPublicClassWorkbench(activityId);
     if (!publicClass) notFound();
-    const requestedView = typeof query.view === "string" ? query.view : "arrangement";
-    const activeView: PublicClassView = PUBLIC_CLASS_VIEWS.includes(requestedView as PublicClassView)
-      ? requestedView as PublicClassView
-      : "arrangement";
+    const requestedView = typeof query.view === "string" ? query.view : "prepare";
+    const legacyViewAliases: Record<string, PublicClassView> = {
+      arrangement: "prepare",
+      roster: "live",
+      print: "prepare",
+      conversion: "review",
+    };
+    const normalizedView = legacyViewAliases[requestedView] ?? requestedView;
+    const activeView: PublicClassView = PUBLIC_CLASS_VIEWS.includes(normalizedView as PublicClassView)
+      ? normalizedView as PublicClassView
+      : "prepare";
     const requestedSegmentId = typeof query.segment === "string" ? query.segment : null;
     const activeSegmentId = publicClass.segments.some((segment) => segment.id === requestedSegmentId)
       ? requestedSegmentId
@@ -76,7 +83,7 @@ export default async function ActivityDetailPage({
       <PublicClassWorkspace
         data={publicClass}
         locale={locale}
-        activeView={activeView === "conversion" && !permissions.has("class.manage") ? "arrangement" : activeView}
+        activeView={activeView}
         activeSegmentId={activeSegmentId}
         canManage={permissions.has("activity.manage")}
         canRecord={canRecord}
