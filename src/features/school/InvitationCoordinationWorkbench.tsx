@@ -154,7 +154,15 @@ function InvitationEditor({
   const submittedInputRef = useRef<UpdateInvitationInput | null>(null);
   const assessorEditing = !canManageInvitation && row.assessorId === currentUserId;
   const updateRun = useAction(updateLeadInvitationAction, {
-    successMessage: t("saveSuccess"),
+    successMessage: () => {
+      const input = submittedInputRef.current;
+      if (input?.state === "awaiting_teacher") {
+        const assessor = assessors.find((item) => item.userId === input.assessorId)?.displayName ?? t("assessorPending");
+        return t("teacherHandoffSavedToast", { assessor });
+      }
+      if (input?.state === "confirmed") return t("directBookingSavedToast");
+      return t("saveSuccess");
+    },
     errorMessage: {
       INVALID_INVITATION: t("invalidDraft"),
       ACTIVITY_NOT_FOUND: t("activityUnavailable"),
@@ -347,6 +355,25 @@ function InvitationEditor({
         </>
       );
     }
+    if (workStep === "waiting_assessor_response") {
+      return (
+        <>
+          {header(t("workTitle_waiting_assessor_response"), t("workHint_waiting_assessor_response", { assessor: assessorName }))}
+          <p className="border-l-2 border-moon pl-3 text-[11px] leading-5 text-ink">{compactOptions(draft.parentTimeOptions)}</p>
+          <div className="flex flex-wrap items-center gap-1 text-[11px] text-muted" aria-label={t("teacherHandoffPathLabel")}>
+            <span className="rounded-full bg-leaf/20 px-2 py-1 text-ink">{t("teacherHandoffStepTeacher")}</span>
+            <ChevronRight className="size-3.5 shrink-0" aria-hidden="true" />
+            <span>{t("teacherHandoffStepOverlap")}</span>
+            <ChevronRight className="size-3.5 shrink-0" aria-hidden="true" />
+            <span>{t("teacherHandoffStepSupport")}</span>
+          </div>
+          <Button type="button" size="sm" variant="secondary" className="h-8 w-full" disabled={pending} onClick={() => copyText(teacherRequestText)}>
+            <Copy className="size-3.5" />
+            {t("copyTeacherRequestAgain")}
+          </Button>
+        </>
+      );
+    }
     if (workStep === "resolve_time_conflict") {
       return (
         <>
@@ -496,6 +523,23 @@ function InvitationEditor({
           <Button type="button" size="sm" className="h-9 w-full" disabled={pending || (!dirty && !note.trim())} onClick={() => submitSupport({ ...draft, state: "waiting_activity" })}>
             {pending ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" /> : <Check className="size-4" />}
             {t("saveKnownFacts")}
+          </Button>
+        </>
+      );
+    }
+    if (workStep === "confirmed" && dirty) {
+      return (
+        <>
+          {header(t("workTitle_direct_booking_ready"), t("workHint_direct_booking_ready"))}
+          <div className="border-l-2 border-rose pl-3">
+            <p className="text-sm font-medium text-ink">{currentArrangement}</p>
+          </div>
+          <Button type="button" size="sm" className="h-9 w-full" disabled={pending} onClick={() => submitSupport({ ...draft, state: "confirmed" })}>
+            {pending ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" /> : <Check className="size-4" />}
+            {t("saveDirectBooking")}
+          </Button>
+          <Button type="button" size="sm" variant="ghost" className="h-8 w-full" disabled={pending} onClick={() => setDraft({ ...draft, state: "coordinating_time", scheduledAt: null })}>
+            {t("backToCoordination")}
           </Button>
         </>
       );

@@ -44,6 +44,7 @@ export type InvitationCoordinationStage =
 export type InvitationWorkStep =
   | "collect_arrangement"
   | "waiting_assessor"
+  | "waiting_assessor_response"
   | "resolve_time_conflict"
   | "choose_shared_time"
   | "confirm_with_parent"
@@ -186,6 +187,21 @@ export function normalizeAssessmentTimeOptions(values: readonly string[]): strin
     .slice(0, MAX_ASSESSMENT_TIME_OPTIONS);
 }
 
+export function applyDirectAssessmentTime(
+  draft: InvitationDraft,
+  option: string,
+): InvitationDraft | null {
+  const scheduledAt = assessmentTimeOptionToInstant(option);
+  if (draft.kind !== "assessment_1v1" || !draft.assessorId || !scheduledAt) return null;
+  return {
+    ...draft,
+    state: "confirmed",
+    parentTimeOptions: normalizeAssessmentTimeOptions([...draft.parentTimeOptions, option]),
+    assessorTimeOptions: normalizeAssessmentTimeOptions([...draft.assessorTimeOptions, option]),
+    scheduledAt,
+  };
+}
+
 export function invitationDraftIsComplete(draft: InvitationDraft): boolean {
   if (draft.kind === "assessment_1v1") {
     if (draft.state === "coordinating_time") return true;
@@ -204,9 +220,10 @@ export function invitationDraftIsComplete(draft: InvitationDraft): boolean {
 }
 
 export function invitationStateFromFacts(draft: InvitationDraft): InvitationState {
-  if (draft.state === "completed" || draft.state === "cancelled" || draft.state === "confirmed") {
+  if (draft.state === "completed" || draft.state === "cancelled") {
     return draft.state;
   }
+  if (draft.state === "confirmed" && invitationDraftIsComplete(draft)) return "confirmed";
   if (draft.kind === "waiting_activity") return "waiting_activity";
   if (draft.kind === "activity") return "awaiting_parent";
   if (!draft.assessorId || draft.parentTimeOptions.length === 0) return "coordinating_time";
@@ -231,7 +248,9 @@ export function invitationWorkStep(draft: InvitationDraft): InvitationWorkStep {
   if (draft.kind === "waiting_activity") return "waiting_activity";
   if (draft.kind === "activity") return draft.activityId ? "confirm_activity" : "choose_activity";
   if (!draft.assessorId || draft.parentTimeOptions.length === 0) return "collect_arrangement";
-  if (draft.assessorTimeOptions.length === 0) return "waiting_assessor";
+  if (draft.assessorTimeOptions.length === 0) {
+    return draft.state === "awaiting_teacher" ? "waiting_assessor_response" : "waiting_assessor";
+  }
   const intersection = assessmentAvailabilityIntersection(
     draft.parentTimeOptions,
     draft.assessorTimeOptions,

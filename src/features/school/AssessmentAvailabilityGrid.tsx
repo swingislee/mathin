@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarDays, Check, ChevronLeft, ChevronRight, Handshake } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -12,13 +12,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { addCalendarDays, startOfWeek, zonedDateParts, zonedDateTimeToInstant } from "./schedule";
 import {
   ASSESSMENT_SLOT_DEFINITIONS,
   ASSESSMENT_TIME_ZONE,
+  applyDirectAssessmentTime,
   assessmentAvailabilityIntersection,
   assessmentTimeOptionForInstant,
   assessmentTimeOptionToken,
@@ -28,6 +28,7 @@ import {
 } from "./invitation-contract";
 
 type AvailabilitySide = "parent" | "assessor";
+type AvailabilityMode = AvailabilitySide | "direct";
 
 const EXPIRED_SLOT_STYLE = {
   backgroundColor: "color-mix(in srgb, var(--paper) 84%, var(--line))",
@@ -57,7 +58,7 @@ export function AssessmentAvailabilityGrid({
 }) {
   const t = useTranslations("school.invitations");
   const [open, setOpen] = useState(false);
-  const [side, setSide] = useState<AvailabilitySide>(editableSide === "assessor" ? "assessor" : "parent");
+  const [side, setSide] = useState<AvailabilityMode>(editableSide === "assessor" ? "assessor" : "parent");
   const initialAnchor = value.scheduledAt
     ? new Date(value.scheduledAt)
     : dayFromOption(value.parentTimeOptions[0] ?? value.assessorTimeOptions[0]) ?? new Date();
@@ -100,6 +101,13 @@ export function AssessmentAvailabilityGrid({
     return zonedDateTimeToInstant({ year: parts.year, month: parts.month, day: parts.day, hour, minute }, ASSESSMENT_TIME_ZONE).toISOString();
   };
   const toggleSlot = (slot: string) => {
+    if (side === "direct") {
+      const next = applyDirectAssessmentTime(value, slot);
+      if (!next) return;
+      onChange(next);
+      setOpen(false);
+      return;
+    }
     const key = side === "parent" ? "parentTimeOptions" : "assessorTimeOptions";
     const current = new Set(value[key]);
     if (current.has(slot)) current.delete(slot);
@@ -125,12 +133,16 @@ export function AssessmentAvailabilityGrid({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+      <div className={cn("grid gap-1.5", editableSide === "both" && "grid-cols-[minmax(0,1fr)_auto]")}>
         <Button
           type="button"
           variant="secondary"
           className="h-10 w-full justify-start gap-2 rounded-xl px-3 text-left"
           disabled={disabled}
+          onClick={() => {
+            setSide(editableSide === "assessor" ? "assessor" : "parent");
+            setOpen(true);
+          }}
         >
           <CalendarDays className="size-4 shrink-0 text-moon-deep" />
           <span className="min-w-0 flex-1">
@@ -138,7 +150,23 @@ export function AssessmentAvailabilityGrid({
             <span className="block truncate text-[10px] font-normal text-muted">{triggerSummary}</span>
           </span>
         </Button>
-      </DialogTrigger>
+        {editableSide === "both" ? (
+          <Button
+            type="button"
+            variant="secondary"
+            className="h-10 rounded-xl px-3 text-xs"
+            disabled={disabled || !value.assessorId}
+            title={!value.assessorId ? t("availabilityDirectNeedsAssessor") : undefined}
+            onClick={() => {
+              setSide("direct");
+              setOpen(true);
+            }}
+          >
+            <Handshake className="size-4" />
+            {value.assessorId ? t("availabilityDirectOpen") : t("availabilityDirectNeedsAssessor")}
+          </Button>
+        ) : null}
+      </div>
       <DialogContent className="max-w-[min(62rem,calc(100vw-2rem))] gap-3 p-4 sm:p-5">
         <DialogHeader>
           <DialogTitle>{t("availabilityTitle")}</DialogTitle>
@@ -175,6 +203,21 @@ export function AssessmentAvailabilityGrid({
                 <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-[10px]">{value.assessorTimeOptions.length}</Badge>
               </Button>
             ) : null}
+            {editableSide === "both" ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className={cn("h-8 rounded-lg px-3 text-xs", side === "direct" && "bg-rose/15 text-ink shadow-sm")}
+                aria-pressed={side === "direct"}
+                disabled={!value.assessorId}
+                title={!value.assessorId ? t("availabilityDirectNeedsAssessor") : undefined}
+                onClick={() => setSide("direct")}
+              >
+                {side === "direct" ? <Check className="size-3.5" /> : null}
+                {t("availabilityDirectSide")}
+              </Button>
+            ) : null}
           </div>
           <div className="flex items-center gap-1">
             <Button type="button" size="sm" variant="ghost" className="size-8 p-0" aria-label={t("availabilityPreviousWeek")} onClick={() => setWeekAnchor((current) => addCalendarDays(current, -7, ASSESSMENT_TIME_ZONE))}>
@@ -186,6 +229,12 @@ export function AssessmentAvailabilityGrid({
             </Button>
           </div>
         </div>
+
+        {side === "direct" ? (
+          <p className="border-l-2 border-rose pl-3 text-[11px] leading-5 text-ink" role="status">
+            {t("availabilityDirectHint")}
+          </p>
+        ) : null}
 
         <div className="overflow-x-auto rounded-xl border border-line">
           <div className="grid min-w-[48rem] grid-cols-[5.5rem_repeat(7,minmax(5.5rem,1fr))] bg-card">
@@ -226,6 +275,10 @@ export function AssessmentAvailabilityGrid({
                     ? new Date(instant).getTime() < now.getTime()
                     : assessmentTimeOptionToken(day, key).slice(0, 10) < todayKey;
                   const unavailable = expired && !parent && !assessor && !selected;
+                  const directUnavailable = side === "direct" && !instant;
+                  const sideLabel = side === "direct"
+                    ? t("availabilityDirectShort")
+                    : t(`availability${side === "parent" ? "Parent" : "Assessor"}Short`);
                   return (
                     <button
                       key={option}
@@ -237,13 +290,14 @@ export function AssessmentAvailabilityGrid({
                         assessor && !parent && "bg-leaf/20 hover:bg-leaf/30",
                         overlap && "bg-rose/15 hover:bg-rose/25",
                         selected && "bg-rose text-white hover:bg-rose",
-                        expired && "cursor-not-allowed",
+                        (expired || directUnavailable) && "cursor-not-allowed",
+                        directUnavailable && "opacity-45",
                         unavailable && "text-muted/35",
                       )}
                       style={unavailable ? EXPIRED_SLOT_STYLE : undefined}
-                      disabled={disabled || expired}
-                      aria-pressed={side === "parent" ? parent : assessor}
-                      aria-label={t("availabilityCellLabel", { date: `${dateFormatter.format(day)} ${label}`, side: t(`availability${side === "parent" ? "Parent" : "Assessor"}Short`) })}
+                      disabled={disabled || expired || directUnavailable}
+                      aria-pressed={side === "direct" ? selected : side === "parent" ? parent : assessor}
+                      aria-label={t("availabilityCellLabel", { date: `${dateFormatter.format(day)} ${label}`, side: sideLabel })}
                       onClick={() => toggleSlot(option)}
                     >
                       {selected ? <Check className="mx-auto size-4" /> : (

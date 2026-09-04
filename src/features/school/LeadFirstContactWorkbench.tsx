@@ -244,6 +244,8 @@ function ContactEntryRow({
     && invitationDraftIsComplete({ ...invitation, state: "confirmed" })
     ? { ...invitation, state: "confirmed" as const }
     : null;
+  const directConfirmedInvitation = invitation?.state === "confirmed"
+    && invitationDraftIsComplete(invitation);
 
   return (
     <TableRow
@@ -455,7 +457,11 @@ function ContactEntryRow({
                   {contactRun.pending
                     ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" />
                     : <Check className="size-4" />}
-                  {confirmableInvitation ? t("saveContactAwaitParent") : t("saveContactRow")}
+                  {directConfirmedInvitation
+                    ? t("saveContactConfirmedInvitation")
+                    : confirmableInvitation
+                      ? t("saveContactAwaitParent")
+                      : t("saveContactRow")}
                 </Button>
               </div>
             </div>

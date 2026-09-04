@@ -2,7 +2,7 @@
 
 import { Check } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -55,21 +55,29 @@ export function InvitationDraftFields({
 }) {
   const t = useTranslations("school.invitations");
   const workflow = variant === "workflow";
-  const emit = (next: InvitationDraft) => onChange(workflow ? next : {
-    ...next,
-    state: invitationStateFromFacts(next),
-  });
+  const draftCacheRef = useRef<Partial<Record<InvitationKind, InvitationDraft>>>(
+    value ? { [value.kind]: value } : {},
+  );
+  const emit = (next: InvitationDraft) => {
+    const emitted = workflow ? next : {
+      ...next,
+      state: invitationStateFromFacts(next),
+    };
+    draftCacheRef.current[emitted.kind] = emitted;
+    onChange(emitted);
+  };
   const dateTimeFormatter = useMemo(() => new Intl.DateTimeFormat(locale, {
     dateStyle: "short",
     timeStyle: "short",
     timeZone: "Asia/Shanghai",
   }), [locale]);
   const chooseKind = (kind: InvitationKind | null) => {
+    if (value) draftCacheRef.current[value.kind] = value;
     if (!kind) {
       onChange(null);
       return;
     }
-    const next = value?.kind === kind ? value : blankDraft(kind);
+    const next = value?.kind === kind ? value : draftCacheRef.current[kind] ?? blankDraft(kind);
     emit(next);
   };
   const update = <K extends keyof InvitationDraft>(key: K, next: InvitationDraft[K]) => {

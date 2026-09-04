@@ -16,6 +16,7 @@ import {
   type LeadPoolRow,
 } from "@/features/school/lead-contract";
 import {
+  applyDirectAssessmentTime,
   assessmentAvailabilityIntersection,
   assessmentTimeOptionForInstant,
   assessmentTimeOptionToInstant,
@@ -142,8 +143,10 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(draftFields).toContain("invitationStateFromFacts");
     expect(draftFields).not.toContain("stateChoices.map");
     expect(draftFields).toContain("AssessmentAvailabilityGrid");
+    expect(draftFields).toContain("draftCacheRef.current");
     expect(availabilityGrid).toContain("grid-cols-[5.5rem_repeat(7");
     expect(availabilityGrid).toContain("ASSESSMENT_SLOT_DEFINITIONS");
+    expect(availabilityGrid).toContain('side === "direct"');
   });
 
   it("separates dense seed management from the inline first-contact entry table", () => {
@@ -305,6 +308,41 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(assessmentTimeOptionForInstant("2026-09-05T08:30:00.000Z")).toBeNull();
     expect(assessmentTimeOptionToInstant("2026-09-05@14:00")).toBe("2026-09-05T06:00:00.000Z");
     expect(assessmentTimeOptionToInstant("2026-09-05@after_school")).toBeNull();
+    expect(applyDirectAssessmentTime({
+      kind: "assessment_1v1",
+      state: "coordinating_time",
+      activityId: null,
+      assessorId: "00000000-0000-0000-0000-000000000001",
+      parentTimeOptions: [],
+      assessorTimeOptions: [],
+      scheduledAt: null,
+      locationText: "",
+    }, "2026-09-05@14:00")).toMatchObject({
+      state: "confirmed",
+      parentTimeOptions: ["2026-09-05@14:00"],
+      assessorTimeOptions: ["2026-09-05@14:00"],
+      scheduledAt: "2026-09-05T06:00:00.000Z",
+    });
+    expect(applyDirectAssessmentTime({
+      kind: "assessment_1v1",
+      state: "coordinating_time",
+      activityId: null,
+      assessorId: null,
+      parentTimeOptions: [],
+      assessorTimeOptions: [],
+      scheduledAt: null,
+      locationText: "",
+    }, "2026-09-05@14:00")).toBeNull();
+    expect(invitationStateFromFacts({
+      kind: "assessment_1v1",
+      state: "confirmed",
+      activityId: null,
+      assessorId: "00000000-0000-0000-0000-000000000001",
+      parentTimeOptions: ["2026-09-05@14:00"],
+      assessorTimeOptions: [],
+      scheduledAt: null,
+      locationText: "",
+    })).toBe("awaiting_teacher");
     expect(invitationStateFromFacts({
       kind: "assessment_1v1",
       state: "coordinating_time",
@@ -334,6 +372,12 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
       assessorId: "00000000-0000-0000-0000-000000000001",
       parentTimeOptions: ["2026-09-05@14:00"],
     })).toBe("waiting_assessor");
+    expect(invitationWorkStep({
+      ...base,
+      state: "awaiting_teacher",
+      assessorId: "00000000-0000-0000-0000-000000000001",
+      parentTimeOptions: ["2026-09-05@14:00"],
+    })).toBe("waiting_assessor_response");
     expect(invitationWorkStep({
       ...base,
       assessorId: "00000000-0000-0000-0000-000000000001",
