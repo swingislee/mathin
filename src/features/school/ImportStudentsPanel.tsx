@@ -21,7 +21,14 @@ import {
   type StudentImportBatchResult,
   type StudentImportBatchSummary,
 } from "./actions/types";
-import { DashboardSection, DashboardTableShell, StatusStrip } from "./dashboard-page";
+import {
+  DashboardSection,
+  DashboardTableColumnHeader,
+  DashboardTableShell,
+  StatusStrip,
+  type DashboardTableColumnDefinition,
+  useDashboardTableView,
+} from "./dashboard-page";
 
 interface PreviewRow extends ImportStudentRow {
   line: number;
@@ -29,8 +36,18 @@ interface PreviewRow extends ImportStudentRow {
   errors: string[];
 }
 
+interface PreviewEntry {
+  row: PreviewRow;
+  rowErrors: string[];
+  rowStatus: "valid" | "duplicate" | "error" | "inserted";
+}
+
+type PreviewColumn = "line" | "name" | "phone" | "grade" | "region" | "source" | "remark" | "validation";
+type BatchColumn = "createdAt" | "status" | "total" | "duplicates" | "errors" | "inserted" | "batchId";
+
 const HEADER_NAMES = new Set(["姓名", "name"]);
 const CSV_HEADERS = ["name", "phone", "grade", "region", "source", "remark"];
+const EMPTY_VALUE = "$empty";
 
 function splitLine(line: string, delimiter: string): string[] {
   const cells: string[] = [];
@@ -103,7 +120,12 @@ function nextIdempotencyKey() {
 
 export function ImportStudentsPanel({ recentBatches }: { recentBatches: StudentImportBatchSummary[] }) {
   const t = useTranslations("school.students");
+  const tableT = useTranslations("school.table");
   const locale = useLocale();
+  const formatAt = useMemo(() => (value: string) => new Intl.DateTimeFormat(locale, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value)), [locale]);
   const router = useRouter();
   const [text, setText] = useState("");
   const [fileName, setFileName] = useState("");
@@ -115,6 +137,95 @@ export function ImportStudentsPanel({ recentBatches }: { recentBatches: StudentI
   const rows = useMemo(() => parseInput(text), [text]);
   const serverRows = useMemo(() => new Map(batch?.rows.map((row) => [row.row, row]) ?? []), [batch]);
   const missingSource = rows.some((row) => !row.source) && !batchSource.trim();
+  const previewEntries = useMemo<PreviewEntry[]>(() => rows.map((row, index) => {
+    const serverRow = serverRows.get(index + 1);
+    const rowErrors = serverRow?.errors ?? row.errors;
+    return {
+      row,
+      rowErrors,
+      rowStatus: serverRow?.status ?? (rowErrors.length > 0 ? "error" : "valid"),
+    };
+  }), [rows, serverRows]);
+  const previewColumns = useMemo<Record<PreviewColumn, DashboardTableColumnDefinition<PreviewEntry>>>(() => ({
+    line: {
+      filterValues: ({ row }) => ({ value: String(row.line), label: String(row.line) }),
+      sortValue: ({ row }) => row.line,
+    },
+    name: {
+      filterValues: ({ row }) => ({ value: row.name || EMPTY_VALUE, label: row.name || tableT("emptyValue") }),
+      sortValue: ({ row }) => row.name,
+    },
+    phone: {
+      filterValues: ({ row }) => ({ value: row.phone || EMPTY_VALUE, label: row.phone || tableT("emptyValue") }),
+      sortValue: ({ row }) => row.phone,
+    },
+    grade: {
+      filterValues: ({ row }) => ({ value: row.gradeText || EMPTY_VALUE, label: row.gradeText || tableT("emptyValue") }),
+      sortValue: ({ row }) => row.gradeText ? Number(row.gradeText) : null,
+    },
+    region: {
+      filterValues: ({ row }) => ({ value: row.region || EMPTY_VALUE, label: row.region || tableT("emptyValue") }),
+      sortValue: ({ row }) => row.region,
+    },
+    source: {
+      filterValues: ({ row }) => {
+        const value = row.source || batchSource.trim();
+        return { value: value || EMPTY_VALUE, label: value || tableT("emptyValue") };
+      },
+      sortValue: ({ row }) => row.source || batchSource.trim(),
+    },
+    remark: {
+      filterValues: ({ row }) => ({ value: row.remark || EMPTY_VALUE, label: row.remark || tableT("emptyValue") }),
+      sortValue: ({ row }) => row.remark,
+    },
+    validation: {
+      filterValues: ({ rowErrors, rowStatus }) => [
+        {
+          value: `status:${rowStatus}`,
+          label: t(`importRowStatus_${rowStatus}`),
+          group: tableT("fieldStatus"),
+        },
+        ...rowErrors.map((code) => ({
+          value: `reason:${code}`,
+          label: t(`importError_${code}`),
+          group: tableT("fieldReason"),
+        })),
+      ],
+      sortValue: ({ rowStatus }) => rowStatus,
+    },
+  }), [batchSource, t, tableT]);
+  const previewTable = useDashboardTableView({ rows: previewEntries, columns: previewColumns, locale });
+  const batchColumns = useMemo<Record<BatchColumn, DashboardTableColumnDefinition<StudentImportBatchSummary>>>(() => ({
+    createdAt: {
+      filterValues: (item) => ({ value: item.createdAt.slice(0, 10), label: formatAt(item.createdAt) }),
+      sortValue: (item) => item.createdAt,
+    },
+    status: {
+      filterValues: (item) => ({ value: item.status, label: t(`importBatchStatus_${item.status}`) }),
+      sortValue: (item) => item.status,
+    },
+    total: {
+      filterValues: (item) => ({ value: String(item.total), label: String(item.total) }),
+      sortValue: (item) => item.total,
+    },
+    duplicates: {
+      filterValues: (item) => ({ value: String(item.duplicates), label: String(item.duplicates) }),
+      sortValue: (item) => item.duplicates,
+    },
+    errors: {
+      filterValues: (item) => ({ value: String(item.errors), label: String(item.errors) }),
+      sortValue: (item) => item.errors,
+    },
+    inserted: {
+      filterValues: (item) => ({ value: String(item.inserted), label: String(item.inserted) }),
+      sortValue: (item) => item.inserted,
+    },
+    batchId: {
+      filterValues: (item) => ({ value: item.batchId, label: item.batchId.slice(0, 8) }),
+      sortValue: (item) => item.batchId,
+    },
+  }), [formatAt, t]);
+  const batchTable = useDashboardTableView({ rows: recentBatches, columns: batchColumns, locale });
 
   const importErrors = {
     default: t("importFailed"),
@@ -198,11 +309,6 @@ export function ImportStudentsPanel({ recentBatches }: { recentBatches: StudentI
       }),
     ]);
   };
-  const formatAt = (value: string) => new Intl.DateTimeFormat(locale, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-
   return (
     <div className="space-y-10">
       <DashboardSection
@@ -299,16 +405,18 @@ export function ImportStudentsPanel({ recentBatches }: { recentBatches: StudentI
             <Table className="w-full min-w-[760px] border-collapse text-left text-xs">
               <TableHeader className="sticky top-0 bg-card text-muted">
                 <TableRow>
-                  {["line", "name", "phone", "gradeCol", "region", "source", "remark", "validation"].map((key) => (
-                    <TableHead key={key} className="px-3 py-2 font-medium">{t(key)}</TableHead>
-                  ))}
+                  <TableHead className="px-3 py-2 font-medium"><DashboardTableColumnHeader label={t("line")} {...previewTable.columnProps("line")} /></TableHead>
+                  <TableHead className="px-3 py-2 font-medium"><DashboardTableColumnHeader label={t("name")} {...previewTable.columnProps("name")} /></TableHead>
+                  <TableHead className="px-3 py-2 font-medium"><DashboardTableColumnHeader label={t("phone")} {...previewTable.columnProps("phone")} /></TableHead>
+                  <TableHead className="px-3 py-2 font-medium"><DashboardTableColumnHeader label={t("gradeCol")} {...previewTable.columnProps("grade")} /></TableHead>
+                  <TableHead className="px-3 py-2 font-medium"><DashboardTableColumnHeader label={t("region")} {...previewTable.columnProps("region")} /></TableHead>
+                  <TableHead className="px-3 py-2 font-medium"><DashboardTableColumnHeader label={t("source")} {...previewTable.columnProps("source")} /></TableHead>
+                  <TableHead className="px-3 py-2 font-medium"><DashboardTableColumnHeader label={t("remark")} {...previewTable.columnProps("remark")} /></TableHead>
+                  <TableHead className="px-3 py-2 font-medium"><DashboardTableColumnHeader label={t("validation")} {...previewTable.columnProps("validation")} /></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((row, index) => {
-                  const serverRow = serverRows.get(index + 1);
-                  const rowErrors = serverRow?.errors ?? row.errors;
-                  const rowStatus = serverRow?.status ?? (rowErrors.length > 0 ? "error" : "valid");
+                {previewTable.visibleRows.map(({ row, rowErrors, rowStatus }) => {
                   return (
                     <TableRow key={row.line} className={rowStatus === "error" ? "bg-rose/5" : undefined}>
                       <TableCell className="px-3 py-2 font-mono text-muted">{row.line}</TableCell>
@@ -326,6 +434,7 @@ export function ImportStudentsPanel({ recentBatches }: { recentBatches: StudentI
                     </TableRow>
                   );
                 })}
+                {previewTable.visibleRows.length === 0 ? <TableRow><TableCell colSpan={8} className="h-32 text-center text-muted">{tableT("filteredEmpty")}</TableCell></TableRow> : null}
               </TableBody>
             </Table>
           </DashboardTableShell>
@@ -405,17 +514,17 @@ export function ImportStudentsPanel({ recentBatches }: { recentBatches: StudentI
             <Table className="w-full min-w-[44rem] text-sm">
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t("importCreatedAt")}</TableHead>
-                  <TableHead>{t("importStatus")}</TableHead>
-                  <TableHead>{t("importRowsCount")}</TableHead>
-                  <TableHead>{t("importDuplicates")}</TableHead>
-                  <TableHead>{t("importErrors")}</TableHead>
-                  <TableHead>{t("importWrittenCount")}</TableHead>
-                  <TableHead>{t("importBatchId")}</TableHead>
+                  <TableHead><DashboardTableColumnHeader label={t("importCreatedAt")} {...batchTable.columnProps("createdAt")} /></TableHead>
+                  <TableHead><DashboardTableColumnHeader label={t("importStatus")} {...batchTable.columnProps("status")} /></TableHead>
+                  <TableHead><DashboardTableColumnHeader label={t("importRowsCount")} {...batchTable.columnProps("total")} /></TableHead>
+                  <TableHead><DashboardTableColumnHeader label={t("importDuplicates")} {...batchTable.columnProps("duplicates")} /></TableHead>
+                  <TableHead><DashboardTableColumnHeader label={t("importErrors")} {...batchTable.columnProps("errors")} /></TableHead>
+                  <TableHead><DashboardTableColumnHeader label={t("importWrittenCount")} {...batchTable.columnProps("inserted")} /></TableHead>
+                  <TableHead><DashboardTableColumnHeader label={t("importBatchId")} {...batchTable.columnProps("batchId")} /></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {recentBatches.map((item) => (
+                {batchTable.visibleRows.map((item) => (
                   <TableRow key={item.batchId}>
                     <TableCell className="whitespace-nowrap">{formatAt(item.createdAt)}</TableCell>
                     <TableCell><Badge variant={item.status === "completed" ? "secondary" : "outline"}>{t(`importBatchStatus_${item.status}`)}</Badge></TableCell>
@@ -426,6 +535,7 @@ export function ImportStudentsPanel({ recentBatches }: { recentBatches: StudentI
                     <TableCell className="font-mono text-xs text-muted">{item.batchId.slice(0, 8)}</TableCell>
                   </TableRow>
                 ))}
+                {batchTable.visibleRows.length === 0 ? <TableRow><TableCell colSpan={7} className="h-28 text-center text-muted">{tableT("filteredEmpty")}</TableCell></TableRow> : null}
               </TableBody>
             </Table>
           </DashboardTableShell>
