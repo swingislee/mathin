@@ -4,6 +4,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { inlineEntryCommand } from "./inline-entry-keyboard";
 
 /** 表格内连续录入的共享展开容器；保留当前记录及周围行的位置。 */
 export function DashboardInlineEntry({
@@ -41,13 +42,18 @@ export function DashboardInlineEntry({
       aria-label={title}
       aria-busy={pending}
       className={cn("min-w-0", !flush && "mt-2 space-y-2 border-t border-line pt-2")}
-      onKeyDown={onSubmit ? (event) => {
-        if ((event.ctrlKey || event.metaKey) && event.key === "Enter" && !event.nativeEvent.isComposing) {
+      onKeyDown={(event) => {
+        if (event.defaultPrevented || (event.target as HTMLElement).closest("[role='dialog'], [role='listbox'], [role='menu']")) return;
+        const command = inlineEntryCommand({ ...event, isComposing: event.nativeEvent.isComposing });
+        if ((command?.type === "submit" && onSubmit) || (command?.type === "close" && onClose)) {
           event.preventDefault();
           event.stopPropagation();
-          if (!pending) onSubmit();
+          if (!pending) {
+            if (command.type === "submit") onSubmit?.();
+            else onClose?.();
+          }
         }
-      } : undefined}
+      }}
     >
       {title || onClose ? <div className="flex items-center justify-between gap-3">
         {title ? <h3 className="text-xs font-medium text-ink">{title}</h3> : <span />}
