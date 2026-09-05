@@ -61,3 +61,11 @@ next-env.d.ts
 .vscode/
 
 .tmp/ 
+
+# local snapshots, temporary analyses, and detached worktrees
+/.prod-backups/
+/.prod-session-data-import-*/
+/.rc-worktrees/
+/.tmp-*
+/.web-push-rc-*/
+/.worktrees/
