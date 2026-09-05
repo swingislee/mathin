@@ -17,11 +17,15 @@ const contactSchema = z.object({
 const enrollSchema = z.object({ registrationId: uuid, courseId: uuid, termId: uuid, classroomId: uuid.nullable(), note: text(2000) });
 const moveSchema = z.object({ enrollmentId: uuid.nullable(), membershipId: uuid.nullable(), fromClassroomId: uuid.nullable(), toClassroomId: uuid.nullable() })
   .refine((value) => Boolean(value.enrollmentId || value.membershipId));
+const seatSchema = z.object({ enrollmentId: uuid.nullable(), membershipId: uuid.nullable(), fromClassroomId: uuid.nullable(), toClassroomId: uuid.nullable(),
+  seat: z.number().int().positive().nullable(), expectedSeat: z.number().int().positive().nullable(),
+}).strict().refine((value) => Boolean(value.enrollmentId || value.membershipId));
 const ERRORS = [
   "FORBIDDEN_SCOPE", "FORBIDDEN", "UNAUTHENTICATED", "VALIDATION", "PARTICIPATION_NOT_COMPLETED", "IDENTITY_NOT_CONFIRMED",
   "IDEMPOTENCY_CONFLICT", "CLASS_TARGET_MISMATCH", "CLASS_FULL", "PLACEMENT_CHANGED", "CLASS_NOT_AVAILABLE",
   "ENROLLMENT_ALREADY_ASSIGNED", "ENROLLMENT_NOT_ACTIVE", "ENROLLMENT_CANCELLED", "COURSE_NOT_AVAILABLE", "TERM_NOT_FOUND",
   "OPPORTUNITY_NOT_CONFIRMABLE", "STUDENT_NOT_AVAILABLE", "CLASS_MEMBERSHIP_NOT_ACTIVE", "MEMBERSHIP_ALREADY_LINKED",
+  "INVALID_SEAT", "SEAT_OCCUPIED",
 ] as const;
 function refreshEnrollmentWorkflow() {
   for (const path of ["assessments", "invitations", "enrollments", "opportunities"]) revalidatePath(`/[locale]/dashboard/${path}`, "page");
@@ -60,6 +64,18 @@ export async function confirmActivityEnrollmentAction(input: z.infer<typeof enro
     });
     refreshEnrollmentWorkflow();
     return { ok: true, data: await loadActivityEnrollmentContext({ registrationId: value.registrationId, invitationId: null }) };
+  } catch (error) { return actionError(error, ERRORS); }
+}
+export async function moveEnrollmentSeatAction(input: z.infer<typeof seatSchema>): Promise<ActionResult<EnrollmentPlacementBoard>> {
+  try {
+    const value = parse(seatSchema, input);
+    await authorizedClient("enrollment.manage");
+    await enrollmentWorkflowRpc("move_enrollment_to_seat", {
+      p_enrollment_id: value.enrollmentId, p_membership_id: value.membershipId, p_from_classroom_id: value.fromClassroomId,
+      p_to_classroom_id: value.toClassroomId, p_to_seat: value.seat, p_expected_seat: value.expectedSeat,
+    });
+    refreshEnrollmentWorkflow();
+    return { ok: true, data: await loadEnrollmentPlacementBoard() };
   } catch (error) { return actionError(error, ERRORS); }
 }
 export async function moveEnrollmentPlacementAction(input: z.infer<typeof moveSchema>): Promise<ActionResult<EnrollmentPlacementBoard>> {

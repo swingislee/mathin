@@ -15,6 +15,7 @@ import {
 import { getPublicClassTeachingCourseware } from "@/features/school/public-class-teaching";
 import { getPublicClassPreparations } from "@/features/school/public-class-preparation";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
+import { redirect } from "@/i18n/navigation";
 
 const ACTIVITY_WORKSPACE_PERMISSIONS = ["activity.register", "review.write", "followup.view"] as const;
 
@@ -50,15 +51,14 @@ export default async function ActivityDetailPage({
       && (segment.primaryTeacherId === user.id || segment.assistantTeacherId === user.id)
     );
     const canManagePublicClass = permissions.has("activity.manage");
+    if ((!assignedPresentation && !canManagePublicClass) || (typeof query.view === "string" && !["teaching", "prepare"].includes(query.view))) {
+      redirect({ href: `/dashboard/activities?activity=${activityId}`, locale });
+    }
     const canRecord = assignedToSegment
       || canManagePublicClass
       || permissions.has("activity.register")
       || permissions.has("review.write");
-    const defaultView: PublicClassView = assignedPresentation
-      ? "teaching"
-      : canRecord
-        ? "onsite"
-        : "review";
+    const defaultView: PublicClassView = "teaching";
     const requestedView = typeof query.view === "string" ? query.view : defaultView;
     const legacyViewAliases: Record<string, PublicClassView> = {
       prepare: "teaching",

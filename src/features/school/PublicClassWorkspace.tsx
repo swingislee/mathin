@@ -178,8 +178,8 @@ export function PublicClassWorkspace({
   const activeStage = activeView === "live" ? "live" : activeView === "review" ? "post" : "pre";
   const stageItems = [
     { value: "pre", label: sessionT("stage_pre"), href: `${baseHref}?view=${activeStage === "pre" ? activeView : "teaching"}` },
-    { value: "live", label: sessionT("stage_live"), href: `${baseHref}?view=live${selectedSegment ? `&segment=${selectedSegment.id}` : ""}` },
-    { value: "post", label: sessionT("stage_post"), href: `${baseHref}?view=review` },
+    { value: "live", label: sessionT("stage_live"), href: `/activity/${data.activity.id}/live?mode=host` },
+    { value: "post", label: sessionT("stage_post"), href: `/dashboard/activities?activity=${data.activity.id}` },
   ];
   return <div className="space-y-5">
     <DashboardCommandPanel>

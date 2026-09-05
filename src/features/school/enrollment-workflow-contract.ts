@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { RenewalHealthSignal } from "./renewal-health-contract";
 
 const nullableId = z.uuid().nullable();
 export const CONTACT_ROUTES = ["continue_follow_up", "await_product", "closed", "enrollment_pending"] as const;
@@ -37,6 +38,8 @@ export type PlacementClassroom = EnrollmentWorkflowOptions["classrooms"][number]
 export const placementMemberSchema = z.object({
   membershipId: z.uuid(), studentId: z.uuid(), name: z.string(), phone: z.string(), classroomId: z.uuid(),
   enrollmentId: nullableId, note: z.string(), recommendation: z.string(),
+  seat: z.number().int().positive().nullable().optional(),
+  status: z.enum(["active", "paused", "withdrawn"]).optional(),
 });
 export type PlacementMember = z.infer<typeof placementMemberSchema>;
 export const enrollmentSchema = z.object({
@@ -69,6 +72,7 @@ export interface EnrollmentPlacementBoard {
   options: EnrollmentWorkflowOptions;
   enrollments: CourseEnrollmentRow[];
   members: PlacementMember[];
+  health?: Record<string, RenewalHealthSignal[]>;
 }
 export interface PlacementStudent {
   key: string;
@@ -84,6 +88,8 @@ export interface PlacementStudent {
   classroomId: string | null;
   note: string;
   recommendation: string;
+  seat: number | null;
+  status: "active" | "paused" | "withdrawn";
 }
 
 /** 花名册已经占用名额；未关联的报名不在待分班首行重复显示。 */
@@ -97,22 +103,25 @@ export function placementStudents(board: EnrollmentPlacementBoard): PlacementStu
     const course = courses.get(classroom.courseId);
     return [{
       ...member, key: member.membershipId, courseId: classroom.courseId, courseTitle: course?.title ?? "",
+      seat: member.seat ?? null, status: member.status ?? "active",
       termId: classroom.termId, grade: course?.grade ?? 0,
     }];
   });
-  return [...members, ...board.enrollments.filter((row) => row.status === "active" && !linked.has(row.id)).map((row) => ({
+  return [...members, ...board.enrollments.filter((row) => !linked.has(row.id)).map((row) => ({
     key: row.id, enrollmentId: row.id, membershipId: row.membershipId, studentId: row.studentId,
     name: row.studentName, phone: row.studentPhone, grade: courses.get(row.courseId)?.grade ?? 0,
     courseId: row.courseId, courseTitle: row.courseTitle, termId: row.termId, classroomId: row.classroomId,
     note: row.note, recommendation: "",
+    seat: null, status: row.status === "cancelled" ? "withdrawn" as const : "active" as const,
   }))];
 }
 
 export function placementDestinationError(student: PlacementStudent, classroom: PlacementClassroom | null, members: readonly PlacementStudent[]): string | null {
+  if (student.status === "withdrawn") return "ENROLLMENT_CANCELLED";
   if (!classroom) return null;
   if (classroom.id === student.classroomId) return null;
   if (classroom.termId !== student.termId || classroom.courseId !== student.courseId) return "CLASS_TARGET_MISMATCH";
-  const alreadyPresent = members.some((member) => member.classroomId === classroom.id && member.studentId === student.studentId);
+  const alreadyPresent = members.some((member) => member.classroomId === classroom.id && member.studentId === student.studentId && member.status !== "withdrawn");
   if (!alreadyPresent && classroom.capacity !== null && classroom.activeCount >= classroom.capacity) return "CLASS_FULL";
   return null;
 }
@@ -125,6 +134,24 @@ export function followupState(context: ActivityEnrollmentContext): "enrolled" | 
   return "contact";
 }
 
+/** 颜色汇总已观察的事实，缺测保持中性；不把颜色解释为续报概率。 */
+export function placementHealth(signals: readonly RenewalHealthSignal[] = []) {
+  const known = signals.filter((signal) => signal.level === "observed" || signal.level === "attention");
+  if (known.length < 2) return { tone: "neutral" as const, balance: 0, background: "var(--card)" };
+  const attention = known.filter((signal) => signal.level === "attention").length;
+  const balance = (known.length - attention * 2) / known.length;
+  if (balance === 0) return { tone: "neutral" as const, balance, background: "var(--card)" };
+  const strength = Math.round(10 + Math.abs(balance) * 22);
+  return { tone: balance < 0 ? "low" as const : "high" as const, balance,
+    background: `color-mix(in srgb, var(--card) ${100 - strength}%, ${balance < 0 ? "#ef4444" : "#3b82f6"})` };
+}
+
+export function classWeeklyScheduleLabel(classroom: PlacementClassroom, locale: string) {
+  const dayTime = new Intl.DateTimeFormat(locale, { weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Shanghai" });
+  const time = new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Shanghai" });
+  return [...new Set(classroom.sessions.map((session) => `${dayTime.format(new Date(session.at))}–${time.format(new Date(Date.parse(session.at) + session.duration * 60000))}`))].join(" / ");
+}
+
 export function classScheduleLabel(classroom: PlacementClassroom, locale: string): string {
   const dateTime = new Intl.DateTimeFormat(locale, { month: "numeric", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Shanghai" });
   return classroom.sessions.slice(0, 2).map((session) => dateTime.format(new Date(session.at))).join(" / ");
@@ -133,6 +160,8 @@ export function classScheduleLabel(classroom: PlacementClassroom, locale: string
 export function enrollmentErrorKey(code: string) {
   if (["FORBIDDEN", "FORBIDDEN_SCOPE", "UNAUTHENTICATED"].includes(code)) return "errorPermission";
   if (code === "CLASS_FULL") return "errorFull";
+  if (code === "SEAT_OCCUPIED") return "errorSeatOccupied";
+  if (code === "INVALID_SEAT") return "errorSeat";
   if (code === "CLASS_TARGET_MISMATCH") return "errorTarget";
   if (code === "IDENTITY_NOT_CONFIRMED") return "identityRequired";
   if (code === "PARTICIPATION_NOT_COMPLETED") return "notCompleted";

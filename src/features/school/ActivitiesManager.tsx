@@ -1,8 +1,9 @@
 "use client";
 
-import { ArrowRight, LoaderCircle, Plus, Trash2 } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronRight, LoaderCircle, Plus, Trash2 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useLocale, useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { Fragment, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -25,6 +26,9 @@ import {
 import { ACTIVITY_KINDS } from "./activity-kinds";
 import type { ActivityRow } from "./activities";
 import { inputClass } from "./controls";
+import { DashboardInlineEntry } from "./dashboard-page/DashboardInlineEntry";
+import type { PublicClassRegistrationData } from "./public-class-registration-contract";
+const PublicClassRegistrationPanel = dynamic(() => import("./PublicClassRegistrationPanel"));
 import {
   DashboardCommandActions,
   DashboardCommandPanel,
@@ -54,10 +58,16 @@ export function ActivitiesManager({
   title,
   activities,
   canManage,
+  initialActivityId,
+  teachingActivityIds,
+  initialRegistrationData,
 }: {
   title: string;
   activities: ActivityRow[];
   canManage: boolean;
+  initialActivityId?: string;
+  teachingActivityIds: string[];
+  initialRegistrationData?: PublicClassRegistrationData;
 }) {
   const t = useTranslations("school.activities");
   const locale = useLocale();
@@ -65,6 +75,8 @@ export function ActivitiesManager({
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState<ActivityRow | null | "new">(null);
   const [deleteTarget, setDeleteTarget] = useState<ActivityRow | null>(null);
+  const [activeActivityId, setActiveActivityId] = useState<string | null>(initialActivityId ?? null);
+  const toggleActivity = (activityId: string) => setActiveActivityId((current) => current === activityId ? null : activityId);
   const run: RunAction = (action, successMessage, onSuccess) => startTransition(async () => {
     const result = await action();
     if (result.ok) {
@@ -105,8 +117,8 @@ export function ActivitiesManager({
         ]}
       />
       <DashboardTableShell>
-        <Table>
-          <TableHeader>
+        <Table containerClassName="max-h-[calc(100dvh-15rem)] overflow-auto">
+          <TableHeader className="sticky top-0 z-30 bg-card">
             <TableRow>
               <TableHead>{t("time")}</TableHead>
               <TableHead>{t("activity")}</TableHead>
@@ -124,14 +136,16 @@ export function ActivitiesManager({
               const awaitingRoute = activity.registrations.filter((registration) =>
                 registration.status === "attended" && registration.assessment !== null && registration.route === null
               ).length;
-              return <TableRow key={activity.id}>
+              const expanded = activeActivityId === activity.id;
+              const publicClass = activity.kind === "public_class";
+              return <Fragment key={activity.id}><TableRow aria-expanded={publicClass ? expanded : undefined} className={publicClass ? `cursor-pointer ${expanded ? "bg-moon/10 hover:bg-moon/10" : ""}` : undefined} onClick={publicClass ? () => toggleActivity(activity.id) : undefined}>
                 <TableCell className="whitespace-nowrap text-sm">
                   {new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(activity.scheduledAt))}
                 </TableCell>
                 <TableCell>
-                  <Link href={`/dashboard/activities/${activity.id}`} className="font-medium text-ink hover:underline">
+                  {publicClass ? <Button size="sm" variant="ghost" className="h-auto justify-start gap-1 p-0 text-left text-ink" onClick={(event) => { event.stopPropagation(); toggleActivity(activity.id); }}>{expanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}{activity.title}</Button> : <Link href={`/dashboard/activities/${activity.id}`} className="font-medium text-ink hover:underline">
                     {activity.title}
-                  </Link>
+                  </Link>}
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted">
                     <Badge variant="outline">{t(`kind_${activity.kind}`)}</Badge>
                     <span>{activity.location || "—"}</span>
@@ -141,22 +155,18 @@ export function ActivitiesManager({
                 <TableCell className="tabular-nums">{assessed}</TableCell>
                 <TableCell className="tabular-nums">{awaitingRoute}</TableCell>
                 <TableCell>
-                  <div className="flex justify-end gap-1">
+                  <div className="flex justify-end gap-1" onClick={(event) => event.stopPropagation()}>
                     {canManage ? <>
                       <Button size="sm" variant="ghost" onClick={() => setEditing(activity)}>{t("edit")}</Button>
                       <Button size="sm" variant="ghost" className="text-rose" aria-label={t("delete")} disabled={pending} onClick={() => setDeleteTarget(activity)}><Trash2 size={15} /></Button>
                     </> : null}
-                    {activity.kind === "public_class" ? (
-                      <Link href={`/dashboard/activities/${activity.id}?view=onsite`} className={buttonVariants({ size: "sm", variant: "secondary" })}>
-                        {t("openActivityPreparation")}
-                      </Link>
-                    ) : null}
-                    <Link href={`/dashboard/activities/${activity.id}${activity.kind === "public_class" ? "?view=teaching" : ""}`} className={buttonVariants({ size: "sm", variant: "secondary" })}>
-                      {t("openWorkspace")}<ArrowRight size={15} />
-                    </Link>
+                    {publicClass ? <Button size="sm" variant="secondary" onClick={() => toggleActivity(activity.id)}>{t("inlineRegistration")}</Button> : null}
+                    {!publicClass || teachingActivityIds.includes(activity.id) ? <Link href={`/dashboard/activities/${activity.id}${publicClass ? "?view=teaching" : ""}`} className={buttonVariants({ size: "sm", variant: "secondary" })}>
+                      {t(publicClass ? "teacherWorkspace" : "openWorkspace")}<ArrowRight size={15} />
+                    </Link> : null}
                   </div>
                 </TableCell>
-              </TableRow>;
+              </TableRow>{publicClass && expanded ? <TableRow className="hover:bg-transparent"><TableCell colSpan={6} className="p-0"><DashboardInlineEntry flush title={activity.title} onClose={() => setActiveActivityId(null)} closeLabel={t("closeRegistration")}><PublicClassRegistrationPanel activityId={activity.id} initialData={initialRegistrationData?.activity.id === activity.id ? initialRegistrationData : undefined} /></DashboardInlineEntry></TableCell></TableRow> : null}</Fragment>;
             })}
             {activities.length === 0 ? <TableRow><TableCell colSpan={6} className="h-40 text-center text-muted">{t("empty")}</TableCell></TableRow> : null}
           </TableBody>

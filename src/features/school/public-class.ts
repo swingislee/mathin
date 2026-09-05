@@ -211,7 +211,7 @@ interface LectureDbRow {
 }
 interface MicrocourseDbRow { id: string; course_id: string; author_id: string }
 
-export async function getPublicClassWorkbench(activityId: string): Promise<PublicClassWorkbenchData | null> {
+export async function getPublicClassWorkbench(activityId: string, options: { includeTeachingCatalog?: boolean } = {}): Promise<PublicClassWorkbenchData | null> {
   const supabase = await createClient();
   const [activityResult, segmentResult, registrationResult, recordResult, linkResult, candidateResult] = await Promise.all([
     from<ActivityDbRow[]>(supabase, "activities")
@@ -290,7 +290,7 @@ export async function getPublicClassWorkbench(activityId: string): Promise<Publi
     courseIds.length ? from<CourseDbRow[]>(supabase, "courses").select("id,family_id,title,product_code,catalog_version_id,superseded_by_course_id,grade,term,class_type,course_kind").in("id", courseIds) : Promise.resolve({ data: [], error: null }),
     lectureIds.length ? from<LectureDbRow[]>(supabase, "course_lectures").select("id,course_id,no,name,status,current_release_id").in("id", lectureIds) : Promise.resolve({ data: [], error: null }),
     microcourseIds.length ? from<MicrocourseDbRow[]>(supabase, "teacher_microcourses").select("id,course_id,author_id").in("id", microcourseIds) : Promise.resolve({ data: [], error: null }),
-    microcourseFamilyId
+    microcourseFamilyId && options.includeTeachingCatalog !== false
       ? from<CourseDbRow[]>(supabase, "courses").select("id,family_id,title,product_code,catalog_version_id,superseded_by_course_id,grade,term,class_type,course_kind").eq("family_id", microcourseFamilyId).eq("course_kind", "microcourse").is("trashed_at", null).order("updated_at", { ascending: false }).limit(200)
       : Promise.resolve({ data: [], error: null }),
   ]);

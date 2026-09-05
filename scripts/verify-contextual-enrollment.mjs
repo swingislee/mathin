@@ -39,7 +39,10 @@ try {
   const paths = ["/dashboard/enrollments", "/dashboard/invitations?queue=post_activity", "/dashboard/assessments"];
   const publicClass = await client.from("activities").select("id").eq("kind", "public_class").is("deleted_at", null).limit(1).maybeSingle();
   if (publicClass.error) throw new Error(publicClass.error.message);
-  if (publicClass.data) paths.push(`/dashboard/activities/${publicClass.data.id}?view=review`);
+  if (publicClass.data) paths.push(`/dashboard/activities?activity=${publicClass.data.id}`);
+  const sampleClass = await client.from("activities").select("id").eq("id", "f3380000-0905-4000-8002-000000000001").maybeSingle();
+  if (sampleClass.error) throw new Error(sampleClass.error.message);
+  if (sampleClass.data) paths.push(`/dashboard/activities?activity=${sampleClass.data.id}`);
   if (source) paths.push(`/dashboard/activities/${source.activityId}?node=assessment&view=review`);
   for (const locale of ["zh", "en"]) {
     const checked = [];

@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { renewalHealthSignals, type RenewalHealthFacts } from "./renewal-health-contract";
 import {
   enrollmentSchema, activityEnrollmentContextSchema, enrollmentWorkflowOptionsSchema, placementMemberSchema,
   type EnrollmentPlacementBoard, type EnrollmentSourceRef,
@@ -25,6 +26,19 @@ export async function loadEnrollmentWorkflowOptions() {
   return enrollmentWorkflowOptionsSchema.parse(await enrollmentWorkflowRpc("get_enrollment_workflow_options"));
 }
 export async function loadEnrollmentPlacementBoard(): Promise<EnrollmentPlacementBoard> {
-  return z.object({ options: enrollmentWorkflowOptionsSchema, enrollments: z.array(enrollmentSchema), members: z.array(placementMemberSchema) })
+  const board = z.object({ options: enrollmentWorkflowOptionsSchema, enrollments: z.array(enrollmentSchema), members: z.array(placementMemberSchema) })
     .parse(await enrollmentWorkflowRpc("get_enrollment_placement_board"));
+  const supabase = await createClient();
+  const ids = [...new Set([...board.enrollments.map((row) => row.studentId), ...board.members.map((row) => row.studentId)])];
+  const health: NonNullable<EnrollmentPlacementBoard["health"]> = {};
+  const now = Date.now();
+  for (let offset = 0; offset < ids.length; offset += 200) {
+    const response = await supabase.rpc("get_renewal_health_facts", { p_student_ids: ids.slice(offset, offset + 200) });
+    if (response.error) {
+      if (response.error.message.includes("FORBIDDEN")) break;
+      throw new Error(response.error.message);
+    }
+    for (const facts of response.data as unknown as RenewalHealthFacts[]) health[facts.studentId] = renewalHealthSignals(facts, now);
+  }
+  return { ...board, health };
 }

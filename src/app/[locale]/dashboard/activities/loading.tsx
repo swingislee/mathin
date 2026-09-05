@@ -1,1 +1,1 @@
-export { DashboardListSkeleton as default } from "@/features/school/list-skeleton";
+export { default } from "../enrollments/loading";

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  activityEnrollmentContextSchema, followupState, placementDestinationError, placementStudents,
+  activityEnrollmentContextSchema, followupState, placementDestinationError, placementStudents, placementHealth, classWeeklyScheduleLabel,
   type EnrollmentPlacementBoard, type PlacementClassroom, type PlacementStudent,
 } from "../src/features/school/enrollment-workflow-contract";
 
@@ -8,7 +8,7 @@ const enrollmentDefaults = { opportunityId: "opportunity", termName: "Term", not
 
 const course = { id: "course", title: "Grade 4 math", grade: 4, classType: "a", productCode: null };
 const classroom: PlacementClassroom = { id: "class", courseId: course.id, termId: "term", name: "Class A", activeCount: 1, capacity: 1, operationalStatus: "active", teacherNames: "Teacher", sessions: [] };
-const student: PlacementStudent = { key: "enrollment", enrollmentId: "enrollment", membershipId: null, studentId: "student", name: "Student", phone: "", grade: 4, courseId: course.id, courseTitle: course.title, termId: "term", classroomId: null, note: "", recommendation: "" };
+const student: PlacementStudent = { key: "enrollment", enrollmentId: "enrollment", membershipId: null, studentId: "student", name: "Student", phone: "", grade: 4, courseId: course.id, courseTitle: course.title, termId: "term", classroomId: null, note: "", recommendation: "", seat: null, status: "active" };
 
 describe("enrollment placement decisions", () => {
   it("uses the enrollment course grade and shows an existing roster member only once", () => {
@@ -53,5 +53,28 @@ describe("post-activity contact queues", () => {
   it("removes confirmed enrollment from the open queue even if the last contact was unreachable", () => {
     expect(followupState({ ...context, enrollmentId: id })).toBe("enrolled");
     expect(followupState({ ...context, route: "closed" })).toBe("closed");
+  });
+});
+
+describe("roster status and health", () => {
+  it("preserves withdrawn enrollment for review and prevents dragging it into a class", () => {
+    const board = { options: { courses: [course], terms: [], classrooms: [classroom] }, members: [],
+      enrollments: [{ ...enrollmentDefaults, id: "cancelled", studentId: "student", studentName: "Student", studentPhone: "", courseId: course.id, courseTitle: course.title, termId: "term", classroomId: null, status: "cancelled" as const }] };
+    const [withdrawn] = placementStudents(board);
+    expect(withdrawn.status).toBe("withdrawn");
+    expect(placementDestinationError(withdrawn, classroom, [])).toBe("ENROLLMENT_CANCELLED");
+  });
+  it("keeps missing and single-observation evidence neutral", () => {
+    expect(placementHealth().tone).toBe("neutral");
+    expect(placementHealth([{ key: "attendance", level: "observed" }, { key: "homework", level: "unknown" }]).tone).toBe("neutral");
+  });
+  it("maps comparable observed evidence towards blue and attention towards red", () => {
+    expect(placementHealth([{ key: "attendance", level: "observed" }, { key: "communication", level: "observed" }]).tone).toBe("high");
+    expect(placementHealth([{ key: "attendance", level: "attention" }, { key: "communication", level: "attention" }]).tone).toBe("low");
+    expect(placementHealth([{ key: "attendance", level: "observed" }, { key: "communication", level: "attention" }]).tone).toBe("neutral");
+  });
+  it("collapses weekly repetitions while retaining duration and distinct time slots", () => {
+    const label = classWeeklyScheduleLabel({ ...classroom, sessions: [{ at: "2026-09-05T01:00:00Z", duration: 90 }, { at: "2026-09-12T01:00:00Z", duration: 90 }] }, "zh");
+    expect(label).toContain("09:00"); expect(label).toContain("10:30"); expect(label).not.toContain(" / ");
   });
 });
