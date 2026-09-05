@@ -40,6 +40,7 @@ export type InvitationKind = (typeof INVITATION_KINDS)[number];
 export type InvitationState = (typeof INVITATION_STATES)[number];
 export type InvitationChannel = (typeof INVITATION_CHANNELS)[number];
 export type InvitationQueue =
+  | "all"
   | "coordination"
   | "confirmed"
   | "waiting_activity"
@@ -319,11 +320,12 @@ export function invitationWorkStep(draft: InvitationDraft): InvitationWorkStep {
 
 export function invitationQueueFrom(value: string | string[] | undefined): InvitationQueue {
   const raw = Array.isArray(value) ? value[0] : value;
-  return raw === "confirmed"
+  return raw === "coordination"
+    || raw === "confirmed"
     || raw === "waiting_activity"
     || raw === "closed"
     ? raw
-    : "coordination";
+    : "all";
 }
 
 export function invitationCoordinationStageFrom(

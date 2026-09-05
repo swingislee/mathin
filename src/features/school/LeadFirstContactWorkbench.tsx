@@ -1,21 +1,31 @@
 "use client";
 
-import { Check, LoaderCircle } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, LoaderCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useAction } from "@/components/action-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { DashboardInlineEntry } from "./dashboard-page/DashboardInlineEntry";
+import { FollowupChoice, followupToneClasses } from "./dashboard-page/FollowupChoice";
+import { FollowupInlineDetails } from "./dashboard-page/FollowupInlineDetails";
+import { LeadIdentityControl } from "./LeadIdentityControl";
+import { useLeadPoolSelection } from "./LeadPoolSelection";
 import {
   recordLeadContactAction,
   setLeadContactReminderAction,
   type LeadContactInput,
 } from "./actions/leads";
-import { DashboardTableShell } from "./dashboard-page";
+import {
+  DashboardTableColumnHeader,
+  DashboardTableShell,
+  type DashboardTableColumnDefinition,
+  useDashboardTableView,
+} from "./dashboard-page";
 import {
   clearInvitationDraftSession,
   InvitationDraftFields,
@@ -48,6 +58,8 @@ const CONTACT_OUTCOME_SHORTCUTS = [
 ] as const satisfies ReadonlyArray<{ key: string; outcome: LeadContactOutcome }>;
 const QUICK_SUBMIT_OUTCOMES: readonly LeadContactOutcome[] = ["unreachable", "invalid_number"];
 const ACQUISITION_TIME_ZONE = "Asia/Shanghai";
+const EMPTY_VALUE = "$empty";
+type FirstContactTableColumn = "seed" | "context" | "owner" | "status";
 
 type TernaryChoice = "" | "yes" | "no";
 
@@ -86,14 +98,14 @@ function SavedLeadReminderControl({
         id={`saved-lead-reminder-${lead.id}`}
         value={nextContactAt}
         disabled={disabled || reminderRun.pending}
-        className="min-w-64 max-w-sm flex-1"
+        className="min-w-0 basis-56 flex-1"
         onChange={setNextContactAt}
       />
       <Button
         type="button"
         size="sm"
         variant="secondary"
-        className="mb-5 h-8 whitespace-nowrap"
+        className="mb-5 h-auto min-h-8 max-w-full whitespace-normal px-2 py-1 text-xs"
         disabled={disabled || reminderRun.pending || !dirty || !valid}
         onClick={() => {
           submittedRef.current = nextContactAt;
@@ -109,49 +121,7 @@ function SavedLeadReminderControl({
   );
 }
 
-function DirectChoiceGroup<T extends string>({
-  label,
-  value,
-  choices,
-  disabled,
-  onChange,
-}: {
-  label: string;
-  value: T;
-  choices: ReadonlyArray<{ value: T; label: string; accessibleLabel?: string }>;
-  disabled: boolean;
-  onChange: (value: T) => void;
-}) {
-  return (
-    <div className="flex min-w-0 flex-wrap items-center gap-1" role="group" aria-label={label}>
-      <span className="mr-1 text-[11px] text-muted" aria-hidden="true">{label}</span>
-      {choices.map((choice) => {
-        const selected = choice.value === value;
-        return (
-          <Button
-            key={choice.value || "unset"}
-            type="button"
-            size="sm"
-            variant="secondary"
-            className={cn(
-              "h-7 px-2.5 text-[11px]",
-              selected && "border-leaf-deep bg-leaf/60 text-ink hover:bg-leaf/70",
-            )}
-            disabled={disabled}
-            aria-pressed={selected}
-            aria-label={choice.accessibleLabel ?? choice.label}
-            onClick={() => onChange(choice.value)}
-          >
-            {selected ? <Check className="size-3" /> : null}
-            {choice.label}
-          </Button>
-        );
-      })}
-    </div>
-  );
-}
-
-function ContactEntryRow({
+export function LeadContactEntryRow({
   lead,
   formatAt,
   active,
@@ -161,6 +131,21 @@ function ContactEntryRow({
   activities,
   assessors,
   locale,
+  canContact,
+  canAssign = false,
+  canManageIdentity = false,
+  visibleIds = [],
+  layout = "default",
+  expanded,
+  onExpandedChange,
+  onPendingChange,
+  detailsExtra,
+  rowActions,
+  leadingSelection,
+  workPurpose,
+  detailsFirst = false,
+  historicalSummary,
+  historicalEntryLabel,
 }: {
   lead: LeadPoolRow;
   formatAt: (value: string) => string;
@@ -171,10 +156,35 @@ function ContactEntryRow({
   activities: InvitationActivityOption[];
   assessors: InvitationAssessorOption[];
   locale: string;
+  canContact: boolean;
+  canAssign?: boolean;
+  canManageIdentity?: boolean;
+  visibleIds?: string[];
+  layout?: "default" | "communication";
+  expanded?: boolean;
+  onExpandedChange?: (open: boolean) => void;
+  onPendingChange?: (pending: boolean) => void;
+  detailsExtra?: ReactNode;
+  rowActions?: ReactNode;
+  leadingSelection?: ReactNode;
+  workPurpose?: ReactNode;
+  detailsFirst?: boolean;
+  historicalSummary?: { state: ReactNode; details: ReactNode; updated: ReactNode };
+  historicalEntryLabel?: string;
 }) {
   const t = useTranslations("school.leads");
   const invitationT = useTranslations("school.invitations");
   const rowRef = useRef<HTMLTableRowElement>(null);
+  const [localDetailsOpen, setLocalDetailsOpen] = useState(false);
+  const detailsOpen = expanded ?? localDetailsOpen;
+  const setDetailsOpen = (open: boolean) => { setLocalDetailsOpen(open); onExpandedChange?.(open); };
+  const detailsId = `lead-contact-details-${lead.id}`;
+  const changeDetailsOpen = (open: boolean) => {
+    if (!open && contactRun.pending) return;
+    setDetailsOpen(open);
+    if (!open) rowRef.current?.focus({ preventScroll: true });
+  };
+  const canEdit = canContact && Boolean(lead.ownerId) && lead.status !== "invalid" && lead.status !== "converted";
   const submittedInputRef = useRef<LeadContactInput | null>(null);
   const [outcome, setOutcome] = useState<LeadContactOutcome | "">("");
   const [wechatState, setWechatState] = useState<TernaryChoice>("");
@@ -189,7 +199,7 @@ function ContactEntryRow({
   );
 
   useEffect(() => {
-    if (!active) return;
+    if (!active || rowRef.current?.contains(document.activeElement)) return;
     rowRef.current?.focus({ preventScroll: true });
     rowRef.current?.scrollIntoView({ block: "nearest" });
   }, [active]);
@@ -216,15 +226,18 @@ function ContactEntryRow({
       submittedInputRef.current = null;
       clearInvitationDraftSession(draftStorageKey);
       reset();
+      setDetailsOpen(false);
       if (savedInput) onSaved(lead.id, savedInput);
     },
     onError: () => { submittedInputRef.current = null; },
   });
 
+  const pendingChangeRef = useRef(onPendingChange);
+  useEffect(() => { pendingChangeRef.current = onPendingChange; }, [onPendingChange]);
+  useEffect(() => { pendingChangeRef.current?.(contactRun.pending); }, [contactRun.pending]);
+  useEffect(() => () => { pendingChangeRef.current?.(false); }, []);
+
   const reachable = outcome === "connected" || outcome === "declined";
-  const destination = outcome
-    ? deriveLeadContactDestination(outcome)
-    : null;
   const canSubmit = !invitation || invitationDraftIsComplete(invitation);
   const draftReminderAt = outcome === "declined"
     ? nextContactAt
@@ -233,18 +246,6 @@ function ContactEntryRow({
       : null;
   const reminderValid = isFutureNextContactReminder(draftReminderAt);
   const displayedOutcome = outcome || lead.lastContactOutcome;
-  const savedReachable = lead.lastContactOutcome === "connected" || lead.lastContactOutcome === "declined";
-  const showSavedDetails = Boolean(
-    lead.lastContactOutcome && (savedReachable || lead.lastContactNote || lead.nextContactAt),
-  );
-  const savedWechatFact = lead.wechatAdded === true
-    ? t("wechatAddedShort")
-    : lead.wechatAdded === false
-      ? t("wechatNotAdded")
-      : t("notDiscussed");
-  const savedInterest = lead.interestLevel
-    ? t(`interest_${lead.interestLevel}`)
-    : t("interestUnrated");
   const sourceAttribution = [
     lead.acquisitionPromoter ? t("promoterValue", { name: lead.acquisitionPromoter }) : "",
     lead.acquisitionMethod,
@@ -286,7 +287,7 @@ function ContactEntryRow({
     nextOutcome: LeadContactOutcome | "" = outcome,
     invitationOverride: InvitationDraft | null = invitation,
   ) => {
-    if (!nextOutcome) return;
+    if (!nextOutcome || !canEdit) return;
     const input = inputFor(nextOutcome, invitationOverride);
     if ((input.invitation && !invitationDraftIsComplete(input.invitation))
         || !isFutureNextContactReminder(input.nextContactAt)) return;
@@ -295,8 +296,10 @@ function ContactEntryRow({
   };
 
   const chooseOutcome = (nextOutcome: LeadContactOutcome) => {
+    if (!canEdit) return;
     onActivate(lead.id);
     setOutcome(nextOutcome);
+    if (!QUICK_SUBMIT_OUTCOMES.includes(nextOutcome)) setDetailsOpen(true);
     if (nextOutcome === "unreachable" || nextOutcome === "invalid_number") {
       setWechatState("");
       setInterestLevel("");
@@ -315,8 +318,11 @@ function ContactEntryRow({
     }
   };
 
-  const handleRowKeyDown = (event: React.KeyboardEvent<HTMLTableRowElement>) => {
-    if (!active || contactRun.pending || event.repeat || event.altKey) return;
+  const handleRowKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+    if (event.defaultPrevented || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229 || event.repeat || contactRun.pending) return;
+    if (event.target === rowRef.current && event.key === "Enter" && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) { event.preventDefault(); changeDetailsOpen(!detailsOpen); return; }
+    if (event.key === "Escape" && detailsOpen) { event.preventDefault(); changeDetailsOpen(false); return; }
+    if (!canEdit || !active || contactRun.pending || event.altKey) return;
     if ((event.ctrlKey || event.metaKey) && event.key === "Enter" && outcome) {
       event.preventDefault();
       submit();
@@ -324,29 +330,23 @@ function ContactEntryRow({
     }
     if (event.ctrlKey || event.metaKey) return;
     const target = event.target as HTMLElement;
-    if (target.closest("textarea, input, [contenteditable='true']")) return;
+    if (target.closest("textarea, input, [role='combobox'], [role='option'], [contenteditable='true']")) return;
     const shortcut = CONTACT_OUTCOME_SHORTCUTS.find((item) => item.key === event.key);
     if (!shortcut) return;
     event.preventDefault();
     chooseOutcome(shortcut.outcome);
   };
 
-  const wechatChoices: ReadonlyArray<{ value: TernaryChoice; label: string }> = [
-    { value: "", label: t("notDiscussed") },
-    { value: "yes", label: t("wechatAddedShort") },
-    { value: "no", label: t("wechatNotAdded") },
+  const wechatChoices = [
+    { value: "", label: t("notDiscussed"), tone: "neutral" as const },
+    { value: "yes", label: t("wechatAddedShort"), tone: "healthy" as const },
+    { value: "no", label: t("wechatNotAdded"), tone: "attention" as const },
   ];
-  const interestChoices: ReadonlyArray<{
-    value: LeadInterestLevel | "";
-    label: string;
-    accessibleLabel?: string;
-  }> = [
-    { value: "", label: t("interestUnrated") },
-    ...(["A", "B", "C"] as const).map((value) => ({
-      value,
-      label: value,
-      accessibleLabel: t(`interest_${value}`),
-    })),
+  const interestChoices = [
+    { value: "", label: t("interestUnrated"), tone: "neutral" as const },
+    { value: "A", label: t("interest_A"), tone: "healthy" as const },
+    { value: "B", label: t("interest_B"), tone: "attention" as const },
+    { value: "C", label: t("interest_C"), tone: "unhealthy" as const },
   ];
   const confirmableInvitation = invitation?.state === "awaiting_parent"
     && invitationDraftIsComplete({ ...invitation, state: "confirmed" })
@@ -355,254 +355,103 @@ function ContactEntryRow({
   const directConfirmedInvitation = invitation?.state === "confirmed"
     && invitationDraftIsComplete(invitation);
 
-  return (
-    <TableRow
-      ref={rowRef}
-      tabIndex={active ? 0 : -1}
-      aria-selected={active}
-      aria-busy={contactRun.pending}
-      className={cn(
-        "focus-visible:outline-none",
-        active && "bg-moon/10 hover:bg-moon/10",
-      )}
-      onClick={() => onActivate(lead.id)}
-      onKeyDown={handleRowKeyDown}
-    >
-      <TableCell
-        className="sticky left-0 z-10 min-w-56 border-r border-line bg-card px-2 py-2 align-top"
-        style={active
-          ? { backgroundColor: "color-mix(in srgb, var(--card) 90%, var(--moon))" }
-          : undefined}
-      >
-        <div className="flex items-baseline gap-2 whitespace-nowrap">
-          <span className="font-medium text-ink">{lead.provisionalStudentName}</span>
-          <a className="font-mono text-[11px] text-ink underline-offset-4 hover:underline" href={`tel:${lead.phone}`}>
-            {lead.phone}
-          </a>
+  const entryCell = (
+      <TableCell className="px-2 py-2">
+        {historicalSummary ? <div className="mb-1 min-w-0">{historicalSummary.details}</div> : null}
+        {historicalEntryLabel ? <p className="mb-1 text-[10px] text-muted">{historicalEntryLabel}</p> : null}
+        <div className="flex min-w-0 items-center gap-1">
+          <FollowupChoice className="w-28 shrink-0" label={t("latestContact")} value={displayedOutcome ?? ""} disabled={!canEdit || contactRun.pending}
+            onValueChange={(value) => chooseOutcome(value as LeadContactOutcome)}
+            options={CONTACT_OUTCOME_SHORTCUTS.map(({ key, outcome: value }) => ({ value, label: `${t(`contactOutcome_${value}`)} · ${key}`, tone: value === "connected" ? "healthy" : value === "invalid_number" ? "unhealthy" : "attention" }))} />
+          <Input value={note} disabled={!canEdit || contactRun.pending} maxLength={2000} className="h-8 w-0 min-w-0 flex-1 px-2 text-xs"
+            onFocus={() => onActivate(lead.id)} onChange={(event) => setNote(event.target.value)} placeholder={t("contactNoteInlinePlaceholder")} aria-label={t("contactNoteFor", { name: lead.provisionalStudentName })} />
+          <Button type="button" size="sm" variant="ghost" className="size-7 shrink-0 p-0" disabled={contactRun.pending} title={t("actions")} aria-label={t("actions")} aria-keyshortcuts="Enter" aria-expanded={detailsOpen} aria-controls={detailsId}
+            onClick={() => changeDetailsOpen(!detailsOpen)}>{detailsOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}</Button>
+          <Button type="button" size="sm" variant="ghost" className="size-7 shrink-0 p-0" disabled={!canEdit || !outcome || contactRun.pending || !canSubmit || !reminderValid} onClick={() => submit()} aria-label={t("saveContactRow")} title={`${t("saveContactRow")} · Ctrl ↵`} aria-keyshortcuts="Control+Enter Meta+Enter">
+            {contactRun.pending ? <LoaderCircle className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
+          </Button>
+          {canManageIdentity ? <span title={t("confirmIdentity")} className="shrink-0 [&>button]:size-7 [&>button]:gap-0 [&>button]:p-0 [&>button]:text-[0px]"><LeadIdentityControl lead={lead} /></span> : null}
         </div>
-        <p className="mt-0.5 text-[11px] leading-4 text-muted">
-          {lead.gradeText || (lead.gradeHint ? t("gradeValue", { grade: lead.gradeHint }) : t("unknownGrade"))}
-        </p>
-        {lead.contactCount > 0 && lead.lastContactAt ? (
-          <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px] leading-4 text-muted">
-            <span>{t("firstContactTried", { count: lead.contactCount, time: formatAt(lead.lastContactAt) })}</span>
-            {lead.lastContactOutcome ? (
-              <Badge variant="secondary" className="px-1.5 py-0 text-[10px] font-normal leading-4">
-                {t(`contactOutcome_${lead.lastContactOutcome}`)}
-              </Badge>
-            ) : null}
-          </div>
-        ) : null}
+        {!historicalSummary ? <p className="mt-1 truncate text-[11px] text-muted" title={lead.lastContactNote}>{layout === "default" ? lead.lastContactAt ? formatAt(lead.lastContactAt) : t("notContacted") : ""}{lead.lastContactNote ? `${layout === "default" ? " · " : ""}${lead.lastContactNote}` : ""}{lead.nextContactAt ? ` · ${formatAt(lead.nextContactAt)}` : ""}</p> : null}
       </TableCell>
-
-      <TableCell className="min-w-60 max-w-80 px-2 py-2 align-top">
-        <p className="truncate text-xs text-ink" title={lead.acquisitionLocation || undefined}>
-          {lead.acquisitionLocation || t("acquisitionLocationMissing")}
-        </p>
-        <p className="mt-0.5 truncate text-[11px] leading-4 text-muted" title={sourceAttribution || undefined}>
-          {lead.acquiredAt ? formatAt(lead.acquiredAt) : t("acquisitionTimeMissing")}
-          {sourceAttribution ? ` · ${sourceAttribution}` : ""}
-        </p>
-        <div className="mt-1 flex max-w-80 flex-wrap gap-1">
-          {lead.interests.length > 0
-            ? lead.interests.map((interest) => (
-                <Badge key={interest} variant="outline" className="px-1.5 py-0 text-[11px] font-normal leading-4">
-                  {interest}
-                </Badge>
-              ))
-            : <span className="text-[11px] text-muted">{t("noSourceInterest")}</span>}
-        </div>
-      </TableCell>
-
-      <TableCell className="min-w-[38rem] px-2 py-2 align-top">
-        <div className="flex items-start gap-2">
-          <div className="flex shrink-0 flex-wrap gap-1.5">
-            {CONTACT_OUTCOME_SHORTCUTS.map(({ key, outcome: value }) => {
-              const selected = displayedOutcome === value;
-              return (
-                <Button
-                  key={value}
-                  type="button"
-                  size="sm"
-                  variant={selected ? "primary" : "secondary"}
-                  className={cn(
-                    "h-8 px-3 text-xs",
-                    selected && "shadow-sm",
-                  )}
-                  disabled={contactRun.pending}
-                  aria-pressed={selected}
-                  onClick={() => chooseOutcome(value)}
-                >
-                  {contactRun.pending && selected
-                    ? <LoaderCircle className="size-3.5 animate-spin motion-reduce:animate-none" />
-                    : selected
-                      ? <Check className="size-3.5" />
-                      : <span className="font-mono text-[11px] text-muted">{key}</span>}
-                  {t(`contactOutcome_${value}`)}
-                </Button>
-              );
-            })}
-          </div>
-          <Textarea
-            value={note}
-            disabled={contactRun.pending}
-            onFocus={() => onActivate(lead.id)}
-            onChange={(event) => setNote(event.target.value)}
-            rows={1}
-            maxLength={2000}
-            className="h-8 min-h-8 min-w-52 flex-1 resize-y overflow-hidden rounded-xl px-2 py-1.5 text-xs transition-[height] focus:h-20 focus:overflow-auto motion-reduce:transition-none"
-            placeholder={outcome ? t(`contactNotePlaceholder_${outcome}`) : t("contactNoteInlinePlaceholder")}
-            aria-label={t("contactNoteFor", { name: lead.provisionalStudentName })}
-          />
-        </div>
-
-        {showSavedDetails ? (
-          <div
-            className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1"
-            aria-label={t("latestContact")}
-          >
-            {savedReachable ? (
-              <>
-                <div className="flex items-center gap-1 text-[11px] text-muted">
-                  <span>{t("wechatFact")}</span>
-                  <Badge variant="outline" className="px-1.5 py-0 text-[10px] font-normal leading-4 text-ink">
-                    {savedWechatFact}
-                  </Badge>
-                </div>
-                {lead.activeInvitation ? (
-                  <div className="flex items-center gap-1 text-[11px] text-muted">
-                    <span>{t("invitationFact")}</span>
-                    <Badge variant="outline" className="px-1.5 py-0 text-[10px] font-normal leading-4 text-ink">
-                      {t(`invitationKind_${lead.activeInvitation.kind}`)} · {invitationStepLabel(lead.activeInvitation)}
-                    </Badge>
-                  </div>
-                ) : null}
-                <div className="flex items-center gap-1 text-[11px] text-muted">
-                  <span>{t("interestLevel")}</span>
-                  <Badge variant="outline" className="px-1.5 py-0 text-[10px] font-normal leading-4 text-ink">
-                    {savedInterest}
-                  </Badge>
-                </div>
-              </>
-            ) : null}
-            {lead.nextContactAt ? (
-              <Badge variant="outline" className="px-1.5 py-0 text-[10px] font-normal leading-4 text-rose">
-                {invitationT("nextContactReminderScheduled", { time: formatAt(lead.nextContactAt) })}
-              </Badge>
-            ) : null}
-            <p
-              className={cn(
-                "min-w-52 flex-1 text-[11px] leading-4 text-ink",
-                active ? "whitespace-pre-wrap break-words" : "truncate",
-              )}
-              title={active ? undefined : lead.lastContactNote || undefined}
-            >
-              <span className="text-muted">{t("contactNote")} · </span>
-              {lead.lastContactNote || t("noContactNote")}
-            </p>
-          </div>
-        ) : null}
-
-        {active && outcome ? (
-          <DashboardInlineEntry pending={contactRun.pending}>
-            {reachable ? (
-              <div className="flex flex-wrap gap-x-4 gap-y-2">
-                <DirectChoiceGroup
-                  label={t("wechatFact")}
-                  value={wechatState}
-                  choices={wechatChoices}
-                  disabled={contactRun.pending}
-                  onChange={setWechatState}
-                />
-                <DirectChoiceGroup
-                  label={t("interestLevel")}
-                  value={interestLevel}
-                  choices={interestChoices}
-                  disabled={contactRun.pending}
-                  onChange={setInterestLevel}
-                />
-              </div>
-            ) : null}
-
-            {outcome === "connected" ? (
-              <InvitationDraftFields
-                value={invitation}
-                activities={activities}
-                assessors={assessors}
-                locale={locale}
-                disabled={contactRun.pending}
-                draftStorageKey={draftStorageKey}
-                onChange={setInvitation}
-              />
-            ) : null}
-
-            {outcome === "declined" ? (
-              <NextContactReminderField
-                id={`lead-next-contact-${lead.id}`}
-                value={nextContactAt}
-                disabled={contactRun.pending}
-                className="max-w-xs"
-                onChange={setNextContactAt}
-              />
-            ) : null}
-
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-[11px] leading-4 text-muted" aria-live="polite">
-                {destination
-                  ? invitation
-                    ? t("contactDestinationWithInvitation", {
-                        status: t(`status_${destination}`),
-                        queue: invitationStepLabel(invitation),
-                      })
-                    : t("contactDestination", { status: t(`status_${destination}`) })
-                  : t("contactDestinationPending")}
-              </p>
-              <div className="flex flex-wrap justify-end gap-1.5">
-                {confirmableInvitation ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    className="h-8 whitespace-nowrap"
-                    disabled={contactRun.pending}
-                    onClick={() => submit("connected", confirmableInvitation)}
-                  >
-                    <Check className="size-4" />
-                    {t("saveContactAndConfirmInvitation")}
-                  </Button>
-                ) : null}
-                <Button
-                  type="button"
-                  size="sm"
-                  className="h-8 whitespace-nowrap"
-                  disabled={contactRun.pending || !canSubmit || !reminderValid}
-                  onClick={() => submit()}
-                >
-                  {contactRun.pending
-                    ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" />
-                    : <Check className="size-4" />}
-                  {directConfirmedInvitation
-                    ? t("saveContactConfirmedInvitation")
-                    : confirmableInvitation
-                      ? t("saveContactAwaitParent")
-                      : t("saveContactRow")}
-                </Button>
-              </div>
-            </div>
-          </DashboardInlineEntry>
-        ) : outcome ? (
-          <p className="mt-2 text-[11px] text-muted">{t("contactDraftPending")}</p>
-        ) : null}
-        {active && !outcome && lead.lastContactOutcome && leadCanHaveReminder(lead) ? (
-          <SavedLeadReminderControl
-            lead={lead}
-            disabled={contactRun.pending}
-            onSaved={onReminderSaved}
-          />
-        ) : null}
-      </TableCell>
-    </TableRow>
   );
+
+  return <>
+    <TableRow data-communication-work-key={layout === "communication" ? `lead:${lead.id}` : undefined} ref={rowRef} tabIndex={layout === "communication" || active ? 0 : -1} aria-selected={active} aria-busy={contactRun.pending}
+      className={cn("h-16 focus-visible:outline-none [&>td]:min-w-0", active && "bg-blue/5")}
+      onClick={(event) => {
+        onActivate(lead.id);
+        if (!contactRun.pending && !(event.target as HTMLElement).closest("button,a,input,textarea,[role='combobox'],[role='option'],[role='checkbox']")) changeDetailsOpen(!detailsOpen);
+      }} onKeyDown={handleRowKeyDown}>
+      {layout === "communication" ? <>
+      <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-2">
+        <div className="flex min-w-0 items-center gap-1">{leadingSelection}<Button type="button" size="sm" variant="ghost" className="size-5 shrink-0 p-0" aria-expanded={detailsOpen} aria-controls={detailsId} aria-label={lead.provisionalStudentName} onClick={() => changeDetailsOpen(!detailsOpen)}>{detailsOpen ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}</Button><span className="truncate font-medium" title={lead.provisionalStudentName}>{lead.provisionalStudentName}</span></div>
+        <p className="mt-0.5 truncate pl-6 text-[11px] text-muted">{lead.ownerName || t("unassignedOwner")} · {lead.gradeText || (lead.gradeHint ? t("gradeValue", { grade: lead.gradeHint }) : t("unknownGrade"))}</p>
+        <a className="mt-0.5 block truncate pl-6 font-mono text-[10px] hover:underline" href={`tel:${lead.phone}`}>{lead.phone}</a>
+      </TableCell>
+      <TableCell className="px-2 py-2">{historicalSummary ? historicalSummary.state : <><Badge variant="outline" className={cn("max-w-full truncate px-1.5 text-[10px]", followupToneClasses[lead.status === "invalid" ? "unhealthy" : lead.status === "nurture" ? "attention" : lead.status === "uncontacted" ? "neutral" : "healthy"])}>{lead.lastContactOutcome ? t(`contactOutcome_${lead.lastContactOutcome}`) : t(`status_${lead.status}`)}</Badge>{workPurpose ? <div className="mt-1 truncate text-[11px] text-muted">{workPurpose}</div> : <p className="mt-1 truncate text-[11px] text-muted" title={[lead.acquisitionLocation, sourceAttribution, ...lead.interests].filter(Boolean).join(" · ")}>{lead.acquisitionLocation || t("acquisitionLocationMissing")}{lead.interests.length ? ` · ${lead.interests.join(" / ")}` : ""}</p>}</>}</TableCell>
+      {entryCell}
+      <TableCell className="px-2 py-2 text-[11px] text-muted">{historicalSummary ? historicalSummary.updated : <><span className="block break-words">{lead.lastContactAt ? formatAt(lead.lastContactAt) : t("notContacted")}</span>{lead.contactCount ? <p className="mt-1 truncate">{t("contactCount", { count: lead.contactCount })}</p> : null}</>}{rowActions ? <div className="mt-1 flex min-w-0 flex-wrap gap-1">{rowActions}</div> : null}</TableCell>
+      </> : <>
+      {canAssign && layout === "default" ? <LeadContactSelectionCell lead={lead} visibleIds={visibleIds} /> : null}
+      <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-2">
+        <div className="flex min-w-0 items-baseline justify-between gap-2"><span className="min-w-0 truncate font-medium text-ink" title={lead.provisionalStudentName}>{lead.provisionalStudentName}</span>
+          <span className="max-w-[50%] truncate text-[10px] text-muted" title={lead.gradeText || undefined}>{lead.gradeText || (lead.gradeHint ? t("gradeValue", { grade: lead.gradeHint }) : t("unknownGrade"))}</span></div>
+        <div className="mt-1 flex min-w-0 items-center gap-2"><a className="shrink-0 font-mono text-[10px] hover:underline" href={`tel:${lead.phone}`}>{lead.phone}</a>{lead.sourceMarkedDuplicate ? <span className="truncate text-[10px] text-muted">{t("sourceDuplicateShort")}</span> : null}</div>
+      </TableCell>
+      <TableCell className="px-2 py-2"><p className="truncate" title={lead.acquisitionLocation}>{lead.acquisitionLocation || t("acquisitionLocationMissing")}</p>
+        <p className="mt-1 truncate text-[11px] text-muted" title={[sourceAttribution, ...lead.interests].join(" · ")}>{lead.acquiredAt ? formatAt(lead.acquiredAt) : "—"}{lead.interests.length ? ` · ${lead.interests.join(" / ")}` : ""}</p></TableCell>
+      <TableCell className="px-2 py-2"><p className="truncate" title={lead.ownerName || t("unassignedOwner")}>{lead.ownerName || t("unassignedOwner")}</p></TableCell>
+      <TableCell className="px-2 py-2"><Badge variant="outline" title={t(`status_${lead.status}`)} className={cn("max-w-full truncate px-1.5 text-[10px]", followupToneClasses[lead.status === "invalid" ? "unhealthy" : lead.status === "nurture" ? "attention" : ["contacted", "intent_confirmed", "converted"].includes(lead.status) ? "healthy" : "neutral"])}>{t(`status_${lead.status}`)}</Badge></TableCell>
+      {entryCell}
+
+      </>}
+    </TableRow>
+    <FollowupInlineDetails id={detailsId} open={detailsOpen} onOpenChange={changeDetailsOpen} title={lead.provisionalStudentName} colSpan={layout === "communication" ? 4 : canAssign ? 6 : 5} pending={contactRun.pending}>
+      {detailsFirst ? detailsExtra : null}
+      <div className="grid min-w-0 gap-4 @5xl/followup-entry:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]" onKeyDown={handleRowKeyDown}>
+        <section className="min-w-0 space-y-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            {canEdit ? <FollowupChoice className="w-36" label={t("latestContact")} value={displayedOutcome ?? ""} disabled={contactRun.pending}
+              onValueChange={(value) => chooseOutcome(value as LeadContactOutcome)} options={CONTACT_OUTCOME_SHORTCUTS.map(({ key, outcome: value }) => ({ value, label: `${t(`contactOutcome_${value}`)} · ${key}`, tone: value === "connected" ? "healthy" : value === "invalid_number" ? "unhealthy" : "attention" }))} /> : null}
+            {reachable ? <>
+              <FollowupChoice label={t("wechatFact")} value={wechatState} options={wechatChoices} disabled={contactRun.pending} onValueChange={(value) => setWechatState(value as TernaryChoice)} />
+              <FollowupChoice className="w-36" label={t("interestLevel")} value={interestLevel} options={interestChoices} disabled={contactRun.pending} onValueChange={(value) => setInterestLevel(value as LeadInterestLevel | "")} />
+            </> : null}
+          </div>
+          {outcome === "connected" ? <InvitationDraftFields value={invitation} activities={activities} assessors={assessors} locale={locale} disabled={contactRun.pending} draftStorageKey={draftStorageKey} onChange={setInvitation} /> : null}
+          {outcome === "declined" ? <NextContactReminderField id={`lead-next-contact-${lead.id}`} value={nextContactAt} disabled={contactRun.pending} onChange={setNextContactAt} /> : null}
+          {!outcome && lead.lastContactOutcome ? <div className="space-y-2 text-xs"><p>{t(`contactOutcome_${lead.lastContactOutcome}`)} · {lead.lastContactAt ? formatAt(lead.lastContactAt) : ""}</p>
+            {lead.activeInvitation ? <p>{t(`invitationKind_${lead.activeInvitation.kind}`)} · {invitationStepLabel(lead.activeInvitation)}</p> : null}</div> : null}
+          {!outcome && canEdit && leadCanHaveReminder(lead) ? <SavedLeadReminderControl lead={lead} disabled={contactRun.pending} onSaved={onReminderSaved} /> : null}
+        </section>
+        <section className="min-w-0 space-y-3 @5xl/followup-entry:border-l @5xl/followup-entry:border-line @5xl/followup-entry:pl-4">
+          {outcome ? <>
+            <Textarea className="min-w-0 text-xs" value={note} disabled={contactRun.pending} rows={3} maxLength={2000} onChange={(event) => setNote(event.target.value)} placeholder={t(`contactNotePlaceholder_${outcome}`)} aria-label={t("contactNote")} />
+            <div className="flex min-w-0 flex-wrap justify-end gap-2">
+              {confirmableInvitation ? <Button type="button" size="sm" variant="secondary" className="h-auto min-h-8 max-w-full whitespace-normal px-2 py-1 text-xs" disabled={contactRun.pending} onClick={() => submit("connected", confirmableInvitation)}>{t("saveContactAndConfirmInvitation")}</Button> : null}
+              <Button type="button" size="sm" className="h-auto min-h-8 max-w-full whitespace-normal px-2 py-1 text-xs" disabled={contactRun.pending || !canSubmit || !reminderValid} onClick={() => submit()} aria-keyshortcuts="Control+Enter Meta+Enter">
+                {contactRun.pending ? <LoaderCircle className="size-4 animate-spin" /> : <Check className="size-4" />}{directConfirmedInvitation ? t("saveContactConfirmedInvitation") : t("saveContactRow")}<kbd className="ml-1 shrink-0 whitespace-nowrap text-[10px]">Ctrl ↵</kbd>
+              </Button>
+            </div>
+          </> : <p className="whitespace-pre-wrap text-xs">{lead.lastContactNote || t("noContactNote")}</p>}
+          <p className="break-words text-[11px] text-muted">{[sourceAttribution, ...lead.interests].filter(Boolean).join(" · ")}</p>
+        </section>
+      </div>
+      {!detailsFirst ? detailsExtra : null}
+    </FollowupInlineDetails>
+  </>;
+}
+
+function LeadContactSelectionCell({ lead, visibleIds }: { lead: LeadPoolRow; visibleIds: string[] }) {
+  const t = useTranslations("school.leads");
+  const selection = useLeadPoolSelection();
+  const rangeRef = useRef(false);
+  return <TableCell className="w-8 px-2 py-2"><Checkbox checked={selection.selected.has(lead.id)}
+    disabled={selection.assignmentPending || lead.status === "invalid" || lead.status === "converted"}
+    onClick={(event) => { rangeRef.current = event.shiftKey; }}
+    onCheckedChange={(checked) => { selection.toggleLead(lead.id, checked === true, visibleIds, rangeRef.current); rangeRef.current = false; }}
+    aria-label={t("selectLead", { name: lead.provisionalStudentName })} /></TableCell>;
 }
 
 export function LeadFirstContactWorkbench({
@@ -610,37 +459,121 @@ export function LeadFirstContactWorkbench({
   locale,
   activities,
   assessors,
+  canContact = false,
+  canAssign = false,
+  canManageIdentity = false,
+  currentUserId,
 }: {
   leads: LeadPoolRow[];
   locale: string;
   activities: InvitationActivityOption[];
   assessors: InvitationAssessorOption[];
+  canContact?: boolean;
+  canAssign?: boolean;
+  canManageIdentity?: boolean;
+  currentUserId?: string;
 }) {
   const t = useTranslations("school.leads");
-  const [sessionLeads, setSessionLeads] = useState(leads);
+  const tableT = useTranslations("school.table");
+  const [session, setSession] = useState({ source: leads, rows: leads });
+  if (session.source !== leads) setSession({ source: leads, rows: leads });
+  const sessionLeads = session.rows;
+  const setSessionLeads = (update: (current: LeadPoolRow[]) => LeadPoolRow[]) => setSession((current) => ({ ...current, rows: update(current.rows) }));
   const [activeLeadId, setActiveLeadId] = useState<string | null>(() => leads[0]?.id ?? null);
-  const freshCount = sessionLeads.filter((lead) => lead.status === "uncontacted" && lead.contactCount === 0).length;
-  const retryCount = sessionLeads.filter((lead) => lead.status === "uncontacted" && lead.contactCount > 0).length;
+  const selection = useLeadPoolSelection();
   const dateTimeFormatter = useMemo(() => new Intl.DateTimeFormat(locale, {
     dateStyle: "short",
     timeStyle: "short",
     timeZone: ACQUISITION_TIME_ZONE,
   }), [locale]);
   const formatAt = (value: string) => dateTimeFormatter.format(new Date(value));
+  const tableColumns = useMemo<Record<FirstContactTableColumn, DashboardTableColumnDefinition<LeadPoolRow>>>(() => ({
+    seed: {
+      filterValues: (lead) => [
+        { value: `name:${lead.provisionalStudentName}`, label: lead.provisionalStudentName, group: tableT("fieldName") },
+        { value: `phone:${lead.phone}`, label: lead.phone, group: tableT("fieldPhone") },
+        {
+          value: lead.gradeText || lead.gradeHint ? `grade:${lead.gradeText || lead.gradeHint}` : `grade:${EMPTY_VALUE}`,
+          label: lead.gradeText || (lead.gradeHint ? t("gradeValue", { grade: lead.gradeHint }) : t("unknownGrade")),
+          group: tableT("fieldGrade"),
+        },
+        ...(lead.contactCount > 0
+          ? [{ value: `contacts:${lead.contactCount}`, label: String(lead.contactCount), group: tableT("fieldContactCount") }]
+          : []),
+        ...(lead.lastContactAt
+          ? [{
+              value: `contact-time:${lead.lastContactAt}`,
+              label: dateTimeFormatter.format(new Date(lead.lastContactAt)),
+              group: tableT("fieldTime"),
+            }]
+          : []),
+        ...(lead.lastContactOutcome
+          ? [{
+              value: `contact-result:${lead.lastContactOutcome}`,
+              label: t(`contactOutcome_${lead.lastContactOutcome}`),
+              group: tableT("fieldContactResult"),
+            }]
+          : []),
+      ],
+      sortValue: (lead) => lead.provisionalStudentName,
+    },
+    owner: { filterValues: (lead) => ({ value: lead.ownerId ?? "$unassigned", label: lead.ownerName || t("unassignedOwner") }), sortValue: (lead) => lead.ownerName },
+    status: { filterValues: (lead) => ({ value: lead.status, label: t(`status_${lead.status}`) }), sortValue: (lead) => lead.status },
+    context: {
+      filterValues: (lead) => [
+        ...(lead.interests.length > 0
+          ? lead.interests.map((interest) => ({ value: `interest:${interest}`, label: interest, group: tableT("fieldInterest") }))
+          : [{ value: `interest:${EMPTY_VALUE}`, label: t("noSourceInterest"), group: tableT("fieldInterest") }]),
+        {
+          value: lead.acquisitionLocation ? `location:${lead.acquisitionLocation}` : "$missing-location",
+          label: lead.acquisitionLocation || t("acquisitionLocationMissing"),
+          group: tableT("fieldLocation"),
+        },
+        ...(lead.acquiredAt
+          ? [{
+              value: `acquired:${lead.acquiredAt}`,
+              label: dateTimeFormatter.format(new Date(lead.acquiredAt)),
+              group: tableT("fieldTime"),
+            }]
+          : []),
+        ...(lead.acquisitionPromoter
+          ? [{
+              value: `promoter:${lead.acquisitionPromoter}`,
+              label: t("promoterValue", { name: lead.acquisitionPromoter }),
+              group: tableT("fieldPromoter"),
+            }]
+          : []),
+        ...(lead.acquisitionMethod
+          ? [{ value: `method:${lead.acquisitionMethod}`, label: lead.acquisitionMethod, group: tableT("fieldMethod") }]
+          : []),
+        ...(lead.sourceCount > 1
+          ? [{
+              value: `source-count:${lead.sourceCount}`,
+              label: t("sourceCount", { count: lead.sourceCount }),
+              group: tableT("fieldSourceCount"),
+            }]
+          : []),
+      ],
+      sortValue: (lead) => lead.acquiredAt,
+    },
+  }), [dateTimeFormatter, t, tableT]);
+  const contactTable = useDashboardTableView({ rows: sessionLeads, columns: tableColumns, locale, persistenceKey: `school.followup.leads.${currentUserId ?? "user"}` });
+  const visibleIds = contactTable.visibleRows.filter((lead) => lead.status !== "invalid" && lead.status !== "converted").map((lead) => lead.id);
+  const selectedVisibleCount = visibleIds.filter((id) => selection.selected.has(id)).length;
 
-  const resolvedActiveLeadId = activeLeadId && sessionLeads.some((lead) => lead.id === activeLeadId)
+  const resolvedActiveLeadId = activeLeadId && contactTable.visibleRows.some((lead) => lead.id === activeLeadId)
     ? activeLeadId
     : null;
 
   const recordAndAdvance = (leadId: string, input: LeadContactInput) => {
-    const currentIndex = sessionLeads.findIndex((lead) => lead.id === leadId);
-    if (currentIndex < 0 || sessionLeads.length === 0) {
+    const currentIndex = contactTable.visibleRows.findIndex((lead) => lead.id === leadId);
+    if (currentIndex < 0 || contactTable.visibleRows.length === 0) {
       setActiveLeadId(null);
       return;
     }
     const nextLead = [
-      ...sessionLeads.slice(currentIndex + 1),
-      ...sessionLeads.slice(0, currentIndex),
+      ...contactTable.visibleRows.slice(currentIndex + 1),
+      ...contactTable.visibleRows.slice(0, currentIndex),
     ].find((lead) => lead.status === "uncontacted");
     setActiveLeadId(nextLead?.id ?? null);
 
@@ -690,31 +623,22 @@ export function LeadFirstContactWorkbench({
   };
 
   return (
-    <div className="space-y-2">
-      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
-        <span>{t("firstContactWorkbenchHint")}</span>
-        <Badge variant="outline" className="px-1.5 py-0 text-[11px] font-normal leading-4">
-          {t("firstContactFreshCount", { count: freshCount })}
-        </Badge>
-        {retryCount > 0 ? (
-          <Badge variant="secondary" className="px-1.5 py-0 text-[11px] font-normal leading-4">
-            {t("firstContactRetryCount", { count: retryCount })}
-          </Badge>
-        ) : null}
-      </div>
-
       <DashboardTableShell>
-        <Table className="w-full min-w-[67rem] text-xs" containerClassName="max-h-[calc(100dvh-15rem)] overflow-auto">
+        <Table className="w-full min-w-[52rem] table-fixed text-xs" containerClassName="max-h-[calc(100dvh-15rem)] overflow-auto">
+          <colgroup>{canAssign ? <col style={{ width: "2rem" }} /> : null}<col style={{ width: "19%" }} /><col style={{ width: "15%" }} /><col style={{ width: "9%" }} /><col style={{ width: "11%" }} /><col /></colgroup>
           <TableHeader>
             <TableRow>
-              <TableHead className="sticky left-0 top-0 z-30 h-8 min-w-56 bg-card px-2">{t("seed")}</TableHead>
-              <TableHead className="sticky top-0 z-20 h-8 min-w-60 bg-card px-2">{t("firstContactContext")}</TableHead>
-              <TableHead className="sticky top-0 z-20 h-8 min-w-[38rem] bg-card px-2">{t("firstContactEntry")}</TableHead>
+              {canAssign ? <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><Checkbox checked={visibleIds.length > 0 && selectedVisibleCount === visibleIds.length ? true : selectedVisibleCount > 0 ? "indeterminate" : false} disabled={!visibleIds.length || selection.assignmentPending} onCheckedChange={(checked) => selection.setVisibleSelection(visibleIds, checked === true)} aria-label={t("selectPage")} /></TableHead> : null}
+              <TableHead className="sticky left-0 top-0 z-30 h-8 bg-card px-2"><DashboardTableColumnHeader label={t("seed")} {...contactTable.columnProps("seed")} /></TableHead>
+              <TableHead className="sticky top-0 z-20 h-8 bg-card px-2"><DashboardTableColumnHeader label={t("firstContactContext")} {...contactTable.columnProps("context")} /></TableHead>
+              <TableHead className="sticky top-0 z-20 h-8 bg-card px-2"><DashboardTableColumnHeader label={t("owner")} {...contactTable.columnProps("owner")} /></TableHead>
+              <TableHead className="sticky top-0 z-20 h-8 bg-card px-2"><DashboardTableColumnHeader label={t("status")} {...contactTable.columnProps("status")} /></TableHead>
+              <TableHead className="sticky top-0 z-20 h-8 bg-card px-2">{t("firstContactEntry")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sessionLeads.map((lead) => (
-              <ContactEntryRow
+            {contactTable.visibleRows.map((lead) => (
+              <LeadContactEntryRow
                 key={lead.id}
                 lead={lead}
                 formatAt={formatAt}
@@ -725,11 +649,17 @@ export function LeadFirstContactWorkbench({
                 activities={activities}
                 assessors={assessors}
                 locale={locale}
+                canContact={canContact}
+                canAssign={canAssign}
+                canManageIdentity={canManageIdentity}
+                visibleIds={visibleIds}
               />
             ))}
+            {contactTable.visibleRows.length === 0 ? (
+              <TableRow><TableCell colSpan={canAssign ? 6 : 5} className="h-32 px-4 text-center text-sm text-muted">{tableT("filteredEmpty")}</TableCell></TableRow>
+            ) : null}
           </TableBody>
         </Table>
       </DashboardTableShell>
-    </div>
   );
 }

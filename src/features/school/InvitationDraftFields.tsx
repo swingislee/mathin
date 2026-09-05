@@ -1,13 +1,11 @@
 "use client";
 
-import { Check, Keyboard } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useId, useMemo, useRef } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { FollowupChoice } from "./dashboard-page/FollowupChoice";
 import { AssessmentAvailabilityGrid } from "./AssessmentAvailabilityGrid";
 import {
   defaultInvitationState,
@@ -224,7 +222,6 @@ export function InvitationDraftFields({
   const stateChoices = value?.kind === "assessment_1v1"
     ? ASSESSMENT_PROGRESS_STATES
     : [];
-  const selectedStateIndex = value ? stateChoices.indexOf(value.state) : -1;
   const chooseState = useCallback((state: InvitationState) => {
     if (!value) return;
     emit(selectInvitationProgress(value, state));
@@ -244,7 +241,7 @@ export function InvitationDraftFields({
     const target = event.target;
     if (
       target instanceof HTMLElement
-      && target.closest("input, textarea, select, [contenteditable='true'], [role='combobox'], [role='dialog'], [role='listbox'], [role='menu']")
+      && target.closest("input, textarea, select, [contenteditable='true'], [role='combobox'], [role='listbox'], [role='menu']")
     ) return;
     const state = ASSESSMENT_PROGRESS_STATES[Number(event.key) - 1];
     if (!state) return;
@@ -252,79 +249,18 @@ export function InvitationDraftFields({
     event.stopPropagation();
     chooseState(state);
   }, [chooseState, disabled, editingScope, value]);
-  useEffect(() => {
-    if (!workflow) return;
-    const listener = (event: KeyboardEvent) => handleStateShortcut(event);
-    window.addEventListener("keydown", listener, true);
-    return () => window.removeEventListener("keydown", listener, true);
-  }, [handleStateShortcut, workflow]);
   const selectedActivity = value?.activityId
     ? activities.find((activity) => activity.id === value.activityId)
     : undefined;
 
-  const kindChoices = (
-    <div
-      className={cn(workflow ? "grid gap-1.5" : "flex min-w-0 flex-wrap items-center gap-1")}
-      role="group"
-      aria-label={t("kindLabel")}
-    >
-      {!workflow ? <span className="mr-1 text-[11px] text-muted">{t("kindLabel")}</span> : null}
-      {allowNone ? (
-        <Button
-          type="button"
-          size="sm"
-          variant={workflow ? "ghost" : "secondary"}
-          className={cn(
-            workflow ? "h-9 justify-start rounded-lg px-3 text-xs" : "h-7 px-2.5 text-[11px]",
-            !value && (workflow ? "bg-leaf/25 text-ink" : "border-leaf-deep bg-leaf/60 text-ink"),
-          )}
-          disabled={disabled || editingScope === "assessor"}
-          aria-pressed={!value}
-          onClick={() => chooseKind(null)}
-        >
-          <span className={cn(
-            "flex size-4 shrink-0 items-center justify-center rounded-full border text-[10px]",
-            !value ? "border-leaf-deep bg-leaf text-ink" : "border-line text-muted",
-          )}>
-            {!value ? <Check className="size-3" /> : null}
-          </span>
-          {t("kind_none")}
-        </Button>
-      ) : null}
-      {(["assessment_1v1", "activity", "waiting_activity"] as const).map((kind) => {
-        const selected = value?.kind === kind;
-        return (
-          <Button
-            key={kind}
-            type="button"
-            size="sm"
-            variant={workflow ? "ghost" : "secondary"}
-            className={cn(
-              workflow ? "h-9 justify-start rounded-lg px-3 text-xs" : "h-7 px-2.5 text-[11px]",
-              selected && (workflow ? "bg-leaf/25 text-ink" : "border-leaf-deep bg-leaf/60 text-ink"),
-            )}
-            disabled={disabled || editingScope === "assessor"}
-            aria-pressed={selected}
-            onClick={() => chooseKind(kind)}
-          >
-            {workflow ? (
-              <span className={cn(
-                "flex size-4 shrink-0 items-center justify-center rounded-full border text-[10px]",
-                selected ? "border-leaf-deep bg-leaf text-ink" : "border-line text-muted",
-              )}>
-                {selected ? <Check className="size-3" /> : null}
-              </span>
-            ) : selected ? <Check className="size-3" /> : null}
-            {t(`kind_${kind}`)}
-          </Button>
-        );
-      })}
-    </div>
-  );
+  const kindChoices = <FollowupChoice className={workflow ? "grid w-full min-w-0 max-w-full grid-cols-3 gap-1.5 @[44rem]/invitation-draft:grid-cols-1 [&>button]:justify-start" : "flex min-w-0 max-w-full flex-wrap items-center gap-1"} label={t("kindLabel")} value={value?.kind ?? "none"}
+    disabled={disabled || editingScope === "assessor"} onValueChange={(kind) => chooseKind(kind === "none" ? null : kind as InvitationKind)}
+    options={[...(allowNone ? [{ value: "none", label: t("kind_none"), tone: "neutral" as const }] : []),
+      ...INVITATION_KINDS.map((kind) => ({ value: kind, label: t(`kind_${kind}`), tone: kind === "waiting_activity" ? "attention" as const : "healthy" as const }))]} />;
 
   const arrangementFields = value?.kind === "assessment_1v1" ? (
-    <div className="grid gap-2 md:grid-cols-[minmax(18rem,1.5fr)_minmax(11rem,0.75fr)_minmax(11rem,0.75fr)]">
-      <div className="space-y-1.5">
+    <div className="grid min-w-0 gap-3 @[25rem]/invitation-fields:grid-cols-2 @[44rem]/invitation-fields:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="min-w-0 space-y-1.5 @[25rem]/invitation-fields:col-span-2 @[44rem]/invitation-fields:col-span-1 [&>button]:min-w-0 [&>button]:max-w-full">
         {workflow ? <Label className="text-[11px] text-muted">{t("timeLabel")}</Label> : null}
         <AssessmentAvailabilityGrid
           value={value}
@@ -334,39 +270,25 @@ export function InvitationDraftFields({
           onChange={(next) => emit(next)}
         />
       </div>
-      <div className="space-y-1.5">
+      <div className="min-w-0 space-y-1.5">
         {workflow ? <Label htmlFor="invitation-assessor" className="text-[11px] text-muted">{t("assessorLabel")}</Label> : null}
-        <Select
-          value={value.assessorId ?? "none"}
-          disabled={disabled || editingScope === "assessor"}
+        <FollowupChoice className="w-full min-w-0 max-w-full" label={t("assessorLabel")} value={value.assessorId ?? "none"}
+          disabled={disabled || editingScope === "assessor"} options={[{ value: "none", label: t("assessorPending") }, ...assessors.map((assessor) => ({ value: assessor.userId, label: assessor.displayName }))]}
           onValueChange={(assessorId) => {
-            if (!value) return;
             const nextAssessorId = assessorId === "none" ? null : assessorId;
-            emit({
-              ...value,
-              assessorId: nextAssessorId,
+            emit({ ...value, assessorId: nextAssessorId,
               assessorTimeOptions: nextAssessorId === value.assessorId ? value.assessorTimeOptions : [],
-              scheduledAt: nextAssessorId === value.assessorId ? value.scheduledAt : null,
-            });
-          }}
-        >
-          <SelectTrigger id={workflow ? "invitation-assessor" : undefined} className="h-8 text-xs" aria-label={t("assessorLabel")}><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">{t("assessorPending")}</SelectItem>
-            {assessors.map((assessor) => (
-              <SelectItem key={assessor.userId} value={assessor.userId}>{assessor.displayName}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+              scheduledAt: nextAssessorId === value.assessorId ? value.scheduledAt : null });
+          }} />
       </div>
-      <div className="space-y-1.5">
+      <div className="min-w-0 space-y-1.5">
         {workflow ? <Label htmlFor="invitation-location" className="text-[11px] text-muted">{t("locationLabel")}</Label> : null}
         <Input
           id={workflow ? "invitation-location" : undefined}
           value={value.locationText}
           disabled={disabled || editingScope === "assessor"}
           maxLength={200}
-          className="h-8 text-xs"
+          className="h-8 min-w-0 max-w-full text-xs"
           placeholder={t("locationPlaceholder")}
           aria-label={t("locationLabel")}
           onChange={(event) => update("locationText", event.target.value)}
@@ -374,119 +296,49 @@ export function InvitationDraftFields({
       </div>
     </div>
   ) : value?.kind === "activity" ? (
-    <div className="grid gap-2 md:grid-cols-[minmax(18rem,1fr)_minmax(12rem,1fr)]">
-      <div className="space-y-1.5">
+    <div className="grid min-w-0 gap-3 @[30rem]/invitation-fields:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+      <div className="min-w-0 space-y-1.5">
         {workflow ? <Label htmlFor="invitation-activity" className="text-[11px] text-muted">{t("activityLabel")}</Label> : null}
-        <Select
-          value={value.activityId ?? "none"}
-          disabled={disabled || activities.length === 0}
-          onValueChange={(activityId) => {
-            const activity = activities.find((item) => item.id === activityId);
-            emit({
-              ...value,
-              activityId,
-              locationText: activity?.location ?? value.locationText,
-            });
-          }}
-        >
-          <SelectTrigger id={workflow ? "invitation-activity" : undefined} className="h-8 text-xs" aria-label={t("activityLabel")}><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none" disabled>{activities.length > 0 ? t("activityPending") : t("activityEmpty")}</SelectItem>
-            {activities.map((activity) => (
-              <SelectItem key={activity.id} value={activity.id}>
-                {activity.title} · {dateTimeFormatter.format(new Date(activity.scheduledAt))}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <FollowupChoice className="w-full min-w-0 max-w-full" label={t("activityLabel")} value={value.activityId ?? ""} disabled={disabled || activities.length === 0}
+          options={activities.map((activity) => ({ value: activity.id, label: `${activity.title} · ${dateTimeFormatter.format(new Date(activity.scheduledAt))}` }))}
+          onValueChange={(activityId) => { const activity = activities.find((item) => item.id === activityId); emit({ ...value, activityId, locationText: activity?.location ?? value.locationText }); }} />
       </div>
-      <div className="space-y-1.5">
+      <div className="min-w-0 space-y-1.5">
         {workflow ? <Label htmlFor="invitation-activity-location" className="text-[11px] text-muted">{t("locationLabel")}</Label> : null}
         <Input
           id={workflow ? "invitation-activity-location" : undefined}
           value={value.locationText}
           disabled={disabled}
           maxLength={200}
-          className="h-8 text-xs"
+          className="h-8 min-w-0 max-w-full text-xs"
           placeholder={t("locationPlaceholder")}
           aria-label={t("locationLabel")}
           onChange={(event) => update("locationText", event.target.value)}
         />
       </div>
       {selectedActivity ? (
-        <p className="md:col-span-2 text-[11px] text-muted">
+        <p className="min-w-0 break-words text-[11px] text-muted @[30rem]/invitation-fields:col-span-2">
           {dateTimeFormatter.format(new Date(selectedActivity.scheduledAt))}
           {selectedActivity.location ? ` · ${selectedActivity.location}` : ""}
         </p>
       ) : null}
     </div>
-  ) : value?.kind === "waiting_activity" ? (
+  ) : value?.kind === "waiting_activity" && !workflow ? (
     <p className="text-[11px] leading-4 text-muted">{t("waitingActivityHint")}</p>
   ) : null;
 
-  const stateControls = value?.kind === "assessment_1v1" ? (
-    <div className="space-y-2">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <p className="text-[11px] font-medium text-muted">{t("stateLabel")}</p>
-        <p className="flex items-center gap-1.5 text-[10px] text-muted">
-          <Keyboard className="size-3 text-ink" aria-hidden="true" />
-          <span>{t("stateManualHint")}</span>
-        </p>
-      </div>
-      <div
-        className="grid gap-1.5"
-        style={{ gridTemplateColumns: `repeat(${stateChoices.length}, minmax(0, 1fr))` }}
-        role="group"
-        aria-label={t("stateLabel")}
-        aria-keyshortcuts="1 2 3 4"
-      >
-        {stateChoices.map((state, index) => {
-          const selected = value.state === state;
-          const passed = index < selectedStateIndex;
-          return (
-            <Button
-              key={state}
-              type="button"
-              size="sm"
-              variant="ghost"
-              className={cn(
-                "h-auto min-h-11 min-w-0 flex-col gap-1 rounded-lg px-1.5 py-1.5 text-center text-[11px] leading-4",
-                passed && "bg-leaf/10 text-ink",
-                selected && "bg-moon/35 text-ink",
-              )}
-              disabled={disabled || editingScope === "assessor"}
-              aria-pressed={selected}
-              aria-keyshortcuts={String(index + 1)}
-              onClick={() => chooseState(state)}
-            >
-              <span className={cn(
-                "flex size-5 shrink-0 items-center justify-center rounded-full border text-[10px]",
-                selected
-                  ? "border-moon bg-moon text-ink"
-                  : passed
-                    ? "border-leaf-deep bg-leaf/50 text-ink"
-                    : "border-line text-muted",
-              )}>
-                {passed ? <Check className="size-3" /> : index + 1}
-              </span>
-              <span className="w-full truncate">{t(`state_${state}`)}</span>
-            </Button>
-          );
-        })}
-      </div>
-      <p className="border-l-2 border-moon pl-3 text-[11px] leading-5 text-ink">
-        {t(`task_${value.state}`)}
-      </p>
-    </div>
-  ) : null;
+  const stateControls = value?.kind === "assessment_1v1" ? <FollowupChoice className="w-full min-w-0 max-w-full" label={t("stateLabel")} value={value.state}
+    disabled={disabled || editingScope === "assessor"} onValueChange={(state) => chooseState(state as InvitationState)}
+    options={stateChoices.map((state, index) => ({ value: state, label: `${t(`state_${state}`)} · ${index + 1}`, tone: state === "confirmed" ? "healthy" : "attention" }))} /> : null;
 
   return (
     <div
-      className={cn(workflow ? "grid gap-5 xl:grid-cols-[12rem_minmax(0,1fr)]" : "space-y-2")}
+      className="@container/invitation-draft min-w-0 max-w-full"
       data-testid="invitation-draft-fields"
       onKeyDownCapture={handleStateShortcut}
     >
-      <section>
+      <div className={cn("grid min-w-0 gap-3", workflow && "@[44rem]/invitation-draft:grid-cols-[12rem_minmax(0,1fr)]")}>
+      <section className="min-w-0">
         {workflow ? (
           <p className="mb-2 text-[11px] font-medium text-muted">{t("kindLabel")}</p>
         ) : null}
@@ -494,11 +346,8 @@ export function InvitationDraftFields({
       </section>
 
       {value ? (
-        <section className={cn("space-y-3", workflow && "border-line xl:border-l xl:pl-5")}>
+        <section className={cn("@container/invitation-fields min-w-0 space-y-3", workflow && "border-line @[44rem]/invitation-draft:border-l @[44rem]/invitation-draft:pl-4")}>
           {stateControls}
-          {workflow ? (
-            <p className="text-[11px] font-medium text-muted">{t("arrangementFactsLabel")}</p>
-          ) : null}
           {arrangementFields}
 
           {invitationCanHaveNextContactReminder(value) && editingScope !== "assessor" ? (
@@ -506,7 +355,7 @@ export function InvitationDraftFields({
               id={`invitation-next-contact-${reminderId}`}
               value={value.nextContactAt}
               disabled={disabled}
-              className={workflow ? "max-w-sm" : "max-w-xs"}
+              className="w-full min-w-0 max-w-sm [&>button]:min-w-0 [&>button]:max-w-full"
               onChange={(nextContactAt) => update("nextContactAt", nextContactAt)}
             />
           ) : null}
@@ -516,6 +365,7 @@ export function InvitationDraftFields({
           ) : null}
         </section>
       ) : null}
+      </div>
     </div>
   );
 }

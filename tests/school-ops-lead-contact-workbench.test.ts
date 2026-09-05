@@ -105,7 +105,7 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
       "migrations",
       "20260903001100_school_ops_invitation_coordination.sql",
     );
-    const page = read("src", "app", "[locale]", "dashboard", "invitations", "page.tsx");
+    const page = read("src", "app", "[locale]", "dashboard", "followups", "communication", "page.tsx");
     const workbench = read("src", "features", "school", "InvitationCoordinationWorkbench.tsx");
     const draftFields = read("src", "features", "school", "InvitationDraftFields.tsx");
     const availabilityGrid = read("src", "features", "school", "AssessmentAvailabilityGrid.tsx");
@@ -142,22 +142,29 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(reminderMigration).toContain("p_remind_at is not null and p_remind_at <= now()");
     expect(reminderMigration).toContain("lead_invitation_threads_close_reminder");
     expect(page).toContain("InvitationCoordinationWorkbench");
-    expect(page).toContain("DashboardCommandTabs");
-    expect(page).toContain("listInvitationQueueCounts");
-    expect(page).toContain('key={`${filters.queue}:${filters.stage}:${filters.q ?? ""}`}');
+    expect(page).toContain("FollowupTabs");
+    expect(page).toContain("loadCommunicationWorkbench");
+    expect(page).toContain("contactLeads={data.contactLeads}");
     expect(page).not.toContain("COORDINATION_STAGES");
     expect(workbench).toContain("copyWithFallback");
     expect(workbench).toContain("copyRelay");
     expect(workbench).toContain("sticky left-0 top-0");
     expect(workbench).toContain("DashboardTableColumnHeader");
-    expect(workbench).toContain("replaceCoordinationStage");
-    expect(workbench).toContain("const rowWorkStep = invitationWorkStep(row)");
-    expect(workbench.match(/t\("workHint_waiting_assessor_response", \{ assessor:/g)).toHaveLength(2);
+    expect(workbench).toContain("school.followup.communication");
+    expect(workbench).toContain("InvitationQuickContact");
+    expect(workbench).toContain('t("workHint_waiting_assessor_response", { assessor:');
     expect(workbench).not.toContain('row.state === "confirmed" && !dirty');
     expect(workbench).toContain("onConfirmedReady");
     expect(workbench).toContain("confirmedDraftComplete");
-    expect(workbench).toContain("rowMatchesView");
-    expect(draftFields).toContain('"assessment_1v1", "activity", "waiting_activity"');
+    expect(workbench).toContain("postActivityRows");
+    expect(workbench).toContain("FollowupInlineDetails");
+    expect(workbench).not.toContain("FollowupDetails");
+    expect(workbench).toContain("colSpan={4}");
+    expect(workbench).toContain("const rowWorkStep =");
+    expect(workbench).toContain("const rowActionHint =");
+    expect(workbench).toContain("@[56rem]/invitation-editor:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)]");
+    expect(draftFields).toContain("INVITATION_KINDS.map");
+    expect(draftFields).toContain("FollowupChoice");
     expect(draftFields).not.toContain("invitationStateFromFacts");
     expect(draftFields).toContain("stateChoices.map");
     expect(draftFields).toContain("selectInvitationProgress");
@@ -173,100 +180,49 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(availabilityGrid).toContain('side === "direct"');
   });
 
-  it("separates dense seed management from the inline first-contact entry table", () => {
-    const page = read("src", "app", "[locale]", "dashboard", "leads", "page.tsx");
-    const table = read("src", "features", "school", "LeadPoolTable.tsx");
+  it("keeps intake in leads and moves editable contact rows into communication", () => {
+    const page = read("src", "app", "[locale]", "dashboard", "followups", "leads", "page.tsx");
     const workbench = read("src", "features", "school", "LeadFirstContactWorkbench.tsx");
     const selection = read("src", "features", "school", "LeadPoolSelection.tsx");
-    const columnHeader = read(
-      "src",
-      "features",
-      "school",
-      "dashboard-page",
-      "DashboardTableColumnHeader.tsx",
-    );
     const actions = read("src", "features", "school", "actions", "leads.ts");
     const query = read("src", "features", "school", "leads.ts");
-    const tableView = read("src", "features", "school", "lead-table-view.ts");
-    const contract = read("src", "features", "school", "lead-contract.ts");
-
-    expect(page).toContain('value: "first_contact"');
-    expect(page).toContain('status: "uncontacted"');
-    expect(page).toContain("listStaffMembers");
+    expect(page).toContain("LeadIntakeWorkbench");
+    expect(page).not.toContain("LeadFirstContactWorkbench");
+    expect(page).toContain("FollowupTabs");
     expect(page).toContain("LeadPoolSelectionProvider");
     expect(page).toContain("LeadPoolBatchActions");
     expect(page).toContain("FilterSearchInput");
-    expect(page).not.toContain("allStatuses");
-    expect(page).not.toContain("FilterSelectTrigger");
-    expect(selection).toContain("assignSelected");
-    expect(selection).toContain("selectedCount");
-    expect(table).not.toContain("assignSelected");
-    expect(table).not.toContain("selectedCount");
-    expect(table).toMatch(/<DashboardTableShell>\s*<Table/);
-    expect(table).toContain("event.shiftKey");
-    expect(selection).toContain("selectionAnchorRef");
-    expect(table).toContain("DashboardTableColumnHeader");
-    expect(table).toContain("containerClassName");
-    expect(table).toContain("sticky top-0");
-    expect(columnHeader).toContain("Popover");
-    expect(columnHeader).toContain("Select");
-    expect(columnHeader).toContain("Button");
-    expect(page).toContain("LeadFirstContactWorkbench");
-    expect(page).toContain("isFirstContactWorkbench");
-    expect(workbench).toMatch(/<DashboardTableShell>\s*<Table/);
-    expect(workbench).toContain("sticky left-0");
-    expect(workbench).toContain("color-mix(in srgb, var(--card) 90%, var(--moon))");
-    expect(workbench).toContain("recordLeadContactAction");
-    expect(workbench).toContain("deriveLeadContactDestination");
-    expect(workbench).toContain("contactDestination");
-    expect(workbench).toContain('event.key === "Enter"');
+    expect(page).not.toContain("isFirstContactWorkbench");
+    expect(page).not.toContain("LeadPoolTable");
+    expect(workbench).toContain("FollowupInlineDetails");
+    expect(workbench).not.toContain("FollowupDetails");
+    expect(workbench).toContain("table-fixed");
+    expect(workbench).not.toContain("focus:h-20");
+    expect(workbench).not.toContain("DashboardInlineEntry");
+    expect(workbench).toContain("canContact && Boolean(lead.ownerId)");
+    expect(workbench).toContain('lead.status !== "converted"');
     expect(workbench).toContain("CONTACT_OUTCOME_SHORTCUTS");
-    expect(workbench).toContain("DirectChoiceGroup");
+    expect(workbench).toContain("FollowupChoice");
+    expect(workbench).toContain("Control+Enter Meta+Enter");
+    expect(workbench).toContain("school.followup.leads");
+    expect(workbench).toContain("LeadIdentityControl");
+    expect(workbench).toContain("selection.toggleLead");
+    expect(workbench).toContain("event.shiftKey");
+    expect(selection).toContain("selectionAnchorRef");
     expect(workbench).toContain("recordAndAdvance");
-    expect(workbench).toContain("sessionLeads");
-    expect(workbench).toContain("status: destination");
     expect(workbench).toContain("lastContactOutcome: input.outcome");
-    expect(workbench).toContain("outcome || lead.lastContactOutcome");
-    expect(workbench).toContain("displayedOutcome === value");
-    expect(workbench).toContain("showSavedDetails");
-    expect(workbench).toContain("savedWechatFact");
     expect(workbench).toContain("confirmableInvitation");
-    expect(workbench).toContain("saveContactAndConfirmInvitation");
-    expect(workbench).toContain("lead.activeInvitation");
     expect(workbench).toContain("InvitationDraftFields");
-    expect(workbench).toContain("savedInterest");
-    expect(workbench).toContain("lead.lastContactNote || t(\"noContactNote\")");
-    expect(workbench).toContain('active ? "whitespace-pre-wrap break-words" : "truncate"');
-    expect(workbench).not.toContain("router.refresh()");
-    expect(workbench).toContain("rows={1}");
-    expect(workbench).toContain("contactNoteInlinePlaceholder");
-    expect(workbench).toContain("focus:h-20");
-    expect(workbench).toContain("lead.lastContactOutcome");
-    expect(workbench).toContain("active && outcome");
-    expect(workbench).toContain('outcome === "connected"');
-    expect(workbench).toContain("contactNotePlaceholder_${outcome}");
-    expect(workbench).toContain("QUICK_SUBMIT_OUTCOMES");
-    expect(workbench).not.toContain("MessageSquarePlus");
-    expect(workbench).not.toContain("deferSubmit");
-    expect(workbench).not.toContain("<Select");
     expect(workbench).toContain("NextContactReminderField");
     expect(workbench).toContain("setLeadContactReminderAction");
-    expect(workbench).not.toContain('t("nextAction")');
-    expect(table).not.toContain("recordLeadContactAction");
-    expect(table).not.toContain("Dialog");
-    expect(table).not.toContain('t("source")');
-    expect(table).toContain('from "./lead-contract"');
-    expect(table).not.toContain('from "./leads"');
-    expect(tableView).toContain('from "./lead-contract"');
-    expect(contract).not.toContain("@/lib/supabase/server");
     expect(actions).toContain('authorizedClient("student.assign")');
     expect(actions).toContain('authorizedClient("followup.write")');
     expect(actions).toContain('supabase.rpc("record_lead_contact_v4"');
     expect(actions).toContain('supabase.rpc("set_lead_contact_reminder"');
-    expect(actions).toContain("p_invitation_state");
-    expect(query).toContain('.from("lead_communications")');
+    expect(query).toContain('.from("effective_lead_communications" as "lead_communications")');
     expect(query).toContain('.from("lead_invitation_threads")');
     expect(query).toContain('.from("lead_next_actions")');
+    expect(query).toContain('canScopeAll ? "all" : "mine"');
   });
 
   it("previews the same automatic contact pools as the database rule", () => {
@@ -471,8 +427,8 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
   });
 
   it("separates the coordination work queue from its current blocker", () => {
-    expect(invitationQueueFrom(undefined)).toBe("coordination");
-    expect(invitationQueueFrom("awaiting_teacher")).toBe("coordination");
+    expect(invitationQueueFrom(undefined)).toBe("all");
+    expect(invitationQueueFrom("awaiting_teacher")).toBe("all");
     expect(invitationCoordinationStageFrom("awaiting_teacher", undefined)).toBe("awaiting_teacher");
     expect(invitationCoordinationStageFrom(undefined, "awaiting_parent")).toBe("awaiting_parent");
     expect(invitationCoordinationStageFrom("confirmed", "awaiting_parent")).toBe("awaiting_parent");
@@ -548,6 +504,12 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
       .toEqual(["c"]);
     expect(filterAndSortLeadRows(rows, { owner: "staff-1", status: "contacted" }, null, "zh").map((row) => row.id))
       .toEqual(["a"]);
+    expect(filterAndSortLeadRows(rows, { seed: "name:贝贝" }, null, "zh").map((row) => row.id))
+      .toEqual(["b"]);
+    expect(filterAndSortLeadRows(rows, { acquisitionLocation: "promoter:推广员甲" }, null, "zh").map((row) => row.id))
+      .toEqual(["b", "a", "c"]);
+    expect(filterAndSortLeadRows(rows, { latestContact: "contact-time:2026-09-02T10:00:00.000Z" }, null, "zh").map((row) => row.id))
+      .toEqual(["c"]);
     expect(filterAndSortLeadRows(rows, {}, { column: "seed", direction: "asc" }, "zh").map((row) => row.id))
       .toEqual(["a", "b", "c"]);
     expect(filterAndSortLeadRows(rows, {}, { column: "latestContact", direction: "desc" }, "zh").map((row) => row.id))
@@ -557,7 +519,7 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
   });
 
   it("uses client-safe contracts and explicit configurable shadcn pagination", () => {
-    const page = read("src", "app", "[locale]", "dashboard", "leads", "page.tsx");
+    const page = read("src", "app", "[locale]", "dashboard", "followups", "leads", "page.tsx");
     const query = read("src", "features", "school", "leads.ts");
     const contract = read("src", "features", "school", "lead-contract.ts");
     const pagination = read("src", "features", "school", "LeadPoolPagination.tsx");
@@ -565,7 +527,7 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
 
     expect(query).toContain('import "server-only"');
     expect(query).toContain("filters.pageSize");
-    expect(query).toContain("offset + filters.pageSize - 1");
+    expect(query).toContain("offset + (selectedLeadIds?.length ?? filters.pageSize) - 1");
     expect(contract).toContain("LEAD_PAGE_SIZES = [20, 50, 100]");
     expect(page).toContain("LeadPoolPagination");
     expect(page).toContain('name="pageSize"');

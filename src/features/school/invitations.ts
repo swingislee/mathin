@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { readSchoolQueryBatches, readSchoolQueryPages } from "./school-query-pages";
 import {
   INVITATION_COORDINATION_STATES,
   invitationCoordinationStageFrom,
@@ -88,7 +89,7 @@ export function parseInvitationFilters(
 
 export async function listInvitationQueueCounts(): Promise<InvitationQueueCounts> {
   const empty: InvitationQueueCounts = {
-    queues: { coordination: 0, confirmed: 0, waiting_activity: 0, closed: 0 },
+    queues: { all: 0, coordination: 0, confirmed: 0, waiting_activity: 0, closed: 0 },
     stages: { all: 0, coordinating_time: 0, awaiting_teacher: 0, awaiting_parent: 0 },
   };
   const supabase = await createClient();
@@ -116,6 +117,7 @@ export async function listInvitationQueueCounts(): Promise<InvitationQueueCounts
   const coordinationTotal = Object.values(coordinationCounts).reduce((sum, count) => sum + count, 0);
   return {
     queues: {
+      all: coordinationTotal + (confirmed.count ?? 0) + (waitingActivity.count ?? 0) + (closed.count ?? 0),
       coordination: coordinationTotal,
       confirmed: confirmed.count ?? 0,
       waiting_activity: waitingActivity.count ?? 0,
@@ -166,41 +168,36 @@ export async function listInvitationOptions(): Promise<{
 
 export async function listInvitationCoordination(
   filters: InvitationFilters,
+  selection: { leadIds?: readonly string[]; assessorId?: string } = {},
 ): Promise<InvitationCoordinationRow[]> {
+  if (selection.leadIds?.length === 0) return [];
   const supabase = await createClient();
-  let invitationQuery = supabase
-    .from("lead_invitation_threads")
-    .select("id,lead_id,kind,state,activity_id,assessor_id,proposed_time_text,parent_time_options,assessor_time_options,scheduled_at,location_text,summary,updated_at")
-    .order("updated_at", { ascending: false })
-    .limit(500);
-  if (filters.queue === "closed") {
-    invitationQuery = invitationQuery.in("state", ["completed", "cancelled"]);
-  } else if (filters.queue === "coordination") {
-    invitationQuery = filters.stage === "all"
-      ? invitationQuery.in("state", [...INVITATION_COORDINATION_STATES])
-      : invitationQuery.eq("state", filters.stage);
-  } else {
-    invitationQuery = invitationQuery.eq("state", filters.queue);
-  }
-  let invitationResult = await invitationQuery.returns<InvitationDbRow[]>();
+  const readInvitations = (legacy: boolean) => {
+    const readPage = (leadIds: string[] | undefined, start: number, end: number) => {
+      let query = supabase.from("lead_invitation_threads")
+        .select(legacy
+          ? "id,lead_id,kind,state,activity_id,assessor_id,proposed_time_text,location_text,summary,updated_at"
+          : "id,lead_id,kind,state,activity_id,assessor_id,proposed_time_text,parent_time_options,assessor_time_options,scheduled_at,location_text,summary,updated_at");
+      if (leadIds) query = query.in("lead_id", leadIds);
+      if (selection.assessorId) query = query.eq("assessor_id", selection.assessorId);
+      if (filters.queue === "closed") query = query.in("state", ["completed", "cancelled"]);
+      else if (filters.queue === "coordination") {
+        query = filters.stage === "all"
+          ? query.in("state", [...INVITATION_COORDINATION_STATES])
+          : query.eq("state", filters.stage);
+      } else if (filters.queue !== "all") query = query.eq("state", filters.queue);
+      return query.order("updated_at", { ascending: false }).order("id", { ascending: true })
+        .range(start, end).returns<InvitationDbRow[]>();
+    };
+    return selection.leadIds
+      ? readSchoolQueryBatches(selection.leadIds, readPage)
+      : readSchoolQueryPages((start, end) => readPage(undefined, start, end));
+  };
+  let invitationResult = await readInvitations(false);
   if (invitationResult.error?.code === "PGRST204"
       || invitationResult.error?.code === "42703"
       || invitationResult.error?.message?.includes("parent_time_options")) {
-    let legacyQuery = supabase
-      .from("lead_invitation_threads")
-      .select("id,lead_id,kind,state,activity_id,assessor_id,proposed_time_text,location_text,summary,updated_at")
-      .order("updated_at", { ascending: false })
-      .limit(500);
-    if (filters.queue === "closed") {
-      legacyQuery = legacyQuery.in("state", ["completed", "cancelled"]);
-    } else if (filters.queue === "coordination") {
-      legacyQuery = filters.stage === "all"
-        ? legacyQuery.in("state", [...INVITATION_COORDINATION_STATES])
-        : legacyQuery.eq("state", filters.stage);
-    } else {
-      legacyQuery = legacyQuery.eq("state", filters.queue);
-    }
-    invitationResult = await legacyQuery.returns<InvitationDbRow[]>();
+    invitationResult = await readInvitations(true);
   }
   if (invitationResult.error) {
     if (relationUnavailable(invitationResult.error)) return [];
@@ -214,31 +211,31 @@ export async function listInvitationCoordination(
   const assessorIds = [...new Set(invitations.map((row) => row.assessor_id).filter((id): id is string => Boolean(id)))];
   const invitationIds = invitations.map((row) => row.id);
   const [leadResult, activityResult, assessorResult, eventResult, reminderResult] = await Promise.all([
-    supabase
+    readSchoolQueryBatches(leadIds, (batch, start, end) => supabase
       .from("leads")
       .select("id,provisional_student_name,phone,grade_hint,grade_text,owner_id")
-      .in("id", leadIds)
-      .returns<InvitationLeadDbRow[]>(),
-    activityIds.length > 0
-      ? supabase.from("activities").select("id,kind,title,scheduled_at,location").in("id", activityIds).returns<ActivityDbRow[]>()
-      : Promise.resolve({ data: [], error: null }),
-    assessorIds.length > 0
-      ? supabase.from("profiles").select("id,display_name").in("id", assessorIds)
-      : Promise.resolve({ data: [], error: null }),
-    supabase
-      .from("lead_invitation_events")
+      .in("id", batch).order("id", { ascending: true }).range(start, end)
+      .returns<InvitationLeadDbRow[]>()),
+    readSchoolQueryBatches(activityIds, (batch, start, end) => supabase.from("activities")
+      .select("id,kind,title,scheduled_at,location").in("id", batch)
+      .order("id", { ascending: true }).range(start, end).returns<ActivityDbRow[]>()),
+    readSchoolQueryBatches(assessorIds, (batch, start, end) => supabase.from("profiles")
+      .select("id,display_name").in("id", batch).order("id", { ascending: true }).range(start, end)),
+    readSchoolQueryBatches(invitationIds, (batch, start, end) => supabase
+      .from("effective_lead_invitation_events" as "lead_invitation_events")
       .select("id,invitation_id,from_state,to_state,channel,note,recorded_by,occurred_at")
-      .in("invitation_id", invitationIds)
-      .order("occurred_at", { ascending: false })
-      .limit(5_000)
-      .returns<InvitationEventDbRow[]>(),
-    supabase
+      .in("invitation_id", batch)
+      .order("original_occurred_at", { ascending: false })
+      .order("id", { ascending: true }).range(start, end)
+      .returns<InvitationEventDbRow[]>()),
+    readSchoolQueryBatches(leadIds, (batch, start, end) => supabase
       .from("lead_next_actions")
       .select("lead_id,due_at")
-      .in("lead_id", leadIds)
+      .in("lead_id", batch)
       .eq("status", "open")
       .eq("kind", "invitation_followup")
-      .returns<LeadNextActionDbRow[]>(),
+      .order("id", { ascending: true }).range(start, end)
+      .returns<LeadNextActionDbRow[]>()),
   ]);
   if (leadResult.error) throw new Error(leadResult.error.message);
   if (activityResult.error) throw new Error(activityResult.error.message);
@@ -250,9 +247,9 @@ export async function listInvitationCoordination(
   const ownerIds = [...new Set(leads.map((row) => row.owner_id).filter((id): id is string => Boolean(id)))];
   const eventRecorderIds = [...new Set((eventResult.data ?? []).map((row) => row.recorded_by))];
   const profileIds = [...new Set([...ownerIds, ...eventRecorderIds])];
-  const profileResult = profileIds.length > 0
-    ? await supabase.from("profiles").select("id,display_name").in("id", profileIds)
-    : { data: [], error: null };
+  const profileResult = await readSchoolQueryBatches(profileIds, (batch, start, end) => supabase
+    .from("profiles").select("id,display_name").in("id", batch)
+    .order("id", { ascending: true }).range(start, end));
   if (profileResult.error) throw new Error(profileResult.error.message);
 
   const leadById = new Map(leads.map((row) => [row.id, row]));
