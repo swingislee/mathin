@@ -11,8 +11,8 @@ export async function registerRenewalResultAction(input:z.input<typeof schema>):
     const {supabase}=await authorizedClient('followup.write');
     const {error}=await supabase.rpc('register_renewal_result',{p_cycle_id:value.cycleId,p_membership_id:value.membershipId,p_stage:value.stage,p_note:value.note,p_period_count:value.periodCount??undefined,p_paid_amount:value.paidAmount??undefined});
     if(error) throw new Error(error.message);
-    revalidatePath('/[locale]/dashboard/renewals','layout');
-    revalidatePath('/[locale]/dashboard/enrollments','page');
+    revalidatePath('/[locale]/dashboard/followups/renewals','layout');
+    revalidatePath('/[locale]/dashboard/followups/enrollments','page');
     return {ok:true};
   } catch(error) { return actionError(error,['VALIDATION','FORBIDDEN','FORBIDDEN_SCOPE','UNAUTHENTICATED','INVALID_CYCLE_STATE','OPPORTUNITY_ENROLLED','COURSE_REQUIRED','OWNER_NOT_AVAILABLE','FORBIDDEN_OWNER_ASSIGNMENT','INVALID_OPPORTUNITY_TRANSITION']); }
 }

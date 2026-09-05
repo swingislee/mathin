@@ -17,7 +17,7 @@ export async function saveRenewalHealthPolicyAction(input: z.input<typeof schema
       p_cycle_id: value.cycleId, p_policy: value.policy as unknown as Json, p_expected_revision: value.revision,
     });
     if (error) throw new Error(error.message);
-    revalidatePath('/[locale]/dashboard/renewals', 'layout');
+    revalidatePath('/[locale]/dashboard/followups/renewals', 'layout');
     return { ok: true, data: data! };
   } catch (error) { return actionError(error, ['VALIDATION', 'FORBIDDEN', 'UNAUTHENTICATED', 'NOT_FOUND', 'POLICY_CHANGED']); }
 }
