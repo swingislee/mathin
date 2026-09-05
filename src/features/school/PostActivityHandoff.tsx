@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Link, useRouter } from "@/i18n/navigation";
+import { newId } from "@/lib/uuid";
 import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
 import { CONTACT_CHANNELS, CONTACT_ROUTES, classScheduleLabel, enrollmentErrorKey, type ActivityEnrollmentContext, type EnrollmentSourceRef, type EnrollmentWorkflowOptions } from "./enrollment-workflow-contract";
 import { confirmActivityEnrollmentAction, getActivityEnrollmentContextAction, getEnrollmentWorkflowOptionsAction, savePostActivityContactAction } from "./enrollment-workflow-actions";
@@ -57,7 +58,7 @@ function HandoffEditor({ context, onSaved, reload }: { context: ActivityEnrollme
   const [route, setRoute] = useState<(typeof CONTACT_ROUTES)[number]>(context.route ?? "continue_follow_up");
   const [note, setNote] = useState("");
   const [nextAt, setNextAt] = useState(() => context.contacts[0]?.nextContactAt ? new Date(new Date(context.contacts[0].nextContactAt).getTime() + 8 * 60 * 60 * 1000).toISOString().slice(0, 16) : "");
-  const [requestId, setRequestId] = useState(() => crypto.randomUUID());
+  const [requestId, setRequestId] = useState(() => newId());
   const [enrolling, setEnrolling] = useState(false);
   const formatAt = (value: string) => new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Shanghai" }).format(new Date(value));
   const saveContact = () => startSaving(async () => {
@@ -66,7 +67,7 @@ function HandoffEditor({ context, onSaved, reload }: { context: ActivityEnrollme
       nextContactAt: nextAt && route !== "closed" ? new Date(`${nextAt}+08:00`).toISOString() : null,
     });
     if (!result.ok) { toast.error(t(enrollmentErrorKey(result.code))); return; }
-    onSaved(result.data); setNote(""); setRequestId(crypto.randomUUID()); toast.success(t("contactSaved")); window.dispatchEvent(new Event(STUDENT_360_REFRESH_EVENT)); router.refresh();
+    onSaved(result.data); setNote(""); setRequestId(newId()); toast.success(t("contactSaved")); window.dispatchEvent(new Event(STUDENT_360_REFRESH_EVENT)); router.refresh();
   });
   return <div className="space-y-4">
     <div className="flex flex-wrap items-start justify-between gap-3">
