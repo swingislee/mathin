@@ -27,7 +27,7 @@
 - 业务代码不得新增原生 `<input>`、`<select>`、`<table>` 等控件；优先复用 `components/ui/`，缺失时先检查 shadcn/ui。底层无障碍封装可以使用原生元素。
 - 禁止 `window.confirm()`，也不得为单页重复手搓已有 badge、card、dialog、drawer、table 等组件。
 - 页面、布局和区块默认是 Server Component。`"use client"` 只放在确实使用 hook 或 DOM 事件的交互叶子；白板、课堂实时、编辑器、three.js、游戏棋盘等整块交互体除外。
-- 客户端需要的常量、DTO 和纯函数必须来自明确的 client-safe contract；不得从依赖 Supabase server、`server-only`、`next/headers` 或 `cookies()` 的读取模块引入运行时值。服务端读取模块应声明 `import "server-only"`，共享类型另拆合同文件。
+- 同一功能同时包含服务端读取与客户端交互时，先建立 client-safe contract：常量、DTO 和纯函数放入 `*-contract.ts`；服务端读取模块声明 `import "server-only"` 并从 contract 复用类型；Server Component 完成读取后通过可序列化 props 传给 `"use client"` 交互组件，交互组件需要的共享运行时值也从 contract 导入。
 - 非首屏必需的重型客户端组件用模块级 `next/dynamic` 懒加载；变更客户端边界前后用 `pnpm bundle:report` 对比相关路由。
 - 新增受保护/数据页时，将读取 `cookies()`、`searchParams` 或远程数据的动态子树放进 `<Suspense>`，或提供形状匹配的 `loading.tsx`；静态页头与导航留在边界外。
 - 当前未启用 `cacheComponents`。禁止引入弃用路径上的 `unstable_cache`；正式缓存迁移须单独立项，在此之前写后使用 `router.refresh()`。
