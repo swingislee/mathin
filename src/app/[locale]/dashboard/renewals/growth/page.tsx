@@ -1,7 +1,7 @@
 import { redirect } from "@/i18n/navigation";
 
 export default async function LegacyFollowupRoute({ params, searchParams }: {
-  params: Promise<{ locale: string; registrationId: string }>;
+  params: Promise<{ locale: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const [values, raw] = await Promise.all([params, searchParams]);
@@ -10,5 +10,5 @@ export default async function LegacyFollowupRoute({ params, searchParams }: {
     if (typeof value === "string") query.set(key, value);
     else if (Array.isArray(value)) value.forEach((item) => query.append(key, item));
   }
-  redirect({ locale: values.locale, href: `/dashboard/followups/assessments/${encodeURIComponent(values.registrationId)}${query.size ? `?${query}` : ""}` });
+  redirect({ locale: values.locale, href: `/dashboard/followups/renewals/growth${query.size ? `?${query}` : ""}` });
 }

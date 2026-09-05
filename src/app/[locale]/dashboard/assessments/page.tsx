@@ -1,34 +1,14 @@
-import { setRequestLocale } from "next-intl/server";
-import { AssessmentUnifiedWorkbench } from "@/features/school/AssessmentUnifiedWorkbench";
-import { listAssessmentWorkbenchRows } from "@/features/school/assessment-workbench-data";
-import { listInvitationOptions } from "@/features/school/invitations";
-import { getMyPerms, requireAnyPerm } from "@/lib/auth";
+import { redirect } from "@/i18n/navigation";
 
-export default async function AssessmentsPage({
-  params,
-}: {
+export default async function LegacyFollowupRoute({ params, searchParams }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { locale } = await params;
-  setRequestLocale(locale);
-  const user = await requireAnyPerm(locale, ["review.write", "followup.view"]);
-  const permissions = await getMyPerms(user.id);
-  const canAssess = permissions.has("review.write");
-  const canSupport = permissions.has("followup.view");
-  const canManageAssessor = permissions.has("followup.write");
-  const [rows, options] = await Promise.all([
-    listAssessmentWorkbenchRows(),
-    listInvitationOptions(),
-  ]);
-
-  return (
-    <AssessmentUnifiedWorkbench
-      initialRows={rows}
-      assessors={options.assessors}
-      locale={locale}
-      canAssess={canAssess}
-      canSupport={canSupport}
-      canManageAssessor={canManageAssessor}
-    />
-  );
+  const [values, raw] = await Promise.all([params, searchParams]);
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(raw)) {
+    if (typeof value === "string") query.set(key, value);
+    else if (Array.isArray(value)) value.forEach((item) => query.append(key, item));
+  }
+  redirect({ locale: values.locale, href: `/dashboard/followups/assessments${query.size ? `?${query}` : ""}` });
 }

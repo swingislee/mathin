@@ -819,27 +819,27 @@ export async function getStaffOverviewData({
     {
       key: "unassignedLeads",
       value: !sourceExact("leads") ? null : openLeads.filter((row) => row.owner_id === null || row.status === "unassigned").length,
-      href: "/dashboard/leads?ownership=unassigned",
+      href: "/dashboard/followups/leads?ownership=unassigned",
     },
     {
       key: "uncontactedLeads",
       value: !sourceExact("leads") ? null : openLeads.filter((row) => row.status === "uncontacted").length,
-      href: "/dashboard/leads?status=uncontacted",
+      href: "/dashboard/followups/leads?status=uncontacted",
     },
     {
       key: "overdueLeadActions",
       value: !sourceExact("leads") ? null : leadActions.filter((row) => new Date(row.due_at) < now).length,
-      href: "/dashboard/leads",
+      href: "/dashboard/followups/leads",
     },
     {
       key: "awaitingTeacher",
       value: !sourceExact("invitations") ? null : activeInvitationThreads.filter((row) => row.state === "awaiting_teacher").length,
-      href: "/dashboard/invitations?state=awaiting_teacher",
+      href: "/dashboard/followups/communication?state=awaiting_teacher",
     },
     {
       key: "awaitingParent",
       value: !sourceExact("invitations") ? null : activeInvitationThreads.filter((row) => row.state === "awaiting_parent").length,
-      href: "/dashboard/invitations?state=awaiting_parent",
+      href: "/dashboard/followups/communication?state=awaiting_parent",
     },
     {
       key: "unassessedArrivals",

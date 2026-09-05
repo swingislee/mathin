@@ -1,30 +1,14 @@
-import { notFound } from "next/navigation";
-import { getTranslations, setRequestLocale } from "next-intl/server";
-import { DashboardPage } from "@/features/school/dashboard-page";
-import { LearningCheckMatrixPreview } from "@/features/school/LearningCheckMatrixPreview";
-import { requireDashboardEnvironment } from "@/lib/auth";
+import { redirect } from "@/i18n/navigation";
 
-export default async function LearningMatrixPreviewPage({
-  params,
-}: {
+export default async function LegacyFollowupRoute({ params, searchParams }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  if (process.env.NODE_ENV === "production") notFound();
-
-  const { locale } = await params;
-  setRequestLocale(locale);
-  await requireDashboardEnvironment(locale, ["staff"]);
-  const t = await getTranslations("school.session");
-
-  return (
-    <DashboardPage
-      title={t("learningMatrixPreviewTitle")}
-      description={t("learningMatrixPreviewDescription", { students: 20, questions: 19 })}
-      meta={t("learningMatrixPreviewLocal")}
-      density="compact"
-      contentClassName="min-h-0"
-    >
-      <LearningCheckMatrixPreview />
-    </DashboardPage>
-  );
+  const [values, raw] = await Promise.all([params, searchParams]);
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(raw)) {
+    if (typeof value === "string") query.set(key, value);
+    else if (Array.isArray(value)) value.forEach((item) => query.append(key, item));
+  }
+  redirect({ locale: values.locale, href: `/dashboard/followups/assessments/learning-matrix-preview${query.size ? `?${query}` : ""}` });
 }

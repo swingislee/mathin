@@ -173,34 +173,34 @@ export const DASHBOARD_ROUTES = {
 
   // ── 学员服务 ────────────────────────────────────────────────────────────
   leads: {
-    href: "/dashboard/leads",
+    href: "/dashboard/followups/leads",
     kind: "queue",
     environments: STAFF_ONLY,
     permission: "followup.view",
     // 种子由外部名单和后续接触事实产生；导入时不创建学生身份。
     createSurface: "derived",
-    nav: { labelKey: "leads", group: "subjectOperations" },
+    parent: "followups",
   },
   invitations: {
-    href: "/dashboard/invitations",
+    href: "/dashboard/followups/communication",
     kind: "queue",
     environments: STAFF_ONLY,
     permissionAny: ["followup.view", "review.write"],
     // 电联只发起邀约；时间、老师与家长确认在这里按状态接续，不创建虚构的日历待办。
     createSurface: "derived",
-    nav: { labelKey: "invitations", group: "subjectOperations" },
+    parent: "followups",
   },
   assessments: {
-    href: "/dashboard/assessments",
+    href: "/dashboard/followups/assessments",
     kind: "queue",
     environments: STAFF_ONLY,
     permissionAny: ["review.write", "followup.view"],
     // 已确认的 1 对 1 邀约自动进入这里；首次录入才物化到访事实，不要求提前建 Student。
     createSurface: "derived",
-    nav: { labelKey: "assessments", group: "subjectOperations" },
+    parent: "followups",
   },
   assessmentDetail: {
-    hrefPattern: "/dashboard/assessments/[registrationId]",
+    hrefPattern: "/dashboard/followups/assessments/[registrationId]",
     kind: "workflow",
     shellMode: "panel",
     environments: STAFF_ONLY,
@@ -208,13 +208,63 @@ export const DASHBOARD_ROUTES = {
     createSurface: "derived",
     parent: "assessments",
   },
+  opportunities: {
+    href: "/dashboard/opportunities",
+    kind: "queue",
+    environments: STAFF_ONLY,
+    permissionAny: ["followup.view", "enrollment.manage"],
+    // 由活动／测评结果进入报班跟进；等待产品留在等待池，确认报名后再进入分班。
+    createSurface: "derived",
+  },
+  enrollments: {
+    href: "/dashboard/followups/enrollments",
+    kind: "queue",
+    environments: STAFF_ONLY,
+    permission: "enrollment.manage",
+    // 商业报名由课程机会确认产生；本队列负责后续分班、批量分班与调班。
+    createSurface: "derived",
+    parent: "followups",
+  },
+  renewals: {
+    href: "/dashboard/followups/renewals",
+    kind: "collection",
+    environments: STAFF_ONLY,
+    permission: "followup.view",
+    // 周期只批量准备资格快照；推进状态继续由 canonical course opportunity 承载。
+    createSurface: "dialog",
+    parent: "followups",
+  },
+  renewalDetail: {
+    hrefPattern: "/dashboard/followups/renewals/[opportunityId]",
+    kind: "object",
+    environments: STAFF_ONLY,
+    permission: "followup.view",
+    createSurface: "derived",
+    parent: "renewals",
+  },
+  renewalSignals: {
+    href: "/dashboard/followups/renewals/signals",
+    kind: "queue",
+    environments: STAFF_ONLY,
+    permissionAny: ["review.write", "followup.view"],
+    createSurface: "dialog",
+    parent: "renewals",
+  },
+  renewalGrowth: {
+    href: "/dashboard/followups/renewals/growth",
+    kind: "queue",
+    environments: STAFF_ONLY,
+    permission: "followup.view",
+    createSurface: "dialog",
+    parent: "renewals",
+  },
   followups: {
     href: "/dashboard/followups",
     kind: "queue",
     environments: STAFF_ONLY,
-    permission: "followup.view",
-    // 跟进记录从学生详情或队列行内 FollowUpForm 创建，没有 /followups/new（§5.8）。
-    createSurface: "dialog",
+    permissionAny: ["followup.view", "review.write", "enrollment.manage"],
+    // 五个运营工作节点共用跟进入口。
+    createSurface: "none",
     nav: { labelKey: "followups", group: "subjectOperations" },
   },
   students: {

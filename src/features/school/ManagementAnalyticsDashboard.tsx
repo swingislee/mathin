@@ -71,10 +71,10 @@ function MetricRate({
 }
 
 function stageHref(stage: ManagementFunnelStage): string {
-  if (stage === "invitations") return "/dashboard/invitations";
+  if (stage === "invitations") return "/dashboard/followups/communication";
   if (stage === "arrivals") return "/dashboard/activities";
-  if (stage === "assessments") return "/dashboard/assessments";
-  return "/dashboard/leads?scope=all";
+  if (stage === "assessments") return "/dashboard/followups/assessments";
+  return "/dashboard/followups/leads?scope=all";
 }
 
 function FunnelTable({
@@ -210,7 +210,7 @@ function BreakdownTable({
                 {valueOrDash(row.currentFallback.leads, numberFormatter)}
               </TableCell>
               <TableCell className="text-right">
-                <Link href="/dashboard/leads?scope=all" className="inline-flex items-center gap-1 text-xs font-medium text-ink hover:underline">
+                <Link href="/dashboard/followups/leads?scope=all" className="inline-flex items-center gap-1 text-xs font-medium text-ink hover:underline">
                   {labels.trace}<ArrowUpRight className="size-3" aria-hidden />
                 </Link>
               </TableCell>
@@ -522,10 +522,10 @@ export async function ManagementAnalyticsDashboard({
                 <TableHeader><TableRow><TableHead>{t("backlogColumn")}</TableHead><TableHead className="text-right">{t("countColumn")}</TableHead><TableHead className="text-right">{t("trace")}</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {([
-                    ["unassignedLeads", data.backlog.unassignedLeads, "/dashboard/leads?scope=unassigned"],
-                    ["overdueReminders", data.backlog.overdueReminders, "/dashboard/leads?scope=all"],
-                    ["dueSoonReminders", data.backlog.dueSoonReminders, "/dashboard/leads?scope=all"],
-                    ["arrivedWithoutAssessment", data.backlog.arrivedWithoutAssessment, "/dashboard/assessments"],
+                    ["unassignedLeads", data.backlog.unassignedLeads, "/dashboard/followups/leads?scope=unassigned"],
+                    ["overdueReminders", data.backlog.overdueReminders, "/dashboard/followups/leads?scope=all"],
+                    ["dueSoonReminders", data.backlog.dueSoonReminders, "/dashboard/followups/leads?scope=all"],
+                    ["arrivedWithoutAssessment", data.backlog.arrivedWithoutAssessment, "/dashboard/followups/assessments"],
                   ] as const).map(([key, metric, href]) => (
                     <TableRow key={key}>
                       <TableCell className="font-medium text-ink">{t(`backlog_${key}`)}</TableCell>

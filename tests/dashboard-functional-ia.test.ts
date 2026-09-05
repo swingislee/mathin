@@ -10,12 +10,9 @@ describe("dashboard functional information architecture", () => {
   it("groups the staff sidebar by job function and keeps overview as the only top-level item", () => {
     expect(SCHOOL_NAV_ITEMS.map(({ labelKey, group }) => [labelKey, group ?? null])).toEqual([
       ["home", null],
-      ["leads", "subjectOperations"],
-      ["invitations", "subjectOperations"],
-      ["assessments", "subjectOperations"],
+      ["followups", "subjectOperations"],
       ["students", "subjectOperations"],
       ["activities", "subjectOperations"],
-      ["followups", "subjectOperations"],
       ["coordination", "subjectOperations"],
       ["finance", "subjectOperations"],
       ["managementAnalytics", "subjectOperations"],

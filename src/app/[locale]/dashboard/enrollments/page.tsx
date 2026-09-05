@@ -1,29 +1,14 @@
-import { setRequestLocale } from "next-intl/server";
-import { EnrollmentPlacementWorkbench } from "@/features/school/EnrollmentPlacementWorkbench";
-import { loadEnrollmentPlacementBoard } from "@/features/school/enrollment-workflow-data";
-import { getMyPerms, requirePerm } from "@/lib/auth";
+import { redirect } from "@/i18n/navigation";
 
-export default async function CourseEnrollmentsPage({
-  params,
-  searchParams,
-}: {
+export default async function LegacyFollowupRoute({ params, searchParams }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ term?: string; student?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const [{ locale }, query] = await Promise.all([params, searchParams]);
-  setRequestLocale(locale);
-  const user = await requirePerm(locale, "enrollment.manage");
-  const [board, permissions] = await Promise.all([
-    loadEnrollmentPlacementBoard(),
-    getMyPerms(user.id),
-  ]);
-
-  return (
-    <EnrollmentPlacementWorkbench
-      initialBoard={board}
-      initialTermId={query.term}
-      focusStudentId={query.student}
-      canCreateClass={permissions.has("class.create")}
-    />
-  );
+  const [values, raw] = await Promise.all([params, searchParams]);
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(raw)) {
+    if (typeof value === "string") query.set(key, value);
+    else if (Array.isArray(value)) value.forEach((item) => query.append(key, item));
+  }
+  redirect({ locale: values.locale, href: `/dashboard/followups/enrollments${query.size ? `?${query}` : ""}` });
 }
