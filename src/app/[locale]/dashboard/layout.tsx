@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { setRequestLocale } from "next-intl/server";
 import { SiteHeader } from "@/components/site-header";
 import { DashboardShell } from "@/features/school/DashboardShell";
+import { DashboardPreferenceScope } from "@/features/school/dashboard-page/DashboardPreferenceScope";
 import { DASHBOARD_SIDEBAR_COOKIE, parseDashboardSidebarMode } from "@/features/school/dashboard-sidebar";
 import { getMyStudents } from "@/features/school/customer";
 import { filterSchoolNav, HOME_NAV_ITEM, PARENT_NAV_ITEMS, STUDENT_NAV_ITEMS, type SchoolNavItem } from "@/features/school/nav";
@@ -48,7 +49,9 @@ export default async function DashboardLayout({
     // 唯一滚动区 = 主内容：外框 h-dvh + overflow-hidden 锁死 window 滚动（P4C-0 §3.1）
     <div className="flex h-screen h-dvh flex-col overflow-hidden">
       <SiteHeader workspace />
-      <DashboardShell nav={nav} initialSidebarMode={sidebarMode}>{children}</DashboardShell>
+      <DashboardPreferenceScope userId={user.id}>
+        <DashboardShell nav={nav} initialSidebarMode={sidebarMode}>{children}</DashboardShell>
+      </DashboardPreferenceScope>
     </div>
   );
 }

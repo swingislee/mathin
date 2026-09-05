@@ -14,6 +14,15 @@ export {
   type DashboardTableFilterOption,
   type DashboardTableSortDirection,
 } from "./DashboardTableColumnHeader";
+export {
+  dashboardTableFilterOptions,
+  filterAndSortDashboardRows,
+  useDashboardTableView,
+  type DashboardTableColumnDefinition,
+  type DashboardTableFilters,
+  type DashboardTableSort,
+  type DashboardTableSortValue,
+} from "./useDashboardTableView";
 export { DashboardStatGrid, DashboardSummaryCard, type DashboardStat } from "./DashboardSummaryCard";
 export {
   DashboardCommandActions,
