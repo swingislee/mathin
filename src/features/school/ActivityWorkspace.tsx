@@ -30,6 +30,7 @@ import {
   type StoredAssessmentBand,
 } from "./activity-workflow-contract";
 import type { ActivityRegistration, ActivityRow } from "./activities";
+import { EnrollmentHandoffButton } from "./EnrollmentHandoffButton";
 import {
   DashboardCommandPanel,
   DashboardCommandState,
@@ -141,6 +142,7 @@ export function ActivityWorkspace({
           items={nodeItems}
         />
       </DashboardCommandState>
+
     </DashboardCommandPanel>
 
     {activeNode === "participation" ? <ParticipationTable
@@ -467,7 +469,9 @@ function AssessmentRow({
           <SelectItem value="pending" disabled>{t("route_pending")}</SelectItem>
           {ACTIVITY_ROUTES.map((route) => <SelectItem key={route} value={route}>{t(`route_${route}`)}</SelectItem>)}
         </SelectContent>
-      </Select></TableCell>
+      </Select>
+        <div className="mt-2"><EnrollmentHandoffButton source={{ registrationId: registration.id, invitationId: null }} name={registration.studentName} disabled={outcomeDisabled} /></div>
+      </TableCell>
       <TableCell className="p-2"><CellTextarea
         value={routeAutosave.draft.note}
         disabled={outcomeDisabled || !routeAutosave.draft.route}

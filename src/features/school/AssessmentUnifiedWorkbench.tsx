@@ -5,24 +5,21 @@ import {
   ChevronDown,
   ChevronRight,
   Clock3,
-  MessageSquareText,
   UserCheck,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
-import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { DashboardInlineEntry } from "./dashboard-page/DashboardInlineEntry";
+import { Link } from "@/i18n/navigation";
+import { PostActivityHandoff } from "./EnrollmentHandoffButton";
 import { reassignAssessmentAssessorAction } from "./assessment-assessor-actions";
 import {
-  ACTIVITY_ROUTES,
   type ActivityRouteKind,
 } from "./activity-workflow-contract";
 import {
@@ -45,16 +42,10 @@ import { LEARNING_CHECK_STATUS_STYLE } from "./session-learning-visual";
 import { TEACHER_ASSESSMENT_OUTCOMES } from "./teacher-assessment-contract";
 import { TeacherAssessmentEntryButton } from "./TeacherAssessmentEntryButton";
 
-type ContactChannel = "phone" | "wechat" | "in_person";
-
 interface SupportDraft {
-  channel: ContactChannel | null;
-  familyFeedback: string;
   route: ActivityRouteKind | null;
-  followUpClue: string;
 }
 
-const CHANNELS: ContactChannel[] = ["phone", "wechat", "in_person"];
 
 const QUEUE_LABEL_KEYS: Record<AssessmentWorkbenchQueue, string> = {
   pending: "queue_assessment_pending",
@@ -66,10 +57,7 @@ const QUEUE_LABEL_KEYS: Record<AssessmentWorkbenchQueue, string> = {
 
 function draftFromRow(row: AssessmentWorkbenchRow): SupportDraft {
   return {
-    channel: null,
-    familyFeedback: "",
     route: row.route?.route ?? null,
-    followUpClue: row.route?.note ?? "",
   };
 }
 
@@ -179,15 +167,6 @@ export function AssessmentUnifiedWorkbench({
     setRetainedId(null);
     setActiveId(rows.find((row) => nextQueue === "all" || queueFor(row, drafts[row.id]) === nextQueue)?.id ?? null);
   };
-  const chooseRoute = (row: AssessmentWorkbenchRow, route: ActivityRouteKind) => {
-    setRetainedId(row.id);
-    updateDraft(row.id, (current) => ({ ...current, route: current.route === route ? null : route }));
-  };
-  const openNextFeedback = (currentId: string) => {
-    const next = rows.find((row) => row.id !== currentId && queueFor(row, drafts[row.id]) === "feedback");
-    setRetainedId(null);
-    setActiveId(next?.id ?? currentId);
-  };
   const reassignAssessor = (row: AssessmentWorkbenchRow, assessorId: string) => {
     if (!row.invitationId || assessorId === row.assessorId) return;
     const option = assessors.find((candidate) => candidate.userId === assessorId);
@@ -221,7 +200,7 @@ export function AssessmentUnifiedWorkbench({
       title={hubT("title")}
       eyebrow={hubT("sharedDesk")}
       description={t("unifiedIntro")}
-      meta={canSupport ? t("acceptanceMeta") : t("liveQueueMeta")}
+      meta={t("liveQueueMeta")}
       density="compact"
       commandPanel={(
         <DashboardCommandPanel>
@@ -248,6 +227,7 @@ export function AssessmentUnifiedWorkbench({
               aria-label={t("searchPlaceholder")}
             />
           </DashboardCommandFilters>
+
         </DashboardCommandPanel>
       )}
     >
@@ -372,7 +352,7 @@ export function AssessmentUnifiedWorkbench({
                       </TableCell>
                       <TableCell className="px-2 py-2">
                         <div className="flex items-center justify-between gap-2">
-                          <StageBadge stage={stage} contacting={Boolean(draft.channel || draft.familyFeedback)} />
+                          <StageBadge stage={stage} contacting={false} />
                           {canAssess ? (
                             <TeacherAssessmentEntryButton registrationId={row.registrationId} invitationId={row.invitationId} />
                           ) : null}
@@ -408,7 +388,7 @@ export function AssessmentUnifiedWorkbench({
                               </section>
                             </div>
                           ) : (
-                            <div className={cn("grid min-w-0", canSupport && "xl:grid-cols-[1.15fr_1fr_1fr]")}>
+                            <div className={cn("grid min-w-0", canSupport && "xl:grid-cols-[1fr_1.6fr]")}>
                               <section className={cn("min-w-0 p-4", canSupport && "border-b border-line/70 xl:border-b-0 xl:border-r")}>
                                 <h3 className="text-xs font-medium text-ink">{t("teacherEvidence")}</h3>
                                 <p className="mt-2 text-xs leading-5 text-ink">{conclusion || t("conclusionPending")}</p>
@@ -450,89 +430,15 @@ export function AssessmentUnifiedWorkbench({
                               </section>
 
                               {canSupport ? (
-                                <>
-                                  <section className="min-w-0 border-b border-line/70 p-4 xl:border-b-0 xl:border-r">
-                                    <div className="flex items-center justify-between gap-2">
-                                      <h3 className="text-xs font-medium text-ink">{t("familyConversation")}</h3>
-                                      <span className="text-[10px] text-muted">{t("draftOnly")}</span>
-                                    </div>
-                                    <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label={t("channelLabel")}>
-                                      {CHANNELS.map((channel) => (
-                                        <Button
-                                          key={channel}
-                                          type="button"
-                                          size="sm"
-                                          variant={draft.channel === channel ? "primary" : "secondary"}
-                                          className="h-8 px-2.5 text-[11px]"
-                                          aria-pressed={draft.channel === channel}
-                                          onClick={() => updateDraft(row.id, (current) => ({ ...current, channel }))}
-                                        >
-                                          {t(`channel_${channel}`)}
-                                        </Button>
-                                      ))}
-                                    </div>
-                                    <label className="mt-3 block space-y-1 text-[11px] text-muted">
-                                      <span>{t("familyFeedback")}</span>
-                                      <Textarea
-                                        value={draft.familyFeedback}
-                                        rows={4}
-                                        maxLength={2_000}
-                                        className="min-h-24 resize-y text-xs leading-5 text-ink"
-                                        placeholder={t("familyFeedbackPlaceholder")}
-                                        onChange={(event) => updateDraft(row.id, (current) => ({ ...current, familyFeedback: event.target.value }))}
-                                      />
-                                    </label>
-                                  </section>
-
-                                  <section className="min-w-0 p-4">
-                                    <h3 className="text-xs font-medium text-ink">{t("outcomeTitle")}</h3>
-                                    <p className="mt-1 text-[11px] leading-5 text-muted">{t("outcomeHint")}</p>
-                                    <div className="mt-2 grid grid-cols-2 gap-1.5" role="group" aria-label={t("outcomeTitle")}>
-                                      {ACTIVITY_ROUTES.map((route) => (
-                                        <Button
-                                          key={route}
-                                          type="button"
-                                          size="sm"
-                                          variant={draft.route === route ? "primary" : "secondary"}
-                                          className="min-h-9 h-auto justify-start whitespace-normal px-2.5 py-1.5 text-left text-[11px] leading-4"
-                                          aria-pressed={draft.route === route}
-                                          onClick={() => chooseRoute(row, route)}
-                                        >
-                                          {assessmentT(`route_${route}`)}
-                                        </Button>
-                                      ))}
-                                    </div>
-                                    {(draft.route === "continue_follow_up" || draft.route === "await_product") ? (
-                                      <label className="mt-3 block space-y-1 text-[11px] text-muted">
-                                        <span>{t("followUpClue")}</span>
-                                        <Input
-                                          value={draft.followUpClue}
-                                          maxLength={300}
-                                          className="h-9 text-xs text-ink"
-                                          placeholder={t("followUpCluePlaceholder")}
-                                          onChange={(event) => updateDraft(row.id, (current) => ({ ...current, followUpClue: event.target.value }))}
-                                        />
-                                      </label>
-                                    ) : null}
-                                    <p className="mt-3 text-[11px] leading-5 text-muted">
-                                      {draft.route ? assessmentT(`routeHint_${draft.route}`) : assessmentT("routePendingHint")}
-                                    </p>
-                                    {retainedId === row.id && draft.route ? (
-                                      <p className="mt-2 text-[11px] leading-5 text-leaf-deep">{t("retainedAfterRoute")}</p>
-                                    ) : null}
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      variant="secondary"
-                                      className="mt-3 h-8 px-2.5 text-[11px]"
-                                      disabled={!rows.some((candidate) => candidate.id !== row.id && queueFor(candidate, drafts[candidate.id]) === "feedback")}
-                                      onClick={() => openNextFeedback(row.id)}
-                                    >
-                                      <MessageSquareText className="size-3.5" />
-                                      {t("nextPending")}
-                                    </Button>
-                                  </section>
-                                </>
+                                <section className="min-w-0 p-4">
+                                  <PostActivityHandoff
+                                    source={{ registrationId: row.registrationId, invitationId: row.registrationId ? null : row.invitationId }}
+                                    onSaved={(context) => {
+                                      setRetainedId(row.id);
+                                      updateDraft(row.id, (current) => ({ ...current, route: context.route }));
+                                    }}
+                                  />
+                                </section>
                               ) : null}
                             </div>
                           )}

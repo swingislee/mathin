@@ -116,6 +116,7 @@ export default async function ActivityDetailPage({
         canManage={canManagePublicClass}
         canRecord={canRecord}
         canLinkClass={permissions.has("class.manage")}
+        canFollowUp={permissions.has("followup.view") || permissions.has("enrollment.manage")}
         canUseCourseware={canRecord && (permissions.has("course.view") || permissions.has("courseware.microcourse.author"))}
         canAuthorMicrocourse={canRecord && permissions.has("courseware.microcourse.author")}
         canPrepareTeaching={assignedPresentation || canManagePublicClass}

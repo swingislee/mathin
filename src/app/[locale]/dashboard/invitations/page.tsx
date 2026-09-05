@@ -14,6 +14,9 @@ import {
   FilterSearchInput,
 } from "@/features/school/FilterBar";
 import { InvitationCoordinationWorkbench } from "@/features/school/InvitationCoordinationWorkbench";
+import { PostActivityFollowupTable } from "@/features/school/PostActivityFollowupTable";
+import { loadPostActivityFollowups } from "@/features/school/enrollment-workflow-data";
+import { followupState } from "@/features/school/enrollment-workflow-contract";
 import {
   listInvitationCoordination,
   listInvitationOptions,
@@ -42,14 +45,17 @@ export default async function InvitationsPage({
   const user = await requireAnyPerm(locale, ["followup.view", "review.write"]);
   const permissions = await getMyPerms(user.id);
   const canManageInvitation = permissions.has("followup.write");
+  const isPostActivity = rawSearchParams.queue === "post_activity" && permissions.has("followup.view");
   const filters = parseInvitationFilters(rawSearchParams);
-  const [t, rows, options, counts] = await Promise.all([
+  const activeQueue = isPostActivity ? "post_activity" : filters.queue;
+  const [t, rows, options, counts, postActivityRows] = await Promise.all([
     getTranslations("school.invitations"),
-    listInvitationCoordination(filters),
+    isPostActivity ? Promise.resolve([]) : listInvitationCoordination(filters),
     listInvitationOptions(),
     listInvitationQueueCounts(),
+    permissions.has("followup.view") ? loadPostActivityFollowups() : Promise.resolve([]),
   ]);
-  const hrefForQueue = (queue: InvitationQueue, q = filters.q) => {
+  const hrefForQueue = (queue: InvitationQueue | "post_activity", q = filters.q) => {
     const query = new URLSearchParams();
     if (queue !== "coordination") query.set("queue", queue);
     if (q) query.set("q", q);
@@ -81,20 +87,20 @@ export default async function InvitationsPage({
           <DashboardCommandState>
             <DashboardCommandTabs
               ariaLabel={t("queueLabel")}
-              activeValue={filters.queue}
+              activeValue={activeQueue}
               activeTone="accent"
-              items={QUEUES.map((queue) => ({
+              items={[...QUEUES.map((queue) => ({
                 value: queue,
                 label: t(`queue_${queue}`),
                 href: hrefForQueue(queue),
                 badge: countBadge(counts.queues[queue]),
-              }))}
+              })), ...(permissions.has("followup.view") ? [{ value: "post_activity", label: t("queue_post_activity"), href: hrefForQueue("post_activity"), badge: countBadge(postActivityRows.filter((row) => row.eligible && !["enrolled", "closed"].includes(followupState(row))).length) }] : [])]}
             />
           </DashboardCommandState>
           <DashboardCommandFilters>
             <FilterBar action={`/${locale}/dashboard/invitations`} method="get" aria-label={t("filterLabel")}>
-              {filters.queue !== "coordination" ? <input type="hidden" name="queue" value={filters.queue} /> : null}
-              {filters.queue === "coordination" && filters.stage !== "all" ? <input type="hidden" name="stage" value={filters.stage} /> : null}
+              {activeQueue !== "coordination" ? <input type="hidden" name="queue" value={activeQueue} /> : null}
+              {!isPostActivity && filters.queue === "coordination" && filters.stage !== "all" ? <input type="hidden" name="stage" value={filters.stage} /> : null}
               <FilterSearchInput
                 name="q"
                 defaultValue={filters.q}
@@ -104,7 +110,7 @@ export default async function InvitationsPage({
               <FilterBarSubmit>{t("filter")}</FilterBarSubmit>
               {filters.q ? (
                 <FilterBarReset
-                  href={filters.queue === "coordination"
+                  href={isPostActivity ? hrefForQueue("post_activity", undefined) : filters.queue === "coordination"
                     ? hrefForStage(filters.stage, undefined)
                     : hrefForQueue(filters.queue, undefined)}
                   label={t("reset")}
@@ -115,7 +121,7 @@ export default async function InvitationsPage({
         </DashboardCommandPanel>
       )}
     >
-      {rows.length > 0 ? (
+      {isPostActivity ? <PostActivityFollowupTable initialRows={postActivityRows} query={filters.q} /> : rows.length > 0 ? (
         <InvitationCoordinationWorkbench
           key={`${filters.queue}:${filters.stage}:${filters.q ?? ""}`}
           rows={rows}

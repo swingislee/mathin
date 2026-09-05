@@ -70,6 +70,7 @@ import {
   DashboardTableShell,
 } from "./dashboard-page";
 import { StageNavigation } from "./object-workspace";
+import { EnrollmentHandoffButton } from "./EnrollmentHandoffButton";
 import { TeachingPostworkSection, TeachingPostworkStatus } from "./TeachingPostworkSurface";
 
 const NONE = "__none__";
@@ -112,6 +113,7 @@ export function PublicClassWorkspace({
   canManage,
   canRecord,
   canLinkClass,
+  canFollowUp,
   canUseCourseware,
   canAuthorMicrocourse,
   canPrepareTeaching,
@@ -129,6 +131,7 @@ export function PublicClassWorkspace({
   canManage: boolean;
   canRecord: boolean;
   canLinkClass: boolean;
+  canFollowUp: boolean;
   canUseCourseware: boolean;
   canAuthorMicrocourse: boolean;
   canPrepareTeaching: boolean;
@@ -248,7 +251,7 @@ export function PublicClassWorkspace({
       </div>
     </> : null}
     {activeView === "review" ? <>
-      <ReviewOverview data={data} recordedParticipants={recordedParticipants} />
+      <ReviewOverview data={data} recordedParticipants={recordedParticipants} canFollowUp={canFollowUp} />
       {canLinkClass ? <ConversionView data={data} pending={pending} run={run} /> : null}
     </> : null}
 
@@ -364,7 +367,7 @@ function LiveRunOverview({
   </DashboardSection>;
 }
 
-function ReviewOverview({ data, recordedParticipants }: { data: PublicClassWorkbenchData; recordedParticipants: number }) {
+function ReviewOverview({ data, recordedParticipants, canFollowUp }: { data: PublicClassWorkbenchData; recordedParticipants: number; canFollowUp: boolean }) {
   const t = useTranslations("school.publicClass");
   const active = data.participants.filter((participant) => participant.status !== "cancelled");
   const pendingRecords = Math.max(0, active.length - recordedParticipants);
@@ -399,7 +402,7 @@ function ReviewOverview({ data, recordedParticipants }: { data: PublicClassWorkb
                   <TableCell className="px-2 py-2"><Badge variant={attended ? "secondary" : "outline"}>{attended ? t("presence_attended") : t("presence_expected")}</Badge></TableCell>
                   <TableCell className="truncate px-2 py-2 text-muted">{assessmentRecord?.assessmentSummary || assessmentRecord?.learningObservation || "—"}</TableCell>
                   <TableCell className="truncate px-2 py-2 text-muted">{talkRecord?.parentFeedback || assessmentRecord?.parentFeedback || "—"}</TableCell>
-                  <TableCell className="truncate px-2 py-2 text-muted">{assessmentRecord?.recommendation || talkRecord?.recommendation || "—"}</TableCell>
+                  <TableCell className="px-2 py-2 text-muted"><p className="truncate">{assessmentRecord?.recommendation || talkRecord?.recommendation || "—"}</p>{canFollowUp && attended ? <div className="mt-2"><EnrollmentHandoffButton source={{ registrationId: participant.registrationId, invitationId: null }} name={participant.name} /></div> : null}</TableCell>
                 </TableRow>;
               })}
               {active.length === 0 ? <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted">{t("emptyRoster")}</TableCell></TableRow> : null}
