@@ -7072,6 +7072,16 @@
       "saved": "Class records saved",
       "saveFailed": "Save failed. Your entries are retained.",
       "changed": "This student’s records have changed. Keep your entries and reload to compare."
+    },
+    "followupWorkspace": {
+      "title": "Follow-up",
+      "leads": "Leads",
+      "communication": "Communication",
+      "assessments": "Assessments",
+      "enrollments": "Placement",
+      "renewals": "Renewals",
+      "count": "{count} records",
+      "close": "Close"
     }
   },
   "account": {

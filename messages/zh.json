@@ -7072,6 +7072,16 @@
       "saved": "本课学生记录已保存",
       "saveFailed": "保存失败，填写内容已保留",
       "changed": "该学生记录已被更新。请保留填写内容，重新读取后核对。"
+    },
+    "followupWorkspace": {
+      "title": "跟进",
+      "leads": "线索",
+      "communication": "沟通",
+      "assessments": "测评",
+      "enrollments": "分班",
+      "renewals": "续班",
+      "count": "{count} 条",
+      "close": "关闭"
     }
   },
   "account": {
