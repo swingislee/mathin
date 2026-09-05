@@ -40,6 +40,7 @@ import {
   type TilePlacement,
 } from "./tile-layout";
 import type { TileIconName, TileSize, TileTone } from "./tiles";
+import { useTilePointerDrag, type TilePointerDragState } from "./tile-pointer-drag";
 
 const TILE_ICONS: Record<TileIconName, LucideIcon> = {
   CalendarDays,
@@ -103,18 +104,14 @@ function pickNode(item: TileGridItem, variant: Variant): ReactNode {
   return item.node;
 }
 
-interface DragState {
+interface TileDragData {
   key: string;
   mode: "move" | "resize";
-  startX: number;
-  startY: number;
   /** 拖动起点时磁贴的像素框（相对容器）。 */
   originLeft: number;
   originTop: number;
   originW: number;
   originH: number;
-  /** 跟手的像素位置（move 模式）。 */
-  px: { left: number; top: number } | null;
 }
 
 export function TileWorkspace({
@@ -138,7 +135,6 @@ export function TileWorkspace({
   const [draft, setDraft] = useState<TilePlacement[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [drag, setDrag] = useState<DragState | null>(null);
   const [containerW, setContainerW] = useState(0);
   const [wide, setWide] = useState(true);
   const [zoomKey, setZoomKey] = useState<string | null>(null);
@@ -236,38 +232,14 @@ export function TileWorkspace({
     });
   };
 
-  const beginDrag = (event: ReactPointerEvent<HTMLElement>, key: string, mode: DragState["mode"]) => {
-    if (!editing || !wide || cellW <= 0) return;
-    const tile = draft.find((entry) => entry.k === key);
-    if (!tile) return;
-    event.preventDefault();
-    event.stopPropagation();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    const px = toPx(tile);
-    setDrag({
-      key,
-      mode,
-      startX: event.clientX,
-      startY: event.clientY,
-      originLeft: px.left,
-      originTop: px.top,
-      originW: px.width,
-      originH: px.height,
-      px: mode === "move" ? { left: px.left, top: px.top } : null,
-    });
-  };
-
-  const onDragMove = (event: ReactPointerEvent<HTMLElement>) => {
-    if (!drag || cellW <= 0) return;
-    const dx = event.clientX - drag.startX;
-    const dy = event.clientY - drag.startY;
+  const onDragMove = ({ data: drag, deltaX: dx, deltaY: dy }: TilePointerDragState<TileDragData>) => {
+    if (cellW <= 0) return;
     const tile = draft.find((entry) => entry.k === drag.key);
     if (!tile) return;
 
     if (drag.mode === "move") {
       const left = drag.originLeft + dx;
       const top = Math.max(0, drag.originTop + dy);
-      setDrag((prev) => (prev ? { ...prev, px: { left, top } } : prev));
       const x = Math.max(0, Math.min(Math.round(left / (cellW + GAP)), GRID_COLS - tile.w));
       const y = Math.max(0, Math.min(Math.round(top / (ROW_H + GAP)), MAX_Y));
       if (x !== tile.x || y !== tile.y) {
@@ -289,10 +261,25 @@ export function TileWorkspace({
     }
   };
 
-  const endDrag = () => {
-    if (!drag) return;
-    setDraft((prev) => resolveLayout(prev));
-    setDrag(null);
+  const pointerDrag = useTilePointerDrag<TileDragData>({
+    threshold: 0,
+    onMove: onDragMove,
+    onEnd: () => setDraft((prev) => resolveLayout(prev)),
+    onCancel: () => setDraft((prev) => resolveLayout(prev)),
+  });
+  const drag = pointerDrag.drag ? {
+    ...pointerDrag.drag.data,
+    px: pointerDrag.drag.data.mode === "move" ? {
+      left: pointerDrag.drag.data.originLeft + pointerDrag.drag.deltaX,
+      top: Math.max(0, pointerDrag.drag.data.originTop + pointerDrag.drag.deltaY),
+    } : null,
+  } : null;
+  const beginDrag = (event: ReactPointerEvent<HTMLElement>, key: string, mode: TileDragData["mode"]) => {
+    if (!editing || !wide || cellW <= 0) return;
+    const tile = draft.find((entry) => entry.k === key);
+    if (!tile) return;
+    const px = toPx(tile);
+    pointerDrag.begin(event, { key, mode, originLeft: px.left, originTop: px.top, originW: px.width, originH: px.height });
   };
 
   const visibleItems = editing
@@ -350,9 +337,11 @@ export function TileWorkspace({
         className={cn("absolute inset-0 z-10 rounded-2xl", wide && "touch-none cursor-grab active:cursor-grabbing")}
         aria-hidden
         onPointerDown={(event) => beginDrag(event, key, "move")}
-        onPointerMove={onDragMove}
-        onPointerUp={endDrag}
-        onPointerCancel={endDrag}
+        onPointerMove={pointerDrag.onPointerMove}
+        onPointerUp={pointerDrag.onPointerUp}
+        onPointerCancel={pointerDrag.onPointerCancel}
+        onLostPointerCapture={pointerDrag.onLostPointerCapture}
+        onClickCapture={pointerDrag.onClickCapture}
       />
       <div className="absolute inset-x-1.5 top-1.5 z-20 flex items-center justify-end gap-1">
         {!wide && (
@@ -389,9 +378,11 @@ export function TileWorkspace({
           aria-label={t("resize")}
           title={t("resize")}
           onPointerDown={(event) => beginDrag(event, key, "resize")}
-          onPointerMove={onDragMove}
-          onPointerUp={endDrag}
-          onPointerCancel={endDrag}
+          onPointerMove={pointerDrag.onPointerMove}
+          onPointerUp={pointerDrag.onPointerUp}
+          onPointerCancel={pointerDrag.onPointerCancel}
+          onLostPointerCapture={pointerDrag.onLostPointerCapture}
+          onClickCapture={pointerDrag.onClickCapture}
           className="absolute bottom-0 right-0 z-20 h-5 w-5 cursor-nwse-resize touch-none rounded-tl-lg border-l border-t border-line bg-card"
         >
           <span aria-hidden className="absolute bottom-1 right-1 h-2 w-2 border-b-2 border-r-2 border-muted" />
@@ -420,7 +411,7 @@ export function TileWorkspace({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setEditing(false)}
+                  onClick={() => { pointerDrag.cancel(); setEditing(false); }}
                   disabled={saving}
                   className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
                 >
