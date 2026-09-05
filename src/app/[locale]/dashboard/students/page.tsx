@@ -3,7 +3,6 @@ import { getTranslations } from "next-intl/server";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toSelectValue } from "@/features/school/controls";
 import { getStaffStats, type StaffStats } from "@/features/school/dashboard";
 import {
@@ -14,12 +13,11 @@ import {
   DashboardCommandTabs,
   DashboardEmptyCard,
   DashboardPage,
-  DashboardTableShell,
 } from "@/features/school/dashboard-page";
 import { FilterBar, FilterBarMore, FilterBarReset, FilterBarSubmit, FilterSearchInput, FilterSelectTrigger } from "@/features/school/FilterBar";
 import { NewStudentDialog } from "@/features/school/NewStudentDialog";
 import { StatusStrip, type StatusStripItem } from "@/features/school/dashboard-page";
-import { StudentRestoreButton } from "@/features/school/StudentRestoreButton";
+import { StudentsTable } from "@/features/school/StudentsTable";
 import { FOLLOW_UP_STATUSES, listStudents, parseStudentFilters, STUDENT_STATUSES } from "@/features/school/students";
 import { Link } from "@/i18n/navigation";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
@@ -161,45 +159,7 @@ export default async function StudentsPage({
       {students.length === 0 ? (
         <DashboardEmptyCard>{t("empty")}</DashboardEmptyCard>
       ) : (
-        <DashboardTableShell>
-          {/* 表格铺满统一内容轴；列放不下时由 Table 自带的 overflow-x 横向滚动，
-              而不是把每一格挤成竖排单字（§17.1）。 */}
-          <Table className="w-full min-w-[44rem] border-collapse text-left text-sm">
-            <TableHeader className="border-b border-line text-xs text-muted">
-              <TableRow>
-                <TableHead className="px-4 py-3 font-medium">{t("name")}</TableHead>
-                <TableHead className="px-4 py-3 font-medium">{t("gradeCol")}</TableHead>
-                <TableHead className="px-4 py-3 font-medium">{t("status")}</TableHead>
-                <TableHead className="px-4 py-3 font-medium">{t("followUp")}</TableHead>
-                <TableHead className="px-4 py-3 font-medium">{t("assignedTo")}</TableHead>
-                <TableHead className="px-4 py-3 font-medium">{t("nextFollowUp")}</TableHead>
-                <TableHead className="px-4 py-3 font-medium"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {students.map((student) => (
-                <TableRow key={student.id}>
-                  <TableCell className="px-4 py-3 font-medium">{student.name}</TableCell>
-                  <TableCell className="px-4 py-3">{student.grade ? t("grade", { grade: student.grade }) : "-"}</TableCell>
-                  <TableCell className="px-4 py-3">{t(student.status)}</TableCell>
-                  <TableCell className="px-4 py-3">{t(student.followUpStatus)}</TableCell>
-                  <TableCell className="px-4 py-3">{student.assignedName || t("none")}</TableCell>
-                  <TableCell className="px-4 py-3 text-muted">
-                    {student.nextFollowUpAt ? new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(student.nextFollowUpAt)) : "-"}
-                  </TableCell>
-                  <TableCell className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-3">
-                      <Link href={`/dashboard/students/${student.id}`} className="text-xs text-muted underline underline-offset-2 hover:text-ink">
-                        {t("open")}
-                      </Link>
-                      {filters.recycle && canDelete && <StudentRestoreButton studentId={student.id} />}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </DashboardTableShell>
+        <StudentsTable students={students} locale={locale} recycle={filters.recycle} canDelete={canDelete} />
       )}
     </DashboardPage>
   );

@@ -26,13 +26,16 @@ import {
   PanelLeftOpen,
   PhoneForwarded,
   ReceiptText,
+  RotateCcw,
   School,
   ShieldAlert,
   ShieldCheck,
   Sparkles,
   Sprout,
+  Target,
   TicketCheck,
   UserCog,
+  UserRoundCheck,
   Users,
 } from "lucide-react";
 import Image from "next/image";
@@ -53,12 +56,15 @@ import {
   type DashboardSidebarMode,
 } from "./dashboard-sidebar";
 import { resolveActiveNavHref, type SchoolNavItem } from "./nav";
+import { Student360Workspace } from "./Student360Sheet";
 
 const ICONS: Record<string, ComponentType<{ size?: number; strokeWidth?: number }>> = {
   home: LayoutDashboard,
   leads: Sprout,
   invitations: CalendarCheck2,
   assessments: ClipboardPenLine,
+  opportunities: Target,
+  enrollments: UserRoundCheck,
   followups: PhoneForwarded,
   students: Users,
   coordination: Handshake,
@@ -71,6 +77,7 @@ const ICONS: Record<string, ComponentType<{ size?: number; strokeWidth?: number 
   academicYears: CalendarRange,
   schedule: CalendarClock,
   finance: ReceiptText,
+  renewals: RotateCcw,
   managementAnalytics: ChartSpline,
   staff: UserCog,
   organizationProfile: Building2,
@@ -299,23 +306,25 @@ export function DashboardShell({
         悬浮控件加的 lg:pr-24 会让整页正文从头到尾右边多缺一块，那份避让已经改由页头内部
         的透明占位承担。
       */}
-      <main
-        data-dashboard-canvas
-        className={cn(
-          "flex min-w-0 flex-1 flex-col overflow-y-auto pb-5 [--dashboard-gutter:1rem] px-(--dashboard-gutter) md:[--dashboard-gutter:1.5rem] lg:pb-6 lg:[--dashboard-gutter:2rem] 2xl:[--dashboard-gutter:2.5rem]",
-          // panel 工作区的"定高不滚动"需要一份够用的宽度，而不是一个够大的视口；
-          // 阈值随侧栏状态变化，规则写在 globals.css 的 .panel-canvas-* 里（doc 27 §3 D4）。
-          workspace && "panel-canvas-clip",
-        )}
-      >
-        <div
-          data-dashboard-content
-          data-dashboard-workspace={workspace ? "true" : undefined}
-          className={cn("min-w-0", workspace && "min-h-0 flex-1 panel-canvas-flex")}
+      <Student360Workspace>
+        <main
+          data-dashboard-canvas
+          className={cn(
+            "flex min-w-0 flex-1 flex-col overflow-y-auto pb-5 [--dashboard-gutter:1rem] px-(--dashboard-gutter) md:[--dashboard-gutter:1.5rem] lg:pb-6 lg:[--dashboard-gutter:2rem] 2xl:[--dashboard-gutter:2.5rem]",
+            // panel 工作区的"定高不滚动"需要一份够用的宽度，而不是一个够大的视口；
+            // 阈值随侧栏状态变化，规则写在 globals.css 的 .panel-canvas-* 里（doc 27 §3 D4）。
+            workspace && "panel-canvas-clip",
+          )}
         >
-          {children}
-        </div>
-      </main>
+          <div
+            data-dashboard-content
+            data-dashboard-workspace={workspace ? "true" : undefined}
+            className={cn("min-w-0", workspace && "min-h-0 flex-1 panel-canvas-flex")}
+          >
+            {children}
+          </div>
+        </main>
+      </Student360Workspace>
     </div>
   );
 }
