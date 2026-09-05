@@ -27,7 +27,7 @@ async function archivePath(): Promise<string | null> {
 export async function loadHistoryArchivePage(filters: HistoryArchiveFilters): Promise<HistoryArchivePageData> {
   const database = await archivePath();
   if (database) return readHistoryArchivePage(database, filters) as HistoryArchivePageData;
-  return { summary: {available:false,generatedAt:null,sourceCount:0,tableCount:0,recordCount:0,contentRecordCount:0,matchedCount:0,reviewCount:0,unmatchedCount:0,gradeCorrectionCount:0,excludedCommunicationCount:0,archivedClassCount:0,tables:[]},rows:[],total:0,page:1,pageSize:filters.pageSize };
+  return { summary: {available:false,generatedAt:null,sourceCount:0,tableCount:0,recordCount:0,contentRecordCount:0,matchedCount:0,reviewCount:0,singleCandidateReviewCount:0,multipleCandidateReviewCount:0,unmatchedCount:0,gradeCorrectionCount:0,excludedCommunicationCount:0,archivedClassCount:0,tables:[]},rows:[],total:0,page:1,pageSize:filters.pageSize };
 }
 
 export async function loadHistoryArchiveDetail(id: string, page = 1): Promise<HistoryArchiveDetail | null> {

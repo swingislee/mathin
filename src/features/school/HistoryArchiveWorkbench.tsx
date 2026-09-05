@@ -69,7 +69,8 @@ export function HistoryArchiveWorkbench({ data, detail, filters, messages }: {
     [messages.records, summary.recordCount],
     [messages.contentRecords, summary.contentRecordCount],
     [messages.matched, summary.matchedCount],
-    [messages.review, summary.reviewCount],
+    [messages.singleCandidate, summary.singleCandidateReviewCount],
+    [messages.multipleCandidates, summary.multipleCandidateReviewCount],
     [messages.unmatched, summary.unmatchedCount],
   ] as const;
 

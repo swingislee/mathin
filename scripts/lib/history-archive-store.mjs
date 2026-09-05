@@ -54,13 +54,18 @@ export function buildHistoryArchiveDatabase(file, { packages, entities, matches,
       const m = matchMap.get(r.id);
       if (!m || (m.status === 'matched' && !entityMap.has(m.entityKey)) || m.candidateKeys.some(k => !entityMap.has(k))) throw new Error('HISTORY_ARCHIVE_IDENTITY_REFERENCE');
       const entity = entityMap.get(m.entityKey);
-      const search = normalizeArchiveSearch([r.label, r.tableName, ...r.names, ...r.phones, ...r.cells.filter(c => c.kind !== 'system').map(c => c.text), entity?.name, ...(entity?.phones ?? [])].join('\n'));
+      const candidateEntities = m.candidateKeys.map(key => entityMap.get(key)).filter(Boolean);
+      const search = normalizeArchiveSearch([r.label, r.tableName, ...r.names, ...r.phones, ...r.cells.filter(c => c.kind !== 'system').map(c => c.text),
+        entity?.name, ...(entity?.phones ?? []), ...candidateEntities.flatMap(candidate => [candidate.name, ...candidate.phones])].join('\n'));
       insert.run(r.id, r.sourceId, r.tableId, Number(r.hasContent), m.status, m.entityKey, m.anchorRecordId, search, JSON.stringify(r), JSON.stringify(m));
     }
     const countStatus = status => records.filter(r => r.hasContent && matchMap.get(r.id).status === status).length;
+    const reviewRecords = records.filter(r => r.hasContent && matchMap.get(r.id).status === 'review');
     const summary = {
       available: true, generatedAt, sourceCount: packages.length, tableCount: packages.reduce((n,p) => n+p.tables.length,0), recordCount: records.length,
       contentRecordCount: records.filter(r => r.hasContent).length, matchedCount: countStatus('matched'), reviewCount: countStatus('review'), unmatchedCount: countStatus('unmatched'),
+      singleCandidateReviewCount: reviewRecords.filter(r => matchMap.get(r.id).candidateKeys.length === 1).length,
+      multipleCandidateReviewCount: reviewRecords.filter(r => matchMap.get(r.id).candidateKeys.length > 1).length,
       gradeCorrectionCount: entities.filter(e => e.gradeCorrection).length,
       excludedCommunicationCount: decisions.communicationDecision?.communicationIds?.length ?? 0,
       archivedClassCount: decisions.classDecision?.sourceRecords?.length ?? decisions.classDecision?.candidates?.length ?? decisions.classDecision?.records?.length ?? 0,

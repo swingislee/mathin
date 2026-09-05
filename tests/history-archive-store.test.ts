@@ -73,6 +73,7 @@ describe("history archive isolated SQLite store", () => {
     expect(readHistoryArchivePage(file, { q: "'" }).total).toBe(1);
     expect(readHistoryArchivePage(file, { q: "' OR 1=1 --" }).total).toBe(0);
     expect(readHistoryArchivePage(file, { q: "abc" }).rows.map((r: { id: string }) => r.id)).toEqual(["e"]);
+    expect(readHistoryArchivePage(file, { q: "合成学生甲", status: "review" }).rows.map((r: { id: string }) => r.id)).toEqual(["c"]);
     expect(readHistoryArchivePage(file, { table: "table-a' OR 1=1 --" }).total).toBe(0);
   });
 
@@ -141,6 +142,7 @@ describe("history archive isolated SQLite store", () => {
     const { file, summary } = build();
     expect(summary).toMatchObject({
       recordCount: 7, contentRecordCount: 6, matchedCount: 3, reviewCount: 1, unmatchedCount: 2,
+      singleCandidateReviewCount: 0, multipleCandidateReviewCount: 1,
       gradeCorrectionCount: 1, excludedCommunicationCount: 1, archivedClassCount: 5,
     });
     expect(summary.tables.map((table: { records: number }) => table.records)).toEqual([3, 3]);
@@ -151,6 +153,10 @@ describe("history archive isolated SQLite store", () => {
     expect(readHistoryArchivePage(file, { page: -1, pageSize: 0 })).toMatchObject({ page: 1, pageSize: 25 });
     expect(readHistoryArchivePage(file, { status: "review", pageSize: 2 }).total).toBe(summary.reviewCount);
     expect(readHistoryArchivePage(file, { table: "table-b" }).total).toBe(summary.tables[1].records);
+    const singleCandidateInput = fixtures();
+    singleCandidateInput.matches[2].candidateKeys = ["entity-a"];
+    const singleCandidateSummary = buildHistoryArchiveDatabase(freshFile(), singleCandidateInput);
+    expect(singleCandidateSummary).toMatchObject({ singleCandidateReviewCount: 1, multipleCandidateReviewCount: 0 });
   });
 
   it("does not alter database bytes or file modification time during repeated readonly page and detail reads", () => {

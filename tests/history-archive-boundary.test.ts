@@ -50,7 +50,7 @@ import { Select } from "../src/components/ui/select";
 const filters = parseHistoryArchiveFilters({ q: "示例姓名 & 13800000000", table: "table-source", status: "review", page: "3", pageSize: "50", record: "source-record", relatedPage: "2" });
 const emptyPage: HistoryArchivePageData = {
   summary: { available: true, generatedAt: null, sourceCount: 1, tableCount: 1, recordCount: 0, contentRecordCount: 0,
-    matchedCount: 0, reviewCount: 0, unmatchedCount: 0, gradeCorrectionCount: 0, excludedCommunicationCount: 0, archivedClassCount: 0, tables: [] },
+    matchedCount: 0, reviewCount: 0, singleCandidateReviewCount: 0, multipleCandidateReviewCount: 0, unmatchedCount: 0, gradeCorrectionCount: 0, excludedCommunicationCount: 0, archivedClassCount: 0, tables: [] },
   rows: [], total: 0, page: 1, pageSize: 50,
 };
 
