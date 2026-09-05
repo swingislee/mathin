@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { createContext, type ReactNode, useContext, useMemo, useRef, useState } from "react";
 import { useAction } from "@/components/action-form";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FollowupChoice } from "./dashboard-page/FollowupChoice";
 import { useRouter } from "@/i18n/navigation";
 import { assignLeadsAction } from "./actions/leads";
 import { updateLeadSelection } from "./lead-selection";
@@ -124,23 +124,15 @@ export function LeadPoolBatchActions({ assignees }: { assignees: LeadAssigneeOpt
 
   return (
     <>
-      <span className="hidden whitespace-nowrap text-xs tabular-nums text-muted 2xl:inline">
+      {selectedIds.length > 0 ? <span className="whitespace-nowrap text-[11px] tabular-nums text-muted">
         {t("selectedCount", { count: selectedIds.length })}
-      </span>
-      <Select value={assigneeId || undefined} onValueChange={setAssigneeId} disabled={assignmentPending || assignees.length === 0}>
-        <SelectTrigger className="h-9 w-44 rounded-full bg-card/70 shadow-none" aria-label={t("chooseAssignee")}>
-          <SelectValue placeholder={t("chooseAssignee")} />
-        </SelectTrigger>
-        <SelectContent>
-          {assignees.map((person) => (
-            <SelectItem key={person.userId} value={person.userId}>{person.displayName}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      </span> : null}
+      <FollowupChoice label={t("chooseAssignee")} value={assigneeId} onValueChange={setAssigneeId} disabled={assignmentPending || assignees.length === 0}
+        className="w-36 min-w-0 max-w-56 [&>button]:px-1.5 [&>button]:text-[11px]" options={assignees.map((person) => ({ value: person.userId, label: person.displayName }))} />
       <Button
         type="button"
         size="sm"
-        className="h-9 whitespace-nowrap"
+        className="h-8 shrink-0 gap-1 whitespace-nowrap px-2 text-xs"
         disabled={assignmentPending || selectedIds.length === 0 || !assigneeId}
         onClick={assignSelected}
       >

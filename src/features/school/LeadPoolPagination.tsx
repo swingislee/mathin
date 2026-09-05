@@ -31,6 +31,9 @@ export function LeadPoolPagination({
   scope,
   status,
   q,
+  baseHref = "/dashboard/followups/leads",
+  focusLeadId,
+  extraQuery = {},
 }: {
   currentPage: number;
   totalPages: number;
@@ -39,20 +42,24 @@ export function LeadPoolPagination({
   scope: LeadPoolScope;
   status?: LeadStatus;
   q?: string;
+  baseHref?: "/dashboard/followups/leads" | "/dashboard/followups/communication";
+  focusLeadId?: string;
+  extraQuery?: Record<string, string>;
 }) {
   const t = useTranslations("school.leads");
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
   const hrefFor = (page: number, size: LeadPageSize = pageSize) => {
-    const query = new URLSearchParams();
-    if (scope !== "unassigned") query.set("scope", scope);
+    const query = new URLSearchParams(extraQuery);
+    query.set("scope", scope);
     if (status) query.set("status", status);
     if (q) query.set("q", q);
-    if (size !== LEAD_DEFAULT_PAGE_SIZE) query.set("pageSize", String(size));
+    if (focusLeadId) query.set("lead", focusLeadId);
+    if (size !== LEAD_DEFAULT_PAGE_SIZE || baseHref === "/dashboard/followups/communication") query.set("pageSize", String(size));
     if (page > 1) query.set("page", String(page));
     const value = query.toString();
-    return `/dashboard/leads${value ? `?${value}` : ""}`;
+    return `${baseHref}${value ? `?${value}` : ""}`;
   };
   const tokens = leadPaginationTokens(currentPage, totalPages);
   const previousDisabled = currentPage <= 1;

@@ -12,8 +12,22 @@ import {
   MAX_ASSESSMENT_TIME_OPTIONS,
   type InvitationDraft,
 } from "../invitation-contract";
+import type {
+  LeadIdentityConfirmation,
+  LeadIdentityInput,
+  LeadIdentityOptions,
+} from "../lead-identity-contract";
 import { authorizedClient, nullableRpcArg } from "./guards";
-import { COMMON_CODES, datetime, parse, text, uuid } from "./schemas";
+import { COMMON_CODES, datetime, intInRange, parse, requiredText, text, uuid } from "./schemas";
+
+type UntypedRpc = (
+  name: string,
+  args: Record<string, unknown>,
+) => Promise<{ data: unknown; error: { message: string } | null }>;
+
+function rpc(supabase: { rpc: unknown }): UntypedRpc {
+  return (supabase.rpc as UntypedRpc).bind(supabase);
+}
 
 const LEAD_CONTACT_OUTCOMES = ["unreachable", "connected", "declined", "invalid_number"] as const;
 const LEAD_INTEREST_LEVELS = ["A", "B", "C"] as const;
@@ -96,6 +110,117 @@ const leadReminderSchema = z.object({
     context.addIssue({ code: "custom", message: "REMINDER_NOT_FUTURE" });
   }
 });
+
+const existingIdentitySchema = z.object({
+  mode: z.literal("existing"),
+  id: uuid,
+}).strict();
+
+const leadIdentitySchema = z.object({
+  student: z.discriminatedUnion("mode", [
+    existingIdentitySchema,
+    z.object({
+      mode: z.literal("create"),
+      name: requiredText(100),
+      grade: intInRange(1, 12).nullable(),
+    }).strict(),
+  ]),
+  family: z.discriminatedUnion("mode", [
+    existingIdentitySchema,
+    z.object({
+      mode: z.literal("create"),
+      displayName: requiredText(120),
+    }).strict(),
+  ]),
+  contact: z.discriminatedUnion("mode", [
+    existingIdentitySchema,
+    z.object({
+      mode: z.literal("create"),
+      displayName: requiredText(100),
+      phone: requiredText(40),
+      wechat: text(100),
+    }).strict(),
+  ]),
+  relationship: z.object({
+    relation: requiredText(40),
+    isPrimaryFamily: z.boolean(),
+    isPrimaryContact: z.boolean(),
+    isDecisionMaker: z.boolean(),
+    preferredChannel: z.enum(["phone", "wechat", "other"]),
+  }).strict(),
+  allowPossibleDuplicate: z.boolean(),
+  allowAdditionalRelationship: z.boolean(),
+}).strict();
+
+const confirmLeadIdentitySchema = z.object({
+  leadId: uuid,
+  idempotencyKey: z.string().trim().min(16).max(200),
+  identity: leadIdentitySchema,
+}).strict();
+
+const LEAD_IDENTITY_CODES = [
+  "FORBIDDEN_SCOPE",
+  "LEAD_UNASSIGNED",
+  "LEAD_CLOSED",
+  "STUDENT_NOT_FOUND",
+  "FAMILY_NOT_FOUND",
+  "CONTACT_NOT_FOUND",
+  "POSSIBLE_STUDENT_DUPLICATE",
+  "POSSIBLE_FAMILY_DUPLICATE",
+  "POSSIBLE_CONTACT_DUPLICATE",
+  "RELATIONSHIP_CONFLICT",
+  "PRIMARY_RELATION_REQUIRED",
+  "COURSE_OPPORTUNITY_IDENTITY_CONFLICT",
+  "LEAD_IDENTITY_HISTORY_CONFLICT",
+  "IDEMPOTENCY_CONFLICT",
+  "INVALID_IDENTITY",
+  "NOT_FOUND",
+  ...COMMON_CODES,
+] as const;
+
+export async function getLeadIdentityOptionsAction(
+  leadId: string,
+): Promise<ActionResult<LeadIdentityOptions>> {
+  try {
+    const id = parse(uuid, leadId);
+    const { supabase } = await authorizedClient("followup.view");
+    const { data, error } = await rpc(supabase)("get_lead_identity_options", {
+      p_lead_id: id,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true, data: data as LeadIdentityOptions };
+  } catch (error) {
+    return actionError<LeadIdentityOptions>(error, LEAD_IDENTITY_CODES);
+  }
+}
+
+/**
+ * The single application mutation for Lead identity promotion. Later phases
+ * may route an operator here, but enrollment must never invoke or hide it.
+ */
+export async function confirmLeadIdentityAction(
+  leadId: string,
+  idempotencyKey: string,
+  input: LeadIdentityInput,
+): Promise<ActionResult<LeadIdentityConfirmation>> {
+  try {
+    const value = parse(confirmLeadIdentitySchema, {
+      leadId,
+      idempotencyKey,
+      identity: input,
+    });
+    const { supabase } = await authorizedClient("followup.write");
+    const { data, error } = await rpc(supabase)("confirm_lead_identity", {
+      p_lead_id: value.leadId,
+      p_idempotency_key: value.idempotencyKey,
+      p_identity: value.identity,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true, data: data as LeadIdentityConfirmation };
+  } catch (error) {
+    return actionError<LeadIdentityConfirmation>(error, LEAD_IDENTITY_CODES);
+  }
+}
 
 export async function assignLeadsAction(leadIds: string[], staffUserId: string): Promise<ActionResult<{ count: number }>> {
   try {

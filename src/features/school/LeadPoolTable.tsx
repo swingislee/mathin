@@ -25,6 +25,7 @@ import {
   UNKNOWN_GRADE_FILTER,
 } from "./lead-table-view";
 import { useLeadPoolSelection } from "./LeadPoolSelection";
+import { LeadIdentityControl } from "./LeadIdentityControl";
 import { LEAD_STATUSES, type LeadPoolRow } from "./lead-contract";
 
 const CONTACT_OUTCOMES = ["unreachable", "connected", "declined", "invalid_number"] as const;
@@ -34,12 +35,15 @@ export function LeadPoolTable({
   leads,
   locale,
   canAssign,
+  canManageIdentity,
 }: {
   leads: LeadPoolRow[];
   locale: string;
   canAssign: boolean;
+  canManageIdentity: boolean;
 }) {
   const t = useTranslations("school.leads");
+  const tableT = useTranslations("school.table");
   const extendRangeRef = useRef(false);
   const [columnFilters, setColumnFilters] = useState<LeadTableFilters>({});
   const [sort, setSort] = useState<LeadTableSort | null>(null);
@@ -59,7 +63,7 @@ export function LeadPoolTable({
       .map((lead) => lead.id),
     [visibleLeads],
   );
-  const tableColumnCount = 7 + (canAssign ? 1 : 0);
+  const tableColumnCount = 7 + (canAssign ? 1 : 0) + (canManageIdentity ? 1 : 0);
   const selectedVisibleCount = visibleAssignableIds.filter((id) => selected.has(id)).length;
   const allVisibleSelected = visibleAssignableIds.length > 0
     && selectedVisibleCount === visibleAssignableIds.length;
@@ -77,19 +81,45 @@ export function LeadPoolTable({
 
   const columnOptions = useMemo<Record<LeadTableColumn, DashboardTableFilterOption[]>>(() => {
     const collator = new Intl.Collator(locale, { numeric: true, sensitivity: "base" });
-    const sortOptions = (options: DashboardTableFilterOption[]) => options
-      .sort((left, right) => collator.compare(left.label, right.label));
+    const sortOptions = (options: DashboardTableFilterOption[]) => {
+      const groupOrder = new Map<string, number>();
+      for (const option of options) {
+        const group = option.group ?? "";
+        if (!groupOrder.has(group)) groupOrder.set(group, groupOrder.size);
+      }
+      return options.sort((left, right) => {
+        const groupDifference = (groupOrder.get(left.group ?? "") ?? 0) - (groupOrder.get(right.group ?? "") ?? 0);
+        return groupDifference || collator.compare(left.label, right.label);
+      });
+    };
+    const names = new Set<string>();
+    const phones = new Set<string>();
     const grades = new Map<string, string>();
+    const suggestions = new Set<string>();
     const interests = new Set<string>();
     const acquisitionLocations = new Set<string>();
+    const acquisitionPromoters = new Set<string>();
+    const acquisitionMethods = new Set<string>();
+    const sourceCounts = new Set<number>();
     const acquisitionDates = new Map<string, string>();
     const owners = new Map<string, string>();
+    const contactOutcomes = new Set<LeadPoolRow["lastContactOutcome"]>();
+    const contactTimes = new Map<string, string>();
+    const contactInterests = new Set<string>();
+    const invitations = new Map<string, string>();
+    const contactNotes = new Set<string>();
+    const contactCounts = new Set<number>();
     let hasMissingAcquisitionLocation = false;
     let hasMissingAcquisitionTime = false;
     let hasUnassignedOwner = false;
     let hasNoContact = false;
+    let hasNoContactNote = false;
+    let hasDuplicate = false;
+    let hasWechatAdded = false;
 
     for (const lead of leads) {
+      names.add(lead.provisionalStudentName);
+      phones.add(lead.phone);
       const gradeKey = leadGradeFilterKey(lead);
       grades.set(
         gradeKey,
@@ -97,9 +127,14 @@ export function LeadPoolTable({
           ? t("unknownGrade")
           : lead.gradeText.trim() || t("gradeValue", { grade: lead.gradeHint ?? "" }),
       );
+      if (lead.sourceMarkedDuplicate) hasDuplicate = true;
+      if (lead.suggestedStudentName) suggestions.add(lead.suggestedStudentName);
       for (const interest of lead.interests) interests.add(interest);
       if (lead.acquisitionLocation.trim()) acquisitionLocations.add(lead.acquisitionLocation.trim());
       else hasMissingAcquisitionLocation = true;
+      if (lead.acquisitionPromoter) acquisitionPromoters.add(lead.acquisitionPromoter);
+      if (lead.acquisitionMethod) acquisitionMethods.add(lead.acquisitionMethod);
+      if (lead.sourceCount > 1) sourceCounts.add(lead.sourceCount);
       if (lead.acquiredAt) {
         acquisitionDates.set(
           leadAcquisitionDateFilterKey(lead.acquiredAt),
@@ -108,17 +143,57 @@ export function LeadPoolTable({
       } else hasMissingAcquisitionTime = true;
       if (lead.ownerId) owners.set(lead.ownerId, lead.ownerName || t("unassignedOwner"));
       else hasUnassignedOwner = true;
-      if (!lead.lastContactOutcome) hasNoContact = true;
+      if (!lead.lastContactAt || !lead.lastContactOutcome) {
+        hasNoContact = true;
+      } else {
+        contactOutcomes.add(lead.lastContactOutcome);
+        contactTimes.set(lead.lastContactAt, dateTimeFormatter.format(new Date(lead.lastContactAt)));
+        if (lead.interestLevel) contactInterests.add(lead.interestLevel);
+        if (lead.wechatAdded === true) hasWechatAdded = true;
+        if (lead.activeInvitation) {
+          invitations.set(
+            `${lead.activeInvitation.kind}:${lead.activeInvitation.state}`,
+            `${t(`invitationKind_${lead.activeInvitation.kind}`)} · ${t(`invitationState_${lead.activeInvitation.state}`)}`,
+          );
+        }
+        if (lead.lastContactNote) contactNotes.add(lead.lastContactNote);
+        else if (lead.contactCount > 1) contactCounts.add(lead.contactCount);
+        else hasNoContactNote = true;
+      }
     }
 
     return {
-      seed: sortOptions([...grades].map(([value, label]) => ({ value, label }))),
+      seed: sortOptions([
+        ...[...names].map((value) => ({ value: `name:${value}`, label: value, group: tableT("fieldName") })),
+        ...[...phones].map((value) => ({ value: `phone:${value}`, label: value, group: tableT("fieldPhone") })),
+        ...[...grades].map(([value, label]) => ({ value, label, group: tableT("fieldGrade") })),
+        { value: "identity:unconfirmed", label: t("identityUnconfirmed"), group: tableT("fieldIdentity") },
+        ...(hasDuplicate
+          ? [{ value: "duplicate:true", label: t("sourceDuplicateShort"), group: tableT("fieldDuplicate") }]
+          : []),
+        ...[...suggestions].map((value) => ({
+          value: `suggested:${value}`,
+          label: t("studentSuggestion", { name: value }),
+          group: tableT("fieldSuggestedStudent"),
+        })),
+      ]),
       interests: sortOptions([...interests].map((value) => ({ value, label: value }))),
       acquisitionLocation: sortOptions([
         ...(hasMissingAcquisitionLocation
-          ? [{ value: NO_ACQUISITION_LOCATION_FILTER, label: t("acquisitionLocationMissing") }]
+          ? [{ value: NO_ACQUISITION_LOCATION_FILTER, label: t("acquisitionLocationMissing"), group: tableT("fieldLocation") }]
           : []),
-        ...[...acquisitionLocations].map((value) => ({ value, label: value })),
+        ...[...acquisitionLocations].map((value) => ({ value, label: value, group: tableT("fieldLocation") })),
+        ...[...acquisitionPromoters].map((value) => ({
+          value: `promoter:${value}`,
+          label: t("promoterValue", { name: value }),
+          group: tableT("fieldPromoter"),
+        })),
+        ...[...acquisitionMethods].map((value) => ({ value: `method:${value}`, label: value, group: tableT("fieldMethod") })),
+        ...[...sourceCounts].map((value) => ({
+          value: `source-count:${value}`,
+          label: t("sourceCount", { count: value }),
+          group: tableT("fieldSourceCount"),
+        })),
       ]),
       acquiredAt: [
         ...(hasMissingAcquisitionTime
@@ -133,12 +208,31 @@ export function LeadPoolTable({
         ...[...owners].map(([value, label]) => ({ value, label })),
       ]),
       latestContact: [
-        ...(hasNoContact ? [{ value: NO_CONTACT_FILTER, label: t("notContacted") }] : []),
-        ...CONTACT_OUTCOMES.map((value) => ({ value, label: t(`contactOutcome_${value}`) })),
+        ...(hasNoContact
+          ? [{ value: NO_CONTACT_FILTER, label: t("notContacted"), group: tableT("fieldContactResult") }]
+          : []),
+        ...CONTACT_OUTCOMES.filter((value) => contactOutcomes.has(value)).map((value) => ({
+          value,
+          label: t(`contactOutcome_${value}`),
+          group: tableT("fieldContactResult"),
+        })),
+        ...[...contactTimes].map(([value, label]) => ({ value: `contact-time:${value}`, label, group: tableT("fieldTime") })),
+        ...[...contactInterests].map((value) => ({ value: `interest:${value}`, label: value, group: tableT("fieldInterest") })),
+        ...(hasWechatAdded ? [{ value: "wechat:true", label: t("wechatAddedShort"), group: tableT("fieldWechat") }] : []),
+        ...[...invitations].map(([value, label]) => ({ value: `invitation:${value}`, label, group: tableT("fieldInvitation") })),
+        ...[...contactNotes].map((value) => ({ value: `note:${value}`, label: value, group: tableT("fieldNote") })),
+        ...(hasNoContactNote
+          ? [{ value: "note:$empty", label: t("noContactNote"), group: tableT("fieldNote") }]
+          : []),
+        ...[...contactCounts].map((value) => ({
+          value: `contact-count:${value}`,
+          label: t("contactCount", { count: value }),
+          group: tableT("fieldContactCount"),
+        })),
       ],
       status: LEAD_STATUSES.map((value) => ({ value, label: t(`status_${value}`) })),
     };
-  }, [acquisitionDateFormatter, leads, locale, t]);
+  }, [acquisitionDateFormatter, dateTimeFormatter, leads, locale, t, tableT]);
 
   const setColumnFilter = (column: LeadTableColumn, value: string | undefined) => {
     setColumnFilters((current) => {
@@ -168,7 +262,7 @@ export function LeadPoolTable({
       filterOptions={columnOptions[column]}
       sortDirection={sort?.column === column ? sort.direction : undefined}
       onFilterChange={(value) => setColumnFilter(column, value)}
-      onSortChange={(direction) => setSort({ column, direction })}
+      onSortChange={(direction) => setSort(direction ? { column, direction } : null)}
       onClear={() => clearColumn(column)}
     />
   );
@@ -177,7 +271,7 @@ export function LeadPoolTable({
     <>
       <DashboardTableShell>
         <Table
-          className="w-full min-w-[84rem] text-xs"
+          className="w-full min-w-[88rem] text-xs"
           containerClassName="max-h-[calc(100dvh-15rem)] overflow-auto"
         >
           <TableHeader>
@@ -208,6 +302,7 @@ export function LeadPoolTable({
               <TableHead className="sticky top-0 z-20 h-8 bg-card px-2">{columnHeader("owner", t("owner"))}</TableHead>
               <TableHead className="sticky top-0 z-20 h-8 bg-card px-2">{columnHeader("latestContact", t("latestContact"))}</TableHead>
               <TableHead className="sticky top-0 z-20 h-8 bg-card px-2">{columnHeader("status", t("status"))}</TableHead>
+              {canManageIdentity ? <TableHead className="sticky top-0 z-20 h-8 bg-card px-2">{t("actions")}</TableHead> : null}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -247,7 +342,7 @@ export function LeadPoolTable({
                     <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11px] leading-4 text-muted">
                       <span>{lead.gradeText || (lead.gradeHint ? t("gradeValue", { grade: lead.gradeHint }) : t("unknownGrade"))}</span>
                       <span aria-hidden="true">·</span>
-                      <span>{t("identityUnconfirmed")}</span>
+                      <span>{t(lead.status === "converted" ? "identityConfirmed" : "identityUnconfirmed")}</span>
                       {lead.sourceMarkedDuplicate ? <Badge variant="danger" className="px-1.5 py-0 text-[11px] font-normal leading-4">{t("sourceDuplicateShort")}</Badge> : null}
                     </div>
                     {lead.suggestedStudentName ? (
@@ -300,6 +395,11 @@ export function LeadPoolTable({
                       {t(`status_${lead.status}`)}
                     </Badge>
                   </TableCell>
+                  {canManageIdentity ? (
+                    <TableCell className="whitespace-nowrap px-2 py-1.5">
+                      <LeadIdentityControl lead={lead} />
+                    </TableCell>
+                  ) : null}
                 </TableRow>
               );
             })}

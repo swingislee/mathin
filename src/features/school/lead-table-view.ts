@@ -42,22 +42,60 @@ export function leadAcquisitionDateFilterKey(value: string | null): string {
 }
 
 function matchesFilters(lead: LeadPoolRow, filters: LeadTableFilters): boolean {
-  if (filters.seed && leadGradeFilterKey(lead) !== filters.seed) return false;
+  if (filters.seed) {
+    const selected = filters.seed;
+    const matchesSeed = selected.startsWith("name:")
+      ? lead.provisionalStudentName === selected.slice("name:".length)
+      : selected.startsWith("phone:")
+        ? lead.phone === selected.slice("phone:".length)
+        : selected === "identity:unconfirmed"
+          ? true
+          : selected === "duplicate:true"
+            ? lead.sourceMarkedDuplicate
+            : selected.startsWith("suggested:")
+              ? lead.suggestedStudentName === selected.slice("suggested:".length)
+              : leadGradeFilterKey(lead) === selected;
+    if (!matchesSeed) return false;
+  }
   if (filters.interests && !lead.interests.includes(filters.interests)) return false;
   if (filters.acquisitionLocation) {
+    const selected = filters.acquisitionLocation;
     const location = lead.acquisitionLocation.trim();
-    if (filters.acquisitionLocation === NO_ACQUISITION_LOCATION_FILTER
-      ? location !== ""
-      : location !== filters.acquisitionLocation) return false;
+    const matchesAcquisition = selected.startsWith("promoter:")
+      ? lead.acquisitionPromoter === selected.slice("promoter:".length)
+      : selected.startsWith("method:")
+        ? lead.acquisitionMethod === selected.slice("method:".length)
+        : selected.startsWith("source-count:")
+          ? lead.sourceCount === Number(selected.slice("source-count:".length))
+          : selected === NO_ACQUISITION_LOCATION_FILTER
+            ? location === ""
+            : location === selected;
+    if (!matchesAcquisition) return false;
   }
   if (filters.acquiredAt && leadAcquisitionDateFilterKey(lead.acquiredAt) !== filters.acquiredAt) return false;
   if (filters.owner) {
     if (filters.owner === NO_OWNER_FILTER ? lead.ownerId !== null : lead.ownerId !== filters.owner) return false;
   }
   if (filters.latestContact) {
-    if (filters.latestContact === NO_CONTACT_FILTER
-      ? lead.lastContactOutcome !== null
-      : lead.lastContactOutcome !== filters.latestContact) return false;
+    const selected = filters.latestContact;
+    const matchesContact = selected.startsWith("contact-time:")
+      ? lead.lastContactAt === selected.slice("contact-time:".length)
+      : selected.startsWith("interest:")
+        ? lead.interestLevel === selected.slice("interest:".length)
+        : selected === "wechat:true"
+          ? lead.wechatAdded === true
+          : selected.startsWith("invitation:")
+            ? `${lead.activeInvitation?.kind ?? ""}:${lead.activeInvitation?.state ?? ""}` === selected.slice("invitation:".length)
+            : selected === "note:$empty"
+              ? lead.lastContactAt !== null && lead.lastContactOutcome !== null && lead.lastContactNote === "" && lead.contactCount <= 1
+              : selected.startsWith("note:")
+                ? lead.lastContactNote === selected.slice("note:".length)
+                : selected.startsWith("contact-count:")
+                  ? lead.contactCount === Number(selected.slice("contact-count:".length))
+                  : selected === NO_CONTACT_FILTER
+                    ? lead.lastContactAt === null || lead.lastContactOutcome === null
+                    : lead.lastContactOutcome === selected;
+    if (!matchesContact) return false;
   }
   if (filters.status && lead.status !== filters.status) return false;
   return true;

@@ -87,9 +87,9 @@ export function parseLeadPoolFilters(
   const pageSize = parseLeadPageSize(searchParams.pageSize);
   const scope: LeadPoolScope = requestedScope === "mine"
     ? "mine"
-    : requestedScope === "all" && canScopeAll
-      ? "all"
-      : "unassigned";
+    : requestedScope === "unassigned"
+      ? "unassigned"
+      : canScopeAll ? "all" : "mine";
   return {
     scope,
     status: LEAD_STATUSES.includes(status as LeadStatus) ? status as LeadStatus : undefined,
@@ -99,7 +99,7 @@ export function parseLeadPoolFilters(
   };
 }
 
-function leadSearchFilter(raw: string): string {
+export function leadSearchFilter(raw: string): string {
   const escaped = raw.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
   const clauses = [
     `provisional_student_name.ilike.%${escaped}%`,
@@ -118,9 +118,11 @@ function sourceTimestamp(row: LeadSourceDbRow): number {
 export async function listLeadPool(
   userId: string,
   filters: LeadPoolFilters,
+  selectedLeadIds?: readonly string[],
 ): Promise<{ leads: LeadPoolRow[]; count: number; pageSize: LeadPageSize }> {
+  if (selectedLeadIds?.length === 0) return { leads: [], count: 0, pageSize: filters.pageSize };
   const supabase = await createClient();
-  const offset = (filters.page - 1) * filters.pageSize;
+  const offset = selectedLeadIds ? 0 : (filters.page - 1) * filters.pageSize;
   let query = supabase
     .from("leads")
     .select(
@@ -131,10 +133,12 @@ export async function listLeadPool(
   if (filters.scope === "mine") query = query.eq("owner_id", userId);
   if (filters.status) query = query.eq("status", filters.status);
   if (filters.q) query = query.or(leadSearchFilter(filters.q));
+  if (selectedLeadIds) query = query.in("id", [...selectedLeadIds]);
 
   const { data, error, count } = await query
     .order("created_at", { ascending: false })
-    .range(offset, offset + filters.pageSize - 1)
+    .order("id", { ascending: true })
+    .range(offset, offset + (selectedLeadIds?.length ?? filters.pageSize) - 1)
     .returns<LeadDbRow[]>();
   if (error) throw new Error(error.message);
   const rows = data ?? [];
@@ -161,10 +165,11 @@ export async function listLeadPool(
       .limit(5_000)
       .returns<LeadInterestDbRow[]>(),
     supabase
-      .from("lead_communications")
+      .from("effective_lead_communications" as "lead_communications")
       .select("id,lead_id,outcome,note,wechat_added,visit_committed,interest_level,occurred_at")
       .in("lead_id", leadIds)
-      .order("occurred_at", { ascending: false })
+      .order("original_occurred_at", { ascending: false })
+      .order("id", { ascending: false })
       .limit(5_000)
       .returns<LeadCommunicationDbRow[]>(),
     supabase
@@ -257,9 +262,7 @@ export async function listLeadPool(
     entries.push(communication);
     communicationsByLead.set(communication.lead_id, entries);
   }
-  for (const communications of communicationsByLead.values()) {
-    communications.sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime());
-  }
+  // 保留查询的原录入顺序；更正历史发生时间不改变当前最新沟通事实。
 
   return {
     count: count ?? 0,

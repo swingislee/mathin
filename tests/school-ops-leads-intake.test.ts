@@ -118,7 +118,7 @@ describe("SCHOOL-OPS Leads seed intake", () => {
   });
 
   it("exposes a separate seed pool and keeps review decisions identity-free", () => {
-    const page = read("src", "app", "[locale]", "dashboard", "leads", "page.tsx");
+    const page = read("src", "app", "[locale]", "dashboard", "followups", "leads", "page.tsx");
     const table = read("src", "features", "school", "LeadPoolTable.tsx");
     const panel = read("src", "features", "school", "XiaodituiImportPanel.tsx");
     const actions = read("src", "features", "school", "actions", "lead-imports.ts");
@@ -129,12 +129,12 @@ describe("SCHOOL-OPS Leads seed intake", () => {
     expect(table).toContain("acquisitionLocation");
     expect(table).toContain("acquiredAt");
     expect(page).toContain("listLeadPool");
-    expect(panel).toContain('href="/dashboard/leads"');
+    expect(panel).toContain('href="/dashboard/followups/leads"');
     expect(panel).toContain("getLeadImportBatchAction");
     expect(panel).toContain('t("acquisitionLocation")');
     expect(panel).toContain('t("missingAcquisitionLocation")');
     expect(actions).toContain('z.enum(["create_new", "link_existing", "skip"])');
     expect(actions).not.toContain("create_household_student");
-    expect(routes).toContain('href: "/dashboard/leads"');
+    expect(routes).toContain('href: "/dashboard/followups/leads"');
   });
 });

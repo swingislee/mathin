@@ -24,7 +24,14 @@ import {
   type LeadImportBatchSummary,
   type LeadImportDecision,
 } from "./actions/types";
-import { DashboardSection, DashboardTableShell, StatusStrip } from "./dashboard-page";
+import {
+  DashboardSection,
+  DashboardTableColumnHeader,
+  DashboardTableShell,
+  StatusStrip,
+  type DashboardTableColumnDefinition,
+  useDashboardTableView,
+} from "./dashboard-page";
 import {
   XiaodituiParseError,
   classifyXiaodituiInterest,
@@ -35,6 +42,16 @@ import {
 } from "./xiaoditui-import";
 
 const PREVIEW_LIMIT = 100;
+const EMPTY_VALUE = "$empty";
+
+type PreviewColumn = "sourceRow" | "child" | "phone" | "grade" | "interests" | "location" | "submittedAt" | "promoter" | "sourceDuplicate" | "match";
+type ReviewColumn = "sourceRow" | "identity" | "sourceSignal" | "reason" | "existingIdentity";
+type BatchColumn = "createdAt" | "label" | "status" | "total" | "duplicates" | "errors" | "created" | "batchId";
+
+interface PreviewEntry {
+  ordinal: number;
+  row: ParsedXiaodituiWorksheet["rows"][number];
+}
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
@@ -58,7 +75,12 @@ function reviewDecisions(row: LeadImportBatchRow): ReviewDecision[] {
 
 export function XiaodituiImportPanel({ recentBatches }: { recentBatches: LeadImportBatchSummary[] }) {
   const t = useTranslations("school.students.xiaoditui");
+  const tableT = useTranslations("school.table");
   const locale = useLocale();
+  const formatAt = useMemo(() => (value: string) => new Intl.DateTimeFormat(locale, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value)), [locale]);
   const router = useRouter();
   const [fileName, setFileName] = useState("");
   const [fileBase64, setFileBase64] = useState("");
@@ -73,9 +95,13 @@ export function XiaodituiImportPanel({ recentBatches }: { recentBatches: LeadImp
     setBatch(null);
     setIdempotencyKey(newId());
   };
-  const previewRows = parsed?.rows.slice(0, PREVIEW_LIMIT) ?? [];
-  const reviewRows = batch?.rows.filter((row) => row.decision === "pending") ?? [];
+  const previewRows = useMemo<PreviewEntry[]>(
+    () => (parsed?.rows.slice(0, PREVIEW_LIMIT) ?? []).map((row, index) => ({ row, ordinal: index + 1 })),
+    [parsed],
+  );
+  const reviewRows = useMemo(() => batch?.rows.filter((row) => row.decision === "pending") ?? [], [batch]);
   const rowByOrdinal = useMemo(() => new Map(parsed?.rows.map((row, index) => [index + 1, row]) ?? []), [parsed]);
+  const serverRowByOrdinal = useMemo(() => new Map(batch?.rows.map((row) => [row.row, row]) ?? []), [batch]);
   const interestCounts = useMemo(() => {
     const counts = { assessment: 0, activity: 0, nurture: 0, product_interest: 0, unknown: 0 };
     for (const row of parsed?.rows ?? []) {
@@ -87,6 +113,166 @@ export function XiaodituiImportPanel({ recentBatches }: { recentBatches: LeadImp
     missingTime: parsed?.rows.filter((row) => !row.submittedAt).length ?? 0,
     missingLocation: parsed?.rows.filter((row) => !row.location.trim()).length ?? 0,
   }), [parsed]);
+  const previewColumns = useMemo<Record<PreviewColumn, DashboardTableColumnDefinition<PreviewEntry>>>(() => ({
+    sourceRow: {
+      filterValues: ({ row }) => ({ value: String(row.sourceRow), label: String(row.sourceRow) }),
+      sortValue: ({ row }) => row.sourceRow,
+    },
+    child: {
+      filterValues: ({ row }) => ({ value: row.childName || EMPTY_VALUE, label: row.childName || tableT("emptyValue") }),
+      sortValue: ({ row }) => row.childName,
+    },
+    phone: {
+      filterValues: ({ row }) => ({ value: row.phone || EMPTY_VALUE, label: row.phone || tableT("emptyValue") }),
+      sortValue: ({ row }) => row.phone,
+    },
+    grade: {
+      filterValues: ({ row }) => ({ value: row.gradeText || EMPTY_VALUE, label: row.gradeText || tableT("emptyValue") }),
+      sortValue: ({ row }) => row.grade,
+    },
+    interests: {
+      filterValues: ({ row }) => row.interests.length > 0
+        ? row.interests.map((interest) => ({ value: interest, label: interest }))
+        : { value: EMPTY_VALUE, label: tableT("emptyValue") },
+      sortValue: ({ row }) => row.interests.join("|"),
+    },
+    location: {
+      filterValues: ({ row }) => ({ value: row.location || EMPTY_VALUE, label: row.location || t("acquisitionLocationMissing") }),
+      sortValue: ({ row }) => row.location,
+    },
+    submittedAt: {
+      filterValues: ({ row }) => ({
+        value: row.submittedAt?.slice(0, 10) ?? EMPTY_VALUE,
+        label: row.submittedAt ? formatAt(row.submittedAt) : tableT("emptyValue"),
+      }),
+      sortValue: ({ row }) => row.submittedAt,
+    },
+    promoter: {
+      filterValues: ({ row }) => [
+        {
+          value: row.promoter ? `promoter:${row.promoter}` : `promoter:${EMPTY_VALUE}`,
+          label: row.promoter || tableT("emptyValue"),
+          group: tableT("fieldPromoter"),
+        },
+        ...(row.acquisitionMethod
+          ? [{ value: `method:${row.acquisitionMethod}`, label: row.acquisitionMethod, group: tableT("fieldMethod") }]
+          : []),
+      ],
+      sortValue: ({ row }) => `${row.promoter}\u0000${row.acquisitionMethod}`,
+    },
+    sourceDuplicate: {
+      filterValues: ({ row }) => ({
+        value: row.sourceDuplicate ? "duplicate" : "unique",
+        label: row.sourceDuplicate ? t("sourceDuplicateAdvisory") : t("none"),
+      }),
+      sortValue: ({ row }) => row.sourceDuplicate ? 1 : 0,
+    },
+    match: {
+      filterValues: ({ ordinal }) => {
+        const serverRow = serverRowByOrdinal.get(ordinal);
+        const match = serverRow ? resolveXiaodituiMathinMatch(serverRow, batch?.rows ?? []) : null;
+        return { value: match ?? "not_checked", label: match ? t(`match_${match}`) : t("notChecked") };
+      },
+      sortValue: ({ ordinal }) => {
+        const serverRow = serverRowByOrdinal.get(ordinal);
+        return serverRow ? resolveXiaodituiMathinMatch(serverRow, batch?.rows ?? []) : "not_checked";
+      },
+    },
+  }), [batch, formatAt, serverRowByOrdinal, t, tableT]);
+  const previewTable = useDashboardTableView({ rows: previewRows, columns: previewColumns, locale });
+  const reviewColumns = useMemo<Record<ReviewColumn, DashboardTableColumnDefinition<LeadImportBatchRow>>>(() => ({
+    sourceRow: {
+      filterValues: (row) => {
+        const value = rowByOrdinal.get(row.row)?.sourceRow ?? row.sourceRow;
+        return { value: String(value), label: String(value) };
+      },
+      sortValue: (row) => rowByOrdinal.get(row.row)?.sourceRow ?? row.sourceRow,
+    },
+    identity: {
+      filterValues: (row) => {
+        const source = rowByOrdinal.get(row.row);
+        const name = source?.childName || row.sourceName;
+        const phone = source?.phone || row.sourcePhone;
+        return [
+          {
+            value: name ? `name:${name}` : `name:${EMPTY_VALUE}`,
+            label: name || tableT("emptyValue"),
+            group: tableT("fieldName"),
+          },
+          {
+            value: phone ? `phone:${phone}` : `phone:${EMPTY_VALUE}`,
+            label: phone || tableT("emptyValue"),
+            group: tableT("fieldPhone"),
+          },
+        ];
+      },
+      sortValue: (row) => rowByOrdinal.get(row.row)?.childName || row.sourceName,
+    },
+    sourceSignal: {
+      filterValues: (row) => ({
+        value: isXiaodituiSourceMarkedDuplicate(row) ? "duplicate" : "unique",
+        label: isXiaodituiSourceMarkedDuplicate(row) ? t("sourceDuplicateAdvisory") : t("none"),
+      }),
+      sortValue: (row) => isXiaodituiSourceMarkedDuplicate(row) ? 1 : 0,
+    },
+    reason: {
+      filterValues: (row) => {
+        const match = resolveXiaodituiMathinMatch(row, batch?.rows ?? []);
+        return { value: match, label: t(`match_${match}`) };
+      },
+      sortValue: (row) => resolveXiaodituiMathinMatch(row, batch?.rows ?? []),
+    },
+    existingIdentity: {
+      filterValues: (row) => {
+        const value = row.matchedLeadName
+          ? t("existingLead", { name: row.matchedLeadName })
+          : row.suggestedStudentName
+            ? t("studentHint", { name: row.suggestedStudentName })
+            : t("none");
+        return { value, label: value };
+      },
+      sortValue: (row) => row.matchedLeadName || row.suggestedStudentName || "",
+    },
+  }), [batch, rowByOrdinal, t, tableT]);
+  const reviewTable = useDashboardTableView({ rows: reviewRows, columns: reviewColumns, locale });
+  const batchColumns = useMemo<Record<BatchColumn, DashboardTableColumnDefinition<LeadImportBatchSummary>>>(() => ({
+    createdAt: {
+      filterValues: (item) => ({ value: item.createdAt.slice(0, 10), label: formatAt(item.createdAt) }),
+      sortValue: (item) => item.createdAt,
+    },
+    label: {
+      filterValues: (item) => ({ value: item.batchLabel || item.fileName, label: item.batchLabel || item.fileName }),
+      sortValue: (item) => item.batchLabel || item.fileName,
+    },
+    status: {
+      filterValues: (item) => ({
+        value: item.reviewCount > 0 ? "pending_review" : item.status,
+        label: item.reviewCount > 0 ? t("pendingCount", { count: item.reviewCount }) : t(`status_${item.status}`),
+      }),
+      sortValue: (item) => item.reviewCount > 0 ? "pending_review" : item.status,
+    },
+    total: {
+      filterValues: (item) => ({ value: String(item.total), label: String(item.total) }),
+      sortValue: (item) => item.total,
+    },
+    duplicates: {
+      filterValues: (item) => ({ value: String(item.duplicates), label: String(item.duplicates) }),
+      sortValue: (item) => item.duplicates,
+    },
+    errors: {
+      filterValues: (item) => ({ value: String(item.errors), label: String(item.errors) }),
+      sortValue: (item) => item.errors,
+    },
+    created: {
+      filterValues: (item) => ({ value: String(item.created), label: String(item.created) }),
+      sortValue: (item) => item.created,
+    },
+    batchId: {
+      filterValues: (item) => ({ value: item.batchId, label: item.batchId.slice(0, 8) }),
+      sortValue: (item) => item.batchId,
+    },
+  }), [formatAt, t]);
+  const batchTable = useDashboardTableView({ rows: recentBatches, columns: batchColumns, locale });
 
   const errorMessages = {
     default: t("failed"),
@@ -165,11 +351,6 @@ export function XiaodituiImportPanel({ recentBatches }: { recentBatches: LeadImp
       rows: parsed.rows,
     });
   };
-  const formatAt = (value: string) => new Intl.DateTimeFormat(locale, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-
   return (
     <div className="space-y-10">
       <DashboardSection title={t("inputTitle")} description={t("inputDescription")}>
@@ -255,21 +436,21 @@ export function XiaodituiImportPanel({ recentBatches }: { recentBatches: LeadImp
             <Table className="w-full min-w-[84rem] text-xs">
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t("sourceRow")}</TableHead>
-                  <TableHead>{t("child")}</TableHead>
-                  <TableHead>{t("phone")}</TableHead>
-                  <TableHead>{t("grade")}</TableHead>
-                  <TableHead>{t("interests")}</TableHead>
-                  <TableHead>{t("acquisitionLocation")}</TableHead>
-                  <TableHead>{t("submittedAt")}</TableHead>
-                  <TableHead>{t("promoter")}</TableHead>
-                  <TableHead>{t("sourceDuplicate")}</TableHead>
-                  <TableHead>{t("matchResult")}</TableHead>
+                  <TableHead><DashboardTableColumnHeader label={t("sourceRow")} {...previewTable.columnProps("sourceRow")} /></TableHead>
+                  <TableHead><DashboardTableColumnHeader label={t("child")} {...previewTable.columnProps("child")} /></TableHead>
+                  <TableHead><DashboardTableColumnHeader label={t("phone")} {...previewTable.columnProps("phone")} /></TableHead>
+                  <TableHead><DashboardTableColumnHeader label={t("grade")} {...previewTable.columnProps("grade")} /></TableHead>
+                  <TableHead><DashboardTableColumnHeader label={t("interests")} {...previewTable.columnProps("interests")} /></TableHead>
+                  <TableHead><DashboardTableColumnHeader label={t("acquisitionLocation")} {...previewTable.columnProps("location")} /></TableHead>
+                  <TableHead><DashboardTableColumnHeader label={t("submittedAt")} {...previewTable.columnProps("submittedAt")} /></TableHead>
+                  <TableHead><DashboardTableColumnHeader label={t("promoter")} {...previewTable.columnProps("promoter")} /></TableHead>
+                  <TableHead><DashboardTableColumnHeader label={t("sourceDuplicate")} {...previewTable.columnProps("sourceDuplicate")} /></TableHead>
+                  <TableHead><DashboardTableColumnHeader label={t("matchResult")} {...previewTable.columnProps("match")} /></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {previewRows.map((row, index) => {
-                  const serverRow = batch?.rows[index];
+                {previewTable.visibleRows.map(({ row, ordinal }) => {
+                  const serverRow = serverRowByOrdinal.get(ordinal);
                   return (
                     <TableRow key={row.sourceRow}>
                       <TableCell className="font-mono text-muted">{row.sourceRow}</TableCell>
@@ -306,6 +487,7 @@ export function XiaodituiImportPanel({ recentBatches }: { recentBatches: LeadImp
                     </TableRow>
                   );
                 })}
+                {previewTable.visibleRows.length === 0 ? <TableRow><TableCell colSpan={10} className="h-32 text-center text-muted">{tableT("filteredEmpty")}</TableCell></TableRow> : null}
               </TableBody>
             </Table>
           </DashboardTableShell>
@@ -341,10 +523,15 @@ export function XiaodituiImportPanel({ recentBatches }: { recentBatches: LeadImp
               <DashboardTableShell>
                 <Table className="w-full min-w-[76rem] text-xs">
                   <TableHeader><TableRow>
-                    <TableHead>{t("sourceRow")}</TableHead><TableHead>{t("sourceIdentity")}</TableHead><TableHead>{t("sourceSignal")}</TableHead><TableHead>{t("matchReason")}</TableHead><TableHead>{t("existingIdentity")}</TableHead><TableHead>{t("decision")}</TableHead>
+                    <TableHead><DashboardTableColumnHeader label={t("sourceRow")} {...reviewTable.columnProps("sourceRow")} /></TableHead>
+                    <TableHead><DashboardTableColumnHeader label={t("sourceIdentity")} {...reviewTable.columnProps("identity")} /></TableHead>
+                    <TableHead><DashboardTableColumnHeader label={t("sourceSignal")} {...reviewTable.columnProps("sourceSignal")} /></TableHead>
+                    <TableHead><DashboardTableColumnHeader label={t("matchReason")} {...reviewTable.columnProps("reason")} /></TableHead>
+                    <TableHead><DashboardTableColumnHeader label={t("existingIdentity")} {...reviewTable.columnProps("existingIdentity")} /></TableHead>
+                    <TableHead>{t("decision")}</TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
-                    {reviewRows.map((serverRow) => {
+                    {reviewTable.visibleRows.map((serverRow) => {
                       const source = rowByOrdinal.get(serverRow.row);
                       const sourceMarkedDuplicate = isXiaodituiSourceMarkedDuplicate(serverRow);
                       const mathinMatch = resolveXiaodituiMathinMatch(serverRow, batch.rows);
@@ -375,6 +562,7 @@ export function XiaodituiImportPanel({ recentBatches }: { recentBatches: LeadImp
                         </TableCell>
                       </TableRow>;
                     })}
+                    {reviewTable.visibleRows.length === 0 ? <TableRow><TableCell colSpan={6} className="h-32 text-center text-muted">{tableT("filteredEmpty")}</TableCell></TableRow> : null}
                   </TableBody>
                 </Table>
               </DashboardTableShell>
@@ -394,7 +582,7 @@ export function XiaodituiImportPanel({ recentBatches }: { recentBatches: LeadImp
           {batch.status === "completed" ? (
             <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
               <p className="flex items-center gap-2 text-sm text-leaf-deep"><CheckCircle2 size={16} />{t("completed", { applied: batch.applied, created: batch.created, skipped: batch.skippedCount })}</p>
-              <Link href="/dashboard/leads" className={buttonVariants({ size: "sm" })}>{t("openLeadPool")}<ArrowRight size={15} /></Link>
+              <Link href="/dashboard/followups/leads" className={buttonVariants({ size: "sm" })}>{t("openLeadPool")}<ArrowRight size={15} /></Link>
             </div>
           ) : null}
         </DashboardSection>
@@ -404,16 +592,27 @@ export function XiaodituiImportPanel({ recentBatches }: { recentBatches: LeadImp
         {recentBatches.length === 0 ? <div className="grid min-h-28 place-items-center text-sm text-muted">{t("recentEmpty")}</div> : (
           <DashboardTableShell>
             <Table className="w-full min-w-[52rem] text-sm">
-              <TableHeader><TableRow><TableHead>{t("createdAt")}</TableHead><TableHead>{t("batchLabel")}</TableHead><TableHead>{t("statusLabel")}</TableHead><TableHead>{t("rows")}</TableHead><TableHead>{t("duplicates")}</TableHead><TableHead>{t("errors")}</TableHead><TableHead>{t("createdLeads")}</TableHead><TableHead>{t("batchId")}</TableHead><TableHead /></TableRow></TableHeader>
-              <TableBody>{recentBatches.map((item) => <TableRow key={item.batchId}>
+              <TableHeader><TableRow>
+                <TableHead><DashboardTableColumnHeader label={t("createdAt")} {...batchTable.columnProps("createdAt")} /></TableHead>
+                <TableHead><DashboardTableColumnHeader label={t("batchLabel")} {...batchTable.columnProps("label")} /></TableHead>
+                <TableHead><DashboardTableColumnHeader label={t("statusLabel")} {...batchTable.columnProps("status")} /></TableHead>
+                <TableHead><DashboardTableColumnHeader label={t("rows")} {...batchTable.columnProps("total")} /></TableHead>
+                <TableHead><DashboardTableColumnHeader label={t("duplicates")} {...batchTable.columnProps("duplicates")} /></TableHead>
+                <TableHead><DashboardTableColumnHeader label={t("errors")} {...batchTable.columnProps("errors")} /></TableHead>
+                <TableHead><DashboardTableColumnHeader label={t("createdLeads")} {...batchTable.columnProps("created")} /></TableHead>
+                <TableHead><DashboardTableColumnHeader label={t("batchId")} {...batchTable.columnProps("batchId")} /></TableHead>
+                <TableHead />
+              </TableRow></TableHeader>
+              <TableBody>{batchTable.visibleRows.map((item) => <TableRow key={item.batchId}>
                 <TableCell className="whitespace-nowrap">{formatAt(item.createdAt)}</TableCell><TableCell>{item.batchLabel || item.fileName}</TableCell><TableCell><Badge variant={item.status === "completed" ? "secondary" : item.reviewCount > 0 ? "danger" : "outline"}>{item.reviewCount > 0 ? t("pendingCount", { count: item.reviewCount }) : t(`status_${item.status}`)}</Badge></TableCell><TableCell>{item.total}</TableCell><TableCell>{item.duplicates}</TableCell><TableCell className={item.errors > 0 ? "text-rose" : undefined}>{item.errors}</TableCell><TableCell>{item.created}</TableCell><TableCell className="font-mono text-xs text-muted">{item.batchId.slice(0, 8)}</TableCell><TableCell className="text-right">{item.status === "validated" ? <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => openBatchRun.run(item.batchId)}>{t("openBatch")}</Button> : null}</TableCell>
-              </TableRow>)}</TableBody>
+              </TableRow>)}
+              {batchTable.visibleRows.length === 0 ? <TableRow><TableCell colSpan={9} className="h-28 text-center text-muted">{tableT("filteredEmpty")}</TableCell></TableRow> : null}</TableBody>
             </Table>
           </DashboardTableShell>
         )}
       </DashboardSection>
 
-      <div className="flex justify-end"><Link href="/dashboard/leads" className={buttonVariants({ variant: "secondary", size: "sm" })}><FileSpreadsheet size={15} />{t("openLeadPool")}</Link></div>
+      <div className="flex justify-end"><Link href="/dashboard/followups/leads" className={buttonVariants({ variant: "secondary", size: "sm" })}><FileSpreadsheet size={15} />{t("openLeadPool")}</Link></div>
     </div>
   );
 }
