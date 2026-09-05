@@ -8776,6 +8776,10 @@ export type Database = {
           created_at: string
           created_by: string
           decision_due_on: string | null
+          health_policy: Json
+          health_policy_revision: number
+          health_policy_updated_at: string | null
+          health_policy_updated_by: string | null
           id: string
           name: string
           preparation_starts_on: string | null
@@ -8789,6 +8793,10 @@ export type Database = {
           created_at?: string
           created_by: string
           decision_due_on?: string | null
+          health_policy?: Json
+          health_policy_revision?: number
+          health_policy_updated_at?: string | null
+          health_policy_updated_by?: string | null
           id?: string
           name: string
           preparation_starts_on?: string | null
@@ -8802,6 +8810,10 @@ export type Database = {
           created_at?: string
           created_by?: string
           decision_due_on?: string | null
+          health_policy?: Json
+          health_policy_revision?: number
+          health_policy_updated_at?: string | null
+          health_policy_updated_by?: string | null
           id?: string
           name?: string
           preparation_starts_on?: string | null
@@ -8811,6 +8823,12 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "renewal_cycles_health_policy_updated_by_fkey"
+            columns: ["health_policy_updated_by"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "renewal_cycles_campus_id_fkey"
             columns: ["campus_id"]
@@ -17370,6 +17388,14 @@ export type Database = {
           p_stage: string
         }
         Returns: string
+      }
+      valid_renewal_health_policy: {
+        Args: { p_policy: Json }
+        Returns: boolean
+      }
+      save_renewal_health_policy: {
+        Args: { p_cycle_id: string; p_policy: Json; p_expected_revision: number }
+        Returns: number
       }
       register_teacher_microcourse_h5_artifact: {
         Args: {

@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Check, ChevronDown, ChevronUp, Pencil, Search } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, FlaskConical, Pencil, Search, SlidersHorizontal } from "lucide-react";
 import { useAction } from "@/components/action-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,10 @@ import { DashboardPage, DashboardCommandPanel, DashboardCommandState, DashboardC
 import { DashboardInlineEntry } from "./dashboard-page/DashboardInlineEntry";
 import { inlineEntryCommand } from "./dashboard-page/inline-entry-keyboard";
 import { useDashboardTableView } from "./dashboard-page/useDashboardTableView";
-import { renewalHealthSignals, type RenewalHealthSignal } from "./renewal-health-contract";
+import { renewalHealthLevel, renewalHealthSignals } from "./renewal-health-contract";
+import { HEALTH_RULE_KEYS, type HealthRuleKey, type RenewalHealthPolicy } from "./renewal-health-policy";
+import { renewalHealthSamples } from "./renewal-health-samples";
+import { RenewalHealthSettings } from "./RenewalHealthSettings";
 import { registerRenewalResultAction } from "./renewal-pool-actions";
 import type { RenewalPoolSupplement } from "./renewal-pool-data";
 import { TEACHER_PROFESSIONAL_SIGNAL_TYPES, type TeacherProfessionalSignalType } from "./renewal-contract";
@@ -38,34 +41,43 @@ type ResultStage = typeof RESULT_STAGES[number];
 type ActiveEntry = { membershipId: string; kind: "registration" | "observation"; focus?: boolean };
 type Payment = RenewalPoolSupplement["payments"][number];
 const isResultStage = (stage: string): stage is ResultStage => RESULT_STAGES.includes(stage as ResultStage);
-const levelFor = (signals: RenewalHealthSignal[]) => signals.some(signal => signal.level === "attention")
-  ? "attention" : signals.some(signal => signal.level === "unknown") ? "unknown" : "observed";
+const levelFor = renewalHealthLevel;
 
-export function RenewalStudentPool({ data, supplement, canWrite, canReview, canEnroll, settings = false, health = false }: {
+export function RenewalStudentPool({ data, supplement, canWrite, canReview, canEnroll, settings = false, health = false, allowHealthSamples = false, healthSampleMode = false }: {
   data: RenewalWorkspaceData; supplement: RenewalPoolSupplement;
   canWrite: boolean; canReview: boolean; canEnroll: boolean; settings?: boolean; health?: boolean;
+  allowHealthSamples?: boolean; healthSampleMode?: boolean;
 }) {
   const t = useTranslations("school.renewals.poolV2");
   const legacy = useTranslations("school.renewals");
+  const policyT = useTranslations("school.renewals.healthSettings");
   const locale = useLocale();
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [entry, setEntry] = useState<ActiveEntry | null>(null);
   const [entryBusy, setEntryBusy] = useState(false);
   const [healthStudent, setHealthStudent] = useState<string | null>(null);
+  const [policyOpen, setPolicyOpen] = useState(false);
+  const [policyUpdate, setPolicyUpdate] = useState<{ policy: RenewalHealthPolicy; revision: number } | null>(null);
+  const latestPolicy = policyUpdate && policyUpdate.revision >= supplement.healthPolicyRevision ? policyUpdate : { policy: supplement.healthPolicy, revision: supplement.healthPolicyRevision };
+  const policy = latestPolicy.policy;
   const [createOpen, setCreateOpen] = useState(false);
   const [closeCycleOpen, setCloseCycleOpen] = useState(false);
   const cycle = data.cycles.find(row => row.id === data.selectedCycleId);
-  const facts = new Map(supplement.health.map(row => [row.studentId, row]));
+  const samples = renewalHealthSamples(supplement.now);
+  const sampleMode = health && allowHealthSamples && healthSampleMode;
+  const healthFacts = sampleMode ? samples.map(sample => sample.facts) : supplement.health;
+  const facts = new Map(healthFacts.map(row => [row.studentId, row]));
   const payments = new Map(supplement.payments.map(row => [row.opportunity_id, row]));
-  const signalsFor = (row: PoolRow) => renewalHealthSignals(facts.get(row.studentId), supplement.now);
+  const signalsFor = (row: PoolRow) => renewalHealthSignals(facts.get(row.studentId), supplement.now, policy);
   const rows: PoolRow[] = [
     ...data.candidates.map(row => ({ membershipId: row.membershipId, studentId: row.studentId, name: row.studentName, grade: row.grade, classroom: row.classroomName, owner: row.currentOwnerName, stage: "unprepared", note: "", opportunityId: null })),
     ...data.opportunities.filter(row => row.opportunityType === "renewal" && row.cycleId === cycle?.id && row.sourceMembershipId).map(row => ({ membershipId: row.sourceMembershipId!, studentId: row.studentId, name: row.studentName, grade: row.grade, classroom: row.sourceClassroomName, owner: row.ownerName, stage: row.stage, note: row.note, opportunityId: row.id })),
   ];
   const stageLabel = (row: PoolRow) => row.stage === "enrolled" && !payments.has(row.opportunityId ?? "")
     ? legacy("stage_enrolled") : row.stage === "unprepared" ? t("unprepared") : isResultStage(row.stage) ? t(row.stage) : legacy("stage_" + row.stage);
-  const filtered = rows.filter(row => [row.name, row.classroom, row.owner].some(value => value.toLocaleLowerCase(locale).includes(query.trim().toLocaleLowerCase(locale))));
+  const displayRows: PoolRow[] = sampleMode ? samples.map((sample, index) => ({ membershipId: sample.facts.studentId, studentId: sample.facts.studentId, name: policyT('sampleName', { number: index + 1, scenario: policyT('sample_' + sample.key) }), grade: null, classroom: policyT('sampleClass'), owner: '—', stage: 'unprepared', note: '', opportunityId: null })) : rows;
+  const filtered = displayRows.filter(row => [row.name, row.classroom, row.owner].some(value => value.toLocaleLowerCase(locale).includes(query.trim().toLocaleLowerCase(locale))));
   const columns = {
     name: { filterValues: (row: PoolRow) => ({ value: row.studentId, label: row.name }), sortValue: (row: PoolRow) => row.name },
     classroom: { filterValues: (row: PoolRow) => ({ value: row.classroom, label: row.classroom }), sortValue: (row: PoolRow) => row.classroom },
@@ -85,6 +97,10 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
       <Search className="absolute left-3 top-3 size-4 text-muted" />
       <Input aria-label={t("search")} className="pl-9" placeholder={t("search")} value={query} disabled={entryBusy} onChange={event => setQuery(event.target.value)} />
     </div></DashboardCommandFilters> : null}
+    {health ? <DashboardCommandActions>
+      {allowHealthSamples ? <Button size="sm" variant="ghost" onClick={() => router.replace('/dashboard/renewals?tab=health' + (cycle ? '&cycle=' + cycle.id : '') + (sampleMode ? '' : '&samples=1'))}><FlaskConical className="size-4" />{policyT(sampleMode ? 'showStudents' : 'showSamples')}</Button> : null}
+      {canWrite && cycle ? <Button size="sm" variant="secondary" onClick={() => setPolicyOpen(true)}><SlidersHorizontal className="size-4" />{policyT('title')}</Button> : null}
+    </DashboardCommandActions> : null}
     {settings && canWrite ? <DashboardCommandActions>
       {cycle && cycle.status !== "closed" ? <Button size="sm" variant="secondary" disabled={refresh.pending} onClick={() => refresh.run(cycle.id)}>{t("refresh")}</Button> : null}
       {cycle?.status === "open" ? <Button size="sm" variant="secondary" onClick={() => setCloseCycleOpen(true)}>{t("closeCycle")}</Button> : null}
@@ -100,8 +116,10 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
           {canWrite && cycle.status === "planning" ? <Button disabled={status.pending} onClick={() => status.run(cycle.id, "open")}>{legacy("openCycle")}</Button> : null}
         </> : null}
       </div></DashboardSection>
-      <DashboardSection title={t("healthPolicy")} description={t("healthHint")}><dl className="max-w-3xl space-y-4">{["communication", "attendance", "participation", "challenge", "homework", "accuracy", "video", "trend"].map(key => <div key={key}><dt className="font-medium">{t(key)}</dt><dd className="mt-1 text-sm text-muted">{t(key + "Rule")}</dd></div>)}</dl></DashboardSection>
-    </> : health ? <DashboardTableShell>
+      <DashboardSection title={t("healthPolicy")} description={policyT('windowHint', { days: policy.windowDays })}><dl className="max-w-3xl space-y-4">{HEALTH_RULE_KEYS.map(key => <div key={key}><dt className="font-medium">{t(key)}{!policy.rules[key].enabled ? ' · ' + t('disabled') : ''}</dt><dd className="mt-1 text-sm text-muted">{policyT('condition_' + key, { min: policy.rules[key].minSamples, threshold: policy.rules[key].threshold })}</dd></div>)}</dl></DashboardSection>
+    </> : health ? <>
+    <p className="text-xs leading-5 text-muted" role="status">{sampleMode ? policyT('samplesNotice', { count: samples.length }) : policyT('windowHint', { days: policy.windowDays })}</p>
+    <DashboardTableShell>
       <Table className="min-w-[56rem] table-fixed text-xs" containerClassName="max-h-[calc(100dvh-15rem)] overflow-auto">
         <colgroup><col className="w-44" /><col className="w-44" /><col className="w-28" /><col className="w-40" /><col /></colgroup>
         <TableHeader className="sticky top-0 z-20 bg-card"><TableRow>
@@ -118,7 +136,7 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
           const attention = signals.filter(signal => signal.level === "attention");
           return <Fragment key={row.membershipId}>
             <TableRow className={cn("[&>td]:py-2", expanded && "bg-moon/15 hover:bg-moon/15")}>
-              <TableCell><Student360Trigger className="block max-w-full truncate" subject={{ studentId: row.studentId, leadId: null }} fallback={{ name: row.name, grade: row.grade }} /></TableCell>
+              <TableCell>{sampleMode ? <span className="block truncate font-medium" title={row.name}>{row.name}</span> : <Student360Trigger className="block max-w-full truncate" subject={{ studentId: row.studentId, leadId: null }} fallback={{ name: row.name, grade: row.grade }} />}</TableCell>
               <TableCell className="truncate" title={row.classroom}>{row.classroom}</TableCell><TableCell className="truncate" title={row.owner}>{row.owner || "—"}</TableCell>
               <TableCell><Badge variant="outline" className={level === "attention" ? "text-rose" : ""}>{t(level)}{attention.length ? " · " + attention.length : ""}</Badge></TableCell>
               <TableCell><Button size="sm" variant="ghost" className="h-8 w-full justify-start px-0 text-xs" aria-expanded={expanded} onClick={() => setHealthStudent(expanded ? null : row.membershipId)}>
@@ -126,15 +144,15 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
               </Button></TableCell>
             </TableRow>
             {expanded ? <TableRow className="hover:bg-transparent"><TableCell colSpan={5} className="whitespace-normal px-5 py-4">
-              <p className="mb-4 text-xs text-muted">{t("healthHint")}</p><div className="grid gap-x-8 gap-y-5 md:grid-cols-2 xl:grid-cols-4">{signals.map(signal => <div key={signal.key}>
+              <p className="mb-4 text-xs text-muted">{policyT('windowHint', { days: policy.windowDays })}</p><div className="grid gap-x-8 gap-y-5 md:grid-cols-2 xl:grid-cols-4">{signals.map(signal => <div key={signal.key}>
                 <div className="flex items-center justify-between gap-2"><strong>{t(signal.key)}</strong><span className={signal.level === "attention" ? "text-rose" : "text-muted"}>{t(signal.level)}</span></div>
-                {signal.key !== "unavailable" ? <><p className="mt-1">{t("counts", { count: signal.count ?? 0, total: signal.total ?? 0 })}</p><p className="mt-1 leading-5 text-muted">{t(signal.key + "Rule")}</p></> : null}
+                {signal.key !== "unavailable" ? <><p className="mt-1">{policyT('facts_' + signal.key, { count: signal.count ?? 0, total: signal.total ?? 0 })}</p><p className="mt-1 leading-5 text-muted">{policyT('condition_' + signal.key, { min: policy.rules[signal.key as HealthRuleKey].minSamples, threshold: policy.rules[signal.key as HealthRuleKey].threshold })}</p><p className="mt-1 leading-5 text-muted">{policyT('coverage_' + signal.key)}</p></> : null}
               </div>)}</div>
             </TableCell></TableRow> : null}
           </Fragment>;
         })}{!table.visibleRows.length ? <EmptyRows columns={5} /> : null}</TableBody>
       </Table>
-    </DashboardTableShell> : <DashboardTableShell>
+    </DashboardTableShell></> : <DashboardTableShell>
       <Table className="min-w-[74rem] table-fixed text-xs" containerClassName="max-h-[calc(100dvh-15rem)] overflow-auto">
         <colgroup><col className="w-44" /><col className="w-36" /><col className="w-24" /><col className="w-40" /><col className="w-[22rem]" /><col /></colgroup>
         <TableHeader className="sticky top-0 z-20 bg-card" inert={entryBusy || undefined}><TableRow className="[&>th]:h-9 [&>th]:px-2">
@@ -163,6 +181,7 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
       </Table>
     </DashboardTableShell>}
     <ConfirmDialog open={closeCycleOpen} onOpenChange={setCloseCycleOpen} title={legacy("closeCycleTitle")} description={legacy("closeCycleDescription")} confirmLabel={legacy("closeCycleConfirm")} cancelLabel={t("cancel")} pending={status.pending} onConfirm={() => cycle && status.run(cycle.id, "closed")} />
+    {policyOpen && cycle ? <RenewalHealthSettings key={latestPolicy.revision} open onOpenChange={setPolicyOpen} cycleId={cycle.id} cycleName={cycle.name} policy={policy} revision={latestPolicy.revision} facts={healthFacts} now={supplement.now} sampleMode={sampleMode} onSaved={(value, revision) => setPolicyUpdate({ policy: value, revision })} /> : null}
   </DashboardPage>;
 }
 

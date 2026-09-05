@@ -2,9 +2,12 @@ import 'server-only';
 import { createClient } from '@/lib/supabase/server';
 import type { RenewalWorkspaceData } from './renewals';
 import type { RenewalHealthFacts } from './renewal-health-contract';
+import { DEFAULT_RENEWAL_HEALTH_POLICY, isRenewalHealthPolicy, type RenewalHealthPolicy } from './renewal-health-policy';
 export interface RenewalPoolSupplement {
   health: RenewalHealthFacts[];
   healthAvailable: boolean;
+  healthPolicy: RenewalHealthPolicy;
+  healthPolicyRevision: number;
   payments: {opportunity_id:string;period_count:number;paid_amount:number;note:string}[];
   signals: {student_id:string;recommendation:string;occurred_at:string}[];
   now: number;
@@ -12,6 +15,10 @@ export interface RenewalPoolSupplement {
 }
 export async function loadRenewalPoolSupplement(data:RenewalWorkspaceData,actorId:string):Promise<RenewalPoolSupplement> {
   const supabase=await createClient();
+  const policyResult=data.selectedCycleId?await supabase.from('renewal_cycles').select('health_policy,health_policy_revision').eq('id',data.selectedCycleId).single():null;
+  if(policyResult?.error) throw new Error(policyResult.error.message);
+  const healthPolicy=policyResult?.data?.health_policy??DEFAULT_RENEWAL_HEALTH_POLICY;
+  if(!isRenewalHealthPolicy(healthPolicy)) throw new Error('Invalid renewal health policy');
   const ids=[...new Set([...data.candidates.map(row=>row.studentId),...data.opportunities.filter(row=>row.cycleId===data.selectedCycleId).map(row=>row.studentId)])];
   const health:RenewalHealthFacts[]=[];
   let healthAvailable=true;
@@ -41,5 +48,5 @@ export async function loadRenewalPoolSupplement(data:RenewalWorkspaceData,actorI
     return data?cid:null;
   })));
   const observationMemberships=(memberships.data??[]).filter(row=>['active','completed'].includes(row.status)&&(admin.data||teacherClasses.has(row.classroom_id))).map(row=>row.id);
-  return {health,healthAvailable,payments:payments.data as RenewalPoolSupplement['payments'],signals:signals.data??[],observationMemberships,now:Date.now()};
+  return {health,healthAvailable,healthPolicy,healthPolicyRevision:policyResult?.data?.health_policy_revision??0,payments:payments.data as RenewalPoolSupplement['payments'],signals:signals.data??[],observationMemberships,now:Date.now()};
 }
