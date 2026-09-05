@@ -26,7 +26,7 @@ export function DashboardCommandPanel({
       data-dashboard-command-panel
       data-dashboard-command-mode={selection ? "selection" : "default"}
       className={cn(
-        "grid min-h-14 min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 py-2",
+        "flex min-h-14 min-w-0 flex-wrap items-center gap-x-3 gap-y-2 py-2 @3xl/chrome:grid",
         "@3xl/chrome:grid-cols-[auto_minmax(0,1fr)_auto]",
         className,
       )}
@@ -47,7 +47,7 @@ export function DashboardCommandState({ children, className }: { children: React
   return (
     <div
       data-dashboard-command-slot="state"
-      className={cn("col-start-1 row-start-1 flex min-w-0 flex-wrap items-center gap-2", className)}
+      className={cn("col-start-1 row-start-1 flex min-w-0 max-w-full flex-wrap items-center gap-2", className)}
     >
       {children}
     </div>
@@ -86,7 +86,7 @@ export function DashboardCommandActions({ children, className }: { children: Rea
     <div
       data-dashboard-command-slot="actions"
       className={cn(
-        "col-start-2 row-start-1 flex shrink-0 items-center justify-self-end gap-2 @3xl/chrome:col-start-3",
+        "col-start-2 row-start-1 ml-auto flex min-w-0 max-w-full flex-wrap items-center justify-self-end gap-2 @3xl/chrome:col-start-3",
         className,
       )}
     >

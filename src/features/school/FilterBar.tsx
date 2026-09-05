@@ -1,10 +1,10 @@
 import type { ComponentProps, ReactNode } from "react";
-import { RotateCcw, Search, SlidersHorizontal } from "lucide-react";
+import { RotateCcw, SlidersHorizontal } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { SelectTrigger } from "@/components/ui/select";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
+export { DashboardSearch as FilterSearchInput } from "./DashboardSearch";
 
 /**
  * 不带任何外边距：筛选条现在住在 DashboardCommandPanel 的 filters 槽里，
@@ -29,18 +29,6 @@ export function FilterBar({ className, children, ...props }: ComponentProps<"for
 /** 用于 Select 变化后立即改 URL 等无需提交表单的筛选。 */
 export function FilterBarFrame({ className, children, ...props }: ComponentProps<"div">) {
   return <div role="search" className={cn(BAR_CLASS, className)} {...props}>{children}</div>;
-}
-
-export function FilterSearchInput({ className, ...props }: ComponentProps<typeof Input>) {
-  return (
-    <div className="relative min-w-0 grow basis-40 sm:max-w-sm">
-      <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
-      <Input
-        className={cn("h-9 rounded-full border-line/80 bg-card/70 pl-9 shadow-none focus-visible:bg-card", className)}
-        {...props}
-      />
-    </div>
-  );
 }
 
 export function FilterSelectTrigger({ className, ...props }: ComponentProps<typeof SelectTrigger>) {

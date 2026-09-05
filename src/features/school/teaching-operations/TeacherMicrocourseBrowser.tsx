@@ -1,12 +1,13 @@
 "use client";
 
+import { FilterSearchInput } from "../FilterBar";
+
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Filter, FolderTree, Search, Settings2, SlidersHorizontal } from "lucide-react";
+import { Filter, FolderTree, Settings2, SlidersHorizontal } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -304,10 +305,9 @@ export function TeacherMicrocourseBrowser({
         </Select>
       </DashboardCommandState>
       <DashboardCommandFilters>
-        <div className="flex basis-56 grow items-center gap-2 @3xl/chrome:max-w-xl">
+        <div className="flex items-center gap-2">
           <Label className="sr-only" htmlFor="microcourse-search">{t("searchCourses")}</Label>
-          <Input id="microcourse-search" value={search} placeholder={t("searchPlaceholder")} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") searchCourses(); }} />
-          <Button size="sm" className="size-9 shrink-0 p-0" aria-label={t("search")} title={t("search")} onClick={searchCourses}><Search className="h-4 w-4" /></Button>
+          <FilterSearchInput id="microcourse-search" value={search} placeholder={t("searchPlaceholder")} aria-label={t("searchCourses")} onChange={(event) => setSearch(event.target.value)} onSearch={searchCourses} />
         </div>
         <Label className="flex items-center gap-2 whitespace-nowrap text-xs text-muted"><Checkbox checked={searchAll} onCheckedChange={(checked) => setSearchAll(Boolean(checked))} />{t("searchAllCourses")}</Label>
         <Label className="sr-only" htmlFor="microcourse-sort">{t("sortBy")}</Label>
