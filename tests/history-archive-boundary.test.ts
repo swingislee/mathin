@@ -50,7 +50,7 @@ import { Select } from "../src/components/ui/select";
 const filters = parseHistoryArchiveFilters({ q: "示例姓名 & 13800000000", table: "table-source", status: "review", page: "3", pageSize: "50", record: "source-record", relatedPage: "2" });
 const emptyPage: HistoryArchivePageData = {
   summary: { available: true, generatedAt: null, sourceCount: 1, tableCount: 1, recordCount: 0, contentRecordCount: 0,
-    matchedCount: 0, reviewCount: 0, singleCandidateReviewCount: 0, multipleCandidateReviewCount: 0, unmatchedCount: 0, gradeCorrectionCount: 0, excludedCommunicationCount: 0, archivedClassCount: 0, tables: [] },
+    matchedCount: 0, reviewCount: 0, singleCandidateReviewCount: 0, multipleCandidateReviewCount: 0, unmatchedCount: 0, unmatchedWithIdentityCount: 0, unmatchedWithoutIdentityCount: 0, gradeCorrectionCount: 0, excludedCommunicationCount: 0, archivedClassCount: 0, tables: [] },
   rows: [], total: 0, page: 1, pageSize: 50,
 };
 
@@ -108,6 +108,8 @@ describe("history archive query boundaries", () => {
 describe("operator-facing history explanations", () => {
   it.each(["zh", "en"])("explains ambiguous identities and unavailable source references in %s without displaying implementation flags", (locale) => {
     const messages = getHistoryArchiveMessages(locale);
+    expect(historyArchiveMatchExplanation("no_current_identity_candidate", messages)).toBe(messages.reasonNoCurrentIdentity);
+    expect(historyArchiveMatchExplanation("no_identity_fields", messages)).toBe(messages.reasonNoIdentityFields);
     expect(historyArchiveMatchExplanation("phone_only", messages)).toBe(messages.reasonPhoneOnly);
     expect(historyArchiveMatchExplanation("unrecognized_internal_flag", messages)).toBe(messages.reasonUnknown);
     expect(historyArchiveWarningExplanation("LINK_TARGET_MISSING:field-private:table-private:record-private", messages)).toBe(messages.warningLink);

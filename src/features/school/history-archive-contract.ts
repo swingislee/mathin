@@ -60,6 +60,8 @@ export interface HistoryArchiveSummary {
   singleCandidateReviewCount: number;
   multipleCandidateReviewCount: number;
   unmatchedCount: number;
+  unmatchedWithIdentityCount: number;
+  unmatchedWithoutIdentityCount: number;
   gradeCorrectionCount: number;
   excludedCommunicationCount: number;
   archivedClassCount: number;

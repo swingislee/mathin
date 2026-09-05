@@ -171,7 +171,14 @@ function directMatch(record, index) {
   const phoneKeys = lookup(index.byPhone, phones);
   const externalCandidates = lookup(index.bySourceKey, externalKeys);
   const allCandidates = unique([...nameKeys, ...phoneKeys, ...externalCandidates]);
-  const base = { recordId: record.id, status: "unmatched", entityKey: null, candidateKeys: allCandidates, reason: "no_identity_candidate", anchorRecordId: null };
+  const base = {
+    recordId: record.id,
+    status: "unmatched",
+    entityKey: null,
+    candidateKeys: allCandidates,
+    reason: names.length || phones.length ? "no_current_identity_candidate" : "no_identity_fields",
+    anchorRecordId: null,
+  };
   const compatible = (entity) => names.every((name) => name === normalizedName(entity.name)) && phones.every((phone) => entity.phones.includes(phone));
 
   if (externalKeys.length) {

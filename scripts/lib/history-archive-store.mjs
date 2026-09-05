@@ -61,11 +61,14 @@ export function buildHistoryArchiveDatabase(file, { packages, entities, matches,
     }
     const countStatus = status => records.filter(r => r.hasContent && matchMap.get(r.id).status === status).length;
     const reviewRecords = records.filter(r => r.hasContent && matchMap.get(r.id).status === 'review');
+    const unmatchedRecords = records.filter(r => r.hasContent && matchMap.get(r.id).status === 'unmatched');
     const summary = {
       available: true, generatedAt, sourceCount: packages.length, tableCount: packages.reduce((n,p) => n+p.tables.length,0), recordCount: records.length,
       contentRecordCount: records.filter(r => r.hasContent).length, matchedCount: countStatus('matched'), reviewCount: countStatus('review'), unmatchedCount: countStatus('unmatched'),
       singleCandidateReviewCount: reviewRecords.filter(r => matchMap.get(r.id).candidateKeys.length === 1).length,
       multipleCandidateReviewCount: reviewRecords.filter(r => matchMap.get(r.id).candidateKeys.length > 1).length,
+      unmatchedWithIdentityCount: unmatchedRecords.filter(r => r.names.length || r.phones.length).length,
+      unmatchedWithoutIdentityCount: unmatchedRecords.filter(r => !r.names.length && !r.phones.length).length,
       gradeCorrectionCount: entities.filter(e => e.gradeCorrection).length,
       excludedCommunicationCount: decisions.communicationDecision?.communicationIds?.length ?? 0,
       archivedClassCount: decisions.classDecision?.sourceRecords?.length ?? decisions.classDecision?.candidates?.length ?? decisions.classDecision?.records?.length ?? 0,

@@ -26,7 +26,7 @@ function fixtures() {
     { id: "a", text: "中文沟通：孩子喜欢图形，家长希望周末体验。", status: "matched", entityKey: "entity-a", tableId: "table-a", hasContent: true },
     { id: "b", text: longNarrative, status: "matched", entityKey: "entity-a", tableId: "table-a", hasContent: true },
     { id: "c", text: "待核对沟通，候选包含同名学员。", status: "review", entityKey: null, tableId: "table-a", hasContent: true },
-    { id: "d", text: "未匹配旧档案：联系电话未知，仍需搜索。", status: "unmatched", entityKey: null, tableId: "table-b", hasContent: true },
+    { id: "d", text: "未匹配旧档案：联系电话未知，仍需搜索。", status: "unmatched", entityKey: null, tableId: "table-b", hasContent: true, names: ["旧档案"], phones: ["13800000003"] },
     { id: "e", text: "保存原始标记 %_ 与单引号 ' 和全角ＡＢＣ", status: "unmatched", entityKey: null, tableId: "table-b", hasContent: true },
     { id: "f", text: "", status: "matched", entityKey: "entity-a", tableId: "table-a", hasContent: false },
     { id: "g", text: "另一名学员的独立沟通。", status: "matched", entityKey: "entity-b", tableId: "table-b", hasContent: true },
@@ -38,7 +38,7 @@ function fixtures() {
       tables: [{ id: "table-a", name: "历史沟通", contentRowCount: 99 }, { id: "table-b", name: "旧档案", contentRowCount: 99 }],
       records: records.map((r) => ({
         id: r.id, sourceId: "source-a", tableId: r.tableId, tableName: r.tableId === "table-a" ? "历史沟通" : "旧档案",
-        sourceRecordId: `source-${r.id}`, sourceRow: 1, dateLabel: "2020-01-01", label: `合成记录 ${r.id}`, names: [], phones: [],
+        sourceRecordId: `source-${r.id}`, sourceRow: 1, dateLabel: "2020-01-01", label: `合成记录 ${r.id}`, names: r.names ?? [], phones: r.phones ?? [],
         hasContent: r.hasContent, warnings: [], links: [],
         cells: [{ fieldId: "note", fieldName: "沟通原文", kind: "narrative", type: "Text", text: r.text, rawValue: { text: r.text, sourceStyle: "original" } }],
       })),
@@ -142,7 +142,7 @@ describe("history archive isolated SQLite store", () => {
     const { file, summary } = build();
     expect(summary).toMatchObject({
       recordCount: 7, contentRecordCount: 6, matchedCount: 3, reviewCount: 1, unmatchedCount: 2,
-      singleCandidateReviewCount: 0, multipleCandidateReviewCount: 1,
+      singleCandidateReviewCount: 0, multipleCandidateReviewCount: 1, unmatchedWithIdentityCount: 1, unmatchedWithoutIdentityCount: 1,
       gradeCorrectionCount: 1, excludedCommunicationCount: 1, archivedClassCount: 5,
     });
     expect(summary.tables.map((table: { records: number }) => table.records)).toEqual([3, 3]);
