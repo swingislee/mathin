@@ -80,7 +80,7 @@ export function TeacherAssessmentWorkbench({ data }: { data: TeacherAssessmentWo
         title={t("title", { name: data.subjectName })}
         description={t("choosePaperIntro")}
         meta={<span>{grade} · {schedule}{data.location ? ` · ${data.location}` : ""}</span>}
-        backHref="/dashboard/assessments"
+        backHref="/dashboard/followups/assessments"
         backLabel={t("backToAggregate")}
         density="compact"
       >
@@ -480,7 +480,7 @@ function QuestionWorkbench({
     <DashboardPage
       title={t("title", { name: data.subjectName })}
       meta={<span>{pageMeta}</span>}
-      backHref="/dashboard/assessments"
+      backHref="/dashboard/followups/assessments"
       backLabel={t("backToAggregate")}
       density="compact"
       className="flex w-full min-w-0 flex-1 flex-col panel-canvas"

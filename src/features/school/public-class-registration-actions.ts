@@ -25,7 +25,7 @@ export async function savePublicClassRegistrationBundleAction(input: z.input<typ
       p_activity_id: value.activityId, p_registration_id: value.registrationId, p_records: value.records,
     });
     revalidatePath("/[locale]/dashboard/activities", "layout");
-    revalidatePath("/[locale]/dashboard/invitations", "page");
+    revalidatePath("/[locale]/dashboard/followups/communication", "page");
     return { ok: true, data: await loadPublicClassRegistration(value.activityId) };
   } catch (error) { return actionError(error, codes); }
 }

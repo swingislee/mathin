@@ -138,7 +138,7 @@ describe("teacher question assessment workbench", () => {
     const classroomPanel = read("src", "features", "school", "SessionLearningCheckPanel.tsx");
     const matrix = read("src", "features", "school", "LearningCheckMatrixEntry.tsx");
     const quickEntryGrid = read("src", "features", "school", "LearningCheckQuickEntryGrid.tsx");
-    const page = read("src", "app", "[locale]", "dashboard", "assessments", "[registrationId]", "page.tsx");
+    const page = read("src", "app", "[locale]", "dashboard", "followups", "assessments", "[registrationId]", "page.tsx");
     const queue = read("src", "features", "school", "AssessmentUnifiedWorkbench.tsx");
     const routes = read("src", "features", "school", "dashboard-routes.ts");
 
@@ -166,7 +166,7 @@ describe("teacher question assessment workbench", () => {
     expect(queue).toContain("TeacherAssessmentEntryButton");
     expect(queue).not.toContain("saveAssessmentWorkbenchRowAction");
     expect(queue).not.toContain("saveAssessmentWorkbenchRouteAction");
-    expect(routes).toContain('hrefPattern: "/dashboard/assessments/[registrationId]"');
+    expect(routes).toContain('hrefPattern: "/dashboard/followups/assessments/[registrationId]"');
     expect(routes).toContain('shellMode: "panel"');
   });
 });

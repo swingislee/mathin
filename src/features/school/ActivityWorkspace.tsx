@@ -1,8 +1,8 @@
 "use client";
 
 import { CircleAlert, CircleCheck, LoaderCircle, Search, UserPlus } from "lucide-react";
-import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,12 +36,18 @@ import {
   DashboardCommandState,
   DashboardCommandTabs,
   DashboardSection,
+  DashboardTableColumnHeader,
   DashboardTableShell,
   StatusStrip,
+  type DashboardTableColumnDefinition,
+  useDashboardTableView,
 } from "./dashboard-page";
 
 type ParticipationStatus = ActivityRegistration["status"];
 type SaveState = "idle" | "dirty" | "saving" | "saved" | "error";
+const EMPTY_VALUE = "$empty";
+type ParticipationViewColumn = "student" | "note" | "assessment" | "route";
+type AssessmentRosterColumn = "student" | "participation";
 
 interface AssessmentDraft {
   assessmentBand: StoredAssessmentBand | null;
@@ -181,6 +187,50 @@ function ParticipationTable({
   onStatusEdit: (registrationId: string) => void;
 }) {
   const t = useTranslations("school.activities");
+  const tableT = useTranslations("school.table");
+  const locale = useLocale();
+  const columns = useMemo<Record<ParticipationViewColumn, DashboardTableColumnDefinition<ActivityRegistration>>>(() => ({
+    student: {
+      filterValues: (registration) => [
+        {
+          value: `name:${registration.studentName}`,
+          label: registration.studentName,
+          group: tableT("fieldName"),
+        },
+        {
+          value: registration.studentGrade ? `grade:${registration.studentGrade}` : `grade:${EMPTY_VALUE}`,
+          label: registration.studentGrade ? t("gradeValue", { grade: registration.studentGrade }) : tableT("emptyValue"),
+          group: tableT("fieldGrade"),
+        },
+      ],
+      sortValue: (registration) => registration.studentName,
+    },
+    note: {
+      filterValues: (registration) => ({
+        value: registration.outcome ? `note:${registration.outcome}` : EMPTY_VALUE,
+        label: registration.outcome || tableT("emptyValue"),
+      }),
+      sortValue: (registration) => registration.outcome,
+    },
+    assessment: {
+      filterValues: (registration) => registration.assessment
+        ? {
+            value: registration.assessment.assessmentBand ?? "entered",
+            label: registration.assessment.assessmentBand
+              ? t(`band_${registration.assessment.assessmentBand}`)
+              : t("assessmentEntered"),
+          }
+        : { value: EMPTY_VALUE, label: t("notEntered") },
+      sortValue: (registration) => registration.assessment?.score,
+    },
+    route: {
+      filterValues: (registration) => registration.route
+        ? { value: registration.route.route, label: t(`route_${registration.route.route}`) }
+        : { value: EMPTY_VALUE, label: t("route_pending") },
+      sortValue: (registration) => registration.route?.route,
+    },
+  }), [t, tableT]);
+  const table = useDashboardTableView({ rows: activity.registrations, columns, locale });
 
   const setStatus = (registration: ActivityRegistration, status: ParticipationStatus) => {
     onStatusEdit(registration.id);
@@ -199,14 +249,14 @@ function ParticipationTable({
     <DashboardTableShell>
       <Table className="min-w-[58rem]">
         <TableHeader><TableRow>
-          <TableHead>{t("student")}</TableHead>
+          <TableHead><DashboardTableColumnHeader label={t("student")} {...table.columnProps("student")} /></TableHead>
           <TableHead>{t("participation")}</TableHead>
-          <TableHead>{t("onSiteNote")}</TableHead>
-          <TableHead>{t("assessment")}</TableHead>
-          <TableHead>{t("routingResult")}</TableHead>
+          <TableHead><DashboardTableColumnHeader label={t("onSiteNote")} {...table.columnProps("note")} /></TableHead>
+          <TableHead><DashboardTableColumnHeader label={t("assessment")} {...table.columnProps("assessment")} /></TableHead>
+          <TableHead><DashboardTableColumnHeader label={t("routingResult")} {...table.columnProps("route")} /></TableHead>
         </TableRow></TableHeader>
         <TableBody>
-          {activity.registrations.map((registration) => <TableRow key={registration.id}>
+          {table.visibleRows.map((registration) => <TableRow key={registration.id}>
             <StudentCell registration={registration} />
             <TableCell>
               {canRegister ? <Select
@@ -231,7 +281,7 @@ function ParticipationTable({
               ? <Badge variant="outline">{t(`route_${registration.route.route}`)}</Badge>
               : <span className="text-xs text-muted">{t("route_pending")}</span>}</TableCell>
           </TableRow>)}
-          {activity.registrations.length === 0 ? <TableRow><TableCell colSpan={5} className="h-40 text-center text-muted">{t("noParticipants")}</TableCell></TableRow> : null}
+          {table.visibleRows.length === 0 ? <TableRow><TableCell colSpan={5} className="h-40 text-center text-muted">{activity.registrations.length === 0 ? t("noParticipants") : tableT("filteredEmpty")}</TableCell></TableRow> : null}
         </TableBody>
       </Table>
     </DashboardTableShell>
@@ -309,7 +359,37 @@ function AssessmentTable({
   onEdit: (registration: ActivityRegistration) => void;
 }) {
   const t = useTranslations("school.activities");
-  const rows = registrations.filter((registration) => registration.status !== "cancelled");
+  const tableT = useTranslations("school.table");
+  const locale = useLocale();
+  const rows = useMemo(
+    () => registrations.filter((registration) => registration.status !== "cancelled"),
+    [registrations],
+  );
+  const columns = useMemo<Record<AssessmentRosterColumn, DashboardTableColumnDefinition<ActivityRegistration>>>(() => ({
+    student: {
+      filterValues: (registration) => [
+        {
+          value: `name:${registration.studentName}`,
+          label: registration.studentName,
+          group: tableT("fieldName"),
+        },
+        {
+          value: registration.studentGrade ? `grade:${registration.studentGrade}` : `grade:${EMPTY_VALUE}`,
+          label: registration.studentGrade ? t("gradeValue", { grade: registration.studentGrade }) : tableT("emptyValue"),
+          group: tableT("fieldGrade"),
+        },
+      ],
+      sortValue: (registration) => registration.studentName,
+    },
+    participation: {
+      filterValues: (registration) => ({
+        value: registration.status,
+        label: t(`status_${registration.status}`),
+      }),
+      sortValue: (registration) => registration.status,
+    },
+  }), [t, tableT]);
+  const table = useDashboardTableView({ rows, columns, locale });
   const columnCount = canViewOutcome ? 12 : 10;
 
   return <DashboardSection
@@ -321,8 +401,8 @@ function AssessmentTable({
       <Table className="min-w-[128rem] table-fixed">
         <TableHeader className="bg-card">
           <TableRow className="border-b border-line/60 hover:bg-transparent">
-            <TableHead rowSpan={2} className="sticky left-0 z-30 w-44 border-r border-line bg-card">{t("student")}</TableHead>
-            <TableHead rowSpan={2} className="sticky left-44 z-30 w-28 border-r border-line bg-card">{t("participation")}</TableHead>
+            <TableHead rowSpan={2} className="sticky left-0 z-30 w-44 border-r border-line bg-card"><DashboardTableColumnHeader label={t("student")} {...table.columnProps("student")} /></TableHead>
+            <TableHead rowSpan={2} className="sticky left-44 z-30 w-28 border-r border-line bg-card"><DashboardTableColumnHeader label={t("participation")} {...table.columnProps("participation")} /></TableHead>
             <TableHead scope="colgroup" colSpan={4} className="h-8 text-center">{t("assessmentGroup")}</TableHead>
             <TableHead scope="colgroup" colSpan={3} className="h-8 text-center">{t("familyDecisionGroup")}</TableHead>
             {canViewOutcome ? <TableHead scope="colgroup" colSpan={2} className="h-8 text-center">{t("conversationOutcome")}</TableHead> : null}
@@ -343,7 +423,7 @@ function AssessmentTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.map((registration) => <AssessmentRow
+          {table.visibleRows.map((registration) => <AssessmentRow
             key={registration.id}
             registration={registration}
             canAssess={canAssess}
@@ -352,7 +432,7 @@ function AssessmentTable({
             attendancePending={attendancePendingIds.has(registration.id)}
             onEdit={onEdit}
           />)}
-          {rows.length === 0 ? <TableRow><TableCell colSpan={columnCount} className="h-40 text-center text-muted">{t("noAssessmentRows")}</TableCell></TableRow> : null}
+          {table.visibleRows.length === 0 ? <TableRow><TableCell colSpan={columnCount} className="h-40 text-center text-muted">{rows.length === 0 ? t("noAssessmentRows") : tableT("filteredEmpty")}</TableCell></TableRow> : null}
         </TableBody>
       </Table>
     </DashboardTableShell>

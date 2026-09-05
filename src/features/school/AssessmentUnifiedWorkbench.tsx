@@ -1,22 +1,28 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { useDashboardSearchQuery } from "./dashboard-page/DashboardPreferenceScope";
+
+import { useMemo, useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
   Clock3,
+  FilePenLine,
   UserCheck,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
-import { DashboardInlineEntry } from "./dashboard-page/DashboardInlineEntry";
 import { Link } from "@/i18n/navigation";
+import { cn } from "@/lib/utils";
+import { FollowupChoice } from "./dashboard-page/FollowupChoice";
+import { FollowupInlineDetails } from "./dashboard-page/FollowupInlineDetails";
+import { FilterSearchInput } from "./FilterBar";
+import { FollowupTabs } from "./FollowupTabs";
+import { ActivityAssessmentDetails, ActivityAssessmentDraftProvider } from "./ActivityAssessmentDetails";
+import { Student360Trigger } from "./Student360Sheet";
 import { PostActivityHandoff } from "./EnrollmentHandoffButton";
 import { reassignAssessmentAssessorAction } from "./assessment-assessor-actions";
 import {
@@ -34,7 +40,10 @@ import {
   DashboardCommandState,
   DashboardEmptyCard,
   DashboardPage,
+  DashboardTableColumnHeader,
   DashboardTableShell,
+  type DashboardTableColumnDefinition,
+  useDashboardTableView,
 } from "./dashboard-page";
 import type { InvitationAssessorOption } from "./invitation-contract";
 import { LearningCheckStatusIcon } from "./LearningCheckStatusIcon";
@@ -46,6 +55,8 @@ interface SupportDraft {
   route: ActivityRouteKind | null;
 }
 
+const EMPTY_VALUE = "$empty";
+type AssessmentTableColumn = "student" | "kind" | "arrangement" | "result" | "teacher" | "status" | "updated";
 
 const QUEUE_LABEL_KEYS: Record<AssessmentWorkbenchQueue, string> = {
   pending: "queue_assessment_pending",
@@ -72,16 +83,11 @@ function queueFor(
   return stage;
 }
 
-function defaultQueue(
-  rows: readonly AssessmentWorkbenchRow[],
-  drafts: Readonly<Record<string, SupportDraft>>,
-  canSupport: boolean,
-): AssessmentWorkbenchQueue {
-  if (canSupport && rows.some((row) => queueFor(row, drafts[row.id]) === "feedback")) return "feedback";
-  if (rows.some((row) => queueFor(row, drafts[row.id]) === "pending")) return "pending";
-  if (rows.some((row) => queueFor(row, drafts[row.id]) === "in_progress")) return "in_progress";
-  if (rows.some((row) => queueFor(row, drafts[row.id]) === "handled")) return "handled";
-  return "all";
+function assessmentConclusion(row: AssessmentWorkbenchRow): string {
+  return row.assessment?.teacherObservation
+    || row.assessment?.teacherRecommendation
+    || row.assessment?.strengths
+    || "";
 }
 
 export function AssessmentUnifiedWorkbench({
@@ -104,23 +110,14 @@ export function AssessmentUnifiedWorkbench({
   const assessmentT = useTranslations("school.assessments");
   const teacherT = useTranslations("school.teacherAssessment");
   const sessionT = useTranslations("school.session");
+  const tableT = useTranslations("school.table");
   const initialDrafts = useMemo(() => Object.fromEntries(
     initialRows.map((row) => [row.id, draftFromRow(row)]),
   ), [initialRows]);
-  const initialQueue = useMemo(
-    () => defaultQueue(initialRows, initialDrafts, canSupport),
-    [canSupport, initialDrafts, initialRows],
-  );
   const [rows, setRows] = useState(initialRows);
   const [drafts, setDrafts] = useState<Record<string, SupportDraft>>(initialDrafts);
-  const [queue, setQueue] = useState<AssessmentWorkbenchQueue>(initialQueue);
-  const [query, setQuery] = useState("");
-  const [activeId, setActiveId] = useState<string | null>(
-    initialRows.find((row) => queueFor(row, initialDrafts[row.id]) === initialQueue)?.id
-      ?? initialRows[0]?.id
-      ?? null,
-  );
-  const [retainedId, setRetainedId] = useState<string | null>(null);
+  const [query, setQuery] = useDashboardSearchQuery("assessments");
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [reassigningId, setReassigningId] = useState<string | null>(null);
   const dateTime = useMemo(() => new Intl.DateTimeFormat(locale, {
     month: "numeric",
@@ -131,19 +128,9 @@ export function AssessmentUnifiedWorkbench({
     timeZone: "Asia/Shanghai",
   }), [locale]);
 
-  const counts = useMemo(() => ({
-    pending: rows.filter((row) => queueFor(row, drafts[row.id]) === "pending").length,
-    in_progress: rows.filter((row) => queueFor(row, drafts[row.id]) === "in_progress").length,
-    feedback: rows.filter((row) => queueFor(row, drafts[row.id]) === "feedback").length,
-    handled: rows.filter((row) => queueFor(row, drafts[row.id]) === "handled").length,
-    all: rows.length,
-  }), [drafts, rows]);
-  const visibleRows = useMemo(() => {
+  const scopedRows = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase(locale);
     return rows.filter((row) => {
-      const draft = drafts[row.id];
-      const inQueue = queue === "all" || queueFor(row, draft) === queue || row.id === retainedId;
-      if (!inQueue) return false;
       if (!needle) return true;
       const assessment = row.assessment;
       return [
@@ -153,22 +140,143 @@ export function AssessmentUnifiedWorkbench({
         row.location,
         row.assessorName,
         row.background,
+        row.activityTitle,
         assessment?.teacherObservation ?? "",
         assessment?.teacherRecommendation ?? "",
       ].some((value) => value.toLocaleLowerCase(locale).includes(needle));
     });
-  }, [drafts, locale, query, queue, retainedId, rows]);
+  }, [locale, query, rows]);
+  const dayFormatter = useMemo(() => new Intl.DateTimeFormat(locale, {
+    dateStyle: "medium",
+    timeZone: "Asia/Shanghai",
+  }), [locale]);
+  const tableColumns = useMemo<Record<AssessmentTableColumn, DashboardTableColumnDefinition<AssessmentWorkbenchRow>>>(() => ({
+    kind: {
+      filterValues: (row) => ({ value: row.assessmentKind, label: t(`type_${row.assessmentKind}`) }),
+      sortValue: (row) => row.assessmentKind,
+    },
+    student: {
+      filterValues: (row) => [
+        { value: `name:${row.name}`, label: row.name, group: tableT("fieldName") },
+        {
+          value: row.phone ? `phone:${row.phone}` : `phone:${EMPTY_VALUE}`,
+          label: row.phone || tableT("emptyValue"),
+          group: tableT("fieldPhone"),
+        },
+        {
+          value: row.gradeText || row.grade ? `grade:${row.gradeText || row.grade}` : `grade:${EMPTY_VALUE}`,
+          label: row.gradeText || (row.grade ? assessmentT("gradeValue", { grade: row.grade }) : assessmentT("gradePending")),
+          group: tableT("fieldGrade"),
+        },
+      ],
+      sortValue: (row) => row.name,
+    },
+    arrangement: {
+      filterValues: (row) => [
+        {
+          value: `time:${row.scheduledAt}`,
+          label: dateTime.format(new Date(row.scheduledAt)),
+          group: tableT("fieldScheduledTime"),
+        },
+        {
+          value: row.location ? `location:${row.location}` : `location:${EMPTY_VALUE}`,
+          label: row.location || assessmentT("locationPending"),
+          group: tableT("fieldLocation"),
+        },
+        {
+          value: row.assessorId ? `assessor:${row.assessorId}` : `assessor:${EMPTY_VALUE}`,
+          label: row.assessorName || t("assessorPending"),
+          group: tableT("fieldAssessor"),
+        },
+        {
+          value: `assessor-source:${row.assessorSource}`,
+          label: t(row.assessorSource === "actual" ? "actualAssessor" : "assignedAssessor"),
+          group: tableT("fieldAssessorSource"),
+        },
+      ],
+      sortValue: (row) => row.scheduledAt,
+    },
+    result: {
+      filterValues: (row) => {
+        const stage = queueFor(row, drafts[row.id]);
+        const completed = stage === "feedback" || stage === "handled";
+        const score = completed ? row.assessment?.score : null;
+        const hasScore = score !== null && score !== undefined;
+        return [
+          ...(hasScore
+            ? [{
+                value: `score:${score}`,
+                label: row.questionSummary
+                  ? t("scoreValue", { score, total: row.questionSummary.totalScore })
+                  : t("scoreOnly", { score }),
+                group: tableT("fieldScore"),
+              }]
+            : []),
+          ...(row.assessment?.assessmentBand
+            ? [{
+                value: `band:${row.assessment.assessmentBand}`,
+                label: teacherT(`band_${row.assessment.assessmentBand}`),
+                group: tableT("fieldBand"),
+              }]
+            : []),
+          ...(!hasScore
+            ? [{
+                value: row.questionSummary
+                  ? `progress:${row.questionSummary.answeredCount}:${row.questionSummary.questionCount}`
+                  : `progress:${stage}`,
+                label: row.questionSummary
+                  ? t("progressValue", {
+                      answered: row.questionSummary.answeredCount,
+                      total: row.questionSummary.questionCount,
+                    })
+                  : t(stage === "pending" ? "waitingStart" : "teacherWorking"),
+                group: tableT("fieldProgress"),
+              }]
+            : []),
+          {
+            value: row.questionSummary?.paperTitle
+              ? `paper:${row.questionSummary.paperTitle}`
+              : `paper:${EMPTY_VALUE}`,
+            label: row.questionSummary?.paperTitle || t("paperPending"),
+            group: tableT("fieldPaper"),
+          },
+        ];
+      },
+      sortValue: (row) => row.assessment?.score,
+    },
+    teacher: {
+      filterValues: (row) => {
+        const conclusion = assessmentConclusion(row);
+        return {
+          value: conclusion ? `conclusion:${conclusion}` : EMPTY_VALUE,
+          label: conclusion || tableT("emptyValue"),
+        };
+      },
+      sortValue: (row) => assessmentConclusion(row),
+    },
+    status: {
+      filterValues: (row) => {
+        const stage = queueFor(row, drafts[row.id]);
+        return { value: stage, label: t(QUEUE_LABEL_KEYS[stage]) };
+      },
+      sortValue: (row) => ASSESSMENT_WORKBENCH_QUEUES.indexOf(queueFor(row, drafts[row.id])),
+    },
+    updated: {
+      filterValues: (row) => ({
+        value: dayFormatter.format(new Date(row.updatedAt)),
+        label: dayFormatter.format(new Date(row.updatedAt)),
+      }),
+      sortValue: (row) => row.updatedAt,
+    },
+  }), [assessmentT, dateTime, dayFormatter, drafts, t, tableT, teacherT]);
+  const assessmentTable = useDashboardTableView({ rows: scopedRows, columns: tableColumns, locale, persistenceKey: "followup-assessments" });
+  const saveRow = (saved: AssessmentWorkbenchRow) => setRows((current) => current.map((row) => row.id === saved.id ? saved : row));
 
   const updateDraft = (id: string, update: (draft: SupportDraft) => SupportDraft) => {
     setDrafts((current) => ({ ...current, [id]: update(current[id]) }));
   };
-  const chooseQueue = (nextQueue: AssessmentWorkbenchQueue) => {
-    setQueue(nextQueue);
-    setRetainedId(null);
-    setActiveId(rows.find((row) => nextQueue === "all" || queueFor(row, drafts[row.id]) === nextQueue)?.id ?? null);
-  };
   const reassignAssessor = (row: AssessmentWorkbenchRow, assessorId: string) => {
-    if (!row.invitationId || assessorId === row.assessorId) return;
+    if (row.assessmentKind !== "one_to_one" || !row.invitationId || assessorId === row.assessorId) return;
     const option = assessors.find((candidate) => candidate.userId === assessorId);
     if (!option) return;
     const previous = { assessorId: row.assessorId, assessorName: row.assessorName };
@@ -192,75 +300,79 @@ export function AssessmentUnifiedWorkbench({
         assessorName: previous.assessorName,
       } : candidate));
       toast.error(t("reassignFailed"));
+    }).catch(() => {
+      setReassigningId(null);
+      setRows((current) => current.map((candidate) => candidate.id === row.id ? { ...candidate, ...previous, assessorSource: row.assessorSource } : candidate));
+      toast.error(t("reassignFailed"));
     });
   };
 
   return (
     <DashboardPage
       title={hubT("title")}
-      eyebrow={hubT("sharedDesk")}
-      description={t("unifiedIntro")}
-      meta={t("liveQueueMeta")}
       density="compact"
       commandPanel={(
         <DashboardCommandPanel>
           <DashboardCommandState>
-            <Tabs value={queue} onValueChange={(value) => chooseQueue(value as AssessmentWorkbenchQueue)} aria-label={t("unifiedQueueLabel")}>
-              <TabsList className="h-9 p-0.5">
-                {ASSESSMENT_WORKBENCH_QUEUES.map((item) => (
-                  <TabsTrigger key={item} value={item} className="h-8 gap-1.5 px-2.5 text-xs">
-                    {t(QUEUE_LABEL_KEYS[item])}
-                    <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-line/70 px-1.5 text-[10px] leading-5 text-ink">
-                      {counts[item]}
-                    </span>
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
+            <FollowupTabs />
+            <span className="text-xs tabular-nums text-muted">{assessmentTable.visibleRows.length} / {rows.length}</span>
           </DashboardCommandState>
           <DashboardCommandFilters>
-            <Input
+            <FilterSearchInput
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              className="h-9 min-w-56 max-w-xl flex-1 text-xs"
               placeholder={t("searchPlaceholder")}
               aria-label={t("searchPlaceholder")}
             />
+            <span className="hidden text-[11px] text-muted xl:inline">{t("keyboardHint")}</span>
           </DashboardCommandFilters>
 
         </DashboardCommandPanel>
       )}
     >
-      {visibleRows.length === 0 ? <DashboardEmptyCard>{t("empty")}</DashboardEmptyCard> : (
+      {scopedRows.length === 0 ? <DashboardEmptyCard>{t("empty")}</DashboardEmptyCard> : (
         <DashboardTableShell data-assessment-unified-workbench>
-          <Table className="min-w-[86rem] table-fixed text-xs" containerClassName="max-h-[calc(100dvh-13rem)] overflow-auto">
+          <Table className="min-w-[94rem] table-fixed text-xs" containerClassName="max-h-[calc(100dvh-11rem)] overflow-auto">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="sticky left-0 top-0 z-30 h-9 w-56 border-r border-line bg-card px-2">{t("studentColumn")}</TableHead>
-                <TableHead className="sticky top-0 z-20 h-9 w-64 bg-card px-2">{t("arrangementColumn")}</TableHead>
-                <TableHead className="sticky top-0 z-20 h-9 w-48 bg-card px-2">{t("resultColumn")}</TableHead>
-                <TableHead className="sticky top-0 z-20 h-9 bg-card px-2">{t("teacherColumn")}</TableHead>
-                <TableHead className="sticky top-0 z-20 h-9 w-48 bg-card px-2">{t("statusColumn")}</TableHead>
-                <TableHead className="sticky top-0 z-20 h-9 w-28 bg-card px-2">{t("updatedColumn")}</TableHead>
+                <TableHead className="sticky left-0 top-0 z-30 h-9 w-56 border-r border-line bg-card px-2"><DashboardTableColumnHeader label={t("studentColumn")} {...assessmentTable.columnProps("student")} /></TableHead>
+                <TableHead className="sticky top-0 z-20 h-9 w-32 bg-card px-2"><DashboardTableColumnHeader label={t("typeColumn")} {...assessmentTable.columnProps("kind")} /></TableHead>
+                <TableHead className="sticky top-0 z-20 h-9 w-64 bg-card px-2"><DashboardTableColumnHeader label={t("arrangementColumn")} {...assessmentTable.columnProps("arrangement")} /></TableHead>
+                <TableHead className="sticky top-0 z-20 h-9 w-56 bg-card px-2"><DashboardTableColumnHeader label={t("resultColumn")} {...assessmentTable.columnProps("result")} /></TableHead>
+                <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={t("teacherColumn")} {...assessmentTable.columnProps("teacher")} /></TableHead>
+                <TableHead className="sticky top-0 z-20 h-9 w-64 bg-card px-2"><DashboardTableColumnHeader label={t("statusColumn")} {...assessmentTable.columnProps("status")} /></TableHead>
+                <TableHead className="sticky top-0 z-20 h-9 w-28 bg-card px-2"><DashboardTableColumnHeader label={t("updatedColumn")} {...assessmentTable.columnProps("updated")} /></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {visibleRows.map((row) => {
+              {assessmentTable.visibleRows.map((row) => {
                 const draft = drafts[row.id];
                 const active = row.id === activeId;
                 const stage = queueFor(row, draft);
                 const completed = stage === "feedback" || stage === "handled";
-                const conclusion = row.assessment?.teacherObservation
-                  || row.assessment?.teacherRecommendation
-                  || row.assessment?.strengths
-                  || "";
+                const conclusion = assessmentConclusion(row);
                 return (
-                  <Fragment key={row.id}>
+                  <ActivityAssessmentDraftProvider key={row.id} row={row}>
                     <TableRow
+                      tabIndex={0}
                       aria-expanded={active}
+                      aria-controls={active ? `assessment-details-${row.id}` : undefined}
                       aria-selected={active}
-                      className={cn("cursor-pointer", active && "bg-moon/10 hover:bg-moon/10")}
+                      className={cn("h-16 cursor-pointer focus-visible:bg-blue/10 focus-visible:outline-none", active && "bg-blue/10 hover:bg-blue/10")}
                       onClick={() => setActiveId((current) => current === row.id ? null : row.id)}
+                      onKeyDown={(event) => {
+                        if (event.nativeEvent.isComposing || event.repeat) return;
+                        if (event.target !== event.currentTarget || event.nativeEvent.isComposing || event.repeat) return;
+                        if (event.key === "Enter" && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) { event.preventDefault(); setActiveId(active ? null : row.id); }
+                        if (event.key === "Escape" && active) { event.preventDefault(); setActiveId(null); }
+                        if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                          event.preventDefault();
+                          const direction = event.key === "ArrowDown" ? "nextElementSibling" : "previousElementSibling";
+                          let sibling = event.currentTarget[direction];
+                          while (sibling && !sibling.hasAttribute("data-assessment-workbench-row")) sibling = sibling[direction];
+                          if (sibling instanceof HTMLElement) sibling.focus();
+                        }
+                      }}
                       data-assessment-workbench-row={row.id}
                     >
                       <TableCell
@@ -271,15 +383,18 @@ export function AssessmentUnifiedWorkbench({
                           {active ? <ChevronDown className="mt-0.5 size-3.5 shrink-0 text-muted" /> : <ChevronRight className="mt-0.5 size-3.5 shrink-0 text-muted" />}
                           <div className="min-w-0">
                             <div className="flex min-w-0 items-center gap-2">
-                              {row.studentId ? (
-                                <Link
-                                  href={`/dashboard/students/${row.studentId}`}
-                                  className="truncate font-medium text-ink hover:underline"
-                                  onClick={(event) => event.stopPropagation()}
-                                >
-                                  {row.name}
-                                </Link>
-                              ) : <span className="truncate font-medium text-ink">{row.name}</span>}
+                              <Student360Trigger
+                                subject={{ studentId: row.studentId, leadId: row.leadId }}
+                                fallback={{
+                                  name: row.name,
+                                  grade: row.grade,
+                                  gradeText: row.gradeText,
+                                  phone: row.phone,
+                                }}
+                                className="truncate"
+                              >
+                                {row.name}
+                              </Student360Trigger>
                               <span className="shrink-0 text-[11px] text-muted">
                                 {row.gradeText || (row.grade ? assessmentT("gradeValue", { grade: row.grade }) : assessmentT("gradePending"))}
                               </span>
@@ -288,43 +403,32 @@ export function AssessmentUnifiedWorkbench({
                           </div>
                         </div>
                       </TableCell>
+                      <TableCell className="px-2 py-2"><Badge variant="outline" className="whitespace-nowrap border-line bg-line/20 text-muted">{t(`type_${row.assessmentKind}`)}</Badge></TableCell>
                       <TableCell className="px-2 py-2">
                         <p className="truncate whitespace-nowrap font-medium text-ink">
                           {dateTime.format(new Date(row.scheduledAt))} · {row.location || assessmentT("locationPending")}
                         </p>
                         <div className="mt-1" onClick={(event) => event.stopPropagation()}>
-                          {completed || !canManageAssessor || !row.invitationId ? (
+                          {completed || row.assessmentKind !== "one_to_one" || !canManageAssessor || !row.invitationId ? (
                             <div className="flex min-w-0 items-center gap-1.5 text-[11px] text-muted">
                               {row.assessorSource === "actual" ? <UserCheck className="size-3.5 shrink-0 text-leaf-deep" /> : null}
                               <span className="shrink-0">{t(row.assessorSource === "actual" ? "actualAssessor" : "assignedAssessor")}</span>
                               <span className="truncate font-medium text-ink">{row.assessorName || t("assessorPending")}</span>
                             </div>
                           ) : (
-                            <Select
-                              value={row.assessorId ?? undefined}
+                            <div data-assessor-reassignment={row.id}><FollowupChoice
+                              value={row.assessorId ?? ""}
                               disabled={reassigningId === row.id}
                               onValueChange={(value) => reassignAssessor(row, value)}
-                            >
-                              <SelectTrigger
-                                className="h-7 w-full border-dashed px-2 text-[11px] shadow-none hover:translate-y-0"
-                                aria-label={t("changeAssessorFor", { name: row.name })}
-                                data-assessor-reassignment={row.id}
-                              >
-                                <SelectValue placeholder={t("assessorPending")} />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {assessors.map((assessor) => (
-                                  <SelectItem key={assessor.userId} value={assessor.userId} className="text-xs">
-                                    {assessor.displayName}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                              className="flex-nowrap [&>button]:min-w-0 [&>button]:truncate"
+                              label={t("changeAssessorFor", { name: row.name })}
+                              options={assessors.map((assessor) => ({ value: assessor.userId, label: assessor.displayName, tone: "healthy" }))}
+                            /></div>
                           )}
                         </div>
                       </TableCell>
                       <TableCell className="px-2 py-2">
-                        {completed && row.assessment?.score !== null && row.assessment?.score !== undefined ? (
+                        {row.assessmentKind === "activity" && !row.publicClassRecord && canAssess ? <ActivityAssessmentDetails row={row} compact disabled={!canAssess} onSaved={saveRow} /> : completed && row.assessment?.score !== null && row.assessment?.score !== undefined ? (
                           <div className="flex min-w-0 items-center gap-2">
                             <span className="shrink-0 text-sm font-semibold tabular-nums text-ink">
                               {row.questionSummary
@@ -332,7 +436,7 @@ export function AssessmentUnifiedWorkbench({
                                 : t("scoreOnly", { score: row.assessment.score })}
                             </span>
                             {row.assessment.assessmentBand ? (
-                              <Badge variant="outline" className="border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300">
+                              <Badge variant="outline" className={cn(row.assessment.assessmentBand === "x_plus" || row.assessment.assessmentBand === "below_a" ? "border-rose/30 bg-rose/15 text-rose" : row.assessment.assessmentBand === "g_plus" ? "border-crater/40 bg-moon/40 text-ink" : "border-blue/30 bg-blue/15 text-blue")}>
                                 {teacherT(`band_${row.assessment.assessmentBand}`)}
                               </Badge>
                             ) : null}
@@ -342,18 +446,19 @@ export function AssessmentUnifiedWorkbench({
                             answered: row.questionSummary.answeredCount,
                             total: row.questionSummary.questionCount,
                           })}</p>
-                        ) : <p className="font-medium text-muted">{t(stage === "pending" ? "waitingStart" : "teacherWorking")}</p>}
-                        <p className="mt-0.5 truncate text-[11px] text-muted">{row.questionSummary?.paperTitle || t("paperPending")}</p>
+                        ) : <p className="font-medium text-muted">{completed ? "—" : t(stage === "pending" ? "waitingStart" : "teacherWorking")}</p>}
+                        {row.questionSummary?.paperTitle ? <p className="mt-0.5 truncate text-[11px] text-muted">{row.questionSummary.paperTitle}</p> : null}
                       </TableCell>
                       <TableCell className="px-2 py-2">
-                        <p className={cn("line-clamp-2 leading-5", conclusion ? "text-ink" : "text-muted")}>
+                        {row.publicClassRecord && canAssess ? <ActivityAssessmentDetails row={row} compact disabled={!canAssess} onSaved={saveRow} /> : <p className={cn("truncate leading-5", conclusion ? "text-ink" : "text-muted")}>
                           {conclusion || (completed ? t("conclusionPending") : t("teacherWorking"))}
-                        </p>
+                        </p>}
                       </TableCell>
                       <TableCell className="px-2 py-2">
                         <div className="flex items-center justify-between gap-2">
                           <StageBadge stage={stage} contacting={false} />
-                          {canAssess ? (
+                          <Button type="button" variant="ghost" size="sm" className="h-7 px-1.5" aria-label={t("details")} aria-expanded={active} aria-controls={active ? `assessment-details-${row.id}` : undefined} title={`${t("details")} · Enter`} aria-keyshortcuts="Enter" onClick={(event) => { event.stopPropagation(); setActiveId(active ? null : row.id); }}><FilePenLine className="size-3.5" /></Button>
+                          {canAssess && row.assessmentKind === "one_to_one" ? (
                             <TeacherAssessmentEntryButton registrationId={row.registrationId} invitationId={row.invitationId} />
                           ) : null}
                         </div>
@@ -364,21 +469,22 @@ export function AssessmentUnifiedWorkbench({
                     </TableRow>
 
                     {active ? (
-                      <TableRow className="bg-moon/5 hover:bg-moon/5" data-assessment-workbench-detail={row.id}>
-                        <TableCell colSpan={6} className="p-0">
-                          <DashboardInlineEntry flush>
-                          {!completed ? (
-                            <div className="grid min-w-0 md:grid-cols-[1fr_auto]">
-                              <section className="min-w-0 border-b border-line/70 px-5 py-4 md:border-b-0 md:border-r">
+                      <FollowupInlineDetails open={active} onOpenChange={(open) => { if (!open) setActiveId(null); }} title={`${row.name} · ${t(`type_${row.assessmentKind}`)}`} colSpan={7} id={`assessment-details-${row.id}`}>
+                        <div className="min-w-0 space-y-3" data-assessment-workbench-detail={row.id}>
+                          {row.activityId ? <Link href={`/dashboard/activities/${row.activityId}?${row.publicClassRecord ? `view=onsite&segment=${row.publicClassRecord.segmentId}` : "node=assessment"}`} className="block truncate text-xs text-blue hover:underline">{row.publicClassRecord?.segmentTitle || row.activityTitle} · {t("activityWorkspace")}</Link> : null}
+                          {row.assessmentKind === "activity" ? <div className={cn("grid min-w-0 gap-4", canSupport && completed && "xl:grid-cols-[1.4fr_1fr]")}>
+                            <div className="min-w-0"><ActivityAssessmentDetails row={row} disabled={!canAssess} onSaved={saveRow} /></div>
+                            {canSupport && completed ? <div className="min-w-0"><PostActivityHandoff source={{ registrationId: row.registrationId, invitationId: null }} onSaved={(context) => updateDraft(row.id, (current) => ({ ...current, route: context.route }))} /></div> : null}
+                          </div> : !completed ? (
+                            <div className="grid min-w-0 items-start gap-4 md:grid-cols-[1fr_auto]">
+                              <section className="min-w-0">
                                 <h3 className="text-xs font-medium text-ink">{t("backgroundTitle")}</h3>
                                 <p className="mt-1 text-xs leading-5 text-muted">{row.background || assessmentT("backgroundEmpty")}</p>
-                                <p className="mt-3 text-[11px] leading-5 text-muted">{t("autoHandoff")}</p>
                               </section>
-                              <section className="flex min-w-72 items-center gap-3 px-5 py-4">
+                              <section className="flex min-w-0 items-center gap-3">
                                 <Clock3 className="size-5 shrink-0 text-yellow-600" />
                                 <div className="min-w-0">
                                   <p className="font-medium text-ink">{t(stage === "pending" ? "waitingAssessment" : "assessmentInProgress")}</p>
-                                  <p className="mt-1 text-[11px] leading-5 text-muted">{t("teacherEntryHint")}</p>
                                   {canAssess ? (
                                     <div className="mt-2">
                                       <TeacherAssessmentEntryButton registrationId={row.registrationId} invitationId={row.invitationId} />
@@ -388,8 +494,8 @@ export function AssessmentUnifiedWorkbench({
                               </section>
                             </div>
                           ) : (
-                            <div className={cn("grid min-w-0", canSupport && "xl:grid-cols-[1fr_1.6fr]")}>
-                              <section className={cn("min-w-0 p-4", canSupport && "border-b border-line/70 xl:border-b-0 xl:border-r")}>
+                            <div className={cn("grid min-w-0 items-start gap-4", canSupport && "xl:grid-cols-[1fr_1.6fr]")}>
+                              <section className="min-w-0">
                                 <h3 className="text-xs font-medium text-ink">{t("teacherEvidence")}</h3>
                                 <p className="mt-2 text-xs leading-5 text-ink">{conclusion || t("conclusionPending")}</p>
                                 {row.questionSummary ? (
@@ -430,11 +536,10 @@ export function AssessmentUnifiedWorkbench({
                               </section>
 
                               {canSupport ? (
-                                <section className="min-w-0 p-4">
+                                <section className="min-w-0">
                                   <PostActivityHandoff
                                     source={{ registrationId: row.registrationId, invitationId: row.registrationId ? null : row.invitationId }}
                                     onSaved={(context) => {
-                                      setRetainedId(row.id);
                                       updateDraft(row.id, (current) => ({ ...current, route: context.route }));
                                     }}
                                   />
@@ -442,13 +547,15 @@ export function AssessmentUnifiedWorkbench({
                               ) : null}
                             </div>
                           )}
-                          </DashboardInlineEntry>
-                        </TableCell>
-                      </TableRow>
+                        </div>
+                      </FollowupInlineDetails>
                     ) : null}
-                  </Fragment>
+                  </ActivityAssessmentDraftProvider>
                 );
               })}
+              {assessmentTable.visibleRows.length === 0 ? (
+                <TableRow><TableCell colSpan={7} className="h-32 px-4 text-center text-sm text-muted">{tableT("filteredEmpty")}</TableCell></TableRow>
+              ) : null}
             </TableBody>
           </Table>
         </DashboardTableShell>
@@ -477,10 +584,10 @@ export function AssessmentUnifiedWorkbench({
         variant="outline"
         className={cn(
           "whitespace-nowrap",
-          stage === "pending" && "border-orange-500/40 bg-orange-500/10 text-orange-700 dark:text-orange-300",
-          stage === "in_progress" && "border-yellow-500/40 bg-yellow-500/10 text-yellow-700 dark:text-yellow-300",
-          stage === "feedback" && "border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300",
-          stage === "handled" && "border-leaf-deep/40 bg-leaf/30 text-leaf-deep",
+          stage === "pending" && "border-line bg-line/20 text-muted",
+          stage === "in_progress" && "border-crater/40 bg-moon/40 text-ink",
+          stage === "feedback" && "border-crater/40 bg-moon/40 text-ink",
+          stage === "handled" && "border-blue/30 bg-blue/15 text-blue",
         )}
       >
         {label}

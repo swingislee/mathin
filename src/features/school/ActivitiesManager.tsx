@@ -3,7 +3,7 @@
 import { ArrowRight, ChevronDown, ChevronRight, LoaderCircle, Plus, Trash2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useLocale, useTranslations } from "next-intl";
-import { Fragment, useState, useTransition } from "react";
+import { Fragment, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -34,8 +34,11 @@ import {
   DashboardCommandPanel,
   DashboardPage,
   DashboardSection,
+  DashboardTableColumnHeader,
   DashboardTableShell,
   StatusStrip,
+  type DashboardTableColumnDefinition,
+  useDashboardTableView,
 } from "./dashboard-page";
 
 const empty: ActivityInput = {
@@ -54,6 +57,19 @@ type RunAction = (
   onSuccess?: () => void,
 ) => void;
 
+type ActivityTableColumn = "time" | "activity" | "participation" | "assessment" | "awaitingRoute";
+const EMPTY_VALUE = "$empty";
+
+function activityCounts(activity: ActivityRow) {
+  const booked = activity.registrations.filter((registration) => registration.status !== "cancelled").length;
+  const attended = activity.registrations.filter((registration) => registration.status === "attended").length;
+  const assessed = activity.registrations.filter((registration) => registration.assessment).length;
+  const awaitingRoute = activity.registrations.filter((registration) =>
+    registration.status === "attended" && registration.assessment !== null && registration.route === null
+  ).length;
+  return { booked, attended, assessed, awaitingRoute };
+}
+
 export function ActivitiesManager({
   title,
   activities,
@@ -70,6 +86,7 @@ export function ActivitiesManager({
   initialRegistrationData?: PublicClassRegistrationData;
 }) {
   const t = useTranslations("school.activities");
+  const tableT = useTranslations("school.table");
   const locale = useLocale();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -77,6 +94,63 @@ export function ActivitiesManager({
   const [deleteTarget, setDeleteTarget] = useState<ActivityRow | null>(null);
   const [activeActivityId, setActiveActivityId] = useState<string | null>(initialActivityId ?? null);
   const toggleActivity = (activityId: string) => setActiveActivityId((current) => current === activityId ? null : activityId);
+  const dateTimeFormatter = useMemo(
+    () => new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }),
+    [locale],
+  );
+  const dateFormatter = useMemo(
+    () => new Intl.DateTimeFormat(locale, { dateStyle: "medium" }),
+    [locale],
+  );
+  const tableColumns = useMemo<Record<ActivityTableColumn, DashboardTableColumnDefinition<ActivityRow>>>(() => ({
+    time: {
+      filterValues: (activity) => ({
+        value: dateFormatter.format(new Date(activity.scheduledAt)),
+        label: dateFormatter.format(new Date(activity.scheduledAt)),
+      }),
+      sortValue: (activity) => activity.scheduledAt,
+    },
+    activity: {
+      filterValues: (activity) => [
+        { value: `title:${activity.id}`, label: activity.title, group: tableT("fieldTitle") },
+        { value: `kind:${activity.kind}`, label: t(`kind_${activity.kind}`), group: tableT("fieldType") },
+        {
+          value: activity.location ? `location:${activity.location}` : `location:${EMPTY_VALUE}`,
+          label: activity.location || tableT("emptyValue"),
+          group: tableT("fieldLocation"),
+        },
+      ],
+      sortValue: (activity) => activity.title,
+    },
+    participation: {
+      filterValues: (activity) => {
+        const { booked, attended } = activityCounts(activity);
+        return [
+          { value: `booked:${booked}`, label: String(booked), group: tableT("fieldBooked") },
+          { value: `attended:${attended}`, label: String(attended), group: tableT("fieldAttended") },
+        ];
+      },
+      sortValue: (activity) => {
+        const { booked, attended } = activityCounts(activity);
+        return booked * 10_000 + attended;
+      },
+    },
+    assessment: {
+      filterValues: (activity) => {
+        const value = activityCounts(activity).assessed;
+        return { value: String(value), label: String(value) };
+      },
+      sortValue: (activity) => activityCounts(activity).assessed,
+    },
+    awaitingRoute: {
+      filterValues: (activity) => {
+        const value = activityCounts(activity).awaitingRoute;
+        return { value: String(value), label: String(value) };
+      },
+      sortValue: (activity) => activityCounts(activity).awaitingRoute,
+    },
+  }), [dateFormatter, t, tableT]);
+  const activityTable = useDashboardTableView({ rows: activities, columns: tableColumns, locale });
   const run: RunAction = (action, successMessage, onSuccess) => startTransition(async () => {
     const result = await action();
     if (result.ok) {
@@ -120,27 +194,22 @@ export function ActivitiesManager({
         <Table containerClassName="max-h-[calc(100dvh-15rem)] overflow-auto">
           <TableHeader className="sticky top-0 z-30 bg-card">
             <TableRow>
-              <TableHead>{t("time")}</TableHead>
-              <TableHead>{t("activity")}</TableHead>
-              <TableHead>{t("participation")}</TableHead>
-              <TableHead>{t("assessment")}</TableHead>
-              <TableHead>{t("awaitingRoute")}</TableHead>
+              <TableHead><DashboardTableColumnHeader label={t("time")} {...activityTable.columnProps("time")} /></TableHead>
+              <TableHead><DashboardTableColumnHeader label={t("activity")} {...activityTable.columnProps("activity")} /></TableHead>
+              <TableHead><DashboardTableColumnHeader label={t("participation")} {...activityTable.columnProps("participation")} /></TableHead>
+              <TableHead><DashboardTableColumnHeader label={t("assessment")} {...activityTable.columnProps("assessment")} /></TableHead>
+              <TableHead><DashboardTableColumnHeader label={t("awaitingRoute")} {...activityTable.columnProps("awaitingRoute")} /></TableHead>
               <TableHead className="text-right">{t("actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {activities.map((activity) => {
-              const booked = activity.registrations.filter((registration) => registration.status !== "cancelled").length;
-              const attended = activity.registrations.filter((registration) => registration.status === "attended").length;
-              const assessed = activity.registrations.filter((registration) => registration.assessment).length;
-              const awaitingRoute = activity.registrations.filter((registration) =>
-                registration.status === "attended" && registration.assessment !== null && registration.route === null
-              ).length;
+            {activityTable.visibleRows.map((activity) => {
+              const { booked, attended, assessed, awaitingRoute } = activityCounts(activity);
               const expanded = activeActivityId === activity.id;
               const publicClass = activity.kind === "public_class";
               return <Fragment key={activity.id}><TableRow aria-expanded={publicClass ? expanded : undefined} className={publicClass ? `cursor-pointer ${expanded ? "bg-moon/10 hover:bg-moon/10" : ""}` : undefined} onClick={publicClass ? () => toggleActivity(activity.id) : undefined}>
                 <TableCell className="whitespace-nowrap text-sm">
-                  {new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(activity.scheduledAt))}
+                  {dateTimeFormatter.format(new Date(activity.scheduledAt))}
                 </TableCell>
                 <TableCell>
                   {publicClass ? <Button size="sm" variant="ghost" className="h-auto justify-start gap-1 p-0 text-left text-ink" onClick={(event) => { event.stopPropagation(); toggleActivity(activity.id); }}>{expanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}{activity.title}</Button> : <Link href={`/dashboard/activities/${activity.id}`} className="font-medium text-ink hover:underline">
@@ -168,7 +237,7 @@ export function ActivitiesManager({
                 </TableCell>
               </TableRow>{publicClass && expanded ? <TableRow className="hover:bg-transparent"><TableCell colSpan={6} className="p-0"><DashboardInlineEntry flush title={activity.title} onClose={() => setActiveActivityId(null)} closeLabel={t("closeRegistration")}><PublicClassRegistrationPanel activityId={activity.id} initialData={initialRegistrationData?.activity.id === activity.id ? initialRegistrationData : undefined} /></DashboardInlineEntry></TableCell></TableRow> : null}</Fragment>;
             })}
-            {activities.length === 0 ? <TableRow><TableCell colSpan={6} className="h-40 text-center text-muted">{t("empty")}</TableCell></TableRow> : null}
+            {activityTable.visibleRows.length === 0 ? <TableRow><TableCell colSpan={6} className="h-40 text-center text-muted">{activities.length === 0 ? t("empty") : tableT("filteredEmpty")}</TableCell></TableRow> : null}
           </TableBody>
         </Table>
       </DashboardTableShell>

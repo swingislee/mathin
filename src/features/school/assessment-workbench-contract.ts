@@ -1,5 +1,6 @@
 import type { ActivityRouteKind, StoredAssessmentBand } from "./activity-workflow-contract";
 import type { TeacherAssessmentOutcome } from "./teacher-assessment-contract";
+import type { PublicClassPresence } from "./public-class";
 
 export const ASSESSMENT_WORKBENCH_QUEUES = [
   "pending",
@@ -10,6 +11,8 @@ export const ASSESSMENT_WORKBENCH_QUEUES = [
 ] as const;
 
 export type AssessmentWorkbenchQueue = (typeof ASSESSMENT_WORKBENCH_QUEUES)[number];
+export const ASSESSMENT_WORKBENCH_KINDS = ["one_to_one", "activity"] as const;
+export type AssessmentWorkbenchKind = (typeof ASSESSMENT_WORKBENCH_KINDS)[number];
 
 export interface AssessmentWorkbenchAssessment {
   id: string;
@@ -45,9 +48,25 @@ export interface AssessmentWorkbenchQuestionSummary {
   keyNotes: AssessmentWorkbenchQuestionNote[];
 }
 
-/** Client-safe row for the cross-student 1:1 assessment work session. */
+export interface AssessmentWorkbenchPublicClassRecord {
+  id: string | null;
+  segmentId: string;
+  segmentTitle: string;
+  studentPresence: PublicClassPresence;
+  guardianPresence: PublicClassPresence;
+  learningObservation: string;
+  assessmentSummary: string;
+  parentFeedback: string;
+  recommendation: string;
+}
+
+/** 学生测评总表的统一数据合同，覆盖单独预约和活动集中测评。 */
 export interface AssessmentWorkbenchRow {
   id: string;
+  assessmentKind: AssessmentWorkbenchKind;
+  activityId: string | null;
+  activityTitle: string;
+  publicClassRecord: AssessmentWorkbenchPublicClassRecord | null;
   invitationId: string | null;
   registrationId: string | null;
   studentId: string | null;
@@ -73,6 +92,7 @@ export interface AssessmentWorkbenchRow {
 
 export interface AssessmentWorkbenchFilters {
   queue: AssessmentWorkbenchQueue;
+  kind?: AssessmentWorkbenchKind;
   q?: string;
 }
 
@@ -88,17 +108,19 @@ export function assessmentWorkbenchQueueFrom(
   value: string | string[] | undefined,
 ): AssessmentWorkbenchQueue {
   const raw = Array.isArray(value) ? value[0] : value;
-  return raw === "in_progress" || raw === "feedback" || raw === "handled" || raw === "all"
+  return raw === "pending" || raw === "in_progress" || raw === "feedback" || raw === "handled"
     ? raw
-    : "pending";
+    : "all";
 }
 
 export function parseAssessmentWorkbenchFilters(
   searchParams: Record<string, string | string[] | undefined>,
 ): AssessmentWorkbenchFilters {
   const qValue = Array.isArray(searchParams.q) ? searchParams.q[0] : searchParams.q;
+  const kindValue = Array.isArray(searchParams.kind) ? searchParams.kind[0] : searchParams.kind;
   return {
     queue: assessmentWorkbenchQueueFrom(searchParams.queue),
+    kind: kindValue === "one_to_one" || kindValue === "activity" ? kindValue : undefined,
     q: qValue?.trim().slice(0, 80) || undefined,
   };
 }
@@ -135,6 +157,7 @@ export function assessmentWorkbenchRowsForView(
   const needle = filters.q?.toLocaleLowerCase(locale);
   return rows
     .filter((row) => {
+      if (filters.kind && row.assessmentKind !== filters.kind) return false;
       if (filters.queue !== "all" && assessmentWorkbenchStage(row) !== filters.queue) return false;
       if (!needle) return true;
       return [row.name, row.phone, row.gradeText, row.location, row.assessorName, row.background]

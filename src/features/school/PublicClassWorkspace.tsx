@@ -19,8 +19,8 @@ import {
   UsersRound,
 } from "lucide-react";
 import Image from "next/image";
-import { useTranslations } from "next-intl";
-import { Fragment, useState, useTransition } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { Fragment, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -67,13 +67,20 @@ import {
   DashboardCommandPanel,
   DashboardCommandState,
   DashboardSection,
+  DashboardTableColumnHeader,
   DashboardTableShell,
+  type DashboardTableColumnDefinition,
+  useDashboardTableView,
 } from "./dashboard-page";
 import { StageNavigation } from "./object-workspace";
+import { Student360Trigger } from "./Student360Sheet";
 import { EnrollmentHandoffButton } from "./EnrollmentHandoffButton";
 import { TeachingPostworkSection, TeachingPostworkStatus } from "./TeachingPostworkSurface";
 
 const NONE = "__none__";
+const EMPTY_VALUE = "$empty";
+type PublicClassReviewColumn = "participant" | "attendance" | "assessment" | "feedback" | "recommendation";
+type PublicClassRosterColumn = "participant" | "summary" | "state";
 
 type Run = (
   action: () => Promise<ActionResult>,
@@ -83,6 +90,17 @@ type Run = (
 
 function recordFor(participant: PublicClassParticipant, segmentId: string): PublicClassParticipantRecord | null {
   return participant.records.find((record) => record.segmentId === segmentId) ?? null;
+}
+
+function recordSummary(participant: PublicClassParticipant, segmentId: string): string {
+  const record = recordFor(participant, segmentId);
+  return [record?.assessmentSummary, record?.learningObservation, record?.parentFeedback, record?.recommendation]
+    .find((item) => item?.trim()) ?? "";
+}
+
+function participantAttended(participant: PublicClassParticipant): boolean {
+  return participant.status === "attended"
+    || participant.records.some((record) => record.studentPresence === "attended" || record.studentPresence === "late");
 }
 
 function SegmentKindIcon({ kind, className }: { kind: PublicClassSegmentKind; className?: string }) {
@@ -369,10 +387,75 @@ function LiveRunOverview({
 
 function ReviewOverview({ data, recordedParticipants, canFollowUp }: { data: PublicClassWorkbenchData; recordedParticipants: number; canFollowUp: boolean }) {
   const t = useTranslations("school.publicClass");
-  const active = data.participants.filter((participant) => participant.status !== "cancelled");
+  const tableT = useTranslations("school.table");
+  const locale = useLocale();
+  const active = useMemo(
+    () => data.participants.filter((participant) => participant.status !== "cancelled"),
+    [data.participants],
+  );
   const pendingRecords = Math.max(0, active.length - recordedParticipants);
   const assessmentId = data.segments.find((segment) => segment.kind === "group_assessment")?.id;
   const talkId = data.segments.find((segment) => segment.kind === "parent_talk")?.id;
+  const columns = useMemo<Record<PublicClassReviewColumn, DashboardTableColumnDefinition<PublicClassParticipant>>>(() => ({
+    participant: {
+      filterValues: (participant) => [
+        { value: `name:${participant.name}`, label: participant.name, group: tableT("fieldName") },
+        {
+          value: participant.gradeText || participant.grade
+            ? `grade:${participant.gradeText || participant.grade}`
+            : `grade:${EMPTY_VALUE}`,
+          label: participant.gradeText || (participant.grade ? t("gradeValue", { grade: participant.grade }) : t("gradePending")),
+          group: tableT("fieldGrade"),
+        },
+      ],
+      sortValue: (participant) => participant.name,
+    },
+    attendance: {
+      filterValues: (participant) => {
+        const attended = participantAttended(participant);
+        return { value: attended ? "attended" : "expected", label: t(attended ? "presence_attended" : "presence_expected") };
+      },
+      sortValue: (participant) => participantAttended(participant) ? 1 : 0,
+    },
+    assessment: {
+      filterValues: (participant) => {
+        const record = assessmentId ? recordFor(participant, assessmentId) : null;
+        const value = record?.assessmentSummary || record?.learningObservation || "";
+        return { value: value ? `assessment:${value}` : EMPTY_VALUE, label: value || tableT("emptyValue") };
+      },
+      sortValue: (participant) => {
+        const record = assessmentId ? recordFor(participant, assessmentId) : null;
+        return record?.assessmentSummary || record?.learningObservation || "";
+      },
+    },
+    feedback: {
+      filterValues: (participant) => {
+        const assessmentRecord = assessmentId ? recordFor(participant, assessmentId) : null;
+        const talkRecord = talkId ? recordFor(participant, talkId) : null;
+        const value = talkRecord?.parentFeedback || assessmentRecord?.parentFeedback || "";
+        return { value: value ? `feedback:${value}` : EMPTY_VALUE, label: value || tableT("emptyValue") };
+      },
+      sortValue: (participant) => {
+        const assessmentRecord = assessmentId ? recordFor(participant, assessmentId) : null;
+        const talkRecord = talkId ? recordFor(participant, talkId) : null;
+        return talkRecord?.parentFeedback || assessmentRecord?.parentFeedback || "";
+      },
+    },
+    recommendation: {
+      filterValues: (participant) => {
+        const assessmentRecord = assessmentId ? recordFor(participant, assessmentId) : null;
+        const talkRecord = talkId ? recordFor(participant, talkId) : null;
+        const value = assessmentRecord?.recommendation || talkRecord?.recommendation || "";
+        return { value: value ? `recommendation:${value}` : EMPTY_VALUE, label: value || tableT("emptyValue") };
+      },
+      sortValue: (participant) => {
+        const assessmentRecord = assessmentId ? recordFor(participant, assessmentId) : null;
+        const talkRecord = talkId ? recordFor(participant, talkId) : null;
+        return assessmentRecord?.recommendation || talkRecord?.recommendation || "";
+      },
+    },
+  }), [assessmentId, t, tableT, talkId]);
+  const table = useDashboardTableView({ rows: active, columns, locale });
   return <div className="space-y-5">
     <TeachingPostworkStatus
       complete={pendingRecords === 0}
@@ -386,26 +469,35 @@ function ReviewOverview({ data, recordedParticipants, canFollowUp }: { data: Pub
         <DashboardTableShell>
           <Table className="min-w-[52rem] table-fixed text-xs">
             <TableHeader><TableRow>
-              <TableHead className="h-9 w-56 px-2">{t("participant")}</TableHead>
-              <TableHead className="h-9 w-28 px-2">{t("attendanceResult")}</TableHead>
-              <TableHead className="h-9 px-2">{t("assessmentSummary")}</TableHead>
-              <TableHead className="h-9 px-2">{t("parentFeedback")}</TableHead>
-              <TableHead className="h-9 px-2">{t("recommendation")}</TableHead>
+              <TableHead className="h-9 w-56 px-2"><DashboardTableColumnHeader label={t("participant")} {...table.columnProps("participant")} /></TableHead>
+              <TableHead className="h-9 w-28 px-2"><DashboardTableColumnHeader label={t("attendanceResult")} {...table.columnProps("attendance")} /></TableHead>
+              <TableHead className="h-9 px-2"><DashboardTableColumnHeader label={t("assessmentSummary")} {...table.columnProps("assessment")} /></TableHead>
+              <TableHead className="h-9 px-2"><DashboardTableColumnHeader label={t("parentFeedback")} {...table.columnProps("feedback")} /></TableHead>
+              <TableHead className="h-9 px-2"><DashboardTableColumnHeader label={t("recommendation")} {...table.columnProps("recommendation")} /></TableHead>
             </TableRow></TableHeader>
             <TableBody>
-              {active.map((participant) => {
+              {table.visibleRows.map((participant) => {
                 const assessmentRecord = assessmentId ? recordFor(participant, assessmentId) : null;
                 const talkRecord = talkId ? recordFor(participant, talkId) : null;
-                const attended = participant.status === "attended" || participant.records.some((record) => record.studentPresence === "attended" || record.studentPresence === "late");
+                const attended = participantAttended(participant);
                 return <TableRow key={participant.registrationId}>
-                  <TableCell className="px-2 py-2"><p className="font-medium text-ink">{participant.name}</p><p className="mt-0.5 truncate text-[11px] text-muted">{participant.gradeText || (participant.grade ? t("gradeValue", { grade: participant.grade }) : t("gradePending"))}</p></TableCell>
+                  <TableCell className="px-2 py-2">
+                    <Student360Trigger
+                      subject={{ studentId: participant.studentId, leadId: participant.leadId }}
+                      fallback={{ name: participant.name, grade: participant.grade, gradeText: participant.gradeText, phone: participant.phone }}
+                      className="block max-w-full truncate"
+                    >
+                      {participant.name}
+                    </Student360Trigger>
+                    <p className="mt-0.5 truncate text-[11px] text-muted">{participant.gradeText || (participant.grade ? t("gradeValue", { grade: participant.grade }) : t("gradePending"))}</p>
+                  </TableCell>
                   <TableCell className="px-2 py-2"><Badge variant={attended ? "secondary" : "outline"}>{attended ? t("presence_attended") : t("presence_expected")}</Badge></TableCell>
                   <TableCell className="truncate px-2 py-2 text-muted">{assessmentRecord?.assessmentSummary || assessmentRecord?.learningObservation || "—"}</TableCell>
                   <TableCell className="truncate px-2 py-2 text-muted">{talkRecord?.parentFeedback || assessmentRecord?.parentFeedback || "—"}</TableCell>
                   <TableCell className="px-2 py-2 text-muted"><p className="truncate">{assessmentRecord?.recommendation || talkRecord?.recommendation || "—"}</p>{canFollowUp && attended ? <div className="mt-2"><EnrollmentHandoffButton source={{ registrationId: participant.registrationId, invitationId: null }} name={participant.name} /></div> : null}</TableCell>
                 </TableRow>;
               })}
-              {active.length === 0 ? <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted">{t("emptyRoster")}</TableCell></TableRow> : null}
+              {table.visibleRows.length === 0 ? <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted">{active.length === 0 ? t("emptyRoster") : tableT("filteredEmpty")}</TableCell></TableRow> : null}
             </TableBody>
           </Table>
         </DashboardTableShell>
@@ -530,7 +622,77 @@ export function PublicClassRosterView({
 }) {
   const t = useTranslations("school.publicClass");
   if (!segment) return <DashboardSection title={t("rosterTitle")} description={t("noSegments")} />;
-  const active = data.participants.filter((participant) => participant.status !== "cancelled");
+  return <PublicClassRosterTable
+    data={data}
+    locale={locale}
+    segment={segment}
+    canRecord={canRecord}
+    pending={pending}
+    run={run}
+  />;
+}
+
+function PublicClassRosterTable({
+  data,
+  locale,
+  segment,
+  canRecord,
+  pending,
+  run,
+}: {
+  data: PublicClassWorkbenchData;
+  locale: string;
+  segment: PublicClassSegment;
+  canRecord: boolean;
+  pending: boolean;
+  run: Run;
+}) {
+  const t = useTranslations("school.publicClass");
+  const tableT = useTranslations("school.table");
+  const active = useMemo(
+    () => data.participants.filter((participant) => participant.status !== "cancelled"),
+    [data.participants],
+  );
+  const columns = useMemo<Record<PublicClassRosterColumn, DashboardTableColumnDefinition<PublicClassParticipant>>>(() => ({
+    participant: {
+      filterValues: (participant) => [
+        { value: `name:${participant.name}`, label: participant.name, group: tableT("fieldName") },
+        {
+          value: participant.phone ? `phone:${participant.phone}` : `phone:${EMPTY_VALUE}`,
+          label: participant.phone || tableT("emptyValue"),
+          group: tableT("fieldPhone"),
+        },
+        {
+          value: participant.gradeText || participant.grade
+            ? `grade:${participant.gradeText || participant.grade}`
+            : `grade:${EMPTY_VALUE}`,
+          label: participant.gradeText || (participant.grade ? t("gradeValue", { grade: participant.grade }) : t("gradePending")),
+          group: tableT("fieldGrade"),
+        },
+        {
+          value: `identity:${participant.identity}`,
+          label: t(`identity_${participant.identity}`),
+          group: tableT("fieldIdentity"),
+        },
+      ],
+      sortValue: (participant) => participant.name,
+    },
+    summary: {
+      filterValues: (participant) => {
+        const value = recordSummary(participant, segment.id);
+        return { value: value || EMPTY_VALUE, label: value || tableT("emptyValue") };
+      },
+      sortValue: (participant) => recordSummary(participant, segment.id),
+    },
+    state: {
+      filterValues: (participant) => ({
+        value: recordSummary(participant, segment.id) ? "recorded" : "pending",
+        label: t(recordSummary(participant, segment.id) ? "recorded" : "notRecorded"),
+      }),
+      sortValue: (participant) => recordSummary(participant, segment.id) ? 1 : 0,
+    },
+  }), [segment.id, t, tableT]);
+  const table = useDashboardTableView({ rows: active, columns, locale });
   const attended = active.filter((participant) => {
     const record = recordFor(participant, segment.id);
     const value = segment.kind === "parent_talk" ? record?.guardianPresence : record?.studentPresence;
@@ -554,13 +716,13 @@ export function PublicClassRosterView({
       <DashboardTableShell>
         <Table className="min-w-[68rem] table-fixed text-xs" containerClassName="max-h-[calc(100dvh-15rem)] overflow-auto">
           <TableHeader><TableRow>
-            <TableHead className="sticky left-0 top-0 z-30 h-9 w-60 border-r border-line bg-card px-2">{t("participant")}</TableHead>
+            <TableHead className="sticky left-0 top-0 z-30 h-9 w-60 border-r border-line bg-card px-2"><DashboardTableColumnHeader label={t("participant")} {...table.columnProps("participant")} /></TableHead>
             <TableHead className="sticky top-0 z-20 h-9 w-72 bg-card px-2">{segment.kind === "parent_talk" ? t("guardianAttendance") : t("studentAttendance")}</TableHead>
-            <TableHead className="sticky top-0 z-20 h-9 bg-card px-2">{t("recordSummary")}</TableHead>
-            <TableHead className="sticky top-0 z-20 h-9 w-28 bg-card px-2">{t("recordState")}</TableHead>
+            <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={t("recordSummary")} {...table.columnProps("summary")} /></TableHead>
+            <TableHead className="sticky top-0 z-20 h-9 w-28 bg-card px-2"><DashboardTableColumnHeader label={t("recordState")} {...table.columnProps("state")} /></TableHead>
           </TableRow></TableHeader>
           <TableBody>
-            {active.map((participant) => <ParticipantRows
+            {table.visibleRows.map((participant) => <ParticipantRows
               key={participant.registrationId}
               participant={participant}
               segment={segment}
@@ -568,7 +730,7 @@ export function PublicClassRosterView({
               pending={pending}
               run={run}
             />)}
-            {active.length === 0 ? <TableRow><TableCell colSpan={4} className="h-40 text-center text-muted">{t("emptyRoster")}</TableCell></TableRow> : null}
+            {table.visibleRows.length === 0 ? <TableRow><TableCell colSpan={4} className="h-40 text-center text-muted">{active.length === 0 ? t("emptyRoster") : tableT("filteredEmpty")}</TableCell></TableRow> : null}
           </TableBody>
         </Table>
       </DashboardTableShell>
@@ -629,17 +791,35 @@ function ParticipantRows({
   return <Fragment>
     <TableRow aria-expanded={expanded} className={cn(expanded && "bg-moon/10 hover:bg-moon/10")}>
       <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-2">
-        <button type="button" className="flex w-full items-start gap-2 text-left" onClick={() => setExpanded((value) => !value)}>
-          {expanded ? <ChevronDown className="mt-0.5 size-3.5 shrink-0 text-muted" /> : <ChevronRight className="mt-0.5 size-3.5 shrink-0 text-muted" />}
+        <div className="flex w-full items-start gap-2 text-left">
+          <button
+            type="button"
+            className="mt-0.5 shrink-0 rounded-sm text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-crater"
+            aria-label={t("expandParticipant", { name: participant.name })}
+            onClick={() => setExpanded((value) => !value)}
+          >
+            {expanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
+          </button>
           <span className="min-w-0">
-            <span className="block truncate font-medium text-ink">{participant.name}</span>
+            <Student360Trigger
+              subject={{ studentId: participant.studentId, leadId: participant.leadId }}
+              fallback={{
+                name: participant.name,
+                grade: participant.grade,
+                gradeText: participant.gradeText,
+                phone: participant.phone,
+              }}
+              className="block max-w-full truncate"
+            >
+              {participant.name}
+            </Student360Trigger>
             <span className="mt-0.5 block truncate text-[11px] text-muted">
               {participant.gradeText || (participant.grade ? t("gradeValue", { grade: participant.grade }) : t("gradePending"))}
               {` · ${t(`identity_${participant.identity}`)}`}
               {participant.phone ? ` · ${participant.phone}` : ""}
             </span>
           </span>
-        </button>
+        </div>
       </TableCell>
       <TableCell className="px-2 py-2">
         <div className="flex gap-1" role="radiogroup" aria-label={segment.kind === "parent_talk" ? t("guardianAttendance") : t("studentAttendance")}>

@@ -114,7 +114,7 @@ describe("narrow classroom layout", () => {
 
   it("provides a stable local acceptance route through the same shared learning matrix", () => {
     const preview = source("src/features/school/LearningCheckMatrixPreview.tsx");
-    const route = source("src/app/[locale]/dashboard/assessments/learning-matrix-preview/page.tsx");
+    const route = source("src/app/[locale]/dashboard/followups/assessments/learning-matrix-preview/page.tsx");
 
     expect(preview).toContain("<LearningCheckMatrixEntry");
     expect(preview).toContain("students={students}");

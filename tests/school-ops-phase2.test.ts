@@ -62,7 +62,7 @@ describe("DEV-SCHOOL-OPS-1 Phase 2 assessment-session worktable", () => {
     expect(contract).toContain('"assessment"');
     expect(contract).not.toContain('"routing"');
     expect(routes).toContain('hrefPattern: "/dashboard/activities/[activityId]"');
-    expect(routes).not.toContain('href: "/dashboard/opportunities"');
+    expect(routes).not.toContain('nav: { labelKey: "opportunities"');
   });
 
   it("keeps the session-entry and enrollment-outcome language bilingual", () => {
@@ -101,7 +101,7 @@ describe("DEV-SCHOOL-OPS-1 Phase 2 assessment-session worktable", () => {
       "migrations",
       "20260904000220_school_ops_assessment_route_and_bands.sql",
     );
-    const page = read("src", "app", "[locale]", "dashboard", "assessments", "page.tsx");
+    const page = read("src", "app", "[locale]", "dashboard", "followups", "assessments", "page.tsx");
     const queue = read("src", "features", "school", "AssessmentUnifiedWorkbench.tsx");
     const actions = read("src", "features", "school", "assessment-workbench-actions.ts");
     const query = read("src", "features", "school", "assessment-workbench-data.ts");
@@ -148,7 +148,7 @@ describe("DEV-SCHOOL-OPS-1 Phase 2 assessment-session worktable", () => {
     expect(queue).not.toContain("saveAssessmentWorkbenchRowAction");
     expect(queue).not.toContain("saveAssessmentWorkbenchRouteAction");
     expect(queue).not.toContain("routeGroup");
-    expect(routes).toContain('href: "/dashboard/assessments"');
+    expect(routes).toContain('href: "/dashboard/followups/assessments"');
   });
 
   it("orders the selectable assessment levels from low to high and retains the old value as read-only history", () => {
@@ -172,6 +172,10 @@ describe("DEV-SCHOOL-OPS-1 Phase 2 assessment-session worktable", () => {
   it("keeps a saved assessment row in the current session while queue counts remain derivable", () => {
     const makeRow = (id: string, recorded: boolean): AssessmentWorkbenchRow => ({
       id,
+      assessmentKind: "one_to_one",
+      activityId: recorded ? `${id}-activity` : null,
+      activityTitle: "",
+      publicClassRecord: null,
       invitationId: recorded ? null : `${id}-invitation`,
       registrationId: recorded ? `${id}-registration` : null,
       studentId: recorded ? `${id}-student` : null,

@@ -1,5 +1,7 @@
 "use client";
 
+import { FilterSearchInput } from "./FilterBar";
+
 import { Fragment, useEffect, useMemo, useState, useTransition } from "react";
 import { ChevronDown, ChevronRight, LoaderCircle } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -72,7 +74,7 @@ export default function PublicClassRegistrationPanel({ activityId, initialData }
   return <div className="space-y-3 p-3">
     <DashboardCommandPanel>
       <DashboardCommandState><Tabs value={tab} onValueChange={setTab}><TabsList><TabsTrigger value="students">{t("students", { count: data.participants.length })}</TabsTrigger><TabsTrigger value="arrangement">{t("arrangement")}</TabsTrigger></TabsList></Tabs></DashboardCommandState>
-      {tab === "students" ? <DashboardCommandFilters><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("search")} aria-label={t("search")} className="h-8 max-w-64 text-xs" /></DashboardCommandFilters> : null}
+      {tab === "students" ? <DashboardCommandFilters><FilterSearchInput value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("search")} aria-label={t("search")} className="h-8 max-w-64 text-xs" /></DashboardCommandFilters> : null}
     </DashboardCommandPanel>
     {tab === "students" ? <DashboardTableShell><Table className="min-w-[800px] table-fixed text-xs" containerClassName="max-h-[65dvh] overflow-auto">
       <TableHeader><TableRow>{REGISTRATION_COLUMNS.map((key, index) => <TableHead key={key} className={cn("sticky top-0 z-20 h-8 bg-card px-2", index === 0 && "left-0 z-30 w-52 border-r border-line")}><DashboardTableColumnHeader label={t(key)} {...table.columnProps(key)} /></TableHead>)}</TableRow></TableHeader>

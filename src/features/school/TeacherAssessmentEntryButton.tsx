@@ -23,7 +23,7 @@ export function TeacherAssessmentEntryButton({
   if (registrationId) {
     return (
       <Link
-        href={`/dashboard/assessments/${registrationId}`}
+        href={`/dashboard/followups/assessments/${registrationId}`}
         className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "h-7 px-2 text-[11px]")}
         onClick={(event) => event.stopPropagation()}
       >
@@ -50,7 +50,7 @@ export function TeacherAssessmentEntryButton({
             setPending(false);
             return;
           }
-          router.push(`/dashboard/assessments/${result.data.registrationId}`);
+          router.push(`/dashboard/followups/assessments/${result.data.registrationId}`);
         });
       }}
     >
