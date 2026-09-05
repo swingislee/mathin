@@ -6,6 +6,7 @@ import {
 } from "../src/features/courseware-doc/document";
 import type { PageDoc } from "../src/features/courseware-doc/schema";
 import { collectCoursewarePreviewWarmTargets } from "../src/features/courseware-preview/preload";
+import type { SourceRuntimePageDoc } from "../src/features/courseware-doc/source-runtime-schema";
 
 const key = (character: string) => character.repeat(64);
 
@@ -76,5 +77,32 @@ describe("mofaxiao preview binding closure and warming", () => {
       { kind: "image", url: "https://assets/image.png" },
       { kind: "h5", url: "/api/cw-h5/packages/runtime/index.html" },
     ]);
+  });
+
+  it("warms source-owned image bindings without pulling lottie JSON or video", () => {
+    const sourceDoc = {
+      docVersion: "source-runtime-page-v1",
+      source: { sourceSystem: "aixuexi", packageKey: "xplus", coursewareId: "1", pageDatabaseId: 30, sourceSnapshotId: 30, sourceContentHash: key("a"), pageName: "练习2", groupName: null },
+      viewport: { width: 1200, height: 675 },
+      runtime: { protocol: "mathin-source-runtime-v1", bindingKey: key("b"), packageHash: key("c"), entryPath: "index.html", sourceFingerprint: key("d") },
+      payload: {
+        format: "aixuexi-viewer-page-v1",
+        data: { assets: { resources: [
+          { resourceRefId: 1, kind: "image", mime: "image/png" },
+          { resourceRefId: 2, kind: "json", mime: "application/json" },
+          { resourceRefId: 3, kind: "video", mime: "video/mp4" },
+          { resourceRefId: 4, kind: "image", mime: "image/png" },
+        ] } },
+      },
+      bindings: { resources: { "1": key("e"), "2": key("f"), "3": key("1"), "4": key("e") }, routes: [] },
+      behavior: { advanceOnCanvasClick: false },
+    } satisfies SourceRuntimePageDoc;
+
+    expect(collectCoursewarePreviewWarmTargets(sourceDoc, {
+      [key("b")]: "/api/cw-h5/packages/runtime/index.html",
+      [key("e")]: "https://assets/question.png",
+      [key("f")]: "https://assets/animation.json",
+      [key("1")]: "https://assets/animation.mp4",
+    })).toEqual([{ kind: "image", url: "https://assets/question.png" }]);
   });
 });

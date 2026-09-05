@@ -19,6 +19,12 @@
   border: revert;
 }
 
+/* Published/source pages are presentation surfaces, not selectable documents. */
+[data-doc-stage] {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 [data-doc-stage] hr {
   height: revert;
   color: revert;

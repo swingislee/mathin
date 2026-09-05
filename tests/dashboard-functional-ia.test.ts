@@ -76,6 +76,10 @@ describe("dashboard functional information architecture", () => {
   it("keeps the new navigation labels synchronized in Chinese and English", () => {
     const zh = JSON.parse(read("messages/zh.json"));
     const en = JSON.parse(read("messages/en.json"));
+    for (const { labelKey } of SCHOOL_NAV_ITEMS) {
+      expect(zh.school.nav, `missing Chinese navigation label: ${labelKey}`).toHaveProperty(labelKey);
+      expect(en.school.nav, `missing English navigation label: ${labelKey}`).toHaveProperty(labelKey);
+    }
     expect(zh.school.nav).toMatchObject({
       group_subjectOperations: "学科运营",
       group_teaching: "教学",

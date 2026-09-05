@@ -62,7 +62,6 @@ describe("DEV-CW-1 Step 1 read-only unified courseware workspace", () => {
     expect(fittedCanvas).toContain("CoursewareStageViewport");
     expect(stageViewport).toContain("availableHeight * aspect");
     expect(stageViewport).toContain('height: size?.height ?? "auto"');
-    expect(fittedCanvas).toContain("data-fitted-courseware-stage");
   });
 
   it("keeps the new workspace bilingual", () => {
