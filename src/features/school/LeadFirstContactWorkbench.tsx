@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { DashboardInlineEntry } from "./dashboard-page/DashboardInlineEntry";
 import {
   recordLeadContactAction,
   setLeadContactReminderAction,
@@ -503,7 +504,7 @@ function ContactEntryRow({
         ) : null}
 
         {active && outcome ? (
-          <div className="mt-2 space-y-2 border-t border-line pt-2">
+          <DashboardInlineEntry pending={contactRun.pending}>
             {reachable ? (
               <div className="flex flex-wrap gap-x-4 gap-y-2">
                 <DirectChoiceGroup
@@ -588,7 +589,7 @@ function ContactEntryRow({
                 </Button>
               </div>
             </div>
-          </div>
+          </DashboardInlineEntry>
         ) : outcome ? (
           <p className="mt-2 text-[11px] text-muted">{t("contactDraftPending")}</p>
         ) : null}

@@ -19,6 +19,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
+import { DashboardInlineEntry } from "./dashboard-page/DashboardInlineEntry";
 import { reassignAssessmentAssessorAction } from "./assessment-assessor-actions";
 import {
   ACTIVITY_ROUTES,
@@ -385,6 +386,7 @@ export function AssessmentUnifiedWorkbench({
                     {active ? (
                       <TableRow className="bg-moon/5 hover:bg-moon/5" data-assessment-workbench-detail={row.id}>
                         <TableCell colSpan={6} className="p-0">
+                          <DashboardInlineEntry flush>
                           {!completed ? (
                             <div className="grid min-w-0 md:grid-cols-[1fr_auto]">
                               <section className="min-w-0 border-b border-line/70 px-5 py-4 md:border-b-0 md:border-r">
@@ -534,6 +536,7 @@ export function AssessmentUnifiedWorkbench({
                               ) : null}
                             </div>
                           )}
+                          </DashboardInlineEntry>
                         </TableCell>
                       </TableRow>
                     ) : null}
