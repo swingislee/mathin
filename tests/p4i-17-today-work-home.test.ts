@@ -9,7 +9,7 @@ describe("P4I-17 today's work becomes the default staff home", () => {
   it("dashboard/page.tsx 的 staff 分支渲染 TodayWorkHome，不再渲染 StaffHome", () => {
     const page = read("src", "app", "[locale]", "dashboard", "page.tsx");
     expect(page).toContain("TodayWorkHome");
-    expect(page).not.toContain("StaffHome");
+    expect(page).not.toMatch(/<StaffHome\b/);
   });
 
   it("nav.ts 不再有独立的今日工作入口", () => {

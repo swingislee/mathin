@@ -335,12 +335,7 @@ export async function TodayWorkHome({
             />
           </WorkColumn>
 
-          <WorkColumn title={(
-            <Link href="/dashboard/sessions" className="inline-flex items-center gap-1 transition-colors hover:text-ink">
-              {t("todayTitle")}
-              <ArrowUpRight className="size-3" aria-hidden />
-            </Link>
-          )}>
+          <WorkColumn title={t("todayTitle")}>
             {todaySessionData ? (
               <TeacherTodaySessions
                 sessions={todaySessionData.sessions}

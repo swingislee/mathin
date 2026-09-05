@@ -78,15 +78,19 @@ describe("school ops Phase 4 session and attendance seam", () => {
     expect(data).toContain("id,classroom_id,student_id,status,joined_at,left_at");
   });
 
-  it("exposes a dedicated teacher-today route with direct roster and attendance actions", () => {
-    const page = read("src", "app", "[locale]", "dashboard", "sessions", "page.tsx");
+  it("keeps teacher-today roster and attendance actions in the dashboard home", () => {
+    const home = read("src", "features", "school", "home", "TodayWorkHome.tsx");
     const view = read("src", "features", "school", "TeacherTodaySessions.tsx");
     const routes = read("src", "features", "school", "dashboard-routes.ts");
-    expect(page).toContain("getTodaySessionOperations");
-    expect(page).toContain("TeacherTodaySessions");
+    expect(home).toContain("getTodaySessionOperations");
+    expect(home).toContain("TeacherTodaySessions");
+    expect(home).toContain('returnTo="/dashboard?view=work"');
+    expect(home).not.toContain('href="/dashboard/sessions"');
+    expect(fs.existsSync(path.join(root, "src", "app", "[locale]", "dashboard", "sessions", "page.tsx"))).toBe(false);
     expect(view).toContain("AttendanceDrawer");
     expect(view).toContain("?tab=students");
-    expect(routes).toContain('href: "/dashboard/sessions"');
+    expect(routes).not.toContain('href: "/dashboard/sessions"');
+    expect(routes).toContain('hrefPattern: "/dashboard/sessions/[sessionId]"');
   });
 
   it("keeps attendance persistence on the four-state Mathin fact table", () => {
