@@ -1,6 +1,8 @@
 "use client";
 
-import { useDashboardSearchQuery } from "./dashboard-page/DashboardPreferenceScope";
+import { BusinessRecordStateFilter, HistoricalRecordBadge, useBusinessSearchQuery } from './BusinessRecordStateFilter';
+import { businessRecordMessages, matchesBusinessRecordState, type BusinessRecordStateFilter as StateFilter } from './business-record-state-contract';
+import type { HistoricalRenewal, StudentBusinessHistory } from './student-business-history-contract';
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
@@ -35,11 +37,11 @@ import type { RenewalWorkspaceData } from "./renewals";
 import { CreateCycleDialog } from "./RenewalPoolWorkspace";
 import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
 import { Student360Trigger } from "./Student360Sheet";
-import { getStudentBusinessHistoryMessages } from "./student-business-history-messages";
 
 type PoolRow = {
   membershipId: string; studentId: string; name: string; grade: number | null;
   classroom: string; owner: string; stage: string; note: string; opportunityId: string | null;
+  historical?: HistoricalRenewal;
 };
 const RESULT_STAGES = ["considering", "payment_pending", "enrolled", "not_enrolled", "nurturing"] as const;
 type ResultStage = typeof RESULT_STAGES[number];
@@ -50,18 +52,20 @@ const levelFor = renewalHealthLevel;
 const resultTone = (stage: string): FollowupTone => stage === "enrolled" ? "healthy" : stage === "not_enrolled" ? "unhealthy" : stage === "payment_pending" ? "healthy" : stage === "nurturing" ? "attention" : "neutral";
 const healthTone = (level: string): FollowupTone => level === "attention" ? "unhealthy" : level === "observed" ? "healthy" : "neutral";
 
-export function RenewalStudentPool({ data, supplement, canWrite, canReview, canEnroll, settings = false, allowHealthSamples = false, healthSampleMode = false, showHistory = false }: {
+export function RenewalStudentPool({ data, supplement, canWrite, canReview, canEnroll, settings = false, allowHealthSamples = false, healthSampleMode = false, history, initialQuery, initialRecordState='all' }: {
   data: RenewalWorkspaceData; supplement: RenewalPoolSupplement;
   canWrite: boolean; canReview: boolean; canEnroll: boolean; settings?: boolean; health?: boolean;
   allowHealthSamples?: boolean; healthSampleMode?: boolean;
-  showHistory?: boolean;
+  history?: StudentBusinessHistory | null; initialQuery?: string; initialRecordState?: StateFilter;
 }) {
   const t = useTranslations("school.renewals.poolV2");
   const legacy = useTranslations("school.renewals");
   const policyT = useTranslations("school.renewals.healthSettings");
   const locale = useLocale();
   const router = useRouter();
-  const [query, setQuery] = useDashboardSearchQuery("renewals");
+  const [query, setQuery] = useBusinessSearchQuery("renewals",initialQuery);
+  const [recordState,setRecordState]=useState(initialRecordState);
+  const recordM=businessRecordMessages(locale);
   const [entry, setEntry] = useState<ActiveEntry | null>(null);
   const [entryBusy, setEntryBusy] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(settings);
@@ -81,10 +85,12 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
   const rows: PoolRow[] = [
     ...data.candidates.map(row => ({ membershipId: row.membershipId, studentId: row.studentId, name: row.studentName, grade: row.grade, classroom: row.classroomName, owner: row.currentOwnerName, stage: "unprepared", note: "", opportunityId: null })),
     ...data.opportunities.filter(row => row.opportunityType === "renewal" && row.cycleId === cycle?.id && row.sourceMembershipId).map(row => ({ membershipId: row.sourceMembershipId!, studentId: row.studentId, name: row.studentName, grade: row.grade, classroom: row.sourceClassroomName, owner: row.ownerName, stage: row.stage, note: row.note, opportunityId: row.id })),
+    ...(history?.renewals??[]).map(row=>({membershipId:'',studentId:row.student_id,name:history!.students[row.student_id]??recordM.unknown,grade:history!.subjects[row.student_id]?.grade??null,classroom:`${row.period_year??''}${row.period_key==='summer'?(locale==='zh'?'暑假':' Summer'):(locale==='zh'?'秋季':' Autumn')} · ${row.class_label}`,owner:'',stage:'historical',note:row.decision_note,opportunityId:row.id,historical:row})),
   ];
-  const stageLabel = (row: PoolRow) => row.stage === "enrolled" && !payments.has(row.opportunityId ?? "") ? legacy("stage_enrolled") : row.stage === "unprepared" ? t("unprepared") : isResultStage(row.stage) ? t(row.stage) : legacy("stage_" + row.stage);
+  const stageLabel = (row: PoolRow) => row.historical ? recordM.historical : row.stage === "enrolled" && !payments.has(row.opportunityId ?? "") ? legacy("stage_enrolled") : row.stage === "unprepared" ? t("unprepared") : isResultStage(row.stage) ? t(row.stage) : legacy("stage_" + row.stage);
   const displayRows: PoolRow[] = sampleMode ? samples.map((sample, index) => ({ membershipId: sample.facts.studentId, studentId: sample.facts.studentId, name: policyT("sampleName", { number: index + 1, scenario: policyT("sample_" + sample.key) }), grade: null, classroom: policyT("sampleClass"), owner: "—", stage: "unprepared", note: "", opportunityId: null })) : rows;
-  const filtered = displayRows.filter(row => [row.name, row.classroom, row.owner].some(value => value.toLocaleLowerCase(locale).includes(query.trim().toLocaleLowerCase(locale))));
+  const filtered = displayRows.filter(row => matchesBusinessRecordState(row.historical?'historical':'current',recordState)&&[row.name, row.classroom, row.owner,row.note,history?.subjects[row.studentId]?.phone??''].some(value => value.toLocaleLowerCase(locale).includes(query.trim().toLocaleLowerCase(locale))));
+  const currentRows=rows.filter(row=>!row.historical);
   const columns = {
     name: { filterValues: (row: PoolRow) => ({ value: row.studentId, label: row.name }), sortValue: (row: PoolRow) => row.name },
     classroom: { filterValues: (row: PoolRow) => ({ value: row.classroom, label: row.classroom }), sortValue: (row: PoolRow) => row.classroom },
@@ -98,10 +104,9 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
   const status = useAction(setRenewalCycleStatusAction, { successMessage: legacy("cycleStatusSaved"), errorMessage: errors, onSuccess: () => { setCloseCycleOpen(false); router.refresh(); } });
 
   return <DashboardPage title={legacy("title")} density="compact" commandPanel={<DashboardCommandPanel>
-    <DashboardCommandState><FollowupTabs /><span className="whitespace-nowrap text-xs text-muted">{legacy("view_all")} {rows.length} · {t("enrolled")} {rows.filter(row => row.stage === "enrolled").length} · {t("attention")} {rows.filter(row => levelFor(signalsFor(row)) === "attention").length}</span></DashboardCommandState>
-    <DashboardCommandFilters><FilterSearchInput aria-label={t("search")} placeholder={t("search")} value={query} disabled={entryBusy} onChange={event => setQuery(event.target.value)} /></DashboardCommandFilters>
+    <DashboardCommandState><FollowupTabs /><span className="whitespace-nowrap text-xs text-muted">{recordM.current} {currentRows.length} · {t("enrolled")} {currentRows.filter(row => row.stage === "enrolled").length} · {t("attention")} {currentRows.filter(row => levelFor(signalsFor(row)) === "attention").length} · {recordM.historical} {rows.length-currentRows.length}</span></DashboardCommandState>
+    <DashboardCommandFilters><BusinessRecordStateFilter value={recordState} onChange={setRecordState} locale={locale}/><FilterSearchInput aria-label={t("search")} placeholder={t("search")} value={query} disabled={entryBusy} onChange={event => setQuery(event.target.value)} /></DashboardCommandFilters>
     <DashboardCommandActions>
-      {showHistory && <Link href="/dashboard/followups/renewals?view=history" className={buttonVariants({ size: "sm", variant: "ghost" })}>{getStudentBusinessHistoryMessages(locale).renewal}</Link>}
       <Button size="sm" variant="ghost" disabled={entryBusy} onClick={() => setSettingsOpen(true)}><SlidersHorizontal className="size-4" />{t("settings")}</Button>
       <Link href="/dashboard/followups/renewals/growth" className={buttonVariants({ size: "sm", variant: "ghost" })}>{legacy("reactivationAndReferrals")}</Link>
       <Link href="/dashboard/followups/renewals/signals" className={buttonVariants({ size: "sm", variant: "ghost" })}>{legacy("teacherSignals")}</Link>
@@ -118,7 +123,7 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
         <TableHead><DashboardTableColumnHeader label={t("result")} {...table.columnProps("stage")} /></TableHead>
         <TableHead>{t("details")}</TableHead>
       </TableRow></TableHeader>
-      <TableBody>{table.visibleRows.map(row => <RenewalEntryRow key={(cycle?.id ?? "") + "-" + row.membershipId}
+      <TableBody>{table.visibleRows.map(row => row.historical?<HistoricalRenewalRow key={row.opportunityId} row={row} locale={locale}/>:<RenewalEntryRow key={(cycle?.id ?? "") + "-" + row.membershipId}
         row={row} cycleId={cycle?.id ?? ""} stageLabel={stageLabel(row)} payment={payments.get(row.opportunityId ?? "")}
         health={signalsFor(row)} policy={policy} sampleMode={sampleMode}
         observation={supplement.signals.find(item => item.student_id === row.studentId)?.recommendation}
@@ -149,6 +154,17 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
     <ConfirmDialog open={closeCycleOpen} onOpenChange={setCloseCycleOpen} title={legacy("closeCycleTitle")} description={legacy("closeCycleDescription")} confirmLabel={legacy("closeCycleConfirm")} cancelLabel={t("cancel")} pending={status.pending} onConfirm={() => cycle && status.run(cycle.id, "closed")} />
     {policyOpen && cycle ? <RenewalHealthSettings key={latestPolicy.revision} open onOpenChange={setPolicyOpen} cycleId={cycle.id} cycleName={cycle.name} policy={policy} revision={latestPolicy.revision} facts={healthFacts} now={supplement.now} sampleMode={sampleMode} onSaved={(value, revision) => setPolicyUpdate({ policy: value, revision })} /> : null}
   </DashboardPage>;
+}
+
+function HistoricalRenewalRow({row,locale}:{row:PoolRow;locale:string}) {
+  const m=businessRecordMessages(locale);
+  return <TableRow data-record-state="historical" data-renewal-pool-row={row.opportunityId} className="align-top [&>td]:px-2 [&>td]:py-2">
+    <TableCell><Student360Trigger subject={{studentId:row.studentId,leadId:null}} fallback={{name:row.name,grade:row.grade}}/></TableCell>
+    <TableCell>{row.classroom}<p className="text-muted">{row.historical?.teacher_label}</p></TableCell>
+    <TableCell>{m.unknown}</TableCell><TableCell>—</TableCell><TableCell>—</TableCell>
+    <TableCell><HistoricalRecordBadge locale={locale}/><p className="mt-1 text-muted">{row.historical?.outcome==='unknown'?m.outcomeUnknown:row.historical?.outcome}</p></TableCell>
+    <TableCell><p className="whitespace-pre-wrap leading-6">{row.note}</p><Link href={`/dashboard/students/${row.studentId}?tab=history&history=renewal`} className="mt-2 inline-block underline">{m.viewStudent}</Link></TableCell>
+  </TableRow>;
 }
 
 function RenewalEntryRow({ row, cycleId, stageLabel, payment, observation, canWrite, canEnroll, canObserve, entry, busy, onBusy, onActivate, onClose, onSaved, health, policy, sampleMode }: {

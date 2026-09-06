@@ -72,6 +72,8 @@ export interface AssessmentWorkbenchPublicClassRecord {
 /** 学生测评总表的统一数据合同，覆盖单独预约和活动集中测评。 */
 export interface AssessmentWorkbenchRow {
   id: string;
+  recordState?: 'current' | 'historical';
+  occurredOn?: string | null;
   assessmentKind: AssessmentWorkbenchKind;
   activityId: string | null;
   activityTitle: string;
@@ -112,6 +114,7 @@ export interface AssessmentWorkbenchCounts {
   feedback: number;
   handled: number;
   all: number;
+  historical: number;
 }
 
 export function assessmentWorkbenchQueueFrom(
@@ -140,11 +143,12 @@ export function assessmentWorkbenchCounts(
 ): AssessmentWorkbenchCounts {
   const stages = rows.map(assessmentWorkbenchStage);
   return {
-    pending: stages.filter((stage) => stage === "pending").length,
-    in_progress: stages.filter((stage) => stage === "in_progress").length,
-    feedback: stages.filter((stage) => stage === "feedback").length,
-    handled: stages.filter((stage) => stage === "handled").length,
+    pending: stages.filter((stage, i) => stage === "pending" && rows[i].recordState !== 'historical').length,
+    in_progress: stages.filter((stage, i) => stage === "in_progress" && rows[i].recordState !== 'historical').length,
+    feedback: stages.filter((stage, i) => stage === "feedback" && rows[i].recordState !== 'historical').length,
+    handled: stages.filter((stage, i) => stage === "handled" && rows[i].recordState !== 'historical').length,
     all: rows.length,
+    historical: rows.filter(row=>row.recordState==='historical').length,
   };
 }
 
@@ -167,6 +171,7 @@ export function assessmentWorkbenchRowsForView(
   const needle = filters.q?.toLocaleLowerCase(locale);
   return rows
     .filter((row) => {
+      if (filters.queue !== 'all' && row.recordState === 'historical') return false;
       if (filters.kind && row.assessmentKind !== filters.kind) return false;
       if (filters.queue !== "all" && assessmentWorkbenchStage(row) !== filters.queue) return false;
       if (!needle) return true;

@@ -32,6 +32,9 @@ export interface ActivityRegistration {
   studentGrade: number | null;
   status: "booked" | "attended" | "no_show" | "cancelled";
   outcome: string;
+  registeredOn?: string | null;
+  reportedResult?: string;
+  resultLinkStatus?: string;
   assessment: ActivityAssessmentResult | null;
   route: ActivityRoute | null;
 }
@@ -41,6 +44,8 @@ export interface ActivityRow {
   kind: ActivityKind;
   title: string;
   scheduledAt: string;
+  occurredOn?: string | null;
+  recordState?: 'current' | 'historical';
   durationMin: number | null;
   location: string;
   capacity: number | null;
@@ -60,7 +65,9 @@ interface ActivityQueryRow {
   id: string;
   kind: ActivityKind;
   title: string;
-  scheduled_at: string;
+  scheduled_at: string | null;
+  occurred_on: string | null;
+  record_state: 'current' | 'historical';
   duration_min: number | null;
   location: string;
   capacity: number | null;
@@ -70,6 +77,9 @@ interface ActivityQueryRow {
     student_id: string;
     status: ActivityRegistration["status"];
     outcome: string;
+    registered_on: string | null;
+    reported_result: string;
+    result_link_status: string;
     students: { name: string; grade: number | null } | null;
   }>;
   target_grades: number[] | null;
@@ -122,10 +132,10 @@ async function readActivities(activityId?: string): Promise<ActivityRow[]> {
   const supabase = await createClient();
   let query = supabase
     .from("activities")
-    .select("id,kind,title,scheduled_at,duration_min,location,capacity,remark,target_grades,activity_registrations(id,student_id,status,outcome,students(name,grade))")
+    .select("id,kind,title,scheduled_at,occurred_on,record_state,duration_min,location,capacity,remark,target_grades,activity_registrations(id,student_id,status,outcome,registered_on,reported_result,result_link_status,students(name,grade))")
     .is("deleted_at", null)
     .order("scheduled_at", { ascending: true });
-  if (activityId) query = query.eq("id", activityId);
+  if (activityId) query = query.eq("id", activityId).eq("record_state","current");
   else query = query.is("source_invitation_id", null);
 
   const { data, error } = await query.returns<ActivityQueryRow[]>();
@@ -156,7 +166,9 @@ async function readActivities(activityId?: string): Promise<ActivityRow[]> {
     id: activity.id,
     kind: activity.kind,
     title: activity.title,
-    scheduledAt: activity.scheduled_at,
+    scheduledAt: activity.scheduled_at??'',
+    occurredOn:activity.occurred_on,
+    recordState:activity.record_state,
     durationMin: activity.duration_min,
     location: activity.location,
     capacity: activity.capacity,
@@ -173,6 +185,9 @@ async function readActivities(activityId?: string): Promise<ActivityRow[]> {
           studentGrade: registration.students?.grade ?? null,
           status: registration.status,
           outcome: registration.outcome,
+          registeredOn:registration.registered_on,
+          reportedResult:registration.reported_result,
+          resultLinkStatus:registration.result_link_status,
           assessment: assessment ? {
             id: assessment.id,
             assessmentBand: assessment.assessment_band,
@@ -207,7 +222,7 @@ export async function getActivity(activityId: string): Promise<ActivityRow | nul
 }
 
 export function summarizeActivityWorkspace(activities: readonly ActivityRow[]): ActivityWorkspaceSummary {
-  const registrations = activities.flatMap((activity) => activity.registrations);
+  const registrations = activities.filter(activity=>activity.recordState!=='historical').flatMap((activity) => activity.registrations);
   return {
     activeRegistrations: registrations.filter((registration) => registration.status !== "cancelled").length,
     attended: registrations.filter((registration) => registration.status === "attended").length,

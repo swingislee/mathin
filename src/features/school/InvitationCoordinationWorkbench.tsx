@@ -1,4 +1,6 @@
 "use client";
+import { HistoricalFirstContactRows } from './HistoricalFirstContactRows';
+import type { HistoricalFirstContactRow } from './historical-first-contact-contract';
 
 import { Check, ChevronDown, ChevronRight, Copy, LoaderCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -551,7 +553,7 @@ const communicationRowKey = (row: CommunicationRow) => row.source === "post_acti
 const sameCommunicationFact = (left: CommunicationRow, right: CommunicationRow) => left.source === right.source
   && left.value === right.value && (left.source !== "contact" || right.source !== "contact" || left.previousInvitation === right.previousInvitation);
 
-export function InvitationCoordinationWorkbench({ rows, activities, assessors, locale, currentUserId, canManageInvitation, postActivityRows = [], searchQuery = "", contactLeads = EMPTY_CONTACT_LEADS, leadDetails = EMPTY_CONTACT_LEADS, canContact = false, canManageIdentity = false, focusLeadId, rowOrder, invitationHistory = [], workday, worklist, selectionEnabled = false, sessionKey = "communication", workMode }: {
+export function InvitationCoordinationWorkbench({ rows, activities, assessors, locale, currentUserId, canManageInvitation, postActivityRows = [], searchQuery = "", contactLeads = EMPTY_CONTACT_LEADS, leadDetails = EMPTY_CONTACT_LEADS, canContact = false, canManageIdentity = false, focusLeadId, rowOrder, invitationHistory = [], workday, worklist, selectionEnabled = false, sessionKey = "communication", workMode, historicalFirstContacts=[] }: {
   rows: InvitationCoordinationRow[]; activities: InvitationActivityOption[]; assessors: InvitationAssessorOption[]; locale: string;
   queue?: InvitationQueue; coordinationStage?: InvitationCoordinationStage | null; stageCounts?: InvitationQueueCounts["stages"];
   searchQuery?: string; currentUserId: string; canManageInvitation: boolean; postActivityRows?: ActivityEnrollmentContext[];
@@ -559,6 +561,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
   rowOrder?: string[]; invitationHistory?: InvitationCoordinationRow[];
   workday?: CommunicationWorkday; worklist?: CommunicationWorklist; selectionEnabled?: boolean; sessionKey?: string;
   workMode?: CommunicationWorkbenchView;
+  historicalFirstContacts?:HistoricalFirstContactRow[];
 }) {
   const t = useTranslations("school.invitations");
   const leadT = useTranslations("school.leads");
@@ -924,7 +927,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
             {row.source === "invitation" ? <InvitationHistory rows={historyFor(row.value.leadId, row.value.id)} formatAt={formatAt} /> : null}
           </FollowupInlineDetails>
         </Fragment>;
-      })}{!visibleRows.length ? <TableRow><TableCell colSpan={4} className="h-32 text-center text-muted">{tableT("filteredEmpty")}</TableCell></TableRow> : null}</TableBody>
+      })}<HistoricalFirstContactRows rows={historicalFirstContacts} locale={locale}/>{!visibleRows.length&&!historicalFirstContacts.length ? <TableRow><TableCell colSpan={4} className="h-32 text-center text-muted">{tableT("filteredEmpty")}</TableCell></TableRow> : null}</TableBody>
     </Table>
   </DashboardTableShell>;
 }

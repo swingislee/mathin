@@ -1,6 +1,7 @@
 "use client";
 
-import { useDashboardSearchQuery } from "./dashboard-page/DashboardPreferenceScope";
+import { BusinessRecordStateFilter, HistoricalRecordBadge, useBusinessSearchQuery } from './BusinessRecordStateFilter';
+import { businessRecordMessages, matchesBusinessRecordState, type BusinessRecordStateFilter as StateFilter } from './business-record-state-contract';
 
 import { useMemo, useState } from "react";
 import {
@@ -92,6 +93,29 @@ function assessmentConclusion(row: AssessmentWorkbenchRow): string {
     || "";
 }
 
+function HistoricalAssessmentTableRow({row,locale}:{row:AssessmentWorkbenchRow;locale:string}) {
+  const [open,setOpen]=useState(false);
+  const m=businessRecordMessages(locale);
+  const t=useTranslations('school.supportAssessment');
+  const teacherT=useTranslations('school.teacherAssessment');
+  return <>
+    <TableRow data-assessment-workbench-row={row.id} data-record-state="historical" aria-expanded={open} tabIndex={0}
+      onClick={()=>setOpen(value=>!value)} onKeyDown={event=>{if(event.target===event.currentTarget&&event.key==='Enter'){event.preventDefault();setOpen(value=>!value);}}} className="h-16 cursor-pointer">
+      <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-2"><Student360Trigger subject={{studentId:row.studentId,leadId:row.leadId}} fallback={{name:row.name,phone:row.phone,grade:row.grade}}/>{row.phone&&<p className="mt-1 font-mono text-[11px] text-muted">{row.phone}</p>}</TableCell>
+      <TableCell>{t(`type_${row.assessmentKind}`)}</TableCell>
+      <TableCell><p>{row.occurredOn??m.unknown}</p><p className="mt-1 text-muted">{row.assessorName||m.unknown}</p></TableCell>
+      <TableCell>{row.assessment?.assessmentBand?<Badge variant="outline">{teacherT(`band_${row.assessment.assessmentBand}`)}</Badge>:m.unknown}{row.assessment?.score!==null&&row.assessment?.score!==undefined&&<p>{row.assessment.score}</p>}</TableCell>
+      <TableCell><p className="line-clamp-2 whitespace-pre-wrap" title={assessmentConclusion(row)}>{assessmentConclusion(row)||m.unknown}</p></TableCell>
+      <TableCell><div className="flex items-center gap-2"><HistoricalRecordBadge locale={locale}/><Button variant="ghost" size="sm" onClick={event=>{event.stopPropagation();setOpen(value=>!value);}} aria-expanded={open}>{t('details')}</Button></div></TableCell>
+      <TableCell>{row.occurredOn??m.unknown}</TableCell>
+    </TableRow>
+    <FollowupInlineDetails open={open} onOpenChange={setOpen} title={`${row.name} · ${m.historical}`} colSpan={7}>
+      <div className="grid gap-4 text-sm md:grid-cols-2"><p className="whitespace-pre-wrap leading-6">{row.assessment?.strengths||m.unknown}</p><p className="whitespace-pre-wrap leading-6">{row.assessment?.parentConcerns||m.unknown}</p></div>
+      <Link href={`/dashboard/students/${row.studentId}?tab=history&history=assessment`} className="mt-3 inline-block text-xs underline">{m.viewStudent}</Link>
+    </FollowupInlineDetails>
+  </>;
+}
+
 export function AssessmentUnifiedWorkbench({
   initialRows,
   assessors,
@@ -99,6 +123,8 @@ export function AssessmentUnifiedWorkbench({
   canAssess,
   canSupport,
   canManageAssessor,
+  initialQuery,
+  initialRecordState = 'all',
 }: {
   initialRows: AssessmentWorkbenchRow[];
   assessors: InvitationAssessorOption[];
@@ -106,6 +132,8 @@ export function AssessmentUnifiedWorkbench({
   canAssess: boolean;
   canSupport: boolean;
   canManageAssessor: boolean;
+  initialQuery?: string;
+  initialRecordState?: StateFilter;
 }) {
   const t = useTranslations("school.supportAssessment");
   const hubT = useTranslations("school.assessmentHub");
@@ -118,7 +146,9 @@ export function AssessmentUnifiedWorkbench({
   ), [initialRows]);
   const [rows, setRows] = useState(initialRows);
   const [drafts, setDrafts] = useState<Record<string, SupportDraft>>(initialDrafts);
-  const [query, setQuery] = useDashboardSearchQuery("assessments");
+  const [query, setQuery] = useBusinessSearchQuery("assessments",initialQuery);
+  const [recordState,setRecordState]=useState(initialRecordState);
+  const recordM=businessRecordMessages(locale);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [reassigningId, setReassigningId] = useState<string | null>(null);
   const dateTime = useMemo(() => new Intl.DateTimeFormat(locale, {
@@ -133,6 +163,7 @@ export function AssessmentUnifiedWorkbench({
   const scopedRows = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase(locale);
     return rows.filter((row) => {
+      if(!matchesBusinessRecordState(row.recordState,recordState)) return false;
       if (!needle) return true;
       const assessment = row.assessment;
       return [
@@ -147,7 +178,7 @@ export function AssessmentUnifiedWorkbench({
         assessment?.teacherRecommendation ?? "",
       ].some((value) => value.toLocaleLowerCase(locale).includes(needle));
     });
-  }, [locale, query, rows]);
+  }, [locale, query, rows, recordState]);
   const dayFormatter = useMemo(() => new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
     timeZone: "Asia/Shanghai",
@@ -177,7 +208,7 @@ export function AssessmentUnifiedWorkbench({
       filterValues: (row) => [
         {
           value: `time:${row.scheduledAt}`,
-          label: dateTime.format(new Date(row.scheduledAt)),
+          label: row.recordState==='historical' ? row.occurredOn??recordM.unknown : dateTime.format(new Date(row.scheduledAt)),
           group: tableT("fieldScheduledTime"),
         },
         {
@@ -259,18 +290,19 @@ export function AssessmentUnifiedWorkbench({
     status: {
       filterValues: (row) => {
         const stage = queueFor(row, drafts[row.id]);
+        if(row.recordState==='historical') return {value:'historical',label:recordM.historical};
         return { value: stage, label: t(QUEUE_LABEL_KEYS[stage]) };
       },
       sortValue: (row) => ASSESSMENT_WORKBENCH_QUEUES.indexOf(queueFor(row, drafts[row.id])),
     },
     updated: {
       filterValues: (row) => ({
-        value: dayFormatter.format(new Date(row.updatedAt)),
-        label: dayFormatter.format(new Date(row.updatedAt)),
+        value: row.recordState==='historical'?row.occurredOn??EMPTY_VALUE:dayFormatter.format(new Date(row.updatedAt)),
+        label: row.recordState==='historical'?row.occurredOn??recordM.unknown:dayFormatter.format(new Date(row.updatedAt)),
       }),
       sortValue: (row) => row.updatedAt,
     },
-  }), [assessmentT, dateTime, dayFormatter, drafts, t, tableT, teacherT]);
+  }), [assessmentT, dateTime, dayFormatter, drafts, t, tableT, teacherT,recordM.unknown,recordM.historical]);
   const assessmentTable = useDashboardTableView({ rows: scopedRows, columns: tableColumns, locale, persistenceKey: "followup-assessments" });
   const saveRow = (saved: AssessmentWorkbenchRow) => setRows((current) => current.map((row) => row.id === saved.id ? saved : row));
   const saveQuickFollowUp = (row: AssessmentWorkbenchRow, content: string, createdAt: string) => setRows((current) => current.map((candidate) => candidate.id === row.id ? {
@@ -332,6 +364,7 @@ export function AssessmentUnifiedWorkbench({
             <span className="text-xs tabular-nums text-muted">{assessmentTable.visibleRows.length} / {rows.length}</span>
           </DashboardCommandState>
           <DashboardCommandFilters>
+            <BusinessRecordStateFilter value={recordState} onChange={setRecordState} locale={locale}/>
             <FilterSearchInput
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -360,6 +393,7 @@ export function AssessmentUnifiedWorkbench({
             </TableHeader>
             <TableBody>
               {assessmentTable.visibleRows.map((row) => {
+                if(row.recordState==='historical') return <HistoricalAssessmentTableRow key={row.id} row={row} locale={locale}/>;
                 const draft = drafts[row.id];
                 const active = row.id === activeId;
                 const stage = queueFor(row, draft);

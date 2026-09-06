@@ -31,9 +31,13 @@ import { inputClass } from "./controls";
 import { DashboardInlineEntry } from "./dashboard-page/DashboardInlineEntry";
 import type { PublicClassRegistrationData } from "./public-class-registration-contract";
 import { getStudentBusinessHistoryMessages } from "./student-business-history-messages";
+import { BusinessRecordStateFilter, HistoricalRecordBadge, useBusinessSearchQuery } from './BusinessRecordStateFilter';
+import { businessRecordMessages, matchesBusinessRecordState, type BusinessRecordStateFilter as StateFilter } from './business-record-state-contract';
+import { FilterSearchInput } from './FilterBar';
 const PublicClassRegistrationPanel = dynamic(() => import("./PublicClassRegistrationPanel"));
 import {
   DashboardCommandActions,
+  DashboardCommandFilters,
   DashboardCommandPanel,
   DashboardPage,
   DashboardSection,
@@ -67,7 +71,7 @@ function activityCounts(activity: ActivityRow) {
   const booked = activity.registrations.filter((registration) => registration.status !== "cancelled").length;
   const attended = activity.registrations.filter((registration) => registration.status === "attended").length;
   const assessed = activity.registrations.filter((registration) => registration.assessment).length;
-  const awaitingRoute = activity.registrations.filter((registration) =>
+  const awaitingRoute = activity.recordState==='historical'?0:activity.registrations.filter((registration) =>
     registration.status === "attended" && registration.assessment !== null && registration.route === null
   ).length;
   return { booked, attended, assessed, awaitingRoute };
@@ -80,7 +84,8 @@ export function ActivitiesManager({
   initialActivityId,
   teachingActivityIds,
   initialRegistrationData,
-  showHistory = false,
+  initialQuery,
+  initialRecordState='all',
 }: {
   title: string;
   activities: ActivityRow[];
@@ -88,12 +93,16 @@ export function ActivitiesManager({
   initialActivityId?: string;
   teachingActivityIds: string[];
   initialRegistrationData?: PublicClassRegistrationData;
-  showHistory?: boolean;
+  initialQuery?: string;
+  initialRecordState?: StateFilter;
 }) {
   const t = useTranslations("school.activities");
   const tableT = useTranslations("school.table");
   const gradeT = useTranslations("school.activityGrades");
   const locale = useLocale();
+  const recordM=businessRecordMessages(locale);
+  const [query,setQuery]=useBusinessSearchQuery('activities',initialQuery);
+  const [recordState,setRecordState]=useState(initialRecordState);
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState<ActivityRow | null | "new">(null);
@@ -112,8 +121,8 @@ export function ActivitiesManager({
   const tableColumns = useMemo<Record<ActivityTableColumn, DashboardTableColumnDefinition<ActivityRow>>>(() => ({
     time: {
       filterValues: (activity) => ({
-        value: dateFormatter.format(new Date(activity.scheduledAt)),
-        label: dateFormatter.format(new Date(activity.scheduledAt)),
+        value: activity.recordState==='historical'?activity.occurredOn??EMPTY_VALUE:dateFormatter.format(new Date(activity.scheduledAt)),
+        label: activity.recordState==='historical'?activity.occurredOn??recordM.unknown:dateFormatter.format(new Date(activity.scheduledAt)),
       }),
       sortValue: (activity) => activity.scheduledAt,
     },
@@ -156,8 +165,9 @@ export function ActivitiesManager({
       },
       sortValue: (activity) => activityCounts(activity).awaitingRoute,
     },
-  }), [dateFormatter, t, tableT]);
-  const activityTable = useDashboardTableView({ rows: activities, columns: tableColumns, locale });
+  }), [dateFormatter, t, tableT,recordM.unknown]);
+  const visibleActivities=activities.filter(activity=>matchesBusinessRecordState(activity.recordState,recordState)&&[activity.title,activity.remark,...activity.registrations.flatMap(row=>[row.studentName,row.reportedResult??''])].join(' ').toLocaleLowerCase(locale).includes(query.trim().toLocaleLowerCase(locale)));
+  const activityTable = useDashboardTableView({ rows: visibleActivities, columns: tableColumns, locale });
   const run: RunAction = (action, successMessage, onSuccess) => startTransition(async () => {
     const result = await action();
     if (result.ok) {
@@ -168,7 +178,7 @@ export function ActivitiesManager({
       toast.error(result.code === "ACTIVITY_FULL" ? t("full") : t("actionFailed"));
     }
   });
-  const registrations = activities.flatMap((activity) => activity.registrations);
+  const registrations = activities.filter(activity=>activity.recordState!=='historical').flatMap((activity) => activity.registrations);
   const funnel = {
     booked: registrations.filter((registration) => registration.status !== "cancelled").length,
     attended: registrations.filter((registration) => registration.status === "attended").length,
@@ -181,12 +191,12 @@ export function ActivitiesManager({
   return <DashboardPage
     title={title}
     description={t("intro")}
-    commandPanel={canManage || showHistory ? <DashboardCommandPanel>
+    commandPanel={<DashboardCommandPanel>
+      <DashboardCommandFilters><BusinessRecordStateFilter value={recordState} onChange={setRecordState} locale={locale}/><FilterSearchInput value={query} onChange={event=>setQuery(event.target.value)} placeholder={recordM.search} aria-label={recordM.search}/></DashboardCommandFilters>
       <DashboardCommandActions>
-        {showHistory && <Link href="/dashboard/activities?view=history" className={buttonVariants({size:"sm",variant:"ghost"})}>{getStudentBusinessHistoryMessages(locale).activity}</Link>}
         {canManage && <Button size="sm" onClick={() => setEditing("new")} className="gap-1"><Plus size={15} />{t("new")}</Button>}
       </DashboardCommandActions>
-    </DashboardCommandPanel> : undefined}
+    </DashboardCommandPanel>}
   >
     <DashboardSection title={t("workspaceListTitle")} description={t("workspaceListHint")}>
       <StatusStrip
@@ -206,12 +216,20 @@ export function ActivitiesManager({
               <TableHead><DashboardTableColumnHeader label={t("activity")} {...activityTable.columnProps("activity")} /></TableHead>
               <TableHead><DashboardTableColumnHeader label={t("participation")} {...activityTable.columnProps("participation")} /></TableHead>
               <TableHead><DashboardTableColumnHeader label={t("assessment")} {...activityTable.columnProps("assessment")} /></TableHead>
-              <TableHead><DashboardTableColumnHeader label={t("awaitingRoute")} {...activityTable.columnProps("awaitingRoute")} /></TableHead>
+              <TableHead><DashboardTableColumnHeader label={`${t("awaitingRoute")} / ${getStudentBusinessHistoryMessages(locale).result}`} {...activityTable.columnProps("awaitingRoute")} /></TableHead>
               <TableHead className="text-right">{t("actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {activityTable.visibleRows.map((activity) => {
+              if(activity.recordState==='historical') return <TableRow key={activity.id} data-record-state="historical" className="align-top">
+                <TableCell>{activity.occurredOn??recordM.unknown}</TableCell>
+                <TableCell><p className="mb-1 font-medium">{activity.title}</p><HistoricalRecordBadge locale={locale}/></TableCell>
+                <TableCell>{activity.registrations.map(row=><div key={row.id} className="mb-2"><p>{row.studentName}</p><p className="mt-1 text-xs text-muted">{row.registeredOn?`${recordM.registeredOn} ${row.registeredOn}`:row.status==='attended'?getStudentBusinessHistoryMessages(locale).attended:recordM.unknown}</p></div>)}</TableCell>
+                <TableCell>{activity.registrations.map(row=><p key={row.id}>{row.assessment?.assessmentBand==='a_plus'?'A+':row.assessment?.assessmentBand??'—'}</p>)}</TableCell>
+                <TableCell>{activity.registrations.map(row=><div key={row.id}><p>{row.reportedResult||'—'}</p>{row.resultLinkStatus==='edition_unconfirmed'&&<p className="mt-1 text-xs text-muted">{getStudentBusinessHistoryMessages(locale).reportedResult} · {getStudentBusinessHistoryMessages(locale).editionPending}</p>}</div>)}</TableCell>
+                <TableCell>{activity.registrations.map(row=><Link key={row.id} href={`/dashboard/students/${row.studentId}?tab=history&history=${activity.kind==='assessment_1v1'?'assessment':'activity'}`} className="block text-xs underline">{recordM.viewStudent}</Link>)}</TableCell>
+              </TableRow>;
               const { booked, attended, assessed, awaitingRoute } = activityCounts(activity);
               const expanded = activeActivityId === activity.id;
               const publicClass = activity.kind === "public_class";

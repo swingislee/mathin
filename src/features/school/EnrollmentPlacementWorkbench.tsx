@@ -14,13 +14,16 @@ import { Student360Trigger } from "./Student360Sheet";
 import { FilterSearchInput } from "./FilterBar";
 import { FollowupTabs } from "./FollowupTabs";
 import { DashboardCommandActions, DashboardCommandFilters, DashboardCommandPanel, DashboardCommandState, DashboardPage, DashboardTableColumnHeader, DashboardTableShell, useDashboardTableView } from "./dashboard-page";
-import { useDashboardSearchQuery } from "./dashboard-page/DashboardPreferenceScope";
+import { BusinessRecordStateFilter, HistoricalRecordBadge, useBusinessSearchQuery } from './BusinessRecordStateFilter';
+import { businessRecordMessages, matchesBusinessRecordState, type BusinessRecordStateFilter as StateFilter } from './business-record-state-contract';
+import type { HistoricalEnrollment, StudentBusinessHistory } from './student-business-history-contract';
 import { classWeeklyScheduleLabel, enrollmentErrorKey, placementHealth, placementStudents, type EnrollmentPlacementBoard, type PlacementClassroom, type PlacementStudent } from "./enrollment-workflow-contract";
 import { moveEnrollmentSeatAction } from "./enrollment-workflow-actions";
 import { placementRosterSeats, placementSeatTargetError } from "./placement-roster";
 import { useTilePointerDrag } from "./tile-pointer-drag";
 
 interface RosterRow {
+  historical?: HistoricalEnrollment;
   key: string;
   group: string;
   grade: number;
@@ -56,8 +59,9 @@ function rosterRows(board: EnrollmentPlacementBoard, students: PlacementStudent[
   ]);
 }
 
-export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focusStudentId, canCreateClass }: {
+export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focusStudentId, canCreateClass, history, initialQuery, initialRecordState='all' }: {
   initialBoard: EnrollmentPlacementBoard; initialTermId?: string; focusStudentId?: string; canCreateClass: boolean;
+  history?: StudentBusinessHistory|null; initialQuery?: string; initialRecordState?: StateFilter;
 }) {
   const t = useTranslations("school.enrollmentWorkflow");
   const healthT = useTranslations("school.renewals.poolV2");
@@ -67,35 +71,41 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   const pointerPosition = useRef<{ clientX: number; clientY: number } | null>(null);
   const [savedBoard, setSavedBoard] = useState<{ base: EnrollmentPlacementBoard; value: EnrollmentPlacementBoard } | null>(null);
   const board = savedBoard?.base === initialBoard ? savedBoard.value : initialBoard;
-  const [query, setQuery] = useDashboardSearchQuery("enrollments");
+  const [query, setQuery] = useBusinessSearchQuery("enrollments",initialQuery);
+  const [recordState,setRecordState]=useState(initialRecordState);
+  const recordM=businessRecordMessages(locale);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
   const [pending, startMoving] = useTransition();
   const students = useMemo(() => placementStudents(board), [board]);
   const selected = students.find((student) => student.key === selectedKey) ?? null;
-  const rows = useMemo(() => rosterRows(board, students), [board, students]);
+  const rows = useMemo(() => [...rosterRows(board, students),...(history?.enrollments??[]).map((row):RosterRow=>({key:row.id,group:`historical:${row.period_label}`,termId:`historical:${row.period_label}`,grade:history?.subjects[row.student_id]?.grade??0,classroom:null,classrooms:[],students:[],historical:row}))], [board, students,history]);
   const terms = new Map(board.options.terms.map((term) => [term.id, term.name]));
   const courses = new Map(board.options.courses.map((course) => [course.id, course.title]));
   const schedule = (classroom: PlacementClassroom) => classWeeklyScheduleLabel(classroom, locale) || t("schedulePending");
   const classValues = (row: RosterRow) => row.classroom ? [row.classroom] : row.classrooms;
   const columns = {
     grade: { filterValues: (row: RosterRow) => ({ value: String(row.grade), label: row.grade ? t("grade", { grade: row.grade }) : t("gradePending") }), sortValue: (row: RosterRow) => row.grade },
-    term: { filterValues: (row: RosterRow) => ({ value: row.termId, label: terms.get(row.termId) ?? "—" }), sortValue: (row: RosterRow) => terms.get(row.termId) },
+    term: { filterValues: (row: RosterRow) => ({ value: row.termId, label: row.historical?.period_label??terms.get(row.termId) ?? "—" }), sortValue: (row: RosterRow) => row.historical?.period_label??terms.get(row.termId) },
     course: { filterValues: (row: RosterRow) => [...new Set([...classValues(row).map((value) => value.courseId), ...row.students.map((student) => student.courseId)])].map((value) => ({ value, label: courses.get(value) ?? row.students.find((student) => student.courseId === value)?.courseTitle ?? "—" })), sortValue: (row: RosterRow) => courses.get(row.classroom?.courseId ?? "") },
-    classroom: { filterValues: (row: RosterRow) => classValues(row).map((value) => ({ value: value.id, label: value.name })), sortValue: (row: RosterRow) => row.classroom?.name },
-    teacher: { filterValues: (row: RosterRow) => classValues(row).map((value) => ({ value: value.teacherNames || "$pending", label: value.teacherNames || t("teacherPending") })), sortValue: (row: RosterRow) => row.classroom?.teacherNames },
-    time: { filterValues: (row: RosterRow) => classValues(row).map((value) => ({ value: schedule(value), label: schedule(value) })), sortValue: (row: RosterRow) => row.classroom && schedule(row.classroom) },
+    classroom: { filterValues: (row: RosterRow) => row.historical?[{value:row.historical.class_label,label:row.historical.class_label||recordM.unknown}]:classValues(row).map((value) => ({ value: value.id, label: value.name })), sortValue: (row: RosterRow) => row.historical?.class_label??row.classroom?.name },
+    teacher: { filterValues: (row: RosterRow) => row.historical?[{value:row.historical.teacher_label,label:row.historical.teacher_label||recordM.unknown}]:classValues(row).map((value) => ({ value: value.teacherNames || "$pending", label: value.teacherNames || t("teacherPending") })), sortValue: (row: RosterRow) => row.historical?.teacher_label??row.classroom?.teacherNames },
+    time: { filterValues: (row: RosterRow) => row.historical?[{value:row.historical.schedule_label,label:row.historical.schedule_label||recordM.unknown}]:classValues(row).map((value) => ({ value: schedule(value), label: schedule(value) })), sortValue: (row: RosterRow) => row.historical?.schedule_label??(row.classroom && schedule(row.classroom)) },
     health: { filterValues: (row: RosterRow) => row.students.map((student) => { const tone = placementHealth(board.health?.[student.studentId]).tone; return { value: tone, label: t(`legend_${tone}`) }; }), sortValue: (row: RosterRow) => row.classroom?.name },
   };
   const focused = students.find((student) => student.studentId === focusStudentId);
   const explicitTerm = board.options.terms.find((term) => term.id === initialTermId)?.id;
-  const table = useDashboardTableView({ rows, columns, locale, persistenceKey: "followup-enrollment-roster", initialFilters: explicitTerm ? { term: explicitTerm } : focused ? { term: focused.termId, grade: String(focused.grade) } : undefined });
+  const searchableRows=rows.filter(row=>matchesBusinessRecordState(row.historical?'historical':'current',recordState)&&(!query.trim()||[
+    row.classroom?.name??'',...row.students.flatMap(student=>[student.name,student.phone]),
+    ...(row.historical?[history?.students[row.historical.student_id]??'',history?.subjects[row.historical.student_id]?.phone??'',row.historical.period_label,row.historical.class_label,row.historical.teacher_label]:[]),
+  ].join(' ').toLocaleLowerCase(locale).includes(query.trim().toLocaleLowerCase(locale))));
+  const table = useDashboardTableView({ rows:searchableRows, columns, locale, persistenceKey: "followup-enrollment-roster", initialFilters: explicitTerm ? { term: explicitTerm } : focused ? { term: focused.termId, grade: String(focused.grade) } : undefined });
   const pendingMatchesClassFilters = (row: RosterRow) => !table.filters.classroom && !table.filters.teacher && !table.filters.time || row.classrooms.some((classroom) =>
     (!table.filters.classroom || classroom.id === table.filters.classroom)
     && (!table.filters.teacher || (classroom.teacherNames || "$pending") === table.filters.teacher)
     && (!table.filters.time || schedule(classroom) === table.filters.time)
     && (!table.filters.course || classroom.courseId === table.filters.course));
-  const visibleRows = table.visibleRows.filter((row) => row.classroom || pendingMatchesClassFilters(row));
+  const visibleRows = table.visibleRows.filter((row) => row.historical || row.classroom || pendingMatchesClassFilters(row));
   const groups = [...new Set(visibleRows.map((row) => row.group))];
   if (!table.sort || !["grade", "term"].includes(table.sort.column)) {
     groups.sort((a, b) => {
@@ -209,6 +219,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   return <DashboardPage title={t("placementTitle")} density="compact" commandPanel={<DashboardCommandPanel>
     <DashboardCommandState><FollowupTabs /><span className="whitespace-nowrap text-xs text-muted">{t("placementCounts", { pending: scopeStudents.filter((student) => !student.classroomId && student.status !== "withdrawn").length, assigned: scopeStudents.filter((student) => student.classroomId && student.status !== "withdrawn").length })}</span></DashboardCommandState>
     <DashboardCommandFilters>
+      <BusinessRecordStateFilter value={recordState} onChange={setRecordState} locale={locale}/>
       <DashboardTableColumnHeader label={table.filters.term ? terms.get(table.filters.term) ?? t("term") : t("followupAllTerms")} {...table.columnProps("term")} />
       <DashboardTableColumnHeader label={table.filters.grade ? t("grade", { grade: Number(table.filters.grade) }) : t("targetGrade")} {...table.columnProps("grade")} />
       <DashboardTableColumnHeader label={table.filters.course ? courses.get(table.filters.course) ?? t("course") : t("course")} {...table.columnProps("course")} />
@@ -227,6 +238,15 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
         </TableRow></TableHeader>
         <TableBody>{groups.map((group) => {
           const scope = rows.find((row) => row.group === group && !row.classroom)!;
+          if(scope.historical) return <Fragment key={group}>
+            <TableRow><TableCell colSpan={4} className="bg-paper px-2 py-1"><span className="mr-3">{scope.historical.period_label}</span><HistoricalRecordBadge locale={locale}/></TableCell></TableRow>
+            {visibleRows.filter(row=>row.group===group&&row.historical).map(row=>{const fact=row.historical!;return <TableRow key={row.key} data-record-state="historical" className="[&>td]:px-2 [&>td]:py-2">
+              <TableCell>{fact.class_label||recordM.unknown}<p className="mt-1 text-[10px] text-muted">{fact.registered_on??recordM.unknown} · {fact.amount??fact.amount_original}</p></TableCell>
+              <TableCell><p className="whitespace-pre-wrap text-[11px]">{fact.schedule_label||recordM.unknown}</p><p className="mt-1 text-muted">{fact.room_label}</p></TableCell>
+              <TableCell>{fact.teacher_label||recordM.unknown}</TableCell>
+              <TableCell><Student360Trigger subject={{studentId:fact.student_id,leadId:null}} fallback={{name:history?.students[fact.student_id]??recordM.unknown,grade:history?.subjects[fact.student_id]?.grade??null}}/><Link href={`/dashboard/students/${fact.student_id}?tab=history&history=enrollment`} className="ml-4 text-[11px] text-muted underline">{recordM.viewStudent}</Link></TableCell>
+            </TableRow>;})}
+          </Fragment>;
           const pendingStudents = scope.students.filter((student) => !student.classroomId && student.status !== "withdrawn" && (!table.filters.course || student.courseId === table.filters.course));
           const classrooms = table.visibleRows.filter((row) => row.group === group && row.classroom);
           if (!table.sort) classrooms.sort((a, b) => a.classroom!.name.localeCompare(b.classroom!.name, locale, { numeric: true }));

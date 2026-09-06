@@ -261,14 +261,17 @@ export async function getStudent360Snapshot(
       .returns<InvitationRow[]>()) : Promise.resolve([]),
     studentId ? readRows(supabase.from("activity_registrations")
       .select("id,activity_id,student_id,lead_id,status,outcome,operated_by,assessment_started_at,assessment_completed_at,created_at,updated_at")
+      .eq("record_state", "current")
       .eq("student_id", studentId).order("created_at", { ascending: false }).limit(READ_LIMIT)
       .returns<RegistrationRow[]>()) : Promise.resolve([]),
     leadIds.length ? readRows(supabase.from("activity_registrations")
       .select("id,activity_id,student_id,lead_id,status,outcome,operated_by,assessment_started_at,assessment_completed_at,created_at,updated_at")
+      .eq("record_state", "current")
       .in("lead_id", leadIds).order("created_at", { ascending: false }).limit(READ_LIMIT)
       .returns<RegistrationRow[]>()) : Promise.resolve([]),
     studentId ? readRows(supabase.from("student_follow_ups")
       .select("id,student_id,author_id,content,kind,next_follow_up_at,status_after,created_at")
+      .eq("record_state", "current")
       .eq("student_id", studentId).order("created_at", { ascending: false }).limit(READ_LIMIT)
       .returns<FollowUpRow[]>()) : Promise.resolve([]),
     studentId ? readRows(supabase.from("enrollments")
@@ -285,6 +288,7 @@ export async function getStudent360Snapshot(
       .returns<ReviewRow[]>()) : Promise.resolve([]),
     studentId ? readRows(supabase.from("course_enrollments")
       .select("id,note,confirmed_by,confirmed_at,cancelled_by,cancelled_at,courses(title),school_terms(name)")
+      .eq("record_state", "current")
       .eq("student_id", studentId).order("confirmed_at", { ascending: false }).limit(READ_LIMIT)
       .returns<CommercialEnrollmentRow[]>()) : Promise.resolve([]),
   ]);
@@ -548,7 +552,7 @@ export async function getStudent360Snapshot(
 
   for (const row of registrations) {
     const activity = activityById.get(row.activity_id);
-    if (!activity) continue;
+    if (!activity?.scheduled_at) continue;
     addEvent(events, {
       id: `activity:${row.id}`,
       phase: "experience",

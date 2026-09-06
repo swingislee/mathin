@@ -12,6 +12,7 @@ fs.mkdirSync(root,{recursive:true});
 const read = file => JSON.parse(fs.readFileSync(file,'utf8'));
 const {sql,docker,observed} = openHistoryLocalTarget({attestationPath:path.join(root,'preflight.json'),refresh:!!args.preflight,errorFile:path.join(root,'database-error.txt')});
 if (args.preflight) { console.log(JSON.stringify({mode:'preflight',...observed})); process.exit(0); }
+if(sql("begin read only;select count(*) from public.schema_migrations where version='20260906002000_business_record_history_state';commit;")!=='0')throw new Error('HISTORY_FACTS_NOW_USE_CANONICAL_BUSINESS_TABLES');
 const inputFile = typeof args.family === 'string' ? path.resolve(args.family) : read(path.join(root,'input.json')).familyFile;
 const familyRoot = path.resolve('.tmp/history-import-trial');
 if (!inputFile.startsWith(familyRoot+path.sep) || path.basename(inputFile)!=='plan.json') throw new Error('HISTORY_BUSINESS_LOCAL_FAMILY_PLAN_REQUIRED');

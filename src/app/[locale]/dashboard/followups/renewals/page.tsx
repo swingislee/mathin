@@ -4,8 +4,8 @@ import { RenewalStudentPool } from "@/features/school/RenewalStudentPool";
 import { loadRenewalWorkspace } from "@/features/school/renewals";
 import { loadRenewalPoolSupplement } from "@/features/school/renewal-pool-data";
 import { getMyPerms, requirePerm } from "@/lib/auth";
-import { BusinessHistoryWorkspace } from "@/features/school/BusinessHistoryWorkspace";
-import { canReadStudentBusinessHistory } from "@/features/school/student-business-history-data";
+import { loadStudentBusinessHistory } from "@/features/school/student-business-history-data";
+import { businessRecordStateFilter } from '@/features/school/business-record-state-contract';
 
 export default async function RenewalsPage({
   params,
@@ -27,7 +27,6 @@ async function RenewalsContent({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const [user, raw] = await Promise.all([requirePerm(locale, "followup.view"), searchParams]);
-  if (raw.view === "history") return <BusinessHistoryWorkspace locale={locale} kind="renewal" query={typeof raw.q === "string" ? raw.q.slice(0, 100) : ""} />;
   const permissions = await getMyPerms(user.id);
   const canWrite = permissions.has("followup.write");
   const cycle = typeof raw.cycle === "string" ? raw.cycle : null;
@@ -44,7 +43,9 @@ async function RenewalsContent({
     health={raw.tab === "health"}
     allowHealthSamples={process.env.NODE_ENV === "development"}
     healthSampleMode={process.env.NODE_ENV === "development" && raw.samples === "1"}
-    showHistory={await canReadStudentBusinessHistory(locale)}
+    history={await loadStudentBusinessHistory(locale,{kind:'renewal'})}
+    initialQuery={typeof raw.q==='string'?raw.q.slice(0,100):undefined}
+    initialRecordState={businessRecordStateFilter(raw.view==='history'?'historical':raw.state)}
   />;
 }
 

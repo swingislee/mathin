@@ -49,7 +49,9 @@ interface ActivityDbRow {
   id: string;
   kind: ActivityKind;
   title: string;
-  scheduled_at: string;
+  scheduled_at: string | null;
+  occurred_on: string | null;
+  record_state: 'current' | 'historical';
   location: string;
   source_invitation_id: string | null;
 }
@@ -116,6 +118,7 @@ interface RouteDbRow {
 }
 
 interface FollowUpDbRow {
+  record_state: 'current' | 'historical';
   id: string;
   student_id: string;
   content: string;
@@ -216,6 +219,7 @@ const INVITATION_COLUMNS = [
 
 const ACTIVITY_COLUMNS = [
   "id",
+  "record_state,occurred_on",
   "kind",
   "title",
   "scheduled_at",
@@ -283,7 +287,7 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
     readRelatedRows<QuestionResultDbRow>(supabase, "assessment_question_results", "activity_registration_id,question_id,outcome,note", "activity_registration_id", registrationIds),
     readRelatedRows<PublicClassSegmentDbRow>(supabase, "public_class_segments", "id,activity_id,kind,title,scheduled_at,location,primary_teacher_id,primary_teacher:profiles!public_class_segments_primary_teacher_id_fkey(display_name)", "activity_id", publicClassActivityIds),
     readRelatedRows<PublicClassRecordDbRow>(supabase, "public_class_participant_records", "id,segment_id,registration_id,student_presence,guardian_presence,learning_observation,assessment_summary,parent_feedback,recommendation,updated_at", "activity_id", publicClassActivityIds),
-    readRelatedRows<FollowUpDbRow>(supabase, "student_follow_ups", "id,student_id,content,kind,next_follow_up_at,status_after,created_at", "student_id", followUpStudentIds),
+    readRelatedRows<FollowUpDbRow>(supabase, "student_follow_ups", "id,student_id,content,kind,next_follow_up_at,status_after,created_at,record_state", "student_id", followUpStudentIds),
   ]);
   if (assessmentResult.error) throw new Error(assessmentResult.error.message);
   if (routeResult.error) throw new Error(routeResult.error.message);
@@ -333,6 +337,7 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
   }
   const latestFollowUps = new Map<string, AssessmentWorkbenchFollowUp>();
   for (const row of followUpResult.data ?? []) {
+    if (row.record_state === 'historical') continue;
     const current = latestFollowUps.get(row.student_id);
     if (!current || row.created_at > current.createdAt) {
       latestFollowUps.set(row.student_id, {
@@ -393,7 +398,7 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
     }));
 
   const materializedRows = registrations
-    .filter(({ registration }) => registration.status !== "cancelled")
+    .filter(({ activity, registration }) => registration.status !== "cancelled" && (activity.record_state!=='historical'||assessments.has(registration.id)))
     .map(({ activity, registration }): AssessmentWorkbenchRow => {
       const invitation = activity.source_invitation_id
         ? invitations.get(activity.source_invitation_id)
@@ -428,7 +433,9 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
         phone: student?.parent_phone || student?.phone || lead?.phone || "",
         grade: student?.grade ?? lead?.grade_hint ?? null,
         gradeText: lead?.grade_text ?? "",
-        scheduledAt: activity.scheduled_at,
+        scheduledAt: activity.scheduled_at ?? '',
+        recordState: activity.record_state,
+        occurredOn: activity.occurred_on,
         location: activity.location,
         assessorId: completed && actualAssessorId ? actualAssessorId : invitation?.assessor_id ?? actualAssessorId,
         assessorName: completed && actualAssessorName

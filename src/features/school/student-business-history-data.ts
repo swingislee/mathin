@@ -10,17 +10,17 @@ export async function canReadStudentBusinessHistory(locale: string): Promise<boo
   return (await getProfile(user.id))?.role === 'admin';
 }
 
-/** 各业务入口直接读取历史领域列；原始文件只用于展开的来源依据。 */
+/** 学生档案与各业务表格复用现有业务表中的历史状态事实。 */
 export async function loadStudentBusinessHistory(locale: string, options: {studentId?: string; kind?: BusinessHistoryKind} = {}): Promise<StudentBusinessHistory | null> {
   if (!await canReadStudentBusinessHistory(locale)) return null;
   const supabase = await createClient();
   const { studentId, kind } = options;
   const include = (current: BusinessHistoryKind) => !kind || kind === current;
-  const renewalsQuery = supabase.from('student_renewal_history').select('*').order('period_year', {ascending:false}).order('period_key').limit(251);
-  const activitiesQuery = supabase.from('student_activity_history').select('*').order('registered_on', {ascending:false, nullsFirst:false}).limit(251);
-  const assessmentsQuery = supabase.from('student_assessment_history').select('*').order('assessed_on', {ascending:false, nullsFirst:false}).limit(251);
-  const enrollmentsQuery = supabase.from('student_enrollment_history').select('*').order('registered_on', {ascending:false, nullsFirst:false}).order('id').limit(251);
-  const communicationQuery = supabase.from('student_communication_history').select('*').order('occurred_on', {ascending:false, nullsFirst:false}).order('id').limit(251);
+  const renewalsQuery = supabase.from('course_opportunities').select('*').eq('record_state','historical').eq('opportunity_type','renewal').order('period_year', {ascending:false}).order('period_key').limit(251);
+  const activitiesQuery = supabase.from('activity_registrations').select('*,activities!inner(id,title,kind,occurred_on)').eq('record_state','historical').neq('activities.kind','assessment_1v1').order('registered_on', {ascending:false, nullsFirst:false}).limit(251);
+  const assessmentsQuery = supabase.from('assessment_results').select('*').eq('record_state','historical').order('assessed_on', {ascending:false, nullsFirst:false}).limit(251);
+  const enrollmentsQuery = supabase.from('course_enrollments').select('*,course_enrollment_assignments(*)').eq('record_state','historical').order('registered_on', {ascending:false, nullsFirst:false}).order('id').limit(251);
+  const communicationQuery = supabase.from('student_follow_ups').select('*').eq('record_state','historical').order('occurred_on', {ascending:false, nullsFirst:false}).order('id').limit(251);
   const none = {data:[],error:null};
   const responses = await Promise.all([
     include('renewal') ? studentId ? renewalsQuery.eq('student_id',studentId) : renewalsQuery : none,
@@ -33,20 +33,30 @@ export async function loadStudentBusinessHistory(locale: string, options: {stude
     if(response.error) throw new Error(`STUDENT_BUSINESS_HISTORY_${response.error.code}`);
     if((response.data?.length ?? 0)>250) throw new Error('STUDENT_BUSINESS_HISTORY_PAGE_REQUIRED');
   }
+  const source = (row: {id:string;student_id:string|null;source_record_id:string|null;source_field_ids:string[]}) => {
+    if(!row.student_id || !row.source_record_id) throw new Error('BUSINESS_HISTORY_SOURCE_REQUIRED');
+    return {id:row.id,student_id:row.student_id,source_record_id:row.source_record_id,source_field_ids:row.source_field_ids};
+  };
+  const bands: Record<string,string> = {a_plus:'A+',a:'A',s:'S',c:'C',g_plus:'G+',x_plus:'X+',below_a:'A 以下'};
   const data: StudentBusinessHistory = {
-    renewals:responses[0].data??[],activities:responses[1].data??[],assessments:responses[2].data??[],
-    enrollments:responses[3].data??[],communications:responses[4].data??[],students:{},sources:{},
+    renewals:(responses[0].data??[]).map(row=>({...source(row),period_year:row.period_year,period_key:row.period_key??'',decision_note:row.note,outcome:row.stage==='enrolled'?'renewed':row.stage==='not_enrolled'?'not_renewed':'unknown',class_label:row.class_label,teacher_label:row.teacher_label})),
+    activities:(responses[1].data??[]).map(row=>({...source(row),activity_id:row.activity_id,activity_name:row.activities.title,activity_kind:row.activities.kind,registered_on:row.registered_on,occurred_on:row.activities.occurred_on,participation_status:row.status==='booked'?'registered':row.status,reported_result:row.reported_result,result_link_status:row.result_link_status,result_source_record_id:row.result_source_record_id,result_field_ids:row.result_field_ids})),
+    assessments:(responses[2].data??[]).map(row=>({...source(row),activity_registration_id:row.activity_registration_id,assessed_on:row.assessed_on,assessment_band:bands[row.assessment_band??'']??row.assessment_band??'',score:row.score,learning_notes:row.strengths,parent_notes:row.parent_concerns})),
+    enrollments:(responses[3].data??[]).map(row=>{const assignment=row.course_enrollment_assignments.find(item=>item.record_state==='historical');return {...source(row),course_enrollment_id:row.id,registered_on:row.registered_on,period_label:row.period_label,amount:row.amount,amount_original:row.amount_original,class_label:assignment?.class_label??'',teacher_label:assignment?.teacher_label??'',room_label:assignment?.room_label??'',schedule_label:assignment?.schedule_label??''};}),
+    communications:(responses[4].data??[]).map(row=>({...source(row),occurred_on:row.occurred_on,context_kind:row.context_kind,content:row.content,author_label:row.author_label})),
+    students:{},subjects:{},sources:{},
   };
   const allRows=[...data.renewals,...data.activities,...data.assessments,...data.enrollments,...data.communications];
   if(!allRows.length)return data;
   const studentIds=[...new Set(allRows.map(row=>row.student_id))];
   const sourceIds=[...new Set([...allRows.map(row=>row.source_record_id),...data.activities.flatMap(row=>row.result_source_record_id?[row.result_source_record_id]:[])])];
   const [students,sources]=await Promise.all([
-    supabase.from('students').select('id,name').in('id',studentIds),
+    supabase.from('students').select('id,name,phone,parent_phone,grade').in('id',studentIds),
     supabase.from('history_import_records').select('id,source_data,record_data').in('id',sourceIds),
   ]);
   if(students.error||sources.error)throw new Error('STUDENT_BUSINESS_HISTORY_CONTEXT');
   data.students=Object.fromEntries((students.data??[]).map(student=>[student.id,student.name]));
+  data.subjects=Object.fromEntries((students.data??[]).map(student=>[student.id,{name:student.name,phone:student.parent_phone||student.phone,grade:student.grade}]));
   data.sources=Object.fromEntries((sources.data??[]).map(source=>{
     const sourceData=source.source_data as {filename:string};
     const record=source.record_data as {tableName:string;cells:StudentBusinessHistory['sources'][string]['cells']};
