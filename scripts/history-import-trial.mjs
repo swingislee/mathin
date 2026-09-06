@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { DatabaseSync } from 'node:sqlite';
 import { buildHistoryIdentityIndex, matchHistoryRecords } from './lib/history-archive-identity.mjs';
-import { buildHistoryTrialPayload, historyPayloadHash, selectHistoryTrialCases, validateHistoryTrialTarget } from './lib/history-import-trial.mjs';
+import { buildHistoryFamilyPayload, buildHistoryTrialPayload, historyPayloadHash, selectHistoryTrialCases, validateHistoryTrialTarget } from './lib/history-import-trial.mjs';
 
 const args = Object.fromEntries(process.argv.slice(2).map(value => {
   const split = value.indexOf('=');
@@ -14,7 +14,9 @@ const args = Object.fromEntries(process.argv.slice(2).map(value => {
 if ((!args.prepare && !args.apply) || (args.prepare && args.apply) || typeof args.attestation !== 'string') {
   throw new Error('Use --prepare or --apply with --attestation=local-file');
 }
-const root = path.resolve('.tmp/history-import-trial');
+if (args.family && (typeof args.family !== 'string' || !args.family.trim() || args.family.length > 100)) throw new Error('HISTORY_FAMILY_NAME_REQUIRED');
+const trialRoot = path.resolve('.tmp/history-import-trial');
+const root = args.family ? path.join(trialRoot, `family-${historyPayloadHash(args.family.trim()).slice(0, 12)}`) : trialRoot;
 fs.mkdirSync(root, { recursive: true });
 const read = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const docker = argv => execFileSync('docker.exe', ['--context', 'desktop-linux', ...argv], { encoding: 'utf8', windowsHide: true, maxBuffer: 96 * 1024 * 1024 }).trim();
@@ -72,14 +74,20 @@ const identities = buildHistoryIdentityIndex({ tables: snapshot });
 const matches = matchHistoryRecords(records, identities);
 if (args.diagnostics) console.log(JSON.stringify({identities:identities.diagnostics, sources:sources.map(source=>({id:source.id,filename:source.filename})),statuses:matches.reduce((counts,match)=>({...counts,[match.status]:(counts[match.status]??0)+1}),{}),tableSample:records.find(record=>record.tableName==='（老数据）各选拔产品协作信息表-总')?.sourceId}));
 const planFile = path.join(root, 'plan.json');
-const cases = args.prepare ? selectHistoryTrialCases(records, matches, identities.entities) : read(planFile).manifest.cases;
-const payload = buildHistoryTrialPayload({ records, matches, entities: identities.entities, sources, cases });
+const seedCases = args.family ? read(path.join(trialRoot, 'plan.json')).manifest.cases.filter(item => item.label === args.family.trim() && item.entityKind === 'student') : [];
+if (args.family && seedCases.length !== 1) throw new Error('HISTORY_FAMILY_SAMPLE_AMBIGUOUS');
+const cases = args.family ? null : args.prepare ? selectHistoryTrialCases(records, matches, identities.entities) : read(planFile).manifest.cases;
+const payload = args.family
+  ? buildHistoryFamilyPayload({ records, matches, entities: identities.entities, sources, seedCase: seedCases[0] })
+  : buildHistoryTrialPayload({ records, matches, entities: identities.entities, sources, cases });
 if (args.prepare) {
   if (fs.existsSync(planFile) && read(planFile).payloadHash !== payload.payloadHash) throw new Error('HISTORY_TRIAL_PLAN_EXISTS_WITH_DIFFERENT_INPUT');
   fs.writeFileSync(planFile, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
   fs.writeFileSync(path.join(root, 'fresh-identity-snapshot.json'), `${JSON.stringify(snapshot)}\n`, 'utf8');
   console.log(JSON.stringify({ mode: 'prepared', records: payload.records.length, cases: payload.manifest.cases.length,
-    linkedIdentities: payload.manifest.linkedIdentities, reviewCases: payload.manifest.reviewCases, unmatchedCases: payload.manifest.unmatchedCases, payloadHash: payload.payloadHash }));
+    linkedIdentities: payload.manifest.linkedIdentities, reviewCases: payload.manifest.reviewCases, unmatchedCases: payload.manifest.unmatchedCases,
+    searchedSources: payload.manifest.searchedSourceCount ?? null, linkedRecords: payload.manifest.linkedRecordCount ?? null,
+    candidateRecords: payload.manifest.candidateRecordCount ?? null, rosterMentions: payload.manifest.rosterRecordCount ?? null, payloadHash: payload.payloadHash }));
   process.exit(0);
 }
 const saved = read(planFile);

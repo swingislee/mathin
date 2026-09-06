@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { buildHistoryTrialPayload, historyPayloadHash, validateHistoryTrialTarget } from '../scripts/lib/history-import-trial.mjs';
+import { buildHistoryFamilyPayload, buildHistoryTrialPayload, historyPayloadHash, validateHistoryTrialTarget } from '../scripts/lib/history-import-trial.mjs';
+import { originalEnrollmentPeriods } from '../src/features/school/imported-family-history-contract';
+import type { ImportedHistoryRecord } from '../src/features/school/history-import-trial-contract';
 
 const now = Date.parse('2026-09-06T08:00:00Z');
 const target = { host: 'WHITEHOUSE', envOrigin: 'http://127.0.0.1:35421', now, dockerEndpoint: 'npipe:////./pipe/dockerDesktopLinuxEngine', systemIdentifier: '123456' };
@@ -19,6 +21,37 @@ describe('actual history import local boundary', () => {
     for (const checkedAt of ['invalid', '2026-09-06T06:00:00Z', '2026-09-06T08:01:00Z']) {
       expect(() => validateHistoryTrialTarget({ ...attestation, checkedAt }, target)).toThrow('LOCAL_PREFLIGHT');
     }
+  });
+});
+
+describe('one-family source comparison', () => {
+  it('finds a name in a shared roster without attaching the whole class to one child', () => {
+    const input = fixture();
+    const first = { ...input.records[0], hasContent: true, sourceRow: 2 };
+    const roster = { ...first, id: 'roster-row', sourceRecordId: '22', names: [], phones: [], sourceRow: 22,
+      cells: [{ fieldId: 'S22', fieldName: 'S', kind: 'context', text: '示例孩子', rawValue: { ref: 'S22', value: '示例孩子' } }] };
+    const result = buildHistoryFamilyPayload({ ...input, records: [first, roster], seedCase: input.cases[0],
+      matches: [...input.matches, { recordId: roster.id, status: 'unmatched', entityKey: null, candidateKeys: [], reason: 'no_identity_fields' }] });
+    expect(result.manifest).toMatchObject({ mode: 'local_family_audit', recordCount: 2, linkedRecordCount: 1, rosterRecordCount: 1, previousRecordCount: 1 });
+    expect(result.records.find((record: { id: string }) => record.id === roster.id)).toMatchObject({ student_id: null, lead_id: null, match_status: 'unmatched' });
+    expect(result.manifest.coverage.find((item: { recordId: string }) => item.recordId === roster.id)).toMatchObject({ category: 'roster_mention', hits: [{ fieldId: 'S22', text: '示例孩子' }] });
+  });
+  it('keeps a name-only source unlinked and ties the saved comparison to source values', () => {
+    const input = fixture();
+    const first = { ...input.records[0], hasContent: true, sourceRow: null };
+    const candidate = { ...first, id: 'name-only', sourceRecordId: 'other', phones: [],
+      cells: [{ fieldId: 'name', fieldName: '姓名', kind: 'identity', text: '示例孩子', rawValue: '示例孩子' }] };
+    const result = buildHistoryFamilyPayload({ ...input, records: [first, candidate], seedCase: input.cases[0],
+      matches: [...input.matches, { recordId: candidate.id, status: 'review', entityKey: null, candidateKeys: [input.entities[0].key], reason: 'name_only' }] });
+    expect(result.records.find((record: { id: string }) => record.id === candidate.id)?.student_id).toBeNull();
+    expect(result.manifest.candidateRecordCount).toBe(1);
+    input.entities[0].phones.push('13900000000');
+    expect(result.payloadHash).toBe(historyPayloadHash({ manifest: result.manifest, records: result.records }));
+  });
+  it('reads repeated enrollment columns without borrowing the next period’s date or amount', () => {
+    const fields = [['报课7 [AK]', '寒假'], ['报名日期 [AL]', '2025.12.29'], ['缴费金额 [AN]', '100'], ['报课8 [AP]', '春季'], ['报名日期 [AQ]', ''], ['缴费金额 [AS]', '200']];
+    const record = { record_data: { cells: fields.map(([fieldName, text]) => ({ fieldName, text })) } } as unknown as ImportedHistoryRecord;
+    expect(originalEnrollmentPeriods(record)).toEqual([{ course: '寒假', date: '2025.12.29', amount: '100' }, { course: '春季', date: '', amount: '200' }]);
   });
 });
 

@@ -102,6 +102,49 @@ export function buildHistoryTrialPayload({ records, matches, entities, sources, 
   return structuredClone({ batchKey: HISTORY_TRIAL_BATCH_KEY, manifest, records: selected, payloadHash: historyPayloadHash({ manifest, records: selected }) });
 }
 
+/** 家庭核对覆盖所有已提取来源。班级行中的姓名只构成来源线索，整行仍保持未关联。 */
+export function buildHistoryFamilyPayload({ records, matches, entities, sources, seedCase }) {
+  const entity = entities.find(item => item.key === seedCase?.key);
+  if (!entity || entity.kind !== 'student') throw new Error('HISTORY_FAMILY_EXISTING_STUDENT_REQUIRED');
+  const matchMap = new Map(matches.map(match => [match.recordId, match]));
+  const name = normalizeArchiveSearch(entity.name);
+  const phones = entity.phones.map(normalizeArchiveSearch);
+  const coverage = records.filter(record => record.hasContent).flatMap(record => {
+    const match = matchMap.get(record.id);
+    const hits = record.cells.filter(cell => cell.kind !== 'system' && cell.text.trim()).filter(cell => {
+      const text = normalizeArchiveSearch(cell.text);
+      return text.includes(name) || phones.some(phone => text.replace(/[^0-9]/g, '').includes(phone));
+    });
+    const linked = match?.status === 'matched' && match.entityKey === entity.key;
+    if (!linked && !hits.length) return [];
+    const roster = !linked && record.names.length !== 1 && record.sourceRow !== null
+      && hits.some(cell => normalizeArchiveSearch(cell.text) === name);
+    return [{ record, category: linked ? 'linked' : roster ? 'roster_mention' : 'candidate',
+      hits: hits.map(cell => ({ fieldId: cell.fieldId, fieldName: cell.fieldName, text: cell.text })) }];
+  }).sort((a, b) => a.record.id.localeCompare(b.record.id));
+  if (!coverage.length) throw new Error('HISTORY_FAMILY_NO_SOURCE_RECORDS');
+  const linkedRows = coverage.filter(item => item.category === 'linked');
+  if (!linkedRows.length) throw new Error('HISTORY_FAMILY_IDENTITY_EVIDENCE_REQUIRED');
+  const cases = [
+    { key: entity.key, label: entity.name, kind: 'matched', entityKind: 'student', phones: entity.phones, recordIds: linkedRows.map(item => item.record.id) },
+    ...coverage.filter(item => item.category !== 'linked').map(item => ({ key: item.record.id, label: entity.name,
+      kind: matchMap.get(item.record.id).status, entityKind: null, phones: item.record.phones, recordIds: [item.record.id] })),
+  ];
+  const result = buildHistoryTrialPayload({ records, matches, entities, sources, cases });
+  const manifest = {
+    ...result.manifest, mode: 'local_family_audit',
+    subject: { key: entity.key, studentId: entity.localId, name: entity.name, phones: entity.phones },
+    searchedSourceCount: sources.length,
+    previousRecordCount: coverage.filter(item => seedCase.recordIds.includes(item.record.id)).length,
+    coverage: coverage.map(item => ({ recordId: item.record.id, category: item.category, hits: item.hits })),
+    linkedRecordCount: linkedRows.length,
+    candidateRecordCount: coverage.filter(item => item.category === 'candidate').length,
+    rosterRecordCount: coverage.filter(item => item.category === 'roster_mention').length,
+  };
+  return structuredClone({ ...result, batchKey: `${HISTORY_TRIAL_BATCH_KEY}-family-${historyPayloadHash(entity.key).slice(0, 12)}`,
+    manifest, payloadHash: historyPayloadHash({ manifest, records: result.records }) });
+}
+
 export function validateHistoryTrialTarget(attestation, { host, envOrigin, now = Date.now(), dockerEndpoint, systemIdentifier }) {
   const checkedAt = Date.parse(attestation?.checkedAt);
   if (host?.toLowerCase() !== attestation?.host?.toLowerCase() || host?.toLowerCase() !== 'whitehouse'

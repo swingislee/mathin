@@ -37,3 +37,20 @@ node scripts/history-import-trial.mjs --apply --attestation=.tmp/history-import-
 定向检查使用 `tests/history-import-trial.test.ts`、受影响历史入口边界测试、SQL RLS 断言、类型检查和固定开发账号的 HTTP/API 读取。数据库原文应与导入计划逐字段相同；管理员可见，其他身份不可见。产品负责人在页面验收查询与原文展示。
 
 当前批次完成历史原文落库、已有身份关联与幂等重放。全量历史迁移、候选归属决定、普通新名单的全范围查重、四个生命周期里程碑回填与本轮工作名单启用继续作为后续业务增量。当前程序限定本机试验，生产迁移采用独立的明确批次和生产 runbook。
+
+## 单个家庭的来源核对与实际使用
+
+产品负责人指定原样本中的一名学生后，使用 `--family` 搜索全部已提取来源中的姓名、电话及明确身份关联。将下面的学生姓名替换为指定对象：
+
+```powershell
+node scripts/history-import-trial.mjs --prepare '--family=学生姓名' --attestation=.tmp/history-import-trial/preflight.json
+node scripts/history-import-trial.mjs --apply '--family=学生姓名' --attestation=.tmp/history-import-trial/preflight.json
+```
+
+家庭清单与执行记录保存到 `.tmp/history-import-trial/family-<摘要>/`，使用独立批次；已存在的原文继续复用。对同一家庭批次重放验证新增为零。
+
+家庭核对区分明确关联、相关候选与班级名单中的姓名。横向名单保留目标姓名所在单元格，整行仍作为共享来源保存；名单中的其他孩子不会因此归入该学生身份。覆盖数字只表示现有可检索资料中的命中位置。
+
+开发管理员从已有学生的 `?tab=followups` 进入，可直接阅读续报沟通背景、测评与报名来源，逐项查看来源覆盖和当前档案差异，再使用原有表单记录本次跟进。展示来源中已经发生的事实，不将来源编辑时间变成业务发生时间。重复报名日期与缴费字段按对应课程段读取。
+
+当前学生分类、性别和年级与源资料有差异时并列展示，后续按业务定义及人工核对结果更正；这一增量继续保留当前业务表与工作范围。完整生命周期恢复与当前名单启用仍有独立退出条件。

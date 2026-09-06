@@ -2,6 +2,9 @@ import { getTranslations } from "next-intl/server";
 import { CustomerVideoButton } from "./CustomerVideoButton";
 import { FollowUpForm } from "./FollowUpForm";
 import { ImportedHistoryStudentLink } from "./ImportedHistoryStudentLink";
+import { ImportedFamilyHistoryPanel } from "./ImportedFamilyHistoryPanel";
+import { loadImportedFamilyHistory } from "./history-import-trial-data";
+import { getImportedFamilyHistoryMessages } from "./imported-family-history-messages";
 import { StageReportPanel } from "./StageReportPanel";
 import type { SchoolTermRow } from "./courses";
 import type { StaffLearningResult } from "./learning-results";
@@ -39,11 +42,15 @@ export async function StudentFollowUpsTab({
   const t = await getTranslations("school.students");
   const formatter = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" });
   const shortFormatter = new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short" });
+  const importedFamily = await loadImportedFamilyHistory(locale, student.id);
+  const historyMessages = getImportedFamilyHistoryMessages(locale);
 
   return (
-    <Section title={t("followUps")}>
+    <div className="space-y-6">
+      {importedFamily && <ImportedFamilyHistoryPanel data={importedFamily} locale={locale} current={{ status: t(student.status), gender: student.gender, grade: student.grade }} />}
+    <Section title={importedFamily ? historyMessages.newFollowup : t("followUps")}>
       {canWrite && <FollowUpForm studentId={student.id} currentStatus={student.followUpStatus} />}
-      <ImportedHistoryStudentLink studentId={student.id} locale={locale} />
+      {!importedFamily && <ImportedHistoryStudentLink studentId={student.id} locale={locale} />}
       {student.followUps.length === 0 ? (
         <p className="mt-4 text-sm text-muted">{t("noFollowUps")}</p>
       ) : (
@@ -67,6 +74,7 @@ export async function StudentFollowUpsTab({
         </ol>
       )}
     </Section>
+    </div>
   );
 }
 

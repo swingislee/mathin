@@ -1,0 +1,31 @@
+const zh = {
+  title: '这个家庭的历史背景', context: '续报沟通原文', facts: '来源中的测评与报名', assessment: '到访与测评', enrollment: '报名缴费记录',
+  visitDate: '到访日期', assessmentBand: '测评等级', signup: '报名结果', amount: '缴费金额',
+  recordCoverage: '来源核对', coverage: '已核对现有可检索文件', files: '个', found: '处命中', savedBefore: '上轮已保存', savedNow: '本轮已保存',
+  linked: '已关联到此学生', candidate: '同名或相关资料，待核对', roster: '班级名单中的姓名，单独保留',
+  source: '源文件与表', position: '位置', result: '归属结果', open: '查看来源原文', line: '行',
+  comparison: '当前档案中需要核对的信息', item: '项目', current: '当前系统', original: '源资料中的记载',
+  status: '学生分类', gender: '性别', grade: '年级', empty: '未记录',
+  compareHint: '源资料中的报名、后续沟通与当前分类需要一起判断；性别与年级保留各来源说法，核对后再更正。',
+  notesHint: '先读历史背景，再用下方表单记录这一次沟通。',
+  rosterHint: '班级名单整行包含多个孩子。本页保留姓名所在单元格，名单作为来源证据保存；这些行尚未归为该学生的个人记录。',
+  originals: '已关联的完整历史资料', date: '来源日期原文', allFields: '查看全部原始字段', field: '字段', value: '原文',
+  archiveScope: '核对范围是已经收到并提取的资料。这里展示来源事实，当前工作名单与业务阶段另行确认。',
+  newFollowup: '记录本次跟进',
+};
+const en: typeof zh = {
+  title: 'This family’s history', context: 'Original renewal conversation', facts: 'Assessment and enrollment in the sources', assessment: 'Visit and assessment', enrollment: 'Enrollment and payment records',
+  visitDate: 'Visit date', assessmentBand: 'Assessment band', signup: 'Enrollment outcome', amount: 'Payment amount',
+  recordCoverage: 'Source comparison', coverage: 'Searchable source files checked', files: 'files', found: 'source matches', savedBefore: 'Saved in the first trial', savedNow: 'Saved now',
+  linked: 'Linked to this student', candidate: 'Same name or related evidence; to confirm', roster: 'Name in a class roster; preserved separately',
+  source: 'Source file and table', position: 'Position', result: 'Identity link', open: 'Read original source', line: 'row',
+  comparison: 'Profile information to review', item: 'Field', current: 'Current system', original: 'What the sources say',
+  status: 'Student classification', gender: 'Gender', grade: 'Grade', empty: 'Not recorded',
+  compareHint: 'Review enrollment, later conversations and current classification together. Retain each source’s gender and grade until the differences are resolved.',
+  notesHint: 'Read the historical context, then use the form below to record this conversation.',
+  rosterHint: 'Each class row contains several children. This view identifies the matching name cell and preserves the roster as source evidence. These rows are not linked as this student’s personal records.',
+  originals: 'Complete linked historical records', date: 'Source date as written', allFields: 'Read all original fields', field: 'Field', value: 'Original text',
+  archiveScope: 'The comparison covers material already received and extracted. These are source facts; current work lists and business stages are confirmed separately.',
+  newFollowup: 'Record this follow-up',
+};
+export const getImportedFamilyHistoryMessages = (locale: string) => locale === 'en' ? en : zh;
