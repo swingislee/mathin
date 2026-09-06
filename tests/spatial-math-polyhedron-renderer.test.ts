@@ -197,7 +197,8 @@ describe("polyhedron-net-2d-v1 fallback", () => {
     expect(rig).toContain("spatialCameraTransitionProgress");
     expect(source).toContain('data-camera-transition="orbit-ease-in-out"');
     expect(source).toContain('data-camera-transition-state="idle"');
-    expect(rig).toContain("!previous || reducedMotion");
+    expect(rig).toContain("active.startedAtMs ??= now");
+    expect(rig).not.toContain("!previous || reducedMotion");
   });
 
   it("uses opaque solid faces and one instanced ink-edge draw instead of WebGL line widths", () => {

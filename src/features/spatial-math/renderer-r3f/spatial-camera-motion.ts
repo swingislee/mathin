@@ -50,7 +50,18 @@ export function spatialCameraTransitionProgress(elapsedMs: number, durationMs: n
   return progress * progress * (3 - 2 * progress);
 }
 
-/** 位置方向和屏幕上方向作为同一个旋转插值，经过顶面时始终保持正交。 */
+function uprightAngles(orientation: Quaternion) {
+  const right = new Vector3(1, 0, 0).applyQuaternion(orientation);
+  const up = new Vector3(0, 1, 0).applyQuaternion(orientation);
+  if (Math.abs(right.y) > 1e-6 || up.y < -1e-6) return null;
+  const backward = new Vector3(0, 0, 1).applyQuaternion(orientation);
+  return {
+    azimuth: Math.atan2(-right.z, right.x),
+    elevation: Math.atan2(backward.y, Math.hypot(backward.x, backward.z)),
+  };
+}
+
+/** 正立视角沿方位角/仰角过渡，侧视转俯视也保持竖直方向；兼容旧侧倾书签。 */
 export function interpolateSpatialCameraPose(
   from: SpatialCameraPose,
   to: SpatialCameraPose,
@@ -63,7 +74,20 @@ export function interpolateSpatialCameraPose(
   const last = cameraFrame(to);
   if (progress === 0) return from;
   if (progress === 1) return to;
-  const orientation = first.orientation.slerp(last.orientation, progress);
+  const firstAngles = uprightAngles(first.orientation);
+  const lastAngles = uprightAngles(last.orientation);
+  let orientation: Quaternion;
+  if (firstAngles && lastAngles) {
+    const difference = lastAngles.azimuth - firstAngles.azimuth;
+    const azimuth = firstAngles.azimuth + Math.atan2(Math.sin(difference), Math.cos(difference)) * progress;
+    const elevation = firstAngles.elevation + (lastAngles.elevation - firstAngles.elevation) * progress;
+    const right = new Vector3(Math.cos(azimuth), 0, -Math.sin(azimuth));
+    const backward = new Vector3(Math.sin(azimuth) * Math.cos(elevation), Math.sin(elevation), Math.cos(azimuth) * Math.cos(elevation));
+    const up = backward.clone().cross(right);
+    orientation = new Quaternion().setFromRotationMatrix(new Matrix4().makeBasis(right, up, backward));
+  } else {
+    orientation = first.orientation.slerp(last.orientation, progress);
+  }
   const target = first.target.lerp(last.target, progress);
   const radius = first.radius + (last.radius - first.radius) * progress;
   return {

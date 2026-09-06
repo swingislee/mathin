@@ -23,7 +23,7 @@ interface CameraTransition {
   readonly to: SpatialCameraPose;
   readonly projectionFrom: number;
   readonly projectionTo: number;
-  readonly startedAtMs: number;
+  startedAtMs: number | null;
   readonly durationMs: number;
 }
 
@@ -44,7 +44,7 @@ function applyCameraPose(camera: SpatialCamera, pose: SpatialCameraPose, control
   camera.position.set(pose.position.x, pose.position.y, pose.position.z);
   camera.up.set(pose.up.x, pose.up.y, pose.up.z);
   camera.lookAt(pose.target.x, pose.target.y, pose.target.z);
-  // 书签的 up 可以是方向提示；自由旋转始终从实际屏幕坐标系接手。
+  // 书签的 up 可以是方向提示；过渡始终从实际屏幕坐标系接手。
   camera.up.set(0, 1, 0).applyQuaternion(camera.quaternion);
   camera.updateMatrixWorld();
   if (controls?.object === camera) {
@@ -127,7 +127,7 @@ export function SpatialCameraRig({ bookmark, radius, interactive, axisSnapEnable
     }
     activeCamera.current = camera;
     setThree({ camera });
-    if (!previous || reducedMotion) {
+    if (!previous) {
       transition.current = null;
       currentTarget.current = targetPose.target;
       applyProjectionValue(camera, projectionTarget);
@@ -135,7 +135,9 @@ export function SpatialCameraRig({ bookmark, radius, interactive, axisSnapEnable
       onTransitionStateChange(false);
     } else {
       transition.current = { from, to: targetPose, projectionFrom: projectionValue(camera),
-        projectionTo: projectionTarget, startedAtMs: performance.now(), durationMs: SPATIAL_CAMERA_TRANSITION_MS };
+        projectionTo: projectionTarget, startedAtMs: null,
+        // 主动教学视角切换保留空间对应关系；减少动态效果时使用短过渡。
+        durationMs: reducedMotion ? SPATIAL_AXIS_SNAP_TRANSITION_MS : SPATIAL_CAMERA_TRANSITION_MS };
       onTransitionStateChange(true);
     }
     invalidate();
@@ -155,7 +157,7 @@ export function SpatialCameraRig({ bookmark, radius, interactive, axisSnapEnable
       applyCameraPose(camera, to, instance);
     } else {
       transition.current = { from, to, projectionFrom: projectionValue(camera), projectionTo: projectionValue(camera),
-        startedAtMs: performance.now(), durationMs: SPATIAL_AXIS_SNAP_TRANSITION_MS };
+        startedAtMs: null, durationMs: SPATIAL_AXIS_SNAP_TRANSITION_MS };
       onTransitionStateChange(true);
     }
     invalidate();
@@ -201,7 +203,10 @@ export function SpatialCameraRig({ bookmark, radius, interactive, axisSnapEnable
       controls.current?.update();
       return;
     }
-    const progress = spatialCameraTransitionProgress(Math.max(0, performance.now() - active.startedAtMs), active.durationMs);
+    const now = performance.now();
+    // demand 画布可能晚于点击才绘制。首帧才开始计时，等待时间不消耗动画。
+    active.startedAtMs ??= now;
+    const progress = spatialCameraTransitionProgress(Math.max(0, now - active.startedAtMs), active.durationMs);
     const pose = interpolateSpatialCameraPose(active.from, active.to, progress);
     currentTarget.current = pose.target;
     applyProjectionValue(camera, THREE.MathUtils.lerp(active.projectionFrom, active.projectionTo, progress));

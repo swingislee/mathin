@@ -70,6 +70,8 @@ describe("统一空间相机运动", () => {
         expect(offset.length()).toBeCloseTo(10, 10);
         expect(v(pose.up).length()).toBeCloseTo(1, 10);
         expect(offset.normalize().dot(v(pose.up))).toBeCloseTo(0, 10);
+        expect(v(pose.up).cross(offset).normalize().y).toBeCloseTo(0, 10);
+        expect(pose.up.y).toBeGreaterThanOrEqual(-1e-10);
       }
     }
   });
