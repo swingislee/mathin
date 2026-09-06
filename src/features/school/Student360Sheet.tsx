@@ -572,39 +572,49 @@ function Student360LifecycleRail({ snapshot }: { snapshot: Student360Snapshot })
   const currentIndex = STUDENT_LIFECYCLE_STAGES.indexOf(snapshot.lifecycleStage);
   return (
     <section className="px-5 py-5 sm:px-7" aria-label={t("lifecycleLabel")} data-student-lifecycle={snapshot.lifecycleStage}>
-      <ol className="grid grid-cols-5 grid-rows-[auto_2rem_auto]">
+      <ol className="grid grid-cols-5 grid-rows-[auto_auto] gap-y-2">
         {STUDENT_LIFECYCLE_ROADMAP.map(({ table, milestone }, index) => {
           const current = milestone === snapshot.lifecycleStage;
           const previous = index < currentIndex;
+          const traversed = index <= currentIndex;
           return (
-            <li key={table} className="row-span-3 grid min-w-0 grid-rows-subgrid">
-              <div className="flex min-w-0 items-end justify-center px-0.5">
+            <li key={table} className="row-span-2 grid min-w-0 grid-rows-subgrid">
+              <div className="relative flex min-w-0 items-center justify-center px-3">
+                <span
+                  aria-hidden="true"
+                  data-student-lifecycle-connector
+                  className={cn("absolute inset-x-0 top-1/2 h-px", traversed ? "bg-crater/80" : "bg-line")}
+                />
                 <Badge
                   variant="outline"
                   data-student-lifecycle-process={table}
+                  data-journey-state={traversed ? "passed" : "future"}
                   title={t("lifecycleProcess", { table: workspaceT(table) })}
-                  className="max-w-full justify-center whitespace-normal break-words rounded-md px-1.5 py-1 text-center text-[11px] font-normal leading-4 text-muted"
-                >{workspaceT(table)}</Badge>
-              </div>
-              <div className="relative flex items-center" aria-hidden="true">
-                <span data-student-lifecycle-connector className={cn(
-                  "h-px w-full",
-                  index <= currentIndex ? "bg-leaf-deep/40" : "bg-line",
-                )} />
+                  className={cn(
+                    "relative z-10 max-w-full justify-center whitespace-normal break-words rounded-md bg-paper px-1 py-1 text-center text-[11px] font-normal leading-4",
+                    traversed ? "border-crater/70 text-ink" : "border-line text-muted",
+                  )}
+                >
+                  {traversed ? <span aria-hidden="true" className="absolute inset-0 rounded-[inherit] bg-moon/40" /> : null}
+                  <span className="relative min-w-0">{workspaceT(table)}</span>
+                  {traversed ? <span className="sr-only"> · {t("lifecyclePassed")}</span> : null}
+                </Badge>
                 {milestone ? (
-                  <span className={cn(
-                    "absolute right-0 z-10 flex size-5 translate-x-1/2 items-center justify-center rounded-full border-2 bg-paper",
+                  <span aria-hidden="true" className={cn(
+                    "absolute right-0 top-1/2 z-10 flex size-5 -translate-y-1/2 translate-x-1/2 items-center justify-center rounded-full border-2 bg-paper",
                     current ? "border-leaf-deep" : previous ? "border-crater" : "border-line",
                   )}>
                     {current ? <span className="size-2 rounded-full bg-leaf-deep" /> : null}
+                    {previous ? <span className="absolute inset-0 rounded-full bg-moon/60" /> : null}
                   </span>
                 ) : (
-                  <ArrowRight data-student-lifecycle-continuation className="absolute -right-0.5 size-3 text-muted" />
+                  <ArrowRight aria-hidden="true" data-student-lifecycle-continuation className="absolute -right-0.5 size-3 text-muted" />
                 )}
               </div>
               {milestone ? (
                 <div
                   data-student-lifecycle-milestone={milestone}
+                  data-journey-state={current ? "current" : previous ? "passed" : "future"}
                   aria-current={current ? "step" : undefined}
                   className={cn(
                     "relative left-1/2 min-w-0 break-words px-0.5 text-center text-[11px] leading-4",
@@ -613,6 +623,7 @@ function Student360LifecycleRail({ snapshot }: { snapshot: Student360Snapshot })
                 >
                   {t(`milestone_${milestone}`)}
                   {current ? <span className="sr-only"> · {t("lifecycleCurrent")}</span> : null}
+                  {previous ? <span className="sr-only"> · {t("lifecyclePassed")}</span> : null}
                 </div>
               ) : <span aria-hidden="true" />}
             </li>
@@ -702,12 +713,12 @@ function Student360Loading() {
   return (
     <div className="px-5 py-6 sm:px-7" aria-busy="true" aria-label={t("loading")}>
       <div className="flex items-center gap-2 text-xs text-muted"><LoaderCircle className="size-3.5 animate-spin" /><Skeleton className="h-4 w-36" /></div>
-      <div className="mt-5 grid grid-cols-5 grid-rows-[auto_2rem_auto]">
+      <div className="mt-5 grid grid-cols-5 grid-rows-[auto_auto] gap-y-2">
         {STUDENT_LIFECYCLE_ROADMAP.map(({ table, milestone }) => (
-          <div key={table} className="row-span-3 grid min-w-0 grid-rows-subgrid">
-            <Skeleton className="h-6 w-10 max-w-full justify-self-center rounded-md" />
-            <div className="relative flex items-center">
-              <Skeleton className="h-px w-full" />
+          <div key={table} className="row-span-2 grid min-w-0 grid-rows-subgrid">
+            <div className="relative flex items-center justify-center px-3">
+              <Skeleton className="absolute inset-x-0 top-1/2 h-px" />
+              <Skeleton className="relative h-6 w-10 max-w-full rounded-md" />
               {milestone ? <Skeleton className="absolute right-0 size-5 translate-x-1/2 rounded-full" /> : null}
             </div>
             {milestone ? <Skeleton className="relative left-1/2 h-4 w-12 max-w-full justify-self-center" /> : <span />}

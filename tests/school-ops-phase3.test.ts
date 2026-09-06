@@ -142,7 +142,7 @@ describe("school operations Phase 3 enrollment handoff", () => {
     expect(enrollmentPage).toContain('requirePerm(locale, "enrollment.manage")');
     expect(enrollmentPage).toContain("EnrollmentPlacementWorkbench");
     expect(zh.school.courseOpportunities.title).toBe("报班跟进");
-    expect(en.school.courseEnrollments.title).toBe("Enrollment assignment");
+    expect(en.school.courseEnrollments.title).toBe("Class placement");
   });
 
   it("keeps cancelled commercial enrollments visible as immutable history", () => {

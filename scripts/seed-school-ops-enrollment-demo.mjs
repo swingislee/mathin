@@ -1,4 +1,4 @@
-/** 本机报名分班验收数据。需先完成 operations.md 的本机写入目标核对。 */
+/** 本机分班验收数据。需先完成 operations.md 的本机写入目标核对。 */
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";

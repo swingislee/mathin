@@ -48,7 +48,7 @@ node scripts/business-record-history-cleanup.mjs --apply
 | --- | --- |
 | 测评 | `AssessmentUnifiedWorkbench` 的同一数据行、结果字段及 `FollowupInlineDetails` |
 | 续班 | `RenewalStudentPool` 内的 `RenewalEntryRow`，按操作能力显示结果编辑或只读事实 |
-| 报名分班 | `EnrollmentPlacementWorkbench` 的同一班级行与 `studentTile`；历史资料没有可操作的座位关系 |
+| 分班 | `EnrollmentPlacementWorkbench` 的同一班级行与 `studentTile`；历史资料没有可操作的座位关系 |
 | 首联 | `FirstContactRecordRow`、`FollowupPersonCell`、`FollowupEntryFields`；`LeadContactEntryRow` 提供当前业务写入控制，缺失首联只传入真实学生的查询数据 |
 | 活动 | `ActivitiesManager` 的同一活动行及各列；日期、报名与结果按已有字段显示 |
 

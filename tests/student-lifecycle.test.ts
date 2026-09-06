@@ -30,7 +30,9 @@ describe("student lifecycle tags", () => {
     expect(sheet).toContain("data-student-lifecycle={snapshot.lifecycleStage}");
     expect(sheet).toContain("Student360LifecycleRail");
     expect(sheet).toContain("STUDENT_LIFECYCLE_ROADMAP.map(({ table, milestone }, index)");
-    expect(sheet).toContain('grid-cols-5 grid-rows-[auto_2rem_auto]');
+    expect(sheet).toContain('grid-cols-5 grid-rows-[auto_auto] gap-y-2');
+    expect(sheet).not.toContain("grid-rows-[auto_2rem_auto]");
+    expect(sheet).toContain('"absolute inset-x-0 top-1/2 h-px"');
     expect(sheet).toContain("data-student-lifecycle-process={table}");
     expect(sheet).toContain("data-student-lifecycle-milestone={milestone}");
     expect(sheet).toContain("data-student-lifecycle-connector");
@@ -43,6 +45,17 @@ describe("student lifecycle tags", () => {
     expect(sheet).not.toContain('t("createProfile")');
   });
 
+  it("marks earlier nodes and processes in warm tones while keeping the current node green", () => {
+    const sheet = fs.readFileSync("src/features/school/Student360Sheet.tsx", "utf8");
+    expect(sheet).toContain('data-journey-state={traversed ? "passed" : "future"}');
+    expect(sheet).toContain('data-journey-state={current ? "current" : previous ? "passed" : "future"}');
+    expect(sheet).toContain('traversed ? "bg-crater/80" : "bg-line"');
+    expect(sheet).toContain('bg-moon/40');
+    expect(sheet).toContain('bg-moon/60');
+    expect(sheet).toContain('current ? "border-leaf-deep"');
+    expect(sheet).toContain('size-2 rounded-full bg-leaf-deep');
+  });
+
   it("names reached milestones instead of pending actions and reuses the five table names", () => {
     for (const locale of ["zh", "en"]) {
       const school = JSON.parse(fs.readFileSync(`messages/${locale}.json`, "utf8")).school;
@@ -51,9 +64,12 @@ describe("student lifecycle tags", () => {
         ? ["线索入池", "建立联系", "完成测评", "确认报名"]
         : ["Lead added", "Contact made", "Assessed", "Enrolled"]);
       for (const { table } of STUDENT_LIFECYCLE_ROADMAP) expect(school.followupWorkspace[table]).toBeTruthy();
+      expect(school.followupWorkspace.enrollments).toBe(locale === "zh" ? "分班" : "Class placement");
+      expect(school.courseEnrollments.title).toBe(locale === "zh" ? "分班" : "Class placement");
       for (const stage of STUDENT_LIFECYCLE_STAGES) expect(copy[`lifecycle_${stage}`]).toBeUndefined();
       expect(copy.lifecycleProcess).toContain("{table}");
       expect(copy.lifecycleCurrent).toBeTruthy();
+      expect(copy.lifecyclePassed).toBeTruthy();
       expect(copy.description).toBeUndefined();
       expect(copy.filter_business).toBe(locale === "zh" ? "入班前" : "Before joining class");
     }
