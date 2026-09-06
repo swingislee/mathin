@@ -6,7 +6,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { LeadInterestLevel } from "./lead-contract";
-import { FollowupChoice } from "./dashboard-page/FollowupChoice";
+import { WechatStatusControl } from "./WechatStatusControl";
 
 const interestColors = {
   A: "bg-leaf/10 hover:bg-leaf/25 data-[state=on]:border-leaf-deep data-[state=on]:bg-leaf",
@@ -25,13 +25,8 @@ export function FollowupContactFacts({ wechat, onWechatChange, interest, onInter
   const entryT = useTranslations("school.followupEntry");
   const id = useId();
   return <div data-followup-contact-facts className="flex min-w-0 flex-wrap items-center gap-x-6 gap-y-2">
-    <div className="flex min-h-9 items-center gap-2">
-      <p className="text-xs font-medium text-muted">{entryT("wechatLabel")}</p>
-      <FollowupChoice presentation="select" className="w-28" label={entryT("wechatLabel")}
-        placeholder={entryT("wechatUnknown")} value={wechat === null ? "" : wechat ? "yes" : "no"}
-        disabled={disabled} onValueChange={(value) => onWechatChange(value === "yes")}
-        options={[{ value: "yes", label: entryT("wechatYes"), tone: "healthy" }, { value: "no", label: entryT("wechatNo"), tone: "unhealthy" }]} />
-    </div>
+    <WechatStatusControl value={wechat} onChange={onWechatChange} disabled={disabled}
+      labels={{ name: entryT("wechatLabel"), unknown: entryT("wechatUnknown"), yes: entryT("wechatYes"), no: entryT("wechatNo") }} />
     <div className="flex min-h-8 items-center gap-3">
       <p id={`${id}-interest`} className="text-xs font-medium text-muted">{t("interestLevel")}</p>
       <TooltipProvider delayDuration={200}>

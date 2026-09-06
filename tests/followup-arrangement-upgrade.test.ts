@@ -132,10 +132,11 @@ describe("follow-up arrangement upgrade", () => {
     expect(progress).toContain('data-followup-progress-link="complete"');
     expect(progress.match(/data-followup-progress-link="pending"/g)).toHaveLength(2);
   });
-  it("preserves unknown WeChat as a select placeholder and uses compact colored interest choices without checkmarks", () => {
+  it("preserves unknown WeChat in a compact sliding control and keeps colored interest choices without checkmarks", () => {
     const props = { wechat: null, onWechatChange: vi.fn(), interest: "" as const, onInterestChange: vi.fn() };
     const blank = render(createElement(FollowupContactFacts, props));
-    expect(blank).toContain('role="combobox"');
+    expect(blank).toContain('data-wechat-status="unknown"');
+    expect(blank).not.toContain('role="combobox"');
     expect(blank).not.toContain('role="switch"');
     expect(blank).toContain(messages.school.followupEntry.wechatUnknown);
     expect(blank).not.toContain(messages.school.followupEntry.wechatConfirmNo);
