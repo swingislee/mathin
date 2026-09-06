@@ -40,6 +40,20 @@ node scripts/business-record-history-cleanup.mjs --apply
 
 清理检查逐字段确认全部副本已有对应业务记录，执行删除、备份恢复及事务回滚演练；正式事务再比较 25 张业务、身份与来源表的内容指纹。备份保存在上述本机私有目录中。
 
+## 组件实现入口
+
+当前与历史的组件复用规则以 [前端规则](../agent/frontend.md#组件与客户端边界) 为准。本轮已将历史专用整行布局归入下列实现；页面重构从这些入口继续维护。
+
+| 工作表 | 共用实现 |
+| --- | --- |
+| 测评 | `AssessmentUnifiedWorkbench` 的同一数据行、结果字段及 `FollowupInlineDetails` |
+| 续班 | `RenewalStudentPool` 内的 `RenewalEntryRow`，按操作能力显示结果编辑或只读事实 |
+| 报名分班 | `EnrollmentPlacementWorkbench` 的同一班级行与 `studentTile`；历史资料没有可操作的座位关系 |
+| 首联 | `FirstContactRecordRow`、`FollowupPersonCell`、`FollowupEntryFields`；`LeadContactEntryRow` 提供当前业务写入控制，缺失首联只传入真实学生的查询数据 |
+| 活动 | `ActivitiesManager` 的同一活动行及各列；日期、报名与结果按已有字段显示 |
+
+首联缺失项已接入工作表的同一搜索、逐列筛选、排序与展开逻辑。当前首联的默认填写、保存及键盘行为沿用已验收版本。
+
 ## 逐步验收
 
 用开发端管理员在原工作表搜索已选案例。交付入口统一使用 `http://192.168.5.213:3130`，保留语言前缀。

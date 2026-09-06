@@ -42,6 +42,14 @@ interface SeatTarget {
 
 const NAME_GRID = "grid grid-cols-[repeat(auto-fill,minmax(3.75rem,1fr))] gap-px";
 
+interface StudentTileRecord {
+  key: string; studentId: string; name: string; phone: string; grade: number;
+  status: PlacementStudent['status'] | null; courseTitle: string; recommendation: string; note: string;
+  placement?: PlacementStudent;
+}
+
+const studentTileRecord = (student: PlacementStudent): StudentTileRecord => ({ ...student, placement: student });
+
 function rosterRows(board: EnrollmentPlacementBoard, students: PlacementStudent[]): RosterRow[] {
   const groups = new Map<string, { grade: number; termId: string; classrooms: PlacementClassroom[]; students: PlacementStudent[] }>();
   const groupFor = (termId: string, grade: number) => {
@@ -183,11 +191,11 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
     if (focusStudentId) root.current?.querySelector<HTMLElement>("[data-placement-focus='true']")?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [focusStudentId]);
 
-  const studentTile = (student: PlacementStudent, target?: SeatTarget) => {
-    const signals = board.health?.[student.studentId] ?? [];
-    const health = placementHealth(signals);
-    const movable = student.status !== "withdrawn" && !pending;
-    const swapping = Boolean(selected && selected.key !== student.key && target && accepts(selected, target));
+  const studentTile = (student: StudentTileRecord, target?: SeatTarget) => {
+    const signals = student.placement ? board.health?.[student.studentId] ?? [] : [];
+    const health = student.placement ? placementHealth(signals) : null;
+    const movable = Boolean(student.placement && student.status !== "withdrawn" && !pending);
+    const swapping = Boolean(student.placement && selected && selected.key !== student.key && target && accepts(selected, target));
     return <Tooltip key={student.key}><TooltipTrigger asChild><span
       data-placement-student={student.key}
       data-placement-focus={student.studentId === focusStudentId}
@@ -197,22 +205,22 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
         event.preventDefault(); event.stopPropagation();
         if (selected && target) move(selected, target);
       }}
-      className={cn("group relative flex min-h-9 min-w-0 select-none items-center justify-center px-1", movable && "touch-none cursor-grab active:cursor-grabbing", selectedKey === student.key && "ring-2 ring-inset ring-crater", student.studentId === focusStudentId && "outline-2 -outline-offset-2 outline-leaf-deep", !matches(student) && "opacity-35")}
-      style={{ background: health.background }}
+      className={cn("group relative flex min-h-9 min-w-0 select-none items-center justify-center px-1", movable && "touch-none cursor-grab active:cursor-grabbing", selectedKey === student.key && "ring-2 ring-inset ring-crater", student.studentId === focusStudentId && "outline-2 -outline-offset-2 outline-leaf-deep", student.placement && !matches(student.placement) && "opacity-35")}
+      style={{ background: health?.background }}
     >
       <Student360Trigger subject={{ studentId: student.studentId, leadId: null }} fallback={{ name: student.name, phone: student.phone, grade: student.grade || null }} className="flex w-full min-w-0 flex-col items-center justify-center py-1 text-xs font-normal">
         <span className="max-w-full truncate">{student.name}</span>
-        {student.status !== "active" ? <span className="whitespace-nowrap text-[9px] leading-3 text-muted">{t(`status_${student.status}`)}</span> : null}
+        {student.status && student.status !== "active" ? <span className="whitespace-nowrap text-[9px] leading-3 text-muted">{t(`status_${student.status}`)}</span> : null}
       </Student360Trigger>
       {movable ? <button type="button" data-placement-select aria-label={t("selectStudent", { name: student.name })} aria-pressed={selectedKey === student.key} className="absolute right-0 top-0 flex h-full w-3 items-center justify-center bg-card/70 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-crater" onClick={() => setSelectedKey((value) => value === student.key ? null : student.key)}><GripVertical className="size-3" /></button> : null}
     </span></TooltipTrigger><TooltipContent className="max-w-80 space-y-1 text-xs leading-5">
-      <p className="font-medium">{student.name}{student.status !== "active" ? t(`status_${student.status}`) : ""}</p><p>{student.courseTitle}</p>{target?.seat ? <p>{t("capacitySlot", { count: target.seat })}</p> : null}
+      <p className="font-medium">{student.name}{student.status && student.status !== "active" ? t(`status_${student.status}`) : ""}</p><p>{student.courseTitle}</p>{target?.seat ? <p>{t("capacitySlot", { count: target.seat })}</p> : null}
       {student.phone ? <p>{student.phone}</p> : null}{student.recommendation ? <p>{student.recommendation}</p> : null}{student.note ? <p>{student.note}</p> : null}
-      <p>{t(`health_${health.tone}`)}</p>{signals.filter((signal) => signal.level === "observed" || signal.level === "attention").map((signal) => <p key={signal.key}>{healthT(signal.key)} · {healthT(signal.level)}{signal.total ? ` (${signal.count ?? 0}/${signal.total})` : ""}</p>)}
-      <p>{t("studentInteraction")}</p>
+      {health ? <p>{t(`health_${health.tone}`)}</p> : <HistoricalRecordBadge locale={locale} />}{signals.filter((signal) => signal.level === "observed" || signal.level === "attention").map((signal) => <p key={signal.key}>{healthT(signal.key)} · {healthT(signal.level)}{signal.total ? ` (${signal.count ?? 0}/${signal.total})` : ""}</p>)}
+      <p>{student.placement ? t("studentInteraction") : recordM.viewStudent}</p>
     </TooltipContent></Tooltip>;
   };
-  const retiredRow = (retired: PlacementStudent[], label: string) => retired.length ? <TableRow className="hover:bg-transparent"><TableCell colSpan={3} className="sticky left-0 z-10 border-r border-line bg-card px-2 py-1 text-[11px] text-muted">{label}</TableCell><TableCell className="p-0"><div className={NAME_GRID}>{retired.map((student) => studentTile(student))}</div></TableCell></TableRow> : null;
+  const retiredRow = (retired: PlacementStudent[], label: string) => retired.length ? <TableRow className="hover:bg-transparent"><TableCell colSpan={3} className="sticky left-0 z-10 border-r border-line bg-card px-2 py-1 text-[11px] text-muted">{label}</TableCell><TableCell className="p-0"><div className={NAME_GRID}>{retired.map((student) => studentTile(studentTileRecord(student)))}</div></TableCell></TableRow> : null;
   const visibleClassIds = new Set(visibleRows.flatMap((row) => row.classroom ? [row.classroom.id] : []));
   const scopeStudents = students.filter((student) => (student.classroomId ? visibleClassIds.has(student.classroomId) : groups.includes(`${student.termId}:${student.grade}`)) && (!table.filters.course || student.courseId === table.filters.course));
 
@@ -238,43 +246,39 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
         </TableRow></TableHeader>
         <TableBody>{groups.map((group) => {
           const scope = rows.find((row) => row.group === group && !row.classroom)!;
-          if(scope.historical) return <Fragment key={group}>
-            <TableRow><TableCell colSpan={4} className="bg-paper px-2 py-1"><span className="mr-3">{scope.historical.period_label}</span><HistoricalRecordBadge locale={locale}/></TableCell></TableRow>
-            {visibleRows.filter(row=>row.group===group&&row.historical).map(row=>{const fact=row.historical!;return <TableRow key={row.key} data-record-state="historical" className="[&>td]:px-2 [&>td]:py-2">
-              <TableCell>{fact.class_label||recordM.unknown}<p className="mt-1 text-[10px] text-muted">{fact.registered_on??recordM.unknown} · {fact.amount??fact.amount_original}</p></TableCell>
-              <TableCell><p className="whitespace-pre-wrap text-[11px]">{fact.schedule_label||recordM.unknown}</p><p className="mt-1 text-muted">{fact.room_label}</p></TableCell>
-              <TableCell>{fact.teacher_label||recordM.unknown}</TableCell>
-              <TableCell><Student360Trigger subject={{studentId:fact.student_id,leadId:null}} fallback={{name:history?.students[fact.student_id]??recordM.unknown,grade:history?.subjects[fact.student_id]?.grade??null}}/><Link href={`/dashboard/students/${fact.student_id}?tab=history&history=enrollment`} className="ml-4 text-[11px] text-muted underline">{recordM.viewStudent}</Link></TableCell>
-            </TableRow>;})}
-          </Fragment>;
           const pendingStudents = scope.students.filter((student) => !student.classroomId && student.status !== "withdrawn" && (!table.filters.course || student.courseId === table.filters.course));
-          const classrooms = table.visibleRows.filter((row) => row.group === group && row.classroom);
-          if (!table.sort) classrooms.sort((a, b) => a.classroom!.name.localeCompare(b.classroom!.name, locale, { numeric: true }));
+          const classrooms = visibleRows.filter((row) => row.group === group && (row.classroom || row.historical));
+          if (!table.sort) classrooms.sort((a, b) => (a.classroom?.name ?? a.historical?.class_label ?? '').localeCompare(b.classroom?.name ?? b.historical?.class_label ?? '', locale, { numeric: true }));
           const pendingTarget: SeatTarget = { classroom: null, termId: scope.termId, grade: scope.grade, seat: null };
           const canReturn = Boolean(selected?.classroomId && accepts(selected, pendingTarget));
           const pendingTargetKey = `${group}:pending`;
           return <Fragment key={group}>
-            <TableRow className="hover:bg-transparent"><TableCell colSpan={4} className="h-8 bg-paper px-2 py-1 font-medium"><span className="sticky left-2">{scope.grade ? t("grade", { grade: scope.grade }) : t("gradePending")}<span className="ml-3 text-[11px] font-normal text-muted">{terms.get(scope.termId) ?? "—"}</span></span></TableCell></TableRow>
-            <TableRow data-placement-pending={group} className="hover:bg-transparent" {...registerTarget(pendingTargetKey, pendingTarget)}>
+            <TableRow className="hover:bg-transparent"><TableCell colSpan={4} className="h-8 bg-paper px-2 py-1 font-medium"><span className="sticky left-2">{scope.grade ? t("grade", { grade: scope.grade }) : t("gradePending")}<span className="ml-3 text-[11px] font-normal text-muted">{scope.historical?.period_label ?? terms.get(scope.termId) ?? "—"}</span>{scope.historical ? <HistoricalRecordBadge locale={locale} /> : null}</span></TableCell></TableRow>
+            {!scope.historical ? <TableRow data-placement-pending={group} className="hover:bg-transparent" {...registerTarget(pendingTargetKey, pendingTarget)}>
               <TableCell colSpan={3} className="sticky left-0 z-10 border-r border-line bg-card px-2 py-1"><div className="flex items-center justify-between gap-1"><span>{t("pendingRow", { count: pendingStudents.length })}</span>{canReturn ? <Button size="sm" variant="ghost" className="h-7 px-1 text-[11px]" onClick={() => { if (selected) move(selected, pendingTarget); }}>{t("returnPending")}</Button> : null}</div></TableCell>
-              <TableCell className={cn("p-0", canReturn && "ring-1 ring-inset ring-crater/50", hovered === pendingTargetKey && canReturn && "bg-moon/30 ring-2 ring-crater")}><div className={cn(NAME_GRID, "min-h-9")}>{pendingStudents.map((student) => studentTile(student))}{!pendingStudents.length ? <span className="col-span-full px-2 py-2 text-[11px] text-muted">{t("noPending")}</span> : null}</div></TableCell>
-            </TableRow>
+              <TableCell className={cn("p-0", canReturn && "ring-1 ring-inset ring-crater/50", hovered === pendingTargetKey && canReturn && "bg-moon/30 ring-2 ring-crater")}><div className={cn(NAME_GRID, "min-h-9")}>{pendingStudents.map((student) => studentTile(studentTileRecord(student)))}{!pendingStudents.length ? <span className="col-span-full px-2 py-2 text-[11px] text-muted">{t("noPending")}</span> : null}</div></TableCell>
+            </TableRow> : null}
             {classrooms.map((row) => {
-              const classroom = row.classroom!;
-              const slots = placementRosterSeats(classroom, row.students);
-              return <Fragment key={row.key}><TableRow data-placement-classroom={classroom.id} className="hover:bg-transparent">
-                <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-1"><div className="flex items-center justify-between gap-1"><Link href={`/dashboard/classes/${classroom.id}`} className="min-w-0 truncate font-medium hover:underline" title={classroom.name}>{classroom.name}</Link><span className="shrink-0 text-[10px] tabular-nums text-muted">{classroom.activeCount}/{classroom.capacity ?? "∞"}</span></div><div className="truncate text-[10px] text-muted" title={courses.get(classroom.courseId)}>{courses.get(classroom.courseId)}</div></TableCell>
-                <TableCell className="sticky left-36 z-10 border-r border-line bg-card px-2 py-1 text-[11px]" title={schedule(classroom)}><span className="line-clamp-2 break-words">{schedule(classroom)}</span></TableCell>
-                <TableCell className="sticky left-64 z-10 border-r border-line bg-card px-2 py-1" title={classroom.teacherNames}><span className="block truncate">{classroom.teacherNames || "—"}</span></TableCell>
-                <TableCell className="bg-paper/50 p-0"><div className={NAME_GRID}>{slots.map(({ seat, student }) => {
+              const classroom = row.classroom;
+              const fact = row.historical;
+              const className = classroom?.name ?? fact?.class_label ?? recordM.unknown;
+              const teacher = classroom?.teacherNames ?? fact?.teacher_label ?? recordM.unknown;
+              const time = classroom ? schedule(classroom) : fact?.schedule_label || recordM.unknown;
+              const courseTitle = classroom ? courses.get(classroom.courseId) : fact?.period_label;
+              const slots = classroom ? placementRosterSeats(classroom, row.students) : [];
+              return <Fragment key={row.key}><TableRow data-record-state={fact ? 'historical' : 'current'} data-placement-classroom={classroom?.id} data-placement-record={row.key} className="hover:bg-transparent">
+                <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-1"><div className="flex items-center justify-between gap-1">{classroom ? <Link href={`/dashboard/classes/${classroom.id}`} className="min-w-0 truncate font-medium hover:underline" title={className}>{className}</Link> : <span className="min-w-0 truncate font-medium" title={className}>{className}</span>}{classroom ? <span className="shrink-0 text-[10px] tabular-nums text-muted">{classroom.activeCount}/{classroom.capacity ?? "∞"}</span> : null}</div><div className="truncate text-[10px] text-muted" title={courseTitle}>{courseTitle}</div>{fact ? <p className="mt-1 text-[10px] text-muted">{fact.registered_on ?? recordM.unknown} · {fact.amount ?? fact.amount_original}</p> : null}</TableCell>
+                <TableCell className="sticky left-36 z-10 border-r border-line bg-card px-2 py-1 text-[11px]" title={time}><span className="line-clamp-2 break-words">{time}</span>{fact?.room_label ? <p className="mt-1 text-muted">{fact.room_label}</p> : null}</TableCell>
+                <TableCell className="sticky left-64 z-10 border-r border-line bg-card px-2 py-1" title={teacher}><span className="block truncate">{teacher || "—"}</span></TableCell>
+                <TableCell className="bg-paper/50 p-0"><div className={NAME_GRID}>{fact ? studentTile({key: fact.id, studentId: fact.student_id, name: history?.students[fact.student_id] ?? recordM.unknown, phone: history?.subjects[fact.student_id]?.phone ?? '', grade: history?.subjects[fact.student_id]?.grade ?? 0, status: null, courseTitle: fact.period_label, recommendation: '', note: `${fact.registered_on ?? recordM.unknown} · ${fact.amount ?? fact.amount_original}`}) : null}{classroom ? slots.map(({ seat, student }) => {
                   const target = { classroom, termId: scope.termId, grade: scope.grade, seat };
                   const key = `${classroom.id}:${seat}`;
                   const eligible = accepts(selected, target);
                   return <div key={seat} {...registerTarget(key, target)} className={cn("relative min-w-0 border-b border-line", eligible && "ring-1 ring-inset ring-crater/40", hovered === key && eligible && "z-10 ring-2 ring-crater", hovered === key && !eligible && dragging && "ring-2 ring-rose")}>
-                    {student ? studentTile(student, target) : classroom.capacity !== null && seat > classroom.capacity ? <span className="flex min-h-9 items-center justify-center text-line" aria-label={t("noSeat")}>—</span> : <button type="button" className="flex min-h-9 w-full items-center justify-center gap-1 bg-card text-[10px] tabular-nums text-muted/50 enabled:hover:bg-moon/25 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-crater" disabled={!eligible} aria-label={selected ? t("placeInSeat", { name: selected.name, classroom: classroom.name, seat }) : t("emptySeatNumber", { seat })} onClick={() => { if (selected) move(selected, target); }}>{eligible ? <Plus className="size-3" /> : null}{seat}</button>}
+                    {student ? studentTile(studentTileRecord(student), target) : classroom.capacity !== null && seat > classroom.capacity ? <span className="flex min-h-9 items-center justify-center text-line" aria-label={t("noSeat")}>—</span> : <button type="button" className="flex min-h-9 w-full items-center justify-center gap-1 bg-card text-[10px] tabular-nums text-muted/50 enabled:hover:bg-moon/25 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-crater" disabled={!eligible} aria-label={selected ? t("placeInSeat", { name: selected.name, classroom: classroom.name, seat }) : t("emptySeatNumber", { seat })} onClick={() => { if (selected) move(selected, target); }}>{eligible ? <Plus className="size-3" /> : null}{seat}</button>}
                   </div>;
-                })}</div></TableCell>
-              </TableRow>{retiredRow(row.students.filter((student) => student.status === "withdrawn"), `${classroom.name} ${t("status_withdrawn")}`)}</Fragment>;
+                }) : null}</div></TableCell>
+              </TableRow>{retiredRow(row.students.filter((student) => student.status === "withdrawn"), `${className} ${t("status_withdrawn")}`)}</Fragment>;
             })}
             {retiredRow(scope.students.filter((student) => !student.classroomId && student.status === "withdrawn"), t("status_withdrawn"))}
             {retiredRow(scope.students.filter((student) => student.classroomId && !scope.classrooms.some((classroom) => classroom.id === student.classroomId)), t("unavailableClass"))}

@@ -13,10 +13,11 @@ import { NextContactReminderField } from "./NextContactReminderField";
 export function FollowupEntryFields({
   id, note, onNoteChange, placeholder, disabled = false, pending = false,
   reminder, hint, children, tools, saveDisabled = false, onSave, canAdvance = false,
+  readOnly = false, noteLabel,
 }: {
   id: string;
   note: string;
-  onNoteChange: (value: string) => void;
+  onNoteChange?: (value: string) => void;
   placeholder?: string;
   disabled?: boolean;
   pending?: boolean;
@@ -25,8 +26,10 @@ export function FollowupEntryFields({
   children?: ReactNode;
   tools?: ReactNode;
   saveDisabled?: boolean;
-  onSave: (advance: boolean) => void;
+  onSave?: (advance: boolean) => void;
   canAdvance?: boolean;
+  readOnly?: boolean;
+  noteLabel?: string;
 }) {
   const t = useTranslations("school.followupEntry");
   const hasBusiness = Children.toArray(children).length > 0;
@@ -37,7 +40,7 @@ export function FollowupEntryFields({
     if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
       event.preventDefault();
       event.stopPropagation();
-      if (!disabled && !pending && !saveDisabled) onSave(false);
+      if (!readOnly && !disabled && !pending && !saveDisabled) onSave?.(false);
     }
   }}>
     {hasBusiness ? <div data-followup-business className="min-w-0 space-y-5">{children}</div> : null}
@@ -45,13 +48,13 @@ export function FollowupEntryFields({
       ? "@[50rem]/followup-entry:sticky @[50rem]/followup-entry:top-2"
       : "w-full max-w-3xl")}>
       <div className="space-y-1.5">
-        <Label htmlFor={`${id}-note`} className="text-xs font-medium text-ink">{t("note")}</Label>
-        <Textarea id={`${id}-note`} value={note} onChange={(event) => onNoteChange(event.target.value)}
+        <Label htmlFor={`${id}-note`} className="text-xs font-medium text-ink">{noteLabel ?? t("note")}</Label>
+        {readOnly ? <p id={`${id}-note`} className="min-h-28 whitespace-pre-wrap text-sm leading-6">{note || '—'}</p> : <Textarea id={`${id}-note`} value={note} onChange={(event) => onNoteChange?.(event.target.value)}
           rows={4} maxLength={2000} disabled={disabled || pending}
           placeholder={placeholder ?? t("notePlaceholder")}
-          className="min-h-28 resize-y bg-card text-sm leading-6" />
+          className="min-h-28 resize-y bg-card text-sm leading-6" />}
       </div>
-      {reminder || hasBusiness ? <div data-followup-reminder-slot className={cn(hasBusiness && "min-h-18")}>
+      {!readOnly && (reminder || hasBusiness) ? <div data-followup-reminder-slot className={cn(hasBusiness && "min-h-18")}>
         {reminder ? <NextContactReminderField id={`${id}-reminder`} value={reminder.value}
           onChange={reminder.onChange} disabled={disabled || pending || reminder.disabled}
           compact className="w-full max-w-72" /> : null}
@@ -59,14 +62,14 @@ export function FollowupEntryFields({
       <div data-followup-entry-actions className="flex min-w-0 flex-wrap items-center gap-2 pt-1">
         {hint ? <p className="w-full text-xs leading-5 text-muted" role="status">{hint}</p> : null}
         {tools ? <div className="flex w-full min-w-0 flex-wrap items-center gap-2">{tools}</div> : null}
-        <Button type="button" size="sm" variant={canAdvance ? "secondary" : "primary"}
+        {!readOnly ? <Button type="button" size="sm" variant={canAdvance ? "secondary" : "primary"}
           className="h-auto min-h-9 whitespace-normal rounded-md px-3 py-1.5 text-xs"
-          disabled={disabled || pending || saveDisabled} onClick={() => onSave(false)} aria-keyshortcuts="Control+Enter Meta+Enter">
+          disabled={disabled || pending || saveDisabled} onClick={() => onSave?.(false)} aria-keyshortcuts="Control+Enter Meta+Enter">
           {pending ? <LoaderCircle className="size-3.5 animate-spin motion-reduce:animate-none" /> : <Check className="size-3.5" />}
           {t("save")}<kbd className="text-[10px]">Ctrl ↵</kbd>
-        </Button>
-        {canAdvance ? <Button type="button" size="sm" className="h-auto min-h-9 whitespace-normal rounded-md px-3 py-1.5 text-xs"
-          disabled={disabled || pending || saveDisabled} onClick={() => onSave(true)}>{t("saveAndNext")}</Button> : null}
+        </Button> : null}
+        {!readOnly && canAdvance ? <Button type="button" size="sm" className="h-auto min-h-9 whitespace-normal rounded-md px-3 py-1.5 text-xs"
+          disabled={disabled || pending || saveDisabled} onClick={() => onSave?.(true)}>{t("saveAndNext")}</Button> : null}
       </div>
     </aside>
   </div>;

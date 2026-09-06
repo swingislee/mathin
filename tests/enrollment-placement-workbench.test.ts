@@ -50,11 +50,10 @@ const board: EnrollmentPlacementBoard = {
   enrollments: [enrollment("pending-fourth"), enrollment("pending-fifth", "math-5"), enrollment("pending-spring", "math-4", "spring"), enrollment("withdrawn-pending", "math-4", "autumn", "cancelled")],
 };
 
-function renderRoster(initialTermId?: string) {
+function renderRoster(initialTermId?: string, props: Partial<ComponentProps<typeof EnrollmentPlacementWorkbench>> = {}) {
   const markup = renderToStaticMarkup(createElement(NextIntlClientProvider, {
     locale: "zh", timeZone: "Asia/Shanghai", now: new Date("2026-09-05T00:00:00Z"), messages,
-    children: createElement(EnrollmentPlacementWorkbench, { initialBoard: board, initialTermId, canCreateClass: false }),
-  }));
+  }, createElement(EnrollmentPlacementWorkbench, { initialBoard: board, initialTermId, canCreateClass: false, ...props })));
   const body = markup.match(/<tbody\b[^>]*>([\s\S]*?)<\/tbody>/)?.[1];
   expect(body, "the workbench renders its class roster as a table body").toBeDefined();
   return [...body!.matchAll(/<tr\b([^>]*)>([\s\S]*?)<\/tr>/g)].map((match) => ({
@@ -68,6 +67,29 @@ const studentKeys = (content: string) => [...content.matchAll(/data-placement-st
 const classroomId = (attributes: string) => attributes.match(/data-placement-classroom="([^"]+)"/)?.[1];
 
 describe("enrollment placement class roster", () => {
+  it("shares class columns and student tiles with historical arrangements while keeping them outside seat operations", () => {
+    const history: NonNullable<ComponentProps<typeof EnrollmentPlacementWorkbench>['history']> = {
+      renewals: [], activities: [], assessments: [], communications: [], sources: {},
+      students: { 'existing-student': '历史学生' }, subjects: { 'existing-student': { name: '历史学生', phone: '', grade: 4 } },
+      enrollments: [{ id: 'historical-enrollment', course_enrollment_id: 'historical-enrollment', student_id: 'existing-student',
+        source_record_id: 'existing-source', source_field_ids: ['enrollment'], registered_on: '2025-01-02', period_label: '往期寒假',
+        amount: 1200, amount_original: '1200', class_label: '原寒假班', teacher_label: '原老师', room_label: '原教室', schedule_label: '周六上午' }],
+    };
+    const rows = renderRoster(undefined, { history });
+    const current = rows.find(row => classroomId(row.attributes) === 'autumn-4')!;
+    const historical = rows.find(row => row.attributes.includes('data-record-state="historical"'))!;
+    const columnClasses = (row: typeof historical) => row.cells.map(cell => cell.attributes.match(/class="([^"]*)"/)?.[1]);
+    expect(columnClasses(historical)).toEqual(columnClasses(current));
+    expect(studentKeys(historical.cells[3].content)).toEqual(['historical-enrollment']);
+    expect(historical.content).toContain('原老师');
+    expect(historical.content).toContain('1200');
+    expect(historical.content).not.toMatch(/data-placement-target|data-placement-select|touch-none/);
+    expect(renderRoster(undefined, { history, initialRecordState: 'current' }).some(row => row.attributes.includes('data-record-state="historical"'))).toBe(false);
+    const historicalOnly = renderRoster(undefined, { history, initialRecordState: 'historical' });
+    expect(historicalOnly.some(row => classroomId(row.attributes))).toBe(false);
+    expect(historicalOnly.some(row => row.attributes.includes('data-placement-pending'))).toBe(false);
+  });
+
   it("renders each class once and keeps its students together in the roster cell", () => {
     const rows = renderRoster();
     const classes = rows.filter((row) => classroomId(row.attributes));

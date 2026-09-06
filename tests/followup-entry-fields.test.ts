@@ -16,6 +16,21 @@ const props: ComponentProps<typeof FollowupEntryFields> = {
 };
 
 describe("shared follow-up entry layout and submission contract", () => {
+  it("uses the same note section for immutable facts and blocks keyboard submission", () => {
+    const save = vi.fn();
+    const readonlyProps = { ...props, readOnly: true, onSave: save, noteLabel: '原有业务事实' };
+    const markup = renderToStaticMarkup(createElement(FollowupEntryFields, readonlyProps));
+    expect(markup).toContain('data-followup-notes');
+    expect(markup).toContain('原有业务事实');
+    expect(markup).toContain(props.note);
+    expect(markup).not.toMatch(/<textarea|id="entry-reminder"|aria-keyshortcuts/);
+    FollowupEntryFields(readonlyProps).props.onKeyDown({
+      defaultPrevented: false, nativeEvent: { isComposing: false }, repeat: false, ctrlKey: true, metaKey: false,
+      key: 'Enter', preventDefault: vi.fn(), stopPropagation: vi.fn(),
+    });
+    expect(save).not.toHaveBeenCalled();
+  });
+
   it.each([
     { name: "empty", children: null }, { name: "hidden", children: false },
     { name: "assessment", children: createElement("div", null, "assessment") },

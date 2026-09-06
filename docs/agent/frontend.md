@@ -30,6 +30,7 @@
 - 禁止 `window.confirm()`，也不得为单页重复手搓已有 badge、card、dialog、drawer、table 等组件。
 - 页面、布局和区块默认是 Server Component。`"use client"` 只放在确实使用 hook 或 DOM 事件的交互叶子；白板、课堂实时、编辑器、three.js、游戏棋盘等整块交互体除外。
 - 同一功能同时包含服务端读取与客户端交互时，先建立 client-safe contract：常量、DTO 和纯函数放入 `*-contract.ts`；服务端读取模块声明 `import "server-only"` 并从 contract 复用类型；Server Component 完成读取后通过可序列化 props 传给 `"use client"` 交互组件，交互组件需要的共享运行时值也从 contract 导入。
+- 同一业务的当前与历史记录共用行、字段、详情和筛选排序组件。`record_state` 通过数据值、缺失字段及操作能力表达；原组件需要支持只读或不完整事实时，在原组件增加相应能力。查询适配器负责整理来源差异，布局与交互继续在共用组件中维护。当前实现位置见 [业务历史状态运行手册](../runbooks/business-record-history-state.md#组件实现入口)。
 - 非首屏必需的重型客户端组件用模块级 `next/dynamic` 懒加载；变更客户端边界前后用 `pnpm bundle:report` 对比相关路由。
 - 新增受保护/数据页时，将读取 `cookies()`、`searchParams` 或远程数据的动态子树放进 `<Suspense>`，或提供形状匹配的 `loading.tsx`；静态页头与导航留在边界外。
 - 当前未启用 `cacheComponents`。禁止引入弃用路径上的 `unstable_cache`；正式缓存迁移须单独立项，在此之前写后使用 `router.refresh()`。

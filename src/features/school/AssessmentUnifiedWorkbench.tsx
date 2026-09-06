@@ -1,7 +1,7 @@
 "use client";
 
 import { BusinessRecordStateFilter, HistoricalRecordBadge, useBusinessSearchQuery } from './BusinessRecordStateFilter';
-import { businessRecordMessages, matchesBusinessRecordState, type BusinessRecordStateFilter as StateFilter } from './business-record-state-contract';
+import { businessRecordMessages, isCurrentBusinessRecord, matchesBusinessRecordState, type BusinessRecordStateFilter as StateFilter } from './business-record-state-contract';
 
 import { useMemo, useState } from "react";
 import {
@@ -91,29 +91,6 @@ function assessmentConclusion(row: AssessmentWorkbenchRow): string {
     || row.assessment?.teacherRecommendation
     || row.assessment?.strengths
     || "";
-}
-
-function HistoricalAssessmentTableRow({row,locale}:{row:AssessmentWorkbenchRow;locale:string}) {
-  const [open,setOpen]=useState(false);
-  const m=businessRecordMessages(locale);
-  const t=useTranslations('school.supportAssessment');
-  const teacherT=useTranslations('school.teacherAssessment');
-  return <>
-    <TableRow data-assessment-workbench-row={row.id} data-record-state="historical" aria-expanded={open} tabIndex={0}
-      onClick={()=>setOpen(value=>!value)} onKeyDown={event=>{if(event.target===event.currentTarget&&event.key==='Enter'){event.preventDefault();setOpen(value=>!value);}}} className="h-16 cursor-pointer">
-      <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-2"><Student360Trigger subject={{studentId:row.studentId,leadId:row.leadId}} fallback={{name:row.name,phone:row.phone,grade:row.grade}}/>{row.phone&&<p className="mt-1 font-mono text-[11px] text-muted">{row.phone}</p>}</TableCell>
-      <TableCell>{t(`type_${row.assessmentKind}`)}</TableCell>
-      <TableCell><p>{row.occurredOn??m.unknown}</p><p className="mt-1 text-muted">{row.assessorName||m.unknown}</p></TableCell>
-      <TableCell>{row.assessment?.assessmentBand?<Badge variant="outline">{teacherT(`band_${row.assessment.assessmentBand}`)}</Badge>:m.unknown}{row.assessment?.score!==null&&row.assessment?.score!==undefined&&<p>{row.assessment.score}</p>}</TableCell>
-      <TableCell><p className="line-clamp-2 whitespace-pre-wrap" title={assessmentConclusion(row)}>{assessmentConclusion(row)||m.unknown}</p></TableCell>
-      <TableCell><div className="flex items-center gap-2"><HistoricalRecordBadge locale={locale}/><Button variant="ghost" size="sm" onClick={event=>{event.stopPropagation();setOpen(value=>!value);}} aria-expanded={open}>{t('details')}</Button></div></TableCell>
-      <TableCell>{row.occurredOn??m.unknown}</TableCell>
-    </TableRow>
-    <FollowupInlineDetails open={open} onOpenChange={setOpen} title={`${row.name} · ${m.historical}`} colSpan={7}>
-      <div className="grid gap-4 text-sm md:grid-cols-2"><p className="whitespace-pre-wrap leading-6">{row.assessment?.strengths||m.unknown}</p><p className="whitespace-pre-wrap leading-6">{row.assessment?.parentConcerns||m.unknown}</p></div>
-      <Link href={`/dashboard/students/${row.studentId}?tab=history&history=assessment`} className="mt-3 inline-block text-xs underline">{m.viewStudent}</Link>
-    </FollowupInlineDetails>
-  </>;
 }
 
 export function AssessmentUnifiedWorkbench({
@@ -393,7 +370,9 @@ export function AssessmentUnifiedWorkbench({
             </TableHeader>
             <TableBody>
               {assessmentTable.visibleRows.map((row) => {
-                if(row.recordState==='historical') return <HistoricalAssessmentTableRow key={row.id} row={row} locale={locale}/>;
+                const current = isCurrentBusinessRecord(row.recordState);
+                const mayAssess = current && canAssess;
+                const maySupport = current && canSupport;
                 const draft = drafts[row.id];
                 const active = row.id === activeId;
                 const stage = queueFor(row, draft);
@@ -402,6 +381,7 @@ export function AssessmentUnifiedWorkbench({
                 return (
                   <ActivityAssessmentDraftProvider key={row.id} row={row}>
                     <TableRow
+                      data-record-state={row.recordState ?? 'current'}
                       tabIndex={0}
                       aria-expanded={active}
                       aria-controls={active ? `assessment-details-${row.id}` : undefined}
@@ -453,14 +433,14 @@ export function AssessmentUnifiedWorkbench({
                       <TableCell className="px-2 py-2"><Badge variant="outline" className="whitespace-nowrap border-line bg-line/20 text-muted">{t(`type_${row.assessmentKind}`)}</Badge></TableCell>
                       <TableCell className="px-2 py-2">
                         <p className="truncate whitespace-nowrap font-medium text-ink">
-                          {dateTime.format(new Date(row.scheduledAt))} · {row.location || assessmentT("locationPending")}
+                          {current ? dateTime.format(new Date(row.scheduledAt)) : row.occurredOn ?? recordM.unknown} · {row.location || (current ? assessmentT("locationPending") : recordM.unknown)}
                         </p>
                         <div className="mt-1" onClick={(event) => event.stopPropagation()}>
-                          {completed || row.assessmentKind !== "one_to_one" || !canManageAssessor || !row.invitationId ? (
+                          {!current || completed || row.assessmentKind !== "one_to_one" || !canManageAssessor || !row.invitationId ? (
                             <div className="flex min-w-0 items-center gap-1.5 text-[11px] text-muted">
                               {row.assessorSource === "actual" ? <UserCheck className="size-3.5 shrink-0 text-leaf-deep" /> : null}
                               <span className="shrink-0">{t(row.assessorSource === "actual" ? "actualAssessor" : "assignedAssessor")}</span>
-                              <span className="truncate font-medium text-ink">{row.assessorName || t("assessorPending")}</span>
+                              <span className="truncate font-medium text-ink">{row.assessorName || (current ? t("assessorPending") : recordM.unknown)}</span>
                             </div>
                           ) : (
                             <div data-assessor-reassignment={row.id}><FollowupChoice
@@ -475,13 +455,13 @@ export function AssessmentUnifiedWorkbench({
                         </div>
                       </TableCell>
                       <TableCell className="px-2 py-2">
-                        {row.assessmentKind === "activity" && !row.publicClassRecord && canAssess ? <ActivityAssessmentDetails row={row} compact disabled={!canAssess} onSaved={saveRow} /> : completed && row.assessment?.score !== null && row.assessment?.score !== undefined ? (
+                        {row.assessmentKind === "activity" && !row.publicClassRecord && mayAssess ? <ActivityAssessmentDetails row={row} compact disabled={!mayAssess} onSaved={saveRow} /> : completed && row.assessment && (row.assessment.score !== null || row.assessment.assessmentBand) ? (
                           <div className="flex min-w-0 items-center gap-2">
-                            <span className="shrink-0 text-sm font-semibold tabular-nums text-ink">
+                            {row.assessment.score !== null ? <span className="shrink-0 text-sm font-semibold tabular-nums text-ink">
                               {row.questionSummary
                                 ? t("scoreValue", { score: row.assessment.score, total: row.questionSummary.totalScore })
                                 : t("scoreOnly", { score: row.assessment.score })}
-                            </span>
+                            </span> : null}
                             {row.assessment.assessmentBand ? (
                               <Badge variant="outline" className={cn(row.assessment.assessmentBand === "x_plus" || row.assessment.assessmentBand === "below_a" ? "border-rose/30 bg-rose/15 text-rose" : row.assessment.assessmentBand === "g_plus" ? "border-crater/40 bg-moon/40 text-ink" : "border-blue/30 bg-blue/15 text-blue")}>
                                 {teacherT(`band_${row.assessment.assessmentBand}`)}
@@ -497,37 +477,37 @@ export function AssessmentUnifiedWorkbench({
                         {row.questionSummary?.paperTitle ? <p className="mt-0.5 truncate text-[11px] text-muted">{row.questionSummary.paperTitle}</p> : null}
                       </TableCell>
                       <TableCell className="px-2 py-2">
-                        {row.publicClassRecord && canAssess ? <ActivityAssessmentDetails row={row} compact disabled={!canAssess} onSaved={saveRow} /> : <p className={cn("truncate leading-5", conclusion ? "text-ink" : "text-muted")}>
+                        {row.publicClassRecord && mayAssess ? <ActivityAssessmentDetails row={row} compact disabled={!mayAssess} onSaved={saveRow} /> : <p className={cn("truncate leading-5", conclusion ? "text-ink" : "text-muted")} title={conclusion}>
                           {conclusion || (completed ? t("conclusionPending") : t("teacherWorking"))}
                         </p>}
                       </TableCell>
                       <TableCell className="px-2 py-2">
                         <div className="flex items-center justify-between gap-2">
-                          <StageBadge stage={stage} contacting={false} />
+                          {current ? <StageBadge stage={stage} contacting={false} /> : <HistoricalRecordBadge locale={locale} />}
                           <Button type="button" variant="ghost" size="sm" className="h-7 px-1.5" aria-label={t("details")} aria-expanded={active} aria-controls={active ? `assessment-details-${row.id}` : undefined} title={`${t("details")} · Enter`} aria-keyshortcuts="Enter" onClick={(event) => { event.stopPropagation(); setActiveId(active ? null : row.id); }}><FilePenLine className="size-3.5" /></Button>
-                          {canAssess && row.assessmentKind === "one_to_one" ? (
+                          {mayAssess && row.assessmentKind === "one_to_one" ? (
                             <TeacherAssessmentEntryButton registrationId={row.registrationId} invitationId={row.invitationId} />
                           ) : null}
                         </div>
-                        {row.latestFollowUp?.content ? <p data-current-situation className="mt-1 line-clamp-2 text-[11px] leading-4 text-muted" title={row.latestFollowUp.content}>{row.latestFollowUp.content}</p> : null}
+                        {current && row.latestFollowUp?.content ? <p data-current-situation className="mt-1 line-clamp-2 text-[11px] leading-4 text-muted" title={row.latestFollowUp.content}>{row.latestFollowUp.content}</p> : null}
                       </TableCell>
                       <TableCell className="px-2 py-2 text-[11px] tabular-nums text-muted">
-                        {dateTime.format(new Date(row.updatedAt))}
+                        {current ? dateTime.format(new Date(row.updatedAt)) : row.occurredOn ?? recordM.unknown}
                       </TableCell>
                     </TableRow>
 
                     {active ? (
                       <FollowupInlineDetails open={active} onOpenChange={(open) => { if (!open) setActiveId(null); }} title={`${row.name} · ${t(`type_${row.assessmentKind}`)}`} colSpan={7} id={`assessment-details-${row.id}`}>
                         <div className="min-w-0 space-y-3" data-assessment-workbench-detail={row.id}>
-                          {row.activityId ? <Link href={`/dashboard/activities/${row.activityId}?${row.publicClassRecord ? `view=onsite&segment=${row.publicClassRecord.segmentId}` : "node=assessment"}`} className="block truncate text-xs text-blue hover:underline">{row.publicClassRecord?.segmentTitle || row.activityTitle} · {t("activityWorkspace")}</Link> : null}
-                          {row.studentId ? <QuickFollowUpEntry
+                          {row.activityId ? <Link href={current ? `/dashboard/activities/${row.activityId}?${row.publicClassRecord ? `view=onsite&segment=${row.publicClassRecord.segmentId}` : "node=assessment"}` : `/dashboard/students/${row.studentId}?tab=history&history=assessment`} className="block truncate text-xs text-blue hover:underline">{current ? `${row.publicClassRecord?.segmentTitle || row.activityTitle} · ${t("activityWorkspace")}` : recordM.viewStudent}</Link> : null}
+                          {current && row.studentId ? <QuickFollowUpEntry
                             studentId={row.studentId}
                             onSaved={(entry) => saveQuickFollowUp(row, entry.content, entry.createdAt)}
                             onSaveAndNext={() => advanceFrom(row.id)}
                           /> : null}
-                          {row.assessmentKind === "activity" ? <div className={cn("grid min-w-0 gap-4", canSupport && completed && "xl:grid-cols-[1.4fr_1fr]")}>
-                            <div className="min-w-0"><ActivityAssessmentDetails row={row} disabled={!canAssess} onSaved={saveRow} /></div>
-                            {canSupport && completed ? <div className="min-w-0"><PostActivityHandoff source={{ registrationId: row.registrationId, invitationId: null }} onSaved={(context) => updateDraft(row.id, (current) => ({ ...current, route: context.route }))} /></div> : null}
+                          {row.assessmentKind === "activity" ? <div className={cn("grid min-w-0 gap-4", maySupport && completed && "xl:grid-cols-[1.4fr_1fr]")}>
+                            <div className="min-w-0"><ActivityAssessmentDetails row={row} disabled={!mayAssess} onSaved={saveRow} /></div>
+                            {maySupport && completed ? <div className="min-w-0"><PostActivityHandoff source={{ registrationId: row.registrationId, invitationId: null }} onSaved={(context) => updateDraft(row.id, (current) => ({ ...current, route: context.route }))} /></div> : null}
                           </div> : !completed ? (
                             <div className="grid min-w-0 items-start gap-4 md:grid-cols-[1fr_auto]">
                               <section className="min-w-0">
@@ -538,7 +518,7 @@ export function AssessmentUnifiedWorkbench({
                                 <Clock3 className="size-5 shrink-0 text-yellow-600" />
                                 <div className="min-w-0">
                                   <p className="font-medium text-ink">{t(stage === "pending" ? "waitingAssessment" : "assessmentInProgress")}</p>
-                                  {canAssess ? (
+                                  {mayAssess ? (
                                     <div className="mt-2">
                                       <TeacherAssessmentEntryButton registrationId={row.registrationId} invitationId={row.invitationId} />
                                     </div>
@@ -547,10 +527,11 @@ export function AssessmentUnifiedWorkbench({
                               </section>
                             </div>
                           ) : (
-                            <div className={cn("grid min-w-0 items-start gap-4", canSupport && "xl:grid-cols-[1fr_1.6fr]")}>
+                            <div className={cn("grid min-w-0 items-start gap-4", maySupport && "xl:grid-cols-[1fr_1.6fr]")}>
                               <section className="min-w-0">
                                 <h3 className="text-xs font-medium text-ink">{t("teacherEvidence")}</h3>
-                                <p className="mt-2 text-xs leading-5 text-ink">{conclusion || t("conclusionPending")}</p>
+                                <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-ink">{conclusion || t("conclusionPending")}</p>
+                                {row.assessment?.parentConcerns ? <p className="mt-3 whitespace-pre-wrap text-xs leading-5 text-muted">{row.assessment.parentConcerns}</p> : null}
                                 {row.questionSummary ? (
                                   <>
                                     <div className="mt-3 flex flex-wrap gap-1">
@@ -588,7 +569,7 @@ export function AssessmentUnifiedWorkbench({
                                 ) : null}
                               </section>
 
-                              {canSupport ? (
+                              {maySupport ? (
                                 <section className="min-w-0">
                                   <PostActivityHandoff
                                     source={{ registrationId: row.registrationId, invitationId: row.registrationId ? null : row.invitationId }}

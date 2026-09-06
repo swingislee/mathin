@@ -164,7 +164,8 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(workbench).not.toContain("onConfirmedReady");
     expect(workbench).toContain("!invitationDraftIsComplete(draft)");
     expect(workbench).toContain("postActivityRows");
-    expect(workbench).toContain("FollowupInlineDetails");
+    expect(workbench).toContain("<FirstContactRecordRow");
+    expect(read("src", "features", "school", "FirstContactRecordRow.tsx")).toContain("<FollowupInlineDetails");
     expect(workbench).not.toContain("FollowupDetails");
     expect(workbench).toContain("colSpan={4}");
     expect(workbench).toContain("const rowWorkStep =");
@@ -205,7 +206,8 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(page).toContain("FilterSearchInput");
     expect(page).not.toContain("isFirstContactWorkbench");
     expect(page).not.toContain("LeadPoolTable");
-    expect(workbench).toContain("FollowupInlineDetails");
+    expect(workbench).toContain("<FirstContactRecordRow");
+    expect(read("src", "features", "school", "FirstContactRecordRow.tsx")).toContain("<FollowupInlineDetails");
     expect(workbench).not.toContain("FollowupDetails");
     expect(workbench).toContain("table-fixed");
     expect(workbench).not.toContain("focus:h-20");

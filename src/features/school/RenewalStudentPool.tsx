@@ -1,8 +1,8 @@
 "use client";
 
 import { BusinessRecordStateFilter, HistoricalRecordBadge, useBusinessSearchQuery } from './BusinessRecordStateFilter';
-import { businessRecordMessages, matchesBusinessRecordState, type BusinessRecordStateFilter as StateFilter } from './business-record-state-contract';
-import type { HistoricalRenewal, StudentBusinessHistory } from './student-business-history-contract';
+import { businessRecordMessages, isCurrentBusinessRecord, matchesBusinessRecordState, type BusinessRecordState, type BusinessRecordStateFilter as StateFilter } from './business-record-state-contract';
+import type { StudentBusinessHistory } from './student-business-history-contract';
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
@@ -39,18 +39,19 @@ import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
 import { Student360Trigger } from "./Student360Sheet";
 
 type PoolRow = {
-  membershipId: string; studentId: string; name: string; grade: number | null;
+  membershipId: string | null; studentId: string; name: string; grade: number | null;
   classroom: string; owner: string; stage: string; note: string; opportunityId: string | null;
-  historical?: HistoricalRenewal;
+  recordState?: BusinessRecordState; teacherLabel?: string;
 };
 const RESULT_STAGES = ["considering", "payment_pending", "enrolled", "not_enrolled", "nurturing"] as const;
 type ResultStage = typeof RESULT_STAGES[number];
-type ActiveEntry = { membershipId: string; kind: "registration" | "observation" | "health"; focus?: boolean };
+type ActiveEntry = { rowId: string; kind: "registration" | "observation" | "health" | "details"; focus?: boolean };
 type Payment = RenewalPoolSupplement["payments"][number];
 const isResultStage = (stage: string): stage is ResultStage => RESULT_STAGES.includes(stage as ResultStage);
 const levelFor = renewalHealthLevel;
 const resultTone = (stage: string): FollowupTone => stage === "enrolled" ? "healthy" : stage === "not_enrolled" ? "unhealthy" : stage === "payment_pending" ? "healthy" : stage === "nurturing" ? "attention" : "neutral";
 const healthTone = (level: string): FollowupTone => level === "attention" ? "unhealthy" : level === "observed" ? "healthy" : "neutral";
+const poolRowId = (row: PoolRow) => row.membershipId ?? row.opportunityId!;
 
 export function RenewalStudentPool({ data, supplement, canWrite, canReview, canEnroll, settings = false, allowHealthSamples = false, healthSampleMode = false, history, initialQuery, initialRecordState='all' }: {
   data: RenewalWorkspaceData; supplement: RenewalPoolSupplement;
@@ -81,22 +82,22 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
   const healthFacts = sampleMode ? samples.map(sample => sample.facts) : supplement.health;
   const facts = new Map(healthFacts.map(row => [row.studentId, row]));
   const payments = new Map(supplement.payments.map(row => [row.opportunity_id, row]));
-  const signalsFor = (row: PoolRow) => renewalHealthSignals(facts.get(row.studentId), supplement.now, policy);
+  const signalsFor = (row: PoolRow) => isCurrentBusinessRecord(row.recordState) ? renewalHealthSignals(facts.get(row.studentId), supplement.now, policy) : [];
   const rows: PoolRow[] = [
     ...data.candidates.map(row => ({ membershipId: row.membershipId, studentId: row.studentId, name: row.studentName, grade: row.grade, classroom: row.classroomName, owner: row.currentOwnerName, stage: "unprepared", note: "", opportunityId: null })),
     ...data.opportunities.filter(row => row.opportunityType === "renewal" && row.cycleId === cycle?.id && row.sourceMembershipId).map(row => ({ membershipId: row.sourceMembershipId!, studentId: row.studentId, name: row.studentName, grade: row.grade, classroom: row.sourceClassroomName, owner: row.ownerName, stage: row.stage, note: row.note, opportunityId: row.id })),
-    ...(history?.renewals??[]).map(row=>({membershipId:'',studentId:row.student_id,name:history!.students[row.student_id]??recordM.unknown,grade:history!.subjects[row.student_id]?.grade??null,classroom:`${row.period_year??''}${row.period_key==='summer'?(locale==='zh'?'暑假':' Summer'):(locale==='zh'?'秋季':' Autumn')} · ${row.class_label}`,owner:'',stage:'historical',note:row.decision_note,opportunityId:row.id,historical:row})),
+    ...(history?.renewals??[]).map(row=>({membershipId:null,studentId:row.student_id,name:history!.students[row.student_id]??recordM.unknown,grade:history!.subjects[row.student_id]?.grade??null,classroom:`${row.period_year??''}${row.period_key==='summer'?(locale==='zh'?'暑假':' Summer'):(locale==='zh'?'秋季':' Autumn')} · ${row.class_label}`,owner:'',stage:row.outcome==='renewed'?'enrolled':row.outcome==='not_renewed'?'not_enrolled':'unknown',note:row.decision_note,opportunityId:row.id,recordState:'historical' as const,teacherLabel:row.teacher_label})),
   ];
-  const stageLabel = (row: PoolRow) => row.historical ? recordM.historical : row.stage === "enrolled" && !payments.has(row.opportunityId ?? "") ? legacy("stage_enrolled") : row.stage === "unprepared" ? t("unprepared") : isResultStage(row.stage) ? t(row.stage) : legacy("stage_" + row.stage);
+  const stageLabel = (row: PoolRow) => row.stage === 'unknown' ? recordM.outcomeUnknown : row.stage === "enrolled" && !payments.has(row.opportunityId ?? "") ? legacy("stage_enrolled") : row.stage === "unprepared" ? t("unprepared") : isResultStage(row.stage) ? t(row.stage) : legacy("stage_" + row.stage);
   const displayRows: PoolRow[] = sampleMode ? samples.map((sample, index) => ({ membershipId: sample.facts.studentId, studentId: sample.facts.studentId, name: policyT("sampleName", { number: index + 1, scenario: policyT("sample_" + sample.key) }), grade: null, classroom: policyT("sampleClass"), owner: "—", stage: "unprepared", note: "", opportunityId: null })) : rows;
-  const filtered = displayRows.filter(row => matchesBusinessRecordState(row.historical?'historical':'current',recordState)&&[row.name, row.classroom, row.owner,row.note,history?.subjects[row.studentId]?.phone??''].some(value => value.toLocaleLowerCase(locale).includes(query.trim().toLocaleLowerCase(locale))));
-  const currentRows=rows.filter(row=>!row.historical);
+  const filtered = displayRows.filter(row => matchesBusinessRecordState(row.recordState,recordState)&&[row.name, row.classroom, row.owner,row.note,history?.subjects[row.studentId]?.phone??''].some(value => value.toLocaleLowerCase(locale).includes(query.trim().toLocaleLowerCase(locale))));
+  const currentRows=rows.filter(row=>isCurrentBusinessRecord(row.recordState));
   const columns = {
     name: { filterValues: (row: PoolRow) => ({ value: row.studentId, label: row.name }), sortValue: (row: PoolRow) => row.name },
     classroom: { filterValues: (row: PoolRow) => ({ value: row.classroom, label: row.classroom }), sortValue: (row: PoolRow) => row.classroom },
     owner: { filterValues: (row: PoolRow) => ({ value: row.owner || "none", label: row.owner || "—" }), sortValue: (row: PoolRow) => row.owner },
     stage: { filterValues: (row: PoolRow) => ({ value: row.stage === "enrolled" && payments.has(row.opportunityId ?? "") ? "paid" : row.stage, label: stageLabel(row) }), sortValue: (row: PoolRow) => row.stage },
-    health: { filterValues: (row: PoolRow) => ({ value: levelFor(signalsFor(row)), label: t(levelFor(signalsFor(row))) }), sortValue: (row: PoolRow) => signalsFor(row).filter(signal => signal.level === "attention").length },
+    health: { filterValues: (row: PoolRow) => isCurrentBusinessRecord(row.recordState) ? { value: levelFor(signalsFor(row)), label: t(levelFor(signalsFor(row))) } : [], sortValue: (row: PoolRow) => signalsFor(row).filter(signal => signal.level === "attention").length },
   };
   const table = useDashboardTableView({ rows: filtered, columns, locale, persistenceKey: "followup-renewals" });
   const errors = { default: legacy("actionFailed") };
@@ -123,18 +124,18 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
         <TableHead><DashboardTableColumnHeader label={t("result")} {...table.columnProps("stage")} /></TableHead>
         <TableHead>{t("details")}</TableHead>
       </TableRow></TableHeader>
-      <TableBody>{table.visibleRows.map(row => row.historical?<HistoricalRenewalRow key={row.opportunityId} row={row} locale={locale}/>:<RenewalEntryRow key={(cycle?.id ?? "") + "-" + row.membershipId}
+      <TableBody>{table.visibleRows.map(row => <RenewalEntryRow key={(cycle?.id ?? "") + "-" + poolRowId(row)}
         row={row} cycleId={cycle?.id ?? ""} stageLabel={stageLabel(row)} payment={payments.get(row.opportunityId ?? "")}
         health={signalsFor(row)} policy={policy} sampleMode={sampleMode}
-        observation={supplement.signals.find(item => item.student_id === row.studentId)?.recommendation}
-        canWrite={!sampleMode && canWrite && cycle?.status === "open"} canEnroll={canEnroll}
-        canObserve={!sampleMode && canReview && supplement.observationMemberships.includes(row.membershipId)}
-        entry={entry?.membershipId === row.membershipId ? entry : null} busy={entryBusy} onBusy={setEntryBusy}
-        onActivate={(kind, focus = false) => { if (!entryBusy) setEntry({ membershipId: row.membershipId, kind, focus }); }}
+        observation={isCurrentBusinessRecord(row.recordState) ? supplement.signals.find(item => item.student_id === row.studentId)?.recommendation : undefined}
+        canWrite={isCurrentBusinessRecord(row.recordState) && !sampleMode && canWrite && cycle?.status === "open"} canEnroll={canEnroll}
+        canObserve={isCurrentBusinessRecord(row.recordState) && !sampleMode && canReview && Boolean(row.membershipId && supplement.observationMemberships.includes(row.membershipId))}
+        entry={entry?.rowId === poolRowId(row) ? entry : null} busy={entryBusy} onBusy={setEntryBusy}
+        onActivate={(kind, focus = false) => { if (!entryBusy) setEntry({ rowId: poolRowId(row), kind, focus }); }}
         onClose={() => setEntry(null)} onSaved={advance => {
-          const index = table.visibleRows.findIndex(item => item.membershipId === row.membershipId);
-          const next = advance ? table.visibleRows.slice(index + 1).find(item => ["unprepared", "planning", "contacted", "considering", "payment_pending"].includes(item.stage)) : undefined;
-          setEntry(next ? { membershipId: next.membershipId, kind: "registration", focus: true } : null);
+          const index = table.visibleRows.findIndex(item => poolRowId(item) === poolRowId(row));
+          const next = advance ? table.visibleRows.slice(index + 1).find(item => isCurrentBusinessRecord(item.recordState) && ["unprepared", "planning", "contacted", "considering", "payment_pending"].includes(item.stage)) : undefined;
+          setEntry(next ? { rowId: poolRowId(next), kind: "registration", focus: true } : null);
           window.dispatchEvent(new Event(STUDENT_360_REFRESH_EVENT)); router.refresh();
         }}
       />)}{!table.visibleRows.length ? <TableRow><TableCell colSpan={7} className="h-40 text-center text-muted">{t("noRows")}</TableCell></TableRow> : null}</TableBody>
@@ -156,17 +157,6 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
   </DashboardPage>;
 }
 
-function HistoricalRenewalRow({row,locale}:{row:PoolRow;locale:string}) {
-  const m=businessRecordMessages(locale);
-  return <TableRow data-record-state="historical" data-renewal-pool-row={row.opportunityId} className="align-top [&>td]:px-2 [&>td]:py-2">
-    <TableCell><Student360Trigger subject={{studentId:row.studentId,leadId:null}} fallback={{name:row.name,grade:row.grade}}/></TableCell>
-    <TableCell>{row.classroom}<p className="text-muted">{row.historical?.teacher_label}</p></TableCell>
-    <TableCell>{m.unknown}</TableCell><TableCell>—</TableCell><TableCell>—</TableCell>
-    <TableCell><HistoricalRecordBadge locale={locale}/><p className="mt-1 text-muted">{row.historical?.outcome==='unknown'?m.outcomeUnknown:row.historical?.outcome}</p></TableCell>
-    <TableCell><p className="whitespace-pre-wrap leading-6">{row.note}</p><Link href={`/dashboard/students/${row.studentId}?tab=history&history=renewal`} className="mt-2 inline-block underline">{m.viewStudent}</Link></TableCell>
-  </TableRow>;
-}
-
 function RenewalEntryRow({ row, cycleId, stageLabel, payment, observation, canWrite, canEnroll, canObserve, entry, busy, onBusy, onActivate, onClose, onSaved, health, policy, sampleMode }: {
   row: PoolRow; cycleId: string; stageLabel: string; payment?: Payment; observation?: string;
   health: RenewalHealthSignal[]; policy: RenewalHealthPolicy; sampleMode: boolean;
@@ -177,6 +167,10 @@ function RenewalEntryRow({ row, cycleId, stageLabel, payment, observation, canWr
   const t = useTranslations("school.renewals.poolV2");
   const legacy = useTranslations("school.renewals");
   const policyT = useTranslations("school.renewals.healthSettings");
+  const locale = useLocale();
+  const recordM = businessRecordMessages(locale);
+  const readOnly = !isCurrentBusinessRecord(row.recordState);
+  const defaultEntry = readOnly ? 'details' : canWrite ? 'registration' : 'health';
   const [stage, setStage] = useState<ResultStage>(isResultStage(row.stage) ? row.stage : "considering");
   const [note, setNote] = useState(payment?.note ?? row.note);
   const [periods, setPeriods] = useState(payment ? String(payment.period_count) : "");
@@ -219,16 +213,16 @@ function RenewalEntryRow({ row, cycleId, stageLabel, payment, observation, canWr
   }, [entry?.focus, entry?.kind, paid]);
 
   const submit = (advance: boolean) => {
-    if (busy || run.pending || !canWrite || !valid) return;
+    if (readOnly || !row.membershipId || busy || run.pending || !canWrite || !valid) return;
     advanceRef.current = advance;
     run.run({ cycleId, membershipId: row.membershipId, stage, note, periodCount: paid ? Number(periods) : null, paidAmount: paid ? Number(amount) : null });
   };
   const submitObservation = () => {
-    if (busy || observe.pending || !canObserve || !observationNote.trim()) return;
+    if (readOnly || !row.membershipId || busy || observe.pending || !canObserve || !observationNote.trim()) return;
     observe.run({ studentId: row.studentId, sourceMembershipId: row.membershipId, sourceSessionId: null, signalType: observationType, recommendation: observationNote, suggestedCourseId: null, targetTermId: null });
   };
   const chooseStage = (value: ResultStage) => {
-    if (busy || !canWrite || (value === "enrolled" && !canEnroll) || (currentStage === "enrolled" && value !== "enrolled")) return;
+    if (readOnly || busy || !canWrite || (value === "enrolled" && !canEnroll) || (currentStage === "enrolled" && value !== "enrolled")) return;
     setStage(value);
     onActivate("registration", value === "enrolled");
   };
@@ -238,7 +232,7 @@ function RenewalEntryRow({ row, cycleId, stageLabel, payment, observation, canWr
     if (target.closest("[role='listbox'], [role='menu'], [role='dialog']")) return;
     if (event.target === event.currentTarget && event.currentTarget.tagName === "TR" && event.key === "Enter" && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) {
       event.preventDefault();
-      if (entry) onClose(); else onActivate(canWrite ? "registration" : "health");
+      if (entry) onClose(); else onActivate(defaultEntry);
       return;
     }
     const command = inlineEntryCommand({ ...event, isComposing: event.nativeEvent.isComposing }, !!target.closest("input, textarea, select, [contenteditable='true'], [role='combobox']"));
@@ -254,33 +248,33 @@ function RenewalEntryRow({ row, cycleId, stageLabel, payment, observation, canWr
     }
   };
   const displayedStage = registering ? stage : currentStage;
-  const detailId = "renewal-entry-" + row.membershipId;
+  const detailId = "renewal-entry-" + poolRowId(row);
 
   return <>
-    <TableRow data-renewal-pool-row={row.membershipId} tabIndex={0} aria-selected={!!entry} aria-expanded={!!entry} aria-controls={entry ? detailId : undefined}
+    <TableRow data-record-state={row.recordState ?? 'current'} data-renewal-pool-row={poolRowId(row)} tabIndex={0} aria-selected={!!entry} aria-expanded={!!entry} aria-controls={entry ? detailId : undefined}
       className={cn("h-10 cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-crater [&>td]:px-2 [&>td]:py-1", entry && "bg-moon/15 hover:bg-moon/15")} onKeyDown={handleKeyDown} onClick={(event) => {
         if (busy || (event.target as HTMLElement).closest("button,a,input,textarea,select,[role='combobox'],[role='checkbox']")) return;
-        if (entry) onClose(); else onActivate(canWrite ? "registration" : "health");
+        if (entry) onClose(); else onActivate(defaultEntry);
       }}>
       <TableCell><div className="flex min-w-0 items-center gap-1">
-        <Button type="button" size="sm" variant="ghost" className="size-6 shrink-0 p-0" aria-label={entry ? t("close") : t("details")} aria-expanded={!!entry} disabled={busy} onClick={() => entry ? onClose() : onActivate(canWrite ? "registration" : "health")}>
+        <Button type="button" size="sm" variant="ghost" className="size-6 shrink-0 p-0" aria-label={entry ? t("close") : t("details")} aria-expanded={!!entry} disabled={busy} onClick={() => entry ? onClose() : onActivate(defaultEntry)}>
           {entry ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
         </Button>{sampleMode ? <span className="truncate">{row.name}</span> : <Student360Trigger className="truncate" subject={{ studentId: row.studentId, leadId: null }} fallback={{ name: row.name, grade: row.grade }} />}
       </div></TableCell>
-      <TableCell className="truncate" title={row.classroom}>{row.classroom}</TableCell><TableCell className="truncate" title={row.owner}>{row.owner || "—"}</TableCell>
-      <TableCell><Button size="sm" variant="ghost" className={cn("h-7 w-full truncate px-1 text-xs", followupToneClasses[healthTone(levelFor(health))])} disabled={busy} aria-expanded={viewingHealth} onClick={() => viewingHealth ? onClose() : onActivate("health")}>{t(levelFor(health))}</Button></TableCell>
+      <TableCell className="truncate" title={row.classroom}>{row.classroom}{row.teacherLabel ? <p className="text-muted">{row.teacherLabel}</p> : null}</TableCell><TableCell className="truncate" title={row.owner}>{row.owner || "—"}</TableCell>
+      <TableCell>{readOnly ? '—' : <Button size="sm" variant="ghost" className={cn("h-7 w-full truncate px-1 text-xs", followupToneClasses[healthTone(levelFor(health))])} disabled={busy} aria-expanded={viewingHealth} onClick={() => viewingHealth ? onClose() : onActivate("health")}>{t(levelFor(health))}</Button>}</TableCell>
       <TableCell>{canObserve ? <Button type="button" size="sm" variant="ghost" className={cn("h-8 w-full justify-start gap-1 rounded-md px-1 text-xs", observing && "bg-moon/50 text-ink")} disabled={busy} aria-label={row.name + " · " + t("observe")} aria-expanded={observing} title={currentObservation} onClick={() => observing ? onClose() : onActivate("observation", true)}>
         <Pencil className="size-3 shrink-0" /><span className="truncate">{currentObservation || t("observe")}</span>
-      </Button> : <p className="truncate text-muted" title={currentObservation}>{currentObservation || t("noObservation")}</p>}</TableCell>
-      <TableCell>{canWrite ? <FollowupChoice value={displayedStage} onValueChange={value => chooseStage(value as ResultStage)} label={row.name + " · " + t("result")} disabled={busy} className="w-full" options={RESULT_STAGES.filter(value => (value !== "enrolled" || canEnroll) && (currentStage !== "enrolled" || value === "enrolled")).map((value) => ({ value, label: t(value), tone: resultTone(value) }))} /> : <Badge variant="outline" className={followupToneClasses[resultTone(currentStage)]}>{currentLabel}</Badge>}</TableCell>
+      </Button> : <p className="truncate text-muted" title={currentObservation}>{currentObservation || (readOnly ? '—' : t("noObservation"))}</p>}</TableCell>
+      <TableCell>{readOnly ? <HistoricalRecordBadge locale={locale} /> : null}{canWrite ? <FollowupChoice value={displayedStage} onValueChange={value => chooseStage(value as ResultStage)} label={row.name + " · " + t("result")} disabled={busy} className="w-full" options={RESULT_STAGES.filter(value => (value !== "enrolled" || canEnroll) && (currentStage !== "enrolled" || value === "enrolled")).map((value) => ({ value, label: t(value), tone: resultTone(value) }))} /> : <Badge variant="outline" className={followupToneClasses[resultTone(currentStage)]}>{currentLabel}</Badge>}</TableCell>
       <TableCell><div className="flex min-w-0 items-center gap-2">
         {!isResultStage(currentStage) ? <span className="shrink-0 text-[10px] text-muted">{currentLabel}</span> : null}
         {currentPayment ? <span className="shrink-0 text-[11px] font-medium text-leaf-deep">{t("paidSummary", { periods: currentPayment.period_count, amount: Number(currentPayment.paid_amount).toFixed(2) })}</span> : null}
-        <Button size="sm" variant="ghost" className="h-8 min-w-0 flex-1 justify-start px-1 text-xs" disabled={busy || !canWrite} onClick={() => onActivate("registration", true)} aria-label={row.name + " · " + t("details")} aria-expanded={registering} title={note || currentLabel}><span className="truncate">{note || t("details")}</span><Pencil className="size-3 shrink-0" /></Button>
+        <Button size="sm" variant="ghost" className="h-8 min-w-0 flex-1 justify-start px-1 text-xs" disabled={busy || !canWrite && !readOnly} onClick={() => onActivate(readOnly ? 'details' : 'registration', !readOnly)} aria-label={row.name + " · " + t("details")} aria-expanded={!!entry && !viewingHealth && !observing} title={note || currentLabel}><span className="truncate">{note || t("details")}</span>{readOnly ? <ChevronDown className="size-3 shrink-0" /> : <Pencil className="size-3 shrink-0" />}</Button>
         {canWrite ? <Button size="sm" variant="ghost" className="size-7 shrink-0 p-0" aria-label={t("save")} title={t("save") + " · Ctrl/⌘ + Enter"} aria-keyshortcuts="Control+Enter Meta+Enter" disabled={busy || !valid || !registering} onClick={() => submit(false)}><Check className="size-3.5" /></Button> : null}
       </div></TableCell>
     </TableRow>
-    <FollowupInlineDetails open={!!entry} onOpenChange={open => { if (!open && !busy) onClose(); }} title={row.name + " · " + (viewingHealth ? t("health") : observing ? t("observe") : t("details"))} colSpan={7} pending={busy} autoFocus={!!entry?.focus} onSubmit={viewingHealth ? undefined : () => observing ? submitObservation() : submit(true)} id={detailId}>
+    <FollowupInlineDetails open={!!entry} onOpenChange={open => { if (!open && !busy) onClose(); }} title={row.name + " · " + (viewingHealth ? t("health") : observing ? t("observe") : t("details"))} colSpan={7} pending={busy} autoFocus={!!entry?.focus} onSubmit={viewingHealth || readOnly ? undefined : () => observing ? submitObservation() : submit(true)} id={detailId}>
       <div ref={detailRef} data-renewal-entry-detail onKeyDown={handleKeyDown} inert={busy || undefined}>
         {viewingHealth ? <>
           <p className="mb-3 text-xs text-muted">{policyT("windowHint", { days: policy.windowDays })}</p>
@@ -293,14 +287,16 @@ function RenewalEntryRow({ row, cycleId, stageLabel, payment, observation, canWr
             <Label className="block text-xs">{t("signalType")}<FollowupChoice label={t("signalType")} value={observationType} onValueChange={value => setObservationType(value as TeacherProfessionalSignalType)} options={TEACHER_PROFESSIONAL_SIGNAL_TYPES.map(value => ({ value, label: legacy("signalType_" + value), tone: value === "churn_risk" ? "unhealthy" : "healthy" }))} className="mt-1 w-full" /></Label>
             <Label className="block text-xs">{t("recommendation")}<Textarea className="mt-1 min-h-20 text-xs" rows={3} value={observationNote} maxLength={2000} onChange={event => setObservationNote(event.target.value)} /></Label>
           </div> : <div className="grid items-start gap-4 md:grid-cols-[15rem_minmax(0,1fr)]">
-            <div className="space-y-3"><Label className="block text-xs">{t("result")}<FollowupChoice label={t("result")} value={stage} onValueChange={value => chooseStage(value as ResultStage)} options={RESULT_STAGES.filter(value => (value !== "enrolled" || canEnroll) && (currentStage !== "enrolled" || value === "enrolled")).map(value => ({ value, label: t(value), tone: resultTone(value) }))} className="mt-1 w-full" /></Label>
-              {paid ? <div className="grid grid-cols-2 gap-3"><Label className="block text-xs">{t("periods")}<Input className="mt-1 h-8 text-xs" type="number" min={1} max={24} step={1} value={periods} onChange={event => setPeriods(event.target.value)} /></Label><Label className="block text-xs">{t("amount")}<Input className="mt-1 h-8 text-xs" type="number" min="0.01" step="0.01" value={amount} onChange={event => setAmount(event.target.value)} /></Label></div> : null}
+            <div className="space-y-3"><Label className="block text-xs">{t("result")}{readOnly ? <p className="mt-1">{currentLabel}</p> : <FollowupChoice label={t("result")} value={stage} onValueChange={value => chooseStage(value as ResultStage)} options={RESULT_STAGES.filter(value => (value !== "enrolled" || canEnroll) && (currentStage !== "enrolled" || value === "enrolled")).map(value => ({ value, label: t(value), tone: resultTone(value) }))} className="mt-1 w-full" />}</Label>
+              {paid && !readOnly ? <div className="grid grid-cols-2 gap-3"><Label className="block text-xs">{t("periods")}<Input className="mt-1 h-8 text-xs" type="number" min={1} max={24} step={1} value={periods} onChange={event => setPeriods(event.target.value)} /></Label><Label className="block text-xs">{t("amount")}<Input className="mt-1 h-8 text-xs" type="number" min="0.01" step="0.01" value={amount} onChange={event => setAmount(event.target.value)} /></Label></div> : null}
             </div>
-            <Label className="block text-xs">{t("note")}<Textarea className="mt-1 min-h-20 text-xs" rows={3} value={note} maxLength={2000} onChange={event => setNote(event.target.value)} /></Label>
+            <Label className="block text-xs">{t("note")}{readOnly ? <p className="mt-1 whitespace-pre-wrap leading-6">{note || recordM.unknown}</p> : <Textarea className="mt-1 min-h-20 text-xs" rows={3} value={note} maxLength={2000} onChange={event => setNote(event.target.value)} />}</Label>
           </div>}</div>
           <div className="flex flex-col gap-3 border-line xl:border-l xl:pl-5">
+            {readOnly ? <Link href={`/dashboard/students/${row.studentId}?tab=history&history=renewal`} className="text-xs underline">{recordM.viewStudent}</Link> : <>
             {observing ? <Button size="sm" disabled={busy || !observationNote.trim()} onClick={submitObservation}><Check className="size-4" />{t("save")}</Button> : <><Button size="sm" disabled={busy || !valid} onClick={() => submit(true)}><Check className="size-4" />{t("action_" + stage)}</Button><Button size="sm" variant="ghost" disabled={busy || !valid} onClick={() => submit(false)}>{t("save")}</Button></>}
             <p className="text-[11px] leading-5 text-muted">{observing ? t("observationKeys") : t("quickKeys")}</p>
+            </>}
           </div>
         </div>}
       </div>

@@ -32,7 +32,7 @@ import { DashboardInlineEntry } from "./dashboard-page/DashboardInlineEntry";
 import type { PublicClassRegistrationData } from "./public-class-registration-contract";
 import { getStudentBusinessHistoryMessages } from "./student-business-history-messages";
 import { BusinessRecordStateFilter, HistoricalRecordBadge, useBusinessSearchQuery } from './BusinessRecordStateFilter';
-import { businessRecordMessages, matchesBusinessRecordState, type BusinessRecordStateFilter as StateFilter } from './business-record-state-contract';
+import { businessRecordMessages, isCurrentBusinessRecord, matchesBusinessRecordState, type BusinessRecordStateFilter as StateFilter } from './business-record-state-contract';
 import { FilterSearchInput } from './FilterBar';
 const PublicClassRegistrationPanel = dynamic(() => import("./PublicClassRegistrationPanel"));
 import {
@@ -99,6 +99,7 @@ export function ActivitiesManager({
   const t = useTranslations("school.activities");
   const tableT = useTranslations("school.table");
   const gradeT = useTranslations("school.activityGrades");
+  const assessmentT = useTranslations("school.teacherAssessment");
   const locale = useLocale();
   const recordM=businessRecordMessages(locale);
   const [query,setQuery]=useBusinessSearchQuery('activities',initialQuery);
@@ -222,49 +223,45 @@ export function ActivitiesManager({
           </TableHeader>
           <TableBody>
             {activityTable.visibleRows.map((activity) => {
-              if(activity.recordState==='historical') return <TableRow key={activity.id} data-record-state="historical" className="align-top">
-                <TableCell>{activity.occurredOn??recordM.unknown}</TableCell>
-                <TableCell><p className="mb-1 font-medium">{activity.title}</p><HistoricalRecordBadge locale={locale}/></TableCell>
-                <TableCell>{activity.registrations.map(row=><div key={row.id} className="mb-2"><p>{row.studentName}</p><p className="mt-1 text-xs text-muted">{row.registeredOn?`${recordM.registeredOn} ${row.registeredOn}`:row.status==='attended'?getStudentBusinessHistoryMessages(locale).attended:recordM.unknown}</p></div>)}</TableCell>
-                <TableCell>{activity.registrations.map(row=><p key={row.id}>{row.assessment?.assessmentBand==='a_plus'?'A+':row.assessment?.assessmentBand??'—'}</p>)}</TableCell>
-                <TableCell>{activity.registrations.map(row=><div key={row.id}><p>{row.reportedResult||'—'}</p>{row.resultLinkStatus==='edition_unconfirmed'&&<p className="mt-1 text-xs text-muted">{getStudentBusinessHistoryMessages(locale).reportedResult} · {getStudentBusinessHistoryMessages(locale).editionPending}</p>}</div>)}</TableCell>
-                <TableCell>{activity.registrations.map(row=><Link key={row.id} href={`/dashboard/students/${row.studentId}?tab=history&history=${activity.kind==='assessment_1v1'?'assessment':'activity'}`} className="block text-xs underline">{recordM.viewStudent}</Link>)}</TableCell>
-              </TableRow>;
+              const current = isCurrentBusinessRecord(activity.recordState);
               const { booked, attended, assessed, awaitingRoute } = activityCounts(activity);
               const expanded = activeActivityId === activity.id;
               const publicClass = activity.kind === "public_class";
-              return <Fragment key={activity.id}><TableRow aria-expanded={publicClass ? expanded : undefined} className={publicClass ? `cursor-pointer ${expanded ? "bg-moon/10 hover:bg-moon/10" : ""}` : undefined} onClick={publicClass ? () => toggleActivity(activity.id) : undefined}>
+              const canRegister = current && publicClass;
+              const registrationFacts = activity.registrations.filter(row => row.registeredOn || row.reportedResult || row.assessment?.assessmentBand && row.assessment.score === null);
+              return <Fragment key={activity.id}><TableRow data-record-state={activity.recordState ?? 'current'} data-activity-row={activity.id} aria-expanded={canRegister ? expanded : undefined} className={canRegister ? `cursor-pointer ${expanded ? "bg-moon/10 hover:bg-moon/10" : ""}` : undefined} onClick={canRegister ? () => toggleActivity(activity.id) : undefined}>
                 <TableCell className="whitespace-nowrap text-sm">
-                  {dateTimeFormatter.format(new Date(activity.scheduledAt))}
+                  {current ? dateTimeFormatter.format(new Date(activity.scheduledAt)) : activity.occurredOn ?? recordM.unknown}
                 </TableCell>
                 <TableCell>
-                  {publicClass ? <Button size="sm" variant="ghost" className="h-auto justify-start gap-1 p-0 text-left text-ink" onClick={(event) => { event.stopPropagation(); toggleActivity(activity.id); }}>{expanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}{activity.title}</Button> : <Link href={`/dashboard/activities/${activity.id}`} className="font-medium text-ink hover:underline">
+                  {canRegister ? <Button size="sm" variant="ghost" className="h-auto justify-start gap-1 p-0 text-left text-ink" onClick={(event) => { event.stopPropagation(); toggleActivity(activity.id); }}>{expanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}{activity.title}</Button> : current ? <Link href={`/dashboard/activities/${activity.id}`} className="font-medium text-ink hover:underline">
                     {activity.title}
-                  </Link>}
+                  </Link> : <span className="font-medium text-ink">{activity.title}</span>}
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted">
                     <Badge variant="outline">{t(`kind_${activity.kind}`)}</Badge>
+                    {!current ? <HistoricalRecordBadge locale={locale} /> : null}
                     <span>{activity.location || "—"}</span>
                     <span>{activity.targetGrades == null ? gradeT("unknown") : activity.targetGrades.length
                       ? activity.targetGrades.map((grade) => gradeT("grade", { grade })).join("、") : gradeT("all")}</span>
                   </div>
                 </TableCell>
-                <TableCell className="tabular-nums">{t("participationCounts", { booked, attended })}</TableCell>
-                <TableCell className="tabular-nums">{assessed}</TableCell>
-                <TableCell className="tabular-nums">{awaitingRoute}</TableCell>
+                <TableCell className="tabular-nums">{t("participationCounts", { booked, attended })}{registrationFacts.map(row => <div key={row.id} className="mt-1 text-xs"><p>{row.studentName}</p>{row.registeredOn ? <p className="text-muted">{recordM.registeredOn} {row.registeredOn}</p> : null}</div>)}</TableCell>
+                <TableCell className="tabular-nums">{assessed}{registrationFacts.map(row => row.assessment?.assessmentBand ? <p key={row.id} className="mt-1 text-xs">{assessmentT(`band_${row.assessment.assessmentBand}`)}</p> : null)}</TableCell>
+                <TableCell className="tabular-nums">{current ? awaitingRoute : '—'}{registrationFacts.map(row => row.reportedResult ? <div key={row.id} className="mt-1 text-xs"><p>{row.reportedResult}</p>{row.resultLinkStatus === 'edition_unconfirmed' ? <p className="text-muted">{getStudentBusinessHistoryMessages(locale).reportedResult} · {getStudentBusinessHistoryMessages(locale).editionPending}</p> : null}</div> : null)}</TableCell>
                 <TableCell>
                   <div className="flex justify-end gap-1" onClick={(event) => event.stopPropagation()}>
-                    {canManage ? <>
+                    {current && canManage ? <>
                       <Button size="sm" variant="ghost" onClick={() => setEditing(activity)}>{t("edit")}</Button>
                       <Button size="sm" variant="ghost" onClick={() => setGradeTarget(activity)}>{gradeT("title")}</Button>
                       <Button size="sm" variant="ghost" className="text-rose" aria-label={t("delete")} disabled={pending} onClick={() => setDeleteTarget(activity)}><Trash2 size={15} /></Button>
                     </> : null}
-                    {publicClass ? <Button size="sm" variant="secondary" onClick={() => toggleActivity(activity.id)}>{t("inlineRegistration")}</Button> : null}
-                    {!publicClass || teachingActivityIds.includes(activity.id) ? <Link href={`/dashboard/activities/${activity.id}${publicClass ? "?view=teaching" : ""}`} className={buttonVariants({ size: "sm", variant: "secondary" })}>
+                    {canRegister ? <Button size="sm" variant="secondary" onClick={() => toggleActivity(activity.id)}>{t("inlineRegistration")}</Button> : null}
+                    {current && (!publicClass || teachingActivityIds.includes(activity.id)) ? <Link href={`/dashboard/activities/${activity.id}${publicClass ? "?view=teaching" : ""}`} className={buttonVariants({ size: "sm", variant: "secondary" })}>
                       {t(publicClass ? "teacherWorkspace" : "openWorkspace")}<ArrowRight size={15} />
-                    </Link> : null}
+                    </Link> : !current ? activity.registrations.map(row => row.studentId ? <Link key={row.id} href={`/dashboard/students/${row.studentId}?tab=history`} className={buttonVariants({ size: "sm", variant: "secondary" })}>{recordM.viewStudent}<ArrowRight size={15} /></Link> : null) : null}
                   </div>
                 </TableCell>
-              </TableRow>{publicClass && expanded ? <TableRow className="hover:bg-transparent"><TableCell colSpan={6} className="p-0"><DashboardInlineEntry flush title={activity.title} onClose={() => setActiveActivityId(null)} closeLabel={t("closeRegistration")}><PublicClassRegistrationPanel activityId={activity.id} initialData={initialRegistrationData?.activity.id === activity.id ? initialRegistrationData : undefined} /></DashboardInlineEntry></TableCell></TableRow> : null}</Fragment>;
+              </TableRow>{canRegister && expanded ? <TableRow className="hover:bg-transparent"><TableCell colSpan={6} className="p-0"><DashboardInlineEntry flush title={activity.title} onClose={() => setActiveActivityId(null)} closeLabel={t("closeRegistration")}><PublicClassRegistrationPanel activityId={activity.id} initialData={initialRegistrationData?.activity.id === activity.id ? initialRegistrationData : undefined} /></DashboardInlineEntry></TableCell></TableRow> : null}</Fragment>;
             })}
             {activityTable.visibleRows.length === 0 ? <TableRow><TableCell colSpan={6} className="h-40 text-center text-muted">{activities.length === 0 ? t("empty") : tableT("filteredEmpty")}</TableCell></TableRow> : null}
           </TableBody>

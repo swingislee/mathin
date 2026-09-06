@@ -1,5 +1,8 @@
 export type BusinessRecordState = 'current' | 'historical';
 export type BusinessRecordStateFilter = BusinessRecordState | 'all';
+export function isCurrentBusinessRecord(state: BusinessRecordState | undefined) {
+  return (state ?? 'current') === 'current';
+}
 export function businessRecordStateFilter(value: unknown): BusinessRecordStateFilter {
   return value==='current'||value==='historical'?value:'all';
 }

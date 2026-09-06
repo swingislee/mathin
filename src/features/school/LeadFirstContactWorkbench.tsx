@@ -11,13 +11,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { FollowupEntryFields } from "./FollowupEntryFields";
 import { FollowupContactFacts } from "./FollowupContactFacts";
-import { FollowupPersonCell } from "./dashboard-page/FollowupPersonCell";
+import { FirstContactRecordRow } from "./FirstContactRecordRow";
 import { invitationForAdvance, invitationHasStageInformation, leadContactInput, leadWechatValue, type LeadContactDraft } from "./followup-entry-contract";
 import { addStudentFollowUp } from "./actions/followups";
 import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
 import { cn } from "@/lib/utils";
 import { FollowupChoice, followupToneClasses } from "./dashboard-page/FollowupChoice";
-import { FollowupInlineDetails } from "./dashboard-page/FollowupInlineDetails";
 import { LeadIdentityControl } from "./LeadIdentityControl";
 import { Student360Trigger } from "./Student360Sheet";
 import { CONTACT_OUTCOME_SHORTCUTS, followupKeyboardCommand, followupKeyContext, navigateFollowupTable } from "./followup-keyboard";
@@ -303,8 +302,8 @@ export function LeadContactEntryRow({
 
   const contactFacts = reachable ? <FollowupContactFacts wechat={leadWechatValue(wechatState, lead.wechatAdded)}
     onWechatChange={(added) => setWechatState(added === null ? "unknown" : added ? "yes" : "no")} interest={interestLevel} onInterestChange={setInterestLevel} disabled={pending} /> : null;
-  const entryCell = (
-      <TableCell className="px-2 py-2">
+  const entryContent = (
+      <>
         {historicalSummary ? <div className="mb-1 min-w-0">{historicalSummary.details}</div> : null}
         {historicalEntryLabel ? <p className="mb-1 text-[10px] text-muted">{historicalEntryLabel}</p> : null}
         {!historicalSummary ? <p className="mb-1 text-[11px] text-muted">{entryT("thisContact")}{outcome || note.trim() ? ` · ${entryT("unsaved")}` : ""}</p> : null}
@@ -322,28 +321,26 @@ export function LeadContactEntryRow({
           {canManageIdentity ? <span title={t("confirmIdentity")} className="shrink-0 [&>button]:size-7 [&>button]:gap-0 [&>button]:p-0 [&>button]:text-[0px]"><LeadIdentityControl lead={lead} /></span> : null}
         </div>
         {!historicalSummary ? <p className="mt-1 truncate text-[11px] text-muted" title={lead.lastContactNote}>{layout === "default" ? lead.lastContactAt ? formatAt(lead.lastContactAt) : t("notContacted") : ""}{lead.lastContactNote ? `${layout === "default" ? " · " : ""}${entryT("lastNote", { note: lead.lastContactNote })}` : ""}{lead.nextContactAt ? ` · ${formatAt(lead.nextContactAt)}` : ""}</p> : null}
-      </TableCell>
+      </>
   );
 
-  return <>
-    <TableRow data-communication-work-key={layout === "communication" ? `lead:${lead.id}` : undefined} data-followup-row-key={layout === "communication" ? `lead:${lead.id}` : lead.id} ref={rowRef} tabIndex={layout === "communication" || active ? 0 : -1} aria-selected={selected} data-followup-active={active} data-followup-expanded={detailsOpen} aria-busy={pending}
-      className="h-16 focus-visible:outline-none [&>td]:min-w-0"
-      onFocusCapture={() => onActivate(lead.id)}
-      onClick={(event) => {
-        onActivate(lead.id);
-        if (!pending && !(event.target as HTMLElement).closest("button,a,input,textarea,[role='combobox'],[role='option'],[role='checkbox']")) changeDetailsOpen(!detailsOpen);
-      }} onKeyDown={handleRowKeyDown}>
-      {layout === "communication" ? <>
-      <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-2">
-        <FollowupPersonCell name={lead.provisionalStudentName} phone={lead.phone} owner={lead.ownerName || t("unassignedOwner")}
-          grade={lead.gradeText || (lead.gradeHint ? t("gradeValue", { grade: lead.gradeHint }) : t("unknownGrade"))}
-          subject={{ studentId: lead.studentId ?? null, leadId: lead.id }} studentGrade={lead.gradeHint}
-          selection={leadingSelection} expanded={detailsOpen} detailsId={detailsId} onToggle={() => changeDetailsOpen(!detailsOpen)} />
-      </TableCell>
-      <TableCell className="px-2 py-2">{historicalSummary ? historicalSummary.state : <><Badge variant="outline" className={cn("max-w-full whitespace-normal rounded-md px-1.5 text-[11px]", followupToneClasses[lead.status === "invalid" ? "unhealthy" : lead.status === "nurture" ? "attention" : lead.status === "uncontacted" ? "neutral" : "healthy"])}><span aria-hidden className="size-1.5 shrink-0 rounded-full bg-current" />{lead.lastContactOutcome ? entryT("lastOutcome", { outcome: t(`contactOutcome_${lead.lastContactOutcome}`) }) : t(`status_${lead.status}`)}</Badge>{workPurpose ? <div className="mt-1 truncate text-[11px] text-muted">{workPurpose}</div> : <p className="mt-1 truncate text-[11px] text-muted" title={[lead.acquisitionLocation, sourceAttribution, ...lead.interests].filter(Boolean).join(" · ")}>{lead.acquisitionLocation || t("acquisitionLocationMissing")}{lead.interests.length ? ` · ${lead.interests.join(" / ")}` : ""}</p>}</>}</TableCell>
-      {entryCell}
-      <TableCell className="px-2 py-2 text-[11px] text-muted">{historicalSummary ? historicalSummary.updated : <><span className="block break-words">{lead.lastContactAt ? formatAt(lead.lastContactAt) : t("notContacted")}</span>{lead.contactCount ? <p className="mt-1 truncate">{t("contactCount", { count: lead.contactCount })}</p> : null}</>}{rowActions ? <div className="mt-1 flex min-w-0 flex-wrap gap-1">{rowActions}</div> : null}</TableCell>
-      </> : <>
+  return <FirstContactRecordRow record={{
+      key: layout === "communication" ? `lead:${lead.id}` : lead.id,
+      person: { name: lead.provisionalStudentName, phone: lead.phone, owner: lead.ownerName || t("unassignedOwner"),
+        grade: lead.gradeText || (lead.gradeHint ? t("gradeValue", { grade: lead.gradeHint }) : t("unknownGrade")),
+        subject: { studentId: lead.studentId ?? null, leadId: lead.id }, studentGrade: lead.gradeHint },
+      status: { label: lead.lastContactOutcome ? entryT("lastOutcome", { outcome: t(`contactOutcome_${lead.lastContactOutcome}`) }) : t(`status_${lead.status}`),
+        tone: lead.status === "invalid" ? "unhealthy" : lead.status === "nurture" ? "attention" : lead.status === "uncontacted" ? "neutral" : "healthy",
+        context: `${lead.acquisitionLocation || t("acquisitionLocationMissing")}${lead.interests.length ? ` · ${lead.interests.join(" / ")}` : ""}`,
+        contextTitle: [lead.acquisitionLocation, sourceAttribution, ...lead.interests].filter(Boolean).join(" · ") },
+      updated: lead.lastContactAt ? formatAt(lead.lastContactAt) : t("notContacted"),
+      countLabel: lead.contactCount ? t("contactCount", { count: lead.contactCount }) : undefined,
+      note: lead.lastContactNote,
+    }} locale={locale} rowRef={rowRef} tabIndex={layout === "communication" || active ? 0 : -1}
+    active={active} selected={selected} expanded={detailsOpen} pending={pending} layout={layout} canAssign={canAssign}
+    detailsId={detailsId} onExpandedChange={changeDetailsOpen} onActivate={() => onActivate(lead.id)} onKeyDown={handleRowKeyDown}
+    selection={leadingSelection} workPurpose={workPurpose} historicalSummary={historicalSummary} rowActions={rowActions} entry={entryContent}
+    defaultCells={<>
       {canAssign && layout === "default" ? <LeadContactSelectionCell lead={lead} visibleIds={visibleIds} /> : null}
       <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-2">
         <div className="flex min-w-0 items-baseline justify-between gap-2"><Student360Trigger subject={{ studentId: lead.studentId ?? null, leadId: lead.id }} fallback={{ name: lead.provisionalStudentName, phone: lead.phone, grade: lead.gradeHint, gradeText: lead.gradeText }} className="truncate">{lead.provisionalStudentName}</Student360Trigger>
@@ -354,12 +351,9 @@ export function LeadContactEntryRow({
         <p className="mt-1 truncate text-[11px] text-muted" title={[sourceAttribution, ...lead.interests].join(" · ")}>{lead.acquiredAt ? formatAt(lead.acquiredAt) : "—"}{lead.interests.length ? ` · ${lead.interests.join(" / ")}` : ""}</p></TableCell>
       <TableCell className="px-2 py-2"><p className="truncate" title={lead.ownerName || t("unassignedOwner")}>{lead.ownerName || t("unassignedOwner")}</p></TableCell>
       <TableCell className="px-2 py-2"><Badge variant="outline" title={t(`status_${lead.status}`)} className={cn("max-w-full truncate px-1.5 text-[10px]", followupToneClasses[lead.status === "invalid" ? "unhealthy" : lead.status === "nurture" ? "attention" : ["contacted", "intent_confirmed", "converted"].includes(lead.status) ? "healthy" : "neutral"])}>{t(`status_${lead.status}`)}</Badge></TableCell>
-      {entryCell}
+      <TableCell className="px-2 py-2">{entryContent}</TableCell>
 
-      </>}
-    </TableRow>
-    <FollowupInlineDetails id={detailsId} open={detailsOpen} onOpenChange={changeDetailsOpen} title={lead.provisionalStudentName} hideTitle active={active} colSpan={layout === "communication" ? 4 : canAssign ? 6 : 5} pending={pending}
-      onActivate={() => onActivate(lead.id)} onKeyDown={handleRowKeyDown}>
+    </>}>
       {detailsFirst ? detailsExtra : null}
       {detailsFirst && historicalSummary ? <div className="space-y-1 text-xs text-muted">
         <p>{lead.lastContactOutcome ? t(`contactOutcome_${lead.lastContactOutcome}`) : t("notContacted")}{lead.lastContactAt ? ` · ${formatAt(lead.lastContactAt)}` : ""}</p>
@@ -384,8 +378,7 @@ export function LeadContactEntryRow({
           onChange={(value) => setInvitation(value && !invitation && invitationCanHaveNextContactReminder(value) ? { ...value, nextContactAt: value.nextContactAt ?? nextContactAt } : value)} /> : contactFacts}
       </FollowupEntryFields>
       {!detailsFirst ? detailsExtra : null}
-    </FollowupInlineDetails>
-  </>;
+  </FirstContactRecordRow>;
 }
 
 function LeadContactSelectionCell({ lead, visibleIds }: { lead: LeadPoolRow; visibleIds: string[] }) {

@@ -1,5 +1,6 @@
 "use client";
-import { HistoricalFirstContactRows } from './HistoricalFirstContactRows';
+import { FirstContactRecordRow } from './FirstContactRecordRow';
+import { businessRecordMessages } from './business-record-state-contract';
 import type { HistoricalFirstContactRow } from './historical-first-contact-contract';
 
 import { Check, ChevronDown, ChevronRight, Copy, LoaderCircle } from "lucide-react";
@@ -544,11 +545,12 @@ function InvitationHistory({ rows, formatAt }: { rows: InvitationCoordinationRow
 }
 
 type CommunicationRow =
+  | { id: string; source: "profile"; value: HistoricalFirstContactRow }
   | { id: string; source: "invitation"; value: InvitationCoordinationRow }
   | { id: string; source: "contact"; value: LeadPoolRow; previousInvitation?: InvitationCoordinationRow }
   | { id: string; source: "post_activity"; value: ActivityEnrollmentContext };
 
-const communicationRowKey = (row: CommunicationRow) => row.source === "post_activity"
+const communicationRowKey = (row: CommunicationRow) => row.source === "profile" ? `student:${row.value.studentId}` : row.source === "post_activity"
   ? `post:${row.value.registrationId}` : `lead:${row.source === "contact" ? row.value.id : row.value.leadId}`;
 const sameCommunicationFact = (left: CommunicationRow, right: CommunicationRow) => left.source === right.source
   && left.value === right.value && (left.source !== "contact" || right.source !== "contact" || left.previousInvitation === right.previousInvitation);
@@ -570,6 +572,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
   const enrollmentT = useTranslations("school.enrollmentWorkflow");
   const tableT = useTranslations("school.table");
   const workT = useTranslations("school.communicationWorkday");
+  const recordM = businessRecordMessages(locale);
   const workSelection = useCommunicationWorkSelection();
   const { setVisibleKeys } = workSelection;
   const router = useRouter();
@@ -670,9 +673,10 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
     ...uniqueContactLeads.filter((lead) => (!lead.activeInvitation || hasPendingInvitation(lead)) && !invitedLeadIds.has(lead.id)).map((value) => ({ id: `contact:${value.id}`, source: "contact" as const, value })),
     ...postActivityRows.filter((row) => workday || worklist || row.eligible).map((original) => ({ id: `post:${original.registrationId}`, source: "post_activity" as const,
       value: communicationFactWithOverride(original, postOverrides[original.registrationId]) })),
+    ...historicalFirstContacts.map(value => ({ id: `student:${value.studentId}`, source: 'profile' as const, value })),
   ];
   const orderById = new Map((worklist?.rowKeys ?? rowOrder ?? []).map((id, index) => [id, index]));
-  const orderOf = (row: CommunicationRow) => orderById.get(row.source === "post_activity" ? `post:${row.value.registrationId}` : `lead:${row.source === "contact" ? row.value.id : row.value.leadId}`) ?? Number.MAX_SAFE_INTEGER;
+  const orderOf = (row: CommunicationRow) => orderById.get(communicationRowKey(row)) ?? Number.MAX_SAFE_INTEGER;
   const combined = orderById.size ? [...combinedUnsorted].sort((left, right) => orderOf(left) - orderOf(right)) : combinedUnsorted;
   const historyFor = (leadId: string, currentId?: string) => invitationHistory.filter((row) => row.leadId === leadId && row.id !== currentId);
   const nameOf = (row: CommunicationRow) => row.source === "invitation" ? row.value.leadName : row.source === "contact" ? row.value.provisionalStudentName : row.value.name;
@@ -682,37 +686,39 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
     return ["completed", "cancelled"].includes(row.state) && lead?.lastContactAt
       && new Date(lead.lastContactAt).getTime() > new Date(row.updatedAt).getTime() ? lead : null;
   };
-  const stateOf = (input: CommunicationRow) => { const row = referenceRow(input); return row.source === "invitation" ? t(`state_${row.value.state}`) : row.source === "contact" ? leadT(`status_${row.value.status}`) : enrollmentT(`state_${followupState(row.value)}`); };
-  const kindOf = (input: CommunicationRow) => { const row = referenceRow(input); return row.source === "invitation" ? t(`kind_${row.value.kind}`) : row.source === "contact" ? leadT("firstContactEntry") : t("queue_post_activity"); };
-  const arrangementOf = (input: CommunicationRow) => { const row = referenceRow(input); return row.source === "invitation" ? arrangementText(row.value, t, formatAt) : row.source === "contact" ? [row.value.acquisitionLocation, ...row.value.interests].filter(Boolean).join(" · ") || leadT("noSourceInterest") : row.value.activityTitle; };
-  const updatedOf = (input: CommunicationRow) => { const row = referenceRow(input); return row.source === "invitation" ? laterContactFor(row.value)?.lastContactAt ?? row.value.updatedAt : row.source === "contact" ? row.value.lastContactAt ?? row.value.createdAt : row.value.contacts[0]?.occurredAt ?? row.value.activityAt; };
+  const stateOf = (input: CommunicationRow) => { const row = referenceRow(input); return row.source === 'profile' ? recordM.firstContactMissing : row.source === "invitation" ? t(`state_${row.value.state}`) : row.source === "contact" ? leadT(`status_${row.value.status}`) : enrollmentT(`state_${followupState(row.value)}`); };
+  const kindOf = (input: CommunicationRow) => { const row = referenceRow(input); return row.source === "invitation" ? t(`kind_${row.value.kind}`) : row.source === "contact" || row.source === 'profile' ? leadT("firstContactEntry") : t("queue_post_activity"); };
+  const arrangementOf = (input: CommunicationRow) => { const row = referenceRow(input); return row.source === 'profile' ? recordM.firstContactHint : row.source === "invitation" ? arrangementText(row.value, t, formatAt) : row.source === "contact" ? [row.value.acquisitionLocation, ...row.value.interests].filter(Boolean).join(" · ") || leadT("noSourceInterest") : row.value.activityTitle; };
+  const updatedOf = (input: CommunicationRow) => { const row = referenceRow(input); return row.source === 'profile' ? null : row.source === "invitation" ? laterContactFor(row.value)?.lastContactAt ?? row.value.updatedAt : row.source === "contact" ? row.value.lastContactAt ?? row.value.createdAt : row.value.contacts[0]?.occurredAt ?? row.value.activityAt; };
+  const gradeOf = (row: CommunicationRow) => row.source === 'profile' ? row.value.grade ? leadT('gradeValue', { grade: row.value.grade }) : '' : row.value.gradeText;
   const noteOf = (input: CommunicationRow) => {
     const row = referenceRow(input);
+    if (row.source === 'profile') return row.value.context;
     if (row.source === "contact") return row.value.lastContactNote;
     if (row.source === "post_activity") return row.value.contacts[0]?.note || row.value.routeNote;
     const latest = laterContactFor(row.value);
     return latest ? [latest.lastContactOutcome ? leadT(`contactOutcome_${latest.lastContactOutcome}`) : "", latest.lastContactNote].filter(Boolean).join(" · ") : row.value.summary;
   };
-  const stateValueOf = (input: CommunicationRow) => { const row = referenceRow(input); return row.source === "invitation" ? row.value.state : row.source === "contact" ? `contact:${row.value.status}` : `post:${followupState(row.value)}`; };
+  const stateValueOf = (input: CommunicationRow) => { const row = referenceRow(input); return row.source === 'profile' ? 'first_contact_missing' : row.source === "invitation" ? row.value.state : row.source === "contact" ? `contact:${row.value.status}` : `post:${followupState(row.value)}`; };
   const filtered = combined.filter((row) => [nameOf(row), row.value.phone, ...(recordsMode ? dayEventsFor(row).flatMap((event) => [event.note, dayOutcomeLabel(event), t(`channel_${event.channel}`)]) : [arrangementOf(row), noteOf(row)])].join(" ").toLocaleLowerCase(locale).includes(searchQuery.toLocaleLowerCase(locale)));
   const tableColumns: Record<InvitationTableColumn, DashboardTableColumnDefinition<CommunicationRow>> = {
     lead: { filterValues: (row) => [{ value: `name:${nameOf(row)}`, label: nameOf(row), group: tableT("fieldName") }, { value: `phone:${row.value.phone}`, label: row.value.phone || tableT("emptyValue"), group: tableT("fieldPhone") },
-      { value: `grade:${row.value.gradeText || EMPTY_VALUE}`, label: row.value.gradeText || t("gradePending"), group: tableT("fieldGrade") },
-      ...(row.source !== "post_activity" ? [{ value: `owner:${row.value.ownerName || EMPTY_VALUE}`, label: row.value.ownerName || tableT("emptyValue"), group: tableT("fieldOwner") }] : [])], sortValue: nameOf },
+      { value: `grade:${gradeOf(row) || EMPTY_VALUE}`, label: gradeOf(row) || t("gradePending"), group: tableT("fieldGrade") },
+      ...(row.source === 'contact' || row.source === 'invitation' ? [{ value: `owner:${row.value.ownerName || EMPTY_VALUE}`, label: row.value.ownerName || tableT("emptyValue"), group: tableT("fieldOwner") }] : [])], sortValue: nameOf },
     state: { filterValues: (row) => recordsMode ? ({ value: `day:${dayEventFor(row)?.source}:${dayEventFor(row)?.outcome}`, label: dayOutcomeLabel(dayEventFor(row)) }) : ({ value: stateValueOf(row), label: stateOf(row) }), sortValue: (row) => recordsMode ? dayOutcomeLabel(dayEventFor(row)) : stateOf(row) },
     arrangement: { filterValues: (row) => recordsMode ? dayEventsFor(row).map((event) => ({ value: `channel:${event.channel}`, label: t(`channel_${event.channel}`) })) : [{ value: `type:${kindOf(row)}`, label: kindOf(row), group: tableT("fieldType") }, { value: `arrangement:${arrangementOf(row)}`, label: arrangementOf(row), group: tableT("fieldActivity") }], sortValue: (row) => recordsMode ? dayEventFor(row)?.note : arrangementOf(row) },
-    updated: { filterValues: (row) => workday ? [] : ({ value: new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai" }).format(new Date(updatedOf(row))), label: formatAt(updatedOf(row)).split(" ")[0] }), sortValue: (row) => recordsMode ? dayEventFor(row)?.occurredAt : updatedOf(row) },
+    updated: { filterValues: (row) => { const at = updatedOf(row); return workday ? [] : at ? { value: new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai" }).format(new Date(at)), label: formatAt(at).split(" ")[0] } : { value: EMPTY_VALUE, label: recordM.unknown }; }, sortValue: (row) => recordsMode ? dayEventFor(row)?.occurredAt : updatedOf(row) },
   };
   const table = useDashboardTableView({ rows: filtered, columns: tableColumns, locale, initialFilters: focusLeadId || worklist ? {} : undefined,
     persistenceKey: focusLeadId ? undefined : `school.followup.communication.${recordsMode ? "records" : workday ? "workday" : "v2"}.${worklist?.id ?? currentUserId}` });
   const selectionSignature = JSON.stringify({ filters: table.filters, sort: table.sort });
   const currentSession = reconcileCommunicationWorkSession(workSession, { boundary: sessionKey, selection: selectionSignature,
-    rows: combined, selectedRows: table.visibleRows, authorizedKeys: rowOrder, keyOf: communicationRowKey, sameFact: sameCommunicationFact });
+    rows: combined, selectedRows: table.visibleRows, authorizedKeys: rowOrder ? [...rowOrder, ...historicalFirstContacts.map(row => `student:${row.studentId}`)] : undefined, keyOf: communicationRowKey, sameFact: sameCommunicationFact });
   if (currentSession !== workSession) setWorkSession(currentSession);
   const visibleRows = currentSession.keys.flatMap((key) => { const row = currentSession.facts.get(key); return row ? [row] : []; });
   const visibleKeysSignature = JSON.stringify(visibleRows.map(communicationRowKey));
   useEffect(() => { setVisibleKeys(JSON.parse(visibleKeysSignature) as string[]); }, [visibleKeysSignature, setVisibleKeys]);
-  const canOperateRow = (row: CommunicationRow) => row.source === "contact" ? Boolean(canContact && row.value.ownerId && !row.value.activeInvitation && !["invalid", "converted"].includes(row.value.status))
+  const canOperateRow = (row: CommunicationRow) => row.source === 'profile' ? false : row.source === "contact" ? Boolean(canContact && row.value.ownerId && !row.value.activeInvitation && !["invalid", "converted"].includes(row.value.status))
     : row.source === "invitation" ? canManageInvitation && !["completed", "cancelled"].includes(row.value.state)
       : row.value.canContact && row.value.eligible && !row.value.enrollmentId && row.value.route !== "closed";
   const selectableKeys = visibleRows.filter(canOperateRow).map(communicationRowKey);
@@ -851,6 +857,15 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
       })}>{visibleRows.map((row) => {
         const canonicalKey = communicationRowKey(row);
         const historicalSummary = historicalSummaryFor(row);
+        if (row.source === 'profile') return <FirstContactRecordRow key={canonicalKey} locale={locale} record={{
+          key: canonicalKey, state: 'historical', missingFirstContact: true,
+          person: { name: row.value.name, phone: row.value.phone, grade: gradeOf(row) || t('gradePending'),
+            subject: { studentId: row.value.studentId, leadId: null }, studentGrade: row.value.grade },
+          status: { label: stateOf(row), tone: 'neutral', context: arrangementOf(row) },
+          updated: recordM.unknown, note: row.value.context,
+        }} active={activeId === canonicalKey} expanded={activeId === canonicalKey}
+          rowRef={element => { if (element) rowRefs.current.set(canonicalKey, element); else rowRefs.current.delete(canonicalKey); }}
+          detailsId={`first-contact-details-${canonicalKey}`} onExpandedChange={open => changeDetails(canonicalKey, open)} />;
         if (row.source === "contact") {
           const previous = row.previousInvitation;
           return <LeadContactEntryRow key={canonicalKey} lead={row.value} formatAt={formatAt}
@@ -916,7 +931,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
               {!historicalSummary && noteOf(row) ? <p className="mt-1 truncate text-[11px] text-muted" title={noteOf(row)}>{entryT("lastNote", { note: noteOf(row) })}</p> : null}
               {!historicalSummary && nextAt ? <p className="mt-1 truncate text-[11px] text-muted" title={formatAt(nextAt)}>{t("nextContactReminderScheduled", { time: formatAt(nextAt) })}</p> : null}
             </TableCell>
-            <TableCell className="whitespace-nowrap px-2 py-2 text-muted">{historicalSummary ? historicalSummary.updated : formatAt(updatedOf(row))}</TableCell>
+            <TableCell className="whitespace-nowrap px-2 py-2 text-muted">{historicalSummary ? historicalSummary.updated : updatedOf(row) ? formatAt(updatedOf(row)!) : recordM.unknown}</TableCell>
           </TableRow>
           <FollowupInlineDetails id={detailsId} open={active} onOpenChange={(open) => changeDetails(canonicalKey, open)} title={nameOf(row)} hideTitle={row.source === "invitation"} colSpan={4} pending={savingIds.has(row.id)}>
             {recordsMode ? <CommunicationDaySummary workday={workday} rowKey={canonicalKey} defaultExpanded /> : null}
@@ -927,7 +942,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
             {row.source === "invitation" ? <InvitationHistory rows={historyFor(row.value.leadId, row.value.id)} formatAt={formatAt} /> : null}
           </FollowupInlineDetails>
         </Fragment>;
-      })}<HistoricalFirstContactRows rows={historicalFirstContacts} locale={locale}/>{!visibleRows.length&&!historicalFirstContacts.length ? <TableRow><TableCell colSpan={4} className="h-32 text-center text-muted">{tableT("filteredEmpty")}</TableCell></TableRow> : null}</TableBody>
+      })}{!visibleRows.length ? <TableRow><TableCell colSpan={4} className="h-32 text-center text-muted">{tableT("filteredEmpty")}</TableCell></TableRow> : null}</TableBody>
     </Table>
   </DashboardTableShell>;
 }

@@ -4,6 +4,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it, vi } from "vitest";
 import messages from "../messages/zh.json";
 import { InvitationCoordinationWorkbench } from "@/features/school/InvitationCoordinationWorkbench";
+import { FirstContactRecordRow } from "@/features/school/FirstContactRecordRow";
 import { CommunicationWorkSelectionProvider } from "@/features/school/CommunicationWorkSelection";
 import type { LeadPoolRow } from "@/features/school/lead-contract";
 import type { InvitationCoordinationRow } from "@/features/school/invitation-contract";
@@ -82,6 +83,38 @@ function renderWorkbench(props: Partial<Props> = {}) {
 }
 
 describe("communication workbench server rendering", () => {
+  it("renders an existing profile with missing first-contact facts in the same searchable row layout", () => {
+    const historicalFirstContacts = [{ studentId: 'existing-student', name: '历史学生', phone: '13800000000', grade: 3, context: '独有历史沟通事实' }];
+    const { dataRows } = renderWorkbench({ historicalFirstContacts, selectionEnabled: true });
+    expect(dataRows.map(row => row.key)).toEqual(['lead:a', 'student:existing-student']);
+    expect(dataRows.every(row => row.attributes.includes('data-first-contact-record='))).toBe(true);
+    expect(dataRows[0].cells.map(cell => cell.attributes)).toEqual(dataRows[1].cells.map(cell => cell.attributes));
+    expect(dataRows[1].cells[0].content).toContain('data-followup-person');
+    expect(dataRows[1].content).toContain('首联记录缺失');
+    expect(dataRows[1].cells[3].content).toContain('资料未记录');
+    expect(dataRows[1].content).not.toMatch(/<input|<textarea|role="checkbox"|aria-keyshortcuts="Control/);
+    expect(renderWorkbench({ historicalFirstContacts, contactLeads: [], rowOrder: [] }).dataRows.map(row => row.key)).toEqual(['student:existing-student']);
+    expect(renderWorkbench({ historicalFirstContacts, searchQuery: '独有历史沟通事实' }).dataRows.map(row => row.key)).toEqual(['student:existing-student']);
+    expect(renderWorkbench({ historicalFirstContacts, searchQuery: '不存在的内容' }).dataRows).toHaveLength(0);
+  });
+
+  it("opens historical first-contact details with the shared fields and no submit controls", () => {
+    const element = createElement(FirstContactRecordRow, {
+      record: { key: 'student:existing', state: 'historical', missingFirstContact: true,
+        person: { name: '历史学生', phone: '', grade: '', subject: { studentId: 'existing', leadId: null } },
+        status: { label: '首联记录缺失', tone: 'neutral', context: '原资料未记录首联' }, updated: '资料未记录', note: '保留完整历史事实' },
+      locale: 'zh', active: true, expanded: true, detailsId: 'existing-details', onExpandedChange: vi.fn(),
+    });
+    const markup = renderToStaticMarkup(createElement(NextIntlClientProvider, {
+      locale: 'zh', messages, timeZone: 'Asia/Shanghai',
+    }, element));
+    expect(markup).toContain('data-followup-inline-details');
+    expect(markup).toContain('data-followup-entry-fields');
+    expect(markup).toContain('data-followup-notes');
+    expect(markup).toContain('保留完整历史事实');
+    expect(markup).not.toMatch(/<input|<textarea|aria-keyshortcuts="Control/);
+  });
+
   it("lets the table own the available scroll space without a competing viewport-height cap", () => {
     const { markup } = renderWorkbench();
     expect(markup).toContain("data-communication-scroll");
