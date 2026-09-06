@@ -4987,6 +4987,8 @@
       "openFullProfile": "Open full profile",
       "lifecycleLabel": "Student journey roadmap",
       "lifecycleCurrent": "Current stage",
+      "resizeSidePage": "Resize student side page",
+      "resizeSidePageHint": "Drag to resize, double-click to reset, or focus and use the left and right arrow keys",
       "lifecyclePassed": "Earlier in the journey",
       "lifecycleProcess": "Process table: {table}",
       "lifecycle_awaiting_first_contact": "Awaiting first contact",

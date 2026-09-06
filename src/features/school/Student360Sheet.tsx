@@ -23,6 +23,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Student360SplitLayout } from "./Student360SplitLayout";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { getStudent360Action } from "./actions/student-360";
@@ -218,7 +219,6 @@ function errorKey(code: string): string {
  * 这样切换学生时只有一份档案状态，也不会为每一行挂一套抽屉 Portal。
  */
 export function Student360Workspace({ children }: { children: ReactNode }) {
-  const t = useTranslations("school.student360");
   const locale = useLocale();
   const [active, setActive] = useState<ActiveStudent360 | null>(null);
   const [expanded, setExpanded] = useState(false);
@@ -295,46 +295,25 @@ export function Student360Workspace({ children }: { children: ReactNode }) {
 
   return (
     <Student360WorkspaceContext.Provider value={contextValue}>
-      <div data-student-360-workspace className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
-        {children}
-        {active ? (
-          <button
-            type="button"
-            tabIndex={-1}
-            aria-label={t("close")}
-            className={cn(
-              "absolute inset-0 z-40 bg-ink/35 transition-opacity duration-200 motion-reduce:transition-none xl:hidden",
-              expanded ? "opacity-100" : "pointer-events-none opacity-0",
-            )}
-            onClick={close}
+      <Student360SplitLayout
+        active={Boolean(active)}
+        expanded={expanded}
+        close={close}
+        sidePage={active ? (
+          <Student360PanelBody
+            snapshot={snapshot}
+            fallback={active.fallback}
+            locale={locale}
+            loading={loading}
+            error={error}
+            retry={retry}
+            refresh={refresh}
+            close={close}
           />
         ) : null}
-        <aside
-          data-student-360-side-page
-          aria-labelledby={active ? "student-360-heading" : undefined}
-          aria-hidden={!expanded}
-          inert={!expanded || undefined}
-          className={cn(
-            "absolute inset-y-0 right-0 z-50 flex w-[min(94vw,46rem)] flex-col overflow-x-hidden overflow-y-auto border-l border-line bg-paper shadow-xl transition-[width,transform,opacity,border-color] duration-200 ease-out motion-reduce:transition-none xl:relative xl:inset-auto xl:z-auto xl:shrink-0 xl:shadow-none",
-            expanded
-              ? "translate-x-0 opacity-100 xl:w-[clamp(26rem,40%,46rem)]"
-              : "pointer-events-none translate-x-full border-l-transparent opacity-0 xl:w-0",
-          )}
-        >
-          {active ? (
-            <Student360PanelBody
-              snapshot={snapshot}
-              fallback={active.fallback}
-              locale={locale}
-              loading={loading}
-              error={error}
-              retry={retry}
-              refresh={refresh}
-              close={close}
-            />
-          ) : null}
-        </aside>
-      </div>
+      >
+        {children}
+      </Student360SplitLayout>
     </Student360WorkspaceContext.Provider>
   );
 }

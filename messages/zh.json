@@ -4987,6 +4987,8 @@
       "openFullProfile": "打开完整档案",
       "lifecycleLabel": "学生成长路线图",
       "lifecycleCurrent": "当前所在阶段",
+      "resizeSidePage": "调整学生侧页面宽度",
+      "resizeSidePageHint": "拖动边线调整宽度，双击恢复默认宽度；聚焦后可用左右方向键调整",
       "lifecyclePassed": "已经历",
       "lifecycleProcess": "过程表：{table}",
       "lifecycle_awaiting_first_contact": "待首联",

@@ -54,6 +54,7 @@ describe("Student 360", () => {
   it("aggregates every current journey source behind a lazy, non-modal side page", () => {
     const data = read("src", "features", "school", "student-360.ts");
     const sheet = read("src", "features", "school", "Student360Sheet.tsx");
+    const layout = read("src", "features", "school", "Student360SplitLayout.tsx");
     const shell = read("src", "features", "school", "DashboardShell.tsx");
 
     for (const source of [
@@ -71,10 +72,18 @@ describe("Student 360", () => {
       expect(data).toContain(`from(\"${source}\")`);
     }
     expect(sheet).toContain("getStudent360Action(subject)");
-    expect(sheet).toContain("data-student-360-side-page");
-    expect(sheet).toContain("xl:w-[clamp(26rem,40%,46rem)]");
-    expect(sheet).toContain("transition-[width,transform,opacity,border-color]");
-    expect(sheet).toContain("translate-x-full");
+    expect(sheet).toContain("<Student360SplitLayout");
+    expect(layout).toContain("data-student-360-side-page");
+    expect(layout).toContain("transition-[transform,opacity]");
+    expect(layout).not.toContain("transition-[width");
+    expect(layout).toContain("translate-x-full");
+    expect(layout).toContain("@/components/ui/resizable");
+    expect(layout).toContain("minSize={docked ? STUDENT_360_MAIN_MIN_WIDTH : 0}");
+    expect(layout).toContain("minSize={docked ? STUDENT_360_SIDE_MIN_WIDTH : 0}");
+    expect(layout).toContain("!meta.isUserInteraction");
+    expect(layout).toContain("onDoubleClick={resetWidth}");
+    expect(layout.match(/\{children\}/g)).toHaveLength(1);
+    expect(layout.match(/\{sidePage\}/g)).toHaveLength(1);
     expect(sheet).not.toContain("SheetContent");
     expect(shell).toContain("<Student360Workspace>");
     expect(sheet).toContain("data-student-360-timeline");
