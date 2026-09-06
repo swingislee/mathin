@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { CustomerVideoButton } from "./CustomerVideoButton";
 import { FollowUpForm } from "./FollowUpForm";
+import { ImportedHistoryStudentLink } from "./ImportedHistoryStudentLink";
 import { StageReportPanel } from "./StageReportPanel";
 import type { SchoolTermRow } from "./courses";
 import type { StaffLearningResult } from "./learning-results";
@@ -42,6 +43,7 @@ export async function StudentFollowUpsTab({
   return (
     <Section title={t("followUps")}>
       {canWrite && <FollowUpForm studentId={student.id} currentStatus={student.followUpStatus} />}
+      <ImportedHistoryStudentLink studentId={student.id} locale={locale} />
       {student.followUps.length === 0 ? (
         <p className="mt-4 text-sm text-muted">{t("noFollowUps")}</p>
       ) : (

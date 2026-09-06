@@ -33,6 +33,7 @@ export function HistoryArchiveCommandBar({ filters, messages }: { filters: Histo
         <HistoryArchiveSearch key={filters.q} filters={filters} messages={messages} />
       </DashboardCommandFilters>
       <DashboardCommandActions>
+        <Link href="/dashboard/history-import/test" className={buttonVariants({ variant: "secondary", size: "sm" })}>{messages.importTest}</Link>
         <Link href="/dashboard/history-import" className={buttonVariants({ variant: "ghost", size: "sm" })}>{messages.reset}</Link>
         {filters.record ? <Link href={historyArchiveHref(filters, { record: "", relatedPage: 1 })} className={buttonVariants({ variant: "ghost", size: "sm" })}>{messages.closeDetail}</Link> : null}
       </DashboardCommandActions>
