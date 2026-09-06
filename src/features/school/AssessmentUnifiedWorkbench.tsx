@@ -391,7 +391,6 @@ export function AssessmentUnifiedWorkbench({
                     >
                       <TableCell
                         className="sticky left-0 z-10 border-r border-line bg-card px-2 py-2"
-                        style={active ? { backgroundColor: "color-mix(in srgb, var(--card) 90%, var(--moon))" } : undefined}
                       >
                         <div className="flex min-w-0 items-start gap-2">
                           {active ? <ChevronDown className="mt-0.5 size-3.5 shrink-0 text-muted" /> : <ChevronRight className="mt-0.5 size-3.5 shrink-0 text-muted" />}
@@ -434,7 +433,7 @@ export function AssessmentUnifiedWorkbench({
                               value={row.assessorId ?? ""}
                               disabled={reassigningId === row.id}
                               onValueChange={(value) => reassignAssessor(row, value)}
-                              className="flex-nowrap [&>button]:min-w-0 [&>button]:truncate"
+                              className="[&>button]:min-w-0"
                               label={t("changeAssessorFor", { name: row.name })}
                               options={assessors.map((assessor) => ({ value: assessor.userId, label: assessor.displayName, tone: "healthy" }))}
                             /></div>

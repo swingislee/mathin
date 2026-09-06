@@ -314,7 +314,7 @@ export function LeadPoolTable({
                 lead.sourceCount > 1 ? t("sourceCount", { count: lead.sourceCount }) : "",
               ].filter(Boolean).join(" · ");
               return (
-                <TableRow key={lead.id} className={selected.has(lead.id) ? "bg-moon/20" : undefined}>
+                <TableRow key={lead.id} aria-selected={selected.has(lead.id)}>
                   {canAssign ? (
                     <TableCell className="w-9 px-2 py-1.5">
                       <Checkbox

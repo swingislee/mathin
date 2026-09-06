@@ -48,7 +48,7 @@ import {
   type InvitationQueue,
   type InvitationQueueCounts,
 } from "./invitation-contract";
-import { isFutureNextContactReminder } from "./NextContactReminderField";
+import { isFutureNextContactReminder, NextContactReminderField } from "./NextContactReminderField";
 import { zonedDateTimeToInstant } from "./schedule";
 import { FollowupChoice, followupToneClasses } from "./dashboard-page/FollowupChoice";
 import { FollowupInlineDetails } from "./dashboard-page/FollowupInlineDetails";
@@ -204,6 +204,7 @@ function InvitationEditor({
   const [channel, setChannel] = useState<InvitationChannel>("wechat");
   const [note, setNote] = useState("");
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [autoFlowFailed, setAutoFlowFailed] = useState(false);
   const submittedInputRef = useRef<UpdateInvitationInput | null>(null);
   const [draftStorageKey] = useState(() => invitationDraftSessionKey("coordination", row.id, row.updatedAt));
@@ -659,7 +660,7 @@ function InvitationEditor({
   }
   return (
     <div className="@container/invitation-editor min-w-0 max-w-full px-1">
-      <div className="grid min-w-0 items-start gap-4 @[56rem]/invitation-editor:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)]">
+      <div className="grid min-w-0 items-start gap-4 @[54rem]/invitation-editor:grid-cols-[minmax(0,1fr)_19rem]">
         <InvitationDraftFields
           value={draft}
           activities={activities}
@@ -667,6 +668,7 @@ function InvitationEditor({
           locale={locale}
           disabled={pending}
           allowNone={false}
+          showReminder={false}
           variant="workflow"
           editingScope={assessorEditing ? "assessor" : "full"}
           draftStorageKey={draftStorageKey}
@@ -676,7 +678,7 @@ function InvitationEditor({
           }}
         />
 
-        <section className="min-w-0 max-w-full space-y-2.5 border-line @[56rem]/invitation-editor:border-l @[56rem]/invitation-editor:pl-4 [&_button]:h-auto [&_button]:min-h-8 [&_button]:min-w-0 [&_button]:max-w-full [&_button]:whitespace-normal [&_button]:py-1.5 [&_p]:break-words">
+        <section className="min-w-0 max-w-full space-y-2.5 border-line @[54rem]/invitation-editor:border-l @[54rem]/invitation-editor:pl-4 [&_button]:h-auto [&_button]:min-h-9 [&_button]:min-w-0 [&_button]:max-w-full [&_button]:whitespace-normal [&_button]:py-1.5 [&_button]:text-xs [&_p]:break-words">
           {assessorEditing ? (
             <>
               <p className="text-sm font-medium text-ink">{t("assessorAvailabilityTitle")}</p>
@@ -708,7 +710,7 @@ function InvitationEditor({
                         type="button"
                         size="sm"
                         variant="ghost"
-                        className={cn("min-w-0 gap-1 rounded-lg px-1 text-[10px]", channel === value && "bg-moon/35 text-ink")}
+                        className={cn("min-w-0 gap-1 rounded-lg px-1 text-xs", channel === value && "bg-moon/35 text-ink")}
                         aria-pressed={channel === value}
                         disabled={pending}
                         onClick={() => setChannel(value)}
@@ -731,6 +733,10 @@ function InvitationEditor({
                   />
                 </div>
               ) : null}
+              {invitationCanHaveNextContactReminder(draft) ? <NextContactReminderField
+                id={`invitation-reminder-${row.id}`} value={draft.nextContactAt} disabled={pending}
+                onChange={(nextContactAt) => setDraft({ ...draft, nextContactAt })}
+              /> : null}
               <div className="flex justify-end border-t border-line pt-2">
                 <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-[11px]" disabled={pending} onClick={() => setCancelOpen(true)}>
                   {t("cancelInvitation")}
@@ -741,11 +747,14 @@ function InvitationEditor({
         </section>
       </div>
 
-      {row.events.length > 0 ? <div className="mt-3 grid min-w-0 gap-2 border-t border-line pt-2 @[36rem]/invitation-editor:grid-cols-[6rem_minmax(0,1fr)]">
-        <p className="text-[11px] font-medium text-ink">{t("recentHistory")}</p>
-          <div className="grid min-w-0 gap-1">
+      {row.events.length > 0 ? <div className="mt-3 min-w-0">
+        <Button type="button" variant="ghost" size="sm" className="h-auto min-h-8 max-w-full justify-start whitespace-normal px-0 text-xs" aria-expanded={historyOpen} aria-controls={`invitation-events-${row.id}`} onClick={() => setHistoryOpen(!historyOpen)}>
+          {historyOpen ? <ChevronDown className="size-3.5 shrink-0" /> : <ChevronRight className="size-3.5 shrink-0" />}
+          {t("recentHistory")} · {row.events.length}
+        </Button>
+          <div id={`invitation-events-${row.id}`} hidden={!historyOpen} className="min-w-0 space-y-1">
             {row.events.map((event) => (
-              <p key={event.id} className="truncate text-[11px] leading-4 text-muted" title={event.note || undefined}>
+              <p key={event.id} className="break-words text-xs leading-5 text-muted">
                 {formatAt(event.occurredAt)} · {event.recordedByName || t("unknownOperator")} · {t(`channel_${event.channel}`)} · {t(`state_${event.toState}`)}
                 {event.note ? ` · ${event.note}` : ""}
               </p>
@@ -1128,6 +1137,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
           const previous = row.previousInvitation;
           return <LeadContactEntryRow key={canonicalKey} lead={row.value} formatAt={formatAt}
             active={activeContactId === row.value.id || activeId === canonicalKey} onActivate={setActiveContactId}
+            selected={workSelection.selectedKeys.has(canonicalKey)}
             onSaved={saveContact} onReminderSaved={saveContactReminder}
             activities={activities} assessors={assessors} locale={locale}
             canContact={canContact && !row.value.activeInvitation} canManageIdentity={canManageIdentity} layout="communication"
@@ -1140,7 +1150,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
               setRecontactIds((current) => new Set([...current].filter((id) => id !== previous.id)));
               setActiveId(canonicalKey);
             }}>{t("returnToInvitation")}</Button> : undefined}
-            detailsExtra={<><CommunicationDaySummary workday={workday} rowKey={canonicalKey} /><InvitationHistory rows={previous ? [previous, ...historyFor(row.value.id, previous.id)] : historyFor(row.value.id)} formatAt={formatAt} />{workMode === "records" ? <p className="text-xs font-medium text-muted">{workT("currentFacts")}</p> : null}</>}
+            detailsExtra={<><CommunicationDaySummary workday={workday} rowKey={canonicalKey} defaultExpanded={recordsMode} /><InvitationHistory rows={previous ? [previous, ...historyFor(row.value.id, previous.id)] : historyFor(row.value.id)} formatAt={formatAt} />{workMode === "records" ? <p className="text-xs font-medium text-muted">{workT("currentFacts")}</p> : null}</>}
           />;
         }
         const state = row.source === "invitation" ? row.value.state : followupState(row.value);
@@ -1159,14 +1169,14 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
           : row.value.recommendation || row.value.routeNote;
         return <Fragment key={canonicalKey}>
           <TableRow data-communication-work-key={canonicalKey} ref={(element) => { if (element) rowRefs.current.set(canonicalKey, element); else rowRefs.current.delete(canonicalKey); }}
-            tabIndex={0} aria-selected={active} aria-busy={savingIds.has(row.id)} className={cn("cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:bg-blue/10", active && "bg-moon/10 hover:bg-moon/10")}
+            tabIndex={0} aria-selected={active || workSelection.selectedKeys.has(canonicalKey)} aria-busy={savingIds.has(row.id)} className="cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:bg-table-selected"
             onClick={(event) => { if (!(event.target as HTMLElement).closest("button,a,input,textarea,[role='combobox'],[role='checkbox']")) changeDetails(canonicalKey, !active); }}
             onKeyDown={(event) => {
               if (event.defaultPrevented || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229 || event.repeat) return;
               if (event.target === event.currentTarget && event.key === "Enter" && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) { event.preventDefault(); changeDetails(canonicalKey, !active); }
               if (event.key === "Escape" && active) { event.preventDefault(); changeDetails(canonicalKey, false); }
             }}>
-            <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-2" style={active ? { backgroundColor: "color-mix(in srgb, var(--card) 90%, var(--moon))" } : undefined}>
+            <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-2">
               <div className="flex min-w-0 items-center gap-2 whitespace-nowrap">
                 {leadingSelectionFor(row)}<Button type="button" size="sm" variant="ghost" className="size-5 shrink-0 p-0" aria-label={nameOf(row)} aria-expanded={active} aria-controls={detailsId} onClick={() => changeDetails(canonicalKey, !active)}>
                   {active ? <ChevronDown className="size-3.5 text-muted" /> : <ChevronRight className="size-3.5 text-muted" />}
@@ -1190,7 +1200,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
             <TableCell className="whitespace-nowrap px-2 py-2 text-muted">{historicalSummary ? historicalSummary.updated : formatAt(updatedOf(row))}</TableCell>
           </TableRow>
           <FollowupInlineDetails id={detailsId} open={active} onOpenChange={(open) => changeDetails(canonicalKey, open)} title={nameOf(row)} colSpan={4} pending={savingIds.has(row.id)}>
-            <CommunicationDaySummary workday={workday} rowKey={canonicalKey} />
+            <CommunicationDaySummary workday={workday} rowKey={canonicalKey} defaultExpanded={recordsMode} />
             {recordsMode ? <div className="space-y-1 text-xs"><p className="font-medium text-muted">{workT("currentFacts")}</p><p>{stateOf(row)} · {arrangementOf(row)}</p>{noteOf(row) ? <p className="break-words text-muted">{noteOf(row)}</p> : null}</div> : null}
             {row.source === "invitation" ? <InvitationEditor key={row.id} row={row.value} activities={activities} assessors={assessors} locale={locale} formatAt={formatAt} currentUserId={currentUserId} canManageInvitation={canManageInvitation} onSaved={onSaved} saving={savingIds.has(row.id)} beginSave={beginSave} endSave={endSave} /> : <PostActivityHandoff source={{ registrationId: row.value.registrationId, invitationId: null }} initialContext={row.value} onSaved={savePost} />}
             {laterContact?.lastContactAt ? <p className="mt-2 min-w-0 break-words border-t border-line pt-2 text-xs text-muted">{formatAt(laterContact.lastContactAt)} · {noteOf(row)}</p> : null}

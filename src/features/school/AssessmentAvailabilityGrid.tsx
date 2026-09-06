@@ -152,7 +152,7 @@ export function AssessmentAvailabilityGrid({
       <Button
         type="button"
         variant="secondary"
-        className="h-10 w-full justify-start gap-2 rounded-xl px-3 text-left"
+        className="h-auto min-h-10 w-full min-w-0 justify-start gap-2 whitespace-normal rounded-xl px-3 py-2 text-left"
         disabled={disabled || scheduledTimeNeedsAssessor}
         title={scheduledTimeNeedsAssessor ? t("availabilityDirectNeedsAssessor") : undefined}
         onClick={() => {
@@ -162,14 +162,14 @@ export function AssessmentAvailabilityGrid({
       >
         <CalendarDays className="size-4 shrink-0 text-moon-deep" />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-xs font-medium text-ink">
+          <span className="block break-words text-xs font-medium leading-5 text-ink">
             {scheduledTimeNeedsAssessor
               ? t("availabilityDirectNeedsAssessor")
               : choosingScheduledTime
                 ? t("availabilityChooseScheduled")
                 : t("availabilityOpen")}
           </span>
-          <span className="block truncate text-[10px] font-normal text-muted">{triggerSummary}</span>
+          <span className="block break-words text-[11px] font-normal leading-4 text-muted">{triggerSummary}</span>
         </span>
       </Button>
       <DialogContent className="max-w-[min(62rem,calc(100vw-2rem))] gap-3 p-4 sm:p-5">

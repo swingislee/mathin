@@ -18,6 +18,9 @@
   --leaf: #bbcf87;
   --leaf-deep: #6f8b48;
   --cheek: #fbc9c3;
+  --table-hover: color-mix(in srgb, var(--blue) 4%, var(--card));
+  --table-selected: color-mix(in srgb, var(--blue) 14%, var(--card));
+  --table-selected-muted: color-mix(in srgb, var(--ink) 35%, var(--muted));
 }
 
 /* 暗色 = 星夜 */
@@ -37,6 +40,9 @@
   --leaf: #8fa968;
   --leaf-deep: #a9c284;
   --cheek: #b98883;
+  --table-hover: color-mix(in srgb, var(--blue) 10%, var(--card));
+  --table-selected: color-mix(in srgb, var(--blue) 26%, var(--card));
+  --table-selected-muted: color-mix(in srgb, var(--ink) 35%, var(--muted));
 }
 
 @media (prefers-color-scheme: dark) {
@@ -56,6 +62,9 @@
     --leaf: #8fa968;
     --leaf-deep: #a9c284;
     --cheek: #b98883;
+    --table-hover: color-mix(in srgb, var(--blue) 10%, var(--card));
+    --table-selected: color-mix(in srgb, var(--blue) 26%, var(--card));
+    --table-selected-muted: color-mix(in srgb, var(--ink) 35%, var(--muted));
   }
 }
 
@@ -173,6 +182,8 @@
   --color-muted: var(--muted);
   --color-line: var(--line);
   --color-card: var(--card);
+  --color-table-hover: var(--table-hover);
+  --color-table-selected: var(--table-selected);
   --color-moon: var(--moon);
   --color-star: var(--star);
   --color-crater: var(--crater);
@@ -259,6 +270,24 @@ body::after {
 .dark body::after { mix-blend-mode: screen; opacity: 0.05; }
 @media (prefers-color-scheme: dark) {
   :root:not(.light) body::after { mix-blend-mode: screen; opacity: 0.05; }
+}
+
+/* 数据工作区使用干净的表面，避免全页纸纹把白底和选中色叠成灰色。 */
+body:has([data-dashboard-canvas])::after { display: none; }
+
+/* 选中态覆盖整行及固定列，颜色由亮色／星夜 token 分别派生。 */
+[data-slot="table"] > tbody > tr:is([aria-selected="true"], [aria-expanded="true"], [data-state="selected"], [data-followup-inline-details]) {
+  --muted: var(--table-selected-muted);
+  background-color: var(--table-selected);
+}
+[data-slot="table"] > tbody > tr > td.sticky {
+  background-color: inherit;
+}
+[data-slot="table"] > tbody > tr:is([aria-selected="true"], [aria-expanded="true"], [data-state="selected"], [data-followup-inline-details]) > td {
+  background-color: inherit;
+}
+[data-slot="table"] > tbody > tr:is([aria-selected="true"], [aria-expanded="true"], [data-state="selected"]) > td:first-child {
+  box-shadow: inset 3px 0 var(--blue);
 }
 
 /*

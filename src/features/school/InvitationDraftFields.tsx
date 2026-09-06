@@ -141,6 +141,7 @@ export function InvitationDraftFields({
   locale,
   disabled = false,
   allowNone = true,
+  showReminder = true,
   variant = "inline",
   editingScope = "full",
   draftStorageKey,
@@ -153,6 +154,7 @@ export function InvitationDraftFields({
   locale: string;
   disabled?: boolean;
   allowNone?: boolean;
+  showReminder?: boolean;
   variant?: "inline" | "workflow";
   editingScope?: "full" | "assessor";
   draftStorageKey?: string;
@@ -194,6 +196,15 @@ export function InvitationDraftFields({
       drafts: draftCacheRef.current,
     });
   }, [draftStorageKey]);
+  const previousValueRef = useRef(value);
+  useEffect(() => {
+    if (previousValueRef.current === value) return;
+    previousValueRef.current = value;
+    // 备注栏中的提醒同样属于当前邀约草稿，随受控值更新保持会话暂存。
+    if (!value || draftCacheRef.current[value.kind]?.nextContactAt === value.nextContactAt) return;
+    draftCacheRef.current[value.kind] = value;
+    persistDrafts(value.kind);
+  }, [persistDrafts, value]);
   const emit = useCallback((next: InvitationDraft) => {
     draftCacheRef.current[next.kind] = next;
     persistDrafts(next.kind);
@@ -256,23 +267,22 @@ export function InvitationDraftFields({
     ? activities.find((activity) => activity.id === value.activityId)
     : undefined;
 
-  // 邀约类型与进度沿用产品确认的圆点布局（aaa1f020），始终平铺供连续登记。
+  // 保留圆点选择；笔记本宽度将类型横排，宽工作区才展开左侧类型栏。
   const kindChoices = (
     <div
       className={cn(workflow
-        ? "grid min-w-0 grid-cols-2 gap-1.5 @[34rem]/invitation-draft:grid-cols-1"
+        ? "grid min-w-0 grid-cols-2 gap-1.5 @[28rem]/invitation-draft:grid-cols-3 @[48rem]/invitation-draft:grid-cols-1"
         : "flex min-w-0 flex-wrap items-center gap-1")}
       role="group"
       aria-label={t("kindLabel")}
     >
-      {!workflow ? <span className="mr-1 text-[11px] text-muted">{t("kindLabel")}</span> : null}
       {allowNone ? (
         <Button
           type="button"
           size="sm"
           variant={workflow ? "ghost" : "secondary"}
           className={cn(
-            "h-auto min-h-8 min-w-0 justify-start gap-2 whitespace-normal text-left text-xs",
+            "h-auto min-h-9 min-w-0 justify-start gap-2 whitespace-normal text-left text-xs leading-5",
             workflow ? "rounded-lg px-3 py-2" : "px-2.5 py-1",
             !value && "bg-leaf/25 text-ink",
           )}
@@ -298,7 +308,7 @@ export function InvitationDraftFields({
             size="sm"
             variant={workflow ? "ghost" : "secondary"}
             className={cn(
-              "h-auto min-h-8 min-w-0 justify-start gap-2 whitespace-normal text-left text-xs",
+              "h-auto min-h-9 min-w-0 justify-start gap-2 whitespace-normal text-left text-xs leading-5",
               workflow ? "rounded-lg px-3 py-2" : "px-2.5 py-1",
               selected && "bg-leaf/25 text-ink",
             )}
@@ -320,9 +330,9 @@ export function InvitationDraftFields({
   );
 
   const arrangementFields = value?.kind === "assessment_1v1" ? (
-    <div className="grid min-w-0 gap-3 @[25rem]/invitation-fields:grid-cols-2 @[44rem]/invitation-fields:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)]">
-      <div className="min-w-0 space-y-1.5 @[25rem]/invitation-fields:col-span-2 @[44rem]/invitation-fields:col-span-1 [&>button]:min-w-0 [&>button]:max-w-full">
-        {workflow ? <Label className="text-[11px] text-muted">{t("timeLabel")}</Label> : null}
+    <div className="grid min-w-0 items-start gap-3 @[25rem]/invitation-fields:grid-cols-2 @[34rem]/invitation-fields:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="min-w-0 space-y-1.5 @[25rem]/invitation-fields:col-span-2 @[34rem]/invitation-fields:col-span-1 [&>button]:min-w-0 [&>button]:max-w-full">
+        <p className="text-xs text-muted">{t("timeLabel")}</p>
         <AssessmentAvailabilityGrid
           value={value}
           locale={locale}
@@ -332,7 +342,7 @@ export function InvitationDraftFields({
         />
       </div>
       <div className="min-w-0 space-y-1.5">
-        {workflow ? <Label htmlFor="invitation-assessor" className="text-[11px] text-muted">{t("assessorLabel")}</Label> : null}
+        <p className="text-xs text-muted">{t("assessorLabel")}</p>
         <FollowupChoice className="w-full min-w-0 max-w-full" label={t("assessorLabel")} value={value.assessorId ?? "none"}
           disabled={disabled || editingScope === "assessor"} options={[{ value: "none", label: t("assessorPending") }, ...assessors.map((assessor) => ({ value: assessor.userId, label: assessor.displayName }))]}
           onValueChange={(assessorId) => {
@@ -343,13 +353,13 @@ export function InvitationDraftFields({
           }} />
       </div>
       <div className="min-w-0 space-y-1.5">
-        {workflow ? <Label htmlFor="invitation-location" className="text-[11px] text-muted">{t("locationLabel")}</Label> : null}
+        <Label htmlFor={`invitation-location-${reminderId}`} className="text-xs text-muted">{t("locationLabel")}</Label>
         <Input
-          id={workflow ? "invitation-location" : undefined}
+          id={`invitation-location-${reminderId}`}
           value={value.locationText}
           disabled={disabled || editingScope === "assessor"}
           maxLength={200}
-          className="h-8 min-w-0 max-w-full text-xs"
+          className="h-9 min-w-0 max-w-full text-xs"
           placeholder={t("locationPlaceholder")}
           aria-label={t("locationLabel")}
           onChange={(event) => update("locationText", event.target.value)}
@@ -359,19 +369,19 @@ export function InvitationDraftFields({
   ) : value?.kind === "activity" ? (
     <div className="grid min-w-0 gap-3 @[30rem]/invitation-fields:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
       <div className="min-w-0 space-y-1.5">
-        {workflow ? <Label htmlFor="invitation-activity" className="text-[11px] text-muted">{t("activityLabel")}</Label> : null}
+        <p className="text-xs text-muted">{t("activityLabel")}</p>
         <FollowupChoice className="w-full min-w-0 max-w-full" label={t("activityLabel")} value={value.activityId ?? ""} disabled={disabled || activities.length === 0}
           options={activities.map((activity) => ({ value: activity.id, label: `${activity.title} · ${dateTimeFormatter.format(new Date(activity.scheduledAt))}` }))}
           onValueChange={(activityId) => { const activity = activities.find((item) => item.id === activityId); emit({ ...value, activityId, locationText: activity?.location ?? value.locationText }); }} />
       </div>
       <div className="min-w-0 space-y-1.5">
-        {workflow ? <Label htmlFor="invitation-activity-location" className="text-[11px] text-muted">{t("locationLabel")}</Label> : null}
+        <Label htmlFor={`invitation-activity-location-${reminderId}`} className="text-xs text-muted">{t("locationLabel")}</Label>
         <Input
-          id={workflow ? "invitation-activity-location" : undefined}
+          id={`invitation-activity-location-${reminderId}`}
           value={value.locationText}
           disabled={disabled}
           maxLength={200}
-          className="h-8 min-w-0 max-w-full text-xs"
+          className="h-9 min-w-0 max-w-full text-xs"
           placeholder={t("locationPlaceholder")}
           aria-label={t("locationLabel")}
           onChange={(event) => update("locationText", event.target.value)}
@@ -391,8 +401,8 @@ export function InvitationDraftFields({
   const stateControls = value?.kind === "assessment_1v1" ? (
     <div className="min-w-0 space-y-2">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <p className="text-[11px] font-medium text-muted">{t("stateLabel")}</p>
-        <p className="flex items-center gap-1.5 text-[10px] text-muted">
+        <p className="text-xs font-medium text-ink">{t("stateLabel")}</p>
+        <p className="flex items-center gap-1.5 text-[11px] text-muted">
           <Keyboard className="size-3 shrink-0 text-ink" aria-hidden="true" />
           <span>{t("stateManualHint")}</span>
         </p>
@@ -408,9 +418,9 @@ export function InvitationDraftFields({
               size="sm"
               variant="ghost"
               className={cn(
-                "h-auto min-h-11 min-w-0 flex-col justify-start gap-1 whitespace-normal rounded-lg px-1.5 py-1.5 text-center text-[11px] leading-4",
+                "h-auto min-h-11 min-w-0 flex-col justify-start gap-1 whitespace-normal rounded-lg px-1.5 py-1.5 text-center text-xs leading-5",
                 passed && "bg-leaf/10 text-ink",
-                selected && "bg-moon/35 text-ink",
+                selected && "bg-[color-mix(in_srgb,var(--moon)_55%,var(--card))] text-ink",
               )}
               disabled={disabled || editingScope === "assessor"}
               aria-pressed={selected}
@@ -443,21 +453,18 @@ export function InvitationDraftFields({
       data-testid="invitation-draft-fields"
       onKeyDownCapture={handleStateShortcut}
     >
-      <div className={cn("grid min-w-0 gap-3", workflow && "@[34rem]/invitation-draft:grid-cols-[10rem_minmax(0,1fr)]")}>
+      <div className={cn("grid min-w-0 gap-3", workflow && "@[48rem]/invitation-draft:grid-cols-[10rem_minmax(0,1fr)]")}>
       <section className="min-w-0">
-        {workflow ? (
-          <p className="mb-2 text-[11px] font-medium text-muted">{t("kindLabel")}</p>
-        ) : null}
+        <p className="mb-1.5 text-xs font-medium text-ink">{t("kindLabel")}</p>
         {kindChoices}
       </section>
 
       {value ? (
-        <section className={cn("@container/invitation-fields min-w-0 space-y-3", workflow && "border-line @[34rem]/invitation-draft:border-l @[34rem]/invitation-draft:pl-4")}>
+        <section className={cn("@container/invitation-fields min-w-0 space-y-3", workflow && "border-line @[48rem]/invitation-draft:border-l @[48rem]/invitation-draft:pl-4")}>
           {stateControls}
-          {workflow ? <p className="text-[11px] font-medium text-muted">{t("arrangementFactsLabel")}</p> : null}
           {arrangementFields}
 
-          {invitationCanHaveNextContactReminder(value) && editingScope !== "assessor" ? (
+          {showReminder && invitationCanHaveNextContactReminder(value) && editingScope !== "assessor" ? (
             <NextContactReminderField
               id={`invitation-next-contact-${reminderId}`}
               value={value.nextContactAt}

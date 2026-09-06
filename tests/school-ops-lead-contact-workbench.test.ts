@@ -162,7 +162,7 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(workbench).toContain("colSpan={4}");
     expect(workbench).toContain("const rowWorkStep =");
     expect(workbench).toContain("const rowActionHint =");
-    expect(workbench).toContain("@[56rem]/invitation-editor:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)]");
+    expect(workbench).toMatch(/@\[\d+rem\]\/invitation-editor:grid-cols-\[minmax\(0,1fr\)_/);
     expect(draftFields).toContain("INVITATION_KINDS.map");
     expect(draftFields).toContain("FollowupChoice");
     expect(draftFields).not.toContain("invitationStateFromFacts");

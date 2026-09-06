@@ -20,7 +20,7 @@ describe("Dashboard table and divider semantics", () => {
       ...filesUnder("src/features/school"),
       ...filesUnder("src/features/courseware-studio"),
       ...filesUnder("src/features/teacher-microcourses"),
-    ].filter((file) => file.endsWith(".tsx") && read(file).includes("<Table"));
+    ].filter((file) => file.endsWith(".tsx") && /<Table(?:\s|>)/.test(read(file)));
 
     expect(files.length).toBeGreaterThan(10);
     for (const file of files) {

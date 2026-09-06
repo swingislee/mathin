@@ -1,7 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
+import { useId, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -82,12 +83,17 @@ function CommunicationRecord({ event }: { event: CommunicationDayEvent }) {
   </li>;
 }
 
-export function CommunicationDaySummary({ workday, rowKey }: { workday?: CommunicationWorkday; rowKey: string }) {
+export function CommunicationDaySummary({ workday, rowKey, defaultExpanded = false }: { workday?: CommunicationWorkday; rowKey: string; defaultExpanded?: boolean }) {
   const t = useTranslations("school.communicationWorkday");
+  const [expanded, setExpanded] = useState(defaultExpanded);
+  const recordsId = useId();
   const events = workday?.events.filter((event) => event.key === rowKey) ?? [];
   if (!events.length) return null;
-  return <section className="min-w-0 border-b border-line pb-3" aria-label={t("dayRecords", { date: workday!.date })}>
-    <p className="text-xs font-medium text-muted">{t("dayRecords", { date: workday!.date })}</p>
-    <ul className="min-w-0">{events.map((event) => <CommunicationRecord key={`${event.source}:${event.id}:${event.revisionId ?? "original"}`} event={event} />)}</ul>
+  return <section className="min-w-0" aria-label={t("dayRecords", { date: workday!.date })}>
+    <Button type="button" variant="ghost" size="sm" className="h-auto min-h-8 max-w-full justify-start whitespace-normal px-0 text-xs" aria-expanded={expanded} aria-controls={recordsId} onClick={() => setExpanded(!expanded)}>
+      {expanded ? <ChevronDown className="size-3.5 shrink-0" /> : <ChevronRight className="size-3.5 shrink-0" />}
+      {t("dayRecords", { date: workday!.date })} · {events.length}
+    </Button>
+    <ul id={recordsId} hidden={!expanded} className="min-w-0">{events.map((event) => <CommunicationRecord key={`${event.source}:${event.id}:${event.revisionId ?? "original"}`} event={event} />)}</ul>
   </section>;
 }

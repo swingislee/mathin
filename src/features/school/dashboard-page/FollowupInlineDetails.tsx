@@ -31,10 +31,10 @@ export function FollowupInlineDetails({
     (trigger ?? summary)?.focus({ preventScroll: true });
   };
 
-  return <TableRow ref={rowRef} id={id} data-followup-inline-details className="bg-blue/5 hover:bg-blue/5">
+  return <TableRow ref={rowRef} id={id} data-followup-inline-details>
     <TableCell colSpan={colSpan} className="p-3 align-top whitespace-normal">
       <DashboardInlineEntry title={title} closeLabel={t("close")} onClose={close} onSubmit={onSubmit} pending={pending} autoFocus={autoFocus} flush>
-        <div className="@container/followup-entry min-w-0 max-w-full break-words pt-2">{children}</div>
+        <div className="@container/followup-entry min-w-0 max-w-full space-y-3 break-words pt-2">{children}</div>
       </DashboardInlineEntry>
     </TableCell>
   </TableRow>;

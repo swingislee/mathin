@@ -39,7 +39,7 @@ export function NextContactReminderField({
 
   return (
     <div className={cn("space-y-1.5", className)}>
-      <Label htmlFor={id} className="text-[11px] text-muted">
+      <Label htmlFor={id} className="text-xs text-muted">
         {t("nextContactReminderLabel")}
       </Label>
       <DateTimePicker
@@ -48,7 +48,7 @@ export function NextContactReminderField({
         value={localValue}
         disabled={disabled}
         placeholder={t("nextContactReminderPlaceholder")}
-        className="h-8 text-xs"
+        className="h-auto min-h-9 whitespace-normal text-xs [&>span]:whitespace-normal [&>span]:text-clip [&>span]:break-words"
         aria-describedby={hintId}
         aria-invalid={!valid}
         onValueChange={(next) => {
@@ -60,7 +60,7 @@ export function NextContactReminderField({
           onChange(instant?.toISOString() ?? null);
         }}
       />
-      <p id={hintId} className={cn("text-[10px] leading-4", valid ? "text-muted" : "text-rose")}>
+      <p id={hintId} className={cn("text-[11px] leading-4", valid ? "text-muted" : "text-rose")}>
         {valid ? t("nextContactReminderHint") : t("nextContactReminderPast")}
       </p>
     </div>

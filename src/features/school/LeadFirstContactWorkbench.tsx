@@ -126,6 +126,7 @@ export function LeadContactEntryRow({
   lead,
   formatAt,
   active,
+  selected = false,
   onActivate,
   onSaved,
   onReminderSaved,
@@ -151,6 +152,7 @@ export function LeadContactEntryRow({
   lead: LeadPoolRow;
   formatAt: (value: string) => string;
   active: boolean;
+  selected?: boolean;
   onActivate: (leadId: string) => void;
   onSaved: (leadId: string, input: LeadContactInput) => void;
   onReminderSaved: (leadId: string, nextContactAt: string | null) => void;
@@ -355,6 +357,7 @@ export function LeadContactEntryRow({
     : null;
   const directConfirmedInvitation = invitation?.state === "confirmed"
     && invitationDraftIsComplete(invitation);
+  const showArrangementDetails = outcome === "connected" || !outcome;
 
   const entryCell = (
       <TableCell className="px-2 py-2">
@@ -378,8 +381,8 @@ export function LeadContactEntryRow({
   );
 
   return <>
-    <TableRow data-communication-work-key={layout === "communication" ? `lead:${lead.id}` : undefined} ref={rowRef} tabIndex={layout === "communication" || active ? 0 : -1} aria-selected={active} aria-busy={contactRun.pending}
-      className={cn("h-16 focus-visible:outline-none [&>td]:min-w-0", active && "bg-blue/5")}
+    <TableRow data-communication-work-key={layout === "communication" ? `lead:${lead.id}` : undefined} ref={rowRef} tabIndex={layout === "communication" || active ? 0 : -1} aria-selected={active || selected || detailsOpen} aria-busy={contactRun.pending}
+      className="h-16 focus-visible:outline-none [&>td]:min-w-0"
       onClick={(event) => {
         onActivate(lead.id);
         if (!contactRun.pending && !(event.target as HTMLElement).closest("button,a,input,textarea,[role='combobox'],[role='option'],[role='checkbox']")) changeDetailsOpen(!detailsOpen);
@@ -410,25 +413,40 @@ export function LeadContactEntryRow({
     </TableRow>
     <FollowupInlineDetails id={detailsId} open={detailsOpen} onOpenChange={changeDetailsOpen} title={lead.provisionalStudentName} colSpan={layout === "communication" ? 4 : canAssign ? 6 : 5} pending={contactRun.pending}>
       {detailsFirst ? detailsExtra : null}
-      <div className="grid min-w-0 gap-4 @5xl/followup-entry:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]" onKeyDown={handleRowKeyDown}>
-        <section className="min-w-0 space-y-3">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            {canEdit ? <FollowupChoice className="w-36" label={t("latestContact")} value={displayedOutcome ?? ""} disabled={contactRun.pending}
-              onValueChange={(value) => chooseOutcome(value as LeadContactOutcome)} options={CONTACT_OUTCOME_SHORTCUTS.map(({ key, outcome: value }) => ({ value, label: `${t(`contactOutcome_${value}`)} · ${key}`, tone: value === "connected" ? "healthy" : value === "invalid_number" ? "unhealthy" : "attention" }))} /> : null}
+      <div className="min-w-0 space-y-3" onKeyDown={handleRowKeyDown}>
+          <div className="grid min-w-0 items-start gap-3 @[42rem]/followup-entry:grid-cols-[minmax(9rem,0.8fr)_minmax(18rem,1.6fr)_minmax(9rem,0.8fr)]">
+            {canEdit ? <div className="min-w-0 space-y-1">
+              <p className="text-xs font-medium text-ink">{t("latestContact")}</p>
+              <FollowupChoice label={t("latestContact")} value={displayedOutcome ?? ""} disabled={contactRun.pending}
+                onValueChange={(value) => chooseOutcome(value as LeadContactOutcome)} options={CONTACT_OUTCOME_SHORTCUTS.map(({ key, outcome: value }) => ({ value, label: `${t(`contactOutcome_${value}`)} · ${key}`, tone: value === "connected" ? "healthy" : value === "invalid_number" ? "unhealthy" : "attention" }))} />
+            </div> : null}
             {reachable ? <>
-              <FollowupChoice label={t("wechatFact")} value={wechatState} options={wechatChoices} disabled={contactRun.pending} onValueChange={(value) => setWechatState(value as TernaryChoice)} />
-              <FollowupChoice className="w-36" label={t("interestLevel")} value={interestLevel} options={interestChoices} disabled={contactRun.pending} onValueChange={(value) => setInterestLevel(value as LeadInterestLevel | "")} />
+              <div className="min-w-0 space-y-1">
+                <p className="text-xs font-medium text-ink">{t("wechatFact")}</p>
+                <FollowupChoice label={t("wechatFact")} value={wechatState} options={wechatChoices} disabled={contactRun.pending} onValueChange={(value) => setWechatState(value as TernaryChoice)} />
+              </div>
+              <div className="min-w-0 space-y-1">
+                <p className="text-xs font-medium text-ink">{t("interestLevel")}</p>
+                <FollowupChoice label={t("interestLevel")} value={interestLevel} options={interestChoices} disabled={contactRun.pending} onValueChange={(value) => setInterestLevel(value as LeadInterestLevel | "")} />
+              </div>
             </> : null}
           </div>
-          {outcome === "connected" ? <InvitationDraftFields value={invitation} activities={activities} assessors={assessors} locale={locale} disabled={contactRun.pending} draftStorageKey={draftStorageKey} onChange={setInvitation} /> : null}
-          {outcome === "declined" ? <NextContactReminderField id={`lead-next-contact-${lead.id}`} value={nextContactAt} disabled={contactRun.pending} onChange={setNextContactAt} /> : null}
+        <div className={cn("grid min-w-0 items-start gap-4", showArrangementDetails && "@[54rem]/followup-entry:grid-cols-[minmax(0,1fr)_19rem]")}>
+        {showArrangementDetails ? <section className="min-w-0 space-y-3">
+          {outcome === "connected" ? <InvitationDraftFields value={invitation} activities={activities} assessors={assessors} locale={locale} disabled={contactRun.pending} showReminder={false} draftStorageKey={draftStorageKey} onChange={setInvitation} /> : null}
           {!outcome && lead.lastContactOutcome ? <div className="space-y-2 text-xs"><p>{t(`contactOutcome_${lead.lastContactOutcome}`)} · {lead.lastContactAt ? formatAt(lead.lastContactAt) : ""}</p>
             {lead.activeInvitation ? <p>{t(`invitationKind_${lead.activeInvitation.kind}`)} · {invitationStepLabel(lead.activeInvitation)}</p> : null}</div> : null}
           {!outcome && canEdit && leadCanHaveReminder(lead) ? <SavedLeadReminderControl lead={lead} disabled={contactRun.pending} onSaved={onReminderSaved} /> : null}
-        </section>
-        <section className="min-w-0 space-y-3 @5xl/followup-entry:border-l @5xl/followup-entry:border-line @5xl/followup-entry:pl-4">
+        </section> : null}
+        <section className={cn("min-w-0 space-y-2", showArrangementDetails ? "@[54rem]/followup-entry:border-l @[54rem]/followup-entry:border-line @[54rem]/followup-entry:pl-4" : "max-w-2xl")}>
+          <p className="text-xs font-medium text-ink">{t("contactNote")}</p>
           {outcome ? <>
-            <Textarea className="min-w-0 text-xs" value={note} disabled={contactRun.pending} rows={3} maxLength={2000} onChange={(event) => setNote(event.target.value)} placeholder={t(`contactNotePlaceholder_${outcome}`)} aria-label={t("contactNote")} />
+            <Textarea className="min-h-24 min-w-0 bg-card text-xs leading-5" value={note} disabled={contactRun.pending} rows={3} maxLength={2000} onChange={(event) => setNote(event.target.value)} placeholder={t(`contactNotePlaceholder_${outcome}`)} aria-label={t("contactNote")} />
+            {outcome === "connected" && invitation && invitationCanHaveNextContactReminder(invitation) ? <NextContactReminderField
+              id={`lead-invitation-reminder-${lead.id}`} value={invitation.nextContactAt} disabled={contactRun.pending}
+              onChange={(next) => setInvitation({ ...invitation, nextContactAt: next })}
+            /> : null}
+            {outcome === "declined" ? <NextContactReminderField id={`lead-next-contact-${lead.id}`} value={nextContactAt} disabled={contactRun.pending} onChange={setNextContactAt} /> : null}
             <div className="flex min-w-0 flex-wrap justify-end gap-2">
               {confirmableInvitation ? <Button type="button" size="sm" variant="secondary" className="h-auto min-h-8 max-w-full whitespace-normal px-2 py-1 text-xs" disabled={contactRun.pending} onClick={() => submit("connected", confirmableInvitation)}>{t("saveContactAndConfirmInvitation")}</Button> : null}
               <Button type="button" size="sm" className="h-auto min-h-8 max-w-full whitespace-normal px-2 py-1 text-xs" disabled={contactRun.pending || !canSubmit || !reminderValid} onClick={() => submit()} aria-keyshortcuts="Control+Enter Meta+Enter">
@@ -438,6 +456,7 @@ export function LeadContactEntryRow({
           </> : <p className="whitespace-pre-wrap text-xs">{lead.lastContactNote || t("noContactNote")}</p>}
           <p className="break-words text-[11px] text-muted">{[sourceAttribution, ...lead.interests].filter(Boolean).join(" · ")}</p>
         </section>
+        </div>
       </div>
       {lead.studentId && canContact ? <div className="mt-3 border-t border-line pt-3">
         <QuickFollowUpEntry
