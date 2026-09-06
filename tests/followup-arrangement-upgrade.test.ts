@@ -6,9 +6,11 @@ import messages from "../messages/zh.json";
 import { ActivityWeekPicker } from "@/features/school/ActivityWeekPicker";
 import { FollowupContactFacts } from "@/features/school/FollowupContactFacts";
 import { InvitationDraftFields } from "@/features/school/InvitationDraftFields";
-import { activityGradeFit, activityWeekCell } from "@/features/school/activity-grade-contract";
+import { NextContactReminderField } from "@/features/school/NextContactReminderField";
+import { activityGradeFit, activityInitialWeek, activityWeekCell } from "@/features/school/activity-grade-contract";
 import { emptyInvitationDraft, invitationForAdvance, invitationTabSelection } from "@/features/school/followup-entry-contract";
 import type { InvitationActivityOption } from "@/features/school/invitation-contract";
+import { calendarDayKey } from "@/features/school/schedule";
 
 vi.mock("@/i18n/navigation", () => ({ Link: ({ children, ...props }: ComponentProps<"a">) => createElement("a", props, children) }));
 const render = (child: ReturnType<typeof createElement>) => {
@@ -59,12 +61,72 @@ describe("follow-up arrangement upgrade", () => {
       expect(markup).toContain('aria-pressed="false"');
     } finally { vi.useRealTimers(); }
   });
+  it("opens the earliest suitable upcoming week without changing or sorting the source options", () => {
+    const now = new Date("2026-09-06T02:00:00Z");
+    const options = [
+      { ...activities[0], id: "later", scheduledAt: "2026-09-15T06:00:00Z" },
+      { ...activities[0], id: "past", scheduledAt: "2026-09-01T06:00:00Z" },
+      ...activities,
+    ];
+    const before = structuredClone(options);
+    const dayOf = (week: Date) => calendarDayKey(week, "Asia/Shanghai");
+    expect(dayOf(activityInitialWeek(options, 3, null, now))).toBe("2026-09-07");
+    expect(dayOf(activityInitialWeek(options, 3, "later", now))).toBe("2026-09-14");
+    expect(dayOf(activityInitialWeek(options, 6, "past", now))).toBe("2026-08-31");
+    expect(dayOf(activityInitialWeek(options, 12, null, now))).toBe("2026-08-31");
+    expect(dayOf(activityInitialWeek(options, null, null, now))).toBe("2026-08-31");
+    expect(dayOf(activityInitialWeek([{ ...activities[0], targetGrades: [] }], null, null, now))).toBe("2026-09-07");
+    expect(options).toEqual(before);
+  });
+  it("shows next-week samples on Sunday, keeps same-day titles intact, and omits empty period rows", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-06T02:00:00Z"));
+    try {
+      const change = vi.fn();
+      const sameDay = { ...activities[0], id: "second", title: "验收课 · 很长的活动标题完整显示与同日多场检查", scheduledAt: "2026-09-08T07:30:00Z" };
+      const markup = render(createElement(ActivityWeekPicker, { activities: [sameDay, ...activities], gradeHint: 3, selectedId: null, locale: "zh", onSelect: change }));
+      expect(markup).toContain("9/7 – 9/13");
+      expect(markup).toContain(sameDay.title);
+      expect(markup.indexOf(activities[0].title)).toBeLessThan(markup.indexOf(sameDay.title));
+      expect(markup.match(/role="rowheader"/g)).toHaveLength(1);
+      expect(markup).toContain(">下午</div>");
+      expect(markup).toContain("overflow-x-auto");
+      expect(markup).not.toContain("line-clamp");
+      expect(markup).not.toContain(messages.school.activityWeek.browseHint);
+      expect(change).not.toHaveBeenCalled();
+    } finally { vi.useRealTimers(); }
+  });
+  it("provides a compact assessment action when no suitable sessions exist", () => {
+    const change = vi.fn();
+    const assessment = vi.fn();
+    const markup = render(createElement(ActivityWeekPicker, { activities: [], gradeHint: 3, selectedId: null, locale: "zh", onSelect: change, onChooseAssessment: assessment }));
+    expect(markup).toContain("data-activity-empty");
+    expect(markup).toContain(messages.school.activityWeek.emptyWeek);
+    expect(markup).toContain(messages.school.activityWeek.switchAssessment);
+    expect(markup).not.toContain("min-h-28");
+    expect(markup).not.toContain("border-dashed");
+    expect(change).not.toHaveBeenCalled();
+    expect(assessment).not.toHaveBeenCalled();
+  });
+  it("retains an out-of-grade selected activity in its own week", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-06T02:00:00Z"));
+    try {
+      const markup = render(createElement(ActivityWeekPicker, { activities, gradeHint: 3, selectedId: "wrong", locale: "zh", onSelect: vi.fn() }));
+      expect(markup).toContain("其他年级场次");
+      expect(markup).toContain('aria-pressed="true"');
+      expect(markup).toContain(messages.school.activityWeek.gradeMismatch);
+    } finally { vi.useRealTimers(); }
+  });
   it("starts with activity tabs without emitting an arrangement and renders solid/dashed progress links", () => {
     const change = vi.fn();
     const props = { value: null, activities: [], assessors: [], locale: "zh", onChange: change };
     const blank = render(createElement(InvitationDraftFields, props));
     expect(blank).toMatch(/data-state="active"[^>]*>活动<\/button>/);
     expect(blank.match(/role="tab"/g)).toHaveLength(3);
+    expect(blank).toContain('role="tablist"');
+    expect(blank).toContain("data-[state=active]:border-[var(--followup-outline)]");
+    expect(blank).not.toContain("data-[state=active]:ring-1");
     expect(change).not.toHaveBeenCalled();
     const progress = render(createElement(InvitationDraftFields, { ...props, value: { ...emptyInvitationDraft("assessment_1v1"), state: "awaiting_teacher" } }));
     expect(progress).toContain('data-followup-progress-link="complete"');
@@ -77,8 +139,21 @@ describe("follow-up arrangement upgrade", () => {
     expect(blank).toContain(messages.school.followupEntry.wechatUnknown);
     expect(blank).toContain(messages.school.followupEntry.wechatConfirmNo);
     expect(blank).not.toContain('data-state="on"');
+    expect(blank).not.toContain("data-[state=on]:ring-1");
     for (const level of ["A", "B", "C"] as const) expect(blank).toContain(`aria-label="${messages.school.leads[`interest_${level}`]}"`);
     expect(render(createElement(FollowupContactFacts, { ...props, wechat: true }))).toContain('aria-checked="true"');
     expect(render(createElement(FollowupContactFacts, { ...props, wechat: false }))).toContain("data-[state=unchecked]:bg-rose");
+  });
+  it("keeps reminder help available without an extra disclosure row, and leaves invalid-time errors visible", () => {
+    const props = { id: "reminder", value: null, compact: true, onChange: vi.fn() };
+    const blank = render(createElement(NextContactReminderField, props));
+    expect(blank).not.toContain("<details");
+    expect(blank).toContain(`aria-label="${messages.school.invitations.nextContactReminderHelp}"`);
+    expect(blank).toMatch(/<p id="reminder-hint" class="[^"]*sr-only/);
+    expect(blank).toContain('aria-describedby="reminder-hint"');
+    const invalid = render(createElement(NextContactReminderField, { ...props, value: "2020-01-01T00:00:00Z" }));
+    expect(invalid).toContain('data-invalid="true"');
+    expect(invalid).toContain(messages.school.invitations.nextContactReminderPast);
+    expect(invalid).not.toMatch(/<p id="reminder-hint" class="[^"]*sr-only/);
   });
 });

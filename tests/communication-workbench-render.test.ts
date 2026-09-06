@@ -90,6 +90,9 @@ describe("communication workbench server rendering", () => {
       expect(detail).not.toMatch(/<h3\b/);
       expect(detail).not.toContain(messages.school.leads.latestContact);
       expect(result.dataRows[0].cells[2].content).not.toContain("<input");
+      expect(result.dataRows[0].cells[2].content).not.toContain(messages.school.followupEntry.noteExpanded);
+      expect(result.dataRows[0].cells[1].content).not.toContain(messages.school.followupEntry.savedFacts);
+      expect(detail).not.toContain(messages.school.invitations.explicitSaveHint);
       expect(detail.match(/<textarea\b/g)).toHaveLength(1);
       expect(detail).toContain("data-followup-entry-fields");
       expect(detail.indexOf("<textarea")).toBeLessThan(detail.indexOf(messages.school.invitations.nextContactReminderLabel));

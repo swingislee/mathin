@@ -1,8 +1,11 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { CircleHelp } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { dateTimeInputToInstant, zonedDateTimeInputValue } from "./schedule";
 
@@ -41,9 +44,15 @@ export function NextContactReminderField({
 
   return (
     <div className={cn("space-y-1.5", className)}>
-      <Label htmlFor={id} className="text-xs text-muted">
-        {t("nextContactReminderLabel")}
-      </Label>
+      <div className="flex items-center gap-1">
+        <Label htmlFor={id} className="text-xs text-muted">{t("nextContactReminderLabel")}</Label>
+        {compact ? <TooltipProvider delayDuration={200}><Tooltip>
+          <TooltipTrigger asChild><Button type="button" size="sm" variant="ghost" className="size-6 p-0 text-muted" aria-label={t("nextContactReminderHelp")}>
+            <CircleHelp className="size-3.5" aria-hidden />
+          </Button></TooltipTrigger>
+          <TooltipContent className="max-w-72 leading-5">{t("nextContactReminderHint")}</TooltipContent>
+        </Tooltip></TooltipProvider> : null}
+      </div>
       <DateTimePicker
         id={id}
         mode="datetime"
@@ -62,12 +71,9 @@ export function NextContactReminderField({
           onChange(instant?.toISOString() ?? null);
         }}
       />
-      {compact && valid ? <details className="text-[11px] leading-4 text-muted">
-        <summary className="w-fit cursor-pointer">{t("nextContactReminderHelp")}</summary>
-        <p id={hintId} className="pt-1">{t("nextContactReminderHint")}</p>
-      </details> : <p id={hintId} className={cn("text-[11px] leading-4", valid ? "text-muted" : "text-rose")}>
+      <p id={hintId} className={cn("text-[11px] leading-4", valid ? "text-muted" : "text-rose", compact && valid && "sr-only")}>
         {valid ? t("nextContactReminderHint") : t("nextContactReminderPast")}
-      </p>}
+      </p>
     </div>
   );
 }

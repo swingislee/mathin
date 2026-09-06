@@ -26,6 +26,8 @@ describe("shared follow-up entry layout and submission contract", () => {
       expect(markup).toContain("max-w-72");
       if (children) expect(markup).toContain("@[50rem]/followup-entry:grid-cols-[minmax(0,1fr)_19rem]");
       expect(markup).toContain("data-followup-notes");
+      expect(markup).not.toContain("followup-entry:border-l");
+      expect(markup).not.toContain("border-t");
       if (!children) expect(markup).not.toContain("data-followup-business");
     },
   );

@@ -437,7 +437,6 @@ function InvitationEditor({
         </Button>
       </div> : <FollowupEntryFields id={`invitation-${row.id}`} note={note} onNoteChange={setNote}
         pending={pending} saveDisabled={saveDisabled} onSave={(advance) => submitSupport(draft, advance)} canAdvance
-        hint={t("explicitSaveHint")}
         reminder={invitationCanHaveNextContactReminder(draft) ? {
           value: draft.nextContactAt, onChange: (nextContactAt) => setDraft({ ...draft, nextContactAt }),
         } : undefined}
@@ -520,7 +519,7 @@ function InvitationQuickContact({ row, disabled, onSaved, saving, beginSave, end
   }}>
     <FollowupChoice className="w-40 shrink-0" label={t("channelLabel")} value={channel} onValueChange={(value) => setChannel(value as InvitationChannel)} disabled={disabled || saving || run.pending}
       options={CHANNELS.map((value) => ({ value, label: t(`channel_${value}`) }))} />
-    {expanded ? <span className="min-w-0 flex-1 text-xs text-muted">{entryT(note.trim() ? "draftExpanded" : "noteExpanded")}</span> : <Input value={note} onChange={(event) => setNote(event.target.value)} placeholder={entryT("note")} aria-label={t("noteFor", { name: row.leadName })} disabled={disabled || saving || run.pending} maxLength={2000} className="h-8 min-w-0 flex-1 text-xs" />}
+    {expanded ? <span className="min-w-0 flex-1 truncate text-xs text-muted" title={note || undefined}>{note}</span> : <Input value={note} onChange={(event) => setNote(event.target.value)} placeholder={entryT("note")} aria-label={t("noteFor", { name: row.leadName })} disabled={disabled || saving || run.pending} maxLength={2000} className="h-8 min-w-0 flex-1 text-xs" />}
     {!expanded ? <Button type="button" size="sm" variant="secondary" className="h-8 shrink-0 px-2" onClick={submit} disabled={disabled || saving || run.pending || !note.trim()} aria-label={t("saveKnownFacts")} aria-keyshortcuts="Control+Enter Meta+Enter" title={`${t("saveKnownFacts")} · Ctrl ↵`}>
       {run.pending ? <LoaderCircle className="size-4 animate-spin" /> : <Check className="size-4" />}</Button> : null}
   </div>;
@@ -891,7 +890,6 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
                 detailsId={detailsId} onToggle={() => changeDetails(canonicalKey, !active)} />
             </TableCell>
             <TableCell className="px-2 py-2">{historicalSummary ? historicalSummary.state : <>
-              <p className="mb-1 text-[11px] text-muted">{entryT("savedFacts")}</p>
               <Badge variant="outline" className={cn("max-w-full whitespace-normal rounded-md text-[11px]", followupToneClasses[tone])}><span aria-hidden className="size-1.5 shrink-0 rounded-full bg-current" />{rowAction}</Badge>
               <p className="mt-1 truncate text-[11px] text-muted" title={`${kindOf(row)} · ${arrangementOf(row)}`}>{kindOf(row)} · {arrangementOf(row)}</p>
               {workPurposeFor(canonicalKey) ? <p className="mt-1 truncate text-[11px] text-muted" title={rowActionHint}>{workPurposeFor(canonicalKey)}</p> : null}

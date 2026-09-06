@@ -30,7 +30,7 @@ export function FollowupEntryFields({
 }) {
   const t = useTranslations("school.followupEntry");
   const hasBusiness = Children.toArray(children).length > 0;
-  return <div data-followup-entry-fields className={cn("grid min-w-0 items-start gap-4",
+  return <div data-followup-entry-fields className={cn("grid min-w-0 items-start gap-6",
     hasBusiness && "@[50rem]/followup-entry:grid-cols-[minmax(0,1fr)_19rem] @[72rem]/followup-entry:grid-cols-[minmax(0,1fr)_22rem]")}
     onKeyDown={(event) => {
     if (event.defaultPrevented || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229 || event.repeat) return;
@@ -40,9 +40,9 @@ export function FollowupEntryFields({
       if (!disabled && !pending && !saveDisabled) onSave(false);
     }
   }}>
-    {hasBusiness ? <div data-followup-business className="min-w-0 space-y-4">{children}</div> : null}
+    {hasBusiness ? <div data-followup-business className="min-w-0 space-y-5">{children}</div> : null}
     <aside data-followup-notes className={cn("min-w-0 space-y-3", hasBusiness
-      ? "@[50rem]/followup-entry:sticky @[50rem]/followup-entry:top-2 @[50rem]/followup-entry:border-l @[50rem]/followup-entry:border-line @[50rem]/followup-entry:pl-4"
+      ? "@[50rem]/followup-entry:sticky @[50rem]/followup-entry:top-2"
       : "w-full max-w-3xl")}>
       <div className="space-y-1.5">
         <Label htmlFor={`${id}-note`} className="text-xs font-medium text-ink">{t("note")}</Label>
@@ -54,9 +54,9 @@ export function FollowupEntryFields({
       {reminder ? <NextContactReminderField id={`${id}-reminder`} value={reminder.value}
         onChange={reminder.onChange} disabled={disabled || pending || reminder.disabled}
         compact className="w-full max-w-72" /> : null}
-      <div data-followup-entry-actions className="flex min-w-0 flex-wrap items-center gap-2 border-t border-line pt-3">
+      <div data-followup-entry-actions className="flex min-w-0 flex-wrap items-center gap-2 pt-1">
         {hint ? <p className="w-full text-xs leading-5 text-muted" role="status">{hint}</p> : null}
-        {tools ? <div className="mr-auto flex min-w-0 flex-wrap items-center gap-2">{tools}</div> : <span className="mr-auto" />}
+        {tools ? <div className="flex w-full min-w-0 flex-wrap items-center gap-2">{tools}</div> : null}
         <Button type="button" size="sm" variant={canAdvance ? "secondary" : "primary"}
           className="h-auto min-h-9 whitespace-normal rounded-md px-3 py-1.5 text-xs"
           disabled={disabled || pending || saveDisabled} onClick={() => onSave(false)} aria-keyshortcuts="Control+Enter Meta+Enter">

@@ -272,6 +272,7 @@ export function InvitationDraftFields({
     </div>
   ) : value?.kind === "activity" ? (
     <ActivityWeekPicker activities={activities} gradeHint={gradeHint} selectedId={value.activityId} locale={locale}
+      onChooseAssessment={() => chooseKind("assessment_1v1")}
       disabled={disabled || editingScope === "assessor"} onSelect={(activity) => emit({ ...value,
         activityId: activity.id, locationText: activity.location, state: "awaiting_parent", scheduledAt: null })} />
   ) : value?.kind === "waiting_activity" ? (
@@ -336,13 +337,15 @@ export function InvitationDraftFields({
       onKeyDownCapture={handleStateShortcut}
     >
       <Tabs value={value.kind} onValueChange={(kind) => chooseKind(kind as InvitationKind)} className="min-w-0">
-        <p className="mb-1.5 text-xs font-medium text-ink">{t("kindLabel")}</p>
-        <TabsList aria-label={t("kindLabel")} className="h-10 w-full justify-start gap-1 rounded-md border border-line bg-card p-1">
-          {(["activity", "assessment_1v1", "waiting_activity"] as const).map((kind) => <TabsTrigger key={kind} value={kind}
-            disabled={disabled || editingScope === "assessor"} className="min-w-20 flex-1 text-xs data-[state=active]:bg-moon/25 data-[state=active]:shadow-none data-[state=active]:ring-1 data-[state=active]:ring-[var(--followup-outline)]/60">
-            {entryT(`tab_${kind}`)}
-          </TabsTrigger>)}
-        </TabsList>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
+          <p className="text-xs text-muted">{t("kindLabel")}</p>
+          <TabsList aria-label={t("kindLabel")} className="h-9 w-fit justify-start gap-4 rounded-none bg-transparent p-0">
+            {(["activity", "assessment_1v1", "waiting_activity"] as const).map((kind) => <TabsTrigger key={kind} value={kind}
+              disabled={disabled || editingScope === "assessor"} className="h-9 rounded-none border-b-2 border-transparent px-1 text-xs data-[state=active]:border-[var(--followup-outline)] data-[state=active]:bg-transparent data-[state=active]:shadow-none">
+              {entryT(`tab_${kind}`)}
+            </TabsTrigger>)}
+          </TabsList>
+        </div>
         <TabsContent value={value.kind} className="@container/invitation-fields min-w-0 space-y-3 pt-1">
           {browsingDraft && committedValue && invitationHasStageInformation(committedValue) && browsingDraft.kind !== committedValue.kind
             ? <p className="text-xs text-muted" role="status">{entryT("retainedArrangement", { kind: entryT(`tab_${committedValue.kind}`) })}</p> : null}
