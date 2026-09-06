@@ -1,9 +1,9 @@
 "use client";
 
+import { Check, X } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { WechatStatusGlyph } from "./WechatStatusGlyph";
 
 type WechatStatusControlProps = {
   value: boolean | null;
@@ -22,31 +22,27 @@ function WechatGlyph() {
 export function WechatStatusControl({ value, onChange, labels, disabled }: WechatStatusControlProps) {
   const state = value === null ? "unknown" : value ? "yes" : "no";
   return <TooltipProvider delayDuration={200}>
-    <ToggleGroup type="single" orientation="horizontal" dir="ltr" loop={false}
-      value={state} disabled={disabled}
+    <ToggleGroup type="single" orientation="horizontal" dir="ltr" loop={false} size="sm"
+      value={value === null ? "" : state} disabled={disabled}
       aria-label={`${labels.name} · ${labels[state]}`} data-wechat-status={state}
       onValueChange={(next) => {
         if (disabled) return;
-        if (next === "unknown" || next === "") onChange(null);
+        if (next === "") onChange(null);
         else if (next === "yes" || next === "no") onChange(next === "yes");
       }}
-      className={cn("relative isolate h-8 w-18 shrink-0 gap-0 text-muted", disabled && "opacity-50")}>
-      <span aria-hidden="true" data-wechat-rail className="pointer-events-none absolute inset-x-3 top-1/2 h-px bg-muted/25" />
-      {(["yes", "unknown", "no"] as const).map((choice) => <Tooltip key={choice}>
+      className="h-8 shrink-0 justify-start gap-1">
+      <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" data-wechat-icon
+        className={cn("mr-1 size-5 shrink-0 text-leaf-deep", disabled && "opacity-50")}><WechatGlyph /></svg>
+      {(["yes", "no"] as const).map((choice) => <Tooltip key={choice}>
         <ToggleGroupItem value={choice} asChild
-          className="relative h-8 w-6 min-w-0 cursor-pointer rounded-full p-0 hover:bg-muted/8 data-[state=on]:bg-transparent focus-visible:z-10 [&_svg]:size-3">
+          className={cn("size-8 min-w-8 cursor-pointer border border-transparent bg-muted/6 p-0 text-xs text-muted data-[state=on]:font-semibold data-[state=on]:text-[var(--followup-choice-ink)]",
+            choice === "yes" ? "hover:bg-leaf/20 data-[state=on]:border-leaf-deep/40 data-[state=on]:bg-leaf" : "hover:bg-rose/15 data-[state=on]:border-rose-deep/40 data-[state=on]:bg-rose/85")}>
           <TooltipTrigger aria-label={`${labels.name} · ${labels[choice]}`}>
-            {choice === "unknown" ? <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" className="size-3 bg-card text-muted/45"><WechatGlyph /></svg>
-              : <span aria-hidden="true" className="size-0.5 rounded-full bg-muted/50" />}
+            {choice === "yes" ? <Check aria-hidden="true" /> : <X aria-hidden="true" />}
           </TooltipTrigger>
         </ToggleGroupItem>
         <TooltipContent>{labels.name} · {labels[choice]}</TooltipContent>
       </Tooltip>)}
-      <span aria-hidden="true" data-wechat-thumb={state}
-        className={cn("pointer-events-none absolute left-0.5 top-1.5 flex size-5 items-center justify-center rounded-full transition-[translate,background-color,color] duration-200 motion-reduce:transition-colors",
-          state === "unknown" ? "translate-x-6 bg-card text-muted" : state === "yes" ? "translate-x-0 bg-leaf/25 text-leaf-deep" : "translate-x-12 bg-rose/15 text-rose-deep")}>
-        <WechatStatusGlyph state={state} />
-      </span>
     </ToggleGroup>
   </TooltipProvider>;
 }

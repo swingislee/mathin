@@ -1,8 +1,4 @@
-/* 按钮形变与圈选只在交互时发生，沿用工作区色板。 */
-.morphPath {
-  transition: d 200ms ease, opacity 160ms ease, fill 160ms ease;
-}
-
+/* 承接圈选只在交互时发生，沿用工作区色板。 */
 .handoffMark {
   position: absolute;
   inset: 0;
@@ -40,10 +36,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .morphPath {
-    transition: opacity 160ms ease, fill 160ms ease;
-  }
-
   .handoffLine {
     transition: opacity 160ms ease;
   }

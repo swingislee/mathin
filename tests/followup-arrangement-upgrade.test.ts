@@ -134,7 +134,7 @@ describe("follow-up arrangement upgrade", () => {
     expect(progress).toContain('data-followup-progress-link="complete"');
     expect(progress.match(/data-followup-progress-link="pending"/g)).toHaveLength(2);
   });
-  it("preserves unknown WeChat in a compact sliding control and keeps colored interest choices without checkmarks", () => {
+  it("preserves unknown WeChat with both choices unselected and keeps colored interest choices without checkmarks", () => {
     const props = { wechat: null, onWechatChange: vi.fn(), interest: "" as const, onInterestChange: vi.fn() };
     const blank = render(createElement(FollowupContactFacts, props));
     expect(blank).toContain('data-wechat-status="unknown"');
@@ -143,17 +143,17 @@ describe("follow-up arrangement upgrade", () => {
     expect(blank).toContain(messages.school.followupEntry.wechatUnknown);
     expect(blank).not.toContain(messages.school.followupEntry.wechatConfirmNo);
     expect(blank).not.toContain(messages.school.followupEntry.wechatUnknownHint);
-    expect(blank.match(/data-state="on"/g)).toHaveLength(1);
+    expect(blank.match(/data-state="on"/g) ?? []).toHaveLength(0);
     expect(blank).not.toContain("data-[state=on]:ring-1");
     for (const level of ["A", "B", "C"] as const) expect(blank).toContain(`aria-label="${messages.school.leads[`interest_${level}`]}"`);
     expect(render(createElement(FollowupContactFacts, { ...props, wechat: true }))).toContain(messages.school.followupEntry.wechatYes);
     expect(render(createElement(FollowupContactFacts, { ...props, wechat: false }))).toContain(messages.school.followupEntry.wechatNo);
     for (const level of ["A", "B", "C"] as const) {
       const selected = render(createElement(FollowupContactFacts, { ...props, interest: level }));
-      const selectedChoice = selected.match(/<button\b[^>]*>/g)?.find((button) => button.includes(`aria-label="${messages.school.leads[`interest_${level}`]}"`));
+      const selectedChoice = selected.match(/<button\b[^>]*>.*?<\/button>/g)?.find((button) => button.includes(`aria-label="${messages.school.leads[`interest_${level}`]}"`));
       expect(selectedChoice).toContain('data-state="on"');
       expect(selectedChoice).toContain('aria-checked="true"');
-      expect(selected).not.toContain("lucide-check");
+      expect(selectedChoice).not.toContain("lucide-check");
       expect(selected).toContain("size-8 min-w-8");
       expect(selected).toContain("text-muted");
       expect(selected).toContain("data-[state=on]:bg-leaf");
@@ -163,6 +163,14 @@ describe("follow-up arrangement upgrade", () => {
     }
     expect(props.onWechatChange).not.toHaveBeenCalled();
   });
+  it.each([[true, "A", "wechatYes"], [false, "C", "wechatNo"]] as const)("matches WeChat %s to interest %s button geometry and color", (wechat, interest, statusLabel) => {
+    const markup = render(createElement(FollowupContactFacts, { wechat, interest, onWechatChange: vi.fn(), onInterestChange: vi.fn() }));
+    const buttons = markup.match(/<button\b[^>]*>/g)!;
+    const classes = (label: string) => buttons.find((button) => button.includes(`aria-label="${label}"`))?.match(/class="([^"]+)"/)?.[1];
+    const wechatClasses = classes(`${messages.school.followupEntry.wechatLabel} · ${messages.school.followupEntry[statusLabel]}`);
+    expect(wechatClasses).toBeDefined();
+    expect(wechatClasses).toBe(classes(messages.school.leads[`interest_${interest}`]));
+  });
   it.each(["activity", "assessment_1v1", "waiting_activity"] as const)("keeps equal-height handoff choices and draws the selected option's contour for %s", (kind) => {
     const change = vi.fn();
     const markup = render(createElement(InvitationDraftFields, {
@@ -170,7 +178,11 @@ describe("follow-up arrangement upgrade", () => {
     }));
     const tabs = markup.match(/<button\b[^>]*role="tab"[^>]*>.*?<\/button>/g)!;
     expect(tabs).toHaveLength(3);
-    for (const tab of tabs) expect(tab).toContain("h-8 min-w-14");
+    for (const tab of tabs) {
+      expect(tab).toContain("h-8 min-w-11");
+      expect(tab).toContain("px-2 py-0");
+    }
+    expect(markup).toContain("grid-cols-3 gap-0.5");
     const selected = tabs.filter((tab) => tab.includes('aria-selected="true"'));
     expect(selected).toHaveLength(1);
     expect(selected[0]).toContain(`data-followup-handoff-mark="${kind}"`);
