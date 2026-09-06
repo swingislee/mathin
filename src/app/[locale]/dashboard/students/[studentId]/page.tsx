@@ -21,6 +21,10 @@ import {
   StudentSummary,
 } from "@/features/school/StudentAsidePanels";
 import { StudentFollowUpsTab, StudentLearningTab, StudentVideosTab } from "@/features/school/StudentDetailTabs";
+import { StudentBusinessHistoryTab } from "@/features/school/StudentBusinessHistoryTab";
+import { businessHistoryKind } from "@/features/school/student-business-history-contract";
+import { canReadStudentBusinessHistory } from "@/features/school/student-business-history-data";
+import { getStudentBusinessHistoryMessages } from "@/features/school/student-business-history-messages";
 import { StudentFinancePanel } from "@/features/school/StudentFinancePanel";
 import { StudentProfileEditor } from "@/features/school/StudentProfileEditor";
 import { GuardianInvitePanel } from "@/features/school/GuardianInvitePanel";
@@ -36,7 +40,7 @@ import { getActiveEnvironment, getMyPerms, requireAnyPerm } from "@/lib/auth";
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const BASE_TABS = ["overview", "followups", "learning", "videos", "guardians"] as const;
-type StudentTab = (typeof BASE_TABS)[number] | "finance";
+type StudentTab = (typeof BASE_TABS)[number] | "finance" | "history";
 
 /**
  * 学生 360° 档案（doc 23 §11）。
@@ -54,7 +58,7 @@ export default async function StudentDetailPage({
   searchParams,
 }: {
   params: Promise<{ locale: string; studentId: string }>;
-  searchParams: Promise<{ tab?: string; report?: string; returnTo?: string | string[] }>;
+  searchParams: Promise<{ tab?: string; report?: string; history?: string; returnTo?: string | string[] }>;
 }) {
   const [{ locale, studentId }, rawSearchParams] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
@@ -80,6 +84,8 @@ export default async function StudentDetailPage({
     : [];
 
   const tabs: StudentTab[] = showFinance ? [...BASE_TABS, "finance"] : [...BASE_TABS];
+  if (await canReadStudentBusinessHistory(locale)) tabs.splice(2, 0, "history");
+  const historyMessages = getStudentBusinessHistoryMessages(locale);
   const requested = rawSearchParams.tab as StudentTab | undefined;
   const activeTab: StudentTab = requested && tabs.includes(requested) ? requested : "overview";
 
@@ -113,7 +119,7 @@ export default async function StudentDetailPage({
         <DashboardCommandPanel>
           <DashboardCommandState>
             <DashboardCommandTabs
-              items={tabs.map((tab) => ({ value: tab, label: t(`tab_${tab}`), href: tabHref(tab) }))}
+              items={tabs.map((tab) => ({ value: tab, label: tab === "history" ? historyMessages.title : t(`tab_${tab}`), href: tabHref(tab) }))}
               activeValue={activeTab}
               ariaLabel={t("tabsLabel")}
             />
@@ -158,6 +164,10 @@ export default async function StudentDetailPage({
 
           {activeTab === "followups" && perms.has("followup.view") && (
             <StudentFollowUpsTab student={student} locale={locale} canWrite={perms.has("followup.write") && !student.deletedAt} />
+          )}
+
+          {activeTab === "history" && (
+            <StudentBusinessHistoryTab studentId={studentId} locale={locale} kind={businessHistoryKind(rawSearchParams.history)} current={{ status: t(student.status), gender: student.gender, grade: student.grade }} />
           )}
 
           {activeTab === "learning" && (

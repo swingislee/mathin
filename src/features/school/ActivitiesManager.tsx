@@ -30,6 +30,7 @@ import { ActivityGradesDialog } from "./ActivityGradesDialog";
 import { inputClass } from "./controls";
 import { DashboardInlineEntry } from "./dashboard-page/DashboardInlineEntry";
 import type { PublicClassRegistrationData } from "./public-class-registration-contract";
+import { getStudentBusinessHistoryMessages } from "./student-business-history-messages";
 const PublicClassRegistrationPanel = dynamic(() => import("./PublicClassRegistrationPanel"));
 import {
   DashboardCommandActions,
@@ -79,6 +80,7 @@ export function ActivitiesManager({
   initialActivityId,
   teachingActivityIds,
   initialRegistrationData,
+  showHistory = false,
 }: {
   title: string;
   activities: ActivityRow[];
@@ -86,6 +88,7 @@ export function ActivitiesManager({
   initialActivityId?: string;
   teachingActivityIds: string[];
   initialRegistrationData?: PublicClassRegistrationData;
+  showHistory?: boolean;
 }) {
   const t = useTranslations("school.activities");
   const tableT = useTranslations("school.table");
@@ -178,9 +181,10 @@ export function ActivitiesManager({
   return <DashboardPage
     title={title}
     description={t("intro")}
-    commandPanel={canManage ? <DashboardCommandPanel>
+    commandPanel={canManage || showHistory ? <DashboardCommandPanel>
       <DashboardCommandActions>
-        <Button size="sm" onClick={() => setEditing("new")} className="gap-1"><Plus size={15} />{t("new")}</Button>
+        {showHistory && <Link href="/dashboard/activities?view=history" className={buttonVariants({size:"sm",variant:"ghost"})}>{getStudentBusinessHistoryMessages(locale).activity}</Link>}
+        {canManage && <Button size="sm" onClick={() => setEditing("new")} className="gap-1"><Plus size={15} />{t("new")}</Button>}
       </DashboardCommandActions>
     </DashboardCommandPanel> : undefined}
   >

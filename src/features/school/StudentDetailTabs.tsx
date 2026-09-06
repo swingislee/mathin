@@ -2,9 +2,11 @@ import { getTranslations } from "next-intl/server";
 import { CustomerVideoButton } from "./CustomerVideoButton";
 import { FollowUpForm } from "./FollowUpForm";
 import { ImportedHistoryStudentLink } from "./ImportedHistoryStudentLink";
-import { ImportedFamilyHistoryPanel } from "./ImportedFamilyHistoryPanel";
-import { loadImportedFamilyHistory } from "./history-import-trial-data";
-import { getImportedFamilyHistoryMessages } from "./imported-family-history-messages";
+import { BusinessHistorySections } from "./BusinessHistorySections";
+import { loadStudentBusinessHistory } from "./student-business-history-data";
+import { getStudentBusinessHistoryMessages } from "./student-business-history-messages";
+import { Link } from "@/i18n/navigation";
+import { DashboardSection } from "./dashboard-page";
 import { StageReportPanel } from "./StageReportPanel";
 import type { SchoolTermRow } from "./courses";
 import type { StaffLearningResult } from "./learning-results";
@@ -42,15 +44,19 @@ export async function StudentFollowUpsTab({
   const t = await getTranslations("school.students");
   const formatter = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" });
   const shortFormatter = new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short" });
-  const importedFamily = await loadImportedFamilyHistory(locale, student.id);
-  const historyMessages = getImportedFamilyHistoryMessages(locale);
+  const history = await loadStudentBusinessHistory(locale, { studentId: student.id, kind: "communication" });
+  const historyMessages = getStudentBusinessHistoryMessages(locale);
+  const hasHistory = !!history?.communications.length;
 
   return (
     <div className="space-y-6">
-      {importedFamily && <ImportedFamilyHistoryPanel data={importedFamily} locale={locale} current={{ status: t(student.status), gender: student.gender, grade: student.grade }} />}
-    <Section title={importedFamily ? historyMessages.newFollowup : t("followUps")}>
+      {hasHistory && <>
+        <Link href={`/dashboard/students/${student.id}?tab=history`} className="text-sm underline underline-offset-4">{historyMessages.historyLink}</Link>
+        <BusinessHistorySections data={history!} locale={locale} kind="communication" />
+      </>}
+    <DashboardSection title={hasHistory ? historyMessages.currentFollowup : t("followUps")}>
       {canWrite && <FollowUpForm studentId={student.id} currentStatus={student.followUpStatus} />}
-      {!importedFamily && <ImportedHistoryStudentLink studentId={student.id} locale={locale} />}
+      {!hasHistory && <ImportedHistoryStudentLink studentId={student.id} locale={locale} />}
       {student.followUps.length === 0 ? (
         <p className="mt-4 text-sm text-muted">{t("noFollowUps")}</p>
       ) : (
@@ -73,7 +79,7 @@ export async function StudentFollowUpsTab({
           ))}
         </ol>
       )}
-    </Section>
+    </DashboardSection>
     </div>
   );
 }

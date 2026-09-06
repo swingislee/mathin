@@ -35,6 +35,7 @@ import type { RenewalWorkspaceData } from "./renewals";
 import { CreateCycleDialog } from "./RenewalPoolWorkspace";
 import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
 import { Student360Trigger } from "./Student360Sheet";
+import { getStudentBusinessHistoryMessages } from "./student-business-history-messages";
 
 type PoolRow = {
   membershipId: string; studentId: string; name: string; grade: number | null;
@@ -49,10 +50,11 @@ const levelFor = renewalHealthLevel;
 const resultTone = (stage: string): FollowupTone => stage === "enrolled" ? "healthy" : stage === "not_enrolled" ? "unhealthy" : stage === "payment_pending" ? "healthy" : stage === "nurturing" ? "attention" : "neutral";
 const healthTone = (level: string): FollowupTone => level === "attention" ? "unhealthy" : level === "observed" ? "healthy" : "neutral";
 
-export function RenewalStudentPool({ data, supplement, canWrite, canReview, canEnroll, settings = false, allowHealthSamples = false, healthSampleMode = false }: {
+export function RenewalStudentPool({ data, supplement, canWrite, canReview, canEnroll, settings = false, allowHealthSamples = false, healthSampleMode = false, showHistory = false }: {
   data: RenewalWorkspaceData; supplement: RenewalPoolSupplement;
   canWrite: boolean; canReview: boolean; canEnroll: boolean; settings?: boolean; health?: boolean;
   allowHealthSamples?: boolean; healthSampleMode?: boolean;
+  showHistory?: boolean;
 }) {
   const t = useTranslations("school.renewals.poolV2");
   const legacy = useTranslations("school.renewals");
@@ -99,6 +101,7 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
     <DashboardCommandState><FollowupTabs /><span className="whitespace-nowrap text-xs text-muted">{legacy("view_all")} {rows.length} · {t("enrolled")} {rows.filter(row => row.stage === "enrolled").length} · {t("attention")} {rows.filter(row => levelFor(signalsFor(row)) === "attention").length}</span></DashboardCommandState>
     <DashboardCommandFilters><FilterSearchInput aria-label={t("search")} placeholder={t("search")} value={query} disabled={entryBusy} onChange={event => setQuery(event.target.value)} /></DashboardCommandFilters>
     <DashboardCommandActions>
+      {showHistory && <Link href="/dashboard/followups/renewals?view=history" className={buttonVariants({ size: "sm", variant: "ghost" })}>{getStudentBusinessHistoryMessages(locale).renewal}</Link>}
       <Button size="sm" variant="ghost" disabled={entryBusy} onClick={() => setSettingsOpen(true)}><SlidersHorizontal className="size-4" />{t("settings")}</Button>
       <Link href="/dashboard/followups/renewals/growth" className={buttonVariants({ size: "sm", variant: "ghost" })}>{legacy("reactivationAndReferrals")}</Link>
       <Link href="/dashboard/followups/renewals/signals" className={buttonVariants({ size: "sm", variant: "ghost" })}>{legacy("teacherSignals")}</Link>

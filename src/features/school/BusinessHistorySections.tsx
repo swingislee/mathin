@@ -1,0 +1,105 @@
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Link } from '@/i18n/navigation';
+import { DashboardSection, DashboardTableShell } from './dashboard-page';
+import type { BusinessHistoryKind, StudentBusinessHistory } from './student-business-history-contract';
+import { getStudentBusinessHistoryMessages } from './student-business-history-messages';
+
+type SourceReference = { source_record_id: string; source_field_ids: string[] };
+export function BusinessHistoryEvidence({ data, reference, locale }: {data: StudentBusinessHistory; reference: SourceReference; locale: string}) {
+  const source = data.sources[reference.source_record_id];
+  const m = getStudentBusinessHistoryMessages(locale);
+  if(!source)return null;
+  return <details className="mt-2 text-xs text-muted">
+    <summary className="cursor-pointer">{m.source}</summary>
+    <p className="mt-2">{source.filename} · {source.tableName}</p>
+    <dl className="mt-2 space-y-2">{source.cells.filter(cell=>reference.source_field_ids.includes(cell.fieldId)).map(cell=><div key={cell.fieldId}>
+      <dt>{cell.fieldName}</dt><dd className="whitespace-pre-wrap text-ink">{cell.text || m.unknown}</dd>
+    </div>)}</dl>
+    <Link href={`/dashboard/history-import?record=${encodeURIComponent(reference.source_record_id)}#history-archive-detail`} className="mt-2 inline-block underline underline-offset-4">{m.original}</Link>
+  </details>;
+}
+
+export function BusinessHistorySections({ data, locale, kind, showStudent = false, query = '' }: {
+  data: StudentBusinessHistory; locale: string; kind?: BusinessHistoryKind; showStudent?: boolean; query?: string;
+}) {
+  const m=getStudentBusinessHistoryMessages(locale);
+  const include=(value:BusinessHistoryKind)=>!kind||kind===value;
+  const needle=query.trim().toLocaleLowerCase(locale);
+  const visible=<T extends {student_id:string}>(rows:T[])=>rows.filter(row=>!needle||`${data.students[row.student_id]??''} ${JSON.stringify(row)}`.toLocaleLowerCase(locale).includes(needle));
+  const renewals=visible(data.renewals), activities=visible(data.activities), assessments=visible(data.assessments), enrollments=visible(data.enrollments), communications=visible(data.communications);
+  const studentCell=(studentId:string,currentKind:BusinessHistoryKind)=>showStudent?<TableCell className="align-top"><Link href={`/dashboard/students/${studentId}?tab=history&history=${currentKind}`} className="underline underline-offset-4">{data.students[studentId]??m.unknown}</Link></TableCell>:null;
+  const studentHead=showStudent?<TableHead>{m.student}</TableHead>:null;
+  const empty=<p className="text-sm text-muted">{m.empty}</p>;
+  const related=(sourceId:string)=>data.communications.filter(row=>row.source_record_id===sourceId).map(row=><details key={row.id} className="mt-2 text-xs">
+    <summary className="cursor-pointer text-muted">{m.fullConversation}</summary>
+    <p className="mt-2 text-muted">{row.occurred_on??m.dateUnknown} · {m.author}：{row.author_label??m.unknown}</p>
+    <p className="mt-2 whitespace-pre-wrap text-sm leading-7">{row.content}</p>
+  </details>);
+
+  return <div className="min-w-0 space-y-7" id="student-business-history">
+    {include('renewal')&&<DashboardSection title={`${m.renewal} · ${renewals.length}`}>
+      {!renewals.length?empty:<DashboardTableShell><Table>
+        <TableHeader><TableRow>{studentHead}<TableHead>{m.period}</TableHead><TableHead>{m.intention}</TableHead><TableHead>{m.outcome}</TableHead><TableHead>{m.currentClass}</TableHead></TableRow></TableHeader>
+        <TableBody>{renewals.map(row=><TableRow key={row.id} id={row.id}>
+          {studentCell(row.student_id,'renewal')}
+          <TableCell className="align-top whitespace-nowrap">{row.period_year??m.unknown} {row.period_key==='summer'?m.summer:m.autumn}</TableCell>
+          <TableCell className="align-top"><p className="max-w-xl whitespace-pre-wrap leading-6">{row.decision_note}</p>{related(row.source_record_id)}<BusinessHistoryEvidence data={data} reference={row} locale={locale}/></TableCell>
+          <TableCell className="align-top">{row.outcome==='renewed'?m.renewed:row.outcome==='not_renewed'?m.notRenewed:m.unknown}</TableCell>
+          <TableCell className="align-top">{[row.class_label,row.teacher_label].filter(Boolean).join(' · ')||m.unknown}</TableCell>
+        </TableRow>)}</TableBody>
+      </Table></DashboardTableShell>}
+    </DashboardSection>}
+
+    {include('activity')&&<DashboardSection title={`${m.activity} · ${activities.length}`}>
+      {!activities.length?empty:<DashboardTableShell><Table>
+        <TableHeader><TableRow>{studentHead}<TableHead>{m.activityName}</TableHead><TableHead>{m.registeredOn}</TableHead><TableHead>{m.participation}</TableHead><TableHead>{m.result}</TableHead></TableRow></TableHeader>
+        <TableBody>{activities.map(row=><TableRow key={row.id} id={row.id}>
+          {studentCell(row.student_id,'activity')}
+          <TableCell className="align-top">{row.activity_name}<p className="mt-1 text-xs text-muted">{m.occurredOn}：{row.occurred_on??m.unknown}</p><BusinessHistoryEvidence data={data} reference={row} locale={locale}/></TableCell>
+          <TableCell className="align-top whitespace-nowrap">{row.registered_on??m.unknown}</TableCell>
+          <TableCell className="align-top">{row.participation_status==='registered'?m.registered:row.participation_status==='attended'?m.attended:row.participation_status==='no_show'?m.noShow:m.unknown}</TableCell>
+          <TableCell className="align-top">{row.reported_result||m.unknown}{row.reported_result&&<p className="mt-1 text-xs text-muted">{m.reportedResult}{row.result_link_status==='edition_unconfirmed'?` · ${m.editionPending}`:''}</p>}
+            {row.result_source_record_id&&<><BusinessHistoryEvidence data={data} reference={{source_record_id:row.result_source_record_id,source_field_ids:row.result_field_ids}} locale={locale}/>{related(row.result_source_record_id)}</>}
+          </TableCell>
+        </TableRow>)}</TableBody>
+      </Table></DashboardTableShell>}
+    </DashboardSection>}
+
+    {include('assessment')&&<DashboardSection title={`${m.assessment} · ${assessments.length}`}>
+      {!assessments.length?empty:<DashboardTableShell><Table>
+        <TableHeader><TableRow>{studentHead}<TableHead>{m.assessedOn}</TableHead><TableHead>{m.band}</TableHead><TableHead>{m.learning}</TableHead><TableHead>{m.parent}</TableHead></TableRow></TableHeader>
+        <TableBody>{assessments.map(row=><TableRow key={row.id} id={row.id}>
+          {studentCell(row.student_id,'assessment')}
+          <TableCell className="align-top whitespace-nowrap">{row.assessed_on??m.unknown}<BusinessHistoryEvidence data={data} reference={row} locale={locale}/></TableCell>
+          <TableCell className="align-top">{row.assessment_band}<p className="mt-1 text-xs text-muted">{m.score}：{row.score??m.unknown}</p></TableCell>
+          <TableCell className="max-w-sm align-top whitespace-pre-wrap leading-6">{row.learning_notes||m.unknown}</TableCell>
+          <TableCell className="max-w-sm align-top whitespace-pre-wrap leading-6">{row.parent_notes||m.unknown}</TableCell>
+        </TableRow>)}</TableBody>
+      </Table></DashboardTableShell>}
+    </DashboardSection>}
+
+    {include('enrollment')&&<DashboardSection title={`${m.enrollment} · ${enrollments.length}`}>
+      {!enrollments.length?empty:<><DashboardTableShell><Table>
+        <TableHeader><TableRow>{studentHead}<TableHead>{m.period}</TableHead><TableHead>{m.registeredOn}</TableHead><TableHead>{m.amount}</TableHead><TableHead>{m.currentClass}</TableHead><TableHead>{m.schedule}</TableHead></TableRow></TableHeader>
+        <TableBody>{enrollments.map(row=><TableRow key={row.id} id={row.id}>
+          {studentCell(row.student_id,'enrollment')}
+          <TableCell className="align-top">{row.period_label}<BusinessHistoryEvidence data={data} reference={row} locale={locale}/></TableCell>
+          <TableCell className="align-top whitespace-nowrap">{row.registered_on??m.unknown}</TableCell>
+          <TableCell className="align-top">{row.amount===null?row.amount_original||m.unknown:new Intl.NumberFormat(locale).format(row.amount)}</TableCell>
+          <TableCell className="align-top">{[row.class_label,row.teacher_label].filter(Boolean).join(' · ')||m.unknown}</TableCell>
+          <TableCell className="align-top">{row.schedule_label||m.unknown}{row.room_label&&<p className="mt-1 text-xs text-muted">{m.room} {row.room_label}</p>}</TableCell>
+        </TableRow>)}</TableBody>
+      </Table></DashboardTableShell><p className="mt-2 text-xs text-muted">{m.enrollmentHint}</p></>}
+    </DashboardSection>}
+
+    {include('communication')&&<DashboardSection title={`${m.communication} · ${communications.length}`}>
+      {!communications.length?empty:<ol className="space-y-6">{communications.map(row=><li key={row.id} id={row.id}>
+        {showStudent&&<Link href={`/dashboard/students/${row.student_id}?tab=history&history=communication`} className="mb-2 inline-block text-sm underline underline-offset-4">{data.students[row.student_id]??m.unknown}</Link>}
+        <h3 className="text-sm font-medium">{row.context_kind==='renewal'?m.renewalContext:m.assessmentContext}</h3>
+        <p className="mt-1 text-xs text-muted">{row.occurred_on??m.dateUnknown} · {m.author}：{row.author_label??m.unknown}</p>
+        <p className="mt-2 whitespace-pre-wrap text-sm leading-7">{row.content}</p>
+        <BusinessHistoryEvidence data={data} reference={row} locale={locale}/>
+      </li>)}</ol>}
+    </DashboardSection>}
+  </div>;
+}
