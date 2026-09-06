@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { parseStudentLifecycleStage, STUDENT_LIFECYCLE_ROADMAP, STUDENT_LIFECYCLE_STAGES } from "@/features/school/student-lifecycle-contract";
 
 describe("student lifecycle tags", () => {
-  it("accepts exactly the four business milestones", () => {
+  it("accepts exactly the four original business stages", () => {
     expect(STUDENT_LIFECYCLE_STAGES).toEqual([
       "awaiting_first_contact", "awaiting_assessment", "awaiting_enrollment", "awaiting_renewal",
     ]);
@@ -13,28 +13,28 @@ describe("student lifecycle tags", () => {
     }
   });
 
-  it("places five process tables around four milestones with renewal as a continuation", () => {
+  it("places five process tables around the original four stage states", () => {
     expect(STUDENT_LIFECYCLE_ROADMAP).toEqual([
-      { table: "leads", milestone: "awaiting_first_contact" },
-      { table: "communication", milestone: "awaiting_assessment" },
-      { table: "assessments", milestone: "awaiting_enrollment" },
-      { table: "enrollments", milestone: "awaiting_renewal" },
-      { table: "renewals", milestone: null },
+      { table: "leads", stage: "awaiting_first_contact" },
+      { table: "communication", stage: "awaiting_assessment" },
+      { table: "assessments", stage: "awaiting_enrollment" },
+      { table: "enrollments", stage: "awaiting_renewal" },
+      { table: "renewals", stage: null },
     ]);
-    expect(STUDENT_LIFECYCLE_ROADMAP.flatMap(({ milestone }) => milestone ? [milestone] : []))
+    expect(STUDENT_LIFECYCLE_ROADMAP.flatMap(({ stage }) => stage ? [stage] : []))
       .toEqual(STUDENT_LIFECYCLE_STAGES);
   });
 
-  it("separates process labels from circular milestones and highlights the current position", () => {
+  it("separates process labels from circular stage nodes and highlights the current position", () => {
     const sheet = fs.readFileSync("src/features/school/Student360Sheet.tsx", "utf8");
     expect(sheet).toContain("data-student-lifecycle={snapshot.lifecycleStage}");
     expect(sheet).toContain("Student360LifecycleRail");
-    expect(sheet).toContain("STUDENT_LIFECYCLE_ROADMAP.map(({ table, milestone }, index)");
+    expect(sheet).toContain("STUDENT_LIFECYCLE_ROADMAP.map(({ table, stage }, index)");
     expect(sheet).toContain('grid-cols-5 grid-rows-[auto_auto] gap-y-2');
     expect(sheet).not.toContain("grid-rows-[auto_2rem_auto]");
     expect(sheet).toContain('"absolute inset-x-0 top-1/2 h-px"');
     expect(sheet).toContain("data-student-lifecycle-process={table}");
-    expect(sheet).toContain("data-student-lifecycle-milestone={milestone}");
+    expect(sheet).toContain("data-student-lifecycle-stage={stage}");
     expect(sheet).toContain("data-student-lifecycle-connector");
     expect(sheet).toContain("data-student-lifecycle-continuation");
     expect(sheet).toContain('aria-current={current ? "step" : undefined}');
@@ -56,17 +56,17 @@ describe("student lifecycle tags", () => {
     expect(sheet).toContain('size-2 rounded-full bg-leaf-deep');
   });
 
-  it("names reached milestones instead of pending actions and reuses the five table names", () => {
+  it("keeps the original pending-stage meaning instead of substituting completed outcomes", () => {
     for (const locale of ["zh", "en"]) {
       const school = JSON.parse(fs.readFileSync(`messages/${locale}.json`, "utf8")).school;
       const copy = school.student360;
-      expect(STUDENT_LIFECYCLE_STAGES.map((stage) => copy[`milestone_${stage}`])).toEqual(locale === "zh"
-        ? ["线索入池", "建立联系", "完成测评", "确认报名"]
-        : ["Lead added", "Contact made", "Assessed", "Enrolled"]);
+      expect(STUDENT_LIFECYCLE_STAGES.map((stage) => copy[`lifecycle_${stage}`])).toEqual(locale === "zh"
+        ? ["待首联", "待测评", "待报名", "待续费"]
+        : ["Awaiting first contact", "Awaiting assessment", "Awaiting enrollment", "Awaiting renewal"]);
       for (const { table } of STUDENT_LIFECYCLE_ROADMAP) expect(school.followupWorkspace[table]).toBeTruthy();
       expect(school.followupWorkspace.enrollments).toBe(locale === "zh" ? "分班" : "Class placement");
       expect(school.courseEnrollments.title).toBe(locale === "zh" ? "分班" : "Class placement");
-      for (const stage of STUDENT_LIFECYCLE_STAGES) expect(copy[`lifecycle_${stage}`]).toBeUndefined();
+      for (const stage of STUDENT_LIFECYCLE_STAGES) expect(copy[`milestone_${stage}`]).toBeUndefined();
       expect(copy.lifecycleProcess).toContain("{table}");
       expect(copy.lifecycleCurrent).toBeTruthy();
       expect(copy.lifecyclePassed).toBeTruthy();
