@@ -13,7 +13,7 @@ import { NextContactReminderField } from "./NextContactReminderField";
 export function FollowupEntryFields({
   id, note, onNoteChange, placeholder, disabled = false, pending = false,
   reminder, hint, children, tools, saveDisabled = false, onSave, canAdvance = false,
-  readOnly = false, noteLabel,
+  readOnly = false, noteLabel, noteMaxLength = 2000,
 }: {
   id: string;
   note: string;
@@ -30,6 +30,7 @@ export function FollowupEntryFields({
   canAdvance?: boolean;
   readOnly?: boolean;
   noteLabel?: string;
+  noteMaxLength?: number;
 }) {
   const t = useTranslations("school.followupEntry");
   const hasBusiness = Children.toArray(children).length > 0;
@@ -50,7 +51,7 @@ export function FollowupEntryFields({
       <div className="space-y-1.5">
         <Label htmlFor={`${id}-note`} className="text-xs font-medium text-ink">{noteLabel ?? t("note")}</Label>
         {readOnly ? <p id={`${id}-note`} className="min-h-28 whitespace-pre-wrap text-sm leading-6">{note || '—'}</p> : <Textarea id={`${id}-note`} value={note} onChange={(event) => onNoteChange?.(event.target.value)}
-          rows={4} maxLength={2000} disabled={disabled || pending}
+          rows={4} maxLength={noteMaxLength} disabled={disabled || pending}
           placeholder={placeholder ?? t("notePlaceholder")}
           className="min-h-28 resize-y bg-card text-sm leading-6" />}
       </div>

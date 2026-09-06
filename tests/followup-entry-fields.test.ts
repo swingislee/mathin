@@ -16,6 +16,10 @@ const props: ComponentProps<typeof FollowupEntryFields> = {
 };
 
 describe("shared follow-up entry layout and submission contract", () => {
+  it("keeps the first-contact note limit while allowing a public-class assessment field to retain its own limit", () => {
+    expect(renderToStaticMarkup(createElement(FollowupEntryFields, props))).toMatch(/maxLength="2000"/i);
+    expect(renderToStaticMarkup(createElement(FollowupEntryFields, { ...props, noteMaxLength: 3000 }))).toMatch(/maxLength="3000"/i);
+  });
   it("uses the same note section for immutable facts and blocks keyboard submission", () => {
     const save = vi.fn();
     const readonlyProps = { ...props, readOnly: true, onSave: save, noteLabel: '原有业务事实' };

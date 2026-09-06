@@ -2,22 +2,23 @@
 
 import { createContext, useContext, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { useTranslations } from "next-intl";
-import { LoaderCircle } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { saveActivityAssessmentAction, type ActivityAssessmentInput } from "./activity-actions";
 import { savePublicClassParticipantRecordAction } from "./public-class-actions";
 import { ASSESSMENT_BANDS, type StoredAssessmentBand } from "./activity-workflow-contract";
 import type { AssessmentWorkbenchPublicClassRecord, AssessmentWorkbenchRow } from "./assessment-workbench-contract";
 import { FollowupChoice, type FollowupTone } from "./dashboard-page/FollowupChoice";
+import { FollowupEntryFields } from "./FollowupEntryFields";
+import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
 
 interface EntryProps {
   row: AssessmentWorkbenchRow;
   disabled: boolean;
   onSaved: (row: AssessmentWorkbenchRow) => void;
-  compact?: boolean;
+  onSaveAndNext?: () => void;
 }
 
 interface AssessmentDraftState {
@@ -25,8 +26,10 @@ interface AssessmentDraftState {
   setAggregate: Dispatch<SetStateAction<ActivityAssessmentInput>>;
   publicClass: AssessmentWorkbenchPublicClassRecord | null;
   setPublicClass: Dispatch<SetStateAction<AssessmentWorkbenchPublicClassRecord | null>>;
-  savedAggregateRef: { current: string };
-  savedPublicClassRef: { current: string };
+  savedAggregate: string;
+  setSavedAggregate: Dispatch<SetStateAction<string>>;
+  savedPublicClass: string;
+  setSavedPublicClass: Dispatch<SetStateAction<string>>;
   savingRef: { current: boolean };
   composingRef: { current: boolean };
   pending: boolean;
@@ -48,12 +51,12 @@ export function ActivityAssessmentDraftProvider({ row, children }: { row: Assess
     recommendedClass: row.assessment?.recommendedClass ?? "",
   }));
   const [publicClass, setPublicClass] = useState(row.publicClassRecord);
-  const savedAggregateRef = useRef(JSON.stringify(aggregate));
-  const savedPublicClassRef = useRef(JSON.stringify(publicClass));
+  const [savedAggregate, setSavedAggregate] = useState(() => JSON.stringify(aggregate));
+  const [savedPublicClass, setSavedPublicClass] = useState(() => JSON.stringify(publicClass));
   const savingRef = useRef(false);
   const composingRef = useRef(false);
   const [pending, setPending] = useState(false);
-  return <AssessmentDraftContext.Provider value={{ aggregate, setAggregate, publicClass, setPublicClass, savedAggregateRef, savedPublicClassRef, savingRef, composingRef, pending, setPending }}>{children}</AssessmentDraftContext.Provider>;
+  return <AssessmentDraftContext.Provider value={{ aggregate, setAggregate, publicClass, setPublicClass, savedAggregate, setSavedAggregate, savedPublicClass, setSavedPublicClass, savingRef, composingRef, pending, setPending }}>{children}</AssessmentDraftContext.Provider>;
 }
 
 function useAssessmentDraft() {
@@ -74,17 +77,22 @@ function bandTone(band: string): FollowupTone {
   return "healthy";
 }
 
-function ActivityAssessmentEntry({ row, disabled, onSaved, compact }: EntryProps) {
+function ActivityAssessmentEntry({ row, disabled, onSaved, onSaveAndNext }: EntryProps) {
   const t = useTranslations("school.activities");
-  const { aggregate: draft, setAggregate: setDraft, pending, setPending, savedAggregateRef: savedRef, savingRef, composingRef } = useAssessmentDraft();
-  const save = async (next = draft) => {
-    if (disabled || savingRef.current || composingRef.current || !row.registrationId || JSON.stringify(next) === savedRef.current) return;
+  const entryT = useTranslations("school.supportAssessment");
+  const { aggregate: draft, setAggregate: setDraft, pending, setPending, savedAggregate, setSavedAggregate, savingRef, composingRef } = useAssessmentDraft();
+  const [hasSaved, setHasSaved] = useState(false);
+  const dirty = JSON.stringify(draft) !== savedAggregate;
+  const save = async (advance: boolean) => {
+    if (disabled || savingRef.current || composingRef.current || !row.registrationId || !dirty) return;
+    const next = draft;
     savingRef.current = true;
     setPending(true);
     try {
       const result = await saveActivityAssessmentAction(next);
       if (!result.ok) { toast.error(t("assessmentAutosaveFailed")); return; }
-      savedRef.current = JSON.stringify(next);
+      setSavedAggregate(JSON.stringify(next));
+      setHasSaved(true);
       const updatedAt = new Date().toISOString();
       onSaved({ ...row, participationStatus: "attended", updatedAt, assessment: {
         ...next,
@@ -93,23 +101,25 @@ function ActivityAssessmentEntry({ row, disabled, onSaved, compact }: EntryProps
         updatedAt,
       } });
       toast.success(t("autosave_saved"));
+      window.dispatchEvent(new Event(STUDENT_360_REFRESH_EVENT));
+      if (advance) onSaveAndNext?.();
     } catch { toast.error(t("assessmentAutosaveFailed")); }
     finally { savingRef.current = false; setPending(false); }
   };
   const locked = disabled || pending;
-  return <form className={compact ? "flex min-w-0 items-center gap-1.5" : "grid min-w-0 grid-cols-2 items-start gap-3 xl:grid-cols-4"}
+  return <div data-assessment-entry="activity" className="min-w-0"
     onClick={(event) => event.stopPropagation()}
     onCompositionStart={() => { composingRef.current = true; }}
     onCompositionEnd={() => { composingRef.current = false; }}
-    onSubmit={(event) => { event.preventDefault(); void save(); }}
-    onKeyDown={(event) => {
-      if (event.nativeEvent.isComposing || composingRef.current) return;
-      if (event.repeat) { if (event.key === "Enter") event.preventDefault(); return; }
-      if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) { event.preventDefault(); void save(); }
-    }}>
-    <div className={compact ? "contents" : "col-span-full flex min-w-0 flex-wrap items-end gap-3"}>
-    <div className={compact ? "contents" : "w-32 shrink-0 space-y-1 text-xs text-muted"}>
-    {!compact ? <span>{t("assessmentBand")}</span> : null}
+    >
+    <FollowupEntryFields id={`assessment-entry-${row.id}`} note={draft.parentConcerns} noteLabel={t("parentConcerns")}
+      onNoteChange={(value) => setDraft((current) => ({ ...current, parentConcerns: value }))}
+      disabled={disabled} readOnly={disabled} pending={pending} saveDisabled={!dirty}
+      onSave={(advance) => { void save(advance); }} canAdvance={Boolean(onSaveAndNext)}
+      hint={disabled ? entryT("readonlyHint") : dirty ? entryT("draftHint") : hasSaved ? entryT("savedInSession") : undefined}>
+    <div className="flex min-w-0 flex-wrap items-end gap-3">
+    <div className="w-32 shrink-0 space-y-1.5 text-xs text-muted">
+    <Label className="text-xs">{t("assessmentBand")}</Label>
     <FollowupChoice value={draft.assessmentBand ?? "none"} label={t("assessmentBand")} disabled={locked}
       className="w-28 shrink-0"
       options={[
@@ -120,42 +130,39 @@ function ActivityAssessmentEntry({ row, disabled, onSaved, compact }: EntryProps
       onValueChange={(value) => {
         const next = { ...draft, assessmentBand: value === "none" ? null : value as StoredAssessmentBand };
         setDraft(next);
-        if (compact) void save(next);
       }} /></div>
-    <label className={compact ? "contents" : "w-24 shrink-0 space-y-1 text-xs text-muted"}>
-    {!compact ? <span>{t("scoreShort")}</span> : null}
+    <label className="w-24 shrink-0 space-y-1.5 text-xs text-muted">
+    <span>{t("scoreShort")}</span>
     <Input aria-label={t("scoreShort")} type="number" min={0} max={10000} value={draft.score ?? ""} disabled={locked}
-      placeholder={t("scoreShort")} className={compact ? "h-8 min-w-0 w-20 text-xs" : "h-8 text-xs"}
-      onChange={(event) => setDraft((current) => ({ ...current, score: event.target.value === "" ? null : Number(event.target.value) }))}
-      onBlur={() => { if (compact) void save(); }} /></label>
-    {!compact ? <>
+      placeholder={t("scoreShort")} className="h-8 text-xs"
+      onChange={(event) => setDraft((current) => ({ ...current, score: event.target.value === "" ? null : Number(event.target.value) }))} /></label>
       <label className="min-w-40 flex-1 space-y-1 text-xs text-muted"><span>{t("recommendedClass")}</span>
         <Input value={draft.recommendedClass} maxLength={200} disabled={locked} aria-label={t("recommendedClass")} className="h-8 text-xs"
           onChange={(event) => setDraft((current) => ({ ...current, recommendedClass: event.target.value }))} />
       </label>
-      <Button type="submit" disabled={locked} size="sm" className="h-8 shrink-0" aria-keyshortcuts="Control+Enter Meta+Enter">
-        {pending ? <LoaderCircle className="size-3.5 animate-spin" /> : null}{t("save")} <kbd className="text-[10px] opacity-70">Ctrl ↵</kbd>
-      </Button>
-    </> : null}
     </div>
-    {!compact ? <>
-      {(["strengths", "focusAreas", "parentConcerns", "teacherRecommendation"] as const).map((field) => <label key={field} className="block min-w-0 space-y-1 text-xs text-muted">
+    <div className="grid min-w-0 gap-3 @[36rem]/followup-entry:grid-cols-2">
+      {(["strengths", "focusAreas", "teacherRecommendation"] as const).map((field) => <label key={field} className="block min-w-0 space-y-1.5 text-xs text-muted">
         <span>{t(field)}</span>
         <Textarea rows={2} maxLength={2000} value={draft[field]} disabled={locked} aria-label={t(field)} className="min-h-20 resize-y text-xs"
           onChange={(event) => setDraft((current) => ({ ...current, [field]: event.target.value }))} />
       </label>)}
-    </> : null}
-  </form>;
+    </div>
+    </FollowupEntryFields>
+  </div>;
 }
 
-function PublicClassAssessmentEntry({ row, disabled, onSaved, compact }: EntryProps) {
+function PublicClassAssessmentEntry({ row, disabled, onSaved, onSaveAndNext }: EntryProps) {
   const t = useTranslations("school.publicClass");
   const activityT = useTranslations("school.activities");
-  const { publicClass, setPublicClass, pending, setPending, savedPublicClassRef: savedRef, savingRef, composingRef } = useAssessmentDraft();
+  const entryT = useTranslations("school.supportAssessment");
+  const { publicClass, setPublicClass, pending, setPending, savedPublicClass, setSavedPublicClass, savingRef, composingRef } = useAssessmentDraft();
+  const [hasSaved, setHasSaved] = useState(false);
   const draft = publicClass!;
   const setDraft = (update: (current: AssessmentWorkbenchPublicClassRecord) => AssessmentWorkbenchPublicClassRecord) => setPublicClass((current) => current ? update(current) : current);
-  const save = async () => {
-    if (disabled || savingRef.current || composingRef.current || !row.registrationId || JSON.stringify(draft) === savedRef.current) return;
+  const dirty = JSON.stringify(draft) !== savedPublicClass;
+  const save = async (advance: boolean) => {
+    if (disabled || savingRef.current || composingRef.current || !row.registrationId || !dirty) return;
     savingRef.current = true;
     setPending(true);
     try {
@@ -170,7 +177,8 @@ function PublicClassAssessmentEntry({ row, disabled, onSaved, compact }: EntryPr
         recommendation: draft.recommendation,
       });
       if (!result.ok) { toast.error(activityT("actionFailed")); return; }
-      savedRef.current = JSON.stringify(draft);
+      setSavedPublicClass(JSON.stringify(draft));
+      setHasSaved(true);
       const updatedAt = new Date().toISOString();
       const completed = Boolean(draft.assessmentSummary.trim());
       onSaved({ ...row, updatedAt, publicClassRecord: { ...draft, id: result.data.recordId },
@@ -182,24 +190,22 @@ function PublicClassAssessmentEntry({ row, disabled, onSaved, compact }: EntryPr
         } : null,
       });
       toast.success(t("recordSaved"));
+      window.dispatchEvent(new Event(STUDENT_360_REFRESH_EVENT));
+      if (advance) onSaveAndNext?.();
     } catch { toast.error(activityT("actionFailed")); }
     finally { savingRef.current = false; setPending(false); }
   };
   const locked = disabled || pending;
-  return <form className={compact ? "min-w-0" : "grid min-w-0 grid-cols-2 items-start gap-3 xl:grid-cols-4"} onClick={(event) => event.stopPropagation()}
+  return <div data-assessment-entry="public-class" className="min-w-0" onClick={(event) => event.stopPropagation()}
     onCompositionStart={() => { composingRef.current = true; }}
     onCompositionEnd={() => { composingRef.current = false; }}
-    onSubmit={(event) => { event.preventDefault(); void save(); }}
-    onKeyDown={(event) => {
-      if (event.nativeEvent.isComposing || composingRef.current) return;
-      if (event.repeat) { if (event.key === "Enter") event.preventDefault(); return; }
-      if (event.key === "Enter" && (event.ctrlKey || event.metaKey || compact)) { event.preventDefault(); void save(); }
-    }}>
-    {compact ? <Input value={draft.assessmentSummary} disabled={locked} maxLength={3000} className="h-8 text-xs"
-      aria-label={t("assessmentSummary")} placeholder={t("assessmentSummary")}
-      onChange={(event) => setDraft((current) => ({ ...current, assessmentSummary: event.target.value }))}
-      onBlur={() => { void save(); }} /> : <>
-      <div className="col-span-full flex min-w-0 flex-wrap items-end gap-3">
+    >
+    <FollowupEntryFields id={`assessment-entry-${row.id}`} note={draft.parentFeedback} noteLabel={t("parentFeedback")} noteMaxLength={3000}
+      onNoteChange={(value) => setDraft((current) => ({ ...current, parentFeedback: value }))}
+      disabled={disabled} readOnly={disabled} pending={pending} saveDisabled={!dirty}
+      onSave={(advance) => { void save(advance); }} canAdvance={Boolean(onSaveAndNext)}
+      hint={disabled ? entryT("readonlyHint") : dirty ? entryT("draftHint") : hasSaved ? entryT("savedInSession") : undefined}>
+      <div className="flex min-w-0 flex-wrap items-end gap-3">
       {(["studentPresence", "guardianPresence"] as const).filter((field) => draft[field] !== "not_applicable").map((field) => <label key={field} className="block w-40 space-y-1 text-xs text-muted">
         <span>{t(field === "studentPresence" ? "studentAttendance" : "guardianAttendance")}</span>
         <FollowupChoice value={draft[field]} disabled={locked} label={t(field === "studentPresence" ? "studentAttendance" : "guardianAttendance")}
@@ -208,15 +214,14 @@ function PublicClassAssessmentEntry({ row, disabled, onSaved, compact }: EntryPr
           }))}
           onValueChange={(value) => setDraft((current) => ({ ...current, [field]: value }))} />
       </label>)}
-      <Button type="submit" disabled={locked} size="sm" className="ml-auto h-8 shrink-0" aria-keyshortcuts="Control+Enter Meta+Enter">
-        {pending ? <LoaderCircle className="size-3.5 animate-spin" /> : null}{activityT("save")} <kbd className="text-[10px] opacity-70">Ctrl ↵</kbd>
-      </Button>
       </div>
-      {(["assessmentSummary", "learningObservation", "parentFeedback", "recommendation"] as const).map((field) => <label key={field} className="block min-w-0 space-y-1 text-xs text-muted">
+      <div className="grid min-w-0 gap-3 @[36rem]/followup-entry:grid-cols-2">
+      {(["assessmentSummary", "learningObservation", "recommendation"] as const).map((field) => <label key={field} className="block min-w-0 space-y-1.5 text-xs text-muted">
         <span>{t(field)}</span>
         <Textarea rows={2} maxLength={3000} value={draft[field]} disabled={locked} aria-label={t(field)} className="min-h-20 resize-y text-xs"
           onChange={(event) => setDraft((current) => ({ ...current, [field]: event.target.value }))} />
       </label>)}
-    </>}
-  </form>;
+      </div>
+    </FollowupEntryFields>
+  </div>;
 }

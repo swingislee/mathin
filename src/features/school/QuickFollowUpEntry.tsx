@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { LoaderCircle, MessageSquarePlus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useAction } from "@/components/action-form";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
 import { addStudentFollowUp } from "./actions/followups";
+import { FollowupEntryFields } from "./FollowupEntryFields";
 
 export interface QuickFollowUpSaved {
   content: string;
@@ -25,12 +26,15 @@ export function QuickFollowUpEntry({
   studentId,
   onSaved,
   onSaveAndNext,
+  layout = "standalone",
 }: {
   studentId: string;
   onSaved?: (entry: QuickFollowUpSaved) => void;
   onSaveAndNext?: () => void;
+  layout?: "standalone" | "followup";
 }) {
   const t = useTranslations("school.quickFollowUp");
+  const entryId = useId();
   const [content, setContent] = useState("");
   const advanceRef = useRef(false);
   const submittedContentRef = useRef("");
@@ -80,6 +84,9 @@ export function QuickFollowUpEntry({
         }
       }}
     >
+      {layout === "followup" ? <FollowupEntryFields id={`assessment-note-${entryId}`} note={content} noteLabel={t("title")}
+        onNoteChange={setContent} placeholder={t("placeholder")} pending={run.pending} saveDisabled={!content.trim()}
+        onSave={submit} canAdvance={Boolean(onSaveAndNext)} hint={t("independentHint")} /> : <>
       <label className="block space-y-1 text-xs text-muted">
         <span>{t("title")}</span>
         <Textarea
@@ -106,6 +113,7 @@ export function QuickFollowUpEntry({
           </Button>
         ) : null}
       </div>
+      </>}
     </form>
   );
 }

@@ -7,7 +7,7 @@ import { DashboardInlineEntry } from "./DashboardInlineEntry";
 
 /** 详情单独占据当前记录的下一行；数据行和固定列宽保持原样。 */
 export function FollowupInlineDetails({
-  open, onOpenChange, title, colSpan, children, pending = false, autoFocus = false, onSubmit, id, hideTitle = false, active = true, onKeyDown, onActivate,
+  open, onOpenChange, title, colSpan, children, pending = false, autoFocus = false, onSubmit, id, hideTitle = false, active = true, onKeyDown, onActivate, keepMounted = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -22,10 +22,12 @@ export function FollowupInlineDetails({
   active?: boolean;
   onKeyDown?: KeyboardEventHandler<HTMLElement>;
   onActivate?: () => void;
+  /** 已打开的测评登记可收起并保留草稿；其他入口沿用关闭即卸载的默认行为。 */
+  keepMounted?: boolean;
 }) {
   const t = useTranslations("school.followupWorkspace");
   const rowRef = useRef<HTMLTableRowElement>(null);
-  if (!open) return null;
+  if (!open && !keepMounted) return null;
 
   const close = () => {
     if (pending) return;
@@ -35,7 +37,7 @@ export function FollowupInlineDetails({
     (trigger ?? summary)?.focus({ preventScroll: true });
   };
 
-  return <TableRow ref={rowRef} id={id} tabIndex={-1} data-followup-inline-details data-followup-active={active} onKeyDown={onKeyDown}
+  return <TableRow ref={rowRef} id={id} tabIndex={-1} hidden={!open} aria-hidden={!open || undefined} inert={!open || undefined} data-followup-inline-details data-followup-active={active} onKeyDown={onKeyDown}
     onFocusCapture={(event) => { if (event.currentTarget.contains(event.target)) onActivate?.(); }}
     onPointerDown={(event) => {
       if (!event.currentTarget.contains(event.target as Node)) return;

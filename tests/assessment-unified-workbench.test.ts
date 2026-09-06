@@ -35,9 +35,10 @@ describe("unified assessment workbench", () => {
 
   it("opens an attached detail row while keeping the original record row and table columns fixed", () => {
     const workbench = source("src/features/school/AssessmentUnifiedWorkbench.tsx");
+    const detail = source("src/features/school/AssessmentRecordDetails.tsx");
 
     expect(workbench).toContain("<DashboardCommandPanel>");
-    expect(workbench).toContain("<DashboardTableShell data-assessment-unified-workbench>");
+    expect(workbench).toContain("<DashboardTableShell data-assessment-unified-workbench data-followup-workbench");
     expect(workbench).toContain('className="sticky left-0');
     expect(workbench).toContain("TeacherAssessmentEntryButton");
     expect(workbench).toContain("teacherObservation");
@@ -46,13 +47,18 @@ describe("unified assessment workbench", () => {
     expect(workbench).toContain("colSpan={7}");
     expect(workbench).toContain("table-fixed");
     expect(workbench).toContain('"h-16 cursor-pointer');
-    expect(workbench).toContain('!sibling.hasAttribute("data-assessment-workbench-row")');
+    expect(workbench).toContain("navigateFollowupTable(event");
+    expect(workbench).toContain("keepMounted={visitedDetails.has(row.id)}");
+    expect(workbench).toContain("data-followup-active={active}");
+    expect(workbench).toContain("data-followup-expanded={expanded}");
+    expect(workbench).not.toContain("min-w-[94rem]");
+    expect(workbench).not.toContain("bg-blue/10");
     expect(workbench).not.toContain('from "./dashboard-page/FollowupDetails"');
     expect(workbench).toContain('persistenceKey: "followup-assessments"');
     expect(workbench).toContain("ActivityAssessmentDetails");
     expect(workbench).toContain('assessmentTable.columnProps("kind")');
     expect(workbench).not.toContain("<Tabs");
-    expect(workbench).toContain("LEARNING_CHECK_STATUS_STYLE[status]");
+    expect(detail).toContain("LEARNING_CHECK_STATUS_STYLE[status]");
     expect(workbench).not.toContain("saveTeacherAssessmentQuestionAction");
   });
 
@@ -66,7 +72,7 @@ describe("unified assessment workbench", () => {
     expect(route).toContain('redirect(`/${locale}/dashboard/followups/assessments`)');
     expect(canonical).toContain("<AssessmentUnifiedWorkbench");
     expect(canonical).not.toContain("requestedDesk");
-    expect(workbench).toContain("data-assessor-reassignment");
+    expect(source("src/features/school/AssessmentRecordDetails.tsx")).toContain("data-assessor-reassignment");
     expect(workbench).toContain("reassignAssessmentAssessorAction");
     expect(action).toContain('"reassign_assessment_assessor"');
     expect(migration).toContain("create or replace function public.reassign_assessment_assessor");
@@ -131,7 +137,12 @@ describe("unified assessment workbench", () => {
     const details = source("src/features/school/ActivityAssessmentDetails.tsx");
     expect(details).toContain("savePublicClassParticipantRecordAction");
     expect(details).toContain("saveActivityAssessmentAction");
-    expect(details).toContain('aria-keyshortcuts="Control+Enter Meta+Enter"');
+    expect(details).toContain("<FollowupEntryFields");
+    expect(source("src/features/school/FollowupEntryFields.tsx")).toContain('aria-keyshortcuts="Control+Enter Meta+Enter"');
+    expect(details).not.toContain("onBlur=");
+    expect(details).not.toContain("if (compact)");
+    expect(details).toContain("if (advance) onSaveAndNext?.()");
+    expect(details).toContain("STUDENT_360_REFRESH_EVENT");
     expect(details).toContain("segmentId: draft.segmentId");
     expect(details).not.toContain("saveTeacherAssessmentQuestionAction");
   });

@@ -3453,7 +3453,7 @@
       "signinFooter": "This sheet includes {count} participants. Add walk-ins in the blank space."
     },
     "assessmentHub": {
-      "title": "1:1 assessments",
+      "title": "Assessments",
       "sharedDesk": "Shared support and assessor workbench",
       "teacherDesk": "Assessor workspace",
       "supportDesk": "Support handoff workspace",
@@ -3554,14 +3554,14 @@
       "liveQueueMeta": "Connected to the live assessment queue",
       "localPreview": "Local acceptance · no business data is written",
       "queueLabel": "Support assessment handoff queue",
-      "unifiedQueueLabel": "1:1 assessment work queue",
+      "unifiedQueueLabel": "Assessment work queue",
       "queue_assessment_pending": "Awaiting assessment",
       "queue_pending": "Awaiting family feedback",
       "queue_in_progress": "In progress",
       "queue_handled": "Classified",
       "queue_all": "All",
       "searchPlaceholder": "Search child, phone, teacher, or conclusion",
-      "empty": "No 1:1 assessment records match the current filter.",
+      "empty": "No assessment records match the current filter.",
       "studentColumn": "Child and family",
       "arrangementColumn": "Schedule and assessor",
       "resultColumn": "Assessment result",
@@ -3617,7 +3617,16 @@
       "details": "Details",
       "activityWorkspace": "Activity records",
       "save": "Save",
-      "keyboardHint": "Arrow keys to navigate, Enter for details"
+      "keyboardHint": "↑↓ Navigate · Enter Expand · Ctrl/Cmd ↵ Save",
+      "entryAssessment": "Assessment record",
+      "entryNote": "Add a note",
+      "entryHandoff": "Feedback and next step",
+      "entryLabel": "Record for this visit",
+      "progressLabel": "Assessment progress",
+      "confirmAssessor": "Confirm reassignment",
+      "draftHint": "Your entries are kept until you choose to save.",
+      "readonlyHint": "This record is read-only.",
+      "savedInSession": "Saved. This row stays in the current list."
     },
     "quickFollowUp": {
       "title": "Current situation",

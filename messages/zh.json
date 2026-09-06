@@ -3453,7 +3453,7 @@
       "signinFooter": "本表共 {count} 位参与者；临时新增可在空白处补记。"
     },
     "assessmentHub": {
-      "title": "1 对 1 测评",
+      "title": "测评",
       "sharedDesk": "学辅与测评教师共用工作台",
       "teacherDesk": "测评教师工作台",
       "supportDesk": "学辅接续工作台",
@@ -3554,14 +3554,14 @@
       "liveQueueMeta": "已接入真实测评队列",
       "localPreview": "本地验收 · 不写业务数据",
       "queueLabel": "学辅测评接续队列",
-      "unifiedQueueLabel": "1 对 1 测评工作队列",
+      "unifiedQueueLabel": "测评工作队列",
       "queue_assessment_pending": "待测评",
       "queue_pending": "待向家长反馈",
       "queue_in_progress": "测评中",
       "queue_handled": "已归类",
       "queue_all": "全部",
       "searchPlaceholder": "搜索孩子、电话、老师或结论",
-      "empty": "当前筛选下没有 1 对 1 测评记录。",
+      "empty": "当前筛选下没有测评记录。",
       "studentColumn": "孩子与家长",
       "arrangementColumn": "测评安排与老师",
       "resultColumn": "测评结果",
@@ -3617,7 +3617,16 @@
       "details": "详情",
       "activityWorkspace": "活动登记",
       "save": "保存",
-      "keyboardHint": "方向键切换，Enter 打开详情"
+      "keyboardHint": "↑↓ 切换记录 · Enter 展开 · Ctrl/Cmd ↵ 保存",
+      "entryAssessment": "测评登记",
+      "entryNote": "记情况",
+      "entryHandoff": "反馈与去向",
+      "entryLabel": "本次登记内容",
+      "progressLabel": "本次测评进度",
+      "confirmAssessor": "确认换师",
+      "draftHint": "填写内容会保留，确认后保存。",
+      "readonlyHint": "当前记录仅供查看。",
+      "savedInSession": "已保存，本行保留在当前名单中。"
     },
     "quickFollowUp": {
       "title": "本次情况",

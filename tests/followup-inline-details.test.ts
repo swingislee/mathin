@@ -5,18 +5,26 @@ import { FollowupInlineDetails } from "@/features/school/dashboard-page/Followup
 
 vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
 
-function renderTable(open: boolean) {
+function renderTable(open: boolean, keepMounted = false) {
   return renderToStaticMarkup(createElement("table", { style: { tableLayout: "fixed", width: "100%" } },
     createElement("colgroup", null, createElement("col", { style: { width: "14rem" } }), createElement("col", { style: { width: "24rem" } })),
     createElement("tbody", null,
       createElement("tr", { id: "record", style: { height: "64px" } }, createElement("td", null, "学生"), createElement("td", null, "安排及快捷录入")),
-      createElement(FollowupInlineDetails, { open, onOpenChange: () => {}, title: "学生录入", colSpan: 2, id: "entry" }, createElement("input", { "aria-label": "详细记录" })),
+      createElement(FollowupInlineDetails, { open, keepMounted, onOpenChange: () => {}, title: "学生录入", colSpan: 2, id: "entry" }, createElement("input", { "aria-label": "详细记录" })),
       createElement("tr", { id: "next-record" }, createElement("td", { colSpan: 2 }, "下一条记录")),
     ),
   ));
 }
 
 describe("follow-up inline details", () => {
+  it("keeps an opted-in assessment draft hidden and inert when its detail is closed", () => {
+    const markup = renderTable(false, true);
+    const detailRow = markup.match(/<tr\b[^>]*id="entry"[^>]*>/)?.[0];
+    expect(detailRow).toContain('hidden=""');
+    expect(detailRow).toContain('inert=""');
+    expect(detailRow).toContain('aria-hidden="true"');
+    expect(markup.match(/aria-label="详细记录"/g)).toHaveLength(1);
+  });
   it("adds details between the selected record and the next record without modifying either summary or columns", () => {
     const closed = renderTable(false);
     const open = renderTable(true);

@@ -1,14 +1,10 @@
 "use client";
 
+
 import { BusinessRecordStateFilter, HistoricalRecordBadge, useBusinessSearchQuery } from './BusinessRecordStateFilter';
 import { businessRecordMessages, isCurrentBusinessRecord, matchesBusinessRecordState, type BusinessRecordStateFilter as StateFilter } from './business-record-state-contract';
-import { uniqueBusinessFeedback } from './business-record-notes';
-
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ChevronDown,
-  ChevronRight,
-  Clock3,
   FilePenLine,
   UserCheck,
 } from "lucide-react";
@@ -17,15 +13,14 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
-import { FollowupChoice } from "./dashboard-page/FollowupChoice";
 import { FollowupInlineDetails } from "./dashboard-page/FollowupInlineDetails";
+import { FollowupPersonCell } from "./dashboard-page/FollowupPersonCell";
+import { navigateFollowupTable } from "./followup-keyboard";
 import { FilterSearchInput } from "./FilterBar";
 import { FollowupTabs } from "./FollowupTabs";
-import { ActivityAssessmentDetails, ActivityAssessmentDraftProvider } from "./ActivityAssessmentDetails";
-import { Student360Trigger } from "./Student360Sheet";
-import { PostActivityHandoff } from "./EnrollmentHandoffButton";
+import { ActivityAssessmentDraftProvider } from "./ActivityAssessmentDetails";
+import { AssessmentRecordDetails } from "./AssessmentRecordDetails";
 import { reassignAssessmentAssessorAction } from "./assessment-assessor-actions";
 import {
   type ActivityRouteKind,
@@ -49,11 +44,7 @@ import {
   useDashboardTableView,
 } from "./dashboard-page";
 import type { InvitationAssessorOption } from "./invitation-contract";
-import { LearningCheckStatusIcon } from "./LearningCheckStatusIcon";
-import { LEARNING_CHECK_STATUS_STYLE } from "./session-learning-visual";
-import { TEACHER_ASSESSMENT_OUTCOMES } from "./teacher-assessment-contract";
 import { TeacherAssessmentEntryButton } from "./TeacherAssessmentEntryButton";
-import { QuickFollowUpEntry } from "./QuickFollowUpEntry";
 
 interface SupportDraft {
   route: ActivityRouteKind | null;
@@ -82,7 +73,7 @@ function queueFor(
 ): Exclude<AssessmentWorkbenchQueue, "all"> {
   const stage = assessmentWorkbenchStage(row);
   if (stage === "feedback" || stage === "handled") {
-    return draft.route ? "handled" : "feedback";
+    return (draft?.route ?? row.route?.route) ? "handled" : "feedback";
   }
   return stage;
 }
@@ -117,17 +108,20 @@ export function AssessmentUnifiedWorkbench({
   const hubT = useTranslations("school.assessmentHub");
   const assessmentT = useTranslations("school.assessments");
   const teacherT = useTranslations("school.teacherAssessment");
-  const sessionT = useTranslations("school.session");
   const tableT = useTranslations("school.table");
   const initialDrafts = useMemo(() => Object.fromEntries(
     initialRows.map((row) => [row.id, draftFromRow(row)]),
   ), [initialRows]);
-  const [rows, setRows] = useState(initialRows);
+  const [currentRows, setRows] = useState(() => initialRows.filter(row => isCurrentBusinessRecord(row.recordState)));
+  const rows = useMemo(() => [...currentRows, ...initialRows.filter(row => !isCurrentBusinessRecord(row.recordState))], [currentRows, initialRows]);
   const [drafts, setDrafts] = useState<Record<string, SupportDraft>>(initialDrafts);
   const [query, setQuery] = useBusinessSearchQuery("assessments",initialQuery);
   const [recordState,setRecordState]=useState(initialRecordState);
   const recordM=businessRecordMessages(locale);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [visitedDetails, setVisitedDetails] = useState<Set<string>>(() => new Set());
+  const [retainedView, setRetainedView] = useState<{ key: string; ids: string[] } | null>(null);
   const [reassigningId, setReassigningId] = useState<string | null>(null);
   const dateTime = useMemo(() => new Intl.DateTimeFormat(locale, {
     month: "numeric",
@@ -282,8 +276,22 @@ export function AssessmentUnifiedWorkbench({
     },
   }), [assessmentT, dateTime, dayFormatter, drafts, t, tableT, teacherT,recordM.unknown,recordM.historical]);
   const assessmentTable = useDashboardTableView({ rows: scopedRows, columns: tableColumns, locale, persistenceKey: "followup-assessments" });
-  const saveRow = (saved: AssessmentWorkbenchRow) => setRows((current) => current.map((row) => row.id === saved.id ? saved : row));
-  const saveQuickFollowUp = (row: AssessmentWorkbenchRow, content: string, createdAt: string) => setRows((current) => current.map((candidate) => candidate.id === row.id ? {
+  const viewKey = JSON.stringify([query, recordState, assessmentTable.filters, assessmentTable.sort]);
+  const latestInteraction = useRef({ activeId, expandedId, viewKey });
+  useEffect(() => { latestInteraction.current = { activeId, expandedId, viewKey }; }, [activeId, expandedId, viewKey]);
+  if (retainedView && retainedView.key !== viewKey) setRetainedView(null);
+  const rowById = new Map(rows.map((row) => [row.id, row]));
+  const visibleRows = retainedView?.key === viewKey
+    ? retainedView.ids.flatMap((id) => rowById.has(id) ? [rowById.get(id)!] : [])
+    : assessmentTable.visibleRows;
+  const retainCurrentView = () => setRetainedView((current) => current?.key === viewKey ? current : { key: viewKey, ids: visibleRows.map((row) => row.id) });
+  const saveRow = (saved: AssessmentWorkbenchRow) => {
+    retainCurrentView();
+    setRows((current) => current.map((row) => row.id === saved.id ? saved : row));
+  };
+  const saveQuickFollowUp = (row: AssessmentWorkbenchRow, content: string, createdAt: string) => {
+    retainCurrentView();
+    setRows((current) => current.map((candidate) => candidate.id === row.id ? {
     ...candidate,
     latestFollowUp: {
       id: `local:${createdAt}`,
@@ -293,40 +301,43 @@ export function AssessmentUnifiedWorkbench({
       nextFollowUpAt: null,
       statusAfter: null,
     },
-  } : candidate));
-  const advanceFrom = (rowId: string) => setActiveId(nextAssessmentWorkbenchRowId(assessmentTable.visibleRows.map((row) => row.id), rowId));
+    } : candidate));
+  };
+  const changeDetails = (id: string, open: boolean) => {
+    setActiveId(id);
+    setExpandedId(open ? id : null);
+    if (open) setVisitedDetails((current) => new Set([...current, id]));
+  };
+  const advanceFrom = (rowId: string) => {
+    // 请求期间用户切换了记录或筛选时，保存只更新原记录，继续尊重用户当前所在位置。
+    const latest = latestInteraction.current;
+    if (latest.activeId !== rowId || latest.expandedId !== rowId || latest.viewKey !== viewKey) return;
+    const nextId = nextAssessmentWorkbenchRowId(visibleRows.map((row) => row.id), rowId);
+    if (nextId) changeDetails(nextId, true);
+  };
 
   const updateDraft = (id: string, update: (draft: SupportDraft) => SupportDraft) => {
+    retainCurrentView();
     setDrafts((current) => ({ ...current, [id]: update(current[id]) }));
   };
   const reassignAssessor = (row: AssessmentWorkbenchRow, assessorId: string) => {
     if (row.assessmentKind !== "one_to_one" || !row.invitationId || assessorId === row.assessorId) return;
     const option = assessors.find((candidate) => candidate.userId === assessorId);
     if (!option) return;
-    const previous = { assessorId: row.assessorId, assessorName: row.assessorName };
+    retainCurrentView();
     setReassigningId(row.id);
-    setRows((current) => current.map((candidate) => candidate.id === row.id ? {
-      ...candidate,
-      assessorId,
-      assessorName: option.displayName,
-      assessorSource: "assigned",
-      updatedAt: new Date().toISOString(),
-    } : candidate));
     void reassignAssessmentAssessorAction(row.invitationId, assessorId).then((result) => {
       setReassigningId(null);
       if (result.ok) {
+        setRows((current) => current.map((candidate) => candidate.id === row.id ? {
+          ...candidate, assessorId, assessorName: option.displayName, assessorSource: "assigned", updatedAt: new Date().toISOString(),
+        } : candidate));
         toast.success(t("reassignSuccess", { assessor: option.displayName }));
         return;
       }
-      setRows((current) => current.map((candidate) => candidate.id === row.id ? {
-        ...candidate,
-        assessorId: previous.assessorId,
-        assessorName: previous.assessorName,
-      } : candidate));
       toast.error(t("reassignFailed"));
     }).catch(() => {
       setReassigningId(null);
-      setRows((current) => current.map((candidate) => candidate.id === row.id ? { ...candidate, ...previous, assessorSource: row.assessorSource } : candidate));
       toast.error(t("reassignFailed"));
     });
   };
@@ -339,7 +350,7 @@ export function AssessmentUnifiedWorkbench({
         <DashboardCommandPanel>
           <DashboardCommandState>
             <FollowupTabs />
-            <span className="text-xs tabular-nums text-muted">{assessmentTable.visibleRows.length} / {rows.length}</span>
+            <span className="text-xs tabular-nums text-muted">{visibleRows.length} / {rows.length}</span>
           </DashboardCommandState>
           <DashboardCommandFilters>
             <BusinessRecordStateFilter value={recordState} onChange={setRecordState} locale={locale}/>
@@ -355,108 +366,75 @@ export function AssessmentUnifiedWorkbench({
         </DashboardCommandPanel>
       )}
     >
-      {scopedRows.length === 0 ? <DashboardEmptyCard>{t("empty")}</DashboardEmptyCard> : (
-        <DashboardTableShell data-assessment-unified-workbench>
-          <Table className="min-w-[94rem] table-fixed text-xs" containerClassName="max-h-[calc(100dvh-11rem)] overflow-auto">
+      {rows.length === 0 ? <DashboardEmptyCard>{t("empty")}</DashboardEmptyCard> : (
+        <DashboardTableShell data-assessment-unified-workbench data-followup-workbench data-followup-scroll>
+          <Table className="w-full min-w-[68rem] table-fixed text-xs" containerClassName="overflow-auto [scrollbar-gutter:stable]">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="sticky left-0 top-0 z-30 h-9 w-56 border-r border-line bg-card px-2"><DashboardTableColumnHeader label={t("studentColumn")} {...assessmentTable.columnProps("student")} /></TableHead>
-                <TableHead className="sticky top-0 z-20 h-9 w-32 bg-card px-2"><DashboardTableColumnHeader label={t("typeColumn")} {...assessmentTable.columnProps("kind")} /></TableHead>
-                <TableHead className="sticky top-0 z-20 h-9 w-64 bg-card px-2"><DashboardTableColumnHeader label={t("arrangementColumn")} {...assessmentTable.columnProps("arrangement")} /></TableHead>
-                <TableHead className="sticky top-0 z-20 h-9 w-56 bg-card px-2"><DashboardTableColumnHeader label={t("resultColumn")} {...assessmentTable.columnProps("result")} /></TableHead>
+                <TableHead className="sticky left-0 top-0 z-30 h-9 w-48 border-r border-line bg-card px-2"><DashboardTableColumnHeader label={t("studentColumn")} {...assessmentTable.columnProps("student")} /></TableHead>
+                <TableHead className="sticky top-0 z-20 h-9 w-20 bg-card px-2"><DashboardTableColumnHeader label={t("typeColumn")} {...assessmentTable.columnProps("kind")} /></TableHead>
+                <TableHead className="sticky top-0 z-20 h-9 w-48 bg-card px-2"><DashboardTableColumnHeader label={t("arrangementColumn")} {...assessmentTable.columnProps("arrangement")} /></TableHead>
+                <TableHead className="sticky top-0 z-20 h-9 w-40 bg-card px-2"><DashboardTableColumnHeader label={t("resultColumn")} {...assessmentTable.columnProps("result")} /></TableHead>
                 <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={t("teacherColumn")} {...assessmentTable.columnProps("teacher")} /></TableHead>
-                <TableHead className="sticky top-0 z-20 h-9 w-64 bg-card px-2"><DashboardTableColumnHeader label={t("statusColumn")} {...assessmentTable.columnProps("status")} /></TableHead>
-                <TableHead className="sticky top-0 z-20 h-9 w-28 bg-card px-2"><DashboardTableColumnHeader label={t("updatedColumn")} {...assessmentTable.columnProps("updated")} /></TableHead>
+                <TableHead className="sticky top-0 z-20 h-9 w-40 bg-card px-2"><DashboardTableColumnHeader label={t("statusColumn")} {...assessmentTable.columnProps("status")} /></TableHead>
+                <TableHead className="sticky top-0 z-20 h-9 w-24 bg-card px-2"><DashboardTableColumnHeader label={t("updatedColumn")} {...assessmentTable.columnProps("updated")} /></TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
-              {assessmentTable.visibleRows.map((row) => {
+            <TableBody onKeyDown={(event) => navigateFollowupTable(event, (id) => { setActiveId(id); return true; })}>
+              {visibleRows.map((row) => {
                 const current = isCurrentBusinessRecord(row.recordState);
                 const mayAssess = current && canAssess;
                 const maySupport = current && canSupport;
                 const draft = drafts[row.id];
                 const active = row.id === activeId;
+                const expanded = row.id === expandedId;
                 const stage = queueFor(row, draft);
                 const completed = stage === "feedback" || stage === "handled";
                 const conclusion = assessmentConclusion(row);
                 return (
                   <ActivityAssessmentDraftProvider key={row.id} row={row}>
                     <TableRow
-                      data-record-state={row.recordState ?? 'current'}
+                      data-record-state={row.recordState ?? "current"}
+                      data-followup-row-key={row.id}
+                      data-followup-active={active}
+                      data-followup-expanded={expanded}
                       tabIndex={0}
-                      aria-expanded={active}
-                      aria-controls={active ? `assessment-details-${row.id}` : undefined}
-                      aria-selected={active}
-                      className={cn("h-16 cursor-pointer focus-visible:bg-blue/10 focus-visible:outline-none", active && "bg-blue/10 hover:bg-blue/10")}
-                      onClick={() => setActiveId((current) => current === row.id ? null : row.id)}
+                      aria-expanded={expanded}
+                      aria-controls={`assessment-details-${row.id}`}
+                      className="h-16 cursor-pointer focus-visible:outline-none [&>td]:min-w-0"
+                      onFocusCapture={() => setActiveId(row.id)}
+                      onClick={(event) => {
+                        setActiveId(row.id);
+                        if (!(event.target as HTMLElement).closest("button,a,input,textarea,[role='combobox'],[role='option'],[role='checkbox']")) changeDetails(row.id, !expanded);
+                      }}
                       onKeyDown={(event) => {
-                        if (event.nativeEvent.isComposing || event.repeat) return;
-                        if (event.target !== event.currentTarget || event.nativeEvent.isComposing || event.repeat) return;
-                        if (event.key === "Enter" && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) { event.preventDefault(); setActiveId(active ? null : row.id); }
-                        if (event.key === "Escape" && active) { event.preventDefault(); setActiveId(null); }
-                        if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-                          event.preventDefault();
-                          const direction = event.key === "ArrowDown" ? "nextElementSibling" : "previousElementSibling";
-                          let sibling = event.currentTarget[direction];
-                          while (sibling && !sibling.hasAttribute("data-assessment-workbench-row")) sibling = sibling[direction];
-                          if (sibling instanceof HTMLElement) sibling.focus();
-                        }
+                        if (event.defaultPrevented || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229 || event.repeat || event.target !== event.currentTarget) return;
+                        if (event.key === "Enter" && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) { event.preventDefault(); changeDetails(row.id, !expanded); }
+                        if (event.key === "Escape" && expanded) { event.preventDefault(); changeDetails(row.id, false); }
                       }}
                       data-assessment-workbench-row={row.id}
                     >
                       <TableCell
                         className="sticky left-0 z-10 border-r border-line bg-card px-2 py-2"
                       >
-                        <div className="flex min-w-0 items-start gap-2">
-                          {active ? <ChevronDown className="mt-0.5 size-3.5 shrink-0 text-muted" /> : <ChevronRight className="mt-0.5 size-3.5 shrink-0 text-muted" />}
-                          <div className="min-w-0">
-                            <div className="flex min-w-0 items-center gap-2">
-                              <Student360Trigger
-                                subject={{ studentId: row.studentId, leadId: row.leadId }}
-                                fallback={{
-                                  name: row.name,
-                                  grade: row.grade,
-                                  gradeText: row.gradeText,
-                                  phone: row.phone,
-                                }}
-                                className="truncate"
-                              >
-                                {row.name}
-                              </Student360Trigger>
-                              <span className="shrink-0 text-[11px] text-muted">
-                                {row.gradeText || (row.grade ? assessmentT("gradeValue", { grade: row.grade }) : assessmentT("gradePending"))}
-                              </span>
-                            </div>
-                            {row.phone ? <a href={`tel:${row.phone}`} className="mt-0.5 block font-mono text-[11px] text-muted hover:underline" onClick={(event) => event.stopPropagation()}>{row.phone}</a> : null}
-                          </div>
-                        </div>
+                        <FollowupPersonCell name={row.name} phone={row.phone}
+                          grade={row.gradeText || (row.grade ? assessmentT("gradeValue", { grade: row.grade }) : assessmentT("gradePending"))}
+                          studentGrade={row.grade} expanded={expanded} detailsId={`assessment-details-${row.id}`}
+                          onToggle={() => changeDetails(row.id, !expanded)}
+                          subject={{ studentId: row.studentId, leadId: row.leadId }} />
                       </TableCell>
                       <TableCell className="px-2 py-2"><Badge variant="outline" className="whitespace-nowrap border-line bg-line/20 text-muted">{t(`type_${row.assessmentKind}`)}</Badge></TableCell>
                       <TableCell className="px-2 py-2">
-                        <p className="truncate whitespace-nowrap font-medium text-ink">
-                          {current ? dateTime.format(new Date(row.scheduledAt)) : row.occurredOn ?? recordM.unknown} · {row.location || (current ? assessmentT("locationPending") : recordM.unknown)}
-                        </p>
-                        <div className="mt-1" onClick={(event) => event.stopPropagation()}>
-                          {!current || completed || row.assessmentKind !== "one_to_one" || !canManageAssessor || !row.invitationId ? (
-                            <div className="flex min-w-0 items-center gap-1.5 text-[11px] text-muted">
-                              {row.assessorSource === "actual" ? <UserCheck className="size-3.5 shrink-0 text-leaf-deep" /> : null}
-                              <span className="shrink-0">{t(row.assessorSource === "actual" ? "actualAssessor" : "assignedAssessor")}</span>
-                              <span className="truncate font-medium text-ink">{row.assessorName || (current ? t("assessorPending") : recordM.unknown)}</span>
-                            </div>
-                          ) : (
-                            <div data-assessor-reassignment={row.id}><FollowupChoice
-                              value={row.assessorId ?? ""}
-                              disabled={reassigningId === row.id}
-                              onValueChange={(value) => reassignAssessor(row, value)}
-                              className="[&>button]:min-w-0"
-                              label={t("changeAssessorFor", { name: row.name })}
-                              options={assessors.map((assessor) => ({ value: assessor.userId, label: assessor.displayName, tone: "healthy" }))}
-                            /></div>
-                          )}
+                        <p className="truncate font-medium text-ink">{current ? dateTime.format(new Date(row.scheduledAt)) : row.occurredOn ?? recordM.unknown}</p>
+                        <p className="mt-0.5 truncate text-[11px] text-muted" title={row.location}>{row.location || (current ? assessmentT("locationPending") : recordM.unknown)}</p>
+                        <div className="mt-1 flex min-w-0 items-center gap-1.5 text-[11px] text-muted">
+                          {row.assessorSource === "actual" ? <UserCheck className="size-3.5 shrink-0 text-leaf-deep" /> : null}
+                          <span className="shrink-0">{t(row.assessorSource === "actual" ? "actualAssessor" : "assignedAssessor")}</span>
+                          <span className="truncate font-medium text-ink">{row.assessorName || (current ? t("assessorPending") : recordM.unknown)}</span>
                         </div>
                       </TableCell>
                       <TableCell className="px-2 py-2">
-                        {row.assessmentKind === "activity" && !row.publicClassRecord && mayAssess ? <ActivityAssessmentDetails row={row} compact disabled={!mayAssess} onSaved={saveRow} /> : completed && row.assessment && (row.assessment.score !== null || row.assessment.assessmentBand) ? (
+                        {completed && row.assessment && (row.assessment.score !== null || row.assessment.assessmentBand) ? (
                           <div className="flex min-w-0 items-center gap-2">
                             {row.assessment.score !== null ? <span className="shrink-0 text-sm font-semibold tabular-nums text-ink">
                               {row.questionSummary
@@ -464,7 +442,7 @@ export function AssessmentUnifiedWorkbench({
                                 : t("scoreOnly", { score: row.assessment.score })}
                             </span> : null}
                             {row.assessment.assessmentBand ? (
-                              <Badge variant="outline" className={cn(row.assessment.assessmentBand === "x_plus" || row.assessment.assessmentBand === "below_a" ? "border-rose/30 bg-rose/15 text-rose" : row.assessment.assessmentBand === "g_plus" ? "border-crater/40 bg-moon/40 text-ink" : "border-blue/30 bg-blue/15 text-blue")}>
+                              <Badge variant="outline" className={cn(row.assessment.assessmentBand === "x_plus" || row.assessment.assessmentBand === "below_a" ? "border-rose/30 bg-cheek/25 text-ink" : row.assessment.assessmentBand === "g_plus" ? "border-crater/40 bg-moon/40 text-ink" : "border-leaf-deep/35 bg-leaf/20 text-leaf-deep")}>
                                 {teacherT(`band_${row.assessment.assessmentBand}`)}
                               </Badge>
                             ) : null}
@@ -474,18 +452,18 @@ export function AssessmentUnifiedWorkbench({
                             answered: row.questionSummary.answeredCount,
                             total: row.questionSummary.questionCount,
                           })}</p>
-                        ) : <p className="font-medium text-muted">{completed ? "—" : t(stage === "pending" ? "waitingStart" : "teacherWorking")}</p>}
+                        ) : <p className="truncate font-medium text-muted">{completed ? "—" : t(stage === "pending" ? "waitingStart" : "stageInProgress")}</p>}
                         {row.questionSummary?.paperTitle ? <p className="mt-0.5 truncate text-[11px] text-muted">{row.questionSummary.paperTitle}</p> : null}
                       </TableCell>
                       <TableCell className="px-2 py-2">
-                        {row.publicClassRecord && mayAssess ? <ActivityAssessmentDetails row={row} compact disabled={!mayAssess} onSaved={saveRow} /> : <p className={cn("truncate leading-5", conclusion ? "text-ink" : "text-muted")} title={!current && active ? undefined : conclusion}>
-                          {!current && active ? recordM.historicalFeedback : conclusion || (completed ? t("conclusionPending") : t("teacherWorking"))}
-                        </p>}
+                        <p className={cn("line-clamp-2 whitespace-normal leading-5", conclusion ? "text-ink" : "text-muted")} title={!current && expanded ? undefined : conclusion}>
+                          {!current && expanded ? recordM.historicalFeedback : conclusion || (completed ? t("conclusionPending") : t("stageAssessmentPending"))}
+                        </p>
                       </TableCell>
                       <TableCell className="px-2 py-2">
-                        <div className="flex items-center justify-between gap-2">
+                        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                           {current ? <StageBadge stage={stage} contacting={false} /> : <HistoricalRecordBadge locale={locale} />}
-                          <Button type="button" variant="ghost" size="sm" className="h-7 px-1.5" aria-label={t("details")} aria-expanded={active} aria-controls={active ? `assessment-details-${row.id}` : undefined} title={`${t("details")} · Enter`} aria-keyshortcuts="Enter" onClick={(event) => { event.stopPropagation(); setActiveId(active ? null : row.id); }}><FilePenLine className="size-3.5" /></Button>
+                          <Button type="button" variant="ghost" size="sm" className="h-auto min-h-7 whitespace-normal rounded-md px-1.5 py-1 text-[11px]" aria-expanded={expanded} aria-controls={`assessment-details-${row.id}`} title={`${t("details")} · Enter`} aria-keyshortcuts="Enter" onClick={(event) => { event.stopPropagation(); changeDetails(row.id, !expanded); }}><FilePenLine className="size-3.5" />{t("details")}</Button>
                           {mayAssess && row.assessmentKind === "one_to_one" ? (
                             <TeacherAssessmentEntryButton registrationId={row.registrationId} invitationId={row.invitationId} />
                           ) : null}
@@ -497,97 +475,20 @@ export function AssessmentUnifiedWorkbench({
                       </TableCell>
                     </TableRow>
 
-                    {active ? (
-                      <FollowupInlineDetails open={active} onOpenChange={(open) => { if (!open) setActiveId(null); }} title={`${row.name} · ${t(`type_${row.assessmentKind}`)}`} hideTitle={!current} colSpan={7} id={`assessment-details-${row.id}`}>
-                        <div className="min-w-0 space-y-3" data-assessment-workbench-detail={row.id}>
-                          {current && row.activityId ? <Link href={`/dashboard/activities/${row.activityId}?${row.publicClassRecord ? `view=onsite&segment=${row.publicClassRecord.segmentId}` : "node=assessment"}`} className="block truncate text-xs text-blue hover:underline">{row.publicClassRecord?.segmentTitle || row.activityTitle} · {t("activityWorkspace")}</Link> : null}
-                          {current && row.studentId ? <QuickFollowUpEntry
-                            studentId={row.studentId}
-                            onSaved={(entry) => saveQuickFollowUp(row, entry.content, entry.createdAt)}
-                            onSaveAndNext={() => advanceFrom(row.id)}
-                          /> : null}
-                          {current && row.assessmentKind === "activity" ? <div className={cn("grid min-w-0 gap-4", maySupport && completed && "xl:grid-cols-[1.4fr_1fr]")}>
-                            <div className="min-w-0"><ActivityAssessmentDetails row={row} disabled={!mayAssess} onSaved={saveRow} /></div>
-                            {maySupport && completed ? <div className="min-w-0"><PostActivityHandoff source={{ registrationId: row.registrationId, invitationId: null }} onSaved={(context) => updateDraft(row.id, (current) => ({ ...current, route: context.route }))} /></div> : null}
-                          </div> : !completed ? (
-                            <div className="grid min-w-0 items-start gap-4 md:grid-cols-[1fr_auto]">
-                              <section className="min-w-0">
-                                <h3 className="text-xs font-medium text-ink">{t("backgroundTitle")}</h3>
-                                <p className="mt-1 text-xs leading-5 text-muted">{row.background || assessmentT("backgroundEmpty")}</p>
-                              </section>
-                              <section className="flex min-w-0 items-center gap-3">
-                                <Clock3 className="size-5 shrink-0 text-yellow-600" />
-                                <div className="min-w-0">
-                                  <p className="font-medium text-ink">{t(stage === "pending" ? "waitingAssessment" : "assessmentInProgress")}</p>
-                                  {mayAssess ? (
-                                    <div className="mt-2">
-                                      <TeacherAssessmentEntryButton registrationId={row.registrationId} invitationId={row.invitationId} />
-                                    </div>
-                                  ) : null}
-                                </div>
-                              </section>
-                            </div>
-                          ) : (
-                            <div className={cn("grid min-w-0 items-start gap-4", maySupport && "xl:grid-cols-[1fr_1.6fr]")}>
-                              <section className="min-w-0">
-                                <h3 className="text-xs font-medium text-ink">{current ? t("teacherEvidence") : recordM.historicalFeedback}</h3>
-                                <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-ink">{uniqueBusinessFeedback(conclusion, row.assessment?.parentConcerns) || t("conclusionPending")}</p>
-                                {row.questionSummary ? (
-                                  <>
-                                    <div className="mt-3 flex flex-wrap gap-1">
-                                      {TEACHER_ASSESSMENT_OUTCOMES.map((status) => {
-                                        const count = row.questionSummary?.outcomeCounts[status] ?? 0;
-                                        if (count === 0) return null;
-                                        return (
-                                          <Badge
-                                            key={status}
-                                            variant="outline"
-                                            className={cn(
-                                              "gap-1 px-2 py-1 text-[10px]",
-                                              LEARNING_CHECK_STATUS_STYLE[status].card,
-                                              LEARNING_CHECK_STATUS_STYLE[status].icon,
-                                            )}
-                                          >
-                                            <LearningCheckStatusIcon status={status} size={12} />
-                                            {sessionT(`learningStatusShort_${status}`)} {count}
-                                          </Badge>
-                                        );
-                                      })}
-                                    </div>
-                                    <h4 className="mt-4 text-[11px] font-medium text-muted">{t("keyNotes")}</h4>
-                                    {row.questionSummary.keyNotes.length > 0 ? (
-                                      <ul className="mt-1 divide-y divide-line/70">
-                                        {row.questionSummary.keyNotes.map((note, index) => (
-                                          <li key={`${row.id}:${note.questionNo}:${index}`} className="py-2 text-[11px] leading-5">
-                                            <span className="font-medium text-ink">{t("questionNote", { question: note.questionNo, point: note.knowledgePoint })}</span>
-                                            <span className="ml-2 text-muted">{note.note}</span>
-                                          </li>
-                                        ))}
-                                      </ul>
-                                    ) : <p className="mt-1 text-[11px] text-muted">{t("noKeyNotes")}</p>}
-                                  </>
-                                ) : null}
-                              </section>
-
-                              {maySupport ? (
-                                <section className="min-w-0">
-                                  <PostActivityHandoff
-                                    source={{ registrationId: row.registrationId, invitationId: row.registrationId ? null : row.invitationId }}
-                                    onSaved={(context) => {
-                                      updateDraft(row.id, (current) => ({ ...current, route: context.route }));
-                                    }}
-                                  />
-                                </section>
-                              ) : null}
-                            </div>
-                          )}
-                        </div>
-                      </FollowupInlineDetails>
-                    ) : null}
+                    <FollowupInlineDetails open={expanded} keepMounted={visitedDetails.has(row.id)}
+                      onOpenChange={(open) => changeDetails(row.id, open)} title={row.name} hideTitle
+                      active={active} onActivate={() => setActiveId(row.id)} colSpan={7} id={`assessment-details-${row.id}`}>
+                      <AssessmentRecordDetails row={row} stage={stage} conclusion={conclusion} locale={locale}
+                        canAssess={mayAssess} canSupport={maySupport} canManageAssessor={canManageAssessor}
+                        assessors={assessors} reassigning={reassigningId === row.id} onReassign={(id) => reassignAssessor(row, id)}
+                        onSaved={saveRow} onNoteSaved={(entry) => saveQuickFollowUp(row, entry.content, entry.createdAt)}
+                        onSaveAndNext={nextAssessmentWorkbenchRowId(visibleRows.map((item) => item.id), row.id) ? () => advanceFrom(row.id) : undefined}
+                        onHandoffSaved={(context) => updateDraft(row.id, (current) => ({ ...current, route: context.route }))} />
+                    </FollowupInlineDetails>
                   </ActivityAssessmentDraftProvider>
                 );
               })}
-              {assessmentTable.visibleRows.length === 0 ? (
+              {visibleRows.length === 0 ? (
                 <TableRow><TableCell colSpan={7} className="h-32 px-4 text-center text-sm text-muted">{tableT("filteredEmpty")}</TableCell></TableRow>
               ) : null}
             </TableBody>
@@ -617,13 +518,14 @@ export function AssessmentUnifiedWorkbench({
       <Badge
         variant="outline"
         className={cn(
-          "whitespace-nowrap",
+          "max-w-full whitespace-normal rounded-md px-1.5 text-[11px]",
           stage === "pending" && "border-line bg-line/20 text-muted",
           stage === "in_progress" && "border-crater/40 bg-moon/40 text-ink",
           stage === "feedback" && "border-crater/40 bg-moon/40 text-ink",
-          stage === "handled" && "border-blue/30 bg-blue/15 text-blue",
+          stage === "handled" && "border-leaf-deep/35 bg-leaf/20 text-leaf-deep",
         )}
       >
+        <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-current" />
         {label}
       </Badge>
     );

@@ -94,7 +94,8 @@ describe("Student 360", () => {
     const assessment = read("src", "features", "school", "AssessmentUnifiedWorkbench.tsx");
     const publicClass = read("src", "features", "school", "PublicClassWorkspace.tsx");
 
-    expect(assessment).toContain("<Student360Trigger");
+    expect(assessment).toContain("<FollowupPersonCell");
+    expect(read("src", "features", "school", "dashboard-page", "FollowupPersonCell.tsx")).toContain("<Student360Trigger");
     expect(assessment).toContain("studentId: row.studentId, leadId: row.leadId");
     expect(publicClass).toContain("<Student360Trigger");
     expect(publicClass).toContain("studentId: participant.studentId, leadId: participant.leadId");

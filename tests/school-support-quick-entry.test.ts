@@ -31,7 +31,8 @@ describe("school support quick entry", () => {
     expect(assessmentData).toContain('"student_follow_ups"');
     expect(assessmentData).toContain("latestFollowUps");
     expect(assessment).toContain("data-current-situation");
-    expect(assessment).toContain("<QuickFollowUpEntry");
+    expect(assessment).toContain("<AssessmentRecordDetails");
+    expect(read("src", "features", "school", "AssessmentRecordDetails.tsx")).toContain("<QuickFollowUpEntry");
     expect(students).toContain("<FollowupInlineDetails");
     expect(students).toContain("<QuickFollowUpEntry");
     expect(students).toContain("lastFollowUpContent");
