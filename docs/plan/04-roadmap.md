@@ -16,6 +16,8 @@
 >
 > **核对日期**：2026-09-03；最新生产事实为 ledger/head=`242 / 20260903000700_courseware_page_insertions`、应用 `8c50b48…`，对应统一课件工作区窄范围发布的备份、回滚演练、正式 migration、原子 release 与机器 postflight；状态为已部署、待产品验收，不把机器检查记作用户通过。`DEV-SCHOOL-OPS-1` 当前先以真实小地推种子验收 Phase 1C 的批量分配与初次电联；该开发预演没有生产 schema、数据库、Storage 或写入。其余依据 active doc 00/25/30、代码与迁移、本机隔离验证、Xiaomi 运行核查和 `mathin-R1-Live-讨论稿.md`。
 
+> **开发端人工验收更新**：2026-09-06 首联部分已用户验收通过；后续升级参考及变更边界见 [首联已验收保护基线](school-support-followup-panel-contract.md#10-首联已验收保护基线)。本条不改变上述生产阶段或 Gate 状态。
+
 ## 1. 两个交付事件
 
 | 事件 | 完成结果 | 不作为前置条件 |
@@ -213,6 +215,8 @@ Phase 1～5 的本机隔离 Supabase、固定开发身份、migration LF checksu
 产品负责人于 2026-08-31～09-03 依次确认 Step 0～8D。Step 3B 把文字／图片／形状节点与图层能力收敛为共享组件；Step 4A/4B 打通共享 4:3 控制器、旧 A～F 映射和单页草稿；Step 5A/5B 打通页面上下文影响预览、单样本替换与回滚；Step 6 让爱学习来源 Viewer 通过共享编辑桥获得选择、文字、几何、图层、网格与历史能力。Step 7B 已收敛审核入口并退役旧直发／批量适配发布链；Step 7C 确认三端共享工作台与编辑组件真实复用；Step 8A/8B 完成爱学习双轨草稿与正式 PageDoc／爱学习共享的文字、公式、形状、图片和 H5 插入持久化。Step 8D 生产只读事务盘点确认 77,060 个正式可编辑页面和 154,120 个可插入轨道 head 无需存量回填。Step 8E 当前为 **PRODUCTION DEPLOYED / MACHINE POSTFLIGHT PASSED / PENDING PRODUCT ACCEPTANCE**：最终候选 `8c50b48…` 从实际生产基线 `750bd607…` 建立，6 条 migration 通过写前备份、回滚／零残留演练后正式提交，应用 current/previous=`20260903-115645` / `8c50b48…` 与 `20260903-100016` / `750bd607…`；存量页面、binding、资源、release、冻结会话和 Storage 计数不变。真实生产工作流仍待产品验收，也不改变 R1-Live Gate 2。
 
 #### DEV-SCHOOL-OPS-1 · 学辅运营与教学履约主干
+
+2026-09-06 更新：首联部分的验收与保护以 [首联已验收保护基线](school-support-followup-panel-contract.md#10-首联已验收保护基线) 为准，其他业务切片分别验收。下段保留 2026-09-03 的交付背景，其“待验收”不覆盖此次已确认的首联部分。
 
 `DEV-SCHOOL-OPS-1` 是产品负责人于 2026-09-01 选入的独立开发预演，权威里程碑见 [`30-mathin_school_ops_architecture_plan.md`](30-mathin_school_ops_architecture_plan.md)。规划型 `/dashboard/school-ops` 页面、导航和快照已删除；Phase 2 已把活动详情收敛为“名单与到访 / 本场测评登记”两个角色工作节点，测评、学情、家长关注、老师建议和报名去向在同一学生行完成，后台仍分别写入 Participation、AssessmentResult 与 ActivityRoute。2026-09-02 取得两组真实小地推脱敏导出后，Phase 1B 已让数据收件箱逐行校验并只写 `leads`、来源记录与意向标签，第一组 1071 行形成 1071 个未分配种子，第二组 157 行保持 dry-run（138 拟新增／11 复用／8 待判断／0 错误）。2026-09-03 当前进入 **Phase 1C · 种子批量分配与初次电联**：`/dashboard/leads` 增加整页／Shift 连续选择、批量分配、“我的初次电联”和追加式沟通记录；种子表压缩为身份、意向、负责人、最近沟通和池内状态，来源批次与下一动作退出该表，老师不再手填确认月份／周次／日期／人员。状态为 **DEVELOPMENT READY / AWAITING PRODUCT OWNER UI AND INTERACTION ACCEPTANCE**；显式建立／关联 Student、加入具体活动和业务组配置未暗做，没有 Xiaomi／生产迁移、业务写入、Storage 或发布动作。
 
