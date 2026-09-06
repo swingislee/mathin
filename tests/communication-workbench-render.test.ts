@@ -92,15 +92,16 @@ describe("communication workbench server rendering", () => {
     expect(dataRows[1].cells[0].content).toContain('data-followup-person');
     expect(dataRows[1].content).toContain('首联记录缺失');
     expect(dataRows[1].cells[3].content).toContain('资料未记录');
+    expect(dataRows[1].content).not.toContain('独有历史沟通事实');
     expect(dataRows[1].content).not.toMatch(/<input|<textarea|role="checkbox"|aria-keyshortcuts="Control/);
     expect(renderWorkbench({ historicalFirstContacts, contactLeads: [], rowOrder: [] }).dataRows.map(row => row.key)).toEqual(['student:existing-student']);
-    expect(renderWorkbench({ historicalFirstContacts, searchQuery: '独有历史沟通事实' }).dataRows.map(row => row.key)).toEqual(['student:existing-student']);
+    expect(renderWorkbench({ historicalFirstContacts, searchQuery: '历史学生' }).dataRows.map(row => row.key)).toEqual(['student:existing-student']);
     expect(renderWorkbench({ historicalFirstContacts, searchQuery: '不存在的内容' }).dataRows).toHaveLength(0);
   });
 
   it("opens historical first-contact details with the shared fields and no submit controls", () => {
     const element = createElement(FirstContactRecordRow, {
-      record: { key: 'student:existing', state: 'historical', missingFirstContact: true,
+      record: { key: 'student:existing', state: 'historical',
         person: { name: '历史学生', phone: '', grade: '', subject: { studentId: 'existing', leadId: null } },
         status: { label: '首联记录缺失', tone: 'neutral', context: '原资料未记录首联' }, updated: '资料未记录', note: '保留完整历史事实' },
       locale: 'zh', active: true, expanded: true, detailsId: 'existing-details', onExpandedChange: vi.fn(),
@@ -113,6 +114,20 @@ describe("communication workbench server rendering", () => {
     expect(markup).toContain('data-followup-notes');
     expect(markup).toContain('保留完整历史事实');
     expect(markup).not.toMatch(/<input|<textarea|aria-keyshortcuts="Control/);
+  });
+
+  it("shows a missing first-contact explanation once without copying other business notes", () => {
+    const element = createElement(FirstContactRecordRow, {
+      record: { key: 'student:existing', state: 'historical', missingFirstContact: true,
+        person: { name: '历史学生', phone: '', grade: '', subject: { studentId: 'existing', leadId: null } },
+        status: { label: '首联记录缺失', tone: 'neutral', context: '' }, updated: '资料未记录', note: '来自测评和续班的内容' },
+      locale: 'zh', active: true, expanded: true, detailsId: 'existing-details', onExpandedChange: vi.fn(),
+    });
+    const markup = renderToStaticMarkup(createElement(NextIntlClientProvider, { locale: 'zh', messages, timeZone: 'Asia/Shanghai' }, element));
+    expect(markup.match(/原资料未提供首次联系记录/g)).toHaveLength(1);
+    expect(markup).not.toContain('来自测评和续班的内容');
+    expect(markup).not.toContain('data-followup-notes');
+    expect(markup).not.toContain('查看学生档案');
   });
 
   it("lets the table own the available scroll space without a competing viewport-height cap", () => {

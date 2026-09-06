@@ -16,6 +16,6 @@ export async function loadHistoricalFirstContactRows(locale:string,query=''):Pro
   const needle=query.trim().toLocaleLowerCase(locale);
   return ids.filter(id=>!documented.has(id)).map(id=>({
     studentId:id,...data.subjects[id],
-    context:data.communications.filter(row=>row.student_id===id).map(row=>row.content).join('\n\n'),
+    context:'',
   })).filter(row=>!needle||[row.name,row.phone,row.context].join(' ').toLocaleLowerCase(locale).includes(needle));
 }

@@ -2,6 +2,7 @@
 
 import { BusinessRecordStateFilter, HistoricalRecordBadge, useBusinessSearchQuery } from './BusinessRecordStateFilter';
 import { businessRecordMessages, isCurrentBusinessRecord, matchesBusinessRecordState, type BusinessRecordStateFilter as StateFilter } from './business-record-state-contract';
+import { uniqueBusinessFeedback } from './business-record-notes';
 
 import { useMemo, useState } from "react";
 import {
@@ -477,8 +478,8 @@ export function AssessmentUnifiedWorkbench({
                         {row.questionSummary?.paperTitle ? <p className="mt-0.5 truncate text-[11px] text-muted">{row.questionSummary.paperTitle}</p> : null}
                       </TableCell>
                       <TableCell className="px-2 py-2">
-                        {row.publicClassRecord && mayAssess ? <ActivityAssessmentDetails row={row} compact disabled={!mayAssess} onSaved={saveRow} /> : <p className={cn("truncate leading-5", conclusion ? "text-ink" : "text-muted")} title={conclusion}>
-                          {conclusion || (completed ? t("conclusionPending") : t("teacherWorking"))}
+                        {row.publicClassRecord && mayAssess ? <ActivityAssessmentDetails row={row} compact disabled={!mayAssess} onSaved={saveRow} /> : <p className={cn("truncate leading-5", conclusion ? "text-ink" : "text-muted")} title={!current && active ? undefined : conclusion}>
+                          {!current && active ? recordM.historicalFeedback : conclusion || (completed ? t("conclusionPending") : t("teacherWorking"))}
                         </p>}
                       </TableCell>
                       <TableCell className="px-2 py-2">
@@ -497,15 +498,15 @@ export function AssessmentUnifiedWorkbench({
                     </TableRow>
 
                     {active ? (
-                      <FollowupInlineDetails open={active} onOpenChange={(open) => { if (!open) setActiveId(null); }} title={`${row.name} · ${t(`type_${row.assessmentKind}`)}`} colSpan={7} id={`assessment-details-${row.id}`}>
+                      <FollowupInlineDetails open={active} onOpenChange={(open) => { if (!open) setActiveId(null); }} title={`${row.name} · ${t(`type_${row.assessmentKind}`)}`} hideTitle={!current} colSpan={7} id={`assessment-details-${row.id}`}>
                         <div className="min-w-0 space-y-3" data-assessment-workbench-detail={row.id}>
-                          {row.activityId ? <Link href={current ? `/dashboard/activities/${row.activityId}?${row.publicClassRecord ? `view=onsite&segment=${row.publicClassRecord.segmentId}` : "node=assessment"}` : `/dashboard/students/${row.studentId}?tab=history&history=assessment`} className="block truncate text-xs text-blue hover:underline">{current ? `${row.publicClassRecord?.segmentTitle || row.activityTitle} · ${t("activityWorkspace")}` : recordM.viewStudent}</Link> : null}
+                          {current && row.activityId ? <Link href={`/dashboard/activities/${row.activityId}?${row.publicClassRecord ? `view=onsite&segment=${row.publicClassRecord.segmentId}` : "node=assessment"}`} className="block truncate text-xs text-blue hover:underline">{row.publicClassRecord?.segmentTitle || row.activityTitle} · {t("activityWorkspace")}</Link> : null}
                           {current && row.studentId ? <QuickFollowUpEntry
                             studentId={row.studentId}
                             onSaved={(entry) => saveQuickFollowUp(row, entry.content, entry.createdAt)}
                             onSaveAndNext={() => advanceFrom(row.id)}
                           /> : null}
-                          {row.assessmentKind === "activity" ? <div className={cn("grid min-w-0 gap-4", maySupport && completed && "xl:grid-cols-[1.4fr_1fr]")}>
+                          {current && row.assessmentKind === "activity" ? <div className={cn("grid min-w-0 gap-4", maySupport && completed && "xl:grid-cols-[1.4fr_1fr]")}>
                             <div className="min-w-0"><ActivityAssessmentDetails row={row} disabled={!mayAssess} onSaved={saveRow} /></div>
                             {maySupport && completed ? <div className="min-w-0"><PostActivityHandoff source={{ registrationId: row.registrationId, invitationId: null }} onSaved={(context) => updateDraft(row.id, (current) => ({ ...current, route: context.route }))} /></div> : null}
                           </div> : !completed ? (
@@ -529,9 +530,8 @@ export function AssessmentUnifiedWorkbench({
                           ) : (
                             <div className={cn("grid min-w-0 items-start gap-4", maySupport && "xl:grid-cols-[1fr_1.6fr]")}>
                               <section className="min-w-0">
-                                <h3 className="text-xs font-medium text-ink">{t("teacherEvidence")}</h3>
-                                <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-ink">{conclusion || t("conclusionPending")}</p>
-                                {row.assessment?.parentConcerns ? <p className="mt-3 whitespace-pre-wrap text-xs leading-5 text-muted">{row.assessment.parentConcerns}</p> : null}
+                                <h3 className="text-xs font-medium text-ink">{current ? t("teacherEvidence") : recordM.historicalFeedback}</h3>
+                                <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-ink">{uniqueBusinessFeedback(conclusion, row.assessment?.parentConcerns) || t("conclusionPending")}</p>
                                 {row.questionSummary ? (
                                   <>
                                     <div className="mt-3 flex flex-wrap gap-1">

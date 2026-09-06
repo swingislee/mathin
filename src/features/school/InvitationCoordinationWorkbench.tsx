@@ -693,7 +693,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
   const gradeOf = (row: CommunicationRow) => row.source === 'profile' ? row.value.grade ? leadT('gradeValue', { grade: row.value.grade }) : '' : row.value.gradeText;
   const noteOf = (input: CommunicationRow) => {
     const row = referenceRow(input);
-    if (row.source === 'profile') return row.value.context;
+    if (row.source === 'profile') return '';
     if (row.source === "contact") return row.value.lastContactNote;
     if (row.source === "post_activity") return row.value.contacts[0]?.note || row.value.routeNote;
     const latest = laterContactFor(row.value);
@@ -861,7 +861,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
           key: canonicalKey, state: 'historical', missingFirstContact: true,
           person: { name: row.value.name, phone: row.value.phone, grade: gradeOf(row) || t('gradePending'),
             subject: { studentId: row.value.studentId, leadId: null }, studentGrade: row.value.grade },
-          status: { label: stateOf(row), tone: 'neutral', context: arrangementOf(row) },
+          status: { label: stateOf(row), tone: 'neutral', context: '' },
           updated: recordM.unknown, note: row.value.context,
         }} active={activeId === canonicalKey} expanded={activeId === canonicalKey}
           rowRef={element => { if (element) rowRefs.current.set(canonicalKey, element); else rowRefs.current.delete(canonicalKey); }}

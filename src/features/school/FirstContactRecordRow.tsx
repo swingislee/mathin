@@ -3,7 +3,6 @@
 import type { ComponentProps, ReactNode, Ref } from "react";
 import { Badge } from "@/components/ui/badge";
 import { TableCell, TableRow } from "@/components/ui/table";
-import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { HistoricalRecordBadge } from "./BusinessRecordStateFilter";
 import { businessRecordMessages, type BusinessRecordState } from "./business-record-state-contract";
@@ -78,12 +77,12 @@ export function FirstContactRecordRow({
         <TableCell className="px-2 py-2">{historicalSummary ? historicalSummary.state : <>
           <Badge variant="outline" className={cn("max-w-full whitespace-normal rounded-md px-1.5 text-[11px]", followupToneClasses[record.status.tone])}><span aria-hidden className="size-1.5 shrink-0 rounded-full bg-current" />{record.status.label}</Badge>
           {record.state === "historical" ? <HistoricalRecordBadge locale={locale} /> : null}
-          {workPurpose ? <div className="mt-1 truncate text-[11px] text-muted">{workPurpose}</div> : <p className="mt-1 truncate text-[11px] text-muted" title={record.status.contextTitle ?? record.status.context}>{record.status.context}</p>}
+          {workPurpose ? <div className="mt-1 truncate text-[11px] text-muted">{workPurpose}</div> : record.status.context ? <p className="mt-1 truncate text-[11px] text-muted" title={record.status.contextTitle ?? record.status.context}>{record.status.context}</p> : null}
         </>}</TableCell>
-        <TableCell className="px-2 py-2">{entry ?? <>
+        <TableCell className="px-2 py-2">{entry ?? (record.missingFirstContact ? !expanded && <p className="truncate text-xs text-muted" title={m.firstContactHint}>{m.firstContactHint}</p> : <>
           <p className="mb-1 text-[11px] text-muted">{m.recordedOnly}</p>
           <p className="truncate text-xs" title={record.note}>{record.note || m.unknown}</p>
-        </>}</TableCell>
+        </>)}</TableCell>
         <TableCell className="px-2 py-2 text-[11px] text-muted">{historicalSummary ? historicalSummary.updated : <>
           <span className="block break-words">{record.updated}</span>{record.countLabel ? <p className="mt-1 truncate">{record.countLabel}</p> : null}
         </>}{rowActions ? <div className="mt-1 flex min-w-0 flex-wrap gap-1">{rowActions}</div> : null}</TableCell>
@@ -91,8 +90,7 @@ export function FirstContactRecordRow({
     </TableRow>
     <FollowupInlineDetails id={detailsId} open={expanded} onOpenChange={onExpandedChange} title={record.person.name} hideTitle active={active}
       colSpan={layout === "communication" ? 4 : canAssign ? 6 : 5} pending={pending} onActivate={onActivate} onKeyDown={handleKeyDown}>
-      {children ?? <FollowupEntryFields id={detailsId} readOnly note={record.note ?? ''} noteLabel={m.recordedOnly} hint={record.status.context}
-        tools={record.person.subject.studentId ? <Link href={`/dashboard/students/${record.person.subject.studentId}?tab=history`} className="text-xs underline">{m.viewStudent}</Link> : undefined} />}
+      {children ?? (record.missingFirstContact ? <p className="text-xs leading-6 text-muted">{m.firstContactHint}</p> : <FollowupEntryFields id={detailsId} readOnly note={record.note ?? ''} noteLabel={m.recordedOnly} />)}
     </FollowupInlineDetails>
   </>;
 }

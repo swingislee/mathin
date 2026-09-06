@@ -1,5 +1,6 @@
 import type { LeadIdentitySubject } from "./lead-identity-contract";
 import type { StudentLifecycleStage } from "./student-lifecycle-contract";
+import type { BusinessRecordState } from "./business-record-state-contract";
 
 export const STUDENT_360_REFRESH_EVENT = "mathin:student-360-refresh";
 
@@ -67,6 +68,12 @@ export type Student360FactLabel =
   | "score"
   | "band"
   | "classroom"
+  | "period"
+  | "amount"
+  | "teacher"
+  | "registered_on"
+  | "renewal_result"
+  | "activity_result"
   | "student_presence"
   | "guardian_presence"
   | "entry_score"
@@ -110,7 +117,8 @@ export interface Student360Event {
   id: string;
   phase: Student360Phase;
   kind: Student360EventKind;
-  occurredAt: string;
+  occurredAt: string | null;
+  recordState?: BusinessRecordState;
   title: string;
   status: string | null;
   actorName: string | null;
@@ -166,7 +174,7 @@ export interface Student360Snapshot {
 
 export function sortStudent360Events(events: readonly Student360Event[]): Student360Event[] {
   return [...events].sort((left, right) => {
-    const byTime = right.occurredAt.localeCompare(left.occurredAt);
+    const byTime = (right.occurredAt ?? '').localeCompare(left.occurredAt ?? '');
     return byTime || left.id.localeCompare(right.id);
   });
 }
@@ -180,7 +188,7 @@ export function summarizeStudent360Phases(
       phase,
       count: matching.length,
       latestAt: matching.reduce<string | null>((latest, event) => (
-        latest === null || event.occurredAt > latest ? event.occurredAt : latest
+        event.occurredAt && (latest === null || event.occurredAt > latest) ? event.occurredAt : latest
       ), null),
     };
   });

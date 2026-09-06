@@ -1,4 +1,5 @@
 import "server-only";
+import { getLocale } from "next-intl/server";
 
 import type { Database } from "@/lib/database.types";
 import { getMyPerms } from "@/lib/auth";
@@ -7,6 +8,8 @@ import type { PermissionKey } from "./permissions";
 import type { LeadStatus } from "./lead-contract";
 import { leadContactAllowsIdentity } from "./lead-identity-contract";
 import { readStudentLifecycle } from "./student-lifecycle-data";
+import { loadStudentBusinessHistory } from "./student-business-history-data";
+import { studentBusinessHistoryEvents } from "./student-business-history-timeline";
 import {
   latestStudent360Phase,
   sortStudent360Events,
@@ -761,7 +764,9 @@ export async function getStudent360Snapshot(
     });
   }
 
-  const sortedEvents = sortStudent360Events(events);
+  const locale = await getLocale();
+  const history = student ? await loadStudentBusinessHistory(locale, { studentId: student.id }) : null;
+  const sortedEvents = sortStudent360Events([...events, ...studentBusinessHistoryEvents(history, locale)]);
   const phases = summarizeStudent360Phases(sortedEvents);
   const openLeadAction = nextActionRows
     .filter((row) => row.status === "open")

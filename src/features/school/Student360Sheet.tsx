@@ -26,6 +26,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { getStudent360Action } from "./actions/student-360";
+import { HistoricalRecordBadge } from "./BusinessRecordStateFilter";
+import { businessRecordMessages } from "./business-record-state-contract";
+import { getStudentBusinessHistoryMessages } from "./student-business-history-messages";
 import { STUDENT_LIFECYCLE_ROADMAP, STUDENT_LIFECYCLE_STAGES } from "./student-lifecycle-contract";
 import {
   STUDENT_360_REFRESH_EVENT,
@@ -390,6 +393,7 @@ function Student360PanelBody({
   close: () => void;
 }) {
   const t = useTranslations("school.student360");
+  const recordM = businessRecordMessages(locale);
   const [filter, setFilter] = useState<TimelineFilter>("all");
   const dateTime = useMemo(() => new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
@@ -423,15 +427,14 @@ function Student360PanelBody({
   const groups = useMemo(() => {
     const result: Array<{ key: string; label: string; events: Student360Event[] }> = [];
     for (const event of visibleEvents) {
-      const date = new Date(event.occurredAt);
-      const label = month.format(date);
+      const label = event.occurredAt ? month.format(new Date(event.occurredAt)) : recordM.dateUnknown;
       const key = label;
       const last = result[result.length - 1];
       if (last?.key === key) last.events.push(event);
       else result.push({ key, label, events: [event] });
     }
     return result;
-  }, [month, visibleEvents]);
+  }, [month, visibleEvents, recordM.dateUnknown]);
 
   return (
     <>
@@ -644,18 +647,26 @@ function Student360TimelineEvent({
   dateTime: Intl.DateTimeFormat;
 }) {
   const t = useTranslations("school.student360");
+  const locale = useLocale();
+  const recordM = businessRecordMessages(locale);
+  const historyM = getStudentBusinessHistoryMessages(locale);
+  const factLabels: Partial<Record<Student360Fact['label'], string>> = {
+    period: historyM.period, amount: historyM.amount, teacher: historyM.teacher,
+    registered_on: historyM.registeredOn, renewal_result: historyM.outcome, activity_result: historyM.result,
+  };
   const statusKey = event.status ? STATUS_KEYS[event.status] : null;
   return (
-    <li className="relative grid grid-cols-[1.75rem_minmax(0,1fr)] pb-5 last:pb-0">
+    <li data-student-360-event={event.id} data-record-state={event.recordState ?? 'current'} className="relative grid grid-cols-[1.75rem_minmax(0,1fr)] pb-5 last:pb-0">
       <span className={cn(
         "relative z-10 mt-1 block rounded-full border-2 border-paper",
         event.important ? "size-4 bg-leaf-deep" : "ml-1 size-2.5 bg-crater/60",
       )} />
       <article className="min-w-0 border-b border-line/80 pb-5 last:border-b-0 last:pb-0">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <time className="text-[11px] tabular-nums text-muted" dateTime={event.occurredAt}>{day.format(new Date(event.occurredAt))}</time>
+          {event.occurredAt ? <time className="text-[11px] tabular-nums text-muted" dateTime={event.occurredAt}>{event.occurredAt.length === 10 ? event.occurredAt : day.format(new Date(event.occurredAt))}</time> : <span className="text-[11px] text-muted">{recordM.dateUnknown}</span>}
           <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted">{t(`phase_${event.phase}`)}</span>
           <span className="text-xs font-medium text-ink">{t(`event_${event.kind}`)}</span>
+          {event.recordState === 'historical' ? <HistoricalRecordBadge locale={locale} /> : null}
           {statusKey ? <Badge
             variant="outline"
             className={cn(
@@ -670,7 +681,7 @@ function Student360TimelineEvent({
           <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
             {event.facts.map((item, index) => (
               <div key={`${item.label}:${index}`} className="flex min-w-0 gap-1">
-                <dt className="shrink-0 text-muted">{t(`fact_${item.label}`)}</dt>
+                <dt className="shrink-0 text-muted">{factLabels[item.label] ?? t(`fact_${item.label}`)}</dt>
                 <dd className="min-w-0 break-words text-ink">{formatFactValue(item, t, dateTime)}</dd>
               </div>
             ))}
@@ -687,7 +698,7 @@ function Student360TimelineEvent({
           </div>
         ) : null}
         <p className="mt-2 text-[10px] text-muted">
-          {event.actorName ? t("recordedBy", { name: event.actorName }) : t("systemRecord")}
+          {event.actorName ? t("recordedBy", { name: event.actorName }) : event.recordState === 'historical' ? `${historyM.author}：${recordM.unknown}` : t("systemRecord")}
         </p>
       </article>
     </li>
