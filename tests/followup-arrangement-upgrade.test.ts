@@ -214,11 +214,10 @@ describe("follow-up arrangement upgrade", () => {
     for (const icon of fieldIcons) expect(icon).toContain('stroke-width="2"');
     const heartIcon = fieldIcons.find((icon) => icon.includes("lucide-heart-pulse"));
     expect(heartIcon).toContain('fill="none"');
-    expect(heartIcon).toContain("fill-rose/25");
-    expect(heartIcon).toContain("var(--rose)_55%,var(--muted)");
+    expect(heartIcon).toContain("fill-cheek");
+    expect(heartIcon).toContain("var(--rose)_35%,var(--cheek)");
     const handoffIcon = fieldIcons.find((icon) => icon.includes("lucide-signpost"));
-    expect(handoffIcon).toContain("fill-crater/35");
-    expect(handoffIcon).toContain("var(--crater)_55%,var(--muted)");
+    expect(handoffIcon).toContain("fill-moon text-crater");
   });
   it("leaves number keys to contact outcomes when assessment is nested in first contact", () => {
     const props = { value: emptyInvitationDraft("assessment_1v1"), activities: [], assessors: [], locale: "zh", onChange: vi.fn() };

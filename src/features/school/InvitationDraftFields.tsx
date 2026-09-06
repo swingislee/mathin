@@ -333,7 +333,7 @@ export function InvitationDraftFields({
           {contactFacts}
           <div className="flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-1">
             <FollowupFieldIcon icon={Signpost} label={t("kindLabel")}
-              className="fill-crater/35 text-[color:color-mix(in_srgb,var(--crater)_55%,var(--muted))]" />
+              className="fill-moon text-crater" />
             <TabsList aria-label={t("kindLabel")} data-followup-handoff
               className="grid h-8 w-max max-w-full grid-cols-3 gap-0.5 bg-transparent p-0">
               {HANDOFF_KINDS.map((kind) => <TabsTrigger key={kind} value={kind}

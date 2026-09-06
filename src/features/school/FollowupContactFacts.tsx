@@ -31,7 +31,7 @@ export function FollowupContactFacts({ wechat, onWechatChange, interest, onInter
       labels={{ name: entryT("wechatLabel"), unknown: entryT("wechatUnknown"), yes: entryT("wechatYes"), no: entryT("wechatNo") }} />
     <div className="flex min-h-8 items-center gap-2">
       <FollowupFieldIcon id={`${id}-interest`} icon={HeartPulse} label={t("interestLevel")}
-        className="text-[color:color-mix(in_srgb,var(--rose)_55%,var(--muted))] [&>path:first-child]:fill-rose/25" />
+        className="text-[color:color-mix(in_srgb,var(--rose)_35%,var(--cheek))] [&>path:first-child]:fill-cheek" />
       <TooltipProvider delayDuration={200}>
         <ToggleGroup type="single" value={interest} onValueChange={(value) => onInterestChange(value as LeadInterestLevel | "")}
           disabled={disabled} aria-labelledby={`${id}-interest`} size="sm" className="justify-start gap-1">
