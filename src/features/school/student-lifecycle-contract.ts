@@ -8,6 +8,15 @@ export const STUDENT_LIFECYCLE_STAGES = [
 
 export type StudentLifecycleStage = (typeof STUDENT_LIFECYCLE_STAGES)[number];
 
+/** 表名表示推进过程；节点表示到达的位置，续班从报名后的阶段继续展开。 */
+export const STUDENT_LIFECYCLE_ROADMAP = [
+  { table: "leads", milestone: "awaiting_first_contact" },
+  { table: "communication", milestone: "awaiting_assessment" },
+  { table: "assessments", milestone: "awaiting_enrollment" },
+  { table: "enrollments", milestone: "awaiting_renewal" },
+  { table: "renewals", milestone: null },
+] as const satisfies readonly { table: string; milestone: StudentLifecycleStage | null }[];
+
 export function parseStudentLifecycleStage(value: unknown): StudentLifecycleStage {
   if (typeof value === "string" && STUDENT_LIFECYCLE_STAGES.includes(value as StudentLifecycleStage)) {
     return value as StudentLifecycleStage;

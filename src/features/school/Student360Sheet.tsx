@@ -2,11 +2,9 @@
 
 import dynamic from "next/dynamic";
 import {
+  ArrowRight,
   ArrowUpRight,
-  ClipboardCheck,
-  GraduationCap,
   LoaderCircle,
-  MessageSquareText,
   PanelRightClose,
   RefreshCw,
   UserRoundSearch,
@@ -28,7 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { getStudent360Action } from "./actions/student-360";
-import { STUDENT_LIFECYCLE_STAGES } from "./student-lifecycle-contract";
+import { STUDENT_LIFECYCLE_ROADMAP, STUDENT_LIFECYCLE_STAGES } from "./student-lifecycle-contract";
 import {
   STUDENT_360_REFRESH_EVENT,
   type Student360Event,
@@ -568,42 +566,55 @@ function Student360PanelBody({
   );
 }
 
-const LIFECYCLE_ICONS = {
-  awaiting_first_contact: MessageSquareText,
-  awaiting_assessment: ClipboardCheck,
-  awaiting_enrollment: GraduationCap,
-  awaiting_renewal: RefreshCw,
-};
-
 function Student360LifecycleRail({ snapshot }: { snapshot: Student360Snapshot }) {
   const t = useTranslations("school.student360");
+  const workspaceT = useTranslations("school.followupWorkspace");
   const currentIndex = STUDENT_LIFECYCLE_STAGES.indexOf(snapshot.lifecycleStage);
   return (
     <section className="px-5 py-5 sm:px-7" aria-label={t("lifecycleLabel")} data-student-lifecycle={snapshot.lifecycleStage}>
-      <ol className="grid grid-cols-4">
-        {STUDENT_LIFECYCLE_STAGES.map((stage, index) => {
-          const Icon = LIFECYCLE_ICONS[stage];
-          const current = stage === snapshot.lifecycleStage;
+      <ol className="grid grid-cols-5 grid-rows-[auto_2rem_auto]">
+        {STUDENT_LIFECYCLE_ROADMAP.map(({ table, milestone }, index) => {
+          const current = milestone === snapshot.lifecycleStage;
           const previous = index < currentIndex;
           return (
-            <li key={stage} className="relative flex min-w-0 flex-col items-center px-0.5 text-center" aria-current={current ? "step" : undefined}>
-              {index < STUDENT_LIFECYCLE_STAGES.length - 1 ? (
-                <span aria-hidden="true" data-student-lifecycle-connector className={cn(
-                  "absolute left-1/2 top-4 h-px w-full",
-                  previous ? "bg-leaf-deep/50" : "bg-line",
+            <li key={table} className="row-span-3 grid min-w-0 grid-rows-subgrid">
+              <div className="flex min-w-0 items-end justify-center px-0.5">
+                <Badge
+                  variant="outline"
+                  data-student-lifecycle-process={table}
+                  title={t("lifecycleProcess", { table: workspaceT(table) })}
+                  className="max-w-full justify-center whitespace-normal break-words rounded-md px-1.5 py-1 text-center text-[11px] font-normal leading-4 text-muted"
+                >{workspaceT(table)}</Badge>
+              </div>
+              <div className="relative flex items-center" aria-hidden="true">
+                <span data-student-lifecycle-connector className={cn(
+                  "h-px w-full",
+                  index <= currentIndex ? "bg-leaf-deep/40" : "bg-line",
                 )} />
-              ) : null}
-              <span aria-hidden="true" className={cn(
-                "relative z-10 flex size-8 items-center justify-center rounded-full border bg-paper",
-                current ? "border-leaf-deep text-leaf-deep" : previous ? "border-crater/50 text-ink" : "border-line text-muted",
-              )}>
-                {current ? <span className="absolute inset-0 rounded-full bg-leaf/30" /> : null}
-                <Icon className="relative size-3.5" />
-              </span>
-              <Badge variant="outline" className={cn(
-                "mt-2 max-w-full whitespace-normal rounded-full px-2 py-1 text-xs font-medium leading-4",
-                current ? "border-leaf-deep/40 bg-leaf/20 text-leaf-deep" : previous ? "border-crater/40 text-ink" : "border-line text-muted",
-              )}>{t(`lifecycle_${stage}`)}</Badge>
+                {milestone ? (
+                  <span className={cn(
+                    "absolute right-0 z-10 flex size-5 translate-x-1/2 items-center justify-center rounded-full border-2 bg-paper",
+                    current ? "border-leaf-deep" : previous ? "border-crater" : "border-line",
+                  )}>
+                    {current ? <span className="size-2 rounded-full bg-leaf-deep" /> : null}
+                  </span>
+                ) : (
+                  <ArrowRight data-student-lifecycle-continuation className="absolute -right-0.5 size-3 text-muted" />
+                )}
+              </div>
+              {milestone ? (
+                <div
+                  data-student-lifecycle-milestone={milestone}
+                  aria-current={current ? "step" : undefined}
+                  className={cn(
+                    "relative left-1/2 min-w-0 break-words px-0.5 text-center text-[11px] leading-4",
+                    current ? "font-medium text-leaf-deep" : previous ? "text-ink" : "text-muted",
+                  )}
+                >
+                  {t(`milestone_${milestone}`)}
+                  {current ? <span className="sr-only"> · {t("lifecycleCurrent")}</span> : null}
+                </div>
+              ) : <span aria-hidden="true" />}
             </li>
           );
         })}
@@ -691,8 +702,17 @@ function Student360Loading() {
   return (
     <div className="px-5 py-6 sm:px-7" aria-busy="true" aria-label={t("loading")}>
       <div className="flex items-center gap-2 text-xs text-muted"><LoaderCircle className="size-3.5 animate-spin" /><Skeleton className="h-4 w-36" /></div>
-      <div className="mt-5 grid grid-cols-4 gap-2">
-        {STUDENT_LIFECYCLE_STAGES.map((stage) => <div key={stage} className="flex flex-col items-center gap-2"><Skeleton className="size-8 rounded-full" /><Skeleton className="h-6 w-14 rounded-full" /></div>)}
+      <div className="mt-5 grid grid-cols-5 grid-rows-[auto_2rem_auto]">
+        {STUDENT_LIFECYCLE_ROADMAP.map(({ table, milestone }) => (
+          <div key={table} className="row-span-3 grid min-w-0 grid-rows-subgrid">
+            <Skeleton className="h-6 w-10 max-w-full justify-self-center rounded-md" />
+            <div className="relative flex items-center">
+              <Skeleton className="h-px w-full" />
+              {milestone ? <Skeleton className="absolute right-0 size-5 translate-x-1/2 rounded-full" /> : null}
+            </div>
+            {milestone ? <Skeleton className="relative left-1/2 h-4 w-12 max-w-full justify-self-center" /> : <span />}
+          </div>
+        ))}
       </div>
       <div className="mt-8 space-y-6">
         {Array.from({ length: 4 }, (_, index) => <div key={index} className="grid grid-cols-[1.5rem_1fr] gap-3"><Skeleton className="size-3 rounded-full" /><div className="space-y-2"><Skeleton className="h-4 w-44" /><Skeleton className="h-16 w-full" /></div></div>)}
