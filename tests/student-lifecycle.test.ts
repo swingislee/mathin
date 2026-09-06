@@ -13,9 +13,15 @@ describe("student lifecycle tags", () => {
     }
   });
 
-  it("replaces the rail and explanatory copy with one current tag", () => {
+  it("keeps a connected four-tag stage rail and highlights the current stage", () => {
     const sheet = fs.readFileSync("src/features/school/Student360Sheet.tsx", "utf8");
     expect(sheet).toContain("data-student-lifecycle={snapshot.lifecycleStage}");
+    expect(sheet).toContain("Student360LifecycleRail");
+    expect(sheet).toContain("STUDENT_LIFECYCLE_STAGES.map((stage, index)");
+    expect(sheet).toContain('className="grid grid-cols-4"');
+    expect(sheet).toContain("data-student-lifecycle-connector");
+    expect(sheet).toContain('aria-current={current ? "step" : undefined}');
+    expect(sheet).not.toContain("grid-cols-7");
     expect(sheet).not.toContain("Student360PhaseRail");
     expect(sheet).not.toContain("student-360-description");
     expect(sheet).not.toContain('t("createProfile")');

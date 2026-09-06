@@ -3,7 +3,10 @@
 import dynamic from "next/dynamic";
 import {
   ArrowUpRight,
+  ClipboardCheck,
+  GraduationCap,
   LoaderCircle,
+  MessageSquareText,
   PanelRightClose,
   RefreshCw,
   UserRoundSearch,
@@ -25,6 +28,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { getStudent360Action } from "./actions/student-360";
+import { STUDENT_LIFECYCLE_STAGES } from "./student-lifecycle-contract";
 import {
   STUDENT_360_REFRESH_EVENT,
   type Student360Event,
@@ -496,7 +500,7 @@ function Student360PanelBody({
               <Button type="button" variant="ghost" size="sm" className="h-7 px-2" onClick={retry}>{t("retry")}</Button>
             </div>
           ) : null}
-          <Student360LifecycleTag snapshot={snapshot} />
+          <Student360LifecycleRail snapshot={snapshot} />
 
           {snapshot.identity.profileRemark ? (
             <section className="border-y border-line bg-moon/10 px-5 py-4 sm:px-7" aria-labelledby="student-360-profile-remark">
@@ -564,18 +568,46 @@ function Student360PanelBody({
   );
 }
 
-function Student360LifecycleTag({ snapshot }: { snapshot: Student360Snapshot }) {
+const LIFECYCLE_ICONS = {
+  awaiting_first_contact: MessageSquareText,
+  awaiting_assessment: ClipboardCheck,
+  awaiting_enrollment: GraduationCap,
+  awaiting_renewal: RefreshCw,
+};
+
+function Student360LifecycleRail({ snapshot }: { snapshot: Student360Snapshot }) {
   const t = useTranslations("school.student360");
+  const currentIndex = STUDENT_LIFECYCLE_STAGES.indexOf(snapshot.lifecycleStage);
   return (
-    <section className="flex flex-wrap items-center gap-3 px-5 pb-1 pt-5 sm:px-7" aria-label={t("lifecycleLabel")} data-student-lifecycle={snapshot.lifecycleStage}>
-      <span className="text-xs text-muted">{t("lifecycleLabel")}</span>
-      <Badge variant="outline" className={cn(
-        "rounded-full px-3 py-1 text-xs font-medium",
-        snapshot.lifecycleStage === "awaiting_first_contact" && "border-line bg-moon/20 text-ink",
-        snapshot.lifecycleStage === "awaiting_assessment" && "border-leaf-deep/30 bg-leaf/20 text-leaf-deep",
-        snapshot.lifecycleStage === "awaiting_enrollment" && "border-crater/60 bg-moon/40 text-ink",
-        snapshot.lifecycleStage === "awaiting_renewal" && "border-crater/50 bg-crater/15 text-ink",
-      )}>{t(`lifecycle_${snapshot.lifecycleStage}`)}</Badge>
+    <section className="px-5 py-5 sm:px-7" aria-label={t("lifecycleLabel")} data-student-lifecycle={snapshot.lifecycleStage}>
+      <ol className="grid grid-cols-4">
+        {STUDENT_LIFECYCLE_STAGES.map((stage, index) => {
+          const Icon = LIFECYCLE_ICONS[stage];
+          const current = stage === snapshot.lifecycleStage;
+          const previous = index < currentIndex;
+          return (
+            <li key={stage} className="relative flex min-w-0 flex-col items-center px-0.5 text-center" aria-current={current ? "step" : undefined}>
+              {index < STUDENT_LIFECYCLE_STAGES.length - 1 ? (
+                <span aria-hidden="true" data-student-lifecycle-connector className={cn(
+                  "absolute left-1/2 top-4 h-px w-full",
+                  previous ? "bg-leaf-deep/50" : "bg-line",
+                )} />
+              ) : null}
+              <span aria-hidden="true" className={cn(
+                "relative z-10 flex size-8 items-center justify-center rounded-full border bg-paper",
+                current ? "border-leaf-deep text-leaf-deep" : previous ? "border-crater/50 text-ink" : "border-line text-muted",
+              )}>
+                {current ? <span className="absolute inset-0 rounded-full bg-leaf/30" /> : null}
+                <Icon className="relative size-3.5" />
+              </span>
+              <Badge variant="outline" className={cn(
+                "mt-2 max-w-full whitespace-normal rounded-full px-2 py-1 text-xs font-medium leading-4",
+                current ? "border-leaf-deep/40 bg-leaf/20 text-leaf-deep" : previous ? "border-crater/40 text-ink" : "border-line text-muted",
+              )}>{t(`lifecycle_${stage}`)}</Badge>
+            </li>
+          );
+        })}
+      </ol>
     </section>
   );
 }
@@ -659,7 +691,9 @@ function Student360Loading() {
   return (
     <div className="px-5 py-6 sm:px-7" aria-busy="true" aria-label={t("loading")}>
       <div className="flex items-center gap-2 text-xs text-muted"><LoaderCircle className="size-3.5 animate-spin" /><Skeleton className="h-4 w-36" /></div>
-      <Skeleton className="mt-5 h-7 w-28 rounded-full" />
+      <div className="mt-5 grid grid-cols-4 gap-2">
+        {STUDENT_LIFECYCLE_STAGES.map((stage) => <div key={stage} className="flex flex-col items-center gap-2"><Skeleton className="size-8 rounded-full" /><Skeleton className="h-6 w-14 rounded-full" /></div>)}
+      </div>
       <div className="mt-8 space-y-6">
         {Array.from({ length: 4 }, (_, index) => <div key={index} className="grid grid-cols-[1.5rem_1fr] gap-3"><Skeleton className="size-3 rounded-full" /><div className="space-y-2"><Skeleton className="h-4 w-44" /><Skeleton className="h-16 w-full" /></div></div>)}
       </div>
