@@ -51,9 +51,11 @@ export function FollowupEntryFields({
           placeholder={placeholder ?? t("notePlaceholder")}
           className="min-h-28 resize-y bg-card text-sm leading-6" />
       </div>
-      {reminder ? <NextContactReminderField id={`${id}-reminder`} value={reminder.value}
-        onChange={reminder.onChange} disabled={disabled || pending || reminder.disabled}
-        compact className="w-full max-w-72" /> : null}
+      {reminder || hasBusiness ? <div data-followup-reminder-slot className={cn(hasBusiness && "min-h-18")}>
+        {reminder ? <NextContactReminderField id={`${id}-reminder`} value={reminder.value}
+          onChange={reminder.onChange} disabled={disabled || pending || reminder.disabled}
+          compact className="w-full max-w-72" /> : null}
+      </div> : null}
       <div data-followup-entry-actions className="flex min-w-0 flex-wrap items-center gap-2 pt-1">
         {hint ? <p className="w-full text-xs leading-5 text-muted" role="status">{hint}</p> : null}
         {tools ? <div className="flex w-full min-w-0 flex-wrap items-center gap-2">{tools}</div> : null}

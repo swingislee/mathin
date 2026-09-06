@@ -826,8 +826,8 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
     if (pending) beginSave(id);
     else if (savingIdsRef.current.has(id)) endSave(id);
   };
-  return <DashboardTableShell data-followup-workbench>
-    <Table className="w-full min-w-[62rem] table-fixed text-xs" containerClassName="max-h-[calc(100dvh-13rem)] overflow-auto">
+  return <DashboardTableShell data-followup-workbench data-communication-scroll>
+    <Table className="w-full min-w-[62rem] table-fixed text-xs" containerClassName="overflow-auto [scrollbar-gutter:stable]">
       <colgroup><col style={{ width: "14rem" }} /><col style={{ width: "16rem" }} /><col style={{ width: "24rem" }} /><col style={{ width: "8rem" }} /></colgroup>
       <TableHeader><TableRow>
         <TableHead className="sticky left-0 top-0 z-30 h-9 border-r border-line bg-card px-2"><div className="flex min-w-0 items-center gap-1.5">

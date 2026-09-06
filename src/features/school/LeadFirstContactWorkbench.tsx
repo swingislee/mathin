@@ -306,6 +306,8 @@ export function LeadContactEntryRow({
     chooseOutcome(shortcut.outcome);
   };
 
+  const contactFacts = reachable ? <FollowupContactFacts wechat={wechatState ? wechatState === "yes" : lead.wechatAdded}
+    onWechatChange={(added) => setWechatState(added ? "yes" : "no")} interest={interestLevel} onInterestChange={setInterestLevel} disabled={pending} /> : null;
   const entryCell = (
       <TableCell className="px-2 py-2">
         {historicalSummary ? <div className="mb-1 min-w-0">{historicalSummary.details}</div> : null}
@@ -379,11 +381,9 @@ export function LeadContactEntryRow({
         hint={!canUseEntry ? entryT("readOnly")
           : !outcome && note.trim() ? entryT(noteOnly && !reminderDirty ? "studentNoteOnly" : "chooseOutcome")
           : hasDeferredFacts ? entryT("deferredFacts") : outcome ? undefined : entryT(canWriteNote ? "studentNoteAvailable" : "chooseOutcome")}>
-        {reachable ? <FollowupContactFacts wechat={wechatState ? wechatState === "yes" : lead.wechatAdded}
-          onWechatChange={(added) => setWechatState(added ? "yes" : "no")} interest={interestLevel} onInterestChange={setInterestLevel} disabled={pending} /> : null}
         {outcome === "connected" ? <InvitationDraftFields key={draftStorageKey} value={invitation} activities={activities} assessors={assessors} locale={locale}
-          gradeHint={lead.gradeHint} disabled={pending} showReminder={false} draftStorageKey={draftStorageKey}
-          onChange={(value) => setInvitation(value && !invitation && invitationCanHaveNextContactReminder(value) ? { ...value, nextContactAt: value.nextContactAt ?? nextContactAt } : value)} /> : null}
+          gradeHint={lead.gradeHint} contactFacts={contactFacts} disabled={pending} showReminder={false} draftStorageKey={draftStorageKey}
+          onChange={(value) => setInvitation(value && !invitation && invitationCanHaveNextContactReminder(value) ? { ...value, nextContactAt: value.nextContactAt ?? nextContactAt } : value)} /> : contactFacts}
       </FollowupEntryFields>
       {!detailsFirst ? detailsExtra : null}
     </FollowupInlineDetails>

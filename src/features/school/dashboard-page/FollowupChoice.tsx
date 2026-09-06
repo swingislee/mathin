@@ -16,15 +16,17 @@ const toneDot: Record<FollowupTone, string> = {
   healthy: "bg-leaf-deep", neutral: "bg-muted", attention: "bg-[var(--followup-outline)]", unhealthy: "bg-rose",
 };
 
-export function FollowupChoice({ value, onValueChange, options, label, disabled, className }: {
+export function FollowupChoice({ value, onValueChange, options, label, disabled, className, presentation = "auto", placeholder }: {
   value: string;
   onValueChange: (value: string) => void;
   options: readonly { value: string; label: string; tone?: FollowupTone }[];
   label: string;
   disabled?: boolean;
   className?: string;
+  presentation?: "auto" | "select";
+  placeholder?: string;
 }) {
-  if (options.length < 4) return <div role="group" aria-label={label} className={cn("flex min-w-0 flex-wrap gap-1.5", className)}>
+  if (presentation === "auto" && options.length < 4) return <div role="group" aria-label={label} className={cn("flex min-w-0 flex-wrap gap-1.5", className)}>
     {options.map((option) => <Button key={option.value} type="button" size="sm" variant="secondary" disabled={disabled}
       aria-pressed={value === option.value}
       title={option.label}
@@ -37,7 +39,7 @@ export function FollowupChoice({ value, onValueChange, options, label, disabled,
   const selected = options.find((option) => option.value === value);
   return <Select value={selected ? selected.value || "$unset" : ""} onValueChange={(next) => onValueChange(next === "$unset" ? "" : next)} disabled={disabled}>
     <SelectTrigger aria-label={label} title={selected?.label ?? label} className={cn("h-auto min-h-9 min-w-0 max-w-full gap-2 whitespace-normal bg-card py-1.5 text-left text-xs leading-5 text-ink hover:translate-y-0 [&>span]:min-w-0 [&>span]:line-clamp-none [&>span]:break-words [&>svg]:shrink-0", className)}>
-      <SelectValue placeholder={label}>{selected ? <span className="flex items-center gap-2">
+      <SelectValue placeholder={placeholder ?? label}>{selected ? <span className="flex items-center gap-2">
         {selected.tone ? <span aria-hidden="true" className={cn("size-1.5 shrink-0 rounded-full", toneDot[selected.tone])} /> : null}
         <span>{selected.label}</span>
       </span> : null}</SelectValue>

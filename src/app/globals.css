@@ -26,6 +26,7 @@
   --followup-edit: color-mix(in srgb, var(--moon) 38%, var(--card));
   --followup-detail: color-mix(in srgb, var(--moon) 14%, var(--card));
   --followup-outline: #bc963f;
+  --followup-choice-ink: var(--ink);
 }
 
 /* 暗色 = 星夜 */
@@ -53,6 +54,7 @@
   --followup-edit: color-mix(in srgb, var(--moon) 13%, var(--card));
   --followup-detail: color-mix(in srgb, var(--moon) 5%, var(--card));
   --followup-outline: var(--moon);
+  --followup-choice-ink: var(--paper);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -80,6 +82,7 @@
     --followup-edit: color-mix(in srgb, var(--moon) 13%, var(--card));
     --followup-detail: color-mix(in srgb, var(--moon) 5%, var(--card));
     --followup-outline: var(--moon);
+    --followup-choice-ink: var(--paper);
   }
 }
 
@@ -348,6 +351,40 @@ body:has([data-dashboard-canvas], [data-followup-workbench])::after { display: n
 [data-followup-workbench] [data-slot="table"] > tbody > tr:focus-visible > td:first-child button[aria-expanded] {
   outline: 2px solid var(--followup-outline);
   outline-offset: 2px;
+}
+
+/* 沟通页由表格使用剩余高度滚动；页头和分页保持原位，滚动条出现时列宽不变。 */
+@media (min-width: 48rem) and (min-height: 36rem) {
+  [data-dashboard-canvas]:has([data-communication-scroll]) {
+    min-height: 0;
+    overflow: hidden;
+  }
+  [data-dashboard-content]:has([data-communication-scroll]),
+  [data-dashboard-page]:has([data-communication-scroll]) {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+  }
+  [data-dashboard-page]:has([data-communication-scroll]) > [data-dashboard-page-chrome],
+  [data-dashboard-page-body]:has([data-communication-scroll]) > [data-dashboard-page-slot="footer"] {
+    flex-shrink: 0;
+  }
+  [data-dashboard-page-body]:has([data-communication-scroll]) {
+    min-height: 0;
+    flex: 1;
+  }
+  [data-dashboard-page-body]:has([data-communication-scroll]) > [data-dashboard-page-slot="content"] {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+  }
+  [data-communication-scroll] {
+    min-height: 0;
+    flex: 1;
+  }
+  [data-communication-scroll] > [data-slot="table-container"] { height: 100%; }
 }
 
 /*

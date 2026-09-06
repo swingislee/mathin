@@ -1,5 +1,5 @@
 import type { LeadContactInput } from "./actions/leads";
-import { defaultInvitationState, invitationCanHaveNextContactReminder, type InvitationDraft, type InvitationKind } from "./invitation-contract";
+import { assessmentAvailabilityIntersection, defaultInvitationState, invitationCanHaveNextContactReminder, invitationDraftIsComplete, type InvitationDraft, type InvitationKind } from "./invitation-contract";
 import type { LeadContactOutcome, LeadInterestLevel } from "./lead-contract";
 
 export interface LeadContactDraft {
@@ -20,6 +20,19 @@ export function invitationHasStageInformation(draft: InvitationDraft | null): bo
   return Boolean(draft && (draft.activityId || draft.assessorId || draft.scheduledAt || draft.locationText.trim()
     || draft.parentTimeOptions.length || draft.assessorTimeOptions.length
     || draft.state !== defaultInvitationState(draft.kind)));
+}
+
+/** 仅指出当前步骤实际缺少的字段，填写顺序与表单保持一致。 */
+export function invitationDraftIssue(draft: InvitationDraft):
+  "missingAssessor" | "missingParentAvailability" | "missingAssessorAvailability" | "noSharedAvailability" | "missingScheduledTime" | "missingActivity" | null {
+  if (invitationDraftIsComplete(draft)) return null;
+  if (draft.kind === "activity") return "missingActivity";
+  if (draft.kind !== "assessment_1v1") return null;
+  if (!draft.assessorId) return "missingAssessor";
+  if (!draft.parentTimeOptions.length) return "missingParentAvailability";
+  if (!draft.assessorTimeOptions.length) return "missingAssessorAvailability";
+  if (!assessmentAvailabilityIntersection(draft.parentTimeOptions, draft.assessorTimeOptions).length) return "noSharedAvailability";
+  return "missingScheduledTime";
 }
 
 export function invitationTabSelection(current: InvitationDraft | null, kind: InvitationKind, cached?: InvitationDraft): {

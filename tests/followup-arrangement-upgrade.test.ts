@@ -8,7 +8,7 @@ import { FollowupContactFacts } from "@/features/school/FollowupContactFacts";
 import { InvitationDraftFields } from "@/features/school/InvitationDraftFields";
 import { NextContactReminderField } from "@/features/school/NextContactReminderField";
 import { activityGradeFit, activityInitialWeek, activityWeekCell } from "@/features/school/activity-grade-contract";
-import { emptyInvitationDraft, invitationForAdvance, invitationTabSelection } from "@/features/school/followup-entry-contract";
+import { emptyInvitationDraft, invitationDraftIssue, invitationForAdvance, invitationTabSelection } from "@/features/school/followup-entry-contract";
 import type { InvitationActivityOption } from "@/features/school/invitation-contract";
 import { calendarDayKey } from "@/features/school/schedule";
 
@@ -132,17 +132,82 @@ describe("follow-up arrangement upgrade", () => {
     expect(progress).toContain('data-followup-progress-link="complete"');
     expect(progress.match(/data-followup-progress-link="pending"/g)).toHaveLength(2);
   });
-  it("uses an accessible switch and three default-unselected colored interest choices", () => {
+  it("preserves unknown WeChat as a select placeholder and uses compact colored interest choices without checkmarks", () => {
     const props = { wechat: null, onWechatChange: vi.fn(), interest: "" as const, onInterestChange: vi.fn() };
     const blank = render(createElement(FollowupContactFacts, props));
-    expect(blank).toContain('role="switch"');
+    expect(blank).toContain('role="combobox"');
+    expect(blank).not.toContain('role="switch"');
     expect(blank).toContain(messages.school.followupEntry.wechatUnknown);
-    expect(blank).toContain(messages.school.followupEntry.wechatConfirmNo);
+    expect(blank).not.toContain(messages.school.followupEntry.wechatConfirmNo);
+    expect(blank).not.toContain(messages.school.followupEntry.wechatUnknownHint);
     expect(blank).not.toContain('data-state="on"');
     expect(blank).not.toContain("data-[state=on]:ring-1");
     for (const level of ["A", "B", "C"] as const) expect(blank).toContain(`aria-label="${messages.school.leads[`interest_${level}`]}"`);
-    expect(render(createElement(FollowupContactFacts, { ...props, wechat: true }))).toContain('aria-checked="true"');
-    expect(render(createElement(FollowupContactFacts, { ...props, wechat: false }))).toContain("data-[state=unchecked]:bg-rose");
+    expect(render(createElement(FollowupContactFacts, { ...props, wechat: true }))).toContain(messages.school.followupEntry.wechatYes);
+    expect(render(createElement(FollowupContactFacts, { ...props, wechat: false }))).toContain(messages.school.followupEntry.wechatNo);
+    for (const level of ["A", "B", "C"] as const) {
+      const selected = render(createElement(FollowupContactFacts, { ...props, interest: level }));
+      expect(selected).not.toContain("lucide-check");
+      expect(selected).toContain("size-8 min-w-8");
+      expect(selected).toContain("text-muted");
+      expect(selected).toContain("data-[state=on]:bg-leaf");
+      expect(selected).toContain("data-[state=on]:bg-moon");
+      expect(selected).toContain("data-[state=on]:bg-rose/85");
+    }
+    expect(props.onWechatChange).not.toHaveBeenCalled();
+  });
+  it("groups contact facts and handoff tabs in one wrapping toolbar", () => {
+    const props = { value: null, activities: [], assessors: [], locale: "zh", onChange: vi.fn(),
+      contactFacts: createElement(FollowupContactFacts, { wechat: null, onWechatChange: vi.fn(), interest: "" as const, onInterestChange: vi.fn() }) };
+    const markup = render(createElement(InvitationDraftFields, props));
+    const toolbar = markup.indexOf("data-followup-facts-toolbar");
+    const facts = markup.indexOf("data-followup-contact-facts");
+    const tabs = markup.indexOf('role="tablist"');
+    expect(toolbar).toBeLessThan(facts);
+    expect(facts).toBeLessThan(tabs);
+    expect(markup.match(/data-followup-contact-facts/g)).toHaveLength(1);
+    expect(markup).toContain('aria-label="承接"');
+  });
+  it("keeps assessor, time and location in stable compact geometry at every assessment step", () => {
+    const renders = (["coordinating_time", "awaiting_teacher", "awaiting_parent", "confirmed"] as const).map((state) => {
+      const value = { ...emptyInvitationDraft("assessment_1v1"), state, assessorId: "teacher", parentTimeOptions: ["2026-09-07@14:00"] };
+      const markup = render(createElement(InvitationDraftFields, { value, activities: [], assessors: [{ userId: "teacher", displayName: "测评老师甲" }], locale: "zh", showReminder: false, onChange: vi.fn() }));
+      const labels = messages.school.invitations;
+      expect(markup.indexOf(labels.assessorLabel)).toBeLessThan(markup.indexOf(labels.timeLabel));
+      expect(markup.indexOf(labels.timeLabel)).toBeLessThan(markup.indexOf(labels.locationLabel));
+      expect(markup).not.toContain(labels.stateManualHint);
+      expect(markup).not.toContain(labels[`task_${state}`]);
+      expect(markup).not.toContain(labels.draftIncomplete);
+      expect(markup).not.toContain(labels.availabilityOpen);
+      expect(markup).not.toContain(labels.availabilityChooseScheduled);
+      expect(markup).toContain('data-invitation-validation="true" class="min-h-5');
+      expect(markup).not.toContain("/invitation-fields:flex-1");
+      return {
+        fields: markup.match(/data-assessment-fields="true" class="([^"]+)"/)?.[1],
+        progress: markup.match(/data-invitation-progress="true" class="([^"]+)"/)?.[1],
+        timeTrigger: markup.match(/<button class="([^"]+)"[^>]*data-assessment-time-trigger="true"/)?.[1],
+      };
+    });
+    expect(renders[0].fields).toContain("max-w-[58rem]");
+    expect(renders[0].progress).toBeDefined();
+    expect(renders[0].timeTrigger).toContain("min-h-9");
+    for (const result of renders) expect(result).toEqual(renders[0]);
+  });
+  it("reports only the actual missing requirement and keeps the original draft", () => {
+    const draft = { ...emptyInvitationDraft("assessment_1v1"), state: "awaiting_parent" as const };
+    expect(invitationDraftIssue(emptyInvitationDraft("assessment_1v1"))).toBeNull();
+    expect(invitationDraftIssue(draft)).toBe("missingAssessor");
+    const teacher = { ...draft, assessorId: "teacher" };
+    expect(invitationDraftIssue(teacher)).toBe("missingParentAvailability");
+    const parent = { ...teacher, parentTimeOptions: ["2026-09-07@14:00"] };
+    expect(invitationDraftIssue(parent)).toBe("missingAssessorAvailability");
+    expect(invitationDraftIssue({ ...parent, state: "awaiting_teacher" })).toBeNull();
+    expect(invitationDraftIssue({ ...parent, assessorTimeOptions: ["2026-09-07@15:00"] })).toBe("noSharedAvailability");
+    const shared = { ...parent, assessorTimeOptions: parent.parentTimeOptions };
+    expect(invitationDraftIssue(shared)).toBeNull();
+    expect(invitationDraftIssue({ ...shared, state: "confirmed" })).toBe("missingScheduledTime");
+    expect(invitationDraftIssue({ ...shared, state: "confirmed", scheduledAt: "2026-09-07T06:00:00Z" })).toBeNull();
+    expect(draft).toEqual({ ...emptyInvitationDraft("assessment_1v1"), state: "awaiting_parent" });
   });
   it("keeps reminder help available without an extra disclosure row, and leaves invalid-time errors visible", () => {
     const props = { id: "reminder", value: null, compact: true, onChange: vi.fn() };

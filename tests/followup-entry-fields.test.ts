@@ -16,8 +16,12 @@ const props: ComponentProps<typeof FollowupEntryFields> = {
 };
 
 describe("shared follow-up entry layout and submission contract", () => {
-  it.each([null, false, createElement("div", { key: "assessment" }, "assessment"), createElement("div", { key: "activity" }, "activity")])(
-    "keeps one note, a compact reminder immediately below, and a single action footer (%s)", (children) => {
+  it.each([
+    { name: "empty", children: null }, { name: "hidden", children: false },
+    { name: "assessment", children: createElement("div", null, "assessment") },
+    { name: "activity", children: createElement("div", null, "activity") },
+  ])(
+    "keeps one note, a compact reminder immediately below, and a single action footer ($name)", ({ children }) => {
       const markup = renderToStaticMarkup(createElement(FollowupEntryFields, props, children));
       expect(markup.match(/<textarea\b/g)).toHaveLength(1);
       expect(markup.indexOf('id="entry-note"')).toBeLessThan(markup.indexOf('id="entry-reminder"'));
@@ -38,6 +42,14 @@ describe("shared follow-up entry layout and submission contract", () => {
     expect(markup).toContain(">saveAndNext</button>");
     const noQueue = renderToStaticMarkup(createElement(FollowupEntryFields, { ...props, canAdvance: false }));
     expect(noQueue).not.toContain("saveAndNext");
+  });
+  it("retains the reminder slot when a confirmed arrangement no longer allows reminders", () => {
+    const children = createElement("div", null, "assessment");
+    for (const reminder of [props.reminder, undefined]) {
+      const markup = renderToStaticMarkup(createElement(FollowupEntryFields, { ...props, reminder }, children));
+      expect(markup).toContain('data-followup-reminder-slot="true" class="min-h-18"');
+      expect(markup.indexOf("data-followup-reminder-slot")).toBeLessThan(markup.indexOf("data-followup-entry-actions"));
+    }
   });
 
   it("uses Ctrl+Enter for explicit save, ignores IME and repeat, and blocks disabled or pending submissions", () => {

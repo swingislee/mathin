@@ -23,4 +23,12 @@ describe("follow-up choice labels", () => {
     expect(markup.match(/aria-pressed=/g)).toHaveLength(3);
     expect(markup).toMatch(/aria-pressed="true"[^>]*>.*?乙<\/span>/);
   });
+  it("keeps a requested select stable even with two options and an unknown placeholder", () => {
+    const markup = renderToStaticMarkup(createElement(FollowupChoice, {
+      value: "", options: options.slice(0, 2), label: "加微信", placeholder: "待确认",
+      presentation: "select", onValueChange: () => {},
+    }));
+    expect(trigger(markup)).toContain("待确认</span>");
+    expect(markup).not.toContain("aria-pressed");
+  });
 });

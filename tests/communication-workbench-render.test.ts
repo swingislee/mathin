@@ -82,6 +82,12 @@ function renderWorkbench(props: Partial<Props> = {}) {
 }
 
 describe("communication workbench server rendering", () => {
+  it("lets the table own the available scroll space without a competing viewport-height cap", () => {
+    const { markup } = renderWorkbench();
+    expect(markup).toContain("data-communication-scroll");
+    expect(markup).toContain("[scrollbar-gutter:stable]");
+    expect(markup).not.toContain("100dvh-13rem");
+  });
   it("shares one note editor and stable note/reminder/action order across a lead and existing invitation", () => {
     const editableInvitation = { ...invitation("a"), state: "coordinating_time" as const, scheduledAt: null };
     for (const result of [renderWorkbench({ focusLeadId: "a" }), renderWorkbench({ focusLeadId: "a", rows: [editableInvitation] })]) {

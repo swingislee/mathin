@@ -1,8 +1,8 @@
 "use client";
 
-import { Check, ChevronRight, Keyboard } from "lucide-react";
+import { Check, ChevronRight } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Fragment, useCallback, useEffect, useId, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,12 +11,11 @@ import { cn } from "@/lib/utils";
 import { FollowupChoice } from "./dashboard-page/FollowupChoice";
 import { AssessmentAvailabilityGrid } from "./AssessmentAvailabilityGrid";
 import { ActivityWeekPicker } from "./ActivityWeekPicker";
-import { emptyInvitationDraft, invitationHasStageInformation, invitationTabSelection } from "./followup-entry-contract";
+import { emptyInvitationDraft, invitationDraftIssue, invitationHasStageInformation, invitationTabSelection } from "./followup-entry-contract";
 import {
   INVITATION_KINDS,
   INVITATION_STATES,
   invitationCanHaveNextContactReminder,
-  invitationDraftIsComplete,
   invitationStatesForKind,
   normalizeAssessmentTimeOptions,
   selectInvitationProgress,
@@ -133,6 +132,7 @@ export function InvitationDraftFields({
   editingScope = "full",
   draftStorageKey,
   gradeHint,
+  contactFacts,
   onChange,
 }: {
   value: InvitationDraft | null;
@@ -145,6 +145,7 @@ export function InvitationDraftFields({
   editingScope?: "full" | "assessor";
   draftStorageKey?: string;
   gradeHint?: number | null;
+  contactFacts?: ReactNode;
   onChange: (value: InvitationDraft | null) => void;
 }) {
   const t = useTranslations("school.invitations");
@@ -234,8 +235,19 @@ export function InvitationDraftFields({
   };
 
   const arrangementFields = value?.kind === "assessment_1v1" ? (
-    <div className="grid min-w-0 items-start gap-3 @[25rem]/invitation-fields:grid-cols-2 @[34rem]/invitation-fields:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)]">
-      <div className="min-w-0 space-y-1.5 @[25rem]/invitation-fields:col-span-2 @[34rem]/invitation-fields:col-span-1 [&>button]:min-w-0 [&>button]:max-w-full">
+    <div data-assessment-fields className="grid min-w-0 max-w-[58rem] items-start gap-3 @[40rem]/invitation-fields:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,1fr)]">
+      <div className="min-w-0 space-y-1.5">
+        <p className="text-xs text-muted">{t("assessorLabel")}</p>
+        <FollowupChoice presentation="select" className="w-full min-w-0 max-w-full" label={t("assessorLabel")} value={value.assessorId ?? "none"}
+          disabled={disabled || editingScope === "assessor"} options={[{ value: "none", label: t("assessorPending") }, ...assessors.map((assessor) => ({ value: assessor.userId, label: assessor.displayName }))]}
+          onValueChange={(assessorId) => {
+            const nextAssessorId = assessorId === "none" ? null : assessorId;
+            emit({ ...value, assessorId: nextAssessorId,
+              assessorTimeOptions: nextAssessorId === value.assessorId ? value.assessorTimeOptions : [],
+              scheduledAt: nextAssessorId === value.assessorId ? value.scheduledAt : null });
+          }} />
+      </div>
+      <div className="min-w-0 space-y-1.5 [&>button]:min-w-0 [&>button]:max-w-full">
         <p className="text-xs text-muted">{t("timeLabel")}</p>
         <AssessmentAvailabilityGrid
           value={value}
@@ -244,17 +256,6 @@ export function InvitationDraftFields({
           editableSide={editingScope === "assessor" ? "assessor" : "both"}
           onChange={(next) => emit(next)}
         />
-      </div>
-      <div className="min-w-0 space-y-1.5">
-        <p className="text-xs text-muted">{t("assessorLabel")}</p>
-        <FollowupChoice className="w-full min-w-0 max-w-full" label={t("assessorLabel")} value={value.assessorId ?? "none"}
-          disabled={disabled || editingScope === "assessor"} options={[{ value: "none", label: t("assessorPending") }, ...assessors.map((assessor) => ({ value: assessor.userId, label: assessor.displayName }))]}
-          onValueChange={(assessorId) => {
-            const nextAssessorId = assessorId === "none" ? null : assessorId;
-            emit({ ...value, assessorId: nextAssessorId,
-              assessorTimeOptions: nextAssessorId === value.assessorId ? value.assessorTimeOptions : [],
-              scheduledAt: nextAssessorId === value.assessorId ? value.scheduledAt : null });
-          }} />
       </div>
       <div className="min-w-0 space-y-1.5">
         <Label htmlFor={`invitation-location-${reminderId}`} className="text-xs text-muted">{t("locationLabel")}</Label>
@@ -275,20 +276,12 @@ export function InvitationDraftFields({
       onChooseAssessment={() => chooseKind("assessment_1v1")}
       disabled={disabled || editingScope === "assessor"} onSelect={(activity) => emit({ ...value,
         activityId: activity.id, locationText: activity.location, state: "awaiting_parent", scheduledAt: null })} />
-  ) : value?.kind === "waiting_activity" ? (
-    <p className="text-[11px] leading-4 text-muted">{t("waitingActivityHint")}</p>
   ) : null;
 
   const stateControls = value && stateChoices.length > 1 && (value.kind !== "activity" || value.activityId) ? (
-    <div className="min-w-0 space-y-2">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <p className="text-xs font-medium text-ink">{t("stateLabel")}</p>
-        {value.kind === "assessment_1v1" ? <p className="flex items-center gap-1.5 text-[11px] text-muted">
-          <Keyboard className="size-3 shrink-0 text-ink" aria-hidden="true" />
-          <span>{t("stateManualHint")}</span>
-        </p> : null}
-      </div>
-      <div className="flex min-w-0 flex-col @[30rem]/invitation-fields:flex-row @[30rem]/invitation-fields:items-start" role="group" aria-label={t("stateLabel")} aria-keyshortcuts={value.kind === "assessment_1v1" ? "1 2 3 4" : undefined}>
+    <div className="flex min-w-0 max-w-[58rem] flex-wrap items-center gap-x-4 gap-y-1">
+      <p className="text-xs text-muted">{t("stateLabel")}</p>
+      <div data-invitation-progress className="flex min-w-0 flex-col items-start @[38rem]/invitation-fields:flex-row @[38rem]/invitation-fields:items-center" role="group" aria-label={t("stateLabel")} aria-keyshortcuts={value.kind === "assessment_1v1" ? "1 2 3 4" : undefined}>
         {stateChoices.map((state, index) => {
           const selected = value.state === state;
           const passed = index < selectedStateIndex;
@@ -298,8 +291,8 @@ export function InvitationDraftFields({
               size="sm"
               variant="ghost"
               className={cn(
-                "h-auto min-h-10 min-w-0 justify-start gap-2 whitespace-normal rounded-md px-1 py-1.5 text-left text-xs leading-5 @[30rem]/invitation-fields:flex-1 @[30rem]/invitation-fields:flex-col @[30rem]/invitation-fields:text-center",
-                selected ? "font-medium text-ink" : "text-muted",
+                "h-10 min-w-0 justify-start gap-1.5 whitespace-normal rounded-md px-0 py-1 text-left text-xs font-medium leading-4",
+                selected ? "text-ink" : "text-muted",
               )}
               disabled={disabled || editingScope === "assessor"}
               aria-pressed={selected}
@@ -308,27 +301,25 @@ export function InvitationDraftFields({
               onClick={() => chooseState(state)}
             >
               <span aria-hidden="true" className={cn(
-                "flex size-6 shrink-0 items-center justify-center rounded-full border text-xs",
+                "flex size-5 shrink-0 items-center justify-center rounded-full border text-[11px]",
                 selected ? "border-[var(--followup-outline)] bg-moon/25 text-ink ring-2 ring-[var(--followup-outline)]/25"
                   : passed ? "border-leaf-deep bg-leaf/25 text-ink"
                     : "border-muted/40 bg-card text-muted",
               )}>
                 {passed ? <Check className="size-3" /> : index + 1}
               </span>
-              <span className="w-full">{t(`state_${state}`)}</span>
+              <span className="max-w-32">{t(`state_${state}`)}</span>
             </Button>{index < stateChoices.length - 1 ? <span aria-hidden="true" data-followup-progress-link={passed ? "complete" : "pending"}
-              className={cn("relative ml-3 h-5 w-0 shrink-0 border-l-2 @[30rem]/invitation-fields:mx-1 @[30rem]/invitation-fields:mt-[18px] @[30rem]/invitation-fields:h-0 @[30rem]/invitation-fields:w-8 @[30rem]/invitation-fields:border-t-2 @[30rem]/invitation-fields:border-l-0",
+              className={cn("relative ml-2.5 h-3 w-0 shrink-0 border-l-2 @[38rem]/invitation-fields:mx-2 @[38rem]/invitation-fields:h-0 @[38rem]/invitation-fields:w-5 @[38rem]/invitation-fields:border-t-2 @[38rem]/invitation-fields:border-l-0",
                 passed ? "border-solid border-leaf-deep text-leaf-deep" : "border-dashed border-muted/40 text-muted")}>
-              <ChevronRight className="absolute -bottom-1 -left-[7px] size-3 rotate-90 @[30rem]/invitation-fields:-top-[7px] @[30rem]/invitation-fields:-right-1 @[30rem]/invitation-fields:bottom-auto @[30rem]/invitation-fields:left-auto @[30rem]/invitation-fields:rotate-0" />
+              <ChevronRight className="absolute -bottom-1 -left-[7px] size-3 rotate-90 @[38rem]/invitation-fields:-top-[7px] @[38rem]/invitation-fields:-right-1 @[38rem]/invitation-fields:bottom-auto @[38rem]/invitation-fields:left-auto @[38rem]/invitation-fields:rotate-0" />
             </span> : null}</Fragment>
           );
         })}
       </div>
-      <p className="text-xs leading-5 text-muted">
-        {t(`task_${value.state}`)}
-      </p>
     </div>
   ) : null;
+  const issue = invitationHasStageInformation(value) ? invitationDraftIssue(value) : null;
 
   return (
     <div
@@ -337,18 +328,19 @@ export function InvitationDraftFields({
       onKeyDownCapture={handleStateShortcut}
     >
       <Tabs value={value.kind} onValueChange={(kind) => chooseKind(kind as InvitationKind)} className="min-w-0">
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
-          <p className="text-xs text-muted">{t("kindLabel")}</p>
-          <TabsList aria-label={t("kindLabel")} className="h-9 w-fit justify-start gap-4 rounded-none bg-transparent p-0">
-            {(["activity", "assessment_1v1", "waiting_activity"] as const).map((kind) => <TabsTrigger key={kind} value={kind}
-              disabled={disabled || editingScope === "assessor"} className="h-9 rounded-none border-b-2 border-transparent px-1 text-xs data-[state=active]:border-[var(--followup-outline)] data-[state=active]:bg-transparent data-[state=active]:shadow-none">
-              {entryT(`tab_${kind}`)}
-            </TabsTrigger>)}
-          </TabsList>
+        <div data-followup-facts-toolbar className="flex min-w-0 flex-wrap items-center gap-x-6 gap-y-2">
+          {contactFacts}
+          <div className="flex items-center gap-3">
+            <p className="text-xs text-muted">{t("kindLabel")}</p>
+            <TabsList aria-label={t("kindLabel")} className="h-9 w-fit justify-start gap-4 rounded-none bg-transparent p-0">
+              {(["activity", "assessment_1v1", "waiting_activity"] as const).map((kind) => <TabsTrigger key={kind} value={kind}
+                disabled={disabled || editingScope === "assessor"} className="h-9 rounded-none border-b-2 border-transparent px-1 text-xs data-[state=active]:border-[var(--followup-outline)] data-[state=active]:bg-transparent data-[state=active]:shadow-none">
+                {entryT(`tab_${kind}`)}
+              </TabsTrigger>)}
+            </TabsList>
+          </div>
         </div>
         <TabsContent value={value.kind} className="@container/invitation-fields min-w-0 space-y-3 pt-1">
-          {browsingDraft && committedValue && invitationHasStageInformation(committedValue) && browsingDraft.kind !== committedValue.kind
-            ? <p className="text-xs text-muted" role="status">{entryT("retainedArrangement", { kind: entryT(`tab_${committedValue.kind}`) })}</p> : null}
           {value.kind !== "activity" ? stateControls : null}
           {arrangementFields}
           {value.kind === "activity" ? stateControls : null}
@@ -363,9 +355,9 @@ export function InvitationDraftFields({
             />
           ) : null}
 
-          {invitationHasStageInformation(value) && !invitationDraftIsComplete(value) ? (
-            <p className="text-[11px] leading-4 text-amber-700" role="status">{t("draftIncomplete")}</p>
-          ) : null}
+          <div data-invitation-validation className="min-h-5 max-w-[58rem] text-xs leading-5 text-rose">
+            {issue ? <p role="alert">{t(issue)}</p> : null}
+          </div>
         </TabsContent>
       </Tabs>
     </div>

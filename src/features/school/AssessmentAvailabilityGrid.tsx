@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -152,7 +151,11 @@ export function AssessmentAvailabilityGrid({
       <Button
         type="button"
         variant="secondary"
-        className="h-auto min-h-10 w-full min-w-0 justify-start gap-2 whitespace-normal rounded-xl px-3 py-2 text-left"
+        data-assessment-time-trigger
+        aria-label={t("timeLabel")}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        className="h-auto min-h-9 w-full min-w-0 justify-start gap-2 whitespace-normal rounded-lg border-line bg-card px-3 py-1.5 text-left text-xs leading-5 shadow-sm hover:translate-y-0"
         disabled={disabled || scheduledTimeNeedsAssessor}
         title={scheduledTimeNeedsAssessor ? t("availabilityDirectNeedsAssessor") : undefined}
         onClick={() => {
@@ -160,22 +163,12 @@ export function AssessmentAvailabilityGrid({
           setOpen(true);
         }}
       >
-        <CalendarDays className="size-4 shrink-0 text-moon-deep" />
-        <span className="min-w-0 flex-1">
-          <span className="block break-words text-xs font-medium leading-5 text-ink">
-            {scheduledTimeNeedsAssessor
-              ? t("availabilityDirectNeedsAssessor")
-              : choosingScheduledTime
-                ? t("availabilityChooseScheduled")
-                : t("availabilityOpen")}
-          </span>
-          <span className="block break-words text-[11px] font-normal leading-4 text-muted">{triggerSummary}</span>
-        </span>
+        <CalendarDays className="size-4 shrink-0 text-muted" />
+        <span className={cn("min-w-0 flex-1 break-words font-normal", value.scheduledAt || value.parentTimeOptions.length || value.assessorTimeOptions.length ? "text-ink" : "text-muted")}>{triggerSummary}</span>
       </Button>
-      <DialogContent className="max-w-[min(62rem,calc(100vw-2rem))] gap-3 p-4 sm:p-5">
+      <DialogContent aria-describedby={undefined} className="max-w-[min(62rem,calc(100vw-2rem))] gap-3 p-4 sm:p-5">
         <DialogHeader>
           <DialogTitle>{t("availabilityTitle")}</DialogTitle>
-          <DialogDescription>{t("availabilityDescription")}</DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-wrap items-center justify-between gap-2 border-y border-line py-2">
@@ -234,12 +227,6 @@ export function AssessmentAvailabilityGrid({
             </Button>
           </div>
         </div>
-
-        {side === "direct" ? (
-          <p className="border-l-2 border-rose pl-3 text-[11px] leading-5 text-ink" role="status">
-            {t(value.state === "confirmed" ? "availabilityConfirmedModeHint" : "availabilityCandidateModeHint")}
-          </p>
-        ) : null}
 
         <div className="overflow-x-auto rounded-xl border border-line">
           <div className="grid min-w-[48rem] grid-cols-[5.5rem_repeat(7,minmax(5.5rem,1fr))] bg-card">

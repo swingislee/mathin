@@ -35,6 +35,13 @@ const root = process.cwd();
 const read = (...segments: string[]) => fs.readFileSync(path.join(root, ...segments), "utf8");
 
 describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
+  it("scopes the desktop single-scroll layout to the communication workbench", () => {
+    const css = read("src", "app", "globals.css");
+    expect(css).toContain("@media (min-width: 48rem) and (min-height: 36rem)");
+    expect(css).toMatch(/\[data-dashboard-canvas\]:has\(\[data-communication-scroll\]\)\s*\{[^}]*overflow: hidden/);
+    expect(css).toMatch(/\[data-dashboard-page-body\]:has\(\[data-communication-scroll\]\)\s*\{[^}]*min-height: 0;[^}]*flex: 1;/);
+    expect(css).toContain('[data-communication-scroll] > [data-slot="table-container"] { height: 100%; }');
+  });
   it("stores repeatable communication and next-action facts instead of copied calendar columns", () => {
     const migration = read(
       "supabase",
