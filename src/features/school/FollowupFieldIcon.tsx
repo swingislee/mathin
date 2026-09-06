@@ -9,7 +9,7 @@ export function FollowupFieldIcon({ icon: Icon, label, id }: { icon: LucideIcon;
     <TooltipTrigger asChild>
       <span id={id} role="img" aria-label={label} tabIndex={0} data-followup-field-icon
         className="inline-flex size-5 shrink-0 items-center justify-center rounded-sm text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-crater">
-        <Icon className="size-5" aria-hidden="true" />
+        <Icon className="size-5" strokeWidth={2.5} aria-hidden="true" />
       </span>
     </TooltipTrigger>
     <TooltipContent>{label}</TooltipContent>

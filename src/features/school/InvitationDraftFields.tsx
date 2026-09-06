@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronRight, Signpost } from "lucide-react";
+import { ArrowRightToLine, Check, ChevronRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Fragment, useCallback, useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
@@ -332,7 +332,7 @@ export function InvitationDraftFields({
         <div data-followup-facts-toolbar className="flex min-w-0 flex-wrap items-center gap-x-5 gap-y-2">
           {contactFacts}
           <div className="flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-1">
-            <FollowupFieldIcon icon={Signpost} label={t("kindLabel")} />
+            <FollowupFieldIcon icon={ArrowRightToLine} label={t("kindLabel")} />
             <TabsList aria-label={t("kindLabel")} data-followup-handoff
               className="grid h-8 w-max max-w-full grid-cols-3 gap-0.5 bg-transparent p-0">
               {HANDOFF_KINDS.map((kind) => <TabsTrigger key={kind} value={kind}
