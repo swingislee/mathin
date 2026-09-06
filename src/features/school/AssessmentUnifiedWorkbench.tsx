@@ -1,5 +1,6 @@
 "use client";
 
+import { BusinessRecordRevisionButton } from './BusinessRecordRevisionButton';
 
 import { BusinessRecordStateFilter, HistoricalRecordBadge, useBusinessSearchQuery } from './BusinessRecordStateFilter';
 import { businessRecordMessages, isCurrentBusinessRecord, matchesBusinessRecordState, type BusinessRecordStateFilter as StateFilter } from './business-record-state-contract';
@@ -463,6 +464,7 @@ export function AssessmentUnifiedWorkbench({
                       <TableCell className="px-2 py-2">
                         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                           {current ? <StageBadge stage={stage} contacting={false} /> : <HistoricalRecordBadge locale={locale} />}
+                          {!current && row.assessment ? <BusinessRecordRevisionButton kind="assessment" recordId={row.assessment.id} subject={row.name}/> : null}
                           <Button type="button" variant="ghost" size="sm" className="h-auto min-h-7 whitespace-normal rounded-md px-1.5 py-1 text-[11px]" aria-expanded={expanded} aria-controls={`assessment-details-${row.id}`} title={`${t("details")} · Enter`} aria-keyshortcuts="Enter" onClick={(event) => { event.stopPropagation(); changeDetails(row.id, !expanded); }}><FilePenLine className="size-3.5" />{t("details")}</Button>
                           {mayAssess && row.assessmentKind === "one_to_one" ? (
                             <TeacherAssessmentEntryButton registrationId={row.registrationId} invitationId={row.invitationId} />

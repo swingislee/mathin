@@ -25,7 +25,7 @@ export async function loadStudentBusinessHistory(locale: string, options: {stude
   const responses = await Promise.all([
     include('renewal') ? studentId ? renewalsQuery.eq('student_id',studentId) : renewalsQuery : none,
     include('activity') ? studentId ? activitiesQuery.eq('student_id',studentId) : activitiesQuery : none,
-    include('assessment') ? studentId ? assessmentsQuery.eq('student_id',studentId) : assessmentsQuery : none,
+    include('assessment') || kind==='communication' ? studentId ? assessmentsQuery.eq('student_id',studentId) : assessmentsQuery : none,
     include('enrollment') ? studentId ? enrollmentsQuery.eq('student_id',studentId) : enrollmentsQuery : none,
     include('communication') || kind==='renewal' || kind==='activity' ? studentId ? communicationQuery.eq('student_id',studentId) : communicationQuery : none,
   ]);
@@ -41,7 +41,7 @@ export async function loadStudentBusinessHistory(locale: string, options: {stude
   const data: StudentBusinessHistory = {
     renewals:(responses[0].data??[]).map(row=>({...source(row),period_year:row.period_year,period_key:row.period_key??'',decision_note:row.note,outcome:row.stage==='enrolled'?'renewed':row.stage==='not_enrolled'?'not_renewed':'unknown',class_label:row.class_label,teacher_label:row.teacher_label})),
     activities:(responses[1].data??[]).map(row=>({...source(row),activity_id:row.activity_id,activity_name:row.activities.title,activity_kind:row.activities.kind,registered_on:row.registered_on,occurred_on:row.activities.occurred_on,participation_status:row.status==='booked'?'registered':row.status,reported_result:row.reported_result,result_link_status:row.result_link_status,result_source_record_id:row.result_source_record_id,result_field_ids:row.result_field_ids})),
-    assessments:(responses[2].data??[]).map(row=>({...source(row),activity_registration_id:row.activity_registration_id,assessed_on:row.assessed_on,assessment_band:bands[row.assessment_band??'']??row.assessment_band??'',score:row.score,learning_notes:row.strengths,parent_notes:row.parent_concerns})),
+    assessments:(responses[2].data??[]).map(row=>({...source(row),history_revision:row.history_revision,activity_registration_id:row.activity_registration_id,assessed_on:row.assessed_on,assessment_band:bands[row.assessment_band??'']??row.assessment_band??'',score:row.score,learning_notes:row.strengths,parent_notes:row.parent_concerns})),
     enrollments:(responses[3].data??[]).map(row=>{const assignment=row.course_enrollment_assignments.find(item=>item.record_state==='historical');return {...source(row),course_enrollment_id:row.id,registered_on:row.registered_on,period_label:row.period_label,amount:row.amount,amount_original:row.amount_original,class_label:assignment?.class_label??'',teacher_label:assignment?.teacher_label??'',room_label:assignment?.room_label??'',schedule_label:assignment?.schedule_label??''};}),
     communications:(responses[4].data??[]).map(row=>({...source(row),occurred_on:row.occurred_on,context_kind:row.context_kind,content:row.content,author_label:row.author_label})),
     students:{},subjects:{},sources:{},

@@ -1,5 +1,7 @@
 "use client";
 
+import { BusinessRecordRevisionButton } from './BusinessRecordRevisionButton';
+
 import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { GripVertical, LoaderCircle, Plus, X } from "lucide-react";
@@ -269,7 +271,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
               return <Fragment key={row.key}><TableRow data-record-state={fact ? 'historical' : 'current'} data-placement-classroom={classroom?.id} data-placement-record={row.key} className="hover:bg-transparent">
                 <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-1"><div className="flex items-center justify-between gap-1">{classroom ? <Link href={`/dashboard/classes/${classroom.id}`} className="min-w-0 truncate font-medium hover:underline" title={className}>{className}</Link> : <span className="min-w-0 truncate font-medium" title={className}>{className}</span>}{classroom ? <span className="shrink-0 text-[10px] tabular-nums text-muted">{classroom.activeCount}/{classroom.capacity ?? "∞"}</span> : null}</div><div className="truncate text-[10px] text-muted" title={courseTitle}>{courseTitle}</div>{fact ? <p className="mt-1 text-[10px] text-muted">{fact.registered_on ?? recordM.unknown} · {fact.amount ?? fact.amount_original}</p> : null}</TableCell>
                 <TableCell className="sticky left-36 z-10 border-r border-line bg-card px-2 py-1 text-[11px]" title={time}><span className="line-clamp-2 break-words">{time}</span>{fact?.room_label ? <p className="mt-1 text-muted">{fact.room_label}</p> : null}</TableCell>
-                <TableCell className="sticky left-64 z-10 border-r border-line bg-card px-2 py-1" title={teacher}><span className="block truncate">{teacher || "—"}</span></TableCell>
+                <TableCell className="sticky left-64 z-10 border-r border-line bg-card px-2 py-1" title={teacher}><span className="block truncate">{teacher || "—"}</span>{fact ? <BusinessRecordRevisionButton kind="enrollment" recordId={fact.id} subject={history?.students[fact.student_id]}/> : null}</TableCell>
                 <TableCell className="bg-paper/50 p-0"><div className={NAME_GRID}>{fact ? studentTile({key: fact.id, studentId: fact.student_id, name: history?.students[fact.student_id] ?? recordM.unknown, phone: history?.subjects[fact.student_id]?.phone ?? '', grade: history?.subjects[fact.student_id]?.grade ?? 0, status: null, courseTitle: fact.period_label, recommendation: '', note: `${fact.registered_on ?? recordM.unknown} · ${fact.amount ?? fact.amount_original}`}) : null}{classroom ? slots.map(({ seat, student }) => {
                   const target = { classroom, termId: scope.termId, grade: scope.grade, seat };
                   const key = `${classroom.id}:${seat}`;

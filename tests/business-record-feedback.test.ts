@@ -1,4 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
+import { createElement, type ComponentProps } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { NextIntlClientProvider } from 'next-intl';
+import { BusinessHistorySections } from '@/features/school/BusinessHistorySections';
 import { historicalAssessmentFeedback, relatedBusinessCommunications, uniqueBusinessFeedback } from '@/features/school/business-record-notes';
 import { studentBusinessHistoryEvents } from '@/features/school/student-business-history-timeline';
 import { sortStudent360Events, summarizeStudent360Phases } from '@/features/school/student-360-contract';
@@ -7,6 +11,7 @@ import { loadHistoricalFirstContactRows } from '@/features/school/historical-fir
 
 const db = vi.hoisted(() => ({ history: null as StudentBusinessHistory | null }));
 vi.mock('server-only', () => ({}));
+vi.mock('@/i18n/navigation', () => ({ Link: ({children,...props}:ComponentProps<'a'>) => createElement('a',props,children) }));
 vi.mock('@/features/school/student-business-history-data', () => ({ loadStudentBusinessHistory: async () => db.history }));
 vi.mock('@/lib/supabase/server', () => ({ createClient: async () => ({ from: () => ({ select: () => ({ in: async () => ({ data: [], error: null }) }) }) }) }));
 
@@ -47,6 +52,26 @@ describe('historical feedback ownership and Student 360', () => {
       { student_id: 'another-student' }, { source_record_id: 'another-source' }, { source_field_ids: ['another-field'] }, { context_kind: 'renewal' },
     ].map((overrides, index) => ({ ...data.communications[0], ...overrides, id: `independent-${index}` })));
     expect(relatedBusinessCommunications(data, data.assessments[0], 'assessment').map(row => row.id)).toEqual(['assessment-contact']);
+  });
+
+  it('uses revised feedback in both the business record and 360 without restoring the original source copy', () => {
+    const data = history();
+    data.assessments[0] = { ...data.assessments[0], history_revision: 1, learning_notes: '修订后的反馈', parent_notes: '' };
+    expect(historicalAssessmentFeedback(data.assessments[0], data)).toBe('修订后的反馈');
+    const event = studentBusinessHistoryEvents(data, 'zh').find(event => event.kind === 'assessment');
+    expect(event?.notes.map(note => note.content)).toEqual(['修订后的反馈']);
+    expect(data.communications[0].content).toContain('计算准确');
+  });
+
+  it('opens the owning assessment editor from the communication archive and displays its revised feedback', () => {
+    const data = history();
+    data.assessments[0] = {...data.assessments[0], history_revision:1, learning_notes:'统一修订反馈', parent_notes:''};
+    const markup = renderToStaticMarkup(createElement(NextIntlClientProvider,{locale:'zh',timeZone:'Asia/Shanghai',messages:{}},
+      createElement(BusinessHistorySections,{data,locale:'zh',kind:'communication'})));
+    expect(markup).toContain('统一修订反馈');
+    expect(markup).not.toContain('计算准确');
+    expect(markup.match(/data-business-revision="assessment"/g)).toHaveLength(1);
+    expect(markup.match(/data-business-revision="communication"/g)).toHaveLength(1);
   });
 
   it('shows all existing history in one timeline, with one assessment feedback and one renewal conversation', () => {

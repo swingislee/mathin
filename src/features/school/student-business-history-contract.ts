@@ -13,6 +13,7 @@ export interface HistoricalActivity extends BusinessRecordSource {
   result_source_record_id: string | null; result_field_ids: string[];
 }
 export interface HistoricalAssessment extends BusinessRecordSource {
+  history_revision?: number;
   activity_registration_id: string; assessed_on: string | null; assessment_band: string;
   score: number | null; learning_notes: string; parent_notes: string;
 }

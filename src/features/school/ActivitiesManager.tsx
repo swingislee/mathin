@@ -27,6 +27,7 @@ import {
 import { ACTIVITY_KINDS } from "./activity-kinds";
 import type { ActivityRow } from "./activities";
 import { ActivityGradesDialog } from "./ActivityGradesDialog";
+import { BusinessRecordRevisionButton } from './BusinessRecordRevisionButton';
 import { inputClass } from "./controls";
 import { DashboardInlineEntry } from "./dashboard-page/DashboardInlineEntry";
 import type { PublicClassRegistrationData } from "./public-class-registration-contract";
@@ -256,6 +257,7 @@ export function ActivitiesManager({
                       <Button size="sm" variant="ghost" className="text-rose" aria-label={t("delete")} disabled={pending} onClick={() => setDeleteTarget(activity)}><Trash2 size={15} /></Button>
                     </> : null}
                     {canRegister ? <Button size="sm" variant="secondary" onClick={() => toggleActivity(activity.id)}>{t("inlineRegistration")}</Button> : null}
+                    {!current ? activity.registrations.map(row => <BusinessRecordRevisionButton key={row.id} kind="activity" recordId={row.id} subject={row.studentName} label={activity.registrations.length > 1 ? `${row.studentName} · ${locale==='zh'?'修订':'Revise'}` : undefined}/>) : null}
                     {current && (!publicClass || teachingActivityIds.includes(activity.id)) ? <Link href={`/dashboard/activities/${activity.id}${publicClass ? "?view=teaching" : ""}`} className={buttonVariants({ size: "sm", variant: "secondary" })}>
                       {t(publicClass ? "teacherWorkspace" : "openWorkspace")}<ArrowRight size={15} />
                     </Link> : !current ? activity.registrations.map(row => row.studentId ? <Link key={row.id} href={`/dashboard/students/${row.studentId}?tab=history`} className={buttonVariants({ size: "sm", variant: "secondary" })}>{recordM.viewStudent}<ArrowRight size={15} /></Link> : null) : null}

@@ -72,6 +72,7 @@ interface RegistrationDbRow {
 
 interface AssessmentDbRow {
   id: string;
+  assessed_on: string | null;
   activity_registration_id: string;
   assessment_band: StoredAssessmentBand | null;
   score: number | null;
@@ -280,7 +281,7 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
     publicClassRecordResult,
     followUpResult,
   ] = await Promise.all([
-    readRelatedRows<AssessmentDbRow>(supabase, "assessment_results", "id,activity_registration_id,assessment_band,score,strengths,focus_areas,parent_concerns,teacher_recommendation,recommended_class,teacher_observation,updated_at,assessor:profiles!assessment_results_assessed_by_fkey(id,display_name)", "activity_registration_id", registrationIds),
+    readRelatedRows<AssessmentDbRow>(supabase, "assessment_results", "id,activity_registration_id,assessed_on,assessment_band,score,strengths,focus_areas,parent_concerns,teacher_recommendation,recommended_class,teacher_observation,updated_at,assessor:profiles!assessment_results_assessed_by_fkey(id,display_name)", "activity_registration_id", registrationIds),
     readRelatedRows<RouteDbRow>(supabase, "activity_routes", "id,activity_registration_id,route,note,updated_at", "activity_registration_id", registrationIds),
     readRelatedRows<InvitationDbRow>(supabase, "lead_invitation_threads", INVITATION_COLUMNS, "id", sourceInvitationIds),
     readRelatedRows<PaperVersionDbRow>(supabase, "assessment_paper_versions", "id,paper_id,question_count,total_score", "id", paperVersionIds),
@@ -308,6 +309,7 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
   if (questionDefinitionResult.error) throw new Error(questionDefinitionResult.error.message);
 
   const assessments = new Map<string, AssessmentWorkbenchAssessment>();
+  const assessmentDates = new Map((assessmentResult.data ?? []).map(row => [row.activity_registration_id, row.assessed_on]));
   const assessmentAssessorNames = new Map<string, string>();
   const assessmentAssessorIds = new Map<string, string>();
   for (const row of assessmentResult.data ?? []) {
@@ -435,7 +437,7 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
         gradeText: lead?.grade_text ?? "",
         scheduledAt: activity.scheduled_at ?? '',
         recordState: activity.record_state,
-        occurredOn: activity.occurred_on,
+        occurredOn: activity.record_state === 'historical' ? assessmentDates.get(registration.id) ?? null : activity.occurred_on,
         location: activity.location,
         assessorId: completed && actualAssessorId ? actualAssessorId : invitation?.assessor_id ?? actualAssessorId,
         assessorName: completed && actualAssessorName

@@ -1,5 +1,7 @@
 "use client";
 
+import { BusinessRecordRevisionButton } from './BusinessRecordRevisionButton';
+
 import { BusinessRecordStateFilter, HistoricalRecordBadge, useBusinessSearchQuery } from './BusinessRecordStateFilter';
 import { businessRecordMessages, isCurrentBusinessRecord, matchesBusinessRecordState, type BusinessRecordState, type BusinessRecordStateFilter as StateFilter } from './business-record-state-contract';
 import type { StudentBusinessHistory } from './student-business-history-contract';
@@ -172,7 +174,8 @@ function RenewalEntryRow({ row, cycleId, stageLabel, payment, observation, canWr
   const readOnly = !isCurrentBusinessRecord(row.recordState);
   const defaultEntry = readOnly ? 'details' : canWrite ? 'registration' : 'health';
   const [stage, setStage] = useState<ResultStage>(isResultStage(row.stage) ? row.stage : "considering");
-  const [note, setNote] = useState(payment?.note ?? row.note);
+  const [draftNote, setNote] = useState(payment?.note ?? row.note);
+  const note = readOnly ? row.note : draftNote;
   const [periods, setPeriods] = useState(payment ? String(payment.period_count) : "");
   const [amount, setAmount] = useState(payment ? String(payment.paid_amount) : "");
   const [observationType, setObservationType] = useState<TeacherProfessionalSignalType>("churn_risk");
@@ -268,6 +271,7 @@ function RenewalEntryRow({ row, cycleId, stageLabel, payment, observation, canWr
       </Button> : <p className="truncate text-muted" title={currentObservation}>{currentObservation || (readOnly ? '—' : t("noObservation"))}</p>}</TableCell>
       <TableCell>{readOnly ? <HistoricalRecordBadge locale={locale} /> : null}{canWrite ? <FollowupChoice value={displayedStage} onValueChange={value => chooseStage(value as ResultStage)} label={row.name + " · " + t("result")} disabled={busy} className="w-full" options={RESULT_STAGES.filter(value => (value !== "enrolled" || canEnroll) && (currentStage !== "enrolled" || value === "enrolled")).map((value) => ({ value, label: t(value), tone: resultTone(value) }))} /> : <Badge variant="outline" className={followupToneClasses[resultTone(currentStage)]}>{currentLabel}</Badge>}</TableCell>
       <TableCell><div className="flex min-w-0 items-center gap-2">
+        {readOnly && row.opportunityId ? <BusinessRecordRevisionButton kind="renewal" recordId={row.opportunityId} subject={row.name}/> : null}
         {!isResultStage(currentStage) ? <span className="shrink-0 text-[10px] text-muted">{currentLabel}</span> : null}
         {currentPayment ? <span className="shrink-0 text-[11px] font-medium text-leaf-deep">{t("paidSummary", { periods: currentPayment.period_count, amount: Number(currentPayment.paid_amount).toFixed(2) })}</span> : null}
         <Button size="sm" variant="ghost" className="h-8 min-w-0 flex-1 justify-start px-1 text-xs" disabled={busy || !canWrite && !readOnly} onClick={() => onActivate(readOnly ? 'details' : 'registration', !readOnly)} aria-label={row.name + " · " + t("details")} aria-expanded={!!entry && !viewingHealth && !observing} title={note || currentLabel}><span className="truncate">{note || t("details")}</span>{readOnly ? <ChevronDown className="size-3 shrink-0" /> : <Pencil className="size-3 shrink-0" />}</Button>

@@ -24,7 +24,7 @@ export function relatedBusinessCommunications(data: StudentBusinessHistory, reco
 
 export function historicalAssessmentFeedback(record: HistoricalAssessment, data?: StudentBusinessHistory): string {
   return uniqueBusinessFeedback(record.learning_notes, record.parent_notes,
-    ...(data ? relatedBusinessCommunications(data, record, 'assessment').map(row => row.content) : []));
+    ...(data && !record.history_revision ? relatedBusinessCommunications(data, record, 'assessment').map(row => row.content) : []));
 }
 
 export function hasBusinessFeedbackOwner(data: StudentBusinessHistory, communication: HistoricalCommunication): boolean {
