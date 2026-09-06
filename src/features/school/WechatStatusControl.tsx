@@ -32,7 +32,7 @@ export function WechatStatusControl({ value, onChange, labels, disabled }: Wecha
       }}
       className="h-8 shrink-0 justify-start gap-1">
       <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" data-wechat-icon
-        className={cn("mr-1 size-5 shrink-0 text-leaf-deep", disabled && "opacity-50")}><WechatGlyph /></svg>
+        className={cn("mr-1 size-5 shrink-0 text-[color:color-mix(in_srgb,var(--leaf-deep)_55%,var(--muted))]", disabled && "opacity-50")}><WechatGlyph /></svg>
       {(["yes", "no"] as const).map((choice) => <Tooltip key={choice}>
         <ToggleGroupItem value={choice} asChild
           className={cn("size-8 min-w-8 cursor-pointer border border-transparent bg-muted/6 p-0 text-xs text-muted data-[state=on]:font-semibold data-[state=on]:text-[var(--followup-choice-ink)]",

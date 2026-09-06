@@ -184,7 +184,7 @@ describe("follow-up arrangement upgrade", () => {
       expect(tab.match(/class="([^"]+)"/)?.[1].split(" ")).toContain("text-ink");
     }
     expect(markup).toContain(`role="img" aria-label="${messages.school.invitations.kindLabel}"`);
-    expect(markup).toContain("lucide-arrow-right-to-line");
+    expect(markup).toContain("lucide-signpost");
     expect(markup).toContain("grid-cols-3 gap-0.5");
     const selected = tabs.filter((tab) => tab.includes('aria-selected="true"'));
     expect(selected).toHaveLength(1);
@@ -207,11 +207,18 @@ describe("follow-up arrangement upgrade", () => {
     expect(markup.match(/data-followup-contact-facts/g)).toHaveLength(1);
     expect(markup).toContain('aria-label="承接"');
     expect(markup).toContain(`role="img" aria-label="${messages.school.leads.interestLevel}"`);
-    expect(markup).toContain("lucide-target");
+    expect(markup).toContain("lucide-heart-pulse");
     expect(markup.match(/data-followup-field-icon=/g)).toHaveLength(2);
-    const fieldIcons = markup.match(/<svg\b[^>]*class="[^"]*lucide-(?:target|arrow-right-to-line)[^"]*"[^>]*>/g) ?? [];
+    const fieldIcons = markup.match(/<svg\b[^>]*class="[^"]*lucide-(?:heart-pulse|signpost)[^"]*"[^>]*>/g) ?? [];
     expect(fieldIcons).toHaveLength(2);
-    for (const icon of fieldIcons) expect(icon).toContain('stroke-width="2.5"');
+    for (const icon of fieldIcons) expect(icon).toContain('stroke-width="2"');
+    const heartIcon = fieldIcons.find((icon) => icon.includes("lucide-heart-pulse"));
+    expect(heartIcon).toContain('fill="none"');
+    expect(heartIcon).toContain("fill-rose/25");
+    expect(heartIcon).toContain("var(--rose)_55%,var(--muted)");
+    const handoffIcon = fieldIcons.find((icon) => icon.includes("lucide-signpost"));
+    expect(handoffIcon).toContain("fill-crater/35");
+    expect(handoffIcon).toContain("var(--crater)_55%,var(--muted)");
   });
   it("leaves number keys to contact outcomes when assessment is nested in first contact", () => {
     const props = { value: emptyInvitationDraft("assessment_1v1"), activities: [], assessors: [], locale: "zh", onChange: vi.fn() };

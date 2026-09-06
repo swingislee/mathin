@@ -1,7 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import { Target } from "lucide-react";
+import { HeartPulse } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -30,7 +30,8 @@ export function FollowupContactFacts({ wechat, onWechatChange, interest, onInter
     <WechatStatusControl value={wechat} onChange={onWechatChange} disabled={disabled}
       labels={{ name: entryT("wechatLabel"), unknown: entryT("wechatUnknown"), yes: entryT("wechatYes"), no: entryT("wechatNo") }} />
     <div className="flex min-h-8 items-center gap-2">
-      <FollowupFieldIcon id={`${id}-interest`} icon={Target} label={t("interestLevel")} />
+      <FollowupFieldIcon id={`${id}-interest`} icon={HeartPulse} label={t("interestLevel")}
+        className="text-[color:color-mix(in_srgb,var(--rose)_55%,var(--muted))] [&>path:first-child]:fill-rose/25" />
       <TooltipProvider delayDuration={200}>
         <ToggleGroup type="single" value={interest} onValueChange={(value) => onInterestChange(value as LeadInterestLevel | "")}
           disabled={disabled} aria-labelledby={`${id}-interest`} size="sm" className="justify-start gap-1">

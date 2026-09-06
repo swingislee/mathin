@@ -15,11 +15,11 @@ describe("compact WeChat status control", () => {
     [null, "unknown"],
     [true, "yes"],
     [false, "no"],
-  ] as const)("renders %s with a fixed green icon and two explicit choices", (value, state) => {
+  ] as const)("renders %s with a fixed muted green icon and two explicit choices", (value, state) => {
     const markup = render(value);
     expect(markup).toContain(`data-wechat-status="${state}"`);
     expect(markup.match(/data-wechat-icon=/g)).toHaveLength(1);
-    expect(markup).toContain("mr-1 size-5 shrink-0 text-leaf-deep");
+    expect(markup).toContain("mr-1 size-5 shrink-0 text-[color:color-mix(in_srgb,var(--leaf-deep)_55%,var(--muted))]");
     expect(markup.indexOf("data-wechat-icon")).toBeLessThan(markup.indexOf('role="radio"'));
     expect(markup).toContain('role="radiogroup"');
     expect(markup.match(/role="radio"/g)).toHaveLength(2);
