@@ -696,12 +696,28 @@ function InvitationEditor({
             </>
           ) : (
             <>
+              <p className="text-[11px] font-medium text-muted">{t("currentWorkAction")}</p>
               {supportActionContent}
               {workStep !== "confirmed" ? (
                 <div className="min-w-0 space-y-2 border-t border-line pt-2">
                   <Label htmlFor={`invitation-note-${row.id}`} className="text-[11px] text-muted">{t("communicationOptional")}</Label>
-                  <FollowupChoice className="w-28" label={t("channelLabel")} value={channel} onValueChange={(value) => setChannel(value as InvitationChannel)} disabled={pending}
-                    options={CHANNELS.map((value) => ({ value, label: t(`channel_${value}`) }))} />
+                  <div className="grid grid-cols-4 gap-1" role="group" aria-label={t("channelLabel")}>
+                    {CHANNELS.map((value) => (
+                      <Button
+                        key={value}
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className={cn("min-w-0 gap-1 rounded-lg px-1 text-[10px]", channel === value && "bg-moon/35 text-ink")}
+                        aria-pressed={channel === value}
+                        disabled={pending}
+                        onClick={() => setChannel(value)}
+                      >
+                        {channel === value ? <Check className="size-3 shrink-0" aria-hidden="true" /> : null}
+                        {t(`channel_${value}`)}
+                      </Button>
+                    ))}
+                  </div>
                   <Textarea
                     id={`invitation-note-${row.id}`}
                     value={note}
