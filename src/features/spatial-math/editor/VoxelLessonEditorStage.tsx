@@ -133,6 +133,7 @@ type PreviewState =
       readonly status: "ready";
       readonly key: string;
       readonly builder: VoxelLessonEditorPageBuilder;
+      readonly page: SpatialPageDoc;
       readonly runtime: SpatialRuntimeState;
     }
   | {
@@ -453,6 +454,8 @@ export function VoxelLessonEditorStage({
     && preview.builder === buildPage
     ? preview
     : null;
+  // 异步切步期间保留上一对 page/runtime，连续更新同一个 Canvas，让相机能够过渡。
+  const displayedPreview = preview.status === "ready" ? preview : null;
   const previewFailed = (
     builtLesson.status === "error"
     && builtLesson.key === buildKey
@@ -522,7 +525,7 @@ export function VoxelLessonEditorStage({
       setPreview({ status: "error", key: requestKey, builder: requestBuilder });
       return;
     }
-    setPreview({ status: "ready", key: requestKey, builder: requestBuilder, runtime });
+    setPreview({ status: "ready", key: requestKey, builder: requestBuilder, page: readyLesson.page, runtime });
   });
 
   useEffect(() => {
@@ -657,11 +660,16 @@ export function VoxelLessonEditorStage({
           </CardHeader>
           <CardContent className="p-4 pt-0">
             <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-line bg-paper" data-editor-preview="standard-4x3">
-              {previewStatus === "ready" && readyLesson && readyPreview ? (
-                <VoxelTeachingStage className="absolute inset-0 h-full aspect-auto rounded-none border-0 shadow-none" page={readyLesson.page} state={readyPreview.runtime} entityId={modelInput.entityId} actor={PREVIEW_ACTOR} locale={locale} readOnly messages={messages} onCommandIntent={ignorePreviewCommand} materialColors={materialColors} />
+              {displayedPreview ? (
+                <VoxelTeachingStage className="absolute inset-0 h-full aspect-auto rounded-none border-0 shadow-none" page={displayedPreview.page} state={displayedPreview.runtime} entityId={modelInput.entityId} actor={PREVIEW_ACTOR} locale={locale} readOnly cameraInteractive messages={messages} onCommandIntent={ignorePreviewCommand} materialColors={materialColors} />
               ) : (
                 <div className="grid h-full place-items-center p-6 text-center text-sm text-muted">{previewStatus === "error" ? messages.previewError : messages.previewBuilding}</div>
               )}
+              {displayedPreview && previewStatus !== "ready" ? (
+                <p className="pointer-events-none absolute inset-x-0 bottom-0 bg-card/95 p-2 text-center text-xs text-muted" role="status">
+                  {previewStatus === "error" ? messages.previewError : messages.previewBuilding}
+                </p>
+              ) : null}
             </div>
           </CardContent>
         </Card>

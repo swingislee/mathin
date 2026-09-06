@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Camera, ChevronLeft, ChevronRight, Eye, EyeOff, Layers3, Magnet, Pause, Play, RotateCcw } from "lucide-react";
+import { Camera, ChevronLeft, ChevronRight, Eye, EyeOff, Layers3, Pause, Play, RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,7 @@ import {
 } from "../runtime";
 import type { VoxelRendererMessages } from "./VoxelFallback";
 import { VoxelView } from "./VoxelView";
+import { SpatialAxisSnapButton, useSpatialAxisSnap } from "./SpatialCameraControls";
 
 const MINIMUM_PLAYBACK_STEP_MS = 650;
 
@@ -54,6 +55,8 @@ export interface VoxelTeachingStageProps {
   readonly locale: VoxelTeachingLocale;
   readonly messages: VoxelTeachingMessages;
   readonly readOnly?: boolean;
+  /** 仅编辑器预览开启本地观察；课堂只读端保留默认值。 */
+  readonly cameraInteractive?: boolean;
   readonly onCommandIntent: (payload: SpatialCommandPayload) => void;
   readonly onAttemptDraft?: (draft: VoxelCountAttemptDraft) => void;
   readonly materialColors?: Readonly<Record<string, string>>;
@@ -71,6 +74,7 @@ export function VoxelTeachingStage({
   locale,
   messages,
   readOnly = false,
+  cameraInteractive,
   onCommandIntent,
   onAttemptDraft,
   materialColors,
@@ -79,13 +83,19 @@ export function VoxelTeachingStage({
   onFaceSelect,
   className,
 }: VoxelTeachingStageProps) {
+  const [inspectionCamera, setInspectionCamera] = useState<{ readonly baseline: SpatialRuntimeState; readonly id: string } | null>(null);
+  // 编辑预览的观察视角只作用于渲染副本，不发送课堂命令或修改编排步骤。
+  const previewCameraId = cameraInteractive && readOnly && inspectionCamera?.baseline === state ? inspectionCamera.id : null;
+  const presentationState = useMemo(() => previewCameraId ? { ...state, cameraBookmarkId: previewCameraId } : state, [previewCameraId, state]);
   const view = useMemo(
-    () => deriveVoxelTeachingControllerView(page, state, entityId, actor, locale, readOnly),
-    [actor, entityId, locale, page, readOnly, state],
+    () => deriveVoxelTeachingControllerView(page, presentationState, entityId, actor, locale, readOnly),
+    [actor, entityId, locale, page, presentationState, readOnly],
   );
   const [playing, setPlaying] = useState(false);
   const [countValue, setCountValue] = useState("");
-  const [axisSnapEnabled, setAxisSnapEnabled] = useState(false);
+  const axisSnapEnabled = useSpatialAxisSnap();
+  const [cameraRequestKey, setCameraRequestKey] = useState(0);
+  const canInspectCamera = cameraInteractive ?? view.canManipulateScene;
   const emit = useCallback(
     (action: VoxelTeachingAction) => {
       const payload = createVoxelTeachingCommandIntent(page, state, entityId, actor, locale, action, readOnly);
@@ -131,11 +141,13 @@ export function VoxelTeachingStage({
       <VoxelView
         className="absolute inset-0 h-full aspect-auto rounded-none border-0 shadow-none"
         page={page}
-        state={state}
+        state={presentationState}
         entityId={entityId}
         locale={locale}
         readOnly={!view.canManipulateScene}
         axisSnapEnabled={axisSnapEnabled}
+        cameraInteractive={canInspectCamera}
+        cameraRequestKey={cameraRequestKey}
         messages={messages}
         materialColors={materialColors}
         paintedFaces={paintedFaces}
@@ -163,26 +175,18 @@ export function VoxelTeachingStage({
               size="sm"
               variant="ghost"
               className={cn("h-7 px-2 text-xs", camera.id === view.cameraId && "bg-moon/70 text-ink")}
-              disabled={!view.canManipulateScene}
+              disabled={!canInspectCamera}
               aria-pressed={camera.id === view.cameraId}
-              onClick={() => emit({ kind: "camera.apply", cameraId: camera.id })}
+              onClick={() => {
+                if (cameraInteractive && readOnly) setInspectionCamera({ baseline: state, id: camera.id });
+                else emit({ kind: "camera.apply", cameraId: camera.id });
+                setCameraRequestKey((current) => current + 1);
+              }}
             >
               {camera.label}
             </Button>
           ))}
-          <Button
-            type="button"
-            size="sm"
-            variant={axisSnapEnabled ? "secondary" : "ghost"}
-            className="h-7 gap-1 px-2 text-xs"
-            disabled={!view.canManipulateScene}
-            aria-label={axisSnapEnabled ? messages.disableAxisSnap : messages.enableAxisSnap}
-            aria-pressed={axisSnapEnabled}
-            onClick={() => setAxisSnapEnabled((current) => !current)}
-          >
-            <Magnet aria-hidden="true" className="size-3.5" />
-            {messages.axisSnap}
-          </Button>
+          <SpatialAxisSnapButton messages={messages} disabled={!canInspectCamera} />
         </div>
       </header>
 

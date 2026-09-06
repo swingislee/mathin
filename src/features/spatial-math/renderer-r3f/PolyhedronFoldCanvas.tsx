@@ -1,9 +1,8 @@
 "use client";
 
-import { Html, OrbitControls } from "@react-three/drei";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Html } from "@react-three/drei";
+import { Canvas, useThree } from "@react-three/fiber";
 import {
-  type ComponentRef,
   type RefObject,
   useCallback,
   useEffect,
@@ -22,18 +21,12 @@ import {
   createPolyhedronFoldRenderModelResolver,
   isPolyhedronFoldFaceSelectable,
   interpolatePolyhedronFoldProgress,
-  matchPolyhedronFoldProjectionValue,
   type PolyhedronFoldEasing,
   type PolyhedronFoldRenderFace,
   type PolyhedronFoldRenderModel,
   type SpatialRendererLocale,
 } from "./polyhedron-fold-render-model";
-import {
-  VOXEL_CAMERA_TRANSITION_MS,
-  interpolateVoxelCameraPose,
-  voxelCameraTransitionProgress,
-  type VoxelCameraPose,
-} from "./voxel-camera-transition";
+import { SpatialCameraRig } from "./SpatialCameraRig";
 
 export interface PolyhedronFoldRendererMessages {
   readonly webglUnavailable: string;
@@ -49,6 +42,8 @@ export interface PolyhedronFoldCanvasProps {
   readonly selectedFaceIds?: readonly string[];
   readonly selectableFaceIds?: readonly string[];
   readonly readOnly?: boolean;
+  readonly axisSnapEnabled?: boolean;
+  readonly cameraRequestKey?: string | number;
   readonly onFaceSelect?: (faceId: string) => void;
   readonly messages: PolyhedronFoldRendererMessages;
   readonly materialColors?: Readonly<Record<string, string>>;
@@ -330,257 +325,6 @@ function FoldEdges({
   );
 }
 
-type FoldCamera = THREE.OrthographicCamera | THREE.PerspectiveCamera;
-
-interface ActiveCameraTransition {
-  readonly camera: FoldCamera;
-  readonly from: VoxelCameraPose;
-  readonly to: VoxelCameraPose;
-  readonly projectionFrom: number;
-  readonly projectionTo: number;
-  readonly startedAtMs: number;
-}
-
-function cameraPose(camera: FoldCamera, target: VoxelCameraPose["target"]): VoxelCameraPose {
-  return {
-    position: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
-    target,
-    up: { x: camera.up.x, y: camera.up.y, z: camera.up.z },
-  };
-}
-
-function applyCameraPose(
-  camera: FoldCamera,
-  pose: VoxelCameraPose,
-  controls: ComponentRef<typeof OrbitControls> | null,
-) {
-  camera.position.set(pose.position.x, pose.position.y, pose.position.z);
-  camera.up.set(pose.up.x, pose.up.y, pose.up.z);
-  camera.lookAt(pose.target.x, pose.target.y, pose.target.z);
-  camera.updateMatrixWorld();
-  if (controls) {
-    controls.target.set(pose.target.x, pose.target.y, pose.target.z);
-    controls.update();
-  }
-}
-
-function projectionValue(camera: FoldCamera): number {
-  return camera instanceof THREE.OrthographicCamera ? camera.zoom : camera.fov;
-}
-
-function applyProjectionValue(camera: FoldCamera, value: number) {
-  if (camera instanceof THREE.OrthographicCamera) camera.zoom = value;
-  else camera.fov = value;
-  camera.updateProjectionMatrix();
-}
-
-function CameraRig({
-  model,
-  interactive,
-  onTransitionStateChange,
-}: {
-  readonly model: PolyhedronFoldRenderModel;
-  readonly interactive: boolean;
-  readonly onTransitionStateChange: (active: boolean) => void;
-}) {
-  const size = useThree((state) => state.size);
-  const renderedCamera = useThree((state) => state.camera);
-  const setThree = useThree((state) => state.set);
-  const invalidate = useThree((state) => state.invalidate);
-  const reducedMotion = useReducedMotion();
-  const aspect = size.width / Math.max(size.height, 1);
-  const target: [number, number, number] = [model.camera.target.x, model.camera.target.y, model.camera.target.z];
-  const halfHeight = model.bounds.radius * 1.35;
-  const halfWidth = halfHeight * aspect;
-  const halfHeightRef = useRef(halfHeight);
-  const orthographicCamera = useRef<THREE.OrthographicCamera>(null);
-  const perspectiveCamera = useRef<THREE.PerspectiveCamera>(null);
-  if (orthographicCamera.current == null) orthographicCamera.current = new THREE.OrthographicCamera();
-  if (perspectiveCamera.current == null) perspectiveCamera.current = new THREE.PerspectiveCamera();
-  const controls = useRef<ComponentRef<typeof OrbitControls>>(null);
-  const activeCamera = useRef<FoldCamera | null>(null);
-  const currentTarget = useRef<VoxelCameraPose["target"]>({ x: target[0], y: target[1], z: target[2] });
-  const transition = useRef<ActiveCameraTransition | null>(null);
-  const targetPose = useMemo<VoxelCameraPose>(() => ({
-    position: {
-      x: model.camera.position.x,
-      y: model.camera.position.y,
-      z: model.camera.position.z,
-    },
-    target: {
-      x: model.camera.target.x,
-      y: model.camera.target.y,
-      z: model.camera.target.z,
-    },
-    up: {
-      x: model.camera.up.x,
-      y: model.camera.up.y,
-      z: model.camera.up.z,
-    },
-  }), [
-    model.camera.position.x,
-    model.camera.position.y,
-    model.camera.position.z,
-    model.camera.target.x,
-    model.camera.target.y,
-    model.camera.target.z,
-    model.camera.up.x,
-    model.camera.up.y,
-    model.camera.up.z,
-  ]);
-  const projectionTarget = model.camera.projection === "orthographic"
-    ? model.camera.zoom
-    : model.camera.fovDegrees;
-
-  useLayoutEffect(() => {
-    halfHeightRef.current = halfHeight;
-    const orthographic = orthographicCamera.current!;
-    const perspective = perspectiveCamera.current!;
-    orthographic.left = -halfWidth;
-    orthographic.right = halfWidth;
-    orthographic.top = halfHeight;
-    orthographic.bottom = -halfHeight;
-    orthographic.near = 0.01;
-    orthographic.far = Math.max(1_000, model.bounds.radius * 100);
-    orthographic.updateProjectionMatrix();
-    perspective.aspect = aspect;
-    perspective.near = 0.01;
-    perspective.far = Math.max(1_000, model.bounds.radius * 100);
-    perspective.updateProjectionMatrix();
-  }, [aspect, halfHeight, halfWidth, model.bounds.radius]);
-
-  useLayoutEffect(() => {
-    const nextCamera = model.camera.projection === "orthographic"
-      ? orthographicCamera.current!
-      : perspectiveCamera.current!;
-    const previousCamera = activeCamera.current;
-    const projectionTo = projectionTarget;
-    const liveControlsTarget = controls.current
-      ? {
-          x: controls.current.target.x,
-          y: controls.current.target.y,
-          z: controls.current.target.z,
-        }
-      : currentTarget.current;
-    currentTarget.current = liveControlsTarget;
-    if (!previousCamera) {
-      activeCamera.current = nextCamera;
-      currentTarget.current = targetPose.target;
-      applyProjectionValue(nextCamera, projectionTo);
-      applyCameraPose(nextCamera, targetPose, controls.current);
-      setThree({ camera: nextCamera });
-      onTransitionStateChange(false);
-      invalidate();
-      return;
-    }
-
-    if (previousCamera !== nextCamera) {
-      nextCamera.position.copy(previousCamera.position);
-      nextCamera.quaternion.copy(previousCamera.quaternion);
-      nextCamera.up.copy(previousCamera.up);
-      const currentDistance = previousCamera.position.distanceTo(
-        new THREE.Vector3(liveControlsTarget.x, liveControlsTarget.y, liveControlsTarget.z),
-      );
-      applyProjectionValue(
-        nextCamera,
-        matchPolyhedronFoldProjectionValue(
-          previousCamera instanceof THREE.OrthographicCamera ? "orthographic" : "perspective",
-          nextCamera instanceof THREE.OrthographicCamera ? "orthographic" : "perspective",
-          projectionValue(previousCamera),
-          halfHeightRef.current,
-          Math.max(0.01, currentDistance),
-        ),
-      );
-      nextCamera.updateProjectionMatrix();
-    }
-
-    activeCamera.current = nextCamera;
-    setThree({ camera: nextCamera });
-    if (reducedMotion) {
-      transition.current = null;
-      currentTarget.current = targetPose.target;
-      applyProjectionValue(nextCamera, projectionTo);
-      applyCameraPose(nextCamera, targetPose, controls.current);
-      onTransitionStateChange(false);
-      invalidate();
-      return;
-    }
-    transition.current = {
-      camera: nextCamera,
-      from: cameraPose(nextCamera, liveControlsTarget),
-      to: targetPose,
-      projectionFrom: projectionValue(nextCamera),
-      projectionTo,
-      startedAtMs: performance.now(),
-    };
-    onTransitionStateChange(true);
-    invalidate();
-  }, [
-    invalidate,
-    model.camera.id,
-    model.camera.projection,
-    onTransitionStateChange,
-    projectionTarget,
-    reducedMotion,
-    setThree,
-    targetPose,
-  ]);
-
-  useFrame(() => {
-    const activeTransition = transition.current;
-    if (!activeTransition) return;
-    const progress = voxelCameraTransitionProgress(
-      Math.max(0, performance.now() - activeTransition.startedAtMs),
-      VOXEL_CAMERA_TRANSITION_MS,
-    );
-    const pose = interpolateVoxelCameraPose(activeTransition.from, activeTransition.to, progress);
-    currentTarget.current = pose.target;
-    applyProjectionValue(
-      activeTransition.camera,
-      THREE.MathUtils.lerp(activeTransition.projectionFrom, activeTransition.projectionTo, progress),
-    );
-    applyCameraPose(activeTransition.camera, pose, controls.current);
-    if (progress === 1) {
-      transition.current = null;
-      onTransitionStateChange(false);
-    } else invalidate();
-  });
-
-  return (
-    <OrbitControls
-      ref={controls}
-      makeDefault
-      camera={renderedCamera}
-      enablePan={interactive}
-      enableRotate={interactive}
-      enableZoom={interactive}
-      enableDamping={false}
-      minDistance={0.1}
-      maxDistance={Math.max(20, model.bounds.radius * 20)}
-      onStart={() => {
-        transition.current = null;
-        onTransitionStateChange(false);
-        if (controls.current) {
-          currentTarget.current = {
-            x: controls.current.target.x,
-            y: controls.current.target.y,
-            z: controls.current.target.z,
-          };
-        }
-      }}
-      onEnd={() => {
-        if (controls.current) {
-          currentTarget.current = {
-            x: controls.current.target.x,
-            y: controls.current.target.y,
-            z: controls.current.target.z,
-          };
-        }
-      }}
-    />
-  );
-}
-
 function FoldScene({
   model,
   palette,
@@ -589,10 +333,14 @@ function FoldScene({
   materialColors,
   onFaceSelect,
   onCameraTransitionStateChange,
+  axisSnapEnabled,
+  cameraRequestKey,
 }: {
   readonly model: PolyhedronFoldRenderModel;
   readonly palette: SpatialRendererPalette;
   readonly readOnly: boolean;
+  readonly axisSnapEnabled: boolean;
+  readonly cameraRequestKey?: string | number;
   readonly selectableFaceIds?: readonly string[];
   readonly materialColors?: Readonly<Record<string, string>>;
   readonly onFaceSelect?: (faceId: string) => void;
@@ -606,8 +354,11 @@ function FoldScene({
   return (
     <>
       <color attach="background" args={[model.background === "night" ? palette.workspacePanel : palette.paper]} />
-      <CameraRig
-        model={model}
+      <SpatialCameraRig
+        bookmark={model.camera}
+        radius={model.bounds.radius}
+        axisSnapEnabled={axisSnapEnabled}
+        requestKey={cameraRequestKey}
         interactive={!readOnly}
         onTransitionStateChange={onCameraTransitionStateChange}
       />
@@ -641,6 +392,8 @@ export function PolyhedronFoldCanvas({
   selectedFaceIds = [],
   selectableFaceIds,
   readOnly = false,
+  axisSnapEnabled = false,
+  cameraRequestKey,
   onFaceSelect,
   messages,
   materialColors,
@@ -700,6 +453,8 @@ export function PolyhedronFoldCanvas({
       ref={rendererElement}
       className="relative h-full w-full"
       data-spatial-renderer="polyhedron-fold-r3f-v1"
+      data-camera-controls="anchored-arcball"
+      data-camera-axis-snap={axisSnapEnabled ? "enabled" : "disabled"}
       data-camera-transition="orbit-ease-in-out"
       data-camera-transition-state="idle"
     >
@@ -720,6 +475,8 @@ export function PolyhedronFoldCanvas({
           model={model}
           palette={palette}
           readOnly={readOnly}
+          axisSnapEnabled={axisSnapEnabled}
+          cameraRequestKey={cameraRequestKey}
           selectableFaceIds={selectableFaceIds}
           materialColors={materialColors}
           onFaceSelect={onFaceSelect}

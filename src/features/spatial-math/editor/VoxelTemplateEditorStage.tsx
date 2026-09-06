@@ -16,6 +16,7 @@ import {
   type VoxelSceneAdapterInput,
 } from "../domain";
 import { VoxelView } from "../renderer-r3f/VoxelView";
+import { SpatialAxisSnapButton, useSpatialAxisSnap, type SpatialCameraControlMessages } from "../renderer-r3f/SpatialCameraControls";
 import type { VoxelRendererMessages } from "../renderer-r3f/VoxelFallback";
 import {
   applyVoxelTemplateEditorAction,
@@ -28,7 +29,7 @@ import {
 } from "./voxel-template-editor";
 import { assertVoxelEditorStandard4x3Page } from "./voxel-editor-page-contract";
 
-export interface VoxelTemplateEditorMessages extends VoxelRendererMessages {
+export interface VoxelTemplateEditorMessages extends VoxelRendererMessages, SpatialCameraControlMessages {
   readonly editorTitle: string;
   readonly editorDescription: string;
   readonly axisLabel: string;
@@ -120,8 +121,9 @@ export function VoxelTemplateEditorStage({
     key: buildKey,
     builder: buildPage,
   }));
+  const axisSnapEnabled = useSpatialAxisSnap();
+  const displayedPreview = preview.status === "ready" ? preview : null;
   const previewIsCurrent = preview.key === buildKey && preview.builder === buildPage;
-  const readyPreview = previewIsCurrent && preview.status === "ready" ? preview : null;
   const previewStatus = previewIsCurrent ? preview.status : "building";
   const completePreviewBuild = useEffectEvent((
     requestKey: string,
@@ -316,18 +318,23 @@ export function VoxelTemplateEditorStage({
                     : messages.previewBuilding}
               </CardDescription>
             </div>
-            <Badge variant="outline">standard-4x3</Badge>
+            <div className="flex items-center gap-2">
+              <SpatialAxisSnapButton messages={messages} disabled={!displayedPreview} />
+              <Badge variant="outline">standard-4x3</Badge>
+            </div>
           </CardHeader>
           <CardContent className="p-4 pt-0">
             <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-line bg-paper" data-editor-preview="standard-4x3">
-              {readyPreview ? (
+              {displayedPreview ? (
                 <VoxelView
                   className="absolute inset-0 h-full aspect-auto rounded-none border-0 shadow-none"
-                  page={readyPreview.page}
-                  state={readyPreview.runtime}
+                  page={displayedPreview.page}
+                  state={displayedPreview.runtime}
                   entityId={draft.entityId}
                   locale={locale}
                   readOnly
+                  cameraInteractive
+                  axisSnapEnabled={axisSnapEnabled}
                   messages={messages}
                   materialColors={materialColors}
                 />
@@ -336,6 +343,11 @@ export function VoxelTemplateEditorStage({
                   {previewStatus === "error" ? messages.previewError : messages.previewBuilding}
                 </div>
               )}
+              {displayedPreview && previewStatus !== "ready" ? (
+                <p className="pointer-events-none absolute inset-x-0 bottom-0 bg-card/95 p-2 text-center text-xs text-muted" role="status">
+                  {messages.previewBuilding}
+                </p>
+              ) : null}
             </div>
           </CardContent>
         </Card>

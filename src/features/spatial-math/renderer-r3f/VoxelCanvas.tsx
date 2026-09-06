@@ -1,7 +1,6 @@
 "use client";
 
-import { OrbitControls } from "@react-three/drei";
-import { Canvas, type ThreeEvent, useFrame, useThree } from "@react-three/fiber";
+import { Canvas, type ThreeEvent, useThree } from "@react-three/fiber";
 import {
   useEffect,
   useCallback,
@@ -9,20 +8,11 @@ import {
   useMemo,
   useRef,
   useState,
-  useSyncExternalStore,
-  type ComponentRef,
 } from "react";
 import * as THREE from "three";
 import type { SpatialPageDoc, SpatialRuntimeState, VoxelFaceSelection } from "../domain";
 import { VoxelFallback, type VoxelRendererMessages } from "./VoxelFallback";
-import {
-  VOXEL_AXIS_SNAP_TRANSITION_MS,
-  VOXEL_CAMERA_TRANSITION_MS,
-  interpolateVoxelCameraPose,
-  snapVoxelCameraPoseToPrincipalAxis,
-  voxelCameraTransitionProgress,
-  type VoxelCameraPose,
-} from "./voxel-camera-transition";
+import { SpatialCameraRig } from "./SpatialCameraRig";
 import {
   buildVoxelRenderModel,
   VOXEL_RENDERER_MAX_DPR,
@@ -46,6 +36,9 @@ export interface VoxelCanvasProps {
   readonly selectedCellKeys?: readonly string[];
   readonly readOnly?: boolean;
   readonly axisSnapEnabled?: boolean;
+  /** 编辑预览允许本地观察，模型选择与课堂只读合同保持独立。 */
+  readonly cameraInteractive?: boolean;
+  readonly cameraRequestKey?: string | number;
   readonly onCellSelect?: (cellKey: string) => void;
   readonly paintedFaces?: readonly VoxelFaceSelection[];
   readonly paintedFaceMaterialToken?: string;
@@ -97,286 +90,6 @@ function useVoxelPalette(): VoxelPalette | null {
     };
   }, []);
   return palette;
-}
-
-function subscribeReducedMotion(onChange: () => void) {
-  const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-  media.addEventListener("change", onChange);
-  return () => media.removeEventListener("change", onChange);
-}
-
-function useReducedMotion(): boolean {
-  return useSyncExternalStore(
-    subscribeReducedMotion,
-    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-    () => false,
-  );
-}
-
-type VoxelCamera = THREE.OrthographicCamera | THREE.PerspectiveCamera;
-
-interface ActiveCameraTransition {
-  readonly camera: VoxelCamera;
-  readonly from: VoxelCameraPose;
-  readonly to: VoxelCameraPose;
-  readonly projectionFrom: number;
-  readonly projectionTo: number;
-  readonly startedAtMs: number;
-  readonly durationMs: number;
-}
-
-function cameraPose(camera: VoxelCamera, target: VoxelCameraPose["target"]): VoxelCameraPose {
-  return {
-    position: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
-    target,
-    up: { x: camera.up.x, y: camera.up.y, z: camera.up.z },
-  };
-}
-
-function applyCameraPose(
-  camera: VoxelCamera,
-  pose: VoxelCameraPose,
-  controls: ComponentRef<typeof OrbitControls> | null,
-) {
-  camera.position.set(pose.position.x, pose.position.y, pose.position.z);
-  camera.up.set(pose.up.x, pose.up.y, pose.up.z);
-  camera.lookAt(pose.target.x, pose.target.y, pose.target.z);
-  camera.updateMatrixWorld();
-  if (controls) {
-    controls.target.set(pose.target.x, pose.target.y, pose.target.z);
-    controls.update();
-  }
-}
-
-function projectionValue(camera: VoxelCamera): number {
-  return camera instanceof THREE.OrthographicCamera ? camera.zoom : camera.fov;
-}
-
-function applyProjectionValue(camera: VoxelCamera, value: number) {
-  if (camera instanceof THREE.OrthographicCamera) camera.zoom = value;
-  else camera.fov = value;
-  camera.updateProjectionMatrix();
-}
-
-function VoxelCameraRig({
-  model,
-  interactive,
-  axisSnapEnabled,
-  onTransitionStateChange,
-}: {
-  readonly model: VoxelRenderModel;
-  readonly interactive: boolean;
-  readonly axisSnapEnabled: boolean;
-  readonly onTransitionStateChange: (active: boolean) => void;
-}) {
-  const size = useThree((state) => state.size);
-  const renderedCamera = useThree((state) => state.camera);
-  const setThree = useThree((state) => state.set);
-  const invalidate = useThree((state) => state.invalidate);
-  const reducedMotion = useReducedMotion();
-  const aspect = size.width / Math.max(1, size.height);
-  const halfHeight = model.bounds.radius * 1.35;
-  const halfWidth = halfHeight * aspect;
-  const orthographicCamera = useRef<THREE.OrthographicCamera>(null);
-  const perspectiveCamera = useRef<THREE.PerspectiveCamera>(null);
-  if (orthographicCamera.current == null) {
-    orthographicCamera.current = new THREE.OrthographicCamera();
-  }
-  if (perspectiveCamera.current == null) {
-    perspectiveCamera.current = new THREE.PerspectiveCamera();
-  }
-  const controls = useRef<ComponentRef<typeof OrbitControls>>(null);
-  const activeCamera = useRef<VoxelCamera | null>(null);
-  const currentTarget = useRef<VoxelCameraPose["target"]>({
-    x: model.camera.target.x,
-    y: model.camera.target.y,
-    z: model.camera.target.z,
-  });
-  const transition = useRef<ActiveCameraTransition | null>(null);
-  const targetPose = useMemo<VoxelCameraPose>(() => ({
-    position: model.camera.position,
-    target: model.camera.target,
-    up: model.camera.up,
-  }), [model.camera.position, model.camera.target, model.camera.up]);
-
-  useLayoutEffect(() => {
-    const orthographic = orthographicCamera.current!;
-    const perspective = perspectiveCamera.current!;
-    orthographic.left = -halfWidth;
-    orthographic.right = halfWidth;
-    orthographic.top = halfHeight;
-    orthographic.bottom = -halfHeight;
-    orthographic.near = 0.01;
-    orthographic.far = 1_000;
-    orthographic.updateProjectionMatrix();
-    perspective.aspect = aspect;
-    perspective.near = 0.01;
-    perspective.far = 1_000;
-    perspective.updateProjectionMatrix();
-  }, [aspect, halfHeight, halfWidth]);
-
-  useLayoutEffect(() => {
-    const nextCamera = model.camera.projection === "orthographic"
-      ? orthographicCamera.current!
-      : perspectiveCamera.current!;
-    const previousCamera = activeCamera.current;
-    if (!previousCamera) {
-      activeCamera.current = nextCamera;
-      currentTarget.current = targetPose.target;
-      applyProjectionValue(
-        nextCamera,
-        nextCamera instanceof THREE.OrthographicCamera ? model.camera.zoom : model.camera.fovDegrees,
-      );
-      applyCameraPose(nextCamera, targetPose, controls.current);
-      setThree({ camera: nextCamera });
-      onTransitionStateChange(false);
-      invalidate();
-      return;
-    }
-
-    if (previousCamera !== nextCamera) {
-      nextCamera.position.copy(previousCamera.position);
-      nextCamera.quaternion.copy(previousCamera.quaternion);
-      nextCamera.up.copy(previousCamera.up);
-      const currentDistance = previousCamera.position.distanceTo(
-        new THREE.Vector3(currentTarget.current.x, currentTarget.current.y, currentTarget.current.z),
-      );
-      if (nextCamera instanceof THREE.OrthographicCamera) {
-        const previousHalfHeight = previousCamera instanceof THREE.PerspectiveCamera
-          ? Math.tan(THREE.MathUtils.degToRad(previousCamera.fov / 2)) * currentDistance
-          : halfHeight / previousCamera.zoom;
-        nextCamera.zoom = halfHeight / Math.max(0.01, previousHalfHeight);
-      } else {
-        const previousHalfHeight = previousCamera instanceof THREE.OrthographicCamera
-          ? halfHeight / previousCamera.zoom
-          : Math.tan(THREE.MathUtils.degToRad(previousCamera.fov / 2)) * currentDistance;
-        nextCamera.fov = THREE.MathUtils.radToDeg(
-          2 * Math.atan(previousHalfHeight / Math.max(0.01, currentDistance)),
-        );
-      }
-      nextCamera.updateProjectionMatrix();
-    }
-
-    activeCamera.current = nextCamera;
-    setThree({ camera: nextCamera });
-    const projectionTo = nextCamera instanceof THREE.OrthographicCamera
-      ? model.camera.zoom
-      : model.camera.fovDegrees;
-    if (reducedMotion) {
-      transition.current = null;
-      currentTarget.current = targetPose.target;
-      applyProjectionValue(nextCamera, projectionTo);
-      applyCameraPose(nextCamera, targetPose, controls.current);
-      onTransitionStateChange(false);
-      invalidate();
-      return;
-    }
-    transition.current = {
-      camera: nextCamera,
-      from: cameraPose(nextCamera, currentTarget.current),
-      to: targetPose,
-      projectionFrom: projectionValue(nextCamera),
-      projectionTo,
-      startedAtMs: performance.now(),
-      durationMs: VOXEL_CAMERA_TRANSITION_MS,
-    };
-    onTransitionStateChange(true);
-    invalidate();
-  }, [
-    halfHeight,
-    invalidate,
-    model.camera.fovDegrees,
-    model.camera.id,
-    model.camera.projection,
-    model.camera.zoom,
-    onTransitionStateChange,
-    reducedMotion,
-    setThree,
-    targetPose,
-  ]);
-
-  useFrame(() => {
-    const activeTransition = transition.current;
-    if (!activeTransition) return;
-    const progress = voxelCameraTransitionProgress(
-      Math.max(0, performance.now() - activeTransition.startedAtMs),
-      activeTransition.durationMs,
-    );
-    const pose = interpolateVoxelCameraPose(
-      activeTransition.from,
-      activeTransition.to,
-      progress,
-    );
-    currentTarget.current = pose.target;
-    applyProjectionValue(
-      activeTransition.camera,
-      THREE.MathUtils.lerp(
-        activeTransition.projectionFrom,
-        activeTransition.projectionTo,
-        progress,
-      ),
-    );
-    applyCameraPose(activeTransition.camera, pose, controls.current);
-    if (progress === 1) {
-      transition.current = null;
-      onTransitionStateChange(false);
-    }
-    else invalidate();
-  });
-
-  return (
-    <OrbitControls
-      ref={controls}
-      makeDefault
-      camera={renderedCamera}
-      enablePan={interactive}
-      enableRotate={interactive}
-      enableZoom={interactive}
-      enableDamping={false}
-      onStart={() => {
-        transition.current = null;
-        onTransitionStateChange(false);
-        if (controls.current) {
-          currentTarget.current = {
-            x: controls.current.target.x,
-            y: controls.current.target.y,
-            z: controls.current.target.z,
-          };
-        }
-      }}
-      onEnd={() => {
-        if (!axisSnapEnabled) return;
-        const camera = activeCamera.current;
-        const orbitControls = controls.current;
-        if (!camera || !orbitControls) return;
-        const target = {
-          x: orbitControls.target.x,
-          y: orbitControls.target.y,
-          z: orbitControls.target.z,
-        };
-        currentTarget.current = target;
-        const snappedPose = snapVoxelCameraPoseToPrincipalAxis(cameraPose(camera, target));
-        if (!snappedPose) return;
-        if (reducedMotion) {
-          applyCameraPose(camera, snappedPose, orbitControls);
-          onTransitionStateChange(false);
-          invalidate();
-          return;
-        }
-        transition.current = {
-          camera,
-          from: cameraPose(camera, target),
-          to: snappedPose,
-          projectionFrom: projectionValue(camera),
-          projectionTo: projectionValue(camera),
-          startedAtMs: performance.now(),
-          durationMs: VOXEL_AXIS_SNAP_TRANSITION_MS,
-        };
-        onTransitionStateChange(true);
-        invalidate();
-      }}
-    />
-  );
 }
 
 function VoxelInstances({
@@ -605,6 +318,8 @@ function VoxelScene({
   paintedFaceColor,
   onFaceSelect,
   axisSnapEnabled,
+  cameraInteractive,
+  cameraRequestKey,
   onCameraTransitionStateChange,
 }: {
   readonly model: VoxelRenderModel;
@@ -616,14 +331,18 @@ function VoxelScene({
   readonly paintedFaceColor: string;
   readonly onFaceSelect?: (face: VoxelFaceSelection) => void;
   readonly axisSnapEnabled: boolean;
+  readonly cameraInteractive: boolean;
+  readonly cameraRequestKey: string;
   readonly onCameraTransitionStateChange: (active: boolean) => void;
 }) {
   return (
     <>
       <color attach="background" args={[model.background === "night" ? palette.workspacePanel : palette.paper]} />
-      <VoxelCameraRig
-        model={model}
-        interactive={!readOnly}
+      <SpatialCameraRig
+        bookmark={model.camera}
+        radius={model.bounds.radius}
+        interactive={cameraInteractive}
+        requestKey={cameraRequestKey}
         axisSnapEnabled={axisSnapEnabled}
         onTransitionStateChange={onCameraTransitionStateChange}
       />
@@ -643,6 +362,8 @@ export function VoxelCanvas({
   selectedCellKeys = [],
   readOnly = false,
   axisSnapEnabled = false,
+  cameraInteractive = !readOnly,
+  cameraRequestKey,
   onCellSelect,
   paintedFaces = [],
   paintedFaceMaterialToken = "voxel.paint",
@@ -689,6 +410,7 @@ export function VoxelCanvas({
       ref={rendererElement}
       className="relative h-full w-full"
       data-spatial-renderer="voxel-instanced-r3f-v1"
+      data-camera-controls="anchored-arcball"
       data-camera-transition="orbit-ease-in-out"
       data-camera-transition-state="idle"
       data-camera-axis-snap={axisSnapEnabled ? "enabled" : "disabled"}
@@ -707,7 +429,7 @@ export function VoxelCanvas({
           setCanvasElement(gl.domElement);
         }}
         aria-label={model.label}
-        style={{ touchAction: readOnly ? "pan-x pan-y" : "none" }}
+        style={{ touchAction: cameraInteractive ? "none" : "pan-x pan-y" }}
       >
         <VoxelScene
           model={model}
@@ -719,6 +441,8 @@ export function VoxelCanvas({
           paintedFaceColor={materialColors?.[paintedFaceMaterialToken] ?? palette.rose}
           onFaceSelect={onFaceSelect}
           axisSnapEnabled={axisSnapEnabled}
+          cameraInteractive={cameraInteractive}
+          cameraRequestKey={`${state.resetEpoch}:${cameraRequestKey ?? 0}`}
           onCameraTransitionStateChange={setCameraTransitionState}
         />
       </Canvas>

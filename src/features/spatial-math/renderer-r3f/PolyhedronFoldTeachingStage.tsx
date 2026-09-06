@@ -23,12 +23,13 @@ import {
   type PolyhedronTeachingLocale,
 } from "../runtime";
 import { PolyhedronFoldView } from "./PolyhedronFoldView";
+import { SpatialAxisSnapButton, useSpatialAxisSnap, type SpatialCameraControlMessages } from "./SpatialCameraControls";
 import type { PolyhedronFoldRendererMessages } from "./PolyhedronFoldCanvas";
 
 const MINIMUM_PLAYBACK_STEP_MS = 650;
 const EMPTY_FACE_SELECTION: readonly string[] = [];
 
-export interface PolyhedronFoldTeachingMessages extends PolyhedronFoldRendererMessages {
+export interface PolyhedronFoldTeachingMessages extends PolyhedronFoldRendererMessages, SpatialCameraControlMessages {
   readonly previousStep: string;
   readonly nextStep: string;
   readonly playSteps: string;
@@ -82,6 +83,8 @@ export function PolyhedronFoldTeachingStage({
     [actor, entityId, locale, page, readOnly, state],
   );
   const [playing, setPlaying] = useState(false);
+  const axisSnapEnabled = useSpatialAxisSnap();
+  const [cameraRequestKey, setCameraRequestKey] = useState(0);
   const summaryId = useId();
   const [previewProgress, setPreviewProgress] = useState<{ readonly value: number; readonly baseline: number } | null>(null);
   const previewStillCurrent =
@@ -161,6 +164,8 @@ export function PolyhedronFoldTeachingStage({
       selectedFaceIds={validSelectedFaceIds}
       selectableFaceIds={selectableFaceIds}
       readOnly={!view.canManipulateScene}
+      axisSnapEnabled={axisSnapEnabled}
+      cameraRequestKey={`${state.resetEpoch}:${cameraRequestKey}`}
       onFaceSelect={canChooseFaces ? selectFace : undefined}
       messages={messages}
       materialColors={materialColors}
@@ -185,11 +190,18 @@ export function PolyhedronFoldTeachingStage({
       )}
       disabled={!view.canManipulateScene}
       aria-pressed={camera.id === view.cameraId}
-      onClick={() => emit({ kind: "camera.apply", cameraId: camera.id })}
+      onClick={() => {
+        emit({ kind: "camera.apply", cameraId: camera.id });
+        setCameraRequestKey((current) => current + 1);
+      }}
     >
       {camera.label}
     </Button>
   ));
+  const axisSnapButton = (
+    <SpatialAxisSnapButton messages={messages} disabled={!view.canManipulateScene}
+      className={externalControls ? "h-11 px-3 text-sm" : undefined} />
+  );
   const checkpointControls = view.faceCheckpoint ? (
     <div>
       <p className="text-sm leading-5 text-ink">{view.faceCheckpoint.prompt}</p>
@@ -346,7 +358,7 @@ export function PolyhedronFoldTeachingStage({
                 <Camera aria-hidden="true" className="size-4 text-muted" />
                 {messages.cameraBookmarks}
               </p>
-              <div className="flex flex-wrap gap-2">{cameraButtons}</div>
+              <div className="flex flex-wrap gap-2">{cameraButtons}{axisSnapButton}</div>
             </div>
             {checkpointControls}
             <div className="grid gap-3 border-t border-line pt-3">
@@ -400,6 +412,7 @@ export function PolyhedronFoldTeachingStage({
         >
           <Camera aria-hidden="true" className="m-1 size-4 text-muted" />
           {cameraButtons}
+          {axisSnapButton}
         </div>
       </header>
       {checkpointControls ? (

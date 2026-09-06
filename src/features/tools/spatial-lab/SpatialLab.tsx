@@ -536,6 +536,9 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
   }), [t]);
 
   const modelMessages = useMemo<VoxelTemplateEditorMessages>(() => ({
+    axisSnap: t("teaching.axisSnap"),
+    enableAxisSnap: t("teaching.enableAxisSnap"),
+    disableAxisSnap: t("teaching.disableAxisSnap"),
     ...rendererMessages,
     editorTitle: t("model.editorTitle"),
     editorDescription: t("model.editorDescription"),

@@ -180,19 +180,24 @@ describe("polyhedron-net-2d-v1 fallback", () => {
     expect(isPolyhedronFoldFaceSelectable("face.x.pos")).toBe(true);
   });
 
-  it("reuses the accepted orbit transition for authored camera bookmarks", () => {
+  it("uses the shared camera rig for authored bookmark transitions", () => {
     const source = readFileSync(
       resolve(process.cwd(), "src/features/spatial-math/renderer-r3f/PolyhedronFoldCanvas.tsx"),
       "utf8",
     );
+    const rig = readFileSync(
+      resolve(process.cwd(), "src/features/spatial-math/renderer-r3f/SpatialCameraRig.tsx"),
+      "utf8",
+    );
 
-    expect(source).toContain("VOXEL_CAMERA_TRANSITION_MS");
-    expect(source).toContain("interpolateVoxelCameraPose");
-    expect(source).toContain("voxelCameraTransitionProgress");
-    expect(source).toContain("matchPolyhedronFoldProjectionValue");
+    expect(source).toContain("<SpatialCameraRig");
+    expect(source).not.toContain("OrbitControls");
+    expect(rig).toContain("SPATIAL_CAMERA_TRANSITION_MS");
+    expect(rig).toContain("interpolateSpatialCameraPose");
+    expect(rig).toContain("spatialCameraTransitionProgress");
     expect(source).toContain('data-camera-transition="orbit-ease-in-out"');
     expect(source).toContain('data-camera-transition-state="idle"');
-    expect(source).toContain("if (reducedMotion)");
+    expect(rig).toContain("!previous || reducedMotion");
   });
 
   it("uses opaque solid faces and one instanced ink-edge draw instead of WebGL line widths", () => {
