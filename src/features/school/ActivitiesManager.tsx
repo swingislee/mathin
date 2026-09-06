@@ -21,10 +21,12 @@ import {
   createActivityAction,
   deleteActivityAction,
   updateActivityAction,
+  setActivityTargetGradesAction,
   type ActivityInput,
 } from "./activity-actions";
 import { ACTIVITY_KINDS } from "./activity-kinds";
 import type { ActivityRow } from "./activities";
+import { ActivityGradesDialog } from "./ActivityGradesDialog";
 import { inputClass } from "./controls";
 import { DashboardInlineEntry } from "./dashboard-page/DashboardInlineEntry";
 import type { PublicClassRegistrationData } from "./public-class-registration-contract";
@@ -87,11 +89,13 @@ export function ActivitiesManager({
 }) {
   const t = useTranslations("school.activities");
   const tableT = useTranslations("school.table");
+  const gradeT = useTranslations("school.activityGrades");
   const locale = useLocale();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState<ActivityRow | null | "new">(null);
   const [deleteTarget, setDeleteTarget] = useState<ActivityRow | null>(null);
+  const [gradeTarget, setGradeTarget] = useState<ActivityRow | null>(null);
   const [activeActivityId, setActiveActivityId] = useState<string | null>(initialActivityId ?? null);
   const toggleActivity = (activityId: string) => setActiveActivityId((current) => current === activityId ? null : activityId);
   const dateTimeFormatter = useMemo(
@@ -218,6 +222,8 @@ export function ActivitiesManager({
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted">
                     <Badge variant="outline">{t(`kind_${activity.kind}`)}</Badge>
                     <span>{activity.location || "—"}</span>
+                    <span>{activity.targetGrades == null ? gradeT("unknown") : activity.targetGrades.length
+                      ? activity.targetGrades.map((grade) => gradeT("grade", { grade })).join("、") : gradeT("all")}</span>
                   </div>
                 </TableCell>
                 <TableCell className="tabular-nums">{t("participationCounts", { booked, attended })}</TableCell>
@@ -227,6 +233,7 @@ export function ActivitiesManager({
                   <div className="flex justify-end gap-1" onClick={(event) => event.stopPropagation()}>
                     {canManage ? <>
                       <Button size="sm" variant="ghost" onClick={() => setEditing(activity)}>{t("edit")}</Button>
+                      <Button size="sm" variant="ghost" onClick={() => setGradeTarget(activity)}>{gradeT("title")}</Button>
                       <Button size="sm" variant="ghost" className="text-rose" aria-label={t("delete")} disabled={pending} onClick={() => setDeleteTarget(activity)}><Trash2 size={15} /></Button>
                     </> : null}
                     {publicClass ? <Button size="sm" variant="secondary" onClick={() => toggleActivity(activity.id)}>{t("inlineRegistration")}</Button> : null}
@@ -252,6 +259,8 @@ export function ActivitiesManager({
         () => setEditing(null),
       )}
     />}
+    {gradeTarget ? <ActivityGradesDialog activity={gradeTarget} pending={pending} onClose={() => setGradeTarget(null)}
+      onSave={(grades) => run(() => setActivityTargetGradesAction(gradeTarget.id, grades), gradeT("saved"), () => setGradeTarget(null))} /> : null}
     <ConfirmDialog
       open={deleteTarget !== null}
       onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}

@@ -25,7 +25,7 @@
   --followup-checked: color-mix(in srgb, var(--moon) 22%, var(--card));
   --followup-edit: color-mix(in srgb, var(--moon) 38%, var(--card));
   --followup-detail: color-mix(in srgb, var(--moon) 14%, var(--card));
-  --followup-outline: color-mix(in srgb, var(--moon) 50%, var(--ink));
+  --followup-outline: #bc963f;
 }
 
 /* 暗色 = 星夜 */
@@ -322,6 +322,8 @@ body:has([data-dashboard-canvas], [data-followup-workbench])::after { display: n
   background-color: var(--followup-edit);
 }
 [data-followup-workbench] [data-slot="table"] > tbody > tr[data-followup-active="true"][data-followup-expanded="true"] { --followup-bottom: transparent; }
+[data-followup-workbench] [data-slot="table"] > tbody > tr[data-followup-expanded="true"] { border-bottom-color: transparent; }
+[data-followup-workbench] [data-slot="table"] > tbody > tr[data-followup-expanded="true"] > td.sticky { border-right-color: transparent; }
 [data-followup-workbench] [data-slot="table"] > tbody > tr[data-followup-inline-details] {
   --followup-top: transparent;
   background-color: var(--followup-detail);
@@ -340,8 +342,12 @@ body:has([data-dashboard-canvas], [data-followup-workbench])::after { display: n
   box-shadow: inset 1px 0 var(--followup-side), inset -1px 0 var(--followup-side), inset 0 -1px var(--followup-bottom);
 }
 [data-followup-workbench] [data-slot="table"] > tbody > tr:focus-visible {
-  outline: 2px solid var(--ink);
-  outline-offset: -3px;
+  outline: none;
+}
+/* 键盘焦点落在展开控件上，不再叠加第二个整行外框。 */
+[data-followup-workbench] [data-slot="table"] > tbody > tr:focus-visible > td:first-child button[aria-expanded] {
+  outline: 2px solid var(--followup-outline);
+  outline-offset: 2px;
 }
 
 /*

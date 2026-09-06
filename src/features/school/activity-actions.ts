@@ -171,6 +171,18 @@ export async function deleteActivityAction(id: string): Promise<ActionResult> {
   }
 }
 
+export async function setActivityTargetGradesAction(id: string, targetGrades: number[] | null): Promise<ActionResult> {
+  try {
+    const value = parse(z.object({ id: uuid, grades: z.array(z.number().int().min(1).max(12)).max(12).nullable() }), { id, grades: targetGrades });
+    const supabase = await authorizedActivityClient("activity.manage");
+    const { error } = await supabase.rpc("set_activity_target_grades", { p_activity_id: value.id, p_target_grades: value.grades! });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ACTIVITY_ERROR_CODES);
+  }
+}
+
 export async function bookActivityAction(activityId: string, studentId: string): Promise<ActionResult> {
   try {
     const value = parse(z.object({ activityId: uuid, studentId: uuid }), { activityId, studentId });

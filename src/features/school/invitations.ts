@@ -58,6 +58,8 @@ interface ActivityDbRow {
   title: string;
   scheduled_at: string;
   location: string;
+  duration_min?: number | null;
+  target_grades?: number[] | null;
 }
 
 interface LeadNextActionDbRow {
@@ -137,14 +139,15 @@ export async function listInvitationOptions(): Promise<{
   const supabase = await createClient();
   const oldestVisible = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const [activityResult, assessorResult] = await Promise.all([
-    supabase
+    readSchoolQueryPages((start, end) => supabase
       .from("activities")
-      .select("id,kind,title,scheduled_at,location")
+      .select("id,kind,title,scheduled_at,location,duration_min,target_grades")
       .is("deleted_at", null)
+      .is("source_invitation_id", null)
       .gte("scheduled_at", oldestVisible)
       .order("scheduled_at", { ascending: true })
-      .limit(100)
-      .returns<ActivityDbRow[]>(),
+      .order("id", { ascending: true }).range(start, end)
+      .returns<ActivityDbRow[]>()),
     supabase.rpc("list_invitation_assessors"),
   ]);
   if (activityResult.error) throw new Error(activityResult.error.message);
@@ -158,6 +161,8 @@ export async function listInvitationOptions(): Promise<{
       title: row.title,
       scheduledAt: row.scheduled_at,
       location: row.location,
+      durationMin: row.duration_min ?? null,
+      targetGrades: row.target_grades ?? null,
     })),
     assessors: (assessorResult.data ?? []).map((row) => ({
       userId: row.user_id,
@@ -279,6 +284,7 @@ export async function listInvitationCoordination(
       leadName: lead.provisional_student_name,
       phone: lead.phone,
       gradeText: lead.grade_text || (lead.grade_hint ? String(lead.grade_hint) : ""),
+      gradeHint: lead.grade_hint,
       ownerName: lead.owner_id ? profileById.get(lead.owner_id) ?? "" : "",
       kind: invitation.kind,
       state: invitation.state,

@@ -164,7 +164,9 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(workbench).toContain("const rowActionHint =");
     expect(workbench).toContain("<FollowupEntryFields");
     expect(workbench).not.toContain("/invitation-editor:grid-cols-");
-    expect(draftFields).toContain("INVITATION_KINDS.map");
+    expect(draftFields).toContain("<TabsTrigger");
+    expect(draftFields).toContain("<ActivityWeekPicker");
+    expect(draftFields).toContain('data-followup-progress-link={passed ? "complete" : "pending"}');
     expect(draftFields).toContain("FollowupChoice");
     expect(draftFields).not.toContain("invitationStateFromFacts");
     expect(draftFields).toContain("stateChoices.map");

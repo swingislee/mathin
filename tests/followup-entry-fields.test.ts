@@ -2,7 +2,7 @@ import { createElement, type ComponentProps } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { FollowupEntryFields } from "@/features/school/FollowupEntryFields";
-import { leadContactInput, type LeadContactDraft } from "@/features/school/followup-entry-contract";
+import { emptyInvitationDraft, invitationForAdvance, invitationHasStageInformation, leadContactInput, type LeadContactDraft } from "@/features/school/followup-entry-contract";
 
 vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
 vi.mock("@/features/school/NextContactReminderField", () => ({
@@ -24,7 +24,8 @@ describe("shared follow-up entry layout and submission contract", () => {
       expect(markup.indexOf('id="entry-reminder"')).toBeLessThan(markup.indexOf("data-followup-entry-actions"));
       expect(markup).toContain('data-compact="true"');
       expect(markup).toContain("max-w-72");
-      expect(markup).not.toContain("grid-cols-[minmax(0,1fr)_19rem]");
+      if (children) expect(markup).toContain("@[50rem]/followup-entry:grid-cols-[minmax(0,1fr)_19rem]");
+      expect(markup).toContain("data-followup-notes");
       if (!children) expect(markup).not.toContain("data-followup-business");
     },
   );
@@ -62,6 +63,26 @@ const draft: LeadContactDraft = {
 };
 
 describe("contact result draft projection", () => {
+  it("marks only blank browsing undecided on advance, retaining reminders", () => {
+    for (const invitation of [null, emptyInvitationDraft("activity"), emptyInvitationDraft("assessment_1v1")]) {
+      expect(invitationHasStageInformation(invitation)).toBe(false);
+      expect(invitationForAdvance(invitation, draft.nextContactAt)).toMatchObject({ kind: "waiting_activity", state: "waiting_activity", nextContactAt: draft.nextContactAt });
+    }
+  });
+  it("retains every kind of partial coordination, not just final parent confirmation", () => {
+    const blank = emptyInvitationDraft("assessment_1v1");
+    for (const invitation of [
+      { ...blank, assessorId: "teacher" }, { ...blank, parentTimeOptions: ["2026-09-07@14:00"] },
+      { ...blank, assessorTimeOptions: ["2026-09-07@14:00"] }, { ...blank, locationText: "教室" },
+      { ...blank, scheduledAt: "2026-09-07T06:00:00Z" }, { ...blank, state: "awaiting_teacher" as const },
+      { ...emptyInvitationDraft("activity"), activityId: "session" },
+    ]) {
+      const before = structuredClone(invitation);
+      expect(invitationHasStageInformation(invitation)).toBe(true);
+      expect(invitationForAdvance(invitation)).toBe(invitation);
+      expect(invitation).toEqual(before);
+    }
+  });
   it("keeps unreachable notes and reminders without submitting hidden WeChat or invitation fields", () => {
     expect(leadContactInput("unreachable", draft)).toEqual({
       outcome: "unreachable", note: draft.note, wechatAdded: null, interestLevel: null, invitation: null, nextContactAt: draft.nextContactAt,

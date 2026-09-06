@@ -51,6 +51,8 @@ import { zonedDateTimeToInstant } from "./schedule";
 import { FollowupChoice, followupToneClasses } from "./dashboard-page/FollowupChoice";
 import { FollowupInlineDetails } from "./dashboard-page/FollowupInlineDetails";
 import { FollowupEntryFields } from "./FollowupEntryFields";
+import { FollowupPersonCell } from "./dashboard-page/FollowupPersonCell";
+import { invitationForAdvance } from "./followup-entry-contract";
 import { PostActivityHandoff } from "./EnrollmentHandoffButton";
 import { PostActivityQuickContact } from "./PostActivityQuickContact";
 import { followupState, type ActivityEnrollmentContext } from "./enrollment-workflow-contract";
@@ -299,6 +301,7 @@ function InvitationEditor({
   const pending = operationPending || saving;
   const submitSupport = (nextDraft: InvitationDraft, advance = false) => {
     if (pending || !canManageInvitation) return;
+    if (advance) nextDraft = invitationForAdvance(nextDraft);
     if (nextDraft.state !== "cancelled" && !invitationDraftIsComplete(nextDraft)) return;
     const normalizedDraft = invitationCanHaveNextContactReminder(nextDraft)
       ? { ...nextDraft, nextContactAt: nextDraft.nextContactAt ?? null }
@@ -420,7 +423,8 @@ function InvitationEditor({
   return (
     <div className="@container/invitation-editor min-w-0 max-w-full px-1">
       {assessorEditing ? <div className="space-y-3">
-        <InvitationDraftFields value={draft} activities={activities} assessors={assessors} locale={locale}
+        <InvitationDraftFields key={draftStorageKey} value={draft} activities={activities} assessors={assessors} locale={locale}
+          gradeHint={row.gradeHint}
           disabled={pending} allowNone={false} showReminder={false} editingScope="assessor"
           draftStorageKey={draftStorageKey} onChange={(value) => { if (value) setDraft(value); }} />
         <p className="text-xs text-muted">{sharedOptions.length > 0
@@ -439,7 +443,8 @@ function InvitationEditor({
         } : undefined}
         tools={<Button type="button" size="sm" variant="ghost" className="h-auto min-h-8 whitespace-normal px-2 py-1 text-xs text-muted"
           disabled={pending} onClick={() => setCancelOpen(true)}>{t("cancelInvitation")}</Button>}>
-        <InvitationDraftFields value={draft} activities={activities} assessors={assessors} locale={locale}
+        <InvitationDraftFields key={draftStorageKey} value={draft} activities={activities} assessors={assessors} locale={locale}
+          gradeHint={row.gradeHint}
           disabled={pending} allowNone={false} showReminder={false}
           draftStorageKey={draftStorageKey} onChange={(value) => { if (value) setDraft(value); }} />
         {communicationTools}
@@ -513,7 +518,7 @@ function InvitationQuickContact({ row, disabled, onSaved, saving, beginSave, end
     if (event.defaultPrevented || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229 || event.repeat) return;
     if ((event.ctrlKey || event.metaKey) && event.key === "Enter") { event.preventDefault(); submit(); }
   }}>
-    <FollowupChoice className="w-28 shrink-0" label={t("channelLabel")} value={channel} onValueChange={(value) => setChannel(value as InvitationChannel)} disabled={disabled || saving || run.pending}
+    <FollowupChoice className="w-40 shrink-0" label={t("channelLabel")} value={channel} onValueChange={(value) => setChannel(value as InvitationChannel)} disabled={disabled || saving || run.pending}
       options={CHANNELS.map((value) => ({ value, label: t(`channel_${value}`) }))} />
     {expanded ? <span className="min-w-0 flex-1 text-xs text-muted">{entryT(note.trim() ? "draftExpanded" : "noteExpanded")}</span> : <Input value={note} onChange={(event) => setNote(event.target.value)} placeholder={entryT("note")} aria-label={t("noteFor", { name: row.leadName })} disabled={disabled || saving || run.pending} maxLength={2000} className="h-8 min-w-0 flex-1 text-xs" />}
     {!expanded ? <Button type="button" size="sm" variant="secondary" className="h-8 shrink-0 px-2" onClick={submit} disabled={disabled || saving || run.pending || !note.trim()} aria-label={t("saveKnownFacts")} aria-keyshortcuts="Control+Enter Meta+Enter" title={`${t("saveKnownFacts")} · Ctrl ↵`}>
@@ -557,6 +562,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
 }) {
   const t = useTranslations("school.invitations");
   const leadT = useTranslations("school.leads");
+  const entryT = useTranslations("school.followupEntry");
   const workspaceT = useTranslations("school.followupWorkspace");
   const enrollmentT = useTranslations("school.enrollmentWorkflow");
   const tableT = useTranslations("school.table");
@@ -880,25 +886,26 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
               if (event.key === "Escape" && active) { event.preventDefault(); changeDetails(canonicalKey, false); }
             }}>
             <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-2">
-              <div className="flex min-w-0 items-center gap-2 whitespace-nowrap">
-                {leadingSelectionFor(row)}<Button type="button" size="sm" variant="ghost" className="size-5 shrink-0 p-0" aria-label={nameOf(row)} aria-expanded={active} aria-controls={detailsId} onClick={() => changeDetails(canonicalKey, !active)}>
-                  {active ? <ChevronDown className="size-3.5 text-muted" /> : <ChevronRight className="size-3.5 text-muted" />}
-                </Button>
-                <span className="truncate font-medium text-ink">{nameOf(row)}</span><a href={`tel:${row.value.phone}`} className="font-mono text-[11px] text-ink underline-offset-4 hover:underline">{row.value.phone}</a>
-              </div>
-              <p className="mt-0.5 truncate pl-7 text-[11px] text-muted">{row.value.gradeText || t("gradePending")}{row.source === "invitation" && row.value.ownerName ? ` · ${row.value.ownerName}` : ""}</p>
+              <FollowupPersonCell name={nameOf(row)} phone={row.value.phone} grade={row.value.gradeText || t("gradePending")}
+                owner={row.source === "invitation" ? row.value.ownerName : undefined} selection={leadingSelectionFor(row)} expanded={active}
+                detailsId={detailsId} onToggle={() => changeDetails(canonicalKey, !active)} />
             </TableCell>
-            <TableCell className="px-2 py-2">{historicalSummary ? historicalSummary.state : <><Badge variant="outline" className={cn("max-w-full truncate", followupToneClasses[tone])}>{rowAction}</Badge><p className="mt-1 truncate text-[11px] text-muted" title={workPurposeFor(canonicalKey) || rowActionHint}>{workPurposeFor(canonicalKey) || rowActionHint}</p></>}</TableCell>
+            <TableCell className="px-2 py-2">{historicalSummary ? historicalSummary.state : <>
+              <p className="mb-1 text-[11px] text-muted">{entryT("savedFacts")}</p>
+              <Badge variant="outline" className={cn("max-w-full whitespace-normal rounded-md text-[11px]", followupToneClasses[tone])}><span aria-hidden className="size-1.5 shrink-0 rounded-full bg-current" />{rowAction}</Badge>
+              <p className="mt-1 truncate text-[11px] text-muted" title={`${kindOf(row)} · ${arrangementOf(row)}`}>{kindOf(row)} · {arrangementOf(row)}</p>
+              {workPurposeFor(canonicalKey) ? <p className="mt-1 truncate text-[11px] text-muted" title={rowActionHint}>{workPurposeFor(canonicalKey)}</p> : null}
+            </>}</TableCell>
             <TableCell className="px-2 py-2">
-              {historicalSummary ? historicalSummary.details : <><div className="flex min-w-0 items-center gap-2"><Badge variant="secondary" className="shrink-0 text-[11px]">{kindOf(row)}</Badge><p className="truncate text-ink" title={arrangementOf(row)}>{arrangementOf(row)}</p></div>
-              {noteOf(row) ? <p className="mt-1 truncate text-[11px] text-muted" title={noteOf(row)}>{noteOf(row)}</p> : null}
-              {nextAt ? <p className="mt-1 truncate text-[11px] text-rose" title={formatAt(nextAt)}>{t("nextContactReminderScheduled", { time: formatAt(nextAt) })}</p> : null}</>}
+              {historicalSummary ? historicalSummary.details : <p className="mb-1 text-[11px] text-muted">{entryT("thisContact")}{row.source === "invitation" && entryDrafts[row.id]?.note.trim() ? ` · ${entryT("unsaved")}` : ""}</p>}
               {recordsMode && (row.source === "invitation" || row.value.eligible) ? <p className="mt-1 text-[10px] text-muted">{workT("newCommunication")}</p> : null}
               <div className="mt-1.5">{row.source === "invitation" ? closed && canContact && leadById.has(row.value.leadId) && !leadById.get(row.value.leadId)?.activeInvitation ? <Button type="button" size="sm" variant="secondary" className="h-8 text-xs" onClick={() => {
                 setRecontactIds((current) => new Set(current).add(row.id));
                 setActiveContactId(row.value.leadId);
                 changeDetails(canonicalKey, true);
               }}>{leadT("continueCommunication")}</Button> : <InvitationQuickContact row={row.value} entry={entryDrafts[row.id] ?? EMPTY_INVITATION_ENTRY} onEntryChange={(entry) => updateEntryDraft(row.id, entry)} expanded={active} disabled={!canManageInvitation || closed} onSaved={onSaved} saving={savingIds.has(row.id)} beginSave={beginSave} endSave={endSave} /> : row.value.eligible ? <PostActivityQuickContact row={row.value} onSaved={(saved) => { savePost(saved); advanceAfter(canonicalKey); }} onDetails={() => changeDetails(canonicalKey, !active)} expanded={active} detailsId={detailsId} /> : null}</div>
+              {!historicalSummary && noteOf(row) ? <p className="mt-1 truncate text-[11px] text-muted" title={noteOf(row)}>{entryT("lastNote", { note: noteOf(row) })}</p> : null}
+              {!historicalSummary && nextAt ? <p className="mt-1 truncate text-[11px] text-muted" title={formatAt(nextAt)}>{t("nextContactReminderScheduled", { time: formatAt(nextAt) })}</p> : null}
             </TableCell>
             <TableCell className="whitespace-nowrap px-2 py-2 text-muted">{historicalSummary ? historicalSummary.updated : formatAt(updatedOf(row))}</TableCell>
           </TableRow>

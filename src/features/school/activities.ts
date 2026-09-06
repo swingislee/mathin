@@ -46,6 +46,7 @@ export interface ActivityRow {
   capacity: number | null;
   remark: string;
   registrations: ActivityRegistration[];
+  targetGrades?: number[] | null;
 }
 
 export interface ActivityWorkspaceSummary {
@@ -71,6 +72,7 @@ interface ActivityQueryRow {
     outcome: string;
     students: { name: string; grade: number | null } | null;
   }>;
+  target_grades: number[] | null;
 }
 
 interface AssessmentQueryRow {
@@ -120,7 +122,7 @@ async function readActivities(activityId?: string): Promise<ActivityRow[]> {
   const supabase = await createClient();
   let query = supabase
     .from("activities")
-    .select("id,kind,title,scheduled_at,duration_min,location,capacity,remark,activity_registrations(id,student_id,status,outcome,students(name,grade))")
+    .select("id,kind,title,scheduled_at,duration_min,location,capacity,remark,target_grades,activity_registrations(id,student_id,status,outcome,students(name,grade))")
     .is("deleted_at", null)
     .order("scheduled_at", { ascending: true });
   if (activityId) query = query.eq("id", activityId);
@@ -159,6 +161,7 @@ async function readActivities(activityId?: string): Promise<ActivityRow[]> {
     location: activity.location,
     capacity: activity.capacity,
     remark: activity.remark,
+    targetGrades: activity.target_grades,
     registrations: activity.activity_registrations
       .map((registration): ActivityRegistration => {
         const assessment = assessments.get(registration.id);

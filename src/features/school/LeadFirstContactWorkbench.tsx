@@ -10,7 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { FollowupEntryFields } from "./FollowupEntryFields";
-import { leadContactInput } from "./followup-entry-contract";
+import { FollowupContactFacts } from "./FollowupContactFacts";
+import { FollowupPersonCell } from "./dashboard-page/FollowupPersonCell";
+import { invitationForAdvance, invitationHasStageInformation, leadContactInput } from "./followup-entry-contract";
 import { addStudentFollowUp } from "./actions/followups";
 import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
 import { cn } from "@/lib/utils";
@@ -226,9 +228,9 @@ export function LeadContactEntryRow({
   useEffect(() => () => { pendingChangeRef.current?.(false); }, []);
 
   const reachable = outcome === "connected" || outcome === "declined";
-  const canSubmit = outcome !== "connected" || !invitation || invitationDraftIsComplete(invitation);
+  const canSubmit = outcome !== "connected" || !invitation || !invitationHasStageInformation(invitation) || invitationDraftIsComplete(invitation);
   const reminderAllowed = outcome === "unreachable" || outcome === "declined"
-    || (outcome === "connected" && Boolean(invitation && invitationCanHaveNextContactReminder(invitation)))
+    || (outcome === "connected" && (!invitation || invitationCanHaveNextContactReminder(invitation)))
     || (!outcome && leadCanHaveReminder(lead));
   const draftReminderAt = outcome === "connected" && invitation ? invitation.nextContactAt : nextContactAt;
   const reminderValid = !reminderAllowed || isFutureNextContactReminder(draftReminderAt);
@@ -257,7 +259,9 @@ export function LeadContactEntryRow({
     advance = false,
   ) => {
     if (!nextOutcome || !canEdit || pending) return;
-    const input = inputFor(nextOutcome, invitationOverride);
+    const arrangement = nextOutcome === "connected" && (advance || (nextContactAt && !invitationHasStageInformation(invitationOverride))) ? invitationForAdvance(invitationOverride, nextContactAt)
+      : invitationOverride && !invitationHasStageInformation(invitationOverride) && invitationOverride.kind !== "waiting_activity" ? null : invitationOverride;
+    const input = inputFor(nextOutcome, arrangement);
     if ((input.invitation && !invitationDraftIsComplete(input.invitation))
         || !isFutureNextContactReminder(input.nextContactAt)) return;
     advanceRef.current = advance;
@@ -302,21 +306,11 @@ export function LeadContactEntryRow({
     chooseOutcome(shortcut.outcome);
   };
 
-  const wechatChoices = [
-    { value: "", label: t("notDiscussed"), tone: "neutral" as const },
-    { value: "yes", label: t("wechatAddedShort"), tone: "healthy" as const },
-    { value: "no", label: t("wechatNotAdded"), tone: "attention" as const },
-  ];
-  const interestChoices = [
-    { value: "", label: t("interestUnrated"), tone: "neutral" as const },
-    { value: "A", label: t("interest_A"), tone: "healthy" as const },
-    { value: "B", label: t("interest_B"), tone: "attention" as const },
-    { value: "C", label: t("interest_C"), tone: "unhealthy" as const },
-  ];
   const entryCell = (
       <TableCell className="px-2 py-2">
         {historicalSummary ? <div className="mb-1 min-w-0">{historicalSummary.details}</div> : null}
         {historicalEntryLabel ? <p className="mb-1 text-[10px] text-muted">{historicalEntryLabel}</p> : null}
+        {!historicalSummary ? <p className="mb-1 text-[11px] text-muted">{entryT("thisContact")}{outcome || note.trim() ? ` · ${entryT("unsaved")}` : ""}</p> : null}
         <div className="flex min-w-0 items-center gap-1">
           <FollowupChoice className="w-40 shrink-0" label={entryT("outcome")} value={outcome} disabled={!canEdit || pending}
             onValueChange={(value) => chooseOutcome(value as LeadContactOutcome)}
@@ -330,7 +324,7 @@ export function LeadContactEntryRow({
           </Button> : null}
           {canManageIdentity ? <span title={t("confirmIdentity")} className="shrink-0 [&>button]:size-7 [&>button]:gap-0 [&>button]:p-0 [&>button]:text-[0px]"><LeadIdentityControl lead={lead} /></span> : null}
         </div>
-        {!historicalSummary ? <p className="mt-1 truncate text-[11px] text-muted" title={lead.lastContactNote}>{layout === "default" ? lead.lastContactAt ? formatAt(lead.lastContactAt) : t("notContacted") : ""}{lead.lastContactNote ? `${layout === "default" ? " · " : ""}${lead.lastContactNote}` : ""}{lead.nextContactAt ? ` · ${formatAt(lead.nextContactAt)}` : ""}</p> : null}
+        {!historicalSummary ? <p className="mt-1 truncate text-[11px] text-muted" title={lead.lastContactNote}>{layout === "default" ? lead.lastContactAt ? formatAt(lead.lastContactAt) : t("notContacted") : ""}{lead.lastContactNote ? `${layout === "default" ? " · " : ""}${entryT("lastNote", { note: lead.lastContactNote })}` : ""}{lead.nextContactAt ? ` · ${formatAt(lead.nextContactAt)}` : ""}</p> : null}
       </TableCell>
   );
 
@@ -343,11 +337,11 @@ export function LeadContactEntryRow({
       }} onKeyDown={handleRowKeyDown}>
       {layout === "communication" ? <>
       <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-2">
-        <div className="flex min-w-0 items-center gap-1">{leadingSelection}<Button type="button" size="sm" variant="ghost" className="size-5 shrink-0 p-0" aria-expanded={detailsOpen} aria-controls={detailsId} aria-label={lead.provisionalStudentName} onClick={() => changeDetailsOpen(!detailsOpen)}>{detailsOpen ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}</Button><span className="truncate font-medium" title={lead.provisionalStudentName}>{lead.provisionalStudentName}</span></div>
-        <p className="mt-0.5 truncate pl-6 text-[11px] text-muted">{lead.ownerName || t("unassignedOwner")} · {lead.gradeText || (lead.gradeHint ? t("gradeValue", { grade: lead.gradeHint }) : t("unknownGrade"))}</p>
-        <a className="mt-0.5 block truncate pl-6 font-mono text-[10px] hover:underline" href={`tel:${lead.phone}`}>{lead.phone}</a>
+        <FollowupPersonCell name={lead.provisionalStudentName} phone={lead.phone} owner={lead.ownerName || t("unassignedOwner")}
+          grade={lead.gradeText || (lead.gradeHint ? t("gradeValue", { grade: lead.gradeHint }) : t("unknownGrade"))}
+          selection={leadingSelection} expanded={detailsOpen} detailsId={detailsId} onToggle={() => changeDetailsOpen(!detailsOpen)} />
       </TableCell>
-      <TableCell className="px-2 py-2">{historicalSummary ? historicalSummary.state : <><Badge variant="outline" className={cn("max-w-full truncate px-1.5 text-[10px]", followupToneClasses[lead.status === "invalid" ? "unhealthy" : lead.status === "nurture" ? "attention" : lead.status === "uncontacted" ? "neutral" : "healthy"])}>{lead.lastContactOutcome ? t(`contactOutcome_${lead.lastContactOutcome}`) : t(`status_${lead.status}`)}</Badge>{workPurpose ? <div className="mt-1 truncate text-[11px] text-muted">{workPurpose}</div> : <p className="mt-1 truncate text-[11px] text-muted" title={[lead.acquisitionLocation, sourceAttribution, ...lead.interests].filter(Boolean).join(" · ")}>{lead.acquisitionLocation || t("acquisitionLocationMissing")}{lead.interests.length ? ` · ${lead.interests.join(" / ")}` : ""}</p>}</>}</TableCell>
+      <TableCell className="px-2 py-2">{historicalSummary ? historicalSummary.state : <><p className="mb-1 text-[11px] text-muted">{entryT("savedFacts")}</p><Badge variant="outline" className={cn("max-w-full whitespace-normal rounded-md px-1.5 text-[11px]", followupToneClasses[lead.status === "invalid" ? "unhealthy" : lead.status === "nurture" ? "attention" : lead.status === "uncontacted" ? "neutral" : "healthy"])}><span aria-hidden className="size-1.5 shrink-0 rounded-full bg-current" />{lead.lastContactOutcome ? entryT("lastOutcome", { outcome: t(`contactOutcome_${lead.lastContactOutcome}`) }) : t(`status_${lead.status}`)}</Badge>{workPurpose ? <div className="mt-1 truncate text-[11px] text-muted">{workPurpose}</div> : <p className="mt-1 truncate text-[11px] text-muted" title={[lead.acquisitionLocation, sourceAttribution, ...lead.interests].filter(Boolean).join(" · ")}>{lead.acquisitionLocation || t("acquisitionLocationMissing")}{lead.interests.length ? ` · ${lead.interests.join(" / ")}` : ""}</p>}</>}</TableCell>
       {entryCell}
       <TableCell className="px-2 py-2 text-[11px] text-muted">{historicalSummary ? historicalSummary.updated : <><span className="block break-words">{lead.lastContactAt ? formatAt(lead.lastContactAt) : t("notContacted")}</span>{lead.contactCount ? <p className="mt-1 truncate">{t("contactCount", { count: lead.contactCount })}</p> : null}</>}{rowActions ? <div className="mt-1 flex min-w-0 flex-wrap gap-1">{rowActions}</div> : null}</TableCell>
       </> : <>
@@ -385,18 +379,11 @@ export function LeadContactEntryRow({
         hint={!canUseEntry ? entryT("readOnly")
           : !outcome && note.trim() ? entryT(noteOnly && !reminderDirty ? "studentNoteOnly" : "chooseOutcome")
           : hasDeferredFacts ? entryT("deferredFacts") : outcome ? entryT("draftHint") : entryT(canWriteNote ? "studentNoteAvailable" : "chooseOutcome")}>
-        {reachable ? <div className="flex min-w-0 flex-wrap items-start gap-x-6 gap-y-3">
-          <div className="min-w-0 space-y-1.5">
-            <p className="text-xs font-medium text-ink">{t("wechatFact")}</p>
-            <FollowupChoice label={t("wechatFact")} value={wechatState} options={wechatChoices} disabled={pending} onValueChange={(value) => setWechatState(value as TernaryChoice)} />
-          </div>
-          <div className="w-full max-w-64 space-y-1.5">
-            <p className="text-xs font-medium text-ink">{t("interestLevel")}</p>
-            <FollowupChoice label={t("interestLevel")} value={interestLevel} options={interestChoices} disabled={pending} onValueChange={(value) => setInterestLevel(value as LeadInterestLevel | "")} />
-          </div>
-        </div> : null}
-        {outcome === "connected" ? <InvitationDraftFields value={invitation} activities={activities} assessors={assessors} locale={locale}
-          disabled={pending} showReminder={false} draftStorageKey={draftStorageKey} onChange={setInvitation} /> : null}
+        {reachable ? <FollowupContactFacts wechat={wechatState ? wechatState === "yes" : lead.wechatAdded}
+          onWechatChange={(added) => setWechatState(added ? "yes" : "no")} interest={interestLevel} onInterestChange={setInterestLevel} disabled={pending} /> : null}
+        {outcome === "connected" ? <InvitationDraftFields key={draftStorageKey} value={invitation} activities={activities} assessors={assessors} locale={locale}
+          gradeHint={lead.gradeHint} disabled={pending} showReminder={false} draftStorageKey={draftStorageKey}
+          onChange={(value) => setInvitation(value && !invitation && invitationCanHaveNextContactReminder(value) ? { ...value, nextContactAt: value.nextContactAt ?? nextContactAt } : value)} /> : null}
       </FollowupEntryFields>
       {!detailsFirst ? detailsExtra : null}
     </FollowupInlineDetails>

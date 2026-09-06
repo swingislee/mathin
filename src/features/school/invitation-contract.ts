@@ -89,6 +89,9 @@ export interface InvitationActivityOption {
   title: string;
   scheduledAt: string;
   location: string;
+  durationMin?: number | null;
+  /** null/未提供为待标注，空数组为明确不限年级。 */
+  targetGrades?: number[] | null;
 }
 
 export interface InvitationAssessorOption {
@@ -111,6 +114,7 @@ export interface InvitationCoordinationRow extends InvitationSummary {
   leadName: string;
   phone: string;
   gradeText: string;
+  gradeHint?: number | null;
   ownerName: string;
   summary: string;
   events: InvitationEventRow[];

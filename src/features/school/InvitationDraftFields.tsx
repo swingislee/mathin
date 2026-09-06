@@ -1,16 +1,18 @@
 "use client";
 
-import { Check, Keyboard } from "lucide-react";
+import { Check, ChevronRight, Keyboard } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useId, useMemo, useRef } from "react";
+import { Fragment, useCallback, useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { FollowupChoice } from "./dashboard-page/FollowupChoice";
 import { AssessmentAvailabilityGrid } from "./AssessmentAvailabilityGrid";
+import { ActivityWeekPicker } from "./ActivityWeekPicker";
+import { emptyInvitationDraft, invitationHasStageInformation, invitationTabSelection } from "./followup-entry-contract";
 import {
-  defaultInvitationState,
   INVITATION_KINDS,
   INVITATION_STATES,
   invitationCanHaveNextContactReminder,
@@ -120,22 +122,8 @@ function writeStoredDrafts(key: string, value: StoredInvitationDrafts): void {
   }
 }
 
-function blankDraft(kind: InvitationKind): InvitationDraft {
-  return {
-    kind,
-    state: defaultInvitationState(kind),
-    activityId: null,
-    assessorId: null,
-    parentTimeOptions: [],
-    assessorTimeOptions: [],
-    scheduledAt: null,
-    locationText: "",
-    nextContactAt: null,
-  };
-}
-
 export function InvitationDraftFields({
-  value,
+  value: committedValue,
   activities,
   assessors,
   locale,
@@ -144,6 +132,7 @@ export function InvitationDraftFields({
   showReminder = true,
   editingScope = "full",
   draftStorageKey,
+  gradeHint,
   onChange,
 }: {
   value: InvitationDraft | null;
@@ -155,12 +144,17 @@ export function InvitationDraftFields({
   showReminder?: boolean;
   editingScope?: "full" | "assessor";
   draftStorageKey?: string;
+  gradeHint?: number | null;
   onChange: (value: InvitationDraft | null) => void;
 }) {
   const t = useTranslations("school.invitations");
+  const entryT = useTranslations("school.followupEntry");
   const reminderId = useId();
+  // 页签浏览独立于已登记安排，空白页签不会覆盖其他页签中的阶段信息。
+  const [browsingDraft, setBrowsingDraft] = useState<InvitationDraft | null>(null);
+  const value = browsingDraft ?? committedValue ?? emptyInvitationDraft();
   const draftCacheRef = useRef<Partial<Record<InvitationKind, InvitationDraft>>>(
-    value ? { [value.kind]: value } : {},
+    committedValue ? { [committedValue.kind]: committedValue } : {},
   );
   const onChangeRef = useRef(onChange);
   useEffect(() => {
@@ -184,34 +178,26 @@ export function InvitationDraftFields({
       drafts: draftCacheRef.current,
     });
   }, [draftStorageKey]);
-  const previousValueRef = useRef(value);
+  const previousValueRef = useRef(committedValue);
   useEffect(() => {
-    if (previousValueRef.current === value) return;
-    previousValueRef.current = value;
+    if (previousValueRef.current === committedValue) return;
+    previousValueRef.current = committedValue;
     // 备注栏中的提醒同样属于当前邀约草稿，随受控值更新保持会话暂存。
-    if (!value || draftCacheRef.current[value.kind]?.nextContactAt === value.nextContactAt) return;
-    draftCacheRef.current[value.kind] = value;
-    persistDrafts(value.kind);
-  }, [persistDrafts, value]);
+    if (!committedValue || draftCacheRef.current[committedValue.kind]?.nextContactAt === committedValue.nextContactAt) return;
+    draftCacheRef.current[committedValue.kind] = committedValue;
+    persistDrafts(committedValue.kind);
+  }, [persistDrafts, committedValue]);
   const emit = useCallback((next: InvitationDraft) => {
+    setBrowsingDraft(null);
     draftCacheRef.current[next.kind] = next;
     persistDrafts(next.kind);
     onChangeRef.current(next);
   }, [persistDrafts]);
-  const dateTimeFormatter = useMemo(() => new Intl.DateTimeFormat(locale, {
-    dateStyle: "short",
-    timeStyle: "short",
-    timeZone: "Asia/Shanghai",
-  }), [locale]);
-  const chooseKind = (kind: InvitationKind | null) => {
-    if (value) draftCacheRef.current[value.kind] = value;
-    if (!kind) {
-      persistDrafts(null);
-      onChange(null);
-      return;
-    }
-    const next = value?.kind === kind ? value : draftCacheRef.current[kind] ?? blankDraft(kind);
-    emit(next);
+  const chooseKind = (kind: InvitationKind) => {
+    draftCacheRef.current[value.kind] = value;
+    const next = invitationTabSelection(committedValue, kind, draftCacheRef.current[kind]);
+    if (next.register) emit(next.preview);
+    else setBrowsingDraft(next.preview);
   };
   const update = <K extends keyof InvitationDraft>(key: K, next: InvitationDraft[K]) => {
     if (!value) return;
@@ -219,11 +205,11 @@ export function InvitationDraftFields({
   };
   const stateChoices = value ? invitationStatesForKind(value.kind) : [];
   const selectedStateIndex = value ? stateChoices.indexOf(value.state) : -1;
-  const chooseState = useCallback((state: InvitationState) => {
+  const chooseState = (state: InvitationState) => {
     if (!value) return;
     emit(selectInvitationProgress(value, state));
-  }, [emit, value]);
-  const handleStateShortcut = useCallback((event: InvitationShortcutEvent) => {
+  };
+  const handleStateShortcut = (event: InvitationShortcutEvent) => {
     if (
       !value
       || value.kind !== "assessment_1v1"
@@ -245,70 +231,7 @@ export function InvitationDraftFields({
     event.preventDefault();
     event.stopPropagation();
     chooseState(state);
-  }, [chooseState, disabled, editingScope, value]);
-  const selectedActivity = value?.activityId
-    ? activities.find((activity) => activity.id === value.activityId)
-    : undefined;
-
-  // 首联与已有邀约使用相同横向结构；完整文案按容器宽度自然换行。
-  const kindChoices = (
-    <div
-      className="flex min-w-0 flex-wrap items-center gap-2"
-      role="group"
-      aria-label={t("kindLabel")}
-    >
-      {allowNone ? (
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          className={cn(
-            "h-auto min-h-9 min-w-0 justify-start gap-2 whitespace-normal text-left text-xs leading-5",
-            "bg-card px-3 py-1",
-            !value && "border-ink/50 text-ink",
-          )}
-          disabled={disabled || editingScope === "assessor"}
-          aria-pressed={!value}
-          onClick={() => chooseKind(null)}
-        >
-          <span aria-hidden="true" className={cn(
-            "flex size-4 shrink-0 items-center justify-center rounded-full border",
-            !value ? "border-leaf-deep bg-leaf/20 text-ink" : "border-line text-muted",
-          )}>
-            {!value ? <Check className="size-3" /> : null}
-          </span>
-          {t("kind_none")}
-        </Button>
-      ) : null}
-      {INVITATION_KINDS.map((kind) => {
-        const selected = value?.kind === kind;
-        return (
-          <Button
-            key={kind}
-            type="button"
-            size="sm"
-            variant="secondary"
-            className={cn(
-              "h-auto min-h-9 min-w-0 justify-start gap-2 whitespace-normal text-left text-xs leading-5",
-              "bg-card px-3 py-1",
-              selected && "border-ink/50 text-ink",
-            )}
-            disabled={disabled || editingScope === "assessor"}
-            aria-pressed={selected}
-            onClick={() => chooseKind(kind)}
-          >
-            <span aria-hidden="true" className={cn(
-              "flex size-4 shrink-0 items-center justify-center rounded-full border",
-              selected ? "border-leaf-deep bg-leaf/20 text-ink" : "border-line text-muted",
-            )}>
-              {selected ? <Check className="size-3" /> : null}
-            </span>
-            {t(`kind_${kind}`)}
-          </Button>
-        );
-      })}
-    </div>
-  );
+  };
 
   const arrangementFields = value?.kind === "assessment_1v1" ? (
     <div className="grid min-w-0 items-start gap-3 @[25rem]/invitation-fields:grid-cols-2 @[34rem]/invitation-fields:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)]">
@@ -348,38 +271,14 @@ export function InvitationDraftFields({
       </div>
     </div>
   ) : value?.kind === "activity" ? (
-    <div className="grid min-w-0 gap-3 @[30rem]/invitation-fields:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
-      <div className="min-w-0 space-y-1.5">
-        <p className="text-xs text-muted">{t("activityLabel")}</p>
-        <FollowupChoice className="w-full min-w-0 max-w-full" label={t("activityLabel")} value={value.activityId ?? ""} disabled={disabled || activities.length === 0}
-          options={activities.map((activity) => ({ value: activity.id, label: `${activity.title} · ${dateTimeFormatter.format(new Date(activity.scheduledAt))}` }))}
-          onValueChange={(activityId) => { const activity = activities.find((item) => item.id === activityId); emit({ ...value, activityId, locationText: activity?.location ?? value.locationText }); }} />
-      </div>
-      <div className="min-w-0 space-y-1.5">
-        <Label htmlFor={`invitation-activity-location-${reminderId}`} className="text-xs text-muted">{t("locationLabel")}</Label>
-        <Input
-          id={`invitation-activity-location-${reminderId}`}
-          value={value.locationText}
-          disabled={disabled}
-          maxLength={200}
-          className="h-9 min-w-0 max-w-full text-xs"
-          placeholder={t("locationPlaceholder")}
-          aria-label={t("locationLabel")}
-          onChange={(event) => update("locationText", event.target.value)}
-        />
-      </div>
-      {selectedActivity ? (
-        <p className="min-w-0 break-words text-[11px] text-muted @[30rem]/invitation-fields:col-span-2">
-          {dateTimeFormatter.format(new Date(selectedActivity.scheduledAt))}
-          {selectedActivity.location ? ` · ${selectedActivity.location}` : ""}
-        </p>
-      ) : null}
-    </div>
+    <ActivityWeekPicker activities={activities} gradeHint={gradeHint} selectedId={value.activityId} locale={locale}
+      disabled={disabled || editingScope === "assessor"} onSelect={(activity) => emit({ ...value,
+        activityId: activity.id, locationText: activity.location, state: "awaiting_parent", scheduledAt: null })} />
   ) : value?.kind === "waiting_activity" ? (
     <p className="text-[11px] leading-4 text-muted">{t("waitingActivityHint")}</p>
   ) : null;
 
-  const stateControls = value && stateChoices.length > 1 ? (
+  const stateControls = value && stateChoices.length > 1 && (value.kind !== "activity" || value.activityId) ? (
     <div className="min-w-0 space-y-2">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <p className="text-xs font-medium text-ink">{t("stateLabel")}</p>
@@ -388,18 +287,17 @@ export function InvitationDraftFields({
           <span>{t("stateManualHint")}</span>
         </p> : null}
       </div>
-      <div className="grid max-w-3xl grid-cols-2 gap-2 @[34rem]/invitation-fields:grid-cols-4" role="group" aria-label={t("stateLabel")} aria-keyshortcuts={value.kind === "assessment_1v1" ? "1 2 3 4" : undefined}>
+      <div className="flex min-w-0 flex-col @[30rem]/invitation-fields:flex-row @[30rem]/invitation-fields:items-start" role="group" aria-label={t("stateLabel")} aria-keyshortcuts={value.kind === "assessment_1v1" ? "1 2 3 4" : undefined}>
         {stateChoices.map((state, index) => {
           const selected = value.state === state;
           const passed = index < selectedStateIndex;
           return (
-            <Button
-              key={state}
+            <Fragment key={state}><Button
               type="button"
               size="sm"
               variant="ghost"
               className={cn(
-                "h-auto min-h-10 min-w-0 justify-start gap-2 whitespace-normal rounded-lg px-2 py-1.5 text-left text-xs leading-5",
+                "h-auto min-h-10 min-w-0 justify-start gap-2 whitespace-normal rounded-md px-1 py-1.5 text-left text-xs leading-5 @[30rem]/invitation-fields:flex-1 @[30rem]/invitation-fields:flex-col @[30rem]/invitation-fields:text-center",
                 selected ? "font-medium text-ink" : "text-muted",
               )}
               disabled={disabled || editingScope === "assessor"}
@@ -409,15 +307,19 @@ export function InvitationDraftFields({
               onClick={() => chooseState(state)}
             >
               <span aria-hidden="true" className={cn(
-                "flex size-5 shrink-0 items-center justify-center rounded-full border text-[10px]",
-                selected ? "border-[var(--followup-outline)] bg-[color:var(--followup-edit)] text-ink"
-                  : passed ? "border-leaf-deep bg-leaf/50 text-ink"
-                    : "border-line text-muted",
+                "flex size-6 shrink-0 items-center justify-center rounded-full border text-xs",
+                selected ? "border-[var(--followup-outline)] bg-moon/25 text-ink ring-2 ring-[var(--followup-outline)]/25"
+                  : passed ? "border-leaf-deep bg-leaf/25 text-ink"
+                    : "border-muted/40 bg-card text-muted",
               )}>
                 {passed ? <Check className="size-3" /> : index + 1}
               </span>
               <span className="w-full">{t(`state_${state}`)}</span>
-            </Button>
+            </Button>{index < stateChoices.length - 1 ? <span aria-hidden="true" data-followup-progress-link={passed ? "complete" : "pending"}
+              className={cn("relative ml-3 h-5 w-0 shrink-0 border-l-2 @[30rem]/invitation-fields:mx-1 @[30rem]/invitation-fields:mt-[18px] @[30rem]/invitation-fields:h-0 @[30rem]/invitation-fields:w-8 @[30rem]/invitation-fields:border-t-2 @[30rem]/invitation-fields:border-l-0",
+                passed ? "border-solid border-leaf-deep text-leaf-deep" : "border-dashed border-muted/40 text-muted")}>
+              <ChevronRight className="absolute -bottom-1 -left-[7px] size-3 rotate-90 @[30rem]/invitation-fields:-top-[7px] @[30rem]/invitation-fields:-right-1 @[30rem]/invitation-fields:bottom-auto @[30rem]/invitation-fields:left-auto @[30rem]/invitation-fields:rotate-0" />
+            </span> : null}</Fragment>
           );
         })}
       </div>
@@ -433,16 +335,20 @@ export function InvitationDraftFields({
       data-testid="invitation-draft-fields"
       onKeyDownCapture={handleStateShortcut}
     >
-      <div className="grid min-w-0 gap-3">
-      <section className="min-w-0">
+      <Tabs value={value.kind} onValueChange={(kind) => chooseKind(kind as InvitationKind)} className="min-w-0">
         <p className="mb-1.5 text-xs font-medium text-ink">{t("kindLabel")}</p>
-        {kindChoices}
-      </section>
-
-      {value ? (
-        <section className="@container/invitation-fields min-w-0 space-y-3">
-          {stateControls}
+        <TabsList aria-label={t("kindLabel")} className="h-10 w-full justify-start gap-1 rounded-md border border-line bg-card p-1">
+          {(["activity", "assessment_1v1", "waiting_activity"] as const).map((kind) => <TabsTrigger key={kind} value={kind}
+            disabled={disabled || editingScope === "assessor"} className="min-w-20 flex-1 text-xs data-[state=active]:bg-moon/25 data-[state=active]:shadow-none data-[state=active]:ring-1 data-[state=active]:ring-[var(--followup-outline)]/60">
+            {entryT(`tab_${kind}`)}
+          </TabsTrigger>)}
+        </TabsList>
+        <TabsContent value={value.kind} className="@container/invitation-fields min-w-0 space-y-3 pt-1">
+          {browsingDraft && committedValue && invitationHasStageInformation(committedValue) && browsingDraft.kind !== committedValue.kind
+            ? <p className="text-xs text-muted" role="status">{entryT("retainedArrangement", { kind: entryT(`tab_${committedValue.kind}`) })}</p> : null}
+          {value.kind !== "activity" ? stateControls : null}
           {arrangementFields}
+          {value.kind === "activity" ? stateControls : null}
 
           {showReminder && invitationCanHaveNextContactReminder(value) && editingScope !== "assessor" ? (
             <NextContactReminderField
@@ -454,12 +360,11 @@ export function InvitationDraftFields({
             />
           ) : null}
 
-          {!invitationDraftIsComplete(value) ? (
+          {invitationHasStageInformation(value) && !invitationDraftIsComplete(value) ? (
             <p className="text-[11px] leading-4 text-amber-700" role="status">{t("draftIncomplete")}</p>
           ) : null}
-        </section>
-      ) : null}
-      </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

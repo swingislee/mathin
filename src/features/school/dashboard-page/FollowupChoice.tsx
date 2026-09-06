@@ -28,7 +28,7 @@ export function FollowupChoice({ value, onValueChange, options, label, disabled,
     {options.map((option) => <Button key={option.value} type="button" size="sm" variant="secondary" disabled={disabled}
       aria-pressed={value === option.value}
       title={option.label}
-      className={cn("h-auto min-h-9 min-w-0 max-w-full whitespace-normal bg-card px-3 py-1.5 text-xs leading-5", value === option.value && "border-ink/50 text-ink")}
+      className={cn("h-auto min-h-9 min-w-0 max-w-full whitespace-normal rounded-md bg-card px-3 py-1.5 text-xs leading-5", value === option.value && "border-[var(--followup-outline)] text-ink")}
       onClick={() => onValueChange(option.value)}>
       <span aria-hidden="true" className={cn("flex size-3.5 shrink-0 items-center justify-center rounded-full border", value === option.value ? "border-ink text-ink" : "border-line")}>
         {value === option.value ? <Check className="size-2.5" /> : null}
