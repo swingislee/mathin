@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import {
   ArrowUpRight,
   BookOpenCheck,
@@ -43,6 +44,7 @@ import {
 } from "./student-360-contract";
 
 type TimelineFilter = "all" | "business" | "teaching" | "notes";
+const LeadIdentityControl = dynamic(() => import("./LeadIdentityControl").then((module) => module.LeadIdentityControl));
 
 const BUSINESS_PHASES = new Set<Student360Phase>([
   "source",
@@ -566,7 +568,10 @@ function Student360PanelBody({
           </section>
 
           <footer className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-line bg-paper/95 px-5 py-3 backdrop-blur sm:px-7">
-            <p className="text-xs text-muted">{t(snapshot.identity.accessScope === "full" ? "fullScopeHint" : "journeyScopeHint")}</p>
+            <p className="text-xs text-muted">{t(snapshot.identityCreation && !snapshot.identityCreation.contactEstablished ? "profilePendingContact" : snapshot.identity.accessScope === "full" ? "fullScopeHint" : "journeyScopeHint")}</p>
+            {snapshot.identityCreation?.contactEstablished && snapshot.identityCreation.canManage ? (
+              <LeadIdentityControl key={snapshot.identityCreation.lead.id} lead={snapshot.identityCreation.lead} label={t("createProfile")} />
+            ) : null}
             {snapshot.identity.studentId && snapshot.identity.accessScope === "full" ? (
               <Link href={`/dashboard/students/${snapshot.identity.studentId}`} className={buttonVariants({ size: "sm", variant: "secondary" })} onClick={close}>
                 {t("openFullProfile")}<ArrowUpRight className="size-3.5" />

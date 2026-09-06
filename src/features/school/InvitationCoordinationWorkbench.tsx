@@ -57,6 +57,7 @@ import { PostActivityHandoff } from "./EnrollmentHandoffButton";
 import { PostActivityQuickContact } from "./PostActivityQuickContact";
 import { followupState, type ActivityEnrollmentContext } from "./enrollment-workflow-contract";
 import { LeadContactEntryRow } from "./LeadFirstContactWorkbench";
+import { navigateFollowupTable } from "./followup-keyboard";
 import { deriveLeadContactDestination, type LeadPoolRow } from "./lead-contract";
 import type { LeadContactInput } from "./actions/leads";
 import { communicationDayBounds, type CommunicationDayEvent, type CommunicationWorkbenchView, type CommunicationWorkday, type CommunicationWorklist } from "./communication-workday-contract";
@@ -838,7 +839,13 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
         <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={recordsMode ? workT("dayCommunicationColumn") : workspaceT("communicationInfo")} {...table.columnProps("arrangement")} /></TableHead>
         <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={recordsMode ? workT("occurredAtColumn") : t("updatedColumn")} {...table.columnProps("updated")} /></TableHead>
       </TableRow></TableHeader>
-      <TableBody>{visibleRows.map((row) => {
+      <TableBody onKeyDown={(event) => navigateFollowupTable(event, (key) => {
+        if (activeId && isSavingKey(activeId)) return false;
+        setActiveId(key);
+        const next = currentSession.facts.get(key);
+        setActiveContactId(next?.source === "contact" ? next.value.id : null);
+        return true;
+      })}>{visibleRows.map((row) => {
         const canonicalKey = communicationRowKey(row);
         const historicalSummary = historicalSummaryFor(row);
         if (row.source === "contact") {
@@ -876,7 +883,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
               : rowWorkStep ? t(`workHint_${rowWorkStep}`) : ""
           : row.value.recommendation || row.value.routeNote;
         return <Fragment key={canonicalKey}>
-          <TableRow data-communication-work-key={canonicalKey} ref={(element) => { if (element) rowRefs.current.set(canonicalKey, element); else rowRefs.current.delete(canonicalKey); }}
+          <TableRow data-communication-work-key={canonicalKey} data-followup-row-key={canonicalKey} ref={(element) => { if (element) rowRefs.current.set(canonicalKey, element); else rowRefs.current.delete(canonicalKey); }}
             tabIndex={0} aria-selected={workSelection.selectedKeys.has(canonicalKey)} data-followup-active={active} data-followup-expanded={active} aria-busy={savingIds.has(row.id)} className="cursor-pointer focus-visible:outline-none"
             onClick={(event) => { if (!(event.target as HTMLElement).closest("button,a,input,textarea,[role='combobox'],[role='checkbox']")) changeDetails(canonicalKey, !active); }}
             onKeyDown={(event) => {
@@ -886,6 +893,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
             }}>
             <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-2">
               <FollowupPersonCell name={nameOf(row)} phone={row.value.phone} grade={row.value.gradeText || t("gradePending")}
+                subject={{ studentId: row.source === "invitation" ? leadById.get(row.value.leadId)?.studentId ?? null : row.value.studentId, leadId: row.value.leadId }} studentGrade={row.source === "invitation" ? row.value.gradeHint : row.value.grade}
                 owner={row.source === "invitation" ? row.value.ownerName : undefined} selection={leadingSelectionFor(row)} expanded={active}
                 detailsId={detailsId} onToggle={() => changeDetails(canonicalKey, !active)} />
             </TableCell>

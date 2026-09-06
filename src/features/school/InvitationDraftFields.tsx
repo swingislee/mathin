@@ -1,8 +1,8 @@
 "use client";
 
-import { Check, ChevronRight } from "lucide-react";
+import { Check, ChevronRight, Signpost } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Fragment, useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,6 +27,8 @@ import {
 } from "./invitation-contract";
 import { NextContactReminderField } from "./NextContactReminderField";
 import microStyles from "./followup-micro-interactions.module.css";
+import { FollowupFieldIcon } from "./FollowupFieldIcon";
+import { followupKeyContext } from "./followup-keyboard";
 
 interface StoredInvitationDrafts {
   version: 1;
@@ -37,17 +39,7 @@ interface StoredInvitationDrafts {
 const ASSESSMENT_PROGRESS_STATES = invitationStatesForKind("assessment_1v1");
 const HANDOFF_KINDS = ["activity", "assessment_1v1", "waiting_activity"] as const;
 
-interface InvitationShortcutEvent {
-  key: string;
-  repeat: boolean;
-  altKey: boolean;
-  ctrlKey: boolean;
-  metaKey: boolean;
-  shiftKey: boolean;
-  target: EventTarget | null;
-  preventDefault: () => void;
-  stopPropagation: () => void;
-}
+type InvitationShortcutEvent = KeyboardEvent<HTMLDivElement>;
 
 export function invitationDraftSessionKey(
   scope: "contact" | "coordination",
@@ -135,6 +127,7 @@ export function InvitationDraftFields({
   draftStorageKey,
   gradeHint,
   contactFacts,
+  enableProgressShortcuts = true,
   onChange,
 }: {
   value: InvitationDraft | null;
@@ -148,6 +141,7 @@ export function InvitationDraftFields({
   draftStorageKey?: string;
   gradeHint?: number | null;
   contactFacts?: ReactNode;
+  enableProgressShortcuts?: boolean;
   onChange: (value: InvitationDraft | null) => void;
 }) {
   const t = useTranslations("school.invitations");
@@ -214,7 +208,12 @@ export function InvitationDraftFields({
   };
   const handleStateShortcut = (event: InvitationShortcutEvent) => {
     if (
-      !value
+      !enableProgressShortcuts
+      || followupKeyContext(event).overlay
+      || event.defaultPrevented
+      || event.nativeEvent.isComposing
+      || event.nativeEvent.keyCode === 229
+      || !value
       || value.kind !== "assessment_1v1"
       || disabled
       || editingScope === "assessor"
@@ -283,7 +282,7 @@ export function InvitationDraftFields({
   const stateControls = value && stateChoices.length > 1 && (value.kind !== "activity" || value.activityId) ? (
     <div className="flex min-w-0 max-w-[58rem] flex-wrap items-center gap-x-4 gap-y-1">
       <p className="text-xs text-muted">{t("stateLabel")}</p>
-      <div data-invitation-progress className="flex min-w-0 flex-col items-start @[38rem]/invitation-fields:flex-row @[38rem]/invitation-fields:items-center" role="group" aria-label={t("stateLabel")} aria-keyshortcuts={value.kind === "assessment_1v1" ? "1 2 3 4" : undefined}>
+      <div data-invitation-progress className="flex min-w-0 flex-col items-start @[38rem]/invitation-fields:flex-row @[38rem]/invitation-fields:items-center" role="group" aria-label={t("stateLabel")} aria-keyshortcuts={enableProgressShortcuts && value.kind === "assessment_1v1" ? "1 2 3 4" : undefined}>
         {stateChoices.map((state, index) => {
           const selected = value.state === state;
           const passed = index < selectedStateIndex;
@@ -299,7 +298,7 @@ export function InvitationDraftFields({
               disabled={disabled || editingScope === "assessor"}
               aria-pressed={selected}
               aria-current={selected ? "step" : undefined}
-              aria-keyshortcuts={value.kind === "assessment_1v1" ? String(index + 1) : undefined}
+              aria-keyshortcuts={enableProgressShortcuts && value.kind === "assessment_1v1" ? String(index + 1) : undefined}
               onClick={() => chooseState(state)}
             >
               <span aria-hidden="true" className={cn(
@@ -333,7 +332,7 @@ export function InvitationDraftFields({
         <div data-followup-facts-toolbar className="flex min-w-0 flex-wrap items-center gap-x-5 gap-y-2">
           {contactFacts}
           <div className="flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-1">
-            <p className="text-xs font-medium text-muted">{t("kindLabel")}</p>
+            <FollowupFieldIcon icon={Signpost} label={t("kindLabel")} />
             <TabsList aria-label={t("kindLabel")} data-followup-handoff
               className="grid h-8 w-max max-w-full grid-cols-3 gap-0.5 bg-transparent p-0">
               {HANDOFF_KINDS.map((kind) => <TabsTrigger key={kind} value={kind}

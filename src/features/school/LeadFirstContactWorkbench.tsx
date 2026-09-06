@@ -19,6 +19,8 @@ import { cn } from "@/lib/utils";
 import { FollowupChoice, followupToneClasses } from "./dashboard-page/FollowupChoice";
 import { FollowupInlineDetails } from "./dashboard-page/FollowupInlineDetails";
 import { LeadIdentityControl } from "./LeadIdentityControl";
+import { Student360Trigger } from "./Student360Sheet";
+import { CONTACT_OUTCOME_SHORTCUTS, followupKeyboardCommand, followupKeyContext, navigateFollowupTable } from "./followup-keyboard";
 import { useLeadPoolSelection } from "./LeadPoolSelection";
 import {
   recordLeadContactAction,
@@ -53,12 +55,6 @@ import {
   type LeadPoolRow,
 } from "./lead-contract";
 
-const CONTACT_OUTCOME_SHORTCUTS = [
-  { key: "1", outcome: "unreachable" },
-  { key: "2", outcome: "connected" },
-  { key: "3", outcome: "declined" },
-  { key: "4", outcome: "invalid_number" },
-] as const satisfies ReadonlyArray<{ key: string; outcome: LeadContactOutcome }>;
 const ACQUISITION_TIME_ZONE = "Asia/Shanghai";
 const EMPTY_VALUE = "$empty";
 type FirstContactTableColumn = "seed" | "context" | "owner" | "status";
@@ -156,10 +152,10 @@ export function LeadContactEntryRow({
   );
 
   useEffect(() => {
-    if (!active || rowRef.current?.contains(document.activeElement)) return;
+    if (!active || rowRef.current?.contains(document.activeElement) || document.getElementById(detailsId)?.contains(document.activeElement)) return;
     rowRef.current?.focus({ preventScroll: true });
     rowRef.current?.scrollIntoView({ block: "nearest" });
-  }, [active]);
+  }, [active, detailsId]);
 
   const contactRun = useAction(recordLeadContactAction, {
     successMessage: t("contactSaved"),
@@ -187,6 +183,7 @@ export function LeadContactEntryRow({
       setNextContactAt(savedInput?.nextContactAt ?? null);
       if (advanceRef.current) setDetailsOpen(false);
       if (savedInput) onSaved(lead.id, savedInput, advanceRef.current);
+      window.dispatchEvent(new Event(STUDENT_360_REFRESH_EVENT));
       advanceRef.current = false;
     },
     onError: () => { submittedInputRef.current = null; },
@@ -288,22 +285,20 @@ export function LeadContactEntryRow({
   };
 
   const handleRowKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
-    if (event.defaultPrevented || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229 || event.repeat || pending) return;
+    const context = followupKeyContext(event);
+    if (context.overlay || event.defaultPrevented || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229 || event.repeat || pending) return;
     if (event.target === rowRef.current && event.key === "Enter" && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) { event.preventDefault(); changeDetailsOpen(!detailsOpen); return; }
-    if (event.key === "Escape" && detailsOpen) { event.preventDefault(); changeDetailsOpen(false); return; }
-    if (!canUseEntry || !active || pending || event.altKey) return;
-    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+    const command = followupKeyboardCommand({ ...event, isComposing: event.nativeEvent.isComposing }, context);
+    if (command?.type === "close" && detailsOpen) { event.preventDefault(); changeDetailsOpen(false); return; }
+    if (!canUseEntry) return;
+    if (command?.type === "save") {
       event.preventDefault();
       saveEntry(false);
       return;
     }
-    if (event.ctrlKey || event.metaKey) return;
-    const target = event.target as HTMLElement;
-    if (target.closest("textarea, input, [role='combobox'], [role='option'], [contenteditable='true']")) return;
-    const shortcut = CONTACT_OUTCOME_SHORTCUTS.find((item) => item.key === event.key);
-    if (!shortcut) return;
+    if (command?.type !== "outcome") return;
     event.preventDefault();
-    chooseOutcome(shortcut.outcome);
+    chooseOutcome(command.outcome);
   };
 
   const contactFacts = reachable ? <FollowupContactFacts wechat={leadWechatValue(wechatState, lead.wechatAdded)}
@@ -331,8 +326,9 @@ export function LeadContactEntryRow({
   );
 
   return <>
-    <TableRow data-communication-work-key={layout === "communication" ? `lead:${lead.id}` : undefined} ref={rowRef} tabIndex={layout === "communication" || active ? 0 : -1} aria-selected={selected} data-followup-active={active} data-followup-expanded={detailsOpen} aria-busy={pending}
+    <TableRow data-communication-work-key={layout === "communication" ? `lead:${lead.id}` : undefined} data-followup-row-key={layout === "communication" ? `lead:${lead.id}` : lead.id} ref={rowRef} tabIndex={layout === "communication" || active ? 0 : -1} aria-selected={selected} data-followup-active={active} data-followup-expanded={detailsOpen} aria-busy={pending}
       className="h-16 focus-visible:outline-none [&>td]:min-w-0"
+      onFocusCapture={() => onActivate(lead.id)}
       onClick={(event) => {
         onActivate(lead.id);
         if (!pending && !(event.target as HTMLElement).closest("button,a,input,textarea,[role='combobox'],[role='option'],[role='checkbox']")) changeDetailsOpen(!detailsOpen);
@@ -341,6 +337,7 @@ export function LeadContactEntryRow({
       <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-2">
         <FollowupPersonCell name={lead.provisionalStudentName} phone={lead.phone} owner={lead.ownerName || t("unassignedOwner")}
           grade={lead.gradeText || (lead.gradeHint ? t("gradeValue", { grade: lead.gradeHint }) : t("unknownGrade"))}
+          subject={{ studentId: lead.studentId ?? null, leadId: lead.id }} studentGrade={lead.gradeHint}
           selection={leadingSelection} expanded={detailsOpen} detailsId={detailsId} onToggle={() => changeDetailsOpen(!detailsOpen)} />
       </TableCell>
       <TableCell className="px-2 py-2">{historicalSummary ? historicalSummary.state : <><Badge variant="outline" className={cn("max-w-full whitespace-normal rounded-md px-1.5 text-[11px]", followupToneClasses[lead.status === "invalid" ? "unhealthy" : lead.status === "nurture" ? "attention" : lead.status === "uncontacted" ? "neutral" : "healthy"])}><span aria-hidden className="size-1.5 shrink-0 rounded-full bg-current" />{lead.lastContactOutcome ? entryT("lastOutcome", { outcome: t(`contactOutcome_${lead.lastContactOutcome}`) }) : t(`status_${lead.status}`)}</Badge>{workPurpose ? <div className="mt-1 truncate text-[11px] text-muted">{workPurpose}</div> : <p className="mt-1 truncate text-[11px] text-muted" title={[lead.acquisitionLocation, sourceAttribution, ...lead.interests].filter(Boolean).join(" · ")}>{lead.acquisitionLocation || t("acquisitionLocationMissing")}{lead.interests.length ? ` · ${lead.interests.join(" / ")}` : ""}</p>}</>}</TableCell>
@@ -349,7 +346,7 @@ export function LeadContactEntryRow({
       </> : <>
       {canAssign && layout === "default" ? <LeadContactSelectionCell lead={lead} visibleIds={visibleIds} /> : null}
       <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-2">
-        <div className="flex min-w-0 items-baseline justify-between gap-2"><span className="min-w-0 truncate font-medium text-ink" title={lead.provisionalStudentName}>{lead.provisionalStudentName}</span>
+        <div className="flex min-w-0 items-baseline justify-between gap-2"><Student360Trigger subject={{ studentId: lead.studentId ?? null, leadId: lead.id }} fallback={{ name: lead.provisionalStudentName, phone: lead.phone, grade: lead.gradeHint, gradeText: lead.gradeText }} className="truncate">{lead.provisionalStudentName}</Student360Trigger>
           <span className="max-w-[50%] truncate text-[10px] text-muted" title={lead.gradeText || undefined}>{lead.gradeText || (lead.gradeHint ? t("gradeValue", { grade: lead.gradeHint }) : t("unknownGrade"))}</span></div>
         <div className="mt-1 flex min-w-0 items-center gap-2"><a className="shrink-0 font-mono text-[10px] hover:underline" href={`tel:${lead.phone}`}>{lead.phone}</a>{lead.sourceMarkedDuplicate ? <span className="truncate text-[10px] text-muted">{t("sourceDuplicateShort")}</span> : null}</div>
       </TableCell>
@@ -361,7 +358,8 @@ export function LeadContactEntryRow({
 
       </>}
     </TableRow>
-    <FollowupInlineDetails id={detailsId} open={detailsOpen} onOpenChange={changeDetailsOpen} title={lead.provisionalStudentName} hideTitle active={active} colSpan={layout === "communication" ? 4 : canAssign ? 6 : 5} pending={pending}>
+    <FollowupInlineDetails id={detailsId} open={detailsOpen} onOpenChange={changeDetailsOpen} title={lead.provisionalStudentName} hideTitle active={active} colSpan={layout === "communication" ? 4 : canAssign ? 6 : 5} pending={pending}
+      onActivate={() => onActivate(lead.id)} onKeyDown={handleRowKeyDown}>
       {detailsFirst ? detailsExtra : null}
       {detailsFirst && historicalSummary ? <div className="space-y-1 text-xs text-muted">
         <p>{lead.lastContactOutcome ? t(`contactOutcome_${lead.lastContactOutcome}`) : t("notContacted")}{lead.lastContactAt ? ` · ${formatAt(lead.lastContactAt)}` : ""}</p>
@@ -382,7 +380,7 @@ export function LeadContactEntryRow({
           : !outcome && note.trim() ? entryT(noteOnly && !reminderDirty ? "studentNoteOnly" : "chooseOutcome")
           : hasDeferredFacts ? entryT("deferredFacts") : outcome ? undefined : entryT(canWriteNote ? "studentNoteAvailable" : "chooseOutcome")}>
         {outcome === "connected" ? <InvitationDraftFields key={draftStorageKey} value={invitation} activities={activities} assessors={assessors} locale={locale}
-          gradeHint={lead.gradeHint} contactFacts={contactFacts} disabled={pending} showReminder={false} draftStorageKey={draftStorageKey}
+          gradeHint={lead.gradeHint} contactFacts={contactFacts} enableProgressShortcuts={false} disabled={pending} showReminder={false} draftStorageKey={draftStorageKey}
           onChange={(value) => setInvitation(value && !invitation && invitationCanHaveNextContactReminder(value) ? { ...value, nextContactAt: value.nextContactAt ?? nextContactAt } : value)} /> : contactFacts}
       </FollowupEntryFields>
       {!detailsFirst ? detailsExtra : null}
@@ -583,7 +581,7 @@ export function LeadFirstContactWorkbench({
               <TableHead className="sticky top-0 z-20 h-8 bg-card px-2">{t("firstContactEntry")}</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
+          <TableBody onKeyDown={(event) => navigateFollowupTable(event, (key) => { setActiveLeadId(key); return true; })}>
             {contactTable.visibleRows.map((lead) => (
               <LeadContactEntryRow
                 key={lead.id}

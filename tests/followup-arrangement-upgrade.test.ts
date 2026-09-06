@@ -183,7 +183,8 @@ describe("follow-up arrangement upgrade", () => {
       expect(tab).toContain("px-2 py-0");
       expect(tab.match(/class="([^"]+)"/)?.[1].split(" ")).toContain("text-ink");
     }
-    expect(markup).toContain(`<p class="text-xs font-medium text-muted">${messages.school.invitations.kindLabel}</p>`);
+    expect(markup).toContain(`role="img" aria-label="${messages.school.invitations.kindLabel}"`);
+    expect(markup).toContain("lucide-signpost");
     expect(markup).toContain("grid-cols-3 gap-0.5");
     const selected = tabs.filter((tab) => tab.includes('aria-selected="true"'));
     expect(selected).toHaveLength(1);
@@ -205,6 +206,15 @@ describe("follow-up arrangement upgrade", () => {
     expect(facts).toBeLessThan(tabs);
     expect(markup.match(/data-followup-contact-facts/g)).toHaveLength(1);
     expect(markup).toContain('aria-label="承接"');
+    expect(markup).toContain(`role="img" aria-label="${messages.school.leads.interestLevel}"`);
+    expect(markup).toContain("lucide-heart");
+    expect(markup.match(/data-followup-field-icon=/g)).toHaveLength(2);
+  });
+  it("leaves number keys to contact outcomes when assessment is nested in first contact", () => {
+    const props = { value: emptyInvitationDraft("assessment_1v1"), activities: [], assessors: [], locale: "zh", onChange: vi.fn() };
+    expect(render(createElement(InvitationDraftFields, props))).toContain('aria-keyshortcuts="1 2 3 4"');
+    const nested = render(createElement(InvitationDraftFields, { ...props, enableProgressShortcuts: false }));
+    expect(nested).not.toMatch(/aria-keyshortcuts="[1-4](?: [1-4])*"/);
   });
   it("keeps assessor, time and location in stable compact geometry at every assessment step", () => {
     const renders = (["coordinating_time", "awaiting_teacher", "awaiting_parent", "confirmed"] as const).map((state) => {

@@ -1,3 +1,5 @@
+import type { LeadIdentitySubject } from "./lead-identity-contract";
+
 export const STUDENT_360_REFRESH_EVENT = "mathin:student-360-refresh";
 
 export const STUDENT_360_PHASES = [
@@ -153,6 +155,11 @@ export interface Student360Snapshot {
   phases: Student360PhaseSummary[];
   events: Student360Event[];
   truncated: boolean;
+  identityCreation?: {
+    lead: LeadIdentitySubject;
+    contactEstablished: boolean;
+    canManage: boolean;
+  } | null;
 }
 
 export function sortStudent360Events(events: readonly Student360Event[]): Student360Event[] {

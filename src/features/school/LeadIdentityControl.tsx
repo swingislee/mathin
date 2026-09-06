@@ -26,8 +26,9 @@ import {
   leadIdentityHasPossibleDuplicate,
   type LeadIdentityInput,
   type LeadIdentityOptions,
+  type LeadIdentitySubject,
 } from "./lead-identity-contract";
-import type { LeadPoolRow } from "./lead-contract";
+import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
 
 type IdentityChoice = "" | "create" | `existing:${string}`;
 
@@ -42,9 +43,10 @@ function newIdempotencyKey(): string {
   return `lead-identity-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-export function LeadIdentityControl({ lead, onConfirmed }: {
-  lead: Pick<LeadPoolRow, "id" | "provisionalStudentName" | "gradeHint" | "phone" | "status" | "ownerId">;
+export function LeadIdentityControl({ lead, onConfirmed, label }: {
+  lead: LeadIdentitySubject;
   onConfirmed?: () => void;
+  label?: string;
 }) {
   const t = useTranslations("school.leads");
   const router = useRouter();
@@ -195,6 +197,7 @@ export function LeadIdentityControl({ lead, onConfirmed }: {
     onSuccess: () => {
       setOpen(false);
       onConfirmed?.();
+      window.dispatchEvent(new Event(STUDENT_360_REFRESH_EVENT));
       router.refresh();
     },
     onError: (code) => {
@@ -220,7 +223,7 @@ export function LeadIdentityControl({ lead, onConfirmed }: {
         onClick={openControl}
       >
         <UserRoundCheck size={13} />
-        {t("confirmIdentity")}
+        {label ?? t("confirmIdentity")}
       </Button>
 
       <Dialog open={open} onOpenChange={(next) => { if (!pending) setOpen(next); }}>

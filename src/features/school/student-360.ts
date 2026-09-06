@@ -4,6 +4,8 @@ import type { Database } from "@/lib/database.types";
 import { getMyPerms } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { PermissionKey } from "./permissions";
+import type { LeadStatus } from "./lead-contract";
+import { leadContactAllowsIdentity } from "./lead-identity-contract";
 import {
   latestStudent360Phase,
   sortStudent360Events,
@@ -781,6 +783,14 @@ export async function getStudent360Snapshot(
   ];
 
   return {
+    identityCreation: !studentId && primaryLead ? {
+      lead: { id: primaryLead.id, provisionalStudentName: primaryLead.provisional_student_name, gradeHint: primaryLead.grade_hint,
+        phone: primaryLead.phone, status: primaryLead.status as LeadStatus, ownerId: primaryLead.owner_id },
+      contactEstablished: !["invalid", "converted"].includes(primaryLead.status)
+        && communicationRows.some((row) => row.lead_id === primaryLead.id && leadContactAllowsIdentity(row.outcome)),
+      canManage: Boolean(primaryLead.owner_id) && (primaryLead.owner_id === user.id || permissions.has("student.view.all"))
+        && permissions.has("followup.write") && permissions.has("student.edit"),
+    } : null,
     identity: {
       studentId,
       primaryLeadId: primaryLead?.id ?? subject.leadId,
