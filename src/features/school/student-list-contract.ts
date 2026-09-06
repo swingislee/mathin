@@ -12,6 +12,7 @@ export interface StudentSummary {
   followUpStatus: FollowUpStatus;
   assignedName: string;
   lastFollowUpAt: string | null;
+  lastFollowUpContent?: string;
   nextFollowUpAt: string | null;
   deletedAt: string | null;
 }

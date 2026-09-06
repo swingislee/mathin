@@ -48,6 +48,15 @@ export interface AssessmentWorkbenchQuestionSummary {
   keyNotes: AssessmentWorkbenchQuestionNote[];
 }
 
+export interface AssessmentWorkbenchFollowUp {
+  id: string;
+  content: string;
+  kind: string;
+  createdAt: string;
+  nextFollowUpAt: string | null;
+  statusAfter: string | null;
+}
+
 export interface AssessmentWorkbenchPublicClassRecord {
   id: string | null;
   segmentId: string;
@@ -87,6 +96,7 @@ export interface AssessmentWorkbenchRow {
   assessment: AssessmentWorkbenchAssessment | null;
   questionSummary: AssessmentWorkbenchQuestionSummary | null;
   route: AssessmentWorkbenchRoute | null;
+  latestFollowUp?: AssessmentWorkbenchFollowUp | null;
   updatedAt: string;
 }
 
@@ -169,4 +179,13 @@ export function assessmentWorkbenchRowsForView(
       }
       return left.scheduledAt.localeCompare(right.scheduledAt) || left.name.localeCompare(right.name, locale);
     });
+}
+
+/** 可见名单中“保存并下一位”的稳定邻接关系。 */
+export function nextAssessmentWorkbenchRowId(
+  visibleRowIds: readonly string[],
+  currentId: string,
+): string | null {
+  const index = visibleRowIds.indexOf(currentId);
+  return index >= 0 && index + 1 < visibleRowIds.length ? visibleRowIds[index + 1] : null;
 }

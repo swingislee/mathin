@@ -31,6 +31,7 @@ import {
 import {
   ASSESSMENT_WORKBENCH_QUEUES,
   assessmentWorkbenchStage,
+  nextAssessmentWorkbenchRowId,
   type AssessmentWorkbenchQueue,
   type AssessmentWorkbenchRow,
 } from "./assessment-workbench-contract";
@@ -50,6 +51,7 @@ import { LearningCheckStatusIcon } from "./LearningCheckStatusIcon";
 import { LEARNING_CHECK_STATUS_STYLE } from "./session-learning-visual";
 import { TEACHER_ASSESSMENT_OUTCOMES } from "./teacher-assessment-contract";
 import { TeacherAssessmentEntryButton } from "./TeacherAssessmentEntryButton";
+import { QuickFollowUpEntry } from "./QuickFollowUpEntry";
 
 interface SupportDraft {
   route: ActivityRouteKind | null;
@@ -271,6 +273,18 @@ export function AssessmentUnifiedWorkbench({
   }), [assessmentT, dateTime, dayFormatter, drafts, t, tableT, teacherT]);
   const assessmentTable = useDashboardTableView({ rows: scopedRows, columns: tableColumns, locale, persistenceKey: "followup-assessments" });
   const saveRow = (saved: AssessmentWorkbenchRow) => setRows((current) => current.map((row) => row.id === saved.id ? saved : row));
+  const saveQuickFollowUp = (row: AssessmentWorkbenchRow, content: string, createdAt: string) => setRows((current) => current.map((candidate) => candidate.id === row.id ? {
+    ...candidate,
+    latestFollowUp: {
+      id: `local:${createdAt}`,
+      content,
+      kind: "note",
+      createdAt,
+      nextFollowUpAt: null,
+      statusAfter: null,
+    },
+  } : candidate));
+  const advanceFrom = (rowId: string) => setActiveId(nextAssessmentWorkbenchRowId(assessmentTable.visibleRows.map((row) => row.id), rowId));
 
   const updateDraft = (id: string, update: (draft: SupportDraft) => SupportDraft) => {
     setDrafts((current) => ({ ...current, [id]: update(current[id]) }));
@@ -462,6 +476,7 @@ export function AssessmentUnifiedWorkbench({
                             <TeacherAssessmentEntryButton registrationId={row.registrationId} invitationId={row.invitationId} />
                           ) : null}
                         </div>
+                        {row.latestFollowUp?.content ? <p data-current-situation className="mt-1 line-clamp-2 text-[11px] leading-4 text-muted" title={row.latestFollowUp.content}>{row.latestFollowUp.content}</p> : null}
                       </TableCell>
                       <TableCell className="px-2 py-2 text-[11px] tabular-nums text-muted">
                         {dateTime.format(new Date(row.updatedAt))}
@@ -472,6 +487,11 @@ export function AssessmentUnifiedWorkbench({
                       <FollowupInlineDetails open={active} onOpenChange={(open) => { if (!open) setActiveId(null); }} title={`${row.name} · ${t(`type_${row.assessmentKind}`)}`} colSpan={7} id={`assessment-details-${row.id}`}>
                         <div className="min-w-0 space-y-3" data-assessment-workbench-detail={row.id}>
                           {row.activityId ? <Link href={`/dashboard/activities/${row.activityId}?${row.publicClassRecord ? `view=onsite&segment=${row.publicClassRecord.segmentId}` : "node=assessment"}`} className="block truncate text-xs text-blue hover:underline">{row.publicClassRecord?.segmentTitle || row.activityTitle} · {t("activityWorkspace")}</Link> : null}
+                          {row.studentId ? <QuickFollowUpEntry
+                            studentId={row.studentId}
+                            onSaved={(entry) => saveQuickFollowUp(row, entry.content, entry.createdAt)}
+                            onSaveAndNext={() => advanceFrom(row.id)}
+                          /> : null}
                           {row.assessmentKind === "activity" ? <div className={cn("grid min-w-0 gap-4", canSupport && completed && "xl:grid-cols-[1.4fr_1fr]")}>
                             <div className="min-w-0"><ActivityAssessmentDetails row={row} disabled={!canAssess} onSaved={saveRow} /></div>
                             {canSupport && completed ? <div className="min-w-0"><PostActivityHandoff source={{ registrationId: row.registrationId, invitationId: null }} onSaved={(context) => updateDraft(row.id, (current) => ({ ...current, route: context.route }))} /></div> : null}

@@ -51,7 +51,7 @@ export default async function StudentsPage({
   const filters = parseStudentFilters(rawSearchParams);
   const emptyStats: StaffStats = { enrolledCount: 0, leadCount: 0, weekSessionCount: 0, overdueFollowUpCount: 0 };
   const [{ students, count }, stats]: [Awaited<ReturnType<typeof listStudents>>, StaffStats] = await Promise.all([
-    listStudents(filters),
+    listStudents(filters, { includeFollowUpContent: perms.has("followup.view") }),
     perms.has("student.view.all") ? safe(getStaffStats, emptyStats) : Promise.resolve(emptyStats),
   ]);
   const maxPage = count ? Math.max(1, Math.ceil(count / 20)) : filters.page;
@@ -159,7 +159,13 @@ export default async function StudentsPage({
       {students.length === 0 ? (
         <DashboardEmptyCard>{t("empty")}</DashboardEmptyCard>
       ) : (
-        <StudentsTable students={students} locale={locale} recycle={filters.recycle} canDelete={canDelete} />
+        <StudentsTable
+          students={students}
+          locale={locale}
+          recycle={filters.recycle}
+          canDelete={canDelete}
+          canWriteFollowup={perms.has("followup.write")}
+        />
       )}
     </DashboardPage>
   );

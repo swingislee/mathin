@@ -96,6 +96,12 @@ interface FollowUpRow {
   profiles: { display_name: string } | null;
 }
 
+interface FollowUpSummaryRow {
+  student_id: string;
+  content: string;
+  created_at: string;
+}
+
 const PAGE_SIZE = 20;
 
 export function parseStudentFilters(searchParams: Record<string, string | string[] | undefined>): StudentFilters {
@@ -141,7 +147,7 @@ export function studentSearchFilter(raw: string): string {
   return clauses.join(",");
 }
 
-function toSummary(row: StudentRow): StudentSummary {
+function toSummary(row: StudentRow, lastFollowUpContent = ""): StudentSummary {
   return {
     id: row.id,
     name: row.name,
@@ -150,12 +156,16 @@ function toSummary(row: StudentRow): StudentSummary {
     followUpStatus: row.follow_up_status,
     assignedName: row.profiles?.display_name || "",
     lastFollowUpAt: row.last_follow_up_at,
+    lastFollowUpContent,
     nextFollowUpAt: row.next_follow_up_at,
     deletedAt: row.deleted_at,
   };
 }
 
-export async function listStudents(filters: StudentFilters): Promise<{ students: StudentSummary[]; count: number | null }> {
+export async function listStudents(
+  filters: StudentFilters,
+  options: { includeFollowUpContent?: boolean } = {},
+): Promise<{ students: StudentSummary[]; count: number | null }> {
   const supabase = await createClient();
   const from = (filters.page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
@@ -175,7 +185,21 @@ export async function listStudents(filters: StudentFilters): Promise<{ students:
     .range(from, to)
     .returns<StudentRow[]>();
   if (error) throw new Error(error.message);
-  return { students: (data ?? []).map(toSummary), count };
+  const rows = data ?? [];
+  const latestFollowUps = new Map<string, string>();
+  if (options.includeFollowUpContent && rows.length > 0) {
+    const { data: followUps, error: followUpError } = await supabase
+      .from("student_follow_ups")
+      .select("student_id,content,created_at")
+      .in("student_id", rows.map((row) => row.id))
+      .order("created_at", { ascending: false })
+      .returns<FollowUpSummaryRow[]>();
+    if (followUpError) throw new Error(followUpError.message);
+    for (const followUp of followUps ?? []) {
+      if (!latestFollowUps.has(followUp.student_id)) latestFollowUps.set(followUp.student_id, followUp.content);
+    }
+  }
+  return { students: rows.map((row) => toSummary(row, latestFollowUps.get(row.id) ?? "")), count };
 }
 
 export async function getStudentDetail(id: string): Promise<StudentDetail | null> {
@@ -198,7 +222,7 @@ export async function getStudentDetail(id: string): Promise<StudentDetail | null
   if (followUpError) throw new Error(followUpError.message);
 
   return {
-    ...toSummary(student),
+    ...toSummary(student, followUps?.[0]?.content ?? ""),
     gender: student.gender,
     birthday: student.birthday,
     phone: student.phone,

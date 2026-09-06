@@ -6,6 +6,7 @@ import type { PublicClassPresence } from "./public-class";
 import type { ActivityRouteKind, StoredAssessmentBand } from "./activity-workflow-contract";
 import type {
   AssessmentWorkbenchAssessment,
+  AssessmentWorkbenchFollowUp,
   AssessmentWorkbenchQuestionSummary,
   AssessmentWorkbenchRoute,
   AssessmentWorkbenchRow,
@@ -112,6 +113,16 @@ interface RouteDbRow {
   route: ActivityRouteKind;
   note: string;
   updated_at: string;
+}
+
+interface FollowUpDbRow {
+  id: string;
+  student_id: string;
+  content: string;
+  kind: string;
+  next_follow_up_at: string | null;
+  status_after: string | null;
+  created_at: string;
 }
 
 interface PaperVersionDbRow {
@@ -250,6 +261,10 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
   const sourceInvitationIds = [...new Set(activities
     .map((activity) => activity.source_invitation_id)
     .filter((id): id is string => Boolean(id)))];
+  const followUpStudentIds = [...new Set([
+    ...registrations.map(({ registration }) => registration.student_id),
+    ...(confirmedInvitationResult.data ?? []).map((invitation) => invitation.leads?.student_id ?? null),
+  ].filter((id): id is string => Boolean(id)))];
 
   const [
     assessmentResult,
@@ -259,6 +274,7 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
     questionResult,
     publicClassSegmentResult,
     publicClassRecordResult,
+    followUpResult,
   ] = await Promise.all([
     readRelatedRows<AssessmentDbRow>(supabase, "assessment_results", "id,activity_registration_id,assessment_band,score,strengths,focus_areas,parent_concerns,teacher_recommendation,recommended_class,teacher_observation,updated_at,assessor:profiles!assessment_results_assessed_by_fkey(id,display_name)", "activity_registration_id", registrationIds),
     readRelatedRows<RouteDbRow>(supabase, "activity_routes", "id,activity_registration_id,route,note,updated_at", "activity_registration_id", registrationIds),
@@ -267,6 +283,7 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
     readRelatedRows<QuestionResultDbRow>(supabase, "assessment_question_results", "activity_registration_id,question_id,outcome,note", "activity_registration_id", registrationIds),
     readRelatedRows<PublicClassSegmentDbRow>(supabase, "public_class_segments", "id,activity_id,kind,title,scheduled_at,location,primary_teacher_id,primary_teacher:profiles!public_class_segments_primary_teacher_id_fkey(display_name)", "activity_id", publicClassActivityIds),
     readRelatedRows<PublicClassRecordDbRow>(supabase, "public_class_participant_records", "id,segment_id,registration_id,student_presence,guardian_presence,learning_observation,assessment_summary,parent_feedback,recommendation,updated_at", "activity_id", publicClassActivityIds),
+    readRelatedRows<FollowUpDbRow>(supabase, "student_follow_ups", "id,student_id,content,kind,next_follow_up_at,status_after,created_at", "student_id", followUpStudentIds),
   ]);
   if (assessmentResult.error) throw new Error(assessmentResult.error.message);
   if (routeResult.error) throw new Error(routeResult.error.message);
@@ -275,6 +292,7 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
   if (questionResult.error) throw new Error(questionResult.error.message);
   if (publicClassSegmentResult.error) throw new Error(publicClassSegmentResult.error.message);
   if (publicClassRecordResult.error) throw new Error(publicClassRecordResult.error.message);
+  if (followUpResult.error) throw new Error(followUpResult.error.message);
 
   const paperIds = [...new Set((paperVersionResult.data ?? []).map((row) => row.paper_id))];
   const questionIds = [...new Set((questionResult.data ?? []).map((row) => row.question_id))];
@@ -312,6 +330,20 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
       note: row.note,
       updatedAt: row.updated_at,
     });
+  }
+  const latestFollowUps = new Map<string, AssessmentWorkbenchFollowUp>();
+  for (const row of followUpResult.data ?? []) {
+    const current = latestFollowUps.get(row.student_id);
+    if (!current || row.created_at > current.createdAt) {
+      latestFollowUps.set(row.student_id, {
+        id: row.id,
+        content: row.content,
+        kind: row.kind,
+        createdAt: row.created_at,
+        nextFollowUpAt: row.next_follow_up_at,
+        statusAfter: row.status_after,
+      });
+    }
   }
   const invitations = new Map<string, InvitationDbRow>();
   for (const row of historicalInvitationResult.data ?? []) invitations.set(row.id, row);
@@ -356,6 +388,7 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
       assessment: null,
       questionSummary: null,
       route: null,
+      latestFollowUp: invitation.leads?.student_id ? latestFollowUps.get(invitation.leads.student_id) ?? null : null,
       updatedAt: invitation.updated_at,
     }));
 
@@ -409,6 +442,7 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
         assessment,
         questionSummary,
         route,
+        latestFollowUp: registration.student_id ? latestFollowUps.get(registration.student_id) ?? null : null,
         updatedAt: assessment?.updatedAt || route?.updatedAt || registration.updated_at,
       };
     });
