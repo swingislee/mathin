@@ -4614,7 +4614,24 @@
       "contactNeedsOwner": "Assign an owner before recording contact.",
       "contactClosed": "This seed is closed or already linked to a student."
     },
+    "followupEntry": {
+      "note": "Note (optional)",
+      "notePlaceholder": "Record the family's concerns, availability, or other useful follow-up details",
+      "noteExpanded": "Edit the note below",
+      "draftExpanded": "Unsaved draft · continue below",
+      "outcome": "Choose this contact's result",
+      "chooseOutcome": "Choose this contact's result in the row before saving a contact. Reminder-only changes can be saved directly.",
+      "studentNoteOnly": "Saves a student follow-up note only, without adding a contact result or changing the invitation.",
+      "studentNoteAvailable": "You can save a student note directly. To record a contact, first choose its result in the row.",
+      "readOnly": "This record is read-only with your current access.",
+      "deferredFacts": "WeChat, interest and invitation drafts are retained. Only fields applicable to this result are submitted; switch back to continue the others.",
+      "draftHint": "These changes are a draft. Review them, then save.",
+      "save": "Save",
+      "saveAndNext": "Save and next"
+    },
     "invitations": {
+      "explicitSaveHint": "Progress and time changes update the draft only. Review them, then save.",
+      "nextContactReminderHelp": "How does a reminder differ from an appointment?",
       "continueCommunication": "Continue communication",
       "returnToInvitation": "Back to invitation",
       "previousInvitations": "Previous invitations",

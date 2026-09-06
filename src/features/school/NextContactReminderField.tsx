@@ -22,12 +22,14 @@ export function NextContactReminderField({
   value,
   disabled = false,
   className,
+  compact = false,
   onChange,
 }: {
   id: string;
   value: string | null | undefined;
   disabled?: boolean;
   className?: string;
+  compact?: boolean;
   onChange: (value: string | null) => void;
 }) {
   const t = useTranslations("school.invitations");
@@ -60,9 +62,12 @@ export function NextContactReminderField({
           onChange(instant?.toISOString() ?? null);
         }}
       />
-      <p id={hintId} className={cn("text-[11px] leading-4", valid ? "text-muted" : "text-rose")}>
+      {compact && valid ? <details className="text-[11px] leading-4 text-muted">
+        <summary className="w-fit cursor-pointer">{t("nextContactReminderHelp")}</summary>
+        <p id={hintId} className="pt-1">{t("nextContactReminderHint")}</p>
+      </details> : <p id={hintId} className={cn("text-[11px] leading-4", valid ? "text-muted" : "text-rose")}>
         {valid ? t("nextContactReminderHint") : t("nextContactReminderPast")}
-      </p>
+      </p>}
     </div>
   );
 }

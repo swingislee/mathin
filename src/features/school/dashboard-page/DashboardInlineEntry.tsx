@@ -16,6 +16,7 @@ export function DashboardInlineEntry({
   pending = false,
   autoFocus = false,
   flush = false,
+  hideTitle = false,
 }: {
   children: ReactNode;
   title?: string;
@@ -25,6 +26,7 @@ export function DashboardInlineEntry({
   pending?: boolean;
   autoFocus?: boolean;
   flush?: boolean;
+  hideTitle?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -41,7 +43,7 @@ export function DashboardInlineEntry({
       role={title ? "region" : undefined}
       aria-label={title}
       aria-busy={pending}
-      className={cn("min-w-0", !flush && "mt-2 space-y-2 border-t border-line pt-2")}
+      className={cn("relative min-w-0", hideTitle && "pr-8", !flush && "mt-2 space-y-2 border-t border-line pt-2")}
       onKeyDown={(event) => {
         if (event.defaultPrevented || (event.target as HTMLElement).closest("[role='dialog'], [role='listbox'], [role='menu']")) return;
         const command = inlineEntryCommand({ ...event, isComposing: event.nativeEvent.isComposing });
@@ -55,8 +57,8 @@ export function DashboardInlineEntry({
         }
       }}
     >
-      {title || onClose ? <div className="flex items-center justify-between gap-3">
-        {title ? <h3 className="text-xs font-medium text-ink">{title}</h3> : <span />}
+      {title || onClose ? <div className={cn("flex items-center justify-between gap-3", hideTitle && "absolute right-0 top-0")}>
+        {title && !hideTitle ? <h3 className="text-xs font-medium text-ink">{title}</h3> : null}
         {onClose ? <Button type="button" size="sm" variant="ghost" className="size-7 p-0" disabled={pending} aria-label={closeLabel} onClick={onClose}><X className="size-3.5" /></Button> : null}
       </div> : null}
       {children}

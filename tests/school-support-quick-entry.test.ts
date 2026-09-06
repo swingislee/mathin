@@ -44,9 +44,12 @@ describe("school support quick entry", () => {
     expect(leads).toContain("student_id");
     expect(leads).toContain("studentId: row.student_id");
     expect(contract).toContain("studentId?: string | null");
-    expect(workbench).toContain("lead.studentId && canContact");
-    expect(workbench).toContain("<QuickFollowUpEntry");
-    expect(workbench).toContain("visibleIds[currentIndex + 1]");
+    expect(workbench).toContain("noteOnly && lead.studentId");
+    expect(workbench).toContain("noteRun.run(lead.studentId");
+    expect(workbench).toContain('kind: "note", nextFollowUpAt: null, statusAfter: null');
+    expect(workbench).toContain("<FollowupEntryFields");
+    expect(workbench).not.toContain("<QuickFollowUpEntry");
+    expect(workbench).toContain("visibleIds[visibleIds.indexOf(lead.id) + 1]");
   });
 
   it("keeps bilingual copy for a note that does not create a task", () => {

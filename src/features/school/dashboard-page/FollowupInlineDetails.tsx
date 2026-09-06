@@ -7,7 +7,7 @@ import { DashboardInlineEntry } from "./DashboardInlineEntry";
 
 /** 详情单独占据当前记录的下一行；数据行和固定列宽保持原样。 */
 export function FollowupInlineDetails({
-  open, onOpenChange, title, colSpan, children, pending = false, autoFocus = false, onSubmit, id,
+  open, onOpenChange, title, colSpan, children, pending = false, autoFocus = false, onSubmit, id, hideTitle = false, active = true,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -18,6 +18,8 @@ export function FollowupInlineDetails({
   autoFocus?: boolean;
   onSubmit?: () => void;
   id?: string;
+  hideTitle?: boolean;
+  active?: boolean;
 }) {
   const t = useTranslations("school.followupWorkspace");
   const rowRef = useRef<HTMLTableRowElement>(null);
@@ -31,9 +33,9 @@ export function FollowupInlineDetails({
     (trigger ?? summary)?.focus({ preventScroll: true });
   };
 
-  return <TableRow ref={rowRef} id={id} data-followup-inline-details>
+  return <TableRow ref={rowRef} id={id} data-followup-inline-details data-followup-active={active}>
     <TableCell colSpan={colSpan} className="p-3 align-top whitespace-normal">
-      <DashboardInlineEntry title={title} closeLabel={t("close")} onClose={close} onSubmit={onSubmit} pending={pending} autoFocus={autoFocus} flush>
+      <DashboardInlineEntry title={title} hideTitle={hideTitle} closeLabel={t("close")} onClose={close} onSubmit={onSubmit} pending={pending} autoFocus={autoFocus} flush>
         <div className="@container/followup-entry min-w-0 max-w-full space-y-3 break-words pt-2">{children}</div>
       </DashboardInlineEntry>
     </TableCell>

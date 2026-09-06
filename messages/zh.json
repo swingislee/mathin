@@ -4614,7 +4614,24 @@
       "contactNeedsOwner": "请先分配负责人，再记录沟通。",
       "contactClosed": "这条种子已经关闭或完成身份确认。"
     },
+    "followupEntry": {
+      "note": "备注（选填）",
+      "notePlaceholder": "记录家长关注点、时间限制或其他有助于后续跟进的信息",
+      "noteExpanded": "备注在下方填写",
+      "draftExpanded": "有草稿 · 在下方继续填写",
+      "outcome": "选择本次结果",
+      "chooseOutcome": "登记本次沟通时，请在主行选择本次结果；仅调整提醒可直接保存。",
+      "studentNoteOnly": "本次仅保存学生跟进备注，不新增联系结果或更改邀约。",
+      "studentNoteAvailable": "可直接保存学生跟进备注；登记本次联系时，请先在主行选择结果。",
+      "readOnly": "当前记录仅供查看，暂无编辑权限。",
+      "deferredFacts": "微信、意向及邀约草稿已保留；本次只提交当前结果适用的字段，切回原结果可继续填写。",
+      "draftHint": "当前为未保存的填写内容，确认后保存。",
+      "save": "保存",
+      "saveAndNext": "保存并下一位"
+    },
     "invitations": {
+      "explicitSaveHint": "进度圆点和时间修改只更新草稿；确认内容后保存。",
+      "nextContactReminderHelp": "提醒与预约有什么区别？",
       "continueCommunication": "继续沟通",
       "returnToInvitation": "返回邀约记录",
       "previousInvitations": "历史邀约",

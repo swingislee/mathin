@@ -10,9 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import {
@@ -48,10 +46,11 @@ import {
   type InvitationQueue,
   type InvitationQueueCounts,
 } from "./invitation-contract";
-import { isFutureNextContactReminder, NextContactReminderField } from "./NextContactReminderField";
+import { isFutureNextContactReminder } from "./NextContactReminderField";
 import { zonedDateTimeToInstant } from "./schedule";
 import { FollowupChoice, followupToneClasses } from "./dashboard-page/FollowupChoice";
 import { FollowupInlineDetails } from "./dashboard-page/FollowupInlineDetails";
+import { FollowupEntryFields } from "./FollowupEntryFields";
 import { PostActivityHandoff } from "./EnrollmentHandoffButton";
 import { PostActivityQuickContact } from "./PostActivityQuickContact";
 import { followupState, type ActivityEnrollmentContext } from "./enrollment-workflow-contract";
@@ -152,6 +151,9 @@ function mergeInvitationDraft(base: InvitationDraft, draft: InvitationDraft, inc
   return { ...latest, ...changed };
 }
 
+type InvitationEntryDraft = { channel: InvitationChannel; note: string };
+const EMPTY_INVITATION_ENTRY: InvitationEntryDraft = { channel: "wechat", note: "" };
+
 function InvitationEditor({
   row,
   activities,
@@ -160,6 +162,9 @@ function InvitationEditor({
   formatAt,
   currentUserId,
   canManageInvitation,
+  entry,
+  onEntryChange,
+  onAdvance,
   onSaved,
   saving,
   beginSave,
@@ -172,6 +177,9 @@ function InvitationEditor({
   formatAt: (value: string) => string;
   currentUserId: string;
   canManageInvitation: boolean;
+  entry: InvitationEntryDraft;
+  onEntryChange: (value: InvitationEntryDraft) => void;
+  onAdvance: () => void;
   onSaved: (row: InvitationCoordinationRow, input: UpdateInvitationInput) => void;
   saving: boolean;
   beginSave: (id: string) => boolean;
@@ -201,11 +209,11 @@ function InvitationEditor({
     ownsSave.current = false;
     endSave(row.id);
   }, [endSave, row.id]);
-  const [channel, setChannel] = useState<InvitationChannel>("wechat");
-  const [note, setNote] = useState("");
+  const { channel, note } = entry;
+  const setNote = (value: string) => onEntryChange({ ...entry, note: value });
+  const advanceRef = useRef(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [autoFlowFailed, setAutoFlowFailed] = useState(false);
   const submittedInputRef = useRef<UpdateInvitationInput | null>(null);
   const [draftStorageKey] = useState(() => invitationDraftSessionKey("coordination", row.id, row.updatedAt));
   const assessorEditing = !canManageInvitation && row.assessorId === currentUserId;
@@ -251,12 +259,13 @@ function InvitationEditor({
       onSaved(row, input);
       setNote("");
       setCancelOpen(false);
-      setAutoFlowFailed(false);
+      if (advanceRef.current) onAdvance();
+      advanceRef.current = false;
       router.refresh();
     },
     onError: () => {
       finishSaving();
-      if (submittedInputRef.current?.state === "confirmed") setAutoFlowFailed(true);
+      advanceRef.current = false;
     },
   });
   const assessorRun = useAction(updateAssessorAvailabilityAction, {
@@ -288,7 +297,9 @@ function InvitationEditor({
   const operationPending = updateRun.pending || assessorRun.pending;
   useEffect(() => { if (!operationPending) finishSaving(); }, [finishSaving, operationPending]);
   const pending = operationPending || saving;
-  const submitSupport = (nextDraft: InvitationDraft) => {
+  const submitSupport = (nextDraft: InvitationDraft, advance = false) => {
+    if (pending || !canManageInvitation) return;
+    if (nextDraft.state !== "cancelled" && !invitationDraftIsComplete(nextDraft)) return;
     const normalizedDraft = invitationCanHaveNextContactReminder(nextDraft)
       ? { ...nextDraft, nextContactAt: nextDraft.nextContactAt ?? null }
       : { ...nextDraft, nextContactAt: null };
@@ -296,8 +307,8 @@ function InvitationEditor({
       toast.error(t("nextContactReminderPast"));
       return;
     }
-    if (normalizedDraft.state === "confirmed") setAutoFlowFailed(false);
     const input = { ...normalizedDraft, channel, note };
+    advanceRef.current = advance;
     if (!beginSave(row.id)) return;
     ownsSave.current = true;
     submittedInputRef.current = input;
@@ -312,11 +323,6 @@ function InvitationEditor({
     draft.parentTimeOptions,
     draft.assessorTimeOptions,
   );
-  const exactSharedOptions = sharedOptions.flatMap((option) => {
-    const instant = assessmentTimeOptionToInstant(option);
-    return instant ? [{ option, instant }] : [];
-  });
-  const broadSharedCount = sharedOptions.length - exactSharedOptions.length;
   const workStep = invitationWorkStep(draft);
   const selectedActivity = draft.activityId
     ? activities.find((activity) => activity.id === draft.activityId)
@@ -391,268 +397,21 @@ function InvitationEditor({
     location: draft.locationText || selectedActivity?.location || t("locationToConfirm"),
   });
   const dirty = !draftMatchesRow(draft, row);
-  const confirmedDraftComplete = invitationDraftIsComplete(draft);
-  const teacherHandoffNeedsSave = dirty || row.state !== "awaiting_teacher" || Boolean(note.trim());
-  const candidateNeedsSave = dirty || row.state !== "awaiting_parent" || Boolean(note.trim());
-
-  const supportActionContent = (() => {
-    const header = (title: string, hint: string) => (
-      <p className="min-w-0 break-words text-xs font-medium text-ink" title={hint}>{title}</p>
-    );
-    if (workStep === "collect_arrangement") {
-      return (
-        <>
-          {header(t("workTitle_collect_arrangement"), t("workHint_collect_arrangement"))}
-          <div className="grid gap-1.5 text-[11px]">
-            <p className="flex items-center justify-between gap-3"><span className="text-muted">{t("workFactParent")}</span><span className="text-right text-ink">{draft.parentTimeOptions.length > 0 ? t("availabilitySlotCount", { count: draft.parentTimeOptions.length }) : t("notRecorded")}</span></p>
-            <p className="flex items-center justify-between gap-3"><span className="text-muted">{t("workFactAssessor")}</span><span className="text-right text-ink">{draft.assessorId ? assessorName : t("notRecorded")}</span></p>
-          </div>
-          <Button type="button" size="sm" className="h-9 w-full" disabled={pending || (!dirty && !note.trim())} onClick={() => submitSupport({ ...draft, state: "coordinating_time" })}>
-            {pending ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" /> : <Check className="size-4" />}
-            {t("saveKnownFacts")}
-          </Button>
-        </>
-      );
-    }
-    if (workStep === "waiting_assessor") {
-      return (
-        <>
-          {header(t("workTitle_waiting_assessor"), t("workHint_waiting_assessor"))}
-          <p className="border-l-2 border-moon pl-3 text-[11px] leading-5 text-ink">{compactOptions(draft.parentTimeOptions)}</p>
-          <Button
-            type="button"
-            size="sm"
-            className="h-9 w-full"
-            disabled={pending}
-            onClick={() => {
-              copyText(teacherRequestText);
-              if (teacherHandoffNeedsSave) submitSupport({ ...draft, state: "awaiting_teacher" });
-            }}
-          >
-            {pending ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" /> : <Copy className="size-4" />}
-            {teacherHandoffNeedsSave ? t("saveAndCopyTeacher") : t("copyTeacherRequest")}
-          </Button>
-        </>
-      );
-    }
-    if (workStep === "waiting_assessor_response") {
-      return (
-        <>
-          {header(t("workTitle_waiting_assessor_response"), t("workHint_waiting_assessor_response", { assessor: assessorName }))}
-          <p className="border-l-2 border-moon pl-3 text-[11px] leading-5 text-ink">{compactOptions(draft.parentTimeOptions)}</p>
-          <div className="flex flex-wrap items-center gap-1 text-[11px] text-muted" aria-label={t("teacherHandoffPathLabel")}>
-            <span className="rounded-full bg-leaf/20 px-2 py-1 text-ink">{t("teacherHandoffStepTeacher")}</span>
-            <ChevronRight className="size-3.5 shrink-0" aria-hidden="true" />
-            <span>{t("teacherHandoffStepOverlap")}</span>
-            <ChevronRight className="size-3.5 shrink-0" aria-hidden="true" />
-            <span>{t("teacherHandoffStepSupport")}</span>
-          </div>
-          <Button type="button" size="sm" variant="secondary" className="h-8 w-full" disabled={pending} onClick={() => copyText(teacherRequestText)}>
-            <Copy className="size-3.5" />
-            {t("copyTeacherRequestAgain")}
-          </Button>
-        </>
-      );
-    }
-    if (workStep === "resolve_time_conflict") {
-      return (
-        <>
-          {header(t("workTitle_resolve_time_conflict"), t("workHint_resolve_time_conflict"))}
-          <p className="text-[11px] text-ink">{t("availabilityCounts", {
-            parent: draft.parentTimeOptions.length,
-            assessor: draft.assessorTimeOptions.length,
-            overlap: 0,
-          })}</p>
-          <Button type="button" size="sm" className="h-9 w-full" disabled={pending || (!dirty && !note.trim())} onClick={() => submitSupport({ ...draft, state: "coordinating_time", scheduledAt: null })}>
-            {pending ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" /> : <Check className="size-4" />}
-            {t("saveTimeAdjustment")}
-          </Button>
-        </>
-      );
-    }
-    if (workStep === "choose_shared_time") {
-      return (
-        <>
-          {header(t("workTitle_choose_shared_time"), t("workHint_choose_shared_time"))}
-          <FollowupChoice label={t("timeLabel")} value={draft.scheduledAt ?? ""} disabled={pending}
-            onValueChange={(instant) => setDraft({ ...draft, scheduledAt: instant })}
-            options={exactSharedOptions.map(({ option, instant }) => ({ value: instant, label: formatOption(option), tone: "healthy" }))} />
-          {broadSharedCount > 0 ? <p className="text-[11px] leading-5 text-amber-700">{t("workRangeNeedsDetail", { count: broadSharedCount })}</p> : null}
-          {exactSharedOptions.length === 0 ? <p className="text-[11px] leading-5 text-muted">{t("workNoExactSharedTime")}</p> : null}
-        </>
-      );
-    }
-    if (workStep === "confirm_with_parent") {
-      const alreadyWaiting = !candidateNeedsSave && row.state === "awaiting_parent";
-      return (
-        <>
-          {header(t("workTitle_confirm_with_parent"), t("workHint_confirm_with_parent"))}
-          <div className="border-l-2 border-rose pl-3">
-            <p className="text-sm font-medium text-ink">{selectedTimeText}</p>
-            <p className="mt-0.5 text-[11px] text-muted">{assessorName} · {draft.locationText || t("locationToConfirm")}</p>
-          </div>
-          {exactSharedOptions.length > 1 ? (
-            <FollowupChoice label={t("timeLabel")} value={draft.scheduledAt ?? ""} disabled={pending}
-              onValueChange={(instant) => setDraft({ ...draft, scheduledAt: instant })}
-              options={exactSharedOptions.map(({ option, instant }) => ({ value: instant, label: formatOption(option), tone: "healthy" }))} />
-          ) : null}
-          {alreadyWaiting ? (
-            <>
-              <Button type="button" size="sm" className="h-9 w-full" disabled={pending} onClick={() => submitSupport({ ...draft, state: "confirmed" })}>
-                {pending ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" /> : <Check className="size-4" />}
-                {t("parentConfirmed")}
-              </Button>
-              <Button type="button" size="sm" variant="secondary" className="h-8 w-full" disabled={pending} onClick={() => copyText(parentConfirmationText)}>
-                <Copy className="size-3.5" />
-                {t("copyParentConfirmation")}
-              </Button>
-              {note.trim() ? (
-                <Button type="button" size="sm" variant="ghost" className="h-8 w-full" disabled={pending} onClick={() => submitSupport({ ...draft, state: "awaiting_parent" })}>
-                  {t("recordAndWait")}
-                </Button>
-              ) : null}
-            </>
-          ) : (
-            <>
-              <Button
-                type="button"
-                size="sm"
-                className="h-9 w-full"
-                disabled={pending}
-                onClick={() => {
-                  copyText(parentConfirmationText);
-                  submitSupport({ ...draft, state: "awaiting_parent" });
-                }}
-              >
-                {pending ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" /> : <Copy className="size-4" />}
-                {t("saveCandidateAndCopy")}
-              </Button>
-              <Button type="button" size="sm" variant="secondary" className="h-8 w-full" disabled={pending} onClick={() => submitSupport({ ...draft, state: "confirmed" })}>
-                <Check className="size-3.5" />
-                {t("parentConfirmedDirect")}
-              </Button>
-            </>
-          )}
-          <Button type="button" size="sm" variant="ghost" className="h-7 w-full text-[11px]" disabled={pending} onClick={() => setDraft({ ...draft, state: "coordinating_time", scheduledAt: null })}>
-            {t("chooseAnotherTime")}
-          </Button>
-        </>
-      );
-    }
-    if (workStep === "choose_activity") {
-      return <>{header(t("workTitle_choose_activity"), t("workHint_choose_activity"))}</>;
-    }
-    if (workStep === "confirm_activity") {
-      const alreadyWaiting = !dirty && row.state === "awaiting_parent";
-      return (
-        <>
-          {header(t("workTitle_confirm_activity"), t("workHint_confirm_activity"))}
-          {selectedActivity ? (
-            <div className="border-l-2 border-moon pl-3">
-              <p className="text-sm font-medium text-ink">{selectedActivity.title}</p>
-              <p className="mt-0.5 text-[11px] text-muted">{formatAt(selectedActivity.scheduledAt)} · {draft.locationText || selectedActivity.location || t("locationToConfirm")}</p>
-            </div>
-          ) : null}
-          {alreadyWaiting ? (
-            <>
-              <Button type="button" size="sm" className="h-9 w-full" disabled={pending} onClick={() => submitSupport({ ...draft, state: "confirmed" })}>
-                {pending ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" /> : <Check className="size-4" />}
-                {t("parentConfirmed")}
-              </Button>
-              <Button type="button" size="sm" variant="secondary" className="h-8 w-full" disabled={pending} onClick={() => copyText(activityConfirmationText)}>
-                <Copy className="size-3.5" />
-                {t("copyParentConfirmation")}
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button type="button" size="sm" className="h-9 w-full" disabled={pending} onClick={() => { copyText(activityConfirmationText); submitSupport({ ...draft, state: "awaiting_parent" }); }}>
-                {pending ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" /> : <Copy className="size-4" />}
-                {t("saveActivityAndCopy")}
-              </Button>
-              <Button type="button" size="sm" variant="secondary" className="h-8 w-full" disabled={pending} onClick={() => submitSupport({ ...draft, state: "confirmed" })}>
-                <Check className="size-3.5" />
-                {t("parentConfirmedDirect")}
-              </Button>
-            </>
-          )}
-        </>
-      );
-    }
-    if (workStep === "waiting_activity") {
-      return (
-        <>
-          {header(t("workTitle_waiting_activity"), t("workHint_waiting_activity"))}
-          <Button type="button" size="sm" className="h-9 w-full" disabled={pending || (!dirty && !note.trim())} onClick={() => submitSupport({ ...draft, state: "waiting_activity" })}>
-            {pending ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" /> : <Check className="size-4" />}
-            {t("saveKnownFacts")}
-          </Button>
-        </>
-      );
-    }
-    if (workStep === "confirmed" && dirty) {
-      const shouldAutoFlow = draft.kind === "assessment_1v1" && row.state !== "confirmed";
-      return (
-        <>
-          {header(
-            shouldAutoFlow
-              ? confirmedDraftComplete ? t("workTitle_direct_booking_ready") : t("workTitle_confirmed_incomplete")
-              : confirmedDraftComplete ? t("workTitle_confirmed_changes") : t("workTitle_confirmed_edit_incomplete"),
-            shouldAutoFlow
-              ? confirmedDraftComplete ? t("workHint_direct_booking_ready") : t("workHint_confirmed_incomplete")
-              : confirmedDraftComplete ? t("workHint_confirmed_changes") : t("workHint_confirmed_edit_incomplete"),
-          )}
-          <div className="border-l-2 border-rose pl-3">
-            <p className="text-sm font-medium text-ink">{currentArrangement}</p>
-          </div>
-          {shouldAutoFlow ? (
-            confirmedDraftComplete ? (
-              autoFlowFailed ? (
-                <Button type="button" size="sm" variant="secondary" className="h-9 w-full" disabled={pending} onClick={() => submitSupport(draft)}>
-                  {pending ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" /> : null}
-                  {t("retryAutoConfirm")}
-                </Button>
-              ) : (
-                <p className="flex items-center gap-2 rounded-lg bg-leaf/15 px-3 py-2 text-[11px] text-ink" role="status">
-                  <LoaderCircle className="size-3.5 animate-spin motion-reduce:animate-none" />
-                  {t("autoConfirming")}
-                </p>
-              )
-            ) : (
-              <p className="rounded-lg bg-moon/20 px-3 py-2 text-[11px] leading-5 text-ink" role="status">
-                {t("confirmedNeedsExactTime")}
-              </p>
-            )
-          ) : confirmedDraftComplete ? (
-            <Button type="button" size="sm" className="h-9 w-full" disabled={pending} onClick={() => submitSupport(draft)}>
-              {pending ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" /> : <Check className="size-4" />}
-              {t("saveConfirmedChanges")}
-            </Button>
-          ) : null}
-          <Button type="button" size="sm" variant="ghost" className="h-8 w-full" disabled={pending} onClick={() => setDraft({ ...draft, state: "coordinating_time", scheduledAt: null })}>
-            {t("backToCoordination")}
-          </Button>
-        </>
-      );
-    }
-    return (
-      <>
-        {header(t("workTitle_confirmed"), t("workHint_confirmed"))}
-        <div className="border-l-2 border-leaf-deep pl-3">
-          <p className="text-sm font-medium text-ink">{currentArrangement}</p>
-        </div>
-        <Button type="button" size="sm" className="h-9 w-full" disabled={pending} onClick={() => copyText(relayText)}>
-          <Copy className="size-4" />
-          {t("copyRelay")}
-        </Button>
-        {draft.kind === "assessment_1v1" ? (
-          <Button type="button" size="sm" variant="ghost" className="h-8 w-full" disabled={pending} onClick={() => setDraft({ ...draft, state: "coordinating_time", scheduledAt: null })}>
-            {t("recoordinate")}
-          </Button>
-        ) : null}
-      </>
-    );
-  })();
+  const reminderValid = !invitationCanHaveNextContactReminder(draft) || isFutureNextContactReminder(draft.nextContactAt);
+  const saveDisabled = (!dirty && !note.trim()) || !invitationDraftIsComplete(draft) || !reminderValid;
+  // 协调文案是辅助动作；复制与选择步骤均不写入业务记录。
+  const communicationTools = <div className="flex min-w-0 flex-wrap items-center gap-2">
+    {draft.kind === "assessment_1v1" && draft.assessorId && draft.parentTimeOptions.length > 0
+      && (workStep === "waiting_assessor" || workStep === "waiting_assessor_response") ? <Button type="button" size="sm" variant="ghost"
+        className="h-auto min-h-8 whitespace-normal px-2 py-1 text-xs" disabled={pending} onClick={() => copyText(teacherRequestText)}>
+        <Copy className="size-3.5" />{t("copyTeacherRequest")}
+      </Button> : null}
+    {(draft.kind === "assessment_1v1" && draft.scheduledAt) || selectedActivity ? <Button type="button" size="sm" variant="ghost"
+      className="h-auto min-h-8 whitespace-normal px-2 py-1 text-xs" disabled={pending}
+      onClick={() => copyText(draft.state === "confirmed" ? relayText : draft.kind === "activity" ? activityConfirmationText : parentConfirmationText)}>
+      <Copy className="size-3.5" />{draft.state === "confirmed" ? t("copyRelay") : t("copyParentConfirmation")}
+    </Button> : null}
+  </div>;
 
   if ((!canManageInvitation && !assessorEditing) || row.state === "completed" || row.state === "cancelled") {
     return <div className="grid gap-3 text-xs md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"><div className="space-y-2"><p>{currentArrangement}</p><Badge variant="outline">{t(`state_${row.state}`)}</Badge></div>
@@ -660,92 +419,31 @@ function InvitationEditor({
   }
   return (
     <div className="@container/invitation-editor min-w-0 max-w-full px-1">
-      <div className="grid min-w-0 items-start gap-4 @[54rem]/invitation-editor:grid-cols-[minmax(0,1fr)_19rem]">
-        <InvitationDraftFields
-          value={draft}
-          activities={activities}
-          assessors={assessors}
-          locale={locale}
-          disabled={pending}
-          allowNone={false}
-          showReminder={false}
-          variant="workflow"
-          editingScope={assessorEditing ? "assessor" : "full"}
-          draftStorageKey={draftStorageKey}
-          onChange={(value) => { if (value) setDraft(value); }}
-          onConfirmedReady={(value) => {
-            if (!assessorEditing && row.state !== "confirmed") submitSupport(value);
-          }}
-        />
-
-        <section className="min-w-0 max-w-full space-y-2.5 border-line @[54rem]/invitation-editor:border-l @[54rem]/invitation-editor:pl-4 [&_button]:h-auto [&_button]:min-h-9 [&_button]:min-w-0 [&_button]:max-w-full [&_button]:whitespace-normal [&_button]:py-1.5 [&_button]:text-xs [&_p]:break-words">
-          {assessorEditing ? (
-            <>
-              <p className="text-sm font-medium text-ink">{t("assessorAvailabilityTitle")}</p>
-              <p className="text-[11px] text-ink">{sharedOptions.length > 0
-                ? t("assessorOverlapFound", { count: sharedOptions.length })
-                : t("assessorOverlapPending")}</p>
-              <Button
-                type="button"
-                size="sm"
-                className="h-9 w-full"
-                disabled={pending || sameOptions(draft.assessorTimeOptions, row.assessorTimeOptions)}
-                onClick={() => { if (beginSave(row.id)) { ownsSave.current = true; assessorRun.run(row.id, draft.assessorTimeOptions); } }}
-              >
-                {pending ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" /> : <Check className="size-4" />}
-                {sharedOptions.length > 0 ? t("saveAssessorAvailabilityWithOverlap") : t("saveAssessorAvailability")}
-              </Button>
-            </>
-          ) : (
-            <>
-              <p className="text-[11px] font-medium text-muted">{t("currentWorkAction")}</p>
-              {supportActionContent}
-              {workStep !== "confirmed" ? (
-                <div className="min-w-0 space-y-2 border-t border-line pt-2">
-                  <Label htmlFor={`invitation-note-${row.id}`} className="text-[11px] text-muted">{t("communicationOptional")}</Label>
-                  <div className="grid grid-cols-4 gap-1" role="group" aria-label={t("channelLabel")}>
-                    {CHANNELS.map((value) => (
-                      <Button
-                        key={value}
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className={cn("min-w-0 gap-1 rounded-lg px-1 text-xs", channel === value && "bg-moon/35 text-ink")}
-                        aria-pressed={channel === value}
-                        disabled={pending}
-                        onClick={() => setChannel(value)}
-                      >
-                        {channel === value ? <Check className="size-3 shrink-0" aria-hidden="true" /> : null}
-                        {t(`channel_${value}`)}
-                      </Button>
-                    ))}
-                  </div>
-                  <Textarea
-                    id={`invitation-note-${row.id}`}
-                    value={note}
-                    disabled={pending}
-                    rows={1}
-                    maxLength={2000}
-                    className="min-h-9 min-w-0 max-w-full resize-y rounded-xl px-3 py-2 text-xs"
-                    placeholder={t("notePlaceholder")}
-                    aria-label={t("noteFor", { name: row.leadName })}
-                    onChange={(event) => setNote(event.target.value)}
-                  />
-                </div>
-              ) : null}
-              {invitationCanHaveNextContactReminder(draft) ? <NextContactReminderField
-                id={`invitation-reminder-${row.id}`} value={draft.nextContactAt} disabled={pending}
-                onChange={(nextContactAt) => setDraft({ ...draft, nextContactAt })}
-              /> : null}
-              <div className="flex justify-end border-t border-line pt-2">
-                <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-[11px]" disabled={pending} onClick={() => setCancelOpen(true)}>
-                  {t("cancelInvitation")}
-                </Button>
-              </div>
-            </>
-          )}
-        </section>
-      </div>
+      {assessorEditing ? <div className="space-y-3">
+        <InvitationDraftFields value={draft} activities={activities} assessors={assessors} locale={locale}
+          disabled={pending} allowNone={false} showReminder={false} editingScope="assessor"
+          draftStorageKey={draftStorageKey} onChange={(value) => { if (value) setDraft(value); }} />
+        <p className="text-xs text-muted">{sharedOptions.length > 0
+          ? t("assessorOverlapFound", { count: sharedOptions.length }) : t("assessorOverlapPending")}</p>
+        <Button type="button" size="sm" className="h-auto min-h-9 whitespace-normal px-3 py-1.5 text-xs"
+          disabled={pending || sameOptions(draft.assessorTimeOptions, row.assessorTimeOptions)}
+          onClick={() => { if (beginSave(row.id)) { ownsSave.current = true; assessorRun.run(row.id, draft.assessorTimeOptions); } }}>
+          {pending ? <LoaderCircle className="size-4 animate-spin" /> : <Check className="size-4" />}
+          {sharedOptions.length > 0 ? t("saveAssessorAvailabilityWithOverlap") : t("saveAssessorAvailability")}
+        </Button>
+      </div> : <FollowupEntryFields id={`invitation-${row.id}`} note={note} onNoteChange={setNote}
+        pending={pending} saveDisabled={saveDisabled} onSave={(advance) => submitSupport(draft, advance)} canAdvance
+        hint={t("explicitSaveHint")}
+        reminder={invitationCanHaveNextContactReminder(draft) ? {
+          value: draft.nextContactAt, onChange: (nextContactAt) => setDraft({ ...draft, nextContactAt }),
+        } : undefined}
+        tools={<Button type="button" size="sm" variant="ghost" className="h-auto min-h-8 whitespace-normal px-2 py-1 text-xs text-muted"
+          disabled={pending} onClick={() => setCancelOpen(true)}>{t("cancelInvitation")}</Button>}>
+        <InvitationDraftFields value={draft} activities={activities} assessors={assessors} locale={locale}
+          disabled={pending} allowNone={false} showReminder={false}
+          draftStorageKey={draftStorageKey} onChange={(value) => { if (value) setDraft(value); }} />
+        {communicationTools}
+      </FollowupEntryFields>}
 
       {row.events.length > 0 ? <div className="mt-3 min-w-0">
         <Button type="button" variant="ghost" size="sm" className="h-auto min-h-8 max-w-full justify-start whitespace-normal px-0 text-xs" aria-expanded={historyOpen} aria-controls={`invitation-events-${row.id}`} onClick={() => setHistoryOpen(!historyOpen)}>
@@ -775,7 +473,8 @@ function InvitationEditor({
   );
 }
 
-function InvitationQuickContact({ row, disabled, onSaved, saving, beginSave, endSave }: {
+function InvitationQuickContact({ row, disabled, onSaved, saving, beginSave, endSave, entry, onEntryChange, expanded }: {
+  entry: InvitationEntryDraft; onEntryChange: (value: InvitationEntryDraft) => void; expanded: boolean;
   row: InvitationCoordinationRow; disabled: boolean;
   onSaved: (row: InvitationCoordinationRow, input: UpdateInvitationInput) => void;
   saving: boolean;
@@ -783,8 +482,10 @@ function InvitationQuickContact({ row, disabled, onSaved, saving, beginSave, end
   endSave: (id: string) => void;
 }) {
   const t = useTranslations("school.invitations");
-  const [channel, setChannel] = useState<InvitationChannel>("wechat");
-  const [note, setNote] = useState("");
+  const entryT = useTranslations("school.followupEntry");
+  const { channel, note } = entry;
+  const setChannel = (value: InvitationChannel) => onEntryChange({ ...entry, channel: value });
+  const setNote = (value: string) => onEntryChange({ ...entry, note: value });
   const submitted = useRef<UpdateInvitationInput | null>(null);
   const ownsSave = useRef(false);
   const finishSaving = useCallback(() => {
@@ -799,7 +500,7 @@ function InvitationQuickContact({ row, disabled, onSaved, saving, beginSave, end
   }, onError: finishSaving });
   useEffect(() => { if (!run.pending) finishSaving(); }, [finishSaving, run.pending]);
   const submit = () => {
-    if (disabled || saving || run.pending || !note.trim()) return;
+    if (expanded || disabled || saving || run.pending || !note.trim()) return;
     const input: UpdateInvitationInput = { kind: row.kind, state: row.state, activityId: row.activityId, assessorId: row.assessorId,
       parentTimeOptions: row.parentTimeOptions, assessorTimeOptions: row.assessorTimeOptions, scheduledAt: row.scheduledAt,
       locationText: row.locationText, nextContactAt: row.nextContactAt, channel, note };
@@ -814,9 +515,9 @@ function InvitationQuickContact({ row, disabled, onSaved, saving, beginSave, end
   }}>
     <FollowupChoice className="w-28 shrink-0" label={t("channelLabel")} value={channel} onValueChange={(value) => setChannel(value as InvitationChannel)} disabled={disabled || saving || run.pending}
       options={CHANNELS.map((value) => ({ value, label: t(`channel_${value}`) }))} />
-    <Input value={note} onChange={(event) => setNote(event.target.value)} placeholder={t("notePlaceholder")} aria-label={t("noteFor", { name: row.leadName })} disabled={disabled || saving || run.pending} maxLength={2000} className="h-8 min-w-0 flex-1 text-xs" />
-    <Button type="button" size="sm" variant="secondary" className="h-8 shrink-0 px-2" onClick={submit} disabled={disabled || saving || run.pending || !note.trim()} aria-label={t("saveKnownFacts")} aria-keyshortcuts="Control+Enter Meta+Enter" title={`${t("saveKnownFacts")} · Ctrl ↵`}>
-      {run.pending ? <LoaderCircle className="size-4 animate-spin" /> : <Check className="size-4" />}</Button>
+    {expanded ? <span className="min-w-0 flex-1 text-xs text-muted">{entryT(note.trim() ? "draftExpanded" : "noteExpanded")}</span> : <Input value={note} onChange={(event) => setNote(event.target.value)} placeholder={entryT("note")} aria-label={t("noteFor", { name: row.leadName })} disabled={disabled || saving || run.pending} maxLength={2000} className="h-8 min-w-0 flex-1 text-xs" />}
+    {!expanded ? <Button type="button" size="sm" variant="secondary" className="h-8 shrink-0 px-2" onClick={submit} disabled={disabled || saving || run.pending || !note.trim()} aria-label={t("saveKnownFacts")} aria-keyshortcuts="Control+Enter Meta+Enter" title={`${t("saveKnownFacts")} · Ctrl ↵`}>
+      {run.pending ? <LoaderCircle className="size-4 animate-spin" /> : <Check className="size-4" />}</Button> : null}
   </div>;
 }
 
@@ -863,6 +564,8 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
   const workSelection = useCommunicationWorkSelection();
   const { setVisibleKeys } = workSelection;
   const router = useRouter();
+  const [entryDrafts, setEntryDrafts] = useState<Record<string, InvitationEntryDraft>>({});
+  const updateEntryDraft = (id: string, entry: InvitationEntryDraft) => setEntryDrafts((current) => ({ ...current, [id]: entry }));
   const [rowOverrides, setRowOverrides] = useState<Record<string, { base: InvitationCoordinationRow; value: InvitationCoordinationRow }>>({});
   const [workSession, setWorkSession] = useState<CommunicationWorkSession<CommunicationRow> | null>(null);
   const [postOverrides, setPostOverrides] = useState<Record<string, { base: ActivityEnrollmentContext; value: ActivityEnrollmentContext }>>({});
@@ -1073,7 +776,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
     updateSessionFact({ id: `post:${row.registrationId}`, source: "post_activity", value: row });
     markProcessed(`post:${row.registrationId}`);
   };
-  const saveContact = (leadId: string, input: LeadContactInput) => {
+  const saveContact = (leadId: string, input: LeadContactInput, advance = false) => {
     endSave(`contact:${leadId}`);
     const lead = leadById.get(leadId);
     if (!lead) return;
@@ -1087,8 +790,8 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
       lastContactAt: savedAt,
       lastContactOutcome: input.outcome,
       lastContactNote: input.note,
-      wechatAdded: input.wechatAdded,
-      interestLevel: input.interestLevel,
+      wechatAdded: input.wechatAdded ?? lead.wechatAdded,
+      interestLevel: input.interestLevel ?? lead.interestLevel,
       nextContactAt: input.nextContactAt,
       activeInvitation: input.invitation ? {
         id: `session-${lead.id}`, ...input.invitation, legacyTimeText: "",
@@ -1103,7 +806,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
       ...(savedRow?.source === "contact" && savedRow.previousInvitation ? { previousInvitation: savedRow.previousInvitation } : {}) });
     if (!input.invitation) setRecontactIds((current) => new Set([...current].filter((id) => !rows.some((row) => row.id === id && row.leadId === leadId))));
     markProcessed(`lead:${leadId}`);
-    advanceAfter(`lead:${leadId}`);
+    if (advance) advanceAfter(`lead:${leadId}`);
     router.refresh();
   };
   const saveContactReminder = (leadId: string, nextContactAt: string | null) => {
@@ -1118,7 +821,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
     if (pending) beginSave(id);
     else if (savingIdsRef.current.has(id)) endSave(id);
   };
-  return <DashboardTableShell>
+  return <DashboardTableShell data-followup-workbench>
     <Table className="w-full min-w-[62rem] table-fixed text-xs" containerClassName="max-h-[calc(100dvh-13rem)] overflow-auto">
       <colgroup><col style={{ width: "14rem" }} /><col style={{ width: "16rem" }} /><col style={{ width: "24rem" }} /><col style={{ width: "8rem" }} /></colgroup>
       <TableHeader><TableRow>
@@ -1138,7 +841,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
           return <LeadContactEntryRow key={canonicalKey} lead={row.value} formatAt={formatAt}
             active={activeContactId === row.value.id || activeId === canonicalKey} onActivate={setActiveContactId}
             selected={workSelection.selectedKeys.has(canonicalKey)}
-            onSaved={saveContact} onReminderSaved={saveContactReminder}
+            onSaved={saveContact} onReminderSaved={saveContactReminder} onAdvance={() => advanceAfter(canonicalKey)}
             activities={activities} assessors={assessors} locale={locale}
             canContact={canContact && !row.value.activeInvitation} canManageIdentity={canManageIdentity} layout="communication"
             expanded={activeId === canonicalKey} onExpandedChange={(open) => changeDetails(canonicalKey, open)}
@@ -1169,7 +872,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
           : row.value.recommendation || row.value.routeNote;
         return <Fragment key={canonicalKey}>
           <TableRow data-communication-work-key={canonicalKey} ref={(element) => { if (element) rowRefs.current.set(canonicalKey, element); else rowRefs.current.delete(canonicalKey); }}
-            tabIndex={0} aria-selected={active || workSelection.selectedKeys.has(canonicalKey)} aria-busy={savingIds.has(row.id)} className="cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:bg-table-selected"
+            tabIndex={0} aria-selected={workSelection.selectedKeys.has(canonicalKey)} data-followup-active={active} data-followup-expanded={active} aria-busy={savingIds.has(row.id)} className="cursor-pointer focus-visible:outline-none"
             onClick={(event) => { if (!(event.target as HTMLElement).closest("button,a,input,textarea,[role='combobox'],[role='checkbox']")) changeDetails(canonicalKey, !active); }}
             onKeyDown={(event) => {
               if (event.defaultPrevented || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229 || event.repeat) return;
@@ -1195,14 +898,15 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
                 setRecontactIds((current) => new Set(current).add(row.id));
                 setActiveContactId(row.value.leadId);
                 changeDetails(canonicalKey, true);
-              }}>{leadT("continueCommunication")}</Button> : <InvitationQuickContact row={row.value} disabled={!canManageInvitation || closed} onSaved={(saved, input) => { onSaved(saved, input); advanceAfter(canonicalKey); }} saving={savingIds.has(row.id)} beginSave={beginSave} endSave={endSave} /> : row.value.eligible ? <PostActivityQuickContact row={row.value} onSaved={(saved) => { savePost(saved); advanceAfter(canonicalKey); }} onDetails={() => changeDetails(canonicalKey, !active)} expanded={active} detailsId={detailsId} /> : null}</div>
+              }}>{leadT("continueCommunication")}</Button> : <InvitationQuickContact row={row.value} entry={entryDrafts[row.id] ?? EMPTY_INVITATION_ENTRY} onEntryChange={(entry) => updateEntryDraft(row.id, entry)} expanded={active} disabled={!canManageInvitation || closed} onSaved={onSaved} saving={savingIds.has(row.id)} beginSave={beginSave} endSave={endSave} /> : row.value.eligible ? <PostActivityQuickContact row={row.value} onSaved={(saved) => { savePost(saved); advanceAfter(canonicalKey); }} onDetails={() => changeDetails(canonicalKey, !active)} expanded={active} detailsId={detailsId} /> : null}</div>
             </TableCell>
             <TableCell className="whitespace-nowrap px-2 py-2 text-muted">{historicalSummary ? historicalSummary.updated : formatAt(updatedOf(row))}</TableCell>
           </TableRow>
-          <FollowupInlineDetails id={detailsId} open={active} onOpenChange={(open) => changeDetails(canonicalKey, open)} title={nameOf(row)} colSpan={4} pending={savingIds.has(row.id)}>
-            <CommunicationDaySummary workday={workday} rowKey={canonicalKey} defaultExpanded={recordsMode} />
+          <FollowupInlineDetails id={detailsId} open={active} onOpenChange={(open) => changeDetails(canonicalKey, open)} title={nameOf(row)} hideTitle={row.source === "invitation"} colSpan={4} pending={savingIds.has(row.id)}>
+            {recordsMode ? <CommunicationDaySummary workday={workday} rowKey={canonicalKey} defaultExpanded /> : null}
             {recordsMode ? <div className="space-y-1 text-xs"><p className="font-medium text-muted">{workT("currentFacts")}</p><p>{stateOf(row)} · {arrangementOf(row)}</p>{noteOf(row) ? <p className="break-words text-muted">{noteOf(row)}</p> : null}</div> : null}
-            {row.source === "invitation" ? <InvitationEditor key={row.id} row={row.value} activities={activities} assessors={assessors} locale={locale} formatAt={formatAt} currentUserId={currentUserId} canManageInvitation={canManageInvitation} onSaved={onSaved} saving={savingIds.has(row.id)} beginSave={beginSave} endSave={endSave} /> : <PostActivityHandoff source={{ registrationId: row.value.registrationId, invitationId: null }} initialContext={row.value} onSaved={savePost} />}
+            {row.source === "invitation" ? <InvitationEditor key={row.id} row={row.value} entry={entryDrafts[row.id] ?? EMPTY_INVITATION_ENTRY} onEntryChange={(entry) => updateEntryDraft(row.id, entry)} onAdvance={() => advanceAfter(canonicalKey)} activities={activities} assessors={assessors} locale={locale} formatAt={formatAt} currentUserId={currentUserId} canManageInvitation={canManageInvitation} onSaved={onSaved} saving={savingIds.has(row.id)} beginSave={beginSave} endSave={endSave} /> : <PostActivityHandoff source={{ registrationId: row.value.registrationId, invitationId: null }} initialContext={row.value} onSaved={savePost} />}
+            {!recordsMode ? <CommunicationDaySummary workday={workday} rowKey={canonicalKey} defaultExpanded={false} /> : null}
             {laterContact?.lastContactAt ? <p className="mt-2 min-w-0 break-words border-t border-line pt-2 text-xs text-muted">{formatAt(laterContact.lastContactAt)} · {noteOf(row)}</p> : null}
             {row.source === "invitation" ? <InvitationHistory rows={historyFor(row.value.leadId, row.value.id)} formatAt={formatAt} /> : null}
           </FollowupInlineDetails>

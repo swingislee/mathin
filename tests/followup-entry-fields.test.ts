@@ -1,0 +1,97 @@
+import { createElement, type ComponentProps } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it, vi } from "vitest";
+import { FollowupEntryFields } from "@/features/school/FollowupEntryFields";
+import { leadContactInput, type LeadContactDraft } from "@/features/school/followup-entry-contract";
+
+vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
+vi.mock("@/features/school/NextContactReminderField", () => ({
+  NextContactReminderField: ({ id, className, compact }: { id: string; className?: string; compact?: boolean }) =>
+    createElement("button", { id, className, "data-compact": compact }, "reminder"),
+}));
+
+const props: ComponentProps<typeof FollowupEntryFields> = {
+  id: "entry", note: "同一份备注", onNoteChange: () => {}, onSave: () => {}, canAdvance: true,
+  reminder: { value: null, onChange: () => {} },
+};
+
+describe("shared follow-up entry layout and submission contract", () => {
+  it.each([null, false, createElement("div", { key: "assessment" }, "assessment"), createElement("div", { key: "activity" }, "activity")])(
+    "keeps one note, a compact reminder immediately below, and a single action footer (%s)", (children) => {
+      const markup = renderToStaticMarkup(createElement(FollowupEntryFields, props, children));
+      expect(markup.match(/<textarea\b/g)).toHaveLength(1);
+      expect(markup.indexOf('id="entry-note"')).toBeLessThan(markup.indexOf('id="entry-reminder"'));
+      expect(markup.indexOf('id="entry-reminder"')).toBeLessThan(markup.indexOf("data-followup-entry-actions"));
+      expect(markup).toContain('data-compact="true"');
+      expect(markup).toContain("max-w-72");
+      expect(markup).not.toContain("grid-cols-[minmax(0,1fr)_19rem]");
+      if (!children) expect(markup).not.toContain("data-followup-business");
+    },
+  );
+
+  it("offers ordinary save and save-next separately, with the keyboard shortcut on ordinary save", () => {
+    const markup = renderToStaticMarkup(createElement(FollowupEntryFields, props));
+    expect(markup).toMatch(/aria-keyshortcuts="Control\+Enter Meta\+Enter"[^>]*>.*?save<kbd/);
+    expect(markup).toContain(">saveAndNext</button>");
+    const noQueue = renderToStaticMarkup(createElement(FollowupEntryFields, { ...props, canAdvance: false }));
+    expect(noQueue).not.toContain("saveAndNext");
+  });
+
+  it("uses Ctrl+Enter for explicit save, ignores IME and repeat, and blocks disabled or pending submissions", () => {
+    const save = vi.fn();
+    const event = (extra = {}) => ({
+      defaultPrevented: false, nativeEvent: { isComposing: false }, repeat: false, ctrlKey: true,
+      metaKey: false, key: "Enter", preventDefault: vi.fn(), stopPropagation: vi.fn(), ...extra,
+    });
+    const handler = (extra = {}) => FollowupEntryFields({ ...props, onSave: save, ...extra }).props.onKeyDown;
+    handler()(event());
+    expect(save).toHaveBeenCalledExactlyOnceWith(false);
+    handler()(event({ nativeEvent: { isComposing: true } }));
+    handler()(event({ repeat: true }));
+    handler({ pending: true })(event());
+    handler({ saveDisabled: true })(event());
+    handler({ disabled: true })(event());
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+});
+
+const draft: LeadContactDraft = {
+  note: "已经填写的备注", wechatState: "yes", interestLevel: "A", nextContactAt: "2026-10-01T02:00:00Z",
+  invitation: { kind: "assessment_1v1", state: "coordinating_time", activityId: null, assessorId: null,
+    parentTimeOptions: [], assessorTimeOptions: [], scheduledAt: null, locationText: "教室", nextContactAt: "2026-10-02T02:00:00Z" },
+};
+
+describe("contact result draft projection", () => {
+  it("keeps unreachable notes and reminders without submitting hidden WeChat or invitation fields", () => {
+    expect(leadContactInput("unreachable", draft)).toEqual({
+      outcome: "unreachable", note: draft.note, wechatAdded: null, interestLevel: null, invitation: null, nextContactAt: draft.nextContactAt,
+    });
+  });
+  it("keeps invalid-number notes but does not schedule another phone reminder", () => {
+    expect(leadContactInput("invalid_number", draft)).toMatchObject({
+      note: draft.note, wechatAdded: null, interestLevel: null, invitation: null, nextContactAt: null,
+    });
+  });
+  it("defers an invitation on a declined contact, retaining the source draft when switching back", () => {
+    const before = structuredClone(draft);
+    expect(leadContactInput("declined", draft)).toMatchObject({ wechatAdded: true, interestLevel: "A", invitation: null, nextContactAt: draft.nextContactAt });
+    expect(draft).toEqual(before);
+    expect(leadContactInput("connected", draft).invitation).toEqual(before.invitation);
+  });
+  it("submits the same reminder in both the connected contact and invitation contracts", () => {
+    const input = leadContactInput("connected", draft);
+    expect(input.nextContactAt).toBe(input.invitation?.nextContactAt);
+    expect(input.nextContactAt).toBe(draft.invitation?.nextContactAt);
+  });
+  it("normalizes a confirmed invitation's reminder without deleting the draft", () => {
+    const confirmed = { ...draft, invitation: { ...draft.invitation!, state: "confirmed" as const } };
+    const input = leadContactInput("connected", confirmed);
+    expect(input.nextContactAt).toBeNull();
+    expect(input.invitation?.nextContactAt).toBeNull();
+    expect(confirmed.invitation.nextContactAt).toBe(draft.invitation?.nextContactAt);
+  });
+  it("keeps unknown facts unknown instead of manufacturing a no", () => {
+    expect(leadContactInput("connected", { ...draft, wechatState: "", interestLevel: "", invitation: null }))
+      .toMatchObject({ wechatAdded: null, interestLevel: null, invitation: null, nextContactAt: null });
+  });
+});

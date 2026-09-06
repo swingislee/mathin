@@ -142,11 +142,9 @@ export function InvitationDraftFields({
   disabled = false,
   allowNone = true,
   showReminder = true,
-  variant = "inline",
   editingScope = "full",
   draftStorageKey,
   onChange,
-  onConfirmedReady,
 }: {
   value: InvitationDraft | null;
   activities: InvitationActivityOption[];
@@ -155,26 +153,19 @@ export function InvitationDraftFields({
   disabled?: boolean;
   allowNone?: boolean;
   showReminder?: boolean;
-  variant?: "inline" | "workflow";
   editingScope?: "full" | "assessor";
   draftStorageKey?: string;
   onChange: (value: InvitationDraft | null) => void;
-  onConfirmedReady?: (value: InvitationDraft) => void;
 }) {
   const t = useTranslations("school.invitations");
   const reminderId = useId();
-  const workflow = variant === "workflow";
   const draftCacheRef = useRef<Partial<Record<InvitationKind, InvitationDraft>>>(
     value ? { [value.kind]: value } : {},
   );
   const onChangeRef = useRef(onChange);
-  const onConfirmedReadyRef = useRef(onConfirmedReady);
   useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
-  useEffect(() => {
-    onConfirmedReadyRef.current = onConfirmedReady;
-  }, [onConfirmedReady]);
   useEffect(() => {
     if (!draftStorageKey) return;
     const stored = readStoredDrafts(draftStorageKey);
@@ -183,9 +174,6 @@ export function InvitationDraftFields({
     const restored = stored.selectedKind ? stored.drafts[stored.selectedKind] ?? null : null;
     if (restored || allowNone) {
       onChangeRef.current(restored);
-      if (restored?.kind === "assessment_1v1" && restored.state === "confirmed" && invitationDraftIsComplete(restored)) {
-        onConfirmedReadyRef.current?.(restored);
-      }
     }
   }, [allowNone, draftStorageKey]);
   const persistDrafts = useCallback((selectedKind: InvitationKind | null) => {
@@ -209,9 +197,6 @@ export function InvitationDraftFields({
     draftCacheRef.current[next.kind] = next;
     persistDrafts(next.kind);
     onChangeRef.current(next);
-    if (next.kind === "assessment_1v1" && next.state === "confirmed" && invitationDraftIsComplete(next)) {
-      onConfirmedReadyRef.current?.(next);
-    }
   }, [persistDrafts]);
   const dateTimeFormatter = useMemo(() => new Intl.DateTimeFormat(locale, {
     dateStyle: "short",
@@ -232,9 +217,7 @@ export function InvitationDraftFields({
     if (!value) return;
     emit({ ...value, [key]: next });
   };
-  const stateChoices = value?.kind === "assessment_1v1"
-    ? ASSESSMENT_PROGRESS_STATES
-    : [];
+  const stateChoices = value ? invitationStatesForKind(value.kind) : [];
   const selectedStateIndex = value ? stateChoices.indexOf(value.state) : -1;
   const chooseState = useCallback((state: InvitationState) => {
     if (!value) return;
@@ -267,12 +250,10 @@ export function InvitationDraftFields({
     ? activities.find((activity) => activity.id === value.activityId)
     : undefined;
 
-  // 保留圆点选择；笔记本宽度将类型横排，宽工作区才展开左侧类型栏。
+  // 首联与已有邀约使用相同横向结构；完整文案按容器宽度自然换行。
   const kindChoices = (
     <div
-      className={cn(workflow
-        ? "grid min-w-0 grid-cols-2 gap-1.5 @[28rem]/invitation-draft:grid-cols-3 @[48rem]/invitation-draft:grid-cols-1"
-        : "flex min-w-0 flex-wrap items-center gap-1")}
+      className="flex min-w-0 flex-wrap items-center gap-2"
       role="group"
       aria-label={t("kindLabel")}
     >
@@ -280,11 +261,11 @@ export function InvitationDraftFields({
         <Button
           type="button"
           size="sm"
-          variant={workflow ? "ghost" : "secondary"}
+          variant="secondary"
           className={cn(
             "h-auto min-h-9 min-w-0 justify-start gap-2 whitespace-normal text-left text-xs leading-5",
-            workflow ? "rounded-lg px-3 py-2" : "px-2.5 py-1",
-            !value && "bg-leaf/25 text-ink",
+            "bg-card px-3 py-1",
+            !value && "border-ink/50 text-ink",
           )}
           disabled={disabled || editingScope === "assessor"}
           aria-pressed={!value}
@@ -292,7 +273,7 @@ export function InvitationDraftFields({
         >
           <span aria-hidden="true" className={cn(
             "flex size-4 shrink-0 items-center justify-center rounded-full border",
-            !value ? "border-leaf-deep bg-leaf text-ink" : "border-line text-muted",
+            !value ? "border-leaf-deep bg-leaf/20 text-ink" : "border-line text-muted",
           )}>
             {!value ? <Check className="size-3" /> : null}
           </span>
@@ -306,11 +287,11 @@ export function InvitationDraftFields({
             key={kind}
             type="button"
             size="sm"
-            variant={workflow ? "ghost" : "secondary"}
+            variant="secondary"
             className={cn(
               "h-auto min-h-9 min-w-0 justify-start gap-2 whitespace-normal text-left text-xs leading-5",
-              workflow ? "rounded-lg px-3 py-2" : "px-2.5 py-1",
-              selected && "bg-leaf/25 text-ink",
+              "bg-card px-3 py-1",
+              selected && "border-ink/50 text-ink",
             )}
             disabled={disabled || editingScope === "assessor"}
             aria-pressed={selected}
@@ -318,7 +299,7 @@ export function InvitationDraftFields({
           >
             <span aria-hidden="true" className={cn(
               "flex size-4 shrink-0 items-center justify-center rounded-full border",
-              selected ? "border-leaf-deep bg-leaf text-ink" : "border-line text-muted",
+              selected ? "border-leaf-deep bg-leaf/20 text-ink" : "border-line text-muted",
             )}>
               {selected ? <Check className="size-3" /> : null}
             </span>
@@ -394,20 +375,20 @@ export function InvitationDraftFields({
         </p>
       ) : null}
     </div>
-  ) : value?.kind === "waiting_activity" && !workflow ? (
+  ) : value?.kind === "waiting_activity" ? (
     <p className="text-[11px] leading-4 text-muted">{t("waitingActivityHint")}</p>
   ) : null;
 
-  const stateControls = value?.kind === "assessment_1v1" ? (
+  const stateControls = value && stateChoices.length > 1 ? (
     <div className="min-w-0 space-y-2">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <p className="text-xs font-medium text-ink">{t("stateLabel")}</p>
-        <p className="flex items-center gap-1.5 text-[11px] text-muted">
+        {value.kind === "assessment_1v1" ? <p className="flex items-center gap-1.5 text-[11px] text-muted">
           <Keyboard className="size-3 shrink-0 text-ink" aria-hidden="true" />
           <span>{t("stateManualHint")}</span>
-        </p>
+        </p> : null}
       </div>
-      <div className="grid grid-cols-4 gap-1.5" role="group" aria-label={t("stateLabel")} aria-keyshortcuts="1 2 3 4">
+      <div className="grid max-w-3xl grid-cols-2 gap-2 @[34rem]/invitation-fields:grid-cols-4" role="group" aria-label={t("stateLabel")} aria-keyshortcuts={value.kind === "assessment_1v1" ? "1 2 3 4" : undefined}>
         {stateChoices.map((state, index) => {
           const selected = value.state === state;
           const passed = index < selectedStateIndex;
@@ -418,19 +399,18 @@ export function InvitationDraftFields({
               size="sm"
               variant="ghost"
               className={cn(
-                "h-auto min-h-11 min-w-0 flex-col justify-start gap-1 whitespace-normal rounded-lg px-1.5 py-1.5 text-center text-xs leading-5",
-                passed && "bg-leaf/10 text-ink",
-                selected && "bg-[color-mix(in_srgb,var(--moon)_55%,var(--card))] text-ink",
+                "h-auto min-h-10 min-w-0 justify-start gap-2 whitespace-normal rounded-lg px-2 py-1.5 text-left text-xs leading-5",
+                selected ? "font-medium text-ink" : "text-muted",
               )}
               disabled={disabled || editingScope === "assessor"}
               aria-pressed={selected}
               aria-current={selected ? "step" : undefined}
-              aria-keyshortcuts={String(index + 1)}
+              aria-keyshortcuts={value.kind === "assessment_1v1" ? String(index + 1) : undefined}
               onClick={() => chooseState(state)}
             >
               <span aria-hidden="true" className={cn(
                 "flex size-5 shrink-0 items-center justify-center rounded-full border text-[10px]",
-                selected ? "border-crater bg-moon text-ink"
+                selected ? "border-[var(--followup-outline)] bg-[color:var(--followup-edit)] text-ink"
                   : passed ? "border-leaf-deep bg-leaf/50 text-ink"
                     : "border-line text-muted",
               )}>
@@ -441,7 +421,7 @@ export function InvitationDraftFields({
           );
         })}
       </div>
-      <p className="border-l-2 border-moon pl-3 text-[11px] leading-5 text-ink">
+      <p className="text-xs leading-5 text-muted">
         {t(`task_${value.state}`)}
       </p>
     </div>
@@ -453,14 +433,14 @@ export function InvitationDraftFields({
       data-testid="invitation-draft-fields"
       onKeyDownCapture={handleStateShortcut}
     >
-      <div className={cn("grid min-w-0 gap-3", workflow && "@[48rem]/invitation-draft:grid-cols-[10rem_minmax(0,1fr)]")}>
+      <div className="grid min-w-0 gap-3">
       <section className="min-w-0">
         <p className="mb-1.5 text-xs font-medium text-ink">{t("kindLabel")}</p>
         {kindChoices}
       </section>
 
       {value ? (
-        <section className={cn("@container/invitation-fields min-w-0 space-y-3", workflow && "border-line @[48rem]/invitation-draft:border-l @[48rem]/invitation-draft:pl-4")}>
+        <section className="@container/invitation-fields min-w-0 space-y-3">
           {stateControls}
           {arrangementFields}
 
@@ -474,7 +454,7 @@ export function InvitationDraftFields({
             />
           ) : null}
 
-          {!workflow && !invitationDraftIsComplete(value) ? (
+          {!invitationDraftIsComplete(value) ? (
             <p className="text-[11px] leading-4 text-amber-700" role="status">{t("draftIncomplete")}</p>
           ) : null}
         </section>

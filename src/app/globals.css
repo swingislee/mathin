@@ -21,6 +21,11 @@
   --table-hover: color-mix(in srgb, var(--blue) 4%, var(--card));
   --table-selected: color-mix(in srgb, var(--blue) 14%, var(--card));
   --table-selected-muted: color-mix(in srgb, var(--ink) 35%, var(--muted));
+  --followup-hover: color-mix(in srgb, var(--moon) 10%, var(--card));
+  --followup-checked: color-mix(in srgb, var(--moon) 22%, var(--card));
+  --followup-edit: color-mix(in srgb, var(--moon) 38%, var(--card));
+  --followup-detail: color-mix(in srgb, var(--moon) 14%, var(--card));
+  --followup-outline: color-mix(in srgb, var(--moon) 50%, var(--ink));
 }
 
 /* 暗色 = 星夜 */
@@ -43,6 +48,11 @@
   --table-hover: color-mix(in srgb, var(--blue) 10%, var(--card));
   --table-selected: color-mix(in srgb, var(--blue) 26%, var(--card));
   --table-selected-muted: color-mix(in srgb, var(--ink) 35%, var(--muted));
+  --followup-hover: color-mix(in srgb, var(--moon) 5%, var(--card));
+  --followup-checked: color-mix(in srgb, var(--moon) 9%, var(--card));
+  --followup-edit: color-mix(in srgb, var(--moon) 13%, var(--card));
+  --followup-detail: color-mix(in srgb, var(--moon) 5%, var(--card));
+  --followup-outline: var(--moon);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -65,6 +75,11 @@
     --table-hover: color-mix(in srgb, var(--blue) 10%, var(--card));
     --table-selected: color-mix(in srgb, var(--blue) 26%, var(--card));
     --table-selected-muted: color-mix(in srgb, var(--ink) 35%, var(--muted));
+    --followup-hover: color-mix(in srgb, var(--moon) 5%, var(--card));
+    --followup-checked: color-mix(in srgb, var(--moon) 9%, var(--card));
+    --followup-edit: color-mix(in srgb, var(--moon) 13%, var(--card));
+    --followup-detail: color-mix(in srgb, var(--moon) 5%, var(--card));
+    --followup-outline: var(--moon);
   }
 }
 
@@ -273,7 +288,7 @@ body::after {
 }
 
 /* 数据工作区使用干净的表面，避免全页纸纹把白底和选中色叠成灰色。 */
-body:has([data-dashboard-canvas])::after { display: none; }
+body:has([data-dashboard-canvas], [data-followup-workbench])::after { display: none; }
 
 /* 选中态覆盖整行及固定列，颜色由亮色／星夜 token 分别派生。 */
 [data-slot="table"] > tbody > tr:is([aria-selected="true"], [aria-expanded="true"], [data-state="selected"], [data-followup-inline-details]) {
@@ -288,6 +303,45 @@ body:has([data-dashboard-canvas])::after { display: none; }
 }
 [data-slot="table"] > tbody > tr:is([aria-selected="true"], [aria-expanded="true"], [data-state="selected"]) > td:first-child {
   box-shadow: inset 3px 0 var(--blue);
+}
+
+/* 跟进工作台：背景只表达当前处理范围；勾选、展开与焦点各自保留标志。 */
+[data-followup-workbench] [data-slot="table"] > tbody > tr {
+  --followup-top: transparent;
+  --followup-bottom: transparent;
+  --followup-side: transparent;
+  background-color: var(--card);
+}
+[data-followup-workbench] [data-slot="table"] > tbody > tr:hover { background-color: var(--followup-hover); }
+[data-followup-workbench] [data-slot="table"] > tbody > tr[aria-selected="true"] { background-color: var(--followup-checked); }
+[data-followup-workbench] [data-slot="table"] > tbody > tr[data-followup-expanded="true"] { background-color: var(--followup-checked); }
+[data-followup-workbench] [data-slot="table"] > tbody > tr[data-followup-active="true"] {
+  --followup-top: var(--followup-outline);
+  --followup-bottom: var(--followup-outline);
+  --followup-side: var(--followup-outline);
+  background-color: var(--followup-edit);
+}
+[data-followup-workbench] [data-slot="table"] > tbody > tr[data-followup-active="true"][data-followup-expanded="true"] { --followup-bottom: transparent; }
+[data-followup-workbench] [data-slot="table"] > tbody > tr[data-followup-inline-details] {
+  --followup-top: transparent;
+  background-color: var(--followup-detail);
+}
+[data-followup-workbench] [data-slot="table"] > tbody > tr > td {
+  background-color: inherit;
+  box-shadow: inset 0 1px var(--followup-top), inset 0 -1px var(--followup-bottom);
+}
+[data-followup-workbench] [data-slot="table"] > tbody > tr > td:first-child {
+  box-shadow: inset 1px 0 var(--followup-side), inset 0 1px var(--followup-top), inset 0 -1px var(--followup-bottom);
+}
+[data-followup-workbench] [data-slot="table"] > tbody > tr > td:last-child {
+  box-shadow: inset -1px 0 var(--followup-side), inset 0 1px var(--followup-top), inset 0 -1px var(--followup-bottom);
+}
+[data-followup-workbench] [data-slot="table"] > tbody > tr > td:only-child {
+  box-shadow: inset 1px 0 var(--followup-side), inset -1px 0 var(--followup-side), inset 0 -1px var(--followup-bottom);
+}
+[data-followup-workbench] [data-slot="table"] > tbody > tr:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: -3px;
 }
 
 /*

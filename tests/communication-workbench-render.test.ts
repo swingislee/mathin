@@ -82,6 +82,30 @@ function renderWorkbench(props: Partial<Props> = {}) {
 }
 
 describe("communication workbench server rendering", () => {
+  it("shares one note editor and stable note/reminder/action order across a lead and existing invitation", () => {
+    const editableInvitation = { ...invitation("a"), state: "coordinating_time" as const, scheduledAt: null };
+    for (const result of [renderWorkbench({ focusLeadId: "a" }), renderWorkbench({ focusLeadId: "a", rows: [editableInvitation] })]) {
+      const detail = result.rows[1].content;
+      expect(detail).toContain('role="region" aria-label="学生a"');
+      expect(detail).not.toMatch(/<h3\b/);
+      expect(detail).not.toContain(messages.school.leads.latestContact);
+      expect(result.dataRows[0].cells[2].content).not.toContain("<input");
+      expect(detail.match(/<textarea\b/g)).toHaveLength(1);
+      expect(detail).toContain("data-followup-entry-fields");
+      expect(detail.indexOf("<textarea")).toBeLessThan(detail.indexOf(messages.school.invitations.nextContactReminderLabel));
+      expect(detail.indexOf(messages.school.invitations.nextContactReminderLabel)).toBeLessThan(detail.indexOf("data-followup-entry-actions"));
+    }
+  });
+
+  it("treats selection and expanded editing as independent states", () => {
+    const result = renderWorkbench({ rows: [invitation("b")], focusLeadId: "b", rowOrder: ["lead:a", "lead:b"] });
+    expect(result.dataRows[0].attributes).toContain('aria-selected="true"');
+    expect(result.dataRows[0].attributes).toContain('data-followup-expanded="false"');
+    expect(result.dataRows[1].attributes).toContain('aria-selected="false"');
+    expect(result.dataRows[1].attributes).toContain('data-followup-active="true"');
+    expect(result.dataRows[1].attributes).toContain('data-followup-expanded="true"');
+  });
+
   it("restores persistent worklist order and completion on each fresh browser load", () => {
     const props = { rows: [invitation("b")], contactLeads: [lead("a")], postActivityRows: [post], rowOrder: ["lead:a", "lead:b", "post:registration"], worklist };
     for (const result of [renderWorkbench(props), renderWorkbench(props)]) {
@@ -172,7 +196,8 @@ describe("communication workbench server rendering", () => {
     expect(result.dataRows[0].cells[2].content).toContain("昨天最后一次未接通");
     expect(result.dataRows[0].cells[2].content).not.toContain("今天的新信息");
     expect(result.dataRows[0].cells[2].content).toContain(messages.school.communicationWorkday.newCommunication);
-    expect(result.dataRows[0].cells[2].content).toContain('aria-keyshortcuts="Control+Enter Meta+Enter"');
+    expect(result.dataRows[0].cells[2].content).not.toContain('aria-keyshortcuts="Control+Enter Meta+Enter"');
+    expect(result.rows[1].content).toContain('aria-keyshortcuts="Control+Enter Meta+Enter"');
     expect(result.dataRows[1].cells[1].content).toContain(messages.school.invitations.state_awaiting_parent);
     expect(result.dataRows[1].cells[2].content).toContain("昨天还在等家长确认");
     expect(result.dataRows[1].cells[2].content).toContain(messages.school.invitations.channel_wechat);
