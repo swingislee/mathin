@@ -195,8 +195,8 @@ export async function getLeadIdentityOptionsAction(
 }
 
 /**
- * The single application mutation for Lead identity promotion. Later phases
- * may route an operator here, but enrollment must never invoke or hide it.
+ * 显式核对 Student / Family / Contact 及关系；有效首联的最小学生档案由
+ * record_lead_contact_v4 自动建立。本入口继续处理需要人工确认的身份关系。
  */
 export async function confirmLeadIdentityAction(
   leadId: string,

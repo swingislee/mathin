@@ -3,14 +3,7 @@
 import dynamic from "next/dynamic";
 import {
   ArrowUpRight,
-  BookOpenCheck,
-  CalendarClock,
-  ClipboardCheck,
-  GraduationCap,
-  History,
   LoaderCircle,
-  MapPinned,
-  MessageSquareText,
   PanelRightClose,
   RefreshCw,
   UserRoundSearch,
@@ -33,7 +26,6 @@ import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { getStudent360Action } from "./actions/student-360";
 import {
-  STUDENT_360_PHASES,
   STUDENT_360_REFRESH_EVENT,
   type Student360Event,
   type Student360Fact,
@@ -195,16 +187,6 @@ const CODE_KEYS: Partial<Record<Student360Fact["label"], Record<string, string>>
   },
 };
 
-const PHASE_ICONS = {
-  source: MapPinned,
-  contact: MessageSquareText,
-  invitation: CalendarClock,
-  experience: UserRoundSearch,
-  assessment: ClipboardCheck,
-  enrollment: GraduationCap,
-  learning: BookOpenCheck,
-} satisfies Record<Student360Phase, typeof History>;
-
 interface Student360WorkspaceContextValue {
   openStudent: (subject: Student360SubjectRef, fallback: Student360FallbackIdentity) => void;
 }
@@ -218,7 +200,7 @@ const Student360WorkspaceContext = createContext<Student360WorkspaceContextValue
 
 function errorKey(code: string): string {
   if (code === "NOT_FOUND") return "error_not_found";
-  if (code === "FORBIDDEN" || code === "UNAUTHENTICATED") return "error_forbidden";
+  if (code === "FORBIDDEN" || code === "FORBIDDEN_SCOPE" || code === "UNAUTHENTICATED") return "error_forbidden";
   if (code === "SUBJECT_MISMATCH") return "error_mismatch";
   return "error_unknown";
 }
@@ -325,7 +307,6 @@ export function Student360Workspace({ children }: { children: ReactNode }) {
         <aside
           data-student-360-side-page
           aria-labelledby={active ? "student-360-heading" : undefined}
-          aria-describedby={active ? "student-360-description" : undefined}
           aria-hidden={!expanded}
           inert={!expanded || undefined}
           className={cn(
@@ -469,11 +450,10 @@ function Student360PanelBody({
             <div className="flex flex-wrap items-center gap-2">
               <h2 id="student-360-heading" className="font-display text-xl text-ink">{name}</h2>
               {identity ? <Badge variant={identity.identityState === "student" ? "secondary" : "outline"}>
-                {t(`identity_${identity.identityState}`)}
+                {t(snapshot?.identityCreation?.contactEstablished ? "identity_review" : `identity_${identity.identityState}`)}
               </Badge> : null}
               {identity?.accessScope === "journey" ? <Badge variant="outline">{t("journeyScope")}</Badge> : null}
             </div>
-            <p id="student-360-description" className="mt-1 text-sm text-muted">{t("description")}</p>
           </div>
           <div className="flex shrink-0 items-center gap-1">
             <Button
@@ -516,7 +496,7 @@ function Student360PanelBody({
               <Button type="button" variant="ghost" size="sm" className="h-7 px-2" onClick={retry}>{t("retry")}</Button>
             </div>
           ) : null}
-          <Student360PhaseRail snapshot={snapshot} locale={locale} />
+          <Student360LifecycleTag snapshot={snapshot} />
 
           {snapshot.identity.profileRemark ? (
             <section className="border-y border-line bg-moon/10 px-5 py-4 sm:px-7" aria-labelledby="student-360-profile-remark">
@@ -568,9 +548,9 @@ function Student360PanelBody({
           </section>
 
           <footer className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-line bg-paper/95 px-5 py-3 backdrop-blur sm:px-7">
-            <p className="text-xs text-muted">{t(snapshot.identityCreation && !snapshot.identityCreation.contactEstablished ? "profilePendingContact" : snapshot.identity.accessScope === "full" ? "fullScopeHint" : "journeyScopeHint")}</p>
+            <p className="text-xs text-muted">{t(snapshot.identityCreation ? snapshot.identityCreation.contactEstablished ? "profileNeedsReview" : "profilePendingContact" : snapshot.identity.accessScope === "full" ? "fullScopeHint" : "journeyScopeHint")}</p>
             {snapshot.identityCreation?.contactEstablished && snapshot.identityCreation.canManage ? (
-              <LeadIdentityControl key={snapshot.identityCreation.lead.id} lead={snapshot.identityCreation.lead} label={t("createProfile")} />
+              <LeadIdentityControl key={snapshot.identityCreation.lead.id} lead={snapshot.identityCreation.lead} label={t("reviewProfile")} />
             ) : null}
             {snapshot.identity.studentId && snapshot.identity.accessScope === "full" ? (
               <Link href={`/dashboard/students/${snapshot.identity.studentId}`} className={buttonVariants({ size: "sm", variant: "secondary" })} onClick={close}>
@@ -584,42 +564,18 @@ function Student360PanelBody({
   );
 }
 
-function Student360PhaseRail({ snapshot, locale }: { snapshot: Student360Snapshot; locale: string }) {
+function Student360LifecycleTag({ snapshot }: { snapshot: Student360Snapshot }) {
   const t = useTranslations("school.student360");
-  const shortDate = useMemo(() => new Intl.DateTimeFormat(locale, {
-    month: "numeric",
-    day: "numeric",
-    timeZone: "Asia/Shanghai",
-  }), [locale]);
-  const currentIndex = STUDENT_360_PHASES.indexOf(snapshot.currentPhase);
   return (
-    <section className="overflow-x-auto px-5 py-5 sm:px-7" aria-label={t("phaseRailLabel")}>
-      <ol className="grid min-w-[46rem] grid-cols-7">
-        {snapshot.phases.map((summary, index) => {
-          const Icon = PHASE_ICONS[summary.phase];
-          const reached = summary.count > 0;
-          const current = summary.phase === snapshot.currentPhase;
-          return (
-            <li key={summary.phase} className="relative pr-2 text-left" aria-current={current ? "step" : undefined}>
-              {index < snapshot.phases.length - 1 ? (
-                <span className={cn("absolute left-6 right-0 top-4 h-px", index < currentIndex ? "bg-leaf-deep/50" : "bg-line")} />
-              ) : null}
-              <span className={cn(
-                "relative z-10 flex size-8 items-center justify-center rounded-full border bg-paper",
-                current ? "border-leaf-deep bg-leaf/30 text-leaf-deep" : reached ? "border-crater/50 text-ink" : "border-line text-muted",
-              )}>
-                <Icon className="size-3.5" />
-              </span>
-              <p className={cn("mt-2 text-xs font-medium", current ? "text-leaf-deep" : "text-ink")}>{t(`phase_${summary.phase}`)}</p>
-              <p className="mt-0.5 text-[10px] text-muted">
-                {summary.count
-                  ? t("phaseSummary", { count: summary.count, date: shortDate.format(new Date(summary.latestAt!)) })
-                  : t("phasePending")}
-              </p>
-            </li>
-          );
-        })}
-      </ol>
+    <section className="flex flex-wrap items-center gap-3 px-5 pb-1 pt-5 sm:px-7" aria-label={t("lifecycleLabel")} data-student-lifecycle={snapshot.lifecycleStage}>
+      <span className="text-xs text-muted">{t("lifecycleLabel")}</span>
+      <Badge variant="outline" className={cn(
+        "rounded-full px-3 py-1 text-xs font-medium",
+        snapshot.lifecycleStage === "awaiting_first_contact" && "border-line bg-moon/20 text-ink",
+        snapshot.lifecycleStage === "awaiting_assessment" && "border-leaf-deep/30 bg-leaf/20 text-leaf-deep",
+        snapshot.lifecycleStage === "awaiting_enrollment" && "border-crater/60 bg-moon/40 text-ink",
+        snapshot.lifecycleStage === "awaiting_renewal" && "border-crater/50 bg-crater/15 text-ink",
+      )}>{t(`lifecycle_${snapshot.lifecycleStage}`)}</Badge>
     </section>
   );
 }
@@ -703,9 +659,7 @@ function Student360Loading() {
   return (
     <div className="px-5 py-6 sm:px-7" aria-busy="true" aria-label={t("loading")}>
       <div className="flex items-center gap-2 text-xs text-muted"><LoaderCircle className="size-3.5 animate-spin" /><Skeleton className="h-4 w-36" /></div>
-      <div className="mt-7 grid min-w-0 grid-cols-4 gap-4 sm:grid-cols-7">
-        {Array.from({ length: 7 }, (_, index) => <Skeleton key={index} className="h-16" />)}
-      </div>
+      <Skeleton className="mt-5 h-7 w-28 rounded-full" />
       <div className="mt-8 space-y-6">
         {Array.from({ length: 4 }, (_, index) => <div key={index} className="grid grid-cols-[1.5rem_1fr] gap-3"><Skeleton className="size-3 rounded-full" /><div className="space-y-2"><Skeleton className="h-4 w-44" /><Skeleton className="h-16 w-full" /></div></div>)}
       </div>

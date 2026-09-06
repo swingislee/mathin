@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { PermissionKey } from "./permissions";
 import type { LeadStatus } from "./lead-contract";
 import { leadContactAllowsIdentity } from "./lead-identity-contract";
+import { readStudentLifecycle } from "./student-lifecycle-data";
 import {
   latestStudent360Phase,
   sortStudent360Events,
@@ -202,7 +203,7 @@ export async function getStudent360Snapshot(
         .eq("id", subject.leadId)
         .maybeSingle<LeadRow>())
     : null;
-  if (subject.studentId && directLead?.student_id && directLead.student_id !== subject.studentId) {
+  if (subject.studentId && subject.leadId && directLead?.student_id !== subject.studentId) {
     throw new Error("SUBJECT_MISMATCH");
   }
 
@@ -238,6 +239,7 @@ export async function getStudent360Snapshot(
     attendanceRows,
     reviewRows,
     commercialEnrollmentRows,
+    lifecycleStage,
   ] = await Promise.all([
     leadIds.length ? readRows(supabase.from("lead_source_records")
       .select("id,lead_id,submitted_at,source_system,batch_label,acquisition_method,promoter,location_text,raw_interest_text,remark,created_at")
@@ -291,6 +293,7 @@ export async function getStudent360Snapshot(
       .eq("record_state", "current")
       .eq("student_id", studentId).order("confirmed_at", { ascending: false }).limit(READ_LIMIT)
       .returns<CommercialEnrollmentRow[]>()) : Promise.resolve([]),
+    readStudentLifecycle(supabase, { studentId, leadId: directLead?.id ?? linkedLeads[0]?.id ?? null }),
   ]);
 
   const registrations = [...new Map(
@@ -422,7 +425,7 @@ export async function getStudent360Snapshot(
     });
     if (lead.identity_confirmed_at) addEvent(events, {
       id: `lead-confirmed:${lead.id}`,
-      phase: "enrollment",
+      phase: "contact",
       kind: "identity_confirmed",
       occurredAt: lead.identity_confirmed_at,
       title: "",
@@ -787,6 +790,7 @@ export async function getStudent360Snapshot(
   ];
 
   return {
+    lifecycleStage,
     identityCreation: !studentId && primaryLead ? {
       lead: { id: primaryLead.id, provisionalStudentName: primaryLead.provisional_student_name, gradeHint: primaryLead.grade_hint,
         phone: primaryLead.phone, status: primaryLead.status as LeadStatus, ownerId: primaryLead.owner_id },

@@ -1,4 +1,5 @@
 import type { LeadIdentitySubject } from "./lead-identity-contract";
+import type { StudentLifecycleStage } from "./student-lifecycle-contract";
 
 export const STUDENT_360_REFRESH_EVENT = "mathin:student-360-refresh";
 
@@ -151,6 +152,7 @@ export interface Student360Identity {
 
 export interface Student360Snapshot {
   identity: Student360Identity;
+  lifecycleStage: StudentLifecycleStage;
   currentPhase: Student360Phase;
   phases: Student360PhaseSummary[];
   events: Student360Event[];

@@ -9,7 +9,7 @@ import { COMMON_CODES, parse, uuid } from "./schemas";
 const student360SubjectSchema = z.object({
   studentId: uuid.nullable(),
   leadId: uuid.nullable(),
-}).refine((subject) => Number(Boolean(subject.studentId)) + Number(Boolean(subject.leadId)) === 1);
+}).refine((subject) => Boolean(subject.studentId || subject.leadId));
 
 export async function getStudent360Action(
   subject: Student360SubjectRef,
@@ -23,6 +23,7 @@ export async function getStudent360Action(
       ...COMMON_CODES,
       "NOT_FOUND",
       "SUBJECT_MISMATCH",
+      "FORBIDDEN_SCOPE",
     ]);
   }
 }

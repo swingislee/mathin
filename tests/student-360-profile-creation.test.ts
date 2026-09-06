@@ -5,6 +5,7 @@ import { getStudent360Snapshot } from "@/features/school/student-360";
 const state = vi.hoisted(() => ({ permissions: new Set<string>(), tables: {} as Record<string, Record<string, unknown>[]> }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/auth", () => ({ getMyPerms: async () => state.permissions }));
+vi.mock("@/features/school/student-lifecycle-data", () => ({ readStudentLifecycle: async () => "awaiting_assessment" }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({
   auth: { getUser: async () => ({ data: { user: { id: "owner" } } }) },
   from(table: string) {
@@ -33,13 +34,13 @@ beforeEach(() => {
     status: "uncontacted", owner_id: "owner", student_id: null, identity_confirmed_at: null, created_by: "owner", created_at: at }] };
 });
 
-describe("student 360 explicit profile creation", () => {
+describe("student 360 profile state remains read-only", () => {
   it.each([null, "unreachable", "invalid_number"])("keeps an unsaved or unsuccessful contact %s pending", async (outcome) => {
     state.tables.lead_communications = outcome ? [contact(outcome)] : [];
     expect(leadContactAllowsIdentity(outcome)).toBe(false);
     expect((await snapshot()).identityCreation).toMatchObject({ contactEstablished: false, canManage: true });
   });
-  it.each(["connected", "declined"])("allows explicit identity resolution after saved %s", async (outcome) => {
+  it.each(["connected", "declined"])("keeps a saved %s without a linked profile available for exception review", async (outcome) => {
     state.tables.lead_communications = [contact(outcome)];
     expect(leadContactAllowsIdentity(outcome)).toBe(true);
     const result = await snapshot();
@@ -74,5 +75,12 @@ describe("student 360 explicit profile creation", () => {
     expect(result.identityCreation).toBeNull();
     expect(result.identity.studentId).toBe("student");
     expect(result.identity.identityState).toBe("student");
+  });
+  it("accepts matching Lead + Student references after automatic creation and rejects mismatches", async () => {
+    state.tables.leads[0].student_id = "student";
+    const result = await getStudent360Snapshot({ leadId: "lead", studentId: "student" });
+    expect(result.identity.studentId).toBe("student");
+    await expect(getStudent360Snapshot({ leadId: "lead", studentId: "another" })).rejects.toThrow("SUBJECT_MISMATCH");
+    await expect(getStudent360Snapshot({ leadId: "missing", studentId: "student" })).rejects.toThrow("SUBJECT_MISMATCH");
   });
 });
