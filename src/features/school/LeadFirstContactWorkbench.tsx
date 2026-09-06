@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { FollowupEntryFields } from "./FollowupEntryFields";
 import { FollowupContactFacts } from "./FollowupContactFacts";
 import { FollowupPersonCell } from "./dashboard-page/FollowupPersonCell";
-import { invitationForAdvance, invitationHasStageInformation, leadContactInput } from "./followup-entry-contract";
+import { invitationForAdvance, invitationHasStageInformation, leadContactInput, leadWechatValue, type LeadContactDraft } from "./followup-entry-contract";
 import { addStudentFollowUp } from "./actions/followups";
 import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
 import { cn } from "@/lib/utils";
@@ -63,7 +63,7 @@ const ACQUISITION_TIME_ZONE = "Asia/Shanghai";
 const EMPTY_VALUE = "$empty";
 type FirstContactTableColumn = "seed" | "context" | "owner" | "status";
 
-type TernaryChoice = "" | "yes" | "no";
+type TernaryChoice = LeadContactDraft["wechatState"];
 
 function leadCanHaveReminder(lead: LeadPoolRow): boolean {
   if (lead.activeInvitation) return invitationCanHaveNextContactReminder(lead.activeInvitation);
@@ -250,7 +250,7 @@ export function LeadContactEntryRow({
     nextOutcome: LeadContactOutcome,
     invitationOverride: InvitationDraft | null = invitation,
   ): LeadContactInput => leadContactInput(nextOutcome, {
-    note, wechatState, interestLevel, invitation: invitationOverride, nextContactAt,
+    note, wechatState, savedWechatAdded: lead.wechatAdded, interestLevel, invitation: invitationOverride, nextContactAt,
   });
 
   const submit = (
@@ -306,8 +306,8 @@ export function LeadContactEntryRow({
     chooseOutcome(shortcut.outcome);
   };
 
-  const contactFacts = reachable ? <FollowupContactFacts wechat={wechatState ? wechatState === "yes" : lead.wechatAdded}
-    onWechatChange={(added) => setWechatState(added ? "yes" : "no")} interest={interestLevel} onInterestChange={setInterestLevel} disabled={pending} /> : null;
+  const contactFacts = reachable ? <FollowupContactFacts wechat={leadWechatValue(wechatState, lead.wechatAdded)}
+    onWechatChange={(added) => setWechatState(added === null ? "unknown" : added ? "yes" : "no")} interest={interestLevel} onInterestChange={setInterestLevel} disabled={pending} /> : null;
   const entryCell = (
       <TableCell className="px-2 py-2">
         {historicalSummary ? <div className="mb-1 min-w-0">{historicalSummary.details}</div> : null}
@@ -534,7 +534,7 @@ export function LeadFirstContactWorkbench({
           lastContactAt: savedAt,
           lastContactOutcome: input.outcome,
           lastContactNote: input.note,
-          wechatAdded: input.wechatAdded ?? lead.wechatAdded,
+          wechatAdded: input.outcome === "connected" || input.outcome === "declined" ? input.wechatAdded : lead.wechatAdded,
           interestLevel: input.interestLevel ?? lead.interestLevel,
           nextContactAt: input.nextContactAt,
           activeInvitation: input.invitation ? {

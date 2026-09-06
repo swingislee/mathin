@@ -4,10 +4,16 @@ import type { LeadContactOutcome, LeadInterestLevel } from "./lead-contract";
 
 export interface LeadContactDraft {
   note: string;
-  wechatState: "" | "yes" | "no";
+  wechatState: "" | "yes" | "no" | "unknown";
+  savedWechatAdded?: boolean | null;
   interestLevel: LeadInterestLevel | "";
   invitation: InvitationDraft | null;
   nextContactAt: string | null;
+}
+
+/** 空串沿用已显示的事实；显式回中间按本次待确认提交，保留历史记录。 */
+export function leadWechatValue(state: LeadContactDraft["wechatState"], saved: boolean | null = null): boolean | null {
+  return state === "unknown" ? null : state === "yes" ? true : state === "no" ? false : saved;
 }
 
 export function emptyInvitationDraft(kind: InvitationKind = "activity"): InvitationDraft {
@@ -59,7 +65,7 @@ export function leadContactInput(outcome: LeadContactOutcome, draft: LeadContact
   return {
     outcome,
     note: draft.note,
-    wechatAdded: reachable && draft.wechatState ? draft.wechatState === "yes" : null,
+    wechatAdded: reachable ? leadWechatValue(draft.wechatState, draft.savedWechatAdded) : null,
     interestLevel: reachable && draft.interestLevel ? draft.interestLevel : null,
     invitation: invitation ? { ...invitation, nextContactAt } : null,
     nextContactAt,

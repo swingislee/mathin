@@ -26,6 +26,7 @@ import {
   type InvitationState,
 } from "./invitation-contract";
 import { NextContactReminderField } from "./NextContactReminderField";
+import microStyles from "./followup-micro-interactions.module.css";
 
 interface StoredInvitationDrafts {
   version: 1;
@@ -34,6 +35,7 @@ interface StoredInvitationDrafts {
 }
 
 const ASSESSMENT_PROGRESS_STATES = invitationStatesForKind("assessment_1v1");
+const HANDOFF_KINDS = ["activity", "assessment_1v1", "waiting_activity"] as const;
 
 interface InvitationShortcutEvent {
   key: string;
@@ -328,14 +330,19 @@ export function InvitationDraftFields({
       onKeyDownCapture={handleStateShortcut}
     >
       <Tabs value={value.kind} onValueChange={(kind) => chooseKind(kind as InvitationKind)} className="min-w-0">
-        <div data-followup-facts-toolbar className="flex min-w-0 flex-wrap items-center gap-x-6 gap-y-2">
+        <div data-followup-facts-toolbar className="flex min-w-0 flex-wrap items-center gap-x-5 gap-y-2">
           {contactFacts}
-          <div className="flex items-center gap-3">
-            <p className="text-xs text-muted">{t("kindLabel")}</p>
-            <TabsList aria-label={t("kindLabel")} className="h-9 w-fit justify-start gap-4 rounded-none bg-transparent p-0">
-              {(["activity", "assessment_1v1", "waiting_activity"] as const).map((kind) => <TabsTrigger key={kind} value={kind}
-                disabled={disabled || editingScope === "assessor"} className="h-9 rounded-none border-b-2 border-transparent px-1 text-xs data-[state=active]:border-[var(--followup-outline)] data-[state=active]:bg-transparent data-[state=active]:shadow-none">
-                {entryT(`tab_${kind}`)}
+          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-1">
+            <p className="text-xs font-medium text-muted">{t("kindLabel")}</p>
+            <TabsList aria-label={t("kindLabel")} data-followup-handoff
+              className="grid h-8 w-max max-w-full grid-cols-3 gap-1 bg-transparent p-0">
+              {HANDOFF_KINDS.map((kind) => <TabsTrigger key={kind} value={kind}
+                disabled={disabled || editingScope === "assessor"} className={cn(microStyles.handoffChoice, "relative h-8 min-w-14 cursor-pointer rounded-full border-0 bg-transparent px-3 py-0 text-xs leading-none transition-colors hover:text-ink data-[state=active]:bg-transparent data-[state=active]:shadow-none")}>
+                <svg aria-hidden="true" focusable="false" viewBox="0 0 100 32" preserveAspectRatio="none" className={microStyles.handoffMark} data-followup-handoff-mark={kind}>
+                  <path className={microStyles.handoffWash} d="M11 7C29 2 77 3 90 9C99 16 90 25 73 27C50 30 21 28 10 23C2 18 3 11 11 7Z" />
+                  <path className={microStyles.handoffLine} pathLength="1" d="M82 5C64 2 29 2 12 8C0 12 1 21 15 26C34 31 75 30 90 23C100 18 96 9 86 6" />
+                </svg>
+                <span className="relative">{entryT(`tab_${kind}`)}</span>
               </TabsTrigger>)}
             </TabsList>
           </div>

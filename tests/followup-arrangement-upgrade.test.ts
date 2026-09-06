@@ -122,10 +122,12 @@ describe("follow-up arrangement upgrade", () => {
     const change = vi.fn();
     const props = { value: null, activities: [], assessors: [], locale: "zh", onChange: change };
     const blank = render(createElement(InvitationDraftFields, props));
-    expect(blank).toMatch(/data-state="active"[^>]*>活动<\/button>/);
+    expect(blank).toMatch(/<button[^>]*data-state="active"[^>]*>.*?<span class="relative">活动<\/span><\/button>/);
     expect(blank.match(/role="tab"/g)).toHaveLength(3);
     expect(blank).toContain('role="tablist"');
-    expect(blank).toContain("data-[state=active]:border-[var(--followup-outline)]");
+    expect(blank).toContain("data-followup-handoff-mark");
+    expect(blank).toContain("grid-cols-3");
+    expect(blank).not.toContain("border-b-2");
     expect(blank).not.toContain("data-[state=active]:ring-1");
     expect(change).not.toHaveBeenCalled();
     const progress = render(createElement(InvitationDraftFields, { ...props, value: { ...emptyInvitationDraft("assessment_1v1"), state: "awaiting_teacher" } }));
@@ -141,21 +143,42 @@ describe("follow-up arrangement upgrade", () => {
     expect(blank).toContain(messages.school.followupEntry.wechatUnknown);
     expect(blank).not.toContain(messages.school.followupEntry.wechatConfirmNo);
     expect(blank).not.toContain(messages.school.followupEntry.wechatUnknownHint);
-    expect(blank).not.toContain('data-state="on"');
+    expect(blank.match(/data-state="on"/g)).toHaveLength(1);
     expect(blank).not.toContain("data-[state=on]:ring-1");
     for (const level of ["A", "B", "C"] as const) expect(blank).toContain(`aria-label="${messages.school.leads[`interest_${level}`]}"`);
     expect(render(createElement(FollowupContactFacts, { ...props, wechat: true }))).toContain(messages.school.followupEntry.wechatYes);
     expect(render(createElement(FollowupContactFacts, { ...props, wechat: false }))).toContain(messages.school.followupEntry.wechatNo);
     for (const level of ["A", "B", "C"] as const) {
       const selected = render(createElement(FollowupContactFacts, { ...props, interest: level }));
+      const selectedChoice = selected.match(/<button\b[^>]*>/g)?.find((button) => button.includes(`aria-label="${messages.school.leads[`interest_${level}`]}"`));
+      expect(selectedChoice).toContain('data-state="on"');
+      expect(selectedChoice).toContain('aria-checked="true"');
       expect(selected).not.toContain("lucide-check");
       expect(selected).toContain("size-8 min-w-8");
       expect(selected).toContain("text-muted");
       expect(selected).toContain("data-[state=on]:bg-leaf");
       expect(selected).toContain("data-[state=on]:bg-moon");
       expect(selected).toContain("data-[state=on]:bg-rose/85");
+      expect(selected).toContain("bg-muted/6");
     }
     expect(props.onWechatChange).not.toHaveBeenCalled();
+  });
+  it.each(["activity", "assessment_1v1", "waiting_activity"] as const)("keeps equal-height handoff choices and draws the selected option's contour for %s", (kind) => {
+    const change = vi.fn();
+    const markup = render(createElement(InvitationDraftFields, {
+      value: emptyInvitationDraft(kind), activities: [], assessors: [], locale: "zh", onChange: change,
+    }));
+    const tabs = markup.match(/<button\b[^>]*role="tab"[^>]*>.*?<\/button>/g)!;
+    expect(tabs).toHaveLength(3);
+    for (const tab of tabs) expect(tab).toContain("h-8 min-w-14");
+    const selected = tabs.filter((tab) => tab.includes('aria-selected="true"'));
+    expect(selected).toHaveLength(1);
+    expect(selected[0]).toContain(`data-followup-handoff-mark="${kind}"`);
+    expect(selected[0]).toContain('pathLength="1"');
+    expect(markup.match(/data-followup-handoff-mark=/g)).toHaveLength(3);
+    expect(markup).not.toContain("data-followup-handoff-indicator");
+    expect(markup).not.toContain("border-b-2");
+    expect(change).not.toHaveBeenCalled();
   });
   it("groups contact facts and handoff tabs in one wrapping toolbar", () => {
     const props = { value: null, activities: [], assessors: [], locale: "zh", onChange: vi.fn(),

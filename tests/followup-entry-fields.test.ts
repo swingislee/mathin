@@ -2,7 +2,7 @@ import { createElement, type ComponentProps } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { FollowupEntryFields } from "@/features/school/FollowupEntryFields";
-import { emptyInvitationDraft, invitationForAdvance, invitationHasStageInformation, leadContactInput, type LeadContactDraft } from "@/features/school/followup-entry-contract";
+import { emptyInvitationDraft, invitationForAdvance, invitationHasStageInformation, leadContactInput, leadWechatValue, type LeadContactDraft } from "@/features/school/followup-entry-contract";
 
 vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
 vi.mock("@/features/school/NextContactReminderField", () => ({
@@ -128,5 +128,18 @@ describe("contact result draft projection", () => {
   it("keeps unknown facts unknown instead of manufacturing a no", () => {
     expect(leadContactInput("connected", { ...draft, wechatState: "", interestLevel: "", invitation: null }))
       .toMatchObject({ wechatAdded: null, interestLevel: null, invitation: null, nextContactAt: null });
+  });
+  it.each([true, false, null])("distinguishes untouched WeChat from explicitly returning to the center when the saved fact is %s", (savedWechatAdded) => {
+    const untouched = { ...draft, wechatState: "" as const, savedWechatAdded };
+    const centered = { ...untouched, wechatState: "unknown" as const };
+    const before = structuredClone(centered);
+    expect(leadWechatValue("", savedWechatAdded)).toBe(savedWechatAdded);
+    expect(leadWechatValue("unknown", savedWechatAdded)).toBeNull();
+    for (const outcome of ["connected", "declined"] as const) {
+      expect(leadContactInput(outcome, untouched).wechatAdded).toBe(savedWechatAdded);
+      expect(leadContactInput(outcome, centered).wechatAdded).toBeNull();
+    }
+    expect(leadContactInput("unreachable", untouched).wechatAdded).toBeNull();
+    expect(centered).toEqual(before);
   });
 });
