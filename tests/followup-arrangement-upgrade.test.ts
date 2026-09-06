@@ -181,7 +181,9 @@ describe("follow-up arrangement upgrade", () => {
     for (const tab of tabs) {
       expect(tab).toContain("h-8 min-w-11");
       expect(tab).toContain("px-2 py-0");
+      expect(tab.match(/class="([^"]+)"/)?.[1].split(" ")).toContain("text-ink");
     }
+    expect(markup).toContain(`<p class="text-xs font-medium text-muted">${messages.school.invitations.kindLabel}</p>`);
     expect(markup).toContain("grid-cols-3 gap-0.5");
     const selected = tabs.filter((tab) => tab.includes('aria-selected="true"'));
     expect(selected).toHaveLength(1);

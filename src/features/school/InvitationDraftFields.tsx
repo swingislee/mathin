@@ -337,7 +337,7 @@ export function InvitationDraftFields({
             <TabsList aria-label={t("kindLabel")} data-followup-handoff
               className="grid h-8 w-max max-w-full grid-cols-3 gap-0.5 bg-transparent p-0">
               {HANDOFF_KINDS.map((kind) => <TabsTrigger key={kind} value={kind}
-                disabled={disabled || editingScope === "assessor"} className={cn(microStyles.handoffChoice, "relative h-8 min-w-11 cursor-pointer rounded-full border-0 bg-transparent px-2 py-0 text-xs leading-none transition-colors hover:text-ink data-[state=active]:bg-transparent data-[state=active]:shadow-none")}>
+                disabled={disabled || editingScope === "assessor"} className={cn(microStyles.handoffChoice, "relative h-8 min-w-11 cursor-pointer rounded-full border-0 bg-transparent px-2 py-0 text-xs text-ink leading-none transition-colors data-[state=active]:bg-transparent data-[state=active]:shadow-none")}>
                 <svg aria-hidden="true" focusable="false" viewBox="0 0 100 32" preserveAspectRatio="none" className={microStyles.handoffMark} data-followup-handoff-mark={kind}>
                   <path className={microStyles.handoffWash} d="M11 7C29 2 77 3 90 9C99 16 90 25 73 27C50 30 21 28 10 23C2 18 3 11 11 7Z" />
                   <path className={microStyles.handoffLine} pathLength="1" d="M82 5C64 2 29 2 12 8C0 12 1 21 15 26C34 31 75 30 90 23C100 18 96 9 86 6" />
