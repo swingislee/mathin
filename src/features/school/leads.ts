@@ -22,6 +22,7 @@ interface LeadDbRow {
   grade_text: string;
   status: LeadStatus | "unassigned";
   owner_id: string | null;
+  student_id: string | null;
   suggested_student_id: string | null;
   created_at: string;
 }
@@ -126,7 +127,7 @@ export async function listLeadPool(
   let query = supabase
     .from("leads")
     .select(
-      "id,provisional_student_name,phone,grade_hint,grade_text,status,owner_id,suggested_student_id,created_at",
+      "id,provisional_student_name,phone,grade_hint,grade_text,status,owner_id,student_id,suggested_student_id,created_at",
       { count: "exact" },
     );
   if (filters.scope === "unassigned") query = query.is("owner_id", null);
@@ -288,6 +289,7 @@ export async function listLeadPool(
         // semantic cleanup migration is applied to a development database.
         status: row.status === "unassigned" ? "uncontacted" : row.status,
         ownerId: row.owner_id,
+        studentId: row.student_id,
         ownerName: row.owner_id ? ownerNames.get(row.owner_id) ?? "" : "",
         suggestedStudentId: row.suggested_student_id,
         suggestedStudentName: row.suggested_student_id

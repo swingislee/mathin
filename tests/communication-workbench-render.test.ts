@@ -15,6 +15,8 @@ vi.mock("@/features/school/actions/leads", () => ({
   recordLeadContactAction: vi.fn(), setLeadContactReminderAction: vi.fn(), assignLeadsAction: vi.fn(),
   confirmLeadIdentityAction: vi.fn(), getLeadIdentityOptionsAction: vi.fn(),
 }));
+vi.mock("server-only", () => ({}));
+vi.mock("@/features/school/actions/followups", () => ({ addStudentFollowUp: vi.fn() }));
 vi.mock("@/features/school/communication-workday-actions", () => ({ completeCommunicationWorklistItemAction: vi.fn(), reviseCommunicationRecordAction: vi.fn() }));
 vi.mock("@/features/school/enrollment-workflow-actions", () => ({ savePostActivityContactAction: vi.fn() }));
 vi.mock("@/features/school/Student360Sheet", () => ({

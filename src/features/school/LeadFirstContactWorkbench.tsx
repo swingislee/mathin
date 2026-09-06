@@ -49,6 +49,7 @@ import {
   type LeadInterestLevel,
   type LeadPoolRow,
 } from "./lead-contract";
+import { QuickFollowUpEntry } from "./QuickFollowUpEntry";
 
 const CONTACT_OUTCOME_SHORTCUTS = [
   { key: "1", outcome: "unreachable" },
@@ -438,6 +439,17 @@ export function LeadContactEntryRow({
           <p className="break-words text-[11px] text-muted">{[sourceAttribution, ...lead.interests].filter(Boolean).join(" · ")}</p>
         </section>
       </div>
+      {lead.studentId && canContact ? <div className="mt-3 border-t border-line pt-3">
+        <QuickFollowUpEntry
+          studentId={lead.studentId}
+          onSaveAndNext={() => {
+            const currentIndex = visibleIds.indexOf(lead.id);
+            const nextLeadId = currentIndex >= 0 ? visibleIds[currentIndex + 1] : undefined;
+            changeDetailsOpen(false);
+            if (nextLeadId) onActivate(nextLeadId);
+          }}
+        />
+      </div> : null}
       {!detailsFirst ? detailsExtra : null}
     </FollowupInlineDetails>
   </>;

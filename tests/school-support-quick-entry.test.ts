@@ -37,6 +37,18 @@ describe("school support quick entry", () => {
     expect(students).toContain("lastFollowUpContent");
   });
 
+  it("reuses the same entry for a confirmed student in the contact workbench", () => {
+    const leads = read("src", "features", "school", "leads.ts");
+    const contract = read("src", "features", "school", "lead-contract.ts");
+    const workbench = read("src", "features", "school", "LeadFirstContactWorkbench.tsx");
+    expect(leads).toContain("student_id");
+    expect(leads).toContain("studentId: row.student_id");
+    expect(contract).toContain("studentId?: string | null");
+    expect(workbench).toContain("lead.studentId && canContact");
+    expect(workbench).toContain("<QuickFollowUpEntry");
+    expect(workbench).toContain("visibleIds[currentIndex + 1]");
+  });
+
   it("keeps bilingual copy for a note that does not create a task", () => {
     const zh = JSON.parse(read("messages", "zh.json")) as { school: { quickFollowUp: Record<string, string> } };
     const en = JSON.parse(read("messages", "en.json")) as { school: { quickFollowUp: Record<string, string> } };

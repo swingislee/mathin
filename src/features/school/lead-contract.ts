@@ -54,6 +54,8 @@ export interface LeadPoolRow {
   status: LeadStatus;
   ownerId: string | null;
   ownerName: string;
+  /** 已完成身份确认后，线索对应的真实学生；未确认线索保持为空。 */
+  studentId?: string | null;
   suggestedStudentId: string | null;
   suggestedStudentName: string;
   createdAt: string;
