@@ -208,6 +208,15 @@ export const DASHBOARD_ROUTES = {
     createSurface: "derived",
     parent: "assessments",
   },
+  assessmentReport: {
+    hrefPattern: "/dashboard/followups/assessments/[registrationId]/reports/[reportId]",
+    kind: "workflow",
+    shellMode: "panel",
+    environments: STAFF_ONLY,
+    permissionAny: ["review.write", "followup.view"],
+    createSurface: "derived",
+    parent: "assessments",
+  },
   opportunities: {
     href: "/dashboard/opportunities",
     kind: "queue",

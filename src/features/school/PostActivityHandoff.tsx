@@ -21,8 +21,8 @@ import { FollowupChoice } from "./dashboard-page/FollowupChoice";
 import type { LeadStatus } from "./lead-contract";
 
 
-export function PostActivityHandoff({ source, initialContext, onSaved }: {
-  source: EnrollmentSourceRef; initialContext?: ActivityEnrollmentContext; onSaved?: (context: ActivityEnrollmentContext) => void;
+export function PostActivityHandoff({ source, initialContext, onSaved, enrollmentOnly = false }: {
+  source: EnrollmentSourceRef; initialContext?: ActivityEnrollmentContext; onSaved?: (context: ActivityEnrollmentContext) => void; enrollmentOnly?: boolean;
 }) {
   const t = useTranslations("school.enrollmentWorkflow");
   const [context, setContext] = useState(initialContext ?? null);
@@ -52,10 +52,10 @@ export function PostActivityHandoff({ source, initialContext, onSaved }: {
   </div>;
   if (error) return <p role="alert" className="text-xs text-rose">{t(enrollmentErrorKey(error))}</p>;
   if (!context.eligible && !context.canContactBeforeCompletion) return <p className="py-3 text-xs text-muted">{t("notCompleted")}</p>;
-  return <HandoffEditor context={context} onSaved={saved} reload={() => setVersion((value) => value + 1)} />;
+  return <HandoffEditor context={context} onSaved={saved} enrollmentOnly={enrollmentOnly} reload={() => setVersion((value) => value + 1)} />;
 }
 
-function HandoffEditor({ context, onSaved, reload }: { context: ActivityEnrollmentContext; onSaved: (context: ActivityEnrollmentContext) => void; reload: () => void }) {
+function HandoffEditor({ context, onSaved, reload, enrollmentOnly }: { context: ActivityEnrollmentContext; onSaved: (context: ActivityEnrollmentContext) => void; reload: () => void; enrollmentOnly: boolean }) {
   const t = useTranslations("school.enrollmentWorkflow");
   const locale = useLocale();
   const router = useRouter();
@@ -88,7 +88,7 @@ function HandoffEditor({ context, onSaved, reload }: { context: ActivityEnrollme
     if (!result.ok) { toast.error(t(enrollmentErrorKey(result.code))); return; }
     onSaved(result.data); setNote(""); setRequestId(newId()); toast.success(t("contactSaved")); window.dispatchEvent(new Event(STUDENT_360_REFRESH_EVENT)); router.refresh();
   });
-  return <div className="space-y-4" onKeyDown={(event) => { if ((event.ctrlKey || event.metaKey) && event.key === "Enter" && context.canContact && !pending) { event.preventDefault(); saveContact(); } }}>
+  return <div className="space-y-4" onKeyDown={(event) => { if (!enrollmentOnly && (event.ctrlKey || event.metaKey) && event.key === "Enter" && context.canContact && !pending) { event.preventDefault(); saveContact(); } }}>
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0 flex-1 text-xs leading-5">
         <p className="font-medium text-ink">{context.name} · {context.activityTitle}</p>
@@ -98,7 +98,7 @@ function HandoffEditor({ context, onSaved, reload }: { context: ActivityEnrollme
       {context.eligible && context.canEnroll && !context.enrollmentId ? <Button size="sm" onClick={() => setEnrolling(true)}>{t("enroll")}</Button> : null}
       {context.enrollmentId && context.canEnroll ? <Link className={buttonVariants({ size: "sm", variant: "secondary" })} href={`/dashboard/followups/enrollments?term=${context.termId}&student=${context.studentId}`}>{t("openPlacement")}</Link> : null}
     </div>
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(12rem,0.8fr)]">
+    {!enrollmentOnly ? <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(12rem,0.8fr)]">
       {context.canContact ? <div className="space-y-3">
         <div className="grid grid-cols-2 gap-2">
           <FollowupChoice label={t("channel")} value={channel} disabled={pending} onValueChange={(value) => setChannel(value as typeof channel)} options={CONTACT_CHANNELS.map((value) => ({ value, label: t(`channel_${value}`) }))} />
@@ -118,7 +118,7 @@ function HandoffEditor({ context, onSaved, reload }: { context: ActivityEnrollme
           {!context.contacts.length ? <p>{context.routeNote || t("noHistory")}</p> : null}
         </div>
       </div>
-    </div>
+    </div> : null}
     <Dialog open={enrolling} onOpenChange={setEnrolling}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader><DialogTitle>{t("enrollFor", { name: context.name })}</DialogTitle><DialogDescription>{t("enrollIntro")}</DialogDescription></DialogHeader>

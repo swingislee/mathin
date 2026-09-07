@@ -2,6 +2,7 @@ import type { ActivityRouteKind, StoredAssessmentBand } from "./activity-workflo
 import type { TeacherAssessmentOutcome } from "./teacher-assessment-contract";
 import type { PublicClassPresence } from "./public-class";
 import type { AssessmentEntryActor, AssessmentQuickEntry } from "./assessment-quick-entry-contract";
+import type { AssessmentWorkflow } from "./assessment-workflow-contract";
 
 export const ASSESSMENT_WORKBENCH_QUEUES = [
   "pending",
@@ -106,6 +107,7 @@ export interface AssessmentWorkbenchRow {
   quickEntry?: AssessmentQuickEntry | null;
   entryActors?: AssessmentEntryActor[];
   teacherRequired?: boolean;
+  workflow?: AssessmentWorkflow | null;
   updatedAt: string;
 }
 
@@ -162,11 +164,12 @@ export function assessmentWorkbenchCounts(
 export function assessmentWorkbenchStage(
   row: AssessmentWorkbenchRow,
 ): Exclude<AssessmentWorkbenchQueue, "all"> {
+  if (row.workflow) return row.workflow.stage;
   if (assessmentWorkbenchHasFinalResult(row)) return row.route ? "handled" : "feedback";
   // 快速登记草稿和已完成归类各有事实，未发布分数不会被伪装成最终测评结果。
   if (row.route) return "handled";
   if (row.quickEntry || row.assessment?.resultSource === "teacher") return "in_progress";
-  if (row.assessmentStartedAt || row.assessment) return "in_progress";
+  if (row.participationStatus === "attended" || row.assessmentStartedAt || row.assessment) return "in_progress";
   return "pending";
 }
 

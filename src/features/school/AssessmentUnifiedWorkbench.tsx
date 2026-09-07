@@ -69,6 +69,7 @@ function queueFor(
   row: AssessmentWorkbenchRow,
   draft: SupportDraft,
 ): Exclude<AssessmentWorkbenchQueue, "all"> {
+  if (row.workflow) return assessmentWorkbenchStage(row);
   const stage = assessmentWorkbenchStage(row);
   if (draft?.route || stage === "feedback" || stage === "handled") {
     return (draft?.route ?? row.route?.route) ? "handled" : "feedback";
@@ -111,6 +112,7 @@ export function AssessmentUnifiedWorkbench({
   const assessmentT = useTranslations("school.assessments");
   const teacherT = useTranslations("school.teacherAssessment");
   const quickT = useTranslations("school.assessmentQuickEntry");
+  const workflowT = useTranslations("school.assessmentWorkflow");
   const tableT = useTranslations("school.table");
   const initialDrafts = useMemo(() => Object.fromEntries(
     initialRows.map((row) => [row.id, draftFromRow(row)]),
@@ -290,7 +292,8 @@ export function AssessmentUnifiedWorkbench({
   const retainCurrentView = () => setRetainedView((current) => current?.key === viewKey ? current : { key: viewKey, ids: visibleRows.map((row) => row.id) });
   const saveRow = (saved: AssessmentWorkbenchRow) => {
     retainCurrentView();
-    setRows((current) => current.map((row) => row.id === saved.id ? saved : row));
+    setRows((current) => current.map((row) => row.id === saved.id ? saved
+      : saved.registrationId && row.registrationId === saved.registrationId ? { ...row, workflow: saved.workflow, participationStatus: saved.participationStatus } : row));
   };
   const saveQuickFollowUp = (row: AssessmentWorkbenchRow, content: string, createdAt: string) => {
     retainCurrentView();
@@ -394,6 +397,9 @@ export function AssessmentUnifiedWorkbench({
                 const stage = queueFor(row, draft);
                 const completed = assessmentWorkbenchHasFinalResult(row);
                 const conclusion = assessmentConclusion(row);
+                const latestContext = row.workflow?.finalizedAt && row.workflow.parentResponse
+                  && row.workflow.finalizedAt > (row.latestFollowUp?.createdAt ?? "")
+                  ? row.workflow.parentResponse : row.latestFollowUp?.content;
                 return (
                   <ActivityAssessmentDraftProvider key={row.id} row={row}>
                     <TableRow
@@ -470,6 +476,7 @@ export function AssessmentUnifiedWorkbench({
                       <TableCell className="px-2 py-2">
                         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                           {current ? <StageBadge stage={stage} contacting={false} /> : <HistoricalRecordBadge locale={locale} />}
+                          {current && row.workflow?.classification ? <span className="text-[11px] text-muted">{workflowT("classification_" + row.workflow.classification)}</span> : null}
                           {!current && row.assessment ? <BusinessRecordRevisionButton kind="assessment" recordId={row.assessment.id} subject={row.name}/> : null}
                         </div>
                         {mayAssess && row.assessmentKind === "one_to_one" ? <div className="mt-1" data-assessment-question-entry
@@ -479,7 +486,7 @@ export function AssessmentUnifiedWorkbench({
                       </TableCell>
                       <TableCell data-assessment-latest-update className="px-2 py-2 text-[11px] text-muted">
                         <p className="whitespace-nowrap tabular-nums">{current ? dateTime.format(new Date(row.updatedAt)) : row.occurredOn ?? recordM.unknown}</p>
-                        {current && row.latestFollowUp?.content.trim() ? <p data-current-situation className="mt-0.5 truncate leading-4">{row.latestFollowUp.content}</p> : null}
+                        {current && latestContext?.trim() ? <p data-current-situation className="mt-0.5 truncate leading-4">{latestContext}</p> : null}
                       </TableCell>
                     </TableRow>
 

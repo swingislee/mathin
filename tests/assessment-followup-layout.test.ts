@@ -17,6 +17,7 @@ vi.mock("@/features/school/public-class-actions", () => ({ savePublicClassPartic
 vi.mock("@/features/school/actions/followups", () => ({ addStudentFollowUp: vi.fn() }));
 vi.mock("@/features/school/assessment-assessor-actions", () => ({ reassignAssessmentAssessorAction: vi.fn() }));
 vi.mock("@/features/school/assessment-quick-entry-actions", () => ({ saveAssessmentQuickEntryAction: vi.fn() }));
+vi.mock("@/features/school/assessment-workflow-actions", () => ({ getAssessmentWorkflowAction: vi.fn(), saveAssessmentWorkflowAction: vi.fn(), getAssessmentWorkflowHistoryAction: vi.fn() }));
 vi.mock("@/features/school/EnrollmentHandoffButton", () => ({ PostActivityHandoff: () => createElement("div", null, "handoff") }));
 vi.mock("@/features/school/TeacherAssessmentEntryButton", () => ({ TeacherAssessmentEntryButton: () => createElement("button", null, "逐题登记") }));
 vi.mock("@/features/school/Student360Sheet", () => ({
@@ -47,7 +48,7 @@ function render(element: ReactNode, locale: "zh" | "en" = "zh") {
 
 function renderDetails(record: AssessmentWorkbenchRow, canAssess = true) {
   const detail: ComponentProps<typeof AssessmentRecordDetails> = {
-    row: record, stage: record.assessment ? "feedback" : "pending", conclusion: record.assessment?.teacherObservation ?? "",
+    row: record, stage: record.assessment ? "feedback" : "in_progress", conclusion: record.assessment?.teacherObservation ?? "",
     locale: "zh", canAssess, canSupport: true, canManageAssessor: true,
     assessors: [{ userId: "teacher", displayName: "测评老师" }], reassigning: false,
     onReassign: vi.fn(), onSaved: vi.fn(), onNoteSaved: vi.fn(), onHandoffSaved: vi.fn(), onSaveAndNext: vi.fn(),
@@ -123,17 +124,16 @@ describe("assessment page aligned with first contact", () => {
     expect(markup.match(/data-assessment-latest-update/g)).toHaveLength(2);
   });
 
-  it("separates read-only progress from the labeled entry switcher in one detail header", () => {
+  it("uses only the four clickable business stages in the detail header", () => {
     const markup = renderDetails(row("header"));
-    const header = markup.slice(markup.indexOf("data-assessment-detail-header"), markup.indexOf('role="tabpanel"'));
+    const header = markup.slice(markup.indexOf("data-assessment-detail-header"), markup.indexOf('data-assessment-panel'));
     expect(header).toContain('data-assessment-progress');
     expect(header).toContain(zh.school.supportAssessment.progressLabel);
-    expect(header).toContain('data-assessment-entry-switcher');
-    expect(header).toContain(zh.school.supportAssessment.entryLabel);
-    expect(header.match(/role="tablist"/g)).toHaveLength(1);
+    expect(header).not.toContain('data-assessment-entry-switcher');
+    expect(header).not.toContain('role="tablist"');
     expect(header.match(/aria-current="step"/g)).toHaveLength(1);
-    expect(header.match(/<ol\b[\s\S]*?<\/ol>/)?.[0]).not.toContain("<button");
-    expect(header).toContain("bg-transparent p-0");
+    expect(header.match(/data-assessment-stage=/g)).toHaveLength(4);
+    expect(header).toContain(zh.school.assessmentWorkflow.stage_handled);
   });
 
   it("keeps public-class assessment and parent feedback in one explicit entry layout", () => {
@@ -208,16 +208,17 @@ describe("assessment page aligned with first contact", () => {
 });
 
 describe("optional teacher assessment", () => {
-  it("lets support enter scores and routing before teacher completion without duplicating the teacher button", () => {
+  it("lets support enter scores before teacher completion while parent classification lives in its own stage", () => {
     const record = row("support-first", { registrationId: null, studentId: null, leadId: "lead" });
     const markup = render(createElement(AssessmentRecordDetails, {
-      row: record, stage: "pending", conclusion: "", locale: "zh", canAssess: false, canQuickEntry: true,
+      row: record, stage: "in_progress", conclusion: "", locale: "zh", canAssess: false, canQuickEntry: true,
       canRoute: true, canSupport: true, canManageAssessor: false, assessors: [], reassigning: false,
       onReassign: vi.fn(), onSaved: vi.fn(), onNoteSaved: vi.fn(), onHandoffSaved: vi.fn(),
     }));
     expect(markup).toContain("data-assessment-quick-entry");
     expect(markup).toContain('type="number"');
-    expect(markup).toContain(zh.school.enrollmentWorkflow.nextStep);
+    expect(markup).not.toContain('data-assessment-field="route"');
+    expect(markup).toContain(zh.school.assessmentWorkflow.stage_handled);
     expect(markup).toContain(zh.school.assessmentQuickEntry.optionalHint);
     expect(markup).not.toContain("逐题登记");
     expect(markup).toContain(zh.school.followupEntry.save);
@@ -235,7 +236,7 @@ describe("optional teacher assessment", () => {
     expect(markup).toMatch(/<input\b[^>]*type="number"/);
     expect(markup.match(/<input\b[^>]*type="number"[^>]*>/)?.[0]).not.toContain(' disabled=""');
     expect(markup).not.toContain("逐题登记");
-    expect(markup).toContain(zh.school.supportAssessment.entryHandoff);
+    expect(markup).toContain(zh.school.assessmentWorkflow.stage_handled);
   });
 });
 

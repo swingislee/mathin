@@ -64,8 +64,9 @@ interface AssessmentFillUndo {
   outcome: TeacherAssessmentOutcome;
 }
 
-export function TeacherAssessmentWorkbench({ data }: { data: TeacherAssessmentWorkbenchData }) {
+export function TeacherAssessmentWorkbench({ data, readOnly = false }: { data: TeacherAssessmentWorkbenchData; readOnly?: boolean }) {
   const t = useTranslations("school.teacherAssessment");
+  const workflowT = useTranslations("school.assessmentWorkflow");
   const locale = useLocale();
   const schedule = useMemo(() => new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
@@ -73,6 +74,18 @@ export function TeacherAssessmentWorkbench({ data }: { data: TeacherAssessmentWo
     timeZone: "Asia/Shanghai",
   }).format(new Date(data.scheduledAt)), [data.scheduledAt, locale]);
   const grade = data.gradeText || (data.grade === null ? t("gradePending") : t("gradeValue", { grade: data.grade }));
+
+  if (readOnly) return <DashboardPage title={t("title", { name: data.subjectName })} description={workflowT("finalizedHint")}
+    backHref="/dashboard/followups/assessments" backLabel={t("backToAggregate")} density="compact">
+    <section className="space-y-4" data-assessment-questions-readonly>
+      <p className="whitespace-pre-wrap text-sm leading-6">{data.teacherObservation}</p>
+      <ol className="divide-y divide-line">{data.questions.map((question) => <li key={question.id} className="space-y-1 py-3 text-sm">
+        <p>{question.questionNo} · {question.knowledgePoint} · {question.result?.score ?? "—"} / {question.maxScore}</p>
+        <p className="whitespace-pre-wrap text-muted">{question.prompt}</p>
+        {question.result?.note ? <p className="whitespace-pre-wrap">{question.result.note}</p> : null}
+      </li>)}</ol>
+    </section>
+  </DashboardPage>;
 
   if (!data.paperVersion) {
     return (

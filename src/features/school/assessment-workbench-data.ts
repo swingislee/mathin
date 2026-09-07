@@ -2,6 +2,8 @@ import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
 import type { ActivityKind } from "./activity-kinds";
+import { ASSESSMENT_WORKFLOW_COLUMNS } from "./assessment-workflow-data";
+import { assessmentWorkflowFromDb, type AssessmentWorkflowDbRow } from "./assessment-workflow-contract";
 import type { PublicClassPresence } from "./public-class";
 import { REQUIRE_TEACHER_ASSESSMENT_FLAG, type AssessmentQuickEntry, type AssessmentQuickEntryValues, type AssessmentEntryActor } from "./assessment-quick-entry-contract";
 import type { ActivityRouteKind, StoredAssessmentBand } from "./activity-workflow-contract";
@@ -297,6 +299,7 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
     followUpResult,
     quickEntryResult,
     entryActorResult,
+    workflowResult,
   ] = await Promise.all([
     readRelatedRows<AssessmentDbRow>(supabase, "assessment_results", "id,activity_registration_id,assessed_on,assessment_band,score,strengths,focus_areas,parent_concerns,teacher_recommendation,recommended_class,teacher_observation,updated_at,result_source,result_finalized_at,assessor:profiles!assessment_results_assessed_by_fkey(id,display_name)", "activity_registration_id", registrationIds),
     readRelatedRows<RouteDbRow>(supabase, "activity_routes", "id,activity_registration_id,route,note,updated_at", "activity_registration_id", registrationIds),
@@ -308,6 +311,7 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
     readRelatedRows<FollowUpDbRow>(supabase, "student_follow_ups", "id,student_id,content,kind,next_follow_up_at,status_after,created_at,record_state", "student_id", followUpStudentIds),
     readRelatedRows<QuickEntryDbRow>(supabase, "assessment_quick_entries", "id,registration_id,entry,revision,recorded_by,updated_at,finalized_at,recorder:profiles!assessment_quick_entries_recorded_by_fkey(display_name)", "registration_id", registrationIds),
     readRelatedRows<EntryActorDbRow>(supabase, "assessment_entry_actors", "id,registration_id,entry_kind,recorded_by,recorded_at,display_name", "registration_id", registrationIds),
+    readRelatedRows<AssessmentWorkflowDbRow>(supabase, "assessment_workflow_states", ASSESSMENT_WORKFLOW_COLUMNS, "registration_id", registrationIds),
   ]);
   if (assessmentResult.error) throw new Error(assessmentResult.error.message);
   if (routeResult.error) throw new Error(routeResult.error.message);
@@ -319,6 +323,8 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
   if (followUpResult.error) throw new Error(followUpResult.error.message);
   if (quickEntryResult.error) throw new Error(quickEntryResult.error.message);
   if (entryActorResult.error) throw new Error(entryActorResult.error.message);
+  if (workflowResult.error) throw new Error(workflowResult.error.message);
+  const workflows = new Map((workflowResult.data ?? []).map((row) => [row.registration_id, assessmentWorkflowFromDb(row)]));
 
   const quickEntries = new Map<string, AssessmentQuickEntry>((quickEntryResult.data ?? []).map((entry) => [entry.registration_id, {
     id: entry.id, values: entry.entry, revision: entry.revision, recordedBy: entry.recorded_by,
@@ -491,10 +497,11 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
         quickEntry: quickEntries.get(registration.id) ?? null,
         entryActors: entryActors.get(registration.id) ?? [],
         teacherRequired: requiredResult.data,
+        workflow: workflows.get(registration.id) ?? null,
         questionSummary,
         route,
         latestFollowUp: registration.student_id ? latestFollowUps.get(registration.student_id) ?? null : null,
-        updatedAt: [assessment?.updatedAt, route?.updatedAt, quickEntries.get(registration.id)?.updatedAt, registration.updated_at]
+        updatedAt: [assessment?.updatedAt, route?.updatedAt, quickEntries.get(registration.id)?.updatedAt, workflows.get(registration.id)?.updatedAt, registration.updated_at]
           .filter((value): value is string => Boolean(value)).sort().at(-1)!,
       };
     });
