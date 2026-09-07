@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { createRequire } from "node:module";
+import childProcess from "node:child_process";
 
 const require = createRequire(import.meta.url);
 const { getParsedNodeOptions, formatNodeOptions } = require("next/dist/server/lib/utils");
@@ -11,6 +12,19 @@ const nodeOptions = getParsedNodeOptions();
 nodeOptions["max-old-space-size"] = "4096";
 delete nodeOptions.max_old_space_size;
 process.env.NODE_OPTIONS = formatNodeOptions(nodeOptions).nodeOptions;
+
+// 仅为 Next 开发 worker 预加载兼容处理；命令行参数独立追加，保留已有 NODE_OPTIONS 预加载项。
+const nextWorker = require.resolve("next/dist/server/lib/start-server");
+const memoryGuard = require.resolve("./dev-react-memory.cjs");
+const fork = childProcess.fork;
+childProcess.fork = function (modulePath, ...args) {
+  const optionsIndex = Array.isArray(args[0]) ? 1 : 0;
+  const options = args[optionsIndex];
+  if (modulePath === nextWorker && options?.env?.__NEXT_DEV_SERVER === "1") {
+    args[optionsIndex] = { ...options, execArgv: [...(options.execArgv ?? process.execArgv), "--require", memoryGuard] };
+  }
+  return fork.call(this, modulePath, ...args);
+};
 
 const nextBin = require.resolve("next/dist/bin/next");
 process.argv = [process.execPath, nextBin, "dev", "--hostname", "0.0.0.0", "--port", "3130", ...process.argv.slice(2)];

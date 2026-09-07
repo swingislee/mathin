@@ -79,6 +79,8 @@ const nextConfig: NextConfig = {
     // 开发期文件系统缓存保持关闭。诊断与限制边界见 local-development-memory runbook。
     turbopackMemoryLimit: devTurbopackMemoryLimit,
     turbopackFileSystemCacheForDev: false,
+    // Next 16.2.11 会永久保留未连接 HMR 的 HTML 请求调试流；随 RSC 响应传递调试信息。
+    reactDebugChannel: false,
   },
   // 默认 .next；bundle 量化时 NEXT_DIST_DIR=.next-bundle 构建到独立目录，
   // 不与正在运行的 dev server 争用 .next（见 scripts/bundle-report.mjs）。
