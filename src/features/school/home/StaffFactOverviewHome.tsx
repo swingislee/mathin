@@ -674,9 +674,13 @@ export async function StaffFactOverviewHome({
   const greeting = schoolT("home.staffGreeting", { name: profile?.displayName || "" });
   const sourceNames = (sources: StaffOverviewSourceKey[]) => sources.map((source) => t(`source_${source}`)).join(t("listSeparator"));
   const limitedSources = Array.from(new Set([...data.unavailableSources, ...data.truncatedSources]));
+  const missingDates = STAFF_OVERVIEW_METRICS.filter(metric => (data.missingDateCounts[metric] ?? 0) > 0)
+    .map(metric => t("missingDateMetric", { metric: t(`fact_${metric}`), count: data.missingDateCounts[metric]! }));
   const sourceDetail = [
     data.unavailableSources.length > 0 ? t("unavailableSources", { sources: sourceNames(data.unavailableSources) }) : null,
     data.truncatedSources.length > 0 ? t("truncatedSources", { sources: sourceNames(data.truncatedSources), limit: 10000 }) : null,
+    missingDates.length > 0 ? t("missingDateSources", { sources: missingDates.join(t("listSeparator")) }) : null,
+    t("businessFactBasis"),
   ].filter(Boolean).join("；");
   const metricLabels = Object.fromEntries(STAFF_OVERVIEW_METRICS.map((metric) => [metric, t(`fact_${metric}`)])) as MetricLabels;
   const periodTabs = (["week", "month"] as const).map((value) => ({
@@ -727,11 +731,12 @@ export async function StaffFactOverviewHome({
               rows={[
                 { label: t("currentPeriod"), value: currentRange },
                 { label: t("previousPeriod"), value: previousRange },
+                { label: t("currentSchoolTerm"), value: data.currentTermName ?? t("unknownSchoolTerm") },
                 { label: t("generatedAt"), value: generatedAt },
               ]}
-              status={limitedSources.length > 0 ? t("dataLimitedShort", { count: limitedSources.length }) : t("dataReadyShort")}
+              status={limitedSources.length > 0 ? t("dataLimitedShort", { count: limitedSources.length }) : missingDates.length > 0 ? t("dataDatesPending") : t("dataReadyShort")}
               statusDetail={sourceDetail || t("allSourcesAvailable")}
-              limited={limitedSources.length > 0}
+              limited={limitedSources.length > 0 || missingDates.length > 0}
             />
           </DashboardCommandActions>
         </DashboardCommandPanel>

@@ -2,6 +2,13 @@ import "server-only";
 
 import { getOrganizationTimezoneV2 } from "@/features/school/organization-locations";
 import { createClient } from "@/lib/supabase/server";
+import { resolveSourceStaffId, sourceStaffLabel } from "../business-source-contract";
+import { readCurrentTermClassroomIds, readOverviewRows, STAFF_OVERVIEW_READ_LIMIT, type OverviewRowsResult } from "./staff-overview-read";
+import {
+  buildOverviewSourceEvents, overviewFactInstant, overviewSubjectKey,
+  type OverviewActivity, type OverviewRegistration, type OverviewAssessment,
+  type OverviewCourseEnrollment, type OverviewMembership, type OverviewEnrollmentAssignment,
+} from "./staff-overview-source-contract";
 import {
   aggregateStaffOverviewEvents,
   aggregateStaffOverviewEventsByPerson,
@@ -17,7 +24,7 @@ import {
   type StaffOverviewTrendPoint,
 } from "./staff-overview-contract";
 
-const READ_LIMIT = 10_000;
+const READ_LIMIT = STAFF_OVERVIEW_READ_LIMIT;
 
 export const STAFF_OVERVIEW_SOURCE_KEYS = [
   "leads",
@@ -113,6 +120,8 @@ export interface StaffOverviewData {
   currentCutoff: string;
   previousStart: string;
   previousCutoff: string;
+  currentTermName: string | null;
+  missingDateCounts: Partial<Record<StaffOverviewMetric, number>>;
   snapshot: StaffOverviewSnapshot;
   businessFacts: StaffOverviewBusinessFact[];
   pendingFacts: StaffOverviewPendingFact[];
@@ -143,11 +152,16 @@ interface LeadDirectoryRow {
   status: string;
   student_id: string | null;
   created_at: string;
+  source_record_id: string | null;
 }
 
 interface CommunicationRow {
   id: string;
-  occurred_at: string;
+  occurred_at: string | null;
+  occurred_on: string | null;
+  lead_id: string;
+  recorded_by: string | null;
+  source_record_id: string | null;
   outcome: string;
   owner_id_at_contact: string | null;
 }
@@ -178,40 +192,12 @@ interface InvitationThreadRow {
   updated_at: string;
 }
 
-interface ActivityPeriodRow {
-  id: string;
-  scheduled_at: string;
-  activity_registrations: Array<{
-    id: string;
-    status: string;
-    student_id: string;
-  }>;
-}
-
-interface AssessmentPeriodRow {
-  id: string;
-  activity_registration_id: string;
-  assessed_by: string | null;
-  student_id: string;
-  created_at: string;
-}
-
-interface EnrollmentPeriodRow {
-  id: string;
-  classroom_id: string;
-  student_id: string;
-  joined_at: string;
-}
-
-interface ActiveEnrollmentRow {
-  classroom_id: string;
-  student_id: string;
-}
-
 interface ClassroomRow {
   id: string;
   grade: number | null;
   capacity: number | null;
+  archived_at: string | null;
+  trashed_at: string | null;
 }
 
 interface AssignmentRow {
@@ -230,14 +216,11 @@ interface SupportTaskRow {
   assigned_to: string | null;
 }
 
-interface AssessmentReferenceRow {
-  activity_registration_id: string;
-  assessed_by: string | null;
-}
-
 interface ProfileRow {
   id: string;
   display_name: string;
+  role: string;
+  is_active: boolean;
 }
 
 interface StaffRoleMemberRow {
@@ -245,10 +228,7 @@ interface StaffRoleMemberRow {
   staff_roles: { key: string } | null;
 }
 
-interface QueryRowsResult<T> {
-  data: T[] | null;
-  error: { message: string } | null;
-}
+type QueryRowsResult<T> = OverviewRowsResult<T>;
 
 function emptyCapacityTotals(): ClassroomCapacityTotals {
   return {
@@ -261,117 +241,75 @@ function emptyCapacityTotals(): ClassroomCapacityTotals {
   };
 }
 
-/** 今日工作只读取交叉摘要需要的五类事实，避免为五个数字装载完整人员归属与待办目录。 */
-export async function getStaffHomeWeekSummaryData({
-  now = new Date(),
-}: {
-  now?: Date;
-} = {}): Promise<StaffHomeWeekSummaryData> {
+async function readOverviewCore(supabase: Awaited<ReturnType<typeof createClient>>) {
+  const [activities, registrations, assessments, courseEnrollments, memberships, enrollmentAssignments, classrooms, currentTerms] = await Promise.all([
+    readOverviewRows<OverviewActivity>(() => supabase.from("activities")
+      .select("id,scheduled_at,occurred_on,source_invitation_id,remark,record_state").is("deleted_at", null)),
+    readOverviewRows<OverviewRegistration>(() => supabase.from("activity_registrations")
+      .select("id,activity_id,student_id,lead_id,status,record_state,registered_on,created_at,source_record_id,assessment_started_at,assessment_completed_at")),
+    readOverviewRows<OverviewAssessment>(() => supabase.from("assessment_results")
+      .select("id,activity_registration_id,student_id,lead_id,assessed_by,assessed_on,created_at,source_record_id,result_source,result_finalized_at,assessment_band,score,strengths")),
+    readOverviewRows<OverviewCourseEnrollment>(() => supabase.from("course_enrollments")
+      .select("id,student_id,opportunity_id,registered_on,confirmed_at,created_at,source_record_id")),
+    readOverviewRows<OverviewMembership>(() => supabase.from("enrollments")
+      .select("id,classroom_id,student_id,joined_at,status,remark")),
+    readOverviewRows<OverviewEnrollmentAssignment>(() => supabase.from("course_enrollment_assignments")
+      .select("id,course_enrollment_id,classroom_membership_id")),
+    readOverviewRows<ClassroomRow>(() => supabase.from("classrooms")
+      .select("id,grade,capacity,archived_at,trashed_at").eq("purpose", "production")),
+    supabase.from("school_terms").select("id,name").eq("is_current", true).limit(2),
+  ]);
+  const termId = !currentTerms.error && currentTerms.data?.length === 1 ? currentTerms.data[0].id : null;
+  const currentClassIds = await readCurrentTermClassroomIds(supabase, termId);
+  return { activities, registrations, assessments, courseEnrollments, memberships, enrollmentAssignments, classrooms, currentTerms, currentClassIds };
+}
+
+function coreEvents(core: Awaited<ReturnType<typeof readOverviewCore>>, timeZone: string) {
+  const productionClassIds = new Set((core.classrooms.data ?? []).map(row => row.id));
+  return buildOverviewSourceEvents({
+    activities: core.activities.data ?? [], registrations: core.registrations.data ?? [],
+    assessments: core.assessments.data ?? [], courseEnrollments: core.courseEnrollments.data ?? [],
+    memberships: (core.memberships.data ?? []).filter(row => productionClassIds.has(row.classroom_id)),
+    enrollmentAssignments: core.enrollmentAssignments.data ?? [],
+  }, timeZone);
+}
+
+function datedEvents<T extends { at: string | null }>(events: T[]): Array<T & { at: string }> {
+  return events.filter((event): event is T & { at: string } => event.at !== null);
+}
+
+function exactRows<T>(result: QueryRowsResult<T>) {
+  return !result.error && (result.data?.length ?? 0) < READ_LIMIT;
+}
+
+/** 今日工作与总览共用发生日期和当前学期口径，只读取这五个数字依赖的业务事实。 */
+export async function getStaffHomeWeekSummaryData({ now = new Date() }: { now?: Date } = {}): Promise<StaffHomeWeekSummaryData> {
   const [supabase, timeZone] = await Promise.all([createClient(), getOrganizationTimezoneV2()]);
   const window = buildStaffOverviewWindow("week", now, timeZone);
-  const rangeStart = window.previousStart.toISOString();
-  const rangeEnd = window.currentCutoff.toISOString();
-  const [activitiesResult, assessmentsResult, periodEnrollmentsResult, activeEnrollmentsResult, classroomsResult] = await Promise.all([
-    supabase
-      .from("activities")
-      .select("id,scheduled_at,activity_registrations(id,status,student_id)")
-      .is("deleted_at", null)
-      .gte("scheduled_at", rangeStart)
-      .lt("scheduled_at", rangeEnd)
-      .limit(READ_LIMIT)
-      .returns<ActivityPeriodRow[]>(),
-    supabase
-      .from("assessment_results")
-      .select("id,activity_registration_id,assessed_by,student_id,created_at")
-      .gte("created_at", rangeStart)
-      .lt("created_at", rangeEnd)
-      .limit(READ_LIMIT)
-      .returns<AssessmentPeriodRow[]>(),
-    supabase
-      .from("enrollments")
-      .select("id,classroom_id,student_id,joined_at")
-      .gte("joined_at", rangeStart)
-      .lt("joined_at", rangeEnd)
-      .limit(READ_LIMIT)
-      .returns<EnrollmentPeriodRow[]>(),
-    supabase
-      .from("enrollments")
-      .select("classroom_id,student_id")
-      .eq("status", "active")
-      .limit(READ_LIMIT)
-      .returns<ActiveEnrollmentRow[]>(),
-    supabase
-      .from("classrooms")
-      .select("id,grade,capacity")
-      .eq("purpose", "production")
-      .eq("operational_status", "active")
-      .is("archived_at", null)
-      .is("trashed_at", null)
-      .limit(READ_LIMIT)
-      .returns<ClassroomRow[]>(),
-  ]);
-
-  const exact = <T,>(result: QueryRowsResult<T>) => !result.error && (result.data?.length ?? 0) < READ_LIMIT;
-  const activities = activitiesResult.data ?? [];
-  const assessments = assessmentsResult.data ?? [];
-  const periodEnrollments = periodEnrollmentsResult.data ?? [];
-  const activeEnrollments = activeEnrollmentsResult.data ?? [];
-  const classrooms = classroomsResult.data ?? [];
-  const comparisons: Record<"arrivals" | "assessments" | "enrollments", StaffOverviewComparison | null> = {
-    arrivals: exact(activitiesResult)
-      ? aggregateStaffOverviewEvents(
-        activities.flatMap((activity) => activity.activity_registrations
-          .filter((registration) => registration.status === "attended")
-          .map((registration) => ({ id: registration.id, at: activity.scheduled_at }))),
-        window,
-        timeZone,
-      )
-      : null,
-    assessments: exact(assessmentsResult)
-      ? aggregateStaffOverviewEvents(
-        assessments.map((assessment) => ({ id: assessment.id, at: assessment.created_at })),
-        window,
-        timeZone,
-      )
-      : null,
-    enrollments: exact(periodEnrollmentsResult)
-      ? aggregateStaffOverviewEvents(
-        periodEnrollments.map((enrollment) => ({ id: enrollment.id, at: enrollment.joined_at })),
-        window,
-        timeZone,
-      )
-      : null,
+  const core = await readOverviewCore(supabase);
+  const events = coreEvents(core, timeZone);
+  const arrivalsExact = exactRows(core.activities) && exactRows(core.registrations);
+  const comparisons = {
+    arrivals: arrivalsExact ? aggregateStaffOverviewEvents(datedEvents(events.arrivals), window, timeZone) : null,
+    assessments: arrivalsExact && exactRows(core.assessments) ? aggregateStaffOverviewEvents(datedEvents(events.assessments), window, timeZone) : null,
+    enrollments: exactRows(core.courseEnrollments) && exactRows(core.memberships) && exactRows(core.enrollmentAssignments) && exactRows(core.classrooms)
+      ? aggregateStaffOverviewEvents(datedEvents(events.enrollments), window, timeZone) : null,
   };
   const businessFacts = (["arrivals", "assessments", "enrollments"] as const).map((key): StaffOverviewBusinessFact => ({
-    key,
-    current: comparisons[key]?.current ?? null,
-    previous: comparisons[key]?.previous ?? null,
-    trend: comparisons[key]?.trend ?? null,
+    key, current: comparisons[key]?.current ?? null, previous: comparisons[key]?.previous ?? null, trend: comparisons[key]?.trend ?? null,
   }));
-
-  const capacityAvailable = exact(classroomsResult) && exact(activeEnrollmentsResult);
-  const activeClassIds = new Set(classrooms.map((classroom) => classroom.id));
-  const enrollmentsByClassroom = new Map<string, number>();
-  for (const enrollment of activeEnrollments) {
-    if (!activeClassIds.has(enrollment.classroom_id)) continue;
-    enrollmentsByClassroom.set(enrollment.classroom_id, (enrollmentsByClassroom.get(enrollment.classroom_id) ?? 0) + 1);
-  }
-  const capacityTotals = capacityAvailable
-    ? summarizeClassroomCapacity(classrooms.map((classroom) => ({
-      classroomId: classroom.id,
-      grade: classroom.grade,
-      classroomCapacity: classroom.capacity,
-      enrolledSeats: enrollmentsByClassroom.get(classroom.id) ?? 0,
-    })))
-    : null;
-
-  return {
-    businessFacts,
-    snapshot: {
-      activeClasses: exact(classroomsResult) ? classrooms.length : null,
-      remainingSeats: capacityTotals?.remainingSeats ?? null,
-    },
-  };
+  const term = !core.currentTerms.error && core.currentTerms.data?.length === 1 ? core.currentTerms.data[0] : null;
+  const termClassIds = new Set((core.currentClassIds.data ?? []).map(row => row.id));
+  const classrooms = (core.classrooms.data ?? []).filter(row => termClassIds.has(row.id) && !row.archived_at && !row.trashed_at);
+  const capacityAvailable = Boolean(term) && exactRows(core.currentClassIds) && exactRows(core.classrooms) && exactRows(core.memberships);
+  const capacityTotals = capacityAvailable ? summarizeClassroomCapacity(classrooms.map(classroom => ({
+    classroomId: classroom.id, grade: classroom.grade, classroomCapacity: classroom.capacity,
+    enrolledSeats: (core.memberships.data ?? []).filter(row => row.status === "active" && row.classroom_id === classroom.id).length,
+  }))) : null;
+  return { businessFacts, snapshot: {
+    activeClasses: term && exactRows(core.classrooms) && exactRows(core.currentClassIds) ? classrooms.length : null,
+    remainingSeats: capacityTotals?.remainingSeats ?? null,
+  } };
 }
 
 export async function getStaffOverviewData({
@@ -394,76 +332,26 @@ export async function getStaffOverviewData({
     "waiting_activity",
   ];
 
-  const [
-    periodLeadsResult,
-    leadDirectoryResult,
-    communicationsResult,
-    invitationEventsResult,
-    invitationThreadsResult,
-    activitiesResult,
-    assessmentsResult,
-    periodEnrollmentsResult,
-    activeEnrollmentsResult,
-    classroomsResult,
-    assignmentsResult,
-    leadActionsResult,
-    attendedResult,
-    assessmentRefsResult,
-    supportTasksResult,
-    profilesResult,
-    staffRoleMembersResult,
-  ] = await Promise.all([
-    supabase.from("leads").select("id,created_at,owner_id").gte("created_at", rangeStart).lt("created_at", rangeEnd).limit(READ_LIMIT).returns<PeriodLeadRow[]>(),
-    supabase.from("leads").select("id,owner_id,status,student_id,created_at").limit(READ_LIMIT).returns<LeadDirectoryRow[]>(),
-    supabase.from("lead_communications").select("id,occurred_at,outcome,owner_id_at_contact").gte("occurred_at", rangeStart).lt("occurred_at", rangeEnd).limit(READ_LIMIT).returns<CommunicationRow[]>(),
-    supabase
-      .from("lead_invitation_events")
+  const [core, periodLeadsResult, leadDirectoryResult, communicationsResult, invitationEventsResult,
+    invitationThreadsResult, assignmentsResult, leadActionsResult, supportTasksResult, profilesResult,
+    staffRoleMembersResult, opportunitiesResult] = await Promise.all([
+    readOverviewCore(supabase),
+    readOverviewRows<PeriodLeadRow>(() => supabase.from("leads").select("id,created_at,owner_id").gte("created_at", rangeStart).lt("created_at", rangeEnd)),
+    readOverviewRows<LeadDirectoryRow>(() => supabase.from("leads").select("id,owner_id,status,student_id,created_at,source_record_id")),
+    readOverviewRows<CommunicationRow>(() => supabase.from("lead_communications").select("id,lead_id,occurred_at,occurred_on,outcome,owner_id_at_contact,recorded_by,source_record_id")),
+    readOverviewRows<InvitationEventRow>(() => supabase.from("lead_invitation_events")
       .select("invitation_id,occurred_at,to_state,lead_invitation_threads(owner_id_at_open,assessor_id)")
-      .eq("to_state", "confirmed")
-      .gte("occurred_at", rangeStart)
-      .lt("occurred_at", rangeEnd)
-      .limit(READ_LIMIT)
-      .returns<InvitationEventRow[]>(),
-    supabase
-      .from("lead_invitation_threads")
-      .select("id,activity_id,lead_id,kind,state,owner_id_at_open,assessor_id,scheduled_at,closed_at,created_at,updated_at")
-      .limit(READ_LIMIT)
-      .returns<InvitationThreadRow[]>(),
-    supabase
-      .from("activities")
-      .select("id,scheduled_at,activity_registrations(id,status,student_id)")
-      .is("deleted_at", null)
-      .gte("scheduled_at", rangeStart)
-      .lt("scheduled_at", rangeEnd)
-      .limit(READ_LIMIT)
-      .returns<ActivityPeriodRow[]>(),
-    supabase.from("assessment_results").select("id,activity_registration_id,assessed_by,student_id,created_at").gte("created_at", rangeStart).lt("created_at", rangeEnd).limit(READ_LIMIT).returns<AssessmentPeriodRow[]>(),
-    supabase.from("enrollments").select("id,classroom_id,student_id,joined_at").gte("joined_at", rangeStart).lt("joined_at", rangeEnd).limit(READ_LIMIT).returns<EnrollmentPeriodRow[]>(),
-    supabase.from("enrollments").select("classroom_id,student_id").eq("status", "active").limit(READ_LIMIT).returns<ActiveEnrollmentRow[]>(),
-    supabase
-      .from("classrooms")
-      .select("id,grade,capacity")
-      .eq("purpose", "production")
-      .eq("operational_status", "active")
-      .is("archived_at", null)
-      .is("trashed_at", null)
-      .limit(READ_LIMIT)
-      .returns<ClassroomRow[]>(),
-    supabase
-      .from("classroom_staff_assignments")
-      .select("classroom_id,user_id,responsibility,profiles!classroom_staff_assignments_user_id_fkey(display_name)")
-      .limit(READ_LIMIT)
-      .returns<AssignmentRow[]>(),
-    supabase.from("lead_next_actions").select("lead_id,due_at").eq("status", "open").limit(READ_LIMIT).returns<LeadActionRow[]>(),
-    supabase.from("activity_registrations").select("id").eq("status", "attended").limit(READ_LIMIT).returns<Array<{ id: string }>>(),
-    supabase.from("assessment_results").select("activity_registration_id,assessed_by").limit(READ_LIMIT).returns<AssessmentReferenceRow[]>(),
-    supabase.from("class_support_tasks").select("assigned_to").eq("status", "pending").limit(READ_LIMIT).returns<SupportTaskRow[]>(),
-    supabase.from("profiles").select("id,display_name").in("role", ["staff", "admin"]).eq("is_active", true).limit(READ_LIMIT).returns<ProfileRow[]>(),
-    supabase
-      .from("staff_role_members")
-      .select("user_id,staff_roles!staff_role_members_role_id_fkey(key)")
-      .limit(READ_LIMIT)
-      .returns<StaffRoleMemberRow[]>(),
+      .eq("to_state", "confirmed").gte("occurred_at", rangeStart).lt("occurred_at", rangeEnd)),
+    readOverviewRows<InvitationThreadRow>(() => supabase.from("lead_invitation_threads")
+      .select("id,activity_id,lead_id,kind,state,owner_id_at_open,assessor_id,scheduled_at,closed_at,created_at,updated_at")),
+    readOverviewRows<AssignmentRow>(() => supabase.from("classroom_staff_assignments")
+      .select("classroom_id,user_id,responsibility,profiles!classroom_staff_assignments_user_id_fkey(display_name)"), ["classroom_id", "user_id", "responsibility"]),
+    readOverviewRows<LeadActionRow>(() => supabase.from("lead_next_actions").select("lead_id,due_at").eq("status", "open")),
+    readOverviewRows<SupportTaskRow>(() => supabase.from("class_support_tasks").select("assigned_to").eq("status", "pending")),
+    readOverviewRows<ProfileRow>(() => supabase.from("profiles").select("id,display_name,role,is_active").in("role", ["staff", "admin"]).eq("is_active", true)),
+    readOverviewRows<StaffRoleMemberRow>(() => supabase.from("staff_role_members")
+      .select("user_id,staff_roles!staff_role_members_role_id_fkey(key)"), ["user_id", "role_id"]),
+    readOverviewRows<{ id: string; owner_id: string | null }>(() => supabase.from("course_opportunities").select("id,owner_id")),
   ]);
 
   const unavailable = new Set<StaffOverviewSourceKey>();
@@ -485,18 +373,29 @@ export async function getStaffOverviewData({
   const invitationEvents = rows(invitationEventsResult, "invitations");
   const invitationThreads = rows(invitationThreadsResult, "invitations");
   const activeInvitationThreads = invitationThreads.filter((row) => activeInvitationStates.includes(row.state));
-  const activities = rows(activitiesResult, "activities");
-  const assessments = rows(assessmentsResult, "assessments");
-  const periodEnrollments = rows(periodEnrollmentsResult, "enrollments");
-  const activeEnrollments = rows(activeEnrollmentsResult, "enrollments");
-  const classrooms = rows(classroomsResult, "classrooms");
+  const activities = rows(core.activities, "activities");
+  const registrations = rows(core.registrations, "activities");
+  const assessments = rows(core.assessments, "assessments");
+  const courseEnrollments = rows(core.courseEnrollments, "enrollments");
+  const memberships = rows(core.memberships, "enrollments");
+  rows(core.enrollmentAssignments, "enrollments");
+  const allClassrooms = rows(core.classrooms, "classrooms");
+  const term = !core.currentTerms.error && core.currentTerms.data?.length === 1 ? core.currentTerms.data[0] : null;
+  if (!term) unavailable.add("classrooms");
+  const termClassIds = new Set(rows(core.currentClassIds, "classrooms").map(row => row.id));
+  const classrooms = allClassrooms.filter(row => termClassIds.has(row.id) && !row.archived_at && !row.trashed_at);
+  const activeEnrollments = memberships.filter(row => row.status === "active");
   const assignments = rows(assignmentsResult, "staffAssignments");
   const leadActions = rows(leadActionsResult, "leads");
-  const attended = rows(attendedResult, "activities");
-  const assessmentRefs = rows(assessmentRefsResult, "assessments");
   const supportTasks = rows(supportTasksResult, "supportTasks");
   const profiles = rows(profilesResult, "staffDirectory");
   const staffRoleMembers = rows(staffRoleMembersResult, "staffDirectory");
+  const opportunities = rows(opportunitiesResult, "enrollments");
+  const sourceEvents = coreEvents(core, timeZone);
+  const assessmentRefs = assessments;
+  const activityById = new Map(activities.map(row => [row.id, row]));
+  const attended = registrations.filter(row => row.status === "attended" && row.record_state === "current"
+    && activityById.get(row.activity_id)?.record_state === "current");
   const sourceExact = (source: StaffOverviewSourceKey) => !unavailable.has(source) && !truncated.has(source);
 
   const leadById = new Map(leadDirectory.map((row) => [row.id, row]));
@@ -537,7 +436,7 @@ export async function getStaffOverviewData({
     const cutoff = new Date(before).getTime();
     return leadsByStudent.get(studentId)?.find((lead) => (
       new Date(lead.created_at).getTime() <= cutoff && lead.owner_id !== null
-    ))?.owner_id ?? null;
+    ))?.owner_id ?? leadsByStudent.get(studentId)?.find(lead => lead.source_record_id && lead.owner_id)?.owner_id ?? null;
   };
   const supportOwnerForActivity = (activityId: string, studentId: string, at: string): string | null => {
     const exactOwner = invitationThreadsByActivityStudent.get(`${activityId}:${studentId}`)
@@ -552,16 +451,17 @@ export async function getStaffOverviewData({
     return invitationOwner ?? latestLeadOwner(studentId, at);
   };
 
-  const registrationContextById = new Map<string, { activityId: string; studentId: string; at: string }>();
-  for (const activity of activities) {
-    for (const registration of activity.activity_registrations) {
-      registrationContextById.set(registration.id, {
-        activityId: activity.id,
-        studentId: registration.student_id,
-        at: activity.scheduled_at,
-      });
-    }
-  }
+  const sourceSupport = new Map(activities.map(activity => [activity.id,
+    resolveSourceStaffId(sourceStaffLabel(activity.remark, "学服老师"), profiles)]));
+  const personForEvent = (event: { activityId: string | null; studentId: string | null; leadId: string | null; at: string }) => {
+    const directOwner = event.activityId ? sourceSupport.get(event.activityId) : null;
+    const linkedLead = event.leadId ? leadById.get(event.leadId) : null;
+    const studentId = event.studentId ?? linkedLead?.student_id;
+    return directOwner ?? linkedLead?.owner_id ?? (studentId && event.activityId
+      ? supportOwnerForActivity(event.activityId, studentId, event.at) : studentId ? latestLeadOwner(studentId, event.at) : null);
+  };
+  const subjectForEvent = (event: { studentId: string | null; leadId: string | null; id: string }) =>
+    overviewSubjectKey(event.studentId, event.leadId, event.leadId ? leadById.get(event.leadId)?.student_id ?? null : null, event.id);
   const assessorsByRegistrationId = new Map<string, Set<string>>();
   for (const assessment of assessmentRefs) {
     if (!assessment.assessed_by) continue;
@@ -569,51 +469,44 @@ export async function getStaffOverviewData({
     values.add(assessment.assessed_by);
     assessorsByRegistrationId.set(assessment.activity_registration_id, values);
   }
-
-  const leadEvents = periodLeads.map((row) => ({ id: row.id, at: row.created_at, personId: row.owner_id }));
-  const contactEvents = communications
-    .filter((row) => row.outcome === "connected")
-    .map((row) => ({ id: row.id, at: row.occurred_at, personId: row.owner_id_at_contact }));
-  const invitationFactEvents = invitationEvents.map((row) => ({
-    id: row.invitation_id,
-    at: row.occurred_at,
-    personId: row.lead_invitation_threads?.owner_id_at_open ?? null,
+  const leadEvents = periodLeads.map(row => ({ id: row.id, at: row.created_at, personId: row.owner_id }));
+  const sourceContactEvents = communications.filter(row => row.outcome === "connected").map(row => ({
+    id: row.id, at: overviewFactInstant(row.occurred_at, row.occurred_on, timeZone),
+    personId: row.owner_id_at_contact ?? (row.source_record_id ? row.recorded_by ?? leadById.get(row.lead_id)?.owner_id ?? null : null),
   }));
-  const arrivalEvents = activities.flatMap((activity) => activity.activity_registrations
-    .filter((registration) => registration.status === "attended")
-    .map((registration) => ({
-      id: registration.id,
-      at: activity.scheduled_at,
-      studentId: registration.student_id,
-      personId: supportOwnerForActivity(activity.id, registration.student_id, activity.scheduled_at),
-    })));
-  const assessmentEvents = assessments.map((row) => {
-    const registration = registrationContextById.get(row.activity_registration_id);
-    return {
-      id: row.id,
-      at: row.created_at,
-      studentId: row.student_id,
-      personId: registration
-        ? supportOwnerForActivity(registration.activityId, registration.studentId, row.created_at)
-        : latestLeadOwner(row.student_id, row.created_at),
-    };
-  });
-  const enrollmentEvents = periodEnrollments.map((row) => ({
-    id: row.id,
-    at: row.joined_at,
-    studentId: row.student_id,
-    personId: supportOwnerForEnrollment(row.student_id, row.joined_at),
+  const contactEvents = datedEvents(sourceContactEvents);
+  const sourceInvitationEvents = registrations.filter(row => row.source_record_id && activityById.has(row.activity_id) && !activityById.get(row.activity_id)?.source_invitation_id)
+    .map(row => ({ id: row.source_record_id!, at: overviewFactInstant(null, row.registered_on, timeZone),
+      activityId: row.activity_id, studentId: row.student_id, leadId: row.lead_id }));
+  const invitationFactEvents = [
+    ...invitationEvents.map(row => ({ id: row.invitation_id, at: row.occurred_at, personId: row.lead_invitation_threads?.owner_id_at_open ?? null })),
+    ...datedEvents(sourceInvitationEvents).map(row => ({ ...row, personId: personForEvent(row) })),
+  ];
+  const arrivalEvents = datedEvents(sourceEvents.arrivals).map(row => ({ ...row, studentId: subjectForEvent(row), personId: personForEvent(row) }));
+  const assessmentEvents = datedEvents(sourceEvents.assessments).map(row => ({ ...row, studentId: subjectForEvent(row), personId: personForEvent(row) }));
+  const opportunityOwner = new Map(opportunities.map(row => [row.id, row.owner_id]));
+  const enrollmentOwner = new Map(courseEnrollments.map(row => [row.id, row.opportunity_id ? opportunityOwner.get(row.opportunity_id) : null]));
+  const enrollmentEvents = datedEvents(sourceEvents.enrollments).map(row => ({
+    ...row, studentId: subjectForEvent(row),
+    personId: enrollmentOwner.get(row.id) ?? (row.studentId ? supportOwnerForEnrollment(row.studentId, row.at) : null),
   }));
+  const missingDateCounts: Partial<Record<StaffOverviewMetric, number>> = {
+    contacts: sourceContactEvents.filter(row => !row.at).length,
+    invitations: new Set(sourceInvitationEvents.filter(row => !row.at).map(row => row.id)).size,
+    arrivals: sourceEvents.arrivals.filter(row => !row.at).length,
+    assessments: sourceEvents.assessments.filter(row => !row.at).length,
+    enrollments: sourceEvents.enrollments.filter(row => !row.at).length,
+  };
 
   const comparisonByMetric: Record<StaffOverviewMetric, StaffOverviewComparison | null> = {
     leads: !sourceExact("leads") ? null : aggregateStaffOverviewEvents(leadEvents, window, timeZone),
     contacts: !sourceExact("communications") ? null : aggregateStaffOverviewEvents(contactEvents, window, timeZone),
-    invitations: !sourceExact("invitations")
+    invitations: !sourceExact("invitations") || !sourceExact("activities")
       ? null
       : aggregateStaffOverviewEvents(invitationFactEvents, window, timeZone, true),
     arrivals: !sourceExact("activities") ? null : aggregateStaffOverviewEvents(arrivalEvents, window, timeZone),
-    assessments: !sourceExact("assessments") ? null : aggregateStaffOverviewEvents(assessmentEvents, window, timeZone),
-    enrollments: !sourceExact("enrollments") ? null : aggregateStaffOverviewEvents(enrollmentEvents, window, timeZone),
+    assessments: !sourceExact("assessments") || !sourceExact("activities") ? null : aggregateStaffOverviewEvents(assessmentEvents, window, timeZone),
+    enrollments: !sourceExact("enrollments") || !sourceExact("classrooms") ? null : aggregateStaffOverviewEvents(enrollmentEvents, window, timeZone),
   };
 
   const businessFacts = (["leads", "contacts", "invitations", "arrivals", "assessments", "enrollments"] as const)
@@ -680,10 +573,10 @@ export async function getStaffOverviewData({
   const supportMetricSources: Record<StaffOverviewMetric, StaffOverviewSourceKey[]> = {
     leads: ["leads"],
     contacts: ["communications"],
-    invitations: ["invitations"],
-    arrivals: ["activities", "invitations", "leads"],
-    assessments: ["assessments", "activities", "invitations", "leads"],
-    enrollments: ["enrollments", "invitations", "leads"],
+    invitations: ["invitations", "activities", "leads", "staffDirectory"],
+    arrivals: ["activities", "invitations", "leads", "staffDirectory"],
+    assessments: ["assessments", "activities", "invitations", "leads", "staffDirectory"],
+    enrollments: ["enrollments", "invitations", "leads", "classrooms"],
   };
   const supportMetricExact = (metric: StaffOverviewMetric) => supportMetricSources[metric].every(sourceExact);
   const personKey = (userId: string | null) => userId ?? "__unassigned__";
@@ -784,14 +677,12 @@ export async function getStaffOverviewData({
           at: event.at,
           teacherIds: Array.from(assessorsByRegistrationId.get(event.id) ?? []),
         })),
-        ...assessments.map((event) => ({
-          id: event.id,
-          studentId: event.student_id,
-          at: event.created_at,
-          teacherIds: event.assessed_by ? [event.assessed_by] : [],
+        ...assessmentEvents.map(event => ({
+          id: event.id, studentId: event.studentId, at: event.at,
+          teacherIds: assessments.find(row => row.id === event.id)?.assessed_by ? [assessments.find(row => row.id === event.id)!.assessed_by!] : [],
         })),
       ],
-      periodEnrollments.map((row) => ({ id: row.id, studentId: row.student_id, at: row.joined_at })),
+      enrollmentEvents,
       window,
     )
     : null;
@@ -856,6 +747,8 @@ export async function getStaffOverviewData({
   ];
 
   return {
+    currentTermName: term?.name ?? null,
+    missingDateCounts,
     generatedAt: now.toISOString(),
     timeZone,
     grain,
