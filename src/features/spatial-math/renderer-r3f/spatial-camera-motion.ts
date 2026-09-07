@@ -113,24 +113,22 @@ export function snapSpatialCameraPoseToPrincipalAxis(
   if (!Number.isFinite(maxAngleDegrees) || maxAngleDegrees < 0 || maxAngleDegrees > 45) {
     throw new RangeError("camera axis snap angle must be between 0 and 45 degrees");
   }
-  const { radius, target, orientation } = cameraFrame(pose);
-  let closest: SpatialCameraPose | null = null;
-  let closestAngle = Infinity;
-  // 六个观察方向各有四个直角朝向；自由翻转后也只吸附附近姿态，不突然翻正画面。
+  const { radius, target } = cameraFrame(pose);
+  const direction = vector(pose.position).sub(target).normalize();
+  let closest = PRINCIPAL_AXES[0]!;
+  let closestCosine = -Infinity;
+  // 沿用原轨道操作的六个标准方向吸附，开关仍为可选项。
   for (const axis of PRINCIPAL_AXES) {
-    for (let quarterTurn = 0; quarterTurn < 4; quarterTurn++) {
-      const up = vector(axis.up).applyAxisAngle(vector(axis.direction), quarterTurn * Math.PI / 2).round();
-      const candidate = {
-        target: pose.target,
-        position: coordinates(vector(axis.direction).multiplyScalar(radius).add(target)),
-        up: { x: up.x || 0, y: up.y || 0, z: up.z || 0 },
-      };
-      const angle = orientation.angleTo(cameraFrame(candidate).orientation);
-      if (angle < closestAngle) {
-        closestAngle = angle;
-        closest = candidate;
-      }
+    const cosine = direction.dot(vector(axis.direction));
+    if (cosine > closestCosine) {
+      closestCosine = cosine;
+      closest = axis;
     }
   }
-  return closestAngle * 180 / Math.PI <= maxAngleDegrees ? closest : null;
+  const angle = Math.acos(Math.max(-1, Math.min(1, closestCosine))) * 180 / Math.PI;
+  return angle <= maxAngleDegrees ? {
+    target: pose.target,
+    position: coordinates(vector(closest.direction).multiplyScalar(radius).add(target)),
+    up: closest.up,
+  } : null;
 }

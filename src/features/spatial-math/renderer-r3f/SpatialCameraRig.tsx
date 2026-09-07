@@ -1,7 +1,8 @@
 "use client";
 
+import { OrbitControls } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useSyncExternalStore, type ComponentRef } from "react";
 import * as THREE from "three";
 import {
   SPATIAL_AXIS_SNAP_TRANSITION_MS,
@@ -11,9 +12,9 @@ import {
   spatialCameraTransitionProgress,
   type SpatialCameraPose,
 } from "./spatial-camera-motion";
-import { createSpatialArcballControls, type SpatialArcballControls } from "./spatial-arcball-controls";
 
 type SpatialCamera = THREE.OrthographicCamera | THREE.PerspectiveCamera;
+type SpatialControls = ComponentRef<typeof OrbitControls>;
 type CameraBookmark = SpatialCameraPose & { readonly id: string } & (
   | { readonly projection: "orthographic"; readonly zoom: number }
   | { readonly projection: "perspective"; readonly fovDegrees: number }
@@ -40,16 +41,14 @@ function cameraPose(camera: SpatialCamera, target: SpatialCameraPose["target"]):
     up: { x: up.x, y: up.y, z: up.z },
   };
 }
-function applyCameraPose(camera: SpatialCamera, pose: SpatialCameraPose, controls: SpatialArcballControls | null) {
+function applyCameraPose(camera: SpatialCamera, pose: SpatialCameraPose, controls: SpatialControls | null) {
   camera.position.set(pose.position.x, pose.position.y, pose.position.z);
   camera.up.set(pose.up.x, pose.up.y, pose.up.z);
   camera.lookAt(pose.target.x, pose.target.y, pose.target.z);
-  // 书签的 up 可以是方向提示；过渡始终从实际屏幕坐标系接手。
-  camera.up.set(0, 1, 0).applyQuaternion(camera.quaternion);
   camera.updateMatrixWorld();
   if (controls?.object === camera) {
-    controls.setRotationTarget(pose.target);
-    controls.syncFromCamera();
+    // Orbit 的逐帧更新早于相机动画；这里只同步中心，保留本帧的精确插值姿态。
+    controls.target.set(pose.target.x, pose.target.y, pose.target.z);
   }
 }
 function projectionValue(camera: SpatialCamera): number {
@@ -62,16 +61,18 @@ function applyProjectionValue(camera: SpatialCamera, value: number) {
 }
 
 /** 体素、展开图、编辑预览和课堂舞台共用的表现层相机，不产生课堂语义写入。 */
-export function SpatialCameraRig({ bookmark, radius, interactive, axisSnapEnabled = false, requestKey, onTransitionStateChange }: {
+export function SpatialCameraRig({ bookmark, radius, interactive, axisSnapEnabled = false, requestKey, minDistance = 0, maxDistance = Infinity, onTransitionStateChange }: {
   readonly bookmark: CameraBookmark;
   readonly radius: number;
   readonly interactive: boolean;
   readonly axisSnapEnabled?: boolean;
   readonly requestKey?: string | number;
+  readonly minDistance?: number;
+  readonly maxDistance?: number;
   readonly onTransitionStateChange: (active: boolean) => void;
 }) {
   const size = useThree((state) => state.size);
-  const gl = useThree((state) => state.gl);
+  const renderedCamera = useThree((state) => state.camera);
   const setThree = useThree((state) => state.set);
   const invalidate = useThree((state) => state.invalidate);
   const reducedMotion = useSyncExternalStore(subscribeReducedMotion,
@@ -79,9 +80,20 @@ export function SpatialCameraRig({ bookmark, radius, interactive, axisSnapEnable
   const orthographicRef = useRef(new THREE.OrthographicCamera());
   const perspectiveRef = useRef(new THREE.PerspectiveCamera());
   const activeCamera = useRef<SpatialCamera | null>(null);
-  const controls = useRef<SpatialArcballControls | null>(null);
+  const controls = useRef<SpatialControls | null>(null);
+  const startedOrientation = useRef(new THREE.Quaternion());
   const currentTarget = useRef<SpatialCameraPose["target"]>(bookmark.target);
   const transition = useRef<CameraTransition | null>(null);
+  const attachControls = useCallback((instance: SpatialControls | null) => {
+    controls.current = instance;
+    const camera = activeCamera.current;
+    if (!instance || !camera || instance.object !== camera) return;
+    const target = currentTarget.current;
+    instance.target.set(target.x, target.y, target.z);
+    // 新相机接入原控件时保留当前中心，不在构造器的默认原点停留一帧。
+    camera.lookAt(target.x, target.y, target.z);
+    camera.updateMatrixWorld();
+  }, []);
   // 数值相同的模型重建、染色、折叠帧和吸附偏好更新保留手动视角。
   const targetPose = useMemo<SpatialCameraPose>(() => ({
     position: { x: bookmark.position.x, y: bookmark.position.y, z: bookmark.position.z },
@@ -105,14 +117,13 @@ export function SpatialCameraRig({ bookmark, radius, interactive, axisSnapEnable
     perspective.aspect = aspect;
     orthographic.updateProjectionMatrix();
     perspective.updateProjectionMatrix();
-    controls.current?.resize();
     invalidate();
   }, [invalidate, radius, size.height, size.width]);
 
   useLayoutEffect(() => {
     const camera = bookmark.projection === "orthographic" ? orthographicRef.current : perspectiveRef.current;
     const previous = activeCamera.current;
-    const liveTarget = controls.current?.rotationTarget ?? currentTarget.current;
+    const liveTarget = controls.current?.target ?? currentTarget.current;
     const from = previous ? cameraPose(previous, liveTarget) : targetPose;
     currentTarget.current = from.target;
     if (previous && previous !== camera) {
@@ -143,14 +154,15 @@ export function SpatialCameraRig({ bookmark, radius, interactive, axisSnapEnable
     invalidate();
   }, [bookmark.id, bookmark.projection, invalidate, onTransitionStateChange, projectionTarget, reducedMotion, requestKey, setThree, targetPose]);
 
-  const finishGesture = useEffectEvent((instance: SpatialArcballControls, startedOrientation: THREE.Quaternion) => {
+  const finishGesture = () => {
+    const instance = controls.current;
     const camera = activeCamera.current;
-    if (!camera) return;
+    if (!camera || !instance) return;
     instance.update();
-    const from = cameraPose(camera, instance.rotationTarget);
+    const from = cameraPose(camera, instance.target);
     currentTarget.current = from.target;
     // 单纯点击、平移或滚轮缩放保留当前方向；只有实际旋转后的松手才考虑吸附。
-    if (!axisSnapEnabled || startedOrientation.angleTo(camera.quaternion) < 1e-5) return;
+    if (!axisSnapEnabled || startedOrientation.current.angleTo(camera.quaternion) < 1e-5) return;
     const to = snapSpatialCameraPoseToPrincipalAxis(from);
     if (!to) return;
     if (reducedMotion) {
@@ -161,48 +173,13 @@ export function SpatialCameraRig({ bookmark, radius, interactive, axisSnapEnable
       onTransitionStateChange(true);
     }
     invalidate();
-  });
-
-  useEffect(() => {
-    const camera = activeCamera.current;
-    if (!interactive || !camera) return;
-    const element = gl.domElement;
-    const initialPose = cameraPose(camera, currentTarget.current);
-    const instance = createSpatialArcballControls(camera, element);
-    controls.current = instance;
-    applyCameraPose(camera, initialPose, instance);
-    const startedOrientation = new THREE.Quaternion();
-    const start = () => {
-      startedOrientation.copy(camera.quaternion);
-      transition.current = null;
-      currentTarget.current = cameraPose(camera, instance.rotationTarget).target;
-      onTransitionStateChange(false);
-      invalidate();
-    };
-    const end = () => { finishGesture(instance, startedOrientation); invalidate(); };
-    const change = () => invalidate();
-    instance.addEventListener("start", start);
-    instance.addEventListener("end", end);
-    instance.addEventListener("change", change);
-    // Arcball 每次指针事件直接更新姿态；change 为 demand 画布请求重绘。
-    return () => {
-      currentTarget.current = cameraPose(camera, instance.rotationTarget).target;
-      instance.removeEventListener("start", start);
-      instance.removeEventListener("end", end);
-      instance.removeEventListener("change", change);
-      instance.dispose();
-      if (controls.current === instance) controls.current = null;
-    };
-  }, [bookmark.projection, gl, interactive, invalidate, onTransitionStateChange]);
+  };
 
   useFrame(() => {
     const camera = activeCamera.current;
     if (!camera) return;
     const active = transition.current;
-    if (!active) {
-      controls.current?.update();
-      return;
-    }
+    if (!active) return;
     const now = performance.now();
     // demand 画布可能晚于点击才绘制。首帧才开始计时，等待时间不消耗动画。
     active.startedAtMs ??= now;
@@ -217,5 +194,28 @@ export function SpatialCameraRig({ bookmark, radius, interactive, axisSnapEnable
     } else invalidate();
   });
 
-  return null;
+  return (
+    <OrbitControls
+      ref={attachControls}
+      makeDefault
+      camera={renderedCamera}
+      enablePan={interactive}
+      enableRotate={interactive}
+      enableZoom={interactive}
+      enableDamping={false}
+      minDistance={minDistance}
+      maxDistance={maxDistance}
+      onStart={() => {
+        const camera = activeCamera.current;
+        const instance = controls.current;
+        if (!camera || !instance) return;
+        startedOrientation.current.copy(camera.quaternion);
+        transition.current = null;
+        currentTarget.current = cameraPose(camera, instance.target).target;
+        onTransitionStateChange(false);
+        invalidate();
+      }}
+      onEnd={finishGesture}
+    />
+  );
 }

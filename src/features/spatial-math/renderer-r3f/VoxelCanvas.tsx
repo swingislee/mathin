@@ -410,7 +410,7 @@ export function VoxelCanvas({
       ref={rendererElement}
       className="relative h-full w-full"
       data-spatial-renderer="voxel-instanced-r3f-v1"
-      data-camera-controls="anchored-arcball"
+      data-camera-controls="orbit"
       data-camera-transition="orbit-ease-in-out"
       data-camera-transition-state="idle"
       data-camera-axis-snap={axisSnapEnabled ? "enabled" : "disabled"}

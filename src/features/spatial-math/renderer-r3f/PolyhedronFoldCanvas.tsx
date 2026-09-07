@@ -360,6 +360,8 @@ function FoldScene({
         axisSnapEnabled={axisSnapEnabled}
         requestKey={cameraRequestKey}
         interactive={!readOnly}
+        minDistance={0.1}
+        maxDistance={Math.max(20, model.bounds.radius * 20)}
         onTransitionStateChange={onCameraTransitionStateChange}
       />
       <group position={displayOffset}>
@@ -453,7 +455,7 @@ export function PolyhedronFoldCanvas({
       ref={rendererElement}
       className="relative h-full w-full"
       data-spatial-renderer="polyhedron-fold-r3f-v1"
-      data-camera-controls="anchored-arcball"
+      data-camera-controls="orbit"
       data-camera-axis-snap={axisSnapEnabled ? "enabled" : "disabled"}
       data-camera-transition="orbit-ease-in-out"
       data-camera-transition-state="idle"

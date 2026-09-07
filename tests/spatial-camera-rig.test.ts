@@ -1,10 +1,18 @@
-import { createElement } from "react";
+import { createElement, type ComponentRef } from "react";
+import type { OrbitControls } from "@react-three/drei";
 import { act, advance, createRoot, _roots, type RootState } from "@react-three/fiber";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { OrthographicCamera, Quaternion, Vector3, type WebGLRenderer } from "three";
 import { SpatialCameraRig } from "@/features/spatial-math/renderer-r3f/SpatialCameraRig";
 
+// Node 下 drei 使用 CJS；统一真实 Three 构造器，避免 ESM/CJS 双实例误判相机类型。
+vi.mock("three", async () => {
+  const { createRequire } = await import("node:module");
+  return createRequire(import.meta.url)("three");
+});
+
 type Bookmark = Parameters<typeof SpatialCameraRig>[0]["bookmark"];
+type Orbit = ComponentRef<typeof OrbitControls>;
 const front: Bookmark = { id: "front", projection: "orthographic", zoom: 1,
   position: { x: 0, y: 0, z: 10 }, target: { x: 0, y: 0, z: 0 }, up: { x: 0, y: 1, z: 0 } };
 const right: Bookmark = { ...front, id: "right", position: { x: 10, y: 0, z: 0 } };
@@ -21,6 +29,13 @@ class CanvasSurface extends EventTarget {
   releasePointerCapture() {}
 }
 
+function pointer(surface: CanvasSurface, type: string, x: number, y: number, button = 0, pointerType = "mouse") {
+  const target = type === "pointerdown" ? surface : surface.ownerDocument;
+  target.dispatchEvent(Object.assign(new Event(type), {
+    pageX: x, pageY: y, clientX: x, clientY: y, button, pointerType, pointerId: 1,
+  }));
+}
+
 const cleanups: (() => Promise<void>)[] = [];
 afterEach(async () => {
   for (const cleanup of cleanups.splice(0)) await cleanup();
@@ -29,7 +44,7 @@ afterEach(async () => {
 });
 
 // 保留真实 React/R3F 生命周期与 useFrame；只替换 GPU 输出，逐帧检查实际相机。
-async function setupRig(reducedMotion = false, demand = false) {
+async function setupRig(reducedMotion = false, demand = false, initialBookmark: Bookmark = front) {
   let now = 1_000;
   vi.spyOn(performance, "now").mockImplementation(() => now);
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
@@ -71,7 +86,7 @@ async function setupRig(reducedMotion = false, demand = false) {
       advance(now / 1_000, false, state());
     }
   };
-  await render(front);
+  await render(initialBookmark);
   frame();
   cleanups.push(async () => { await act(async () => { root.unmount(); }); frame(); });
   return { render, state, frame, surface, rendered, onTransitionStateChange,
@@ -159,6 +174,26 @@ describe("共享相机真实帧循环", () => {
     expect(camera.right / camera.top).toBeCloseTo(4 / 3);
   });
 
+  it("非原点模型接入与投影切换保持当前中心，不闪回默认原点", async () => {
+    const target = { x: 3, y: 2, z: 1 };
+    const position = { x: 3, y: 2, z: 11 };
+    const rig = await setupRig(false, false, { ...front, target, position });
+    const initial = rig.state().camera.quaternion.clone();
+    expect(initial.angleTo(new Quaternion())).toBeLessThan(1e-7);
+    expect((rig.state().controls as unknown as Orbit).target.toArray()).toEqual([3, 2, 1]);
+    await rig.render({ ...front, id: "3d", projection: "perspective", fovDegrees: 38,
+      target, position: { x: 13, y: 10, z: 11 } });
+    const camera = rig.state().camera;
+    expect(camera.quaternion.angleTo(initial)).toBeLessThan(1e-7);
+    rig.frame();
+    expect(camera.position.distanceTo(new Vector3(3, 2, 11))).toBeLessThan(1e-7);
+    rig.frame(360);
+    expect(camera.position.x).toBeGreaterThan(3);
+    expect(camera.position.x).toBeLessThan(13);
+    rig.frame(360);
+    expect(camera.position.distanceTo(new Vector3(13, 10, 11))).toBeLessThan(1e-7);
+  });
+
   it("减少动态效果偏好下，主动切换仍渲染简短中间姿态", async () => {
     const rig = await setupRig(true);
     const camera = rig.state().camera;
@@ -179,15 +214,75 @@ describe("共享相机真实帧循环", () => {
     rig.frame();
     rig.frame(240);
     const camera = rig.state().camera;
-    const event = (type: string, x: number, y: number) => Object.assign(new Event(type), {
-      pageX: x, pageY: y, clientX: x, clientY: y, button: 0, pointerType: "mouse", pointerId: 1,
-    });
-    rig.surface.dispatchEvent(event("pointerdown", 400, 300));
-    window.dispatchEvent(event("pointermove", 450, 330));
-    window.dispatchEvent(event("pointerup", 450, 330));
+    const before = camera.quaternion.clone();
+    pointer(rig.surface, "pointerdown", 400, 300);
+    pointer(rig.surface, "pointermove", 450, 330);
+    pointer(rig.surface, "pointerup", 450, 330);
     const manual = camera.quaternion.clone();
+    expect(manual.angleTo(before)).toBeGreaterThan(0.1);
     rig.frame(1_000);
     expect(camera.quaternion.angleTo(manual)).toBeLessThan(1e-7);
     expect(rig.onTransitionStateChange).toHaveBeenLastCalledWith(false);
   });
+
+  for (const projection of ["orthographic", "perspective"] as const) {
+    for (const pointerType of ["mouse", "touch"] as const) {
+      it(`${projection}/${pointerType}：沿用原 Orbit 控件与默认手势参数`, async () => {
+        const bookmark: Bookmark = projection === "orthographic" ? front : {
+          ...front, projection: "perspective", fovDegrees: 38,
+        };
+        const rig = await setupRig(false, false, bookmark);
+        const controls = rig.state().controls as unknown as Orbit;
+        expect(controls.constructor.name).toBe("OrbitControls");
+        expect(controls.enableDamping).toBe(false);
+        expect(controls.rotateSpeed).toBe(1);
+        expect(controls.minPolarAngle).toBe(0);
+        expect(controls.maxPolarAngle).toBe(Math.PI);
+        expect(controls.minAzimuthAngle).toBe(-Infinity);
+        expect(controls.maxAzimuthAngle).toBe(Infinity);
+
+        // 对照同版本原控件，不重写另一套旋转算法；包含普通拖动和顶部之后的拖动。
+        const baselineCamera = rig.state().camera.clone();
+        const baselineSurface = new CanvasSurface();
+        const Constructor = controls.constructor as new (camera: typeof baselineCamera) => Orbit;
+        const baseline = new Constructor(baselineCamera);
+        baseline.enableDamping = false;
+        baseline.connect(baselineSurface as unknown as HTMLElement);
+        for (const [dx, dy] of [[80, 40], [-60, 700], [80, 0], [0, -120]]) {
+          for (const surface of [rig.surface, baselineSurface]) {
+            pointer(surface, "pointerdown", 400, 300, 0, pointerType);
+            pointer(surface, "pointermove", 400 + dx, 300 + dy, 0, pointerType);
+            pointer(surface, "pointerup", 400 + dx, 300 + dy, 0, pointerType);
+          }
+          rig.frame();
+          baseline.update();
+          expect(rig.state().camera.position.distanceTo(baselineCamera.position)).toBeLessThan(1e-7);
+          expect(rig.state().camera.quaternion.angleTo(baselineCamera.quaternion)).toBeLessThan(1e-7);
+        }
+        baseline.dispose();
+      });
+    }
+
+    it(`${projection}：原缩放和平移保留，按钮从平移后的姿态平滑恢复`, async () => {
+      const bookmark: Bookmark = projection === "orthographic" ? front : { ...front, projection: "perspective", fovDegrees: 38 };
+      const rig = await setupRig(false, false, bookmark);
+      const camera = rig.state().camera;
+      const controls = rig.state().controls as unknown as Orbit;
+      const visibleScale = () => camera instanceof OrthographicCamera ? camera.zoom : 1 / camera.position.distanceTo(controls.target);
+      const initialScale = visibleScale();
+      rig.surface.dispatchEvent(Object.assign(new Event("wheel"), { deltaY: -100 }));
+      expect(visibleScale()).toBeGreaterThan(initialScale);
+      pointer(rig.surface, "pointerdown", 400, 300, 2);
+      pointer(rig.surface, "pointermove", 450, 330, 2);
+      pointer(rig.surface, "pointerup", 450, 330, 2);
+      expect(controls.target.length()).toBeGreaterThan(0.1);
+      const position = camera.position.clone();
+      await rig.render(bookmark, 1);
+      expect(camera.position.distanceTo(position)).toBeLessThan(1e-7);
+      rig.frame();
+      rig.frame(720);
+      expect(controls.target.length()).toBeLessThan(1e-7);
+      expect(camera.position.distanceTo(new Vector3(0, 0, 10))).toBeLessThan(1e-7);
+    });
+  }
 });
