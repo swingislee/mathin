@@ -14,6 +14,7 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DashboardTableFieldMenu, type DashboardTableFieldHeaderProps } from "./DashboardTableFieldMenu";
 
 export type DashboardTableSortDirection = "asc" | "desc";
 
@@ -36,17 +37,7 @@ export interface DashboardTableColumnHeaderLabels {
   noOptions?: string;
 }
 
-/** Shared shadcn column control for Dashboard data tables; business labels stay with the caller. */
-export function DashboardTableColumnHeader({
-  label,
-  labels,
-  filterValue,
-  filterOptions,
-  sortDirection,
-  onFilterChange,
-  onSortChange,
-  onClear,
-}: {
+interface LegacyColumnHeaderProps {
   label: string;
   labels?: DashboardTableColumnHeaderLabels;
   filterValue?: string;
@@ -55,7 +46,23 @@ export function DashboardTableColumnHeader({
   onFilterChange: (value: string | undefined) => void;
   onSortChange?: (direction: DashboardTableSortDirection | undefined) => void;
   onClear: () => void;
-}) {
+}
+
+/** 新字段接口按工作表逐批接入；尚未迁移的调用保持原合同。 */
+export function DashboardTableColumnHeader(props: LegacyColumnHeaderProps | DashboardTableFieldHeaderProps) {
+  return "fields" in props ? <DashboardTableFieldMenu {...props} /> : <LegacyColumnHeader {...props} />;
+}
+
+function LegacyColumnHeader({
+  label,
+  labels,
+  filterValue,
+  filterOptions,
+  sortDirection,
+  onFilterChange,
+  onSortChange,
+  onClear,
+}: LegacyColumnHeaderProps) {
   const t = useTranslations("school.table");
   const [menuOpen, setMenuOpen] = useState(false);
   const active = Boolean(filterValue || sortDirection);

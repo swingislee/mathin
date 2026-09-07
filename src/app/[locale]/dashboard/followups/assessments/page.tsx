@@ -1,9 +1,9 @@
-import { setRequestLocale } from "next-intl/server";
+import { getNow, setRequestLocale } from "next-intl/server";
 import { AssessmentUnifiedWorkbench } from "@/features/school/AssessmentUnifiedWorkbench";
 import { listAssessmentWorkbenchRows } from "@/features/school/assessment-workbench-data";
 import { listInvitationOptions } from "@/features/school/invitations";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
-import { businessRecordStateFilter } from '@/features/school/business-record-state-contract';
+import { getOrganizationTimezoneV2 } from "@/features/school/organization-locations";
 
 export default async function AssessmentsPage({
   params,
@@ -20,18 +20,21 @@ export default async function AssessmentsPage({
   const canAssess = permissions.has("review.write");
   const canSupport = permissions.has("followup.view");
   const canManageAssessor = permissions.has("followup.write");
-  const [rows, options] = await Promise.all([
+  const [rows, options, timeZone, now] = await Promise.all([
     listAssessmentWorkbenchRows(),
     listInvitationOptions(),
+    getOrganizationTimezoneV2(),
+    getNow(),
   ]);
 
   return (
     <AssessmentUnifiedWorkbench
       initialRows={rows}
       initialQuery={query.q?.slice(0,100)}
-      initialRecordState={businessRecordStateFilter(query.state)}
       assessors={options.assessors}
       locale={locale}
+      timeZone={timeZone}
+      now={now.getTime()}
       canAssess={canAssess}
       canSupport={canSupport}
       canManageAssessor={canManageAssessor}

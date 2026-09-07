@@ -1,5 +1,5 @@
-// 固定开发账号只读检查线索页启动；--followup-filters 检查学辅五表标题栏。
-// Run: node --experimental-strip-types scripts/verify-lead-intake.mjs [--followup-filters]
+// 固定开发账号只读检查线索页启动；--followup-filters 检查五表，--assessment-fields 仅检查测评样板。
+// Run: node --experimental-strip-types scripts/verify-lead-intake.mjs [--followup-filters | --assessment-fields]
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -9,6 +9,7 @@ import { openHistoryLocalTarget } from './lib/history-local-target.mjs';
 
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'mathin-lead-intake-'));
 const followupFilters = process.argv.includes('--followup-filters');
+const assessmentFields = process.argv.includes('--assessment-fields');
 openHistoryLocalTarget({ refresh: true, attestationPath: path.join(temporary, 'preflight.json'), errorFile: path.join(temporary, 'database-error.txt') });
 const env = Object.fromEntries(fs.readFileSync('.env.local', 'utf8').split(/\r?\n/)
   .filter(line => /^[A-Z_]+=/.test(line)).map(line => {
@@ -29,7 +30,7 @@ for (const role of ['principal','teacher']) {
   if (error) throw new Error('FIXED_ACCOUNT_LOGIN_FAILED: '+(error.code || 'unknown'));
   try {
     for (const locale of ['zh','en']) {
-      const routes = followupFilters ? [
+      const routes = assessmentFields ? ['assessments'] : followupFilters ? [
         'leads?scope='+ (role === 'principal' ? 'unassigned' : 'mine'),
         'leads?scope='+ (role === 'principal' ? 'all' : 'mine') +'&assignment=assigned',
         'communication?view=all&scope=mine', 'assessments', 'renewals',
@@ -40,7 +41,8 @@ for (const role of ['principal','teacher']) {
           headers: { cookie:[...cookies].map(([name,value]) => name+'='+value).join('; ') } });
         const html = await response.text();
         if (response.status !== 200 || /Could not find|schema cache|MISSING_MESSAGE|NEXT_REDIRECT|__next_error__|NEXT_HTTP_ERROR_FALLBACK/.test(html)
-          || !html.includes('data-dashboard-command-panel') || (followupFilters && !html.includes('data-followup-primary-filter')))
+          || !html.includes('data-dashboard-command-panel') || ((followupFilters || assessmentFields) && !html.includes('data-followup-primary-filter'))
+          || (assessmentFields && !html.includes(locale === 'zh' ? '记录时间' : 'Record date')))
           throw new Error('FOLLOWUP_STARTUP_FAILED: '+role+'/'+locale+'/'+route+' HTTP '+response.status);
         console.log(JSON.stringify({role,locale,route,status:response.status,worksheet:html.includes('data-lead-intake-workbench'),
           primaryFilter:html.includes('data-followup-primary-filter'),businessWrites:false}));

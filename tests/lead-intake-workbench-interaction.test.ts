@@ -22,7 +22,7 @@ vi.mock("@/i18n/navigation", () => ({ Link: ({ children, ...props }: ComponentPr
 vi.mock("sonner", () => ({ toast: { error: actions.error, success: vi.fn() } }));
 vi.mock("@/features/school/dashboard-page/DashboardTableColumnHeader", () => ({ DashboardTableColumnHeader: ({
   label, labels, filterValue, filterOptions, onFilterChange, onSortChange,
-}: ComponentProps<typeof DashboardTableColumnHeader>) => createElement("div", { "data-column-scope": labels?.scope },
+}: Extract<ComponentProps<typeof DashboardTableColumnHeader>, { filterOptions: unknown }>) => createElement("div", { "data-column-scope": labels?.scope },
   createElement("select", { "aria-label": label, value: filterValue ?? "", onChange: (event: { currentTarget: HTMLSelectElement }) => onFilterChange(event.currentTarget.value || undefined) },
     createElement("option", { value: "" }, label), ...filterOptions.map(option => createElement("option", { key: option.value, value: option.value }, option.label))),
   createElement("button", { type: "button", "aria-label": `${label} ascending`, onClick: () => onSortChange?.("asc") }, "Sort")) }));

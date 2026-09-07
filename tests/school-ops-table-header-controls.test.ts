@@ -83,7 +83,7 @@ describe("subject-operations table header controls", () => {
     ];
     for (const [source, count] of dataTables) {
       expect(source.match(/<DashboardTableColumnHeader/g)).toHaveLength(count);
-      expect(source).toContain("useDashboardTableView");
+      expect(source).toMatch(/useDashboard(?:Table|Field)View/);
     }
 
     const leads = read("src", "features", "school", "LeadPoolTable.tsx");

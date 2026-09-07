@@ -2,8 +2,8 @@
 
 import { BusinessRecordRevisionButton } from './BusinessRecordRevisionButton';
 
-import { BusinessRecordStateFilter, HistoricalRecordBadge, useBusinessSearchQuery } from './BusinessRecordStateFilter';
-import { businessRecordMessages, isCurrentBusinessRecord, matchesBusinessRecordState, type BusinessRecordStateFilter as StateFilter } from './business-record-state-contract';
+import { useBusinessSearchQuery } from './BusinessRecordStateFilter';
+import { isCurrentBusinessRecord } from './business-record-state-contract';
 import { useEffect, useMemo, useRef, useState } from "react";
 import { UserCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -40,25 +40,20 @@ import {
   DashboardPage,
   DashboardTableColumnHeader,
   DashboardTableShell,
-  type DashboardTableColumnDefinition,
-  useDashboardTableView,
 } from "./dashboard-page";
+import { useDashboardFieldView } from "./dashboard-page/useDashboardFieldView";
+import { formatDashboardDate } from "./dashboard-page/dashboard-table-date-contract";
+import { dashboardFieldMessages } from "./dashboard-page/dashboard-field-messages";
+import {
+  ASSESSMENT_TABLE_COLUMNS, assessmentTableFields, assessmentTableBand, assessmentTableScore,
+  assessmentScheduledDate, assessmentRecordDate, assessmentTableConclusion as assessmentConclusion,
+  formatAssessmentTableScore, migrateAssessmentFieldQuery,
+} from "./assessment-table-fields";
 import type { InvitationAssessorOption } from "./invitation-contract";
 
 interface SupportDraft {
   route: ActivityRouteKind | null;
 }
-
-const EMPTY_VALUE = "$empty";
-type AssessmentTableColumn = "student" | "kind" | "arrangement" | "result" | "teacher" | "status" | "updated";
-
-const QUEUE_LABEL_KEYS: Record<AssessmentWorkbenchQueue, string> = {
-  pending: "queue_assessment_pending",
-  in_progress: "queue_in_progress",
-  feedback: "queue_pending",
-  handled: "queue_handled",
-  all: "queue_all",
-};
 
 function draftFromRow(row: AssessmentWorkbenchRow): SupportDraft {
   return {
@@ -78,15 +73,6 @@ function queueFor(
   return stage;
 }
 
-function assessmentConclusion(row: AssessmentWorkbenchRow): string {
-  if (row.assessment?.resultSource === "quick_entry") return row.assessment.teacherRecommendation || row.assessment.strengths || "";
-  if (row.assessment?.resultSource === "teacher") return row.assessment.teacherObservation;
-  return row.assessment?.teacherObservation
-    || row.assessment?.teacherRecommendation
-    || row.assessment?.strengths
-    || "";
-}
-
 export function AssessmentUnifiedWorkbench({
   initialRows,
   assessors,
@@ -96,7 +82,8 @@ export function AssessmentUnifiedWorkbench({
   canManageAssessor,
   canQuickEntry = canAssess,
   initialQuery,
-  initialRecordState = 'all',
+  timeZone = "Asia/Shanghai",
+  now,
 }: {
   initialRows: AssessmentWorkbenchRow[];
   assessors: InvitationAssessorOption[];
@@ -106,7 +93,8 @@ export function AssessmentUnifiedWorkbench({
   canManageAssessor: boolean;
   canQuickEntry?: boolean;
   initialQuery?: string;
-  initialRecordState?: StateFilter;
+  timeZone?: string;
+  now?: number;
 }) {
   const t = useTranslations("school.supportAssessment");
   const filterT = useTranslations("school.followupFilters");
@@ -123,26 +111,17 @@ export function AssessmentUnifiedWorkbench({
   const rows = useMemo(() => [...currentRows, ...initialRows.filter(row => !isCurrentBusinessRecord(row.recordState))], [currentRows, initialRows]);
   const [drafts, setDrafts] = useState<Record<string, SupportDraft>>(initialDrafts);
   const [query, setQuery] = useBusinessSearchQuery("assessments",initialQuery);
-  const [recordState,setRecordState]=useState(initialRecordState);
-  const recordM=businessRecordMessages(locale);
+  const [clockNow] = useState(() => now ?? Date.now());
+  const dateContext = useMemo(() => ({ locale, timeZone, now: clockNow }), [locale, timeZone, clockNow]);
+  const fieldM = dashboardFieldMessages(locale);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [visitedDetails, setVisitedDetails] = useState<Set<string>>(() => new Set());
   const [retainedView, setRetainedView] = useState<{ key: string; ids: string[] } | null>(null);
   const [reassigningId, setReassigningId] = useState<string | null>(null);
-  const dateTime = useMemo(() => new Intl.DateTimeFormat(locale, {
-    month: "numeric",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone: "Asia/Shanghai",
-  }), [locale]);
-
   const scopedRows = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase(locale);
     return rows.filter((row) => {
-      if(!matchesBusinessRecordState(row.recordState,recordState)) return false;
       if (!needle) return true;
       const assessment = row.assessment;
       return [
@@ -155,135 +134,19 @@ export function AssessmentUnifiedWorkbench({
         row.activityTitle,
         assessment?.teacherObservation ?? "",
         assessment?.teacherRecommendation ?? "",
+        assessment?.strengths ?? "",
+        assessment?.focusAreas ?? "",
+        assessment?.parentConcerns ?? "",
+        row.questionSummary?.paperTitle ?? "",
       ].some((value) => value.toLocaleLowerCase(locale).includes(needle));
     });
-  }, [locale, query, rows, recordState]);
-  const dayFormatter = useMemo(() => new Intl.DateTimeFormat(locale, {
-    dateStyle: "medium",
-    timeZone: "Asia/Shanghai",
-  }), [locale]);
-  const tableColumns = useMemo<Record<AssessmentTableColumn, DashboardTableColumnDefinition<AssessmentWorkbenchRow>>>(() => ({
-    kind: {
-      filterValues: (row) => ({ value: row.assessmentKind, label: t(`type_${row.assessmentKind}`) }),
-      sortValue: (row) => row.assessmentKind,
-    },
-    student: {
-      filterValues: (row) => [
-        { value: `name:${row.name}`, label: row.name, group: tableT("fieldName") },
-        {
-          value: row.phone ? `phone:${row.phone}` : `phone:${EMPTY_VALUE}`,
-          label: row.phone || tableT("emptyValue"),
-          group: tableT("fieldPhone"),
-        },
-        {
-          value: row.gradeText || row.grade ? `grade:${row.gradeText || row.grade}` : `grade:${EMPTY_VALUE}`,
-          label: row.gradeText || (row.grade ? assessmentT("gradeValue", { grade: row.grade }) : assessmentT("gradePending")),
-          group: tableT("fieldGrade"),
-        },
-      ],
-      sortValue: (row) => row.name,
-    },
-    arrangement: {
-      filterValues: (row) => [
-        {
-          value: `time:${row.scheduledAt}`,
-          label: row.recordState==='historical' ? row.occurredOn??recordM.unknown : dateTime.format(new Date(row.scheduledAt)),
-          group: tableT("fieldScheduledTime"),
-        },
-        {
-          value: row.location ? `location:${row.location}` : `location:${EMPTY_VALUE}`,
-          label: row.location || assessmentT("locationPending"),
-          group: tableT("fieldLocation"),
-        },
-        {
-          value: row.assessorId ? `assessor:${row.assessorId}` : `assessor:${EMPTY_VALUE}`,
-          label: row.assessorName || t("assessorPending"),
-          group: tableT("fieldAssessor"),
-        },
-        {
-          value: `assessor-source:${row.assessorSource}`,
-          label: t(row.assessorSource === "actual" ? "actualAssessor" : "assignedAssessor"),
-          group: tableT("fieldAssessorSource"),
-        },
-      ],
-      sortValue: (row) => row.scheduledAt,
-    },
-    result: {
-      filterValues: (row) => {
-        const stage = queueFor(row, drafts[row.id]);
-        const completed = assessmentWorkbenchHasFinalResult(row);
-        const score = completed ? row.assessment?.score : null;
-        const hasScore = score !== null && score !== undefined;
-        return [
-          ...(hasScore
-            ? [{
-                value: `score:${score}`,
-                label: row.questionSummary
-                  ? t("scoreValue", { score, total: row.questionSummary.totalScore })
-                  : t("scoreOnly", { score }),
-                group: tableT("fieldScore"),
-              }]
-            : []),
-          ...(row.assessment?.assessmentBand
-            ? [{
-                value: `band:${row.assessment.assessmentBand}`,
-                label: teacherT(`band_${row.assessment.assessmentBand}`),
-                group: tableT("fieldBand"),
-              }]
-            : []),
-          ...(!hasScore
-            ? [{
-                value: row.questionSummary
-                  ? `progress:${row.questionSummary.answeredCount}:${row.questionSummary.questionCount}`
-                  : `progress:${stage}`,
-                label: row.questionSummary
-                  ? t("progressValue", {
-                      answered: row.questionSummary.answeredCount,
-                      total: row.questionSummary.questionCount,
-                    })
-                  : t(stage === "pending" ? "waitingStart" : "teacherWorking"),
-                group: tableT("fieldProgress"),
-              }]
-            : []),
-          {
-            value: row.questionSummary?.paperTitle
-              ? `paper:${row.questionSummary.paperTitle}`
-              : `paper:${EMPTY_VALUE}`,
-            label: row.questionSummary?.paperTitle || t("paperPending"),
-            group: tableT("fieldPaper"),
-          },
-        ];
-      },
-      sortValue: (row) => row.assessment?.score,
-    },
-    teacher: {
-      filterValues: (row) => {
-        const conclusion = assessmentConclusion(row);
-        return {
-          value: conclusion ? `conclusion:${conclusion}` : EMPTY_VALUE,
-          label: conclusion || tableT("emptyValue"),
-        };
-      },
-      sortValue: (row) => assessmentConclusion(row),
-    },
-    status: {
-      filterValues: (row) => {
-        const stage = queueFor(row, drafts[row.id]);
-        if(row.recordState==='historical') return {value:'historical',label:recordM.historical};
-        return { value: stage, label: t(QUEUE_LABEL_KEYS[stage]) };
-      },
-      sortValue: (row) => ASSESSMENT_WORKBENCH_QUEUES.indexOf(queueFor(row, drafts[row.id])),
-    },
-    updated: {
-      filterValues: (row) => ({
-        value: row.recordState==='historical'?row.occurredOn??EMPTY_VALUE:dayFormatter.format(new Date(row.updatedAt)),
-        label: row.recordState==='historical'?row.occurredOn??recordM.unknown:dayFormatter.format(new Date(row.updatedAt)),
-      }),
-      sortValue: (row) => row.updatedAt,
-    },
-  }), [assessmentT, dateTime, dayFormatter, drafts, t, tableT, teacherT,recordM.unknown,recordM.historical]);
-  const assessmentTable = useDashboardTableView({ rows: scopedRows, columns: tableColumns, locale, persistenceKey: "followup-assessments" });
-  const viewKey = JSON.stringify([query, recordState, assessmentTable.filters, assessmentTable.sort]);
+  }, [locale, query, rows]);
+  const fields = useMemo(() => assessmentTableFields({ locale, timeZone, tableT, assessmentT, t, teacherT, quickT,
+    stageFor: row => queueFor(row, drafts[row.id]),
+  }), [locale, timeZone, tableT, assessmentT, t, teacherT, quickT, drafts]);
+  const assessmentTable = useDashboardFieldView({ rows: scopedRows, fields, columns: ASSESSMENT_TABLE_COLUMNS,
+    context: dateContext, persistenceKey: "followup-assessments", migrate: migrateAssessmentFieldQuery });
+  const viewKey = JSON.stringify([query, assessmentTable.filters, assessmentTable.sort]);
   const latestInteraction = useRef({ activeId, expandedId, viewKey });
   useEffect(() => { latestInteraction.current = { activeId, expandedId, viewKey }; }, [activeId, expandedId, viewKey]);
   if (retainedView && retainedView.key !== viewKey) setRetainedView(null);
@@ -360,16 +223,11 @@ export function AssessmentUnifiedWorkbench({
             <FollowupTabs />
           </DashboardCommandState>
           <DashboardCommandFilters>
-            <FollowupPrimaryFilter label={filterT("workQueue")} value={ASSESSMENT_WORKBENCH_QUEUES.includes(assessmentTable.filters.status as AssessmentWorkbenchQueue) ? assessmentTable.filters.status! : "all"}
+            <FollowupPrimaryFilter label={filterT("workQueue")} value={assessmentTable.filters.status?.kind === "enum" ? assessmentTable.filters.status.values[0] : "all"}
               options={ASSESSMENT_WORKBENCH_QUEUES.map(value => ({ value, label: filterT(`assessments_${value}`) }))}
               onValueChange={value => {
-                assessmentTable.setFilter("status", value === "all" ? undefined : value);
-                if (value !== "all" && recordState === "historical") setRecordState("current");
+                assessmentTable.setFilter("status", value === "all" ? undefined : { kind: "enum", values: [value] });
               }} />
-            <BusinessRecordStateFilter presentation="followup" value={recordState} onChange={value => {
-              setRecordState(value);
-              if (value === "historical") assessmentTable.setFilter("status", undefined);
-            }} locale={locale}/>
             <FilterSearchInput
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -392,7 +250,7 @@ export function AssessmentUnifiedWorkbench({
                 <TableHead className="sticky top-0 z-20 h-9 w-40 bg-card px-2"><DashboardTableColumnHeader label={t("resultColumn")} {...assessmentTable.columnProps("result")} /></TableHead>
                 <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={t("teacherColumn")} {...assessmentTable.columnProps("teacher")} /></TableHead>
                 <TableHead className="sticky top-0 z-20 h-9 w-40 bg-card px-2"><DashboardTableColumnHeader label={t("statusColumn")} {...assessmentTable.columnProps("status")} /></TableHead>
-                <TableHead className="sticky top-0 z-20 h-9 w-24 bg-card px-2"><DashboardTableColumnHeader label={t("updatedColumn")} {...assessmentTable.columnProps("updated")} /></TableHead>
+                <TableHead className="sticky top-0 z-20 h-9 w-24 bg-card px-2"><DashboardTableColumnHeader label={fieldM.recordedAt} {...assessmentTable.columnProps("updated")} /></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody onKeyDown={(event) => navigateFollowupTable(event, (id) => { setActiveId(id); return true; })}>
@@ -406,6 +264,11 @@ export function AssessmentUnifiedWorkbench({
                 const stage = queueFor(row, draft);
                 const completed = assessmentWorkbenchHasFinalResult(row);
                 const conclusion = assessmentConclusion(row);
+                const band = assessmentTableBand(row);
+                const score = assessmentTableScore(row);
+                const scoreDisplay = formatAssessmentTableScore(row, locale);
+                const scheduledAt = assessmentScheduledDate(row, timeZone);
+                const recordedAt = assessmentRecordDate(row);
                 const latestContext = row.workflow?.finalizedAt && row.workflow.parentResponse
                   && row.workflow.finalizedAt > (row.latestFollowUp?.createdAt ?? "")
                   ? row.workflow.parentResponse : row.latestFollowUp?.content;
@@ -443,25 +306,24 @@ export function AssessmentUnifiedWorkbench({
                       </TableCell>
                       <TableCell className="px-2 py-2"><Badge variant="outline" className="whitespace-nowrap border-line bg-line/20 text-muted">{t(`type_${row.assessmentKind}`)}</Badge></TableCell>
                       <TableCell className="px-2 py-2">
-                        <p className="truncate font-medium text-ink">{current ? dateTime.format(new Date(row.scheduledAt)) : row.occurredOn ?? recordM.unknown}</p>
-                        <p className="mt-0.5 truncate text-[11px] text-muted" title={row.location}>{row.location || (current ? assessmentT("locationPending") : recordM.unknown)}</p>
+                        <p className="truncate font-medium text-ink"><time dateTime={scheduledAt ?? undefined} aria-label={formatDashboardDate(scheduledAt, dateContext, { time: true, full: true })}>{formatDashboardDate(scheduledAt, dateContext, { time: true })}</time></p>
+                        <p className="mt-0.5 truncate text-[11px] text-muted" title={row.location}>{row.location || "—"}</p>
                         <div className="mt-1 flex min-w-0 items-center gap-1.5 text-[11px] text-muted">
                           {row.assessorSource === "actual" ? <UserCheck className="size-3.5 shrink-0 text-leaf-deep" /> : null}
                           <span className="shrink-0">{t(row.assessorSource === "actual" ? "actualAssessor" : "assignedAssessor")}</span>
-                          <span className="truncate font-medium text-ink">{row.assessorName || (current ? t("assessorPending") : recordM.unknown)}</span>
+                          <span className="truncate font-medium text-ink">{row.assessorName || "—"}</span>
                         </div>
                       </TableCell>
                       <TableCell className="px-2 py-2">
-                        {completed && row.assessment && (row.assessment.score !== null || row.assessment.assessmentBand) ? (
+                        {completed && row.assessment && (score.score !== null || band) ? (
                           <div className="flex min-w-0 items-center gap-2">
-                            {row.assessment.score !== null ? <span className="shrink-0 text-sm font-semibold tabular-nums text-ink">
-                              {row.questionSummary
-                                ? t("scoreValue", { score: row.assessment.score, total: row.questionSummary.totalScore })
-                                : t("scoreOnly", { score: row.assessment.score })}
+                            {score.score !== null ? <span className={cn("shrink-0 text-sm font-semibold tabular-nums", score.invalid ? "text-rose" : "text-ink")}
+                              title={scoreDisplay.hint || undefined} aria-label={`${scoreDisplay.label}${scoreDisplay.hint ? ` · ${scoreDisplay.hint}` : ""}`}>
+                              {scoreDisplay.label}
                             </span> : null}
-                            {row.assessment.assessmentBand ? (
-                              <Badge variant="outline" className={cn(row.assessment.assessmentBand === "x_plus" || row.assessment.assessmentBand === "below_a" ? "border-rose/30 bg-cheek/25 text-ink" : row.assessment.assessmentBand === "g_plus" ? "border-crater/40 bg-moon/40 text-ink" : "border-leaf-deep/35 bg-leaf/20 text-leaf-deep")}>
-                                {teacherT(`band_${row.assessment.assessmentBand}`)}
+                            {band ? (
+                              <Badge variant="outline" className={cn(band === "x_plus" ? "border-rose/30 bg-cheek/25 text-ink" : band === "g_plus" ? "border-crater/40 bg-moon/40 text-ink" : "border-leaf-deep/35 bg-leaf/20 text-leaf-deep")}>
+                                {teacherT(`band_${band}`)}
                               </Badge>
                             ) : null}
                           </div>
@@ -478,13 +340,13 @@ export function AssessmentUnifiedWorkbench({
                           {quickT(row.assessment.resultSource === "quick_entry" ? "quickResult" : "teacherResult")}{row.assessment.recordedByName ? ` · ${row.assessment.recordedByName}` : ""}</p> : null}
                       </TableCell>
                       <TableCell className="px-2 py-2">
-                        <p className={cn("line-clamp-2 whitespace-normal leading-5", conclusion ? "text-ink" : "text-muted")} title={!current && expanded ? undefined : conclusion}>
-                          {!current && expanded ? recordM.historicalFeedback : conclusion || (completed ? t("conclusionPending") : t("stageAssessmentPending"))}
+                        <p className={cn("line-clamp-2 whitespace-normal leading-5", conclusion ? "text-ink" : "text-muted")} title={conclusion || undefined}>
+                          {conclusion || (completed ? t("conclusionPending") : t("stageAssessmentPending"))}
                         </p>
                       </TableCell>
                       <TableCell className="px-2 py-2">
                         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                          {current ? <StageBadge stage={stage} contacting={false} /> : <HistoricalRecordBadge locale={locale} />}
+                          {current ? <StageBadge stage={stage} contacting={false} /> : <span className="text-muted">—</span>}
                           {current && row.workflow?.classification ? <span className="text-[11px] text-muted">{workflowT("classification_" + row.workflow.classification)}</span> : null}
                           {!current && row.assessment ? <BusinessRecordRevisionButton kind="assessment" recordId={row.assessment.id} subject={row.name}/> : null}
                         </div>
@@ -494,7 +356,7 @@ export function AssessmentUnifiedWorkbench({
                         </div> : null}
                       </TableCell>
                       <TableCell data-assessment-latest-update className="px-2 py-2 text-[11px] text-muted">
-                        <p className="whitespace-nowrap tabular-nums">{current ? dateTime.format(new Date(row.updatedAt)) : row.occurredOn ?? recordM.unknown}</p>
+                        <p className="truncate tabular-nums"><time dateTime={recordedAt ?? undefined} title={formatDashboardDate(recordedAt, dateContext, { time: true, full: true })} aria-label={formatDashboardDate(recordedAt, dateContext, { time: true, full: true })}>{formatDashboardDate(recordedAt, dateContext, { time: true })}</time></p>
                         {current && latestContext?.trim() ? <p data-current-situation className="mt-0.5 truncate leading-4">{latestContext}</p> : null}
                       </TableCell>
                     </TableRow>
