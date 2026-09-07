@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { FollowupTableRecord, type FollowupRowState } from "./dashboard-page/FollowupTableRecord";
+
+import { useCallback, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { FlaskConical, SlidersHorizontal } from "lucide-react";
 import { useAction } from "@/components/action-form";
@@ -70,76 +72,98 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
   const [createOpen, setCreateOpen] = useState(false);
   const [closeCycleOpen, setCloseCycleOpen] = useState(false);
   const cycle = data.cycles.find(row => row.id === data.selectedCycleId);
-  const samples = renewalHealthSamples(supplement.now);
-  const healthFacts = sampleMode ? samples.map(sample => sample.facts) : supplement.health;
-  const facts = new Map(healthFacts.map(row => [row.studentId, row]));
-  const payments = new Map(supplement.payments.map(row => [row.opportunity_id, row]));
-  const records = new Map(supplement.records.map(row => [row.opportunityId, row]));
-  const phones = new Map(supplement.students.map(row => [row.id, row.phone]));
-  const teachers = new Map(supplement.membershipTeachers.map(row => [row.membershipId, row.name]));
-  const memberships = new Map(supplement.membershipTeachers.map(row => [row.membershipId, row]));
-  const signalsFor = (row: RenewalPoolRow) => isCurrentBusinessRecord(row.recordState) ? renewalHealthSignals(facts.get(row.studentId), supplement.now, policy) : [];
-  const currentRows: RenewalPoolRow[] = [
-    ...data.candidates.map(row => ({ id: row.membershipId, membershipId: row.membershipId, studentId: row.studentId,
-      name: row.studentName, phone: phones.get(row.studentId) ?? "", grade: row.grade, classroom: row.classroomName,
-      teacher: teachers.get(row.membershipId) ?? "", teachers: memberships.get(row.membershipId)?.teachers, classroomId: row.classroomId,
-      owner: row.currentOwnerName, ownerId: row.currentOwnerId, targetCourseId: row.sourceCourseId, targetTermId: cycle?.targetTermId, targetTermName: cycle?.targetTermName,
-      stage: "unprepared", note: "", opportunityId: null,
-      targetCourse: row.sourceCourseTitle, nextContactAt: null, updatedAt: null })),
-    ...data.opportunities.filter(row => row.opportunityType === "renewal" && row.cycleId === cycle?.id && row.sourceMembershipId).map(row => ({
-      id: row.sourceMembershipId!, membershipId: row.sourceMembershipId!, studentId: row.studentId, name: row.studentName,
-      phone: phones.get(row.studentId) ?? "", grade: row.grade, classroom: row.sourceClassroomName, teacher: teachers.get(row.sourceMembershipId!) ?? "",
-      owner: row.ownerName, ownerId: row.ownerId, teachers: memberships.get(row.sourceMembershipId!)?.teachers, classroomId: memberships.get(row.sourceMembershipId!)?.classroomId,
-      targetCourseId: row.courseId, targetTermId: row.termId, targetTermName: row.termName,
-      stage: row.stage, note: row.note, opportunityId: row.id, targetCourse: row.courseTitle,
-      nextContactAt: row.nextActionAt, updatedAt: row.updatedAt, record: records.get(row.id), payment: payments.get(row.id),
-    })),
-  ].map(row => {
-    const saved = savedRows[row.id];
-    // 新的服务器事实优先；在刷新到达前即时回显本次完整保存结果。
-    if (!saved || (row.updatedAt && Date.parse(row.updatedAt) > Date.parse(saved.record.updatedAt))) return row;
-    return { ...row, opportunityId: saved.record.opportunityId, stage: saved.stage, note: saved.note,
-      nextContactAt: saved.nextContactAt, updatedAt: saved.record.updatedAt, record: saved.record, payment: saved.payment ?? undefined };
-  });
-  const rows: RenewalPoolRow[] = [...currentRows, ...(history?.renewals ?? []).map(row => ({
-    id: `historical:${row.id}`, membershipId: null, studentId: row.student_id ?? "", sourceRecordId: row.source_record_id,
-    name: history!.students[businessSubjectKey(row)] ?? recordM.unknown, phone: history!.subjects[businessSubjectKey(row)]?.phone ?? "",
-    grade: history!.subjects[businessSubjectKey(row)]?.grade ?? null, classroom: `${row.period_label || `${row.period_year ?? ""}${row.period_key === "summer" ? t("season_summer") : row.period_key === "autumn" ? t("season_autumn") : ""}`} · ${row.class_label}`,
-    teacher: row.teacher_label, owner: "", stage: row.outcome === "renewed" ? "enrolled" : row.outcome === "not_renewed" ? "not_enrolled" : "unknown",
-    note: row.decision_note, opportunityId: row.id, targetCourse: "", nextContactAt: null, updatedAt: null, recordState: "historical" as const,
-  }))];
-  const displayRows: RenewalPoolRow[] = sampleMode ? samples.map((sample, index) => ({
-    id: sample.facts.studentId, membershipId: null, studentId: sample.facts.studentId,
-    name: policyT("sampleName", { number: index + 1, scenario: policyT("sample_" + sample.key) }), phone: "", grade: null,
-    classroom: policyT("sampleClass"), teacher: "", owner: "", stage: "unprepared", note: "", opportunityId: null,
-    targetCourse: "", nextContactAt: null, updatedAt: null,
-  })) : rows;
-  const resultFor = (row: RenewalPoolRow) => row.stage === "unknown" ? "unknown" : renewalResult(row.stage, row.payment);
-  const labelFor = (row: RenewalPoolRow) => resultFor(row) === "unknown" ? recordM.outcomeUnknown : t(`result_${resultFor(row)}`);
-  const filtered = displayRows.filter(row => matchesBusinessRecordState(row.recordState, recordState)
-    && [row.name, row.phone, row.classroom, row.teacher, row.owner, row.note].some(value => value.toLocaleLowerCase(locale).includes(query.trim().toLocaleLowerCase(locale))));
-  const table = useDashboardFieldView({ rows: filtered, context: { locale, timeZone, now: supplement.now }, persistenceKey: "followup-renewals-fields-v2", columns: RENEWAL_TABLE_COLUMNS,
-    fields: renewalTableFields({ locale, now: supplement.now, t, pool, resultFor, labelFor,
-      healthFor: row => isCurrentBusinessRecord(row.recordState) && supplement.healthAvailable && facts.has(row.studentId) ? renewalHealthLevel(signalsFor(row)) : null,
-      observationFor: row => supplement.signals.find(signal => signal.student_id === row.studentId)?.recommendation ?? "",
-    }) });
+  const { healthFacts, facts, signalsFor, rows, displayRows, filtered, resultFor, labelFor } = useMemo(() => {
+    const samples = renewalHealthSamples(supplement.now);
+    const healthFacts = sampleMode ? samples.map(sample => sample.facts) : supplement.health;
+    const facts = new Map(healthFacts.map(row => [row.studentId, row]));
+    const payments = new Map(supplement.payments.map(row => [row.opportunity_id, row]));
+    const records = new Map(supplement.records.map(row => [row.opportunityId, row]));
+    const phones = new Map(supplement.students.map(row => [row.id, row.phone]));
+    const teachers = new Map(supplement.membershipTeachers.map(row => [row.membershipId, row.name]));
+    const memberships = new Map(supplement.membershipTeachers.map(row => [row.membershipId, row]));
+    const signalsFor = (row: RenewalPoolRow) => isCurrentBusinessRecord(row.recordState) ? renewalHealthSignals(facts.get(row.studentId), supplement.now, policy) : [];
+    const currentRows: RenewalPoolRow[] = [
+      ...data.candidates.map(row => ({ id: row.membershipId, membershipId: row.membershipId, studentId: row.studentId,
+        name: row.studentName, phone: phones.get(row.studentId) ?? "", grade: row.grade, classroom: row.classroomName,
+        teacher: teachers.get(row.membershipId) ?? "", teachers: memberships.get(row.membershipId)?.teachers, classroomId: row.classroomId,
+        owner: row.currentOwnerName, ownerId: row.currentOwnerId, targetCourseId: row.sourceCourseId, targetTermId: cycle?.targetTermId, targetTermName: cycle?.targetTermName,
+        stage: "unprepared", note: "", opportunityId: null,
+        targetCourse: row.sourceCourseTitle, nextContactAt: null, updatedAt: null })),
+      ...data.opportunities.filter(row => row.opportunityType === "renewal" && row.cycleId === cycle?.id && row.sourceMembershipId).map(row => ({
+        id: row.sourceMembershipId!, membershipId: row.sourceMembershipId!, studentId: row.studentId, name: row.studentName,
+        phone: phones.get(row.studentId) ?? "", grade: row.grade, classroom: row.sourceClassroomName, teacher: teachers.get(row.sourceMembershipId!) ?? "",
+        owner: row.ownerName, ownerId: row.ownerId, teachers: memberships.get(row.sourceMembershipId!)?.teachers, classroomId: memberships.get(row.sourceMembershipId!)?.classroomId,
+        targetCourseId: row.courseId, targetTermId: row.termId, targetTermName: row.termName,
+        stage: row.stage, note: row.note, opportunityId: row.id, targetCourse: row.courseTitle,
+        nextContactAt: row.nextActionAt, updatedAt: row.updatedAt, record: records.get(row.id), payment: payments.get(row.id),
+      })),
+    ].map(row => {
+      const saved = savedRows[row.id];
+      // 新的服务器事实优先；在刷新到达前即时回显本次完整保存结果。
+      if (!saved || (row.updatedAt && Date.parse(row.updatedAt) > Date.parse(saved.record.updatedAt))) return row;
+      return { ...row, opportunityId: saved.record.opportunityId, stage: saved.stage, note: saved.note,
+        nextContactAt: saved.nextContactAt, updatedAt: saved.record.updatedAt, record: saved.record, payment: saved.payment ?? undefined };
+    });
+    const rows: RenewalPoolRow[] = [...currentRows, ...(history?.renewals ?? []).map(row => ({
+      id: `historical:${row.id}`, membershipId: null, studentId: row.student_id ?? "", sourceRecordId: row.source_record_id,
+      name: history!.students[businessSubjectKey(row)] ?? recordM.unknown, phone: history!.subjects[businessSubjectKey(row)]?.phone ?? "",
+      grade: history!.subjects[businessSubjectKey(row)]?.grade ?? null, classroom: `${row.period_label || `${row.period_year ?? ""}${row.period_key === "summer" ? t("season_summer") : row.period_key === "autumn" ? t("season_autumn") : ""}`} · ${row.class_label}`,
+      teacher: row.teacher_label, owner: "", stage: row.outcome === "renewed" ? "enrolled" : row.outcome === "not_renewed" ? "not_enrolled" : "unknown",
+      note: row.decision_note, opportunityId: row.id, targetCourse: "", nextContactAt: null, updatedAt: null, recordState: "historical" as const,
+    }))];
+    const displayRows: RenewalPoolRow[] = sampleMode ? samples.map((sample, index) => ({
+      id: sample.facts.studentId, membershipId: null, studentId: sample.facts.studentId,
+      name: policyT("sampleName", { number: index + 1, scenario: policyT("sample_" + sample.key) }), phone: "", grade: null,
+      classroom: policyT("sampleClass"), teacher: "", owner: "", stage: "unprepared", note: "", opportunityId: null,
+      targetCourse: "", nextContactAt: null, updatedAt: null,
+    })) : rows;
+    const resultFor = (row: RenewalPoolRow) => row.stage === "unknown" ? "unknown" : renewalResult(row.stage, row.payment);
+    const labelFor = (row: RenewalPoolRow) => resultFor(row) === "unknown" ? recordM.outcomeUnknown : t(`result_${resultFor(row)}`);
+    const filtered = displayRows.filter(row => matchesBusinessRecordState(row.recordState, recordState)
+      && [row.name, row.phone, row.classroom, row.teacher, row.owner, row.note].some(value => value.toLocaleLowerCase(locale).includes(query.trim().toLocaleLowerCase(locale))));
+    return { healthFacts, facts, signalsFor, rows, displayRows, filtered, resultFor, labelFor };
+  }, [supplement, sampleMode, data.candidates, data.opportunities, cycle, savedRows, history, recordM.unknown, recordM.outcomeUnknown, t, policyT, policy, recordState, locale, query]);
+  const fields = useMemo(() => renewalTableFields({ locale, now: supplement.now, t, pool, resultFor, labelFor,
+    healthFor: row => isCurrentBusinessRecord(row.recordState) && supplement.healthAvailable && facts.has(row.studentId) ? renewalHealthLevel(signalsFor(row)) : null,
+    observationFor: row => supplement.signals.find(signal => signal.student_id === row.studentId)?.recommendation ?? "",
+  }), [locale, supplement.now, supplement.healthAvailable, supplement.signals, t, pool, resultFor, labelFor, facts, signalsFor]);
+  const table = useDashboardFieldView({ rows: filtered, context: { locale, timeZone, now: supplement.now }, persistenceKey: "followup-renewals-fields-v2", columns: RENEWAL_TABLE_COLUMNS, fields });
   const viewKey = JSON.stringify([cycle?.id, sampleMode, query, recordState, effectiveWorkFilter, table.filters, table.sort]);
   if (retainedView && retainedView.key !== viewKey) setRetainedView(null);
-  const rowById = new Map(displayRows.map(row => [row.id, row]));
-  const orderedVisibleRows = retainedView?.key === viewKey ? retainedView.ids.flatMap(id => rowById.has(id) ? [rowById.get(id)!] : []) : table.visibleRows.filter(row => renewalMatchesWorkFilter(row, effectiveWorkFilter));
+  const rowById = useMemo(() => new Map(displayRows.map(row => [row.id, row])), [displayRows]);
+  const matchingRows = useMemo(() => table.visibleRows.filter(row => renewalMatchesWorkFilter(row, effectiveWorkFilter)), [table.visibleRows, effectiveWorkFilter]);
+  const orderedVisibleRows = useMemo(() => {
+    if (retainedView?.key !== viewKey) return matchingRows;
+    const retained = retainedView.ids.flatMap(id => rowById.has(id) ? [rowById.get(id)!] : []);
+    return retained.length === matchingRows.length && retained.every((row, index) => row === matchingRows[index]) ? matchingRows : retained;
+  }, [retainedView, viewKey, matchingRows, rowById]);
   const pagination = useFollowupPagination(orderedVisibleRows, viewKey);
   const visibleRows = pagination.rows;
-  const activate = (id: string) => {
+  const activate = useCallback((id: string) => {
     if (entryBusy) return;
     setRetainedView(current => current?.key === viewKey ? current : { key: viewKey, ids: orderedVisibleRows.map(row => row.id) });
     setActiveId(id);
-  };
-  const nextRow = (row: RenewalPoolRow) => visibleRows.slice(visibleRows.findIndex(item => item.id === row.id) + 1)
-    .find(item => isCurrentBusinessRecord(item.recordState) && item.membershipId && !["paid", "not_enrolled"].includes(resultFor(item)));
-  const notifySaved = () => { window.dispatchEvent(new Event(STUDENT_360_REFRESH_EVENT)); router.refresh(); };
+  }, [entryBusy, orderedVisibleRows, viewKey]);
+  const nextRow = useCallback((row: RenewalPoolRow) => visibleRows.slice(visibleRows.findIndex(item => item.id === row.id) + 1)
+    .find(item => isCurrentBusinessRecord(item.recordState) && item.membershipId && !["paid", "not_enrolled"].includes(resultFor(item))), [resultFor, visibleRows]);
+  const notifySaved = useCallback(() => { window.dispatchEvent(new Event(STUDENT_360_REFRESH_EVENT)); router.refresh(); }, [router]);
   const errors = { default: legacy("actionFailed") };
   const refresh = useAction(snapshotRenewalCycleMembershipsAction, { successMessage: result => legacy("snapshotSuccess", result), errorMessage: errors, onSuccess: () => router.refresh() });
   const status = useAction(setRenewalCycleStatusAction, { successMessage: legacy("cycleStatusSaved"), errorMessage: errors, onSuccess: () => { setCloseCycleOpen(false); router.refresh(); } });
+  const renderRow = useCallback((row: RenewalPoolRow, state: FollowupRowState) => {
+    const { active } = state;
+    return <RenewalEntryRow key={`${sampleMode}:${row.id}`} row={row} timeZone={timeZone} cycleId={cycle?.id ?? ""} cycleName={cycle?.name ?? ""} targetTerm={cycle?.targetTermName ?? ""}
+          health={signalsFor(row)} healthAvailable={sampleMode || supplement.healthAvailable} policy={policy} sampleMode={sampleMode} now={supplement.now}
+          observation={supplement.signals.find(item => item.student_id === row.studentId && item.source_class_membership_id === row.membershipId)?.recommendation}
+          canWrite={isCurrentBusinessRecord(row.recordState) && !sampleMode && canWrite && cycle?.status === "open"} canEnroll={canEnroll}
+          canObserve={isCurrentBusinessRecord(row.recordState) && !sampleMode && canReview && !!row.membershipId && supplement.observationMemberships.includes(row.membershipId)}
+          active={active} busy={entryBusy} canAdvance={!!nextRow(row)} onBusy={setEntryBusy} onActivate={() => activate(row.id)} onClose={() => setActiveId(null)}
+          onSaved={(value, advance) => {
+            setSavedRows(current => ({ ...current, [row.id]: value }));
+            if (advance) { const next = nextRow(row); if (next) setActiveId(current => current === row.id ? next.id : current); }
+            notifySaved();
+          }} onObservationSaved={notifySaved} />;
+  }, [activate, canEnroll, canReview, canWrite, cycle?.id, cycle?.name, cycle?.status, cycle?.targetTermName, entryBusy, nextRow, notifySaved, policy, sampleMode, signalsFor, supplement.healthAvailable, supplement.now, supplement.observationMemberships, supplement.signals, timeZone]);
 
   return <DashboardPage title={legacy("title")} density="compact" commandPanel={<FollowupCommandPanel>
     <DashboardCommandState><FollowupTabs /></DashboardCommandState>
@@ -178,17 +202,7 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
           <TableHead><DashboardTableColumnHeader label={t("paymentFacts")} {...table.columnProps("payment")} /></TableHead>
           <TableHead><DashboardTableColumnHeader label={t("nextContact")} {...table.columnProps("next")} /></TableHead>
         </TableRow></TableHeader>
-        <TableBody>{visibleRows.map(row => <RenewalEntryRow key={`${sampleMode}:${row.id}`} row={row} timeZone={timeZone} cycleId={cycle?.id ?? ""} cycleName={cycle?.name ?? ""} targetTerm={cycle?.targetTermName ?? ""}
-          health={signalsFor(row)} healthAvailable={sampleMode || supplement.healthAvailable} policy={policy} sampleMode={sampleMode} now={supplement.now}
-          observation={supplement.signals.find(item => item.student_id === row.studentId && item.source_class_membership_id === row.membershipId)?.recommendation}
-          canWrite={isCurrentBusinessRecord(row.recordState) && !sampleMode && canWrite && cycle?.status === "open"} canEnroll={canEnroll}
-          canObserve={isCurrentBusinessRecord(row.recordState) && !sampleMode && canReview && !!row.membershipId && supplement.observationMemberships.includes(row.membershipId)}
-          active={activeId === row.id} busy={entryBusy} canAdvance={!!nextRow(row)} onBusy={setEntryBusy} onActivate={() => activate(row.id)} onClose={() => setActiveId(null)}
-          onSaved={(value, advance) => {
-            setSavedRows(current => ({ ...current, [row.id]: value }));
-            if (advance && activeId === row.id) { const next = nextRow(row); if (next) setActiveId(next.id); }
-            notifySaved();
-          }} onObservationSaved={notifySaved} />)}
+        <TableBody>{visibleRows.map((row) => <FollowupTableRecord key={`${sampleMode}:${row.id}`} row={row} active={activeId === row.id} expanded={activeId === row.id} render={renderRow} />)}
           {!visibleRows.length ? <TableRow><TableCell colSpan={7} className="h-40 text-center text-muted">{pool("noRows")}{!rows.length ? <p className="mt-2 text-xs">{pool("readyHint")}</p> : null}</TableCell></TableRow> : null}
         </TableBody>
       </Table>

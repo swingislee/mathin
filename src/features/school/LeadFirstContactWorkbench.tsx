@@ -342,7 +342,7 @@ export function LeadContactEntryRow({
     active={active} selected={selected} expanded={detailsOpen} pending={pending} layout={layout} canAssign={canAssign}
     detailsId={detailsId} onExpandedChange={changeDetailsOpen} onActivate={() => onActivate(lead.id)} onKeyDown={handleRowKeyDown}
     selection={leadingSelection} workPurpose={workPurpose} historicalSummary={historicalSummary} rowActions={rowActions} entry={entryContent}
-    defaultCells={<>
+    defaultCells={layout === "default" ? <>
       {canAssign && layout === "default" ? <LeadContactSelectionCell lead={lead} visibleIds={visibleIds} /> : null}
       <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-2">
         <div className="flex min-w-0 items-baseline justify-between gap-2"><Student360Trigger subject={{ studentId: lead.studentId ?? null, leadId: lead.id }} fallback={{ name: lead.provisionalStudentName, phone: lead.phone, grade: lead.gradeHint, gradeText: lead.gradeText }} className="truncate">{lead.provisionalStudentName}</Student360Trigger>
@@ -355,7 +355,8 @@ export function LeadContactEntryRow({
       <TableCell className="px-2 py-2"><Badge variant="outline" title={t(`status_${lead.status}`)} className={cn("max-w-full truncate px-1.5 text-[10px]", followupToneClasses[lead.status === "invalid" ? "unhealthy" : lead.status === "nurture" ? "attention" : ["contacted", "intent_confirmed", "converted"].includes(lead.status) ? "healthy" : "neutral"])}>{t(`status_${lead.status}`)}</Badge></TableCell>
       <TableCell className="px-2 py-2">{entryContent}</TableCell>
 
-    </>}>
+    </> : undefined}>
+      {() => <>
       {detailsFirst ? detailsExtra : null}
       {detailsFirst && historicalSummary ? <div className="space-y-1 text-xs text-muted">
         <p>{lead.lastContactOutcome ? t(`contactOutcome_${lead.lastContactOutcome}`) : t("notContacted")}{lead.lastContactAt ? ` · ${formatAt(lead.lastContactAt)}` : ""}</p>
@@ -380,6 +381,7 @@ export function LeadContactEntryRow({
           onChange={(value) => setInvitation(value && !invitation && invitationCanHaveNextContactReminder(value) ? { ...value, nextContactAt: value.nextContactAt ?? nextContactAt } : value)} /> : contactFacts}
       </FollowupEntryFields>
       {!detailsFirst ? detailsExtra : null}
+      </>}
   </FirstContactRecordRow>;
 }
 

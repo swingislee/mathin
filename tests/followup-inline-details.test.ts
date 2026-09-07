@@ -17,6 +17,21 @@ function renderTable(open: boolean, keepMounted = false) {
 }
 
 describe("follow-up inline details", () => {
+  it("constructs lazy detail fields only for open or retained records", () => {
+    const content = vi.fn(() => createElement("textarea", { defaultValue: "unsaved draft" }));
+    const render = (open: boolean, keepMounted = false) => {
+      const props = { open, keepMounted, onOpenChange: () => {}, title: "Details", colSpan: 2, children: content };
+      return renderToStaticMarkup(createElement("table", null,
+        createElement("tbody", null, createElement(FollowupInlineDetails, props)),
+      ));
+    };
+    expect(render(false)).not.toContain("unsaved draft");
+    expect(content).not.toHaveBeenCalled();
+    expect(render(true)).toContain("unsaved draft");
+    expect(content).toHaveBeenCalledTimes(1);
+    expect(render(false, true)).toContain("unsaved draft");
+    expect(content).toHaveBeenCalledTimes(2);
+  });
   it("keeps an opted-in assessment draft hidden and inert when its detail is closed", () => {
     const markup = renderTable(false, true);
     const detailRow = markup.match(/<tr\b[^>]*id="entry"[^>]*>/)?.[0];

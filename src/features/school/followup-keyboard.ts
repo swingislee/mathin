@@ -1,4 +1,9 @@
-import type { KeyboardEvent } from "react";
+import type { FocusEvent, KeyboardEvent } from "react";
+
+/** 键盘聚焦即时激活；鼠标点击的激活与展开在同一个 click 更新中完成。 */
+export function followupFocusActivatesRow(event: FocusEvent<HTMLElement>): boolean {
+  return event.target.matches(":focus-visible");
+}
 
 export const CONTACT_OUTCOME_SHORTCUTS = [
   { key: "1", outcome: "unreachable" },

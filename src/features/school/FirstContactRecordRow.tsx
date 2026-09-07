@@ -10,6 +10,7 @@ import { FollowupEntryFields } from "./FollowupEntryFields";
 import { followupToneClasses, type FollowupTone } from "./dashboard-page/FollowupChoice";
 import { FollowupInlineDetails } from "./dashboard-page/FollowupInlineDetails";
 import { FollowupPersonCell } from "./dashboard-page/FollowupPersonCell";
+import { followupFocusActivatesRow } from "./followup-keyboard";
 
 export interface FirstContactRecord {
   key: string;
@@ -51,7 +52,7 @@ export function FirstContactRecordRow({
   rowActions?: ReactNode;
   entry?: ReactNode;
   defaultCells?: ReactNode;
-  children?: ReactNode;
+  children?: ReactNode | (() => ReactNode);
 }) {
   const m = businessRecordMessages(locale);
   const handleKeyDown: NonNullable<typeof onKeyDown> = onKeyDown ?? ((event) => {
@@ -67,7 +68,7 @@ export function FirstContactRecordRow({
       data-communication-work-key={layout === "communication" ? record.key : undefined} data-followup-row-key={record.key}
       data-followup-success={record.visitCommitted === true}
       tabIndex={tabIndex} aria-selected={selected} data-followup-active={active} data-followup-expanded={expanded} aria-busy={pending}
-      className="h-16 focus-visible:outline-none [&>td]:min-w-0" onFocusCapture={onActivate}
+      className="h-16 focus-visible:outline-none [&>td]:min-w-0" onFocusCapture={(event) => { if (followupFocusActivatesRow(event)) onActivate?.(); }}
       onClick={onClick ?? ((event) => {
         onActivate?.();
         if (!pending && !(event.target as HTMLElement).closest("button,a,input,textarea,[role='combobox'],[role='option'],[role='checkbox']")) onExpandedChange(!expanded);
@@ -92,7 +93,7 @@ export function FirstContactRecordRow({
     </TableRow>
     <FollowupInlineDetails id={detailsId} open={expanded} onOpenChange={onExpandedChange} title={record.person.name} hideTitle active={active}
       colSpan={layout === "communication" ? 4 : canAssign ? 6 : 5} pending={pending} onActivate={onActivate} onKeyDown={handleKeyDown}>
-      {children ?? (record.missingFirstContact ? <p className="text-xs leading-6 text-muted">{m.firstContactHint}</p> : <FollowupEntryFields id={detailsId} readOnly note={record.note ?? ''} noteLabel={m.recordedOnly} />)}
+      {children ?? (() => record.missingFirstContact ? <p className="text-xs leading-6 text-muted">{m.firstContactHint}</p> : <FollowupEntryFields id={detailsId} readOnly note={record.note ?? ''} noteLabel={m.recordedOnly} />)}
     </FollowupInlineDetails>
   </>;
 }

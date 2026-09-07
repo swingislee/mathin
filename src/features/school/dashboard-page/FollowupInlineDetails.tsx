@@ -13,7 +13,8 @@ export function FollowupInlineDetails({
   onOpenChange: (open: boolean) => void;
   title: string;
   colSpan: number;
-  children?: ReactNode;
+  /** 详情内容在打开或保留草稿时构造，收起的其他记录跳过字段计算。 */
+  children?: ReactNode | (() => ReactNode);
   pending?: boolean;
   autoFocus?: boolean;
   onSubmit?: () => void;
@@ -49,7 +50,7 @@ export function FollowupInlineDetails({
     }}>
     <TableCell colSpan={colSpan} className="p-3 align-top whitespace-normal">
       <DashboardInlineEntry title={title} hideTitle={hideTitle} closeLabel={t("close")} onClose={close} onSubmit={onSubmit} pending={pending} autoFocus={autoFocus} flush>
-        <div className="@container/followup-entry min-w-0 max-w-full space-y-3 break-words pt-2">{children}</div>
+        <div className="@container/followup-entry min-w-0 max-w-full space-y-3 break-words pt-2">{typeof children === "function" ? children() : children}</div>
       </DashboardInlineEntry>
     </TableCell>
   </TableRow>;

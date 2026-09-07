@@ -217,7 +217,7 @@ export function RenewalEntryRow({ row, cycleId, cycleName, targetTerm, health, h
     </TableRow>
     <FollowupInlineDetails open={active} keepMounted={visited} hideTitle title={`${row.name} · ${t("details")}`} colSpan={7} id={detailId} pending={pending}
       onOpenChange={value => { if (!value && !pending) onClose(); }} onSubmit={() => submit(false)}>
-      <div data-renewal-entry-detail onKeyDown={keyDown}>
+      {() => <div data-renewal-entry-detail onKeyDown={keyDown}>
         <FollowupEntryLayout data-renewal-detail-layout>
           <FollowupEntryFields id={detailId} layout="stage" note={historical ? row.note : draft.note} onNoteChange={note => patch({ note })}
             noteLabel={t("note")} placeholder={t("notePlaceholder")} readOnly={!writable || historical} pending={pending}
@@ -302,7 +302,7 @@ export function RenewalEntryRow({ row, cycleId, cycleName, targetTerm, health, h
             </section>
           </FollowupEntryFields>
         </FollowupEntryLayout>
-      </div>
+      </div>}
     </FollowupInlineDetails>
   </>;
 }

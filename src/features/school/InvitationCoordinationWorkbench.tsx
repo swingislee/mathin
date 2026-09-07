@@ -1,4 +1,6 @@
 "use client";
+
+import { FollowupTableRecord, type FollowupRowState } from "./dashboard-page/FollowupTableRecord";
 import { FirstContactRecordRow } from './FirstContactRecordRow';
 import { businessRecordMessages } from './business-record-state-contract';
 import type { HistoricalFirstContactRow } from './historical-first-contact-contract';
@@ -73,6 +75,7 @@ import { useCommunicationWorkSelection } from "./CommunicationWorkSelection";
 import { communicationFactWithOverride, nextUnprocessedCommunicationKey, reconcileCommunicationWorkSession, type CommunicationWorkSession } from "./communication-work-session";
 
 const CHANNELS = ["phone", "wechat", "in_person", "other"] as const;
+const EMPTY_ROWS: never[] = [];
 const EMPTY_CONTACT_LEADS: LeadPoolRow[] = [];
 
 function copyWithFallback(value: string): Promise<void> {
@@ -548,7 +551,7 @@ function InvitationHistory({ rows, formatAt }: { rows: InvitationCoordinationRow
 const sameCommunicationFact = (left: CommunicationRow, right: CommunicationRow) => left.source === right.source
   && left.value === right.value && (left.source !== "contact" || right.source !== "contact" || left.previousInvitation === right.previousInvitation);
 
-export function InvitationCoordinationWorkbench({ rows, activities, assessors, locale, currentUserId, canManageInvitation, postActivityRows = [], searchQuery = "", contactLeads = EMPTY_CONTACT_LEADS, leadDetails = EMPTY_CONTACT_LEADS, canContact = false, canManageIdentity = false, focusLeadId, rowOrder, invitationHistory = [], workday, worklist, selectionEnabled = false, sessionKey = "communication", workMode, historicalFirstContacts=[], fieldView, timeZone = ASSESSMENT_TIME_ZONE, now }: {
+export function InvitationCoordinationWorkbench({ rows, activities, assessors, locale, currentUserId, canManageInvitation, postActivityRows = EMPTY_ROWS, searchQuery = "", contactLeads = EMPTY_CONTACT_LEADS, leadDetails = EMPTY_CONTACT_LEADS, canContact = false, canManageIdentity = false, focusLeadId, rowOrder, invitationHistory = EMPTY_ROWS, workday, worklist, selectionEnabled = false, sessionKey = "communication", workMode, historicalFirstContacts=EMPTY_ROWS, fieldView, timeZone = ASSESSMENT_TIME_ZONE, now }: {
   rows: InvitationCoordinationRow[]; activities: InvitationActivityOption[]; assessors: InvitationAssessorOption[]; locale: string;
   queue?: InvitationQueue; coordinationStage?: InvitationCoordinationStage | null; stageCounts?: InvitationQueueCounts["stages"];
   searchQuery?: string; currentUserId: string; canManageInvitation: boolean; postActivityRows?: ActivityEnrollmentContext[];
@@ -571,7 +574,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
   const { setVisibleKeys } = workSelection;
   const router = useRouter();
   const [entryDrafts, setEntryDrafts] = useState<Record<string, InvitationEntryDraft>>({});
-  const updateEntryDraft = (id: string, entry: InvitationEntryDraft) => setEntryDrafts((current) => ({ ...current, [id]: entry }));
+  const updateEntryDraft = useCallback((id: string, entry: InvitationEntryDraft) => setEntryDrafts((current) => ({ ...current, [id]: entry })), []);
   const [rowOverrides, setRowOverrides] = useState<Record<string, { base: InvitationCoordinationRow; value: InvitationCoordinationRow }>>({});
   const [workSession, setWorkSession] = useState<CommunicationWorkSession<CommunicationRow> | null>(null);
   const [postOverrides, setPostOverrides] = useState<Record<string, { base: ActivityEnrollmentContext; value: ActivityEnrollmentContext }>>({});
@@ -611,25 +614,24 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
     savingIdsRef.current.delete(id);
     setSavingIds(new Set(savingIdsRef.current));
   }, []);
-  const canonicalFromId = (id: string) => id.startsWith("contact:") ? `lead:${id.slice(8)}`
-    : rows.find((row) => row.id === id) ? `lead:${rows.find((row) => row.id === id)!.leadId}` : id;
-  const isSavingKey = (key: string) => [...savingIdsRef.current].some((id) => canonicalFromId(id) === key);
-  const changeDetails = (id: string, open: boolean) => {
+  const canonicalFromId = useCallback((id: string) => id.startsWith("contact:") ? `lead:${id.slice(8)}`
+    : rows.find((row) => row.id === id) ? `lead:${rows.find((row) => row.id === id)!.leadId}` : id, [rows]);
+  const isSavingKey = useCallback((key: string) => [...savingIdsRef.current].some((id) => canonicalFromId(id) === key), [canonicalFromId]);
+  const changeDetails = useCallback((id: string, open: boolean) => {
     const key = canonicalFromId(id);
     if (!open && isSavingKey(key)) return;
-    if (open && activeId && activeId !== key && isSavingKey(activeId)) return;
-    setActiveId(open ? key : null);
+    setActiveId(current => open && current && current !== key && isSavingKey(current) ? current : open ? key : null);
     if (!open) rowRefs.current.get(key)?.focus({ preventScroll: true });
-  };
+  }, [canonicalFromId, isSavingKey]);
   const [mountedAt] = useState(() => Date.now());
   const dateContext: DashboardDateContext = useMemo(() => ({ locale, timeZone, now: now ?? mountedAt }), [locale, timeZone, now, mountedAt]);
   const formatAt = useCallback((value: string) => formatDashboardDate(value, dateContext, { time: !/^\d{4}-\d{2}-\d{2}$/.test(value) }), [dateContext]);
   const recordsMode = workMode === "records";
   const dayEventsByKey = useMemo(() => communicationFieldDayEvents(recordsMode ? workday : undefined), [recordsMode, workday]);
-  const dayEventsFor = (row: CommunicationRow) => dayEventsByKey.get(communicationRowKey(row)) ?? [];
-  const dayEventFor = (row: CommunicationRow) => dayEventsFor(row)[0];
-  const dayOutcomeLabel = (event: CommunicationDayEvent | undefined) => event ? event.source === "invitation" ? t(`state_${event.outcome}`) : workT(`outcome_${event.outcome}`) : "—";
-  const historicalSummaryFor = (row: CommunicationRow) => {
+  const dayEventsFor = useCallback((row: CommunicationRow) => dayEventsByKey.get(communicationRowKey(row)) ?? [], [dayEventsByKey]);
+  const dayEventFor = useCallback((row: CommunicationRow) => dayEventsFor(row)[0], [dayEventsFor]);
+  const dayOutcomeLabel = useCallback((event: CommunicationDayEvent | undefined) => event ? event.source === "invitation" ? t(`state_${event.outcome}`) : workT(`outcome_${event.outcome}`) : "—", [t, workT]);
+  const historicalSummaryFor = useCallback((row: CommunicationRow) => {
     if (!recordsMode) return undefined;
     const event = dayEventFor(row);
     const tone = !event ? "neutral" : ["connected", "confirmed", "completed"].includes(event.outcome) ? "healthy"
@@ -639,77 +641,81 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
       details: <div className="flex min-w-0 items-center gap-2"><span className="shrink-0 text-[11px] text-muted">{event ? t(`channel_${event.channel}`) : "—"}</span><p className="truncate text-ink" title={event?.note}>{event?.note || "—"}</p></div>,
       updated: event ? <time dateTime={event.occurredAt}>{formatAt(event.occurredAt)}</time> : "—",
     };
-  };
-  const retainedContactLeads = [...(workSession?.facts.values() ?? [])].flatMap((row) => row.source === "contact" ? [row.value] : []);
-  const leadById = new Map([...retainedContactLeads, ...leadDetails, ...contactLeads].map((lead) => [lead.id, leadSession.overrides[lead.id] ?? lead]));
-  const invitedLeadIds = new Set(rows.map((row) => row.leadId));
-  const hasPendingInvitation = (lead: LeadPoolRow) => lead.activeInvitation?.id === `session-${lead.id}`;
-  const uniqueContactLeads = [...new Map(contactLeads.map((lead) => [lead.id, leadSession.overrides[lead.id] ?? lead])).values()];
-  const combinedUnsorted: CommunicationRow[] = [
-    ...rows.map((original): CommunicationRow => {
-      const override = rowOverrides[original.id];
-      const value = communicationFactWithOverride(original, override);
-      const lead = leadById.get(value.leadId);
-      if (recontactIds.has(value.id) && lead && (!lead.activeInvitation || hasPendingInvitation(lead)) && ["completed", "cancelled"].includes(value.state)) {
-        return { id: `contact:${lead.id}`, source: "contact", value: lead, previousInvitation: value };
-      }
-      return { id: value.id, source: "invitation" as const, value };
-    }),
-    ...uniqueContactLeads.filter((lead) => (!lead.activeInvitation || hasPendingInvitation(lead)) && !invitedLeadIds.has(lead.id)).map((value) => ({ id: `contact:${value.id}`, source: "contact" as const, value })),
-    ...postActivityRows.filter((row) => workday || worklist || row.eligible).map((original) => ({ id: `post:${original.registrationId}`, source: "post_activity" as const,
-      value: communicationFactWithOverride(original, postOverrides[original.registrationId]) })),
-    ...historicalFirstContacts.map(value => ({ id: `student:${value.studentId}`, source: 'profile' as const, value })),
-  ];
-  const orderedKeys = fieldView ? rowOrder ?? worklist?.rowKeys : worklist?.rowKeys ?? rowOrder;
-  const byKey = new Map(combinedUnsorted.map(row => [communicationRowKey(row), row]));
-  const combined = orderedKeys ? [...orderedKeys.flatMap(key => { const row = byKey.get(key); byKey.delete(key); return row ? [row] : []; }), ...byKey.values()] : combinedUnsorted;
-  const historyFor = (leadId: string, currentId?: string) => invitationHistory.filter((row) => row.leadId === leadId && row.id !== currentId);
-  const nameOf = (row: CommunicationRow) => row.source === "invitation" ? row.value.leadName : row.source === "contact" ? row.value.provisionalStudentName : row.value.name;
-  const referenceRow = (row: CommunicationRow): CommunicationRow => row.source === "contact" && row.previousInvitation ? { id: row.previousInvitation.id, source: "invitation", value: row.previousInvitation } : row;
-  const laterContactFor = (row: InvitationCoordinationRow) => {
+  }, [dayEventFor, dayEventsFor, dayOutcomeLabel, formatAt, recordsMode, t, workT]);
+  const { leadById, combined } = useMemo(() => {
+    const retainedContactLeads = [...(workSession?.facts.values() ?? [])].flatMap((row) => row.source === "contact" ? [row.value] : []);
+    const leadById = new Map([...retainedContactLeads, ...leadDetails, ...contactLeads].map((lead) => [lead.id, leadSession.overrides[lead.id] ?? lead]));
+    const invitedLeadIds = new Set(rows.map((row) => row.leadId));
+    const hasPendingInvitation = (lead: LeadPoolRow) => lead.activeInvitation?.id === `session-${lead.id}`;
+    const uniqueContactLeads = [...new Map(contactLeads.map((lead) => [lead.id, leadSession.overrides[lead.id] ?? lead])).values()];
+    const combinedUnsorted: CommunicationRow[] = [
+      ...rows.map((original): CommunicationRow => {
+        const override = rowOverrides[original.id];
+        const value = communicationFactWithOverride(original, override);
+        const lead = leadById.get(value.leadId);
+        if (recontactIds.has(value.id) && lead && (!lead.activeInvitation || hasPendingInvitation(lead)) && ["completed", "cancelled"].includes(value.state)) {
+          return { id: `contact:${lead.id}`, source: "contact", value: lead, previousInvitation: value };
+        }
+        return { id: value.id, source: "invitation" as const, value };
+      }),
+      ...uniqueContactLeads.filter((lead) => (!lead.activeInvitation || hasPendingInvitation(lead)) && !invitedLeadIds.has(lead.id)).map((value) => ({ id: `contact:${value.id}`, source: "contact" as const, value })),
+      ...postActivityRows.filter((row) => workday || worklist || row.eligible).map((original) => ({ id: `post:${original.registrationId}`, source: "post_activity" as const,
+        value: communicationFactWithOverride(original, postOverrides[original.registrationId]) })),
+      ...historicalFirstContacts.map(value => ({ id: `student:${value.studentId}`, source: 'profile' as const, value })),
+    ];
+    const orderedKeys = fieldView ? rowOrder ?? worklist?.rowKeys : worklist?.rowKeys ?? rowOrder;
+    const byKey = new Map(combinedUnsorted.map(row => [communicationRowKey(row), row]));
+    const combined = orderedKeys ? [...orderedKeys.flatMap(key => { const row = byKey.get(key); byKey.delete(key); return row ? [row] : []; }), ...byKey.values()] : combinedUnsorted;
+    return { leadById, combined };
+  }, [workSession?.facts, leadDetails, contactLeads, leadSession.overrides, rows, rowOverrides, recontactIds, postActivityRows, postOverrides, historicalFirstContacts, fieldView, rowOrder, workday, worklist]);
+  const historyFor = useCallback((leadId: string, currentId?: string) => invitationHistory.filter((row) => row.leadId === leadId && row.id !== currentId), [invitationHistory]);
+  const nameOf = useCallback((row: CommunicationRow) => row.source === "invitation" ? row.value.leadName : row.source === "contact" ? row.value.provisionalStudentName : row.value.name, []);
+  const referenceRow = useCallback((row: CommunicationRow): CommunicationRow => row.source === "contact" && row.previousInvitation ? { id: row.previousInvitation.id, source: "invitation", value: row.previousInvitation } : row, []);
+  const laterContactFor = useCallback((row: InvitationCoordinationRow) => {
     const lead = leadById.get(row.leadId);
     return ["completed", "cancelled"].includes(row.state) && lead?.lastContactAt
       && new Date(lead.lastContactAt).getTime() > new Date(row.updatedAt).getTime() ? lead : null;
-  };
-  const stateOf = (input: CommunicationRow) => { const row = referenceRow(input); return row.source === 'profile' ? recordM.firstContactMissing : row.source === "invitation" ? t(`state_${row.value.state}`) : row.source === "contact" ? leadT(`status_${row.value.status}`) : enrollmentT(`state_${followupState(row.value)}`); };
-  const kindOf = (input: CommunicationRow) => { const row = referenceRow(input); return row.source === "invitation" ? t(`kind_${row.value.kind}`) : row.source === "contact" || row.source === 'profile' ? leadT("firstContactEntry") : t("queue_post_activity"); };
-  const arrangementOf = (input: CommunicationRow) => { const row = referenceRow(input); return row.source === 'profile' ? recordM.firstContactHint : row.source === "invitation" ? arrangementText(row.value, t, formatAt) : row.source === "contact" ? [row.value.acquisitionLocation, ...row.value.interests].filter(Boolean).join(" · ") || leadT("noSourceInterest") : row.value.activityTitle; };
-  const updatedOf = (input: CommunicationRow) => { const row = referenceRow(input); return row.source === 'profile' ? null : row.source === "invitation" ? laterContactFor(row.value)?.lastContactAt ?? row.value.updatedAt : row.source === "contact" ? row.value.lastContactAt ?? row.value.createdAt : row.value.contacts[0]?.occurredAt ?? row.value.activityAt; };
-  const gradeOf = (row: CommunicationRow) => row.source === 'profile' ? row.value.grade ? leadT('gradeValue', { grade: row.value.grade }) : '' : row.value.gradeText;
-  const noteOf = (input: CommunicationRow) => {
+  }, [leadById]);
+  const stateOf = useCallback((input: CommunicationRow) => { const row = referenceRow(input); return row.source === 'profile' ? recordM.firstContactMissing : row.source === "invitation" ? t(`state_${row.value.state}`) : row.source === "contact" ? leadT(`status_${row.value.status}`) : enrollmentT(`state_${followupState(row.value)}`); }, [enrollmentT, leadT, recordM.firstContactMissing, referenceRow, t]);
+  const kindOf = useCallback((input: CommunicationRow) => { const row = referenceRow(input); return row.source === "invitation" ? t(`kind_${row.value.kind}`) : row.source === "contact" || row.source === 'profile' ? leadT("firstContactEntry") : t("queue_post_activity"); }, [leadT, referenceRow, t]);
+  const arrangementOf = useCallback((input: CommunicationRow) => { const row = referenceRow(input); return row.source === 'profile' ? recordM.firstContactHint : row.source === "invitation" ? arrangementText(row.value, t, formatAt) : row.source === "contact" ? [row.value.acquisitionLocation, ...row.value.interests].filter(Boolean).join(" · ") || leadT("noSourceInterest") : row.value.activityTitle; }, [formatAt, leadT, recordM.firstContactHint, referenceRow, t]);
+  const updatedOf = useCallback((input: CommunicationRow) => { const row = referenceRow(input); return row.source === 'profile' ? null : row.source === "invitation" ? laterContactFor(row.value)?.lastContactAt ?? row.value.updatedAt : row.source === "contact" ? row.value.lastContactAt ?? row.value.createdAt : row.value.contacts[0]?.occurredAt ?? row.value.activityAt; }, [laterContactFor, referenceRow]);
+  const gradeOf = useCallback((row: CommunicationRow) => row.source === 'profile' ? row.value.grade ? leadT('gradeValue', { grade: row.value.grade }) : '' : row.value.gradeText, [leadT]);
+  const noteOf = useCallback((input: CommunicationRow) => {
     const row = referenceRow(input);
     if (row.source === 'profile') return '';
     if (row.source === "contact") return row.value.lastContactNote;
     if (row.source === "post_activity") return row.value.contacts[0]?.note || row.value.routeNote;
     const latest = laterContactFor(row.value);
     return latest ? [latest.lastContactOutcome ? leadT(`contactOutcome_${latest.lastContactOutcome}`) : "", latest.lastContactNote].filter(Boolean).join(" · ") : row.value.summary;
-  };
-  const filtered = combined.filter((row) => [nameOf(row), row.value.phone, ...(recordsMode ? dayEventsFor(row).flatMap((event) => [event.note, dayOutcomeLabel(event), t(`channel_${event.channel}`)]) : [arrangementOf(row), noteOf(row)])].join(" ").toLocaleLowerCase(locale).includes(searchQuery.toLocaleLowerCase(locale)));
+  }, [laterContactFor, leadT, referenceRow]);
+  const filtered = useMemo(() => combined.filter((row) => [nameOf(row), row.value.phone, ...(recordsMode ? dayEventsFor(row).flatMap((event) => [event.note, dayOutcomeLabel(event), t(`channel_${event.channel}`)]) : [arrangementOf(row), noteOf(row)])].join(" ").toLocaleLowerCase(locale).includes(searchQuery.toLocaleLowerCase(locale))), [arrangementOf, combined, dayEventsFor, dayOutcomeLabel, locale, nameOf, noteOf, recordsMode, searchQuery, t]);
   const serverFields = useFollowupServerFields(fieldView);
-  const fields = communicationTableFields({ locale, t, leadT, enrollmentT, tableT, workT, leads: leadById, workday, recordsMode });
+  const fields = useMemo(() => communicationTableFields({ locale, t, leadT, enrollmentT, tableT, workT, leads: leadById, workday, recordsMode }),
+    [locale, t, leadT, enrollmentT, tableT, workT, leadById, workday, recordsMode]);
   const table = useDashboardFieldView({ rows: serverFields ? combined : filtered, fields, columns: COMMUNICATION_TABLE_COLUMNS, context: dateContext, server: serverFields,
     persistenceKey: focusLeadId ? undefined : `school.followup.communication.fields-v2.${recordsMode ? "records" : workday ? "workday" : "all"}.${worklist?.id ?? currentUserId}` });
   const selectionSignature = JSON.stringify({ filters: table.filters, sort: table.sort });
   const currentSession = reconcileCommunicationWorkSession(workSession, { boundary: sessionKey, selection: selectionSignature,
     rows: combined, selectedRows: table.visibleRows, authorizedKeys: rowOrder ? [...rowOrder, ...historicalFirstContacts.map(row => `student:${row.studentId}`)] : undefined, keyOf: communicationRowKey, sameFact: sameCommunicationFact });
   if (currentSession !== workSession) setWorkSession(currentSession);
-  const visibleRows = currentSession.keys.flatMap((key) => { const row = currentSession.facts.get(key); return row ? [row] : []; });
+  const visibleRows = useMemo(() => currentSession.keys.flatMap((key) => { const row = currentSession.facts.get(key); return row ? [row] : []; }), [currentSession.facts, currentSession.keys]);
   const visibleKeysSignature = JSON.stringify(visibleRows.map(communicationRowKey));
   useEffect(() => { setVisibleKeys(JSON.parse(visibleKeysSignature) as string[]); }, [visibleKeysSignature, setVisibleKeys]);
-  const canOperateRow = (row: CommunicationRow) => row.source === 'profile' ? false : row.source === "contact" ? Boolean(canContact && row.value.ownerId && !row.value.activeInvitation && !["invalid", "converted"].includes(row.value.status))
+  const canOperateRow = useCallback((row: CommunicationRow) => row.source === 'profile' ? false : row.source === "contact" ? Boolean(canContact && row.value.ownerId && !row.value.activeInvitation && !["invalid", "converted"].includes(row.value.status))
     : row.source === "invitation" ? canManageInvitation && !["completed", "cancelled"].includes(row.value.state)
-      : row.value.canContact && row.value.eligible && !row.value.enrollmentId && row.value.route !== "closed";
-  const selectableKeys = visibleRows.filter(canOperateRow).map(communicationRowKey);
+      : row.value.canContact && row.value.eligible && !row.value.enrollmentId && row.value.route !== "closed", [canContact, canManageInvitation]);
+  const selectableKeys = useMemo(() => visibleRows.filter(canOperateRow).map(communicationRowKey), [canOperateRow, visibleRows]);
   const activeSource = visibleRows.find((row) => communicationRowKey(row) === activeId)?.source;
   useEffect(() => { if (activeId) rowRefs.current.get(activeId)?.focus({ preventScroll: true }); }, [activeId, activeSource]);
 
-  const completedFor = (key: string) => {
+  const completedFor = useCallback((key: string) => {
     if (!worklist) return processedKeys.has(key);
     const saved = worklist.items.find((item) => item.key === key)?.completedAt ?? null;
     const override = completionOverrides[key];
     return override && override.base === saved ? override.completed : Boolean(saved);
-  };
-  const setCompletion = async (key: string, completed: boolean) => {
+  }, [completionOverrides, processedKeys, worklist]);
+  const setCompletion = useCallback(async (key: string, completed: boolean) => {
     if (!worklist || worklist.closedAt || completingRef.current.has(key)) return;
     completingRef.current.add(key);
     setCompletingKeys(new Set(completingRef.current));
@@ -721,12 +727,12 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
       router.refresh();
     } catch { toast.error(workT("completeFailed")); }
     finally { completingRef.current.delete(key); setCompletingKeys(new Set(completingRef.current)); }
-  };
-  const markProcessed = (key: string) => {
+  }, [router, workT, worklist]);
+  const markProcessed = useCallback((key: string) => {
     setProcessedKeys((current) => new Set(current).add(key));
     if (worklist && canContact && !completedFor(key)) void setCompletion(key, true);
-  };
-  const advanceAfter = (key: string) => {
+  }, [canContact, completedFor, setCompletion, worklist]);
+  const advanceAfter = useCallback((key: string) => {
     const processed = new Set([...processedKeys, key, ...currentSession.keys.filter(completedFor)]);
     const allowed = new Set(selectableKeys);
     for (const candidate of currentSession.keys) if (!allowed.has(candidate)) processed.add(candidate);
@@ -734,12 +740,12 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
     setActiveId(next);
     const nextRow = currentSession.facts.get(next);
     setActiveContactId(nextRow?.source === "contact" ? nextRow.value.id : null);
-  };
-  const workPurposeFor = (key: string) => {
+  }, [completedFor, currentSession.facts, currentSession.keys, processedKeys, selectableKeys]);
+  const workPurposeFor = useCallback((key: string) => {
     const task = workday?.tasks.find((item) => item.key === key);
     return worklist?.name ?? (task ? workT("taskDue", { time: formatAt(task.dueAt) }) : undefined);
-  };
-  const leadingSelectionFor = (row: CommunicationRow) => {
+  }, [formatAt, workT, workday?.tasks, worklist?.name]);
+  const leadingSelectionFor = useCallback((row: CommunicationRow) => {
     const key = communicationRowKey(row);
     const completed = completedFor(key);
     return <>{selectionEnabled && canOperateRow(row) ? <Checkbox checked={workSelection.selectedKeys.has(key)} onCheckedChange={(checked) => workSelection.toggle(key, checked === true)}
@@ -749,11 +755,11 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
         aria-label={workT(completed ? "markPending" : "markComplete")} title={workT(completed ? "completed" : "markComplete")}>
         {completingKeys.has(key) ? <LoaderCircle className="size-3 animate-spin" /> : <Check className="size-3" />}</Button>
         : completed ? <Check className="size-3.5 shrink-0 text-blue" aria-label={workT("completed")} /> : null}</>;
-  };
+  }, [canContact, canOperateRow, completedFor, completingKeys, nameOf, selectionEnabled, setCompletion, workSelection, workT, worklist]);
   const selectedVisible = selectableKeys.filter((key) => workSelection.selectedKeys.has(key)).length;
-  const updateSessionFact = (row: CommunicationRow) => setWorkSession((current) => current
-    ? { ...current, facts: new Map(current.facts).set(communicationRowKey(row), row) } : current);
-  const onSaved = (row: InvitationCoordinationRow, input: UpdateInvitationInput) => {
+  const updateSessionFact = useCallback((row: CommunicationRow) => setWorkSession((current) => current
+    ? { ...current, facts: new Map(current.facts).set(communicationRowKey(row), row) } : current), []);
+  const onSaved = useCallback((row: InvitationCoordinationRow, input: UpdateInvitationInput) => {
     const savedAt = new Date().toISOString();
     const activity = activities.find((item) => item.id === input.activityId);
     const assessor = assessors.find((item) => item.userId === input.assessorId);
@@ -763,13 +769,13 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
     setRowOverrides((current) => ({ ...current, [row.id]: { base: rows.find((original) => original.id === row.id) ?? row, value } }));
     updateSessionFact({ id: row.id, source: "invitation", value });
     markProcessed(`lead:${row.leadId}`);
-  };
-  const savePost = (row: ActivityEnrollmentContext) => {
+  }, [activities, assessors, markProcessed, rows, t, updateSessionFact]);
+  const savePost = useCallback((row: ActivityEnrollmentContext) => {
     setPostOverrides((current) => ({ ...current, [row.registrationId]: { base: postActivityRows.find((original) => original.registrationId === row.registrationId) ?? row, value: row } }));
     updateSessionFact({ id: `post:${row.registrationId}`, source: "post_activity", value: row });
     markProcessed(`post:${row.registrationId}`);
-  };
-  const saveContact = (leadId: string, input: LeadContactInput, advance = false) => {
+  }, [markProcessed, postActivityRows, updateSessionFact]);
+  const saveContact = useCallback((leadId: string, input: LeadContactInput, advance = false) => {
     endSave(`contact:${leadId}`);
     const lead = leadById.get(leadId);
     if (!lead) return;
@@ -801,19 +807,113 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
     markProcessed(`lead:${leadId}`);
     if (advance) advanceAfter(`lead:${leadId}`);
     router.refresh();
-  };
-  const saveContactReminder = (leadId: string, nextContactAt: string | null) => {
+  }, [activities, advanceAfter, assessors, currentSession.facts, endSave, leadById, markProcessed, router, rows, updateSessionFact]);
+  const saveContactReminder = useCallback((leadId: string, nextContactAt: string | null) => {
     const lead = leadById.get(leadId);
     if (!lead) return;
     setLeadSession((current) => ({ ...current, overrides: { ...current.overrides, [leadId]: { ...lead, nextContactAt } } }));
     const savedRow = currentSession.facts.get(`lead:${leadId}`);
     if (savedRow?.source === "contact") updateSessionFact({ ...savedRow, value: { ...lead, nextContactAt } });
     router.refresh();
-  };
-  const contactPending = (id: string, pending: boolean) => {
+  }, [currentSession.facts, leadById, router, updateSessionFact]);
+  const contactPending = useCallback((id: string, pending: boolean) => {
     if (pending) beginSave(id);
     else if (savingIdsRef.current.has(id)) endSave(id);
-  };
+  }, [beginSave, endSave]);
+  const renderRow = useCallback((row: CommunicationRow, rowState: FollowupRowState) => {
+    const { active, expanded, selected = false, pending = false } = rowState;
+    const canonicalKey = communicationRowKey(row);
+    const historicalSummary = historicalSummaryFor(row);
+    if (row.source === 'profile') return <FirstContactRecordRow key={canonicalKey} locale={locale} record={{
+      key: canonicalKey, state: 'historical', missingFirstContact: true,
+      person: { name: row.value.name, phone: row.value.phone, grade: gradeOf(row) || t('gradePending'),
+        subject: { studentId: row.value.studentId, leadId: null }, studentGrade: row.value.grade },
+      status: { label: stateOf(row), tone: 'neutral', context: '' },
+      updated: recordM.unknown, note: row.value.context,
+    }} active={active} expanded={expanded}
+      rowRef={element => { if (element) rowRefs.current.set(canonicalKey, element); else rowRefs.current.delete(canonicalKey); }}
+      detailsId={`first-contact-details-${canonicalKey}`} onExpandedChange={open => changeDetails(canonicalKey, open)} />;
+    if (row.source === "contact") {
+      const previous = row.previousInvitation;
+      return <LeadContactEntryRow key={canonicalKey} lead={row.value} formatAt={formatAt}
+        active={active} onActivate={setActiveContactId}
+        selected={selected}
+        onSaved={saveContact} onReminderSaved={saveContactReminder} onAdvance={() => advanceAfter(canonicalKey)}
+        activities={activities} assessors={assessors} locale={locale}
+        canContact={canContact && !row.value.activeInvitation} canManageIdentity={canManageIdentity} layout="communication"
+        expanded={expanded} onExpandedChange={(open) => changeDetails(canonicalKey, open)}
+        leadingSelection={leadingSelectionFor(row)} workPurpose={workPurposeFor(canonicalKey)}
+        historicalSummary={historicalSummary} historicalEntryLabel={recordsMode ? workT("newCommunication") : undefined}
+        detailsFirst={workMode === "records"}
+        onPendingChange={(pending) => contactPending(row.id, pending)}
+        rowActions={previous ? <Button type="button" size="sm" variant="ghost" className="h-auto min-h-7 max-w-full whitespace-normal px-1 py-1 text-[11px]" disabled={pending} onClick={() => {
+          setRecontactIds((current) => new Set([...current].filter((id) => id !== previous.id)));
+          setActiveId(canonicalKey);
+        }}>{t("returnToInvitation")}</Button> : undefined}
+        detailsExtra={<><CommunicationDaySummary workday={workday} rowKey={canonicalKey} defaultExpanded={recordsMode} /><InvitationHistory rows={previous ? [previous, ...historyFor(row.value.id, previous.id)] : historyFor(row.value.id)} formatAt={formatAt} />{workMode === "records" ? <p className="text-xs font-medium text-muted">{workT("currentFacts")}</p> : null}</>}
+      />;
+    }
+    const state = row.source === "invitation" ? row.value.state : followupState(row.value);
+    const tone = ["confirmed", "completed", "enrolled"].includes(state) ? "healthy" : ["cancelled", "closed", "unreachable"].includes(state) ? "unhealthy" : "attention";
+    const laterContact = row.source === "invitation" ? laterContactFor(row.value) : null;
+    const nextAt = row.source === "invitation" ? laterContact ? laterContact.nextContactAt : row.value.nextContactAt : row.value.contacts[0]?.nextContactAt;
+    const closed = row.source === "invitation" && ["completed", "cancelled"].includes(row.value.state);
+    const detailsId = `communication-details-${canonicalKey}`;
+    const rowWorkStep = row.source === "invitation" ? invitationWorkStep(row.value) : null;
+    const rowAction = rowWorkStep && rowWorkStep !== "closed" ? t(`workTitle_${rowWorkStep}`) : stateOf(row);
+    const rowActionHint = row.source === "invitation"
+      ? rowWorkStep === "closed" ? laterContact?.lastContactOutcome ? leadT(`contactOutcome_${laterContact.lastContactOutcome}`) : t(`task_${row.value.state}`)
+        : rowWorkStep === "waiting_assessor_response" ? t("workHint_waiting_assessor_response", { assessor: row.value.assessorName || t("assessorPending") })
+          : rowWorkStep ? t(`workHint_${rowWorkStep}`) : ""
+      : row.value.recommendation || row.value.routeNote;
+    return <Fragment key={canonicalKey}>
+      <TableRow data-communication-work-key={canonicalKey} data-followup-row-key={canonicalKey} ref={(element) => { if (element) rowRefs.current.set(canonicalKey, element); else rowRefs.current.delete(canonicalKey); }}
+        data-followup-success={leadHasCommittedVisit(row.value.leadId ? leadById.get(row.value.leadId) : null, row.source === "invitation" ? row.value : null)}
+        tabIndex={0} aria-selected={selected} data-followup-active={active} data-followup-expanded={active} aria-busy={pending} className="cursor-pointer focus-visible:outline-none"
+        onClick={(event) => { if (!(event.target as HTMLElement).closest("button,a,input,textarea,[role='combobox'],[role='checkbox']")) changeDetails(canonicalKey, !active); }}
+        onKeyDown={(event) => {
+          if (event.defaultPrevented || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229 || event.repeat) return;
+          if (event.target === event.currentTarget && event.key === "Enter" && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) { event.preventDefault(); changeDetails(canonicalKey, !active); }
+          if (event.key === "Escape" && active) { event.preventDefault(); changeDetails(canonicalKey, false); }
+        }}>
+        <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-2">
+          <FollowupPersonCell name={nameOf(row)} phone={row.value.phone} grade={row.value.gradeText || t("gradePending")}
+            subject={{ studentId: row.source === "invitation" ? leadById.get(row.value.leadId)?.studentId ?? null : row.value.studentId, leadId: row.value.leadId }} studentGrade={row.source === "invitation" ? row.value.gradeHint : row.value.grade}
+            owner={row.source === "invitation" ? row.value.ownerName : undefined} selection={leadingSelectionFor(row)} expanded={active}
+            detailsId={detailsId} onToggle={() => changeDetails(canonicalKey, !active)} />
+        </TableCell>
+        <TableCell className="px-2 py-2">{historicalSummary ? historicalSummary.state : <>
+          <Badge variant="outline" className={cn("max-w-full whitespace-normal rounded-md text-[11px]", followupToneClasses[tone])}><span aria-hidden className="size-1.5 shrink-0 rounded-full bg-current" />{rowAction}</Badge>
+          <p className="mt-1 truncate text-[11px] text-muted" title={`${kindOf(row)} · ${arrangementOf(row)}`}>{kindOf(row)} · {arrangementOf(row)}</p>
+          {workPurposeFor(canonicalKey) ? <p className="mt-1 truncate text-[11px] text-muted" title={rowActionHint}>{workPurposeFor(canonicalKey)}</p> : null}
+        </>}</TableCell>
+        <TableCell className="px-2 py-2">
+          {historicalSummary ? historicalSummary.details : <p className="mb-1 text-[11px] text-muted">{entryT("thisContact")}{row.source === "invitation" && entryDrafts[row.id]?.note.trim() ? ` · ${entryT("unsaved")}` : ""}</p>}
+          {recordsMode && (row.source === "invitation" || row.value.eligible) ? <p className="mt-1 text-[10px] text-muted">{workT("newCommunication")}</p> : null}
+          <div className="mt-1.5">{row.source === "invitation" ? closed && canContact && leadById.has(row.value.leadId) && !leadById.get(row.value.leadId)?.activeInvitation ? <Button type="button" size="sm" variant="secondary" className="h-8 text-xs" onClick={() => {
+            setRecontactIds((current) => new Set(current).add(row.id));
+            setActiveContactId(row.value.leadId);
+            changeDetails(canonicalKey, true);
+          }}>{leadT("continueCommunication")}</Button> : <InvitationQuickContact row={row.value} entry={entryDrafts[row.id] ?? EMPTY_INVITATION_ENTRY} onEntryChange={(entry) => updateEntryDraft(row.id, entry)} expanded={active} disabled={!canManageInvitation || closed} onSaved={onSaved} saving={pending} beginSave={beginSave} endSave={endSave} /> : row.value.eligible ? <PostActivityQuickContact row={row.value} onSaved={(saved) => { savePost(saved); advanceAfter(canonicalKey); }} onDetails={() => changeDetails(canonicalKey, !active)} expanded={active} detailsId={detailsId} /> : null}</div>
+          {!historicalSummary && noteOf(row) ? <p className="mt-1 truncate text-[11px] text-muted" title={noteOf(row)}>{entryT("lastNote", { note: noteOf(row) })}</p> : null}
+          {!historicalSummary && nextAt ? <p className="mt-1 truncate text-[11px] text-muted" title={formatAt(nextAt)}>{t("nextContactReminderScheduled", { time: formatAt(nextAt) })}</p> : null}
+        </TableCell>
+        <TableCell className="whitespace-nowrap px-2 py-2 text-muted">{historicalSummary ? historicalSummary.updated : updatedOf(row) ? formatAt(updatedOf(row)!) : recordM.unknown}</TableCell>
+      </TableRow>
+      <FollowupInlineDetails id={detailsId} open={active} onOpenChange={(open) => changeDetails(canonicalKey, open)} title={nameOf(row)} hideTitle={row.source === "invitation"} colSpan={4} pending={pending}>
+        {() => <>
+        {recordsMode ? <CommunicationDaySummary workday={workday} rowKey={canonicalKey} defaultExpanded /> : null}
+        {recordsMode ? <div className="space-y-1 text-xs"><p className="font-medium text-muted">{workT("currentFacts")}</p><p>{stateOf(row)} · {arrangementOf(row)}</p>{noteOf(row) ? <p className="break-words text-muted">{noteOf(row)}</p> : null}</div> : null}
+        {row.source === "invitation" ? <InvitationEditor key={row.id} row={row.value} entry={entryDrafts[row.id] ?? EMPTY_INVITATION_ENTRY} onEntryChange={(entry) => updateEntryDraft(row.id, entry)} onAdvance={() => advanceAfter(canonicalKey)} activities={activities} assessors={assessors} locale={locale} formatAt={formatAt} currentUserId={currentUserId} canManageInvitation={canManageInvitation} onSaved={onSaved} saving={pending} beginSave={beginSave} endSave={endSave} /> : <PostActivityHandoff source={{ registrationId: row.value.registrationId, invitationId: null }} initialContext={row.value} onSaved={savePost} />}
+        {!recordsMode ? <CommunicationDaySummary workday={workday} rowKey={canonicalKey} defaultExpanded={false} /> : null}
+        {laterContact?.lastContactAt ? <p className="mt-2 min-w-0 break-words border-t border-line pt-2 text-xs text-muted">{formatAt(laterContact.lastContactAt)} · {noteOf(row)}</p> : null}
+        {row.source === "invitation" ? <InvitationHistory rows={historyFor(row.value.leadId, row.value.id)} formatAt={formatAt} /> : null}
+        </>}
+      </FollowupInlineDetails>
+    </Fragment>;
+  }, [activities, advanceAfter, arrangementOf, assessors, beginSave, canContact, canManageIdentity, canManageInvitation, changeDetails, contactPending, currentUserId, endSave, entryDrafts, entryT, formatAt, gradeOf, historicalSummaryFor, historyFor, kindOf, laterContactFor, leadById, leadT, leadingSelectionFor, locale, nameOf, noteOf, onSaved, recordM.unknown, recordsMode, saveContact, saveContactReminder, savePost, stateOf, t, updateEntryDraft, updatedOf, workMode, workPurposeFor, workT, workday]);
+
+
   return <DashboardTableShell data-followup-workbench data-communication-scroll>
     <Table className="w-full min-w-[62rem] table-fixed text-xs" containerClassName="overflow-auto [scrollbar-gutter:stable]">
       <colgroup><col style={{ width: "14rem" }} /><col style={{ width: "16rem" }} /><col style={{ width: "24rem" }} /><col style={{ width: "8rem" }} /></colgroup>
@@ -832,96 +932,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
         const next = currentSession.facts.get(key);
         setActiveContactId(next?.source === "contact" ? next.value.id : null);
         return true;
-      })}>{visibleRows.map((row) => {
-        const canonicalKey = communicationRowKey(row);
-        const historicalSummary = historicalSummaryFor(row);
-        if (row.source === 'profile') return <FirstContactRecordRow key={canonicalKey} locale={locale} record={{
-          key: canonicalKey, state: 'historical', missingFirstContact: true,
-          person: { name: row.value.name, phone: row.value.phone, grade: gradeOf(row) || t('gradePending'),
-            subject: { studentId: row.value.studentId, leadId: null }, studentGrade: row.value.grade },
-          status: { label: stateOf(row), tone: 'neutral', context: '' },
-          updated: recordM.unknown, note: row.value.context,
-        }} active={activeId === canonicalKey} expanded={activeId === canonicalKey}
-          rowRef={element => { if (element) rowRefs.current.set(canonicalKey, element); else rowRefs.current.delete(canonicalKey); }}
-          detailsId={`first-contact-details-${canonicalKey}`} onExpandedChange={open => changeDetails(canonicalKey, open)} />;
-        if (row.source === "contact") {
-          const previous = row.previousInvitation;
-          return <LeadContactEntryRow key={canonicalKey} lead={row.value} formatAt={formatAt}
-            active={activeContactId === row.value.id || activeId === canonicalKey} onActivate={setActiveContactId}
-            selected={workSelection.selectedKeys.has(canonicalKey)}
-            onSaved={saveContact} onReminderSaved={saveContactReminder} onAdvance={() => advanceAfter(canonicalKey)}
-            activities={activities} assessors={assessors} locale={locale}
-            canContact={canContact && !row.value.activeInvitation} canManageIdentity={canManageIdentity} layout="communication"
-            expanded={activeId === canonicalKey} onExpandedChange={(open) => changeDetails(canonicalKey, open)}
-            leadingSelection={leadingSelectionFor(row)} workPurpose={workPurposeFor(canonicalKey)}
-            historicalSummary={historicalSummary} historicalEntryLabel={recordsMode ? workT("newCommunication") : undefined}
-            detailsFirst={workMode === "records"}
-            onPendingChange={(pending) => contactPending(row.id, pending)}
-            rowActions={previous ? <Button type="button" size="sm" variant="ghost" className="h-auto min-h-7 max-w-full whitespace-normal px-1 py-1 text-[11px]" disabled={savingIds.has(row.id)} onClick={() => {
-              setRecontactIds((current) => new Set([...current].filter((id) => id !== previous.id)));
-              setActiveId(canonicalKey);
-            }}>{t("returnToInvitation")}</Button> : undefined}
-            detailsExtra={<><CommunicationDaySummary workday={workday} rowKey={canonicalKey} defaultExpanded={recordsMode} /><InvitationHistory rows={previous ? [previous, ...historyFor(row.value.id, previous.id)] : historyFor(row.value.id)} formatAt={formatAt} />{workMode === "records" ? <p className="text-xs font-medium text-muted">{workT("currentFacts")}</p> : null}</>}
-          />;
-        }
-        const state = row.source === "invitation" ? row.value.state : followupState(row.value);
-        const tone = ["confirmed", "completed", "enrolled"].includes(state) ? "healthy" : ["cancelled", "closed", "unreachable"].includes(state) ? "unhealthy" : "attention";
-        const laterContact = row.source === "invitation" ? laterContactFor(row.value) : null;
-        const nextAt = row.source === "invitation" ? laterContact ? laterContact.nextContactAt : row.value.nextContactAt : row.value.contacts[0]?.nextContactAt;
-        const closed = row.source === "invitation" && ["completed", "cancelled"].includes(row.value.state);
-        const active = activeId === canonicalKey;
-        const detailsId = `communication-details-${canonicalKey}`;
-        const rowWorkStep = row.source === "invitation" ? invitationWorkStep(row.value) : null;
-        const rowAction = rowWorkStep && rowWorkStep !== "closed" ? t(`workTitle_${rowWorkStep}`) : stateOf(row);
-        const rowActionHint = row.source === "invitation"
-          ? rowWorkStep === "closed" ? laterContact?.lastContactOutcome ? leadT(`contactOutcome_${laterContact.lastContactOutcome}`) : t(`task_${row.value.state}`)
-            : rowWorkStep === "waiting_assessor_response" ? t("workHint_waiting_assessor_response", { assessor: row.value.assessorName || t("assessorPending") })
-              : rowWorkStep ? t(`workHint_${rowWorkStep}`) : ""
-          : row.value.recommendation || row.value.routeNote;
-        return <Fragment key={canonicalKey}>
-          <TableRow data-communication-work-key={canonicalKey} data-followup-row-key={canonicalKey} ref={(element) => { if (element) rowRefs.current.set(canonicalKey, element); else rowRefs.current.delete(canonicalKey); }}
-            data-followup-success={leadHasCommittedVisit(row.value.leadId ? leadById.get(row.value.leadId) : null, row.source === "invitation" ? row.value : null)}
-            tabIndex={0} aria-selected={workSelection.selectedKeys.has(canonicalKey)} data-followup-active={active} data-followup-expanded={active} aria-busy={savingIds.has(row.id)} className="cursor-pointer focus-visible:outline-none"
-            onClick={(event) => { if (!(event.target as HTMLElement).closest("button,a,input,textarea,[role='combobox'],[role='checkbox']")) changeDetails(canonicalKey, !active); }}
-            onKeyDown={(event) => {
-              if (event.defaultPrevented || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229 || event.repeat) return;
-              if (event.target === event.currentTarget && event.key === "Enter" && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) { event.preventDefault(); changeDetails(canonicalKey, !active); }
-              if (event.key === "Escape" && active) { event.preventDefault(); changeDetails(canonicalKey, false); }
-            }}>
-            <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-2">
-              <FollowupPersonCell name={nameOf(row)} phone={row.value.phone} grade={row.value.gradeText || t("gradePending")}
-                subject={{ studentId: row.source === "invitation" ? leadById.get(row.value.leadId)?.studentId ?? null : row.value.studentId, leadId: row.value.leadId }} studentGrade={row.source === "invitation" ? row.value.gradeHint : row.value.grade}
-                owner={row.source === "invitation" ? row.value.ownerName : undefined} selection={leadingSelectionFor(row)} expanded={active}
-                detailsId={detailsId} onToggle={() => changeDetails(canonicalKey, !active)} />
-            </TableCell>
-            <TableCell className="px-2 py-2">{historicalSummary ? historicalSummary.state : <>
-              <Badge variant="outline" className={cn("max-w-full whitespace-normal rounded-md text-[11px]", followupToneClasses[tone])}><span aria-hidden className="size-1.5 shrink-0 rounded-full bg-current" />{rowAction}</Badge>
-              <p className="mt-1 truncate text-[11px] text-muted" title={`${kindOf(row)} · ${arrangementOf(row)}`}>{kindOf(row)} · {arrangementOf(row)}</p>
-              {workPurposeFor(canonicalKey) ? <p className="mt-1 truncate text-[11px] text-muted" title={rowActionHint}>{workPurposeFor(canonicalKey)}</p> : null}
-            </>}</TableCell>
-            <TableCell className="px-2 py-2">
-              {historicalSummary ? historicalSummary.details : <p className="mb-1 text-[11px] text-muted">{entryT("thisContact")}{row.source === "invitation" && entryDrafts[row.id]?.note.trim() ? ` · ${entryT("unsaved")}` : ""}</p>}
-              {recordsMode && (row.source === "invitation" || row.value.eligible) ? <p className="mt-1 text-[10px] text-muted">{workT("newCommunication")}</p> : null}
-              <div className="mt-1.5">{row.source === "invitation" ? closed && canContact && leadById.has(row.value.leadId) && !leadById.get(row.value.leadId)?.activeInvitation ? <Button type="button" size="sm" variant="secondary" className="h-8 text-xs" onClick={() => {
-                setRecontactIds((current) => new Set(current).add(row.id));
-                setActiveContactId(row.value.leadId);
-                changeDetails(canonicalKey, true);
-              }}>{leadT("continueCommunication")}</Button> : <InvitationQuickContact row={row.value} entry={entryDrafts[row.id] ?? EMPTY_INVITATION_ENTRY} onEntryChange={(entry) => updateEntryDraft(row.id, entry)} expanded={active} disabled={!canManageInvitation || closed} onSaved={onSaved} saving={savingIds.has(row.id)} beginSave={beginSave} endSave={endSave} /> : row.value.eligible ? <PostActivityQuickContact row={row.value} onSaved={(saved) => { savePost(saved); advanceAfter(canonicalKey); }} onDetails={() => changeDetails(canonicalKey, !active)} expanded={active} detailsId={detailsId} /> : null}</div>
-              {!historicalSummary && noteOf(row) ? <p className="mt-1 truncate text-[11px] text-muted" title={noteOf(row)}>{entryT("lastNote", { note: noteOf(row) })}</p> : null}
-              {!historicalSummary && nextAt ? <p className="mt-1 truncate text-[11px] text-muted" title={formatAt(nextAt)}>{t("nextContactReminderScheduled", { time: formatAt(nextAt) })}</p> : null}
-            </TableCell>
-            <TableCell className="whitespace-nowrap px-2 py-2 text-muted">{historicalSummary ? historicalSummary.updated : updatedOf(row) ? formatAt(updatedOf(row)!) : recordM.unknown}</TableCell>
-          </TableRow>
-          <FollowupInlineDetails id={detailsId} open={active} onOpenChange={(open) => changeDetails(canonicalKey, open)} title={nameOf(row)} hideTitle={row.source === "invitation"} colSpan={4} pending={savingIds.has(row.id)}>
-            {recordsMode ? <CommunicationDaySummary workday={workday} rowKey={canonicalKey} defaultExpanded /> : null}
-            {recordsMode ? <div className="space-y-1 text-xs"><p className="font-medium text-muted">{workT("currentFacts")}</p><p>{stateOf(row)} · {arrangementOf(row)}</p>{noteOf(row) ? <p className="break-words text-muted">{noteOf(row)}</p> : null}</div> : null}
-            {row.source === "invitation" ? <InvitationEditor key={row.id} row={row.value} entry={entryDrafts[row.id] ?? EMPTY_INVITATION_ENTRY} onEntryChange={(entry) => updateEntryDraft(row.id, entry)} onAdvance={() => advanceAfter(canonicalKey)} activities={activities} assessors={assessors} locale={locale} formatAt={formatAt} currentUserId={currentUserId} canManageInvitation={canManageInvitation} onSaved={onSaved} saving={savingIds.has(row.id)} beginSave={beginSave} endSave={endSave} /> : <PostActivityHandoff source={{ registrationId: row.value.registrationId, invitationId: null }} initialContext={row.value} onSaved={savePost} />}
-            {!recordsMode ? <CommunicationDaySummary workday={workday} rowKey={canonicalKey} defaultExpanded={false} /> : null}
-            {laterContact?.lastContactAt ? <p className="mt-2 min-w-0 break-words border-t border-line pt-2 text-xs text-muted">{formatAt(laterContact.lastContactAt)} · {noteOf(row)}</p> : null}
-            {row.source === "invitation" ? <InvitationHistory rows={historyFor(row.value.leadId, row.value.id)} formatAt={formatAt} /> : null}
-          </FollowupInlineDetails>
-        </Fragment>;
-      })}{!visibleRows.length ? <TableRow><TableCell colSpan={4} className="h-32 text-center text-muted">{tableT("filteredEmpty")}</TableCell></TableRow> : null}</TableBody>
+      })}>{visibleRows.map((row) => <FollowupTableRecord key={communicationRowKey(row)} row={row} active={activeId === communicationRowKey(row) || (row.source === "contact" && activeContactId === row.value.id)} expanded={activeId === communicationRowKey(row)} selected={workSelection.selectedKeys.has(communicationRowKey(row))} pending={savingIds.has(row.id)} render={renderRow} />)}{!visibleRows.length ? <TableRow><TableCell colSpan={4} className="h-32 text-center text-muted">{tableT("filteredEmpty")}</TableCell></TableRow> : null}</TableBody>
     </Table>
   </DashboardTableShell>;
 }

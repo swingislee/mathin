@@ -1,10 +1,12 @@
 "use client";
 
+import { FollowupTableRecord, type FollowupRowState } from "./dashboard-page/FollowupTableRecord";
+
 import { BusinessRecordRevisionButton } from './BusinessRecordRevisionButton';
 
 import { useBusinessSearchQuery } from './BusinessRecordStateFilter';
 import { isCurrentBusinessRecord } from './business-record-state-contract';
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CalendarClock, UserCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -13,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { cn } from "@/lib/utils";
 import { FollowupInlineDetails } from "./dashboard-page/FollowupInlineDetails";
 import { FollowupPersonCell } from "./dashboard-page/FollowupPersonCell";
-import { navigateFollowupTable } from "./followup-keyboard";
+import { followupFocusActivatesRow, navigateFollowupTable } from "./followup-keyboard";
 import { FilterSearchInput } from "./FilterBar";
 import { FollowupTabs } from "./FollowupTabs";
 import { FollowupCommandPanel } from "./FollowupCommandPanel";
@@ -75,6 +77,8 @@ function queueFor(
   return stage;
 }
 
+const ASSESSMENT_SOURCE_SORT = { field: "scheduledAt", direction: "desc" } as const;
+
 export function AssessmentUnifiedWorkbench({
   initialRows,
   assessors,
@@ -118,7 +122,7 @@ export function AssessmentUnifiedWorkbench({
   const [query, setQuery] = useBusinessSearchQuery("assessments",initialQuery);
   const [clockNow] = useState(() => now ?? Date.now());
   const dateContext = useMemo(() => ({ locale, timeZone, now: clockNow }), [locale, timeZone, clockNow]);
-  const fieldM = dashboardFieldMessages(locale);
+  const fieldM = useMemo(() => dashboardFieldMessages(locale), [locale]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [visitedDetails, setVisitedDetails] = useState<Set<string>>(() => new Set());
@@ -151,24 +155,24 @@ export function AssessmentUnifiedWorkbench({
   }), [locale, timeZone, tableT, assessmentT, t, teacherT, quickT, drafts]);
   const assessmentTable = useDashboardFieldView({ rows: scopedRows, fields, columns: ASSESSMENT_TABLE_COLUMNS,
     context: dateContext, persistenceKey: "followup-assessments", migrate: migrateAssessmentFieldQuery,
-    sourceSort: { field: "scheduledAt", direction: "desc" } });
+    sourceSort: ASSESSMENT_SOURCE_SORT });
   const filterKey = JSON.stringify([query, assessmentTable.filters, assessmentTable.sort]);
   if (retainedView && retainedView.key !== filterKey) setRetainedView(null);
-  const rowById = new Map(rows.map((row) => [row.id, row]));
-  const orderedVisibleRows = retainedView?.key === filterKey
-    ? retainedView.ids.flatMap(id => rowById.has(id) ? [rowById.get(id)!] : []) : assessmentTable.visibleRows;
+  const rowById = useMemo(() => new Map(rows.map((row) => [row.id, row])), [rows]);
+  const orderedVisibleRows = useMemo(() => retainedView?.key === filterKey
+    ? retainedView.ids.flatMap(id => rowById.has(id) ? [rowById.get(id)!] : []) : assessmentTable.visibleRows, [assessmentTable.visibleRows, filterKey, retainedView, rowById]);
   const pagination = useFollowupPagination(orderedVisibleRows, filterKey);
   const viewKey = JSON.stringify([filterKey, pagination.page, pagination.pageSize]);
   const latestInteraction = useRef({ activeId, expandedId, viewKey });
   useEffect(() => { latestInteraction.current = { activeId, expandedId, viewKey }; }, [activeId, expandedId, viewKey]);
   const visibleRows = pagination.rows;
-  const retainCurrentView = () => setRetainedView((current) => current?.key === filterKey ? current : { key: filterKey, ids: orderedVisibleRows.map((row) => row.id) });
-  const saveRow = (saved: AssessmentWorkbenchRow) => {
+  const retainCurrentView = useCallback(() => setRetainedView((current) => current?.key === filterKey ? current : { key: filterKey, ids: orderedVisibleRows.map((row) => row.id) }), [filterKey, orderedVisibleRows]);
+  const saveRow = useCallback((saved: AssessmentWorkbenchRow) => {
     retainCurrentView();
     setRows((current) => current.map((row) => row.id === saved.id ? saved
       : saved.registrationId && row.registrationId === saved.registrationId ? { ...row, workflow: saved.workflow, participationStatus: saved.participationStatus } : row));
-  };
-  const saveQuickFollowUp = (row: AssessmentWorkbenchRow, content: string, createdAt: string) => {
+  }, [retainCurrentView]);
+  const saveQuickFollowUp = useCallback((row: AssessmentWorkbenchRow, content: string, createdAt: string) => {
     retainCurrentView();
     setRows((current) => current.map((candidate) => candidate.id === row.id ? {
     ...candidate,
@@ -181,25 +185,25 @@ export function AssessmentUnifiedWorkbench({
       statusAfter: null,
     },
     } : candidate));
-  };
-  const changeDetails = (id: string, open: boolean) => {
+  }, [retainCurrentView]);
+  const changeDetails = useCallback((id: string, open: boolean) => {
     setActiveId(id);
     setExpandedId(open ? id : null);
     if (open) setVisitedDetails((current) => new Set([...current, id]));
-  };
-  const advanceFrom = (rowId: string) => {
+  }, []);
+  const advanceFrom = useCallback((rowId: string) => {
     // 请求期间用户切换了记录或筛选时，保存只更新原记录，继续尊重用户当前所在位置。
     const latest = latestInteraction.current;
     if (latest.activeId !== rowId || latest.expandedId !== rowId || latest.viewKey !== viewKey) return;
     const nextId = nextAssessmentWorkbenchRowId(visibleRows.map((row) => row.id), rowId);
     if (nextId) changeDetails(nextId, true);
-  };
+  }, [changeDetails, viewKey, visibleRows]);
 
-  const updateDraft = (id: string, update: (draft: SupportDraft) => SupportDraft) => {
+  const updateDraft = useCallback((id: string, update: (draft: SupportDraft) => SupportDraft) => {
     retainCurrentView();
     setDrafts((current) => ({ ...current, [id]: update(current[id]) }));
-  };
-  const reassignAssessor = (row: AssessmentWorkbenchRow, assessorId: string) => {
+  }, [retainCurrentView]);
+  const reassignAssessor = useCallback((row: AssessmentWorkbenchRow, assessorId: string) => {
     if (row.assessmentKind !== "one_to_one" || !row.invitationId || assessorId === row.assessorId) return;
     const option = assessors.find((candidate) => candidate.userId === assessorId);
     if (!option) return;
@@ -219,7 +223,141 @@ export function AssessmentUnifiedWorkbench({
       setReassigningId(null);
       toast.error(t("reassignFailed"));
     });
-  };
+  }, [assessors, retainCurrentView, t]);
+  const renderRow = useCallback((row: AssessmentWorkbenchRow, state: FollowupRowState) => {
+    const { active, expanded, retained } = state;
+    const current = isCurrentBusinessRecord(row.recordState);
+    const mayAssess = current && canAssess;
+    const maySupport = current && canSupport;
+    const draft = drafts[row.id];
+    const stage = queueFor(row, draft);
+    const completed = assessmentWorkbenchHasFinalResult(row);
+    const conclusion = assessmentConclusion(row);
+    const band = assessmentTableBand(row);
+    const score = assessmentTableScore(row);
+    const scoreDisplay = formatAssessmentTableScore(row, locale);
+    const scheduledAt = assessmentScheduledDate(row, timeZone);
+    const recordedAt = assessmentRecordDate(row);
+    const latestContext = row.workflow?.finalizedAt && row.workflow.parentResponse
+      && row.workflow.finalizedAt > (row.latestFollowUp?.createdAt ?? "")
+      ? row.workflow.parentResponse : row.latestFollowUp?.content;
+    return (
+      <ActivityAssessmentDraftProvider key={row.id} row={row}>
+        <TableRow
+          data-record-state={row.recordState ?? "current"}
+          data-followup-row-key={row.id}
+          data-followup-active={active}
+          data-followup-expanded={expanded}
+          data-followup-success={Boolean(row.enrollmentId)}
+          tabIndex={0}
+          aria-expanded={expanded}
+          aria-controls={`assessment-details-${row.id}`}
+          className="h-16 cursor-pointer focus-visible:outline-none [&>td]:min-w-0"
+          onFocusCapture={(event) => { if (followupFocusActivatesRow(event)) setActiveId(row.id); }}
+          onClick={(event) => {
+            setActiveId(row.id);
+            if (!(event.target as HTMLElement).closest("button,a,input,textarea,[role='combobox'],[role='option'],[role='checkbox']")) changeDetails(row.id, !expanded);
+          }}
+          onKeyDown={(event) => {
+            if (event.defaultPrevented || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229 || event.repeat || event.target !== event.currentTarget) return;
+            if (event.key === "Enter" && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) { event.preventDefault(); changeDetails(row.id, !expanded); }
+            if (event.key === "Escape" && expanded) { event.preventDefault(); changeDetails(row.id, false); }
+          }}
+          data-assessment-workbench-row={row.id}
+        >
+          <TableCell
+            className="sticky left-0 z-10 border-r border-line bg-card px-2 py-2"
+          >
+            <FollowupPersonCell name={row.name} phone={row.phone}
+              grade={row.gradeText || (row.grade ? assessmentT("gradeValue", { grade: row.grade }) : assessmentT("gradePending"))}
+              studentGrade={row.grade} expanded={expanded} detailsId={`assessment-details-${row.id}`}
+              onToggle={() => changeDetails(row.id, !expanded)}
+              subject={{ studentId: row.studentId, leadId: row.leadId }} />
+          </TableCell>
+          <TableCell data-assessment-state-kind className="px-2 py-2">
+            <div className="flex min-w-0 flex-col items-start gap-1">
+              {current ? <StageBadge stage={stage} contacting={false} /> : null}
+              {row.assessmentKind !== "one_to_one" ? <Badge variant="outline" className="whitespace-nowrap border-line bg-line/20 text-muted">{t(`type_${row.assessmentKind}`)}</Badge> : null}
+              {current && row.workflow?.classification ? <span className="text-[11px] text-muted">{workflowT("classification_" + row.workflow.classification)}</span> : null}
+            </div>
+          </TableCell>
+          <TableCell data-assessment-arrangement className="px-2 py-2">
+            <p className="truncate font-medium text-ink"><time dateTime={scheduledAt ?? undefined} aria-label={formatDashboardDate(scheduledAt, dateContext, { time: true, full: true })}>{formatDashboardDate(scheduledAt, dateContext, { time: true })}</time></p>
+            <div className="mt-1 flex min-w-0 items-center gap-1.5 text-[11px] text-muted" data-assessment-support-owner>
+              <span className="max-w-[50%] truncate font-medium text-ink" title={fieldM.supportOwner}
+                aria-label={`${fieldM.supportOwner}: ${row.supportOwnerName || "—"}`}>{row.supportOwnerName || "—"}</span>
+              <span aria-hidden>·</span>
+              <span className="truncate" title={row.location || undefined}>{row.location || "—"}</span>
+            </div>
+          </TableCell>
+          <TableCell className="px-2 py-2">
+            {completed && row.assessment && (score.score !== null || band) ? (
+              <div className="flex min-w-0 items-center gap-2">
+                {score.score !== null ? <span className={cn("shrink-0 text-sm font-semibold tabular-nums", score.invalid ? "text-rose" : "text-ink")}
+                  title={scoreDisplay.hint || undefined} aria-label={`${scoreDisplay.label}${scoreDisplay.hint ? ` · ${scoreDisplay.hint}` : ""}`}>
+                  {scoreDisplay.label}
+                </span> : null}
+                {band ? (
+                  <Badge variant="outline" className={cn(band === "x_plus" ? "border-rose/30 bg-cheek/25 text-ink" : band === "g_plus" ? "border-crater/40 bg-moon/40 text-ink" : "border-leaf-deep/35 bg-leaf/20 text-leaf-deep")}>
+                    {teacherT(`band_${band}`)}
+                  </Badge>
+                ) : null}
+              </div>
+            ) : row.questionSummary ? (
+              <p className="font-medium tabular-nums text-ink">{t("progressValue", {
+                answered: row.questionSummary.answeredCount,
+                total: row.questionSummary.questionCount,
+              })}</p>
+            ) : <p className="truncate font-medium text-muted">{completed ? "—" : t(stage === "pending" ? "waitingStart" : "stageInProgress")}</p>}
+            {row.questionSummary?.paperTitle ? <p className="mt-0.5 truncate text-[11px] text-muted">{row.questionSummary.paperTitle}</p> : null}
+            {current && row.quickEntry && !row.quickEntry.finalizedAt && !row.assessmentCompletedAt ? <p className="mt-1 text-[11px] text-crater" data-assessment-pending-result>
+              {quickT("pendingResult")}{row.quickEntry.values.score !== null ? ` · ${row.quickEntry.values.score}` : ""}</p> : null}
+            {current && row.assessment?.resultSource && row.assessment.resultSource !== "legacy" ? <p className="mt-1 text-[11px] text-muted">
+              {quickT(row.assessment.resultSource === "quick_entry" ? "quickResult" : "teacherResult")}{row.assessment.recordedByName ? ` · ${row.assessment.recordedByName}` : ""}</p> : null}
+          </TableCell>
+          <TableCell className="px-2 py-2">
+            <p className={cn("line-clamp-2 whitespace-normal leading-5", conclusion ? "text-ink" : "text-muted")} title={conclusion || undefined}>
+              {conclusion || (completed ? t("conclusionPending") : t("stageAssessmentPending"))}
+            </p>
+          </TableCell>
+          <TableCell data-assessment-current-work className="px-2 py-2">
+            <div className="flex min-w-0 items-center gap-1.5 text-[11px]">
+              <span role="img" title={t(row.assessorSource === "actual" ? "actualAssessor" : "assignedAssessor")}
+                aria-label={t(row.assessorSource === "actual" ? "actualAssessor" : "assignedAssessor")} className="shrink-0">
+                {row.assessorSource === "actual" ? <UserCheck aria-hidden className="size-4 text-leaf-deep" /> : <CalendarClock aria-hidden className="size-4 text-crater" />}
+              </span>
+              <span className="truncate font-medium text-ink" title={row.assessorName || undefined}>{row.assessorName || "—"}</span>
+              {!current && row.assessment ? <BusinessRecordRevisionButton kind="assessment" recordId={row.assessment.id} subject={row.name}/> : null}
+            </div>
+            {mayAssess && row.assessmentKind === "one_to_one" ? <div className="mt-1" data-assessment-question-entry
+              title={quickT(row.assessmentCompletedAt ? "questionCompleted" : row.assessmentStartedAt ? "questionInProgress" : row.teacherRequired ? "questionRequired" : "questionOptional")}>
+              <TeacherAssessmentEntryButton registrationId={row.registrationId} invitationId={row.invitationId} />
+            </div> : null}
+          </TableCell>
+          <TableCell data-assessment-latest-update className="px-2 py-2 text-[11px] text-muted">
+            <p className="truncate tabular-nums"><time dateTime={recordedAt ?? undefined} title={formatDashboardDate(recordedAt, dateContext, { time: true, full: true })} aria-label={formatDashboardDate(recordedAt, dateContext, { time: true, full: true })}>{formatDashboardDate(recordedAt, dateContext, { time: true })}</time></p>
+            {current && latestContext?.trim() ? <p data-current-situation className="mt-0.5 truncate leading-4">{latestContext}</p> : null}
+          </TableCell>
+        </TableRow>
+
+        <FollowupInlineDetails open={expanded} keepMounted={retained}
+          onOpenChange={(open) => changeDetails(row.id, open)} title={row.name} hideTitle
+          active={active} onActivate={() => setActiveId(row.id)} colSpan={7} id={`assessment-details-${row.id}`}>
+          <AssessmentRecordDetails row={row} stage={stage} conclusion={conclusion} locale={locale}
+            canAssess={mayAssess} canSupport={maySupport} canManageAssessor={canManageAssessor}
+            canQuickEntry={current && canQuickEntry} canRoute={current && canManageAssessor}
+            assessors={assessors} reassigning={reassigningId === row.id} onReassign={(id) => reassignAssessor(row, id)}
+            onSaved={saveRow} onNoteSaved={(entry) => saveQuickFollowUp(row, entry.content, entry.createdAt)}
+            onSaveAndNext={nextAssessmentWorkbenchRowId(visibleRows.map((item) => item.id), row.id) ? () => advanceFrom(row.id) : undefined}
+            onHandoffSaved={(context) => {
+              updateDraft(row.id, (current) => ({ ...current, route: context.route }));
+              setRows(current => current.map(candidate => candidate.id === row.id || candidate.registrationId === context.registrationId
+                ? { ...candidate, enrollmentId: context.enrollmentId } : candidate));
+            }} />
+        </FollowupInlineDetails>
+      </ActivityAssessmentDraftProvider>
+    );
+  }, [advanceFrom, assessmentT, assessors, canAssess, canManageAssessor, canQuickEntry, canSupport, changeDetails, dateContext, drafts, fieldM.supportOwner, locale, quickT, reassignAssessor, reassigningId, saveQuickFollowUp, saveRow, t, teacherT, timeZone, updateDraft, visibleRows, workflowT]);
 
   return (
     <DashboardPage
@@ -264,141 +402,7 @@ export function AssessmentUnifiedWorkbench({
               </TableRow>
             </TableHeader>
             <TableBody onKeyDown={(event) => navigateFollowupTable(event, (id) => { setActiveId(id); return true; })}>
-              {visibleRows.map((row) => {
-                const current = isCurrentBusinessRecord(row.recordState);
-                const mayAssess = current && canAssess;
-                const maySupport = current && canSupport;
-                const draft = drafts[row.id];
-                const active = row.id === activeId;
-                const expanded = row.id === expandedId;
-                const stage = queueFor(row, draft);
-                const completed = assessmentWorkbenchHasFinalResult(row);
-                const conclusion = assessmentConclusion(row);
-                const band = assessmentTableBand(row);
-                const score = assessmentTableScore(row);
-                const scoreDisplay = formatAssessmentTableScore(row, locale);
-                const scheduledAt = assessmentScheduledDate(row, timeZone);
-                const recordedAt = assessmentRecordDate(row);
-                const latestContext = row.workflow?.finalizedAt && row.workflow.parentResponse
-                  && row.workflow.finalizedAt > (row.latestFollowUp?.createdAt ?? "")
-                  ? row.workflow.parentResponse : row.latestFollowUp?.content;
-                return (
-                  <ActivityAssessmentDraftProvider key={row.id} row={row}>
-                    <TableRow
-                      data-record-state={row.recordState ?? "current"}
-                      data-followup-row-key={row.id}
-                      data-followup-active={active}
-                      data-followup-expanded={expanded}
-                      data-followup-success={Boolean(row.enrollmentId)}
-                      tabIndex={0}
-                      aria-expanded={expanded}
-                      aria-controls={`assessment-details-${row.id}`}
-                      className="h-16 cursor-pointer focus-visible:outline-none [&>td]:min-w-0"
-                      onFocusCapture={() => setActiveId(row.id)}
-                      onClick={(event) => {
-                        setActiveId(row.id);
-                        if (!(event.target as HTMLElement).closest("button,a,input,textarea,[role='combobox'],[role='option'],[role='checkbox']")) changeDetails(row.id, !expanded);
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.defaultPrevented || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229 || event.repeat || event.target !== event.currentTarget) return;
-                        if (event.key === "Enter" && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) { event.preventDefault(); changeDetails(row.id, !expanded); }
-                        if (event.key === "Escape" && expanded) { event.preventDefault(); changeDetails(row.id, false); }
-                      }}
-                      data-assessment-workbench-row={row.id}
-                    >
-                      <TableCell
-                        className="sticky left-0 z-10 border-r border-line bg-card px-2 py-2"
-                      >
-                        <FollowupPersonCell name={row.name} phone={row.phone}
-                          grade={row.gradeText || (row.grade ? assessmentT("gradeValue", { grade: row.grade }) : assessmentT("gradePending"))}
-                          studentGrade={row.grade} expanded={expanded} detailsId={`assessment-details-${row.id}`}
-                          onToggle={() => changeDetails(row.id, !expanded)}
-                          subject={{ studentId: row.studentId, leadId: row.leadId }} />
-                      </TableCell>
-                      <TableCell data-assessment-state-kind className="px-2 py-2">
-                        <div className="flex min-w-0 flex-col items-start gap-1">
-                          {current ? <StageBadge stage={stage} contacting={false} /> : null}
-                          {row.assessmentKind !== "one_to_one" ? <Badge variant="outline" className="whitespace-nowrap border-line bg-line/20 text-muted">{t(`type_${row.assessmentKind}`)}</Badge> : null}
-                          {current && row.workflow?.classification ? <span className="text-[11px] text-muted">{workflowT("classification_" + row.workflow.classification)}</span> : null}
-                        </div>
-                      </TableCell>
-                      <TableCell data-assessment-arrangement className="px-2 py-2">
-                        <p className="truncate font-medium text-ink"><time dateTime={scheduledAt ?? undefined} aria-label={formatDashboardDate(scheduledAt, dateContext, { time: true, full: true })}>{formatDashboardDate(scheduledAt, dateContext, { time: true })}</time></p>
-                        <div className="mt-1 flex min-w-0 items-center gap-1.5 text-[11px] text-muted" data-assessment-support-owner>
-                          <span className="max-w-[50%] truncate font-medium text-ink" title={fieldM.supportOwner}
-                            aria-label={`${fieldM.supportOwner}: ${row.supportOwnerName || "—"}`}>{row.supportOwnerName || "—"}</span>
-                          <span aria-hidden>·</span>
-                          <span className="truncate" title={row.location || undefined}>{row.location || "—"}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="px-2 py-2">
-                        {completed && row.assessment && (score.score !== null || band) ? (
-                          <div className="flex min-w-0 items-center gap-2">
-                            {score.score !== null ? <span className={cn("shrink-0 text-sm font-semibold tabular-nums", score.invalid ? "text-rose" : "text-ink")}
-                              title={scoreDisplay.hint || undefined} aria-label={`${scoreDisplay.label}${scoreDisplay.hint ? ` · ${scoreDisplay.hint}` : ""}`}>
-                              {scoreDisplay.label}
-                            </span> : null}
-                            {band ? (
-                              <Badge variant="outline" className={cn(band === "x_plus" ? "border-rose/30 bg-cheek/25 text-ink" : band === "g_plus" ? "border-crater/40 bg-moon/40 text-ink" : "border-leaf-deep/35 bg-leaf/20 text-leaf-deep")}>
-                                {teacherT(`band_${band}`)}
-                              </Badge>
-                            ) : null}
-                          </div>
-                        ) : row.questionSummary ? (
-                          <p className="font-medium tabular-nums text-ink">{t("progressValue", {
-                            answered: row.questionSummary.answeredCount,
-                            total: row.questionSummary.questionCount,
-                          })}</p>
-                        ) : <p className="truncate font-medium text-muted">{completed ? "—" : t(stage === "pending" ? "waitingStart" : "stageInProgress")}</p>}
-                        {row.questionSummary?.paperTitle ? <p className="mt-0.5 truncate text-[11px] text-muted">{row.questionSummary.paperTitle}</p> : null}
-                        {current && row.quickEntry && !row.quickEntry.finalizedAt && !row.assessmentCompletedAt ? <p className="mt-1 text-[11px] text-crater" data-assessment-pending-result>
-                          {quickT("pendingResult")}{row.quickEntry.values.score !== null ? ` · ${row.quickEntry.values.score}` : ""}</p> : null}
-                        {current && row.assessment?.resultSource && row.assessment.resultSource !== "legacy" ? <p className="mt-1 text-[11px] text-muted">
-                          {quickT(row.assessment.resultSource === "quick_entry" ? "quickResult" : "teacherResult")}{row.assessment.recordedByName ? ` · ${row.assessment.recordedByName}` : ""}</p> : null}
-                      </TableCell>
-                      <TableCell className="px-2 py-2">
-                        <p className={cn("line-clamp-2 whitespace-normal leading-5", conclusion ? "text-ink" : "text-muted")} title={conclusion || undefined}>
-                          {conclusion || (completed ? t("conclusionPending") : t("stageAssessmentPending"))}
-                        </p>
-                      </TableCell>
-                      <TableCell data-assessment-current-work className="px-2 py-2">
-                        <div className="flex min-w-0 items-center gap-1.5 text-[11px]">
-                          <span role="img" title={t(row.assessorSource === "actual" ? "actualAssessor" : "assignedAssessor")}
-                            aria-label={t(row.assessorSource === "actual" ? "actualAssessor" : "assignedAssessor")} className="shrink-0">
-                            {row.assessorSource === "actual" ? <UserCheck aria-hidden className="size-4 text-leaf-deep" /> : <CalendarClock aria-hidden className="size-4 text-crater" />}
-                          </span>
-                          <span className="truncate font-medium text-ink" title={row.assessorName || undefined}>{row.assessorName || "—"}</span>
-                          {!current && row.assessment ? <BusinessRecordRevisionButton kind="assessment" recordId={row.assessment.id} subject={row.name}/> : null}
-                        </div>
-                        {mayAssess && row.assessmentKind === "one_to_one" ? <div className="mt-1" data-assessment-question-entry
-                          title={quickT(row.assessmentCompletedAt ? "questionCompleted" : row.assessmentStartedAt ? "questionInProgress" : row.teacherRequired ? "questionRequired" : "questionOptional")}>
-                          <TeacherAssessmentEntryButton registrationId={row.registrationId} invitationId={row.invitationId} />
-                        </div> : null}
-                      </TableCell>
-                      <TableCell data-assessment-latest-update className="px-2 py-2 text-[11px] text-muted">
-                        <p className="truncate tabular-nums"><time dateTime={recordedAt ?? undefined} title={formatDashboardDate(recordedAt, dateContext, { time: true, full: true })} aria-label={formatDashboardDate(recordedAt, dateContext, { time: true, full: true })}>{formatDashboardDate(recordedAt, dateContext, { time: true })}</time></p>
-                        {current && latestContext?.trim() ? <p data-current-situation className="mt-0.5 truncate leading-4">{latestContext}</p> : null}
-                      </TableCell>
-                    </TableRow>
-
-                    <FollowupInlineDetails open={expanded} keepMounted={visitedDetails.has(row.id)}
-                      onOpenChange={(open) => changeDetails(row.id, open)} title={row.name} hideTitle
-                      active={active} onActivate={() => setActiveId(row.id)} colSpan={7} id={`assessment-details-${row.id}`}>
-                      <AssessmentRecordDetails row={row} stage={stage} conclusion={conclusion} locale={locale}
-                        canAssess={mayAssess} canSupport={maySupport} canManageAssessor={canManageAssessor}
-                        canQuickEntry={current && canQuickEntry} canRoute={current && canManageAssessor}
-                        assessors={assessors} reassigning={reassigningId === row.id} onReassign={(id) => reassignAssessor(row, id)}
-                        onSaved={saveRow} onNoteSaved={(entry) => saveQuickFollowUp(row, entry.content, entry.createdAt)}
-                        onSaveAndNext={nextAssessmentWorkbenchRowId(visibleRows.map((item) => item.id), row.id) ? () => advanceFrom(row.id) : undefined}
-                        onHandoffSaved={(context) => {
-                          updateDraft(row.id, (current) => ({ ...current, route: context.route }));
-                          setRows(current => current.map(candidate => candidate.id === row.id || candidate.registrationId === context.registrationId
-                            ? { ...candidate, enrollmentId: context.enrollmentId } : candidate));
-                        }} />
-                    </FollowupInlineDetails>
-                  </ActivityAssessmentDraftProvider>
-                );
-              })}
+              {visibleRows.map((row) => <FollowupTableRecord key={row.id} row={row} active={activeId === row.id} expanded={expandedId === row.id} retained={visitedDetails.has(row.id)} render={renderRow} />)}
               {visibleRows.length === 0 ? (
                 <TableRow><TableCell colSpan={7} className="h-32 px-4 text-center text-sm text-muted">{tableT("filteredEmpty")}</TableCell></TableRow>
               ) : null}
@@ -409,36 +413,38 @@ export function AssessmentUnifiedWorkbench({
     </DashboardPage>
   );
 
-  function StageBadge({
-    stage,
-    contacting,
-  }: {
-    stage: Exclude<AssessmentWorkbenchQueue, "all">;
-    contacting: boolean;
-  }) {
-    const label = stage === "pending"
-      ? t("stageAssessmentPending")
-      : stage === "in_progress"
-        ? t("stageInProgress")
-        : stage === "handled"
-          ? t("stageHandled")
-          : contacting
-            ? t("stageContacting")
-            : t("stagePending");
-    return (
-      <Badge
-        variant="outline"
-        className={cn(
-          "max-w-full whitespace-normal rounded-md px-1.5 text-[11px]",
-          stage === "pending" && "border-line bg-line/20 text-muted",
-          stage === "in_progress" && "border-crater/40 bg-moon/40 text-ink",
-          stage === "feedback" && "border-crater/40 bg-moon/40 text-ink",
-          stage === "handled" && "border-leaf-deep/35 bg-leaf/20 text-leaf-deep",
-        )}
-      >
-        <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-current" />
-        {label}
-      </Badge>
-    );
-  }
+}
+
+function StageBadge({
+  stage,
+  contacting,
+}: {
+  stage: Exclude<AssessmentWorkbenchQueue, "all">;
+  contacting: boolean;
+}) {
+  const t = useTranslations("school.supportAssessment");
+  const label = stage === "pending"
+    ? t("stageAssessmentPending")
+    : stage === "in_progress"
+      ? t("stageInProgress")
+      : stage === "handled"
+        ? t("stageHandled")
+        : contacting
+          ? t("stageContacting")
+          : t("stagePending");
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        "max-w-full whitespace-normal rounded-md px-1.5 text-[11px]",
+        stage === "pending" && "border-line bg-line/20 text-muted",
+        stage === "in_progress" && "border-crater/40 bg-moon/40 text-ink",
+        stage === "feedback" && "border-crater/40 bg-moon/40 text-ink",
+        stage === "handled" && "border-leaf-deep/35 bg-leaf/20 text-leaf-deep",
+      )}
+    >
+      <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-current" />
+      {label}
+    </Badge>
+  );
 }
