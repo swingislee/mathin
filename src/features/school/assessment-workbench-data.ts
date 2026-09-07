@@ -270,7 +270,7 @@ const REGISTRATION_COLUMNS = [
 export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbenchRow[]> {
   const supabase = await createClient();
   const [activityResult, confirmedInvitationResult, requiredResult, orderResult] = await Promise.all([
-    readAllRows<ActivityDbRow>(() => from(supabase)("activities")
+    readAllRows<ActivityDbRow>(() => from(supabase)("business_activities")
       .select(ACTIVITY_COLUMNS)
       .is("deleted_at", null)),
     readAllRows<InvitationDbRow>(() => from(supabase)("lead_invitation_threads")
@@ -288,7 +288,7 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
   if (orderResult.error) throw new Error("ASSESSMENT_SOURCE_ORDER_READ");
 
   const activities = activityResult.data ?? [];
-  const registrationResult = await readRelatedRows<RegistrationDbRow>(supabase, "activity_registrations", REGISTRATION_COLUMNS, "activity_id", activities.map((activity) => activity.id));
+  const registrationResult = await readRelatedRows<RegistrationDbRow>(supabase, "business_activity_registrations", REGISTRATION_COLUMNS, "activity_id", activities.map((activity) => activity.id));
   if (registrationResult.error) throw new Error(registrationResult.error.message);
   const activityById = new Map(activities.map((activity) => [activity.id, activity]));
   const registrations = (registrationResult.data ?? []).flatMap((registration) => {
@@ -347,14 +347,14 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
     supportOwnerResult,
     sourceSupportResult,
   ] = await Promise.all([
-    readRelatedRows<AssessmentDbRow>(supabase, "assessment_results", "id,activity_registration_id,assessed_on,assessment_band,score,score_max,strengths,focus_areas,parent_concerns,teacher_recommendation,recommended_class,teacher_observation,updated_at,result_source,result_finalized_at,assessor:profiles!assessment_results_assessed_by_fkey(id,display_name)", "activity_registration_id", registrationIds),
+    readRelatedRows<AssessmentDbRow>(supabase, "business_assessment_results", "id,activity_registration_id,assessed_on,assessment_band,score,score_max,strengths,focus_areas,parent_concerns,teacher_recommendation,recommended_class,teacher_observation,updated_at,result_source,result_finalized_at,assessor:profiles!assessment_results_assessed_by_fkey(id,display_name)", "activity_registration_id", registrationIds),
     readRelatedRows<RouteDbRow>(supabase, "activity_routes", "id,activity_registration_id,route,note,updated_at,enrollment:course_enrollments!activity_routes_course_enrollment_id_fkey(id,status)", "activity_registration_id", registrationIds),
     readRelatedRows<InvitationDbRow>(supabase, "lead_invitation_threads", INVITATION_COLUMNS, "id", sourceInvitationIds),
     readRelatedRows<PaperVersionDbRow>(supabase, "assessment_paper_versions", "id,paper_id,question_count,total_score", "id", paperVersionIds),
     readRelatedRows<QuestionResultDbRow>(supabase, "assessment_question_results", "activity_registration_id,question_id,outcome,note", "activity_registration_id", registrationIds),
     readRelatedRows<PublicClassSegmentDbRow>(supabase, "public_class_segments", "id,activity_id,kind,title,scheduled_at,location,primary_teacher_id,primary_teacher:profiles!public_class_segments_primary_teacher_id_fkey(display_name)", "activity_id", publicClassActivityIds),
     readRelatedRows<PublicClassRecordDbRow>(supabase, "public_class_participant_records", "id,segment_id,registration_id,student_presence,guardian_presence,learning_observation,assessment_summary,parent_feedback,recommendation,updated_at", "activity_id", publicClassActivityIds),
-    readRelatedRows<FollowUpDbRow>(supabase, "student_follow_ups", "id,student_id,content,kind,next_follow_up_at,status_after,created_at,record_state", "student_id", followUpStudentIds),
+    readRelatedRows<FollowUpDbRow>(supabase, "business_student_follow_ups", "id,student_id,content,kind,next_follow_up_at,status_after,created_at,record_state", "student_id", followUpStudentIds),
     readRelatedRows<QuickEntryDbRow>(supabase, "assessment_quick_entries", "id,registration_id,entry,revision,recorded_by,updated_at,finalized_at,recorder:profiles!assessment_quick_entries_recorded_by_fkey(display_name)", "registration_id", registrationIds),
     readRelatedRows<EntryActorDbRow>(supabase, "assessment_entry_actors", "id,registration_id,entry_kind,recorded_by,recorded_at,display_name", "registration_id", registrationIds),
     readRelatedRows<AssessmentWorkflowDbRow>(supabase, "assessment_workflow_states", ASSESSMENT_WORKFLOW_COLUMNS, "registration_id", registrationIds),

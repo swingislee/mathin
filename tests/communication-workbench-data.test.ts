@@ -33,7 +33,7 @@ vi.mock("../src/lib/supabase/server", () => ({
     from: (table: string) => {
     const request = { table, columns: "", ids: [] as number[], range: undefined as [number, number] | undefined, search: undefined as string | undefined };
     db.requests.push(request);
-    let rows = [...(db.tables[table] ?? db.tables[table.replace("effective_", "")] ?? [])];
+    let rows = [...(db.tables[table] ?? db.tables[table.replace(/^(effective_|operational_)/, "")] ?? [])];
     const orders: { key: string; ascending: boolean }[] = [];
     const result = () => {
       const sorted = [...rows].sort((a, b) => {
@@ -113,6 +113,16 @@ const nextAction = (id: string, leadId: string, dueAt = "2026-09-04T05:00:00Z", 
 
 describe("communication merged page", () => {
   beforeEach(() => { db.tables = {}; db.posts = []; db.requests = []; db.postReads = 0; db.worklists = []; db.contexts = []; db.rpcs = []; vi.restoreAllMocks(); });
+
+  it("uses current workflow leads for the queue and preserves direct access to historical contacts", async () => {
+    db.tables.leads = [lead("current"), lead("historical")];
+    db.tables.operational_leads = [lead("current")];
+    const options = parseCommunicationWorkQuery({}, "2026-09-05");
+    const queue = await loadCommunicationWorkbench("owner", filters, true, undefined, options);
+    expect(queue.rowOrder).toEqual(["lead:current"]);
+    const focused = await loadCommunicationWorkbench("owner", filters, true, "historical", options);
+    expect(focused.contactLeads.map(row => row.id)).toContain("historical");
+  });
 
   it("loads assigned contacts across dates by default and paginates the full owner queue", async () => {
     db.tables.leads = [

@@ -130,7 +130,7 @@ export async function listLeadPool(
   const supabase = await createClient();
   const offset = selectedLeadIds ? 0 : (filters.page - 1) * filters.pageSize;
   let query = supabase
-    .from("leads")
+    .from((selectedLeadIds ? "leads" : "operational_leads") as "leads")
     .select(
       "id,provisional_student_name,phone,grade_hint,grade_text,status,owner_id,student_id,suggested_student_id,created_at,note",
       { count: "exact" },

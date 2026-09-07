@@ -248,13 +248,13 @@ function emptyCapacityTotals(): ClassroomCapacityTotals {
 
 async function readOverviewCore(supabase: Awaited<ReturnType<typeof createClient>>) {
   const [activities, registrations, assessments, courseEnrollments, memberships, enrollmentAssignments, classrooms, currentTerms] = await Promise.all([
-    readOverviewRows<OverviewActivity>(() => supabase.from("activities")
+    readOverviewRows<OverviewActivity>(() => supabase.from("business_activities" as "activities")
       .select("id,scheduled_at,occurred_on,source_invitation_id,remark,record_state").is("deleted_at", null)),
-    readOverviewRows<OverviewRegistration>(() => supabase.from("activity_registrations")
+    readOverviewRows<OverviewRegistration>(() => supabase.from("business_activity_registrations" as "activity_registrations")
       .select("id,activity_id,student_id,lead_id,status,record_state,registered_on,created_at,source_record_id,assessment_started_at,assessment_completed_at,source_enrollment_facts")),
-    readOverviewRows<OverviewAssessment>(() => supabase.from("assessment_results")
+    readOverviewRows<OverviewAssessment>(() => supabase.from("business_assessment_results" as "assessment_results")
       .select("id,activity_registration_id,student_id,lead_id,assessed_by,assessed_on,created_at,source_record_id,result_source,result_finalized_at,assessment_band,score,strengths")),
-    readOverviewRows<OverviewCourseEnrollment>(() => supabase.from("course_enrollments")
+    readOverviewRows<OverviewCourseEnrollment>(() => supabase.from("business_course_enrollments" as "course_enrollments")
       .select("id,student_id,opportunity_id,registered_on,confirmed_at,created_at,source_record_id,course_opportunities(student_id,lead_id)")),
     readOverviewRows<OverviewMembership>(() => supabase.from("enrollments")
       .select("id,classroom_id,student_id,joined_at,status,remark")),
@@ -341,14 +341,14 @@ export async function getStaffOverviewData({
 
   const [core, acquisitionSourcesResult, leadSubmissionsResult, leadDirectoryResult, communicationsResult, invitationEventsResult,
     invitationThreadsResult, assignmentsResult, leadActionsResult, supportTasksResult, profilesResult,
-    staffRoleMembersResult, opportunitiesResult] = await Promise.all([
+    staffRoleMembersResult, opportunitiesResult, operationalLeadsResult] = await Promise.all([
     readOverviewCore(supabase),
     readOverviewRows<OverviewAcquisitionSource>(() => supabase.from("history_import_records")
       .select("id,lead_id,record_data").eq("source_data->>filename", OVERVIEW_ACQUISITION_SOURCE)
       .eq("record_data->>tableName", OVERVIEW_ACQUISITION_TABLE)),
     readOverviewRows<OverviewLeadSubmission>(() => supabase.from("lead_source_records").select("id,lead_id,submitted_at")),
     readOverviewRows<LeadDirectoryRow>(() => supabase.from("leads").select("id,owner_id,status,student_id,created_at,source_record_id")),
-    readOverviewRows<CommunicationRow>(() => supabase.from("lead_communications").select("id,lead_id,occurred_at,occurred_on,outcome,owner_id_at_contact,recorded_by,source_record_id")),
+    readOverviewRows<CommunicationRow>(() => supabase.from("business_lead_communications" as "lead_communications").select("id,lead_id,occurred_at,occurred_on,outcome,owner_id_at_contact,recorded_by,source_record_id")),
     readOverviewRows<InvitationEventRow>(() => supabase.from("lead_invitation_events")
       .select("invitation_id,occurred_at,to_state,lead_invitation_threads(owner_id_at_open,assessor_id)")
       .eq("to_state", "confirmed").gte("occurred_at", rangeStart).lt("occurred_at", rangeEnd)),
@@ -362,6 +362,7 @@ export async function getStaffOverviewData({
     readOverviewRows<StaffRoleMemberRow>(() => supabase.from("staff_role_members")
       .select("user_id,staff_roles!staff_role_members_role_id_fkey(key)"), ["user_id", "role_id"]),
     readOverviewRows<{ id: string; owner_id: string | null }>(() => supabase.from("course_opportunities").select("id,owner_id")),
+    readOverviewRows<{ id: string }>(() => supabase.from("operational_leads" as "leads").select("id")),
   ]);
 
   const unavailable = new Set<StaffOverviewSourceKey>();
@@ -383,7 +384,8 @@ export async function getStaffOverviewData({
   const acquisitionReadable = !acquisitionSourcesResult.error && !leadSubmissionsResult.error
     && !(acquisitionSources.length === 0 && leadDirectory.some(row => row.source_record_id));
   const acquisitionAvailable = acquisitionReadable && exactRows(acquisitionSourcesResult) && exactRows(leadSubmissionsResult);
-  const openLeads = leadDirectory.filter((row) => activeLeadStates.includes(row.status));
+  const operationalLeadIds = new Set((operationalLeadsResult.data ?? []).map(row => row.id));
+  const openLeads = leadDirectory.filter((row) => operationalLeadIds.has(row.id) && activeLeadStates.includes(row.status));
   const communications = rows(communicationsResult, "communications");
   const invitationEvents = rows(invitationEventsResult, "invitations");
   const invitationThreads = rows(invitationThreadsResult, "invitations");
@@ -756,12 +758,12 @@ export async function getStaffOverviewData({
   const pendingFacts: StaffOverviewPendingFact[] = [
     {
       key: "unassignedLeads",
-      value: !sourceExact("leads") ? null : openLeads.filter((row) => row.owner_id === null || row.status === "unassigned").length,
+      value: !sourceExact("leads") || !exactRows(operationalLeadsResult) ? null : openLeads.filter((row) => row.owner_id === null || row.status === "unassigned").length,
       href: "/dashboard/followups/leads?ownership=unassigned",
     },
     {
       key: "uncontactedLeads",
-      value: !sourceExact("leads") ? null : openLeads.filter((row) => row.status === "uncontacted").length,
+      value: !sourceExact("leads") || !exactRows(operationalLeadsResult) ? null : openLeads.filter((row) => row.status === "uncontacted").length,
       href: "/dashboard/followups/leads?status=uncontacted",
     },
     {

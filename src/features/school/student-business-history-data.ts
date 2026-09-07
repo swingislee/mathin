@@ -36,11 +36,11 @@ export async function loadStudentBusinessHistory(locale: string, options: {stude
   const supabase = await createClient();
   const { studentId, kind } = options;
   const include = (current: BusinessHistoryKind) => !kind || kind === current;
-  const renewalsQuery = supabase.from('course_opportunities').select('*').not('source_record_id','is',null).eq('opportunity_type','renewal').order('period_year', {ascending:false}).order('period_key').order('id');
-  const activitiesQuery = supabase.from('activity_registrations').select('*,activities!inner(id,title,kind,occurred_on)').not('source_record_id','is',null).neq('activities.kind','assessment_1v1').order('registered_on', {ascending:false, nullsFirst:false}).order('id');
-  const assessmentsQuery = supabase.from('assessment_results').select('*,activity_registrations!inner(activities!inner(deleted_at))').is('activity_registrations.activities.deleted_at',null).not('source_record_id','is',null).order('assessed_on', {ascending:false, nullsFirst:false}).order('id');
-  const enrollmentsQuery = supabase.from('course_enrollments').select('*,course_enrollment_assignments(*)').not('source_record_id','is',null).order('registered_on', {ascending:false, nullsFirst:false}).order('id');
-  const communicationQuery = supabase.from('student_follow_ups').select('*').not('source_record_id','is',null).order('occurred_on', {ascending:false, nullsFirst:false}).order('id');
+  const renewalsQuery = supabase.from('business_course_opportunities' as 'course_opportunities').select('*').not('source_record_id','is',null).eq('opportunity_type','renewal').order('period_year', {ascending:false}).order('period_key').order('id');
+  const activitiesQuery = supabase.from('business_activity_registrations' as 'activity_registrations').select('*,activities!inner(id,title,kind,occurred_on)').not('source_record_id','is',null).neq('activities.kind','assessment_1v1').order('registered_on', {ascending:false, nullsFirst:false}).order('id');
+  const assessmentsQuery = supabase.from('business_assessment_results' as 'assessment_results').select('*,activity_registrations!inner(activities!inner(deleted_at))').is('activity_registrations.activities.deleted_at',null).not('source_record_id','is',null).order('assessed_on', {ascending:false, nullsFirst:false}).order('id');
+  const enrollmentsQuery = supabase.from('business_course_enrollments' as 'course_enrollments').select('*,course_enrollment_assignments(*)').not('source_record_id','is',null).order('registered_on', {ascending:false, nullsFirst:false}).order('id');
+  const communicationQuery = supabase.from('business_student_follow_ups' as 'student_follow_ups').select('*').not('source_record_id','is',null).order('occurred_on', {ascending:false, nullsFirst:false}).order('id');
   const none = {data:[],error:null};
   const responses = await Promise.all([
     include('renewal') ? historyPages(studentId ? renewalsQuery.eq('student_id',studentId) : renewalsQuery) : none,

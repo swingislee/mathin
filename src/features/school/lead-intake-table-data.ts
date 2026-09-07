@@ -12,7 +12,7 @@ export async function listLeadIntakeFieldPage(userId: string, filters: LeadPoolF
   fields: DashboardFieldDefinitions<LeadPoolRow>, raw: unknown, context: DashboardDateContext) {
   const client = await createClient();
   const result = await readSchoolQueryPages((start, end) => {
-    let query = client.from("leads").select("id");
+    let query = client.from("operational_leads" as "leads").select("id");
     if (filters.scope === "unassigned") query = query.is("owner_id", null);
     if (filters.scope === "mine") query = query.eq("owner_id", userId);
     if (filters.assignment === "assigned") query = query.not("owner_id", "is", null);

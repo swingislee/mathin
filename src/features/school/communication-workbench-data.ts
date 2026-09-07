@@ -17,10 +17,10 @@ import type { DashboardFieldDefinitions } from "./dashboard-page/dashboard-table
 import type { DashboardDateContext } from "./dashboard-page/dashboard-table-date-contract";
 import type { CommunicationWorkday } from "./communication-workday-contract";
 
-async function listCommunicationLeadCandidates(userId: string, filters: LeadPoolFilters, focusLeadId?: string, searchNotes = true) {
+async function listCommunicationLeadCandidates(userId: string, filters: LeadPoolFilters, focusLeadId?: string, searchNotes = true, includeHistory = false) {
   const supabase = await createClient();
   const readCandidates = (query?: string) => readSchoolQueryPages((start, end) => {
-    let request = supabase.from("leads").select("id,created_at,student_id,status,owner_id");
+    let request = supabase.from((includeHistory ? "leads" : "operational_leads") as "leads").select("id,created_at,student_id,status,owner_id");
     if (focusLeadId) request = request.eq("id", focusLeadId);
     if (filters.scope === "mine") request = request.eq("owner_id", userId);
     if (filters.scope === "unassigned") request = request.is("owner_id", null);
@@ -110,7 +110,7 @@ export async function loadCommunicationWorkbench(
     ? { ...filters, scope: "all", status: undefined, q: undefined, page: 1 }
     : selectedView ? { ...filters, scope: "all", status: undefined } : filters;
   const [leadResult, invitations, initialPostRows, worklists, worklist] = await Promise.all([
-    canViewLeads ? listCommunicationLeadCandidates(userId, effectiveFilters, focusLeadId, !options || !["day", "records"].includes(options.view))
+    canViewLeads ? listCommunicationLeadCandidates(userId, effectiveFilters, focusLeadId, !options || !["day", "records"].includes(options.view), Boolean(selectedView || focusLeadId))
       : Promise.resolve({ candidates: [], matchingLeadIds: undefined }),
     listInvitationCoordination({ queue: "all", stage: "all" }, {
       ...(focusLeadId ? { leadIds: [focusLeadId] } : {}),

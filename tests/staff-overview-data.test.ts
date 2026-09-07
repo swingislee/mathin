@@ -15,11 +15,12 @@ async function rpc(name: string, args: { p_filters?: { schoolTermId: string }; p
 
 // 模拟 API 单次最多 1000 行，分页必须读取后面的真实记录。
 function query(table: string) {
+  const canonical = table.replace(/^(business_|operational_)/, "");
   const predicates: Array<(row: Record<string, unknown>) => boolean> = [];
   let start = 0, end = 999;
-  const execute = () => Promise.resolve(state.failures.has(table)
+  const execute = () => Promise.resolve(state.failures.has(table) || state.failures.has(canonical)
     ? { data: null, error: { message: "UNAVAILABLE" } }
-    : { data: (state.tables[table] ?? []).filter(row => predicates.every(test => test(row))).slice(start, Math.min(end + 1, start + 1000)), error: null });
+    : { data: (state.tables[table] ?? state.tables[canonical] ?? []).filter(row => predicates.every(test => test(row))).slice(start, Math.min(end + 1, start + 1000)), error: null });
   const api = {
     select: (columns: string) => {
       if (table === "classrooms" && columns.split(",").includes("term_id")) throw new Error("CLASSROOM_TERM_COLUMN_NOT_GRANTED");
@@ -66,6 +67,18 @@ beforeEach(() => {
     school_terms: [{ id: "current", name: "本学期", is_current: true }],
     profiles: [{ id: "support", display_name: "学服甲", role: "staff", is_active: true }, { id: "teacher", display_name: "老师甲", role: "staff", is_active: true }],
   };
+});
+
+it("keeps historical acquisitions when their leads leave the current work queue", async () => {
+  state.tables.leads = [{ id: "historical", created_at: "2026-09-06T02:00:00Z", owner_id: null, status: "unassigned" }];
+  state.tables.operational_leads = [];
+  const data = await getStaffOverviewData({ grain: "month", now });
+  expect(data.businessFacts.find(row => row.key === "leads")?.current).toBe(1);
+  expect(data.pendingFacts.find(row => row.key === "unassignedLeads")?.value).toBe(0);
+  state.failures.add("operational_leads");
+  const unavailable = await getStaffOverviewData({ grain: "month", now });
+  expect(unavailable.businessFacts.find(row => row.key === "leads")?.current).toBe(1);
+  expect(unavailable.pendingFacts.find(row => row.key === "unassignedLeads")?.value).toBeNull();
 });
 
 describe("staff overview reads current business sources", () => {
