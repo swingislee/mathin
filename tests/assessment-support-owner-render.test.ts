@@ -9,6 +9,7 @@ import { TeacherAssessmentWorkbench } from '@/features/school/TeacherAssessmentW
 import type { AssessmentWorkbenchRow } from '@/features/school/assessment-workbench-contract';
 import { assessmentWorkflowFromDb, type AssessmentReport } from '@/features/school/assessment-workflow-contract';
 import { assessmentStatusMessages } from '@/features/school/assessment-status-contract';
+import { sourceCompletionMessages } from '@/features/school/source-completion-contract';
 
 vi.mock('server-only', () => ({}));
 vi.mock('@/features/school/Student360Sheet', () => ({ Student360Trigger: ({ children }: { children: ReactNode }) => createElement('button', null, children) }));
@@ -83,6 +84,32 @@ describe('imported assessment rendering', () => {
     expect(enrolled).toContain('sticky left-0');
     expect(enrolled).toContain('data-assessment-status="enrolled"');
     expect(enrolled).toContain('来源学生');
+  });
+  it.each(['zh', 'en'] as const)('keeps enrollment and red missing-details badges in the status column, not the identity column, in %s', locale => {
+    const html = render(createElement(AssessmentUnifiedWorkbench, {
+      initialRows: [{ ...row, sourceEnrollmentFacts: { version: 1, confirmed: true, assessmentBand: 'a', registeredOn: null },
+        sourceCompletion: { enrolled: true, knownBand: 'a', missing: ['assessment_score', 'assessment_teacher'] } }],
+      assessors: [], locale, canAssess: true, canSupport: true, canManageAssessor: false,
+    }), locale);
+    const main = html.match(/<tr[^>]*data-followup-success="true"[^>]*>([\s\S]*?)<\/tr>/)?.[1];
+    const identity = main?.match(/<td[^>]*>([\s\S]*?)<\/td>/)?.[1];
+    const status = main?.match(/<td[^>]*data-assessment-state-kind[^>]*>([\s\S]*?)<\/td>/)?.[1];
+    const m = sourceCompletionMessages(locale);
+    expect(identity).toContain('来源学生');
+    expect(identity).not.toContain(m.enrolled);
+    expect(identity).not.toContain(m.pending);
+    expect(status).toContain(m.enrolled);
+    expect(status).toContain(m.pending);
+    expect(status).toContain(m.missing.assessment_score);
+    expect(status).toContain(m.missing.assessment_teacher);
+    expect(status?.match(/<span[^>]*data-assessment-missing-details[^>]*>/)?.[0]).toContain('text-rose');
+  });
+  it('removes the missing-details badge after all details are complete', () => {
+    const html = render(createElement(AssessmentUnifiedWorkbench, {
+      initialRows: [{ ...row, sourceCompletion: { enrolled: true, knownBand: 'a', missing: [] } }],
+      assessors: [], locale: 'zh', canAssess: true, canSupport: true, canManageAssessor: false,
+    }), 'zh');
+    expect(html).not.toContain('data-assessment-missing-details');
   });
   it.each(['zh', 'en'] as const)('replaces broad row labels with the next action in the status column without a dot in %s', locale => {
     const time = '2026-09-07T03:00:00Z';

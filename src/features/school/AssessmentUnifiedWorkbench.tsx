@@ -290,11 +290,10 @@ export function AssessmentUnifiedWorkbench({
               studentGrade={row.grade} expanded={expanded} detailsId={`assessment-details-${row.id}`}
               onToggle={() => changeDetails(row.id, !expanded)}
               subject={{ studentId: row.studentId, leadId: row.leadId }} />
-            {row.sourceCompletion?<div className="mt-1"><SourceCompletionNotice summary={row.sourceCompletion} locale={locale} compact/></div>:null}
           </TableCell>
           <TableCell data-assessment-state-kind className="px-2 py-2">
             <div className="flex min-w-0 flex-col items-start gap-1">
-              {current || closed || row.sourceEnrollmentFacts?.confirmed ? <AssessmentStatusTags row={row} locale={locale} /> : null}
+              <AssessmentStatusTags row={row} locale={locale} showStatus={current || closed || Boolean(row.sourceEnrollmentFacts?.confirmed)} />
               {row.assessmentKind !== "one_to_one" ? <Badge variant="outline" className="whitespace-nowrap border-line bg-line/20 text-muted">{t(`type_${row.assessmentKind}`)}</Badge> : null}
             </div>
           </TableCell>
