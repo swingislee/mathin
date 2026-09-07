@@ -20,6 +20,7 @@ import { CubeAxisIcon, CubeCanvasPanel, CubeIconButton, CubeMarkIcon, CubeViewIc
 import { CubeRecordingPanel } from "./CubeRecordingPanel";
 import { CubeOpacitySlider } from "./CubeOpacitySlider";
 import { EMPTY_CUBE_CUT, chooseCubeCut, cubeCutCandidate, cubeCutLayers, type CubeCutDraft, type CubeCutHit } from "./cube-structures-cut-interaction";
+import { buildCubeCutPieces, cubeCutScopeIds } from "./cube-structures-cut-scope";
 import styles from "./CubeStructuresWorkbench.module.css";
 
 const CubeStructuresViewport = dynamic(() => import("./CubeStructuresViewport").then((module) => module.CubeStructuresViewport), { ssr: false });
@@ -90,16 +91,20 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
   const nextPosition = hoverFace && hoveredCube ? adjacentCube({ ...hoverFace, cell: hoveredCube.position }) : hoverGround;
   const validBuild = Boolean(tool === "build" && nextPosition && applyCubeOperation(state, { kind: "build", position: nextPosition, displayOffset: hoveredCube?.displayOffset, color: CUBE_COLORS[0] }) !== state);
   const lockedCut = cutDraft.selection;
-  const hoveredCut = cubeCutCandidate(state, targetIds, cutDraft.firstLine, hoveredCutHit);
+  const cutPieces = useMemo(() => buildCubeCutPieces(state), [state]);
+  const cutTargetIds = cubeCutScopeIds(state, cutPieces, selectedIds, cutDraft, hoveredCutHit);
+  const hoveredCut = cubeCutCandidate(state, cutTargetIds, cutDraft.firstLine, hoveredCutHit);
   const hoveringFace = hoveredCutHit?.kind === "face";
   const cutSelection = lockedCut ?? (hoveredCutHit?.kind === "edge" ? hoveredCut.selection : null);
   const cutIssue = cutDraft.issue ?? (hoveredCutHit && !(cutDraft.firstLine && hoveringFace) ? hoveredCut.issue : null);
   const cutStatus = cutIssue ? m.cutIssues[cutIssue] : lockedCut ? m.cutReady : cutDraft.firstLine && hoveringFace ? m.cutLineOrFace
     : cutDraft.firstLine && hoveredCut.selection ? m.cutSecondReady : cutDraft.firstLine ? m.cutSecondLine : hoveringFace ? m.cutFaceReady : m.cutFirstPick;
-  const hiddenCutCount = state.cubes.filter((cube) => targetIds.includes(cube.id) && !cubeIsVisible(state, cube)).length;
+  const hiddenCutCount = state.cubes.filter((cube) => cutTargetIds.includes(cube.id) && !cubeIsVisible(state, cube)).length;
+  const cutScopeDescription = cutTargetIds.length ? `${selectedIds.length ? m.selected : m.cutPart} · ${cutTargetIds.length} ${m.cubeUnit}${hiddenCutCount ? ` · ${m.cutHidden} ${hiddenCutCount}` : ""}` : m.cutPickPart;
   const cutLayers = lockedCut ? cubeCutLayers(state, lockedCut.ids, lockedCut.axis) : [];
   const validCutGap = Number.isInteger(Number(cutGap) * 2) && Number(cutGap) >= 0.5 && Number(cutGap) <= 8;
   const hasDisplayOffsets = state.cubes.some((cube) => cube.displayOffset && Object.values(cube.displayOffset).some((value) => value !== 0));
+  const hasCutDisplayOffsets = state.cubes.some((cube) => cutTargetIds.includes(cube.id) && cube.displayOffset && Object.values(cube.displayOffset).some((value) => value !== 0));
 
   function updateSession(update: (current: CubeWorkbenchSession) => CubeWorkbenchSession) {
     if (mode === "prepare") setPrepared(update); else setDemo((current) => update(current ?? createCubeDemo(prepared)));
@@ -174,8 +179,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
     const groupId = "cut-" + (++identity.current);
     const operation = cubeCutOperation(state, lockedCut.ids, lockedCut.axis, lockedCut.after, lockedCut.side, Number(cutGap), groupId, m.cutPiece + " " + (state.groups.length + 1));
     if (!operation) { setNotice(m.invalidCut); return; }
-    const originalStep = replacementStep !== null ? session.lesson?.operations[replacementStep] : undefined;
-    if (commit(operation)) { setScopeId(originalStep?.kind === "cut" ? originalStep.groupId : groupId); setSelected([]); }
+    if (commit(operation)) { setScopeId(null); setSelected([]); }
   }
   function chooseMode() {
     if (mode === "prepare" && !demo) setDemo(createCubeDemo(prepared));
@@ -245,7 +249,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
             onAxisChange: setMoveAxis, onSelect: (id) => setSelected([id]), onCommit: commit, onUnavailable: () => setNotice(m.moveAxisHidden) } : null}
           cutInteraction={tool === "cut" && editable && !lockedCut ? { state, hovered: hoveredCutHit,
             onHover: (hit) => { setHoveredCutHit(hit); setCutDraft((current) => current.issue ? { ...current, issue: null } : current); },
-            onPick: (hit) => { const next = chooseCubeCut(state, targetIds, cutDraft, hit); setCutDraft(next); setHoveredCutHit(null); setNotice(""); if (next.selection && panel === "cut") setPanel(null); } } : null}
+            onPick: (hit) => { const ids = cubeCutScopeIds(state, cutPieces, selectedIds, cutDraft, hit); const next = chooseCubeCut(state, ids, cutDraft, hit); setCutDraft(next); setHoveredCutHit(null); setNotice(""); if (next.selection && panel === "cut") setPanel(null); } } : null}
           hiddenEdgesVisible={state.hiddenEdgesVisible}
           readOnly={playing || (!editable && tool !== "select")} cameraInteractive navigationMode={tool === "pan" ? "pan" : tool === "move" || tool === "cut" ? "object" : "orbit"}
           onFaceSelect={["orbit", "pan", "move", "cut"].includes(tool) ? undefined : clickFace}
@@ -267,7 +271,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
         </div>
         {tool === "cut" && editable && !lockedCut && <div className={styles.cutStatus} data-cube-cut-progress={cutDraft.firstLine ? "second-line" : "first-pick"}>
           <p role="status">{cutStatus}</p>
-          <p className="text-muted">{selectedIds.length ? m.selected : scopeLabel} · {targetIds.length} {m.cubeUnit}{hiddenCutCount ? ` · ${m.cutHidden} ${hiddenCutCount}` : ""}</p>
+          <p className="text-muted">{cutScopeDescription}</p>
           {(cutDraft.firstLine || cutDraft.face) && <Button size="sm" variant="ghost" className="h-7 px-1 text-xs" onClick={clearPointer}>{m.cutRestart}</Button>}
         </div>}
         <div className={cn(styles.dock, styles.views)} role="toolbar" aria-label={m.view} data-cube-view-toolbar>
@@ -328,7 +332,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
             <Button size="sm" variant="secondary" disabled={!editable || !hasDisplayOffsets} onClick={() => commit({ kind: "display-reset", ids: targetIds })}>{m.displayReset}</Button>
           </div>}
           {panel === "cut" && <div className="space-y-3 text-xs" data-cube-cut-panel>
-            <p className="leading-5 text-muted">{m.cutHint}</p><p>{m.currentScope}: {selectedIds.length ? m.selected + " · " + scopeLabel : scopeLabel} · {targetIds.length} {m.cubeUnit}{hiddenCutCount ? ` · ${m.cutHidden} ${hiddenCutCount}` : ""}</p>
+            <p className="leading-5 text-muted">{m.cutHint}</p><p>{cutScopeDescription}</p>
             {selectedIds.length > 0 && <Button size="sm" variant="secondary" onClick={() => { setSelected([]); clearPointer(); }}>{m.cutUseScope}</Button>}
             <p className="leading-5 text-muted">{m.cutGeometryHint}</p>
             {!lockedCut && <p role="status">{cutStatus}</p>}
@@ -339,7 +343,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
             {lockedCut && <div className="flex items-center gap-2"><span className="flex-1">{m.cutSide}</span>{([-1, 1] as const).map((side) => <CubeIconButton key={side} label={lockedCut.axis.toUpperCase() + (side > 0 ? "+" : "−")} active={lockedCut.side === side} onClick={() => setCutDraft((current) => current.selection ? { ...current, selection: { ...current.selection, side } } : current)}>{side > 0 ? <Plus aria-hidden /> : <Minus aria-hidden />}</CubeIconButton>)}</div>}
             {(lockedCut || cutDraft.firstLine || cutDraft.face) && <Button size="sm" variant="ghost" onClick={clearPointer}>{m.cutRestart}</Button>}
             <p className="leading-5 text-muted">{m.displayHint}</p>
-            <div className="flex flex-wrap gap-1"><Button size="sm" variant="secondary" disabled={!editable || !hasDisplayOffsets} onClick={() => commit({ kind: "display-reset", ids: targetIds })}>{m.displayReset}</Button><Button size="sm" variant="secondary" disabled={!editable || !hasDisplayOffsets} onClick={() => commit({ kind: "display-reset", ids: state.cubes.map((cube) => cube.id) })}>{m.displayResetAll}</Button></div>
+            <div className="flex flex-wrap gap-1"><Button size="sm" variant="secondary" disabled={!editable || !hasCutDisplayOffsets} onClick={() => commit({ kind: "display-reset", ids: cutTargetIds })}>{m.displayResetPart}</Button><Button size="sm" variant="secondary" disabled={!editable || !hasDisplayOffsets} onClick={() => commit({ kind: "display-reset", ids: state.cubes.map((cube) => cube.id) })}>{m.displayResetAll}</Button></div>
           </div>}
           {(panel === "mark" || panel === "number") && <div className="space-y-3 text-xs" data-cube-annotation-panel>
             <p className="leading-5 text-muted">{panel === "mark" ? m.markHint : m.numberHint}</p>
