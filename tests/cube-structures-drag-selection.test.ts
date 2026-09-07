@@ -25,7 +25,7 @@ class Surface extends EventTarget {
   releasePointerCapture(id: number) { this.captured.delete(id); }
 }
 afterEach(() => vi.unstubAllGlobals());
-function setup(kind: CubeMoveInteraction["kind"] = "move", positions = [origin], targetIds = ["cube-1"]) {
+function setup(kind: CubeMoveInteraction["kind"] = "move", positions = [origin], targetIds = ["cube-1"], snapToGrid = false) {
   let session = startCubeRecording(createCubeSession(positions));
   const surface = new Surface();
   const previews: (CubeDragPreview | null)[] = [];
@@ -33,16 +33,16 @@ function setup(kind: CubeMoveInteraction["kind"] = "move", positions = [origin],
   vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => { frames.set(++nextFrame, callback); return nextFrame; });
   vi.stubGlobal("cancelAnimationFrame", (id: number) => frames.delete(id));
   let state = cubeSessionScene(session);
-  const interaction: CubeMoveInteraction = { state, ids: targetIds, scopeIds: state.cubes.map((cube) => cube.id), axis: "x", kind,
+  const interaction: CubeMoveInteraction = { state, ids: targetIds, scopeIds: state.cubes.map((cube) => cube.id), axis: "x", kind, snapToGrid,
     onAxisChange: vi.fn(), onSelect: vi.fn(), onUnavailable: vi.fn(), onCommit: (operation) => { session = operateCubeSession(session, operation); state = cubeSessionScene(session); } };
-  const dispose = bindCubeAxisDrag(surface as unknown as HTMLCanvasElement, () => ({ ...interaction, state }), () => camera(), (preview) => previews.push(preview));
+  const dispose = bindCubeAxisDrag(surface as unknown as HTMLCanvasElement, () => ({ ...interaction, state, snapToGrid }), () => camera(), (preview) => previews.push(preview));
   const send = (type: string, x = 400, y = 300, pointerId = 1) => {
     const event = Object.assign(new Event(type, { cancelable: true }), { clientX: x, clientY: y, pointerId, button: 0, isPrimary: true });
     (type === "pointerdown" || type === "lostpointercapture" ? surface : surface.ownerDocument).dispatchEvent(event);
     return event;
   };
   const flush = () => { const pending = [...frames.values()]; frames.clear(); for (const callback of pending) callback(100); };
-  return { session: () => session, state: () => state, surface, previews, interaction, dispose, send, flush };
+  return { session: () => session, state: () => state, surface, previews, interaction, dispose, send, flush, setSnapToGrid: (value: boolean) => { snapToGrid = value; } };
 }
 
 describe("axis dragging uses camera projection and one semantic release", () => {
@@ -80,6 +80,58 @@ describe("axis dragging uses camera projection and one semantic release", () => 
     drag.dispose();
   });
 
+  it.each([-1, 1])("previews and commits the same cell with snapping enabled in direction %s", (sign) => {
+    const drag = setup("move", [origin], ["cube-1"], true);
+    drag.send("pointerdown"); drag.send("pointermove", 400 + sign * 96); drag.flush();
+    expect(drag.previews.at(-1)?.positions.get("cube-1")?.x).toBe(sign);
+    expect(drag.previews.at(-1)?.distance).toBe(sign);
+    expect(drag.session().lesson?.operations).toHaveLength(0);
+    drag.send("pointerup", 400 + sign * 96);
+    expect(drag.state().cubes[0].position.x).toBe(sign);
+    expect(drag.session().lesson?.operations).toEqual([{ kind: "move", ids: ["cube-1"], axis: "x", distance: sign }]);
+    expect(cubeSessionScene(undoCubeSession(drag.session(), -1)).cubes[0].position).toEqual(origin);
+    drag.dispose();
+  });
+
+  it("snaps at the cell boundary and leaves a return to the starting cell unrecorded", () => {
+    const drag = setup("move", [origin], ["cube-1"], true); drag.send("pointerdown");
+    drag.send("pointermove", 432); drag.flush();
+    expect(drag.previews.at(-1)?.positions.get("cube-1")?.x).toBe(0);
+    drag.send("pointermove", 448); drag.flush();
+    expect(drag.previews.at(-1)?.positions.get("cube-1")?.x).toBe(1);
+    drag.send("pointermove", 432); drag.flush(); drag.send("pointerup", 432);
+    expect(drag.session().lesson?.operations).toHaveLength(0);
+    expect(drag.state().cubes[0].position).toEqual(origin); drag.dispose();
+  });
+
+  it.each(["x", "y", "z"] as const)("aligns displaced display anchors to actual cells on %s", (axis) => {
+    expect(cubeDragOperation("display-move", ["cube-1"], axis, 1.2, 0.5)?.distance).toBe(1.5);
+    expect(cubeDragOperation("display-move", ["cube-1"], axis, -1.2, -0.5)?.distance).toBe(-1.5);
+    expect(cubeDragOperation("display-move", ["cube-1"], axis, 0.5, -2)?.distance).toBe(1);
+    expect(cubeDragOperation("display-move", ["cube-1"], axis, -0.5, 2)?.distance).toBe(-1);
+    expect(cubeDragOperation("display-move", ["cube-1"], axis, 0, 0.5)).toBeNull();
+  });
+
+  it("aligns an already half-displaced group, preserves geometry, and can disable snapping again", () => {
+    const positions = [origin, { x: 0, y: 1, z: 0 }];
+    const drag = setup("display-move", positions, ["cube-1", "cube-2"]);
+    drag.send("pointerdown", 390, 310); drag.send("pointermove", 430, 310); drag.send("pointerup", 430, 310);
+    expect(drag.state().cubes.map(cubeDisplayPosition).map((p) => p.x)).toEqual([0.5, 0.5]);
+    drag.setSnapToGrid(true);
+    drag.send("pointerdown", 430, 310); drag.send("pointermove", 526, 310); drag.flush();
+    expect(["cube-1", "cube-2"].map((id) => drag.previews.at(-1)?.positions.get(id)?.x)).toEqual([2, 2]);
+    drag.send("pointerup", 526, 310);
+    expect(drag.state().cubes.map(cubeDisplayPosition)).toEqual([{ x: 2, y: 0, z: 0 }, { x: 2, y: 1, z: 0 }]);
+    expect(drag.state().cubes.map((cube) => cube.position)).toEqual(positions);
+    expect(drag.session().lesson?.operations).toHaveLength(2);
+    expect(drag.session().lesson?.operations[1]).toMatchObject({ kind: "display-move", ids: ["cube-1", "cube-2"], distance: 1.5 });
+    drag.setSnapToGrid(false);
+    drag.send("pointerdown", 550, 310); drag.send("pointermove", 566, 310); drag.flush();
+    expect(drag.previews.at(-1)?.positions.get("cube-1")?.x).toBeCloseTo(2.2);
+    drag.send("pointercancel", 566, 310);
+    expect(drag.session().lesson?.operations).toHaveLength(2); drag.dispose();
+  });
+
   it.each(["pointercancel", "lostpointercapture", "Escape", "blur", "unmount"])("%s discards the preview without changing history", (action) => {
     const drag = setup(); drag.send("pointerdown"); drag.send("pointermove", 496); drag.flush();
     if (action === "Escape") drag.surface.ownerDocument.dispatchEvent(Object.assign(new Event("keydown"), { key: "Escape" }));
@@ -100,11 +152,12 @@ describe("axis dragging uses camera projection and one semantic release", () => 
     expect(drag.state().cubes[0].position.y).toBe(1); drag.dispose();
   });
 
-  it("collision previews do not record a move or change other cubes", () => {
-    const drag = setup("move", [origin, { x: 1, y: 0, z: 0 }]);
-    drag.send("pointerdown"); drag.send("pointermove", 480); drag.flush();
+  it.each([false, true])("collision previews do not record a move or change other cubes (snap %s)", (snap) => {
+    const drag = setup("move", [origin, { x: 1, y: 0, z: 0 }], ["cube-1"], snap);
+    drag.send("pointerdown"); drag.send("pointermove", 464); drag.flush();
     expect(drag.previews.at(-1)?.valid).toBe(false);
-    drag.send("pointerup", 480);
+    expect(drag.previews.at(-1)?.positions.get("cube-1")?.x).toBeCloseTo(snap ? 1 : 0.8);
+    drag.send("pointerup", 464);
     expect(drag.session().lesson?.operations).toHaveLength(0);
     expect(drag.state().cubes.map((cube) => cube.position)).toEqual([origin, { x: 1, y: 0, z: 0 }]); drag.dispose();
   });
@@ -185,6 +238,8 @@ describe("cut edge selection and independent selection/group colors", () => {
     expect(root).toContain('tool === "move" ? "object" : "orbit"');
     expect(root).toContain('setCutInput(value as typeof cutInput)');
     expect(root).toContain("onCommit: commit");
+    expect(root).toContain("snapToGrid: snap");
+    expect(root).toContain("enableAxisSnap: m.enableCellSnap");
     expect(motion).toContain("current.current = next; setFrame(next)");
   });
 });

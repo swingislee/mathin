@@ -237,7 +237,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
         <CubeStructuresViewport model={model} messages={rendererMessages} materialColors={COLOR_MAP}
           axisSnapEnabled={snap} cameraRequestKey={cameraRequest} sceneKey={session.work.initial} onMovingChange={setMoving}
           opacityPreview={opacityPreview === null ? null : { ids: targetIds, opacity: opacityPreview / 100 }}
-          moveInteraction={tool === "move" && editable ? { state, ids: targetIds, scopeIds, axis: moveAxis, kind: moveMode,
+          moveInteraction={tool === "move" && editable ? { state, ids: targetIds, scopeIds, axis: moveAxis, kind: moveMode, snapToGrid: snap,
             onAxisChange: setMoveAxis, onSelect: (id) => setSelected([id]), onCommit: commit, onUnavailable: () => setNotice(m.moveAxisHidden) } : null}
           hiddenEdgesVisible={state.hiddenEdgesVisible}
           readOnly={playing || (!editable && tool !== "select")} cameraInteractive navigationMode={tool === "pan" ? "pan" : tool === "move" ? "object" : "orbit"}
@@ -263,7 +263,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
         <div className={cn(styles.dock, styles.views)} role="toolbar" aria-label={m.view} data-cube-view-toolbar>
           {VIEWS.map((view) => <CubeIconButton key={view} label={m[view]} active={(viewOverride ?? state.view) === view} onClick={() => chooseView(view)}><CubeViewIcon view={view} /></CubeIconButton>)}
           <CubeIconButton label={m.fit} onClick={() => chooseView(viewOverride ?? state.view)}><Maximize aria-hidden /></CubeIconButton>
-          <SpatialAxisSnapButton messages={cameraMessages} iconOnly className={styles.icon} />
+          <SpatialAxisSnapButton messages={tool === "move" ? { axisSnap: m.cellSnap, enableAxisSnap: m.enableCellSnap, disableAxisSnap: m.disableCellSnap } : cameraMessages} iconOnly className={styles.icon} />
           <CubeIconButton label={state.axesVisible ? m.hideAxes : m.showAxes} active={state.axesVisible} disabled={!editable} onClick={() => commit({ kind: "axes", visible: !state.axesVisible })}>
             <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" aria-hidden><path d="M5 19h15" stroke={CUBE_AXIS_COLORS.x} /><path d="M5 19V3" stroke={CUBE_AXIS_COLORS.y} /><path d="m5 19 11-10" stroke={CUBE_AXIS_COLORS.z} /></svg>
           </CubeIconButton>
