@@ -10,6 +10,7 @@ import { AssessmentRegistrationFields } from "@/features/school/AssessmentRegist
 import { ActivityAssessmentDraftProvider } from "@/features/school/ActivityAssessmentDetails";
 import { QuickFollowUpEntry } from "@/features/school/QuickFollowUpEntry";
 import type { AssessmentWorkbenchRow } from "@/features/school/assessment-workbench-contract";
+import { ASSESSMENT_STAGES, type AssessmentStage } from "@/features/school/assessment-workflow-contract";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/features/school/activity-actions", () => ({ saveActivityAssessmentAction: vi.fn() }));
@@ -46,17 +47,17 @@ function render(element: ReactNode, locale: "zh" | "en" = "zh") {
   return renderToStaticMarkup(createElement(NextIntlClientProvider, provider));
 }
 
-function renderDetails(record: AssessmentWorkbenchRow, canAssess = true) {
+function renderDetails(record: AssessmentWorkbenchRow, canAssess = true, stage?: AssessmentStage, locale: "zh" | "en" = "zh") {
   const detail: ComponentProps<typeof AssessmentRecordDetails> = {
-    row: record, stage: record.assessment ? "feedback" : "in_progress", conclusion: record.assessment?.teacherObservation ?? "",
-    locale: "zh", canAssess, canSupport: true, canManageAssessor: true,
+    row: record, stage: stage ?? (record.assessment ? "feedback" : "in_progress"), conclusion: record.assessment?.teacherObservation ?? "",
+    locale, canAssess, canSupport: true, canManageAssessor: true,
     assessors: [{ userId: "teacher", displayName: "测评老师" }], reassigning: false,
     onReassign: vi.fn(), onSaved: vi.fn(), onNoteSaved: vi.fn(), onHandoffSaved: vi.fn(), onSaveAndNext: vi.fn(),
   };
   const provider: ComponentProps<typeof ActivityAssessmentDraftProvider> = {
     row: record, children: createElement(AssessmentRecordDetails, detail),
   };
-  return render(createElement(ActivityAssessmentDraftProvider, provider));
+  return render(createElement(ActivityAssessmentDraftProvider, provider), locale);
 }
 
 describe("assessment page aligned with first contact", () => {
@@ -162,8 +163,29 @@ describe("assessment page aligned with first contact", () => {
     expect(markup).toContain(zh.school.activities.parentConcerns);
     expect(markup).toContain("data-followup-notes");
     expect(markup).toMatch(/maxLength="2000"/i);
-    expect(markup.match(/data-followup-field-icon/g)).toHaveLength(3);
+    expect(markup.match(/data-followup-field-icon/g)).toHaveLength(4);
     expect(markup).not.toContain('data-assessment-field="route"');
+  });
+
+  it.each(["zh", "en"] as const)("keeps SVG tags above navigation and the note/time column beside all assessment stages in %s", (locale) => {
+    for (const stage of ASSESSMENT_STAGES) {
+      const markup = renderDetails(row(`layout-${stage}`), true, stage, locale);
+      expect(markup.match(/data-assessment-tags/g)).toHaveLength(1);
+      expect(markup.indexOf("data-assessment-tags")).toBeLessThan(markup.indexOf("data-assessment-progress"));
+      expect(markup.indexOf("data-assessment-progress")).toBeLessThan(markup.indexOf("data-followup-business"));
+      expect(markup.match(/data-followup-field-icon/g)).toHaveLength(4);
+      expect(markup.match(/data-followup-notes/g)).toHaveLength(1);
+      expect(markup.match(/data-followup-entry-actions/g)).toHaveLength(1);
+      expect(markup).toContain("@[50rem]/followup-entry:grid-cols-[minmax(0,1fr)_19rem]");
+      const business = markup.slice(markup.indexOf("data-followup-business"), markup.indexOf("data-followup-notes"));
+      const notes = markup.slice(markup.indexOf("data-followup-notes"), markup.indexOf("</aside>"));
+      expect(notes).toContain("@[50rem]/followup-entry:col-start-2");
+      expect(notes).toContain("@[50rem]/followup-entry:row-start-1");
+      expect(notes).toContain((locale === "zh" ? zh : en).school.assessmentWorkflow.nextContact);
+      expect(notes.indexOf("<textarea")).toBeLessThan(notes.indexOf("data-followup-reminder-slot"));
+      expect(business).not.toContain("data-assessment-field=");
+      expect(business).not.toContain("data-followup-reminder-slot");
+    }
   });
 
   it("keeps quick entry and explicit assessor reassignment in details without a second professional button", () => {
@@ -175,6 +197,20 @@ describe("assessment page aligned with first contact", () => {
     expect(markup).not.toContain("data-assessment-question-entry");
     expect(markup).toContain(zh.school.assessmentQuickEntry.optionalHint);
     expect(markup).toContain("data-assessment-quick-entry");
+  });
+
+  it("keeps teacher-owned result labels visible and places parent concerns only in the right column", () => {
+    const record = row("teacher-result", { assessmentCompletedAt: "2026-09-07T03:00:00Z", assessment: {
+      id: "teacher-result", resultSource: "teacher", assessmentBand: "a", score: 85, recommendedClass: "A",
+      parentConcerns: "家长关注时间安排", teacherObservation: "老师逐题结论", strengths: "", focusAreas: "", teacherRecommendation: "", updatedAt: "2026-09-07T03:00:00Z",
+    } });
+    const markup = renderDetails(record);
+    expect(markup).toContain('value="85"');
+    expect(markup).toContain('value="A"');
+    expect(markup.match(/家长关注时间安排/g)).toHaveLength(1);
+    const business = markup.slice(markup.indexOf("data-followup-business"), markup.indexOf("data-followup-notes"));
+    expect(business).toContain("老师逐题结论");
+    expect(business).not.toContain("家长关注时间安排");
   });
 
   it("renders historical feedback without live progress, reassignment, or editable modules", () => {

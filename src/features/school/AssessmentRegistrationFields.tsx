@@ -1,12 +1,25 @@
 "use client";
 
-import { useId } from "react";
+import { useId, type ComponentProps, type ReactNode } from "react";
 import { Award, Gauge, GraduationCap, Signpost } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { ACTIVITY_ROUTES, ASSESSMENT_BANDS, type ActivityRouteKind, type StoredAssessmentBand } from "./activity-workflow-contract";
 import { FollowupChoice, type FollowupTone } from "./dashboard-page/FollowupChoice";
 import { FollowupFieldIcon } from "./FollowupFieldIcon";
+import type { FollowupEntryFields } from "./FollowupEntryFields";
+
+/** 同一控制器提供常驻标签、阶段字段和右栏；切换阶段保留唯一草稿。 */
+export interface AssessmentEntryParts {
+  tags: ReactNode;
+  fields: ReactNode;
+  followup: ComponentProps<typeof FollowupEntryFields>;
+  dirty: boolean;
+}
+
+export function AssessmentEntrySurface({ entry, render }: { entry: AssessmentEntryParts; render: (entry: AssessmentEntryParts) => ReactNode }) {
+  return render(entry);
+}
 
 interface RegistrationValues {
   assessmentBand: StoredAssessmentBand | null;

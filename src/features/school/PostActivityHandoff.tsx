@@ -18,6 +18,7 @@ import { CONTACT_CHANNELS, CONTACT_ROUTES, classScheduleLabel, enrollmentErrorKe
 import { confirmActivityEnrollmentAction, getActivityEnrollmentContextAction, getEnrollmentWorkflowOptionsAction, savePostActivityContactAction } from "./enrollment-workflow-actions";
 import { LeadIdentityControl } from "./LeadIdentityControl";
 import { FollowupChoice } from "./dashboard-page/FollowupChoice";
+import { FollowupEntryFields } from "./FollowupEntryFields";
 import type { LeadStatus } from "./lead-contract";
 
 
@@ -88,7 +89,7 @@ function HandoffEditor({ context, onSaved, reload, enrollmentOnly }: { context: 
     if (!result.ok) { toast.error(t(enrollmentErrorKey(result.code))); return; }
     onSaved(result.data); setNote(""); setRequestId(newId()); toast.success(t("contactSaved")); window.dispatchEvent(new Event(STUDENT_360_REFRESH_EVENT)); router.refresh();
   });
-  return <div className="space-y-4" onKeyDown={(event) => { if (!enrollmentOnly && (event.ctrlKey || event.metaKey) && event.key === "Enter" && context.canContact && !pending) { event.preventDefault(); saveContact(); } }}>
+  const summary =
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0 flex-1 text-xs leading-5">
         <p className="font-medium text-ink">{context.name} · {context.activityTitle}</p>
@@ -97,28 +98,34 @@ function HandoffEditor({ context, onSaved, reload, enrollmentOnly }: { context: 
       </div>
       {context.eligible && context.canEnroll && !context.enrollmentId ? <Button size="sm" onClick={() => setEnrolling(true)}>{t("enroll")}</Button> : null}
       {context.enrollmentId && context.canEnroll ? <Link className={buttonVariants({ size: "sm", variant: "secondary" })} href={`/dashboard/followups/enrollments?term=${context.termId}&student=${context.studentId}`}>{t("openPlacement")}</Link> : null}
-    </div>
-    {!enrollmentOnly ? <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(12rem,0.8fr)]">
+    </div>;
+  return <div className="space-y-4">
+    {enrollmentOnly ? summary : <FollowupEntryFields id={`post-activity-${context.registrationId}`}
+      note={context.canContact ? note : context.contacts[0]?.note ?? context.routeNote ?? ""} onNoteChange={setNote}
+      noteLabel={t("contactNote")} placeholder={t("contactPlaceholder")} readOnly={!context.canContact}
+      disabled={!context.canContact} pending={pending} onSave={() => { if (context.canContact && !pending) saveContact(); }} saveLabel={t("saveContact")}
+      reminderContent={route !== "closed" ? <div className="w-full max-w-72 space-y-1.5">
+        <Label className="text-xs text-muted" htmlFor={`next-contact-${context.registrationId}`}>{t("nextContact")}</Label>
+        <DateTimePicker id={`next-contact-${context.registrationId}`} mode="datetime" value={nextAt} onValueChange={setNextAt} disabled={!context.canContact || pending}
+          className="h-auto min-h-9 whitespace-normal text-xs" /></div> : undefined}>
+      {summary}
       {context.canContact ? <div className="space-y-3">
         <div className="grid grid-cols-2 gap-2">
           <FollowupChoice label={t("channel")} value={channel} disabled={pending} onValueChange={(value) => setChannel(value as typeof channel)} options={CONTACT_CHANNELS.map((value) => ({ value, label: t(`channel_${value}`) }))} />
           <FollowupChoice label={t("outcome")} value={outcome} disabled={pending} onValueChange={(value) => setOutcome(value as typeof outcome)} options={[{ value: "connected", label: t("connected"), tone: "healthy" }, { value: "unreachable", label: t("unreachable"), tone: "unhealthy" }]} />
         </div>
-        <Textarea aria-label={t("contactNote")} placeholder={t("contactPlaceholder")} rows={3} value={note} maxLength={2000} disabled={pending} onChange={(event) => setNote(event.target.value)} />
-        <div className="grid gap-2 sm:grid-cols-2">
+        <div className="max-w-xs">
           <FollowupChoice label={t("nextStep")} value={route} disabled={pending} onValueChange={(value) => setRoute(value as typeof route)} options={CONTACT_ROUTES.filter((value) => value !== "enrollment_pending" || route === value).map((value) => ({ value, label: t(`route_${value}`), tone: value === "closed" ? "unhealthy" : value === "continue_follow_up" ? "healthy" : "attention" }))} />
-          {route !== "closed" ? <div className="space-y-1"><Label className="text-xs text-muted" htmlFor={`next-contact-${context.registrationId}`}>{t("nextContact")}</Label><DateTimePicker id={`next-contact-${context.registrationId}`} mode="datetime" value={nextAt} onValueChange={setNextAt} disabled={pending} /></div> : null}
         </div>
-        <div className="flex flex-wrap items-center gap-2"><Button size="sm" variant="secondary" onClick={saveContact} disabled={pending}>{pending ? t("saving") : t("saveContact")}</Button><kbd className="text-[11px] text-muted">Ctrl ↵</kbd></div>
       </div> : null}
-      <div className="space-y-2 xl:border-l xl:border-line xl:pl-4">
+      <div className="space-y-2">
         <p className="text-xs font-medium text-ink">{t("history")}</p>
         <div className="max-h-64 space-y-3 overflow-y-auto text-[11px] leading-5 text-muted">
           {context.contacts.map((contact) => <div key={contact.id}><p>{formatAt(contact.occurredAt)} · {contact.recordedByName} · {t(`channel_${contact.channel}`)} · {t(contact.outcome)}</p>{contact.note ? <p className="whitespace-pre-wrap text-ink">{contact.note}</p> : null}{contact.nextContactAt ? <p>{t("nextAt", { time: formatAt(contact.nextContactAt) })}</p> : null}</div>)}
           {!context.contacts.length ? <p>{context.routeNote || t("noHistory")}</p> : null}
         </div>
       </div>
-    </div> : null}
+    </FollowupEntryFields>}
     <Dialog open={enrolling} onOpenChange={setEnrolling}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader><DialogTitle>{t("enrollFor", { name: context.name })}</DialogTitle><DialogDescription>{t("enrollIntro")}</DialogDescription></DialogHeader>

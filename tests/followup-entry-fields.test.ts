@@ -47,11 +47,13 @@ describe("shared follow-up entry layout and submission contract", () => {
       expect(markup.indexOf('id="entry-reminder"')).toBeLessThan(markup.indexOf("data-followup-entry-actions"));
       expect(markup).toContain('data-compact="true"');
       expect(markup).toContain("max-w-72");
-      if (children) expect(markup).toContain("@[50rem]/followup-entry:grid-cols-[minmax(0,1fr)_19rem]");
+      expect(markup).toContain("@[50rem]/followup-entry:grid-cols-[minmax(0,1fr)_19rem]");
       expect(markup).toContain("data-followup-notes");
       expect(markup).not.toContain("followup-entry:border-l");
       expect(markup).not.toContain("border-t");
-      if (!children) expect(markup).not.toContain("data-followup-business");
+      expect(markup).toContain("data-followup-business");
+      expect(markup.indexOf("data-followup-business")).toBeLessThan(markup.indexOf("data-followup-notes"));
+      expect(markup).not.toContain("max-w-3xl");
     },
   );
 
@@ -63,12 +65,21 @@ describe("shared follow-up entry layout and submission contract", () => {
     expect(noQueue).not.toContain("saveAndNext");
   });
   it("retains the reminder slot when a confirmed arrangement no longer allows reminders", () => {
-    const children = createElement("div", null, "assessment");
-    for (const reminder of [props.reminder, undefined]) {
+    for (const children of [null, createElement("div", null, "assessment")]) for (const reminder of [props.reminder, undefined]) {
       const markup = renderToStaticMarkup(createElement(FollowupEntryFields, { ...props, reminder }, children));
       expect(markup).toContain('data-followup-reminder-slot="true" class="min-h-18"');
       expect(markup.indexOf("data-followup-reminder-slot")).toBeLessThan(markup.indexOf("data-followup-entry-actions"));
     }
+  });
+
+  it("places persistent stage tags above the business panel while notes occupy the right column from the top", () => {
+    const markup = renderToStaticMarkup(createElement(FollowupEntryFields, {
+      ...props, layout: "stage", stageHeader: createElement("div", { "data-stage-header": true }, "tags and navigation"),
+    }, createElement("div", null, "stage details")));
+    expect(markup.indexOf("data-stage-header")).toBeLessThan(markup.indexOf("data-followup-business"));
+    expect(markup).toContain("col-start-1 row-start-2");
+    expect(markup).toContain("@[50rem]/followup-entry:col-start-2");
+    expect(markup).toContain("@[50rem]/followup-entry:row-start-1");
   });
 
   it("uses Ctrl+Enter for explicit save, ignores IME and repeat, and blocks disabled or pending submissions", () => {

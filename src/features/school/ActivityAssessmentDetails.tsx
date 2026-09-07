@@ -3,13 +3,15 @@
 import { createContext, useContext, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { UserRound, UsersRound } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { saveActivityAssessmentAction, type ActivityAssessmentInput } from "./activity-actions";
 import { savePublicClassParticipantRecordAction } from "./public-class-actions";
 import type { AssessmentWorkbenchPublicClassRecord, AssessmentWorkbenchRow } from "./assessment-workbench-contract";
-import { AssessmentRegistrationFields } from "./AssessmentRegistrationFields";
+import { AssessmentEntrySurface, AssessmentRegistrationFields, type AssessmentEntryParts } from "./AssessmentRegistrationFields";
 import { FollowupChoice } from "./dashboard-page/FollowupChoice";
 import { FollowupEntryFields } from "./FollowupEntryFields";
+import { FollowupFieldIcon } from "./FollowupFieldIcon";
 import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
 
 interface EntryProps {
@@ -17,6 +19,7 @@ interface EntryProps {
   disabled: boolean;
   onSaved: (row: AssessmentWorkbenchRow) => void;
   onSaveAndNext?: () => void;
+  render?: (entry: AssessmentEntryParts) => ReactNode;
 }
 
 interface AssessmentDraftState {
@@ -69,7 +72,7 @@ export function ActivityAssessmentDetails(props: EntryProps) {
     : <ActivityAssessmentEntry {...props} disabled={props.disabled || !props.row.studentId} />;
 }
 
-function ActivityAssessmentEntry({ row, disabled, onSaved, onSaveAndNext }: EntryProps) {
+function ActivityAssessmentEntry({ row, disabled, onSaved, onSaveAndNext, render }: EntryProps) {
   const t = useTranslations("school.activities");
   const entryT = useTranslations("school.supportAssessment");
   const { aggregate: draft, setAggregate: setDraft, pending, setPending, savedAggregate, setSavedAggregate, savingRef, composingRef } = useAssessmentDraft();
@@ -99,30 +102,32 @@ function ActivityAssessmentEntry({ row, disabled, onSaved, onSaveAndNext }: Entr
     finally { savingRef.current = false; setPending(false); }
   };
   const locked = disabled || pending;
-  return <div data-assessment-entry="activity" className="min-w-0"
-    onClick={(event) => event.stopPropagation()}
-    onCompositionStart={() => { composingRef.current = true; }}
-    onCompositionEnd={() => { composingRef.current = false; }}
-    >
-    <FollowupEntryFields id={`assessment-entry-${row.id}`} note={draft.parentConcerns} noteLabel={t("parentConcerns")}
-      onNoteChange={(value) => setDraft((current) => ({ ...current, parentConcerns: value }))}
-      disabled={disabled} readOnly={disabled} pending={pending} saveDisabled={!dirty}
-      onSave={(advance) => { void save(advance); }} canAdvance={Boolean(onSaveAndNext)}
-      hint={disabled ? entryT("readonlyHint") : dirty ? entryT("draftHint") : hasSaved ? entryT("savedInSession") : undefined}>
-    <AssessmentRegistrationFields value={draft} disabled={locked}
-      onChange={(patch) => setDraft((current) => ({ ...current, ...patch }))} />
-    <div className="grid min-w-0 gap-3 @[36rem]/followup-entry:grid-cols-2">
+  const entry: AssessmentEntryParts = {
+    dirty,
+    followup: {
+      id: `assessment-entry-${row.id}`, note: draft.parentConcerns, noteLabel: t("parentConcerns"),
+      onNoteChange: (value) => setDraft((current) => ({ ...current, parentConcerns: value })),
+      disabled, readOnly: disabled, pending, saveDisabled: !dirty,
+      onSave: (advance) => { void save(advance); }, canAdvance: Boolean(onSaveAndNext),
+      hint: disabled ? entryT("readonlyHint") : dirty ? entryT("draftHint") : hasSaved ? entryT("savedInSession") : undefined,
+    },
+    tags: <AssessmentRegistrationFields value={draft} disabled={locked}
+      onChange={(patch) => setDraft((current) => ({ ...current, ...patch }))} />,
+    fields: <div className="grid min-w-0 gap-3 @[36rem]/followup-entry:grid-cols-2">
       {(["strengths", "focusAreas", "teacherRecommendation"] as const).map((field) => <label key={field} className="block min-w-0 space-y-1.5 text-xs text-muted">
         <span>{t(field)}</span>
         <Textarea rows={2} maxLength={2000} value={draft[field]} disabled={locked} aria-label={t(field)} className="min-h-20 resize-y text-xs"
           onChange={(event) => setDraft((current) => ({ ...current, [field]: event.target.value }))} />
       </label>)}
-    </div>
-    </FollowupEntryFields>
+    </div>,
+  };
+  return <div data-assessment-entry="activity" className="min-w-0" onClick={(event) => event.stopPropagation()}
+    onCompositionStart={() => { composingRef.current = true; }} onCompositionEnd={() => { composingRef.current = false; }}>
+    {render ? <AssessmentEntrySurface entry={entry} render={render} /> : <FollowupEntryFields {...entry.followup}>{entry.tags}{entry.fields}</FollowupEntryFields>}
   </div>;
 }
 
-function PublicClassAssessmentEntry({ row, disabled, onSaved, onSaveAndNext }: EntryProps) {
+function PublicClassAssessmentEntry({ row, disabled, onSaved, onSaveAndNext, render }: EntryProps) {
   const t = useTranslations("school.publicClass");
   const activityT = useTranslations("school.activities");
   const entryT = useTranslations("school.supportAssessment");
@@ -166,32 +171,37 @@ function PublicClassAssessmentEntry({ row, disabled, onSaved, onSaveAndNext }: E
     finally { savingRef.current = false; setPending(false); }
   };
   const locked = disabled || pending;
-  return <div data-assessment-entry="public-class" className="min-w-0" onClick={(event) => event.stopPropagation()}
-    onCompositionStart={() => { composingRef.current = true; }}
-    onCompositionEnd={() => { composingRef.current = false; }}
-    >
-    <FollowupEntryFields id={`assessment-entry-${row.id}`} note={draft.parentFeedback} noteLabel={t("parentFeedback")} noteMaxLength={3000}
-      onNoteChange={(value) => setDraft((current) => ({ ...current, parentFeedback: value }))}
-      disabled={disabled} readOnly={disabled} pending={pending} saveDisabled={!dirty}
-      onSave={(advance) => { void save(advance); }} canAdvance={Boolean(onSaveAndNext)}
-      hint={disabled ? entryT("readonlyHint") : dirty ? entryT("draftHint") : hasSaved ? entryT("savedInSession") : undefined}>
-      <div className="flex min-w-0 flex-wrap items-end gap-3">
-      {(["studentPresence", "guardianPresence"] as const).filter((field) => draft[field] !== "not_applicable").map((field) => <label key={field} className="block w-40 space-y-1 text-xs text-muted">
-        <span>{t(field === "studentPresence" ? "studentAttendance" : "guardianAttendance")}</span>
+  const entry: AssessmentEntryParts = {
+    dirty,
+    followup: {
+      id: `assessment-entry-${row.id}`, note: draft.parentFeedback, noteLabel: t("parentFeedback"), noteMaxLength: 3000,
+      onNoteChange: (value) => setDraft((current) => ({ ...current, parentFeedback: value })),
+      disabled, readOnly: disabled, pending, saveDisabled: !dirty,
+      onSave: (advance) => { void save(advance); }, canAdvance: Boolean(onSaveAndNext),
+      hint: disabled ? entryT("readonlyHint") : dirty ? entryT("draftHint") : hasSaved ? entryT("savedInSession") : undefined,
+    },
+    tags: <div className="flex min-w-0 flex-wrap items-end gap-3">
+      {(["studentPresence", "guardianPresence"] as const).filter((field) => draft[field] !== "not_applicable").map((field) => <div key={field} data-assessment-field={field} className="flex min-h-8 min-w-0 items-center gap-2">
+        <FollowupFieldIcon icon={field === "studentPresence" ? UserRound : UsersRound} label={t(field === "studentPresence" ? "studentAttendance" : "guardianAttendance")}
+          className={field === "studentPresence" ? "fill-leaf/50 text-leaf-deep" : "fill-cheek/60 text-crater"} />
         <FollowupChoice value={draft[field]} disabled={locked} label={t(field === "studentPresence" ? "studentAttendance" : "guardianAttendance")}
+          className="w-32 min-h-8 py-1"
           options={(["expected", "attended", "late", "absent"] as const).map((value) => ({
             value, label: t(`presence_${value}`), tone: value === "attended" ? "healthy" : value === "absent" ? "unhealthy" : value === "late" ? "attention" : "neutral",
           }))}
           onValueChange={(value) => setDraft((current) => ({ ...current, [field]: value }))} />
-      </label>)}
-      </div>
-      <div className="grid min-w-0 gap-3 @[36rem]/followup-entry:grid-cols-2">
+      </div>)}
+      </div>,
+    fields: <div className="grid min-w-0 gap-3 @[36rem]/followup-entry:grid-cols-2">
       {(["assessmentSummary", "learningObservation", "recommendation"] as const).map((field) => <label key={field} className="block min-w-0 space-y-1.5 text-xs text-muted">
         <span>{t(field)}</span>
         <Textarea rows={2} maxLength={3000} value={draft[field]} disabled={locked} aria-label={t(field)} className="min-h-20 resize-y text-xs"
           onChange={(event) => setDraft((current) => ({ ...current, [field]: event.target.value }))} />
       </label>)}
-      </div>
-    </FollowupEntryFields>
+      </div>,
+  };
+  return <div data-assessment-entry="public-class" className="min-w-0" onClick={(event) => event.stopPropagation()}
+    onCompositionStart={() => { composingRef.current = true; }} onCompositionEnd={() => { composingRef.current = false; }}>
+    {render ? <AssessmentEntrySurface entry={entry} render={render} /> : <FollowupEntryFields {...entry.followup}>{entry.tags}{entry.fields}</FollowupEntryFields>}
   </div>;
 }
