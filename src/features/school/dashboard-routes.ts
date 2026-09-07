@@ -293,6 +293,14 @@ export const DASHBOARD_ROUTES = {
     createSurface: "none",
     parent: "students",
   },
+  studentProfileReview: {
+    href: "/dashboard/students/confirm",
+    kind: "queue",
+    environments: STAFF_ONLY,
+    // 开发端来源确认；具体可见班级与任课／学辅反馈由分配关系和 RLS 限定。
+    createSurface: "none",
+    parent: "students",
+  },
   studentDetail: {
     hrefPattern: "/dashboard/students/[studentId]",
     kind: "object",
