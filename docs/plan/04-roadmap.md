@@ -58,7 +58,7 @@ R1-Live 完成即代表 Mathin 进入公司内部生产使用。它产生的身�
 | Gate | 状态 | 已完成证据 | 唯一退出差距 |
 | --- | --- | --- | --- |
 | **Gate 1 · 可安全开始** | **PASS** | 生产目标组合指纹、部署和匿名计数已登记；危险 fixture/rebuild/import 拒绝 Xiaomi；唯一正式 admin 已完成 verified MFA，首名真实教师为 active `staff` 并有 `research`/`teacher` 岗位；生产 purge 仍要求当前数据库指纹、active manifest、显式 `purge_allowed` test 根和精确影响计数，当前准删数为 0。2026-08-30 postflight 数据库 ledger/head=`236 / 20260830000700_teacher_microcourse_editor_unification`，应用 current/previous=`20260830-080555` / `a165004…` 与 `20260830-045421` / `76f0f9a…`；原子发布健康门和 `operational_errors` 查询位置已知。最近 PostgreSQL 写前备份 `mathin-db-prechange-20260830T042220Z-tmc-unification-8b9b195` 与 PostgreSQL+Storage 同批次全量备份 `mathin-20260828T052842Z-teacher-microcourse-variant-087b497` 已核对 | 无。previous 实际回切、恢复演练、异机/静态加密备份和错误 release 标签属于 Production 1.0 |
-| **Gate 2 · 首个真实教师闭环** | **BLOCKED** | 学生、班级、课次、报名、点名 UI/RPC 与 RLS 已实现；本轮运行时合同允许自由班/未完整课程启用，备课质量项、点名前置、资源预载和无 release 均不阻断开课；本机隔离固定账号 Golden Path 1/1 已完成建班→自动课次→`lead` 报名→教师保存迟到/备注→换页再读。生产已有 1 个 production 班级、15 个课次和 1 条 active 报名，主讲 1、学辅 0；学年修复只调整三类对象的周期引用，未升年级，应用已发布且健康 | 正式教师完成登录→进入课次→开课/点名→保存→刷新/重登再读；正式管理员可见，匿名及一个既有无权限主体不可见；P0/核心 P1=0 |
+| **Gate 2 · 首个真实教师闭环** | **BLOCKED** | 学生、班级、课次、报名、点名 UI/RPC 与 RLS 已实现；本轮运行时合同允许自由班/未完整课程启用，备课质量项、点名前置、资源预载和无 release 均不阻断开课；本机隔离固定账号 Golden Path 1/1 已完成建班→自动课次→`lead` 报名→教师保存迟到/备注→换页再读。生产已有 1 个 production 班级、15 个课次和 1 条 active 报名，主讲 1、学服 0；学年修复只调整三类对象的周期引用，未升年级，应用已发布且健康 | 正式教师完成登录→进入课次→开课/点名→保存→刷新/重登再读；正式管理员可见，匿名及一个既有无权限主体不可见；P0/核心 P1=0 |
 
 `R1-Live-N` 表示当前只关闭 Gate N。Gate 1 通过后推进 `R1-Live-2`；Gate 2 通过后立即向第一批公司教师开放，不再追加新的上线 Gate。
 
@@ -82,7 +82,7 @@ R1-Live 完成即代表 Mathin 进入公司内部生产使用。它产生的身�
 | 层 | R1-Live 合同 |
 | --- | --- |
 | 身份 | 当前使用邮箱/password 和一次性员工邀请；`auth.users.id` 是唯一账号锚点。手机号、OTP、微信/QQ 绑定按 [`r1-live-auth-identities.md`](r1-live-auth-identities.md) 后续启用，不延迟首个闭环 |
-| 建班 | 管理员决定 planning/active；正式自由班、课程未完整和教师冲突只提示。创建向导在字段所在步骤就地校验名称、主讲、学期、日期、时间、时长与排课日；学辅可留空，若与新主讲相同则立即清除并提示。服务端仍校验权限、输入及 course/family/lecture 引用 |
+| 建班 | 管理员决定 planning/active；正式自由班、课程未完整和教师冲突只提示。创建向导在字段所在步骤就地校验名称、主讲、学期、日期、时间、时长与排课日；学服可留空，若与新主讲相同则立即清除并提示。服务端仍校验权限、输入及 course/family/lecture 引用 |
 | 备课/开课 | 备课产物、三项审核、检查项和 release 是质量信号。教师可冻结当前 release，也可把 `releaseId=null` 的空白/本次覆盖快照用于课堂；点名和资源预载不再是开始按钮前置 |
 | 写入 | `saveAttendanceAction` 最多接收 200 条合法状态并 upsert；可在课前、课中或课后登记 |
 | 授权 | 本班教师与管理员可读写允许范围；匿名和无关系主体拒绝。前端隐藏不替代数据库 RLS |
@@ -214,7 +214,7 @@ Phase 1～5 的本机隔离 Supabase、固定开发身份、migration LF checksu
 
 产品负责人于 2026-08-31～09-03 依次确认 Step 0～8D。Step 3B 把文字／图片／形状节点与图层能力收敛为共享组件；Step 4A/4B 打通共享 4:3 控制器、旧 A～F 映射和单页草稿；Step 5A/5B 打通页面上下文影响预览、单样本替换与回滚；Step 6 让爱学习来源 Viewer 通过共享编辑桥获得选择、文字、几何、图层、网格与历史能力。Step 7B 已收敛审核入口并退役旧直发／批量适配发布链；Step 7C 确认三端共享工作台与编辑组件真实复用；Step 8A/8B 完成爱学习双轨草稿与正式 PageDoc／爱学习共享的文字、公式、形状、图片和 H5 插入持久化。Step 8D 生产只读事务盘点确认 77,060 个正式可编辑页面和 154,120 个可插入轨道 head 无需存量回填。Step 8E 当前为 **PRODUCTION DEPLOYED / MACHINE POSTFLIGHT PASSED / PENDING PRODUCT ACCEPTANCE**：最终候选 `8c50b48…` 从实际生产基线 `750bd607…` 建立，6 条 migration 通过写前备份、回滚／零残留演练后正式提交，应用 current/previous=`20260903-115645` / `8c50b48…` 与 `20260903-100016` / `750bd607…`；存量页面、binding、资源、release、冻结会话和 Storage 计数不变。真实生产工作流仍待产品验收，也不改变 R1-Live Gate 2。
 
-#### DEV-SCHOOL-OPS-1 · 学辅运营与教学履约主干
+#### DEV-SCHOOL-OPS-1 · 学服运营与教学履约主干
 
 2026-09-06 更新：首联部分的验收与保护以 [首联已验收保护基线](school-support-followup-panel-contract.md#10-首联已验收保护基线) 为准，其他业务切片分别验收。下段保留 2026-09-03 的交付背景，其“待验收”不覆盖此次已确认的首联部分。
 

@@ -1,6 +1,6 @@
 const zh = {
   title: '秋季资料确认', help: '确认一项，也有帮助。不了解的内容可以留待下次上课或沟通时补充。',
-  teacher: '任课老师', support: '学辅', view: '查看工作内容', group: '选择班级', unnamedGroup: '班级情况待补充',
+  teacher: '任课老师', support: '学服', view: '查看工作内容', group: '选择班级', unnamedGroup: '班级情况待补充',
   search: '找学生', all: '全部学生', pendingFilter: '还未填写', feedbackFilter: '已有反馈',
   pending: '待了解', supplemented: '已补充情况', responded: '已反馈', later: '下次再了解', partial: '已确认部分',
   yes: '情况一致', correction: '补充情况', unknown: '暂时不清楚', missing: '目前还没有这项信息',
@@ -16,7 +16,7 @@ const zh = {
   attention: '请按这学期的实际年级确认。', contactHelp: '下次联系时补充一个常用号码，并注明家长称呼或与孩子的关系即可。',
   contactPlaceholder: '例如：常用联系电话、妈妈／爸爸；双胞胎或同名孩子可补一句说明',
   assignment: '安排负责同事', sourceTeacher: '名单中的任课老师', unassigned: '待安排', assignmentSave: '保存负责安排',
-  assignmentSaved: '负责安排已保存，对应同事登录后可查看本班。', assignmentHelp: '任课老师和学辅分别看到自己的工作内容。保存后生效。',
+  assignmentSaved: '负责安排已保存，对应同事登录后可查看本班。', assignmentHelp: '任课老师和学服分别看到自己的工作内容。保存后生效。',
   unavailable: '这位同事目前不可分配，请选择其他同事。', teacherHint: '老师只需确认熟悉的学生和上课情况。',
   supportHint: '结合日常沟通补充即可，暂时联系不上也可以稍后再了解。', adminHint: '你正在查看一线填写内容。保存的反馈会记录为你本人提交。',
   roster: '本班学生', savedCount: '已有反馈', drafts: '填写中', countUnit: '位', nextEmpty: '本班这一轮已查看，可以选择其他班级或回看已有反馈。',

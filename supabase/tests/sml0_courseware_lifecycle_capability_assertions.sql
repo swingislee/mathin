@@ -4,7 +4,7 @@ begin;
 
 select id as admin_id from public.profiles where display_name = '测试-管理员' limit 1 \gset
 select id as student_id from public.profiles where display_name = '测试-学生' limit 1 \gset
-select id as reviewer_id from public.profiles where display_name = '测试-学辅' limit 1 \gset
+select id as reviewer_id from public.profiles where display_name in ('测试-学服', '测试-学辅') limit 1 \gset
 
 \if :{?admin_id}
 \else
@@ -18,7 +18,7 @@ select id as reviewer_id from public.profiles where display_name = '测试-学�
 \endif
 \if :{?reviewer_id}
 \else
-  \echo SML-0 lifecycle fixtures missing: 测试-学辅
+  \echo SML-0 lifecycle fixtures missing: 测试-学服
   select 1 / 0;
 \endif
 
@@ -29,7 +29,7 @@ order by role_id
 limit 1 \gset
 \if :{?reviewer_role_id}
 \else
-  \echo SML-0 lifecycle fixtures missing: 测试-学辅 staff role
+  \echo SML-0 lifecycle fixtures missing: 测试-学服 staff role
   select 1 / 0;
 \endif
 

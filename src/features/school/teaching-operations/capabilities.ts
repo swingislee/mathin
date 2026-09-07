@@ -102,7 +102,7 @@ function classroomReason(
   return allowed;
 }
 
-/** P4H 的唯一班级能力公式；教学/学辅/管理关系由服务端查询层折叠后传入。 */
+/** P4H 的唯一班级能力公式；教学/学服/管理关系由服务端查询层折叠后传入。 */
 export function resolveClassroomCapabilities(context: ClassroomCapabilityContext): ClassroomCapabilities {
   const reasons: ClassroomCapabilities["reasons"] = {};
   const canViewClassroom = context.isTeaching || context.isSupport || context.isManagement;

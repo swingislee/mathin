@@ -163,7 +163,7 @@ async function ClassDetailBody({
     listPublicClassesForClassroom(classId),
   ]);
 
-  // doc23 §9：身份行只保留"这是哪个班"——课程版本、年级、主讲、学辅。
+  // doc23 §9：身份行只保留"这是哪个班"——课程版本、年级、主讲、学服。
   // 人数与下一节课是**状况**不是身份，进 Aside；它们放在这条里既会被截断，
   // 又会随排课变化让身份行看起来一直在动。
   const contextItems: ObjectContextItem[] = ([

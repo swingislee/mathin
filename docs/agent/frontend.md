@@ -2,7 +2,7 @@
 
 > 读取条件：任务涉及 UI、路由、视觉、交互、页面数据边界或 Next.js 配置。产品与页面事实仍以 `../plan/00-overview.md`、`../plan/01-design-system.md`、`../plan/02-pages.md`、`../plan/05-planet-themes.md` 和当前专题文档为准。
 
-学辅工作区或可能影响它的共享组件、主题样式变更，先读取 [首联已验收保护基线](../plan/school-support-followup-panel-contract.md#10-首联已验收保护基线)，按其中范围核对本次修改。后续升级参考及用户明确要求的变更边界统一维护在那里。
+学服工作区或可能影响它的共享组件、主题样式变更，先读取 [首联已验收保护基线](../plan/school-support-followup-panel-contract.md#10-首联已验收保护基线)，按其中范围核对本次修改。后续升级参考及用户明确要求的变更边界统一维护在那里。
 
 ## 技术与路由
 

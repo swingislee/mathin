@@ -23,7 +23,7 @@ function fact(overrides: Partial<ManagementCohortFact> = {}): ManagementCohortFa
     batchKey: "batch-1",
     batchLabel: "九月第一批",
     ownerId: "owner-1",
-    ownerName: "学辅甲",
+    ownerName: "学服甲",
     ownerResolution: "snapshot",
     contacted: true,
     invited: true,

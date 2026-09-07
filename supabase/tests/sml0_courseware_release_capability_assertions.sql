@@ -4,7 +4,7 @@ begin;
 
 select id as admin_id from public.profiles where display_name = '测试-管理员' limit 1 \gset
 select id as teacher_id from public.profiles where display_name = '测试-教师' limit 1 \gset
-select id as editor_id from public.profiles where display_name = '测试-学辅' limit 1 \gset
+select id as editor_id from public.profiles where display_name in ('测试-学服', '测试-学辅') limit 1 \gset
 
 \if :{?admin_id}
 \else
@@ -18,7 +18,7 @@ select id as editor_id from public.profiles where display_name = '测试-学辅'
 \endif
 \if :{?editor_id}
 \else
-  \echo SML-0 release fixtures missing: 测试-学辅
+  \echo SML-0 release fixtures missing: 测试-学服
   select 1 / 0;
 \endif
 

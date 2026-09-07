@@ -28,7 +28,7 @@ declare
   v_notes text[] := array[
     '待批量建立续报意向；可与02号一起选择。',
     '待批量建立续报意向；家长希望了解秋季上课安排。',
-    '教师建议继续巩固应用题，等待学辅首次续报沟通。',
+    '教师建议继续巩固应用题，等待学服首次续报沟通。',
     '家长正在比较周末时间，已收到课程安排，约定再次联系。',
     '家长已认可课程方案，等待确认缴费与正式报名。',
     '已确认秋季报名，保留商业报名记录，便于查看成功样例。',
@@ -137,7 +137,7 @@ begin
   perform set_config('request.jwt.claim.sub',v_teacher::text,true);
   perform set_config('request.jwt.claims',jsonb_build_object('sub',v_teacher,'role','authenticated')::text,true);
   v_signals := array_append(v_signals,public.create_teacher_professional_signal(v_students[3],v_memberships[3],null,
-    'renewal_recommendation','基础掌握稳定，建议秋季继续巩固多步应用题；请学辅联系家长。',v_course,v_target));
+    'renewal_recommendation','基础掌握稳定，建议秋季继续巩固多步应用题；请学服联系家长。',v_course,v_target));
   v_signals := array_append(v_signals,public.create_teacher_professional_signal(v_students[4],v_memberships[4],null,
     'upsell_recommendation','课堂理解快，愿意主动讲解；建议讨论更高挑战的课程安排。',v_course,v_target));
   v_signals := array_append(v_signals,public.create_teacher_professional_signal(v_students[7],v_memberships[7],null,

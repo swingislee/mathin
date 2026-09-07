@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { loadFixedAccountForMode, FIXED_ACCOUNT_SKIP_REASON } from "./support/fixed-accounts";
 import { loginWithFixedAccount } from "./support/login";
 
-const ZH_PRIMARY_SECTIONS = ["本期业务事实", "当前未完成记录", "学辅完整周期", "老师参与与报名", "班级容量事实"];
+const ZH_PRIMARY_SECTIONS = ["本期业务事实", "当前未完成记录", "学服完整周期", "老师参与与报名", "班级容量事实"];
 
 async function expectNoPageOverflow(page: Page) {
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
@@ -72,8 +72,8 @@ test("staff homepage prioritizes per-person business and class capacity across s
   await page.reload({ waitUntil: "domcontentloaded" });
   await expectNoPageOverflow(page);
   await expect(page.getByRole("heading", { name: "本期业务事实", exact: true })).toBeVisible();
-  await page.getByRole("heading", { name: "学辅完整周期", exact: true }).scrollIntoViewIfNeeded();
-  await expect(page.getByRole("heading", { name: "学辅完整周期", exact: true })).toBeInViewport();
+  await page.getByRole("heading", { name: "学服完整周期", exact: true }).scrollIntoViewIfNeeded();
+  await expect(page.getByRole("heading", { name: "学服完整周期", exact: true })).toBeInViewport();
   await page.getByRole("heading", { name: "老师参与与报名", exact: true }).scrollIntoViewIfNeeded();
   await expect(page.getByRole("heading", { name: "老师参与与报名", exact: true })).toBeInViewport();
   await page.getByRole("heading", { name: "班级容量事实", exact: true }).scrollIntoViewIfNeeded();

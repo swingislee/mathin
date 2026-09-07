@@ -5,7 +5,7 @@ import { getOrganizationTimezoneV2 } from "./organization-locations";
 import { FOLLOW_UP_STATUSES, studentSearchFilter, type FollowUpStatus, type StudentStatus } from "./students";
 
 // ---------------------------------------------------------------------------
-// 学辅跟进工作台数据层（P4C-6 §6）。零权限分支：scope=mine 只是 assigned_to 过滤，
+// 学服跟进工作台数据层（P4C-6 §6）。零权限分支：scope=mine 只是 assigned_to 过滤，
 // scope=all 交给 students RLS 自然收窄（无 student.view.all 的人本来就只见名下）。
 // 大 UUID 集统一分批，避免 PostgREST 过滤器突破网关请求行限制。
 // ---------------------------------------------------------------------------
@@ -92,7 +92,7 @@ export async function listFollowUpBoard(userId: string, scope: BoardScope, bucke
     .order("next_follow_up_at", { ascending: true, nullsFirst: false })
     .limit(500);
   if (scope === "mine") query = query.eq("assigned_to", userId);
-  // 检索下沉到查询而不是在 500 行上限之后做内存过滤：全量学辅的队列会超过这个上限，
+  // 检索下沉到查询而不是在 500 行上限之后做内存过滤：全量学服的队列会超过这个上限，
   // 内存过滤会让"搜得到的人"取决于排序截断位置。
   if (q) query = query.or(studentSearchFilter(q));
   const { data: studentRows, error } = await query.returns<BoardStudentRow[]>();

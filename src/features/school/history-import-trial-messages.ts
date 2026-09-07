@@ -16,7 +16,7 @@ const zh = {
   empty: '未记录', nonText: '原始值', sourceLanguage: '源资料使用原始语言，完整内容按原样保留。',
   checkTitle: '导入前后核对', checkHint: '以下数量在导入事务内核对，相关记录的内容指纹也保持一致。',
   item: '业务记录', before: '导入前', after: '导入后',
-  nextActions: '线索待办', opportunities: '课程意向', renewals: '续费事项', supportTasks: '班级学辅任务',
+  nextActions: '线索待办', opportunities: '课程意向', renewals: '续费事项', supportTasks: '班级学服任务',
   students: '学生身份', leads: '线索身份', families: '家庭身份',
   sourceEqual: '入库原文已与来源逐字段核对。',
 };

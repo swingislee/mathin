@@ -299,7 +299,7 @@ export function invitationStateFromFacts(draft: InvitationDraft): InvitationStat
 }
 
 /**
- * 学辅看到的是当前应执行的工作，而不是可以任意切换的状态机。
+ * 学服看到的是当前应执行的工作，而不是可以任意切换的状态机。
  * 该步骤完全由已经登记的业务事实推导。
  */
 export function invitationWorkStep(draft: InvitationDraft): InvitationWorkStep {

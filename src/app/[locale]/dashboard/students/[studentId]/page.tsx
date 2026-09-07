@@ -106,7 +106,7 @@ export default async function StudentDetailPage({
     : [[], { studentId, balance: 0, ledger: [], lessonBalance: 0, lessonLedger: [] }];
 
   // doc24 §6：学生详情有四个真实入口——学生列表、跟进队列、财务订单、班级名单。
-  // 只有列表那一条的"回到上一级"和"回到来的地方"是同一个答案，其余三条以前都把学辅
+  // 只有列表那一条的"回到上一级"和"回到来的地方"是同一个答案，其余三条以前都把学服
   // 甩回学生列表，再自己找一遍刚才处理到哪一行。
   const returnTo = environment ? parseReturnTo({ returnTo: rawSearchParams.returnTo, environment }) : null;
   const tabHref = (tab: StudentTab) => preserveReturnTo(`/dashboard/students/${studentId}?tab=${tab}`, returnTo);

@@ -15,7 +15,7 @@
 > **背景**：P4B 交付后用户于 2026-07-10 全面试用，结论是「基本功能已实现，但 dashboard 处于毛坯阶段」——没有站在使用者角度考虑每个角色进后台要**做什么**。本文把用户的 10 条反馈翻译成不留发挥空间的施工方案。执行 agent 智能水平有限：**遇到本文没写的决策，停下来问用户，不要自行发挥**；每条任务一次独立提交，提交前 `pnpm lint && pnpm typecheck && pnpm build`（build 前先停掉常驻 dev server，二者共用 `.next`）。
 >
 > 用户 10 条反馈 → 本文章节的映射：
-> ①员工/岗位权限页仍是占位、陈旧开发文案 → §8、§3.4；②总览一屏也出现滚动条、顶栏会滚走 → §3；③视觉过于朴素、关键信息看不清 → §5.4；④右侧标题顶端比左侧导航矮一截 → §3.3；⑤暗色下拉菜单白底 → §3.5;⑥磁贴式可自定义总览 → §5;⑦教师误删课次不可恢复/教师不应移出学生/缺教务、教研角色 → §4、§7;⑧学辅看得见全公司财务/缺跟进工作台 → §4.3、§6;⑨学生页面不应有财务 → §4.5;⑩家长总览布局与其他角色不同 → §5.6。
+> ①员工/岗位权限页仍是占位、陈旧开发文案 → §8、§3.4；②总览一屏也出现滚动条、顶栏会滚走 → §3；③视觉过于朴素、关键信息看不清 → §5.4；④右侧标题顶端比左侧导航矮一截 → §3.3；⑤暗色下拉菜单白底 → §3.5;⑥磁贴式可自定义总览 → §5;⑦教师误删课次不可恢复/教师不应移出学生/缺教务、教研角色 → §4、§7;⑧学服看得见全公司财务/缺跟进工作台 → §4.3、§6;⑨学生页面不应有财务 → §4.5;⑩家长总览布局与其他角色不同 → §5.6。
 >
 > **§0 是全文的第一优先级**（用户 2026-07-10 追加拍板）：先从"这个人每天进后台要干什么"推需求，再由需求定面板，数据可扩充、需求必须被满足。§5/§6 的磁贴清单与页面规格全部以 §0 为依据；两者冲突时以 §0 为准。
 >
@@ -27,7 +27,7 @@
 
 ### 0.1 校长 / 主管（principal / director）——经营者：异常驱动，不看流水账
 
-一天：早上到校先问三件事——今天全校多少节课、有没有异常（课没备、时间冲突）；昨天进了多少钱、有没有新线索没人跟；有没有压着我的审批（退费）。日间巡数字：本月应收/实收/欠费、生源漏斗卡在哪一档、哪个班快满该开新班、哪个班快上完该推续费。管理动作：审退费、把线索指派给学辅、抽查课堂报告与备课情况、调整员工岗位。
+一天：早上到校先问三件事——今天全校多少节课、有没有异常（课没备、时间冲突）；昨天进了多少钱、有没有新线索没人跟；有没有压着我的审批（退费）。日间巡数字：本月应收/实收/欠费、生源漏斗卡在哪一档、哪个班快满该开新班、哪个班快上完该推续费。管理动作：审退费、把线索指派给学服、抽查课堂报告与备课情况、调整员工岗位。
 
 - **第一眼**：今天全校课表（带异常标注）+ 一排"要我处理"的红数字（待审退费、逾期未跟、欠费订单）。
 - **日常操作**：审批退费（财务页）、指派跟进人（学生列表/360°）、授岗调权（员工页）——工作台以"看+跳转"为主，重操作在子页。
@@ -49,7 +49,7 @@
 
 - **第一眼**：本周全校课表 + 三个待处理计数：**未点名课次、花名册错位、今日冲突**。
 - **日常操作**：改时间/补排/软删恢复（班级详情）、报名/转班/退班（花名册）、建班（向导）、代点名。
-- **权限审计**：§4.2 新画像（class 全权 + enrollment.manage + student.view.all + schedule.view.all + attendance.mark）与上述完全匹配 ✓；不给 finance（收钱是学辅/前台的事）、不给 followup（不做销售跟进）。
+- **权限审计**：§4.2 新画像（class 全权 + enrollment.manage + student.view.all + schedule.view.all + attendance.mark）与上述完全匹配 ✓；不给 finance（收钱是学服/前台的事）、不给 followup（不做销售跟进）。
 
 | 需求 | 面板 | 状态 |
 | --- | --- | --- |
@@ -90,13 +90,13 @@
 | 我班异常学生（缺勤/滑坡） | 磁贴键位留空态 | 🌱 |
 | 写课堂表现跟进 | 跟进台 §6（followup.write 者可用，教师导航不置顶） | 🔧 P4C-6 |
 
-### 0.5 学辅 / 销售（sales）——名单驱动：今天该打的电话一个不落
+### 0.5 学服 / 销售（sales）——名单驱动：今天该打的电话一个不落
 
 一天：早上拉"今天要跟的名单"（昨天承诺今天回访的、逾期的）；看今天有试听的学生并提醒到课；全天打电话记跟进、推进六档状态；签约就下单收款；月中月末盯自己业绩与**催缴**（我名下欠费单）。
 
 - **第一眼**：**今日待跟 + 逾期名单**（人名可点，不是数字）+ 今日试听提醒。
 - **日常操作**：记跟进、改状态、新建线索、下单、收款、催缴——收口在跟进台（§6）+ 360° 费用段。
-- **权限审计**：§4.2 收缩后无全量订单 ✓；保留 finance.payment.record（前台收钱场景真实存在）✓；无 scholarship/coupon.manage/refund ✓（用券在下单流程里，建券是管理者的事）；student.assign 保留（学辅间移交线索，RPC 已限只能分给 staff）。
+- **权限审计**：§4.2 收缩后无全量订单 ✓；保留 finance.payment.record（前台收钱场景真实存在）✓；无 scholarship/coupon.manage/refund ✓（用券在下单流程里，建券是管理者的事）；student.assign 保留（学服间移交线索，RPC 已限只能分给 staff）。
 
 | 需求 | 面板 | 状态 |
 | --- | --- | --- |
@@ -137,7 +137,7 @@
 
 ### 0.9 汇总：本节反向修订的施工项（已同步进 §4/§5/§6/§9）
 
-新磁贴 6 张：gradingQueue（教师）、dueOrders（学辅/管理者双 scope）、templateUrgent（教研）、unmarkedAttendance（教务/管理者）、rosterMismatch（教务/管理者）、myStars（学生）；磁贴增强 3 处：mySchedule 进教室按钮、pendingAssignments 列表化、childCard（本周课次+待交作业）；权限增补 1 处：research + schedule.view.all；页面增补 1 处：跟进台加「今日试听」桶；新任务 **P4C-7 顾客侧需求补齐**（§9）。🌱 项一律不算本期验收。
+新磁贴 6 张：gradingQueue（教师）、dueOrders（学服/管理者双 scope）、templateUrgent（教研）、unmarkedAttendance（教务/管理者）、rosterMismatch（教务/管理者）、myStars（学生）；磁贴增强 3 处：mySchedule 进教室按钮、pendingAssignments 列表化、childCard（本周课次+待交作业）；权限增补 1 处：research + schedule.view.all；页面增补 1 处：跟进台加「今日试听」桶；新任务 **P4C-7 顾客侧需求补齐**（§9）。🌱 项一律不算本期验收。
 
 ### 0.10 学生生命周期地图与画像补全（2026-07-10 用户二轮拍板；新域施工见 `12-p4d-student-lifecycle.md`）
 
@@ -145,21 +145,21 @@
 
 | 阶段 | 主责角色 | 系统对象 | 关键动作 |
 | --- | --- | --- | --- |
-| 0 获客准备 | 学辅（分区）+ 兼职（地推） | students.region、来源预设 | 学辅按地区分派；地推采集电话名单 |
-| 1 初始线索 | 学辅 | students（status=lead，source=地推/转介绍/自然引流/活动） | **批量导入**电话名单、查重、分派跟进人 |
-| 2 预约到校活动 | 学辅约、教务/主管办 | **activities / activity_registrations**（体验课 / 1v1 测评 / 三板斧 / 讲座 / 竞赛活动） | 报名活动→follow_up_status 推 invited；到场登记→trialed |
-| 3 初次到校与持续跟进 | 学辅 | student_follow_ups（P4C-6 跟进台） | 记跟进、推进六档状态 |
-| 4 正式课学习 | 教师主责，学辅同看 | 每课产出：**课上表现多维评价 + 入门考/出门测成绩 + 课堂知识总结 + 作业 + 课后视频**（session_reviews / knowledge_summary / session_videos） | 教师课后逐生记录、**倍速审阅课后视频**、写课堂跟进；学辅可见学情与师家沟通 |
-| 5（用户未编号，隐含） 阶段间流失 | 学辅 | status=lost/invalid + 流失池 | 流失原因记跟进；**回流=从流失池一键改回跟进中**，历史留痕 |
-| 6 学期结束续费 | 学辅+主管 | 续费窗口（剩余课次≤3 的 active enrollment） | 待续费名单→跟进→place_order 续报新班 |
+| 0 获客准备 | 学服（分区）+ 兼职（地推） | students.region、来源预设 | 学服按地区分派；地推采集电话名单 |
+| 1 初始线索 | 学服 | students（status=lead，source=地推/转介绍/自然引流/活动） | **批量导入**电话名单、查重、分派跟进人 |
+| 2 预约到校活动 | 学服约、教务/主管办 | **activities / activity_registrations**（体验课 / 1v1 测评 / 三板斧 / 讲座 / 竞赛活动） | 报名活动→follow_up_status 推 invited；到场登记→trialed |
+| 3 初次到校与持续跟进 | 学服 | student_follow_ups（P4C-6 跟进台） | 记跟进、推进六档状态 |
+| 4 正式课学习 | 教师主责，学服同看 | 每课产出：**课上表现多维评价 + 入门考/出门测成绩 + 课堂知识总结 + 作业 + 课后视频**（session_reviews / knowledge_summary / session_videos） | 教师课后逐生记录、**倍速审阅课后视频**、写课堂跟进；学服可见学情与师家沟通 |
+| 5（用户未编号，隐含） 阶段间流失 | 学服 | status=lost/invalid + 流失池 | 流失原因记跟进；**回流=从流失池一键改回跟进中**，历史留痕 |
+| 6 学期结束续费 | 学服+主管 | 续费窗口（剩余课次≤3 的 active enrollment） | 待续费名单→跟进→place_order 续报新班 |
 
 **画像补全**（在 §0.1–§0.8 之上叠加，不重复已列项）：
 - **校长/主管**：+活动转化视角（各类活动的 报名→到场→签约 转化）、续费率。第一眼补"本周活动与到场率"。→ 磁贴 activityToday（P4D-2）、renewalDue 升级为 🔧（P4D-5，取代 §0.1 的 🌱 续费预警）。
 - **教务**：+活动的场地/排期主办方；活动管理页的建/改/登记到场是教务与主管的操作面。
 - **教研**：+从 session_reviews 的出门测均分反查讲次质量（🌱，数据攒够再建面板）。
 - **教师**：课后固定动线变为四步——点名 → **课评（逐生入门考/出门测/三维表现+评语）** → 写课堂知识总结 → **审阅课后视频（倍速）**；第一眼补"待写课评 N、待审视频 N"。→ 课评抽屉、videoQueue/reviewGaps 磁贴（P4D-3/4）。
-- **学辅**：+跟进台再加两桶「待续费」「流失池（可一键回流）」（P4D-5）；360°/跟进台可见名下学生的课评摘要与视频审阅结论（"老师和家长的沟通情况"=教师写的 follow_ups，学辅本就可见 ✓）。
-- **兼职**：+地推名单录入口（批量导入页对 student.import 持有者开放；是否给兼职该键由管理员在权限矩阵勾选，默认不给——地推名单常由学辅统一录入）。
+- **学服**：+跟进台再加两桶「待续费」「流失池（可一键回流）」（P4D-5）；360°/跟进台可见名下学生的课评摘要与视频审阅结论（"老师和家长的沟通情况"=教师写的 follow_ups，学服本就可见 ✓）。
+- **兼职**：+地推名单录入口（批量导入页对 student.import 持有者开放；是否给兼职该键由管理员在权限矩阵勾选，默认不给——地推名单常由学服统一录入）。
 - **学生**：+课后视频上传入口（课次维度）、看自己的出门测成绩与课评。
 - **家长**：+孩子每课的"入门考/出门测/课堂表现/知识总结"卡片（比星星实质得多——这正是"课上表现过于简单"的解）；已审课后视频可回看。
 
@@ -173,7 +173,7 @@
 - 暗色机制：`globals.css` 用 `.dark` 类 + `@media (prefers-color-scheme: dark)` 双轨改 CSS 变量，但**从未声明 `color-scheme`** ⇒ 原生 `<select>` 的下拉弹层由操作系统按 light 渲染（白底浅字，反馈⑤）。裸 `<select>` 共 9 处：AttendanceDrawer、ClassBuildWizard、CouponsPanel、FollowUpForm、RosterPanel、ScheduleWeekView、StudentFinancePanel、courses/page、students/page。
 - 现网岗位角色权限（`staff_roles`×`role_permissions` 实测 dump）：
   - **teacher**：attendance.mark, **class.create, class.manage**, class.view.mine, course.view, courseware.overlay.edit, followup.view, followup.write, grading.write, student.view.assigned ⇒ 教师能建班、删课次、报名/转班/退班学生（反馈⑦的根源）。
-  - **sales**：finance.order.create, **finance.order.view**, finance.payment.record, followup.view, followup.write, student.assign, student.create, student.edit, student.view.assigned ⇒ `finance.order.view` 在 orders RLS 中放行**全量** select，学辅能看全公司订单（反馈⑧根源）；奖学金键 sales 本来就没有，但 `/dashboard/finance` 页各面板的按键显隐要在 P4C-1 逐一核对。
+  - **sales**：finance.order.create, **finance.order.view**, finance.payment.record, followup.view, followup.write, student.assign, student.create, student.edit, student.view.assigned ⇒ `finance.order.view` 在 orders RLS 中放行**全量** select，学服能看全公司订单（反馈⑧根源）；奖学金键 sales 本来就没有，但 `/dashboard/finance` 页各面板的按键显隐要在 P4C-1 逐一核对。
   - **research 教研已存在**（course.manage/course.view/courseware.template.edit/report.view.all）——用户感觉"缺教研"是因为员工页没实装、无法把这个角色授给任何人；**教务 registrar 确实不存在**，需新增。
 - 课次删除：`deleteUnstartedSessionAction` 物理 delete（仅挡已开始的），无恢复路径（反馈⑦）。
 - 学生端财务入口：`STUDENT_NAV_ITEMS` 含 finance、student 首屏有「我的费用」卡、`/dashboard/finance` 有 student 只读分支（反馈⑨要求全部拿掉；**家长的保留**）。
@@ -181,7 +181,7 @@
 
 ## 2. 范围与非目标
 
-**做**：§3 外壳固定与全局视觉基线修复；§4 权限矫正（教师收缩、学辅收缩、新增教务角色、报名操作独立权限键、学生去财务）；§5 磁贴式可自定义工作台（全部四类角色统一）；§6 学辅跟进工作台页；§7 课次软删与回收站；§8 员工与岗位权限两页实装。
+**做**：§3 外壳固定与全局视觉基线修复；§4 权限矫正（教师收缩、学服收缩、新增教务角色、报名操作独立权限键、学生去财务）；§5 磁贴式可自定义工作台（全部四类角色统一）；§6 学服跟进工作台页；§7 课次软删与回收站；§8 员工与岗位权限两页实装。
 
 **不做**（除非用户重启议题）：自由 x/y 坐标摆放磁贴（只做「顺序+尺寸档」，见 §5.1 决策理由）；拖拽改变尺寸（尺寸走档位循环按钮）；磁贴跨用户共享模板/管理员下发布局；看板式拖卡跟进（跟进台是分组列表不是 kanban）；新第三方依赖（拖拽用原生 HTML5 Drag API，不引 dnd-kit）；移动端拖拽排序（编辑态用上移/下移按钮代替）。
 
@@ -292,7 +292,7 @@ migration 写法：按 `staff_roles.key` 查 id，`delete from role_permissions 
 ### 4.3 RLS/页面层随动核查（同一提交内完成）
 
 - 审查 `20260709000500_school_enrollments.sql` 里 class_sessions/enrollments 的 update/delete 策略：若存在「教室 teacher 成员即可写」的放行，收紧为 `can_manage_classroom`（教师失键后 Server Action 已挡，RLS 兜底同步收紧，防直连）。enrollments 的写本来只走 RPC，重点是 class_sessions。
-- `/dashboard/finance` 页逐面板核对按键显隐：订单段=order.view **或** order.create（学辅要能看自己经手的单）；RefundQueuePanel=refund.approve；CouponsPanel=coupon.manage；ScholarshipsPanel=scholarship.grant；AccountLookupPanel=account.adjust。验收：sales 登录 finance 页只见「订单」段且列表只有自己经手/名下学生的单；「财务概览」磁贴（finance.report.view）对 sales 不渲染。
+- `/dashboard/finance` 页逐面板核对按键显隐：订单段=order.view **或** order.create（学服要能看自己经手的单）；RefundQueuePanel=refund.approve；CouponsPanel=coupon.manage；ScholarshipsPanel=scholarship.grant；AccountLookupPanel=account.adjust。验收：sales 登录 finance 页只见「订单」段且列表只有自己经手/名下学生的单；「财务概览」磁贴（finance.report.view）对 sales 不渲染。
 - `classes/[id]` 页：改课次时间、删课次、归档班级、批量补排按钮按 class.manage 显隐（教师进入只读视图 + 点名 + 课件链接）。`classes/new` 的 `requirePerm` 已是 class.create，不动。
 
 ### 4.4 学生去财务（反馈⑨）
@@ -375,7 +375,7 @@ export const TILE_REGISTRY: readonly TileDef[] = [ …§5.6 全清单… ];
 3. hidden 集 = eligible − result（供编辑态"已隐藏"行）
 4. 用户行不存在（从未自定义）：result = eligible 按【§5.6 角色默认顺序】排列并取默认档
    —— staff 按四种画像给预设顺序，判定取首个命中：isManager=student.view.all（教务 registrar
-   画像含之，自然走管理者序）→ 教师=class.view.mine → 教研=course.manage → 其余=学辅序；
+   画像含之，自然走管理者序）→ 教师=class.view.mine → 教研=course.manage → 其余=学服序；
    student/parent 各一份固定顺序
 5. 输出 result + hidden
 ```
@@ -392,7 +392,7 @@ export const TILE_REGISTRY: readonly TileDef[] = [ …§5.6 全清单… ];
 | todaySchedule | — | **3x2**/3x3/6x2 | 今日课表（无 schedule.view.all 时标题自动"我的今日课表"） |
 | funnel | student.view.all | **2x2**/3x2 | 生源漏斗六档横条 |
 | myFollowUps | followup.view | **3x2**/3x3 | 我的待跟进（空且 isManager 时默认隐藏=不进第 4 步默认序，但留在池里可手动加回） |
-| myPerformance | finance.order.view **或** finance.order.create | **2x1**/2x2 | 本月业绩（键改为二选一：学辅删掉 order.view 后仍要看自己业绩） |
+| myPerformance | finance.order.view **或** finance.order.create | **2x1**/2x2 | 本月业绩（键改为二选一：学服删掉 order.view 后仍要看自己业绩） |
 | myTeaching | class.view.mine | **3x2**/3x3 | 我的课与待办（课件/候课直达链接保留） |
 | myClasses | class.view.mine | **3x2** | 我的班级（在读/容量、进度徽章） |
 | financeOverview | finance.report.view | **3x2**/6x2 | 财务概览四数 |
@@ -400,12 +400,12 @@ export const TILE_REGISTRY: readonly TileDef[] = [ …§5.6 全清单… ];
 | templateProgress | course.manage | **2x2** | **新增**（教研关注焦点）：课件模板完成度——`course_lectures` 中 `courseware_template != '[]'` 的讲次数/总数，按年级分 6 行小条；点击进课程列表。取数 `getTemplateProgress()` 新增于 dashboard.ts |
 | templateUrgent | course.manage | **3x2** | **新增**（§0.3 倒排期）：未来 7 天 `class_sessions`（未删、未冻结、lecture_id 非空）中对应 `course_lectures.courseware_template = '[]'` 的课次，列 课程/讲次/班级/开课时间，每行直达 `/dashboard/courses/[id]/lectures/[lectureId]`；空态"未来一周的课模板都已就绪"（leaf tone）。取数 `getTemplateUrgent()` |
 | gradingQueue | grading.write | **3x2**/3x3 | **新增**（§0.4）：我任教班级未批改提交清单（学生名/作业名/提交时间，升序取 8），每行直达 `/classroom/[cid]/assignment/[aid]`；>0 时 tone=rose。取数 `getGradingQueue(uid)`（submissions ⋈ assignments ⋈ 我班，graded_at is null and submitted_at not null） |
-| dueOrders | finance.order.view **或** finance.order.create | **3x2** | **新增**（§0.1/§0.5 催缴）：欠费订单清单（学生名/欠额=due−已收/下单日），行直达 360° 费用段。scope 由 RLS 天然决定：有 order.view 见全校，仅 order.create 的学辅见自己经手/名下——**同一查询零分支**。取数 `getDueOrders()` |
+| dueOrders | finance.order.view **或** finance.order.create | **3x2** | **新增**（§0.1/§0.5 催缴）：欠费订单清单（学生名/欠额=due−已收/下单日），行直达 360° 费用段。scope 由 RLS 天然决定：有 order.view 见全校，仅 order.create 的学服见自己经手/名下——**同一查询零分支**。取数 `getDueOrders()` |
 | unmarkedAttendance | class.view.all | **2x2** | **新增**（§0.2）：近 7 天已结束（ended_at 非空或 scheduled_at+duration < now）且 `session_attendance` 零行的课次，列班级/讲次/时间，直达班级详情；空态 leaf"考勤都齐了"。取数 `getUnmarkedSessions()` |
 | rosterMismatch | class.view.all | **1x1**/2x1 | **新增**（§0.2）：全校错位两计数——active enrollment 的学生无 user 绑定或其 user 不在该教室 members；教室 student 成员无 active enrollment。>0 tone=rose，点击进班级列表。取数 `getRosterMismatchCount()`（一次查全量 enrollments+members 在内存对账，量级千行内可接受） |
 | followupBoardEntry | followup.write | **2x1** | **新增**：跟进工作台入口贴（§6），"逾期 N · 今日 N"两数，点击进 `/dashboard/followups` |
 
-staff 默认顺序：管理者=stat×4 → todaySchedule → dueOrders → funnel → financeOverview → refundQueue → unmarkedAttendance → rosterMismatch → templateProgress → 其余；教务（registrar 画像 = class.view.all 且无 finance.report.view）走管理者序自然命中课表/未点名/错位贴；教师=myTeaching → gradingQueue → myClasses → todaySchedule → myFollowUps → followupBoardEntry；学辅=followupBoardEntry → myFollowUps → dueOrders → myPerformance → todaySchedule；教研（course.manage 且非 manager）=templateUrgent → templateProgress → todaySchedule（默认序判定顺序：manager > 教师 > 教研 > 学辅，取首个命中画像）。
+staff 默认顺序：管理者=stat×4 → todaySchedule → dueOrders → funnel → financeOverview → refundQueue → unmarkedAttendance → rosterMismatch → templateProgress → 其余；教务（registrar 画像 = class.view.all 且无 finance.report.view）走管理者序自然命中课表/未点名/错位贴；教师=myTeaching → gradingQueue → myClasses → todaySchedule → myFollowUps → followupBoardEntry；学服=followupBoardEntry → myFollowUps → dueOrders → myPerformance → todaySchedule；教研（course.manage 且非 manager）=templateUrgent → templateProgress → todaySchedule（默认序判定顺序：manager > 教师 > 教研 > 学服，取首个命中画像）。
 
 **student 磁贴池**（audience=student；§0.7 增强项在 P4C-7 落）：mySchedule（**3x2**，下节课+本周；**P4C-7 增强**：距开课 ≤30 分钟且本人是该班 classroom_members 时，显示「进教室」主按钮直达 `/classroom/[id]`——schedule 数据源需带 classroomId，缺列则补）、pendingAssignments（**2x1**，**P4C-7 起列表化**：最近截止 3 份（作业名+截止时间+直达 `/classroom/[cid]/assignment/[aid]`），>0 tone=rose）、myStars（**1x1**，**P4C-7 新增**：星总数+近 30 天出勤率，数据=`get_my_learning_summary` 本人行，勿另写聚合）、myScores（**2x2**，原成绩卡）、myNotes（**2x1**，原笔记卡）、myClassrooms（**2x2**，原教室卡）。默认序即此。**无费用磁贴**（§4.4）。未绑定档案时：网格前显示绑定码卡（固定块不是磁贴），磁贴只出 myScores/myNotes/myClassrooms。
 
@@ -444,9 +444,9 @@ staff 默认顺序：管理者=stat×4 → todaySchedule → dueOrders → funne
 
 **P4C-4b 验收**：拖动时其他磁贴实时让位、释放无重叠无空洞、刷新位置一致；拖角调档虚影吸附、落档切形态无溢出；塞脏 jsonb（越权键/越界坐标/非法档/重叠）服务端全消解；旧 `{k,s}` 数据自动重铺不报错；放大弹窗可用；移动端上移/下移仍可用；亮/暗 × 桌面/移动截图报批。
 
-## 6. P4C-6 学辅跟进工作台 `/dashboard/followups`（反馈⑧后半）
+## 6. P4C-6 学服跟进工作台 `/dashboard/followups`（反馈⑧后半）
 
-学辅的日常不是看总览，是**沿生命周期推学生**。新页面（nav 项 `followups`，labelKey=followups，requiredPerm=`followup.view`，插在 students 之前；学辅默认导航序：总览/跟进/学生/课表/财务）：
+学服的日常不是看总览，是**沿生命周期推学生**。新页面（nav 项 `followups`，labelKey=followups，requiredPerm=`followup.view`，插在 students 之前；学服默认导航序：总览/跟进/学生/课表/财务）：
 
 - **页头 actions**：新建学生按钮（student.create）——**注意：现库并无任何新建学生 UI（create_student RPC 从未被前端调用），本任务需自带一个简版弹窗**（姓名必填 + 电话/年级/来源/备注，调 create_student；完整版含地区/家长文本/批量导入在 P4D-0）；「全部/我名下」切换（仅 student.view.all 持有者显示，searchParams `scope=all|mine`，默认 mine）。
 - **顶部五贴统计行**（点击=下方列表过滤，searchParams `bucket=`）：逾期（next_follow_up_at < now，rose）/ 今日（next 在今天内）/ 本周 / 未安排（next is null 且 status 未到 signed/lost）/ **今日试听**（§0.5：status='trialing' 且其 active enrollment 班级今天有未删课次——提醒到课回访，试听后当天必跟）。
@@ -455,7 +455,7 @@ staff 默认顺序：管理者=stat×4 → todaySchedule → dueOrders → funne
   - 「改状态」：下拉直调 `change_student_status` RPC 的 Server Action（新增 `changeStudentStatusAction`，判 student.edit）；
   - （有 finance.order.create）「下单」：链接到 `/dashboard/students/<id>#finance`。
 - 数据层 `src/features/school/followups.ts`：`listFollowUpBoard(scope, bucket?)` 一次查 students（RLS 自然收窄）+ 每生最近一条 follow_up（`student_follow_ups` 按 student_id in (...) 取 created_at desc 去重，先查学生页 20 条分页再查跟进，别 N+1）。分页每组内折叠显示前 8 行 +「展开全部」。
-- 验收：学辅登录默认只见名下学生；逾期学生行红色徽章；记跟进后行内最后跟进时间即时更新；主管切「全部」能见全校；无 followup.view 的账号直输 URL 302。
+- 验收：学服登录默认只见名下学生；逾期学生行红色徽章；记跟进后行内最后跟进时间即时更新；主管切「全部」能见全校；无 followup.view 的账号直输 URL 302。
 
 ## 7. P4C-2 课次软删与回收站（反馈⑦前半）
 
@@ -503,7 +503,7 @@ delete_staff_role(role_id)    -- 同上；仅 is_system=false；有成员则拒�
 | **P4C-2** | §7 软删+回收站（含三个 get_my_* RPC 过滤重建） | 删→各端消失；恢复归位；教师不可删 |
 | **P4C-3** | §8 员工/岗位权限两页 + 5 个新 RPC | §8.3 验收全过；测试账号复原 |
 | **P4C-4** | §5.1-5.3+5.5-5.7 磁贴基建：dashboard_layouts 表、TILE_REGISTRY、TileGrid（拖拽/尺寸/隐藏/恢复默认）、四角色首屏全部迁入磁贴壳（视觉先沿旧卡样式） | 拖拽重排持久化、刷新保留；无权限磁贴永不渲染（改 tiles jsonb 塞键也被服务端过滤）；家长与学生同壳；移动端上移/下移可用 |
-| **P4C-5** | §5.4 视觉升级 + §0 反推的 staff 新磁贴七张：templateProgress、templateUrgent、gradingQueue、dueOrders、unmarkedAttendance、rosterMismatch、followupBoardEntry（各自取数函数见 §5.6，全部 `safe()` 包裹） | 四档截图报批；缩略 50% 关键数字可辨；教研账号见倒排期贴、教师账号见批改清单直达批改页、学辅 dueOrders 只见名下、教务见未点名/错位计数且数字与 SQL 手查一致 |
+| **P4C-5** | §5.4 视觉升级 + §0 反推的 staff 新磁贴七张：templateProgress、templateUrgent、gradingQueue、dueOrders、unmarkedAttendance、rosterMismatch、followupBoardEntry（各自取数函数见 §5.6，全部 `safe()` 包裹） | 四档截图报批；缩略 50% 关键数字可辨；教研账号见倒排期贴、教师账号见批改清单直达批改页、学服 dueOrders 只见名下、教务见未点名/错位计数且数字与 SQL 手查一致 |
 | **P4C-6** | §6 跟进工作台页（含「今日试听」桶） | §6 验收全过 |
 | **P4C-4b** | §5.8 磁贴交互重做：真二维坐标+确定性 push、拖边角档位吸附、minimal/compact/full 分档内容模板+放大弹窗（2026-07-11 三轮拍板插队，在 P4C-6 后、P4C-7 前执行） | §5.8 验收全过 |
 | **P4C-7** | §0.7/§0.8 顾客侧补齐：mySchedule「进教室」按钮、pendingAssignments 列表化、myStars 磁贴、childCard 增强 + `get_my_learning_summary` 扩 `week_session_count`/`pending_assignment_count` 两列（migration） | 学生开课前 30 分钟内首屏一键进教室；待交作业行直达提交页；家长孩子卡见本周课次与待交作业数；无账号孩子显示"—"不报错 |

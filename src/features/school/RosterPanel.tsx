@@ -22,7 +22,7 @@ import { enrollStudentAction, listClassroomOptions, searchStudentsForEnroll, tra
 import { type StudentSearchResult } from "./actions/types";
 import type { RosterRow, RosterSignals, RosterViewerRole } from "./classes";
 
-/** 角色默认列（doc19 §13.4）：教师看出勤/作业/学习异常，学辅看请假/欠费，主管看综合异常，其余角色沿用既有教务列。 */
+/** 角色默认列（doc19 §13.4）：教师看出勤/作业/学习异常，学服看请假/欠费，主管看综合异常，其余角色沿用既有教务列。 */
 function RosterSignalColumns({ role, signals }: { role: RosterViewerRole; signals: RosterSignals | undefined }) {
   const t = useTranslations("school.classes");
   if (!signals) return null;

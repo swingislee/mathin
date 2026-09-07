@@ -11,6 +11,7 @@ import {
 import {
   canonicalizeStaffRoleTokens,
   hasLegacyStaffRoleSeparator,
+  normalizeStaffRoleName,
   splitStaffRoleInput,
   staffRoleDisplayName,
 } from "@/features/school/staff-role-input";
@@ -106,6 +107,24 @@ describe("DEV-STAFF-ONBOARD-1 bulk staff provisioning", () => {
     expect(canonicalizeStaffRoleTokens(["TEACHER"], roles)).toEqual(["teacher"]);
     expect(staffRoleDisplayName("teacher", roles, "zh")).toBe("教师");
     expect(staffRoleDisplayName("teacher", roles, "en")).toBe("teacher");
+  });
+
+  it.each(["学辅", "学服"])("岗位原名为 %s 时，新旧导入用语均归属原有岗位", (name) => {
+    const roles = [{ key: "sales", name }];
+    expect(normalizeStaffRoleName(name)).toBe("学服");
+    expect(staffRoleDisplayName("sales", roles, "zh")).toBe("学服");
+    expect(staffRoleDisplayName("sales", roles, "en")).toBe("sales");
+    expect(canonicalizeStaffRoleTokens(["学辅", " 学服 ", "SALES"], roles)).toEqual(["sales"]);
+  });
+
+  it("岗位别名冲突或岗位缺失时，保留输入供原有校验处理", () => {
+    expect(canonicalizeStaffRoleTokens(["学服"], [])).toEqual(["学服"]);
+    expect(canonicalizeStaffRoleTokens(["学服"], [
+      { key: "sales", name: "学辅" },
+      { key: "custom", name: "学服" },
+    ])).toEqual(["学服"]);
+    expect(normalizeStaffRoleName("课程顾问")).toBe("课程顾问");
+    expect(normalizeStaffRoleName("教学辅助")).toBe("教学辅助");
   });
 
   it("keeps ImportBatch preview while switching apply to trusted direct Auth provisioning", () => {

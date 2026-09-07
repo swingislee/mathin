@@ -3,7 +3,7 @@ begin;
 
 select id as admin_id from public.profiles where display_name='测试-管理员' \gset
 select id as teacher_id from public.profiles where display_name='测试-教师' \gset
-select id as sales_id from public.profiles where display_name='测试-学辅' \gset
+select id as sales_id from public.profiles where display_name in ('测试-学服', '测试-学辅') \gset
 select id as student_user_id from public.profiles where display_name='测试-学生' \gset
 select id as parent_id from public.profiles where display_name='测试-家长' \gset
 select id as student_id from public.students where user_id=:'student_user_id' \gset

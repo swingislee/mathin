@@ -10,7 +10,7 @@ export type ContextLens =
   | "production" // 课程研发：从研发任务进入讲次
   | "teaching" // 当前教学使用：从课次进入讲次
   | "management" // 管理审阅：主管/教务查看
-  | "support" // 学辅服务：客勤/通知/回访
+  | "support" // 学服服务：客勤/通知/回访
   | "family" // 家庭可见：家长视角
   | "learning"; // 学生学习：学生视角
 

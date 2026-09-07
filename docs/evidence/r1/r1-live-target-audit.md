@@ -276,15 +276,15 @@ replacement artifact 只复制首份 manifest 的 4 个 protected 条目，并�
 
 #### 4.2.2 2026-08-23 建班字段校验修复发布
 
-产品负责人在正式建班向导先选某职员为学辅、再选同一人为主讲后，学辅选项因主讲过滤而从界面消失，但客户端状态仍保留原 UUID；服务端只在最终提交时拒绝主讲与学辅相同，因此界面显示学辅为空却返回 `VALIDATION`。生产错误表记录同一路由、同一 digest 的两次失败；产品负责人显式改选“暂不指定学辅”后成功创建 1 个 production 班级和 15 个课次。修复后，改选主讲会同步清除冲突学辅并就地提示，建班向导的必填项和格式错误也在字段所在步骤显示，不再等到最终提交；学辅继续保持可选。
+产品负责人在正式建班向导先选某职员为学服、再选同一人为主讲后，学服选项因主讲过滤而从界面消失，但客户端状态仍保留原 UUID；服务端只在最终提交时拒绝主讲与学服相同，因此界面显示学服为空却返回 `VALIDATION`。生产错误表记录同一路由、同一 digest 的两次失败；产品负责人显式改选“暂不指定学服”后成功创建 1 个 production 班级和 15 个课次。修复后，改选主讲会同步清除冲突学服并就地提示，建班向导的必填项和格式错误也在字段所在步骤显示，不再等到最终提交；学服继续保持可选。
 
 | 证据字段 | 值 |
 | --- | --- |
 | `gate_id`, `domain`, `result` | `R1-Live Gate 2`；正式建班表单校验与生产应用；该缺陷 `PASS`，Gate 2 整体仍 `BLOCKED` |
-| `measured_value`, `threshold` | `operational_errors` 在 `2026-08-22T15:53:01.279Z` 与 `15:53:09.807Z` 记录 route=`/[locale]/dashboard/classes/new`、digest=`1508028600`；成功班级创建于 `2026-08-22T15:59:26.477406Z`。生产 postflight 为班级/课次/报名/点名=`1/15/0/0`、staff assignment=`1`（主讲=`1`、学辅=`0`），active manifest/entry/purge=`1/8/0`。本机固定账号 Golden Path 复现“先学辅、后同人主讲”并 1/1 通过；R1-Live 48/48、全量 Vitest 621 通过+1 条件跳过、CI 16/16。阈值为学辅可空、冲突立即清除、当前步骤就地报错、合法建班不回归，全部满足 |
+| `measured_value`, `threshold` | `operational_errors` 在 `2026-08-22T15:53:01.279Z` 与 `15:53:09.807Z` 记录 route=`/[locale]/dashboard/classes/new`、digest=`1508028600`；成功班级创建于 `2026-08-22T15:59:26.477406Z`。生产 postflight 为班级/课次/报名/点名=`1/15/0/0`、staff assignment=`1`（主讲=`1`、学服=`0`），active manifest/entry/purge=`1/8/0`。本机固定账号 Golden Path 复现“先学服、后同人主讲”并 1/1 通过；R1-Live 48/48、全量 Vitest 621 通过+1 条件跳过、CI 16/16。阈值为学服可空、冲突立即清除、当前步骤就地报错、合法建班不回归，全部满足 |
 | `commit_sha`, `migration_head`, `environment` | `6dfb3af96cc81ca09be9b662d7cb047025546019`；`20260822000300_r1_live_enrollment_status_transition`（未新增 migration）；本机隔离 Supabase + Xiaomi / production；数据库指纹 `10e3…1a0c` |
-| `dataset_manifest` | 产品负责人通过正式 UI 创建班级和 15 个课次；Agent 只读核查该结果。应用发布前后数据库保持班级/课次/报名/点名=`1/15/0/0`、主讲/学辅=`1/0`，未创建或修改账号、岗位、manifest、报名、点名或其他业务数据 |
-| `started_at`, `finished_at`, `actor`, `approver` | 首次失败 `2026-08-22T15:53:01.279Z`；修复 release 构建完成 `2026-08-22T16:25:29Z`；产品负责人执行正式建班，Codex 完成只读定位、实现、验证和发布；`swingislee`（报告创建失败并确认学辅留空触发路径） |
+| `dataset_manifest` | 产品负责人通过正式 UI 创建班级和 15 个课次；Agent 只读核查该结果。应用发布前后数据库保持班级/课次/报名/点名=`1/15/0/0`、主讲/学服=`1/0`，未创建或修改账号、岗位、manifest、报名、点名或其他业务数据 |
+| `started_at`, `finished_at`, `actor`, `approver` | 首次失败 `2026-08-22T15:53:01.279Z`；修复 release 构建完成 `2026-08-22T16:25:29Z`；产品负责人执行正式建班，Codex 完成只读定位、实现、验证和发布；`swingislee`（报告创建失败并确认学服留空触发路径） |
 | `command_or_runbook` | 生产 `operational_errors` 与业务计数只读查询、已登录页面只读检查；`pnpm r1:live:test`、`pnpm e2e:r1-live:golden`、`pnpm typecheck`、`pnpm messages:check`、`pnpm lint`、`pnpm build`、`pnpm ci:checks`；`scripts/ops/publish-mathin-xiaomi.ps1 -Action Publish` / `-Action Status`；公网 health、双语 login 与匿名建班重定向探针 |
 | `artifact_url_or_path`, `artifact_hash` | Git commit `6dfb3af96cc81ca09be9b662d7cb047025546019`；Xiaomi `/home/swing/services/mathin/releases/20260822-162416/release.json`；远端 immutable metadata 不复制到仓库，`artifact_hash=not_applicable` |
 | `retention`, `access_roles`, `failure_ticket` | 应用、测试与去标识化摘要随 Git 保留；immutable release 按现有发布策略保留；仓库维护者/Xiaomi 运维角色；`BUG-R1-LIVE-004` 已关闭 |

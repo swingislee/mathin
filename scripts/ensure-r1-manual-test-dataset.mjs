@@ -269,7 +269,7 @@ function inviteCode() {
   return crypto.randomBytes(4).toString("hex");
 }
 
-/** DATA-15：planning / active 两个测试班，各带主讲、学辅、学期、教室与课次。 */
+/** DATA-15：planning / active 两个测试班，各带主讲、学服、学期、教室与课次。 */
 async function ensureQaClass(admin, actors, term, course, { name, operationalStatus, room, capacity }) {
   let classroom = unwrap(await admin
     .from("classrooms")

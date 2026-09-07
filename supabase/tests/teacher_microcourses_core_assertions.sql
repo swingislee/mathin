@@ -4,7 +4,7 @@ begin;
 
 select id as admin_id from public.profiles where display_name = '测试-管理员' limit 1 \gset
 select id as teacher_id from public.profiles where display_name = '测试-教师' limit 1 \gset
-select id as other_teacher_id from public.profiles where display_name = '测试-学辅' limit 1 \gset
+select id as other_teacher_id from public.profiles where display_name in ('测试-学服', '测试-学辅') limit 1 \gset
 select id as reviewer_id from public.profiles where display_name = '测试-教务' limit 1 \gset
 
 \if :{?admin_id}

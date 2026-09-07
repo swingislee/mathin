@@ -156,14 +156,14 @@
 
 ### 正式建班与填写时校验证据
 
-生产记录确认产品负责人已成功创建 1 个 production 班级和 15 个课次，主讲分配 1 条、学辅 0 条；学辅本身是可选字段。此前失败是因为先选择学辅、再把同一人选为主讲后，学辅选项虽然从界面消失，客户端仍保留冲突 UUID，服务端直到最终提交才返回 `VALIDATION`。commit `6dfb3af96cc81ca09be9b662d7cb047025546019` 让主讲变化立即清除冲突学辅并提示，同时在每个向导步骤就地显示必填和格式错误；本机固定账号 Golden Path 复现该顺序并通过。应用已发布为 `20260822-162416`，service、loopback/Caddy/公网 health、双语登录及匿名建班重定向 postflight 均通过；应用发布没有写数据库或业务数据。
+生产记录确认产品负责人已成功创建 1 个 production 班级和 15 个课次，主讲分配 1 条、学服 0 条；学服本身是可选字段。此前失败是因为先选择学服、再把同一人选为主讲后，学服选项虽然从界面消失，客户端仍保留冲突 UUID，服务端直到最终提交才返回 `VALIDATION`。commit `6dfb3af96cc81ca09be9b662d7cb047025546019` 让主讲变化立即清除冲突学服并提示，同时在每个向导步骤就地显示必填和格式错误；本机固定账号 Golden Path 复现该顺序并通过。应用已发布为 `20260822-162416`，service、loopback/Caddy/公网 health、双语登录及匿名建班重定向 postflight 均通过；应用发布没有写数据库或业务数据。
 
 | 证据字段 | 值 |
 | --- | --- |
 | `gate_id`, `domain`, `result` | `R1-Live Gate 2`；正式建班与表单校验；该子项 `PASS`，Gate 2 整体仍 `BLOCKED` |
-| `measured_value`, `threshold` | 生产班级/课次/报名/点名=`1/15/0/0`、主讲/学辅=`1/0`；同一路由/digest 的失败记录 2 条；本机固定账号 Golden Path 1/1，R1-Live 48/48，CI 16/16。阈值为学辅可空、冲突即时清除、错误在字段所在步骤显示、合法建班路径通过，全部满足 |
+| `measured_value`, `threshold` | 生产班级/课次/报名/点名=`1/15/0/0`、主讲/学服=`1/0`；同一路由/digest 的失败记录 2 条；本机固定账号 Golden Path 1/1，R1-Live 48/48，CI 16/16。阈值为学服可空、冲突即时清除、错误在字段所在步骤显示、合法建班路径通过，全部满足 |
 | `commit_sha`, `migration_head`, `environment` | `6dfb3af96cc81ca09be9b662d7cb047025546019`；`20260822000300_r1_live_enrollment_status_transition`；本机隔离 Supabase + Xiaomi / production；数据库指纹 `10e3…1a0c` |
-| `dataset_manifest` | 真实班级与课次由产品负责人通过正式 UI 创建；Agent 只读核查。应用发布前后均为班级/课次/报名/点名=`1/15/0/0`、主讲/学辅=`1/0`、active manifest/entry/purge=`1/8/0` |
+| `dataset_manifest` | 真实班级与课次由产品负责人通过正式 UI 创建；Agent 只读核查。应用发布前后均为班级/课次/报名/点名=`1/15/0/0`、主讲/学服=`1/0`、active manifest/entry/purge=`1/8/0` |
 | `started_at`, `finished_at`, `actor`, `approver` | 首次失败 `2026-08-22T15:53:01.279Z`；release 构建完成 `2026-08-22T16:25:29Z`；产品负责人执行正式建班，Codex 定位、实现、验证和发布；`swingislee`（报告失败并确认触发路径） |
 | `command_or_runbook` | 生产错误与业务计数只读核查；`pnpm r1:live:test`、固定账号 `pnpm e2e:r1-live:golden`、typecheck/messages/lint/build/CI；Xiaomi 应用 publish/status 与 HTTP postflight |
 | `artifact_url_or_path`, `artifact_hash` | Git commit `6dfb3af96cc81ca09be9b662d7cb047025546019`；Xiaomi `/home/swing/services/mathin/releases/20260822-162416/release.json`；`artifact_hash=not_applicable` |
@@ -422,7 +422,7 @@ Agent 按 doc 04 的 standing execution direction 生成包含原 4 个 protecte
 2. **邮箱路径已完成，手机号路径已部署待验收**：正式管理员已为首名真实教师邮箱生成一次性员工邀请码并通过受控渠道交付；手机号绑定员工邀请与 password 登录现已在 Xiaomi 启用，但尚未创建真实手机号邀请或账号。
 3. **注册与岗位已完成**：教师已在 `/signup` 自行注册；正式管理员分配的 `research` 与 `teacher` 双岗位均有效，现有 active manifest 已保护该身份。教师的 production password 登录与授权范围仍在后续人工闭环中核对。邮箱、手机号、微信和 QQ 最终都绑定同一 `auth.users.id`，不得为登录方式复制 profile。
 4. **花名册/报名已有首条事实**：生产只读核查确认现有班级已有 1 条 active 报名；学生可识别字段不进入 Git/聊天证据。
-5. **建班与学年归属已完成**：管理员已使用 `/dashboard/classes/new` 创建 1 个 `purpose=production` 班级和 15 个课次；学辅可留空。班级、课次和报名现归 `2026–2027` 秋季；教师可使用 immutable release，也可冻结 `releaseId=null` 的空白/本次覆盖快照。
+5. **建班与学年归属已完成**：管理员已使用 `/dashboard/classes/new` 创建 1 个 `purpose=production` 班级和 15 个课次；学服可留空。班级、课次和报名现归 `2026–2027` 秋季；教师可使用 immutable release，也可冻结 `releaseId=null` 的空白/本次覆盖快照。
 6. 固定开发账号继续只用于开发验证；正式教师只分配 production 班级。任何 reset、seed、rebuild 或 testdata purge 在命中目标指纹或受保护对象 manifest 时必须拒绝。
 
 自由班可以直接启用，但不会自动生成课次。Gate 2 必须有至少 1 个可进入的真实课次，因此最小闭环可以选择一门启用中的 production 课程生成课次，或先建自由班再通过正式 UI 添加课次；不得用一次性 SQL 补造业务事实。

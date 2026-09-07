@@ -32,9 +32,9 @@
 
 **做**：
 
-1. 角色与权限（**可配置 RBAC**，2026-07-09 用户拍板）：员工岗位角色（校长/主管/教研/教师/学辅/兼职 + 系统管理员）不再是固定枚举，而是数据行；管理员按**权限键**颗粒度勾选每个角色能做什么。见 §3。
+1. 角色与权限（**可配置 RBAC**，2026-07-09 用户拍板）：员工岗位角色（校长/主管/教研/教师/学服/兼职 + 系统管理员）不再是固定枚举，而是数据行；管理员按**权限键**颗粒度勾选每个角色能做什么。见 §3。
 2. 课程体系：`courses` / `course_lectures` 两表 + 管理页 + 教学计划种子数据导入。
-3. 学生档案（CRM 核心）：`students` / `student_guardians` / `student_follow_ups`，学生列表 + 360° 档案页 + 跟进时间线；学辅（销售）为跟进人 `assigned_to`。
+3. 学生档案（CRM 核心）：`students` / `student_guardians` / `student_follow_ups`，学生列表 + 360° 档案页 + 跟进时间线；学服（销售）为跟进人 `assigned_to`。
 4. 建班报名排课：`classrooms` 挂接课程、`enrollments` 报名关系、`class_sessions` 挂接讲次与上课时间、批量排课。
 5. 课表视图：按周的日历课表（全校 / 按教师 / 本人 / 孩子四种切面）。
 6. 考勤与学情：`session_attendance` 点名 + 学生学情聚合（出勤/星星/作业成绩）。
@@ -56,7 +56,7 @@
 固定枚举 `role` 不足以表达「管理员按颗粒度配置权限」。改为**双层**：
 
 - **第一层 · 身份类（`profiles.role`，仍是枚举）**：`student`（默认）| `parent` | `staff` | `admin`。这一层只区分「你是哪一类人」——顾客侧的学生/家长，员工侧的 staff，以及系统管理员 admin。**RLS 的行级作用域基于这一层 + 数据关系**（我是不是这个学生的跟进人/任课教师、我是不是 owner），不基于细粒度权限键——RLS 里塞几十个权限键既慢又难维护，也没必要（敏感写全走 Server Action / RPC，见 §4.5）。
-- **第二层 · 岗位与权限（可配置 RBAC，表驱动）**：员工的**岗位角色**（校长/主管/教研/教师/学辅/兼职…）是 `staff_roles` 表的数据行，管理员可增删改名；每个岗位角色勾选一组**权限键**（`role_permissions`）；员工可挂**多个**岗位角色，有效权限 = 并集。**功能级授权（能看哪个菜单、能点哪个按钮、能进哪个页面、能发起哪个操作）基于这一层**，在 Server Action 开头与 UI 渲染时用 `hasPerm(uid, key)` 判定。
+- **第二层 · 岗位与权限（可配置 RBAC，表驱动）**：员工的**岗位角色**（校长/主管/教研/教师/学服/兼职…）是 `staff_roles` 表的数据行，管理员可增删改名；每个岗位角色勾选一组**权限键**（`role_permissions`）；员工可挂**多个**岗位角色，有效权限 = 并集。**功能级授权（能看哪个菜单、能点哪个按钮、能进哪个页面、能发起哪个操作）基于这一层**，在 Server Action 开头与 UI 渲染时用 `hasPerm(uid, key)` 判定。
 
 一句话分工：**RLS 管「你能碰哪些行」（结构性、关系驱动、写死）；权限键管「你能用哪些功能」（配置性、管理员可调）。** 两层叠加即最终可见/可为。
 
@@ -68,7 +68,7 @@
 | 主管 director | 教务全权 + 财务查看/收款 + 学情/报告全校可见；无权限配置、无退费审批 |
 | 教研 research | 课程与课件模板读写、学情只读；无学生跟进、无财务 |
 | 教师 teacher | 我的班级：学生基本档案与跟进读写、排课/点名/批改、课件覆盖层编辑 |
-| 学辅 sales（=销售） | 学生线索与跟进读写（我负责的）、报名下单、优惠券使用、查看我名下学生的报名与回款；无课件、无排课 |
+| 学服 sales（=销售） | 学生线索与跟进读写（我负责的）、报名下单、优惠券使用、查看我名下学生的报名与回款；无课件、无排课 |
 | 兼职 part-time | 最小集：我的班级点名 + 我的课表；默认无学生档案写、无财务 |
 
 - `admin`（系统管理员，`profiles.role='admin'`）是**超级用户**：绕过权限键检查（`hasPerm` 对 admin 恒真），负责配置 `staff_roles`/`role_permissions`、授予员工角色。校长岗位角色可被配置到接近 admin，但**权限配置本身（`permission.configure`）默认只给 admin 与校长**——防止普通员工给自己提权。
@@ -220,7 +220,7 @@ is_staff(uid)            -- profiles.role in ('staff','admin')
 has_perm(uid, key)       -- admin 恒 true；否则 exists(staff_role_members ⋈ role_permissions where perm_key=key)
 staff_has_perm(uid, key) -- = has_perm，供 RLS 内联调用（命名区分：RLS 里只用它判「全局 vs 仅本人」）
 teacher_of_student(sid, uid)  -- uid 是某教室 teacher 成员且该教室有 sid 的 active enrollment
-assigned_of_student(sid, uid) -- students.assigned_to = uid（学辅/跟进人边界）
+assigned_of_student(sid, uid) -- students.assigned_to = uid（学服/跟进人边界）
 ```
 
 **RPC**（security definer）：
@@ -275,7 +275,7 @@ students (
   tags text[] not null default '{}',
   parent_name text not null default '', parent_relation text not null default '',
   parent_phone text not null default '',                            -- CRM 纯文本家长信息（无账号也要能记）
-  assigned_to uuid references profiles,                             -- 跟进人（学辅/销售），由 has_perm('student.assign') 者分配
+  assigned_to uuid references profiles,                             -- 跟进人（学服/销售），由 has_perm('student.assign') 者分配
   follow_up_status text not null default 'pending'
     check (follow_up_status in ('pending','following','invited','trialed','signed','lost')),
   last_follow_up_at timestamptz, next_follow_up_at timestamptz,     -- 由触发器随 follow_ups 插入更新
@@ -348,13 +348,13 @@ create index enrollments_classroom_idx on enrollments (classroom_id) ;
 -- RPC：enroll_student(classroom_id, student_id, remark[, order 相关见 §5.7])
 --      transfer_student(student_id, from_classroom, to_classroom, remark)   -- 原行置 transferred_out+left_at，新班插 active，单事务
 --      withdraw_student(enrollment_id, remark)
--- 三个 RPC 需 has_perm('class.manage')（学辅报名另经 §5.7 下单 RPC，内部调 enroll）；
+-- 三个 RPC 需 has_perm('class.manage')（学服报名另经 §5.7 下单 RPC，内部调 enroll）；
 -- 报名时 status='lead/trialing' 的学生自动升 'enrolled'
 ```
 
 **开课冻结 RPC/Action**：P4B-3 必须把现有 `startClassSession()` 改为服务端事务：锁定 `class_sessions` 行；若 `lecture_id` 非空且 `courseware_frozen_at` 为空，则读取 `course_lectures.courseware_template` + `courseware_overlay`，服务端校验/resolve 后写入 `class_sessions.courseware` 与 `courseware_frozen_at`；再写 `started_at`。客户端必须在该事务成功后再广播 `session_ctl:start`。`mode=rehearsal` 不调用冻结事务。
 
-> **报名 ↔ 下单的关系**：教务上的「报名」（enrollments，进班的事实）与财务上的「下单收费」（orders，§5.7）是两件事但常同时发生。约定：学辅走 `place_order` RPC 一步完成「建订单 + 报名进班」（单事务）；admin/主管也可只报名不建单（试听/免费/内部）或只建单不进班（补费）。`enroll_student` 保持可独立调用，`place_order` 内部复用它。
+> **报名 ↔ 下单的关系**：教务上的「报名」（enrollments，进班的事实）与财务上的「下单收费」（orders，§5.7）是两件事但常同时发生。约定：学服走 `place_order` RPC 一步完成「建订单 + 报名进班」（单事务）；admin/主管也可只报名不建单（试听/免费/内部）或只建单不进班（补费）。`enroll_student` 保持可独立调用，`place_order` 内部复用它。
 
 ### 5.5 考勤（P4B-5）
 
@@ -465,7 +465,7 @@ get_my_orders()                                   -- 学生/家长读本人/孩�
 get_my_account()                                  -- 学生/家长读本人/孩子账户余额与白名单流水
 ```
 
-**RLS**：所有财务表 admin 全权；staff 依 `finance.*` 各键读/写（`finance.order.view` 决定能否 select 全量订单，否则仅自己经手 `created_by=我` 或 `students.assigned_to=我` 的订单/收款，避免代收款后学辅看不到自己学生回款）；写一律走上列 RPC，表级不给 insert/update。学生/家长无表级 select，只经 `get_my_orders`/`get_my_account`。触发器：`payments`/`account_ledger`/`refunds` 变动后重算 `orders.status` 与 `student_accounts.balance`（幂等，按流水求和，不做增量写回——防并发错账）。
+**RLS**：所有财务表 admin 全权；staff 依 `finance.*` 各键读/写（`finance.order.view` 决定能否 select 全量订单，否则仅自己经手 `created_by=我` 或 `students.assigned_to=我` 的订单/收款，避免代收款后学服看不到自己学生回款）；写一律走上列 RPC，表级不给 insert/update。学生/家长无表级 select，只经 `get_my_orders`/`get_my_account`。触发器：`payments`/`account_ledger`/`refunds` 变动后重算 `orders.status` 与 `student_accounts.balance`（幂等，按流水求和，不做增量写回——防并发错账）。
 
 ### 5.7 种子数据（P4B-1 内执行）
 
@@ -526,15 +526,15 @@ src/app/[locale]/dashboard/
 
 ## 7. 首屏规格（`/dashboard` page.tsx 按身份分发 → staff 内部按权限自适应）
 
-身份分三支：`staff`（含 admin）走**卡片自适应工作台**、`student`、`parent`。staff 工作台不再按固定岗位分「admin 首屏/teacher 首屏」，而是**一组卡片各自声明 `requiredPerm`，命中则渲染**——校长看到全部，教师只看到与教学相关的几张，学辅只看到线索与业绩几张。这样多岗位（主管+教师）自然并集，无需分发逻辑。
+身份分三支：`staff`（含 admin）走**卡片自适应工作台**、`student`、`parent`。staff 工作台不再按固定岗位分「admin 首屏/teacher 首屏」，而是**一组卡片各自声明 `requiredPerm`，命中则渲染**——校长看到全部，教师只看到与教学相关的几张，学服只看到线索与业绩几张。这样多岗位（主管+教师）自然并集，无需分发逻辑。
 
 **staff 工作台卡片池**（每张标注 requiredPerm，无权限则不渲染；全空时给通用欢迎卡）：
 
 1. 统计卡行（`student.view.all`）：在读学生数 / 潜在学生数（lead+trialing）/ 本周课次数 / 逾期待跟进数。
 2. 「今日课表」卡（`schedule.view.all` 看全校 / 否则看我的）：今天 class_sessions（时间、班级、讲次名、教师）。
 3. 「生源漏斗」卡（`student.view.all`）：follow_up_status 六档计数横向条（纯 div 宽度百分比，不引图表库）。
-4. 「我的待跟进」卡（`followup.view`）：我名下 next_follow_up_at 逾期的学生（学辅的核心视图）。
-5. 「本月业绩」卡（`finance.order.view`）：我经手订单的应收/实收合计、报名人数（学辅/主管看业绩）。
+4. 「我的待跟进」卡（`followup.view`）：我名下 next_follow_up_at 逾期的学生（学服的核心视图）。
+5. 「本月业绩」卡（`finance.order.view`）：我经手订单的应收/实收合计、报名人数（学服/主管看业绩）。
 6. 「我的课与待办」卡（`class.view.mine`）：我任教班级的今日/本周课 + 待批改 + 未备课课次，每条给「课件/候课/上课」直达链接（复用 P4 路由）。
 7. 「我的班级」卡（`class.view.mine`）：班级名、在读人数/容量、进度（已上/总课次）。
 8. 「财务概览」卡（`finance.report.view`）：本月应收/实收/退费合计、欠费订单数。
@@ -556,7 +556,7 @@ src/app/[locale]/dashboard/
 三栏/三 tab（移动端 tab 化）：
 
 1. **资料**：基本信息表单（`student.edit` 可改基本列，admin 全改）、状态徽章 + 状态变更（含 `student.assign` 才见的跟进人分配）、标签、家长信息、绑定状态（账号/家长绑定情况 + 绑定码展示，staff 可见码）。
-2. **跟进**（`followup.view` 才渲染此 tab）：时间线（倒序，作者头像+类型徽章+内容+下次跟进时间），顶部快捷添加表单（内容、类型四选、下次跟进时间、跟进状态变更下拉，`followup.write` 才可提交）。这是教师与学辅的日常写入口，交互要轻（提交后乐观追加）。
+2. **跟进**（`followup.view` 才渲染此 tab）：时间线（倒序，作者头像+类型徽章+内容+下次跟进时间），顶部快捷添加表单（内容、类型四选、下次跟进时间、跟进状态变更下拉，`followup.write` 才可提交）。这是教师与学服的日常写入口，交互要轻（提交后乐观追加）。
 3. **学习**：报名记录（班级、状态、起止）→ 课表（该生班级的未来课次）→ 学情汇总：出勤统计（present/absent/late/leave 计数与出勤率）、课堂星星总数（有账号时聚合 session_events type='star' − 'star_undo'）、作业成绩列表（submissions join assignments）。聚合逻辑写成纯函数 `src/features/school/learning.ts`，学生/家长端复用同一函数的只读渲染。
 4. **费用**（`finance.order.view` 才渲染此 tab）：该生订单列表、缴费/退费记录、账户余额与流水；下单/收款/退费/发券/发奖学金按钮各按对应 `finance.*` 键显隐。
 
@@ -569,8 +569,8 @@ src/app/[locale]/dashboard/
 - **P4B-4 课表视图**：`/dashboard/schedule` 周视图（CSS grid：7 列 × 时间轴行，课次块显示 时间/班级/讲次/教师；上一周/下一周/回今天；`schedule.view.all` 加教师筛选下拉）；切面（`schedule.view.all` 全校、否则本人任教、student 本人班级、parent 孩子班级——后两者经 `get_my_schedule` RPC）；同教师同时段重叠的课次块标冲突色（token 内的警示色）。验收：各身份各自只见该见的课；冲突排课出现标记。
 - **P4B-5 考勤与学情**：§5.5 migration + `get_my_attendance`；班级详情/课次行加「点名」抽屉（`attendance.mark`）：按 enrollments 花名册逐人四态 upsert，**有账号且该 session 有其 user 事件的默认预填 present**；§8 档案页「学习」tab 补全（`learning.ts` 聚合纯函数 + 渲染）。验收：点名幂等（重复提交不重复计）；出勤率计算与手工数数一致；parent 经 RPC 只能拿到自己孩子的考勤。
 - **P4B-6 财务模块**：§5.6 migration（八表 + 触发器重算 status/balance + 全部财务 RPC）；`/dashboard/finance` 页（子 tab：订单/收款/退费/优惠券/奖学金/账户，各按 `finance.*` 键显隐）；档案页「费用」tab（下单弹窗：选班级+课程费/教辅费明细 → 选券/奖学金 → 服务端算应收 → 建单，`finance.order.create`；收款、发起退费、审批退费、发券、发奖学金、账户预存/扣费按钮各按键显隐）；student/parent 首屏「我的费用」卡（`get_my_orders`/`get_my_account`）。验收：`place_order` 一步建单+进班、应收由服务端算（前端篡改 due 无效）；分次收款累计达应收自动 paid；退费金额超可退额被 RPC 拒；`method='account'` 收款余额不足被拒；无 `finance.refund.approve` 的员工调审批 RPC 被拒且不改数据；学生越权直读 orders 被拒、`get_my_orders` 只返回本人；账户余额 = 流水求和（并发两笔收款不错账）。
-- **P4B-7 staff 工作台首屏**：按 §7 实装 staff 工作台卡片池（此前是骨架空态），每张卡服务端判 `hasPerm` 决定是否查询与渲染；统计/聚合查询在 Server Component 内 `Promise.all` 并行，单卡 try/catch 落空态。验收：校长看到全部卡、纯教师只见教学卡、学辅只见线索+业绩卡，与手工勾选的权限一致；各卡数字与 SQL 手查一致。
-- **P4B-8 学生与家长端收尾与全链路验收**：student 首屏三卡 + parent 首屏与 `/dashboard/children`（§7）；`claim_student_account`/`bind_guardian` 绑定表单闭环；全后台亮/暗 × 桌面/移动回归截图报批；memory 与 roadmap 状态更新。验收：Playwright 全链路——admin 配岗位权限 → 建课建班 → 学辅报名下单收款 → 学生绑码 → 家长绑码 → 教师点名跟进 → 学生/家长各自看到课表/学情/费用；越权用例全被拒（student 调 `admin_set_identity`、无权员工调财务/权限 RPC、parent 直读 follow_ups、跨家长读别人孩子、前端篡改权限键或订单金额）。
+- **P4B-7 staff 工作台首屏**：按 §7 实装 staff 工作台卡片池（此前是骨架空态），每张卡服务端判 `hasPerm` 决定是否查询与渲染；统计/聚合查询在 Server Component 内 `Promise.all` 并行，单卡 try/catch 落空态。验收：校长看到全部卡、纯教师只见教学卡、学服只见线索+业绩卡，与手工勾选的权限一致；各卡数字与 SQL 手查一致。
+- **P4B-8 学生与家长端收尾与全链路验收**：student 首屏三卡 + parent 首屏与 `/dashboard/children`（§7）；`claim_student_account`/`bind_guardian` 绑定表单闭环；全后台亮/暗 × 桌面/移动回归截图报批；memory 与 roadmap 状态更新。验收：Playwright 全链路——admin 配岗位权限 → 建课建班 → 学服报名下单收款 → 学生绑码 → 家长绑码 → 教师点名跟进 → 学生/家长各自看到课表/学情/费用；越权用例全被拒（student 调 `admin_set_identity`、无权员工调财务/权限 RPC、parent 直读 follow_ups、跨家长读别人孩子、前端篡改权限键或订单金额）。
 
 ## 10. 隐含坑清单（执行 agent 必读，08-§7 全部继续有效）
 

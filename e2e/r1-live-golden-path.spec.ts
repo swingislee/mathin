@@ -45,8 +45,8 @@ test("principal builds an incomplete-course class and its teacher persists and r
     await page.getByRole("option", { name: fixture.teacherDisplayName, exact: true }).click();
     await staffSelectors.first().click();
     await page.getByRole("option", { name: fixture.teacherDisplayName, exact: true }).click();
-    await expect(page.getByText("原学辅与新主讲为同一人，已改为暂不指定学辅。", { exact: true })).toBeVisible();
-    await expect(staffSelectors.nth(1)).toContainText("暂不指定学辅");
+    await expect(page.getByText("原学服与新主讲为同一人，已改为暂不指定学服。", { exact: true })).toBeVisible();
+    await expect(staffSelectors.nth(1)).toContainText("暂不指定学服");
     await page.getByRole("button", { name: "下一步", exact: true }).click();
 
     await page.getByRole("combobox").first().click();

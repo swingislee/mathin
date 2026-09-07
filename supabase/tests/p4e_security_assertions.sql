@@ -3,13 +3,13 @@
 begin;
 
 do $$ begin
-  if not exists(select 1 from public.profiles where display_name='测试-学辅')
+  if not exists(select 1 from public.profiles where display_name in ('测试-学服', '测试-学辅'))
      or not exists(select 1 from public.profiles where display_name='测试-学生') then
     raise exception 'P4E_FIXTURES_MISSING: seed the fixed 测试-* accounts first';
   end if;
 end $$;
 
-select id as sales_id from public.profiles where display_name='测试-学辅' limit 1 \gset
+select id as sales_id from public.profiles where display_name in ('测试-学服', '测试-学辅') limit 1 \gset
 select id as admin_id from public.profiles where display_name='测试-管理员' limit 1 \gset
 select id as teacher_id from public.profiles where display_name='测试-教师' limit 1 \gset
 select id as student_user_id from public.profiles where display_name='测试-学生' limit 1 \gset
@@ -36,7 +36,7 @@ select cs.id as member_session_id from public.class_sessions cs
  where cm.user_id=:'student_user_id' and cm.role='student' and cs.deleted_at is null limit 1 \gset
 \if :{?foreign_student_id}
 \else
-  \echo P4E fixtures missing: no foreign student for 测试-学辅
+  \echo P4E fixtures missing: no foreign student for 测试-学服
   select 1 / 0;
 \endif
 \if :{?member_session_id}
@@ -79,7 +79,7 @@ begin
 end $$;
 reset role;
 
--- view.assigned 学辅读取非名下、非任课学生必须得到 0 行。
+-- view.assigned 学服读取非名下、非任课学生必须得到 0 行。
 set local role authenticated;
 select set_config('request.jwt.claim.sub',:'sales_id',true);
 select (count(*)=0) as assigned_scope_ok from public.students where id=:'foreign_student_id' \gset

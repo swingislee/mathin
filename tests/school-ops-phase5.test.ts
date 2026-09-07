@@ -27,7 +27,7 @@ function opportunity(
     termName: "2026–2027 学年 · 寒假",
     stage,
     ownerId: "owner-1",
-    ownerName: "学辅老师",
+    ownerName: "学服老师",
     nextAction: "确认下周期安排",
     nextActionAt: null,
     note: "",

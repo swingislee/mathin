@@ -28,7 +28,7 @@ const checks = ['scripts/sql/assessment-stage-workflow-assertions.sql', 'scripts
 let identities = '';
 if (mode === '--check') {
   const manifest = fs.readFileSync('.claude/test-accounts.local.md', 'utf8');
-  const roles = { admin: /^管理员\s+admin(?:\s|$)/, support: /^学辅\/前台\s+staff\/sales(?:\s|$)/,
+  const roles = { admin: /^管理员\s+admin(?:\s|$)/, support: /\bstaff\/sales(?:\s|$)/,
     teacher: /^教师\s+staff\/teacher(?:\s|$)/, other: /^教研\s+staff\/research(?:\s|$)/ };
   for (const [role, pattern] of Object.entries(roles)) {
     const cells = manifest.split(/\r?\n/).map(line => line.split('|').slice(1,-1).map(cell => cell.replace(/[*_`]/g,'').trim()))

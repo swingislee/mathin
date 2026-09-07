@@ -4,7 +4,7 @@ begin;
 
 select id as admin_id from public.profiles where display_name = '测试-管理员' limit 1 \gset
 select id as teacher_id from public.profiles where display_name = '测试-教师' limit 1 \gset
-select id as other_staff_id from public.profiles where display_name = '测试-学辅' limit 1 \gset
+select id as other_staff_id from public.profiles where display_name in ('测试-学服', '测试-学辅') limit 1 \gset
 select
   lecture_value.id as lecture_id,
   course_value.id as course_id,
@@ -32,7 +32,7 @@ limit 1 \gset
 \endif
 \if :{?other_staff_id}
 \else
-  \echo SML-0 fixtures missing: 测试-学辅
+  \echo SML-0 fixtures missing: 测试-学服
   select 1 / 0;
 \endif
 \if :{?lecture_id}

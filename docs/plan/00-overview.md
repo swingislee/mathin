@@ -65,7 +65,7 @@ R1-Live 不缩减 1.0 产品合同。它只保留两个结果 Gate：原范围�
 | --- | --- |
 | 公开入口 | `/[locale]/story`、`games`、`minds`、`terms`、`tools`；Notebook 公开详情允许未登录阅读 |
 | 登录入口 | `/[locale]/notebook/me`、`classroom`、`whiteboard`、`dashboard/**`、`studio/courseware/**` |
-| 顶层身份 | `student`、`parent`、`staff`、`admin`；教师、教务、教研、学辅、销售、财务属于 staff 权限/角色 |
+| 顶层身份 | `student`、`parent`、`staff`、`admin`；教师、教务、教研、学服、销售、财务属于 staff 权限/角色 |
 | 登录身份 | `auth.users.id` 是唯一账号/业务主体；邮箱、手机号、微信和 QQ 只作为可绑定到该 UUID 的 identity，不得为同一人创建四个 profile。密码属于账号；验证码登录不得隐式注册；OAuth 新身份只在已有会话或完成账号恢复后绑定，详见 [`r1-live-auth-identities.md`](r1-live-auth-identities.md) |
 | 服务端认证 | `requireUser(locale)` → `supabase.auth.getUser()`；Proxy 只刷新 Cookie 和做乐观跳转 |
 | 授权 | 数据库 RLS；前端隐藏按钮不构成授权 |
@@ -139,7 +139,7 @@ R1-Live 不缩减 1.0 产品合同。它只保留两个结果 Gate：原范围�
 - 当前子阶段以 doc 04 顶部为准；2026-08-23 进入 `R1-Live-2 · 生产单老师试用`，首个 Gate 2 闭环仍固定为正式教师整班点名、持久再读和权限对照。
 - 当前采用双轨执行：生产端只由 1 名正式教师在既有正式数据上小范围试用，开发端可并行尝试产品负责人选中的新功能。新功能须在隔离开发目标完成相关机器检查和产品负责人初步验收，再以独立可回退提交经过生产 preflight、发布与 postflight；开发通过、已部署待验收和生产通过必须分别记录。
 - `DEV-CW-1` 当前为 `STEP 8E PRODUCTION DEPLOYED / MACHINE POSTFLIGHT PASSED / PENDING PRODUCT ACCEPTANCE`：产品负责人明确授权生产发布后，最终窄范围候选 `8c50b48…` 已从实际生产基线 `750bd607…` 发布。6 条 migration 先完成 PostgreSQL 写前备份与 `SERIALIZABLE` 回滚／零残留演练，再正式把 ledger/head 推进为 `242 / 20260903000700_courseware_page_insertions`；应用 current/previous=`20260903-115645` / `8c50b48…` 与 `20260903-100016` / `750bd607…`。77,224 个页面及资源、release、冻结会话和 Storage 计数均未改变；服务、健康、鉴权、canonical 路由和错误增量 postflight 通过。本批没有全量备份／测试或 Storage 写入，真实用户工作流仍待产品负责人在生产验收。
-- `DEV-SCHOOL-OPS-1` 的首联部分已于 2026-09-06 用户验收通过；代码版本、保护边界及后续升级参考统一见 [首联已验收保护基线](school-support-followup-panel-contract.md#10-首联已验收保护基线)。其他学辅切片继续按 doc 30 分别建设和验收；本次确认不关闭整个 Phase 或 R1-Live Gate，也不表示获准部署或已部署生产。
+- `DEV-SCHOOL-OPS-1` 的首联部分已于 2026-09-06 用户验收通过；代码版本、保护边界及后续升级参考统一见 [首联已验收保护基线](school-support-followup-panel-contract.md#10-首联已验收保护基线)。其他学服切片继续按 doc 30 分别建设和验收；本次确认不关闭整个 Phase 或 R1-Live Gate，也不表示获准部署或已部署生产。
 - `DEV-STAFF-ONBOARD-1` 当前为 `DEVELOPMENT READY / AWAITING PRODUCT OWNER UI AND INTERACTION ACCEPTANCE`：主管及以上可从员工页粘贴 Mathin 三列或魔法校 Tab 四列名单，预检后直接建立 Auth 账号、员工档案和岗位；档案立即可用于排课。首次登录密码只在本次交接清单出现，Auth 建档触发完成后同事务清除临时元数据键；员工登录后必须输入并二次确认新密码，完成前本人 staff 权限与 staff-wide RLS fail closed，完成后再自行处理必要同意。员工尚未完成首次改密时，持有 `staff.invite` 的主管可重新生成一次性显示的新首次密码，旧密码立即失效；完成改密后该入口关闭，不扩展成通用代改密码。`staff.invite` 与完整 `staff.manage` 分离；本机迁移、数据库回滚断言、相关 Vitest、ESLint、TypeScript、双语键和类型摘要已通过。该功能未进入 Xiaomi／生产，仍待产品负责人页面、首次登录和交接验收。
 - `DEV-ORG-1` 当前为 `DEPLOYED / PENDING USER ACCEPTANCE`：机构资料、校区/教室目录、课表学年/日历/排课默认和系统能力发布已按工作对象拆分；7 个兼容 migration 与应用 `34f07e8…` 已在 Xiaomi 通过备份、完整回滚/零残留演练、正式迁移和机器 postflight。生产唯一旧教室文本 `3305` 已在唯一活跃校区内生成结构化教室，并回填 1 个班级和 15 个课次；兼容字段与旧 RPC 继续保留一个回退窗口。登录态 Chrome 刷新超时，生产页面人工验收仍 pending；本项不修改 R1-Live Gate 2。
 - `DEV-DASH-1` 当前为 `DEPLOYED / PENDING USER ACCEPTANCE`：后台侧栏改为总览、学科运营、教学、教研、组织管理和系统管理；学年、教学日历和唯一一项排课默认合并到 `/dashboard/academic-years`，旧设置与旧排课子路径直接退役且不重定向；个人班级默认优先、全部班级使用分页表格，课件资源库每页只读取并签名 10 条。定向合同 22/22、固定账号 Playwright 2/2 与 production build 已通过，生产 route manifest 已确认新路径存在、旧设置路径不存在；生产页面人工验收仍 pending。

@@ -4,7 +4,7 @@
 
 ## 身份与授权
 
-- 顶层身份只有 `student | parent | staff | admin`；教师、教务、教研、学辅、销售等属于 staff 岗位/权限，不得新增平行顶层角色。
+- 顶层身份只有 `student | parent | staff | admin`；教师、教务、教研、学服、销售等属于 staff 岗位/权限，不得新增平行顶层角色。
 - 受保护页面统一调用 `src/lib/auth.ts` 的 `requireUser(locale)`，内部使用 `supabase.auth.getUser()`；未经专门鉴权迁移不得绕过、复制或替换。
 - 服务端授权禁止信任 `getSession()` 返回的用户。`src/proxy.ts` 只刷新 Cookie 并做乐观跳转，真实授权依赖数据库 RLS。
 - 登录/注册 Action 位于 `src/app/[locale]/(auth)/actions.ts`，其 `next` 参数必须防 open redirect；OAuth/邮箱确认回调位于 `src/app/[locale]/auth/callback/route.ts`。浏览器、服务端和环境校验分别复用 `src/lib/supabase/client.ts`、`server.ts` 和 `config.ts`。

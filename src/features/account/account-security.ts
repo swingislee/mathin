@@ -3,6 +3,7 @@ import "server-only";
 import type { User } from "@supabase/supabase-js";
 import type { Profile, ProfileRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { normalizeStaffRoleName } from "@/features/school/staff-role-input";
 
 export type ConsentKind = "privacy" | "children_privacy";
 export type ConsentDecision = "granted" | "withdrawn" | null;
@@ -185,7 +186,7 @@ export async function getAccountCenterSnapshot(user: User, profile: Profile): Pr
   const staffRoles = (staffRoleResult.data ?? []).flatMap((row) => {
     if (Array.isArray(row.staff_roles)) return row.staff_roles;
     return row.staff_roles ? [row.staff_roles] : [];
-  });
+  }).map((role) => ({ ...role, name: normalizeStaffRoleName(role.name) }));
 
   return {
     ...(securityResult.data as unknown as AccountSecuritySnapshot),

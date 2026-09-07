@@ -45,7 +45,7 @@ student.delete       // 软删学生（进回收站）与恢复
 | director | activity.manage, activity.register, review.write, video.review, student.import |
 | registrar 教务 | activity.manage, activity.register, student.import, student.delete |
 | teacher | review.write, video.review |
-| sales 学辅 | activity.register, student.import |
+| sales 学服 | activity.register, student.import |
 | research 教研 | （无——出门测质量反查是 🌱 面板，用既有 report.view.all 读） |
 | part_time 兼职 | （默认无；地推名单录入是否给 student.import 由管理员在矩阵里勾，见 11-§0.10） |
 
@@ -68,7 +68,7 @@ create_student(...)      -- 已存在；create or replace 加 p_region/p_source/
 import_students(rows jsonb)  -- has_perm('student.import')；单事务逐行：
                          --   {name*, phone, grade, region, source, remark}；name 空→计入 errors；
                          --   phone 非空且已存在同 phone 未删学生→跳过计 dup；插入行 status='lead'、
-                         --   assigned_to=调用者（学辅自录自跟；管理员导入后再分派）、bind_code 服务端生成；
+                         --   assigned_to=调用者（学服自录自跟；管理员导入后再分派）、bind_code 服务端生成；
                          --   返回 jsonb {inserted, dup, errors:[{row,reason}]}；≤500 行/次，超限整体拒
 soft_delete_student(id) / restore_student(id)  -- has_perm('student.delete')；置/清 deleted_at；
                          --   已有 active enrollment 的学生拒删（提示先退班）
@@ -126,7 +126,7 @@ session_reviews (
 )
 -- 辅助 can_review_session(cid, uid) = has_perm('review.write') and (is_classroom_teacher or can_manage_classroom)
 --   —— 照抄 20260709000700 的 can_mark_attendance 模式（security definer 全套）
--- RLS：admin 全权；can_review_session 读写（upsert）；staff 读 = can_access_student(student)（学辅看名下学情）；
+-- RLS：admin 全权；can_review_session 读写（upsert）；staff 读 = can_access_student(student)（学服看名下学情）；
 --      student/parent 无表级读，走白名单 RPC get_my_session_reviews(from,to)：本人/孩子的
 --      session/讲次名/entry/exit/三维/comment + 该课次 knowledge_summary
 -- knowledge_summary 的写：Server Action 判 review.write + 本班（同 can_review_session），单列 update
@@ -164,7 +164,7 @@ Server Actions（全部走既有 RLS，course.manage / class.manage 键）：`cr
 
 ## 4. 页面与面板规格
 
-### 4.1 活动管理页 `/dashboard/activities`（nav 项 activities，requiredPerm activity.register，教务/学辅/主管可见）
+### 4.1 活动管理页 `/dashboard/activities`（nav 项 activities，requiredPerm activity.register，教务/学服/主管可见）
 
 - 页头 actions：「新建活动」（activity.manage）——弹窗：类型五选/标题/时间/时长/地点/容量/备注。
 - 主体：即将举行（升序）与已结束（降序折叠）两组；活动卡：类型徽章（五类五个 icon）、标题、时间地点、**报名 n / 到场 m / 容量 c**；卡内展开报名名单：学生名（链 360°）/状态徽章/结论摘要 + 行内「到场/爽约」登记按钮与结论输入（mark_activity_result）；「添加学生」搜索框（作用域内学生，book_activity）。
@@ -226,12 +226,12 @@ textarea 粘贴 CSV/TSV（表头可有可无，列序固定：姓名,电话,年�
 
 | # | 内容 | 关键验收 |
 | --- | --- | --- |
-| **P4D-0** | §3.1 学生域 migration（region/deleted_at/import_students/soft_delete/create_student 扩参）+ §4.2 批量导入页 + §4.3 360° 补齐（编辑/状态/分派/软删/回收站）+ 软删过滤清单逐处落 | 导入 3 行含 1 重复 1 缺名 → 报告 1 成功 1 dup 1 error；软删学生从列表/搜索/漏斗/顾客端 RPC 全消失、回收站可恢复；有 active 报名的学生拒删；学辅编辑名下学生资料成功、改 assigned_to 被列级 grant 拒 |
+| **P4D-0** | §3.1 学生域 migration（region/deleted_at/import_students/soft_delete/create_student 扩参）+ §4.2 批量导入页 + §4.3 360° 补齐（编辑/状态/分派/软删/回收站）+ 软删过滤清单逐处落 | 导入 3 行含 1 重复 1 缺名 → 报告 1 成功 1 dup 1 error；软删学生从列表/搜索/漏斗/顾客端 RPC 全消失、回收站可恢复；有 active 报名的学生拒删；学服编辑名下学生资料成功、改 assigned_to 被列级 grant 拒 |
 | **P4D-1** | §3.5 课程/班级 CRUD Actions + UI（课程新建/编辑/启停、讲次增删改重排、班级信息编辑） | 无 course.manage 者不见按钮且直调被拒；讲次重排后 no 连续无冲突；被引用讲次拒删提示清晰 |
 | **P4D-2** | §3.2 活动域 migration + §4.1 活动页 + activityToday 磁贴 + 跟进状态联动 | book 满员拒；报名后学生状态 pending→invited、时间线出现 kind=activity 行；到场登记三板斧→trialed；no_show 不降状态；顾客账号读 activities 被 RLS 拒 |
-| **P4D-3** | §3.3 课评 migration + §4.4 抽屉/知识总结 + reviewGaps 磁贴 + get_my_session_reviews + 学生/家长端展示 + 360° 学习 tab 课评列表 | 课评 upsert 幂等；无 review.write 的学辅可读名下学生课评不可写；家长只见孩子课评；出门测分数与 SQL 手查一致 |
+| **P4D-3** | §3.3 课评 migration + §4.4 抽屉/知识总结 + reviewGaps 磁贴 + get_my_session_reviews + 学生/家长端展示 + 360° 学习 tab 课评列表 | 课评 upsert 幂等；无 review.write 的学服可读名下学生课评不可写；家长只见孩子课评；出门测分数与 SQL 手查一致 |
 | **P4D-4** | §3.4 视频 migration + bucket + 上传/审阅/videoQueue + getVideoSignedUrl | 学生传自己课次成功、传别班被拒；教师 2x 倍速播放（playbackRate 断言）；家长只能拿到已审视频的 signed URL、未审/别人孩子拿不到；signed URL 过期后 403 |
-| **P4D-5** | §4.6 跟进台待续费/流失池两桶 + renewalDue 磁贴 + 回流动作 | 剩余≤3 课次的学生进待续费；回流后状态 following 且时间线留痕；学辅只见名下 |
+| **P4D-5** | §4.6 跟进台待续费/流失池两桶 + renewalDue 磁贴 + 回流动作 | 剩余≤3 课次的学生进待续费；回流后状态 following 且时间线留痕；学服只见名下 |
 | **P4D-6** | §5 审计表逐行复核收尾（补漏项、政策项在 UI 加说明文案）+ 五角色全链路回归（Playwright，复用 P4B 验收脚手架）+ memory/roadmap 更新 | 审计表全行打勾或注明政策；生命周期全链路：导入线索→约活动→到场→报名缴费→课评+视频→续费提醒→流失回流 一条龙走通 |
 
 ## 7. 隐含坑清单（10-§10、11-§10 全部继续有效，本期新增）

@@ -7,7 +7,7 @@ import type { UserEnvironment } from "@/lib/environment";
  * 存在的理由只有一个：**阻止后续 agent 靠目录对称性推断产品结构**。
  * 看到 `students/[studentId]` 旁边没有 `new`、`classes/[classId]` 旁边有，
  * 很容易得出"学生模块缺个新建页"的错误结论——真实原因是学生单个创建只建立
- * 轻量线索档案（Dialog 足够），而建班要过课程/教师/学辅/学期/排课/冲突检查
+ * 轻量线索档案（Dialog 足够），而建班要过课程/教师/学服/学期/排课/冲突检查
  * （必须独立 Wizard）。统一的是资源语义，不是目录外形。
  *
  * 因此每条路由都必须显式声明它是哪一类页面、创建入口在哪；`createSurface: "none"`
@@ -297,7 +297,7 @@ export const DASHBOARD_ROUTES = {
     href: "/dashboard/students/confirm",
     kind: "queue",
     environments: STAFF_ONLY,
-    // 开发端来源确认；具体可见班级与任课／学辅反馈由分配关系和 RLS 限定。
+    // 开发端来源确认；具体可见班级与任课／学服反馈由分配关系和 RLS 限定。
     createSurface: "none",
     parent: "students",
   },
@@ -352,7 +352,7 @@ export const DASHBOARD_ROUTES = {
     kind: "collection",
     environments: STAFF_ONLY,
     permissionAny: CLASSES_PERMS,
-    // 建班要过课程版本/主讲/学辅/学期/排课预览/冲突检测 → 完整 Wizard（§5.11）。
+    // 建班要过课程版本/主讲/学服/学期/排课预览/冲突检测 → 完整 Wizard（§5.11）。
     createSurface: "page",
     createHref: "/dashboard/classes/new",
     nav: { labelKey: "classes", group: "teaching" },

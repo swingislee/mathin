@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * 课堂（doc19 §14.8）：课堂本体仍是 `/classroom/.../live`（真实白板/实时频道），
- * 本页只展示状态卡片；主管/教务/学辅在这里只审阅状态，不获得实时频道或课堂资产权限。
+ * 本页只展示状态卡片；主管/教务/学服在这里只审阅状态，不获得实时频道或课堂资产权限。
  */
 export async function SessionLivePanel({ detail }: { detail: SessionWorkspaceDetail }) {
   const t = await getTranslations("school.session");

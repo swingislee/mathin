@@ -3,8 +3,13 @@ export interface StaffRoleAlias {
   name: string;
 }
 
+/** 旧岗位名称在读取和导入边界统一为学服，岗位 key 与权限保持原有含义。 */
+export function normalizeStaffRoleName(name: string): string {
+  return name === "学辅" ? "学服" : name;
+}
+
 function normalizedRoleToken(value: string): string {
-  return value.trim().toLocaleLowerCase("en-US");
+  return normalizeStaffRoleName(value.trim()).toLocaleLowerCase("en-US");
 }
 
 /** The spreadsheet contract uses whitespace between role names. */
@@ -34,5 +39,5 @@ export function canonicalizeStaffRoleTokens(tokens: string[], roles: StaffRoleAl
 
 export function staffRoleDisplayName(key: string, roles: StaffRoleAlias[], locale: string): string {
   const role = roles.find((item) => item.key === key);
-  return locale === "zh" ? role?.name ?? key : role?.key ?? key;
+  return locale === "zh" ? normalizeStaffRoleName(role?.name ?? key) : role?.key ?? key;
 }

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { isPermissionKey, type PermissionKey } from "./permissions";
+import { normalizeStaffRoleName } from "./staff-role-input";
 
 // P4C-3（docs/plan/11 §8）：员工页与岗位权限页的读侧。
 
@@ -39,7 +40,7 @@ export async function listStaffMembers(): Promise<StaffMember[]> {
       email: row.email,
       identity: row.identity,
       roleIds: row.role_ids ?? [],
-      roleNames: row.role_names ?? [],
+      roleNames: (row.role_names ?? []).map(normalizeStaffRoleName),
       canFollowUp: Boolean(row.can_follow_up),
       isActive: Boolean(row.is_active),
       passwordChangeRequired: Boolean(row.password_change_required),
@@ -79,7 +80,7 @@ export async function listStaffRoles(): Promise<StaffRoleInfo[]> {
   return (data ?? []).map((row) => ({
     id: row.id,
     key: row.key,
-    name: row.name,
+    name: normalizeStaffRoleName(row.name),
     isSystem: row.is_system,
     memberCount: row.staff_role_members.length,
     permKeys: row.role_permissions.map((p) => p.perm_key).filter(isPermissionKey),

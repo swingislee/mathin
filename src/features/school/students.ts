@@ -129,7 +129,7 @@ export function parseStudentFilters(searchParams: Record<string, string | string
 /**
  * 学生检索的统一 PostgREST or-filter（跟进台与学生集合共用）。
  *
- * STU-01：原来只覆盖 `name`/`school`，学辅拿着来电号码查不到人——而"来电显示后 3 秒内
+ * STU-01：原来只覆盖 `name`/`school`，学服拿着来电号码查不到人——而"来电显示后 3 秒内
  * 找到这个人"正是这两页最高频的动作。这里同时覆盖学生手机号与家长手机号；输入含分隔符
  * （`139-0000-0106`）时再补一条去分隔符的 ilike，让号码抄写格式不影响命中。
  */

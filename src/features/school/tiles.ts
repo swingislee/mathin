@@ -37,7 +37,7 @@ export interface TileDef {
   key: string;
   audiences: readonly TileAudience[];
   requiredPerm?: PermissionKey;
-  /** 任一持有即放行（如业绩贴：学辅失 order.view 后靠 order.create）。 */
+  /** 任一持有即放行（如业绩贴：学服失 order.view 后靠 order.create）。 */
   requiredAnyPerm?: readonly PermissionKey[];
   /** 首个为默认档，尺寸按钮在档位间循环。 */
   allowedSizes: readonly TileSize[];
