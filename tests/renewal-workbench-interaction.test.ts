@@ -208,6 +208,7 @@ describe("renewal worksheet interaction", () => {
       healthPolicyRevision: 0, payments: [], signals: [], records: [], students: [], membershipTeachers: [], now: Date.parse(time), observationMemberships: [] };
     const app = (values: RenewalWorkspaceData) => createElement(RenewalStudentPool, { data: values, supplement, canWrite: true, canEnroll: true, canReview: false });
     await render(app(data));
+    await click(button(zh.school.followupFilters.renewals_uncontacted));
     await click(container.querySelector<HTMLButtonElement>(`[data-renewal-pool-row="${id}"] [aria-expanded]`)!); await save();
     const sidebar = container.querySelector("[data-followup-notes]");
     await render(app({ ...data, candidates: [candidate(nextId)], opportunities: [{ id, opportunityType: "renewal", studentId: id,
@@ -217,5 +218,9 @@ describe("renewal worksheet interaction", () => {
     expect([...container.querySelectorAll<HTMLElement>("[data-renewal-pool-row]")].map(row => row.dataset.renewalPoolRow)).toEqual([id, nextId]);
     expect(container.querySelector("[data-followup-notes]")).toBe(sidebar);
     expect(container.querySelector(`[data-renewal-pool-row="${id}"]`)?.getAttribute("aria-expanded")).toBe("true");
+    await click(button(zh.school.followupFilters.renewals_following));
+    expect([...container.querySelectorAll<HTMLElement>("[data-renewal-pool-row]")].map(row => row.dataset.renewalPoolRow)).toEqual([id]);
+    await click(button(zh.school.followupFilters.renewals_payment));
+    expect(container.querySelectorAll("[data-renewal-pool-row]")).toHaveLength(0);
   });
 });

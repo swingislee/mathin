@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { z } from "zod";
-import { DashboardCommandPanel, DashboardCommandState, DashboardPage } from "@/features/school/dashboard-page";
+import { DashboardCommandState, DashboardPage } from "@/features/school/dashboard-page";
+import { FollowupCommandPanel } from "@/features/school/FollowupCommandPanel";
 import { FollowupTabs } from "@/features/school/FollowupTabs";
 import { FollowupQueryMemory } from "@/features/school/FollowupQueryMemory";
 import { InvitationCoordinationWorkbench } from "@/features/school/InvitationCoordinationWorkbench";
@@ -29,7 +30,7 @@ export default async function CommunicationPage({ params, searchParams }: {
   const today = communicationToday();
   const workOptions = parseCommunicationWorkQuery(raw, today, Boolean(focusLeadId));
   const { date } = workOptions;
-  const filters = parseLeadPoolFilters({ ...raw, scope: raw.scope === "all" ? "all" : "mine", pageSize: raw.pageSize ?? "20", status: undefined }, permissions.has("student.view.all"));
+  const filters = parseLeadPoolFilters({ ...raw, scope: raw.scope === "all" ? "all" : "mine", pageSize: raw.pageSize ?? "20", status: undefined, assignment: undefined }, permissions.has("student.view.all"));
   const recordState=businessRecordStateFilter(raw.state);
   const historicalFirstContacts=recordState!=='current'&&!focusLeadId&&(workOptions.view==='all'||!!filters.q||recordState==='historical')?await loadHistoricalFirstContactRows(locale,filters.q):[];
   const [workspaceT, data, options] = await Promise.all([
@@ -45,10 +46,11 @@ export default async function CommunicationPage({ params, searchParams }: {
     ...data.invitations.filter((row) => row.state !== "completed" && row.state !== "cancelled").map((row) => `lead:${row.leadId}`),
     ...data.postActivityRows.filter((row) => row.eligible && !row.enrollmentId && row.route !== "closed").map((row) => `post:${row.registrationId}`),
   ]);
-  return <CommunicationWorkSelectionProvider key={sessionKey}><FollowupQueryMemory keys={["scope", "pageSize"]} /><DashboardPage title={workspaceT("communication")} commandPanel={<DashboardCommandPanel>
-    <DashboardCommandState><FollowupTabs /><BusinessRecordStateQueryFilter value={recordState} locale={locale} query={Object.fromEntries(Object.entries(raw).filter((entry):entry is [string,string]=>typeof entry[1]==='string'))}/></DashboardCommandState>
-    <CommunicationWorkToolbar options={workOptions} scope={filters.scope} canViewAll={permissions.has("student.view.all")} canManage={permissions.has("followup.write")} workday={data.workday} worklist={data.worklist} worklists={data.worklists} pageKeys={data.rowOrder.filter((key) => actionableKeys.has(key))} count={data.count+historicalFirstContacts.length} today={today} query={focusLeadId ? "" : filters.q} />
-  </DashboardCommandPanel>} footer={data.count > 0 ? <LeadPoolPagination currentPage={data.page} totalPages={Math.max(1, Math.ceil(data.count / data.pageSize))} totalCount={data.count} pageSize={data.pageSize} scope={focusLeadId ? "all" : filters.scope} q={focusLeadId ? undefined : filters.q} focusLeadId={focusLeadId} baseHref="/dashboard/followups/communication" extraQuery={{ view: workOptions.view, date, state: recordState, ...(workOptions.worklistId ? { worklist: workOptions.worklistId } : {}) }} /> : null}>
+  return <CommunicationWorkSelectionProvider key={sessionKey}><FollowupQueryMemory keys={["scope", "pageSize"]} /><DashboardPage title={workspaceT("communication")} commandPanel={<FollowupCommandPanel>
+    <DashboardCommandState><FollowupTabs /></DashboardCommandState>
+    <CommunicationWorkToolbar options={workOptions} scope={filters.scope} canViewAll={permissions.has("student.view.all")} canManage={permissions.has("followup.write")} workday={data.workday} worklist={data.worklist} worklists={data.worklists} pageKeys={data.rowOrder.filter((key) => actionableKeys.has(key))} count={data.count+historicalFirstContacts.length} today={today} query={focusLeadId ? "" : filters.q}
+      secondaryFilters={<BusinessRecordStateQueryFilter value={recordState} locale={locale} query={Object.fromEntries(Object.entries(raw).filter((entry):entry is [string,string]=>typeof entry[1]==='string'))}/>} />
+  </FollowupCommandPanel>} footer={data.count > 0 ? <LeadPoolPagination currentPage={data.page} totalPages={Math.max(1, Math.ceil(data.count / data.pageSize))} totalCount={data.count} pageSize={data.pageSize} scope={focusLeadId ? "all" : filters.scope} q={focusLeadId ? undefined : filters.q} focusLeadId={focusLeadId} baseHref="/dashboard/followups/communication" extraQuery={{ view: workOptions.view, date, state: recordState, ...(workOptions.worklistId ? { worklist: workOptions.worklistId } : {}) }} /> : null}>
     <InvitationCoordinationWorkbench historicalFirstContacts={historicalFirstContacts} sessionKey={sessionKey} workMode={workOptions.view} workday={data.workday} worklist={data.worklist ?? undefined} selectionEnabled={permissions.has("followup.write") && workOptions.view !== "worklist"} rows={data.invitations} contactLeads={data.contactLeads} leadDetails={data.leadDetails} rowOrder={data.rowOrder} invitationHistory={data.invitationHistory} focusLeadId={focusLeadId} activities={options.activities} assessors={options.assessors} locale={locale} currentUserId={user.id} canManageInvitation={permissions.has("followup.write")} canContact={permissions.has("followup.write")} canManageIdentity={permissions.has("followup.write") && permissions.has("student.edit")} postActivityRows={data.postActivityRows} />
   </DashboardPage></CommunicationWorkSelectionProvider>;
 }

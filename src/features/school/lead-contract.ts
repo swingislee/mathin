@@ -39,6 +39,7 @@ export function parseLeadPageSize(value: string | string[] | undefined): LeadPag
 
 export interface LeadPoolFilters {
   scope: LeadPoolScope;
+  assignment?: "assigned";
   status?: LeadStatus;
   q?: string;
   page: number;

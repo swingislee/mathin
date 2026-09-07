@@ -2,7 +2,7 @@
 
 import { ChevronLeft, ChevronRight, ListChecks, Play } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,15 +10,17 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useRouter } from "@/i18n/navigation";
 import { DashboardCommandActions, DashboardCommandFilters } from "./dashboard-page";
 import { FollowupChoice } from "./dashboard-page/FollowupChoice";
+import { FollowupPrimaryFilter } from "./FollowupPrimaryFilter";
 import { DashboardSearch } from "./DashboardSearch";
 import { useCommunicationWorkSelection } from "./CommunicationWorkSelection";
 import { createCommunicationWorklistAction } from "./communication-workday-actions";
 import { communicationDayBounds, type CommunicationWorkbenchOptions, type CommunicationWorkday, type CommunicationWorklist } from "./communication-workday-contract";
 
-export function CommunicationWorkToolbar({ options, scope, canViewAll, canManage, workday, worklist, worklists, pageKeys, count, today, query = "" }: {
+export function CommunicationWorkToolbar({ options, scope, canViewAll, canManage, workday, worklist, worklists, pageKeys, count, today, query = "", secondaryFilters }: {
   options: CommunicationWorkbenchOptions; scope: string; canViewAll: boolean; canManage: boolean;
   workday?: CommunicationWorkday; worklist?: CommunicationWorklist | null; worklists: CommunicationWorklist[];
   pageKeys: string[]; count: number; today: string; query?: string;
+  secondaryFilters?: ReactNode;
 }) {
   const t = useTranslations("school.communicationWorkday");
   const router = useRouter();
@@ -56,16 +58,17 @@ export function CommunicationWorkToolbar({ options, scope, canViewAll, canManage
   const completed = worklist?.items.filter((item) => item.completedAt).length ?? 0;
   return <>
     <DashboardCommandFilters>
-      <FollowupChoice value={options.view} label={t("viewLabel")} disabled={pending} className="w-32 shrink-0"
-        options={(["day", "records", "unscheduled", "all", ...(worklist ? ["worklist"] : [])] as const).map((value) => ({ value, label: value === "worklist" ? t("view_worklist") : t(`view_${value}`) }))}
-        onValueChange={(view) => navigate({ view, worklist: view === "worklist" ? worklist?.id ?? null : null, q: null })} />
+      <FollowupPrimaryFilter value={options.view} label={t("viewLabel")} disabled={pending}
+        options={(["day", "unscheduled", "records", "all", ...(worklist ? ["worklist"] : [])] as const).map((value) => ({ value, label: value === "worklist" ? t("view_worklist") : t(`view_${value}`) }))}
+        onValueChange={(view) => navigate({ view, ...(view !== "all" ? { state: "current" } : {}), worklist: view === "worklist" ? worklist?.id ?? null : null })} />
       {options.view === "day" || options.view === "records" ? <div className="flex items-center gap-1">
         <Button variant="ghost" size="sm" className="size-8 p-0" aria-label={t("previousDay")} disabled={pending} onClick={() => shiftDay(-1)}><ChevronLeft className="size-4" /></Button>
         <Input type="date" value={options.date} aria-label={t("date")} className="h-8 w-36 text-xs" disabled={pending} onChange={(event) => { try { communicationDayBounds(event.target.value); navigate({ date: event.target.value }); } catch { /* 等待完整日期。 */ } }} />
         <Button variant="ghost" size="sm" className="size-8 p-0" aria-label={t("nextDay")} disabled={pending} onClick={() => shiftDay(1)}><ChevronRight className="size-4" /></Button>
         {options.date !== today ? <Button variant="ghost" size="sm" onClick={() => navigate({ date: today })}>{t("today")}</Button> : null}
       </div> : null}
-      {canViewAll ? <FollowupChoice value={scope} label={t("scope")} disabled={pending || options.view === "worklist"} options={[{ value: "mine", label: t("mine") }, { value: "all", label: t("team") }]} onValueChange={(value) => navigate({ scope: value })} /> : null}
+      {canViewAll ? <FollowupChoice value={scope} label={t("scope")} presentation="select" className="h-8 min-h-8 w-28 shrink-0 py-1 text-xs" disabled={pending || options.view === "worklist"} options={[{ value: "mine", label: t("mine") }, { value: "all", label: t("team") }]} onValueChange={(value) => navigate({ scope: value })} /> : null}
+      {secondaryFilters}
       <span className="max-w-72 truncate text-xs tabular-nums text-muted" title={worklist?.name}>{worklist ? t("progress", { name: worklist.name, completed, total: worklist.items.length }) : options.view === "records" || options.view === "day" ? t("dayCount", { count, recorded: recordedPeople }) : t("count", { count })}</span>
       <DashboardSearch value={search} onChange={(event) => setSearch(event.target.value)} onSearch={() => navigate({ q: search.trim() || null })} aria-label={t("search")} placeholder={t("search")} />
     </DashboardCommandFilters>

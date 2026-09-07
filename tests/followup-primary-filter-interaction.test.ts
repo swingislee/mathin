@@ -1,0 +1,128 @@
+// @vitest-environment jsdom
+import { act, createElement, useState, type ComponentProps, type ReactNode } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { NextIntlClientProvider } from "next-intl";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import zh from "../messages/zh.json";
+import en from "../messages/en.json";
+import { FollowupPrimaryFilter } from "@/features/school/FollowupPrimaryFilter";
+import { FollowupCommandPanel } from "@/features/school/FollowupCommandPanel";
+import { CommunicationWorkToolbar } from "@/features/school/CommunicationWorkToolbar";
+import { CommunicationWorkSelectionProvider } from "@/features/school/CommunicationWorkSelection";
+import { AssessmentUnifiedWorkbench } from "@/features/school/AssessmentUnifiedWorkbench";
+import type { AssessmentWorkbenchRow } from "@/features/school/assessment-workbench-contract";
+import { assessmentWorkflowFromDb } from "@/features/school/assessment-workflow-contract";
+import { EnrollmentPlacementWorkbench } from "@/features/school/EnrollmentPlacementWorkbench";
+import type { EnrollmentPlacementBoard } from "@/features/school/enrollment-workflow-contract";
+import { DashboardCommandState, DashboardCommandFilters, DashboardCommandActions } from "@/features/school/dashboard-page";
+
+const actions = vi.hoisted(() => ({ replace: vi.fn(), create: vi.fn(), move: vi.fn(), query: "view=day&date=2026-09-07&scope=mine&q=Sample&page=4&pageSize=50&lead=focus&status=uncontacted" }));
+vi.mock("server-only", () => ({}));
+vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(actions.query) }));
+vi.mock("@/i18n/navigation", () => ({ Link: ({ children, ...props }: ComponentProps<"a">) => createElement("a", props, children), useRouter: () => ({ replace: actions.replace, refresh: vi.fn() }), usePathname: () => "/dashboard/followups/assessments" }));
+vi.mock("@/features/school/communication-workday-actions", () => ({ createCommunicationWorklistAction: actions.create }));
+vi.mock("@/features/school/assessment-assessor-actions", () => ({ reassignAssessmentAssessorAction: vi.fn() }));
+vi.mock("@/features/school/enrollment-workflow-actions", () => ({ moveEnrollmentSeatAction: actions.move }));
+vi.mock("@/features/school/BusinessRecordRevisionButton", () => ({ BusinessRecordRevisionButton: () => null }));
+vi.mock("@/features/school/Student360Sheet", () => ({ Student360Trigger: ({ children }: { children: ReactNode }) => createElement("button", { type: "button" }, children) }));
+vi.mock("@/features/school/ActivityAssessmentDetails", () => ({ ActivityAssessmentDraftProvider: ({ children }: { children: ReactNode }) => children }));
+vi.mock("@/features/school/AssessmentRecordDetails", () => ({ AssessmentRecordDetails: ({ row, onSaved }: { row: AssessmentWorkbenchRow; onSaved: (row: AssessmentWorkbenchRow) => void }) => createElement("button", { onClick: () => onSaved({ ...row, workflow: { ...row.workflow!, stage: "handled" } }) }, "Save classification") }));
+vi.mock("@/features/school/TeacherAssessmentEntryButton", () => ({ TeacherAssessmentEntryButton: () => null }));
+
+let root: Root, container: HTMLDivElement;
+async function render(children: ReactNode, locale: "zh" | "en" = "zh") {
+  const provider: ComponentProps<typeof NextIntlClientProvider> = { locale, messages: locale === "zh" ? zh : en, timeZone: "Asia/Shanghai", children };
+  await act(async () => root.render(createElement(NextIntlClientProvider, provider)));
+}
+const click = async (button: HTMLElement) => { expect(button).toBeTruthy(); await act(async () => button.click()); };
+const primary = (label: string) => [...container.querySelectorAll<HTMLButtonElement>("[data-followup-primary-filter] button")].find(button => button.textContent === label)!;
+const keys = (attribute: string) => [...container.querySelectorAll(`[${attribute}]`)].map(row => row.getAttribute(attribute));
+const at = "2026-09-07T01:00:00Z";
+
+describe("title-bar primary filters", () => {
+  beforeEach(() => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+    container = document.createElement("div"); document.body.append(container); root = createRoot(container);
+    vi.clearAllMocks();
+  });
+  afterEach(async () => { await act(async () => root.unmount()); container.remove(); });
+  it.each(["zh", "en"] as const)("uses content-sized horizontal buttons with one persistent selection in %s", async locale => {
+    const labels = (locale === "zh" ? zh : en).school.followupFilters;
+    function Harness() {
+      const [value, setValue] = useState("all");
+      return createElement(FollowupPrimaryFilter, { label: labels.workQueue, value, onValueChange: setValue,
+        options: ["pending", "vacancies", "full", "all"].map(value => ({ value, label: labels[`enrollments_${value}` as keyof typeof labels] })) });
+    }
+    await render(createElement(Harness), locale);
+    const group = container.querySelector("[data-followup-primary-filter]")!;
+    expect(group.className).toContain("w-fit"); expect(group.className).toContain("flex-wrap");
+    expect([...group.querySelectorAll("button")].every(button => button.className.includes("whitespace-nowrap") && button.className.includes("flex-none"))).toBe(true);
+    await click(primary(labels.enrollments_pending)); await click(primary(labels.enrollments_pending));
+    expect(group.querySelectorAll('[data-state="on"]')).toHaveLength(1);
+    expect(primary(labels.enrollments_pending).getAttribute("aria-checked")).toBe("true");
+  });
+  it("gives filters the full narrow-workspace row and keeps actions in their command slot", async () => {
+    const stateProps = { key: "state", children: "Pages" }, filterProps = { key: "filters", children: "Work filters" }, actionProps = { key: "actions", children: "Assign" };
+    const panelProps = { children: [createElement(DashboardCommandState, stateProps),
+      createElement(DashboardCommandFilters, filterProps), createElement(DashboardCommandActions, actionProps)] };
+    await render(createElement(FollowupCommandPanel, panelProps));
+    expect(container.querySelector("[data-dashboard-command-panel]")?.className).toContain("[&>[data-dashboard-command-slot=filters]]:basis-full");
+    expect(container.querySelector('[data-dashboard-command-slot="actions"]')?.textContent).toBe("Assign");
+  });
+  it("switches communication work queues without dropping search/date/size or creating a worklist", async () => {
+    const children = createElement(CommunicationWorkToolbar, { options: { view: "day", date: "2026-09-07" }, scope: "mine", canViewAll: true,
+      canManage: true, worklists: [], pageKeys: [], count: 0, today: "2026-09-07", query: "Sample" });
+    const selectionProps = { children };
+    await render(createElement(CommunicationWorkSelectionProvider, selectionProps));
+    expect(container.querySelectorAll("[data-followup-primary-filter] button")).toHaveLength(4);
+    await click(primary(zh.school.communicationWorkday.view_unscheduled));
+    const query = new URL(actions.replace.mock.calls[0][0], "http://example.test").searchParams;
+    expect(Object.fromEntries(query)).toEqual({ view: "unscheduled", date: "2026-09-07", scope: "mine", q: "Sample", pageSize: "50", state: "current" });
+    expect(actions.create).not.toHaveBeenCalled();
+  });
+  it("filters assessment stages from saved facts, shares the column filter, and retains a saved row until the next filter change", async () => {
+    const rows = ["pending", "in_progress", "feedback", "handled"].map(stage => ({ id: stage, assessmentKind: "one_to_one", activityId: null,
+      activityTitle: "", publicClassRecord: null, invitationId: stage, registrationId: null, studentId: null, leadId: null,
+      name: stage, phone: "", grade: 3, gradeText: "", scheduledAt: at, location: "", assessorId: null, assessorName: "",
+      assessorSource: "assigned", background: "", participationStatus: "booked", assessmentStartedAt: null, assessmentCompletedAt: null,
+      assessment: null, questionSummary: null, route: null, updatedAt: at,
+      workflow: assessmentWorkflowFromDb({ id: "00000000-0000-4000-8000-000000000001", registration_id: "00000000-0000-4000-8000-000000000001",
+        stage, revision: 1, arrived_at: null, report_id: null, report: null, sent_report_id: null, sent_at: null, sent_by: null,
+        classification: null, parent_response: "", reasons: [], next_contact_at: null, finalized_at: null, revision_reason: "",
+        updated_by: "00000000-0000-4000-8000-000000000001", updated_at: at }),
+    })) as AssessmentWorkbenchRow[];
+    await render(createElement(AssessmentUnifiedWorkbench, { initialRows: rows, assessors: [], locale: "zh", canAssess: false, canSupport: true, canManageAssessor: false }));
+    const labels = zh.school.followupFilters;
+    for (const stage of ["pending", "in_progress", "feedback", "handled"] as const) {
+      await click(primary(labels[`assessments_${stage}`]));
+      expect(keys("data-followup-row-key")).toEqual([stage]);
+    }
+    await click(primary(labels.assessments_feedback));
+    await click(container.querySelector<HTMLElement>('[data-followup-row-key="feedback"]')!);
+    await click([...container.querySelectorAll("button")].find(button => button.textContent === "Save classification")!);
+    expect(keys("data-followup-row-key")).toEqual(["feedback"]);
+    await click(primary(labels.assessments_handled)); expect(keys("data-followup-row-key")).toEqual(["feedback", "handled"]);
+    await click(primary(labels.assessments_all)); expect(keys("data-followup-row-key")).toHaveLength(4);
+  });
+  it("keeps target classrooms and occupied seats visible for pending placement and filters by real class capacity", async () => {
+    const classroom = (id: string, grade: number, capacity: number | null, activeCount: number) => ({ id, name: id, courseId: `course-${grade}`, termId: "term",
+      capacity, activeCount, operationalStatus: "active" as const, teacherNames: "", sessions: [] });
+    const board: EnrollmentPlacementBoard = { options: { terms: [{ id: "term", name: "Term", isCurrent: true, startsOn: null, endsOn: null }],
+      courses: [3, 4].map(grade => ({ id: `course-${grade}`, title: "Course", grade, productCode: null, classType: "standard" })),
+      classrooms: [classroom("open", 3, 2, 1), classroom("full", 3, 1, 1), classroom("unlimited", 4, null, 0)] },
+      members: ["open", "full"].map(classroomId => ({ membershipId: classroomId, classroomId, studentId: classroomId, name: `Occupant ${classroomId}`,
+        phone: "", enrollmentId: null, note: "", recommendation: "", seat: 1 })),
+      enrollments: [{ id: "pending", opportunityId: "pending", studentId: "pending", studentName: "Pending", studentPhone: "", courseId: "course-3", courseTitle: "Course",
+        termId: "term", termName: "Term", status: "active", note: "", confirmedAt: at, confirmedByName: "", cancelledAt: null, cancelledByName: null,
+        assignmentId: null, classroomId: null, classroomName: null, membershipId: null, assignedAt: null, claimableClassroomIds: [], updatedAt: at }] };
+    await render(createElement(EnrollmentPlacementWorkbench, { initialBoard: board, canCreateClass: false }));
+    const labels = zh.school.followupFilters;
+    await click(primary(labels.enrollments_pending));
+    expect(keys("data-placement-classroom")).toEqual(["full", "open"]);
+    expect(container.textContent).toContain("Occupant full"); expect(container.textContent).toContain("Occupant open");
+    await click(primary(labels.enrollments_vacancies)); expect(keys("data-placement-classroom")).toEqual(["open", "unlimited"]);
+    await click(primary(labels.enrollments_full)); expect(keys("data-placement-classroom")).toEqual(["full"]);
+    expect(actions.move).not.toHaveBeenCalled();
+  });
+});

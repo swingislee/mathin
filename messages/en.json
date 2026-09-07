@@ -8260,6 +8260,28 @@
       "route_closed": "Close follow-up",
       "route_enrollment_pending": "Prepare enrollment"
     },
+    "followupFilters": {
+      "workQueue": "Work filter",
+      "allOwners": "All owners",
+      "leads_unassigned": "Unassigned",
+      "leads_assigned": "Assigned",
+      "leads_all": "All",
+      "assessments_pending": "Awaiting assessment",
+      "assessments_in_progress": "In progress",
+      "assessments_feedback": "Awaiting feedback",
+      "assessments_handled": "Classified",
+      "assessments_all": "All",
+      "enrollments_pending": "Awaiting placement",
+      "enrollments_vacancies": "Open seats",
+      "enrollments_full": "Full classes",
+      "enrollments_all": "All",
+      "renewals_uncontacted": "To contact",
+      "renewals_following": "Following up",
+      "renewals_payment": "Awaiting payment",
+      "renewals_paid": "Paid",
+      "renewals_deferred": "Deferred / declined",
+      "renewals_all": "All"
+    },
     "followupWorkspace": {
       "title": "Learning support workspace",
       "leads": "Leads",

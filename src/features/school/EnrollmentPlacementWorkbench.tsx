@@ -15,7 +15,10 @@ import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
 import { Student360Trigger } from "./Student360Sheet";
 import { FilterSearchInput } from "./FilterBar";
 import { FollowupTabs } from "./FollowupTabs";
-import { DashboardCommandActions, DashboardCommandFilters, DashboardCommandPanel, DashboardCommandState, DashboardPage, DashboardTableColumnHeader, DashboardTableShell, useDashboardTableView } from "./dashboard-page";
+import { FollowupCommandPanel } from "./FollowupCommandPanel";
+import { FollowupPrimaryFilter, useFollowupWorkFilter } from "./FollowupPrimaryFilter";
+import { PLACEMENT_WORK_FILTERS, placementClassMatchesWorkFilter, type PlacementWorkFilter } from "./followup-primary-filter-contract";
+import { DashboardCommandActions, DashboardCommandFilters, DashboardCommandState, DashboardPage, DashboardTableColumnHeader, DashboardTableShell, useDashboardTableView } from "./dashboard-page";
 import { BusinessRecordStateFilter, HistoricalRecordBadge, useBusinessSearchQuery } from './BusinessRecordStateFilter';
 import { businessRecordMessages, matchesBusinessRecordState, type BusinessRecordStateFilter as StateFilter } from './business-record-state-contract';
 import type { HistoricalEnrollment, StudentBusinessHistory } from './student-business-history-contract';
@@ -74,6 +77,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   history?: StudentBusinessHistory|null; initialQuery?: string; initialRecordState?: StateFilter;
 }) {
   const t = useTranslations("school.enrollmentWorkflow");
+  const filterT = useTranslations("school.followupFilters");
   const healthT = useTranslations("school.renewals.poolV2");
   const locale = useLocale();
   const router = useRouter();
@@ -83,6 +87,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   const board = savedBoard?.base === initialBoard ? savedBoard.value : initialBoard;
   const [query, setQuery] = useBusinessSearchQuery("enrollments",initialQuery);
   const [recordState,setRecordState]=useState(initialRecordState);
+  const [workFilter, setWorkFilter] = useFollowupWorkFilter("enrollments", PLACEMENT_WORK_FILTERS, "all");
   const recordM=businessRecordMessages(locale);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
@@ -115,7 +120,19 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
     && (!table.filters.teacher || (classroom.teacherNames || "$pending") === table.filters.teacher)
     && (!table.filters.time || schedule(classroom) === table.filters.time)
     && (!table.filters.course || classroom.courseId === table.filters.course));
-  const visibleRows = table.visibleRows.filter((row) => row.historical || row.classroom || pendingMatchesClassFilters(row));
+  const effectiveWorkFilter = recordState === "historical" ? "all" : workFilter;
+  const matchingGroups = new Set(table.visibleRows.filter(row => {
+    if (row.historical) return false;
+    if (effectiveWorkFilter === "pending") return !row.classroom && row.students.some(student => !student.classroomId && student.status !== "withdrawn"
+      && (!table.filters.course || student.courseId === table.filters.course));
+    return row.classroom && placementClassMatchesWorkFilter(row.classroom, effectiveWorkFilter);
+  }).map(row => row.group));
+  // 待分班保留同组目标班级及已占座位；班额筛选只收窄班级，不生成虚假空位。
+  const visibleRows = table.visibleRows.filter(row => {
+    if (effectiveWorkFilter === "all") return row.historical || row.classroom || pendingMatchesClassFilters(row);
+    if (row.historical || !matchingGroups.has(row.group)) return false;
+    return row.classroom ? placementClassMatchesWorkFilter(row.classroom, effectiveWorkFilter) : pendingMatchesClassFilters(row);
+  });
   const groups = [...new Set(visibleRows.map((row) => row.group))];
   if (!table.sort || !["grade", "term"].includes(table.sort.column)) {
     groups.sort((a, b) => {
@@ -226,17 +243,27 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   const visibleClassIds = new Set(visibleRows.flatMap((row) => row.classroom ? [row.classroom.id] : []));
   const scopeStudents = students.filter((student) => (student.classroomId ? visibleClassIds.has(student.classroomId) : groups.includes(`${student.termId}:${student.grade}`)) && (!table.filters.course || student.courseId === table.filters.course));
 
-  return <DashboardPage title={t("placementTitle")} density="compact" commandPanel={<DashboardCommandPanel>
+  return <DashboardPage title={t("placementTitle")} density="compact" commandPanel={<FollowupCommandPanel>
     <DashboardCommandState><FollowupTabs /><span className="whitespace-nowrap text-xs text-muted">{t("placementCounts", { pending: scopeStudents.filter((student) => !student.classroomId && student.status !== "withdrawn").length, assigned: scopeStudents.filter((student) => student.classroomId && student.status !== "withdrawn").length })}</span></DashboardCommandState>
     <DashboardCommandFilters>
-      <BusinessRecordStateFilter value={recordState} onChange={setRecordState} locale={locale}/>
+      <FollowupPrimaryFilter label={filterT("workQueue")} value={effectiveWorkFilter} disabled={pending}
+        options={PLACEMENT_WORK_FILTERS.map(value => ({ value, label: filterT(`enrollments_${value}`) }))}
+        onValueChange={value => {
+          pointer.cancel(); setSelectedKey(null); setWorkFilter(value as PlacementWorkFilter);
+          if (value !== "all" && recordState === "historical") setRecordState("current");
+        }} />
+      <BusinessRecordStateFilter value={recordState} onChange={value => {
+        if (pending) return;
+        pointer.cancel(); setSelectedKey(null); setRecordState(value);
+        if (value === "historical") setWorkFilter("all");
+      }} locale={locale}/>
       <DashboardTableColumnHeader label={table.filters.term ? terms.get(table.filters.term) ?? t("term") : t("followupAllTerms")} {...table.columnProps("term")} />
       <DashboardTableColumnHeader label={table.filters.grade ? t("grade", { grade: Number(table.filters.grade) }) : t("targetGrade")} {...table.columnProps("grade")} />
       <DashboardTableColumnHeader label={table.filters.course ? courses.get(table.filters.course) ?? t("course") : t("course")} {...table.columnProps("course")} />
       <FilterSearchInput value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("searchPlacement")} aria-label={t("searchPlacement")} />
     </DashboardCommandFilters>
     <DashboardCommandActions><span role="status" className={cn("flex w-32 items-center justify-end gap-1 text-xs text-muted", !selected && "invisible")} title={selected ? t("selectedHint", { name: selected.name }) : undefined}><span className="truncate">{selected?.name}</span><Button size="sm" variant="ghost" className="size-7 shrink-0 p-0" aria-label={t("clearSelection")} disabled={!selected || pending} onClick={() => setSelectedKey(null)}>{pending ? <LoaderCircle className="size-3 animate-spin" /> : <X className="size-3" />}</Button></span>{canCreateClass ? <Link href="/dashboard/classes/new" className={buttonVariants({ size: "sm", variant: "secondary" })}><Plus className="size-4" />{t("createClass")}</Link> : null}</DashboardCommandActions>
-  </DashboardCommandPanel>}>
+  </FollowupCommandPanel>}>
     <div ref={root} onPointerMove={pointer.onPointerMove} onPointerUp={pointer.onPointerUp} onPointerCancel={pointer.onPointerCancel} onLostPointerCapture={pointer.onLostPointerCapture} onClickCapture={pointer.onClickCapture} onKeyDown={(event) => { if (event.key === "Escape" && !event.defaultPrevented) { pointer.cancel(); setSelectedKey(null); } }}>
       <TooltipProvider delayDuration={350}><DashboardTableShell><Table className="min-w-[44rem] table-fixed text-xs" containerClassName="max-h-[calc(100dvh-12rem)] overflow-auto" aria-busy={pending}>
         <colgroup><col className="w-36" /><col className="w-28" /><col className="w-20" /><col /></colgroup>

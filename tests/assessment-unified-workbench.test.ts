@@ -38,7 +38,7 @@ describe("unified assessment workbench", () => {
     const workbench = source("src/features/school/AssessmentUnifiedWorkbench.tsx");
     const detail = source("src/features/school/AssessmentRecordDetails.tsx");
 
-    expect(workbench).toContain("<DashboardCommandPanel>");
+    expect(workbench).toContain("<FollowupCommandPanel>");
     expect(workbench).toContain("<DashboardTableShell data-assessment-unified-workbench data-followup-workbench");
     expect(workbench).toContain('className="sticky left-0');
     expect(workbench.match(/<TeacherAssessmentEntryButton/g)).toHaveLength(1);

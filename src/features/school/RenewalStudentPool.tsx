@@ -13,12 +13,15 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { setRenewalCycleStatusAction, snapshotRenewalCycleMembershipsAction } from "./actions/renewals";
 import { BusinessRecordStateFilter, useBusinessSearchQuery } from "./BusinessRecordStateFilter";
 import { businessRecordMessages, isCurrentBusinessRecord, matchesBusinessRecordState, type BusinessRecordStateFilter as StateFilter } from "./business-record-state-contract";
-import { DashboardPage, DashboardCommandPanel, DashboardCommandState, DashboardCommandFilters, DashboardCommandActions, DashboardTableShell, DashboardTableColumnHeader } from "./dashboard-page";
+import { DashboardPage, DashboardCommandState, DashboardCommandFilters, DashboardCommandActions, DashboardTableShell, DashboardTableColumnHeader } from "./dashboard-page";
 import { FollowupChoice } from "./dashboard-page/FollowupChoice";
 import { useDashboardTableView } from "./dashboard-page/useDashboardTableView";
 import { FilterSearchInput } from "./FilterBar";
 import { navigateFollowupTable } from "./followup-keyboard";
 import { FollowupTabs } from "./FollowupTabs";
+import { FollowupCommandPanel } from "./FollowupCommandPanel";
+import { FollowupPrimaryFilter, useFollowupWorkFilter } from "./FollowupPrimaryFilter";
+import { RENEWAL_WORK_FILTERS, renewalMatchesWorkFilter, type RenewalWorkFilter } from "./followup-primary-filter-contract";
 import { RenewalEntryRow, type RenewalPoolRow } from "./RenewalRecordDetails";
 import { renewalHealthLevel, renewalHealthSignals } from "./renewal-health-contract";
 import type { RenewalHealthPolicy } from "./renewal-health-policy";
@@ -40,12 +43,15 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
   history?: StudentBusinessHistory | null; initialQuery?: string; initialRecordState?: StateFilter;
 }) {
   const t = useTranslations("school.renewals.workbench");
+  const filterT = useTranslations("school.followupFilters");
   const pool = useTranslations("school.renewals.poolV2");
   const legacy = useTranslations("school.renewals");
   const policyT = useTranslations("school.renewals.healthSettings");
   const locale = useLocale(), router = useRouter(), recordM = businessRecordMessages(locale);
   const [query, setQuery] = useBusinessSearchQuery("renewals", initialQuery);
   const [recordState, setRecordState] = useState(initialRecordState);
+  const [workFilter, setWorkFilter] = useFollowupWorkFilter("renewals", RENEWAL_WORK_FILTERS, "all");
+  const effectiveWorkFilter = recordState === "historical" ? "all" : workFilter;
   const [activeId, setActiveId] = useState<string | null>(null);
   const [entryBusy, setEntryBusy] = useState(false);
   const [savedRows, setSavedRows] = useState<Record<string, RenewalWorkbenchSaved>>({});
@@ -116,10 +122,10 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
     next: { filterValues: (row: RenewalPoolRow) => ({ value: row.nextContactAt ? Date.parse(row.nextContactAt) <= supplement.now ? "due" : "scheduled" : "none",
       label: t(row.nextContactAt ? Date.parse(row.nextContactAt) <= supplement.now ? "contactDue" : "contactScheduled" : "contactUnscheduled") }), sortValue: row => row.nextContactAt },
   } });
-  const viewKey = JSON.stringify([cycle?.id, sampleMode, query, recordState, table.filters, table.sort]);
+  const viewKey = JSON.stringify([cycle?.id, sampleMode, query, recordState, effectiveWorkFilter, table.filters, table.sort]);
   if (retainedView && retainedView.key !== viewKey) setRetainedView(null);
   const rowById = new Map(displayRows.map(row => [row.id, row]));
-  const visibleRows = retainedView?.key === viewKey ? retainedView.ids.flatMap(id => rowById.has(id) ? [rowById.get(id)!] : []) : table.visibleRows;
+  const visibleRows = retainedView?.key === viewKey ? retainedView.ids.flatMap(id => rowById.has(id) ? [rowById.get(id)!] : []) : table.visibleRows.filter(row => renewalMatchesWorkFilter(row, effectiveWorkFilter));
   const activate = (id: string) => {
     if (entryBusy) return;
     setRetainedView(current => current?.key === viewKey ? current : { key: viewKey, ids: visibleRows.map(row => row.id) });
@@ -132,12 +138,23 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
   const refresh = useAction(snapshotRenewalCycleMembershipsAction, { successMessage: result => legacy("snapshotSuccess", result), errorMessage: errors, onSuccess: () => router.refresh() });
   const status = useAction(setRenewalCycleStatusAction, { successMessage: legacy("cycleStatusSaved"), errorMessage: errors, onSuccess: () => { setCloseCycleOpen(false); router.refresh(); } });
 
-  return <DashboardPage title={legacy("title")} density="compact" commandPanel={<DashboardCommandPanel>
+  return <DashboardPage title={legacy("title")} density="compact" commandPanel={<FollowupCommandPanel>
     <DashboardCommandState><FollowupTabs /><span className="text-xs tabular-nums text-muted">{t("counts", {
       count: currentRows.length, registered: currentRows.filter(row => row.stage === "enrolled").length,
       paid: currentRows.filter(row => !!row.payment).length })}</span></DashboardCommandState>
-    <DashboardCommandFilters><BusinessRecordStateFilter value={recordState} onChange={value => { if (!entryBusy) setRecordState(value); }} locale={locale} />
-      <FollowupChoice label={pool("cycle")} value={cycle?.id ?? "none"} disabled={entryBusy || !data.cycles.length} className="w-52 min-h-8 text-xs"
+    <DashboardCommandFilters>
+      <FollowupPrimaryFilter label={filterT("workQueue")} value={effectiveWorkFilter} disabled={entryBusy}
+        options={RENEWAL_WORK_FILTERS.map(value => ({ value, label: filterT(`renewals_${value}`) }))}
+        onValueChange={value => {
+          setWorkFilter(value as RenewalWorkFilter);
+          if (value !== "all" && recordState === "historical") setRecordState("current");
+        }} />
+      <BusinessRecordStateFilter value={recordState} onChange={value => {
+        if (entryBusy) return;
+        setRecordState(value);
+        if (value === "historical") setWorkFilter("all");
+      }} locale={locale} />
+      <FollowupChoice label={pool("cycle")} value={cycle?.id ?? "none"} presentation="select" disabled={entryBusy || !data.cycles.length} className="w-52 h-8 min-h-8 shrink-0 py-1 text-xs"
         onValueChange={id => router.replace(`/dashboard/followups/renewals?cycle=${id}`)} options={data.cycles.length ? data.cycles.map(item => ({ value: item.id, label: item.name })) : [{ value: "none", label: legacy("noCycles") }]} />
       <FilterSearchInput aria-label={t("search")} placeholder={t("search")} value={query} disabled={entryBusy} onChange={event => setQuery(event.target.value)} />
     </DashboardCommandFilters>
@@ -145,7 +162,7 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
       <Link href="/dashboard/followups/renewals/growth" className={buttonVariants({ size: "sm", variant: "ghost" })}>{legacy("reactivationAndReferrals")}</Link>
       <Link href="/dashboard/followups/renewals/signals" className={buttonVariants({ size: "sm", variant: "ghost" })}>{legacy("teacherSignals")}</Link>
     </DashboardCommandActions>
-  </DashboardCommandPanel>}>
+  </FollowupCommandPanel>}>
     <DashboardTableShell data-renewal-workbench data-followup-workbench data-followup-scroll>
       <Table className="w-full min-w-[70rem] table-fixed text-xs" containerClassName="overflow-auto [scrollbar-gutter:stable]"
         onKeyDown={event => navigateFollowupTable(event, id => { if (entryBusy) return false; activate(id); return true; })}>

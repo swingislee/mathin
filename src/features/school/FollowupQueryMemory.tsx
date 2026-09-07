@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { useDashboardPreference } from "./dashboard-page/DashboardPreferenceScope";
 
 /** 保存服务端查询条件；分页和临时定位参数不进入偏好。 */
-const DEFAULT_KEYS = ["q", "scope", "status", "pageSize", "queue", "stage", "cycle"];
+const DEFAULT_KEYS = ["q", "scope", "assignment", "status", "pageSize", "queue", "stage", "cycle"];
 export function FollowupQueryMemory({ keys = DEFAULT_KEYS }: { keys?: string[] }) {
   const pathname = usePathname();
   const query = useSearchParams().toString();

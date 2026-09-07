@@ -93,6 +93,7 @@ export function parseLeadPoolFilters(
       : canScopeAll ? "all" : "mine";
   return {
     scope,
+    ...(scope !== "unassigned" && pickParam(searchParams.assignment) === "assigned" ? { assignment: "assigned" as const } : {}),
     status: LEAD_STATUSES.includes(status as LeadStatus) ? status as LeadStatus : undefined,
     q: pickParam(searchParams.q)?.trim().slice(0, 80) || undefined,
     page,
@@ -132,6 +133,7 @@ export async function listLeadPool(
     );
   if (filters.scope === "unassigned") query = query.is("owner_id", null);
   if (filters.scope === "mine") query = query.eq("owner_id", userId);
+  if (filters.assignment === "assigned") query = query.not("owner_id", "is", null);
   if (filters.status) query = query.eq("status", filters.status);
   if (filters.q) query = query.or(leadSearchFilter(filters.q));
   if (selectedLeadIds) query = query.in("id", [...selectedLeadIds]);

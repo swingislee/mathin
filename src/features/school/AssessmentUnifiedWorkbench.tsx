@@ -16,6 +16,8 @@ import { FollowupPersonCell } from "./dashboard-page/FollowupPersonCell";
 import { navigateFollowupTable } from "./followup-keyboard";
 import { FilterSearchInput } from "./FilterBar";
 import { FollowupTabs } from "./FollowupTabs";
+import { FollowupCommandPanel } from "./FollowupCommandPanel";
+import { FollowupPrimaryFilter } from "./FollowupPrimaryFilter";
 import { ActivityAssessmentDraftProvider } from "./ActivityAssessmentDetails";
 import { AssessmentRecordDetails } from "./AssessmentRecordDetails";
 import { TeacherAssessmentEntryButton } from "./TeacherAssessmentEntryButton";
@@ -33,7 +35,6 @@ import {
 } from "./assessment-workbench-contract";
 import {
   DashboardCommandFilters,
-  DashboardCommandPanel,
   DashboardCommandState,
   DashboardEmptyCard,
   DashboardPage,
@@ -108,6 +109,7 @@ export function AssessmentUnifiedWorkbench({
   initialRecordState?: StateFilter;
 }) {
   const t = useTranslations("school.supportAssessment");
+  const filterT = useTranslations("school.followupFilters");
   const hubT = useTranslations("school.assessmentHub");
   const assessmentT = useTranslations("school.assessments");
   const teacherT = useTranslations("school.teacherAssessment");
@@ -353,23 +355,31 @@ export function AssessmentUnifiedWorkbench({
       title={hubT("title")}
       density="compact"
       commandPanel={(
-        <DashboardCommandPanel>
+        <FollowupCommandPanel>
           <DashboardCommandState>
             <FollowupTabs />
             <span className="text-xs tabular-nums text-muted">{visibleRows.length} / {rows.length}</span>
           </DashboardCommandState>
           <DashboardCommandFilters>
-            <BusinessRecordStateFilter value={recordState} onChange={setRecordState} locale={locale}/>
+            <FollowupPrimaryFilter label={filterT("workQueue")} value={ASSESSMENT_WORKBENCH_QUEUES.includes(assessmentTable.filters.status as AssessmentWorkbenchQueue) ? assessmentTable.filters.status! : "all"}
+              options={ASSESSMENT_WORKBENCH_QUEUES.map(value => ({ value, label: filterT(`assessments_${value}`) }))}
+              onValueChange={value => {
+                assessmentTable.setFilter("status", value === "all" ? undefined : value);
+                if (value !== "all" && recordState === "historical") setRecordState("current");
+              }} />
+            <BusinessRecordStateFilter value={recordState} onChange={value => {
+              setRecordState(value);
+              if (value === "historical") assessmentTable.setFilter("status", undefined);
+            }} locale={locale}/>
             <FilterSearchInput
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder={t("searchPlaceholder")}
               aria-label={t("searchPlaceholder")}
             />
-            <span className="hidden text-[11px] text-muted xl:inline">{t("keyboardHint")}</span>
           </DashboardCommandFilters>
 
-        </DashboardCommandPanel>
+        </FollowupCommandPanel>
       )}
     >
       {rows.length === 0 ? <DashboardEmptyCard>{t("empty")}</DashboardEmptyCard> : (

@@ -8260,6 +8260,28 @@
       "route_closed": "结束跟进",
       "route_enrollment_pending": "准备报名"
     },
+    "followupFilters": {
+      "workQueue": "工作筛选",
+      "allOwners": "全部负责人",
+      "leads_unassigned": "待分配",
+      "leads_assigned": "已分配",
+      "leads_all": "全部",
+      "assessments_pending": "待测评",
+      "assessments_in_progress": "测评中",
+      "assessments_feedback": "待反馈",
+      "assessments_handled": "已归类",
+      "assessments_all": "全部",
+      "enrollments_pending": "待分班",
+      "enrollments_vacancies": "有空位",
+      "enrollments_full": "已满班",
+      "enrollments_all": "全部",
+      "renewals_uncontacted": "待沟通",
+      "renewals_following": "跟进中",
+      "renewals_payment": "待缴费",
+      "renewals_paid": "已缴费",
+      "renewals_deferred": "暂缓／不续",
+      "renewals_all": "全部"
+    },
     "followupWorkspace": {
       "title": "学辅工作台",
       "leads": "线索",
