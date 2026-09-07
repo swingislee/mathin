@@ -36,6 +36,7 @@ export function StaffOverviewPeriodPicker({
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [year, setYear] = useState(selectedDate.slice(0, 4));
+  const [visibleMonth, setVisibleMonth] = useState(() => calendarDate(selectedDate));
   const selected = calendarDate(selectedDate);
   const weekEnd = new Date(selected.getFullYear(), selected.getMonth(), selected.getDate() + 6);
   const currentYear = Number(today.slice(0, 4));
@@ -68,9 +69,26 @@ export function StaffOverviewPeriodPicker({
         <PopoverContent align="start" className="w-auto max-w-[calc(100vw-2rem)] space-y-3 p-3">
           <p className="text-xs text-muted">{t(`choose_${grain}`)}</p>
           {grain === "week" ? (
-            <Calendar mode="range" selected={{ from: selected, to: weekEnd }} defaultMonth={selected}
-              weekStartsOn={1} captionLayout="dropdown" startMonth={new Date(1900, 0, 1)} endMonth={calendarDate(today)}
-              disabled={{ after: calendarDate(today) }} onDayClick={day => choose(`${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`)} />
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Select value={String(visibleMonth.getFullYear())} onValueChange={value => setVisibleMonth(new Date(Number(value), Math.min(visibleMonth.getMonth(), Number(value) === currentYear ? currentMonth - 1 : 11), 1))}>
+                  <SelectTrigger className="h-8 flex-1" aria-label={t("chooseYear")}><SelectValue /></SelectTrigger>
+                  <SelectContent>{Array.from({ length: currentYear - 1899 }, (_, index) => String(currentYear - index)).map(value => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
+                </Select>
+                <Select value={String(visibleMonth.getMonth())} onValueChange={value => setVisibleMonth(new Date(visibleMonth.getFullYear(), Number(value), 1))}>
+                  <SelectTrigger className="h-8 flex-1" aria-label={t("chooseMonth")}><SelectValue /></SelectTrigger>
+                  <SelectContent>{Array.from({ length: visibleMonth.getFullYear() === currentYear ? currentMonth : 12 }, (_, month) => (
+                    <SelectItem key={month} value={String(month)}>{new Intl.DateTimeFormat(locale, { month: "long" }).format(new Date(2000, month, 1))}</SelectItem>
+                  ))}</SelectContent>
+                </Select>
+              </div>
+              <Calendar mode="range" selected={{ from: selected, to: weekEnd }} month={visibleMonth} onMonthChange={setVisibleMonth}
+                hideNavigation classNames={{ month_caption: "hidden", month: "space-y-1" }}
+                weekStartsOn={1} startMonth={new Date(1900, 0, 1)} endMonth={calendarDate(today)}
+                disabled={{ after: calendarDate(today) }} onDayClick={(day, modifiers) => {
+                  if (!modifiers.disabled) choose(`${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`);
+                }} />
+            </div>
           ) : (
             <div className="w-64 space-y-3">
               <Select value={year} onValueChange={setYear}>

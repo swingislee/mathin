@@ -128,6 +128,7 @@ export interface StaffOverviewData {
   businessFacts: StaffOverviewBusinessFact[];
   pendingFacts: StaffOverviewPendingFact[];
   supportFunnelRows: StaffOverviewSupportFunnelRow[];
+  supportDirectory: Array<{ userId: string; name: string }>;
   teacherParticipationRows: StaffOverviewTeacherParticipationRow[];
   teacherParticipationSummary: StaffOverviewTeacherParticipationSummary;
   capacityByGrade: StaffOverviewCapacityRow[];
@@ -766,6 +767,7 @@ export async function getStaffOverviewData({
     businessFacts,
     pendingFacts,
     supportFunnelRows,
+    supportDirectory: profiles.map(person => ({ userId: person.id, name: displayName(person.id) })),
     teacherParticipationRows,
     teacherParticipationSummary,
     capacityByGrade,
