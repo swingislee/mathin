@@ -15,6 +15,7 @@ import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { createTeacherProfessionalSignalAction } from "./actions/renewals";
 import { BusinessRecordRevisionButton } from "./BusinessRecordRevisionButton";
+import {SourceUseButton} from './SourceUseButton';
 import { HistoricalRecordBadge } from "./BusinessRecordStateFilter";
 import { businessRecordMessages, isCurrentBusinessRecord, type BusinessRecordState } from "./business-record-state-contract";
 import { FollowupEntryFields, FollowupEntryLayout } from "./FollowupEntryFields";
@@ -52,6 +53,7 @@ export interface RenewalPoolRow {
   record?: RenewalWorkbenchRecord;
   payment?: RenewalPayment;
   recordState?: BusinessRecordState;
+  sourceRecordId?: string;
 }
 
 export const renewalResultTone = (value: string): FollowupTone => ["paid", "registered"].includes(value) ? "healthy"
@@ -223,7 +225,8 @@ export function RenewalEntryRow({ row, cycleId, cycleName, targetTerm, health, h
               {!historical && !nextAllowed ? <p className="text-[11px] text-muted">{t("nextContactClosed")}</p> : null}
             </div>}
             tools={historical ? <><BusinessRecordRevisionButton kind="renewal" recordId={row.opportunityId!} subject={row.name} />
-              <Link href={`/dashboard/students/${row.studentId}?tab=history&history=renewal`} className="text-xs underline">{recordM.viewStudent}</Link></> : undefined}
+              {row.sourceRecordId?<SourceUseButton recordId={row.sourceRecordId} locale={locale} studentId={row.studentId||undefined} linked={Boolean(row.studentId)} context="renewal" label={locale==='en'?'Check student':'核对学生'}/>:null}
+              {row.studentId?<Link href={`/dashboard/students/${row.studentId}?tab=history&history=renewal`} className="text-xs underline">{recordM.viewStudent}</Link>:null}</> : undefined}
             stageHeader={<div data-renewal-detail-header className="col-start-1 row-start-1 min-w-0 space-y-3">
               <div data-renewal-tags className="flex min-w-0 flex-wrap items-center gap-x-5 gap-y-2">
                 <div className="flex min-h-8 items-center gap-2"><FollowupFieldIcon icon={Signpost} label={t("result")} className="fill-moon text-crater" />

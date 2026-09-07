@@ -4,6 +4,8 @@ import { getStudent360Snapshot } from "@/features/school/student-360";
 
 const state = vi.hoisted(() => ({ permissions: new Set<string>(), tables: {} as Record<string, Record<string, unknown>[]> }));
 vi.mock("server-only", () => ({}));
+vi.mock("next-intl/server",()=>({getLocale:async()=>"zh"}));
+vi.mock("@/features/school/student-business-history-data",()=>({loadStudentBusinessHistory:async()=>null}));
 vi.mock("@/lib/auth", () => ({ getMyPerms: async () => state.permissions }));
 vi.mock("@/features/school/student-lifecycle-data", () => ({ readStudentLifecycle: async () => "awaiting_assessment" }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({
@@ -35,6 +37,14 @@ beforeEach(() => {
 });
 
 describe("student 360 profile state remains read-only", () => {
+  it('uses source event dates without turning the import timestamp into an assessment date',async()=>{
+    state.tables.activity_registrations=[{id:'registration',activity_id:'visit',lead_id:'lead',student_id:null,record_state:'current',status:'attended',outcome:'',assessment_completed_at:null}];
+    state.tables.activities=[{id:'visit',kind:'assessment_1v1',title:'1v1',scheduled_at:null,occurred_on:'2025-12-29',location:'',remark:''}];
+    state.tables.assessment_results=[{id:'assessment',activity_registration_id:'registration',source_record_id:'source',assessed_on:null,updated_at:at,assessment_band:'a',overall_level:null,score:null,strengths:'',focus_areas:'',parent_concerns:'',teacher_recommendation:'',recommended_class:'',teacher_observation:''}];
+    const result=await snapshot();
+    expect(result.events.find(event=>event.id==='activity:registration')?.occurredAt).toBe('2025-12-29');
+    expect(result.events.find(event=>event.id==='assessment:assessment')?.occurredAt).toBeNull();
+  });
   it.each([null, "unreachable", "invalid_number"])("keeps an unsaved or unsuccessful contact %s pending", async (outcome) => {
     state.tables.lead_communications = outcome ? [contact(outcome)] : [];
     expect(leadContactAllowsIdentity(outcome)).toBe(false);

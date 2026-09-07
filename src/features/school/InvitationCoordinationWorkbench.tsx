@@ -628,7 +628,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
     if (!open) rowRefs.current.get(key)?.focus({ preventScroll: true });
   };
   const dateTimeFormatter = useMemo(() => new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Shanghai" }), [locale]);
-  const formatAt = useCallback((value: string) => dateTimeFormatter.format(new Date(value)), [dateTimeFormatter]);
+  const formatAt = useCallback((value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : Number.isFinite(Date.parse(value)) ? dateTimeFormatter.format(new Date(value)) : '—', [dateTimeFormatter]);
   const recordsMode = workMode === "records";
   const dayEventsByKey = useMemo(() => {
     const grouped = new Map<string, CommunicationDayEvent[]>();

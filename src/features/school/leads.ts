@@ -13,8 +13,10 @@ import {
   type LeadStatus,
 } from "./lead-contract";
 import type { InvitationKind, InvitationState } from "./invitation-contract";
+import { mergeSourceNotes, sourceLeadContactFacts } from './business-source-contract';
 
 interface LeadDbRow {
+  note: string;
   id: string;
   provisional_student_name: string;
   phone: string;
@@ -51,7 +53,8 @@ interface LeadCommunicationDbRow {
   wechat_added: boolean | null;
   visit_committed: boolean | null;
   interest_level: LeadInterestLevel | null;
-  occurred_at: string;
+  occurred_at: string | null;
+  occurred_on?: string | null;
 }
 
 interface LeadInvitationDbRow {
@@ -128,7 +131,7 @@ export async function listLeadPool(
   let query = supabase
     .from("leads")
     .select(
-      "id,provisional_student_name,phone,grade_hint,grade_text,status,owner_id,student_id,suggested_student_id,created_at",
+      "id,provisional_student_name,phone,grade_hint,grade_text,status,owner_id,student_id,suggested_student_id,created_at,note",
       { count: "exact" },
     );
   if (filters.scope === "unassigned") query = query.is("owner_id", null);
@@ -152,7 +155,7 @@ export async function listLeadPool(
   const suggestedStudentIds = [...new Set(rows
     .map((row) => row.suggested_student_id)
     .filter((id): id is string => Boolean(id)))];
-  const [sourceResult, interestResult, communicationResult, initialInvitationResult, reminderResult, ownerResult, studentResult] = await Promise.all([
+  const [sourceResult, interestResult, communicationResult, initialInvitationResult, reminderResult, ownerResult, studentResult, communicationDates] = await Promise.all([
     supabase
       .from("lead_source_records")
       .select("id,lead_id,submitted_at,acquisition_method,promoter,location_text,source_marked_duplicate,created_at")
@@ -171,7 +174,7 @@ export async function listLeadPool(
       .from("effective_lead_communications" as "lead_communications")
       .select("id,lead_id,outcome,note,wechat_added,visit_committed,interest_level,occurred_at")
       .in("lead_id", leadIds)
-      .order("original_occurred_at", { ascending: false })
+      .order("original_occurred_at", { ascending: false, nullsFirst: false })
       .order("id", { ascending: false })
       .limit(5_000)
       .returns<LeadCommunicationDbRow[]>(),
@@ -196,6 +199,7 @@ export async function listLeadPool(
     suggestedStudentIds.length > 0
       ? supabase.from("students").select("id,name").in("id", suggestedStudentIds).is("deleted_at", null)
       : Promise.resolve({ data: [], error: null }),
+    supabase.from('lead_communications').select('id,occurred_on').in('lead_id',leadIds),
   ]);
   let invitationResult = initialInvitationResult;
   if (invitationResult.error?.code === "PGRST204"
@@ -213,6 +217,10 @@ export async function listLeadPool(
   if (sourceResult.error) throw new Error(sourceResult.error.message);
   if (interestResult.error) throw new Error(interestResult.error.message);
   if (communicationResult.error) throw new Error(communicationResult.error.message);
+  if (communicationDates.error) throw new Error(communicationDates.error.message);
+  const contactDateById=new Map((communicationDates.data??[]).map(row=>[row.id,row.occurred_on]));
+  for(const contact of communicationResult.data??[])contact.occurred_on=contactDateById.get(contact.id)??null;
+  communicationResult.data?.sort((a,b)=>(b.occurred_at??b.occurred_on??'').localeCompare(a.occurred_at??a.occurred_on??''));
   if (reminderResult.error) throw new Error(reminderResult.error.message);
   const invitationUnavailable = invitationResult.error?.code === "42P01"
     || invitationResult.error?.code === "PGRST205";
@@ -306,12 +314,12 @@ export async function listLeadPool(
         sourceMarkedDuplicate: latest?.source_marked_duplicate ?? false,
         interests: interestsByLead.get(row.id) ?? [],
         contactCount: communications.length,
-        lastContactAt: lastContact?.occurred_at ?? null,
+        lastContactAt: lastContact?.occurred_at ?? lastContact?.occurred_on ?? null,
         lastContactOutcome: lastContact?.outcome ?? null,
-        lastContactNote: lastContact?.note ?? "",
-        wechatAdded: lastContact?.wechat_added ?? null,
-        visitCommitted: lastContact?.visit_committed ?? null,
-        interestLevel: lastContact?.interest_level ?? null,
+        lastContactNote: mergeSourceNotes(lastContact?.note,row.note),
+        wechatAdded: communications.find(contact=>contact.wechat_added!==null)?.wechat_added ?? sourceLeadContactFacts(row.note).wechatAdded,
+        visitCommitted: communications.find(contact=>contact.visit_committed!==null)?.visit_committed ?? sourceLeadContactFacts(row.note).visitCommitted,
+        interestLevel: communications.find(contact=>contact.interest_level!==null)?.interest_level ?? sourceLeadContactFacts(row.note).interestLevel,
         nextContactAt,
         activeInvitation: invitation ? {
           id: invitation.id,

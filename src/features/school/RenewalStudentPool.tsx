@@ -32,7 +32,7 @@ import { renewalResult, type RenewalWorkbenchSaved } from "./renewal-workbench-c
 import type { RenewalWorkspaceData } from "./renewals";
 import { CreateCycleDialog } from "./RenewalPoolWorkspace";
 import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
-import type { StudentBusinessHistory } from "./student-business-history-contract";
+import { businessSubjectKey, type StudentBusinessHistory } from "./student-business-history-contract";
 
 export function RenewalStudentPool({ data, supplement, canWrite, canReview, canEnroll, settings = false,
   allowHealthSamples = false, healthSampleMode = false, history, initialQuery, initialRecordState = "all",
@@ -93,9 +93,9 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
       nextContactAt: saved.nextContactAt, updatedAt: saved.record.updatedAt, record: saved.record, payment: saved.payment ?? undefined };
   });
   const rows: RenewalPoolRow[] = [...currentRows, ...(history?.renewals ?? []).map(row => ({
-    id: `historical:${row.id}`, membershipId: null, studentId: row.student_id,
-    name: history!.students[row.student_id] ?? recordM.unknown, phone: history!.subjects[row.student_id]?.phone ?? "",
-    grade: history!.subjects[row.student_id]?.grade ?? null, classroom: `${row.period_label || `${row.period_year ?? ""}${row.period_key === "summer" ? t("season_summer") : row.period_key === "autumn" ? t("season_autumn") : ""}`} · ${row.class_label}`,
+    id: `historical:${row.id}`, membershipId: null, studentId: row.student_id ?? "", sourceRecordId: row.source_record_id,
+    name: history!.students[businessSubjectKey(row)] ?? recordM.unknown, phone: history!.subjects[businessSubjectKey(row)]?.phone ?? "",
+    grade: history!.subjects[businessSubjectKey(row)]?.grade ?? null, classroom: `${row.period_label || `${row.period_year ?? ""}${row.period_key === "summer" ? t("season_summer") : row.period_key === "autumn" ? t("season_autumn") : ""}`} · ${row.class_label}`,
     teacher: row.teacher_label, owner: "", stage: row.outcome === "renewed" ? "enrolled" : row.outcome === "not_renewed" ? "not_enrolled" : "unknown",
     note: row.decision_note, opportunityId: row.id, targetCourse: "", nextContactAt: null, updatedAt: null, recordState: "historical" as const,
   }))];

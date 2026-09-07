@@ -18,7 +18,8 @@ const q=v=>`'${String(v).replaceAll("'","''")}'`;
 const source=read('.tmp/full-source-import/plan.json');
 const batch=JSON.parse(sql(`begin read only;select to_jsonb(b) from public.history_import_batches b where batch_key=${q(source.batchKey)};commit;`));
 if(batch.payload_sha256!==source.payloadHash)throw new Error('SOURCE_BATCH_CHANGED');
-const snapshot=read(path.join(root,'snapshot.json'));
+const snapshot=Object.fromEntries(OPERATIONAL_TABLES.map(table=>[table,JSON.parse(sql(`begin read only;select coalesce(jsonb_agg(t),'[]'::jsonb) from public.${table} t;commit;`))]));
+snapshot.profiles=JSON.parse(sql("begin read only;select coalesce(jsonb_agg(t),'[]'::jsonb) from(select id,display_name,role,is_active,account_status from public.profiles where role in ('staff','admin')) t;commit;"));
 const plan=buildOperationalSourceImport(source,snapshot);
 fs.writeFileSync(path.join(root,'plan.json'),JSON.stringify(plan));
 if(mode==='--prepare'){console.log(JSON.stringify({counts:plan.counts,coverage:plan.coverage.reduce((out,row)=>(out[row.table]=(out[row.table]??0)+1,out),{})}));process.exit(0);}

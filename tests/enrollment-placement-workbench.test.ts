@@ -1,10 +1,11 @@
-import { createElement, type ComponentProps, type ReactNode } from "react";
+import { createElement, type ComponentProps, type ComponentType, type PropsWithChildren, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it, vi } from "vitest";
 import messages from "../messages/zh.json";
 import type { CourseEnrollmentRow, EnrollmentPlacementBoard, PlacementClassroom, PlacementMember } from "@/features/school/enrollment-workflow-contract";
 import { EnrollmentPlacementWorkbench } from "@/features/school/EnrollmentPlacementWorkbench";
+const IntlProvider=NextIntlClientProvider as ComponentType<PropsWithChildren<Omit<ComponentProps<typeof NextIntlClientProvider>,'children'>>>;
 
 vi.mock("@/features/school/enrollment-workflow-actions", () => ({ moveEnrollmentSeatAction: vi.fn() }));
 vi.mock("@/features/school/Student360Sheet", () => ({
@@ -51,9 +52,9 @@ const board: EnrollmentPlacementBoard = {
 };
 
 function renderRoster(initialTermId?: string, props: Partial<ComponentProps<typeof EnrollmentPlacementWorkbench>> = {}) {
-  const markup = renderToStaticMarkup(createElement(NextIntlClientProvider, {
+  const markup = renderToStaticMarkup(createElement(IntlProvider, {
     locale: "zh", timeZone: "Asia/Shanghai", now: new Date("2026-09-05T00:00:00Z"), messages,
-  }, createElement(EnrollmentPlacementWorkbench, { initialBoard: board, initialTermId, canCreateClass: false, ...props })));
+  },createElement(EnrollmentPlacementWorkbench, { initialBoard: board, initialTermId, canCreateClass: false, ...props })));
   const body = markup.match(/<tbody\b[^>]*>([\s\S]*?)<\/tbody>/)?.[1];
   expect(body, "the workbench renders its class roster as a table body").toBeDefined();
   return [...body!.matchAll(/<tr\b([^>]*)>([\s\S]*?)<\/tr>/g)].map((match) => ({
@@ -67,7 +68,7 @@ const studentKeys = (content: string) => [...content.matchAll(/data-placement-st
 const classroomId = (attributes: string) => attributes.match(/data-placement-classroom="([^"]+)"/)?.[1];
 
 describe("enrollment placement class roster", () => {
-  it("shares class columns and student tiles with historical arrangements while keeping them outside seat operations", () => {
+  it("includes source arrangements in the same roster and confirms their class before seat operations", () => {
     const history: NonNullable<ComponentProps<typeof EnrollmentPlacementWorkbench>['history']> = {
       renewals: [], activities: [], assessments: [], communications: [], sources: {},
       students: { 'existing-student': '历史学生' }, subjects: { 'existing-student': { name: '历史学生', phone: '', grade: 4 } },
@@ -84,10 +85,11 @@ describe("enrollment placement class roster", () => {
     expect(historical.content).toContain('原老师');
     expect(historical.content).toContain('1200');
     expect(historical.content).not.toMatch(/data-placement-target|data-placement-select|touch-none/);
-    expect(renderRoster(undefined, { history, initialRecordState: 'current' }).some(row => row.attributes.includes('data-record-state="historical"'))).toBe(false);
-    const historicalOnly = renderRoster(undefined, { history, initialRecordState: 'historical' });
-    expect(historicalOnly.some(row => classroomId(row.attributes))).toBe(false);
-    expect(historicalOnly.some(row => row.attributes.includes('data-placement-pending'))).toBe(false);
+    for(const initialRecordState of ['current','historical'] as const){
+      const visible=renderRoster(undefined,{history,initialRecordState});
+      expect(visible.some(row=>row.attributes.includes('data-record-state="historical"'))).toBe(true);
+      expect(visible.some(row=>classroomId(row.attributes))).toBe(true);
+    }
   });
 
   it("renders each class once and keeps its students together in the roster cell", () => {

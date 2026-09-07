@@ -52,7 +52,6 @@ export function AssessmentRegistrationFields({ value, onChange, disabled, routin
         className="w-28 min-h-8 py-1"
         options={[
           { value: "none", label: t("notEntered"), tone: "neutral" },
-          ...(value.assessmentBand === "below_a" ? [{ value: "below_a", label: t("band_below_a"), tone: "unhealthy" as const }] : []),
           ...ASSESSMENT_BANDS.map((band) => ({ value: band, label: t(`band_${band}`), tone: bandTone(band) })),
         ]}
         onValueChange={(band) => onChange({ assessmentBand: band === "none" ? null : band as StoredAssessmentBand })} />

@@ -27,6 +27,7 @@ import {
 import { ACTIVITY_KINDS } from "./activity-kinds";
 import type { ActivityRow } from "./activities";
 import { ActivityGradesDialog } from "./ActivityGradesDialog";
+import { businessDisplayDate } from './business-source-contract';
 import { BusinessRecordRevisionButton } from './BusinessRecordRevisionButton';
 import { inputClass } from "./controls";
 import { DashboardInlineEntry } from "./dashboard-page/DashboardInlineEntry";
@@ -112,10 +113,6 @@ export function ActivitiesManager({
   const [gradeTarget, setGradeTarget] = useState<ActivityRow | null>(null);
   const [activeActivityId, setActiveActivityId] = useState<string | null>(initialActivityId ?? null);
   const toggleActivity = (activityId: string) => setActiveActivityId((current) => current === activityId ? null : activityId);
-  const dateTimeFormatter = useMemo(
-    () => new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }),
-    [locale],
-  );
   const dateFormatter = useMemo(
     () => new Intl.DateTimeFormat(locale, { dateStyle: "medium" }),
     [locale],
@@ -232,7 +229,7 @@ export function ActivitiesManager({
               const registrationFacts = activity.registrations.filter(row => row.registeredOn || row.reportedResult || row.assessment?.assessmentBand && row.assessment.score === null);
               return <Fragment key={activity.id}><TableRow data-record-state={activity.recordState ?? 'current'} data-activity-row={activity.id} aria-expanded={canRegister ? expanded : undefined} className={canRegister ? `cursor-pointer ${expanded ? "bg-moon/10 hover:bg-moon/10" : ""}` : undefined} onClick={canRegister ? () => toggleActivity(activity.id) : undefined}>
                 <TableCell className="whitespace-nowrap text-sm">
-                  {current ? dateTimeFormatter.format(new Date(activity.scheduledAt)) : activity.occurredOn ?? recordM.unknown}
+                  {businessDisplayDate(activity.scheduledAt,activity.occurredOn,locale)}
                 </TableCell>
                 <TableCell>
                   {canRegister ? <Button size="sm" variant="ghost" className="h-auto justify-start gap-1 p-0 text-left text-ink" onClick={(event) => { event.stopPropagation(); toggleActivity(activity.id); }}>{expanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}{activity.title}</Button> : current ? <Link href={`/dashboard/activities/${activity.id}`} className="font-medium text-ink hover:underline">

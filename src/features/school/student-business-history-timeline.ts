@@ -4,7 +4,7 @@ import type { HistoricalRenewal, StudentBusinessHistory } from './student-busine
 import { getStudentBusinessHistoryMessages } from './student-business-history-messages';
 import type { Student360Event, Student360Fact, Student360FactLabel, Student360NoteLabel } from './student-360-contract';
 
-/** 现有业务历史投影到同一条 360 时间线；同源沟通随所属业务显示一次。 */
+/** 来源业务投影到同一条 360 时间线；同源沟通随所属业务显示一次。 */
 export function studentBusinessHistoryEvents(data: StudentBusinessHistory | null, locale: string): Student360Event[] {
   if (!data) return [];
   const m = getStudentBusinessHistoryMessages(locale);
@@ -36,7 +36,7 @@ export function studentBusinessHistoryEvents(data: StudentBusinessHistory | null
     id: `historical-enrollment:${row.id}`, phase: 'enrollment', kind: 'course_enrollment', recordState: 'historical',
     occurredAt: row.registered_on, title: row.period_label, status: null, actorName: null, important: true,
     facts: facts([['amount', row.amount ?? row.amount_original], ['classroom', row.class_label], ['teacher', row.teacher_label], ['location', row.room_label], ['scheduled', row.schedule_label]]),
-    notes: [], source: { kind: 'course_enrollments', id: row.id },
+    notes: notes('enrollment',row.note??''), source: { kind: 'course_enrollments', id: row.id },
   });
   for (const row of data.communications.filter(row => row.context_kind === 'renewal')) {
     const renewals = data.renewals.filter(renewal => relatedBusinessCommunications(data, renewal, 'renewal').some(communication => communication.id === row.id));
@@ -62,4 +62,18 @@ export function studentBusinessHistoryEvents(data: StudentBusinessHistory | null
     notes: notes('follow_up', uniqueBusinessFeedback(row.content)), source: { kind: 'student_follow_ups', id: row.id },
   });
   return events;
+}
+
+export function mergeStudentBusinessEvents(current:Student360Event[],source:Student360Event[]):Student360Event[] {
+  const aliases:Record<string,string>={assessment_results:'assessment_result',activity_registrations:'activity_registration',course_enrollments:'course_enrollment',student_follow_ups:'student_follow_up'};
+  const key=(event:Student360Event)=>`${aliases[event.source.kind]??event.source.kind}:${event.source.id}`;
+  const represented=new Set(current.map(key));
+  const sourceByKey=new Map(source.map(event=>[key(event),event]));
+  return [...current.map(event=>{
+    const original=sourceByKey.get(key(event));
+    if(!original)return event;
+    return {...event,title:event.title||original.title,
+      facts:[...event.facts,...original.facts.filter(fact=>!event.facts.some(existing=>existing.label===fact.label))],
+      notes:event.notes.length?event.notes:original.notes};
+  }),...source.filter(event=>!represented.has(key(event)))];
 }

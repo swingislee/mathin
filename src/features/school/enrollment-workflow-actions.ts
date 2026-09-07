@@ -26,6 +26,7 @@ const ERRORS = [
   "ENROLLMENT_ALREADY_ASSIGNED", "ENROLLMENT_NOT_ACTIVE", "ENROLLMENT_CANCELLED", "COURSE_NOT_AVAILABLE", "TERM_NOT_FOUND",
   "OPPORTUNITY_NOT_CONFIRMABLE", "STUDENT_NOT_AVAILABLE", "CLASS_MEMBERSHIP_NOT_ACTIVE", "MEMBERSHIP_ALREADY_LINKED",
   "INVALID_SEAT", "SEAT_OCCUPIED",
+  "ALREADY_ENROLLED_FOR_COURSE", "SOURCE_ASSOCIATION_REQUIRED", "SOURCE_IN_USE",
 ] as const;
 function refreshEnrollmentWorkflow() {
   for (const path of ["assessments", "invitations", "enrollments", "opportunities"]) revalidatePath(`/[locale]/dashboard/${path}`, "page");
@@ -89,4 +90,14 @@ export async function moveEnrollmentPlacementAction(input: z.infer<typeof moveSc
     refreshEnrollmentWorkflow();
     return { ok: true, data: await loadEnrollmentPlacementBoard() };
   } catch (error) { return actionError(error, ERRORS); }
+}
+export async function prepareSourceEnrollmentAction(input:{enrollmentId:string;studentId:string;classroomId:string}):Promise<ActionResult<EnrollmentPlacementBoard>> {
+  try {
+    const value=parse(z.object({enrollmentId:uuid,studentId:uuid,classroomId:uuid}).strict(),input);
+    await authorizedClient('enrollment.manage');
+    await enrollmentWorkflowRpc('prepare_source_enrollment',{p_enrollment_id:value.enrollmentId,p_student_id:value.studentId,p_classroom_id:value.classroomId});
+    refreshEnrollmentWorkflow();
+    revalidatePath('/[locale]/dashboard/followups/enrollments','page');
+    return {ok:true,data:await loadEnrollmentPlacementBoard()};
+  } catch(error){return actionError(error,ERRORS);}
 }

@@ -1,13 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createElement, type ComponentProps } from 'react';
+import { createElement, type ComponentProps, type ComponentType, type PropsWithChildren } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { NextIntlClientProvider } from 'next-intl';
 import { BusinessHistorySections } from '@/features/school/BusinessHistorySections';
 import { historicalAssessmentFeedback, relatedBusinessCommunications, uniqueBusinessFeedback } from '@/features/school/business-record-notes';
-import { studentBusinessHistoryEvents } from '@/features/school/student-business-history-timeline';
+import { studentBusinessHistoryEvents, mergeStudentBusinessEvents } from '@/features/school/student-business-history-timeline';
 import { sortStudent360Events, summarizeStudent360Phases } from '@/features/school/student-360-contract';
 import type { StudentBusinessHistory } from '@/features/school/student-business-history-contract';
 import { loadHistoricalFirstContactRows } from '@/features/school/historical-first-contact-data';
+const IntlProvider=NextIntlClientProvider as ComponentType<PropsWithChildren<Omit<ComponentProps<typeof NextIntlClientProvider>,'children'>>>;
 
 const db = vi.hoisted(() => ({ history: null as StudentBusinessHistory | null }));
 vi.mock('server-only', () => ({}));
@@ -38,6 +39,13 @@ function history(): StudentBusinessHistory {
 }
 
 describe('historical feedback ownership and Student 360', () => {
+  it('shows a source assessment once after it becomes an active business record',()=>{
+    const original=studentBusinessHistoryEvents(history(),'zh').find(event=>event.kind==='assessment')!;
+    const current={...original,id:'assessment:assessment',recordState:'current' as const,actorName:'测评老师',source:{kind:'assessment_result',id:'assessment'}};
+    const events=mergeStudentBusinessEvents([current],[original]);
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({id:'assessment:assessment',actorName:'测评老师',occurredAt:'2025-12-29'});
+  });
   it('keeps each feedback line once without mutating the source records', () => {
     const data = history();
     const original = JSON.stringify(data);
@@ -66,7 +74,7 @@ describe('historical feedback ownership and Student 360', () => {
   it('opens the owning assessment editor from the communication archive and displays its revised feedback', () => {
     const data = history();
     data.assessments[0] = {...data.assessments[0], history_revision:1, learning_notes:'统一修订反馈', parent_notes:''};
-    const markup = renderToStaticMarkup(createElement(NextIntlClientProvider,{locale:'zh',timeZone:'Asia/Shanghai',messages:{}},
+    const markup = renderToStaticMarkup(createElement(IntlProvider,{locale:'zh',timeZone:'Asia/Shanghai',messages:{}},
       createElement(BusinessHistorySections,{data,locale:'zh',kind:'communication'})));
     expect(markup).toContain('统一修订反馈');
     expect(markup).not.toContain('计算准确');

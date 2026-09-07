@@ -9,7 +9,7 @@ import type { LeadStatus } from "./lead-contract";
 import { leadContactAllowsIdentity } from "./lead-identity-contract";
 import { readStudentLifecycle } from "./student-lifecycle-data";
 import { loadStudentBusinessHistory } from "./student-business-history-data";
-import { studentBusinessHistoryEvents } from "./student-business-history-timeline";
+import { studentBusinessHistoryEvents, mergeStudentBusinessEvents } from "./student-business-history-timeline";
 import {
   latestStudent360Phase,
   sortStudent360Events,
@@ -25,7 +25,8 @@ import {
 } from "./student-360-contract";
 
 type CommercialEnrollmentRow = {
-  id: string; note: string; confirmed_by: string; confirmed_at: string;
+  id: string; note: string; confirmed_by: string | null; confirmed_at: string | null;
+  source_record_id:string|null;registered_on:string|null;
   cancelled_by: string | null; cancelled_at: string | null;
   courses: { title: string } | null; school_terms: { name: string } | null;
 };
@@ -56,7 +57,7 @@ type InterestRow = Pick<TableRow<"lead_interest_selections">,
 >;
 type CommunicationRow = Pick<TableRow<"lead_communications">,
   "id" | "lead_id" | "channel" | "outcome" | "note" | "wechat_added" |
-  "visit_committed" | "interest_level" | "recorded_by" | "occurred_at"
+  "visit_committed" | "interest_level" | "recorded_by" | "occurred_at" | "occurred_on"
 >;
 type NextActionRow = Pick<TableRow<"lead_next_actions">,
   "id" | "lead_id" | "kind" | "due_at" | "status" | "created_by" |
@@ -78,13 +79,13 @@ type RegistrationRow = Pick<TableRow<"activity_registrations">,
 >;
 type ActivityRow = Pick<TableRow<"activities">,
   "id" | "kind" | "title" | "scheduled_at" | "location" | "remark" |
-  "created_by" | "source_invitation_id"
+  "created_by" | "source_invitation_id" | "occurred_on"
 >;
 type AssessmentRow = Pick<TableRow<"assessment_results">,
   "id" | "activity_registration_id" | "assessment_band" | "overall_level" |
   "score" | "strengths" | "focus_areas" | "parent_concerns" |
   "teacher_recommendation" | "recommended_class" | "teacher_observation" |
-  "assessed_by" | "created_at" | "updated_at"
+  "assessed_by" | "created_at" | "updated_at" | "source_record_id" | "assessed_on"
 >;
 type RouteRow = Pick<TableRow<"activity_routes">,
   "id" | "activity_registration_id" | "route" | "note" | "routed_by" |
@@ -106,7 +107,7 @@ type QuestionRow = Pick<TableRow<"assessment_paper_questions">,
 >;
 type FollowUpRow = Pick<TableRow<"student_follow_ups">,
   "id" | "student_id" | "author_id" | "content" | "kind" |
-  "next_follow_up_at" | "status_after" | "created_at"
+  "next_follow_up_at" | "status_after" | "created_at" | "source_record_id" | "occurred_on"
 >;
 type EnrollmentRow = Pick<TableRow<"enrollments">,
   "id" | "classroom_id" | "student_id" | "status" | "joined_at" | "left_at" |
@@ -253,7 +254,7 @@ export async function getStudent360Snapshot(
       .in("lead_id", leadIds).order("created_at", { ascending: false }).limit(READ_LIMIT)
       .returns<InterestRow[]>()) : Promise.resolve([]),
     leadIds.length ? readRows(supabase.from("lead_communications")
-      .select("id,lead_id,channel,outcome,note,wechat_added,visit_committed,interest_level,recorded_by,occurred_at")
+      .select("id,lead_id,channel,outcome,note,wechat_added,visit_committed,interest_level,recorded_by,occurred_at,occurred_on")
       .in("lead_id", leadIds).order("occurred_at", { ascending: false }).limit(READ_LIMIT)
       .returns<CommunicationRow[]>()) : Promise.resolve([]),
     leadIds.length ? readRows(supabase.from("lead_next_actions")
@@ -275,7 +276,7 @@ export async function getStudent360Snapshot(
       .in("lead_id", leadIds).order("created_at", { ascending: false }).limit(READ_LIMIT)
       .returns<RegistrationRow[]>()) : Promise.resolve([]),
     studentId ? readRows(supabase.from("student_follow_ups")
-      .select("id,student_id,author_id,content,kind,next_follow_up_at,status_after,created_at")
+      .select("id,student_id,author_id,content,kind,next_follow_up_at,status_after,created_at,source_record_id,occurred_on")
       .eq("record_state", "current")
       .eq("student_id", studentId).order("created_at", { ascending: false }).limit(READ_LIMIT)
       .returns<FollowUpRow[]>()) : Promise.resolve([]),
@@ -292,7 +293,7 @@ export async function getStudent360Snapshot(
       .eq("student_id", studentId).order("updated_at", { ascending: false }).limit(READ_LIMIT)
       .returns<ReviewRow[]>()) : Promise.resolve([]),
     studentId ? readRows(supabase.from("course_enrollments")
-      .select("id,note,confirmed_by,confirmed_at,cancelled_by,cancelled_at,courses(title),school_terms(name)")
+      .select("id,note,confirmed_by,confirmed_at,cancelled_by,cancelled_at,source_record_id,registered_on,courses(title),school_terms(name)")
       .eq("record_state", "current")
       .eq("student_id", studentId).order("confirmed_at", { ascending: false }).limit(READ_LIMIT)
       .returns<CommercialEnrollmentRow[]>()) : Promise.resolve([]),
@@ -327,10 +328,10 @@ export async function getStudent360Snapshot(
       .in("invitation_id", invitationIds).order("occurred_at", { ascending: false }).limit(READ_LIMIT)
       .returns<InvitationEventRow[]>()) : Promise.resolve([]),
     activityIds.length ? readRows(supabase.from("activities")
-      .select("id,kind,title,scheduled_at,location,remark,created_by,source_invitation_id")
+      .select("id,kind,title,scheduled_at,occurred_on,location,remark,created_by,source_invitation_id")
       .in("id", activityIds).limit(READ_LIMIT).returns<ActivityRow[]>()) : Promise.resolve([]),
     registrationIds.length ? readRows(supabase.from("assessment_results")
-      .select("id,activity_registration_id,assessment_band,overall_level,score,strengths,focus_areas,parent_concerns,teacher_recommendation,recommended_class,teacher_observation,assessed_by,created_at,updated_at")
+      .select("id,activity_registration_id,assessment_band,overall_level,score,strengths,focus_areas,parent_concerns,teacher_recommendation,recommended_class,teacher_observation,assessed_by,created_at,updated_at,source_record_id,assessed_on")
       .in("activity_registration_id", registrationIds).order("updated_at", { ascending: false }).limit(READ_LIMIT)
       .returns<AssessmentRow[]>()) : Promise.resolve([]),
     registrationIds.length ? readRows(supabase.from("activity_routes")
@@ -471,7 +472,7 @@ export async function getStudent360Snapshot(
     id: `contact:${row.id}`,
     phase: "contact",
     kind: "contact",
-    occurredAt: row.occurred_at,
+    occurredAt: row.occurred_at ?? row.occurred_on,
     title: "",
     status: `contact.${row.outcome}`,
     actorName: nameOf(row.recorded_by),
@@ -558,12 +559,12 @@ export async function getStudent360Snapshot(
 
   for (const row of registrations) {
     const activity = activityById.get(row.activity_id);
-    if (!activity?.scheduled_at) continue;
+    if (!activity) continue;
     addEvent(events, {
       id: `activity:${row.id}`,
       phase: "experience",
       kind: "activity",
-      occurredAt: activity.scheduled_at,
+      occurredAt: activity.scheduled_at ?? activity.occurred_on,
       title: activity.title,
       status: `registration.${row.status}`,
       actorName: nameOf(row.operated_by ?? activity.created_by),
@@ -601,7 +602,7 @@ export async function getStudent360Snapshot(
       id: `assessment:${row.id}`,
       phase: "assessment",
       kind: "assessment",
-      occurredAt: registration?.assessment_completed_at ?? row.updated_at,
+      occurredAt: registration?.assessment_completed_at ?? (row.source_record_id ? row.assessed_on : row.updated_at),
       title: activity?.title ?? "",
       status: row.assessment_band ? `assessment.${row.assessment_band}` : row.overall_level ? `assessment.${row.overall_level}` : null,
       actorName: nameOf(row.assessed_by),
@@ -676,7 +677,7 @@ export async function getStudent360Snapshot(
     id: `follow-up:${row.id}`,
     phase: followUpPhase(row.kind, row.created_at, firstEnrollmentAt),
     kind: "follow_up",
-    occurredAt: row.created_at,
+    occurredAt: row.source_record_id ? row.occurred_on : row.created_at,
     title: "",
     status: `followup.${row.kind}`,
     actorName: nameOf(row.author_id),
@@ -690,7 +691,7 @@ export async function getStudent360Snapshot(
     const title = [row.courses?.title, row.school_terms?.name].filter(Boolean).join(" · ");
     addEvent(events, {
       id: `course-enrollment:${row.id}`, phase: "enrollment", kind: "course_enrollment",
-      occurredAt: row.confirmed_at, title, status: null, actorName: nameOf(row.confirmed_by),
+      occurredAt: row.source_record_id ? row.registered_on : row.confirmed_at, title, status: null, actorName: nameOf(row.confirmed_by),
       facts: [], notes: compact([note("enrollment", row.note)]), important: true,
       source: { kind: "course_enrollment", id: row.id },
     });
@@ -766,7 +767,7 @@ export async function getStudent360Snapshot(
 
   const locale = await getLocale();
   const history = student ? await loadStudentBusinessHistory(locale, { studentId: student.id }) : null;
-  const sortedEvents = sortStudent360Events([...events, ...studentBusinessHistoryEvents(history, locale)]);
+  const sortedEvents = sortStudent360Events(mergeStudentBusinessEvents(events, studentBusinessHistoryEvents(history, locale)));
   const phases = summarizeStudent360Phases(sortedEvents);
   const openLeadAction = nextActionRows
     .filter((row) => row.status === "open")

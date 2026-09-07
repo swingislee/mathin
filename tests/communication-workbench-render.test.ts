@@ -1,6 +1,7 @@
-import { createElement, type ComponentProps, type ReactNode } from "react";
+import { createElement, type ComponentProps, type ComponentType, type PropsWithChildren, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { NextIntlClientProvider } from "next-intl";
+const IntlProvider=NextIntlClientProvider as ComponentType<PropsWithChildren<Omit<ComponentProps<typeof NextIntlClientProvider>,'children'>>>;
 import { describe, expect, it, vi } from "vitest";
 import messages from "../messages/zh.json";
 import { InvitationCoordinationWorkbench } from "@/features/school/InvitationCoordinationWorkbench";
@@ -90,8 +91,8 @@ describe("communication workbench server rendering", () => {
     expect(dataRows.every(row => row.attributes.includes('data-first-contact-record='))).toBe(true);
     expect(dataRows[0].cells.map(cell => cell.attributes)).toEqual(dataRows[1].cells.map(cell => cell.attributes));
     expect(dataRows[1].cells[0].content).toContain('data-followup-person');
-    expect(dataRows[1].content).toContain('首联记录缺失');
-    expect(dataRows[1].cells[3].content).toContain('资料未记录');
+    expect(dataRows[1].content).toContain('待联系');
+    expect(dataRows[1].cells[3].content).toContain('—');
     expect(dataRows[1].content).not.toContain('独有历史沟通事实');
     expect(dataRows[1].content).not.toMatch(/<input|<textarea|role="checkbox"|aria-keyshortcuts="Control/);
     expect(renderWorkbench({ historicalFirstContacts, contactLeads: [], rowOrder: [] }).dataRows.map(row => row.key)).toEqual(['student:existing-student']);
@@ -106,9 +107,9 @@ describe("communication workbench server rendering", () => {
         status: { label: '首联记录缺失', tone: 'neutral', context: '原资料未记录首联' }, updated: '资料未记录', note: '保留完整历史事实' },
       locale: 'zh', active: true, expanded: true, detailsId: 'existing-details', onExpandedChange: vi.fn(),
     });
-    const markup = renderToStaticMarkup(createElement(NextIntlClientProvider, {
+    const markup = renderToStaticMarkup(createElement(IntlProvider, {
       locale: 'zh', messages, timeZone: 'Asia/Shanghai',
-    }, element));
+    },element));
     expect(markup).toContain('data-followup-inline-details');
     expect(markup).toContain('data-followup-entry-fields');
     expect(markup).toContain('data-followup-notes');
@@ -123,8 +124,8 @@ describe("communication workbench server rendering", () => {
         status: { label: '首联记录缺失', tone: 'neutral', context: '' }, updated: '资料未记录', note: '来自测评和续班的内容' },
       locale: 'zh', active: true, expanded: true, detailsId: 'existing-details', onExpandedChange: vi.fn(),
     });
-    const markup = renderToStaticMarkup(createElement(NextIntlClientProvider, { locale: 'zh', messages, timeZone: 'Asia/Shanghai' }, element));
-    expect(markup.match(/原资料未提供首次联系记录/g)).toHaveLength(1);
+    const markup = renderToStaticMarkup(createElement(IntlProvider, { locale: 'zh', messages, timeZone: 'Asia/Shanghai' },element));
+    expect(markup.match(/查看已有记录并继续联系。/g)).toHaveLength(1);
     expect(markup).not.toContain('来自测评和续班的内容');
     expect(markup).not.toContain('data-followup-notes');
     expect(markup).not.toContain('查看学生档案');

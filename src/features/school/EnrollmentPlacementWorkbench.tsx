@@ -1,7 +1,5 @@
 "use client";
 
-import { BusinessRecordRevisionButton } from './BusinessRecordRevisionButton';
-
 import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { GripVertical, LoaderCircle, Plus, X } from "lucide-react";
@@ -21,14 +19,16 @@ import { PLACEMENT_WORK_FILTERS, placementClassMatchesWorkFilter, type Placement
 import { DashboardCommandActions, DashboardCommandFilters, DashboardCommandState, DashboardPage, DashboardTableColumnHeader, DashboardTableShell, useDashboardTableView } from "./dashboard-page";
 import { BusinessRecordStateFilter, HistoricalRecordBadge, useBusinessSearchQuery } from './BusinessRecordStateFilter';
 import { businessRecordMessages, matchesBusinessRecordState, type BusinessRecordStateFilter as StateFilter } from './business-record-state-contract';
-import type { HistoricalEnrollment, StudentBusinessHistory } from './student-business-history-contract';
+import { businessSubjectKey, type HistoricalEnrollment, type StudentBusinessHistory } from './student-business-history-contract';
 import { classWeeklyScheduleLabel, enrollmentErrorKey, placementHealth, placementStudents, type EnrollmentPlacementBoard, type PlacementClassroom, type PlacementStudent } from "./enrollment-workflow-contract";
 import { moveEnrollmentSeatAction } from "./enrollment-workflow-actions";
 import { placementRosterSeats, placementSeatTargetError } from "./placement-roster";
 import { useTilePointerDrag } from "./tile-pointer-drag";
+import { SourceEnrollmentPlacementDialog } from './SourceEnrollmentPlacementDialog';
 
 interface RosterRow {
   historical?: HistoricalEnrollment;
+  sourceEnrollments?: HistoricalEnrollment[];
   key: string;
   group: string;
   grade: number;
@@ -48,9 +48,10 @@ interface SeatTarget {
 const NAME_GRID = "grid grid-cols-[repeat(auto-fill,minmax(3.75rem,1fr))] gap-px";
 
 interface StudentTileRecord {
-  key: string; studentId: string; name: string; phone: string; grade: number;
+  key: string; studentId: string | null; name: string; phone: string; grade: number;
   status: PlacementStudent['status'] | null; courseTitle: string; recommendation: string; note: string;
   placement?: PlacementStudent;
+  sourceEnrollment?: HistoricalEnrollment;
 }
 
 const studentTileRecord = (student: PlacementStudent): StudentTileRecord => ({ ...student, placement: student });
@@ -70,6 +71,22 @@ function rosterRows(board: EnrollmentPlacementBoard, students: PlacementStudent[
     { ...value, group, key: `${group}:pending`, classroom: null, students: value.students.filter((student) => !student.classroomId || !value.classrooms.some((classroom) => classroom.id === student.classroomId)) },
     ...value.classrooms.map((classroom) => ({ ...value, group, key: classroom.id, classroom, students: value.students.filter((student) => student.classroomId === classroom.id) })),
   ]);
+}
+
+function sourceRosterRows(board:EnrollmentPlacementBoard,history:StudentBusinessHistory|null|undefined):RosterRow[] {
+  const bound=new Set(board.enrollments.map(row=>row.id));
+  const grouped=new Map<string,RosterRow>();
+  const termKey=(label:string)=>label.replace(/[\s年学期]/gu,'').replace('暑假','暑').replace('秋季','秋');
+  for(const row of history?.enrollments??[]) {
+    if(bound.has(row.id))continue;
+    const grade=history?.subjects[businessSubjectKey(row)]?.grade??0;
+    const termId=board.options.terms.find(term=>termKey(term.name)===termKey(row.period_label))?.id??`period:${row.period_label}`;
+    const group=`${termId}:${grade}`,key=JSON.stringify([group,row.class_label,row.teacher_label,row.schedule_label,row.room_label]);
+    const existing=grouped.get(key);
+    if(existing)existing.sourceEnrollments!.push(row);
+    else grouped.set(key,{key,group,termId,grade,classroom:null,classrooms:[],students:[],historical:row,sourceEnrollments:[row]});
+  }
+  return [...grouped.values()];
 }
 
 export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focusStudentId, canCreateClass, history, initialQuery, initialRecordState='all' }: {
@@ -92,9 +109,10 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
   const [pending, startMoving] = useTransition();
+  const [sourceEnrollment,setSourceEnrollment]=useState<HistoricalEnrollment|null>(null);
   const students = useMemo(() => placementStudents(board), [board]);
   const selected = students.find((student) => student.key === selectedKey) ?? null;
-  const rows = useMemo(() => [...rosterRows(board, students),...(history?.enrollments??[]).map((row):RosterRow=>({key:row.id,group:`historical:${row.period_label}`,termId:`historical:${row.period_label}`,grade:history?.subjects[row.student_id]?.grade??0,classroom:null,classrooms:[],students:[],historical:row}))], [board, students,history]);
+  const rows = useMemo(() => [...rosterRows(board, students),...sourceRosterRows(board,history)], [board, students,history]);
   const terms = new Map(board.options.terms.map((term) => [term.id, term.name]));
   const courses = new Map(board.options.courses.map((course) => [course.id, course.title]));
   const schedule = (classroom: PlacementClassroom) => classWeeklyScheduleLabel(classroom, locale) || t("schedulePending");
@@ -112,7 +130,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   const explicitTerm = board.options.terms.find((term) => term.id === initialTermId)?.id;
   const searchableRows=rows.filter(row=>matchesBusinessRecordState(row.historical?'historical':'current',recordState)&&(!query.trim()||[
     row.classroom?.name??'',...row.students.flatMap(student=>[student.name,student.phone]),
-    ...(row.historical?[history?.students[row.historical.student_id]??'',history?.subjects[row.historical.student_id]?.phone??'',row.historical.period_label,row.historical.class_label,row.historical.teacher_label]:[]),
+    ...(row.sourceEnrollments??[]).flatMap(fact=>[history?.students[businessSubjectKey(fact)]??'',history?.subjects[businessSubjectKey(fact)]?.phone??'',fact.period_label,fact.class_label,fact.teacher_label,fact.note??'']),
   ].join(' ').toLocaleLowerCase(locale).includes(query.trim().toLocaleLowerCase(locale))));
   const table = useDashboardTableView({ rows:searchableRows, columns, locale, persistenceKey: "followup-enrollment-roster", initialFilters: explicitTerm ? { term: explicitTerm } : focused ? { term: focused.termId, grade: String(focused.grade) } : undefined });
   const pendingMatchesClassFilters = (row: RosterRow) => !table.filters.classroom && !table.filters.teacher && !table.filters.time || row.classrooms.some((classroom) =>
@@ -211,7 +229,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   }, [focusStudentId]);
 
   const studentTile = (student: StudentTileRecord, target?: SeatTarget) => {
-    const signals = student.placement ? board.health?.[student.studentId] ?? [] : [];
+    const signals = student.placement ? board.health?.[student.studentId ?? ""] ?? [] : [];
     const health = student.placement ? placementHealth(signals) : null;
     const movable = Boolean(student.placement && student.status !== "withdrawn" && !pending);
     const swapping = Boolean(student.placement && selected && selected.key !== student.key && target && accepts(selected, target));
@@ -227,10 +245,10 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
       className={cn("group relative flex min-h-9 min-w-0 select-none items-center justify-center px-1", movable && "touch-none cursor-grab active:cursor-grabbing", selectedKey === student.key && "ring-2 ring-inset ring-crater", student.studentId === focusStudentId && "outline-2 -outline-offset-2 outline-leaf-deep", student.placement && !matches(student.placement) && "opacity-35")}
       style={{ background: health?.background }}
     >
-      <Student360Trigger subject={{ studentId: student.studentId, leadId: null }} fallback={{ name: student.name, phone: student.phone, grade: student.grade || null }} className="flex w-full min-w-0 flex-col items-center justify-center py-1 text-xs font-normal">
+      {student.sourceEnrollment?<button type="button" onClick={()=>setSourceEnrollment(student.sourceEnrollment!)} className="w-full truncate py-1 text-xs hover:underline">{student.name}</button>:<Student360Trigger subject={{ studentId: student.studentId, leadId: null }} fallback={{ name: student.name, phone: student.phone, grade: student.grade || null }} className="flex w-full min-w-0 flex-col items-center justify-center py-1 text-xs font-normal">
         <span className="max-w-full truncate">{student.name}</span>
         {student.status && student.status !== "active" ? <span className="whitespace-nowrap text-[9px] leading-3 text-muted">{t(`status_${student.status}`)}</span> : null}
-      </Student360Trigger>
+      </Student360Trigger>}
       {movable ? <button type="button" data-placement-select aria-label={t("selectStudent", { name: student.name })} aria-pressed={selectedKey === student.key} className="absolute right-0 top-0 flex h-full w-3 items-center justify-center bg-card/70 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-crater" onClick={() => setSelectedKey((value) => value === student.key ? null : student.key)}><GripVertical className="size-3" /></button> : null}
     </span></TooltipTrigger><TooltipContent className="max-w-80 space-y-1 text-xs leading-5">
       <p className="font-medium">{student.name}{student.status && student.status !== "active" ? t(`status_${student.status}`) : ""}</p><p>{student.courseTitle}</p>{target?.seat ? <p>{t("capacitySlot", { count: target.seat })}</p> : null}
@@ -295,8 +313,8 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
               return <Fragment key={row.key}><TableRow data-record-state={fact ? 'historical' : 'current'} data-placement-classroom={classroom?.id} data-placement-record={row.key} className="hover:bg-transparent">
                 <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-1"><div className="flex items-center justify-between gap-1">{classroom ? <Link href={`/dashboard/classes/${classroom.id}`} className="min-w-0 truncate font-medium hover:underline" title={className}>{className}</Link> : <span className="min-w-0 truncate font-medium" title={className}>{className}</span>}{classroom ? <span className="shrink-0 text-[10px] tabular-nums text-muted">{classroom.activeCount}/{classroom.capacity ?? "∞"}</span> : null}</div><div className="truncate text-[10px] text-muted" title={courseTitle}>{courseTitle}</div>{fact ? <p className="mt-1 text-[10px] text-muted">{fact.registered_on ?? recordM.unknown} · {fact.amount ?? fact.amount_original}</p> : null}</TableCell>
                 <TableCell className="sticky left-36 z-10 border-r border-line bg-card px-2 py-1 text-[11px]" title={time}><span className="line-clamp-2 break-words">{time}</span>{fact?.room_label ? <p className="mt-1 text-muted">{fact.room_label}</p> : null}</TableCell>
-                <TableCell className="sticky left-64 z-10 border-r border-line bg-card px-2 py-1" title={teacher}><span className="block truncate">{teacher || "—"}</span>{fact ? <BusinessRecordRevisionButton kind="enrollment" recordId={fact.id} subject={history?.students[fact.student_id]}/> : null}</TableCell>
-                <TableCell className="bg-paper/50 p-0"><div className={NAME_GRID}>{fact ? studentTile({key: fact.id, studentId: fact.student_id, name: history?.students[fact.student_id] ?? recordM.unknown, phone: history?.subjects[fact.student_id]?.phone ?? '', grade: history?.subjects[fact.student_id]?.grade ?? 0, status: null, courseTitle: fact.period_label, recommendation: '', note: `${fact.registered_on ?? recordM.unknown} · ${fact.amount ?? fact.amount_original}`}) : null}{classroom ? slots.map(({ seat, student }) => {
+                <TableCell className="sticky left-64 z-10 border-r border-line bg-card px-2 py-1" title={teacher}><span className="block truncate">{teacher || "—"}</span></TableCell>
+                <TableCell className="bg-paper/50 p-0"><div className={NAME_GRID}>{(row.sourceEnrollments??[]).map(item=>studentTile({key:item.id,studentId:item.student_id,name:history?.students[businessSubjectKey(item)]??recordM.unknown,phone:history?.subjects[businessSubjectKey(item)]?.phone??'',grade:history?.subjects[businessSubjectKey(item)]?.grade??0,status:null,courseTitle:item.period_label,recommendation:'',note:item.note??'',sourceEnrollment:item}))}{classroom ? slots.map(({ seat, student }) => {
                   const target = { classroom, termId: scope.termId, grade: scope.grade, seat };
                   const key = `${classroom.id}:${seat}`;
                   const eligible = accepts(selected, target);
@@ -311,6 +329,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
           </Fragment>;
         })}{!groups.length ? <TableRow><TableCell colSpan={4} className="h-40 text-center text-muted">{t("emptyPlacement")}</TableCell></TableRow> : null}</TableBody>
       </Table></DashboardTableShell></TooltipProvider>
+      {sourceEnrollment?<SourceEnrollmentPlacementDialog record={sourceEnrollment} name={history?.students[businessSubjectKey(sourceEnrollment)]??recordM.unknown} options={board.options} locale={locale} onClose={()=>setSourceEnrollment(null)} onSaved={value=>{setSavedBoard({base:initialBoard,value});setSourceEnrollment(null);router.refresh();}}/>:null}
       {pointer.drag ? <div aria-hidden className="pointer-events-none fixed z-50 min-w-20 rounded-sm border border-crater bg-card px-3 py-2 text-center text-xs shadow-lg" style={{ left: pointer.drag.clientX + 12, top: pointer.drag.clientY + 12 }}>{students.find((student) => student.key === pointer.drag?.data)?.name}</div> : null}
     </div>
   </DashboardPage>;

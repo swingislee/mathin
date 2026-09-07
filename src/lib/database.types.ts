@@ -16784,6 +16784,10 @@ export type Database = {
         Args: { p_id: string; p_kind: string }
         Returns: Json
       }
+      get_business_source_records: {
+        Args: { p_ids: string[] }
+        Returns: { id: string; source_data: Json; record_data: Json }[]
+      }
       get_campus_v2: { Args: { p_campus_id: string }; Returns: Json }
       get_class_build_calendar_preview_v2: {
         Args: { p_room_id: string; p_slots: Json }
@@ -18682,6 +18686,10 @@ export type Database = {
           invitation_id: string
           role_keys: string[]
         }[]
+      }
+      prepare_source_enrollment: {
+        Args: { p_enrollment_id: string; p_student_id: string; p_classroom_id: string }
+        Returns: string
       }
       prepare_staff_initial_password_reissue: {
         Args: { p_actor_id: string; p_code_hash: string; p_user_id: string }

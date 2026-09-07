@@ -8,6 +8,13 @@ const source=(id:string,tableName:string,values:Record<string,string>,studentId:
 const payload=(records:ReturnType<typeof source>[])=>({records,payloadHash:'source-fingerprint',batchKey:'source-batch'});
 
 describe('来源记录衔接当前业务模型',()=>{
+  it('maps source subject teachers to assessment teachers and support teachers to lead owners',()=>{
+    const profile={id:'assessor',display_name:'示例测评老师',role:'staff',is_active:true};
+    const p=buildOperationalSourceImport(payload([source('visit','到访数据与信息表1.0-总',{'学科老师':'示例测评老师','学服老师':'示例学服老师','思维测评等级':'A'})]),{profiles:[profile,{...profile,id:'support',display_name:'示例学服老师'}]});
+    expect(p.rows.assessment_results[0].assessed_by).toBe('assessor');
+    expect(p.rows.leads[0].owner_id).toBe('support');
+    expect(p.rows.activities[0].remark).toContain('学科老师：示例测评老师');
+  });
   it('未关联到学生的到访行仍可继续测评，学习力等级保持独立，未达A进入备注',()=>{
     const p=buildOperationalSourceImport(payload([source('visit','到访数据与信息表1.0-总',{'参与内容':'测评','思维测评等级':'未达A','学习力测评等级':'A+','年级/25级':'3','到访与否':'已到'})]),{});
     expect(p.rows.activity_registrations).toHaveLength(1);

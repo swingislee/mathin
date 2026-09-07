@@ -17,9 +17,9 @@ export const REVISION_FIELDS: Record<string, { zh: string; en: string; fields: R
   ] },
   assessment_results: { zh: '测评', en: 'Assessment', fields: [
     { key: 'assessed_on', zh: '测评日期', en: 'Assessment date', type: 'date', nullable: true },
-    { key: 'assessment_band', zh: '测评等级', en: 'Assessment band', nullable: true, options: [['a_plus','A+','A+'],['a','A','A'],['s','S','S'],['c','C','C'],['g_plus','G+','G+'],['x_plus','X+','X+'],['below_a','A 以下','Below A']] },
+    { key: 'assessment_band', zh: '测评等级', en: 'Assessment band', nullable: true, options: [['a_plus','A+','A+'],['a','A','A'],['s','S','S'],['c','C','C'],['g_plus','G+','G+'],['x_plus','X+','X+']] },
     { key: 'score', zh: '分数', en: 'Score', type: 'number', nullable: true },
-    { key: 'strengths', zh: '历史反馈', en: 'Historical feedback', type: 'textarea' },
+    { key: 'strengths', zh: '反馈与备注', en: 'Feedback and notes', type: 'textarea' },
   ] },
   course_opportunities: { zh: '续班', en: 'Renewal', fields: [
     { key: 'period_year', zh: '年份', en: 'Year', type: 'number', nullable: true },
@@ -37,7 +37,7 @@ export const REVISION_FIELDS: Record<string, { zh: string; en: string; fields: R
     { key: 'class_label', zh: '原班级', en: 'Recorded class' }, { key: 'teacher_label', zh: '原老师', en: 'Recorded teacher' },
     { key: 'room_label', zh: '原教室', en: 'Recorded classroom' }, { key: 'schedule_label', zh: '原上课时间', en: 'Recorded schedule' },
   ] },
-  student_follow_ups: { zh: '历史沟通', en: 'Historical communication', fields: [
+  student_follow_ups: { zh: '沟通记录', en: 'Communication', fields: [
     { key: 'occurred_on', zh: '沟通日期', en: 'Communication date', type: 'date', nullable: true },
     { key: 'author_label', zh: '记录人', en: 'Recorded author', nullable: true }, { key: 'content', zh: '沟通内容', en: 'Communication notes', type: 'textarea' },
   ] },
@@ -53,12 +53,12 @@ export interface BusinessRecordRevisionContext {
 export interface BusinessRecordRevisionTarget { kind: BusinessHistoryKind; recordId: string }
 export function businessRevisionMessages(locale: string) {
   return locale === 'zh' ? {
-    edit: '修订', title: '修订历史记录', hint: '修改后会同步到业务表、学生档案和 360。原始导入资料与修改前后值会保留。',
+    edit: '修订', title: '修订业务记录', hint: '修改后会同步到业务表、学生档案和 360。原始导入资料与修改前后值会保留。',
     reason: '修改说明（选填）', save: '保存修订', cancel: '取消', loading: '正在读取记录…', retry: '重新读取',
     history: '修改记录', empty: '暂无修订', unknown: '未记录', saved: '修订已保存', failed: '读取或保存失败，请重试。',
     conflict: '这条记录已被修改。请重新读取最新内容后再修订。', invalid: '请检查填写内容；有结果时请选择对应届次状态。', noChanges: '内容没有变化。',
   } : {
-    edit: 'Revise', title: 'Revise historical record', hint: 'Changes appear in business tables, the student profile and 360. Original imports and before/after values are retained.',
+    edit: 'Revise', title: 'Revise business record', hint: 'Changes appear in business tables, the student profile and 360. Original imports and before/after values are retained.',
     reason: 'Reason (optional)', save: 'Save revision', cancel: 'Cancel', loading: 'Loading record…', retry: 'Reload record',
     history: 'Revision history', empty: 'No revisions yet', unknown: 'Not recorded', saved: 'Revision saved', failed: 'Unable to load or save. Please try again.',
     conflict: 'This record has changed. Reload its latest content before revising.', invalid: 'Check the values and select an edition status when a result is recorded.', noChanges: 'No changes to save.',

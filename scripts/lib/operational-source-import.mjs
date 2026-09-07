@@ -1,7 +1,7 @@
 import {createHash} from 'node:crypto';
 import {historyFieldName,historicalDate} from './student-business-history.mjs';
 import {historyPayloadHash} from './history-import-trial.mjs';
-import {normalizeSourceAssessmentBand,sourceAssessmentNote,normalizeSourceContact,sourceScore,mergeSourceNotes} from '../../src/features/school/business-source-contract.ts';
+import {normalizeSourceAssessmentBand,sourceAssessmentNote,normalizeSourceContact,sourceScore,mergeSourceNotes,sourceVisitKinds,resolveSourceStaffId} from '../../src/features/school/business-source-contract.ts';
 
 export const OPERATIONAL_TABLES=['leads','lead_communications','activities','activity_registrations','assessment_results','course_opportunities','course_enrollments','course_enrollment_assignments'];
 const id=key=>{const h=createHash('md5').update(key).digest('hex');return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;};
@@ -23,6 +23,7 @@ export function buildOperationalSourceImport(payload,snapshot) {
   const studentLeads=new Map((snapshot.leads??[]).filter(l=>l.student_id).map(l=>[l.student_id,l.id]));
   const coverage=[];
   const leadFacts=new Map();
+  const staff=(r,fieldName)=>resolveSourceStaffId(field(r,fieldName),snapshot.profiles??[]);
   const add=(table,r,key,data)=>{
     const current=table==='course_opportunities'?(snapshot[table]??[]).find(row=>row.source_record_id===r.id&&row.term_label===data.term_label):existing[table].get(r.id);
     const row={id:current?.id??id(key),history_key:current?.history_key??key,...provenance(r),...data};
@@ -37,7 +38,7 @@ export function buildOperationalSourceImport(payload,snapshot) {
     if(key&&leadsByExact.has(key))return leadsByExact.get(key);
     const leadId=id(`operation-lead:${r.id}`);
     rows.leads.push({id:leadId,provisional_student_name:name(r),normalized_name:normalized,phone:tel,phone_normalized:tel||null,
-      grade_hint:grade(r),grade_text:field(r,'年级')||field(r,'年级/25级'),status:'unassigned',source_record_id:r.id,
+      grade_hint:grade(r),grade_text:field(r,'年级')||field(r,'年级/25级'),status:'unassigned',source_record_id:r.id,owner_id:staff(r,'学服老师'),
       note:originalNotes(r,['年级/25级','就读学校','获取渠道','渠道','获取人员','跟进人','确认人员','跟进结果','确认结果','意向分类','用户当下加V与否','诺访与否'])});
     if(key)leadsByExact.set(key,leadId);
     if(r.student_id)studentLeads.set(r.student_id,leadId);
@@ -61,7 +62,7 @@ export function buildOperationalSourceImport(payload,snapshot) {
         if(!mapped.outcome&&!originalNotes(r,noteFields.filter(f=>!['跟进人','确认人员'].includes(f)))&&!(phase==='confirmation'&&(['已','是'].includes(wechat)||['是','已'].includes(visit))))continue;
         const key=`operation-contact:${r.id}:${phase}`;
         rows.lead_communications.push({id:id(key),lead_id:leadId,source_record_id:r.id,source_key:key,channel:'other',outcome:mapped.outcome,
-          note,occurred_at:null,occurred_on:validDate(r,dateField),recorded_by:null,
+          note,occurred_at:null,occurred_on:validDate(r,dateField),recorded_by:staff(r,phase==='followup'?'跟进人':'确认人员'),
           wechat_added:phase==='confirmation'&&['已','是'].includes(wechat)?true:phase==='confirmation'&&['未','否'].includes(wechat)?false:mapped.wechatAdded,
           visit_committed:phase==='confirmation'&&['是','已'].includes(visit)?true:phase==='confirmation'&&['否','未'].includes(visit)?false:mapped.visitCommitted,
           interest_level:phase==='confirmation'&&['A','B','C'].includes(interest)?interest:null});
@@ -76,8 +77,8 @@ export function buildOperationalSourceImport(payload,snapshot) {
     if(table==='到访数据与信息表1.0-总'||table==='（老数据）各选拔产品协作信息表-总') {
       const bandValue=field(r,'思维测评等级'),content=field(r,'参与内容')||field(r,'选拔产品项目');
       const date=validDate(r,'体/测日期','参加选拔产品日期','到访日期');
-      const kinds=[...(/测评|散测/u.test(content)||bandValue?['assessment_1v1']:[]),...(/体验|试听/u.test(content)?['trial_class']:[])];
-      if(!kinds.length)kinds.push('assessment_1v1');
+      const kinds=sourceVisitKinds(content,bandValue,field(r,'学习力测评等级'),field(r,'测评成绩（分数）'));
+      if(!kinds.length){const leadId=ensureLead(r);const previous=leadFacts.get(leadId);leadFacts.set(leadId,{id:leadId,source_record_id:previous?.source_record_id??r.id,note:mergeSourceNotes(previous?.note,originalNotes(r,['参与内容','到访与否','到访日期','学员情况','学员情况2','家长情况','家长情况2','家长理念','培养重点&核心期待&共识点','体验测评家长关注点']))});emitted.push(['leads',leadId]);}
       const target=subject(r);
       for(const kind of kinds) {
         const suffix=`operation-visit:${r.id}:${kind}`;
@@ -85,17 +86,17 @@ export function buildOperationalSourceImport(payload,snapshot) {
         const oldRegistration=(snapshot.activity_registrations??[]).find(x=>x.activity_id===oldActivity?.id);
         const activityId=oldActivity?.id??id(`${suffix}:activity`),registrationId=oldRegistration?.id??id(`${suffix}:registration`);
         const common=provenance(r);
-        rows.activities.push({id:activityId,history_key:oldActivity?.history_key??`${suffix}:activity`,...common,kind,title:kind==='trial_class'?'体验课':'1 对 1 测评',scheduled_at:null,occurred_on:date,
+        rows.activities.push({id:activityId,history_key:oldActivity?.history_key??`${suffix}:activity`,...common,kind,title:kind==='trial_class'?'体验课':kind==='competition'?content:'1 对 1 测评',scheduled_at:null,occurred_on:date,
           remark:originalNotes(r,['参与内容','选拔产品项目','学服老师','学科老师','主线服务老师','到访时段','体/测日期'])});
         rows.activity_registrations.push({id:registrationId,history_key:oldRegistration?.history_key??`${suffix}:registration`,...common,activity_id:activityId,...target,
-          status:['已到','是','已出勤'].includes(field(r,'到访与否')||field(r,'学员出勤情况'))?'attended':['未到','未出勤'].includes(field(r,'到访与否')||field(r,'学员出勤情况'))?'no_show':bandValue?'attended':'booked',
+          status:['已到','是','已出勤','出勤'].includes(field(r,'到访与否')||field(r,'学员出勤情况'))?'attended':['未到','未出勤'].includes(field(r,'到访与否')||field(r,'学员出勤情况'))?'no_show':bandValue?'attended':'booked',
           registered_on:validDate(r,'确认日期','报名选拔产品日期'),outcome:originalNotes(r,['到访与否','报名与否','班型','方案宣讲与否','选拔产品','年级/25级'])});
         emitted.push(['activity_registrations',registrationId]);
-        if(kind!=='assessment_1v1')continue;
+        if(kind==='trial_class')continue;
         const score=sourceScore(field(r,'测评成绩（分数）'));
         const notes=mergeSourceNotes(originalNotes(r,['学员情况','学员情况2','培养重点&核心期待&共识点','学员程度&推荐班型','学习力测评等级','英语测评成绩（年级限定下）','备考成绩']),sourceAssessmentNote(bandValue),score.note);
         const parent=originalNotes(r,['家长情况','家长情况2','家长理念','体验测评家长关注点','家长主要关注点','家长沟通信息总结（附整理文档）']);
-        if(bandValue||score.score!==null||notes||parent)emitted.push(['assessment_results',add('assessment_results',r,`${suffix}:result`,{...target,activity_registration_id:registrationId,assessment_band:normalizeSourceAssessmentBand(bandValue),score:score.score,score_max:score.maxScore,assessed_on:date,strengths:notes,parent_concerns:parent})]);
+        if(bandValue||score.score!==null||notes||parent)emitted.push(['assessment_results',add('assessment_results',r,`${suffix}:result`,{...target,activity_registration_id:registrationId,assessment_band:normalizeSourceAssessmentBand(bandValue),score:score.score,score_max:score.maxScore,assessed_on:date,assessed_by:existing.assessment_results.get(r.id)?.assessed_by??staff(r,'学科老师'),strengths:notes,parent_concerns:parent})]);
       }
     }
     const autumn=table==='2026秋季在读学员表格';
