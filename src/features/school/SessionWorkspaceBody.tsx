@@ -127,7 +127,7 @@ export async function SessionWorkspaceBody({
       && new Date(detail.prepPreparedAt).getTime() > new Date(detail.scheduledAt).getTime(),
   );
   const microcourseWorkspaceCandidate = stage === "pre"
-    && detail.state === "scheduled"
+    && (detail.state === "scheduled" || Boolean(detail.coursewareFrozenAt && detail.capabilities.canEditPreparationArchive))
     && detail.lectureId === null;
   const microcourseEnabled = microcourseWorkspaceCandidate
     && await isFeatureEnabled("teaching.teacher_microcourses_v1");
@@ -135,7 +135,7 @@ export async function SessionWorkspaceBody({
   const canAuthorMicrocourse = Boolean(
     microcourseEnabled
       && viewerPerms?.has("courseware.microcourse.author")
-      && (detail.capabilities.canPrepare || viewerPerms.has("courseware.review")),
+      && (detail.capabilities.canPrepare || (detail.coursewareFrozenAt && detail.capabilities.canEditPreparationArchive) || viewerPerms.has("courseware.review")),
   );
 
   return (
@@ -175,7 +175,7 @@ export async function SessionWorkspaceBody({
           </div>
             {stage === "pre" && detail.state === "scheduled" && (detail.capabilities.canPrepare || canAuthorMicrocourse) ? (
               <div className="flex flex-wrap items-center justify-end gap-2">
-              {canAuthorMicrocourse ? (
+              {canAuthorMicrocourse && !detail.coursewareFrozenAt ? (
                 <MicrocourseWorkspaceButton
                   href={`/dashboard/sessions/${detail.id}/microcourse`}
                   label={t("editCourseware")}

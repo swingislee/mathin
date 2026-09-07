@@ -97,10 +97,10 @@ export function CoursewareAnnotationBoard({
   }, [persist, readOnly, revision]);
 
   useEffect(() => {
-    if (!toolbarTargetId) return;
+    if (!toolbarTargetId || readOnly) return;
     const frame = window.requestAnimationFrame(() => setToolbarTarget(document.getElementById(toolbarTargetId)));
     return () => window.cancelAnimationFrame(frame);
-  }, [toolbarTargetId]);
+  }, [toolbarTargetId, readOnly]);
 
   const generate = async () => {
     setGenerating(true);

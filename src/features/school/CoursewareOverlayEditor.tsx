@@ -104,6 +104,7 @@ export function CoursewareOverlayEditor({
   learningChecksReadOnly: requestedLearningChecksReadOnly,
   saveLearningChecks: saveLearningChecksOverride,
   previewHeaderLeading,
+  frozenEditActions,
   initialPageId,
   readOnly: baseReadOnly = false,
   structureReadOnly: baseStructureReadOnly = baseReadOnly,
@@ -130,6 +131,8 @@ export function CoursewareOverlayEditor({
   saveLearningChecks?: (items: CoursewareLearningCheckDraft[]) => Promise<ActionResult>;
   /** Occurrence-specific switchers belong in the shared preview titlebar. */
   previewHeaderLeading?: ReactNode;
+  /** 已授权的课件入口随本地解锁状态显示；实际写入继续由服务端授权。 */
+  frozenEditActions?: ReactNode;
   initialPageId?: string;
   readOnly?: boolean;
   structureReadOnly?: boolean;
@@ -527,6 +530,7 @@ export function CoursewareOverlayEditor({
                 {frozenUnlocked ? <LockKeyholeOpen size={14} /> : <LockKeyhole size={14} />}
               </Button>
             ) : null}
+            {frozenEditActive ? frozenEditActions : null}
             {!structureReadOnly ? (
               <span
                 className={saveState === "error" ? "text-rose" : "text-muted"}

@@ -14,6 +14,7 @@ import { SessionLessonPlanWorkspace } from "./SessionLessonPlanWorkspace";
 import { TeachingPreparationSurface } from "./TeachingPreparationSurface";
 import { getTeacherPreparationWorkspace } from "./teacher-preparation";
 import { isFeatureEnabled } from "./organization-settings";
+import { MicrocourseWorkspaceButton } from "@/features/teacher-microcourses/MicrocourseWorkspaceButton";
 
 export async function SessionPrepPanel({
   detail,
@@ -169,6 +170,9 @@ export async function SessionPrepPanel({
                 structureReadOnly={!regularPreparationEditing}
                 frozen={Boolean(detail.coursewareFrozenAt)}
                 canUnlockFrozen={frozenCoursewareUnlockAvailable}
+                frozenEditActions={frozenCoursewareUnlockAvailable && canAuthorMicrocourseProposal ? (
+                  <MicrocourseWorkspaceButton href={`/dashboard/sessions/${detail.id}/microcourse`} label={t("editCourseware")} compact />
+                ) : undefined}
               />
             ) : null}
             </section>
