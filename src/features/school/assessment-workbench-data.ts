@@ -2,6 +2,7 @@ import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
 import type { ActivityKind } from "./activity-kinds";
+import { mergeSourceNotes, normalizeSourceAssessmentBand, sourceAssessmentNote } from './business-source-contract';
 import { ASSESSMENT_WORKFLOW_COLUMNS } from "./assessment-workflow-data";
 import { assessmentWorkflowFromDb, type AssessmentWorkflowDbRow } from "./assessment-workflow-contract";
 import type { PublicClassPresence } from "./public-class";
@@ -59,6 +60,7 @@ interface ActivityDbRow {
   source_invitation_id: string | null;
 }
 interface RegistrationDbRow {
+  source_record_id: string | null;
   id: string;
   activity_id: string;
   student_id: string | null;
@@ -79,6 +81,7 @@ interface AssessmentDbRow {
   activity_registration_id: string;
   assessment_band: StoredAssessmentBand | null;
   score: number | null;
+  score_max: number | null;
   strengths: string;
   focus_areas: string;
   parent_concerns: string;
@@ -244,7 +247,7 @@ const ACTIVITY_COLUMNS = [
 ].join(",");
 
 const REGISTRATION_COLUMNS = [
-  "id,activity_id,student_id,lead_id,status,outcome,assessment_paper_version_id,assessment_started_at,assessment_completed_at,updated_at",
+  "id,activity_id,student_id,lead_id,source_record_id,status,outcome,assessment_paper_version_id,assessment_started_at,assessment_completed_at,updated_at",
   "students(id,name,phone,parent_phone,grade,remark)",
   "leads(id,provisional_student_name,phone,grade_hint,grade_text,student_id)",
 ].join(",");
@@ -301,7 +304,7 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
     entryActorResult,
     workflowResult,
   ] = await Promise.all([
-    readRelatedRows<AssessmentDbRow>(supabase, "assessment_results", "id,activity_registration_id,assessed_on,assessment_band,score,strengths,focus_areas,parent_concerns,teacher_recommendation,recommended_class,teacher_observation,updated_at,result_source,result_finalized_at,assessor:profiles!assessment_results_assessed_by_fkey(id,display_name)", "activity_registration_id", registrationIds),
+    readRelatedRows<AssessmentDbRow>(supabase, "assessment_results", "id,activity_registration_id,assessed_on,assessment_band,score,score_max,strengths,focus_areas,parent_concerns,teacher_recommendation,recommended_class,teacher_observation,updated_at,result_source,result_finalized_at,assessor:profiles!assessment_results_assessed_by_fkey(id,display_name)", "activity_registration_id", registrationIds),
     readRelatedRows<RouteDbRow>(supabase, "activity_routes", "id,activity_registration_id,route,note,updated_at", "activity_registration_id", registrationIds),
     readRelatedRows<InvitationDbRow>(supabase, "lead_invitation_threads", INVITATION_COLUMNS, "id", sourceInvitationIds),
     readRelatedRows<PaperVersionDbRow>(supabase, "assessment_paper_versions", "id,paper_id,question_count,total_score", "id", paperVersionIds),
@@ -353,9 +356,10 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
   for (const row of assessmentResult.data ?? []) {
     assessments.set(row.activity_registration_id, {
       id: row.id,
-      assessmentBand: row.assessment_band,
+      assessmentBand: normalizeSourceAssessmentBand(row.assessment_band),
       score: row.score,
-      strengths: row.strengths,
+      scoreMax: row.score_max,
+      strengths: mergeSourceNotes(row.strengths,sourceAssessmentNote(row.assessment_band)),
       focusAreas: row.focus_areas,
       parentConcerns: row.parent_concerns,
       teacherRecommendation: row.teacher_recommendation,
@@ -445,7 +449,7 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
     }));
 
   const materializedRows = registrations
-    .filter(({ activity, registration }) => registration.status !== "cancelled" && (activity.record_state!=='historical'||assessments.has(registration.id)))
+    .filter(({ registration }) => registration.status !== "cancelled")
     .map(({ activity, registration }): AssessmentWorkbenchRow => {
       const invitation = activity.source_invitation_id
         ? invitations.get(activity.source_invitation_id)
@@ -474,6 +478,8 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
         publicClassRecord: null,
         invitationId: activity.source_invitation_id,
         registrationId: registration.id,
+        paperVersionId: registration.assessment_paper_version_id,
+        sourceRecordId: registration.source_record_id,
         studentId: registration.student_id,
         leadId: registration.lead_id,
         name: student?.name ?? lead?.provisional_student_name ?? "-",
@@ -482,7 +488,7 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
         gradeText: lead?.grade_text ?? "",
         scheduledAt: activity.scheduled_at ?? '',
         recordState: activity.record_state,
-        occurredOn: activity.record_state === 'historical' ? assessmentDates.get(registration.id) ?? null : activity.occurred_on,
+        occurredOn: assessmentDates.get(registration.id) ?? activity.occurred_on,
         location: activity.location,
         assessorId: completed && actualAssessorId ? actualAssessorId : invitation?.assessor_id ?? actualAssessorId,
         assessorName: completed && actualAssessorName
@@ -570,6 +576,7 @@ function buildQuestionSummary(
     if (result.outcome) outcomeCounts[result.outcome] += 1;
   }
   return {
+    paperVersionId: version.id,
     paperTitle,
     answeredCount: results.filter((result) => result.outcome).length,
     questionCount: version.question_count,

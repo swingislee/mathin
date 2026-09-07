@@ -20,6 +20,7 @@ export interface AssessmentWorkbenchAssessment {
   id: string;
   assessmentBand: StoredAssessmentBand | null;
   score: number | null;
+  scoreMax?: number | null;
   strengths: string;
   focusAreas: string;
   parentConcerns: string;
@@ -45,6 +46,7 @@ export interface AssessmentWorkbenchQuestionNote {
 }
 
 export interface AssessmentWorkbenchQuestionSummary {
+  paperVersionId?: string | null;
   paperTitle: string;
   answeredCount: number;
   questionCount: number;
@@ -85,6 +87,8 @@ export interface AssessmentWorkbenchRow {
   publicClassRecord: AssessmentWorkbenchPublicClassRecord | null;
   invitationId: string | null;
   registrationId: string | null;
+  paperVersionId?: string | null;
+  sourceRecordId?: string | null;
   studentId: string | null;
   leadId: string | null;
   name: string;
@@ -152,10 +156,10 @@ export function assessmentWorkbenchCounts(
 ): AssessmentWorkbenchCounts {
   const stages = rows.map(assessmentWorkbenchStage);
   return {
-    pending: stages.filter((stage, i) => stage === "pending" && rows[i].recordState !== 'historical').length,
-    in_progress: stages.filter((stage, i) => stage === "in_progress" && rows[i].recordState !== 'historical').length,
-    feedback: stages.filter((stage, i) => stage === "feedback" && rows[i].recordState !== 'historical').length,
-    handled: stages.filter((stage, i) => stage === "handled" && rows[i].recordState !== 'historical').length,
+    pending: stages.filter((stage) => stage === "pending").length,
+    in_progress: stages.filter((stage) => stage === "in_progress").length,
+    feedback: stages.filter((stage) => stage === "feedback").length,
+    handled: stages.filter((stage) => stage === "handled").length,
     all: rows.length,
     historical: rows.filter(row=>row.recordState==='historical').length,
   };
@@ -186,7 +190,6 @@ export function assessmentWorkbenchRowsForView(
   const needle = filters.q?.toLocaleLowerCase(locale);
   return rows
     .filter((row) => {
-      if (filters.queue !== 'all' && row.recordState === 'historical') return false;
       if (filters.kind && row.assessmentKind !== filters.kind) return false;
       if (filters.queue !== "all" && assessmentWorkbenchStage(row) !== filters.queue) return false;
       if (!needle) return true;

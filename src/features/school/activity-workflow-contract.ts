@@ -1,11 +1,5 @@
-export const ASSESSMENT_BANDS = [
-  "x_plus",
-  "g_plus",
-  "a",
-  "a_plus",
-  "s",
-  "c",
-] as const;
+import { CURRENT_ASSESSMENT_BANDS } from './business-source-contract';
+export const ASSESSMENT_BANDS = CURRENT_ASSESSMENT_BANDS;
 
 export type AssessmentBand = (typeof ASSESSMENT_BANDS)[number];
 
