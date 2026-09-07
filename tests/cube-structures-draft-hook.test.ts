@@ -14,7 +14,7 @@ function deferred<T>() { let resolve!: (value: T) => void; const promise = new P
 const cleanups: (() => Promise<void>)[] = [];
 afterEach(async () => { for (const cleanup of cleanups.splice(0)) await cleanup(); vi.unstubAllGlobals(); });
 
-async function setup(store: CubeDraftStore) {
+async function setup(store: CubeDraftStore, enabled = true) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.stubGlobal("window", Object.assign(new EventTarget(), { devicePixelRatio: 1 }));
   const canvas = Object.assign(new EventTarget(), { style: {}, getBoundingClientRect: () => ({ width: 800, height: 600, left: 0, top: 0 }) }) as unknown as HTMLCanvasElement;
@@ -24,7 +24,7 @@ async function setup(store: CubeDraftStore) {
   let library!: CubeDraftLibrary; let current!: CubeWorkbenchSession; let edit!: (session: CubeWorkbenchSession) => void;
   function Probe() {
     const [prepared, setPrepared] = useState(initial);
-    const result = useCubeDrafts({ prepared, store, getIdentity: () => 5, onOpen: (draft) => setPrepared(draft.snapshot.session) });
+    const result = useCubeDrafts({ enabled, prepared, store, getIdentity: () => 5, onOpen: (draft) => setPrepared(draft.snapshot.session) });
     useLayoutEffect(() => { library = result; current = prepared; edit = setPrepared; }, [result, prepared]);
     return null;
   }
@@ -37,6 +37,19 @@ function storeMock() {
     read: vi.fn<CubeDraftStore["read"]>().mockResolvedValue(saved), save: vi.fn<CubeDraftStore["save"]>().mockResolvedValue(saved), remember: vi.fn<CubeDraftStore["remember"]>() };
 }
 describe("account draft editor lifecycle", () => {
+  it("keeps embedded courseware independent of account reads, writes, draft restoration and unload warnings", async () => {
+    const store = storeMock(); store.overview.mockResolvedValue({ drafts: [saved], lastOpenedId: saved.id });
+    const rig = await setup(store, false);
+    const listener = vi.spyOn(window, "addEventListener");
+    await rig.edit(operateCubeSession(rig.current(), { kind: "axes", visible: false }));
+    await act(async () => {
+      await rig.library().refresh(); expect(await rig.library().save()).toBe(false); expect(await rig.library().open(saved.id)).toBe(false);
+      rig.library().newDraft(); rig.library().setName("Preview only");
+    });
+    expect(rig.library().loading).toBe(false); expect(rig.library().dirty).toBe(false); expect(rig.library().error).toBeNull();
+    expect(store.overview).not.toHaveBeenCalled(); expect(store.read).not.toHaveBeenCalled(); expect(store.save).not.toHaveBeenCalled(); expect(store.remember).not.toHaveBeenCalled();
+    expect(listener).not.toHaveBeenCalled();
+  });
   it("restores after asynchronous list/detail reads under StrictMode without marking content dirty", async () => {
     const store = storeMock(); const list = deferred<CubeDraftOverview>();
     store.overview.mockReturnValue(list.promise);

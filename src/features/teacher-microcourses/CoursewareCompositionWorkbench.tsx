@@ -77,8 +77,9 @@ import { gameCoursewareContractsForSurface } from "@/features/games/courseware/r
 import { getGame } from "@/features/games/registry";
 import { toolCoursewareContractsForSurface } from "@/features/tools/courseware/registry";
 import { getTool } from "@/features/tools/registry";
-import { CUBE_COURSEWARE_CONTENT_VERSION, type CubeCoursewareTool } from "@/features/tools/courseware/cube-structures-content";
+import { CUBE_COURSEWARE_CONTENT_VERSION, CUBE_COURSEWARE_LEGACY_VERSION, isCubeCoursewareTool, type CubeCoursewareTool } from "@/features/tools/courseware/cube-structures-content";
 import { CubeDraftCoursewarePicker, CubeFrozenCoursewarePreview } from "./CubeDraftCoursewarePicker";
+import { CubeCoursewareToolbarSettings } from "./CubeCoursewareToolbarSettings";
 import { cn } from "@/lib/utils";
 import {
   createTeacherGameComponentAction,
@@ -498,9 +499,10 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
             ) : null}
             {selected?.type === "tool" ? (
               <div className="space-y-2 border-t border-line pt-3">
-                <p className="text-sm font-medium text-ink">{selected.tool.contentVersion === CUBE_COURSEWARE_CONTENT_VERSION ? selected.tool.payload.title : selected.tool.toolId}</p>
-                {selected.tool.contentVersion === CUBE_COURSEWARE_CONTENT_VERSION && <>
+                <p className="text-sm font-medium text-ink">{isCubeCoursewareTool(selected.tool) ? selected.tool.payload.title : selected.tool.toolId}</p>
+                {isCubeCoursewareTool(selected.tool) && <>
                   <p className="text-xs text-muted">{t("cubeFrozenHint")}</p>
+                  <CubeCoursewareToolbarSettings tool={selected.tool} onChange={(tool) => updateDoc((current) => ({ ...current, layout: { ...current.layout, blocks: current.layout.blocks.map((block) => block.id === selected.id && block.type === "tool" ? { ...block, tool } : block) } }))} />
                   <CubeFrozenCoursewarePreview payload={selected.tool.payload} />
                 </>}
                 <p className="text-xs text-muted">{t("componentToolClassroomReadOnly")}</p>
@@ -593,7 +595,7 @@ function ToolComponentDialog({ disabled = false, onCreated }: {
 }) {
   const t = useTranslations("teacherMicrocourses");
   const tTools = useTranslations("tools");
-  const contracts = toolCoursewareContractsForSurface("microcourse");
+  const contracts = toolCoursewareContractsForSurface("microcourse").filter((contract) => contract.contentVersion !== CUBE_COURSEWARE_LEGACY_VERSION);
   const [open, setOpen] = useState(false);
   const [cubeTool, setCubeTool] = useState<CubeCoursewareTool | null>(null);
   const [selectedKey, setSelectedKey] = useState(

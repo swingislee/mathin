@@ -2,6 +2,7 @@ import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ToolComponentProps } from "./types";
 import type { CoursewareCompositionTool } from "@/features/courseware-doc/composition-page-schema";
+import { isCubeCoursewareTool } from "./courseware/cube-structures-content";
 
 // 工具按需加载：只有真正渲染某个工具的地方（工具页、概念页的内嵌演示、embed、课堂工具窗）才付它的 JS，
 // 且只付被点开的那一个——列表页、概念图谱与 sitemap 现在一份工具代码都不下载。
@@ -18,7 +19,7 @@ export const CubeCoursewarePreview = dynamic(() => import("./courseware/CubeStru
 
 /** 固定课件内容不打开个人工作台，也不读取账号草稿或页面 URL。 */
 export function CoursewareToolView({ tool }: { tool: CoursewareCompositionTool }) {
-  return tool.contentVersion === "cube-structures-lesson-v1"
+  return isCubeCoursewareTool(tool)
     ? <CubeCoursewarePreview payload={tool.payload} />
     : <ToolView id={tool.toolId} embedded />;
 }

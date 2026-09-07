@@ -8,7 +8,8 @@ import type { CubeWorkbenchSession } from "./cube-structures-session";
 function errorCode(error: unknown): CubeDraftErrorCode { return error instanceof CubeDraftError ? error.code : "unavailable"; }
 function sortDrafts(drafts: readonly CubeSavedDraftSummary[]) { return [...drafts].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.id.localeCompare(b.id)); }
 
-export function useCubeDrafts({ prepared, getIdentity, onOpen, locale = "zh", store: suppliedStore }: {
+export function useCubeDrafts({ prepared, getIdentity, onOpen, locale = "zh", store: suppliedStore, enabled = true }: {
+  readonly enabled?: boolean;
   readonly prepared: CubeWorkbenchSession;
   readonly getIdentity: () => number;
   readonly onOpen: (draft: CubeSavedDraft) => void;
@@ -16,22 +17,23 @@ export function useCubeDrafts({ prepared, getIdentity, onOpen, locale = "zh", st
   readonly store?: CubeDraftStore;
 }) {
   const [store] = useState(() => suppliedStore ?? createCubeDraftStore({ locale }));
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [busy, setBusy] = useState(false);
   const [drafts, setDrafts] = useState<readonly CubeSavedDraftSummary[]>([]);
   const [accountReady, setAccountReady] = useState(false);
   const [current, setCurrent] = useState<CubeSavedDraftSummary | null>(null);
   const [name, setName] = useState("");
   const [error, setError] = useState<CubeDraftErrorCode | null>(null);
-  const contentKey = useMemo(() => cubeDraftContentKey(prepared), [prepared]);
+  const contentKey = useMemo(() => enabled ? cubeDraftContentKey(prepared) : "", [prepared, enabled]);
   const [savedKey, setSavedKey] = useState<string | null>(contentKey);
   const onOpenRef = useRef(onOpen);
   const running = useRef(false);
   const mounted = useRef(false);
-  const dirty = !loading && (savedKey !== contentKey || name.trim() !== (current?.name ?? ""));
+  const dirty = enabled && !loading && (savedKey !== contentKey || name.trim() !== (current?.name ?? ""));
 
   useEffect(() => { onOpenRef.current = onOpen; }, [onOpen]);
   useEffect(() => {
+    if (!enabled) return;
     mounted.current = true;
     let active = true;
     async function restore() {
@@ -50,7 +52,7 @@ export function useCubeDrafts({ prepared, getIdentity, onOpen, locale = "zh", st
     }
     void restore();
     return () => { active = false; mounted.current = false; };
-  }, [store]);
+  }, [store, enabled]);
 
   useEffect(() => {
     if (!dirty) return;
@@ -60,7 +62,7 @@ export function useCubeDrafts({ prepared, getIdentity, onOpen, locale = "zh", st
   }, [dirty]);
 
   async function refresh() {
-    if (loading || running.current) return;
+    if (!enabled || loading || running.current) return;
     running.current = true; setBusy(true);
     try {
       const overview = await store.overview();
@@ -70,7 +72,7 @@ export function useCubeDrafts({ prepared, getIdentity, onOpen, locale = "zh", st
     finally { running.current = false; if (mounted.current) setBusy(false); }
   }
   async function save(asNew = false): Promise<boolean> {
-    if (loading || running.current || !accountReady) return false;
+    if (!enabled || loading || running.current || !accountReady) return false;
     running.current = true; setBusy(true); setError(null);
     const submittedKey = contentKey;
     try {
@@ -85,7 +87,7 @@ export function useCubeDrafts({ prepared, getIdentity, onOpen, locale = "zh", st
     finally { running.current = false; if (mounted.current) setBusy(false); }
   }
   async function open(draftId: string): Promise<boolean> {
-    if (loading || running.current) return false;
+    if (!enabled || loading || running.current) return false;
     running.current = true; setBusy(true); setError(null);
     try {
       const draft = await store.read(draftId);
@@ -98,7 +100,7 @@ export function useCubeDrafts({ prepared, getIdentity, onOpen, locale = "zh", st
     } catch (error) { if (mounted.current) { const code = errorCode(error); setError(code); if (["auth-required", "account-security", "account-changed"].includes(code)) setAccountReady(false); } return false; }
     finally { running.current = false; if (mounted.current) setBusy(false); }
   }
-  function newDraft() { store.remember(null); setCurrent(null); setName(""); setSavedKey(null); }
+  function newDraft() { if (!enabled) return; store.remember(null); setCurrent(null); setName(""); setSavedKey(null); }
 
   return { loading, busy, drafts, current, name, setName, dirty, error, accountReady, save, open, refresh, newDraft };
 }

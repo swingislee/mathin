@@ -4,13 +4,14 @@ import {
 } from "@/features/classroom/sync/interaction-provider";
 
 export const TOOL_COURSEWARE_CONTENT_VERSION = "tool-embed-v1" as const;
-export const CUBE_COURSEWARE_CONTENT_VERSION = "cube-structures-lesson-v1" as const;
+export const CUBE_COURSEWARE_LEGACY_VERSION = "cube-structures-lesson-v1" as const;
+export const CUBE_COURSEWARE_CONTENT_VERSION = "cube-structures-lesson-v2" as const;
 
 export type ToolCoursewareAuthoringSurface = "microcourse";
 
 interface ToolCoursewareContractDefinition {
   toolId: string;
-  contentVersion: typeof TOOL_COURSEWARE_CONTENT_VERSION | typeof CUBE_COURSEWARE_CONTENT_VERSION;
+  contentVersion: typeof TOOL_COURSEWARE_CONTENT_VERSION | typeof CUBE_COURSEWARE_CONTENT_VERSION | typeof CUBE_COURSEWARE_LEGACY_VERSION;
   authoringSurfaces: readonly ToolCoursewareAuthoringSurface[];
   classroomSync: ClassroomInteractionSyncProvider;
 }
@@ -19,6 +20,12 @@ export const TOOL_COURSEWARE_CONTRACTS = [
   {
     toolId: "spatial-lab",
     contentVersion: CUBE_COURSEWARE_CONTENT_VERSION,
+    authoringSurfaces: ["microcourse"] as const,
+    classroomSync: CLASSROOM_TOOL_STATE_SYNC_REQUIRED_V1,
+  },
+  {
+    toolId: "spatial-lab",
+    contentVersion: CUBE_COURSEWARE_LEGACY_VERSION,
     authoringSurfaces: ["microcourse"] as const,
     classroomSync: CLASSROOM_TOOL_STATE_SYNC_REQUIRED_V1,
   },

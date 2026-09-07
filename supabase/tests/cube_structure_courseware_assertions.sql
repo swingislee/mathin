@@ -15,8 +15,22 @@ declare
   release_id uuid;
   result jsonb;
   doc jsonb;
+  legacy_tool jsonb;
   saved_tool jsonb := '{"toolId":"spatial-lab","contentVersion":"cube-structures-lesson-v1","payload":{"title":"Cube fixture","history":{"version":"cube-structures-draft-v3","cursor":0,"initial":{"cubes":[{"id":"cube-1","position":{"x":0,"y":0,"z":0},"color":"#8fbf88","faces":{}}],"hiddenCubeIds":[],"groups":[],"origin":{"x":-0.5,"y":-0.5,"z":-0.5},"axesVisible":true,"view":"angle","frame":{"center":{"x":0,"y":0,"z":0},"radius":2},"nextCubeId":2,"nextNumber":1,"hiddenEdgesVisible":true},"operations":[{"kind":"axes","visible":false}]}}}'::jsonb;
 begin
+  legacy_tool := saved_tool;
+  if current_setting('mathin.cube_toolbar_check', true) = 'on' then
+    saved_tool := jsonb_set(jsonb_set(saved_tool, '{contentVersion}', '"cube-structures-lesson-v2"'), '{payload,toolbar}', '["orbit","cut","recording"]');
+    if not public.cw_cube_structures_tool_is_valid(legacy_tool)
+      or not public.cw_cube_structures_tool_is_valid(jsonb_set(saved_tool, '{payload,toolbar}', '[]'))
+      or public.cw_cube_structures_tool_is_valid(jsonb_set(legacy_tool, '{payload,toolbar}', '[]'))
+      or public.cw_cube_structures_tool_is_valid(saved_tool #- '{payload,toolbar}')
+      or public.cw_cube_structures_tool_is_valid(jsonb_set(saved_tool, '{payload,toolbar}', '["cut","cut"]'))
+      or public.cw_cube_structures_tool_is_valid(jsonb_set(saved_tool, '{payload,toolbar}', '["account-drafts"]'))
+      or public.cw_cube_structures_tool_is_valid(jsonb_set(saved_tool, '{payload,toolbar}', '[null]'))
+      or public.cw_cube_structures_tool_is_valid(jsonb_set(saved_tool, '{payload,toolbar}', '"orbit"'))
+    then raise exception 'CUBE_TOOLBAR_CONTRACT_FAILED'; end if;
+  end if;
   if not public.cw_cube_structures_tool_is_valid(saved_tool)
     or public.cw_cube_structures_tool_is_valid(null)
     or public.cw_cube_structures_tool_is_valid(saved_tool - 'payload')
@@ -73,6 +87,9 @@ begin
   cycle_id := public.submit_teacher_microcourse_review(microcourse_id, 'Cube transactional verification');
   -- 提交后的草稿可以继续编辑；已提交及随后发布的 revision 必须保持固定。
   perform set_config('request.jwt.claim.role', 'service_role', true);
+  if current_setting('mathin.cube_toolbar_check', true) = 'on' then
+    doc := jsonb_set(doc, '{layout,blocks,0,tool,payload,toolbar}', '["number"]');
+  end if;
   select saved.revision_id into next_revision_id from public.save_teacher_courseware_composition_page(
     teacher_id, page_id, jsonb_set(doc, '{layout,blocks,0,tool,payload,title}', '"Later draft"'), revision_no, null, '') saved;
   if (select c.content_snapshot -> 0 ->> 'revisionId' from public.cw_review_cycles c where c.id = cycle_id) is distinct from revision_id::text

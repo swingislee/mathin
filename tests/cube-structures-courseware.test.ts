@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import { CUBE_COLORS, replayCubeHistory } from "@/features/tools/spatial-lab/cube-structures-contract";
 import { cubeDraftSnapshot } from "@/features/tools/spatial-lab/cube-structures-draft";
 import { createCubeSession, cubeSessionScene, operateCubeSession, pauseCubeRecording, startCubeRecording, undoCubeSession } from "@/features/tools/spatial-lab/cube-structures-session";
-import { createCubeCoursewareTool, cubeCoursewareToolSchema } from "@/features/tools/courseware/cube-structures-content";
+import { CUBE_COURSEWARE_LEGACY_VERSION, configureCubeCoursewareToolbar, createCubeCoursewareTool, cubeCoursewareToolSchema, cubeCoursewareV1ToolSchema } from "@/features/tools/courseware/cube-structures-content";
+import { CUBE_TOOLBAR_IDS, CUBE_TOOLBAR_LABELS } from "@/features/tools/spatial-lab/cube-structures-toolbar";
+import { cubeStructuresMessages } from "@/features/tools/spatial-lab/cube-structures-messages";
 import { getToolCoursewareContract } from "@/features/tools/courseware/registry";
 import { coursewareCompositionPageSchema, coursewareCompositionToolSchema, createEmptyCoursewareCompositionPage } from "@/features/courseware-doc/composition-page-schema";
 import { addCoursewareCompositionTool } from "@/features/courseware-doc/composition-page-layout";
@@ -23,7 +25,8 @@ describe("frozen cube courseware content", () => {
     expect(tool.payload.history.initial).toEqual(cubeSessionScene(session));
     expect(tool.payload.history.operations).toEqual([]);
     expect(tool.payload.history.cursor).toBe(0);
-    expect(Object.keys(tool.payload).sort()).toEqual(["history", "title"]);
+    expect(Object.keys(tool.payload).sort()).toEqual(["history", "title", "toolbar"]);
+    expect(tool.payload.toolbar).toEqual(CUBE_TOOLBAR_IDS);
     expect(JSON.stringify(source)).toBe(before);
     source.snapshot.session.work.initial.cubes[0].faces["y+"] = CUBE_COLORS[3];
     expect(tool.payload.history.initial.cubes[0].faces["y+"]).toBeUndefined();
@@ -50,7 +53,7 @@ describe("frozen cube courseware content", () => {
     expect(resolveClassroomInteractionAudit(page).provider).toMatchObject({ mode: "read-only", protocol: "tool-state-v1" });
     expect(coursewareCompositionToolSchema.safeParse({ toolId: "spatial-lab", contentVersion: "tool-embed-v1" }).success).toBe(true);
     expect(coursewareCompositionToolSchema.safeParse({ ...tool, contentVersion: "tool-embed-v1" }).success).toBe(false);
-    expect(coursewareCompositionToolSchema.safeParse({ ...tool, contentVersion: "cube-structures-lesson-v2" }).success).toBe(false);
+    expect(coursewareCompositionToolSchema.safeParse({ ...tool, contentVersion: "cube-structures-lesson-v3" }).success).toBe(false);
     expect(coursewareCompositionToolSchema.safeParse({ ...tool, toolId: "motion-lab" }).success).toBe(false);
   });
 
@@ -61,6 +64,33 @@ describe("frozen cube courseware content", () => {
     expect(cubeCoursewareToolSchema.safeParse(changeHistory({ operations: [{ kind: "remove", ids: ["missing"] }] })).success).toBe(false);
     expect(cubeCoursewareToolSchema.safeParse(changeHistory({ initial: { ...tool.payload.history.initial, hiddenCubeIds: ["missing"] } })).success).toBe(false);
     expect(cubeCoursewareToolSchema.safeParse({ ...tool, payload: { ...tool.payload, ownerId: "private" } }).success).toBe(false);
+  });
+
+  it("persists exactly the chosen subset, including none, and rejects unsupported, repeated or missing tools", () => {
+    for (const toolbar of [[], ["cut", "orbit", "undo"]] as const) {
+      const tool = createCubeCoursewareTool(draft(), "current", toolbar);
+      const page = addCoursewareCompositionTool(createEmptyCoursewareCompositionPage(), tool);
+      const restored = coursewareCompositionPageSchema.parse(JSON.parse(JSON.stringify(page))).layout.blocks[0];
+      expect(restored.type === "tool" && "payload" in restored.tool && "toolbar" in restored.tool.payload && restored.tool.payload.toolbar).toEqual(toolbar);
+    }
+    const tool = createCubeCoursewareTool(draft(), "current");
+    for (const toolbar of [["account-drafts"], ["cut", "cut"], [null], "orbit", undefined]) {
+      expect(cubeCoursewareToolSchema.safeParse({ ...tool, payload: { ...tool.payload, toolbar } }).success).toBe(false);
+    }
+    for (const locale of ["zh", "en"] as const) for (const id of CUBE_TOOLBAR_IDS) expect(cubeStructuresMessages(locale)[CUBE_TOOLBAR_LABELS[id]]).toBeTruthy();
+  });
+
+  it("upgrades an old component only on explicit toolbar configuration and preserves the frozen origin and steps", () => {
+    const created = createCubeCoursewareTool(draft(), "current");
+    const legacy = cubeCoursewareV1ToolSchema.parse({ ...created, contentVersion: CUBE_COURSEWARE_LEGACY_VERSION, payload: { title: created.payload.title, history: created.payload.history } });
+    const before = JSON.stringify(legacy);
+    expect(coursewareCompositionToolSchema.parse(legacy)).toEqual(legacy);
+    expect(getToolCoursewareContract(legacy.toolId, legacy.contentVersion)?.classroomSync.mode).toBe("read-only");
+    const configured = configureCubeCoursewareToolbar(legacy, ["orbit", "layer"]);
+    expect(configured.payload.history).toEqual(legacy.payload.history);
+    expect(configured.payload.toolbar).toEqual(["orbit", "layer"]);
+    expect(JSON.stringify(legacy)).toBe(before);
+    expect(cubeCoursewareToolSchema.safeParse({ ...configured, contentVersion: CUBE_COURSEWARE_LEGACY_VERSION }).success).toBe(false);
   });
 
   it("enforces content and combined-page budgets without lowering the old page budget", () => {
@@ -86,6 +116,12 @@ describe("frozen cube courseware content", () => {
     expect(renderer).toContain("preview = false");
     expect(renderer).toContain("cameraInteractive={preview}");
     expect(renderer).toContain("<CubeStructuresViewport");
+    expect(renderer).toContain("<CubeStructuresWorkbench");
+    expect(renderer).toContain("readOnly: !preview");
+    const workbench = fs.readFileSync("src/features/tools/spatial-lab/CubeStructuresWorkbench.tsx", "utf8");
+    expect(workbench).toContain("enabled: !courseware");
+    expect(workbench).toContain('TOOL_BUTTONS.filter(({ id }) => hasTool(id))');
+    expect(workbench).toContain("inert={readOnly}");
     expect(renderer).not.toMatch(/createCubeDraftStore|useCubeDrafts|window.location/);
   });
 });
