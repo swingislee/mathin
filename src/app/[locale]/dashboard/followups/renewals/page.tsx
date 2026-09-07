@@ -3,6 +3,7 @@ import { setRequestLocale } from "next-intl/server";
 import { RenewalStudentPool } from "@/features/school/RenewalStudentPool";
 import { loadRenewalWorkspace } from "@/features/school/renewals";
 import { loadRenewalPoolSupplement } from "@/features/school/renewal-pool-data";
+import { getOrganizationTimezoneV2 } from "@/features/school/organization-locations";
 import { getMyPerms, requirePerm } from "@/lib/auth";
 import { loadStudentBusinessHistory } from "@/features/school/student-business-history-data";
 import { businessRecordStateFilter } from '@/features/school/business-record-state-contract';
@@ -35,6 +36,7 @@ async function RenewalsContent({
   return <RenewalStudentPool
     key={`${data.selectedCycleId ?? "none"}:${typeof raw.tab === "string" ? raw.tab : "pool"}:${raw.samples === "1"}`}
     data={data}
+    timeZone={await getOrganizationTimezoneV2()}
     supplement={supplement}
     canWrite={canWrite}
     canReview={permissions.has("review.write")}

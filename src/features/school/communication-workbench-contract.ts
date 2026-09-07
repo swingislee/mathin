@@ -32,7 +32,7 @@ function matchesSearch(query: string | undefined, values: string[], phone: strin
 /** 每条线索只保留一个主行，活动报名分别保留各自的后续沟通事项。 */
 export function paginateCommunicationRows({
   leadCandidates, matchingLeadIds, invitations, postActivityRows, filters, userId,
-  includeContacts, focusLeadId, selectedKeys, matchingEventKeys,
+  includeContacts, focusLeadId, selectedKeys, matchingEventKeys, unpaged = false,
 }: {
   leadCandidates: CommunicationLeadCandidate[];
   matchingLeadIds?: readonly string[];
@@ -45,6 +45,8 @@ export function paginateCommunicationRows({
   /** 已按日志作者/任务负责人及 RLS 求出的日集合，或持久工作单顺序。 */
   selectedKeys?: readonly string[];
   matchingEventKeys?: readonly string[];
+  /** 字段查询读取完整权限范围后再统一分页，既有调用仍按原页读取。 */
+  unpaged?: boolean;
 }) {
   const effectiveFilters = focusLeadId
     ? { ...filters, scope: "all" as const, status: undefined, q: undefined, page: 1 }
@@ -110,5 +112,5 @@ export function paginateCommunicationRows({
   const requestedPage = Number.isFinite(effectiveFilters.page) ? Math.floor(effectiveFilters.page) : 1;
   const page = Math.min(totalPages, Math.max(1, requestedPage));
   const offset = (page - 1) * effectiveFilters.pageSize;
-  return { entries: entries.slice(offset, offset + effectiveFilters.pageSize), count, page, pageSize: effectiveFilters.pageSize };
+  return { entries: unpaged ? entries : entries.slice(offset, offset + effectiveFilters.pageSize), count, page, pageSize: effectiveFilters.pageSize };
 }

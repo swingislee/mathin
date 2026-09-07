@@ -6,21 +6,25 @@ import { useDashboardPreference } from "./DashboardPreferenceScope";
 import { dashboardFieldMessages } from "./dashboard-field-messages";
 import {
   dashboardFieldEnabled, dashboardFieldFacets, EMPTY_DASHBOARD_FIELD_QUERY, filterAndSortDashboardFields,
-  normalizeDashboardFieldQuery, type DashboardFieldDefinitions, type DashboardFieldFilter, type DashboardFieldQuery,
+  normalizeDashboardFieldQuery, type DashboardFieldDefinitions, type DashboardFieldFacet, type DashboardFieldFilter, type DashboardFieldQuery, type DashboardFieldSort,
 } from "./dashboard-table-field-contract";
 import type { DashboardDateContext } from "./dashboard-table-date-contract";
 import type { DashboardFieldControl, DashboardTableFieldHeaderProps } from "./DashboardTableFieldMenu";
 
-export function useDashboardFieldView<Row, Column extends string>({ rows, fields, columns, context, persistenceKey, migrate }: {
+export function useDashboardFieldView<Row, Column extends string>({ rows, fields, columns, context, persistenceKey, migrate, server, sourceSort, initialQuery }: {
   rows: readonly Row[];
   fields: DashboardFieldDefinitions<Row>;
   columns: Record<Column, readonly string[]>;
   context: DashboardDateContext;
   persistenceKey?: string;
   migrate?: (value: unknown) => DashboardFieldQuery;
+  initialQuery?: DashboardFieldQuery;
+  /** 后端已经给出的默认顺序只展示方向，客户端不再执行一次相同排序。 */
+  sourceSort?: DashboardFieldSort;
+  server?: { query: DashboardFieldQuery; facets: Record<string, DashboardFieldFacet>; onChange: (query: DashboardFieldQuery) => void };
 }) {
   const preference = useDashboardPreference(persistenceKey);
-  const [local, setLocal] = useState<DashboardFieldQuery>(EMPTY_DASHBOARD_FIELD_QUERY);
+  const [local, setLocal] = useState<DashboardFieldQuery>(initialQuery ?? EMPTY_DASHBOARD_FIELD_QUERY);
   const acceptedMigration = useRef<string | null>(null);
   const saved = useMemo(() => {
     if (!preference.raw) return null;
@@ -30,19 +34,23 @@ export function useDashboardFieldView<Row, Column extends string>({ rows, fields
       return { query: normalizeDashboardFieldQuery(fields, legacy && migrate ? migrate(value) : value), legacy };
     } catch { return { query: EMPTY_DASHBOARD_FIELD_QUERY, legacy: true }; }
   }, [fields, migrate, preference.raw]);
-  const query = useMemo(() => saved?.query ?? normalizeDashboardFieldQuery(fields, local), [saved, fields, local]);
+  const query = useMemo(() => server?.query ?? saved?.query ?? normalizeDashboardFieldQuery(fields, local), [server?.query, saved, fields, local]);
   useEffect(() => {
     if (!preference.ready || !saved?.legacy || acceptedMigration.current === preference.raw) return;
     acceptedMigration.current = preference.raw;
     preference.save(saved.query);
     toast.info(dashboardFieldMessages(context.locale).migrated);
   }, [context.locale, preference, saved]);
-  const visibleRows = useMemo(() => filterAndSortDashboardFields(rows, fields, query, context.locale, context.timeZone), [rows, fields, query, context.locale, context.timeZone]);
-  const facets = useMemo(() => dashboardFieldFacets(rows, fields, query.filters, context.locale, context.timeZone), [rows, fields, query.filters, context.locale, context.timeZone]);
+  const serverFacets = server?.facets;
+  const visibleRows = useMemo(() => serverFacets ? [...rows] : filterAndSortDashboardFields(rows, fields,
+    sourceSort && query.sort?.field === sourceSort.field && query.sort.direction === sourceSort.direction ? { ...query, sort: null } : query,
+    context.locale, context.timeZone), [serverFacets, rows, fields, query, sourceSort, context.locale, context.timeZone]);
+  const facets = useMemo(() => serverFacets ?? dashboardFieldFacets(rows, fields, query.filters, context.locale, context.timeZone), [serverFacets, rows, fields, query.filters, context.locale, context.timeZone]);
   const update = (next: DashboardFieldQuery) => {
     const normalized = normalizeDashboardFieldQuery(fields, next);
     setLocal(normalized);
     preference.save(normalized);
+    server?.onChange(normalized);
   };
   const setFilter = (id: string, filter: DashboardFieldFilter | undefined) => {
     const filters = { ...query.filters };
@@ -62,8 +70,8 @@ export function useDashboardFieldView<Row, Column extends string>({ rows, fields
     return {
       id, label: field.label, hint: field.hint, kind: field.kind, filter: query.filters[id],
       sortable: field.sortable !== false, disabled: !dashboardFieldEnabled(field, query.filters),
-      sortDirection: query.sort?.field === id ? query.sort.direction : undefined,
-      options: facets[id].options, days: facets[id].days,
+      sortDirection: (query.sort ?? sourceSort)?.field === id ? (query.sort ?? sourceSort)?.direction : undefined,
+      options: facets[id]?.options ?? [], days: facets[id]?.days ?? [],
       multiple: field.kind === "enum" ? field.multiple !== false : undefined,
       step: field.kind === "number" ? field.step : undefined,
       onFilterChange: filter => setFilter(id, filter),

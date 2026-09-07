@@ -15021,6 +15021,10 @@ export type Database = {
       }
     }
     Views: {
+      assessment_workbench_read_order: {
+        Row: { id: string | null; assessment_at: string | null }
+        Relationships: []
+      }
       assessment_entry_actors: {
         Row: {
           display_name: string | null

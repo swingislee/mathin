@@ -9,7 +9,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
-import { DashboardTableColumnHeader, DashboardTableShell, useDashboardTableView, type DashboardTableColumnDefinition } from "./dashboard-page";
+import { DashboardTableColumnHeader, DashboardTableShell } from "./dashboard-page";
+import { useDashboardFieldView } from "./dashboard-page/useDashboardFieldView";
+import { formatDashboardDate } from "./dashboard-page/dashboard-table-date-contract";
+import { LEAD_INTAKE_TABLE_COLUMNS, leadIntakeTableFields } from "./lead-intake-table-fields";
+import { useFollowupServerFields } from "./useFollowupServerFields";
+import type { FollowupServerFields } from "./followup-table-page";
 import { FollowupInlineDetails } from "./dashboard-page/FollowupInlineDetails";
 import { followupToneClasses, type FollowupTone } from "./dashboard-page/FollowupChoice";
 import { LeadIdentityControl } from "./LeadIdentityControl";
@@ -20,14 +25,15 @@ import { followupKeyContext, navigateFollowupTable } from "./followup-keyboard";
 import { Student360Trigger } from "./Student360Sheet";
 import type { LeadPoolRow } from "./lead-contract";
 
-type IntakeColumn = "identity" | "phone" | "grade" | "source" | "acquiredAt" | "owner" | "progress";
-
-export function LeadIntakeWorkbench({ leads, locale, canAssign = false, canManageIdentity = false, currentUserId }: {
+export function LeadIntakeWorkbench({ leads, locale, canAssign = false, canManageIdentity = false, currentUserId, fieldView, timeZone = "Asia/Shanghai", now }: {
   leads: LeadPoolRow[];
   locale: string;
   canAssign?: boolean;
   canManageIdentity?: boolean;
   currentUserId?: string;
+  fieldView?: FollowupServerFields;
+  timeZone?: string;
+  now?: number;
 }) {
   const t = useTranslations("school.leads");
   const tableT = useTranslations("school.table");
@@ -37,45 +43,18 @@ export function LeadIntakeWorkbench({ leads, locale, canAssign = false, canManag
   const rowRefs = useRef(new Map<string, HTMLTableRowElement>());
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const dateTime = useMemo(() => new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Shanghai" }), [locale]);
-  const date = useMemo(() => new Intl.DateTimeFormat(locale, { dateStyle: "short", timeZone: "Asia/Shanghai" }), [locale]);
-  const formatAt = (value: string | null, dateOnly = false) => value && Number.isFinite(Date.parse(value)) ? (dateOnly ? date : dateTime).format(new Date(value)) : "—";
+  const [clockNow] = useState(() => now ?? Date.now());
+  const context = useMemo(() => ({ locale, timeZone, now: clockNow }), [locale, timeZone, clockNow]);
+  const formatAt = (value: string | null, dateOnly = false) => formatDashboardDate(value, context, { time: !dateOnly });
   const gradeOf = (lead: LeadPoolRow) => lead.gradeText || (lead.gradeHint ? t("gradeValue", { grade: lead.gradeHint }) : t("unknownGrade"));
   const progressOf = (lead: LeadPoolRow) => lead.activeInvitation ? invitationT(`state_${lead.activeInvitation.state}`) : t(`status_${lead.status}`);
-  const progressValue = (lead: LeadPoolRow) => lead.activeInvitation ? `invitation:${lead.activeInvitation.state}` : `lead:${lead.status}`;
   const toneOf = (lead: LeadPoolRow): FollowupTone => lead.activeInvitation
     ? ["confirmed", "completed"].includes(lead.activeInvitation.state) ? "healthy" : lead.activeInvitation.state === "cancelled" ? "unhealthy" : "attention"
     : lead.status === "invalid" ? "unhealthy" : lead.status === "nurture" ? "attention" : ["contacted", "intent_confirmed", "converted"].includes(lead.status) ? "healthy" : "neutral";
-  const columns: Record<IntakeColumn, DashboardTableColumnDefinition<LeadPoolRow>> = {
-    identity: {
-      filterValues: (lead) => [
-        { value: `name:${lead.provisionalStudentName}`, label: lead.provisionalStudentName, group: tableT("fieldName") },
-        { value: `identity:${lead.status === "converted"}`, label: t(lead.status === "converted" ? "identityConfirmed" : "identityUnconfirmed"), group: tableT("fieldIdentity") },
-        ...(lead.sourceMarkedDuplicate ? [{ value: "duplicate:true", label: t("sourceDuplicateShort"), group: tableT("fieldDuplicate") }] : []),
-        ...(lead.suggestedStudentName ? [{ value: `suggested:${lead.suggestedStudentName}`, label: lead.suggestedStudentName, group: tableT("fieldSuggestedStudent") }] : []),
-      ],
-      sortValue: (lead) => lead.provisionalStudentName,
-    },
-    phone: { filterValues: (lead) => ({ value: lead.phone || "$missing", label: lead.phone || "—" }), sortValue: (lead) => lead.phone },
-    grade: { filterValues: (lead) => ({ value: gradeOf(lead), label: gradeOf(lead) }), sortValue: gradeOf },
-    source: {
-      filterValues: (lead) => [
-        { value: `location:${lead.acquisitionLocation}`, label: lead.acquisitionLocation || t("acquisitionLocationMissing"), group: tableT("fieldLocation") },
-        ...(lead.acquisitionPromoter ? [{ value: `promoter:${lead.acquisitionPromoter}`, label: lead.acquisitionPromoter, group: tableT("fieldPromoter") }] : []),
-        ...(lead.acquisitionMethod ? [{ value: `method:${lead.acquisitionMethod}`, label: lead.acquisitionMethod, group: tableT("fieldMethod") }] : []),
-        { value: `count:${lead.sourceCount}`, label: t("sourceCount", { count: lead.sourceCount }), group: tableT("fieldSourceCount") },
-        ...lead.interests.map((value) => ({ value: `interest:${value}`, label: value, group: tableT("fieldInterest") })),
-      ],
-      sortValue: (lead) => lead.acquisitionLocation,
-    },
-    acquiredAt: { filterValues: (lead) => ({ value: formatAt(lead.acquiredAt, true), label: lead.acquiredAt ? formatAt(lead.acquiredAt, true) : t("acquisitionTimeMissing") }), sortValue: (lead) => lead.acquiredAt },
-    owner: { filterValues: (lead) => ({ value: lead.ownerId ?? "$unassigned", label: lead.ownerName || t("unassignedOwner") }), sortValue: (lead) => lead.ownerName },
-    progress: {
-      filterValues: (lead) => [{ value: progressValue(lead), label: progressOf(lead) }, ...(lead.lastContactOutcome ? [{ value: `contact:${lead.lastContactOutcome}`, label: t(`contactOutcome_${lead.lastContactOutcome}`), group: tableT("fieldContactResult") }] : [])],
-      sortValue: progressOf,
-    },
-  };
-  const table = useDashboardTableView({ rows: leads, columns, locale, persistenceKey: `school.followup.lead-intake.compact-v2.${currentUserId ?? "user"}` });
+  const fields = useMemo(() => leadIntakeTableFields(t, tableT, invitationT), [t, tableT, invitationT]);
+  const server = useFollowupServerFields(fieldView);
+  const table = useDashboardFieldView({ rows: leads, fields, columns: LEAD_INTAKE_TABLE_COLUMNS, context, server,
+    persistenceKey: server ? undefined : `school.followup.lead-intake.fields-v2.${currentUserId ?? "user"}` });
   const visibleIds = table.visibleRows.filter((lead) => !["invalid", "converted"].includes(lead.status)).map((lead) => lead.id);
   const visibleKey = visibleIds.join(",");
   const { setVisibleIds } = selection;
@@ -89,7 +68,6 @@ export function LeadIntakeWorkbench({ leads, locale, canAssign = false, canManag
     if (!open) rowRefs.current.get(id)?.focus({ preventScroll: true });
   };
   const colSpan = canAssign ? 9 : 8;
-  const headerLabels = { scope: t("columnMenuScope") };
 
   return <DashboardTableShell data-lead-intake-workbench data-followup-workbench data-followup-scroll>
     <Table className="w-full min-w-[58rem] table-fixed text-xs" containerClassName="overflow-auto [scrollbar-gutter:stable]"
@@ -102,13 +80,13 @@ export function LeadIntakeWorkbench({ leads, locale, canAssign = false, canManag
     <colgroup>{canAssign ? <col className="w-8" /> : null}<col className="w-44" /><col className="w-32" /><col className="w-20" /><col /><col className="w-28" /><col className="w-28" /><col className="w-32" /><col className="w-10" /></colgroup>
     <TableHeader inert={selection.assignmentPending || undefined}><TableRow className="[&>th]:h-9 [&>th]:px-2">
       {canAssign ? <TableHead className="sticky left-0 top-0 z-30 bg-card"><Checkbox checked={visibleIds.length > 0 && selectedCount === visibleIds.length ? true : selectedCount > 0 ? "indeterminate" : false} disabled={!visibleIds.length || selection.assignmentPending} onCheckedChange={(checked) => selection.setVisibleSelection(visibleIds, checked === true)} aria-label={t("selectPage")} title={t("rangeSelectionHint")} /></TableHead> : null}
-      <TableHead className={cn("sticky top-0 z-30 border-r border-line bg-card", canAssign ? "left-8" : "left-0")}><DashboardTableColumnHeader label={tableT("fieldName")} labels={headerLabels} {...table.columnProps("identity")} /></TableHead>
-      <TableHead className="sticky top-0 z-20 bg-card"><DashboardTableColumnHeader label={tableT("fieldPhone")} labels={headerLabels} {...table.columnProps("phone")} /></TableHead>
-      <TableHead className="sticky top-0 z-20 bg-card"><DashboardTableColumnHeader label={t("grade")} labels={headerLabels} {...table.columnProps("grade")} /></TableHead>
-      <TableHead className="sticky top-0 z-20 bg-card"><DashboardTableColumnHeader label={t("acquisitionLocation")} labels={headerLabels} {...table.columnProps("source")} /></TableHead>
-      <TableHead className="sticky top-0 z-20 bg-card"><DashboardTableColumnHeader label={t("acquiredAt")} labels={headerLabels} {...table.columnProps("acquiredAt")} /></TableHead>
-      <TableHead className="sticky top-0 z-20 bg-card"><DashboardTableColumnHeader label={t("owner")} labels={headerLabels} {...table.columnProps("owner")} /></TableHead>
-      <TableHead className="sticky top-0 z-20 bg-card"><DashboardTableColumnHeader label={t("intakeProgress")} labels={headerLabels} {...table.columnProps("progress")} /></TableHead>
+      <TableHead className={cn("sticky top-0 z-30 border-r border-line bg-card", canAssign ? "left-8" : "left-0")}><DashboardTableColumnHeader label={tableT("fieldName")} {...table.columnProps("identity")} /></TableHead>
+      <TableHead className="sticky top-0 z-20 bg-card"><DashboardTableColumnHeader label={tableT("fieldPhone")} {...table.columnProps("phone")} /></TableHead>
+      <TableHead className="sticky top-0 z-20 bg-card"><DashboardTableColumnHeader label={t("grade")} {...table.columnProps("grade")} /></TableHead>
+      <TableHead className="sticky top-0 z-20 bg-card"><DashboardTableColumnHeader label={t("acquisitionLocation")} {...table.columnProps("source")} /></TableHead>
+      <TableHead className="sticky top-0 z-20 bg-card"><DashboardTableColumnHeader label={t("acquiredAt")} {...table.columnProps("acquiredAt")} /></TableHead>
+      <TableHead className="sticky top-0 z-20 bg-card"><DashboardTableColumnHeader label={t("owner")} {...table.columnProps("owner")} /></TableHead>
+      <TableHead className="sticky top-0 z-20 bg-card"><DashboardTableColumnHeader label={t("intakeProgress")} {...table.columnProps("progress")} /></TableHead>
       <TableHead className="sticky top-0 z-20 bg-card"><span className="sr-only">{t("actions")}</span></TableHead>
     </TableRow></TableHeader>
     <TableBody>{table.visibleRows.map((lead) => {

@@ -24,9 +24,12 @@ import {
 import {
   DashboardTableColumnHeader,
   DashboardTableShell,
-  type DashboardTableColumnDefinition,
-  useDashboardTableView,
 } from "./dashboard-page";
+import { useDashboardFieldView } from "./dashboard-page/useDashboardFieldView";
+import { formatDashboardDate, type DashboardDateContext } from "./dashboard-page/dashboard-table-date-contract";
+import { COMMUNICATION_TABLE_COLUMNS, communicationFieldDayEvents, communicationTableFields, communicationTableRowKey as communicationRowKey, type CommunicationTableRow as CommunicationRow } from "./communication-table-fields";
+import type { FollowupServerFields } from "./followup-table-page";
+import { useFollowupServerFields } from "./useFollowupServerFields";
 import {
   clearInvitationDraftSession,
   InvitationDraftFields,
@@ -63,16 +66,14 @@ import { LeadContactEntryRow } from "./LeadFirstContactWorkbench";
 import { navigateFollowupTable } from "./followup-keyboard";
 import { deriveLeadContactDestination, type LeadPoolRow } from "./lead-contract";
 import type { LeadContactInput } from "./actions/leads";
-import { communicationDayBounds, type CommunicationDayEvent, type CommunicationWorkbenchView, type CommunicationWorkday, type CommunicationWorklist } from "./communication-workday-contract";
+import { type CommunicationDayEvent, type CommunicationWorkbenchView, type CommunicationWorkday, type CommunicationWorklist } from "./communication-workday-contract";
 import { completeCommunicationWorklistItemAction } from "./communication-workday-actions";
 import { CommunicationDaySummary } from "./CommunicationDaySummary";
 import { useCommunicationWorkSelection } from "./CommunicationWorkSelection";
 import { communicationFactWithOverride, nextUnprocessedCommunicationKey, reconcileCommunicationWorkSession, type CommunicationWorkSession } from "./communication-work-session";
 
 const CHANNELS = ["phone", "wechat", "in_person", "other"] as const;
-const EMPTY_VALUE = "$empty";
 const EMPTY_CONTACT_LEADS: LeadPoolRow[] = [];
-type InvitationTableColumn = "lead" | "state" | "arrangement" | "updated";
 
 function copyWithFallback(value: string): Promise<void> {
   if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(value);
@@ -544,18 +545,10 @@ function InvitationHistory({ rows, formatAt }: { rows: InvitationCoordinationRow
   </details>;
 }
 
-type CommunicationRow =
-  | { id: string; source: "profile"; value: HistoricalFirstContactRow }
-  | { id: string; source: "invitation"; value: InvitationCoordinationRow }
-  | { id: string; source: "contact"; value: LeadPoolRow; previousInvitation?: InvitationCoordinationRow }
-  | { id: string; source: "post_activity"; value: ActivityEnrollmentContext };
-
-const communicationRowKey = (row: CommunicationRow) => row.source === "profile" ? `student:${row.value.studentId}` : row.source === "post_activity"
-  ? `post:${row.value.registrationId}` : `lead:${row.source === "contact" ? row.value.id : row.value.leadId}`;
 const sameCommunicationFact = (left: CommunicationRow, right: CommunicationRow) => left.source === right.source
   && left.value === right.value && (left.source !== "contact" || right.source !== "contact" || left.previousInvitation === right.previousInvitation);
 
-export function InvitationCoordinationWorkbench({ rows, activities, assessors, locale, currentUserId, canManageInvitation, postActivityRows = [], searchQuery = "", contactLeads = EMPTY_CONTACT_LEADS, leadDetails = EMPTY_CONTACT_LEADS, canContact = false, canManageIdentity = false, focusLeadId, rowOrder, invitationHistory = [], workday, worklist, selectionEnabled = false, sessionKey = "communication", workMode, historicalFirstContacts=[] }: {
+export function InvitationCoordinationWorkbench({ rows, activities, assessors, locale, currentUserId, canManageInvitation, postActivityRows = [], searchQuery = "", contactLeads = EMPTY_CONTACT_LEADS, leadDetails = EMPTY_CONTACT_LEADS, canContact = false, canManageIdentity = false, focusLeadId, rowOrder, invitationHistory = [], workday, worklist, selectionEnabled = false, sessionKey = "communication", workMode, historicalFirstContacts=[], fieldView, timeZone = ASSESSMENT_TIME_ZONE, now }: {
   rows: InvitationCoordinationRow[]; activities: InvitationActivityOption[]; assessors: InvitationAssessorOption[]; locale: string;
   queue?: InvitationQueue; coordinationStage?: InvitationCoordinationStage | null; stageCounts?: InvitationQueueCounts["stages"];
   searchQuery?: string; currentUserId: string; canManageInvitation: boolean; postActivityRows?: ActivityEnrollmentContext[];
@@ -564,6 +557,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
   workday?: CommunicationWorkday; worklist?: CommunicationWorklist; selectionEnabled?: boolean; sessionKey?: string;
   workMode?: CommunicationWorkbenchView;
   historicalFirstContacts?:HistoricalFirstContactRow[];
+  fieldView?: FollowupServerFields; timeZone?: string; now?: number;
 }) {
   const t = useTranslations("school.invitations");
   const leadT = useTranslations("school.leads");
@@ -627,20 +621,11 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
     setActiveId(open ? key : null);
     if (!open) rowRefs.current.get(key)?.focus({ preventScroll: true });
   };
-  const dateTimeFormatter = useMemo(() => new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Shanghai" }), [locale]);
-  const formatAt = useCallback((value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : Number.isFinite(Date.parse(value)) ? dateTimeFormatter.format(new Date(value)) : '—', [dateTimeFormatter]);
+  const [mountedAt] = useState(() => Date.now());
+  const dateContext: DashboardDateContext = useMemo(() => ({ locale, timeZone, now: now ?? mountedAt }), [locale, timeZone, now, mountedAt]);
+  const formatAt = useCallback((value: string) => formatDashboardDate(value, dateContext, { time: !/^\d{4}-\d{2}-\d{2}$/.test(value) }), [dateContext]);
   const recordsMode = workMode === "records";
-  const dayEventsByKey = useMemo(() => {
-    const grouped = new Map<string, CommunicationDayEvent[]>();
-    if (!recordsMode || !workday) return grouped;
-    const bounds = communicationDayBounds(workday.date);
-    for (const event of workday.events) {
-      if (Date.parse(event.occurredAt) < Date.parse(bounds.start) || Date.parse(event.occurredAt) >= Date.parse(bounds.end)) continue;
-      grouped.set(event.key, [...(grouped.get(event.key) ?? []), event]);
-    }
-    for (const events of grouped.values()) events.sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt) || Date.parse(b.recordedAt) - Date.parse(a.recordedAt) || a.id.localeCompare(b.id));
-    return grouped;
-  }, [recordsMode, workday]);
+  const dayEventsByKey = useMemo(() => communicationFieldDayEvents(recordsMode ? workday : undefined), [recordsMode, workday]);
   const dayEventsFor = (row: CommunicationRow) => dayEventsByKey.get(communicationRowKey(row)) ?? [];
   const dayEventFor = (row: CommunicationRow) => dayEventsFor(row)[0];
   const dayOutcomeLabel = (event: CommunicationDayEvent | undefined) => event ? event.source === "invitation" ? t(`state_${event.outcome}`) : workT(`outcome_${event.outcome}`) : "—";
@@ -675,9 +660,9 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
       value: communicationFactWithOverride(original, postOverrides[original.registrationId]) })),
     ...historicalFirstContacts.map(value => ({ id: `student:${value.studentId}`, source: 'profile' as const, value })),
   ];
-  const orderById = new Map((worklist?.rowKeys ?? rowOrder ?? []).map((id, index) => [id, index]));
-  const orderOf = (row: CommunicationRow) => orderById.get(communicationRowKey(row)) ?? Number.MAX_SAFE_INTEGER;
-  const combined = orderById.size ? [...combinedUnsorted].sort((left, right) => orderOf(left) - orderOf(right)) : combinedUnsorted;
+  const orderedKeys = fieldView ? rowOrder ?? worklist?.rowKeys : worklist?.rowKeys ?? rowOrder;
+  const byKey = new Map(combinedUnsorted.map(row => [communicationRowKey(row), row]));
+  const combined = orderedKeys ? [...orderedKeys.flatMap(key => { const row = byKey.get(key); byKey.delete(key); return row ? [row] : []; }), ...byKey.values()] : combinedUnsorted;
   const historyFor = (leadId: string, currentId?: string) => invitationHistory.filter((row) => row.leadId === leadId && row.id !== currentId);
   const nameOf = (row: CommunicationRow) => row.source === "invitation" ? row.value.leadName : row.source === "contact" ? row.value.provisionalStudentName : row.value.name;
   const referenceRow = (row: CommunicationRow): CommunicationRow => row.source === "contact" && row.previousInvitation ? { id: row.previousInvitation.id, source: "invitation", value: row.previousInvitation } : row;
@@ -699,18 +684,11 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
     const latest = laterContactFor(row.value);
     return latest ? [latest.lastContactOutcome ? leadT(`contactOutcome_${latest.lastContactOutcome}`) : "", latest.lastContactNote].filter(Boolean).join(" · ") : row.value.summary;
   };
-  const stateValueOf = (input: CommunicationRow) => { const row = referenceRow(input); return row.source === 'profile' ? 'first_contact_missing' : row.source === "invitation" ? row.value.state : row.source === "contact" ? `contact:${row.value.status}` : `post:${followupState(row.value)}`; };
   const filtered = combined.filter((row) => [nameOf(row), row.value.phone, ...(recordsMode ? dayEventsFor(row).flatMap((event) => [event.note, dayOutcomeLabel(event), t(`channel_${event.channel}`)]) : [arrangementOf(row), noteOf(row)])].join(" ").toLocaleLowerCase(locale).includes(searchQuery.toLocaleLowerCase(locale)));
-  const tableColumns: Record<InvitationTableColumn, DashboardTableColumnDefinition<CommunicationRow>> = {
-    lead: { filterValues: (row) => [{ value: `name:${nameOf(row)}`, label: nameOf(row), group: tableT("fieldName") }, { value: `phone:${row.value.phone}`, label: row.value.phone || tableT("emptyValue"), group: tableT("fieldPhone") },
-      { value: `grade:${gradeOf(row) || EMPTY_VALUE}`, label: gradeOf(row) || t("gradePending"), group: tableT("fieldGrade") },
-      ...(row.source === 'contact' || row.source === 'invitation' ? [{ value: `owner:${row.value.ownerName || EMPTY_VALUE}`, label: row.value.ownerName || tableT("emptyValue"), group: tableT("fieldOwner") }] : [])], sortValue: nameOf },
-    state: { filterValues: (row) => recordsMode ? ({ value: `day:${dayEventFor(row)?.source}:${dayEventFor(row)?.outcome}`, label: dayOutcomeLabel(dayEventFor(row)) }) : ({ value: stateValueOf(row), label: stateOf(row) }), sortValue: (row) => recordsMode ? dayOutcomeLabel(dayEventFor(row)) : stateOf(row) },
-    arrangement: { filterValues: (row) => recordsMode ? dayEventsFor(row).map((event) => ({ value: `channel:${event.channel}`, label: t(`channel_${event.channel}`) })) : [{ value: `type:${kindOf(row)}`, label: kindOf(row), group: tableT("fieldType") }, { value: `arrangement:${arrangementOf(row)}`, label: arrangementOf(row), group: tableT("fieldActivity") }], sortValue: (row) => recordsMode ? dayEventFor(row)?.note : arrangementOf(row) },
-    updated: { filterValues: (row) => { const at = updatedOf(row); return workday ? [] : at ? { value: new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai" }).format(new Date(at)), label: formatAt(at).split(" ")[0] } : { value: EMPTY_VALUE, label: recordM.unknown }; }, sortValue: (row) => recordsMode ? dayEventFor(row)?.occurredAt : updatedOf(row) },
-  };
-  const table = useDashboardTableView({ rows: filtered, columns: tableColumns, locale, initialFilters: focusLeadId || worklist ? {} : undefined,
-    persistenceKey: focusLeadId ? undefined : `school.followup.communication.${recordsMode ? "records" : workday ? "workday" : "v2"}.${worklist?.id ?? currentUserId}` });
+  const serverFields = useFollowupServerFields(fieldView);
+  const fields = communicationTableFields({ locale, t, leadT, enrollmentT, tableT, workT, leads: leadById, workday, recordsMode });
+  const table = useDashboardFieldView({ rows: serverFields ? combined : filtered, fields, columns: COMMUNICATION_TABLE_COLUMNS, context: dateContext, server: serverFields,
+    persistenceKey: focusLeadId ? undefined : `school.followup.communication.fields-v2.${recordsMode ? "records" : workday ? "workday" : "all"}.${worklist?.id ?? currentUserId}` });
   const selectionSignature = JSON.stringify({ filters: table.filters, sort: table.sort });
   const currentSession = reconcileCommunicationWorkSession(workSession, { boundary: sessionKey, selection: selectionSignature,
     rows: combined, selectedRows: table.visibleRows, authorizedKeys: rowOrder ? [...rowOrder, ...historicalFirstContacts.map(row => `student:${row.studentId}`)] : undefined, keyOf: communicationRowKey, sameFact: sameCommunicationFact });

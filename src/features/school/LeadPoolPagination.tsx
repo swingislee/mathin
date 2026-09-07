@@ -28,23 +28,27 @@ export function LeadPoolPagination({
   totalPages,
   totalCount,
   pageSize,
-  scope,
+  scope = "all",
   status,
   q,
   baseHref = "/dashboard/followups/leads",
   focusLeadId,
   extraQuery = {},
+  onPageChange,
+  disabled = false,
 }: {
   currentPage: number;
   totalPages: number;
   totalCount: number;
   pageSize: LeadPageSize;
-  scope: LeadPoolScope;
+  scope?: LeadPoolScope;
   status?: LeadStatus;
   q?: string;
-  baseHref?: "/dashboard/followups/leads" | "/dashboard/followups/communication";
+  baseHref?: `/dashboard/followups/${string}`;
   focusLeadId?: string;
   extraQuery?: Record<string, string>;
+  onPageChange?: (page: number, pageSize: LeadPageSize) => void;
+  disabled?: boolean;
 }) {
   const t = useTranslations("school.leads");
   const router = useRouter();
@@ -70,22 +74,27 @@ export function LeadPoolPagination({
   const nextContent = (
     <ChevronRight className="size-3.5" aria-hidden />
   );
+  const navigate = (event: React.MouseEvent, page: number) => {
+    if (disabled || pending) { event.preventDefault(); return; }
+    if (onPageChange) { event.preventDefault(); onPageChange(page, pageSize); }
+  };
 
   return (
-    <div data-followup-pagination className="flex w-full min-w-0 flex-wrap items-center justify-end gap-x-2 gap-y-1 text-xs text-muted">
+    <div data-followup-pagination data-page={currentPage} data-page-size={pageSize} aria-busy={pending} className="flex w-full min-w-0 flex-wrap items-center justify-end gap-x-1.5 gap-y-1 text-[11px] leading-4 text-muted">
       <div className="flex items-center gap-2 whitespace-nowrap">
         <span className="tabular-nums">
           {t("paginationCompactSummary", { page: currentPage, pages: totalPages, count: totalCount })}
         </span>
         <Select
           value={String(pageSize)}
-          disabled={pending}
+          disabled={pending || disabled}
           onValueChange={(value) => {
             const nextPageSize = Number(value) as LeadPageSize;
-            startTransition(() => router.replace(hrefFor(1, nextPageSize)));
+            if (onPageChange) onPageChange(1, nextPageSize);
+            else startTransition(() => router.replace(hrefFor(1, nextPageSize)));
           }}
         >
-          <SelectTrigger className="h-7 w-auto min-w-24 gap-1 rounded-full bg-card px-2 py-0 text-xs shadow-none" aria-label={t("rowsPerPageLabel")}>
+          <SelectTrigger className="h-6 w-auto min-w-20 gap-1 rounded-full bg-card px-2 py-0 text-[11px] shadow-none" aria-label={t("rowsPerPageLabel")}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -107,30 +116,30 @@ export function LeadPoolPagination({
                 title={t("previous")}
                 aria-disabled="true"
                 tabIndex={-1}
-                className="size-7 p-0 opacity-40"
+                className="size-6 p-0 opacity-40"
               >
                 {previousContent}
               </PaginationPrevious>
             ) : (
-              <PaginationPrevious asChild aria-label={t("previous")} title={t("previous")} className="size-7 p-0">
-                <Link href={hrefFor(currentPage - 1)}>{previousContent}</Link>
+              <PaginationPrevious asChild aria-label={t("previous")} title={t("previous")} className="size-6 p-0">
+                <Link aria-disabled={disabled || pending || undefined} href={hrefFor(currentPage - 1)} onClick={event => navigate(event, currentPage - 1)}>{previousContent}</Link>
               </PaginationPrevious>
             )}
           </PaginationItem>
 
           {tokens.map((token) => token === "ellipsis-left" || token === "ellipsis-right" ? (
             <PaginationItem key={token}>
-              <PaginationEllipsis className="size-7" label={t("morePages")} />
+              <PaginationEllipsis className="size-6" label={t("morePages")} />
             </PaginationItem>
           ) : (
             <PaginationItem key={token}>
               {token === currentPage ? (
-                <PaginationLink className="size-7 text-xs" asChild isActive aria-label={t("pageLabel", { page: token })}>
+                <PaginationLink className="size-6 text-[11px]" asChild isActive aria-label={t("pageLabel", { page: token })}>
                   <span>{token}</span>
                 </PaginationLink>
               ) : (
-                <PaginationLink className="size-7 text-xs" asChild aria-label={t("pageLabel", { page: token })}>
-                  <Link href={hrefFor(token)}>{token}</Link>
+                <PaginationLink className="size-6 text-[11px]" asChild aria-label={t("pageLabel", { page: token })}>
+                  <Link aria-disabled={disabled || pending || undefined} href={hrefFor(token)} onClick={event => navigate(event, token)}>{token}</Link>
                 </PaginationLink>
               )}
             </PaginationItem>
@@ -143,13 +152,13 @@ export function LeadPoolPagination({
                 title={t("next")}
                 aria-disabled="true"
                 tabIndex={-1}
-                className="size-7 p-0 opacity-40"
+                className="size-6 p-0 opacity-40"
               >
                 {nextContent}
               </PaginationNext>
             ) : (
-              <PaginationNext asChild aria-label={t("next")} title={t("next")} className="size-7 p-0">
-                <Link href={hrefFor(currentPage + 1)}>{nextContent}</Link>
+              <PaginationNext asChild aria-label={t("next")} title={t("next")} className="size-6 p-0">
+                <Link aria-disabled={disabled || pending || undefined} href={hrefFor(currentPage + 1)} onClick={event => navigate(event, currentPage + 1)}>{nextContent}</Link>
               </PaginationNext>
             )}
           </PaginationItem>

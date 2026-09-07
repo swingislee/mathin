@@ -11,6 +11,11 @@ import { communicationWorkdayKeys, type CommunicationWorkbenchOptions } from "./
 import { getCommunicationWorklist, getCommunicationWorklists, loadCommunicationWorkday } from "./communication-workday-data";
 import type { ActivityEnrollmentContext } from "./enrollment-workflow-contract";
 import type { InvitationCoordinationRow } from "./invitation-contract";
+import { communicationTableRowKey, type CommunicationTableRow } from "./communication-table-fields";
+import { followupFieldPage, type FollowupServerFields } from "./followup-table-page";
+import type { DashboardFieldDefinitions } from "./dashboard-page/dashboard-table-field-contract";
+import type { DashboardDateContext } from "./dashboard-page/dashboard-table-date-contract";
+import type { CommunicationWorkday } from "./communication-workday-contract";
 
 async function listCommunicationLeadCandidates(userId: string, filters: LeadPoolFilters, focusLeadId?: string) {
   const supabase = await createClient();
@@ -75,6 +80,8 @@ export async function loadCommunicationWorkbench(
   canViewLeads: boolean,
   focusLeadId?: string,
   options?: CommunicationWorkbenchOptions,
+  fieldOptions?: { rawQuery: unknown; context: DashboardDateContext;
+    createFields: (leads: ReadonlyMap<string, LeadPoolRow>, workday?: CommunicationWorkday) => DashboardFieldDefinitions<CommunicationTableRow> },
 ) {
   const selectedView = !focusLeadId && options && ["day", "records", "worklist"].includes(options.view);
   const effectiveFilters: LeadPoolFilters = focusLeadId
@@ -103,30 +110,42 @@ export async function loadCommunicationWorkbench(
   const postActivityRows = selectedKeys && canViewLeads ? await includeRequiredPosts(initialPostRows, selectedKeys) : initialPostRows;
   const matchingEventKeys = effectiveFilters.q && workday ? workday.events.filter((event) =>
     [event.note, event.recordedByName, event.details ?? ""].join(" ").toLocaleLowerCase().includes(effectiveFilters.q!.toLocaleLowerCase())).map((event) => event.key) : undefined;
-  const selection = paginateCommunicationRows({
+  let selection = paginateCommunicationRows({
     leadCandidates: leadResult.candidates, matchingLeadIds: leadResult.matchingLeadIds,
-    invitations, postActivityRows, filters: effectiveFilters, userId, includeContacts: canViewLeads, focusLeadId, selectedKeys, matchingEventKeys,
+    invitations, postActivityRows, filters: effectiveFilters, userId, includeContacts: canViewLeads, focusLeadId, selectedKeys, matchingEventKeys, unpaged: Boolean(fieldOptions),
   });
   const selectedLeadIds = selection.entries.flatMap((row) => row.source === "lead" ? [row.leadId] : []);
   const leadDetails: LeadPoolRow[] = [];
   if (canViewLeads) {
-    for (let index = 0; index < selectedLeadIds.length; index += SCHOOL_QUERY_ID_BATCH_SIZE) {
-      const batch = selectedLeadIds.slice(index, index + SCHOOL_QUERY_ID_BATCH_SIZE);
-      const result = await listLeadPool(userId, { ...effectiveFilters, q: undefined, page: 1 }, batch);
-      leadDetails.push(...result.leads);
+    for (let index = 0; index < selectedLeadIds.length; index += SCHOOL_QUERY_ID_BATCH_SIZE * 4) {
+      const results = await Promise.all(Array.from({ length: 4 }, (_, offset) => listLeadPool(userId, { ...effectiveFilters, q: undefined, page: 1 },
+        selectedLeadIds.slice(index + offset * SCHOOL_QUERY_ID_BATCH_SIZE, index + (offset + 1) * SCHOOL_QUERY_ID_BATCH_SIZE))));
+      for (const result of results) leadDetails.push(...result.leads);
     }
   }
+  let fieldView: FollowupServerFields | undefined;
+  if (fieldOptions) {
+    const leadById = new Map(leadDetails.map(row => [row.id, row]));
+    const fieldRows = selection.entries.flatMap((entry): CommunicationTableRow[] => entry.source === "post_activity" ? [{ id: entry.key, source: "post_activity", value: entry.row }]
+      : entry.invitation ? [{ id: entry.invitation.id, source: "invitation", value: entry.invitation }]
+        : leadById.has(entry.leadId) ? [{ id: `contact:${entry.leadId}`, source: "contact", value: leadById.get(entry.leadId)! }] : []);
+    const page = followupFieldPage(fieldRows, fieldOptions.createFields(leadById, workday), fieldOptions.rawQuery, fieldOptions.context, effectiveFilters.page, effectiveFilters.pageSize);
+    const byKey = new Map(selection.entries.map(entry => [entry.key, entry]));
+    selection = { entries: page.rows.map(row => byKey.get(communicationTableRowKey(row))!), count: page.count, page: page.page, pageSize: page.pageSize };
+    fieldView = page.fieldView;
+  }
   const contactIds = new Set(selection.entries.flatMap((row) => row.source === "lead" && !row.invitation ? [row.leadId] : []));
-  const selectedLeadIdSet = new Set(selectedLeadIds);
+  const selectedLeadIdSet = new Set(selection.entries.flatMap(row => row.source === "lead" ? [row.leadId] : []));
   const selectedInvitationIds = new Set(selection.entries.flatMap((row) => row.source === "lead" && row.invitation ? [row.invitation.id] : []));
   return {
     contactLeads: leadDetails.filter((row) => contactIds.has(row.id)),
-    leadDetails,
+    leadDetails: leadDetails.filter(row => selectedLeadIdSet.has(row.id)),
     invitations: selection.entries.flatMap((row) => row.source === "lead" && row.invitation ? [row.invitation] : []),
     invitationHistory: invitations.filter((row) => selectedLeadIdSet.has(row.leadId) && !selectedInvitationIds.has(row.id)),
     postActivityRows: selection.entries.flatMap((row) => row.source === "post_activity" ? [row.row] : []),
     rowOrder: selection.entries.map((row) => row.key),
     count: selection.count, page: selection.page, pageSize: selection.pageSize,
+    fieldView,
     workday, worklist, worklists,
   };
 }

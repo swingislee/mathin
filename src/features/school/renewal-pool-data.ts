@@ -13,7 +13,7 @@ export interface RenewalPoolSupplement {
   signals: {student_id:string;source_class_membership_id:string;recommendation:string;occurred_at:string}[];
   records: RenewalWorkbenchRecord[];
   students: {id:string;phone:string}[];
-  membershipTeachers: {membershipId:string;name:string}[];
+  membershipTeachers: {membershipId:string;name:string;classroomId?:string;teachers?:{id:string;name:string}[]}[];
   now: number;
   observationMemberships: string[];
 }
@@ -51,7 +51,7 @@ export async function loadRenewalPoolSupplement(data:RenewalWorkspaceData,actorI
   if(memberships.error) throw new Error(memberships.error.message);
   const classes=[...new Set((memberships.data??[]).map(row=>row.classroom_id))];
   const teachers=classes.length?await supabase.from('classroom_staff_assignments')
-    .select('classroom_id,profiles!classroom_staff_assignments_user_id_fkey(display_name)')
+    .select('classroom_id,user_id,profiles!classroom_staff_assignments_user_id_fkey(display_name)')
     .in('classroom_id',classes).eq('responsibility','primary_teacher'): {data:[],error:null};
   if(teachers.error) throw new Error(teachers.error.message);
   const teacherNames=new Map((teachers.data??[]).map(row=>[row.classroom_id,row.profiles?.display_name??'']));
@@ -66,6 +66,7 @@ export async function loadRenewalPoolSupplement(data:RenewalWorkspaceData,actorI
   return {health,healthAvailable,healthPolicy,healthPolicyRevision:policyResult?.data?.health_policy_revision??0,
     payments:payments.data as RenewalPoolSupplement['payments'],signals:signals.data??[],records,
     students:(students.data??[]).map(row=>({id:row.id,phone:row.phone??''})),
-    membershipTeachers:(memberships.data??[]).map(row=>({membershipId:row.id,name:teacherNames.get(row.classroom_id)??''})),
+    membershipTeachers:(memberships.data??[]).map(row=>({membershipId:row.id,name:teacherNames.get(row.classroom_id)??'',classroomId:row.classroom_id,
+      teachers:(teachers.data??[]).filter(item=>item.classroom_id===row.classroom_id).map(item=>({id:item.user_id,name:item.profiles?.display_name??''}))})),
     observationMemberships,now:Date.now()};
 }

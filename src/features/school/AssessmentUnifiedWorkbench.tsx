@@ -50,6 +50,8 @@ import {
   formatAssessmentTableScore, migrateAssessmentFieldQuery,
 } from "./assessment-table-fields";
 import type { InvitationAssessorOption } from "./invitation-contract";
+import { LeadPoolPagination } from "./LeadPoolPagination";
+import { useFollowupPagination } from "./useFollowupPagination";
 
 interface SupportDraft {
   route: ActivityRouteKind | null;
@@ -108,7 +110,10 @@ export function AssessmentUnifiedWorkbench({
     initialRows.map((row) => [row.id, draftFromRow(row)]),
   ), [initialRows]);
   const [currentRows, setRows] = useState(() => initialRows.filter(row => isCurrentBusinessRecord(row.recordState)));
-  const rows = useMemo(() => [...currentRows, ...initialRows.filter(row => !isCurrentBusinessRecord(row.recordState))], [currentRows, initialRows]);
+  const rows = useMemo(() => {
+    const currentById = new Map(currentRows.map(row => [row.id, row]));
+    return initialRows.map(row => isCurrentBusinessRecord(row.recordState) ? currentById.get(row.id) ?? row : row);
+  }, [currentRows, initialRows]);
   const [drafts, setDrafts] = useState<Record<string, SupportDraft>>(initialDrafts);
   const [query, setQuery] = useBusinessSearchQuery("assessments",initialQuery);
   const [clockNow] = useState(() => now ?? Date.now());
@@ -145,16 +150,19 @@ export function AssessmentUnifiedWorkbench({
     stageFor: row => queueFor(row, drafts[row.id]),
   }), [locale, timeZone, tableT, assessmentT, t, teacherT, quickT, drafts]);
   const assessmentTable = useDashboardFieldView({ rows: scopedRows, fields, columns: ASSESSMENT_TABLE_COLUMNS,
-    context: dateContext, persistenceKey: "followup-assessments", migrate: migrateAssessmentFieldQuery });
-  const viewKey = JSON.stringify([query, assessmentTable.filters, assessmentTable.sort]);
+    context: dateContext, persistenceKey: "followup-assessments", migrate: migrateAssessmentFieldQuery,
+    sourceSort: { field: "scheduledAt", direction: "desc" } });
+  const filterKey = JSON.stringify([query, assessmentTable.filters, assessmentTable.sort]);
+  if (retainedView && retainedView.key !== filterKey) setRetainedView(null);
+  const rowById = new Map(rows.map((row) => [row.id, row]));
+  const orderedVisibleRows = retainedView?.key === filterKey
+    ? retainedView.ids.flatMap(id => rowById.has(id) ? [rowById.get(id)!] : []) : assessmentTable.visibleRows;
+  const pagination = useFollowupPagination(orderedVisibleRows, filterKey);
+  const viewKey = JSON.stringify([filterKey, pagination.page, pagination.pageSize]);
   const latestInteraction = useRef({ activeId, expandedId, viewKey });
   useEffect(() => { latestInteraction.current = { activeId, expandedId, viewKey }; }, [activeId, expandedId, viewKey]);
-  if (retainedView && retainedView.key !== viewKey) setRetainedView(null);
-  const rowById = new Map(rows.map((row) => [row.id, row]));
-  const visibleRows = retainedView?.key === viewKey
-    ? retainedView.ids.flatMap((id) => rowById.has(id) ? [rowById.get(id)!] : [])
-    : assessmentTable.visibleRows;
-  const retainCurrentView = () => setRetainedView((current) => current?.key === viewKey ? current : { key: viewKey, ids: visibleRows.map((row) => row.id) });
+  const visibleRows = pagination.rows;
+  const retainCurrentView = () => setRetainedView((current) => current?.key === filterKey ? current : { key: filterKey, ids: orderedVisibleRows.map((row) => row.id) });
   const saveRow = (saved: AssessmentWorkbenchRow) => {
     retainCurrentView();
     setRows((current) => current.map((row) => row.id === saved.id ? saved
@@ -217,6 +225,8 @@ export function AssessmentUnifiedWorkbench({
     <DashboardPage
       title={hubT("title")}
       density="compact"
+      footer={<LeadPoolPagination baseHref="/dashboard/followups/assessments" currentPage={pagination.page} totalPages={pagination.totalPages}
+        totalCount={pagination.count} pageSize={pagination.pageSize} onPageChange={(page, size) => { setRetainedView(null); pagination.onPageChange(page, size); }} />}
       commandPanel={(
         <FollowupCommandPanel>
           <DashboardCommandState>

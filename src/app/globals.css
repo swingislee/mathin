@@ -353,7 +353,11 @@ body:has([data-dashboard-canvas], [data-followup-workbench])::after { display: n
   outline-offset: 2px;
 }
 
-/* 沟通页由表格使用剩余高度滚动；页头和分页保持原位，滚动条出现时列宽不变。 */
+/* 五张学服表共用紧凑底部，其余 Dashboard 页保留既有留白。 */
+[data-dashboard-canvas]:has(.followup-command-panel) { padding-bottom: 0.375rem; }
+[data-dashboard-page]:has(.followup-command-panel) [data-dashboard-page-body] { row-gap: 0.25rem; }
+
+/* 学服页由表格使用剩余高度滚动；页头和分页保持原位，滚动条出现时列宽不变。 */
 @media (min-width: 48rem) and (min-height: 36rem) {
   [data-dashboard-canvas]:has([data-communication-scroll], [data-followup-scroll]) {
     min-height: 0;

@@ -49,6 +49,7 @@ interface LeadCommunicationDbRow {
   id: string;
   lead_id: string;
   outcome: LeadContactOutcome;
+  channel?: string | null;
   note: string;
   wechat_added: boolean | null;
   visit_committed: boolean | null;
@@ -172,7 +173,7 @@ export async function listLeadPool(
       .returns<LeadInterestDbRow[]>(),
     supabase
       .from("effective_lead_communications" as "lead_communications")
-      .select("id,lead_id,outcome,note,wechat_added,visit_committed,interest_level,occurred_at")
+      .select("id,lead_id,outcome,channel,note,wechat_added,visit_committed,interest_level,occurred_at")
       .in("lead_id", leadIds)
       .order("original_occurred_at", { ascending: false, nullsFirst: false })
       .order("id", { ascending: false })
@@ -220,7 +221,6 @@ export async function listLeadPool(
   if (communicationDates.error) throw new Error(communicationDates.error.message);
   const contactDateById=new Map((communicationDates.data??[]).map(row=>[row.id,row.occurred_on]));
   for(const contact of communicationResult.data??[])contact.occurred_on=contactDateById.get(contact.id)??null;
-  communicationResult.data?.sort((a,b)=>(b.occurred_at??b.occurred_on??'').localeCompare(a.occurred_at??a.occurred_on??''));
   if (reminderResult.error) throw new Error(reminderResult.error.message);
   const invitationUnavailable = invitationResult.error?.code === "42P01"
     || invitationResult.error?.code === "PGRST205";
@@ -316,6 +316,7 @@ export async function listLeadPool(
         contactCount: communications.length,
         lastContactAt: lastContact?.occurred_at ?? lastContact?.occurred_on ?? null,
         lastContactOutcome: lastContact?.outcome ?? null,
+        lastContactChannel: lastContact?.channel ?? null,
         lastContactNote: mergeSourceNotes(lastContact?.note,row.note),
         wechatAdded: communications.find(contact=>contact.wechat_added!==null)?.wechat_added ?? sourceLeadContactFacts(row.note).wechatAdded,
         visitCommitted: communications.find(contact=>contact.visit_committed!==null)?.visit_committed ?? sourceLeadContactFacts(row.note).visitCommitted,

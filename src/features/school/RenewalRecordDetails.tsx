@@ -33,6 +33,7 @@ import { RENEWAL_CONTACT_METHODS, RENEWAL_PANELS, RENEWAL_PAYMENT_METHODS, RENEW
   type RenewalPanel, type RenewalPayment, type RenewalResult, type RenewalWorkbenchDraft, type RenewalWorkbenchRecord, type RenewalWorkbenchSaved,
 } from "./renewal-workbench-contract";
 import { dateTimeInputToInstant, zonedDateTimeInputValue } from "./schedule";
+import { formatDashboardDate } from "./dashboard-page/dashboard-table-date-contract";
 
 export interface RenewalPoolRow {
   id: string;
@@ -54,13 +55,17 @@ export interface RenewalPoolRow {
   payment?: RenewalPayment;
   recordState?: BusinessRecordState;
   sourceRecordId?: string;
+  ownerId?: string | null;
+  classroomId?: string | null;
+  teachers?: { id: string; name: string }[];
+  targetCourseId?: string | null;
+  targetTermId?: string | null;
+  targetTermName?: string;
 }
 
 export const renewalResultTone = (value: string): FollowupTone => ["paid", "registered"].includes(value) ? "healthy"
   : value === "not_enrolled" ? "unhealthy" : ["payment_pending", "nurturing"].includes(value) ? "attention" : "neutral";
 const healthTone = (level: string): FollowupTone => level === "attention" ? "unhealthy" : level === "observed" ? "healthy" : "neutral";
-const localDateTime = (value: string | null, locale: string) => value && Number.isFinite(Date.parse(value))
-  ? new Intl.DateTimeFormat(locale, { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Shanghai" }).format(new Date(value)) : "—";
 const draftFor = (row: RenewalPoolRow): RenewalWorkbenchDraft => ({
   result: renewalResult(row.stage, row.payment) === "unprepared" ? "considering" : renewalResult(row.stage, row.payment) as RenewalResult,
   contactMethod: row.record?.contactMethod ?? null, seasons: row.record?.seasons ?? [],
@@ -71,9 +76,10 @@ const draftFor = (row: RenewalPoolRow): RenewalWorkbenchDraft => ({
 
 /** 摘要读取已保存事实；常驻草稿跨阶段、收起和继续下一位保留。 */
 export function RenewalEntryRow({ row, cycleId, cycleName, targetTerm, health, healthAvailable, policy, observation, now,
-  sampleMode, canWrite, canEnroll, canObserve, active, busy, canAdvance, onBusy, onActivate, onClose, onSaved, onObservationSaved,
+  sampleMode, canWrite, canEnroll, canObserve, active, busy, canAdvance, onBusy, onActivate, onClose, onSaved, onObservationSaved, timeZone = "Asia/Shanghai",
 }: {
   row: RenewalPoolRow; cycleId: string; cycleName: string; targetTerm: string;
+  timeZone?: string;
   health: RenewalHealthSignal[]; healthAvailable: boolean; policy: RenewalHealthPolicy; observation?: string; now: number;
   sampleMode: boolean; canWrite: boolean; canEnroll: boolean; canObserve: boolean;
   active: boolean; busy: boolean; canAdvance: boolean; onBusy: (value: boolean) => void;
@@ -203,9 +209,9 @@ export function RenewalEntryRow({ row, cycleId, cycleName, targetTerm, health, h
           </Button>)}
         </div> : null}</TableCell>
       <TableCell className="align-top">{row.payment ? <><p className="font-medium tabular-nums text-leaf-deep">{pool("paidSummary", { periods: row.payment.period_count, amount: Number(row.payment.paid_amount).toFixed(2) })}</p>
-        <p className="mt-1 text-[11px] text-muted">{row.record?.paidOn ?? t("paymentDateMissing")}</p><p className="mt-0.5 text-[11px] text-muted">{row.record?.paymentMethod ? t(`payment_${row.record.paymentMethod}`) : t("paymentMethodMissing")}</p></>
+        <p className="mt-1 text-[11px] text-muted">{row.record?.paidOn ? formatDashboardDate(row.record.paidOn, { locale, timeZone, now }) : t("paymentDateMissing")}</p><p className="mt-0.5 text-[11px] text-muted">{row.record?.paymentMethod ? t(`payment_${row.record.paymentMethod}`) : t("paymentMethodMissing")}</p></>
         : <span className="text-muted">{savedResult === "registered" ? t("paymentNotRecorded") : "—"}</span>}</TableCell>
-      <TableCell className="align-top"><p className={cn("text-[11px] tabular-nums", row.nextContactAt && Date.parse(row.nextContactAt) <= now ? "text-rose" : "text-muted")}>{localDateTime(row.nextContactAt, locale)}</p>
+      <TableCell className="align-top"><p className={cn("text-[11px] tabular-nums", row.nextContactAt && Date.parse(row.nextContactAt) <= now ? "text-rose" : "text-muted")}>{formatDashboardDate(row.nextContactAt, { locale, timeZone, now }, { time: true })}</p>
         <p className="mt-1 line-clamp-2 whitespace-pre-wrap text-[11px] leading-5 text-muted" title={row.payment?.note ?? row.note}>{row.payment?.note ?? row.note}</p>
       </TableCell>
     </TableRow>
@@ -218,7 +224,7 @@ export function RenewalEntryRow({ row, cycleId, cycleName, targetTerm, health, h
             onSave={submit} saveDisabled={!valid || conflict} canAdvance={canAdvance} saveLabel={t("save")}
             hint={conflict ? t("conflict") : paid && !valid ? t("paymentRequired") : t("keys")}
             reminderContent={<div className="space-y-1.5"><Label htmlFor={`${detailId}-next`} className="text-xs text-muted">{t("nextContact")}</Label>
-              {historical ? <p className="text-xs">{localDateTime(row.nextContactAt, locale)}</p> : <DateTimePicker id={`${detailId}-next`} mode="datetime" disabled={!writable || pending || !nextAllowed}
+              {historical ? <p className="text-xs">{formatDashboardDate(row.nextContactAt, { locale, timeZone, now }, { time: true })}</p> : <DateTimePicker id={`${detailId}-next`} mode="datetime" disabled={!writable || pending || !nextAllowed}
                 value={draft.nextContactAt ? zonedDateTimeInputValue(new Date(draft.nextContactAt), "Asia/Shanghai") : ""}
                 onValueChange={value => patch({ nextContactAt: value ? dateTimeInputToInstant(value, "Asia/Shanghai")?.toISOString() ?? null : null })}
                 className="h-auto min-h-9 w-full whitespace-normal bg-card text-xs" />}

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { assessmentSourceOrder } from "./assessment-source-order";
 import type { ActivityKind } from "./activity-kinds";
 import { mergeSourceNotes, normalizeSourceAssessmentBand, sourceAssessmentNote, sourceStaffLabel, resolveSourceStaffId, hasSourceAssessmentConclusion } from './business-source-contract';
 import { ASSESSMENT_WORKFLOW_COLUMNS } from "./assessment-workflow-data";
@@ -186,7 +187,7 @@ interface UntypedPostgrestFilter {
   eq(column: string, value: unknown): UntypedPostgrestFilter;
   is(column: string, value: null): UntypedPostgrestFilter;
   in(column: string, values: readonly string[]): UntypedPostgrestFilter;
-  order(column: string, options?: { ascending?: boolean }): UntypedPostgrestFilter;
+  order(column: string, options?: { ascending?: boolean; nullsFirst?: boolean }): UntypedPostgrestFilter;
   range(from: number, to: number): UntypedPostgrestFilter;
   returns<T>(): PromiseLike<UntypedPostgrestResult<T>>;
 }
@@ -260,21 +261,23 @@ const REGISTRATION_COLUMNS = [
 
 export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbenchRow[]> {
   const supabase = await createClient();
-  const [activityResult, confirmedInvitationResult, requiredResult] = await Promise.all([
+  const [activityResult, confirmedInvitationResult, requiredResult, orderResult] = await Promise.all([
     readAllRows<ActivityDbRow>(() => from(supabase)("activities")
       .select(ACTIVITY_COLUMNS)
-      .is("deleted_at", null)
-      .order("scheduled_at", { ascending: true })),
+      .is("deleted_at", null)),
     readAllRows<InvitationDbRow>(() => from(supabase)("lead_invitation_threads")
       .select(INVITATION_COLUMNS)
       .eq("kind", "assessment_1v1")
-      .eq("state", "confirmed")
-      .order("scheduled_at", { ascending: true })),
+      .eq("state", "confirmed")),
     supabase.rpc("is_feature_enabled", { p_flag_key: REQUIRE_TEACHER_ASSESSMENT_FLAG }),
+    readAllRows<{ id: string }>(() => from(supabase)("assessment_workbench_read_order")
+      .select("id")
+      .order("assessment_at", { ascending: false, nullsFirst: false })),
   ]);
   if (activityResult.error) throw new Error(activityResult.error.message);
   if (confirmedInvitationResult.error) throw new Error(confirmedInvitationResult.error.message);
   if (requiredResult.error) throw new Error(requiredResult.error.message);
+  if (orderResult.error) throw new Error("ASSESSMENT_SOURCE_ORDER_READ");
 
   const activities = activityResult.data ?? [];
   const registrationResult = await readRelatedRows<RegistrationDbRow>(supabase, "activity_registrations", REGISTRATION_COLUMNS, "activity_id", activities.map((activity) => activity.id));
@@ -583,7 +586,7 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
     });
   });
   const segmentedRegistrationIds = new Set(publicClassRows.map((row) => row.registrationId));
-  return [...pendingRows, ...materializedRows.filter((row) => !segmentedRegistrationIds.has(row.registrationId)), ...publicClassRows];
+  return assessmentSourceOrder([...pendingRows, ...materializedRows.filter((row) => !segmentedRegistrationIds.has(row.registrationId)), ...publicClassRows], orderResult.data ?? []);
 }
 
 function buildQuestionSummary(

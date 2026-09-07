@@ -30,6 +30,7 @@ export const enrollmentWorkflowOptionsSchema = z.object({
   classrooms: z.array(z.object({
     id: z.uuid(), name: z.string(), courseId: z.uuid(), termId: z.uuid(), capacity: z.number().int().nonnegative().nullable(),
     activeCount: z.number().int().nonnegative(), operationalStatus: z.enum(["planning", "active"]), teacherNames: z.string(),
+    teachers: z.array(z.object({ id: z.uuid(), name: z.string() })).optional(),
     sessions: z.array(z.object({ at: z.string(), duration: z.number() })),
   })),
 });

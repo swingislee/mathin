@@ -9,7 +9,7 @@ import { LeadIntakeWorkbench } from "@/features/school/LeadIntakeWorkbench";
 import { LeadIntakeScopeFilter } from "@/features/school/LeadIntakeScopeFilter";
 import { LeadPoolBatchActions, LeadPoolSelectionProvider } from "@/features/school/LeadPoolSelection";
 import type { LeadPoolFilters, LeadPoolRow } from "@/features/school/lead-contract";
-import type { DashboardTableColumnHeader } from "@/features/school/dashboard-page/DashboardTableColumnHeader";
+import type { DashboardTableFieldHeaderProps } from "@/features/school/dashboard-page/DashboardTableFieldMenu";
 
 const actions = vi.hoisted(() => ({ assign: vi.fn(), refresh: vi.fn(), replace: vi.fn(), open360: vi.fn(), error: vi.fn() }));
 vi.mock("@/features/school/actions/leads", () => ({ assignLeadsAction: actions.assign }));
@@ -18,14 +18,16 @@ vi.mock("@/features/school/Student360Sheet", () => ({ Student360Trigger: ({ chil
   children: ReactNode; subject: unknown; className?: string;
 }) => createElement("button", { type: "button", "data-open-student": true, className, onClick: () => actions.open360(subject) }, children) }));
 vi.mock("@/i18n/navigation", () => ({ Link: ({ children, ...props }: ComponentProps<"a">) => createElement("a", props, children),
-  useRouter: () => ({ refresh: actions.refresh, replace: actions.replace }) }));
+  useRouter: () => ({ refresh: actions.refresh, replace: actions.replace }), usePathname: () => "/dashboard/followups/leads" }));
+vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams() }));
 vi.mock("sonner", () => ({ toast: { error: actions.error, success: vi.fn() } }));
 vi.mock("@/features/school/dashboard-page/DashboardTableColumnHeader", () => ({ DashboardTableColumnHeader: ({
-  label, labels, filterValue, filterOptions, onFilterChange, onSortChange,
-}: Extract<ComponentProps<typeof DashboardTableColumnHeader>, { filterOptions: unknown }>) => createElement("div", { "data-column-scope": labels?.scope },
-  createElement("select", { "aria-label": label, value: filterValue ?? "", onChange: (event: { currentTarget: HTMLSelectElement }) => onFilterChange(event.currentTarget.value || undefined) },
-    createElement("option", { value: "" }, label), ...filterOptions.map(option => createElement("option", { key: option.value, value: option.value }, option.label))),
-  createElement("button", { type: "button", "aria-label": `${label} ascending`, onClick: () => onSortChange?.("asc") }, "Sort")) }));
+  label, fields,
+}: DashboardTableFieldHeaderProps) => createElement("div", { "data-column-scope": label },
+  ...fields.filter(field => field.kind === "enum").map((field, index) => createElement("select", { key: field.id, "aria-label": index === 0 ? label : field.label,
+    value: field.filter?.kind === "enum" ? field.filter.values[0] : "", onChange: (event: { currentTarget: HTMLSelectElement }) => field.onFilterChange(event.currentTarget.value ? { kind: "enum", values: [event.currentTarget.value] } : undefined) },
+    createElement("option", { value: "" }, label), ...field.options.map(option => createElement("option", { key: option.value, value: option.value }, option.label)))),
+  createElement("button", { type: "button", "aria-label": `${label} ascending`, onClick: () => fields[0].onSortChange?.("asc") }, "Sort")) }));
 vi.mock("@/features/school/dashboard-page/FollowupChoice", async importOriginal => {
   const original = await importOriginal<typeof import("@/features/school/dashboard-page/FollowupChoice")>();
   return { ...original, FollowupChoice: ({ label, value, disabled, options, onValueChange }: {
@@ -128,7 +130,7 @@ describe("compact lead intake worksheet", () => {
     expect(actions.assign).not.toHaveBeenCalled();
   });
   it("combines grade and owner filters, shows hidden selections, and assigns the explicit selected set", async () => {
-    await render(); await choose(t.grade, "1 年级");
+    await render(); await choose(t.grade, "1");
     await click(container.querySelector<HTMLButtonElement>("thead [role=checkbox]")!);
     await choose(t.owner, "owner-1");
     expect(container.querySelectorAll("[data-lead-intake-row]")).toHaveLength(1);
@@ -143,7 +145,7 @@ describe("compact lead intake worksheet", () => {
     await render(); await click(button(`${zh.school.table.fieldName} ascending`));
     await click(checkbox(ids[1])); await click(checkbox(ids[0]), true);
     expect(ids.slice(0, 3).every(id => checkbox(id).getAttribute("aria-checked") === "true")).toBe(true);
-    await choose(t.grade, "2 年级"); await click(button(t.clearSelection));
+    await choose(t.grade, "2"); await click(button(t.clearSelection));
     expect(checkbox(ids[1]).getAttribute("aria-checked")).toBe("false");
     await choose(t.grade, ""); await click(checkbox(ids[2]), true);
     expect(ids.slice(0, 3).map(id => checkbox(id).getAttribute("aria-checked"))).toEqual(["false", "false", "true"]);

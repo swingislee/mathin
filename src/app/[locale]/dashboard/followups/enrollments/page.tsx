@@ -1,4 +1,5 @@
-import { setRequestLocale } from "next-intl/server";
+import { getNow, setRequestLocale } from "next-intl/server";
+import { getOrganizationTimezoneV2 } from "@/features/school/organization-locations";
 import { EnrollmentPlacementWorkbench } from "@/features/school/EnrollmentPlacementWorkbench";
 import { loadEnrollmentPlacementBoard } from "@/features/school/enrollment-workflow-data";
 import { getMyPerms, requirePerm } from "@/lib/auth";
@@ -15,14 +16,17 @@ export default async function CourseEnrollmentsPage({
   const [{ locale }, query] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
   const user = await requirePerm(locale, "enrollment.manage");
-  const [board, permissions] = await Promise.all([
+  const [board, permissions, timeZone, now] = await Promise.all([
     loadEnrollmentPlacementBoard(),
     getMyPerms(user.id),
+    getOrganizationTimezoneV2(), getNow(),
   ]);
 
   return (
     <EnrollmentPlacementWorkbench
       initialBoard={board}
+      timeZone={timeZone}
+      now={now.getTime()}
       history={await loadStudentBusinessHistory(locale,{kind:'enrollment'})}
       initialQuery={query.q?.slice(0,100)}
       initialRecordState={businessRecordStateFilter(query.state)}

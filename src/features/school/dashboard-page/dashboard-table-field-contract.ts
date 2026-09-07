@@ -9,6 +9,8 @@ interface FieldBase<Row> {
   sortValue?: (row: Row) => DashboardFieldScalar;
   /** 原分等字段要求先选定一个可比较的量尺。 */
   requiresSingleValue?: string;
+  /** 关联条件一起命中同一条班级/课次/沟通事件，避免跨关联事实拼接命中。 */
+  related?: { group: string; rows: (row: Row) => readonly Row[] };
 }
 export type DashboardFieldDefinition<Row> = FieldBase<Row> & (
   | { kind: "text"; value: (row: Row) => string | null | undefined }
@@ -63,8 +65,17 @@ export function matchesDashboardField<Row>(
 }
 
 function matchingRows<Row>(rows: readonly Row[], fields: DashboardFieldDefinitions<Row>, filters: DashboardFieldFilters, locale: string, timeZone: string, except?: string): Row[] {
-  return rows.filter(row => Object.entries(filters).every(([id, filter]) => id === except
-    || !Object.hasOwn(fields, id) || !dashboardFieldEnabled(fields[id], filters) || matchesDashboardField(row, fields[id], filter, locale, timeZone)));
+  const active = Object.entries(filters).filter(([id]) => id !== except && Object.hasOwn(fields, id) && dashboardFieldEnabled(fields[id], filters));
+  const groups = new Map<string, typeof active>();
+  for (const pair of active) {
+    const related = fields[pair[0]].related;
+    if (related) groups.set(related.group, [...(groups.get(related.group) ?? []), pair]);
+  }
+  return rows.filter(row => active.every(([id, filter]) => fields[id].related
+    ? fields[id].related!.rows(row).some(item => matchesDashboardField(item, fields[id], filter, locale, timeZone))
+    : matchesDashboardField(row, fields[id], filter, locale, timeZone))
+    && [...groups.values()].every(group => group.length < 2 || fields[group[0][0]].related!.rows(row)
+      .some(item => group.every(([id, filter]) => matchesDashboardField(item, fields[id], filter, locale, timeZone)))));
 }
 
 export function filterAndSortDashboardFields<Row>(
@@ -96,7 +107,8 @@ export function dashboardFieldFacets<Row>(
   return Object.fromEntries(Object.entries(fields).map(([id, field]) => {
     // 文本与数值不会生成逐行枚举，避免复制姓名、电话和整段备注。
     if (field.kind !== "enum" && field.kind !== "date") return [id, { options: [], days: [] }];
-    const available = matchingRows(rows, fields, filters, locale, timeZone, id);
+    const candidates = field.related ? rows.flatMap(row => [...field.related!.rows(row)]) : rows;
+    const available = matchingRows(candidates, fields, filters, locale, timeZone, id);
     if (field.kind === "date") return [id, { options: [], days: [...new Set(available.map(row => dashboardDay(field.value(row), timeZone)).filter((day): day is string => Boolean(day)))].sort().reverse() }];
     const allOptions = new Map<string, DashboardFieldOption>();
     for (const row of rows) for (const option of field.values(row)) if (!allOptions.has(option.value)) allOptions.set(option.value, option);

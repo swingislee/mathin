@@ -8,7 +8,7 @@ vi.mock("../src/lib/supabase/server", () => ({
   createClient: async () => ({
     rpc: async () => ({ data: db.teacherRequired, error: null }),
     from: (table: string) => {
-      let rows = db.tables[table] ?? [];
+      let rows = (db.tables[table] ?? []).map(row => table === "activities" ? { remark: "", record_state: "current", occurred_on: null, ...row } : row);
       const query = {
         select: () => query,
         eq: (field: string, value: unknown) => {
@@ -100,6 +100,7 @@ describe("unified assessment workbench", () => {
     ];
     db.tables.public_class_segments = [{ id: "group", activity_id: "public", kind: "group_assessment", title: "集体测评", scheduled_at: "2026-09-05T04:00:00Z", location: "B2", primary_teacher_id: "teacher", primary_teacher: { display_name: "教师" } }];
     db.tables.public_class_participant_records = [{ id: "record", activity_id: "public", segment_id: "group", registration_id: "recorded", student_presence: "attended", guardian_presence: "absent", learning_observation: "思路清晰", assessment_summary: "A 班水平", parent_feedback: "关注时间", recommendation: "建议进阶", updated_at: "2026-09-05T05:00:00Z" }];
+    db.tables.assessment_workbench_read_order = ["segment:group:recorded", "segment:group:pending", "registration:solo-student"].map(id => ({ id }));
 
     const rows = await listAssessmentWorkbenchRows();
     expect(rows).toHaveLength(3);
@@ -129,6 +130,7 @@ describe("unified assessment workbench", () => {
       assessment_paper_version_id: null, assessment_started_at: null, assessment_completed_at: null, updated_at: "2026-09-05T02:00:00Z",
       students: { id: `student-${index}`, name: `Student ${index}`, phone: "", parent_phone: "", grade: 3, remark: "" }, leads: null,
     }));
+    db.tables.assessment_workbench_read_order = db.tables.activity_registrations.map(row => ({ id: `registration:${row.id}` }));
     const rows = await listAssessmentWorkbenchRows();
     expect(rows).toHaveLength(525);
     expect(rows.some((row) => row.registrationId === "registration-524")).toBe(true);
@@ -150,6 +152,7 @@ describe("unified assessment workbench", () => {
     db.tables.assessment_quick_entries = [{ id: "entry", registration_id: "registration", entry: { score: 65 }, revision: 1,
       recorded_by: "support", recorder: { display_name: "学服老师" }, updated_at: updatedAt, finalized_at: updatedAt }];
     db.tables.assessment_entry_actors = [{ id: "event", registration_id: "registration", entry_kind: "quick_entry", recorded_by: "support", recorded_at: updatedAt, display_name: "学服老师" }];
+    db.tables.assessment_workbench_read_order = [{ id: "invitation:invite" }];
     const rows = await listAssessmentWorkbenchRows();
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ id: "invitation:invite", teacherRequired: true, assessorId: "teacher", assessorName: "测评老师", assessorSource: "assigned" });

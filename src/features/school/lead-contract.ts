@@ -1,4 +1,5 @@
 import type { InvitationSummary } from "./invitation-contract";
+import { FOLLOWUP_DEFAULT_PAGE_SIZE, FOLLOWUP_PAGE_SIZES } from "./followup-table-page";
 
 /** Client-safe lead constants and DTOs shared by the server reader and table UI. */
 export const LEAD_STATUSES = [
@@ -10,8 +11,8 @@ export const LEAD_STATUSES = [
   "converted",
 ] as const;
 
-export const LEAD_PAGE_SIZES = [20, 50, 100] as const;
-export const LEAD_DEFAULT_PAGE_SIZE = 100;
+export const LEAD_PAGE_SIZES = FOLLOWUP_PAGE_SIZES;
+export const LEAD_DEFAULT_PAGE_SIZE = FOLLOWUP_DEFAULT_PAGE_SIZE;
 
 export type LeadStatus = (typeof LEAD_STATUSES)[number];
 export type LeadPageSize = (typeof LEAD_PAGE_SIZES)[number];
@@ -70,6 +71,7 @@ export interface LeadPoolRow {
   contactCount: number;
   lastContactAt: string | null;
   lastContactOutcome: LeadContactOutcome | null;
+  lastContactChannel?: string | null;
   lastContactNote: string;
   wechatAdded: boolean | null;
   visitCommitted: boolean | null;

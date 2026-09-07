@@ -42,10 +42,27 @@ for (const role of ['principal','teacher']) {
         const html = await response.text();
         if (response.status !== 200 || /Could not find|schema cache|MISSING_MESSAGE|NEXT_REDIRECT|__next_error__|NEXT_HTTP_ERROR_FALLBACK/.test(html)
           || !html.includes('data-dashboard-command-panel') || ((followupFilters || assessmentFields) && !html.includes('data-followup-primary-filter'))
-          || (assessmentFields && !html.includes(locale === 'zh' ? '记录时间' : 'Record date')))
+          || (assessmentFields && !html.includes(locale === 'zh' ? '记录时间' : 'Record date'))
+          || (followupFilters && !/data-followup-pagination="(?:true)?"[^>]*data-page-size="50"/.test(html))) {
+          console.error(JSON.stringify({ status: response.status, marker: /Could not find|schema cache|MISSING_MESSAGE|NEXT_REDIRECT|__next_error__|NEXT_HTTP_ERROR_FALLBACK/.exec(html)?.[0],
+            commandPanel: html.includes('data-dashboard-command-panel'), primaryFilter: html.includes('data-followup-primary-filter'),
+            pagination: html.match(/<div[^>]*data-followup-pagination[^>]*>/)?.[0] }));
+          const stream = [...html.matchAll(/self\.__next_f\.push\((\[[\s\S]*?\])\)<\/script>/g)].flatMap(match => {
+            try { const chunk = JSON.parse(match[1]); return typeof chunk[1] === 'string' ? [chunk[1]] : []; } catch { return []; }
+          }).join('');
+          for (const line of stream.split('\n')) if (/^[\da-f]+:E\{/.test(line)) {
+            const error = JSON.parse(line.slice(line.indexOf(':E') + 2));
+            console.error(JSON.stringify({ message: error.message, stack: error.stack }));
+          }
+          const errorScript = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/)?.[1];
+          if (errorScript) {
+            const error = JSON.parse(errorScript).err;
+            if (error) console.error(JSON.stringify({ message: error.message, stack: error.stack }));
+          }
           throw new Error('FOLLOWUP_STARTUP_FAILED: '+role+'/'+locale+'/'+route+' HTTP '+response.status);
+        }
         console.log(JSON.stringify({role,locale,route,status:response.status,worksheet:html.includes('data-lead-intake-workbench'),
-          primaryFilter:html.includes('data-followup-primary-filter'),businessWrites:false}));
+          primaryFilter:html.includes('data-followup-primary-filter'),defaultPageSize:followupFilters ? 50 : undefined,businessWrites:false}));
       }
     }
   } finally { await client.auth.signOut({scope:'local'}); }

@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { readSchoolQueryBatches } from "./school-query-pages";
 import { renewalHealthSignals, type RenewalHealthFacts } from "./renewal-health-contract";
 import {
   enrollmentSchema, activityEnrollmentContextSchema, enrollmentWorkflowOptionsSchema, placementMemberSchema,
@@ -29,6 +30,13 @@ export async function loadEnrollmentPlacementBoard(): Promise<EnrollmentPlacemen
   const board = z.object({ options: enrollmentWorkflowOptionsSchema, enrollments: z.array(enrollmentSchema), members: z.array(placementMemberSchema) })
     .parse(await enrollmentWorkflowRpc("get_enrollment_placement_board"));
   const supabase = await createClient();
+  const teachers = await readSchoolQueryBatches(board.options.classrooms.map(row => row.id), (batch, start, end) =>
+    supabase.from("classroom_staff_assignments").select("classroom_id,user_id,profiles!classroom_staff_assignments_user_id_fkey(display_name)")
+      .in("classroom_id", batch).in("responsibility", ["primary_teacher", "assistant_teacher"])
+      .order("classroom_id").order("user_id").order("responsibility").range(start, end));
+  if (teachers.error) throw new Error("PLACEMENT_TEACHER_FIELDS_READ");
+  board.options.classrooms = board.options.classrooms.map(row => ({ ...row, teachers: (teachers.data ?? [])
+    .filter(item => item.classroom_id === row.id).map(item => ({ id: item.user_id, name: item.profiles?.display_name ?? "" })) }));
   const ids = [...new Set([...board.enrollments.map((row) => row.studentId), ...board.members.map((row) => row.studentId)])];
   const health: NonNullable<EnrollmentPlacementBoard["health"]> = {};
   const now = Date.now();

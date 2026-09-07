@@ -15,6 +15,7 @@ import { DashboardSearch } from "./DashboardSearch";
 import { useCommunicationWorkSelection } from "./CommunicationWorkSelection";
 import { createCommunicationWorklistAction } from "./communication-workday-actions";
 import { communicationDayBounds, type CommunicationWorkbenchOptions, type CommunicationWorklist } from "./communication-workday-contract";
+import { FOLLOWUP_DEFAULT_PAGE_SIZE } from "./followup-table-page";
 
 export function CommunicationWorkToolbar({ options, scope, canViewAll, canManage, worklist, worklists, pageKeys, count, today, query = "", secondaryFilters }: {
   options: CommunicationWorkbenchOptions; scope: string; canViewAll: boolean; canManage: boolean;
@@ -51,7 +52,7 @@ export function CommunicationWorkToolbar({ options, scope, canViewAll, canManage
       const result = await createCommunicationWorklistAction({ name: name.trim() || t("defaultName", { date }), date, keys });
       if (!result.ok) { setError(t("createFailed")); return; }
       selection.clear(); setCreateOpen(false);
-      router.replace(`/dashboard/followups/communication?view=worklist&worklist=${result.data.id}&date=${date}&scope=mine&pageSize=20`);
+      router.replace(`/dashboard/followups/communication?view=worklist&worklist=${result.data.id}&date=${date}&scope=mine&pageSize=${FOLLOWUP_DEFAULT_PAGE_SIZE}`);
     });
   };
   return <>

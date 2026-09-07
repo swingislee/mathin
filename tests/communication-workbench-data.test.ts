@@ -75,12 +75,15 @@ vi.mock("../src/lib/supabase/server", () => ({
   } }),
 }));
 import { loadCommunicationWorkbench } from "../src/features/school/communication-workbench-data";
+import { listLeadIntakeFieldPage } from "../src/features/school/lead-intake-table-data";
+import { leadIntakeTableFields } from "../src/features/school/lead-intake-table-fields";
+import { communicationTableFields } from "../src/features/school/communication-table-fields";
 
 const filters: LeadPoolFilters = { scope: "all", page: 1, pageSize: 20 };
 const at = "2026-09-05T05:00:00Z";
 const lead = (id: string, owner = "owner", studentId: string | null = null) => ({
   id, provisional_student_name: `Name ${id}`, phone: "13812345678", phone_normalized: "13812345678", grade_hint: 3,
-  grade_text: "", status: "uncontacted", owner_id: owner, suggested_student_id: null, student_id: studentId, created_at: at,
+  grade_text: "", status: "uncontacted", owner_id: owner, suggested_student_id: null, student_id: studentId, created_at: at, note: "",
 });
 const invitation = (id: string, leadId: string, state = "confirmed", updatedAt = at) => ({
   id, lead_id: leadId, kind: "assessment_1v1", state, activity_id: null, assessor_id: "teacher", proposed_time_text: "",
@@ -108,6 +111,30 @@ const nextAction = (id: string, leadId: string, dueAt = "2026-09-04T05:00:00Z", 
 
 describe("communication merged page", () => {
   beforeEach(() => { db.tables = {}; db.posts = []; db.requests = []; db.postReads = 0; db.worklists = []; db.contexts = []; db.rpcs = []; vi.restoreAllMocks(); });
+
+  it("filters lead intake across all readable ID batches before the 50-row page and owner-scoped facets", async () => {
+    db.tables.leads = Array.from({ length: 130 }, (_, id) => ({ ...lead(`lead-${String(id).padStart(3, "0")}`, id === 129 ? "other" : "owner"), grade_hint: id < 70 ? 3 : 4 }));
+    const result = await listLeadIntakeFieldPage("owner", { scope: "mine", page: 2, pageSize: 50 }, leadIntakeTableFields(key => key, key => key, key => key),
+      { version: 2, filters: { grade: { kind: "enum", values: ["4"] } }, sort: null }, { locale: "en", timeZone: "Asia/Shanghai", now: Date.parse(at) });
+    expect(result).toMatchObject({ count: 59, page: 2, pageSize: 50 });
+    expect(result.rows.map(row => row.id)).toEqual(Array.from({ length: 9 }, (_, index) => `lead-${120 + index}`));
+    expect(result.fieldView.facets.owner.options.map(option => option.value)).toEqual(["owner"]);
+    expect(result.assignableIds).not.toContain("lead-129");
+    expect(Math.max(...db.requests.flatMap(request => request.ids))).toBeLessThanOrEqual(80);
+  });
+
+  it("applies communication field conditions before pagination and only returns the selected page details", async () => {
+    db.tables.leads = Array.from({ length: 130 }, (_, id) => ({ ...lead(`lead-${String(id).padStart(3, "0")}`), grade_hint: id < 70 ? 3 : 4 }));
+    const result = await loadCommunicationWorkbench("owner", { scope: "all", page: 2, pageSize: 50 }, true, undefined, undefined, {
+      rawQuery: { version: 2, filters: { grade: { kind: "enum", values: ["4"] } }, sort: null },
+      context: { locale: "en", timeZone: "Asia/Shanghai", now: Date.parse(at) },
+      createFields: (leads, workday) => communicationTableFields({ locale: "en", t: key => key, leadT: key => key, enrollmentT: key => key, tableT: key => key, workT: key => key, leads, workday, recordsMode: false }),
+    });
+    expect(result).toMatchObject({ count: 60, page: 2, pageSize: 50 });
+    expect(result.leadDetails).toHaveLength(10); expect(result.contactLeads).toHaveLength(10);
+    expect(result.rowOrder).toEqual(Array.from({ length: 10 }, (_, index) => `lead:lead-${120 + index}`));
+    expect(result.fieldView!.facets.grade.options.map(option => option.value)).toEqual(["3", "4"]);
+  });
 
   it("prefers the active invitation, keeps post registrations, and pages the union without duplicate leads", () => {
     const leadCandidates = Array.from({ length: 39 }, (_, i) => ({ id: `lead-${i}`, createdAt: at, studentId: null }));
