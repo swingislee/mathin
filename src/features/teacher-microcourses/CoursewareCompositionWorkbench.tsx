@@ -75,12 +75,13 @@ import type { DocNodeTransformPatch } from "@/features/courseware-doc/DocStage";
 import { GamePageEditor } from "@/features/games/courseware/GamePageEditor";
 import { gameCoursewareContractsForSurface } from "@/features/games/courseware/registry";
 import { getGame } from "@/features/games/registry";
-import { toolCoursewareContractsForSurface } from "@/features/tools/courseware/registry";
+import { toolCoursewareContractsForSurface, type ToolCoursewareAuthoringSurface } from "@/features/tools/courseware/registry";
 import { getTool } from "@/features/tools/registry";
 import { CUBE_COURSEWARE_CONTENT_VERSION, CUBE_COURSEWARE_LEGACY_VERSION, isCubeCoursewareTool, type CubeCoursewareTool } from "@/features/tools/courseware/cube-structures-content";
 import { CubeDraftCoursewarePicker, CubeFrozenCoursewarePreview } from "./CubeDraftCoursewarePicker";
 import { CubeCoursewareToolbarSettings } from "./CubeCoursewareToolbarSettings";
 import { cn } from "@/lib/utils";
+import type { ActionResult } from "@/lib/action-result";
 import {
   createTeacherGameComponentAction,
   createTeacherH5ComponentArtifactAction,
@@ -101,6 +102,10 @@ interface PersistedCompositionPage {
   revisionNo: number;
 }
 
+export interface CompositionPagePersistence {
+  save: (input: { pageDocId: string; doc: CoursewareCompositionPage; baseRevisionNo: number; title: string; note: string }) => Promise<ActionResult<{ doc: CoursewareCompositionPage; revisionNo: number }>>;
+}
+
 function blockLabel(
   block: CoursewareCompositionBlock,
   doc: CoursewareCompositionPage,
@@ -117,7 +122,6 @@ function blockLabel(
 }
 
 export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWorkbenchHandle, {
-  microcourseId: string;
   page: {
     pageDocId: string;
     title: string;
@@ -127,8 +131,9 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
   };
   onPersisted: (draft: PersistedCompositionPage) => void;
   onStatus: (message: string) => void;
-}>(function CoursewareCompositionWorkbench({
+} & ({ microcourseId: string; persistence?: never } | { microcourseId?: never; persistence: CompositionPagePersistence })>(function CoursewareCompositionWorkbench({
   microcourseId,
+  persistence,
   page,
   onPersisted,
   onStatus,
@@ -165,9 +170,17 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
     if (timerRef.current) window.clearTimeout(timerRef.current);
     const sequence = sequenceRef.current;
     const titleSnapshot = titleRef.current;
-    const docSnapshot = coursewareCompositionPageSchema.parse(structuredClone(docRef.current));
+    const parsedDoc = coursewareCompositionPageSchema.safeParse(structuredClone(docRef.current));
+    if (!parsedDoc.success) {
+      setSaveState("error");
+      setMessage(t("cubeContentTooLarge"));
+      onStatus(t("pageAutosaveFailed"));
+      return false;
+    }
+    const docSnapshot = parsedDoc.data;
     setSaveState("saving");
-    const request = saveTeacherMicrocoursePageAction({
+    const save = persistence?.save ?? saveTeacherMicrocoursePageAction;
+    const request = save({
       pageDocId: page.pageDocId,
       doc: docSnapshot,
       baseRevisionNo: revisionRef.current,
@@ -182,8 +195,11 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
       }
       revisionRef.current = result.data.revisionNo;
       savedSequenceRef.current = sequence;
-      docRef.current = structuredClone(result.data.doc);
-      setDoc(result.data.doc);
+      // 保存返回的是提交时的快照；请求期间的新编辑继续留在当前画布。
+      if (sequenceRef.current === sequence) {
+        docRef.current = structuredClone(result.data.doc);
+        setDoc(result.data.doc);
+      }
       setMessage("");
       onPersisted({
         pageDocId: page.pageDocId,
@@ -207,7 +223,7 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
     });
     savingRef.current = request;
     return request;
-  }, [onPersisted, onStatus, page.pageDocId, t]);
+  }, [onPersisted, onStatus, page.pageDocId, persistence, t]);
 
   const markDirty = useCallback(() => {
     sequenceRef.current += 1;
@@ -277,7 +293,7 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
   };
 
   const uploadImage = (file: File | null) => {
-    if (!file) return;
+    if (!file || !microcourseId) return;
     startTransition(async () => {
       const result = await uploadTeacherMicrocourseImageAction({
         microcourseId,
@@ -406,30 +422,30 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
         text: () => addNode("text"),
         formula: () => addNode("formula"),
         shape: () => addNode("shape"),
-        image: (
+        image: microcourseId ? (
           <CoursewareEditorToolbarLabel aria-label={t("componentImage")} title={t("componentImage")}>
               <Input type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="sr-only" disabled={pending} onChange={(event) => uploadImage(event.target.files?.[0] ?? null)} />
               <ImagePlus className="size-4" />
           </CoursewareEditorToolbarLabel>
-        ),
-        game: (
+        ) : undefined,
+        game: microcourseId ? (
           <GameComponentDialog microcourseId={microcourseId} disabled={pending} iconOnly onCreated={(game) => {
               const previousIds = new Set(docRef.current.layout.blocks.map((block) => block.id));
               const next = addCoursewareCompositionGame(docRef.current, game);
               updateDoc(next);
               setSelectedBlockId(next.layout.blocks.find((block) => !previousIds.has(block.id))?.id ?? null);
           }} />
-        ),
-        h5: (
+        ) : undefined,
+        h5: microcourseId ? (
           <H5ComponentDialog microcourseId={microcourseId} disabled={pending} iconOnly onSaved={(h5) => {
               const previousIds = new Set(docRef.current.layout.blocks.map((block) => block.id));
               const next = addCoursewareCompositionH5(docRef.current, h5);
               updateDoc(next);
               setSelectedBlockId(next.layout.blocks.find((block) => !previousIds.has(block.id))?.id ?? null);
           }} />
-        ),
+        ) : undefined,
         tool: (
-          <ToolComponentDialog disabled={pending} onCreated={(tool) => {
+          <ToolComponentDialog disabled={pending} surface={persistence ? "formal-courseware" : "microcourse"} onCreated={(tool) => {
               const previousIds = new Set(docRef.current.layout.blocks.map((block) => block.id));
               let next: CoursewareCompositionPage;
               try { next = addCoursewareCompositionTool(docRef.current, tool); }
@@ -491,7 +507,7 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
                 <GamePageEditor doc={selected.game} onChange={patchSelectedGame} embedded />
               </div>
             ) : null}
-            {selected?.type === "h5" ? (
+            {selected?.type === "h5" && microcourseId ? (
               <div className="space-y-2 border-t border-line pt-3">
                 <H5ComponentDialog microcourseId={microcourseId} existing={selected.h5} onSaved={replaceSelectedH5} />
                 <p className="text-xs text-muted">{t("componentH5ClassroomReadOnly")}</p>
@@ -589,13 +605,14 @@ function GameComponentDialog({ microcourseId, disabled = false, iconOnly = false
   );
 }
 
-function ToolComponentDialog({ disabled = false, onCreated }: {
+function ToolComponentDialog({ disabled = false, surface = "microcourse", onCreated }: {
   disabled?: boolean;
+  surface?: ToolCoursewareAuthoringSurface;
   onCreated: (tool: CoursewareCompositionTool) => void;
 }) {
   const t = useTranslations("teacherMicrocourses");
   const tTools = useTranslations("tools");
-  const contracts = toolCoursewareContractsForSurface("microcourse").filter((contract) => contract.contentVersion !== CUBE_COURSEWARE_LEGACY_VERSION);
+  const contracts = toolCoursewareContractsForSurface(surface).filter((contract) => contract.contentVersion !== CUBE_COURSEWARE_LEGACY_VERSION);
   const [open, setOpen] = useState(false);
   const [cubeTool, setCubeTool] = useState<CubeCoursewareTool | null>(null);
   const [selectedKey, setSelectedKey] = useState(
@@ -609,7 +626,8 @@ function ToolComponentDialog({ disabled = false, onCreated }: {
     if (selected.contentVersion === CUBE_COURSEWARE_CONTENT_VERSION) {
       if (!cubeTool) return;
       onCreated(cubeTool);
-    } else onCreated({ toolId: selected.toolId, contentVersion: selected.contentVersion });
+    } else if (selected.contentVersion === "tool-embed-v1") onCreated({ toolId: selected.toolId, contentVersion: selected.contentVersion });
+    else return;
     setOpen(false);
   };
   return (

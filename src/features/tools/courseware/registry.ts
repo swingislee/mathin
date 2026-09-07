@@ -8,7 +8,7 @@ export const TOOL_COURSEWARE_CONTENT_VERSION = "tool-embed-v1" as const;
 export const CUBE_COURSEWARE_LEGACY_VERSION = "cube-structures-lesson-v1" as const;
 export const CUBE_COURSEWARE_CONTENT_VERSION = "cube-structures-lesson-v2" as const;
 
-export type ToolCoursewareAuthoringSurface = "microcourse";
+export type ToolCoursewareAuthoringSurface = "microcourse" | "formal-courseware";
 
 interface ToolCoursewareContractDefinition {
   toolId: string;
@@ -21,7 +21,7 @@ export const TOOL_COURSEWARE_CONTRACTS = [
   {
     toolId: "spatial-lab",
     contentVersion: CUBE_COURSEWARE_CONTENT_VERSION,
-    authoringSurfaces: ["microcourse"] as const,
+    authoringSurfaces: ["microcourse", "formal-courseware"] as const,
     classroomSync: CLASSROOM_TOOL_STATE_SYNC_V1,
   },
   {

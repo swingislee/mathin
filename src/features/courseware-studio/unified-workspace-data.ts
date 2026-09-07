@@ -10,6 +10,9 @@ import {
 } from "@/features/courseware-doc/source-runtime-schema";
 import { getLectureWorkspaceDetail, isUuid } from "@/features/school/curriculum/lecture-workspace-detail";
 import { requirePerm } from "@/lib/auth";
+import { loadFormalCubePages } from "./formal-cube-page-data";
+import { formalCubePageSchema } from "./formal-cube-page-contract";
+import type { FormalCubePageEditorData } from "./FormalCubePageEditor";
 import {
   loadCoursewareStudioPage,
   loadLecturePreview,
@@ -93,9 +96,10 @@ export async function loadUnifiedCoursewareWorkspaceData(
   });
   if (!detail) notFound();
 
-  const [nativePreview, adaptedPreview] = await Promise.all([
+  const [nativePreview, adaptedPreview, formalCubePages] = await Promise.all([
     loadLecturePreview(lectureId, "native-16x9", requestedPage),
     loadLecturePreview(lectureId, "adapted-4x3", requestedPage),
+    loadFormalCubePages(lectureId),
   ]);
 
   const safeNativePreview = nativePreview?.lecture.courseId === detail.variant.id ? nativePreview : null;
@@ -104,13 +108,24 @@ export async function loadUnifiedCoursewareWorkspaceData(
   const requestedCanvas = first(rawSearchParams.canvas);
   let pageEditor: UnifiedPageDocEditorData | null = null;
   let sourceRuntimeEditor: UnifiedSourceRuntimeEditorData | null = null;
-  const pageDocId = safeNativePreview?.page.pageDocId ?? safeAdaptedPreview?.page.pageDocId ?? null;
+  let formalCubeEditor: FormalCubePageEditorData | null = null;
+  const requestedCubePage = first(rawSearchParams.cubePage);
+  if (requestedCubePage && (!isUuid(requestedCubePage) || !formalCubePages.some((page) => page.pageDocId === requestedCubePage))) notFound();
+  const pageDocId = requestedCubePage ?? safeNativePreview?.page.pageDocId ?? safeAdaptedPreview?.page.pageDocId ?? null;
 
   if (pageDocId) {
     const [nativeStudioPage, adaptedStudioPage] = await Promise.all([
       loadCoursewareStudioPage(lectureId, pageDocId, "native-16x9"),
       loadCoursewareStudioPage(lectureId, pageDocId, "adapted-4x3"),
     ]);
+    if (formalCubePages.some((page) => page.pageDocId === pageDocId)) {
+      const cubeTrack = requestedCanvas === "adapted-4x3" || (requestedCanvas !== "native-16x9" && requestedTrack === "adapted-4x3")
+        ? "adapted-4x3" : "native-16x9";
+      const studio = cubeTrack === "adapted-4x3" ? adaptedStudioPage : nativeStudioPage;
+      if (!studio) notFound();
+      formalCubeEditor = { pageDocId, title: studio.page.title, track: cubeTrack,
+        revisionNo: studio.activeRevision.revisionNo, doc: formalCubePageSchema.parse(studio.activeRevision.doc) };
+    }
     const nativePageDoc = nativeStudioPage?.activeRevision.doc.docVersion === PAGE_DOC_VERSION
       ? { studioPage: nativeStudioPage, doc: nativeStudioPage.activeRevision.doc }
       : null;
@@ -220,5 +235,7 @@ export async function loadUnifiedCoursewareWorkspaceData(
     adaptedPreview: safeAdaptedPreview,
     pageEditor,
     sourceRuntimeEditor,
+    formalCubePages,
+    formalCubeEditor,
   };
 }
