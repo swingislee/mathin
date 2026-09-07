@@ -1,23 +1,24 @@
 .workspace { display: flex; flex: 1; min-width: 0; min-height: 0; padding: 8px; }
 .viewport { container-type: size; display: grid; flex: 1; min-width: 0; min-height: 0; place-items: center; }
-.canvas { position: relative; width: min(100cqw, calc(100cqh * 4 / 3)); height: min(100cqh, calc(100cqw * 3 / 4)); overflow: hidden; border: 1px solid var(--line); background: var(--paper); }
+.canvas { --cube-dock-bottom: 8px; position: relative; width: min(100cqw, calc(100cqh * 4 / 3)); height: min(100cqh, calc(100cqw * 3 / 4)); overflow: hidden; border: 1px solid var(--line); background: var(--paper); }
+.canvas[data-has-cube-groups="true"] { --cube-dock-bottom: 52px; }
 .dock { display: flex; gap: 2px; padding: 4px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); box-shadow: 0 1px 2px rgb(0 0 0 / 5%); }
-.tools { position: absolute; z-index: 12; right: 8px; top: 52px; bottom: 8px; flex-direction: column; overflow: auto; scrollbar-width: thin; }
+.tools { position: absolute; z-index: 12; right: 8px; top: 52px; bottom: var(--cube-dock-bottom); flex-direction: column; overflow: auto; scrollbar-width: thin; }
 .views { position: absolute; z-index: 12; top: 8px; right: 8px; flex-direction: row; }
 .meta { position: absolute; z-index: 12; top: 8px; left: 8px; flex-direction: row; }
 .icon { width: 30px; height: 30px; min-width: 30px; flex-shrink: 0; border-radius: 7px; padding: 0; }
 .icon svg { width: 17px; height: 17px; }
-.groups { position: absolute; z-index: 12; bottom: 8px; left: 8px; max-width: calc(100% - 68px); overflow-x: auto; white-space: nowrap; scrollbar-width: thin; }
-.panel { position: absolute; z-index: 15; top: 52px; bottom: 54px; left: 8px; display: flex; flex-direction: column; width: min(276px, calc(100% - 66px)); max-height: 440px; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); box-shadow: 0 1px 2px rgb(0 0 0 / 5%); }
+.groups { position: absolute; z-index: 12; bottom: 8px; right: 8px; max-width: calc(100% - 16px); overflow-x: auto; white-space: nowrap; scrollbar-width: thin; }
+.panel { position: absolute; z-index: 15; top: 52px; bottom: var(--cube-dock-bottom); right: 56px; display: flex; flex-direction: column; width: min(276px, calc(100% - 66px)); max-height: 440px; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); box-shadow: 0 1px 2px rgb(0 0 0 / 5%); }
+.panel[data-cube-panel-anchor="meta"] { right: auto; left: 8px; }
 .panelHeader { display: flex; flex-shrink: 0; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 8px; border-bottom: 1px solid var(--line); font-size: 12px; font-weight: 600; }
 .panelContent { overflow: auto; min-height: 0; padding: 8px; scrollbar-width: thin; }
-.notice { position: absolute; z-index: 16; left: 8px; right: 60px; bottom: 52px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); padding: 6px 8px; font-size: 11px; line-height: 1.5; }
+.notice { position: absolute; z-index: 16; left: 8px; right: 60px; bottom: calc(var(--cube-dock-bottom) + 44px); border: 1px solid var(--line); border-radius: 8px; background: var(--paper); padding: 6px 8px; font-size: 11px; line-height: 1.5; }
 .recordStatus { position: absolute; top: 52px; left: 50%; z-index: 11; transform: translateX(-50%); border-radius: 99px; background: var(--paper); padding: 3px 8px; font-size: 10px; pointer-events: none; }
 @media (orientation: portrait) {
-  .tools { flex-direction: row; top: auto; bottom: 8px; left: 8px; right: 8px; overflow-x: auto; overflow-y: hidden; }
-  .groups { bottom: 54px; max-width: calc(100% - 16px); }
-  .panel { bottom: 100px; width: min(276px, calc(100% - 16px)); }
-  .notice { bottom: 98px; right: 8px; }
+  .tools { flex-direction: row; top: auto; left: 8px; right: 8px; overflow-x: auto; overflow-y: hidden; }
+  .panel { bottom: calc(var(--cube-dock-bottom) + 48px); right: 8px; width: min(276px, calc(100% - 16px)); }
+  .notice { bottom: calc(var(--cube-dock-bottom) + 48px); right: 8px; }
 }
 @media (max-width: 380px) {
   .icon { width: 26px; height: 28px; min-width: 26px; }

@@ -32,7 +32,7 @@ function Annotation({ cube, label, lane, preview = false }: { readonly cube: Str
 
 export function CubeStructureAnnotations({ state, tool, face, annotation }: { readonly state: CubeStructureState; readonly tool: CubeTool; readonly face: VoxelFaceSelection | null; readonly annotation: CubeAnnotationPreview }) {
   const hovered = face ? cubeAtDisplayPosition(state, face.cell) : undefined;
-  return <group>{state.cubes.filter((cube) => cubeIsVisible(state, cube)).map((cube) => {
+  return <group>{state.cubes.filter((cube) => cubeIsVisible(state, cube) && (cube.mark || cube.numberLabel || (hovered?.id === cube.id && (tool === "mark" || tool === "number")))).map((cube) => {
     const markPreview = tool === "mark" && hovered?.id === cube.id && face;
     const numberPreview = tool === "number" && hovered?.id === cube.id && !cube.numberLabel && face;
     const mark = markPreview ? { ...annotation, value: undefined, direction: markPreview.direction } : cube.mark;

@@ -5,7 +5,6 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Boxes, Circle, Droplets, Eraser, Eye, EyeOff, Hand, Hash, Layers3, Maximize, Minus, MousePointer2, Move, Orbit, Paintbrush, PaintBucket, Plus, Presentation, Redo2, RotateCcw, Scissors, Settings2, Shapes, Stamp, Trash2, Undo2, Ungroup, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
@@ -13,12 +12,14 @@ import { voxelKey, type Axis, type VoxelCoordinate, type VoxelFaceSelection } fr
 import { SpatialAxisSnapButton, useSpatialAxisSnap, type SpatialCameraControlMessages } from "@/features/spatial-math/renderer-r3f/SpatialCameraControls";
 import type { VoxelRendererMessages } from "@/features/spatial-math/renderer-r3f/VoxelFallback";
 import { SPATIAL_LAB_MEASUREMENT_PRESET_ID, SPATIAL_LAB_PRESET_ID, SPATIAL_LAB_PRESETS, createSpatialLabPresetDraft, type SpatialLabPresetId } from "./preset";
-import { CUBE_AXIS_COLORS, CUBE_COLORS, CUBE_MARK_SHAPES, CUBE_STRUCTURES_LIMITS, adjacentCube, applyCubeOperation, buildCubeStructureRenderModel, canPlaceCube, cubeAtDisplayPosition, cubeCutOperation, cubeFrame, cubeIsVisible, cubeLayerNumber, cubeLayerOperation, cubePaintGroups, cubeScopeIds, cubeStructureMetrics, exteriorPaintOperation, type CubeColor, type CubeLabelPlacement, type CubeMarkShape, type CubeOperation, type CubeTool, type CubeView } from "./cube-structures-contract";
+import { CUBE_AXIS_COLORS, CUBE_COLORS, CUBE_MARK_SHAPES, CUBE_STRUCTURES_LIMITS, adjacentCube, applyCubeOperation, buildCubeStructureRenderModel, canPlaceCube, cubeAtDisplayPosition, cubeCutOperation, cubeFrame, cubeIsVisible, cubeLayerNumber, cubeLayerOperation, cubeScopeIds, cubeStructureMetrics, exteriorPaintOperation, type CubeColor, type CubeLabelPlacement, type CubeMarkShape, type CubeOperation, type CubeTool, type CubeView } from "./cube-structures-contract";
 import { createCubeDemo, createCubeSession, cubeResumeNeedsRestore, cubeSessionScene, editCubeRecording, finishCubeRecording, moveCubeRecordedStep, operateCubeSession, pauseCubeRecording, previewCubeSession, replaceCubeRecordedStep, resumeCubeRecording, startCubeRecording, undoCubeSession, type CubeWorkbenchSession } from "./cube-structures-session";
 import { cubeStructuresMessages } from "./cube-structures-messages";
 import { cubeToolCursor } from "./cube-structures-cursor";
 import { CubeAxisIcon, CubeCanvasPanel, CubeIconButton, CubeMarkIcon, CubeViewIcon } from "./CubeWorkbenchControls";
 import { CubeRecordingPanel } from "./CubeRecordingPanel";
+import { CubeOpacitySlider } from "./CubeOpacitySlider";
+import { cubeCutFromFace, cubeCutLayers, type CubeCutSelection } from "./cube-structures-cut-interaction";
 import styles from "./CubeStructuresWorkbench.module.css";
 
 const CubeStructuresViewport = dynamic(() => import("./CubeStructuresViewport").then((module) => module.CubeStructuresViewport), { ssr: false });
@@ -49,12 +50,13 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
   const [axis, setAxis] = useState<Axis>("y");
   const [moveDistance, setMoveDistance] = useState("1");
   const [moveMode, setMoveMode] = useState<"move" | "display-move">("move");
-  const [cutAfter, setCutAfter] = useState<number | null>(null);
+  const [lockedCut, setLockedCut] = useState<CubeCutSelection | null>(null);
   const [cutGap, setCutGap] = useState("2");
-  const [cutSide, setCutSide] = useState<-1 | 1>(1);
   const [markShape, setMarkShape] = useState<CubeMarkShape>("circle");
   const [labelPlacement, setLabelPlacement] = useState<CubeLabelPlacement>("face");
   const [opacity, setOpacity] = useState(30);
+  const [opacityPreview, setOpacityPreview] = useState<number | null>(null);
+  const [moving, setMoving] = useState(false);
   const [hoverFace, setHoverFace] = useState<VoxelFaceSelection | null>(null);
   const [hoverGround, setHoverGround] = useState<VoxelCoordinate | null>(null);
   const [showMetrics, setShowMetrics] = useState(false);
@@ -77,23 +79,23 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
   const targetIds = selectedIds.length ? selectedIds : scopeIds;
   const scopeLabel = activeGroup?.name ?? m.allGroups;
   const model = useMemo(() => buildCubeStructureRenderModel(viewOverride ? { ...state, view: viewOverride } : state, selectedIds, m.title, activeGroupId), [state, selectedIds, m.title, viewOverride, activeGroupId]);
-  const paints = useMemo(() => cubePaintGroups(state), [state]);
   const metrics = useMemo(() => cubeStructureMetrics(state), [state]);
   // 包括已经隐藏的单位块，恢复入口始终保留。
   const layers = useMemo(() => [...new Set(state.cubes.filter((cube) => scopeIds.includes(cube.id)).map((cube) => cube.position[axis]))].sort((a, b) => a - b), [axis, state.cubes, scopeIds]);
-  const editable = !playing && (session.preview === null || replacementStep !== null);
+  const editable = !playing && !moving && (session.preview === null || replacementStep !== null);
   const hoveredCube = hoverFace ? cubeAtDisplayPosition(state, hoverFace.cell) : undefined;
   const nextPosition = hoverFace && hoveredCube ? adjacentCube({ ...hoverFace, cell: hoveredCube.position }) : hoverGround;
-  const validBuild = Boolean(nextPosition && applyCubeOperation(state, { kind: "build", position: nextPosition, displayOffset: hoveredCube?.displayOffset, color: CUBE_COLORS[0] }) !== state);
-  const cutLayers = [...new Set(state.cubes.filter((cube) => targetIds.includes(cube.id)).map((cube) => cube.position[axis]))].sort((a, b) => a - b).slice(0, -1);
-  const activeCutAfter = cutLayers.includes(cutAfter ?? NaN) ? cutAfter! : cutLayers[0] ?? 0;
-  const previewCutAfter = tool === "cut" && hoveredCube && cutLayers.includes(hoveredCube.position[axis]) ? hoveredCube.position[axis] : activeCutAfter;
+  const validBuild = Boolean(tool === "build" && nextPosition && applyCubeOperation(state, { kind: "build", position: nextPosition, displayOffset: hoveredCube?.displayOffset, color: CUBE_COLORS[0] }) !== state);
+  const hoveredCut = tool === "cut" && hoverFace ? cubeCutFromFace(state, targetIds, hoverFace) : null;
+  const cutSelection = lockedCut ?? hoveredCut;
+  const cutLayers = lockedCut ? cubeCutLayers(state, lockedCut.ids, lockedCut.axis) : [];
+  const validCutGap = Number.isInteger(Number(cutGap) * 2) && Number(cutGap) >= 0.5 && Number(cutGap) <= 8;
   const hasDisplayOffsets = state.cubes.some((cube) => cube.displayOffset && Object.values(cube.displayOffset).some((value) => value !== 0));
 
   function updateSession(update: (current: CubeWorkbenchSession) => CubeWorkbenchSession) {
     if (mode === "prepare") setPrepared(update); else setDemo((current) => update(current ?? createCubeDemo(prepared)));
   }
-  function clearPointer() { setHoverFace(null); setHoverGround(null); setNotice(""); }
+  function clearPointer() { setHoverFace(null); setHoverGround(null); setLockedCut(null); setOpacityPreview(null); setNotice(""); }
   function resetTransient() {
     setPlaying(false); setReplacementStep(null); setSelected([]); setScopeId(null); setViewOverride(null);
     clearPointer(); setCameraRequest((value) => value + 1);
@@ -107,7 +109,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
       const result = replaceCubeRecordedStep(session, replacementStep, operation);
       if (result.issue) { setNotice(m.sequenceError + " (" + (result.issue.index + 1) + ")"); return false; }
       updateSession(() => ({ ...result.session, preview: replacementStep + 1 }));
-      setReplacementStep(null); setNotice(""); return true;
+      setReplacementStep(null); clearPointer(); return true;
     }
     if (session.recording === "recording" && (session.lesson?.cursor ?? 0) >= CUBE_STRUCTURES_LIMITS.steps) { setNotice(m.limit); return false; }
     if (applyCubeOperation(state, operation) === state) {
@@ -116,7 +118,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
       else if (operation.kind === "build") setNotice(m.blockedBuild);
       return false;
     }
-    updateSession((current) => operateCubeSession(current, operation)); setNotice(""); return true;
+    updateSession((current) => operateCubeSession(current, operation)); clearPointer(); return true;
   }
   function build(position: VoxelCoordinate, displayOffset?: VoxelCoordinate) {
     if (!canPlaceCube(position) || state.cubes.some((cube) => voxelKey(cube.position) === voxelKey(position))) { setNotice(m.blockedBuild); return; }
@@ -137,8 +139,10 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
       case "layer": commit(cubeLayerOperation(state, axis, cube.position[axis], false, scopeIds)); break;
       case "move": setSelected([cube.id]); break;
       case "cut":
-        if (cutLayers.includes(cube.position[axis])) { setCutAfter(cube.position[axis]); setNotice(""); }
-        else setNotice(m.invalidCut);
+        { const selection = cubeCutFromFace(state, targetIds, face);
+          if (selection) { setLockedCut(selection); setNotice(""); if (panel === "cut") setPanel(null); }
+          else { setLockedCut(null); setNotice(m.invalidCut); }
+        }
         break;
       case "mark": commit({ kind: "mark", ids: [cube.id], shape: markShape, placement: labelPlacement, direction: face.direction, color }); break;
       case "number":
@@ -149,18 +153,19 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
     }
   }
   function chooseTool(value: CubeTool) {
+    const nextPanel: Panel = value === "layer" ? "layers" : value === "color" || value === "face" ? "color" : value === "select" ? "selection"
+      : value === "move" || value === "cut" || value === "mark" || value === "number" || value === "transparent" ? value : null;
+    if (value === tool && nextPanel) { setPanel(panel === nextPanel ? null : nextPanel); return; }
     setTool(value); clearPointer();
-    if (value === "layer") setPanel("layers");
-    else if (value === "color" || value === "face") setPanel("color");
-    else if (value === "select") setPanel("selection");
-    else if (value === "move") setPanel("move");
-    else if (value === "cut" || value === "mark" || value === "number" || value === "transparent") setPanel(value);
+    if (nextPanel) setPanel(nextPanel);
   }
   function performCut() {
+    if (!lockedCut || !validCutGap) return;
     const groupId = "cut-" + (++identity.current);
-    const operation = cubeCutOperation(state, targetIds, axis, activeCutAfter, cutSide, Number(cutGap), groupId, m.cutPiece + " " + (state.groups.length + 1));
+    const operation = cubeCutOperation(state, lockedCut.ids, lockedCut.axis, lockedCut.after, lockedCut.side, Number(cutGap), groupId, m.cutPiece + " " + (state.groups.length + 1));
     if (!operation) { setNotice(m.invalidCut); return; }
-    if (commit(operation)) { setScopeId(groupId); setSelected([]); setCutAfter(null); clearPointer(); }
+    const originalStep = replacementStep !== null ? session.lesson?.operations[replacementStep] : undefined;
+    if (commit(operation)) { setScopeId(originalStep?.kind === "cut" ? originalStep.groupId : groupId); setSelected([]); }
   }
   function chooseMode() {
     if (mode === "prepare" && !demo) setDemo(createCubeDemo(prepared));
@@ -199,6 +204,15 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
   }
 
   useEffect(() => {
+    if (!lockedCut) return;
+    const cancelCut = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !event.defaultPrevented) { setLockedCut(null); setHoverFace(null); }
+    };
+    window.addEventListener("keydown", cancelCut);
+    return () => window.removeEventListener("keydown", cancelCut);
+  }, [lockedCut]);
+
+  useEffect(() => {
     if (!playing || !session.lesson) return;
     const cursor = session.preview ?? 0;
     const timer = window.setTimeout(() => {
@@ -213,18 +227,21 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
   const panelTitle = panel === "selection" ? m.selectionPanel : panel === "color" ? m.colorLabel : panel === "layers" ? m.layers : panel === "recording" ? m.record : panel && panel !== "model" ? m[panel] : m.modelPanel;
   return <div className={styles.workspace} data-cube-structures-workbench="v3" data-workbench-mode={mode}>
     <div className={styles.viewport}>
-      <div className={styles.canvas} aria-label={m.title + " · " + m[mode]} style={{ cursor: cubeToolCursor(tool) }} data-active-cube-tool={tool} data-cube-workspace-frame="4:3">
+      <div className={styles.canvas} aria-label={m.title + " · " + m[mode]} style={{ cursor: cubeToolCursor(tool) }} data-active-cube-tool={tool} data-cube-workspace-frame="4:3" data-has-cube-groups={state.groups.length > 0} data-cube-motion={moving ? "moving" : "idle"}>
         <CubeStructuresViewport model={model} messages={rendererMessages} materialColors={COLOR_MAP}
-          axisSnapEnabled={snap} cameraRequestKey={cameraRequest} paintedFaceGroups={paints}
+          axisSnapEnabled={snap} cameraRequestKey={cameraRequest} sceneKey={session.work.initial} onMovingChange={setMoving}
+          opacityPreview={opacityPreview === null ? null : { ids: targetIds, opacity: opacityPreview / 100 }}
           hiddenEdgesVisible={state.hiddenEdgesVisible}
           readOnly={playing || (!editable && tool !== "select")} cameraInteractive navigationMode={tool === "pan" ? "pan" : "orbit"}
           onFaceSelect={tool === "orbit" || tool === "pan" ? undefined : clickFace}
-          onFaceHover={tool === "orbit" || tool === "pan" ? undefined : (face) => {
+          onFaceHover={tool === "orbit" || tool === "pan" || (tool === "cut" && lockedCut) ? undefined : (face) => {
             const hit = face && cubeAtDisplayPosition(state, face.cell);
             setHoverFace(hit && scopeIds.includes(hit.id) ? face : null); if (face) setHoverGround(null);
           }}
           scene={{ tool: editable ? tool : "orbit", face: hoverFace, ground: editable ? hoverGround : null, validBuild,
-            state, cut: cutLayers.length ? { axis, after: previewCutAfter, ids: targetIds } : null,
+            state, cut: cutSelection,
+            cutConfirmation: lockedCut && editable ? { anchor: lockedCut.anchor, title: lockedCut.axis.toUpperCase() + " · " + cubeLayerNumber(state, lockedCut.axis, lockedCut.after) + " " + m.layerUnit,
+              confirmLabel: m.cutConfirm, cancelLabel: m.cancel, disabled: !validCutGap, onConfirm: performCut, onCancel: clearPointer } : null,
             annotation: { shape: markShape, placement: labelPlacement, color, value: state.nextNumber },
             origin: state.origin, axesVisible: state.axesVisible, axisLength: Math.max(3, state.frame.radius * 1.5),
             onGroundHover: (position) => { setHoverGround(position); if (position) setHoverFace(null); }, onGroundClick: build }} />
@@ -254,7 +271,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
           {state.groups.map((group) => <Button key={group.id} size="sm" variant={activeGroupId === group.id ? "secondary" : "ghost"} className="h-7 max-w-36 gap-1.5 px-2 py-0 text-xs" aria-pressed={activeGroupId === group.id} title={group.name} onClick={() => { setScopeId(group.id); setSelected([]); clearPointer(); }}><span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: group.color }} aria-hidden /><span className="truncate">{group.name}</span></Button>)}
         </div>}
 
-        {panel && <CubeCanvasPanel title={panelTitle} closeLabel={m.closePanel} onClose={() => setPanel(null)}>
+        {panel && <CubeCanvasPanel title={panelTitle} anchor={panel === "model" ? "meta" : "tool"} closeLabel={m.closePanel} onClose={() => setPanel(null)}>
           {panel === "selection" && <div className="space-y-3 text-xs">
             <p className="leading-5 text-muted">{m.selectHint}</p><p>{m.selected}: {selectedIds.length} · {m.currentScope}: {scopeLabel}</p>
             <div className="flex flex-wrap gap-1">
@@ -288,12 +305,11 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
           </div>}
           {panel === "cut" && <div className="space-y-3 text-xs" data-cube-cut-panel>
             <p className="leading-5 text-muted">{m.cutHint}</p><p>{m.currentScope}: {scopeLabel}</p>
-            <div className="flex gap-1">{(["x", "y", "z"] as const).map((value) => <CubeIconButton key={value} label={m.cut + " " + value.toUpperCase()} active={axis === value} onClick={() => { setAxis(value); setCutAfter(null); }}><CubeAxisIcon axis={value} /></CubeIconButton>)}</div>
-            <label className="block">{m.cutAfter}</label>
-            <Select value={cutLayers.length ? String(activeCutAfter) : ""} onValueChange={(value) => setCutAfter(Number(value))} disabled={!cutLayers.length}><SelectTrigger aria-label={m.cutAfter}><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{cutLayers.map((value) => <SelectItem key={value} value={String(value)}>{axis.toUpperCase()} {cubeLayerNumber(state, axis, value)} {m.layerUnit}</SelectItem>)}</SelectContent></Select>
+            {cutSelection && <p className="font-bold" style={{ color: CUBE_AXIS_COLORS[cutSelection.axis] }}>{cutSelection.axis.toUpperCase()} · {m.cutAfter} {cubeLayerNumber(state, cutSelection.axis, cutSelection.after)}</p>}
+            {lockedCut && <><label className="block">{m.cutAfter}</label>
+              <Select value={String(lockedCut.after)} onValueChange={(value) => setLockedCut((current) => current ? { ...current, after: Number(value), anchor: { ...current.anchor, [current.axis]: current.anchor[current.axis] + Number(value) - current.after } } : null)}><SelectTrigger aria-label={m.cutAfter}><SelectValue /></SelectTrigger><SelectContent>{cutLayers.map((value) => <SelectItem key={value} value={String(value)}>{lockedCut.axis.toUpperCase()} {cubeLayerNumber(state, lockedCut.axis, value)} {m.layerUnit}</SelectItem>)}</SelectContent></Select></>}
             <div className="flex items-center gap-2"><label htmlFor="cube-cut-gap" className="flex-1">{m.cutGap}</label><Input id="cube-cut-gap" className="h-8 w-20 text-xs" type="number" min={0.5} max={8} step={0.5} value={cutGap} onChange={(event) => setCutGap(event.target.value)} /></div>
-            <div className="flex items-center gap-2"><span className="flex-1">{m.cutSide}</span>{([-1, 1] as const).map((side) => <CubeIconButton key={side} label={axis.toUpperCase() + (side > 0 ? "+" : "−")} active={cutSide === side} onClick={() => setCutSide(side)}>{side > 0 ? <Plus aria-hidden /> : <Minus aria-hidden />}</CubeIconButton>)}</div>
-            <Button size="sm" disabled={!editable || !cutLayers.length || !Number.isInteger(Number(cutGap) * 2) || Number(cutGap) < 0.5 || Number(cutGap) > 8} onClick={performCut}><Scissors aria-hidden className="mr-1 size-4" />{m.performCut}</Button>
+            {lockedCut && <div className="flex items-center gap-2"><span className="flex-1">{m.cutSide}</span>{([-1, 1] as const).map((side) => <CubeIconButton key={side} label={lockedCut.axis.toUpperCase() + (side > 0 ? "+" : "−")} active={lockedCut.side === side} onClick={() => setLockedCut((current) => current ? { ...current, side } : null)}>{side > 0 ? <Plus aria-hidden /> : <Minus aria-hidden />}</CubeIconButton>)}</div>}
             <p className="leading-5 text-muted">{m.displayHint}</p>
             <div className="flex flex-wrap gap-1"><Button size="sm" variant="secondary" disabled={!editable || !hasDisplayOffsets} onClick={() => commit({ kind: "display-reset", ids: targetIds })}>{m.displayReset}</Button><Button size="sm" variant="secondary" disabled={!editable || !hasDisplayOffsets} onClick={() => commit({ kind: "display-reset", ids: state.cubes.map((cube) => cube.id) })}>{m.displayResetAll}</Button></div>
           </div>}
@@ -311,8 +327,9 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
             </div>
           </div>}
           {panel === "transparent" && <div className="space-y-3 text-xs" data-cube-transparency-panel>
-            <p className="leading-5 text-muted">{m.transparencyHint}</p><label className="block">{m.opacityLabel}: {opacity}%</label>
-            <Slider aria-label={m.opacityLabel} value={[opacity]} min={0} max={100} step={5} onValueChange={([value]) => setOpacity(value)} />
+            <p className="leading-5 text-muted">{m.transparencyHint}</p>
+            <CubeOpacitySlider key={targetIds.join(":")} label={m.opacityLabel} value={opacity} disabled={!editable || !targetIds.length} onPreview={setOpacityPreview}
+              onCommit={(value) => { setOpacity(value); commit({ kind: "opacity", ids: targetIds, opacity: value / 100 }); }} />
             <p>{m.currentScope}: {scopeLabel} · {targetIds.length} {m.cubeUnit}</p>
             <div className="flex flex-wrap gap-1"><Button size="sm" disabled={!editable || !targetIds.length} onClick={() => commit({ kind: "opacity", ids: targetIds, opacity: opacity / 100 })}>{m.applyOpacity}</Button><Button size="sm" variant="secondary" disabled={!editable || !targetIds.length} onClick={() => commit({ kind: "opacity", ids: targetIds, opacity: 1 })}>{m.restoreOpacity}</Button></div>
             <Button size="sm" variant={state.hiddenEdgesVisible ? "secondary" : "ghost"} aria-pressed={state.hiddenEdgesVisible} disabled={!editable} onClick={() => commit({ kind: "hidden-edges", visible: !state.hiddenEdgesVisible })}>{m.hiddenEdges}</Button>

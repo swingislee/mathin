@@ -2,6 +2,7 @@
 
 import { Canvas, type ThreeEvent, useThree } from "@react-three/fiber";
 import {
+  memo,
   useEffect,
   useCallback,
   useLayoutEffect,
@@ -320,7 +321,7 @@ function applyEdgeMatrices(
   mesh.computeBoundingSphere();
 }
 
-function VoxelEdgeInstances({ model, hiddenEdgeUniforms }: { readonly model: VoxelRenderModel; readonly hiddenEdgeUniforms: VoxelHiddenEdgeUniforms | null }) {
+const VoxelEdgeInstances = memo(function VoxelEdgeInstances({ model, hiddenEdgeUniforms }: { readonly model: VoxelRenderModel; readonly hiddenEdgeUniforms: VoxelHiddenEdgeUniforms | null }) {
   const xEdges = useRef<THREE.InstancedMesh>(null);
   const yEdges = useRef<THREE.InstancedMesh>(null);
   const zEdges = useRef<THREE.InstancedMesh>(null);
@@ -356,7 +357,13 @@ function VoxelEdgeInstances({ model, hiddenEdgeUniforms }: { readonly model: Vox
       ))}
     </group>
   );
-}
+}, (previous, next) => previous.hiddenEdgeUniforms === next.hiddenEdgeUniforms && previous.model.cells.length === next.model.cells.length
+  && previous.model.cells.every((cell, index) => {
+    const other = next.model.cells[index];
+    return cell.x === other.x && cell.y === other.y && cell.z === other.z && cell.emphasis?.color === other.emphasis?.color && cell.emphasis?.priority === other.emphasis?.priority;
+  }));
+
+const EMPTY_VOXEL_FACE_PAINT = {};
 
 /** 半透明块各自保留对象中心，使 Three 按真实深度排序；面染色与底色使用同一透明度。 */
 function VoxelTranslucentCube({ cell, color, paint, readOnly, onFaceSelect, onFaceHover, onCellSelect }: {
@@ -451,7 +458,7 @@ function VoxelScene({
       <VoxelInstances model={model} palette={palette} readOnly={readOnly} materialColors={materialColors} onCellSelect={onCellSelect} onFaceSelect={onFaceSelect} onFaceHover={onFaceHover} preserveSelectedColors={preserveSelectedColors} />
       {model.cells.filter((cell) => (cell.opacity ?? 1) < 1).map((cell) => <VoxelTranslucentCube key={cell.key} cell={cell}
         color={cell.selected && !preserveSelectedColors ? palette.moon : materialColors?.[cell.materialToken] ?? palette.leaf}
-        paint={paintByCell.get(voxelKey(cell)) ?? {}} readOnly={readOnly} onFaceSelect={onFaceSelect} onFaceHover={onFaceHover} onCellSelect={onCellSelect} />)}
+        paint={paintByCell.get(voxelKey(cell)) ?? EMPTY_VOXEL_FACE_PAINT} readOnly={readOnly} onFaceSelect={onFaceSelect} onFaceHover={onFaceHover} onCellSelect={onCellSelect} />)}
       <VoxelPaintFaceInstances model={model} faces={paintedFaces} color={paintedFaceColor} />
       {paintedFaceGroups?.map((group) => <VoxelPaintFaceInstances key={group.color} model={model} faces={group.faces} color={group.color} />)}
       <VoxelEdgeInstances model={model} hiddenEdgeUniforms={hiddenEdgeUniforms} />

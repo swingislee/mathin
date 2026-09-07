@@ -2,16 +2,19 @@
 
 import type { ThreeEvent } from "@react-three/fiber";
 import { Html, Line } from "@react-three/drei";
-import { DoubleSide } from "three";
+import { DoubleSide, Vector3 } from "three";
+import { Scissors, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { Axis, VoxelCoordinate, VoxelFaceSelection } from "@/features/spatial-math/domain";
 import { buildVoxelPaintFaceInstances } from "@/features/spatial-math/renderer-r3f/voxel-visual-model";
 import { adjacentCube, CUBE_AXIS_COLORS, type CubeStructureState, type CubeTool } from "./cube-structures-contract";
 import { CubeStructureAnnotations, type CubeAnnotationPreview } from "./CubeStructureAnnotations";
 import { cubeCutPreviewPlanes } from "./cube-structures-cut-preview";
 
-export function CubeStructuresScene({ state, cut, annotation, tool, face, ground, origin, axesVisible, axisLength, validBuild, onGroundHover, onGroundClick }: {
+export function CubeStructuresScene({ state, cut, cutConfirmation, annotation, tool, face, ground, origin, axesVisible, axisLength, validBuild, onGroundHover, onGroundClick }: {
   readonly state: CubeStructureState;
   readonly cut: { readonly axis: Axis; readonly after: number; readonly ids: readonly string[] } | null;
+  readonly cutConfirmation: { readonly anchor: VoxelCoordinate; readonly title: string; readonly confirmLabel: string; readonly cancelLabel: string; readonly disabled: boolean; readonly onConfirm: () => void; readonly onCancel: () => void } | null;
   readonly annotation: CubeAnnotationPreview;
   readonly tool: CubeTool;
   readonly face: VoxelFaceSelection | null;
@@ -34,6 +37,16 @@ export function CubeStructuresScene({ state, cut, annotation, tool, face, ground
       <boxGeometry args={[plane.size.x, plane.size.y, plane.size.z]} />
       <meshBasicMaterial color={CUBE_AXIS_COLORS[cut.axis]} transparent opacity={0.22} depthTest={false} depthWrite={false} side={DoubleSide} />
     </mesh>)}
+    {tool === "cut" && cutConfirmation && <Html position={[cutConfirmation.anchor.x, cutConfirmation.anchor.y, cutConfirmation.anchor.z]} zIndexRange={[24, 20]}
+      calculatePosition={(object, camera, size) => {
+        const point = new Vector3().setFromMatrixPosition(object.matrixWorld).project(camera);
+        return [Math.max(8, Math.min(size.width - 218, (point.x + 1) * size.width / 2 + 14)), Math.max(54, Math.min(size.height - 104, (1 - point.y) * size.height / 2))];
+      }}>
+      <div className="w-40 cursor-default rounded-lg border border-line bg-paper p-1.5 shadow-sm" data-cube-cut-confirmation onPointerDown={(event) => event.stopPropagation()} onKeyDown={(event) => { if (event.key === "Escape") cutConfirmation.onCancel(); }}>
+        <p className="mb-1 px-1 text-xs text-muted">{cutConfirmation.title}</p>
+        <div className="flex items-center gap-1"><Button size="sm" className="h-8 gap-1 px-2 text-xs" disabled={cutConfirmation.disabled} onClick={cutConfirmation.onConfirm}><Scissors aria-hidden className="size-3.5" />{cutConfirmation.confirmLabel}</Button><Button size="sm" variant="ghost" className="h-8 gap-1 px-2 text-xs" onClick={cutConfirmation.onCancel}><X aria-hidden className="size-3.5" />{cutConfirmation.cancelLabel}</Button></div>
+      </div>
+    </Html>}
     {axesVisible && origin && <group>
       {(["x", "y", "z"] as const).map((axis) => {
         const end = { ...origin, [axis]: origin[axis] + axisLength };

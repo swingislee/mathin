@@ -18,10 +18,11 @@ export function CubeIconButton({ label, active, className, ...props }: Omit<Comp
 }
 
 /** 非模态工作区侧栏：位于画布内，切换鼠标工具时可以继续保留。 */
-export function CubeCanvasPanel({ title, closeLabel, onClose, children }: {
+export function CubeCanvasPanel({ title, anchor = "tool", closeLabel, onClose, children }: {
   readonly title: string; readonly closeLabel: string; readonly onClose: () => void; readonly children: ReactNode;
+  readonly anchor?: "tool" | "meta";
 }) {
-  return <aside className={styles.panel} aria-label={title} data-cube-canvas-panel>
+  return <aside className={styles.panel} aria-label={title} data-cube-canvas-panel data-cube-panel-anchor={anchor}>
     <div className={styles.panelHeader}><span>{title}</span><CubeIconButton label={closeLabel} onClick={onClose}><X aria-hidden /></CubeIconButton></div>
     <div className={styles.panelContent}>{children}</div>
   </aside>;

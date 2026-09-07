@@ -32,7 +32,7 @@ export interface VoxelPaintFaceInstance {
 }
 
 function coordinateKey(value: number): string {
-  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+  return String(Math.round(value * 1e6) / 1e6);
 }
 
 function edgeKey(
