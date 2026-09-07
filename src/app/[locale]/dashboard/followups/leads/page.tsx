@@ -8,6 +8,7 @@ import { FollowupQueryMemory } from "@/features/school/FollowupQueryMemory";
 import { LeadPoolBatchActions, LeadPoolSelectionProvider } from "@/features/school/LeadPoolSelection";
 import { LeadPoolPagination } from "@/features/school/LeadPoolPagination";
 import { LeadIntakeWorkbench } from "@/features/school/LeadIntakeWorkbench";
+import { LeadIntakeScopeFilter } from "@/features/school/LeadIntakeScopeFilter";
 import { listLeadPool, parseLeadPoolFilters } from "@/features/school/leads";
 import { listStaffMembers } from "@/features/school/staff";
 import { Link } from "@/i18n/navigation";
@@ -30,10 +31,11 @@ export default async function LeadsPage({ params, searchParams }: {
   ]);
   return <LeadPoolSelectionProvider key={`${filters.scope}:${filters.status ?? ""}:${filters.q ?? ""}:${filters.page}:${filters.pageSize}`} assignableIds={leads.filter((lead) => lead.status !== "invalid" && lead.status !== "converted").map((lead) => lead.id)}>
     <FollowupQueryMemory />
-    <DashboardPage title={workspaceT("leads")} commandPanel={<DashboardCommandPanel>
+    <DashboardPage title={workspaceT("leads")} density="compact" commandPanel={<DashboardCommandPanel>
       <DashboardCommandState><FollowupTabs /></DashboardCommandState>
       <DashboardCommandFilters>
         <span className="whitespace-nowrap text-xs tabular-nums text-muted">{workspaceT("count", { count })}</span>
+        <LeadIntakeScopeFilter filters={filters} canScopeAll={perms.has("student.view.all")} />
         <FilterBar action={`/${locale}/dashboard/followups/leads`} method="get" aria-label={t("filter")}>
           <Input type="hidden" name="scope" value={filters.scope} />
           {filters.status ? <Input type="hidden" name="status" value={filters.status} /> : null}

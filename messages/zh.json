@@ -4646,6 +4646,8 @@
       "status_converted": "已确认学生",
       "selectPage": "选择当前页可分配种子",
       "selectedCount": "已选 {count} 条",
+      "selectedHidden": "（含筛选外 {count} 条）",
+      "clearSelection": "清除本页全部选择",
       "rangeSelectionHint": "全选当前列筛选结果；先选一行，再按住 Shift 选择另一行可连续选择。",
       "chooseAssignee": "选择学辅老师",
       "assignSelected": "批量分配",

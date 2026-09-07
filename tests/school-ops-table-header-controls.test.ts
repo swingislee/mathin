@@ -74,7 +74,7 @@ describe("subject-operations table header controls", () => {
       [read("src", "features", "school", "ActivitiesManager.tsx"), 5],
       [read("src", "features", "school", "StudentsTable.tsx"), 6],
       [read("src", "features", "school", "LeadFirstContactWorkbench.tsx"), 4],
-      [read("src", "features", "school", "LeadIntakeWorkbench.tsx"), 4],
+      [read("src", "features", "school", "LeadIntakeWorkbench.tsx"), 7],
       [read("src", "features", "school", "ActivityWorkspace.tsx"), 6],
       [read("src", "features", "school", "PublicClassWorkspace.tsx"), 8],
       [read("src", "features", "school", "ImportStudentsPanel.tsx"), 15],

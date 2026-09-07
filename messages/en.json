@@ -4646,6 +4646,8 @@
       "status_converted": "Student confirmed",
       "selectPage": "Select assignable seeds on this page",
       "selectedCount": "{count} selected",
+      "selectedHidden": "({count} hidden by filters)",
+      "clearSelection": "Clear all selections on this page",
       "rangeSelectionHint": "Select all results under the current column filters, or select one row and Shift-click another to select the range.",
       "chooseAssignee": "Choose support owner",
       "assignSelected": "Assign selected",
