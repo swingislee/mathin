@@ -14,11 +14,11 @@ import { FollowupPrimaryFilter } from "./FollowupPrimaryFilter";
 import { DashboardSearch } from "./DashboardSearch";
 import { useCommunicationWorkSelection } from "./CommunicationWorkSelection";
 import { createCommunicationWorklistAction } from "./communication-workday-actions";
-import { communicationDayBounds, type CommunicationWorkbenchOptions, type CommunicationWorkday, type CommunicationWorklist } from "./communication-workday-contract";
+import { communicationDayBounds, type CommunicationWorkbenchOptions, type CommunicationWorklist } from "./communication-workday-contract";
 
-export function CommunicationWorkToolbar({ options, scope, canViewAll, canManage, workday, worklist, worklists, pageKeys, count, today, query = "", secondaryFilters }: {
+export function CommunicationWorkToolbar({ options, scope, canViewAll, canManage, worklist, worklists, pageKeys, count, today, query = "", secondaryFilters }: {
   options: CommunicationWorkbenchOptions; scope: string; canViewAll: boolean; canManage: boolean;
-  workday?: CommunicationWorkday; worklist?: CommunicationWorklist | null; worklists: CommunicationWorklist[];
+  worklist?: CommunicationWorklist | null; worklists: CommunicationWorklist[];
   pageKeys: string[]; count: number; today: string; query?: string;
   secondaryFilters?: ReactNode;
 }) {
@@ -54,13 +54,12 @@ export function CommunicationWorkToolbar({ options, scope, canViewAll, canManage
       router.replace(`/dashboard/followups/communication?view=worklist&worklist=${result.data.id}&date=${date}&scope=mine&pageSize=20`);
     });
   };
-  const recordedPeople = new Set(workday?.events.map((event) => event.key)).size;
-  const completed = worklist?.items.filter((item) => item.completedAt).length ?? 0;
   return <>
     <DashboardCommandFilters>
       <FollowupPrimaryFilter value={options.view} label={t("viewLabel")} disabled={pending}
         options={(["day", "unscheduled", "records", "all", ...(worklist ? ["worklist"] : [])] as const).map((value) => ({ value, label: value === "worklist" ? t("view_worklist") : t(`view_${value}`) }))}
         onValueChange={(view) => navigate({ view, ...(view !== "all" ? { state: "current" } : {}), worklist: view === "worklist" ? worklist?.id ?? null : null })} />
+      {options.view === "worklist" && worklist ? <span className="max-w-52 truncate text-xs text-muted" title={worklist.name}>{worklist.name}</span> : null}
       {options.view === "day" || options.view === "records" ? <div className="flex items-center gap-1">
         <Button variant="ghost" size="sm" className="size-8 p-0" aria-label={t("previousDay")} disabled={pending} onClick={() => shiftDay(-1)}><ChevronLeft className="size-4" /></Button>
         <Input type="date" value={options.date} aria-label={t("date")} className="h-8 w-36 text-xs" disabled={pending} onChange={(event) => { try { communicationDayBounds(event.target.value); navigate({ date: event.target.value }); } catch { /* 等待完整日期。 */ } }} />
@@ -69,7 +68,6 @@ export function CommunicationWorkToolbar({ options, scope, canViewAll, canManage
       </div> : null}
       {canViewAll ? <FollowupChoice value={scope} label={t("scope")} presentation="select" className="h-8 min-h-8 w-28 shrink-0 py-1 text-xs" disabled={pending || options.view === "worklist"} options={[{ value: "mine", label: t("mine") }, { value: "all", label: t("team") }]} onValueChange={(value) => navigate({ scope: value })} /> : null}
       {secondaryFilters}
-      <span className="max-w-72 truncate text-xs tabular-nums text-muted" title={worklist?.name}>{worklist ? t("progress", { name: worklist.name, completed, total: worklist.items.length }) : options.view === "records" || options.view === "day" ? t("dayCount", { count, recorded: recordedPeople }) : t("count", { count })}</span>
       <DashboardSearch value={search} onChange={(event) => setSearch(event.target.value)} onSearch={() => navigate({ q: search.trim() || null })} aria-label={t("search")} placeholder={t("search")} />
     </DashboardCommandFilters>
     <DashboardCommandActions>

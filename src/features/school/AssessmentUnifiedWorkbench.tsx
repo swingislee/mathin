@@ -358,7 +358,6 @@ export function AssessmentUnifiedWorkbench({
         <FollowupCommandPanel>
           <DashboardCommandState>
             <FollowupTabs />
-            <span className="text-xs tabular-nums text-muted">{visibleRows.length} / {rows.length}</span>
           </DashboardCommandState>
           <DashboardCommandFilters>
             <FollowupPrimaryFilter label={filterT("workQueue")} value={ASSESSMENT_WORKBENCH_QUEUES.includes(assessmentTable.filters.status as AssessmentWorkbenchQueue) ? assessmentTable.filters.status! : "all"}
@@ -367,7 +366,7 @@ export function AssessmentUnifiedWorkbench({
                 assessmentTable.setFilter("status", value === "all" ? undefined : value);
                 if (value !== "all" && recordState === "historical") setRecordState("current");
               }} />
-            <BusinessRecordStateFilter value={recordState} onChange={value => {
+            <BusinessRecordStateFilter presentation="followup" value={recordState} onChange={value => {
               setRecordState(value);
               if (value === "historical") assessmentTable.setFilter("status", undefined);
             }} locale={locale}/>

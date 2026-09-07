@@ -139,9 +139,7 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
   const status = useAction(setRenewalCycleStatusAction, { successMessage: legacy("cycleStatusSaved"), errorMessage: errors, onSuccess: () => { setCloseCycleOpen(false); router.refresh(); } });
 
   return <DashboardPage title={legacy("title")} density="compact" commandPanel={<FollowupCommandPanel>
-    <DashboardCommandState><FollowupTabs /><span className="text-xs tabular-nums text-muted">{t("counts", {
-      count: currentRows.length, registered: currentRows.filter(row => row.stage === "enrolled").length,
-      paid: currentRows.filter(row => !!row.payment).length })}</span></DashboardCommandState>
+    <DashboardCommandState><FollowupTabs /></DashboardCommandState>
     <DashboardCommandFilters>
       <FollowupPrimaryFilter label={filterT("workQueue")} value={effectiveWorkFilter} disabled={entryBusy}
         options={RENEWAL_WORK_FILTERS.map(value => ({ value, label: filterT(`renewals_${value}`) }))}
@@ -149,13 +147,13 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
           setWorkFilter(value as RenewalWorkFilter);
           if (value !== "all" && recordState === "historical") setRecordState("current");
         }} />
-      <BusinessRecordStateFilter value={recordState} onChange={value => {
+      <FollowupChoice label={pool("cycle")} value={cycle?.id ?? "none"} presentation="select" disabled={entryBusy || !data.cycles.length} className="w-52 h-8 min-h-8 shrink-0 py-1 text-xs"
+        onValueChange={id => router.replace(`/dashboard/followups/renewals?cycle=${id}`)} options={data.cycles.length ? data.cycles.map(item => ({ value: item.id, label: item.name })) : [{ value: "none", label: legacy("noCycles") }]} />
+      <BusinessRecordStateFilter presentation="followup" value={recordState} onChange={value => {
         if (entryBusy) return;
         setRecordState(value);
         if (value === "historical") setWorkFilter("all");
       }} locale={locale} />
-      <FollowupChoice label={pool("cycle")} value={cycle?.id ?? "none"} presentation="select" disabled={entryBusy || !data.cycles.length} className="w-52 h-8 min-h-8 shrink-0 py-1 text-xs"
-        onValueChange={id => router.replace(`/dashboard/followups/renewals?cycle=${id}`)} options={data.cycles.length ? data.cycles.map(item => ({ value: item.id, label: item.name })) : [{ value: "none", label: legacy("noCycles") }]} />
       <FilterSearchInput aria-label={t("search")} placeholder={t("search")} value={query} disabled={entryBusy} onChange={event => setQuery(event.target.value)} />
     </DashboardCommandFilters>
     <DashboardCommandActions><Button size="sm" variant="ghost" disabled={entryBusy} onClick={() => setSettingsOpen(true)}><SlidersHorizontal className="size-4" />{pool("settings")}</Button>

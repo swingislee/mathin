@@ -4554,6 +4554,8 @@
       "previous": "Previous",
       "next": "Next",
       "paginationSummary": "Page {page} of {pages} · {count} rows",
+      "paginationCompactSummary": "{count} rows · {page}/{pages}",
+      "rowsPerPageCompact": "{count} / page",
       "paginationLabel": "Lead seed pages",
       "pageLabel": "Page {page}",
       "morePages": "More pages",

@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import { DashboardCommandPanel } from "./dashboard-page/DashboardCommandPanel";
 
-/** 学辅五表共用标题栏；笔记本上筛选独占整行，宽工作区合并为一行。 */
+/** 五表按导航、工作队列、条件、操作的 DOM 顺序排布，空间不足时按完整控件换行。 */
 export function FollowupCommandPanel({ children }: { children: ReactNode }) {
-  return <DashboardCommandPanel className="@3xl/chrome:flex [&>[data-dashboard-command-slot=state]]:order-1 [&>[data-dashboard-command-slot=actions]]:order-2 [&>[data-dashboard-command-slot=filters]]:order-3 [&>[data-dashboard-command-slot=filters]]:basis-full @7xl/chrome:[&>[data-dashboard-command-slot=filters]]:order-1 @7xl/chrome:[&>[data-dashboard-command-slot=filters]]:basis-auto @7xl/chrome:[&>[data-dashboard-command-slot=filters]]:flex-1">
+  return <DashboardCommandPanel className="min-h-0 gap-x-3 gap-y-1.5 py-1.5 @3xl/chrome:flex [&>[data-dashboard-command-slot=state]]:shrink-0 [&>[data-dashboard-command-slot=filters]]:contents [&>[data-dashboard-command-slot=actions]]:gap-1.5 [&>[data-dashboard-command-slot=actions]:empty]:hidden">
     {children}
   </DashboardCommandPanel>;
 }

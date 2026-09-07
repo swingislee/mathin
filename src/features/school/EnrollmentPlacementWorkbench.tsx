@@ -240,11 +240,8 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
     </TooltipContent></Tooltip>;
   };
   const retiredRow = (retired: PlacementStudent[], label: string) => retired.length ? <TableRow className="hover:bg-transparent"><TableCell colSpan={3} className="sticky left-0 z-10 border-r border-line bg-card px-2 py-1 text-[11px] text-muted">{label}</TableCell><TableCell className="p-0"><div className={NAME_GRID}>{retired.map((student) => studentTile(studentTileRecord(student)))}</div></TableCell></TableRow> : null;
-  const visibleClassIds = new Set(visibleRows.flatMap((row) => row.classroom ? [row.classroom.id] : []));
-  const scopeStudents = students.filter((student) => (student.classroomId ? visibleClassIds.has(student.classroomId) : groups.includes(`${student.termId}:${student.grade}`)) && (!table.filters.course || student.courseId === table.filters.course));
-
   return <DashboardPage title={t("placementTitle")} density="compact" commandPanel={<FollowupCommandPanel>
-    <DashboardCommandState><FollowupTabs /><span className="whitespace-nowrap text-xs text-muted">{t("placementCounts", { pending: scopeStudents.filter((student) => !student.classroomId && student.status !== "withdrawn").length, assigned: scopeStudents.filter((student) => student.classroomId && student.status !== "withdrawn").length })}</span></DashboardCommandState>
+    <DashboardCommandState><FollowupTabs /></DashboardCommandState>
     <DashboardCommandFilters>
       <FollowupPrimaryFilter label={filterT("workQueue")} value={effectiveWorkFilter} disabled={pending}
         options={PLACEMENT_WORK_FILTERS.map(value => ({ value, label: filterT(`enrollments_${value}`) }))}
@@ -252,14 +249,14 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
           pointer.cancel(); setSelectedKey(null); setWorkFilter(value as PlacementWorkFilter);
           if (value !== "all" && recordState === "historical") setRecordState("current");
         }} />
-      <BusinessRecordStateFilter value={recordState} onChange={value => {
+      <DashboardTableColumnHeader label={table.filters.term ? terms.get(table.filters.term) ?? t("term") : t("followupAllTerms")} {...table.columnProps("term")} />
+      <DashboardTableColumnHeader label={table.filters.grade ? t("grade", { grade: Number(table.filters.grade) }) : t("targetGrade")} {...table.columnProps("grade")} />
+      <DashboardTableColumnHeader label={table.filters.course ? courses.get(table.filters.course) ?? t("course") : t("course")} {...table.columnProps("course")} />
+      <BusinessRecordStateFilter presentation="followup" value={recordState} onChange={value => {
         if (pending) return;
         pointer.cancel(); setSelectedKey(null); setRecordState(value);
         if (value === "historical") setWorkFilter("all");
       }} locale={locale}/>
-      <DashboardTableColumnHeader label={table.filters.term ? terms.get(table.filters.term) ?? t("term") : t("followupAllTerms")} {...table.columnProps("term")} />
-      <DashboardTableColumnHeader label={table.filters.grade ? t("grade", { grade: Number(table.filters.grade) }) : t("targetGrade")} {...table.columnProps("grade")} />
-      <DashboardTableColumnHeader label={table.filters.course ? courses.get(table.filters.course) ?? t("course") : t("course")} {...table.columnProps("course")} />
       <FilterSearchInput value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("searchPlacement")} aria-label={t("searchPlacement")} />
     </DashboardCommandFilters>
     <DashboardCommandActions><span role="status" className={cn("flex w-32 items-center justify-end gap-1 text-xs text-muted", !selected && "invisible")} title={selected ? t("selectedHint", { name: selected.name }) : undefined}><span className="truncate">{selected?.name}</span><Button size="sm" variant="ghost" className="size-7 shrink-0 p-0" aria-label={t("clearSelection")} disabled={!selected || pending} onClick={() => setSelectedKey(null)}>{pending ? <LoaderCircle className="size-3 animate-spin" /> : <X className="size-3" />}</Button></span>{canCreateClass ? <Link href="/dashboard/classes/new" className={buttonVariants({ size: "sm", variant: "secondary" })}><Plus className="size-4" />{t("createClass")}</Link> : null}</DashboardCommandActions>

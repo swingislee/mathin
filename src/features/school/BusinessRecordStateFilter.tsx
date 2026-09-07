@@ -5,10 +5,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useDashboardSearchQuery } from './dashboard-page/DashboardPreferenceScope';
 import { businessRecordMessages, type BusinessRecordStateFilter as StateFilter } from './business-record-state-contract';
 
-export function BusinessRecordStateFilter({value,onChange,locale}:{value:StateFilter;onChange:(value:StateFilter)=>void;locale:string}) {
-  const m=businessRecordMessages(locale);
+export function BusinessRecordStateFilter({value,onChange,locale,presentation='default'}:{value:StateFilter;onChange:(value:StateFilter)=>void;locale:string;presentation?:'default'|'followup'}) {
+  const m=presentation==='followup'
+    ? locale==='zh'
+      ? {state:'记录范围',all:'全部记录',current:'当前记录',historical:'历史记录'}
+      : {state:'Record scope',all:'All records',current:'Current records',historical:'Historical records'}
+    : businessRecordMessages(locale);
   return <Select value={value} onValueChange={value=>onChange(value as StateFilter)}>
-    <SelectTrigger className="h-8 w-32 text-xs" aria-label={m.state}><SelectValue/></SelectTrigger>
+    <SelectTrigger className={presentation==='followup'?'h-8 w-auto min-w-32 text-xs':'h-8 w-32 text-xs'} aria-label={m.state}><SelectValue/></SelectTrigger>
     <SelectContent>{(['all','current','historical'] as const).map(value=><SelectItem key={value} value={value}>{m[value]}</SelectItem>)}</SelectContent>
   </Select>;
 }

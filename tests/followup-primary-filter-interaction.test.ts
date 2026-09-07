@@ -62,12 +62,15 @@ describe("title-bar primary filters", () => {
     expect(group.querySelectorAll('[data-state="on"]')).toHaveLength(1);
     expect(primary(labels.enrollments_pending).getAttribute("aria-checked")).toBe("true");
   });
-  it("gives filters the full narrow-workspace row and keeps actions in their command slot", async () => {
+  it("keeps navigation, work filters and actions in one consistent flow without breakpoint reordering", async () => {
     const stateProps = { key: "state", children: "Pages" }, filterProps = { key: "filters", children: "Work filters" }, actionProps = { key: "actions", children: "Assign" };
     const panelProps = { children: [createElement(DashboardCommandState, stateProps),
       createElement(DashboardCommandFilters, filterProps), createElement(DashboardCommandActions, actionProps)] };
     await render(createElement(FollowupCommandPanel, panelProps));
-    expect(container.querySelector("[data-dashboard-command-panel]")?.className).toContain("[&>[data-dashboard-command-slot=filters]]:basis-full");
+    const panel = container.querySelector("[data-dashboard-command-panel]")!;
+    expect(panel.className).toContain("[&>[data-dashboard-command-slot=filters]]:contents");
+    expect(panel.className).not.toContain("order-");
+    expect([...panel.children].map(child => child.getAttribute("data-dashboard-command-slot"))).toEqual(["state", "filters", "actions"]);
     expect(container.querySelector('[data-dashboard-command-slot="actions"]')?.textContent).toBe("Assign");
   });
   it("switches communication work queues without dropping search/date/size or creating a worklist", async () => {
