@@ -210,7 +210,7 @@ P4H 的目标不是给旧表格补按钮，而是先统一六个不可混用的�
 
 学服若只有销售/跟进/班级责任而无 `course.view`，侧栏不显示课程库；课程摘要从班级详情读取。
 
-课程库按 family 去重；命中 product_code 或讲次名时，结果卡说明“命中版本：一年级秋季 A / MFHK00007”，不得重新展开成 72 行。
+课程库按 family 去重；命中 product_code 或讲次名时，结果卡说明“命中版本：1年级秋季 A / MFHK00007”，不得重新展开成 72 行。
 
 ### 3.6 班级页 scope
 
@@ -731,7 +731,7 @@ interface SessionCapabilities {
 │                       │  年级  [1] [2] [3] [4] [5] [6]
 └───────────────────────┘  班型  [A] [B] [S]
                            季节  [春] [暑] [秋] [寒]
-                           当前版本：一年级秋季 A · MFHK00007 · 可用
+                           当前版本：1年级秋季 A · MFHK00007 · 可用
                            [用此版本建班] [编辑教学计划，仅教研] [更多]
 
 教学计划
@@ -789,7 +789,7 @@ canonical `.../courseware/lectures/[lectureId]`：
 
 - 使用 Command + Popover；初始无选中值；打开即请求首批最多 30 个紧凑 variant 候选，输入与筛选防抖 250ms 后更新；任何请求都不得下发全量讲次明细。
 - 搜索 family/variant title、product_code、lecture name；快捷筛选 grade/courseSeason/classType。
-- 结果按 family 分组，但最终选择值必须是现有 `courses.id`；每项显示“E 系列小学数学 · 一年级 · 秋季 · A · MFHK00007”和 ready/total。
+- 结果按 family 分组，但最终选择值必须是现有 `courses.id`；每项显示“E 系列小学数学 · 1年级 · 秋季 · A · MFHK00007”和 ready/total。
 - 默认只查 family/variant 都 enabled 且 trashed_at 为空；purpose=test 仅 test 建班模式可见。
 - 不完整项黄色 Badge，production 班可选但只能进入 planning；空结果不得自动新建课程。
 - 键盘上下/Enter/Escape 可用；不得把 72 个版本及 865 讲一次性全部下发客户端。

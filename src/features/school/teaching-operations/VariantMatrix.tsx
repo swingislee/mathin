@@ -69,7 +69,7 @@ function AddGradeRow({ familyId, catalogVersionId, existingGrades }: { familyId:
 
 export function VariantMatrix({ familyId, variants, catalogVersions, canManage }: { familyId: string; variants: Variant[]; catalogVersions: CatalogVersion[]; canManage: boolean }) {
   const t = useTranslations("school.courses");
-  // 年级 × 季节 × 班型这三维在教材年度换代后会整体重叠（2025 与 2026 的一年级秋季 A
+  // 年级 × 季节 × 班型这三维在教材年度换代后会整体重叠（2025 与 2026 的1年级秋季 A
   // 是两门不同的课）。矩阵先按版本分面，否则同一格里会并排出现看起来一样的徽标。
   const defaultVersion = catalogVersions.find((version) => version.isCurrent) ?? catalogVersions[0];
   const [activeVersionId, setActiveVersionId] = useState<string | null>(defaultVersion?.id ?? null);

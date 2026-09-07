@@ -16,7 +16,7 @@ const options: LeadIdentityOptions = {
     studentName: "小满",
     phone: "13800000001",
     grade: 6,
-    gradeText: "六年级",
+    gradeText: "6年级",
     wechatNickname: "星星",
     ownerId: "00000000-0000-0000-0000-000000000002",
     suggestedStudentId: "00000000-0000-0000-0000-000000000003",

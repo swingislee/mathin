@@ -1,4 +1,5 @@
 import type { MofaxiaoStudentImportRow } from "./actions/types";
+import { parseSchoolGrade } from "@/lib/grade-format.mjs";
 
 type WorksheetCell = unknown;
 
@@ -45,13 +46,6 @@ const NORMALIZED_HEADERS = new Map<string, FieldKey>();
 for (const [field, aliases] of Object.entries(HEADER_ALIASES) as Array<[FieldKey, readonly string[]]>) {
   for (const alias of aliases) NORMALIZED_HEADERS.set(normalizeHeader(alias), field);
 }
-
-const GRADE_WORDS = new Map<string, number>([
-  ["一年级", 1], ["二年级", 2], ["三年级", 3], ["四年级", 4], ["五年级", 5], ["六年级", 6],
-  ["七年级", 7], ["八年级", 8], ["九年级", 9], ["十年级", 10], ["十一年级", 11], ["十二年级", 12],
-  ["小一", 1], ["小二", 2], ["小三", 3], ["小四", 4], ["小五", 5], ["小六", 6],
-  ["初一", 7], ["初二", 8], ["初三", 9], ["高一", 10], ["高二", 11], ["高三", 12],
-]);
 
 const NO_GRADE_VALUES = new Set(["", "无", "无年级", "未填写", "未知", "暂无"]);
 
@@ -126,13 +120,8 @@ function parseGrade(value: WorksheetCell): { value: number | null; text: string;
   const raw = textOf(value);
   const compact = raw.replace(/\s+/g, "");
   if (NO_GRADE_VALUES.has(compact)) return { value: null, text: raw, unmapped: false };
-  const wordValue = GRADE_WORDS.get(compact);
-  if (wordValue) return { value: wordValue, text: raw, unmapped: false };
-  const numeric = compact.match(/^(?:第)?(\d{1,2})(?:年级)?$/);
-  if (numeric) {
-    const grade = Number(numeric[1]);
-    if (grade >= 1 && grade <= 12) return { value: grade, text: raw, unmapped: false };
-  }
+  const grade = parseSchoolGrade(compact);
+  if (grade !== null) return { value: grade, text: raw, unmapped: false };
   return { value: null, text: raw, unmapped: true };
 }
 

@@ -19,7 +19,11 @@ const URL_OR_CONNECTION = /(?:https?|postgres(?:ql)?):\/\//i;
 const ASSET_KINDS = new Set(["image", "video", "audio", "svg", "h5"]);
 const PATH_SCHEME = /^[a-z][a-z0-9+.-]*:/i;
 const E_SERIES_ROSTER_PATH = "supabase/seed/teaching-plans.json";
-const E_SERIES_ROSTER_SHA256 = "6f89722d555d32600826a85a0ebcd31f72dd163b8f5ffa62d15fd6b7012cfe08";
+// 两份已核对目录只在年级标题写法上有差异；历史导出继续按各自原始文件校验。
+const E_SERIES_ROSTER_SHA256 = new Set([
+  "7f4caef6fbdc1849a6ccecd678bc210bc9ce24ee2c37ebceb3bdc87ab7ed39ea",
+  "6f89722d555d32600826a85a0ebcd31f72dd163b8f5ffa62d15fd6b7012cfe08",
+]);
 const E_SERIES_PACKAGES = Object.freeze({
   baseline: {
     packageKey: "mofaxiao-e-math-baseline-2026-07-17",
@@ -790,7 +794,7 @@ export function loadCoursewareSourceContext({
     if (inventory.courseSystem === "e-series") {
       exactKeys(inventory.roster, ["path", "sha256"], `${label}.roster`);
       assert(inventory.roster.path === E_SERIES_ROSTER_PATH, `${label}.roster.path must bind ${E_SERIES_ROSTER_PATH}`);
-      assert(inventory.roster.sha256 === E_SERIES_ROSTER_SHA256, `${label}.roster.sha256 must bind the reviewed E-series roster artifact`);
+      assert(E_SERIES_ROSTER_SHA256.has(inventory.roster.sha256), `${label}.roster.sha256 must bind the reviewed E-series roster artifact`);
       const rosterFile = resolveInputPath(repositoryRoot, inventory.roster.path, `${label}.roster.path`);
       assert(fs.existsSync(rosterFile), `${label}.roster.path does not exist`);
       assert(textFileSha256(rosterFile) === inventory.roster.sha256, `${label}.roster.sha256 does not match the LF-normalized roster file`);

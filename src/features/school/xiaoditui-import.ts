@@ -1,3 +1,4 @@
+import { parseSchoolGrade } from "@/lib/grade-format.mjs";
 import type {
   LeadImportBatchRow,
   LeadImportMatchKind,
@@ -27,24 +28,6 @@ type HeaderKey = keyof typeof HEADER_ALIASES;
 
 const REQUIRED_KEYS: HeaderKey[] = ["childName", "phone", "gradeText", "interestText", "submittedAt", "location"];
 const MIN_HEADER_MATCH_COUNT = 4;
-const GRADE_VALUES: Record<string, number | null> = {
-  小班: null,
-  中班: null,
-  大班: null,
-  一年级: 1,
-  二年级: 2,
-  三年级: 3,
-  四年级: 4,
-  五年级: 5,
-  六年级: 6,
-  七年级: 7,
-  八年级: 8,
-  九年级: 9,
-  十年级: 10,
-  十一年级: 11,
-  十二年级: 12,
-};
-
 export type LeadInterestCategory = "assessment" | "activity" | "nurture" | "product_interest" | "unknown";
 
 export interface ParsedXiaodituiWorksheet {
@@ -191,7 +174,7 @@ export function parseXiaodituiWorksheet(grid: readonly (readonly WorksheetCell[]
       sourceRow: index + 1,
       childName: valueAt(row, columns.childName),
       phone: valueAt(row, columns.phone),
-      grade: Object.hasOwn(GRADE_VALUES, gradeText) ? GRADE_VALUES[gradeText] : null,
+      grade: parseSchoolGrade(gradeText),
       gradeText,
       interestText,
       interests: splitXiaodituiInterests(interestText),

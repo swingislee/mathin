@@ -144,7 +144,7 @@ async function ensureTestCourse(admin, actors, term) {
   if (!course) {
     course = unwrap(await admin.from("courses").insert({
       family_id: family.id,
-      title: `${QA}-人工验收课程·一年级暑期A`,
+      title: `${QA}-人工验收课程·1年级暑期A`,
       product_code: productCode,
       grade: 1,
       term: 1,

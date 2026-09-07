@@ -220,7 +220,7 @@ export async function assignStudentAction(studentId: string, staffUserId: string
   }
 }
 
-// 导入行的年级由 RPC 侧解析（表格里可能是 "三年级" 这类字符串），这里只挡住形状与体量。
+// 导入行的年级由 RPC 侧解析（表格里可能是 "3年级" 这类字符串），这里只挡住形状与体量。
 const importRowsSchema = z
   .array(
     z.object({

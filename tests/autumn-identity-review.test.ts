@@ -18,7 +18,7 @@ function fixture() {
     data_import_batches: [{ id: 'batch', source_system: 'mofaxiao', import_kind: 'students', status: 'completed' }],
     data_import_rows: [{ batch_id: 'batch', normalized_key: 'mofaxiao:id:100', row_status: 'inserted', target_id: student.id }],
     history_import_records: [] as { source_table_id: string; source_record_id: string; student_id: string; match_status: string }[],
-    classrooms: [{ id: 'class-1', name: '一年级秋季班', archived_at: null, trashed_at: null }],
+    classrooms: [{ id: 'class-1', name: '1年级秋季班', archived_at: null, trashed_at: null }],
     enrollments: [] as { student_id: string; classroom_id: string; left_at: string | null; status: string }[],
     course_enrollments: [] as { id: string; student_id: string; history_revision: number; record_state: string }[],
     course_enrollment_assignments: [] as { id: string; course_enrollment_id: string; history_revision: number; record_state: string }[],

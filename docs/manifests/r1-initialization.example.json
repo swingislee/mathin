@@ -6,9 +6,9 @@
   "projectId": "example-production-project",
   "databaseId": "example-production-database",
   "migration": {
-    "head": "20260830000700_teacher_microcourse_editor_unification",
-    "digest": "7bc3630ecc12b9dadcfd347acd6a7b14dc8282eadfb6b95101fe6c347c49524e",
-    "fileCount": 239
+    "head": "20260907001300_arabic_grade_labels",
+    "digest": "79684943c3d64490e1a1231f795818f6bd8a2f38bac16f83a2de577e801ec275",
+    "fileCount": 320
   },
   "platform": {
     "source": "supabase/ci/00_platform_bootstrap.sql",
@@ -18,7 +18,7 @@
   "referenceData": {
     "kind": "course_catalog",
     "source": "supabase/seed/teaching-plans.json",
-    "sourceSha256": "6f89722d555d32600826a85a0ebcd31f72dd163b8f5ffa62d15fd6b7012cfe08",
+    "sourceSha256": "7f4caef6fbdc1849a6ccecd678bc210bc9ce24ee2c37ebceb3bdc87ab7ed39ea",
     "familySlug": "xueersi-e-primary-math-cn",
     "naturalKey": "catalogVersion+productCode",
     "expectedCourseCount": 90,

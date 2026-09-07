@@ -2,7 +2,7 @@
  {
   "productCode": "MFHK00621",
   "catalogVersion": "2026",
-  "title": "E系列数学一年级暑期A[全国版]",
+  "title": "E系列数学1年级暑期A[全国版]",
   "grade": 1,
   "term": "暑期",
   "termIndex": 1,
@@ -53,7 +53,7 @@
  {
   "productCode": "MFHK00622",
   "catalogVersion": "2026",
-  "title": "E系列数学一年级暑期B[全国版]",
+  "title": "E系列数学1年级暑期B[全国版]",
   "grade": 1,
   "term": "暑期",
   "termIndex": 1,
@@ -104,7 +104,7 @@
  {
   "productCode": "MFHK00632",
   "catalogVersion": "2026",
-  "title": "E系列数学一年级暑期S班[全国版]",
+  "title": "E系列数学1年级暑期S班[全国版]",
   "grade": 1,
   "term": "暑期",
   "termIndex": 1,
@@ -155,7 +155,7 @@
  {
   "productCode": "MFHK00007",
   "catalogVersion": "2025",
-  "title": "E系列数学一年级秋季A[全国版]",
+  "title": "E系列数学1年级秋季A[全国版]",
   "grade": 1,
   "term": "秋季",
   "termIndex": 2,
@@ -226,7 +226,7 @@
  {
   "productCode": "MFHK00007",
   "catalogVersion": "2026",
-  "title": "E系列数学一年级秋季A[全国版]",
+  "title": "E系列数学1年级秋季A[全国版]",
   "grade": 1,
   "term": "秋季",
   "termIndex": 2,
@@ -297,7 +297,7 @@
  {
   "productCode": "MFHK00008",
   "catalogVersion": "2025",
-  "title": "E系列数学一年级秋季B[全国版]",
+  "title": "E系列数学1年级秋季B[全国版]",
   "grade": 1,
   "term": "秋季",
   "termIndex": 2,
@@ -368,7 +368,7 @@
  {
   "productCode": "MFHK00008",
   "catalogVersion": "2026",
-  "title": "E系列数学一年级秋季B[全国版]",
+  "title": "E系列数学1年级秋季B[全国版]",
   "grade": 1,
   "term": "秋季",
   "termIndex": 2,
@@ -439,7 +439,7 @@
  {
   "productCode": "MFHK00009",
   "catalogVersion": "2025",
-  "title": "E系列数学一年级秋季S[全国版]",
+  "title": "E系列数学1年级秋季S[全国版]",
   "grade": 1,
   "term": "秋季",
   "termIndex": 2,
@@ -510,7 +510,7 @@
  {
   "productCode": "MFHK00009",
   "catalogVersion": "2026",
-  "title": "E系列数学一年级秋季S[全国版]",
+  "title": "E系列数学1年级秋季S[全国版]",
   "grade": 1,
   "term": "秋季",
   "termIndex": 2,
@@ -581,7 +581,7 @@
  {
   "productCode": "MFHK02013",
   "catalogVersion": "2025",
-  "title": "E系列数学一年级寒假A[全国版]",
+  "title": "E系列数学1年级寒假A[全国版]",
   "grade": 1,
   "term": "寒假",
   "termIndex": 3,
@@ -620,7 +620,7 @@
  {
   "productCode": "MFHK02014",
   "catalogVersion": "2025",
-  "title": "E系列数学一年级寒假B[全国版]",
+  "title": "E系列数学1年级寒假B[全国版]",
   "grade": 1,
   "term": "寒假",
   "termIndex": 3,
@@ -659,7 +659,7 @@
  {
   "productCode": "MFHK02015",
   "catalogVersion": "2025",
-  "title": "E系列数学一年级寒假S[全国版]",
+  "title": "E系列数学1年级寒假S[全国版]",
   "grade": 1,
   "term": "寒假",
   "termIndex": 3,
@@ -698,7 +698,7 @@
  {
   "productCode": "MFHK02038",
   "catalogVersion": "2025",
-  "title": "E系列数学一年级春季A[全国版]",
+  "title": "E系列数学1年级春季A[全国版]",
   "grade": 1,
   "term": "春季",
   "termIndex": 4,
@@ -769,7 +769,7 @@
  {
   "productCode": "MFHK02039",
   "catalogVersion": "2025",
-  "title": "E系列数学一年级春季B[全国版]",
+  "title": "E系列数学1年级春季B[全国版]",
   "grade": 1,
   "term": "春季",
   "termIndex": 4,
@@ -840,7 +840,7 @@
  {
   "productCode": "MFHK02040",
   "catalogVersion": "2025",
-  "title": "E系列数学一年级春季S[全国版]",
+  "title": "E系列数学1年级春季S[全国版]",
   "grade": 1,
   "term": "春季",
   "termIndex": 4,
@@ -911,7 +911,7 @@
  {
   "productCode": "MFHK00619",
   "catalogVersion": "2026",
-  "title": "E系列数学二年级暑期A[全国版]",
+  "title": "E系列数学2年级暑期A[全国版]",
   "grade": 2,
   "term": "暑期",
   "termIndex": 1,
@@ -962,7 +962,7 @@
  {
   "productCode": "MFHK00620",
   "catalogVersion": "2026",
-  "title": "E系列数学二年级暑期B[全国版]",
+  "title": "E系列数学2年级暑期B[全国版]",
   "grade": 2,
   "term": "暑期",
   "termIndex": 1,
@@ -1013,7 +1013,7 @@
  {
   "productCode": "MFHK00640",
   "catalogVersion": "2026",
-  "title": "E系列数学二年级暑期S班[全国版]",
+  "title": "E系列数学2年级暑期S班[全国版]",
   "grade": 2,
   "term": "暑期",
   "termIndex": 1,
@@ -1064,7 +1064,7 @@
  {
   "productCode": "MFHK00010",
   "catalogVersion": "2025",
-  "title": "E系列数学二年级秋季A[全国版]",
+  "title": "E系列数学2年级秋季A[全国版]",
   "grade": 2,
   "term": "秋季",
   "termIndex": 2,
@@ -1135,7 +1135,7 @@
  {
   "productCode": "MFHK00010",
   "catalogVersion": "2026",
-  "title": "E系列数学二年级秋季A[全国版]",
+  "title": "E系列数学2年级秋季A[全国版]",
   "grade": 2,
   "term": "秋季",
   "termIndex": 2,
@@ -1206,7 +1206,7 @@
  {
   "productCode": "MFHK00011",
   "catalogVersion": "2025",
-  "title": "E系列数学二年级秋季B[全国版]",
+  "title": "E系列数学2年级秋季B[全国版]",
   "grade": 2,
   "term": "秋季",
   "termIndex": 2,
@@ -1277,7 +1277,7 @@
  {
   "productCode": "MFHK00011",
   "catalogVersion": "2026",
-  "title": "E系列数学二年级秋季B[全国版]",
+  "title": "E系列数学2年级秋季B[全国版]",
   "grade": 2,
   "term": "秋季",
   "termIndex": 2,
@@ -1348,7 +1348,7 @@
  {
   "productCode": "MFHK00012",
   "catalogVersion": "2025",
-  "title": "E系列数学二年级秋季S[全国版]",
+  "title": "E系列数学2年级秋季S[全国版]",
   "grade": 2,
   "term": "秋季",
   "termIndex": 2,
@@ -1419,7 +1419,7 @@
  {
   "productCode": "MFHK00012",
   "catalogVersion": "2026",
-  "title": "E系列数学二年级秋季S[全国版]",
+  "title": "E系列数学2年级秋季S[全国版]",
   "grade": 2,
   "term": "秋季",
   "termIndex": 2,
@@ -1490,7 +1490,7 @@
  {
   "productCode": "MFHK02016",
   "catalogVersion": "2025",
-  "title": "E系列数学二年级寒假A[全国版]",
+  "title": "E系列数学2年级寒假A[全国版]",
   "grade": 2,
   "term": "寒假",
   "termIndex": 3,
@@ -1529,7 +1529,7 @@
  {
   "productCode": "MFHK02017",
   "catalogVersion": "2025",
-  "title": "E系列数学二年级寒假B[全国版]",
+  "title": "E系列数学2年级寒假B[全国版]",
   "grade": 2,
   "term": "寒假",
   "termIndex": 3,
@@ -1568,7 +1568,7 @@
  {
   "productCode": "MFHK02018",
   "catalogVersion": "2025",
-  "title": "E系列数学二年级寒假S[全国版]",
+  "title": "E系列数学2年级寒假S[全国版]",
   "grade": 2,
   "term": "寒假",
   "termIndex": 3,
@@ -1607,7 +1607,7 @@
  {
   "productCode": "MFHK02041",
   "catalogVersion": "2025",
-  "title": "E系列数学二年级春季A[全国版]",
+  "title": "E系列数学2年级春季A[全国版]",
   "grade": 2,
   "term": "春季",
   "termIndex": 4,
@@ -1678,7 +1678,7 @@
  {
   "productCode": "MFHK02042",
   "catalogVersion": "2025",
-  "title": "E系列数学二年级春季B[全国版]",
+  "title": "E系列数学2年级春季B[全国版]",
   "grade": 2,
   "term": "春季",
   "termIndex": 4,
@@ -1749,7 +1749,7 @@
  {
   "productCode": "MFHK02043",
   "catalogVersion": "2025",
-  "title": "E系列数学二年级春季S[全国版]",
+  "title": "E系列数学2年级春季S[全国版]",
   "grade": 2,
   "term": "春季",
   "termIndex": 4,
@@ -1820,7 +1820,7 @@
  {
   "productCode": "MFHK00647",
   "catalogVersion": "2026",
-  "title": "E系列数学三年级暑期A[全国版]",
+  "title": "E系列数学3年级暑期A[全国版]",
   "grade": 3,
   "term": "暑期",
   "termIndex": 1,
@@ -1871,7 +1871,7 @@
  {
   "productCode": "MFHK00646",
   "catalogVersion": "2026",
-  "title": "E系列数学三年级暑期B[全国版]",
+  "title": "E系列数学3年级暑期B[全国版]",
   "grade": 3,
   "term": "暑期",
   "termIndex": 1,
@@ -1922,7 +1922,7 @@
  {
   "productCode": "MFHK00650",
   "catalogVersion": "2026",
-  "title": "E系列数学三年级暑期S班[全国版]",
+  "title": "E系列数学3年级暑期S班[全国版]",
   "grade": 3,
   "term": "暑期",
   "termIndex": 1,
@@ -1973,7 +1973,7 @@
  {
   "productCode": "MFHK00013",
   "catalogVersion": "2025",
-  "title": "E系列数学三年级秋季A[全国版]",
+  "title": "E系列数学3年级秋季A[全国版]",
   "grade": 3,
   "term": "秋季",
   "termIndex": 2,
@@ -2044,7 +2044,7 @@
  {
   "productCode": "MFHK00013",
   "catalogVersion": "2026",
-  "title": "E系列数学三年级秋季A[全国版]",
+  "title": "E系列数学3年级秋季A[全国版]",
   "grade": 3,
   "term": "秋季",
   "termIndex": 2,
@@ -2115,7 +2115,7 @@
  {
   "productCode": "MFHK00014",
   "catalogVersion": "2025",
-  "title": "E系列数学三年级秋季B[全国版]",
+  "title": "E系列数学3年级秋季B[全国版]",
   "grade": 3,
   "term": "秋季",
   "termIndex": 2,
@@ -2186,7 +2186,7 @@
  {
   "productCode": "MFHK00014",
   "catalogVersion": "2026",
-  "title": "E系列数学三年级秋季B[全国版]",
+  "title": "E系列数学3年级秋季B[全国版]",
   "grade": 3,
   "term": "秋季",
   "termIndex": 2,
@@ -2257,7 +2257,7 @@
  {
   "productCode": "MFHK00015",
   "catalogVersion": "2025",
-  "title": "E系列数学三年级秋季S[全国版]",
+  "title": "E系列数学3年级秋季S[全国版]",
   "grade": 3,
   "term": "秋季",
   "termIndex": 2,
@@ -2328,7 +2328,7 @@
  {
   "productCode": "MFHK00015",
   "catalogVersion": "2026",
-  "title": "E系列数学三年级秋季S[全国版]",
+  "title": "E系列数学3年级秋季S[全国版]",
   "grade": 3,
   "term": "秋季",
   "termIndex": 2,
@@ -2399,7 +2399,7 @@
  {
   "productCode": "MFHK02019",
   "catalogVersion": "2025",
-  "title": "E系列数学三年级寒假A[全国版]",
+  "title": "E系列数学3年级寒假A[全国版]",
   "grade": 3,
   "term": "寒假",
   "termIndex": 3,
@@ -2438,7 +2438,7 @@
  {
   "productCode": "MFHK02020",
   "catalogVersion": "2025",
-  "title": "E系列数学三年级寒假B[全国版]",
+  "title": "E系列数学3年级寒假B[全国版]",
   "grade": 3,
   "term": "寒假",
   "termIndex": 3,
@@ -2477,7 +2477,7 @@
  {
   "productCode": "MFHK02021",
   "catalogVersion": "2025",
-  "title": "E系列数学三年级寒假S[全国版]",
+  "title": "E系列数学3年级寒假S[全国版]",
   "grade": 3,
   "term": "寒假",
   "termIndex": 3,
@@ -2516,7 +2516,7 @@
  {
   "productCode": "MFHK02044",
   "catalogVersion": "2025",
-  "title": "E系列数学三年级春季A[全国版]",
+  "title": "E系列数学3年级春季A[全国版]",
   "grade": 3,
   "term": "春季",
   "termIndex": 4,
@@ -2587,7 +2587,7 @@
  {
   "productCode": "MFHK02045",
   "catalogVersion": "2025",
-  "title": "E系列数学三年级春季B[全国版]",
+  "title": "E系列数学3年级春季B[全国版]",
   "grade": 3,
   "term": "春季",
   "termIndex": 4,
@@ -2658,7 +2658,7 @@
  {
   "productCode": "MFHK02046",
   "catalogVersion": "2025",
-  "title": "E系列数学三年级春季S[全国版]",
+  "title": "E系列数学3年级春季S[全国版]",
   "grade": 3,
   "term": "春季",
   "termIndex": 4,
@@ -2729,7 +2729,7 @@
  {
   "productCode": "MFHK01861",
   "catalogVersion": "2026",
-  "title": "E系列数学四年级暑期A[全国版]",
+  "title": "E系列数学4年级暑期A[全国版]",
   "grade": 4,
   "term": "暑期",
   "termIndex": 1,
@@ -2784,7 +2784,7 @@
  {
   "productCode": "MFHK01862",
   "catalogVersion": "2026",
-  "title": "E系列数学四年级暑期B[全国版]",
+  "title": "E系列数学4年级暑期B[全国版]",
   "grade": 4,
   "term": "暑期",
   "termIndex": 1,
@@ -2839,7 +2839,7 @@
  {
   "productCode": "MFHK00651",
   "catalogVersion": "2026",
-  "title": "E系列数学四年级暑期S班[全国版]",
+  "title": "E系列数学4年级暑期S班[全国版]",
   "grade": 4,
   "term": "暑期",
   "termIndex": 1,
@@ -2898,7 +2898,7 @@
  {
   "productCode": "MFHK00016",
   "catalogVersion": "2025",
-  "title": "E系列数学四年级秋季A[全国版]",
+  "title": "E系列数学4年级秋季A[全国版]",
   "grade": 4,
   "term": "秋季",
   "termIndex": 2,
@@ -2969,7 +2969,7 @@
  {
   "productCode": "MFHK00016",
   "catalogVersion": "2026",
-  "title": "E系列数学四年级秋季A[全国版]",
+  "title": "E系列数学4年级秋季A[全国版]",
   "grade": 4,
   "term": "秋季",
   "termIndex": 2,
@@ -3040,7 +3040,7 @@
  {
   "productCode": "MFHK00017",
   "catalogVersion": "2025",
-  "title": "E系列数学四年级秋季B[全国版]",
+  "title": "E系列数学4年级秋季B[全国版]",
   "grade": 4,
   "term": "秋季",
   "termIndex": 2,
@@ -3111,7 +3111,7 @@
  {
   "productCode": "MFHK00017",
   "catalogVersion": "2026",
-  "title": "E系列数学四年级秋季B[全国版]",
+  "title": "E系列数学4年级秋季B[全国版]",
   "grade": 4,
   "term": "秋季",
   "termIndex": 2,
@@ -3182,7 +3182,7 @@
  {
   "productCode": "MFHK00018",
   "catalogVersion": "2025",
-  "title": "E系列数学四年级秋季S[全国版]",
+  "title": "E系列数学4年级秋季S[全国版]",
   "grade": 4,
   "term": "秋季",
   "termIndex": 2,
@@ -3253,7 +3253,7 @@
  {
   "productCode": "MFHK00018",
   "catalogVersion": "2026",
-  "title": "E系列数学四年级秋季S[全国版]",
+  "title": "E系列数学4年级秋季S[全国版]",
   "grade": 4,
   "term": "秋季",
   "termIndex": 2,
@@ -3324,7 +3324,7 @@
  {
   "productCode": "MFHK02022",
   "catalogVersion": "2025",
-  "title": "E系列数学四年级寒假A[全国版]",
+  "title": "E系列数学4年级寒假A[全国版]",
   "grade": 4,
   "term": "寒假",
   "termIndex": 3,
@@ -3363,7 +3363,7 @@
  {
   "productCode": "MFHK02023",
   "catalogVersion": "2025",
-  "title": "E系列数学四年级寒假B[全国版]",
+  "title": "E系列数学4年级寒假B[全国版]",
   "grade": 4,
   "term": "寒假",
   "termIndex": 3,
@@ -3402,7 +3402,7 @@
  {
   "productCode": "MFHK02024",
   "catalogVersion": "2025",
-  "title": "E系列数学四年级寒假S[全国版]",
+  "title": "E系列数学4年级寒假S[全国版]",
   "grade": 4,
   "term": "寒假",
   "termIndex": 3,
@@ -3441,7 +3441,7 @@
  {
   "productCode": "MFHK02047",
   "catalogVersion": "2025",
-  "title": "E系列数学四年级春季A[全国版]",
+  "title": "E系列数学4年级春季A[全国版]",
   "grade": 4,
   "term": "春季",
   "termIndex": 4,
@@ -3512,7 +3512,7 @@
  {
   "productCode": "MFHK02048",
   "catalogVersion": "2025",
-  "title": "E系列数学四年级春季B[全国版]",
+  "title": "E系列数学4年级春季B[全国版]",
   "grade": 4,
   "term": "春季",
   "termIndex": 4,
@@ -3583,7 +3583,7 @@
  {
   "productCode": "MFHK02049",
   "catalogVersion": "2025",
-  "title": "E系列数学四年级春季S[全国版]",
+  "title": "E系列数学4年级春季S[全国版]",
   "grade": 4,
   "term": "春季",
   "termIndex": 4,
@@ -3654,7 +3654,7 @@
  {
   "productCode": "MFHK01863",
   "catalogVersion": "2026",
-  "title": "E系列数学五年级暑期A[全国版]",
+  "title": "E系列数学5年级暑期A[全国版]",
   "grade": 5,
   "term": "暑期",
   "termIndex": 1,
@@ -3725,7 +3725,7 @@
  {
   "productCode": "MFHK01864",
   "catalogVersion": "2026",
-  "title": "E系列数学五年级暑期B[全国版]",
+  "title": "E系列数学5年级暑期B[全国版]",
   "grade": 5,
   "term": "暑期",
   "termIndex": 1,
@@ -3796,7 +3796,7 @@
  {
   "productCode": "MFHK01865",
   "catalogVersion": "2026",
-  "title": "E系列数学五年级暑期S[全国版]",
+  "title": "E系列数学5年级暑期S[全国版]",
   "grade": 5,
   "term": "暑期",
   "termIndex": 1,
@@ -3867,7 +3867,7 @@
  {
   "productCode": "MFHK01911",
   "catalogVersion": "2025",
-  "title": "E系列数学五年级秋季A[全国版]",
+  "title": "E系列数学5年级秋季A[全国版]",
   "grade": 5,
   "term": "秋季",
   "termIndex": 2,
@@ -3938,7 +3938,7 @@
  {
   "productCode": "MFHK01911",
   "catalogVersion": "2026",
-  "title": "E系列数学五年级秋季A[全国版]",
+  "title": "E系列数学5年级秋季A[全国版]",
   "grade": 5,
   "term": "秋季",
   "termIndex": 2,
@@ -4009,7 +4009,7 @@
  {
   "productCode": "MFHK01912",
   "catalogVersion": "2025",
-  "title": "E系列数学五年级秋季B[全国版]",
+  "title": "E系列数学5年级秋季B[全国版]",
   "grade": 5,
   "term": "秋季",
   "termIndex": 2,
@@ -4080,7 +4080,7 @@
  {
   "productCode": "MFHK01912",
   "catalogVersion": "2026",
-  "title": "E系列数学五年级秋季B[全国版]",
+  "title": "E系列数学5年级秋季B[全国版]",
   "grade": 5,
   "term": "秋季",
   "termIndex": 2,
@@ -4151,7 +4151,7 @@
  {
   "productCode": "MFHK00021",
   "catalogVersion": "2025",
-  "title": "E系列数学五年级秋季S[全国版]",
+  "title": "E系列数学5年级秋季S[全国版]",
   "grade": 5,
   "term": "秋季",
   "termIndex": 2,
@@ -4222,7 +4222,7 @@
  {
   "productCode": "MFHK00021",
   "catalogVersion": "2026",
-  "title": "E系列数学五年级秋季S[全国版]",
+  "title": "E系列数学5年级秋季S[全国版]",
   "grade": 5,
   "term": "秋季",
   "termIndex": 2,
@@ -4293,7 +4293,7 @@
  {
   "productCode": "MFHK02025",
   "catalogVersion": "2025",
-  "title": "E系列数学五年级寒假A[全国版]",
+  "title": "E系列数学5年级寒假A[全国版]",
   "grade": 5,
   "term": "寒假",
   "termIndex": 3,
@@ -4332,7 +4332,7 @@
  {
   "productCode": "MFHK02026",
   "catalogVersion": "2025",
-  "title": "E系列数学五年级寒假B[全国版]",
+  "title": "E系列数学5年级寒假B[全国版]",
   "grade": 5,
   "term": "寒假",
   "termIndex": 3,
@@ -4371,7 +4371,7 @@
  {
   "productCode": "MFHK02027",
   "catalogVersion": "2025",
-  "title": "E系列数学五年级寒假S[全国版]",
+  "title": "E系列数学5年级寒假S[全国版]",
   "grade": 5,
   "term": "寒假",
   "termIndex": 3,
@@ -4410,7 +4410,7 @@
  {
   "productCode": "MFHK02050",
   "catalogVersion": "2025",
-  "title": "E系列数学五年级春季A[全国版]",
+  "title": "E系列数学5年级春季A[全国版]",
   "grade": 5,
   "term": "春季",
   "termIndex": 4,
@@ -4481,7 +4481,7 @@
  {
   "productCode": "MFHK02051",
   "catalogVersion": "2025",
-  "title": "E系列数学五年级春季B[全国版]",
+  "title": "E系列数学5年级春季B[全国版]",
   "grade": 5,
   "term": "春季",
   "termIndex": 4,
@@ -4552,7 +4552,7 @@
  {
   "productCode": "MFHK02052",
   "catalogVersion": "2025",
-  "title": "E系列数学五年级春季S[全国版]",
+  "title": "E系列数学5年级春季S[全国版]",
   "grade": 5,
   "term": "春季",
   "termIndex": 4,
@@ -4623,7 +4623,7 @@
  {
   "productCode": "MFHK01866",
   "catalogVersion": "2026",
-  "title": "E系列数学六年级暑期A[全国版]",
+  "title": "E系列数学6年级暑期A[全国版]",
   "grade": 6,
   "term": "暑期",
   "termIndex": 1,
@@ -4694,7 +4694,7 @@
  {
   "productCode": "MFHK01867",
   "catalogVersion": "2026",
-  "title": "E系列数学六年级暑期B[全国版]",
+  "title": "E系列数学6年级暑期B[全国版]",
   "grade": 6,
   "term": "暑期",
   "termIndex": 1,
@@ -4765,7 +4765,7 @@
  {
   "productCode": "MFHK01868",
   "catalogVersion": "2026",
-  "title": "E系列数学六年级暑期S[全国版]",
+  "title": "E系列数学6年级暑期S[全国版]",
   "grade": 6,
   "term": "暑期",
   "termIndex": 1,
@@ -4836,7 +4836,7 @@
  {
   "productCode": "MFHK00022",
   "catalogVersion": "2025",
-  "title": "E系列数学六年级秋季A[全国版]",
+  "title": "E系列数学6年级秋季A[全国版]",
   "grade": 6,
   "term": "秋季",
   "termIndex": 2,
@@ -4907,7 +4907,7 @@
  {
   "productCode": "MFHK00022",
   "catalogVersion": "2026",
-  "title": "E系列数学六年级秋季A[全国版]",
+  "title": "E系列数学6年级秋季A[全国版]",
   "grade": 6,
   "term": "秋季",
   "termIndex": 2,
@@ -4978,7 +4978,7 @@
  {
   "productCode": "MFHK00023",
   "catalogVersion": "2025",
-  "title": "E系列数学六年级秋季B[全国版]",
+  "title": "E系列数学6年级秋季B[全国版]",
   "grade": 6,
   "term": "秋季",
   "termIndex": 2,
@@ -5049,7 +5049,7 @@
  {
   "productCode": "MFHK00023",
   "catalogVersion": "2026",
-  "title": "E系列数学六年级秋季B[全国版]",
+  "title": "E系列数学6年级秋季B[全国版]",
   "grade": 6,
   "term": "秋季",
   "termIndex": 2,
@@ -5120,7 +5120,7 @@
  {
   "productCode": "MFHK01913",
   "catalogVersion": "2025",
-  "title": "E系列数学六年级秋季S[全国版]",
+  "title": "E系列数学6年级秋季S[全国版]",
   "grade": 6,
   "term": "秋季",
   "termIndex": 2,
@@ -5191,7 +5191,7 @@
  {
   "productCode": "MFHK01913",
   "catalogVersion": "2026",
-  "title": "E系列数学六年级秋季S[全国版]",
+  "title": "E系列数学6年级秋季S[全国版]",
   "grade": 6,
   "term": "秋季",
   "termIndex": 2,
@@ -5262,7 +5262,7 @@
  {
   "productCode": "MFHK02028",
   "catalogVersion": "2025",
-  "title": "E系列数学六年级寒假A[全国版]",
+  "title": "E系列数学6年级寒假A[全国版]",
   "grade": 6,
   "term": "寒假",
   "termIndex": 3,
@@ -5301,7 +5301,7 @@
  {
   "productCode": "MFHK02029",
   "catalogVersion": "2025",
-  "title": "E系列数学六年级寒假B[全国版]",
+  "title": "E系列数学6年级寒假B[全国版]",
   "grade": 6,
   "term": "寒假",
   "termIndex": 3,
@@ -5340,7 +5340,7 @@
  {
   "productCode": "MFHK02030",
   "catalogVersion": "2025",
-  "title": "E系列数学六年级寒假S[全国版]",
+  "title": "E系列数学6年级寒假S[全国版]",
   "grade": 6,
   "term": "寒假",
   "termIndex": 3,
@@ -5379,7 +5379,7 @@
  {
   "productCode": "MFHK02053",
   "catalogVersion": "2025",
-  "title": "E系列数学六年级春季A[全国版]",
+  "title": "E系列数学6年级春季A[全国版]",
   "grade": 6,
   "term": "春季",
   "termIndex": 4,
@@ -5430,7 +5430,7 @@
  {
   "productCode": "MFHK02054",
   "catalogVersion": "2025",
-  "title": "E系列数学六年级春季B[全国版]",
+  "title": "E系列数学6年级春季B[全国版]",
   "grade": 6,
   "term": "春季",
   "termIndex": 4,
@@ -5481,7 +5481,7 @@
  {
   "productCode": "MFHK02055",
   "catalogVersion": "2025",
-  "title": "E系列数学六年级春季S[全国版]",
+  "title": "E系列数学6年级春季S[全国版]",
   "grade": 6,
   "term": "春季",
   "termIndex": 4,

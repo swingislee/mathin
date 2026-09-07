@@ -825,9 +825,9 @@ support-task:<taskId>
 
 ```text
              暑期       秋季       寒假       春季
-一年级       A B S      A B S      A B S      A B S
+1年级       A B S      A B S      A B S      A B S
 ……
-六年级       A B S      A B S      A B S      A B S
+6年级       A B S      A B S      A B S      A B S
 ```
 
 每个单元显示：
@@ -1137,7 +1137,7 @@ responsibility：owner / editor / reviewer
 
 ```text
 负责人：张老师
-来源：一年级暑期 A
+来源：1年级暑期 A
 ```
 
 ---

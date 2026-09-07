@@ -10,7 +10,7 @@ const read = (...segments: string[]) => fs.readFileSync(path.join(root, ...segme
 function scheduleEntry(overrides: Partial<ScheduleEntry> & Pick<ScheduleEntry, "sessionId" | "classroomId" | "scheduledAt">): ScheduleEntry {
   return {
     studentId: "",
-    classroomName: "三年级 A 班",
+    classroomName: "3年级 A 班",
     lectureName: "分数",
     durationMin: 90,
     teacherName: "张老师",

@@ -111,7 +111,7 @@ domain_events(
 
 ### 3.2 学期时间轴（你的数据模型里现在没有"时间"）
 
-**现状证据**：`students.grade smallint`（`school_students.sql:14`）是**静态数字**；courses/classrooms/orders/enrollments 全不挂任何学期维度。后果：2026-09-01 全校 grade 同时失真，且"他三年级时的成绩"在数据里无法表达；续费率/课消/招生同比等一切经营指标本是"本学期 vs 上学期"，无学期轴则 P4D-5 续费窗口只能按裸日期硬算；360°档案与未来掌握度模型本质是时间序列，而所有表只答"现在是什么"。
+**现状证据**：`students.grade smallint`（`school_students.sql:14`）是**静态数字**；courses/classrooms/orders/enrollments 全不挂任何学期维度。后果：2026-09-01 全校 grade 同时失真，且"他3年级时的成绩"在数据里无法表达；续费率/课消/招生同比等一切经营指标本是"本学期 vs 上学期"，无学期轴则 P4D-5 续费窗口只能按裸日期硬算；360°档案与未来掌握度模型本质是时间序列，而所有表只答"现在是什么"。
 
 **修法（新 migration）**：
 1. `school_terms(id, year smallint, term smallint /*1春 2秋 或按机构*/, name text, starts_on date, ends_on date, is_current boolean)`；单机构多校区留门——预留 `campus_id uuid null`，本期恒空但不写死单校唯一约束。

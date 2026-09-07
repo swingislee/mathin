@@ -315,6 +315,21 @@ function writeRootManifest(temp: string, manifest: Record<string, unknown>) {
 }
 
 describe("R1-9 P6 courseware source manifest", () => {
+  it("accepts the reviewed legacy roster without changing its raw source hash", () => {
+    const temp = fs.mkdtempSync(path.join(os.tmpdir(), "mathin-r1-grade-roster-"));
+    try {
+      const source = copyExampleFixture(temp);
+      const rosterPath = path.join(temp, rosterRelativePath);
+      const legacy = fs.readFileSync(rosterPath, "utf8").replace(/([1-7])年级/g,
+        (_label, grade: string) => `${"一二三四五六七"[Number(grade) - 1]}年级`);
+      fs.writeFileSync(rosterPath, legacy);
+      expect(textFileSha256(rosterPath)).toBe("6f89722d555d32600826a85a0ebcd31f72dd163b8f5ffa62d15fd6b7012cfe08");
+      source.inventories[1].roster.sha256 = textFileSha256(rosterPath);
+      expect(() => loadCoursewareSourceContext({ root: temp, manifestPath: writeExampleManifest(temp, source) })).not.toThrow();
+    } finally {
+      fs.rmSync(temp, { recursive: true, force: true });
+    }
+  });
   it("keeps the repository example deterministic, read-only, and visibly blocked", () => {
     const first = buildCoursewareSourcePlan(loadCoursewareSourceContext({ root: repositoryRoot, manifestPath: exampleManifestPath }));
     const second = buildCoursewareSourcePlan(loadCoursewareSourceContext({ root: repositoryRoot, manifestPath: exampleManifestPath }));

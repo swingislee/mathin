@@ -93,8 +93,8 @@ begin
   end loop;
   insert into public.classrooms(id,owner_id,name,invite_code,course_id,grade,capacity,term_id,purpose,operational_status)
     values
-      (v_class,v_teacher,'P5验收 · 三年级暑期衔接班','p5demo01',v_course,3,12,v_source,'test','active'),
-      (v_old_class,v_teacher,'P5验收 · 三年级历史班','p5demo02',v_course,3,12,v_history,'test','active');
+      (v_class,v_teacher,'P5验收 · 3年级暑期衔接班','p5demo01',v_course,3,12,v_source,'test','active'),
+      (v_old_class,v_teacher,'P5验收 · 3年级历史班','p5demo02',v_course,3,12,v_history,'test','active');
   insert into public.classroom_staff_assignments(classroom_id,user_id,responsibility,is_primary,created_by)
     select class_id,v_teacher,'primary_teacher',false,v_owner from unnest(array[v_class,v_old_class]) class_id
     union all select class_id,v_owner,'learning_support',true,v_owner from unnest(array[v_class,v_old_class]) class_id;

@@ -208,7 +208,7 @@ describe("魔法校班级学员花名册导入", () => {
     expect(teacherInitialsForClassName("张灿")).toBe("ZC");
     expect(teacherInitialsForClassName("XLZ")).toBe("XLZ");
     expect(buildMofaxiaoRosterDefaultClass(source)).toEqual(expect.objectContaining({
-      name: "【科学思维】三年级秋季A+|紫辰阁XLZ周六17:00",
+      name: "【科学思维】3年级秋季A+|紫辰阁XLZ周六17:00",
       system: "科学思维",
       classType: "A+",
       courseClassType: "B",

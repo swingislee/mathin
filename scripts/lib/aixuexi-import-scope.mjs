@@ -1,10 +1,12 @@
 import { readFileSync } from "node:fs";
+import { parseSchoolGrade } from "../../src/lib/grade-format.mjs";
 
 const definitions = JSON.parse(readFileSync(new URL("../config/aixuexi-packages.json", import.meta.url), "utf8"));
-export const AIXUEXI_GRADE = new Map([
-  ["一年级", 1], ["二年级", 2], ["三年级", 3],
-  ["四年级", 4], ["五年级", 5], ["六年级", 6],
-]);
+export function parseAixuexiGrade(value) {
+  if (typeof value !== "string") return null;
+  const grade = parseSchoolGrade(value);
+  return grade !== null && grade <= 6 ? grade : null;
+}
 const TERM_CODES = new Map([["寒假", "WIN"], ["春季", "SPR"], ["暑期", "SUM"], ["秋季", "AUT"]]);
 
 function fail(message) { throw new Error(`AIXUEXI_SCOPE: ${message}`); }
@@ -83,7 +85,7 @@ export function assertAixuexiSourceScope(siteManifest, catalog, definition, opti
     fail("来源整包仍有投影缺口");
   }
   for (const course of selected) {
-    if (!definition.grades.includes(AIXUEXI_GRADE.get(course.grade))
+    if (!definition.grades.includes(parseAixuexiGrade(course.grade))
         || course.term !== definition.term || course.level !== definition.sourceLevel
         || course.status !== "complete" || course.pageCount < 1
         || !Number.isInteger(course.lessonIndex) || course.lessonIndex < 1) {

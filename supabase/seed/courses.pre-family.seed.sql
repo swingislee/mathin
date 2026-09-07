@@ -2,7 +2,7 @@
 begin;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学一年级暑期A[全国版]', 'MFHK00621', 1, 1, 'A', 'enabled')
+values ('E系列数学1年级暑期A[全国版]', 'MFHK00621', 1, 1, 'A', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -70,7 +70,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学一年级暑期B[全国版]', 'MFHK00622', 1, 1, 'B', 'enabled')
+values ('E系列数学1年级暑期B[全国版]', 'MFHK00622', 1, 1, 'B', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -138,7 +138,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学一年级暑期S班[全国版]', 'MFHK00632', 1, 1, 'S', 'enabled')
+values ('E系列数学1年级暑期S班[全国版]', 'MFHK00632', 1, 1, 'S', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -206,7 +206,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学一年级秋季A[全国版]', 'MFHK00007', 1, 2, 'A', 'enabled')
+values ('E系列数学1年级秋季A[全国版]', 'MFHK00007', 1, 2, 'A', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -304,7 +304,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学一年级秋季B[全国版]', 'MFHK00008', 1, 2, 'B', 'enabled')
+values ('E系列数学1年级秋季B[全国版]', 'MFHK00008', 1, 2, 'B', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -402,7 +402,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学一年级秋季S[全国版]', 'MFHK00009', 1, 2, 'S', 'enabled')
+values ('E系列数学1年级秋季S[全国版]', 'MFHK00009', 1, 2, 'S', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -500,7 +500,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学一年级寒假A[全国版]', 'MFHK02013', 1, 3, 'A', 'enabled')
+values ('E系列数学1年级寒假A[全国版]', 'MFHK02013', 1, 3, 'A', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -550,7 +550,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学一年级寒假B[全国版]', 'MFHK02014', 1, 3, 'B', 'enabled')
+values ('E系列数学1年级寒假B[全国版]', 'MFHK02014', 1, 3, 'B', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -600,7 +600,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学一年级寒假S[全国版]', 'MFHK02015', 1, 3, 'S', 'enabled')
+values ('E系列数学1年级寒假S[全国版]', 'MFHK02015', 1, 3, 'S', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -650,7 +650,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学一年级春季A[全国版]', 'MFHK02038', 1, 4, 'A', 'enabled')
+values ('E系列数学1年级春季A[全国版]', 'MFHK02038', 1, 4, 'A', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -748,7 +748,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学一年级春季B[全国版]', 'MFHK02039', 1, 4, 'B', 'enabled')
+values ('E系列数学1年级春季B[全国版]', 'MFHK02039', 1, 4, 'B', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -846,7 +846,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学一年级春季S[全国版]', 'MFHK02040', 1, 4, 'S', 'enabled')
+values ('E系列数学1年级春季S[全国版]', 'MFHK02040', 1, 4, 'S', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -944,7 +944,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学二年级暑期A[全国版]', 'MFHK00619', 2, 1, 'A', 'enabled')
+values ('E系列数学2年级暑期A[全国版]', 'MFHK00619', 2, 1, 'A', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -1012,7 +1012,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学二年级暑期B[全国版]', 'MFHK00620', 2, 1, 'B', 'enabled')
+values ('E系列数学2年级暑期B[全国版]', 'MFHK00620', 2, 1, 'B', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -1080,7 +1080,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学二年级暑期S班[全国版]', 'MFHK00640', 2, 1, 'S', 'enabled')
+values ('E系列数学2年级暑期S班[全国版]', 'MFHK00640', 2, 1, 'S', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -1148,7 +1148,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学二年级秋季A[全国版]', 'MFHK00010', 2, 2, 'A', 'enabled')
+values ('E系列数学2年级秋季A[全国版]', 'MFHK00010', 2, 2, 'A', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -1246,7 +1246,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学二年级秋季B[全国版]', 'MFHK00011', 2, 2, 'B', 'enabled')
+values ('E系列数学2年级秋季B[全国版]', 'MFHK00011', 2, 2, 'B', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -1344,7 +1344,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学二年级秋季S[全国版]', 'MFHK00012', 2, 2, 'S', 'enabled')
+values ('E系列数学2年级秋季S[全国版]', 'MFHK00012', 2, 2, 'S', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -1442,7 +1442,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学二年级寒假A[全国版]', 'MFHK02016', 2, 3, 'A', 'enabled')
+values ('E系列数学2年级寒假A[全国版]', 'MFHK02016', 2, 3, 'A', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -1492,7 +1492,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学二年级寒假B[全国版]', 'MFHK02017', 2, 3, 'B', 'enabled')
+values ('E系列数学2年级寒假B[全国版]', 'MFHK02017', 2, 3, 'B', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -1542,7 +1542,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学二年级寒假S[全国版]', 'MFHK02018', 2, 3, 'S', 'enabled')
+values ('E系列数学2年级寒假S[全国版]', 'MFHK02018', 2, 3, 'S', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -1592,7 +1592,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学二年级春季A[全国版]', 'MFHK02041', 2, 4, 'A', 'enabled')
+values ('E系列数学2年级春季A[全国版]', 'MFHK02041', 2, 4, 'A', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -1690,7 +1690,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学二年级春季B[全国版]', 'MFHK02042', 2, 4, 'B', 'enabled')
+values ('E系列数学2年级春季B[全国版]', 'MFHK02042', 2, 4, 'B', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -1788,7 +1788,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学二年级春季S[全国版]', 'MFHK02043', 2, 4, 'S', 'enabled')
+values ('E系列数学2年级春季S[全国版]', 'MFHK02043', 2, 4, 'S', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -1886,7 +1886,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学三年级暑期A[全国版]', 'MFHK00647', 3, 1, 'A', 'enabled')
+values ('E系列数学3年级暑期A[全国版]', 'MFHK00647', 3, 1, 'A', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -1954,7 +1954,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学三年级暑期B[全国版]', 'MFHK00646', 3, 1, 'B', 'enabled')
+values ('E系列数学3年级暑期B[全国版]', 'MFHK00646', 3, 1, 'B', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -2022,7 +2022,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学三年级暑期S班[全国版]', 'MFHK00650', 3, 1, 'S', 'enabled')
+values ('E系列数学3年级暑期S班[全国版]', 'MFHK00650', 3, 1, 'S', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -2090,7 +2090,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学三年级秋季A[全国版]', 'MFHK00013', 3, 2, 'A', 'enabled')
+values ('E系列数学3年级秋季A[全国版]', 'MFHK00013', 3, 2, 'A', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -2188,7 +2188,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学三年级秋季B[全国版]', 'MFHK00014', 3, 2, 'B', 'enabled')
+values ('E系列数学3年级秋季B[全国版]', 'MFHK00014', 3, 2, 'B', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -2286,7 +2286,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学三年级秋季S[全国版]', 'MFHK00015', 3, 2, 'S', 'enabled')
+values ('E系列数学3年级秋季S[全国版]', 'MFHK00015', 3, 2, 'S', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -2384,7 +2384,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学三年级寒假A[全国版]', 'MFHK02019', 3, 3, 'A', 'enabled')
+values ('E系列数学3年级寒假A[全国版]', 'MFHK02019', 3, 3, 'A', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -2434,7 +2434,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学三年级寒假B[全国版]', 'MFHK02020', 3, 3, 'B', 'enabled')
+values ('E系列数学3年级寒假B[全国版]', 'MFHK02020', 3, 3, 'B', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -2484,7 +2484,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学三年级寒假S[全国版]', 'MFHK02021', 3, 3, 'S', 'enabled')
+values ('E系列数学3年级寒假S[全国版]', 'MFHK02021', 3, 3, 'S', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -2534,7 +2534,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学三年级春季A[全国版]', 'MFHK02044', 3, 4, 'A', 'enabled')
+values ('E系列数学3年级春季A[全国版]', 'MFHK02044', 3, 4, 'A', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -2632,7 +2632,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学三年级春季B[全国版]', 'MFHK02045', 3, 4, 'B', 'enabled')
+values ('E系列数学3年级春季B[全国版]', 'MFHK02045', 3, 4, 'B', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -2730,7 +2730,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学三年级春季S[全国版]', 'MFHK02046', 3, 4, 'S', 'enabled')
+values ('E系列数学3年级春季S[全国版]', 'MFHK02046', 3, 4, 'S', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -2828,7 +2828,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学四年级暑期A[全国版]', 'MFHK01861', 4, 1, 'A', 'enabled')
+values ('E系列数学4年级暑期A[全国版]', 'MFHK01861', 4, 1, 'A', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -2902,7 +2902,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学四年级暑期B[全国版]', 'MFHK01862', 4, 1, 'B', 'enabled')
+values ('E系列数学4年级暑期B[全国版]', 'MFHK01862', 4, 1, 'B', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -2976,7 +2976,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学四年级暑期S班[全国版]', 'MFHK00651', 4, 1, 'S', 'enabled')
+values ('E系列数学4年级暑期S班[全国版]', 'MFHK00651', 4, 1, 'S', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -3056,7 +3056,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学四年级秋季A[全国版]', 'MFHK00016', 4, 2, 'A', 'enabled')
+values ('E系列数学4年级秋季A[全国版]', 'MFHK00016', 4, 2, 'A', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -3154,7 +3154,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学四年级秋季B[全国版]', 'MFHK00017', 4, 2, 'B', 'enabled')
+values ('E系列数学4年级秋季B[全国版]', 'MFHK00017', 4, 2, 'B', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -3252,7 +3252,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学四年级秋季S[全国版]', 'MFHK00018', 4, 2, 'S', 'enabled')
+values ('E系列数学4年级秋季S[全国版]', 'MFHK00018', 4, 2, 'S', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -3350,7 +3350,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学四年级寒假A[全国版]', 'MFHK02022', 4, 3, 'A', 'enabled')
+values ('E系列数学4年级寒假A[全国版]', 'MFHK02022', 4, 3, 'A', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -3400,7 +3400,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学四年级寒假B[全国版]', 'MFHK02023', 4, 3, 'B', 'enabled')
+values ('E系列数学4年级寒假B[全国版]', 'MFHK02023', 4, 3, 'B', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -3450,7 +3450,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学四年级寒假S[全国版]', 'MFHK02024', 4, 3, 'S', 'enabled')
+values ('E系列数学4年级寒假S[全国版]', 'MFHK02024', 4, 3, 'S', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -3500,7 +3500,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学四年级春季A[全国版]', 'MFHK02047', 4, 4, 'A', 'enabled')
+values ('E系列数学4年级春季A[全国版]', 'MFHK02047', 4, 4, 'A', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -3598,7 +3598,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学四年级春季B[全国版]', 'MFHK02048', 4, 4, 'B', 'enabled')
+values ('E系列数学4年级春季B[全国版]', 'MFHK02048', 4, 4, 'B', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -3696,7 +3696,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学四年级春季S[全国版]', 'MFHK02049', 4, 4, 'S', 'enabled')
+values ('E系列数学4年级春季S[全国版]', 'MFHK02049', 4, 4, 'S', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -3794,7 +3794,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学五年级暑期A[全国版]', 'MFHK01863', 5, 1, 'A', 'enabled')
+values ('E系列数学5年级暑期A[全国版]', 'MFHK01863', 5, 1, 'A', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -3892,7 +3892,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学五年级暑期B[全国版]', 'MFHK01864', 5, 1, 'B', 'enabled')
+values ('E系列数学5年级暑期B[全国版]', 'MFHK01864', 5, 1, 'B', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -3990,7 +3990,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学五年级暑期S[全国版]', 'MFHK01865', 5, 1, 'S', 'enabled')
+values ('E系列数学5年级暑期S[全国版]', 'MFHK01865', 5, 1, 'S', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -4088,7 +4088,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学五年级秋季A[全国版]', 'MFHK01911', 5, 2, 'A', 'enabled')
+values ('E系列数学5年级秋季A[全国版]', 'MFHK01911', 5, 2, 'A', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -4186,7 +4186,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学五年级秋季B[全国版]', 'MFHK01912', 5, 2, 'B', 'enabled')
+values ('E系列数学5年级秋季B[全国版]', 'MFHK01912', 5, 2, 'B', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -4284,7 +4284,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学五年级秋季S[全国版]', 'MFHK00021', 5, 2, 'S', 'enabled')
+values ('E系列数学5年级秋季S[全国版]', 'MFHK00021', 5, 2, 'S', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -4382,7 +4382,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学五年级寒假A[全国版]', 'MFHK02025', 5, 3, 'A', 'enabled')
+values ('E系列数学5年级寒假A[全国版]', 'MFHK02025', 5, 3, 'A', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -4432,7 +4432,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学五年级寒假B[全国版]', 'MFHK02026', 5, 3, 'B', 'enabled')
+values ('E系列数学5年级寒假B[全国版]', 'MFHK02026', 5, 3, 'B', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -4482,7 +4482,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学五年级寒假S[全国版]', 'MFHK02027', 5, 3, 'S', 'enabled')
+values ('E系列数学5年级寒假S[全国版]', 'MFHK02027', 5, 3, 'S', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -4532,7 +4532,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学五年级春季A[全国版]', 'MFHK02050', 5, 4, 'A', 'enabled')
+values ('E系列数学5年级春季A[全国版]', 'MFHK02050', 5, 4, 'A', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -4630,7 +4630,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学五年级春季B[全国版]', 'MFHK02051', 5, 4, 'B', 'enabled')
+values ('E系列数学5年级春季B[全国版]', 'MFHK02051', 5, 4, 'B', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -4728,7 +4728,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学五年级春季S[全国版]', 'MFHK02052', 5, 4, 'S', 'enabled')
+values ('E系列数学5年级春季S[全国版]', 'MFHK02052', 5, 4, 'S', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -4826,7 +4826,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学六年级暑期A[全国版]', 'MFHK01866', 6, 1, 'A', 'enabled')
+values ('E系列数学6年级暑期A[全国版]', 'MFHK01866', 6, 1, 'A', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -4924,7 +4924,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学六年级暑期B[全国版]', 'MFHK01867', 6, 1, 'B', 'enabled')
+values ('E系列数学6年级暑期B[全国版]', 'MFHK01867', 6, 1, 'B', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -5022,7 +5022,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学六年级暑期S[全国版]', 'MFHK01868', 6, 1, 'S', 'enabled')
+values ('E系列数学6年级暑期S[全国版]', 'MFHK01868', 6, 1, 'S', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -5120,7 +5120,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学六年级秋季A[全国版]', 'MFHK00022', 6, 2, 'A', 'enabled')
+values ('E系列数学6年级秋季A[全国版]', 'MFHK00022', 6, 2, 'A', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -5218,7 +5218,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学六年级秋季B[全国版]', 'MFHK00023', 6, 2, 'B', 'enabled')
+values ('E系列数学6年级秋季B[全国版]', 'MFHK00023', 6, 2, 'B', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -5316,7 +5316,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学六年级秋季S[全国版]', 'MFHK01913', 6, 2, 'S', 'enabled')
+values ('E系列数学6年级秋季S[全国版]', 'MFHK01913', 6, 2, 'S', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -5414,7 +5414,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学六年级寒假A[全国版]', 'MFHK02028', 6, 3, 'A', 'enabled')
+values ('E系列数学6年级寒假A[全国版]', 'MFHK02028', 6, 3, 'A', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -5464,7 +5464,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学六年级寒假B[全国版]', 'MFHK02029', 6, 3, 'B', 'enabled')
+values ('E系列数学6年级寒假B[全国版]', 'MFHK02029', 6, 3, 'B', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -5514,7 +5514,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学六年级寒假S[全国版]', 'MFHK02030', 6, 3, 'S', 'enabled')
+values ('E系列数学6年级寒假S[全国版]', 'MFHK02030', 6, 3, 'S', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -5564,7 +5564,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学六年级春季A[全国版]', 'MFHK02053', 6, 4, 'A', 'enabled')
+values ('E系列数学6年级春季A[全国版]', 'MFHK02053', 6, 4, 'A', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -5632,7 +5632,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学六年级春季B[全国版]', 'MFHK02054', 6, 4, 'B', 'enabled')
+values ('E系列数学6年级春季B[全国版]', 'MFHK02054', 6, 4, 'B', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,
@@ -5700,7 +5700,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.courses (title, product_code, grade, term, class_type, status)
-values ('E系列数学六年级春季S[全国版]', 'MFHK02055', 6, 4, 'S', 'enabled')
+values ('E系列数学6年级春季S[全国版]', 'MFHK02055', 6, 4, 'S', 'enabled')
 on conflict (product_code) do update set
   title = excluded.title,
   grade = excluded.grade,

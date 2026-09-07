@@ -4,7 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { textFileSha256 } from "./lib/text-hash.mjs";
 import {
-  AIXUEXI_GRADE as GRADE,
+  parseAixuexiGrade,
   aixuexiPackageDefinition,
   assertAixuexiSourceScope,
   normalizeAixuexiLessonIds,
@@ -577,11 +577,11 @@ async function writeAixuexiPackage(options, prepared) {
   };
 
   const sortedCourses = [...selectedCourses].sort((left, right) => {
-    const grade = GRADE.get(left.grade) - GRADE.get(right.grade);
+    const grade = parseAixuexiGrade(left.grade) - parseAixuexiGrade(right.grade);
     return grade || left.lessonIndex - right.lessonIndex;
   });
   for (const catalogCourse of sortedCourses) {
-    const grade = GRADE.get(catalogCourse.grade);
+    const grade = parseAixuexiGrade(catalogCourse.grade);
     const course = await readJson(resolveInside(siteRoot, catalogCourse.dataPath));
     if (course.coursewareId !== catalogCourse.coursewareId || course.pages?.length !== catalogCourse.pageCount) {
       fail(`lecture ${catalogCourse.coursewareId} does not match its catalog entry`);

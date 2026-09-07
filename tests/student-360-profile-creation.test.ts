@@ -32,7 +32,7 @@ const snapshot = () => getStudent360Snapshot({ leadId: "lead", studentId: null }
 
 beforeEach(() => {
   state.permissions = new Set(["followup.view", "followup.write", "student.edit", "student.create"]);
-  state.tables = { leads: [{ id: "lead", provisional_student_name: "孩子", phone: "", grade_hint: 3, grade_text: "三年级",
+  state.tables = { leads: [{ id: "lead", provisional_student_name: "孩子", phone: "", grade_hint: 3, grade_text: "3年级",
     status: "uncontacted", owner_id: "owner", student_id: null, identity_confirmed_at: null, created_by: "owner", created_at: at }] };
 });
 

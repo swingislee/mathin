@@ -128,7 +128,7 @@
           "required": ["path", "sha256"],
           "properties": {
             "path": { "const": "supabase/seed/teaching-plans.json" },
-            "sha256": { "const": "6f89722d555d32600826a85a0ebcd31f72dd163b8f5ffa62d15fd6b7012cfe08" }
+            "sha256": { "enum": ["7f4caef6fbdc1849a6ccecd678bc210bc9ce24ee2c37ebceb3bdc87ab7ed39ea", "6f89722d555d32600826a85a0ebcd31f72dd163b8f5ffa62d15fd6b7012cfe08"] }
           }
         }
       }

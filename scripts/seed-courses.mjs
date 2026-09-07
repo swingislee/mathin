@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { normalizeGradeText } from "../src/lib/grade-format.mjs";
 
 const root = process.cwd();
 const inputPath = path.join(root, "supabase", "seed", "teaching-plans.json");
@@ -30,6 +31,7 @@ const raw = await readFile(inputPath, "utf8");
 const plans = JSON.parse(raw);
 if (!Array.isArray(plans)) throw new Error("teaching-plans.json must contain an array");
 for (const plan of plans) {
+  plan.title = normalizeGradeText(plan.title);
   if (!catalogVersions.has(plan.catalogVersion)) {
     throw new Error(`${plan.productCode}: unregistered catalogVersion ${JSON.stringify(plan.catalogVersion)}`);
   }

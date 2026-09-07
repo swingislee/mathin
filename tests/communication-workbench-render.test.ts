@@ -31,21 +31,21 @@ vi.mock("@/i18n/navigation", () => ({
 
 const at = "2026-09-05T05:00:00Z";
 const lead = (id: string): LeadPoolRow => ({
-  id, provisionalStudentName: `学生${id}`, phone: "13812345678", gradeHint: 3, gradeText: "三年级", status: "uncontacted",
+  id, provisionalStudentName: `学生${id}`, phone: "13812345678", gradeHint: 3, gradeText: "3年级", status: "uncontacted",
   ownerId: "owner", ownerName: "跟进老师", suggestedStudentId: null, suggestedStudentName: "", createdAt: at,
   acquiredAt: at, acquisitionLocation: "校门", acquisitionMethod: "", acquisitionPromoter: "", sourceCount: 1,
   sourceMarkedDuplicate: false, interests: [], contactCount: 0, lastContactAt: null, lastContactOutcome: null,
   lastContactNote: "", wechatAdded: null, visitCommitted: null, interestLevel: null, nextContactAt: null, activeInvitation: null,
 });
 const invitation = (leadId: string): InvitationCoordinationRow => ({
-  id: `invitation-${leadId}`, leadId, leadName: `学生${leadId}`, phone: "13812345678", gradeText: "三年级", ownerName: "跟进老师",
+  id: `invitation-${leadId}`, leadId, leadName: `学生${leadId}`, phone: "13812345678", gradeText: "3年级", ownerName: "跟进老师",
   kind: "assessment_1v1", state: "confirmed", activityId: null, activityTitle: "", activityScheduledAt: null,
   assessorId: "assessor", assessorName: "测评老师", legacyTimeText: "", parentTimeOptions: [], assessorTimeOptions: [],
   scheduledAt: at, locationText: "教室", summary: "约好测评", updatedAt: at, nextContactAt: null, events: [],
 });
 const post: ActivityEnrollmentContext = {
   registrationId: "registration", studentId: null, leadId: null, name: "已结束的活动学生", phone: "13912345678", grade: 3,
-  gradeText: "三年级", ownerId: "owner", leadStatus: null, activityId: "activity", activityTitle: "数学活动", activityAt: at,
+  gradeText: "3年级", ownerId: "owner", leadStatus: null, activityId: "activity", activityTitle: "数学活动", activityAt: at,
   eligible: false, recommendation: "", assessmentBand: null, route: "closed", routeNote: "已结束", enrollmentId: null,
   courseTitle: null, termName: null, classroomName: null, termId: null, canContact: false, canEnroll: false, contacts: [],
 };

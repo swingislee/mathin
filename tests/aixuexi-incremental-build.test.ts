@@ -17,6 +17,12 @@ const catalog = { schemaVersion: 1, packageKey, courseCount: 1, courses: [course
 const manifest = { schemaVersion: 1, sourceSystem: "aixuexi_bsk", packageKey, courseCount: 1, pageCount: 25, projectedPageCount: 25, unsupportedLayoutNodeCount: 0, unmappedLayoutResourceCount: 0, registeredGapNodeCount: 0, registeredGapResourceCount: 0 };
 
 describe("single-lesson scope", () => {
+  it("accepts Arabic grade labels while preserving source manifests", () => {
+    const numericCourse = { ...course, grade: "5年级" };
+    expect(assertAixuexiSourceScope(manifest, { ...catalog, courses: [numericCourse] }, aixuexiPackageDefinition(packageKey),
+      { packageKey, lessonIds: [course.coursewareId] })).toEqual([numericCourse]);
+    expect(course.grade).toBe("五年级");
+  });
   it("accepts actual added content independently of historical package counts", () => {
     const definition = aixuexiPackageDefinition(packageKey);
     expect(assertAixuexiSourceScope(manifest, catalog, definition, { packageKey, lessonIds: ["123"] })).toEqual([course]);

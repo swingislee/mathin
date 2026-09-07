@@ -43,7 +43,7 @@ pnpm r1:courseware-source:export -- --artifact-root D:\approved-artifacts --outp
 
 1. 课程使用 `catalogVersion + productCode` 自然键；lecture、page、revision、asset revision 使用目标数据集 UUID。example ID 和重复字符 SHA-256 在真实模式拒绝。
 2. E 系列逐项匹配固定 90 门 roster 和两个冻结来源包；爱学习逐项匹配 projection v31 的 12 个产品码、三个 package key、年级和讲号。
-3. 爱学习显式讲号合同为：G+ 三/四年级、X+ 一/三/四年级和 A+ 一/二年级各 1～15 讲；G+ 五/六年级与 X+ 二/五/六年级只含 1～6、8～14。前者的第 7/15 讲是来源占位，后者是来源缺失，两者不得混淆。
+3. 爱学习显式讲号合同为：G+ 3/4年级、X+ 1/3/4年级和 A+ 1/2年级各 1～15 讲；G+ 5/6年级与 X+ 2/5/6年级只含 1～6、8～14。前者的第 7/15 讲是来源占位，后者是来源缺失，两者不得混淆。
 4. 每个 page 显式记录源 revision、规范化文档 SHA-256、`learningCheckEnabled`、非空 `requiredBindingKeys` 和解析后的 binding 明细；required set 差异使流程停止。`native-16x9` release 只能引用 native revision；`adapted-4x3` 允许引用 adapted revision，也允许复用同一 4:3 文档语义下的 native revision。
 5. 每个 binding 固定 `bindingKey → assetRevisionId → objectSha256 → bucket/path`，并把 H5 `launchQuery` 纳入目标 snapshot；遗漏它会改变课堂 H5 启动行为。普通 CAS 位于 `cw-objects/sha256/<前两位>/<sha256>`；H5 位于 `cw-h5/packages/<packageHash>`，包 manifest 的入口、字节数、精确文件集合与每个远端文件的实际字节 SHA-256 必须全部一致。
 6. 每轨分别计算 page set、binding set、resource set 和 normalized release snapshot 的 canonical JSON SHA-256。`capturedRelease` 必须来自 `cw_lecture_track_heads.current_release_id → cw_lecture_releases` 的严格连接，记录唯一 release UUID、实际 release number、原始 `release.snapshot` 摘要 `rawSnapshotSha256` 和可重建投影摘要 `snapshotSha256`；页面、revision 与 binding 只沿该 snapshot 解析，禁止从 draft/current page head、可变 binding 或任意历史 release 拼装。目标 `release` 仍描述未来 `production-v1.0-baseline` release-1，其 snapshot hash 必须与显式页面内容一致。

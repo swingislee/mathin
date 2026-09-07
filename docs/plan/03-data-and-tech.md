@@ -55,6 +55,8 @@ export const tools: ToolDef[] = [ ... ];
 
 所有表默认 `id uuid pk default gen_random_uuid()`、`created_at timestamptz default now()`。**每张表必须 `enable row level security` 并写策略**，migration 里没有 RLS 的表不得合并。
 
+**年级表示**：1–7 年级的结构化值使用整数 `1`–`7`，中文标签、课程／班级名称、种子和业务文档使用阿拉伯数字，例如 `1年级`、`7年级`、`3–6年级`；双语页面可按现有排版保留数字与“年级”之间的空格。外部导入继续兼容旧写法，进入业务标签时规范化；原始来源凭据、稳定来源键、历史迁移和冻结内容保留原值。通用解析与格式化复用 `src/lib/grade-format.mjs`；数据库范围及本地验证步骤见 [年级文字统一操作记录](../runbooks/grade-label-standardization.md)。
+
 ### 3.1 账户
 
 ```sql

@@ -1,3 +1,4 @@
+import { normalizeGradeLabel, parseSchoolGrade } from "@/lib/grade-format.mjs";
 import type {
   ClassRosterStudentOption,
   ClassRosterTargetOption,
@@ -108,14 +109,7 @@ function columnName(index: number): string {
 }
 
 function parseGrade(value: string): number | null {
-  const compact = value.replace(/\s+/g, "");
-  const numeric = compact.match(/^(\d{1,2})年级$/);
-  if (numeric) return Number(numeric[1]);
-  const words = new Map([
-    ["一年级", 1], ["二年级", 2], ["三年级", 3], ["四年级", 4], ["五年级", 5], ["六年级", 6],
-    ["七年级", 7], ["八年级", 8], ["九年级", 9],
-  ]);
-  return words.get(compact) ?? null;
+  return parseSchoolGrade(value);
 }
 
 export interface ParsedMofaxiaoRosterSchedule {
@@ -482,7 +476,7 @@ export function buildMofaxiaoRosterDefaultClass(
   schoolYear = 2026,
 ): MofaxiaoClassRosterDefaultClass {
   const system = canonicalRosterSeriesName(source.system);
-  const gradeText = compactNamePart(source.gradeText, "待定年级");
+  const gradeText = compactNamePart(normalizeGradeLabel(source.gradeText), "待定年级");
   const seasonText = compactNamePart(source.seasonText, source.season === 2 ? "秋季" : "待定季节");
   const classType = compactNamePart(canonicalMofaxiaoRosterClassType(source), "待定班型");
   const courseClassType = compactNamePart(mofaxiaoRosterCourseClassType(source), classType);

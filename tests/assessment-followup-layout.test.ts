@@ -33,7 +33,7 @@ function row(id: string, overrides: Partial<AssessmentWorkbenchRow> = {}): Asses
   return {
     id, assessmentKind: "one_to_one", activityId: null, activityTitle: "测评", publicClassRecord: null,
     invitationId: `invitation-${id}`, registrationId: `registration-${id}`, studentId: `student-${id}`, leadId: null,
-    name: `同学${id}`, phone: "13800000000", grade: 3, gradeText: "三年级", scheduledAt: "2026-09-06T02:00:00Z",
+    name: `同学${id}`, phone: "13800000000", grade: 3, gradeText: "3年级", scheduledAt: "2026-09-06T02:00:00Z",
     location: "测评教室", assessorId: "teacher", assessorName: "测评老师", assessorSource: "assigned", background: "前序沟通",
     participationStatus: "booked", assessmentStartedAt: null, assessmentCompletedAt: null, assessment: null,
     questionSummary: null, route: null, updatedAt: "2026-09-06T02:00:00Z", ...overrides,

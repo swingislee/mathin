@@ -80,22 +80,22 @@ begin
   insert into public.classrooms(id,owner_id,name,invite_code,course_id,term_id,
     grade,capacity,purpose,offering_type,operational_status)
   values
-    (class_a,actor,'报名验收 · 四年级 A 班','d3s905a1',course_four,target_term,4,12,'production','long_term_formal','active'),
-    (class_b,actor,'报名验收 · 四年级 B 班','d3s905b1',course_four,target_term,4,12,'production','long_term_formal','active'),
-    (class_c,actor,'报名验收 · 五年级 A 班','d3s905c1',course_five,target_term,5,12,'production','long_term_formal','active');
+    (class_a,actor,'报名验收 · 4年级 A 班','d3s905a1',course_four,target_term,4,12,'production','long_term_formal','active'),
+    (class_b,actor,'报名验收 · 4年级 B 班','d3s905b1',course_four,target_term,4,12,'production','long_term_formal','active'),
+    (class_c,actor,'报名验收 · 5年级 A 班','d3s905c1',course_five,target_term,5,12,'production','long_term_formal','active');
 
   for ordinal in 1..12 loop
     student_grade := case when ordinal <= 6 or ordinal in (9,10) then 4 else 5 end;
     target_course := case when student_grade=4 then course_four else course_five end;
     demo_note := case
-      when ordinal <= 6 then '人工验收种子：同课程、同学期，可连续选择并批量分入四年级 A 班或 B 班。'
-      when ordinal <= 8 then '人工验收种子：五年级待分班，用于课程与年级筛选、单人分班。'
-      when ordinal=9 then '人工验收种子：已分入四年级 A 班，可试用调班。'
-      when ordinal=10 then '人工验收种子：已从四年级 A 班转入 B 班，保留原班历史。'
-      when ordinal=11 then '人工验收种子：已分入五年级 A 班。'
+      when ordinal <= 6 then '人工验收种子：同课程、同学期，可连续选择并批量分入4年级 A 班或 B 班。'
+      when ordinal <= 8 then '人工验收种子：5年级待分班，用于课程与年级筛选、单人分班。'
+      when ordinal=9 then '人工验收种子：已分入4年级 A 班，可试用调班。'
+      when ordinal=10 then '人工验收种子：已从4年级 A 班转入 B 班，保留原班历史。'
+      when ordinal=11 then '人工验收种子：已分入5年级 A 班。'
       else '人工验收种子：家长调整学习安排，报名取消，保留报名记录。' end;
     student_id := public.create_student(
-      '报名验收 · ' || case when student_grade=4 then '四年级' else '五年级' end
+      '报名验收 · ' || case when student_grade=4 then '4年级' else '5年级' end
         || ' ' || lpad(ordinal::text,2,'0'),
       student_grade,'','',seed_key,'','',demo_note);
     opportunity_id := public.save_course_opportunity(
@@ -110,7 +110,7 @@ begin
       perform public.cancel_course_enrollment(enrollment_id,'报名验收：家长调整学习安排，取消本次报名',clock_timestamp());
     end if;
     if ordinal=10 then
-      perform public.transfer_course_enrollment(enrollment_id,class_b,'报名验收：由四年级 A 班转入 B 班',clock_timestamp());
+      perform public.transfer_course_enrollment(enrollment_id,class_b,'报名验收：由4年级 A 班转入 B 班',clock_timestamp());
     end if;
   end loop;
   if (select count(*) from public.students) <> before_students+12

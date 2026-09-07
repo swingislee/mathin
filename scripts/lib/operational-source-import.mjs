@@ -1,4 +1,5 @@
 import {createHash} from 'node:crypto';
+import {normalizeGradeLabel} from '../../src/lib/grade-format.mjs';
 import {historyFieldName,historicalDate} from './student-business-history.mjs';
 import {historyPayloadHash} from './history-import-trial.mjs';
 import {normalizeSourceAssessmentBand,sourceAssessmentNote,normalizeSourceContact,sourceScore,mergeSourceNotes,sourceVisitKinds,resolveSourceStaffId} from '../../src/features/school/business-source-contract.ts';
@@ -38,7 +39,7 @@ export function buildOperationalSourceImport(payload,snapshot) {
     if(key&&leadsByExact.has(key))return leadsByExact.get(key);
     const leadId=id(`operation-lead:${r.id}`);
     rows.leads.push({id:leadId,provisional_student_name:name(r),normalized_name:normalized,phone:tel,phone_normalized:tel||null,
-      grade_hint:grade(r),grade_text:field(r,'年级')||field(r,'年级/25级'),status:'unassigned',source_record_id:r.id,owner_id:staff(r,'学服老师'),
+      grade_hint:grade(r),grade_text:normalizeGradeLabel(field(r,'年级')||field(r,'年级/25级')),status:'unassigned',source_record_id:r.id,owner_id:staff(r,'学服老师'),
       note:originalNotes(r,['年级/25级','就读学校','获取渠道','渠道','获取人员','跟进人','确认人员','跟进结果','确认结果','意向分类','用户当下加V与否','诺访与否'])});
     if(key)leadsByExact.set(key,leadId);
     if(r.student_id)studentLeads.set(r.student_id,leadId);
