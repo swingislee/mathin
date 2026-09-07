@@ -114,7 +114,7 @@ describe("direct face cuts and presentation-only cube motion", () => {
     expect(scene).toContain("data-cube-cut-confirmation");
     expect(scene).toContain("onClick={cutConfirmation.onConfirm}");
     expect(scene).toContain("onClick={cutConfirmation.onCancel}");
-    expect(workbench).toContain("const cutSelection = lockedCut ?? hoveredCut");
+    expect(workbench).toContain("const cutSelection = lockedCut ?? hoveredCut.selection");
     expect(workbench).not.toContain("setCutAfter");
     expect(css).toMatch(/\.groups \{[^}]*bottom: 8px; right: 8px/);
     expect(css).toContain('data-cube-panel-anchor="meta"');

@@ -10,11 +10,12 @@ import { buildVoxelPaintFaceInstances } from "@/features/spatial-math/renderer-r
 import { adjacentCube, CUBE_AXIS_COLORS, type CubeStructureState, type CubeTool } from "./cube-structures-contract";
 import { CubeStructureAnnotations, type CubeAnnotationPreview } from "./CubeStructureAnnotations";
 import { cubeCutPreviewPlanes } from "./cube-structures-cut-preview";
-import type { CubeCutSelection } from "./cube-structures-cut-interaction";
+import type { CubeCutLine, CubeCutSelection } from "./cube-structures-cut-interaction";
 
-export function CubeStructuresScene({ state, cut, cutConfirmation, annotation, tool, face, ground, origin, axesVisible, axisLength, validBuild, onGroundHover, onGroundClick }: {
+export function CubeStructuresScene({ state, cut, cutLines, cutConfirmation, annotation, tool, face, ground, origin, axesVisible, axisLength, validBuild, onGroundHover, onGroundClick }: {
   readonly state: CubeStructureState;
   readonly cut: CubeCutSelection | null;
+  readonly cutLines: readonly CubeCutLine[];
   readonly cutConfirmation: { readonly anchor: VoxelCoordinate; readonly title: string; readonly confirmLabel: string; readonly cancelLabel: string; readonly disabled: boolean; readonly onConfirm: () => void; readonly onCancel: () => void } | null;
   readonly annotation: CubeAnnotationPreview;
   readonly tool: CubeTool;
@@ -28,7 +29,7 @@ export function CubeStructuresScene({ state, cut, cutConfirmation, annotation, t
   readonly onGroundClick: (position: VoxelCoordinate) => void;
 }) {
   const position = tool === "build" ? (face ? adjacentCube(face) : ground) : face?.cell;
-  const highlightedFace = tool === "face" ? face : tool === "cut" && !cut?.edge ? cut?.face : null;
+  const highlightedFace = tool === "face" || tool === "cut" && !cutLines.length ? face : null;
   const previewFace = highlightedFace ? buildVoxelPaintFaceInstances([highlightedFace.cell], [highlightedFace])[0] : null;
   const color = tool === "cut" && cut ? CUBE_AXIS_COLORS[cut.axis] : tool === "remove" || (tool === "build" && !validBuild) ? "#df8a84" : "#edce79";
   const floor = origin?.y ?? -0.5;
@@ -46,8 +47,9 @@ export function CubeStructuresScene({ state, cut, cutConfirmation, annotation, t
         <meshBasicMaterial color={CUBE_AXIS_COLORS[cut.axis]} transparent opacity={0.16} depthTest={false} depthWrite={false} side={DoubleSide} />
       </mesh><Line points={corners} color={CUBE_AXIS_COLORS[cut.axis]} lineWidth={2} depthTest={false} depthWrite={false} raycast={() => null} renderOrder={6} /></group>;
     })}
-    {tool === "cut" && cut?.edge && <Line points={[[cut.edge.start.x, cut.edge.start.y, cut.edge.start.z], [cut.edge.end.x, cut.edge.end.y, cut.edge.end.z]]}
-      color={CUBE_AXIS_COLORS[cut.axis]} lineWidth={6} depthTest={false} depthWrite={false} raycast={() => null} renderOrder={7} />}
+    {["cut", "orbit", "pan"].includes(tool) && [...new Map(cutLines.map((line) => [line.key, line])).values()].map((line, index) => <Line key={line.key}
+      points={[[line.start.x, line.start.y, line.start.z], [line.end.x, line.end.y, line.end.z]]}
+      color={cut ? CUBE_AXIS_COLORS[cut.axis] : "#edce79"} lineWidth={index === 0 ? 6 : 4} depthTest={false} depthWrite={false} raycast={() => null} renderOrder={7} />)}
     {tool === "cut" && cutConfirmation && <Html position={[cutConfirmation.anchor.x, cutConfirmation.anchor.y, cutConfirmation.anchor.z]} zIndexRange={[24, 20]}
       calculatePosition={(object, camera, size) => {
         const point = new Vector3().setFromMatrixPosition(object.matrixWorld).project(camera);

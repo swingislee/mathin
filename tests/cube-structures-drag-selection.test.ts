@@ -1,10 +1,10 @@
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { OrthographicCamera, Ray, Vector3 } from "three";
-import { CUBE_COLORS, CUBE_GROUP_COLORS, CUBE_SELECTION_COLOR, applyCubeOperation, buildCubeStructureRenderModel, createCubeHistory, cubeDisplayPosition, cubeStructureMetrics } from "@/features/tools/spatial-lab/cube-structures-contract";
+import { CUBE_COLORS, CUBE_GROUP_COLORS, CUBE_SELECTION_COLOR, buildCubeStructureRenderModel, createCubeHistory, cubeDisplayPosition, cubeStructureMetrics } from "@/features/tools/spatial-lab/cube-structures-contract";
 import { cubeDragDistance, cubeDragHit, cubeDragOperation, cubeDragPositions, cubeDragProjection } from "@/features/tools/spatial-lab/cube-structures-drag";
 import { bindCubeAxisDrag, type CubeDragPreview, type CubeMoveInteraction } from "@/features/tools/spatial-lab/cube-structures-drag-controller";
-import { cubeCutFromEdge, cubeCutFromFace } from "@/features/tools/spatial-lab/cube-structures-cut-interaction";
+import { cubeCutFromFace } from "@/features/tools/spatial-lab/cube-structures-cut-interaction";
 import { createCubeSession, cubeSessionScene, operateCubeSession, startCubeRecording, undoCubeSession } from "@/features/tools/spatial-lab/cube-structures-session";
 
 const origin = { x: 0, y: 0, z: 0 };
@@ -187,31 +187,10 @@ describe("cut edge selection and independent selection/group colors", () => {
   const ids = state.cubes.map((cube) => cube.id);
   const face = { cell: { x: 1, y: 1, z: 2 }, direction: "z+" as const };
 
-  it("face mode uses the center region, so brushing a corner cannot switch the normal", () => {
+  it("face mode accepts the complete picked surface, including corners", () => {
     expect(cubeCutFromFace(state, ids, face, { x: 1, y: 1, z: 2.5 })?.axis).toBe("z");
-    expect(cubeCutFromFace(state, ids, face, { x: 1.48, y: 1, z: 2.5 })).toBeNull();
-    expect(cubeCutFromFace(state, ids, face, { x: 1, y: 0.51, z: 2.5 })).toBeNull();
-  });
-
-  it("selects the actual X or Y seam on a front face, not its Z normal", () => {
-    expect(cubeCutFromEdge(state, ids, face, { x: 0.51, y: 1, z: 2.5 })).toMatchObject({ axis: "x", after: 0, edge: { start: { x: 0.5 }, end: { x: 0.5 } } });
-    expect(cubeCutFromEdge(state, ids, face, { x: 1, y: 1.49, z: 2.5 })).toMatchObject({ axis: "y", after: 1 });
-    expect(cubeCutFromEdge(state, ids, face, { x: 1, y: 1, z: 2.5 })).toBeNull();
-    expect(cubeCutFromEdge(state, ids, { ...face, cell: { x: 0, y: 1, z: 2 } }, { x: -0.49, y: 1, z: 2.5 })).toBeNull();
-  });
-
-  it("keeps the same boundary across adjacent cubes and retains it near intersections", () => {
-    const previous = cubeCutFromEdge(state, ids, face, { x: 0.51, y: 1, z: 2.5 })!;
-    expect(cubeCutFromEdge(state, ids, { ...face, cell: { x: 0, y: 1, z: 2 } }, { x: 0.49, y: 1, z: 2.5 })).toMatchObject({ axis: "x", after: 0 });
-    expect(cubeCutFromEdge(state, ids, face, { x: 0.53, y: 0.51, z: 2.5 }, previous)?.axis).toBe("x");
-    expect(cubeCutFromEdge(state, ids, face, { x: 0.67, y: 0.51, z: 2.5 }, previous)?.axis).toBe("y");
-  });
-
-  it("uses displaced coordinates and respects group scope", () => {
-    const moved = applyCubeOperation(state, { kind: "display-move", ids, axis: "x", distance: 3 });
-    const selection = cubeCutFromEdge(moved, ids, { ...face, cell: { x: 4, y: 1, z: 2 } }, { x: 3.51, y: 1, z: 2.5 });
-    expect(selection).toMatchObject({ axis: "x", after: 0, anchor: { x: 3.5 } });
-    expect(cubeCutFromEdge(state, [ids[0]], face, { x: 0.51, y: 1, z: 2.5 })).toBeNull();
+    expect(cubeCutFromFace(state, ids, face, { x: 1.48, y: 1, z: 2.5 })?.axis).toBe("z");
+    expect(cubeCutFromFace(state, ids, face, { x: 1, y: 0.51, z: 2.5 })?.axis).toBe("z");
   });
 
   it("selection stays yellow in every group; group recoloring preserves membership, order and authored colors", () => {
@@ -235,7 +214,7 @@ describe("cut edge selection and independent selection/group colors", () => {
   it("wires object navigation and preview handoff independently of semantic state", () => {
     const root = readFileSync("src/features/tools/spatial-lab/CubeStructuresWorkbench.tsx", "utf8");
     const motion = readFileSync("src/features/tools/spatial-lab/useCubeDisplayMotion.ts", "utf8");
-    expect(root).toContain('tool === "move" ? "object" : "orbit"');
+    expect(root).toContain('tool === "move" || tool === "cut" ? "object" : "orbit"');
     expect(root).toContain('setCutInput(value as typeof cutInput)');
     expect(root).toContain("onCommit: commit");
     expect(root).toContain("snapToGrid: snap");

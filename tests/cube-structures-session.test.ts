@@ -221,7 +221,7 @@ describe("groups, recoverable layers and fixed axes", () => {
     expect(source).toContain("data-cube-group-scope");
     expect(source).toContain("if (!scopeIds.includes(cube.id))");
     expect(source).toContain("data-cube-layer-panel");
-    expect(source).toContain("navigationMode={tool === \"pan\" ? \"pan\" : tool === \"move\" ? \"object\" : \"orbit\"}");
+    expect(source).toContain("navigationMode={tool === \"pan\" ? \"pan\" : tool === \"move\" || tool === \"cut\" ? \"object\" : \"orbit\"}");
     expect(source).not.toContain("setEdgeStyle");
     const scene = readFileSync("src/features/tools/spatial-lab/CubeStructuresScene.tsx", "utf8");
     const renderer = readFileSync("src/features/spatial-math/renderer-r3f/VoxelCanvas.tsx", "utf8");
