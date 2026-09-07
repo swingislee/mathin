@@ -1,33 +1,37 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useRef, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Check, Ellipsis, RefreshCw } from "lucide-react";
 import { useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { DashboardCommandActions, DashboardCommandFilters, DashboardCommandState, DashboardCommandTabs, DashboardEmptyCard, DashboardPage, DashboardTableShell } from "./dashboard-page";
+import { DashboardCommandActions, DashboardCommandFilters, DashboardCommandState, DashboardCommandTabs, DashboardEmptyCard, DashboardPage, DashboardTableColumnHeader, DashboardTableShell } from "./dashboard-page";
 import { FollowupCommandPanel } from "./FollowupCommandPanel";
 import { FollowupRecordRow, FollowupTableBody } from "./dashboard-page/FollowupRecordRow";
-import { Student360Trigger } from "./Student360Sheet";
+import { FollowupPersonCell } from "./dashboard-page/FollowupPersonCell";
+import { useDashboardFieldView } from "./dashboard-page/useDashboardFieldView";
+import { formatDashboardDate } from "./dashboard-page/dashboard-table-date-contract";
+import { filterAndSortDashboardFields } from "./dashboard-page/dashboard-table-field-contract";
+import { useFollowupServerFields } from "./useFollowupServerFields";
+import { STUDENT_STAGE_TABLE_COLUMNS, studentStageFieldsAcrossStages, studentStageTableFields } from "./student-stage-table-fields";
+import { FilterBar, FilterSearchInput } from "./FilterBar";
 import { LeadPoolPagination } from "./LeadPoolPagination";
 import { StudentStageAssignmentControl, StudentStageOwnerControl } from "./StudentStageAssignmentControl";
 import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
 import { studentStageMessages } from "./student-stage-messages";
-import { defaultStudentEntryMode, replaceSavedStudent, STUDENT_STAGE_DETAILS, STUDENT_STAGE_TABS, studentStageHref,
+import { defaultStudentEntryMode, replaceSavedStudent, STUDENT_STAGE_TABS, studentStageHref,
   type StudentEntryMode, type StudentStageData, type StudentStageFilters, type StudentStageRow, type StudentStageSaved, type StudentStageAssignment, type StudentStageAssignee } from "./student-stage-contract";
 
 const Entry = dynamic(() => import("./StudentStageEntry").then(m => m.StudentStageEntry));
 
-export function StudentStageWorkspace({ data, filters, locale, currentUserId, canEnroll, canAssign, assignees, actions, timeZone }: {
+export function StudentStageWorkspace({ data, filters, locale, currentUserId, canEnroll, canAssign, assignees, actions, timeZone, now }: {
   data: StudentStageData; filters: StudentStageFilters; locale: string; currentUserId: string;
-  canEnroll: boolean; actions: ReactNode; timeZone: string;
+  canEnroll: boolean; actions: ReactNode; timeZone: string; now?: number;
   canAssign: boolean; assignees: StudentStageAssignee[];
 }) {
   const m = studentStageMessages(locale);
@@ -37,7 +41,6 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
   const viewKey = JSON.stringify(filters);
   const [rows, setRows] = useState(data.rows);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
-  const selectedRows = rows.filter(row => selectedKeys.has(row.key));
   const [active, setActive] = useState<{ key: string; mode: StudentEntryMode } | null>(null);
   const [focusedKey, setFocusedKey] = useState<string | null>(null);
   const [outcomeRequest, setOutcomeRequest] = useState<{ key: string; value: "" | "unreachable" | "connected" | "declined" | "invalid_number" } | null>(null);
@@ -54,15 +57,28 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
       setRows(data.rows); setSelectedKeys(new Set()); setActive(null); setFocusedKey(null); setOutcomeRequest(null); setVisited(new Set()); setHandled(new Set()); setResetRequested(false);
     }
   }
-  const formatAt = (value: string | null) => value ? new Intl.DateTimeFormat(locale, { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false, timeZone }).format(new Date(value)) : "—";
-  const navigate = (change: Partial<StudentStageFilters>) => { if (!busy) router.replace(studentStageHref(filters, { page: 1, ...change }), { scroll: false }); };
+  const [clockNow] = useState(() => now ?? Date.now());
+  const context = useMemo(() => ({ locale, timeZone, now: clockNow }), [locale, timeZone, clockNow]);
+  const fields = useMemo(() => studentStageTableFields(locale, filters.stage, currentUserId), [locale, filters.stage, currentUserId]);
+  const server = useFollowupServerFields(data.fieldView);
+  const table = useDashboardFieldView({ rows, fields, columns: STUDENT_STAGE_TABLE_COLUMNS, context,
+    server: server ? { ...server, onChange: query => { if (!busy) server.onChange(query); } } : undefined });
+  const visibleRows = table.visibleRows;
+  const selectedRows = visibleRows.filter(row => selectedKeys.has(row.key));
+  const fieldQuery = { version: 2 as const, filters: table.filters, sort: table.sort };
+  const currentFilters = { ...filters, fields: JSON.stringify(fieldQuery) };
+  const acrossStages = studentStageFieldsAcrossStages(fieldQuery);
+  const formatAt = (value: string | null) => formatDashboardDate(value, context, { time: true });
+  const navigate = (change: Partial<StudentStageFilters>) => { if (!busy) router.replace(studentStageHref(currentFilters, {
+    page: 1, ...(change.stage !== undefined || change.q !== undefined ? { fields: acrossStages, detail: "" } : {}), ...change,
+  }), { scroll: false }); };
   const open = (row: StudentStageRow, mode: StudentEntryMode = defaultStudentEntryMode(row)) => {
     if (busy) return;
     setMenuKey(null); setFocusedKey(row.key); setVisited(current => new Set(current).add(row.key)); setActive({ key: row.key, mode });
   };
   const saved = (originalKey: string, result: StudentStageSaved, advance: boolean) => {
     setOutcomeRequest(null);
-    const next = rows[rows.findIndex(row => row.key === originalKey) + 1];
+    const next = visibleRows[visibleRows.findIndex(row => row.key === originalKey) + 1];
     setRows(current => replaceSavedStudent(current, originalKey, result.subject));
     setSelectedKeys(current => { if (!current.has(originalKey)) return current; const values = new Set(current); values.delete(originalKey); values.add(result.subject.key); return values; });
     setFocusedKey(advance && next ? next.key : result.subject.key);
@@ -77,6 +93,7 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
       if (!updates.has(row.key)) return [row];
       const subject = updates.get(row.key);
       if (!subject || filters.scope === "mine" && subject.ownerId !== currentUserId || filters.scope === "unassigned" && subject.ownerId !== null) return [];
+      if (!filterAndSortDashboardFields([subject], fields, fieldQuery, locale, timeZone).length) return [];
       return [subject];
     }));
     setSelectedKeys(current => new Set([...current].filter(key => !updates.has(key))));
@@ -88,13 +105,12 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
     commandPanel={<FollowupCommandPanel>
       <DashboardCommandState><DashboardCommandTabs ariaLabel={m.title} activeValue={filters.stage} activeTone="accent"
         items={STUDENT_STAGE_TABS.map(stage => ({ value: stage, label: m.stages[stage], badge: data.counts[stage] ?? 0,
-          href: studentStageHref(filters, { stage, page: 1, detail: "", q: "" }) }))} /></DashboardCommandState>
-      <DashboardCommandFilters><form className="flex min-w-0 flex-wrap items-center gap-2" onSubmit={event => {
+          href: studentStageHref(currentFilters, { stage, page: 1, detail: "", q: "", fields: acrossStages }) }))} /></DashboardCommandState>
+      <DashboardCommandFilters><FilterBar onSubmit={event => {
         event.preventDefault(); const form = new FormData(event.currentTarget); navigate({ q: String(form.get("q") ?? "").trim(), detail: "" });
-      }}><Input key={filters.q} name="q" defaultValue={filters.q} placeholder={m.search} aria-label={m.search} disabled={busy} className="h-8 w-60 text-xs" />
-        <Button type="submit" size="sm" variant="secondary" disabled={busy}>{studentT("filter")}</Button>
+      }}><FilterSearchInput name="q" defaultValue={filters.q} placeholder={m.search} aria-label={m.search} disabled={busy} />
         {filters.q ? <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => navigate({ q: "", detail: "" })}>{studentT("reset")}</Button> : null}
-      </form></DashboardCommandFilters>
+      </FilterBar></DashboardCommandFilters>
       <DashboardCommandActions>
         {canAssign && selectedRows.length ? <><span className="text-xs text-muted">{m.selected} {selectedRows.length}</span>
           <StudentStageAssignmentControl rows={selectedRows} assignees={assignees} locale={locale} disabled={busy} onBusyChange={setBusy} onAssigned={assigned} />
@@ -105,28 +121,22 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
     </FollowupCommandPanel>}
     summary={filters.q ? <p className="text-xs text-muted">{m.searchHint}</p> : filters.stage === "former_student" ? <p className="text-xs text-muted">{m.formerHint}</p> : null}
     footer={<LeadPoolPagination baseHref="/dashboard/students" currentPage={data.page} totalPages={data.totalPages} totalCount={data.count}
-      pageSize={data.pageSize} scope={filters.scope} q={filters.q} extraQuery={{ stage: filters.stage, ...(filters.detail ? { detail: filters.detail } : {}) }}
+      pageSize={data.pageSize} scope={filters.scope} q={filters.q} extraQuery={{ stage: filters.stage, fields: currentFilters.fields }}
       disabled={busy} onPageChange={(page, pageSize) => navigate({ page, pageSize })} />}>
-    <DashboardTableShell data-followup-workbench>
+    <DashboardTableShell data-followup-workbench aria-busy={server?.pending}>
       <Table className={`table-fixed text-xs [&_th]:px-2 ${showBackground ? "min-w-[63rem]" : "min-w-[53rem]"}`}>
         <TableHeader className="sticky top-0 z-20 bg-paper text-xs text-muted"><TableRow>
-          {canAssign ? <TableHead className="w-9"><Checkbox aria-label={m.selectPage} disabled={busy || !rows.length}
-            checked={Boolean(rows.length) && selectedRows.length === rows.length ? true : selectedRows.length ? "indeterminate" : false}
-            onCheckedChange={checked => setSelectedKeys(new Set(checked === true ? rows.map(row => row.key) : []))} /></TableHead> : null}
-          <TableHead className="w-36">{m.name}</TableHead>
-          <TableHead className="w-28">{m.phone}</TableHead>
-          <TableHead className="w-32"><Select value={filters.detail || "all"} onValueChange={value => navigate({ detail: value === "all" ? "" : value })} disabled={busy || Boolean(filters.q)}>
-            <SelectTrigger className="h-8 border-0 bg-transparent px-0 text-xs shadow-none" aria-label={m.state}><SelectValue /></SelectTrigger><SelectContent>
-              <SelectItem value="all">{m.allDetails}</SelectItem>{STUDENT_STAGE_DETAILS[filters.stage].map(value => <SelectItem key={value} value={value}>{m.details[value]}</SelectItem>)}
-            </SelectContent></Select></TableHead>
-          {showBackground ? <TableHead className="w-40">{m.background}</TableHead> : null}
-          <TableHead className="w-20"><Select value={filters.scope} onValueChange={scope => navigate({ scope: scope as StudentStageFilters["scope"] })} disabled={busy}>
-            <SelectTrigger className="h-8 border-0 bg-transparent px-0 text-xs shadow-none" aria-label={m.owner}><SelectValue /></SelectTrigger><SelectContent>
-              <SelectItem value="mine">{m.mine}</SelectItem><SelectItem value="all">{m.all}</SelectItem><SelectItem value="unassigned">{m.unassigned}</SelectItem>
-            </SelectContent></Select></TableHead>
-          <TableHead>{m.recent}</TableHead><TableHead className={locale.startsWith("en") ? "w-64 text-right" : "w-48 text-right"}>{m.actions}</TableHead>
+          {canAssign ? <TableHead className="w-9"><Checkbox aria-label={m.selectPage} disabled={busy || !visibleRows.length}
+            checked={Boolean(visibleRows.length) && selectedRows.length === visibleRows.length ? true : selectedRows.length ? "indeterminate" : false}
+            onCheckedChange={checked => setSelectedKeys(new Set(checked === true ? visibleRows.map(row => row.key) : []))} /></TableHead> : null}
+          <TableHead className="w-40"><DashboardTableColumnHeader label={m.name} {...table.columnProps("name")} disabled={busy} /></TableHead>
+          <TableHead className="w-28"><DashboardTableColumnHeader label={m.phone} {...table.columnProps("phone")} disabled={busy} /></TableHead>
+          <TableHead className="w-32"><DashboardTableColumnHeader label={m.state} {...table.columnProps("state")} disabled={busy} /></TableHead>
+          {showBackground ? <TableHead className="w-40"><DashboardTableColumnHeader label={m.background} {...table.columnProps("background")} disabled={busy} /></TableHead> : null}
+          <TableHead className="w-24"><DashboardTableColumnHeader label={m.owner} {...table.columnProps("owner")} disabled={busy} /></TableHead>
+          <TableHead><DashboardTableColumnHeader label={m.recent} {...table.columnProps("recent")} disabled={busy} /></TableHead><TableHead className={locale.startsWith("en") ? "w-64 text-right" : "w-48 text-right"}>{m.actions}</TableHead>
         </TableRow></TableHeader>
-        <FollowupTableBody onNavigate={key => { if (busy) return false; setFocusedKey(key); return true; }}>{rows.map((row, index) => {
+        <FollowupTableBody onNavigate={key => { if (busy) return false; setFocusedKey(key); return true; }}>{visibleRows.map((row, index) => {
           const expanded = active?.key === row.key;
           const contactMode = defaultStudentEntryMode(row);
           const enrollmentLabel = row.stage === "awaiting_renewal" ? m.renewal : row.stage === "former_student" ? m.reactivate : m.enrollment;
@@ -146,10 +156,9 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
             summary={<>
             {canAssign ? <TableCell><Checkbox aria-label={`${m.selectStudent} · ${row.name}`} disabled={busy} checked={selectedKeys.has(row.key)}
               onCheckedChange={checked => setSelectedKeys(current => { const next = new Set(current); if (checked === true) next.add(row.key); else next.delete(row.key); return next; })} /></TableCell> : null}
-            <TableCell title={`${row.name} · ${grade}`}><div className="flex min-w-0 items-center gap-1.5">
-              <Student360Trigger subject={{ studentId: row.studentId, leadId: row.leadId }} fallback={{ name: row.name, grade: row.grade }} className="min-w-0 truncate font-medium">{row.name}</Student360Trigger>
-              <span className="max-w-16 shrink-0 truncate text-[11px] text-muted">{grade}</span>
-            </div></TableCell>
+            <TableCell><FollowupPersonCell name={row.name} phone={row.phone} grade={grade} studentGrade={row.grade} nameOnly inlineGrade
+              subject={{ studentId: row.studentId, leadId: row.leadId }} expanded={expanded} detailsId={`student-stage-details-${row.key}`}
+              onToggle={() => { if (!busy) { if (expanded) setActive(null); else open(row); } }} /></TableCell>
             <TableCell title={row.phone || undefined}><p className="truncate tabular-nums text-muted">{row.phone || "—"}</p></TableCell>
             <TableCell title={`${m.stages[row.stage]} · ${situation}`}><div className="flex min-w-0 items-center gap-1.5">
               <Badge variant="outline" className="min-w-0 max-w-full rounded-md px-1.5 py-0"><span className="truncate">{showStage ? `${m.stages[row.stage]} · ` : ""}{situation}</span></Badge>
@@ -171,11 +180,11 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
             {() => row.canWrite ? <Entry row={row} requestedMode={expanded ? active.mode : contactMode} locale={locale} currentUserId={currentUserId} canEnroll={canEnroll}
               ref={entry => { if (entry) entryRefs.current.set(row.key, entry); else entryRefs.current.delete(row.key); }}
               outcomeRequest={outcomeRequest?.key === row.key ? outcomeRequest : null}
-              canAdvance={index < rows.length - 1} onBusyChange={setBusy} onSaved={(result, advance) => saved(row.key, result, advance)} /> : <p className="text-sm text-muted">{m.needOwner}</p>}
+              canAdvance={index < visibleRows.length - 1} onBusyChange={setBusy} onSaved={(result, advance) => saved(row.key, result, advance)} /> : <p className="text-sm text-muted">{m.needOwner}</p>}
           </FollowupRecordRow>;
         })}</FollowupTableBody>
       </Table>
     </DashboardTableShell>
-    {rows.length === 0 ? <DashboardEmptyCard>{m.empty}</DashboardEmptyCard> : null}
+    {visibleRows.length === 0 ? <DashboardEmptyCard>{m.empty}</DashboardEmptyCard> : null}
   </DashboardPage>;
 }

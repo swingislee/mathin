@@ -1,11 +1,12 @@
-import { getTranslations } from "next-intl/server";
+import { getNow, getTranslations } from "next-intl/server";
 import { buttonVariants } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import type { PermissionKey } from "./permissions";
 import { NewStudentDialog } from "./NewStudentDialog";
 import { parseStudentStageFilters } from "./student-stage-contract";
-import { loadStudentStageData } from "./student-stage-data";
+import { loadStudentStageFieldPage } from "./student-stage-table-data";
+import { studentStageFieldScope } from "./student-stage-table-fields";
 import { StudentStageWorkspace } from "./StudentStageWorkspace";
 import { getOrganizationTimezoneV2 } from "./organization-locations";
 import { listStaffMembers } from "./staff";
@@ -15,10 +16,13 @@ export async function StudentStagePage({ locale, currentUserId, permissions, sea
 }) {
   const filters = parseStudentStageFilters(searchParams, permissions.has("student.view.all") ? "all" : "mine");
   const canAssign = permissions.has("student.assign");
-  const [data, t, timeZone, staff] = await Promise.all([loadStudentStageData(filters), getTranslations("school.students"), getOrganizationTimezoneV2(), canAssign ? listStaffMembers() : Promise.resolve([])]);
-  return <StudentStageWorkspace data={data} filters={filters} locale={locale} currentUserId={currentUserId}
+  const [t, timeZone, staff, currentTime] = await Promise.all([getTranslations("school.students"), getOrganizationTimezoneV2(), canAssign ? listStaffMembers() : Promise.resolve([]), getNow()]);
+  const now = currentTime.getTime();
+  const data = await loadStudentStageFieldPage(filters, { locale, timeZone, now }, currentUserId);
+  const resolvedFilters = { ...filters, scope: studentStageFieldScope(data.fieldView.query), detail: "", fields: JSON.stringify(data.fieldView.query) };
+  return <StudentStageWorkspace data={data} filters={resolvedFilters} locale={locale} currentUserId={currentUserId}
     canAssign={canAssign} assignees={staff.filter(member => member.isActive && member.canFollowUp).map(({ userId, displayName }) => ({ userId, displayName }))}
-    canEnroll={permissions.has("enrollment.manage")} timeZone={timeZone} actions={<>
+    canEnroll={permissions.has("enrollment.manage")} timeZone={timeZone} now={now} actions={<>
       {permissions.has("student.create") ? <NewStudentDialog /> : null}
       {permissions.has("student.import") ? <Link href="/dashboard/students/import" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>{t("import")}</Link> : null}
       {permissions.has("student.delete") ? <Link href="/dashboard/students?tab=recycle" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>{t("recycleBin")}</Link> : null}

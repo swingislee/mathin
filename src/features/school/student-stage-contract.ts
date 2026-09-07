@@ -3,6 +3,7 @@ import type { InvitationDraft } from "./invitation-contract";
 import type { InvitationActivityOption, InvitationAssessorOption } from "./invitation-contract";
 import type { Phase3EnrollmentOptions } from "./phase3-enrollment-contract";
 import { followupPageSize, type FollowupPageSize } from "./followup-table-page";
+import type { FollowupServerFields } from "./followup-table-page";
 
 export const STUDENT_STAGE_TABS = [...STUDENT_LIFECYCLE_STAGES, "former_student"] as const;
 export type StudentStage = typeof STUDENT_STAGE_TABS[number];
@@ -32,10 +33,12 @@ export interface StudentStageRow {
 export interface StudentStageData {
   rows: StudentStageRow[]; counts: Partial<Record<StudentStage, number>>;
   count: number; page: number; pageSize: FollowupPageSize; totalPages: number;
+  fieldView?: FollowupServerFields;
 }
 export interface StudentStageFilters {
   stage: StudentStage; scope: "mine" | "all" | "unassigned"; q: string;
   detail: string; page: number; pageSize: FollowupPageSize;
+  fields?: string;
 }
 
 export function parseStudentStageFilters(raw: Record<string, string | string[] | undefined>, defaultScope: "mine" | "all" = "mine"): StudentStageFilters {
@@ -49,7 +52,7 @@ export function parseStudentStageFilters(raw: Record<string, string | string[] |
   return { stage, q, scope: scope === "mine" || scope === "all" || scope === "unassigned" ? scope : defaultScope,
     detail: !q && (STUDENT_STAGE_DETAILS[stage] as readonly string[]).includes(detail) ? detail : "",
     page: Number.isSafeInteger(page) && page > 0 ? Math.min(page, 1_000_000) : 1,
-    pageSize: followupPageSize(pick("pageSize")) };
+    pageSize: followupPageSize(pick("pageSize")), ...(pick("fields") ? { fields: pick("fields")!.slice(0, 16_384) } : {}) };
 }
 
 export function studentStageHref(filters: StudentStageFilters, change: Partial<StudentStageFilters> = {}) {
@@ -57,6 +60,7 @@ export function studentStageHref(filters: StudentStageFilters, change: Partial<S
   const query = new URLSearchParams({ stage: next.stage, scope: next.scope, pageSize: String(next.pageSize) });
   if (next.q) query.set("q", next.q);
   if (next.detail) query.set("detail", next.detail);
+  if (next.fields) query.set("fields", next.fields);
   if (next.page > 1) query.set("page", String(next.page));
   return `/dashboard/students?${query}`;
 }

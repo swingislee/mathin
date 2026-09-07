@@ -35,6 +35,7 @@ export interface DashboardFieldControl {
 }
 export interface DashboardTableFieldHeaderProps {
   label: string;
+  disabled?: boolean;
   fields: DashboardFieldControl[];
   context: DashboardDateContext;
   onClearColumn: () => void;
@@ -170,7 +171,7 @@ function FieldPanel({ field, context, selected }: { field: DashboardFieldControl
 }
 
 /** 一个主表列只打开一层 Popover；逻辑字段各自持有检索、条件和排序。 */
-export function DashboardTableFieldMenu({ label, fields, context, onClearColumn, onClearAll }: DashboardTableFieldHeaderProps) {
+export function DashboardTableFieldMenu({ label, fields, context, onClearColumn, onClearAll, disabled = false }: DashboardTableFieldHeaderProps) {
   const m = dashboardFieldMessages(context.locale);
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(fields[0]?.id);
@@ -179,8 +180,9 @@ export function DashboardTableFieldMenu({ label, fields, context, onClearColumn,
   const direction = sorted?.sortDirection === "asc" ? m.ascending : m.descending;
   const panelColumns = fields.length === 4 || fields.length === 5 ? fields.length : Math.min(3, fields.length);
   return <div className="-ml-2 inline-flex max-w-full items-center">
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open && !disabled} onOpenChange={setOpen}>
       <PopoverTrigger asChild><Button type="button" variant="ghost" size="sm"
+        disabled={disabled}
         className="h-7 min-w-0 gap-1 px-2 text-xs font-medium text-muted hover:text-ink"
         data-dashboard-table-menu data-dashboard-table-filter aria-label={`${label} · ${m.menu}`} title={sorted ? `${sorted.label} · ${direction}` : m.menu}>
         <span className="truncate">{label}</span><ListFilter className={cn("size-3.5 shrink-0", filtered && "text-rose")} />

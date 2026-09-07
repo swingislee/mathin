@@ -10,7 +10,7 @@ const base = new URL(process.argv[2]);
 if (base.protocol !== 'http:' || base.port !== '3130' || !['192.168.5.213', '127.0.0.1', 'localhost'].includes(base.hostname)) throw new Error('LOCAL_DEV_URL_REQUIRED');
 const root = path.resolve('.tmp/student-stage-workspace');
 fs.mkdirSync(root, { recursive: true });
-openHistoryLocalTarget({ attestationPath: path.join(root, 'preflight.json'), errorFile: path.join(root, 'database-error.txt') });
+openHistoryLocalTarget({ attestationPath: path.join(root, 'preflight.json'), refresh: true, errorFile: path.join(root, 'database-error.txt') });
 const env = Object.fromEntries(fs.readFileSync('.env.local', 'utf8').split(/\r?\n/).filter(line => /^[A-Z_]+=/.test(line)).map(line => {
   const at = line.indexOf('='); return [line.slice(0, at), line.slice(at + 1).trim().replace(/^(["'])(.*)\1$/, '$2')];
 }));
@@ -52,6 +52,7 @@ for (const role of ['principal', 'teacher', 'student']) {
     for (const locale of role === 'principal' ? ['zh', 'en'] : ['zh']) {
       for (const stage of role === 'principal' ? stages : [stages[0]]) {
         const route = `/${locale}/dashboard/students?stage=${stage}&scope=all`;
+        const started = performance.now();
         const response = await fetch(new URL(route, base), { headers: { cookie: [...cookies].map(([name, value]) => `${name}=${value}`).join('; ') },
           redirect: 'manual', signal: AbortSignal.timeout(45000) });
         const html = await response.text();
@@ -62,11 +63,29 @@ for (const role of ['principal', 'teacher', 'student']) {
           const head = table.match(/<thead\b[\s\S]*?<\/thead>/)?.[0] ?? '';
           if (/下次联系|Next contact/.test(head)) throw new Error('NEXT_CONTACT_COLUMN_RETURNED');
           if (['awaiting_first_contact','awaiting_assessment'].includes(stage) && /测评／学习|Assessment \/ learning/.test(head)) throw new Error('BACKGROUND_COLUMN_RETURNED');
+          const expectedHeaders = ['awaiting_first_contact', 'awaiting_assessment'].includes(stage) ? 5 : 6;
+          if ((head.match(/data-dashboard-table-menu/g) ?? []).length !== expectedHeaders || !html.includes('data-dashboard-search')
+            || table.includes('data-student-stage-row') && !table.includes('data-followup-person')) throw new Error('SHARED_LIST_COMPONENT_MISSING');
           if (role === 'principal' && (!table.includes(locale === 'zh' ? '勾选本页' : 'Select this page')
             || table.includes('data-student-stage-row') && (!table.includes('data-followup-row-key') || !table.includes(locale === 'zh' ? 'aria-label="分配 · ' : 'aria-label="Assign · ')))) throw new Error('INLINE_ASSIGNMENT_MISSING');
         }
-        console.log(JSON.stringify({ role, locale, stage, startup: 'PASS' }));
+        console.log(JSON.stringify({ role, locale, stage, startup: 'PASS', elapsedMs: Math.round(performance.now() - started) }));
       }
+    }
+    if (interfaceOnly && role === 'principal') {
+      const later = await client.rpc('list_student_stage_workspace', { ...args(stages[0]), p_page: 2 });
+      if (later.error) throw new Error('LATER_PAGE_READ_FAILED');
+      const sample = later.data.rows.find(row => row.name && row.phone);
+      if (!sample) throw new Error('LATER_PAGE_SAMPLE_REQUIRED');
+      const query = new URLSearchParams({ stage: stages[0], scope: 'all', fields: JSON.stringify({ version: 2,
+        filters: { name: { kind: 'text', query: sample.name }, phone: { kind: 'text', query: sample.phone } }, sort: { field: 'name', direction: 'asc' } }) });
+      const started = performance.now();
+      const response = await fetch(new URL(`/zh/dashboard/students?${query}`, base), { headers: { cookie: [...cookies].map(([name, value]) => `${name}=${value}`).join('; ') },
+        redirect: 'manual', signal: AbortSignal.timeout(45000) });
+      const html = await response.text();
+      const table = html.match(/<table\b[\s\S]*?<\/table>/)?.[0] ?? '';
+      if (response.status !== 200 || !table.includes(`data-student-stage-row="${sample.key}"`)) throw new Error('FULL_SCOPE_FIELD_FILTER_FAILED');
+      console.log(JSON.stringify({ role, fullScopeFieldFilter: 'PASS', elapsedMs: Math.round(performance.now() - started) }));
     }
   } finally { await client.auth.signOut({ scope: 'local' }); }
 }
