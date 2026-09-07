@@ -54,7 +54,6 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
   const [moveAxis, setMoveAxis] = useState<Axis>("x");
   const [cutDraft, setCutDraft] = useState<CubeCutDraft>(EMPTY_CUBE_CUT);
   const [hoveredCutHit, setHoveredCutHit] = useState<CubeCutHit | null>(null);
-  const [cutInput, setCutInput] = useState<"edge" | "face">("edge");
   const [cutGap, setCutGap] = useState("2");
   const [markShape, setMarkShape] = useState<CubeMarkShape>("circle");
   const [labelPlacement, setLabelPlacement] = useState<CubeLabelPlacement>("face");
@@ -92,9 +91,11 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
   const validBuild = Boolean(tool === "build" && nextPosition && applyCubeOperation(state, { kind: "build", position: nextPosition, displayOffset: hoveredCube?.displayOffset, color: CUBE_COLORS[0] }) !== state);
   const lockedCut = cutDraft.selection;
   const hoveredCut = cubeCutCandidate(state, targetIds, cutDraft.firstLine, hoveredCutHit);
-  const cutSelection = lockedCut ?? hoveredCut.selection;
-  const cutIssue = cutDraft.issue ?? (hoveredCutHit ? hoveredCut.issue : null);
-  const cutStatus = cutIssue ? m.cutIssues[cutIssue] : lockedCut ? m.cutReady : cutDraft.firstLine && hoveredCut.selection ? m.cutSecondReady : cutDraft.firstLine ? m.cutSecondLine : cutInput === "edge" ? m.cutFirstLine : m.cutFaceHint;
+  const hoveringFace = hoveredCutHit?.kind === "face";
+  const cutSelection = lockedCut ?? (hoveredCutHit?.kind === "edge" ? hoveredCut.selection : null);
+  const cutIssue = cutDraft.issue ?? (hoveredCutHit && !(cutDraft.firstLine && hoveringFace) ? hoveredCut.issue : null);
+  const cutStatus = cutIssue ? m.cutIssues[cutIssue] : lockedCut ? m.cutReady : cutDraft.firstLine && hoveringFace ? m.cutLineOrFace
+    : cutDraft.firstLine && hoveredCut.selection ? m.cutSecondReady : cutDraft.firstLine ? m.cutSecondLine : hoveringFace ? m.cutFaceReady : m.cutFirstPick;
   const hiddenCutCount = state.cubes.filter((cube) => targetIds.includes(cube.id) && !cubeIsVisible(state, cube)).length;
   const cutLayers = lockedCut ? cubeCutLayers(state, lockedCut.ids, lockedCut.axis) : [];
   const validCutGap = Number.isInteger(Number(cutGap) * 2) && Number(cutGap) >= 0.5 && Number(cutGap) <= 8;
@@ -242,7 +243,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
           opacityPreview={opacityPreview === null ? null : { ids: targetIds, opacity: opacityPreview / 100 }}
           moveInteraction={tool === "move" && editable ? { state, ids: targetIds, scopeIds, axis: moveAxis, kind: moveMode, snapToGrid: snap,
             onAxisChange: setMoveAxis, onSelect: (id) => setSelected([id]), onCommit: commit, onUnavailable: () => setNotice(m.moveAxisHidden) } : null}
-          cutInteraction={tool === "cut" && editable && !lockedCut ? { state, input: cutInput, hovered: hoveredCutHit,
+          cutInteraction={tool === "cut" && editable && !lockedCut ? { state, hovered: hoveredCutHit,
             onHover: (hit) => { setHoveredCutHit(hit); setCutDraft((current) => current.issue ? { ...current, issue: null } : current); },
             onPick: (hit) => { const next = chooseCubeCut(state, targetIds, cutDraft, hit); setCutDraft(next); setHoveredCutHit(null); setNotice(""); if (next.selection && panel === "cut") setPanel(null); } } : null}
           hiddenEdgesVisible={state.hiddenEdgesVisible}
@@ -252,7 +253,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
             const hit = face && cubeAtDisplayPosition(state, face.cell);
             setHoverFace(hit && scopeIds.includes(hit.id) ? face : null); if (face) setHoverGround(null);
           }}
-          scene={{ tool: editable ? tool : "orbit", face: tool === "cut" ? hoveredCutHit?.kind === "face" ? hoveredCutHit.face : cutDraft.face : hoverFace, ground: editable ? hoverGround : null, validBuild,
+          scene={{ tool: editable ? tool : "orbit", face: tool === "cut" ? hoveredCutHit ? hoveredCutHit.kind === "face" ? hoveredCutHit.face : null : cutDraft.face : hoverFace, ground: editable ? hoverGround : null, validBuild,
             state, cut: cutSelection, cutLines: lockedCut?.lines ?? [cutDraft.firstLine, hoveredCutHit?.kind === "edge" ? hoveredCutHit.line : null].filter((line) => line !== null),
             cutConfirmation: lockedCut && editable ? { anchor: lockedCut.anchor, title: lockedCut.axis.toUpperCase() + " · " + cubeLayerNumber(state, lockedCut.axis, lockedCut.after) + " " + m.layerUnit + " · " + lockedCut.ids.length + " " + m.cubeUnit,
               confirmLabel: m.cutConfirm, cancelLabel: m.cancel, disabled: !validCutGap, onConfirm: performCut, onCancel: clearPointer } : null,
@@ -327,10 +328,9 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
             <Button size="sm" variant="secondary" disabled={!editable || !hasDisplayOffsets} onClick={() => commit({ kind: "display-reset", ids: targetIds })}>{m.displayReset}</Button>
           </div>}
           {panel === "cut" && <div className="space-y-3 text-xs" data-cube-cut-panel>
-            <Select value={cutInput} onValueChange={(value) => { clearPointer(); setCutInput(value as typeof cutInput); }}><SelectTrigger aria-label={m.cutInput}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="edge">{m.cutEdge}</SelectItem><SelectItem value="face">{m.cutFace}</SelectItem></SelectContent></Select>
             <p className="leading-5 text-muted">{m.cutHint}</p><p>{m.currentScope}: {selectedIds.length ? m.selected + " · " + scopeLabel : scopeLabel} · {targetIds.length} {m.cubeUnit}{hiddenCutCount ? ` · ${m.cutHidden} ${hiddenCutCount}` : ""}</p>
             {selectedIds.length > 0 && <Button size="sm" variant="secondary" onClick={() => { setSelected([]); clearPointer(); }}>{m.cutUseScope}</Button>}
-            <p className="leading-5 text-muted">{cutInput === "edge" ? m.cutEdgeHint : m.cutFaceHint}</p>
+            <p className="leading-5 text-muted">{m.cutGeometryHint}</p>
             {!lockedCut && <p role="status">{cutStatus}</p>}
             {cutSelection && <p className="font-bold" style={{ color: CUBE_AXIS_COLORS[cutSelection.axis] }}>{cutSelection.axis.toUpperCase()} · {m.cutAfter} {cubeLayerNumber(state, cutSelection.axis, cutSelection.after)}</p>}
             {lockedCut && !lockedCut.lines && <><label className="block">{m.cutAfter}</label>

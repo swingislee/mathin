@@ -5,7 +5,6 @@ import { buildCubeCutGeometry, cubeCutHitKey, pickCubeCut } from "./cube-structu
 
 export interface CubeCutInteraction {
   readonly state: CubeStructureState;
-  readonly input: "edge" | "face";
   readonly hovered?: CubeCutHit | null;
   readonly onHover: (hit: CubeCutHit | null) => void;
   readonly onPick: (hit: CubeCutHit | null) => void;
@@ -16,7 +15,7 @@ export function bindCubeCutPicking(canvas: HTMLCanvasElement, getInteraction: ()
   let snapshot = getInteraction();
   let geometry = buildCubeCutGeometry(snapshot.state);
   let hovered: CubeCutHit | null = null;
-  let down: { pointerId: number; x: number; y: number; moved: boolean; state: CubeStructureState; input: "edge" | "face" } | null = null;
+  let down: { pointerId: number; x: number; y: number; moved: boolean; state: CubeStructureState } | null = null;
   const pointers = new Set<number>();
   const activeHover = () => getInteraction().hovered === undefined ? hovered : getInteraction().hovered!;
   const hover = (hit: CubeCutHit | null) => {
@@ -27,13 +26,13 @@ export function bindCubeCutPicking(canvas: HTMLCanvasElement, getInteraction: ()
     if (snapshot.state !== current.state) geometry = buildCubeCutGeometry(current.state);
     snapshot = current;
     const size = canvas.getBoundingClientRect();
-    return pickCubeCut(geometry, current.input, { x: event.clientX - size.left, y: event.clientY - size.top }, getCamera(), size, activeHover(), event.pointerType === "touch" ? 12 : 8);
+    return pickCubeCut(geometry, "auto", { x: event.clientX - size.left, y: event.clientY - size.top }, getCamera(), size, activeHover(), event.pointerType === "touch" ? 12 : 8);
   };
   const start = (event: PointerEvent) => {
     pointers.add(event.pointerId);
     if (event.button !== 0 || event.isPrimary === false || pointers.size > 1) { down = null; hover(null); return; }
     const current = getInteraction();
-    down = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, moved: false, state: current.state, input: current.input };
+    down = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, moved: false, state: current.state };
   };
   const move = (event: PointerEvent) => {
     if (down?.pointerId === event.pointerId && Math.hypot(event.clientX - down.x, event.clientY - down.y) > 5) down.moved = true;
@@ -44,7 +43,7 @@ export function bindCubeCutPicking(canvas: HTMLCanvasElement, getInteraction: ()
     pointers.delete(event.pointerId); down = null;
     if (!gesture || gesture.pointerId !== event.pointerId || gesture.moved || Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) > 5) return;
     const current = getInteraction();
-    if (current.state !== gesture.state || current.input !== gesture.input) return;
+    if (current.state !== gesture.state) return;
     const size = canvas.getBoundingClientRect();
     if (event.clientX < size.left || event.clientX > size.right || event.clientY < size.top || event.clientY > size.bottom) return;
     const hit = pick(event); hover(hit); current.onPick(hit);

@@ -185,12 +185,13 @@ describe("axis dragging uses camera projection and one semantic release", () => 
 describe("cut edge selection and independent selection/group colors", () => {
   const state = createCubeHistory(Array.from({ length: 27 }, (_, i) => ({ x: i % 3, y: Math.floor(i / 3) % 3, z: Math.floor(i / 9) }))).initial;
   const ids = state.cubes.map((cube) => cube.id);
-  const face = { cell: { x: 1, y: 1, z: 2 }, direction: "z+" as const };
+  const face = { cell: { x: 1, y: 1, z: 1 }, direction: "z+" as const };
 
-  it("face mode accepts the complete picked surface, including corners", () => {
-    expect(cubeCutFromFace(state, ids, face, { x: 1, y: 1, z: 2.5 })?.axis).toBe("z");
-    expect(cubeCutFromFace(state, ids, face, { x: 1.48, y: 1, z: 2.5 })?.axis).toBe("z");
-    expect(cubeCutFromFace(state, ids, face, { x: 1, y: 0.51, z: 2.5 })?.axis).toBe("z");
+  it("face selection accepts the complete picked layer surface, including corners", () => {
+    expect(cubeCutFromFace(state, ids, face, { x: 1, y: 1, z: 1.5 })?.axis).toBe("z");
+    expect(cubeCutFromFace(state, ids, face, { x: 1.48, y: 1, z: 1.5 })?.axis).toBe("z");
+    expect(cubeCutFromFace(state, ids, face, { x: 1, y: 0.51, z: 1.5 })?.axis).toBe("z");
+    expect(cubeCutFromFace(state, ids, face, { x: 1, y: 1, z: 2.5 })).toBeNull();
   });
 
   it("selection stays yellow in every group; group recoloring preserves membership, order and authored colors", () => {
@@ -215,7 +216,7 @@ describe("cut edge selection and independent selection/group colors", () => {
     const root = readFileSync("src/features/tools/spatial-lab/CubeStructuresWorkbench.tsx", "utf8");
     const motion = readFileSync("src/features/tools/spatial-lab/useCubeDisplayMotion.ts", "utf8");
     expect(root).toContain('tool === "move" || tool === "cut" ? "object" : "orbit"');
-    expect(root).toContain('setCutInput(value as typeof cutInput)');
+    expect(root).not.toContain("cutInput");
     expect(root).toContain("onCommit: commit");
     expect(root).toContain("snapToGrid: snap");
     expect(root).toContain("enableAxisSnap: m.enableCellSnap");

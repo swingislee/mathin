@@ -76,7 +76,7 @@ function visibleLinePoint(geometry: CubeCutGeometry, ray: Ray, point: Vector3): 
     && entry.clone().sub(ray.origin).dot(ray.direction) < distance - EPSILON);
 }
 
-export function pickCubeCut(geometry: CubeCutGeometry, input: "edge" | "face", pointer: CubeCutScreenPoint, camera: Camera,
+export function pickCubeCut(geometry: CubeCutGeometry, input: "auto" | "edge" | "face", pointer: CubeCutScreenPoint, camera: Camera,
   size: { readonly width: number; readonly height: number }, previous: CubeCutHit | null = null, radius = CUBE_CUT_PICK_RADIUS): CubeCutHit | null {
   if (size.width <= 0 || size.height <= 0) return null;
   const raycaster = new Raycaster();
@@ -112,7 +112,7 @@ export function pickCubeCut(geometry: CubeCutGeometry, input: "edge" | "face", p
     candidates.push({ line, distance, depth });
   }
   candidates.sort((a, b) => a.distance - b.distance || a.depth - b.depth || a.line.key.localeCompare(b.line.key));
-  if (!candidates.length) return null;
+  if (!candidates.length) return input === "auto" ? pickCubeCutFace(geometry, rayAt(pointer)) : null;
   // 交点附近保留当前线；2 CSS 像素的滞回量不随缩放和 DPR 改变。
   const retained = previous?.kind === "edge" ? candidates.find((candidate) => candidate.line.key === previous.line.key
     && candidate.distance <= candidates[0].distance + 2 && candidate.depth <= candidates[0].depth + EPSILON) : undefined;

@@ -29,7 +29,7 @@ export function CubeStructuresScene({ state, cut, cutLines, cutConfirmation, ann
   readonly onGroundClick: (position: VoxelCoordinate) => void;
 }) {
   const position = tool === "build" ? (face ? adjacentCube(face) : ground) : face?.cell;
-  const highlightedFace = tool === "face" || tool === "cut" && !cutLines.length ? face : null;
+  const highlightedFace = tool === "face" || tool === "cut" ? face : null;
   const previewFace = highlightedFace ? buildVoxelPaintFaceInstances([highlightedFace.cell], [highlightedFace])[0] : null;
   const color = tool === "cut" && cut ? CUBE_AXIS_COLORS[cut.axis] : tool === "remove" || (tool === "build" && !validBuild) ? "#df8a84" : "#edce79";
   const floor = origin?.y ?? -0.5;
@@ -42,10 +42,10 @@ export function CubeStructuresScene({ state, cut, cutLines, cutConfirmation, ann
         const point = { ...plane.center, [a]: plane.center[a] + first * plane.size[a] / 2, [b]: plane.center[b] + second * plane.size[b] / 2 };
         return [point.x, point.y, point.z] as [number, number, number];
       });
-      return <group key={plane.key}><mesh position={[plane.center.x, plane.center.y, plane.center.z]} raycast={() => null} renderOrder={5}>
-        <boxGeometry args={[plane.size.x, plane.size.y, plane.size.z]} />
-        <meshBasicMaterial color={CUBE_AXIS_COLORS[cut.axis]} transparent opacity={0.16} depthTest={false} depthWrite={false} side={DoubleSide} />
-      </mesh><Line points={corners} color={CUBE_AXIS_COLORS[cut.axis]} lineWidth={2} depthTest={false} depthWrite={false} raycast={() => null} renderOrder={6} /></group>;
+      return <group key={plane.key}><mesh position={[plane.center.x, plane.center.y, plane.center.z]} rotation={plane.rotation} raycast={() => null} renderOrder={5}>
+        <planeGeometry args={plane.dimensions} />
+        <meshBasicMaterial color={CUBE_AXIS_COLORS[cut.axis]} transparent opacity={0.12} depthWrite={false} side={DoubleSide} polygonOffset polygonOffsetFactor={-1} />
+      </mesh><Line points={corners} color={CUBE_AXIS_COLORS[cut.axis]} lineWidth={1.5} dashed dashSize={0.12} gapSize={0.08} depthTest={false} depthWrite={false} raycast={() => null} renderOrder={6} /></group>;
     })}
     {["cut", "orbit", "pan"].includes(tool) && [...new Map(cutLines.map((line) => [line.key, line])).values()].map((line, index) => <Line key={line.key}
       points={[[line.start.x, line.start.y, line.start.z], [line.end.x, line.end.y, line.end.z]]}

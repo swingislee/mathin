@@ -35,22 +35,34 @@ const AXES = ["x", "y", "z"] as const;
 const EPSILON = 1e-6;
 
 export function cubeCutLayers(state: CubeStructureState, ids: readonly string[], axis: Axis): readonly number[] {
-  return [...new Set(state.cubes.filter((cube) => ids.includes(cube.id)).map((cube) => cube.position[axis]))].sort((a, b) => a - b).slice(0, -1);
+  const positions = state.cubes.filter((cube) => ids.includes(cube.id)).map((cube) => cube.position[axis]);
+  if (!positions.length) return [];
+  const min = Math.min(...positions); const max = Math.max(...positions);
+  // 中间有空层时，仍保留能把对象分到两侧的实际整数界面。
+  return Array.from({ length: max - min }, (_, index) => min + index);
 }
 
-/** 面法向直接决定 XYZ；正/负外侧面向内取最近的层间界面，保留完整单位块。 */
-export function cubeCutFromFace(state: CubeStructureState, ids: readonly string[], face: VoxelFaceSelection, point?: VoxelCoordinate): CubeCutSelection | null {
+/** 所选面就是截面；外边界明确反馈，保持点击平面与逻辑层界一致。 */
+function evaluateCubeCutFace(state: CubeStructureState, ids: readonly string[], face: VoxelFaceSelection, point?: VoxelCoordinate): { selection: CubeCutSelection | null; issue: CubeCutIssue | null } {
+  const fail = (issue: CubeCutIssue) => ({ selection: null, issue });
   const cube = cubeAtDisplayPosition(state, face.cell);
-  if (!cube || !ids.includes(cube.id)) return null;
+  if (!cube) return fail("miss");
+  if (!ids.includes(cube.id)) return fail("scope");
   const axis = face.direction[0] as Axis;
   const position = cubeDisplayPosition(cube);
-  if (point && AXES.some((value) => value !== axis && Math.abs(point[value] - position[value]) > 0.5 + EPSILON)) return null;
   const side = face.direction[1] === "+" ? 1 : -1;
+  const plane = position[axis] + side * 0.5;
+  if (point && (Math.abs(point[axis] - plane) > EPSILON || AXES.some((value) => value !== axis && Math.abs(point[value] - position[value]) > 0.5 + EPSILON))) return fail("miss");
   const layers = cubeCutLayers(state, ids, axis);
-  if (!layers.length) return null;
-  const preferred = cube.position[axis] - (side > 0 ? 1 : 0);
-  const after = layers.reduce((closest, layer) => Math.abs(layer - preferred) < Math.abs(closest - preferred) ? layer : closest);
-  return { axis, after, side, ids: [...ids], cubeId: cube.id, face, anchor: { ...position, [axis]: after + 0.5 + (cube.displayOffset?.[axis] ?? 0) } };
+  if (!layers.length) return fail("singleLayer");
+  if (state.cubes.some((other) => ids.includes(other.id) && (other.displayOffset?.[axis] ?? 0) !== (cube.displayOffset?.[axis] ?? 0))) return fail("displaced");
+  const after = cube.position[axis] - (side > 0 ? 0 : 1);
+  if (!layers.includes(after)) return fail("boundary");
+  return { issue: null, selection: { axis, after, side, ids: [...ids], cubeId: cube.id, face, anchor: { ...(point ?? position), [axis]: plane } } };
+}
+
+export function cubeCutFromFace(state: CubeStructureState, ids: readonly string[], face: VoxelFaceSelection, point?: VoxelCoordinate): CubeCutSelection | null {
+  return evaluateCubeCutFace(state, ids, face, point).selection;
 }
 
 /** 两条几何直线先定唯一平面，再映射为保留完整单位块的逻辑层界。 */
@@ -85,13 +97,13 @@ export function cubeCutCandidate(state: CubeStructureState, ids: readonly string
     return first ? cubeCutFromLines(state, ids, first, hit.line) : { selection: null, issue: null };
   }
   if (!ids.includes(hit.cubeId)) return { selection: null, issue: "scope" };
-  const selection = cubeCutFromFace(state, ids, hit.face, hit.point);
-  return { selection, issue: selection ? null : "singleLayer" };
+  return evaluateCubeCutFace(state, ids, hit.face, hit.point);
 }
 
 export function chooseCubeCut(state: CubeStructureState, ids: readonly string[], draft: CubeCutDraft, hit: CubeCutHit | null): CubeCutDraft {
   if (draft.selection) return draft;
   const result = cubeCutCandidate(state, ids, draft.firstLine, hit);
   if (hit?.kind === "edge" && !draft.firstLine && !result.issue) return { ...EMPTY_CUBE_CUT, firstLine: hit.line };
-  return { ...draft, ...result, face: hit?.kind === "face" ? hit.face : draft.face };
+  if (hit?.kind === "face" && result.issue !== "scope" && result.issue !== "miss") return { ...EMPTY_CUBE_CUT, ...result, face: hit.face };
+  return { ...draft, ...result };
 }

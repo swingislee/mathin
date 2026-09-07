@@ -41,6 +41,7 @@ describe("visible cut geometry is independent of rendering order", () => {
     const pointer = project({ x: 0.5, y: 1, z: 2.5 });
     expect(pickCubeCut(index, "face", pointer, camera(), size)).toMatchObject({ kind: "face", face: { direction: "z+", cell: { z: 2 } } });
     expect(pickCubeCut(index, "edge", pointer, camera(), size)).toMatchObject(edge());
+    expect(pickCubeCut(index, "auto", pointer, camera(), size)).toMatchObject(edge());
   });
 
   it.each([[1, 0.8, 1], [1, 0, 1], [-1, 0, 1], [1, 1, 2]])("keeps front seams selectable from oblique direction %j", (...direction) => {
@@ -64,8 +65,10 @@ describe("visible cut geometry is independent of rendering order", () => {
     const index = buildCubeCutGeometry(applyCubeOperation(blocks, { kind: "opacity", ids: [front.id], opacity }));
     const view = camera([0, 0, 1]);
     expect(pickCubeCut(index, "face", project({ x: 1.1, y: 1.1, z: 1.5 }, view), view, size)).toMatchObject({ face: { cell: { z: opacity === 0 ? 0 : 1 }, direction: "z+" } });
+    expect(pickCubeCut(index, "auto", project({ x: 1.1, y: 1.1, z: 1.5 }, view), view, size)).toMatchObject({ face: { cell: { z: opacity === 0 ? 0 : 1 }, direction: "z+" } });
     const hit = pickCubeCut(index, "edge", project({ x: 1.5, y: 1, z: 1.5 }, view), view, size);
     expect(hit).toMatchObject({ kind: "edge", line: { start: { x: 1.5, z: 1.5 } } });
+    expect(pickCubeCut(index, "auto", project({ x: 1.5, y: 1, z: 1.5 }, view), view, size)).toMatchObject(hit!);
   });
 
   it("does not select an internal or rear edge through a filled cube", () => {
@@ -87,6 +90,21 @@ describe("visible cut geometry is independent of rendering order", () => {
     const hit = pickCubeCut(geometry, "edge", { x: crossing.x + 1.5, y: crossing.y - 1 }, view, size, edge());
     expect(hit).toMatchObject(edge());
     expect(pickCubeCut(geometry, "edge", { x: crossing.x + 5, y: crossing.y - 1 }, view, size, edge())).toMatchObject({ line: { along: "x" } });
+  });
+
+  it.each([0.25, 1, 2])("automatically changes from an edge to its face outside the 8px radius at zoom %s", (zoom) => {
+    const view = camera([0, 0, 1], zoom); const seam = project({ x: 0.5, y: 1, z: 2.5 }, view);
+    const near = pickCubeCut(geometry, "auto", { x: seam.x + 6, y: seam.y }, view, size);
+    expect(near).toMatchObject(edge());
+    const inside = pickCubeCut(geometry, "auto", { x: seam.x + 9, y: seam.y }, view, size, near);
+    expect(inside).toMatchObject({ kind: "face", face: { cell: { x: 1, y: 1, z: 2 }, direction: "z+" } });
+    expect(pickCubeCut(geometry, "auto", seam, view, size, inside)).toMatchObject(edge());
+  });
+
+  it("automatically uses the touch edge radius without a face/edge mode", () => {
+    const view = camera([0, 0, 1]); const seam = project({ x: 0.5, y: 1, z: 2.5 }, view);
+    expect(pickCubeCut(geometry, "auto", { x: seam.x + 10, y: seam.y }, view, size, null, 12)).toMatchObject(edge());
+    expect(pickCubeCut(geometry, "auto", { x: seam.x + 13, y: seam.y }, view, size, edge(), 12)?.kind).toBe("face");
   });
 
   it("uses actual positions after separation, not logical neighbors", () => {
@@ -145,7 +163,7 @@ describe("two lines define one cut before a semantic confirmation", () => {
   it("distinguishes a selected whole face from a single-layer cut limitation", () => {
     const view = camera([0, 0, 1]);
     const faceHit = pickCubeCut(geometry, "face", project({ x: 1.49, y: 1.49, z: 2.5 }, view), view, size)!;
-    expect(chooseCubeCut(state, ids, EMPTY_CUBE_CUT, faceHit).selection?.axis).toBe("z");
+    expect(chooseCubeCut(state, ids, EMPTY_CUBE_CUT, faceHit)).toMatchObject({ selection: null, issue: "boundary", face: { cell: { z: 2 }, direction: "z+" } });
     const slab = state.cubes.filter((cube) => cube.position.z === 2).map((cube) => cube.id);
     const draft = chooseCubeCut(state, slab, EMPTY_CUBE_CUT, faceHit);
     expect(draft).toMatchObject({ selection: null, issue: "singleLayer", face: { direction: "z+" } });
@@ -159,6 +177,9 @@ describe("two lines define one cut before a semantic confirmation", () => {
     expect(cubeCutFromLines(moved, ids, a, b).selection).toMatchObject({ axis: "x", after: 0 });
     const mixed = applyCubeOperation(moved, { kind: "display-move", ids: [ids[0]], axis: "x", distance: -3 });
     expect(cubeCutFromLines(mixed, ids, a, b)).toEqual({ selection: null, issue: "displaced" });
+    const faceHit: CubeCutHit = { kind: "face", cubeId: ids[1], face: { cell: { x: 4, y: 0, z: 0 }, direction: "x-" }, point: { x: 3.5, y: 0, z: 0 } };
+    expect(cubeCutCandidate(moved, ids, null, faceHit)).toMatchObject({ issue: null, selection: { axis: "x", after: 0, anchor: { x: 3.5 } } });
+    expect(cubeCutCandidate(mixed, ids, null, faceHit)).toEqual({ selection: null, issue: "displaced" });
   });
 
   it("includes hidden targets in the confirmed cut and records only one reversible command", () => {
@@ -181,10 +202,10 @@ class Surface extends EventTarget {
   ownerDocument = Object.assign(new EventTarget(), { defaultView: new EventTarget() });
   getBoundingClientRect() { return { ...size, left: 0, top: 0, right: 800, bottom: 600 }; }
 }
-function bind() {
-  const canvas = new Surface(); let draft: CubeCutDraft = EMPTY_CUBE_CUT; let currentState = state;
+function bind(startState = state) {
+  const canvas = new Surface(); let draft: CubeCutDraft = EMPTY_CUBE_CUT; let currentState = startState;
   const onHover = vi.fn(); const picked: (CubeCutHit | null)[] = [];
-  const current = (): CubeCutInteraction => ({ state: currentState, input: "edge", onHover, onPick: (hit) => { picked.push(hit); draft = chooseCubeCut(currentState, ids, draft, hit); } });
+  const current = (): CubeCutInteraction => ({ state: currentState, onHover, onPick: (hit) => { picked.push(hit); draft = chooseCubeCut(currentState, ids, draft, hit); } });
   const dispose = bindCubeCutPicking(canvas as unknown as HTMLCanvasElement, current, () => camera());
   const send = (type: string, point: VoxelCoordinate, extra: object = {}) => {
     const p = project(point);
@@ -201,11 +222,34 @@ describe("the real cut pointer controller", () => {
     const control = bind(); control.send("pointermove", point); control.send("pointerdown", point); control.send("pointerup", point);
     expect(control.onHover).toHaveBeenCalledWith(edge()); expect(control.picked).toEqual([edge()]);
     expect(control.draft().selection).toBeNull(); expect(control.draft().firstLine).toEqual(first);
+    control.send("pointermove", { x: 1, y: 1, z: 2.5 });
+    expect(control.onHover).toHaveBeenLastCalledWith(expect.objectContaining({ kind: "face" }));
+    expect(control.draft().firstLine).toEqual(first);
     control.send("pointerleave", point); expect(control.draft().firstLine).toEqual(first);
     const second = { x: 0.5, y: 2.5, z: 1 };
     control.send("pointermove", second); control.send("pointerdown", second); control.send("pointerup", second);
     expect(control.draft().selection).toMatchObject({ axis: "x", after: 0 });
     control.dispose(); control.send("pointerdown", point); control.send("pointerup", point); expect(control.picked).toHaveLength(2);
+  });
+
+  it("switches from the retained first line to a face only when that face is clicked", () => {
+    const control = bind(); control.send("pointerdown", point); control.send("pointerup", point);
+    const face = { x: 1, y: 1, z: 2.5 };
+    control.send("pointermove", face); expect(control.draft().firstLine).toEqual(first);
+    control.send("pointerdown", face); control.send("pointerup", face);
+    expect(control.draft()).toMatchObject({ firstLine: null, selection: null, issue: "boundary", face: { cell: { z: 2 }, direction: "z+" } });
+    control.send("pointerdown", point); control.send("pointerup", point);
+    expect(control.draft()).toEqual({ ...EMPTY_CUBE_CUT, firstLine: first });
+    control.dispose();
+  });
+
+  it("locks an exposed interior face on its actual plane with automatic input", () => {
+    const hidden = { ...state, hiddenCubeIds: state.cubes.filter((cube) => cube.position.z === 2).map((cube) => cube.id) };
+    const control = bind(hidden); const point = { x: 1, y: 1, z: 1.5 };
+    control.send("pointermove", point); expect(control.draft()).toEqual(EMPTY_CUBE_CUT);
+    control.send("pointerdown", point); control.send("pointerup", point);
+    expect(control.draft()).toMatchObject({ firstLine: null, issue: null, face: { cell: { z: 1 }, direction: "z+" }, selection: { axis: "z", after: 1, anchor: { z: 1.5 } } });
+    control.dispose();
   });
 
   it.each(["drag", "pointercancel", "blur", "wheel", "Escape", "second-touch", "state-change"])("%s does not produce a selection", (action) => {
@@ -227,6 +271,8 @@ describe("the real cut pointer controller", () => {
     expect(source).toContain('if (operation.kind === "view")');
     expect(source).toContain('data-cube-cut-progress={cutDraft.firstLine ? "second-line" : "first-pick"}');
     expect(source).toContain("m.cutUseScope");
+    expect(source).not.toContain("cutInput");
+    expect(source).toContain('lockedCut ?? (hoveredCutHit?.kind === "edge" ? hoveredCut.selection : null)');
     expect(viewport).toContain("cutInteraction && !moving && <CubeCutPicker");
     expect(Object.keys(cubeStructuresMessages("zh").cutIssues)).toEqual(Object.keys(cubeStructuresMessages("en").cutIssues));
   });
