@@ -19,6 +19,8 @@ import { cubeToolCursor } from "./cube-structures-cursor";
 import { CubeAxisIcon, CubeCanvasPanel, CubeIconButton, CubeMarkIcon, CubeViewIcon } from "./CubeWorkbenchControls";
 import { CubeRecordingPanel } from "./CubeRecordingPanel";
 import { CubeOpacitySlider } from "./CubeOpacitySlider";
+import { CubeDraftPanel } from "./CubeDraftPanel";
+import { useCubeDrafts } from "./useCubeDrafts";
 import { EMPTY_CUBE_CUT, chooseCubeCut, cubeCutCandidate, cubeCutLayers, type CubeCutDraft, type CubeCutHit } from "./cube-structures-cut-interaction";
 import { buildCubeCutPieces, cubeCutScopeIds } from "./cube-structures-cut-scope";
 import styles from "./CubeStructuresWorkbench.module.css";
@@ -72,6 +74,10 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
   const [cameraRequest, setCameraRequest] = useState(0);
   const [viewOverride, setViewOverride] = useState<CubeView | null>(null);
   const identity = useRef(0);
+  const draftLibrary = useCubeDrafts({ locale, prepared, getIdentity: () => identity.current, onOpen: (draft) => {
+    setPrepared(draft.snapshot.session); identity.current = draft.snapshot.identity;
+    setDemo(null); setMode("prepare"); setTool("orbit"); resetTransient();
+  } });
   const snap = useSpatialAxisSnap();
   const session = mode === "prepare" ? prepared : demo ?? prepared;
   const state = useMemo(() => cubeSessionScene(session), [session]);
@@ -86,7 +92,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
   const metrics = useMemo(() => cubeStructureMetrics(state), [state]);
   // 包括已经隐藏的单位块，恢复入口始终保留。
   const layers = useMemo(() => [...new Set(state.cubes.filter((cube) => scopeIds.includes(cube.id)).map((cube) => cube.position[axis]))].sort((a, b) => a - b), [axis, state.cubes, scopeIds]);
-  const editable = !playing && !moving && (session.preview === null || replacementStep !== null);
+  const editable = !draftLibrary.loading && !draftLibrary.busy && !playing && !moving && (session.preview === null || replacementStep !== null);
   const hoveredCube = hoverFace ? cubeAtDisplayPosition(state, hoverFace.cell) : undefined;
   const nextPosition = hoverFace && hoveredCube ? adjacentCube({ ...hoverFace, cell: hoveredCube.position }) : hoverGround;
   const validBuild = Boolean(tool === "build" && nextPosition && applyCubeOperation(state, { kind: "build", position: nextPosition, displayOffset: hoveredCube?.displayOffset, color: CUBE_COLORS[0] }) !== state);
@@ -107,6 +113,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
   const hasCutDisplayOffsets = state.cubes.some((cube) => cutTargetIds.includes(cube.id) && cube.displayOffset && Object.values(cube.displayOffset).some((value) => value !== 0));
 
   function updateSession(update: (current: CubeWorkbenchSession) => CubeWorkbenchSession) {
+    if (draftLibrary.loading || draftLibrary.busy) return;
     if (mode === "prepare") setPrepared(update); else setDemo((current) => update(current ?? createCubeDemo(prepared)));
   }
   function clearPointer() { setHoverFace(null); setHoverGround(null); setHoveredCutHit(null); setCutDraft(EMPTY_CUBE_CUT); setOpacityPreview(null); setNotice(""); }
@@ -201,7 +208,10 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
     else { updateSession(resumeCubeRecording); resetTransient(); }
   }
   function confirmChange() {
-    if (confirmation === "load") updateSession(() => createCubeSession(preset === "empty" ? [] : createSpatialLabPresetDraft(preset).model.cells));
+    if (confirmation === "load") {
+      updateSession(() => createCubeSession(preset === "empty" ? [] : createSpatialLabPresetDraft(preset).model.cells));
+      if (mode === "prepare") draftLibrary.newDraft();
+    }
     else if (confirmation === "record") updateSession(startCubeRecording);
     else if (confirmation === "resume") updateSession(resumeCubeRecording);
     else if (confirmation === "demo") setDemo(createCubeDemo(prepared));
@@ -388,11 +398,12 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
             onDelete={(index) => changeRecorded(editCubeRecording(session, session.lesson!.operations.filter((_, cursor) => cursor !== index)))}
             onMove={(from, to) => changeRecorded(moveCubeRecordedStep(session, from, to))} />}
           {panel === "model" && <div className="space-y-3 text-xs">
+            <CubeDraftPanel locale={locale} library={draftLibrary} preparation={mode === "prepare"} disabled={playing || moving || replacementStep !== null} />
             <p className="leading-5 text-muted">{m.prepareNote} {m.scope}</p>
             {workspaceSelector}
             <label className="block">{m.library}</label>
             <div className="flex gap-1"><Select value={preset} onValueChange={(value) => setPreset(value as SpatialLabPresetId | "empty")}><SelectTrigger className="min-w-0 flex-1" aria-label={m.library}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="empty">{m.empty}</SelectItem>{SPATIAL_LAB_PRESETS.filter((item) => item.id !== SPATIAL_LAB_MEASUREMENT_PRESET_ID).map((item) => <SelectItem key={item.id} value={item.id}>{m[item.messageKey as "layeredCounting" | "hiddenCubes" | "threeViews" | "surfacePainting" | "hollowing"]}</SelectItem>)}</SelectContent></Select>
-              <CubeIconButton label={m.loadPreset} onClick={() => setConfirmation("load")}><RotateCcw aria-hidden /></CubeIconButton>
+              <CubeIconButton label={m.loadPreset} disabled={draftLibrary.loading || draftLibrary.busy} onClick={() => setConfirmation("load")}><RotateCcw aria-hidden /></CubeIconButton>
             </div>
             <p className="leading-5 text-muted">{m.edgeNote}</p><p className="leading-5 text-muted">{m.axisNote}</p>
             <div className="flex items-center justify-between"><span>{m.metrics}</span><CubeIconButton label={showMetrics ? m.hideMetrics : m.showMetrics} active={showMetrics} onClick={() => setShowMetrics((value) => !value)}>{showMetrics ? <EyeOff aria-hidden /> : <Eye aria-hidden />}</CubeIconButton></div>
