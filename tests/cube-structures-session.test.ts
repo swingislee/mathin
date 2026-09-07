@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { CUBE_COLORS, CUBE_GROUP_COLORS, CUBE_STRUCTURES_LIMITS, applyCubeOperation, buildCubeStructureRenderModel, createCubeHistory, cubeIsVisible, cubeLayerNumber, cubeLayerOperation, cubeScopeIds, replayCubeHistory, type CubeStructureState } from "@/features/tools/spatial-lab/cube-structures-contract";
+import { CUBE_COLORS, CUBE_GROUP_COLORS, CUBE_SELECTION_COLOR, CUBE_STRUCTURES_LIMITS, applyCubeOperation, buildCubeStructureRenderModel, createCubeHistory, cubeIsVisible, cubeLayerNumber, cubeLayerOperation, cubeScopeIds, replayCubeHistory, type CubeStructureState } from "@/features/tools/spatial-lab/cube-structures-contract";
 import { createCubeDemo, createCubeSession, cubeResumeNeedsRestore, cubeSessionScene, editCubeRecording, finishCubeRecording, moveCubeRecordedStep, operateCubeSession, pauseCubeRecording, previewCubeSession, replaceCubeRecordedStep, resumeCubeRecording, startCubeRecording, undoCubeSession } from "@/features/tools/spatial-lab/cube-structures-session";
 
 const positions = [{ x: 0, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }];
@@ -142,7 +142,7 @@ describe("groups, recoverable layers and fixed axes", () => {
     const state = applyCubeOperation(grouped(), { kind: "paint", faces: [{ id: "cube-1", direction: "z+" }], color: CUBE_COLORS[3] });
     const original = JSON.stringify(state);
     const selected = buildCubeStructureRenderModel(state, ["cube-1"], "Cubes");
-    expect(selected.cells[0]).toMatchObject({ materialToken: CUBE_COLORS[0], emphasis: { color: CUBE_GROUP_COLORS[0], faceOpacity: 0.4, priority: 2 } });
+    expect(selected.cells[0]).toMatchObject({ materialToken: CUBE_COLORS[0], emphasis: { color: CUBE_SELECTION_COLOR, faceOpacity: 0.4, priority: 2 } });
     expect(selected.cells[1].emphasis).toBeUndefined();
     const activeGroup = buildCubeStructureRenderModel(state, [], "Cubes", "group-a");
     expect(activeGroup.cells[0].emphasis).toMatchObject({ color: state.groups[0].color, faceOpacity: 0.25 });
@@ -221,7 +221,7 @@ describe("groups, recoverable layers and fixed axes", () => {
     expect(source).toContain("data-cube-group-scope");
     expect(source).toContain("if (!scopeIds.includes(cube.id))");
     expect(source).toContain("data-cube-layer-panel");
-    expect(source).toContain("navigationMode={tool === \"pan\" ? \"pan\" : \"orbit\"}");
+    expect(source).toContain("navigationMode={tool === \"pan\" ? \"pan\" : tool === \"move\" ? \"object\" : \"orbit\"}");
     expect(source).not.toContain("setEdgeStyle");
     const scene = readFileSync("src/features/tools/spatial-lab/CubeStructuresScene.tsx", "utf8");
     const renderer = readFileSync("src/features/spatial-math/renderer-r3f/VoxelCanvas.tsx", "utf8");

@@ -17,7 +17,8 @@ export const CUBE_STRUCTURES_DRAFT_VERSION = "cube-structures-draft-v3" as const
 export const CUBE_STRUCTURES_LIMITS = { cubes: 512, steps: 256, coordinate: 12, displayOffset: 24 } as const;
 export const CUBE_COLORS = ["#8fbf88", "#df8a84", "#edce79", "#7da9ce", "#b39dcc", "#e7e0d0"] as const;
 export const CUBE_AXIS_COLORS = { x: "#c64848", y: "#258345", z: "#3267bd" } as const;
-export const CUBE_GROUP_COLORS = ["#f2bd30", "#dc4444", "#3686c9", "#9d57ba", "#239a81", "#e27c2d"] as const;
+export const CUBE_SELECTION_COLOR = "#f2bd30";
+export const CUBE_GROUP_COLORS = CUBE_COLORS;
 export type CubeColor = (typeof CUBE_COLORS)[number];
 export type CubeView = "angle" | "front" | "right" | "top";
 export type CubeTool = "orbit" | "pan" | "select" | "build" | "remove" | "color" | "face" | "move" | "layer" | "cut" | "mark" | "number" | "transparent";
@@ -254,7 +255,9 @@ export function applyCubeOperation(state: CubeStructureState, operation: CubeOpe
       if (!cubeIds.length || !operation.name.trim()) return state;
       const color = operation.color ?? state.groups.find((item) => item.id === operation.id)?.color ?? CUBE_GROUP_COLORS[state.groups.length % CUBE_GROUP_COLORS.length];
       const group = { id: operation.id, name: operation.name.trim().slice(0, 40), color, cubeIds };
-      return { ...state, groups: [...state.groups.filter((item) => item.id !== group.id), group] };
+      const existing = state.groups.find((item) => item.id === group.id);
+      if (existing?.name === group.name && existing.color === group.color && existing.cubeIds.join(":") === cubeIds.join(":")) return state;
+      return { ...state, groups: existing ? state.groups.map((item) => item.id === group.id ? group : item) : [...state.groups, group] };
     }
     case "ungroup": return state.groups.some((group) => group.id === operation.id) ? { ...state, groups: state.groups.filter((group) => group.id !== operation.id) } : state;
     case "move": {
@@ -412,7 +415,7 @@ export function buildCubeStructureRenderModel(state: CubeStructureState, selecte
     profile: "standard-4x3", entityId: "cube-structures", label, summary: label,
     background: "paper", lighting: "flat", showAxes: false,
     cells: visible.map((cube) => ({ key: cube.id, ...cubeDisplayPosition(cube), materialToken: cube.color, opacity: cube.opacity, selected: selected.has(cube.id),
-      emphasis: selected.has(cube.id) ? { color: group?.color ?? CUBE_GROUP_COLORS[0], faceOpacity: 0.4, priority: 2 }
+      emphasis: selected.has(cube.id) ? { color: CUBE_SELECTION_COLOR, faceOpacity: 0.4, priority: 2 }
         : groupIds.has(cube.id) ? { color: group!.color, faceOpacity: 0.25, priority: 1 } : undefined })),
     totalCellCount: state.cubes.length, hiddenByLayerCount: state.cubes.length - visible.length,
     totalCountRevealed: false, layers: [], projectionView,

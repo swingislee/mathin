@@ -70,7 +70,7 @@ async function setupRig(reducedMotion = false, demand = false, initialBookmark: 
   const root = createRoot(canvas);
   await root.configure({ gl: renderer, size: { width: 800, height: 600, top: 0, left: 0 }, frameloop: demand ? "demand" : "never", dpr: 1 });
   const onTransitionStateChange = vi.fn();
-  const render = async (bookmark: Bookmark, requestKey = 0, navigationMode: "orbit" | "pan" = "orbit") => {
+  const render = async (bookmark: Bookmark, requestKey = 0, navigationMode: "orbit" | "pan" | "object" = "orbit") => {
     await act(async () => { root.render(createElement(SpatialCameraRig, {
       bookmark, radius: 4, interactive: true, requestKey, navigationMode, onTransitionStateChange,
     })); });
@@ -94,6 +94,52 @@ async function setupRig(reducedMotion = false, demand = false, initialBookmark: 
 }
 
 describe("共享相机真实帧循环", () => {
+  for (const pointerType of ["mouse", "touch"] as const) {
+    it(`${pointerType} 对象移动占用左键/单指，滚轮缩放与右键平移仍可用`, async () => {
+      const rig = await setupRig();
+      await rig.render(front, 0, "object");
+      const camera = rig.state().camera as OrthographicCamera;
+      const controls = rig.state().controls as unknown as Orbit;
+      const before = camera.quaternion.clone();
+      pointer(rig.surface, "pointerdown", 400, 300, 0, pointerType);
+      pointer(rig.surface, "pointermove", 490, 340, 0, pointerType);
+      pointer(rig.surface, "pointerup", 490, 340, 0, pointerType);
+      rig.frame();
+      expect(camera.quaternion.angleTo(before)).toBeLessThan(1e-7);
+      expect(controls.target.length()).toBeLessThan(1e-7);
+      const zoom = camera.zoom;
+      rig.surface.dispatchEvent(Object.assign(new Event("wheel"), { deltaY: -100 }));
+      expect(camera.zoom).toBeGreaterThan(zoom);
+      pointer(rig.surface, "pointerdown", 400, 300, 2);
+      pointer(rig.surface, "pointermove", 440, 340, 2);
+      pointer(rig.surface, "pointerup", 440, 340, 2);
+      expect(controls.target.length()).toBeGreaterThan(0.1);
+    });
+
+    it(`${pointerType} 点击俯视后，手动旋转仍围绕世界 Y 轴`, async () => {
+      const rig = await setupRig();
+      await rig.render(top);
+      rig.frame(); rig.frame(720);
+      const camera = rig.state().camera;
+      expect(camera.up.toArray()).toEqual([0, 0, -1]);
+      pointer(rig.surface, "pointerdown", 400, 300, 0, pointerType);
+      pointer(rig.surface, "pointermove", 480, 300, 0, pointerType);
+      pointer(rig.surface, "pointerup", 480, 300, 0, pointerType);
+      expect(camera.up.toArray()).toEqual([0, 1, 0]);
+      expect(camera.position.y).toBeCloseTo(10, 6);
+      expect(Math.hypot(camera.position.x, camera.position.z)).toBeLessThan(0.0001);
+      // 从俯视向下拖动恢复仰角，左右转动仍保持相同高度。
+      pointer(rig.surface, "pointerdown", 400, 300, 0, pointerType);
+      pointer(rig.surface, "pointermove", 400, 240, 0, pointerType);
+      pointer(rig.surface, "pointerup", 400, 240, 0, pointerType);
+      expect(camera.position.y).toBeLessThan(9);
+      const elevation = camera.position.y;
+      pointer(rig.surface, "pointerdown", 400, 300, 0, pointerType);
+      pointer(rig.surface, "pointermove", 440, 300, 0, pointerType);
+      pointer(rig.surface, "pointerup", 440, 300, 0, pointerType);
+      expect(camera.position.y).toBeCloseTo(elevation, 7);
+    });
+  }
   for (const pointerType of ["mouse", "touch"] as const) {
     it(`${pointerType} 平移工具只移动视野，切回观察恢复原旋转`, async () => {
       const rig = await setupRig();

@@ -65,7 +65,7 @@ export function SpatialCameraRig({ bookmark, radius, interactive, navigationMode
   readonly bookmark: CameraBookmark;
   readonly radius: number;
   readonly interactive: boolean;
-  readonly navigationMode?: "orbit" | "pan";
+  readonly navigationMode?: "orbit" | "pan" | "object";
   readonly axisSnapEnabled?: boolean;
   readonly requestKey?: string | number;
   readonly minDistance?: number;
@@ -212,6 +212,17 @@ export function SpatialCameraRig({ bookmark, radius, interactive, navigationMode
         const camera = activeCamera.current;
         const instance = controls.current;
         if (!camera || !instance) return;
+        // 书签的 up 表达画面朝向，手动轨道始终围绕世界 Y 轴。
+        // 极点保留当前屏幕方位，只引入 Orbit 自身要求的微小离极偏移。
+        const offset = camera.position.clone().sub(instance.target);
+        if (Math.hypot(offset.x, offset.z) < offset.length() * 1e-6) {
+          const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+          const azimuth = Math.atan2(-right.z, right.x);
+          const poleRadius = offset.length() * 1e-6;
+          camera.position.x = instance.target.x + Math.sin(azimuth) * poleRadius;
+          camera.position.z = instance.target.z + Math.cos(azimuth) * poleRadius;
+        }
+        camera.up.set(0, 1, 0);
         startedOrientation.current.copy(camera.quaternion);
         transition.current = null;
         currentTarget.current = cameraPose(camera, instance.target).target;

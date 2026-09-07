@@ -12,7 +12,7 @@ import {
   type ReactNode,
 } from "react";
 import * as THREE from "three";
-import { voxelKey, type SpatialPageDoc, type SpatialRuntimeState, type VoxelFaceSelection } from "../domain";
+import { voxelKey, type SpatialPageDoc, type SpatialRuntimeState, type VoxelCoordinate, type VoxelFaceSelection } from "../domain";
 import { useVoxelHiddenEdges, type VoxelHiddenEdgeUniforms } from "./useVoxelHiddenEdges";
 import { voxelHiddenEdgeShaders } from "./voxel-hidden-edge-shader";
 import { VoxelFallback, type VoxelRendererMessages } from "./VoxelFallback";
@@ -44,13 +44,13 @@ export interface VoxelCanvasProps {
   readonly axisSnapEnabled?: boolean;
   /** 编辑预览允许本地观察，模型选择与课堂只读合同保持独立。 */
   readonly cameraInteractive?: boolean;
-  readonly navigationMode?: "orbit" | "pan";
+  readonly navigationMode?: "orbit" | "pan" | "object";
   readonly cameraRequestKey?: string | number;
   readonly onCellSelect?: (cellKey: string) => void;
   readonly paintedFaces?: readonly VoxelFaceSelection[];
   readonly paintedFaceMaterialToken?: string;
-  readonly onFaceSelect?: (face: VoxelFaceSelection) => void;
-  readonly onFaceHover?: (face: VoxelFaceSelection | null) => void;
+  readonly onFaceSelect?: (face: VoxelFaceSelection, point?: VoxelCoordinate) => void;
+  readonly onFaceHover?: (face: VoxelFaceSelection | null, point?: VoxelCoordinate) => void;
   readonly paintedFaceGroups?: readonly { readonly color: string; readonly faces: readonly VoxelFaceSelection[] }[];
   readonly sceneOverlay?: ReactNode;
   readonly hiddenEdgesVisible?: boolean;
@@ -118,8 +118,8 @@ function VoxelInstances({
   readonly readOnly: boolean;
   readonly materialColors?: Readonly<Record<string, string>>;
   readonly onCellSelect?: (cellKey: string) => void;
-  readonly onFaceSelect?: (face: VoxelFaceSelection) => void;
-  readonly onFaceHover?: (face: VoxelFaceSelection | null) => void;
+  readonly onFaceSelect?: VoxelCanvasProps["onFaceSelect"];
+  readonly onFaceHover?: VoxelCanvasProps["onFaceHover"];
   readonly preserveSelectedColors?: boolean;
 }) {
   const groups = useMemo(() => {
@@ -165,8 +165,8 @@ function VoxelMaterialInstances({
   readonly color: string;
   readonly readOnly: boolean;
   readonly onCellSelect?: (cellKey: string) => void;
-  readonly onFaceSelect?: (face: VoxelFaceSelection) => void;
-  readonly onFaceHover?: (face: VoxelFaceSelection | null) => void;
+  readonly onFaceSelect?: VoxelCanvasProps["onFaceSelect"];
+  readonly onFaceHover?: VoxelCanvasProps["onFaceHover"];
 }) {
   const mesh = useRef<THREE.InstancedMesh>(null);
   const matrix = useMemo(() => new THREE.Matrix4(), []);
@@ -190,7 +190,7 @@ function VoxelMaterialInstances({
       const direction = voxelFaceDirectionFromNormal(event.face.normal);
       if (!direction) return;
       event.stopPropagation();
-      onFaceSelect({ cell: { x: cell.x, y: cell.y, z: cell.z }, direction });
+      onFaceSelect({ cell: { x: cell.x, y: cell.y, z: cell.z }, direction }, event.point);
       return;
     }
     if (!onCellSelect) return;
@@ -203,7 +203,7 @@ function VoxelMaterialInstances({
     const direction = voxelFaceDirectionFromNormal(event.face.normal);
     if (!cell || !direction) return;
     event.stopPropagation();
-    onFaceHover({ cell: { x: cell.x, y: cell.y, z: cell.z }, direction });
+    onFaceHover({ cell: { x: cell.x, y: cell.y, z: cell.z }, direction }, event.point);
   };
   return (
     <instancedMesh ref={mesh} args={[undefined, undefined, cells.length]} onClick={select}
@@ -380,12 +380,12 @@ function VoxelTranslucentCube({ cell, color, paint, readOnly, onFaceSelect, onFa
     onClick={(event) => {
       if (readOnly || event.delta > 5) return;
       const direction = event.face && voxelFaceDirectionFromNormal(event.face.normal);
-      if (direction && onFaceSelect) { event.stopPropagation(); onFaceSelect({ cell, direction }); }
+      if (direction && onFaceSelect) { event.stopPropagation(); onFaceSelect({ cell, direction }, event.point); }
       else if (onCellSelect) { event.stopPropagation(); onCellSelect(cell.key); }
     }}
     onPointerMove={(event) => {
       const direction = event.face && voxelFaceDirectionFromNormal(event.face.normal);
-      if (!readOnly && direction && onFaceHover) { event.stopPropagation(); onFaceHover({ cell, direction }); }
+      if (!readOnly && direction && onFaceHover) { event.stopPropagation(); onFaceHover({ cell, direction }, event.point); }
     }} onPointerOut={() => onFaceHover?.(null)}>
     <boxGeometry args={[VOXEL_SOLID_SIZE, VOXEL_SOLID_SIZE, VOXEL_SOLID_SIZE]} />
     {faceColors.map((faceColor, index) => <meshBasicMaterial key={index} attach={`material-${index}`} color={faceColor} opacity={cell.opacity} transparent depthWrite={false} side={THREE.DoubleSide} toneMapped={false} />)}
@@ -419,14 +419,14 @@ function VoxelScene({
   readonly onCellSelect?: (cellKey: string) => void;
   readonly paintedFaces: readonly VoxelFaceSelection[];
   readonly paintedFaceColor: string;
-  readonly onFaceSelect?: (face: VoxelFaceSelection) => void;
-  readonly onFaceHover?: (face: VoxelFaceSelection | null) => void;
+  readonly onFaceSelect?: VoxelCanvasProps["onFaceSelect"];
+  readonly onFaceHover?: VoxelCanvasProps["onFaceHover"];
   readonly paintedFaceGroups?: VoxelCanvasProps["paintedFaceGroups"];
   readonly sceneOverlay?: ReactNode;
   readonly hiddenEdgesVisible?: boolean;
   readonly preserveSelectedColors?: boolean;
   readonly axisSnapEnabled: boolean;
-  readonly navigationMode?: "orbit" | "pan";
+  readonly navigationMode?: "orbit" | "pan" | "object";
   readonly cameraInteractive: boolean;
   readonly cameraRequestKey: string;
   readonly onCameraTransitionStateChange: (active: boolean) => void;

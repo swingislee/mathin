@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { CubeStructureState } from "./cube-structures-contract";
-import { cubeDisplayPositions, cubeMotionDistance, cubeMotionDuration, cubePresentationState, interpolateCubePositions } from "./cube-structures-motion";
+import { cubeDisplayPositions, cubeMotionDistance, cubeMotionDuration, cubePresentationState, interpolateCubePositions, type CubeDisplayPositions } from "./cube-structures-motion";
 
 function subscribeReducedMotion(onChange: () => void) {
   const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -14,8 +14,18 @@ export function useCubeDisplayMotion(state: CubeStructureState, sceneKey: object
   const reduced = useSyncExternalStore(subscribeReducedMotion, () => window.matchMedia("(prefers-reduced-motion: reduce)").matches, () => false);
   const target = useMemo(() => cubeDisplayPositions(state.cubes), [state.cubes]);
   const [frame, setFrame] = useState(() => ({ positions: target, sceneKey }));
+  const [preview, setPreview] = useState<CubeDisplayPositions | null>(null);
   const current = useRef(frame);
+  const previewPositions = useCallback((positions: CubeDisplayPositions | null) => {
+    // 从指针事件同时更新可见帧与动画起点，松手后接续到吸附终点。
+    if (positions) { const next = { positions, sceneKey }; current.current = next; setFrame(next); }
+    setPreview(positions);
+  }, [sceneKey]);
   useEffect(() => {
+    if (preview) {
+      onMovingChange(false);
+      return;
+    }
     const from = current.current.positions;
     const distance = cubeMotionDistance(from, target);
     const snap = reduced || current.current.sceneKey !== sceneKey || distance === 0;
@@ -32,9 +42,9 @@ export function useCubeDisplayMotion(state: CubeStructureState, sceneKey: object
     };
     frameId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frameId);
-  }, [target, reduced, sceneKey, onMovingChange]);
-  const positions = reduced || frame.sceneKey !== sceneKey ? target : frame.positions;
-  const moving = cubeMotionDistance(positions, target) > 0;
+  }, [target, reduced, sceneKey, onMovingChange, preview]);
+  const positions = preview ?? (reduced || frame.sceneKey !== sceneKey ? target : frame.positions);
+  const moving = !preview && cubeMotionDistance(positions, target) > 0;
   const presentation = useMemo(() => cubePresentationState(state, positions), [state, positions]);
-  return { presentation, moving };
+  return { presentation, moving, previewPositions };
 }
