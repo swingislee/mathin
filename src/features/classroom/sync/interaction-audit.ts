@@ -61,6 +61,11 @@ export const MATHIN_MICROCOURSE_SYNC_PROVIDERS = {
   h5: CLASSROOM_H5_STATE_SYNC_REQUIRED_V1,
 } as const satisfies Record<MicrocoursePageDoc["mode"], ClassroomInteractionSyncProvider>;
 
+/** 独立 Tools 工作台可本机预演；本地操作记录不等于正式课堂语义事件链。 */
+export const LOCAL_SPATIAL_WORKBENCH_SYNC_PROVIDERS = {
+  "cube-structures-draft-v1": CLASSROOM_SPATIAL_COMMAND_SYNC_REQUIRED_V1,
+} as const satisfies Record<string, ClassroomInteractionSyncProvider>;
+
 function profile(
   surface: string,
   ownership: ClassroomInteractionAuditProfile["ownership"],
@@ -169,6 +174,12 @@ export function classroomInteractionAuditIssues(): string[] {
   }
   for (const [mode, provider] of Object.entries(MATHIN_MICROCOURSE_SYNC_PROVIDERS)) {
     if (!isClassroomInteractionSyncProvider(provider)) issues.push(`microcourse:${mode}:invalid-provider`);
+  }
+  for (const [version, provider] of Object.entries(LOCAL_SPATIAL_WORKBENCH_SYNC_PROVIDERS)) {
+    if (!isClassroomInteractionSyncProvider(provider) || provider.mode !== "read-only"
+      || provider.protocol !== "spatial-command-v1") {
+      issues.push(`spatial-workbench:${version}:requires-classroom-command-sync`);
+    }
   }
   if (MATHIN_MICROCOURSE_SYNC_PROVIDERS.h5.mode !== "read-only"
     || MATHIN_MICROCOURSE_SYNC_PROVIDERS.h5.protocol !== "h5-state-v1") {

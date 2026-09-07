@@ -7,6 +7,7 @@ import { getTool, tools } from "@/features/tools/registry";
 import {
   SPATIAL_LAB_ACTIVITIES,
   SPATIAL_LAB_CUBE_NET_FOLD_PRESET_ID,
+  SPATIAL_LAB_CUBE_STRUCTURES_ID,
   SPATIAL_LAB_PRESET_ID,
   SPATIAL_LAB_PRESETS,
   createSpatialLabInitialDraft,
@@ -83,17 +84,14 @@ describe("spatial-lab Tools acceptance prototype", () => {
     expect(new Set(builds).size).toBe(6);
   });
 
-  it("routes the seventh cube-net activity away from the voxel draft factory", () => {
+  it("merges five branches into Cube Structures and keeps measurement and cube nets independent", () => {
     expect(SPATIAL_LAB_ACTIVITIES.map((activity) => [activity.id, activity.kind])).toEqual([
-      ["spatial-lab.voxel-counting.v1", "voxel"],
-      ["spatial-lab.hidden-cubes.v1", "voxel"],
-      ["spatial-lab.three-views.v1", "voxel"],
-      ["spatial-lab.surface-paint.v1", "voxel"],
-      ["spatial-lab.hollowing.v1", "voxel"],
+      ["spatial-lab.cube-structures.v1", "cube-structures"],
       ["spatial-lab.rectangular-prism-measurement.v1", "voxel"],
       ["spatial-lab.cube-net-fold.v1", "polyhedron-fold"],
     ]);
     expect(isSpatialLabVoxelPresetId(SPATIAL_LAB_CUBE_NET_FOLD_PRESET_ID)).toBe(false);
+    expect(isSpatialLabVoxelPresetId(SPATIAL_LAB_CUBE_STRUCTURES_ID)).toBe(false);
     expect(() =>
       (createSpatialLabPresetDraft as (value: string) => unknown)(SPATIAL_LAB_CUBE_NET_FOLD_PRESET_ID),
     ).toThrow(/unknown spatial-lab voxel preset/);

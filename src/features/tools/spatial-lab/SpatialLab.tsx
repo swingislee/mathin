@@ -61,15 +61,16 @@ import type { ToolComponentProps } from "../types";
 import {
   SPATIAL_LAB_ACTIVITIES,
   SPATIAL_LAB_CUBE_NET_FOLD_PRESET_ID,
+  SPATIAL_LAB_CUBE_STRUCTURES_ID,
   SPATIAL_LAB_DEFAULT_PRESET_ID,
-  SPATIAL_LAB_HOLLOWING_PRESET_ID,
   SPATIAL_LAB_MEASUREMENT_PRESET_ID,
-  SPATIAL_LAB_SURFACE_PAINT_PRESET_ID,
   createSpatialLabPresetDraft,
   isSpatialLabVoxelPresetId,
   type SpatialLabActivityId,
 } from "./preset";
 import { CubeNetFoldWorkspace } from "./CubeNetFoldWorkspace";
+import { CubeStructuresWorkbench } from "./CubeStructuresWorkbench";
+import { cubeStructuresMessages } from "./cube-structures-messages";
 import {
   RectangularPrismMeasurementPanel,
   type RectangularPrismMeasurementMessages,
@@ -349,7 +350,7 @@ function ClassroomRehearsal({
 export function SpatialLab({ embedded = false }: ToolComponentProps) {
   const t = useTranslations("tools.spatialLab");
   const locale = useLocale() === "en" ? "en" : "zh";
-  const [activeActivityId, setActiveActivityId] = useState<SpatialLabActivityId>(SPATIAL_LAB_DEFAULT_PRESET_ID);
+  const [activeActivityId, setActiveActivityId] = useState<SpatialLabActivityId>(SPATIAL_LAB_CUBE_STRUCTURES_ID);
   const activeVoxelPresetId = isSpatialLabVoxelPresetId(activeActivityId) ? activeActivityId : null;
   const initialDraft = useMemo(
     () => createSpatialLabPresetDraft(activeVoxelPresetId ?? SPATIAL_LAB_DEFAULT_PRESET_ID),
@@ -663,7 +664,7 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
               <Badge variant="outline">standard-4x3</Badge>
               <Badge variant="secondary">{t("memoryOnly")}</Badge>
             </div>
-            {!embedded ? <p className="mt-2 text-sm leading-6 text-muted">{t("prototypeNote")}</p> : null}
+            {!embedded && activeActivityId !== SPATIAL_LAB_CUBE_STRUCTURES_ID ? <p className="mt-2 text-sm leading-6 text-muted">{t("prototypeNote")}</p> : null}
           </div>
           <div className="grid w-full gap-2 sm:w-80">
             <div>
@@ -677,7 +678,7 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
               <SelectContent>
                 {SPATIAL_LAB_ACTIVITIES.map((activity) => (
                   <SelectItem key={activity.id} value={activity.id}>
-                    {t(`presets.options.${activity.messageKey}`)}
+                    {activity.id === SPATIAL_LAB_CUBE_STRUCTURES_ID ? cubeStructuresMessages(locale).title : t(`presets.options.${activity.messageKey}`)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -687,7 +688,9 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
         </div>
       </div>
 
-      {activeActivityId === SPATIAL_LAB_CUBE_NET_FOLD_PRESET_ID ? (
+      {activeActivityId === SPATIAL_LAB_CUBE_STRUCTURES_ID ? (
+        <CubeStructuresWorkbench locale={locale} rendererMessages={rendererMessages} cameraMessages={teachingMessages} />
+      ) : activeActivityId === SPATIAL_LAB_CUBE_NET_FOLD_PRESET_ID ? (
         <CubeNetFoldWorkspace locale={locale} />
       ) : <Tabs
         value={activeTab}
@@ -770,9 +773,9 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
                 locale={locale}
                 messages={teachingMessages}
                 cells={draft.model.cells}
-                paintEnabled={activeActivityId === SPATIAL_LAB_SURFACE_PAINT_PRESET_ID}
+                paintEnabled={false}
                 paintMessages={paintMessages}
-                carvingEnabled={activeActivityId === SPATIAL_LAB_HOLLOWING_PRESET_ID}
+                carvingEnabled={false}
                 carvingMessages={carvingMessages}
               />
             ) : (

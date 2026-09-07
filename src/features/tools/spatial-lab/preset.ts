@@ -11,6 +11,7 @@ export const SPATIAL_LAB_SURFACE_PAINT_PRESET_ID = "spatial-lab.surface-paint.v1
 export const SPATIAL_LAB_HOLLOWING_PRESET_ID = "spatial-lab.hollowing.v1" as const;
 export const SPATIAL_LAB_MEASUREMENT_PRESET_ID = "spatial-lab.rectangular-prism-measurement.v1" as const;
 export const SPATIAL_LAB_CUBE_NET_FOLD_PRESET_ID = "spatial-lab.cube-net-fold.v1" as const;
+export const SPATIAL_LAB_CUBE_STRUCTURES_ID = "spatial-lab.cube-structures.v1" as const;
 
 export const SPATIAL_LAB_PRESETS = [
   { id: SPATIAL_LAB_PRESET_ID, messageKey: "layeredCounting" },
@@ -24,7 +25,8 @@ export const SPATIAL_LAB_PRESETS = [
 export type SpatialLabPresetId = (typeof SPATIAL_LAB_PRESETS)[number]["id"];
 
 export const SPATIAL_LAB_ACTIVITIES = [
-  ...SPATIAL_LAB_PRESETS.map((preset) => ({ ...preset, kind: "voxel" as const })),
+  { id: SPATIAL_LAB_CUBE_STRUCTURES_ID, messageKey: "cubeStructures", kind: "cube-structures" as const },
+  { id: SPATIAL_LAB_MEASUREMENT_PRESET_ID, messageKey: "volumeSurface", kind: "voxel" as const },
   {
     id: SPATIAL_LAB_CUBE_NET_FOLD_PRESET_ID,
     messageKey: "cubeNetFold",

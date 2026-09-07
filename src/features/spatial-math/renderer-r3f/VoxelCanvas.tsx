@@ -8,6 +8,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from "react";
 import * as THREE from "three";
 import type { SpatialPageDoc, SpatialRuntimeState, VoxelFaceSelection } from "../domain";
@@ -34,6 +35,7 @@ export interface VoxelCanvasProps {
   readonly entityId: string;
   readonly locale: VoxelRendererLocale;
   readonly selectedCellKeys?: readonly string[];
+  readonly preserveSelectedColors?: boolean;
   readonly readOnly?: boolean;
   readonly axisSnapEnabled?: boolean;
   /** 编辑预览允许本地观察，模型选择与课堂只读合同保持独立。 */
@@ -43,6 +45,9 @@ export interface VoxelCanvasProps {
   readonly paintedFaces?: readonly VoxelFaceSelection[];
   readonly paintedFaceMaterialToken?: string;
   readonly onFaceSelect?: (face: VoxelFaceSelection) => void;
+  readonly onFaceHover?: (face: VoxelFaceSelection | null) => void;
+  readonly paintedFaceGroups?: readonly { readonly color: string; readonly faces: readonly VoxelFaceSelection[] }[];
+  readonly sceneOverlay?: ReactNode;
   readonly messages: VoxelRendererMessages;
   readonly materialColors?: Readonly<Record<string, string>>;
 }
@@ -99,6 +104,8 @@ function VoxelInstances({
   materialColors,
   onCellSelect,
   onFaceSelect,
+  onFaceHover,
+  preserveSelectedColors,
 }: {
   readonly model: VoxelRenderModel;
   readonly palette: VoxelPalette;
@@ -106,11 +113,13 @@ function VoxelInstances({
   readonly materialColors?: Readonly<Record<string, string>>;
   readonly onCellSelect?: (cellKey: string) => void;
   readonly onFaceSelect?: (face: VoxelFaceSelection) => void;
+  readonly onFaceHover?: (face: VoxelFaceSelection | null) => void;
+  readonly preserveSelectedColors?: boolean;
 }) {
   const groups = useMemo(() => {
     const grouped = new Map<string, Array<VoxelRenderModel["cells"][number]>>();
     for (const cell of model.cells) {
-      const color = cell.selected
+      const color = cell.selected && !preserveSelectedColors
         ? palette.moon
         : materialColors?.[cell.materialToken] ?? palette.leaf;
       const cells = grouped.get(color);
@@ -118,7 +127,7 @@ function VoxelInstances({
       else grouped.set(color, [cell]);
     }
     return [...grouped.entries()].sort(([left], [right]) => left.localeCompare(right));
-  }, [materialColors, model.cells, palette.leaf, palette.moon]);
+  }, [materialColors, model.cells, palette.leaf, palette.moon, preserveSelectedColors]);
   if (model.cells.length === 0) return null;
   return (
     <group>
@@ -130,6 +139,7 @@ function VoxelInstances({
           readOnly={readOnly}
           onCellSelect={onCellSelect}
           onFaceSelect={onFaceSelect}
+          onFaceHover={onFaceHover}
         />
       ))}
     </group>
@@ -142,12 +152,14 @@ function VoxelMaterialInstances({
   readOnly,
   onCellSelect,
   onFaceSelect,
+  onFaceHover,
 }: {
   readonly cells: VoxelRenderModel["cells"];
   readonly color: string;
   readonly readOnly: boolean;
   readonly onCellSelect?: (cellKey: string) => void;
   readonly onFaceSelect?: (face: VoxelFaceSelection) => void;
+  readonly onFaceHover?: (face: VoxelFaceSelection | null) => void;
 }) {
   const mesh = useRef<THREE.InstancedMesh>(null);
   const matrix = useMemo(() => new THREE.Matrix4(), []);
@@ -164,7 +176,7 @@ function VoxelMaterialInstances({
     invalidate();
   }, [cells, invalidate, matrix]);
   const select = (event: ThreeEvent<MouseEvent>) => {
-    if (readOnly || event.instanceId === undefined) return;
+    if (readOnly || event.delta > 5 || event.instanceId === undefined) return;
     const cell = cells[event.instanceId];
     if (!cell) return;
     if (onFaceSelect && event.face) {
@@ -178,8 +190,17 @@ function VoxelMaterialInstances({
     event.stopPropagation();
     onCellSelect(cell.key);
   };
+  const hover = (event: ThreeEvent<PointerEvent>) => {
+    if (readOnly || !onFaceHover || event.instanceId === undefined || !event.face) return;
+    const cell = cells[event.instanceId];
+    const direction = voxelFaceDirectionFromNormal(event.face.normal);
+    if (!cell || !direction) return;
+    event.stopPropagation();
+    onFaceHover({ cell: { x: cell.x, y: cell.y, z: cell.z }, direction });
+  };
   return (
-    <instancedMesh ref={mesh} args={[undefined, undefined, cells.length]} onClick={select}>
+    <instancedMesh ref={mesh} args={[undefined, undefined, cells.length]} onClick={select}
+      onPointerMove={hover} onPointerOut={() => onFaceHover?.(null)}>
       <boxGeometry args={[VOXEL_SOLID_SIZE, VOXEL_SOLID_SIZE, VOXEL_SOLID_SIZE]} />
       <meshBasicMaterial color={color} toneMapped={false} />
     </instancedMesh>
@@ -317,6 +338,10 @@ function VoxelScene({
   paintedFaces,
   paintedFaceColor,
   onFaceSelect,
+  onFaceHover,
+  paintedFaceGroups,
+  sceneOverlay,
+  preserveSelectedColors,
   axisSnapEnabled,
   cameraInteractive,
   cameraRequestKey,
@@ -330,6 +355,10 @@ function VoxelScene({
   readonly paintedFaces: readonly VoxelFaceSelection[];
   readonly paintedFaceColor: string;
   readonly onFaceSelect?: (face: VoxelFaceSelection) => void;
+  readonly onFaceHover?: (face: VoxelFaceSelection | null) => void;
+  readonly paintedFaceGroups?: VoxelCanvasProps["paintedFaceGroups"];
+  readonly sceneOverlay?: ReactNode;
+  readonly preserveSelectedColors?: boolean;
   readonly axisSnapEnabled: boolean;
   readonly cameraInteractive: boolean;
   readonly cameraRequestKey: string;
@@ -346,10 +375,12 @@ function VoxelScene({
         axisSnapEnabled={axisSnapEnabled}
         onTransitionStateChange={onCameraTransitionStateChange}
       />
-      <VoxelInstances model={model} palette={palette} readOnly={readOnly} materialColors={materialColors} onCellSelect={onCellSelect} onFaceSelect={onFaceSelect} />
+      <VoxelInstances model={model} palette={palette} readOnly={readOnly} materialColors={materialColors} onCellSelect={onCellSelect} onFaceSelect={onFaceSelect} onFaceHover={onFaceHover} preserveSelectedColors={preserveSelectedColors} />
       <VoxelPaintFaceInstances model={model} faces={paintedFaces} color={paintedFaceColor} />
+      {paintedFaceGroups?.map((group) => <VoxelPaintFaceInstances key={group.color} model={model} faces={group.faces} color={group.color} />)}
       <VoxelEdgeInstances model={model} />
       {model.showAxes ? <axesHelper args={[Math.max(2, model.bounds.radius * 1.5)]} /> : null}
+      {sceneOverlay}
     </>
   );
 }
@@ -360,6 +391,22 @@ export function VoxelCanvas({
   entityId,
   locale,
   selectedCellKeys = [],
+  ...props
+}: VoxelCanvasProps) {
+  const model = useMemo(
+    () => buildVoxelRenderModel(page, state, entityId, locale, selectedCellKeys),
+    [entityId, locale, page, selectedCellKeys, state],
+  );
+  return <VoxelModelCanvas {...props} model={model} cameraRequestKey={`${state.resetEpoch}:${props.cameraRequestKey ?? 0}`} />;
+}
+
+export type VoxelModelCanvasProps = Omit<VoxelCanvasProps, "page" | "state" | "entityId" | "locale" | "selectedCellKeys"> & {
+  readonly model: VoxelRenderModel;
+};
+
+/** 工作台与冻结课件共用同一画布和相机；各自的版本化状态在渲染模型处适配。 */
+export function VoxelModelCanvas({
+  model,
   readOnly = false,
   axisSnapEnabled = false,
   cameraInteractive = !readOnly,
@@ -368,14 +415,14 @@ export function VoxelCanvas({
   paintedFaces = [],
   paintedFaceMaterialToken = "voxel.paint",
   onFaceSelect,
+  onFaceHover,
+  paintedFaceGroups,
+  sceneOverlay,
+  preserveSelectedColors,
   messages,
   materialColors,
-}: VoxelCanvasProps) {
+}: VoxelModelCanvasProps) {
   const palette = useVoxelPalette();
-  const model = useMemo(
-    () => buildVoxelRenderModel(page, state, entityId, locale, selectedCellKeys),
-    [entityId, locale, page, selectedCellKeys, state],
-  );
   const [canvasElement, setCanvasElement] = useState<HTMLCanvasElement | null>(null);
   const [contextLost, setContextLost] = useState(false);
   const rendererElement = useRef<HTMLDivElement>(null);
@@ -440,9 +487,13 @@ export function VoxelCanvas({
           paintedFaces={paintedFaces}
           paintedFaceColor={materialColors?.[paintedFaceMaterialToken] ?? palette.rose}
           onFaceSelect={onFaceSelect}
+          onFaceHover={onFaceHover}
+          paintedFaceGroups={paintedFaceGroups}
+          sceneOverlay={sceneOverlay}
+          preserveSelectedColors={preserveSelectedColors}
           axisSnapEnabled={axisSnapEnabled}
           cameraInteractive={cameraInteractive}
-          cameraRequestKey={`${state.resetEpoch}:${cameraRequestKey ?? 0}`}
+          cameraRequestKey={String(cameraRequestKey ?? 0)}
           onCameraTransitionStateChange={setCameraTransitionState}
         />
       </Canvas>
