@@ -188,8 +188,6 @@ export function DashboardTableFieldMenu({ label, fields, context, onClearColumn,
       </Button></PopoverTrigger>
       <PopoverContent align="start" className="max-h-[var(--radix-popover-content-available-height)] overflow-y-auto p-0"
         style={{ width: `min(${panelColumns * 16}rem, calc(100vw - 1.5rem))` }} aria-label={`${label} · ${m.menu}`} data-dashboard-field-menu>
-        <div className="border-b border-line px-3 py-2"><p className="text-sm font-medium">{label}</p>
-          <p className="mt-0.5 text-[11px] text-muted">{m.scope} · {m.sortHint}</p></div>
         {fields.length > 1 ? <ToggleGroup type="single" value={selected} onValueChange={value => { if (value) setSelected(value); }}
           aria-label={m.fields} className="justify-start overflow-x-auto border-b border-line p-2 md:hidden">
           {fields.map(field => <ToggleGroupItem key={field.id} value={field.id} className="h-7 shrink-0 px-2 text-xs">{field.label}{field.filter ? " ·" : ""}</ToggleGroupItem>)}
@@ -197,8 +195,7 @@ export function DashboardTableFieldMenu({ label, fields, context, onClearColumn,
         <div className={cn("grid divide-line md:divide-x", panelColumns === 1 ? "md:grid-cols-1" : panelColumns === 2 ? "md:grid-cols-2" : panelColumns === 4 ? "md:grid-cols-4" : "md:grid-cols-3")}>
           {fields.map(field => <FieldPanel key={field.id} field={field} context={context} selected={selected === field.id} />)}
         </div>
-        <div className="flex flex-wrap items-center gap-1 border-t border-line px-2 py-1.5">
-          <span className="min-w-0 flex-1 px-1 text-[11px] text-muted">{m.combine}</span>
+        <div className="flex flex-wrap items-center justify-end gap-1 border-t border-line px-2 py-1.5">
           <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={onClearColumn}>{m.clearColumn}</Button>
           <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={onClearAll}>{m.clearAll}</Button>
         </div>

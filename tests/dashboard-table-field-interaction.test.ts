@@ -78,6 +78,11 @@ describe("real field menu and query hook", () => {
   it.each(["zh", "en"] as const)("combines independent fields, keeps the menu open, and separates option search from sorting in %s", async locale => {
     await render(locale); const m = dashboardFieldMessages(locale);
     const trigger = byLabel(`arrangement · ${m.menu}`); await click(trigger);
+    const menu = document.querySelector<HTMLElement>("[data-dashboard-field-menu]")!;
+    expect(menu.getAttribute("aria-label")).toBe(`arrangement · ${m.menu}`);
+    expect(menu.textContent).not.toContain("arrangement");
+    for (const removedCopy of [m.scope, m.sortHint, m.combine]) expect(menu.textContent).not.toContain(removedCopy);
+    expect(menu.textContent).toContain(m.clearColumn); expect(menu.textContent).toContain(m.clearAll);
     await click(document.querySelector<HTMLElement>('[data-field-date-from="2026-09-07"]'));
     await click(option("t1")); expect(visible()).toBe("a");
     await click(option("t2")); expect(visible()).toBe("a,b");
