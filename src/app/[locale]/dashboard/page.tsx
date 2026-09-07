@@ -8,6 +8,8 @@ import {
   hasStaffHomeManagementScope,
   resolveStaffHomeView,
   STAFF_HOME_VIEW_COOKIE,
+  STAFF_OVERVIEW_GRAIN_COOKIE,
+  STAFF_OVERVIEW_DATE_COOKIE,
 } from "@/features/school/home/staff-home-contract";
 import { normalizeOverviewGrain } from "@/features/school/home/staff-overview-contract";
 import { listMyWorkItems } from "@/features/school/work-items";
@@ -36,6 +38,7 @@ export default async function DashboardPage({
   searchParams: Promise<{
     focus?: string | string[];
     period?: string | string[];
+    date?: string | string[];
     view?: string | string[];
   }>;
 }) {
@@ -44,7 +47,6 @@ export default async function DashboardPage({
   const focusTarget = typeof rawSearchParams.focus === "string" && rawSearchParams.focus.length <= 200
     ? rawSearchParams.focus
     : undefined;
-  const period = normalizeOverviewGrain(typeof rawSearchParams.period === "string" ? rawSearchParams.period : undefined);
   const requestedView = typeof rawSearchParams.view === "string" ? rawSearchParams.view : undefined;
   const user = await requireUser(locale);
   const profile = await getProfile(user.id);
@@ -63,6 +65,10 @@ export default async function DashboardPage({
       remembered: cookieStore.get(STAFF_HOME_VIEW_COOKIE)?.value,
       hasManagementScope: hasStaffHomeManagementScope(perms),
     });
+    const period = normalizeOverviewGrain(typeof rawSearchParams.period === "string"
+      ? rawSearchParams.period : cookieStore.get(STAFF_OVERVIEW_GRAIN_COOKIE)?.value);
+    const date = (typeof rawSearchParams.date === "string"
+      ? rawSearchParams.date : cookieStore.get(STAFF_OVERVIEW_DATE_COOKIE)?.value ?? "previous").slice(0, 20);
     if (view === "work") {
       return (
         <TodayWorkHome
@@ -72,6 +78,8 @@ export default async function DashboardPage({
           focusTarget={focusTarget}
           items={workItems}
           perms={perms}
+          overviewGrain={period}
+          overviewDate={date}
         />
       );
     }
@@ -82,6 +90,7 @@ export default async function DashboardPage({
         profile={profile}
         focusTarget={focusTarget}
         grain={period}
+        date={date}
         workItemCount={workItems.length}
       />
     );

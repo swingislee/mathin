@@ -48,6 +48,51 @@ describe("staff fact overview contract", () => {
     expect(comparison.previous).toBe(1);
   });
 
+  it("shows the full last week at the start of a new working week", () => {
+    const window = buildStaffOverviewWindow("week", new Date("2026-09-08T09:00:00+08:00"), "Asia/Shanghai", "previous");
+    expect(window.isComplete).toBe(true);
+    expect(window.currentStart.toISOString()).toBe("2026-08-30T16:00:00.000Z");
+    expect(window.currentCutoff.toISOString()).toBe("2026-09-06T16:00:00.000Z");
+    expect(window.previousCutoff).toEqual(window.previousEnd);
+    const comparison = aggregateStaffOverviewEvents([
+      { at: "2026-09-06T23:59:59+08:00" },
+      { at: "2026-08-30T23:59:59+08:00" },
+      { at: "2026-09-07T00:00:00+08:00" },
+    ], window, "Asia/Shanghai");
+    expect(comparison).toMatchObject({ current: 1, previous: 1 });
+    expect(comparison.trend.every(point => point.current !== null && point.previous !== null)).toBe(true);
+  });
+
+  it("compares complete calendar months of different lengths and includes leap days", () => {
+    const window = buildStaffOverviewWindow("month", new Date("2026-09-08T09:00:00+08:00"), "Asia/Shanghai", "2024-02-15");
+    expect(window.isComplete).toBe(true);
+    expect(window.currentDays).toHaveLength(29);
+    expect(window.previousDays).toHaveLength(31);
+    const comparison = aggregateStaffOverviewEvents([
+      { at: "2024-02-29T23:59:59+08:00" },
+      { at: "2024-01-31T23:59:59+08:00" },
+      { at: "2024-03-01T00:00:00+08:00" },
+    ], window, "Asia/Shanghai");
+    expect(comparison).toMatchObject({ current: 1, previous: 1 });
+    expect(comparison.trend[30]).toMatchObject({ current: null, previous: 1 });
+  });
+
+  it("normalizes selected days across years and handles invalid or future dates", () => {
+    const now = new Date("2026-09-08T09:00:00+08:00");
+    const selected = buildStaffOverviewWindow("week", now, "Asia/Shanghai", "2026-01-02");
+    expect(selected.currentStart.toISOString()).toBe("2025-12-28T16:00:00.000Z");
+    expect(selected.currentEnd.toISOString()).toBe("2026-01-04T16:00:00.000Z");
+    const current = buildStaffOverviewWindow("week", now, "Asia/Shanghai", "current");
+    for (const date of ["2026-02-30", "2027-01-01", "invalid", "2026-1-2"])
+      expect(buildStaffOverviewWindow("week", now, "Asia/Shanghai", date)).toEqual(current);
+    expect(current.isComplete).toBe(false);
+  });
+
+  it("keeps current-week comparison at the same local time across daylight saving", () => {
+    const window = buildStaffOverviewWindow("week", new Date("2026-03-09T12:00:00-04:00"), "America/New_York", "current");
+    expect(window.previousCutoff.toISOString()).toBe("2026-03-02T17:00:00.000Z");
+  });
+
   it("keeps per-person comparisons and an explicit unassigned bucket", () => {
     const timeZone = "Asia/Shanghai";
     const window = buildStaffOverviewWindow("week", new Date("2026-09-03T10:30:00+08:00"), timeZone);

@@ -190,7 +190,7 @@ async function WeekBusinessSummaryData({
     <WeekBusinessSummary
       title={title}
       linkLabel={linkLabel}
-      href={staffHomeHref("overview", "week")}
+      href={staffHomeHref("overview", "week", "current")}
       items={weekBusinessSummaryItems(data, copy)}
     />
   );
@@ -203,8 +203,12 @@ export async function TodayWorkHome({
   focusTarget,
   items,
   perms,
+  overviewGrain = "week",
+  overviewDate,
 }: HomeProps & {
   focusTarget?: string;
+  overviewGrain?: "week" | "month";
+  overviewDate?: string;
   items: WorkItemRow[];
   perms: ReadonlySet<PermissionKey>;
 }) {
@@ -273,7 +277,8 @@ export async function TodayWorkHome({
           <DashboardCommandState>
             <StaffHomeViewTabs
               activeView="work"
-              period="week"
+              period={overviewGrain}
+              date={overviewDate}
               workItemCount={items.length}
               ariaLabel={hubT("viewAriaLabel")}
               workLabel={hubT("workView")}
@@ -293,7 +298,7 @@ export async function TodayWorkHome({
             <WeekBusinessSummary
               title={hubT("weekSummaryTitle")}
               linkLabel={hubT("openOverview")}
-              href={staffHomeHref("overview", "week")}
+              href={staffHomeHref("overview", "week", "current")}
               items={weekBusinessSummaryItems(null, weekSummaryCopy)}
             />
           )}

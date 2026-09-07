@@ -2,6 +2,8 @@ export const STAFF_HOME_VIEWS = ["work", "overview"] as const;
 export type StaffHomeView = (typeof STAFF_HOME_VIEWS)[number];
 
 export const STAFF_HOME_VIEW_COOKIE = "mathin_staff_home_view";
+export const STAFF_OVERVIEW_GRAIN_COOKIE = "mathin_staff_overview_grain";
+export const STAFF_OVERVIEW_DATE_COOKIE = "mathin_staff_overview_date";
 
 const MANAGEMENT_PERMISSIONS = [
   "work_item.manage",
@@ -35,8 +37,8 @@ export function resolveStaffHomeView({
     ?? (hasManagementScope ? "overview" : "work");
 }
 
-export function staffHomeHref(view: StaffHomeView, period: "week" | "month" = "week"): string {
+export function staffHomeHref(view: StaffHomeView, period: "week" | "month" = "week", date?: string): string {
   return view === "work"
     ? "/dashboard?view=work"
-    : `/dashboard?view=overview&period=${period}`;
+    : `/dashboard?view=overview&period=${period}${date ? `&date=${encodeURIComponent(date)}` : ""}`;
 }

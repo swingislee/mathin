@@ -116,7 +116,9 @@ export interface StaffOverviewData {
   generatedAt: string;
   timeZone: string;
   grain: StaffOverviewGrain;
+  isComplete: boolean;
   currentStart: string;
+  currentEnd: string;
   currentCutoff: string;
   previousStart: string;
   previousCutoff: string;
@@ -315,12 +317,14 @@ export async function getStaffHomeWeekSummaryData({ now = new Date() }: { now?: 
 export async function getStaffOverviewData({
   grain,
   now = new Date(),
+  date,
 }: {
   grain: StaffOverviewGrain;
   now?: Date;
+  date?: string;
 }): Promise<StaffOverviewData> {
   const [supabase, timeZone] = await Promise.all([createClient(), getOrganizationTimezoneV2()]);
-  const window = buildStaffOverviewWindow(grain, now, timeZone);
+  const window = buildStaffOverviewWindow(grain, now, timeZone, date);
   const rangeStart = window.previousStart.toISOString();
   const rangeEnd = window.currentCutoff.toISOString();
   const activeLeadStates = ["unassigned", "uncontacted", "contacted", "nurture", "intent_confirmed"];
@@ -752,7 +756,9 @@ export async function getStaffOverviewData({
     generatedAt: now.toISOString(),
     timeZone,
     grain,
+    isComplete: window.isComplete,
     currentStart: window.currentStart.toISOString(),
+    currentEnd: window.currentEnd.toISOString(),
     currentCutoff: window.currentCutoff.toISOString(),
     previousStart: window.previousStart.toISOString(),
     previousCutoff: window.previousCutoff.toISOString(),

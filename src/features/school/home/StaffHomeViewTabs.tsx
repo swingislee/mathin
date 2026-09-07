@@ -14,6 +14,7 @@ import {
 export function StaffHomeViewTabs({
   activeView,
   period,
+  date,
   workItemCount,
   ariaLabel,
   workLabel,
@@ -21,6 +22,7 @@ export function StaffHomeViewTabs({
 }: {
   activeView: StaffHomeView;
   period: "week" | "month";
+  date?: string;
   workItemCount: number;
   ariaLabel: string;
   workLabel: string;
@@ -44,7 +46,7 @@ export function StaffHomeViewTabs({
     {
       value: "overview",
       label: overviewLabel,
-      href: staffHomeHref("overview", period),
+      href: staffHomeHref("overview", period, date),
     },
   ];
 

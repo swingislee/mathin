@@ -26,6 +26,7 @@ export function normalizeOverviewGrain(value: string | undefined): StaffOverview
 
 export interface StaffOverviewWindow {
   grain: StaffOverviewGrain;
+  isComplete: boolean;
   currentStart: Date;
   currentEnd: Date;
   currentCutoff: Date;
@@ -75,13 +76,29 @@ function previousMonthComparableCutoff(
   }, timeZone);
 }
 
-/** 当前自然周/月截至此刻，并与上一自然周期的同一进度比较。 */
+/** URL 日期按机构时区定位自然周期；未来日期收敛到当前周期。 */
+export function overviewPeriodAnchor(value: string | undefined, now: Date, timeZone: string): Date {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return now;
+  const [year, month, day] = value.split("-").map(Number);
+  if (year < 1900) return now;
+  const check = new Date(Date.UTC(year, month - 1, day));
+  if (check.getUTCFullYear() !== year || check.getUTCMonth() !== month - 1 || check.getUTCDate() !== day) return now;
+  const date = zonedDateTimeToInstant({ year, month: month - 1, day }, timeZone);
+  return date > now ? now : date;
+}
+
+/** 历史周期比较完整两期；当前周期比较截至此刻的相同日历进度。 */
 export function buildStaffOverviewWindow(
   grain: StaffOverviewGrain,
   now: Date,
   timeZone: string,
+  date?: string,
 ): StaffOverviewWindow {
-  const currentStart = grain === "week" ? startOfWeek(now, timeZone) : startOfMonth(now, timeZone);
+  const anchor = overviewPeriodAnchor(date, now, timeZone);
+  let currentStart = grain === "week" ? startOfWeek(anchor, timeZone) : startOfMonth(anchor, timeZone);
+  if (date === "previous") {
+    currentStart = grain === "week" ? addCalendarDays(currentStart, -7, timeZone) : monthStartOffset(currentStart, -1, timeZone);
+  }
   const currentEnd = grain === "week"
     ? addCalendarDays(currentStart, 7, timeZone)
     : monthStartOffset(currentStart, 1, timeZone);
@@ -90,12 +107,14 @@ export function buildStaffOverviewWindow(
     : monthStartOffset(currentStart, -1, timeZone);
   const previousEnd = currentStart;
   const currentCutoff = now < currentEnd ? now : currentEnd;
-  const previousCutoff = grain === "week"
-    ? new Date(Math.min(previousEnd.getTime(), previousStart.getTime() + (currentCutoff.getTime() - currentStart.getTime())))
+  const isComplete = currentEnd <= now;
+  const previousCutoff = isComplete ? previousEnd : grain === "week"
+    ? addCalendarDays(currentCutoff, -7, timeZone)
     : previousMonthComparableCutoff(currentCutoff, previousStart, previousEnd, timeZone);
 
   return {
     grain,
+    isComplete,
     currentStart,
     currentEnd,
     currentCutoff,

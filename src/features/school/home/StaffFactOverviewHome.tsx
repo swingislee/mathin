@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { getTranslations } from "next-intl/server";
+import { Badge } from "@/components/ui/badge";
 import { NotificationFocus } from "@/features/events/NotificationFocus";
 import {
   DashboardCommandActions,
@@ -9,12 +10,15 @@ import {
   DashboardCommandTabs,
 } from "@/features/school/dashboard-page";
 import { ObjectBar, ObjectWorkspace } from "@/features/school/object-workspace";
+import { calendarDayKey } from "@/features/school/schedule";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import type { HomeProps } from "./shared";
 import { staffHomeHref } from "./staff-home-contract";
 import { StaffHomeViewTabs } from "./StaffHomeViewTabs";
 import { StaffOverviewDataNote } from "./StaffOverviewDataNote";
+import { StaffOverviewPeriodPicker } from "./StaffOverviewPeriodPicker";
+import { StaffOverviewRefreshButton } from "./StaffOverviewRefreshButton";
 import {
   getStaffOverviewData,
   type StaffOverviewBusinessFact,
@@ -28,12 +32,20 @@ import {
 } from "./staff-overview-data";
 import {
   STAFF_OVERVIEW_METRICS,
+  buildStaffOverviewWindow,
   type StaffOverviewGrain,
   type StaffOverviewMetric,
   type StaffOverviewTrendPoint,
 } from "./staff-overview-contract";
 
 type MetricLabels = Record<StaffOverviewMetric, string>;
+
+function ScopeTitle({ label, children, current = false }: { label: string; children: ReactNode; current?: boolean }) {
+  return <span className="inline-flex min-w-0 items-center gap-2">
+    <Badge variant="outline" className={cn("shrink-0 px-1.5 py-0 text-[9px]", current ? "border-leaf-deep/25 bg-leaf/15 text-leaf-deep" : "border-crater/30 bg-moon/25 text-muted")}>{label}</Badge>
+    <span className="min-w-0 truncate">{children}</span>
+  </span>;
+}
 
 interface CapacityVisualDatum {
   key: string;
@@ -60,13 +72,9 @@ function factDifference(fact: Pick<StaffOverviewBusinessFact, "current" | "previ
   return fact.current - fact.previous;
 }
 
-function periodHref(grain: StaffOverviewGrain): string {
-  return staffHomeHref("overview", grain);
-}
-
 function rangeLabel(locale: string, timeZone: string, start: string, cutoff: string): string {
-  const formatter = new Intl.DateTimeFormat(locale, { month: "numeric", day: "numeric", timeZone });
-  return `${formatter.format(new Date(start))}–${formatter.format(new Date(cutoff))}`;
+  const formatter = new Intl.DateTimeFormat(locale, { year: "numeric", month: "numeric", day: "numeric", timeZone });
+  return formatter.formatRange(new Date(start), new Date(Math.max(new Date(start).getTime(), new Date(cutoff).getTime() - 1)));
 }
 
 function MiniTrend({ points }: { points: StaffOverviewTrendPoint[] | null }) {
@@ -108,14 +116,14 @@ function BusinessFactBand({
   differenceLabel,
 }: {
   facts: StaffOverviewBusinessFact[];
-  title: string;
+  title: ReactNode;
   labels: MetricLabels;
   currentLabel: string;
   previousLabel: string;
   differenceLabel: string;
 }) {
   return (
-    <section aria-labelledby="staff-overview-business-facts">
+    <section aria-labelledby="staff-overview-business-facts" data-overview-scope="period">
       <div className="mb-1.5 flex min-w-0 items-center justify-between gap-3">
         <h2 id="staff-overview-business-facts" className="text-xs font-medium text-ink">{title}</h2>
         <p className="flex shrink-0 items-center gap-2 text-[10px] text-muted">
@@ -155,7 +163,7 @@ function PendingStrip({
   fullLabel,
 }: {
   facts: Array<{ key: string; value: number | null; href: string }>;
-  title: string;
+  title: ReactNode;
   countLabel: string;
   shortLabel: (key: string) => string;
   fullLabel: (key: string) => string;
@@ -163,6 +171,7 @@ function PendingStrip({
   return (
     <section
       aria-labelledby="staff-overview-pending"
+      data-overview-scope="current"
       className="grid min-w-0 grid-cols-2 gap-px overflow-hidden rounded-xl border border-line/75 bg-line/70 @3xl/page:grid-cols-[auto_repeat(7,minmax(0,1fr))]"
     >
       <div className="col-span-2 flex min-h-10 items-center justify-between gap-2 bg-card px-3 @3xl/page:col-span-1">
@@ -191,15 +200,17 @@ function CockpitPanel({
   children,
   className,
   bodyClassName,
+  timeScope,
 }: {
   title: ReactNode;
   meta?: ReactNode;
   children: ReactNode;
   className?: string;
   bodyClassName?: string;
+  timeScope: "period" | "current";
 }) {
   return (
-    <section className={cn("flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-line/80 bg-card/90", className)}>
+    <section data-overview-scope={timeScope} className={cn("flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-line/80 bg-card/90", className)}>
       <header className="flex min-h-11 shrink-0 min-w-0 items-center justify-between gap-3 border-b border-line/70 px-3">
         <h2 className="min-w-0 truncate text-sm font-medium text-ink">{title}</h2>
         {meta ? <div className="shrink-0 text-[10px] text-muted">{meta}</div> : null}
@@ -253,7 +264,7 @@ function SupportFunnelPanel({
   emptyLabel,
 }: {
   rows: StaffOverviewSupportFunnelRow[];
-  title: string;
+  title: ReactNode;
   metricLabels: MetricLabels;
   currentLabel: string;
   previousLabel: string;
@@ -272,6 +283,7 @@ function SupportFunnelPanel({
 
   return (
     <CockpitPanel
+      timeScope="period"
       title={title}
       meta={(
         <span className="inline-flex items-center gap-2">
@@ -401,7 +413,7 @@ function TeacherOutcomePanel({
   note,
   emptyLabel,
 }: {
-  title: string;
+  title: ReactNode;
   rows: StaffOverviewTeacherParticipationRow[];
   summary: StaffOverviewTeacherParticipationSummary;
   currentLabel: string;
@@ -419,6 +431,7 @@ function TeacherOutcomePanel({
 
   return (
     <CockpitPanel
+      timeScope="period"
       title={title}
       meta={(
         <span className="inline-flex items-center gap-2">
@@ -556,7 +569,7 @@ function CapacityPanel({
   legendHealthy,
   policy,
 }: {
-  title: string;
+  title: ReactNode;
   snapshotItems: Array<{ label: string; value: string; note: string }>;
   teachers: CapacityVisualDatum[];
   grades: CapacityVisualDatum[];
@@ -571,6 +584,7 @@ function CapacityPanel({
 }) {
   return (
     <CockpitPanel
+      timeScope="current"
       title={title}
       meta={(
         <span className="inline-flex items-center gap-2">
@@ -646,20 +660,27 @@ export async function StaffFactOverviewHome({
   profile,
   focusTarget,
   grain,
+  date,
   workItemCount,
 }: HomeProps & {
   focusTarget?: string;
   grain: StaffOverviewGrain;
+  date: string;
   workItemCount: number;
 }) {
   const [schoolT, t, hubT, data] = await Promise.all([
     getTranslations("school"),
     getTranslations("school.home.overview"),
     getTranslations("school.home.staffHub"),
-    getStaffOverviewData({ grain }),
+    getStaffOverviewData({ grain, date }),
   ]);
   const currentRange = rangeLabel(locale, data.timeZone, data.currentStart, data.currentCutoff);
   const previousRange = rangeLabel(locale, data.timeZone, data.previousStart, data.previousCutoff);
+  const dayKey = (value: string) => calendarDayKey(new Date(value), data.timeZone);
+  const selectedDate = dayKey(data.currentStart);
+  const selection = date === "current" || date === "previous" ? date : selectedDate;
+  const liveWindow = buildStaffOverviewWindow(grain, new Date(data.generatedAt), data.timeZone);
+  const previousLabel = t(data.isComplete ? "previousComplete" : "previousShort");
   const generatedAt = new Intl.DateTimeFormat(locale, {
     month: "numeric",
     day: "numeric",
@@ -686,7 +707,7 @@ export async function StaffFactOverviewHome({
   const periodTabs = (["week", "month"] as const).map((value) => ({
     value,
     label: t(`period_${value}`),
-    href: periodHref(value),
+    href: staffHomeHref("overview", value, selection),
   }));
   const snapshotItems = [
     { label: t("snapshotActiveStudents"), value: valueOrDash(data.snapshot.activeStudents), note: t("snapshotActiveStudentsNote") },
@@ -716,6 +737,7 @@ export async function StaffFactOverviewHome({
             <StaffHomeViewTabs
               activeView="overview"
               period={grain}
+              date={selection}
               workItemCount={workItemCount}
               ariaLabel={hubT("viewAriaLabel")}
               workLabel={hubT("workView")}
@@ -723,14 +745,25 @@ export async function StaffFactOverviewHome({
             />
             <span aria-hidden className="hidden h-6 w-px bg-line @xl/page:block" />
             <DashboardCommandTabs items={periodTabs} activeValue={grain} ariaLabel={t("periodAriaLabel")} />
+            <StaffOverviewPeriodPicker
+              key={`${grain}:${selection}:${selectedDate}`}
+              grain={grain} selection={selection} selectedDate={selectedDate} today={dayKey(data.generatedAt)}
+              range={grain === "month"
+                ? new Intl.DateTimeFormat(locale, { year: "numeric", month: "long", timeZone: data.timeZone }).format(new Date(data.currentStart))
+                : rangeLabel(locale, data.timeZone, data.currentStart, data.currentEnd)}
+              previousDate={dayKey(data.previousStart)} nextDate={data.isComplete ? dayKey(data.currentEnd) : null}
+              isPrevious={data.currentEnd === liveWindow.currentStart.toISOString()}
+            />
           </DashboardCommandState>
           <DashboardCommandActions>
+            <span className="text-[10px] tabular-nums text-muted">{t("updatedAt", { time: generatedAt })}</span>
+            <StaffOverviewRefreshButton />
             <StaffOverviewDataNote
               triggerLabel={t("dataNoteTrigger")}
               title={t("dataNoteTitle")}
               rows={[
-                { label: t("currentPeriod"), value: currentRange },
-                { label: t("previousPeriod"), value: previousRange },
+                { label: t("selectedPeriod"), value: currentRange },
+                { label: previousLabel, value: previousRange },
                 { label: t("currentSchoolTerm"), value: data.currentTermName ?? t("unknownSchoolTerm") },
                 { label: t("generatedAt"), value: generatedAt },
               ]}
@@ -745,19 +778,22 @@ export async function StaffFactOverviewHome({
     >
       <div className="min-h-0 space-y-2 pb-3">
         <NotificationFocus target={focusTarget} />
+        <p className="text-[10px] text-muted" data-overview-comparison={data.isComplete ? "complete" : "to-date"}>
+          {t(data.isComplete ? "completeComparison" : "progressComparison", { current: currentRange, previous: previousRange })}
+        </p>
 
         <BusinessFactBand
           facts={data.businessFacts}
-          title={t("businessFactsTitle")}
+          title={<ScopeTitle label={t("periodScope")}>{t("businessFactsTitle")}</ScopeTitle>}
           labels={metricLabels}
           currentLabel={t("currentShort")}
-          previousLabel={t("previousShort")}
+          previousLabel={previousLabel}
           differenceLabel={t("differenceColumn")}
         />
 
         <PendingStrip
           facts={data.pendingFacts}
-          title={t("pendingTitle")}
+          title={<ScopeTitle label={t("currentScope")} current>{t("pendingRecordsTitle")}</ScopeTitle>}
           countLabel={t("recordCount", { count: data.pendingFacts.length })}
           shortLabel={(key) => t(`pendingShort_${key}`)}
           fullLabel={(key) => t(`pending_${key}`)}
@@ -766,10 +802,10 @@ export async function StaffFactOverviewHome({
         <div className="grid min-w-0 gap-3 @4xl/page:h-[calc(100dvh-21rem)] @4xl/page:min-h-[24rem] @4xl/page:max-h-[44rem] @4xl/page:grid-cols-[minmax(0,1.55fr)_minmax(23rem,1fr)]">
           <SupportFunnelPanel
             rows={data.supportFunnelRows}
-            title={t("supportFunnelTitle")}
+            title={<ScopeTitle label={t("periodScope")}>{t("supportFunnelTitle")}</ScopeTitle>}
             metricLabels={metricLabels}
             currentLabel={t("currentShort")}
-            previousLabel={t("previousShort")}
+            previousLabel={previousLabel}
             differenceLabel={t("differenceColumn")}
             peopleLabel={t("peopleCount", { count: data.supportFunnelRows.length })}
             personLabel={t("role_learningSupport")}
@@ -780,11 +816,11 @@ export async function StaffFactOverviewHome({
 
           <div className="grid min-h-0 min-w-0 gap-3 @4xl/page:grid-rows-[minmax(15rem,.78fr)_minmax(20rem,1.22fr)]">
             <TeacherOutcomePanel
-              title={t("teacherOutcomeTitle")}
+              title={<ScopeTitle label={t("periodScope")}>{t("teacherOutcomeTitle")}</ScopeTitle>}
               rows={data.teacherParticipationRows}
               summary={data.teacherParticipationSummary}
               currentLabel={t("currentShort")}
-              previousLabel={t("previousShort")}
+              previousLabel={previousLabel}
               peopleLabel={t("teacherParticipantCount", { count: data.teacherParticipationRows.length })}
               participantLabel={t("teacherParticipants")}
               enrollmentLabel={t("teacherEnrollments")}
@@ -795,7 +831,7 @@ export async function StaffFactOverviewHome({
             />
 
             <CapacityPanel
-              title={t("capacityTitle")}
+              title={<ScopeTitle label={t("currentScope")} current>{t("capacityTermTitle", { term: data.currentTermName ?? t("unknownSchoolTerm") })}</ScopeTitle>}
               snapshotItems={snapshotItems}
               teachers={teacherCapacityRows(data.teacherRows)}
               grades={gradeCapacityRows(

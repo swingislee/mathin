@@ -137,6 +137,29 @@ describe("staff overview reads current business sources", () => {
     expect(data.businessFacts.find(row => row.key === "enrollments")?.current).toBeNull();
   });
 
+  it("switches all period facts to a full historical week while keeping today's roster and pending state", async () => {
+    state.tables.activities = [activity("last-week", "2026-09-06"), activity("prior-week", "2026-08-30")];
+    state.tables.activity_registrations = [registration("last-reg", "last-week", "one"), registration("prior-reg", "prior-week", "two")];
+    state.tables.assessment_results = [assessment("last-result", "last-reg"), assessment("prior-result", "prior-reg")];
+    state.tables.leads = [{ id: "last-lead", created_at: "2026-09-06T02:00:00Z", owner_id: "support", status: "uncontacted" }];
+    state.tables.course_enrollments = [courseEnrollment("last-enrollment", "2026-09-06"), courseEnrollment("prior-enrollment", "2026-08-30")];
+    state.tables.classrooms = [{ id: "class", purpose: "production", grade: 3, capacity: 20, term_id: "current", archived_at: null, trashed_at: null }];
+    state.tables.enrollments = [{ id: "member", classroom_id: "class", student_id: "child", joined_at: "2026-09-07T00:00:00Z", status: "active", remark: "班级学员导入：在读名单" }];
+    const historical = await getStaffOverviewData({ grain: "week", now, date: "previous" });
+    const current = await getStaffOverviewData({ grain: "week", now, date: "current" });
+    expect(historical.isComplete).toBe(true);
+    for (const key of ["arrivals", "assessments", "enrollments"]) {
+      expect(historical.businessFacts.find(row => row.key === key)).toMatchObject({ current: 1, previous: 1 });
+      expect(current.businessFacts.find(row => row.key === key)?.current).toBe(0);
+    }
+    expect(historical.businessFacts.find(row => row.key === "leads")?.current).toBe(1);
+    expect(historical.supportFunnelRows.find(row => row.userId === "support")?.metrics.arrivals).toEqual({ current: 1, previous: 1 });
+    expect(historical.teacherParticipationRows.find(row => row.userId === "teacher")?.participants).toEqual({ current: 1, previous: 1 });
+    expect(historical.snapshot).toEqual(current.snapshot);
+    expect(historical.snapshot.activeStudents).toBe(1);
+    expect(historical.pendingFacts).toEqual(current.pendingFacts);
+  });
+
   it("places date-only records in the organization timezone and leaves missing dates empty", () => {
     expect(overviewFactInstant(null, "2026-09-01", "Asia/Shanghai")).toBe("2026-08-31T16:00:00.000Z");
     expect(overviewFactInstant(null, "2026-02-30", "Asia/Shanghai")).toBeNull();

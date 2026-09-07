@@ -28,5 +28,8 @@ describe("staff home view contract", () => {
   it("keeps the selected overview period in URL-driven navigation", () => {
     expect(staffHomeHref("work", "month")).toBe("/dashboard?view=work");
     expect(staffHomeHref("overview", "month")).toBe("/dashboard?view=overview&period=month");
+    expect(staffHomeHref("overview", "week", "2026-08-31")).toBe("/dashboard?view=overview&period=week&date=2026-08-31");
+    expect(staffHomeHref("overview", "week", "current")).toBe("/dashboard?view=overview&period=week&date=current");
+    expect(staffHomeHref("overview", "month", "previous")).toBe("/dashboard?view=overview&period=month&date=previous");
   });
 });
