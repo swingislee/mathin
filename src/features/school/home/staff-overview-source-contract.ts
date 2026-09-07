@@ -67,6 +67,7 @@ export interface OverviewEnrollmentAssignment {
 
 export interface OverviewSourceEvent {
   id: string;
+  registrationIds?: string[];
   at: string | null;
   studentId: string | null;
   leadId: string | null;
@@ -108,9 +109,17 @@ export function buildOverviewSourceEvents(input: {
     const activity = activities.get(id);
     return activity ? overviewFactInstant(activity.scheduled_at, activity.occurred_on, timeZone) : null;
   };
-  const arrivals: OverviewSourceEvent[] = input.registrations
-    .filter(row => row.status === "attended" && activities.has(row.activity_id))
-    .map(row => ({ id: row.id, at: activityAt(row.activity_id), studentId: row.student_id, leadId: row.lead_id, activityId: row.activity_id }));
+  const visits = new Map<string, OverviewSourceEvent>();
+  for (const row of input.registrations) {
+    if (row.status !== "attended" || !activities.has(row.activity_id)) continue;
+    const at = activityAt(row.activity_id);
+    // 同一来源到访拆成体验、测评两个产品时计一次；原生预约和另一次到访分别保留。
+    const key = row.source_record_id ? JSON.stringify([row.source_record_id, at, row.student_id, row.lead_id]) : row.id;
+    const existing = visits.get(key);
+    if (existing) existing.registrationIds!.push(row.id);
+    else visits.set(key, { id: row.id, registrationIds: [row.id], at, studentId: row.student_id, leadId: row.lead_id, activityId: row.activity_id });
+  }
+  const arrivals = Array.from(visits.values());
   const assessments: OverviewSourceEvent[] = input.assessments
     .filter(row => overviewAssessmentCompleted(row, registrations.get(row.activity_registration_id)))
     .filter(row => activities.has(registrations.get(row.activity_registration_id)!.activity_id))

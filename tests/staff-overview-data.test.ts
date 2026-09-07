@@ -41,6 +41,7 @@ function query(table: string) {
 
 import { getStaffHomeWeekSummaryData, getStaffOverviewData } from "@/features/school/home/staff-overview-data";
 import { overviewFactInstant, overviewSubjectKey } from "@/features/school/home/staff-overview-source-contract";
+import { selectOverviewSupportRows } from "@/features/school/home/staff-overview-display-contract";
 
 const now = new Date("2026-09-08T12:00:00+08:00");
 const activity = (id: string, date: string | null) => ({ id, scheduled_at: null, occurred_on: date, source_invitation_id: null, remark: "学服老师：学服甲", record_state: "current", deleted_at: null });
@@ -113,6 +114,29 @@ describe("staff overview reads current business sources", () => {
     const data = await getStaffOverviewData({ grain: "month", now });
     expect(data.businessFacts.find(row => row.key === "enrollments")).toMatchObject({ current: 3, previous: 1 });
     expect(data.missingDateCounts.enrollments).toBe(1);
+  });
+
+  it("counts a combined source visit once and keeps its staff signature and all participating teachers", async () => {
+    state.tables.activities = [activity("assessment", "2026-09-02"), activity("trial", "2026-09-02"), activity("return", "2026-09-03")]
+      .map(row => ({ ...row, remark: "学服老师：来源学服乙" }));
+    state.tables.activity_registrations = [
+      { ...registration("assess-reg", "assessment", "child"), source_record_id: "combined-visit" },
+      { ...registration("trial-reg", "trial", "child"), source_record_id: "combined-visit" },
+      { ...registration("return-reg", "return", "child"), source_record_id: "another-visit" },
+      { ...registration("native-a", "trial", "child"), source_record_id: null },
+      { ...registration("native-b", "trial", "child"), source_record_id: null },
+    ];
+    state.tables.assessment_results = [assessment("result", "trial-reg")];
+    const data = await getStaffOverviewData({ grain: "month", now });
+    expect(data.businessFacts.find(row => row.key === "arrivals")?.current).toBe(4);
+    expect(data.supportFunnelRows.find(row => row.name === "来源学服乙")).toMatchObject({
+      userId: `source-staff:${encodeURIComponent("来源学服乙")}`,
+      metrics: { arrivals: { current: 4 }, invitations: { current: 2 } },
+    });
+    expect(selectOverviewSupportRows(data.supportFunnelRows, data.supportDirectory).options.some(row => row.name === "来源学服乙")).toBe(true);
+    expect(data.teacherParticipationRows.find(row => row.userId === "teacher")?.participants.current).toBe(1);
+    const summary = await getStaffHomeWeekSummaryData({ now: new Date("2026-09-03T12:00:00+08:00") });
+    expect(summary.businessFacts.find(row => row.key === "arrivals")?.current).toBe(4);
   });
 
   it("counts all current-term production rosters including planned classes, and deduplicates students", async () => {

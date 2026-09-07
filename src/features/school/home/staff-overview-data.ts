@@ -456,8 +456,16 @@ export async function getStaffOverviewData({
     return invitationOwner ?? latestLeadOwner(studentId, at);
   };
 
-  const sourceSupport = new Map(activities.map(activity => [activity.id,
-    resolveSourceStaffId(sourceStaffLabel(activity.remark, "学服老师"), profiles)]));
+  const sourceStaffNames = new Map<string, string>();
+  const sourceSupport = new Map(activities.map(activity => {
+    const name = sourceStaffLabel(activity.remark, "学服老师");
+    const accountId = resolveSourceStaffId(name, profiles);
+    if (!name || accountId) return [activity.id, accountId] as const;
+    // 来源署名可以参与统计和展示选择；此键只用于总览，不创建账号或授予岗位。
+    const displayId = `source-staff:${encodeURIComponent(name)}`;
+    sourceStaffNames.set(displayId, name);
+    return [activity.id, displayId] as const;
+  }));
   const personForEvent = (event: { activityId: string | null; studentId: string | null; leadId: string | null; at: string }) => {
     const directOwner = event.activityId ? sourceSupport.get(event.activityId) : null;
     const linkedLead = event.leadId ? leadById.get(event.leadId) : null;
@@ -565,7 +573,7 @@ export async function getStaffOverviewData({
       profileNames.set(assignment.user_id, assignment.profiles.display_name);
     }
   }
-  const displayName = (userId: string) => profileNames.get(userId) || userId.slice(0, 8);
+  const displayName = (userId: string) => profileNames.get(userId) || sourceStaffNames.get(userId) || userId.slice(0, 8);
 
   const supportAttributedEvents: Record<StaffOverviewMetric, Array<{ id: string; at: string; personId: string | null }>> = {
     leads: leadEvents,
@@ -680,7 +688,8 @@ export async function getStaffOverviewData({
           id: event.id,
           studentId: event.studentId,
           at: event.at,
-          teacherIds: Array.from(assessorsByRegistrationId.get(event.id) ?? []),
+          teacherIds: Array.from(new Set((event.registrationIds ?? [event.id])
+            .flatMap(id => Array.from(assessorsByRegistrationId.get(id) ?? [])))),
         })),
         ...assessmentEvents.map(event => ({
           id: event.id, studentId: event.studentId, at: event.at,
