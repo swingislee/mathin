@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import { cookies } from "next/headers";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { StaffOverviewSupportPicker } from "./StaffOverviewSupportPicker";
+import { StaffOverviewDisplayPicker } from "./StaffOverviewDisplayPicker";
 import { StaffOverviewCapacityTabs } from "./StaffOverviewCapacityTabs";
-import { selectOverviewSupportRows, staffOverviewSupportCookie } from "./staff-overview-display-contract";
+import { selectOverviewDisplayIds, selectOverviewSupportRows, selectOverviewTeacherRows, staffOverviewDisplayCookie, type OverviewDisplayGroup, type OverviewDisplayScope } from "./staff-overview-display-contract";
 import { ArrowUpRight } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
@@ -202,6 +202,8 @@ function PendingStrip({
 function CockpitPanel({
   title,
   meta,
+  actions,
+  panel,
   children,
   className,
   bodyClassName,
@@ -209,16 +211,18 @@ function CockpitPanel({
 }: {
   title: ReactNode;
   meta?: ReactNode;
+  actions?: ReactNode;
+  panel?: "support" | "participation" | "capacity";
   children: ReactNode;
   className?: string;
   bodyClassName?: string;
   timeScope: "period" | "current";
 }) {
   return (
-    <section data-overview-scope={timeScope} className={cn("flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-line/80 bg-card/90", className)}>
+    <section data-overview-scope={timeScope} data-overview-panel={panel} className={cn("flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-line/80 bg-card/90", className)}>
       <header className="flex min-h-11 shrink-0 min-w-0 items-center justify-between gap-3 border-b border-line/70 px-3">
         <h2 className="min-w-0 truncate text-sm font-medium text-ink">{title}</h2>
-        {meta ? <div className="shrink-0 text-[10px] text-muted">{meta}</div> : null}
+        <div className="flex shrink-0 items-center gap-1.5 text-[10px] text-muted">{meta}{actions}</div>
       </header>
       <div className={cn("min-h-0 flex-1", bodyClassName)}>{children}</div>
     </section>
@@ -232,11 +236,12 @@ function PersonComparisonCell({ value, previousLabel }: { value: StaffOverviewPe
   </span>;
 }
 
-function SupportFunnelPanel({ rows, title, metricLabels, currentLabel, previousLabel, peopleLabel, personLabel, unassignedLabel, otherLabel, attributionNote, emptyLabel }: {
+function SupportFunnelPanel({ rows, title, settings, metricLabels, currentLabel, previousLabel, peopleLabel, personLabel, unassignedLabel, otherLabel, attributionNote, emptyLabel }: {
   rows: StaffOverviewSupportFunnelRow[]; title: ReactNode; metricLabels: MetricLabels; currentLabel: string;
+  settings: ReactNode;
   previousLabel: string; peopleLabel: string; personLabel: string; unassignedLabel: string; otherLabel: string; attributionNote: string; emptyLabel: string;
 }) {
-  return <CockpitPanel timeScope="period" title={title} meta={peopleLabel}
+  return <CockpitPanel timeScope="period" panel="support" title={title} meta={peopleLabel} actions={settings}
     className="min-h-64 @4xl/page:col-span-2 @6xl/page:col-span-1" bodyClassName="flex min-h-0 flex-col">
     <p className="shrink-0 px-3 py-1.5 text-[10px] text-muted">{currentLabel} / {previousLabel}</p>
     <Table containerClassName="min-h-0 flex-1 overflow-auto" className="min-w-[29rem] text-xs">
@@ -263,6 +268,7 @@ function percentage(numerator: number | null, denominator: number | null): strin
 
 function TeacherOutcomePanel({
   title,
+  settings,
   rows,
   summary,
   currentLabel,
@@ -277,6 +283,7 @@ function TeacherOutcomePanel({
   emptyLabel,
 }: {
   title: ReactNode;
+  settings: ReactNode;
   rows: StaffOverviewTeacherParticipationRow[];
   summary: StaffOverviewTeacherParticipationSummary;
   currentLabel: string;
@@ -294,8 +301,10 @@ function TeacherOutcomePanel({
   return (
     <CockpitPanel
       timeScope="period"
+      panel="participation"
       title={title}
       meta={peopleLabel}
+      actions={settings}
       className="min-h-64"
       bodyClassName="flex min-h-0 flex-col"
     >
@@ -322,7 +331,7 @@ function TeacherOutcomePanel({
           <TableHead className="h-8 px-2 text-right text-[10px]">{enrollmentLabel}</TableHead>
           <TableHead className="h-8 px-2 text-right text-[10px]">{conversionLabel}</TableHead>
         </TableRow></TableHeader>
-        <TableBody>{rows.map(row => <TableRow key={row.userId}>
+        <TableBody>{rows.map(row => <TableRow key={row.userId} data-participation-row={row.userId}>
           <TableCell className="max-w-24 truncate px-3 py-1.5 font-medium" title={row.name}>{row.name}</TableCell>
           <TableCell className="px-2 py-1.5 text-right"><PersonComparisonCell value={row.participants} previousLabel={previousLabel} /></TableCell>
           <TableCell className="px-2 py-1.5 text-right"><PersonComparisonCell value={row.enrollments} previousLabel={previousLabel} /></TableCell>
@@ -345,7 +354,7 @@ function CapacityGroup({ title, rows, emptyLabel, labels }: {
         {[title, labels.classes, labels.enrolled, labels.minimum, labels.healthy, labels.remaining].map((label, i) =>
           <TableHead key={label} className={cn("h-8 px-2 text-[10px] whitespace-nowrap", i > 0 && "text-right")}>{label}</TableHead>)}
       </TableRow></TableHeader>
-      <TableBody>{rows.map(row => <TableRow key={row.key}>
+      <TableBody>{rows.map(row => <TableRow key={row.key} data-capacity-row={row.key}>
         <TableCell className="max-w-24 truncate px-2 py-1.5 font-medium" title={row.label}>{row.label}</TableCell>
         <TableCell className="px-2 py-1.5 text-right tabular-nums">{valueOrDash(row.classCount)}</TableCell>
         <TableCell className="px-2 py-1.5 text-right tabular-nums whitespace-nowrap">{valueOrDash(row.enrolledSeats)}<span className="text-[10px] text-muted">/{valueOrDash(row.fullSeats)}</span></TableCell>
@@ -360,6 +369,7 @@ function CapacityGroup({ title, rows, emptyLabel, labels }: {
 
 function CapacityPanel({
   title,
+  settings,
   snapshotItems,
   teachers,
   grades,
@@ -371,6 +381,7 @@ function CapacityPanel({
   policy,
 }: {
   title: ReactNode;
+  settings: ReactNode;
   snapshotItems: Array<{ label: string; value: string; note: string }>;
   teachers: CapacityVisualDatum[];
   grades: CapacityVisualDatum[];
@@ -384,7 +395,9 @@ function CapacityPanel({
   return (
     <CockpitPanel
       timeScope="current"
+      panel="capacity"
       title={title}
+      actions={settings}
       className="min-h-64"
       bodyClassName="flex min-h-0 flex-col"
     >
@@ -413,7 +426,7 @@ function CapacityPanel({
 }
 
 function teacherCapacityRows(rows: StaffOverviewTeacherRow[]): CapacityVisualDatum[] {
-  return rows.filter(row => row.classCount === null || row.classCount > 0).map((row) => ({
+  return rows.map((row) => ({
     key: row.userId,
     label: row.name,
     classCount: row.classCount,
@@ -461,9 +474,11 @@ export async function StaffFactOverviewHome({
     getTranslations("school.home.staffHub"),
     getStaffOverviewData({ grain, date }),
   ]);
-  const supportCookie = staffOverviewSupportCookie(user.id);
-  const rememberedSupport = (await cookies()).get(supportCookie)?.value;
-  const supportDisplay = selectOverviewSupportRows(data.supportFunnelRows, data.supportDirectory, rememberedSupport);
+  const cookieStore = await cookies();
+  const remembered = (scope: OverviewDisplayScope) => cookieStore.get(staffOverviewDisplayCookie(user.id, scope))?.value;
+  const supportDisplay = selectOverviewSupportRows(data.supportFunnelRows, data.supportDirectory, remembered("support"));
+  const teacherDisplay = selectOverviewTeacherRows(data.teacherParticipationRows,
+    data.teacherRows.map(row => ({ userId: row.userId, name: row.name })), data.teacherParticipationSummary, remembered("participation"));
   const currentRange = rangeLabel(locale, data.timeZone, data.currentStart, data.currentCutoff);
   const previousRange = rangeLabel(locale, data.timeZone, data.previousStart, data.previousCutoff);
   const dayKey = (value: string) => calendarDayKey(new Date(value), data.timeZone);
@@ -513,6 +528,15 @@ export async function StaffFactOverviewHome({
     healthy: t("shortHealthy"),
     remaining: t("shortRemaining"),
   };
+  const capacityTeachers = teacherCapacityRows(data.teacherRows);
+  const capacityGrades = gradeCapacityRows(data.capacityByGrade, row => row.grade === null ? t("unknownGrade") : t("gradeValue", { grade: row.grade }));
+  const capacityTeacherDisplay = selectOverviewDisplayIds(capacityTeachers.map(row => ({ userId: row.key, name: row.label })),
+    capacityTeachers.filter(row => row.classCount === null || row.classCount > 0).map(row => row.key), remembered("capacity_teachers"));
+  const capacityGradeDisplay = selectOverviewDisplayIds(capacityGrades.map(row => ({ userId: row.key, name: row.label })),
+    capacityGrades.map(row => row.key), remembered("capacity_grades"));
+  const displayGroup = (scope: OverviewDisplayScope, label: string, selection: { options: OverviewDisplayGroup["options"]; selectedIds: string[] }): OverviewDisplayGroup => ({
+    scope, label, cookieName: staffOverviewDisplayCookie(user.id, scope), options: selection.options, selectedIds: selection.selectedIds,
+  });
 
   return (
     <ObjectWorkspace
@@ -547,7 +571,6 @@ export async function StaffFactOverviewHome({
             />
           </DashboardCommandState>
           <DashboardCommandActions>
-            <StaffOverviewSupportPicker key={rememberedSupport ?? "default"} options={supportDisplay.options} selectedIds={supportDisplay.selectedIds} cookieName={supportCookie} />
             <span className="text-[10px] tabular-nums text-muted">{t("updatedAt", { time: generatedAt })}</span>
             <StaffOverviewRefreshButton />
             <StaffOverviewDataNote
@@ -595,6 +618,8 @@ export async function StaffFactOverviewHome({
           <SupportFunnelPanel
             rows={supportDisplay.rows}
             title={<ScopeTitle label={t("periodScope")}>{t("supportFunnelTitle")}</ScopeTitle>}
+            settings={<StaffOverviewDisplayPicker ariaLabel={t("displaySettingsFor", { panel: t("supportFunnelTitle") })}
+              groups={[displayGroup("support", t("role_learningSupport"), supportDisplay)]} />}
             metricLabels={metricLabels}
             currentLabel={t("currentShort")}
             previousLabel={previousLabel}
@@ -609,32 +634,33 @@ export async function StaffFactOverviewHome({
 
             <TeacherOutcomePanel
               title={<ScopeTitle label={t("periodScope")}>{t("teacherOutcomeTitle")}</ScopeTitle>}
-              rows={data.teacherParticipationRows}
+              settings={<StaffOverviewDisplayPicker ariaLabel={t("displaySettingsFor", { panel: t("teacherOutcomeTitle") })}
+                groups={[displayGroup("participation", t("role_teacher"), teacherDisplay)]} />}
+              rows={teacherDisplay.rows}
               summary={data.teacherParticipationSummary}
               currentLabel={t("currentShort")}
               previousLabel={previousLabel}
-              peopleLabel={t("teacherParticipantCount", { count: data.teacherParticipationRows.length })}
+              peopleLabel={t("teacherParticipantCount", { count: teacherDisplay.selectedIds.length })}
               teacherLabel={t("role_teacher")}
               participantLabel={t("teacherParticipants")}
               enrollmentLabel={t("teacherEnrollments")}
               conversionLabel={t("teacherConversion")}
               unattributedLabel={t("teacherUnattributed")}
               note={t("teacherOutcomeNote")}
-              emptyLabel={t("teacherOutcomeEmpty")}
+              emptyLabel={t(teacherDisplay.selectedIds.length === 0 ? "displayEmpty" : "teacherOutcomeEmpty")}
             />
 
             <CapacityPanel
               title={<ScopeTitle label={t("currentScope")} current>{t("capacityTermTitle", { term: data.currentTermName ?? t("unknownSchoolTerm") })}</ScopeTitle>}
+              settings={<StaffOverviewDisplayPicker ariaLabel={t("displaySettingsFor", { panel: t("capacityByTeacher") + " / " + t("capacityByGrade") })}
+                groups={[displayGroup("capacity_teachers", t("capacityByTeacher"), capacityTeacherDisplay), displayGroup("capacity_grades", t("capacityByGrade"), capacityGradeDisplay)]} />}
               snapshotItems={snapshotItems}
-              teachers={teacherCapacityRows(data.teacherRows)}
-              grades={gradeCapacityRows(
-                data.capacityByGrade,
-                (row) => row.grade === null ? t("unknownGrade") : t("gradeValue", { grade: row.grade }),
-              )}
+              teachers={capacityTeachers.filter(row => capacityTeacherDisplay.selectedIds.includes(row.key))}
+              grades={capacityGrades.filter(row => capacityGradeDisplay.selectedIds.includes(row.key))}
               teacherTitle={t("capacityByTeacher")}
               gradeTitle={t("capacityByGrade")}
-              teacherEmpty={t("teacherEmpty")}
-              gradeEmpty={data.capacityAvailable ? t("capacityEmpty") : t("capacityUnavailable")}
+              teacherEmpty={t(capacityTeacherDisplay.selectedIds.length === 0 ? "displayEmpty" : "teacherEmpty")}
+              gradeEmpty={data.capacityAvailable ? t(capacityGradeDisplay.selectedIds.length === 0 ? "displayEmpty" : "capacityEmpty") : t("capacityUnavailable")}
               labels={capacityLabels}
               policy={t("capacityPolicyCompact")}
             />
