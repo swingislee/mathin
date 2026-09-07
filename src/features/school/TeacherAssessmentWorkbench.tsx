@@ -68,11 +68,11 @@ export function TeacherAssessmentWorkbench({ data, readOnly = false }: { data: T
   const t = useTranslations("school.teacherAssessment");
   const workflowT = useTranslations("school.assessmentWorkflow");
   const locale = useLocale();
-  const schedule = useMemo(() => new Intl.DateTimeFormat(locale, {
+  const schedule = useMemo(() => data.scheduledAt ? new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
     timeStyle: "short",
     timeZone: "Asia/Shanghai",
-  }).format(new Date(data.scheduledAt)), [data.scheduledAt, locale]);
+  }).format(new Date(data.scheduledAt)) : "—", [data.scheduledAt, locale]);
   const grade = data.gradeText || (data.grade === null ? t("gradePending") : t("gradeValue", { grade: data.grade }));
 
   if (readOnly) return <DashboardPage title={t("title", { name: data.subjectName })} description={workflowT("finalizedHint")}

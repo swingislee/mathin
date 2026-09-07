@@ -1,11 +1,10 @@
-import {createHash} from 'node:crypto';
+import {createImportUuid} from './import-uuid.mjs';
 import {normalizeGradeLabel} from '../../src/lib/grade-format.mjs';
 import {historyFieldName,historicalDate} from './student-business-history.mjs';
 import {historyPayloadHash} from './history-import-trial.mjs';
 import {normalizeSourceAssessmentBand,sourceAssessmentNote,normalizeSourceContact,sourceScore,mergeSourceNotes,sourceVisitKinds,resolveSourceStaffId} from '../../src/features/school/business-source-contract.ts';
 
 export const OPERATIONAL_TABLES=['leads','lead_communications','activities','activity_registrations','assessment_results','course_opportunities','course_enrollments','course_enrollment_assignments'];
-const id=key=>{const h=createHash('md5').update(key).digest('hex');return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;};
 const field=(r,name)=>r.record_data.cells.find(c=>historyFieldName(c.fieldName)===name)?.text.trim()??'';
 const originalNotes=(r,names)=>mergeSourceNotes(...names.map(name=>field(r,name)?`${name}：${field(r,name)}`:''));
 const normalizedName=name=>name.normalize('NFKC').replace(/\s+/gu,'').toLocaleLowerCase('zh');
@@ -17,6 +16,7 @@ const validDate=(r,...fields)=>fields.map(f=>historicalDate(field(r,f))).find(Bo
 
 /** 原表中的个人业务行各有稳定主键；待确认归属保留来源锚点，实际使用时绑定已有学生。 */
 export function buildOperationalSourceImport(payload,snapshot) {
+  const id=createImportUuid(OPERATIONAL_TABLES.flatMap(table=>(snapshot[table]??[]).map(row=>row.id)));
   /** @type {Record<string, Array<Record<string, unknown>>>} */
   const rows=Object.fromEntries(OPERATIONAL_TABLES.map(t=>[t,[]]));
   const existing=Object.fromEntries(OPERATIONAL_TABLES.map(t=>[t,new Map((snapshot[t]??[]).filter(r=>r.source_record_id).map(r=>[r.source_record_id,r]))]));

@@ -111,6 +111,16 @@ function assessment(id: string, overrides: Partial<AssessmentWorkbenchRow> = {})
 }
 
 describe("assessment field adapter", () => {
+  it("filters preserved source support names even when no employee account is linked", () => {
+    const t = (key: string) => key;
+    const definitions = assessmentTableFields({ locale: "zh", timeZone: context.timeZone, tableT: t, assessmentT: t, t, teacherT: t, quickT: t, stageFor: () => "feedback" });
+    const field = definitions.supportOwner;
+    expect(field.kind).toBe("enum");
+    if (field.kind !== "enum") throw new Error("SUPPORT_FIELD_TYPE");
+    const row = assessment("source", { supportOwnerId: null, supportOwnerName: "来源学服" });
+    expect(field.values(row)).toEqual([{ value: "source:来源学服", label: "来源学服" }]);
+    expect(filterAndSortDashboardFields([row], definitions, query({ filters: { supportOwner: { kind: "enum", values: ["source:来源学服"] } } }), "zh", context.timeZone)).toEqual([row]);
+  });
   it("filters responsible support staff independently from the assessor, using stable IDs and missing values", () => {
     const t = (key: string) => key;
     const definitions = assessmentTableFields({ locale: "zh", timeZone: context.timeZone, tableT: t, assessmentT: t, t, teacherT: t, quickT: t, stageFor: () => "feedback" });

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { databaseUuid } from "@/lib/database-uuid";
 
 // ---------------------------------------------------------------------------
 // school actions 的入参校验原语（P4G-9 §7.2）。
@@ -20,8 +21,8 @@ export function parse<S extends z.ZodType>(schema: S, input: unknown): z.output<
   return result.data;
 }
 
-export const uuid = z.uuid();
-export const optionalUuid = z.uuid().nullable();
+export const uuid = databaseUuid;
+export const optionalUuid = uuid.nullable();
 
 /** 可空文本：trim 后按上限拒绝（此前是静默 slice 截断）。 */
 export const text = (max: number) => z.string().trim().max(max);

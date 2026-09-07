@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { databaseUuid } from "@/lib/database-uuid";
 import { STORED_ASSESSMENT_BANDS } from "./activity-workflow-contract";
 
 export const ASSESSMENT_STAGES = ["pending", "in_progress", "feedback", "handled"] as const;
@@ -19,7 +20,7 @@ export const assessmentReportSchema = z.object({
 export type AssessmentReport = z.infer<typeof assessmentReportSchema>;
 
 export const assessmentWorkflowDbSchema = z.object({
-  id: z.string().uuid(), registration_id: z.string().uuid(), stage: z.enum(ASSESSMENT_STAGES), revision: z.number().int().positive(),
+  id: z.string().uuid(), registration_id: databaseUuid, stage: z.enum(ASSESSMENT_STAGES), revision: z.number().int().positive(),
   arrived_at: z.string().nullable(), report_id: z.string().uuid().nullable(), sent_report_id: z.string().uuid().nullable(),
   sent_at: z.string().nullable(), sent_by: z.string().uuid().nullable(),
   classification: z.enum(ASSESSMENT_PARENT_CLASSIFICATIONS).nullable(), parent_response: z.string(),

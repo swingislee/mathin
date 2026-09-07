@@ -19,6 +19,15 @@ describe("student 360 subject action", () => {
     expect(await getStudent360Action({ studentId: null, leadId: null })).toMatchObject({ ok: false, code: "VALIDATION" });
     expect(state.read).not.toHaveBeenCalled();
   });
+  it("accepts persisted import UUIDs without changing their identity", async () => {
+    const subject = { studentId: null, leadId: "abcdef01-2345-abcd-cdef-0123456789ab" };
+    expect(await getStudent360Action(subject)).toMatchObject({ ok: true });
+    expect(state.read).toHaveBeenCalledWith(subject);
+  });
+  it.each(["not-an-id", "abcdef01-2345-abcd-cdef-0123456789az", "abcdef012345abcdcdef0123456789ab", "abcdef01-2345-abcd-cdef-0123456789ab' OR true"])("rejects malformed input %s before querying", async (value) => {
+    expect(await getStudent360Action({ studentId: null, leadId: value })).toMatchObject({ ok: false, code: "VALIDATION" });
+    expect(state.read).not.toHaveBeenCalled();
+  });
   it.each(["SUBJECT_MISMATCH", "FORBIDDEN_SCOPE"])("preserves the server-side %s boundary", async (code) => {
     state.read.mockRejectedValue(new Error(code));
     expect(await getStudent360Action({ studentId, leadId })).toMatchObject({

@@ -1,9 +1,9 @@
-import { createHash } from 'node:crypto';
+import { createImportUuid } from './import-uuid.mjs';
 import { buildStudentBusinessHistory, historicalDate, historyFieldName } from './student-business-history.mjs';
 import { historyPayloadHash } from './history-import-trial.mjs';
 
 export const COMPLETE_HISTORY_TABLES = ['activities','activity_registrations','assessment_results','course_opportunities','course_enrollments','course_enrollment_assignments','student_follow_ups'];
-const uuid = key => { const hash=createHash('md5').update(key).digest('hex');return `${hash.slice(0,8)}-${hash.slice(8,12)}-${hash.slice(12,16)}-${hash.slice(16,20)}-${hash.slice(20)}`; };
+const uuid = createImportUuid();
 const cell = (source,name) => source.record_data.cells.find(item=>historyFieldName(item.fieldName)===name);
 const value = (source,name) => cell(source,name)?.text.trim()??'';
 const fields = (source,names) => source.record_data.cells.filter(item=>names.includes(historyFieldName(item.fieldName))).map(item=>item.fieldId);

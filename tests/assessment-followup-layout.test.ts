@@ -109,7 +109,7 @@ describe("assessment page aligned with first contact", () => {
     expect(latest).toContain(content);
     expect(latest).toMatch(/data-current-situation[^>]*class="[^"]*truncate/);
     expect(latest).not.toContain("line-clamp-2");
-    expect(latest).not.toContain('title=');
+    expect(latest.match(/<p[^>]*data-current-situation[^>]*>/)?.[0]).not.toContain('title=');
     expect(body).not.toContain(`>${(locale === "zh" ? zh : en).school.supportAssessment.details}<`);
     expect(body.match(/data-student-360-trigger/g)).toHaveLength(1);
     expect(body).toContain('aria-controls="assessment-details-compact"');
@@ -304,13 +304,13 @@ describe("assessment registration field language", () => {
     expect(markup.match(/<input\b[^>]*aria-labelledby=/g)).toHaveLength(1);
   });
 
-  it("keeps a zero score and legacy band visible while disabling every read-only control", () => {
+  it("keeps a zero score and supported band visible while disabling every read-only control", () => {
     const markup = render(createElement(AssessmentRegistrationFields, {
-      value: { assessmentBand: "below_a", score: 0 }, disabled: true, onChange: vi.fn(),
+      value: { assessmentBand: "a", score: 0 }, disabled: true, onChange: vi.fn(),
       routing: { value: "enrollment_pending", onChange: vi.fn() },
     }));
     expect(markup).toContain('value="0"');
-    expect(markup).toContain(zh.school.activities.band_below_a);
+    expect(markup).toContain(zh.school.activities.band_a);
     expect(markup).toContain(zh.school.enrollmentWorkflow.route_enrollment_pending);
     const controls = markup.match(/<(?:input|button)\b[^>]*>/g) ?? [];
     expect(controls).toHaveLength(3);

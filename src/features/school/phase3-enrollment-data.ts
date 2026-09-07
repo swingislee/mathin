@@ -1,6 +1,7 @@
 import "server-only";
 
 import { z } from "zod";
+import { databaseUuid } from "@/lib/database-uuid";
 import { createClient } from "@/lib/supabase/server";
 import {
   COURSE_OPPORTUNITY_STAGES,
@@ -19,11 +20,11 @@ function rpc(supabase: { rpc: unknown }): UntypedRpc {
   return (supabase.rpc as UntypedRpc).bind(supabase);
 }
 
-const nullableUuid = z.uuid().nullable();
+const nullableUuid = databaseUuid.nullable();
 
 const opportunitySourceSchema = z.object({
-  id: z.uuid(),
-  registrationId: z.uuid(),
+  id: databaseUuid,
+  registrationId: databaseUuid,
   route: z.enum(["enrollment_pending", "continue_follow_up", "await_product"]),
   routeNote: z.string(),
   studentId: nullableUuid,
@@ -40,7 +41,7 @@ const opportunitySourceSchema = z.object({
 });
 
 const opportunitySchema = z.object({
-  id: z.uuid(),
+  id: databaseUuid,
   sourceActivityRouteId: nullableUuid,
   studentId: nullableUuid,
   leadId: nullableUuid,
@@ -54,12 +55,12 @@ const opportunitySchema = z.object({
   sourceActivityTitle: z.string().nullable(),
   teacherRecommendation: z.string(),
   opportunityType: z.enum(COURSE_OPPORTUNITY_TYPES),
-  courseId: z.uuid(),
+  courseId: databaseUuid,
   courseTitle: z.string(),
-  termId: z.uuid(),
+  termId: databaseUuid,
   termName: z.string(),
   stage: z.enum(COURSE_OPPORTUNITY_STAGES),
-  ownerId: z.uuid(),
+  ownerId: databaseUuid,
   ownerName: z.string(),
   nextAction: z.string(),
   nextActionAt: z.string().nullable(),
@@ -76,14 +77,14 @@ const opportunityWorkbenchSchema = z.object({
 });
 
 const enrollmentSchema = z.object({
-  id: z.uuid(),
-  opportunityId: z.uuid(),
-  studentId: z.uuid(),
+  id: databaseUuid,
+  opportunityId: databaseUuid,
+  studentId: databaseUuid,
   studentName: z.string(),
   studentPhone: z.string(),
-  courseId: z.uuid(),
+  courseId: databaseUuid,
   courseTitle: z.string(),
-  termId: z.uuid(),
+  termId: databaseUuid,
   termName: z.string(),
   status: z.enum(["active", "cancelled"]),
   note: z.string(),
@@ -96,30 +97,30 @@ const enrollmentSchema = z.object({
   classroomName: z.string().nullable(),
   membershipId: nullableUuid,
   assignedAt: z.string().nullable(),
-  claimableClassroomIds: z.array(z.uuid()),
+  claimableClassroomIds: z.array(databaseUuid),
   updatedAt: z.string(),
 });
 
 const optionsSchema = z.object({
   courses: z.array(z.object({
-    id: z.uuid(),
+    id: databaseUuid,
     title: z.string(),
     productCode: z.string().nullable(),
     grade: z.number().int(),
     classType: z.string(),
   })),
   terms: z.array(z.object({
-    id: z.uuid(),
+    id: databaseUuid,
     name: z.string(),
     isCurrent: z.boolean(),
     startsOn: z.string().nullable(),
     endsOn: z.string().nullable(),
   })),
   classrooms: z.array(z.object({
-    id: z.uuid(),
+    id: databaseUuid,
     name: z.string(),
-    courseId: z.uuid(),
-    termId: z.uuid(),
+    courseId: databaseUuid,
+    termId: databaseUuid,
     capacity: z.number().int().nullable(),
     activeCount: z.number().int().nonnegative(),
     operationalStatus: z.enum(["planning", "active"]),

@@ -304,7 +304,25 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
   if(linkedStudentOwnerResult.error)throw new Error('ASSESSMENT_LINKED_STUDENT_OWNER_READ');
   const linkedStudentOwners=new Map((linkedStudentOwnerResult.data??[]).map(student=>[student.id,student.assigned_to]));
   const supportOwnerIds=[...new Set([...registrations.flatMap(({registration})=>[registration.students?.assigned_to,registration.leads?.owner_id]),...(confirmedInvitationResult.data??[]).map(invitation=>invitation.leads?.owner_id),...linkedStudentOwners.values()].filter((id):id is string=>Boolean(id)))];
-  const sourceSupportNames=[...new Set(activities.map(activity=>sourceStaffLabel(activity.remark,'学服老师')).filter(Boolean))];
+  const sourceSupportByActivity=new Map(activities.map(activity=>[activity.id,sourceStaffLabel(activity.remark,'学服老师')]));
+  const missingSourceIds=[...new Set(registrations.filter(({activity})=>!sourceSupportByActivity.get(activity.id))
+    .map(({registration})=>registration.source_record_id).filter((id):id is string=>Boolean(id)))];
+  const sourceSupportByRecord=new Map<string,string>();
+  for(let offset=0;offset<missingSourceIds.length;offset+=100){
+    const result=await supabase.rpc('get_business_source_records',{p_ids:missingSourceIds.slice(offset,offset+100)});
+    if(result.error)throw new Error('ASSESSMENT_SOURCE_SUPPORT_READ');
+    for(const source of result.data??[]){
+      const record=source.record_data as {cells?:{fieldName:string;text:string}[]}|null;
+      const names=[...new Set((record?.cells??[]).filter(cell=>cell.fieldName==='学服老师').map(cell=>cell.text.trim()).filter(Boolean))];
+      if(names.length===1)sourceSupportByRecord.set(source.id,names[0]);
+    }
+  }
+  for(const {activity,registration} of registrations){
+    if(!sourceSupportByActivity.get(activity.id)&&registration.source_record_id){
+      sourceSupportByActivity.set(activity.id,sourceSupportByRecord.get(registration.source_record_id)??'');
+    }
+  }
+  const sourceSupportNames=[...new Set([...sourceSupportByActivity.values()].filter(Boolean))];
 
   const [
     assessmentResult,
@@ -480,7 +498,8 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
       const student = registration.students;
       const lead = registration.leads ?? invitation?.leads ?? null;
       const assessment = assessments.get(registration.id) ?? null;
-      const supportOwnerId=student?.assigned_to??linkedStudentOwners.get(lead?.student_id??'')??lead?.owner_id??resolveSourceStaffId(sourceStaffLabel(activity.remark,'学服老师'),sourceSupportResult.data??[]);
+      const sourceSupportName=sourceSupportByActivity.get(activity.id)??'';
+      const supportOwnerId=student?.assigned_to??linkedStudentOwners.get(lead?.student_id??'')??lead?.owner_id??resolveSourceStaffId(sourceSupportName,sourceSupportResult.data??[]);
       const route = routes.get(registration.id) ?? null;
       const completed = Boolean(registration.assessment_completed_at)
         || Boolean(assessment && assessment.resultSource !== "quick_entry" && !registration.assessment_started_at && (!registration.source_record_id || registration.status==='attended' && hasSourceAssessmentConclusion(assessment)));
@@ -520,7 +539,7 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
           : invitation?.assessor?.display_name || actualAssessorName,
         assessorSource: completed && actualAssessorName ? "actual" : "assigned",
         supportOwnerId,
-        supportOwnerName:supportOwners.get(supportOwnerId??'')??'',
+        supportOwnerName:supportOwners.get(supportOwnerId??'')||sourceSupportName,
         background: mergeSourceNotes(invitation?.summary,registration.outcome,activity.remark,student?.remark),
         participationStatus: registration.status,
         assessmentStartedAt: registration.assessment_started_at,

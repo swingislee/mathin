@@ -1,6 +1,7 @@
 import "server-only";
 
 import { z } from "zod";
+import { databaseUuid } from "@/lib/database-uuid";
 import { createClient } from "@/lib/supabase/server";
 import { STORED_ASSESSMENT_BANDS } from "./activity-workflow-contract";
 import {
@@ -45,13 +46,13 @@ const paperOptionSchema = z.object({
 });
 
 const teacherAssessmentDataSchema = z.object({
-  registrationId: z.string().uuid(),
+  registrationId: databaseUuid,
   subjectName: z.string(),
   grade: z.number().int().nullable(),
   gradeText: z.string(),
   background: z.string(),
   participationStatus: z.enum(["booked", "attended", "no_show", "cancelled"]),
-  scheduledAt: z.string(),
+  scheduledAt: z.string().nullable().transform(value => value ?? ""),
   location: z.string(),
   startedAt: z.string().nullable(),
   completedAt: z.string().nullable(),

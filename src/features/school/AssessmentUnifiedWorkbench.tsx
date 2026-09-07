@@ -323,6 +323,10 @@ export function AssessmentUnifiedWorkbench({
                           <span className="shrink-0">{t(row.assessorSource === "actual" ? "actualAssessor" : "assignedAssessor")}</span>
                           <span className="truncate font-medium text-ink">{row.assessorName || "—"}</span>
                         </div>
+                        <div className="mt-1 flex min-w-0 items-center gap-1.5 text-[11px] text-muted" data-assessment-support-owner>
+                          <span className="shrink-0">{fieldM.supportOwner}</span>
+                          <span className="truncate font-medium text-ink" title={row.supportOwnerName || undefined}>{row.supportOwnerName || "—"}</span>
+                        </div>
                       </TableCell>
                       <TableCell className="px-2 py-2">
                         {completed && row.assessment && (score.score !== null || band) ? (

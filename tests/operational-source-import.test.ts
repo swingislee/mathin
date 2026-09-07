@@ -1,4 +1,6 @@
 import {describe,expect,it} from 'vitest';
+import {createHash} from 'node:crypto';
+import {z} from 'zod';
 import {buildOperationalSourceImport} from '../scripts/lib/operational-source-import.mjs';
 
 const source=(id:string,tableName:string,values:Record<string,string>,studentId:string|null=null)=>({
@@ -8,6 +10,21 @@ const source=(id:string,tableName:string,values:Record<string,string>,studentId:
 const payload=(records:ReturnType<typeof source>[])=>({records,payloadHash:'source-fingerprint',batchKey:'source-batch'});
 
 describe('来源记录衔接当前业务模型',()=>{
+  it('generates standard IDs for new source rows and reuses the complete legacy graph on reimport',()=>{
+    const input=payload([source('visit','到访数据与信息表1.0-总',{'思维测评等级':'A'})]);
+    const fresh=buildOperationalSourceImport(input,{});
+    const legacy=new Map<string,string>();
+    for(const [table,rows] of Object.entries(fresh.rows))for(const row of rows){
+      expect(z.uuid().safeParse(row.id).success).toBe(true);
+      const hash=createHash('md5').update(table==='leads'?'operation-lead:visit':String(row.history_key)).digest('hex');
+      legacy.set(String(row.id),`${hash.slice(0,8)}-${hash.slice(8,12)}-${hash.slice(12,16)}-${hash.slice(16,20)}-${hash.slice(20)}`);
+    }
+    const previous=Object.fromEntries(Object.entries(fresh.rows).map(([table,rows])=>[table,rows.map(row=>Object.fromEntries(Object.entries(row).map(([key,value])=>[key,typeof value==='string'?(legacy.get(value)??value):value])))]));
+    const repeated=buildOperationalSourceImport(input,previous);
+    for(const [table,rows] of Object.entries(repeated.rows))expect(rows.map(row=>row.id)).toEqual(previous[table].map(row=>row.id));
+    expect(repeated.rows.activity_registrations[0].lead_id).toBe(previous.leads[0].id);
+    expect(repeated.rows.assessment_results[0].activity_registration_id).toBe(previous.activity_registrations[0].id);
+  });
   it('maps source subject teachers to assessment teachers and support teachers to lead owners',()=>{
     const profile={id:'assessor',display_name:'示例测评老师',role:'staff',is_active:true};
     const p=buildOperationalSourceImport(payload([source('visit','到访数据与信息表1.0-总',{'学科老师':'示例测评老师','学服老师':'示例学服老师','思维测评等级':'A'})]),{profiles:[profile,{...profile,id:'support',display_name:'示例学服老师'}]});
