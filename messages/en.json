@@ -3771,6 +3771,7 @@
       "progress": "Recorded",
       "score": "Score",
       "suggestedBand": "Suggested band",
+      "band_below_a": "Legacy: Below A",
       "band_x_plus": "X+",
       "band_g_plus": "G+",
       "band_a": "A",

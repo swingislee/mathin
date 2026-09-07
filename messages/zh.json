@@ -3771,6 +3771,7 @@
       "progress": "已评",
       "score": "得分",
       "suggestedBand": "建议等级",
+      "band_below_a": "历史：未达 A",
       "band_x_plus": "X+",
       "band_g_plus": "G+",
       "band_a": "A",
