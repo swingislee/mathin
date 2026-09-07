@@ -22,6 +22,7 @@ import { FilterSearchInput } from "./FilterBar";
 import { FollowupTabs } from "./FollowupTabs";
 import { ActivityAssessmentDraftProvider } from "./ActivityAssessmentDetails";
 import { AssessmentRecordDetails } from "./AssessmentRecordDetails";
+import { TeacherAssessmentEntryButton } from "./TeacherAssessmentEntryButton";
 import { reassignAssessmentAssessorAction } from "./assessment-assessor-actions";
 import {
   type ActivityRouteKind,
@@ -476,6 +477,10 @@ export function AssessmentUnifiedWorkbench({
                           {!current && row.assessment ? <BusinessRecordRevisionButton kind="assessment" recordId={row.assessment.id} subject={row.name}/> : null}
                           <Button type="button" variant="ghost" size="sm" className="h-auto min-h-7 whitespace-normal rounded-md px-1.5 py-1 text-[11px]" aria-expanded={expanded} aria-controls={`assessment-details-${row.id}`} title={`${t("details")} · Enter`} aria-keyshortcuts="Enter" onClick={(event) => { event.stopPropagation(); changeDetails(row.id, !expanded); }}><FilePenLine className="size-3.5" />{t("details")}</Button>
                         </div>
+                        {mayAssess && row.assessmentKind === "one_to_one" ? <div className="mt-1.5" data-assessment-question-entry
+                          title={quickT(row.assessmentCompletedAt ? "questionCompleted" : row.assessmentStartedAt ? "questionInProgress" : row.teacherRequired ? "questionRequired" : "questionOptional")}>
+                          <TeacherAssessmentEntryButton registrationId={row.registrationId} invitationId={row.invitationId} />
+                        </div> : null}
                         {current && row.latestFollowUp?.content ? <p data-current-situation className="mt-1 line-clamp-2 text-[11px] leading-4 text-muted" title={row.latestFollowUp.content}>{row.latestFollowUp.content}</p> : null}
                       </TableCell>
                       <TableCell className="px-2 py-2 text-[11px] tabular-nums text-muted">

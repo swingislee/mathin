@@ -41,8 +41,8 @@ describe("unified assessment workbench", () => {
     expect(workbench).toContain("<DashboardCommandPanel>");
     expect(workbench).toContain("<DashboardTableShell data-assessment-unified-workbench data-followup-workbench");
     expect(workbench).toContain('className="sticky left-0');
-    expect(workbench).not.toContain("TeacherAssessmentEntryButton");
-    expect(detail.match(/<TeacherAssessmentEntryButton/g)).toHaveLength(1);
+    expect(workbench.match(/<TeacherAssessmentEntryButton/g)).toHaveLength(1);
+    expect(detail).not.toContain("TeacherAssessmentEntryButton");
     expect(workbench).toContain("teacherObservation");
     expect(workbench).toContain("<FollowupTabs />");
     expect(workbench).toContain("<FollowupInlineDetails");

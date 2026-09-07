@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { useState } from "react";
 import { Check, Clock3 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +21,6 @@ import { LearningCheckStatusIcon } from "./LearningCheckStatusIcon";
 import { QuickFollowUpEntry, type QuickFollowUpSaved } from "./QuickFollowUpEntry";
 import { LEARNING_CHECK_STATUS_STYLE } from "./session-learning-visual";
 import { TEACHER_ASSESSMENT_OUTCOMES } from "./teacher-assessment-contract";
-import { TeacherAssessmentEntryButton } from "./TeacherAssessmentEntryButton";
 
 const STAGES = ["pending", "in_progress", "feedback", "handled"] as const;
 const STAGE_LABELS = ["stageAssessmentPending", "stageInProgress", "stagePending", "stageHandled"] as const;
@@ -63,41 +62,37 @@ export function AssessmentRecordDetails({
   const mayTakeNote = current && Boolean(row.studentId);
   const mayHandoff = current && canSupport && Boolean(row.registrationId) && (completed || row.assessmentKind === "one_to_one");
 
-  return <div className="min-w-0 space-y-4" data-assessment-workbench-detail={row.id}>
-    {current ? <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
-      <ol aria-label={t("progressLabel")} data-assessment-progress className="flex min-w-0 flex-wrap items-center gap-y-2">
-        {STAGES.map((value, index) => {
-          const passed = index < STAGES.indexOf(stage);
-          const selected = value === stage;
-          return <Fragment key={value}>
-            <li aria-current={selected ? "step" : undefined} className="flex items-center gap-1.5 text-xs">
-              <span aria-hidden className={cn("flex size-5 shrink-0 items-center justify-center rounded-full border text-[11px]",
-                selected ? "border-[var(--followup-outline)] bg-moon/25 ring-2 ring-[var(--followup-outline)]/25"
-                  : passed ? "border-leaf-deep bg-leaf/25" : "border-muted/40 bg-card text-muted")}>
-                {passed ? <Check className="size-3" /> : index + 1}
-              </span>
-              <span className={selected ? "font-medium text-ink" : "text-muted"}>{t(STAGE_LABELS[index])}</span>
-              {index < STAGES.length - 1 ? <span aria-hidden className={cn("mx-2 w-5 border-t-2", passed ? "border-leaf-deep" : "border-dashed border-muted/40")} /> : null}
-            </li>
-          </Fragment>;
-        })}
-      </ol>
-      {row.activityId ? <Link href={`/dashboard/activities/${row.activityId}?${row.publicClassRecord ? `view=onsite&segment=${row.publicClassRecord.segmentId}` : "node=assessment"}`}
-        className="max-w-full truncate text-xs text-leaf-deep hover:underline">{row.publicClassRecord?.segmentTitle || row.activityTitle} · {t("activityWorkspace")}</Link> : null}
-    </div> : null}
-
-    <Tabs value={section} onValueChange={(value) => { const next = value as EntrySection; setSection(next); setVisited((items) => new Set([...items, next])); }}>
-      {mayTakeNote || mayHandoff ? <TabsList aria-label={t("entryLabel")} className="mb-3 h-auto flex-wrap justify-start gap-1">
-        <TabsTrigger value="assessment">{t("entryAssessment")}</TabsTrigger>
-        {mayTakeNote ? <TabsTrigger value="note">{t("entryNote")}</TabsTrigger> : null}
-        {mayHandoff ? <TabsTrigger value="handoff">{t("entryHandoff")}</TabsTrigger> : null}
-      </TabsList> : null}
-      <TabsContent value="assessment" forceMount hidden={section !== "assessment"} className="mt-0 space-y-4 data-[state=inactive]:hidden">
-        {current && row.assessmentKind === "one_to_one" ? <div className="flex flex-wrap items-center justify-between gap-2" data-assessment-question-entry>
-          <div className="text-xs"><span className="font-medium">{quickT("questionEntry")}</span>
-            <span className="ml-2 text-muted">{quickT(row.assessmentCompletedAt ? "questionCompleted" : row.assessmentStartedAt ? "questionInProgress" : row.teacherRequired ? "questionRequired" : "questionOptional")}</span></div>
-          {canAssess ? <TeacherAssessmentEntryButton registrationId={row.registrationId} invitationId={row.invitationId} /> : null}
+  return <div className="min-w-0" data-assessment-workbench-detail={row.id}>
+    <Tabs value={section} className="min-w-0 space-y-4" onValueChange={(value) => { const next = value as EntrySection; setSection(next); setVisited((items) => new Set([...items, next])); }}>
+      {current ? <div data-assessment-detail-header className="flex min-w-0 flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+          <span className="text-[11px] text-muted">{t("progressLabel")}</span>
+          <ol aria-label={t("progressLabel")} data-assessment-progress className="flex min-w-0 flex-wrap items-center gap-y-2">
+            {STAGES.map((value, index) => {
+              const passed = index < STAGES.indexOf(stage);
+              const selected = value === stage;
+              return <li key={value} aria-current={selected ? "step" : undefined} className="flex items-center gap-1.5 text-xs">
+                <span aria-hidden className={cn("flex size-5 shrink-0 items-center justify-center rounded-full border text-[11px]",
+                  selected ? "border-[var(--followup-outline)] bg-moon/25 ring-2 ring-[var(--followup-outline)]/25"
+                    : passed ? "border-leaf-deep bg-leaf/25" : "border-muted/40 bg-card text-muted")}>
+                  {passed ? <Check className="size-3" /> : index + 1}
+                </span>
+                <span className={selected ? "font-medium text-ink" : "text-muted"}>{t(STAGE_LABELS[index])}</span>
+                {index < STAGES.length - 1 ? <span aria-hidden className={cn("mx-2 w-5 border-t-2", passed ? "border-leaf-deep" : "border-dashed border-muted/40")} /> : null}
+              </li>;
+            })}
+          </ol>
+        </div>
+        {mayTakeNote || mayHandoff ? <div data-assessment-entry-switcher className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="text-[11px] text-muted">{t("entryLabel")}</span>
+          <TabsList aria-label={t("entryLabel")} className="h-auto flex-wrap justify-start gap-1 bg-transparent p-0">
+            <TabsTrigger value="assessment" className="min-h-8 border border-transparent px-2 text-xs data-[state=active]:border-line data-[state=active]:shadow-none">{t("entryAssessment")}</TabsTrigger>
+            {mayTakeNote ? <TabsTrigger value="note" className="min-h-8 border border-transparent px-2 text-xs data-[state=active]:border-line data-[state=active]:shadow-none">{t("entryNote")}</TabsTrigger> : null}
+            {mayHandoff ? <TabsTrigger value="handoff" className="min-h-8 border border-transparent px-2 text-xs data-[state=active]:border-line data-[state=active]:shadow-none">{t("entryHandoff")}</TabsTrigger> : null}
+          </TabsList>
         </div> : null}
+      </div> : null}
+      <TabsContent value="assessment" forceMount hidden={section !== "assessment"} className="mt-0 space-y-4 data-[state=inactive]:hidden">
         {current && (row.entryActors?.length || row.assessment?.recordedByName) ? <div className="flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-muted" data-assessment-entry-actors>
           {row.entryActors?.map((actor) => <span key={actor.kind}>{quickT(actor.kind === "teacher" ? "teacherRecordedBy" : "quickRecordedBy", { name: actor.name || quickT("unknownActor") })}
             <span className="ml-1">{new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short" }).format(new Date(actor.recordedAt))}</span></span>)}
@@ -138,6 +133,8 @@ export function AssessmentRecordDetails({
             </li>)}</ul> : <p className="mt-1 text-[11px] text-muted">{t("noKeyNotes")}</p>}
           </> : null}
         </section>}
+        {current && row.activityId ? <div className="flex justify-end"><Link href={`/dashboard/activities/${row.activityId}?${row.publicClassRecord ? `view=onsite&segment=${row.publicClassRecord.segmentId}` : "node=assessment"}`}
+          className="max-w-full truncate text-xs text-leaf-deep hover:underline">{row.publicClassRecord?.segmentTitle || row.activityTitle} · {t("activityWorkspace")}</Link></div> : null}
       </TabsContent>
       {mayTakeNote && visited.has("note") ? <TabsContent value="note" forceMount hidden={section !== "note"} className="mt-0 data-[state=inactive]:hidden">
         <QuickFollowUpEntry studentId={row.studentId!} layout="followup" onSaved={onNoteSaved} onSaveAndNext={onSaveAndNext} />

@@ -6,6 +6,7 @@ import zh from "../messages/zh.json";
 import en from "../messages/en.json";
 import { AssessmentUnifiedWorkbench } from "@/features/school/AssessmentUnifiedWorkbench";
 import { AssessmentRecordDetails } from "@/features/school/AssessmentRecordDetails";
+import { AssessmentRegistrationFields } from "@/features/school/AssessmentRegistrationFields";
 import { ActivityAssessmentDraftProvider } from "@/features/school/ActivityAssessmentDetails";
 import { QuickFollowUpEntry } from "@/features/school/QuickFollowUpEntry";
 import type { AssessmentWorkbenchRow } from "@/features/school/assessment-workbench-contract";
@@ -76,6 +77,31 @@ describe("assessment page aligned with first contact", () => {
     expect(body).not.toContain('aria-selected="true"');
     expect(body).toContain('data-followup-expanded="false"');
     expect(body).toContain('data-record-state="historical"');
+    expect(body?.match(/逐题登记/g)).toHaveLength(1);
+    expect(body).toContain('data-assessment-question-entry');
+  });
+
+  it("shows the question entry only for authorized current one-to-one rows, including unstarted invitations", () => {
+    const rows = [row("booked", { registrationId: null }), row("group", { assessmentKind: "activity" }), row("history", { recordState: "historical" })];
+    for (const canAssess of [true, false]) {
+      const markup = render(createElement(AssessmentUnifiedWorkbench, {
+        initialRows: rows, assessors: [], locale: "zh", canAssess, canSupport: true, canManageAssessor: true,
+      }));
+      expect(markup.match(/逐题登记/g) ?? []).toHaveLength(canAssess ? 1 : 0);
+    }
+  });
+
+  it("separates read-only progress from the labeled entry switcher in one detail header", () => {
+    const markup = renderDetails(row("header"));
+    const header = markup.slice(markup.indexOf("data-assessment-detail-header"), markup.indexOf('role="tabpanel"'));
+    expect(header).toContain('data-assessment-progress');
+    expect(header).toContain(zh.school.supportAssessment.progressLabel);
+    expect(header).toContain('data-assessment-entry-switcher');
+    expect(header).toContain(zh.school.supportAssessment.entryLabel);
+    expect(header.match(/role="tablist"/g)).toHaveLength(1);
+    expect(header.match(/aria-current="step"/g)).toHaveLength(1);
+    expect(header.match(/<ol\b[\s\S]*?<\/ol>/)?.[0]).not.toContain("<button");
+    expect(header).toContain("bg-transparent p-0");
   });
 
   it("keeps public-class assessment and parent feedback in one explicit entry layout", () => {
@@ -104,16 +130,18 @@ describe("assessment page aligned with first contact", () => {
     expect(markup).toContain(zh.school.activities.parentConcerns);
     expect(markup).toContain("data-followup-notes");
     expect(markup).toMatch(/maxLength="2000"/i);
+    expect(markup.match(/data-followup-field-icon/g)).toHaveLength(3);
+    expect(markup).not.toContain('data-assessment-field="route"');
   });
 
-  it("makes assessor reassignment an explicit detail action and leaves the professional entry intact", () => {
+  it("keeps quick entry and explicit assessor reassignment in details without a second professional button", () => {
     const markup = renderDetails(row("solo"));
     expect(markup).toContain("data-assessor-reassignment");
     expect(markup).toContain(zh.school.supportAssessment.confirmAssessor);
-    expect(markup).toContain("逐题登记");
     expect(markup.match(/data-followup-entry-actions/g)).toHaveLength(1);
-    expect(markup.match(/逐题登记/g)).toHaveLength(1);
-    expect(markup).toContain(zh.school.assessmentQuickEntry.questionOptional);
+    expect(markup).not.toContain("逐题登记");
+    expect(markup).not.toContain("data-assessment-question-entry");
+    expect(markup).toContain(zh.school.assessmentQuickEntry.optionalHint);
     expect(markup).toContain("data-assessment-quick-entry");
   });
 
@@ -158,7 +186,7 @@ describe("optional teacher assessment", () => {
     expect(markup).toContain("data-assessment-quick-entry");
     expect(markup).toContain('type="number"');
     expect(markup).toContain(zh.school.enrollmentWorkflow.nextStep);
-    expect(markup).toContain(zh.school.assessmentQuickEntry.questionOptional);
+    expect(markup).toContain(zh.school.assessmentQuickEntry.optionalHint);
     expect(markup).not.toContain("逐题登记");
     expect(markup).toContain(zh.school.followupEntry.save);
   });
@@ -174,7 +202,47 @@ describe("optional teacher assessment", () => {
     expect(markup).toContain("逐题测评：教师乙");
     expect(markup).toMatch(/<input\b[^>]*type="number"/);
     expect(markup.match(/<input\b[^>]*type="number"[^>]*>/)?.[0]).not.toContain(' disabled=""');
-    expect(markup.match(/逐题登记/g)).toHaveLength(1);
+    expect(markup).not.toContain("逐题登记");
     expect(markup).toContain(zh.school.supportAssessment.entryHandoff);
+  });
+});
+
+describe("assessment registration field language", () => {
+  it.each(["zh", "en"] as const)("pairs four soft field icons with compact accessible controls in %s", (locale) => {
+    const markup = render(createElement(AssessmentRegistrationFields, {
+      value: { assessmentBand: "a", score: 80, recommendedClass: "A" }, disabled: false, onChange: vi.fn(),
+      routing: { value: "continue_follow_up", onChange: vi.fn() },
+    }), locale);
+    const messages = locale === "zh" ? zh : en;
+    expect(markup.match(/data-followup-field-icon/g)).toHaveLength(4);
+    expect(markup.match(/data-assessment-field=/g)).toHaveLength(4);
+    expect(markup).toContain('lucide-award');
+    expect(markup).toContain('lucide-gauge');
+    expect(markup).toContain('lucide-graduation-cap');
+    expect(markup).toContain('lucide-signpost');
+    expect(markup).toContain('fill-leaf/50');
+    expect(markup).toContain('fill-cheek/60');
+    expect(markup).toContain('fill-moon text-crater');
+    expect(markup).toContain(`aria-label="${messages.school.activities.assessmentBand}"`);
+    expect(markup).toContain(`aria-label="${messages.school.enrollmentWorkflow.nextStep}"`);
+    expect(markup).toContain('value="80"');
+    expect(markup).not.toContain('<label');
+    for (const [, labelledBy] of markup.matchAll(/<input\b[^>]*aria-labelledby="([^"]+)"/g)) {
+      expect(markup).toContain(`id="${labelledBy}"`);
+    }
+    expect(markup.match(/<input\b[^>]*aria-labelledby=/g)).toHaveLength(2);
+  });
+
+  it("keeps a zero score and legacy band visible while disabling every read-only control", () => {
+    const markup = render(createElement(AssessmentRegistrationFields, {
+      value: { assessmentBand: "below_a", score: 0, recommendedClass: "" }, disabled: true, onChange: vi.fn(),
+      routing: { value: "enrollment_pending", onChange: vi.fn() },
+    }));
+    expect(markup).toContain('value="0"');
+    expect(markup).toContain(zh.school.activities.band_below_a);
+    expect(markup).toContain(zh.school.enrollmentWorkflow.route_enrollment_pending);
+    const controls = markup.match(/<(?:input|button)\b[^>]*>/g) ?? [];
+    expect(controls).toHaveLength(4);
+    for (const control of controls) expect(control).toContain(' disabled=""');
   });
 });

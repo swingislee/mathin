@@ -163,8 +163,8 @@ describe("teacher question assessment workbench", () => {
     expect(workbench).not.toContain("questionCount: 19");
     expect(workbench).not.toContain("totalScore: 150");
     expect(page).toContain("getTeacherAssessmentWorkbenchData");
-    expect(queue).not.toContain("TeacherAssessmentEntryButton");
-    expect(read("src", "features", "school", "AssessmentRecordDetails.tsx")).toContain("TeacherAssessmentEntryButton");
+    expect(queue).toContain("TeacherAssessmentEntryButton");
+    expect(read("src", "features", "school", "AssessmentRecordDetails.tsx")).not.toContain("TeacherAssessmentEntryButton");
     expect(queue).not.toContain("saveAssessmentWorkbenchRowAction");
     expect(queue).not.toContain("saveAssessmentWorkbenchRouteAction");
     expect(routes).toContain('hrefPattern: "/dashboard/followups/assessments/[registrationId]"');

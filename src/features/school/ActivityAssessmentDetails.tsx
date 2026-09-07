@@ -3,14 +3,12 @@
 import { createContext, useContext, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { saveActivityAssessmentAction, type ActivityAssessmentInput } from "./activity-actions";
 import { savePublicClassParticipantRecordAction } from "./public-class-actions";
-import { ASSESSMENT_BANDS, type StoredAssessmentBand } from "./activity-workflow-contract";
 import type { AssessmentWorkbenchPublicClassRecord, AssessmentWorkbenchRow } from "./assessment-workbench-contract";
-import { FollowupChoice, type FollowupTone } from "./dashboard-page/FollowupChoice";
+import { AssessmentRegistrationFields } from "./AssessmentRegistrationFields";
+import { FollowupChoice } from "./dashboard-page/FollowupChoice";
 import { FollowupEntryFields } from "./FollowupEntryFields";
 import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
 
@@ -71,12 +69,6 @@ export function ActivityAssessmentDetails(props: EntryProps) {
     : <ActivityAssessmentEntry {...props} disabled={props.disabled || !props.row.studentId} />;
 }
 
-function bandTone(band: string): FollowupTone {
-  if (band === "x_plus" || band === "below_a") return "unhealthy";
-  if (band === "g_plus") return "attention";
-  return "healthy";
-}
-
 function ActivityAssessmentEntry({ row, disabled, onSaved, onSaveAndNext }: EntryProps) {
   const t = useTranslations("school.activities");
   const entryT = useTranslations("school.supportAssessment");
@@ -117,30 +109,8 @@ function ActivityAssessmentEntry({ row, disabled, onSaved, onSaveAndNext }: Entr
       disabled={disabled} readOnly={disabled} pending={pending} saveDisabled={!dirty}
       onSave={(advance) => { void save(advance); }} canAdvance={Boolean(onSaveAndNext)}
       hint={disabled ? entryT("readonlyHint") : dirty ? entryT("draftHint") : hasSaved ? entryT("savedInSession") : undefined}>
-    <div className="flex min-w-0 flex-wrap items-end gap-3">
-    <div className="w-32 shrink-0 space-y-1.5 text-xs text-muted">
-    <Label className="text-xs">{t("assessmentBand")}</Label>
-    <FollowupChoice value={draft.assessmentBand ?? "none"} label={t("assessmentBand")} disabled={locked}
-      className="w-28 shrink-0"
-      options={[
-        { value: "none", label: t("notEntered"), tone: "neutral" },
-        ...(draft.assessmentBand === "below_a" ? [{ value: "below_a", label: t("band_below_a"), tone: "unhealthy" as const }] : []),
-        ...ASSESSMENT_BANDS.map((band) => ({ value: band, label: t(`band_${band}`), tone: bandTone(band) })),
-      ]}
-      onValueChange={(value) => {
-        const next = { ...draft, assessmentBand: value === "none" ? null : value as StoredAssessmentBand };
-        setDraft(next);
-      }} /></div>
-    <label className="w-24 shrink-0 space-y-1.5 text-xs text-muted">
-    <span>{t("scoreShort")}</span>
-    <Input aria-label={t("scoreShort")} type="number" min={0} max={10000} value={draft.score ?? ""} disabled={locked}
-      placeholder={t("scoreShort")} className="h-8 text-xs"
-      onChange={(event) => setDraft((current) => ({ ...current, score: event.target.value === "" ? null : Number(event.target.value) }))} /></label>
-      <label className="min-w-40 flex-1 space-y-1 text-xs text-muted"><span>{t("recommendedClass")}</span>
-        <Input value={draft.recommendedClass} maxLength={200} disabled={locked} aria-label={t("recommendedClass")} className="h-8 text-xs"
-          onChange={(event) => setDraft((current) => ({ ...current, recommendedClass: event.target.value }))} />
-      </label>
-    </div>
+    <AssessmentRegistrationFields value={draft} disabled={locked}
+      onChange={(patch) => setDraft((current) => ({ ...current, ...patch }))} />
     <div className="grid min-w-0 gap-3 @[36rem]/followup-entry:grid-cols-2">
       {(["strengths", "focusAreas", "teacherRecommendation"] as const).map((field) => <label key={field} className="block min-w-0 space-y-1.5 text-xs text-muted">
         <span>{t(field)}</span>
