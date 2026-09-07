@@ -393,6 +393,7 @@ export type Database = {
           result_link_status: string
           result_source_record_id: string | null
           source_field_ids: string[]
+          source_enrollment_facts: Json | null
           source_payload_sha256: string | null
           source_record_id: string | null
           status: string
@@ -420,6 +421,7 @@ export type Database = {
           result_link_status?: string
           result_source_record_id?: string | null
           source_field_ids?: string[]
+          source_enrollment_facts?: Json | null
           source_payload_sha256?: string | null
           source_record_id?: string | null
           status?: string
@@ -447,6 +449,7 @@ export type Database = {
           result_link_status?: string
           result_source_record_id?: string | null
           source_field_ids?: string[]
+          source_enrollment_facts?: Json | null
           source_payload_sha256?: string | null
           source_record_id?: string | null
           status?: string
@@ -2872,6 +2875,7 @@ export type Database = {
           record_state: string
           registered_on: string | null
           source_field_ids: string[]
+          source_enrollment_facts: Json | null
           source_payload_sha256: string | null
           source_record_id: string | null
           status: string
@@ -2899,6 +2903,7 @@ export type Database = {
           record_state?: string
           registered_on?: string | null
           source_field_ids?: string[]
+          source_enrollment_facts?: Json | null
           source_payload_sha256?: string | null
           source_record_id?: string | null
           status?: string
@@ -2926,6 +2931,7 @@ export type Database = {
           record_state?: string
           registered_on?: string | null
           source_field_ids?: string[]
+          source_enrollment_facts?: Json | null
           source_payload_sha256?: string | null
           source_record_id?: string | null
           status?: string

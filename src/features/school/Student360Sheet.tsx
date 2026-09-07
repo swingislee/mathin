@@ -1,4 +1,5 @@
 "use client";
+import {SourceCompletionNotice} from './SourceCompletionNotice';
 
 import dynamic from "next/dynamic";
 import {
@@ -481,6 +482,7 @@ function Student360PanelBody({
             </div>
           ) : null}
           <Student360LifecycleRail snapshot={snapshot} />
+          {snapshot.sourceCompletion?<section className="px-5 pb-4 sm:px-7"><SourceCompletionNotice summary={snapshot.sourceCompletion} locale={locale}/></section>:null}
 
           {snapshot.identity.profileRemark ? (
             <section className="border-y border-line bg-moon/10 px-5 py-4 sm:px-7" aria-labelledby="student-360-profile-remark">

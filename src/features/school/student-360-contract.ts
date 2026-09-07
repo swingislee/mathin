@@ -1,6 +1,7 @@
 import type { LeadIdentitySubject } from "./lead-identity-contract";
 import type { StudentLifecycleStage } from "./student-lifecycle-contract";
 import type { BusinessRecordState } from "./business-record-state-contract";
+import type {SourceCompletionSummary} from './source-completion-contract';
 
 export const STUDENT_360_REFRESH_EVENT = "mathin:student-360-refresh";
 
@@ -159,6 +160,7 @@ export interface Student360Identity {
 }
 
 export interface Student360Snapshot {
+  sourceCompletion?: SourceCompletionSummary | null;
   identity: Student360Identity;
   lifecycleStage: StudentLifecycleStage;
   currentPhase: Student360Phase;

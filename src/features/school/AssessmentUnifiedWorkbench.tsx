@@ -3,6 +3,8 @@
 import { FollowupTableRecord, type FollowupRowState } from "./dashboard-page/FollowupTableRecord";
 
 import { BusinessRecordRevisionButton } from './BusinessRecordRevisionButton';
+import {SourceCompletionNotice} from './SourceCompletionNotice';
+import {sourceCompletionMessages} from './source-completion-contract';
 
 import { useBusinessSearchQuery } from './BusinessRecordStateFilter';
 import { isCurrentBusinessRecord } from './business-record-state-contract';
@@ -31,6 +33,7 @@ import {
   ASSESSMENT_WORKBENCH_QUEUES,
   assessmentWorkbenchStage,
   assessmentWorkbenchHasFinalResult,
+  assessmentAppointmentClosed,
   nextAssessmentWorkbenchRowId,
   type AssessmentWorkbenchQueue,
   type AssessmentWorkbenchRow,
@@ -114,6 +117,17 @@ export function AssessmentUnifiedWorkbench({
     initialRows.map((row) => [row.id, draftFromRow(row)]),
   ), [initialRows]);
   const [currentRows, setRows] = useState(() => initialRows.filter(row => isCurrentBusinessRecord(row.recordState)));
+  const [loadedRows,setLoadedRows]=useState(initialRows);
+  if(loadedRows!==initialRows){
+    setLoadedRows(initialRows);
+    setRows(previous=>{
+      const saved=new Map(previous.map(row=>[row.id,row]));
+      return initialRows.filter(row=>isCurrentBusinessRecord(row.recordState)).map(row=>{
+        const local=saved.get(row.id);
+        return local&&local.updatedAt>row.updatedAt?local:row;
+      });
+    });
+  }
   const rows = useMemo(() => {
     const currentById = new Map(currentRows.map(row => [row.id, row]));
     return initialRows.map(row => isCurrentBusinessRecord(row.recordState) ? currentById.get(row.id) ?? row : row);
@@ -123,6 +137,7 @@ export function AssessmentUnifiedWorkbench({
   const [clockNow] = useState(() => now ?? Date.now());
   const dateContext = useMemo(() => ({ locale, timeZone, now: clockNow }), [locale, timeZone, clockNow]);
   const fieldM = useMemo(() => dashboardFieldMessages(locale), [locale]);
+  const sourceM=sourceCompletionMessages(locale);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [visitedDetails, setVisitedDetails] = useState<Set<string>>(() => new Set());
@@ -227,7 +242,8 @@ export function AssessmentUnifiedWorkbench({
   const renderRow = useCallback((row: AssessmentWorkbenchRow, state: FollowupRowState) => {
     const { active, expanded, retained } = state;
     const current = isCurrentBusinessRecord(row.recordState);
-    const mayAssess = current && canAssess;
+    const closed=assessmentAppointmentClosed(row);
+    const mayAssess = current && canAssess && !closed;
     const maySupport = current && canSupport;
     const draft = drafts[row.id];
     const stage = queueFor(row, draft);
@@ -273,10 +289,12 @@ export function AssessmentUnifiedWorkbench({
               studentGrade={row.grade} expanded={expanded} detailsId={`assessment-details-${row.id}`}
               onToggle={() => changeDetails(row.id, !expanded)}
               subject={{ studentId: row.studentId, leadId: row.leadId }} />
+            {row.sourceCompletion?<div className="mt-1"><SourceCompletionNotice summary={row.sourceCompletion} locale={locale} compact/></div>:null}
           </TableCell>
           <TableCell data-assessment-state-kind className="px-2 py-2">
             <div className="flex min-w-0 flex-col items-start gap-1">
-              {current ? <StageBadge stage={stage} contacting={false} /> : null}
+              {closed?<Badge variant="outline" className="border-line bg-line/20 text-muted">{row.participationStatus==='no_show'?sourceM.noShow:sourceM.cancelled}</Badge>
+                :current ? <StageBadge stage={stage} contacting={false} /> : null}
               {row.assessmentKind !== "one_to_one" ? <Badge variant="outline" className="whitespace-nowrap border-line bg-line/20 text-muted">{t(`type_${row.assessmentKind}`)}</Badge> : null}
               {current && row.workflow?.classification ? <span className="text-[11px] text-muted">{workflowT("classification_" + row.workflow.classification)}</span> : null}
             </div>
@@ -291,7 +309,7 @@ export function AssessmentUnifiedWorkbench({
             </div>
           </TableCell>
           <TableCell className="px-2 py-2">
-            {completed && row.assessment && (score.score !== null || band) ? (
+            {closed?<p className="text-muted">—</p>:completed && row.assessment && (score.score !== null || band) ? (
               <div className="flex min-w-0 items-center gap-2">
                 {score.score !== null ? <span className={cn("shrink-0 text-sm font-semibold tabular-nums", score.invalid ? "text-rose" : "text-ink")}
                   title={scoreDisplay.hint || undefined} aria-label={`${scoreDisplay.label}${scoreDisplay.hint ? ` · ${scoreDisplay.hint}` : ""}`}>
@@ -317,7 +335,7 @@ export function AssessmentUnifiedWorkbench({
           </TableCell>
           <TableCell className="px-2 py-2">
             <p className={cn("line-clamp-2 whitespace-normal leading-5", conclusion ? "text-ink" : "text-muted")} title={conclusion || undefined}>
-              {conclusion || (completed ? t("conclusionPending") : t("stageAssessmentPending"))}
+              {conclusion || (closed ? "—" : completed ? t("conclusionPending") : t("stageAssessmentPending"))}
             </p>
           </TableCell>
           <TableCell data-assessment-current-work className="px-2 py-2">
@@ -343,7 +361,12 @@ export function AssessmentUnifiedWorkbench({
         <FollowupInlineDetails open={expanded} keepMounted={retained}
           onOpenChange={(open) => changeDetails(row.id, open)} title={row.name} hideTitle
           active={active} onActivate={() => setActiveId(row.id)} colSpan={7} id={`assessment-details-${row.id}`}>
-          <AssessmentRecordDetails row={row} stage={stage} conclusion={conclusion} locale={locale}
+          {row.sourceCompletion?<div className="px-4 py-3"><SourceCompletionNotice summary={row.sourceCompletion} locale={locale}/></div>:null}
+          {closed?<div className="flex items-center justify-between gap-2 px-4 py-3 text-xs text-muted">
+            <span>{sourceM.closedHint}</span>
+            {row.sourceRecordId&&row.registrationId?<BusinessRecordRevisionButton kind="activity" recordId={row.registrationId} subject={row.name}/>:null}
+          </div>:null}
+          {!closed?<AssessmentRecordDetails row={row} stage={stage} conclusion={conclusion} locale={locale}
             canAssess={mayAssess} canSupport={maySupport} canManageAssessor={canManageAssessor}
             canQuickEntry={current && canQuickEntry} canRoute={current && canManageAssessor}
             assessors={assessors} reassigning={reassigningId === row.id} onReassign={(id) => reassignAssessor(row, id)}
@@ -353,11 +376,11 @@ export function AssessmentUnifiedWorkbench({
               updateDraft(row.id, (current) => ({ ...current, route: context.route }));
               setRows(current => current.map(candidate => candidate.id === row.id || candidate.registrationId === context.registrationId
                 ? { ...candidate, enrollmentId: context.enrollmentId } : candidate));
-            }} />
+            }} />:null}
         </FollowupInlineDetails>
       </ActivityAssessmentDraftProvider>
     );
-  }, [advanceFrom, assessmentT, assessors, canAssess, canManageAssessor, canQuickEntry, canSupport, changeDetails, dateContext, drafts, fieldM.supportOwner, locale, quickT, reassignAssessor, reassigningId, saveQuickFollowUp, saveRow, t, teacherT, timeZone, updateDraft, visibleRows, workflowT]);
+  }, [advanceFrom, assessmentT, assessors, canAssess, canManageAssessor, canQuickEntry, canSupport, changeDetails, dateContext, drafts, fieldM.supportOwner, locale, quickT, reassignAssessor, reassigningId, saveQuickFollowUp, saveRow, sourceM.cancelled, sourceM.closedHint, sourceM.noShow, t, teacherT, timeZone, updateDraft, visibleRows, workflowT]);
 
   return (
     <DashboardPage
@@ -372,7 +395,7 @@ export function AssessmentUnifiedWorkbench({
           </DashboardCommandState>
           <DashboardCommandFilters>
             <FollowupPrimaryFilter label={filterT("workQueue")} value={assessmentTable.filters.status?.kind === "enum" ? assessmentTable.filters.status.values[0] : "all"}
-              options={ASSESSMENT_WORKBENCH_QUEUES.map(value => ({ value, label: filterT(`assessments_${value}`) }))}
+              options={[...ASSESSMENT_WORKBENCH_QUEUES.map(value => ({ value, label: filterT(`assessments_${value}`) })),{value:'no_show',label:sourceM.noShow}]}
               onValueChange={value => {
                 assessmentTable.setFilter("status", value === "all" ? undefined : { kind: "enum", values: [value] });
               }} />

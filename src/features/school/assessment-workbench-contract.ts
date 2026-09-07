@@ -4,6 +4,8 @@ import type { PublicClassPresence } from "./public-class";
 import type { AssessmentEntryActor, AssessmentQuickEntry } from "./assessment-quick-entry-contract";
 import type { AssessmentWorkflow } from "./assessment-workflow-contract";
 import { hasSourceAssessmentConclusion } from './business-source-contract';
+import type {SourceEnrollmentFacts} from './business-source-contract';
+import type {SourceCompletionSummary} from './source-completion-contract';
 
 export const ASSESSMENT_WORKBENCH_QUEUES = [
   "pending",
@@ -104,6 +106,8 @@ export interface AssessmentWorkbenchRow {
   assessorSource: "assigned" | "actual";
   supportOwnerId?: string | null;
   supportOwnerName?: string;
+  sourceEnrollmentFacts?: SourceEnrollmentFacts | null;
+  sourceCompletion?: SourceCompletionSummary | null;
   background: string;
   participationStatus: "booked" | "attended" | "no_show" | "cancelled";
   assessmentStartedAt: string | null;
@@ -158,7 +162,7 @@ export function parseAssessmentWorkbenchFilters(
 export function assessmentWorkbenchCounts(
   rows: readonly AssessmentWorkbenchRow[],
 ): AssessmentWorkbenchCounts {
-  const stages = rows.map(assessmentWorkbenchStage);
+  const stages = rows.filter(row=>!assessmentAppointmentClosed(row)).map(assessmentWorkbenchStage);
   return {
     pending: stages.filter((stage) => stage === "pending").length,
     in_progress: stages.filter((stage) => stage === "in_progress").length,
@@ -181,6 +185,10 @@ export function assessmentWorkbenchStage(
   return "pending";
 }
 
+export function assessmentAppointmentClosed(row: Pick<AssessmentWorkbenchRow,'participationStatus'>): boolean {
+  return row.participationStatus==='no_show'||row.participationStatus==='cancelled';
+}
+
 export function assessmentWorkbenchHasFinalResult(row: AssessmentWorkbenchRow): boolean {
   if(row.sourceRecordId&&['no_show','cancelled'].includes(row.participationStatus))return false;
   return Boolean(row.assessmentCompletedAt || row.assessment?.finalizedAt
@@ -196,7 +204,7 @@ export function assessmentWorkbenchRowsForView(
   return rows
     .filter((row) => {
       if (filters.kind && row.assessmentKind !== filters.kind) return false;
-      if (filters.queue !== "all" && assessmentWorkbenchStage(row) !== filters.queue) return false;
+      if (filters.queue !== "all" && (assessmentAppointmentClosed(row)||assessmentWorkbenchStage(row) !== filters.queue)) return false;
       if (!needle) return true;
       return [row.name, row.phone, row.gradeText, row.location, row.assessorName, row.background]
         .some((value) => value.toLocaleLowerCase(locale).includes(needle));

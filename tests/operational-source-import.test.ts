@@ -10,6 +10,22 @@ const source=(id:string,tableName:string,values:Record<string,string>,studentId:
 const payload=(records:ReturnType<typeof source>[])=>({records,payloadHash:'source-fingerprint',batchKey:'source-batch'});
 
 describe('来源记录衔接当前业务模型',()=>{
+  it('uses the one-to-one class band correspondence only on an attended assessment',()=>{
+    const p=buildOperationalSourceImport(payload([
+      source('attended','到访数据与信息表1.0-总',{'参与内容':'测评','到访与否':'已到','报名与否':'已报名','班型':'A+'}),
+      source('missed','到访数据与信息表1.0-总',{'参与内容':'','报名与否':'已报名','班型':'A+'}),
+    ]),{});
+    expect(p.rows.assessment_results).toHaveLength(1);
+    expect(p.rows.assessment_results[0]).toMatchObject({source_record_id:'attended',assessment_band:'a_plus',score:null});
+    expect(p.rows.activity_registrations.find(row=>row.source_record_id==='missed')).toMatchObject({status:'no_show',source_enrollment_facts:{assessmentBand:'a_plus'}});
+  });
+  it('preserves confirmed source identities and an already reconciled enrollment date',()=>{
+    const p=buildOperationalSourceImport(payload([source('autumn','2026秋季在读学员表格',{'26秋在读':'是','班型':'A+'})]),{
+      history_import_associations:[{record_id:'autumn',student_id:'confirmed-student'}],
+      course_enrollments:[{id:'existing',source_record_id:'autumn',period_label:'2026秋季',registered_on:'2026-09-02',note:'已核对日期'}],
+    });
+    expect(p.rows.course_enrollments[0]).toMatchObject({id:'existing',student_id:'confirmed-student',registered_on:'2026-09-02',source_enrollment_facts:{registeredOn:'2026-09-02'}});
+  });
   it('generates standard IDs for new source rows and reuses the complete legacy graph on reimport',()=>{
     const input=payload([source('visit','到访数据与信息表1.0-总',{'思维测评等级':'A'})]);
     const fresh=buildOperationalSourceImport(input,{});

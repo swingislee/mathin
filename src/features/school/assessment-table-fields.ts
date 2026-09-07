@@ -1,5 +1,6 @@
 import { ASSESSMENT_BANDS } from "./activity-workflow-contract";
-import { assessmentWorkbenchHasFinalResult, ASSESSMENT_WORKBENCH_QUEUES, type AssessmentWorkbenchQueue, type AssessmentWorkbenchRow } from "./assessment-workbench-contract";
+import { assessmentWorkbenchHasFinalResult,assessmentAppointmentClosed, ASSESSMENT_WORKBENCH_QUEUES, type AssessmentWorkbenchQueue, type AssessmentWorkbenchRow } from "./assessment-workbench-contract";
+import {sourceCompletionMessages} from './source-completion-contract';
 import { dashboardFieldMessages } from "./dashboard-page/dashboard-field-messages";
 import { dashboardDay } from "./dashboard-page/dashboard-table-date-contract";
 import { EMPTY_DASHBOARD_FIELD_QUERY, type DashboardFieldDefinitions, type DashboardFieldOption, type DashboardFieldQuery } from "./dashboard-page/dashboard-table-field-contract";
@@ -65,9 +66,11 @@ export function assessmentTableFields({ locale, timeZone, tableT, assessmentT, t
   stageFor: (row: AssessmentWorkbenchRow) => Exclude<AssessmentWorkbenchQueue, "all">;
 }): DashboardFieldDefinitions<AssessmentWorkbenchRow> {
   const m = dashboardFieldMessages(locale);
+  const sourceM=sourceCompletionMessages(locale);
   const bandOptions = ASSESSMENT_BANDS.map(value => ({ value, label: teacherT(`band_${value}`) }));
   const queueKeys = { pending: "queue_assessment_pending", in_progress: "queue_in_progress", feedback: "queue_pending", handled: "queue_handled" };
-  const stages = ASSESSMENT_WORKBENCH_QUEUES.filter(value => value !== "all").map(value => ({ value, label: t(queueKeys[value]) }));
+  const stages = [...ASSESSMENT_WORKBENCH_QUEUES.filter(value => value !== "all").map(value => ({ value, label: t(queueKeys[value]) })),
+    {value:'no_show',label:sourceM.noShow},{value:'cancelled',label:sourceM.cancelled}];
   const sources = [{ value: "teacher", label: quickT("teacherResult") }, { value: "quick_entry", label: quickT("quickResult") }, { value: "legacy", label: m.recordedResult }];
   return {
     name: { kind: "text", label: tableT("fieldName"), value: row => row.name },
@@ -98,7 +101,8 @@ export function assessmentTableFields({ locale, timeZone, tableT, assessmentT, t
       ? option(row.assessment.resultSource ?? "legacy", sources.find(option => option.value === (row.assessment?.resultSource ?? "legacy"))?.label) : [] },
     conclusion: { kind: "text", label: t("teacherColumn"), sortable: false, value: row => [assessmentTableConclusion(row), row.assessment?.strengths, row.assessment?.focusAreas, row.assessment?.parentConcerns].filter(Boolean).join("\n") },
     status: { kind: "enum", label: tableT("fieldStatus"), options: stages, multiple: false,
-      values: row => row.recordState === "historical" ? [] : option(stageFor(row), t(queueKeys[stageFor(row)])),
+      values: row => assessmentAppointmentClosed(row)?option(row.participationStatus,row.participationStatus==='no_show'?sourceM.noShow:sourceM.cancelled)
+        : row.recordState === "historical" ? [] : option(stageFor(row), t(queueKeys[stageFor(row)])),
       sortValue: row => row.recordState === "historical" ? null : ASSESSMENT_WORKBENCH_QUEUES.indexOf(stageFor(row)) },
     recordedAt: { kind: "date", label: m.recordedAt, hint: m.recordedHint, value: assessmentRecordDate },
   };

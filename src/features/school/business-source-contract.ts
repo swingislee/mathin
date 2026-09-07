@@ -81,6 +81,35 @@ export function sourceVisitKinds(content:string,assessmentBand:string,learningBa
   return kinds;
 }
 
+/** 报名确认前序阶段；班型对应学生已知等级，所属测评场次另行核对。 */
+export interface SourceEnrollmentFacts {
+  version: 1;
+  confirmed: true;
+  assessmentBand: CurrentAssessmentBand | null;
+  registeredOn: string | null;
+}
+
+export function sourceEnrollmentFacts(result: string, classBand: string, registeredOn: string | null): SourceEnrollmentFacts | null {
+  if (!['已报名', '已报', '是', '已续', '新报', '已缴费'].includes(result.trim())) return null;
+  return { version: 1, confirmed: true, assessmentBand: normalizeSourceAssessmentBand(classBand), registeredOn };
+}
+
+export function readSourceEnrollmentFacts(value: unknown): SourceEnrollmentFacts | null {
+  if (!value || typeof value !== 'object') return null;
+  const row = value as Record<string, unknown>;
+  if (row.version !== 1 || row.confirmed !== true) return null;
+  return { version: 1, confirmed: true, assessmentBand: normalizeSourceAssessmentBand(row.assessmentBand),
+    registeredOn: typeof row.registeredOn === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(row.registeredOn) ? row.registeredOn : null };
+}
+
+/** 明确到访/成绩优先；内容空白且没有到场证据的来源保留为一次未到预约。 */
+export function sourceVisitParticipation(content: string, attendance: string, assessmentBand: string, learningBand: string, score: string): 'attended' | 'no_show' | 'booked' {
+  if (['已到', '是', '已出勤', '出勤'].includes(attendance.trim())) return 'attended';
+  if (['未到', '未出勤', '否'].includes(attendance.trim())) return 'no_show';
+  if (assessmentBand.trim() || learningBand.trim() || score.trim()) return 'attended';
+  return content.trim() ? 'booked' : 'no_show';
+}
+
 export function hasSourceAssessmentConclusion(assessment:{assessmentBand?:string|null;score?:number|null;strengths?:string}|null|undefined):boolean {
   return Boolean(assessment&&(assessment.assessmentBand||assessment.score!=null||/(原测评等级|学习力测评等级)：/u.test(assessment.strengths??'')));
 }

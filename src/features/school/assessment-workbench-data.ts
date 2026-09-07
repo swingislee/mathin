@@ -3,7 +3,8 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { assessmentSourceOrder } from "./assessment-source-order";
 import type { ActivityKind } from "./activity-kinds";
-import { mergeSourceNotes, normalizeSourceAssessmentBand, sourceAssessmentNote, sourceStaffLabel, resolveSourceStaffId, hasSourceAssessmentConclusion } from './business-source-contract';
+import { mergeSourceNotes, normalizeSourceAssessmentBand, sourceAssessmentNote, sourceStaffLabel, resolveSourceStaffId, hasSourceAssessmentConclusion,readSourceEnrollmentFacts } from './business-source-contract';
+import {sourceCompletionSummary} from './source-completion-contract';
 import { ASSESSMENT_WORKFLOW_COLUMNS } from "./assessment-workflow-data";
 import { assessmentWorkflowFromDb, type AssessmentWorkflowDbRow } from "./assessment-workflow-contract";
 import type { PublicClassPresence } from "./public-class";
@@ -66,6 +67,7 @@ interface ActivityDbRow {
   source_invitation_id: string | null;
 }
 interface RegistrationDbRow {
+  source_enrollment_facts: unknown;
   source_record_id: string | null;
   id: string;
   activity_id: string;
@@ -255,7 +257,7 @@ const ACTIVITY_COLUMNS = [
 ].join(",");
 
 const REGISTRATION_COLUMNS = [
-  "id,activity_id,student_id,lead_id,source_record_id,status,outcome,assessment_paper_version_id,assessment_started_at,assessment_completed_at,updated_at",
+  "id,activity_id,student_id,lead_id,source_record_id,source_enrollment_facts,status,outcome,assessment_paper_version_id,assessment_started_at,assessment_completed_at,updated_at",
   "students(id,name,phone,parent_phone,grade,remark,assigned_to)",
   "leads(id,provisional_student_name,phone,grade_hint,grade_text,student_id,owner_id)",
 ].join(",");
@@ -493,7 +495,7 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
     }));
 
   const materializedRows = registrations
-    .filter(({ registration }) => registration.status !== "cancelled")
+    .filter(({ registration }) => registration.status !== "cancelled" || registration.source_record_id)
     .map(({ activity, registration }): AssessmentWorkbenchRow => {
       const invitation = activity.source_invitation_id
         ? invitations.get(activity.source_invitation_id)
@@ -527,7 +529,8 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
         enrollmentId: enrollmentsByRegistration.get(registration.id) ?? null,
         paperVersionId: registration.assessment_paper_version_id,
         sourceRecordId: registration.source_record_id,
-        studentId: registration.student_id,
+        sourceEnrollmentFacts: readSourceEnrollmentFacts(registration.source_enrollment_facts),
+        studentId: registration.student_id ?? lead?.student_id ?? null,
         leadId: registration.lead_id,
         name: student?.name ?? lead?.provisional_student_name ?? "-",
         phone: student?.parent_phone || student?.phone || lead?.phone || "",
@@ -609,7 +612,35 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
     });
   });
   const segmentedRegistrationIds = new Set(publicClassRows.map((row) => row.registrationId));
-  return assessmentSourceOrder([...pendingRows, ...materializedRows.filter((row) => !segmentedRegistrationIds.has(row.registrationId)), ...publicClassRows], orderResult.data ?? []);
+  const rows=[...pendingRows,...materializedRows.filter(row=>!segmentedRegistrationIds.has(row.registrationId)),...publicClassRows];
+  const studentIds=[...new Set(rows.map(row=>row.studentId).filter((id):id is string=>Boolean(id)))];
+  const [sourceEnrollments,subjectLeads]=await Promise.all([
+    readRelatedRows<{id:string;student_id:string;status:string;source_enrollment_facts:unknown}>(supabase,'course_enrollments','id,student_id,status,source_enrollment_facts','student_id',studentIds),
+    readRelatedRows<{id:string;student_id:string}>(supabase,'leads','id,student_id','student_id',studentIds),
+  ]);
+  if(sourceEnrollments.error||subjectLeads.error)throw new Error('ASSESSMENT_SOURCE_COMPLETION_READ');
+  const enrollmentByStudent=new Map<string,unknown[]>();
+  for(const enrollment of sourceEnrollments.data??[])if(enrollment.status==='active'&&readSourceEnrollmentFacts(enrollment.source_enrollment_facts))
+    enrollmentByStudent.set(enrollment.student_id,[...(enrollmentByStudent.get(enrollment.student_id)??[]),enrollment.source_enrollment_facts]);
+  const subjectKey=(row:AssessmentWorkbenchRow)=>row.studentId?`student:${row.studentId}`:`lead:${row.leadId}`;
+  const groups=new Map<string,AssessmentWorkbenchRow[]>();
+  for(const row of rows)groups.set(subjectKey(row),[...(groups.get(subjectKey(row))??[]),row]);
+  const relevantLeadIds=[...new Set([...groups.values()].filter(group=>group.some(row=>row.sourceEnrollmentFacts)||enrollmentByStudent.has(group[0].studentId??''))
+    .flatMap(group=>[...group.map(row=>row.leadId),...(subjectLeads.data??[]).filter(lead=>lead.student_id===group[0].studentId).map(lead=>lead.id)])
+    .filter((id):id is string=>Boolean(id)))];
+  const contacts=await readRelatedRows<{id:string;lead_id:string;outcome:string|null}>(supabase,'lead_communications','id,lead_id,outcome','lead_id',relevantLeadIds);
+  if(contacts.error)throw new Error('ASSESSMENT_SOURCE_CONTACT_READ');
+  for(const group of groups.values()){
+    const studentId=group[0].studentId;
+    const leadIds=new Set([...group.map(row=>row.leadId),...(subjectLeads.data??[]).filter(lead=>lead.student_id===studentId).map(lead=>lead.id)]);
+    const summary=sourceCompletionSummary([...group.map(row=>row.sourceEnrollmentFacts),...(enrollmentByStudent.get(studentId??'')??[])],
+      (contacts.data??[]).some(contact=>leadIds.has(contact.lead_id)&&['connected','declined'].includes(contact.outcome??'')),
+      group.map(row=>({status:row.participationStatus,hasResult:Boolean(row.assessment&&hasSourceAssessmentConclusion(row.assessment)),
+        date:row.occurredOn??row.assessmentCompletedAt??null,band:row.assessment?.assessmentBand??null,score:row.assessment?.score??null,
+        teacher:row.assessment?.recordedByName||sourceStaffLabel(row.background,'学科老师')||null})));
+    for(const row of group)row.sourceCompletion=summary;
+  }
+  return assessmentSourceOrder(rows,orderResult.data??[]);
 }
 
 function buildQuestionSummary(

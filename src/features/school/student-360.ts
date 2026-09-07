@@ -8,6 +8,8 @@ import type { PermissionKey } from "./permissions";
 import type { LeadStatus } from "./lead-contract";
 import { leadContactAllowsIdentity } from "./lead-identity-contract";
 import { readStudentLifecycle } from "./student-lifecycle-data";
+import {sourceCompletionSummary} from './source-completion-contract';
+import {hasSourceAssessmentConclusion,sourceStaffLabel} from './business-source-contract';
 import { loadStudentBusinessHistory } from "./student-business-history-data";
 import { studentBusinessHistoryEvents, mergeStudentBusinessEvents } from "./student-business-history-timeline";
 import {
@@ -25,6 +27,7 @@ import {
 } from "./student-360-contract";
 
 type CommercialEnrollmentRow = {
+  source_enrollment_facts: unknown;
   id: string; note: string; confirmed_by: string | null; confirmed_at: string | null;
   source_record_id:string|null;registered_on:string|null;
   cancelled_by: string | null; cancelled_at: string | null;
@@ -75,7 +78,7 @@ type InvitationEventRow = Pick<TableRow<"lead_invitation_events">,
 type RegistrationRow = Pick<TableRow<"activity_registrations">,
   "id" | "activity_id" | "student_id" | "lead_id" | "status" | "outcome" |
   "operated_by" | "assessment_started_at" | "assessment_completed_at" |
-  "created_at" | "updated_at"
+  "created_at" | "updated_at" | "source_enrollment_facts"
 >;
 type ActivityRow = Pick<TableRow<"activities">,
   "id" | "kind" | "title" | "scheduled_at" | "location" | "remark" |
@@ -266,12 +269,12 @@ export async function getStudent360Snapshot(
       .in("lead_id", leadIds).order("created_at", { ascending: false }).limit(READ_LIMIT)
       .returns<InvitationRow[]>()) : Promise.resolve([]),
     studentId ? readRows(supabase.from("activity_registrations")
-      .select("id,activity_id,student_id,lead_id,status,outcome,operated_by,assessment_started_at,assessment_completed_at,created_at,updated_at")
+      .select("id,activity_id,student_id,lead_id,status,outcome,source_enrollment_facts,operated_by,assessment_started_at,assessment_completed_at,created_at,updated_at")
       .eq("record_state", "current")
       .eq("student_id", studentId).order("created_at", { ascending: false }).limit(READ_LIMIT)
       .returns<RegistrationRow[]>()) : Promise.resolve([]),
     leadIds.length ? readRows(supabase.from("activity_registrations")
-      .select("id,activity_id,student_id,lead_id,status,outcome,operated_by,assessment_started_at,assessment_completed_at,created_at,updated_at")
+      .select("id,activity_id,student_id,lead_id,status,outcome,source_enrollment_facts,operated_by,assessment_started_at,assessment_completed_at,created_at,updated_at")
       .eq("record_state", "current")
       .in("lead_id", leadIds).order("created_at", { ascending: false }).limit(READ_LIMIT)
       .returns<RegistrationRow[]>()) : Promise.resolve([]),
@@ -293,7 +296,7 @@ export async function getStudent360Snapshot(
       .eq("student_id", studentId).order("updated_at", { ascending: false }).limit(READ_LIMIT)
       .returns<ReviewRow[]>()) : Promise.resolve([]),
     studentId ? readRows(supabase.from("course_enrollments")
-      .select("id,note,confirmed_by,confirmed_at,cancelled_by,cancelled_at,source_record_id,registered_on,courses(title),school_terms(name)")
+      .select("id,note,confirmed_by,confirmed_at,cancelled_by,cancelled_at,source_record_id,source_enrollment_facts,registered_on,courses(title),school_terms(name)")
       .eq("record_state", "current")
       .eq("student_id", studentId).order("confirmed_at", { ascending: false }).limit(READ_LIMIT)
       .returns<CommercialEnrollmentRow[]>()) : Promise.resolve([]),
@@ -797,6 +800,15 @@ export async function getStudent360Snapshot(
 
   return {
     lifecycleStage,
+    sourceCompletion:sourceCompletionSummary([...registrations.map(row=>row.source_enrollment_facts),...commercialEnrollmentRows.filter(row=>!row.cancelled_at).map(row=>row.source_enrollment_facts)],
+      communicationRows.some(row=>['connected','declined'].includes(row.outcome??'')),registrations.map(registration=>{
+        const assessment=assessmentRows.find(row=>row.activity_registration_id===registration.id);
+        const activity=activityById.get(registration.activity_id);
+        return {status:registration.status,hasResult:Boolean(assessment&&hasSourceAssessmentConclusion({assessmentBand:assessment.assessment_band,score:assessment.score,strengths:assessment.strengths})),
+          date:assessment?.assessed_on??activity?.occurred_on??registration.assessment_completed_at,
+          band:assessment?.assessment_band??null,score:assessment?.score??null,
+          teacher:nameOf(assessment?.assessed_by)||sourceStaffLabel(activity?.remark??'','学科老师')||null};
+      })),
     identityCreation: !studentId && primaryLead ? {
       lead: { id: primaryLead.id, provisionalStudentName: primaryLead.provisional_student_name, gradeHint: primaryLead.grade_hint,
         phone: primaryLead.phone, status: primaryLead.status as LeadStatus, ownerId: primaryLead.owner_id },

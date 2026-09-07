@@ -2,7 +2,7 @@ import {createImportUuid} from './import-uuid.mjs';
 import {normalizeGradeLabel} from '../../src/lib/grade-format.mjs';
 import {historyFieldName,historicalDate} from './student-business-history.mjs';
 import {historyPayloadHash} from './history-import-trial.mjs';
-import {normalizeSourceAssessmentBand,sourceAssessmentNote,normalizeSourceContact,sourceScore,mergeSourceNotes,sourceVisitKinds,resolveSourceStaffId} from '../../src/features/school/business-source-contract.ts';
+import {normalizeSourceAssessmentBand,sourceAssessmentNote,normalizeSourceContact,sourceScore,mergeSourceNotes,sourceVisitKinds,resolveSourceStaffId,sourceEnrollmentFacts,sourceVisitParticipation} from '../../src/features/school/business-source-contract.ts';
 
 export const OPERATIONAL_TABLES=['leads','lead_communications','activities','activity_registrations','assessment_results','course_opportunities','course_enrollments','course_enrollment_assignments'];
 const field=(r,name)=>r.record_data.cells.find(c=>historyFieldName(c.fieldName)===name)?.text.trim()??'';
@@ -22,6 +22,7 @@ export function buildOperationalSourceImport(payload,snapshot) {
   const existing=Object.fromEntries(OPERATIONAL_TABLES.map(t=>[t,new Map((snapshot[t]??[]).filter(r=>r.source_record_id).map(r=>[r.source_record_id,r]))]));
   const leadsByExact=new Map((snapshot.leads??[]).filter(l=>l.phone_normalized).map(l=>[`${l.phone_normalized}:${l.normalized_name}`,l.id]));
   const studentLeads=new Map((snapshot.leads??[]).filter(l=>l.student_id).map(l=>[l.student_id,l.id]));
+  const confirmedStudents=new Map((snapshot.history_import_associations??[]).map(row=>[row.record_id,row.student_id]));
   const coverage=[];
   const leadFacts=new Map();
   const staff=(r,fieldName)=>resolveSourceStaffId(field(r,fieldName),snapshot.profiles??[]);
@@ -46,7 +47,8 @@ export function buildOperationalSourceImport(payload,snapshot) {
     return leadId;
   }
   const subject=r=>r.student_id?{student_id:r.student_id,lead_id:null}:{student_id:null,lead_id:ensureLead(r)};
-  for(const r of payload.records.filter(r=>r.source_data.format==='feishu-base'&&name(r))) {
+  for(const source of payload.records.filter(r=>r.source_data.format==='feishu-base'&&name(r))) {
+    const r=confirmedStudents.has(source.id)?{...source,student_id:confirmedStudents.get(source.id)}:source;
     const table=r.record_data.tableName;
     const emitted=[];
     if(table==='获客&私域信息登记表1.0-总') {
@@ -78,6 +80,8 @@ export function buildOperationalSourceImport(payload,snapshot) {
     if(table==='到访数据与信息表1.0-总'||table==='（老数据）各选拔产品协作信息表-总') {
       const bandValue=field(r,'思维测评等级'),content=field(r,'参与内容')||field(r,'选拔产品项目');
       const date=validDate(r,'体/测日期','参加选拔产品日期','到访日期');
+      const participation=sourceVisitParticipation(content,field(r,'到访与否')||field(r,'学员出勤情况'),bandValue,field(r,'学习力测评等级'),field(r,'测评成绩（分数）'));
+      const enrollmentFacts=sourceEnrollmentFacts(field(r,'报名与否'),field(r,'班型'),validDate(r,'报名日期'));
       const kinds=sourceVisitKinds(content,bandValue,field(r,'学习力测评等级'),field(r,'测评成绩（分数）'));
       if(!kinds.length){const leadId=ensureLead(r);const previous=leadFacts.get(leadId);leadFacts.set(leadId,{id:leadId,source_record_id:previous?.source_record_id??r.id,note:mergeSourceNotes(previous?.note,originalNotes(r,['参与内容','到访与否','到访日期','学员情况','学员情况2','家长情况','家长情况2','家长理念','培养重点&核心期待&共识点','体验测评家长关注点']))});emitted.push(['leads',leadId]);}
       const target=subject(r);
@@ -90,14 +94,15 @@ export function buildOperationalSourceImport(payload,snapshot) {
         rows.activities.push({id:activityId,history_key:oldActivity?.history_key??`${suffix}:activity`,...common,kind,title:kind==='trial_class'?'体验课':kind==='competition'?content:'1 对 1 测评',scheduled_at:null,occurred_on:date,
           remark:originalNotes(r,['参与内容','选拔产品项目','学服老师','学科老师','主线服务老师','到访时段','体/测日期'])});
         rows.activity_registrations.push({id:registrationId,history_key:oldRegistration?.history_key??`${suffix}:registration`,...common,activity_id:activityId,...target,
-          status:['已到','是','已出勤','出勤'].includes(field(r,'到访与否')||field(r,'学员出勤情况'))?'attended':['未到','未出勤'].includes(field(r,'到访与否')||field(r,'学员出勤情况'))?'no_show':bandValue?'attended':'booked',
-          registered_on:validDate(r,'确认日期','报名选拔产品日期'),outcome:originalNotes(r,['到访与否','报名与否','班型','方案宣讲与否','选拔产品','年级/25级'])});
+          status:participation,source_enrollment_facts:enrollmentFacts,
+          registered_on:validDate(r,'确认日期','报名选拔产品日期'),outcome:originalNotes(r,['到访与否','报名与否','报名日期','班型','方案宣讲与否','选拔产品','年级/25级'])});
         emitted.push(['activity_registrations',registrationId]);
         if(kind==='trial_class')continue;
         const score=sourceScore(field(r,'测评成绩（分数）'));
-        const notes=mergeSourceNotes(originalNotes(r,['学员情况','学员情况2','培养重点&核心期待&共识点','学员程度&推荐班型','学习力测评等级','英语测评成绩（年级限定下）','备考成绩']),sourceAssessmentNote(bandValue),score.note);
+        const enrollmentBand=kind==='assessment_1v1'&&participation==='attended'&&!bandValue?enrollmentFacts?.assessmentBand:null;
+        const notes=mergeSourceNotes(originalNotes(r,['学员情况','学员情况2','培养重点&核心期待&共识点','学员程度&推荐班型','学习力测评等级','英语测评成绩（年级限定下）','备考成绩']),sourceAssessmentNote(bandValue),score.note,enrollmentBand?'测评等级依据：报名班型':'');
         const parent=originalNotes(r,['家长情况','家长情况2','家长理念','体验测评家长关注点','家长主要关注点','家长沟通信息总结（附整理文档）']);
-        if(bandValue||score.score!==null||notes||parent)emitted.push(['assessment_results',add('assessment_results',r,`${suffix}:result`,{...target,activity_registration_id:registrationId,assessment_band:normalizeSourceAssessmentBand(bandValue),score:score.score,score_max:score.maxScore,assessed_on:date,assessed_by:existing.assessment_results.get(r.id)?.assessed_by??staff(r,'学科老师'),strengths:notes,parent_concerns:parent})]);
+        if(bandValue||score.score!==null||notes||parent)emitted.push(['assessment_results',add('assessment_results',r,`${suffix}:result`,{...target,activity_registration_id:registrationId,assessment_band:normalizeSourceAssessmentBand(bandValue)??enrollmentBand??null,score:score.score,score_max:score.maxScore,assessed_on:date,assessed_by:existing.assessment_results.get(r.id)?.assessed_by??staff(r,'学科老师'),strengths:notes,parent_concerns:parent})]);
       }
     }
     const autumn=table==='2026秋季在读学员表格';
@@ -116,9 +121,11 @@ export function buildOperationalSourceImport(payload,snapshot) {
         if(autumn&&!isPaid)emitted.push(['course_opportunities',add('course_opportunities',r,`${key}:pending`,{student_id:r.student_id,lead_id:r.student_id?null:ensureLead(r),opportunity_type:'new',stage:'planning',note:notes,period_year:2026,period_key:'autumn',term_label:period,class_label:band?classValue:'',teacher_label:teacher})]);
         if(!isPaid)continue;
         const prior=(snapshot.course_enrollments??[]).find(e=>e.source_record_id===r.id&&e.period_label===period);
+        const registeredOn=validDate(r,'报名缴费日期','缴费时间','补续日期')??prior?.registered_on??null;
         const enrollmentId=prior?.id??id(key);
         rows.course_enrollments.push({id:enrollmentId,history_key:prior?.history_key??key,...evidence,student_id:r.student_id,status:'active',confirmed_at:null,
-          registered_on:validDate(r,'报名缴费日期','缴费时间','补续日期'),period_label:period,note:notes});
+          registered_on:registeredOn,period_label:period,note:mergeSourceNotes(notes,prior?.note),
+          source_enrollment_facts:sourceEnrollmentFacts('是',classValue,registeredOn)});
         const assignment=(snapshot.course_enrollment_assignments??[]).find(a=>a.course_enrollment_id===enrollmentId);
         rows.course_enrollment_assignments.push({id:assignment?.id??id(`${key}:assignment`),history_key:assignment?.history_key??`${key}:assignment`,...evidence,course_enrollment_id:enrollmentId,status:'unknown',assigned_at:null,class_label:field(r,'班级')||(band?classValue:''),teacher_label:teacher,room_label:field(r,'校区'),schedule_label:[field(r,'26秋上课周次')||field(r,'周次'),field(r,'26秋上课时段')||field(r,'上课开始时间')].filter(Boolean).join(' '),note:notes});
         emitted.push(['course_enrollments',enrollmentId]);
