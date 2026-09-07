@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { FollowupEntryFields } from "./FollowupEntryFields";
 import { FollowupContactFacts } from "./FollowupContactFacts";
 import { FirstContactRecordRow } from "./FirstContactRecordRow";
+import { firstContactRowMessages } from "./first-contact-row-messages";
 import { invitationForAdvance, invitationHasStageInformation, leadContactInput, leadWechatValue, type LeadContactDraft } from "./followup-entry-contract";
 import { addStudentFollowUp } from "./actions/followups";
 import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
@@ -89,7 +90,6 @@ export function LeadContactEntryRow({
   detailsExtra,
   rowActions,
   leadingSelection,
-  workPurpose,
   detailsFirst = false,
   historicalSummary,
   historicalEntryLabel,
@@ -116,7 +116,6 @@ export function LeadContactEntryRow({
   detailsExtra?: ReactNode;
   rowActions?: ReactNode;
   leadingSelection?: ReactNode;
-  workPurpose?: ReactNode;
   detailsFirst?: boolean;
   historicalSummary?: { state: ReactNode; details: ReactNode; updated: ReactNode };
   historicalEntryLabel?: string;
@@ -124,6 +123,7 @@ export function LeadContactEntryRow({
   const t = useTranslations("school.leads");
   const invitationT = useTranslations("school.invitations");
   const entryT = useTranslations("school.followupEntry");
+  const rowM = firstContactRowMessages(locale);
   const rowRef = useRef<HTMLTableRowElement>(null);
   const [localDetailsOpen, setLocalDetailsOpen] = useState(false);
   const detailsOpen = expanded ?? localDetailsOpen;
@@ -303,6 +303,9 @@ export function LeadContactEntryRow({
 
   const contactFacts = reachable ? <FollowupContactFacts wechat={leadWechatValue(wechatState, lead.wechatAdded)}
     onWechatChange={(added) => setWechatState(added === null ? "unknown" : added ? "yes" : "no")} interest={interestLevel} onInterestChange={setInterestLevel} disabled={pending} /> : null;
+  const outcomeControl = <FollowupChoice className="w-48 shrink-0" label={entryT("outcome")} value={outcome} disabled={!canEdit || pending}
+    onValueChange={(value) => chooseOutcome(value as LeadContactOutcome)}
+    options={CONTACT_OUTCOME_SHORTCUTS.map(({ key, outcome: value }) => ({ value, label: `${t(`contactOutcome_${value}`)} · ${key}`, tone: value === "connected" ? "healthy" : value === "invalid_number" ? "unhealthy" : "attention" }))} />;
   const entryContent = (
       <>
         {historicalSummary ? <div className="mb-1 min-w-0">{historicalSummary.details}</div> : null}
@@ -331,17 +334,19 @@ export function LeadContactEntryRow({
       person: { name: lead.provisionalStudentName, phone: lead.phone, owner: lead.ownerName || t("unassignedOwner"),
         grade: lead.gradeText || (lead.gradeHint ? t("gradeValue", { grade: lead.gradeHint }) : t("unknownGrade")),
         subject: { studentId: lead.studentId ?? null, leadId: lead.id }, studentGrade: lead.gradeHint },
-      status: { label: lead.lastContactOutcome ? entryT("lastOutcome", { outcome: t(`contactOutcome_${lead.lastContactOutcome}`) }) : t(`status_${lead.status}`),
+      status: { label: lead.lastContactOutcome ? t(`contactOutcome_${lead.lastContactOutcome}`) : t(`status_${lead.status}`),
         tone: lead.status === "invalid" ? "unhealthy" : lead.status === "nurture" ? "attention" : lead.status === "uncontacted" ? "neutral" : "healthy",
         context: `${lead.acquisitionLocation || t("acquisitionLocationMissing")}${lead.interests.length ? ` · ${lead.interests.join(" / ")}` : ""}`,
         contextTitle: [lead.acquisitionLocation, sourceAttribution, ...lead.interests].filter(Boolean).join(" · ") },
       updated: lead.lastContactAt ? formatAt(lead.lastContactAt) : t("notContacted"),
       countLabel: lead.contactCount ? t("contactCount", { count: lead.contactCount }) : undefined,
       note: lead.lastContactNote,
+      contactFacts: lead,
+      pendingChanges: Boolean(outcome || note.trim() || reminderDirty),
     }} locale={locale} rowRef={rowRef} tabIndex={layout === "communication" || active ? 0 : -1}
     active={active} selected={selected} expanded={detailsOpen} pending={pending} layout={layout} canAssign={canAssign}
     detailsId={detailsId} onExpandedChange={changeDetailsOpen} onActivate={() => onActivate(lead.id)} onKeyDown={handleRowKeyDown}
-    selection={leadingSelection} workPurpose={workPurpose} historicalSummary={historicalSummary} rowActions={rowActions} entry={entryContent}
+    selection={leadingSelection} historicalSummary={historicalSummary}
     defaultCells={layout === "default" ? <>
       {canAssign && layout === "default" ? <LeadContactSelectionCell lead={lead} visibleIds={visibleIds} /> : null}
       <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-2">
@@ -358,12 +363,17 @@ export function LeadContactEntryRow({
     </> : undefined}>
       {() => <>
       {detailsFirst ? detailsExtra : null}
+      {layout === "communication" && historicalEntryLabel ? <p className="text-xs font-medium text-muted">{historicalEntryLabel}</p> : null}
       {detailsFirst && historicalSummary ? <div className="space-y-1 text-xs text-muted">
         <p>{lead.lastContactOutcome ? t(`contactOutcome_${lead.lastContactOutcome}`) : t("notContacted")}{lead.lastContactAt ? ` · ${formatAt(lead.lastContactAt)}` : ""}</p>
         {lead.lastContactNote ? <p className="whitespace-pre-wrap">{lead.lastContactNote}</p> : null}
       </div> : null}
+      {layout === "communication" && (lead.acquisitionLocation || sourceAttribution || lead.interests.length) ? <p className="text-xs leading-5 text-muted">
+        {rowM.source}：{[lead.acquisitionLocation, sourceAttribution, ...lead.interests].filter(Boolean).join(" · ")}
+      </p> : null}
       <FollowupEntryFields id={detailsId} note={note} onNoteChange={setNote}
         disabled={!canUseEntry} pending={pending} saveDisabled={!entryCanSave} onSave={saveEntry}
+        tools={layout === "communication" ? <>{canManageIdentity ? <LeadIdentityControl lead={lead} /> : null}{rowActions}</> : undefined}
         canAdvance={Boolean(onAdvance || visibleIds.length > 1)}
         placeholder={outcome ? t(`contactNotePlaceholder_${outcome}`) : undefined}
         reminder={reminderAllowed ? {
@@ -376,6 +386,7 @@ export function LeadContactEntryRow({
         hint={!canUseEntry ? entryT("readOnly")
           : !outcome && note.trim() ? entryT(noteOnly && !reminderDirty ? "studentNoteOnly" : "chooseOutcome")
           : hasDeferredFacts ? entryT("deferredFacts") : outcome ? undefined : entryT(canWriteNote ? "studentNoteAvailable" : "chooseOutcome")}>
+        {layout === "communication" ? outcomeControl : null}
         {outcome === "connected" ? <InvitationDraftFields key={draftStorageKey} value={invitation} activities={activities} assessors={assessors} locale={locale}
           gradeHint={lead.gradeHint} contactFacts={contactFacts} enableProgressShortcuts={false} disabled={pending} showReminder={false} draftStorageKey={draftStorageKey}
           onChange={(value) => setInvitation(value && !invitation && invitationCanHaveNextContactReminder(value) ? { ...value, nextContactAt: value.nextContactAt ?? nextContactAt } : value)} /> : contactFacts}

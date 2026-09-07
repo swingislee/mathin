@@ -158,8 +158,6 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(workbench).toContain("sticky left-0 top-0");
     expect(workbench).toContain("DashboardTableColumnHeader");
     expect(workbench).toContain("school.followup.communication");
-    expect(workbench).toContain("InvitationQuickContact");
-    expect(workbench).toContain('t("workHint_waiting_assessor_response", { assessor:');
     expect(workbench).not.toContain('row.state === "confirmed" && !dirty');
     expect(workbench).not.toContain("onConfirmedReady");
     expect(workbench).toContain("!invitationDraftIsComplete(draft)");
@@ -167,9 +165,8 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(workbench).toContain("<FirstContactRecordRow");
     expect(read("src", "features", "school", "FirstContactRecordRow.tsx")).toContain("<FollowupInlineDetails");
     expect(workbench).not.toContain("FollowupDetails");
-    expect(workbench).toContain("colSpan={4}");
+    expect(workbench).toContain("colSpan={5}");
     expect(workbench).toContain("const rowWorkStep =");
-    expect(workbench).toContain("const rowActionHint =");
     expect(workbench).toContain("<FollowupEntryFields");
     expect(workbench).not.toContain("/invitation-editor:grid-cols-");
     expect(draftFields).toContain("<TabsTrigger");

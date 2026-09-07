@@ -2,6 +2,8 @@
 
 import { FollowupTableRecord, type FollowupRowState } from "./dashboard-page/FollowupTableRecord";
 import { FirstContactRecordRow } from './FirstContactRecordRow';
+import { FirstContactStatusTags } from './FirstContactStatusTags';
+import { firstContactRowMessages } from './first-contact-row-messages';
 import { businessRecordMessages } from './business-record-state-contract';
 import type { HistoricalFirstContactRow } from './historical-first-contact-contract';
 
@@ -14,7 +16,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
@@ -62,7 +63,6 @@ import { FollowupEntryFields } from "./FollowupEntryFields";
 import { FollowupPersonCell } from "./dashboard-page/FollowupPersonCell";
 import { invitationForAdvance } from "./followup-entry-contract";
 import { PostActivityHandoff } from "./EnrollmentHandoffButton";
-import { PostActivityQuickContact } from "./PostActivityQuickContact";
 import { followupState, type ActivityEnrollmentContext } from "./enrollment-workflow-contract";
 import { LeadContactEntryRow } from "./LeadFirstContactWorkbench";
 import { navigateFollowupTable } from "./followup-keyboard";
@@ -450,6 +450,9 @@ function InvitationEditor({
         } : undefined}
         tools={<Button type="button" size="sm" variant="ghost" className="h-auto min-h-8 whitespace-normal px-2 py-1 text-xs text-muted"
           disabled={pending} onClick={() => setCancelOpen(true)}>{t("cancelInvitation")}</Button>}>
+        <FollowupChoice className="w-48" label={t("channelLabel")} value={channel}
+          onValueChange={(value) => onEntryChange({ ...entry, channel: value as InvitationChannel })} disabled={pending}
+          options={CHANNELS.map((value) => ({ value, label: t(`channel_${value}`) }))} />
         <InvitationDraftFields key={draftStorageKey} value={draft} activities={activities} assessors={assessors} locale={locale}
           gradeHint={row.gradeHint}
           disabled={pending} allowNone={false} showReminder={false}
@@ -485,54 +488,6 @@ function InvitationEditor({
   );
 }
 
-function InvitationQuickContact({ row, disabled, onSaved, saving, beginSave, endSave, entry, onEntryChange, expanded }: {
-  entry: InvitationEntryDraft; onEntryChange: (value: InvitationEntryDraft) => void; expanded: boolean;
-  row: InvitationCoordinationRow; disabled: boolean;
-  onSaved: (row: InvitationCoordinationRow, input: UpdateInvitationInput) => void;
-  saving: boolean;
-  beginSave: (id: string) => boolean;
-  endSave: (id: string) => void;
-}) {
-  const t = useTranslations("school.invitations");
-  const entryT = useTranslations("school.followupEntry");
-  const { channel, note } = entry;
-  const setChannel = (value: InvitationChannel) => onEntryChange({ ...entry, channel: value });
-  const setNote = (value: string) => onEntryChange({ ...entry, note: value });
-  const submitted = useRef<UpdateInvitationInput | null>(null);
-  const ownsSave = useRef(false);
-  const finishSaving = useCallback(() => {
-    if (!ownsSave.current) return;
-    ownsSave.current = false;
-    endSave(row.id);
-  }, [endSave, row.id]);
-  const run = useAction(updateLeadInvitationAction, { successMessage: t("saveSuccess"), errorMessage: { default: t("saveFailed") }, onSuccess: () => {
-    finishSaving();
-    if (submitted.current) onSaved(row, submitted.current);
-    setNote(""); submitted.current = null;
-  }, onError: finishSaving });
-  useEffect(() => { if (!run.pending) finishSaving(); }, [finishSaving, run.pending]);
-  const submit = () => {
-    if (expanded || disabled || saving || run.pending || !note.trim()) return;
-    const input: UpdateInvitationInput = { kind: row.kind, state: row.state, activityId: row.activityId, assessorId: row.assessorId,
-      parentTimeOptions: row.parentTimeOptions, assessorTimeOptions: row.assessorTimeOptions, scheduledAt: row.scheduledAt,
-      locationText: row.locationText, nextContactAt: row.nextContactAt, channel, note };
-    if (!beginSave(row.id)) return;
-    ownsSave.current = true;
-    submitted.current = input;
-    run.run(row.id, input);
-  };
-  return <div className="flex items-center gap-1.5" onKeyDown={(event) => {
-    if (event.defaultPrevented || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229 || event.repeat) return;
-    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") { event.preventDefault(); submit(); }
-  }}>
-    <FollowupChoice className="w-40 shrink-0" label={t("channelLabel")} value={channel} onValueChange={(value) => setChannel(value as InvitationChannel)} disabled={disabled || saving || run.pending}
-      options={CHANNELS.map((value) => ({ value, label: t(`channel_${value}`) }))} />
-    {expanded ? <span className="min-w-0 flex-1 truncate text-xs text-muted" title={note || undefined}>{note}</span> : <Input value={note} onChange={(event) => setNote(event.target.value)} placeholder={entryT("note")} aria-label={t("noteFor", { name: row.leadName })} disabled={disabled || saving || run.pending} maxLength={2000} className="h-8 min-w-0 flex-1 text-xs" />}
-    {!expanded ? <Button type="button" size="sm" variant="secondary" className="h-8 shrink-0 px-2" onClick={submit} disabled={disabled || saving || run.pending || !note.trim()} aria-label={t("saveKnownFacts")} aria-keyshortcuts="Control+Enter Meta+Enter" title={`${t("saveKnownFacts")} · Ctrl ↵`}>
-      {run.pending ? <LoaderCircle className="size-4 animate-spin" /> : <Check className="size-4" />}</Button> : null}
-  </div>;
-}
-
 function InvitationHistory({ rows, formatAt }: { rows: InvitationCoordinationRow[]; formatAt: (value: string) => string }) {
   const t = useTranslations("school.invitations");
   if (!rows.length) return null;
@@ -565,12 +520,12 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
 }) {
   const t = useTranslations("school.invitations");
   const leadT = useTranslations("school.leads");
-  const entryT = useTranslations("school.followupEntry");
   const workspaceT = useTranslations("school.followupWorkspace");
   const enrollmentT = useTranslations("school.enrollmentWorkflow");
   const tableT = useTranslations("school.table");
   const workT = useTranslations("school.communicationWorkday");
   const recordM = businessRecordMessages(locale);
+  const rowM = firstContactRowMessages(locale);
   const workSelection = useCommunicationWorkSelection();
   const { setVisibleKeys } = workSelection;
   const router = useRouter();
@@ -639,7 +594,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
       : ["declined", "invalid_number", "cancelled", "closed"].includes(event.outcome) ? "unhealthy" : "attention";
     return {
       state: <><Badge variant="outline" className={cn("max-w-full truncate", followupToneClasses[tone])}>{dayOutcomeLabel(event)}</Badge><p className="mt-1 text-[11px] text-muted">{workT("dayEventCount", { count: dayEventsFor(row).length })}</p></>,
-      details: <div className="flex min-w-0 items-center gap-2"><span className="shrink-0 text-[11px] text-muted">{event ? t(`channel_${event.channel}`) : "—"}</span><p className="truncate text-ink" title={event?.note}>{event?.note || "—"}</p></div>,
+      details: <div className="flex min-w-0 items-start gap-2"><span className="shrink-0 text-[11px] leading-5 text-muted">{event ? t(`channel_${event.channel}`) : "—"}</span><p className="line-clamp-2 whitespace-normal break-words leading-5 text-ink" title={event?.note}>{event?.note || "—"}</p></div>,
       updated: event ? <time dateTime={event.occurredAt}>{formatAt(event.occurredAt)}</time> : "—",
     };
   }, [dayEventFor, dayEventsFor, dayOutcomeLabel, formatAt, recordsMode, t, workT]);
@@ -678,7 +633,6 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
       && new Date(lead.lastContactAt).getTime() > new Date(row.updatedAt).getTime() ? lead : null;
   }, [leadById]);
   const stateOf = useCallback((input: CommunicationRow) => { const row = referenceRow(input); return row.source === 'profile' ? recordM.firstContactMissing : row.source === "invitation" ? t(`state_${row.value.state}`) : row.source === "contact" ? leadT(`status_${row.value.status}`) : enrollmentT(`state_${followupState(row.value)}`); }, [enrollmentT, leadT, recordM.firstContactMissing, referenceRow, t]);
-  const kindOf = useCallback((input: CommunicationRow) => { const row = referenceRow(input); return row.source === "invitation" ? t(`kind_${row.value.kind}`) : row.source === "contact" || row.source === 'profile' ? leadT("firstContactEntry") : t("queue_post_activity"); }, [leadT, referenceRow, t]);
   const arrangementOf = useCallback((input: CommunicationRow) => { const row = referenceRow(input); return row.source === 'profile' ? recordM.firstContactHint : row.source === "invitation" ? arrangementText(row.value, t, formatAt) : row.source === "contact" ? [row.value.acquisitionLocation, ...row.value.interests].filter(Boolean).join(" · ") || leadT("noSourceInterest") : row.value.activityTitle; }, [formatAt, leadT, recordM.firstContactHint, referenceRow, t]);
   const updatedOf = useCallback((input: CommunicationRow) => { const row = referenceRow(input); return row.source === 'profile' ? null : row.source === "invitation" ? laterContactFor(row.value)?.lastContactAt ?? row.value.updatedAt : row.source === "contact" ? row.value.lastContactAt ?? row.value.createdAt : row.value.contacts[0]?.occurredAt ?? row.value.activityAt; }, [laterContactFor, referenceRow]);
   const gradeOf = useCallback((row: CommunicationRow) => row.source === 'profile' ? row.value.grade ? leadT('gradeValue', { grade: row.value.grade }) : '' : row.value.gradeText, [leadT]);
@@ -742,15 +696,6 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
     const nextRow = currentSession.facts.get(next);
     setActiveContactId(nextRow?.source === "contact" ? nextRow.value.id : null);
   }, [completedFor, currentSession.facts, currentSession.keys, processedKeys, selectableKeys]);
-  const workPurposeFor = useCallback((key: string) => {
-    const task = workday?.tasks.find((item) => item.key === key);
-    const row = currentSession.facts.get(key);
-    const nextContactAt = row?.source === "contact" ? row.value.nextContactAt
-      : row?.source === "invitation" ? leadById.get(row.value.leadId)?.nextContactAt ?? row.value.nextContactAt
-        : row?.source === "post_activity" ? row.value.contacts[0]?.nextContactAt : undefined;
-    const dueAt = task?.dueAt ?? nextContactAt;
-    return worklist?.name ?? (dueAt ? workT("taskDue", { time: formatAt(dueAt) }) : undefined);
-  }, [currentSession.facts, formatAt, leadById, workT, workday?.tasks, worklist?.name]);
   const leadingSelectionFor = useCallback((row: CommunicationRow) => {
     const key = communicationRowKey(row);
     const completed = completedFor(key);
@@ -848,11 +793,11 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
         activities={activities} assessors={assessors} locale={locale}
         canContact={canContact && !row.value.activeInvitation} canManageIdentity={canManageIdentity} layout="communication"
         expanded={expanded} onExpandedChange={(open) => changeDetails(canonicalKey, open)}
-        leadingSelection={leadingSelectionFor(row)} workPurpose={workPurposeFor(canonicalKey)}
+        leadingSelection={leadingSelectionFor(row)}
         historicalSummary={historicalSummary} historicalEntryLabel={recordsMode ? workT("newCommunication") : undefined}
         detailsFirst={workMode === "records"}
         onPendingChange={(pending) => contactPending(row.id, pending)}
-        rowActions={previous ? <Button type="button" size="sm" variant="ghost" className="h-auto min-h-7 max-w-full whitespace-normal px-1 py-1 text-[11px]" disabled={pending} onClick={() => {
+        rowActions={previous ? <Button type="button" size="sm" variant="ghost" className="h-8 px-2 text-xs" disabled={pending} onClick={() => {
           setRecontactIds((current) => new Set([...current].filter((id) => id !== previous.id)));
           setActiveId(canonicalKey);
         }}>{t("returnToInvitation")}</Button> : undefined}
@@ -862,52 +807,43 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
     const state = row.source === "invitation" ? row.value.state : followupState(row.value);
     const tone = ["confirmed", "completed", "enrolled"].includes(state) ? "healthy" : ["cancelled", "closed", "unreachable"].includes(state) ? "unhealthy" : "attention";
     const laterContact = row.source === "invitation" ? laterContactFor(row.value) : null;
-    const nextAt = row.source === "invitation" ? laterContact ? laterContact.nextContactAt : row.value.nextContactAt : row.value.contacts[0]?.nextContactAt;
     const closed = row.source === "invitation" && ["completed", "cancelled"].includes(row.value.state);
     const detailsId = `communication-details-${canonicalKey}`;
     const rowWorkStep = row.source === "invitation" ? invitationWorkStep(row.value) : null;
     const rowAction = rowWorkStep && rowWorkStep !== "closed" ? t(`workTitle_${rowWorkStep}`) : stateOf(row);
-    const rowActionHint = row.source === "invitation"
-      ? rowWorkStep === "closed" ? laterContact?.lastContactOutcome ? leadT(`contactOutcome_${laterContact.lastContactOutcome}`) : t(`task_${row.value.state}`)
-        : rowWorkStep === "waiting_assessor_response" ? t("workHint_waiting_assessor_response", { assessor: row.value.assessorName || t("assessorPending") })
-          : rowWorkStep ? t(`workHint_${rowWorkStep}`) : ""
-      : row.value.recommendation || row.value.routeNote;
+    const contactFacts = row.value.leadId ? leadById.get(row.value.leadId) : undefined;
+    const canResumeContact = row.source === "invitation" && closed && canContact && contactFacts && !contactFacts.activeInvitation;
+    const ownerName = row.source === "invitation" ? row.value.ownerName : contactFacts?.ownerName;
     return <Fragment key={canonicalKey}>
       <TableRow data-communication-work-key={canonicalKey} data-followup-row-key={canonicalKey} ref={(element) => { if (element) rowRefs.current.set(canonicalKey, element); else rowRefs.current.delete(canonicalKey); }}
         data-followup-success={leadHasCommittedVisit(row.value.leadId ? leadById.get(row.value.leadId) : null, row.source === "invitation" ? row.value : null)}
-        tabIndex={0} aria-selected={selected} data-followup-active={active} data-followup-expanded={active} aria-busy={pending} className="cursor-pointer focus-visible:outline-none"
-        onClick={(event) => { if (!(event.target as HTMLElement).closest("button,a,input,textarea,[role='combobox'],[role='checkbox']")) changeDetails(canonicalKey, !active); }}
+        tabIndex={0} aria-selected={selected} data-followup-active={active} data-followup-expanded={expanded} aria-busy={pending} className="h-11 cursor-pointer focus-visible:outline-none [&>td]:min-w-0"
+        onClick={(event) => { if (!(event.target as HTMLElement).closest("button,a,input,textarea,[role='combobox'],[role='checkbox']")) changeDetails(canonicalKey, !expanded); }}
         onKeyDown={(event) => {
           if (event.defaultPrevented || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229 || event.repeat) return;
-          if (event.target === event.currentTarget && event.key === "Enter" && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) { event.preventDefault(); changeDetails(canonicalKey, !active); }
-          if (event.key === "Escape" && active) { event.preventDefault(); changeDetails(canonicalKey, false); }
+          if (event.target === event.currentTarget && event.key === "Enter" && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) { event.preventDefault(); changeDetails(canonicalKey, !expanded); }
+          if (event.key === "Escape" && expanded) { event.preventDefault(); changeDetails(canonicalKey, false); }
         }}>
-        <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-2">
-          <FollowupPersonCell name={nameOf(row)} phone={row.value.phone} grade={row.value.gradeText || t("gradePending")}
+        <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-1.5">
+          <FollowupPersonCell inline name={nameOf(row)} phone={row.value.phone} grade={row.value.gradeText || t("gradePending")}
             subject={{ studentId: row.source === "invitation" ? leadById.get(row.value.leadId)?.studentId ?? null : row.value.studentId, leadId: row.value.leadId }} studentGrade={row.source === "invitation" ? row.value.gradeHint : row.value.grade}
-            owner={row.source === "invitation" ? row.value.ownerName : undefined} selection={leadingSelectionFor(row)} expanded={active}
-            detailsId={detailsId} onToggle={() => changeDetails(canonicalKey, !active)} />
+            selection={leadingSelectionFor(row)} expanded={expanded}
+            detailsId={detailsId} onToggle={() => changeDetails(canonicalKey, !expanded)} />
         </TableCell>
-        <TableCell className="px-2 py-2">{historicalSummary ? historicalSummary.state : <>
-          <Badge variant="outline" className={cn("max-w-full whitespace-normal rounded-md text-[11px]", followupToneClasses[tone])}><span aria-hidden className="size-1.5 shrink-0 rounded-full bg-current" />{rowAction}</Badge>
-          <p className="mt-1 truncate text-[11px] text-muted" title={`${kindOf(row)} · ${arrangementOf(row)}`}>{kindOf(row)} · {arrangementOf(row)}</p>
-          {workPurposeFor(canonicalKey) ? <p className="mt-1 truncate text-[11px] text-muted" title={rowActionHint}>{workPurposeFor(canonicalKey)}</p> : null}
-        </>}</TableCell>
-        <TableCell className="px-2 py-2">
-          {historicalSummary ? historicalSummary.details : <p className="mb-1 text-[11px] text-muted">{entryT("thisContact")}{row.source === "invitation" && entryDrafts[row.id]?.note.trim() ? ` · ${entryT("unsaved")}` : ""}</p>}
-          {recordsMode && (row.source === "invitation" || row.value.eligible) ? <p className="mt-1 text-[10px] text-muted">{workT("newCommunication")}</p> : null}
-          <div className="mt-1.5">{row.source === "invitation" ? closed && canContact && leadById.has(row.value.leadId) && !leadById.get(row.value.leadId)?.activeInvitation ? <Button type="button" size="sm" variant="secondary" className="h-8 text-xs" onClick={() => {
-            setRecontactIds((current) => new Set(current).add(row.id));
-            setActiveContactId(row.value.leadId);
-            changeDetails(canonicalKey, true);
-          }}>{leadT("continueCommunication")}</Button> : <InvitationQuickContact row={row.value} entry={entryDrafts[row.id] ?? EMPTY_INVITATION_ENTRY} onEntryChange={(entry) => updateEntryDraft(row.id, entry)} expanded={active} disabled={!canManageInvitation || closed} onSaved={onSaved} saving={pending} beginSave={beginSave} endSave={endSave} /> : row.value.eligible ? <PostActivityQuickContact row={row.value} onSaved={(saved) => { savePost(saved); advanceAfter(canonicalKey); }} onDetails={() => changeDetails(canonicalKey, !active)} expanded={active} detailsId={detailsId} /> : null}</div>
-          {!historicalSummary && noteOf(row) ? <p className="mt-1 truncate text-[11px] text-muted" title={noteOf(row)}>{entryT("lastNote", { note: noteOf(row) })}</p> : null}
-          {!historicalSummary && nextAt ? <p className="mt-1 truncate text-[11px] text-muted" title={formatAt(nextAt)}>{t("nextContactReminderScheduled", { time: formatAt(nextAt) })}</p> : null}
-        </TableCell>
-        <TableCell className="whitespace-nowrap px-2 py-2 text-muted">{historicalSummary ? historicalSummary.updated : updatedOf(row) ? formatAt(updatedOf(row)!) : recordM.unknown}</TableCell>
+        <TableCell className="px-2 py-1.5"><p className="truncate text-xs" title={ownerName}>{ownerName || "—"}</p></TableCell>
+        <TableCell className="px-2 py-1.5">{historicalSummary ? historicalSummary.state : <FirstContactStatusTags
+          label={laterContact?.lastContactOutcome ? leadT(`contactOutcome_${laterContact.lastContactOutcome}`) : rowAction}
+          tone={tone} facts={contactFacts} locale={locale} dirty={row.source === "invitation" && Boolean(entryDrafts[row.id]?.note.trim())} />}</TableCell>
+        <TableCell className="px-2 py-1.5">{historicalSummary ? historicalSummary.details : <p className="line-clamp-2 whitespace-normal break-words text-xs leading-5" title={noteOf(row)}>{noteOf(row) || "—"}</p>}</TableCell>
+        <TableCell className="px-2 py-1.5 text-[11px] text-muted">{historicalSummary ? historicalSummary.updated : <p className="truncate" title={updatedOf(row) ? formatAt(updatedOf(row)!) : undefined}>{updatedOf(row) ? formatAt(updatedOf(row)!) : recordM.unknown}</p>}</TableCell>
       </TableRow>
-      <FollowupInlineDetails id={detailsId} open={active} onOpenChange={(open) => changeDetails(canonicalKey, open)} title={nameOf(row)} hideTitle={row.source === "invitation"} colSpan={4} pending={pending}>
+      <FollowupInlineDetails id={detailsId} open={expanded} onOpenChange={(open) => changeDetails(canonicalKey, open)} title={nameOf(row)} hideTitle={row.source === "invitation"} colSpan={5} pending={pending}>
         {() => <>
+        {canResumeContact && row.source === "invitation" ? <Button type="button" size="sm" variant="secondary" className="h-8 text-xs" disabled={pending} onClick={() => {
+          setRecontactIds((current) => new Set(current).add(row.id));
+          setActiveContactId(row.value.leadId);
+          changeDetails(canonicalKey, true);
+        }}>{leadT("continueCommunication")}</Button> : null}
         {recordsMode ? <CommunicationDaySummary workday={workday} rowKey={canonicalKey} defaultExpanded /> : null}
         {recordsMode ? <div className="space-y-1 text-xs"><p className="font-medium text-muted">{workT("currentFacts")}</p><p>{stateOf(row)} · {arrangementOf(row)}</p>{noteOf(row) ? <p className="break-words text-muted">{noteOf(row)}</p> : null}</div> : null}
         {row.source === "invitation" ? <InvitationEditor key={row.id} row={row.value} entry={entryDrafts[row.id] ?? EMPTY_INVITATION_ENTRY} onEntryChange={(entry) => updateEntryDraft(row.id, entry)} onAdvance={() => advanceAfter(canonicalKey)} activities={activities} assessors={assessors} locale={locale} formatAt={formatAt} currentUserId={currentUserId} canManageInvitation={canManageInvitation} onSaved={onSaved} saving={pending} beginSave={beginSave} endSave={endSave} /> : <PostActivityHandoff source={{ registrationId: row.value.registrationId, invitationId: null }} initialContext={row.value} onSaved={savePost} />}
@@ -917,20 +853,21 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
         </>}
       </FollowupInlineDetails>
     </Fragment>;
-  }, [activities, advanceAfter, arrangementOf, assessors, beginSave, canContact, canManageIdentity, canManageInvitation, changeDetails, contactPending, currentUserId, endSave, entryDrafts, entryT, formatAt, gradeOf, historicalSummaryFor, historyFor, kindOf, laterContactFor, leadById, leadT, leadingSelectionFor, locale, nameOf, noteOf, onSaved, recordM.unknown, recordsMode, saveContact, saveContactReminder, savePost, stateOf, t, updateEntryDraft, updatedOf, workMode, workPurposeFor, workT, workday]);
+  }, [activities, advanceAfter, arrangementOf, assessors, beginSave, canContact, canManageIdentity, canManageInvitation, changeDetails, contactPending, currentUserId, endSave, entryDrafts, formatAt, gradeOf, historicalSummaryFor, historyFor, laterContactFor, leadById, leadT, leadingSelectionFor, locale, nameOf, noteOf, onSaved, recordM.unknown, recordsMode, saveContact, saveContactReminder, savePost, stateOf, t, updateEntryDraft, updatedOf, workMode, workT, workday]);
 
 
   return <DashboardTableShell data-followup-workbench data-communication-scroll>
-    <Table className="w-full min-w-[62rem] table-fixed text-xs" containerClassName="overflow-auto [scrollbar-gutter:stable]">
-      <colgroup><col style={{ width: "14rem" }} /><col style={{ width: "16rem" }} /><col style={{ width: "24rem" }} /><col style={{ width: "8rem" }} /></colgroup>
+    <Table className="w-full min-w-[58rem] table-fixed text-xs" containerClassName="overflow-auto [scrollbar-gutter:stable]">
+      <colgroup><col style={{ width: "20rem" }} /><col style={{ width: "6rem" }} /><col style={{ width: "12rem" }} /><col /><col style={{ width: "8rem" }} /></colgroup>
       <TableHeader><TableRow>
         <TableHead className="sticky left-0 top-0 z-30 h-9 border-r border-line bg-card px-2"><div className="flex min-w-0 items-center gap-1.5">
           {selectionEnabled ? <Checkbox checked={selectableKeys.length > 0 && selectedVisible === selectableKeys.length ? true : selectedVisible ? "indeterminate" : false}
             disabled={!selectableKeys.length} aria-label={workT("selectVisible")} onCheckedChange={(checked) => workSelection.toggleMany(selectableKeys, checked === true)} /> : null}
           <DashboardTableColumnHeader label={t("leadColumn")} {...table.columnProps("lead")} /></div></TableHead>
+        <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={rowM.owner} {...table.columnProps("owner")} /></TableHead>
         <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={recordsMode ? workT("dayResultColumn") : workspaceT("contactStage")} {...table.columnProps("state")} /></TableHead>
-        <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={recordsMode ? workT("dayCommunicationColumn") : workspaceT("communicationInfo")} {...table.columnProps("arrangement")} /></TableHead>
-        <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={recordsMode ? workT("occurredAtColumn") : t("updatedColumn")} {...table.columnProps("updated")} /></TableHead>
+        <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={recordsMode ? workT("dayCommunicationColumn") : rowM.notes} {...table.columnProps("note")} /></TableHead>
+        <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={recordsMode ? workT("occurredAtColumn") : rowM.updated} {...table.columnProps("updated")} /></TableHead>
       </TableRow></TableHeader>
       <TableBody onKeyDown={(event) => navigateFollowupTable(event, (key) => {
         if (activeId && isSavingKey(activeId)) return false;
@@ -938,7 +875,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
         const next = currentSession.facts.get(key);
         setActiveContactId(next?.source === "contact" ? next.value.id : null);
         return true;
-      })}>{visibleRows.map((row) => <FollowupTableRecord key={communicationRowKey(row)} row={row} active={activeId === communicationRowKey(row) || (row.source === "contact" && activeContactId === row.value.id)} expanded={activeId === communicationRowKey(row)} selected={workSelection.selectedKeys.has(communicationRowKey(row))} pending={savingIds.has(row.id)} render={renderRow} />)}{!visibleRows.length ? <TableRow><TableCell colSpan={4} className="h-32 text-center text-muted">{emptyMessage ?? tableT("filteredEmpty")}</TableCell></TableRow> : null}</TableBody>
+      })}>{visibleRows.map((row) => <FollowupTableRecord key={communicationRowKey(row)} row={row} active={activeId === communicationRowKey(row) || (row.source === "contact" && activeContactId === row.value.id)} expanded={activeId === communicationRowKey(row)} selected={workSelection.selectedKeys.has(communicationRowKey(row))} pending={savingIds.has(row.id)} render={renderRow} />)}{!visibleRows.length ? <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted">{emptyMessage ?? tableT("filteredEmpty")}</TableCell></TableRow> : null}</TableBody>
     </Table>
   </DashboardTableShell>;
 }

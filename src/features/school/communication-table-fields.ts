@@ -16,9 +16,10 @@ export type CommunicationTableRow = (
 export const communicationTableRowKey = (row: CommunicationTableRow) => row.source === "profile" ? `student:${row.value.studentId}` : row.source === "post_activity"
   ? `post:${row.value.registrationId}` : `lead:${row.source === "contact" ? row.value.id : row.value.leadId}`;
 export const COMMUNICATION_TABLE_COLUMNS = {
-  lead: ["name", "phone", "grade", "owner"], state: ["status", "contactOutcome", "invitationState"],
-  arrangement: ["kind", "activity", "scheduledAt", "location", "assessor", "channel"],
-  updated: ["recordedAt", "lastContact", "nextContact", "note"],
+  lead: ["name", "phone", "grade"], owner: ["owner"],
+  state: ["status", "contactOutcome", "invitationState", "kind", "activity", "scheduledAt", "location", "assessor"],
+  note: ["note", "channel"],
+  updated: ["recordedAt", "lastContact", "nextContact"],
 } as const;
 type Translate = (key: string, values?: Record<string, string | number>) => string;
 const option = (value: string | null | undefined, label = value): DashboardFieldOption[] => value ? [{ value, label: label || value }] : [];

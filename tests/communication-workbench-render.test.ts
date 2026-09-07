@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import messages from "../messages/zh.json";
 import { InvitationCoordinationWorkbench } from "@/features/school/InvitationCoordinationWorkbench";
 import { FirstContactRecordRow } from "@/features/school/FirstContactRecordRow";
+import { firstContactRowMessages } from "@/features/school/first-contact-row-messages";
 import { CommunicationWorkSelectionProvider } from "@/features/school/CommunicationWorkSelection";
 import type { LeadPoolRow } from "@/features/school/lead-contract";
 import type { InvitationCoordinationRow } from "@/features/school/invitation-contract";
@@ -84,6 +85,24 @@ function renderWorkbench(props: Partial<Props> = {}) {
 }
 
 describe("communication workbench server rendering", () => {
+  it("keeps saved contact facts and previous notes separate from registration across row sources", () => {
+    const contacted = { ...lead("a"), status: "contacted" as const, lastContactOutcome: "connected" as const,
+      lastContactNote: "家长希望周末再沟通课程安排", lastContactAt: at, contactCount: 2, wechatAdded: true, interestLevel: "A" as const, visitCommitted: true };
+    const result = renderWorkbench({ contactLeads: [contacted], rows: [invitation("b")], postActivityRows: [{ ...post, eligible: true }], rowOrder: ["lead:a", "lead:b", "post:registration"] });
+    for (const row of result.dataRows) {
+      expect(row.cells).toHaveLength(5);
+      expect(row.cells[0].content).toContain('data-followup-person-inline="true"');
+      expect(row.content).not.toMatch(/<input|<textarea|role="combobox"/);
+      expect(row.content).not.toContain(messages.school.followupEntry.thisContact);
+    }
+    expect(result.dataRows[0].cells[1].content).toContain(contacted.ownerName);
+    expect(result.dataRows[0].cells[0].content).not.toContain(contacted.ownerName);
+    expect(result.dataRows[0].cells[2].content).toContain(messages.school.leads.contactOutcome_connected);
+    for (const fact of ["wechat", "interest", "visit"]) expect(result.dataRows[0].cells[2].content).toContain(`data-first-contact-fact="${fact}"`);
+    expect(result.dataRows[0].cells[3].content).toContain(contacted.lastContactNote);
+    expect(result.markup).toContain(firstContactRowMessages("zh").owner);
+    expect(renderWorkbench().dataRows[0].cells[2].content).not.toContain("data-first-contact-fact");
+  });
   it("marks saved visit commitments and confirmed invitations without marking ordinary contact", () => {
     expect(renderWorkbench({ contactLeads: [{ ...lead('a'), visitCommitted: true }] }).dataRows[0].attributes)
       .toContain('data-followup-success="true"');
@@ -154,7 +173,8 @@ describe("communication workbench server rendering", () => {
       expect(detail).not.toContain(messages.school.leads.latestContact);
       expect(result.dataRows[0].cells[2].content).not.toContain("<input");
       expect(result.dataRows[0].cells[2].content).not.toContain(messages.school.followupEntry.noteExpanded);
-      expect(result.dataRows[0].cells[1].content).not.toContain(messages.school.followupEntry.savedFacts);
+      expect(result.dataRows[0].cells[2].content).not.toContain(messages.school.followupEntry.savedFacts);
+      if (!result.dataRows[0].attributes.includes("data-first-contact-record")) expect(detail).toContain(`aria-label="${messages.school.invitations.channelLabel}"`);
       expect(detail).not.toContain(messages.school.invitations.explicitSaveHint);
       expect(detail.match(/<textarea\b/g)).toHaveLength(1);
       expect(detail).toContain("data-followup-entry-fields");
@@ -176,7 +196,7 @@ describe("communication workbench server rendering", () => {
     const props = { rows: [invitation("b")], contactLeads: [lead("a")], postActivityRows: [post], rowOrder: ["lead:a", "lead:b", "post:registration"], worklist };
     for (const result of [renderWorkbench(props), renderWorkbench(props)]) {
       expect(result.dataRows.map((row) => row.key)).toEqual(worklist.rowKeys);
-      expect(result.dataRows.every((row) => row.cells.length === 4)).toBe(true);
+      expect(result.dataRows.every((row) => row.cells.length === 5)).toBe(true);
       expect(result.dataRows[0].content).toContain('aria-pressed="true"');
       expect(result.dataRows[1].content).toContain(post.name);
       expect(result.dataRows[1].content).not.toContain('aria-keyshortcuts=');
@@ -188,11 +208,11 @@ describe("communication workbench server rendering", () => {
     const after = renderWorkbench({ focusLeadId: "a", workday, rows: [invitation("a")], selectionEnabled: true });
     for (const result of [before, after]) {
       expect(result.dataRows.map((row) => row.key)).toEqual(["lead:a"]);
-      expect(result.dataRows[0].cells).toHaveLength(4);
+      expect(result.dataRows[0].cells).toHaveLength(5);
       expect(result.dataRows[0].cells[0].content).toContain('role="checkbox"');
       expect(result.rows[1].attributes).toContain("data-followup-inline-details");
       expect(result.rows[1].cells).toHaveLength(1);
-      expect(result.rows[1].cells[0].attributes).toContain('colSpan="4"');
+      expect(result.rows[1].cells[0].attributes).toContain('colSpan="5"');
       expect(result.rows[1].content).toContain('data-communication-event="event-a"');
       expect(result.markup).toContain("table-fixed");
     }
@@ -253,23 +273,23 @@ describe("communication workbench server rendering", () => {
     });
     expect(result.dataRows.map((row) => row.key)).toEqual(["lead:a", "lead:b", "post:registration"]);
     for (const row of result.dataRows) {
-      expect(row.cells).toHaveLength(4);
-      expect(row.cells[3].content).toContain(`dateTime="${oldAt}"`);
-      expect(row.cells[3].content).not.toContain("2026/9/5");
+      expect(row.cells).toHaveLength(5);
+      expect(row.cells[4].content).toContain(`dateTime="${oldAt}"`);
+      expect(row.cells[4].content).not.toContain("2026/9/5");
     }
-    expect(result.dataRows[0].cells[1].content).toContain(messages.school.communicationWorkday.outcome_unreachable);
-    expect(result.dataRows[0].cells[1].content).toContain("当天 2 条");
-    expect(result.dataRows[0].cells[2].content).toContain("昨天最后一次未接通");
-    expect(result.dataRows[0].cells[2].content).not.toContain("今天的新信息");
-    expect(result.dataRows[0].cells[2].content).toContain(messages.school.communicationWorkday.newCommunication);
-    expect(result.dataRows[0].cells[2].content).not.toContain('aria-keyshortcuts="Control+Enter Meta+Enter"');
+    expect(result.dataRows[0].cells[2].content).toContain(messages.school.communicationWorkday.outcome_unreachable);
+    expect(result.dataRows[0].cells[2].content).toContain("当天 2 条");
+    expect(result.dataRows[0].cells[3].content).toContain("昨天最后一次未接通");
+    expect(result.dataRows[0].cells[3].content).not.toContain("今天的新信息");
+    expect(result.rows[1].content).toContain(messages.school.communicationWorkday.newCommunication);
+    expect(result.dataRows[0].cells[3].content).not.toContain('aria-keyshortcuts="Control+Enter Meta+Enter"');
     expect(result.rows[1].content).toContain('aria-keyshortcuts="Control+Enter Meta+Enter"');
-    expect(result.dataRows[1].cells[1].content).toContain(messages.school.invitations.state_awaiting_parent);
-    expect(result.dataRows[1].cells[2].content).toContain("昨天还在等家长确认");
-    expect(result.dataRows[1].cells[2].content).toContain(messages.school.invitations.channel_wechat);
-    expect(result.dataRows[1].cells[2].content).not.toContain("约好测评");
-    expect(result.dataRows[2].cells[1].content).toContain(messages.school.communicationWorkday.outcome_connected);
-    expect(result.dataRows[2].cells[2].content).toContain("昨天活动后当面沟通");
+    expect(result.dataRows[1].cells[2].content).toContain(messages.school.invitations.state_awaiting_parent);
+    expect(result.dataRows[1].cells[3].content).toContain("昨天还在等家长确认");
+    expect(result.dataRows[1].cells[3].content).toContain(messages.school.invitations.channel_wechat);
+    expect(result.dataRows[1].cells[3].content).not.toContain("约好测评");
+    expect(result.dataRows[2].cells[2].content).toContain(messages.school.communicationWorkday.outcome_connected);
+    expect(result.dataRows[2].cells[3].content).toContain("昨天活动后当面沟通");
     expect(result.rows[1].content).toContain("昨天上午第一次沟通");
     expect(result.rows[1].content).toContain("今天的新信息");
     const header = result.markup.match(/<thead\b[^>]*>([\s\S]*?)<\/thead>/)?.[1] ?? "";
