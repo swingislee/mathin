@@ -113,6 +113,25 @@ describe("real field menu and query hook", () => {
     expect(query().filters).toEqual({}); expect(visible()).toBe("a,b,c");
   });
 
+  it("keeps five arrangement fields side by side on desktop and switchable on narrow screens", async () => {
+    const m = dashboardFieldMessages("en");
+    await act(async () => root.render(createElement(DashboardTableColumnHeader, {
+      label: "Arrangement", context: { locale: "en", timeZone: "Asia/Shanghai", now: Date.parse("2026-09-07T02:00:00Z") },
+      fields: ["Date", "Location", "Assessor", "Support owner", "Assessor source"].map(label => ({ id: label, label,
+        kind: "text" as const, sortable: true, options: [], days: [], onFilterChange: vi.fn(), onSortChange: vi.fn() })),
+      onClearColumn: vi.fn(), onClearAll: vi.fn(),
+    })));
+    await click(byLabel(`Arrangement · ${m.menu}`));
+    const panels = [...document.querySelectorAll<HTMLElement>("[data-table-field]")];
+    expect(panels).toHaveLength(5);
+    expect(panels[0].parentElement!.className).toContain("md:grid-cols-5");
+    expect(document.querySelector<HTMLElement>("[data-dashboard-field-menu]")!.style.width).toContain("80rem");
+    expect(byLabel(m.fields).className).toContain("md:hidden");
+    await click([...byLabel(m.fields).querySelectorAll<HTMLButtonElement>("button")].find(button => button.textContent === "Support owner"));
+    expect(panel("Support owner").className).not.toContain("hidden");
+    expect(panel("Date").className).toContain("hidden md:flex");
+  });
+
   it("validates number ranges and clears dependent score conditions when the paper changes", async () => {
     await render(); const m = dashboardFieldMessages("en"); await click(byLabel(`result · ${m.menu}`));
     expect(panel("score").querySelector<HTMLInputElement>("input")!.disabled).toBe(true);

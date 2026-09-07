@@ -10,6 +10,7 @@ const zh = {
   scoreInvalid: "分数超出已记录满分，待核对", scoreSource: "结果来源", paperVersion: "试卷版本",
   recordedAt: "记录时间", recordedHint: "当前记录取最近更新时间；来源资料取实际发生日期。", recordedResult: "其他已记录结果",
   scheduledAt: "安排／发生日期", unknownPaper: "试卷版本未记录", progress: "答题进度（%）", progressHint: "已答题数占总题数，独立于成绩。",
+  supportOwner: "负责的学服老师",
 } as const;
 
 const en: Record<keyof typeof zh, string> = {
@@ -24,6 +25,7 @@ const en: Record<keyof typeof zh, string> = {
   scoreInvalid: "Score exceeds the recorded maximum; review needed", scoreSource: "Result source", paperVersion: "Paper version",
   recordedAt: "Record date", recordedHint: "Latest update for current records; actual occurrence date for source records.", recordedResult: "Other recorded result",
   scheduledAt: "Scheduled / occurrence date", unknownPaper: "Paper version not recorded", progress: "Answered (%)", progressHint: "Answered questions out of all questions; separate from the score.",
+  supportOwner: "Responsible support teacher",
 };
 
 export function dashboardFieldMessages(locale: string): Record<keyof typeof zh, string> {

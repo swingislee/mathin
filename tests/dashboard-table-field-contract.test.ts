@@ -7,7 +7,7 @@ import {
   dashboardDateBounds, dashboardDateBucket, dashboardDateBucketLabel, dashboardDay, formatDashboardDate,
 } from "../src/features/school/dashboard-page/dashboard-table-date-contract";
 import {
-  assessmentRecordDate, assessmentScheduledDate, assessmentTableBand, assessmentTableFields, assessmentTableScore,
+  ASSESSMENT_TABLE_COLUMNS, assessmentRecordDate, assessmentScheduledDate, assessmentTableBand, assessmentTableFields, assessmentTableScore,
   formatAssessmentTableScore, migrateAssessmentFieldQuery,
 } from "../src/features/school/assessment-table-fields";
 import type { AssessmentWorkbenchRow } from "../src/features/school/assessment-workbench-contract";
@@ -111,6 +111,28 @@ function assessment(id: string, overrides: Partial<AssessmentWorkbenchRow> = {})
 }
 
 describe("assessment field adapter", () => {
+  it("filters responsible support staff independently from the assessor, using stable IDs and missing values", () => {
+    const t = (key: string) => key;
+    const definitions = assessmentTableFields({ locale: "zh", timeZone: context.timeZone, tableT: t, assessmentT: t, t, teacherT: t, quickT: t, stageFor: () => "feedback" });
+    const fixtures = [
+      assessment("a", { supportOwnerId: "owner-a", supportOwnerName: "Same staff", assessorId: "assessor-a" }),
+      assessment("b", { supportOwnerId: "owner-b", supportOwnerName: "Same staff", assessorId: "assessor-a" }),
+      assessment("c", { supportOwnerId: "owner-a", supportOwnerName: "Same staff", assessorId: "assessor-b" }),
+      assessment("missing", { supportOwnerId: null, supportOwnerName: "" }),
+    ];
+    expect(ASSESSMENT_TABLE_COLUMNS.arrangement).toContain("supportOwner");
+    const facets = dashboardFieldFacets(fixtures, definitions, {}, "zh", context.timeZone);
+    expect(facets.supportOwner.options).toEqual([
+      { value: "owner-a", label: "Same staff · owner-a" }, { value: "owner-b", label: "Same staff · owner-b" },
+    ]);
+    const matching = (filters: DashboardFieldQuery["filters"]) => filterAndSortDashboardFields(fixtures, definitions, query({ filters }), "zh", context.timeZone).map(row => row.id);
+    expect(matching({ supportOwner: { kind: "enum", values: ["owner-a"] } })).toEqual(["a", "c"]);
+    expect(matching({ supportOwner: { kind: "enum", values: ["owner-a"] }, assessor: { kind: "enum", values: ["assessor-a"] },
+      scheduledAt: { kind: "date", from: "2026-09-07", to: "2026-09-07" } })).toEqual(["a"]);
+    expect(matching({ supportOwner: { kind: "enum", values: ["owner-a", "owner-b"] } })).toEqual(["a", "b", "c"]);
+    expect(matching({ supportOwner: { kind: "presence", value: "missing" } })).toEqual(["missing"]);
+  });
+
   it("does not merge the same raw score across paper versions", () => {
     const first = assessment("p20"), second = assessment("p100", { paperVersionId: "paper-100", questionSummary: { ...first.questionSummary!, totalScore: 100 } });
     const t = (key: string) => key;

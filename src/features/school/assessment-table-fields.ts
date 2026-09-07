@@ -7,7 +7,7 @@ import { EMPTY_DASHBOARD_FIELD_QUERY, type DashboardFieldDefinitions, type Dashb
 export const ASSESSMENT_TABLE_COLUMNS = {
   student: ["name", "phone", "grade"],
   kind: ["kind"],
-  arrangement: ["scheduledAt", "location", "assessor", "assessorSource"],
+  arrangement: ["scheduledAt", "location", "assessor", "supportOwner", "assessorSource"],
   result: ["paper", "score", "scoreRate", "band", "progress", "resultSource"],
   teacher: ["conclusion"],
   status: ["status"],
@@ -78,6 +78,8 @@ export function assessmentTableFields({ locale, timeZone, tableT, assessmentT, t
     scheduledAt: { kind: "date", label: m.scheduledAt, value: row => assessmentScheduledDate(row, timeZone) },
     location: { kind: "enum", label: tableT("fieldLocation"), values: row => option(row.location.trim()), sortValue: row => row.location },
     assessor: { kind: "enum", label: tableT("fieldAssessor"), values: row => option(row.assessorId, row.assessorName), sortValue: row => row.assessorName },
+    supportOwner: { kind: "enum", label: m.supportOwner, values: row => option(row.supportOwnerId, row.supportOwnerName),
+      sortValue: row => row.supportOwnerId ? row.supportOwnerName : null },
     assessorSource: { kind: "enum", label: tableT("fieldAssessorSource"), values: row => option(row.assessorSource, t(row.assessorSource === "actual" ? "actualAssessor" : "assignedAssessor")),
       options: ["assigned", "actual"].map(value => ({ value, label: t(value === "actual" ? "actualAssessor" : "assignedAssessor") })) },
     paper: { kind: "enum", label: m.paperVersion, multiple: false, values: row => {

@@ -177,7 +177,7 @@ export function DashboardTableFieldMenu({ label, fields, context, onClearColumn,
   const filtered = fields.some(field => field.filter);
   const sorted = fields.find(field => field.sortDirection);
   const direction = sorted?.sortDirection === "asc" ? m.ascending : m.descending;
-  const panelColumns = fields.length === 4 ? 4 : Math.min(3, fields.length);
+  const panelColumns = fields.length === 4 || fields.length === 5 ? fields.length : Math.min(3, fields.length);
   return <div className="-ml-2 inline-flex max-w-full items-center">
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild><Button type="button" variant="ghost" size="sm"
@@ -192,7 +192,7 @@ export function DashboardTableFieldMenu({ label, fields, context, onClearColumn,
           aria-label={m.fields} className="justify-start overflow-x-auto border-b border-line p-2 md:hidden">
           {fields.map(field => <ToggleGroupItem key={field.id} value={field.id} className="h-7 shrink-0 px-2 text-xs">{field.label}{field.filter ? " ·" : ""}</ToggleGroupItem>)}
         </ToggleGroup> : null}
-        <div className={cn("grid divide-line md:divide-x", panelColumns === 1 ? "md:grid-cols-1" : panelColumns === 2 ? "md:grid-cols-2" : panelColumns === 4 ? "md:grid-cols-4" : "md:grid-cols-3")}>
+        <div className={cn("grid divide-line md:divide-x", panelColumns === 1 ? "md:grid-cols-1" : panelColumns === 2 ? "md:grid-cols-2" : panelColumns === 4 ? "md:grid-cols-4" : panelColumns === 5 ? "md:grid-cols-5" : "md:grid-cols-3")}>
           {fields.map(field => <FieldPanel key={field.id} field={field} context={context} selected={selected === field.id} />)}
         </div>
         <div className="flex flex-wrap items-center justify-end gap-1 border-t border-line px-2 py-1.5">
