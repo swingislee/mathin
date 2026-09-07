@@ -4,6 +4,7 @@ import type { InvitationCoordinationRow } from "../src/features/school/invitatio
 import type { LeadPoolFilters } from "../src/features/school/lead-contract";
 import { paginateCommunicationRows } from "../src/features/school/communication-workbench-contract";
 import { communicationDayBounds, type CommunicationWorklist } from "../src/features/school/communication-workday-contract";
+import { parseCommunicationWorkQuery } from "../src/features/school/communication-work-query";
 
 const db = vi.hoisted(() => ({
   tables: {} as Record<string, Record<string, unknown>[]>,
@@ -49,6 +50,7 @@ vi.mock("../src/lib/supabase/server", () => ({
       select: (columns: string) => { request.columns = columns; return query; },
       eq: (key: string, value: unknown) => { rows = rows.filter((row) => row[key] === value); return query; },
       neq: (key: string, value: unknown) => { rows = rows.filter((row) => row[key] !== value); return query; },
+      ilike: (key: string, pattern: string) => { const value = pattern.slice(1, -1).replace(/\\([\\%_])/g, "$1").toLocaleLowerCase(); rows = rows.filter(row => String(row[key] ?? "").toLocaleLowerCase().includes(value)); return query; },
       gte: (key: string, value: string) => { rows = rows.filter((row) => Date.parse(String(row[key])) >= Date.parse(value)); return query; },
       lt: (key: string, value: string) => { rows = rows.filter((row) => Date.parse(String(row[key])) < Date.parse(value)); return query; },
       is: (key: string, value: unknown) => { rows = rows.filter((row) => (row[key] ?? null) === value); return query; },
@@ -111,6 +113,58 @@ const nextAction = (id: string, leadId: string, dueAt = "2026-09-04T05:00:00Z", 
 
 describe("communication merged page", () => {
   beforeEach(() => { db.tables = {}; db.posts = []; db.requests = []; db.postReads = 0; db.worklists = []; db.contexts = []; db.rpcs = []; vi.restoreAllMocks(); });
+
+  it("loads assigned contacts across dates by default and paginates the full owner queue", async () => {
+    db.tables.leads = [
+      ...Array.from({ length: 65 }, (_, index) => ({ ...lead(`assigned-${String(index).padStart(2, "0")}`), created_at: "2026-08-01T05:00:00Z" })),
+      lead("another-owner", "another"), { ...lead("unassigned"), owner_id: null },
+    ];
+    const options = parseCommunicationWorkQuery({}, "2026-09-05");
+    const first = await loadCommunicationWorkbench("owner", { ...filters, scope: "mine", pageSize: 50 }, true, undefined, options);
+    const second = await loadCommunicationWorkbench("owner", { ...filters, scope: "mine", pageSize: 50, page: 2 }, true, undefined, options);
+    expect(first).toMatchObject({ count: 65, page: 1, pageSize: 50 });
+    expect(first.rowOrder).toHaveLength(50);
+    expect(second).toMatchObject({ count: 65, page: 2 });
+    expect(second.rowOrder).toHaveLength(15);
+    expect(new Set([...first.rowOrder, ...second.rowOrder]).size).toBe(65);
+    expect(first.workday).toBeUndefined();
+    expect(first.contactLeads.every((row) => row.ownerId === "owner" && row.nextContactAt === null)).toBe(true);
+    const team = await loadCommunicationWorkbench("owner", { ...filters, scope: "all", pageSize: 100 }, true, undefined, options);
+    expect(team.count).toBe(66);
+    expect(team.rowOrder).not.toContain("lead:unassigned");
+  });
+
+  it("prioritizes overdue and today's callbacks while keeping future reminders out of the contact queue", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(Date.parse(at));
+    db.tables.leads = ["new", "late", "today", "future", "visit", "visit-callback", "closed"].map(id => lead(id));
+    db.tables.leads.find(row => row.id === "closed")!.status = "converted";
+    db.tables.lead_next_actions = [
+      nextAction("initial", "new", "2026-09-20T05:00:00Z", "initial_contact"),
+      nextAction("late", "late", "2026-09-01T05:00:00Z"),
+      nextAction("today", "today", "2026-09-05T15:00:00Z"),
+      nextAction("future", "future", "2026-09-05T16:00:00Z"),
+      nextAction("visit", "visit-callback", "2026-09-05T01:00:00Z"),
+      nextAction("closed", "closed"),
+    ];
+    db.tables.lead_invitation_threads = ["visit", "visit-callback"].map(id => ({ ...invitation(id, id), scheduled_at: "2026-09-07T05:00:00Z" }));
+    const result = await loadCommunicationWorkbench("owner", { ...filters, scope: "mine" }, true, undefined, { view: "unscheduled", date: "2026-08-01" });
+    expect(result.rowOrder).toEqual(["lead:late", "lead:visit-callback", "lead:today", "lead:new"]);
+    expect(result.workday).toBeUndefined();
+  });
+
+  it("searches contact notes across dates within the owner queue and keeps journal searches scoped to the selected day", async () => {
+    db.tables.leads = [lead("matched"), lead("other-owner", "another")];
+    db.tables.effective_lead_communications = [
+      { ...contactEvent("old", "matched", "2026-08-01T05:00:00Z"), note: "Call after homework" },
+      { ...contactEvent("other", "other-owner", "2026-08-01T05:00:00Z"), note: "Call after homework" },
+      { ...contactEvent("today", "matched"), note: "Requested materials" },
+    ];
+    const result = await loadCommunicationWorkbench("owner", { ...filters, scope: "mine", q: "homework" }, true, undefined, { view: "unscheduled", date: "2026-09-05" });
+    expect(result.rowOrder).toEqual(["lead:matched"]);
+    expect(result.workday).toBeUndefined();
+    const journal = await loadCommunicationWorkbench("owner", { ...filters, scope: "mine", q: "homework" }, true, undefined, { view: "records", date: "2026-09-05" });
+    expect(journal.rowOrder).toEqual([]);
+  });
 
   it("filters lead intake across all readable ID batches before the 50-row page and owner-scoped facets", async () => {
     db.tables.leads = Array.from({ length: 130 }, (_, id) => ({ ...lead(`lead-${String(id).padStart(3, "0")}`, id === 129 ? "other" : "owner"), grade_hint: id < 70 ? 3 : 4 }));
@@ -346,7 +400,7 @@ describe("communication merged page", () => {
     db.posts = [post("pending"), { ...post("closed"), route: "closed" }, { ...post("enrolled"), enrollmentId: "enrolled" }];
     const result = await loadCommunicationWorkbench("owner", { ...filters, scope: "mine" }, true, undefined, { view: "unscheduled", date: "2026-09-05" });
     expect(result.rowOrder).toEqual(["lead:first", "lead:unreachable", "post:pending"]);
-    expect(result.workday?.tasks).toEqual([]);
+    expect(result.workday).toBeUndefined();
   });
 
   it("retains a fixed worklist order and completed records across dates and current status filters", async () => {
@@ -381,6 +435,17 @@ describe("communication merged page", () => {
     ]));
     expect(result.worklists).toEqual([]);
     expect(db.rpcs).toEqual([]);
+    expect(db.postReads).toBe(0);
+  });
+
+  it("keeps review-only teachers' confirmation tasks reachable from the new default queue", async () => {
+    db.tables.leads = [lead("waiting", "sales"), lead("done", "sales"), lead("other", "sales")];
+    db.tables.lead_invitation_threads = [invitation("waiting", "waiting", "awaiting_teacher"), invitation("done", "done"),
+      { ...invitation("other", "other", "awaiting_teacher"), assessor_id: "another-teacher" }];
+    const result = await loadCommunicationWorkbench("teacher", { ...filters, scope: "mine" }, false, undefined, parseCommunicationWorkQuery({}, "2026-09-05"));
+    expect(result.rowOrder).toEqual(["lead:waiting"]);
+    expect(result.contactLeads).toEqual([]);
+    expect(result.workday).toBeUndefined();
     expect(db.postReads).toBe(0);
   });
 });

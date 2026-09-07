@@ -6,8 +6,8 @@ import { listInvitationCoordination } from "./invitations";
 import { leadSearchFilter, listLeadPool } from "./leads";
 import type { LeadPoolFilters, LeadPoolRow } from "./lead-contract";
 import { paginateCommunicationRows, type CommunicationLeadCandidate } from "./communication-workbench-contract";
-import { readSchoolQueryPages, SCHOOL_QUERY_ID_BATCH_SIZE } from "./school-query-pages";
-import { communicationWorkdayKeys, type CommunicationWorkbenchOptions } from "./communication-workday-contract";
+import { readSchoolQueryBatches, readSchoolQueryPages, SCHOOL_QUERY_ID_BATCH_SIZE } from "./school-query-pages";
+import { communicationDayBounds, communicationWorkdayKeys, type CommunicationWorkbenchOptions } from "./communication-workday-contract";
 import { getCommunicationWorklist, getCommunicationWorklists, loadCommunicationWorkday } from "./communication-workday-data";
 import type { ActivityEnrollmentContext } from "./enrollment-workflow-contract";
 import type { InvitationCoordinationRow } from "./invitation-contract";
@@ -17,10 +17,10 @@ import type { DashboardFieldDefinitions } from "./dashboard-page/dashboard-table
 import type { DashboardDateContext } from "./dashboard-page/dashboard-table-date-contract";
 import type { CommunicationWorkday } from "./communication-workday-contract";
 
-async function listCommunicationLeadCandidates(userId: string, filters: LeadPoolFilters, focusLeadId?: string) {
+async function listCommunicationLeadCandidates(userId: string, filters: LeadPoolFilters, focusLeadId?: string, searchNotes = true) {
   const supabase = await createClient();
   const readCandidates = (query?: string) => readSchoolQueryPages((start, end) => {
-    let request = supabase.from("leads").select("id,created_at,student_id,status");
+    let request = supabase.from("leads").select("id,created_at,student_id,status,owner_id");
     if (focusLeadId) request = request.eq("id", focusLeadId);
     if (filters.scope === "mine") request = request.eq("owner_id", userId);
     if (filters.scope === "unassigned") request = request.is("owner_id", null);
@@ -31,29 +31,51 @@ async function listCommunicationLeadCandidates(userId: string, filters: LeadPool
   const [all, matched] = await Promise.all([readCandidates(), filters.q ? readCandidates(filters.q) : Promise.resolve(null)]);
   if (all.error) throw new Error(all.error.message);
   if (matched?.error) throw new Error(matched.error.message);
+  const matchingLeadIds = matched ? new Set((matched.data ?? []).map((row) => row.id)) : undefined;
+  if (filters.q && searchNotes && matchingLeadIds) {
+    const pattern = `%${filters.q.replace(/[\\%_]/g, "\\$&")}%`;
+    const notes = await readSchoolQueryBatches((all.data ?? []).map((row) => row.id), (startIds, start, end) =>
+      supabase.from("effective_lead_communications" as "lead_communications").select("lead_id").in("lead_id", startIds)
+        .ilike("note", pattern).order("id", { ascending: true }).range(start, end));
+    if (notes.error) throw new Error(notes.error.message);
+    for (const row of notes.data ?? []) matchingLeadIds.add(row.lead_id);
+  }
   return {
-    candidates: (all.data ?? []).map((row): CommunicationLeadCandidate => ({ id: row.id, createdAt: row.created_at, studentId: row.student_id, status: row.status })),
-    matchingLeadIds: matched?.data?.map((row) => row.id),
+    candidates: (all.data ?? []).map((row): CommunicationLeadCandidate => ({ id: row.id, createdAt: row.created_at, studentId: row.student_id, status: row.status, ownerId: row.owner_id })),
+    matchingLeadIds: matchingLeadIds ? [...matchingLeadIds] : undefined,
   };
 }
 
 async function unscheduledKeys(candidates: CommunicationLeadCandidate[], invitations: InvitationCoordinationRow[], posts: ActivityEnrollmentContext[], userId: string, filters: LeadPoolFilters) {
   const supabase = await createClient();
   const now = Date.now();
+  const today = new Date(now + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const until = Date.parse(communicationDayBounds(today).end);
   const reminders = await readSchoolQueryPages((start, end) => supabase.from("lead_next_actions")
     .select("lead_id,due_at").eq("status", "open").neq("kind", "initial_contact")
-    .gte("due_at", new Date(now).toISOString()).order("id", { ascending: true }).range(start, end));
+    .order("id", { ascending: true }).range(start, end));
   if (reminders.error) throw new Error(reminders.error.message);
-  const arranged = new Set((reminders.data ?? []).map((row) => row.lead_id));
+  const reminderAt = new Map<string, number>();
+  for (const row of reminders.data ?? []) {
+    const at = Date.parse(row.due_at);
+    if (Number.isFinite(at)) reminderAt.set(row.lead_id, Math.min(reminderAt.get(row.lead_id) ?? Infinity, at));
+  }
+  const arranged = new Set<string>();
   for (const invitation of invitations) {
     if (invitation.state !== "completed" && invitation.state !== "cancelled"
-      && Date.parse(invitation.scheduledAt ?? invitation.activityScheduledAt ?? "") >= now) arranged.add(invitation.leadId);
+      && Date.parse(invitation.scheduledAt ?? invitation.activityScheduledAt ?? "") >= until) arranged.add(invitation.leadId);
   }
-  const leadKeys = candidates.filter((row) => row.status !== "invalid" && row.status !== "converted" && !arranged.has(row.id)).map((row) => `lead:${row.id}`);
-  const postKeys = posts.filter((row) => row.eligible && !row.enrollmentId && row.route !== "closed"
+  // 分配负责人即进入待联系；真实提醒优先于未来到访安排，逾期事项持续保留。
+  const leadKeys = candidates.filter((row) => {
+    if (!row.ownerId || row.status === "invalid" || row.status === "converted") return false;
+    const due = reminderAt.get(row.id);
+    return due !== undefined ? due < until : !arranged.has(row.id);
+  }).map((row) => ({ key: `lead:${row.id}`, due: reminderAt.get(row.id) ?? Infinity }));
+  const postKeys = posts.filter((row) => row.ownerId && row.eligible && !row.enrollmentId && row.route !== "closed"
     && (filters.scope === "all" || (filters.scope === "mine" ? row.ownerId === userId : row.ownerId === null))
-    && (!row.contacts[0]?.nextContactAt || Date.parse(row.contacts[0].nextContactAt) < now)).map((row) => `post:${row.registrationId}`);
-  return [...leadKeys, ...postKeys];
+    && (!row.contacts[0]?.nextContactAt || Date.parse(row.contacts[0].nextContactAt) < until))
+    .map((row) => ({ key: `post:${row.registrationId}`, due: row.contacts[0]?.nextContactAt ? Date.parse(row.contacts[0].nextContactAt) : Infinity }));
+  return [...leadKeys, ...postKeys].sort((left, right) => left.due === right.due ? 0 : left.due - right.due).map((row) => row.key);
 }
 
 async function includeRequiredPosts(rows: ActivityEnrollmentContext[], keys: readonly string[]) {
@@ -88,7 +110,7 @@ export async function loadCommunicationWorkbench(
     ? { ...filters, scope: "all", status: undefined, q: undefined, page: 1 }
     : selectedView ? { ...filters, scope: "all", status: undefined } : filters;
   const [leadResult, invitations, initialPostRows, worklists, worklist] = await Promise.all([
-    canViewLeads ? listCommunicationLeadCandidates(userId, effectiveFilters, focusLeadId)
+    canViewLeads ? listCommunicationLeadCandidates(userId, effectiveFilters, focusLeadId, !options || !["day", "records"].includes(options.view))
       : Promise.resolve({ candidates: [], matchingLeadIds: undefined }),
     listInvitationCoordination({ queue: "all", stage: "all" }, {
       ...(focusLeadId ? { leadIds: [focusLeadId] } : {}),
@@ -98,14 +120,16 @@ export async function loadCommunicationWorkbench(
     options && canViewLeads ? getCommunicationWorklists() : Promise.resolve([]),
     options?.view === "worklist" && options.worklistId && canViewLeads ? getCommunicationWorklist(options.worklistId) : Promise.resolve(null),
   ]);
-  const workday = options ? await loadCommunicationWorkday(userId, filters.scope, options.date, initialPostRows, canViewLeads, invitations) : undefined;
+  const workday = options && ["day", "records", "worklist"].includes(options.view)
+    ? await loadCommunicationWorkday(userId, filters.scope, options.date, initialPostRows, canViewLeads, invitations) : undefined;
   let selectedKeys: string[] | undefined;
   if (!focusLeadId && options) {
     if (options.view === "day" && workday) selectedKeys = communicationWorkdayKeys(workday);
     if (options.view === "records" && workday) selectedKeys = communicationWorkdayKeys({ ...workday, tasks: [] });
     if (options.view === "worklist") selectedKeys = worklist?.items.slice().sort((a, b) => a.position - b.position).map((row) => row.key) ?? [];
     if (options.view === "unscheduled") selectedKeys = canViewLeads
-      ? await unscheduledKeys(leadResult.candidates, invitations, initialPostRows, userId, filters) : [];
+      ? await unscheduledKeys(leadResult.candidates, invitations, initialPostRows, userId, filters)
+      : invitations.filter((row) => row.state === "awaiting_teacher").map((row) => `lead:${row.leadId}`);
   }
   const postActivityRows = selectedKeys && canViewLeads ? await includeRequiredPosts(initialPostRows, selectedKeys) : initialPostRows;
   const matchingEventKeys = effectiveFilters.q && workday ? workday.events.filter((event) =>

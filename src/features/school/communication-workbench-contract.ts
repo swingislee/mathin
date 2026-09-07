@@ -7,6 +7,7 @@ export interface CommunicationLeadCandidate {
   createdAt: string;
   studentId: string | null;
   status?: string;
+  ownerId?: string | null;
 }
 
 export type CommunicationPageEntry =
