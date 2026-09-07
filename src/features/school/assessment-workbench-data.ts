@@ -2,7 +2,7 @@ import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
 import type { ActivityKind } from "./activity-kinds";
-import { mergeSourceNotes, normalizeSourceAssessmentBand, sourceAssessmentNote } from './business-source-contract';
+import { mergeSourceNotes, normalizeSourceAssessmentBand, sourceAssessmentNote, sourceStaffLabel, resolveSourceStaffId, hasSourceAssessmentConclusion } from './business-source-contract';
 import { ASSESSMENT_WORKFLOW_COLUMNS } from "./assessment-workflow-data";
 import { assessmentWorkflowFromDb, type AssessmentWorkflowDbRow } from "./assessment-workflow-contract";
 import type { PublicClassPresence } from "./public-class";
@@ -27,6 +27,7 @@ interface LeadSubjectRow {
   grade_hint: number | null;
   grade_text: string;
   student_id: string | null;
+  owner_id: string | null;
 }
 interface StudentSubjectRow {
   id: string;
@@ -35,7 +36,10 @@ interface StudentSubjectRow {
   parent_phone: string;
   grade: number | null;
   remark: string;
+  assigned_to: string | null;
 }
+
+interface SupportOwnerDbRow {id:string;display_name:string;role:string;is_active:boolean;account_status:string}
 
 interface InvitationDbRow {
   id: string;
@@ -57,6 +61,7 @@ interface ActivityDbRow {
   occurred_on: string | null;
   record_state: 'current' | 'historical';
   location: string;
+  remark: string;
   source_invitation_id: string | null;
 }
 interface RegistrationDbRow {
@@ -232,7 +237,7 @@ const INVITATION_COLUMNS = [
   "location_text",
   "summary",
   "updated_at",
-  "leads(id,provisional_student_name,phone,grade_hint,grade_text,student_id)",
+  "leads(id,provisional_student_name,phone,grade_hint,grade_text,student_id,owner_id)",
   "assessor:profiles!lead_invitation_threads_assessor_id_fkey(display_name)",
 ].join(",");
 
@@ -243,13 +248,14 @@ const ACTIVITY_COLUMNS = [
   "title",
   "scheduled_at",
   "location",
+  "remark",
   "source_invitation_id",
 ].join(",");
 
 const REGISTRATION_COLUMNS = [
   "id,activity_id,student_id,lead_id,source_record_id,status,outcome,assessment_paper_version_id,assessment_started_at,assessment_completed_at,updated_at",
-  "students(id,name,phone,parent_phone,grade,remark)",
-  "leads(id,provisional_student_name,phone,grade_hint,grade_text,student_id)",
+  "students(id,name,phone,parent_phone,grade,remark,assigned_to)",
+  "leads(id,provisional_student_name,phone,grade_hint,grade_text,student_id,owner_id)",
 ].join(",");
 
 export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbenchRow[]> {
@@ -290,6 +296,12 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
     ...registrations.map(({ registration }) => registration.student_id),
     ...(confirmedInvitationResult.data ?? []).map((invitation) => invitation.leads?.student_id ?? null),
   ].filter((id): id is string => Boolean(id)))];
+  const linkedStudentIds=[...new Set([...registrations.map(({registration})=>registration.leads?.student_id),...(confirmedInvitationResult.data??[]).map(invitation=>invitation.leads?.student_id)].filter((id):id is string=>Boolean(id)))];
+  const linkedStudentOwnerResult=await readRelatedRows<{id:string;assigned_to:string|null}>(supabase,'students','id,assigned_to','id',linkedStudentIds);
+  if(linkedStudentOwnerResult.error)throw new Error('ASSESSMENT_LINKED_STUDENT_OWNER_READ');
+  const linkedStudentOwners=new Map((linkedStudentOwnerResult.data??[]).map(student=>[student.id,student.assigned_to]));
+  const supportOwnerIds=[...new Set([...registrations.flatMap(({registration})=>[registration.students?.assigned_to,registration.leads?.owner_id]),...(confirmedInvitationResult.data??[]).map(invitation=>invitation.leads?.owner_id),...linkedStudentOwners.values()].filter((id):id is string=>Boolean(id)))];
+  const sourceSupportNames=[...new Set(activities.map(activity=>sourceStaffLabel(activity.remark,'学服老师')).filter(Boolean))];
 
   const [
     assessmentResult,
@@ -303,6 +315,8 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
     quickEntryResult,
     entryActorResult,
     workflowResult,
+    supportOwnerResult,
+    sourceSupportResult,
   ] = await Promise.all([
     readRelatedRows<AssessmentDbRow>(supabase, "assessment_results", "id,activity_registration_id,assessed_on,assessment_band,score,score_max,strengths,focus_areas,parent_concerns,teacher_recommendation,recommended_class,teacher_observation,updated_at,result_source,result_finalized_at,assessor:profiles!assessment_results_assessed_by_fkey(id,display_name)", "activity_registration_id", registrationIds),
     readRelatedRows<RouteDbRow>(supabase, "activity_routes", "id,activity_registration_id,route,note,updated_at", "activity_registration_id", registrationIds),
@@ -315,6 +329,8 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
     readRelatedRows<QuickEntryDbRow>(supabase, "assessment_quick_entries", "id,registration_id,entry,revision,recorded_by,updated_at,finalized_at,recorder:profiles!assessment_quick_entries_recorded_by_fkey(display_name)", "registration_id", registrationIds),
     readRelatedRows<EntryActorDbRow>(supabase, "assessment_entry_actors", "id,registration_id,entry_kind,recorded_by,recorded_at,display_name", "registration_id", registrationIds),
     readRelatedRows<AssessmentWorkflowDbRow>(supabase, "assessment_workflow_states", ASSESSMENT_WORKFLOW_COLUMNS, "registration_id", registrationIds),
+    readRelatedRows<SupportOwnerDbRow>(supabase,'profiles','id,display_name,role,is_active,account_status','id',supportOwnerIds),
+    readRelatedRows<SupportOwnerDbRow>(supabase,'profiles','id,display_name,role,is_active,account_status','display_name',sourceSupportNames),
   ]);
   if (assessmentResult.error) throw new Error(assessmentResult.error.message);
   if (routeResult.error) throw new Error(routeResult.error.message);
@@ -327,6 +343,8 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
   if (quickEntryResult.error) throw new Error(quickEntryResult.error.message);
   if (entryActorResult.error) throw new Error(entryActorResult.error.message);
   if (workflowResult.error) throw new Error(workflowResult.error.message);
+  if(supportOwnerResult.error||sourceSupportResult.error)throw new Error('ASSESSMENT_SUPPORT_OWNER_READ');
+  const supportOwners=new Map([...supportOwnerResult.data??[],...sourceSupportResult.data??[]].map(profile=>[profile.id,profile.display_name]));
   const workflows = new Map((workflowResult.data ?? []).map((row) => [row.registration_id, assessmentWorkflowFromDb(row)]));
 
   const quickEntries = new Map<string, AssessmentQuickEntry>((quickEntryResult.data ?? []).map((entry) => [entry.registration_id, {
@@ -435,6 +453,8 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
       assessorId: invitation.assessor_id,
       assessorName: invitation.assessor?.display_name ?? "",
       assessorSource: "assigned",
+      supportOwnerId:linkedStudentOwners.get(invitation.leads?.student_id??'')??invitation.leads?.owner_id??null,
+      supportOwnerName:supportOwners.get(linkedStudentOwners.get(invitation.leads?.student_id??'')??invitation.leads?.owner_id??'')??'',
       background: invitation.summary,
       participationStatus: "booked",
       assessmentStartedAt: null,
@@ -457,9 +477,10 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
       const student = registration.students;
       const lead = registration.leads ?? invitation?.leads ?? null;
       const assessment = assessments.get(registration.id) ?? null;
+      const supportOwnerId=student?.assigned_to??linkedStudentOwners.get(lead?.student_id??'')??lead?.owner_id??resolveSourceStaffId(sourceStaffLabel(activity.remark,'学服老师'),sourceSupportResult.data??[]);
       const route = routes.get(registration.id) ?? null;
       const completed = Boolean(registration.assessment_completed_at)
-        || Boolean(assessment && assessment.resultSource !== "quick_entry" && !registration.assessment_started_at);
+        || Boolean(assessment && assessment.resultSource !== "quick_entry" && !registration.assessment_started_at && (!registration.source_record_id || registration.status==='attended' && hasSourceAssessmentConclusion(assessment)));
       const actualAssessorId = assessmentAssessorIds.get(registration.id) ?? null;
       const actualAssessorName = assessmentAssessorNames.get(registration.id) ?? "";
       const version = registration.assessment_paper_version_id
@@ -495,7 +516,9 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
           ? actualAssessorName
           : invitation?.assessor?.display_name || actualAssessorName,
         assessorSource: completed && actualAssessorName ? "actual" : "assigned",
-        background: invitation?.summary || registration.outcome || student?.remark || "",
+        supportOwnerId,
+        supportOwnerName:supportOwners.get(supportOwnerId??'')??'',
+        background: mergeSourceNotes(invitation?.summary,registration.outcome,activity.remark,student?.remark),
         participationStatus: registration.status,
         assessmentStartedAt: registration.assessment_started_at,
         assessmentCompletedAt: registration.assessment_completed_at,

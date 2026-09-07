@@ -53,6 +53,38 @@ export function mergeSourceNotes(...values: (string | null | undefined)[]): stri
   return [...new Set(values.flatMap(value => value?.split(/\r?\n/) ?? []).map(line => line.trim()).filter(Boolean))].join('\n');
 }
 
+export function resolveSourceStaffId(label: string, profiles: readonly {id:string;display_name:string;role:string;is_active:boolean;account_status?:string}[]): string | null {
+  if(!label.trim())return null;
+  const matches=profiles.filter(profile=>profile.display_name.trim()===label.trim()&&['staff','admin'].includes(profile.role)&&profile.is_active&&profile.account_status!=='locked');
+  return matches.length===1?matches[0].id:null;
+}
+
+/** 独立登记的加微、诺访、意向可用于首联工作表；这些字段本身不表示发生过联系。 */
+export function sourceLeadContactFacts(notes: string): {wechatAdded:boolean|null;visitCommitted:boolean|null;interestLevel:'A'|'B'|'C'|null} {
+  const values=(field:string)=>[...new Set(notes.split(/\r?\n/u).filter(line=>line.startsWith(`${field}：`)).map(line=>line.slice(field.length+1).trim()).filter(Boolean))];
+  const single=(field:string)=>{const all=values(field);return all.length===1?all[0]:'';};
+  const interest=single('意向分类');
+  return {wechatAdded:normalizeSourceBoolean(single('用户当下加V与否'),['是','已'],['否','未']),visitCommitted:normalizeSourceBoolean(single('诺访与否'),['是','已'],['否','未']),interestLevel:interest==='A'||interest==='B'||interest==='C'?interest:null};
+}
+
+export function sourceStaffLabel(notes:string,field:'学科老师'|'学服老师'):string {
+  const values=[...new Set(notes.split(/\r?\n/u).filter(line=>line.startsWith(`${field}：`)).map(line=>line.slice(field.length+1).trim()).filter(Boolean))];
+  return values.length===1?values[0]:'';
+}
+
+export function sourceVisitKinds(content:string,assessmentBand:string,learningBand:string,score:string):Array<'assessment_1v1'|'trial_class'|'competition'> {
+  const kinds:Array<'assessment_1v1'|'trial_class'|'competition'>=[];
+  if(/思闯|数独/u.test(content))kinds.push('competition');
+  else if(/测评|散测|一对一沟通/u.test(content)||assessmentBand||learningBand||score)kinds.push('assessment_1v1');
+  if(/体验|试听/u.test(content))kinds.push('trial_class');
+  if(!kinds.length)kinds.push('assessment_1v1');
+  return kinds;
+}
+
+export function hasSourceAssessmentConclusion(assessment:{assessmentBand?:string|null;score?:number|null;strengths?:string}|null|undefined):boolean {
+  return Boolean(assessment&&(assessment.assessmentBand||assessment.score!=null||/(原测评等级|学习力测评等级)：/u.test(assessment.strengths??'')));
+}
+
 export function businessDisplayDate(scheduledAt: string | null | undefined, occurredOn: string | null | undefined, locale: string, empty = '—'): string {
   if(scheduledAt && /^\d{4}-\d{2}-\d{2}$/.test(scheduledAt))return scheduledAt;
   if (scheduledAt && Number.isFinite(new Date(scheduledAt).getTime())) return new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(scheduledAt));

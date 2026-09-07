@@ -3,6 +3,7 @@ import type { TeacherAssessmentOutcome } from "./teacher-assessment-contract";
 import type { PublicClassPresence } from "./public-class";
 import type { AssessmentEntryActor, AssessmentQuickEntry } from "./assessment-quick-entry-contract";
 import type { AssessmentWorkflow } from "./assessment-workflow-contract";
+import { hasSourceAssessmentConclusion } from './business-source-contract';
 
 export const ASSESSMENT_WORKBENCH_QUEUES = [
   "pending",
@@ -100,6 +101,8 @@ export interface AssessmentWorkbenchRow {
   assessorId: string | null;
   assessorName: string;
   assessorSource: "assigned" | "actual";
+  supportOwnerId?: string | null;
+  supportOwnerName?: string;
   background: string;
   participationStatus: "booked" | "attended" | "no_show" | "cancelled";
   assessmentStartedAt: string | null;
@@ -178,8 +181,9 @@ export function assessmentWorkbenchStage(
 }
 
 export function assessmentWorkbenchHasFinalResult(row: AssessmentWorkbenchRow): boolean {
+  if(row.sourceRecordId&&['no_show','cancelled'].includes(row.participationStatus))return false;
   return Boolean(row.assessmentCompletedAt || row.assessment?.finalizedAt
-    || (row.assessment && (!row.assessment.resultSource || row.assessment.resultSource === "legacy") && !row.assessmentStartedAt));
+    || (row.assessment && (!row.assessment.resultSource || row.assessment.resultSource === "legacy") && !row.assessmentStartedAt && (!row.sourceRecordId||hasSourceAssessmentConclusion(row.assessment))));
 }
 
 export function assessmentWorkbenchRowsForView(
