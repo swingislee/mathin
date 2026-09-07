@@ -19,7 +19,7 @@ export function studentStageMessages(locale: string) {
     awaiting_class: "等班", not_enrolling: "暂不报名", attending: "在读", withdrawn: "已退课", ended: "课程已结束", payment_pending: "缴费待核实", nurturing: "长期关注",
     renewal_considering: "续班考虑中", renewal_committed: "有意续班", renewal_confirmed: "本轮已续", not_renewing: "本轮不续" };
   return {
-    stages, details, title: en ? "Students" : "学生", name: en ? "Student / parent" : "学生／家长", state: en ? "Current situation" : "当前情况",
+    stages, details, title: en ? "Students" : "学生", name: en ? "Student / parent" : "学生／家长", phone: en ? "Phone" : "联系电话", state: en ? "Current situation" : "当前情况",
     background: en ? "Assessment / learning" : "测评／学习", owner: en ? "Owner" : "负责人", recent: en ? "Latest note" : "最近记录",
     nextContact: en ? "Next contact" : "下次联系", actions: en ? "Actions" : "操作", search: en ? "Find by name or phone across stages" : "跨阶段搜索姓名、手机号",
     searchHint: en ? "Search includes every stage within this scope." : "搜索覆盖当前负责范围内的全部阶段。",
