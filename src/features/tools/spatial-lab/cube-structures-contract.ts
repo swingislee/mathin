@@ -20,6 +20,10 @@ export const CUBE_AXIS_COLORS = { x: "#c64848", y: "#258345", z: "#3267bd" } as 
 export const CUBE_SELECTION_COLOR = "#f2bd30";
 export const CUBE_GROUP_COLORS = CUBE_COLORS;
 export type CubeColor = (typeof CUBE_COLORS)[number];
+/** 分组棱边使用同色系深色，和浅色实体／面高亮保持区分；不改变持久组色。 */
+export function cubeGroupOutlineColor(color: CubeColor): string {
+  return "#" + [1, 3, 5].map((start) => Math.round(parseInt(color.slice(start, start + 2), 16) * 0.42).toString(16).padStart(2, "0")).join("");
+}
 export type CubeView = "angle" | "front" | "left" | "right" | "top";
 export type CubeTool = "orbit" | "pan" | "select" | "build" | "remove" | "color" | "face" | "move" | "layer" | "cut" | "mark" | "number" | "transparent";
 export const CUBE_MARK_SHAPES = ["circle", "triangle", "square", "star", "diamond", "cross"] as const;
@@ -416,7 +420,7 @@ export function buildCubeStructureRenderModel(state: CubeStructureState, selecte
     background: "paper", lighting: "flat", showAxes: false,
     cells: visible.map((cube) => ({ key: cube.id, ...cubeDisplayPosition(cube), materialToken: cube.color, opacity: cube.opacity, selected: selected.has(cube.id),
       emphasis: selected.has(cube.id) ? { color: CUBE_SELECTION_COLOR, faceOpacity: 0.4, priority: 2 }
-        : groupIds.has(cube.id) ? { color: group!.color, faceOpacity: 0.25, priority: 1 } : undefined })),
+        : groupIds.has(cube.id) ? { color: group!.color, edgeColor: cubeGroupOutlineColor(group!.color), faceOpacity: 0.25, priority: 1 } : undefined })),
     totalCellCount: state.cubes.length, hiddenByLayerCount: state.cubes.length - visible.length,
     totalCountRevealed: false, layers: [], projectionView,
     projection: projectVoxels(createVoxelSet(visible.map((cube) => cube.position)), projectionView),

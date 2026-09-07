@@ -321,7 +321,7 @@ function applyEdgeMatrices(
   mesh.computeBoundingSphere();
 }
 
-const VoxelEdgeInstances = memo(function VoxelEdgeInstances({ model, hiddenEdgeUniforms }: { readonly model: VoxelRenderModel; readonly hiddenEdgeUniforms: VoxelHiddenEdgeUniforms | null }) {
+export const VoxelEdgeInstances = memo(function VoxelEdgeInstances({ model, hiddenEdgeUniforms }: { readonly model: VoxelRenderModel; readonly hiddenEdgeUniforms: VoxelHiddenEdgeUniforms | null }) {
   const xEdges = useRef<THREE.InstancedMesh>(null);
   const yEdges = useRef<THREE.InstancedMesh>(null);
   const zEdges = useRef<THREE.InstancedMesh>(null);
@@ -360,7 +360,7 @@ const VoxelEdgeInstances = memo(function VoxelEdgeInstances({ model, hiddenEdgeU
 }, (previous, next) => previous.hiddenEdgeUniforms === next.hiddenEdgeUniforms && previous.model.cells.length === next.model.cells.length
   && previous.model.cells.every((cell, index) => {
     const other = next.model.cells[index];
-    return cell.x === other.x && cell.y === other.y && cell.z === other.z && cell.emphasis?.color === other.emphasis?.color && cell.emphasis?.priority === other.emphasis?.priority;
+    return cell.x === other.x && cell.y === other.y && cell.z === other.z && cell.emphasis?.color === other.emphasis?.color && cell.emphasis?.edgeColor === other.emphasis?.edgeColor && cell.emphasis?.priority === other.emphasis?.priority;
   }));
 
 const EMPTY_VOXEL_FACE_PAINT = {};

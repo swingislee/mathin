@@ -28,7 +28,7 @@ export interface VoxelRenderCell {
   /** 本地教学展示透明度；缺省为不透明，不影响冻结课件合同。 */
   readonly opacity?: number;
   /** 只读交互高亮，不改写单位块或逐面的教学颜色。 */
-  readonly emphasis?: { readonly color: string; readonly faceOpacity: number; readonly priority: number };
+  readonly emphasis?: { readonly color: string; readonly edgeColor?: string; readonly faceOpacity: number; readonly priority: number };
 }
 
 export interface VoxelRenderLayer {

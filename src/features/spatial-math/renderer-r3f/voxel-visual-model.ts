@@ -68,7 +68,7 @@ function insertEdge(
     key,
     center: { x, y, z },
     scale: edgeScale(axis),
-    ...(emphasis ? { color: emphasis.color, priority: emphasis.priority } : {}),
+    ...(emphasis ? { color: emphasis.edgeColor ?? emphasis.color, priority: emphasis.priority } : {}),
   });
 }
 
