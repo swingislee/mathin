@@ -106,6 +106,20 @@ describe("spatial-lab Tools acceptance prototype", () => {
     expect(leafKeys(zh.tools.spatialLab).sort()).toEqual(leafKeys(en.tools.spatialLab).sort());
   });
 
+  it("moves the template strip into a collapsed floating panel without reserving header space", () => {
+    const source = readFileSync(resolve("src/features/tools/spatial-lab/SpatialLab.tsx"), "utf8");
+    expect(source).toContain("[templatePanelOpen, setTemplatePanelOpen] = useState(false)");
+    expect(source).toContain('className="absolute bottom-3 right-3 z-40" data-spatial-template-launcher');
+    expect(source).toContain("<Popover open={templatePanelOpen} onOpenChange={setTemplatePanelOpen}>");
+    expect(source).toContain("<PopoverTrigger asChild>");
+    expect(source).toContain("data-spatial-template-panel");
+    expect(source).toContain("setTemplatePanelOpen(false)");
+    expect(source).toContain("收起题型模板");
+    expect(source).toContain("Collapse template panel");
+    expect(source).not.toContain('className="border-b border-line bg-moon/15 px-4 py-3 md:px-6"');
+    expect(source).not.toContain("key={templatePanelOpen}");
+  });
+
   it("keeps the mounted client leaf isolated from persistence and classroom transport", () => {
     const gallerySource = readFileSync(
       resolve("src/features/tools/spatial-lab/CubeNetGalleryPanel.tsx"),

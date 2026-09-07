@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Beaker, Box, Eraser, GitCompareArrows, Hammer, Paintbrush, Palette, Presentation, Shapes } from "lucide-react";
+import { Beaker, Box, Eraser, GitCompareArrows, Hammer, Minimize2, Paintbrush, Palette, Presentation, Shapes, SlidersHorizontal } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   SPATIAL_COMMAND_VERSION,
   buildVoxelAuthoringDiff,
@@ -351,6 +352,7 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
   const t = useTranslations("tools.spatialLab");
   const locale = useLocale() === "en" ? "en" : "zh";
   const [activeActivityId, setActiveActivityId] = useState<SpatialLabActivityId>(SPATIAL_LAB_CUBE_STRUCTURES_ID);
+  const [templatePanelOpen, setTemplatePanelOpen] = useState(false);
   const activeVoxelPresetId = isSpatialLabVoxelPresetId(activeActivityId) ? activeActivityId : null;
   const initialDraft = useMemo(
     () => createSpatialLabPresetDraft(activeVoxelPresetId ?? SPATIAL_LAB_DEFAULT_PRESET_ID),
@@ -385,6 +387,7 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
   const page = readyResult?.afterPreview.build.page ?? null;
   const selectActivity = (activityId: SpatialLabActivityId) => {
     setActiveActivityId(activityId);
+    setTemplatePanelOpen(false);
     if (!isSpatialLabVoxelPresetId(activityId)) return;
     const nextDraft = createSpatialLabPresetDraft(activityId);
     setDraft(nextDraft);
@@ -651,26 +654,37 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
 
   return (
     <div
-      className="flex min-h-0 flex-1 flex-col overflow-hidden bg-paper text-ink"
+      className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-paper text-ink"
       data-tool="spatial-lab"
       data-layout-profile="standard-4x3"
       data-spatial-preset={activeActivityId}
     >
-      <div className="border-b border-line bg-moon/15 px-4 py-3 md:px-6">
-        <div className="mx-auto flex max-w-[1500px] flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 max-w-3xl">
+      <div className="absolute bottom-3 right-3 z-40" data-spatial-template-launcher>
+        <Popover open={templatePanelOpen} onOpenChange={setTemplatePanelOpen}>
+          <PopoverTrigger asChild>
+            <Button type="button" size="sm" variant="secondary" className="gap-2 bg-paper shadow-sm" aria-label={t("presets.label")}>
+              <SlidersHorizontal aria-hidden className="size-4" />
+              {t("presets.label")}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent side="top" align="end" sideOffset={8} collisionPadding={12}
+            className="max-h-[var(--radix-popover-content-available-height)] w-80 max-w-[calc(100vw-1.5rem)] space-y-3 overflow-y-auto motion-reduce:animate-none"
+            aria-label={t("presets.label")} data-spatial-template-panel>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-medium">{t("presets.label")}</p>
+              <Button type="button" size="sm" variant="ghost" className="size-8 p-0" onClick={() => setTemplatePanelOpen(false)}
+                aria-label={locale === "en" ? "Collapse template panel" : "收起题型模板"}
+                title={locale === "en" ? "Collapse template panel" : "收起题型模板"}>
+                <Minimize2 aria-hidden className="size-4" />
+              </Button>
+            </div>
             <div className="flex flex-wrap items-center gap-2">
               <Badge>{t("prototypeBadge")}</Badge>
               <Badge variant="outline">standard-4x3</Badge>
               <Badge variant="secondary">{t("memoryOnly")}</Badge>
             </div>
             {!embedded && activeActivityId !== SPATIAL_LAB_CUBE_STRUCTURES_ID ? <p className="mt-2 text-sm leading-6 text-muted">{t("prototypeNote")}</p> : null}
-          </div>
-          <div className="grid w-full gap-2 sm:w-80">
-            <div>
-              <p className="text-xs font-medium text-ink">{t("presets.label")}</p>
-              <p className="mt-0.5 text-xs leading-5 text-muted">{t("presets.description")}</p>
-            </div>
+            <p className="text-xs leading-5 text-muted">{t("presets.description")}</p>
             <Select value={activeActivityId} onValueChange={(value) => selectActivity(value as SpatialLabActivityId)}>
               <SelectTrigger className="w-full" aria-label={t("presets.label")}>
                 <SelectValue />
@@ -684,8 +698,8 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
               </SelectContent>
             </Select>
             <p className="text-xs leading-5 text-muted">{t("boundaryNote")}</p>
-          </div>
-        </div>
+          </PopoverContent>
+        </Popover>
       </div>
 
       {activeActivityId === SPATIAL_LAB_CUBE_STRUCTURES_ID ? (
