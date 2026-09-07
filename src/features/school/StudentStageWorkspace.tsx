@@ -29,6 +29,7 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
   const m = studentStageMessages(locale);
   const studentT = useTranslations("school.students");
   const router = useRouter();
+  const showBackground = filters.stage !== "awaiting_first_contact" && filters.stage !== "awaiting_assessment";
   const viewKey = JSON.stringify(filters);
   const [rows, setRows] = useState(data.rows);
   const [active, setActive] = useState<{ key: string; mode: StudentEntryMode } | null>(null);
@@ -79,7 +80,7 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
       pageSize={data.pageSize} scope={filters.scope} q={filters.q} extraQuery={{ stage: filters.stage, ...(filters.detail ? { detail: filters.detail } : {}) }}
       disabled={busy} onPageChange={(page, pageSize) => navigate({ page, pageSize })} />}>
     <DashboardTableShell data-followup-workbench>
-      <Table className="min-w-[70rem] table-fixed text-xs [&_th]:px-2">
+      <Table className={`table-fixed text-xs [&_th]:px-2 ${showBackground ? "min-w-[63rem]" : "min-w-[53rem]"}`}>
         <TableHeader className="sticky top-0 z-20 bg-paper text-xs text-muted"><TableRow>
           <TableHead className="w-36">{m.name}</TableHead>
           <TableHead className="w-28">{m.phone}</TableHead>
@@ -87,12 +88,12 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
             <SelectTrigger className="h-8 border-0 bg-transparent px-0 text-xs shadow-none" aria-label={m.state}><SelectValue /></SelectTrigger><SelectContent>
               <SelectItem value="all">{m.allDetails}</SelectItem>{STUDENT_STAGE_DETAILS[filters.stage].map(value => <SelectItem key={value} value={value}>{m.details[value]}</SelectItem>)}
             </SelectContent></Select></TableHead>
-          <TableHead className="w-40">{m.background}</TableHead>
+          {showBackground ? <TableHead className="w-40">{m.background}</TableHead> : null}
           <TableHead className="w-20"><Select value={filters.scope} onValueChange={scope => navigate({ scope: scope as StudentStageFilters["scope"] })} disabled={busy}>
             <SelectTrigger className="h-8 border-0 bg-transparent px-0 text-xs shadow-none" aria-label={m.owner}><SelectValue /></SelectTrigger><SelectContent>
               <SelectItem value="mine">{m.mine}</SelectItem><SelectItem value="all">{m.all}</SelectItem><SelectItem value="unassigned">{m.unassigned}</SelectItem>
             </SelectContent></Select></TableHead>
-          <TableHead>{m.recent}</TableHead><TableHead className="w-28">{m.nextContact}</TableHead><TableHead className={locale.startsWith("en") ? "w-64 text-right" : "w-48 text-right"}>{m.actions}</TableHead>
+          <TableHead>{m.recent}</TableHead><TableHead className={locale.startsWith("en") ? "w-64 text-right" : "w-48 text-right"}>{m.actions}</TableHead>
         </TableRow></TableHeader>
         <TableBody>{rows.map((row, index) => {
           const expanded = active?.key === row.key;
@@ -116,10 +117,9 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
               <Badge variant="outline" className="min-w-0 max-w-full rounded-md px-1.5 py-0"><span className="truncate">{showStage ? `${m.stages[row.stage]} · ` : ""}{situation}</span></Badge>
               {handled.has(row.key) ? <span role="img" aria-label={m.retained} title={m.retained} className="shrink-0 text-leaf-deep"><Check className="size-3.5" aria-hidden="true" /></span> : null}
             </div></TableCell>
-            <TableCell title={[background, row.assessmentAt ? formatAt(row.assessmentAt) : ""].filter(Boolean).join(" · ")}><p className="truncate">{background}</p></TableCell>
+            {showBackground ? <TableCell title={[background, row.assessmentAt ? formatAt(row.assessmentAt) : ""].filter(Boolean).join(" · ")}><p className="truncate">{background}</p></TableCell> : null}
             <TableCell title={row.ownerName || m.unassigned}><p className="truncate">{row.ownerName || m.unassigned}</p></TableCell>
             <TableCell title={[row.note || m.noNote, row.lastContactAt ? formatAt(row.lastContactAt) : ""].filter(Boolean).join("\n")}><p className="truncate">{row.note || m.noNote}</p></TableCell>
-            <TableCell className="tabular-nums text-muted" title={formatAt(row.nextContactAt)}><p className="truncate">{formatAt(row.nextContactAt)}</p></TableCell>
             <TableCell><div className="flex items-center justify-end gap-1">
               {row.canWrite ? <Button size="sm" variant="ghost" className="h-7 shrink-0 px-2 text-xs" disabled={busy} onClick={() => open(row, contactMode)}>{contactMode === "contact" ? m.contact : m.note}</Button> : null}
               {row.stage === "awaiting_assessment" && row.canContact ? <Button size="sm" variant="secondary" className="h-7 shrink-0 px-2 text-xs" disabled={busy} onClick={() => open(row, "invitation")}>{row.detail === "no_show" || row.detail === "cancelled" ? m.rebook : m.book}</Button>
@@ -130,7 +130,7 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
             </div></TableCell>
           </TableRow>
           <FollowupInlineDetails open={expanded} keepMounted={visited.has(row.key)} active={expanded} pending={busy && expanded}
-            onOpenChange={openValue => { if (!openValue && !busy) setActive(null); }} title={row.name} colSpan={8} id={`student-stage-details-${row.key}`}>
+            onOpenChange={openValue => { if (!openValue && !busy) setActive(null); }} title={row.name} colSpan={showBackground ? 7 : 6} id={`student-stage-details-${row.key}`}>
             {() => row.canWrite ? <Entry row={row} requestedMode={expanded ? active.mode : contactMode} locale={locale} currentUserId={currentUserId} canEnroll={canEnroll}
               canAdvance={index < rows.length - 1} onBusyChange={setBusy} onSaved={(result, advance) => saved(row.key, result, advance)} /> : <p className="text-sm text-muted">{m.needOwner}</p>}
           </FollowupInlineDetails></Fragment>;
