@@ -1,0 +1,10 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { analyzeStudentStageSnapshot } from './lib/student-stage-audit.mjs';
+import { writeStudentStageAuditReport } from './lib/student-stage-audit-report.mjs';
+const { run } = JSON.parse(fs.readFileSync('.tmp/student-stage-audit/latest.json', 'utf8'));
+const snapshot = JSON.parse(fs.readFileSync(path.join(run, 'snapshot.json'), 'utf8'));
+const audit = analyzeStudentStageSnapshot(snapshot);
+fs.writeFileSync(path.join(run, 'audit.json'), JSON.stringify(audit, null, 2), 'utf8');
+writeStudentStageAuditReport(run, audit, snapshot);
+console.log(JSON.stringify(audit.summary));
