@@ -64,7 +64,7 @@ import { PostActivityQuickContact } from "./PostActivityQuickContact";
 import { followupState, type ActivityEnrollmentContext } from "./enrollment-workflow-contract";
 import { LeadContactEntryRow } from "./LeadFirstContactWorkbench";
 import { navigateFollowupTable } from "./followup-keyboard";
-import { deriveLeadContactDestination, type LeadPoolRow } from "./lead-contract";
+import { deriveLeadContactDestination, leadHasCommittedVisit, type LeadPoolRow } from "./lead-contract";
 import type { LeadContactInput } from "./actions/leads";
 import { type CommunicationDayEvent, type CommunicationWorkbenchView, type CommunicationWorkday, type CommunicationWorklist } from "./communication-workday-contract";
 import { completeCommunicationWorklistItemAction } from "./communication-workday-actions";
@@ -880,6 +880,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
           : row.value.recommendation || row.value.routeNote;
         return <Fragment key={canonicalKey}>
           <TableRow data-communication-work-key={canonicalKey} data-followup-row-key={canonicalKey} ref={(element) => { if (element) rowRefs.current.set(canonicalKey, element); else rowRefs.current.delete(canonicalKey); }}
+            data-followup-success={leadHasCommittedVisit(row.value.leadId ? leadById.get(row.value.leadId) : null, row.source === "invitation" ? row.value : null)}
             tabIndex={0} aria-selected={workSelection.selectedKeys.has(canonicalKey)} data-followup-active={active} data-followup-expanded={active} aria-busy={savingIds.has(row.id)} className="cursor-pointer focus-visible:outline-none"
             onClick={(event) => { if (!(event.target as HTMLElement).closest("button,a,input,textarea,[role='combobox'],[role='checkbox']")) changeDetails(canonicalKey, !active); }}
             onKeyDown={(event) => {

@@ -308,12 +308,15 @@ body:has([data-dashboard-canvas], [data-followup-workbench])::after { display: n
   box-shadow: inset 3px 0 var(--blue);
 }
 
-/* 跟进工作台：背景只表达当前处理范围；勾选、展开与焦点各自保留标志。 */
+/* 跟进工作台：浅绿表达已完成业务；当前处理范围仍用浅黄，勾选、展开与焦点各自保留标志。 */
 [data-followup-workbench] [data-slot="table"] > tbody > tr {
   --followup-top: transparent;
   --followup-bottom: transparent;
   --followup-side: transparent;
   background-color: var(--card);
+}
+[data-followup-workbench] [data-slot="table"] > tbody > tr[data-followup-success="true"] {
+  background-color: color-mix(in srgb, var(--leaf) 24%, var(--card));
 }
 [data-followup-workbench] [data-slot="table"] > tbody > tr:hover { background-color: var(--followup-hover); }
 [data-followup-workbench] [data-slot="table"] > tbody > tr[aria-selected="true"] { background-color: var(--followup-checked); }

@@ -49,6 +49,7 @@ import {
 } from "./NextContactReminderField";
 import {
   deriveLeadContactDestination,
+  leadHasCommittedVisit,
   type LeadContactOutcome,
   type LeadInterestLevel,
   type LeadPoolRow,
@@ -326,6 +327,7 @@ export function LeadContactEntryRow({
 
   return <FirstContactRecordRow record={{
       key: layout === "communication" ? `lead:${lead.id}` : lead.id,
+      visitCommitted: leadHasCommittedVisit(lead),
       person: { name: lead.provisionalStudentName, phone: lead.phone, owner: lead.ownerName || t("unassignedOwner"),
         grade: lead.gradeText || (lead.gradeHint ? t("gradeValue", { grade: lead.gradeHint }) : t("unknownGrade")),
         subject: { studentId: lead.studentId ?? null, leadId: lead.id }, studentGrade: lead.gradeHint },

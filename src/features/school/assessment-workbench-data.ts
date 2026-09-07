@@ -140,6 +140,7 @@ interface RouteDbRow {
   route: ActivityRouteKind;
   note: string;
   updated_at: string;
+  enrollment: { id: string; status: "active" | "cancelled" } | null;
 }
 
 interface FollowUpDbRow {
@@ -340,7 +341,7 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
     sourceSupportResult,
   ] = await Promise.all([
     readRelatedRows<AssessmentDbRow>(supabase, "assessment_results", "id,activity_registration_id,assessed_on,assessment_band,score,score_max,strengths,focus_areas,parent_concerns,teacher_recommendation,recommended_class,teacher_observation,updated_at,result_source,result_finalized_at,assessor:profiles!assessment_results_assessed_by_fkey(id,display_name)", "activity_registration_id", registrationIds),
-    readRelatedRows<RouteDbRow>(supabase, "activity_routes", "id,activity_registration_id,route,note,updated_at", "activity_registration_id", registrationIds),
+    readRelatedRows<RouteDbRow>(supabase, "activity_routes", "id,activity_registration_id,route,note,updated_at,enrollment:course_enrollments!activity_routes_course_enrollment_id_fkey(id,status)", "activity_registration_id", registrationIds),
     readRelatedRows<InvitationDbRow>(supabase, "lead_invitation_threads", INVITATION_COLUMNS, "id", sourceInvitationIds),
     readRelatedRows<PaperVersionDbRow>(supabase, "assessment_paper_versions", "id,paper_id,question_count,total_score", "id", paperVersionIds),
     readRelatedRows<QuestionResultDbRow>(supabase, "assessment_question_results", "activity_registration_id,question_id,outcome,note", "activity_registration_id", registrationIds),
@@ -415,7 +416,9 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
     }
   }
   const routes = new Map<string, AssessmentWorkbenchRoute>();
+  const enrollmentsByRegistration = new Map<string, string>();
   for (const row of routeResult.data ?? []) {
+    if (row.enrollment?.status === "active") enrollmentsByRegistration.set(row.activity_registration_id, row.enrollment.id);
     routes.set(row.activity_registration_id, {
       id: row.id,
       route: row.route,
@@ -521,6 +524,7 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
         publicClassRecord: null,
         invitationId: activity.source_invitation_id,
         registrationId: registration.id,
+        enrollmentId: enrollmentsByRegistration.get(registration.id) ?? null,
         paperVersionId: registration.assessment_paper_version_id,
         sourceRecordId: registration.source_record_id,
         studentId: registration.student_id,

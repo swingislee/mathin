@@ -24,7 +24,7 @@ import { useFollowupPagination } from "./useFollowupPagination";
 import { BusinessRecordStateFilter, HistoricalRecordBadge, useBusinessSearchQuery } from './BusinessRecordStateFilter';
 import { businessRecordMessages, matchesBusinessRecordState, type BusinessRecordStateFilter as StateFilter } from './business-record-state-contract';
 import { businessSubjectKey, type HistoricalEnrollment, type StudentBusinessHistory } from './student-business-history-contract';
-import { classWeeklyScheduleLabel, enrollmentErrorKey, placementHealth, placementStudents, type EnrollmentPlacementBoard, type PlacementClassroom, type PlacementStudent } from "./enrollment-workflow-contract";
+import { classWeeklyScheduleLabel, enrollmentErrorKey, placementHealth, placementStudentBackground, placementStudents, type EnrollmentPlacementBoard, type PlacementClassroom, type PlacementStudent } from "./enrollment-workflow-contract";
 import { moveEnrollmentSeatAction } from "./enrollment-workflow-actions";
 import { placementRosterSeats, placementSeatTargetError } from "./placement-roster";
 import { useTilePointerDrag } from "./tile-pointer-drag";
@@ -106,6 +106,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   const [pending, startMoving] = useTransition();
   const [sourceEnrollment,setSourceEnrollment]=useState<HistoricalEnrollment|null>(null);
   const students = useMemo(() => placementStudents(board), [board]);
+  const renewedMembershipIds = new Set(board.renewedMembershipIds ?? []);
   const selected = students.find((student) => student.key === selectedKey) ?? null;
   const rows = useMemo(() => [...rosterRows(board, students),...sourceRosterRows(board,history)], [board, students,history]);
   const terms = new Map(board.options.terms.map((term) => [term.id, term.name]));
@@ -234,10 +235,13 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   const studentTile = (student: StudentTileRecord, target?: SeatTarget) => {
     const signals = student.placement ? board.health?.[student.studentId ?? ""] ?? [] : [];
     const health = student.placement ? placementHealth(signals) : null;
+    const renewed = Boolean(student.placement?.membershipId && renewedMembershipIds.has(student.placement.membershipId));
     const movable = Boolean(student.placement && student.status !== "withdrawn" && !pending);
     const swapping = Boolean(student.placement && selected && selected.key !== student.key && target && accepts(selected, target));
     return <Tooltip key={student.key}><TooltipTrigger asChild><span
       data-placement-student={student.key}
+      data-placement-renewed={renewed}
+      data-placement-health={health?.tone}
       data-placement-focus={student.studentId === focusStudentId}
       onPointerDown={(event) => { if (movable) pointer.begin(event, student.key, (event.target as HTMLElement).closest("button") ?? event.currentTarget); }}
       onClickCapture={(event) => {
@@ -246,7 +250,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
         if (selected && target) move(selected, target);
       }}
       className={cn("group relative flex min-h-9 min-w-0 select-none items-center justify-center px-1", movable && "touch-none cursor-grab active:cursor-grabbing", selectedKey === student.key && "ring-2 ring-inset ring-crater", student.studentId === focusStudentId && "outline-2 -outline-offset-2 outline-leaf-deep", student.placement && !matches(student.placement) && "opacity-35")}
-      style={{ background: health?.background }}
+      style={{ background: placementStudentBackground(health, renewed) }}
     >
       {student.sourceEnrollment?<button type="button" onClick={()=>setSourceEnrollment(student.sourceEnrollment!)} className="w-full truncate py-1 text-xs hover:underline">{student.name}</button>:<Student360Trigger subject={{ studentId: student.studentId, leadId: null }} fallback={{ name: student.name, phone: student.phone, grade: student.grade || null }} className="flex w-full min-w-0 flex-col items-center justify-center py-1 text-xs font-normal">
         <span className="max-w-full truncate">{student.name}</span>

@@ -1,5 +1,5 @@
-// 固定开发账号只读检查线索页启动；--followup-filters 检查五表，--assessment-fields 仅检查测评样板。
-// Run: node --experimental-strip-types scripts/verify-lead-intake.mjs [--followup-filters | --assessment-fields]
+// 固定开发账号只读检查线索页启动；--followup-filters 检查五表，--assessment-fields 检查测评，--followup-completion 检查首联/测评/分班。
+// Run: node --experimental-strip-types scripts/verify-lead-intake.mjs [--followup-filters | --assessment-fields | --followup-completion]
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -10,6 +10,7 @@ import { openHistoryLocalTarget } from './lib/history-local-target.mjs';
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'mathin-lead-intake-'));
 const followupFilters = process.argv.includes('--followup-filters');
 const assessmentFields = process.argv.includes('--assessment-fields');
+const followupCompletion = process.argv.includes('--followup-completion');
 openHistoryLocalTarget({ refresh: true, attestationPath: path.join(temporary, 'preflight.json'), errorFile: path.join(temporary, 'database-error.txt') });
 const env = Object.fromEntries(fs.readFileSync('.env.local', 'utf8').split(/\r?\n/)
   .filter(line => /^[A-Z_]+=/.test(line)).map(line => {
@@ -30,7 +31,7 @@ for (const role of ['principal','teacher']) {
   if (error) throw new Error('FIXED_ACCOUNT_LOGIN_FAILED: '+(error.code || 'unknown'));
   try {
     for (const locale of ['zh','en']) {
-      const routes = assessmentFields ? ['assessments'] : followupFilters ? [
+      const routes = followupCompletion ? ['communication?view=all&scope=mine', 'assessments', ...(role === 'principal' ? ['enrollments'] : [])] : assessmentFields ? ['assessments'] : followupFilters ? [
         'leads?scope='+ (role === 'principal' ? 'unassigned' : 'mine'),
         'leads?scope='+ (role === 'principal' ? 'all' : 'mine') +'&assignment=assigned',
         'communication?view=all&scope=mine', 'assessments', 'renewals',
@@ -41,7 +42,7 @@ for (const role of ['principal','teacher']) {
           headers: { cookie:[...cookies].map(([name,value]) => name+'='+value).join('; ') } });
         const html = await response.text();
         if (response.status !== 200 || /Could not find|schema cache|MISSING_MESSAGE|NEXT_REDIRECT|__next_error__|NEXT_HTTP_ERROR_FALLBACK/.test(html)
-          || !html.includes('data-dashboard-command-panel') || ((followupFilters || assessmentFields) && !html.includes('data-followup-primary-filter'))
+          || !html.includes('data-dashboard-command-panel') || ((followupFilters || assessmentFields || followupCompletion) && !html.includes('data-followup-primary-filter'))
           || (assessmentFields && !html.includes(locale === 'zh' ? '记录时间' : 'Record date'))
           || (followupFilters && !/data-followup-pagination="(?:true)?"[^>]*data-page-size="50"/.test(html))) {
           console.error(JSON.stringify({ status: response.status, marker: /Could not find|schema cache|MISSING_MESSAGE|NEXT_REDIRECT|__next_error__|NEXT_HTTP_ERROR_FALLBACK/.exec(html)?.[0],

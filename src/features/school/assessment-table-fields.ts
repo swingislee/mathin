@@ -6,11 +6,11 @@ import { EMPTY_DASHBOARD_FIELD_QUERY, type DashboardFieldDefinitions, type Dashb
 
 export const ASSESSMENT_TABLE_COLUMNS = {
   student: ["name", "phone", "grade"],
-  kind: ["kind"],
-  arrangement: ["scheduledAt", "location", "assessor", "supportOwner", "assessorSource"],
+  kind: ["status", "kind"],
+  arrangement: ["scheduledAt", "supportOwner", "location"],
   result: ["paper", "score", "scoreRate", "band", "progress", "resultSource"],
   teacher: ["conclusion"],
-  status: ["status"],
+  status: ["assessor", "assessorSource"],
   updated: ["recordedAt"],
 } as const;
 

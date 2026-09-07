@@ -30,13 +30,46 @@ const render = (children: ReactNode, locale: 'zh' | 'en') => {
 };
 
 describe('imported assessment rendering', () => {
-  it.each(['zh', 'en'] as const)('renders source support names beside the assessor in %s', locale => {
-    const html = render(createElement(AssessmentUnifiedWorkbench, { initialRows: [row], assessors: [], locale, canAssess: true,
+  it.each(['zh', 'en'] as const)('renders the support name before the room with status and type together in %s', locale => {
+    const html = render(createElement(AssessmentUnifiedWorkbench, { initialRows: [{ ...row, location: '教室丙' }], assessors: [], locale, canAssess: true,
       canSupport: true, canManageAssessor: false }), locale);
     const cell = html.match(/<div[^>]*data-assessment-support-owner[^>]*>([\s\S]*?)<\/div>/)?.[1];
     expect(cell).toContain('学服乙');
-    expect(cell).toContain(locale === 'zh' ? '学服老师' : 'Responsible support teacher');
+    const visible = cell?.replace(/<[^>]*>/g, '');
+    expect(visible).not.toContain(locale === 'zh' ? '学服老师' : 'Responsible support teacher');
+    expect(visible).toBe('学服乙·教室丙');
     expect(cell).not.toContain('测评甲');
+    const state = html.match(/<td[^>]*data-assessment-state-kind[^>]*>([\s\S]*?)<\/td>/)?.[1];
+    expect(state).not.toContain((locale === 'zh' ? zh : en).school.supportAssessment.type_one_to_one);
+    expect(state).toContain((locale === 'zh' ? zh : en).school.supportAssessment.stageAssessmentPending);
+    const work = html.match(/<td[^>]*data-assessment-current-work[^>]*>([\s\S]*?)<\/td>/)?.[1];
+    expect(work).toContain('测评甲');
+    expect(work).toContain('lucide-calendar-clock');
+    expect(work).not.toContain('学服乙');
+    expect(work).not.toContain((locale === 'zh' ? zh : en).school.supportAssessment.stageAssessmentPending);
+  });
+  it.each(['zh', 'en'] as const)('keeps 1v1 records and displays activity type labels in %s', locale => {
+    const html = render(createElement(AssessmentUnifiedWorkbench, {
+      initialRows: [row, { ...row, id: 'activity-assessment', assessmentKind: 'activity' }], assessors: [], locale,
+      canAssess: true, canSupport: true, canManageAssessor: false,
+    }), locale);
+    const states = [...html.matchAll(/<td[^>]*data-assessment-state-kind[^>]*>([\s\S]*?)<\/td>/g)].map(match => match[1]);
+    expect(states).toHaveLength(2);
+    expect(states[0]).not.toContain((locale === 'zh' ? zh : en).school.supportAssessment.type_one_to_one);
+    expect(states[1]).toContain((locale === 'zh' ? zh : en).school.supportAssessment.type_activity);
+    expect(html).toContain(`data-assessment-workbench-row="${row.id}"`);
+  });
+  it('uses a distinct execution icon and only marks an actual enrollment as successful', () => {
+    const markup = (enrollmentId: string | null) => render(createElement(AssessmentUnifiedWorkbench, {
+      initialRows: [{ ...row, assessorSource: 'actual', enrollmentId, route: { id: 'route', route: 'enrollment_pending', note: '', updatedAt: '' } }],
+      assessors: [], locale: 'zh', canAssess: true, canSupport: true, canManageAssessor: false,
+    }), 'zh');
+    expect(markup(null)).toContain('data-followup-success="false"');
+    expect(markup(id)).toContain('data-followup-success="true"');
+    const work = markup(id).match(/<td[^>]*data-assessment-current-work[^>]*>([\s\S]*?)<\/td>/)?.[1];
+    expect(work).toContain('lucide-user-check');
+    expect(work).not.toContain('lucide-calendar-clock');
+    expect(work).toContain(zh.school.supportAssessment.actualAssessor);
   });
   it('renders a source question workbench with an unknown scheduled time', () => {
     const html = render(createElement(TeacherAssessmentWorkbench, { data: { registrationId: id, subjectName: '来源学生', grade: null,

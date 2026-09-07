@@ -37,6 +37,13 @@ export async function loadEnrollmentPlacementBoard(): Promise<EnrollmentPlacemen
   if (teachers.error) throw new Error("PLACEMENT_TEACHER_FIELDS_READ");
   board.options.classrooms = board.options.classrooms.map(row => ({ ...row, teachers: (teachers.data ?? [])
     .filter(item => item.classroom_id === row.id).map(item => ({ id: item.user_id, name: item.profiles?.display_name ?? "" })) }));
+  const renewalEntries = await readSchoolQueryBatches(board.members.map(row => row.membershipId), (batch, start, end) =>
+    supabase.from("renewal_cycle_entries").select("source_class_membership_id,opportunity_id")
+      .in("source_class_membership_id", batch).order("renewal_cycle_id").order("source_class_membership_id").range(start, end));
+  if (renewalEntries.error) throw new Error("PLACEMENT_RENEWAL_FIELDS_READ");
+  const renewedOpportunities = new Set(board.enrollments.filter(row => row.status === "active").map(row => row.opportunityId));
+  const renewedMembershipIds = [...new Set((renewalEntries.data ?? []).filter(row => row.opportunity_id && renewedOpportunities.has(row.opportunity_id))
+    .map(row => row.source_class_membership_id))];
   const ids = [...new Set([...board.enrollments.map((row) => row.studentId), ...board.members.map((row) => row.studentId)])];
   const health: NonNullable<EnrollmentPlacementBoard["health"]> = {};
   const now = Date.now();
@@ -48,5 +55,5 @@ export async function loadEnrollmentPlacementBoard(): Promise<EnrollmentPlacemen
     }
     for (const facts of response.data as unknown as RenewalHealthFacts[]) health[facts.studentId] = renewalHealthSignals(facts, now);
   }
-  return { ...board, health };
+  return { ...board, health, renewedMembershipIds };
 }

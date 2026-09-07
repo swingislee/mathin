@@ -34,6 +34,17 @@ const source = (path: string) => readFileSync(new URL(`../${path}`, import.meta.
 describe("unified assessment workbench", () => {
   beforeEach(() => { db.tables = {}; db.activityFilters = []; db.batchSizes = []; db.teacherRequired = false; });
 
+  it.each(['active', 'cancelled', null])('exposes only the linked active enrollment (%s)', async status => {
+    db.tables.activities = [{ id: 'activity', kind: 'assessment_1v1', title: '', scheduled_at: '', location: '', source_invitation_id: null }];
+    db.tables.activity_registrations = [{ id: 'registration', activity_id: 'activity', student_id: null, lead_id: null, status: 'booked',
+      outcome: '', assessment_paper_version_id: null, assessment_started_at: null, assessment_completed_at: null, updated_at: '', students: null, leads: null }];
+    db.tables.activity_routes = [{ id: 'route', activity_registration_id: 'registration', route: 'enrollment_pending', note: '', updated_at: '',
+      enrollment: status ? { id: 'linked-enrollment', status } : null }];
+    db.tables.assessment_workbench_read_order = [{ id: 'registration:registration' }];
+    const rows = await listAssessmentWorkbenchRows();
+    expect(rows[0].enrollmentId).toBe(status === 'active' ? 'linked-enrollment' : null);
+  });
+
   it("opens an attached detail row while keeping the original record row and table columns fixed", () => {
     const workbench = source("src/features/school/AssessmentUnifiedWorkbench.tsx");
     const detail = source("src/features/school/AssessmentRecordDetails.tsx");

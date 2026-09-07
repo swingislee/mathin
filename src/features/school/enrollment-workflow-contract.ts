@@ -76,6 +76,7 @@ export interface EnrollmentPlacementBoard {
   enrollments: CourseEnrollmentRow[];
   members: PlacementMember[];
   health?: Record<string, RenewalHealthSignal[]>;
+  renewedMembershipIds?: string[];
 }
 export interface PlacementStudent {
   key: string;
@@ -146,7 +147,13 @@ export function placementHealth(signals: readonly RenewalHealthSignal[] = []) {
   if (balance === 0) return { tone: "neutral" as const, balance, background: "var(--card)" };
   const strength = Math.round(10 + Math.abs(balance) * 22);
   return { tone: balance < 0 ? "low" as const : "high" as const, balance,
-    background: `color-mix(in srgb, var(--card) ${100 - strength}%, ${balance < 0 ? "#ef4444" : "#3b82f6"})` };
+    background: balance < 0 ? `color-mix(in srgb, var(--card) ${100 - strength}%, var(--rose))` : "var(--card)" };
+}
+
+/** 危险提示优先；普通健康保持白底，已续报单独使用浅绿。 */
+export function placementStudentBackground(health: ReturnType<typeof placementHealth> | null, renewed: boolean) {
+  if (health?.tone === "low") return health.background;
+  return renewed ? "color-mix(in srgb, var(--leaf) 24%, var(--card))" : "var(--card)";
 }
 
 export function classWeeklyScheduleLabel(classroom: PlacementClassroom, locale: string) {

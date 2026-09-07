@@ -88,6 +88,7 @@ export interface AssessmentWorkbenchRow {
   publicClassRecord: AssessmentWorkbenchPublicClassRecord | null;
   invitationId: string | null;
   registrationId: string | null;
+  enrollmentId?: string | null;
   paperVersionId?: string | null;
   sourceRecordId?: string | null;
   studentId: string | null;

@@ -111,6 +111,15 @@ function assessment(id: string, overrides: Partial<AssessmentWorkbenchRow> = {})
 }
 
 describe("assessment field adapter", () => {
+  it("keeps 1v1 available in the type filter when its row label is hidden", () => {
+    const t = (key: string) => key;
+    const definitions = assessmentTableFields({ locale: "zh", timeZone: context.timeZone, tableT: t, assessmentT: t, t, teacherT: t, quickT: t, stageFor: () => "feedback" });
+    const fixtures = [assessment("solo", { assessmentKind: "one_to_one" }), assessment("group", { assessmentKind: "activity" })];
+    const facets = dashboardFieldFacets(fixtures, definitions, {}, "zh", context.timeZone);
+    expect(facets.kind.options).toContainEqual({ value: "one_to_one", label: "type_one_to_one" });
+    expect(filterAndSortDashboardFields(fixtures, definitions, query({ filters: { kind: { kind: "enum", values: ["one_to_one"] } } }), "zh", context.timeZone)
+      .map(row => row.id)).toEqual(["solo"]);
+  });
   it("filters preserved source support names even when no employee account is linked", () => {
     const t = (key: string) => key;
     const definitions = assessmentTableFields({ locale: "zh", timeZone: context.timeZone, tableT: t, assessmentT: t, t, teacherT: t, quickT: t, stageFor: () => "feedback" });
@@ -131,6 +140,9 @@ describe("assessment field adapter", () => {
       assessment("missing", { supportOwnerId: null, supportOwnerName: "" }),
     ];
     expect(ASSESSMENT_TABLE_COLUMNS.arrangement).toContain("supportOwner");
+    expect(ASSESSMENT_TABLE_COLUMNS.kind).toEqual(["status", "kind"]);
+    expect(ASSESSMENT_TABLE_COLUMNS.status).toEqual(["assessor", "assessorSource"]);
+    expect(ASSESSMENT_TABLE_COLUMNS.arrangement).not.toContain("assessor");
     const facets = dashboardFieldFacets(fixtures, definitions, {}, "zh", context.timeZone);
     expect(facets.supportOwner.options).toEqual([
       { value: "owner-a", label: "Same staff · owner-a" }, { value: "owner-b", label: "Same staff · owner-b" },

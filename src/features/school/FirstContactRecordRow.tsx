@@ -15,6 +15,7 @@ export interface FirstContactRecord {
   key: string;
   state?: BusinessRecordState;
   missingFirstContact?: boolean;
+  visitCommitted?: boolean;
   person: Omit<ComponentProps<typeof FollowupPersonCell>, "selection" | "expanded" | "detailsId" | "onToggle">;
   status: { label: string; tone: FollowupTone; context: string; contextTitle?: string };
   updated: string;
@@ -64,6 +65,7 @@ export function FirstContactRecordRow({
     <TableRow ref={rowRef} data-first-contact-record={record.key} data-record-state={record.state ?? "current"}
       data-first-contact-missing={record.missingFirstContact ? record.person.subject.studentId : undefined}
       data-communication-work-key={layout === "communication" ? record.key : undefined} data-followup-row-key={record.key}
+      data-followup-success={record.visitCommitted === true}
       tabIndex={tabIndex} aria-selected={selected} data-followup-active={active} data-followup-expanded={expanded} aria-busy={pending}
       className="h-16 focus-visible:outline-none [&>td]:min-w-0" onFocusCapture={onActivate}
       onClick={onClick ?? ((event) => {

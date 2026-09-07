@@ -84,6 +84,14 @@ function renderWorkbench(props: Partial<Props> = {}) {
 }
 
 describe("communication workbench server rendering", () => {
+  it("marks saved visit commitments and confirmed invitations without marking ordinary contact", () => {
+    expect(renderWorkbench({ contactLeads: [{ ...lead('a'), visitCommitted: true }] }).dataRows[0].attributes)
+      .toContain('data-followup-success="true"');
+    expect(renderWorkbench().dataRows[0].attributes).toContain('data-followup-success="false"');
+    expect(renderWorkbench({ rows: [invitation('a')] }).dataRows[0].attributes).toContain('data-followup-success="true"');
+    expect(renderWorkbench({ rows: [{ ...invitation('a'), state: 'coordinating_time' }] }).dataRows[0].attributes)
+      .toContain('data-followup-success="false"');
+  });
   it("renders an existing profile with missing first-contact facts in the same searchable row layout", () => {
     const historicalFirstContacts = [{ studentId: 'existing-student', name: '历史学生', phone: '13800000000', grade: 3, context: '独有历史沟通事实' }];
     const { dataRows } = renderWorkbench({ historicalFirstContacts, selectionEnabled: true });

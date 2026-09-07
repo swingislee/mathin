@@ -5,7 +5,7 @@ import { BusinessRecordRevisionButton } from './BusinessRecordRevisionButton';
 import { useBusinessSearchQuery } from './BusinessRecordStateFilter';
 import { isCurrentBusinessRecord } from './business-record-state-contract';
 import { useEffect, useMemo, useRef, useState } from "react";
-import { UserCheck } from "lucide-react";
+import { CalendarClock, UserCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -255,7 +255,7 @@ export function AssessmentUnifiedWorkbench({
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead className="sticky left-0 top-0 z-30 h-9 w-48 border-r border-line bg-card px-2"><DashboardTableColumnHeader label={t("studentColumn")} {...assessmentTable.columnProps("student")} /></TableHead>
-                <TableHead className="sticky top-0 z-20 h-9 w-20 bg-card px-2"><DashboardTableColumnHeader label={t("typeColumn")} {...assessmentTable.columnProps("kind")} /></TableHead>
+                <TableHead className="sticky top-0 z-20 h-9 w-28 bg-card px-2"><DashboardTableColumnHeader label={t("typeColumn")} {...assessmentTable.columnProps("kind")} /></TableHead>
                 <TableHead className="sticky top-0 z-20 h-9 w-48 bg-card px-2"><DashboardTableColumnHeader label={t("arrangementColumn")} {...assessmentTable.columnProps("arrangement")} /></TableHead>
                 <TableHead className="sticky top-0 z-20 h-9 w-40 bg-card px-2"><DashboardTableColumnHeader label={t("resultColumn")} {...assessmentTable.columnProps("result")} /></TableHead>
                 <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={t("teacherColumn")} {...assessmentTable.columnProps("teacher")} /></TableHead>
@@ -289,6 +289,7 @@ export function AssessmentUnifiedWorkbench({
                       data-followup-row-key={row.id}
                       data-followup-active={active}
                       data-followup-expanded={expanded}
+                      data-followup-success={Boolean(row.enrollmentId)}
                       tabIndex={0}
                       aria-expanded={expanded}
                       aria-controls={`assessment-details-${row.id}`}
@@ -314,18 +315,20 @@ export function AssessmentUnifiedWorkbench({
                           onToggle={() => changeDetails(row.id, !expanded)}
                           subject={{ studentId: row.studentId, leadId: row.leadId }} />
                       </TableCell>
-                      <TableCell className="px-2 py-2"><Badge variant="outline" className="whitespace-nowrap border-line bg-line/20 text-muted">{t(`type_${row.assessmentKind}`)}</Badge></TableCell>
-                      <TableCell className="px-2 py-2">
-                        <p className="truncate font-medium text-ink"><time dateTime={scheduledAt ?? undefined} aria-label={formatDashboardDate(scheduledAt, dateContext, { time: true, full: true })}>{formatDashboardDate(scheduledAt, dateContext, { time: true })}</time></p>
-                        <p className="mt-0.5 truncate text-[11px] text-muted" title={row.location}>{row.location || "—"}</p>
-                        <div className="mt-1 flex min-w-0 items-center gap-1.5 text-[11px] text-muted">
-                          {row.assessorSource === "actual" ? <UserCheck className="size-3.5 shrink-0 text-leaf-deep" /> : null}
-                          <span className="shrink-0">{t(row.assessorSource === "actual" ? "actualAssessor" : "assignedAssessor")}</span>
-                          <span className="truncate font-medium text-ink">{row.assessorName || "—"}</span>
+                      <TableCell data-assessment-state-kind className="px-2 py-2">
+                        <div className="flex min-w-0 flex-col items-start gap-1">
+                          {current ? <StageBadge stage={stage} contacting={false} /> : null}
+                          {row.assessmentKind !== "one_to_one" ? <Badge variant="outline" className="whitespace-nowrap border-line bg-line/20 text-muted">{t(`type_${row.assessmentKind}`)}</Badge> : null}
+                          {current && row.workflow?.classification ? <span className="text-[11px] text-muted">{workflowT("classification_" + row.workflow.classification)}</span> : null}
                         </div>
+                      </TableCell>
+                      <TableCell data-assessment-arrangement className="px-2 py-2">
+                        <p className="truncate font-medium text-ink"><time dateTime={scheduledAt ?? undefined} aria-label={formatDashboardDate(scheduledAt, dateContext, { time: true, full: true })}>{formatDashboardDate(scheduledAt, dateContext, { time: true })}</time></p>
                         <div className="mt-1 flex min-w-0 items-center gap-1.5 text-[11px] text-muted" data-assessment-support-owner>
-                          <span className="shrink-0">{fieldM.supportOwner}</span>
-                          <span className="truncate font-medium text-ink" title={row.supportOwnerName || undefined}>{row.supportOwnerName || "—"}</span>
+                          <span className="max-w-[50%] truncate font-medium text-ink" title={fieldM.supportOwner}
+                            aria-label={`${fieldM.supportOwner}: ${row.supportOwnerName || "—"}`}>{row.supportOwnerName || "—"}</span>
+                          <span aria-hidden>·</span>
+                          <span className="truncate" title={row.location || undefined}>{row.location || "—"}</span>
                         </div>
                       </TableCell>
                       <TableCell className="px-2 py-2">
@@ -358,10 +361,13 @@ export function AssessmentUnifiedWorkbench({
                           {conclusion || (completed ? t("conclusionPending") : t("stageAssessmentPending"))}
                         </p>
                       </TableCell>
-                      <TableCell className="px-2 py-2">
-                        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                          {current ? <StageBadge stage={stage} contacting={false} /> : <span className="text-muted">—</span>}
-                          {current && row.workflow?.classification ? <span className="text-[11px] text-muted">{workflowT("classification_" + row.workflow.classification)}</span> : null}
+                      <TableCell data-assessment-current-work className="px-2 py-2">
+                        <div className="flex min-w-0 items-center gap-1.5 text-[11px]">
+                          <span role="img" title={t(row.assessorSource === "actual" ? "actualAssessor" : "assignedAssessor")}
+                            aria-label={t(row.assessorSource === "actual" ? "actualAssessor" : "assignedAssessor")} className="shrink-0">
+                            {row.assessorSource === "actual" ? <UserCheck aria-hidden className="size-4 text-leaf-deep" /> : <CalendarClock aria-hidden className="size-4 text-crater" />}
+                          </span>
+                          <span className="truncate font-medium text-ink" title={row.assessorName || undefined}>{row.assessorName || "—"}</span>
                           {!current && row.assessment ? <BusinessRecordRevisionButton kind="assessment" recordId={row.assessment.id} subject={row.name}/> : null}
                         </div>
                         {mayAssess && row.assessmentKind === "one_to_one" ? <div className="mt-1" data-assessment-question-entry
@@ -384,7 +390,11 @@ export function AssessmentUnifiedWorkbench({
                         assessors={assessors} reassigning={reassigningId === row.id} onReassign={(id) => reassignAssessor(row, id)}
                         onSaved={saveRow} onNoteSaved={(entry) => saveQuickFollowUp(row, entry.content, entry.createdAt)}
                         onSaveAndNext={nextAssessmentWorkbenchRowId(visibleRows.map((item) => item.id), row.id) ? () => advanceFrom(row.id) : undefined}
-                        onHandoffSaved={(context) => updateDraft(row.id, (current) => ({ ...current, route: context.route }))} />
+                        onHandoffSaved={(context) => {
+                          updateDraft(row.id, (current) => ({ ...current, route: context.route }));
+                          setRows(current => current.map(candidate => candidate.id === row.id || candidate.registrationId === context.registrationId
+                            ? { ...candidate, enrollmentId: context.enrollmentId } : candidate));
+                        }} />
                     </FollowupInlineDetails>
                   </ActivityAssessmentDraftProvider>
                 );

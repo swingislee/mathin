@@ -79,3 +79,12 @@ export interface LeadPoolRow {
   nextContactAt: string | null;
   activeInvitation: InvitationSummary | null;
 }
+
+/** 已登记诺访或已确认到访安排；尚在协调的邀约保持未完成。 */
+export function leadHasCommittedVisit(
+  lead?: Pick<LeadPoolRow, "visitCommitted" | "activeInvitation"> | null,
+  invitation?: Pick<InvitationSummary, "state"> | null,
+): boolean {
+  const state = (invitation ?? lead?.activeInvitation)?.state;
+  return lead?.visitCommitted === true || state === "confirmed" || state === "completed";
+}
