@@ -21,7 +21,7 @@ import { FittedCoursewareCanvas } from "./FittedCoursewareCanvas";
 import { PageDocVerticalSliceEditor } from "./PageDocVerticalSliceEditor";
 import { StagePreview } from "./StagePreview";
 import { SourceRuntimeFourByThreeEditor } from "./SourceRuntimeFourByThreeEditor";
-import { CreateFormalCubePageButton, FormalCubePageEditor, type FormalCubePageEditorData } from "./FormalCubePageEditor";
+import { CreateBlankCoursewarePageButton, FormalCubePageEditor, type FormalCubePageEditorData } from "./FormalCubePageEditor";
 import { formalCubeDirectory, type FormalCubePageSummary } from "./formal-cube-page-contract";
 import type {
   UnifiedPageDocEditorData,
@@ -64,7 +64,7 @@ function workspaceHref({
 }) {
   const query = new URLSearchParams({ workspace: "courseware", canvas, track });
   if (page > 1) query.set("page", String(page));
-  if (cubePage) { query.set("cubePage", cubePage); query.delete("page"); }
+  if (cubePage) { query.set("compositionPage", cubePage); query.delete("page"); }
   if (returnTo) query.set("returnTo", returnTo);
   return `/dashboard/courseware/lectures/${lectureId}?${query.toString()}`;
 }
@@ -215,7 +215,7 @@ export async function UnifiedCoursewareWorkspace({
           header: <CoursewareWorkbenchDirectoryHeader
             title={t("pageDirectory")}
             meta={t("pageCount", { count: pages.length })}
-            action={<CreateFormalCubePageButton lectureId={detail.lecture.id} returnTo={returnTo} />}
+            action={<CreateBlankCoursewarePageButton lectureId={detail.lecture.id} returnTo={returnTo} />}
           />,
           content: pages.length > 0
             ? <CoursewareFormalPageRail

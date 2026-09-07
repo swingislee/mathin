@@ -12,6 +12,7 @@ import { getLectureWorkspaceDetail, isUuid } from "@/features/school/curriculum/
 import { requirePerm } from "@/lib/auth";
 import { loadFormalCubePages } from "./formal-cube-page-data";
 import { formalCubePageSchema } from "./formal-cube-page-contract";
+import { FORMAL_MANUAL_PAGE_SOURCE, formalManualPageSchema } from "./formal-manual-page-contract";
 import type { FormalCubePageEditorData } from "./FormalCubePageEditor";
 import {
   loadCoursewareStudioPage,
@@ -109,7 +110,7 @@ export async function loadUnifiedCoursewareWorkspaceData(
   let pageEditor: UnifiedPageDocEditorData | null = null;
   let sourceRuntimeEditor: UnifiedSourceRuntimeEditorData | null = null;
   let formalCubeEditor: FormalCubePageEditorData | null = null;
-  const requestedCubePage = first(rawSearchParams.cubePage);
+  const requestedCubePage = first(rawSearchParams.compositionPage) ?? first(rawSearchParams.cubePage);
   if (requestedCubePage && (!isUuid(requestedCubePage) || !formalCubePages.some((page) => page.pageDocId === requestedCubePage))) notFound();
   const pageDocId = requestedCubePage ?? safeNativePreview?.page.pageDocId ?? safeAdaptedPreview?.page.pageDocId ?? null;
 
@@ -123,8 +124,10 @@ export async function loadUnifiedCoursewareWorkspaceData(
         ? "adapted-4x3" : "native-16x9";
       const studio = cubeTrack === "adapted-4x3" ? adaptedStudioPage : nativeStudioPage;
       if (!studio) notFound();
+      const manual = formalCubePages.find((page) => page.pageDocId === pageDocId)?.sourceCoursewareId === FORMAL_MANUAL_PAGE_SOURCE;
       formalCubeEditor = { pageDocId, title: studio.page.title, track: cubeTrack,
-        revisionNo: studio.activeRevision.revisionNo, doc: formalCubePageSchema.parse(studio.activeRevision.doc) };
+        manual, bindingUrls: studio.bindingUrls, revisionNo: studio.activeRevision.revisionNo,
+        doc: (manual ? formalManualPageSchema : formalCubePageSchema).parse(studio.activeRevision.doc) };
     }
     const nativePageDoc = nativeStudioPage?.activeRevision.doc.docVersion === PAGE_DOC_VERSION
       ? { studioPage: nativeStudioPage, doc: nativeStudioPage.activeRevision.doc }

@@ -22,7 +22,7 @@ export function createFormalCubePage(tool: CubeCoursewareTool) {
   return formalCubePageSchema.parse(doc);
 }
 
-export interface FormalCubePageSummary { pageDocId: string; title: string; pageNo: number }
+export interface FormalCubePageSummary { pageDocId: string; title: string; pageNo: number; sourceCoursewareId?: string }
 
 /** 已发布目录维持原索引，新草稿只追加一次；立方体页始终通过稳定 ID 打开。 */
 export function formalCubeDirectory<T extends { pageDocId: string; title: string }>(released: readonly T[], cubes: readonly FormalCubePageSummary[]) {

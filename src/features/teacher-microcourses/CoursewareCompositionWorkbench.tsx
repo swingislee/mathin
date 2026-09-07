@@ -51,6 +51,7 @@ import { CoursewarePageEditorToolbar } from "@/features/courseware-doc/Coursewar
 import { CoursewareH5AuthoringDialog } from "@/features/courseware-doc/CoursewareH5AuthoringDialog";
 import {
   createCoursewareInsertedImageNode,
+  createCoursewareInsertedH5Node,
   createCoursewareInsertedNode,
 } from "@/features/courseware-doc/courseware-inserted-node";
 import { useCoursewareEditHistory } from "@/features/courseware-doc/useCoursewareEditHistory";
@@ -104,6 +105,8 @@ interface PersistedCompositionPage {
 
 export interface CompositionPagePersistence {
   save: (input: { pageDocId: string; doc: CoursewareCompositionPage; baseRevisionNo: number; title: string; note: string }) => Promise<ActionResult<{ doc: CoursewareCompositionPage; revisionNo: number }>>;
+  uploadImage?: (file: File) => Promise<ActionResult<{ bindingKey: string; url: string }>>;
+  createH5?: (html: string) => Promise<ActionResult<{ bindingKey: string; url: string }>>;
 }
 
 function blockLabel(
@@ -116,6 +119,7 @@ function blockLabel(
   if (block.type === "tool") return t("componentTool");
   const node = doc.overlay.nodes.find((item) => item.id === block.nodeId);
   if (node?.adapter === "image") return t("componentImage");
+  if (node?.adapter === "h5") return t("componentH5");
   if (node?.adapter === "rich_text") return t("componentFormula");
   if (node?.adapter === "shape") return t("componentShape");
   return t("componentText");
@@ -293,10 +297,10 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
   };
 
   const uploadImage = (file: File | null) => {
-    if (!file || !microcourseId) return;
+    if (!file || (!microcourseId && !persistence?.uploadImage)) return;
     startTransition(async () => {
-      const result = await uploadTeacherMicrocourseImageAction({
-        microcourseId,
+      const result = persistence?.uploadImage ? await persistence.uploadImage(file) : await uploadTeacherMicrocourseImageAction({
+        microcourseId: microcourseId!,
         pageDocId: page.pageDocId,
         file,
       });
@@ -422,7 +426,7 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
         text: () => addNode("text"),
         formula: () => addNode("formula"),
         shape: () => addNode("shape"),
-        image: microcourseId ? (
+        image: microcourseId || persistence?.uploadImage ? (
           <CoursewareEditorToolbarLabel aria-label={t("componentImage")} title={t("componentImage")}>
               <Input type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="sr-only" disabled={pending} onChange={(event) => uploadImage(event.target.files?.[0] ?? null)} />
               <ImagePlus className="size-4" />
@@ -436,7 +440,16 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
               setSelectedBlockId(next.layout.blocks.find((block) => !previousIds.has(block.id))?.id ?? null);
           }} />
         ) : undefined,
-        h5: microcourseId ? (
+        h5: persistence?.createH5 ? (
+          <CoursewareH5AuthoringDialog iconOnly submit={persistence.createH5} onSaved={(asset) => {
+            setBindingUrls((current) => ({ ...current, [asset.bindingKey]: asset.url }));
+            const node = createCoursewareInsertedH5Node(asset.bindingKey, docRef.current.overlay.nodes.length + 1, docRef.current.canvas);
+            const next = addCoursewareCompositionNode(docRef.current, node, { columnSpan: 6, rowSpan: 5 });
+            if (next === docRef.current) { setMessage(t("componentNoSpace")); return; }
+            updateDoc(next);
+            setSelectedBlockId(`node-${node.id}`);
+          }} />
+        ) : microcourseId ? (
           <H5ComponentDialog microcourseId={microcourseId} disabled={pending} iconOnly onSaved={(h5) => {
               const previousIds = new Set(docRef.current.layout.blocks.map((block) => block.id));
               const next = addCoursewareCompositionH5(docRef.current, h5);

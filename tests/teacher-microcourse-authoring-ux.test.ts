@@ -70,7 +70,7 @@ describe("teacher microcourse authoring UX", () => {
     expect(editor).toContain("workbenchRef.current?.rename?.(value)");
     expect(workbench).toContain("CoursewareEditorAdapterSurface");
     expect(adapterSurface).toContain("CoursewareStageViewport");
-    expect(workbench).toContain("CoursewareInsertionToolbar");
+    expect(workbench).toContain("CoursewarePageEditorToolbar");
     expect(workbench).toContain("CoursewareEditorToolbarButton");
     expect(workbench).toContain("CoursewareEditorToolbarLabel");
     expect(workbench).toContain("iconOnly onCreated");
@@ -100,7 +100,7 @@ describe("teacher microcourse authoring UX", () => {
 
     expect(editor).toContain("const saveForSession");
     expect(editor).toContain("selectTeacherMicrocourseVariantAction");
-    expect(editor).toContain("/dashboard/sessions/${session.id}?stage=pre");
+    expect(editor).toContain("context?.returnHref ?? `/dashboard/sessions/${session?.id}?stage=pre`");
     expect(editor).toContain('t("catalogSharingTitle")');
     expect(editor).toContain("submitTeacherMicrocourseReviewAction");
     expect(editor).not.toContain("freezeTeacherMicrocourseSourceSessionAction");
