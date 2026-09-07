@@ -91,6 +91,38 @@ describe("assessment page aligned with first contact", () => {
     }
   });
 
+  it.each(["zh", "en"] as const)("keeps one-line communication context beside the latest timestamp without a details button in %s", (locale) => {
+    const content = "销售机会状态：new；下一动作：电话。下次联系时补充学生的学习安排与家长反馈。";
+    const record = row("compact", { latestFollowUp: { id: "note", content, kind: "note", createdAt: "2026-09-05T01:00:00Z", nextFollowUpAt: null, statusAfter: null } });
+    const markup = render(createElement(AssessmentUnifiedWorkbench, {
+      initialRows: [record], assessors: [], locale, canAssess: true, canSupport: true, canManageAssessor: true,
+    }), locale);
+    const body = markup.match(/<tbody\b[^>]*>([\s\S]*?)<\/tbody>/)?.[1] ?? "";
+    const cells = [...body.matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/g)].map((match) => match[1]);
+    const latest = cells[6];
+    expect(cells).toHaveLength(7);
+    expect(cells[5]).toContain("逐题登记");
+    expect(cells[5]).not.toContain("data-current-situation");
+    expect(latest).toContain("10:00");
+    expect(latest).toContain(content);
+    expect(latest).toMatch(/data-current-situation[^>]*class="[^"]*truncate/);
+    expect(latest).not.toContain("line-clamp-2");
+    expect(latest).not.toContain('title=');
+    expect(body).not.toContain(`>${(locale === "zh" ? zh : en).school.supportAssessment.details}<`);
+    expect(body.match(/data-student-360-trigger/g)).toHaveLength(1);
+    expect(body).toContain('aria-controls="assessment-details-compact"');
+  });
+
+  it("leaves empty and historical update cells free of communication previews", () => {
+    const latestFollowUp = { id: "note", content: "   ", kind: "note", createdAt: "2026-09-05T01:00:00Z", nextFollowUpAt: null, statusAfter: null };
+    const markup = render(createElement(AssessmentUnifiedWorkbench, {
+      initialRows: [row("empty", { latestFollowUp }), row("history", { recordState: "historical", latestFollowUp: { ...latestFollowUp, content: "历史跟进" } })],
+      assessors: [], locale: "zh", canAssess: true, canSupport: true, canManageAssessor: true,
+    }));
+    expect(markup).not.toContain("data-current-situation");
+    expect(markup.match(/data-assessment-latest-update/g)).toHaveLength(2);
+  });
+
   it("separates read-only progress from the labeled entry switcher in one detail header", () => {
     const markup = renderDetails(row("header"));
     const header = markup.slice(markup.indexOf("data-assessment-detail-header"), markup.indexOf('role="tabpanel"'));
