@@ -38,8 +38,8 @@ export function StaffOverviewDisplayPicker({ groups, ariaLabel }: {
     startTransition(() => router.refresh());
   };
   return <Popover open={open} onOpenChange={value => { setOpen(value); if (value) { setSelected(initialSelection()); setQuery(""); } }}>
-    <PopoverTrigger asChild><Button size="sm" variant="ghost" className="h-7 gap-1.5 px-1.5 text-[10px]" disabled={pending} aria-label={ariaLabel} title={ariaLabel}>
-      <SlidersHorizontal className="size-3.5" aria-hidden />{t("displaySettings")}
+    <PopoverTrigger asChild><Button size="sm" variant="ghost" className="size-7 shrink-0 p-0" disabled={pending} aria-label={ariaLabel} title={ariaLabel}>
+      <SlidersHorizontal className="size-3.5" aria-hidden />
     </Button></PopoverTrigger>
     <PopoverContent align="end" className="w-80 max-w-[calc(100vw-2rem)] space-y-3 p-3">
       <p className="text-xs leading-5 text-muted">{t("displayNote")}</p>
