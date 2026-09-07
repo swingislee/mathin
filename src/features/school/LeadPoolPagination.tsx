@@ -44,7 +44,7 @@ export function LeadPoolPagination({
   scope?: LeadPoolScope;
   status?: LeadStatus;
   q?: string;
-  baseHref?: `/dashboard/followups/${string}`;
+  baseHref?: `/dashboard/followups/${string}` | "/dashboard/students";
   focusLeadId?: string;
   extraQuery?: Record<string, string>;
   onPageChange?: (page: number, pageSize: LeadPageSize) => void;

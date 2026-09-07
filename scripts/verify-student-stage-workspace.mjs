@@ -1,0 +1,62 @@
+// 固定账号 API 与页面启动检查；交互和视觉由产品负责人验收。
+// node --experimental-strip-types scripts/verify-student-stage-workspace.mjs <local-dev-base-url>
+import fs from 'node:fs';
+import path from 'node:path';
+import { createServerClient } from '@supabase/ssr';
+import { loadFixedAccount } from '../e2e/support/fixed-accounts.ts';
+import { openHistoryLocalTarget } from './lib/history-local-target.mjs';
+
+const base = new URL(process.argv[2]);
+if (base.protocol !== 'http:' || base.port !== '3130' || !['192.168.5.213', '127.0.0.1', 'localhost'].includes(base.hostname)) throw new Error('LOCAL_DEV_URL_REQUIRED');
+const root = path.resolve('.tmp/student-stage-workspace');
+fs.mkdirSync(root, { recursive: true });
+openHistoryLocalTarget({ attestationPath: path.join(root, 'preflight.json'), errorFile: path.join(root, 'database-error.txt') });
+const env = Object.fromEntries(fs.readFileSync('.env.local', 'utf8').split(/\r?\n/).filter(line => /^[A-Z_]+=/.test(line)).map(line => {
+  const at = line.indexOf('='); return [line.slice(0, at), line.slice(at + 1).trim().replace(/^(["'])(.*)\1$/, '$2')];
+}));
+const stages = ['awaiting_first_contact', 'awaiting_assessment', 'awaiting_enrollment', 'awaiting_renewal', 'former_student'];
+const args = stage => ({ p_stage: stage, p_scope: 'all', p_search: '', p_page: 1, p_page_size: 100, p_detail: '' });
+const counts = [];
+for (const role of ['principal', 'teacher', 'student']) {
+  const account = loadFixedAccount(role);
+  if (!account) throw new Error('FIXED_DEVELOPMENT_ACCOUNT_REQUIRED');
+  const cookies = new Map();
+  const client = createServerClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, {
+    cookies: { getAll: () => [...cookies].map(([name, value]) => ({ name, value })), setAll: items => items.forEach(({ name, value }) => cookies.set(name, value)) },
+  });
+  const { error } = await client.auth.signInWithPassword(account);
+  if (error) throw new Error(`FIXED_LOGIN_FAILED:${role}:${error.code}`);
+  try {
+    if (role === 'student') {
+      const result = await client.rpc('list_student_stage_workspace', args(stages[0]));
+      if (!result.error || result.error.message !== 'FORBIDDEN') throw new Error('STUDENT_SCOPE_EXPOSED');
+      console.log(JSON.stringify({ role, forbidden: 'PASS' })); continue;
+    }
+    const seen = new Set();
+    for (const stage of role === 'principal' ? stages : [stages[0]]) {
+      const started = performance.now();
+      const { data, error } = await client.rpc('list_student_stage_workspace', args(stage));
+      if (error) throw new Error(`STAGE_RPC_FAILED:${role}:${error.message}`);
+      if (!Array.isArray(data.rows) || data.count !== (data.counts[stage] ?? 0)) throw new Error('STAGE_COUNT_MISMATCH');
+      for (const row of data.rows) {
+        if (row.stage !== stage || seen.has(row.key)) throw new Error('STAGE_IDENTITY_DUPLICATED');
+        seen.add(row.key);
+      }
+      if (role === 'principal') counts.push({ stage, count: data.count, elapsedMs: Math.round(performance.now() - started) });
+    }
+    for (const locale of role === 'principal' ? ['zh', 'en'] : ['zh']) {
+      for (const stage of role === 'principal' ? stages : [stages[0]]) {
+        const route = `/${locale}/dashboard/students?stage=${stage}&scope=all`;
+        const response = await fetch(new URL(route, base), { headers: { cookie: [...cookies].map(([name, value]) => `${name}=${value}`).join('; ') },
+          redirect: 'manual', signal: AbortSignal.timeout(45000) });
+        const html = await response.text();
+        if (response.status !== 200 || /Could not find|schema cache|MISSING_MESSAGE|NEXT_REDIRECT|__next_error__/.test(html)
+          || !(locale === 'zh' ? html.includes('历史学员') : html.includes('Former students'))) throw new Error(`PAGE_STARTUP_FAILED:${role}:${route}:${response.status}`);
+        console.log(JSON.stringify({ role, locale, stage, startup: 'PASS' }));
+      }
+    }
+  } finally { await client.auth.signOut({ scope: 'local' }); }
+}
+fs.writeFileSync(path.join(root, 'http-check.json'), JSON.stringify({ checkedAt: new Date().toISOString(), counts,
+  startup: 'PASS', visualAcceptance: 'PENDING' }, null, 2), 'utf8');
+console.log(JSON.stringify({ api: 'PASS', counts, visualAcceptance: 'PENDING' }));
