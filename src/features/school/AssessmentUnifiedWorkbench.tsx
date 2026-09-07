@@ -29,6 +29,7 @@ import {
 import {
   ASSESSMENT_WORKBENCH_QUEUES,
   assessmentWorkbenchStage,
+  assessmentWorkbenchHasFinalResult,
   nextAssessmentWorkbenchRowId,
   type AssessmentWorkbenchQueue,
   type AssessmentWorkbenchRow,
@@ -45,7 +46,6 @@ import {
   useDashboardTableView,
 } from "./dashboard-page";
 import type { InvitationAssessorOption } from "./invitation-contract";
-import { TeacherAssessmentEntryButton } from "./TeacherAssessmentEntryButton";
 
 interface SupportDraft {
   route: ActivityRouteKind | null;
@@ -73,13 +73,15 @@ function queueFor(
   draft: SupportDraft,
 ): Exclude<AssessmentWorkbenchQueue, "all"> {
   const stage = assessmentWorkbenchStage(row);
-  if (stage === "feedback" || stage === "handled") {
+  if (draft?.route || stage === "feedback" || stage === "handled") {
     return (draft?.route ?? row.route?.route) ? "handled" : "feedback";
   }
   return stage;
 }
 
 function assessmentConclusion(row: AssessmentWorkbenchRow): string {
+  if (row.assessment?.resultSource === "quick_entry") return row.assessment.teacherRecommendation || row.assessment.strengths || "";
+  if (row.assessment?.resultSource === "teacher") return row.assessment.teacherObservation;
   return row.assessment?.teacherObservation
     || row.assessment?.teacherRecommendation
     || row.assessment?.strengths
@@ -93,6 +95,7 @@ export function AssessmentUnifiedWorkbench({
   canAssess,
   canSupport,
   canManageAssessor,
+  canQuickEntry = canAssess,
   initialQuery,
   initialRecordState = 'all',
 }: {
@@ -102,6 +105,7 @@ export function AssessmentUnifiedWorkbench({
   canAssess: boolean;
   canSupport: boolean;
   canManageAssessor: boolean;
+  canQuickEntry?: boolean;
   initialQuery?: string;
   initialRecordState?: StateFilter;
 }) {
@@ -109,6 +113,7 @@ export function AssessmentUnifiedWorkbench({
   const hubT = useTranslations("school.assessmentHub");
   const assessmentT = useTranslations("school.assessments");
   const teacherT = useTranslations("school.teacherAssessment");
+  const quickT = useTranslations("school.assessmentQuickEntry");
   const tableT = useTranslations("school.table");
   const initialDrafts = useMemo(() => Object.fromEntries(
     initialRows.map((row) => [row.id, draftFromRow(row)]),
@@ -205,7 +210,7 @@ export function AssessmentUnifiedWorkbench({
     result: {
       filterValues: (row) => {
         const stage = queueFor(row, drafts[row.id]);
-        const completed = stage === "feedback" || stage === "handled";
+        const completed = assessmentWorkbenchHasFinalResult(row);
         const score = completed ? row.assessment?.score : null;
         const hasScore = score !== null && score !== undefined;
         return [
@@ -390,7 +395,7 @@ export function AssessmentUnifiedWorkbench({
                 const active = row.id === activeId;
                 const expanded = row.id === expandedId;
                 const stage = queueFor(row, draft);
-                const completed = stage === "feedback" || stage === "handled";
+                const completed = assessmentWorkbenchHasFinalResult(row);
                 const conclusion = assessmentConclusion(row);
                 return (
                   <ActivityAssessmentDraftProvider key={row.id} row={row}>
@@ -455,6 +460,10 @@ export function AssessmentUnifiedWorkbench({
                           })}</p>
                         ) : <p className="truncate font-medium text-muted">{completed ? "—" : t(stage === "pending" ? "waitingStart" : "stageInProgress")}</p>}
                         {row.questionSummary?.paperTitle ? <p className="mt-0.5 truncate text-[11px] text-muted">{row.questionSummary.paperTitle}</p> : null}
+                        {current && row.quickEntry && !row.quickEntry.finalizedAt && !row.assessmentCompletedAt ? <p className="mt-1 text-[11px] text-crater" data-assessment-pending-result>
+                          {quickT("pendingResult")}{row.quickEntry.values.score !== null ? ` · ${row.quickEntry.values.score}` : ""}</p> : null}
+                        {current && row.assessment?.resultSource && row.assessment.resultSource !== "legacy" ? <p className="mt-1 text-[11px] text-muted">
+                          {quickT(row.assessment.resultSource === "quick_entry" ? "quickResult" : "teacherResult")}{row.assessment.recordedByName ? ` · ${row.assessment.recordedByName}` : ""}</p> : null}
                       </TableCell>
                       <TableCell className="px-2 py-2">
                         <p className={cn("line-clamp-2 whitespace-normal leading-5", conclusion ? "text-ink" : "text-muted")} title={!current && expanded ? undefined : conclusion}>
@@ -466,9 +475,6 @@ export function AssessmentUnifiedWorkbench({
                           {current ? <StageBadge stage={stage} contacting={false} /> : <HistoricalRecordBadge locale={locale} />}
                           {!current && row.assessment ? <BusinessRecordRevisionButton kind="assessment" recordId={row.assessment.id} subject={row.name}/> : null}
                           <Button type="button" variant="ghost" size="sm" className="h-auto min-h-7 whitespace-normal rounded-md px-1.5 py-1 text-[11px]" aria-expanded={expanded} aria-controls={`assessment-details-${row.id}`} title={`${t("details")} · Enter`} aria-keyshortcuts="Enter" onClick={(event) => { event.stopPropagation(); changeDetails(row.id, !expanded); }}><FilePenLine className="size-3.5" />{t("details")}</Button>
-                          {mayAssess && row.assessmentKind === "one_to_one" ? (
-                            <TeacherAssessmentEntryButton registrationId={row.registrationId} invitationId={row.invitationId} />
-                          ) : null}
                         </div>
                         {current && row.latestFollowUp?.content ? <p data-current-situation className="mt-1 line-clamp-2 text-[11px] leading-4 text-muted" title={row.latestFollowUp.content}>{row.latestFollowUp.content}</p> : null}
                       </TableCell>
@@ -482,6 +488,7 @@ export function AssessmentUnifiedWorkbench({
                       active={active} onActivate={() => setActiveId(row.id)} colSpan={7} id={`assessment-details-${row.id}`}>
                       <AssessmentRecordDetails row={row} stage={stage} conclusion={conclusion} locale={locale}
                         canAssess={mayAssess} canSupport={maySupport} canManageAssessor={canManageAssessor}
+                        canQuickEntry={current && canQuickEntry} canRoute={current && canManageAssessor}
                         assessors={assessors} reassigning={reassigningId === row.id} onReassign={(id) => reassignAssessor(row, id)}
                         onSaved={saveRow} onNoteSaved={(entry) => saveQuickFollowUp(row, entry.content, entry.createdAt)}
                         onSaveAndNext={nextAssessmentWorkbenchRowId(visibleRows.map((item) => item.id), row.id) ? () => advanceFrom(row.id) : undefined}

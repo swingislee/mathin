@@ -15,6 +15,7 @@ export const activityEnrollmentContextSchema = z.object({
   routeNote: z.string(), enrollmentId: nullableId, courseTitle: z.string().nullable(),
   termName: z.string().nullable(), classroomName: z.string().nullable(), termId: nullableId,
   canContact: z.boolean(), canEnroll: z.boolean(),
+  canContactBeforeCompletion: z.boolean().optional(),
   contacts: z.array(z.object({
     id: z.uuid(), channel: z.enum(CONTACT_CHANNELS), outcome: z.enum(["connected", "unreachable"]),
     route: z.enum(CONTACT_ROUTES), note: z.string(), nextContactAt: z.string().nullable(),

@@ -2,10 +2,11 @@ import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { assessmentWorkbenchRowsForView, assessmentWorkbenchStage, parseAssessmentWorkbenchFilters } from "../src/features/school/assessment-workbench-contract";
 
-const db = vi.hoisted(() => ({ tables: {} as Record<string, Record<string, unknown>[]>, activityFilters: [] as string[], batchSizes: [] as number[] }));
+const db = vi.hoisted(() => ({ tables: {} as Record<string, Record<string, unknown>[]>, activityFilters: [] as string[], batchSizes: [] as number[], teacherRequired: false }));
 vi.mock("server-only", () => ({}));
 vi.mock("../src/lib/supabase/server", () => ({
   createClient: async () => ({
+    rpc: async () => ({ data: db.teacherRequired, error: null }),
     from: (table: string) => {
       let rows = db.tables[table] ?? [];
       const query = {
@@ -31,7 +32,7 @@ import { listAssessmentWorkbenchRows } from "../src/features/school/assessment-w
 const source = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
 describe("unified assessment workbench", () => {
-  beforeEach(() => { db.tables = {}; db.activityFilters = []; db.batchSizes = []; });
+  beforeEach(() => { db.tables = {}; db.activityFilters = []; db.batchSizes = []; db.teacherRequired = false; });
 
   it("opens an attached detail row while keeping the original record row and table columns fixed", () => {
     const workbench = source("src/features/school/AssessmentUnifiedWorkbench.tsx");
@@ -40,7 +41,8 @@ describe("unified assessment workbench", () => {
     expect(workbench).toContain("<DashboardCommandPanel>");
     expect(workbench).toContain("<DashboardTableShell data-assessment-unified-workbench data-followup-workbench");
     expect(workbench).toContain('className="sticky left-0');
-    expect(workbench).toContain("TeacherAssessmentEntryButton");
+    expect(workbench).not.toContain("TeacherAssessmentEntryButton");
+    expect(detail.match(/<TeacherAssessmentEntryButton/g)).toHaveLength(1);
     expect(workbench).toContain("teacherObservation");
     expect(workbench).toContain("<FollowupTabs />");
     expect(workbench).toContain("<FollowupInlineDetails");
@@ -131,6 +133,30 @@ describe("unified assessment workbench", () => {
     expect(rows).toHaveLength(525);
     expect(rows.some((row) => row.registrationId === "registration-524")).toBe(true);
     expect(Math.max(...db.batchSizes)).toBeLessThanOrEqual(80);
+  });
+
+  it("keeps the invitation row identity and separates support authors from assigned teachers", async () => {
+    db.teacherRequired = true;
+    const updatedAt = "2026-09-07T01:00:00Z";
+    db.tables.activities = [{ id: "activity", kind: "assessment_1v1", title: "测评", scheduled_at: updatedAt, location: "", source_invitation_id: "invite" }];
+    db.tables.activity_registrations = [{ id: "registration", activity_id: "activity", student_id: null, lead_id: "lead", status: "attended", outcome: "",
+      assessment_paper_version_id: null, assessment_started_at: null, assessment_completed_at: null, updated_at: updatedAt,
+      students: null, leads: { id: "lead", provisional_student_name: "孩子", phone: "", grade_hint: 3, grade_text: "", student_id: null } }];
+    db.tables.lead_invitation_threads = [{ id: "invite", kind: "assessment_1v1", state: "completed", lead_id: "lead", assessor_id: "teacher",
+      assessor: { display_name: "测评老师" }, scheduled_at: updatedAt, location_text: "", summary: "", updated_at: updatedAt }];
+    db.tables.assessment_results = [{ id: "result", activity_registration_id: "registration", assessment_band: "a", score: 65,
+      strengths: "", focus_areas: "", parent_concerns: "反馈", teacher_recommendation: "", recommended_class: "", teacher_observation: "",
+      updated_at: updatedAt, result_source: "quick_entry", result_finalized_at: updatedAt, assessor: { id: "support", display_name: "学服老师" } }];
+    db.tables.assessment_quick_entries = [{ id: "entry", registration_id: "registration", entry: { score: 65 }, revision: 1,
+      recorded_by: "support", recorder: { display_name: "学服老师" }, updated_at: updatedAt, finalized_at: updatedAt }];
+    db.tables.assessment_entry_actors = [{ id: "event", registration_id: "registration", entry_kind: "quick_entry", recorded_by: "support", recorded_at: updatedAt, display_name: "学服老师" }];
+    const rows = await listAssessmentWorkbenchRows();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ id: "invitation:invite", teacherRequired: true, assessorId: "teacher", assessorName: "测评老师", assessorSource: "assigned" });
+    expect(rows[0].assessment?.recordedByName).toBe("学服老师");
+    expect(rows[0].quickEntry?.recordedByName).toBe("学服老师");
+    expect(rows[0].entryActors?.[0]).toMatchObject({ kind: "quick_entry", id: "support" });
+    expect(assessmentWorkbenchStage(rows[0])).toBe("feedback");
   });
 
   it("writes activity details to their existing source record and supports keyboard save", () => {

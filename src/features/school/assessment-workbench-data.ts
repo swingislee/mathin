@@ -3,6 +3,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { ActivityKind } from "./activity-kinds";
 import type { PublicClassPresence } from "./public-class";
+import { REQUIRE_TEACHER_ASSESSMENT_FLAG, type AssessmentQuickEntry, type AssessmentQuickEntryValues, type AssessmentEntryActor } from "./assessment-quick-entry-contract";
 import type { ActivityRouteKind, StoredAssessmentBand } from "./activity-workflow-contract";
 import type {
   AssessmentWorkbenchAssessment,
@@ -84,6 +85,18 @@ interface AssessmentDbRow {
   teacher_observation: string;
   updated_at: string;
   assessor: { id: string; display_name: string } | null;
+  result_source: "legacy" | "quick_entry" | "teacher";
+  result_finalized_at: string | null;
+}
+
+interface QuickEntryDbRow {
+  id: string; registration_id: string; entry: AssessmentQuickEntryValues; revision: number;
+  recorded_by: string; updated_at: string; finalized_at: string | null;
+  recorder: { display_name: string } | null;
+}
+interface EntryActorDbRow {
+  id: string; registration_id: string; entry_kind: "quick_entry" | "teacher";
+  recorded_by: string; recorded_at: string; display_name: string;
 }
 
 interface PublicClassSegmentDbRow {
@@ -236,7 +249,7 @@ const REGISTRATION_COLUMNS = [
 
 export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbenchRow[]> {
   const supabase = await createClient();
-  const [activityResult, confirmedInvitationResult] = await Promise.all([
+  const [activityResult, confirmedInvitationResult, requiredResult] = await Promise.all([
     readAllRows<ActivityDbRow>(() => from(supabase)("activities")
       .select(ACTIVITY_COLUMNS)
       .is("deleted_at", null)
@@ -246,9 +259,11 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
       .eq("kind", "assessment_1v1")
       .eq("state", "confirmed")
       .order("scheduled_at", { ascending: true })),
+    supabase.rpc("is_feature_enabled", { p_flag_key: REQUIRE_TEACHER_ASSESSMENT_FLAG }),
   ]);
   if (activityResult.error) throw new Error(activityResult.error.message);
   if (confirmedInvitationResult.error) throw new Error(confirmedInvitationResult.error.message);
+  if (requiredResult.error) throw new Error(requiredResult.error.message);
 
   const activities = activityResult.data ?? [];
   const registrationResult = await readRelatedRows<RegistrationDbRow>(supabase, "activity_registrations", REGISTRATION_COLUMNS, "activity_id", activities.map((activity) => activity.id));
@@ -280,8 +295,10 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
     publicClassSegmentResult,
     publicClassRecordResult,
     followUpResult,
+    quickEntryResult,
+    entryActorResult,
   ] = await Promise.all([
-    readRelatedRows<AssessmentDbRow>(supabase, "assessment_results", "id,activity_registration_id,assessed_on,assessment_band,score,strengths,focus_areas,parent_concerns,teacher_recommendation,recommended_class,teacher_observation,updated_at,assessor:profiles!assessment_results_assessed_by_fkey(id,display_name)", "activity_registration_id", registrationIds),
+    readRelatedRows<AssessmentDbRow>(supabase, "assessment_results", "id,activity_registration_id,assessed_on,assessment_band,score,strengths,focus_areas,parent_concerns,teacher_recommendation,recommended_class,teacher_observation,updated_at,result_source,result_finalized_at,assessor:profiles!assessment_results_assessed_by_fkey(id,display_name)", "activity_registration_id", registrationIds),
     readRelatedRows<RouteDbRow>(supabase, "activity_routes", "id,activity_registration_id,route,note,updated_at", "activity_registration_id", registrationIds),
     readRelatedRows<InvitationDbRow>(supabase, "lead_invitation_threads", INVITATION_COLUMNS, "id", sourceInvitationIds),
     readRelatedRows<PaperVersionDbRow>(supabase, "assessment_paper_versions", "id,paper_id,question_count,total_score", "id", paperVersionIds),
@@ -289,6 +306,8 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
     readRelatedRows<PublicClassSegmentDbRow>(supabase, "public_class_segments", "id,activity_id,kind,title,scheduled_at,location,primary_teacher_id,primary_teacher:profiles!public_class_segments_primary_teacher_id_fkey(display_name)", "activity_id", publicClassActivityIds),
     readRelatedRows<PublicClassRecordDbRow>(supabase, "public_class_participant_records", "id,segment_id,registration_id,student_presence,guardian_presence,learning_observation,assessment_summary,parent_feedback,recommendation,updated_at", "activity_id", publicClassActivityIds),
     readRelatedRows<FollowUpDbRow>(supabase, "student_follow_ups", "id,student_id,content,kind,next_follow_up_at,status_after,created_at,record_state", "student_id", followUpStudentIds),
+    readRelatedRows<QuickEntryDbRow>(supabase, "assessment_quick_entries", "id,registration_id,entry,revision,recorded_by,updated_at,finalized_at,recorder:profiles!assessment_quick_entries_recorded_by_fkey(display_name)", "registration_id", registrationIds),
+    readRelatedRows<EntryActorDbRow>(supabase, "assessment_entry_actors", "id,registration_id,entry_kind,recorded_by,recorded_at,display_name", "registration_id", registrationIds),
   ]);
   if (assessmentResult.error) throw new Error(assessmentResult.error.message);
   if (routeResult.error) throw new Error(routeResult.error.message);
@@ -298,6 +317,19 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
   if (publicClassSegmentResult.error) throw new Error(publicClassSegmentResult.error.message);
   if (publicClassRecordResult.error) throw new Error(publicClassRecordResult.error.message);
   if (followUpResult.error) throw new Error(followUpResult.error.message);
+  if (quickEntryResult.error) throw new Error(quickEntryResult.error.message);
+  if (entryActorResult.error) throw new Error(entryActorResult.error.message);
+
+  const quickEntries = new Map<string, AssessmentQuickEntry>((quickEntryResult.data ?? []).map((entry) => [entry.registration_id, {
+    id: entry.id, values: entry.entry, revision: entry.revision, recordedBy: entry.recorded_by,
+    recordedByName: entry.recorder?.display_name ?? "", updatedAt: entry.updated_at, finalizedAt: entry.finalized_at,
+  }]));
+  const entryActors = new Map<string, AssessmentEntryActor[]>();
+  for (const actor of entryActorResult.data ?? []) {
+    entryActors.set(actor.registration_id, [...entryActors.get(actor.registration_id) ?? [], {
+      id: actor.recorded_by, name: actor.display_name, kind: actor.entry_kind, recordedAt: actor.recorded_at,
+    }]);
+  }
 
   const paperIds = [...new Set((paperVersionResult.data ?? []).map((row) => row.paper_id))];
   const questionIds = [...new Set((questionResult.data ?? []).map((row) => row.question_id))];
@@ -324,9 +356,14 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
       recommendedClass: row.recommended_class,
       teacherObservation: row.teacher_observation,
       updatedAt: row.updated_at,
+      resultSource: row.result_source,
+      finalizedAt: row.result_finalized_at,
+      recordedByName: row.assessor?.display_name ?? "",
     });
-    assessmentAssessorNames.set(row.activity_registration_id, row.assessor?.display_name ?? "");
-    if (row.assessor?.id) assessmentAssessorIds.set(row.activity_registration_id, row.assessor.id);
+    if (row.result_source !== "quick_entry") {
+      assessmentAssessorNames.set(row.activity_registration_id, row.assessor?.display_name ?? "");
+      if (row.assessor?.id) assessmentAssessorIds.set(row.activity_registration_id, row.assessor.id);
+    }
   }
   const routes = new Map<string, AssessmentWorkbenchRoute>();
   for (const row of routeResult.data ?? []) {
@@ -393,6 +430,8 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
       assessmentStartedAt: null,
       assessmentCompletedAt: null,
       assessment: null,
+      teacherRequired: requiredResult.data,
+      quickEntry: null,
       questionSummary: null,
       route: null,
       latestFollowUp: invitation.leads?.student_id ? latestFollowUps.get(invitation.leads.student_id) ?? null : null,
@@ -410,7 +449,7 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
       const assessment = assessments.get(registration.id) ?? null;
       const route = routes.get(registration.id) ?? null;
       const completed = Boolean(registration.assessment_completed_at)
-        || Boolean(assessment && !registration.assessment_started_at);
+        || Boolean(assessment && assessment.resultSource !== "quick_entry" && !registration.assessment_started_at);
       const actualAssessorId = assessmentAssessorIds.get(registration.id) ?? null;
       const actualAssessorName = assessmentAssessorNames.get(registration.id) ?? "";
       const version = registration.assessment_paper_version_id
@@ -422,7 +461,7 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
         ? buildQuestionSummary(version, paper?.title ?? "", questionResults, questionById)
         : null;
       return {
-        id: `registration:${registration.id}`,
+        id: activity.source_invitation_id ? `invitation:${activity.source_invitation_id}` : `registration:${registration.id}`,
         assessmentKind: activity.kind === "assessment_1v1" ? "one_to_one" : "activity",
         activityId: activity.id,
         activityTitle: activity.title,
@@ -449,10 +488,14 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
         assessmentStartedAt: registration.assessment_started_at,
         assessmentCompletedAt: registration.assessment_completed_at,
         assessment,
+        quickEntry: quickEntries.get(registration.id) ?? null,
+        entryActors: entryActors.get(registration.id) ?? [],
+        teacherRequired: requiredResult.data,
         questionSummary,
         route,
         latestFollowUp: registration.student_id ? latestFollowUps.get(registration.student_id) ?? null : null,
-        updatedAt: assessment?.updatedAt || route?.updatedAt || registration.updated_at,
+        updatedAt: [assessment?.updatedAt, route?.updatedAt, quickEntries.get(registration.id)?.updatedAt, registration.updated_at]
+          .filter((value): value is string => Boolean(value)).sort().at(-1)!,
       };
     });
 

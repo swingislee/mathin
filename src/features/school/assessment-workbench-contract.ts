@@ -1,6 +1,7 @@
 import type { ActivityRouteKind, StoredAssessmentBand } from "./activity-workflow-contract";
 import type { TeacherAssessmentOutcome } from "./teacher-assessment-contract";
 import type { PublicClassPresence } from "./public-class";
+import type { AssessmentEntryActor, AssessmentQuickEntry } from "./assessment-quick-entry-contract";
 
 export const ASSESSMENT_WORKBENCH_QUEUES = [
   "pending",
@@ -25,6 +26,9 @@ export interface AssessmentWorkbenchAssessment {
   recommendedClass: string;
   teacherObservation: string;
   updatedAt: string;
+  resultSource?: "legacy" | "quick_entry" | "teacher";
+  finalizedAt?: string | null;
+  recordedByName?: string;
 }
 export interface AssessmentWorkbenchRoute {
   id: string;
@@ -99,6 +103,9 @@ export interface AssessmentWorkbenchRow {
   questionSummary: AssessmentWorkbenchQuestionSummary | null;
   route: AssessmentWorkbenchRoute | null;
   latestFollowUp?: AssessmentWorkbenchFollowUp | null;
+  quickEntry?: AssessmentQuickEntry | null;
+  entryActors?: AssessmentEntryActor[];
+  teacherRequired?: boolean;
   updatedAt: string;
 }
 
@@ -155,12 +162,17 @@ export function assessmentWorkbenchCounts(
 export function assessmentWorkbenchStage(
   row: AssessmentWorkbenchRow,
 ): Exclude<AssessmentWorkbenchQueue, "all"> {
-  if (row.assessmentCompletedAt) return row.route ? "handled" : "feedback";
-  // Rows written by the retired aggregate editor predate per-question timestamps.
-  // Treat those complete aggregate facts as historical completions, not active work.
-  if (row.assessment && !row.assessmentStartedAt) return row.route ? "handled" : "feedback";
+  if (assessmentWorkbenchHasFinalResult(row)) return row.route ? "handled" : "feedback";
+  // 快速登记草稿和已完成归类各有事实，未发布分数不会被伪装成最终测评结果。
+  if (row.route) return "handled";
+  if (row.quickEntry || row.assessment?.resultSource === "teacher") return "in_progress";
   if (row.assessmentStartedAt || row.assessment) return "in_progress";
   return "pending";
+}
+
+export function assessmentWorkbenchHasFinalResult(row: AssessmentWorkbenchRow): boolean {
+  return Boolean(row.assessmentCompletedAt || row.assessment?.finalizedAt
+    || (row.assessment && (!row.assessment.resultSource || row.assessment.resultSource === "legacy") && !row.assessmentStartedAt));
 }
 
 export function assessmentWorkbenchRowsForView(

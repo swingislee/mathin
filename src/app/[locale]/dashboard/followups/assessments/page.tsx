@@ -35,6 +35,7 @@ export default async function AssessmentsPage({
       canAssess={canAssess}
       canSupport={canSupport}
       canManageAssessor={canManageAssessor}
+      canQuickEntry={canAssess || permissions.has("followup.write")}
     />
   );
 }

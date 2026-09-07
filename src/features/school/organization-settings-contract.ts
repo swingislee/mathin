@@ -20,6 +20,7 @@ export const CONFIGURABLE_ORGANIZATION_FEATURE_KEYS = [
   "teaching.classroom_h5_pointer_v1",
   "teaching.classroom_layout_v2",
   "teaching.teacher_microcourses_v1",
+  "assessment.require_teacher_completion",
 ] as const;
 
 // Retired rollout keys remain part of the database/wire contract so historical

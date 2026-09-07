@@ -51,7 +51,7 @@ export function PostActivityHandoff({ source, initialContext, onSaved }: {
     {!loading ? <Button size="sm" variant="ghost" onClick={() => setVersion((value) => value + 1)}>{t("retry")}</Button> : null}
   </div>;
   if (error) return <p role="alert" className="text-xs text-rose">{t(enrollmentErrorKey(error))}</p>;
-  if (!context.eligible) return <p className="py-3 text-xs text-muted">{t("notCompleted")}</p>;
+  if (!context.eligible && !context.canContactBeforeCompletion) return <p className="py-3 text-xs text-muted">{t("notCompleted")}</p>;
   return <HandoffEditor context={context} onSaved={saved} reload={() => setVersion((value) => value + 1)} />;
 }
 
@@ -95,7 +95,7 @@ function HandoffEditor({ context, onSaved, reload }: { context: ActivityEnrollme
         {context.recommendation ? <p className="text-muted">{t("recommendation")}: {context.recommendation}</p> : null}
         {context.enrollmentId ? <p className="text-leaf-deep">{t("enrolledResult", { course: context.courseTitle ?? "", term: context.termName ?? "", placement: context.classroomName || t("pendingPlacement") })}</p> : null}
       </div>
-      {context.canEnroll && !context.enrollmentId ? <Button size="sm" onClick={() => setEnrolling(true)}>{t("enroll")}</Button> : null}
+      {context.eligible && context.canEnroll && !context.enrollmentId ? <Button size="sm" onClick={() => setEnrolling(true)}>{t("enroll")}</Button> : null}
       {context.enrollmentId && context.canEnroll ? <Link className={buttonVariants({ size: "sm", variant: "secondary" })} href={`/dashboard/followups/enrollments?term=${context.termId}&student=${context.studentId}`}>{t("openPlacement")}</Link> : null}
     </div>
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(12rem,0.8fr)]">

@@ -15,6 +15,7 @@ vi.mock("@/features/school/activity-actions", () => ({ saveActivityAssessmentAct
 vi.mock("@/features/school/public-class-actions", () => ({ savePublicClassParticipantRecordAction: vi.fn() }));
 vi.mock("@/features/school/actions/followups", () => ({ addStudentFollowUp: vi.fn() }));
 vi.mock("@/features/school/assessment-assessor-actions", () => ({ reassignAssessmentAssessorAction: vi.fn() }));
+vi.mock("@/features/school/assessment-quick-entry-actions", () => ({ saveAssessmentQuickEntryAction: vi.fn() }));
 vi.mock("@/features/school/EnrollmentHandoffButton", () => ({ PostActivityHandoff: () => createElement("div", null, "handoff") }));
 vi.mock("@/features/school/TeacherAssessmentEntryButton", () => ({ TeacherAssessmentEntryButton: () => createElement("button", null, "逐题登记") }));
 vi.mock("@/features/school/Student360Sheet", () => ({
@@ -110,7 +111,10 @@ describe("assessment page aligned with first contact", () => {
     expect(markup).toContain("data-assessor-reassignment");
     expect(markup).toContain(zh.school.supportAssessment.confirmAssessor);
     expect(markup).toContain("逐题登记");
-    expect(markup).not.toContain("data-followup-entry-actions");
+    expect(markup.match(/data-followup-entry-actions/g)).toHaveLength(1);
+    expect(markup.match(/逐题登记/g)).toHaveLength(1);
+    expect(markup).toContain(zh.school.assessmentQuickEntry.questionOptional);
+    expect(markup).toContain("data-assessment-quick-entry");
   });
 
   it("renders historical feedback without live progress, reassignment, or editable modules", () => {
@@ -140,5 +144,37 @@ describe("assessment page aligned with first contact", () => {
     const ids = [...markup.matchAll(/<textarea\b[^>]*id="([^"]+)"/g)].map((match) => match[1]);
     expect(ids).toHaveLength(2);
     expect(new Set(ids).size).toBe(2);
+  });
+});
+
+describe("optional teacher assessment", () => {
+  it("lets support enter scores and routing before teacher completion without duplicating the teacher button", () => {
+    const record = row("support-first", { registrationId: null, studentId: null, leadId: "lead" });
+    const markup = render(createElement(AssessmentRecordDetails, {
+      row: record, stage: "pending", conclusion: "", locale: "zh", canAssess: false, canQuickEntry: true,
+      canRoute: true, canSupport: true, canManageAssessor: false, assessors: [], reassigning: false,
+      onReassign: vi.fn(), onSaved: vi.fn(), onNoteSaved: vi.fn(), onHandoffSaved: vi.fn(),
+    }));
+    expect(markup).toContain("data-assessment-quick-entry");
+    expect(markup).toContain('type="number"');
+    expect(markup).toContain(zh.school.enrollmentWorkflow.nextStep);
+    expect(markup).toContain(zh.school.assessmentQuickEntry.questionOptional);
+    expect(markup).not.toContain("逐题登记");
+    expect(markup).toContain(zh.school.followupEntry.save);
+  });
+
+  it("keeps inputs available under the required-teacher policy and distinguishes both contributors", () => {
+    const record = row("required", { teacherRequired: true, entryActors: [
+      { id: "support", name: "学服甲", kind: "quick_entry", recordedAt: "2026-09-07T01:00:00Z" },
+      { id: "teacher", name: "教师乙", kind: "teacher", recordedAt: "2026-09-07T02:00:00Z" },
+    ] });
+    const markup = renderDetails(record);
+    expect(markup).toContain(zh.school.assessmentQuickEntry.requiredHint);
+    expect(markup).toContain("快速登记：学服甲");
+    expect(markup).toContain("逐题测评：教师乙");
+    expect(markup).toMatch(/<input\b[^>]*type="number"/);
+    expect(markup.match(/<input\b[^>]*type="number"[^>]*>/)?.[0]).not.toContain(' disabled=""');
+    expect(markup.match(/逐题登记/g)).toHaveLength(1);
+    expect(markup).toContain(zh.school.supportAssessment.entryHandoff);
   });
 });
