@@ -40,7 +40,7 @@ import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
 import { businessSubjectKey, type StudentBusinessHistory } from "./student-business-history-contract";
 
 export function RenewalStudentPool({ data, supplement, canWrite, canReview, canEnroll, settings = false,
-  allowHealthSamples = false, healthSampleMode = false, history, initialQuery, initialRecordState = "all", timeZone = "Asia/Shanghai",
+  allowHealthSamples = false, healthSampleMode = false, history, initialQuery, initialRecordState = "current", timeZone = "Asia/Shanghai",
 }: {
   data: RenewalWorkspaceData; supplement: RenewalPoolSupplement;
   canWrite: boolean; canReview: boolean; canEnroll: boolean; settings?: boolean; health?: boolean;
@@ -109,7 +109,7 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
       name: history!.students[businessSubjectKey(row)] ?? recordM.unknown, phone: history!.subjects[businessSubjectKey(row)]?.phone ?? "",
       grade: history!.subjects[businessSubjectKey(row)]?.grade ?? null, classroom: `${row.period_label || `${row.period_year ?? ""}${row.period_key === "summer" ? t("season_summer") : row.period_key === "autumn" ? t("season_autumn") : ""}`} · ${row.class_label}`,
       teacher: row.teacher_label, owner: "", stage: row.outcome === "renewed" ? "enrolled" : row.outcome === "not_renewed" ? "not_enrolled" : "unknown",
-      note: row.decision_note, opportunityId: row.id, targetCourse: "", nextContactAt: null, updatedAt: null, recordState: "historical" as const,
+      note: row.decision_note, opportunityId: row.id, targetCourse: "", nextContactAt: null, updatedAt: null, recordState: row.record_state ?? "historical",
     }))];
     const displayRows: RenewalPoolRow[] = sampleMode ? samples.map((sample, index) => ({
       id: sample.facts.studentId, membershipId: null, studentId: sample.facts.studentId,

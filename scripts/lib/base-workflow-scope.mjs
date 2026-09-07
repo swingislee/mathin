@@ -4,7 +4,7 @@ const value=(row,field)=>(row.record_data.cells??[]).find(cell=>cell.fieldName==
 const nameKey=text=>String(text??'').normalize('NFKC').trim().replace(/\([\u4e00-\u9fff]{1,3}\)$/u,'').replace(/\s+/gu,'');
 const isBase=row=>row?.source_data.format==='feishu-base';
 const processingFields=['跟进结果','确认结果','跟进信息','确认信息备注','沟通情况','真题拼团沟通','跟进日期','确认日期'];
-const businessDates=['获取日期','跟进日期','确认日期','到访日期','体/测日期','报名日期','报名缴费日期','缴费时间','补续日期','参加选拔产品日期','报名选拔产品日期'];
+const businessDates=['获取日期','跟进日期','确认日期','沟通日期','推送日期','到访日期','体/测日期','报名日期','报名缴费日期','缴费时间','补续日期','参加选拔产品日期','报名选拔产品日期','报名体系日期'];
 const businessMonths=['获取月份','跟进月份','确认月份','到访月份','报名月份'];
 
 /** 月份只决定工作资料所属期间，保留原始日期及其精度。 */
@@ -17,6 +17,8 @@ export function sourceWorkflowPeriod(row,currentPeriod) {
     if(match&&Number(match[2])>=1&&Number(match[2])<=12)periods.push(`${match[1]}-${match[2].padStart(2,'0')}`);
   }
   for(const field of businessMonths) {
+    // 同一业务步骤已给出年份时，月份标签沿用该年份。
+    if(/^20\d{2}(?:[./-]|\d{4})/u.test(value(row,field.replace('月份','日期'))))continue;
     const match=value(row,field).match(/^(1[0-2]|[1-9])月$/u);
     if(match)periods.push(`${Number(match[1])>month?year-1:year}-${match[1].padStart(2,'0')}`);
   }

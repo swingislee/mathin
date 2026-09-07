@@ -86,7 +86,7 @@ export async function listFollowUpBoard(userId: string, scope: BoardScope, bucke
   const weekEnd = addCalendarDays(weekStartValue, 7, timeZone).toISOString();
 
   let query = supabase
-    .from("students")
+    .from("operational_students" as "students")
     .select("id,name,grade,status,follow_up_status,last_follow_up_at,next_follow_up_at,assigned_to,profiles!students_assigned_to_fkey(display_name)")
     .is("deleted_at", null)
     .order("next_follow_up_at", { ascending: true, nullsFirst: false })
@@ -102,8 +102,9 @@ export async function listFollowUpBoard(userId: string, scope: BoardScope, bucke
 
   const [followUpRows, enrollmentRows] = await Promise.all([
     collectPostgrestRowsInBatches<string, { student_id: string; content: string }>(studentIds, (batch) => supabase
-      .from("student_follow_ups")
+      .from("business_student_follow_ups" as "student_follow_ups")
       .select("student_id,content")
+      .eq("record_state", "current")
       .in("student_id", batch)
       .order("created_at", { ascending: false })
       .limit(2000)

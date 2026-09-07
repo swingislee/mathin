@@ -356,7 +356,7 @@ export async function getStaffOverviewData({
       .select("id,activity_id,lead_id,kind,state,owner_id_at_open,assessor_id,scheduled_at,closed_at,created_at,updated_at")),
     readOverviewRows<AssignmentRow>(() => supabase.from("classroom_staff_assignments")
       .select("classroom_id,user_id,responsibility,profiles!classroom_staff_assignments_user_id_fkey(display_name)"), ["classroom_id", "user_id", "responsibility"]),
-    readOverviewRows<LeadActionRow>(() => supabase.from("lead_next_actions").select("lead_id,due_at").eq("status", "open")),
+    readOverviewRows<LeadActionRow>(() => supabase.from("lead_next_actions").select("lead_id,due_at").eq("status", "open").neq("kind", "initial_contact")),
     readOverviewRows<SupportTaskRow>(() => supabase.from("class_support_tasks").select("assigned_to").eq("status", "pending")),
     readOverviewRows<ProfileRow>(() => supabase.from("profiles").select("id,display_name,role,is_active").in("role", ["staff", "admin"]).eq("is_active", true)),
     readOverviewRows<StaffRoleMemberRow>(() => supabase.from("staff_role_members")
@@ -403,7 +403,7 @@ export async function getStaffOverviewData({
   const classrooms = allClassrooms.filter(row => termClassIds.has(row.id) && !row.archived_at && !row.trashed_at);
   const activeEnrollments = memberships.filter(row => row.status === "active");
   const assignments = rows(assignmentsResult, "staffAssignments");
-  const leadActions = rows(leadActionsResult, "leads");
+  const leadActions = rows(leadActionsResult, "leads").filter(row => operationalLeadIds.has(row.lead_id));
   const supportTasks = rows(supportTasksResult, "supportTasks");
   const profiles = rows(profilesResult, "staffDirectory");
   const staffRoleMembers = rows(staffRoleMembersResult, "staffDirectory");
@@ -768,7 +768,7 @@ export async function getStaffOverviewData({
     },
     {
       key: "overdueLeadActions",
-      value: !sourceExact("leads") ? null : leadActions.filter((row) => new Date(row.due_at) < now).length,
+      value: !sourceExact("leads") || !exactRows(operationalLeadsResult) ? null : leadActions.filter((row) => new Date(row.due_at) < now).length,
       href: "/dashboard/followups/leads",
     },
     {

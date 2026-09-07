@@ -79,7 +79,7 @@ describe("enrollment placement class roster", () => {
         source_record_id: 'existing-source', source_field_ids: ['enrollment'], registered_on: '2025-01-02', period_label: '往期寒假',
         amount: 1200, amount_original: '1200', class_label: '原寒假班', teacher_label: '原老师', room_label: '原教室', schedule_label: '周六上午' }],
     };
-    const rows = renderRoster(undefined, { initialBoard, history });
+    const rows = renderRoster(undefined, { initialBoard, history, initialRecordState: 'all' });
     expect(rows.flatMap(row => classroomId(row.attributes) ? [classroomId(row.attributes)] : []).sort())
       .toEqual(board.options.classrooms.map(value => value.id).sort());
     const current = rows.find(row => classroomId(row.attributes) === 'autumn-4')!;
@@ -92,9 +92,15 @@ describe("enrollment placement class roster", () => {
     expect(historical.content).not.toMatch(/data-placement-target|data-placement-select|touch-none/);
     for(const initialRecordState of ['current','historical'] as const){
       const visible=renderRoster(undefined,{initialBoard,history,initialRecordState});
-      expect(visible.some(row=>row.attributes.includes('data-record-state="historical"'))).toBe(true);
-      expect(visible.some(row=>classroomId(row.attributes))).toBe(true);
+      expect(visible.some(row=>row.attributes.includes('data-record-state="historical"'))).toBe(initialRecordState==='historical');
+      expect(visible.some(row=>classroomId(row.attributes))).toBe(initialRecordState==='current');
     }
+    const mixed = { ...history, enrollments: [...history.enrollments, { ...history.enrollments[0], id: 'active-source', record_state: 'current' as const }] };
+    const visible = renderRoster(undefined, { initialBoard, history: mixed });
+    const keys = visible.flatMap(row => studentKeys(row.content));
+    expect(keys).toContain('active-source');
+    expect(keys).not.toContain('historical-enrollment');
+    expect(visible.find(row => studentKeys(row.content).includes('active-source'))?.attributes).toContain('data-record-state="current"');
   });
 
   it("defaults to the current school-year period and keeps each class and its students together", () => {

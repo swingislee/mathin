@@ -61,10 +61,21 @@ function renderDetails(record: AssessmentWorkbenchRow, canAssess = true, stage?:
 }
 
 describe("assessment page aligned with first contact", () => {
+  it.each(['zh', 'en'] as const)('defaults to current work and opens history explicitly in %s', locale => {
+    for (const initialRecordState of [undefined, 'historical', 'all'] as const) {
+      const markup = render(createElement(AssessmentUnifiedWorkbench, {
+        initialRows: [row('present'), row('past', { recordState: 'historical' })], initialRecordState,
+        assessors: [], locale, canAssess: true, canSupport: true, canManageAssessor: true,
+      }), locale);
+      const body = markup.match(/<tbody\b[^>]*>([\s\S]*?)<\/tbody>/)?.[1] ?? '';
+      expect(body.includes('同学present')).toBe(initialRecordState !== 'historical');
+      expect(body.includes('同学past')).toBe(initialRecordState !== undefined);
+    }
+  });
   it.each(["zh", "en"] as const)("uses the general assessment title and compact shared row identity in %s", (locale) => {
     const rows = [row("solo"), row("group", { assessmentKind: "activity" }), row("history", { recordState: "historical", scheduledAt: "", occurredOn: null })];
     const markup = render(createElement(AssessmentUnifiedWorkbench, {
-      initialRows: rows, assessors: [], locale, canAssess: true, canSupport: true, canManageAssessor: true,
+      initialRows: rows, initialRecordState: 'all', assessors: [], locale, canAssess: true, canSupport: true, canManageAssessor: true,
     }), locale);
     expect(markup).toContain(`>${locale === "zh" ? "测评" : "Assessments"}</h1>`);
     expect(markup).toContain("data-followup-workbench");
@@ -87,7 +98,7 @@ describe("assessment page aligned with first contact", () => {
     const rows = [row("booked", { registrationId: null }), row("group", { assessmentKind: "activity" }), row("history", { recordState: "historical" })];
     for (const canAssess of [true, false]) {
       const markup = render(createElement(AssessmentUnifiedWorkbench, {
-        initialRows: rows, assessors: [], locale: "zh", canAssess, canSupport: true, canManageAssessor: true,
+        initialRows: rows, initialRecordState: 'all', assessors: [], locale: "zh", canAssess, canSupport: true, canManageAssessor: true,
       }));
       expect(markup.match(/逐题登记/g) ?? []).toHaveLength(canAssess ? 1 : 0);
     }
@@ -119,6 +130,7 @@ describe("assessment page aligned with first contact", () => {
     const latestFollowUp = { id: "note", content: "   ", kind: "note", createdAt: "2026-09-05T01:00:00Z", nextFollowUpAt: null, statusAfter: null };
     const markup = render(createElement(AssessmentUnifiedWorkbench, {
       initialRows: [row("empty", { latestFollowUp }), row("history", { recordState: "historical", latestFollowUp: { ...latestFollowUp, content: "历史跟进" } })],
+      initialRecordState: 'all',
       assessors: [], locale: "zh", canAssess: true, canSupport: true, canManageAssessor: true,
     }));
     expect(markup).not.toContain("data-current-situation");

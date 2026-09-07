@@ -10,11 +10,11 @@ import type { StudentBusinessHistory } from '@/features/school/student-business-
 import { loadHistoricalFirstContactRows } from '@/features/school/historical-first-contact-data';
 const IntlProvider=NextIntlClientProvider as ComponentType<PropsWithChildren<Omit<ComponentProps<typeof NextIntlClientProvider>,'children'>>>;
 
-const db = vi.hoisted(() => ({ history: null as StudentBusinessHistory | null }));
+const db = vi.hoisted(() => ({ history: null as StudentBusinessHistory | null, currentStudents: [] as string[] }));
 vi.mock('server-only', () => ({}));
 vi.mock('@/i18n/navigation', () => ({ Link: ({children,...props}:ComponentProps<'a'>) => createElement('a',props,children) }));
 vi.mock('@/features/school/student-business-history-data', () => ({ loadStudentBusinessHistory: async () => db.history }));
-vi.mock('@/lib/supabase/server', () => ({ createClient: async () => ({ from: () => ({ select: () => ({ in: async () => ({ data: [], error: null }) }) }) }) }));
+vi.mock('@/lib/supabase/server', () => ({ createClient: async () => ({ from: (table:string) => ({ select: () => ({ in: async () => ({ data: table==='operational_students'?db.currentStudents.map(id=>({id})):[], error: null }) }) }) }) }));
 
 function history(): StudentBusinessHistory {
   const source = { student_id: 'student', source_record_id: 'assessment-source', source_field_ids: ['learning', 'parent'] };
@@ -103,9 +103,14 @@ describe('historical feedback ownership and Student 360', () => {
     expect(summarizeStudent360Phases(events).find(phase => phase.phase === 'experience')).toEqual({ phase: 'experience', count: 1, latestAt: null });
   });
 
-  it('returns a missing first-contact row without copying assessment or renewal notes into it', async () => {
+  it('keeps archived people out of first-contact placeholders and preserves note ownership for current people', async () => {
     db.history = history();
-    expect(await loadHistoricalFirstContactRows('zh', '样例学生')).toEqual([{ studentId: 'student', name: '样例学生', phone: '', grade: 3, context: '' }]);
+    const id='11111111-1111-4111-8111-111111111111';
+    db.history.subjects={[id]:db.history.subjects.student};
+    db.currentStudents=[];
+    expect(await loadHistoricalFirstContactRows('zh', '样例学生')).toEqual([]);
+    db.currentStudents=[id];
+    expect(await loadHistoricalFirstContactRows('zh', '样例学生')).toEqual([{ studentId: id, name: '样例学生', phone: '', grade: 3, context: '' }]);
     expect(await loadHistoricalFirstContactRows('zh', '计算准确')).toEqual([]);
   });
 });

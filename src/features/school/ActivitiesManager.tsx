@@ -87,7 +87,7 @@ export function ActivitiesManager({
   teachingActivityIds,
   initialRegistrationData,
   initialQuery,
-  initialRecordState='all',
+  initialRecordState='current',
 }: {
   title: string;
   activities: ActivityRow[];

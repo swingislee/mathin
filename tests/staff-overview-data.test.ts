@@ -28,6 +28,7 @@ function query(table: string) {
     },
     order: () => api,
     eq: (key: string, value: unknown) => { predicates.push(row => row[key] === value); return api; },
+    neq: (key: string, value: unknown) => { predicates.push(row => row[key] !== value); return api; },
     is: (key: string, value: unknown) => { predicates.push(row => row[key] === value); return api; },
     in: (key: string, values: unknown[]) => { predicates.push(row => values.includes(row[key])); return api; },
     gte: (key: string, value: string) => { predicates.push(row => typeof row[key] === "string" && row[key] >= value); return api; },
@@ -82,6 +83,18 @@ it("keeps historical acquisitions when their leads leave the current work queue"
 });
 
 describe("staff overview reads current business sources", () => {
+  it('counts explicit current reminders while preserving historical monthly acquisitions', async () => {
+    state.tables.leads = ['current', 'historical'].map(id => ({ id, created_at: '2026-09-06T02:00:00Z', owner_id: null, status: 'unassigned' }));
+    state.tables.operational_leads = [state.tables.leads[0]];
+    state.tables.lead_next_actions = [
+      { lead_id: 'current', kind: 'initial_contact', status: 'open', due_at: '2026-09-01T00:00:00Z' },
+      { lead_id: 'historical', kind: 'callback', status: 'open', due_at: '2026-09-01T00:00:00Z' },
+      { lead_id: 'current', kind: 'callback', status: 'open', due_at: '2026-09-01T00:00:00Z' },
+    ];
+    const data = await getStaffOverviewData({ grain: 'month', now });
+    expect(data.businessFacts.find(row => row.key === 'leads')?.current).toBe(2);
+    expect(data.pendingFacts.find(row => row.key === 'overdueLeadActions')?.value).toBe(1);
+  });
   it("builds class occupancy from current visible classes and preserves unknown counts", async () => {
     state.tables.classrooms = [
       { id: "current-class", name: "三年级甲班", term_id: "current", purpose: "production", grade: 3, capacity: 20, archived_at: null, trashed_at: null },

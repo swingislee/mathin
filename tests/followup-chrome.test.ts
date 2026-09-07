@@ -112,18 +112,17 @@ describe("compact follow-up chrome", () => {
       scope: "mine", q: "Sample", lead: "focused-lead", pageSize: "50" });
   });
 
-  it.each(["zh", "en"] as const)("names record scope explicitly in %s and preserves other pages' default presentation", async locale => {
+  it.each(["zh", "en"] as const)("changes the work scope only after an explicit selection in %s", async locale => {
     const onChange = vi.fn();
     await render(createElement(BusinessRecordStateFilter, { value: "historical", onChange, locale, presentation: "followup" }), locale);
-    let trigger = container.querySelector('[role="combobox"]')!;
-    expect(trigger.getAttribute("aria-label")).toBe(locale === "zh" ? "记录范围" : "Record scope");
-    expect(trigger.textContent).toBe(locale === "zh" ? "历史记录" : "Historical records");
-    expect(trigger.className).toContain("w-auto");
-    await render(createElement(BusinessRecordStateFilter, { value: "historical", onChange, locale }), locale);
-    trigger = container.querySelector('[role="combobox"]')!;
-    expect(trigger.getAttribute("aria-label")).toBe(businessRecordMessages(locale).state);
-    expect(trigger.textContent).toBe(businessRecordMessages(locale).historical);
-    expect(trigger.className).toContain("w-32");
+    const m = businessRecordMessages(locale);
+    const group = container.querySelector('[data-followup-primary-filter]')!;
+    expect(group.getAttribute('aria-label')).toBe(m.state);
+    expect(group.querySelector('[data-state="on"]')?.textContent).toBe(m.historical);
+    expect([...group.querySelectorAll('button')].map(button => button.textContent)).toEqual([m.current,m.historical,m.all]);
     expect(onChange).not.toHaveBeenCalled();
+    const current = [...group.querySelectorAll('button')].find(button => button.textContent === m.current)!;
+    await act(async () => current.click());
+    expect(onChange).toHaveBeenCalledExactlyOnceWith('current');
   });
 });

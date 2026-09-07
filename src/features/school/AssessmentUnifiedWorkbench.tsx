@@ -6,8 +6,8 @@ import { BusinessRecordRevisionButton } from './BusinessRecordRevisionButton';
 import {SourceCompletionNotice} from './SourceCompletionNotice';
 import {sourceCompletionMessages} from './source-completion-contract';
 
-import { useBusinessSearchQuery } from './BusinessRecordStateFilter';
-import { isCurrentBusinessRecord } from './business-record-state-contract';
+import { BusinessRecordStateFilter, useBusinessSearchQuery } from './BusinessRecordStateFilter';
+import { isCurrentBusinessRecord, matchesBusinessRecordState, type BusinessRecordStateFilter as StateFilter } from './business-record-state-contract';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CalendarClock, UserCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -94,6 +94,7 @@ export function AssessmentUnifiedWorkbench({
   canManageAssessor,
   canQuickEntry = canAssess,
   initialQuery,
+  initialRecordState = 'current',
   timeZone = "Asia/Shanghai",
   now,
 }: {
@@ -105,6 +106,7 @@ export function AssessmentUnifiedWorkbench({
   canManageAssessor: boolean;
   canQuickEntry?: boolean;
   initialQuery?: string;
+  initialRecordState?: StateFilter;
   timeZone?: string;
   now?: number;
 }) {
@@ -136,6 +138,7 @@ export function AssessmentUnifiedWorkbench({
   }, [currentRows, initialRows]);
   const [drafts, setDrafts] = useState<Record<string, SupportDraft>>(initialDrafts);
   const [query, setQuery] = useBusinessSearchQuery("assessments",initialQuery);
+  const [recordState, setRecordState] = useState(initialRecordState);
   const [clockNow] = useState(() => now ?? Date.now());
   const dateContext = useMemo(() => ({ locale, timeZone, now: clockNow }), [locale, timeZone, clockNow]);
   const fieldM = useMemo(() => dashboardFieldMessages(locale), [locale]);
@@ -148,6 +151,7 @@ export function AssessmentUnifiedWorkbench({
   const scopedRows = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase(locale);
     return rows.filter((row) => {
+      if (!matchesBusinessRecordState(row.recordState, recordState)) return false;
       if (!needle) return true;
       const assessment = row.assessment;
       return [
@@ -166,14 +170,14 @@ export function AssessmentUnifiedWorkbench({
         row.questionSummary?.paperTitle ?? "",
       ].some((value) => value.toLocaleLowerCase(locale).includes(needle));
     });
-  }, [locale, query, rows]);
+  }, [locale, query, rows, recordState]);
   const fields = useMemo(() => assessmentTableFields({ locale, timeZone, tableT, assessmentT, t, teacherT, quickT,
     stageFor: row => queueFor(row, drafts[row.id]),
   }), [locale, timeZone, tableT, assessmentT, t, teacherT, quickT, drafts]);
   const assessmentTable = useDashboardFieldView({ rows: scopedRows, fields, columns: ASSESSMENT_TABLE_COLUMNS,
     context: dateContext, persistenceKey: "followup-assessments", migrate: migrateAssessmentFieldQuery,
     sourceSort: ASSESSMENT_SOURCE_SORT });
-  const filterKey = JSON.stringify([query, assessmentTable.filters, assessmentTable.sort]);
+  const filterKey = JSON.stringify([query, recordState, assessmentTable.filters, assessmentTable.sort]);
   if (retainedView && retainedView.key !== filterKey) setRetainedView(null);
   const rowById = useMemo(() => new Map(rows.map((row) => [row.id, row])), [rows]);
   const orderedVisibleRows = useMemo(() => retainedView?.key === filterKey
@@ -396,6 +400,7 @@ export function AssessmentUnifiedWorkbench({
             <FollowupTabs />
           </DashboardCommandState>
           <DashboardCommandFilters>
+            <BusinessRecordStateFilter value={recordState} onChange={setRecordState} locale={locale} />
             <FollowupPrimaryFilter label={filterT("workQueue")} value={assessmentTable.filters.status?.kind === "enum" ? assessmentTable.filters.status.values[0] : "all"}
               options={[...ASSESSMENT_WORKBENCH_QUEUES.map(value => ({ value, label: filterT(`assessments_${value}`) })),{value:'no_show',label:sourceM.noShow}]}
               onValueChange={value => {

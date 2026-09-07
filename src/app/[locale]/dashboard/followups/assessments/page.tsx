@@ -4,6 +4,7 @@ import { listAssessmentWorkbenchRows } from "@/features/school/assessment-workbe
 import { listInvitationOptions } from "@/features/school/invitations";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
 import { getOrganizationTimezoneV2 } from "@/features/school/organization-locations";
+import { businessRecordStateFilter } from "@/features/school/business-record-state-contract";
 
 export default async function AssessmentsPage({
   params,
@@ -31,6 +32,7 @@ export default async function AssessmentsPage({
     <AssessmentUnifiedWorkbench
       initialRows={rows}
       initialQuery={query.q?.slice(0,100)}
+      initialRecordState={businessRecordStateFilter(query.state)}
       assessors={options.assessors}
       locale={locale}
       timeZone={timeZone}

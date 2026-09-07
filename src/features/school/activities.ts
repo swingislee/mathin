@@ -131,7 +131,7 @@ function from(supabase: { from: unknown }): UntypedFrom {
 async function readActivities(activityId?: string): Promise<ActivityRow[]> {
   const supabase = await createClient();
   let query = supabase
-    .from("activities")
+    .from("business_activities" as "activities")
     .select("id,kind,title,scheduled_at,occurred_on,record_state,duration_min,location,capacity,remark,target_grades,activity_registrations(id,student_id,status,outcome,registered_on,reported_result,result_link_status,students(name,grade))")
     .is("deleted_at", null)
     .order("scheduled_at", { ascending: true });
@@ -147,7 +147,7 @@ async function readActivities(activityId?: string): Promise<ActivityRow[]> {
   const routes = new Map<string, RouteQueryRow>();
   if (registrationIds.length > 0) {
     const [assessmentResult, routeResult] = await Promise.all([
-      from(supabase)("assessment_results")
+      from(supabase)("business_assessment_results")
         .select("id,activity_registration_id,assessment_band,score,strengths,focus_areas,parent_concerns,teacher_recommendation,recommended_class,updated_at,assessor:profiles!assessment_results_assessed_by_fkey(display_name)")
         .in("activity_registration_id", registrationIds)
         .returns<AssessmentQueryRow[]>(),

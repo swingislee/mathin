@@ -1,6 +1,7 @@
 export const BUSINESS_HISTORY_KINDS = ['renewal','activity','assessment','enrollment','communication'] as const;
 export type BusinessHistoryKind = typeof BUSINESS_HISTORY_KINDS[number];
 export interface BusinessRecordSource {
+  record_state?: 'current' | 'historical';
   id: string; student_id: string | null; lead_id?: string | null; source_record_id: string; source_field_ids: string[];
 }
 export function businessSubjectKey(row: Pick<BusinessRecordSource,'student_id'|'lead_id'|'source_record_id'>):string {

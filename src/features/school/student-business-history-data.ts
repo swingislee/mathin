@@ -49,9 +49,9 @@ export async function loadStudentBusinessHistory(locale: string, options: {stude
     include('enrollment') ? historyPages(studentId ? enrollmentsQuery.eq('student_id',studentId) : enrollmentsQuery) : none,
     include('communication') || kind==='renewal' || kind==='activity' ? historyPages(studentId ? communicationQuery.eq('student_id',studentId) : communicationQuery) : none,
   ]);
-  const source = (row: {id:string;student_id:string|null;lead_id?:string|null;source_record_id:string|null;source_field_ids:string[]}) => {
+  const source = (row: {id:string;student_id:string|null;lead_id?:string|null;source_record_id:string|null;source_field_ids:string[];record_state?:string}) => {
     if(!row.source_record_id) throw new Error('BUSINESS_HISTORY_SOURCE_REQUIRED');
-    return {id:row.id,student_id:row.student_id,lead_id:row.lead_id??null,source_record_id:row.source_record_id,source_field_ids:row.source_field_ids};
+    return {id:row.id,student_id:row.student_id,lead_id:row.lead_id??null,source_record_id:row.source_record_id,source_field_ids:row.source_field_ids,record_state:row.record_state==='current'?'current' as const:'historical' as const};
   };
   const bands: Record<string,string> = {a_plus:'A+',a:'A',s:'S',c:'C',g_plus:'G+',x_plus:'X+'};
   const data: StudentBusinessHistory = {

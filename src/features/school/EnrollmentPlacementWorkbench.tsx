@@ -73,7 +73,7 @@ function sourceRosterRows(board:EnrollmentPlacementBoard,history:StudentBusiness
     if(bound.has(row.id))continue;
     const grade=history?.subjects[businessSubjectKey(row)]?.grade??0;
     const termId=board.options.terms.find(term=>termKey(term.name)===termKey(row.period_label))?.id??`period:${row.period_label}`;
-    const group=`${termId}:${grade}`,key=JSON.stringify([group,row.class_label,row.teacher_label,row.schedule_label,row.room_label]);
+    const group=`${termId}:${grade}`,key=JSON.stringify([group,row.record_state??'historical',row.class_label,row.teacher_label,row.schedule_label,row.room_label]);
     const existing=grouped.get(key);
     if(existing)existing.sourceEnrollments!.push(row);
     else grouped.set(key,{key,group,termId,grade,classroom:null,classrooms:[],students:[],historical:row,sourceEnrollments:[row]});
@@ -81,7 +81,7 @@ function sourceRosterRows(board:EnrollmentPlacementBoard,history:StudentBusiness
   return [...grouped.values()];
 }
 
-export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focusStudentId, canCreateClass, history, initialQuery, initialRecordState='all', timeZone = "Asia/Shanghai", now }: {
+export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focusStudentId, canCreateClass, history, initialQuery, initialRecordState='current', timeZone = "Asia/Shanghai", now }: {
   initialBoard: EnrollmentPlacementBoard; initialTermId?: string; focusStudentId?: string; canCreateClass: boolean;
   history?: StudentBusinessHistory|null; initialQuery?: string; initialRecordState?: StateFilter;
   timeZone?: string; now?: number;
@@ -120,7 +120,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   const explicitTerm = board.options.terms.find((term) => term.id === initialTermId)?.id;
   const currentTerm = board.options.terms.find((term) => term.isCurrent)?.id;
   const defaultTerm = explicitTerm ?? focused?.termId ?? currentTerm;
-  const searchableRows=rows.filter(row=>matchesBusinessRecordState(row.historical?'historical':'current',recordState)&&(!query.trim()||[
+  const searchableRows=rows.filter(row=>matchesBusinessRecordState(row.historical ? row.historical.record_state ?? 'historical' : 'current',recordState)&&(!query.trim()||[
     row.classroom?.name??'',...row.students.flatMap(student=>[student.name,student.phone]),
     ...(row.sourceEnrollments??[]).flatMap(fact=>[history?.students[businessSubjectKey(fact)]??'',history?.subjects[businessSubjectKey(fact)]?.phone??'',fact.period_label,fact.class_label,fact.teacher_label,fact.note??'']),
   ].join(' ').toLocaleLowerCase(locale).includes(query.trim().toLocaleLowerCase(locale))));
@@ -317,7 +317,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
               const time = classroom ? schedule(classroom) : fact?.schedule_label || recordM.unknown;
               const courseTitle = classroom ? courses.get(classroom.courseId) : fact?.period_label;
               const slots = classroom ? placementRosterSeats(classroom, row.students) : [];
-              return <Fragment key={row.key}><TableRow data-record-state={fact ? 'historical' : 'current'} data-placement-classroom={classroom?.id} data-placement-record={row.key} className="hover:bg-transparent">
+              return <Fragment key={row.key}><TableRow data-record-state={fact ? fact.record_state ?? 'historical' : 'current'} data-placement-classroom={classroom?.id} data-placement-record={row.key} className="hover:bg-transparent">
                 <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-1"><div className="flex items-center justify-between gap-1">{classroom ? <Link href={`/dashboard/classes/${classroom.id}`} className="min-w-0 truncate font-medium hover:underline" title={className}>{className}</Link> : <span className="min-w-0 truncate font-medium" title={className}>{className}</span>}{classroom ? <span className="shrink-0 text-[10px] tabular-nums text-muted">{classroom.activeCount}/{classroom.capacity ?? "∞"}</span> : null}</div><div className="truncate text-[10px] text-muted" title={courseTitle}>{courseTitle}</div>{fact ? <p className="mt-1 text-[10px] text-muted">{fact.registered_on ?? recordM.unknown} · {fact.amount ?? fact.amount_original}</p> : null}</TableCell>
                 <TableCell className="sticky left-36 z-10 border-r border-line bg-card px-2 py-1 text-[11px]" title={time}><span className="line-clamp-2 break-words">{time}</span>{fact?.room_label ? <p className="mt-1 text-muted">{fact.room_label}</p> : null}</TableCell>
                 <TableCell className="sticky left-64 z-10 border-r border-line bg-card px-2 py-1" title={teacher}><span className="block truncate">{teacher || "—"}</span></TableCell>
