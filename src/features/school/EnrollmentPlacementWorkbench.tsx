@@ -117,13 +117,19 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   })), [board, locale, timeZone, t, history]);
   const focused = students.find((student) => student.studentId === focusStudentId);
   const explicitTerm = board.options.terms.find((term) => term.id === initialTermId)?.id;
+  const currentTerm = board.options.terms.find((term) => term.isCurrent)?.id;
+  const defaultTerm = explicitTerm ?? focused?.termId ?? currentTerm;
   const searchableRows=rows.filter(row=>matchesBusinessRecordState(row.historical?'historical':'current',recordState)&&(!query.trim()||[
     row.classroom?.name??'',...row.students.flatMap(student=>[student.name,student.phone]),
     ...(row.sourceEnrollments??[]).flatMap(fact=>[history?.students[businessSubjectKey(fact)]??'',history?.subjects[businessSubjectKey(fact)]?.phone??'',fact.period_label,fact.class_label,fact.teacher_label,fact.note??'']),
   ].join(' ').toLocaleLowerCase(locale).includes(query.trim().toLocaleLowerCase(locale))));
-  const table = useDashboardFieldView({ rows: searchableRows, fields, columns: PLACEMENT_TABLE_COLUMNS, context, persistenceKey: "followup-enrollment-roster-fields-v2",
-    initialQuery: { version: 2, filters: explicitTerm ? { term: { kind: "enum", values: [explicitTerm] } } : focused
-      ? { term: { kind: "enum", values: [focused.termId] }, grade: { kind: "enum", values: [String(focused.grade)] } } : {}, sort: null } });
+  // 当前周期隶属已启用学年；按周期保存展示偏好，指定入口保留自身定位。
+  const table = useDashboardFieldView({ rows: searchableRows, fields, columns: PLACEMENT_TABLE_COLUMNS, context,
+    persistenceKey: explicitTerm || focused ? undefined : `followup-enrollment-roster-fields-v3:${currentTerm ?? "all"}`,
+    initialQuery: { version: 2, filters: {
+      ...(defaultTerm ? { term: { kind: "enum", values: [defaultTerm] } } : {}),
+      ...(!explicitTerm && focused ? { grade: { kind: "enum", values: [String(focused.grade)] } } : {}),
+    }, sort: null } });
   const enumMatches = (id: string, value: string) => { const filter = table.filters[id]; return !filter || (filter.kind === "enum" ? filter.values.includes(value) : filter.kind !== "presence" || (filter.value === "present") === Boolean(value)); };
   const effectiveWorkFilter = recordState === "historical" ? "all" : workFilter;
   const matchingGroups = new Set(table.visibleRows.filter(row => {
