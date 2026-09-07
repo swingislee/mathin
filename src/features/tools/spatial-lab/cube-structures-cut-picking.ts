@@ -1,5 +1,6 @@
 import { Box3, Raycaster, Vector2, Vector3, type Camera, type Ray } from "three";
 import type { Axis, FaceDirection, VoxelCoordinate } from "@/features/spatial-math/domain";
+import { VOXEL_EDGE_LENGTH, VOXEL_EDGE_THICKNESS } from "@/features/spatial-math/renderer-r3f/voxel-visual-model";
 import { cubeDisplayPosition, cubeIsVisible, type CubeStructureState } from "./cube-structures-contract";
 import type { CubeCutHit, CubeCutLine } from "./cube-structures-cut-interaction";
 
@@ -9,7 +10,10 @@ export const CUBE_CUT_PICK_RADIUS = 8;
 export interface CubeCutScreenPoint { readonly x: number; readonly y: number }
 type Cell = { id: string; position: VoxelCoordinate; opacity: number; box: Box3 };
 type Face = { cell: Cell; axis: Axis; sign: -1 | 1; direction: FaceDirection; key: string };
-export interface CubeCutGeometry { readonly cells: readonly Cell[]; readonly faces: readonly Face[]; readonly lines: readonly CubeCutLine[] }
+export interface CubeCutGeometry {
+  readonly cells: readonly Cell[]; readonly faces: readonly Face[]; readonly lines: readonly CubeCutLine[];
+  readonly lineBoxes: ReadonlyMap<string, Box3>;
+}
 const key = (point: VoxelCoordinate) => AXES.map((axis) => Math.round(point[axis] * 1e6) / 1e6).join(":");
 const vector = (point: VoxelCoordinate) => new Vector3(point.x, point.y, point.z);
 
@@ -37,7 +41,13 @@ export function buildCubeCutGeometry(state: CubeStructureState): CubeCutGeometry
       }
     }
   }
-  return { cells, faces, lines: [...lines.values()].sort((a, b) => a.key.localeCompare(b.key)) };
+  const lineBoxes = new Map([...lines.values()].map((line) => {
+    const center = vector(line.start).lerp(vector(line.end), 0.5);
+    const size = new Vector3().setScalar(VOXEL_EDGE_THICKNESS);
+    size[line.along] = VOXEL_EDGE_LENGTH;
+    return [line.key, new Box3().setFromCenterAndSize(center, size)] as const;
+  }));
+  return { cells, faces, lines: [...lines.values()].sort((a, b) => a.key.localeCompare(b.key)), lineBoxes };
 }
 
 function coveredFace(geometry: CubeCutGeometry, face: Face, point: VoxelCoordinate): boolean {
@@ -89,7 +99,9 @@ export function pickCubeCut(geometry: CubeCutGeometry, input: "auto" | "edge" | 
     const ndc = vector(point).project(camera);
     return { x: (ndc.x + 1) * size.width / 2, y: (1 - ndc.y) * size.height / 2, z: ndc.z };
   };
-  const candidates: { line: CubeCutLine; distance: number; depth: number }[] = [];
+  const pointerRay = rayAt(pointer).clone();
+  const barEntry = new Vector3();
+  const candidates: { line: CubeCutLine; distance: number; depth: number; barDepth: number }[] = [];
   for (const line of geometry.lines) {
     const a = project(line.start); const b = project(line.end);
     if (a.z < -1 || a.z > 1 || b.z < -1 || b.z > 1) continue;
@@ -99,7 +111,11 @@ export function pickCubeCut(geometry: CubeCutGeometry, input: "auto" | "edge" | 
     const t = Math.max(0, Math.min(1, ((pointer.x - a.x) * dx + (pointer.y - a.y) * dy) / lengthSq));
     const closest = { x: a.x + t * dx, y: a.y + t * dy };
     const distance = Math.hypot(pointer.x - closest.x, pointer.y - closest.y);
-    if (distance > radius) continue;
+    // 原粗棱边随相机放大；实际可见棱边始终可选，屏幕容差补足缩小时的命中区。
+    const box = geometry.lineBoxes.get(line.key);
+    const barDepth = box && pointerRay.intersectBox(box, barEntry) && visibleLinePoint(geometry, pointerRay, barEntry)
+      ? barEntry.clone().sub(pointerRay.origin).dot(pointerRay.direction) : Infinity;
+    if (distance > radius && !Number.isFinite(barDepth)) continue;
     const point = vector(line.start).lerp(vector(line.end), t);
     const ray = rayAt(closest);
     if (!visibleLinePoint(geometry, ray, point)) continue;
@@ -109,12 +125,13 @@ export function pickCubeCut(geometry: CubeCutGeometry, input: "auto" | "edge" | 
       const inside = vector(line.start).lerp(vector(line.end), Math.max(0.001, Math.min(0.999, t)));
       if (!visibleLinePoint(geometry, rayAt(project(inside)), inside)) continue;
     }
-    candidates.push({ line, distance, depth });
+    candidates.push({ line, distance, depth, barDepth });
   }
-  candidates.sort((a, b) => a.distance - b.distance || a.depth - b.depth || a.line.key.localeCompare(b.line.key));
+  candidates.sort((a, b) => a.barDepth - b.barDepth || a.distance - b.distance || a.depth - b.depth || a.line.key.localeCompare(b.line.key));
   if (!candidates.length) return input === "auto" ? pickCubeCutFace(geometry, rayAt(pointer)) : null;
   // 交点附近保留当前线；2 CSS 像素的滞回量不随缩放和 DPR 改变。
   const retained = previous?.kind === "edge" ? candidates.find((candidate) => candidate.line.key === previous.line.key
+    && candidate.barDepth <= candidates[0].barDepth + EPSILON
     && candidate.distance <= candidates[0].distance + 2 && candidate.depth <= candidates[0].depth + EPSILON) : undefined;
   return { kind: "edge", line: (retained ?? candidates[0]).line };
 }
