@@ -38,6 +38,7 @@ failure_ticket
 | DEV-SCHOOL-OPS · 总览统计与当前学期在读 | development available；pending visual acceptance | 2026-09-08 | [周／月接入实际业务日期与报名登记，当前学期完整在读名单；分页、归属、权限及真实页面检查](staff-overview-source-20260908.md) |
 | DEV-SCHOOL-OPS · 总览历史周期与当前状态 | development available；pending visual and interaction acceptance | 2026-09-08 | [上期复盘、当前进展与历史日期选择；区分周期统计和当前待办／在读，校验完整周期及实际页面](staff-overview-periods-20260908.md) |
 | DEV-SCHOOL-OPS · 紧凑总览与展示名单 | development available；pending visual and interaction acceptance | 2026-09-08 | [修复日历标题、配置学服展示名单、三栏紧凑表格及班容切换](staff-overview-compact-20260908.md) |
+| DEV-SCHOOL-OPS · 六月总览核对 | 只读核对完成；月份、日期及来源范围差异已定位 | 2026-09-08 | [按 base 配置复算六月总计、学服、组别与年级，定位缺日期、跨月／跨年及诺访目标卡筛选差异](staff-overview-june-feishu-20260908.md) |
 | DEV-SCHOOL-OPS · 区块展示设置 | development available；persistence checks passed；pending visual and interaction acceptance | 2026-09-08 | [学服、老师参与、班级容量独立展示设置；中文来源署名保存修复及实际重载验证](staff-overview-panel-settings-20260908.md) |
 | DEV-SCHOOL-OPS · 总览清理与飞书对照 | 开发端已交付；获客 92、报名 7、到访 31；缺日期报名与在读名单待核对 | 2026-09-08 | [固定 1,391 行测试记录清理、来源日期与报名去重、老师参与归属及在读逐人差异检查点](staff-overview-cleanup-feishu-20260908.md) |
 | AIXUEXI-DELTA-20260907 · 爱学习两讲增量热更新 | production schema/content deployed；machine postflight passed；pending product acceptance | 2026-09-07 | [两条迁移、完整回滚零残留演练、五/六年级各29页与双轨release、115个对象校验、业务不变量及同主机写前备份](aixuexi-incremental-production-20260907.md)；现有服务连续运行，应用版本保持原值 |
