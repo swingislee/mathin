@@ -32,6 +32,7 @@ failure_ticket
 
 | 阶段 | 状态 | 日期 | 证据 |
 | --- | --- | --- | --- |
+| DEV-SCHOOL-OPS · 四五月总览核对 | 只读核对完成；日期、月份与来源范围差异已定位 | 2026-09-08 | [复算 base 四五月主指标与学服明细，定位获客日期规则、五月缺日期和跨月记录及仪表盘配置差异](staff-overview-apr-may-feishu-20260908.md) |
 | DEV-SCHOOL-OPS · 来源业务衔接 | development available；pending source comparison and product acceptance | 2026-09-07 | [主要工作表 4,864 条来源行接入现有首联、测评、报名分班与续报；人员映射、事务回滚、权限与页面启动检查](business-source-continuation-20260907.md) |
 | DEV-SCHOOL-OPS · 测评学服与 360 修复 | development available；pending product acceptance | 2026-09-07 | [恢复来源学服显示与筛选，兼容既有导入 UUID；实际 360、逐题页面与匿名边界复核](assessment-import-support-and-360-20260907.md) |
 | DEV-SCHOOL-OPS · 来源报名阶段与多次预约 | development available；pending product acceptance | 2026-09-07 | [明确报名确认前序阶段，标准班型对应等级，保留每次预约与资料缺项；本机修复、回滚及真实读取](source-assessment-completion-repair-20260907.md) |
