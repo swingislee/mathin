@@ -40,6 +40,35 @@ describe('employee source reconciliation', () => {
     const staff = createStaffIndex([employee('1', '林莉Lily'), employee('2', '陈莉Lily')]);
     expect(staff.match('Lily')).toMatchObject({ status: 'review', employeeId: null });
   });
+  it('uses confirmed staff outside the roster without inventing external IDs', () => {
+    const roster = [employee('1', '陈小薇')];
+    const decision = { sourceName: '林晓云', canonicalName: '林晓云', decision: 'add_current_staff', confirmedBy: '产品负责人', evidence: '在职但未在源系统登记' };
+    const staff = createStaffIndex(roster, [], [decision, { ...decision, sourceName: '林老师', decision: 'confirm_alias' }]);
+    expect(staff.match('林老师')).toMatchObject({ status: 'current', employeeId: null, canonicalName: '林晓云', importEligible: true });
+    expect(staff.match('林老师').identityKey).toBe(staff.match('林晓云').identityKey);
+    expect(staff.roster.at(-1)).toMatchObject({ id: null, sourcePath: null, sourceRow: null });
+    expect(roster).toEqual([employee('1', '陈小薇')]);
+  });
+  it('preserves historical employment and uncertain identities after a confirmed correction', () => {
+    const confirmed = { confirmedBy: '产品负责人', evidence: '人工核对' };
+    const staff = createStaffIndex([], [], [
+      { ...confirmed, sourceName: '林柯', canonicalName: '林珂', decision: 'correct_name' },
+      { ...confirmed, sourceName: '林姐', decision: 'confirm_part_time_staff_label' },
+      { ...confirmed, sourceName: '方老师', decision: 'retain_as_historical_staff_label' },
+      { ...confirmed, sourceName: '1', decision: 'unresolved_possible_entry_error' },
+    ]);
+    expect(staff.match('林柯')).toMatchObject({ status: 'historical', canonicalName: '林珂', importEligible: false });
+    expect(staff.match('林姐')).toMatchObject({ status: 'part_time', canonicalName: null, importEligible: false, identityConfirmed: false });
+    expect(staff.match('方老师')).toMatchObject({ status: 'historical', canonicalName: null, identityConfirmed: false });
+    expect(staff.match('1')).toMatchObject({ status: 'review', importEligible: false });
+  });
+  it('rejects contradictory identities, alias cycles, and unconfirmed decisions', () => {
+    const alias = { sourceName: '林老师', canonicalName: '林珂', decision: 'confirm_alias', confirmedBy: '产品负责人', evidence: '人工核对' };
+    expect(() => createStaffIndex([], [], [{ ...alias, evidence: '' }])).toThrow('STAFF_DECISION_CONFIRMATION_REQUIRED');
+    expect(() => createStaffIndex([], [], [alias, { ...alias, sourceName: '林珂', canonicalName: '林老师' }])).toThrow('STAFF_DECISION_ALIAS_CYCLE');
+    expect(() => createStaffIndex([employee('1', '林老师')], [], [alias])).toThrow('STAFF_DECISION_CONFLICT');
+    expect(() => createStaffIndex([employee('1', '林珂')], [], [{ ...alias, magicEmployeeId: 'wrong-id' }])).toThrow('STAFF_DECISION_TARGET_INVALID');
+  });
 });
 
 describe('person evidence boundaries', () => {
@@ -119,6 +148,18 @@ function fixture() {
 }
 
 describe('business authority integration', () => {
+  it('keeps an additional base as a separately located historical reference', () => {
+    const input = fixture();
+    const reference = structuredClone(input.base);
+    reference.source.filename = '历史报名.base';
+    reference.records[0].cells.find(cell => cell.fieldName === '26秋在读')!.text = '否';
+    const result = reconcileSources({ ...input, referenceBases: [reference] });
+    expect(result.currentAutumn[0].businessState).toBe('in_study');
+    expect(result.baseTables[0].personRows).toBe(1);
+    const rows = result.people.filter(row => row.name === '林小安');
+    expect(new Set(rows.map(row => row.key)).size).toBe(rows.length);
+    expect(rows.some(row => row.authority === 'historical_reference' && row.sourcePath === '历史报名.base')).toBe(true);
+  });
   it('uses current class evidence for identity and retains the authoritative in-study state despite reference history', () => {
     const input = fixture(); const before = structuredClone(input);
     const result = reconcileSources(input);

@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { normalizeNewlines } from './text-hash.mjs';
 
-export const RECONCILIATION_VERSION = 1;
+export const RECONCILIATION_VERSION = 2;
 const hash = value => crypto.createHash('sha256').update(value).digest('hex');
 const unique = values => [...new Set(values.filter(Boolean))];
 export const normalizeName = value => String(value ?? '').normalize('NFKC').replace(/\s+/gu, '').toLocaleLowerCase('en');
@@ -29,7 +29,7 @@ export function isPlaceholderStaff(name) {
 }
 
 /** 员工表确定当前成员；源表内明确写在同一姓名中的中英文别名可用于唯一匹配。 */
-export function createStaffIndex(employees, confirmedAliases = []) {
+function createRosterStaffIndex(employees, confirmedAliases = []) {
   const exact = new Map();
   const embedded = new Map();
   const append = (map, key, employee) => { const items = map.get(key) ?? []; items.push(employee); map.set(key, items); };
@@ -66,6 +66,53 @@ export function createStaffIndex(employees, confirmedAliases = []) {
   } };
 }
 
+/** 人工确认补充源表成员与规范署名；来源员工 ID 与确认后的姓名身份分别保留。 */
+export function createStaffIndex(employees, confirmedAliases = [], confirmedDecisions = []) {
+  const decisions = new Map();
+  const allowed = new Set(['add_current_staff', 'correct_name', 'confirm_alias', 'retain_as_historical_staff_label',
+    'unresolved_possible_entry_error', 'confirm_part_time_staff_label']);
+  const additions = [];
+  for (const decision of confirmedDecisions) {
+    const key = normalizeName(decision.sourceName);
+    if (!key || !decision.confirmedBy || !decision.evidence || !allowed.has(decision.decision)) throw new Error('STAFF_DECISION_CONFIRMATION_REQUIRED');
+    if (decisions.has(key) || confirmedAliases.some(alias => normalizeName(alias.name) === key)) throw new Error('STAFF_DECISION_CONFLICT');
+    if (['add_current_staff', 'correct_name', 'confirm_alias'].includes(decision.decision)
+      && (!normalizeName(decision.canonicalName) || isPlaceholderStaff(decision.canonicalName))) throw new Error('STAFF_DECISION_TARGET_INVALID');
+    decisions.set(key, decision);
+    if (decision.decision === 'add_current_staff') {
+      if (key !== normalizeName(decision.canonicalName) || employees.some(employee => normalizeName(employee.name) === key)) throw new Error('STAFF_DECISION_CONFLICT');
+      additions.push({ id: null, name: decision.canonicalName, phone: '', position: '', sourcePath: null, sourceRow: null,
+        confirmedBy: decision.confirmedBy, evidence: decision.evidence, authority: 'user_confirmation' });
+    }
+  }
+  const base = createRosterStaffIndex([...employees, ...additions], confirmedAliases);
+  const decorate = (result, name) => ({ ...result,
+    canonicalName: result.employeeId ? base.roster.find(employee => employee.id === result.employeeId).name : name,
+    identityKey: result.employeeId ? `employee:${result.employeeId}` : `source-name:${normalizeName(name)}` });
+  function match(name, seen = new Set()) {
+    const key = normalizeName(name);
+    const decision = decisions.get(key);
+    if (!decision) return decorate(base.match(name), name);
+    if (seen.has(key)) throw new Error('STAFF_DECISION_ALIAS_CYCLE');
+    const confirmation = { evidence: decision.evidence, confirmedBy: decision.confirmedBy };
+    if (['correct_name', 'confirm_alias'].includes(decision.decision)) {
+      if (employees.some(employee => normalizeName(employee.name) === key)) throw new Error('STAFF_DECISION_CONFLICT');
+      const target = match(decision.canonicalName, new Set([...seen, key]));
+      if (!['current', 'historical'].includes(target.status) || (decision.magicEmployeeId && decision.magicEmployeeId !== target.employeeId)) throw new Error('STAFF_DECISION_TARGET_INVALID');
+      return { ...target, ...confirmation, reason: decision.decision === 'correct_name' ? '用户确认姓名更正' : '用户确认别名' };
+    }
+    if (decision.decision === 'add_current_staff') return { ...decorate(base.match(name), decision.canonicalName), ...confirmation, reason: '用户确认当前员工，魔法校尚未登记' };
+    if (employees.some(employee => normalizeName(employee.name) === key)) throw new Error('STAFF_DECISION_CONFLICT');
+    const status = decision.decision === 'retain_as_historical_staff_label' ? 'historical'
+      : decision.decision === 'confirm_part_time_staff_label' ? 'part_time' : 'review';
+    return { status, employeeId: null, canonicalName: null, identityKey: `source-name:${key}`, importEligible: false, ...confirmation,
+      reason: status === 'historical' ? '按用户决定保留历史署名，实名未确认' : status === 'part_time' ? '用户确认兼职称呼，实名及当前任职状态待补' : '用户暂不确定，保留可能登记错误',
+      identityConfirmed: false };
+  }
+  for (const decision of confirmedDecisions) match(decision.sourceName);
+  return { roster: base.roster.map(employee => ({ ...employee, identityKey: employee.id ? `employee:${employee.id}` : `source-name:${normalizeName(employee.name)}` })), match };
+}
+
 /** 文件路径属于来源身份。相同内容的空班导出仍保留各自班级文件及位置。 */
 export function locateWorkbooks(workbooks, manifest) {
   return workbooks.map(workbook => {
@@ -82,7 +129,7 @@ function expectColumns(workbook, names) {
   if (!header || names.some(([column, name]) => valueAt(header, column) !== name)) throw new Error(`SOURCE_HEADER_CHANGED:${workbook.source.filename}`);
 }
 
-const staffIdentity = (name, staff) => { const result = staff.match(name); return result.employeeId ? `employee:${result.employeeId}` : `source-name:${normalizeName(name)}`; };
+const staffIdentity = (name, staff) => staff.match(name).identityKey;
 export const normalizeCampus = name => normalizeName(name) === '紫辰' ? '紫辰阁' : normalizeName(name);
 export function normalizeTime(value) {
   return String(value ?? '').normalize('NFKC').replace(/\s+/gu, '').replace(/(?<!\d)(\d):(\d{2})/gu, '0$1:$2');
@@ -240,7 +287,7 @@ function currentClassCandidates(row, classes, staff) {
     && normalizeName(item.mode) === normalizeName(mode) && staffIdentity(item.teacher, staff) === staffIdentity(teacher, staff));
 }
 
-function teacherReferences(base, workbooks, staff) {
+function teacherReferences(bases, workbooks, staff) {
   const refs = new Map();
   const add = (name, evidence) => {
     for (const value of name.split(/[、,，\n/]+/u).map(name => name.trim()).filter(Boolean)) {
@@ -249,7 +296,7 @@ function teacherReferences(base, workbooks, staff) {
       item.evidence.push(evidence); refs.set(value, item);
     }
   };
-  for (const row of base.records) for (const cell of row.cells) {
+  for (const base of bases) for (const row of base.records) for (const cell of row.cells) {
     if ((cell.type === 'User' || STAFF_FIELD.test(fieldName(cell))) && cell.text.trim()) add(cell.text, { source: base.source.filename, table: row.tableName, position: `${row.sourceRecordId}/${cell.fieldId}` });
   }
   for (const workbook of workbooks) {
@@ -294,16 +341,17 @@ export function compareBaseRevisions(previous, current) {
       representationChangedRecords: representationChanges.length, representationChangedFields: representationChanges.reduce((n, row) => n + row.fieldIds.length, 0) } };
 }
 
-export function reconcileSources({ base, workbooks: extracted, manifest, confirmedStaffAliases = [], previousBase = null }) {
+export function reconcileSources({ base, referenceBases = [], workbooks: extracted, manifest, confirmedStaffAliases = [], confirmedStaffDecisions = [], previousBase = null }) {
   const workbooks = locateWorkbooks(extracted, manifest);
   const employeeBook = workbooks.find(workbook => workbook.source.filename === '员工管理.xlsx');
   if (!employeeBook) throw new Error('EMPLOYEE_SOURCE_REQUIRED');
   expectColumns(employeeBook, [['A', 'ID'], ['B', '姓名'], ['C', '手机号']]);
   const staff = createStaffIndex(employeeBook.records.filter(row => row.sourceRow > 1).map(row => ({ id: valueAt(row, 'A'), name: valueAt(row, 'B'),
-    phone: valueAt(row, 'C'), position: valueAt(row, 'H'), sourcePath: row.sourcePath, sourceRow: row.sourceRow })), confirmedStaffAliases);
+    phone: valueAt(row, 'C'), position: valueAt(row, 'H'), sourcePath: row.sourcePath, sourceRow: row.sourceRow })), confirmedStaffAliases, confirmedStaffDecisions);
   const magic = readMagicReferences(workbooks, staff);
   const magicIndex = createPersonIndex(magic.students);
-  const basePeople = basePersonRows(base);
+  const basePeople = [...basePersonRows(base), ...referenceBases.flatMap(reference => basePersonRows(reference).map(person => ({ ...person,
+    key: `reference:${reference.source.filename}:${person.key}`, authority: 'historical_reference' })))];
   const referencePeople = excelPeople(workbooks);
   const peopleRows = [...basePeople, ...referencePeople].map(row => ({ ...row, match: row.ambiguousNameFields
     ? { status: 'review', method: 'multiple_name_fields', personId: null, candidateIds: [] } : matchPerson(row, magicIndex) }));
@@ -349,7 +397,7 @@ export function reconcileSources({ base, workbooks: extracted, manifest, confirm
     row.sameNameContactCandidates = row.name ? contactGroups.filter(group => normalizeName(group.name) === normalizeName(row.name)).map(group => group.key) : [];
     row.sameNameSourceRows = row.name ? peopleRows.filter(person => person.key !== row.key && normalizeName(person.name) === normalizeName(row.name)).map(person => person.key) : [];
   }
-  const teacherRefs = teacherReferences(base, workbooks, staff);
+  const teacherRefs = teacherReferences([base, ...referenceBases], workbooks, staff);
   const placeBook = workbooks.find(workbook => workbook.source.filename === '校区与教室管理.xlsx');
   if (!placeBook) throw new Error('PLACE_SOURCE_REQUIRED');
   const campuses = placeBook.records.filter(row => row.tableName === '校区管理').map(row => ({ name: valueAt(row, 'A'), address: valueAt(row, 'B'), state: valueAt(row, 'C'),
@@ -359,13 +407,16 @@ export function reconcileSources({ base, workbooks: extracted, manifest, confirm
   const roomChecks = magic.classes.map(item => ({ classId: item.id, room: item.room, campus: item.campus,
     status: !item.room ? 'missing' : rooms.some(room => room.name === item.room && normalizeCampus(room.campus) === normalizeCampus(item.campus) && room.kind === 'directory') ? 'matched' : 'review' }));
   const tableMatches = base.tables.map(table => ({ id: table.id, name: table.name, rawRows: table.rowCount, contentRows: table.contentRowCount,
-    personRows: peopleRows.filter(row => row.tableId === table.id).length,
-    matches: countBy(peopleRows.filter(row => row.tableId === table.id), row => row.match.status) }));
+    personRows: peopleRows.filter(row => row.tableId === table.id && row.sourcePath === base.source.filename).length,
+    matches: countBy(peopleRows.filter(row => row.tableId === table.id && row.sourcePath === base.source.filename), row => row.match.status) }));
   const revisions = compareBaseRevisions(previousBase, base);
   return { schemaVersion: RECONCILIATION_VERSION, generatedAt: new Date().toISOString(), mode: 'source_reconciliation_preview', businessWrites: 0,
     policy: { businessAuthority: base.source.filename, employeeAuthority: employeeBook.sourcePath, referenceStatusChangesAllowed: false,
-      phoneOnlyMergeAllowed: false, placeholderEmployeeImportAllowed: false, confirmedStaffAliases },
-    sourceFiles: manifest, baseTables: tableMatches, employees: staff.roster, teacherReferences: teacherRefs,
+      phoneOnlyMergeAllowed: false, placeholderEmployeeImportAllowed: false, confirmedStaffAliases, confirmedStaffDecisions },
+    sourceFiles: manifest, baseTables: tableMatches,
+    referenceBases: referenceBases.map(reference => ({ filename: reference.source.filename, sha256: reference.source.sha256,
+      tables: reference.tables, rawRows: reference.records.length, contentRows: reference.records.filter(row => row.hasContent).length })),
+    employees: staff.roster, teacherReferences: teacherRefs,
     currentAutumn: current, people: peopleRows.map(({ sourceRow, ...person }) => ({ ...person, sourceRow: typeof sourceRow === 'number' ? sourceRow : null })),
     contactGroups, householdPhones, sharedSourcePhones, magic, places: { campuses, rooms, classRoomChecks: roomChecks }, revisions,
     warnings: base.warnings,

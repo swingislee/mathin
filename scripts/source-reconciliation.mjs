@@ -9,7 +9,7 @@ import { textFileSha256 } from './lib/text-hash.mjs';
 
 const { values } = parseArgs({ options: {
   source: { type: 'string', default: 'docs/test_material' }, run: { type: 'string' }, python: { type: 'string' },
-  reuse: { type: 'boolean', default: false }, decisions: { type: 'string' }, 'previous-base': { type: 'string' },
+  reuse: { type: 'boolean', default: false }, decisions: { type: 'string' }, 'staff-review': { type: 'string' }, 'previous-base': { type: 'string' },
 } });
 if (!values.run) throw new Error('RUN_PATH_REQUIRED');
 const workspace = process.cwd();
@@ -60,8 +60,11 @@ for (const file of manifest) {
   }
 }
 const baseFiles = manifest.filter(file => file.path.endsWith('.base'));
-if (baseFiles.length !== 1 || !baseFiles[0].path.endsWith('2026-09-07【思维】用户与产品运营表.base')) throw new Error('BUSINESS_AUTHORITY_SOURCE_MISMATCH');
-const base = await extractFeishuBase(path.join(snapshot, baseFiles[0].path));
+const authorityFiles = baseFiles.filter(file => file.path.endsWith('2026-09-07【思维】用户与产品运营表.base'));
+if (authorityFiles.length !== 1) throw new Error('BUSINESS_AUTHORITY_SOURCE_MISMATCH');
+const base = await extractFeishuBase(path.join(snapshot, authorityFiles[0].path));
+const referenceBases = [];
+for (const file of baseFiles.filter(file => file !== authorityFiles[0])) referenceBases.push(await extractFeishuBase(path.join(snapshot, file.path)));
 const excelPath = path.join(root, 'excel-extraction.json');
 if (!values.reuse) {
   if (!values.python) throw new Error('BUNDLED_PYTHON_PATH_REQUIRED');
@@ -70,11 +73,15 @@ if (!values.reuse) {
   await fs.writeFile(path.join(root, 'base-extraction.json'), JSON.stringify(base), { flag: 'wx' });
 }
 const decisions = values.decisions ? await json(path.resolve(values.decisions)) : { confirmedStaffAliases: [] };
+const staffReview = values['staff-review'] ? await json(path.resolve(values['staff-review'])) : null;
+if (staffReview && (staffReview.kind !== 'staff_review_confirmation_ledger' || !Array.isArray(staffReview.decisions))) throw new Error('STAFF_REVIEW_LEDGER_INVALID');
+const confirmedStaffDecisions = (staffReview?.decisions ?? []).map(decision => ({ ...decision, confirmedBy: staffReview.confirmedBy }));
 const previousBase = values['previous-base'] ? await extractFeishuBase(path.resolve(values['previous-base'])) : null;
-const output = reconcileSources({ base, workbooks: await json(excelPath), manifest, confirmedStaffAliases: decisions.confirmedStaffAliases, previousBase });
+const output = reconcileSources({ base, referenceBases, workbooks: await json(excelPath), manifest, confirmedStaffAliases: decisions.confirmedStaffAliases, confirmedStaffDecisions, previousBase });
 output.implementationHashes = Object.fromEntries(['scripts/source-reconciliation.mjs', 'scripts/lib/source-reconciliation.mjs', 'scripts/history-archive-excel.py',
   'scripts/lib/history-archive-source.mjs'].map(file => [file, textFileSha256(path.join(workspace, file))]));
 output.decisionsSha256 = values.decisions ? textFileSha256(path.resolve(values.decisions)) : null;
+output.staffReviewSha256 = values['staff-review'] ? textFileSha256(path.resolve(values['staff-review'])) : null;
 const analysisDir = path.join(root, `analysis-${new Date().toISOString().replace(/[-:.]/gu, '')}`);
 await fs.mkdir(analysisDir);
 const outputPath = path.join(analysisDir, 'reconciliation.json');
