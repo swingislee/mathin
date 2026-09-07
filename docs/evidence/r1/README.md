@@ -32,6 +32,7 @@ failure_ticket
 
 | 阶段 | 状态 | 日期 | 证据 |
 | --- | --- | --- | --- |
+| AIXUEXI-DELTA-20260907 · 爱学习两讲增量热更新 | production schema/content deployed；machine postflight passed；pending product acceptance | 2026-09-07 | [两条迁移、完整回滚零残留演练、五/六年级各29页与双轨release、115个对象校验、业务不变量及同主机写前备份](aixuexi-incremental-production-20260907.md)；现有服务连续运行，应用版本保持原值 |
 | DEV-WEB-PUSH-1 / PUSH-P5 · 员工桌面 Web Push 生产暗部署 | production schema/app deployed；dark-state machine postflight passed；employee test not authorized | 2026-09-04 | [候选 `bea3d111…`、生产基线刷新、PostgreSQL 写前备份、migration rollback/零残留 rehearsal、应用原子 release、schema formal、暗态业务/Storage/错误不变量与公网 postflight](employee-web-push-p5-preflight.md)；feature=false、integration disabled/secret null、cohort/subscription/delivery/job=0、Worker inactive，只有 `PUSH-G5` 全部通过并再次获得明确确认后才能进入员工测试 |
 | DEV-CW-1 Step 8E · 统一课件工作区窄范围生产发布 | production schema/app deployed；machine postflight passed；pending production product acceptance | 2026-09-03 | [候选 `8c50b48…`、PostgreSQL 写前备份、6 migration 回滚／正式提交、原子 release、数据零漂移与机器 postflight](courseware-workspace-production.md)；[部署候选证据](courseware-workspace-release-candidate.md)；[Step 8D 生产 inventory](courseware-workspace-production-inventory.md) |
 | HOTFIX-20260831 · 课件 session 修复集中发布 | production app + 爱学习秋季 170 讲 source-runtime upgraded；machine postflight passed；pending production product acceptance | 2026-08-31 | [来源 iframe render 串行化、稳定签名 URL/相邻预热、X+ 首页视频投影、三包 5442 页版本化升级与精确 head 回退清单](courseware-session-fixes-production-20260831.md) |
