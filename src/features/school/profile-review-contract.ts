@@ -1,3 +1,5 @@
+/** 全量导入保留疑点，业务使用相关资料时再确认归属。 */
+export const PROFILE_REVIEW_ENABLED = false;
 export const PROFILE_REVIEW_FIELDS = ['name', 'grade', 'class', 'enrollment', 'contact'] as const;
 export type ProfileReviewField = typeof PROFILE_REVIEW_FIELDS[number];
 export type ProfileReviewScope = 'teacher' | 'support';

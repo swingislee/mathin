@@ -18,7 +18,6 @@ import { FilterBar, FilterBarMore, FilterBarReset, FilterBarSubmit, FilterSearch
 import { NewStudentDialog } from "@/features/school/NewStudentDialog";
 import { StatusStrip, type StatusStripItem } from "@/features/school/dashboard-page";
 import { StudentsTable } from "@/features/school/StudentsTable";
-import { ProfileReviewLink } from "@/features/school/ProfileReviewLink";
 import { FOLLOW_UP_STATUSES, listStudents, parseStudentFilters, STUDENT_STATUSES } from "@/features/school/students";
 import { Link } from "@/i18n/navigation";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
@@ -141,7 +140,6 @@ export default async function StudentsPage({
 
           {!filters.recycle ? (
             <DashboardCommandActions>
-              <ProfileReviewLink locale={locale} />
               {canImport && <Link href="/dashboard/students/import" className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{t("import")}</Link>}
               {canCreate && <NewStudentDialog />}
             </DashboardCommandActions>

@@ -5,7 +5,7 @@ import { actionError, type ActionResult } from '@/lib/action-result';
 import { requireDashboardEnvironment } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { isLocalHistoryArchiveEnvironment } from '../history-archive-contract';
-import type { ProfileReviewResponse } from '../profile-review-contract';
+import { PROFILE_REVIEW_ENABLED, type ProfileReviewResponse } from '../profile-review-contract';
 import { COMMON_CODES, parse, text, uuid } from './schemas';
 import { nullableRpcArg } from './guards';
 
@@ -21,6 +21,7 @@ const codes = [...COMMON_CODES, 'LOCAL_ONLY', 'VERSION_CONFLICT', 'REVIEWER_UNAV
 const readSchema = z.object({ locale: z.enum(['zh', 'en']), itemId: uuid, scope: z.enum(['teacher', 'support']) }).strict();
 
 async function reviewClient(locale: string) {
+  if (!PROFILE_REVIEW_ENABLED) throw new Error('NOT_FOUND');
   if (!isLocalHistoryArchiveEnvironment(process.env.NODE_ENV, process.env.NEXT_PUBLIC_SUPABASE_URL)) throw new Error('LOCAL_ONLY');
   await requireDashboardEnvironment(locale, ['staff']);
   return createClient();

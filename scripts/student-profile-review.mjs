@@ -5,6 +5,7 @@ import { openHistoryLocalTarget } from './lib/history-local-target.mjs';
 import { textFileSha256 } from './lib/text-hash.mjs';
 
 const mode = process.argv[2];
+if (mode === '--apply') throw new Error('PROFILE_REVIEW_RETIRED: import complete sources and resolve associations during business use');
 if (!['--preflight', '--check', '--apply'].includes(mode)) throw new Error('Use --preflight, --check or --apply');
 const output = path.resolve('.tmp/profile-review');
 fs.mkdirSync(output, { recursive: true });
