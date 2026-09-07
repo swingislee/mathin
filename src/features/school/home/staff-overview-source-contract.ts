@@ -1,4 +1,4 @@
-import { hasSourceAssessmentConclusion } from "../business-source-contract";
+import { hasSourceAssessmentConclusion, readSourceEnrollmentFacts } from "../business-source-contract";
 import { zonedDateTimeToInstant } from "../schedule";
 
 export interface OverviewActivity {
@@ -22,6 +22,7 @@ export interface OverviewRegistration {
   source_record_id: string | null;
   assessment_started_at: string | null;
   assessment_completed_at: string | null;
+  source_enrollment_facts?: unknown;
 }
 
 export interface OverviewAssessment {
@@ -42,12 +43,13 @@ export interface OverviewAssessment {
 
 export interface OverviewCourseEnrollment {
   id: string;
-  student_id: string;
+  student_id: string | null;
   opportunity_id: string | null;
   registered_on: string | null;
   confirmed_at: string | null;
   created_at: string;
   source_record_id: string | null;
+  course_opportunities?: { student_id: string | null; lead_id: string | null } | null;
 }
 
 export interface OverviewMembership {
@@ -140,13 +142,46 @@ export function buildOverviewSourceEvents(input: {
       id: row.id,
       at: overviewFactInstant(null, row.registered_on, timeZone)
         ?? (row.source_record_id ? null : overviewFactInstant(row.confirmed_at ?? row.created_at, null, timeZone)),
-      studentId: row.student_id, leadId: null, activityId: null,
+      studentId: row.student_id ?? row.course_opportunities?.student_id ?? null,
+      leadId: row.course_opportunities?.lead_id ?? null, activityId: null,
     })),
     // 花名册导入 RPC 把 joined_at 设为导入时刻；它提供在读快照，报名日期读取独立报名登记。
     ...input.memberships.filter(row => !bridgedMemberships.has(row.id) && !row.remark?.startsWith("班级学员导入：")).map(row => ({
       id: row.id, at: overviewFactInstant(row.joined_at, null, timeZone), studentId: row.student_id, leadId: null, activityId: null,
     })),
   ];
+  const courseSourceIds = new Map(input.courseEnrollments.map(row => [row.id, row.source_record_id]));
+  const seenSourceEnrollments = new Set<string>();
+  const subjectKey = (studentId: string | null, leadId: string | null) => studentId ? `student:${studentId}` : leadId ? `lead:${leadId}` : null;
+  for (const registration of input.registrations) {
+    const facts = readSourceEnrollmentFacts(registration.source_enrollment_facts);
+    if (!registration.source_record_id || !facts || !activities.has(registration.activity_id)) continue;
+    const at = overviewFactInstant(null, facts.registeredOn, timeZone);
+    // 来源报名只有确认与日期，未区分课程；同主体同日报名已有独立登记时沿用该登记。
+    const registrationSubject = subjectKey(registration.student_id, registration.lead_id);
+    const matches = enrollments.filter(event => {
+      const eventSubject = subjectKey(event.studentId, event.leadId);
+      const sameSubject = Boolean(registrationSubject && registrationSubject === eventSubject);
+      return courseSourceIds.get(event.id) === registration.source_record_id && (!registrationSubject || !eventSubject || sameSubject)
+        || at && event.at === at && sameSubject;
+    });
+    if (matches.length) {
+      if (matches.length === 1) {
+        matches[0].at ??= at;
+        matches[0].studentId ??= registration.student_id;
+        matches[0].activityId ??= registration.activity_id;
+        matches[0].leadId ??= registration.lead_id;
+      }
+      continue;
+    }
+    const key = JSON.stringify([registration.source_record_id, at, registration.student_id, registration.lead_id]);
+    if (seenSourceEnrollments.has(key)) continue;
+    seenSourceEnrollments.add(key);
+    enrollments.push({
+      id: `source-enrollment:${registration.id}`, at,
+      studentId: registration.student_id, leadId: registration.lead_id, activityId: registration.activity_id,
+    });
+  }
   return { arrivals, assessments, enrollments };
 }
 

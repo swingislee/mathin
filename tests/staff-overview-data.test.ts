@@ -154,6 +154,48 @@ describe("staff overview reads current business sources", () => {
     expect(data.capacityByGrade[0]).toMatchObject({ classCount: 2, enrolledSeats: 2 });
   });
 
+  it("counts dated source enrollments for unlinked leads and keeps the existing independent registration", async () => {
+    state.tables.activities = [activity("visit", "2026-09-02"), activity("trial", "2026-09-02")];
+    const facts = { version: 1, confirmed: true, registeredOn: "2026-09-03", assessmentBand: "a_plus" };
+    state.tables.activity_registrations = [
+      { ...registration("source-one", "visit", "one"), source_enrollment_facts: facts },
+      { ...registration("source-two", "visit", "two"), source_record_id: "two", source_enrollment_facts: facts },
+      { ...registration("source-two-trial", "trial", "two"), source_record_id: "two", source_enrollment_facts: facts },
+      { ...registration("source-student", "visit", ""), lead_id: null, student_id: "student", source_enrollment_facts: facts },
+      { ...registration("undated", "visit", "unknown"), source_enrollment_facts: { ...facts, registeredOn: null } },
+      { ...registration("old", "visit", "old"), source_enrollment_facts: { ...facts, registeredOn: "2026-08-03" } },
+    ];
+    state.tables.course_enrollments = [
+      { ...courseEnrollment("independent", "2026-09-03"), student_id: "student" },
+      { ...courseEnrollment("unbound", null), student_id: null, source_record_id: "source-one" },
+    ];
+    state.tables.assessment_results = [assessment("result", "source-two")];
+    const data = await getStaffOverviewData({ grain: "month", now });
+    expect(data.businessFacts.find(row => row.key === "enrollments")).toMatchObject({ current: 3, previous: 1 });
+    expect(data.missingDateCounts.enrollments).toBe(1);
+    expect(data.supportFunnelRows.find(row => row.userId === "support")?.metrics.enrollments.current).toBe(3);
+    expect(data.teacherParticipationRows.find(row => row.userId === "teacher")?.enrollments.current).toBe(1);
+    const weekly = await getStaffHomeWeekSummaryData({ now: new Date("2026-09-03T12:00:00+08:00") });
+    expect(weekly.businessFacts.find(row => row.key === "enrollments")?.current).toBe(3);
+  });
+
+  it("keeps source teacher participation when the trial has no assessment result or matching account", async () => {
+    state.tables.activities = [{ ...activity("trial", "2026-09-02"), remark: "学科老师：来源老师乙" }];
+    state.tables.activity_registrations = [registration("source-trial", "trial", "one")];
+    const data = await getStaffOverviewData({ grain: "month", now });
+    expect(data.teacherParticipationSummary.unattributedParticipants.current).toBe(0);
+    expect(data.teacherParticipationRows.find(row => row.name === "来源老师乙")?.participants.current).toBe(1);
+    expect(data.businessFacts.find(row => row.key === "assessments")?.current).toBe(0);
+  });
+
+  it("shows acquisition as unavailable when archive RLS hides dates and preserves readable pending facts", async () => {
+    state.tables.leads = [{ id: "imported", created_at: now.toISOString(), source_record_id: "source", status: "uncontacted", owner_id: "support" }];
+    const data = await getStaffOverviewData({ grain: "month", now });
+    expect(data.businessFacts.find(row => row.key === "leads")?.current).toBeNull();
+    expect(data.unavailableSources).toContain("leads");
+    expect(data.pendingFacts.find(row => row.key === "uncontactedLeads")?.value).toBe(1);
+  });
+
   it("reports an unavailable source instead of showing a successful zero", async () => {
     state.failures.add("course_enrollments");
     const data = await getStaffOverviewData({ grain: "month", now });

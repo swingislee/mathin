@@ -5,6 +5,10 @@ import { createClient } from "@/lib/supabase/server";
 import { resolveSourceStaffId, sourceStaffLabel } from "../business-source-contract";
 import { readCurrentTermClassroomIds, readOverviewRows, STAFF_OVERVIEW_READ_LIMIT, type OverviewRowsResult } from "./staff-overview-read";
 import {
+  buildOverviewAcquisitions, OVERVIEW_ACQUISITION_SOURCE, OVERVIEW_ACQUISITION_TABLE,
+  type OverviewAcquisitionSource, type OverviewLeadSubmission,
+} from "./staff-overview-acquisition-contract";
+import {
   buildOverviewSourceEvents, overviewFactInstant, overviewSubjectKey,
   type OverviewActivity, type OverviewRegistration, type OverviewAssessment,
   type OverviewCourseEnrollment, type OverviewMembership, type OverviewEnrollmentAssignment,
@@ -143,12 +147,6 @@ export interface StaffHomeWeekSummaryData {
   snapshot: Pick<StaffOverviewSnapshot, "activeClasses" | "remainingSeats">;
 }
 
-interface PeriodLeadRow {
-  id: string;
-  created_at: string;
-  owner_id: string | null;
-}
-
 interface LeadDirectoryRow {
   id: string;
   owner_id: string | null;
@@ -249,11 +247,11 @@ async function readOverviewCore(supabase: Awaited<ReturnType<typeof createClient
     readOverviewRows<OverviewActivity>(() => supabase.from("activities")
       .select("id,scheduled_at,occurred_on,source_invitation_id,remark,record_state").is("deleted_at", null)),
     readOverviewRows<OverviewRegistration>(() => supabase.from("activity_registrations")
-      .select("id,activity_id,student_id,lead_id,status,record_state,registered_on,created_at,source_record_id,assessment_started_at,assessment_completed_at")),
+      .select("id,activity_id,student_id,lead_id,status,record_state,registered_on,created_at,source_record_id,assessment_started_at,assessment_completed_at,source_enrollment_facts")),
     readOverviewRows<OverviewAssessment>(() => supabase.from("assessment_results")
       .select("id,activity_registration_id,student_id,lead_id,assessed_by,assessed_on,created_at,source_record_id,result_source,result_finalized_at,assessment_band,score,strengths")),
     readOverviewRows<OverviewCourseEnrollment>(() => supabase.from("course_enrollments")
-      .select("id,student_id,opportunity_id,registered_on,confirmed_at,created_at,source_record_id")),
+      .select("id,student_id,opportunity_id,registered_on,confirmed_at,created_at,source_record_id,course_opportunities(student_id,lead_id)")),
     readOverviewRows<OverviewMembership>(() => supabase.from("enrollments")
       .select("id,classroom_id,student_id,joined_at,status,remark")),
     readOverviewRows<OverviewEnrollmentAssignment>(() => supabase.from("course_enrollment_assignments")
@@ -295,7 +293,7 @@ export async function getStaffHomeWeekSummaryData({ now = new Date() }: { now?: 
   const comparisons = {
     arrivals: arrivalsExact ? aggregateStaffOverviewEvents(datedEvents(events.arrivals), window, timeZone) : null,
     assessments: arrivalsExact && exactRows(core.assessments) ? aggregateStaffOverviewEvents(datedEvents(events.assessments), window, timeZone) : null,
-    enrollments: exactRows(core.courseEnrollments) && exactRows(core.memberships) && exactRows(core.enrollmentAssignments) && exactRows(core.classrooms)
+    enrollments: arrivalsExact && exactRows(core.courseEnrollments) && exactRows(core.memberships) && exactRows(core.enrollmentAssignments) && exactRows(core.classrooms)
       ? aggregateStaffOverviewEvents(datedEvents(events.enrollments), window, timeZone) : null,
   };
   const businessFacts = (["arrivals", "assessments", "enrollments"] as const).map((key): StaffOverviewBusinessFact => ({
@@ -337,11 +335,14 @@ export async function getStaffOverviewData({
     "waiting_activity",
   ];
 
-  const [core, periodLeadsResult, leadDirectoryResult, communicationsResult, invitationEventsResult,
+  const [core, acquisitionSourcesResult, leadSubmissionsResult, leadDirectoryResult, communicationsResult, invitationEventsResult,
     invitationThreadsResult, assignmentsResult, leadActionsResult, supportTasksResult, profilesResult,
     staffRoleMembersResult, opportunitiesResult] = await Promise.all([
     readOverviewCore(supabase),
-    readOverviewRows<PeriodLeadRow>(() => supabase.from("leads").select("id,created_at,owner_id").gte("created_at", rangeStart).lt("created_at", rangeEnd)),
+    readOverviewRows<OverviewAcquisitionSource>(() => supabase.from("history_import_records")
+      .select("id,lead_id,record_data").eq("source_data->>filename", OVERVIEW_ACQUISITION_SOURCE)
+      .eq("record_data->>tableName", OVERVIEW_ACQUISITION_TABLE)),
+    readOverviewRows<OverviewLeadSubmission>(() => supabase.from("lead_source_records").select("id,lead_id,submitted_at")),
     readOverviewRows<LeadDirectoryRow>(() => supabase.from("leads").select("id,owner_id,status,student_id,created_at,source_record_id")),
     readOverviewRows<CommunicationRow>(() => supabase.from("lead_communications").select("id,lead_id,occurred_at,occurred_on,outcome,owner_id_at_contact,recorded_by,source_record_id")),
     readOverviewRows<InvitationEventRow>(() => supabase.from("lead_invitation_events")
@@ -371,8 +372,13 @@ export async function getStaffOverviewData({
     return values;
   }
 
-  const periodLeads = rows(periodLeadsResult, "leads");
+  const acquisitionSources = acquisitionSourcesResult.data ?? [];
+  const leadSubmissions = leadSubmissionsResult.data ?? [];
   const leadDirectory = rows(leadDirectoryResult, "leads");
+  // 原始来源沿用管理员 RLS；当前身份无法读取时，获客统计明确显示不可用。
+  const acquisitionReadable = !acquisitionSourcesResult.error && !leadSubmissionsResult.error
+    && !(acquisitionSources.length === 0 && leadDirectory.some(row => row.source_record_id));
+  const acquisitionAvailable = acquisitionReadable && exactRows(acquisitionSourcesResult) && exactRows(leadSubmissionsResult);
   const openLeads = leadDirectory.filter((row) => activeLeadStates.includes(row.status));
   const communications = rows(communicationsResult, "communications");
   const invitationEvents = rows(invitationEventsResult, "invitations");
@@ -457,15 +463,16 @@ export async function getStaffOverviewData({
   };
 
   const sourceStaffNames = new Map<string, string>();
-  const sourceSupport = new Map(activities.map(activity => {
-    const name = sourceStaffLabel(activity.remark, "学服老师");
+  const sourceStaff = (name: string) => {
     const accountId = resolveSourceStaffId(name, profiles);
-    if (!name || accountId) return [activity.id, accountId] as const;
+    if (!name || accountId) return accountId;
     // 来源署名可以参与统计和展示选择；此键只用于总览，不创建账号或授予岗位。
     const displayId = `source-staff:${encodeURIComponent(name)}`;
     sourceStaffNames.set(displayId, name);
-    return [activity.id, displayId] as const;
-  }));
+    return displayId;
+  };
+  const sourceSupport = new Map(activities.map(activity => [activity.id, sourceStaff(sourceStaffLabel(activity.remark, "学服老师"))]));
+  const sourceTeachers = new Map(activities.map(activity => [activity.id, sourceStaff(sourceStaffLabel(activity.remark, "学科老师"))]));
   const personForEvent = (event: { activityId: string | null; studentId: string | null; leadId: string | null; at: string }) => {
     const directOwner = event.activityId ? sourceSupport.get(event.activityId) : null;
     const linkedLead = event.leadId ? leadById.get(event.leadId) : null;
@@ -482,7 +489,17 @@ export async function getStaffOverviewData({
     values.add(assessment.assessed_by);
     assessorsByRegistrationId.set(assessment.activity_registration_id, values);
   }
-  const leadEvents = periodLeads.map(row => ({ id: row.id, at: row.created_at, personId: row.owner_id }));
+  for (const registration of registrations) {
+    if (!registration.source_record_id) continue;
+    if (assessorsByRegistrationId.get(registration.id)?.size) continue;
+    const teacherId = sourceTeachers.get(registration.activity_id);
+    if (teacherId) assessorsByRegistrationId.set(registration.id, new Set([teacherId]));
+  }
+  const sourceLeadEvents = buildOverviewAcquisitions({
+    sources: acquisitionSources, leads: leadDirectory, submissions: leadSubmissions,
+    sourceLinks: [...communications, ...registrations, ...assessments],
+  }, timeZone);
+  const leadEvents = datedEvents(sourceLeadEvents);
   const sourceContactEvents = communications.filter(row => row.outcome === "connected").map(row => ({
     id: row.id, at: overviewFactInstant(row.occurred_at, row.occurred_on, timeZone),
     personId: row.owner_id_at_contact ?? (row.source_record_id ? row.recorded_by ?? leadById.get(row.lead_id)?.owner_id ?? null : null),
@@ -501,9 +518,10 @@ export async function getStaffOverviewData({
   const enrollmentOwner = new Map(courseEnrollments.map(row => [row.id, row.opportunity_id ? opportunityOwner.get(row.opportunity_id) : null]));
   const enrollmentEvents = datedEvents(sourceEvents.enrollments).map(row => ({
     ...row, studentId: subjectForEvent(row),
-    personId: enrollmentOwner.get(row.id) ?? (row.studentId ? supportOwnerForEnrollment(row.studentId, row.at) : null),
+    personId: enrollmentOwner.get(row.id) ?? personForEvent(row) ?? (row.studentId ? supportOwnerForEnrollment(row.studentId, row.at) : null),
   }));
   const missingDateCounts: Partial<Record<StaffOverviewMetric, number>> = {
+    leads: sourceLeadEvents.filter(row => !row.at).length,
     contacts: sourceContactEvents.filter(row => !row.at).length,
     invitations: new Set(sourceInvitationEvents.filter(row => !row.at).map(row => row.id)).size,
     arrivals: sourceEvents.arrivals.filter(row => !row.at).length,
@@ -512,14 +530,14 @@ export async function getStaffOverviewData({
   };
 
   const comparisonByMetric: Record<StaffOverviewMetric, StaffOverviewComparison | null> = {
-    leads: !sourceExact("leads") ? null : aggregateStaffOverviewEvents(leadEvents, window, timeZone),
+    leads: !sourceExact("leads") || !acquisitionAvailable ? null : aggregateStaffOverviewEvents(leadEvents, window, timeZone),
     contacts: !sourceExact("communications") ? null : aggregateStaffOverviewEvents(contactEvents, window, timeZone),
     invitations: !sourceExact("invitations") || !sourceExact("activities")
       ? null
       : aggregateStaffOverviewEvents(invitationFactEvents, window, timeZone, true),
     arrivals: !sourceExact("activities") ? null : aggregateStaffOverviewEvents(arrivalEvents, window, timeZone),
     assessments: !sourceExact("assessments") || !sourceExact("activities") ? null : aggregateStaffOverviewEvents(assessmentEvents, window, timeZone),
-    enrollments: !sourceExact("enrollments") || !sourceExact("classrooms") ? null : aggregateStaffOverviewEvents(enrollmentEvents, window, timeZone),
+    enrollments: !sourceExact("enrollments") || !sourceExact("classrooms") || !sourceExact("activities") ? null : aggregateStaffOverviewEvents(enrollmentEvents, window, timeZone),
   };
 
   const businessFacts = (["leads", "contacts", "invitations", "arrivals", "assessments", "enrollments"] as const)
@@ -589,9 +607,10 @@ export async function getStaffOverviewData({
     invitations: ["invitations", "activities", "leads", "staffDirectory"],
     arrivals: ["activities", "invitations", "leads", "staffDirectory"],
     assessments: ["assessments", "activities", "invitations", "leads", "staffDirectory"],
-    enrollments: ["enrollments", "invitations", "leads", "classrooms"],
+    enrollments: ["enrollments", "activities", "invitations", "leads", "classrooms", "staffDirectory"],
   };
-  const supportMetricExact = (metric: StaffOverviewMetric) => supportMetricSources[metric].every(sourceExact);
+  const supportMetricExact = (metric: StaffOverviewMetric) => supportMetricSources[metric].every(sourceExact)
+    && (metric !== "leads" || acquisitionAvailable);
   const personKey = (userId: string | null) => userId ?? "__unassigned__";
   const supportComparisons = new Map<StaffOverviewMetric, Map<string, StaffOverviewPersonMetric>>();
   const supportIds = new Set<string>();
@@ -693,7 +712,7 @@ export async function getStaffOverviewData({
         })),
         ...assessmentEvents.map(event => ({
           id: event.id, studentId: event.studentId, at: event.at,
-          teacherIds: assessments.find(row => row.id === event.id)?.assessed_by ? [assessments.find(row => row.id === event.id)!.assessed_by!] : [],
+          teacherIds: Array.from(assessorsByRegistrationId.get(assessments.find(row => row.id === event.id)!.activity_registration_id) ?? []),
         })),
       ],
       enrollmentEvents,
@@ -760,6 +779,8 @@ export async function getStaffOverviewData({
     },
   ];
 
+  if (!acquisitionReadable) unavailable.add("leads");
+  else if (!acquisitionAvailable) truncated.add("leads");
   return {
     currentTermName: term?.name ?? null,
     missingDateCounts,
