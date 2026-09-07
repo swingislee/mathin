@@ -18,5 +18,7 @@ const cursorPaths: Record<CubeTool, string> = {
 export function cubeToolCursor(tool: CubeTool): string {
   if (tool === "orbit") return "grab";
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28"><g fill="white" stroke="#211e1a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${cursorPaths[tool]}</g></svg>`;
-  return `url("data:image/svg+xml,${encodeURIComponent(svg)}") 4 4, crosshair`;
+  // 切割的实际落点与左下方笔尖重合。
+  const hotspot = tool === "cut" ? "4 21" : "4 4";
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${hotspot}, crosshair`;
 }

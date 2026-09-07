@@ -47,9 +47,10 @@ export function CubeStructuresScene({ state, cut, cutLines, cutConfirmation, ann
         <meshBasicMaterial color={CUBE_AXIS_COLORS[cut.axis]} transparent opacity={0.12} depthWrite={false} side={DoubleSide} polygonOffset polygonOffsetFactor={-1} />
       </mesh><Line points={corners} color={CUBE_AXIS_COLORS[cut.axis]} lineWidth={1.5} dashed dashSize={0.12} gapSize={0.08} depthTest={false} depthWrite={false} raycast={() => null} renderOrder={6} /></group>;
     })}
-    {["cut", "orbit", "pan"].includes(tool) && [...new Map(cutLines.map((line) => [line.key, line])).values()].map((line, index) => <Line key={line.key}
+    {/* Three 先按组顺序绘制；高亮组置于原粗棱边组之后，保持所选线清晰可见。 */}
+    {["cut", "orbit", "pan"].includes(tool) && <group name="cube-cut-lines" renderOrder={7}>{[...new Map(cutLines.map((line) => [line.key, line])).values()].map((line, index) => <Line key={line.key}
       points={[[line.start.x, line.start.y, line.start.z], [line.end.x, line.end.y, line.end.z]]}
-      color={cut ? CUBE_AXIS_COLORS[cut.axis] : "#edce79"} lineWidth={index === 0 ? 6 : 4} depthTest={false} depthWrite={false} raycast={() => null} renderOrder={7} />)}
+      color={cut ? CUBE_AXIS_COLORS[cut.axis] : "#edce79"} lineWidth={index === 0 ? 6 : 4} depthTest={false} depthWrite={false} raycast={() => null} renderOrder={7} />)}</group>}
     {tool === "cut" && cutConfirmation && <Html position={[cutConfirmation.anchor.x, cutConfirmation.anchor.y, cutConfirmation.anchor.z]} zIndexRange={[24, 20]}
       calculatePosition={(object, camera, size) => {
         const point = new Vector3().setFromMatrixPosition(object.matrixWorld).project(camera);
