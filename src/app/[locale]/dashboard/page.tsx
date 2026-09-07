@@ -66,9 +66,9 @@ export default async function DashboardPage({
       hasManagementScope: hasStaffHomeManagementScope(perms),
     });
     const period = normalizeOverviewGrain(typeof rawSearchParams.period === "string"
-      ? rawSearchParams.period : cookieStore.get(STAFF_OVERVIEW_GRAIN_COOKIE)?.value);
+      ? rawSearchParams.period : cookieStore.get(STAFF_OVERVIEW_GRAIN_COOKIE)?.value ?? "month");
     const date = (typeof rawSearchParams.date === "string"
-      ? rawSearchParams.date : cookieStore.get(STAFF_OVERVIEW_DATE_COOKIE)?.value ?? "previous").slice(0, 20);
+      ? rawSearchParams.date : cookieStore.get(STAFF_OVERVIEW_DATE_COOKIE)?.value ?? "current").slice(0, 20);
     if (view === "work") {
       return (
         <TodayWorkHome
@@ -92,6 +92,7 @@ export default async function DashboardPage({
         grain={period}
         date={date}
         workItemCount={workItems.length}
+        organizationScope={perms.has("organization.settings.manage")}
       />
     );
   }

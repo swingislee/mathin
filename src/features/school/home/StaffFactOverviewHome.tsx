@@ -3,6 +3,9 @@ import { cookies } from "next/headers";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StaffOverviewDisplayPicker } from "./StaffOverviewDisplayPicker";
 import { StaffOverviewCapacityTabs } from "./StaffOverviewCapacityTabs";
+import { readMonthlyTargets } from "./monthly-targets-data";
+import type { MonthlyTargetRead } from "./monthly-targets-contract";
+import { overviewTargetProgress, type OverviewClassroomOccupancy } from "./staff-overview-presentation-contract";
 import { selectOverviewDisplayIds, selectOverviewSupportRows, selectOverviewTeacherRows, staffOverviewDisplayCookie, type OverviewDisplayGroup, type OverviewDisplayScope } from "./staff-overview-display-contract";
 import { ArrowUpRight } from "lucide-react";
 import { getTranslations } from "next-intl/server";
@@ -18,7 +21,7 @@ import { ObjectBar, ObjectWorkspace } from "@/features/school/object-workspace";
 import { calendarDayKey } from "@/features/school/schedule";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
-import type { HomeProps } from "./shared";
+import type { HomeProps, Translator } from "./shared";
 import { staffHomeHref } from "./staff-home-contract";
 import { StaffHomeViewTabs } from "./StaffHomeViewTabs";
 import { StaffOverviewDataNote } from "./StaffOverviewDataNote";
@@ -61,6 +64,8 @@ interface CapacityVisualDatum {
   minimumOpenGap: number | null;
   healthyDelta: number | null;
   remainingSeats: number | null;
+  href?: string;
+  context?: string;
 }
 
 function valueOrDash(value: number | null): string {
@@ -119,6 +124,8 @@ function BusinessFactBand({
   currentLabel,
   previousLabel,
   differenceLabel,
+  goals,
+  t,
 }: {
   facts: StaffOverviewBusinessFact[];
   title: ReactNode;
@@ -126,7 +133,12 @@ function BusinessFactBand({
   currentLabel: string;
   previousLabel: string;
   differenceLabel: string;
+  goals: MonthlyTargetRead;
+  t: Translator;
 }) {
+  const targets: Partial<Record<StaffOverviewMetric, number | null>> = goals.plan ? {
+    enrollments: goals.plan.enrollmentTarget, arrivals: goals.plan.arrivalTarget, invitations: goals.plan.invitationTarget,
+  } : {};
   return (
     <section aria-labelledby="staff-overview-business-facts" data-overview-scope="period">
       <div className="mb-1.5 flex min-w-0 items-center justify-between gap-3">
@@ -137,9 +149,13 @@ function BusinessFactBand({
         </p>
       </div>
       <div className="grid min-w-0 grid-cols-2 gap-2 @2xl/page:grid-cols-3 @4xl/page:grid-cols-6">
-        {facts.map((fact, index) => (
+        {facts.map((fact, index) => {
+          const target = targets[fact.key] ?? null;
+          const progress = overviewTargetProgress(fact.current, target);
+          return (
           <div
             key={fact.key}
+            data-overview-metric={fact.key} data-overview-value={fact.current ?? "unknown"} data-overview-target={target ?? "unset"}
             className={cn("min-w-0 rounded-xl border border-line/75 border-t-2 px-3 pb-1.5 pt-2", FACT_TONES[index % FACT_TONES.length])}
           >
             <div className="flex min-w-0 items-center justify-between gap-2">
@@ -153,8 +169,18 @@ function BusinessFactBand({
               <span className="truncate text-[9px] tabular-nums text-muted">{previousLabel} {valueOrDash(fact.previous)}</span>
             </div>
             <MiniTrend points={fact.trend} />
+            {target !== null ? <div className="mt-1 border-t border-line/60 pb-1 pt-1.5">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 text-[10px] tabular-nums">
+                <span className="text-muted">{t("goalTargetCompact", { count: target })}</span>
+                <span className="font-medium text-ink">{progress ? t(progress.exceeded > 0 ? "goalExceededCompact" : "goalRemainingCompact", { count: progress.exceeded || progress.remaining }) : "—"}</span>
+              </div>
+              {progress ? <div className="mt-1 flex items-center gap-2">
+                <span className="relative h-1 min-w-0 flex-1 overflow-hidden rounded-full bg-line/60" aria-hidden><span className="absolute inset-y-0 left-0 rounded-full bg-leaf-deep" style={{ width: `${progress.width}%` }} /></span>
+                <span className="shrink-0 text-[9px] tabular-nums text-leaf-deep">{Math.round(progress.percent)}%</span>
+              </div> : null}
+            </div> : null}
           </div>
-        ))}
+        ); })}
       </div>
     </section>
   );
@@ -355,7 +381,9 @@ function CapacityGroup({ title, rows, emptyLabel, labels }: {
           <TableHead key={label} className={cn("h-8 px-2 text-[10px] whitespace-nowrap", i > 0 && "text-right")}>{label}</TableHead>)}
       </TableRow></TableHeader>
       <TableBody>{rows.map(row => <TableRow key={row.key} data-capacity-row={row.key}>
-        <TableCell className="max-w-24 truncate px-2 py-1.5 font-medium" title={row.label}>{row.label}</TableCell>
+        <TableCell className="max-w-32 truncate px-2 py-1.5 font-medium" title={row.context ? `${row.label} · ${row.context}` : row.label}>
+          {row.href ? <Link href={row.href} className="hover:text-rose">{row.label}</Link> : row.label}
+        </TableCell>
         <TableCell className="px-2 py-1.5 text-right tabular-nums">{valueOrDash(row.classCount)}</TableCell>
         <TableCell className="px-2 py-1.5 text-right tabular-nums whitespace-nowrap">{valueOrDash(row.enrolledSeats)}<span className="text-[10px] text-muted">/{valueOrDash(row.fullSeats)}</span></TableCell>
         <TableCell className="px-2 py-1.5 text-right tabular-nums">{valueOrDash(row.minimumOpenGap)}</TableCell>
@@ -379,6 +407,9 @@ function CapacityPanel({
   gradeEmpty,
   labels,
   policy,
+  classrooms,
+  classroomTitle,
+  classroomEmpty,
 }: {
   title: ReactNode;
   settings: ReactNode;
@@ -391,6 +422,9 @@ function CapacityPanel({
   gradeEmpty: string;
   labels: { classes: string; minimum: string; healthy: string; remaining: string; enrolled: string };
   policy: string;
+  classrooms: OverviewClassroomOccupancy[];
+  classroomTitle: string;
+  classroomEmpty: string;
 }) {
   return (
     <CockpitPanel
@@ -418,6 +452,13 @@ function CapacityPanel({
         ))}
       </div>
       <StaffOverviewCapacityTabs teacherLabel={teacherTitle + " · " + teachers.length} gradeLabel={gradeTitle + " · " + grades.length}
+        classroomLabel={classroomTitle + " · " + classrooms.length}
+        classrooms={<CapacityGroup title={classroomTitle} emptyLabel={classroomEmpty} labels={labels}
+          rows={classrooms.map(row => ({ key: row.id, label: row.name, href: `/dashboard/classes/${row.id}`, context: row.teacherNames.join(" · "),
+            classCount: 1, fullSeats: row.full, enrolledSeats: row.enrolledSeats,
+            minimumOpenGap: row.enrolledSeats === null ? null : Math.max(0, row.minimumOpen - row.enrolledSeats),
+            healthyDelta: row.enrolledSeats === null || row.healthy === null ? null : row.enrolledSeats - row.healthy,
+            remainingSeats: row.enrolledSeats === null || row.full === null ? null : Math.max(0, row.full - row.enrolledSeats) }))} />}
         teachers={<CapacityGroup title={teacherTitle} rows={teachers} emptyLabel={teacherEmpty} labels={labels} />}
         grades={<CapacityGroup title={gradeTitle} rows={grades} emptyLabel={gradeEmpty} labels={labels} />} />
       <p className="shrink-0 truncate border-t border-line/70 px-3 py-1.5 text-[9px] text-muted" title={policy}>{policy}</p>
@@ -462,11 +503,13 @@ export async function StaffFactOverviewHome({
   grain,
   date,
   workItemCount,
+  organizationScope,
 }: HomeProps & {
   focusTarget?: string;
   grain: StaffOverviewGrain;
   date: string;
   workItemCount: number;
+  organizationScope: boolean;
 }) {
   const [schoolT, t, hubT, data] = await Promise.all([
     getTranslations("school"),
@@ -483,6 +526,8 @@ export async function StaffFactOverviewHome({
   const previousRange = rangeLabel(locale, data.timeZone, data.previousStart, data.previousCutoff);
   const dayKey = (value: string) => calendarDayKey(new Date(value), data.timeZone);
   const selectedDate = dayKey(data.currentStart);
+  const targetMonth = selectedDate.slice(0, 7);
+  const goals = organizationScope && grain === "month" ? await readMonthlyTargets(targetMonth) : { available: true as const, plan: null };
   const selection = date === "current" || date === "previous" ? date : selectedDate;
   const liveWindow = buildStaffOverviewWindow(grain, new Date(data.generatedAt), data.timeZone);
   const previousLabel = t(data.isComplete ? "previousComplete" : "previousShort");
@@ -571,6 +616,7 @@ export async function StaffFactOverviewHome({
             />
           </DashboardCommandState>
           <DashboardCommandActions>
+            {organizationScope && grain === "month" ? <Link href={`/dashboard/targets?month=${targetMonth}`} className="inline-flex h-8 items-center gap-1 rounded-lg px-2 text-xs text-ink hover:bg-moon/15">{t("goalEdit")}<ArrowUpRight className="size-3" aria-hidden /></Link> : null}
             <span className="text-[10px] tabular-nums text-muted">{t("updatedAt", { time: generatedAt })}</span>
             <StaffOverviewRefreshButton />
             <StaffOverviewDataNote
@@ -595,6 +641,7 @@ export async function StaffFactOverviewHome({
         <NotificationFocus target={focusTarget} />
         <p className="text-[10px] text-muted" data-overview-comparison={data.isComplete ? "complete" : "to-date"}>
           {t(data.isComplete ? "completeComparison" : "progressComparison", { current: currentRange, previous: previousRange })}
+          {organizationScope && grain === "month" ? <span className="ml-3">{t(goals.plan ? goals.plan.basis === "source" ? "goalSource" : "goalSavedSource" : goals.available ? "goalNotSet" : "goalUnavailable", { date: goals.plan?.source.capturedOn ?? "" })}</span> : null}
         </p>
 
         <BusinessFactBand
@@ -604,6 +651,8 @@ export async function StaffFactOverviewHome({
           currentLabel={t("currentShort")}
           previousLabel={previousLabel}
           differenceLabel={t("differenceColumn")}
+          goals={goals}
+          t={t}
         />
 
         <PendingStrip
@@ -614,7 +663,7 @@ export async function StaffFactOverviewHome({
           fullLabel={(key) => t(`pending_${key}`)}
         />
 
-        <div className="grid min-w-0 gap-2 @4xl/page:grid-cols-2 @6xl/page:h-[calc(100dvh-20rem)] @6xl/page:min-h-[23rem] @6xl/page:max-h-[48rem] @6xl/page:grid-cols-[minmax(29rem,1.35fr)_minmax(17rem,.8fr)_minmax(24rem,1.05fr)]">
+        <div className="grid min-w-0 gap-2 @4xl/page:grid-cols-2 @6xl/page:h-[calc(100dvh-23rem)] @6xl/page:min-h-[23rem] @6xl/page:max-h-[48rem] @6xl/page:grid-cols-[minmax(29rem,1.35fr)_minmax(17rem,.8fr)_minmax(24rem,1.05fr)]">
           <SupportFunnelPanel
             rows={supportDisplay.rows}
             title={<ScopeTitle label={t("periodScope")}>{t("supportFunnelTitle")}</ScopeTitle>}
@@ -663,6 +712,9 @@ export async function StaffFactOverviewHome({
               gradeEmpty={data.capacityAvailable ? t(capacityGradeDisplay.selectedIds.length === 0 ? "displayEmpty" : "capacityEmpty") : t("capacityUnavailable")}
               labels={capacityLabels}
               policy={t("capacityPolicyCompact")}
+              classrooms={data.classroomRows}
+              classroomTitle={t("classroomName")}
+              classroomEmpty={t(data.capacityAvailable ? "capacityEmpty" : "capacityUnavailable")}
             />
         </div>
       </div>

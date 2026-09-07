@@ -69,6 +69,24 @@ beforeEach(() => {
 });
 
 describe("staff overview reads current business sources", () => {
+  it("builds class occupancy from current visible classes and preserves unknown counts", async () => {
+    state.tables.classrooms = [
+      { id: "current-class", name: "三年级甲班", term_id: "current", purpose: "production", grade: 3, capacity: 20, archived_at: null, trashed_at: null },
+      { id: "old-class", name: "往期班", term_id: "old", purpose: "production", grade: 3, capacity: 20, archived_at: null, trashed_at: null },
+    ];
+    state.tables.enrollments = [{ id: "e", classroom_id: "current-class", student_id: "student", status: "active", joined_at: "2026-09-02T00:00:00Z" }];
+    state.tables.classroom_staff_assignments = [
+      { classroom_id: "current-class", user_id: "teacher", responsibility: "primary_teacher", ended_at: null },
+      { classroom_id: "current-class", user_id: "support", responsibility: "learning_support", ended_at: null },
+    ];
+    const data = await getStaffOverviewData({ grain: "month", now });
+    expect(data.classroomRows).toHaveLength(1);
+    expect(data.classroomRows[0]).toMatchObject({ id: "current-class", name: "三年级甲班", enrolledSeats: 1, full: 20, teacherNames: ["老师甲"] });
+    state.failures.add("enrollments");
+    const unavailable = await getStaffOverviewData({ grain: "month", now });
+    expect(unavailable.classroomRows[0].enrolledSeats).toBeNull();
+  });
+
   it("loads beyond the server row cap and preserves complete totals and owner rows", async () => {
     state.tables.leads = Array.from({ length: 1103 }, (_, i) => ({ id: `lead-${i}`, created_at: "2026-09-07T02:00:00Z", owner_id: "support", status: "uncontacted", student_id: null, source_record_id: null }));
     const data = await getStaffOverviewData({ grain: "week", now });

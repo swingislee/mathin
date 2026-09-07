@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { OverviewClassroomOccupancy } from "./staff-overview-presentation-contract";
 import { getOrganizationTimezoneV2 } from "@/features/school/organization-locations";
 import { createClient } from "@/lib/supabase/server";
 import { resolveSourceStaffId, sourceStaffLabel } from "../business-source-contract";
@@ -18,6 +19,7 @@ import {
   aggregateStaffOverviewEventsByPerson,
   buildStaffOverviewWindow,
   STAFF_OVERVIEW_METRICS,
+  resolveClassroomCapacityPolicy,
   summarizeClassroomCapacity,
   summarizeTeacherParticipationOutcomes,
   type ClassroomCapacityInput,
@@ -136,6 +138,7 @@ export interface StaffOverviewData {
   teacherParticipationRows: StaffOverviewTeacherParticipationRow[];
   teacherParticipationSummary: StaffOverviewTeacherParticipationSummary;
   capacityByGrade: StaffOverviewCapacityRow[];
+  classroomRows: OverviewClassroomOccupancy[];
   capacityAvailable: boolean;
   teacherRows: StaffOverviewTeacherRow[];
   unavailableSources: StaffOverviewSourceKey[];
@@ -195,6 +198,7 @@ interface InvitationThreadRow {
 
 interface ClassroomRow {
   id: string;
+  name: string;
   grade: number | null;
   capacity: number | null;
   archived_at: string | null;
@@ -257,7 +261,7 @@ async function readOverviewCore(supabase: Awaited<ReturnType<typeof createClient
     readOverviewRows<OverviewEnrollmentAssignment>(() => supabase.from("course_enrollment_assignments")
       .select("id,course_enrollment_id,classroom_membership_id")),
     readOverviewRows<ClassroomRow>(() => supabase.from("classrooms")
-      .select("id,grade,capacity,archived_at,trashed_at").eq("purpose", "production")),
+      .select("id,name,grade,capacity,archived_at,trashed_at").eq("purpose", "production")),
     supabase.from("school_terms").select("id,name").eq("is_current", true).limit(2),
   ]);
   const termId = !currentTerms.error && currentTerms.data?.length === 1 ? currentTerms.data[0].id : null;
@@ -592,6 +596,16 @@ export async function getStaffOverviewData({
     }
   }
   const displayName = (userId: string) => profileNames.get(userId) || sourceStaffNames.get(userId) || userId.slice(0, 8);
+  const classroomRows: OverviewClassroomOccupancy[] = classrooms.map(classroom => ({
+    id: classroom.id,
+    name: classroom.name ?? "",
+    grade: classroom.grade,
+    teacherNames: sourceExact("staffAssignments") ? Array.from(new Set(assignments
+      .filter(assignment => assignment.classroom_id === classroom.id && assignment.responsibility === "primary_teacher")
+      .map(assignment => displayName(assignment.user_id)))) : [],
+    enrolledSeats: capacityAvailable ? enrollmentsByClassroom.get(classroom.id) ?? 0 : null,
+    ...resolveClassroomCapacityPolicy(classroom.grade, classroom.capacity),
+  }));
 
   const supportAttributedEvents: Record<StaffOverviewMetric, Array<{ id: string; at: string; personId: string | null }>> = {
     leads: leadEvents,
@@ -802,6 +816,7 @@ export async function getStaffOverviewData({
     teacherParticipationRows,
     teacherParticipationSummary,
     capacityByGrade,
+    classroomRows,
     capacityAvailable,
     teacherRows,
     unavailableSources: Array.from(unavailable),
