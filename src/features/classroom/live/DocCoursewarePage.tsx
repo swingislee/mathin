@@ -10,6 +10,7 @@ import type { InteractionTrigger } from "@/features/courseware-doc/interactions"
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import { StagePreview } from "@/features/courseware-studio/StagePreview";
 import type { GameMirrorState } from "@/features/games/types";
+import type { ClassroomToolRuntime } from "@/features/tools/courseware/cube-structures-classroom";
 import { resolveClassroomInteractionAudit } from "../sync/interaction-audit";
 import { classroomInteractionSyncAttributes } from "../sync/interaction-provider";
 
@@ -26,6 +27,7 @@ interface Props {
   h5PointerBridge?: H5PointerBridgeHost;
   gameMirror: GameMirrorState | null;
   onGameMirror: (state: GameMirrorState) => void;
+  classroomTools?: ClassroomToolRuntime;
 }
 
 /** 课堂 doc 页舞台（P6-5）：4:3 顶置模式，16:9 内容占上部 75%、下部为板书带（§6.1）。 */
@@ -41,6 +43,7 @@ export function DocCoursewarePage({
   h5PointerBridge,
   gameMirror,
   onGameMirror,
+  classroomTools,
 }: Props) {
   const t = useTranslations("classroom.live");
   // Controller takes the persisted baseline once and then remains the single writer.
@@ -62,6 +65,7 @@ export function DocCoursewarePage({
       h5PointerBridge={h5PointerBridge}
       gameMirror={isController ? initialGameMirror : gameMirror}
       onGameMirror={isController ? onGameMirror : undefined}
+      classroomTools={classroomTools}
     />
   ) : (
     <StagePreview
@@ -75,6 +79,7 @@ export function DocCoursewarePage({
       h5PointerBridge={h5PointerBridge}
       gameMirror={isController ? initialGameMirror : gameMirror}
       onGameMirror={isController ? onGameMirror : undefined}
+      classroomTools={classroomTools}
     />
   );
 

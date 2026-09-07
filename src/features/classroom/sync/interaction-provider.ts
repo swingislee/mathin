@@ -16,7 +16,7 @@ export interface ClassroomInteractionSyncProvider {
   mode: ClassroomInteractionSyncMode;
   protocol: ClassroomInteractionSyncProtocol;
   /** Durable event type. Read-only providers deliberately publish no event. */
-  eventType: "game_state" | "doc_step" | null;
+  eventType: "game_state" | "doc_step" | "tool_state" | null;
   /** Hard payload budget for one durable event. Read-only providers use zero. */
   maxPayloadBytes: number;
 }
@@ -49,7 +49,17 @@ export const CLASSROOM_H5_STATE_SYNC_REQUIRED_V1 = Object.freeze({
   maxPayloadBytes: 0,
 } satisfies ClassroomInteractionSyncProvider);
 
-/** Embedded tools remain read-only until each contract exposes replayable state. */
+/** 已接入的固定立方体组件逐实例回放；预算为整条 payload 的 UTF-8 字节。 */
+export const CLASSROOM_TOOL_STATE_SYNC_V1 = Object.freeze({
+  schema: CLASSROOM_INTERACTION_SYNC_SCHEMA,
+  version: CLASSROOM_INTERACTION_SYNC_VERSION,
+  mode: "snapshot",
+  protocol: "tool-state-v1",
+  eventType: "tool_state",
+  maxPayloadBytes: 512_000,
+} satisfies ClassroomInteractionSyncProvider);
+
+/** 尚未接入回放的工具保留只读合同。 */
 export const CLASSROOM_TOOL_STATE_SYNC_REQUIRED_V1 = Object.freeze({
   schema: CLASSROOM_INTERACTION_SYNC_SCHEMA,
   version: CLASSROOM_INTERACTION_SYNC_VERSION,
@@ -106,7 +116,10 @@ export function isClassroomInteractionSyncProvider(
       && provider.eventType === "game_state")
     || (provider.protocol === "doc-step-v1"
       && provider.mode === "commands"
-      && provider.eventType === "doc_step");
+      && provider.eventType === "doc_step")
+    || (provider.protocol === "tool-state-v1"
+      && provider.mode === "snapshot"
+      && provider.eventType === "tool_state");
   return activeProtocolValid
     && typeof provider.maxPayloadBytes === "number"
     && Number.isSafeInteger(provider.maxPayloadBytes)

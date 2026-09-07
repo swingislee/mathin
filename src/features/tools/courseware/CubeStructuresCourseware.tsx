@@ -1,27 +1,30 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import type { VoxelRendererMessages } from "@/features/spatial-math/renderer-r3f/VoxelFallback";
 import { CubeStructuresViewport } from "../spatial-lab/CubeStructuresViewport";
 import { CubeStructuresWorkbench } from "../spatial-lab/CubeStructuresWorkbench";
-import { cubeSnapshotHistory, type CubeWorkbenchSession } from "../spatial-lab/cube-structures-session";
+import { cubeCoursewareInitialSession, type CubeClassroomSnapshot, type CubeCoursewareRuntime } from "./cube-structures-classroom";
 import { buildCubeStructureRenderModel, CUBE_COLORS, replayCubeHistory } from "../spatial-lab/cube-structures-contract";
 import type { CubeCoursewarePayload } from "./cube-structures-content";
 
 const colors = Object.fromEntries(CUBE_COLORS.map((color) => [color, color]));
 const noop = () => {};
 
-/** 组合页只展示冻结起点；插入弹窗的本地预览明确与课堂同步状态分离。 */
-export function CubeStructuresCourseware({ payload, preview = false }: {
-  payload: CubeCoursewarePayload; preview?: boolean;
+/** 编辑预览只试用固定副本；课堂由版本化事件流控制，与账号草稿分离。 */
+export function CubeStructuresCourseware({ payload, preview = false, classroom }: {
+  payload: CubeCoursewarePayload; preview?: boolean; classroom?: CubeCoursewareRuntime;
 }) {
   const t = useTranslations("tools.spatialLab");
   const locale = useLocale() === "en" ? "en" : "zh";
   const labels = useTranslations("teacherMicrocourses");
   const [cursor, setCursor] = useState(0);
   const [moving, setMoving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [syncError, setSyncError] = useState(false);
+  const pending = useRef(false);
   const step = preview ? Math.min(cursor, payload.history.operations.length) : 0;
   const state = useMemo(() => replayCubeHistory(payload.history, step), [payload.history, step]);
   const model = useMemo(() => buildCubeStructureRenderModel(state, [], payload.title), [state, payload.title]);
@@ -36,16 +39,21 @@ export function CubeStructuresCourseware({ payload, preview = false }: {
     formatProjectedCell: (u, v, count) => count === null ? t("renderer.projectedCellUnrevealed", { u, v })
       : t("renderer.projectedCell", { u, v, count }),
   }), [t]);
-  const initial = useMemo<CubeWorkbenchSession>(() => ({
-    work: cubeSnapshotHistory(payload.history.initial),
-    lesson: payload.history.operations.length ? payload.history : null,
-    recording: "off", preview: null,
-  }), [payload.history]);
+  const initial = useMemo(() => cubeCoursewareInitialSession(payload), [payload]);
+  const snapshot = useMemo<CubeClassroomSnapshot>(() => classroom?.state ?? { session: initial, view: null, cameraRevision: 0 }, [classroom?.state, initial]);
+  const runtime = useMemo(() => classroom ? { snapshot, onChange: (next: CubeClassroomSnapshot) => {
+    if (!classroom.onChange || pending.current) return false;
+    pending.current = true; setPublishing(true); setSyncError(false);
+    void classroom.onChange(next).catch(() => setSyncError(true)).finally(() => { pending.current = false; setPublishing(false); });
+    return true;
+  } } : undefined, [classroom, snapshot]);
   if ("toolbar" in payload) return <section className="flex size-full min-h-0 flex-col bg-paper" aria-label={payload.title} data-cube-courseware="cube-structures-lesson-v2">
     <div className="truncate px-3 py-1 text-sm text-ink">{payload.title}</div>
+    {syncError && <p role="alert" className="px-3 text-sm text-rose">{labels("cubeClassroomSyncError")}</p>}
     <CubeStructuresWorkbench key={JSON.stringify(payload)} locale={locale} rendererMessages={messages}
       cameraMessages={{ axisSnap: t("teaching.axisSnap"), enableAxisSnap: t("teaching.enableAxisSnap"), disableAxisSnap: t("teaching.disableAxisSnap") }}
-      courseware={{ initial, toolbar: payload.toolbar, readOnly: !preview, resetLabel: labels("cubeToolbarReset"), resetHint: labels("cubeClassroomOriginHint") }} />
+      courseware={{ initial, toolbar: payload.toolbar, runtime, readOnly: classroom ? !classroom.onChange || publishing : !preview,
+        resetLabel: labels("cubeToolbarReset"), resetHint: labels("cubeClassroomOriginHint") }} />
   </section>;
   return <section className="flex size-full min-h-0 flex-col bg-paper" aria-label={payload.title}
     data-cube-courseware="cube-structures-lesson-v1" data-cube-courseware-step={step}>

@@ -45,12 +45,12 @@ describe("frozen cube courseware content", () => {
     expect(() => createCubeCoursewareTool(draft(), "recording")).toThrow("CUBE_COURSEWARE_RECORDING_MISSING");
   });
 
-  it("round-trips through a combination page with the distinct version and read-only provider", () => {
+  it("round-trips through a combination page with the distinct version and replayable v2 provider", () => {
     const tool = createCubeCoursewareTool(draft(), "current");
     const page = addCoursewareCompositionTool(createEmptyCoursewareCompositionPage(), tool);
     expect(coursewareCompositionPageSchema.parse(JSON.parse(JSON.stringify(page)))).toEqual(page);
-    expect(getToolCoursewareContract(tool.toolId, tool.contentVersion)?.classroomSync).toMatchObject({ mode: "read-only", protocol: "tool-state-v1" });
-    expect(resolveClassroomInteractionAudit(page).provider).toMatchObject({ mode: "read-only", protocol: "tool-state-v1" });
+    expect(getToolCoursewareContract(tool.toolId, tool.contentVersion)?.classroomSync).toMatchObject({ mode: "snapshot", protocol: "tool-state-v1", eventType: "tool_state" });
+    expect(resolveClassroomInteractionAudit(page).provider).toMatchObject({ mode: "snapshot", protocol: "tool-state-v1", eventType: "tool_state" });
     expect(coursewareCompositionToolSchema.safeParse({ toolId: "spatial-lab", contentVersion: "tool-embed-v1" }).success).toBe(true);
     expect(coursewareCompositionToolSchema.safeParse({ ...tool, contentVersion: "tool-embed-v1" }).success).toBe(false);
     expect(coursewareCompositionToolSchema.safeParse({ ...tool, contentVersion: "cube-structures-lesson-v3" }).success).toBe(false);
@@ -110,14 +110,14 @@ describe("frozen cube courseware content", () => {
     const renderer = fs.readFileSync("src/features/tools/courseware/CubeStructuresCourseware.tsx", "utf8");
     const dispatch = fs.readFileSync("src/features/tools/components.tsx", "utf8");
     const stage = fs.readFileSync("src/features/courseware-doc/CoursewareCompositionStage.tsx", "utf8");
-    expect(dispatch).toContain("<CubeCoursewarePreview payload={tool.payload} />");
-    expect(stage).toContain("<CoursewareToolView tool={block.tool} />");
-    expect(stage).toContain('data-classroom-tool="read-only"');
+    expect(dispatch).toContain("<CubeCoursewarePreview payload={tool.payload} classroom={classroom} />");
+    expect(stage).toContain("<CoursewareToolView tool={block.tool} classroom={toolSynced");
+    expect(stage).toContain('data-classroom-tool={toolSynced ? "synchronized" : "read-only"}');
     expect(renderer).toContain("preview = false");
     expect(renderer).toContain("cameraInteractive={preview}");
     expect(renderer).toContain("<CubeStructuresViewport");
     expect(renderer).toContain("<CubeStructuresWorkbench");
-    expect(renderer).toContain("readOnly: !preview");
+    expect(renderer).toContain("readOnly: classroom ? !classroom.onChange || publishing : !preview");
     const workbench = fs.readFileSync("src/features/tools/spatial-lab/CubeStructuresWorkbench.tsx", "utf8");
     expect(workbench).toContain("enabled: !courseware");
     expect(workbench).toContain('TOOL_BUTTONS.filter(({ id }) => hasTool(id))');

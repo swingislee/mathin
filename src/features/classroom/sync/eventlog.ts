@@ -2,6 +2,7 @@ import { newId } from "@/lib/uuid";
 import type { SessionEvent, SessionEventType } from "../types";
 import { STORE_META, STORE_OUTBOX, idbGet, idbListByIndex, idbPut } from "./idb";
 import type { FxMessage, Transport } from "./transports";
+import { classroomToolInstanceKey, parseClassroomToolState } from "@/features/tools/courseware/cube-structures-classroom";
 
 // 课堂事件流（08-§3.4）：一切操作先写本地（内存 + outbox），UI 零等待网络；
 // 幂等靠客户端 uuid 主键 + (deviceId, seq)，排序靠单写者天然有序。
@@ -37,6 +38,38 @@ export class SessionEventLog {
   private listeners = new Set<Listener>();
   private fxListeners = new Set<(fx: FxMessage) => void>();
   private transports: Transport[] = [];
+  private restoredTools: SessionEvent[] = [];
+  private toolReplay = new Map<string, { event: SessionEvent; sequences: Record<string, number> }>();
+
+  /** 刷新后补回尚未入库的本账号工具快照；试讲始终为空。 */
+  get recoveredToolEvents(): readonly SessionEvent[] { return this.restoredTools; }
+  get latestToolEvents(): readonly SessionEvent[] { return [...this.toolReplay.values()].map(({ event }) => event); }
+
+  /** 为晚加入／重连保留每个组件的最新完整快照，重发沿用原 ID，不新增课堂记录。 */
+  rememberToolStates(events: readonly SessionEvent[]): void {
+    for (const event of events) {
+      if (event.type !== "tool_state" || event.sessionId !== this.sessionId || !event.deviceId || !Number.isSafeInteger(event.seq) || event.seq < 1) continue;
+      const payload = parseClassroomToolState(event.payload);
+      if (!payload) continue;
+      const key = `${payload.pageId}:${classroomToolInstanceKey(payload.docId, payload.instanceId, payload.originHash)}`;
+      const previous = this.toolReplay.get(key);
+      if ((previous?.sequences[event.deviceId] ?? 0) >= event.seq) continue;
+      this.toolReplay.set(key, { event, sequences: { ...previous?.sequences, [event.deviceId]: event.seq } });
+    }
+  }
+
+  rebroadcastToolStates(): void {
+    for (const { event } of this.toolReplay.values()) {
+      this.sendToolEvent(event);
+    }
+  }
+
+  private sendToolEvent(event: SessionEvent): void {
+    for (const transport of this.transports) {
+      // 已持久化的快照可从其他链路和 outbox 恢复；单路断连保留其成功保存状态。
+      try { transport.send(event); } catch { /* 重连后沿用原 ID 重放。 */ }
+    }
+  }
 
   private constructor(sessionId: string, userId: string, deviceId: string, ephemeral: boolean) {
     this.sessionId = sessionId;
@@ -51,6 +84,8 @@ export class SessionEventLog {
     if (log.ephemeral) return log;
     const saved = (await idbGet<number>(STORE_META, log.metaKey())) ?? 0;
     const pending = await idbListByIndex<SessionEvent>(STORE_OUTBOX, "sessionId", sessionId);
+    log.restoredTools = pending.filter((ev) => ev.type === "tool_state" && ev.userId === userId)
+      .sort((a, b) => a.at.localeCompare(b.at) || a.seq - b.seq);
     let maxPending = 0;
     for (const ev of pending) {
       log.seen.add(ev.id);
@@ -95,16 +130,21 @@ export class SessionEventLog {
     if (!this.ephemeral) {
       // outbox 先落盘再回显：宁可 UI 慢一帧，不丢已展示过的事件
       await idbPut(STORE_OUTBOX, ev.id, ev);
-      await idbPut(STORE_META, this.metaKey(), this.seq);
+      try { await idbPut(STORE_META, this.metaKey(), this.seq); } catch (error) {
+        // 工具快照已落盘，seq 可从 outbox 恢复；元数据失败不误报模型未保存。
+        if (type !== "tool_state") throw error;
+      }
     }
     this.emit(ev, true);
-    for (const transport of this.transports) transport.send(ev);
+    if (type === "tool_state") this.sendToolEvent(ev);
+    else for (const transport of this.transports) transport.send(ev);
     return ev;
   }
 
   /** 传输层收到远端事件：按 id 去重后应用（同一事件可能从 T0/T2 各到一次）。 */
   ingest = (ev: SessionEvent): void => {
     if (!ev?.id || this.seen.has(ev.id)) return;
+    if (ev.type === "tool_state" && ev.sessionId !== this.sessionId) return;
     this.seen.add(ev.id);
     this.emit(ev, false);
   };
@@ -132,9 +172,11 @@ export class SessionEventLog {
     this.transports = [];
     this.listeners.clear();
     this.fxListeners.clear();
+    this.toolReplay.clear();
   }
 
   private emit(ev: SessionEvent, local: boolean): void {
+    if (ev.type === "tool_state") this.rememberToolStates([ev]);
     for (const listener of this.listeners) listener(ev, local);
   }
 }

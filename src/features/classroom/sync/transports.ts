@@ -393,10 +393,17 @@ export function createRealtimeTransport(
       onEvent(payload as SessionEvent);
     });
     clientChannel.on("broadcast", { event: "ev" }, ({ payload }) => {
-      onEvent(payload as SessionEvent);
+      // 工具权威状态只接收教师专用通道，成员通道仅可请求重新同步。
+      if ((payload as SessionEvent)?.type !== "tool_state") onEvent(payload as SessionEvent);
     });
     authoritativeChannel.on("broadcast", { event: "fx" }, ({ payload }) => {
       onFx?.(payload as FxMessage);
+    });
+    clientChannel.on("broadcast", { event: "fx" }, ({ payload }) => {
+      const fx = payload as FxMessage;
+      if (fx?.scope === "tool-state-request" && fx.payload?.version === 1) {
+        onFx?.({ scope: "tool-state-request", payload: { version: 1 } });
+      }
     });
     if (signaling) {
       clientChannel.on("broadcast", { event: "p2p-signal" }, ({ payload }) => {
@@ -449,6 +456,10 @@ export function createRealtimeTransport(
       if (joined && channel) void channel.send({ type: "broadcast", event: "ev", payload: ev });
     },
     sendFx(fx) {
+      if (fx.scope === "tool-state-request") {
+        if (clientJoined && clientChannel) void clientChannel.send({ type: "broadcast", event: "fx", payload: { scope: fx.scope, payload: { version: 1 } } });
+        return;
+      }
       if (authoritativeJoined && authoritativeChannel) {
         void authoritativeChannel.send({ type: "broadcast", event: "fx", payload: fx });
       }

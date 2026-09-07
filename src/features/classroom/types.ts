@@ -95,6 +95,7 @@ export type SessionEventType =
   | "session_ctl"    // {action:"start"|"end"|"quiz_open"|"quiz_close", ...}
   | "board_snapshot" // {pageKey:string, items:BoardItem[]}（main=页 uuid、side="side"）
   | "game_state"     // {pageId, state:{values,selected,...gameFields}} 游戏页镜像（单写者=教师）
+  | "tool_state"     // 版本化组件快照（pageId + docId + instanceId，教师单写）
   | "video_ctl"      // {pageId, action:"play"|"pause"|"seek", time} 视频同步（仅教师）
   | "doc_step"       // {pageId, scope:"node"|"page", id} doc 页点击步进转发（仅教师，P6-5）
   | "tool_ctl"       // {action:"open"|"close", toolId?} 工具快捷窗（仅教师）

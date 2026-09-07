@@ -1,5 +1,6 @@
 import {
   CLASSROOM_TOOL_STATE_SYNC_REQUIRED_V1,
+  CLASSROOM_TOOL_STATE_SYNC_V1,
   type ClassroomInteractionSyncProvider,
 } from "@/features/classroom/sync/interaction-provider";
 
@@ -21,7 +22,7 @@ export const TOOL_COURSEWARE_CONTRACTS = [
     toolId: "spatial-lab",
     contentVersion: CUBE_COURSEWARE_CONTENT_VERSION,
     authoringSurfaces: ["microcourse"] as const,
-    classroomSync: CLASSROOM_TOOL_STATE_SYNC_REQUIRED_V1,
+    classroomSync: CLASSROOM_TOOL_STATE_SYNC_V1,
   },
   {
     toolId: "spatial-lab",

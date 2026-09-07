@@ -93,6 +93,12 @@ export function resolveClassroomInteractionAudit(
     if (games.length > 0 || sourceOwnsGameMirror) {
       return profile("composition:game-instances", "mathin", CLASSROOM_GAME_MIRROR_SYNC_V1);
     }
+    const synchronizedTool = doc.layout.blocks.find((block) => block.type === "tool"
+      && getToolCoursewareContract(block.tool.toolId, block.tool.contentVersion)?.classroomSync.mode === "snapshot");
+    if (synchronizedTool?.type === "tool") {
+      return profile("composition:tool-instances", "mathin",
+        getToolCoursewareContract(synchronizedTool.tool.toolId, synchronizedTool.tool.contentVersion)!.classroomSync);
+    }
     if (doc.layout.blocks.some((block) => block.type === "h5")) {
       return profile("composition:h5", "mathin", CLASSROOM_H5_STATE_SYNC_REQUIRED_V1);
     }
@@ -168,7 +174,7 @@ export function classroomInteractionAuditIssues(): string[] {
     const provider: ClassroomInteractionSyncProvider = contract.classroomSync;
     if (!isClassroomInteractionSyncProvider(provider)) {
       issues.push(`tool:${contract.toolId}:${contract.contentVersion}:invalid-provider`);
-    } else if (provider.mode !== "read-only" || provider.protocol !== "tool-state-v1") {
+    } else if (provider.protocol !== "tool-state-v1") {
       issues.push(`tool:${contract.toolId}:${contract.contentVersion}:must-use-versioned-state-sync`);
     }
   }

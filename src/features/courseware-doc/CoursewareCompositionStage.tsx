@@ -1,10 +1,12 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import GamePageStage from "@/features/games/courseware/GamePageStage";
 import type { GameMirrorState } from "@/features/games/types";
 import { CoursewareToolView } from "@/features/tools/components";
+import { CUBE_COURSEWARE_CONTENT_VERSION } from "@/features/tools/courseware/registry";
+import { classroomToolInstanceKey, cubeCoursewareOriginHash, type ClassroomToolRuntime } from "@/features/tools/courseware/cube-structures-classroom";
 import type { CoursewareCompositionPage } from "./composition-page-schema";
 import { coursewareCanvasStyle } from "./courseware-surface";
 import DocStage, { type DocStageProps } from "./DocStage";
@@ -19,6 +21,7 @@ export type CoursewareCompositionStageProps = Omit<DocStageProps, "doc"> & {
   onAdvance?: () => void;
   gameMirror?: GameMirrorState | null;
   onGameMirror?: (state: GameMirrorState) => void;
+  classroomTools?: ClassroomToolRuntime;
 };
 
 const SOURCE_GAME_INSTANCE_ID = "source";
@@ -35,6 +38,10 @@ function placementStyle(placement: CoursewareCompositionPage["layout"]["blocks"]
 /** Shared renderer for Studio, preparation and live classroom composition pages. */
 export default function CoursewareCompositionStage(props: CoursewareCompositionStageProps) {
   const { doc } = props;
+  const classroomActive = Boolean(props.classroomTools);
+  const toolOrigins = useMemo(() => classroomActive ? Object.fromEntries(doc.layout.blocks.flatMap((block) =>
+    block.type === "tool" && block.tool.contentVersion === CUBE_COURSEWARE_CONTENT_VERSION
+      ? [[block.id, cubeCoursewareOriginHash(block.tool.payload)]] : [])) : {}, [doc, classroomActive]);
   const runtimeProps: MicrocourseStageRuntimeProps = props;
   const gameBlocks = doc.layout.blocks.filter((block) => block.type === "game");
   const initialInstances = props.gameMirror?.instances
@@ -82,6 +89,10 @@ export default function CoursewareCompositionStage(props: CoursewareCompositionS
 
       {doc.layout.blocks.map((block) => {
         if (block.type === "node") return null;
+        const toolSynced = block.type === "tool" && block.tool.contentVersion === CUBE_COURSEWARE_CONTENT_VERSION && Boolean(props.classroomTools);
+        const toolEditable = toolSynced && props.interactive && Boolean(props.classroomTools?.onChange);
+        const originHash = toolOrigins[block.id];
+        const toolEntry = props.classroomTools?.states[classroomToolInstanceKey(props.classroomTools.docId, block.id, originHash)]?.payload;
         return (
           <div key={block.id} className="absolute overflow-hidden" style={placementStyle(block.placement)}>
             {block.type === "game" ? (
@@ -99,10 +110,14 @@ export default function CoursewareCompositionStage(props: CoursewareCompositionS
               <div
                 className="size-full overflow-auto bg-paper"
                 data-courseware-tool={block.tool.toolId}
-                data-classroom-tool="read-only"
-                style={{ pointerEvents: "none" }}
+                data-classroom-input={toolSynced ? "native" : undefined}
+                data-classroom-tool={toolSynced ? "synchronized" : "read-only"}
+                style={{ pointerEvents: toolEditable ? "auto" : "none" }}
               >
-                <CoursewareToolView tool={block.tool} />
+                <CoursewareToolView tool={block.tool} classroom={toolSynced ? {
+                  state: toolEntry && toolEntry.docId === props.classroomTools?.docId ? toolEntry.state : undefined,
+                  onChange: toolEditable ? (state) => props.classroomTools!.onChange!(block.id, originHash, state) : undefined,
+                } : undefined} />
               </div>
             )}
           </div>

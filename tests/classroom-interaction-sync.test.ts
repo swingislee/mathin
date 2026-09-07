@@ -126,7 +126,7 @@ describe("classroom interaction synchronization audit", () => {
     expect(TOOL_COURSEWARE_CONTRACTS.every((contract) => {
       const provider: ClassroomInteractionSyncProvider = contract.classroomSync;
       return isClassroomInteractionSyncProvider(provider)
-        && provider.mode === "read-only"
+        && (provider.mode === "read-only" || contract.contentVersion === "cube-structures-lesson-v2")
         && provider.protocol === "tool-state-v1";
     })).toBe(true);
     expect(isClassroomInteractionSyncProvider({
@@ -264,6 +264,6 @@ describe("classroom interaction synchronization audit", () => {
     expect(compositionStage).toContain("updateGameInstance(block.id, state)");
     expect(compositionStage).toContain("MicrocourseH5ArtifactFrame");
     expect(compositionStage).toContain("ToolView");
-    expect(compositionStage).toContain('data-classroom-tool="read-only"');
+    expect(compositionStage).toContain('data-classroom-tool={toolSynced ? "synchronized" : "read-only"}');
   });
 });

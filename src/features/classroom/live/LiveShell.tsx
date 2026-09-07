@@ -134,6 +134,7 @@ import { buildM4aRosterFixtures, M4A_STAR_STUDENT_ID } from "./m4-roster-fixture
 import { buildM4bRosterFixtures, buildM4bStarFixtureEvents } from "./m4-layout-fixtures";
 import { buildRehearsalLearningSetup } from "./rehearsal-learning";
 import { OPTION_LABELS, reduceEvent, type LiveState, type Phase, type Role } from "./liveState";
+import { createClassroomToolState } from "@/features/tools/courseware/cube-structures-classroom";
 import {
   INTERACTION_SYNC_FIXTURE_DOC,
   INTERACTION_SYNC_FIXTURE_PAGE,
@@ -339,6 +340,7 @@ export function LiveShell({
     let flushTimer: ReturnType<typeof setInterval> | null = null;
     let tryFlush: (() => void) | null = null;
     let onHide: (() => void) | null = null;
+    let toolReplayTimer: ReturnType<typeof setTimeout> | null = null;
 
     const setup = async () => {
       const eventLog = await SessionEventLog.create(session.id, userId, { ephemeral: rehearsal });
@@ -357,6 +359,12 @@ export function LiveShell({
         return;
       }
       eventLog.markSeen(initialEvents.map((ev) => ev.id));
+      setState((prev) => eventLog.recoveredToolEvents.reduce(reduceEvent, prev));
+      eventLog.rememberToolStates([...initialEvents, ...eventLog.recoveredToolEvents]);
+      if (role === "control" && myRole === "teacher") eventLog.onFx((fx) => {
+        if (fx.scope !== "tool-state-request" || fx.payload?.version !== 1 || toolReplayTimer) return;
+        toolReplayTimer = setTimeout(() => { toolReplayTimer = null; if (!disposed) eventLog.rebroadcastToolStates(); }, 100);
+      });
       const p2pSignals = createP2PSignalBus();
       logRef.current = eventLog;
       eventLog.subscribe((ev) => {
@@ -417,6 +425,7 @@ export function LiveShell({
 
     return () => {
       disposed = true;
+      if (toolReplayTimer) clearTimeout(toolReplayTimer);
       if (flushTimer) clearInterval(flushTimer);
       if (tryFlush) window.removeEventListener("online", tryFlush);
       if (onHide) {
@@ -430,6 +439,12 @@ export function LiveShell({
     // initialEvents/selfName/myRole 仅首帧使用，不追踪
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.id, userId, rehearsal, offlineDrill]);
+
+  useEffect(() => {
+    if (!log || rehearsal) return;
+    if (isController) log.rebroadcastToolStates();
+    else log.sendFx({ scope: "tool-state-request", payload: { version: 1 } });
+  }, [log, rehearsal, isController, t2Connected, p2pHealth.state, p2pHealth.peers]);
 
   // --- 课件预载（IndexedDB 命中则直接建 objectURL）-----------------------
   // 板书插页等 pages 数组重建不应重跑预载（会撤销在用的 objectURL），
@@ -557,7 +572,12 @@ export function LiveShell({
     void getClassSession(session.id)
       .then((fresh) => {
         if (cancelled || !fresh || fresh.courseware.length === 0) return;
-        setState((prev) => (prev.pages.length > 0 ? prev : { ...prev, pages: fresh.courseware }));
+        setState((prev) => {
+          if (prev.pages.length > 0) return prev;
+          const loaded = { ...prev, pages: fresh.courseware };
+          // 学生候课时快照可能先于冻结页到达；页就绪后补回已收到的最新状态。
+          return logRef.current?.latestToolEvents.reduce(reduceEvent, loaded) ?? loaded;
+        });
       })
       .catch(() => undefined);
     return () => {
@@ -1698,6 +1718,19 @@ export function LiveShell({
                 h5PointerBridge={h5PointerBridge}
                 gameMirror={state.games[renderPage.id] ?? null}
                 onGameMirror={(mirror) => onGameMirror(renderPage.id, mirror)}
+                classroomTools={{
+                  docId: renderPage.docId,
+                  states: state.tools?.[renderPage.id] ?? {},
+                  onChange: editable && log ? async (instanceId, originHash, snapshot) => {
+                    const payload = createClassroomToolState(renderPage.id, renderPage.docId, instanceId, snapshot, originHash);
+                    await log.append("tool_state", payload);
+                    if (!rehearsal) {
+                      // outbox 已落盘才更新舞台；立即尝试入库，让晚加入端尽早读取当前模型。
+                      if (!offlineDrill) void flushOutbox(session.id).then(() => pendingCount(session.id)).then(setPending).catch(() => undefined);
+                      else void pendingCount(session.id).then(setPending).catch(() => undefined);
+                    }
+                  } : undefined,
+                }}
               />
             ) : null}
 

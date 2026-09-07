@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { Boxes, Circle, Droplets, Eraser, Eye, EyeOff, Hand, Hash, Layers3, Maximize, Minus, MousePointer2, Move, Orbit, Paintbrush, PaintBucket, Plus, Presentation, Redo2, RotateCcw, Scissors, Settings2, Shapes, Stamp, Trash2, Undo2, Ungroup, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,7 @@ import { CubeDraftPanel } from "./CubeDraftPanel";
 import { useCubeDrafts } from "./useCubeDrafts";
 import { cubeDraftIdentity } from "./cube-structures-draft";
 import type { CubeToolbarId } from "./cube-structures-toolbar";
+import type { CubeClassroomSnapshot } from "../courseware/cube-structures-classroom";
 import { EMPTY_CUBE_CUT, chooseCubeCut, cubeCutCandidate, cubeCutLayers, type CubeCutDraft, type CubeCutHit } from "./cube-structures-cut-interaction";
 import { buildCubeCutPieces, cubeCutScopeIds } from "./cube-structures-cut-scope";
 import styles from "./CubeStructuresWorkbench.module.css";
@@ -41,7 +42,8 @@ type Panel = "selection" | "color" | "move" | "layers" | "recording" | "model" |
 export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessages, workspaceSelector, courseware }: {
   readonly locale: "zh" | "en"; readonly rendererMessages: VoxelRendererMessages;
   readonly cameraMessages: SpatialCameraControlMessages; readonly workspaceSelector?: ReactNode;
-  readonly courseware?: { readonly initial: CubeWorkbenchSession; readonly toolbar: readonly CubeToolbarId[]; readonly readOnly: boolean; readonly resetLabel: string; readonly resetHint: string };
+  readonly courseware?: { readonly initial: CubeWorkbenchSession; readonly toolbar: readonly CubeToolbarId[]; readonly readOnly: boolean; readonly resetLabel: string; readonly resetHint: string;
+    readonly runtime?: { readonly snapshot: CubeClassroomSnapshot; readonly onChange: (next: CubeClassroomSnapshot) => boolean } };
 }) {
   const m = cubeStructuresMessages(locale);
   const fieldId = useId();
@@ -77,15 +79,18 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
   const [notice, setNotice] = useState("");
   const [playing, setPlaying] = useState(false);
   const [replacementStep, setReplacementStep] = useState<number | null>(null);
-  const [cameraRequest, setCameraRequest] = useState(0);
-  const [viewOverride, setViewOverride] = useState<CubeView | null>(null);
+  const [localCameraRequest, setCameraRequest] = useState(0);
+  const [localViewOverride, setViewOverride] = useState<CubeView | null>(null);
   const identity = useRef(courseware ? cubeDraftIdentity(courseware.initial) : 0);
   const draftLibrary = useCubeDrafts({ enabled: !courseware, locale, prepared, getIdentity: () => identity.current, onOpen: (draft) => {
     setPrepared(draft.snapshot.session); identity.current = draft.snapshot.identity;
     setDemo(null); setMode("prepare"); setTool("orbit"); resetTransient();
   } });
   const snap = useSpatialAxisSnap();
-  const session = mode === "prepare" ? prepared : demo ?? prepared;
+  const runtime = courseware?.runtime;
+  const session = runtime?.snapshot.session ?? (mode === "prepare" ? prepared : demo ?? prepared);
+  const viewOverride = runtime ? runtime.snapshot.view : localViewOverride;
+  const cameraRequest = runtime?.snapshot.cameraRevision ?? localCameraRequest;
   const state = useMemo(() => cubeSessionScene(session), [session]);
   // 撤销编组或回放到编组之前时，失效的组 ID 自动回到整体范围。
   const activeGroup = state.groups.find((group) => group.id === scopeId);
@@ -118,9 +123,15 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
   const hasDisplayOffsets = state.cubes.some((cube) => cube.displayOffset && Object.values(cube.displayOffset).some((value) => value !== 0));
   const hasCutDisplayOffsets = state.cubes.some((cube) => cutTargetIds.includes(cube.id) && cube.displayOffset && Object.values(cube.displayOffset).some((value) => value !== 0));
 
-  function updateSession(update: (current: CubeWorkbenchSession) => CubeWorkbenchSession) {
-    if (readOnly || draftLibrary.loading || draftLibrary.busy) return;
+  const updateSession = useCallback((update: (current: CubeWorkbenchSession) => CubeWorkbenchSession, view: CubeView | null = null, requestCamera = false) => {
+    if (readOnly || draftLibrary.loading || draftLibrary.busy) return false;
+    if (runtime) return runtime.onChange({ session: update(runtime.snapshot.session), view, cameraRevision: runtime.snapshot.cameraRevision + Number(requestCamera) });
     if (mode === "prepare") setPrepared(update); else setDemo((current) => update(current ?? createCubeDemo(prepared)));
+    return true;
+  }, [readOnly, draftLibrary.loading, draftLibrary.busy, runtime, mode, prepared]);
+  function nextIdentity() {
+    identity.current = Math.max(identity.current, cubeDraftIdentity(session)) + 1;
+    return identity.current;
   }
   function clearPointer() { setHoverFace(null); setHoverGround(null); setHoveredCutHit(null); setCutDraft(EMPTY_CUBE_CUT); setOpacityPreview(null); setNotice(""); }
   function resetTransient() {
@@ -128,14 +139,14 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
     clearPointer(); setCameraRequest((value) => value + 1);
   }
   function seek(cursor: number | null) {
-    updateSession((current) => previewCubeSession(current, cursor)); resetTransient();
+    updateSession((current) => previewCubeSession(current, cursor), null, true); resetTransient();
   }
   function commit(operation: CubeOperation): boolean {
     if (!editable) { setNotice(m.previewHint); return false; }
     if (replacementStep !== null) {
       const result = replaceCubeRecordedStep(session, replacementStep, operation);
       if (result.issue) { setNotice(m.sequenceError + " (" + (result.issue.index + 1) + ")"); return false; }
-      updateSession(() => ({ ...result.session, preview: replacementStep + 1 }));
+      if (!updateSession(() => ({ ...result.session, preview: replacementStep + 1 }), null, true)) return false;
       setReplacementStep(null); clearPointer(); return true;
     }
     if (session.recording === "recording" && (session.lesson?.cursor ?? 0) >= CUBE_STRUCTURES_LIMITS.steps) { setNotice(m.limit); return false; }
@@ -145,7 +156,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
       else if (operation.kind === "build") setNotice(m.blockedBuild);
       return false;
     }
-    updateSession((current) => operateCubeSession(current, operation));
+    if (!updateSession((current) => operateCubeSession(current, operation), null, operation.kind === "view")) return false;
     if (operation.kind === "view") { setHoverFace(null); setHoverGround(null); setHoveredCutHit(null); setNotice(""); }
     else clearPointer();
     return true;
@@ -153,7 +164,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
   function build(position: VoxelCoordinate, displayOffset?: VoxelCoordinate) {
     if (!canPlaceCube(position) || state.cubes.some((cube) => voxelKey(cube.position) === voxelKey(position))) { setNotice(m.blockedBuild); return; }
     if (state.cubes.length >= CUBE_STRUCTURES_LIMITS.cubes) { setNotice(m.limit); return; }
-    commit({ kind: "build", id: "added-" + (++identity.current), groupId: activeGroupId ?? undefined, position, displayOffset, color: CUBE_COLORS[0] });
+    commit({ kind: "build", id: "added-" + nextIdentity(), groupId: activeGroupId ?? undefined, position, displayOffset, color: CUBE_COLORS[0] });
   }
   function clickFace(face: VoxelFaceSelection) {
     const cube = cubeAtDisplayPosition(state, face.cell);
@@ -190,7 +201,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
   }
   function performCut() {
     if (!lockedCut || !validCutGap) return;
-    const groupId = "cut-" + (++identity.current);
+    const groupId = "cut-" + nextIdentity();
     const operation = cubeCutOperation(state, lockedCut.ids, lockedCut.axis, lockedCut.after, lockedCut.side, Number(cutGap), groupId, m.cutPiece + " " + (state.groups.length + 1));
     if (!operation) { setNotice(m.invalidCut); return; }
     if (commit(operation)) { setScopeId(null); setSelected([]); }
@@ -201,7 +212,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
   }
   function createGroup() {
     if (!selectedIds.length) { setNotice(m.noSelection); return; }
-    const id = "group-" + (++identity.current);
+    const id = "group-" + nextIdentity();
     if (commit({ kind: "group", id, name: groupName.trim() || m.newGroup + " " + (state.groups.length + 1), color: groupColor, ids: selectedIds })) {
       setScopeId(id); setSelected([]); setGroupName("");
     }
@@ -216,24 +227,25 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
   }
   function confirmChange() {
     if (confirmation === "load") {
-      updateSession(() => createCubeSession(preset === "empty" ? [] : createSpatialLabPresetDraft(preset).model.cells));
+      updateSession(() => createCubeSession(preset === "empty" ? [] : createSpatialLabPresetDraft(preset).model.cells), null, true);
       if (mode === "prepare") draftLibrary.newDraft();
     }
     else if (confirmation === "record") updateSession(startCubeRecording);
     else if (confirmation === "resume") updateSession(resumeCubeRecording);
     else if (confirmation === "demo") {
-      if (courseware) { setPrepared(structuredClone(courseware.initial)); identity.current = cubeDraftIdentity(courseware.initial); }
+      if (courseware) { updateSession(() => structuredClone(courseware.initial), null, true); identity.current = cubeDraftIdentity(courseware.initial); }
       else setDemo(createCubeDemo(prepared));
     }
     setConfirmation(null); resetTransient();
   }
   function changeRecorded(result: ReturnType<typeof editCubeRecording>) {
     if (result.issue) { setNotice(m.sequenceError + " (" + (result.issue.index + 1) + ")"); return; }
-    updateSession(() => result.session); resetTransient();
+    updateSession(() => result.session, null, true); resetTransient();
   }
   function chooseView(view: CubeView) {
     if (readOnly) return;
     if (editable) { commit({ kind: "view", view, frame: cubeFrame(state.cubes) }); setViewOverride(null); }
+    else if (runtime) updateSession((current) => current, view, true);
     else setViewOverride(view);
     setCameraRequest((value) => value + 1);
   }
@@ -248,23 +260,23 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
   }, [cutDraft.firstLine, cutDraft.face, lockedCut]);
 
   useEffect(() => {
-    if (!playing || !session.lesson) return;
+    if (!playing || !session.lesson || readOnly) return;
     const cursor = session.preview ?? 0;
     const timer = window.setTimeout(() => {
       const update = (current: CubeWorkbenchSession) => ({ ...current, preview: Math.min(cursor + 1, current.lesson?.operations.length ?? 0) });
-      if (mode === "prepare") setPrepared(update); else setDemo((current) => current ? update(current) : current);
+      if (!updateSession(update, null, true)) { setPlaying(false); return; }
       setViewOverride(null); setCameraRequest((value) => value + 1);
       if (cursor + 1 >= session.lesson!.operations.length) setPlaying(false);
     }, 1500);
     return () => window.clearTimeout(timer);
-  }, [playing, session.lesson, session.preview, mode]);
+  }, [playing, session.lesson, session.preview, readOnly, updateSession]);
 
   const panelTitle = panel === "selection" ? m.selectionPanel : panel === "color" ? m.colorLabel : panel === "layers" ? m.layers : panel === "recording" ? m.record : panel && panel !== "model" ? m[panel] : m.modelPanel;
   return <div className={styles.workspace} data-cube-structures-workbench="v3" data-workbench-mode={courseware ? "courseware" : mode} inert={readOnly}>
     <div className={styles.viewport}>
       <div className={styles.canvas} aria-label={m.title + " · " + m[mode]} style={{ cursor: readOnly ? "default" : cubeToolCursor(tool) }} data-active-cube-tool={tool} data-cube-workspace-frame="4:3" data-has-cube-groups={state.groups.length > 0 && hasTool("select")} data-cube-motion={moving ? "moving" : "idle"}>
         <CubeStructuresViewport model={model} messages={rendererMessages} materialColors={COLOR_MAP}
-          axisSnapEnabled={snap} cameraRequestKey={cameraRequest} sceneKey={session.work.initial} onMovingChange={setMoving}
+          axisSnapEnabled={snap} cameraRequestKey={cameraRequest} sceneKey={runtime && courseware ? courseware.initial.work.initial : session.work.initial} onMovingChange={setMoving}
           opacityPreview={opacityPreview === null ? null : { ids: targetIds, opacity: opacityPreview / 100 }}
           moveInteraction={tool === "move" && editable ? { state, ids: targetIds, scopeIds, axis: moveAxis, kind: moveMode, snapToGrid: snap,
             onAxisChange: setMoveAxis, onSelect: (id) => setSelected([id]), onCommit: commit, onUnavailable: () => setNotice(m.moveAxisHidden) } : null}
@@ -308,8 +320,8 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
           {TOOL_BUTTONS.filter(({ id }) => hasTool(id)).map(({ id, Icon }) => <CubeIconButton key={id} label={m[id]} active={tool === id} onClick={() => chooseTool(id)} data-cube-tool={id}><Icon aria-hidden /></CubeIconButton>)}
           {hasTool("recording") && <CubeIconButton label={m.record} active={panel === "recording"} onClick={() => setPanel(panel === "recording" ? null : "recording")}><Circle aria-hidden className={session.recording === "recording" ? "fill-rose text-rose" : undefined} /></CubeIconButton>}
           {(hasTool("undo") || hasTool("redo")) && <span className="self-stretch border-t border-line" aria-hidden />}
-          {hasTool("undo") && <CubeIconButton label={m.previous} disabled={!editable || !session.work.cursor || replacementStep !== null} onClick={() => { updateSession((current) => undoCubeSession(current, -1)); clearPointer(); setCameraRequest((value) => value + 1); }}><Undo2 aria-hidden /></CubeIconButton>}
-          {hasTool("redo") && <CubeIconButton label={m.next} disabled={!editable || session.work.cursor >= session.work.operations.length || replacementStep !== null} onClick={() => { updateSession((current) => undoCubeSession(current, 1)); clearPointer(); setCameraRequest((value) => value + 1); }}><Redo2 aria-hidden /></CubeIconButton>}
+          {hasTool("undo") && <CubeIconButton label={m.previous} disabled={!editable || !session.work.cursor || replacementStep !== null} onClick={() => { updateSession((current) => undoCubeSession(current, -1), null, true); clearPointer(); setCameraRequest((value) => value + 1); }}><Undo2 aria-hidden /></CubeIconButton>}
+          {hasTool("redo") && <CubeIconButton label={m.next} disabled={!editable || session.work.cursor >= session.work.operations.length || replacementStep !== null} onClick={() => { updateSession((current) => undoCubeSession(current, 1), null, true); clearPointer(); setCameraRequest((value) => value + 1); }}><Redo2 aria-hidden /></CubeIconButton>}
         </div>}
         {session.recording !== "off" && <p className={styles.recordStatus} role="status">{session.recording === "recording" ? "● " : "Ⅱ "}{session.recording === "recording" ? m.recordingActive : m.recordingPaused}</p>}
         {state.groups.length > 0 && hasTool("select") && <div className={cn(styles.dock, styles.groups)} aria-label={m.groups} data-cube-group-scope>

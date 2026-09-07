@@ -1,5 +1,6 @@
 import type { InteractionTrigger } from "@/features/courseware-doc/interactions";
 import type { GameMirrorState } from "@/features/games/types";
+import { classroomToolInstanceKey, parseClassroomToolState, type ClassroomToolStates } from "@/features/tools/courseware/cube-structures-classroom";
 import type { BoardItem } from "@/features/whiteboard/types";
 import { reduceStarLedger, type StarLedger } from "../stars";
 import type { CoursewarePage, SessionEvent } from "../types";
@@ -24,6 +25,7 @@ export interface LiveState {
   hands: Record<string, boolean>;
   boards: Record<string, BoardItem[]>;
   games: Record<string, GameMirrorState>;
+  tools?: Record<string, ClassroomToolStates>;
   video: Record<string, VideoCtl>;
   /** doc 页点击步进流（P6-5）：pageId → 有序触发列表，回放可收敛舞台状态。 */
   docSteps: Record<string, InteractionTrigger[]>;
@@ -94,6 +96,18 @@ export function reduceEvent(state: LiveState, ev: SessionEvent): LiveState {
         || !instancesValid
         || !classroomInteractionPayloadWithinBudget(CLASSROOM_GAME_MIRROR_SYNC_V1, mirror)) return state;
       return { ...state, games: { ...state.games, [pageId]: mirror } };
+    }
+    case "tool_state": {
+      const payload = parseClassroomToolState(ev.payload);
+      if (!payload || !ev.deviceId || !Number.isSafeInteger(ev.seq) || ev.seq < 1
+        || !state.pages.some((page) => page.id === payload.pageId && page.type === "doc" && page.docId === payload.docId)) return state;
+      const instances = state.tools?.[payload.pageId] ?? {};
+      const key = classroomToolInstanceKey(payload.docId, payload.instanceId, payload.originHash);
+      const previous = instances[key];
+      if ((previous?.sequences[ev.deviceId] ?? 0) >= ev.seq) return state;
+      return { ...state, tools: { ...state.tools, [payload.pageId]: { ...instances, [key]: {
+        payload, sequences: { ...previous?.sequences, [ev.deviceId]: ev.seq },
+      } } } };
     }
     case "doc_step": {
       const pageId = String(ev.payload.pageId ?? "");

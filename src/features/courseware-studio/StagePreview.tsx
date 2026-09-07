@@ -17,6 +17,7 @@ import type { SpatialCoursewareStageProps } from "@/features/courseware-doc/Spat
 import { isSourceRuntimePageDoc } from "@/features/courseware-doc/source-runtime-schema";
 import type { SourceRuntimeStageProps } from "@/features/courseware-doc/SourceRuntimeStage";
 import type { GameMirrorState } from "@/features/games/types";
+import type { ClassroomToolRuntime } from "@/features/tools/courseware/cube-structures-classroom";
 
 /**
  * DocStage 的懒加载 client 叶子(games/boards.tsx 模式):渲染器只在预览页
@@ -77,6 +78,7 @@ export type StagePreviewProps = Omit<DocStageProps, "doc"> & {
   onAdvance?: () => void;
   gameMirror?: GameMirrorState | null;
   onGameMirror?: (state: GameMirrorState) => void;
+  classroomTools?: ClassroomToolRuntime;
   sourceRuntimeFourByThreeMode?: SourceRuntimeStageProps["sourceRuntimeFourByThreeMode"];
   sourceRuntimeEditor?: SourceRuntimeStageProps["editor"];
 };
