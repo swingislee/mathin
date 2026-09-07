@@ -66,7 +66,7 @@ describe("Cube Structures operation workbench", () => {
     expect(hidden.cubes.filter((cube) => cubeIsVisible(hidden, cube))).toHaveLength(8);
     expect(cubeStructureMetrics(hidden)).toEqual(cubeStructureMetrics(initial));
     expect(hidden.frame).toBe(initial.frame);
-    expect(applyCubeOperation(hidden, { kind: "show-all" }).hiddenLayers).toEqual([]);
+    expect(applyCubeOperation(hidden, { kind: "show-all" }).hiddenCubeIds).toEqual([]);
   });
 
   it("paints the logical exterior, not newly revealed internal faces after hiding", () => {
@@ -128,7 +128,7 @@ describe("Cube Structures operation workbench", () => {
 
   it("keeps bilingual tools and operation labels complete", () => {
     expect(Object.keys(cubeStructuresMessages("zh")).sort()).toEqual(Object.keys(cubeStructuresMessages("en")).sort());
-    expect(cubeOperationLabel({ kind: "layer", axis: "y", index: 2, visible: false }, "zh")).toBe("隐藏 Y = 2");
+    expect(cubeOperationLabel({ kind: "layer", axis: "y", index: 2, visible: false }, "zh")).toBe("隐藏 Y 3 层");
     expect(cubeOperationLabel({ kind: "view", view: "top", frame: cubeFrame([]) }, "en")).toBe("View · Top");
   });
 
@@ -138,7 +138,7 @@ describe("Cube Structures operation workbench", () => {
     expect(source.match(/<CubeStructuresViewport /g)).toHaveLength(1);
     expect(source).toContain("ssr: false");
     expect(source).not.toContain('from "three"');
-    expect(source).toContain("aria-pressed={tool === id}");
+    expect(source).toContain("active={tool === id}");
     expect(source).toContain("<AlertDialog");
     expect(source).not.toContain("VoxelLessonEditorStage");
     expect(source).not.toContain("session_events");

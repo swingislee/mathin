@@ -70,9 +70,9 @@ async function setupRig(reducedMotion = false, demand = false, initialBookmark: 
   const root = createRoot(canvas);
   await root.configure({ gl: renderer, size: { width: 800, height: 600, top: 0, left: 0 }, frameloop: demand ? "demand" : "never", dpr: 1 });
   const onTransitionStateChange = vi.fn();
-  const render = async (bookmark: Bookmark, requestKey = 0) => {
+  const render = async (bookmark: Bookmark, requestKey = 0, navigationMode: "orbit" | "pan" = "orbit") => {
     await act(async () => { root.render(createElement(SpatialCameraRig, {
-      bookmark, radius: 4, interactive: true, requestKey, onTransitionStateChange,
+      bookmark, radius: 4, interactive: true, requestKey, navigationMode, onTransitionStateChange,
     })); });
   };
   const state = () => _roots.get(canvas)!.store.getState();
@@ -94,6 +94,29 @@ async function setupRig(reducedMotion = false, demand = false, initialBookmark: 
 }
 
 describe("共享相机真实帧循环", () => {
+  for (const pointerType of ["mouse", "touch"] as const) {
+    it(`${pointerType} 平移工具只移动视野，切回观察恢复原旋转`, async () => {
+      const rig = await setupRig();
+      await rig.render(front, 0, "pan");
+      const camera = rig.state().camera;
+      const controls = rig.state().controls as unknown as Orbit;
+      const orientation = camera.quaternion.clone();
+      const relativePosition = camera.position.clone().sub(controls.target);
+      pointer(rig.surface, "pointerdown", 400, 300, 0, pointerType);
+      pointer(rig.surface, "pointermove", 450, 330, 0, pointerType);
+      pointer(rig.surface, "pointerup", 450, 330, 0, pointerType);
+      rig.frame();
+      expect(controls.target.length()).toBeGreaterThan(0.1);
+      expect(camera.position.clone().sub(controls.target).distanceTo(relativePosition)).toBeLessThan(1e-7);
+      expect(camera.quaternion.angleTo(orientation)).toBeLessThan(1e-7);
+      await rig.render(front, 0, "orbit");
+      pointer(rig.surface, "pointerdown", 400, 300, 0, pointerType);
+      pointer(rig.surface, "pointermove", 450, 330, 0, pointerType);
+      pointer(rig.surface, "pointerup", 450, 330, 0, pointerType);
+      expect(camera.quaternion.angleTo(orientation)).toBeGreaterThan(0.1);
+    });
+  }
+
   it("正视到侧视再到俯视：保留同一个相机，渲染中间姿态并精确到达", async () => {
     const rig = await setupRig();
     const camera = rig.state().camera;

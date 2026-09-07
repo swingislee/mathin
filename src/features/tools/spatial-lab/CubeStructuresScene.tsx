@@ -1,17 +1,19 @@
 "use client";
 
 import type { ThreeEvent } from "@react-three/fiber";
-import { Edges } from "@react-three/drei";
+import { Html, Line } from "@react-three/drei";
 import { DoubleSide } from "three";
 import type { VoxelCoordinate, VoxelFaceSelection } from "@/features/spatial-math/domain";
 import { buildVoxelPaintFaceInstances } from "@/features/spatial-math/renderer-r3f/voxel-visual-model";
-import { adjacentCube, type CubeTool } from "./cube-structures-contract";
+import { adjacentCube, CUBE_AXIS_COLORS, type CubeTool } from "./cube-structures-contract";
 
-export function CubeStructuresScene({ tool, face, ground, selectedPositions, validBuild, onGroundHover, onGroundClick }: {
+export function CubeStructuresScene({ tool, face, ground, origin, axesVisible, axisLength, validBuild, onGroundHover, onGroundClick }: {
   readonly tool: CubeTool;
   readonly face: VoxelFaceSelection | null;
   readonly ground: VoxelCoordinate | null;
-  readonly selectedPositions: readonly VoxelCoordinate[];
+  readonly origin: VoxelCoordinate | null;
+  readonly axesVisible: boolean;
+  readonly axisLength: number;
   readonly validBuild: boolean;
   readonly onGroundHover: (position: VoxelCoordinate | null) => void;
   readonly onGroundClick: (position: VoxelCoordinate) => void;
@@ -19,16 +21,24 @@ export function CubeStructuresScene({ tool, face, ground, selectedPositions, val
   const position = tool === "build" ? (face ? adjacentCube(face) : ground) : face?.cell;
   const previewFace = face && tool === "face" ? buildVoxelPaintFaceInstances([face.cell], [face])[0] : null;
   const color = tool === "remove" || (tool === "build" && !validBuild) ? "#df8a84" : "#edce79";
-  const groundPosition = (event: ThreeEvent<PointerEvent | MouseEvent>): VoxelCoordinate => ({ x: Math.round(event.point.x), y: 0, z: Math.round(event.point.z) });
+  const floor = origin?.y ?? -0.5;
+  const groundPosition = (event: ThreeEvent<PointerEvent | MouseEvent>): VoxelCoordinate => ({ x: Math.round(event.point.x), y: floor + 0.5, z: Math.round(event.point.z) });
   return <>
-    {selectedPositions.map((position) => <mesh key={`${position.x},${position.y},${position.z}`} position={[position.x, position.y, position.z]} raycast={() => null}>
-      <boxGeometry args={[1.065, 1.065, 1.065]} />
-      <meshBasicMaterial visible={false} />
-      <Edges color="#b08024" raycast={() => null} />
-    </mesh>)}
+    {axesVisible && origin && <group>
+      {(["x", "y", "z"] as const).map((axis) => {
+        const end = { ...origin, [axis]: origin[axis] + axisLength };
+        return <group key={axis}>
+          <Line points={[[origin.x, origin.y, origin.z], [end.x, end.y, end.z]]} color={CUBE_AXIS_COLORS[axis]} lineWidth={2} worldUnits={false} raycast={() => null} />
+          <Html position={[end.x, end.y, end.z]} center zIndexRange={[3, 0]} style={{ pointerEvents: "none" }}>
+            <span className="rounded bg-paper/90 px-1 text-xs font-bold" style={{ color: CUBE_AXIS_COLORS[axis] }}>{axis.toUpperCase()}</span>
+          </Html>
+        </group>;
+      })}
+      <Html position={[origin.x, origin.y, origin.z]} center zIndexRange={[3, 0]} style={{ pointerEvents: "none" }}><span className="rounded bg-paper/90 px-1 text-xs text-ink">0</span></Html>
+    </group>}
     {tool === "build" && <>
-      <gridHelper args={[25, 25, "#b8b0a3", "#d9d3c8"]} position={[0, -0.503, 0]} raycast={() => null} />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.505, 0]}
+      <gridHelper args={[25, 25, "#b8b0a3", "#d9d3c8"]} position={[0, floor - 0.003, 0]} raycast={() => null} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, floor - 0.005, 0]}
         onPointerMove={(event) => { event.stopPropagation(); onGroundHover(groundPosition(event)); }}
         onPointerOut={() => onGroundHover(null)}
         onClick={(event) => { if (event.delta <= 5) { event.stopPropagation(); onGroundClick(groundPosition(event)); } }}>
@@ -42,7 +52,7 @@ export function CubeStructuresScene({ tool, face, ground, selectedPositions, val
       raycast={() => null} renderOrder={4}>
       <planeGeometry args={[1.01, 1.01]} />
       <meshBasicMaterial color={color} transparent opacity={0.5} depthWrite={false} side={DoubleSide} polygonOffset polygonOffsetFactor={-2} />
-    </mesh> : position && tool !== "orbit" && <mesh position={[position.x, position.y, position.z]} raycast={() => null}>
+    </mesh> : position && tool !== "orbit" && tool !== "pan" && <mesh position={[position.x, position.y, position.z]} raycast={() => null}>
       <boxGeometry args={[1.04, 1.04, 1.04]} />
       <meshBasicMaterial color={color} transparent opacity={0.3} depthWrite={false} />
     </mesh>}

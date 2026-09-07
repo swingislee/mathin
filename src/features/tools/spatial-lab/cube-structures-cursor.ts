@@ -2,6 +2,8 @@ import type { CubeTool } from "./cube-structures-contract";
 
 const cursorPaths: Record<CubeTool, string> = {
   orbit: "", select: '<path d="m5 3 15 10-7 1-3 7Z"/>',
+  pan: '<path d="M12 2v22 M2 12h22 M8 6l4-4 4 4 M8 20l4 4 4-4 M6 8l-4 4 4 4 M20 8l4 4-4 4"/>',
+  move: '<path d="M12 2v22 M2 12h22 M8 6l4-4 4 4 M8 20l4 4 4-4 M6 8l-4 4 4 4 M20 8l4 4-4 4"/>',
   build: '<path d="m12 3 8 5v9l-8 5-8-5V8Z M4 8l8 5 8-5 M12 13v9 M18 2v6 M15 5h6"/>',
   remove: '<path d="m4 15 9-11 8 7-9 11H8Z M8 11l8 7 M12 22h10"/>',
   color: '<path d="m6 3 12 12-8 7-8-8Z M4 11h13 M20 15q-5 6 0 7 5-1 0-7"/>',

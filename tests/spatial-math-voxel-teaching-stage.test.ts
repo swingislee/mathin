@@ -154,8 +154,10 @@ describe("voxel-teaching-controller-v1 and 4:3 render model", () => {
     expect(renderer).toContain("VOXEL_SOLID_SIZE");
     expect(renderer).toContain("buildVoxelEdgeInstances");
     expect(renderer).toContain("meshBasicMaterial color={color}");
-    expect(renderer).toContain("interpolateVoxelCameraPose");
-    expect(renderer).toContain("snapVoxelCameraPoseToPrincipalAxis");
+    expect(renderer).toContain("<SpatialCameraRig");
+    const camera = readFileSync(resolve(process.cwd(), "src/features/spatial-math/renderer-r3f/SpatialCameraRig.tsx"), "utf8");
+    expect(camera).toContain("interpolateSpatialCameraPose");
+    expect(camera).toContain("snapSpatialCameraPoseToPrincipalAxis");
     expect(renderer).toContain('data-camera-transition="orbit-ease-in-out"');
     expect(renderer).toContain('data-camera-transition-state="idle"');
     expect(renderer).toContain('axisSnapEnabled = false');
@@ -171,8 +173,11 @@ describe("voxel-teaching-controller-v1 and 4:3 render model", () => {
     expect(view).toContain("ssr: false");
     expect(stage).toContain('data-layout-profile="standard-4x3"');
     expect(stage).toContain("<Input");
-    expect(stage).toContain("<Magnet");
-    expect(stage).toContain("aria-pressed={axisSnapEnabled}");
+    expect(stage).toContain("<SpatialAxisSnapButton");
+    expect(stage).toContain("useSpatialAxisSnap()");
+    const controls = readFileSync(resolve(process.cwd(), "src/features/spatial-math/renderer-r3f/SpatialCameraControls.tsx"), "utf8");
+    expect(controls).toContain("<Magnet");
+    expect(controls).toContain("aria-pressed={enabled}");
     expect(stage).toContain("onCommandIntent(payload)");
     expect(stage).not.toContain("session_events");
   });

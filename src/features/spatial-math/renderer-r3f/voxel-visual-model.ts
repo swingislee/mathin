@@ -1,5 +1,5 @@
 import type { FaceDirection, VoxelFaceSelection } from "../domain";
-import { voxelKey } from "../domain";
+import { FACE_DIRECTIONS, FACE_OFFSETS, voxelKey } from "../domain";
 import type { VoxelRenderCell } from "./voxel-render-model";
 
 export const VOXEL_SOLID_SIZE = 1;
@@ -14,6 +14,8 @@ export interface VoxelEdgeInstance {
   readonly key: string;
   readonly center: { readonly x: number; readonly y: number; readonly z: number };
   readonly scale: { readonly x: number; readonly y: number; readonly z: number };
+  readonly color?: string;
+  readonly priority?: number;
 }
 
 export interface VoxelEdgeInstanceGroups {
@@ -56,13 +58,17 @@ function insertEdge(
   x: number,
   y: number,
   z: number,
+  emphasis?: VoxelRenderCell["emphasis"],
 ) {
   const key = edgeKey(axis, x, y, z);
-  if (target.has(key)) return;
+  const existing = target.get(key);
+  // 相邻块仍共享同一条棱边，高亮替换原颜色而不增添几何；单独选择优先于分组。
+  if (existing && (!emphasis || (existing.priority ?? 0) >= emphasis.priority)) return;
   target.set(key, {
     key,
     center: { x, y, z },
     scale: edgeScale(axis),
+    ...(emphasis ? { color: emphasis.color, priority: emphasis.priority } : {}),
   });
 }
 
@@ -72,7 +78,7 @@ function insertEdge(
  * add duplicate coplanar geometry while exterior seams remain legible.
  */
 export function buildVoxelEdgeInstances(
-  cells: readonly Pick<VoxelRenderCell, "x" | "y" | "z">[],
+  cells: readonly Pick<VoxelRenderCell, "x" | "y" | "z" | "emphasis">[],
 ): VoxelEdgeInstanceGroups {
   const groups = {
     x: new Map<string, VoxelEdgeInstance>(),
@@ -84,9 +90,9 @@ export function buildVoxelEdgeInstances(
   for (const cell of cells) {
     for (const first of offsets) {
       for (const second of offsets) {
-        insertEdge(groups.x, "x", cell.x, cell.y + first, cell.z + second);
-        insertEdge(groups.y, "y", cell.x + first, cell.y, cell.z + second);
-        insertEdge(groups.z, "z", cell.x + first, cell.y + second, cell.z);
+        insertEdge(groups.x, "x", cell.x, cell.y + first, cell.z + second, cell.emphasis);
+        insertEdge(groups.y, "y", cell.x + first, cell.y, cell.z + second, cell.emphasis);
+        insertEdge(groups.z, "z", cell.x + first, cell.y + second, cell.z, cell.emphasis);
       }
     }
   }
@@ -98,6 +104,26 @@ export function buildVoxelEdgeInstances(
     y: stable(groups.y),
     z: stable(groups.z),
   };
+}
+
+/** 高亮只覆盖当前可见外露面，保留后方方块遮挡及原来的面染色。 */
+export function buildVoxelEmphasisFaceGroups(cells: readonly Pick<VoxelRenderCell, "x" | "y" | "z" | "emphasis">[]) {
+  const occupied = new Set(cells.map(voxelKey));
+  const groups = new Map<string, { color: string; opacity: number; faces: VoxelFaceSelection[] }>();
+  for (const cell of cells) {
+    if (!cell.emphasis) continue;
+    const { color, faceOpacity: opacity } = cell.emphasis;
+    const key = color + ":" + opacity;
+    const group = groups.get(key) ?? { color, opacity, faces: [] };
+    for (const direction of FACE_DIRECTIONS) {
+      const offset = FACE_OFFSETS[direction];
+      if (!occupied.has(voxelKey({ x: cell.x + offset.x, y: cell.y + offset.y, z: cell.z + offset.z }))) {
+        group.faces.push({ cell, direction });
+      }
+    }
+    groups.set(key, group);
+  }
+  return [...groups.values()];
 }
 
 const paintFaceTransform: Readonly<Record<FaceDirection, {
@@ -115,19 +141,21 @@ const paintFaceTransform: Readonly<Record<FaceDirection, {
 export function buildVoxelPaintFaceInstances(
   cells: readonly Pick<VoxelRenderCell, "x" | "y" | "z">[],
   faces: readonly VoxelFaceSelection[],
+  faceOffset = VOXEL_PAINT_FACE_OFFSET,
 ): readonly VoxelPaintFaceInstance[] {
   const visibleCells = new Set(cells.map((cell) => voxelKey(cell)));
   return faces
     .filter((face) => visibleCells.has(voxelKey(face.cell)))
     .map((face) => {
       const transform = paintFaceTransform[face.direction];
+      const extraOffset = faceOffset - VOXEL_PAINT_FACE_OFFSET;
       return {
         key: `${voxelKey(face.cell)}:${face.direction}`,
         direction: face.direction,
         center: {
-          x: face.cell.x + transform.offset.x,
-          y: face.cell.y + transform.offset.y,
-          z: face.cell.z + transform.offset.z,
+          x: face.cell.x + transform.offset.x + FACE_OFFSETS[face.direction].x * extraOffset,
+          y: face.cell.y + transform.offset.y + FACE_OFFSETS[face.direction].y * extraOffset,
+          z: face.cell.z + transform.offset.z + FACE_OFFSETS[face.direction].z * extraOffset,
         },
         rotation: transform.rotation,
       };

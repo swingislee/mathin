@@ -61,10 +61,11 @@ function applyProjectionValue(camera: SpatialCamera, value: number) {
 }
 
 /** 体素、展开图、编辑预览和课堂舞台共用的表现层相机，不产生课堂语义写入。 */
-export function SpatialCameraRig({ bookmark, radius, interactive, axisSnapEnabled = false, requestKey, minDistance = 0, maxDistance = Infinity, onTransitionStateChange }: {
+export function SpatialCameraRig({ bookmark, radius, interactive, navigationMode = "orbit", axisSnapEnabled = false, requestKey, minDistance = 0, maxDistance = Infinity, onTransitionStateChange }: {
   readonly bookmark: CameraBookmark;
   readonly radius: number;
   readonly interactive: boolean;
+  readonly navigationMode?: "orbit" | "pan";
   readonly axisSnapEnabled?: boolean;
   readonly requestKey?: string | number;
   readonly minDistance?: number;
@@ -200,8 +201,10 @@ export function SpatialCameraRig({ bookmark, radius, interactive, axisSnapEnable
       makeDefault
       camera={renderedCamera}
       enablePan={interactive}
-      enableRotate={interactive}
+      enableRotate={interactive && navigationMode === "orbit"}
       enableZoom={interactive}
+      mouseButtons={{ LEFT: navigationMode === "pan" ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN }}
+      touches={{ ONE: navigationMode === "pan" ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
       enableDamping={false}
       minDistance={minDistance}
       maxDistance={maxDistance}

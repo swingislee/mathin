@@ -651,6 +651,12 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
     new Set(initialDraft.model.cells.map((cell) => cell[initialDraft.model.layerAxis])).size;
   const afterLayers = diff?.derived.layerSteps?.after.length ??
     new Set(draft.model.cells.map((cell) => cell[draft.model.layerAxis])).size;
+  const workspaceSelector = <Select value={activeActivityId} onValueChange={(value) => selectActivity(value as SpatialLabActivityId)}>
+    <SelectTrigger className="w-full" aria-label={t("presets.label")}><SelectValue /></SelectTrigger>
+    <SelectContent>{SPATIAL_LAB_ACTIVITIES.map((activity) => <SelectItem key={activity.id} value={activity.id}>
+      {activity.id === SPATIAL_LAB_CUBE_STRUCTURES_ID ? cubeStructuresMessages(locale).title : t(`presets.options.${activity.messageKey}`)}
+    </SelectItem>)}</SelectContent>
+  </Select>;
 
   return (
     <div
@@ -659,7 +665,7 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
       data-layout-profile="standard-4x3"
       data-spatial-preset={activeActivityId}
     >
-      <div className="absolute bottom-3 right-3 z-40" data-spatial-template-launcher>
+      {activeActivityId !== SPATIAL_LAB_CUBE_STRUCTURES_ID && <div className="absolute bottom-3 right-3 z-40" data-spatial-template-launcher>
         <Popover open={templatePanelOpen} onOpenChange={setTemplatePanelOpen}>
           <PopoverTrigger asChild>
             <Button type="button" size="sm" variant="secondary" className="gap-2 bg-paper shadow-sm" aria-label={t("presets.label")}>
@@ -683,27 +689,16 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
               <Badge variant="outline">standard-4x3</Badge>
               <Badge variant="secondary">{t("memoryOnly")}</Badge>
             </div>
-            {!embedded && activeActivityId !== SPATIAL_LAB_CUBE_STRUCTURES_ID ? <p className="mt-2 text-sm leading-6 text-muted">{t("prototypeNote")}</p> : null}
+            {!embedded ? <p className="mt-2 text-sm leading-6 text-muted">{t("prototypeNote")}</p> : null}
             <p className="text-xs leading-5 text-muted">{t("presets.description")}</p>
-            <Select value={activeActivityId} onValueChange={(value) => selectActivity(value as SpatialLabActivityId)}>
-              <SelectTrigger className="w-full" aria-label={t("presets.label")}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SPATIAL_LAB_ACTIVITIES.map((activity) => (
-                  <SelectItem key={activity.id} value={activity.id}>
-                    {activity.id === SPATIAL_LAB_CUBE_STRUCTURES_ID ? cubeStructuresMessages(locale).title : t(`presets.options.${activity.messageKey}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {workspaceSelector}
             <p className="text-xs leading-5 text-muted">{t("boundaryNote")}</p>
           </PopoverContent>
         </Popover>
-      </div>
+      </div>}
 
       {activeActivityId === SPATIAL_LAB_CUBE_STRUCTURES_ID ? (
-        <CubeStructuresWorkbench locale={locale} rendererMessages={rendererMessages} cameraMessages={teachingMessages} />
+        <CubeStructuresWorkbench locale={locale} rendererMessages={rendererMessages} cameraMessages={teachingMessages} workspaceSelector={workspaceSelector} />
       ) : activeActivityId === SPATIAL_LAB_CUBE_NET_FOLD_PRESET_ID ? (
         <CubeNetFoldWorkspace locale={locale} />
       ) : <Tabs

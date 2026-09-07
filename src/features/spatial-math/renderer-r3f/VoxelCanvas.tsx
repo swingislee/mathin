@@ -24,6 +24,7 @@ import {
   VOXEL_EDGE_COLOR,
   VOXEL_SOLID_SIZE,
   buildVoxelEdgeInstances,
+  buildVoxelEmphasisFaceGroups,
   buildVoxelPaintFaceInstances,
   voxelFaceDirectionFromNormal,
   type VoxelEdgeInstance,
@@ -40,6 +41,7 @@ export interface VoxelCanvasProps {
   readonly axisSnapEnabled?: boolean;
   /** 编辑预览允许本地观察，模型选择与课堂只读合同保持独立。 */
   readonly cameraInteractive?: boolean;
+  readonly navigationMode?: "orbit" | "pan";
   readonly cameraRequestKey?: string | number;
   readonly onCellSelect?: (cellKey: string) => void;
   readonly paintedFaces?: readonly VoxelFaceSelection[];
@@ -211,12 +213,16 @@ function VoxelPaintFaceInstances({
   model,
   faces,
   color,
+  highlight = false,
+  opacity = 1,
 }: {
   readonly model: VoxelRenderModel;
   readonly faces: readonly VoxelFaceSelection[];
   readonly color: string;
+  readonly highlight?: boolean;
+  readonly opacity?: number;
 }) {
-  const instances = useMemo(() => buildVoxelPaintFaceInstances(model.cells, faces), [faces, model.cells]);
+  const instances = useMemo(() => buildVoxelPaintFaceInstances(model.cells, faces, highlight ? 0.503 : undefined), [faces, model.cells, highlight]);
   const groups = useMemo(() => {
     const grouped = new Map<VoxelFaceSelection["direction"], typeof instances>();
     for (const direction of ["x-", "x+", "y-", "y+", "z-", "z+"] as const) {
@@ -227,12 +233,14 @@ function VoxelPaintFaceInstances({
   }, [instances]);
   if (instances.length === 0) return null;
   return (
-    <group renderOrder={1}>
+    <group renderOrder={highlight ? 3 : 1}>
       {groups.map(([direction, directionInstances]) => (
         <VoxelPaintFaceDirectionInstances
           key={direction}
           instances={directionInstances}
           color={color}
+          highlight={highlight}
+          opacity={opacity}
         />
       ))}
     </group>
@@ -242,9 +250,13 @@ function VoxelPaintFaceInstances({
 function VoxelPaintFaceDirectionInstances({
   instances,
   color,
+  highlight = false,
+  opacity = 1,
 }: {
   readonly instances: readonly ReturnType<typeof buildVoxelPaintFaceInstances>[number][];
   readonly color: string;
+  readonly highlight?: boolean;
+  readonly opacity?: number;
 }) {
   const mesh = useRef<THREE.InstancedMesh>(null);
   const matrix = useMemo(() => new THREE.Matrix4(), []);
@@ -275,8 +287,11 @@ function VoxelPaintFaceDirectionInstances({
         color={color}
         side={THREE.DoubleSide}
         toneMapped={false}
+        transparent={highlight}
+        opacity={opacity}
+        depthWrite={!highlight}
         polygonOffset
-        polygonOffsetFactor={-1}
+        polygonOffsetFactor={highlight ? -2 : -1}
       />
     </instancedMesh>
   );
@@ -286,14 +301,17 @@ function applyEdgeMatrices(
   mesh: THREE.InstancedMesh | null,
   instances: readonly VoxelEdgeInstance[],
   matrix: THREE.Matrix4,
+  color: THREE.Color,
 ) {
   if (!mesh) return;
   instances.forEach((edge, index) => {
     matrix.makeScale(edge.scale.x, edge.scale.y, edge.scale.z);
     matrix.setPosition(edge.center.x, edge.center.y, edge.center.z);
     mesh.setMatrixAt(index, matrix);
+    mesh.setColorAt(index, color.set(edge.color ?? VOXEL_EDGE_COLOR));
   });
   mesh.instanceMatrix.needsUpdate = true;
+  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   mesh.computeBoundingBox();
   mesh.computeBoundingSphere();
 }
@@ -303,14 +321,15 @@ function VoxelEdgeInstances({ model }: { readonly model: VoxelRenderModel }) {
   const yEdges = useRef<THREE.InstancedMesh>(null);
   const zEdges = useRef<THREE.InstancedMesh>(null);
   const matrix = useMemo(() => new THREE.Matrix4(), []);
+  const color = useMemo(() => new THREE.Color(), []);
   const groups = useMemo(() => buildVoxelEdgeInstances(model.cells), [model.cells]);
   const invalidate = useThree((state) => state.invalidate);
   useLayoutEffect(() => {
-    applyEdgeMatrices(xEdges.current, groups.x, matrix);
-    applyEdgeMatrices(yEdges.current, groups.y, matrix);
-    applyEdgeMatrices(zEdges.current, groups.z, matrix);
+    applyEdgeMatrices(xEdges.current, groups.x, matrix, color);
+    applyEdgeMatrices(yEdges.current, groups.y, matrix, color);
+    applyEdgeMatrices(zEdges.current, groups.z, matrix, color);
     invalidate();
-  }, [groups, invalidate, matrix]);
+  }, [groups, invalidate, matrix, color]);
   if (model.cells.length === 0) return null;
   return (
     <group renderOrder={2}>
@@ -322,7 +341,7 @@ function VoxelEdgeInstances({ model }: { readonly model: VoxelRenderModel }) {
           raycast={() => null}
         >
           <boxGeometry args={[1, 1, 1]} />
-          <meshBasicMaterial color={VOXEL_EDGE_COLOR} toneMapped={false} />
+          <meshBasicMaterial color="#ffffff" toneMapped={false} />
         </instancedMesh>
       ))}
     </group>
@@ -343,6 +362,7 @@ function VoxelScene({
   sceneOverlay,
   preserveSelectedColors,
   axisSnapEnabled,
+  navigationMode,
   cameraInteractive,
   cameraRequestKey,
   onCameraTransitionStateChange,
@@ -360,10 +380,12 @@ function VoxelScene({
   readonly sceneOverlay?: ReactNode;
   readonly preserveSelectedColors?: boolean;
   readonly axisSnapEnabled: boolean;
+  readonly navigationMode?: "orbit" | "pan";
   readonly cameraInteractive: boolean;
   readonly cameraRequestKey: string;
   readonly onCameraTransitionStateChange: (active: boolean) => void;
 }) {
+  const emphasisFaces = useMemo(() => buildVoxelEmphasisFaceGroups(model.cells), [model.cells]);
   return (
     <>
       <color attach="background" args={[model.background === "night" ? palette.workspacePanel : palette.paper]} />
@@ -371,6 +393,7 @@ function VoxelScene({
         bookmark={model.camera}
         radius={model.bounds.radius}
         interactive={cameraInteractive}
+        navigationMode={navigationMode}
         requestKey={cameraRequestKey}
         axisSnapEnabled={axisSnapEnabled}
         onTransitionStateChange={onCameraTransitionStateChange}
@@ -379,6 +402,7 @@ function VoxelScene({
       <VoxelPaintFaceInstances model={model} faces={paintedFaces} color={paintedFaceColor} />
       {paintedFaceGroups?.map((group) => <VoxelPaintFaceInstances key={group.color} model={model} faces={group.faces} color={group.color} />)}
       <VoxelEdgeInstances model={model} />
+      {emphasisFaces.map((group) => <VoxelPaintFaceInstances key={group.color + ":" + group.opacity} model={model} faces={group.faces} color={group.color} opacity={group.opacity} highlight />)}
       {model.showAxes ? <axesHelper args={[Math.max(2, model.bounds.radius * 1.5)]} /> : null}
       {sceneOverlay}
     </>
@@ -410,6 +434,7 @@ export function VoxelModelCanvas({
   readOnly = false,
   axisSnapEnabled = false,
   cameraInteractive = !readOnly,
+  navigationMode = "orbit",
   cameraRequestKey,
   onCellSelect,
   paintedFaces = [],
@@ -463,6 +488,7 @@ export function VoxelModelCanvas({
       data-camera-axis-snap={axisSnapEnabled ? "enabled" : "disabled"}
       data-camera-projection="orthographic-only"
       data-voxel-visual="solid-fill-thick-edge"
+      data-camera-navigation={navigationMode}
       data-voxel-face-paint={paintedFaces.length}
     >
       <Canvas
@@ -493,6 +519,7 @@ export function VoxelModelCanvas({
           preserveSelectedColors={preserveSelectedColors}
           axisSnapEnabled={axisSnapEnabled}
           cameraInteractive={cameraInteractive}
+          navigationMode={navigationMode}
           cameraRequestKey={String(cameraRequestKey ?? 0)}
           onCameraTransitionStateChange={setCameraTransitionState}
         />

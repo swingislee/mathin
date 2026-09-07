@@ -25,6 +25,8 @@ export interface VoxelRenderCell {
   readonly z: number;
   readonly materialToken: string;
   readonly selected: boolean;
+  /** 只读交互高亮，不改写单位块或逐面的教学颜色。 */
+  readonly emphasis?: { readonly color: string; readonly faceOpacity: number; readonly priority: number };
 }
 
 export interface VoxelRenderLayer {

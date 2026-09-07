@@ -26,10 +26,11 @@ function toggleAxisSnap() {
   listeners.forEach((listener) => listener());
 }
 
-export function SpatialAxisSnapButton({ messages, disabled, className }: {
+export function SpatialAxisSnapButton({ messages, disabled, className, iconOnly = false }: {
   readonly messages: SpatialCameraControlMessages;
   readonly disabled?: boolean;
   readonly className?: string;
+  readonly iconOnly?: boolean;
 }) {
   const enabled = useSpatialAxisSnap();
   return (
@@ -40,11 +41,12 @@ export function SpatialAxisSnapButton({ messages, disabled, className }: {
       className={cn("h-7 gap-1 px-2 text-xs", className)}
       disabled={disabled}
       aria-label={enabled ? messages.disableAxisSnap : messages.enableAxisSnap}
+      title={enabled ? messages.disableAxisSnap : messages.enableAxisSnap}
       aria-pressed={enabled}
       onClick={toggleAxisSnap}
     >
       <Magnet aria-hidden="true" className="size-3.5" />
-      {messages.axisSnap}
+      {!iconOnly && messages.axisSnap}
     </Button>
   );
 }

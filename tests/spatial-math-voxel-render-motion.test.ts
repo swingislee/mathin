@@ -12,6 +12,7 @@ import {
   VOXEL_PAINT_FACE_OFFSET,
   VOXEL_SOLID_SIZE,
   buildVoxelEdgeInstances,
+  buildVoxelEmphasisFaceGroups,
   buildVoxelPaintFaceInstances,
   voxelFaceDirectionFromNormal,
 } from "@/features/spatial-math/renderer-r3f/voxel-visual-model";
@@ -48,6 +49,43 @@ describe("voxel solid visual and camera transition", () => {
     expect(adjacent.z).toHaveLength(6);
     expect(new Set([...adjacent.x, ...adjacent.y, ...adjacent.z].map((edge) => edge.key)).size)
       .toBe(20);
+  });
+
+  it("recolors the existing full bars without adding or resizing edges", () => {
+    const cell = { x: 0, y: 0, z: 0 };
+    const baseline = buildVoxelEdgeInstances([cell]);
+    const highlighted = buildVoxelEdgeInstances([{ ...cell, emphasis: { color: "#f2bd30", faceOpacity: 0.4, priority: 2 } }]);
+    for (const axis of ["x", "y", "z"] as const) {
+      expect(highlighted[axis].map(({ key, center, scale }) => ({ key, center, scale }))).toEqual(baseline[axis]);
+      expect(highlighted[axis].every((edge) => edge.color === "#f2bd30")).toBe(true);
+      expect(baseline[axis].every((edge) => edge.color === undefined)).toBe(true);
+    }
+  });
+
+  it("keeps shared bars unique and gives the selection priority over group color", () => {
+    const cells = [
+      { x: 0, y: 0, z: 0, emphasis: { color: "#f2bd30", faceOpacity: 0.4, priority: 2 } },
+      { x: 1, y: 0, z: 0, emphasis: { color: "#dc4444", faceOpacity: 0.25, priority: 1 } },
+    ];
+    const groups = buildVoxelEdgeInstances(cells);
+    const edges = [...groups.x, ...groups.y, ...groups.z];
+    expect(edges).toHaveLength(20);
+    expect(edges.filter((edge) => edge.color === "#f2bd30")).toHaveLength(12);
+    expect(edges.filter((edge) => edge.color === "#dc4444")).toHaveLength(8);
+    expect(buildVoxelEdgeInstances([...cells].reverse())).toEqual(groups);
+  });
+
+  it("tints only exposed selected faces and disappears cleanly on deselection", () => {
+    const selected = { x: 0, y: 0, z: 0, emphasis: { color: "#f2bd30", faceOpacity: 0.4, priority: 2 } };
+    const neighbor = { x: 1, y: 0, z: 0 };
+    const groups = buildVoxelEmphasisFaceGroups([selected, neighbor]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]).toMatchObject({ color: "#f2bd30", opacity: 0.4 });
+    expect(groups[0].faces).toHaveLength(5);
+    expect(groups[0].faces.some((face) => face.direction === "x+")).toBe(false);
+    expect(buildVoxelEmphasisFaceGroups([selected])[0].faces).toHaveLength(6);
+    expect(buildVoxelEmphasisFaceGroups([{ x: 0, y: 0, z: 0 }, neighbor])).toEqual([]);
+    expect(buildVoxelPaintFaceInstances([selected], [{ cell: selected, direction: "y+" }], 0.503)[0].center.y).toBe(0.503);
   });
 
   it("places painted faces just above the six exact cube surfaces", () => {
