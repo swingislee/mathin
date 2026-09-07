@@ -13,6 +13,8 @@ if (env.NEXT_PUBLIC_SUPABASE_URL !== 'http://127.0.0.1:35421') throw new Error('
 const base = new URL(process.env.MATHIN_VERIFY_BASE_URL || 'http://localhost:3130');
 const localHosts = new Set(['localhost','127.0.0.1',...Object.values(os.networkInterfaces()).flat().filter(Boolean).map(item => item.address)]);
 if (!localHosts.has(base.hostname) || base.port !== '3130' || base.protocol !== 'http:') throw new Error('LOCAL_APP_REQUIRED');
+const assessmentsOnly = process.argv.includes('--assessments-only');
+if (assessmentsOnly && process.argv.includes('--reports-only')) throw new Error('CHOOSE_ONE_PAGE_SCOPE');
 for (const role of ['principal','teacher']) {
   const account = loadFixedAccount(role);
   if (!account) throw new Error('FIXED_ACCOUNT_UNAVAILABLE');
@@ -23,12 +25,12 @@ for (const role of ['principal','teacher']) {
   const { error } = await client.auth.signInWithPassword(account);
   if (error) throw new Error('FIXED_ACCOUNT_LOGIN_FAILED: '+(error.code || 'unknown'));
   try {
-    const states = await client.from('assessment_workflow_states').select('id,revision,report:assessment_reports!assessment_workflow_states_report_id_fkey(id,version),recorder:profiles!assessment_workflow_states_updated_by_fkey(display_name)').limit(1);
+    const states = await client.from('assessment_workflow_states').select('id,revision,trial_intent,contacted_at,report:assessment_reports!assessment_workflow_states_report_id_fkey(id,version),recorder:profiles!assessment_workflow_states_updated_by_fkey(display_name)').limit(1);
     const reports = await client.from('assessment_reports').select('id,registration_id').limit(1);
     if (states.error || reports.error) throw new Error('WORKFLOW_API_CONTRACT_FAILED');
     const report = reports.data?.[0];
     const paths = process.argv.includes('--reports-only') ? [] : ['/dashboard/followups/assessments'];
-    if (report) paths.push('/dashboard/followups/assessments/'+report.registration_id+'/reports/'+report.id);
+    if (report && !assessmentsOnly) paths.push('/dashboard/followups/assessments/'+report.registration_id+'/reports/'+report.id);
     for (const locale of ['zh','en']) {
       for (const path of paths) {
         const response = await fetch(new URL('/'+locale+path,base), { redirect: 'manual',signal: AbortSignal.timeout(45000),
@@ -37,7 +39,7 @@ for (const role of ['principal','teacher']) {
         if (response.status !== 200 || /Could not find|schema cache|MISSING_MESSAGE|NEXT_REDIRECT|__next_error__/.test(html)) throw new Error('PAGE_STARTUP_FAILED: '+role+'/'+locale+' HTTP '+response.status);
         console.log(JSON.stringify({ role,locale,page:path.replace(/[0-9a-f]{8}-[0-9a-f-]{27}/g,':id'),status:response.status,scope:'authenticated startup; manual acceptance pending' }));
       }
-      if (!report) {
+      if (!report && !assessmentsOnly) {
         const path = '/'+locale+'/dashboard/followups/assessments/00000000-0000-4000-8000-000000000100/reports/00000000-0000-4000-8000-000000000200';
         const response = await fetch(new URL(path,base), { redirect:'manual',signal:AbortSignal.timeout(45000),
           headers:{ cookie:[...cookies].map(([name,value]) => name+'='+value).join('; ') } });
@@ -47,6 +49,6 @@ for (const role of ['principal','teacher']) {
         console.log(JSON.stringify({ role,locale,reportRoute:'PASS',httpStatus:response.status,semanticStatus:'NOT_FOUND' }));
       }
     }
-    console.log(JSON.stringify({ role,api:'PASS',reportPage:report ? 'EXISTING_REPORT_CHECKED' : 'NO_REPORT_FIXTURES_CREATED' }));
+    console.log(JSON.stringify({ role,api:'PASS',reportPage:assessmentsOnly ? 'OUT_OF_PAGE_SCOPE' : report ? 'EXISTING_REPORT_CHECKED' : 'NO_REPORT_FIXTURES_CREATED' }));
   } finally { await client.auth.signOut({ scope:'local' }); }
 }

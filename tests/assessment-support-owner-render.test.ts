@@ -7,6 +7,8 @@ import en from '../messages/en.json';
 import { AssessmentUnifiedWorkbench } from '@/features/school/AssessmentUnifiedWorkbench';
 import { TeacherAssessmentWorkbench } from '@/features/school/TeacherAssessmentWorkbench';
 import type { AssessmentWorkbenchRow } from '@/features/school/assessment-workbench-contract';
+import { assessmentWorkflowFromDb, type AssessmentReport } from '@/features/school/assessment-workflow-contract';
+import { assessmentStatusMessages } from '@/features/school/assessment-status-contract';
 
 vi.mock('server-only', () => ({}));
 vi.mock('@/features/school/Student360Sheet', () => ({ Student360Trigger: ({ children }: { children: ReactNode }) => createElement('button', null, children) }));
@@ -70,6 +72,46 @@ describe('imported assessment rendering', () => {
     expect(work).toContain('lucide-user-check');
     expect(work).not.toContain('lucide-calendar-clock');
     expect(work).toContain(zh.school.supportAssessment.actualAssessor);
+  });
+  it('marks confirmed source enrollment on the whole row, including its fixed identity cell', () => {
+    const html = render(createElement(AssessmentUnifiedWorkbench, {
+      initialRows: [{ ...row, sourceEnrollmentFacts: { version: 1, confirmed: true, assessmentBand: 'a', registeredOn: null } }],
+      assessors: [], locale: 'zh', canAssess: true, canSupport: true, canManageAssessor: false,
+    }), 'zh');
+    const enrolled = html.match(/<tr[^>]*data-followup-success="true"[^>]*>([\s\S]*?)<\/tr>/)?.[1];
+    expect(enrolled?.match(/<td/g)).toHaveLength(7);
+    expect(enrolled).toContain('sticky left-0');
+    expect(enrolled).toContain('data-assessment-status="enrolled"');
+    expect(enrolled).toContain('来源学生');
+  });
+  it.each(['zh', 'en'] as const)('replaces broad row labels with the next action in the status column without a dot in %s', locale => {
+    const time = '2026-09-07T03:00:00Z';
+    const workflow = assessmentWorkflowFromDb({ id: '00000000-0000-4000-8000-000000000001', registration_id: id, stage: 'feedback', revision: 1,
+      arrived_at: time, report_id: null, sent_report_id: null, sent_at: null, sent_by: null, classification: null, parent_response: '', reasons: [],
+      next_contact_at: null, finalized_at: null, revision_reason: '', updated_by: '00000000-0000-4000-8000-000000000001', updated_at: time });
+    const report: AssessmentReport = { id: '00000000-0000-4000-8000-000000000002', version: 1, created_at: time, payload: {
+      schemaVersion: 1, name: '同学', grade: null, gradeText: '', activityTitle: '测评', assessedAt: time, resultSource: 'quick_entry', recordedByName: '',
+      score: 60, totalScore: null, assessmentBand: 'a', strengths: '', focusAreas: '', teacherObservation: '', recommendation: '', recommendedClass: '',
+    } };
+    const fixtures: AssessmentWorkbenchRow[] = [
+      { ...row, id: 'entry', assessmentStartedAt: time },
+      { ...row, id: 'prepare', assessmentCompletedAt: time },
+      { ...row, id: 'feedback', assessmentCompletedAt: time, workflow: { ...workflow, report } },
+    ];
+    const html = render(createElement(AssessmentUnifiedWorkbench, { initialRows: fixtures, assessors: [], locale,
+      canAssess: true, canSupport: true, canManageAssessor: false }), locale);
+    const states = [...html.matchAll(/<td[^>]*data-assessment-state-kind[^>]*>([\s\S]*?)<\/td>/g)].map(match => match[1]);
+    const labels = assessmentStatusMessages(locale).labels;
+    for (const key of ['continue_entry', 'prepare_report', 'give_feedback'] as const) {
+      const cell = states.find(state => state.includes(`data-assessment-status="${key}"`));
+      expect(cell).toContain(labels[key]);
+      expect(cell).not.toContain('bg-current');
+      expect(cell?.replace(/<[^>]*>/g, '')).not.toMatch(/[·•●]/u);
+    }
+    const work = [...html.matchAll(/<td[^>]*data-assessment-current-work[^>]*>([\s\S]*?)<\/td>/g)].map(match => match[1]).join('');
+    expect(work).not.toContain(labels.continue_entry);
+    expect(work).not.toContain(labels.prepare_report);
+    expect(work).not.toContain(labels.give_feedback);
   });
   it('renders a source question workbench with an unknown scheduled time', () => {
     const html = render(createElement(TeacherAssessmentWorkbench, { data: { registrationId: id, subjectName: '来源学生', grade: null,

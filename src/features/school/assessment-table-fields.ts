@@ -1,13 +1,14 @@
 import { ASSESSMENT_BANDS } from "./activity-workflow-contract";
 import { assessmentWorkbenchHasFinalResult,assessmentAppointmentClosed, ASSESSMENT_WORKBENCH_QUEUES, type AssessmentWorkbenchQueue, type AssessmentWorkbenchRow } from "./assessment-workbench-contract";
 import {sourceCompletionMessages} from './source-completion-contract';
+import { ASSESSMENT_DETAIL_STATUSES, assessmentDetailStatuses, assessmentStatusMessages } from "./assessment-status-contract";
 import { dashboardFieldMessages } from "./dashboard-page/dashboard-field-messages";
 import { dashboardDay } from "./dashboard-page/dashboard-table-date-contract";
 import { EMPTY_DASHBOARD_FIELD_QUERY, type DashboardFieldDefinitions, type DashboardFieldOption, type DashboardFieldQuery } from "./dashboard-page/dashboard-table-field-contract";
 
 export const ASSESSMENT_TABLE_COLUMNS = {
   student: ["name", "phone", "grade"],
-  kind: ["status", "kind"],
+  kind: ["status", "substatus", "kind"],
   arrangement: ["scheduledAt", "supportOwner", "location"],
   result: ["paper", "score", "scoreRate", "band", "progress", "resultSource"],
   teacher: ["conclusion"],
@@ -67,6 +68,7 @@ export function assessmentTableFields({ locale, timeZone, tableT, assessmentT, t
 }): DashboardFieldDefinitions<AssessmentWorkbenchRow> {
   const m = dashboardFieldMessages(locale);
   const sourceM=sourceCompletionMessages(locale);
+  const statusM = assessmentStatusMessages(locale);
   const bandOptions = ASSESSMENT_BANDS.map(value => ({ value, label: teacherT(`band_${value}`) }));
   const queueKeys = { pending: "queue_assessment_pending", in_progress: "queue_in_progress", feedback: "queue_pending", handled: "queue_handled" };
   const stages = [...ASSESSMENT_WORKBENCH_QUEUES.filter(value => value !== "all").map(value => ({ value, label: t(queueKeys[value]) })),
@@ -104,6 +106,11 @@ export function assessmentTableFields({ locale, timeZone, tableT, assessmentT, t
       values: row => assessmentAppointmentClosed(row)?option(row.participationStatus,row.participationStatus==='no_show'?sourceM.noShow:sourceM.cancelled)
         : row.recordState === "historical" ? [] : option(stageFor(row), t(queueKeys[stageFor(row)])),
       sortValue: row => row.recordState === "historical" ? null : ASSESSMENT_WORKBENCH_QUEUES.indexOf(stageFor(row)) },
+    substatus: { kind: "enum", label: statusM.substatus,
+      options: ASSESSMENT_DETAIL_STATUSES.map(value => ({ value, label: statusM.labels[value] })),
+      values: row => row.recordState === "historical" && !assessmentAppointmentClosed(row) && !row.sourceEnrollmentFacts?.confirmed ? []
+        : assessmentDetailStatuses(row).map(value => ({ value, label: statusM.labels[value] })),
+      sortValue: row => ASSESSMENT_DETAIL_STATUSES.indexOf(assessmentDetailStatuses(row)[0]) },
     recordedAt: { kind: "date", label: m.recordedAt, hint: m.recordedHint, value: assessmentRecordDate },
   };
 }

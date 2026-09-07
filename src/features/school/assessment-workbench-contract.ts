@@ -100,6 +100,7 @@ export interface AssessmentWorkbenchRow {
   grade: number | null;
   gradeText: string;
   scheduledAt: string;
+  rescheduledAt?: string | null;
   location: string;
   assessorId: string | null;
   assessorName: string;
@@ -176,13 +177,20 @@ export function assessmentWorkbenchCounts(
 export function assessmentWorkbenchStage(
   row: AssessmentWorkbenchRow,
 ): Exclude<AssessmentWorkbenchQueue, "all"> {
-  if (row.workflow) return row.workflow.stage;
-  if (assessmentWorkbenchHasFinalResult(row)) return row.route ? "handled" : "feedback";
+  if (row.sourceEnrollmentFacts?.confirmed) return "handled";
+  if (assessmentWorkbenchHasFinalResult(row)) {
+    const decision = row.workflow?.classification;
+    return row.enrollmentId || row.workflow?.trialIntent || decision && decision !== "awaiting_reply" || !row.workflow && row.route ? "handled" : "feedback";
+  }
   // 快速登记草稿和已完成归类各有事实，未发布分数不会被伪装成最终测评结果。
-  if (row.route) return "handled";
+  if (!row.workflow && row.route) return "handled";
   if (row.quickEntry || row.assessment?.resultSource === "teacher") return "in_progress";
-  if (row.participationStatus === "attended" || row.assessmentStartedAt || row.assessment) return "in_progress";
+  if (row.participationStatus === "attended" || row.workflow?.arrivedAt || row.assessmentStartedAt || row.assessment) return "in_progress";
   return "pending";
+}
+
+export function assessmentWorkbenchHasConfirmedEnrollment(row: Pick<AssessmentWorkbenchRow, "enrollmentId" | "sourceEnrollmentFacts">): boolean {
+  return Boolean(row.enrollmentId || row.sourceEnrollmentFacts?.confirmed);
 }
 
 export function assessmentAppointmentClosed(row: Pick<AssessmentWorkbenchRow,'participationStatus'>): boolean {

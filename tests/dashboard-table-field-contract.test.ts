@@ -140,7 +140,7 @@ describe("assessment field adapter", () => {
       assessment("missing", { supportOwnerId: null, supportOwnerName: "" }),
     ];
     expect(ASSESSMENT_TABLE_COLUMNS.arrangement).toContain("supportOwner");
-    expect(ASSESSMENT_TABLE_COLUMNS.kind).toEqual(["status", "kind"]);
+    expect(ASSESSMENT_TABLE_COLUMNS.kind).toEqual(["status", "substatus", "kind"]);
     expect(ASSESSMENT_TABLE_COLUMNS.status).toEqual(["assessor", "assessorSource"]);
     expect(ASSESSMENT_TABLE_COLUMNS.arrangement).not.toContain("assessor");
     const facets = dashboardFieldFacets(fixtures, definitions, {}, "zh", context.timeZone);

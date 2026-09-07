@@ -37,16 +37,16 @@ const row: AssessmentWorkbenchRow = { id, assessmentKind: "one_to_one", activity
   participationStatus: "booked", assessmentStartedAt: null, assessmentCompletedAt: null, assessment: null, questionSummary: null, route: null, updatedAt: time };
 
 describe("assessment workflow state contract", () => {
-  it("treats arrival alone as in progress and respects an explicit return to check-in", () => {
+  it("treats arrival as progress and keeps final evidence authoritative over old navigation", () => {
     expect(assessmentWorkbenchStage({ ...row, participationStatus: "attended" })).toBe("in_progress");
     const workflow = assessmentWorkflowFromDb({ ...dbState, stage: "pending", arrived_at: null });
     expect(assessmentWorkbenchStage({ ...row, workflow, assessmentCompletedAt: time,
-      route: { id, route: "continue_follow_up", note: "", updatedAt: time } })).toBe("pending");
+      route: { id, route: "continue_follow_up", note: "", updatedAt: time } })).toBe("feedback");
   });
-  it("keeps unlocked phase clicks writable and classified or view-only clicks read-only", () => {
-    expect(assessmentStageClickWrites(null, true)).toBe(true);
+  it("keeps navigation read-only for every role and workflow state", () => {
+    expect(assessmentStageClickWrites(null, true)).toBe(false);
     const workflow = assessmentWorkflowFromDb(dbState);
-    expect(assessmentStageClickWrites(workflow, true)).toBe(true);
+    expect(assessmentStageClickWrites(workflow, true)).toBe(false);
     expect(assessmentStageClickWrites({ ...workflow, finalizedAt: time }, true)).toBe(false);
     expect(assessmentStageClickWrites(workflow, false)).toBe(false);
   });
@@ -62,16 +62,28 @@ describe("assessment workflow state contract", () => {
 describe("assessment workflow action boundary", () => {
   beforeEach(() => { fixture.user = { id }; fixture.permissions = new Set(["followup.write"]); fixture.state = dbState; fixture.rpc.mockReset();
     fixture.rpc.mockResolvedValue({ data: { registrationId: id, activityId: id, participationStatus: "attended", state: dbState }, error: null }); });
-  it("submits source, version and stage as one atomic command", async () => {
-    const result = await saveAssessmentWorkflowAction({ registrationId: id, invitationId: null, expectedRevision: 2, command: "visit", values: { stage: "handled" } });
+  it("submits source, version and saved contact as one atomic command", async () => {
+    const values = { classification: null, parentResponse: "已联系，等待家长回复", reasons: [], nextContactAt: null };
+    const result = await saveAssessmentWorkflowAction({ registrationId: id, invitationId: null, expectedRevision: 2, command: "classify", values });
     expect(result.ok).toBe(true);
     expect(fixture.rpc).toHaveBeenCalledWith("save_assessment_workflow", { p_registration_id: id, p_invitation_id: undefined,
-      p_expected_revision: 2, p_command: "visit", p_values: { stage: "handled" } });
+      p_expected_revision: 2, p_command: "classify", p_values: values });
+  });
+  it("rejects an old navigation write before calling the database", async () => {
+    const result = await saveAssessmentWorkflowAction({ registrationId: id, invitationId: null, expectedRevision: 2, command: "visit", values: { stage: "handled" } });
+    expect(result).toMatchObject({ ok: false, code: "ASSESSMENT_NAVIGATION_READ_ONLY" });
+    expect(fixture.rpc).not.toHaveBeenCalled();
   });
   it("does not grant writes to a view-only user", async () => {
     fixture.permissions = new Set(["followup.view"]);
     const result = await saveAssessmentWorkflowAction({ registrationId: id, invitationId: null, expectedRevision: 2, command: "report", values: {} });
     expect(result).toMatchObject({ ok: false, code: "FORBIDDEN" }); expect(fixture.rpc).not.toHaveBeenCalled();
+  });
+  it("saves trial interest without a scheduled activity or a parent classification", async () => {
+    const values = { classification: null, parentResponse: "Would like a trial", reasons: [], nextContactAt: null, trialIntent: true, sharedReportId: null };
+    const result = await saveAssessmentWorkflowAction({ registrationId: id, invitationId: null, expectedRevision: 2, command: "classify", values });
+    expect(result.ok).toBe(true);
+    expect(fixture.rpc).toHaveBeenCalledWith("save_assessment_workflow", expect.objectContaining({ p_command: "classify", p_values: values }));
   });
   it("requires a revision reason and rejects ambiguous subjects", async () => {
     expect(await saveAssessmentWorkflowAction({ registrationId: id, invitationId: null, expectedRevision: 2, command: "revise", values: { reason: " " } })).toMatchObject({ ok: false, code: "VALIDATION" });

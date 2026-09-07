@@ -45,6 +45,26 @@ describe("unified assessment workbench", () => {
     expect(rows[0].enrollmentId).toBe(status === 'active' ? 'linked-enrollment' : null);
   });
 
+  it.each([false, true])('retains cancelled appointments in the same ordered list (materialized: %s)', async materialized => {
+    const time = '2026-09-07T02:00:00Z';
+    db.tables.lead_invitation_threads = [{ id: 'invite', kind: 'assessment_1v1', state: 'cancelled', lead_id: 'lead',
+      assessor_id: null, scheduled_at: time, rescheduled_at: time, location_text: '', summary: '', updated_at: time,
+      leads: { id: 'lead', provisional_student_name: '同学', phone: '', grade_hint: 3, grade_text: '', student_id: null } }];
+    if (materialized) {
+      db.tables.activities = [{ id: 'activity', kind: 'assessment_1v1', title: '', scheduled_at: time, location: '', source_invitation_id: 'invite' }];
+      db.tables.activity_registrations = [{ id: 'registration', activity_id: 'activity', student_id: null, lead_id: 'lead', status: 'cancelled',
+        outcome: '', assessment_paper_version_id: null, assessment_started_at: null, assessment_completed_at: null, updated_at: time, students: null,
+        leads: db.tables.lead_invitation_threads[0].leads }];
+    }
+    db.tables.assessment_workbench_read_order = [{ id: 'invitation:invite' }];
+    const rows = await listAssessmentWorkbenchRows();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ id: 'invitation:invite', participationStatus: 'cancelled', rescheduledAt: time,
+      registrationId: materialized ? 'registration' : null });
+    expect(assessmentWorkbenchRowsForView(rows, { queue: 'all' }, 'zh')).toHaveLength(1);
+    expect(assessmentWorkbenchRowsForView(rows, { queue: 'pending' }, 'zh')).toHaveLength(0);
+  });
+
   it("opens an attached detail row while keeping the original record row and table columns fixed", () => {
     const workbench = source("src/features/school/AssessmentUnifiedWorkbench.tsx");
     const detail = source("src/features/school/AssessmentRecordDetails.tsx");
@@ -61,7 +81,8 @@ describe("unified assessment workbench", () => {
     expect(workbench).toContain("table-fixed");
     expect(workbench).toContain('"h-16 cursor-pointer');
     expect(workbench).toContain("navigateFollowupTable(event");
-    expect(workbench).toContain("keepMounted={visitedDetails.has(row.id)}");
+    expect(workbench).toContain("keepMounted={retained}");
+    expect(workbench).toContain("retained={visitedDetails.has(row.id)}");
     expect(workbench).toContain("data-followup-active={active}");
     expect(workbench).toContain("data-followup-expanded={expanded}");
     expect(workbench).not.toContain("min-w-[94rem]");

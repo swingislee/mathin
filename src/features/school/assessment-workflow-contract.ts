@@ -24,6 +24,7 @@ export const assessmentWorkflowDbSchema = z.object({
   arrived_at: z.string().nullable(), report_id: z.string().uuid().nullable(), sent_report_id: z.string().uuid().nullable(),
   sent_at: z.string().nullable(), sent_by: z.string().uuid().nullable(),
   classification: z.enum(ASSESSMENT_PARENT_CLASSIFICATIONS).nullable(), parent_response: z.string(),
+  trial_intent: z.boolean().optional().default(false), contacted_at: z.string().nullable().optional().default(null),
   reasons: z.array(z.enum(ASSESSMENT_PARENT_REASONS)), next_contact_at: z.string().nullable(),
   finalized_at: z.string().nullable(), revision_reason: z.string(), updated_by: z.string().uuid(), updated_at: z.string(),
   recorder: z.object({ display_name: z.string() }).nullable().optional(),
@@ -38,14 +39,16 @@ export function assessmentWorkflowFromDb(value: unknown) {
     arrivedAt: row.arrived_at, report: row.report ?? null, sentReportId: row.sent_report_id,
     sentAt: row.sent_at, sentByName: row.sender?.display_name ?? "",
     classification: row.classification, parentResponse: row.parent_response, reasons: row.reasons, nextContactAt: row.next_contact_at,
+    trialIntent: row.trial_intent, contactedAt: row.contacted_at,
     finalizedAt: row.finalized_at, revisionReason: row.revision_reason, updatedAt: row.updated_at,
     updatedByName: row.recorder?.display_name ?? "",
   };
 }
 export type AssessmentWorkflow = ReturnType<typeof assessmentWorkflowFromDb>;
 export type AssessmentClassificationValues = {
-  classification: (typeof ASSESSMENT_PARENT_CLASSIFICATIONS)[number]; parentResponse: string;
+  classification: (typeof ASSESSMENT_PARENT_CLASSIFICATIONS)[number] | null; parentResponse: string;
   reasons: (typeof ASSESSMENT_PARENT_REASONS)[number][]; nextContactAt: string | null;
+  trialIntent?: boolean; sharedReportId?: string | null;
 };
 export type AssessmentWorkflowCommand = { command: "visit"; values: { stage: AssessmentStage } }
   | { command: "report"; values: Record<string, never> }
@@ -57,9 +60,10 @@ export function currentAssessmentReportWasSent(workflow: AssessmentWorkflow | nu
   return Boolean(workflow?.report && workflow.sentAt && workflow.sentReportId === workflow.report.id);
 }
 
-/** 已归类和只读身份点击仅浏览；服务端再以同一规则保护旧客户端。 */
+/** 阶段导航只负责查看，业务状态由已保存的测评与沟通事实推进。 */
 export function assessmentStageClickWrites(workflow: AssessmentWorkflow | null | undefined, canWrite: boolean): boolean {
-  return canWrite && !workflow?.finalizedAt;
+  void workflow; void canWrite;
+  return false;
 }
 
 export interface AssessmentWorkflowEvent {
@@ -67,4 +71,5 @@ export interface AssessmentWorkflowEvent {
   stage: AssessmentStage; classification: AssessmentWorkflow["classification"]; reason: string;
   reportId: string | null; sentReportId: string | null;
   parentResponse: string;
+  trialIntent?: boolean;
 }

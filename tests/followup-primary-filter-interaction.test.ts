@@ -26,7 +26,7 @@ vi.mock("@/features/school/enrollment-workflow-actions", () => ({ moveEnrollment
 vi.mock("@/features/school/BusinessRecordRevisionButton", () => ({ BusinessRecordRevisionButton: () => null }));
 vi.mock("@/features/school/Student360Sheet", () => ({ Student360Trigger: ({ children }: { children: ReactNode }) => createElement("button", { type: "button" }, children) }));
 vi.mock("@/features/school/ActivityAssessmentDetails", () => ({ ActivityAssessmentDraftProvider: ({ children }: { children: ReactNode }) => children }));
-vi.mock("@/features/school/AssessmentRecordDetails", () => ({ AssessmentRecordDetails: ({ row, onSaved }: { row: AssessmentWorkbenchRow; onSaved: (row: AssessmentWorkbenchRow) => void }) => createElement("button", { onClick: () => onSaved({ ...row, workflow: { ...row.workflow!, stage: "handled" } }) }, "Save classification") }));
+vi.mock("@/features/school/AssessmentRecordDetails", () => ({ AssessmentRecordDetails: ({ row, onSaved }: { row: AssessmentWorkbenchRow; onSaved: (row: AssessmentWorkbenchRow) => void }) => createElement("button", { onClick: () => onSaved({ ...row, workflow: { ...row.workflow!, stage: "handled", classification: "considering" } }) }, "Save classification") }));
 vi.mock("@/features/school/TeacherAssessmentEntryButton", () => ({ TeacherAssessmentEntryButton: () => null }));
 
 let root: Root, container: HTMLDivElement;
@@ -88,11 +88,11 @@ describe("title-bar primary filters", () => {
     const rows = ["pending", "in_progress", "feedback", "handled"].map(stage => ({ id: stage, assessmentKind: "one_to_one", activityId: null,
       activityTitle: "", publicClassRecord: null, invitationId: stage, registrationId: null, studentId: null, leadId: null,
       name: stage, phone: "", grade: 3, gradeText: "", scheduledAt: at, location: "", assessorId: null, assessorName: "",
-      assessorSource: "assigned", background: "", participationStatus: "booked", assessmentStartedAt: null, assessmentCompletedAt: null,
+      assessorSource: "assigned", background: "", participationStatus: stage === "pending" ? "booked" : "attended", assessmentStartedAt: stage === "in_progress" ? at : null, assessmentCompletedAt: ["feedback", "handled"].includes(stage) ? at : null,
       assessment: null, questionSummary: null, route: null, updatedAt: at,
       workflow: assessmentWorkflowFromDb({ id: "00000000-0000-4000-8000-000000000001", registration_id: "00000000-0000-4000-8000-000000000001",
         stage, revision: 1, arrived_at: null, report_id: null, report: null, sent_report_id: null, sent_at: null, sent_by: null,
-        classification: null, parent_response: "", reasons: [], next_contact_at: null, finalized_at: null, revision_reason: "",
+        classification: stage === "handled" ? "considering" : null, parent_response: "", reasons: [], next_contact_at: null, finalized_at: null, revision_reason: "",
         updated_by: "00000000-0000-4000-8000-000000000001", updated_at: at }),
     })) as AssessmentWorkbenchRow[];
     await render(createElement(AssessmentUnifiedWorkbench, { initialRows: rows, assessors: [], locale: "zh", canAssess: false, canSupport: true, canManageAssessor: false }));

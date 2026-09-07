@@ -78,16 +78,16 @@ describe("assessment stage clicks", () => {
   });
   afterEach(async () => { await act(async () => root.unmount()); container.remove(); });
 
-  it("jumps directly to next steps and uses the materialized registration on subsequent clicks", async () => {
+  it("jumps between panels without materializing an appointment or recording arrival", async () => {
     await mount(); await clickStage("handled");
-    expect(actions.save).toHaveBeenLastCalledWith({ registrationId: null, invitationId: id, expectedRevision: 0, command: "visit", values: { stage: "handled" } });
+    expect(actions.save).not.toHaveBeenCalled();
     expect(stageButton("handled").getAttribute("aria-current")).toBe("step");
-    expect(stageButton("pending").querySelector("svg")).not.toBeNull();
+    expect(stageButton("pending").querySelector("svg")).toBeNull();
     expect(stageButton("in_progress").querySelector("svg")).toBeNull();
     expect(stageButton("feedback").querySelector("svg")).toBeNull();
     expect(container.querySelector('[data-assessment-panel="handled"]')?.hasAttribute("hidden")).toBe(false);
     await clickStage("pending");
-    expect(actions.save).toHaveBeenLastCalledWith({ registrationId: id, invitationId: null, expectedRevision: 1, command: "visit", values: { stage: "pending" } });
+    expect(actions.save).not.toHaveBeenCalled();
     expect(container.textContent).toContain(zh.school.assessmentWorkflow.notArrived);
   });
   it("retains an opened assessment draft across stage changes", async () => {
@@ -98,19 +98,16 @@ describe("assessment stage clicks", () => {
     expect(container.querySelector<HTMLTextAreaElement>('[data-assessment-panel="in_progress"] textarea')?.value).toBe("Keep this unsaved note");
     expect(container.querySelectorAll('[data-assessment-panel="in_progress"]')).toHaveLength(1);
   });
-  it("keeps the previous view when a stage write fails", async () => {
+  it("browses even when the business-write endpoint is unavailable", async () => {
     actions.save.mockResolvedValue({ ok: false, code: "UNKNOWN" });
     await mount(); await clickStage("feedback");
-    expect(stageButton("pending").getAttribute("aria-current")).toBe("step");
-    expect(container.querySelector('[data-assessment-panel="feedback"]')).toBeNull();
+    expect(stageButton("feedback").getAttribute("aria-current")).toBe("step");
+    expect(actions.save).not.toHaveBeenCalled();
   });
-  it("coalesces clicks while a write is pending", async () => {
-    let finish: (value: unknown) => void = () => {};
-    actions.save.mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+  it("switches rapidly without creating pending writes", async () => {
     await mount(); await clickStage("in_progress"); await clickStage("handled");
-    expect(actions.save).toHaveBeenCalledTimes(1);
-    await act(async () => finish(saved({ expectedRevision: 0, command: "visit", values: { stage: "in_progress" } })));
-    expect(stageButton("in_progress").getAttribute("aria-current")).toBe("step");
+    expect(actions.save).not.toHaveBeenCalled();
+    expect(stageButton("handled").getAttribute("aria-current")).toBe("step");
   });
   it("browses a classified record without any writes and requires an explicit revision reason", async () => {
     await mount({ ...initial, registrationId: id, participationStatus: "attended", workflow: { ...workflow, stage: "handled", finalizedAt: time, classification: "considering", parentResponse: "Saved parent response" } });
@@ -149,7 +146,7 @@ describe("assessment stage clicks", () => {
       expect(sidebar.querySelector("[data-followup-reminder-slot] input")).not.toBeNull();
       expect(container.querySelectorAll("[data-assessment-field=score]")).toHaveLength(1);
       expect(tags.compareDocumentPosition(container.querySelector("[data-assessment-progress]")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-      if (stage !== "handled") expect(notesField().value).toBe("Shared parent concerns draft");
+      if (stage !== "handled" && stage !== "feedback") expect(notesField().value).toBe("Shared parent concerns draft");
     }
     expect(actions.quick).not.toHaveBeenCalled();
   });
@@ -168,7 +165,36 @@ describe("assessment stage clicks", () => {
     await act(async () => save.click());
     expect(actions.save).toHaveBeenLastCalledWith(expect.objectContaining({ command: "classify", values: {
       classification: "considering", parentResponse: "Call after discussing the schedule", reasons: [], nextContactAt: "2026-10-01T07:30:00.000Z",
+      trialIntent: false, sharedReportId: null,
     } }));
+  });
+
+  it("saves trial interest together with considering, without an appointment or another status click", async () => {
+    await mount(); await clickStage("handled");
+    await fill(container.querySelector<HTMLSelectElement>('[data-assessment-field="classification"] select')!, "considering");
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-assessment-trial-intent] button[role="checkbox"]')!.click());
+    await fill(notesField(), "Parent wants to try a class before deciding");
+    expect(actions.save).not.toHaveBeenCalled();
+    const save = [...container.querySelectorAll("button")].find(button => button.textContent?.includes(zh.school.assessmentWorkflow.saveClassification))!;
+    await act(async () => save.click());
+    expect(actions.save).toHaveBeenCalledTimes(1);
+    expect(actions.save).toHaveBeenCalledWith(expect.objectContaining({ command: "classify", values: expect.objectContaining({ classification: "considering", trialIntent: true }) }));
+  });
+
+  it("continues parent communication after evidence is finalized", async () => {
+    actions.save.mockImplementation(async input => {
+      const response = saved(input);
+      return { ...response, data: { ...response.data, workflow: { ...response.data.workflow, finalizedAt: time, contactedAt: time,
+        classification: "considering", parentResponse: input.values.parentResponse } } };
+    });
+    await mount({ ...initial, registrationId: id, workflow: { ...workflow, stage: "handled", finalizedAt: time, classification: "considering", parentResponse: "Earlier response" } });
+    await clickStage("feedback");
+    expect(notesField().disabled).toBe(false);
+    await fill(notesField(), "New follow-up response");
+    const save = [...container.querySelectorAll("button")].find(button => button.textContent?.includes(zh.school.assessmentWorkflow.saveClassification))!;
+    await act(async () => save.click());
+    expect(actions.save).toHaveBeenCalledWith(expect.objectContaining({ command: "classify", values: expect.objectContaining({ parentResponse: "New follow-up response" }) }));
+    expect(scoreField().disabled).toBe(true);
   });
 
   it("keeps edited assessment labels from being silently locked by classification", async () => {

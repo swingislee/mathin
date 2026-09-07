@@ -24,6 +24,7 @@ import { FollowupCommandPanel } from "./FollowupCommandPanel";
 import { FollowupPrimaryFilter } from "./FollowupPrimaryFilter";
 import { ActivityAssessmentDraftProvider } from "./ActivityAssessmentDetails";
 import { AssessmentRecordDetails } from "./AssessmentRecordDetails";
+import { AssessmentStatusTags } from "./AssessmentStatusTags";
 import { TeacherAssessmentEntryButton } from "./TeacherAssessmentEntryButton";
 import { reassignAssessmentAssessorAction } from "./assessment-assessor-actions";
 import {
@@ -33,6 +34,7 @@ import {
   ASSESSMENT_WORKBENCH_QUEUES,
   assessmentWorkbenchStage,
   assessmentWorkbenchHasFinalResult,
+  assessmentWorkbenchHasConfirmedEnrollment,
   assessmentAppointmentClosed,
   nextAssessmentWorkbenchRowId,
   type AssessmentWorkbenchQueue,
@@ -111,7 +113,6 @@ export function AssessmentUnifiedWorkbench({
   const assessmentT = useTranslations("school.assessments");
   const teacherT = useTranslations("school.teacherAssessment");
   const quickT = useTranslations("school.assessmentQuickEntry");
-  const workflowT = useTranslations("school.assessmentWorkflow");
   const tableT = useTranslations("school.table");
   const initialDrafts = useMemo(() => Object.fromEntries(
     initialRows.map((row) => [row.id, draftFromRow(row)]),
@@ -254,8 +255,8 @@ export function AssessmentUnifiedWorkbench({
     const scoreDisplay = formatAssessmentTableScore(row, locale);
     const scheduledAt = assessmentScheduledDate(row, timeZone);
     const recordedAt = assessmentRecordDate(row);
-    const latestContext = row.workflow?.finalizedAt && row.workflow.parentResponse
-      && row.workflow.finalizedAt > (row.latestFollowUp?.createdAt ?? "")
+    const latestContext = (row.workflow?.contactedAt ?? row.workflow?.finalizedAt) && row.workflow?.parentResponse
+      && (row.workflow.contactedAt ?? row.workflow.finalizedAt ?? "") > (row.latestFollowUp?.createdAt ?? "")
       ? row.workflow.parentResponse : row.latestFollowUp?.content;
     return (
       <ActivityAssessmentDraftProvider key={row.id} row={row}>
@@ -264,7 +265,7 @@ export function AssessmentUnifiedWorkbench({
           data-followup-row-key={row.id}
           data-followup-active={active}
           data-followup-expanded={expanded}
-          data-followup-success={Boolean(row.enrollmentId)}
+          data-followup-success={assessmentWorkbenchHasConfirmedEnrollment(row)}
           tabIndex={0}
           aria-expanded={expanded}
           aria-controls={`assessment-details-${row.id}`}
@@ -293,10 +294,8 @@ export function AssessmentUnifiedWorkbench({
           </TableCell>
           <TableCell data-assessment-state-kind className="px-2 py-2">
             <div className="flex min-w-0 flex-col items-start gap-1">
-              {closed?<Badge variant="outline" className="border-line bg-line/20 text-muted">{row.participationStatus==='no_show'?sourceM.noShow:sourceM.cancelled}</Badge>
-                :current ? <StageBadge stage={stage} contacting={false} /> : null}
+              {current || closed || row.sourceEnrollmentFacts?.confirmed ? <AssessmentStatusTags row={row} locale={locale} /> : null}
               {row.assessmentKind !== "one_to_one" ? <Badge variant="outline" className="whitespace-nowrap border-line bg-line/20 text-muted">{t(`type_${row.assessmentKind}`)}</Badge> : null}
-              {current && row.workflow?.classification ? <span className="text-[11px] text-muted">{workflowT("classification_" + row.workflow.classification)}</span> : null}
             </div>
           </TableCell>
           <TableCell data-assessment-arrangement className="px-2 py-2">
@@ -339,6 +338,9 @@ export function AssessmentUnifiedWorkbench({
             </p>
           </TableCell>
           <TableCell data-assessment-current-work className="px-2 py-2">
+            {current && !closed && row.workflow?.nextContactAt ? <p className="mb-1 text-[11px] text-crater" data-assessment-next-contact>
+              <time dateTime={row.workflow.nextContactAt}>{formatDashboardDate(row.workflow.nextContactAt, dateContext, { time: true })}</time>
+            </p> : null}
             <div className="flex min-w-0 items-center gap-1.5 text-[11px]">
               <span role="img" title={t(row.assessorSource === "actual" ? "actualAssessor" : "assignedAssessor")}
                 aria-label={t(row.assessorSource === "actual" ? "actualAssessor" : "assignedAssessor")} className="shrink-0">
@@ -380,7 +382,7 @@ export function AssessmentUnifiedWorkbench({
         </FollowupInlineDetails>
       </ActivityAssessmentDraftProvider>
     );
-  }, [advanceFrom, assessmentT, assessors, canAssess, canManageAssessor, canQuickEntry, canSupport, changeDetails, dateContext, drafts, fieldM.supportOwner, locale, quickT, reassignAssessor, reassigningId, saveQuickFollowUp, saveRow, sourceM.cancelled, sourceM.closedHint, sourceM.noShow, t, teacherT, timeZone, updateDraft, visibleRows, workflowT]);
+  }, [advanceFrom, assessmentT, assessors, canAssess, canManageAssessor, canQuickEntry, canSupport, changeDetails, dateContext, drafts, fieldM.supportOwner, locale, quickT, reassignAssessor, reassigningId, saveQuickFollowUp, saveRow, sourceM.closedHint, t, teacherT, timeZone, updateDraft, visibleRows]);
 
   return (
     <DashboardPage
@@ -436,38 +438,4 @@ export function AssessmentUnifiedWorkbench({
     </DashboardPage>
   );
 
-}
-
-function StageBadge({
-  stage,
-  contacting,
-}: {
-  stage: Exclude<AssessmentWorkbenchQueue, "all">;
-  contacting: boolean;
-}) {
-  const t = useTranslations("school.supportAssessment");
-  const label = stage === "pending"
-    ? t("stageAssessmentPending")
-    : stage === "in_progress"
-      ? t("stageInProgress")
-      : stage === "handled"
-        ? t("stageHandled")
-        : contacting
-          ? t("stageContacting")
-          : t("stagePending");
-  return (
-    <Badge
-      variant="outline"
-      className={cn(
-        "max-w-full whitespace-normal rounded-md px-1.5 text-[11px]",
-        stage === "pending" && "border-line bg-line/20 text-muted",
-        stage === "in_progress" && "border-crater/40 bg-moon/40 text-ink",
-        stage === "feedback" && "border-crater/40 bg-moon/40 text-ink",
-        stage === "handled" && "border-leaf-deep/35 bg-leaf/20 text-leaf-deep",
-      )}
-    >
-      <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-current" />
-      {label}
-    </Badge>
-  );
 }

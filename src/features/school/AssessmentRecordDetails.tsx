@@ -14,7 +14,7 @@ import { AssessmentQuickEntry } from "./AssessmentQuickEntry";
 import { AssessmentClassificationPanel, AssessmentFeedbackPanel, AssessmentNextContactField, AssessmentWorkflowHistory } from "./AssessmentWorkflowPanels";
 import type { AssessmentEntryParts } from "./AssessmentRegistrationFields";
 import { FollowupEntryFields, FollowupEntryLayout } from "./FollowupEntryFields";
-import { ASSESSMENT_STAGES, assessmentStageClickWrites, currentAssessmentReportWasSent, type AssessmentStage, type AssessmentWorkflowCommand } from "./assessment-workflow-contract";
+import { ASSESSMENT_STAGES, currentAssessmentReportWasSent, type AssessmentStage, type AssessmentWorkflowCommand } from "./assessment-workflow-contract";
 import { getAssessmentWorkflowAction, saveAssessmentWorkflowAction } from "./assessment-workflow-actions";
 import { assessmentWorkbenchHasFinalResult, type AssessmentWorkbenchQueue, type AssessmentWorkbenchRow } from "./assessment-workbench-contract";
 import { businessRecordMessages, isCurrentBusinessRecord } from "./business-record-state-contract";
@@ -29,7 +29,7 @@ import { LEARNING_CHECK_STATUS_STYLE } from "./session-learning-visual";
 import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
 import { TEACHER_ASSESSMENT_OUTCOMES } from "./teacher-assessment-contract";
 
-/** 一组阶段导航：归类前登记事实，归类后只浏览。已经打开的面板保持草稿。 */
+/** 阶段导航只定位面板；测评和沟通各自在原有保存动作中登记事实。 */
 export function AssessmentRecordDetails({
   row, stage, conclusion, locale, canAssess, canSupport, canManageAssessor, assessors, reassigning,
   onReassign, onSaved, onHandoffSaved, onSaveAndNext, canQuickEntry = canAssess, canRoute = false,
@@ -74,15 +74,11 @@ export function AssessmentRecordDetails({
       }
       onSaved({ ...row, ...result.data, updatedAt: result.data.workflow.updatedAt });
       if (command.command === "visit") show(command.values.stage);
-      if (command.command === "classify") { show("handled"); toast.success(w("classified")); }
+      if (command.command === "classify") { toast.success(w("classified")); }
       if (command.command === "revise") { setRevising(false); setReason(""); toast.success(w("revisionOpened")); }
       window.dispatchEvent(new Event(STUDENT_360_REFRESH_EVENT));
     } catch { toast.error(w("saveFailed")); }
     finally { saving.current = false; setPending(false); }
-  };
-  const visit = (value: AssessmentStage) => {
-    if (!assessmentStageClickWrites(row.workflow, canWrite)) { show(value); return; }
-    void save({ command: "visit", values: { stage: value } });
   };
   const assessmentSaved = async (saved: AssessmentWorkbenchRow) => {
     if (saved.registrationId) {
@@ -115,18 +111,19 @@ export function AssessmentRecordDetails({
 
   if (!current) return <div data-assessment-workbench-detail={row.id}>{evidence}</div>;
   const renderEntry = (entry: AssessmentEntryParts) => <AssessmentClassificationPanel
-    key={row.id + ":" + (row.workflow?.finalizedAt ?? "draft")} id={`assessment-classification-${row.id}`}
-    workflow={row.workflow} disabled={!canWrite || finalized} pending={pending || Boolean(entry.followup.pending)} locale={locale}
+    key={row.id + ":" + (row.workflow?.contactedAt ?? "draft")} id={`assessment-classification-${row.id}`}
+    workflow={row.workflow} disabled={!canWrite} pending={pending || Boolean(entry.followup.pending)} locale={locale}
+    initialResponse={row.assessment?.parentConcerns}
     onSave={(values) => { if (!entry.dirty) void save({ command: "classify", values }); }}
     render={(classification) => {
-      const classifying = section === "handled";
+      const classifying = section === "handled" || section === "feedback";
       const followup = classifying ? classification.followup : entry.followup;
       const blockedByAssessmentDraft = classifying && entry.dirty && !finalized;
       return <div className="min-w-0" data-assessment-workbench-detail={row.id} aria-busy={pending || entry.followup.pending}>
     <FollowupEntryLayout data-assessment-detail-layout>
     <FollowupEntryFields {...followup} layout="stage" saveDisabled={followup.saveDisabled || blockedByAssessmentDraft}
       reminderContent={classifying ? classification.followup.reminderContent : <AssessmentNextContactField
-        id={`assessment-next-${row.id}`} value={classification.nextContactAt} hint={canWrite && !finalized} />}
+        id={`assessment-next-${row.id}`} value={classification.nextContactAt} hint={canWrite} />}
       hint={blockedByAssessmentDraft ? w("saveAssessmentFirst") : followup.hint}
       tools={blockedByAssessmentDraft ? <Button type="button" size="sm" variant="secondary"
         disabled={entry.followup.disabled || entry.followup.pending || entry.followup.saveDisabled}
@@ -138,11 +135,11 @@ export function AssessmentRecordDetails({
       <nav aria-label={t("progressLabel")}><ol data-assessment-progress className="flex min-w-0 flex-wrap items-center gap-y-2">
         {ASSESSMENT_STAGES.map((value, index) => {
           const passed = value === "pending" ? row.participationStatus === "attended" : value === "in_progress" ? completed
-            : value === "feedback" ? currentAssessmentReportWasSent(row.workflow) : finalized;
+            : value === "feedback" ? currentAssessmentReportWasSent(row.workflow) : Boolean(row.enrollmentId || row.workflow?.classification === "not_enrolling");
           const selected = value === section;
           return <li key={value} className="flex items-center gap-1.5 text-xs">
             <button type="button" disabled={pending || entry.followup.pending} aria-current={selected ? "step" : undefined} aria-controls={panelId(value)}
-              data-assessment-stage={value} onClick={() => visit(value)} className="flex min-h-8 items-center gap-1.5 rounded px-1 focus-visible:outline-2 focus-visible:outline-leaf-deep disabled:opacity-60">
+              data-assessment-stage={value} onClick={() => show(value)} className="flex min-h-8 items-center gap-1.5 rounded px-1 focus-visible:outline-2 focus-visible:outline-leaf-deep disabled:opacity-60">
               <span aria-hidden className={cn("flex size-5 shrink-0 items-center justify-center rounded-full border text-[11px]",
                 selected ? "border-[var(--followup-outline)] bg-moon/25 ring-2 ring-[var(--followup-outline)]/25" : passed ? "border-leaf-deep bg-leaf/25" : "border-muted/40 bg-card text-muted")}>
                 {passed ? <Check className="size-3" /> : index + 1}</span>
@@ -177,6 +174,7 @@ export function AssessmentRecordDetails({
     </section> : null}
     {visited.has("feedback") ? <section id={panelId("feedback")} hidden={section !== "feedback"} className="space-y-4" data-assessment-panel="feedback">
       <AssessmentFeedbackPanel registrationId={row.registrationId} workflow={row.workflow} hasResult={completed} canWrite={canWrite} pending={pending || Boolean(entry.followup.pending)} onPrepare={() => { void save({ command: "report", values: {} }); }} />
+      {classification.fields}
       {completed ? evidence : null}
     </section> : null}
     {visited.has("handled") ? <section id={panelId("handled")} hidden={section !== "handled"} className="space-y-4" data-assessment-panel="handled">

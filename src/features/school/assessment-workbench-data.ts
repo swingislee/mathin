@@ -45,6 +45,8 @@ interface SupportOwnerDbRow {id:string;display_name:string;role:string;is_active
 
 interface InvitationDbRow {
   id: string;
+  state: string;
+  rescheduled_at: string | null;
   lead_id: string;
   assessor_id: string | null;
   scheduled_at: string | null;
@@ -57,6 +59,7 @@ interface InvitationDbRow {
 
 interface ActivityDbRow {
   id: string;
+  rescheduled_at: string | null;
   kind: ActivityKind;
   title: string;
   scheduled_at: string | null;
@@ -234,6 +237,7 @@ async function readRelatedRows<T>(
 }
 
 const INVITATION_COLUMNS = [
+  "state,rescheduled_at",
   "id",
   "lead_id",
   "assessor_id",
@@ -246,6 +250,7 @@ const INVITATION_COLUMNS = [
 ].join(",");
 
 const ACTIVITY_COLUMNS = [
+  "rescheduled_at",
   "id",
   "record_state,occurred_on",
   "kind",
@@ -271,7 +276,7 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
     readAllRows<InvitationDbRow>(() => from(supabase)("lead_invitation_threads")
       .select(INVITATION_COLUMNS)
       .eq("kind", "assessment_1v1")
-      .eq("state", "confirmed")),
+      .in("state", ["confirmed", "cancelled"])),
     supabase.rpc("is_feature_enabled", { p_flag_key: REQUIRE_TEACHER_ASSESSMENT_FLAG }),
     readAllRows<{ id: string }>(() => from(supabase)("assessment_workbench_read_order")
       .select("id")
@@ -475,6 +480,7 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
       grade: invitation.leads?.grade_hint ?? null,
       gradeText: invitation.leads?.grade_text ?? "",
       scheduledAt: invitation.scheduled_at ?? invitation.updated_at,
+      rescheduledAt: invitation.rescheduled_at ?? null,
       location: invitation.location_text,
       assessorId: invitation.assessor_id,
       assessorName: invitation.assessor?.display_name ?? "",
@@ -482,7 +488,7 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
       supportOwnerId:linkedStudentOwners.get(invitation.leads?.student_id??'')??invitation.leads?.owner_id??null,
       supportOwnerName:supportOwners.get(linkedStudentOwners.get(invitation.leads?.student_id??'')??invitation.leads?.owner_id??'')??'',
       background: invitation.summary,
-      participationStatus: "booked",
+      participationStatus: invitation.state === "cancelled" ? "cancelled" : "booked",
       assessmentStartedAt: null,
       assessmentCompletedAt: null,
       assessment: null,
@@ -495,7 +501,6 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
     }));
 
   const materializedRows = registrations
-    .filter(({ registration }) => registration.status !== "cancelled" || registration.source_record_id)
     .map(({ activity, registration }): AssessmentWorkbenchRow => {
       const invitation = activity.source_invitation_id
         ? invitations.get(activity.source_invitation_id)
@@ -537,6 +542,7 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
         grade: student?.grade ?? lead?.grade_hint ?? null,
         gradeText: lead?.grade_text ?? "",
         scheduledAt: activity.scheduled_at ?? '',
+        rescheduledAt: [activity.rescheduled_at, invitation?.rescheduled_at].filter((value): value is string => Boolean(value)).sort().at(-1) ?? null,
         recordState: activity.record_state,
         occurredOn: assessmentDates.get(registration.id) ?? activity.occurred_on,
         location: activity.location,
