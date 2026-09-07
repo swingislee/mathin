@@ -58,6 +58,12 @@ import {
 
 const ACQUISITION_TIME_ZONE = "Asia/Shanghai";
 const EMPTY_VALUE = "$empty";
+const CONTACT_OUTCOME_SELECTED_CLASSES: Record<LeadContactOutcome, string> = {
+  unreachable: "border-crater bg-moon/80 font-semibold text-ink hover:bg-moon",
+  connected: "border-leaf-deep/60 bg-leaf/70 font-semibold text-ink hover:bg-leaf/85",
+  declined: "border-blue/55 bg-blue/15 font-semibold text-blue hover:bg-blue/20",
+  invalid_number: "border-rose/60 bg-rose/15 font-semibold text-rose-deep hover:bg-rose/20",
+};
 type FirstContactTableColumn = "seed" | "context" | "owner" | "status";
 
 type TernaryChoice = LeadContactDraft["wechatState"];
@@ -266,11 +272,11 @@ export function LeadContactEntryRow({
     contactRun.run(lead.id, input);
   };
 
-  const chooseOutcome = (nextOutcome: LeadContactOutcome) => {
+  const chooseOutcome = (nextOutcome: LeadContactOutcome | "") => {
     if (!canEdit || pending) return;
     onActivate(lead.id);
     setOutcome(nextOutcome);
-    setDetailsOpen(true);
+    if (nextOutcome) setDetailsOpen(true);
   };
   const saveEntry = (advance: boolean) => {
     if (!entryCanSave || pending) return;
@@ -303,9 +309,19 @@ export function LeadContactEntryRow({
 
   const contactFacts = reachable ? <FollowupContactFacts wechat={leadWechatValue(wechatState, lead.wechatAdded)}
     onWechatChange={(added) => setWechatState(added === null ? "unknown" : added ? "yes" : "no")} interest={interestLevel} onInterestChange={setInterestLevel} disabled={pending} /> : null;
-  const outcomeControl = <FollowupChoice className="w-48 shrink-0" label={entryT("outcome")} value={outcome} disabled={!canEdit || pending}
-    onValueChange={(value) => chooseOutcome(value as LeadContactOutcome)}
-    options={CONTACT_OUTCOME_SHORTCUTS.map(({ key, outcome: value }) => ({ value, label: `${t(`contactOutcome_${value}`)} · ${key}`, tone: value === "connected" ? "healthy" : value === "invalid_number" ? "unhealthy" : "attention" }))} />;
+  const outcomeControl = <div className="space-y-1.5">
+    <p className="text-xs font-medium text-ink">{entryT("outcome")}</p>
+    <div className="flex min-w-0 flex-wrap items-center gap-2">
+      <FollowupChoice presentation="buttons" label={entryT("outcome")} value={outcome} disabled={!canEdit || pending}
+        onValueChange={(value) => chooseOutcome(value as LeadContactOutcome)}
+        options={CONTACT_OUTCOME_SHORTCUTS.map(({ key, outcome: value }) => ({ value, label: `${t(`contactOutcome_${value}`)} · ${key}`, shortcut: key,
+          selectedClassName: CONTACT_OUTCOME_SELECTED_CLASSES[value] }))} />
+      <Button type="button" size="sm" variant="ghost" className="h-9 rounded-md px-2 text-xs"
+        disabled={!canEdit || pending || !outcome} aria-keyshortcuts="0" onClick={() => chooseOutcome("")}>
+        {rowM.clearOutcome}<kbd className="text-[10px]">0</kbd>
+      </Button>
+    </div>
+  </div>;
   const entryContent = (
       <>
         {historicalSummary ? <div className="mb-1 min-w-0">{historicalSummary.details}</div> : null}

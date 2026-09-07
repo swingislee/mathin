@@ -16,7 +16,7 @@ export type CommunicationTableRow = (
 export const communicationTableRowKey = (row: CommunicationTableRow) => row.source === "profile" ? `student:${row.value.studentId}` : row.source === "post_activity"
   ? `post:${row.value.registrationId}` : `lead:${row.source === "contact" ? row.value.id : row.value.leadId}`;
 export const COMMUNICATION_TABLE_COLUMNS = {
-  lead: ["name", "phone", "grade"], owner: ["owner"],
+  name: ["name"], phone: ["phone"], grade: ["grade"], owner: ["owner"],
   state: ["status", "contactOutcome", "invitationState", "kind", "activity", "scheduledAt", "location", "assessor"],
   note: ["note", "channel"],
   updated: ["recordedAt", "lastContact", "nextContact"],

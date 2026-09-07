@@ -31,4 +31,13 @@ describe("follow-up choice labels", () => {
     expect(trigger(markup)).toContain("待确认</span>");
     expect(markup).not.toContain("aria-pressed");
   });
+  it("shows four buttons when explicitly requested while preserving the default dropdown", () => {
+    const markup = renderToStaticMarkup(createElement(FollowupChoice, {
+      value: "1", options, label: "联系结果", presentation: "buttons", onValueChange: () => {},
+    }));
+    expect(markup).not.toContain('role="combobox"');
+    expect(markup.match(/aria-pressed=/g)).toHaveLength(4);
+    expect(markup.match(/aria-pressed="true"/g)).toHaveLength(1);
+    expect(trigger(render("1"))).toBeDefined();
+  });
 });

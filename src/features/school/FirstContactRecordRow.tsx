@@ -74,8 +74,10 @@ export function FirstContactRecordRow({
       })} onKeyDown={handleKeyDown}>
       {layout === "communication" ? <>
         <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-1.5">
-          <FollowupPersonCell {...record.person} inline selection={selection} expanded={expanded} detailsId={detailsId} onToggle={() => onExpandedChange(!expanded)} />
+          <FollowupPersonCell {...record.person} nameOnly selection={selection} expanded={expanded} detailsId={detailsId} onToggle={() => onExpandedChange(!expanded)} />
         </TableCell>
+        <TableCell className="px-2 py-1.5"><a className="block truncate font-mono text-[11px] hover:underline" href={`tel:${record.person.phone}`} title={record.person.phone}>{record.person.phone || "—"}</a></TableCell>
+        <TableCell className="px-2 py-1.5"><p className="truncate text-[11px] text-muted" title={record.person.grade}>{record.person.grade || "—"}</p></TableCell>
         <TableCell className="px-2 py-1.5"><p className="truncate text-xs" title={record.person.owner}>{record.person.owner || "—"}</p></TableCell>
         <TableCell className="px-2 py-1.5">{historicalSummary ? historicalSummary.state : <>
           <FirstContactStatusTags label={record.status.label} tone={record.status.tone} facts={record.contactFacts} locale={locale} dirty={record.pendingChanges} />
@@ -90,7 +92,7 @@ export function FirstContactRecordRow({
       </> : defaultCells}
     </TableRow>
     <FollowupInlineDetails id={detailsId} open={expanded} onOpenChange={onExpandedChange} title={record.person.name} hideTitle active={active}
-      colSpan={layout === "communication" ? 5 : canAssign ? 6 : 5} pending={pending} onActivate={onActivate} onKeyDown={handleKeyDown}>
+      colSpan={layout === "communication" ? 7 : canAssign ? 6 : 5} pending={pending} onActivate={onActivate} onKeyDown={handleKeyDown}>
       {children ?? (() => record.missingFirstContact ? <p className="text-xs leading-6 text-muted">{m.firstContactHint}</p> : <FollowupEntryFields id={detailsId} readOnly note={record.note ?? ''} noteLabel={m.recordedOnly} />)}
     </FollowupInlineDetails>
   </>;

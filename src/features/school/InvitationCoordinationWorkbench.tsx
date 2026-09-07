@@ -825,11 +825,13 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
           if (event.key === "Escape" && expanded) { event.preventDefault(); changeDetails(canonicalKey, false); }
         }}>
         <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-1.5">
-          <FollowupPersonCell inline name={nameOf(row)} phone={row.value.phone} grade={row.value.gradeText || t("gradePending")}
+          <FollowupPersonCell nameOnly name={nameOf(row)} phone={row.value.phone} grade={row.value.gradeText || t("gradePending")}
             subject={{ studentId: row.source === "invitation" ? leadById.get(row.value.leadId)?.studentId ?? null : row.value.studentId, leadId: row.value.leadId }} studentGrade={row.source === "invitation" ? row.value.gradeHint : row.value.grade}
             selection={leadingSelectionFor(row)} expanded={expanded}
             detailsId={detailsId} onToggle={() => changeDetails(canonicalKey, !expanded)} />
         </TableCell>
+        <TableCell className="px-2 py-1.5"><a className="block truncate font-mono text-[11px] hover:underline" href={`tel:${row.value.phone}`} title={row.value.phone}>{row.value.phone || "—"}</a></TableCell>
+        <TableCell className="px-2 py-1.5"><p className="truncate text-[11px] text-muted" title={row.value.gradeText}>{row.value.gradeText || t("gradePending")}</p></TableCell>
         <TableCell className="px-2 py-1.5"><p className="truncate text-xs" title={ownerName}>{ownerName || "—"}</p></TableCell>
         <TableCell className="px-2 py-1.5">{historicalSummary ? historicalSummary.state : <FirstContactStatusTags
           label={laterContact?.lastContactOutcome ? leadT(`contactOutcome_${laterContact.lastContactOutcome}`) : rowAction}
@@ -837,7 +839,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
         <TableCell className="px-2 py-1.5">{historicalSummary ? historicalSummary.details : <p className="line-clamp-2 whitespace-normal break-words text-xs leading-5" title={noteOf(row)}>{noteOf(row) || "—"}</p>}</TableCell>
         <TableCell className="px-2 py-1.5 text-[11px] text-muted">{historicalSummary ? historicalSummary.updated : <p className="truncate" title={updatedOf(row) ? formatAt(updatedOf(row)!) : undefined}>{updatedOf(row) ? formatAt(updatedOf(row)!) : recordM.unknown}</p>}</TableCell>
       </TableRow>
-      <FollowupInlineDetails id={detailsId} open={expanded} onOpenChange={(open) => changeDetails(canonicalKey, open)} title={nameOf(row)} hideTitle={row.source === "invitation"} colSpan={5} pending={pending}>
+      <FollowupInlineDetails id={detailsId} open={expanded} onOpenChange={(open) => changeDetails(canonicalKey, open)} title={nameOf(row)} hideTitle={row.source === "invitation"} colSpan={7} pending={pending}>
         {() => <>
         {canResumeContact && row.source === "invitation" ? <Button type="button" size="sm" variant="secondary" className="h-8 text-xs" disabled={pending} onClick={() => {
           setRecontactIds((current) => new Set(current).add(row.id));
@@ -857,13 +859,15 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
 
 
   return <DashboardTableShell data-followup-workbench data-communication-scroll>
-    <Table className="w-full min-w-[58rem] table-fixed text-xs" containerClassName="overflow-auto [scrollbar-gutter:stable]">
-      <colgroup><col style={{ width: "20rem" }} /><col style={{ width: "6rem" }} /><col style={{ width: "12rem" }} /><col /><col style={{ width: "8rem" }} /></colgroup>
+    <Table className="w-full min-w-[55rem] table-fixed text-xs" containerClassName="overflow-auto [scrollbar-gutter:stable]">
+      <colgroup><col style={{ width: "7rem" }} /><col style={{ width: "6rem" }} /><col style={{ width: "3.75rem" }} /><col style={{ width: "6rem" }} /><col style={{ width: "12rem" }} /><col /><col style={{ width: "8rem" }} /></colgroup>
       <TableHeader><TableRow>
         <TableHead className="sticky left-0 top-0 z-30 h-9 border-r border-line bg-card px-2"><div className="flex min-w-0 items-center gap-1.5">
           {selectionEnabled ? <Checkbox checked={selectableKeys.length > 0 && selectedVisible === selectableKeys.length ? true : selectedVisible ? "indeterminate" : false}
             disabled={!selectableKeys.length} aria-label={workT("selectVisible")} onCheckedChange={(checked) => workSelection.toggleMany(selectableKeys, checked === true)} /> : null}
-          <DashboardTableColumnHeader label={t("leadColumn")} {...table.columnProps("lead")} /></div></TableHead>
+          <DashboardTableColumnHeader label={rowM.name} {...table.columnProps("name")} /></div></TableHead>
+        <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={rowM.phone} {...table.columnProps("phone")} /></TableHead>
+        <TableHead className="sticky top-0 z-20 h-9 bg-card px-1 [&>div]:ml-0 [&_[data-dashboard-table-menu]]:px-1"><DashboardTableColumnHeader label={rowM.grade} {...table.columnProps("grade")} /></TableHead>
         <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={rowM.owner} {...table.columnProps("owner")} /></TableHead>
         <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={recordsMode ? workT("dayResultColumn") : workspaceT("contactStage")} {...table.columnProps("state")} /></TableHead>
         <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={recordsMode ? workT("dayCommunicationColumn") : rowM.notes} {...table.columnProps("note")} /></TableHead>
@@ -875,7 +879,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
         const next = currentSession.facts.get(key);
         setActiveContactId(next?.source === "contact" ? next.value.id : null);
         return true;
-      })}>{visibleRows.map((row) => <FollowupTableRecord key={communicationRowKey(row)} row={row} active={activeId === communicationRowKey(row) || (row.source === "contact" && activeContactId === row.value.id)} expanded={activeId === communicationRowKey(row)} selected={workSelection.selectedKeys.has(communicationRowKey(row))} pending={savingIds.has(row.id)} render={renderRow} />)}{!visibleRows.length ? <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted">{emptyMessage ?? tableT("filteredEmpty")}</TableCell></TableRow> : null}</TableBody>
+      })}>{visibleRows.map((row) => <FollowupTableRecord key={communicationRowKey(row)} row={row} active={activeId === communicationRowKey(row) || (row.source === "contact" && activeContactId === row.value.id)} expanded={activeId === communicationRowKey(row)} selected={workSelection.selectedKeys.has(communicationRowKey(row))} pending={savingIds.has(row.id)} render={renderRow} />)}{!visibleRows.length ? <TableRow><TableCell colSpan={7} className="h-32 text-center text-muted">{emptyMessage ?? tableT("filteredEmpty")}</TableCell></TableRow> : null}</TableBody>
     </Table>
   </DashboardTableShell>;
 }

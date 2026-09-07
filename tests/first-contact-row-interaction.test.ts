@@ -41,18 +41,38 @@ describe("compact first-contact registration", () => {
     const click = async (node: HTMLElement) => { expect(node).toBeTruthy(); await act(async () => node.click()); };
     const summary = () => container.querySelector<HTMLTableRowElement>('[data-first-contact-record="lead:lead"]')!;
     const toggle = () => summary().querySelector<HTMLButtonElement>('button[aria-controls="lead-contact-details-lead"]')!;
+    const outcomeGroup = () => container.querySelector<HTMLElement>(`[role="group"][aria-label="${messages.school.followupEntry.outcome}"]`)!;
+    const outcomeButton = (key: string) => outcomeGroup().querySelector<HTMLButtonElement>(`[aria-keyshortcuts="${key}"]`)!;
+    const press = async (node: HTMLElement, key: string) => { await act(async () => node.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }))); };
     try {
       await act(async () => root.render(createElement(NextIntlClientProvider, provider)));
       expect(summary().querySelector("input,textarea,[role=combobox]")).toBeNull();
       await click(toggle());
       const detail = container.querySelector<HTMLTableRowElement>("[data-followup-inline-details]")!;
-      expect(detail.querySelector(`[role="combobox"][aria-label="${messages.school.followupEntry.outcome}"]`)).toBeTruthy();
-      await act(async () => detail.dispatchEvent(new KeyboardEvent("keydown", { key: "1", bubbles: true })));
+      expect(detail.querySelector(`[role="combobox"][aria-label="${messages.school.followupEntry.outcome}"]`)).toBeNull();
+      expect(outcomeGroup().querySelectorAll("button")).toHaveLength(4);
+      for (const key of ["1", "2", "3", "4"]) {
+        await click(outcomeButton(key));
+        expect(outcomeButton(key).getAttribute("aria-pressed")).toBe("true");
+        expect(outcomeGroup().querySelectorAll('[aria-pressed="true"]')).toHaveLength(1);
+      }
+      await press(detail, "1");
       const draft = container.querySelector("textarea")!;
       await act(async () => {
         Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(draft, "明天继续联系，保留草稿");
         draft.dispatchEvent(new Event("input", { bubbles: true }));
       });
+      await press(draft, "0");
+      expect(outcomeButton("1").getAttribute("aria-pressed")).toBe("true");
+      await press(detail, "0");
+      expect(outcomeGroup().querySelector('[aria-pressed="true"]')).toBeNull();
+      expect(draft.value).toBe("明天继续联系，保留草稿");
+      expect(container.querySelector<HTMLButtonElement>('[data-followup-entry-actions] [aria-keyshortcuts="Control+Enter Meta+Enter"]')?.disabled).toBe(true);
+      await press(detail, "1");
+      await click(container.querySelector<HTMLButtonElement>('button[aria-keyshortcuts="0"]')!);
+      expect(outcomeGroup().querySelector('[aria-pressed="true"]')).toBeNull();
+      expect(draft.value).toBe("明天继续联系，保留草稿");
+      await press(detail, "1");
       expect(actions.record).not.toHaveBeenCalled();
       await click(toggle());
       expect(container.querySelector("textarea")).toBeNull();
@@ -61,7 +81,7 @@ describe("compact first-contact registration", () => {
       expect(summary().querySelector(`[aria-label="${messages.school.followupEntry.unsaved}"]`)).toBeTruthy();
       await click(toggle());
       expect(container.querySelector("textarea")?.value).toBe("明天继续联系，保留草稿");
-      expect(container.querySelector('[data-followup-business] [role="combobox"]')?.textContent).toContain(messages.school.leads.contactOutcome_unreachable);
+      expect(outcomeButton("1").getAttribute("aria-pressed")).toBe("true");
       await click(container.querySelector<HTMLButtonElement>('[data-followup-entry-actions] [aria-keyshortcuts="Control+Enter Meta+Enter"]')!);
       expect(actions.record).toHaveBeenCalledExactlyOnceWith("lead", { outcome: "unreachable", note: "明天继续联系，保留草稿",
         wechatAdded: null, interestLevel: null, invitation: null, nextContactAt: null });

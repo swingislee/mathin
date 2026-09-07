@@ -22,6 +22,7 @@ export function followupKeyboardCommand(event: KeyInput, { editing = false, over
   if (event.ctrlKey || event.metaKey) return null;
   if (event.key === "Escape") return { type: "close" } as const;
   if (editing) return null;
+  if (event.key === "0") return { type: "outcome", outcome: "" } as const;
   if (event.key === "ArrowDown" || event.key === "ArrowUp") return { type: "move", direction: event.key === "ArrowDown" ? 1 : -1 } as const;
   const shortcut = CONTACT_OUTCOME_SHORTCUTS.find((item) => item.key === event.key);
   return shortcut ? { type: "outcome", outcome: shortcut.outcome } as const : null;

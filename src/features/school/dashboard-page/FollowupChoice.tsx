@@ -19,18 +19,20 @@ const toneDot: Record<FollowupTone, string> = {
 export function FollowupChoice({ value, onValueChange, options, label, disabled, className, presentation = "auto", placeholder }: {
   value: string;
   onValueChange: (value: string) => void;
-  options: readonly { value: string; label: string; tone?: FollowupTone }[];
+  options: readonly { value: string; label: string; tone?: FollowupTone; shortcut?: string; selectedClassName?: string }[];
   label: string;
   disabled?: boolean;
   className?: string;
-  presentation?: "auto" | "select";
+  presentation?: "auto" | "select" | "buttons";
   placeholder?: string;
 }) {
-  if (presentation === "auto" && options.length < 4) return <div role="group" aria-label={label} className={cn("flex min-w-0 flex-wrap gap-1.5", className)}>
+  if (presentation === "buttons" || (presentation === "auto" && options.length < 4)) return <div role="group" aria-label={label} className={cn("flex min-w-0 flex-wrap gap-1.5", className)}>
     {options.map((option) => <Button key={option.value} type="button" size="sm" variant="secondary" disabled={disabled}
       aria-pressed={value === option.value}
+      aria-keyshortcuts={option.shortcut}
       title={option.label}
-      className={cn("h-auto min-h-9 min-w-0 max-w-full whitespace-normal rounded-md bg-card px-3 py-1.5 text-xs leading-5", value === option.value && "border-[var(--followup-outline)] text-ink")}
+      className={cn("h-auto min-h-9 min-w-0 max-w-full whitespace-normal rounded-md bg-card px-3 py-1.5 text-xs leading-5",
+        value === option.value && "border-[var(--followup-outline)] text-ink", value === option.value && option.selectedClassName)}
       onClick={() => onValueChange(option.value)}>
       <span aria-hidden="true" className={cn("flex size-3.5 shrink-0 items-center justify-center rounded-full border", value === option.value ? "border-ink text-ink" : "border-line")}>
         {value === option.value ? <Check className="size-2.5" /> : null}

@@ -23,8 +23,11 @@ describe("follow-up keyboard scope", () => {
   it.each([["1", "unreachable"], ["2", "connected"], ["3", "declined"], ["4", "invalid_number"]])("maps %s to the original contact outcome", (value, outcome) => {
     expect(followupKeyboardCommand(key(value))).toEqual({ type: "outcome", outcome });
   });
+  it("clears the outcome with zero", () => {
+    expect(followupKeyboardCommand(key("0"))).toEqual({ type: "outcome", outcome: "" });
+  });
   it("keeps number and arrow keys available for normal text entry, and saves only explicitly", () => {
-    for (const value of ["1", "2", "3", "4", "ArrowUp", "ArrowDown"]) expect(followupKeyboardCommand(key(value), { editing: true })).toBeNull();
+    for (const value of ["0", "1", "2", "3", "4", "ArrowUp", "ArrowDown"]) expect(followupKeyboardCommand(key(value), { editing: true })).toBeNull();
     expect(followupKeyboardCommand(key("Enter", { ctrlKey: true }), { editing: true })).toEqual({ type: "save" });
     expect(followupKeyboardCommand(key("Enter", { metaKey: true }))).toEqual({ type: "save" });
     expect(followupKeyboardCommand(key("Escape"))).toEqual({ type: "close" });
@@ -33,7 +36,9 @@ describe("follow-up keyboard scope", () => {
   it("ignores IME, repeats, modifiers, consumed control events, and overlays", () => {
     for (const extra of [{ isComposing: true }, { repeat: true }, { defaultPrevented: true }, { altKey: true }, { ctrlKey: true }, { metaKey: true }, { shiftKey: true }]) {
       expect(followupKeyboardCommand(key("2", extra))).toBeNull();
+      expect(followupKeyboardCommand(key("0", extra))).toBeNull();
     }
+    expect(followupKeyboardCommand(key("0"), { overlay: true })).toBeNull();
     expect(followupKeyboardCommand(key("Enter", { ctrlKey: true }), { overlay: true })).toBeNull();
     expect(followupKeyContext(tableEvent("2", { editing: true }).event as unknown as KeyboardEvent<HTMLElement>)).toEqual({ editing: true, overlay: false });
     expect(followupKeyContext(tableEvent("2", { portal: true }).event as unknown as KeyboardEvent<HTMLElement>).overlay).toBe(true);

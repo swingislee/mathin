@@ -165,7 +165,7 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(workbench).toContain("<FirstContactRecordRow");
     expect(read("src", "features", "school", "FirstContactRecordRow.tsx")).toContain("<FollowupInlineDetails");
     expect(workbench).not.toContain("FollowupDetails");
-    expect(workbench).toContain("colSpan={5}");
+    expect(workbench).toContain("colSpan={7}");
     expect(workbench).toContain("const rowWorkStep =");
     expect(workbench).toContain("<FollowupEntryFields");
     expect(workbench).not.toContain("/invitation-editor:grid-cols-");
