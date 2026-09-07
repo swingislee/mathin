@@ -33,7 +33,6 @@ export function HistoryArchiveCommandBar({ filters, messages }: { filters: Histo
         <HistoryArchiveSearch key={filters.q} filters={filters} messages={messages} />
       </DashboardCommandFilters>
       <DashboardCommandActions>
-        <Link href="/dashboard/history-import/test" className={buttonVariants({ variant: "secondary", size: "sm" })}>{messages.importTest}</Link>
         <Link href="/dashboard/history-import" className={buttonVariants({ variant: "ghost", size: "sm" })}>{messages.reset}</Link>
         {filters.record ? <Link href={historyArchiveHref(filters, { record: "", relatedPage: 1 })} className={buttonVariants({ variant: "ghost", size: "sm" })}>{messages.closeDetail}</Link> : null}
       </DashboardCommandActions>
@@ -83,7 +82,6 @@ export function HistoryArchiveWorkbench({ data, detail, filters, messages }: {
         <dl className="flex flex-wrap gap-x-7 gap-y-3">
           {metrics.map(([label, value]) => <div key={label}><dt className="text-xs text-muted">{label}</dt><dd className="mt-1 text-lg tabular-nums text-ink">{value.toLocaleString()}</dd></div>)}
         </dl>
-        <p className="text-xs leading-5 text-muted">{messages.exclusions}：{messages.excludedCommunications} {summary.excludedCommunicationCount} · {messages.correctedGrades} {summary.gradeCorrectionCount} · {messages.archivedClasses} {summary.archivedClassCount}</p>
         <p className="text-xs leading-5 text-muted">{messages.sourceLanguage}</p>
         {summary.generatedAt ? <p className="text-xs text-muted">{messages.snapshotTime}：<time dateTime={summary.generatedAt}>{summary.generatedAt}</time></p> : null}
       </div>

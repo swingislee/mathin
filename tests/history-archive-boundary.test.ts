@@ -1,4 +1,3 @@
-import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactElement } from "react";
 import {
@@ -18,6 +17,10 @@ const boundary = vi.hoisted(() => ({
   readPage: vi.fn(),
   readDetail: vi.fn(),
   routerPush: vi.fn(),
+  createClient: vi.fn(),
+  batchPresent: true,
+  databaseError: null as null | { code: string },
+  queryCalls: [] as { table: string; method: string; args: unknown[] }[],
 }));
 
 vi.mock("server-only", () => ({}));
@@ -26,6 +29,7 @@ vi.mock("node:fs", async (importOriginal) => {
   return { ...original, default: { ...original, existsSync: boundary.exists, readFileSync: boundary.readFile, realpathSync: boundary.realpath } };
 });
 vi.mock("../src/lib/auth", () => ({ requireDashboardEnvironment: boundary.requireEnvironment, getProfile: boundary.profile }));
+vi.mock("../src/lib/supabase/server", () => ({ createClient: boundary.createClient }));
 vi.mock("../scripts/lib/history-archive-store.mjs", () => ({ readHistoryArchivePage: boundary.readPage, readHistoryArchiveDetail: boundary.readDetail }));
 vi.mock("next-intl/server", () => ({ setRequestLocale: vi.fn() }));
 vi.mock("next/navigation", () => ({ notFound: () => { throw new Error("NOT_FOUND"); } }));
@@ -63,6 +67,21 @@ beforeEach(() => {
   vi.stubEnv("NODE_ENV", "development");
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "http://127.0.0.1:35421");
   boundary.events = [];
+  boundary.batchPresent = true;
+  boundary.databaseError = null;
+  boundary.queryCalls = [];
+  boundary.createClient.mockImplementation(async () => {
+    boundary.events.push('database');
+    return { from: (table: string) => {
+      const chain: Record<string, unknown> = {};
+      for (const method of ['select','contains','order','limit','eq','neq','ilike']) chain[method] = (...args: unknown[]) => {
+        boundary.queryCalls.push({table,method,args}); return chain;
+      };
+      chain.maybeSingle = async () => ({data:table==='history_import_batches'&&boundary.batchPresent?{id:'batch',manifest:{summary:emptyPage.summary},imported_at:'2026-09-07'}:null,error:boundary.databaseError});
+      chain.range = async (...args: unknown[]) => { boundary.queryCalls.push({table,method:'range',args}); return {data:[],count:0,error:boundary.databaseError}; };
+      return chain;
+    } };
+  });
   boundary.requireEnvironment.mockImplementation(async () => { boundary.events.push("authenticate"); return { user: { id: "test-admin" }, environment: "staff" }; });
   boundary.profile.mockImplementation(async () => { boundary.events.push("authorize-admin"); return { role: "admin" }; });
   boundary.exists.mockImplementation(() => { boundary.events.push("pointer-exists"); return true; });
@@ -169,9 +188,9 @@ describe("private archive read authorization", () => {
     expect(boundary.readDetail).not.toHaveBeenCalled();
   });
 
-  it.each(loads)("$name authenticates and authorizes before pointer and SQLite reads", async ({ run, final }) => {
+  it.each(loads)("$name authenticates and authorizes before database access", async ({ run }) => {
     await run();
-    expect(boundary.events).toEqual(["authenticate", "authorize-admin", "pointer-exists", "pointer-read", final]);
+    expect(boundary.events).toEqual(["authenticate", "authorize-admin", "database"]);
     expect(boundary.requireEnvironment).toHaveBeenCalledWith("zh", ["staff"]);
     expect(boundary.profile).toHaveBeenCalledWith("test-admin");
   });
@@ -182,21 +201,22 @@ describe("private archive read authorization", () => {
     expect(boundary.exists).not.toHaveBeenCalled();
   });
 
-  it.each(["../../private.sqlite", "run-ok/../../private.sqlite", "/archive.sqlite", "run-ok/archive.sqlite/extra"])("rejects a malformed archive pointer %s", async (database) => {
-    boundary.readFile.mockReturnValueOnce(JSON.stringify({ database }));
-    await expect(archiveData.loadHistoryArchivePage(filters)).rejects.toThrow("HISTORY_ARCHIVE_POINTER");
-    expect(boundary.realpath).not.toHaveBeenCalled();
-    expect(boundary.readPage).not.toHaveBeenCalled();
+  it("queries the complete database batch with server pagination and all filters", async () => {
+    await archiveData.loadHistoryArchivePage(filters);
+    expect(boundary.queryCalls).toContainEqual({table:'history_import_records',method:'range',args:[100,149]});
+    expect(boundary.queryCalls).toContainEqual({table:'history_import_records',method:'eq',args:['history_import_batch_records.batch_id','batch']});
+    expect(boundary.queryCalls).toContainEqual({table:'history_import_records',method:'eq',args:['match_status','review']});
+    expect(boundary.queryCalls).toContainEqual({table:'history_import_records',method:'eq',args:['source_table_id','table-source']});
+    expect(boundary.readFile).not.toHaveBeenCalled();
   });
 
-  it("rejects a valid-looking archive pointer whose resolved file escapes the rehearsal directory", async () => {
-    boundary.realpath.mockImplementation((value: string) => value.endsWith("archive.sqlite") ? path.resolve(process.cwd(), "outside", "archive.sqlite") : value);
-    await expect(archiveData.loadHistoryArchivePage(filters)).rejects.toThrow("HISTORY_ARCHIVE_PATH");
-    expect(boundary.readPage).not.toHaveBeenCalled();
+  it("reports database failures without presenting an empty successful import", async () => {
+    boundary.databaseError={code:'XX000'};
+    await expect(archiveData.loadHistoryArchivePage(filters)).rejects.toThrow('HISTORY_ARCHIVE_BATCH_READ');
   });
 
-  it("shows an authorized preparation state when the local archive has not been generated", async () => {
-    boundary.exists.mockReturnValue(false);
+  it("shows an authorized preparation state before a complete database batch exists", async () => {
+    boundary.batchPresent=false;
     expect(await archiveData.loadHistoryArchivePage(filters)).toMatchObject({ summary: { available: false }, rows: [], total: 0, page: 1, pageSize: 50 });
     expect(await archiveData.loadHistoryArchiveDetail("synthetic-record")).toBeNull();
     expect(boundary.readFile).not.toHaveBeenCalled();
