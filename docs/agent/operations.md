@@ -35,6 +35,8 @@
 
 发布 E2E 只允许明确的非生产 target attestation；复用固定开发账号，不注册临时账号。
 
+`pnpm dev` 为开发服务设置 4096 MiB JavaScript 老生代堆上限，与 `next.config.ts` 中的 Turbopack 预算分别生效。出现持续增长时，按[开发服务内存诊断](../runbooks/local-development-memory.md)区分物理内存、JavaScript 堆与回收后保留量。
+
 ## Git、证据与汇报
 
 - 开始与提交前都检查 `git status --short`。只暂存本任务文件；不得覆盖、回滚或夹带用户和其他任务的改动。

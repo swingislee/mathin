@@ -75,9 +75,8 @@ const nextConfig: NextConfig = {
   // the development server on 3130 remains an internal-only process.
   output: "standalone",
   experimental: {
-    // Next 默认按物理内存放大开发子进程的堆上限；长时间 HMR 会让
-    // Turbopack 的增量图和持久缓存占满工作站。限制内存并关闭开发期
-    // 文件系统缓存，让 Next 在达到边界时自行回收，而不是依赖人工清理。
+    // 这里的预算只传给 Turbopack；JavaScript 堆由 pnpm dev 的 NODE_OPTIONS 单独限制。
+    // 开发期文件系统缓存保持关闭。诊断与限制边界见 local-development-memory runbook。
     turbopackMemoryLimit: devTurbopackMemoryLimit,
     turbopackFileSystemCacheForDev: false,
   },
