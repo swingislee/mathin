@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { useState } from "react";
 import GamePageStage from "@/features/games/courseware/GamePageStage";
 import type { GameMirrorState } from "@/features/games/types";
-import { ToolView } from "@/features/tools/components";
+import { CoursewareToolView } from "@/features/tools/components";
 import type { CoursewareCompositionPage } from "./composition-page-schema";
 import { coursewareCanvasStyle } from "./courseware-surface";
 import DocStage, { type DocStageProps } from "./DocStage";
@@ -102,7 +102,7 @@ export default function CoursewareCompositionStage(props: CoursewareCompositionS
                 data-classroom-tool="read-only"
                 style={{ pointerEvents: "none" }}
               >
-                <ToolView id={block.tool.toolId} embedded />
+                <CoursewareToolView tool={block.tool} />
               </div>
             )}
           </div>

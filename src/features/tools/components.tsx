@@ -1,6 +1,7 @@
 import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ToolComponentProps } from "./types";
+import type { CoursewareCompositionTool } from "@/features/courseware-doc/composition-page-schema";
 
 // 工具按需加载：只有真正渲染某个工具的地方（工具页、概念页的内嵌演示、embed、课堂工具窗）才付它的 JS，
 // 且只付被点开的那一个——列表页、概念图谱与 sitemap 现在一份工具代码都不下载。
@@ -13,6 +14,14 @@ function ToolSkeleton() {
 const FractionLine = dynamic(() => import("./fraction-line/FractionLine").then((m) => m.FractionLine), { loading: ToolSkeleton });
 const MotionLab = dynamic(() => import("./motion-lab/MotionLab").then((m) => m.MotionLab), { loading: ToolSkeleton });
 const SpatialLab = dynamic(() => import("./spatial-lab/SpatialLab").then((m) => m.SpatialLab), { loading: ToolSkeleton });
+export const CubeCoursewarePreview = dynamic(() => import("./courseware/CubeStructuresCourseware").then((m) => m.CubeStructuresCourseware), { loading: ToolSkeleton });
+
+/** 固定课件内容不打开个人工作台，也不读取账号草稿或页面 URL。 */
+export function CoursewareToolView({ tool }: { tool: CoursewareCompositionTool }) {
+  return tool.contentVersion === "cube-structures-lesson-v1"
+    ? <CubeCoursewarePreview payload={tool.payload} />
+    : <ToolView id={tool.toolId} embedded />;
+}
 
 /** 按 id 分发工具。id 取自 `./registry` 的元数据，未知 id 渲染空。 */
 export function ToolView({ id, ...props }: ToolComponentProps & { id: string }) {

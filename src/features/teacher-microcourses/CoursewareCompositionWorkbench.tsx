@@ -77,6 +77,8 @@ import { gameCoursewareContractsForSurface } from "@/features/games/courseware/r
 import { getGame } from "@/features/games/registry";
 import { toolCoursewareContractsForSurface } from "@/features/tools/courseware/registry";
 import { getTool } from "@/features/tools/registry";
+import { CUBE_COURSEWARE_CONTENT_VERSION, type CubeCoursewareTool } from "@/features/tools/courseware/cube-structures-content";
+import { CubeDraftCoursewarePicker, CubeFrozenCoursewarePreview } from "./CubeDraftCoursewarePicker";
 import { cn } from "@/lib/utils";
 import {
   createTeacherGameComponentAction,
@@ -428,7 +430,9 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
         tool: (
           <ToolComponentDialog disabled={pending} onCreated={(tool) => {
               const previousIds = new Set(docRef.current.layout.blocks.map((block) => block.id));
-              const next = addCoursewareCompositionTool(docRef.current, tool);
+              let next: CoursewareCompositionPage;
+              try { next = addCoursewareCompositionTool(docRef.current, tool); }
+              catch { setMessage(t("cubeContentTooLarge")); return; }
               if (next === docRef.current) {
                 setMessage(t("componentNoSpace"));
                 return;
@@ -494,7 +498,11 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
             ) : null}
             {selected?.type === "tool" ? (
               <div className="space-y-2 border-t border-line pt-3">
-                <p className="text-sm font-medium text-ink">{selected.tool.toolId}</p>
+                <p className="text-sm font-medium text-ink">{selected.tool.contentVersion === CUBE_COURSEWARE_CONTENT_VERSION ? selected.tool.payload.title : selected.tool.toolId}</p>
+                {selected.tool.contentVersion === CUBE_COURSEWARE_CONTENT_VERSION && <>
+                  <p className="text-xs text-muted">{t("cubeFrozenHint")}</p>
+                  <CubeFrozenCoursewarePreview payload={selected.tool.payload} />
+                </>}
                 <p className="text-xs text-muted">{t("componentToolClassroomReadOnly")}</p>
               </div>
             ) : null}
@@ -587,6 +595,7 @@ function ToolComponentDialog({ disabled = false, onCreated }: {
   const tTools = useTranslations("tools");
   const contracts = toolCoursewareContractsForSurface("microcourse");
   const [open, setOpen] = useState(false);
+  const [cubeTool, setCubeTool] = useState<CubeCoursewareTool | null>(null);
   const [selectedKey, setSelectedKey] = useState(
     contracts[0] ? `${contracts[0].toolId}:${contracts[0].contentVersion}` : "",
   );
@@ -595,17 +604,20 @@ function ToolComponentDialog({ disabled = false, onCreated }: {
   ));
   const insert = () => {
     if (!selected) return;
-    onCreated({ toolId: selected.toolId, contentVersion: selected.contentVersion });
+    if (selected.contentVersion === CUBE_COURSEWARE_CONTENT_VERSION) {
+      if (!cubeTool) return;
+      onCreated(cubeTool);
+    } else onCreated({ toolId: selected.toolId, contentVersion: selected.contentVersion });
     setOpen(false);
   };
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(value) => { setCubeTool(null); setOpen(value); }}>
       <DialogTrigger asChild>
         <CoursewareEditorToolbarButton aria-label={t("componentTool")} title={t("componentTool")} disabled={disabled || contracts.length === 0}>
           <Wrench className="size-4" />
         </CoursewareEditorToolbarButton>
       </DialogTrigger>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-h-[90dvh] max-w-xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t("insertToolComponentTitle")}</DialogTitle>
           <DialogDescription>{t("toolAuthoringHint")}</DialogDescription>
@@ -616,16 +628,17 @@ function ToolComponentDialog({ disabled = false, onCreated }: {
             const Icon = tool?.icon ?? Wrench;
             const key = `${contract.toolId}:${contract.contentVersion}`;
             return (
-              <Button key={key} type="button" variant="secondary" aria-pressed={selectedKey === key} className={cn("h-auto justify-start rounded-xl px-4 py-3", selectedKey === key && "border-crater bg-moon/30")} onClick={() => setSelectedKey(key)}>
+              <Button key={key} type="button" variant="secondary" aria-pressed={selectedKey === key} className={cn("h-auto justify-start rounded-xl px-4 py-3", selectedKey === key && "border-crater bg-moon/30")} onClick={() => { if (key !== selectedKey) { setCubeTool(null); setSelectedKey(key); } }}>
                 <Icon className="size-4" />
-                {tTools(`items.${contract.toolId}.name`)}
+                {contract.contentVersion === CUBE_COURSEWARE_CONTENT_VERSION ? t("cubeSavedComponent") : tTools(`items.${contract.toolId}.name`)}
               </Button>
             );
           })}
         </div>
+        {open && selected?.contentVersion === CUBE_COURSEWARE_CONTENT_VERSION && <CubeDraftCoursewarePicker onReady={setCubeTool} />}
         <DialogFooter>
           <Button type="button" variant="secondary" onClick={() => setOpen(false)}>{t("cancel")}</Button>
-          <Button type="button" disabled={!selected} onClick={insert}>{t("insertComponent")}</Button>
+          <Button type="button" disabled={!selected || (selected.contentVersion === CUBE_COURSEWARE_CONTENT_VERSION && !cubeTool)} onClick={insert}>{t("insertComponent")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

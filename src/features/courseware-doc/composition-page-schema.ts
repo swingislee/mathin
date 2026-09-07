@@ -11,6 +11,7 @@ import {
   type MicrocourseSourceSnapshot,
 } from "./microcourse-schema";
 import { pageDocSchema, type PageDoc } from "./schema";
+import { CUBE_COURSEWARE_CONTENT_VERSION, CUBE_COURSEWARE_PAGE_MAX_BYTES, cubeCoursewareToolSchema } from "@/features/tools/courseware/cube-structures-content";
 
 export const COURSEWARE_COMPOSITION_DOC_VERSION = "courseware-composition-v1" as const;
 export const COURSEWARE_COMPOSITION_LAYOUT_VERSION = "courseware-composition-grid-v1" as const;
@@ -55,10 +56,10 @@ const h5BlockSchema = baseBlockSchema.extend({
   h5: coursewareCompositionH5Schema,
 }).strict();
 
-export const coursewareCompositionToolSchema = z.object({
+export const coursewareCompositionToolSchema = z.discriminatedUnion("contentVersion", [z.object({
   toolId: componentContractIdSchema,
   contentVersion: z.literal("tool-embed-v1"),
-}).strict();
+}).strict(), cubeCoursewareToolSchema]);
 
 const toolBlockSchema = baseBlockSchema.extend({
   type: z.literal("tool"),
@@ -141,7 +142,9 @@ export const coursewareCompositionPageSchema = z.object({
       context.addIssue({ code: "custom", path: ["layout", "blocks", index, "nodeId"], message: "node blocks must reference one unique top-level node" });
     }
   });
-  if (new TextEncoder().encode(JSON.stringify(doc)).byteLength > 3 * 1_024 * 1_024) {
+  const maximumBytes = doc.layout.blocks.some((block) => block.type === "tool" && block.tool.contentVersion === CUBE_COURSEWARE_CONTENT_VERSION)
+    ? CUBE_COURSEWARE_PAGE_MAX_BYTES : 3 * 1_024 * 1_024;
+  if (new TextEncoder().encode(JSON.stringify(doc)).byteLength > maximumBytes) {
     context.addIssue({ code: "custom", path: [], message: "composition page exceeds the document size limit" });
   }
 });

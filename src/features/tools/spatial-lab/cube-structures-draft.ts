@@ -81,7 +81,7 @@ const operationSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("view"), view, frame }).strict(),
 ]) satisfies z.ZodType<CubeOperation>;
 
-const historySchema = z.object({
+export const cubeHistorySchema = z.object({
   version: z.literal(CUBE_STRUCTURES_DRAFT_VERSION), initial: stateSchema,
   operations: z.array(operationSchema).max(CUBE_STRUCTURES_LIMITS.steps), cursor: z.number().int().min(0),
 }).strict().superRefine((history, context) => {
@@ -98,7 +98,7 @@ export interface CubeDraftSnapshot {
 
 const snapshotSchema = z.object({
   version: z.literal(CUBE_SAVED_DRAFT_VERSION),
-  session: z.object({ work: historySchema, lesson: historySchema.nullable(), recording: z.enum(["off", "paused"]), preview: z.null() }).strict()
+  session: z.object({ work: cubeHistorySchema, lesson: cubeHistorySchema.nullable(), recording: z.enum(["off", "paused"]), preview: z.null() }).strict()
     .refine((session) => session.recording === "off" || session.lesson !== null),
   identity: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER - 1),
 }).strict() satisfies z.ZodType<CubeDraftSnapshot>;
