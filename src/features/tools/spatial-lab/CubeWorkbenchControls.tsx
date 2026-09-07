@@ -5,7 +5,8 @@ import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Axis } from "@/features/spatial-math/domain";
-import { CUBE_AXIS_COLORS, type CubeView } from "./cube-structures-contract";
+import { CUBE_AXIS_COLORS, type CubeMarkShape, type CubeView } from "./cube-structures-contract";
+import { CUBE_MARK_PATHS } from "./cube-structures-annotations";
 import styles from "./CubeStructuresWorkbench.module.css";
 
 export function CubeIconButton({ label, active, className, ...props }: Omit<ComponentProps<typeof Button>, "aria-label" | "title"> & {
@@ -28,6 +29,10 @@ export function CubeCanvasPanel({ title, closeLabel, onClose, children }: {
 
 export function CubeAxisIcon({ axis }: { readonly axis: Axis }) {
   return <svg viewBox="0 0 24 24" aria-hidden style={{ color: CUBE_AXIS_COLORS[axis] }}><text x="12" y="17" textAnchor="middle" fill="currentColor" fontFamily="sans-serif" fontWeight="700" fontSize="18">{axis.toUpperCase()}</text></svg>;
+}
+
+export function CubeMarkIcon({ shape }: { readonly shape: CubeMarkShape }) {
+  return <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1" aria-hidden><path d={CUBE_MARK_PATHS[shape]} /></svg>;
 }
 
 export function CubeViewIcon({ view }: { readonly view: CubeView }) {

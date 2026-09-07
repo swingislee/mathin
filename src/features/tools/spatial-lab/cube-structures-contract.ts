@@ -13,14 +13,22 @@ import {
 import type { VoxelRenderModel } from "@/features/spatial-math/renderer-r3f/voxel-render-model";
 
 /** 本地验收草稿；正式课堂接入前保持独立版本，不改写冻结 spatial-page-v1。 */
-export const CUBE_STRUCTURES_DRAFT_VERSION = "cube-structures-draft-v2" as const;
-export const CUBE_STRUCTURES_LIMITS = { cubes: 512, steps: 256, coordinate: 12 } as const;
+export const CUBE_STRUCTURES_DRAFT_VERSION = "cube-structures-draft-v3" as const;
+export const CUBE_STRUCTURES_LIMITS = { cubes: 512, steps: 256, coordinate: 12, displayOffset: 24 } as const;
 export const CUBE_COLORS = ["#8fbf88", "#df8a84", "#edce79", "#7da9ce", "#b39dcc", "#e7e0d0"] as const;
 export const CUBE_AXIS_COLORS = { x: "#c64848", y: "#258345", z: "#3267bd" } as const;
 export const CUBE_GROUP_COLORS = ["#f2bd30", "#dc4444", "#3686c9", "#9d57ba", "#239a81", "#e27c2d"] as const;
 export type CubeColor = (typeof CUBE_COLORS)[number];
 export type CubeView = "angle" | "front" | "right" | "top";
-export type CubeTool = "orbit" | "pan" | "select" | "build" | "remove" | "color" | "face" | "move" | "layer";
+export type CubeTool = "orbit" | "pan" | "select" | "build" | "remove" | "color" | "face" | "move" | "layer" | "cut" | "mark" | "number" | "transparent";
+export const CUBE_MARK_SHAPES = ["circle", "triangle", "square", "star", "diamond", "cross"] as const;
+export type CubeMarkShape = (typeof CUBE_MARK_SHAPES)[number];
+export type CubeLabelPlacement = "side" | "face" | "center";
+export interface CubeLabelStyle {
+  readonly placement: CubeLabelPlacement;
+  readonly direction: FaceDirection;
+  readonly color: CubeColor;
+}
 
 export interface CubeGroup {
   readonly id: string;
@@ -35,6 +43,11 @@ export interface StructureCube {
   readonly color: CubeColor;
   /** 整体底色与逐面染色独立，修改底色保留教学用的染色面。 */
   readonly faces: Partial<Record<FaceDirection, CubeColor>>;
+  /** 展示位移独立于整数逻辑格；切割间隙不参与数学计算。 */
+  readonly displayOffset?: VoxelCoordinate;
+  readonly opacity?: number;
+  readonly mark?: CubeLabelStyle & { readonly shape: CubeMarkShape };
+  readonly numberLabel?: CubeLabelStyle & { readonly value: number };
 }
 
 export interface CubeFrame {
@@ -52,10 +65,12 @@ export interface CubeStructureState {
   readonly view: CubeView;
   readonly frame: CubeFrame;
   readonly nextCubeId: number;
+  readonly nextNumber: number;
+  readonly hiddenEdgesVisible: boolean;
 }
 
 export type CubeOperation =
-  | { readonly kind: "build"; readonly id?: string; readonly groupId?: string; readonly position: VoxelCoordinate; readonly color: CubeColor }
+  | { readonly kind: "build"; readonly id?: string; readonly groupId?: string; readonly position: VoxelCoordinate; readonly displayOffset?: VoxelCoordinate; readonly color: CubeColor }
   | { readonly kind: "remove"; readonly ids: readonly string[] }
   | { readonly kind: "color"; readonly ids: readonly string[]; readonly color: CubeColor }
   | { readonly kind: "paint"; readonly faces: readonly { readonly id: string; readonly direction: FaceDirection }[]; readonly color: CubeColor }
@@ -65,6 +80,15 @@ export type CubeOperation =
   | { readonly kind: "group"; readonly id: string; readonly name: string; readonly color?: CubeGroup["color"]; readonly ids: readonly string[] }
   | { readonly kind: "ungroup"; readonly id: string }
   | { readonly kind: "move"; readonly ids: readonly string[]; readonly axis: Axis; readonly distance: number }
+  | { readonly kind: "cut"; readonly ids: readonly string[]; readonly scopeIds: readonly string[]; readonly axis: Axis; readonly after: number; readonly side: -1 | 1; readonly distance: number; readonly groupId: string; readonly name: string; readonly color?: CubeGroup["color"] }
+  | { readonly kind: "display-move"; readonly ids: readonly string[]; readonly axis: Axis; readonly distance: number }
+  | { readonly kind: "display-reset"; readonly ids: readonly string[] }
+  | ({ readonly kind: "mark"; readonly ids: readonly string[]; readonly shape: CubeMarkShape } & CubeLabelStyle)
+  | ({ readonly kind: "number"; readonly id: string; readonly value?: number } & CubeLabelStyle)
+  | { readonly kind: "clear-labels"; readonly ids: readonly string[]; readonly target: "mark" | "number" }
+  | { readonly kind: "restart-numbering" }
+  | { readonly kind: "opacity"; readonly ids: readonly string[]; readonly opacity: number }
+  | { readonly kind: "hidden-edges"; readonly visible: boolean }
   | { readonly kind: "axes"; readonly visible: boolean }
   | { readonly kind: "view"; readonly view: CubeView; readonly frame: CubeFrame };
 
@@ -76,12 +100,45 @@ export interface CubeHistory {
 }
 
 export function cubeFrame(cubes: readonly StructureCube[]): CubeFrame {
-  const bounds = createVoxelSet(cubes.map((cube) => cube.position)).bounds;
-  if (!bounds) return { center: { x: 0, y: 0, z: 0 }, radius: 2.5 };
+  if (!cubes.length) return { center: { x: 0, y: 0, z: 0 }, radius: 2.5 };
+  const positions = cubes.map(cubeDisplayPosition);
+  const min = { x: Math.min(...positions.map((p) => p.x)), y: Math.min(...positions.map((p) => p.y)), z: Math.min(...positions.map((p) => p.z)) };
+  const max = { x: Math.max(...positions.map((p) => p.x)), y: Math.max(...positions.map((p) => p.y)), z: Math.max(...positions.map((p) => p.z)) };
   return {
-    center: { x: (bounds.minX + bounds.maxX) / 2, y: (bounds.minY + bounds.maxY) / 2, z: (bounds.minZ + bounds.maxZ) / 2 },
-    radius: Math.max(2.5, Math.hypot(bounds.maxX - bounds.minX + 1, bounds.maxY - bounds.minY + 1, bounds.maxZ - bounds.minZ + 1) / 2),
+    center: { x: (min.x + max.x) / 2, y: (min.y + max.y) / 2, z: (min.z + max.z) / 2 },
+    radius: Math.max(2.5, Math.hypot(max.x - min.x + 1, max.y - min.y + 1, max.z - min.z + 1) / 2),
   };
+}
+
+export function cubeDisplayPosition(cube: Pick<StructureCube, "position" | "displayOffset">): VoxelCoordinate {
+  return { x: cube.position.x + (cube.displayOffset?.x ?? 0), y: cube.position.y + (cube.displayOffset?.y ?? 0), z: cube.position.z + (cube.displayOffset?.z ?? 0) };
+}
+
+export function cubeAtDisplayPosition(state: CubeStructureState, position: VoxelCoordinate): StructureCube | undefined {
+  return state.cubes.find((cube) => voxelKey(cubeDisplayPosition(cube)) === voxelKey(position));
+}
+
+function validDisplayOffset(offset: VoxelCoordinate | undefined): boolean {
+  return !offset || [offset.x, offset.y, offset.z].every((value) => Number.isInteger(value * 2) && Math.abs(value) <= CUBE_STRUCTURES_LIMITS.displayOffset);
+}
+
+/** 检查展示实体的体积重叠；接触面允许重合，隐藏的实体同样占位。 */
+export function cubeDisplayCollides(cubes: readonly StructureCube[], changed: readonly StructureCube[]): boolean {
+  return changed.some((cube) => {
+    const a = cubeDisplayPosition(cube);
+    return cubes.some((other) => {
+      if (cube.id === other.id) return false;
+      const b = cubeDisplayPosition(other);
+      return Math.abs(a.x - b.x) < 1 && Math.abs(a.y - b.y) < 1 && Math.abs(a.z - b.z) < 1;
+    });
+  });
+}
+
+export function cubeCutOperation(state: CubeStructureState, scopeIds: readonly string[], axis: Axis, after: number, side: -1 | 1, distance: number, groupId: string, name: string): Extract<CubeOperation, { kind: "cut" }> | null {
+  const scoped = state.cubes.filter((cube) => scopeIds.includes(cube.id));
+  const ids = scoped.filter((cube) => side > 0 ? cube.position[axis] > after : cube.position[axis] <= after).map((cube) => cube.id);
+  if (!Number.isInteger(after) || !ids.length || ids.length === scoped.length) return null;
+  return { kind: "cut", ids, scopeIds: scoped.map((cube) => cube.id), axis, after, side, distance, groupId, name };
 }
 
 export function createCubeHistory(positions: readonly VoxelCoordinate[]): CubeHistory {
@@ -92,7 +149,7 @@ export function createCubeHistory(positions: readonly VoxelCoordinate[]): CubeHi
   const cubes = cells.map((position, index) => ({ id: `cube-${index + 1}`, position, color: CUBE_COLORS[0], faces: {} }));
   return {
     version: CUBE_STRUCTURES_DRAFT_VERSION,
-    initial: { cubes, hiddenCubeIds: [], groups: [], origin: cubeOrigin(cubes), axesVisible: true, view: "angle", frame: cubeFrame(cubes), nextCubeId: cubes.length + 1 },
+    initial: { cubes, hiddenCubeIds: [], groups: [], origin: cubeOrigin(cubes), axesVisible: true, view: "angle", frame: cubeFrame(cubes), nextCubeId: cubes.length + 1, nextNumber: 1, hiddenEdgesVisible: true },
     operations: [],
     cursor: 0,
   };
@@ -135,10 +192,11 @@ export function cubeIsVisible(state: CubeStructureState, cube: StructureCube): b
 export function applyCubeOperation(state: CubeStructureState, operation: CubeOperation): CubeStructureState {
   switch (operation.kind) {
     case "build": {
-      if (!canPlaceCube(operation.position) || state.cubes.length >= CUBE_STRUCTURES_LIMITS.cubes
+      if (!canPlaceCube(operation.position) || !validDisplayOffset(operation.displayOffset) || state.cubes.length >= CUBE_STRUCTURES_LIMITS.cubes
         || state.cubes.some((cube) => voxelKey(cube.position) === voxelKey(operation.position) || cube.id === operation.id)
         || (operation.groupId && !state.groups.some((group) => group.id === operation.groupId))) return state;
-      const cube = { id: operation.id ?? `cube-${state.nextCubeId}`, position: { ...operation.position }, color: operation.color, faces: {} };
+      const cube = { id: operation.id ?? `cube-${state.nextCubeId}`, position: { ...operation.position }, color: operation.color, faces: {}, ...(operation.displayOffset ? { displayOffset: { ...operation.displayOffset } } : {}) };
+      if (cubeDisplayCollides(state.cubes, [cube])) return state;
       return { ...state, origin: state.origin ?? cubeOrigin([cube]), nextCubeId: state.nextCubeId + 1, cubes: [...state.cubes, cube],
         groups: operation.groupId ? state.groups.map((group) => group.id === operation.groupId ? { ...group, cubeIds: [...group.cubeIds, cube.id] } : group) : state.groups };
     }
@@ -206,8 +264,70 @@ export function applyCubeOperation(state: CubeStructureState, operation: CubeOpe
       const moved = state.cubes.filter((cube) => ids.has(cube.id)).map((cube) => ({ ...cube,
         position: { ...cube.position, [operation.axis]: cube.position[operation.axis] + operation.distance } }));
       if (!moved.length || moved.some((cube) => !canPlaceCube(cube.position) || occupied.has(voxelKey(cube.position)))) return state;
-      return { ...state, cubes: state.cubes.map((cube) => moved.find((item) => item.id === cube.id) ?? cube) };
+      const cubes = state.cubes.map((cube) => moved.find((item) => item.id === cube.id) ?? cube);
+      if (cubeDisplayCollides(cubes, moved)) return state;
+      return { ...state, cubes };
     }
+    case "cut": {
+      const expected = cubeCutOperation(state, operation.scopeIds, operation.axis, operation.after, operation.side, operation.distance, operation.groupId, operation.name);
+      if (!expected || expected.ids.length !== operation.ids.length || expected.ids.some((id) => !operation.ids.includes(id))
+        || !operation.name.trim() || state.groups.some((group) => group.id === operation.groupId)
+        || operation.distance < 0.5 || operation.distance > 8) return state;
+      const moved = applyCubeOperation(state, { kind: "display-move", ids: operation.ids, axis: operation.axis, distance: operation.side * operation.distance });
+      if (moved === state) return state;
+      return applyCubeOperation(moved, { kind: "group", id: operation.groupId, name: operation.name, color: operation.color, ids: operation.ids });
+    }
+    case "display-move":
+    case "display-reset": {
+      if (operation.kind === "display-move" && (!Number.isInteger(operation.distance * 2) || !operation.distance)) return state;
+      const changed: StructureCube[] = [];
+      const cubes = state.cubes.map((cube) => {
+        if (!operation.ids.includes(cube.id)) return cube;
+        const offset = cube.displayOffset ?? { x: 0, y: 0, z: 0 };
+        const displayOffset = operation.kind === "display-reset" ? { x: 0, y: 0, z: 0 }
+          : { ...offset, [operation.axis]: offset[operation.axis] + operation.distance };
+        if (voxelKey(offset) === voxelKey(displayOffset)) return cube;
+        const result = { ...cube, displayOffset }; changed.push(result); return result;
+      });
+      if (!changed.length || changed.some((cube) => !validDisplayOffset(cube.displayOffset)) || cubeDisplayCollides(cubes, changed)) return state;
+      return { ...state, cubes };
+    }
+    case "mark":
+    case "clear-labels":
+    case "opacity": {
+      if (operation.kind === "opacity" && (!Number.isFinite(operation.opacity) || operation.opacity < 0 || operation.opacity > 1)) return state;
+      let changed = false;
+      const cubes = state.cubes.map((cube) => {
+        if (!operation.ids.includes(cube.id)) return cube;
+        if (operation.kind === "opacity") {
+          if ((cube.opacity ?? 1) === operation.opacity) return cube;
+          changed = true; return { ...cube, opacity: operation.opacity };
+        }
+        if (operation.kind === "clear-labels") {
+          const key = operation.target === "mark" ? "mark" : "numberLabel";
+          if (!cube[key]) return cube;
+          changed = true; const result = { ...cube }; delete result[key]; return result;
+        }
+        const mark = { shape: operation.shape, placement: operation.placement, direction: operation.direction, color: operation.color };
+        const opacity = operation.placement === "center" ? Math.min(cube.opacity ?? 1, 0.3) : cube.opacity;
+        if (JSON.stringify(cube.mark) === JSON.stringify(mark) && opacity === cube.opacity) return cube;
+        changed = true; return { ...cube, mark, ...(opacity !== undefined ? { opacity } : {}) };
+      });
+      return changed ? { ...state, cubes } : state;
+    }
+    case "number": {
+      const cube = state.cubes.find((item) => item.id === operation.id);
+      const value = operation.value ?? state.nextNumber;
+      if (!cube || cube.numberLabel || !Number.isInteger(value) || value < 1 || value > 9999 || state.cubes.some((item) => item.numberLabel?.value === value)) return state;
+      const numberLabel = { value, placement: operation.placement, direction: operation.direction, color: operation.color };
+      return { ...state, nextNumber: Math.max(state.nextNumber, value + 1), cubes: state.cubes.map((item) => item.id !== cube.id ? item
+        : { ...item, numberLabel, ...(operation.placement === "center" ? { opacity: Math.min(item.opacity ?? 1, 0.3) } : {}) }) };
+    }
+    case "restart-numbering": {
+      if (state.nextNumber === 1 && !state.cubes.some((cube) => cube.numberLabel)) return state;
+      return { ...state, nextNumber: 1, cubes: state.cubes.map((cube) => { const result = { ...cube }; delete result.numberLabel; return result; }) };
+    }
+    case "hidden-edges": return state.hiddenEdgesVisible === operation.visible ? state : { ...state, hiddenEdgesVisible: operation.visible };
     case "axes": return state.axesVisible === operation.visible ? state : { ...state, axesVisible: operation.visible };
     case "view": return { ...state, view: operation.view, frame: operation.frame };
   }
@@ -230,6 +350,8 @@ export function captureCubeOperation(state: CubeStructureState, operation: CubeO
   if (operation.kind === "layer") return { ...operation, ids: operation.ids ?? state.cubes.filter((cube) => cube.position[operation.axis] === operation.index).map((cube) => cube.id) };
   if (operation.kind === "show-all") return { ...operation, ids: operation.ids ?? state.cubes.map((cube) => cube.id) };
   if (operation.kind === "group") return { ...operation, color: operation.color ?? state.groups.find((group) => group.id === operation.id)?.color ?? CUBE_GROUP_COLORS[state.groups.length % CUBE_GROUP_COLORS.length] };
+  if (operation.kind === "cut") return { ...operation, color: operation.color ?? CUBE_GROUP_COLORS[state.groups.length % CUBE_GROUP_COLORS.length] };
+  if (operation.kind === "number") return { ...operation, value: operation.value ?? state.nextNumber };
   return operation;
 }
 
@@ -242,7 +364,7 @@ export interface CubeSequenceIssue {
 export function validateCubeSequence(initial: CubeStructureState, operations: readonly CubeOperation[]): CubeSequenceIssue | null {
   let state = initial;
   for (const [index, operation] of operations.entries()) {
-    const ids = "ids" in operation ? operation.ids ?? [] : operation.kind === "paint" ? operation.faces.map((face) => face.id) : [];
+    const ids = operation.kind === "cut" ? operation.scopeIds : "ids" in operation ? operation.ids ?? [] : operation.kind === "paint" ? operation.faces.map((face) => face.id) : operation.kind === "number" ? [operation.id] : [];
     if (ids.some((id) => !state.cubes.some((cube) => cube.id === id))) return { index, code: "missing-cube" };
     if (operation.kind === "build") {
       if (operation.groupId && !state.groups.some((group) => group.id === operation.groupId)) return { index, code: "missing-group" };
@@ -252,7 +374,9 @@ export function validateCubeSequence(initial: CubeStructureState, operations: re
     if (operation.kind === "ungroup" && !state.groups.some((group) => group.id === operation.id)) return { index, code: "missing-group" };
     if (operation.kind === "group" && (!operation.ids.length || !operation.name.trim())) return { index, code: "invalid-operation" };
     const next = applyCubeOperation(state, operation);
-    if (operation.kind === "move" && next === state) return { index, code: "collision" };
+    if (["move", "display-move", "cut", "build"].includes(operation.kind) && next === state) return { index, code: "collision" };
+    if (operation.kind === "display-reset" && next === state && state.cubes.some((cube) => operation.ids.includes(cube.id) && cube.displayOffset && Object.values(cube.displayOffset).some((value) => value !== 0))) return { index, code: "collision" };
+    if (operation.kind === "number" && next === state) return { index, code: "invalid-operation" };
     state = next;
   }
   return null;
@@ -287,7 +411,7 @@ export function buildCubeStructureRenderModel(state: CubeStructureState, selecte
   return {
     profile: "standard-4x3", entityId: "cube-structures", label, summary: label,
     background: "paper", lighting: "flat", showAxes: false,
-    cells: visible.map((cube) => ({ key: cube.id, ...cube.position, materialToken: cube.color, selected: selected.has(cube.id),
+    cells: visible.map((cube) => ({ key: cube.id, ...cubeDisplayPosition(cube), materialToken: cube.color, opacity: cube.opacity, selected: selected.has(cube.id),
       emphasis: selected.has(cube.id) ? { color: group?.color ?? CUBE_GROUP_COLORS[0], faceOpacity: 0.4, priority: 2 }
         : groupIds.has(cube.id) ? { color: group!.color, faceOpacity: 0.25, priority: 1 } : undefined })),
     totalCellCount: state.cubes.length, hiddenByLayerCount: state.cubes.length - visible.length,
@@ -308,6 +432,6 @@ export function cubePaintGroups(state: CubeStructureState): readonly { readonly 
     color,
     faces: state.cubes.filter((cube) => cubeIsVisible(state, cube)).flatMap((cube) =>
       (Object.entries(cube.faces) as [FaceDirection, CubeColor][]).filter(([, paint]) => paint === color)
-        .map(([direction]) => ({ cell: cube.position, direction }))),
+        .map(([direction]) => ({ cell: cubeDisplayPosition(cube), direction }))),
   })).filter((group) => group.faces.length > 0);
 }

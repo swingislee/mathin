@@ -3,11 +3,16 @@
 import type { ThreeEvent } from "@react-three/fiber";
 import { Html, Line } from "@react-three/drei";
 import { DoubleSide } from "three";
-import type { VoxelCoordinate, VoxelFaceSelection } from "@/features/spatial-math/domain";
+import type { Axis, VoxelCoordinate, VoxelFaceSelection } from "@/features/spatial-math/domain";
 import { buildVoxelPaintFaceInstances } from "@/features/spatial-math/renderer-r3f/voxel-visual-model";
-import { adjacentCube, CUBE_AXIS_COLORS, type CubeTool } from "./cube-structures-contract";
+import { adjacentCube, CUBE_AXIS_COLORS, type CubeStructureState, type CubeTool } from "./cube-structures-contract";
+import { CubeStructureAnnotations, type CubeAnnotationPreview } from "./CubeStructureAnnotations";
+import { cubeCutPreviewPlanes } from "./cube-structures-cut-preview";
 
-export function CubeStructuresScene({ tool, face, ground, origin, axesVisible, axisLength, validBuild, onGroundHover, onGroundClick }: {
+export function CubeStructuresScene({ state, cut, annotation, tool, face, ground, origin, axesVisible, axisLength, validBuild, onGroundHover, onGroundClick }: {
+  readonly state: CubeStructureState;
+  readonly cut: { readonly axis: Axis; readonly after: number; readonly ids: readonly string[] } | null;
+  readonly annotation: CubeAnnotationPreview;
   readonly tool: CubeTool;
   readonly face: VoxelFaceSelection | null;
   readonly ground: VoxelCoordinate | null;
@@ -24,6 +29,11 @@ export function CubeStructuresScene({ tool, face, ground, origin, axesVisible, a
   const floor = origin?.y ?? -0.5;
   const groundPosition = (event: ThreeEvent<PointerEvent | MouseEvent>): VoxelCoordinate => ({ x: Math.round(event.point.x), y: floor + 0.5, z: Math.round(event.point.z) });
   return <>
+    <CubeStructureAnnotations state={state} tool={tool} face={face} annotation={annotation} />
+    {tool === "cut" && cut && cubeCutPreviewPlanes(state, cut.axis, cut.after, cut.ids).map((plane) => <mesh key={plane.key} position={[plane.center.x, plane.center.y, plane.center.z]} raycast={() => null} renderOrder={5}>
+      <boxGeometry args={[plane.size.x, plane.size.y, plane.size.z]} />
+      <meshBasicMaterial color={CUBE_AXIS_COLORS[cut.axis]} transparent opacity={0.22} depthTest={false} depthWrite={false} side={DoubleSide} />
+    </mesh>)}
     {axesVisible && origin && <group>
       {(["x", "y", "z"] as const).map((axis) => {
         const end = { ...origin, [axis]: origin[axis] + axisLength };
@@ -52,7 +62,7 @@ export function CubeStructuresScene({ tool, face, ground, origin, axesVisible, a
       raycast={() => null} renderOrder={4}>
       <planeGeometry args={[1.01, 1.01]} />
       <meshBasicMaterial color={color} transparent opacity={0.5} depthWrite={false} side={DoubleSide} polygonOffset polygonOffsetFactor={-2} />
-    </mesh> : position && tool !== "orbit" && tool !== "pan" && <mesh position={[position.x, position.y, position.z]} raycast={() => null}>
+    </mesh> : position && !["orbit", "pan", "cut", "mark", "number"].includes(tool) && <mesh position={[position.x, position.y, position.z]} raycast={() => null}>
       <boxGeometry args={[1.04, 1.04, 1.04]} />
       <meshBasicMaterial color={color} transparent opacity={0.3} depthWrite={false} />
     </mesh>}

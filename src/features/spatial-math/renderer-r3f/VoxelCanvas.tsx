@@ -11,7 +11,9 @@ import {
   type ReactNode,
 } from "react";
 import * as THREE from "three";
-import type { SpatialPageDoc, SpatialRuntimeState, VoxelFaceSelection } from "../domain";
+import { voxelKey, type SpatialPageDoc, type SpatialRuntimeState, type VoxelFaceSelection } from "../domain";
+import { useVoxelHiddenEdges, type VoxelHiddenEdgeUniforms } from "./useVoxelHiddenEdges";
+import { voxelHiddenEdgeShaders } from "./voxel-hidden-edge-shader";
 import { VoxelFallback, type VoxelRendererMessages } from "./VoxelFallback";
 import { SpatialCameraRig } from "./SpatialCameraRig";
 import {
@@ -50,6 +52,7 @@ export interface VoxelCanvasProps {
   readonly onFaceHover?: (face: VoxelFaceSelection | null) => void;
   readonly paintedFaceGroups?: readonly { readonly color: string; readonly faces: readonly VoxelFaceSelection[] }[];
   readonly sceneOverlay?: ReactNode;
+  readonly hiddenEdgesVisible?: boolean;
   readonly messages: VoxelRendererMessages;
   readonly materialColors?: Readonly<Record<string, string>>;
 }
@@ -121,6 +124,7 @@ function VoxelInstances({
   const groups = useMemo(() => {
     const grouped = new Map<string, Array<VoxelRenderModel["cells"][number]>>();
     for (const cell of model.cells) {
+      if ((cell.opacity ?? 1) < 1) continue;
       const color = cell.selected && !preserveSelectedColors
         ? palette.moon
         : materialColors?.[cell.materialToken] ?? palette.leaf;
@@ -222,7 +226,7 @@ function VoxelPaintFaceInstances({
   readonly highlight?: boolean;
   readonly opacity?: number;
 }) {
-  const instances = useMemo(() => buildVoxelPaintFaceInstances(model.cells, faces, highlight ? 0.503 : undefined), [faces, model.cells, highlight]);
+  const instances = useMemo(() => buildVoxelPaintFaceInstances(model.cells.filter((cell) => (cell.opacity ?? 1) === 1), faces, highlight ? 0.503 : undefined), [faces, model.cells, highlight]);
   const groups = useMemo(() => {
     const grouped = new Map<VoxelFaceSelection["direction"], typeof instances>();
     for (const direction of ["x-", "x+", "y-", "y+", "z-", "z+"] as const) {
@@ -316,7 +320,7 @@ function applyEdgeMatrices(
   mesh.computeBoundingSphere();
 }
 
-function VoxelEdgeInstances({ model }: { readonly model: VoxelRenderModel }) {
+function VoxelEdgeInstances({ model, hiddenEdgeUniforms }: { readonly model: VoxelRenderModel; readonly hiddenEdgeUniforms: VoxelHiddenEdgeUniforms | null }) {
   const xEdges = useRef<THREE.InstancedMesh>(null);
   const yEdges = useRef<THREE.InstancedMesh>(null);
   const zEdges = useRef<THREE.InstancedMesh>(null);
@@ -341,11 +345,44 @@ function VoxelEdgeInstances({ model }: { readonly model: VoxelRenderModel }) {
           raycast={() => null}
         >
           <boxGeometry args={[1, 1, 1]} />
-          <meshBasicMaterial color="#ffffff" toneMapped={false} />
+          <meshBasicMaterial key={hiddenEdgeUniforms ? "dashed" : "solid"} color="#ffffff" toneMapped={false}
+            customProgramCacheKey={() => `voxel-edges-${hiddenEdgeUniforms ? axis : "solid"}`}
+            onBeforeCompile={(shader) => {
+              if (!hiddenEdgeUniforms) return;
+              Object.assign(shader.uniforms, hiddenEdgeUniforms);
+              Object.assign(shader, voxelHiddenEdgeShaders(shader.vertexShader, shader.fragmentShader, axis));
+            }} />
         </instancedMesh>
       ))}
     </group>
   );
+}
+
+/** 半透明块各自保留对象中心，使 Three 按真实深度排序；面染色与底色使用同一透明度。 */
+function VoxelTranslucentCube({ cell, color, paint, readOnly, onFaceSelect, onFaceHover, onCellSelect }: {
+  readonly cell: VoxelRenderModel["cells"][number]; readonly color: string;
+  readonly paint: Partial<Record<VoxelFaceSelection["direction"], string>>;
+  readonly readOnly: boolean; readonly onFaceSelect?: VoxelCanvasProps["onFaceSelect"];
+  readonly onFaceHover?: VoxelCanvasProps["onFaceHover"]; readonly onCellSelect?: VoxelCanvasProps["onCellSelect"];
+}) {
+  const faceColors = useMemo(() => (["x+", "x-", "y+", "y-", "z+", "z-"] as const).map((direction) => {
+    const base = new THREE.Color(paint[direction] ?? color);
+    return cell.emphasis ? base.lerp(new THREE.Color(cell.emphasis.color), cell.emphasis.faceOpacity) : base;
+  }), [cell.emphasis, color, paint]);
+  return <mesh position={[cell.x, cell.y, cell.z]}
+    onClick={(event) => {
+      if (readOnly || event.delta > 5) return;
+      const direction = event.face && voxelFaceDirectionFromNormal(event.face.normal);
+      if (direction && onFaceSelect) { event.stopPropagation(); onFaceSelect({ cell, direction }); }
+      else if (onCellSelect) { event.stopPropagation(); onCellSelect(cell.key); }
+    }}
+    onPointerMove={(event) => {
+      const direction = event.face && voxelFaceDirectionFromNormal(event.face.normal);
+      if (!readOnly && direction && onFaceHover) { event.stopPropagation(); onFaceHover({ cell, direction }); }
+    }} onPointerOut={() => onFaceHover?.(null)}>
+    <boxGeometry args={[VOXEL_SOLID_SIZE, VOXEL_SOLID_SIZE, VOXEL_SOLID_SIZE]} />
+    {faceColors.map((faceColor, index) => <meshBasicMaterial key={index} attach={`material-${index}`} color={faceColor} opacity={cell.opacity} transparent depthWrite={false} side={THREE.DoubleSide} toneMapped={false} />)}
+  </mesh>;
 }
 
 function VoxelScene({
@@ -360,6 +397,7 @@ function VoxelScene({
   onFaceHover,
   paintedFaceGroups,
   sceneOverlay,
+  hiddenEdgesVisible,
   preserveSelectedColors,
   axisSnapEnabled,
   navigationMode,
@@ -378,6 +416,7 @@ function VoxelScene({
   readonly onFaceHover?: (face: VoxelFaceSelection | null) => void;
   readonly paintedFaceGroups?: VoxelCanvasProps["paintedFaceGroups"];
   readonly sceneOverlay?: ReactNode;
+  readonly hiddenEdgesVisible?: boolean;
   readonly preserveSelectedColors?: boolean;
   readonly axisSnapEnabled: boolean;
   readonly navigationMode?: "orbit" | "pan";
@@ -386,6 +425,17 @@ function VoxelScene({
   readonly onCameraTransitionStateChange: (active: boolean) => void;
 }) {
   const emphasisFaces = useMemo(() => buildVoxelEmphasisFaceGroups(model.cells), [model.cells]);
+  const hiddenEdgeUniforms = useVoxelHiddenEdges(model.cells, Boolean(hiddenEdgesVisible && model.cells.some((cell) => (cell.opacity ?? 1) < 1)));
+  const paintByCell = useMemo(() => {
+    const result = new Map<string, Partial<Record<VoxelFaceSelection["direction"], string>>>();
+    for (const group of [{ color: paintedFaceColor, faces: paintedFaces }, ...(paintedFaceGroups ?? [])]) {
+      for (const face of group.faces) {
+        const key = voxelKey(face.cell);
+        result.set(key, { ...result.get(key), [face.direction]: group.color });
+      }
+    }
+    return result;
+  }, [paintedFaceColor, paintedFaces, paintedFaceGroups]);
   return (
     <>
       <color attach="background" args={[model.background === "night" ? palette.workspacePanel : palette.paper]} />
@@ -399,9 +449,12 @@ function VoxelScene({
         onTransitionStateChange={onCameraTransitionStateChange}
       />
       <VoxelInstances model={model} palette={palette} readOnly={readOnly} materialColors={materialColors} onCellSelect={onCellSelect} onFaceSelect={onFaceSelect} onFaceHover={onFaceHover} preserveSelectedColors={preserveSelectedColors} />
+      {model.cells.filter((cell) => (cell.opacity ?? 1) < 1).map((cell) => <VoxelTranslucentCube key={cell.key} cell={cell}
+        color={cell.selected && !preserveSelectedColors ? palette.moon : materialColors?.[cell.materialToken] ?? palette.leaf}
+        paint={paintByCell.get(voxelKey(cell)) ?? {}} readOnly={readOnly} onFaceSelect={onFaceSelect} onFaceHover={onFaceHover} onCellSelect={onCellSelect} />)}
       <VoxelPaintFaceInstances model={model} faces={paintedFaces} color={paintedFaceColor} />
       {paintedFaceGroups?.map((group) => <VoxelPaintFaceInstances key={group.color} model={model} faces={group.faces} color={group.color} />)}
-      <VoxelEdgeInstances model={model} />
+      <VoxelEdgeInstances model={model} hiddenEdgeUniforms={hiddenEdgeUniforms} />
       {emphasisFaces.map((group) => <VoxelPaintFaceInstances key={group.color + ":" + group.opacity} model={model} faces={group.faces} color={group.color} opacity={group.opacity} highlight />)}
       {model.showAxes ? <axesHelper args={[Math.max(2, model.bounds.radius * 1.5)]} /> : null}
       {sceneOverlay}
@@ -443,6 +496,7 @@ export function VoxelModelCanvas({
   onFaceHover,
   paintedFaceGroups,
   sceneOverlay,
+  hiddenEdgesVisible,
   preserveSelectedColors,
   messages,
   materialColors,
@@ -516,6 +570,7 @@ export function VoxelModelCanvas({
           onFaceHover={onFaceHover}
           paintedFaceGroups={paintedFaceGroups}
           sceneOverlay={sceneOverlay}
+          hiddenEdgesVisible={hiddenEdgesVisible}
           preserveSelectedColors={preserveSelectedColors}
           axisSnapEnabled={axisSnapEnabled}
           cameraInteractive={cameraInteractive}

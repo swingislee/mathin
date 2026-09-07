@@ -105,6 +105,8 @@ export function replaceCubeRecordedStep(session: CubeWorkbenchSession, index: nu
   if (original.kind === "build" && captured.kind === "build") captured = { ...captured, id: original.id };
   if (original.kind === "group" && captured.kind === "group") captured = { ...captured, id: original.id,
     color: replacement.kind === "group" ? replacement.color ?? original.color : captured.color };
+  if (original.kind === "cut" && captured.kind === "cut") captured = { ...captured, groupId: original.groupId,
+    color: replacement.kind === "cut" ? replacement.color ?? original.color : captured.color };
   if (applyCubeOperation(before, captured) === before) return { session, issue: { index, code: "invalid-operation" } as const };
   return editCubeRecording(session, session.lesson.operations.map((operation, cursor) => cursor === index ? captured : operation));
 }

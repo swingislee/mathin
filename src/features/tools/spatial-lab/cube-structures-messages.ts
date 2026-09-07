@@ -10,6 +10,17 @@ const zh = {
   tools: "画布工具", orbit: "观察", select: "多选", build: "搭建", remove: "挖除", color: "整块颜色", face: "单面染色", layer: "按层显隐",
   pan: "平移视野", panHint: "单指或鼠标拖动平移视野，双指缩放；单位块坐标保持不变。",
   move: "移动单位块", moveHint: "按 XYZ 固定步长移动当前选择；没有单独选择时移动当前分组或整体。",
+  cut: "截面切割", mark: "分类标记", number: "连续编号", transparent: "透明度",
+  cutHint: "选择 XYZ 轴和层间截面，预览后切开。点击方块可选取它之后的截面；切开后自动选中移开组，可继续切割。",
+  cutAfter: "在此层之后切开", cutGap: "拆开间距", cutSide: "移开方向", performCut: "切开并移开", cutPiece: "切开部分", invalidCut: "此截面需要两侧都有方块，移开目标也需留出空间。",
+  displayMove: "拆开展示", logicalMove: "逻辑移动", displayReset: "合拢当前范围", displayResetAll: "全部合拢", displayHint: "展示位移只改变摆放。合拢回到逻辑位置；原结构体积、表面积与染色分类保持不变。",
+  markHint: "选择符号后点击方块。符号可放在旁边、点击的表面或半透明中心；同一块可同时保留符号与编号。",
+  numberHint: "依次点击方块，从 1 连续编号。已编号的块不会重复计数；撤销也会恢复下一编号。",
+  labelPlacement: "标注位置", side: "旁边", surface: "点击的表面", center: "半透明中心", centerHint: "中心标注会将这块的不透明度降至最多 30%，可继续调整。",
+  circleShape: "圆形", triangleShape: "三角形", squareShape: "方形", starShape: "星形", diamondShape: "菱形", crossShape: "十字",
+  clearMarks: "清除当前范围符号", clearNumbers: "清除当前范围编号", restartNumbering: "清空全部编号，从 1 开始", nextNumber: "下一编号", alreadyNumbered: "这块已有编号；点击其他块继续。", applyMarks: "批量标记（正面）",
+  opacityLabel: "不透明度", transparencyHint: "调整数值后点击单块，或应用到当前选择／分组／整体。0% 只保留棱边与标注，100% 为实心。",
+  applyOpacity: "应用到当前范围", restoreOpacity: "当前范围恢复实心", hiddenEdges: "遮挡边使用虚线", hideHiddenEdges: "遮挡边恢复实线",
   record: "录制与步骤", recordStart: "开始录制", recordPause: "暂停录制", recordResume: "继续录制", recordStop: "结束录制", recordOff: "未在录制", recordingActive: "正在录制", recordingPaused: "录制已暂停",
   recordEmpty: "默认不录制。点击开始，当前画面成为起点，此后的操作才进入步骤。",
   recordNewTitle: "开始一段新录制？", recordNewDescription: "保留当前画面作为新起点，替换现有录制步骤。",
@@ -39,7 +50,7 @@ const zh = {
   previous: "上一步", next: "下一步", play: "播放", pause: "暂停", step: "步", emptySteps: "直接操作画布，操作会逐条出现在这里。",
   replayNote: "正在回看。回到末步可继续录制，或明确从这里续编。", returnEnd: "回到末步", branch: "从这里续编", branchTitle: "替换后续步骤？", branchDescription: "保留当前步及之前的记录，移除后续步骤，然后继续录制。",
   metrics: "结构统计", showMetrics: "显示统计", hideMetrics: "收起统计", volume: "单位块", totalArea: "总表面积", exteriorArea: "外表面积", interiorArea: "内表面积", paintHistogram: "染色面数 → 单位块数", geometryNote: "统计完整逻辑结构；隐藏的块仍计入。整块底色不计作面染色。",
-  pending: "后续验收：连续切割／拆开展示、符号／连续编号、可调半透明与虚线遮挡边。",
+  pending: "本地工具已接入切割、标记、编号及透明度，待本轮人工验收。课件保存与课堂联网同步保持独立接入边界。",
   limit: "已到当前验收版容量：512 个单位块、256 步，坐标范围 −12 至 12。", blockedBuild: "此格已有方块（可能被隐藏），或已超出可搭建范围。",
   clearedPaint: "清除面染色", allLayers: "显示全部层", paint: "染色", cubeUnit: "块", faceUnit: "面",
 } as const;
@@ -53,6 +64,17 @@ const en = {
   tools: "Canvas tools", orbit: "Observe", select: "Multi-select", build: "Build", remove: "Remove", color: "Cube color", face: "Paint face", layer: "Layer visibility",
   pan: "Pan view", panHint: "Drag with one finger or the mouse to pan; pinch to zoom. Cube coordinates stay unchanged.",
   move: "Move cubes", moveHint: "Move selected cubes by fixed XYZ steps. Without an individual selection, move the active group or whole structure.",
+  cut: "Section cut", mark: "Category marks", number: "Sequential numbers", transparent: "Transparency",
+  cutHint: "Choose an XYZ axis and a layer boundary, preview, then cut. Click a cube to select the boundary after its layer. The moved piece becomes the active group for further cuts.",
+  cutAfter: "Cut after this layer", cutGap: "Separation gap", cutSide: "Move direction", performCut: "Cut and separate", cutPiece: "Cut piece", invalidCut: "Both sides need cubes, and the separated piece needs a free destination.",
+  displayMove: "Display separation", logicalMove: "Logical move", displayReset: "Reassemble this scope", displayResetAll: "Reassemble everything", displayHint: "Display offsets only change arrangement. Reassemble to logical positions; volume, surface area and paint classification stay unchanged.",
+  markHint: "Choose a symbol and click a cube. Place it beside the cube, on the clicked face or at its translucent center. Symbols and numbers can coexist.",
+  numberHint: "Click cubes in order to number them from 1. Already numbered cubes are not counted again. Undo also restores the next number.",
+  labelPlacement: "Label position", side: "Beside cube", surface: "Clicked face", center: "Translucent center", centerHint: "A center label reduces this cube's opacity to at most 30%; you can adjust it further.",
+  circleShape: "Circle", triangleShape: "Triangle", squareShape: "Square", starShape: "Star", diamondShape: "Diamond", crossShape: "Cross",
+  clearMarks: "Clear marks in this scope", clearNumbers: "Clear numbers in this scope", restartNumbering: "Clear all numbers and restart at 1", nextNumber: "Next number", alreadyNumbered: "This cube is numbered. Click another cube to continue.", applyMarks: "Mark this scope (front face)",
+  opacityLabel: "Opacity", transparencyHint: "Set the value, then click a cube or apply it to the selection, group or whole structure. 0% keeps only edges and labels; 100% is solid.",
+  applyOpacity: "Apply to this scope", restoreOpacity: "Make this scope solid", hiddenEdges: "Dashed hidden edges", hideHiddenEdges: "Solid hidden edges",
   record: "Recording and steps", recordStart: "Start recording", recordPause: "Pause recording", recordResume: "Resume recording", recordStop: "Finish recording", recordOff: "Not recording", recordingActive: "Recording", recordingPaused: "Recording paused",
   recordEmpty: "Recording starts off. Start it to capture this scene as the beginning and record subsequent operations.",
   recordNewTitle: "Start a new recording?", recordNewDescription: "Use the current scene as the new start and replace the existing recorded steps.",
@@ -82,7 +104,7 @@ const en = {
   previous: "Previous step", next: "Next step", play: "Play", pause: "Pause", step: "steps", emptySteps: "Operate the canvas. Each operation appears here as a step.",
   replayNote: "Reviewing a past step. Return to the last step to record, or explicitly continue from here.", returnEnd: "Go to last step", branch: "Continue from here", branchTitle: "Replace later steps?", branchDescription: "Keep this step and all earlier operations, remove later steps, then continue recording.",
   metrics: "Structure statistics", showMetrics: "Show statistics", hideMetrics: "Hide statistics", volume: "Unit cubes", totalArea: "Total surface area", exteriorArea: "Exterior area", interiorArea: "Interior area", paintHistogram: "Painted faces → cube count", geometryNote: "Measures the full logical structure, including hidden cubes. Base color is separate from face paint.",
-  pending: "Next reviews: repeated cuts / separated display, symbols / sequential numbering, adjustable transparency and dashed hidden edges.",
+  pending: "Local cutting, marks, numbers and transparency are ready for this round of manual review. Courseware saving and live classroom sync remain separate integration work.",
   limit: "Review-build capacity: 512 cubes, 256 steps, coordinates from −12 to 12.", blockedBuild: "This cell is occupied (possibly hidden), or is outside the building range.",
   clearedPaint: "Clear face paint", allLayers: "Show all layers", paint: "Paint", cubeUnit: "cubes", faceUnit: "faces",
 } satisfies { [Key in keyof typeof zh]: Key extends "colors" ? readonly string[] : string };
@@ -104,5 +126,14 @@ export function cubeOperationLabel(operation: CubeOperation, locale: "zh" | "en"
     case "ungroup": return m.ungroup;
     case "move": return `${m.move} · ${operation.axis.toUpperCase()} ${operation.distance > 0 ? "+" : ""}${operation.distance}`;
     case "axes": return operation.visible ? m.showAxes : m.hideAxes;
+    case "cut": return `${m.cut} · ${operation.axis.toUpperCase()} ${cubeLayerNumber({ origin }, operation.axis, operation.after)} · ${operation.name}`;
+    case "display-move": return `${m.displayMove} · ${operation.axis.toUpperCase()} ${operation.distance > 0 ? "+" : ""}${operation.distance}`;
+    case "display-reset": return `${m.displayReset} · ${operation.ids.length} ${m.cubeUnit}`;
+    case "mark": return `${m.mark} · ${m[`${operation.shape}Shape`]} · ${operation.ids.length} ${m.cubeUnit}`;
+    case "number": return `${m.number} · ${operation.value ?? ""}`;
+    case "clear-labels": return operation.target === "mark" ? m.clearMarks : m.clearNumbers;
+    case "restart-numbering": return m.restartNumbering;
+    case "opacity": return `${m.transparent} · ${Math.round(operation.opacity * 100)}% · ${operation.ids.length} ${m.cubeUnit}`;
+    case "hidden-edges": return operation.visible ? m.hiddenEdges : m.hideHiddenEdges;
   }
 }

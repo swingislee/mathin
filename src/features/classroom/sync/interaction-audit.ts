@@ -63,7 +63,7 @@ export const MATHIN_MICROCOURSE_SYNC_PROVIDERS = {
 
 /** 独立 Tools 工作台可本机预演；本地操作记录不等于正式课堂语义事件链。 */
 export const LOCAL_SPATIAL_WORKBENCH_SYNC_PROVIDERS = {
-  "cube-structures-draft-v2": CLASSROOM_SPATIAL_COMMAND_SYNC_REQUIRED_V1,
+  "cube-structures-draft-v3": CLASSROOM_SPATIAL_COMMAND_SYNC_REQUIRED_V1,
 } as const satisfies Record<string, ClassroomInteractionSyncProvider>;
 
 function profile(

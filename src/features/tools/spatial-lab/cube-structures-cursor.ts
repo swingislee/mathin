@@ -9,6 +9,10 @@ const cursorPaths: Record<CubeTool, string> = {
   color: '<path d="m6 3 12 12-8 7-8-8Z M4 11h13 M20 15q-5 6 0 7 5-1 0-7"/>',
   face: '<path d="m14 3 7 7-9 9-7-7Z M5 12q-5 3-3 9 6 2 10-2"/>',
   layer: '<path d="m12 3 10 6-10 6L2 9Z M2 14l10 6 10-6 M2 19l10 6 10-6"/>',
+  cut: '<path d="m18 2 5 5-12 12-7 2 2-7Z M14 6l5 5 M2 25h24"/>',
+  mark: '<path d="M8 16V12a6 6 0 1 1 8 0v4 M5 16h14v5H5Z M3 25h18"/>',
+  number: '<text x="2" y="20" fill="#211e1a" stroke="none" font-size="18" font-family="sans-serif" font-weight="700">123</text>',
+  transparent: '<path d="M12 2Q0 15 4 20a10 10 0 0 0 16 0Q24 15 12 2Z M7 16l3 4 M9 13l5 7 M12 10l5 7"/>',
 };
 
 export function cubeToolCursor(tool: CubeTool): string {

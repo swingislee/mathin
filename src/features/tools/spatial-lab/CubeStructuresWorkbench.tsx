@@ -2,9 +2,10 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Boxes, Circle, Eraser, Eye, EyeOff, Hand, Layers3, Maximize, Minus, MousePointer2, Move, Orbit, Paintbrush, PaintBucket, Plus, Presentation, Redo2, RotateCcw, Settings2, Shapes, Trash2, Undo2, Ungroup, X } from "lucide-react";
+import { Boxes, Circle, Droplets, Eraser, Eye, EyeOff, Hand, Hash, Layers3, Maximize, Minus, MousePointer2, Move, Orbit, Paintbrush, PaintBucket, Plus, Presentation, Redo2, RotateCcw, Scissors, Settings2, Shapes, Stamp, Trash2, Undo2, Ungroup, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
@@ -12,11 +13,11 @@ import { voxelKey, type Axis, type VoxelCoordinate, type VoxelFaceSelection } fr
 import { SpatialAxisSnapButton, useSpatialAxisSnap, type SpatialCameraControlMessages } from "@/features/spatial-math/renderer-r3f/SpatialCameraControls";
 import type { VoxelRendererMessages } from "@/features/spatial-math/renderer-r3f/VoxelFallback";
 import { SPATIAL_LAB_MEASUREMENT_PRESET_ID, SPATIAL_LAB_PRESET_ID, SPATIAL_LAB_PRESETS, createSpatialLabPresetDraft, type SpatialLabPresetId } from "./preset";
-import { CUBE_AXIS_COLORS, CUBE_COLORS, CUBE_STRUCTURES_LIMITS, adjacentCube, applyCubeOperation, buildCubeStructureRenderModel, canPlaceCube, cubeFrame, cubeIsVisible, cubeLayerNumber, cubeLayerOperation, cubePaintGroups, cubeScopeIds, cubeStructureMetrics, exteriorPaintOperation, type CubeColor, type CubeOperation, type CubeTool, type CubeView } from "./cube-structures-contract";
+import { CUBE_AXIS_COLORS, CUBE_COLORS, CUBE_MARK_SHAPES, CUBE_STRUCTURES_LIMITS, adjacentCube, applyCubeOperation, buildCubeStructureRenderModel, canPlaceCube, cubeAtDisplayPosition, cubeCutOperation, cubeFrame, cubeIsVisible, cubeLayerNumber, cubeLayerOperation, cubePaintGroups, cubeScopeIds, cubeStructureMetrics, exteriorPaintOperation, type CubeColor, type CubeLabelPlacement, type CubeMarkShape, type CubeOperation, type CubeTool, type CubeView } from "./cube-structures-contract";
 import { createCubeDemo, createCubeSession, cubeResumeNeedsRestore, cubeSessionScene, editCubeRecording, finishCubeRecording, moveCubeRecordedStep, operateCubeSession, pauseCubeRecording, previewCubeSession, replaceCubeRecordedStep, resumeCubeRecording, startCubeRecording, undoCubeSession, type CubeWorkbenchSession } from "./cube-structures-session";
 import { cubeStructuresMessages } from "./cube-structures-messages";
 import { cubeToolCursor } from "./cube-structures-cursor";
-import { CubeAxisIcon, CubeCanvasPanel, CubeIconButton, CubeViewIcon } from "./CubeWorkbenchControls";
+import { CubeAxisIcon, CubeCanvasPanel, CubeIconButton, CubeMarkIcon, CubeViewIcon } from "./CubeWorkbenchControls";
 import { CubeRecordingPanel } from "./CubeRecordingPanel";
 import styles from "./CubeStructuresWorkbench.module.css";
 
@@ -25,10 +26,11 @@ const TOOL_BUTTONS = [
   { id: "orbit", Icon: Orbit }, { id: "pan", Icon: Hand }, { id: "select", Icon: MousePointer2 },
   { id: "build", Icon: Plus }, { id: "remove", Icon: Eraser }, { id: "color", Icon: PaintBucket },
   { id: "face", Icon: Paintbrush }, { id: "move", Icon: Move }, { id: "layer", Icon: Layers3 },
+  { id: "cut", Icon: Scissors }, { id: "mark", Icon: Stamp }, { id: "number", Icon: Hash }, { id: "transparent", Icon: Droplets },
 ] as const;
 const VIEWS: readonly CubeView[] = ["angle", "front", "right", "top"];
 const COLOR_MAP = Object.fromEntries(CUBE_COLORS.map((color) => [color, color]));
-type Panel = "selection" | "color" | "move" | "layers" | "recording" | "model" | null;
+type Panel = "selection" | "color" | "move" | "layers" | "recording" | "model" | "cut" | "mark" | "number" | "transparent" | null;
 
 export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessages, workspaceSelector }: {
   readonly locale: "zh" | "en"; readonly rendererMessages: VoxelRendererMessages;
@@ -46,6 +48,13 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
   const [groupName, setGroupName] = useState("");
   const [axis, setAxis] = useState<Axis>("y");
   const [moveDistance, setMoveDistance] = useState("1");
+  const [moveMode, setMoveMode] = useState<"move" | "display-move">("move");
+  const [cutAfter, setCutAfter] = useState<number | null>(null);
+  const [cutGap, setCutGap] = useState("2");
+  const [cutSide, setCutSide] = useState<-1 | 1>(1);
+  const [markShape, setMarkShape] = useState<CubeMarkShape>("circle");
+  const [labelPlacement, setLabelPlacement] = useState<CubeLabelPlacement>("face");
+  const [opacity, setOpacity] = useState(30);
   const [hoverFace, setHoverFace] = useState<VoxelFaceSelection | null>(null);
   const [hoverGround, setHoverGround] = useState<VoxelCoordinate | null>(null);
   const [showMetrics, setShowMetrics] = useState(false);
@@ -73,8 +82,13 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
   // 包括已经隐藏的单位块，恢复入口始终保留。
   const layers = useMemo(() => [...new Set(state.cubes.filter((cube) => scopeIds.includes(cube.id)).map((cube) => cube.position[axis]))].sort((a, b) => a - b), [axis, state.cubes, scopeIds]);
   const editable = !playing && (session.preview === null || replacementStep !== null);
-  const nextPosition = hoverFace ? adjacentCube(hoverFace) : hoverGround;
-  const validBuild = Boolean(nextPosition && canPlaceCube(nextPosition) && state.cubes.length < CUBE_STRUCTURES_LIMITS.cubes && !state.cubes.some((cube) => voxelKey(cube.position) === voxelKey(nextPosition)));
+  const hoveredCube = hoverFace ? cubeAtDisplayPosition(state, hoverFace.cell) : undefined;
+  const nextPosition = hoverFace && hoveredCube ? adjacentCube({ ...hoverFace, cell: hoveredCube.position }) : hoverGround;
+  const validBuild = Boolean(nextPosition && applyCubeOperation(state, { kind: "build", position: nextPosition, displayOffset: hoveredCube?.displayOffset, color: CUBE_COLORS[0] }) !== state);
+  const cutLayers = [...new Set(state.cubes.filter((cube) => targetIds.includes(cube.id)).map((cube) => cube.position[axis]))].sort((a, b) => a - b).slice(0, -1);
+  const activeCutAfter = cutLayers.includes(cutAfter ?? NaN) ? cutAfter! : cutLayers[0] ?? 0;
+  const previewCutAfter = tool === "cut" && hoveredCube && cutLayers.includes(hoveredCube.position[axis]) ? hoveredCube.position[axis] : activeCutAfter;
+  const hasDisplayOffsets = state.cubes.some((cube) => cube.displayOffset && Object.values(cube.displayOffset).some((value) => value !== 0));
 
   function updateSession(update: (current: CubeWorkbenchSession) => CubeWorkbenchSession) {
     if (mode === "prepare") setPrepared(update); else setDemo((current) => update(current ?? createCubeDemo(prepared)));
@@ -96,27 +110,42 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
       setReplacementStep(null); setNotice(""); return true;
     }
     if (session.recording === "recording" && (session.lesson?.cursor ?? 0) >= CUBE_STRUCTURES_LIMITS.steps) { setNotice(m.limit); return false; }
-    if (applyCubeOperation(state, operation) === state) { if (operation.kind === "move") setNotice(m.invalidMove); return false; }
+    if (applyCubeOperation(state, operation) === state) {
+      if (operation.kind === "move" || operation.kind === "display-move" || operation.kind === "display-reset") setNotice(m.invalidMove);
+      else if (operation.kind === "cut") setNotice(m.invalidCut);
+      else if (operation.kind === "build") setNotice(m.blockedBuild);
+      return false;
+    }
     updateSession((current) => operateCubeSession(current, operation)); setNotice(""); return true;
   }
-  function build(position: VoxelCoordinate) {
+  function build(position: VoxelCoordinate, displayOffset?: VoxelCoordinate) {
     if (!canPlaceCube(position) || state.cubes.some((cube) => voxelKey(cube.position) === voxelKey(position))) { setNotice(m.blockedBuild); return; }
     if (state.cubes.length >= CUBE_STRUCTURES_LIMITS.cubes) { setNotice(m.limit); return; }
-    commit({ kind: "build", id: "added-" + (++identity.current), groupId: activeGroupId ?? undefined, position, color: CUBE_COLORS[0] });
+    commit({ kind: "build", id: "added-" + (++identity.current), groupId: activeGroupId ?? undefined, position, displayOffset, color: CUBE_COLORS[0] });
   }
   function clickFace(face: VoxelFaceSelection) {
-    const cube = state.cubes.find((candidate) => voxelKey(candidate.position) === voxelKey(face.cell));
+    const cube = cubeAtDisplayPosition(state, face.cell);
     if (!cube) return;
     if (!scopeIds.includes(cube.id)) { setNotice(m.groupProtected); return; }
     if (tool === "select") { setSelected((current) => current.includes(cube.id) ? current.filter((id) => id !== cube.id) : [...current, cube.id]); return; }
     switch (tool) {
       case "orbit": case "pan": break;
-      case "build": build(adjacentCube(face)); break;
+      case "build": build(adjacentCube({ ...face, cell: cube.position }), cube.displayOffset); break;
       case "remove": commit({ kind: "remove", ids: [cube.id] }); break;
       case "color": commit({ kind: "color", ids: [cube.id], color }); break;
       case "face": commit({ kind: "paint", faces: [{ id: cube.id, direction: face.direction }], color }); break;
       case "layer": commit(cubeLayerOperation(state, axis, cube.position[axis], false, scopeIds)); break;
       case "move": setSelected([cube.id]); break;
+      case "cut":
+        if (cutLayers.includes(cube.position[axis])) { setCutAfter(cube.position[axis]); setNotice(""); }
+        else setNotice(m.invalidCut);
+        break;
+      case "mark": commit({ kind: "mark", ids: [cube.id], shape: markShape, placement: labelPlacement, direction: face.direction, color }); break;
+      case "number":
+        if (cube.numberLabel) setNotice(m.alreadyNumbered);
+        else commit({ kind: "number", id: cube.id, placement: labelPlacement, direction: face.direction, color });
+        break;
+      case "transparent": commit({ kind: "opacity", ids: [cube.id], opacity: opacity / 100 }); break;
     }
   }
   function chooseTool(value: CubeTool) {
@@ -125,6 +154,13 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
     else if (value === "color" || value === "face") setPanel("color");
     else if (value === "select") setPanel("selection");
     else if (value === "move") setPanel("move");
+    else if (value === "cut" || value === "mark" || value === "number" || value === "transparent") setPanel(value);
+  }
+  function performCut() {
+    const groupId = "cut-" + (++identity.current);
+    const operation = cubeCutOperation(state, targetIds, axis, activeCutAfter, cutSide, Number(cutGap), groupId, m.cutPiece + " " + (state.groups.length + 1));
+    if (!operation) { setNotice(m.invalidCut); return; }
+    if (commit(operation)) { setScopeId(groupId); setSelected([]); setCutAfter(null); clearPointer(); }
   }
   function chooseMode() {
     if (mode === "prepare" && !demo) setDemo(createCubeDemo(prepared));
@@ -174,19 +210,22 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
     return () => window.clearTimeout(timer);
   }, [playing, session.lesson, session.preview, mode]);
 
-  const panelTitle = panel === "selection" ? m.selectionPanel : panel === "color" ? m.colorLabel : panel === "move" ? m.move : panel === "layers" ? m.layers : panel === "recording" ? m.record : m.modelPanel;
-  return <div className={styles.workspace} data-cube-structures-workbench="v2" data-workbench-mode={mode}>
+  const panelTitle = panel === "selection" ? m.selectionPanel : panel === "color" ? m.colorLabel : panel === "layers" ? m.layers : panel === "recording" ? m.record : panel && panel !== "model" ? m[panel] : m.modelPanel;
+  return <div className={styles.workspace} data-cube-structures-workbench="v3" data-workbench-mode={mode}>
     <div className={styles.viewport}>
       <div className={styles.canvas} aria-label={m.title + " · " + m[mode]} style={{ cursor: cubeToolCursor(tool) }} data-active-cube-tool={tool} data-cube-workspace-frame="4:3">
         <CubeStructuresViewport model={model} messages={rendererMessages} materialColors={COLOR_MAP}
           axisSnapEnabled={snap} cameraRequestKey={cameraRequest} paintedFaceGroups={paints}
+          hiddenEdgesVisible={state.hiddenEdgesVisible}
           readOnly={playing || (!editable && tool !== "select")} cameraInteractive navigationMode={tool === "pan" ? "pan" : "orbit"}
           onFaceSelect={tool === "orbit" || tool === "pan" ? undefined : clickFace}
           onFaceHover={tool === "orbit" || tool === "pan" ? undefined : (face) => {
-            const hit = face && state.cubes.find((cube) => voxelKey(cube.position) === voxelKey(face.cell));
+            const hit = face && cubeAtDisplayPosition(state, face.cell);
             setHoverFace(hit && scopeIds.includes(hit.id) ? face : null); if (face) setHoverGround(null);
           }}
           scene={{ tool: editable ? tool : "orbit", face: hoverFace, ground: editable ? hoverGround : null, validBuild,
+            state, cut: cutLayers.length ? { axis, after: previewCutAfter, ids: targetIds } : null,
+            annotation: { shape: markShape, placement: labelPlacement, color, value: state.nextNumber },
             origin: state.origin, axesVisible: state.axesVisible, axisLength: Math.max(3, state.frame.radius * 1.5),
             onGroundHover: (position) => { setHoverGround(position); if (position) setHoverFace(null); }, onGroundClick: build }} />
 
@@ -241,9 +280,42 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
             </div>
           </div>}
           {panel === "move" && <div className="space-y-3 text-xs">
-            <p className="leading-5 text-muted">{m.moveHint}</p><p>{m.currentScope}: {scopeLabel} · {targetIds.length} {m.cubeUnit}</p>
-            <div className="flex items-center gap-2"><label htmlFor="cube-move-distance" className="flex-1">{m.moveDistance}</label><Input id="cube-move-distance" className="h-8 w-20 text-xs" type="number" min={1} max={12} value={moveDistance} onChange={(event) => setMoveDistance(event.target.value)} /></div>
-            {(["x", "y", "z"] as const).map((value) => <div key={value} className="flex items-center justify-between"><span className="font-bold" style={{ color: CUBE_AXIS_COLORS[value] }}>{value.toUpperCase()}</span><div className="flex gap-2">{([-1, 1] as const).map((sign) => <CubeIconButton key={sign} label={m.move + " " + value.toUpperCase() + " " + (sign > 0 ? "+" : "−") + moveDistance} disabled={!editable || !targetIds.length || !Number.isInteger(Number(moveDistance)) || Number(moveDistance) < 1 || Number(moveDistance) > 12} onClick={() => commit({ kind: "move", ids: targetIds, axis: value, distance: sign * Number(moveDistance) })}>{sign > 0 ? <Plus aria-hidden /> : <Minus aria-hidden />}</CubeIconButton>)}</div></div>)}
+            <Select value={moveMode} onValueChange={(value) => setMoveMode(value as typeof moveMode)}><SelectTrigger aria-label={m.move}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="move">{m.logicalMove}</SelectItem><SelectItem value="display-move">{m.displayMove}</SelectItem></SelectContent></Select>
+            <p className="leading-5 text-muted">{moveMode === "move" ? m.moveHint : m.displayHint}</p><p>{m.currentScope}: {scopeLabel} · {targetIds.length} {m.cubeUnit}</p>
+            <div className="flex items-center gap-2"><label htmlFor="cube-move-distance" className="flex-1">{m.moveDistance}</label><Input id="cube-move-distance" className="h-8 w-20 text-xs" type="number" min={moveMode === "move" ? 1 : 0.5} step={moveMode === "move" ? 1 : 0.5} max={12} value={moveDistance} onChange={(event) => setMoveDistance(event.target.value)} /></div>
+            {(["x", "y", "z"] as const).map((value) => <div key={value} className="flex items-center justify-between"><span className="font-bold" style={{ color: CUBE_AXIS_COLORS[value] }}>{value.toUpperCase()}</span><div className="flex gap-2">{([-1, 1] as const).map((sign) => <CubeIconButton key={sign} label={m.move + " " + value.toUpperCase() + " " + (sign > 0 ? "+" : "−") + moveDistance} disabled={!editable || !targetIds.length || !Number.isInteger(Number(moveDistance) * (moveMode === "move" ? 1 : 2)) || Number(moveDistance) < (moveMode === "move" ? 1 : 0.5) || Number(moveDistance) > 12} onClick={() => commit({ kind: moveMode, ids: targetIds, axis: value, distance: sign * Number(moveDistance) })}>{sign > 0 ? <Plus aria-hidden /> : <Minus aria-hidden />}</CubeIconButton>)}</div></div>)}
+            <Button size="sm" variant="secondary" disabled={!editable || !hasDisplayOffsets} onClick={() => commit({ kind: "display-reset", ids: targetIds })}>{m.displayReset}</Button>
+          </div>}
+          {panel === "cut" && <div className="space-y-3 text-xs" data-cube-cut-panel>
+            <p className="leading-5 text-muted">{m.cutHint}</p><p>{m.currentScope}: {scopeLabel}</p>
+            <div className="flex gap-1">{(["x", "y", "z"] as const).map((value) => <CubeIconButton key={value} label={m.cut + " " + value.toUpperCase()} active={axis === value} onClick={() => { setAxis(value); setCutAfter(null); }}><CubeAxisIcon axis={value} /></CubeIconButton>)}</div>
+            <label className="block">{m.cutAfter}</label>
+            <Select value={cutLayers.length ? String(activeCutAfter) : ""} onValueChange={(value) => setCutAfter(Number(value))} disabled={!cutLayers.length}><SelectTrigger aria-label={m.cutAfter}><SelectValue placeholder="—" /></SelectTrigger><SelectContent>{cutLayers.map((value) => <SelectItem key={value} value={String(value)}>{axis.toUpperCase()} {cubeLayerNumber(state, axis, value)} {m.layerUnit}</SelectItem>)}</SelectContent></Select>
+            <div className="flex items-center gap-2"><label htmlFor="cube-cut-gap" className="flex-1">{m.cutGap}</label><Input id="cube-cut-gap" className="h-8 w-20 text-xs" type="number" min={0.5} max={8} step={0.5} value={cutGap} onChange={(event) => setCutGap(event.target.value)} /></div>
+            <div className="flex items-center gap-2"><span className="flex-1">{m.cutSide}</span>{([-1, 1] as const).map((side) => <CubeIconButton key={side} label={axis.toUpperCase() + (side > 0 ? "+" : "−")} active={cutSide === side} onClick={() => setCutSide(side)}>{side > 0 ? <Plus aria-hidden /> : <Minus aria-hidden />}</CubeIconButton>)}</div>
+            <Button size="sm" disabled={!editable || !cutLayers.length || !Number.isInteger(Number(cutGap) * 2) || Number(cutGap) < 0.5 || Number(cutGap) > 8} onClick={performCut}><Scissors aria-hidden className="mr-1 size-4" />{m.performCut}</Button>
+            <p className="leading-5 text-muted">{m.displayHint}</p>
+            <div className="flex flex-wrap gap-1"><Button size="sm" variant="secondary" disabled={!editable || !hasDisplayOffsets} onClick={() => commit({ kind: "display-reset", ids: targetIds })}>{m.displayReset}</Button><Button size="sm" variant="secondary" disabled={!editable || !hasDisplayOffsets} onClick={() => commit({ kind: "display-reset", ids: state.cubes.map((cube) => cube.id) })}>{m.displayResetAll}</Button></div>
+          </div>}
+          {(panel === "mark" || panel === "number") && <div className="space-y-3 text-xs" data-cube-annotation-panel>
+            <p className="leading-5 text-muted">{panel === "mark" ? m.markHint : m.numberHint}</p>
+            {panel === "mark" ? <div className="flex flex-wrap gap-1">{CUBE_MARK_SHAPES.map((shape) => <CubeIconButton key={shape} label={m[`${shape}Shape`]} active={markShape === shape} onClick={() => setMarkShape(shape)}><CubeMarkIcon shape={shape} /></CubeIconButton>)}</div> : <p className="font-bold tabular-nums">{m.nextNumber}: {state.nextNumber}</p>}
+            <Select value={labelPlacement} onValueChange={(value) => setLabelPlacement(value as CubeLabelPlacement)}><SelectTrigger aria-label={m.labelPlacement}><SelectValue /></SelectTrigger><SelectContent>{(["side", "face", "center"] as const).map((value) => <SelectItem key={value} value={value}>{value === "face" ? m.surface : m[value]}</SelectItem>)}</SelectContent></Select>
+            {labelPlacement === "center" && <p className="leading-5 text-muted">{m.centerHint}</p>}
+            <div className="flex flex-wrap gap-1">{CUBE_COLORS.map((value, index) => <CubeIconButton key={value} label={m.colors[index]} active={color === value} onClick={() => setColor(value)}><svg viewBox="0 0 24 24" aria-hidden><circle cx="12" cy="12" r="9" fill={value} stroke="currentColor" strokeWidth=".5" /></svg></CubeIconButton>)}</div>
+            <p>{m.currentScope}: {scopeLabel} · {targetIds.length} {m.cubeUnit}</p>
+            <div className="flex flex-wrap gap-1">
+              {panel === "mark" && <CubeIconButton label={m.applyMarks} disabled={!editable || !targetIds.length} onClick={() => commit({ kind: "mark", ids: targetIds, shape: markShape, placement: labelPlacement, direction: "z+", color })}><Stamp aria-hidden /></CubeIconButton>}
+              <CubeIconButton label={panel === "mark" ? m.clearMarks : m.clearNumbers} disabled={!editable || !targetIds.length} onClick={() => commit({ kind: "clear-labels", ids: targetIds, target: panel === "mark" ? "mark" : "number" })}><Eraser aria-hidden /></CubeIconButton>
+              {panel === "number" && <Button size="sm" variant="secondary" disabled={!editable} onClick={() => commit({ kind: "restart-numbering" })}>{m.restartNumbering}</Button>}
+            </div>
+          </div>}
+          {panel === "transparent" && <div className="space-y-3 text-xs" data-cube-transparency-panel>
+            <p className="leading-5 text-muted">{m.transparencyHint}</p><label className="block">{m.opacityLabel}: {opacity}%</label>
+            <Slider aria-label={m.opacityLabel} value={[opacity]} min={0} max={100} step={5} onValueChange={([value]) => setOpacity(value)} />
+            <p>{m.currentScope}: {scopeLabel} · {targetIds.length} {m.cubeUnit}</p>
+            <div className="flex flex-wrap gap-1"><Button size="sm" disabled={!editable || !targetIds.length} onClick={() => commit({ kind: "opacity", ids: targetIds, opacity: opacity / 100 })}>{m.applyOpacity}</Button><Button size="sm" variant="secondary" disabled={!editable || !targetIds.length} onClick={() => commit({ kind: "opacity", ids: targetIds, opacity: 1 })}>{m.restoreOpacity}</Button></div>
+            <Button size="sm" variant={state.hiddenEdgesVisible ? "secondary" : "ghost"} aria-pressed={state.hiddenEdgesVisible} disabled={!editable} onClick={() => commit({ kind: "hidden-edges", visible: !state.hiddenEdgesVisible })}>{m.hiddenEdges}</Button>
           </div>}
           {panel === "layers" && <div className="space-y-2 text-xs" data-cube-layer-panel>
             <div className="flex items-center gap-1" role="toolbar" aria-label={m.layerAxis}>{(["x", "y", "z"] as const).map((value) => <CubeIconButton key={value} label={m.layerAxis + " " + value.toUpperCase()} active={axis === value} onClick={() => setAxis(value)}><CubeAxisIcon axis={value} /></CubeIconButton>)}
