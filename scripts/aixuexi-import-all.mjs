@@ -2,12 +2,14 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { importCourseware } from "./cw-import.mjs";
+import { normalizeAixuexiLessonIds, selectAixuexiLectures } from "./lib/aixuexi-import-scope.mjs";
+import { resolveAixuexiImportRoot } from "./lib/aixuexi-build-artifact.mjs";
 
 function fail(message) {
   throw new Error("AIXUEXI_IMPORT_ALL: " + message);
 }
 
-function parseArgs(argv) {
+export function parseImportAllArgs(argv) {
   const options = {
     packageKey: "2026-gplus-sujiao-math",
     packageRoot: null,
@@ -15,6 +17,7 @@ function parseArgs(argv) {
     sshHost: process.env.CW_IMPORT_SSH_HOST ?? "xiaomi",
     startAt: 1,
     limit: Number.POSITIVE_INFINITY,
+    lessonIds: [],
     dryRun: false,
     localDocker: false,
     databaseUrl: process.env.CW_IMPORT_DATABASE_URL ?? null,
@@ -28,6 +31,12 @@ function parseArgs(argv) {
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--") continue;
+    if (arg === "--lesson-id") {
+      const value = argv[++index];
+      if (!value || value.startsWith("--")) fail("--lesson-id requires a value");
+      options.lessonIds.push(value);
+      continue;
+    }
     if (arg === "--dry-run") {
       options.dryRun = true;
       continue;
@@ -58,6 +67,7 @@ function parseArgs(argv) {
     fail("unknown argument " + arg);
   }
   if (!Number.isInteger(options.startAt) || options.startAt < 1) fail("--start-at must be a positive integer");
+  options.lessonIds = normalizeAixuexiLessonIds(options.lessonIds);
   if (!(options.limit === Number.POSITIVE_INFINITY || Number.isInteger(options.limit) && options.limit > 0)) {
     fail("--limit must be a positive integer");
   }
@@ -114,9 +124,10 @@ export function unresolvedSourceRuntimeDrift(pages = {}) {
 }
 
 export async function importAll(options) {
+  options = { ...options, packageRoot: await resolveAixuexiImportRoot(options.packageRoot) };
   const lectures = (await readFile(path.join(options.packageRoot, "lectures.ndjson"), "utf8"))
     .trim().split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line));
-  const selected = lectures.slice(options.startAt - 1, options.startAt - 1 + options.limit);
+  const selected = selectAixuexiLectures(lectures, options);
   const versionsByProduct = await catalogVersionsByProduct(options);
   const results = [];
 
@@ -169,7 +180,7 @@ export async function importAll(options) {
 }
 
 async function main() {
-  const summary = await importAll(parseArgs(process.argv.slice(2)));
+  const summary = await importAll(parseImportAllArgs(process.argv.slice(2)));
   process.stdout.write(JSON.stringify(summary, null, 2) + "\n");
 }
 

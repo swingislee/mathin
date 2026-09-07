@@ -1,8 +1,17 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { textFileSha256 } from "./lib/text-hash.mjs";
+import {
+  AIXUEXI_GRADE as GRADE,
+  aixuexiPackageDefinition,
+  assertAixuexiSourceScope,
+  normalizeAixuexiLessonIds,
+  validateAixuexiPackageDefinition,
+} from "./lib/aixuexi-import-scope.mjs";
+export { aixuexiPackageDefinition } from "./lib/aixuexi-import-scope.mjs";
+import { publishAixuexiBuildArtifact } from "./lib/aixuexi-build-artifact.mjs";
 import {
   buildPortableAixuexiViewerRuntime,
   loadAixuexiSourceViewerRuntime,
@@ -12,32 +21,6 @@ import {
 
 const PACKAGE_KEY = "2026-gplus-sujiao-math";
 const HASH = /^[0-9a-f]{64}$/;
-const GRADE = new Map([
-  ["一年级", 1], ["二年级", 2], ["三年级", 3],
-  ["四年级", 4], ["五年级", 5], ["六年级", 6],
-]);
-const PACKAGE_CONFIGS = new Map([
-  ["2026-gplus-sujiao-math", {
-    lectureCount: 56, pageCount: 1641, grades: [3, 4, 5, 6],
-    level: "G+", sourceLevel: "能力强化 G+", edition: "苏教版", productPrefix: "AXX26G-SJ",
-    term: "秋季", termCode: "AUT",
-  }],
-  ["2026-xplus-sujiao-math", {
-    lectureCount: 84, pageCount: 2767, grades: [1, 2, 3, 4, 5, 6],
-    level: "X+", sourceLevel: "能力提高 X+", edition: "苏教版", productPrefix: "AXX26X-SJ",
-    term: "秋季", termCode: "AUT",
-  }],
-  ["2026-aplus-quanguo-math", {
-    lectureCount: 30, pageCount: 1034, grades: [1, 2],
-    level: "A+", sourceLevel: "思维突破 A+", edition: "全国版", productPrefix: "AXX26A-QG",
-    term: "秋季", termCode: "AUT",
-  }],
-  ["2026-summer-aplus-quanguo-math", {
-    lectureCount: 2, pageCount: 66, grades: [1],
-    level: "A+", sourceLevel: "思维突破 A+", edition: "全国版", productPrefix: "AXX26A-QG",
-    term: "暑期", termCode: "SUM",
-  }],
-]);
 const TEXT_EXTENSIONS = new Set([".css", ".html", ".htm", ".js", ".json", ".mjs", ".svg", ".txt"]);
 
 /**
@@ -55,10 +38,6 @@ const SOURCE_RUNTIME_PROTOCOL = "mathin-source-runtime-v1";
 
 function fail(message) {
   throw new Error(`AIXUEXI_BUILD: ${message}`);
-}
-
-export function aixuexiPackageDefinition(packageKey) {
-  return PACKAGE_CONFIGS.get(packageKey) ?? null;
 }
 
 /**
@@ -213,21 +192,31 @@ function sourceRuntimeRoutePath(prefix, ...parts) {
   return `${prefix}/${suffix}`;
 }
 
-function parseArgs(argv) {
+export function parseBuildArgs(argv) {
   const options = {
     packageKey: PACKAGE_KEY,
     stageH5: true,
     sourceRoot: path.resolve(process.cwd(), "..", "2026-07_mofaxiao_courseware"),
     outputRoot: null,
+    definition: null,
+    lessonIds: [],
+    checkBaselineCounts: false,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--") continue;
+    if (arg === "--check-baseline-counts") { options.checkBaselineCounts = true; continue; }
+    if (arg === "--lesson-id") {
+      const value = argv[++index];
+      if (!value || value.startsWith("--")) fail("--lesson-id requires a value");
+      options.lessonIds.push(value);
+      continue;
+    }
     if (arg === "--metadata-only") {
       options.stageH5 = false;
       continue;
     }
-    if (["--source-root", "--output-root", "--package-key"].includes(arg)) {
+    if (["--source-root", "--output-root", "--package-key", "--definition"].includes(arg)) {
       const value = argv[++index];
       if (!value || value.startsWith("--")) fail(`${arg} requires a value`);
       options[arg.slice(2).replace(/-([a-z])/g, (_all, letter) => letter.toUpperCase())] = value;
@@ -236,6 +225,7 @@ function parseArgs(argv) {
     fail(`unknown argument ${arg}`);
   }
   options.sourceRoot = path.resolve(options.sourceRoot);
+  options.lessonIds = normalizeAixuexiLessonIds(options.lessonIds);
   options.outputRoot = path.resolve(
     options.outputRoot ?? path.join(process.cwd(), ".tmp", "aixuexi-import", options.packageKey),
   );
@@ -309,31 +299,6 @@ async function buildTopicPackage({ sourcePackageRoot, outputRoot, topic, stageH5
   };
 }
 
-function assertSourceScope(siteManifest, catalog, config) {
-  if (siteManifest.sourceSystem !== "aixuexi_bsk") fail("unexpected source system");
-  if (siteManifest.schemaVersion !== 1 || catalog.schemaVersion !== 1) fail("unsupported source manifest schema");
-  if (siteManifest.courseCount !== config.lectureCount || siteManifest.pageCount !== config.pageCount) {
-    fail(`unexpected source counts: ${siteManifest.courseCount} lectures / ${siteManifest.pageCount} pages`);
-  }
-  if (siteManifest.projectedPageCount !== config.pageCount
-      || siteManifest.unsupportedLayoutNodeCount !== 0
-      || siteManifest.unmappedLayoutResourceCount !== 0
-      || siteManifest.registeredGapNodeCount !== 0
-      || siteManifest.registeredGapResourceCount !== 0) {
-    fail("source manifest carries projection gaps");
-  }
-  if (catalog.courseCount !== config.lectureCount || catalog.courses?.length !== config.lectureCount) {
-    fail(`catalog must contain ${config.lectureCount} lectures`);
-  }
-  for (const course of catalog.courses) {
-    const grade = GRADE.get(course.grade);
-    if (!config.grades.includes(grade) || course.term !== config.term || course.level !== config.sourceLevel
-        || course.status !== "complete") {
-      fail(`lecture ${course.coursewareId} is outside the approved ${config.level} scope`);
-    }
-  }
-}
-
 function assertSourceCanvas(layout, label) {
   const { canvas, playerStage, presentation } = layout;
   const canvasPair = `${canvas?.width}x${canvas?.height}`;
@@ -366,11 +331,13 @@ function assertSourceCanvas(layout, label) {
   if (!layout.behaviors || typeof layout.behaviors !== "object") fail(`${label} is missing source behaviors`);
 }
 
-export async function buildAixuexiPackage(options) {
+async function prepareAixuexiBuild(options) {
   const sourceRoot = path.resolve(options.sourceRoot);
-  const outputRoot = path.resolve(options.outputRoot);
-  const config = PACKAGE_CONFIGS.get(options.packageKey);
-  if (!config) fail(`unsupported package key ${options.packageKey}`);
+  const definition = options.definition
+    ? await readJson(path.resolve(options.definition))
+    : aixuexiPackageDefinition(options.packageKey);
+  if (!definition) fail(`课程包 ${options.packageKey} 尚未配置；请用 --definition 指定导入配置`);
+  const config = validateAixuexiPackageDefinition(definition);
   const sourcePackageRoot = path.join(sourceRoot, "exports", "packages", options.packageKey);
   const siteRoot = path.join(sourcePackageRoot, "site");
   const [siteManifest, catalog, slideRuntime, playerRuntime] = await Promise.all([
@@ -379,7 +346,7 @@ export async function buildAixuexiPackage(options) {
     readJson(path.join(siteRoot, "slide-runtime.json")),
     readJson(path.join(siteRoot, "player-runtime.json")),
   ]);
-  assertSourceScope(siteManifest, catalog, config);
+  const selectedCourses = assertAixuexiSourceScope(siteManifest, catalog, config, options);
   if (slideRuntime.schemaVersion !== 1 || slideRuntime.packageKey !== options.packageKey
       || slideRuntime.stylesheetPath !== "slide-runtime.css" || !HASH.test(slideRuntime.cssSha256 ?? "")
       || siteManifest.slideRuntime?.cssSha256 !== slideRuntime.cssSha256) {
@@ -387,10 +354,14 @@ export async function buildAixuexiPackage(options) {
   }
   assertAixuexiPlayerRuntimeCatalog(playerRuntime, {
     packageKey: options.packageKey,
-    lectureCount: config.lectureCount,
+    lectureCount: catalog.courseCount,
   });
+  return { sourceRoot, config, sourcePackageRoot, siteRoot, siteManifest, catalog, slideRuntime, playerRuntime, selectedCourses };
+}
 
-  await rm(outputRoot, { recursive: true, force: true });
+async function writeAixuexiPackage(options, prepared) {
+  const { sourceRoot, config, sourcePackageRoot, siteRoot, siteManifest, catalog, slideRuntime, playerRuntime, selectedCourses } = prepared;
+  const outputRoot = path.resolve(options.outputRoot);
   await mkdir(path.join(outputRoot, "page-docs"), { recursive: true });
   await mkdir(path.join(outputRoot, "h5-manifests"), { recursive: true });
 
@@ -440,11 +411,15 @@ export async function buildAixuexiPackage(options) {
   };
 
   let lottieRuntimeResource = null;
-  for (const item of siteManifest.items.filter((entry) => entry.kind === "page")) {
-    const page = await readJson(resolveInside(siteRoot, item.path));
-    lottieRuntimeResource = (page.assets?.resources ?? []).find((resource) =>
-      resource.kind === "script" && /(?:^|\/)lottie(?:\.min)?\.js(?:$|\?)/i.test(resource.normalizedUrl ?? resource.sourceUrl ?? ""),
-    ) ?? null;
+  for (const selected of selectedCourses) {
+    const course = await readJson(resolveInside(siteRoot, selected.dataPath));
+    for (const item of course.pages) {
+      const page = await readJson(resolveInside(siteRoot, item.dataPath));
+      lottieRuntimeResource = (page.assets?.resources ?? []).find((resource) =>
+        resource.kind === "script" && /(?:^|\/)lottie(?:\.min)?\.js(?:$|\?)/i.test(resource.normalizedUrl ?? resource.sourceUrl ?? ""),
+      ) ?? null;
+      if (lottieRuntimeResource) break;
+    }
     if (lottieRuntimeResource) break;
   }
 
@@ -601,13 +576,16 @@ export async function buildAixuexiPackage(options) {
     return usageKey;
   };
 
-  const sortedCourses = [...catalog.courses].sort((left, right) => {
+  const sortedCourses = [...selectedCourses].sort((left, right) => {
     const grade = GRADE.get(left.grade) - GRADE.get(right.grade);
     return grade || left.lessonIndex - right.lessonIndex;
   });
   for (const catalogCourse of sortedCourses) {
     const grade = GRADE.get(catalogCourse.grade);
     const course = await readJson(resolveInside(siteRoot, catalogCourse.dataPath));
+    if (course.coursewareId !== catalogCourse.coursewareId || course.pages?.length !== catalogCourse.pageCount) {
+      fail(`lecture ${catalogCourse.coursewareId} does not match its catalog entry`);
+    }
     const verificationPath = path.join(sourcePackageRoot, "offline-verification", `lesson-${course.coursewareId}.json`);
     const verification = await readJson(verificationPath);
     if (verification.status !== "complete"
@@ -626,9 +604,9 @@ export async function buildAixuexiPackage(options) {
       sourceSystem: "aixuexi_bsk",
       sourcePackageKey: options.packageKey,
       sourcePackageManifestSha256: packageManifestSha256,
-      sourcePackageLabels: { year: 2026, level: config.level, edition: config.edition, subject: "数学", term: config.term },
+      sourcePackageLabels: { year: config.year, level: config.level, edition: config.edition, subject: "数学", term: config.term },
       sourcePackageScope: { grades: config.grades, term: config.term, level: config.level, placeholders: "source_catalog_only" },
-      sourcePackageCounts: { lectureCount: config.lectureCount, pageCount: config.pageCount },
+      sourcePackageCounts: { lectureCount: catalog.courseCount, pageCount: siteManifest.pageCount },
       sourceRuntimePackageHash: runtimePackageHash,
       sourceProductCode: catalogCourse.productCode,
       offlineStatus: verification.status,
@@ -642,7 +620,10 @@ export async function buildAixuexiPackage(options) {
       const sourcePage = await readJson(resolveInside(siteRoot, pageMeta.dataPath));
       if (sourcePage.layout?.adapter !== "aixuexi_page_v1"
           || sourcePage.layout?.projectionVersion !== SOURCE_PROJECTION_VERSION
-          || sourcePage.reviewState?.mappingStatus !== "mapped") {
+          || sourcePage.reviewState?.mappingStatus !== "mapped"
+          || sourcePage.coursewareId !== course.coursewareId
+          || sourcePage.pageDatabaseId !== pageMeta.pageDatabaseId
+          || sourcePage.layout?.nodes?.some((node) => node.known === false)) {
         fail(`${course.coursewareId}/${pageMeta.pageDatabaseId} is not a mapped projection v${SOURCE_PROJECTION_VERSION} page`);
       }
       assertSourceCanvas(sourcePage.layout, `${course.coursewareId}/${pageMeta.pageDatabaseId}`);
@@ -944,8 +925,57 @@ export async function buildAixuexiPackage(options) {
   };
 }
 
+export async function buildAixuexiPackage(inputOptions) {
+  const options = { stageH5: true, lessonIds: [], ...inputOptions };
+  options.lessonIds = normalizeAixuexiLessonIds(options.lessonIds);
+  if (!/^[a-z0-9][a-z0-9-]{0,159}$/.test(options.packageKey ?? "")) fail("invalid package key");
+  options.outputRoot ??= path.resolve(process.cwd(), ".tmp", "aixuexi-import", options.packageKey);
+  const prepared = await prepareAixuexiBuild(options);
+  const files = new Map();
+  const track = async (label, file) => files.set(label, await sha256File(file));
+  for (const item of prepared.siteManifest.items ?? []) {
+    if (item.kind !== "page" && item.kind !== "course") {
+      await track(`site/${item.path}`, resolveInside(prepared.siteRoot, item.path));
+    }
+  }
+  for (const course of prepared.selectedCourses) {
+    await track(`site/${course.dataPath}`, resolveInside(prepared.siteRoot, course.dataPath));
+    const document = await readJson(resolveInside(prepared.siteRoot, course.dataPath));
+    for (const page of document.pages) {
+      await track(`site/${page.dataPath}`, resolveInside(prepared.siteRoot, page.dataPath));
+    }
+    await track(`verification/${course.coursewareId}`, path.join(prepared.sourcePackageRoot, "offline-verification", `lesson-${course.coursewareId}.json`));
+  }
+  const sourceViewer = await loadAixuexiSourceViewerRuntime(prepared.sourceRoot);
+  const generators = [
+    new URL("./aixuexi-build-package.mjs", import.meta.url),
+    new URL("./lib/aixuexi-import-scope.mjs", import.meta.url),
+    new URL("./lib/aixuexi-build-artifact.mjs", import.meta.url),
+    new URL("./lib/aixuexi-source-viewer-runtime.mjs", import.meta.url),
+    new URL("../src/features/courseware-doc/source-runtime-delivery.mjs", import.meta.url),
+    new URL("../pnpm-lock.yaml", import.meta.url),
+  ].map((file) => textFileSha256(file));
+  const inputFingerprint = sha256(JSON.stringify(stableJson({
+    schemaVersion: "mathin-aixuexi-build-input-v1",
+    packageKey: options.packageKey,
+    definition: prepared.config,
+    lessonIds: prepared.selectedCourses.map((course) => course.coursewareId).sort(),
+    sourceManifestSha256: textFileSha256(path.join(prepared.siteRoot, "manifest.json")),
+    viewerScriptSha256: sha256(sourceViewer.viewerScript),
+    viewerStylesSha256: sha256(sourceViewer.viewerStyles),
+    stageH5: options.stageH5,
+    generators,
+    files: Object.fromEntries(files),
+  })));
+  return publishAixuexiBuildArtifact({
+    outputRoot: options.outputRoot,
+    inputFingerprint,
+    write: (outputRoot) => writeAixuexiPackage({ ...options, outputRoot }, prepared),
+  });
+}
+
 async function main() {
-  const summary = await buildAixuexiPackage(parseArgs(process.argv.slice(2)));
+  const summary = await buildAixuexiPackage(parseBuildArgs(process.argv.slice(2)));
   process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
 }
 

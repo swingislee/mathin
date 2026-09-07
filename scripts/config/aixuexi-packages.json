@@ -1,0 +1,22 @@
+{
+  "2026-gplus-sujiao-math": {
+    "year": 2026, "lectureCount": 56, "pageCount": 1641, "grades": [3, 4, 5, 6],
+    "level": "G+", "sourceLevel": "能力强化 G+", "edition": "苏教版", "productPrefix": "AXX26G-SJ",
+    "term": "秋季", "termCode": "AUT"
+  },
+  "2026-xplus-sujiao-math": {
+    "year": 2026, "lectureCount": 84, "pageCount": 2767, "grades": [1, 2, 3, 4, 5, 6],
+    "level": "X+", "sourceLevel": "能力提高 X+", "edition": "苏教版", "productPrefix": "AXX26X-SJ",
+    "term": "秋季", "termCode": "AUT"
+  },
+  "2026-aplus-quanguo-math": {
+    "year": 2026, "lectureCount": 30, "pageCount": 1034, "grades": [1, 2],
+    "level": "A+", "sourceLevel": "思维突破 A+", "edition": "全国版", "productPrefix": "AXX26A-QG",
+    "term": "秋季", "termCode": "AUT"
+  },
+  "2026-summer-aplus-quanguo-math": {
+    "year": 2026, "lectureCount": 2, "pageCount": 66, "grades": [1],
+    "level": "A+", "sourceLevel": "思维突破 A+", "edition": "全国版", "productPrefix": "AXX26A-QG",
+    "term": "暑期", "termCode": "SUM"
+  }
+}
