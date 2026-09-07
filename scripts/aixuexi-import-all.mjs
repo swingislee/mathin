@@ -27,10 +27,12 @@ export function parseImportAllArgs(argv) {
     allowProductionTarget: false,
     allowProductionSourceRuntimeUpgrade: false,
     upgradeSourceRuntime: false,
+    incrementalSource: false,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--") continue;
+    if (arg === "--incremental-source") { options.incrementalSource = true; continue; }
     if (arg === "--lesson-id") {
       const value = argv[++index];
       if (!value || value.startsWith("--")) fail("--lesson-id requires a value");
@@ -149,6 +151,7 @@ export async function importAll(options) {
       allowProductionTarget: options.allowProductionTarget,
       allowProductionSourceRuntimeUpgrade: options.allowProductionSourceRuntimeUpgrade,
       upgradeSourceRuntime: options.upgradeSourceRuntime,
+      incrementalSource: options.incrementalSource,
       quiet: true,
     });
     results.push(result);

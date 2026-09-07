@@ -895,6 +895,7 @@ async function writeAixuexiPackage(options, prepared) {
     });
   };
   const ndjson = (rows) => `${rows.map((row) => JSON.stringify(row)).join("\n")}\n`;
+  await writeTracked("source-manifest.json", await readFile(path.join(siteRoot, "manifest.json"), "utf8"));
   await writeTracked("lectures.ndjson", ndjson(lectures));
   await writeTracked("asset-objects.ndjson", ndjson([...objects.values()].sort((a, b) => a.objectHash.localeCompare(b.objectHash))));
   await writeTracked("candidates.ndjson", ndjson([...candidates.values()].sort((a, b) => a.candidateKey.localeCompare(b.candidateKey))));

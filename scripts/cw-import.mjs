@@ -8,6 +8,8 @@ import { createClient } from "@supabase/supabase-js";
 import sanitizeHtml from "sanitize-html";
 import { h5StoragePath } from "./lib/courseware-storage-paths.mjs";
 import { stripInertMathTexScriptsForInspection } from "./lib/aixuexi-source-viewer-runtime.mjs";
+import { textFileSha256 } from "./lib/text-hash.mjs";
+import { assertIncrementalSourceState, buildIncrementalSourcePreflight, incrementalSourceSql } from "./lib/aixuexi-source-snapshots.mjs";
 import {
   assertControlledContentWriteTarget,
   R1_WRITE_TARGET_POLICY,
@@ -707,7 +709,7 @@ export function catalogVersionFilterSql(plan, courseAlias) {
  * snapshot: producer runtime package, page documents, binding projection and
  * the content-addressed object selected by each shared-asset candidate.
  */
-export function sourceRuntimeImportFingerprint(plan) {
+export function sourceRuntimeImportFingerprint(plan, { snapshotIndependent = false } = {}) {
   const runtimePackageHash = plan.lecture.sourceRuntimePackageHash;
   assertHash(runtimePackageHash, "lecture.sourceRuntimePackageHash");
   const pages = [...plan.pages]
@@ -736,8 +738,8 @@ export function sourceRuntimeImportFingerprint(plan) {
       objectHash: asset.objectHash,
     }));
   return createHash("sha256").update(JSON.stringify({
-    schemaVersion: "mathin-source-runtime-import-fingerprint-v1",
-    sourcePackageManifestSha256: plan.lecture.sourcePackageManifestSha256,
+    schemaVersion: snapshotIndependent ? "mathin-source-runtime-content-fingerprint-v1" : "mathin-source-runtime-import-fingerprint-v1",
+    ...(!snapshotIndependent ? { sourcePackageManifestSha256: plan.lecture.sourcePackageManifestSha256 } : {}),
     runtimePackageHash,
     pages,
     bindings,
@@ -748,6 +750,11 @@ export function sourceRuntimeImportFingerprint(plan) {
 export function buildImportSql(plan, options = {}) {
   const isAixuexi = plan.lecture.sourceSystem === "aixuexi_bsk";
   const upgradeSourceRuntime = options.upgradeSourceRuntime === true;
+  const incrementalSource = options.incrementalSource === true;
+  if (incrementalSource && (upgradeSourceRuntime || !isAixuexi || plan.lecture.documentAdapter !== SOURCE_RUNTIME_DOCUMENT_ADAPTER)) {
+    fail("--incremental-source requires an Aixuexi source-runtime package and is separate from runtime upgrades");
+  }
+  const incremental = incrementalSource ? incrementalSourceSql(plan, sourceRuntimeImportFingerprint(plan, { snapshotIndependent: true })) : null;
   if (isAixuexi) {
     if (!AIXUEXI_DOCUMENT_ADAPTERS.has(plan.lecture.documentAdapter)) {
       fail(`lecture.documentAdapter is unsupported for Aixuexi: ${plan.lecture.documentAdapter}`);
@@ -1190,8 +1197,9 @@ do $$ begin
     raise exception 'CW_IMPORT_LECTURE_MAPPING_MISSING_OR_AMBIGUOUS';
   end if;
 end $$;
+${incremental?.guard ?? ""}
 ${sourceLectureNameSql}
-${sourceProvenanceSql}
+${incremental?.provenance ?? sourceProvenanceSql}
 
 create temporary table cw_import_objects (
   object_hash text primary key, mime text not null, byte_count bigint not null, kind text not null, storage_path text not null
@@ -1467,7 +1475,7 @@ select context.lecture_id,'native-16x9',release.id from cw_import_context contex
 on conflict(lecture_id,track) do update set current_release_id=excluded.current_release_id,updated_at=now();
 ${adaptedReleaseSql}
 ${sourceRuntimeUpgradeReleaseSql}
-${sourceFinalizeSql}
+${incremental?.receipt ?? sourceFinalizeSql}
 
 select jsonb_build_object(
   'lectureId', (select lecture_id from cw_import_context),
@@ -1538,7 +1546,7 @@ function readEnvFile(text) {
   return parsed;
 }
 
-async function loadLocalEnv(cwd) {
+export async function loadLocalEnv(cwd) {
   try {
     return readEnvFile(await readFile(path.join(cwd, ".env.local"), "utf8"));
   } catch (error) {
@@ -1830,6 +1838,7 @@ export function parseArgs(argv) {
     allowProductionSourceRuntimeUpgrade: false,
     localDocker: false,
     upgradeSourceRuntime: false,
+    incrementalSource: false,
     databaseUrl: process.env.CW_IMPORT_DATABASE_URL,
     sshHost: process.env.CW_IMPORT_SSH_HOST ?? DEFAULT_SSH_HOST,
   };
@@ -1839,6 +1848,7 @@ export function parseArgs(argv) {
     if (arg === "--dry-run") { options.dryRun = true; continue; }
     if (arg === "--local-docker") { options.localDocker = true; continue; }
     if (arg === "--upgrade-source-runtime") { options.upgradeSourceRuntime = true; continue; }
+    if (arg === "--incremental-source") { options.incrementalSource = true; continue; }
     if (arg === "--allow-production-target") { options.allowProductionTarget = true; continue; }
     if (arg === "--allow-production-source-runtime-upgrade") {
       options.allowProductionSourceRuntimeUpgrade = true;
@@ -1900,6 +1910,15 @@ export async function importCourseware(options) {
   });
   const preflight = JSON.parse(runSql(buildPreflightSql(plan), options));
   if (preflight.matches !== 1) fail(`target lecture mapping returned ${preflight.matches} rows`);
+  let disposition = null;
+  if (options.incrementalSource) {
+    const sourceFile = resolveInside(plan.packageRoot, "source-manifest.json");
+    if (textFileSha256(sourceFile) !== plan.lecture.sourcePackageManifestSha256) fail("source manifest hash mismatch");
+    plan.sourceManifest = JSON.parse(await readFile(sourceFile, "utf8"));
+    disposition = assertIncrementalSourceState({ ...preflight, ...JSON.parse(runSql(buildIncrementalSourcePreflight(
+      plan, sourceRuntimeImportFingerprint(plan, { snapshotIndependent: true }), preflight.lectureId,
+    ), options)) });
+  }
   // Compile the complete write transaction before dry-run returns and before
   // any append-only Storage upload begins. This keeps dry-run representative
   // and prevents a malformed database plan from leaving partial new objects.
@@ -1919,9 +1938,13 @@ export async function importCourseware(options) {
       h5Files: [...plan.h5Manifests.values()].reduce((total, manifest) => total + manifest.files.length, 0),
     },
     preflight,
+    disposition,
   };
   if (options.dryRun) {
     return { dryRun: true, ...summary };
+  }
+  if (disposition === "reuse") {
+    return { ...summary, reused: true, database: { pages: { inserted: 0, baselineDrift: 0 }, bindings: { conflicts: 0 }, releaseInserted: false, adaptedReleaseInserted: false } };
   }
   const localEnv = await loadLocalEnv(process.cwd());
   const writeEnvironment = { ...localEnv, ...process.env };

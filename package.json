@@ -49,6 +49,7 @@
     "cw:import": "node scripts/cw-import.mjs",
     "cw:aixuexi:build": "node scripts/aixuexi-build-package.mjs",
     "cw:aixuexi:import": "node scripts/aixuexi-import-all.mjs",
+    "cw:aixuexi:task": "node scripts/aixuexi-import-task.mjs",
     "cw:adapt-4x3": "node scripts/cw-adapt-4x3.mjs",
     "cw:workspace-rollout:audit": "node scripts/courseware-workspace-rollout-audit.mjs",
     "cw:workspace-rollout:candidate": "node scripts/courseware-workspace-candidate.mjs",
