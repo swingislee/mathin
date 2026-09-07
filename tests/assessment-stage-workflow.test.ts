@@ -92,6 +92,9 @@ describe("parent report contract", () => {
     const markup = renderToStaticMarkup(createElement(NextIntlClientProvider, provider));
     expect(markup).toContain(messages.school.assessmentWorkflow.printReport);
     expect(markup).toContain("示例同学"); expect(markup).toContain("推理清楚"); expect(markup).toContain("登记老师");
+    expect(markup).not.toContain(messages.school.assessmentWorkflow.report_recommendedClass);
+    expect(markup).not.toContain(report.payload.recommendedClass);
+    expect(report.payload.recommendedClass).toBe("A 班");
     expect(markup).toMatch(/>0<\/p>/); expect(markup).toContain("A4 portrait");
     expect(markup).not.toContain("parent_response");
   });

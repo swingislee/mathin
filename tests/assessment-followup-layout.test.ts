@@ -163,7 +163,7 @@ describe("assessment page aligned with first contact", () => {
     expect(markup).toContain(zh.school.activities.parentConcerns);
     expect(markup).toContain("data-followup-notes");
     expect(markup).toMatch(/maxLength="2000"/i);
-    expect(markup.match(/data-followup-field-icon/g)).toHaveLength(4);
+    expect(markup.match(/data-followup-field-icon/g)).toHaveLength(3);
     expect(markup).not.toContain('data-assessment-field="route"');
   });
 
@@ -173,7 +173,8 @@ describe("assessment page aligned with first contact", () => {
       expect(markup.match(/data-assessment-tags/g)).toHaveLength(1);
       expect(markup.indexOf("data-assessment-tags")).toBeLessThan(markup.indexOf("data-assessment-progress"));
       expect(markup.indexOf("data-assessment-progress")).toBeLessThan(markup.indexOf("data-followup-business"));
-      expect(markup.match(/data-followup-field-icon/g)).toHaveLength(4);
+      expect(markup.match(/data-followup-field-icon/g)).toHaveLength(3);
+      expect(markup).not.toContain('data-assessment-field="class"');
       expect(markup.match(/data-followup-notes/g)).toHaveLength(1);
       expect(markup.match(/data-followup-entry-actions/g)).toHaveLength(1);
       expect(markup).toContain("@[50rem]/followup-entry:grid-cols-[minmax(0,1fr)_19rem]");
@@ -206,7 +207,8 @@ describe("assessment page aligned with first contact", () => {
     } });
     const markup = renderDetails(record);
     expect(markup).toContain('value="85"');
-    expect(markup).toContain('value="A"');
+    expect(markup).not.toContain('data-assessment-field="class"');
+    expect(markup).not.toContain(zh.school.activities.recommendedClass);
     expect(markup.match(/家长关注时间安排/g)).toHaveLength(1);
     const business = markup.slice(markup.indexOf("data-followup-business"), markup.indexOf("data-followup-notes"));
     expect(business).toContain("老师逐题结论");
@@ -277,20 +279,20 @@ describe("optional teacher assessment", () => {
 });
 
 describe("assessment registration field language", () => {
-  it.each(["zh", "en"] as const)("pairs four soft field icons with compact accessible controls in %s", (locale) => {
+  it.each(["zh", "en"] as const)("keeps rating, score and route icons without a duplicate recommended-class input in %s", (locale) => {
     const markup = render(createElement(AssessmentRegistrationFields, {
-      value: { assessmentBand: "a", score: 80, recommendedClass: "A" }, disabled: false, onChange: vi.fn(),
+      value: { assessmentBand: "a", score: 80 }, disabled: false, onChange: vi.fn(),
       routing: { value: "continue_follow_up", onChange: vi.fn() },
     }), locale);
     const messages = locale === "zh" ? zh : en;
-    expect(markup.match(/data-followup-field-icon/g)).toHaveLength(4);
-    expect(markup.match(/data-assessment-field=/g)).toHaveLength(4);
+    expect(markup.match(/data-followup-field-icon/g)).toHaveLength(3);
+    expect(markup.match(/data-assessment-field=/g)).toHaveLength(3);
     expect(markup).toContain('lucide-award');
     expect(markup).toContain('lucide-gauge');
-    expect(markup).toContain('lucide-graduation-cap');
+    expect(markup).not.toContain('lucide-graduation-cap');
+    expect(markup).not.toContain(messages.school.activities.recommendedClass);
     expect(markup).toContain('lucide-signpost');
     expect(markup).toContain('fill-leaf/50');
-    expect(markup).toContain('fill-cheek/60');
     expect(markup).toContain('fill-moon text-crater');
     expect(markup).toContain(`aria-label="${messages.school.activities.assessmentBand}"`);
     expect(markup).toContain(`aria-label="${messages.school.enrollmentWorkflow.nextStep}"`);
@@ -299,19 +301,19 @@ describe("assessment registration field language", () => {
     for (const [, labelledBy] of markup.matchAll(/<input\b[^>]*aria-labelledby="([^"]+)"/g)) {
       expect(markup).toContain(`id="${labelledBy}"`);
     }
-    expect(markup.match(/<input\b[^>]*aria-labelledby=/g)).toHaveLength(2);
+    expect(markup.match(/<input\b[^>]*aria-labelledby=/g)).toHaveLength(1);
   });
 
   it("keeps a zero score and legacy band visible while disabling every read-only control", () => {
     const markup = render(createElement(AssessmentRegistrationFields, {
-      value: { assessmentBand: "below_a", score: 0, recommendedClass: "" }, disabled: true, onChange: vi.fn(),
+      value: { assessmentBand: "below_a", score: 0 }, disabled: true, onChange: vi.fn(),
       routing: { value: "enrollment_pending", onChange: vi.fn() },
     }));
     expect(markup).toContain('value="0"');
     expect(markup).toContain(zh.school.activities.band_below_a);
     expect(markup).toContain(zh.school.enrollmentWorkflow.route_enrollment_pending);
     const controls = markup.match(/<(?:input|button)\b[^>]*>/g) ?? [];
-    expect(controls).toHaveLength(4);
+    expect(controls).toHaveLength(3);
     for (const control of controls) expect(control).toContain(' disabled=""');
   });
 });

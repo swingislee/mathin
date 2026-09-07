@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, type ComponentProps, type ReactNode } from "react";
-import { Award, Gauge, GraduationCap, Signpost } from "lucide-react";
+import { Award, Gauge, Signpost } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { ACTIVITY_ROUTES, ASSESSMENT_BANDS, type ActivityRouteKind, type StoredAssessmentBand } from "./activity-workflow-contract";
@@ -24,7 +24,6 @@ export function AssessmentEntrySurface({ entry, render }: { entry: AssessmentEnt
 interface RegistrationValues {
   assessmentBand: StoredAssessmentBand | null;
   score: number | null;
-  recommendedClass: string;
 }
 
 function bandTone(band: string): FollowupTone {
@@ -63,13 +62,6 @@ export function AssessmentRegistrationFields({ value, onChange, disabled, routin
       <Input type="number" min={0} max={10000} value={value.score ?? ""} disabled={disabled}
         aria-labelledby={`${id}-score`} placeholder={t("scoreShort")} className="h-8 w-20 min-w-0 bg-card text-xs"
         onChange={(event) => onChange({ score: event.target.value === "" ? null : Number(event.target.value) })} />
-    </div>
-    <div data-assessment-field="class" className="flex min-h-8 min-w-0 max-w-full items-center gap-2">
-      <FollowupFieldIcon id={`${id}-class`} icon={GraduationCap} label={t("recommendedClass")}
-        className="fill-cheek/60 text-[color:color-mix(in_srgb,var(--rose)_35%,var(--cheek))]" />
-      <Input value={value.recommendedClass} maxLength={200} disabled={disabled} aria-labelledby={`${id}-class`}
-        placeholder={t("recommendedClass")} className="h-8 w-40 min-w-0 bg-card text-xs"
-        onChange={(event) => onChange({ recommendedClass: event.target.value })} />
     </div>
     {routing ? <div data-assessment-field="route" className="flex min-h-8 min-w-0 max-w-full items-center gap-2">
       <FollowupFieldIcon id={`${id}-route`} icon={Signpost} label={routeT("nextStep")} className="fill-moon text-crater" />

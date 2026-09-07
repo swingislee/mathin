@@ -26,7 +26,7 @@ export function AssessmentReportView({ report, locale }: { report: AssessmentRep
         {p.score !== null ? <div><p className="text-xs text-slate-500">{t("score")}</p><p className="mt-1 text-2xl font-semibold">{p.score}{p.totalScore ? <span className="text-sm font-normal text-slate-500"> / {p.totalScore}</span> : null}</p></div> : null}
         {p.assessmentBand ? <div><p className="text-xs text-slate-500">{t("band")}</p><p className="mt-1 text-2xl font-semibold">{bands("band_" + p.assessmentBand)}</p></div> : null}
       </section> : null}
-      {(["strengths", "focusAreas", "teacherObservation", "recommendation", "recommendedClass"] as const).map((key) => p[key] ? <section key={key} className="mt-6">
+      {(["strengths", "focusAreas", "teacherObservation", "recommendation"] as const).map((key) => p[key] ? <section key={key} className="mt-6">
         <h2 className="text-sm font-semibold">{t("report_" + key)}</h2><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-7">{p[key]}</p>
       </section> : null)}
       <footer className="mt-10 border-t border-slate-200 pt-4 text-xs leading-6 text-slate-500">

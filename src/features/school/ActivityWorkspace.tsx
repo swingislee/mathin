@@ -390,7 +390,7 @@ function AssessmentTable({
     },
   }), [t, tableT]);
   const table = useDashboardTableView({ rows, columns, locale });
-  const columnCount = canViewOutcome ? 12 : 10;
+  const columnCount = canViewOutcome ? 11 : 9;
 
   return <DashboardSection
     title={t("assessmentNodeTitle")}
@@ -398,13 +398,13 @@ function AssessmentTable({
     actions={<span className="text-xs text-muted">{t("entryKeyboardHint")}</span>}
   >
     <DashboardTableShell>
-      <Table className="min-w-[128rem] table-fixed">
+      <Table className="min-w-[117rem] table-fixed">
         <TableHeader className="bg-card">
           <TableRow className="border-b border-line/60 hover:bg-transparent">
             <TableHead rowSpan={2} className="sticky left-0 z-30 w-44 border-r border-line bg-card"><DashboardTableColumnHeader label={t("student")} {...table.columnProps("student")} /></TableHead>
             <TableHead rowSpan={2} className="sticky left-44 z-30 w-28 border-r border-line bg-card"><DashboardTableColumnHeader label={t("participation")} {...table.columnProps("participation")} /></TableHead>
             <TableHead scope="colgroup" colSpan={4} className="h-8 text-center">{t("assessmentGroup")}</TableHead>
-            <TableHead scope="colgroup" colSpan={3} className="h-8 text-center">{t("familyDecisionGroup")}</TableHead>
+            <TableHead scope="colgroup" colSpan={2} className="h-8 text-center">{t("familyDecisionGroup")}</TableHead>
             {canViewOutcome ? <TableHead scope="colgroup" colSpan={2} className="h-8 text-center">{t("conversationOutcome")}</TableHead> : null}
             <TableHead rowSpan={2} className="w-24">{t("saveState")}</TableHead>
           </TableRow>
@@ -414,7 +414,6 @@ function AssessmentTable({
             <TableHead className="w-52">{t("strengths")}</TableHead>
             <TableHead className="w-52">{t("focusAreas")}</TableHead>
             <TableHead className="w-52">{t("parentConcerns")}</TableHead>
-            <TableHead className="w-44">{t("recommendedClass")}</TableHead>
             <TableHead className="w-56">{t("teacherRecommendation")}</TableHead>
             {canViewOutcome ? <>
               <TableHead className="w-52">{t("routingResult")}</TableHead>
@@ -528,15 +527,6 @@ function AssessmentRow({
     <TableCell className="p-2"><CellTextarea value={assessmentAutosave.draft.strengths} disabled={disabled} label={t("strengths")} onChange={(value) => update("strengths", value)} /></TableCell>
     <TableCell className="p-2"><CellTextarea value={assessmentAutosave.draft.focusAreas} disabled={disabled} label={t("focusAreas")} onChange={(value) => update("focusAreas", value)} /></TableCell>
     <TableCell className="p-2"><CellTextarea value={assessmentAutosave.draft.parentConcerns} disabled={disabled} label={t("parentConcerns")} onChange={(value) => update("parentConcerns", value)} /></TableCell>
-    <TableCell className="p-2"><Input
-      aria-label={t("recommendedClass")}
-      value={assessmentAutosave.draft.recommendedClass}
-      disabled={disabled}
-      maxLength={200}
-      placeholder={t("recommendedClassPlaceholder")}
-      onChange={(event) => update("recommendedClass", event.target.value)}
-      className="h-9"
-    /></TableCell>
     <TableCell className="p-2"><CellTextarea value={assessmentAutosave.draft.teacherRecommendation} disabled={disabled} label={t("teacherRecommendation")} onChange={(value) => update("teacherRecommendation", value)} /></TableCell>
     {canViewOutcome ? <>
       <TableCell className="p-2"><Select

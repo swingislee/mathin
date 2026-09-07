@@ -85,6 +85,16 @@ describe("DEV-SCHOOL-OPS-1 Phase 2 assessment-session worktable", () => {
     }
   });
 
+  it("uses the rating without a duplicate suggested-class column and preserves legacy values", () => {
+    const workspace = read("src", "features", "school", "ActivityWorkspace.tsx");
+    expect(workspace).toContain('t("assessmentBand")');
+    expect(workspace).not.toContain('t("recommendedClass")');
+    expect(workspace).not.toContain('update("recommendedClass",');
+    expect(workspace).toContain("const columnCount = canViewOutcome ? 11 : 9;");
+    expect(workspace).toMatch(/colSpan=\{2\}[^>]*>\{t\("familyDecisionGroup"\)\}/);
+    expect(workspace).toContain('recommendedClass: assessment?.recommendedClass ?? ""');
+  });
+
   it("flows confirmed invitations into one teacher queue, then hands completed results to support", () => {
     const migration = read(
       "supabase",

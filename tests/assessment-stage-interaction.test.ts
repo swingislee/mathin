@@ -138,7 +138,8 @@ describe("assessment stage clicks", () => {
       await clickStage(stage);
       expect(container.querySelector("[data-assessment-tags]")).toBe(tags);
       expect(tags.closest("[hidden]")).toBeNull();
-      expect(tags.querySelectorAll("[data-followup-field-icon]")).toHaveLength(4);
+      expect(tags.querySelectorAll("[data-followup-field-icon]")).toHaveLength(3);
+      expect(tags.querySelector('[data-assessment-field="class"]')).toBeNull();
       expect(scoreField().value).toBe("76");
       expect(container.querySelectorAll("[data-followup-notes]")).toHaveLength(1);
       expect(container.querySelector("[data-followup-notes]")).toBe(sidebar);
