@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
 import { LoaderCircle } from "lucide-react";
@@ -12,6 +12,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { newId } from "@/lib/uuid";
 import { FollowupEntryFields } from "./FollowupEntryFields";
 import { FollowupContactFacts } from "./FollowupContactFacts";
+import { FollowupContactOutcome } from "./FollowupContactOutcome";
 import { InvitationDraftFields } from "./InvitationDraftFields";
 import { invitationDraftIsComplete, invitationCanHaveNextContactReminder, INVITATION_KINDS, INVITATION_STATES } from "./invitation-contract";
 import { emptyInvitationDraft } from "./followup-entry-contract";
@@ -39,15 +40,23 @@ function storeDraft(key: string, draft: Draft | null) {
   try { if (draft) sessionStorage.setItem(key, JSON.stringify(draft)); else sessionStorage.removeItem(key); } catch { /* 会话存储不可用时，保持当前行内草稿。 */ }
 }
 
-export function StudentStageEntry({ row, requestedMode, locale, currentUserId, canEnroll, onSaved, onBusyChange, canAdvance }: {
+export function StudentStageEntry({ row, requestedMode, locale, currentUserId, canEnroll, onSaved, onBusyChange, canAdvance, outcomeRequest, ref }: {
   row: StudentStageRow; requestedMode: StudentEntryMode; locale: string; currentUserId: string; canEnroll: boolean;
   onSaved: (saved: StudentStageSaved, advance: boolean) => void; onBusyChange: (busy: boolean) => void; canAdvance: boolean;
+  outcomeRequest: { value: "" | "unreachable" | "connected" | "declined" | "invalid_number" } | null;
+  ref?: Ref<{ save: () => void }>;
 }) {
   const m = studentStageMessages(locale);
   const storageKey = `mathin:student-stage:v1:${currentUserId}:${row.key}`;
   const [draft, setDraft] = useState(() => readDraft(storageKey, row));
   const [mode, setMode] = useState(requestedMode);
   const [acceptedMode, setAcceptedMode] = useState(requestedMode);
+  const [acceptedOutcome, setAcceptedOutcome] = useState<typeof outcomeRequest>(null);
+  if (outcomeRequest && outcomeRequest !== acceptedOutcome) {
+    setAcceptedOutcome(outcomeRequest);
+    setMode("contact");
+    setDraft(current => ({ ...current, outcome: outcomeRequest.value || null, requestId: newId() }));
+  }
   if (requestedMode !== acceptedMode) {
     setMode(requestedMode); setAcceptedMode(requestedMode);
     setDraft(current => ({ ...current, requestId: newId() }));
@@ -59,6 +68,7 @@ export function StudentStageEntry({ row, requestedMode, locale, currentUserId, c
   const [pending, setPending] = useState(false);
   const saving = useRef(false);
   const [error, setError] = useState("");
+  useEffect(() => { storeDraft(storageKey, draft); }, [storageKey, draft]);
   const change = (patch: Partial<Draft>) => setDraft(current => {
     const next = { ...current, ...patch, requestId: newId() }; storeDraft(storageKey, next); return next;
   });
@@ -86,9 +96,10 @@ export function StudentStageEntry({ row, requestedMode, locale, currentUserId, c
   const save = async (advance: boolean) => {
     if (saving.current || disabled || !valid) return;
     saving.current = true;
+    const hasContactFacts = mode === "contact" && (draft.outcome === "connected" || draft.outcome === "declined");
     const input: StudentStageEntryInput = { studentId: row.studentId, leadId: row.leadId, mode, note: draft.note,
       nextContactAt: reminderAllowed ? draft.nextContactAt : null, outcome: mode === "contact" ? draft.outcome : null,
-      wechatAdded: mode === "contact" ? draft.wechatAdded : null, interestLevel: mode === "contact" ? draft.interestLevel : null,
+      wechatAdded: hasContactFacts ? draft.wechatAdded : null, interestLevel: hasContactFacts ? draft.interestLevel : null,
       invitation: mode === "invitation" ? { ...invitationValue, nextContactAt: reminderAllowed ? draft.nextContactAt : null } : null,
       expectedInvitationId: row.invitation?.id ?? null, expectedInvitationUpdatedAt: row.invitation?.updatedAt ?? null,
       enrollment: mode === "enrollment" ? { courseId: draft.courseId, termId: draft.termId, type: enrollmentType,
@@ -120,6 +131,7 @@ export function StudentStageEntry({ row, requestedMode, locale, currentUserId, c
     } catch { setError(m.saveFailed); toast.error(m.saveFailed); }
     finally { saving.current = false; setPending(false); onBusyChange(false); }
   };
+  useImperativeHandle(ref, () => ({ save: () => { void save(false); } }));
   const switchMode = (value: string) => { if (!pending) { setMode(value as StudentEntryMode); change({}); setError(""); } };
   const enrollmentLabel = row.stage === "awaiting_renewal" ? m.renewal : row.stage === "former_student" ? m.reactivate : m.enrollment;
   return <div className="space-y-4" data-student-stage-entry={row.key}>
@@ -146,12 +158,7 @@ export function StudentStageEntry({ row, requestedMode, locale, currentUserId, c
         {row.stage === "former_student" ? <p className="text-xs text-muted">{m.formerHint}</p> : null}
       </div> : null}
       {mode === "contact" ? <div className="space-y-5">
-        <div className="space-y-2"><Label className="text-xs">{m.contactOutcome}</Label><div className="flex flex-wrap gap-2">
-          {(["unreachable","connected","declined","invalid_number"] as const).map(value => <Button key={value} size="sm"
-            variant={draft.outcome === value ? "primary" : "secondary"} aria-pressed={draft.outcome === value} disabled={disabled}
-            onClick={() => change({ outcome: value, ...(["unreachable","invalid_number"].includes(value) ? { wechatAdded: null, interestLevel: null } : {}) })}>
-            {value === "connected" ? m.connected : value === "declined" ? m.declined : m.details[value]}</Button>)}
-        </div></div>
+        <FollowupContactOutcome value={draft.outcome ?? ""} onChange={value => change({ outcome: value || null })} disabled={disabled} locale={locale} />
         {draft.outcome === "connected" || draft.outcome === "declined" ? <FollowupContactFacts wechat={draft.wechatAdded} onWechatChange={wechatAdded => change({ wechatAdded })}
           interest={draft.interestLevel ?? ""} onInterestChange={value => change({ interestLevel: value || null })} disabled={disabled} /> : null}
       </div> : null}

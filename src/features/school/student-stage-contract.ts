@@ -15,6 +15,9 @@ export const STUDENT_STAGE_DETAILS = {
   former_student: ["withdrawn", "ended"],
 } as const satisfies Record<StudentStage, readonly string[]>;
 
+export type StudentStageAssignment = { key: string; subject: StudentStageRow | null };
+export type StudentStageAssignee = { userId: string; displayName: string };
+
 export interface StudentStageRow {
   key: string; studentId: string | null; leadId: string | null;
   name: string; phone: string; grade: number | null; gradeText: string;

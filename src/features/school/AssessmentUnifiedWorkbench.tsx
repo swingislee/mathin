@@ -13,11 +13,12 @@ import { CalendarClock, UserCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { FollowupInlineDetails } from "./dashboard-page/FollowupInlineDetails";
 import { FollowupPersonCell } from "./dashboard-page/FollowupPersonCell";
-import { followupFocusActivatesRow, navigateFollowupTable } from "./followup-keyboard";
+import { followupFocusActivatesRow } from "./followup-keyboard";
+import { FollowupTableBody } from "./dashboard-page/FollowupRecordRow";
 import { FilterSearchInput } from "./FilterBar";
 import { FollowupTabs } from "./FollowupTabs";
 import { FollowupCommandPanel } from "./FollowupCommandPanel";
@@ -425,12 +426,12 @@ export function AssessmentUnifiedWorkbench({
                 <TableHead className="sticky top-0 z-20 h-9 w-24 bg-card px-2"><DashboardTableColumnHeader label={fieldM.recordedAt} {...assessmentTable.columnProps("updated")} /></TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody onKeyDown={(event) => navigateFollowupTable(event, (id) => { setActiveId(id); return true; })}>
+            <FollowupTableBody onNavigate={(id) => { setActiveId(id); return true; }}>
               {visibleRows.map((row) => <FollowupTableRecord key={row.id} row={row} active={activeId === row.id} expanded={expandedId === row.id} retained={visitedDetails.has(row.id)} render={renderRow} />)}
               {visibleRows.length === 0 ? (
                 <TableRow><TableCell colSpan={7} className="h-32 px-4 text-center text-sm text-muted">{tableT("filteredEmpty")}</TableCell></TableRow>
               ) : null}
-            </TableBody>
+            </FollowupTableBody>
           </Table>
         </DashboardTableShell>
       )}

@@ -8,13 +8,16 @@ import { parseStudentStageFilters } from "./student-stage-contract";
 import { loadStudentStageData } from "./student-stage-data";
 import { StudentStageWorkspace } from "./StudentStageWorkspace";
 import { getOrganizationTimezoneV2 } from "./organization-locations";
+import { listStaffMembers } from "./staff";
 
 export async function StudentStagePage({ locale, currentUserId, permissions, searchParams }: {
   locale: string; currentUserId: string; permissions: Set<PermissionKey>; searchParams: Record<string, string | string[] | undefined>;
 }) {
   const filters = parseStudentStageFilters(searchParams, permissions.has("student.view.all") ? "all" : "mine");
-  const [data, t, timeZone] = await Promise.all([loadStudentStageData(filters), getTranslations("school.students"), getOrganizationTimezoneV2()]);
+  const canAssign = permissions.has("student.assign");
+  const [data, t, timeZone, staff] = await Promise.all([loadStudentStageData(filters), getTranslations("school.students"), getOrganizationTimezoneV2(), canAssign ? listStaffMembers() : Promise.resolve([])]);
   return <StudentStageWorkspace data={data} filters={filters} locale={locale} currentUserId={currentUserId}
+    canAssign={canAssign} assignees={staff.filter(member => member.isActive && member.canFollowUp).map(({ userId, displayName }) => ({ userId, displayName }))}
     canEnroll={permissions.has("enrollment.manage")} timeZone={timeZone} actions={<>
       {permissions.has("student.create") ? <NewStudentDialog /> : null}
       {permissions.has("student.import") ? <Link href="/dashboard/students/import" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>{t("import")}</Link> : null}

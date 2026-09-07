@@ -15,6 +15,7 @@ const env = Object.fromEntries(fs.readFileSync('.env.local', 'utf8').split(/\r?\
   const at = line.indexOf('='); return [line.slice(0, at), line.slice(at + 1).trim().replace(/^(["'])(.*)\1$/, '$2')];
 }));
 const stages = ['awaiting_first_contact', 'awaiting_assessment', 'awaiting_enrollment', 'awaiting_renewal', 'former_student'];
+const interfaceOnly = process.argv.includes('--interface');
 const args = stage => ({ p_stage: stage, p_scope: 'all', p_search: '', p_page: 1, p_page_size: 100, p_detail: '' });
 const counts = [];
 for (const role of ['principal', 'teacher', 'student']) {
@@ -30,10 +31,14 @@ for (const role of ['principal', 'teacher', 'student']) {
     if (role === 'student') {
       const result = await client.rpc('list_student_stage_workspace', args(stages[0]));
       if (!result.error || result.error.message !== 'FORBIDDEN') throw new Error('STUDENT_SCOPE_EXPOSED');
+      if (interfaceOnly) {
+        const assignment = await client.rpc('assign_student_stage_subjects', { p_subjects: [], p_staff_user_id: null });
+        if (assignment.error?.message !== 'FORBIDDEN') throw new Error('STUDENT_ASSIGNMENT_EXPOSED');
+      }
       console.log(JSON.stringify({ role, forbidden: 'PASS' })); continue;
     }
     const seen = new Set();
-    for (const stage of role === 'principal' ? stages : [stages[0]]) {
+    for (const stage of interfaceOnly ? [] : role === 'principal' ? stages : [stages[0]]) {
       const started = performance.now();
       const { data, error } = await client.rpc('list_student_stage_workspace', args(stage));
       if (error) throw new Error(`STAGE_RPC_FAILED:${role}:${error.message}`);
@@ -52,11 +57,19 @@ for (const role of ['principal', 'teacher', 'student']) {
         const html = await response.text();
         if (response.status !== 200 || /Could not find|schema cache|MISSING_MESSAGE|NEXT_REDIRECT|__next_error__/.test(html)
           || !(locale === 'zh' ? html.includes('历史学员') : html.includes('Former students'))) throw new Error(`PAGE_STARTUP_FAILED:${role}:${route}:${response.status}`);
+        if (interfaceOnly) {
+          const table = html.match(/<table\b[\s\S]*?<\/table>/)?.[0] ?? '';
+          const head = table.match(/<thead\b[\s\S]*?<\/thead>/)?.[0] ?? '';
+          if (/下次联系|Next contact/.test(head)) throw new Error('NEXT_CONTACT_COLUMN_RETURNED');
+          if (['awaiting_first_contact','awaiting_assessment'].includes(stage) && /测评／学习|Assessment \/ learning/.test(head)) throw new Error('BACKGROUND_COLUMN_RETURNED');
+          if (role === 'principal' && (!table.includes(locale === 'zh' ? '勾选本页' : 'Select this page')
+            || table.includes('data-student-stage-row') && (!table.includes('data-followup-row-key') || !table.includes(locale === 'zh' ? 'aria-label="分配 · ' : 'aria-label="Assign · ')))) throw new Error('INLINE_ASSIGNMENT_MISSING');
+        }
         console.log(JSON.stringify({ role, locale, stage, startup: 'PASS' }));
       }
     }
   } finally { await client.auth.signOut({ scope: 'local' }); }
 }
-fs.writeFileSync(path.join(root, 'http-check.json'), JSON.stringify({ checkedAt: new Date().toISOString(), counts,
-  startup: 'PASS', visualAcceptance: 'PENDING' }, null, 2), 'utf8');
-console.log(JSON.stringify({ api: 'PASS', counts, visualAcceptance: 'PENDING' }));
+fs.writeFileSync(path.join(root, interfaceOnly ? 'interface-http-check.json' : 'http-check.json'), JSON.stringify({ checkedAt: new Date().toISOString(), counts,
+  startup: 'PASS', interfaceOnly, visualAcceptance: 'PENDING' }, null, 2), 'utf8');
+console.log(JSON.stringify({ startup: 'PASS', ...(interfaceOnly ? { interface: 'PASS' } : { api: 'PASS', counts }), visualAcceptance: 'PENDING' }));

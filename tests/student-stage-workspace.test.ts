@@ -13,7 +13,7 @@ vi.mock("@/lib/auth", () => ({ getMyPerms: async () => fixture.permissions }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({
   auth: { getUser: async () => ({ data: { user: fixture.user } }) }, rpc: fixture.rpc,
 }) }));
-import { saveStudentStageEntryAction } from "@/features/school/student-stage-actions";
+import { assignStudentStageAction, saveStudentStageEntryAction } from "@/features/school/student-stage-actions";
 import { loadStudentStageData } from "@/features/school/student-stage-data";
 
 const id = "00000000-0000-4000-8000-000000000002";
@@ -103,5 +103,27 @@ describe("student entry action and page contract", () => {
     });
     fixture.rpc.mockResolvedValueOnce({ data: { ...page, rows: [{ ...row, stage: "unknown" }] }, error: null });
     await expect(loadStudentStageData(filters)).rejects.toThrow();
+  });
+  it("requires assignment permission and a bounded valid selection before calling the atomic assignment RPC", async () => {
+    const assignment = { staffUserId: id, subjects: [{ studentId: id, leadId: null, expectedOwnerId: null }] };
+    expect(await assignStudentStageAction(assignment)).toEqual({ ok: false, code: "FORBIDDEN" });
+    fixture.permissions.add("student.assign");
+    for (const subjects of [[], Array.from({ length: 101 }, () => assignment.subjects[0]), [{ studentId: null, leadId: null, expectedOwnerId: null }]]) {
+      expect(await assignStudentStageAction({ ...assignment, subjects })).toEqual({ ok: false, code: "VALIDATION" });
+    }
+    expect(fixture.rpc).not.toHaveBeenCalled();
+    const assigned = [{ key: row.key, subject: { ...row, ownerId: id, ownerName: "Owner" } }, { key: "lead:removed", subject: null }];
+    fixture.rpc.mockResolvedValueOnce({ data: assigned, error: null });
+    expect(await assignStudentStageAction(assignment)).toEqual({ ok: true, data: assigned });
+    expect(fixture.rpc).toHaveBeenCalledExactlyOnceWith("assign_student_stage_subjects", { p_subjects: assignment.subjects, p_staff_user_id: id });
+    expect(fixture.revalidate).toHaveBeenCalledWith("/[locale]/dashboard/followups", "layout");
+  });
+  it("returns stale-owner and scope failures without reporting a partial assignment", async () => {
+    fixture.permissions.add("student.assign");
+    for (const code of ["ASSIGNMENT_CONFLICT", "LEAD_SCOPE_MISMATCH", "FORBIDDEN_SCOPE"]) {
+      fixture.rpc.mockResolvedValueOnce({ data: null, error: { message: code } });
+      expect(await assignStudentStageAction({ staffUserId: id, subjects: [{ studentId: id, leadId: null, expectedOwnerId: null }] })).toEqual({ ok: false, code: code === "FORBIDDEN_SCOPE" ? "FORBIDDEN" : code });
+    }
+    expect(fixture.revalidate).not.toHaveBeenCalled();
   });
 });

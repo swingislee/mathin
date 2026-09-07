@@ -67,13 +67,18 @@ describe("follow-up keyboard scope", () => {
     locked.dispatch(vi.fn(() => false));
     expect(locked.rows[2].focus).not.toHaveBeenCalled();
   });
-  it("wires the same contact handler into both rows and keeps the nested assessment shortcut disabled", () => {
+  it("uses one record component for student and contact summaries/details", () => {
     const source = readFileSync(new URL("../src/features/school/LeadFirstContactWorkbench.tsx", import.meta.url), "utf8");
     const details = readFileSync(new URL("../src/features/school/dashboard-page/FollowupInlineDetails.tsx", import.meta.url), "utf8");
     const recordRow = readFileSync(new URL("../src/features/school/FirstContactRecordRow.tsx", import.meta.url), "utf8");
+    const shared = readFileSync(new URL("../src/features/school/dashboard-page/FollowupRecordRow.tsx", import.meta.url), "utf8");
+    const students = readFileSync(new URL("../src/features/school/StudentStageWorkspace.tsx", import.meta.url), "utf8");
     expect(source).toContain("<FirstContactRecordRow");
-    expect(source.match(/onKeyDown=\{handleRowKeyDown\}/g)).toHaveLength(1);
-    expect(recordRow.match(/onKeyDown=\{handleKeyDown\}/g)).toHaveLength(2);
+    expect(recordRow).toContain("<FollowupRecordRow");
+    expect(students).toContain("<FollowupRecordRow");
+    expect(source).toContain("<FollowupTableBody");
+    expect(students).toContain("<FollowupTableBody");
+    expect(shared.match(/onKeyDown=\{handleKeyDown\}/g)).toHaveLength(2);
     expect(source).toContain("enableProgressShortcuts={false}");
     expect(details).toContain("onKeyDown={onKeyDown}");
     expect(details).toContain("onActivate?.()");

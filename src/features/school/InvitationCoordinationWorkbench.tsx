@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import {
@@ -65,7 +65,7 @@ import { invitationForAdvance } from "./followup-entry-contract";
 import { PostActivityHandoff } from "./EnrollmentHandoffButton";
 import { followupState, type ActivityEnrollmentContext } from "./enrollment-workflow-contract";
 import { LeadContactEntryRow } from "./LeadFirstContactWorkbench";
-import { navigateFollowupTable } from "./followup-keyboard";
+import { FollowupTableBody } from "./dashboard-page/FollowupRecordRow";
 import { deriveLeadContactDestination, leadHasCommittedVisit, type LeadPoolRow } from "./lead-contract";
 import type { LeadContactInput } from "./actions/leads";
 import { type CommunicationDayEvent, type CommunicationWorkbenchView, type CommunicationWorkday, type CommunicationWorklist } from "./communication-workday-contract";
@@ -873,13 +873,13 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
         <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={recordsMode ? workT("dayCommunicationColumn") : rowM.notes} {...table.columnProps("note")} /></TableHead>
         <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={recordsMode ? workT("occurredAtColumn") : rowM.updated} {...table.columnProps("updated")} /></TableHead>
       </TableRow></TableHeader>
-      <TableBody onKeyDown={(event) => navigateFollowupTable(event, (key) => {
+      <FollowupTableBody onNavigate={(key) => {
         if (activeId && isSavingKey(activeId)) return false;
         setActiveId(key);
         const next = currentSession.facts.get(key);
         setActiveContactId(next?.source === "contact" ? next.value.id : null);
         return true;
-      })}>{visibleRows.map((row) => <FollowupTableRecord key={communicationRowKey(row)} row={row} active={activeId === communicationRowKey(row) || (row.source === "contact" && activeContactId === row.value.id)} expanded={activeId === communicationRowKey(row)} selected={workSelection.selectedKeys.has(communicationRowKey(row))} pending={savingIds.has(row.id)} render={renderRow} />)}{!visibleRows.length ? <TableRow><TableCell colSpan={7} className="h-32 text-center text-muted">{emptyMessage ?? tableT("filteredEmpty")}</TableCell></TableRow> : null}</TableBody>
+      }}>{visibleRows.map((row) => <FollowupTableRecord key={communicationRowKey(row)} row={row} active={activeId === communicationRowKey(row) || (row.source === "contact" && activeContactId === row.value.id)} expanded={activeId === communicationRowKey(row)} selected={workSelection.selectedKeys.has(communicationRowKey(row))} pending={savingIds.has(row.id)} render={renderRow} />)}{!visibleRows.length ? <TableRow><TableCell colSpan={7} className="h-32 text-center text-muted">{emptyMessage ?? tableT("filteredEmpty")}</TableCell></TableRow> : null}</FollowupTableBody>
     </Table>
   </DashboardTableShell>;
 }

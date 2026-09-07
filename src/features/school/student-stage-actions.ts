@@ -6,8 +6,8 @@ import { actionError, type ActionResult } from "@/lib/action-result";
 import { authorizedClient } from "./actions/guards";
 import { COMMON_CODES, datetime, parse, text, uuid } from "./actions/schemas";
 import { invitationDraftIsComplete, INVITATION_KINDS, INVITATION_STATES, isAssessmentTimeOption, MAX_ASSESSMENT_TIME_OPTIONS } from "./invitation-contract";
-import type { StudentStageEntryInput, StudentStageSaved, StudentStageOptions } from "./student-stage-contract";
-import { parseStudentStageSaved, readStudentStageSubject, studentStageRpc } from "./student-stage-data";
+import type { StudentStageEntryInput, StudentStageSaved, StudentStageOptions, StudentStageAssignment } from "./student-stage-contract";
+import { parseStudentStageSaved, parseStudentStageAssignments, readStudentStageSubject, studentStageRpc } from "./student-stage-data";
 import { listInvitationOptions } from "./invitations";
 import { loadPhase3EnrollmentOptions } from "./phase3-enrollment-data";
 
@@ -32,6 +32,22 @@ const entrySchema = z.object({
   && (v.mode !== "contact" || v.outcome) && (v.mode !== "invitation" || v.invitation)
   && (v.mode !== "enrollment" || v.enrollment));
 const saveSchema = z.object({ requestId: uuid, input: entrySchema });
+const assignmentSchema = z.object({ staffUserId: uuid, subjects: z.array(z.object({ studentId: uuid.nullable(), leadId: uuid.nullable(), expectedOwnerId: uuid.nullable() })
+  .refine(value => value.studentId || value.leadId)).min(1).max(100) });
+
+export async function assignStudentStageAction(input: z.input<typeof assignmentSchema>): Promise<ActionResult<StudentStageAssignment[]>> {
+  try {
+    const value = parse(assignmentSchema, input);
+    const { supabase } = await authorizedClient("student.assign");
+    const result = parseStudentStageAssignments(await studentStageRpc(supabase, "assign_student_stage_subjects", {
+      p_subjects: value.subjects, p_staff_user_id: value.staffUserId,
+    }));
+    revalidatePath("/[locale]/dashboard/students", "page");
+    revalidatePath("/[locale]/dashboard/followups", "layout");
+    revalidatePath("/[locale]/dashboard/leads", "page");
+    return { ok: true, data: result };
+  } catch (error) { return actionError<StudentStageAssignment[]>(error, [...COMMON_CODES,"ASSIGNMENT_CONFLICT","TARGET_CANNOT_FOLLOW_UP","LEAD_SCOPE_MISMATCH","FORBIDDEN_SCOPE","SUBJECT_MISMATCH"]); }
+}
 
 export async function saveStudentStageEntryAction(requestId: string, input: StudentStageEntryInput): Promise<ActionResult<StudentStageSaved>> {
   try {

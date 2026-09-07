@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useAction } from "@/components/action-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { FollowupEntryFields } from "./FollowupEntryFields";
@@ -20,7 +20,9 @@ import { cn } from "@/lib/utils";
 import { FollowupChoice, followupToneClasses } from "./dashboard-page/FollowupChoice";
 import { LeadIdentityControl } from "./LeadIdentityControl";
 import { Student360Trigger } from "./Student360Sheet";
-import { CONTACT_OUTCOME_SHORTCUTS, followupKeyboardCommand, followupKeyContext, navigateFollowupTable } from "./followup-keyboard";
+import { CONTACT_OUTCOME_SHORTCUTS } from "./followup-keyboard";
+import { FollowupTableBody } from "./dashboard-page/FollowupRecordRow";
+import { FollowupContactOutcome } from "./FollowupContactOutcome";
 import { useLeadPoolSelection } from "./LeadPoolSelection";
 import {
   recordLeadContactAction,
@@ -58,12 +60,6 @@ import {
 
 const ACQUISITION_TIME_ZONE = "Asia/Shanghai";
 const EMPTY_VALUE = "$empty";
-const CONTACT_OUTCOME_SELECTED_CLASSES: Record<LeadContactOutcome, string> = {
-  unreachable: "border-crater bg-moon/80 font-semibold text-ink hover:bg-moon",
-  connected: "border-leaf-deep/60 bg-leaf/70 font-semibold text-ink hover:bg-leaf/85",
-  declined: "border-blue/55 bg-blue/15 font-semibold text-blue hover:bg-blue/20",
-  invalid_number: "border-rose/60 bg-rose/15 font-semibold text-rose-deep hover:bg-rose/20",
-};
 type FirstContactTableColumn = "seed" | "context" | "owner" | "status";
 
 type TernaryChoice = LeadContactDraft["wechatState"];
@@ -156,12 +152,6 @@ export function LeadContactEntryRow({
     lead.id,
     `${lead.contactCount}:${lead.lastContactAt ?? "new"}`,
   );
-
-  useEffect(() => {
-    if (!active || rowRef.current?.contains(document.activeElement) || document.getElementById(detailsId)?.contains(document.activeElement)) return;
-    rowRef.current?.focus({ preventScroll: true });
-    rowRef.current?.scrollIntoView({ block: "nearest" });
-  }, [active, detailsId]);
 
   const contactRun = useAction(recordLeadContactAction, {
     successMessage: t("contactSaved"),
@@ -290,38 +280,9 @@ export function LeadContactEntryRow({
     }
   };
 
-  const handleRowKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
-    const context = followupKeyContext(event);
-    if (context.overlay || event.defaultPrevented || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229 || event.repeat || pending) return;
-    if (event.target === rowRef.current && event.key === "Enter" && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) { event.preventDefault(); changeDetailsOpen(!detailsOpen); return; }
-    const command = followupKeyboardCommand({ ...event, isComposing: event.nativeEvent.isComposing }, context);
-    if (command?.type === "close" && detailsOpen) { event.preventDefault(); changeDetailsOpen(false); return; }
-    if (!canUseEntry) return;
-    if (command?.type === "save") {
-      event.preventDefault();
-      saveEntry(false);
-      return;
-    }
-    if (command?.type !== "outcome") return;
-    event.preventDefault();
-    chooseOutcome(command.outcome);
-  };
-
   const contactFacts = reachable ? <FollowupContactFacts wechat={leadWechatValue(wechatState, lead.wechatAdded)}
     onWechatChange={(added) => setWechatState(added === null ? "unknown" : added ? "yes" : "no")} interest={interestLevel} onInterestChange={setInterestLevel} disabled={pending} /> : null;
-  const outcomeControl = <div className="space-y-1.5">
-    <p className="text-xs font-medium text-ink">{entryT("outcome")}</p>
-    <div className="flex min-w-0 flex-wrap items-center gap-2">
-      <FollowupChoice presentation="buttons" label={entryT("outcome")} value={outcome} disabled={!canEdit || pending}
-        onValueChange={(value) => chooseOutcome(value as LeadContactOutcome)}
-        options={CONTACT_OUTCOME_SHORTCUTS.map(({ key, outcome: value }) => ({ value, label: `${t(`contactOutcome_${value}`)} · ${key}`, shortcut: key,
-          selectedClassName: CONTACT_OUTCOME_SELECTED_CLASSES[value] }))} />
-      <Button type="button" size="sm" variant="ghost" className="h-9 rounded-md px-2 text-xs"
-        disabled={!canEdit || pending || !outcome} aria-keyshortcuts="0" onClick={() => chooseOutcome("")}>
-        {rowM.clearOutcome}<kbd className="text-[10px]">0</kbd>
-      </Button>
-    </div>
-  </div>;
+  const outcomeControl = <FollowupContactOutcome value={outcome} onChange={chooseOutcome} disabled={!canEdit || pending} locale={locale} />;
   const entryContent = (
       <>
         {historicalSummary ? <div className="mb-1 min-w-0">{historicalSummary.details}</div> : null}
@@ -361,7 +322,8 @@ export function LeadContactEntryRow({
       pendingChanges: Boolean(outcome || note.trim() || reminderDirty),
     }} locale={locale} rowRef={rowRef} tabIndex={layout === "communication" || active ? 0 : -1}
     active={active} selected={selected} expanded={detailsOpen} pending={pending} layout={layout} canAssign={canAssign}
-    detailsId={detailsId} onExpandedChange={changeDetailsOpen} onActivate={() => onActivate(lead.id)} onKeyDown={handleRowKeyDown}
+    detailsId={detailsId} onExpandedChange={changeDetailsOpen} onActivate={() => onActivate(lead.id)}
+    onOutcomeChange={canUseEntry ? chooseOutcome : undefined} onSave={canUseEntry ? () => saveEntry(false) : undefined}
     selection={leadingSelection} historicalSummary={historicalSummary}
     defaultCells={layout === "default" ? <>
       {canAssign && layout === "default" ? <LeadContactSelectionCell lead={lead} visibleIds={visibleIds} /> : null}
@@ -605,7 +567,7 @@ export function LeadFirstContactWorkbench({
               <TableHead className="sticky top-0 z-20 h-8 bg-card px-2">{t("firstContactEntry")}</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody onKeyDown={(event) => navigateFollowupTable(event, (key) => { setActiveLeadId(key); return true; })}>
+          <FollowupTableBody onNavigate={(key) => { setActiveLeadId(key); return true; }}>
             {contactTable.visibleRows.map((lead) => (
               <LeadContactEntryRow
                 key={lead.id}
@@ -628,7 +590,7 @@ export function LeadFirstContactWorkbench({
             {contactTable.visibleRows.length === 0 ? (
               <TableRow><TableCell colSpan={canAssign ? 6 : 5} className="h-32 px-4 text-center text-sm text-muted">{tableT("filteredEmpty")}</TableCell></TableRow>
             ) : null}
-          </TableBody>
+          </FollowupTableBody>
         </Table>
       </DashboardTableShell>
   );

@@ -41,3 +41,4 @@ export async function readStudentStageSubject(client: Client, subject: { student
   return rowSchema.parse(await studentStageRpc(client, "read_student_stage_subject", { p_student_id: subject.studentId, p_lead_id: subject.leadId }));
 }
 export function parseStudentStageSaved(data: unknown): StudentStageSaved { return savedSchema.parse(data); }
+export function parseStudentStageAssignments(data: unknown) { return z.array(z.object({ key: z.string(), subject: rowSchema.nullable() })).parse(data); }
