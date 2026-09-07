@@ -43,7 +43,7 @@ export function BusinessHistorySections({ data, locale, kind, showStudent = fals
         <TableHeader><TableRow>{studentHead}<TableHead>{m.period}</TableHead><TableHead>{m.intention}</TableHead><TableHead>{m.outcome}</TableHead><TableHead>{m.currentClass}</TableHead></TableRow></TableHeader>
         <TableBody>{renewals.map(row=><TableRow key={row.id} id={row.id}>
           {studentCell(row.student_id,'renewal')}
-          <TableCell className="align-top whitespace-nowrap">{row.period_year??m.unknown} {row.period_key==='summer'?m.summer:m.autumn}</TableCell>
+          <TableCell className="align-top whitespace-nowrap">{row.period_label || [row.period_year, row.period_key==='summer'?m.summer:row.period_key==='autumn'?m.autumn:m.unknown].filter(Boolean).join(' ')}</TableCell>
           <TableCell className="align-top"><p className="max-w-xl whitespace-pre-wrap leading-6">{row.decision_note}</p><BusinessHistoryEvidence data={data} reference={row} locale={locale}/></TableCell>
           <TableCell className="align-top">{row.outcome==='renewed'?m.renewed:row.outcome==='not_renewed'?m.notRenewed:m.unknown}</TableCell>
           <TableCell className="align-top">{[row.class_label,row.teacher_label].filter(Boolean).join(' · ')||m.unknown}<BusinessRecordRevisionButton kind="renewal" recordId={row.id} subject={data.students[row.student_id]}/></TableCell>

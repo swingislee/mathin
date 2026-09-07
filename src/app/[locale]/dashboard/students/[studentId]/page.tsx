@@ -24,6 +24,7 @@ import { StudentFollowUpsTab, StudentLearningTab, StudentVideosTab } from "@/fea
 import { StudentBusinessHistoryTab } from "@/features/school/StudentBusinessHistoryTab";
 import { businessHistoryKind } from "@/features/school/student-business-history-contract";
 import { canReadStudentBusinessHistory } from "@/features/school/student-business-history-data";
+import { isLocalHistoryArchiveEnvironment } from "@/features/school/history-archive-contract";
 import { getStudentBusinessHistoryMessages } from "@/features/school/student-business-history-messages";
 import { StudentFinancePanel } from "@/features/school/StudentFinancePanel";
 import { StudentProfileEditor } from "@/features/school/StudentProfileEditor";
@@ -58,7 +59,7 @@ export default async function StudentDetailPage({
   searchParams,
 }: {
   params: Promise<{ locale: string; studentId: string }>;
-  searchParams: Promise<{ tab?: string; report?: string; history?: string; returnTo?: string | string[] }>;
+  searchParams: Promise<{ tab?: string; report?: string; history?: string; source?: string; sourcePage?: string; returnTo?: string | string[] }>;
 }) {
   const [{ locale, studentId }, rawSearchParams] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
@@ -84,7 +85,10 @@ export default async function StudentDetailPage({
     : [];
 
   const tabs: StudentTab[] = showFinance ? [...BASE_TABS, "finance"] : [...BASE_TABS];
-  if (await canReadStudentBusinessHistory(locale)) tabs.splice(2, 0, "history");
+  const sourceEnabled=isLocalHistoryArchiveEnvironment(process.env.NODE_ENV,process.env.NEXT_PUBLIC_SUPABASE_URL);
+  if (sourceEnabled || await canReadStudentBusinessHistory(locale)) tabs.splice(2, 0, "history");
+  const sourceRecordId=sourceEnabled&&typeof rawSearchParams.source==='string'&&rawSearchParams.source.length<=160?rawSearchParams.source:undefined;
+  const sourcePage=typeof rawSearchParams.sourcePage==='string'&&/^\d{1,5}$/.test(rawSearchParams.sourcePage)?Math.max(1,Number(rawSearchParams.sourcePage)):1;
   const historyMessages = getStudentBusinessHistoryMessages(locale);
   const requested = rawSearchParams.tab as StudentTab | undefined;
   const activeTab: StudentTab = requested && tabs.includes(requested) ? requested : "overview";
@@ -163,11 +167,11 @@ export default async function StudentDetailPage({
           )}
 
           {activeTab === "followups" && perms.has("followup.view") && (
-            <StudentFollowUpsTab student={student} locale={locale} canWrite={perms.has("followup.write") && !student.deletedAt} />
+            <StudentFollowUpsTab student={student} locale={locale} canWrite={perms.has("followup.write") && !student.deletedAt} sourceRecordId={sourceRecordId} />
           )}
 
           {activeTab === "history" && (
-            <StudentBusinessHistoryTab studentId={studentId} locale={locale} kind={businessHistoryKind(rawSearchParams.history)} current={{ status: t(student.status), gender: student.gender, grade: student.grade }} />
+            <StudentBusinessHistoryTab studentId={studentId} locale={locale} kind={businessHistoryKind(rawSearchParams.history)} sourcePage={sourcePage} current={{ status: t(student.status), gender: student.gender, grade: student.grade }} />
           )}
 
           {activeTab === "learning" && (

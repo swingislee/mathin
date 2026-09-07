@@ -100,6 +100,8 @@ const zh = {
   reasonMultiplePeople: "原记录关联了多个学员档案，需要逐一核对归属。",
   reasonLinkedConflict: "本条资料与关联学员档案的身份信息不一致，需要复核。",
   reasonLinkedPerson: "原记录直接关联的学员档案已明确匹配，且身份信息一致。",
+  reasonConfirmedDuringWork: "使用这条资料时已人工确认所属学员；原文与确认记录均保留。",
+  reasonNonStudent: "员工或其他业务来源资料，按原文保留。",
   reasonUnknown: "这条资料的归属依据需要进一步复核，请结合原文和来源核对。",
   warningDateTimezone: "源日期缺少时区说明，已保留原始数值。",
   warningDateFormat: "源日期缺少格式说明，已保留原始数值。",
@@ -218,6 +220,8 @@ const en: HistoryArchiveMessages = {
   reasonMultiplePeople: "The source record links to multiple student profiles. Review each association.",
   reasonLinkedConflict: "Identity information conflicts with the linked student profile. Review is required.",
   reasonLinkedPerson: "The directly linked student profile has a clear match and consistent identity information.",
+  reasonConfirmedDuringWork: "The student association was confirmed when this record was used. The original and confirmation history are retained.",
+  reasonNonStudent: "Staff or other business source material, retained in its original form.",
   reasonUnknown: "The identity evidence needs further review. Check the original content and its source.",
   warningDateTimezone: "The source date has no timezone information. Its original numeric value has been retained.",
   warningDateFormat: "The source date has no format information. Its original numeric value has been retained.",
@@ -249,6 +253,8 @@ export function historyArchiveMatchExplanation(reason: string, messages: History
     multiple_person_anchors: "reasonMultiplePeople",
     person_anchor_identity_conflict: "reasonLinkedConflict",
     unique_direct_person_anchor: "reasonLinkedPerson",
+    confirmed_during_work: "reasonConfirmedDuringWork",
+    non_student_source: "reasonNonStudent",
   };
   return messages[keys[reason] ?? "reasonUnknown"];
 }

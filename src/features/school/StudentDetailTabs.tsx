@@ -11,6 +11,8 @@ import { StageReportPanel } from "./StageReportPanel";
 import type { SchoolTermRow } from "./courses";
 import type { StaffLearningResult } from "./learning-results";
 import type { StudentDetail, StudentLearning } from "./students";
+import { loadStudentSourceContext } from './source-use-data';
+import { sourceFollowupHref, sourceUseMessages } from './source-use-contract';
 
 /**
  * 学生档案各 Tab 的正文（doc 23 §11）。
@@ -36,10 +38,12 @@ export async function StudentFollowUpsTab({
   student,
   locale,
   canWrite,
+  sourceRecordId,
 }: {
   student: StudentDetail;
   locale: string;
   canWrite: boolean;
+  sourceRecordId?: string;
 }) {
   const t = await getTranslations("school.students");
   const formatter = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" });
@@ -47,15 +51,23 @@ export async function StudentFollowUpsTab({
   const history = await loadStudentBusinessHistory(locale, { studentId: student.id, kind: "communication" });
   const historyMessages = getStudentBusinessHistoryMessages(locale);
   const hasHistory = !!history?.communications.length;
+  const sourceContext=sourceRecordId?await loadStudentSourceContext(locale,student.id,sourceRecordId):null;
+  const sourceM=sourceUseMessages(locale);
 
   return (
     <div className="space-y-6">
+      {sourceRecordId?<DashboardSection title={sourceM.sourceContext}>
+        {sourceContext?<details open className="text-sm"><summary className="cursor-pointer font-medium">{sourceContext.title}</summary>
+          <p className="my-2 break-words text-xs text-muted">{sourceContext.source}</p>
+          <dl className="max-h-72 space-y-3 overflow-y-auto">{sourceContext.cells.map((cell,index)=><div key={index}><dt className="text-xs text-muted">{cell.name}</dt><dd className="mt-1 whitespace-pre-wrap break-words leading-6">{cell.text}</dd></div>)}</dl>
+        </details>:<p role="alert" className="text-sm text-muted">{sourceM.associationRequired}</p>}
+      </DashboardSection>:null}
       {hasHistory && <>
         <Link href={`/dashboard/students/${student.id}?tab=history`} className="text-sm underline underline-offset-4">{historyMessages.historyLink}</Link>
         <BusinessHistorySections data={history!} locale={locale} kind="communication" />
       </>}
     <DashboardSection title={hasHistory ? historyMessages.currentFollowup : t("followUps")}>
-      {canWrite && <FollowUpForm studentId={student.id} currentStatus={student.followUpStatus} />}
+      {canWrite && (!sourceRecordId||sourceContext) && <FollowUpForm studentId={student.id} currentStatus={student.followUpStatus} contextSourceRecordId={sourceRecordId} />}
       {!hasHistory && <ImportedHistoryStudentLink studentId={student.id} locale={locale} />}
       {student.followUps.length === 0 ? (
         <p className="mt-4 text-sm text-muted">{t("noFollowUps")}</p>
@@ -75,6 +87,7 @@ export async function StudentFollowUpsTab({
                 )}
               </div>
               <p className="mt-2 whitespace-pre-wrap">{followUp.content}</p>
+              {followUp.contextSourceRecordId?<Link href={sourceFollowupHref(student.id,followUp.contextSourceRecordId)} className="mt-2 inline-block text-xs text-muted underline underline-offset-4">{sourceM.sourceSaved}</Link>:null}
             </li>
           ))}
         </ol>

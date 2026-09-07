@@ -18,11 +18,12 @@ const followUpSchema = z.object({
   kind: z.enum(FOLLOW_UP_KINDS),
   nextFollowUpAt: datetime.nullable(),
   statusAfter: z.enum(FOLLOW_UP_STATUSES).nullable(),
+  contextSourceRecordId: requiredText(160).optional(),
 });
 
 export async function addStudentFollowUp(
   studentId: string,
-  input: { content: string; kind: FollowUpKind; nextFollowUpAt: string | null; statusAfter: string | null },
+  input: { content: string; kind: FollowUpKind; nextFollowUpAt: string | null; statusAfter: string | null; contextSourceRecordId?:string },
 ): Promise<ActionResult> {
   try {
     const value = parse(followUpSchema, { studentId, ...input });
@@ -34,10 +35,11 @@ export async function addStudentFollowUp(
       kind: value.kind,
       next_follow_up_at: value.nextFollowUpAt,
       status_after: value.statusAfter,
+      ...(value.contextSourceRecordId?{context_source_record_id:value.contextSourceRecordId}:{}),
     });
     if (error) throw new Error(error.message);
     return { ok: true };
   } catch (error) {
-    return actionError(error, COMMON_CODES);
+    return actionError(error, [...COMMON_CODES,'SOURCE_ASSOCIATION_REQUIRED']);
   }
 }

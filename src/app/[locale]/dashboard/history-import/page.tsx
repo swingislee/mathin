@@ -60,5 +60,5 @@ async function ArchiveCommandPanel({ locale, searchParams }: { locale: string; s
 
 async function ArchiveBody({ locale, searchParams }: { locale: string; searchParams: SearchParams }) {
   const { filters, data, detail } = await loadAuthorizedArchive(locale, searchParams);
-  return <HistoryArchiveWorkbench filters={filters} data={data} detail={detail} messages={getHistoryArchiveMessages(locale)} />;
+  return <HistoryArchiveWorkbench filters={filters} data={data} detail={detail} messages={getHistoryArchiveMessages(locale)} locale={locale} />;
 }

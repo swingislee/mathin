@@ -5,6 +5,7 @@ export interface BusinessRecordSource {
 }
 export interface HistoricalRenewal extends BusinessRecordSource {
   period_year: number | null; period_key: string; decision_note: string; outcome: string;
+  period_label?: string;
   class_label: string; teacher_label: string;
 }
 export interface HistoricalActivity extends BusinessRecordSource {

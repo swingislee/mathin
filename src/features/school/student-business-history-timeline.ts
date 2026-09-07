@@ -16,7 +16,7 @@ export function studentBusinessHistoryEvents(data: StudentBusinessHistory | null
     .filter(([, value]) => value !== null && value !== undefined && String(value).trim() !== '')
     .map(([label, value]) => ({ label, value: String(value) }));
   const notes = (label: Student360NoteLabel, content: string) => content ? [{ label, content }] : [];
-  const period = (row: HistoricalRenewal) => [row.period_year, row.period_key === 'summer' ? m.summer : row.period_key === 'autumn' ? m.autumn : row.period_key].filter(Boolean).join(' ');
+  const period = (row: HistoricalRenewal) => row.period_label || [row.period_year, row.period_key === 'summer' ? m.summer : row.period_key === 'autumn' ? m.autumn : row.period_key].filter(Boolean).join(' ');
   const outcome = (row: HistoricalRenewal) => row.outcome === 'renewed' ? m.renewed : row.outcome === 'not_renewed' ? m.notRenewed : recordM.outcomeUnknown;
 
   for (const row of data.assessments) {

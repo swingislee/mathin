@@ -1,7 +1,7 @@
 "use client";
 
 import { LoaderCircle, MessageSquarePlus } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
@@ -13,6 +13,7 @@ import { useRouter } from "@/i18n/navigation";
 import { addStudentFollowUp } from "./actions/followups";
 import { type FollowUpKind } from "./actions/types";
 import { fromSelectValue, inputClass, toSelectValue } from "./controls";
+import { sourceUseMessages } from './source-use-contract';
 
 const KINDS: FollowUpKind[] = ["note", "call", "class", "visit"];
 // 与 students.ts 的 FOLLOW_UP_STATUSES 同步（该模块引 server supabase，客户端不可 import）
@@ -21,19 +22,20 @@ type FollowUpStatus=(typeof FOLLOW_UP_STATUSES)[number];
 const FOLLOW_UP_TRANSITIONS:Record<FollowUpStatus,readonly FollowUpStatus[]>={pending:["following","lost"],following:["invited","lost"],invited:["following","trialed","lost"],trialed:["following","signed","lost"],signed:[],lost:["following"]};
 
 /** 360° 档案页跟进快捷添加表单（10-§8：交互要轻，提交后刷新时间线）。 */
-export function FollowUpForm({ studentId, currentStatus, onSuccess }: { studentId: string; currentStatus: FollowUpStatus; onSuccess?: () => void }) {
+export function FollowUpForm({ studentId, currentStatus, onSuccess, contextSourceRecordId }: { studentId: string; currentStatus: FollowUpStatus; onSuccess?: () => void; contextSourceRecordId?:string }) {
   const t = useTranslations("school.students");
   const router = useRouter();
+  const sourceM=sourceUseMessages(useLocale());
   const [content, setContent] = useState("");
   const [kind, setKind] = useState<FollowUpKind>("note");
   const [nextAt, setNextAt] = useState("");
   const [statusAfter, setStatusAfter] = useState("");
 
   const { run: submitRun, pending } = useAction(
-    (input: { content: string; kind: FollowUpKind; nextFollowUpAt: string | null; statusAfter: string | null }) => addStudentFollowUp(studentId, input),
+    (input: { content: string; kind: FollowUpKind; nextFollowUpAt: string | null; statusAfter: string | null }) => addStudentFollowUp(studentId, {...input,...(contextSourceRecordId?{contextSourceRecordId}:{})}),
     {
       successMessage: t("followUpSaved"),
-      errorMessage: { default: t("followUpFailed") },
+      errorMessage: { default: t("followUpFailed"), SOURCE_ASSOCIATION_REQUIRED:sourceM.associationRequired },
       onSuccess: () => {
         setContent("");
         setNextAt("");

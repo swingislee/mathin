@@ -20,6 +20,8 @@ const boundary = vi.hoisted(() => ({
   createClient: vi.fn(),
   batchPresent: true,
   databaseError: null as null | { code: string },
+  records: [] as Record<string, unknown>[],
+  detailRecord: null as Record<string, unknown> | null,
   queryCalls: [] as { table: string; method: string; args: unknown[] }[],
 }));
 
@@ -69,16 +71,18 @@ beforeEach(() => {
   boundary.events = [];
   boundary.batchPresent = true;
   boundary.databaseError = null;
+  boundary.records = [];
+  boundary.detailRecord = null;
   boundary.queryCalls = [];
   boundary.createClient.mockImplementation(async () => {
     boundary.events.push('database');
     return { from: (table: string) => {
       const chain: Record<string, unknown> = {};
-      for (const method of ['select','contains','order','limit','eq','neq','ilike']) chain[method] = (...args: unknown[]) => {
+      for (const method of ['select','contains','order','limit','eq','neq','ilike','is','or']) chain[method] = (...args: unknown[]) => {
         boundary.queryCalls.push({table,method,args}); return chain;
       };
-      chain.maybeSingle = async () => ({data:table==='history_import_batches'&&boundary.batchPresent?{id:'batch',manifest:{summary:emptyPage.summary},imported_at:'2026-09-07'}:null,error:boundary.databaseError});
-      chain.range = async (...args: unknown[]) => { boundary.queryCalls.push({table,method:'range',args}); return {data:[],count:0,error:boundary.databaseError}; };
+      chain.maybeSingle = async () => ({data:table==='history_import_batches'?(boundary.batchPresent?{id:'batch',manifest:{summary:emptyPage.summary},imported_at:'2026-09-07'}:null):boundary.detailRecord,error:boundary.databaseError});
+      chain.range = async (...args: unknown[]) => { boundary.queryCalls.push({table,method:'range',args}); return {data:boundary.records,count:boundary.records.length,error:boundary.databaseError}; };
       return chain;
     } };
   });
@@ -130,6 +134,8 @@ describe("operator-facing history explanations", () => {
     expect(historyArchiveMatchExplanation("no_current_identity_candidate", messages)).toBe(messages.reasonNoCurrentIdentity);
     expect(historyArchiveMatchExplanation("no_identity_fields", messages)).toBe(messages.reasonNoIdentityFields);
     expect(historyArchiveMatchExplanation("phone_only", messages)).toBe(messages.reasonPhoneOnly);
+    expect(historyArchiveMatchExplanation("confirmed_during_work", messages)).toBe(messages.reasonConfirmedDuringWork);
+    expect(historyArchiveMatchExplanation("non_student_source", messages)).toBe(messages.reasonNonStudent);
     expect(historyArchiveMatchExplanation("unrecognized_internal_flag", messages)).toBe(messages.reasonUnknown);
     expect(historyArchiveWarningExplanation("LINK_TARGET_MISSING:field-private:table-private:record-private", messages)).toBe(messages.warningLink);
     expect(historyArchiveWarningExplanation("new_warning:private-detail", messages)).toBe(messages.warningUnknown);
@@ -206,8 +212,32 @@ describe("private archive read authorization", () => {
     expect(boundary.queryCalls).toContainEqual({table:'history_import_records',method:'range',args:[100,149]});
     expect(boundary.queryCalls).toContainEqual({table:'history_import_records',method:'eq',args:['history_import_batch_records.batch_id','batch']});
     expect(boundary.queryCalls).toContainEqual({table:'history_import_records',method:'eq',args:['match_status','review']});
+    expect(boundary.queryCalls).toContainEqual({table:'history_import_records',method:'is',args:['association',null]});
     expect(boundary.queryCalls).toContainEqual({table:'history_import_records',method:'eq',args:['source_table_id','table-source']});
     expect(boundary.readFile).not.toHaveBeenCalled();
+  });
+
+  it("shows the confirmed student while retaining original unresolved evidence", async () => {
+    const stored = {
+      id: 'source-example', student_id: null, source_sha256: 'synthetic-hash', source_data: { filename: 'example.base' },
+      record_data: { label: '来源称呼', tableName: '历史资料', sourceRecordId: 'original-id', sourceRow: 2, dateLabel: null,
+        names: ['来源称呼'], phones: [], warnings: [], cells: [{ fieldId: 'note', fieldName: '原文', kind: 'narrative', text: '保留原有资料', rawValue: '保留原有资料', type: 'text' }] },
+      match_status: 'review', match_data: { reason: 'name_only' }, entity_data: null,
+      candidate_data: [{ key: 'old-candidate' }],
+      association: { student_id: '11111111-1111-4111-8111-111111111111', student: { id: '11111111-1111-4111-8111-111111111111', name: '确认的学员', grade: 3, phone: '', parent_phone: '13800000000' } },
+    };
+    const original = structuredClone(stored);
+    boundary.records = [stored];
+    const result = await archiveData.loadHistoryArchivePage({ ...filters, status: 'matched' });
+    expect(result.rows[0]).toMatchObject({ matchStatus: 'matched', matchReason: 'confirmed_during_work', entity: { kind: 'student', name: '确认的学员' }, excerpt: '原文：保留原有资料' });
+    expect(stored).toEqual(original);
+    expect(boundary.queryCalls).toContainEqual({table:'history_import_records',method:'or',args:['match_status.eq.matched,association.not.is.null']});
+
+    boundary.detailRecord = stored;
+    const detail = await archiveData.loadHistoryArchiveDetail(stored.id);
+    expect(detail?.record.entity?.name).toBe('确认的学员');
+    expect(detail?.candidates).toEqual(original.candidate_data);
+    expect(boundary.queryCalls).toContainEqual({table:'history_import_records',method:'eq',args:['association_scope.student_id',stored.association.student_id]});
   });
 
   it("reports database failures without presenting an empty successful import", async () => {

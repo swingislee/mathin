@@ -47,6 +47,7 @@ export interface StudentFollowUp {
   statusAfter: string | null;
   createdAt: string;
   authorName: string;
+  contextSourceRecordId?: string | null;
 }
 
 export interface StudentFilters {
@@ -94,6 +95,7 @@ interface FollowUpRow {
   status_after: string | null;
   created_at: string;
   profiles: { display_name: string } | null;
+  context_source_record_id: string | null;
 }
 
 interface FollowUpSummaryRow {
@@ -215,7 +217,7 @@ export async function getStudentDetail(id: string): Promise<StudentDetail | null
 
   const { data: followUps, error: followUpError } = await supabase
     .from("student_follow_ups")
-    .select("id,content,kind,next_follow_up_at,status_after,created_at,profiles!student_follow_ups_author_id_fkey(display_name)")
+    .select("id,content,kind,next_follow_up_at,status_after,created_at,context_source_record_id,profiles!student_follow_ups_author_id_fkey(display_name)")
     .eq("record_state", "current")
     .eq("student_id", id)
     .order("created_at", { ascending: false })
@@ -249,6 +251,7 @@ export async function getStudentDetail(id: string): Promise<StudentDetail | null
       statusAfter: followUp.status_after,
       createdAt: followUp.created_at,
       authorName: followUp.profiles?.display_name || "",
+      contextSourceRecordId: followUp.context_source_record_id,
     })),
   };
 }

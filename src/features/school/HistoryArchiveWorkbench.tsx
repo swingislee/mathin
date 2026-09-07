@@ -24,6 +24,7 @@ import {
   type HistoryMatchStatus,
 } from "./history-archive-contract";
 import { historyArchiveMatchExplanation, historyArchiveWarningExplanation, type HistoryArchiveMessages } from "./history-archive-messages";
+import { SourceUseButton } from './SourceUseButton';
 
 export function HistoryArchiveCommandBar({ filters, messages }: { filters: HistoryArchiveFilters; messages: HistoryArchiveMessages }) {
   return (
@@ -52,11 +53,12 @@ function RecordLink({ record, filters, children }: { record: HistoryArchiveRow; 
   return <Link href={`${historyArchiveHref(filters, { record: record.id, relatedPage: 1 })}#history-archive-detail`} className="font-medium text-ink underline decoration-line underline-offset-4 hover:decoration-rose">{children}</Link>;
 }
 
-export function HistoryArchiveWorkbench({ data, detail, filters, messages }: {
+export function HistoryArchiveWorkbench({ data, detail, filters, messages, locale='zh' }: {
   data: HistoryArchivePageData;
   detail: HistoryArchiveDetail | null;
   filters: HistoryArchiveFilters;
   messages: HistoryArchiveMessages;
+  locale?: string;
 }) {
   const { summary } = data;
   if (!summary.available) {
@@ -68,11 +70,6 @@ export function HistoryArchiveWorkbench({ data, detail, filters, messages }: {
     [messages.tables, summary.tableCount],
     [messages.records, summary.recordCount],
     [messages.contentRecords, summary.contentRecordCount],
-    [messages.matched, summary.matchedCount],
-    [messages.singleCandidate, summary.singleCandidateReviewCount],
-    [messages.multipleCandidates, summary.multipleCandidateReviewCount],
-    [messages.unmatchedWithIdentity, summary.unmatchedWithIdentityCount],
-    [messages.unmatchedWithoutIdentity, summary.unmatchedWithoutIdentityCount],
   ] as const;
 
   return (
@@ -140,7 +137,7 @@ export function HistoryArchiveWorkbench({ data, detail, filters, messages }: {
 
         {filters.record ? (
           <aside id="history-archive-detail" aria-label={messages.detail} className="min-w-0 scroll-mt-24 2xl:border-l 2xl:border-line 2xl:pl-7">
-            {detail ? <ArchiveDetail detail={detail} filters={filters} messages={messages} /> : <DashboardEmptyState>{messages.missingRecord}</DashboardEmptyState>}
+            {detail ? <ArchiveDetail detail={detail} filters={filters} messages={messages} locale={locale} /> : <DashboardEmptyState>{messages.missingRecord}</DashboardEmptyState>}
           </aside>
         ) : <p className="text-sm text-muted">{messages.selectHint}</p>}
       </div>
@@ -155,15 +152,15 @@ function EntitySummary({ entity, messages }: { entity: HistoryArchiveEntity; mes
       {entity.phones.length ? <p className="break-words text-xs text-muted">{entity.phones.join(" · ")}</p> : null}
       <p className="text-xs text-muted">{entity.grade === null ? messages.gradeMissing : `${messages.grade} ${entity.grade}`}</p>
       {entity.gradeCorrection ? <p className="text-xs leading-5 text-muted">{messages.gradeCorrection} · {messages.gradeCorrectionHint}</p> : null}
-      <details className="text-xs text-muted">
+      {entity.sourceKeys.length ? <details className="text-xs text-muted">
         <summary className="cursor-pointer py-1">{messages.entityKeys}</summary>
         <ul className="space-y-1 pl-4">{entity.sourceKeys.map((key) => <li key={key} className="break-all font-mono">{key}</li>)}</ul>
-      </details>
+      </details> : null}
     </div>
   );
 }
 
-function ArchiveDetail({ detail, filters, messages }: { detail: HistoryArchiveDetail; filters: HistoryArchiveFilters; messages: HistoryArchiveMessages }) {
+function ArchiveDetail({ detail, filters, messages, locale }: { detail: HistoryArchiveDetail; filters: HistoryArchiveFilters; messages: HistoryArchiveMessages; locale:string }) {
   const { record } = detail;
   const originalFields = detail.cells.filter((cell) => cell.kind !== "system");
   const systemFields = detail.cells.filter((cell) => cell.kind === "system");
@@ -173,6 +170,7 @@ function ArchiveDetail({ detail, filters, messages }: { detail: HistoryArchiveDe
       <DashboardSection title={record.label || record.names.join("、") || messages.detail} description={messages.detail}>
         <div className="space-y-3">
           <MatchBadge status={record.matchStatus} messages={messages} />
+          {record.matchReason!=='non_student_source'&&(record.entity?.kind==='student'||(!record.entity&&(record.names.length>0||record.phones.length>0)))?<SourceUseButton recordId={record.id} locale={locale}/>:null}
           <p className="whitespace-pre-wrap break-words text-sm leading-6"><span className="text-muted">{messages.matchReason}：</span>{historyArchiveMatchExplanation(record.matchReason, messages)}</p>
           {record.entity ? <div><h3 className="mb-2 text-xs text-muted">{messages.matchedEntity}</h3><EntitySummary entity={record.entity} messages={messages} /></div> : null}
           {record.matchStatus !== "matched" ? <div className="space-y-3">
