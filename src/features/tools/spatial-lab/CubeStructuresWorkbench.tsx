@@ -29,7 +29,7 @@ const TOOL_BUTTONS = [
   { id: "face", Icon: Paintbrush }, { id: "move", Icon: Move }, { id: "layer", Icon: Layers3 },
   { id: "cut", Icon: Scissors }, { id: "mark", Icon: Stamp }, { id: "number", Icon: Hash }, { id: "transparent", Icon: Droplets },
 ] as const;
-const VIEWS: readonly CubeView[] = ["angle", "front", "right", "top"];
+const VIEWS: readonly CubeView[] = ["angle", "front", "left", "right", "top"];
 const COLOR_MAP = Object.fromEntries(CUBE_COLORS.map((color) => [color, color]));
 type Panel = "selection" | "color" | "move" | "layers" | "recording" | "model" | "cut" | "mark" | "number" | "transparent" | null;
 

@@ -116,7 +116,7 @@ describe("Cube Structures operation workbench", () => {
 
   it("uses stable parallel camera framing while all view buttons remain actual steps", () => {
     const initial = createCubeHistory(pair).initial;
-    for (const view of ["angle", "front", "right", "top"] as const) {
+    for (const view of ["angle", "front", "left", "right", "top"] as const) {
       const state = applyCubeOperation(initial, { kind: "view", view, frame: cubeFrame(initial.cubes) });
       const model = buildCubeStructureRenderModel(state, ["cube-1"], "Cube Structures");
       expect(model.camera.projection).toBe("orthographic");
@@ -124,6 +124,25 @@ describe("Cube Structures operation workbench", () => {
       expect(model.camera.up).toEqual(view === "top" ? { x: 0, y: 0, z: -1 } : { x: 0, y: 1, z: 0 });
       expect(model.totalCountRevealed).toBe(false);
     }
+  });
+
+  it("looks from negative X in left view, with the matching projection and a replayable step", () => {
+    const history = createCubeHistory([{ x: -1, y: 0, z: 2 }, { x: 1, y: 0, z: 2 }]);
+    const operation = { kind: "view", view: "left", frame: cubeFrame(history.initial.cubes) } as const;
+    const recorded = appendCubeOperation(history, operation);
+    const model = buildCubeStructureRenderModel(replayCubeHistory(recorded), [], "Cubes");
+    expect(model.camera.position.x).toBeLessThan(model.camera.target.x);
+    expect(model.camera.position.y).toBe(model.camera.target.y);
+    expect(model.camera.position.z).toBe(model.camera.target.z);
+    expect(model.projectionView).toBe("left");
+    expect(model.projection).toMatchObject({ horizontalAxis: "z", verticalAxis: "y", depthAxis: "-x" });
+    expect(model.projection.cells[0].frontmostCell.x).toBe(-1);
+    expect(recorded.operations).toEqual([operation]);
+    expect(replayCubeHistory(recorded, 0).view).toBe("angle");
+    expect(replayCubeHistory(recorded, 1).view).toBe("left");
+    expect(cubeOperationLabel(operation, "zh")).toBe("视角 · 左视");
+    expect(cubeOperationLabel(operation, "en")).toBe("View · Left");
+    expect(readFileSync("src/features/tools/spatial-lab/CubeStructuresWorkbench.tsx", "utf8")).toContain('["angle", "front", "left", "right", "top"]');
   });
 
   it("keeps bilingual tools and operation labels complete", () => {

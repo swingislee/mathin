@@ -20,7 +20,7 @@ export const CUBE_AXIS_COLORS = { x: "#c64848", y: "#258345", z: "#3267bd" } as 
 export const CUBE_SELECTION_COLOR = "#f2bd30";
 export const CUBE_GROUP_COLORS = CUBE_COLORS;
 export type CubeColor = (typeof CUBE_COLORS)[number];
-export type CubeView = "angle" | "front" | "right" | "top";
+export type CubeView = "angle" | "front" | "left" | "right" | "top";
 export type CubeTool = "orbit" | "pan" | "select" | "build" | "remove" | "color" | "face" | "move" | "layer" | "cut" | "mark" | "number" | "transparent";
 export const CUBE_MARK_SHAPES = ["circle", "triangle", "square", "star", "diamond", "cross"] as const;
 export type CubeMarkShape = (typeof CUBE_MARK_SHAPES)[number];
@@ -407,7 +407,7 @@ export function buildCubeStructureRenderModel(state: CubeStructureState, selecte
   const selected = new Set(selectedIds);
   const group = state.groups.find((candidate) => candidate.id === groupId);
   const groupIds = new Set(group?.cubeIds ?? []);
-  const direction = { angle: { x: 1, y: 0.8, z: 1 }, front: { x: 0, y: 0, z: 1 }, right: { x: 1, y: 0, z: 0 }, top: { x: 0, y: 1, z: 0 } }[state.view];
+  const direction = { angle: { x: 1, y: 0.8, z: 1 }, front: { x: 0, y: 0, z: 1 }, left: { x: -1, y: 0, z: 0 }, right: { x: 1, y: 0, z: 0 }, top: { x: 0, y: 1, z: 0 } }[state.view];
   const center = state.frame.center;
   const distance = state.frame.radius * 4;
   const projectionView = state.view === "angle" ? "front" : state.view;
