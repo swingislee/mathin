@@ -18,7 +18,7 @@ for(const role of ['principal','teacher','student']) {
     cookies:{getAll:()=>[...cookies].map(([name,value])=>({name,value})),setAll:items=>items.forEach(item=>cookies.set(item.name,item.value))}});
   if((await client.auth.signInWithPassword(account)).error)throw new Error(`FIXED_LOGIN_FAILED:${role}`);
   try {
-    const args=stage=>({p_stage:stage,p_scope:'all',p_search:'',p_page:1,p_page_size:20,p_detail:''});
+    const args=stage=>({p_stage:stage,p_scope:'all',p_search:'',p_page:1,p_page_size:100,p_detail:''});
     if(role==='student') {
       const denied=await client.rpc('list_student_stage_workspace',args(stages[0]));
       if(denied.error?.message!=='FORBIDDEN')throw new Error('STUDENT_STAGE_EXPOSED');
@@ -49,7 +49,8 @@ for(const role of ['principal','teacher','student']) {
       '/zh/dashboard/followups/leads']),'/zh/dashboard/followups/assessments','/zh/dashboard']) {
       const response=await fetch(`http://127.0.0.1:3130${route}`,{headers:{cookie:[...cookies].map(([name,value])=>`${name}=${value}`).join('; ')},redirect:'manual',signal:AbortSignal.timeout(45000)});
       const html=await response.text();fs.writeFileSync(path.join(root,'last-page.html'),html);
-      if(response.status!==200||/Could not find|schema cache|MISSING_MESSAGE|__next_error__/.test(html))throw new Error(`PAGE_STARTUP:${route}:${response.status}`);
+      if(response.status!==200||/canceling statement|statement timeout|Could not find|schema cache|MISSING_MESSAGE|__next_error__/.test(html)
+        ||route.includes('/dashboard/students')&&!html.includes('data-followup-workbench'))throw new Error(`PAGE_STARTUP:${route}:${response.status}`);
       result.push({route,status:'PASS'});console.log(JSON.stringify({route,status:'PASS'}));
     }
     result.push({role,viewsAndRpcs:'PASS'});
