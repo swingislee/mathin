@@ -36,7 +36,7 @@ async function SessionRowItem({ classroomId, session, quickManageHref, returnTo 
         {session.teacherOverrideName && <Badge variant="outline">{t("substituteBy", { name: session.teacherOverrideName })}</Badge>}
       </Link>
       {session.capabilities.canEnterLive && (
-        <Link href={`/classroom/${classroomId}/session/${session.id}`} className="shrink-0 rounded-lg border border-line px-2.5 py-1 text-xs font-medium text-ink transition hover:border-crater">
+        <Link href={`/classroom/${classroomId}/session/${session.id}/live`} className="shrink-0 rounded-lg border border-line px-2.5 py-1 text-xs font-medium text-ink transition hover:border-crater">
           {t("openClassroom")}
         </Link>
       )}

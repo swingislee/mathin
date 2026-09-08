@@ -257,6 +257,7 @@ describe("R1 classroom continuity contracts", () => {
   it("ships a teacher page list, protected student media, and one-touch learning checks with atomic completion", () => {
     const liveShell = read("src/features/classroom/live/LiveShell.tsx");
     const controlMenus = read("src/features/classroom/live/ClassroomControlMenus.tsx");
+    const preload = read("src/features/classroom/courseware/preload-session-assets.ts");
     const video = read("src/features/classroom/live/VideoStage.tsx");
     const panel = read("src/features/school/SessionLearningCheckPanel.tsx");
     const matrix = read("src/features/school/LearningCheckMatrixEntry.tsx");
@@ -275,9 +276,11 @@ describe("R1 classroom continuity contracts", () => {
     expect(controlMenus).toContain('t("pageList")');
     expect(liveShell).toContain("activePageDocId={activePageDocId}");
     expect(video).toContain("pointer-events-none");
-    expect(liveShell).toContain("prioritizeDocObjectHashes");
-    expect(liveShell).toContain("takePrioritizedDocObjectHash");
-    expect(liveShell).toContain("Math.min(4, queue.length)");
+    expect(liveShell).toContain("useSessionAssetPreload");
+    expect(read("src/features/classroom/live/useSessionAssetPreload.ts")).toContain("preloadSessionAssets");
+    expect(preload).toContain("prioritizeDocObjectHashes");
+    expect(preload).toContain("takePrioritizedDocObjectHash");
+    expect(preload).toContain("Math.min(4, queue.length)");
     expect(liveShell).toContain('t("assetLoading")');
     expect(continuityMigration).toContain("create table public.session_learning_checks");
     expect(continuityMigration).toContain("create table public.session_learning_check_results");

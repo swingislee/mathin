@@ -80,6 +80,21 @@ export function takePrioritizedDocObjectHash(
   return queue.shift();
 }
 
+/** 当前互动页先解析入口；切页后，空闲槽跟随新的当前页。 */
+export function takePrioritizedH5PackageHash(
+  queue: string[],
+  pages: readonly SessionPageDoc[],
+  activePageDocId: string | null,
+): string | undefined {
+  const active = pages.find((page) => page.pageDocId === activePageDocId);
+  for (const binding of active?.bindings ?? []) {
+    if (binding.kind !== "h5") continue;
+    const index = queue.indexOf(binding.objectHash);
+    if (index >= 0) return queue.splice(index, 1)[0];
+  }
+  return queue.shift();
+}
+
 /** H5 包 hash（跨页去重；同包多关卡靠 launchQuery 区分，包只预热一次）。 */
 export function collectH5PackageHashes(pages: readonly SessionPageDoc[]): string[] {
   const hashes = new Set<string>();
@@ -122,11 +137,17 @@ export function buildDocBindingUrls(
 }
 
 /** 对象 blob：IndexedDB 命中直取，未命中经 signed URL 下载并落库。 */
-export async function loadObjectBlob(objectHash: string, signedUrl: string | undefined): Promise<Blob> {
+export async function loadObjectBlob(
+  objectHash: string,
+  signedUrl: string | undefined | (() => Promise<string | undefined>),
+  signal?: AbortSignal,
+): Promise<Blob> {
   const cached = await idbGet<Blob>(STORE_ASSETS, OBJECT_KEY(objectHash));
   if (cached) return cached;
-  if (!signedUrl) throw new Error(`SIGNED_URL_MISSING: ${objectHash}`);
-  const response = await fetch(signedUrl);
+  signal?.throwIfAborted();
+  const url = typeof signedUrl === "function" ? await signedUrl() : signedUrl;
+  if (!url) throw new Error(`SIGNED_URL_MISSING: ${objectHash}`);
+  const response = await fetch(url, { signal });
   if (!response.ok) throw new Error(`OBJECT_FETCH_FAILED: ${objectHash}`);
   const blob = await response.blob();
   await idbPut(STORE_ASSETS, OBJECT_KEY(objectHash), blob).catch(() => undefined);
@@ -134,10 +155,11 @@ export async function loadObjectBlob(objectHash: string, signedUrl: string | und
 }
 
 /** 公开桶内包 manifest（mathin-h5-manifest-v1）：入口 + 文件清单，一物两用（D3）。 */
-export async function fetchH5Manifest(packageHash: string): Promise<H5Manifest> {
+export async function fetchH5Manifest(packageHash: string, signal?: AbortSignal): Promise<H5Manifest> {
   const base = getSupabaseConfig().url.replace(/\/$/, "");
   const response = await fetch(
     `${base}/storage/v1/object/public/cw-h5/packages/${packageHash}/__mathin_manifest.json`,
+    { signal },
   );
   if (!response.ok) throw new Error(`H5_MANIFEST_MISSING: ${packageHash}`);
   const manifest = (await response.json()) as Partial<H5Manifest>;
@@ -160,15 +182,26 @@ export async function preheatH5Package(
   packageHash: string,
   manifest: H5Manifest,
   shouldContinue: () => boolean,
+  signal?: AbortSignal,
 ): Promise<void> {
-  const CONCURRENCY = 4;
+  const CONCURRENCY = 2;
   const queue = [...manifest.files];
   const worker = async () => {
     for (;;) {
       const file = queue.shift();
       if (!file || !shouldContinue()) return;
       try {
-        await fetch(h5ShimFileUrl(packageHash, file.packagePath), { cache: "force-cache" });
+        const response = await fetch(h5ShimFileUrl(packageHash, file.packagePath), { cache: "force-cache", signal });
+        // fetch 在响应头到达时就完成；消费完正文才释放下载槽，避免大文件并发失控。
+        const reader = response.body?.getReader();
+        if (reader) {
+          try {
+            while (shouldContinue() && !(await reader.read()).done) { /* 按块消费，交给 HTTP 缓存。 */ }
+          } finally {
+            await reader.cancel().catch(() => undefined);
+            reader.releaseLock();
+          }
+        }
       } catch {
         // 预热失败不影响黄灯语义
       }

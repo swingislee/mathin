@@ -55,7 +55,6 @@ import { classroomDocMountKey } from "./classroom-page-presentation";
 import { useClassroomPageWarmup } from "./useClassroomPageWarmup";
 import type { SessionBoardCheckpoint } from "../checkpoint/types";
 import { shouldApplyLegacyBoardSnapshot } from "../checkpoint/selection";
-import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import { Link, useRouter } from "@/i18n/navigation";
 import { createIsolatedRealtimeClient } from "@/lib/supabase/client";
 import { newId } from "@/lib/uuid";
@@ -69,23 +68,11 @@ import {
   setSessionPage,
   startClassSession,
 } from "../actions";
-import {
-  buildDocBindingUrls,
-  collectH5PackageHashes,
-  countH5Pages,
-  fetchH5Manifest,
-  loadObjectBlob,
-  loadSessionDocsBundle,
-  preheatH5Package,
-  prioritizeDocObjectHashes,
-  takePrioritizedDocObjectHash,
-} from "../courseware/doc-preload";
-import { getSessionAssetUrls, type SessionPageDoc } from "../courseware/session-assets";
-import { downloadCoursewareAsset } from "../courseware/upload";
+import { countH5Pages } from "../courseware/doc-preload";
+import { useSessionAssetPreload } from "./useSessionAssetPreload";
 import { DocCoursewarePage } from "./DocCoursewarePage";
 import { SessionEventLog } from "../sync/eventlog";
 import { flushOutbox, pendingCount } from "../sync/flush";
-import { STORE_ASSETS, idbGet, idbPut } from "../sync/idb";
 import {
   emptyStarLedger,
   latestActiveAwardId,
@@ -146,6 +133,14 @@ import {
 // P4-5 正式舞台：4:3 课件/主板书 + 副板书 + 学生名录；主板书按页 uuid 隔离、
 // 副板书全课一块；游戏页 game_state 镜像、视频 video_ctl 同步、工具快捷窗、
 // 上课中临时插白板页、加星长按撤销、举手/发题/作答、presence 在线名单。
+
+function useRendererInputProfile(...args: Parameters<typeof resolveClassroomRendererInputProfile>) {
+  const [page, toolId, doc, h5BridgeStatus] = args;
+  return useMemo(
+    () => resolveClassroomRendererInputProfile(page, toolId, doc, h5BridgeStatus),
+    [doc, h5BridgeStatus, page, toolId],
+  );
+}
 
 interface Props {
   session: ClassSessionRecord;
@@ -266,19 +261,10 @@ export function LiveShell({
   const starQueueRef = useRef<Promise<void>>(Promise.resolve());
   const activePage = state.pages[state.currentPage];
   const activePageDocId = activePage?.type === "doc" ? activePage.docId : null;
-  // 从 state.pages（而非 props）取媒体页：学生开课后补取的冻结页也要进预载
-  const mediaPages = useMemo(
-    () => state.pages.filter((page): page is Extract<CoursewarePage, { path: string }> =>
-      page.type === "image" || page.type === "video",
-    ),
-    [state.pages],
-  );
   const [phase, setPhase] = useState<Phase>(rehearsal || role === "viewer" || initialState.started ? "live" : "prep");
-  const [assetUrls, setAssetUrls] = useState<Record<string, string>>({});
-  const [preload, setPreload] = useState(() => ({ done: 0, total: mediaPages.length, failed: 0 }));
-  // --- doc 页（P6-5）：页束 + bindingKey→URL 表（blob objectURL / H5 垫片入口） ---
-  const [docBundle, setDocBundle] = useState<SessionPageDoc[] | null>(null);
-  const [docUrls, setDocUrls] = useState<ResolvedBindingUrls>({});
+  const { assetUrls, preload, docBundle, docUrls } = useSessionAssetPreload(
+    session.id, Boolean(session.lectureId), state.pages, state.currentPage,
+  );
   const [wakeLockState, setWakeLockState] = useState<"pending" | "ok" | "unavailable">("pending");
   const [t2Connected, setT2Connected] = useState(false);
   const [p2pHealth, setP2PHealth] = useState<P2PHealth>({ state: "signaling", peers: 0, latencyMs: null });
@@ -316,18 +302,12 @@ export function LiveShell({
     positions: ReadonlyMap<string, number>;
   } | null>(null);
   const logRef = useRef<SessionEventLog | null>(null);
-  const preloadTick = useRef(0);
-  const activePageDocIdRef = useRef(activePageDocId);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const mainInputPortRef = useRef<CanvasSurfaceInputPort | null>(null);
   const sideViewportRef = useRef<HTMLDivElement | null>(null);
   const onMainInputPort = useCallback((port: CanvasSurfaceInputPort | null) => {
     mainInputPortRef.current = port;
   }, []);
-
-  useEffect(() => {
-    activePageDocIdRef.current = activePageDocId;
-  }, [activePageDocId]);
 
   const isController = role === "control" && myRole === "teacher";
   const teacherLayoutV2 = layoutV2Enabled && isController;
@@ -447,123 +427,6 @@ export function LiveShell({
     if (isController) log.rebroadcastToolStates();
     else log.sendFx({ scope: "tool-state-request", payload: { version: 1 } });
   }, [log, rehearsal, isController, t2Connected, p2pHealth.state, p2pHealth.peers]);
-
-  // --- 课件预载（IndexedDB 命中则直接建 objectURL）-----------------------
-  // 板书插页等 pages 数组重建不应重跑预载（会撤销在用的 objectURL），
-  // 媒体页内容以路径串为准。
-  const mediaKey = mediaPages.map((page) => page.path).join("|");
-  const docPageKey = state.pages
-    .filter((page): page is Extract<CoursewarePage, { type: "doc" }> => page.type === "doc")
-    .map((page) => page.docId)
-    .join("|");
-  useEffect(() => {
-    const tick = ++preloadTick.current;
-    const urls: string[] = [];
-    const isLive = () => preloadTick.current === tick;
-
-    const run = async () => {
-      // doc 页束先行（P6-5，D4）：挂讲次的课次统一走 release 页束——
-      // 冻结课次取冻结 pin 的 release，候课/试讲回退 current release。
-      let docPages: SessionPageDoc[] = [];
-      let docHashes: string[] = [];
-      if (session.lectureId || docPageKey) {
-        try {
-          docPages = await loadSessionDocsBundle(session.id);
-          docHashes = prioritizeDocObjectHashes(docPages, activePageDocIdRef.current);
-        } catch {
-          // 束取不到（离线首进且无缓存）：doc 页降级提示，媒体页照常预载
-        }
-        if (!isLive()) return;
-        setDocBundle(docPages);
-      }
-      setPreload({ done: 0, total: mediaPages.length + docHashes.length, failed: 0 });
-
-      for (const page of mediaPages) {
-        if (!isLive()) return;
-        try {
-          let blob = await idbGet<Blob>(STORE_ASSETS, page.path);
-          if (!blob) {
-            blob = await downloadCoursewareAsset(page.path);
-            await idbPut(STORE_ASSETS, page.path, blob);
-          }
-          // await 之后必须复查 tick：StrictMode 双跑 effect 时旧一轮会在此重复计数
-          if (!isLive()) return;
-          const url = URL.createObjectURL(blob);
-          urls.push(url);
-          setAssetUrls((prev) => ({ ...prev, [page.path]: url }));
-          setPreload((prev) => ({ ...prev, done: prev.done + 1 }));
-        } catch {
-          if (!isLive()) return;
-          setPreload((prev) => ({ ...prev, failed: prev.failed + 1 }));
-        }
-      }
-
-      if (docPages.length === 0) return;
-
-      // H5 先行：入口取公开桶 manifest 的 entryPath，同时按清单做 HTTP 缓存
-      // 预热——只是加速，不改变候课单黄灯语义（D4）
-      const h5EntryByHash = new Map<string, string>();
-      const h5Hashes = collectH5PackageHashes(docPages);
-      for (const hash of h5Hashes) {
-        if (!isLive()) return;
-        try {
-          const manifest = await fetchH5Manifest(hash);
-          h5EntryByHash.set(hash, manifest.entryPath);
-          void preheatH5Package(hash, manifest, isLive);
-        } catch {
-          // manifest 取不到：该包的 doc 节点渲染可见的降级块
-        }
-      }
-
-      // 非 H5 对象：IndexedDB 命中免签发（离线可续课）；缺的批签一次（D3）。
-      // URL 表逐对象增量刷新——开课中途加入的学生不必等全部对象下完。
-      let signedByHash = new Map<string, string>();
-      const missing: string[] = [];
-      for (const hash of docHashes) {
-        if (!(await idbGet<Blob>(STORE_ASSETS, `cw:${hash}`))) missing.push(hash);
-      }
-      if (!isLive()) return;
-      if (missing.length > 0) {
-        try {
-          const signed = await getSessionAssetUrls(session.id);
-          signedByHash = new Map(signed.map((item) => [item.objectHash, item.signedUrl]));
-        } catch {
-          // 批签失败（离线）：仅 IndexedDB 命中的对象可用
-        }
-        if (!isLive()) return;
-      }
-      const urlByObjectHash = new Map<string, string>();
-      setDocUrls(buildDocBindingUrls(docPages, urlByObjectHash, h5EntryByHash));
-      const queue = [...docHashes];
-      const preloadWorker = async () => {
-        for (;;) {
-          const hash = takePrioritizedDocObjectHash(queue, docPages, activePageDocIdRef.current);
-          if (!hash || !isLive()) return;
-          try {
-            const blob = await loadObjectBlob(hash, signedByHash.get(hash));
-            if (!isLive()) return;
-            const url = URL.createObjectURL(blob);
-            urls.push(url);
-            urlByObjectHash.set(hash, url);
-            setDocUrls(buildDocBindingUrls(docPages, urlByObjectHash, h5EntryByHash));
-            setPreload((prev) => ({ ...prev, done: prev.done + 1 }));
-          } catch {
-            if (!isLive()) return;
-            setPreload((prev) => ({ ...prev, failed: prev.failed + 1 }));
-          }
-        }
-      };
-      await Promise.all(Array.from({ length: Math.min(4, queue.length) }, preloadWorker));
-    };
-    void run();
-
-    return () => {
-      preloadTick.current += 1;
-      for (const url of urls) URL.revokeObjectURL(url);
-    };
-    // mediaPages 的内容由 mediaKey 代表（见上）
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [docPageKey, mediaKey, session.id, session.lectureId]);
 
   // --- 学生端开课补取（P6-5）：正式讲次或自由课微课的 courseware 都可能在
   // 开课冻结时才落库，
@@ -951,14 +814,8 @@ export function LiveShell({
     gestureKey: renderPage?.id ?? "no-page",
     onInkStart: activateMainInput,
   });
-  const rendererProfile = useMemo(
-    () => resolveClassroomRendererInputProfile(
-      renderPage,
-      activeToolId,
-      renderDoc,
-      h5PointerBridgeStatus,
-    ),
-    [activeToolId, h5PointerBridgeStatus, renderDoc, renderPage],
+  const rendererProfile = useRendererInputProfile(
+    renderPage, activeToolId, renderDoc, h5PointerBridgeStatus,
   );
   const smartInputAvailable = inputV2Enabled && isController && rendererProfile.audited;
   const effectiveRoutingMode = resolveClassroomRoutingMode({

@@ -19,6 +19,9 @@ describe("P4I-13 classroom workspace contract", () => {
     const list = read("src", "features", "school", "SessionGroupList.tsx");
     expect(list).toContain("/dashboard/sessions/");
     expect(list).toContain("quickManageHref");
+    expect(list).toContain("/classroom/${classroomId}/session/${session.id}/live");
+    const page = read("src", "app", "[locale]", "dashboard", "classes", "[classId]", "page.tsx");
+    expect(page).toContain("/classroom/${classroom.id}/session/${groups.next.id}/live");
     expect(list).not.toContain("canPrepare || canEnterLive");
   });
 

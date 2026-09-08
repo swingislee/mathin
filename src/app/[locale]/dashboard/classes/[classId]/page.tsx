@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { cache, Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +20,7 @@ import {
   getClassroomTeachingReadiness,
   groupClassroomSessions,
   listStaffOptions,
+  type ClassroomDetail,
   type OperationalEventRow,
   type RosterSignals,
   type TeachingReadinessRow,
@@ -61,6 +62,50 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 const TABS = ["setup", "sessions", "students", "readiness", "records"] as const;
 const ROSTER_REPAIR_ISSUES = ["course", "teacher", "room", "schedule"] as const satisfies readonly MofaxiaoClassRosterReviewIssue[];
 type Tab = (typeof TABS)[number];
+
+/** 设置、准备页与课次管理共用本次请求的数据，班级入口先显示核心信息。 */
+const readClassroomSettings = cache(async (classroom: ClassroomDetail) => {
+  const [staffOptions, teachingReadiness, roomOptions] = await Promise.all([
+    listStaffOptions(),
+    getClassroomTeachingReadiness(classroom.coursewareTrack, classroom.sessions),
+    listActiveRoomOptionsV2(),
+  ]);
+  return { staffOptions, teachingReadiness, roomOptions };
+});
+
+async function classroomWorkItems(classroom: ClassroomDetail) {
+  const items = await listMyWorkItems();
+  const sessionIds = new Set(classroom.sessions.map((session) => session.id));
+  return items.filter((item) => item.primaryObjectType === "session" && sessionIds.has(item.primaryObjectId));
+}
+
+async function ClassroomSessionList({ classroom, returnTo, timeZone, duration }: {
+  classroom: ClassroomDetail; returnTo: string; timeZone: string; duration: number;
+}) {
+  return <SessionGroupList
+    classroomId={classroom.id}
+    sessions={classroom.sessions}
+    workItems={await classroomWorkItems(classroom)}
+    returnTo={returnTo}
+    canAddSession={classroom.courseId === null && classroom.capabilities.canManageSchedule}
+    defaultDurationMinutes={duration}
+    timeZone={timeZone}
+  />;
+}
+
+async function ClassroomRiskSummary({ classroom, returnTo }: { classroom: ClassroomDetail; returnTo: string }) {
+  const groups = groupClassroomSessions(classroom.sessions, await classroomWorkItems(classroom));
+  return <ClassroomRisks needsAttention={groups.needsAttention} returnTo={returnTo} />;
+}
+
+async function ClassroomSettings({ classroom, setupHref }: { classroom: ClassroomDetail; setupHref: string }) {
+  const settings = await readClassroomSettings(classroom);
+  return <ClassroomSettingsSheet classroom={classroom} {...settings} setupHref={setupHref} />;
+}
+
+async function ClassroomPublicSources({ classroomId, locale }: { classroomId: string; locale: string }) {
+  return <PublicClassSourcePanel activities={await listPublicClassesForClassroom(classroomId)} locale={locale} />;
+}
 
 function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -109,12 +154,10 @@ async function ClassDetailBody({
   const [{ classId }, rawSearchParams, { user, environment }] = await Promise.all([params, searchParams, requireDashboardEnvironment(locale, ["staff"])]);
   if (!UUID_PATTERN.test(classId)) notFound();
 
-  const [t, classroom, perms, allWorkItems, roomOptions, timeZone, scheduleDefaults] = await Promise.all([
+  const [t, classroom, perms, timeZone, scheduleDefaults] = await Promise.all([
     getTranslations("school.classes"),
     getClassroomDetailForScope(classId),
     getMyPerms(user.id),
-    listMyWorkItems(),
-    listActiveRoomOptionsV2(),
     getOrganizationTimezoneV2(),
     getScheduleDefaultsV2(),
   ]);
@@ -145,22 +188,22 @@ async function ClassDetailBody({
     returnTo,
   );
   const closeHref = tabHref(activeTab);
-  const staffOptions = isManagementView ? await listStaffOptions() : [];
+  const settings = isManagementView && (activeTab === "setup" || activeTab === "readiness" || activeSession)
+    ? await readClassroomSettings(classroom)
+    : null;
+  const staffOptions = settings?.staffOptions ?? [];
+  const roomOptions = settings?.roomOptions ?? (activeSession ? await listActiveRoomOptionsV2() : []);
+  const teachingReadiness = settings?.teachingReadiness ?? [] as TeachingReadinessRow[];
   const importSetupContext = isManagementView && activeTab === "setup"
     ? await loadClassroomImportSetupContext(classId)
     : null;
 
-  const classroomSessionIds = new Set(classroom.sessions.map((session) => session.id));
-  const sessionWorkItems = allWorkItems.filter((item) => item.primaryObjectType === "session" && classroomSessionIds.has(item.primaryObjectId));
-  const groups = groupClassroomSessions(classroom.sessions, sessionWorkItems);
+  // 下一课由真实课次时间决定；完整工作项仍用于列表分组和风险区，各自独立加载。
+  const groups = groupClassroomSessions(classroom.sessions, []);
 
-  // teachingReadiness 不只是"教学准备" tab 自己用——设置 Sheet 的启用班级风险确认（任何 tab 都可能打开
-  // 设置）也依赖它，所以只要是管理视角就加载，不能像 rosterSignals/operationalEvents 那样按 tab 懒加载。
-  const [rosterSignals, teachingReadiness, operationalEvents, publicClassSources] = await Promise.all([
+  const [rosterSignals, operationalEvents] = await Promise.all([
     activeTab === "students" ? getClassroomRosterSignals(classId) : Promise.resolve(new Map<string, RosterSignals>()),
-    isManagementView ? getClassroomTeachingReadiness(classroom.coursewareTrack, classroom.sessions) : Promise.resolve([] as TeachingReadinessRow[]),
     activeTab === "records" && canViewClassroom ? getClassroomOperationalEvents(classId) : Promise.resolve([] as OperationalEventRow[]),
-    listPublicClassesForClassroom(classId),
   ]);
 
   // doc23 §9：身份行只保留"这是哪个班"——课程版本、年级、主讲、学服。
@@ -176,7 +219,7 @@ async function ClassDetailBody({
   ] satisfies (ObjectContextItem | null)[]).filter((item) => item !== null);
 
   const primaryAction = isTeachingView && groups.next?.capabilities.canEnterLive
-    ? <Link href={`/classroom/${classroom.id}/session/${groups.next.id}`} className={buttonVariants({ size: "sm" })}>{t("openClassroom")}</Link>
+    ? <Link href={`/classroom/${classroom.id}/session/${groups.next.id}/live`} className={buttonVariants({ size: "sm" })}>{t("openClassroom")}</Link>
     : undefined;
 
   const lifecycleStatus = (
@@ -213,7 +256,11 @@ async function ClassDetailBody({
             {(primaryAction || isManagementView) ? (
               <DashboardCommandActions>
                 {primaryAction}
-                {isManagementView ? <ClassroomSettingsSheet classroom={classroom} staffOptions={staffOptions} teachingReadiness={teachingReadiness} roomOptions={roomOptions} setupHref={tabHref("setup")} /> : null}
+                {isManagementView ? (
+                  <Suspense fallback={<span aria-label={t("settings")} className="size-8 animate-pulse rounded-md bg-muted/10" />}>
+                    <ClassroomSettings classroom={classroom} setupHref={tabHref("setup")} />
+                  </Suspense>
+                ) : null}
               </DashboardCommandActions>
             ) : null}
           </DashboardCommandPanel>
@@ -238,15 +285,9 @@ async function ClassDetailBody({
               />
             ) : null}
             {activeTab === "sessions" && (
-              <SessionGroupList
-                classroomId={classroom.id}
-                sessions={classroom.sessions}
-                workItems={sessionWorkItems}
-                returnTo={tabHref("sessions")}
-                canAddSession={classroom.courseId === null && classroom.capabilities.canManageSchedule}
-                defaultDurationMinutes={scheduleDefaults.defaultDurationMinutes}
-                timeZone={timeZone}
-              />
+              <Suspense fallback={<div className="h-56 animate-pulse rounded-2xl border border-line bg-card" />}>
+                <ClassroomSessionList classroom={classroom} returnTo={tabHref("sessions")} duration={scheduleDefaults.defaultDurationMinutes} timeZone={timeZone} />
+              </Suspense>
             )}
             {activeTab === "students" && (
               <RosterPanel
@@ -271,14 +312,20 @@ async function ClassDetailBody({
           <DashboardAside>
             <ClassroomSummary classroom={classroom} />
             <ClassroomNextSession next={groups.next} returnTo={tabHref(activeTab)} />
-            {isManagementView && <ClassroomRisks needsAttention={groups.needsAttention} returnTo={tabHref(activeTab)} />}
+            {isManagementView && (
+              <Suspense fallback={<div className="h-20 animate-pulse rounded-lg bg-muted/10" />}>
+                <ClassroomRiskSummary classroom={classroom} returnTo={tabHref(activeTab)} />
+              </Suspense>
+            )}
             <ClassroomResponsibility assignments={classroom.staffAssignments} />
-            <PublicClassSourcePanel activities={publicClassSources} locale={locale} />
+            <Suspense fallback={null}>
+              <ClassroomPublicSources classroomId={classId} locale={locale} />
+            </Suspense>
           </DashboardAside>
         </DashboardContentGrid>
       </ObjectWorkspace>
 
-      <SessionManagementDrawer
+      {activeSession ? <SessionManagementDrawer
         key={activeSession?.id ?? "none"}
         session={activeSession}
         classroomName={classroom.name}
@@ -286,7 +333,7 @@ async function ClassDetailBody({
         roomOptions={roomOptions}
         timeZone={timeZone}
         closeHref={closeHref}
-      />
+      /> : null}
     </>
   );
 }
