@@ -13,7 +13,6 @@ import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { STAFF_OVERVIEW_METRICS, type StaffOverviewGrain } from "./staff-overview-contract";
 import type { OverviewDetailQuery, OverviewDetailResult, OverviewDetailSort } from "./staff-overview-drilldown-contract";
-import { readOverviewDetail } from "./staff-overview-drilldown-actions";
 import { overviewDetailMessages } from "./staff-overview-drilldown-messages";
 
 type Selection = { query: OverviewDetailQuery; title: string };
@@ -58,12 +57,20 @@ export function StaffOverviewDrilldown({ children, grain, date, generatedAt, sel
   useEffect(() => {
     if (!request) return;
     let cancelled = false;
-    void readOverviewDetail({ grain, date, generatedAt, selectedSupportIds, query: request.next.query, search: request.term, page: request.page, pageSize: request.size, sort: request.sort, person: request.person })
+    const controller = new AbortController();
+    void fetch(`/${locale}/dashboard/overview-detail`, {
+      method: "POST", credentials: "same-origin", cache: "no-store", signal: controller.signal,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ grain, date, generatedAt, selectedSupportIds, query: request.next.query, search: request.term, page: request.page, pageSize: request.size, sort: request.sort, person: request.person }),
+    }).then(async response => {
+      if (!response.ok) throw new Error("Detail unavailable");
+      return await response.json() as OverviewDetailResult;
+    })
       .then(data => { if (!cancelled) setResult(data); })
       .catch(() => { if (!cancelled) setFailed(true); })
       .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [request, grain, date, generatedAt, selectedSupportIds]);
+    return () => { cancelled = true; controller.abort(); };
+  }, [request, grain, date, generatedAt, selectedSupportIds, locale]);
   const isPeriod = selection && !["pending", "capacity"].includes(selection.query.kind);
   const formatDate = (value: string) => new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: result?.timeZone ?? "Asia/Shanghai" }).format(new Date(value));
   const formatMonth = (value: string) => new Intl.DateTimeFormat(locale, { year: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${value}-01T00:00:00Z`));
@@ -116,7 +123,7 @@ export function StaffOverviewDrilldown({ children, grain, date, generatedAt, sel
                   </TableHead>;
                 })}
               </TableRow></TableHeader><TableBody>{result.records.map(row => <TableRow key={row.id} className="border-t border-line align-top">
-                <TableCell className="p-3"><div className="font-medium text-ink">{row.href ? <Link href={row.href} className="underline decoration-line underline-offset-4 hover:text-rose" title={m.open}>{row.name || m.unnamed}</Link> : row.name || m.unnamed}</div>
+                <TableCell className="p-3"><div className="font-medium text-ink">{row.href ? <Link href={row.href} prefetch={false} className="underline decoration-line underline-offset-4 hover:text-rose" title={m.open}>{row.name || m.unnamed}</Link> : row.name || m.unnamed}</div>
                   {row.values?.map((item, index) => <div key={index} className="mt-1 text-[11px] text-muted">{label(item.label)}: {item.label === "enrollmentOutcome" ? label(item.value) : item.value}</div>)}
                   {row.sourceConfirmed && <div className="mt-1 text-[11px] text-muted">{m.sourceConfirmed}</div>}
                 </TableCell><TableCell className="whitespace-nowrap p-3 text-muted">{row.at ? formatDate(row.at) : "—"}
