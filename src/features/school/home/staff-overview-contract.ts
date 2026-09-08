@@ -185,10 +185,12 @@ export interface StaffOverviewTeacherParticipationEvent {
   teacherIds: readonly string[];
 }
 
-export interface StaffOverviewEnrollmentOutcomeEvent {
+export interface StaffOverviewEnrollmentOutcomeEvent extends StaffOverviewFactEvent {
   id: string;
   studentId: string;
   at: string;
+  /** 来源已确认报名使用该行学科老师归属，报名月份独立于到访月份。 */
+  sourceTeacherIds?: readonly string[];
 }
 
 export interface StaffOverviewTeacherOutcomeComparison {
@@ -319,7 +321,7 @@ interface ParticipationCohort {
 
 /**
  * 老师参与按“学生 × 老师 × 周期”去重，机构总计按“学生 × 周期”去重。
- * 报名只计算参与发生后、该比较周期截止点之前的报名，保证本期与上期使用同样的时间进度。
+ * 原生报名使用参与后的同期事实；来源已确认报名沿用报名月份与该行老师归属。
  */
 export function summarizeTeacherParticipationOutcomes(
   participationEvents: readonly StaffOverviewTeacherParticipationEvent[],
@@ -354,6 +356,7 @@ export function summarizeTeacherParticipationOutcomes(
 
   const enrollmentsByStudent = new Map<string, Date[]>();
   for (const event of enrollmentEvents) {
+    if (event.sourceConfirmed && event.sourceTeacherIds !== undefined) continue;
     const instant = new Date(event.at);
     if (Number.isNaN(instant.getTime())) continue;
     const values = enrollmentsByStudent.get(event.studentId) ?? [];
@@ -368,6 +371,17 @@ export function summarizeTeacherParticipationOutcomes(
     teachers: [],
   };
   const teachers = new Map<string, StaffOverviewTeacherOutcomeComparison>();
+  const enrolledSubjects = { current: new Set<string>(), previous: new Set<string>() };
+  const teacherEnrollments = new Map<string, Set<string>>();
+  const recordEnrollment = (studentId: string, period: OutcomePeriod, teacherId?: string) => {
+    enrolledSubjects[period].add(studentId);
+    if (teacherId) {
+      const key = `${period}:${teacherId}`;
+      const subjects = teacherEnrollments.get(key) ?? new Set<string>();
+      subjects.add(studentId);
+      teacherEnrollments.set(key, subjects);
+    }
+  };
 
   for (const period of ["current", "previous"] as const) {
     const cutoff = period === "current" ? window.currentCutoff : window.previousCutoff;
@@ -378,7 +392,7 @@ export function summarizeTeacherParticipationOutcomes(
       const enrolledAfterParticipation = enrollmentInstants.some((instant) => (
         instant >= cohort.firstAt && instant < cutoff
       ));
-      if (enrolledAfterParticipation) summary.totalEnrollments[period] += 1;
+      if (enrolledAfterParticipation) recordEnrollment(studentId, period);
       if (cohort.teacherFirstAt.size === 0) summary.unattributedParticipants[period] += 1;
 
       for (const [teacherId, teacherFirstAt] of cohort.teacherFirstAt) {
@@ -389,13 +403,30 @@ export function summarizeTeacherParticipationOutcomes(
         };
         teacher.participants[period] += 1;
         if (enrollmentInstants.some((instant) => instant >= teacherFirstAt && instant < cutoff)) {
-          teacher.enrollments[period] += 1;
+          recordEnrollment(studentId, period, teacherId);
         }
         teachers.set(teacherId, teacher);
       }
     }
   }
 
+  for (const event of enrollmentEvents) {
+    if (!event.sourceConfirmed || event.sourceTeacherIds === undefined) continue;
+    for (const period of ["current", "previous"] as const) {
+      if (!overviewFactInPeriod(event, window, period)) continue;
+      recordEnrollment(event.studentId, period);
+      for (const teacherId of new Set(event.sourceTeacherIds.filter(Boolean))) {
+        if (!teachers.has(teacherId)) teachers.set(teacherId, {
+          teacherId, participants: { current: 0, previous: 0 }, enrollments: { current: 0, previous: 0 },
+        });
+        recordEnrollment(event.studentId, period, teacherId);
+      }
+    }
+  }
+  for (const period of ["current", "previous"] as const) {
+    summary.totalEnrollments[period] = enrolledSubjects[period].size;
+    for (const teacher of teachers.values()) teacher.enrollments[period] = teacherEnrollments.get(`${period}:${teacher.teacherId}`)?.size ?? 0;
+  }
   summary.teachers = Array.from(teachers.values());
   return summary;
 }

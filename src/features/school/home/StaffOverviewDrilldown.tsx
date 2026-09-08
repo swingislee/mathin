@@ -79,7 +79,7 @@ export function StaffOverviewDrilldown({ children, grain, date, generatedAt, sel
       <DialogContent className="flex h-[min(85dvh,760px)] max-w-4xl flex-col gap-4 p-4 sm:p-6" showCloseButton={false}
         onCloseAutoFocus={event => { event.preventDefault(); opener.current?.focus(); }}>
         <DialogClose asChild><Button variant="ghost" size="sm" className="absolute right-3 top-3 size-8 p-0" aria-label={m.close}><X className="size-4" /></Button></DialogClose>
-        <div className="pr-12"><DialogTitle>{selection?.query.kind === "business" ? label(selection.query.metric ?? "detail") : selection?.query.kind === "support" ? `${selection.title.split(" · ")[0]} · ${label(selection.query.metric ?? "leads")}` : selection?.title}</DialogTitle><DialogDescription>{m.detail}</DialogDescription></div>
+        <div className="pr-12"><DialogTitle>{selection?.query.kind === "business" ? label(selection.query.metric ?? "detail") : selection?.query.kind === "support" || selection?.query.kind === "participation" ? `${selection.title.split(" · ")[0]} · ${label(selection.query.metric === "enrollments" && selection.query.kind === "participation" ? "enrollmentOutcome" : selection.query.metric ?? "leads")}` : selection?.title}</DialogTitle><DialogDescription>{m.detail}</DialogDescription></div>
         {selection && <>
           <div className="flex flex-wrap items-center gap-2 text-xs">
             {isPeriod ? (["current", "previous"] as const).map(period => <Button variant="ghost" key={period} type="button" aria-pressed={(selection.query.period ?? "current") === period}
@@ -93,6 +93,12 @@ export function StaffOverviewDrilldown({ children, grain, date, generatedAt, sel
               onClick={() => void load({ ...selection, query: { ...selection.query, metric } }, appliedSearch)}>{label(metric)}</Button>)}
           </div>}
           {selection.query.kind === "capacity" && <p className="text-xs leading-5 text-muted">{m.capacityNote}</p>}
+          {selection.query.kind === "participation" && <div className="flex flex-wrap gap-1">
+            {(["participants", "enrollments"] as const).map(metric => <Button variant="ghost" key={metric} type="button"
+              aria-pressed={selection.query.metric === metric}
+              className={cn("rounded-md px-2 py-1 text-xs", selection.query.metric === metric ? "bg-moon/30 text-ink" : "text-muted hover:bg-moon/15")}
+              onClick={() => void load({ ...selection, query: { ...selection.query, metric } }, appliedSearch)}>{metric === "enrollments" ? m.enrollmentOutcome : m.participants}</Button>)}
+          </div>}
           {selection.query.metric === "conversion" && <p className="text-xs leading-5 text-muted">{m.conversionNote}</p>}
           <form className="flex gap-2" onSubmit={event => { event.preventDefault(); void load(selection, search); }}>
             <Input className="min-w-0 flex-1 rounded-md border border-line bg-card px-3 py-2 text-sm" value={search} maxLength={120} onChange={event => setSearch(event.target.value)} placeholder={m.search} aria-label={m.search} />

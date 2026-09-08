@@ -563,6 +563,8 @@ export async function getStaffOverviewData({
   const enrollmentOwner = new Map(courseEnrollments.map(row => [row.id, row.opportunity_id ? opportunityOwner.get(row.opportunity_id) : null]));
   const enrollmentEvents = datedEvents(sourceEvents.enrollments, grain).map(row => ({
     ...row, studentId: subjectForEvent(row),
+    sourceTeacherIds: row.sourceConfirmed ? Array.from(new Set((row.registrationIds ?? [])
+      .flatMap(id => Array.from(assessorsByRegistrationId.get(id) ?? [])))) : undefined,
     personId: row.sourcePerson !== undefined ? sourceStaff(row.sourcePerson)
       : enrollmentOwner.get(row.id) ?? personForEvent(row) ?? (row.studentId ? supportOwnerForEnrollment(row.studentId, row.at) : null),
   }));
@@ -890,9 +892,12 @@ export async function getStaffOverviewData({
     } else if (detail.kind === "participation") {
       available = detail.metric === "enrollments" || detail.metric === "conversion" ? teacherEnrollmentAvailable : teacherParticipationAvailable;
       records = selectOverviewParticipants(participationEvents, enrollmentEvents, window, detail).map(row => {
-        const event = [...arrivalEvents, ...assessmentEvents].find(event => event.studentId === row.studentId);
-        const ref = event ? detailRef(arrivalEvents.includes(event) ? "arrivals" : "assessments", event.id) : {};
+        const event = detail.metric === "enrollments"
+          ? enrollmentEvents.find(event => event.id === row.eventId)
+          : [...arrivalEvents, ...assessmentEvents].find(event => event.studentId === row.studentId && event.at === row.at);
+        const ref = event ? detailRef(detail.metric === "enrollments" ? "enrollments" : arrivalEvents.some(item => item.id === event.id) ? "arrivals" : "assessments", event.id) : {};
         return { ...ref, ...subject(row.studentId), id: row.studentId, at: row.at,
+          sourceName: event?.sourceName, sourceMonth: event?.sourceMonth, sourceConfirmed: event?.sourceConfirmed,
           values: [{ label: "enrollmentOutcome", value: teacherEnrollmentAvailable ? row.enrolled ? "enrolled" : "notEnrolled" : "unknown" }] };
       });
     } else if (detail.kind === "capacity") {

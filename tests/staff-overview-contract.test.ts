@@ -208,6 +208,25 @@ describe("staff fact overview contract", () => {
     expect(outcome.teachers[0]?.enrollments.previous).toBe(0);
   });
 
+  it("counts source-confirmed enrollment months independently from participation dates", () => {
+    const window = buildStaffOverviewWindow("month", new Date("2026-09-08T04:00:00Z"), "Asia/Shanghai");
+    const source = { sourceConfirmed: true, sourceMonth: "2026-09", sourceTeacherIds: ["a"] };
+    const outcome = summarizeTeacherParticipationOutcomes([
+      { id: "old", studentId: "old", at: "2026-08-01T00:00:00Z", teacherIds: ["a"] },
+      { id: "current", studentId: "current", at: "2026-09-02T00:00:00Z", teacherIds: ["a"] },
+    ], [
+      { ...source, id: "month-only", studentId: "old", at: "" },
+      { ...source, id: "no-visit", studentId: "no-visit", at: "2026-09-02T00:00:00Z" },
+      { ...source, id: "same-month", studentId: "current", at: "2026-09-02T00:00:00Z" },
+      { ...source, id: "duplicate", studentId: "current", at: "2026-09-02T00:00:00Z", sourceTeacherIds: ["a", "b"] },
+      { ...source, id: "prior-month", studentId: "prior", at: "", sourceMonth: "2026-08" },
+    ], window);
+    expect(outcome.totalParticipants.current).toBe(1);
+    expect(outcome.totalEnrollments).toEqual({ current: 3, previous: 1 });
+    expect(outcome.teachers.find(row => row.teacherId === "a")?.enrollments).toEqual({ current: 3, previous: 1 });
+    expect(outcome.teachers.find(row => row.teacherId === "b")).toMatchObject({ participants: { current: 0 }, enrollments: { current: 1 } });
+  });
+
   it("uses the confirmed temporary grade policy and sums gaps per class", () => {
     expect(resolveClassroomCapacityPolicy(1, 99)).toEqual({
       minimumOpen: 6,

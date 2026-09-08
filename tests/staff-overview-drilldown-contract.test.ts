@@ -24,6 +24,18 @@ describe("detail table filtering and sorting", () => {
   });
 });
 describe("overview drilldown scopes", () => {
+  it("lists source-confirmed enrollments without requiring a same-month participation and preserves missing dates", () => {
+    const source = { sourceConfirmed: true, sourceMonth: "2026-09", sourceTeacherIds: ["a"] };
+    const enrollments = [
+      { ...source, id: "e1", studentId: "s1", at: "" },
+      { ...source, id: "e2", studentId: "s2", at: "2026-09-02T00:00:00Z" },
+      { ...source, id: "e3", studentId: "s3", at: "", sourceTeacherIds: ["b"] },
+    ];
+    expect(selectOverviewParticipants([], enrollments, window, { kind: "participation", metric: "enrollments", scope: "a" }))
+      .toEqual([{ studentId: "s1", enrolled: true, at: "", eventId: "e1" }, { studentId: "s2", enrolled: true, at: "2026-09-02T00:00:00Z", eventId: "e2" }]);
+    expect(selectOverviewParticipants([], enrollments, window, { kind: "participation", metric: "participants", scope: "a" })).toEqual([]);
+    expect(selectOverviewParticipants([], enrollments, window, { kind: "participation", metric: "enrollments", scope: "a", period: "previous" })).toEqual([]);
+  });
   const events = [
     { id: "invite", at: "2026-09-01T00:00:00Z", personId: "a" },
     { id: "invite", at: "2026-09-02T00:00:00Z", personId: "a" },

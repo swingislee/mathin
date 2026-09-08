@@ -2227,7 +2227,7 @@
         "teacherEnrollments": "Enrolled after participation",
         "teacherConversion": "Same-period enrollment rate",
         "teacherUnattributed": "Teacher not recorded",
-        "teacherOutcomeNote": "Participants are deduplicated from actual activity arrivals and completed assessments; personal attribution uses the teacher saved on the assessment. Every participating teacher receives credit, while the institution total is deduplicated by student. Enrollment counts only records after participation and before the comparable cutoff. General activities without a saved teacher relationship remain under Teacher not recorded.",
+        "teacherOutcomeNote": "Participants are deduplicated from arrivals and completed assessments, attributed to the assessment or source subject teacher. Source-confirmed enrollments use their enrollment month and source teacher, including earlier participants or records without an arrival date. Native enrollments use participation before enrollment and the period cutoff. Each teacher receives credit; institution totals deduplicate students.",
         "teacherOutcomeEmpty": "No participation has been attributed to a teacher in either period; the institution total remains visible above.",
         "fact_leads": "New leads",
         "fact_contacts": "Effective contacts",

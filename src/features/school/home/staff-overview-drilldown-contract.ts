@@ -72,18 +72,21 @@ export function selectOverviewDetailEvents<T extends { id: string; at: string; s
   });
 }
 
-/** 每个学员复用汇总函数判断入选及报名，保证先参与、后报名的时间关系一致。 */
+/** 每个学员复用汇总函数，保持来源报名月份、原生参与时序与汇总一致。 */
 export function selectOverviewParticipants(
   participation: readonly StaffOverviewTeacherParticipationEvent[], enrollments: readonly StaffOverviewEnrollmentOutcomeEvent[],
   window: StaffOverviewWindow, query: OverviewDetailQuery,
-): Array<{ studentId: string; enrolled: boolean; at: string }> {
+): Array<{ studentId: string; enrolled: boolean; at: string; eventId?: string }> {
   const period = query.period ?? "current";
   const groups = new Map<string, StaffOverviewTeacherParticipationEvent[]>();
   const enrollmentGroups = new Map<string, StaffOverviewEnrollmentOutcomeEvent[]>();
   participation.forEach(event => groups.set(event.studentId, [...(groups.get(event.studentId) ?? []), event]));
   enrollments.forEach(event => enrollmentGroups.set(event.studentId, [...(enrollmentGroups.get(event.studentId) ?? []), event]));
-  return Array.from(groups).flatMap(([studentId, events]) => {
-    const summary = summarizeTeacherParticipationOutcomes(events, enrollmentGroups.get(studentId) ?? [], window);
+  const subjects = new Set([...groups.keys(), ...enrollmentGroups.keys()]);
+  return Array.from(subjects).flatMap(studentId => {
+    const events = groups.get(studentId) ?? [];
+    const studentEnrollments = enrollmentGroups.get(studentId) ?? [];
+    const summary = summarizeTeacherParticipationOutcomes(events, studentEnrollments, window);
     const teacher = query.scope ? summary.teachers.find(row => row.teacherId === query.scope) : null;
     const count = query.scope ? teacher?.participants[period] ?? 0
       : query.metric === "unattributed" ? summary.unattributedParticipants[period] : summary.totalParticipants[period];
@@ -92,6 +95,14 @@ export function selectOverviewParticipants(
     const cutoff = period === "current" ? window.currentCutoff : window.previousCutoff;
     const at = events.filter(event => new Date(event.at) >= start && new Date(event.at) < cutoff
       && (!query.scope || event.teacherIds.includes(query.scope))).map(event => event.at).sort()[0];
-    return count && (query.metric !== "enrollments" || enrolled) ? [{ studentId, enrolled, at }] : [];
+    if (query.metric === "enrollments") {
+      const enrollment = studentEnrollments.find(event => {
+        const contribution = summarizeTeacherParticipationOutcomes(events, [event], window);
+        return (query.scope ? contribution.teachers.find(row => row.teacherId === query.scope)?.enrollments[period]
+          : contribution.totalEnrollments[period]) ?? 0;
+      });
+      return enrolled ? [{ studentId, enrolled, at: enrollment?.at ?? at, eventId: enrollment?.id }] : [];
+    }
+    return count ? [{ studentId, enrolled, at }] : [];
   });
 }
