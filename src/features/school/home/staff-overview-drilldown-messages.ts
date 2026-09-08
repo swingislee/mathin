@@ -1,0 +1,25 @@
+const zh = {
+  pageSize: "每页条数", perPage: "条 / 页",
+  detail: "数据明细", close: "关闭明细", current: "本期", previous: "上期", search: "搜索姓名、人员或班级", apply: "搜索",
+  loading: "正在读取明细…", error: "明细暂时无法读取，请重试。", retry: "重试", unavailable: "数据源暂不可用，无法提供完整明细。",
+  empty: "此范围内暂无记录", noMatch: "没有匹配的记录", records: "条记录", previousPage: "上一页", nextPage: "下一页",
+  name: "学员 / 班级", date: "发生日期", person: "关联人员", open: "打开详情", unnamed: "未命名记录", currentState: "当前状态",
+  capacityNote: "班级贡献：起班缺口 = max(0, 起班人数 − 在班人次)；健康差額 = 在班人次 − 健康人数；剩余容量 = max(0, 满班人数 − 在班人次)。",
+  conversionNote: "转化率 = 参与后报名人数 ÷ 参与人数；下方列出参与学员及其报名结果。",
+  leads: "获客", contacts: "有效沟通", invitations: "邀约", arrivals: "到访", assessments: "测评", enrollments: "报名",
+  participants: "参与学员", unattributed: "未归属老师", conversion: "转化率", enrollmentOutcome: "参与后报名", enrolled: "已报名", notEnrolled: "未报名", unknown: "暂不可用",
+  classes: "班级", enrolledSeats: "在班人次", minimum: "起班人数", healthy: "健康人数", full: "满班人数", minimumOpenGap: "起班缺口", healthyDelta: "健康差额", remainingSeats: "剩余容量",
+};
+const en: Record<keyof typeof zh, string> = {
+  pageSize: "Rows per page", perPage: "/ page",
+  detail: "Record details", close: "Close details", current: "Current", previous: "Previous", search: "Search student, staff or class", apply: "Search",
+  loading: "Loading records…", error: "Unable to load details. Please retry.", retry: "Retry", unavailable: "The data source is unavailable; complete details cannot be shown.",
+  empty: "No records in this scope", noMatch: "No matching records", records: "records", previousPage: "Previous page", nextPage: "Next page",
+  name: "Student / class", date: "Event date", person: "Related staff", open: "Open details", unnamed: "Unnamed record", currentState: "Current state",
+  capacityNote: "Class contributions: opening gap = max(0, minimum − enrolled); healthy delta = enrolled − healthy; remaining = max(0, full − enrolled).",
+  conversionNote: "Conversion = students enrolled after participation ÷ participants. Participants and their enrollment outcomes are listed below.",
+  leads: "Acquisition", contacts: "Connected contacts", invitations: "Invitations", arrivals: "Arrivals", assessments: "Assessments", enrollments: "Enrollments",
+  participants: "Participants", unattributed: "No attributed teacher", conversion: "Conversion", enrollmentOutcome: "Enrollment after participation", enrolled: "Enrolled", notEnrolled: "Not enrolled", unknown: "Unavailable",
+  classes: "Classes", enrolledSeats: "Enrolled seats", minimum: "Opening minimum", healthy: "Healthy size", full: "Full size", minimumOpenGap: "Opening gap", healthyDelta: "Healthy delta", remainingSeats: "Remaining seats",
+};
+export function overviewDetailMessages(locale: string) { return locale.startsWith("zh") ? zh : en; }

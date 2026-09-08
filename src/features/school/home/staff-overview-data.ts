@@ -1,4 +1,5 @@
 import "server-only";
+import { selectOverviewDetailEvents, selectOverviewParticipants, type OverviewDetailQuery, type OverviewDetailRecord } from "./staff-overview-drilldown-contract";
 
 import type { OverviewClassroomOccupancy } from "./staff-overview-presentation-contract";
 import { getOrganizationTimezoneV2 } from "@/features/school/organization-locations";
@@ -119,6 +120,7 @@ export interface StaffOverviewSnapshot {
 }
 
 export interface StaffOverviewData {
+  detail?: { available: boolean; records: OverviewDetailRecord[] };
   generatedAt: string;
   timeZone: string;
   grain: StaffOverviewGrain;
@@ -218,6 +220,11 @@ interface LeadActionRow {
 }
 
 interface SupportTaskRow {
+  id: string;
+  classroom_id: string;
+  student_id: string | null;
+  due_at: string | null;
+  note: string;
   assigned_to: string | null;
 }
 
@@ -321,10 +328,14 @@ export async function getStaffOverviewData({
   grain,
   now = new Date(),
   date,
+  detail,
+  selectedSupportIds = [],
 }: {
   grain: StaffOverviewGrain;
   now?: Date;
   date?: string;
+  detail?: OverviewDetailQuery;
+  selectedSupportIds?: string[];
 }): Promise<StaffOverviewData> {
   const [supabase, timeZone] = await Promise.all([createClient(), getOrganizationTimezoneV2()]);
   const window = buildStaffOverviewWindow(grain, now, timeZone, date);
@@ -357,7 +368,7 @@ export async function getStaffOverviewData({
     readOverviewRows<AssignmentRow>(() => supabase.from("classroom_staff_assignments")
       .select("classroom_id,user_id,responsibility,profiles!classroom_staff_assignments_user_id_fkey(display_name)"), ["classroom_id", "user_id", "responsibility"]),
     readOverviewRows<LeadActionRow>(() => supabase.from("lead_next_actions").select("lead_id,due_at").eq("status", "open").neq("kind", "initial_contact")),
-    readOverviewRows<SupportTaskRow>(() => supabase.from("class_support_tasks").select("assigned_to").eq("status", "pending")),
+    readOverviewRows<SupportTaskRow>(() => supabase.from("class_support_tasks").select("id,assigned_to,classroom_id,student_id,due_at,note").eq("status", "pending")),
     readOverviewRows<ProfileRow>(() => supabase.from("profiles").select("id,display_name,role,is_active").in("role", ["staff", "admin"]).eq("is_active", true)),
     readOverviewRows<StaffRoleMemberRow>(() => supabase.from("staff_role_members")
       .select("user_id,staff_roles!staff_role_members_role_id_fkey(key)"), ["user_id", "role_id"]),
@@ -716,9 +727,7 @@ export async function getStaffOverviewData({
 
   const teacherParticipationAvailable = sourceExact("activities") && sourceExact("assessments");
   const teacherEnrollmentAvailable = teacherParticipationAvailable && sourceExact("enrollments");
-  const teacherOutcome = teacherParticipationAvailable
-    ? summarizeTeacherParticipationOutcomes(
-      [
+  const participationEvents = [
         ...arrivalEvents.map((event) => ({
           id: event.id,
           studentId: event.studentId,
@@ -730,7 +739,10 @@ export async function getStaffOverviewData({
           id: event.id, studentId: event.studentId, at: event.at,
           teacherIds: Array.from(assessorsByRegistrationId.get(assessments.find(row => row.id === event.id)!.activity_registration_id) ?? []),
         })),
-      ],
+      ];
+  const teacherOutcome = teacherParticipationAvailable
+    ? summarizeTeacherParticipationOutcomes(
+      participationEvents,
       enrollmentEvents,
       window,
     )
@@ -795,9 +807,96 @@ export async function getStaffOverviewData({
     },
   ];
 
+  let detailResult: StaffOverviewData["detail"];
+  if (detail) {
+    const subject = (key: string): Pick<OverviewDetailRecord, "studentId" | "leadId"> => key.startsWith("lead:")
+      ? { leadId: key.slice(5) } : key.startsWith("record:") ? {} : { studentId: key };
+    const sourceById = new Map(acquisitionSources.map(row => [row.id, row]));
+    const registrationById = new Map(registrations.map(row => [row.id, row]));
+    const detailRef = (metric: StaffOverviewMetric, id: string): OverviewDetailRecord => {
+      if (metric === "leads") {
+        const source = sourceById.get(id);
+        const lead = leadById.get(id.replace(/^submission:/, "")) ?? leadDirectory.find(row => row.source_record_id === id);
+        return { id, leadId: lead?.id ?? source?.lead_id, studentId: lead?.student_id, sourceId: source?.id,
+          name: source?.record_data.cells?.find(cell => cell.fieldName === "学员姓名")?.text };
+      }
+      if (metric === "contacts") {
+        const row = communications.find(row => row.id === id);
+        return { id, leadId: row?.lead_id, sourceId: row?.source_record_id };
+      }
+      if (metric === "invitations") {
+        const row = registrations.find(row => row.source_record_id === id);
+        return { id, leadId: row?.lead_id ?? invitationThreads.find(row => row.id === id)?.lead_id,
+          studentId: row?.student_id, sourceId: row?.source_record_id };
+      }
+      const event = sourceEvents[metric].find(row => row.id === id);
+      const registration = registrationById.get(id.replace(/^source-enrollment:/, ""));
+      const assessment = assessments.find(row => row.id === id);
+      return { id, studentId: event?.studentId, leadId: event?.leadId,
+        sourceId: registration?.source_record_id ?? assessment?.source_record_id ?? courseEnrollments.find(row => row.id === id)?.source_record_id };
+    };
+    let records: OverviewDetailRecord[] = [];
+    let available = false;
+    if ((detail.kind === "business" || detail.kind === "support") && STAFF_OVERVIEW_METRICS.includes(detail.metric as StaffOverviewMetric)) {
+      const metric = detail.metric as StaffOverviewMetric;
+      available = detail.kind === "support" ? supportMetricExact(metric) : comparisonByMetric[metric] !== null;
+      records = selectOverviewDetailEvents(supportAttributedEvents[metric], window, detail, selectedSupportIds)
+        .map((event, index) => ({ ...detailRef(metric, event.id), id: `${event.id}:${index}`, at: event.at,
+          person: event.personId ? displayName(event.personId) : undefined }));
+    } else if (detail.kind === "participation") {
+      available = detail.metric === "enrollments" || detail.metric === "conversion" ? teacherEnrollmentAvailable : teacherParticipationAvailable;
+      records = selectOverviewParticipants(participationEvents, enrollmentEvents, window, detail).map(row => {
+        const event = [...arrivalEvents, ...assessmentEvents].find(event => event.studentId === row.studentId);
+        const ref = event ? detailRef(arrivalEvents.includes(event) ? "arrivals" : "assessments", event.id) : {};
+        return { ...ref, ...subject(row.studentId), id: row.studentId, at: row.at,
+          values: [{ label: "enrollmentOutcome", value: teacherEnrollmentAvailable ? row.enrolled ? "enrolled" : "notEnrolled" : "unknown" }] };
+      });
+    } else if (detail.kind === "capacity") {
+      available = capacityAvailable && (detail.group !== "teacher" || sourceExact("staffAssignments"));
+      const selectedClasses = classroomRows.filter(row => !detail.scope || (detail.group === "teacher"
+        ? primaryClassIdsByTeacher.get(detail.scope)?.has(row.id)
+        : detail.group === "grade" ? (row.grade === null ? "unknown" : String(row.grade)) === detail.scope : row.id === detail.scope));
+      if (detail.metric === "activeStudents" || detail.metric === "enrolledSeats") {
+        const ids = new Set(selectedClasses.map(row => row.id));
+        const seen = new Set<string>();
+        records = scopedActiveEnrollments.filter(row => ids.has(row.classroom_id)).flatMap(row => {
+          if (detail.metric === "activeStudents" && seen.has(row.student_id)) return [];
+          seen.add(row.student_id);
+          return [{ id: row.id, studentId: row.student_id, at: row.joined_at,
+            values: [{ label: "classes", value: selectedClasses.filter(item => scopedActiveEnrollments.some(member => member.student_id === row.student_id && member.classroom_id === item.id)).map(item => item.name).join(" · ") }] }];
+        });
+      } else records = selectedClasses.map(row => ({ id: row.id, name: row.name, person: row.teacherNames.join(" · "), href: `/dashboard/classes/${row.id}`,
+        values: [
+          { label: "enrolledSeats", value: String(row.enrolledSeats ?? "—") },
+          { label: "minimum", value: String(row.minimumOpen) },
+          { label: "healthy", value: String(row.healthy ?? "—") },
+          { label: "full", value: String(row.full ?? "—") },
+          { label: "minimumOpenGap", value: String(Math.max(0, row.minimumOpen - (row.enrolledSeats ?? 0))) },
+          { label: "healthyDelta", value: row.healthy === null ? "—" : String((row.enrolledSeats ?? 0) - row.healthy) },
+          { label: "remainingSeats", value: row.full === null ? "—" : String(Math.max(0, row.full - (row.enrolledSeats ?? 0))) },
+        ] }));
+    } else if (detail.kind === "pending") {
+      available = pendingFacts.find(row => row.key === detail.metric)?.value != null;
+      if (detail.metric === "unassignedLeads" || detail.metric === "uncontactedLeads") records = openLeads
+        .filter(row => detail.metric === "unassignedLeads" ? row.owner_id === null || row.status === "unassigned" : row.status === "uncontacted")
+        .map(row => ({ id: row.id, leadId: row.id, studentId: row.student_id, at: row.created_at, person: row.owner_id ? displayName(row.owner_id) : undefined }));
+      if (detail.metric === "overdueLeadActions") records = leadActions.filter(row => new Date(row.due_at) < now)
+        .map((row, index) => ({ id: `${row.lead_id}:${index}`, leadId: row.lead_id, at: row.due_at }));
+      if (detail.metric === "awaitingTeacher" || detail.metric === "awaitingParent") records = activeInvitationThreads
+        .filter(row => row.state === (detail.metric === "awaitingTeacher" ? "awaiting_teacher" : "awaiting_parent"))
+        .map(row => ({ id: row.id, leadId: row.lead_id, at: row.scheduled_at ?? undefined, person: row.owner_id_at_open ? displayName(row.owner_id_at_open) : undefined }));
+      if (detail.metric === "unassessedArrivals") records = attended.filter(row => !assessedRegistrationIds.has(row.id))
+        .map(row => ({ id: row.id, studentId: row.student_id, leadId: row.lead_id, sourceId: row.source_record_id }));
+      if (detail.metric === "pendingSupportTasks") records = supportTasks.map(row => ({ id: row.id, studentId: row.student_id,
+        name: row.note || undefined, at: row.due_at ?? undefined, person: row.assigned_to ? displayName(row.assigned_to) : undefined,
+        href: `/dashboard/classes/${row.classroom_id}` }));
+    }
+    detailResult = { available, records: available ? records : [] };
+  }
   if (!acquisitionReadable) unavailable.add("leads");
   else if (!acquisitionAvailable) truncated.add("leads");
   return {
+    ...(detailResult ? { detail: detailResult } : {}),
     currentTermName: term?.name ?? null,
     missingDateCounts,
     generatedAt: now.toISOString(),

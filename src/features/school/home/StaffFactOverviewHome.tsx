@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { StaffOverviewDrilldown, OverviewDetailTrigger, OverviewDetailRow } from "./StaffOverviewDrilldown";
+import type { OverviewDetailQuery } from "./staff-overview-drilldown-contract";
 import { cookies } from "next/headers";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StaffOverviewDisplayPicker } from "./StaffOverviewDisplayPicker";
@@ -56,6 +58,7 @@ function ScopeTitle({ label, children, current = false }: { label: string; child
 }
 
 interface CapacityVisualDatum {
+  group: "teacher" | "grade" | "class";
   key: string;
   label: string;
   classCount: number | null;
@@ -153,8 +156,9 @@ function BusinessFactBand({
           const target = targets[fact.key] ?? null;
           const progress = overviewTargetProgress(fact.current, target);
           return (
-          <div
+          <OverviewDetailTrigger
             key={fact.key}
+            query={{ kind: "business", metric: fact.key }} title={labels[fact.key]}
             data-overview-metric={fact.key} data-overview-value={fact.current ?? "unknown"} data-overview-target={target ?? "unset"}
             className={cn("min-w-0 rounded-xl border border-line/75 border-t-2 px-3 pb-1.5 pt-2", FACT_TONES[index % FACT_TONES.length])}
           >
@@ -179,7 +183,7 @@ function BusinessFactBand({
                 <span className="shrink-0 text-[9px] tabular-nums text-leaf-deep">{Math.round(progress.percent)}%</span>
               </div> : null}
             </div> : null}
-          </div>
+          </OverviewDetailTrigger>
         ); })}
       </div>
     </section>
@@ -210,16 +214,16 @@ function PendingStrip({
         <span className="text-[9px] text-muted @3xl/page:hidden">{countLabel}</span>
       </div>
       {facts.map((fact) => (
-        <Link
+        <OverviewDetailTrigger
           key={fact.key}
-          href={fact.href}
+          query={{ kind: "pending", metric: fact.key }}
           title={fullLabel(fact.key)}
           className="flex min-h-10 min-w-0 items-center gap-1.5 bg-card px-2.5 text-muted transition-colors hover:bg-moon/15 hover:text-ink"
         >
           <span className="min-w-0 flex-1 truncate text-[10px]">{shortLabel(fact.key)}</span>
           <strong className="shrink-0 font-display text-base font-normal tabular-nums text-ink">{valueOrDash(fact.value)}</strong>
           <ArrowUpRight className="size-3 shrink-0" aria-hidden />
-        </Link>
+        </OverviewDetailTrigger>
       ))}
     </section>
   );
@@ -255,10 +259,10 @@ function CockpitPanel({
   );
 }
 
-function PersonComparisonCell({ value, previousLabel }: { value: StaffOverviewPersonMetric; previousLabel: string }) {
+function PersonComparisonCell({ value, previousLabel, query, title }: { value: StaffOverviewPersonMetric; previousLabel: string; query: OverviewDetailQuery; title: string }) {
   return <span className="inline-flex items-baseline justify-end gap-1.5 whitespace-nowrap tabular-nums" title={previousLabel}>
-    <strong className="text-sm font-medium text-ink">{valueOrDash(value.current)}</strong>
-    <span className="text-[10px] text-muted">/ {valueOrDash(value.previous)}</span>
+    <OverviewDetailTrigger query={query} title={title} className="rounded px-0.5 text-sm font-medium text-ink">{valueOrDash(value.current)}</OverviewDetailTrigger>
+    <OverviewDetailTrigger query={{ ...query, period: "previous" }} title={`${title} · ${previousLabel}`} className="rounded px-0.5 text-[10px] text-muted">/ {valueOrDash(value.previous)}</OverviewDetailTrigger>
   </span>;
 }
 
@@ -275,10 +279,10 @@ function SupportFunnelPanel({ rows, title, settings, metricLabels, currentLabel,
         <TableHead className="h-8 w-24 px-3 text-[10px]">{personLabel}</TableHead>
         {STAFF_OVERVIEW_METRICS.map(metric => <TableHead key={metric} className="h-8 px-1.5 text-right text-[10px] whitespace-nowrap">{metricLabels[metric]}</TableHead>)}
       </TableRow></TableHeader>
-      <TableBody>{rows.map(row => <TableRow key={row.key} data-support-row={row.key}>
+      <TableBody>{rows.map(row => <OverviewDetailRow key={row.key} data-support-row={row.key} query={{ kind: "support", metric: "leads", scope: row.key }} title={row.name || (row.key === "__other__" ? otherLabel : unassignedLabel)}>
         <TableCell className="max-w-28 truncate px-3 py-1.5 font-medium" title={row.name || (row.key === "__other__" ? otherLabel : unassignedLabel)}>{row.name || (row.key === "__other__" ? otherLabel : unassignedLabel)}</TableCell>
-        {STAFF_OVERVIEW_METRICS.map(metric => <TableCell key={metric} className="px-1.5 py-1.5 text-right"><PersonComparisonCell value={row.metrics[metric]} previousLabel={previousLabel} /></TableCell>)}
-      </TableRow>)}</TableBody>
+        {STAFF_OVERVIEW_METRICS.map(metric => <TableCell key={metric} className="px-1.5 py-1.5 text-right"><PersonComparisonCell value={row.metrics[metric]} previousLabel={previousLabel} query={{ kind: "support", metric, scope: row.key }} title={`${row.name || (row.key === "__other__" ? otherLabel : unassignedLabel)} · ${metricLabels[metric]}`} /></TableCell>)}
+      </OverviewDetailRow>)}</TableBody>
     </Table>
     {rows.length === 0 ? <p className="px-4 py-8 text-center text-xs text-muted">{emptyLabel}</p> : null}
     <p className="shrink-0 border-t border-line/70 px-3 py-1.5 text-[10px] leading-4 text-muted">{attributionNote}</p>
@@ -341,13 +345,13 @@ function TeacherOutcomePanel({
           { label: conversionLabel, value: percentage(summary.enrollments.current, summary.participants.current), previous: null },
           { label: unattributedLabel, value: valueOrDash(summary.unattributedParticipants.current), previous: summary.unattributedParticipants.previous },
         ].map((item, index) => (
-          <dl key={item.label} className={cn("min-w-0 px-2.5 py-2", index > 0 && "border-l border-line/55")}>
+          <OverviewDetailTrigger key={item.label} query={{ kind: "participation", metric: ["participants", "enrollments", "conversion", "unattributed"][index] }} title={item.label} className={cn("min-w-0 px-2.5 py-2", index > 0 && "border-l border-line/55")}><dl>
             <dt className="truncate text-[9px] text-muted">{item.label}</dt>
             <dd className="mt-0.5 font-display text-lg leading-none tabular-nums text-ink">{item.value}</dd>
             <dd className="mt-1 truncate text-[8px] tabular-nums text-muted">
               {item.previous === null ? currentLabel : `${previousLabel} ${valueOrDash(item.previous)}`}
             </dd>
-          </dl>
+          </dl></OverviewDetailTrigger>
         ))}
       </div>
       <Table containerClassName="min-h-0 flex-1 overflow-auto" className="text-xs">
@@ -357,12 +361,12 @@ function TeacherOutcomePanel({
           <TableHead className="h-8 px-2 text-right text-[10px]">{enrollmentLabel}</TableHead>
           <TableHead className="h-8 px-2 text-right text-[10px]">{conversionLabel}</TableHead>
         </TableRow></TableHeader>
-        <TableBody>{rows.map(row => <TableRow key={row.userId} data-participation-row={row.userId}>
+        <TableBody>{rows.map(row => <OverviewDetailRow key={row.userId} data-participation-row={row.userId} query={{ kind: "participation", metric: "participants", scope: row.userId }} title={row.name}>
           <TableCell className="max-w-24 truncate px-3 py-1.5 font-medium" title={row.name}>{row.name}</TableCell>
-          <TableCell className="px-2 py-1.5 text-right"><PersonComparisonCell value={row.participants} previousLabel={previousLabel} /></TableCell>
-          <TableCell className="px-2 py-1.5 text-right"><PersonComparisonCell value={row.enrollments} previousLabel={previousLabel} /></TableCell>
-          <TableCell className="px-2 py-1.5 text-right text-[11px] tabular-nums">{percentage(row.enrollments.current, row.participants.current)}</TableCell>
-        </TableRow>)}</TableBody>
+          <TableCell className="px-2 py-1.5 text-right"><PersonComparisonCell value={row.participants} previousLabel={previousLabel} query={{ kind: "participation", metric: "participants", scope: row.userId }} title={`${row.name} · ${participantLabel}`} /></TableCell>
+          <TableCell className="px-2 py-1.5 text-right"><PersonComparisonCell value={row.enrollments} previousLabel={previousLabel} query={{ kind: "participation", metric: "enrollments", scope: row.userId }} title={`${row.name} · ${enrollmentLabel}`} /></TableCell>
+          <TableCell className="px-2 py-1.5 text-right text-[11px] tabular-nums"><OverviewDetailTrigger query={{ kind: "participation", metric: "conversion", scope: row.userId }} title={`${row.name} · ${conversionLabel}`}>{percentage(row.enrollments.current, row.participants.current)}</OverviewDetailTrigger></TableCell>
+        </OverviewDetailRow>)}</TableBody>
       </Table>
       {rows.length === 0 ? <p className="px-4 py-8 text-center text-xs text-muted">{emptyLabel}</p> : null}
       <p className="shrink-0 border-t border-line/70 px-3 py-1.5 text-[9px] leading-4 text-muted">{note}</p>
@@ -380,16 +384,16 @@ function CapacityGroup({ title, rows, emptyLabel, labels }: {
         {[title, labels.classes, labels.enrolled, labels.minimum, labels.healthy, labels.remaining].map((label, i) =>
           <TableHead key={label} className={cn("h-8 px-2 text-[10px] whitespace-nowrap", i > 0 && "text-right")}>{label}</TableHead>)}
       </TableRow></TableHeader>
-      <TableBody>{rows.map(row => <TableRow key={row.key} data-capacity-row={row.key}>
+      <TableBody>{rows.map(row => <OverviewDetailRow key={row.key} data-capacity-row={row.key} query={{ kind: "capacity", group: row.group, scope: row.key }} title={row.label}>
         <TableCell className="max-w-32 truncate px-2 py-1.5 font-medium" title={row.context ? `${row.label} · ${row.context}` : row.label}>
-          {row.href ? <Link href={row.href} className="hover:text-rose">{row.label}</Link> : row.label}
+          {row.label}
         </TableCell>
-        <TableCell className="px-2 py-1.5 text-right tabular-nums">{valueOrDash(row.classCount)}</TableCell>
-        <TableCell className="px-2 py-1.5 text-right tabular-nums whitespace-nowrap">{valueOrDash(row.enrolledSeats)}<span className="text-[10px] text-muted">/{valueOrDash(row.fullSeats)}</span></TableCell>
-        <TableCell className="px-2 py-1.5 text-right tabular-nums">{valueOrDash(row.minimumOpenGap)}</TableCell>
-        <TableCell className="px-2 py-1.5 text-right tabular-nums">{signedOrDash(row.healthyDelta)}</TableCell>
-        <TableCell className="px-2 py-1.5 text-right tabular-nums">{valueOrDash(row.remainingSeats)}</TableCell>
-      </TableRow>)}</TableBody>
+        <TableCell className="px-2 py-1.5 text-right tabular-nums"><OverviewDetailTrigger query={{ kind: "capacity", group: row.group, scope: row.key }} title={`${row.label} · ${labels.classes}`}>{valueOrDash(row.classCount)}</OverviewDetailTrigger></TableCell>
+        <TableCell className="px-2 py-1.5 text-right tabular-nums whitespace-nowrap"><OverviewDetailTrigger query={{ kind: "capacity", group: row.group, scope: row.key, metric: "enrolledSeats" }} title={`${row.label} · ${labels.enrolled}`}>{valueOrDash(row.enrolledSeats)}</OverviewDetailTrigger><OverviewDetailTrigger query={{ kind: "capacity", group: row.group, scope: row.key, metric: "fullSeats" }} title={row.label} className="text-[10px] text-muted">/{valueOrDash(row.fullSeats)}</OverviewDetailTrigger></TableCell>
+        <TableCell className="px-2 py-1.5 text-right tabular-nums"><OverviewDetailTrigger query={{ kind: "capacity", group: row.group, scope: row.key, metric: "minimumOpenGap" }} title={`${row.label} · ${labels.minimum}`}>{valueOrDash(row.minimumOpenGap)}</OverviewDetailTrigger></TableCell>
+        <TableCell className="px-2 py-1.5 text-right tabular-nums"><OverviewDetailTrigger query={{ kind: "capacity", group: row.group, scope: row.key, metric: "healthyDelta" }} title={`${row.label} · ${labels.healthy}`}>{signedOrDash(row.healthyDelta)}</OverviewDetailTrigger></TableCell>
+        <TableCell className="px-2 py-1.5 text-right tabular-nums"><OverviewDetailTrigger query={{ kind: "capacity", group: row.group, scope: row.key, metric: "remainingSeats" }} title={`${row.label} · ${labels.remaining}`}>{valueOrDash(row.remainingSeats)}</OverviewDetailTrigger></TableCell>
+      </OverviewDetailRow>)}</TableBody>
     </Table>
     {rows.length === 0 ? <p className="px-4 py-8 text-center text-xs text-muted">{emptyLabel}</p> : null}
   </>;
@@ -437,24 +441,24 @@ function CapacityPanel({
     >
       <div className="grid shrink-0 grid-cols-2 border-b border-line/70">
         {snapshotItems.map((item, index) => (
-          <dl
+          <OverviewDetailTrigger query={{ kind: "capacity", metric: ["activeStudents", "activeClasses", "enrolledSeats", "healthyDelta", "remainingSeats"][index] }}
             key={item.label}
             className={cn(
               "flex min-w-0 items-center justify-between gap-2 px-2.5 py-2",
               index > 0 && "border-l border-line/55",
               index === snapshotItems.length - 1 && "col-span-2",
             )}
-            title={item.note}
-          >
+            title={item.label}
+          ><dl className="contents">
             <dt className="truncate text-[9px] text-muted">{item.label}</dt>
             <dd className="shrink-0 font-display text-base leading-none tabular-nums text-ink">{item.value}</dd>
-          </dl>
+          </dl></OverviewDetailTrigger>
         ))}
       </div>
       <StaffOverviewCapacityTabs teacherLabel={teacherTitle + " · " + teachers.length} gradeLabel={gradeTitle + " · " + grades.length}
         classroomLabel={classroomTitle + " · " + classrooms.length}
         classrooms={<CapacityGroup title={classroomTitle} emptyLabel={classroomEmpty} labels={labels}
-          rows={classrooms.map(row => ({ key: row.id, label: row.name, href: `/dashboard/classes/${row.id}`, context: row.teacherNames.join(" · "),
+          rows={classrooms.map(row => ({ key: row.id, group: "class", label: row.name, href: `/dashboard/classes/${row.id}`, context: row.teacherNames.join(" · "),
             classCount: 1, fullSeats: row.full, enrolledSeats: row.enrolledSeats,
             minimumOpenGap: row.enrolledSeats === null ? null : Math.max(0, row.minimumOpen - row.enrolledSeats),
             healthyDelta: row.enrolledSeats === null || row.healthy === null ? null : row.enrolledSeats - row.healthy,
@@ -468,6 +472,7 @@ function CapacityPanel({
 
 function teacherCapacityRows(rows: StaffOverviewTeacherRow[]): CapacityVisualDatum[] {
   return rows.map((row) => ({
+    group: "teacher",
     key: row.userId,
     label: row.name,
     classCount: row.classCount,
@@ -484,6 +489,7 @@ function gradeCapacityRows(
   gradeLabel: (row: StaffOverviewCapacityRow) => string,
 ): CapacityVisualDatum[] {
   return rows.map((row) => ({
+    group: "grade",
     key: row.key,
     label: gradeLabel(row),
     classCount: row.classCount,
@@ -584,7 +590,7 @@ export async function StaffFactOverviewHome({
   });
 
   return (
-    <ObjectWorkspace
+    <StaffOverviewDrilldown grain={grain} date={selectedDate} generatedAt={data.generatedAt} selectedSupportIds={supportDisplay.selectedIds}><ObjectWorkspace
       objectBar={(
         <ObjectBar
           title={greeting}
@@ -718,6 +724,6 @@ export async function StaffFactOverviewHome({
             />
         </div>
       </div>
-    </ObjectWorkspace>
+    </ObjectWorkspace></StaffOverviewDrilldown>
   );
 }
