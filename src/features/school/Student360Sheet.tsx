@@ -44,6 +44,7 @@ import {
 
 type TimelineFilter = "all" | "business" | "teaching" | "notes";
 const LeadIdentityControl = dynamic(() => import("./LeadIdentityControl").then((module) => module.LeadIdentityControl));
+const StudentMergePanel = dynamic(() => import("./StudentMergePanel").then(module => module.StudentMergePanel));
 const SchoolSupportProfileButton = dynamic(() => import("./SchoolSupportProfile").then((module) => module.SchoolSupportProfileButton));
 
 const BUSINESS_PHASES = new Set<Student360Phase>([
@@ -442,6 +443,7 @@ function Student360PanelBody({
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1">
+            {identity?.accessScope === "full" && identity.studentId ? <StudentMergePanel key={identity.studentId} studentId={identity.studentId} name={name} phone={identity.phone ?? ""} compact onSaved={refresh} /> : null}
             {identity?.accessScope === "full" ? <SchoolSupportProfileButton studentId={identity.studentId} leadId={identity.studentId ? null : identity.primaryLeadId} onSaved={refresh} /> : null}
             <Button
               type="button"
