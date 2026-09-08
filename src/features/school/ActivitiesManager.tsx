@@ -333,7 +333,7 @@ function ActivityDialog({
           {t("kind")}
           <Select value={form.kind} onValueChange={(value) => set("kind", value as ActivityInput["kind"])}>
             <SelectTrigger className="h-9 rounded-md shadow-none"><SelectValue /></SelectTrigger>
-            <SelectContent>{ACTIVITY_KINDS.map((kind) => <SelectItem key={kind} value={kind}>{t(`kind_${kind}`)}</SelectItem>)}</SelectContent>
+            <SelectContent>{ACTIVITY_KINDS.filter((kind) => kind !== 'assessment_1v1').map((kind) => <SelectItem key={kind} value={kind}>{t(`kind_${kind}`)}</SelectItem>)}</SelectContent>
           </Select>
         </Label>
         <Label className="grid gap-1 text-xs font-normal text-muted">{t("titleLabel")}<Input value={form.title} onChange={(event) => set("title", event.target.value)} maxLength={100} className={`${inputClass} h-9 rounded-md py-1.5 shadow-none`} /></Label>

@@ -136,7 +136,7 @@ async function readActivities(activityId?: string): Promise<ActivityRow[]> {
     .is("deleted_at", null)
     .order("scheduled_at", { ascending: true });
   if (activityId) query = query.eq("id", activityId).eq("record_state","current");
-  else query = query.is("source_invitation_id", null);
+  else query = query.is("source_invitation_id", null).neq("kind", "assessment_1v1");
 
   const { data, error } = await query.returns<ActivityQueryRow[]>();
   if (error) throw new Error(error.message);
