@@ -13,7 +13,7 @@ import {
   buildOverviewAcquisitions, type OverviewLeadSubmission,
 } from "./staff-overview-acquisition-contract";
 import {
-  buildOverviewSourceEvents, overviewFactInstant, overviewSubjectKey,
+  buildOverviewSourceEvents, overviewFactInstant, overviewSubjectKey, supplementOverviewContacts,
   type OverviewActivity, type OverviewRegistration, type OverviewAssessment,
   type OverviewCourseEnrollment, type OverviewMembership, type OverviewEnrollmentAssignment,
 } from "./staff-overview-source-contract";
@@ -531,18 +531,24 @@ export async function getStaffOverviewData({
     sources: acquisitionSources, leads: leadDirectory, submissions: leadSubmissions,
     sourceLinks: [...communications, ...registrations, ...assessments],
   }, timeZone);
-  const leadEvents = datedEvents(sourceLeadEvents);
+  const leadEvents = datedEvents(sourceLeadEvents).map(event => ({
+    ...event, personId: event.sourcePerson ? sourceStaff(event.sourcePerson) : event.personId,
+  }));
   const contactRows = grain === "month" ? uniqueSourceMetricRows(communications.filter(row => !row.source_key?.endsWith(":followup"))) : communications;
-  const sourceContactEvents = contactRows.filter(row => {
+  const communicationFactEvents = contactRows.filter(row => {
     const facts = readSourceMetricFacts(row.source_metric_facts);
     return grain === "month" && facts ? facts.confirmed.contacts : ["connected", "declined"].includes(row.outcome);
   }).map(row => {
     const facts = readSourceMetricFacts(row.source_metric_facts);
     return { id: row.id, at: overviewFactInstant(row.occurred_at, row.occurred_on, timeZone),
+      subjectId: subjectForEvent({ id: row.id, studentId: null, leadId: row.lead_id }),
       personId: facts ? sourceStaff(facts.staff.contacts ?? "") : row.owner_id_at_contact
         ?? (row.source_record_id ? row.recorded_by ?? leadById.get(row.lead_id)?.owner_id ?? null : null),
       ...(facts ? { sourceMonth: facts.months.contacts, sourceName: facts.sourceName, sourceId: row.source_record_id, sourceConfirmed: true } : {}) };
   });
+  const sourceContactEvents = supplementOverviewContacts(communicationFactEvents, sourceEvents.sourceContacts.map(event => ({
+    ...event, subjectId: subjectForEvent(event), personId: personForEvent({ ...event, at: event.at ?? "" }),
+  })), grain, timeZone);
   const contactEvents = datedEvents(sourceContactEvents, grain);
   const sourceInvitationEvents = [...registrations.filter(row => !readSourceMetricFacts(row.source_metric_facts) && row.source_record_id && activityById.has(row.activity_id) && !activityById.get(row.activity_id)?.source_invitation_id)
     .map(row => ({ id: row.source_record_id!, at: overviewFactInstant(null, row.registered_on, timeZone),
@@ -573,7 +579,8 @@ export async function getStaffOverviewData({
 
   const comparisonByMetric: Record<StaffOverviewMetric, StaffOverviewComparison | null> = {
     leads: !sourceExact("leads") || !acquisitionAvailable ? null : aggregateStaffOverviewEvents(leadEvents, window, timeZone),
-    contacts: !sourceExact("communications") ? null : aggregateStaffOverviewEvents(contactEvents, window, timeZone),
+    contacts: !sourceExact("communications") || !sourceExact("activities") || !sourceExact("leads") || !sourceExact("staffDirectory")
+      ? null : aggregateStaffOverviewEvents(contactEvents, window, timeZone),
     invitations: !sourceExact("invitations") || !sourceExact("activities")
       ? null
       : aggregateStaffOverviewEvents(invitationFactEvents, window, timeZone, true),
@@ -654,8 +661,8 @@ export async function getStaffOverviewData({
     enrollments: enrollmentEvents,
   };
   const supportMetricSources: Record<StaffOverviewMetric, StaffOverviewSourceKey[]> = {
-    leads: ["leads"],
-    contacts: ["communications"],
+    leads: ["leads", "staffDirectory"],
+    contacts: ["communications", "activities", "leads", "staffDirectory"],
     invitations: ["invitations", "activities", "leads", "staffDirectory"],
     arrivals: ["activities", "invitations", "leads", "staffDirectory"],
     assessments: ["assessments", "activities", "invitations", "leads", "staffDirectory"],
@@ -848,7 +855,9 @@ export async function getStaffOverviewData({
       }
       if (metric === "contacts") {
         const row = communications.find(row => row.id === id);
-        return { id, leadId: row?.lead_id, sourceId: row?.source_record_id };
+        const source = sourceEvents.sourceContacts.find(row => row.id === id);
+        return { id, leadId: row?.lead_id ?? source?.leadId, studentId: source?.studentId,
+          sourceId: row?.source_record_id ?? source?.sourceId };
       }
       if (metric === "invitations") {
         const sourceEvent = sourceEvents.sourceInvitations.find(row => row.id === id);

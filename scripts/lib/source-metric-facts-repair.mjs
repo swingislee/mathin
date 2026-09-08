@@ -29,7 +29,7 @@ export function buildSourceMetricFactsRepair(snapshot){
     if(!previous||buildSourceMetricFacts(source).sourceVersion>buildSourceMetricFacts(previous).sourceVersion)latest.set(canonical(source),source);
   }
   for(const source of latest.values()){
-    const facts=buildSourceMetricFacts(source);if(!facts?.confirmed.contacts)continue;
+    const facts=buildSourceMetricFacts(source);if(facts?.scope!=='acquisition'||!facts.confirmed.contacts)continue;
     if(!source.record_data.names?.length){excluded.push({sourceId:source.id,reason:'unnamed_source_not_imported'});continue;}
     const key=`operation-contact:${source.id}:confirmation`;if(originalByKey.has(key))continue;
     const related=snapshot.lead_communications.filter(c=>c.source_record_id===source.id).map(c=>c.lead_id);

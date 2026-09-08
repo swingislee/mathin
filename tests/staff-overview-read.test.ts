@@ -66,4 +66,9 @@ describe("detail read dependencies", () => {
   it("keeps capacity independent of historical business facts", () => {
     expect(overviewReadSources({ kind: "capacity" })).toEqual(new Set(["profiles", "classrooms", "memberships", "assignments"]));
   });
+  it("loads confirmation registrations together with communication details", () => {
+    expect(overviewReadSources({ kind: "business", metric: "contacts" })).toEqual(new Set([
+      "profiles", "leads", "communications", "activities", "registrations",
+    ]));
+  });
 });

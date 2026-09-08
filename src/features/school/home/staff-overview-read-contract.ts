@@ -24,7 +24,7 @@ export function overviewReadSources(detail?: OverviewDetailQuery): Set<OverviewR
   } else {
     add("leads");
     if (detail.metric === "leads") add("acquisitionSources", "leadSubmissions", "communications", "registrations", "assessments");
-    else if (detail.metric === "contacts") add("communications");
+    else if (detail.metric === "contacts") add("communications", "activities", "registrations");
     else {
       add("activities", "registrations", "invitationEvents", "invitationThreads");
       if (detail.metric === "assessments") add("assessments");

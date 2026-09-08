@@ -3,7 +3,7 @@ import type { createClient } from "@/lib/supabase/server";
 import { readOverviewRows, type OverviewRowsResult } from "./staff-overview-read";
 import { OVERVIEW_ACQUISITION_FIELDS, OVERVIEW_ACQUISITION_SOURCE, OVERVIEW_ACQUISITION_TABLE, projectedOverviewAcquisition, type OverviewAcquisitionSource } from "./staff-overview-acquisition-contract";
 
-/** 原始档案包含大量单元格元数据；总览仅传输计数与身份展示需要的四个文本字段。 */
+/** 原始档案包含大量单元格元数据；总览只传输计数、来源人员与姓名所需文本字段。 */
 export async function readOverviewAcquisitions(supabase: Awaited<ReturnType<typeof createClient>>): Promise<OverviewRowsResult<OverviewAcquisitionSource>> {
   const query = (selection: string) => supabase.from("history_import_records").select(selection)
     .eq("source_data->>filename", OVERVIEW_ACQUISITION_SOURCE).eq("record_data->>tableName", OVERVIEW_ACQUISITION_TABLE);

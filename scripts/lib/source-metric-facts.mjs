@@ -13,6 +13,18 @@ export function sourceReportingMonth(value,sourceVersion,fallbackDate=null) {
   return fallbackDate?.slice(0,7)??null;
 }
 
+/** 原表的月日记法只补统计月份；实际日期仍保持原有精度。 */
+export function sourceContactReportingMonth(label,date,sourceVersion) {
+  if(label.trim())return sourceReportingMonth(label,sourceVersion);
+  const actual=historicalDate(date);if(actual)return actual.slice(0,7);
+  const short=/^(1[0-2]|0?[1-9])[.月/-](0?[1-9]|[12]\d|3[01])日?$/.exec(date.trim());
+  if(short){
+    const month=sourceReportingMonth(`${Number(short[1])}月`,sourceVersion);
+    return month&&historicalDate(`${month}-${short[2].padStart(2,'0')}`)?month:null;
+  }
+  return null;
+}
+
 export function buildSourceMetricFacts(source,{phase='confirmation',sourceVersion}={}) {
   if(source.source_data?.format!=='feishu-base')return null;
   const table=source.record_data.tableName;
@@ -36,9 +48,13 @@ export function buildSourceMetricFacts(source,{phase='confirmation',sourceVersio
     const downstream=['已到','是'].includes(field(source,'到访与否'))||['已报名','是','已报'].includes(field(source,'报名与否'));
     const confirmed=phase==='confirmation'&&(positive||!negative&&(confirmedSource||downstream));
     put('contacts',confirmed,'确认月份','确认人员',positive?['确认结果','跟进结果']:downstream?['到访与否','报名与否']:['确认月份','确认人员'],{fallback:true});
+    facts.months.contacts=sourceContactReportingMonth(field(source,'确认月份'),field(source,'确认日期'),version);
+    facts.staff.contacts=field(source,'确认人员')||field(source,'沟通人员')||field(source,'跟进人');
   }else if(table==='到访数据与信息表1.0-总'){
     facts.scope='selection';
     const arrived=field(source,'到访与否')==='已到';
+    put('contacts',Boolean(field(source,'确认日期')),'确认月份','学服老师',['确认日期','学服老师']);
+    facts.months.contacts=sourceContactReportingMonth(field(source,'确认月份'),field(source,'确认日期'),version);
     put('invitations',Boolean(field(source,'确认日期')),'确认月份','学服老师',['确认月份','确认日期']);
     put('arrivals',arrived,'到访月份','学服老师',['到访月份','到访与否']);
     put('assessments',arrived,'到访月份','学服老师',['到访月份','到访与否']);

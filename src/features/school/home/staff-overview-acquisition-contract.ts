@@ -10,7 +10,7 @@ export interface OverviewAcquisitionSource {
   record_data: { cells?: Array<{ fieldName: string; text: string }> };
 }
 
-export const OVERVIEW_ACQUISITION_FIELDS = ["获取日期", "登记日期（此列不用填，自动生成）", "学员姓名", "家长电话"] as const;
+export const OVERVIEW_ACQUISITION_FIELDS = ["获取日期", "登记日期（此列不用填，自动生成）", "学员姓名", "家长电话", "确认人员", "跟进人", "沟通人员"] as const;
 
 /** 每一行核对字段名称；来源列顺序变化的行交回完整读取，不根据位置猜测数据。 */
 export function projectedOverviewAcquisition(row: { id: string; lead_id: string | null } & Record<string, unknown>): OverviewAcquisitionSource | null {
@@ -75,7 +75,7 @@ export function buildOverviewAcquisitions(input: {
   input.sourceLinks.forEach(row => link(row.source_record_id, row.lead_id));
   const primaryLeadIds = new Set(input.sources.flatMap(row => [...sourceLeads.get(row.id) ?? []]));
   const submittedLeadIds = new Set(input.submissions.map(row => row.lead_id));
-  const events: Array<{ id: string; at: string | null; personId: string | null }> = [];
+  const events: Array<{ id: string; at: string | null; personId: string | null; sourcePerson?: string; sourceName?: string; sourceId?: string }> = [];
   for (const source of input.sources) {
     const rawDate = cell(source, "获取日期");
     if (!rawDate && !cell(source, "学员姓名") && !cell(source, "家长电话")) continue;
@@ -84,6 +84,8 @@ export function buildOverviewAcquisitions(input: {
       id: source.id,
       at: overviewFactInstant(null, overviewAcquiredOn(rawDate, cell(source, "登记日期（此列不用填，自动生成）")), timeZone),
       personId: ids.length === 1 ? leadById.get(ids[0])?.owner_id ?? null : null,
+      sourcePerson: cell(source, "确认人员") || cell(source, "跟进人") || cell(source, "沟通人员") || undefined,
+      sourceName: cell(source, "学员姓名") || undefined, sourceId: source.id,
     });
   }
   const firstSubmission = new Map<string, OverviewLeadSubmission>();

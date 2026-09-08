@@ -1,5 +1,5 @@
 import { hasSourceAssessmentConclusion, readSourceEnrollmentFacts } from "../business-source-contract";
-import { zonedDateTimeToInstant } from "../schedule";
+import { calendarDayKey, zonedDateTimeToInstant } from "../schedule";
 import { readSourceMetricFacts, uniqueSourceMetricRows, type SourceMetricKey } from "../source-metric-facts-contract";
 
 export interface OverviewActivity {
@@ -193,7 +193,7 @@ export function buildOverviewSourceEvents(input: {
   const sourceEvent = (row: OverviewRegistration, metric: SourceMetricKey): OverviewSourceEvent => {
     const facts = tagByRegistration.get(row.id)!;
     const at = metric === "enrollments" ? overviewFactInstant(null, readSourceEnrollmentFacts(row.source_enrollment_facts)?.registeredOn ?? null, timeZone)
-      : metric === "invitations" || metric === "activityRegistrations" ? overviewFactInstant(null, row.registered_on, timeZone) : activityAt(row.activity_id);
+      : metric === "contacts" || metric === "invitations" || metric === "activityRegistrations" ? overviewFactInstant(null, row.registered_on, timeZone) : activityAt(row.activity_id);
     return { id: `source-${metric}:${facts.sourceKey}`, at, studentId: row.student_id, leadId: row.lead_id, activityId: row.activity_id,
       registrationIds: registrationIdsBySource.get(facts.sourceKey),
       sourceId: row.source_record_id, sourceName: facts.sourceName, sourceConfirmed: true,
@@ -211,10 +211,36 @@ export function buildOverviewSourceEvents(input: {
     ...sourceMetric("enrollments"),
   ] : enrollments;
   return { arrivals: selectedArrivals, assessments: selectedAssessments, enrollments: selectedEnrollments,
+    sourceContacts: sourceMetric("contacts"),
     sourceInvitations: sourceMetric("invitations"), activityRegistrations: sourceMetric("activityRegistrations") };
 }
 
 /** 尚未关联档案的 Lead 保留独立身份；多个空 student_id 不合并为一个人。 */
 export function overviewSubjectKey(studentId: string | null, leadId: string | null, linkedStudentId: string | null, eventId: string): string {
   return studentId ?? linkedStudentId ?? (leadId ? `lead:${leadId}` : `record:${eventId}`);
+}
+
+interface OverviewContactFact {
+  at: string | null;
+  sourceMonth?: string | null;
+  personId: string | null;
+  subjectId: string | null;
+}
+
+/** 已有同主体、人员、统计期间的有效沟通时，确认邀约只作为补充依据。 */
+export function supplementOverviewContacts<T extends OverviewContactFact>(
+  communications: T[], confirmations: T[], grain: "week" | "month", timeZone: string,
+): T[] {
+  const key = (event: OverviewContactFact) => {
+    if (!event.subjectId || !event.personId) return null;
+    const instant = event.at ? new Date(event.at) : null;
+    const day = instant && Number.isFinite(instant.getTime()) ? calendarDayKey(instant, timeZone) : null;
+    const period = grain === "month" ? event.sourceMonth ?? day?.slice(0, 7) : day;
+    return period ? JSON.stringify([event.subjectId, event.personId, period]) : null;
+  };
+  const covered = new Set(communications.map(key).filter((value): value is string => value !== null));
+  return [...communications, ...confirmations.filter(event => {
+    const value = key(event);
+    return value === null || !covered.has(value);
+  })];
 }

@@ -48,4 +48,19 @@ describe("overview acquisition source dates", () => {
     expect(result).toHaveLength(1);
     expect(result[0].personId).toBeNull();
   });
+
+  it("retains source staff signatures in priority order for historical acquisition attribution", () => {
+    const sources = [
+      { "确认人员": "学服乙", "跟进人": "学服丙", "沟通人员": "学服丁" },
+      { "确认人员": "", "跟进人": "学服丙", "沟通人员": "学服丁" },
+      { "确认人员": "", "跟进人": "", "沟通人员": "学服丁" },
+    ].map((values, i) => {
+      const row = source(String(i), "lead", "9.2");
+      row.record_data.cells!.push(...Object.entries(values).map(([fieldName, text]) => ({ fieldName, text })));
+      return row;
+    });
+    const result = buildOverviewAcquisitions({ sources, leads: [lead("lead", null)], sourceLinks: [], submissions: [] }, "Asia/Shanghai");
+    expect(result.map(row => row.sourcePerson)).toEqual(["学服乙", "学服丙", "学服丁"]);
+    expect(result.every(row => row.personId === "support")).toBe(true);
+  });
 });

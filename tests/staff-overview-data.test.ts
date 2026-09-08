@@ -42,7 +42,8 @@ function query(table: string) {
 }
 
 import { getStaffHomeWeekSummaryData, getStaffOverviewData } from "@/features/school/home/staff-overview-data";
-import { overviewFactInstant, overviewSubjectKey } from "@/features/school/home/staff-overview-source-contract";
+import { overviewFactInstant, overviewSubjectKey, supplementOverviewContacts } from "@/features/school/home/staff-overview-source-contract";
+import { OVERVIEW_ACQUISITION_SOURCE, OVERVIEW_ACQUISITION_TABLE } from "@/features/school/home/staff-overview-acquisition-contract";
 import { selectOverviewSupportRows } from "@/features/school/home/staff-overview-display-contract";
 import {buildSourceMetricFacts} from '../scripts/lib/source-metric-facts.mjs';
 
@@ -98,6 +99,65 @@ it('counts month-only confirmations and source arrivals without results, with ac
   const week=await getStaffOverviewData({grain:'week',now});
   expect(week.businessFacts.find(row=>row.key==='arrivals')?.current).toBe(0);
   expect(week.businessFacts.find(row=>row.key==='enrollments')?.current).toBe(0);
+});
+
+it("attributes source acquisitions to their staff signature in the table and details", async () => {
+  state.tables.leads = [{ id: "lead", source_record_id: "source", owner_id: "support", status: "contacted", student_id: null, created_at: now.toISOString() }];
+  state.tables.history_import_records = [{ id: "source", lead_id: "lead",
+    "source_data->>filename": OVERVIEW_ACQUISITION_SOURCE, "record_data->>tableName": OVERVIEW_ACQUISITION_TABLE,
+    record_data: { cells: [{ fieldName: "获取日期", text: "2026-09-02" }, { fieldName: "学员姓名", text: "来源姓名" },
+      { fieldName: "确认人员", text: "来源学服乙" }] },
+  }];
+  const data = await getStaffOverviewData({ grain: "month", now });
+  const person = data.supportFunnelRows.find(row => row.name === "来源学服乙")!;
+  expect(person.metrics.leads.current).toBe(1);
+  expect(data.businessFacts.find(row => row.key === "leads")?.current).toBe(1);
+  const detail = await getStaffOverviewData({ grain: "month", now, detail: { kind: "support", metric: "leads", scope: person.userId! } });
+  expect(detail.detail?.records).toHaveLength(1);
+  expect(detail.detail?.records[0]).toMatchObject({ leadId: "lead", sourceId: "source", person: "来源学服乙" });
+});
+
+it("includes confirmed visits for missing staff contacts and preserves linked identity in details", async () => {
+  const tag = buildSourceMetricFacts({ id: "source", source_table_id: "export:table", source_record_id: "source",
+    source_data: { format: "feishu-base", filename: "2026-09-07.base" }, record_data: { tableName: "到访数据与信息表1.0-总", names: ["来源姓名"],
+      cells: [{ fieldName: "确认月份", text: "9月" }, { fieldName: "确认日期", text: "9.3" }, { fieldName: "学服老师", text: "来源学服乙" }] } });
+  state.tables.activities = [activity("visit", null)];
+  state.tables.leads = [{ id: "lead", student_id: "student", owner_id: "support", source_record_id: "old-source", created_at: now.toISOString() }];
+  state.tables.activity_registrations = [{ ...registration("source", "visit", "lead"), registered_on: null, student_id: "student", source_metric_facts: tag }];
+  // 另一位学服的沟通保持独立，不覆盖本次确认人员。
+  state.tables.lead_communications = [{ id: "contact", lead_id: "lead", outcome: "connected", occurred_on: "2026-09-03", occurred_at: null, owner_id_at_contact: "support" }];
+  const data = await getStaffOverviewData({ grain: "month", now });
+  const person = data.supportFunnelRows.find(row => row.name === "来源学服乙")!;
+  expect(person.metrics.contacts.current).toBe(1);
+  expect(data.businessFacts.find(row => row.key === "contacts")?.current).toBe(2);
+  const detail = await getStaffOverviewData({ grain: "month", now, detail: { kind: "support", metric: "contacts", scope: person.userId! } });
+  expect(detail.detail?.records).toHaveLength(1);
+  expect(detail.detail?.records[0]).toMatchObject({ leadId: "lead", studentId: "student", sourceId: "source", sourceMonth: "2026-09", sourceConfirmed: true });
+  const week = await getStaffOverviewData({ grain: "week", date: "2026-09-03", now });
+  expect(week.supportFunnelRows.find(row => row.name === "来源学服乙")?.metrics.contacts.current ?? 0).toBe(0);
+  for (const source of ["activity_registrations", "leads", "profiles"]) {
+    state.failures.add(source);
+    const unavailable = await getStaffOverviewData({ grain: "month", now, detail: { kind: "business", metric: "contacts" } });
+    expect(unavailable.detail).toEqual({ available: false, records: [] });
+    state.failures.delete(source);
+  }
+});
+
+it("supplements only uncovered contact subjects, staff and periods without merging independent records", () => {
+  const contact = { id: "contact", at: "2026-09-02T16:00:00Z", personId: "support", subjectId: "student", sourceMonth: "2026-09" };
+  const confirmations = [
+    { ...contact, id: "covered", at: null },
+    { ...contact, id: "other-person", personId: "support-b" },
+    { ...contact, id: "other-subject", subjectId: "student-b" },
+    { ...contact, id: "other-month", sourceMonth: "2026-08" },
+    { ...contact, id: "unlinked", subjectId: null },
+    { ...contact, id: "unassigned", personId: null },
+  ];
+  expect(supplementOverviewContacts([contact, { ...contact, id: "second-call" }], confirmations, "month", "Asia/Shanghai").map(row => row.id))
+    .toEqual(["contact", "second-call", "other-person", "other-subject", "other-month", "unlinked", "unassigned"]);
+  const dates = [{ ...contact, id: "same-local-day", at: "2026-09-03T00:00:00Z" },
+    { ...contact, id: "next-local-day", at: "2026-09-03T16:00:00Z" }];
+  expect(supplementOverviewContacts([contact], dates, "week", "Asia/Shanghai").map(row => row.id)).toEqual(["contact", "next-local-day"]);
 });
 
 it("drills into the same fact records and keeps unknown data distinct from zero", async () => {

@@ -33,11 +33,11 @@ const source = (id: string): OverviewAcquisitionSource => ({ id, lead_id: null, 
 } });
 
 describe("acquisition field projection", () => {
-  it("reads one layout sample, then only four required text fields", async () => {
+  it("reads one layout sample, then required date, identity and staff text fields", async () => {
     const input = [source("a"), source("b")];
     const mock = client(input);
     const result = await readOverviewAcquisitions(mock.supabase);
-    expect(result.data?.map(row => row.record_data.cells)).toEqual(input.map(row => row.record_data.cells?.slice(0, 4)));
+    expect(result.data?.map(row => row.record_data.cells)).toEqual(input.map(row => row.record_data.cells?.slice(0, OVERVIEW_ACQUISITION_FIELDS.length)));
     expect(mock.reads).toEqual([{ projection: false, count: 1 }, { projection: true, count: 2 }]);
   });
   it("falls back per row when the source column order changes", async () => {
