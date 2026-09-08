@@ -10,6 +10,7 @@ import { getSupportOptionsAction, listSupportWorkAction, updateSupportWorkAction
 import { getStudentStageSubjectAction } from './student-stage-actions';
 import { SUPPORT_REFRESH_EVENT, supportError, supportMessages, type SupportItem, type SupportWork, type SupportWorkspace } from './school-support-contract';
 import { SupportWorkFields, type SupportOptions } from './SchoolSupportEntry';
+import { SchoolSupportInsertion } from "./SchoolSupportInlineEntry";
 import { SchoolSupportProfileButton } from './SchoolSupportProfile';
 import { StudentStageEntry } from './StudentStageEntry';
 import type { StudentStageRow } from './student-stage-contract';
@@ -59,7 +60,7 @@ export function SchoolSupportPendingRows({workspace,colSpan}:{workspace:SupportW
       <span className="text-xs text-muted">{item.phone} · {m.pending}{item.identityPending?` · ${m.identity}`:''}</span><span className="min-w-0 flex-1 text-xs">{[item.courseTitle,item.termName,item.note].filter(Boolean).join(' · ')}</span>
       <Button type="button" variant="secondary" size="sm" aria-expanded={expanded===item.id} onClick={()=>setExpanded(value=>value===item.id?null:item.id)}>{m.continue}</Button>
     </div></TableCell>
-  </TableRow>{expanded===item.id?<TableRow><TableCell colSpan={colSpan} className="p-0"><PendingWorkEditor item={item} onSaved={()=>setRevision(value=>value+1)}/></TableCell></TableRow>:null}</Fragment>)}
+  </TableRow>{expanded===item.id?<TableRow><TableCell colSpan={colSpan} className="p-0"><PendingWorkEditor item={item} onSaved={()=>setRevision(value=>value+1)}/></TableCell></TableRow>:null}<SchoolSupportInsertion after={`manual:${item.id}`} /></Fragment>)}
     {error?<TableRow><TableCell colSpan={colSpan} className="text-xs text-rose"><span role="alert">{error}</span><Button variant="ghost" size="sm" onClick={()=>setRevision(value=>value+1)}>{m.retry}</Button></TableCell></TableRow>:null}
   </>;
 }

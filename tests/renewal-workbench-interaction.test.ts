@@ -14,7 +14,7 @@ import type { RenewalPoolSupplement } from "@/features/school/renewal-pool-data"
 
 const actions = vi.hoisted(() => ({ save: vi.fn(), observe: vi.fn(), refresh: vi.fn(), saved: vi.fn(), error: vi.fn() }));
 // 补入流程有独立合同测试；这些用例继续覆盖原工作表交互。
-vi.mock("@/features/school/SchoolSupportEntry", () => ({ SchoolSupportAddButton: () => null }));
+vi.mock("@/features/school/SchoolSupportInlineEntry", () => ({ SchoolSupportTableEntry: ({ children }: { children: import("react").ReactNode }) => children, SchoolSupportInsertion: () => null, SchoolSupportSeatEntry: () => null }));
 vi.mock("@/features/school/SchoolSupportPendingRows", () => ({ SchoolSupportPendingRows: () => null }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/features/school/renewal-workbench-actions", () => ({ saveRenewalWorkbenchAction: actions.save }));

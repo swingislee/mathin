@@ -37,7 +37,7 @@ import { renewalResult, type RenewalWorkbenchSaved } from "./renewal-workbench-c
 import type { RenewalWorkspaceData } from "./renewals";
 import { CreateCycleDialog } from "./RenewalPoolWorkspace";
 import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
-import { SchoolSupportAddButton } from './SchoolSupportEntry';
+import { SchoolSupportTableEntry, SchoolSupportInsertion } from "./SchoolSupportInlineEntry";
 import { SchoolSupportPendingRows } from './SchoolSupportPendingRows';
 import { businessSubjectKey, type StudentBusinessHistory } from "./student-business-history-contract";
 
@@ -185,13 +185,13 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
       }} locale={locale} />
       <FilterSearchInput aria-label={t("search")} placeholder={t("search")} value={query} disabled={entryBusy} onChange={event => setQuery(event.target.value)} />
     </DashboardCommandFilters>
-    <DashboardCommandActions>{canWrite && !sampleMode ? <SchoolSupportAddButton workspace="renewals" initialWork={{cycleId:cycle?.status!=="closed"?cycle?.id??null:null,termId:cycle?.targetTermId??null}} /> : null}<Button size="sm" variant="ghost" disabled={entryBusy} onClick={() => setSettingsOpen(true)}><SlidersHorizontal className="size-4" />{pool("settings")}</Button>
+    <DashboardCommandActions><Button size="sm" variant="ghost" disabled={entryBusy} onClick={() => setSettingsOpen(true)}><SlidersHorizontal className="size-4" />{pool("settings")}</Button>
       <Link href="/dashboard/followups/renewals/growth" className={buttonVariants({ size: "sm", variant: "ghost" })}>{legacy("reactivationAndReferrals")}</Link>
       <Link href="/dashboard/followups/renewals/signals" className={buttonVariants({ size: "sm", variant: "ghost" })}>{legacy("teacherSignals")}</Link>
     </DashboardCommandActions>
   </FollowupCommandPanel>} footer={<LeadPoolPagination baseHref="/dashboard/followups/renewals" currentPage={pagination.page} totalPages={pagination.totalPages} totalCount={pagination.count}
     pageSize={pagination.pageSize} disabled={entryBusy} onPageChange={(page, size) => { setRetainedView(null); setActiveId(null); pagination.onPageChange(page, size); }} />}>
-    <DashboardTableShell data-renewal-workbench data-followup-workbench data-followup-scroll>
+    <SchoolSupportTableEntry workspace="renewals" enabled={canWrite && !sampleMode} columns={["name","blank","blank","blank","blank","blank","blank"]} initialWork={{cycleId:cycle?.status!=="closed"?cycle?.id??null:null,termId:cycle?.targetTermId??null}}><DashboardTableShell data-renewal-workbench data-followup-workbench data-followup-scroll>
       <Table className="w-full min-w-[70rem] table-fixed text-xs" containerClassName="overflow-auto [scrollbar-gutter:stable]"
         onKeyDown={event => navigateFollowupTable(event, id => { if (entryBusy) return false; activate(id); return true; })}>
         <colgroup><col className="w-48" /><col className="w-48" /><col className="w-28" /><col /><col className="w-32" /><col className="w-40" /><col className="w-36" /></colgroup>
@@ -204,11 +204,11 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
           <TableHead><DashboardTableColumnHeader label={t("paymentFacts")} {...table.columnProps("payment")} /></TableHead>
           <TableHead><DashboardTableColumnHeader label={t("nextContact")} {...table.columnProps("next")} /></TableHead>
         </TableRow></TableHeader>
-        <TableBody>{!sampleMode ? <SchoolSupportPendingRows workspace="renewals" colSpan={7} /> : null}{visibleRows.map((row) => <FollowupTableRecord key={`${sampleMode}:${row.id}`} row={row} active={activeId === row.id} expanded={activeId === row.id} render={renderRow} />)}
+        <TableBody><SchoolSupportInsertion after="start" />{!sampleMode ? <SchoolSupportPendingRows workspace="renewals" colSpan={7} /> : null}{visibleRows.map((row) => <FollowupTableRecord key={`${sampleMode}:${row.id}`} row={row} active={activeId === row.id} expanded={activeId === row.id} render={renderRow} />)}
           {!visibleRows.length ? <TableRow><TableCell colSpan={7} className="h-40 text-center text-muted">{pool("noRows")}{!rows.length ? <p className="mt-2 text-xs">{pool("readyHint")}</p> : null}</TableCell></TableRow> : null}
         </TableBody>
       </Table>
-    </DashboardTableShell>
+    </DashboardTableShell></SchoolSupportTableEntry>
     <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}><DialogContent className="sm:max-w-3xl" aria-describedby={undefined}><DialogHeader><DialogTitle>{pool("settings")}</DialogTitle></DialogHeader>
       <div className="space-y-5"><Label className="block">{pool("cycle")}<FollowupChoice label={pool("cycle")} value={cycle?.id ?? ""} onValueChange={id => router.replace(`/dashboard/followups/renewals?cycle=${id}`)} options={data.cycles.map(item => ({ value: item.id, label: item.name }))} className="mt-2 w-full" /></Label>
         {cycle ? <><p className="text-sm">{cycle.sourceTermName} → {cycle.targetTermName}</p><p className="text-xs text-muted">{legacy(`cycleStatus_${cycle.status}`)} · {cycle.preparationStartsOn || "—"} — {cycle.decisionDueOn || "—"}</p></> : null}

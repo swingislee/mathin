@@ -1,5 +1,6 @@
 "use client";
 
+import { SchoolSupportInsertion } from "../SchoolSupportInlineEntry";
 import { memo, type ReactNode } from "react";
 
 export interface FollowupRowState {
@@ -15,7 +16,7 @@ function TableRecord<Row>({ row, render, ...state }: FollowupRowState & {
   row: Row;
   render: (row: Row, state: FollowupRowState) => ReactNode;
 }) {
-  return render(row, state);
+  return <>{render(row, state)}<SchoolSupportInsertion after={String((row as {id?:string}).id ?? "record")} /></>;
 }
 
 export const FollowupTableRecord = memo(TableRecord) as typeof TableRecord;

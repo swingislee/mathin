@@ -18,7 +18,7 @@ import { DashboardCommandState, DashboardCommandFilters, DashboardCommandActions
 
 const actions = vi.hoisted(() => ({ replace: vi.fn(), create: vi.fn(), move: vi.fn(), query: "view=day&date=2026-09-07&scope=mine&q=Sample&page=4&pageSize=50&lead=focus&status=uncontacted" }));
 // 补入流程有独立合同测试；这些用例继续覆盖原工作表交互。
-vi.mock("@/features/school/SchoolSupportEntry", () => ({ SchoolSupportAddButton: () => null }));
+vi.mock("@/features/school/SchoolSupportInlineEntry", () => ({ SchoolSupportTableEntry: ({ children }: { children: import("react").ReactNode }) => children, SchoolSupportInsertion: () => null, SchoolSupportSeatEntry: () => null }));
 vi.mock("@/features/school/SchoolSupportPendingRows", () => ({ SchoolSupportPendingRows: () => null }));
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(actions.query) }));

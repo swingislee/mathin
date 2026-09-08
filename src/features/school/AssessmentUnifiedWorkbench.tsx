@@ -22,7 +22,7 @@ import { FollowupTableBody } from "./dashboard-page/FollowupRecordRow";
 import { FilterSearchInput } from "./FilterBar";
 import { FollowupTabs } from "./FollowupTabs";
 import { FollowupCommandPanel } from "./FollowupCommandPanel";
-import { SchoolSupportAddButton } from "./SchoolSupportEntry";
+import { SchoolSupportTableEntry, SchoolSupportInsertion } from "./SchoolSupportInlineEntry";
 import { SchoolSupportPendingRows } from "./SchoolSupportPendingRows";
 import { FollowupPrimaryFilter } from "./FollowupPrimaryFilter";
 import { ActivityAssessmentDraftProvider } from "./ActivityAssessmentDetails";
@@ -45,7 +45,6 @@ import {
 } from "./assessment-workbench-contract";
 import {
   DashboardCommandFilters,
-  DashboardCommandActions,
   DashboardCommandState,
   DashboardPage,
   DashboardTableColumnHeader,
@@ -415,12 +414,11 @@ export function AssessmentUnifiedWorkbench({
               aria-label={t("searchPlaceholder")}
             />
           </DashboardCommandFilters>
-          {canSupport ? <DashboardCommandActions><SchoolSupportAddButton workspace="assessments" onSaved={item=>{setQuery(item.name);setRecordState('current');assessmentTable.setFilter('status',undefined);setRetainedView(null);if(item.registrationId){setActiveId(`registration:${item.registrationId}`);setExpandedId(`registration:${item.registrationId}`);}}} /></DashboardCommandActions> : null}
         </FollowupCommandPanel>
       )}
     >
       {
-        <DashboardTableShell data-assessment-unified-workbench data-followup-workbench data-followup-scroll>
+        <SchoolSupportTableEntry workspace="assessments" enabled={canSupport} columns={["name","blank","blank","blank","blank","blank","blank"]}><DashboardTableShell data-assessment-unified-workbench data-followup-workbench data-followup-scroll>
           <Table className="w-full min-w-[68rem] table-fixed text-xs" containerClassName="overflow-auto [scrollbar-gutter:stable]">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
@@ -434,14 +432,14 @@ export function AssessmentUnifiedWorkbench({
               </TableRow>
             </TableHeader>
             <FollowupTableBody onNavigate={(id) => { setActiveId(id); return true; }}>
-              <SchoolSupportPendingRows workspace="assessments" colSpan={7} />
+              <SchoolSupportInsertion after="start" /><SchoolSupportPendingRows workspace="assessments" colSpan={7} />
               {visibleRows.map((row) => <FollowupTableRecord key={row.id} row={row} active={activeId === row.id} expanded={expandedId === row.id} retained={visitedDetails.has(row.id)} render={renderRow} />)}
               {visibleRows.length === 0 ? (
                 <TableRow><TableCell colSpan={7} className="h-32 px-4 text-center text-sm text-muted">{tableT("filteredEmpty")}</TableCell></TableRow>
               ) : null}
             </FollowupTableBody>
           </Table>
-        </DashboardTableShell>
+        </DashboardTableShell></SchoolSupportTableEntry>
       }
     </DashboardPage>
   );

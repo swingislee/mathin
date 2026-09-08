@@ -66,6 +66,7 @@ import { PostActivityHandoff } from "./EnrollmentHandoffButton";
 import { followupState, type ActivityEnrollmentContext } from "./enrollment-workflow-contract";
 import { LeadContactEntryRow } from "./LeadFirstContactWorkbench";
 import { FollowupTableBody } from "./dashboard-page/FollowupRecordRow";
+import { SchoolSupportTableEntry, SchoolSupportInsertion } from "./SchoolSupportInlineEntry";
 import { SchoolSupportPendingRows } from './SchoolSupportPendingRows';
 import { deriveLeadContactDestination, leadHasCommittedVisit, type LeadPoolRow } from "./lead-contract";
 import type { LeadContactInput } from "./actions/leads";
@@ -859,7 +860,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
   }, [activities, advanceAfter, arrangementOf, assessors, beginSave, canContact, canManageIdentity, canManageInvitation, changeDetails, contactPending, currentUserId, endSave, entryDrafts, formatAt, gradeOf, historicalSummaryFor, historyFor, laterContactFor, leadById, leadT, leadingSelectionFor, locale, nameOf, noteOf, onSaved, recordM.unknown, recordsMode, saveContact, saveContactReminder, savePost, stateOf, t, updateEntryDraft, updatedOf, workMode, workT, workday]);
 
 
-  return <DashboardTableShell data-followup-workbench data-communication-scroll>
+  return <SchoolSupportTableEntry workspace="communication" enabled={canContact} columns={["name","phone","grade","blank","blank","note","blank"]} initialWork={{date:workday?.date??worklist?.date,worklistId:worklist?.id??null}}><DashboardTableShell data-followup-workbench data-communication-scroll>
     <Table className="w-full min-w-[55rem] table-fixed text-xs" containerClassName="overflow-auto [scrollbar-gutter:stable]">
       <colgroup><col style={{ width: "7rem" }} /><col style={{ width: "6rem" }} /><col style={{ width: "3.75rem" }} /><col style={{ width: "6rem" }} /><col style={{ width: "12rem" }} /><col /><col style={{ width: "8rem" }} /></colgroup>
       <TableHeader><TableRow>
@@ -880,7 +881,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
         const next = currentSession.facts.get(key);
         setActiveContactId(next?.source === "contact" ? next.value.id : null);
         return true;
-      }}><SchoolSupportPendingRows workspace="communication" colSpan={7} />{visibleRows.map((row) => <FollowupTableRecord key={communicationRowKey(row)} row={row} active={activeId === communicationRowKey(row) || (row.source === "contact" && activeContactId === row.value.id)} expanded={activeId === communicationRowKey(row)} selected={workSelection.selectedKeys.has(communicationRowKey(row))} pending={savingIds.has(row.id)} render={renderRow} />)}{!visibleRows.length ? <TableRow><TableCell colSpan={7} className="h-32 text-center text-muted">{emptyMessage ?? tableT("filteredEmpty")}</TableCell></TableRow> : null}</FollowupTableBody>
+      }}><SchoolSupportInsertion after="start" /><SchoolSupportPendingRows workspace="communication" colSpan={7} />{visibleRows.map((row) => <FollowupTableRecord key={communicationRowKey(row)} row={row} active={activeId === communicationRowKey(row) || (row.source === "contact" && activeContactId === row.value.id)} expanded={activeId === communicationRowKey(row)} selected={workSelection.selectedKeys.has(communicationRowKey(row))} pending={savingIds.has(row.id)} render={renderRow} />)}{!visibleRows.length ? <TableRow><TableCell colSpan={7} className="h-32 text-center text-muted">{emptyMessage ?? tableT("filteredEmpty")}</TableCell></TableRow> : null}</FollowupTableBody>
     </Table>
-  </DashboardTableShell>;
+  </DashboardTableShell></SchoolSupportTableEntry>;
 }

@@ -1,13 +1,14 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Check, Ellipsis, RefreshCw } from "lucide-react";
 import { Link, useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { SchoolSupportTableEntry, SchoolSupportInsertion } from "./SchoolSupportInlineEntry";
 import { Table, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DashboardCommandActions, DashboardCommandFilters, DashboardCommandState, DashboardCommandTabs, DashboardEmptyCard, DashboardPage, DashboardTableColumnHeader, DashboardTableShell } from "./dashboard-page";
@@ -142,7 +143,7 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
     footer={<LeadPoolPagination baseHref="/dashboard/students" currentPage={data.page} totalPages={data.totalPages} totalCount={data.count}
       pageSize={data.pageSize} scope={filters.scope} q={filters.q} extraQuery={{ stage: filters.stage, fields: currentFilters.fields, population: filters.population ?? "work", reason: filters.reason ?? "" }}
       disabled={busy} onPageChange={(page, pageSize) => navigate({ page, pageSize })} />}>
-    <DashboardTableShell data-followup-workbench aria-busy={server?.pending}>
+    <SchoolSupportTableEntry workspace="students" enabled={canPlan} columns={[...(canSelect?["blank" as const]:[]),"name","phone","blank",...(showBackground?["blank" as const,"blank" as const]:[]),"note","blank"]}><DashboardTableShell data-followup-workbench aria-busy={server?.pending}>
       <Table className={`table-fixed text-xs [&_th]:px-2 ${showBackground ? "min-w-[69rem]" : "min-w-[53rem]"}`}>
         <TableHeader className="sticky top-0 z-20 bg-paper text-xs text-muted"><TableRow>
           {canSelect ? <TableHead className="w-9"><Checkbox aria-label={m.selectPage} disabled={busy || !selectableRows.length}
@@ -155,7 +156,7 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
           {showBackground ? <TableHead className="w-24"><DashboardTableColumnHeader label={m.teacher} {...table.columnProps("teacher")} disabled={busy} /></TableHead> : null}
           <TableHead><DashboardTableColumnHeader label={m.recent} {...table.columnProps("recent")} disabled={busy} /></TableHead><TableHead className={locale.startsWith("en") ? "w-64 text-right" : "w-48 text-right"}>{m.actions}</TableHead>
         </TableRow></TableHeader>
-        <FollowupTableBody onNavigate={key => { if (busy) return false; setFocusedKey(key); return true; }}>{visibleRows.map((row, index) => {
+        <FollowupTableBody onNavigate={key => { if (busy) return false; setFocusedKey(key); return true; }}><SchoolSupportInsertion after="start" />{visibleRows.map((row, index) => {
           const expanded = active?.key === row.key;
           const contactMode = defaultStudentEntryMode(row);
           const enrollmentLabel = row.stage === "awaiting_renewal" ? m.renewal : row.stage === "former_student" ? m.reactivate : m.enrollment;
@@ -166,7 +167,7 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
             row.learningBand ? `${m.learningBand} ${row.learningBand}` : null].filter(Boolean).join(" · ");
           const background = row.assessmentSource === "class_band" ? `${m.classBandReference} · ${learning || row.classBandLabel}`
             : learning || (row.assessmentSource === "assessment" ? m.completedAssessment : row.courseTitle ? `${row.courseTitle} · ${row.termName}` : m.noAssessment);
-          return <FollowupRecordRow key={row.key} rowKey={row.key} expanded={expanded} active={focusedKey === row.key} focusOnActivate
+          return <Fragment key={row.key}><FollowupRecordRow key={row.key} rowKey={row.key} expanded={expanded} active={focusedKey === row.key} focusOnActivate
             pending={busy} keepMounted={visited.has(row.key)} onActivate={() => { if (!busy) setFocusedKey(row.key); }}
             onExpandedChange={value => { if (!busy) { if (value) open(row); else setActive(null); } }}
             onOutcomeChange={row.stage === "awaiting_first_contact" && row.canContact ? value => { open(row, "contact"); setOutcomeRequest({ key: row.key, value }); } : undefined}
@@ -208,10 +209,10 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
               ref={entry => { if (entry) entryRefs.current.set(row.key, entry); else entryRefs.current.delete(row.key); }}
               outcomeRequest={outcomeRequest?.key === row.key ? outcomeRequest : null}
               canAdvance={index < visibleRows.length - 1} onBusyChange={setBusy} onSaved={(result, advance) => saved(row.key, result, advance)} /> : <p className="text-sm text-muted">{row.ownerId ? m.readOnly : row.ownerName ? m.needOwnerAssignment.replace("{name}", row.ownerName) : m.needOwner}</p>}
-          </FollowupRecordRow>;
+          </FollowupRecordRow><SchoolSupportInsertion after={row.key} /></Fragment>;
         })}</FollowupTableBody>
       </Table>
-    </DashboardTableShell>
+    </DashboardTableShell></SchoolSupportTableEntry>
     {visibleRows.length === 0 ? <DashboardEmptyCard>{m.empty}</DashboardEmptyCard> : null}
   </DashboardPage>;
 }

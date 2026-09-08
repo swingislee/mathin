@@ -10,7 +10,7 @@ import { CommunicationWorkSelectionProvider } from "@/features/school/Communicat
 
 const actions = vi.hoisted(() => ({ replace: vi.fn(), create: vi.fn(), query: "scope=mine&pageSize=50" }));
 // 补入流程有独立合同测试；这些用例继续覆盖原工作表交互。
-vi.mock("@/features/school/SchoolSupportEntry", () => ({ SchoolSupportAddButton: () => null }));
+vi.mock("@/features/school/SchoolSupportInlineEntry", () => ({ SchoolSupportTableEntry: ({ children }: { children: import("react").ReactNode }) => children, SchoolSupportInsertion: () => null, SchoolSupportSeatEntry: () => null }));
 vi.mock("@/features/school/SchoolSupportPendingRows", () => ({ SchoolSupportPendingRows: () => null }));
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(actions.query) }));
 vi.mock("@/i18n/navigation", () => ({ useRouter: () => ({ replace: actions.replace }) }));
