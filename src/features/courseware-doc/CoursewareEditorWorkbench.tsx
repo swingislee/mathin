@@ -398,6 +398,7 @@ function CoursewareWorkbenchFrame({
       data-fullscreen={fullscreen ? "true" : undefined}
       className={cn(
         "h-full min-h-0 min-w-0 overflow-hidden",
+        canvas.actions && "flex flex-col",
         fullscreen && "bg-paper p-3",
         className,
       )}
@@ -405,11 +406,12 @@ function CoursewareWorkbenchFrame({
     >
       <CoursewareEditorChromeContext.Provider value={chromeContext}>
         <CoursewarePageManagementContext.Provider value={registered?.chrome.pageActionsDisabled ?? false}>
+        {canvas.actions ? <div data-courseware-editor-part="lecture-actions" className="flex shrink-0 items-center justify-end gap-2 border-b border-line px-3 py-2">{canvas.actions}</div> : null}
         <ResizablePanelGroup
           groupRef={groupRef}
           orientation={orientation}
           onLayoutChanged={onLayoutChanged}
-          className="size-full min-h-0 min-w-0"
+          className={cn("size-full min-h-0 min-w-0", canvas.actions && "flex-1")}
         >
           <ResizablePanel
             id="directory"
@@ -462,7 +464,6 @@ function CoursewareWorkbenchFrame({
                     {activeSaveControls}
                   </div>
                 ) : null}
-                {canvas.actions}
               </div>
             ) : canvas.header ? (
               <div data-courseware-editor-part="canvas-header" className={WORKBENCH_HEADER_ROW_CLASS}>

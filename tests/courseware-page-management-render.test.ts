@@ -61,7 +61,10 @@ describe("shared page management", () => {
     // eslint-disable-next-line react/no-children-prop
     const surface = createElement(CoursewareEditorAdapterSurface, { toolbar: null, saveControls: null, inspector: null, aspect: 4 / 3, pageActionsDisabled: true, children: null });
     await mount(createElement(CoursewareWorkbench, { mode: "formal-editor", adapter: "test", layout: "workspace",
-      directory: { ariaLabel: "Pages", header: null, content: null, footer }, canvas: { ariaLabel: "Canvas", content: surface }, inspector: { ariaLabel: "Properties", header: null } }));
+      directory: { ariaLabel: "Pages", header: null, content: null, footer }, canvas: { ariaLabel: "Canvas", content: surface, actions: createElement("span", { "data-publication-control": true }, "Publish") }, inspector: { ariaLabel: "Properties", header: null } }));
     expect([...host.querySelectorAll("[data-courseware-page-actions] button")].every((button) => (button as HTMLButtonElement).disabled)).toBe(true);
+    expect(host.querySelector("[data-publication-control]")?.closest('[data-courseware-editor-part="lecture-actions"]')).not.toBeNull();
+    expect(host.querySelector("[data-publication-control]")?.closest('[data-courseware-editor-slot="toolbar"]')).toBeNull();
+    expect(host.querySelector("[data-courseware-workbench]")?.classList.contains("flex-col")).toBe(true);
   });
 });

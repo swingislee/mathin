@@ -1618,8 +1618,14 @@
     "sourceEditorStatus": "Step 6 · 爱学习编辑桥",
     "sourceReadOnlyStatus": "来源课件只读",
     "createBlankPage": "新增空白页",
+    "automaticAdaptation": {
+      "preparing": "正在按匹配规则自动准备整讲 4:3 粗版，剩余 {remaining} 页…",
+      "hint": "只补齐缺失页面，保留已有调整。完成后直接浏览整讲，仅修改需要微调的页面。",
+      "failed": "自动准备未完成，已生成的页面已保留，请重试。",
+      "retry": "继续自动准备"
+    },
     "publication": {
-      "title": "审核与发布",
+      "title": "发布版本",
       "description": "发布范围是本讲当前比例的全部页面。保存保留草稿；提交审核后，按审核轮次通过并发布，课程产品才会显示新版本。",
       "saveFirst": "请先保存当前修改，再进入审核与发布",
       "loading": "正在读取最新发布状态…",

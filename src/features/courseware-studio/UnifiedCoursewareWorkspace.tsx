@@ -25,6 +25,7 @@ import { CreateBlankCoursewarePageButton, FormalCubePageEditor, type FormalCubeP
 import { formalCubeDirectory, type FormalCubePageSummary, type FormalWorkspacePageSummary } from "./formal-cube-page-contract";
 import { FormalCoursewarePageActions } from "./FormalCoursewarePageActions";
 import { FormalCoursewarePublicationDialog } from "./FormalCoursewarePublicationDialog";
+import { AutomaticLectureAdaptation } from "./AutomaticLectureAdaptation";
 import type {
   UnifiedPageDocEditorData,
   UnifiedSourceRuntimeEditorData,
@@ -212,6 +213,7 @@ export async function UnifiedCoursewareWorkspace({
         </div>
       )}
     >
+      <AutomaticLectureAdaptation key={detail.lecture.id} lectureId={detail.lecture.id} missingCount={formalWorkspacePages?.filter((page) => page.nativeAvailable && !page.adaptedAvailable).length ?? 0}>
       <CoursewareWorkbench
         mode="formal-editor"
         data-unified-courseware-workspace
@@ -302,6 +304,7 @@ export async function UnifiedCoursewareWorkspace({
           </ScrollArea>,
         }}
       />
+      </AutomaticLectureAdaptation>
     </ObjectWorkspace>
   );
 }

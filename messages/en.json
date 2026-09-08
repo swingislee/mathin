@@ -1618,8 +1618,14 @@
     "sourceEditorStatus": "Step 6 · Aixuexi editing bridge",
     "sourceReadOnlyStatus": "Source courseware read-only",
     "createBlankPage": "Add blank page",
+    "automaticAdaptation": {
+      "preparing": "Preparing rule-matched 4:3 rough drafts for this lecture: {remaining} pages remaining…",
+      "hint": "Only missing pages are generated; existing edits are preserved. Then skim the lecture and adjust only the pages that need it.",
+      "failed": "Preparation did not finish. Generated pages are preserved; retry to continue.",
+      "retry": "Continue preparation"
+    },
     "publication": {
-      "title": "Review & publish",
+      "title": "Publish version",
       "description": "Publishing covers every page in this lecture’s selected aspect ratio. Saving keeps drafts; the course product shows the new version after the required reviews and publication.",
       "saveFirst": "Save your current changes before opening review and publication",
       "loading": "Loading the latest publication status…",
