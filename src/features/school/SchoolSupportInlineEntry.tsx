@@ -13,6 +13,7 @@ import { TableCell, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useRouter } from '@/i18n/navigation';
 import { newId } from '@/lib/uuid';
+import { cn } from '@/lib/utils';
 import { addSupportWorkAction, getSupportOptionsAction } from './school-support-actions';
 import { SupportChoice, SupportSubjectSearch, SupportWorkFields, type SupportOptions } from './SchoolSupportEntry';
 import { SUPPORT_REFRESH_EVENT, supportEntryHref, supportEntrySchema, supportError, supportMessages,
@@ -29,22 +30,50 @@ export function SchoolSupportTableEntry({ workspace, columns, initialWork, enabl
   children: ReactNode; onSaved?: (item: SupportItem) => void;
 }) {
   const [active, setActive] = useState<string | null>(null);
+  const [position, setPosition] = useState<{key:string;top:number} | null>(null);
+  const root = useRef<HTMLDivElement>(null), locale = useLocale();
+  const positions = () => {
+    if (!root.current || active) return [];
+    const container = root.current.querySelector('[data-slot="table-container"]') ?? root.current;
+    const bounds = container.getBoundingClientRect(), origin = root.current.getBoundingClientRect().top;
+    const headerBottom = root.current.querySelector('thead th')?.getBoundingClientRect().bottom ?? bounds.top;
+    return Array.from(root.current.querySelectorAll<HTMLElement>('[data-support-insertion]')).flatMap(anchor => {
+      const top = anchor.getBoundingClientRect().top;
+      return top >= Math.max(bounds.top, headerBottom, 0) && top <= Math.min(bounds.bottom, window.innerHeight)
+        ? [{key:anchor.dataset.supportInsertion!,top:top-origin}] : [];
+    });
+  };
+  const pointAt = (clientY:number) => {
+    const y = clientY - (root.current?.getBoundingClientRect().top ?? 0);
+    const closest = positions().reduce<{key:string;top:number}|null>((nearest,item) => !nearest || Math.abs(item.top-y)<Math.abs(nearest.top-y) ? item : nearest,null);
+    const next = closest && Math.abs(closest.top-y)<=24 ? closest : null;
+    setPosition(current => current?.key===next?.key && current?.top===next?.top ? current : next);
+  };
   return <EntryContext.Provider value={enabled ? { workspace, columns, initialWork, active, setActive, onSaved } : null}>
-    <div className={enabled ? '[&_[data-slot=table-container]]:pl-7' : undefined}>{children}</div>
+    <div ref={root} className="relative flex min-h-0 min-w-0 flex-1 flex-col" onScrollCapture={() => setPosition(null)}>
+      {children}
+      {enabled && !active ? <div data-support-insertion-gutter className="absolute inset-y-0 right-full z-20 w-[min(var(--dashboard-gutter,1.75rem),1.75rem)]"
+        onPointerMove={event => pointAt(event.clientY)} onPointerLeave={event => { if (!event.currentTarget.contains(document.activeElement)) setPosition(null); }}>
+        <Button type="button" variant="ghost" size="sm" data-support-insertion-target={position?.key}
+          className={cn("absolute left-1/2 size-5 max-w-full -translate-x-1/2 -translate-y-1/2 rounded-full border border-line bg-card p-0 text-muted shadow-sm transition-opacity hover:bg-moon hover:text-ink focus-visible:opacity-100",position ? "opacity-100" : "pointer-events-none opacity-0")}
+          style={{top:position?.top ?? 0}} aria-label={locale === 'en' ? 'Insert student below this row' : '在此行下方补入学生'}
+          onFocus={() => { if (!position) setPosition(positions()[0] ?? null); }} onBlur={() => setPosition(null)}
+          onKeyDown={event => { if (event.key==='ArrowUp' || event.key==='ArrowDown') {
+            event.preventDefault(); const items=positions(), index=items.findIndex(item=>item.key===position?.key);
+            setPosition(items[Math.max(0,Math.min(items.length-1,index+(event.key==='ArrowDown'?1:-1)))] ?? null);
+          } }} onClick={() => { if (position) { setActive(position.key); setPosition(null); } }}><Plus className="size-3.5" /></Button>
+      </div> : null}
+    </div>
   </EntryContext.Provider>;
 }
 
 export function SchoolSupportInsertion({ after }: { after: string }) {
-  const context = useContext(EntryContext), locale = useLocale();
+  const context = useContext(EntryContext);
   if (!context) return null;
   const open = context.active === after;
   return <>
-    <TableRow data-support-insertion={after} className="h-0 border-0 hover:bg-transparent">
-      <TableCell className="sticky left-0 z-20 h-0 border-0 p-0" colSpan={context.columns.length}>
-        <Button type="button" variant="ghost" size="sm" className="absolute -left-6 top-0 size-5 -translate-y-1/2 rounded-full border border-line bg-card p-0 text-muted shadow-sm hover:bg-moon hover:text-ink focus-visible:opacity-100"
-          aria-label={locale === 'en' ? 'Insert student below this row' : '在此行下方补入学生'} aria-expanded={open}
-          disabled={context.active !== null} onClick={() => context.setActive(open ? null : after)}><Plus className="size-3.5" /></Button>
-      </TableCell>
+    <TableRow data-support-insertion={after} aria-hidden style={{height:0,border:0}} className="hover:bg-transparent">
+      <TableCell style={{height:0,padding:0,border:0}} colSpan={context.columns.length} />
     </TableRow>
     {open ? <SupportInlineForm workspace={context.workspace} columns={context.columns} initialWork={context.initialWork}
       onClose={() => context.setActive(null)} onSaved={context.onSaved} /> : null}

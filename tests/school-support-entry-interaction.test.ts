@@ -24,14 +24,23 @@ async function mount(child:ReactNode){
   await act(async()=>root.render(createElement(NextIntlClientProvider,props)));
   return element;
 }
-async function table(){
+async function table(open=true){
   const props:ComponentProps<typeof SchoolSupportTableEntry>={workspace:'communication',enabled:true,columns:['name','phone','grade','note'],initialWork:{date:'2026-09-09'},children:
     createElement('table',null,createElement('tbody',null,
       createElement('tr',{'data-existing':'before'},createElement('td',null,'Existing student')),
       createElement(SchoolSupportInsertion,{after:'before'}),
-      createElement('tr',{'data-existing':'after'},createElement('td',null,'Next student'))))};
+      createElement('tr',{'data-existing':'after'},createElement('td',null,'Next student')),
+      createElement(SchoolSupportInsertion,{after:'after'}))) };
   const element=await mount(createElement(SchoolSupportTableEntry,props));
-  await act(async()=>element.querySelector<HTMLButtonElement>('[aria-label="在此行下方补入学生"]')!.click());
+  const gutter=element.querySelector<HTMLElement>('[data-support-insertion-gutter]')!;
+  vi.spyOn(gutter.parentElement!,'getBoundingClientRect').mockReturnValue(new DOMRect(40,100,500,180));
+  element.querySelectorAll<HTMLElement>('[data-support-insertion]').forEach((anchor,index)=>{
+    vi.spyOn(anchor,'getBoundingClientRect').mockReturnValue(new DOMRect(40,140+index*40,500,0));
+  });
+  if(open){
+    await act(async()=>gutter.dispatchEvent(new MouseEvent('pointermove',{bubbles:true,clientX:28,clientY:140})));
+    await act(async()=>element.querySelector<HTMLButtonElement>('[aria-label="在此行下方补入学生"]')!.click());
+  }
   return element;
 }
 const button=(text:string,scope:ParentNode=document)=>[...scope.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent===text)!;
@@ -39,6 +48,22 @@ async function fill(label:string,value:string){
   const input=document.querySelector<HTMLInputElement>(`input[aria-label="${label}"]`)!;
   await act(async()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(input,value);input.dispatchEvent(new Event('input',{bubbles:true}));});
 }
+it('uses one gutter control outside the table and inserts at the hovered boundary',async()=>{
+  const element=await table(false),gutter=element.querySelector<HTMLElement>('[data-support-insertion-gutter]')!;
+  const plus=element.querySelector<HTMLButtonElement>('[aria-label="在此行下方补入学生"]')!;
+  expect(plus.closest('table')).toBeNull();
+  expect(plus.classList.contains('opacity-0')).toBe(true);
+  await act(async()=>gutter.dispatchEvent(new MouseEvent('pointermove',{bubbles:true,clientX:28,clientY:140})));
+  expect(plus.dataset.supportInsertionTarget).toBe('before');
+  await act(async()=>gutter.dispatchEvent(new MouseEvent('pointermove',{bubbles:true,clientX:28,clientY:180})));
+  expect(plus.dataset.supportInsertionTarget).toBe('after');
+  expect(element.querySelectorAll('[data-support-insertion-target]')).toHaveLength(1);
+  await act(async()=>gutter.dispatchEvent(new MouseEvent('pointerout',{bubbles:true,relatedTarget:document.body})));
+  expect(plus.classList.contains('opacity-0')).toBe(true);
+  await act(async()=>gutter.dispatchEvent(new MouseEvent('pointermove',{bubbles:true,clientX:28,clientY:180})));
+  await act(async()=>plus.click());
+  expect(element.querySelector('[data-support-insertion="after"]')?.nextElementSibling?.hasAttribute('data-support-entry-summary')).toBe(true);
+});
 it('inserts a blank summary and details below the chosen row, preserving the draft and request on failure',async()=>{
   calls.add.mockResolvedValueOnce({ok:false,code:'UNKNOWN'}).mockResolvedValueOnce({ok:true,data:{id:'saved-work',workspace:'communication',name:'Old student',studentId:null,leadId:'lead'}});
   const element=await table();
