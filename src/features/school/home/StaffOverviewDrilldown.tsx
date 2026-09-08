@@ -8,11 +8,11 @@ import { Pagination, PaginationContent, PaginationItem } from "@/components/ui/p
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableHeader, TableHead, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogClose } from "@/components/ui/dialog";
-import { X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, X } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { STAFF_OVERVIEW_METRICS, type StaffOverviewGrain } from "./staff-overview-contract";
-import type { OverviewDetailQuery, OverviewDetailResult } from "./staff-overview-drilldown-contract";
+import type { OverviewDetailQuery, OverviewDetailResult, OverviewDetailSort } from "./staff-overview-drilldown-contract";
 import { readOverviewDetail } from "./staff-overview-drilldown-actions";
 import { overviewDetailMessages } from "./staff-overview-drilldown-messages";
 
@@ -46,17 +46,19 @@ export function StaffOverviewDrilldown({ children, grain, date, generatedAt, sel
   const [search, setSearch] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
   const [pageSize, setPageSize] = useState(50);
-  const [request, setRequest] = useState<{ next: Selection; term: string; page: number; size: number } | null>(null);
+  const [sort, setSort] = useState<OverviewDetailSort>("date_desc");
+  const [person, setPerson] = useState("all");
+  const [request, setRequest] = useState<{ next: Selection; term: string; page: number; size: number; sort: OverviewDetailSort; person: string } | null>(null);
   const opener = useRef<HTMLElement | null>(null);
   const label = (key: string) => m[key as keyof typeof m] ?? key;
-  function load(next: Selection, term = "", page = 0, size = pageSize) {
+  function load(next: Selection, term = "", page = 0, size = pageSize, order = sort, owner = person) {
     setSelection(next); setLoading(true); setFailed(false); setResult(null); setAppliedSearch(term);
-    setRequest({ next, term, page, size });
+    setRequest({ next, term, page, size, sort: order, person: owner });
   }
   useEffect(() => {
     if (!request) return;
     let cancelled = false;
-    void readOverviewDetail({ grain, date, generatedAt, selectedSupportIds, query: request.next.query, search: request.term, page: request.page, pageSize: request.size })
+    void readOverviewDetail({ grain, date, generatedAt, selectedSupportIds, query: request.next.query, search: request.term, page: request.page, pageSize: request.size, sort: request.sort, person: request.person })
       .then(data => { if (!cancelled) setResult(data); })
       .catch(() => { if (!cancelled) setFailed(true); })
       .finally(() => { if (!cancelled) setLoading(false); });
@@ -67,14 +69,14 @@ export function StaffOverviewDrilldown({ children, grain, date, generatedAt, sel
   const range = result?.range.split("/");
   return <DetailContext.Provider value={next => {
     opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    setSearch(""); void load(next);
+    setSearch(""); setPerson("all"); void load(next, "", 0, pageSize, sort, "all");
   }}>
     {children}
     <Dialog open={selection !== null} onOpenChange={open => { if (!open) { setRequest(null); setSelection(null); } }}>
       <DialogContent className="flex h-[min(85dvh,760px)] max-w-4xl flex-col gap-4 p-4 sm:p-6" showCloseButton={false}
         onCloseAutoFocus={event => { event.preventDefault(); opener.current?.focus(); }}>
         <DialogClose asChild><Button variant="ghost" size="sm" className="absolute right-3 top-3 size-8 p-0" aria-label={m.close}><X className="size-4" /></Button></DialogClose>
-        <div className="pr-12"><DialogTitle>{selection?.query.kind === "business" ? label(selection.query.metric ?? "detail") : selection?.title}</DialogTitle><DialogDescription>{m.detail}</DialogDescription></div>
+        <div className="pr-12"><DialogTitle>{selection?.query.kind === "business" ? label(selection.query.metric ?? "detail") : selection?.query.kind === "support" ? `${selection.title.split(" · ")[0]} · ${label(selection.query.metric ?? "leads")}` : selection?.title}</DialogTitle><DialogDescription>{m.detail}</DialogDescription></div>
         {selection && <>
           <div className="flex flex-wrap items-center gap-2 text-xs">
             {isPeriod ? (["current", "previous"] as const).map(period => <Button variant="ghost" key={period} type="button" aria-pressed={(selection.query.period ?? "current") === period}
@@ -92,12 +94,26 @@ export function StaffOverviewDrilldown({ children, grain, date, generatedAt, sel
           <form className="flex gap-2" onSubmit={event => { event.preventDefault(); void load(selection, search); }}>
             <Input className="min-w-0 flex-1 rounded-md border border-line bg-card px-3 py-2 text-sm" value={search} maxLength={120} onChange={event => setSearch(event.target.value)} placeholder={m.search} aria-label={m.search} />
             <Button variant="ghost" className="rounded-md border border-line px-3 text-sm" type="submit">{m.apply}</Button>
+            {(search || appliedSearch || person !== "all") && <Button variant="ghost" type="button" onClick={() => { setSearch(""); setPerson("all"); void load(selection, "", 0, pageSize, sort, "all"); }}>{m.clearFilters}</Button>}
           </form>
           <div aria-live="polite" role="status" className="text-xs text-muted">{loading ? m.loading : failed ? m.error : result?.available === false ? m.unavailable : result ? `${result.filteredTotal} / ${result.total} ${m.records}` : ""}</div>
           {failed && <Button variant="ghost" className="self-start rounded-md border border-line px-3 py-1.5 text-sm" onClick={() => void load(selection, appliedSearch)}>{m.retry}</Button>}
           {result?.available && <>
               <Table containerClassName="min-h-0 flex-1 overflow-auto rounded-lg border border-line" className="w-full text-left text-xs"><TableHeader className="sticky top-0 bg-paper"><TableRow>
-                <TableHead className="p-3">{m.name}</TableHead><TableHead className="p-3">{m.date}</TableHead><TableHead className="p-3">{m.person}</TableHead>
+                {(["name", "date", "person"] as const).map(field => {
+                  const active = sort.startsWith(`${field}_`), descending = sort.endsWith("_desc");
+                  const Icon = active ? descending ? ArrowDown : ArrowUp : ArrowUpDown;
+                  return <TableHead key={field} className="p-3" aria-sort={active ? descending ? "descending" : "ascending" : "none"}>
+                    <Button variant="ghost" size="sm" className="h-7 gap-1 px-0 text-xs" aria-label={`${m[field]} · ${active && !descending ? m.descending : m.ascending}`} onClick={() => {
+                      const order = `${field}_${active && !descending ? "desc" : "asc"}` as OverviewDetailSort;
+                      setSort(order); void load(selection, appliedSearch, 0, pageSize, order);
+                    }}>{m[field]}<Icon className="size-3" aria-hidden /></Button>
+                    {field === "person" && <Select value={person} onValueChange={value => { setPerson(value); void load(selection, appliedSearch, 0, pageSize, sort, value); }}>
+                      <SelectTrigger className="mt-1 h-7 max-w-48 text-xs" aria-label={m.person}><SelectValue /></SelectTrigger>
+                      <SelectContent><SelectItem value="all">{m.allPeople}</SelectItem>{[...new Set([...result.people, ...(person === "empty" ? [""] : person.startsWith("person:") ? [person.slice(7)] : [])])].map(name => <SelectItem key={name} value={name ? `person:${name}` : "empty"}>{name || m.noPerson}</SelectItem>)}</SelectContent>
+                    </Select>}
+                  </TableHead>;
+                })}
               </TableRow></TableHeader><TableBody>{result.records.map(row => <TableRow key={row.id} className="border-t border-line align-top">
                 <TableCell className="p-3"><div className="font-medium text-ink">{row.href ? <Link href={row.href} className="underline decoration-line underline-offset-4 hover:text-rose" title={m.open}>{row.name || m.unnamed}</Link> : row.name || m.unnamed}</div>
                   {row.values?.map((item, index) => <div key={index} className="mt-1 text-[11px] text-muted">{label(item.label)}: {item.label === "enrollmentOutcome" ? label(item.value) : item.value}</div>)}

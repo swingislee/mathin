@@ -19,6 +19,7 @@ export interface OverviewDetailRecord {
   values?: Array<{ label: string; value: string }>;
 }
 export interface OverviewDetailResult {
+  people: string[];
   available: boolean;
   records: OverviewDetailRecord[];
   total: number;
@@ -27,6 +28,24 @@ export interface OverviewDetailResult {
   pageSize: number;
   range: string;
   timeZone: string;
+}
+
+export const OVERVIEW_DETAIL_SORTS = ["date_desc", "date_asc", "name_asc", "name_desc", "person_asc", "person_desc"] as const;
+export type OverviewDetailSort = typeof OVERVIEW_DETAIL_SORTS[number];
+
+/** 筛选和排序在分页前执行，空值始终排在最后，同值以记录 ID 稳定排序。 */
+export function filterOverviewDetailRecords(records: readonly OverviewDetailRecord[], search: string, person: string, sort: OverviewDetailSort) {
+  const term = search.trim().toLocaleLowerCase();
+  const [field, direction] = sort.split("_");
+  const value = (row: OverviewDetailRecord) => field === "date" ? row.at : field === "name" ? row.name : row.person;
+  return records.filter(row => (person === "all" || (person === "empty" ? !row.person : `person:${row.person}` === person))
+    && (!term || [row.name, row.person, ...(row.values ?? []).map(item => item.value)].some(item => item?.toLocaleLowerCase().includes(term))))
+    .sort((a, b) => {
+      const left = value(a), right = value(b);
+      if (!left || !right) return left ? -1 : right ? 1 : a.id.localeCompare(b.id);
+      const comparison = field === "date" ? Date.parse(left) - Date.parse(right) : left.localeCompare(right, "zh-CN", { numeric: true });
+      return (direction === "desc" ? -comparison : comparison) || a.id.localeCompare(b.id);
+    });
 }
 
 /** 邀约按机构或人员分别去重，保留“其他人员”合计中的归属贡献。 */

@@ -1,4 +1,5 @@
 const zh = {
+  allPeople: "全部人员", noPerson: "未关联人员", clearFilters: "清除筛选", ascending: "升序", descending: "降序",
   pageSize: "每页条数", perPage: "条 / 页",
   detail: "数据明细", close: "关闭明细", current: "本期", previous: "上期", search: "搜索姓名、人员或班级", apply: "搜索",
   loading: "正在读取明细…", error: "明细暂时无法读取，请重试。", retry: "重试", unavailable: "数据源暂不可用，无法提供完整明细。",
@@ -11,6 +12,7 @@ const zh = {
   classes: "班级", enrolledSeats: "在班人次", minimum: "起班人数", healthy: "健康人数", full: "满班人数", minimumOpenGap: "起班缺口", healthyDelta: "健康差额", remainingSeats: "剩余容量",
 };
 const en: Record<keyof typeof zh, string> = {
+  allPeople: "All staff", noPerson: "No related staff", clearFilters: "Clear filters", ascending: "Ascending", descending: "Descending",
   pageSize: "Rows per page", perPage: "/ page",
   detail: "Record details", close: "Close details", current: "Current", previous: "Previous", search: "Search student, staff or class", apply: "Search",
   loading: "Loading records…", error: "Unable to load details. Please retry.", retry: "Retry", unavailable: "The data source is unavailable; complete details cannot be shown.",

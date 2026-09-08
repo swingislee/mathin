@@ -4,9 +4,10 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveEnvironment } from "@/lib/auth";
 import { getStaffOverviewData } from "./staff-overview-data";
-import type { OverviewDetailResult } from "./staff-overview-drilldown-contract";
+import { filterOverviewDetailRecords, OVERVIEW_DETAIL_SORTS, type OverviewDetailResult } from "./staff-overview-drilldown-contract";
 
 const inputSchema = z.object({
+  sort: z.enum(OVERVIEW_DETAIL_SORTS).default("date_desc"), person: z.string().max(300).default("all"),
   grain: z.enum(["week", "month"]), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   generatedAt: z.string().datetime(),
   selectedSupportIds: z.array(z.string().max(120)).max(1000),
@@ -60,11 +61,10 @@ export async function readOverviewDetail(input: unknown): Promise<OverviewDetail
     return { ...row, studentId, name: (studentId ? studentNames.get(studentId) : undefined) || lead?.name || row.name || (row.sourceId ? sourceNames.get(row.sourceId) : undefined),
       href: row.href ?? (studentId && studentNames.has(studentId) ? `/dashboard/students/${studentId}` : undefined) };
   }).sort((a, b) => (b.at ?? "").localeCompare(a.at ?? "") || (a.name ?? "").localeCompare(b.name ?? "") || a.id.localeCompare(b.id));
-  const search = args.search.trim().toLocaleLowerCase();
-  const filtered = search ? enriched.filter(row => [row.name, row.person, ...(row.values ?? []).map(item => item.value)].some(value => value?.toLocaleLowerCase().includes(search))) : enriched;
+  const filtered = filterOverviewDetailRecords(enriched, args.search, args.person, args.sort);
   const page = Math.min(args.page, Math.max(0, Math.ceil(filtered.length / args.pageSize) - 1));
   const previous = args.query.period === "previous";
-  return { available: data.detail?.available ?? false, records: filtered.slice(page * args.pageSize, (page + 1) * args.pageSize), total: records.length,
+  return { people: [...new Set(enriched.map(row => row.person ?? ""))].sort((a, b) => a.localeCompare(b, "zh-CN")), available: data.detail?.available ?? false, records: filtered.slice(page * args.pageSize, (page + 1) * args.pageSize), total: records.length,
     filteredTotal: filtered.length, page, pageSize: args.pageSize, timeZone: data.timeZone,
     range: args.query.kind === "capacity" || args.query.kind === "pending" ? data.generatedAt
       : `${previous ? data.previousStart : data.currentStart}/${previous ? data.previousCutoff : data.currentCutoff}` };

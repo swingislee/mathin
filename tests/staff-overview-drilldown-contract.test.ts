@@ -1,8 +1,28 @@
 import { describe, expect, it } from "vitest";
 import { buildStaffOverviewWindow } from "@/features/school/home/staff-overview-contract";
-import { selectOverviewDetailEvents, selectOverviewParticipants } from "@/features/school/home/staff-overview-drilldown-contract";
+import { filterOverviewDetailRecords, selectOverviewDetailEvents, selectOverviewParticipants } from "@/features/school/home/staff-overview-drilldown-contract";
 
 const window = buildStaffOverviewWindow("month", new Date("2026-09-08T04:00:00Z"), "Asia/Shanghai");
+describe("detail table filtering and sorting", () => {
+  const rows = [
+    { id: "b", name: "Student 10", at: "2026-09-02T00:00:00Z", person: "Teacher A" },
+    { id: "a", name: "Student 2", at: "2026-09-01T00:00:00Z", person: "Teacher A", values: [{ label: "classes", value: "Class B" }] },
+    { id: "c", name: "Student 2", at: "2026-09-01T00:00:00Z" },
+    { id: "d" },
+  ];
+  it("combines person and text filters before pagination without mutating source rows", () => {
+    expect(filterOverviewDetailRecords(rows, " class b ", "person:Teacher A", "date_desc").map(row => row.id)).toEqual(["a"]);
+    expect(filterOverviewDetailRecords(rows, "student", "empty", "name_asc").map(row => row.id)).toEqual(["c"]);
+    expect(filterOverviewDetailRecords(rows, "", "person:Missing", "date_desc")).toEqual([]);
+    expect(rows.map(row => row.id)).toEqual(["b", "a", "c", "d"]);
+  });
+  it("orders naturally with stable ties and keeps empty fields last in both directions", () => {
+    expect(filterOverviewDetailRecords(rows, "", "all", "name_asc").map(row => row.id)).toEqual(["a", "c", "b", "d"]);
+    expect(filterOverviewDetailRecords(rows, "", "all", "date_desc").map(row => row.id)).toEqual(["b", "a", "c", "d"]);
+    expect(filterOverviewDetailRecords(rows, "", "all", "date_asc").map(row => row.id)).toEqual(["a", "c", "b", "d"]);
+    expect(filterOverviewDetailRecords(rows, "", "all", "person_desc").map(row => row.id)).toEqual(["a", "b", "c", "d"]);
+  });
+});
 describe("overview drilldown scopes", () => {
   const events = [
     { id: "invite", at: "2026-09-01T00:00:00Z", personId: "a" },
