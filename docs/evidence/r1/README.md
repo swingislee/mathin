@@ -1,5 +1,7 @@
 # Mathin R1 发布证据索引
 
+- [2026-09-08 秋季C清单生产导入](autumn-classes-production-import-20260908.md)：C01–C29共29班及26个首课已写入并回读核对；原有班级、学生、报名和课程资源保持，待业务使用验收。
+
 - [2026-09-08 首批生产员工与教室目录](production-directory-first-batch-20260908.md)：审核后完成 26 个新员工账号、2 个原账号手机号绑定和 17 间新教室；定向 postflight 通过，待员工首次登录与人工验收。
 
 - [2026-09-08 工作区全量快速内部发布](quick-internal-production-20260908.md)：应用 `3dca8078` 与 95 条 migration 已部署，必要 postflight 通过；按本次指令跳过新备份与迁移回滚演练，全量旧测试仍有失败，待内部业务验收。
