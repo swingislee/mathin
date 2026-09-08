@@ -1,5 +1,7 @@
 # Mathin R1 发布证据索引
 
+- [2026-09-08 首批生产员工与教室目录](production-directory-first-batch-20260908.md)：审核后完成 26 个新员工账号、2 个原账号手机号绑定和 17 间新教室；定向 postflight 通过，待员工首次登录与人工验收。
+
 - [2026-09-08 工作区全量快速内部发布](quick-internal-production-20260908.md)：应用 `3dca8078` 与 95 条 migration 已部署，必要 postflight 通过；按本次指令跳过新备份与迁移回滚演练，全量旧测试仍有失败，待内部业务验收。
 
 - [2026 年 9 月老师参与与报名明细](overview-teacher-enrollment-month-20260908.md)：参与名单 12 人一致，来源月份报名从 1 修正为 4 人，补充名单切换；开发端待人工验收。
