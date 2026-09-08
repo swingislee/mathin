@@ -77,6 +77,30 @@ describe("student stage workspace wiring", () => {
     expect(summary.textContent).not.toContain("待分配");
     expect(container.querySelector("thead")?.textContent).toContain("当前情况 · 学服");
   });
+  it("opens and saves an authorized unassigned record without requiring account linking", async () => {
+    await render("awaiting_first_contact", { ownerId: null, ownerName: "原表学服", canWrite: true, canContact: true });
+    const summary = container.querySelector<HTMLElement>("[data-student-stage-row]")!;
+    await act(async () => { summary.dispatchEvent(new KeyboardEvent("keydown", { key: "1", bubbles: true })); });
+    expect(container.querySelector("[data-student-stage-entry]")).not.toBeNull();
+    expect(container.textContent).not.toContain("关联实际办理");
+    await act(async () => { summary.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", ctrlKey: true, bubbles: true })); });
+    expect(actions.save).toHaveBeenCalledTimes(1);
+    expect(actions.save.mock.calls[0][1]).toMatchObject({ leadId: id, mode: "contact", outcome: "unreachable" });
+    expect(actions.assign).not.toHaveBeenCalled();
+  });
+  it.each([
+    { ownerId: "owner", ownerName: "原负责人", message: "登记需要相应的办理权限" },
+    { ownerId: null, ownerName: "原表学服", message: "此档案尚未分配负责人" },
+  ])("explains the actual read-only restriction for $ownerName", async ({ message, ...owner }) => {
+    await render("awaiting_assessment", { ...owner, canWrite: false, canContact: false });
+    const summary = container.querySelector<HTMLElement>("[data-student-stage-row]")!;
+    await act(async () => { summary.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })); });
+    expect(container.textContent).toContain(message);
+    expect(container.textContent).not.toContain("关联实际办理");
+    expect(container.textContent).not.toContain("再登记首联");
+    expect(container.querySelector("[data-student-stage-entry]")).toBeNull();
+    expect(actions.save).not.toHaveBeenCalled();
+  });
   it("opens the shared contact result from a row shortcut and saves its draft only with Ctrl+Enter", async () => {
     await render();
     const summary = container.querySelector<HTMLElement>("[data-student-stage-row]")!;

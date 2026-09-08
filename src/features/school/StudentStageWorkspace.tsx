@@ -207,7 +207,7 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
             {() => row.canWrite ? <Entry row={row} requestedMode={expanded ? active.mode : contactMode} locale={locale} currentUserId={currentUserId} canEnroll={canEnroll}
               ref={entry => { if (entry) entryRefs.current.set(row.key, entry); else entryRefs.current.delete(row.key); }}
               outcomeRequest={outcomeRequest?.key === row.key ? outcomeRequest : null}
-              canAdvance={index < visibleRows.length - 1} onBusyChange={setBusy} onSaved={(result, advance) => saved(row.key, result, advance)} /> : <p className="text-sm text-muted">{row.ownerName && !row.ownerId ? m.needOwnerAccount.replace("{name}", row.ownerName) : m.needOwner}</p>}
+              canAdvance={index < visibleRows.length - 1} onBusyChange={setBusy} onSaved={(result, advance) => saved(row.key, result, advance)} /> : <p className="text-sm text-muted">{row.ownerId ? m.readOnly : row.ownerName ? m.needOwnerAssignment.replace("{name}", row.ownerName) : m.needOwner}</p>}
           </FollowupRecordRow>;
         })}</FollowupTableBody>
       </Table>
