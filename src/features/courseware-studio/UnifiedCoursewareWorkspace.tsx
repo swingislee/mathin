@@ -24,6 +24,7 @@ import { SourceRuntimeFourByThreeEditor } from "./SourceRuntimeFourByThreeEditor
 import { CreateBlankCoursewarePageButton, FormalCubePageEditor, type FormalCubePageEditorData } from "./FormalCubePageEditor";
 import { formalCubeDirectory, type FormalCubePageSummary, type FormalWorkspacePageSummary } from "./formal-cube-page-contract";
 import { FormalCoursewarePageActions } from "./FormalCoursewarePageActions";
+import { FormalCoursewarePublicationDialog } from "./FormalCoursewarePublicationDialog";
 import type {
   UnifiedPageDocEditorData,
   UnifiedSourceRuntimeEditorData,
@@ -237,6 +238,8 @@ export async function UnifiedCoursewareWorkspace({
         }}
         canvas={{
           ariaLabel: t("previewTitle"),
+          actions: <FormalCoursewarePublicationDialog key={`${detail.lecture.id}:${visibleCanvas}`} lectureId={detail.lecture.id}
+            track={visibleCanvas === "compare" && (pageEditor || sourceRuntimeEditor) ? "adapted-4x3" : formalCubeEditor?.track ?? pageEditor?.track ?? sourceRuntimeEditor?.track ?? visibleTrack} />,
           content: <div className="size-full min-h-0 overflow-hidden bg-moon/10">
             {formalCubeEditor ? <FormalCubePageEditor key={`${formalCubeEditor.pageDocId}:${formalCubeEditor.track}:${formalCubeEditor.revisionNo}`} page={formalCubeEditor} /> : pageEditor ? (
               <PageDocVerticalSliceEditor

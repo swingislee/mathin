@@ -10,7 +10,7 @@ import { useRouter } from "@/i18n/navigation";
 import { emergencyPublishCoursewareReviewAction } from "@/features/courseware-studio/actions";
 import type { CoursewareTrack } from "@/features/courseware-studio/data";
 
-export function EmergencyPublishDialog({ lectureId, track }: { lectureId: string; track: CoursewareTrack }) {
+export function EmergencyPublishDialog({ lectureId, track, onChanged }: { lectureId: string; track: CoursewareTrack; onChanged?: () => void }) {
   const t = useTranslations("school.lecture");
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -20,7 +20,7 @@ export function EmergencyPublishDialog({ lectureId, track }: { lectureId: string
   const run = useAction(emergencyPublishCoursewareReviewAction, {
     successMessage: t("emergencyPublishSuccess"),
     errorMessage: { default: t("actionFailed"), REASON_REQUIRED: t("reasonRequired"), EMERGENCY_PUBLISH_DISABLED: t("emergencyPublishDisabled") },
-    onSuccess: () => { setOpen(false); setReason(""); setNote(""); router.refresh(); },
+    onSuccess: () => { setOpen(false); setReason(""); setNote(""); onChanged?.(); router.refresh(); },
   });
 
   return <Dialog open={open} onOpenChange={setOpen}>

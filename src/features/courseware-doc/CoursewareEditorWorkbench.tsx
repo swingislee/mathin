@@ -68,6 +68,7 @@ interface CoursewareEditorDirectory {
 
 interface CoursewareEditorCanvas {
   ariaLabel: string;
+  actions?: ReactNode;
   header?: ReactNode;
   content: ReactNode;
   footer?: ReactNode;
@@ -170,6 +171,10 @@ export function CoursewareWorkbenchAddPageButton({
 }
 
 const CoursewarePageManagementContext = createContext(false);
+
+export function useCoursewarePageActionsDisabled() {
+  return useContext(CoursewarePageManagementContext);
+}
 
 export function CoursewareWorkbenchPageActions({ selectedIndex, total, disabled = false, canDelete = true, onMove, onDelete }: {
   selectedIndex: number; total: number; disabled?: boolean; canDelete?: boolean;
@@ -457,6 +462,7 @@ function CoursewareWorkbenchFrame({
                     {activeSaveControls}
                   </div>
                 ) : null}
+                {canvas.actions}
               </div>
             ) : canvas.header ? (
               <div data-courseware-editor-part="canvas-header" className={WORKBENCH_HEADER_ROW_CLASS}>

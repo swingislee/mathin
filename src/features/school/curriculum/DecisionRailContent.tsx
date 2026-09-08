@@ -30,45 +30,49 @@ export function DecisionRailContent({
   capabilities,
   emergencyPublishEnabled,
   history,
+  onChanged,
 }: {
   lectureId: string;
   trackState: CoursewareTrackState;
   capabilities: LectureReviewCapabilities;
   emergencyPublishEnabled: boolean;
   history: ReviewCycleHistoryItem[];
+  onChanged?: () => void;
 }) {
   const t = useTranslations("school.lecture");
+  const publication = useTranslations("coursewareWorkspace.publication");
   const router = useRouter();
   const [submitNote, setSubmitNote] = useState("");
   const [reviewNote, setReviewNote] = useState("");
   const [publishNote, setPublishNote] = useState("");
 
-  const errorMessages = { default: t("actionFailed"), FORBIDDEN_SELF_REVIEW: t("forbiddenSelfReview"), REVIEW_NOTE_REQUIRED: t("reviewNoteRequired") };
+  const errorMessages = { default: t("actionFailed"), FORBIDDEN_SELF_REVIEW: t("forbiddenSelfReview"), REVIEW_NOTE_REQUIRED: t("reviewNoteRequired"), PAGE_TRACK_NOT_READY: publication("trackNotReady") };
+  const changed = () => { onChanged?.(); router.refresh(); };
 
   const submitRun = useAction(submitCoursewareReviewAction, {
     successMessage: t("submitSuccess"),
     errorMessage: errorMessages,
-    onSuccess: () => { setSubmitNote(""); router.refresh(); },
+    onSuccess: () => { setSubmitNote(""); changed(); },
   });
   const withdrawRun = useAction(withdrawCoursewareReviewAction, {
     successMessage: t("withdrawSuccess"),
     errorMessage: errorMessages,
-    onSuccess: () => router.refresh(),
+    onSuccess: changed,
   });
   const approveRun = useAction(approveCoursewareReviewAction, {
     successMessage: t("approveSuccess"),
     errorMessage: errorMessages,
-    onSuccess: () => { setReviewNote(""); router.refresh(); },
+    onSuccess: () => { setReviewNote(""); changed(); },
   });
   const rejectRun = useAction(rejectCoursewareReviewAction, {
     successMessage: t("rejectSuccess"),
     errorMessage: errorMessages,
-    onSuccess: () => { setReviewNote(""); router.refresh(); },
+    onSuccess: () => { setReviewNote(""); changed(); },
   });
   const publishRun = useAction(publishCoursewareReviewCycleAction, {
     successMessage: t("publishSuccess"),
     errorMessage: errorMessages,
-    onSuccess: () => { setPublishNote(""); router.refresh(); },
+    onSuccess: () => { setPublishNote(""); changed(); },
   });
 
   const pending = submitRun.pending || withdrawRun.pending || approveRun.pending || rejectRun.pending || publishRun.pending;
@@ -107,7 +111,7 @@ export function DecisionRailContent({
     </div>}
 
     {capabilities.canEmergencyPublishNow && emergencyPublishEnabled && (
-      <EmergencyPublishDialog lectureId={lectureId} track={trackState.track} />
+      <EmergencyPublishDialog lectureId={lectureId} track={trackState.track} onChanged={onChanged} />
     )}
 
     <Separator />

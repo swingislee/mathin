@@ -1,10 +1,9 @@
 import "server-only";
 
 import { notFound } from "next/navigation";
-import { loadLecturePreview, parseCoursewareTrack, type CoursewareTrack } from "@/features/courseware-studio/data";
+import { loadLecturePreview, parseCoursewareTrack } from "@/features/courseware-studio/data";
 import { listStaffOptions } from "@/features/school/classes";
-import { resolveLectureReviewCapabilities } from "@/features/school/teaching-operations/capabilities";
-import type { LectureReviewCapabilities } from "@/features/school/teaching-operations/types";
+import { lectureReviewCapabilitiesByTrack } from "./lecture-review-capabilities";
 import { getMyPerms, requirePerm } from "@/lib/auth";
 import { isTeacherMicrocourseReviewCycle } from "@/features/teacher-microcourses/data";
 import { getLectureWorkspaceDetail, isUuid } from "./lecture-workspace-detail";
@@ -34,23 +33,9 @@ export async function loadLectureWorkspacePageData(
   const track = parseCoursewareTrack(first(rawSearchParams.track));
   const canEditPage = perms.has("courseware.page.edit");
   const canReview = perms.has("courseware.review");
-  const canPublish = perms.has("courseware.release.publish");
-  const canEmergencyPublish = perms.has("courseware.emergency_publish");
   const canAssign = perms.has("course.assignment.manage");
 
-  const capabilitiesByTrack = Object.fromEntries(detail.tracks.map((trackState) => [
-    trackState.track,
-    resolveLectureReviewCapabilities({
-      canEditPage,
-      canReview,
-      canPublish,
-      canEmergencyPublish,
-      stage: trackState.stage,
-      activeCycleCreatorId: trackState.activeReviewCycle?.creatorId ?? null,
-      allowCreatorAsReviewer: detail.policy.allowCreatorAsReviewer,
-      currentUserId: user.id,
-    }),
-  ])) as Record<CoursewareTrack, LectureReviewCapabilities>;
+  const capabilitiesByTrack = lectureReviewCapabilitiesByTrack(detail, perms, user.id);
 
   const requestedPageRaw = Number(first(rawSearchParams.page));
   const requestedPage = Number.isInteger(requestedPageRaw) && requestedPageRaw > 0 ? requestedPageRaw : undefined;

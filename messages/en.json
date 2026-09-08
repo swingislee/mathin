@@ -1618,6 +1618,19 @@
     "sourceEditorStatus": "Step 6 · Aixuexi editing bridge",
     "sourceReadOnlyStatus": "Source courseware read-only",
     "createBlankPage": "Add blank page",
+    "publication": {
+      "title": "Review & publish",
+      "description": "Publishing covers every page in this lecture’s selected aspect ratio. Saving keeps drafts; the course product shows the new version after the required reviews and publication.",
+      "saveFirst": "Save your current changes before opening review and publication",
+      "loading": "Loading the latest publication status…",
+      "loadFailed": "Publication status could not be loaded. Retry or check your lecture access.",
+      "retry": "Retry",
+      "released": "Current published version: v{version}",
+      "unreleased": "This aspect ratio has no published version yet",
+      "unpublishedChanges": "Saved changes are waiting to be published",
+      "noUnpublishedChanges": "There are no page draft changes",
+      "trackNotReady": "Some pages or resources in this lecture’s selected aspect ratio are not ready. Complete and save those pages before submitting for review; saving one page does not publish the lecture."
+    },
     "pageManagement": {
       "moveUp": "Move page up",
       "moveDown": "Move page down",
