@@ -1,5 +1,7 @@
 # Mathin R1 发布证据索引
 
+- [2026-09-08 工作区全量快速内部发布](quick-internal-production-20260908.md)：应用 `3dca8078` 与 95 条 migration 已部署，必要 postflight 通过；按本次指令跳过新备份与迁移回滚演练，全量旧测试仍有失败，待内部业务验收。
+
 - [2026 年 9 月老师参与与报名明细](overview-teacher-enrollment-month-20260908.md)：参与名单 12 人一致，来源月份报名从 1 修正为 4 人，补充名单切换；开发端待人工验收。
 
 - [2025 年 12 月／2026 年 1 月开发总览与 base 月仪表盘核对](staff-overview-winter-feishu-20260908.md)：月总量差额、跨批次重复、月份及课程报名口径；只读核对，待修复。
