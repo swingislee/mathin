@@ -36,6 +36,7 @@ export function ClassroomCourseInfoBar({
   title,
   statusLabel,
   statusDetails,
+  preparationAction,
   pageLabel,
   alertLabel,
   alertContent,
@@ -48,6 +49,7 @@ export function ClassroomCourseInfoBar({
   title: string;
   statusLabel: string;
   statusDetails: ReactNode;
+  preparationAction?: ReactNode;
   pageLabel: string;
   alertLabel?: string;
   alertContent?: ReactNode;
@@ -106,6 +108,7 @@ export function ClassroomCourseInfoBar({
       ) : null}
 
       <span className="shrink-0 font-mono text-[11px] text-muted" aria-label={pageLabel}>{pageLabel}</span>
+      {preparationAction}
       <ClassroomEndButton
         label={endLabel}
         disabled={endDisabled}

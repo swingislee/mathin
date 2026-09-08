@@ -18,6 +18,7 @@ import {
 } from "@/features/tools/courseware/registry";
 import {
   CLASSROOM_DOC_STEP_SYNC_V1,
+  CLASSROOM_PAGE_NAVIGATION_SYNC_V1,
   CLASSROOM_GAME_MIRROR_SYNC_V1,
   CLASSROOM_H5_STATE_SYNC_REQUIRED_V1,
   CLASSROOM_SPATIAL_COMMAND_SYNC_REQUIRED_V1,
@@ -60,6 +61,11 @@ export const MATHIN_MICROCOURSE_SYNC_PROVIDERS = {
   composition: CLASSROOM_DOC_STEP_SYNC_V1,
   h5: CLASSROOM_H5_STATE_SYNC_REQUIRED_V1,
 } as const satisfies Record<MicrocoursePageDoc["mode"], ClassroomInteractionSyncProvider>;
+
+/** 按键桥只请求外层翻页，不改变 H5 内容本身的只读／同步裁定。 */
+export const CLASSROOM_NAVIGATION_SYNC_PROVIDERS = {
+  "mathin-classroom-paging-v1": CLASSROOM_PAGE_NAVIGATION_SYNC_V1,
+} as const satisfies Record<string, ClassroomInteractionSyncProvider>;
 
 /** 独立 Tools 工作台可本机预演；本地操作记录不等于正式课堂语义事件链。 */
 export const LOCAL_SPATIAL_WORKBENCH_SYNC_PROVIDERS = {
@@ -180,6 +186,11 @@ export function classroomInteractionAuditIssues(): string[] {
   }
   for (const [mode, provider] of Object.entries(MATHIN_MICROCOURSE_SYNC_PROVIDERS)) {
     if (!isClassroomInteractionSyncProvider(provider)) issues.push(`microcourse:${mode}:invalid-provider`);
+  }
+  for (const [bridge, provider] of Object.entries(CLASSROOM_NAVIGATION_SYNC_PROVIDERS)) {
+    if (!isClassroomInteractionSyncProvider(provider) || provider.eventType !== "page") {
+      issues.push(`navigation:${bridge}:requires-authoritative-page-sync`);
+    }
   }
   for (const [version, provider] of Object.entries(LOCAL_SPATIAL_WORKBENCH_SYNC_PROVIDERS)) {
     if (!isClassroomInteractionSyncProvider(provider) || provider.mode !== "read-only"

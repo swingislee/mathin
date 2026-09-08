@@ -321,6 +321,8 @@ type CoursewareAuthoringWorkbenchProps = Omit<ComponentProps<typeof Card>, "chil
 };
 
 export interface CoursewarePreviewWorkbenchProps {
+  /** 外层课堂统一处理快捷键时关闭内层监听，保留页面按钮。 */
+  keyboardPagingEnabled?: boolean;
   mode: "preview";
   items: CoursewareWorkbenchListItem[];
   selectedIndex: number;
@@ -655,6 +657,7 @@ export function CoursewareWorkbenchPageRail({
 }
 
 export function CoursewareWorkbenchPager({
+  keyboardPagingEnabled = true,
   previousLabel,
   nextLabel,
   previousDisabled,
@@ -665,6 +668,7 @@ export function CoursewareWorkbenchPager({
   nextHref,
   center,
 }: {
+  keyboardPagingEnabled?: boolean;
   previousLabel: string;
   nextLabel: string;
   previousDisabled: boolean;
@@ -689,6 +693,7 @@ export function CoursewareWorkbenchPager({
 
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (!keyboardPagingEnabled) return;
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
       if (blocksPaging(event.target, event.key)) return;
       if (event.key === "ArrowLeft" || event.key === "PageUp") {
@@ -708,7 +713,7 @@ export function CoursewareWorkbenchPager({
     // modes therefore retain the same page-turning keyboard contract.
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [goNext, goPrevious, nextDisabled, previousDisabled]);
+  }, [goNext, goPrevious, keyboardPagingEnabled, nextDisabled, previousDisabled]);
 
   return (
     <div className="flex w-full items-center justify-between gap-2">
@@ -754,6 +759,7 @@ export function CoursewareWorkbenchPager({
 }
 
 function CoursewarePreviewMode({
+  keyboardPagingEnabled = true,
   mode,
   items,
   selectedIndex,
@@ -858,6 +864,7 @@ function CoursewarePreviewMode({
           {preview}
         </CoursewareStageViewport>,
         footer: <CoursewareWorkbenchPager
+          keyboardPagingEnabled={keyboardPagingEnabled}
           previousLabel={previousLabel}
           nextLabel={nextLabel}
           previousDisabled={selectedIndex <= 0}

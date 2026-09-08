@@ -94,6 +94,7 @@ export async function SessionWorkspaceBody({
   initialPrepPageId?: string;
 }) {
   const t = await getTranslations("school.session");
+  const tPreparation = await getTranslations("classroom.preparation");
   const tc = await getTranslations("school.classes");
 
   const baseHref = `/dashboard/sessions/${detail.id}`;
@@ -172,6 +173,12 @@ export async function SessionWorkspaceBody({
                 prepStatus={detail.prepStatus}
               />
             ) : null}
+            {detail.capabilities.canEnterLive && detail.state !== "cancelled" && detail.state !== "voided" && primaryAction?.label !== t("enterCandidate") && (
+              <Link href={`/classroom/${detail.classroomId}/session/${detail.id}/live?entry=prep`}
+                className={buttonVariants({ size: "sm", variant: "secondary" })}>
+                {tPreparation("entry")}
+              </Link>
+            )}
           </div>
             {stage === "pre" && detail.state === "scheduled" && (detail.capabilities.canPrepare || canAuthorMicrocourse) ? (
               <div className="flex flex-wrap items-center justify-end gap-2">

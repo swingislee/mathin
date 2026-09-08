@@ -3,6 +3,7 @@ export const CLASSROOM_INTERACTION_SYNC_VERSION = 1;
 
 export type ClassroomInteractionSyncMode = "snapshot" | "commands" | "read-only";
 export type ClassroomInteractionSyncProtocol =
+  | "page-navigation-v1"
   | "game-mirror-v1"
   | "doc-step-v1"
   | "h5-state-v1"
@@ -16,7 +17,7 @@ export interface ClassroomInteractionSyncProvider {
   mode: ClassroomInteractionSyncMode;
   protocol: ClassroomInteractionSyncProtocol;
   /** Durable event type. Read-only providers deliberately publish no event. */
-  eventType: "game_state" | "doc_step" | "tool_state" | null;
+  eventType: "page" | "game_state" | "doc_step" | "tool_state" | null;
   /** Hard payload budget for one durable event. Read-only providers use zero. */
   maxPayloadBytes: number;
 }
@@ -37,6 +38,16 @@ export const CLASSROOM_DOC_STEP_SYNC_V1 = Object.freeze({
   protocol: "doc-step-v1",
   eventType: "doc_step",
   maxPayloadBytes: 4 * 1_024,
+} satisfies ClassroomInteractionSyncProvider);
+
+/** 窗口和 iframe 翻页键均由教师写入既有 page 事件；晚加入者读取 current_page 基线。 */
+export const CLASSROOM_PAGE_NAVIGATION_SYNC_V1 = Object.freeze({
+  schema: CLASSROOM_INTERACTION_SYNC_SCHEMA,
+  version: CLASSROOM_INTERACTION_SYNC_VERSION,
+  mode: "commands",
+  protocol: "page-navigation-v1",
+  eventType: "page",
+  maxPayloadBytes: 64,
 } satisfies ClassroomInteractionSyncProvider);
 
 /** Mathin-authored H5 remains classroom-read-only until it implements state replay. */
@@ -94,7 +105,8 @@ export function isClassroomInteractionSyncProvider(
   if (!value || typeof value !== "object") return false;
   const provider = value as Partial<ClassroomInteractionSyncProvider>;
   const protocol = provider.protocol;
-  const protocolValid = protocol === "game-mirror-v1"
+  const protocolValid = protocol === "page-navigation-v1"
+    || protocol === "game-mirror-v1"
     || protocol === "doc-step-v1"
     || protocol === "h5-state-v1"
     || protocol === "tool-state-v1"
@@ -111,7 +123,10 @@ export function isClassroomInteractionSyncProvider(
       && provider.eventType === null
       && provider.maxPayloadBytes === 0;
   }
-  const activeProtocolValid = (provider.protocol === "game-mirror-v1"
+  const activeProtocolValid = (provider.protocol === "page-navigation-v1"
+      && provider.mode === "commands"
+      && provider.eventType === "page")
+    || (provider.protocol === "game-mirror-v1"
       && provider.mode === "snapshot"
       && provider.eventType === "game_state")
     || (provider.protocol === "doc-step-v1"

@@ -11,6 +11,7 @@ import AixuexiStage from "./AixuexiStage";
 import { coursewareCanvasStyle } from "./courseware-surface";
 import DocStage, { type DocStageProps } from "./DocStage";
 import { useH5FrameRegistration } from "./useH5FrameRegistration";
+import { withClassroomPagingRuntime } from "@/features/classroom/live/classroom-paging";
 import {
   isMicrocoursePageDoc,
   type MicrocoursePageDoc,
@@ -111,7 +112,7 @@ export function MicrocourseH5ArtifactFrame({ artifact, props }: {
     <iframe
       key={artifact.sha256}
       ref={iframeRef}
-      src={`/api/microcourse-h5/${artifact.artifactId}`}
+      src={withClassroomPagingRuntime(`/api/microcourse-h5/${artifact.artifactId}`)}
       title={locale === "en" ? "Interactive microcourse" : "微课互动内容"}
       sandbox="allow-scripts"
       className="size-full border-0 bg-white"
