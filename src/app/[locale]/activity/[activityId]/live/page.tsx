@@ -7,6 +7,7 @@ import {
 import { getPublicClassWorkbench } from "@/features/school/public-class";
 import { getPublicClassTeachingCourseware } from "@/features/school/public-class-teaching";
 import { getMyPerms, requireUser } from "@/lib/auth";
+import { parseClassroomEntry } from "@/features/classroom/preparation/preparation-contract";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const LIVE_MODES = ["host", "assessment", "roster"] as const;
@@ -42,6 +43,8 @@ export default async function PublicClassRunPage({
     || permissions.has("activity.register")
     || permissions.has("review.write");
   if (!canView) notFound();
+  const canTeach = assignedPresentation || permissions.has("activity.manage");
+  const rehearsal = query.rehearsal === "1" && canTeach;
 
   const program = await Promise.all(presentationSegments.map(async (segment) => ({
     segment,
@@ -60,12 +63,15 @@ export default async function PublicClassRunPage({
     : requestedMode ?? roleDefault;
 
   return <PublicClassRunShell
+    key={`${activityId}:${rehearsal}`}
     data={data}
     program={program}
     assessmentSegment={assessmentSegment}
-    canTeach={assignedPresentation || permissions.has("activity.manage")}
+    canTeach={canTeach}
     canRecord={assignedAny || permissions.has("activity.manage") || permissions.has("activity.register") || permissions.has("review.write")}
     locale={locale}
     defaultMode={defaultMode}
+    rehearsal={rehearsal}
+    entry={parseClassroomEntry(query.entry)}
   />;
 }

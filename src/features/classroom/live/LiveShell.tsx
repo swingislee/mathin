@@ -1,18 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { useStore } from "zustand";
 import {
   ArrowLeft,
-  Check,
   ChevronLeft,
   ChevronRight,
   CircleAlert,
   ExternalLink,
   Hand,
   LoaderCircle,
-  MonitorPlay,
   SquareCheckBig,
   TriangleAlert,
   LocateFixed,
@@ -32,6 +30,7 @@ import {
 import type { GameMirrorState } from "@/features/games/types";
 import {
   CLASSROOM_GAME_MIRROR_SYNC_V1,
+  CLASSROOM_PAGE_NAVIGATION_SYNC_V1,
   classroomInteractionPayloadWithinBudget,
 } from "../sync/interaction-provider";
 import { AttendanceDrawer } from "@/features/school/AttendanceDrawer";
@@ -53,6 +52,7 @@ import { isStrokeItem, type StrokeItem } from "@/features/whiteboard/types";
 import type { InteractionTrigger } from "@/features/courseware-doc/interactions";
 import { classroomDocMountKey } from "./classroom-page-presentation";
 import { useClassroomPageWarmup } from "./useClassroomPageWarmup";
+import { useClassroomPaging } from "./useClassroomPaging";
 import type { SessionBoardCheckpoint } from "../checkpoint/types";
 import { shouldApplyLegacyBoardSnapshot } from "../checkpoint/selection";
 import { Link, useRouter } from "@/i18n/navigation";
@@ -106,6 +106,16 @@ import { GamePage, MainBoard, StudentCard, ToolOverlay } from "./LivePanels";
 import { ClassroomSmartInputToggle } from "./ClassroomSmartInputToggle";
 import { ClassroomBackdrop } from "./ClassroomBackdrop";
 import { ClassroomCourseInfoBar, ClassroomEndButton } from "./ClassroomCourseInfoBar";
+import { ClassroomPreparation, type ClassroomPreparationCheck } from "../preparation/ClassroomPreparation";
+import { useClassroomPreparation } from "../preparation/useClassroomPreparation";
+import {
+  classroomDisplayHref,
+  enterFromPreparation,
+  initialClassroomView,
+  type ClassroomEntry,
+  type ClassroomRunMode,
+  type ClassroomRunState,
+} from "../preparation/preparation-contract";
 import { ClassroomRosterGrid, type ClassroomRosterStudent } from "./ClassroomRosterGrid";
 import { DevelopmentAcceptanceDock } from "./DevelopmentAcceptanceDock";
 import { TeacherClassroomControlBar } from "./TeacherClassroomControlBar";
@@ -164,6 +174,7 @@ interface Props {
   role: Role;
   /** 试讲：教师本地预演/复盘——事件不落库不同步，随时可进（包括已下课的课次）。 */
   rehearsal?: boolean;
+  entry?: ClassroomEntry;
   /** 离线演练：保留可靠 outbox，但主动禁用 T2 与服务端写入，退出后验证补同步。 */
   offlineDrill?: boolean;
   /** 正式课次显示点名提醒；试讲/离线演练不显示，且点名状态不阻断开课。 */
@@ -189,6 +200,7 @@ export function LiveShell({
   acceptanceFixture,
   role,
   rehearsal = false,
+  entry = null,
   offlineDrill = false,
   attendanceSuggested,
   initialAttendanceComplete,
@@ -198,6 +210,9 @@ export function LiveShell({
   const router = useRouter();
   const t = useTranslations("classroom.live");
   const tPrep = useTranslations("classroom.prep");
+  const tPreparation = useTranslations("classroom.preparation");
+  const isController = role === "control" && myRole === "teacher";
+  const runMode: ClassroomRunMode = rehearsal ? "rehearsal" : offlineDrill ? "offline-drill" : "formal";
   const m4aFixtures = useMemo(() => buildM4aRosterFixtures({
     claimed: t("m4FixtureClaimed"),
     unclaimed: t("m4FixtureUnclaimed"),
@@ -261,7 +276,12 @@ export function LiveShell({
   const starQueueRef = useRef<Promise<void>>(Promise.resolve());
   const activePage = state.pages[state.currentPage];
   const activePageDocId = activePage?.type === "doc" ? activePage.docId : null;
-  const [phase, setPhase] = useState<Phase>(rehearsal || role === "viewer" || initialState.started ? "live" : "prep");
+  const runState: ClassroomRunState = state.ended ? "ended" : state.started ? "started" : "scheduled";
+  const preparation = useClassroomPreparation(isController
+    ? initialClassroomView({ mode: runMode, runState, entry })
+    : rehearsal || role === "viewer" || initialState.started ? "live" : "prep");
+  const phase = preparation.phase;
+  const { enterStage, openPreparation } = preparation;
   const { assetUrls, preload, docBundle, docUrls } = useSessionAssetPreload(
     session.id, Boolean(session.lectureId), state.pages, state.currentPage,
   );
@@ -303,13 +323,13 @@ export function LiveShell({
   } | null>(null);
   const logRef = useRef<SessionEventLog | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
+  const classroomRootRef = useRef<HTMLDivElement | null>(null);
   const mainInputPortRef = useRef<CanvasSurfaceInputPort | null>(null);
   const sideViewportRef = useRef<HTMLDivElement | null>(null);
   const onMainInputPort = useCallback((port: CanvasSurfaceInputPort | null) => {
     mainInputPortRef.current = port;
   }, []);
 
-  const isController = role === "control" && myRole === "teacher";
   const teacherLayoutV2 = layoutV2Enabled && isController;
   // 试讲不受「已下课」限制：复盘已结束的课次也可随手写画（本地临时，不留痕）
   const editable = isController && (rehearsal || !state.ended);
@@ -571,64 +591,66 @@ export function LiveShell({
 
   const gotoPage = useCallback((page: number, total: number) => {
     const clamped = Math.max(0, Math.min(total - 1, page));
+    if (!Number.isSafeInteger(clamped) || !classroomInteractionPayloadWithinBudget(CLASSROOM_PAGE_NAVIGATION_SYNC_V1, { page: clamped })) return;
     append("page", { page: clamped });
     // 在线时顺手更新 DB 基线（晚加入者用）；离线静默失败。试讲不改共享基线。
     if (rehearsal || offlineDrill) return;
     void setSessionPage(session.id, clamped).catch(() => undefined);
   }, [append, session.id, rehearsal, offlineDrill]);
 
-  useEffect(() => {
-    if (!isController || state.pages.length === 0) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
-      const target = event.target;
-      if (target instanceof HTMLElement && (
-        target.isContentEditable
-        || target.matches("input, textarea, select, button, [role='dialog'], [role='textbox']")
-      )) return;
-      const direction = event.key === "ArrowLeft" || event.key === "PageUp"
-        ? -1
-        : event.key === "ArrowRight" || event.key === "PageDown" || event.key === " "
-          ? 1
-          : 0;
-      if (!direction) return;
+  useClassroomPaging({
+    enabled: isController && effectivePhase === "live" && !(!rehearsal && state.ended) && state.pages.length > 0,
+    rootRef: classroomRootRef,
+    onPage: (direction) => {
       const nextPage = Math.max(0, Math.min(state.pages.length - 1, state.currentPage + direction));
-      if (nextPage === state.currentPage) return;
-      event.preventDefault();
-      gotoPage(nextPage, state.pages.length);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [gotoPage, isController, state.currentPage, state.pages.length]);
+      if (nextPage !== state.currentPage) gotoPage(nextPage, state.pages.length);
+    },
+  });
 
   const startClass = useCallback(async () => {
     // 挂了讲次的课次要先在服务端 resolve 模板+覆盖层冻结 courseware，
     // 成功后才广播 session_ctl:start（10-§5.4）；失败则留在候课页重试。
+    if (!isController || starting || !logRef.current) return;
     setStarting(true);
     setStartError(false);
     try {
-      const frozenRoster = await startClassSession(session.id);
-      if (frozenRoster) setRosterState(frozenRoster);
+      await enterFromPreparation({
+        mode: runMode,
+        runState,
+        canEnter: isController,
+        startFormal: async () => {
+          const frozenRoster = await startClassSession(session.id);
+          if (frozenRoster) setRosterState(frozenRoster);
+          append("session_ctl", { action: "start" });
+        },
+        enterStage,
+      });
     } catch {
-      setStarting(false);
       setStartError(true);
-      return;
+    } finally {
+      setStarting(false);
     }
-    append("session_ctl", { action: "start" });
-    setPhase("live");
-  }, [append, session.id]);
+  }, [append, enterStage, isController, runMode, runState, session.id, starting]);
+
+  const returnToPreparation = useCallback(() => {
+    setStartError(false);
+    setEndOpen(false);
+    setClassroomToolsOpen(false);
+    openPreparation();
+  }, [openPreparation]);
 
   const insertBoardPage = useCallback(() => {
     const index = Math.min(state.currentPage + 1, state.pages.length);
     const page: CoursewarePage = { id: newId(), type: "board", title: t("boardPageTitle") };
     append("page_insert", { index, page });
     append("page", { page: index });
+    if (rehearsal || offlineDrill) return;
     // 在线时把新排布与页码写回 DB（晚加入者基线）；离线静默失败，事件流已足够还原
     const nextPages = [...state.pages];
     nextPages.splice(index, 0, page);
     void saveCourseware(session.id, nextPages).catch(() => undefined);
     void setSessionPage(session.id, index).catch(() => undefined);
-  }, [state.currentPage, state.pages, append, session.id, t]);
+  }, [state.currentPage, state.pages, append, rehearsal, offlineDrill, session.id, t]);
 
   // 游戏镜像：100ms 合并窗口持续送出最新全量轻状态。不能用 trailing debounce：
   // iPad 连续点按若始终快于等待窗口，会让其他设备直到教师停手才看到变化。
@@ -675,6 +697,7 @@ export function LiveShell({
   }, [mainStore, sideBoard.store]);
 
   const endClass = useCallback(async () => {
+    if (!isController || rehearsal || offlineDrill) return;
     append("session_ctl", { action: "end" });
     try {
       await endClassSession(session.id);
@@ -682,12 +705,13 @@ export function LiveShell({
     } finally {
       setEndOpen(false);
     }
-  }, [append, router, session.id]);
+  }, [append, isController, rehearsal, offlineDrill, router, session.id]);
 
   const reopenClass = useCallback(() => {
+    if (!isController || rehearsal || offlineDrill) return;
     append("session_ctl", { action: "start" });
     void reopenClassSession(session.id).catch(() => undefined);
-  }, [append, session.id]);
+  }, [append, isController, rehearsal, offlineDrill, session.id]);
 
   const confirmRosterRefresh = useCallback(async () => {
     if (!rosterState.hasDifference || rosterRefreshing) return;
@@ -695,6 +719,10 @@ export function LiveShell({
     setRosterRefreshError(false);
     if (rehearsal && acceptanceFixture === "m4a") {
       setRosterState(m4aFixtures.refreshed);
+      setRosterRefreshing(false);
+      return;
+    }
+    if (rehearsal || offlineDrill) {
       setRosterRefreshing(false);
       return;
     }
@@ -711,6 +739,7 @@ export function LiveShell({
     acceptanceFixture,
     m4aFixtures.refreshed,
     rehearsal,
+    offlineDrill,
     rosterRefreshing,
     rosterState.currentSourceHash,
     rosterState.hasDifference,
@@ -989,7 +1018,8 @@ export function LiveShell({
     </div>
   );
 
-  const rosterDifferenceNotice = isController && rosterState.hasDifference ? (
+  const showRosterDifference = isController && (!rehearsal || acceptanceFixture === "m4a") && !offlineDrill && rosterState.hasDifference;
+  const rosterDifferenceNotice = showRosterDifference ? (
     <section
       className="mt-2 flex shrink-0 flex-wrap items-center gap-3 rounded-xl border border-crater/35 bg-crater/8 px-3 py-2"
       data-m4-roster-difference
@@ -1030,14 +1060,14 @@ export function LiveShell({
           : t2Connected
             ? t("online")
             : t("offline");
-  const teacherLayoutAlertContent = starWriteError || rosterState.hasDifference ? (
+  const teacherLayoutAlertContent = starWriteError || showRosterDifference ? (
     <div className="space-y-3" aria-live="polite">
       {starWriteError && (
         <p className="rounded-xl border border-rose/30 bg-rose/5 px-3 py-2 text-xs text-rose" role="alert">
           {t("starWriteFailed")}
         </p>
       )}
-      {rosterState.hasDifference && (
+      {showRosterDifference && (
         <section className="space-y-2">
           <div>
             <p className="text-sm font-medium text-ink">{t("rosterDifferenceTitle")}</p>
@@ -1065,6 +1095,7 @@ export function LiveShell({
   ) : null;
 
   // --- 候课 ----------------------------------------------------------------
+  let preparationPanel: ReactNode = null;
   if (effectivePhase === "prep") {
     const checklist: Array<{ key: string; ok: boolean; warn?: boolean; label: string; hint?: string }> = [
       {
@@ -1125,98 +1156,87 @@ export function LiveShell({
       { key: "roster", ok: true, label: tPrep("roster", { count: students.length }) },
     ];
 
-    return (
-      <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col px-6 py-10">
-        <div className="flex items-center gap-3">
-          <Link
-            href={`/classroom/${classId}/session/${session.id}`}
-            aria-label={t("exit")}
-            className="rounded-full p-2 text-muted transition-colors hover:bg-moon/30 hover:text-ink"
-          >
-            <ArrowLeft size={18} />
-          </Link>
-          <h1 className="min-w-0 flex-1 truncate font-display text-2xl">{session.title || t("untitled")}</h1>
-          {connectionBadges}
-        </div>
+    const checks: ClassroomPreparationCheck[] = checklist.map((item) => ({
+      ...item,
+      status: item.ok ? "ready" as const : item.warn ? "warning" as const : "pending" as const,
+    })).filter((item) => !rehearsal || !["local", "p2p", "server"].includes(item.key));
+    if (rehearsal) checks.push({
+      key: "rehearsal-connection",
+      status: "info",
+      label: tPreparation("rehearsalConnection"),
+      hint: tPreparation("rehearsalConnectionHint"),
+    });
 
-        {rosterDifferenceNotice}
-
-        {attendanceSuggested && (
-          <section className="mt-8 flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-card p-4">
-            <div className="min-w-0 flex-1">
-              <h2 className="text-sm font-medium">{tPrep("attendanceStepTitle")}</h2>
-              <p className="mt-1 text-xs text-muted">
-                {attendanceSaved ? tPrep("attendanceComplete") : tPrep("attendanceStepBody")}
+    preparationPanel = (
+      <div className="fixed inset-0 z-50 overflow-y-auto bg-paper">
+        <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col px-6 py-8">
+          <div className="flex items-center gap-3">
+            <Link
+              href={`/classroom/${classId}/session/${session.id}`}
+              aria-label={t("exit")}
+              className="rounded-full p-2 text-muted transition-colors hover:bg-moon/30 hover:text-ink"
+            >
+              <ArrowLeft size={18} />
+            </Link>
+            <h1 className="min-w-0 flex-1 truncate font-display text-2xl">{session.title || t("untitled")}</h1>
+            {connectionBadges}
+          </div>
+          {rosterDifferenceNotice}
+          <ClassroomPreparation
+            mode={runMode}
+            runState={runState}
+            checks={checks}
+            canEnter={isController}
+            pending={starting}
+            blocked={!log}
+            error={startError ? tPrep("startFailed") : null}
+            onEnter={() => void startClass()}
+            beforeChecks={attendanceSuggested && !state.started && !state.ended ? (
+              <section className="mt-5 flex flex-wrap items-center gap-3 border-b border-line pb-4">
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-sm font-medium">{tPrep("attendanceStepTitle")}</h3>
+                  <p className="mt-1 text-xs text-muted">{attendanceSaved ? tPrep("attendanceComplete") : tPrep("attendanceStepBody")}</p>
+                </div>
+                {attendanceSaved
+                  ? <Badge variant="secondary">{tPrep("attendanceDone")}</Badge>
+                  : <AttendanceDrawer sessionId={session.id} appearance="primary" onSaved={() => setAttendanceSaved(true)} />}
+              </section>
+            ) : null}
+            afterChecks={!rehearsal ? (
+              <p className="mt-3 flex items-center gap-1.5 text-xs text-muted">
+                <CircleAlert size={13} className="shrink-0" />{tPrep("noReloadWarning")}
               </p>
-            </div>
-            {attendanceSaved
-              ? <Badge variant="secondary">{tPrep("attendanceDone")}</Badge>
-              : <AttendanceDrawer sessionId={session.id} appearance="primary" onSaved={() => setAttendanceSaved(true)} />}
-          </section>
-        )}
-
-        <h2 className={attendanceSuggested ? "mt-6 text-sm font-medium text-muted" : "mt-8 text-sm font-medium text-muted"}>{tPrep("title")}</h2>
-        <ul className="mt-3 divide-y divide-line rounded-2xl border border-line">
-          {checklist.map((item) => (
-            <li key={item.key} className="flex items-start gap-3 px-4 py-3">
-              {item.ok ? (
-                <Check size={16} className="mt-0.5 shrink-0 text-leaf-deep" />
-              ) : item.warn ? (
-                <TriangleAlert size={16} className="mt-0.5 shrink-0 text-crater" />
-              ) : (
-                <LoaderCircle size={16} className="mt-0.5 shrink-0 animate-spin text-muted motion-reduce:animate-none" />
-              )}
-              <div className="min-w-0">
-                <p className="text-sm">{item.label}</p>
-                {item.hint && <p className="mt-0.5 text-xs text-muted">{item.hint}</p>}
-              </div>
-            </li>
-          ))}
-        </ul>
-        <p className="mt-3 flex items-center gap-1.5 text-xs text-muted">
-          <CircleAlert size={13} className="shrink-0" />
-          {tPrep("noReloadWarning")}
-        </p>
-
-        <div className="mt-8 flex flex-wrap items-center gap-3">
-          {isController ? (
-            <>
-              <button
-                type="button"
-                onClick={() => window.open(`${window.location.pathname}?role=display`, "_blank")}
-                className="inline-flex items-center gap-2 rounded-full border border-line px-4 py-2 text-sm text-muted transition-colors hover:bg-moon/30 hover:text-ink"
-              >
+            ) : null}
+            secondaryActions={isController ? (
+              <Button type="button" size="sm" variant="secondary" onClick={() => window.open(
+                classroomDisplayHref(window.location.pathname, window.location.search), "_blank",
+              )}>
                 <ExternalLink size={15} />
-                {tPrep("openDisplay")}
-              </button>
-              <button
-                type="button"
-                disabled={starting}
-                onClick={() => void startClass()}
-                className="inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2 text-sm text-paper transition-opacity hover:opacity-85 disabled:opacity-40"
-              >
-                {starting ? <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" /> : <MonitorPlay size={15} />}
-                {tPrep("start")}
-              </button>
-              {startError && <p className="text-xs text-rose">{tPrep("startFailed")}</p>}
-            </>
-          ) : (
-            <p className="inline-flex items-center gap-2 text-sm text-muted">
-              <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" />
-              {tPrep("waiting")}
-            </p>
-          )}
+                {rehearsal ? tPreparation("openRehearsalDisplay") : tPrep("openDisplay")}
+              </Button>
+            ) : <p className="text-sm text-muted">{tPrep("waiting")}</p>}
+          />
         </div>
       </div>
     );
   }
 
   // --- 上课 ----------------------------------------------------------------
+  const stageVisible = effectivePhase === "live";
+  const preparationButton = isController ? (
+    <Button type="button" size="sm" variant="ghost" className="shrink-0 px-2 text-xs"
+      title={tPreparation("entry")} aria-label={tPreparation("entry")} onClick={returnToPreparation}>
+      {tPreparation("shortLabel")}
+    </Button>
+  ) : null;
   return (
-    <div className={cn(
+    <>
+      {preparationPanel}
+      {(preparation.stageMounted || stageVisible) && <div ref={classroomRootRef} className={cn(
+      !stageVisible && "invisible pointer-events-none",
       "relative isolate flex h-dvh select-none flex-col overflow-hidden px-3 [-webkit-touch-callout:none] [-webkit-user-select:none]",
       teacherLayoutV2 ? "pb-[calc(3.5rem+env(safe-area-inset-bottom))] pt-1" : "pb-2 pt-2",
-    )} data-classroom-live-shell data-classroom-selection-policy="none-during-teaching">
+    )} inert={!stageVisible} aria-hidden={!stageVisible} data-classroom-live-shell data-classroom-selection-policy="none-during-teaching">
       <ClassroomBackdrop />
 
       {teacherLayoutV2 && (
@@ -1227,11 +1247,12 @@ export function LiveShell({
             title={displayedSessionTitle}
             statusLabel={courseStatusLabel}
             statusDetails={connectionBadges}
+            preparationAction={preparationButton}
             pageLabel={state.pages.length === 0 ? "0/0" : `${state.currentPage + 1}/${state.pages.length}`}
             alertLabel={teacherLayoutAlertContent ? t("m4bOpenAlerts") : undefined}
             alertContent={teacherLayoutAlertContent}
             endLabel={t("endClass")}
-            endDisabled={rehearsal || state.ended}
+            endDisabled={rehearsal || offlineDrill || state.ended}
             onEnd={() => setEndOpen(true)}
           />
         </div>
@@ -1254,7 +1275,8 @@ export function LiveShell({
           />
         )}
         {connectionBadges}
-        {isController && !state.ended && !rehearsal && (
+        {preparationButton}
+        {isController && !state.ended && !rehearsal && !offlineDrill && (
           <ClassroomEndButton
             label={t("endClass")}
             onClick={() => setEndOpen(true)}
@@ -1668,11 +1690,12 @@ export function LiveShell({
                 title={displayedSessionTitle}
                 statusLabel={courseStatusLabel}
                 statusDetails={connectionBadges}
+                preparationAction={preparationButton}
                 pageLabel={state.pages.length === 0 ? "0/0" : `${state.currentPage + 1}/${state.pages.length}`}
                 alertLabel={teacherLayoutAlertContent ? t("m4bOpenAlerts") : undefined}
                 alertContent={teacherLayoutAlertContent}
                 endLabel={t("endClass")}
-                endDisabled={rehearsal || state.ended}
+                endDisabled={rehearsal || offlineDrill || state.ended}
                 onEnd={() => setEndOpen(true)}
               />
             </div>
@@ -2041,6 +2064,7 @@ export function LiveShell({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>}
+    </>
   );
 }

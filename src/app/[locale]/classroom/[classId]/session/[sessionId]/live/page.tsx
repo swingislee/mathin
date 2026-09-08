@@ -10,6 +10,7 @@ import { getSessionLearningSetup } from "@/features/school/session-learning";
 import { resolveCourseware, type OverlaySlot } from "@/features/school/courseware-overlay";
 import { isFeatureEnabled } from "@/features/school/organization-settings";
 import { requireUser } from "@/lib/auth";
+import { parseClassroomEntry } from "@/features/classroom/preparation/preparation-contract";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -18,9 +19,9 @@ export default async function LiveClassPage({
   searchParams,
 }: {
   params: Promise<{ locale: string; classId: string; sessionId: string }>;
-  searchParams: Promise<{ role?: string; mode?: string; acceptance?: string }>;
+  searchParams: Promise<{ role?: string; mode?: string; acceptance?: string; entry?: string }>;
 }) {
-  const [{ locale, classId, sessionId }, { role: roleParam, mode, acceptance }] = await Promise.all([params, searchParams]);
+  const [{ locale, classId, sessionId }, { role: roleParam, mode, acceptance, entry }] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
   const user = await requireUser(locale);
   if (!UUID_PATTERN.test(classId) || !UUID_PATTERN.test(sessionId)) notFound();
@@ -92,11 +93,12 @@ export default async function LiveClassPage({
         ? "m3b"
         : acceptance === "m4a"
           ? "m4a"
-          : "m4b"
+          : acceptance === "m4b" ? "m4b" : null
       : null;
 
   return (
     <LiveShell
+      key={`${sessionId}:${role}:${rehearsal}:${offlineDrill}`}
       session={effectiveSession}
       classId={classId}
       members={classroom.members}
@@ -112,6 +114,7 @@ export default async function LiveClassPage({
       acceptanceFixture={acceptanceFixture}
       role={role}
       rehearsal={rehearsal}
+      entry={parseClassroomEntry(entry)}
       offlineDrill={offlineDrill}
       attendanceSuggested={attendanceSuggested}
       initialAttendanceComplete={initialAttendanceComplete}

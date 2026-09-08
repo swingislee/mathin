@@ -219,13 +219,22 @@ export function PublicClassWorkspace({
             <Plus className="size-4" />{t("addProgramBlock")}
           </Button> : null}
         </> : null}
-        {activeView === "teaching" && canPrepareTeaching ? <Link
+        {activeView === "teaching" && canPrepareTeaching ? <>
+        <Link href={`/activity/${data.activity.id}/live?mode=host&rehearsal=1`}
+          className={buttonVariants({ size: "sm", variant: "secondary" })}>
+          {sessionT("rehearse")}
+        </Link>
+        {runState !== "preparing" && <Link href={`/activity/${data.activity.id}/live?mode=host&entry=prep`}
+          className={buttonVariants({ size: "sm", variant: "secondary" })}>
+          {t("enterRunCandidate")}
+        </Link>}
+        <Link
           href={`/activity/${data.activity.id}/live?mode=host`}
           className={buttonVariants({ size: "sm" })}
         >
           <MonitorPlay className="size-4" />
           {runState === "live" ? t("returnToLiveRun") : runState === "ended" ? t("reviewCompletedRun") : t("enterRunCandidate")}
-        </Link> : null}
+        </Link></> : null}
         {activeView === "onsite" && canRecord ? <Link
           href={`/activity/${data.activity.id}/live?mode=roster`}
           className={buttonVariants({ size: "sm" })}

@@ -294,7 +294,7 @@ export async function saveCourseware(sessionId: string, pages: CoursewarePage[])
 }
 
 /**
- * 开课：mode=rehearsal 不调用本函数（LiveShell 的 prep phase 对试讲直接跳过）。
+ * 正式开课：候课入口只在正式模式且尚未开课时调用；试讲和继续课堂仅切换本机视图。
  * 若课次尚未冻结，先服务端 resolve(模板+覆盖层) 落 courseware；自由课次有
  * “本节使用”方案时模板来自该方案，没有方案时覆盖层才是本课全部页面。
  * 与 started_at 一起原子写入（同一条 UPDATE ... WHERE started_at is null，

@@ -13,6 +13,7 @@ import { ClassroomVideoInkSurface } from "@/features/classroom/input/ClassroomVi
 import "./doc-stage.css";
 import type { H5PointerBridgeHost } from "./h5-pointer-protocol";
 import { useH5FrameRegistration } from "./useH5FrameRegistration";
+import { withClassroomPagingRuntime } from "@/features/classroom/live/classroom-paging";
 import type { DocNode, PageDoc } from "./schema";
 import { injectBindingUrls, type ResolvedBindingUrls } from "./resolve";
 import { COURSEWARE_LIGHT_SURFACE_STYLE } from "./courseware-surface";
@@ -327,7 +328,7 @@ function H5Frame({
         ref={iframeRef}
         data-classroom-input="native"
         title={title}
-        src={entryUrl}
+        src={withClassroomPagingRuntime(entryUrl)}
         sandbox="allow-scripts"
         allow="autoplay; fullscreen"
         allowFullScreen

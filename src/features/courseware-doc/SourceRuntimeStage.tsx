@@ -30,6 +30,7 @@ import {
   type SourceRuntimeSandboxResource,
 } from "./source-runtime-sandbox";
 import { useH5FrameRegistration } from "./useH5FrameRegistration";
+import { withClassroomPagingRuntime } from "@/features/classroom/live/classroom-paging";
 
 const FRAME_MESSAGE_SOURCE = "mathin-source-runtime";
 const HOST_MESSAGE_SOURCE = "mathin-source-runtime-host";
@@ -495,7 +496,7 @@ export default function SourceRuntimeStage({
             ref={iframeRef}
             key={runtimeInstanceKey}
             title={doc.source.pageName}
-            src={runtimeEntry}
+            src={withClassroomPagingRuntime(runtimeEntry)}
             sandbox="allow-scripts allow-forms allow-pointer-lock allow-modals"
             allow="autoplay; fullscreen"
             allowFullScreen

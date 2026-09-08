@@ -9108,6 +9108,30 @@
       "insertPage": "Insert",
       "cancel": "Cancel"
     },
+    "preparation": {
+      "title": "Waiting room / Device check",
+      "entry": "Waiting room / Device check",
+      "shortLabel": "Waiting room",
+      "rehearsal": "Rehearsal",
+      "offlineDrill": "Offline drill",
+      "rehearsalConnection": "Rehearsal runs independently in this window",
+      "rehearsalConnectionHint": "Check courseware and the roster here. Rehearsal actions are local practice; check device pairing in the formal waiting room.",
+      "openRehearsalDisplay": "Open rehearsal display preview (independent)",
+      "actions": {
+        "start": "Start formal class",
+        "resume": "Continue class",
+        "review": "View ended class",
+        "rehearse": "Start rehearsal",
+        "drill": "Start offline drill"
+      },
+      "hints": {
+        "start": "Check courseware, the roster and devices, then start when ready. Entering this waiting room does not start the class.",
+        "resume": "This class has started. Check this device while classroom progress is preserved, then continue teaching.",
+        "review": "This class has ended. You can check this device and view the classroom while the class stays ended.",
+        "rehearse": "Practice the waiting-room checks, then start rehearsing. Return here at any time; the formal class and teaching records stay unchanged.",
+        "drill": "Check devices before the offline drill. Entering the drill does not start the formal class."
+      }
+    },
     "prep": {
       "title": "Pre-class checklist",
       "attendanceStepTitle": "Attendance (optional)",

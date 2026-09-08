@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
  */
 export async function SessionLivePanel({ detail }: { detail: SessionWorkspaceDetail }) {
   const t = await getTranslations("school.session");
+  const tPreparation = await getTranslations("classroom.preparation");
   const liveHref = `/classroom/${detail.classroomId}/session/${detail.id}/live`;
 
   return (
@@ -19,9 +20,14 @@ export async function SessionLivePanel({ detail }: { detail: SessionWorkspaceDet
           {detail.state === "started" ? t("liveInProgress") : detail.state === "ended" ? t("liveEnded") : t("liveNotStarted")}
         </p>
         {detail.capabilities.canEnterLive ? (
-          <Link href={liveHref} className={cn(buttonVariants({ size: "sm" }), "mt-3")}>
-            {t("enterClassroom")}
-          </Link>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Link href={`${liveHref}?entry=prep`} className={buttonVariants({ size: "sm", variant: detail.state === "started" ? "secondary" : "primary" })}>
+              {tPreparation("entry")}
+            </Link>
+            {detail.state === "started" && <Link href={liveHref} className={cn(buttonVariants({ size: "sm" }))}>
+              {tPreparation("actions.resume")}
+            </Link>}
+          </div>
         ) : (
           <p className="mt-2 text-xs text-muted">{t("liveReviewOnly")}</p>
         )}

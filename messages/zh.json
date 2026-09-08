@@ -9108,6 +9108,30 @@
       "insertPage": "插入",
       "cancel": "取消"
     },
+    "preparation": {
+      "title": "候课 / 设备检查",
+      "entry": "候课 / 设备检查",
+      "shortLabel": "候课",
+      "rehearsal": "试讲",
+      "offlineDrill": "离线演练",
+      "rehearsalConnection": "试讲在本窗口独立运行",
+      "rehearsalConnectionHint": "课件和名单可在此检查。试讲操作只用于本机练习；设备配对请在正式候课时检查。",
+      "openRehearsalDisplay": "打开试讲展示预览（独立运行）",
+      "actions": {
+        "start": "开始正式上课",
+        "resume": "继续上课",
+        "review": "查看已结束课堂",
+        "rehearse": "开始试讲",
+        "drill": "开始离线演练"
+      },
+      "hints": {
+        "start": "检查课件、名单和设备，准备好后开始正式上课。进入候课不会开始课程。",
+        "resume": "本节课已开始。这里仅检查当前设备，课堂进度保持；准备好后继续上课。",
+        "review": "本节课已结束。检查后可查看课堂，课程保持已结束状态。",
+        "rehearse": "先熟悉候课检查，再开始试讲。可随时返回这里，正式课程和教学记录保持不变。",
+        "drill": "检查设备后进入离线演练，本次进入不调用正式开课。"
+      }
+    },
     "prep": {
       "title": "候课检查单",
       "attendanceStepTitle": "点名（可选）",

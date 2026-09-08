@@ -229,7 +229,8 @@ describe("R1 classroom continuity contracts", () => {
     expect(liveShell).not.toContain("attendanceRequired && !attendanceComplete");
     expect(liveShell).toContain("attendanceSuggested");
     expect(liveShell).toContain("AttendanceDrawer");
-    expect(liveShell).toContain("disabled={starting}");
+    expect(liveShell).toContain("pending={starting}");
+    expect(read("src/features/classroom/preparation/ClassroomPreparation.tsx")).toContain("disabled={pending || blocked}");
     expect(liveShell).not.toContain("disabled={!assetsReady");
     expect(actions).not.toContain('throw new Error("ATTENDANCE_REQUIRED")');
     expect(actions).not.toContain('throw new Error("COURSEWARE_TRACK_UNPUBLISHED")');
