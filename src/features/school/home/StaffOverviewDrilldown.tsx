@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { STAFF_OVERVIEW_METRICS, type StaffOverviewGrain } from "./staff-overview-contract";
 import type { OverviewDetailQuery, OverviewDetailResult, OverviewDetailSort } from "./staff-overview-drilldown-contract";
 import { overviewDetailMessages } from "./staff-overview-drilldown-messages";
+import { readDashboardDetail } from "../dashboard-page/readDashboardDetail";
 
 type Selection = { query: OverviewDetailQuery; title: string };
 const DetailContext = createContext<((selection: Selection) => void) | null>(null);
@@ -58,14 +59,8 @@ export function StaffOverviewDrilldown({ children, grain, date, generatedAt, sel
     if (!request) return;
     let cancelled = false;
     const controller = new AbortController();
-    void fetch(`/${locale}/dashboard/overview-detail`, {
-      method: "POST", credentials: "same-origin", cache: "no-store", signal: controller.signal,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ grain, date, generatedAt, selectedSupportIds, query: request.next.query, search: request.term, page: request.page, pageSize: request.size, sort: request.sort, person: request.person }),
-    }).then(async response => {
-      if (!response.ok) throw new Error("Detail unavailable");
-      return await response.json() as OverviewDetailResult;
-    })
+    void readDashboardDetail<OverviewDetailResult>(`/${locale}/dashboard/overview-detail`,
+      { grain, date, generatedAt, selectedSupportIds, query: request.next.query, search: request.term, page: request.page, pageSize: request.size, sort: request.sort, person: request.person }, controller.signal)
       .then(data => { if (!cancelled) setResult(data); })
       .catch(() => { if (!cancelled) setFailed(true); })
       .finally(() => { if (!cancelled) setLoading(false); });

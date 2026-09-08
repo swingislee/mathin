@@ -34,12 +34,28 @@ beforeEach(() => {
   vi.clearAllMocks(); sessionStorage.clear();
   actions.save.mockResolvedValue({ ok: false, code: "INVITATION_CONFLICT" });
   actions.subject.mockResolvedValue({ ok: true, data: full });
+  vi.stubGlobal("fetch", vi.fn(async (_url: string, init: RequestInit) => ({
+    ok: true, json: async () => actions.subject(JSON.parse(init.body as string)),
+  })));
   actions.options.mockResolvedValue({ ok: false, code: "FORBIDDEN" });
   container = document.createElement("div"); document.body.append(container); root = createRoot(container);
 });
-afterEach(async () => { await act(async () => root.unmount()); container.remove(); });
+afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals(); });
 
 describe("student entry loads complete context before initializing a draft", () => {
+  it("uses an independent cancellable request and retains detail across parent renders", async () => {
+    await render();
+    const entry = container.querySelector("[data-student-stage-entry]");
+    await render({ ...light });
+    expect(container.querySelector("[data-student-stage-entry]")).toBe(entry);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledWith("/zh/dashboard/students/entry-detail", expect.objectContaining({
+      method: "POST", cache: "no-store", credentials: "same-origin", signal: expect.any(AbortSignal),
+    }));
+    const signal = vi.mocked(fetch).mock.calls[0][1]!.signal!;
+    await render({ ...light, key: "another", leadId: "another" });
+    expect(signal.aborted).toBe(true);
+  });
   it("waits for reminder and invitation versions, then saves without preloading business options", async () => {
     let resolve!: (value: { ok: true; data: StudentStageRow }) => void;
     actions.subject.mockImplementationOnce(() => new Promise(value => { resolve = value; }));

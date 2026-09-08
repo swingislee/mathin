@@ -4,7 +4,8 @@ import { useEffect, useState, type ComponentProps } from "react";
 import { LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StudentStageEntry } from "./StudentStageEntry";
-import { getStudentStageSubjectAction } from "./student-stage-actions";
+import type { getStudentStageSubjectAction } from "./student-stage-actions";
+import { readDashboardDetail } from "./dashboard-page/readDashboardDetail";
 import { studentStageMessages } from "./student-stage-messages";
 import type { StudentStageRow } from "./student-stage-contract";
 
@@ -19,13 +20,16 @@ export function StudentStageEntryLoader(props: ComponentProps<typeof StudentStag
   useEffect(() => {
     if (!needsDetail) return;
     let active = true;
-    void getStudentStageSubjectAction({ studentId: row.studentId, leadId: row.leadId }).then(result => {
+    const controller = new AbortController();
+    void readDashboardDetail<Awaited<ReturnType<typeof getStudentStageSubjectAction>>>(
+      `/${locale}/dashboard/students/entry-detail`, { studentId: row.studentId, leadId: row.leadId }, controller.signal,
+    ).then(result => {
       if (!active) return;
       if (result.ok) { setLoaded({ key: row.key, row: result.data }); setFailed(null); }
       else setFailed(row.key);
     }).catch(() => { if (active) setFailed(row.key); });
-    return () => { active = false; };
-  }, [needsDetail, row.key, row.studentId, row.leadId, revision]);
+    return () => { active = false; controller.abort(); };
+  }, [needsDetail, row.key, row.studentId, row.leadId, revision, locale]);
   if (detail) return <StudentStageEntry {...props} row={detail} />;
   const m = studentStageMessages(locale);
   return failed === row.key ? <div role="alert" className="space-y-2 text-sm text-muted">
