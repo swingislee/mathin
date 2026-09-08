@@ -117,9 +117,14 @@ describe("shared courseware editor workbench", () => {
     expect(grid).toContain('className="relative isolate aspect-[4/3] w-full touch-none overflow-hidden"');
     expect(grid).toMatch(/<CoursewareCompositionStage\s+className="isolate z-0"/);
     expect(stage).toContain('cn("relative aspect-[4/3] w-full overflow-hidden", props.className)');
-    expect(grid).toContain('className="pointer-events-none absolute inset-0 z-10 grid"');
+    expect(grid).toContain('className="pointer-events-none absolute left-0 top-0 z-10 grid origin-top-left"');
     expect(grid).toContain("data-courseware-composition-handles");
-    expect(grid).toContain('"pointer-events-auto group relative z-10');
+    expect(grid).toContain('"pointer-events-auto relative z-10');
+    expect(grid).toContain("<CoursewareNodeEditorHandles");
+    expect(grid).toContain("...coursewareEditorSelectionStyle(selected || gesture?.blockId === block.id)");
+    expect(grid).toContain("canvasWidth / displayed.overlay.canvas.width");
+    expect(grid).not.toContain("rounded-xl border-2");
+    expect(grid).not.toContain("<Grip");
     expect(grid).toContain('begin(event, block.id, "move")');
     expect(grid).toContain('begin(event, block.id, "resize")');
     expect(grid).toContain("setPointerCapture(event.pointerId)");
@@ -152,7 +157,7 @@ describe("shared courseware editor workbench", () => {
     expect(textEditor).not.toContain('t("textElement")');
     expect(stage).toContain("contentEditable={inlineTextEditing || undefined}");
     expect(stage).toContain('data-courseware-text-font-override');
-    expect(stage).toContain('inlineTextFocused && !transform.active ? "dashed" : "solid"');
+    expect(stage).toContain('coursewareEditorSelectionStyle(selected, inlineTextFocused && !transform.active)');
     expect(stage).toContain("CoursewareNodeEditorHandles");
     expect(stage).toContain("CoursewareSnapGridOverlay");
     expect(stage).toContain("useCoursewareNodeTransform");

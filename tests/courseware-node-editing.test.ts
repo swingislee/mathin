@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { coursewareNodeTransformGeometry } from "@/features/courseware-doc/CoursewareNodeEditing";
+import { coursewareEditorSelectionStyle, coursewareNodeTransformGeometry } from "@/features/courseware-doc/CoursewareNodeEditing";
 
 const origin = { x: 105, y: 44, width: 317, height: 169 };
 
 describe("shared courseware node editing geometry", () => {
+  it("shares one outline for text and embedded components while preserving text-editing feedback", () => {
+    expect(coursewareEditorSelectionStyle(true)).toEqual({ outline: "2px solid #e76f78", outlineOffset: "2px" });
+    expect(coursewareEditorSelectionStyle(true, true)).toEqual({ outline: "2px dashed #e76f78", outlineOffset: "2px" });
+    expect(coursewareEditorSelectionStyle(false)).toEqual({ outline: undefined, outlineOffset: undefined });
+  });
   it("uses the same 12 by 9 snap calculation for every stage adapter", () => {
     expect(coursewareNodeTransformGeometry({
       mode: "move",

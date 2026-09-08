@@ -1,8 +1,7 @@
 "use client";
 
-import { Grip, MoveDiagonal2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import type { ResolvedBindingUrls } from "./resolve";
 import type { DocNodeTransformPatch } from "./DocStage";
 import {
@@ -15,7 +14,7 @@ import type {
 } from "./composition-page-schema";
 import { COURSEWARE_DEFAULT_PAPER } from "./courseware-surface";
 import CoursewareCompositionStage from "./CoursewareCompositionStage";
-import { cn } from "@/lib/utils";
+import { CoursewareNodeEditorHandles, coursewareEditorSelectionStyle } from "./CoursewareNodeEditing";
 
 interface GridGesture {
   blockId: string;
@@ -48,6 +47,14 @@ export function CoursewareCompositionGridEditor({
 }) {
   const t = useTranslations("teacherMicrocourses");
   const canvasRef = useRef<HTMLDivElement>(null);
+  const [canvasWidth, setCanvasWidth] = useState(0);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const observer = new ResizeObserver(([entry]) => setCanvasWidth(entry.contentRect.width));
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, []);
   const draftRef = useRef<CoursewareCompositionPage | null>(null);
   const [gesture, setGesture] = useState<GridGesture | null>(null);
   const [draft, setDraft] = useState<CoursewareCompositionPage | null>(null);
@@ -183,9 +190,14 @@ export function CoursewareCompositionGridEditor({
         nodeResizeLabel={t("gridResizeBlock", { type: t("componentText") })}
       />
       <div
-        className="pointer-events-none absolute inset-0 z-10 grid"
+        className="pointer-events-none absolute left-0 top-0 z-10 grid origin-top-left"
         data-courseware-composition-handles
         style={{
+          // 与 DocStage 共用文档坐标，句柄随舞台同比缩放。
+          width: displayed.overlay.canvas.width,
+          height: displayed.overlay.canvas.height,
+          transform: `scale(${canvasWidth / displayed.overlay.canvas.width})`,
+          visibility: canvasWidth > 0 ? "visible" : "hidden",
           gridTemplateColumns: "repeat(12, minmax(0, 1fr))",
           gridTemplateRows: "repeat(9, minmax(0, 1fr))",
           backgroundImage: gesture && snapToGrid
@@ -204,12 +216,9 @@ export function CoursewareCompositionGridEditor({
               tabIndex={0}
               aria-label={t("gridMoveBlock", { type: label })}
               aria-pressed={selected}
-              className={cn(
-                "pointer-events-auto group relative z-10 m-1 cursor-move rounded-xl border-2 bg-transparent outline-none transition-[border-color] focus-visible:ring-2 focus-visible:ring-rose",
-                selected ? "border-rose" : "border-transparent hover:border-crater/70",
-                gesture?.blockId === block.id && "border-rose-deep",
-              )}
+              className="pointer-events-auto relative z-10 cursor-move bg-transparent focus-visible:ring-2 focus-visible:ring-rose"
               style={{
+                ...coursewareEditorSelectionStyle(selected || gesture?.blockId === block.id),
                 gridColumn: `${block.placement.column + 1} / span ${block.placement.columnSpan}`,
                 gridRow: `${block.placement.row + 1} / span ${block.placement.rowSpan}`,
               }}
@@ -220,27 +229,15 @@ export function CoursewareCompositionGridEditor({
               onPointerMove={move}
               onPointerUp={finish}
             >
-              <span className={cn(
-                "pointer-events-none absolute left-1 top-1 inline-flex items-center gap-1 rounded-full bg-ink/85 px-2 py-1 text-[10px] text-white opacity-0 transition-opacity",
-                (selected || gesture?.blockId === block.id) && "opacity-100",
-              )}>
-                <Grip className="size-3" />{label}
-              </span>
-              <button
-                type="button"
-                data-classroom-input="drag"
-                aria-label={t("gridResizeBlock", { type: label })}
-                className={cn(
-                  "absolute bottom-0 right-0 grid size-7 cursor-nwse-resize place-items-center rounded-tl-xl bg-rose text-white opacity-0 transition-opacity",
-                  selected && "opacity-100",
-                )}
+              {selected || gesture?.blockId === block.id ? <CoursewareNodeEditorHandles
+                moveLabel={t("gridMoveBlock", { type: label })}
+                resizeLabel={t("gridResizeBlock", { type: label })}
+                onMovePointerDown={(event) => begin(event, block.id, "move")}
+                onResizePointerDown={(event) => begin(event, block.id, "resize")}
                 onPointerCancel={cancel}
-                onPointerDown={(event) => begin(event, block.id, "resize")}
                 onPointerMove={move}
                 onPointerUp={finish}
-              >
-                <MoveDiagonal2 className="size-4" />
-              </button>
+              /> : null}
             </div>
           );
         })}

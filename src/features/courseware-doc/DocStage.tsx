@@ -20,6 +20,7 @@ import { createInteractionRuntime, type InteractionRuntime, type InteractionTrig
 import { renderAixuexiMathHtml } from "./aixuexi-math";
 import {
   CoursewareNodeEditorHandles,
+  coursewareEditorSelectionStyle,
   CoursewareSnapGridOverlay,
   useCoursewareNodeTransform,
 } from "./CoursewareNodeEditing";
@@ -596,10 +597,7 @@ function NodeView({
     transform: `translate(${t.x}px,${t.y}px) rotate(${t.rotation}deg) scale(${t.flipX ? -t.scaleX : t.scaleX},${t.flipY ? -t.scaleY : t.scaleY})`,
     display: node.visible ? "block" : "none",
     cursor: inlineTextEditing ? "text" : onNodeTransformChange ? "move" : clickTrigger ? "pointer" : undefined,
-    outline: selected
-      ? `2px ${inlineTextFocused && !transform.active ? "dashed" : "solid"} #e76f78`
-      : undefined,
-    outlineOffset: selected ? "2px" : undefined,
+    ...coursewareEditorSelectionStyle(selected, inlineTextFocused && !transform.active),
   };
   return (
     <div

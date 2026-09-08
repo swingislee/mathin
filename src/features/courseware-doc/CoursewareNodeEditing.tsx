@@ -141,6 +141,13 @@ export function useCoursewareNodeTransform({
   };
 }
 
+export function coursewareEditorSelectionStyle(selected: boolean, editingText = false): CSSProperties {
+  return {
+    outline: selected ? `2px ${editingText ? "dashed" : "solid"} #e76f78` : undefined,
+    outlineOffset: selected ? "2px" : undefined,
+  };
+}
+
 export function CoursewareNodeEditorHandles({
   moveLabel,
   resizeLabel,
