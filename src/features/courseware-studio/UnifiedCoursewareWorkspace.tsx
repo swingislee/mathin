@@ -88,16 +88,22 @@ function coursePreviewHref(detail: LectureWorkspaceDetail, track: CoursewareTrac
 
 function TrackCanvas({
   preview,
+  composition,
   label,
   unavailable,
 }: {
   preview: CoursewareLecturePreview | null;
+  composition?: NonNullable<FormalCubePageEditorData["comparison"]>[CoursewareTrack];
   label: string;
   unavailable: string;
 }) {
   return (
     <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-paper" aria-label={label}>
-      {preview ? (
+      {composition ? (
+        <FittedCoursewareCanvas aspect={4 / 3}>
+          <StagePreview doc={composition.doc} bindingUrls={composition.bindingUrls} stageMode="natural" className="size-full" />
+        </FittedCoursewareCanvas>
+      ) : preview ? (
         <FittedCoursewareCanvas aspect={previewAspect(preview)}>
           <StagePreview
             doc={preview.page.doc}
@@ -152,7 +158,9 @@ export async function UnifiedCoursewareWorkspace({
     && !adaptedPreview
     && Boolean(nativePreview)
     && !sessionAdaptationAvailable && !formalCubeEditor;
-  const visibleCanvas: UnifiedWorkspaceCanvas = formalCubeEditor ? formalCubeEditor.track : adaptedCanvasFellBack ? "native-16x9" : canvas;
+  const visibleCanvas: UnifiedWorkspaceCanvas = adaptedCanvasFellBack ? "native-16x9" : canvas;
+  const compositionComparison = Boolean(formalCubeEditor && visibleCanvas === "compare");
+  const activeEditor = Boolean(pageEditor || sourceRuntimeEditor || (formalCubeEditor && !compositionComparison));
   const visibleTrack: CoursewareTrack = visibleCanvas === "adapted-4x3" ? "adapted-4x3" : "native-16x9";
   const selectedDoc = formalCubeEditor?.doc ?? pageEditor?.doc ?? sourceRuntimeEditor?.doc ?? (visibleCanvas === "adapted-4x3"
     ? adaptedPreview?.page.doc
@@ -161,7 +169,7 @@ export async function UnifiedCoursewareWorkspace({
     { value: "compare", label: t("canvasCompare"), href: workspaceHref({ lectureId: detail.lecture.id, canvas: "compare", track: "native-16x9", page: selectedPage?.releasePage ?? 1, pageDocId: selectedPage?.pageDocId, returnTo }) },
     { value: "native-16x9", label: t("canvasNative"), href: workspaceHref({ lectureId: detail.lecture.id, canvas: "native-16x9", track: "native-16x9", page: selectedPage?.releasePage ?? 1, pageDocId: selectedPage?.pageDocId, returnTo }) },
     { value: "adapted-4x3", label: t("canvasAdapted"), href: workspaceHref({ lectureId: detail.lecture.id, canvas: "adapted-4x3", track: "adapted-4x3", page: selectedPage?.releasePage ?? 1, pageDocId: selectedPage?.pageDocId, returnTo }) },
-  ].filter((item) => !formalCubeEditor || item.value !== "compare");
+  ];
 
   const pageHref = (index: number) => {
     const page = pages[index];
@@ -247,7 +255,12 @@ export async function UnifiedCoursewareWorkspace({
         canvas={{
           ariaLabel: t("previewTitle"),
           content: <div className="size-full min-h-0 overflow-hidden bg-moon/10">
-            {formalCubeEditor ? <FormalCubePageEditor key={`${formalCubeEditor.pageDocId}:${formalCubeEditor.track}:${formalCubeEditor.revisionNo}`} page={formalCubeEditor} /> : pageEditor ? (
+            {compositionComparison ? (
+              <div className="grid size-full min-h-0 grid-rows-2 gap-px bg-line @4xl/workspace:grid-cols-2 @4xl/workspace:grid-rows-1" data-formal-composition-comparison>
+                <TrackCanvas preview={null} composition={formalCubeEditor?.comparison?.["native-16x9"]} label={t("canvasNative")} unavailable={t("nativeUnavailable")} />
+                <TrackCanvas preview={null} composition={formalCubeEditor?.comparison?.["adapted-4x3"]} label={t("canvasAdapted")} unavailable={t("adaptedUnavailable")} />
+              </div>
+            ) : formalCubeEditor ? <FormalCubePageEditor key={`${formalCubeEditor.pageDocId}:${formalCubeEditor.track}:${formalCubeEditor.revisionNo}`} page={formalCubeEditor} /> : pageEditor ? (
               <PageDocVerticalSliceEditor
                 key={`${pageEditor.pageDocId}:${pageEditor.baseRevisionNo}:${pageEditor.fourByThreeDraft?.baseRevisionNo ?? "no-4x3"}:${visibleCanvas}`}
                 pageDocId={pageEditor.pageDocId}
@@ -295,12 +308,12 @@ export async function UnifiedCoursewareWorkspace({
             center={<span className="text-xs tabular-nums text-muted">{t("pageContext", { page: pageIndex, total: pages.length })}</span>}
           />,
         }}
-        toolbar={pageEditor || sourceRuntimeEditor || formalCubeEditor ? undefined : <span className="text-xs text-muted">{t("sourceReadOnlyToolbar")}</span>}
-        saveControls={pageEditor || sourceRuntimeEditor || formalCubeEditor ? undefined : <Badge variant="outline">{t("sourceReadOnlyStatus")}</Badge>}
+        toolbar={activeEditor ? undefined : <span className="text-xs text-muted">{t("sourceReadOnlyToolbar")}</span>}
+        saveControls={activeEditor ? undefined : <Badge variant="outline">{t("sourceReadOnlyStatus")}</Badge>}
         inspector={{
           ariaLabel: t("propertiesTitle"),
           header: <h2 className="shrink-0 text-sm font-medium text-ink">{t("propertiesTitle")}</h2>,
-          content: pageEditor || sourceRuntimeEditor || formalCubeEditor ? undefined : <ScrollArea className="size-full min-h-0">
+          content: activeEditor ? undefined : <ScrollArea className="size-full min-h-0">
             <div className="px-4 py-5">
               <p className="text-sm font-medium text-ink">{t("sourceReadOnlyTitle")}</p>
               <p className="mt-2 text-xs leading-5 text-muted">{t("sourceReadOnlyDescription")}</p>

@@ -11,7 +11,7 @@ import { createCubeCoursewareTool } from "@/features/tools/courseware/cube-struc
 import { cubeDraftSnapshot } from "@/features/tools/spatial-lab/cube-structures-draft";
 import { createCubeSession } from "@/features/tools/spatial-lab/cube-structures-session";
 import { createEmptyCoursewareCompositionPage } from "@/features/courseware-doc/composition-page-schema";
-import { CreateBlankCoursewarePageButton } from "@/features/courseware-studio/FormalCubePageEditor";
+import { CreateBlankCoursewarePageButton, FormalCubePageEditor } from "@/features/courseware-studio/FormalCubePageEditor";
 import { CoursewareWorkbenchAddPageButton, CoursewareWorkbenchDirectoryHeader } from "@/features/courseware-doc/CoursewareEditorWorkbench";
 
 type GridProps = ComponentProps<typeof CoursewareCompositionGridEditor>;
@@ -65,6 +65,15 @@ async function changeBackground(value: string) {
 }
 
 describe("formal cube editor persistence adapter", () => {
+  it("does not reserve a description row above the composition canvas", async () => {
+    const editor = createElement(FormalCubePageEditor, { page: {
+      pageDocId: "77777777-7777-4777-8777-777777777777", title: "Cube", revisionNo: 1, track: "adapted-4x3", doc: pageDoc(),
+    } });
+    // eslint-disable-next-line react/no-children-prop
+    await act(async () => root.render(createElement(NextIntlClientProvider, { locale: "en", messages: en, children: editor })));
+    expect(host.querySelector("[data-formal-cube-page-editor]")).not.toBeNull();
+    expect(host.querySelector("p")).toBeNull();
+  });
   it("creates a blank page immediately without a cube picker and opens its stable page ID", async () => {
     const lectureId = "88888888-8888-4888-8888-888888888888";
     const pageId = "77777777-7777-4777-8777-777777777777";

@@ -78,4 +78,13 @@ describe("DEV-CW-1 Step 1 read-only unified courseware workspace", () => {
     expect(workspace.slice(workspace.indexOf("<CoursewareWorkbench\n"))).not.toContain("<FormalCoursewarePublicationDialog");
     expect(workspace).toContain("<CoursewareWorkbenchScope>");
   });
+
+  it("keeps comparison available on composition pages and shows both saved track documents", () => {
+    const workspace = read("src", "features", "courseware-studio", "UnifiedCoursewareWorkspace.tsx");
+    expect(workspace).not.toContain('item.value !== "compare"');
+    expect(workspace).not.toContain("formalCubeEditor ? formalCubeEditor.track");
+    expect(workspace).toContain("data-formal-composition-comparison");
+    expect(workspace).toContain('composition={formalCubeEditor?.comparison?.["native-16x9"]}');
+    expect(workspace).toContain('composition={formalCubeEditor?.comparison?.["adapted-4x3"]}');
+  });
 });

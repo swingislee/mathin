@@ -1652,7 +1652,6 @@
     },
     "blankPageTitle": "未命名页面",
     "creatingBlankPage": "正在创建…",
-    "formalPageTrackHint": "本页使用 4:3 组合画布；两条轨道分别保存。通过顶部工具栏插入文字、图片或工具组件；立方体的草稿和工具栏在插入时选择。",
     "sourceReadOnlyToolbar": "当前来源暂不支持节点编辑",
     "sourceReadOnlyTitle": "当前页面保持来源只读",
     "sourceReadOnlyDescription": "页面继续使用来源运行时完整渲染；在来源声明安全的文字、节点和资源 patch 协议前，不提供会话样机或伪编辑操作。页面标题仍可在左侧目录中修改。",

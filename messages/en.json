@@ -1652,7 +1652,6 @@
     },
     "blankPageTitle": "Untitled page",
     "creatingBlankPage": "Creating…",
-    "formalPageTrackHint": "This 4:3 composition canvas saves each track separately. Insert text, images or tool components from the toolbar. Choose a cube draft and its tools when inserting the component.",
     "sourceReadOnlyToolbar": "This source does not support node editing yet",
     "sourceReadOnlyTitle": "This page remains source-owned and read-only",
     "sourceReadOnlyDescription": "The source runtime continues to render the page faithfully. Session prototypes and simulated edits are not shown until the source declares a safe text, node, and asset patch protocol. The page title can still be edited in the left directory.",

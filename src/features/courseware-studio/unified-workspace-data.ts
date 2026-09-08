@@ -126,8 +126,15 @@ export async function loadUnifiedCoursewareWorkspaceData(
       const studio = cubeTrack === "adapted-4x3" ? adaptedStudioPage : nativeStudioPage;
       if (!studio) notFound();
       const manual = formalCubePages.find((page) => page.pageDocId === pageDocId)?.sourceCoursewareId === FORMAL_MANUAL_PAGE_SOURCE;
+      const compositionSchema = manual ? formalManualPageSchema : formalCubePageSchema;
+      const comparisonPage = (page: typeof nativeStudioPage) => {
+        const parsed = compositionSchema.safeParse(page?.activeRevision.doc);
+        return page && parsed.success ? { doc: parsed.data, bindingUrls: page.bindingUrls } : null;
+      };
       formalCubeEditor = { pageDocId, title: studio.page.title, track: cubeTrack,
         manual, bindingUrls: studio.bindingUrls, revisionNo: studio.activeRevision.revisionNo,
+        comparison: requestedCanvas !== "native-16x9" && requestedCanvas !== "adapted-4x3"
+          ? { "native-16x9": comparisonPage(nativeStudioPage), "adapted-4x3": comparisonPage(adaptedStudioPage) } : undefined,
         doc: (manual ? formalManualPageSchema : formalCubePageSchema).parse(studio.activeRevision.doc) };
     }
     const nativePageDoc = nativeStudioPage?.activeRevision.doc.docVersion === PAGE_DOC_VERSION

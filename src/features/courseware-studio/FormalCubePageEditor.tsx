@@ -18,10 +18,10 @@ const CoursewareCompositionWorkbench = dynamic(() => import("@/features/teacher-
 export interface FormalCubePageEditorData {
   pageDocId: string; title: string; revisionNo: number; track: CoursewareTrack; doc: CoursewareCompositionPage;
   manual?: boolean; bindingUrls?: Record<string, string>;
+  comparison?: Record<CoursewareTrack, { doc: CoursewareCompositionPage; bindingUrls: Record<string, string> } | null>;
 }
 
 export function FormalCubePageEditor({ page }: { page: FormalCubePageEditorData }) {
-  const t = useTranslations("coursewareWorkspace");
   const persistence = useMemo<CompositionPagePersistence>(() => ({ save: async (input) => {
     const save = page.manual ? saveFormalManualPageAction : saveFormalCubePageAction;
     const result = await save({ pageDocId: input.pageDocId, track: page.track,
@@ -34,7 +34,7 @@ export function FormalCubePageEditor({ page }: { page: FormalCubePageEditorData 
   const onPersisted = useCallback(() => {}, []);
   const [status, setStatus] = useState("");
   return <div className="flex size-full min-h-0 flex-col" data-formal-cube-page-editor>
-    <p role="status" className="px-3 pt-2 text-xs leading-5 text-muted">{status || t("formalPageTrackHint")}</p>
+    {status ? <p role="status" className="px-3 pt-2 text-xs leading-5 text-muted">{status}</p> : null}
     <div className="min-h-0 flex-1">
       <CoursewareCompositionWorkbench persistence={persistence} page={{ ...page, bindingUrls: page.bindingUrls ?? {} }} onPersisted={onPersisted} onStatus={setStatus} />
     </div>
