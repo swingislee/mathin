@@ -1,0 +1,570 @@
+{
+  "environment": "isolated local development",
+  "date": "2026-09-08",
+  "status": "development available; pending product acceptance",
+  "dataset": {
+    "adminWorkRecords": 351,
+    "adminAllRecords": 5444,
+    "comparisonCases": 20,
+    "cumulativeComparedRows": 9646
+  },
+  "baseline": [
+    {
+      "kind": "old",
+      "run": 1,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 2028,
+      "bytes": 155089,
+      "rows": 163,
+      "count": 163
+    },
+    {
+      "kind": "old",
+      "run": 2,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 1907,
+      "bytes": 155089,
+      "rows": 163,
+      "count": 163
+    },
+    {
+      "kind": "old",
+      "run": 3,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 1919,
+      "bytes": 155089,
+      "rows": 163,
+      "count": 163
+    },
+    {
+      "kind": "old",
+      "run": 4,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 2019,
+      "bytes": 155089,
+      "rows": 163,
+      "count": 163
+    },
+    {
+      "kind": "old",
+      "run": 5,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 1916,
+      "bytes": 155089,
+      "rows": 163,
+      "count": 163
+    }
+  ],
+  "final": [
+    {
+      "kind": "first_after_migration",
+      "run": 1,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 245,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "new",
+      "run": 1,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 162,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "new",
+      "run": 2,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 162,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "new",
+      "run": 3,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 160,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "new",
+      "run": 4,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 161,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "new",
+      "run": 5,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 162,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "new",
+      "run": 6,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 167,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "new",
+      "run": 7,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 164,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "new",
+      "run": 8,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 159,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "new",
+      "run": 9,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 160,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "new",
+      "run": 10,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 164,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "new",
+      "run": 11,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 161,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "new",
+      "run": 12,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 160,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "new",
+      "run": 13,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 159,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "new",
+      "run": 14,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 157,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "new",
+      "run": 15,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 161,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "new",
+      "run": 16,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 161,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "new",
+      "run": 17,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 221,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "new",
+      "run": 18,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 163,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "new",
+      "run": 19,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 163,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "new",
+      "run": 20,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 160,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "records",
+      "run": 1,
+      "population": "records",
+      "stage": "awaiting_first_contact",
+      "ms": 1352,
+      "bytes": 41768,
+      "rows": 50,
+      "count": 2426
+    },
+    {
+      "kind": "records",
+      "run": 2,
+      "population": "records",
+      "stage": "awaiting_first_contact",
+      "ms": 1426,
+      "bytes": 41768,
+      "rows": 50,
+      "count": 2426
+    },
+    {
+      "kind": "records",
+      "run": 3,
+      "population": "records",
+      "stage": "awaiting_first_contact",
+      "ms": 1391,
+      "bytes": 41768,
+      "rows": 50,
+      "count": 2426
+    },
+    {
+      "kind": "concurrent5",
+      "run": 2,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 155,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "concurrent5",
+      "run": 1,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 158,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "concurrent5",
+      "run": 5,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 242,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "concurrent5",
+      "run": 4,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 243,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "concurrent5",
+      "run": 3,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 244,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "concurrent5",
+      "run": 6,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 156,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "concurrent5",
+      "run": 7,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 157,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "concurrent5",
+      "run": 10,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 158,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "concurrent5",
+      "run": 8,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 159,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "concurrent5",
+      "run": 9,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 159,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "concurrent5",
+      "run": 14,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 154,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "concurrent5",
+      "run": 11,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 155,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "concurrent5",
+      "run": 15,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 155,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "concurrent5",
+      "run": 13,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 156,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "concurrent5",
+      "run": 12,
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "ms": 217,
+      "bytes": 50456,
+      "rows": 50,
+      "count": 163
+    },
+    {
+      "kind": "http",
+      "locale": "zh",
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "run": 1,
+      "status": 200,
+      "firstRowMs": 661,
+      "totalMs": 662,
+      "bytes": 1015267,
+      "error": false
+    },
+    {
+      "kind": "http",
+      "locale": "zh",
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "run": 2,
+      "status": 200,
+      "firstRowMs": 484,
+      "totalMs": 485,
+      "bytes": 1015262,
+      "error": false
+    },
+    {
+      "kind": "http",
+      "locale": "en",
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "run": 1,
+      "status": 200,
+      "firstRowMs": 635,
+      "totalMs": 636,
+      "bytes": 1049642,
+      "error": false
+    },
+    {
+      "kind": "http",
+      "locale": "en",
+      "population": "work",
+      "stage": "awaiting_renewal",
+      "run": 2,
+      "status": 200,
+      "firstRowMs": 478,
+      "totalMs": 481,
+      "bytes": 1049647,
+      "error": false
+    },
+    {
+      "kind": "http",
+      "locale": "zh",
+      "population": "records",
+      "stage": "awaiting_first_contact",
+      "run": 1,
+      "status": 200,
+      "firstRowMs": 1868,
+      "totalMs": 1869,
+      "bytes": 908355,
+      "error": false
+    },
+    {
+      "kind": "http",
+      "locale": "zh",
+      "population": "records",
+      "stage": "awaiting_first_contact",
+      "run": 2,
+      "status": 200,
+      "firstRowMs": 1741,
+      "totalMs": 1741,
+      "bytes": 908353,
+      "error": false
+    }
+  ],
+  "clientBundle": {
+    "baselineCommit": "1f38fdc0103b1da0f9936d32a8ab722481a00a49",
+    "before": {
+      "route": "/[locale]/dashboard/students",
+      "chunks": 24,
+      "gzip": 519225
+    },
+    "after": {
+      "route": "/[locale]/dashboard/students",
+      "chunks": 24,
+      "gzip": 519209
+    }
+  },
+  "migrations": [
+    {
+      "version": "20260908009100_student_list_query",
+      "checksum": "694d4c0174e652e713eaf53874a10fa903fd163ce2d4d4220a9b5b61a3ae538c"
+    },
+    {
+      "version": "20260908009200_student_list_parameter_plans",
+      "checksum": "c5a45958d7c15148c4cc31ff44a292cb062fb5d7adb772d1a438c379a1cd091d"
+    },
+    {
+      "version": "20260908009300_student_list_field_compatibility",
+      "checksum": "d04721cb25d62b24d758774b36318f3d0ae7806aed007bcc3ec2d149ff4e0c8a"
+    }
+  ],
+  "validation": {
+    "sameVisibleRowsFieldsAndCounts": true,
+    "privateHelperAcls": true,
+    "validatedQueryFields": true,
+    "localeAndFieldContract": true,
+    "draftAndInvitationVersionContract": true,
+    "businessTablesUnchanged": 13,
+    "applicationTypecheck": true,
+    "targetedLint": true,
+    "targetedProductionCompilation": true
+  },
+  "limits": [
+    "Page measurements use the development server.",
+    "The full-record first-contact page remains slower than the current-work page.",
+    "No production deployment or product acceptance is included."
+  ]
+}

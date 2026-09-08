@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { STUDENT_RECONTACT_REASONS, STUDENT_STAGE_TABS, type StudentStageData, type StudentStageFilters, type StudentStageRow, type StudentStageSaved } from "./student-stage-contract";
 import { INVITATION_KINDS, INVITATION_STATES } from "./invitation-contract";
 
-const rowSchema = z.object({
+export const studentStageRowSchema = z.object({
   key: z.string(), studentId: z.string().nullable(), leadId: z.string().nullable(), name: z.string(), phone: z.string(),
   grade: z.number().nullable(), gradeText: z.string(), ownerId: z.string().nullable(), ownerName: z.string(),
   teacherId: z.string().nullable().optional(), teacherName: z.string().optional(),
@@ -15,6 +15,7 @@ const rowSchema = z.object({
   inferredSourceIds: z.array(z.string()).optional(),
   assessmentRecordId: z.string().nullable().optional(), learningBand: z.string().nullable().optional(), classBandLabel: z.string().optional(),
   courseTitle: z.string(), termName: z.string(), courseId: z.string().nullable(), termId: z.string().nullable(), createdAt: z.string(),
+  detailLoaded: z.literal(false).optional(),
   canWrite: z.boolean(), canContact: z.boolean(), invitation: z.object({
     id: z.string(), leadId: z.string(), updatedAt: z.string(), kind: z.enum(INVITATION_KINDS), state: z.enum(INVITATION_STATES),
     activityId: z.string().nullable(), assessorId: z.string().nullable(), parentTimeOptions: z.array(z.string()), assessorTimeOptions: z.array(z.string()),
@@ -22,6 +23,7 @@ const rowSchema = z.object({
   }).nullable(),
   recontactReason: z.enum(STUDENT_RECONTACT_REASONS).optional(), sharedPhoneCount: z.number().int().positive().optional(),
 });
+const rowSchema = studentStageRowSchema;
 const pageSchema = z.object({
   rows: z.array(rowSchema), counts: z.record(z.string(), z.number().int().nonnegative()),
   count: z.number().int().nonnegative(), page: z.number().int().positive(), pageSize: z.union([z.literal(20),z.literal(50),z.literal(100)]),

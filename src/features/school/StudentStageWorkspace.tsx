@@ -30,7 +30,7 @@ import { studentStageMessages } from "./student-stage-messages";
 import { defaultStudentEntryMode, replaceSavedStudent, STUDENT_RECONTACT_REASONS, STUDENT_STAGE_TABS, studentRecordTableStage, studentStageHref,
   type StudentEntryMode, type StudentStageData, type StudentStageFilters, type StudentStageRow, type StudentStageSaved, type StudentStageAssignment, type StudentStageAssignee } from "./student-stage-contract";
 
-const Entry = dynamic(() => import("./StudentStageEntry").then(m => m.StudentStageEntry));
+const Entry = dynamic(() => import("./StudentStageEntryLoader").then(m => m.StudentStageEntryLoader));
 
 export function StudentStageWorkspace({ data, filters, locale, currentUserId, canEnroll, canAssign, assignees, actions, timeZone, now, canPlan = false, canPlanOthers = false }: {
   data: StudentStageData; filters: StudentStageFilters; locale: string; currentUserId: string;

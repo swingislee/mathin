@@ -68,6 +68,17 @@ export async function saveStudentStageEntryAction(requestId: string, input: Stud
   }
 }
 
+/** 展开登记时读取完整事实，邀约并发版本随这一份快照传入表单。 */
+export async function getStudentStageSubjectAction(subject: { studentId: string | null; leadId: string | null }) {
+  try {
+    const value = parse(subjectSchema, subject);
+    const { supabase } = await authorizedClient("followup.write");
+    return { ok: true as const, data: await readStudentStageSubject(supabase, value) };
+  } catch (error) {
+    return actionError<Awaited<ReturnType<typeof readStudentStageSubject>>>(error, [...COMMON_CODES, "FORBIDDEN_SCOPE", "SUBJECT_MISMATCH"]);
+  }
+}
+
 export async function getStudentStageOptionsAction(subject: { studentId: string | null; leadId: string | null }): Promise<ActionResult<StudentStageOptions>> {
   try {
     const value = parse(subjectSchema, subject);

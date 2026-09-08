@@ -72,7 +72,9 @@ export function StudentStageEntry({ row, requestedMode, locale, currentUserId, c
   const change = (patch: Partial<Draft>) => setDraft(current => {
     const next = { ...current, ...patch, requestId: newId() }; storeDraft(storageKey, next); return next;
   });
+  const needsOptions = mode === "invitation" || mode === "enrollment";
   useEffect(() => {
+    if (!needsOptions || options) return;
     let active = true;
     void getStudentStageOptionsAction({ studentId: row.studentId, leadId: row.leadId }).then(result => {
       if (!active) return;
@@ -80,7 +82,7 @@ export function StudentStageEntry({ row, requestedMode, locale, currentUserId, c
       setLoading(false);
     }).catch(() => { if (active) { setLoadError(true); setLoading(false); } });
     return () => { active = false; };
-  }, [row.studentId, row.leadId, revision]);
+  }, [row.studentId, row.leadId, revision, needsOptions, options]);
   const enrollmentType = row.stage === "awaiting_renewal" ? "renewal" : row.stage === "former_student" ? "reactivate" : "new";
   const matchingOpportunity = options?.opportunities.find(o => o.course_id === draft.courseId && o.term_id === draft.termId && o.opportunity_type === enrollmentType);
   const reminderAllowed = mode === "contact" ? draft.outcome === "unreachable" || draft.outcome === "declined"

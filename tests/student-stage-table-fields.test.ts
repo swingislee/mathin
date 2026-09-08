@@ -6,9 +6,10 @@ import type { DashboardFieldFilters } from "@/features/school/dashboard-page/das
 
 const source = vi.hoisted(() => vi.fn());
 vi.mock("server-only", () => ({}));
+vi.mock("@/features/school/student-list-query-data", () => ({ loadStudentListQueryPage: () => { throw new Error("EXPECTED_RECONTACT_PATH"); } }));
 vi.mock("@/features/school/student-stage-data", () => ({ loadStudentRecordSummaries: source }));
 const context = { locale: "zh", timeZone: "Asia/Shanghai", now: Date.parse("2026-09-08T01:00:00Z") };
-const base: StudentStageFilters = { stage: "awaiting_first_contact", scope: "all", detail: "", q: "", page: 1, pageSize: 50 };
+const base: StudentStageFilters = { stage: "awaiting_first_contact", population: "recontact", scope: "all", detail: "", q: "", page: 1, pageSize: 50 };
 const row = (index: number, extra: Partial<StudentStageRow> = {}): StudentStageRow => ({ key: `student:${index}`, studentId: String(index), leadId: null,
   name: `学生${index}`, phone: `phone-${index}`, grade: index < 100 ? 3 : 4, gradeText: "", ownerId: index < 100 ? "owner-a" : "owner-b", ownerName: "同名负责人",
   stage: "awaiting_first_contact", detail: "not_contacted", note: index < 100 ? "" : "全名单匹配", lastContactAt: index < 100 ? null : "2026-09-07T16:30:00Z", nextContactAt: null,
@@ -23,7 +24,7 @@ beforeEach(() => {
   source.mockImplementation(async () => ({ rows, counts: { awaiting_first_contact: rows.length } }));
 });
 
-describe("student lists use the shared field query before pagination", () => {
+describe("recontact lists keep the shared field query before pagination", () => {
   it("finds and sorts records beyond the first source page, and exposes full-scope facets", async () => {
     const result = await loadStudentStageFieldPage({ ...base, page: 2, fields: JSON.stringify({ ...query({ grade: { kind: "enum", values: ["4"] } }), sort: { field: "name", direction: "desc" } }) }, context, "owner-a");
     expect(source).toHaveBeenCalledTimes(1);

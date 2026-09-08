@@ -1,4 +1,5 @@
 import "server-only";
+import { loadStudentListQueryPage } from "./student-list-query-data";
 
 import { loadStudentRecordSummaries } from "./student-stage-data";
 import { followupFieldPage, parseFollowupFieldQuery } from "./followup-table-page";
@@ -8,6 +9,7 @@ import { studentRecordTableStage, type StudentStageFilters } from "./student-sta
 
 /** 复用已有权限读取及跟进字段合同；服务端筛选整个阶段，浏览器只接收最后一页。 */
 export async function loadStudentStageFieldPage(filters: StudentStageFilters, context: DashboardDateContext, currentUserId: string) {
+  if (filters.population !== "recontact") return loadStudentListQueryPage(filters, context, currentUserId);
   const fields = studentStageTableFields(context.locale, studentRecordTableStage(filters), currentUserId);
   const query = parseFollowupFieldQuery(fields, filters.fields ?? { version: 2, filters: {
     ...(filters.scope !== "all" ? { scope: { kind: "enum", values: [filters.scope] } } : {}),
