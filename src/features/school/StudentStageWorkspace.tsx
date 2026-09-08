@@ -20,6 +20,7 @@ import { filterAndSortDashboardFields } from "./dashboard-page/dashboard-table-f
 import { useFollowupServerFields } from "./useFollowupServerFields";
 import { STUDENT_STAGE_TABLE_COLUMNS, studentStageFieldsAcrossStages, studentStageTableFields } from "./student-stage-table-fields";
 import { FilterBar, FilterSearchInput } from "./FilterBar";
+import { FollowupPrimaryFilter } from "./FollowupPrimaryFilter";
 import { LeadPoolPagination } from "./LeadPoolPagination";
 import { StudentStageAssignmentControl, StudentStageOwnerControl } from "./StudentStageAssignmentControl";
 import { Student360Trigger } from "./Student360Sheet";
@@ -107,7 +108,10 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
       <DashboardCommandState><DashboardCommandTabs ariaLabel={m.title} activeValue={filters.stage} activeTone="accent"
         items={STUDENT_STAGE_TABS.map(stage => ({ value: stage, label: m.stages[stage], badge: data.counts[stage] ?? 0,
           href: studentStageHref(currentFilters, { stage, page: 1, detail: "", q: "", fields: acrossStages }) }))} /></DashboardCommandState>
-      <DashboardCommandFilters><FilterBar onSubmit={event => {
+      <DashboardCommandFilters><FollowupPrimaryFilter value={filters.population ?? "work"} label={m.population} disabled={busy}
+        options={[{ value: "work", label: m.workPopulation }, { value: "records", label: m.recordsPopulation }]}
+        onValueChange={population => navigate({ population: population as "work" | "records", q: "" })} />
+      <FilterBar onSubmit={event => {
         event.preventDefault(); const form = new FormData(event.currentTarget); navigate({ q: String(form.get("q") ?? "").trim(), detail: "" });
       }}><FilterSearchInput name="q" defaultValue={filters.q} placeholder={m.search} aria-label={m.search} disabled={busy} />
         {filters.q ? <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => navigate({ q: "", detail: "" })}>{studentT("reset")}</Button> : null}
@@ -120,9 +124,10 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
         {actions}
       </DashboardCommandActions>
     </FollowupCommandPanel>}
-    summary={filters.q ? <p className="text-xs text-muted">{m.searchHint}</p> : filters.stage === "former_student" ? <p className="text-xs text-muted">{m.formerHint}</p> : null}
+    summary={<p className="text-xs text-muted">{filters.q ? m.searchHint : filters.population === "records" ? m.recordsHint : m.workHint}
+      {filters.stage === "former_student" && !filters.q ? ` ${m.formerHint}` : ""}</p>}
     footer={<LeadPoolPagination baseHref="/dashboard/students" currentPage={data.page} totalPages={data.totalPages} totalCount={data.count}
-      pageSize={data.pageSize} scope={filters.scope} q={filters.q} extraQuery={{ stage: filters.stage, fields: currentFilters.fields }}
+      pageSize={data.pageSize} scope={filters.scope} q={filters.q} extraQuery={{ stage: filters.stage, fields: currentFilters.fields, population: filters.population ?? "work" }}
       disabled={busy} onPageChange={(page, pageSize) => navigate({ page, pageSize })} />}>
     <DashboardTableShell data-followup-workbench aria-busy={server?.pending}>
       <Table className={`table-fixed text-xs [&_th]:px-2 ${showBackground ? "min-w-[69rem]" : "min-w-[53rem]"}`}>

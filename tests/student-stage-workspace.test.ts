@@ -33,11 +33,11 @@ const saved = { subject: row, savedAt: row.createdAt, opportunityId: null, enrol
 describe("student stage navigation and row continuity", () => {
   it("normalizes stage filters and makes a name search independent of stage details", () => {
     const filters = parseStudentStageFilters({ stage: ["awaiting_assessment"], detail: "no_show", q: "  姓名  ", scope: "all", page: "2", pageSize: "50" });
-    expect(filters).toEqual({ stage: "awaiting_assessment", detail: "", q: "姓名", scope: "all", page: 2, pageSize: 50 });
+    expect(filters).toEqual({ stage: "awaiting_assessment", detail: "", q: "姓名", population: "records", scope: "all", page: 2, pageSize: 50 });
     const href = studentStageHref(filters, { page: 3 });
     expect(parseStudentStageFilters(Object.fromEntries(new URL(href, "https://example.test").searchParams))).toEqual({ ...filters, page: 3 });
     expect(parseStudentStageFilters({ stage: "missing", detail: "no_show", page: "NaN", pageSize: "200" }, "all"))
-      .toEqual({ stage: "awaiting_first_contact", detail: "", q: "", scope: "all", page: 1, pageSize: 50 });
+      .toEqual({ stage: "awaiting_first_contact", detail: "", q: "", population: "work", scope: "all", page: 1, pageSize: 50 });
     expect(parseStudentStageFilters({ stage: "former_student", detail: "withdrawn" }).detail).toBe("withdrawn");
   });
   it("replaces the linked identity at the original position and removes its duplicate", () => {
@@ -72,7 +72,7 @@ describe("student entry action and page contract", () => {
   });
   it("saves a standalone note with no appointment, result, course or reminder", async () => {
     expect(await saveStudentStageEntryAction(requestId, input)).toEqual({ ok: true, data: saved });
-    expect(fixture.rpc).toHaveBeenCalledExactlyOnceWith("save_student_stage_entry", { p_request_id: requestId, p_payload: input });
+    expect(fixture.rpc).toHaveBeenCalledExactlyOnceWith("save_student_record_entry", { p_request_id: requestId, p_payload: input });
     expect(fixture.revalidate).toHaveBeenCalledWith("/[locale]/dashboard/students", "page");
   });
   it("rejects anonymous, read-only and incomplete entries before writing", async () => {
@@ -98,8 +98,8 @@ describe("student entry action and page contract", () => {
     const page = { rows: [row], counts: { awaiting_assessment: 101 }, count: 101, page: 3, pageSize: 50, totalPages: 3 };
     fixture.rpc.mockResolvedValueOnce({ data: page, error: null });
     expect(await loadStudentStageData(filters)).toEqual(page);
-    expect(fixture.rpc).toHaveBeenCalledWith("list_student_stage_workspace", {
-      p_stage: "awaiting_assessment", p_scope: "mine", p_search: "", p_page: 3, p_page_size: 50, p_detail: "no_show",
+    expect(fixture.rpc).toHaveBeenCalledWith("list_student_record_workspace", {
+      p_stage: "awaiting_assessment", p_scope: "mine", p_search: "", p_page: 3, p_page_size: 50, p_detail: "no_show", p_population: "work",
     });
     fixture.rpc.mockResolvedValueOnce({ data: { ...page, rows: [{ ...row, stage: "unknown" }] }, error: null });
     await expect(loadStudentStageData(filters)).rejects.toThrow();

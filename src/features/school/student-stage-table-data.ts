@@ -1,6 +1,6 @@
 import "server-only";
 
-import { loadStudentStageData } from "./student-stage-data";
+import { loadStudentRecordSummaries } from "./student-stage-data";
 import { followupFieldPage, parseFollowupFieldQuery } from "./followup-table-page";
 import { studentStageFieldScope, studentStageTableFields } from "./student-stage-table-fields";
 import type { DashboardDateContext } from "./dashboard-page/dashboard-table-date-contract";
@@ -14,15 +14,9 @@ export async function loadStudentStageFieldPage(filters: StudentStageFilters, co
     ...(filters.detail ? { detail: { kind: "enum", values: [filters.detail] } } : {}),
   }, sort: null });
   const scope = studentStageFieldScope(query);
-  const source = { ...filters, scope, detail: "", page: 1, pageSize: 100 as const };
-  const first = await loadStudentStageData(source);
-  const rows = [...first.rows];
-  for (let page = 2; page <= first.totalPages; page += 4) {
-    const pages = await Promise.all(Array.from({ length: Math.min(4, first.totalPages - page + 1) }, (_, index) => loadStudentStageData({ ...source, page: page + index })));
-    for (const result of pages) rows.push(...result.rows);
-  }
-  const result = followupFieldPage([...new Map(rows.map(row => [row.key, row])).values()], fields, query, context, filters.page, filters.pageSize);
+  const source = await loadStudentRecordSummaries({ ...filters, scope, detail: "" });
+  const result = followupFieldPage([...new Map(source.rows.map(row => [row.key, row])).values()], fields, query, context, filters.page, filters.pageSize);
   // 范围可由菜单直接切换；候选不受本次 mine/unassigned 读取范围限制。
   result.fieldView.facets.scope = { options: fields.scope.kind === "enum" ? [...fields.scope.options ?? []] : [], days: [] };
-  return { ...result, counts: first.counts };
+  return { ...result, counts: source.counts };
 }

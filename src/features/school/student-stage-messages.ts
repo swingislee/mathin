@@ -5,7 +5,7 @@ export function studentStageMessages(locale: string) {
   const stages: Record<StudentStage, string> = en ? {
     awaiting_first_contact: "First contact", awaiting_assessment: "Awaiting assessment", awaiting_enrollment: "Awaiting enrollment",
     awaiting_renewal: "Ongoing & renewal", former_student: "Former students",
-  } : { awaiting_first_contact: "待首联", awaiting_assessment: "待测评", awaiting_enrollment: "待报名", awaiting_renewal: "待续班", former_student: "历史学员" };
+  } : { awaiting_first_contact: "待首联", awaiting_assessment: "待测评", awaiting_enrollment: "待报名", awaiting_renewal: "待续班", former_student: "已停读／课程结束" };
   const details: Record<string, string> = en ? {
     not_contacted: "Not contacted", unreachable: "Not reached", unassigned: "Unassigned", invalid_number: "Invalid number",
     not_booked: "Not booked", coordinating: "Arranging assessment", booked: "Assessment booked", no_show: "Missed · rebook", cancelled: "Cancelled · follow up",
@@ -24,7 +24,11 @@ export function studentStageMessages(locale: string) {
     classBandReference: en ? "Class band reference" : "班型参考", learningBand: en ? "Learning ability" : "学习力",
     completedAssessment: en ? "Assessment completed" : "已有完成测评", assessmentCandidates: en ? "Assessment records to verify" : "测评资料待核对",
     nextContact: en ? "Next contact" : "下次联系", actions: en ? "Actions" : "操作", search: en ? "Find by name or phone across stages" : "跨阶段搜索姓名、手机号",
-    searchHint: en ? "Search includes every stage within this scope." : "搜索覆盖当前负责范围内的全部阶段。",
+    searchHint: en ? "Search covers all accessible records and stages within the responsibility filter." : "搜索覆盖负责范围内全部档案和业务阶段，可直接打开原有经历。",
+    population: en ? "Records and work" : "资料与工作",
+    workPopulation: en ? "Current work" : "本轮工作", recordsPopulation: en ? "All records" : "全部档案",
+    workHint: en ? "Continuing the existing work roster. Stage counts describe people, not today's tasks." : "接续现有办理名单；阶段数量表示人数，具体办理日期以工作安排为准。",
+    recordsHint: en ? "All accessible customer and student records. Select a worklist to arrange follow-up." : "统一查看客户和学生的全部经历；联系工作通过工作单安排。",
     mine: en ? "My students" : "我的学生", all: en ? "All accessible" : "全部可见", unassigned: en ? "Unassigned" : "未分配",
     assign: en ? "Assign" : "分配", chooseOwner: en ? "Choose learning support" : "选择学服", assigned: en ? "Learning support assigned" : "学服已分配",
     selectPage: en ? "Select this page" : "勾选本页", selectStudent: en ? "Select student" : "勾选学生", selected: en ? "Selected" : "已选",

@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { followupPage } from "@/features/school/followup-table-page";
 import { loadStudentStageFieldPage } from "@/features/school/student-stage-table-data";
 import { studentStageFieldsAcrossStages, studentStageTableFields } from "@/features/school/student-stage-table-fields";
 import { parseStudentStageFilters, studentStageHref, type StudentStageFilters, type StudentStageRow } from "@/features/school/student-stage-contract";
@@ -7,7 +6,7 @@ import type { DashboardFieldFilters } from "@/features/school/dashboard-page/das
 
 const source = vi.hoisted(() => vi.fn());
 vi.mock("server-only", () => ({}));
-vi.mock("@/features/school/student-stage-data", () => ({ loadStudentStageData: source }));
+vi.mock("@/features/school/student-stage-data", () => ({ loadStudentRecordSummaries: source }));
 const context = { locale: "zh", timeZone: "Asia/Shanghai", now: Date.parse("2026-09-08T01:00:00Z") };
 const base: StudentStageFilters = { stage: "awaiting_first_contact", scope: "all", detail: "", q: "", page: 1, pageSize: 50 };
 const row = (index: number, extra: Partial<StudentStageRow> = {}): StudentStageRow => ({ key: `student:${index}`, studentId: String(index), leadId: null,
@@ -21,14 +20,14 @@ const encoded = (filters: DashboardFieldFilters) => JSON.stringify(query(filters
 beforeEach(() => {
   vi.clearAllMocks();
   const rows = Array.from({ length: 165 }, (_, index) => row(index));
-  source.mockImplementation(async (filters: StudentStageFilters) => ({ ...followupPage(rows, filters.page, filters.pageSize), counts: { awaiting_first_contact: rows.length } }));
+  source.mockImplementation(async () => ({ rows, counts: { awaiting_first_contact: rows.length } }));
 });
 
 describe("student lists use the shared field query before pagination", () => {
   it("finds and sorts records beyond the first source page, and exposes full-scope facets", async () => {
     const result = await loadStudentStageFieldPage({ ...base, page: 2, fields: JSON.stringify({ ...query({ grade: { kind: "enum", values: ["4"] } }), sort: { field: "name", direction: "desc" } }) }, context, "owner-a");
-    expect(source.mock.calls.map(([filters]) => filters.page)).toEqual([1, 2]);
-    expect(source.mock.calls.every(([filters]) => filters.pageSize === 100 && filters.detail === "")).toBe(true);
+    expect(source).toHaveBeenCalledTimes(1);
+    expect(source.mock.calls[0][0].detail).toBe("");
     expect(result).toMatchObject({ count: 65, page: 2, totalPages: 2 });
     expect(result.rows.map(value => value.key)).toEqual(Array.from({ length: 15 }, (_, index) => `student:${114 - index}`));
     expect(result.fieldView.facets.grade.options.map(option => option.value)).toEqual(["3", "4"]);
@@ -59,9 +58,8 @@ describe("student lists use the shared field query before pagination", () => {
     for (const stage of ["awaiting_first_contact", "awaiting_assessment"] as const) expect(studentStageTableFields("zh", stage, "owner-a").assessmentAt).toBeUndefined();
     expect(studentStageTableFields("en", "awaiting_enrollment", "owner-a").assessmentAt.kind).toBe("date");
   });
-  it("propagates a failed later source page instead of silently filtering an incomplete list", async () => {
-    source.mockImplementationOnce(async () => ({ ...followupPage(Array.from({ length: 165 }, (_, index) => row(index)), 1, 100), counts: {} }))
-      .mockRejectedValueOnce(new Error("STAGE_READ_FAILED"));
+  it("propagates a failed summary read instead of presenting an incomplete list", async () => {
+    source.mockRejectedValueOnce(new Error("STAGE_READ_FAILED"));
     await expect(loadStudentStageFieldPage(base, context, "owner-a")).rejects.toThrow("STAGE_READ_FAILED");
   });
 });

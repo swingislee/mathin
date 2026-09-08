@@ -38,12 +38,19 @@ export async function studentStageRpc(client: Client, name: string, args: Record
 }
 export async function loadStudentStageData(filters: StudentStageFilters): Promise<StudentStageData> {
   const client = await createClient();
-  return pageSchema.parse(await studentStageRpc(client, "list_student_stage_workspace", {
+  return pageSchema.parse(await studentStageRpc(client, "list_student_record_workspace", {
     p_stage: filters.stage, p_scope: filters.scope, p_search: filters.q, p_page: filters.page, p_page_size: filters.pageSize, p_detail: filters.detail,
+    p_population: filters.population ?? "work",
+  }));
+}
+export async function loadStudentRecordSummaries(filters: StudentStageFilters) {
+  const client = await createClient();
+  return z.object({ rows: z.array(rowSchema), counts: pageSchema.shape.counts }).parse(await studentStageRpc(client, "list_student_record_summaries", {
+    p_stage: filters.stage, p_scope: filters.scope, p_search: filters.q, p_population: filters.population ?? "work",
   }));
 }
 export async function readStudentStageSubject(client: Client, subject: { studentId: string | null; leadId: string | null }): Promise<StudentStageRow> {
-  return rowSchema.parse(await studentStageRpc(client, "read_student_stage_subject", { p_student_id: subject.studentId, p_lead_id: subject.leadId }));
+  return rowSchema.parse(await studentStageRpc(client, "read_student_record_subject", { p_student_id: subject.studentId, p_lead_id: subject.leadId }));
 }
 export function parseStudentStageSaved(data: unknown): StudentStageSaved { return savedSchema.parse(data); }
 export function parseStudentStageAssignments(data: unknown) { return z.array(z.object({ key: z.string(), subject: rowSchema.nullable() })).parse(data); }

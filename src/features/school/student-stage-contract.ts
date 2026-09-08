@@ -42,6 +42,7 @@ export interface StudentStageData {
 }
 export interface StudentStageFilters {
   stage: StudentStage; scope: "mine" | "all" | "unassigned"; q: string;
+  population?: "work" | "records";
   detail: string; page: number; pageSize: FollowupPageSize;
   fields?: string;
 }
@@ -54,7 +55,8 @@ export function parseStudentStageFilters(raw: Record<string, string | string[] |
   const detail = pick("detail") ?? "";
   const scope = pick("scope");
   const page = Number(pick("page"));
-  return { stage, q, scope: scope === "mine" || scope === "all" || scope === "unassigned" ? scope : defaultScope,
+  return { stage, q, population: q || pick("population") === "records" ? "records" : "work",
+    scope: scope === "mine" || scope === "all" || scope === "unassigned" ? scope : defaultScope,
     detail: !q && (STUDENT_STAGE_DETAILS[stage] as readonly string[]).includes(detail) ? detail : "",
     page: Number.isSafeInteger(page) && page > 0 ? Math.min(page, 1_000_000) : 1,
     pageSize: followupPageSize(pick("pageSize")), ...(pick("fields") ? { fields: pick("fields")!.slice(0, 16_384) } : {}) };
@@ -63,6 +65,7 @@ export function parseStudentStageFilters(raw: Record<string, string | string[] |
 export function studentStageHref(filters: StudentStageFilters, change: Partial<StudentStageFilters> = {}) {
   const next = { ...filters, ...change };
   const query = new URLSearchParams({ stage: next.stage, scope: next.scope, pageSize: String(next.pageSize) });
+  if (next.population) query.set("population", next.population);
   if (next.q) query.set("q", next.q);
   if (next.detail) query.set("detail", next.detail);
   if (next.fields) query.set("fields", next.fields);

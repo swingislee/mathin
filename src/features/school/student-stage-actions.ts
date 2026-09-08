@@ -53,7 +53,7 @@ export async function saveStudentStageEntryAction(requestId: string, input: Stud
   try {
     const value = parse(saveSchema, { requestId, input });
     const { supabase } = await authorizedClient("followup.write");
-    const result = parseStudentStageSaved(await studentStageRpc(supabase, "save_student_stage_entry", {
+    const result = parseStudentStageSaved(await studentStageRpc(supabase, "save_student_record_entry", {
       p_request_id: value.requestId, p_payload: value.input,
     }));
     revalidatePath("/[locale]/dashboard/students", "page");
