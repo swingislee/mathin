@@ -42,7 +42,7 @@ export function SchoolSupportProfileButton({studentId,leadId,onSaved}:{studentId
     try{const result=await resolveSupportIdentityAction(profile.leadId,target,profile.version);if(result.ok)saved(result.data);else{setError(supportError(result.code,locale));setConflict(result.code==='PROFILE_CONFLICT');}}
     catch{setError(supportError('',locale));}finally{setPending(false);}
   };
-  const fields=(profile?.studentId?['name','phone','parentPhone','parentName','school','wechat']:['name','phone']) as Array<'name'|'phone'|'parentPhone'|'parentName'|'school'|'wechat'>;
+  const fields=(profile?.values.parentName!==undefined?['name','phone','parentPhone','parentName','school','wechat']:['name','phone']) as Array<'name'|'phone'|'parentPhone'|'parentName'|'school'|'wechat'>;
   return <Dialog open={open} onOpenChange={value=>{if(!pending){setOpen(value);if(!value){setProfile(null);setValues(null);setConflict(false);}}}}><DialogTrigger asChild><Button variant="ghost" type="button" size="sm">{m.edit}</Button></DialogTrigger>
     <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl"><DialogHeader><DialogTitle>{m.edit}</DialogTitle><DialogDescription>{profile?.values.name||m.details}</DialogDescription></DialogHeader>
       {profile&&values?<div className="space-y-4">

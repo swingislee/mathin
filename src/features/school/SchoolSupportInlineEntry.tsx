@@ -6,6 +6,7 @@ import { Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { TableCell, TableRow } from '@/components/ui/table';
@@ -111,8 +112,16 @@ function SupportInlineForm({ workspace, columns, initialWork, onClose, onSaved, 
     <div className="grid gap-3 sm:grid-cols-3">{(['name', 'phone', 'grade'] as const).filter(key => panel || !columns.includes(key)).map(key => <div key={key} className="grid gap-1.5">{key === 'grade' ? null : m[key]}{field(key, !panel)}</div>)}</div>
     {input.subject ? <div className="flex items-center justify-between rounded-md border border-line bg-card p-2"><span>{en ? 'Selected profile' : '已选择档案'} · {selected?.name ?? m.details} · {selected?.phone}</span>
       <Button variant="ghost" size="sm" disabled={pending} onClick={() => changePerson({})}>{en ? 'Change' : '重新填写'}</Button></div>
-      : <SupportSubjectSearch locale={locale} disabled={pending || !ready} studentsOnly={Boolean(initialWork?.classroomId)} queries={[person?.phone ?? '', person?.name ?? '']}
+      : <SupportSubjectSearch locale={locale} disabled={pending || !ready} studentsOnly={Boolean(initialWork?.classroomId)} queries={[person?.phone ?? '', person?.name ?? '', person?.parentPhone ?? '', person?.parentName ?? '', person?.wechat ?? '']}
         onSelect={candidate => { setSelected(candidate); change({ subject: { studentId: candidate.studentId, leadId: candidate.leadId, version: candidate.version }, newPerson: null, acknowledgeDuplicate: false }); }} />}
+    {person ? <div className="grid gap-3 sm:grid-cols-3" data-support-profile-fields>
+      {(['parentPhone','parentName','school','wechat'] as const).map(key => <Label key={key} className="grid gap-1.5 text-xs">{m[key]}
+        <Input aria-label={m[key]} value={person[key] ?? ''} maxLength={key === 'parentPhone' ? 40 : key === 'wechat' ? 80 : 100} disabled={pending || !ready}
+          className="h-8 text-xs" onChange={event => changePerson({[key]:event.target.value})} />
+      </Label>)}
+      <Label className="grid gap-1.5 text-xs sm:col-span-2">{m.remark}<Textarea aria-label={m.remark} value={person.remark ?? ''} maxLength={2000} disabled={pending || !ready}
+        onChange={event => changePerson({remark:event.target.value})} /></Label>
+    </div> : null}
     {person && options?.canCreate ? <div className="flex flex-wrap gap-x-5 gap-y-2">
       <Label className="flex items-center gap-2 text-xs"><Checkbox checked={person.createStudent} disabled={pending || !person.name.trim()}
         onCheckedChange={value => changePerson({ createStudent: value === true, identityPending: value !== true })} />{m.confirmed}</Label>
