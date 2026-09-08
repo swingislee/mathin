@@ -2,10 +2,9 @@
 
 import { useCallback, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CoursewareWorkbenchAddPageButton } from "@/features/courseware-doc/CoursewareEditorWorkbench";
 import { useRouter } from "@/i18n/navigation";
 import type { CompositionPagePersistence } from "@/features/teacher-microcourses/CoursewareCompositionWorkbench";
 import type { CoursewareCompositionPage } from "@/features/courseware-doc/composition-page-schema";
@@ -61,10 +60,9 @@ export function CreateBlankCoursewarePageButton({ lectureId, returnTo }: { lectu
     } catch { setMessage(t("verticalSliceSaveFailed", { code: "NETWORK" })); }
     finally { setPending(false); }
   };
-  return <div className="flex min-w-0 flex-col gap-1">
-    <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => void create()}>
-      <Plus className="size-4" />{t(pending ? "creatingBlankPage" : "createBlankPage")}
-    </Button>
+  return <div className="flex min-w-0 shrink-0 flex-col gap-1">
+    <CoursewareWorkbenchAddPageButton label={t(pending ? "creatingBlankPage" : "createBlankPage")}
+      disabled={pending} onClick={() => void create()} />
     {message && <p role="alert" className="text-xs text-rose">{message}</p>}
   </div>;
 }

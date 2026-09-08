@@ -58,6 +58,17 @@ describe("courseware workbench mode unification", () => {
     expect(microcourseWorkspace).toContain("<CoursewareWorkbenchDirectoryHeader");
   });
 
+  it("keeps the add-page icon in the shared directory header action slot for both editors", () => {
+    const formalPageActions = read("src/features/courseware-studio/FormalCubePageEditor.tsx");
+    expect(workbench).toContain("export function CoursewareWorkbenchAddPageButton");
+    expect(workbench).toContain('data-courseware-editor-action="add-page"');
+    expect(formalWorkspace).toContain("action={<CreateBlankCoursewarePageButton");
+    expect(microcourseWorkspace).toContain("action={<CoursewareWorkbenchAddPageButton");
+    expect(formalPageActions).toContain("<CoursewareWorkbenchAddPageButton");
+    expect(formalPageActions).not.toContain("<Plus");
+    expect(microcourseWorkspace).not.toContain("<Plus");
+  });
+
   it("cannot fall back to the retired formal-course prototype", () => {
     expect(existsSync("src/features/courseware-studio/CoursewareCapabilityPrototype.tsx")).toBe(false);
     expect(formalWorkspace).not.toContain("CoursewareCapabilityPrototype");

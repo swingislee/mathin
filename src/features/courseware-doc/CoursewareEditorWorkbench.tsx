@@ -24,6 +24,7 @@ import {
   LoaderCircle,
   Maximize2,
   Minimize2,
+  Plus,
   Redo2,
   Save,
   Undo2,
@@ -141,6 +142,25 @@ export function CoursewareWorkbenchDirectoryHeader({
       </div>
       {action}
     </>
+  );
+}
+
+/** 正式课与微课在目录标题右侧共用同一个新增页图标按钮。 */
+export function CoursewareWorkbenchAddPageButton({
+  label,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Button type="button" size="sm" variant="ghost" className="size-8 shrink-0 p-0"
+      data-courseware-editor-action="add-page" disabled={disabled} onClick={onClick}
+      aria-label={label} title={label}>
+      <Plus className="size-4" />
+    </Button>
   );
 }
 

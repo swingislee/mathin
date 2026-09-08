@@ -12,6 +12,7 @@ import { cubeDraftSnapshot } from "@/features/tools/spatial-lab/cube-structures-
 import { createCubeSession } from "@/features/tools/spatial-lab/cube-structures-session";
 import { createEmptyCoursewareCompositionPage } from "@/features/courseware-doc/composition-page-schema";
 import { CreateBlankCoursewarePageButton } from "@/features/courseware-studio/FormalCubePageEditor";
+import { CoursewareWorkbenchAddPageButton, CoursewareWorkbenchDirectoryHeader } from "@/features/courseware-doc/CoursewareEditorWorkbench";
 
 type GridProps = ComponentProps<typeof CoursewareCompositionGridEditor>;
 const grid = vi.hoisted(() => ({ props: null as GridProps | null }));
@@ -68,16 +69,39 @@ describe("formal cube editor persistence adapter", () => {
     const lectureId = "88888888-8888-4888-8888-888888888888";
     const pageId = "77777777-7777-4777-8777-777777777777";
     blankPageCreate.mockResolvedValue({ ok: true, data: { pageDocId: pageId } });
-    const button = createElement(CreateBlankCoursewarePageButton, { lectureId, returnTo: "/dashboard/courses" });
+    const button = createElement(CoursewareWorkbenchDirectoryHeader, { title: "Pages",
+      action: createElement(CreateBlankCoursewarePageButton, { lectureId, returnTo: "/dashboard/courses" }) });
     // eslint-disable-next-line react/no-children-prop
     await act(async () => root.render(createElement(NextIntlClientProvider, { locale: "en", messages: en, children: button })));
-    expect(host.textContent).toContain(en.coursewareWorkspace.createBlankPage);
+    const addPageButton = host.querySelector('[data-courseware-editor-action="add-page"]') as HTMLButtonElement;
+    expect(addPageButton.getAttribute("aria-label")).toBe(en.coursewareWorkspace.createBlankPage);
+    expect(addPageButton.title).toBe(en.coursewareWorkspace.createBlankPage);
+    expect(addPageButton.textContent).toBe("");
+    expect(addPageButton.querySelector("svg")).not.toBeNull();
+    expect(addPageButton.classList.contains("size-8")).toBe(true);
+    expect(host.querySelector("h2")!.compareDocumentPosition(addPageButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(document.querySelector("[data-select-cube]")).toBeNull();
     await act(async () => (host.querySelector("button") as HTMLButtonElement).click());
     expect(blankPageCreate).toHaveBeenCalledWith({ lectureId, afterPageDocId: null, title: en.coursewareWorkspace.blankPageTitle });
     expect(router.push).toHaveBeenCalledTimes(1);
     expect(router.push.mock.calls[0][0]).toContain(`compositionPage=${pageId}`);
     expect(router.push.mock.calls[0][0]).toContain("returnTo=%2Fdashboard%2Fcourses");
+  });
+
+  it("uses the same icon button and disabled behavior for the microcourse action", async () => {
+    const onClick = vi.fn();
+    const render = (disabled: boolean) => createElement(CoursewareWorkbenchDirectoryHeader, { title: "Pages",
+      action: createElement(CoursewareWorkbenchAddPageButton, { label: en.teacherMicrocourses.addBlank, disabled, onClick }) });
+    await act(async () => root.render(render(true)));
+    const button = host.querySelector('[data-courseware-editor-action="add-page"]') as HTMLButtonElement;
+    expect(button.textContent).toBe("");
+    expect(button.title).toBe(en.teacherMicrocourses.addBlank);
+    expect(button.classList.contains("size-8")).toBe(true);
+    await act(async () => button.click());
+    expect(onClick).not.toHaveBeenCalled();
+    await act(async () => root.render(render(false)));
+    await act(async () => button.click());
+    expect(onClick).toHaveBeenCalledTimes(1);
   });
 
   it("starts blank and inserts the selected cube only through the existing tool-component dialog", async () => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState, useTransition } from "react";
-import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Plus, Save, Send, Trash2, Undo2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Save, Send, Trash2, Undo2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { CoursewareCompositionPage } from "@/features/courseware-doc/composition-page-schema";
 import {
   CoursewareWorkbench,
+  CoursewareWorkbenchAddPageButton,
   CoursewareWorkbenchDirectoryHeader,
   CoursewareWorkbenchPageRail,
   CoursewareWorkbenchPager,
@@ -289,7 +290,7 @@ export function MicrocourseEditor({ session, context, editor, canTeach }: {
           ariaLabel: t("pages", { count: pages.length }),
           header: <CoursewareWorkbenchDirectoryHeader
             title={t("pages", { count: pages.length })}
-            action={<Button type="button" size="sm" variant="ghost" className="size-8 p-0" disabled={pending || pageSwitching} onClick={addBlank} aria-label={t("addBlank")}><Plus className="size-4" /></Button>}
+            action={<CoursewareWorkbenchAddPageButton label={t("addBlank")} disabled={pending || pageSwitching} onClick={addBlank} />}
           />,
           content: <div className="flex size-full min-h-0 flex-col pt-3">
             <div className="shrink-0 px-3 pb-3"><MicrocourseSourcePicker microcourseId={editor.id} afterPageDocId={currentPage?.pageDocId ?? null} disabled={pending || pageSwitching} onAdded={(id, count) => void handlePageAdded(id, t("pagesAdded", { count }))} /></div>
