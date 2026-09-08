@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { SchoolSupportTableEntry, SchoolSupportInsertion } from "./SchoolSupportInlineEntry";
 import { SchoolSupportPendingRows } from './SchoolSupportPendingRows';
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
@@ -28,9 +29,10 @@ import { followupFocusActivatesRow, followupKeyContext, navigateFollowupTable } 
 import { Student360Trigger } from "./Student360Sheet";
 import type { LeadPoolRow } from "./lead-contract";
 
-export function LeadIntakeWorkbench({ leads, locale, canAssign = false, canManageIdentity = false, currentUserId, fieldView, timeZone = "Asia/Shanghai", now }: {
+export function LeadIntakeWorkbench({ leads, locale, canAssign = false, canManageIdentity = false, canAdd = false, currentUserId, fieldView, timeZone = "Asia/Shanghai", now }: {
   leads: LeadPoolRow[];
   locale: string;
+  canAdd?: boolean;
   canAssign?: boolean;
   canManageIdentity?: boolean;
   currentUserId?: string;
@@ -131,7 +133,7 @@ export function LeadIntakeWorkbench({ leads, locale, canAssign = false, canManag
     </Fragment>;
   }, [canAssign, canManageIdentity, changeDetails, colSpan, formatAt, gradeOf, invitationT, progressOf, selection, t, toneOf, visibleIds]);
 
-  return <DashboardTableShell data-lead-intake-workbench data-followup-workbench data-followup-scroll>
+  return <SchoolSupportTableEntry workspace="leads" enabled={canAdd} columns={[...(canAssign ? ["blank" as const] : []),"name","phone","grade","blank","blank","blank","blank","blank"]}><DashboardTableShell data-lead-intake-workbench data-followup-workbench data-followup-scroll>
     <Table className="w-full min-w-[58rem] table-fixed text-xs" containerClassName="overflow-auto [scrollbar-gutter:stable]"
       onKeyDown={(event) => navigateFollowupTable(event, (id) => {
         if (selection.assignmentPending) return false;
@@ -151,6 +153,6 @@ export function LeadIntakeWorkbench({ leads, locale, canAssign = false, canManag
       <TableHead className="sticky top-0 z-20 bg-card"><DashboardTableColumnHeader label={t("intakeProgress")} {...table.columnProps("progress")} /></TableHead>
       <TableHead className="sticky top-0 z-20 bg-card"><span className="sr-only">{t("actions")}</span></TableHead>
     </TableRow></TableHeader>
-    <TableBody><SchoolSupportPendingRows workspace="leads" colSpan={colSpan} />{table.visibleRows.map((lead) => <FollowupTableRecord key={lead.id} row={lead} active={activeId === lead.id} expanded={expandedId === lead.id} render={renderRow} />)}{!table.visibleRows.length ? <TableRow><TableCell colSpan={colSpan} className="h-32 text-center text-muted">{tableT("filteredEmpty")}</TableCell></TableRow> : null}</TableBody>
-  </Table></DashboardTableShell>;
+    <TableBody><SchoolSupportInsertion after="start" /><SchoolSupportPendingRows workspace="leads" colSpan={colSpan} />{table.visibleRows.map((lead) => <FollowupTableRecord key={lead.id} row={lead} active={activeId === lead.id} expanded={expandedId === lead.id} render={renderRow} />)}{!table.visibleRows.length ? <TableRow><TableCell colSpan={colSpan} className="h-32 text-center text-muted">{tableT("filteredEmpty")}</TableCell></TableRow> : null}</TableBody>
+  </Table></DashboardTableShell></SchoolSupportTableEntry>;
 }

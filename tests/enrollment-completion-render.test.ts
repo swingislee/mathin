@@ -7,7 +7,7 @@ import { EnrollmentPlacementWorkbench } from '@/features/school/EnrollmentPlacem
 import type { EnrollmentPlacementBoard } from '@/features/school/enrollment-workflow-contract';
 
 // 补入流程有独立合同测试；这些用例继续覆盖原工作表交互。
-vi.mock("@/features/school/SchoolSupportEntry", () => ({ SchoolSupportAddButton: () => null }));
+vi.mock("@/features/school/SchoolSupportInlineEntry", () => ({ SchoolSupportTableEntry: ({ children }: { children: import("react").ReactNode }) => children, SchoolSupportInsertion: () => null, SchoolSupportSeatEntry: () => null }));
 vi.mock("@/features/school/SchoolSupportPendingRows", () => ({ SchoolSupportPendingRows: () => null }));
 vi.mock('@/features/school/enrollment-workflow-actions', () => ({ moveEnrollmentSeatAction: vi.fn() }));
 vi.mock('@/features/school/Student360Sheet', () => ({ Student360Trigger: ({ children }: { children: ReactNode }) => createElement('button', null, children) }));

@@ -3,7 +3,6 @@ import { buttonVariants } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import type { PermissionKey } from "./permissions";
-import { SchoolSupportAddButton } from "./SchoolSupportEntry";
 import { NewStudentDialog } from "./NewStudentDialog";
 import { parseStudentStageFilters } from "./student-stage-contract";
 import { loadStudentStageFieldPage } from "./student-stage-table-data";
@@ -29,7 +28,7 @@ export async function StudentStagePage({ locale, currentUserId, permissions, sea
     canPlanOthers={canAssign && permissions.has("student.view.all")}
     canAssign={canAssign} assignees={staff.filter(member => member.isActive && member.canFollowUp).map(({ userId, displayName }) => ({ userId, displayName }))}
     canEnroll={permissions.has("enrollment.manage")} timeZone={timeZone} now={now} actions={<>
-      {permissions.has("followup.write") && permissions.has("followup.view") ? <SchoolSupportAddButton workspace="students" /> : permissions.has("student.create") ? <NewStudentDialog /> : null}
+      {!permissions.has("followup.write") && permissions.has("student.create") ? <NewStudentDialog /> : null}
       {permissions.has("student.import") ? <Link href="/dashboard/students/import" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>{t("import")}</Link> : null}
       {permissions.has("student.delete") ? <Link href="/dashboard/students?tab=recycle" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>{t("recycleBin")}</Link> : null}
     </>} />;

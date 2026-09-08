@@ -15,6 +15,7 @@ export const supportWorkSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(), note: z.string().max(2000),
   worklistId: id.optional(), activityId: id.optional(), scheduledAt: z.iso.datetime({ offset: true }).nullable().optional(),
   arrived: z.boolean().optional(), location: z.string().max(200).optional(),
+  classroomId: id.optional(), seat: z.number().int().positive().nullable().optional(),
   courseId: id.optional(), termId: id.optional(), cycleId: id.optional(), closed: z.boolean().optional(),
 }).strict();
 export type SupportWork = z.infer<typeof supportWorkSchema>;
@@ -25,7 +26,8 @@ export const supportEntrySchema = z.object({
   work: supportWorkSchema, acknowledgeDuplicate: z.boolean(),
 }).strict().refine(value => Boolean(value.subject) !== Boolean(value.newPerson))
   .refine(value => !value.newPerson || Boolean(value.newPerson.name || value.newPerson.phone))
-  .refine(value => !value.newPerson?.createStudent || Boolean(value.newPerson.name && !value.newPerson.identityPending));
+  .refine(value => !value.newPerson?.createStudent || Boolean(value.newPerson.name && !value.newPerson.identityPending))
+  .refine(value => !value.work.classroomId || Boolean(value.workspace === 'enrollments' && value.work.seat && (value.subject?.studentId || value.newPerson?.createStudent)));
 export type SupportEntry = z.infer<typeof supportEntrySchema>;
 export const supportItemSchema = z.object({
   id: databaseUuid, workspace: z.enum(SUPPORT_WORKSPACES), studentId: id, leadId: id,
@@ -92,6 +94,7 @@ export function supportMessages(locale: string) {
 
 export function supportError(code: string, locale: string) {
   const en = locale === 'en';
+  if (['SEAT_OCCUPIED','CLASS_FULL','INVALID_SEAT','ALREADY_ENROLLED'].includes(code)) return en ? 'The seat or roster changed. Close this draft and select an available seat.' : '座位或花名册已更新，请核对当前空位后继续补入。';
   if (['PROFILE_CONFLICT','SUBJECT_CHANGED','WORK_ITEM_CONFLICT'].includes(code)) return en ? 'Details changed. Reload and check your draft before saving.' : '资料已被更新，请重新读取并核对草稿后保存。';
   if (['POSSIBLE_DUPLICATE','CONTACT_CONFLICT','ASSOCIATION_CONFLICT'].includes(code)) return en ? 'Matching records exist. Search and confirm the correct child.' : '存在匹配记录，请先检索并核对孩子身份。';
   if (code.includes('FORBIDDEN') || code === 'LEAD_UNASSIGNED') return en ? 'This record needs an authorized owner to handle it.' : '请由有权限的负责人办理这条记录。';

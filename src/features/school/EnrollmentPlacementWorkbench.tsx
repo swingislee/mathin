@@ -29,7 +29,7 @@ import { moveEnrollmentSeatAction } from "./enrollment-workflow-actions";
 import { placementRosterSeats, placementSeatTargetError } from "./placement-roster";
 import { useTilePointerDrag } from "./tile-pointer-drag";
 import { SourceEnrollmentPlacementDialog } from './SourceEnrollmentPlacementDialog';
-import { SchoolSupportAddButton } from './SchoolSupportEntry';
+import { SchoolSupportSeatEntry } from "./SchoolSupportInlineEntry";
 import { SchoolSupportPendingRows } from './SchoolSupportPendingRows';
 
 interface SeatTarget {
@@ -107,6 +107,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
   const [pending, startMoving] = useTransition();
+  const [seatEntry,setSeatEntry]=useState<{classroom:PlacementClassroom;seat:number}|null>(null);
   const [sourceEnrollment,setSourceEnrollment]=useState<HistoricalEnrollment|null>(null);
   const students = useMemo(() => placementStudents(board), [board]);
   const renewedMembershipIds = new Set(board.renewedMembershipIds ?? []);
@@ -287,7 +288,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
       }} locale={locale}/>
       <FilterSearchInput value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("searchPlacement")} aria-label={t("searchPlacement")} />
     </DashboardCommandFilters>
-    <DashboardCommandActions>{canAdd ? <SchoolSupportAddButton workspace="enrollments" initialWork={{termId:initialTermId??null}} /> : null}<span role="status" className={cn("flex w-32 items-center justify-end gap-1 text-xs text-muted", !selected && "invisible")} title={selected ? t("selectedHint", { name: selected.name }) : undefined}><span className="truncate">{selected?.name}</span><Button size="sm" variant="ghost" className="size-7 shrink-0 p-0" aria-label={t("clearSelection")} disabled={!selected || pending} onClick={() => setSelectedKey(null)}>{pending ? <LoaderCircle className="size-3 animate-spin" /> : <X className="size-3" />}</Button></span>{canCreateClass ? <Link href="/dashboard/classes/new" className={buttonVariants({ size: "sm", variant: "secondary" })}><Plus className="size-4" />{t("createClass")}</Link> : null}</DashboardCommandActions>
+    <DashboardCommandActions><span role="status" className={cn("flex w-32 items-center justify-end gap-1 text-xs text-muted", !selected && "invisible")} title={selected ? t("selectedHint", { name: selected.name }) : undefined}><span className="truncate">{selected?.name}</span><Button size="sm" variant="ghost" className="size-7 shrink-0 p-0" aria-label={t("clearSelection")} disabled={!selected || pending} onClick={() => setSelectedKey(null)}>{pending ? <LoaderCircle className="size-3 animate-spin" /> : <X className="size-3" />}</Button></span>{canCreateClass ? <Link href="/dashboard/classes/new" className={buttonVariants({ size: "sm", variant: "secondary" })}><Plus className="size-4" />{t("createClass")}</Link> : null}</DashboardCommandActions>
   </FollowupCommandPanel>} footer={<LeadPoolPagination baseHref="/dashboard/followups/enrollments" currentPage={pagination.page} totalPages={pagination.totalPages} totalCount={pagination.count}
     pageSize={pagination.pageSize} disabled={pending} onPageChange={(page, size) => { pointer.cancel(); setSelectedKey(null); pagination.onPageChange(page, size); }} />}>
     <div ref={root} className="flex min-h-0 flex-1 flex-col" onPointerMove={pointer.onPointerMove} onPointerUp={pointer.onPointerUp} onPointerCancel={pointer.onPointerCancel} onLostPointerCapture={pointer.onLostPointerCapture} onClickCapture={pointer.onClickCapture} onKeyDown={(event) => { if (event.key === "Escape" && !event.defaultPrevented) { pointer.cancel(); setSelectedKey(null); } }}>
@@ -329,7 +330,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
                   const key = `${classroom.id}:${seat}`;
                   const eligible = accepts(selected, target);
                   return <div key={seat} {...registerTarget(key, target)} className={cn("relative min-w-0 border-b border-line", eligible && "ring-1 ring-inset ring-crater/40", hovered === key && eligible && "z-10 ring-2 ring-crater", hovered === key && !eligible && dragging && "ring-2 ring-rose")}>
-                    {student ? studentTile(studentTileRecord(student), target) : classroom.capacity !== null && seat > classroom.capacity ? <span className="flex min-h-9 items-center justify-center text-line" aria-label={t("noSeat")}>—</span> : <button type="button" className="flex min-h-9 w-full items-center justify-center gap-1 bg-card text-[10px] tabular-nums text-muted/50 enabled:hover:bg-moon/25 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-crater" disabled={!eligible} aria-label={selected ? t("placeInSeat", { name: selected.name, classroom: classroom.name, seat }) : t("emptySeatNumber", { seat })} onClick={() => { if (selected) move(selected, target); }}>{eligible ? <Plus className="size-3" /> : null}{seat}</button>}
+                    {student ? studentTile(studentTileRecord(student), target) : classroom.capacity !== null && seat > classroom.capacity ? <span className="flex min-h-9 items-center justify-center text-line" aria-label={t("noSeat")}>—</span> : <button type="button" className="flex min-h-9 w-full items-center justify-center gap-1 bg-card text-[10px] tabular-nums text-muted/50 enabled:hover:bg-moon/25 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-crater" disabled={selected ? !eligible : !canAdd} aria-label={selected ? t("placeInSeat", { name: selected.name, classroom: classroom.name, seat }) : t("emptySeatNumber", { seat })} onClick={() => { if (selected) move(selected, target); else setSeatEntry({classroom,seat}); }}><span className="absolute right-1 text-[9px] text-muted/40">{seat}</span>{eligible || canAdd ? <Plus className="size-4 rounded-full border border-line bg-card p-0.5 text-muted" /> : seat}</button>}
                   </div>;
                 }) : null}</div></TableCell>
               </TableRow>{retiredRow(row.students.filter((student) => student.status === "withdrawn"), `${className} ${t("status_withdrawn")}`)}</Fragment>;
@@ -339,6 +340,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
           </Fragment>;
         })}{!groups.length ? <TableRow><TableCell colSpan={4} className="h-40 text-center text-muted">{t("emptyPlacement")}</TableCell></TableRow> : null}</TableBody>
       </Table></DashboardTableShell></TooltipProvider>
+      {seatEntry?<SchoolSupportSeatEntry open onClose={()=>setSeatEntry(null)} classroomName={seatEntry.classroom.name} classroomId={seatEntry.classroom.id} courseId={seatEntry.classroom.courseId} termId={seatEntry.classroom.termId} seat={seatEntry.seat}/>:null}
       {sourceEnrollment?<SourceEnrollmentPlacementDialog record={sourceEnrollment} name={history?.students[businessSubjectKey(sourceEnrollment)]??recordM.unknown} options={board.options} locale={locale} onClose={()=>setSourceEnrollment(null)} onSaved={value=>{setSavedBoard({base:initialBoard,value});setSourceEnrollment(null);router.refresh();}}/>:null}
       {pointer.drag ? <div aria-hidden className="pointer-events-none fixed z-50 min-w-20 rounded-sm border border-crater bg-card px-3 py-2 text-center text-xs shadow-lg" style={{ left: pointer.drag.clientX + 12, top: pointer.drag.clientY + 12 }}>{students.find((student) => student.key === pointer.drag?.data)?.name}</div> : null}
     </div>

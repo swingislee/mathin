@@ -9,7 +9,6 @@ import { FollowupQueryMemory } from "@/features/school/FollowupQueryMemory";
 import { LeadPoolBatchActions, LeadPoolSelectionProvider } from "@/features/school/LeadPoolSelection";
 import { LeadPoolPagination } from "@/features/school/LeadPoolPagination";
 import { LeadIntakeWorkbench } from "@/features/school/LeadIntakeWorkbench";
-import { SchoolSupportAddButton } from "@/features/school/SchoolSupportEntry";
 import { LeadIntakeScopeFilter } from "@/features/school/LeadIntakeScopeFilter";
 import { parseLeadPoolFilters } from "@/features/school/leads";
 import { listLeadIntakeFieldPage } from "@/features/school/lead-intake-table-data";
@@ -52,12 +51,11 @@ export default async function LeadsPage({ params, searchParams }: {
         </FilterBar>
       </DashboardCommandFilters>
       <DashboardCommandActions>
-        {canContact ? <SchoolSupportAddButton workspace="leads" /> : null}
         {canAssign ? <LeadPoolBatchActions assignees={assignees} /> : null}
         {perms.has("student.import") ? <Link href="/dashboard/students/import" className={buttonVariants({ variant: "secondary", size: "sm" })}>{t("openDataInbox")}</Link> : null}
       </DashboardCommandActions>
     </FollowupCommandPanel>} footer={<LeadPoolPagination currentPage={page} totalPages={Math.max(1, Math.ceil(count / pageSize))} totalCount={count} pageSize={pageSize} scope={filters.scope} status={filters.status} q={filters.q} extraQuery={{ fields: fieldQuery, ...(filters.assignment ? { assignment: filters.assignment } : {}) }} />}>
-      <LeadIntakeWorkbench leads={leads} fieldView={fieldView} timeZone={timeZone} now={now.getTime()} locale={locale} currentUserId={user.id} canAssign={canAssign} canManageIdentity={canContact && perms.has("student.edit")} />
+      <LeadIntakeWorkbench canAdd={canContact} leads={leads} fieldView={fieldView} timeZone={timeZone} now={now.getTime()} locale={locale} currentUserId={user.id} canAssign={canAssign} canManageIdentity={canContact && perms.has("student.edit")} />
     </DashboardPage>
   </LeadPoolSelectionProvider>;
 }

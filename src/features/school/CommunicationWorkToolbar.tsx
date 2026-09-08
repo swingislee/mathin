@@ -16,7 +16,6 @@ import { useCommunicationWorkSelection } from "./CommunicationWorkSelection";
 import { createCommunicationWorklistAction } from "./communication-workday-actions";
 import { communicationDayBounds, type CommunicationWorkbenchOptions, type CommunicationWorklist } from "./communication-workday-contract";
 import { FOLLOWUP_DEFAULT_PAGE_SIZE } from "./followup-table-page";
-import { SchoolSupportAddButton } from "./SchoolSupportEntry";
 
 export function CommunicationWorkToolbar({ options, scope, canViewAll, canManage, worklist, worklists, pageKeys, count, today, query = "", hasFieldFilters = false, secondaryFilters }: {
   options: CommunicationWorkbenchOptions; scope: string; canViewAll: boolean; canManage: boolean;
@@ -74,7 +73,6 @@ export function CommunicationWorkToolbar({ options, scope, canViewAll, canManage
       {query || hasFieldFilters ? <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => { setSearch(""); navigate({ q: null, fields: null }); }}>{t("clearFilters")}</Button> : null}
     </DashboardCommandFilters>
     <DashboardCommandActions>
-      {canManage ? <SchoolSupportAddButton workspace="communication" initialWork={{date:options.date,worklistId:worklist?.id??null}} /> : null}
       {worklists.length ? <Popover><PopoverTrigger asChild><Button type="button" variant="secondary" size="sm"><ListChecks className="size-4" />{t("resume")}</Button></PopoverTrigger>
         <PopoverContent align="end" className="w-80 p-2"><div className="max-h-72 overflow-y-auto">{worklists.map((list) => <Button key={list.id} type="button" variant="ghost" className="h-auto w-full justify-between gap-3 rounded-lg px-3 py-2 text-left" disabled={pending} onClick={() => navigate({ view: "worklist", worklist: list.id, date: list.date, scope: "mine", q: null })}>
           <span className="min-w-0"><span className="block truncate text-sm">{list.name}</span><span className="block text-xs text-muted">{list.date}</span></span><span className="shrink-0 text-xs tabular-nums text-muted">{list.items.filter((item) => item.completedAt).length}/{list.items.length}</span>
