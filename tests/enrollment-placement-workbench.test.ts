@@ -7,6 +7,9 @@ import type { CourseEnrollmentRow, EnrollmentPlacementBoard, PlacementClassroom,
 import { EnrollmentPlacementWorkbench } from "@/features/school/EnrollmentPlacementWorkbench";
 const IntlProvider=NextIntlClientProvider as ComponentType<PropsWithChildren<Omit<ComponentProps<typeof NextIntlClientProvider>,'children'>>>;
 
+// 补入流程有独立合同测试；这些用例继续覆盖原工作表交互。
+vi.mock("@/features/school/SchoolSupportEntry", () => ({ SchoolSupportAddButton: () => null }));
+vi.mock("@/features/school/SchoolSupportPendingRows", () => ({ SchoolSupportPendingRows: () => null }));
 vi.mock("@/features/school/enrollment-workflow-actions", () => ({ moveEnrollmentSeatAction: vi.fn() }));
 vi.mock("@/features/school/Student360Sheet", () => ({
   Student360Trigger: ({ children, className }: { children: ReactNode; className?: string }) => createElement("button", { type: "button", className }, children),

@@ -12,6 +12,9 @@ import { QuickFollowUpEntry } from "@/features/school/QuickFollowUpEntry";
 import type { AssessmentWorkbenchRow } from "@/features/school/assessment-workbench-contract";
 import { ASSESSMENT_STAGES, type AssessmentStage } from "@/features/school/assessment-workflow-contract";
 
+// 补入流程有独立合同测试；这些用例继续覆盖原工作表交互。
+vi.mock("@/features/school/SchoolSupportEntry", () => ({ SchoolSupportAddButton: () => null }));
+vi.mock("@/features/school/SchoolSupportPendingRows", () => ({ SchoolSupportPendingRows: () => null }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/features/school/activity-actions", () => ({ saveActivityAssessmentAction: vi.fn() }));
 vi.mock("@/features/school/public-class-actions", () => ({ savePublicClassParticipantRecordAction: vi.fn() }));

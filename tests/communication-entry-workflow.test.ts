@@ -9,6 +9,9 @@ import { CommunicationWorkToolbar } from "@/features/school/CommunicationWorkToo
 import { CommunicationWorkSelectionProvider } from "@/features/school/CommunicationWorkSelection";
 
 const actions = vi.hoisted(() => ({ replace: vi.fn(), create: vi.fn(), query: "scope=mine&pageSize=50" }));
+// 补入流程有独立合同测试；这些用例继续覆盖原工作表交互。
+vi.mock("@/features/school/SchoolSupportEntry", () => ({ SchoolSupportAddButton: () => null }));
+vi.mock("@/features/school/SchoolSupportPendingRows", () => ({ SchoolSupportPendingRows: () => null }));
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(actions.query) }));
 vi.mock("@/i18n/navigation", () => ({ useRouter: () => ({ replace: actions.replace }) }));
 vi.mock("@/features/school/communication-workday-actions", () => ({ createCommunicationWorklistAction: actions.create }));

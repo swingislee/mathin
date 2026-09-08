@@ -33,6 +33,7 @@ export default async function CourseEnrollmentsPage({
       initialTermId={query.term}
       focusStudentId={query.student}
       canCreateClass={permissions.has("class.create")}
+      canAdd={permissions.has("followup.write") && permissions.has("followup.view")}
     />
   );
 }

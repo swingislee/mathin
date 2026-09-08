@@ -9,6 +9,7 @@ import { FollowupQueryMemory } from "@/features/school/FollowupQueryMemory";
 import { LeadPoolBatchActions, LeadPoolSelectionProvider } from "@/features/school/LeadPoolSelection";
 import { LeadPoolPagination } from "@/features/school/LeadPoolPagination";
 import { LeadIntakeWorkbench } from "@/features/school/LeadIntakeWorkbench";
+import { SchoolSupportAddButton } from "@/features/school/SchoolSupportEntry";
 import { LeadIntakeScopeFilter } from "@/features/school/LeadIntakeScopeFilter";
 import { parseLeadPoolFilters } from "@/features/school/leads";
 import { listLeadIntakeFieldPage } from "@/features/school/lead-intake-table-data";
@@ -51,6 +52,7 @@ export default async function LeadsPage({ params, searchParams }: {
         </FilterBar>
       </DashboardCommandFilters>
       <DashboardCommandActions>
+        {canContact ? <SchoolSupportAddButton workspace="leads" /> : null}
         {canAssign ? <LeadPoolBatchActions assignees={assignees} /> : null}
         {perms.has("student.import") ? <Link href="/dashboard/students/import" className={buttonVariants({ variant: "secondary", size: "sm" })}>{t("openDataInbox")}</Link> : null}
       </DashboardCommandActions>

@@ -12,6 +12,9 @@ import type { LeadPoolFilters, LeadPoolRow } from "@/features/school/lead-contra
 import type { DashboardTableFieldHeaderProps } from "@/features/school/dashboard-page/DashboardTableFieldMenu";
 
 const actions = vi.hoisted(() => ({ assign: vi.fn(), refresh: vi.fn(), replace: vi.fn(), open360: vi.fn(), error: vi.fn() }));
+// 补入流程有独立合同测试；这些用例继续覆盖原工作表交互。
+vi.mock("@/features/school/SchoolSupportEntry", () => ({ SchoolSupportAddButton: () => null }));
+vi.mock("@/features/school/SchoolSupportPendingRows", () => ({ SchoolSupportPendingRows: () => null }));
 vi.mock("@/features/school/actions/leads", () => ({ assignLeadsAction: actions.assign }));
 vi.mock("@/features/school/LeadIdentityControl", () => ({ LeadIdentityControl: () => createElement("button", { type: "button", "data-identity-control": true }, "Confirm identity") }));
 vi.mock("@/features/school/Student360Sheet", () => ({ Student360Trigger: ({ children, subject, className }: {

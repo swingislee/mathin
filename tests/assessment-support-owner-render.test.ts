@@ -11,6 +11,9 @@ import { assessmentWorkflowFromDb, type AssessmentReport } from '@/features/scho
 import { assessmentStatusMessages } from '@/features/school/assessment-status-contract';
 import { sourceCompletionMessages } from '@/features/school/source-completion-contract';
 
+// 补入流程有独立合同测试；这些用例继续覆盖原工作表交互。
+vi.mock("@/features/school/SchoolSupportEntry", () => ({ SchoolSupportAddButton: () => null }));
+vi.mock("@/features/school/SchoolSupportPendingRows", () => ({ SchoolSupportPendingRows: () => null }));
 vi.mock('server-only', () => ({}));
 vi.mock('@/features/school/Student360Sheet', () => ({ Student360Trigger: ({ children }: { children: ReactNode }) => createElement('button', null, children) }));
 vi.mock('@/i18n/navigation', () => ({

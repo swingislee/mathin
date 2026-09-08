@@ -29,6 +29,8 @@ import { moveEnrollmentSeatAction } from "./enrollment-workflow-actions";
 import { placementRosterSeats, placementSeatTargetError } from "./placement-roster";
 import { useTilePointerDrag } from "./tile-pointer-drag";
 import { SourceEnrollmentPlacementDialog } from './SourceEnrollmentPlacementDialog';
+import { SchoolSupportAddButton } from './SchoolSupportEntry';
+import { SchoolSupportPendingRows } from './SchoolSupportPendingRows';
 
 interface SeatTarget {
   classroom: PlacementClassroom | null;
@@ -81,8 +83,9 @@ function sourceRosterRows(board:EnrollmentPlacementBoard,history:StudentBusiness
   return [...grouped.values()];
 }
 
-export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focusStudentId, canCreateClass, history, initialQuery, initialRecordState='current', timeZone = "Asia/Shanghai", now }: {
+export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focusStudentId, canCreateClass, canAdd=false, history, initialQuery, initialRecordState='current', timeZone = "Asia/Shanghai", now }: {
   initialBoard: EnrollmentPlacementBoard; initialTermId?: string; focusStudentId?: string; canCreateClass: boolean;
+  canAdd?: boolean;
   history?: StudentBusinessHistory|null; initialQuery?: string; initialRecordState?: StateFilter;
   timeZone?: string; now?: number;
 }) {
@@ -284,7 +287,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
       }} locale={locale}/>
       <FilterSearchInput value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("searchPlacement")} aria-label={t("searchPlacement")} />
     </DashboardCommandFilters>
-    <DashboardCommandActions><span role="status" className={cn("flex w-32 items-center justify-end gap-1 text-xs text-muted", !selected && "invisible")} title={selected ? t("selectedHint", { name: selected.name }) : undefined}><span className="truncate">{selected?.name}</span><Button size="sm" variant="ghost" className="size-7 shrink-0 p-0" aria-label={t("clearSelection")} disabled={!selected || pending} onClick={() => setSelectedKey(null)}>{pending ? <LoaderCircle className="size-3 animate-spin" /> : <X className="size-3" />}</Button></span>{canCreateClass ? <Link href="/dashboard/classes/new" className={buttonVariants({ size: "sm", variant: "secondary" })}><Plus className="size-4" />{t("createClass")}</Link> : null}</DashboardCommandActions>
+    <DashboardCommandActions>{canAdd ? <SchoolSupportAddButton workspace="enrollments" initialWork={{termId:initialTermId??null}} /> : null}<span role="status" className={cn("flex w-32 items-center justify-end gap-1 text-xs text-muted", !selected && "invisible")} title={selected ? t("selectedHint", { name: selected.name }) : undefined}><span className="truncate">{selected?.name}</span><Button size="sm" variant="ghost" className="size-7 shrink-0 p-0" aria-label={t("clearSelection")} disabled={!selected || pending} onClick={() => setSelectedKey(null)}>{pending ? <LoaderCircle className="size-3 animate-spin" /> : <X className="size-3" />}</Button></span>{canCreateClass ? <Link href="/dashboard/classes/new" className={buttonVariants({ size: "sm", variant: "secondary" })}><Plus className="size-4" />{t("createClass")}</Link> : null}</DashboardCommandActions>
   </FollowupCommandPanel>} footer={<LeadPoolPagination baseHref="/dashboard/followups/enrollments" currentPage={pagination.page} totalPages={pagination.totalPages} totalCount={pagination.count}
     pageSize={pagination.pageSize} disabled={pending} onPageChange={(page, size) => { pointer.cancel(); setSelectedKey(null); pagination.onPageChange(page, size); }} />}>
     <div ref={root} className="flex min-h-0 flex-1 flex-col" onPointerMove={pointer.onPointerMove} onPointerUp={pointer.onPointerUp} onPointerCancel={pointer.onPointerCancel} onLostPointerCapture={pointer.onLostPointerCapture} onClickCapture={pointer.onClickCapture} onKeyDown={(event) => { if (event.key === "Escape" && !event.defaultPrevented) { pointer.cancel(); setSelectedKey(null); } }}>
@@ -296,7 +299,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
           <TableHead className="sticky left-64 top-0 z-30 border-r border-line bg-card"><DashboardTableColumnHeader label={t("teacherLabel")} {...table.columnProps("teacher")} /></TableHead>
           <TableHead className="sticky top-0 z-20 bg-card"><DashboardTableColumnHeader label={t("student")} {...table.columnProps("health")} /></TableHead>
         </TableRow></TableHeader>
-        <TableBody>{groups.map((group) => {
+        <TableBody><SchoolSupportPendingRows workspace="enrollments" colSpan={4} />{groups.map((group) => {
           const scope = rows.find((row) => row.group === group && !row.classroom)!;
           const pendingStudents = scope.students.filter((student) => !student.classroomId && student.status !== "withdrawn" && enumMatches("course", student.courseId));
           const classrooms = visibleRows.filter((row) => row.group === group && (row.classroom || row.historical));

@@ -40,15 +40,19 @@ function storeDraft(key: string, draft: Draft | null) {
   try { if (draft) sessionStorage.setItem(key, JSON.stringify(draft)); else sessionStorage.removeItem(key); } catch { /* 会话存储不可用时，保持当前行内草稿。 */ }
 }
 
-export function StudentStageEntry({ row, requestedMode, locale, currentUserId, canEnroll, onSaved, onBusyChange, canAdvance, outcomeRequest, ref }: {
+export function StudentStageEntry({ row, requestedMode, locale, currentUserId, canEnroll, onSaved, onBusyChange, canAdvance, outcomeRequest, enrollmentContext, ref }: {
   row: StudentStageRow; requestedMode: StudentEntryMode; locale: string; currentUserId: string; canEnroll: boolean;
   onSaved: (saved: StudentStageSaved, advance: boolean) => void; onBusyChange: (busy: boolean) => void; canAdvance: boolean;
   outcomeRequest: { value: "" | "unreachable" | "connected" | "declined" | "invalid_number" } | null;
+  enrollmentContext?: {type:"new"|"renewal"|"reactivate";courseId:string|null;termId:string|null};
   ref?: Ref<{ save: () => void }>;
 }) {
   const m = studentStageMessages(locale);
-  const storageKey = `mathin:student-stage:v1:${currentUserId}:${row.key}`;
-  const [draft, setDraft] = useState(() => readDraft(storageKey, row));
+  const storageKey = `mathin:student-stage:v1:${currentUserId}:${row.key}${enrollmentContext ? `:${enrollmentContext.type}:${enrollmentContext.courseId ?? ''}:${enrollmentContext.termId ?? ''}` : ''}`;
+  const [draft, setDraft] = useState(() => {
+    const draft=readDraft(storageKey,row);
+    return enrollmentContext ? {...draft,courseId:draft.courseId||enrollmentContext.courseId||'',termId:draft.termId||enrollmentContext.termId||''} : draft;
+  });
   const [mode, setMode] = useState(requestedMode);
   const [acceptedMode, setAcceptedMode] = useState(requestedMode);
   const [acceptedOutcome, setAcceptedOutcome] = useState<typeof outcomeRequest>(null);
@@ -83,7 +87,7 @@ export function StudentStageEntry({ row, requestedMode, locale, currentUserId, c
     }).catch(() => { if (active) { setLoadError(true); setLoading(false); } });
     return () => { active = false; };
   }, [row.studentId, row.leadId, revision, needsOptions, options]);
-  const enrollmentType = row.stage === "awaiting_renewal" ? "renewal" : row.stage === "former_student" ? "reactivate" : "new";
+  const enrollmentType = enrollmentContext?.type ?? (row.stage === "awaiting_renewal" ? "renewal" : row.stage === "former_student" ? "reactivate" : "new");
   const matchingOpportunity = options?.opportunities.find(o => o.course_id === draft.courseId && o.term_id === draft.termId && o.opportunity_type === enrollmentType);
   const reminderAllowed = mode === "contact" ? draft.outcome === "unreachable" || draft.outcome === "declined"
     : mode === "invitation" ? Boolean(draft.invitation && invitationCanHaveNextContactReminder(draft.invitation)) : true;
