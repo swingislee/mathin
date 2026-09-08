@@ -76,13 +76,14 @@ it("drills into the same fact records and keeps unknown data distinct from zero"
   state.tables.activity_registrations = [registration("r", "a", "l")];
   state.tables.assessment_results = [assessment("assessment", "r")];
   state.tables.course_enrollments = [{ ...courseEnrollment("e", "2026-09-03"), student_id: null, course_opportunities: { student_id: null, lead_id: "l" } }];
+  const baseline = await getStaffOverviewData({ grain: "month", now });
   for (const metric of ["leads", "contacts", "invitations", "arrivals", "assessments", "enrollments"] as const) {
     const data = await getStaffOverviewData({ grain: "month", now, detail: { kind: "business", metric } });
     expect(data.detail?.available, metric).toBe(true);
-    expect(data.detail?.records.length, metric).toBe(data.businessFacts.find(row => row.key === metric)?.current);
+    expect(data.detail?.records.length, metric).toBe(baseline.businessFacts.find(row => row.key === metric)?.current);
   }
   const teacher = await getStaffOverviewData({ grain: "month", now, detail: { kind: "participation", metric: "enrollments", scope: "teacher" } });
-  expect(teacher.detail?.records.length).toBe(teacher.teacherParticipationRows.find(row => row.userId === "teacher")?.enrollments.current);
+  expect(teacher.detail?.records.length).toBe(baseline.teacherParticipationRows.find(row => row.userId === "teacher")?.enrollments.current);
   expect(teacher.detail?.records[0]).toMatchObject({ leadId: "l" });
   const pending = await getStaffOverviewData({ grain: "month", now, detail: { kind: "pending", metric: "uncontactedLeads" } });
   expect(pending.detail?.records.length).toBe(pending.pendingFacts.find(row => row.key === "uncontactedLeads")?.value);

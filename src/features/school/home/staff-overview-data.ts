@@ -1,4 +1,6 @@
 import "server-only";
+import { overviewReadSources, type OverviewReadSource } from "./staff-overview-read-contract";
+import { readOverviewAcquisitions } from "./staff-overview-acquisition-read";
 import { selectOverviewDetailEvents, selectOverviewParticipants, type OverviewDetailQuery, type OverviewDetailRecord } from "./staff-overview-drilldown-contract";
 
 import type { OverviewClassroomOccupancy } from "./staff-overview-presentation-contract";
@@ -7,8 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import { resolveSourceStaffId, sourceStaffLabel } from "../business-source-contract";
 import { readCurrentTermClassroomIds, readOverviewRows, STAFF_OVERVIEW_READ_LIMIT, type OverviewRowsResult } from "./staff-overview-read";
 import {
-  buildOverviewAcquisitions, OVERVIEW_ACQUISITION_SOURCE, OVERVIEW_ACQUISITION_TABLE,
-  type OverviewAcquisitionSource, type OverviewLeadSubmission,
+  buildOverviewAcquisitions, type OverviewLeadSubmission,
 } from "./staff-overview-acquisition-contract";
 import {
   buildOverviewSourceEvents, overviewFactInstant, overviewSubjectKey,
@@ -253,26 +254,32 @@ function emptyCapacityTotals(): ClassroomCapacityTotals {
   };
 }
 
-async function readOverviewCore(supabase: Awaited<ReturnType<typeof createClient>>) {
+function overviewReader(sources: Set<OverviewReadSource>) {
+  return <T>(source: OverviewReadSource, query: Parameters<typeof readOverviewRows<T>>[0], order = ["id"]) =>
+    readOverviewRows<T>(query, order, sources.has(source));
+}
+
+async function readOverviewCore(supabase: Awaited<ReturnType<typeof createClient>>, sources = overviewReadSources()) {
+  const read = overviewReader(sources);
   const [activities, registrations, assessments, courseEnrollments, memberships, enrollmentAssignments, classrooms, currentTerms] = await Promise.all([
-    readOverviewRows<OverviewActivity>(() => supabase.from("business_activities" as "activities")
+    read<OverviewActivity>("activities", () => supabase.from("business_activities" as "activities")
       .select("id,scheduled_at,occurred_on,source_invitation_id,remark,record_state").is("deleted_at", null)),
-    readOverviewRows<OverviewRegistration>(() => supabase.from("business_activity_registrations" as "activity_registrations")
+    read<OverviewRegistration>("registrations", () => supabase.from("business_activity_registrations" as "activity_registrations")
       .select("id,activity_id,student_id,lead_id,status,record_state,registered_on,created_at,source_record_id,assessment_started_at,assessment_completed_at,source_enrollment_facts")),
-    readOverviewRows<OverviewAssessment>(() => supabase.from("business_assessment_results" as "assessment_results")
+    read<OverviewAssessment>("assessments", () => supabase.from("business_assessment_results" as "assessment_results")
       .select("id,activity_registration_id,student_id,lead_id,assessed_by,assessed_on,created_at,source_record_id,result_source,result_finalized_at,assessment_band,score,strengths")),
-    readOverviewRows<OverviewCourseEnrollment>(() => supabase.from("business_course_enrollments" as "course_enrollments")
+    read<OverviewCourseEnrollment>("courseEnrollments", () => supabase.from("business_course_enrollments" as "course_enrollments")
       .select("id,student_id,opportunity_id,registered_on,confirmed_at,created_at,source_record_id,course_opportunities(student_id,lead_id)")),
-    readOverviewRows<OverviewMembership>(() => supabase.from("enrollments")
+    read<OverviewMembership>("memberships", () => supabase.from("enrollments")
       .select("id,classroom_id,student_id,joined_at,status,remark")),
-    readOverviewRows<OverviewEnrollmentAssignment>(() => supabase.from("course_enrollment_assignments")
+    read<OverviewEnrollmentAssignment>("enrollmentAssignments", () => supabase.from("course_enrollment_assignments")
       .select("id,course_enrollment_id,classroom_membership_id")),
-    readOverviewRows<ClassroomRow>(() => supabase.from("classrooms")
+    read<ClassroomRow>("classrooms", () => supabase.from("classrooms")
       .select("id,name,grade,capacity,archived_at,trashed_at").eq("purpose", "production")),
-    supabase.from("school_terms").select("id,name").eq("is_current", true).limit(2),
+    sources.has("classrooms") ? supabase.from("school_terms").select("id,name").eq("is_current", true).limit(2) : Promise.resolve({ data: [], error: null }),
   ]);
   const termId = !currentTerms.error && currentTerms.data?.length === 1 ? currentTerms.data[0].id : null;
-  const currentClassIds = await readCurrentTermClassroomIds(supabase, termId);
+  const currentClassIds = sources.has("classrooms") ? await readCurrentTermClassroomIds(supabase, termId) : { data: [], error: null };
   return { activities, registrations, assessments, courseEnrollments, memberships, enrollmentAssignments, classrooms, currentTerms, currentClassIds };
 }
 
@@ -337,6 +344,8 @@ export async function getStaffOverviewData({
   detail?: OverviewDetailQuery;
   selectedSupportIds?: string[];
 }): Promise<StaffOverviewData> {
+  const sources = overviewReadSources(detail);
+  const read = overviewReader(sources);
   const [supabase, timeZone] = await Promise.all([createClient(), getOrganizationTimezoneV2()]);
   const window = buildStaffOverviewWindow(grain, now, timeZone, date);
   const rangeStart = window.previousStart.toISOString();
@@ -353,27 +362,25 @@ export async function getStaffOverviewData({
   const [core, acquisitionSourcesResult, leadSubmissionsResult, leadDirectoryResult, communicationsResult, invitationEventsResult,
     invitationThreadsResult, assignmentsResult, leadActionsResult, supportTasksResult, profilesResult,
     staffRoleMembersResult, opportunitiesResult, operationalLeadsResult] = await Promise.all([
-    readOverviewCore(supabase),
-    readOverviewRows<OverviewAcquisitionSource>(() => supabase.from("history_import_records")
-      .select("id,lead_id,record_data").eq("source_data->>filename", OVERVIEW_ACQUISITION_SOURCE)
-      .eq("record_data->>tableName", OVERVIEW_ACQUISITION_TABLE)),
-    readOverviewRows<OverviewLeadSubmission>(() => supabase.from("lead_source_records").select("id,lead_id,submitted_at")),
-    readOverviewRows<LeadDirectoryRow>(() => supabase.from("leads").select("id,owner_id,status,student_id,created_at,source_record_id")),
-    readOverviewRows<CommunicationRow>(() => supabase.from("business_lead_communications" as "lead_communications").select("id,lead_id,occurred_at,occurred_on,outcome,owner_id_at_contact,recorded_by,source_record_id")),
-    readOverviewRows<InvitationEventRow>(() => supabase.from("lead_invitation_events")
+    readOverviewCore(supabase, sources),
+    sources.has("acquisitionSources") ? readOverviewAcquisitions(supabase) : Promise.resolve({ data: [], error: null }),
+    read<OverviewLeadSubmission>("leadSubmissions", () => supabase.from("lead_source_records").select("id,lead_id,submitted_at")),
+    read<LeadDirectoryRow>("leads", () => supabase.from("leads").select("id,owner_id,status,student_id,created_at,source_record_id")),
+    read<CommunicationRow>("communications", () => supabase.from("business_lead_communications" as "lead_communications").select("id,lead_id,occurred_at,occurred_on,outcome,owner_id_at_contact,recorded_by,source_record_id")),
+    read<InvitationEventRow>("invitationEvents", () => supabase.from("lead_invitation_events")
       .select("invitation_id,occurred_at,to_state,lead_invitation_threads(owner_id_at_open,assessor_id)")
       .eq("to_state", "confirmed").gte("occurred_at", rangeStart).lt("occurred_at", rangeEnd)),
-    readOverviewRows<InvitationThreadRow>(() => supabase.from("lead_invitation_threads")
+    read<InvitationThreadRow>("invitationThreads", () => supabase.from("lead_invitation_threads")
       .select("id,activity_id,lead_id,kind,state,owner_id_at_open,assessor_id,scheduled_at,closed_at,created_at,updated_at")),
-    readOverviewRows<AssignmentRow>(() => supabase.from("classroom_staff_assignments")
+    read<AssignmentRow>("assignments", () => supabase.from("classroom_staff_assignments")
       .select("classroom_id,user_id,responsibility,profiles!classroom_staff_assignments_user_id_fkey(display_name)"), ["classroom_id", "user_id", "responsibility"]),
-    readOverviewRows<LeadActionRow>(() => supabase.from("lead_next_actions").select("lead_id,due_at").eq("status", "open").neq("kind", "initial_contact")),
-    readOverviewRows<SupportTaskRow>(() => supabase.from("class_support_tasks").select("id,assigned_to,classroom_id,student_id,due_at,note").eq("status", "pending")),
-    readOverviewRows<ProfileRow>(() => supabase.from("profiles").select("id,display_name,role,is_active").in("role", ["staff", "admin"]).eq("is_active", true)),
-    readOverviewRows<StaffRoleMemberRow>(() => supabase.from("staff_role_members")
+    read<LeadActionRow>("leadActions", () => supabase.from("lead_next_actions").select("lead_id,due_at").eq("status", "open").neq("kind", "initial_contact")),
+    read<SupportTaskRow>("supportTasks", () => supabase.from("class_support_tasks").select("id,assigned_to,classroom_id,student_id,due_at,note").eq("status", "pending")),
+    read<ProfileRow>("profiles", () => supabase.from("profiles").select("id,display_name,role,is_active").in("role", ["staff", "admin"]).eq("is_active", true)),
+    read<StaffRoleMemberRow>("staffRoleMembers", () => supabase.from("staff_role_members")
       .select("user_id,staff_roles!staff_role_members_role_id_fkey(key)"), ["user_id", "role_id"]),
-    readOverviewRows<{ id: string; owner_id: string | null }>(() => supabase.from("course_opportunities").select("id,owner_id")),
-    readOverviewRows<{ id: string }>(() => supabase.from("operational_leads" as "leads").select("id")),
+    read<{ id: string; owner_id: string | null }>("opportunities", () => supabase.from("course_opportunities").select("id,owner_id")),
+    read<{ id: string }>("operationalLeads", () => supabase.from("operational_leads" as "leads").select("id")),
   ]);
 
   const unavailable = new Set<StaffOverviewSourceKey>();

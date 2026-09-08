@@ -10,6 +10,15 @@ export interface OverviewAcquisitionSource {
   record_data: { cells?: Array<{ fieldName: string; text: string }> };
 }
 
+export const OVERVIEW_ACQUISITION_FIELDS = ["获取日期", "登记日期（此列不用填，自动生成）", "学员姓名", "家长电话"] as const;
+
+/** 每一行核对字段名称；来源列顺序变化的行交回完整读取，不根据位置猜测数据。 */
+export function projectedOverviewAcquisition(row: { id: string; lead_id: string | null } & Record<string, unknown>): OverviewAcquisitionSource | null {
+  const cells = OVERVIEW_ACQUISITION_FIELDS.map((fieldName, index) => ({ fieldName, text: row[`text${index}`] }));
+  if (cells.some((cell, index) => row[`field${index}`] !== cell.fieldName || typeof cell.text !== "string")) return null;
+  return { id: row.id, lead_id: row.lead_id, record_data: { cells: cells as Array<{ fieldName: string; text: string }> } };
+}
+
 export interface OverviewAcquisitionLead {
   id: string;
   created_at: string;

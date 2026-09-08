@@ -3,6 +3,7 @@ import type { createClient } from "@/lib/supabase/server";
 
 export const STAFF_OVERVIEW_READ_LIMIT = 10_000;
 const PAGE_SIZE = 200;
+const PAGE_CONCURRENCY = 4;
 
 export interface OverviewRowsResult<T> {
   data: T[] | null;
@@ -14,18 +15,29 @@ interface OverviewQuery extends PromiseLike<{ data: unknown; error: { message: s
   range(from: number, to: number): OverviewQuery;
 }
 
-/** 小页读取并使用稳定排序，避免服务端单次行数上限静默截断统计。 */
-export async function readOverviewRows<T>(buildQuery: () => OverviewQuery, order = ["id"]): Promise<OverviewRowsResult<T>> {
+/** 首屏探测后以四页为一组读取；保持稳定顺序、小页上限和完整性检查。 */
+export async function readOverviewRows<T>(buildQuery: () => OverviewQuery, order = ["id"], enabled = true): Promise<OverviewRowsResult<T>> {
+  if (!enabled) return { data: [], error: null };
   const rows: T[] = [];
-  for (let offset = 0; offset < STAFF_OVERVIEW_READ_LIMIT; offset += PAGE_SIZE) {
+  const readPage = async (offset: number): Promise<OverviewRowsResult<T>> => {
     let query = buildQuery();
     for (const column of order) query = query.order(column, { ascending: true });
     const result = await query.range(offset, offset + PAGE_SIZE - 1);
     if (result.error) return { data: null, error: result.error };
     if (result.data !== null && !Array.isArray(result.data)) return { data: null, error: { message: "OVERVIEW_INVALID_ROWS" } };
-    const page = (result.data ?? []) as T[];
-    rows.push(...page);
-    if (page.length < PAGE_SIZE) break;
+    return { data: (result.data ?? []) as T[], error: null };
+  };
+  for (let offset = 0; offset < STAFF_OVERVIEW_READ_LIMIT;) {
+    const count = offset === 0 ? 1 : Math.min(PAGE_CONCURRENCY, Math.ceil((STAFF_OVERVIEW_READ_LIMIT - offset) / PAGE_SIZE));
+    const pages = await Promise.allSettled(Array.from({ length: count }, (_, index) => readPage(offset + index * PAGE_SIZE)));
+    for (const result of pages) {
+      if (result.status === "rejected") throw result.reason;
+      if (result.value.error) return { data: null, error: result.value.error };
+      const page = result.value.data ?? [];
+      rows.push(...page);
+      if (page.length < PAGE_SIZE) return { data: rows, error: null };
+    }
+    offset += count * PAGE_SIZE;
   }
   return { data: rows, error: null };
 }
