@@ -119,11 +119,14 @@ export function ActivitiesManager({
   );
   const tableColumns = useMemo<Record<ActivityTableColumn, DashboardTableColumnDefinition<ActivityRow>>>(() => ({
     time: {
-      filterValues: (activity) => ({
-        value: activity.recordState==='historical'?activity.occurredOn??EMPTY_VALUE:dateFormatter.format(new Date(activity.scheduledAt)),
-        label: activity.recordState==='historical'?activity.occurredOn??recordM.unknown:dateFormatter.format(new Date(activity.scheduledAt)),
-      }),
-      sortValue: (activity) => activity.scheduledAt,
+      filterValues: (activity) => {
+        const scheduledDate = new Date(activity.scheduledAt);
+        const value = activity.recordState !== 'historical' && Number.isFinite(scheduledDate.getTime())
+          ? dateFormatter.format(scheduledDate)
+          : activity.occurredOn || null;
+        return { value: value ?? EMPTY_VALUE, label: value ?? recordM.unknown };
+      },
+      sortValue: (activity) => activity.scheduledAt || activity.occurredOn || '',
     },
     activity: {
       filterValues: (activity) => [
