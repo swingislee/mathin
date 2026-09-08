@@ -2209,7 +2209,7 @@
         "goalExceededCompact": "{count} above",
         "classroomName": "Class",
         "businessFactsDescription": "Monthly reports compare the reporting-month total with the full previous month; weekly reports compare actual dates at the same progress.",
-        "businessFactBasis": "Imported monthly reports use source confirmations and reporting months; assessment counts follow the Base visit table's arrived status. Weekly reports and daily charts use actual dates. Enrollments use independent registrations and source confirmations; Kangaroo registrations appear under activities. Known months count in monthly reports while exact dates remain pending.",
+        "businessFactBasis": "Imported monthly reports use source confirmations and reporting months; assessment counts follow the Base visit table's arrived status. Weekly reports and daily charts use actual dates. Course enrollments use independent registrations and source confirmations; activity registrations are counted separately. Known months count in monthly reports while exact dates remain pending.",
         "personComparisonTitle": "Learning-support and teacher comparison",
         "personColumn": "Person",
         "role_learningSupport": "Learning support",

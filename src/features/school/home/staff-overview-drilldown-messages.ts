@@ -1,5 +1,5 @@
 const zh = {
-  activityRegistrations: "活动报名（含袋鼠竞赛）", sourceConfirmed: "来源已确认", businessMonth: "统计月份",
+  activityRegistrations: "活动报名", sourceConfirmed: "来源已确认", businessMonth: "统计月份",
   previousMonth: "上月", monthlyComparison: "按业务月份汇总，本月累计与上月整月对照；每日曲线按实际日期展示。",
   allPeople: "全部人员", noPerson: "未关联人员", clearFilters: "清除筛选", ascending: "升序", descending: "降序",
   pageSize: "每页条数", perPage: "条 / 页",
@@ -14,7 +14,7 @@ const zh = {
   classes: "班级", enrolledSeats: "在班人次", minimum: "起班人数", healthy: "健康人数", full: "满班人数", minimumOpenGap: "起班缺口", healthyDelta: "健康差额", remainingSeats: "剩余容量",
 };
 const en: Record<keyof typeof zh, string> = {
-  activityRegistrations: "Activity registrations (including Kangaroo)", sourceConfirmed: "Confirmed in source", businessMonth: "Reporting month",
+  activityRegistrations: "Activity registrations", sourceConfirmed: "Confirmed in source", businessMonth: "Reporting month",
   previousMonth: "Previous month", monthlyComparison: "Reporting-month totals compare the current month to date with the full previous month; daily charts use actual dates.",
   allPeople: "All staff", noPerson: "No related staff", clearFilters: "Clear filters", ascending: "Ascending", descending: "Descending",
   pageSize: "Rows per page", perPage: "/ page",

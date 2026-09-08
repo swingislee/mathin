@@ -2209,7 +2209,7 @@
         "goalExceededCompact": "超出 {count}",
         "classroomName": "班级",
         "businessFactsDescription": "月报按业务月份汇总，本月累计对照上月整月；周报按实际日期对照上周同期。",
-        "businessFactBasis": "导入月报读取来源确认标签与业务月份，测评沿用 Base 到访表的已到口径；周报和每日曲线使用真实日期。报名读取独立登记与来源确认；袋鼠竞赛单列活动报名。已知月份的记录计入月报，具体日期保持待补。",
+        "businessFactBasis": "导入月报读取来源确认标签与业务月份，测评沿用 Base 到访表的已到口径；周报和每日曲线使用真实日期。课程报名读取独立登记与来源确认，活动报名单独统计。已知月份的记录计入月报，具体日期保持待补。",
         "personComparisonTitle": "学服与老师业务对比",
         "personColumn": "人员",
         "role_learningSupport": "学服",
