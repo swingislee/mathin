@@ -51,6 +51,8 @@ import type { WhiteboardStore } from "@/features/whiteboard/store";
 import { isStrokeItem, type StrokeItem } from "@/features/whiteboard/types";
 
 import type { InteractionTrigger } from "@/features/courseware-doc/interactions";
+import { classroomDocMountKey } from "./classroom-page-presentation";
+import { useClassroomPageWarmup } from "./useClassroomPageWarmup";
 import type { SessionBoardCheckpoint } from "../checkpoint/types";
 import { shouldApplyLegacyBoardSnapshot } from "../checkpoint/selection";
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
@@ -916,6 +918,8 @@ export function LiveShell({
         : activeDocBundleEntry?.doc
     : undefined;
   const teachingSurface = resolveClassroomTeachingSurface();
+  const docMountKey = classroomDocMountKey(renderPage?.id ?? "no-page", renderDoc);
+  useClassroomPageWarmup(state.pages, state.currentPage, docBundle, docUrls, assetUrls);
   const renderDocUrls = usingM3Fixture
     ? m3FixtureRenderer === "aixuexi"
       ? m3AixuexiH5FixtureBindingUrls(m3H5Compatible)
@@ -1706,7 +1710,7 @@ export function LiveShell({
                   </span>
                 </p>
               ) : <DocCoursewarePage
-                key={`doc-${renderPage.id}:${usingM3Fixture ? `${m3FixtureRenderer}:${Number(m3H5Compatible)}` : "courseware"}`}
+                key={`${docMountKey}:${usingM3Fixture ? `${m3FixtureRenderer}:${Number(m3H5Compatible)}` : "courseware"}`}
                 doc={renderDoc ?? null}
                 bindingUrls={renderDocUrls}
                 isController={isController}

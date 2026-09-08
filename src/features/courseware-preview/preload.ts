@@ -51,7 +51,7 @@ export function collectCoursewarePreviewWarmTargets(
   return [...targets.values()];
 }
 
-async function warmImage(url: string): Promise<void> {
+export async function warmCoursewareImage(url: string): Promise<void> {
   if (typeof Image === "undefined") return;
   await new Promise<void>((resolve) => {
     const image = new Image();
@@ -98,6 +98,6 @@ export async function warmCoursewarePreviewPage(
   bindingUrls: ResolvedBindingUrls,
 ): Promise<void> {
   await Promise.all(collectCoursewarePreviewWarmTargets(doc, bindingUrls).map((target) => (
-    target.kind === "image" ? warmImage(target.url) : warmH5Entry(target.url)
+    target.kind === "image" ? warmCoursewareImage(target.url) : warmH5Entry(target.url)
   )));
 }

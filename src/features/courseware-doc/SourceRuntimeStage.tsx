@@ -218,7 +218,7 @@ export default function SourceRuntimeStage({
     pageKey: string;
     nodePath: string;
   } | null>(null);
-  const appliedCtl = useRef<DocVideoControl["ctl"]>(undefined);
+  const appliedCtl = useRef<{ renderKey: string; ctl: DocVideoControl["ctl"] } | null>(null);
   const runtimeReadyFor = useRef<string | null>(null);
   const runtimeLoadedFor = useRef<string | null>(null);
   const runtimePayloadSentFor = useRef<string | null>(null);
@@ -274,7 +274,7 @@ export default function SourceRuntimeStage({
   }, [iframeRef, runtimeInstanceKey]);
 
   const queueRuntimeRender = useCallback((frameKey: string, nextPayload: RuntimePayload) => {
-    if (runtimePayloadSentFor.current === frameKey) return;
+    // 快速返回正在渲染的页面时，也用最新选择替换队列中的中间页。
     runtimeQueuedRender.current = { frameKey, payload: nextPayload };
     flushRuntimeRender();
   }, [flushRuntimeRender]);
@@ -374,7 +374,7 @@ export default function SourceRuntimeStage({
             flushRuntimeRender();
           }
         }
-        if (message.type === "advance") onAdvance?.();
+        if (message.type === "advance" && rendered) onAdvance?.();
         if (message.type === "node-selected" && typeof message.nodePath === "string") {
           editor?.onNodeSelect(message.nodePath);
         }
@@ -408,6 +408,7 @@ export default function SourceRuntimeStage({
         return;
       }
       if (message.source !== "mathin-h5-media"
+          || !rendered
           || !videoControl?.controller
           || !videoControl.onCtl
           || !["play", "pause", "seek"].includes(String(message.action))
@@ -416,19 +417,25 @@ export default function SourceRuntimeStage({
     };
     window.addEventListener("message", receive);
     return () => window.removeEventListener("message", receive);
-  }, [editor, editorPageKey, flushRuntimeRender, iframeRef, onAdvance, runtimeInstanceKey, t, videoControl]);
+  }, [editor, editorPageKey, flushRuntimeRender, iframeRef, onAdvance, rendered, runtimeInstanceKey, t, videoControl]);
 
   useEffect(() => {
     const ctl = videoControl?.ctl;
-    if (!videoControl || videoControl.controller || !ctl || frameGeneration === 0 || appliedCtl.current === ctl) return;
-    appliedCtl.current = ctl;
+    // 复用 iframe 时，等当前页完成渲染再回放媒体状态；回看同一页也重新应用基线。
+    if (!rendered) {
+      appliedCtl.current = null;
+      return;
+    }
+    if (!videoControl || videoControl.controller || !ctl || frameGeneration === 0
+        || (appliedCtl.current?.renderKey === renderKey && appliedCtl.current.ctl === ctl)) return;
+    appliedCtl.current = { renderKey, ctl };
     iframeRef.current?.contentWindow?.postMessage({
       source: "mathin-classroom",
       type: "media_ctl",
       action: ctl.action,
       time: ctl.time,
     }, "*");
-  }, [frameGeneration, iframeRef, videoControl]);
+  }, [frameGeneration, iframeRef, renderKey, rendered, videoControl]);
 
   const sourceAspect = doc.viewport.width / doc.viewport.height;
   const outerAspect = stageMode === "board43" ? 4 / 3 : sourceAspect;
@@ -507,6 +514,7 @@ export default function SourceRuntimeStage({
               height: doc.viewport.height,
               transform: `scale(${sourceFrameScale})`,
               visibility: sourceFrameSize ? "visible" : "hidden",
+              pointerEvents: rendered ? "auto" : "none",
             }}
           />
         ) : null}
