@@ -145,15 +145,18 @@ async function readActivities(activityId?: string): Promise<ActivityRow[]> {
 
   const assessments = new Map<string, AssessmentQueryRow>();
   const routes = new Map<string, RouteQueryRow>();
-  if (registrationIds.length > 0) {
+  // Keep UUID filters below the production gateway's request URI limit.
+  const registrationBatchSize = 100;
+  for (let offset = 0; offset < registrationIds.length; offset += registrationBatchSize) {
+    const batchIds = registrationIds.slice(offset, offset + registrationBatchSize);
     const [assessmentResult, routeResult] = await Promise.all([
       from(supabase)("business_assessment_results")
         .select("id,activity_registration_id,assessment_band,score,strengths,focus_areas,parent_concerns,teacher_recommendation,recommended_class,updated_at,assessor:profiles!assessment_results_assessed_by_fkey(display_name)")
-        .in("activity_registration_id", registrationIds)
+        .in("activity_registration_id", batchIds)
         .returns<AssessmentQueryRow[]>(),
       from(supabase)("activity_routes")
         .select("id,activity_registration_id,route,note,updated_at,routed_by:profiles!activity_routes_routed_by_fkey(display_name)")
-        .in("activity_registration_id", registrationIds)
+        .in("activity_registration_id", batchIds)
         .returns<RouteQueryRow[]>(),
     ]);
     if (assessmentResult.error) throw new Error(assessmentResult.error.message);
