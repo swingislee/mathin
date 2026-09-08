@@ -33,6 +33,43 @@ describe("staff fact overview contract", () => {
     expect(comparison.previous).toBe(1);
     expect(comparison.trend).toHaveLength(7);
     expect(comparison.trend[4]?.current).toBeNull();
+    expect(comparison.trend[4]?.previous).toBeNull();
+  });
+
+  it("draws the full previous month while comparing numbers at the same cutoff", () => {
+    const timeZone = "Asia/Shanghai";
+    const window = buildStaffOverviewWindow("month", new Date("2026-09-08T10:30:00+08:00"), timeZone);
+    const comparison = aggregateStaffOverviewEvents([
+      { at: "2026-08-01T09:00:00+08:00" },
+      { at: "2026-08-08T11:00:00+08:00" },
+      { at: "2026-08-31T23:59:59+08:00" },
+      { at: "2026-09-08T10:00:00+08:00" },
+      { at: "2026-09-08T11:00:00+08:00" },
+      { at: "2026-07-31T23:59:59+08:00" },
+    ], window, timeZone);
+    expect(comparison).toMatchObject({ current: 1, previous: 1 });
+    expect(comparison.trend).toHaveLength(31);
+    expect(comparison.trend[7]).toMatchObject({ current: 1, previous: 1 });
+    expect(comparison.trend[8]).toMatchObject({ current: null, previous: 0 });
+    expect(comparison.trend[30]).toMatchObject({ current: null, previous: 1 });
+    expect(comparison.trend.reduce((sum, point) => sum + (point.previous ?? 0), 0)).toBe(3);
+  });
+
+  it("deduplicates full-month trends independently from comparable totals", () => {
+    const timeZone = "Asia/Shanghai";
+    const window = buildStaffOverviewWindow("month", new Date("2026-09-08T10:30:00+08:00"), timeZone);
+    const comparison = aggregateStaffOverviewEvents([
+      { id: "reconfirmed", at: "2026-08-31T09:00:00+08:00" },
+      { id: "reconfirmed", at: "2026-08-01T09:00:00+08:00" },
+      { id: "late", at: "2026-08-30T09:00:00+08:00" },
+      { id: "late", at: "2026-08-20T09:00:00+08:00" },
+      { id: "reconfirmed", at: "2026-09-01T09:00:00+08:00" },
+    ], window, timeZone, true);
+    expect(comparison).toMatchObject({ current: 1, previous: 1 });
+    expect(comparison.trend[0]).toMatchObject({ current: 1, previous: 1 });
+    expect(comparison.trend[19]?.previous).toBe(1);
+    expect(comparison.trend[29]?.previous).toBe(0);
+    expect(comparison.trend[30]?.previous).toBe(0);
   });
 
   it("counts repeated confirmation transitions once per invitation in each period", () => {

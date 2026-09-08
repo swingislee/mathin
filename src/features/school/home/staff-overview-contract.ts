@@ -188,8 +188,8 @@ export interface StaffOverviewTeacherOutcomeSummary {
 }
 
 /**
- * 将发生事实放入本期/上期的日历日桶。未来日期为 null，已经过但无记录的日期为 0；
- * 两者在图上含义不同，不能把“尚未发生”画成“发生了 0 次”。
+ * 数字按同期截止比较；月趋势展示本月至今和完整上月，周趋势保持同期截止。
+ * 未来日期为 null，已经过但无记录的日期为 0。
  */
 export function aggregateStaffOverviewEvents(
   events: readonly StaffOverviewFactEvent[],
@@ -202,36 +202,42 @@ export function aggregateStaffOverviewEvents(
   const pointCount = Math.max(window.currentDays.length, window.previousDays.length);
   const currentValues = Array<number | null>(pointCount).fill(null);
   const previousValues = Array<number | null>(pointCount).fill(null);
+  const previousTrendCutoff = window.grain === "month" ? window.previousEnd : window.previousCutoff;
 
   window.currentDays.forEach((day, index) => {
     if (day < window.currentCutoff) currentValues[index] = 0;
   });
   window.previousDays.forEach((day, index) => {
-    if (day < window.previousCutoff) previousValues[index] = 0;
+    if (day < previousTrendCutoff) previousValues[index] = 0;
   });
 
   const seen = new Set<string>();
+  const trendSeen = new Set<string>();
   let current = 0;
   let previous = 0;
-  for (const event of events) {
+  // 去重事实的趋势归入周期内最早发生日，独立于来源返回顺序。
+  const orderedEvents = uniquePerPeriod ? [...events].sort((a, b) => Date.parse(a.at) - Date.parse(b.at)) : events;
+  for (const event of orderedEvents) {
     const instant = new Date(event.at);
     if (Number.isNaN(instant.getTime())) continue;
     const inCurrent = instant >= window.currentStart && instant < window.currentCutoff;
     const inPrevious = instant >= window.previousStart && instant < window.previousCutoff;
-    if (!inCurrent && !inPrevious) continue;
+    const inPreviousTrend = instant >= window.previousStart && instant < previousTrendCutoff;
+    if (!inCurrent && !inPreviousTrend) continue;
     const period = inCurrent ? "current" : "previous";
-    if (uniquePerPeriod && event.id) {
-      const uniqueKey = `${period}:${event.id}`;
-      if (seen.has(uniqueKey)) continue;
-      seen.add(uniqueKey);
+    const uniqueKey = uniquePerPeriod && event.id ? `${period}:${event.id}` : null;
+    if ((inCurrent || inPrevious) && (!uniqueKey || !seen.has(uniqueKey))) {
+      if (inCurrent) current += 1;
+      else previous += 1;
+      if (uniqueKey) seen.add(uniqueKey);
     }
+    if (uniqueKey && trendSeen.has(uniqueKey)) continue;
     const index = (inCurrent ? currentIndex : previousIndex).get(calendarDayKey(instant, timeZone));
     if (index === undefined) continue;
+    if (uniqueKey) trendSeen.add(uniqueKey);
     if (inCurrent) {
-      current += 1;
       currentValues[index] = (currentValues[index] ?? 0) + 1;
     } else {
-      previous += 1;
       previousValues[index] = (previousValues[index] ?? 0) + 1;
     }
   }

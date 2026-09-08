@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { StaffOverviewDrilldown, OverviewDetailTrigger, OverviewDetailRow } from "./StaffOverviewDrilldown";
 import type { OverviewDetailQuery } from "./staff-overview-drilldown-contract";
 import { cookies } from "next/headers";
@@ -27,6 +27,7 @@ import type { HomeProps, Translator } from "./shared";
 import { staffHomeHref } from "./staff-home-contract";
 import { StaffHomeViewTabs } from "./StaffHomeViewTabs";
 import { StaffOverviewDataNote } from "./StaffOverviewDataNote";
+import { StaffOverviewHint } from "./StaffOverviewHint";
 import { StaffOverviewPeriodPicker } from "./StaffOverviewPeriodPicker";
 import { StaffOverviewRefreshButton } from "./StaffOverviewRefreshButton";
 import {
@@ -104,9 +105,9 @@ function MiniTrend({ points }: { points: StaffOverviewTrendPoint[] | null }) {
     .join(" ");
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="mt-1 h-6 w-full" aria-hidden>
-      <polyline points={line("previous")} className="fill-none stroke-muted/65" strokeWidth="1.3" strokeDasharray="3 3" />
-      <polyline points={line("current")} className="fill-none stroke-rose" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="mt-1 h-6 w-full" aria-hidden>
+      <polyline points={line("previous")} className="fill-none stroke-muted/65" vectorEffect="non-scaling-stroke" strokeWidth="1.3" strokeDasharray="3 3" />
+      <polyline points={line("current")} className="fill-none stroke-rose" vectorEffect="non-scaling-stroke" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -126,6 +127,7 @@ function BusinessFactBand({
   labels,
   currentLabel,
   previousLabel,
+  previousTrendLabel,
   differenceLabel,
   goals,
   t,
@@ -135,6 +137,7 @@ function BusinessFactBand({
   labels: MetricLabels;
   currentLabel: string;
   previousLabel: string;
+  previousTrendLabel: string;
   differenceLabel: string;
   goals: MonthlyTargetRead;
   t: Translator;
@@ -148,7 +151,7 @@ function BusinessFactBand({
         <h2 id="staff-overview-business-facts" className="text-xs font-medium text-ink">{title}</h2>
         <p className="flex shrink-0 items-center gap-2 text-[10px] text-muted">
           <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-full bg-rose" />{currentLabel}</span>
-          <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-full bg-muted" />{previousLabel}</span>
+          <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-full bg-muted" />{previousTrendLabel}</span>
         </p>
       </div>
       <div className="grid min-w-0 grid-cols-2 gap-2 @2xl/page:grid-cols-3 @4xl/page:grid-cols-6">
@@ -218,11 +221,11 @@ function PendingStrip({
           key={fact.key}
           query={{ kind: "pending", metric: fact.key }}
           title={fullLabel(fact.key)}
-          className="flex min-h-10 min-w-0 items-center gap-1.5 bg-card px-2.5 text-muted transition-colors hover:bg-moon/15 hover:text-ink"
+          className={cn("group flex min-h-10 min-w-0 items-center gap-1.5 bg-card px-2.5 text-muted transition-colors hover:bg-moon/15 hover:text-ink", fact.value === 0 && "bg-card/70")}
         >
           <span className="min-w-0 flex-1 truncate text-[10px]">{shortLabel(fact.key)}</span>
-          <strong className="shrink-0 font-display text-base font-normal tabular-nums text-ink">{valueOrDash(fact.value)}</strong>
-          <ArrowUpRight className="size-3 shrink-0" aria-hidden />
+          <strong className={cn("shrink-0 font-display text-base font-normal tabular-nums", fact.value === 0 ? "text-muted" : "text-ink")}>{valueOrDash(fact.value)}</strong>
+          <ArrowUpRight className={cn("size-3 shrink-0", fact.value === 0 && "opacity-35 group-hover:opacity-100 group-focus-visible:opacity-100")} aria-hidden />
         </OverviewDetailTrigger>
       ))}
     </section>
@@ -259,22 +262,28 @@ function CockpitPanel({
   );
 }
 
+function comparisonWidths(values: StaffOverviewPersonMetric[]): CSSProperties {
+  const width = (key: "current" | "previous") => `${Math.max(2, ...values.map(value => valueOrDash(value[key]).length))}ch`;
+  return { "--overview-current-width": width("current"), "--overview-previous-width": width("previous") } as CSSProperties;
+}
+
 function PersonComparisonCell({ value, previousLabel, query, title }: { value: StaffOverviewPersonMetric; previousLabel: string; query: OverviewDetailQuery; title: string }) {
-  return <span className="inline-flex items-baseline justify-end gap-1.5 whitespace-nowrap tabular-nums" title={previousLabel}>
-    <OverviewDetailTrigger query={query} title={title} className="rounded px-0.5 text-sm font-medium text-ink">{valueOrDash(value.current)}</OverviewDetailTrigger>
-    <OverviewDetailTrigger query={{ ...query, period: "previous" }} title={`${title} · ${previousLabel}`} className="rounded px-0.5 text-[10px] text-muted">/ {valueOrDash(value.previous)}</OverviewDetailTrigger>
+  return <span className="inline-grid grid-cols-[auto_0.5ch_auto] items-baseline gap-x-0.5 whitespace-nowrap tabular-nums" title={previousLabel}>
+    <OverviewDetailTrigger query={query} title={title} className="box-content w-[var(--overview-current-width)] rounded px-0.5 text-right text-sm font-medium text-ink">{valueOrDash(value.current)}</OverviewDetailTrigger>
+    <span className="text-center text-[10px] text-muted" aria-hidden>/</span>
+    <OverviewDetailTrigger query={{ ...query, period: "previous" }} title={`${title} · ${previousLabel}`} className="box-content w-[var(--overview-previous-width)] rounded px-0.5 text-right text-[10px] text-muted">{valueOrDash(value.previous)}</OverviewDetailTrigger>
   </span>;
 }
 
-function SupportFunnelPanel({ rows, title, settings, metricLabels, currentLabel, previousLabel, peopleLabel, personLabel, unassignedLabel, otherLabel, attributionNote, emptyLabel }: {
+function SupportFunnelPanel({ rows, title, settings, metricLabels, currentLabel, previousLabel, peopleLabel, personLabel, unassignedLabel, otherLabel, emptyLabel }: {
   rows: StaffOverviewSupportFunnelRow[]; title: ReactNode; metricLabels: MetricLabels; currentLabel: string;
   settings: ReactNode;
-  previousLabel: string; peopleLabel: string; personLabel: string; unassignedLabel: string; otherLabel: string; attributionNote: string; emptyLabel: string;
+  previousLabel: string; peopleLabel: string; personLabel: string; unassignedLabel: string; otherLabel: string; emptyLabel: string;
 }) {
   return <CockpitPanel timeScope="period" panel="support" title={title} meta={peopleLabel} actions={settings}
     className="min-h-64 @4xl/page:col-span-2 @6xl/page:col-span-1" bodyClassName="flex min-h-0 flex-col">
     <p className="shrink-0 px-3 py-1.5 text-[10px] text-muted">{currentLabel} / {previousLabel}</p>
-    <Table containerClassName="min-h-0 flex-1 overflow-auto" className="min-w-[29rem] text-xs">
+    <Table containerClassName="min-h-0 flex-1 overflow-auto" className="min-w-[29rem] text-xs" style={comparisonWidths(rows.flatMap(row => STAFF_OVERVIEW_METRICS.map(metric => row.metrics[metric])))}>
       <TableHeader className="sticky top-0 z-10 bg-card"><TableRow>
         <TableHead className="h-8 w-24 px-3 text-[10px]">{personLabel}</TableHead>
         {STAFF_OVERVIEW_METRICS.map(metric => <TableHead key={metric} className="h-8 px-1.5 text-right text-[10px] whitespace-nowrap">{metricLabels[metric]}</TableHead>)}
@@ -285,7 +294,6 @@ function SupportFunnelPanel({ rows, title, settings, metricLabels, currentLabel,
       </OverviewDetailRow>)}</TableBody>
     </Table>
     {rows.length === 0 ? <p className="px-4 py-8 text-center text-xs text-muted">{emptyLabel}</p> : null}
-    <p className="shrink-0 border-t border-line/70 px-3 py-1.5 text-[10px] leading-4 text-muted">{attributionNote}</p>
   </CockpitPanel>;
 }
 
@@ -309,7 +317,6 @@ function TeacherOutcomePanel({
   enrollmentLabel,
   conversionLabel,
   unattributedLabel,
-  note,
   emptyLabel,
 }: {
   title: ReactNode;
@@ -324,7 +331,6 @@ function TeacherOutcomePanel({
   enrollmentLabel: string;
   conversionLabel: string;
   unattributedLabel: string;
-  note: string;
   emptyLabel: string;
 }) {
 
@@ -354,7 +360,7 @@ function TeacherOutcomePanel({
           </dl></OverviewDetailTrigger>
         ))}
       </div>
-      <Table containerClassName="min-h-0 flex-1 overflow-auto" className="text-xs">
+      <Table containerClassName="min-h-0 flex-1 overflow-auto" className="text-xs" style={comparisonWidths(rows.flatMap(row => [row.participants, row.enrollments]))}>
         <TableHeader className="sticky top-0 z-10 bg-card"><TableRow>
           <TableHead className="h-8 px-3 text-[10px]">{teacherLabel}</TableHead>
           <TableHead className="h-8 px-2 text-right text-[10px]">{participantLabel}</TableHead>
@@ -369,7 +375,6 @@ function TeacherOutcomePanel({
         </OverviewDetailRow>)}</TableBody>
       </Table>
       {rows.length === 0 ? <p className="px-4 py-8 text-center text-xs text-muted">{emptyLabel}</p> : null}
-      <p className="shrink-0 border-t border-line/70 px-3 py-1.5 text-[9px] leading-4 text-muted">{note}</p>
     </CockpitPanel>
   );
 }
@@ -379,7 +384,7 @@ function CapacityGroup({ title, rows, emptyLabel, labels }: {
   labels: { classes: string; minimum: string; healthy: string; remaining: string; enrolled: string };
 }) {
   return <>
-    <Table containerClassName="min-h-0 flex-1 overflow-auto" className="text-xs">
+    <Table containerClassName="min-h-0 flex-1 overflow-auto" className="text-xs" style={comparisonWidths(rows.map(row => ({ current: row.enrolledSeats, previous: row.fullSeats })))}>
       <TableHeader className="sticky top-0 z-10 bg-card"><TableRow>
         {[title, labels.classes, labels.enrolled, labels.minimum, labels.healthy, labels.remaining].map((label, i) =>
           <TableHead key={label} className={cn("h-8 px-2 text-[10px] whitespace-nowrap", i > 0 && "text-right")}>{label}</TableHead>)}
@@ -389,7 +394,11 @@ function CapacityGroup({ title, rows, emptyLabel, labels }: {
           {row.label}
         </TableCell>
         <TableCell className="px-2 py-1.5 text-right tabular-nums"><OverviewDetailTrigger query={{ kind: "capacity", group: row.group, scope: row.key }} title={`${row.label} · ${labels.classes}`}>{valueOrDash(row.classCount)}</OverviewDetailTrigger></TableCell>
-        <TableCell className="px-2 py-1.5 text-right tabular-nums whitespace-nowrap"><OverviewDetailTrigger query={{ kind: "capacity", group: row.group, scope: row.key, metric: "enrolledSeats" }} title={`${row.label} · ${labels.enrolled}`}>{valueOrDash(row.enrolledSeats)}</OverviewDetailTrigger><OverviewDetailTrigger query={{ kind: "capacity", group: row.group, scope: row.key, metric: "fullSeats" }} title={row.label} className="text-[10px] text-muted">/{valueOrDash(row.fullSeats)}</OverviewDetailTrigger></TableCell>
+        <TableCell className="px-2 py-1.5 text-right tabular-nums whitespace-nowrap"><span className="inline-grid grid-cols-[auto_0.5ch_auto] items-baseline gap-x-0.5">
+          <OverviewDetailTrigger query={{ kind: "capacity", group: row.group, scope: row.key, metric: "enrolledSeats" }} title={`${row.label} · ${labels.enrolled}`} className="box-content w-[var(--overview-current-width)] px-0.5 text-right">{valueOrDash(row.enrolledSeats)}</OverviewDetailTrigger>
+          <span className="text-center text-[10px] text-muted" aria-hidden>/</span>
+          <OverviewDetailTrigger query={{ kind: "capacity", group: row.group, scope: row.key, metric: "fullSeats" }} title={row.label} className="box-content w-[var(--overview-previous-width)] px-0.5 text-right text-[10px] text-muted">{valueOrDash(row.fullSeats)}</OverviewDetailTrigger>
+        </span></TableCell>
         <TableCell className="px-2 py-1.5 text-right tabular-nums"><OverviewDetailTrigger query={{ kind: "capacity", group: row.group, scope: row.key, metric: "minimumOpenGap" }} title={`${row.label} · ${labels.minimum}`}>{valueOrDash(row.minimumOpenGap)}</OverviewDetailTrigger></TableCell>
         <TableCell className="px-2 py-1.5 text-right tabular-nums"><OverviewDetailTrigger query={{ kind: "capacity", group: row.group, scope: row.key, metric: "healthyDelta" }} title={`${row.label} · ${labels.healthy}`}>{signedOrDash(row.healthyDelta)}</OverviewDetailTrigger></TableCell>
         <TableCell className="px-2 py-1.5 text-right tabular-nums"><OverviewDetailTrigger query={{ kind: "capacity", group: row.group, scope: row.key, metric: "remainingSeats" }} title={`${row.label} · ${labels.remaining}`}>{valueOrDash(row.remainingSeats)}</OverviewDetailTrigger></TableCell>
@@ -410,7 +419,6 @@ function CapacityPanel({
   teacherEmpty,
   gradeEmpty,
   labels,
-  policy,
   classrooms,
   classroomTitle,
   classroomEmpty,
@@ -425,7 +433,6 @@ function CapacityPanel({
   teacherEmpty: string;
   gradeEmpty: string;
   labels: { classes: string; minimum: string; healthy: string; remaining: string; enrolled: string };
-  policy: string;
   classrooms: OverviewClassroomOccupancy[];
   classroomTitle: string;
   classroomEmpty: string;
@@ -451,7 +458,7 @@ function CapacityPanel({
             title={item.label}
           ><dl className="contents">
             <dt className="truncate text-[9px] text-muted">{item.label}</dt>
-            <dd className="shrink-0 font-display text-base leading-none tabular-nums text-ink">{item.value}</dd>
+            <dd className="shrink-0 font-display text-base leading-none tabular-nums text-ink" title={item.note}>{item.value}</dd>
           </dl></OverviewDetailTrigger>
         ))}
       </div>
@@ -465,7 +472,6 @@ function CapacityPanel({
             remainingSeats: row.enrolledSeats === null || row.full === null ? null : Math.max(0, row.full - row.enrolledSeats) }))} />}
         teachers={<CapacityGroup title={teacherTitle} rows={teachers} emptyLabel={teacherEmpty} labels={labels} />}
         grades={<CapacityGroup title={gradeTitle} rows={grades} emptyLabel={gradeEmpty} labels={labels} />} />
-      <p className="shrink-0 truncate border-t border-line/70 px-3 py-1.5 text-[9px] text-muted" title={policy}>{policy}</p>
     </CockpitPanel>
   );
 }
@@ -569,8 +575,8 @@ export async function StaffFactOverviewHome({
     { label: t("snapshotActiveStudents"), value: valueOrDash(data.snapshot.activeStudents), note: t("snapshotActiveStudentsNote") },
     { label: t("snapshotActiveClasses"), value: valueOrDash(data.snapshot.activeClasses), note: t("snapshotActiveClassesNote") },
     { label: t("snapshotEnrolledSeats"), value: valueOrDash(data.snapshot.enrolledSeats), note: t("snapshotEnrolledSeatsNote") },
-    { label: t("snapshotHealthyDelta"), value: signedOrDash(data.snapshot.healthyDelta), note: t("snapshotHealthyDeltaNote") },
-    { label: t("snapshotRemainingSeats"), value: valueOrDash(data.snapshot.remainingSeats), note: t("snapshotRemainingSeatsNote") },
+    { label: t("snapshotHealthyDelta"), value: signedOrDash(data.snapshot.healthyDelta), note: t(data.snapshot.healthyDelta !== null ? "snapshotHealthyDeltaNote" : data.classroomRows.some(row => row.healthy === null) ? "snapshotHealthyMissingNote" : "snapshotUnavailableNote") },
+    { label: t("snapshotRemainingSeats"), value: valueOrDash(data.snapshot.remainingSeats), note: t(data.snapshot.remainingSeats !== null ? "snapshotRemainingSeatsNote" : data.classroomRows.some(row => row.full === null) ? "snapshotFullMissingNote" : "snapshotUnavailableNote") },
   ];
   const capacityLabels = {
     classes: t("shortClasses"),
@@ -656,6 +662,7 @@ export async function StaffFactOverviewHome({
           labels={metricLabels}
           currentLabel={t("currentShort")}
           previousLabel={previousLabel}
+          previousTrendLabel={grain === "month" ? t("previousMonthTrend") : previousLabel}
           differenceLabel={t("differenceColumn")}
           goals={goals}
           t={t}
@@ -673,8 +680,9 @@ export async function StaffFactOverviewHome({
           <SupportFunnelPanel
             rows={supportDisplay.rows}
             title={<ScopeTitle label={t("periodScope")}>{t("supportFunnelTitle")}</ScopeTitle>}
-            settings={<StaffOverviewDisplayPicker ariaLabel={t("displaySettingsFor", { panel: t("supportFunnelTitle") })}
-              groups={[displayGroup("support", t("role_learningSupport"), supportDisplay)]} />}
+            settings={<><StaffOverviewHint label={`${t("supportFunnelTitle")} · ${t("dataNoteTrigger")}`}>{t("supportDisplayFootnote")}</StaffOverviewHint>
+              <StaffOverviewDisplayPicker ariaLabel={t("displaySettingsFor", { panel: t("supportFunnelTitle") })}
+                groups={[displayGroup("support", t("role_learningSupport"), supportDisplay)]} /></>}
             metricLabels={metricLabels}
             currentLabel={t("currentShort")}
             previousLabel={previousLabel}
@@ -682,15 +690,15 @@ export async function StaffFactOverviewHome({
             personLabel={t("role_learningSupport")}
             unassignedLabel={t("unassignedPerson")}
             otherLabel={t("otherStaff")}
-            attributionNote={t("supportDisplayFootnote")}
             emptyLabel={t("supportFunnelEmpty")}
           />
 
 
             <TeacherOutcomePanel
               title={<ScopeTitle label={t("periodScope")}>{t("teacherOutcomeTitle")}</ScopeTitle>}
-              settings={<StaffOverviewDisplayPicker ariaLabel={t("displaySettingsFor", { panel: t("teacherOutcomeTitle") })}
-                groups={[displayGroup("participation", t("role_teacher"), teacherDisplay)]} />}
+              settings={<><StaffOverviewHint label={`${t("teacherOutcomeTitle")} · ${t("dataNoteTrigger")}`}>{t("teacherOutcomeNote")}</StaffOverviewHint>
+                <StaffOverviewDisplayPicker ariaLabel={t("displaySettingsFor", { panel: t("teacherOutcomeTitle") })}
+                  groups={[displayGroup("participation", t("role_teacher"), teacherDisplay)]} /></>}
               rows={teacherDisplay.rows}
               summary={data.teacherParticipationSummary}
               currentLabel={t("currentShort")}
@@ -701,14 +709,14 @@ export async function StaffFactOverviewHome({
               enrollmentLabel={t("teacherEnrollments")}
               conversionLabel={t("teacherConversion")}
               unattributedLabel={t("teacherUnattributed")}
-              note={t("teacherOutcomeNote")}
               emptyLabel={t(teacherDisplay.selectedIds.length === 0 ? "displayEmpty" : "teacherOutcomeEmpty")}
             />
 
             <CapacityPanel
               title={<ScopeTitle label={t("currentScope")} current>{t("capacityTermTitle", { term: data.currentTermName ?? t("unknownSchoolTerm") })}</ScopeTitle>}
-              settings={<StaffOverviewDisplayPicker ariaLabel={t("displaySettingsFor", { panel: t("capacityByTeacher") + " / " + t("capacityByGrade") })}
-                groups={[displayGroup("capacity_teachers", t("capacityByTeacher"), capacityTeacherDisplay), displayGroup("capacity_grades", t("capacityByGrade"), capacityGradeDisplay)]} />}
+              settings={<><StaffOverviewHint label={`${t("snapshotTitle")} · ${t("dataNoteTrigger")}`}>{t("capacityPolicyNote")}</StaffOverviewHint>
+                <StaffOverviewDisplayPicker ariaLabel={t("displaySettingsFor", { panel: t("capacityByTeacher") + " / " + t("capacityByGrade") })}
+                  groups={[displayGroup("capacity_teachers", t("capacityByTeacher"), capacityTeacherDisplay), displayGroup("capacity_grades", t("capacityByGrade"), capacityGradeDisplay)]} /></>}
               snapshotItems={snapshotItems}
               teachers={capacityTeachers.filter(row => capacityTeacherDisplay.selectedIds.includes(row.key))}
               grades={capacityGrades.filter(row => capacityGradeDisplay.selectedIds.includes(row.key))}
@@ -717,7 +725,6 @@ export async function StaffFactOverviewHome({
               teacherEmpty={t(capacityTeacherDisplay.selectedIds.length === 0 ? "displayEmpty" : "teacherEmpty")}
               gradeEmpty={data.capacityAvailable ? t(capacityGradeDisplay.selectedIds.length === 0 ? "displayEmpty" : "capacityEmpty") : t("capacityUnavailable")}
               labels={capacityLabels}
-              policy={t("capacityPolicyCompact")}
               classrooms={data.classroomRows}
               classroomTitle={t("classroomName")}
               classroomEmpty={t(data.capacityAvailable ? "capacityEmpty" : "capacityUnavailable")}
