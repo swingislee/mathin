@@ -43,6 +43,7 @@ failure_ticket
 | DEV-SCHOOL-OPS · 紧凑总览与展示名单 | development available；pending visual and interaction acceptance | 2026-09-08 | [修复日历标题、配置学服展示名单、三栏紧凑表格及班容切换](staff-overview-compact-20260908.md) |
 | DEV-SCHOOL-OPS · 六月总览核对 | 只读核对完成；月份、日期及来源范围差异已定位 | 2026-09-08 | [按 base 配置复算六月总计、学服、组别与年级，定位缺日期、跨月／跨年及诺访目标卡筛选差异](staff-overview-june-feishu-20260908.md) |
 | DEV-SCHOOL-OPS · 八月总览核对 | 只读核对完成；37 张基准图表复现，日期解析及统计差异待处理 | 2026-09-08 | [5,212 条来源档案逐条一致；定位报名、到访、诺访、获客差额与动态英语／诺访目标配置](staff-overview-august-feishu-20260908.md) |
+| DEV-SCHOOL-OPS · 五项经营指标来源定位 | 只读定位完成；统计修正与业务验收待完成 | 2026-09-08 | [逐条定位九月报名旧名册回流、测评与沟通定义差异、历史到访和邀约归月及来源混用](funnel-metric-source-diagnosis-20260908.md) |
 | DEV-SCHOOL-OPS · 区块展示设置 | development available；persistence checks passed；pending visual and interaction acceptance | 2026-09-08 | [学服、老师参与、班级容量独立展示设置；中文来源署名保存修复及实际重载验证](staff-overview-panel-settings-20260908.md) |
 | DEV-SCHOOL-OPS · 总览清理与飞书对照 | 开发端已交付；获客 92、报名 7、到访 31；缺日期报名与在读名单待核对 | 2026-09-08 | [固定 1,391 行测试记录清理、来源日期与报名去重、老师参与归属及在读逐人差异检查点](staff-overview-cleanup-feishu-20260908.md) |
 | DEV-SCHOOL-OPS · 7 月总览来源核对 | 只读核对完成；月份标签、日期及重复登记差异待业务核定 | 2026-09-08 | [49 个图表原配置复算、5,212 条来源完整性、报名 20／到访 47／诺访 71／获客 357 的逐条差额与旧筛选配置](staff-overview-july-20260908.md) |
