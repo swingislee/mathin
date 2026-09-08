@@ -12838,6 +12838,37 @@ export type Database = {
           },
         ]
       }
+      student_stage_entry_receipts: {
+        Row: {
+          actor_id: string
+          created_at: string
+          fingerprint: string
+          request_id: string
+          result: Json
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          fingerprint: string
+          request_id: string
+          result: Json
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          fingerprint?: string
+          request_id?: string
+          result?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_stage_entry_receipts_actor_id_fkey"
+            columns: ["actor_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       students: {
         Row: {
           assigned_to: string | null
@@ -15589,6 +15620,10 @@ export type Database = {
           p_teacher_id: string
         }
         Returns: number
+      }
+      assign_student_stage_subjects: {
+        Args: { p_staff_user_id: string; p_subjects: Json }
+        Returns: Json
       }
       assigned_of_student: {
         Args: { sid: string; uid: string }
@@ -18516,6 +18551,17 @@ export type Database = {
           scope: string[]
         }[]
       }
+      list_student_stage_workspace: {
+        Args: {
+          p_detail: string
+          p_page: number
+          p_page_size: number
+          p_scope: string
+          p_search: string
+          p_stage: string
+        }
+        Returns: Json
+      }
       list_substitute_candidates: {
         Args: { p_session_id: string }
         Returns: {
@@ -19084,6 +19130,10 @@ export type Database = {
       r1_resolve_object_protection_manifest: {
         Args: { p_required: boolean }
         Returns: string
+      }
+      read_student_stage_subject: {
+        Args: { p_lead_id: string; p_student_id: string }
+        Returns: Json
       }
       reassign_assessment_assessor: {
         Args: { p_assessor_id: string; p_invitation_id: string }
@@ -20395,6 +20445,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      save_student_stage_entry: {
+        Args: { p_payload: Json; p_request_id: string }
+        Returns: Json
+      }
       save_teacher_assessment_observation: {
         Args: { p_observation?: string; p_registration_id: string }
         Returns: undefined
@@ -20766,6 +20820,17 @@ export type Database = {
       start_session_preparation: {
         Args: { p_session_id: string }
         Returns: undefined
+      }
+      student_stage_workspace_index: {
+        Args: { p_scope: string; p_search: string }
+        Returns: {
+          created_at: string
+          detail: string
+          key: string
+          lead_id: string
+          stage: string
+          student_id: string
+        }[]
       }
       student_star_total: { Args: { p_student_id: string }; Returns: number }
       submit_assignment: {

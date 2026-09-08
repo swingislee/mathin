@@ -100,7 +100,7 @@ describe('source identity and revisions', () => {
   it('retains distinct class files even when both contain identical empty headers', () => {
     const input = ['甲班-1.xlsx', '乙班-2.xlsx'].map(filename => ({ ...workbook(filename, [row('same-table', 1, { A: '班级名称' })]), source: { filename, sha256: 'identical' } }));
     const result = locateWorkbooks(input, input.map(w => ({ path: `导出/班级学生明细/${w.source.filename}`, sha256: 'identical' })));
-    expect(new Set(result.map(w => w.records[0].key)).size).toBe(2);
+    expect(new Set(result.map((w: { records: { key: string }[] }) => w.records[0].key)).size).toBe(2);
     expect(input[0].records[0].key).toBe('same-table:1');
   });
   it('splits horizontal students at source cells and retains each class block context', () => {
@@ -121,7 +121,7 @@ describe('source identity and revisions', () => {
     const before = { source: { id: 'base', sha256: 'before' }, records: [record('keep', '原姓名', [{ text: '原姓名' }]), record('absent', '离开本次导出', '')] };
     const after = { source: { id: 'base', sha256: 'after' }, records: [record('keep', '原姓名', [{ text: '原姓名', type: 'text' }]), record('new', '新记录', '')] };
     const result = compareBaseRevisions(before, after);
-    expect(result.totals).toMatchObject({ changedRecords: 0, changedFields: 0, representationChangedRecords: 1, addedRecords: 1, absentRecords: 1 });
+    expect(result?.totals).toMatchObject({ changedRecords: 0, changedFields: 0, representationChangedRecords: 1, addedRecords: 1, absentRecords: 1 });
     expect(before.records).toHaveLength(2);
   });
 });

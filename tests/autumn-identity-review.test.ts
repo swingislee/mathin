@@ -45,7 +45,7 @@ describe('autumn student review', () => {
     snapshot.tables.students.push({ ...snapshot.tables.students[0], id: 'sibling', name: '林小宁' });
     const result = buildAutumnIdentityReview(source, snapshot).rows[0];
     expect(result).toMatchObject({ decision: 'needs_review', targetId: null });
-    expect(result.studentCandidates.map(row => row.id)).toEqual(['student-1', 'sibling']);
+    expect(result.studentCandidates.map((row: { id: string }) => row.id)).toEqual(['student-1', 'sibling']);
     expect(result.contactCandidates[0].sourcePositions).toEqual(['历史.base / 历史表 / history-one']);
   });
   it('keeps conflicting source owners, renamed targets and deleted students for review', () => {

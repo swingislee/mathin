@@ -204,7 +204,7 @@ export function createPersonIndex(people) {
 }
 
 /** 姓名与完整电话共同命中；电话属于家庭，姓名不足时只给候选。 */
-export function matchPerson({ name, phones = [] }, index) {
+export function matchPerson({ name, phones = /** @type {string[]} */ ([]) }, index) {
   const nameIds = [...(index.names.get(normalizeName(name)) ?? [])];
   const phoneIds = unique(phones.flatMap(phone => [...(index.phones.get(phone) ?? [])]));
   const exactIds = nameIds.filter(id => phones.length > 0 && phones.every(phone => index.people.get(id).phones.includes(phone)));
@@ -341,7 +341,7 @@ export function compareBaseRevisions(previous, current) {
       representationChangedRecords: representationChanges.length, representationChangedFields: representationChanges.reduce((n, row) => n + row.fieldIds.length, 0) } };
 }
 
-export function reconcileSources({ base, referenceBases = [], workbooks: extracted, manifest, confirmedStaffAliases = [], confirmedStaffDecisions = [], previousBase = null }) {
+export function reconcileSources({ base, referenceBases = /** @type {{source: {filename: string}, records: object[]}[]} */ ([]), workbooks: extracted, manifest, confirmedStaffAliases = [], confirmedStaffDecisions = [], previousBase = null }) {
   const workbooks = locateWorkbooks(extracted, manifest);
   const employeeBook = workbooks.find(workbook => workbook.source.filename === '员工管理.xlsx');
   if (!employeeBook) throw new Error('EMPLOYEE_SOURCE_REQUIRED');
