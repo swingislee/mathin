@@ -111,7 +111,10 @@ const backupHash = hash.digest('hex');
 const toc = spawn('docker.exe',['--context','desktop-linux','exec','-i','supabase-db','pg_restore','--list'],{shell:false,windowsHide:true,stdio:['pipe','pipe','pipe']});
 let tocRows=0; toc.stdout.on('data',chunk=>{tocRows+=chunk.toString().split('\n').length-1;}); toc.stderr.resume();
 const verified = new Promise((resolve,reject)=>{toc.on('error',reject);toc.on('close',code=>code===0?resolve():reject(new Error('BACKUP_TOC_FAILED')));});
-await Promise.all([pipeline(fs.createReadStream(backup),toc.stdin),verified]);
+// pg_restore --list 只读取归档头和目录，成功退出时可提前关闭尚未送完的 stdin。
+const inputResult = await pipeline(fs.createReadStream(backup),toc.stdin).then(()=>null,error=>error);
+await verified;
+if (inputResult && !['EPIPE','EOF'].includes(inputResult.code)) throw inputResult;
 if(tocRows<100)throw new Error('BACKUP_TOC_INCOMPLETE');
 fs.writeFileSync(path.join(output,'backup.json'),JSON.stringify({backup,sha256:backupHash,bytes:fs.statSync(backup).size,tocRows,codeHash}), 'utf8');
 console.log(JSON.stringify({backup:'verified',bytes:fs.statSync(backup).size,tocRows}));
