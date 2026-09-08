@@ -69,6 +69,18 @@ describe("courseware workbench mode unification", () => {
     expect(microcourseWorkspace).not.toContain("<Plus");
   });
 
+  it("shares page management controls and deletion confirmation across formal and microcourse editors", () => {
+    const formalManagement = read("src/features/courseware-studio/FormalCoursewarePageActions.tsx");
+    expect(workbench).toContain("export function CoursewareWorkbenchPageActions");
+    expect(formalWorkspace).toContain("footer: <FormalCoursewarePageActions");
+    for (const source of [formalManagement, microcourseWorkspace]) {
+      expect(source).toContain("<CoursewareWorkbenchPageActions");
+      expect(source).toContain("<CoursewareWorkbenchDeletePageDialog");
+      expect(source).not.toContain("<ArrowUp");
+    }
+    expect(adapterSurface).toContain("pageActionsDisabled");
+  });
+
   it("cannot fall back to the retired formal-course prototype", () => {
     expect(existsSync("src/features/courseware-studio/CoursewareCapabilityPrototype.tsx")).toBe(false);
     expect(formalWorkspace).not.toContain("CoursewareCapabilityPrototype");

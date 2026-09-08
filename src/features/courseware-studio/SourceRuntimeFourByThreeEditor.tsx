@@ -469,6 +469,7 @@ export function SourceRuntimeFourByThreeEditor({
 
   return (
     <CoursewareEditorAdapterSurface
+      pageActionsDisabled={saveState !== "saved"}
       toolbar={toolbar}
       saveControls={saveControls}
       inspectorHeader={inspectorHeader}

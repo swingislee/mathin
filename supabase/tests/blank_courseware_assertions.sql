@@ -92,6 +92,40 @@ begin
   if (select snapshot from public.cw_lecture_releases where id=release_id) is distinct from frozen_snapshot
     or (select r.doc from public.cw_page_revisions r where r.id=saved_revision) is distinct from doc then raise exception 'FROZEN_RELEASE_CHANGED'; end if;
 
+  -- 页面管理只调整草稿目录，授权、完整顺序、软删除与发布版本边界均复用既有 RPC。
+  perform set_config('request.jwt.claim.sub',student_id::text,true);
+  begin
+    perform public.reorder_cw_pages(lecture_id,array[second_page_id,page_id]);
+    raise exception 'STUDENT_REORDER_ACCEPTED';
+  exception when sqlstate '42501' then null; end;
+  begin
+    perform public.soft_delete_cw_page(page_id);
+    raise exception 'STUDENT_DELETE_ACCEPTED';
+  exception when sqlstate '42501' then null; end;
+  perform set_config('request.jwt.claim.sub',researcher_id::text,true);
+  begin
+    perform public.soft_delete_cw_page(page_id);
+    raise exception 'UNRELATED_DELETE_ACCEPTED';
+  exception when sqlstate '42501' then null; end;
+  perform set_config('request.jwt.claim.sub',admin_id::text,true);
+  begin
+    perform public.reorder_cw_pages(lecture_id,array[page_id]);
+    raise exception 'INCOMPLETE_ORDER_ACCEPTED';
+  exception when others then if sqlerrm <> 'PAGE_ORDER_MISMATCH' then raise; end if; end;
+  perform public.reorder_cw_pages(lecture_id,array[second_page_id,page_id]);
+  if (select page_no from public.cw_page_docs where id=page_id) <> 2 then raise exception 'PAGE_MOVE_FAILED'; end if;
+  perform public.soft_delete_cw_page(page_id);
+  if exists(select 1 from public.cw_page_docs where id=page_id and deleted_at is null)
+    or not exists(select 1 from public.cw_page_revisions where id=saved_revision)
+    or not exists(select 1 from public.cw_page_asset_bindings where page_doc_id=page_id)
+    or (select snapshot from public.cw_lecture_releases where id=release_id) is distinct from frozen_snapshot
+    then raise exception 'SOFT_DELETE_RELEASE_ISOLATION_FAILED'; end if;
+  perform public.reorder_cw_pages(lecture_id,array[second_page_id]);
+  begin
+    perform public.soft_delete_cw_page(second_page_id);
+    raise exception 'LAST_PAGE_DELETE_ACCEPTED';
+  exception when others then if sqlerrm <> 'LAST_PAGE_FORBIDDEN' then raise; end if; end;
+
   perform set_config('role','postgres',true);
   insert into public.cw_page_docs(id,lecture_id,page_no,title,source_courseware_id,doc_version)
     values(original_page_id,lecture_id,3,'Original manual PageDoc','mathin-manual','page-doc-v1');

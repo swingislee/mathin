@@ -73,4 +73,19 @@ describe("formal cube composition pages", () => {
     expect(JSON.stringify(published)).toBe(before);
     expect(formalCubeDirectory([], cubes)).toHaveLength(2);
   });
+
+  it("uses current draft order and omits deleted pages without changing the release directory", () => {
+    const released = [{ pageDocId: "a", title: "Old A" }, { pageDocId: "deleted", title: "Retained release page" }, { pageDocId: "b", title: "B" }];
+    const current = [
+      { pageDocId: "b", title: "B", pageNo: 1, composition: false, nativeAvailable: true, adaptedAvailable: false },
+      { pageDocId: "new", title: "Blank", pageNo: 2, composition: true, nativeAvailable: true, adaptedAvailable: true },
+      { pageDocId: "a", title: "Renamed A", pageNo: 3, composition: false, nativeAvailable: true, adaptedAvailable: false },
+    ];
+    expect(formalCubeDirectory(released, [current[1]], current)).toEqual([
+      { pageDocId: "b", title: "B", releasePage: 3, cube: false },
+      { pageDocId: "new", title: "Blank", releasePage: null, cube: true },
+      { pageDocId: "a", title: "Renamed A", releasePage: 1, cube: false },
+    ]);
+    expect(released.map((page) => page.pageDocId)).toEqual(["a", "deleted", "b"]);
+  });
 });

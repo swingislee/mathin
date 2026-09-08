@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState, useTransition } from "react";
-import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Save, Send, Trash2, Undo2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Save, Send, Undo2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,8 @@ import type { CoursewareCompositionPage } from "@/features/courseware-doc/compos
 import {
   CoursewareWorkbench,
   CoursewareWorkbenchAddPageButton,
+  CoursewareWorkbenchPageActions,
+  CoursewareWorkbenchDeletePageDialog,
   CoursewareWorkbenchDirectoryHeader,
   CoursewareWorkbenchPageRail,
   CoursewareWorkbenchPager,
@@ -306,11 +308,8 @@ export function MicrocourseEditor({ session, context, editor, canTeach }: {
               }}
             />
           </div>,
-          footer: <div className="grid grid-cols-3 gap-1 p-2">
-              <Button type="button" size="sm" variant="ghost" disabled={pending || !currentPage || currentPage.pageNo <= 1} onClick={() => movePage(-1)} aria-label={t("moveUp")}><ArrowUp className="size-4" /></Button>
-              <Button type="button" size="sm" variant="ghost" disabled={pending || !currentPage || currentPage.pageNo >= pages.length} onClick={() => movePage(1)} aria-label={t("moveDown")}><ArrowDown className="size-4" /></Button>
-              <Button type="button" size="sm" variant="ghost" disabled={pending || !currentPage} onClick={() => setDeletePageId(currentPage?.pageDocId ?? null)} aria-label={t("deletePage")}><Trash2 className="size-4 text-rose" /></Button>
-          </div>,
+          footer: <CoursewareWorkbenchPageActions selectedIndex={currentPageIndex} total={pages.length}
+            disabled={pending || pageSwitching} onMove={movePage} onDelete={() => setDeletePageId(currentPage?.pageDocId ?? null)} />,
         }}
         canvas={{
           ariaLabel: t("workspaceTitle"),
@@ -346,7 +345,7 @@ export function MicrocourseEditor({ session, context, editor, canTeach }: {
         }}
       />
 
-      <ConfirmDialog open={deletePageId !== null} onOpenChange={(open) => { if (!open) setDeletePageId(null); }} title={t("deletePageTitle")} description={t("deletePageDescription")} confirmLabel={t("deletePage")} cancelLabel={t("cancel")} onConfirm={deletePage} pending={pending} />
+      <CoursewareWorkbenchDeletePageDialog open={deletePageId !== null} onOpenChange={(open) => { if (!open) setDeletePageId(null); }} onConfirm={deletePage} pending={pending} />
       <ConfirmDialog open={withdrawOpen} onOpenChange={setWithdrawOpen} title={t("withdrawPublicationTitle")} description={t("withdrawPublicationDescription")} confirmLabel={t("withdrawPublication")} cancelLabel={t("cancel")} onConfirm={withdrawPublished} pending={pending} />
     </div>
   );

@@ -19,6 +19,8 @@ import {
   type Ref,
 } from "react";
 import {
+  ArrowDown,
+  ArrowUp,
   ChevronLeft,
   ChevronRight,
   LoaderCircle,
@@ -27,11 +29,13 @@ import {
   Plus,
   Redo2,
   Save,
+  Trash2,
   Undo2,
   type LucideIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -155,16 +159,42 @@ export function CoursewareWorkbenchAddPageButton({
   disabled?: boolean;
   onClick: () => void;
 }) {
+  const editing = useContext(CoursewarePageManagementContext);
   return (
     <Button type="button" size="sm" variant="ghost" className="size-8 shrink-0 p-0"
-      data-courseware-editor-action="add-page" disabled={disabled} onClick={onClick}
+      data-courseware-editor-action="add-page" disabled={disabled || editing} onClick={onClick}
       aria-label={label} title={label}>
       <Plus className="size-4" />
     </Button>
   );
 }
 
+const CoursewarePageManagementContext = createContext(false);
+
+export function CoursewareWorkbenchPageActions({ selectedIndex, total, disabled = false, canDelete = true, onMove, onDelete }: {
+  selectedIndex: number; total: number; disabled?: boolean; canDelete?: boolean;
+  onMove: (direction: -1 | 1) => void; onDelete: () => void;
+}) {
+  const t = useTranslations("coursewareWorkspace.pageManagement");
+  const editing = useContext(CoursewarePageManagementContext);
+  const unavailable = disabled || editing || selectedIndex < 0 || selectedIndex >= total;
+  return <div className="grid grid-cols-3 gap-1 p-2" data-courseware-page-actions>
+    <Button type="button" size="sm" variant="ghost" disabled={unavailable || selectedIndex === 0} onClick={() => onMove(-1)} aria-label={t("moveUp")} title={editing ? t("saveFirst") : t("moveUp")}><ArrowUp className="size-4" /></Button>
+    <Button type="button" size="sm" variant="ghost" disabled={unavailable || selectedIndex >= total - 1} onClick={() => onMove(1)} aria-label={t("moveDown")} title={editing ? t("saveFirst") : t("moveDown")}><ArrowDown className="size-4" /></Button>
+    <Button type="button" size="sm" variant="ghost" disabled={unavailable || !canDelete} onClick={onDelete} aria-label={t("delete")} title={editing ? t("saveFirst") : !canDelete ? t("lastPage") : t("delete")}><Trash2 className="size-4 text-rose" /></Button>
+  </div>;
+}
+
+export function CoursewareWorkbenchDeletePageDialog({ open, onOpenChange, onConfirm, pending }: {
+  open: boolean; onOpenChange: (open: boolean) => void; onConfirm: () => void; pending: boolean;
+}) {
+  const t = useTranslations("coursewareWorkspace.pageManagement");
+  return <ConfirmDialog open={open} onOpenChange={onOpenChange} onConfirm={onConfirm} pending={pending}
+    title={t("deleteTitle")} description={t("deleteDescription")} confirmLabel={t("delete")} cancelLabel={t("cancel")} />;
+}
+
 export interface CoursewareEditorChrome {
+  pageActionsDisabled?: boolean;
   toolbar?: ReactNode;
   saveControls?: ReactNode;
   inspectorHeader?: ReactNode;
@@ -189,6 +219,7 @@ const CoursewareEditorChromeContext = createContext<CoursewareEditorChromeContex
  * inspector cannot silently mount in different page structures.
  */
 export function useCoursewareEditorChrome({
+  pageActionsDisabled,
   toolbar,
   saveControls,
   inspectorHeader,
@@ -199,9 +230,9 @@ export function useCoursewareEditorChrome({
 
   useLayoutEffect(() => {
     if (!context) return;
-    context.register(ownerId, { toolbar, saveControls, inspectorHeader, inspector });
+    context.register(ownerId, { toolbar, saveControls, inspectorHeader, inspector, pageActionsDisabled });
     return () => context.unregister(ownerId);
-  }, [context, inspector, inspectorHeader, ownerId, saveControls, toolbar]);
+  }, [context, inspector, inspectorHeader, ownerId, saveControls, toolbar, pageActionsDisabled]);
 }
 
 export function CoursewareEditorSaveControls({
@@ -368,6 +399,7 @@ function CoursewareWorkbenchFrame({
       {...cardProps}
     >
       <CoursewareEditorChromeContext.Provider value={chromeContext}>
+        <CoursewarePageManagementContext.Provider value={registered?.chrome.pageActionsDisabled ?? false}>
         <ResizablePanelGroup
           groupRef={groupRef}
           orientation={orientation}
@@ -481,6 +513,7 @@ function CoursewareWorkbenchFrame({
             </Fragment>
           ) : null}
         </ResizablePanelGroup>
+        </CoursewarePageManagementContext.Provider>
       </CoursewareEditorChromeContext.Provider>
     </Card>
   );

@@ -23,9 +23,18 @@ export function createFormalCubePage(tool: CubeCoursewareTool) {
 }
 
 export interface FormalCubePageSummary { pageDocId: string; title: string; pageNo: number; sourceCoursewareId?: string }
+export interface FormalWorkspacePageSummary extends FormalCubePageSummary {
+  composition: boolean; nativeAvailable: boolean; adaptedAvailable: boolean;
+}
 
 /** 已发布目录维持原索引，新草稿只追加一次；立方体页始终通过稳定 ID 打开。 */
-export function formalCubeDirectory<T extends { pageDocId: string; title: string }>(released: readonly T[], cubes: readonly FormalCubePageSummary[]) {
+export function formalCubeDirectory<T extends { pageDocId: string; title: string }>(released: readonly T[], cubes: readonly FormalCubePageSummary[], currentPages?: readonly FormalWorkspacePageSummary[]) {
+  if (currentPages) {
+    const releaseIndexes = new Map(released.map((page, index) => [page.pageDocId, index + 1]));
+    return [...currentPages].sort((a, b) => a.pageNo - b.pageNo).map((page) => ({
+      pageDocId: page.pageDocId, title: page.title, releasePage: releaseIndexes.get(page.pageDocId) ?? null, cube: page.composition,
+    }));
+  }
   const cubeIds = new Set(cubes.map((page) => page.pageDocId));
   const titles = new Map(cubes.map((page) => [page.pageDocId, page.title]));
   const entries = released.map((page, index) => ({ pageDocId: page.pageDocId,

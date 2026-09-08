@@ -14,6 +14,7 @@ type EditorDivAttributes = HTMLAttributes<HTMLDivElement> & {
  * top toolbar, save state, inspector and aspect-fitted stage into the workbench.
  */
 export function CoursewareEditorAdapterSurface({
+  pageActionsDisabled,
   toolbar,
   saveControls,
   inspectorHeader,
@@ -25,6 +26,7 @@ export function CoursewareEditorAdapterSurface({
   hostProps,
   stageProps,
 }: {
+  pageActionsDisabled?: boolean;
   toolbar: ReactNode;
   saveControls: ReactNode;
   inspectorHeader?: ReactNode;
@@ -36,7 +38,7 @@ export function CoursewareEditorAdapterSurface({
   hostProps?: EditorDivAttributes;
   stageProps?: EditorDivAttributes;
 }) {
-  useCoursewareEditorChrome({ toolbar, saveControls, inspectorHeader, inspector });
+  useCoursewareEditorChrome({ toolbar, saveControls, inspectorHeader, inspector, pageActionsDisabled });
 
   return (
     <CoursewareStageViewport

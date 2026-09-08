@@ -534,6 +534,7 @@ export function PageDocVerticalSliceEditor({
 
   return (
     <CoursewareEditorAdapterSurface
+      pageActionsDisabled={saveState !== "saved"}
       toolbar={coarseLayout || sessionAdapted ? null : insertToolbar}
       saveControls={coarseLayout
         ? saveControls

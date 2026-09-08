@@ -22,7 +22,8 @@ import { PageDocVerticalSliceEditor } from "./PageDocVerticalSliceEditor";
 import { StagePreview } from "./StagePreview";
 import { SourceRuntimeFourByThreeEditor } from "./SourceRuntimeFourByThreeEditor";
 import { CreateBlankCoursewarePageButton, FormalCubePageEditor, type FormalCubePageEditorData } from "./FormalCubePageEditor";
-import { formalCubeDirectory, type FormalCubePageSummary } from "./formal-cube-page-contract";
+import { formalCubeDirectory, type FormalCubePageSummary, type FormalWorkspacePageSummary } from "./formal-cube-page-contract";
+import { FormalCoursewarePageActions } from "./FormalCoursewarePageActions";
 import type {
   UnifiedPageDocEditorData,
   UnifiedSourceRuntimeEditorData,
@@ -54,6 +55,7 @@ function workspaceHref({
   page,
   returnTo,
   cubePage,
+  pageDocId,
 }: {
   lectureId: string;
   canvas: UnifiedWorkspaceCanvas;
@@ -61,10 +63,12 @@ function workspaceHref({
   page: number;
   returnTo: string | null;
   cubePage?: string;
+  pageDocId?: string;
 }) {
   const query = new URLSearchParams({ workspace: "courseware", canvas, track });
   if (page > 1) query.set("page", String(page));
   if (cubePage) { query.set("compositionPage", cubePage); query.delete("page"); }
+  if (pageDocId) { query.set("pageId", pageDocId); query.delete("page"); query.delete("compositionPage"); }
   if (returnTo) query.set("returnTo", returnTo);
   return `/dashboard/courseware/lectures/${lectureId}?${query.toString()}`;
 }
@@ -114,6 +118,8 @@ export async function UnifiedCoursewareWorkspace({
   sourceRuntimeEditor,
   formalCubePages = [],
   formalCubeEditor = null,
+  formalWorkspacePages,
+  selectedPageId,
   canvas,
   entryTrack,
   returnTo,
@@ -125,17 +131,19 @@ export async function UnifiedCoursewareWorkspace({
   sourceRuntimeEditor: UnifiedSourceRuntimeEditorData | null;
   formalCubePages?: FormalCubePageSummary[];
   formalCubeEditor?: FormalCubePageEditorData | null;
+  formalWorkspacePages?: FormalWorkspacePageSummary[];
+  selectedPageId?: string | null;
   canvas: UnifiedWorkspaceCanvas;
   entryTrack: CoursewareTrack;
   returnTo: string | null;
 }) {
   const t = await getTranslations("coursewareWorkspace");
   const directoryPreview = nativePreview ?? adaptedPreview;
-  const pages = formalCubeDirectory(directoryPreview?.pages ?? [], formalCubePages);
-  const selectedId = formalCubeEditor?.pageDocId ?? directoryPreview?.page.pageDocId;
+  const pages = formalCubeDirectory(directoryPreview?.pages ?? [], formalCubePages, formalWorkspacePages);
+  const selectedId = selectedPageId ?? formalCubeEditor?.pageDocId ?? directoryPreview?.page.pageDocId;
   const pageIndex = Math.max(1, pages.findIndex((page) => page.pageDocId === selectedId) + 1);
-  const backHref = returnTo ?? coursePreviewHref(detail, entryTrack, pageIndex);
   const selectedPage = pages.find((page) => page.pageDocId === selectedId);
+  const backHref = returnTo ?? coursePreviewHref(detail, entryTrack, selectedPage?.releasePage ?? 1);
   const sessionAdaptationAvailable = Boolean(pageEditor || sourceRuntimeEditor);
   const adaptedCanvasFellBack = canvas === "adapted-4x3"
     && !adaptedPreview
@@ -147,15 +155,15 @@ export async function UnifiedCoursewareWorkspace({
     ? adaptedPreview?.page.doc
     : nativePreview?.page.doc ?? adaptedPreview?.page.doc);
   const canvasItems = [
-    { value: "compare", label: t("canvasCompare"), href: workspaceHref({ lectureId: detail.lecture.id, canvas: "compare", track: "native-16x9", page: selectedPage?.releasePage ?? 1, returnTo }) },
-    { value: "native-16x9", label: t("canvasNative"), href: workspaceHref({ lectureId: detail.lecture.id, canvas: "native-16x9", track: "native-16x9", page: selectedPage?.releasePage ?? 1, cubePage: formalCubeEditor?.pageDocId, returnTo }) },
-    { value: "adapted-4x3", label: t("canvasAdapted"), href: workspaceHref({ lectureId: detail.lecture.id, canvas: "adapted-4x3", track: "adapted-4x3", page: selectedPage?.releasePage ?? 1, cubePage: formalCubeEditor?.pageDocId, returnTo }) },
+    { value: "compare", label: t("canvasCompare"), href: workspaceHref({ lectureId: detail.lecture.id, canvas: "compare", track: "native-16x9", page: selectedPage?.releasePage ?? 1, pageDocId: selectedPage?.pageDocId, returnTo }) },
+    { value: "native-16x9", label: t("canvasNative"), href: workspaceHref({ lectureId: detail.lecture.id, canvas: "native-16x9", track: "native-16x9", page: selectedPage?.releasePage ?? 1, pageDocId: selectedPage?.pageDocId, returnTo }) },
+    { value: "adapted-4x3", label: t("canvasAdapted"), href: workspaceHref({ lectureId: detail.lecture.id, canvas: "adapted-4x3", track: "adapted-4x3", page: selectedPage?.releasePage ?? 1, pageDocId: selectedPage?.pageDocId, returnTo }) },
   ].filter((item) => !formalCubeEditor || item.value !== "compare");
 
   const pageHref = (index: number) => {
     const page = pages[index];
     return page ? workspaceHref({ lectureId: detail.lecture.id, canvas: visibleCanvas, track: visibleTrack,
-      page: page.releasePage ?? 1, cubePage: page.cube ? page.pageDocId : undefined, returnTo }) : null;
+      page: page.releasePage ?? 1, pageDocId: page.pageDocId, returnTo }) : null;
   };
 
   const previousHref = pageIndex > 1
@@ -165,14 +173,15 @@ export async function UnifiedCoursewareWorkspace({
     ? pageHref(pageIndex)
     : null;
   const directoryItems = pages.map((page, index) => {
+    const currentPage = formalWorkspacePages?.find((item) => item.pageDocId === page.pageDocId);
     const nativePage = nativePreview?.pages.find((item) => item.pageDocId === page.pageDocId);
     const adaptedPage = adaptedPreview?.pages.find((item) => item.pageDocId === page.pageDocId);
     return {
       id: page.pageDocId,
       title: page.title || t("untitledPage"),
       href: pageHref(index)!,
-      nativeAvailable: page.cube || Boolean(nativePage),
-      adaptedAvailable: page.cube || Boolean(adaptedPage || (nativePage && sessionAdaptationAvailable)),
+      nativeAvailable: currentPage?.nativeAvailable ?? (page.cube || Boolean(nativePage)),
+      adaptedAvailable: currentPage?.adaptedAvailable ?? (page.cube || Boolean(adaptedPage || (nativePage && sessionAdaptationAvailable))),
     };
   });
 
@@ -215,7 +224,7 @@ export async function UnifiedCoursewareWorkspace({
           header: <CoursewareWorkbenchDirectoryHeader
             title={t("pageDirectory")}
             meta={t("pageCount", { count: pages.length })}
-            action={<CreateBlankCoursewarePageButton lectureId={detail.lecture.id} returnTo={returnTo} />}
+            action={<CreateBlankCoursewarePageButton lectureId={detail.lecture.id} afterPageDocId={selectedPage?.pageDocId ?? null} returnTo={returnTo} />}
           />,
           content: pages.length > 0
             ? <CoursewareFormalPageRail
@@ -224,6 +233,7 @@ export async function UnifiedCoursewareWorkspace({
                 editablePageId={selectedPage?.pageDocId ?? null}
               />
             : <p className="px-3 py-6 text-sm text-muted">{t("noReleasedPages")}</p>,
+          footer: <FormalCoursewarePageActions lectureId={detail.lecture.id} items={directoryItems} selectedIndex={pages.findIndex((page) => page.pageDocId === selectedId)} />,
         }}
         canvas={{
           ariaLabel: t("previewTitle"),

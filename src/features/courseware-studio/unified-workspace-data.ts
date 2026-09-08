@@ -10,7 +10,7 @@ import {
 } from "@/features/courseware-doc/source-runtime-schema";
 import { getLectureWorkspaceDetail, isUuid } from "@/features/school/curriculum/lecture-workspace-detail";
 import { requirePerm } from "@/lib/auth";
-import { loadFormalCubePages } from "./formal-cube-page-data";
+import { loadFormalWorkspacePages } from "./formal-cube-page-data";
 import { formalCubePageSchema } from "./formal-cube-page-contract";
 import { FORMAL_MANUAL_PAGE_SOURCE, formalManualPageSchema } from "./formal-manual-page-contract";
 import type { FormalCubePageEditorData } from "./FormalCubePageEditor";
@@ -97,22 +97,23 @@ export async function loadUnifiedCoursewareWorkspaceData(
   });
   if (!detail) notFound();
 
-  const [nativePreview, adaptedPreview, formalCubePages] = await Promise.all([
-    loadLecturePreview(lectureId, "native-16x9", requestedPage),
-    loadLecturePreview(lectureId, "adapted-4x3", requestedPage),
-    loadFormalCubePages(lectureId),
+  const formalWorkspacePages = await loadFormalWorkspacePages(lectureId);
+  const formalCubePages = formalWorkspacePages.filter((page) => page.composition);
+  const requestedId = first(rawSearchParams.pageId) ?? first(rawSearchParams.compositionPage) ?? first(rawSearchParams.cubePage);
+  if (requestedId && (!isUuid(requestedId) || !formalWorkspacePages.some((page) => page.pageDocId === requestedId))) notFound();
+  const pageDocId = requestedId ?? formalWorkspacePages[Math.min(requestedPage, formalWorkspacePages.length) - 1]?.pageDocId ?? null;
+  const [nativePreview, adaptedPreview] = await Promise.all([
+    pageDocId ? loadLecturePreview(lectureId, "native-16x9", pageDocId) : null,
+    pageDocId ? loadLecturePreview(lectureId, "adapted-4x3", pageDocId) : null,
   ]);
 
-  const safeNativePreview = nativePreview?.lecture.courseId === detail.variant.id ? nativePreview : null;
-  const safeAdaptedPreview = adaptedPreview?.lecture.courseId === detail.variant.id ? adaptedPreview : null;
+  const safeNativePreview = nativePreview?.lecture.courseId === detail.variant.id && nativePreview.page.pageDocId === pageDocId ? nativePreview : null;
+  const safeAdaptedPreview = adaptedPreview?.lecture.courseId === detail.variant.id && adaptedPreview.page.pageDocId === pageDocId ? adaptedPreview : null;
   const requestedTrack = parseCoursewareTrack(rawSearchParams.track);
   const requestedCanvas = first(rawSearchParams.canvas);
   let pageEditor: UnifiedPageDocEditorData | null = null;
   let sourceRuntimeEditor: UnifiedSourceRuntimeEditorData | null = null;
   let formalCubeEditor: FormalCubePageEditorData | null = null;
-  const requestedCubePage = first(rawSearchParams.compositionPage) ?? first(rawSearchParams.cubePage);
-  if (requestedCubePage && (!isUuid(requestedCubePage) || !formalCubePages.some((page) => page.pageDocId === requestedCubePage))) notFound();
-  const pageDocId = requestedCubePage ?? safeNativePreview?.page.pageDocId ?? safeAdaptedPreview?.page.pageDocId ?? null;
 
   if (pageDocId) {
     const [nativeStudioPage, adaptedStudioPage] = await Promise.all([
@@ -239,6 +240,8 @@ export async function loadUnifiedCoursewareWorkspaceData(
     pageEditor,
     sourceRuntimeEditor,
     formalCubePages,
+    formalWorkspacePages,
+    selectedPageId: pageDocId,
     formalCubeEditor,
   };
 }

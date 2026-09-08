@@ -57,6 +57,8 @@ async function LectureWorkspaceContent({
       pageEditor={workspace.pageEditor}
       sourceRuntimeEditor={workspace.sourceRuntimeEditor}
       formalCubePages={workspace.formalCubePages}
+      formalWorkspacePages={workspace.formalWorkspacePages}
+      selectedPageId={workspace.selectedPageId}
       formalCubeEditor={workspace.formalCubeEditor}
       canvas={parseUnifiedWorkspaceCanvas(rawSearchParams.canvas)}
       entryTrack={parseCoursewareTrack(rawSearchParams.track)}

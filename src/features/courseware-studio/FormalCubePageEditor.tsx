@@ -41,7 +41,7 @@ export function FormalCubePageEditor({ page }: { page: FormalCubePageEditorData 
   </div>;
 }
 
-export function CreateBlankCoursewarePageButton({ lectureId, returnTo }: { lectureId: string; returnTo: string | null }) {
+export function CreateBlankCoursewarePageButton({ lectureId, returnTo, afterPageDocId = null }: { lectureId: string; returnTo: string | null; afterPageDocId?: string | null }) {
   const t = useTranslations("coursewareWorkspace");
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -51,7 +51,7 @@ export function CreateBlankCoursewarePageButton({ lectureId, returnTo }: { lectu
     setPending(true);
     setMessage("");
     try {
-      const result = await createBlankCoursewarePageAction({ lectureId, afterPageDocId: null, title: t("blankPageTitle") });
+      const result = await createBlankCoursewarePageAction({ lectureId, afterPageDocId, title: t("blankPageTitle") });
       if (!result.ok) { setMessage(t("verticalSliceSaveFailed", { code: result.code })); return; }
       const query = new URLSearchParams({ workspace: "courseware", canvas: "adapted-4x3", track: "adapted-4x3", compositionPage: result.data.pageDocId });
       if (returnTo) query.set("returnTo", returnTo);

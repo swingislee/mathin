@@ -548,6 +548,7 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
 
   return (
     <CoursewareEditorAdapterSurface
+      pageActionsDisabled={saveState !== "saved" || pending}
       toolbar={insertToolbar}
       saveControls={saveControls}
       inspectorHeader={inspectorHeader}
