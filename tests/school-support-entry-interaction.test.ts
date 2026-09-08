@@ -49,9 +49,12 @@ it('inserts a blank summary and details below the chosen row, preserving the dra
   expect(element.querySelector<HTMLInputElement>('input[aria-label="学生姓名"]')?.value).toBe('');
   expect(element.querySelector('[role="dialog"]')).toBeNull();
   await fill('学生姓名','Old student');
+  await fill('家长姓名','Parent'); await fill('家长电话','60000000998');
+  await fill('学校','School'); await fill('微信','parent-wechat');
   await act(async()=>button('保存').click());
   expect(element.textContent).toContain('当前草稿已保留');
-  expect(calls.add.mock.calls[0][1]).toMatchObject({workspace:'communication',subject:null,newPerson:{name:'Old student',phone:'',identityPending:true,createStudent:false}});
+  expect(calls.add.mock.calls[0][1]).toMatchObject({workspace:'communication',subject:null,newPerson:{name:'Old student',phone:'',identityPending:true,createStudent:false,
+    parentName:'Parent',parentPhone:'60000000998',school:'School',wechat:'parent-wechat'}});
   expect(sessionStorage.getItem('mathin:support-inline:v2:actor:communication::')).toContain('Old student');
   await act(async()=>button('保存').click());
   expect(calls.add.mock.calls[1]).toEqual(calls.add.mock.calls[0]);
@@ -64,8 +67,10 @@ it('automatically matches the entered name and phone and explicitly reuses the s
   calls.search.mockResolvedValue({ok:true,data:[candidate]});
   calls.add.mockResolvedValue({ok:false,code:'UNKNOWN'});
   await table(); await fill('学生姓名','Known'); await fill('联系电话','60000000999');
+  await fill('家长电话','60000000998'); await fill('微信','parent-wechat');
   await act(async()=>vi.advanceTimersByTimeAsync(260));
   expect(calls.search).toHaveBeenCalledWith('Known'); expect(calls.search).toHaveBeenCalledWith('60000000999');
+  expect(calls.search).toHaveBeenCalledWith('60000000998'); expect(calls.search).toHaveBeenCalledWith('parent-wechat');
   expect(document.querySelectorAll('[data-support-candidates] li')).toHaveLength(1);
   await act(async()=>document.querySelector<HTMLButtonElement>('[data-support-candidates] li button')!.click());
   expect(document.querySelector<HTMLInputElement>('input[aria-label="学生姓名"]')?.value).toBe('Known child');

@@ -37,7 +37,7 @@ export function SupportSubjectSearch({ locale, onSelect, studentsOnly=false, dis
   return <div className="space-y-2" data-support-candidates>
     {queries? <p className="font-medium">{locale==='en'?'Possible student matches':'可能匹配的学生'}</p>
       :<Label className="flex items-center gap-2"><Search className="size-4"/><Input autoFocus value={query} maxLength={100} disabled={disabled} placeholder={m.search} aria-label={m.search} onChange={e=>setQuery(e.target.value)}/></Label>}
-    <p className="text-xs text-muted">{queries?(locale==='en'?'Enter a name or phone above, then select the matching profile.':'填写上方姓名或电话后，在这里核对并选择已有档案。'):m.searchFirst}</p>
+    <p className="text-xs text-muted">{queries?(locale==='en'?'Enter a name, phone, parent or WeChat, then select the matching profile.':'填写姓名、电话、家长或微信后，在这里核对并选择已有档案。'):m.searchFirst}</p>
     {loading?<p role="status" className="text-xs text-muted">{m.loading}</p>:null}
     {result.key===queryKey&&result.error?<p role="alert" className="text-xs text-rose">{result.error}</p>:null}
     {queries&&queryKey!=='[]'&&!loading&&!result.error&&!items.length?<p className="text-xs text-muted">{locale==='en'?'No matching profiles. Continue with the details you have.':'暂未找到匹配档案，可继续填写现有资料。'}</p>:null}

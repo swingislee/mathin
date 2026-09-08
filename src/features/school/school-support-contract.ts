@@ -22,6 +22,8 @@ export type SupportWork = z.infer<typeof supportWorkSchema>;
 export const supportEntrySchema = z.object({
   workspace: z.enum(SUPPORT_WORKSPACES), subject: supportSubjectSchema.nullable(),
   newPerson: z.object({ name: z.string().trim().max(100), phone: z.string().trim().max(40), grade: z.number().int().min(1).max(12).nullable(),
+    parentPhone: z.string().trim().max(40).optional(), parentName: z.string().trim().max(100).optional(),
+    school: z.string().trim().max(100).optional(), wechat: z.string().trim().max(80).optional(), remark: z.string().max(2000).optional(),
     createStudent: z.boolean(), identityPending: z.boolean() }).strict().nullable(),
   work: supportWorkSchema, acknowledgeDuplicate: z.boolean(),
 }).strict().refine(value => Boolean(value.subject) !== Boolean(value.newPerson))
