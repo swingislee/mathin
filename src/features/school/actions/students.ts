@@ -84,7 +84,7 @@ export async function findDuplicateStudentsForMergeAction(name: string, phone: s
 
 // BUG-R1M-004：候选列表在挂载时取一次，页面可能已过期。服务端把「对方档案已软删/已被
 // 合并」抛成领域码，这里映射出来让 UI 提示刷新，而不是通用 actionFailed。
-const MERGE_CODES = ["SAME_STUDENT", "STUDENT_DELETED", "ALREADY_MERGED", ...COMMON_CODES] as const;
+const MERGE_CODES = ["SAME_STUDENT", "STUDENT_DELETED", "ALREADY_MERGED", "MERGE_PREVIEW_REQUIRED", ...COMMON_CODES] as const;
 
 export async function mergeStudentsAction(keptId: string, mergedId: string): Promise<ActionResult> {
   try {
