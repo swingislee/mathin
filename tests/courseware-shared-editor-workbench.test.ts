@@ -111,6 +111,20 @@ describe("shared courseware editor workbench", () => {
     }
   });
 
+  it("isolates embedded tool stacking below the composition move and resize handles", () => {
+    const grid = read("src", "features", "courseware-doc", "CoursewareCompositionGridEditor.tsx");
+    const stage = read("src", "features", "courseware-doc", "CoursewareCompositionStage.tsx");
+    expect(grid).toContain('className="relative isolate aspect-[4/3] w-full touch-none overflow-hidden"');
+    expect(grid).toMatch(/<CoursewareCompositionStage\s+className="isolate z-0"/);
+    expect(stage).toContain('cn("relative aspect-[4/3] w-full overflow-hidden", props.className)');
+    expect(grid).toContain('className="pointer-events-none absolute inset-0 z-10 grid"');
+    expect(grid).toContain("data-courseware-composition-handles");
+    expect(grid).toContain('"pointer-events-auto group relative z-10');
+    expect(grid).toContain('begin(event, block.id, "move")');
+    expect(grid).toContain('begin(event, block.id, "resize")');
+    expect(grid).toContain("setPointerCapture(event.pointerId)");
+  });
+
   it("uses one text-element editor and one DocStage edit behavior in formal and microcourse authoring", () => {
     const textEditor = read("src", "features", "courseware-doc", "CoursewareTextElementEditor.tsx");
     const elementEditor = read("src", "features", "courseware-doc", "CoursewarePageElementEditor.tsx");

@@ -164,12 +164,13 @@ export function CoursewareCompositionGridEditor({
   return (
     <div
       ref={canvasRef}
-      className="relative aspect-[4/3] w-full touch-none overflow-hidden"
+      className="relative isolate aspect-[4/3] w-full touch-none overflow-hidden"
       data-courseware-composition-grid-editor
       data-grid-visible={gesture ? "true" : "false"}
       style={{ backgroundColor: doc.canvas.backgroundColor ?? COURSEWARE_DEFAULT_PAPER }}
     >
       <CoursewareCompositionStage
+        className="isolate z-0"
         doc={displayed}
         bindingUrls={bindingUrls}
         interactive={false}
@@ -182,7 +183,8 @@ export function CoursewareCompositionGridEditor({
         nodeResizeLabel={t("gridResizeBlock", { type: t("componentText") })}
       />
       <div
-        className="pointer-events-none absolute inset-0 grid"
+        className="pointer-events-none absolute inset-0 z-10 grid"
+        data-courseware-composition-handles
         style={{
           gridTemplateColumns: "repeat(12, minmax(0, 1fr))",
           gridTemplateRows: "repeat(9, minmax(0, 1fr))",
