@@ -50,7 +50,7 @@ afterEach(async () => { await act(async () => root.unmount()); container.remove(
 describe("student stage workspace wiring", () => {
   it.each(STUDENT_STAGE_TABS)("offers row assignment and the same batch control in %s", async stage => {
     await render(stage);
-    expect(container.querySelectorAll("thead [data-dashboard-table-menu]")).toHaveLength(stage === "awaiting_first_contact" || stage === "awaiting_assessment" ? 5 : 6);
+    expect(container.querySelectorAll("thead [data-dashboard-table-menu]")).toHaveLength(stage === "awaiting_first_contact" || stage === "awaiting_assessment" ? 5 : 7);
     expect(container.querySelector("[data-dashboard-search]")).not.toBeNull();
     expect(container.querySelector("[data-followup-person]")).not.toBeNull();
     expect(container.querySelector('[aria-label="分配 · 示例学生"]')).not.toBeNull();

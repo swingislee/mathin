@@ -23,8 +23,13 @@ export interface StudentStageRow {
   key: string; studentId: string | null; leadId: string | null;
   name: string; phone: string; grade: number | null; gradeText: string;
   ownerId: string | null; ownerName: string; stage: StudentStage; detail: string;
+  teacherId?: string | null; teacherName?: string;
   note: string; lastContactAt: string | null; nextContactAt: string | null;
   score: number | null; assessmentBand: string | null; assessmentAt: string | null;
+  assessmentSource?: "assessment" | "class_band" | null;
+  assessmentCandidateCount?: number;
+  inferredSourceIds?: string[];
+  assessmentRecordId?: string | null; learningBand?: string | null; classBandLabel?: string;
   registrationId: string | null; courseTitle: string; termName: string;
   courseId: string | null; termId: string | null; createdAt: string;
   canWrite: boolean; canContact: boolean;

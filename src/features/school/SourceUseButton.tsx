@@ -8,7 +8,7 @@ import { useRouter } from '@/i18n/navigation';
 import { confirmSourceUseAction, getSourceUseContextAction } from './actions/source-use';
 import { sourceFollowupHref, sourceUseMessages, type SourceUseContext } from './source-use-contract';
 
-export function SourceUseButton({recordId,locale,studentId,linked=false,context:usageContext='followup',onLinked,label}:{recordId:string;locale:string;studentId?:string;linked?:boolean;context?:'followup'|'assessment'|'enrollment'|'renewal';onLinked?:(studentId:string)=>void;label?:string}) {
+export function SourceUseButton({recordId,locale,studentId,linked=false,review=false,context:usageContext='followup',onLinked,label}:{recordId:string;locale:string;studentId?:string;linked?:boolean;review?:boolean;context?:'followup'|'assessment'|'enrollment'|'renewal';onLinked?:(studentId:string)=>void;label?:string}) {
   const m=sourceUseMessages(locale),router=useRouter();
   const [open,setOpen]=useState(false),[busy,setBusy]=useState(false),[context,setContext]=useState<SourceUseContext|null>(null);
   const [selected,setSelected]=useState(studentId??''),[query,setQuery]=useState(''),[error,setError]=useState('');
@@ -19,13 +19,13 @@ export function SourceUseButton({recordId,locale,studentId,linked=false,context:
     try {
       const result=await getSourceUseContextAction({locale,recordId,studentId,query:search});
       if(!result.ok){setError(failure(result.code));return;}
-      if(navigate&&result.data.studentId){setOpen(false);proceed(result.data.studentId);return;}
+      if(navigate&&!review&&result.data.studentId){setOpen(false);proceed(result.data.studentId);return;}
       setContext(result.data);
       if(!result.data.students.some(student=>student.id===selected))setSelected(studentId??'');
     } catch {setError(m.failed);} finally {setBusy(false);}
   }
   function begin() {
-    if(linked&&studentId){proceed(studentId);return;}
+    if(linked&&studentId&&!review){proceed(studentId);return;}
     setOpen(true);setContext(null);setSelected(studentId??'');setQuery('');void load();
   }
   async function confirm() {
@@ -48,7 +48,7 @@ export function SourceUseButton({recordId,locale,studentId,linked=false,context:
           <details className="text-sm"><summary className="cursor-pointer text-muted">{m.original}</summary>
             <dl className="mt-3 max-h-64 space-y-3 overflow-y-auto">{context.cells.map((cell,index)=><div key={index}><dt className="text-xs text-muted">{cell.name}</dt><dd className="mt-1 whitespace-pre-wrap break-words">{cell.text}</dd></div>)}</dl>
           </details>
-          {!studentId?<form className="flex gap-2" onSubmit={event=>{event.preventDefault();void load(query,false);}}>
+          {!studentId||review?<form className="flex gap-2" onSubmit={event=>{event.preventDefault();void load(query,false);}}>
             <Input value={query} onChange={event=>setQuery(event.target.value)} placeholder={m.search} aria-label={m.search} maxLength={100}/>
             <Button variant="secondary" type="submit" disabled={busy||query.trim().length<2}>{m.searchAction}</Button>
           </form>:null}

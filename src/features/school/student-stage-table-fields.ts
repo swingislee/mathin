@@ -5,7 +5,7 @@ import type { DashboardFieldDefinitions, DashboardFieldQuery } from "./dashboard
 export const STUDENT_STAGE_TABLE_COLUMNS = {
   name: ["name", "grade"], phone: ["phone"], state: ["detail"],
   background: ["course", "term", "assessmentBand", "assessmentAt"],
-  owner: ["scope", "owner"], recent: ["note", "lastContactAt"],
+  owner: ["scope", "owner"], teacher: ["teacher"], recent: ["note", "lastContactAt"],
 } as const;
 
 export function studentStageTableFields(locale: string, stage: StudentStage, currentUserId: string): DashboardFieldDefinitions<StudentStageRow> {
@@ -21,11 +21,12 @@ export function studentStageTableFields(locale: string, stage: StudentStage, cur
       options: [{ value: "all", label: m.all }, { value: "mine", label: m.mine }, { value: "unassigned", label: m.unassigned }],
       values: row => [{ value: "all", label: m.all }, ...(row.ownerId === currentUserId ? [{ value: "mine", label: m.mine }]
         : !row.ownerId ? [{ value: "unassigned", label: m.unassigned }] : [])] },
-    owner: { kind: "enum", label: m.owner, values: row => option(row.ownerId, row.ownerName), sortValue: row => row.ownerId ? row.ownerName : null },
+    owner: { kind: "enum", label: m.owner, values: row => option(row.ownerId ?? (row.ownerName ? `source:${row.ownerName}` : null), row.ownerName), sortValue: row => row.ownerName || null },
     note: { kind: "text", label: m.recent, value: row => row.note, sortable: false },
     lastContactAt: { kind: "date", label: en ? "Last contact" : "最近联系时间", value: row => row.lastContactAt },
   };
   if (stage !== "awaiting_first_contact" && stage !== "awaiting_assessment") Object.assign(fields, {
+    teacher: { kind: "enum", label: m.teacher, values: (row: StudentStageRow) => option(row.teacherId ?? (row.teacherName ? `source:${row.teacherName}` : null), row.teacherName ?? ""), sortValue: (row: StudentStageRow) => row.teacherName || null },
     course: { kind: "enum", label: m.course, values: (row: StudentStageRow) => option(row.courseId, row.courseTitle) },
     term: { kind: "enum", label: m.term, values: (row: StudentStageRow) => option(row.termId, row.termName) },
     assessmentBand: { kind: "enum", label: en ? "Assessment band" : "测评级别", values: (row: StudentStageRow) => option(row.assessmentBand, row.assessmentBand?.toUpperCase().replaceAll("_PLUS", "+") ?? "") },

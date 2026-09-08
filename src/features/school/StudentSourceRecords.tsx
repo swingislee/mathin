@@ -5,6 +5,7 @@ import { isLocalHistoryArchiveEnvironment } from './history-archive-contract';
 import { loadStudentSourceArchive } from './source-use-data';
 import { sourceUseMessages } from './source-use-contract';
 import { SourceUseButton } from './SourceUseButton';
+import { Badge } from '@/components/ui/badge';
 
 export async function StudentSourceRecords({studentId,locale,page=1,kind}:{studentId:string;locale:string;page?:number;kind?:string}) {
   if(!isLocalHistoryArchiveEnvironment(process.env.NODE_ENV,process.env.NEXT_PUBLIC_SUPABASE_URL))return null;
@@ -15,7 +16,9 @@ export async function StudentSourceRecords({studentId,locale,page=1,kind}:{stude
       <div className="flex flex-wrap items-start justify-between gap-3"><div>
         <h3 className="text-sm font-medium">{row.title}</h3>
         <p className="mt-1 text-xs text-muted">{row.dateLabel||m.unknown} · {row.linked?m.linked:m.pending}</p>
-      </div>{row.linked||data.canConfirm?<SourceUseButton recordId={row.id} locale={locale} studentId={studentId} linked={row.linked}/>:null}</div>
+        {row.matchState==='inferred'?<Badge variant="outline" className="mt-1">{locale==='en'?'Inferred association · check when needed':'已按最可能关联 · 待核对'}</Badge>:null}
+      </div><div className="flex gap-2">{row.linked||data.canConfirm?<SourceUseButton recordId={row.id} locale={locale} studentId={studentId} linked={row.linked}/>:null}
+        {row.matchState==='inferred'&&data.canConfirm?<SourceUseButton recordId={row.id} locale={locale} studentId={studentId} linked review context="assessment" label={locale==='en'?'Check / correct':'核对／修改'}/>:null}</div></div>
       <details className="text-sm"><summary className="cursor-pointer text-muted">{m.original}</summary>
         <p className="my-3 break-words text-xs text-muted">{row.source}</p>
         <dl className="space-y-3">{row.cells.map((cell,index)=><div key={index}><dt className="text-xs text-muted">{cell.name}</dt><dd className="mt-1 whitespace-pre-wrap break-words leading-6">{cell.text}</dd></div>)}</dl>

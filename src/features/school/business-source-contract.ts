@@ -6,14 +6,17 @@ export function normalizeSourceAssessmentBand(value: unknown): CurrentAssessment
   if (typeof value !== 'string') return null;
   const key = value.trim().replace(/\s+/g, '').replace(/＋/g, '+').toUpperCase();
   const values: Record<string, CurrentAssessmentBand> = {
-    'X+': 'x_plus', X_PLUS: 'x_plus', 'G+': 'g_plus', G_PLUS: 'g_plus',
+    'X+': 'x_plus', X_PLUS: 'x_plus', '未达A': 'x_plus', BELOW_A: 'x_plus', 'G+': 'g_plus', G_PLUS: 'g_plus',
     A: 'a', 'A+': 'a_plus', A_PLUS: 'a_plus', S: 's', C: 'c',
   };
   return values[key] ?? null;
 }
 
 export function sourceAssessmentNote(value: unknown, field = '测评等级'): string {
-  if (typeof value !== 'string' || !value.trim() || normalizeSourceAssessmentBand(value)) return '';
+  if (typeof value !== 'string' || !value.trim()) return '';
+  // 统一等级后保留历史表达，便于从 X+ 追溯原测评记录。
+  if (/^(?:未达\s*A|below_a)$/iu.test(value.trim())) return `原${field}：未达A`;
+  if (normalizeSourceAssessmentBand(value)) return '';
   return `原${field}：${value === 'below_a' ? '未达A' : value.trim()}`;
 }
 

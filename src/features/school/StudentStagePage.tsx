@@ -10,12 +10,14 @@ import { studentStageFieldScope } from "./student-stage-table-fields";
 import { StudentStageWorkspace } from "./StudentStageWorkspace";
 import { getOrganizationTimezoneV2 } from "./organization-locations";
 import { listStaffMembers } from "./staff";
+import { loadHistoryWorkflowReview } from "./history-workflow-review";
 
 export async function StudentStagePage({ locale, currentUserId, permissions, searchParams }: {
   locale: string; currentUserId: string; permissions: Set<PermissionKey>; searchParams: Record<string, string | string[] | undefined>;
 }) {
   const filters = parseStudentStageFilters(searchParams, permissions.has("student.view.all") ? "all" : "mine");
   const canAssign = permissions.has("student.assign");
+  const review = permissions.has("student.view.all") && permissions.has("followup.view") ? await loadHistoryWorkflowReview() : null;
   const [t, timeZone, staff, currentTime] = await Promise.all([getTranslations("school.students"), getOrganizationTimezoneV2(), canAssign ? listStaffMembers() : Promise.resolve([]), getNow()]);
   const now = currentTime.getTime();
   const data = await loadStudentStageFieldPage(filters, { locale, timeZone, now }, currentUserId);
@@ -24,6 +26,7 @@ export async function StudentStagePage({ locale, currentUserId, permissions, sea
     canAssign={canAssign} assignees={staff.filter(member => member.isActive && member.canFollowUp).map(({ userId, displayName }) => ({ userId, displayName }))}
     canEnroll={permissions.has("enrollment.manage")} timeZone={timeZone} now={now} actions={<>
       {permissions.has("student.create") ? <NewStudentDialog /> : null}
+      {review ? <Link href="/dashboard/students/review" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>{locale.startsWith("en") ? "Historical · inferred" : "历史资料 · 待核对"} {review.pendingCount}</Link> : null}
       {permissions.has("student.import") ? <Link href="/dashboard/students/import" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>{t("import")}</Link> : null}
       {permissions.has("student.delete") ? <Link href="/dashboard/students?tab=recycle" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>{t("recycleBin")}</Link> : null}
     </>} />;

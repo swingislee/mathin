@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Check, Ellipsis, RefreshCw } from "lucide-react";
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -22,6 +22,7 @@ import { STUDENT_STAGE_TABLE_COLUMNS, studentStageFieldsAcrossStages, studentSta
 import { FilterBar, FilterSearchInput } from "./FilterBar";
 import { LeadPoolPagination } from "./LeadPoolPagination";
 import { StudentStageAssignmentControl, StudentStageOwnerControl } from "./StudentStageAssignmentControl";
+import { Student360Trigger } from "./Student360Sheet";
 import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
 import { studentStageMessages } from "./student-stage-messages";
 import { defaultStudentEntryMode, replaceSavedStudent, STUDENT_STAGE_TABS, studentStageHref,
@@ -124,7 +125,7 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
       pageSize={data.pageSize} scope={filters.scope} q={filters.q} extraQuery={{ stage: filters.stage, fields: currentFilters.fields }}
       disabled={busy} onPageChange={(page, pageSize) => navigate({ page, pageSize })} />}>
     <DashboardTableShell data-followup-workbench aria-busy={server?.pending}>
-      <Table className={`table-fixed text-xs [&_th]:px-2 ${showBackground ? "min-w-[63rem]" : "min-w-[53rem]"}`}>
+      <Table className={`table-fixed text-xs [&_th]:px-2 ${showBackground ? "min-w-[69rem]" : "min-w-[53rem]"}`}>
         <TableHeader className="sticky top-0 z-20 bg-paper text-xs text-muted"><TableRow>
           {canAssign ? <TableHead className="w-9"><Checkbox aria-label={m.selectPage} disabled={busy || !visibleRows.length}
             checked={Boolean(visibleRows.length) && selectedRows.length === visibleRows.length ? true : selectedRows.length ? "indeterminate" : false}
@@ -134,6 +135,7 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
           <TableHead className="w-32"><DashboardTableColumnHeader label={m.state} {...table.columnProps("state")} disabled={busy} /></TableHead>
           {showBackground ? <TableHead className="w-40"><DashboardTableColumnHeader label={m.background} {...table.columnProps("background")} disabled={busy} /></TableHead> : null}
           <TableHead className="w-24"><DashboardTableColumnHeader label={m.owner} {...table.columnProps("owner")} disabled={busy} /></TableHead>
+          {showBackground ? <TableHead className="w-24"><DashboardTableColumnHeader label={m.teacher} {...table.columnProps("teacher")} disabled={busy} /></TableHead> : null}
           <TableHead><DashboardTableColumnHeader label={m.recent} {...table.columnProps("recent")} disabled={busy} /></TableHead><TableHead className={locale.startsWith("en") ? "w-64 text-right" : "w-48 text-right"}>{m.actions}</TableHead>
         </TableRow></TableHeader>
         <FollowupTableBody onNavigate={key => { if (busy) return false; setFocusedKey(key); return true; }}>{visibleRows.map((row, index) => {
@@ -143,14 +145,16 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
           const grade = row.grade ? studentT("grade", { grade: row.grade }) : row.gradeText || "—";
           const situation = m.details[row.detail] ?? row.detail;
           const showStage = Boolean(filters.q) || row.stage !== filters.stage;
-          const background = row.courseTitle ? `${row.courseTitle} · ${row.termName}`
-            : row.assessmentBand || row.score !== null ? [row.assessmentBand?.toUpperCase().replaceAll("_PLUS", "+"), row.score !== null ? String(row.score) : null].filter(Boolean).join(" · ") : m.noAssessment;
+          const learning = [row.assessmentBand?.toUpperCase().replaceAll("_PLUS", "+"), row.score !== null ? String(row.score) : null,
+            row.learningBand ? `${m.learningBand} ${row.learningBand}` : null].filter(Boolean).join(" · ");
+          const background = row.assessmentSource === "class_band" ? `${m.classBandReference} · ${learning || row.classBandLabel}`
+            : learning || (row.assessmentSource === "assessment" ? m.completedAssessment : row.courseTitle ? `${row.courseTitle} · ${row.termName}` : m.noAssessment);
           return <FollowupRecordRow key={row.key} rowKey={row.key} expanded={expanded} active={focusedKey === row.key} focusOnActivate
             pending={busy} keepMounted={visited.has(row.key)} onActivate={() => { if (!busy) setFocusedKey(row.key); }}
             onExpandedChange={value => { if (!busy) { if (value) open(row); else setActive(null); } }}
             onOutcomeChange={row.stage === "awaiting_first_contact" && row.canContact ? value => { open(row, "contact"); setOutcomeRequest({ key: row.key, value }); } : undefined}
             onSave={row.canWrite ? () => entryRefs.current.get(row.key)?.save() : undefined}
-            detailsId={`student-stage-details-${row.key}`} title={row.name} colSpan={(showBackground ? 7 : 6) + (canAssign ? 1 : 0)} selected={selectedKeys.has(row.key)}
+            detailsId={`student-stage-details-${row.key}`} title={row.name} colSpan={(showBackground ? 8 : 6) + (canAssign ? 1 : 0)} selected={selectedKeys.has(row.key)}
             rowProps={{ "data-student-stage-row": row.key, "data-student-stage": row.stage,
               className: "h-10 cursor-pointer focus-visible:outline-none [&>td]:px-2 [&>td]:py-1 [&>td]:align-middle [&>td]:whitespace-nowrap" }}
             summary={<>
@@ -164,9 +168,12 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
               <Badge variant="outline" className="min-w-0 max-w-full rounded-md px-1.5 py-0"><span className="truncate">{showStage ? `${m.stages[row.stage]} · ` : ""}{situation}</span></Badge>
               {handled.has(row.key) ? <span role="img" aria-label={m.retained} title={m.retained} className="shrink-0 text-leaf-deep"><Check className="size-3.5" aria-hidden="true" /></span> : null}
             </div></TableCell>
-            {showBackground ? <TableCell title={[background, row.assessmentAt ? formatAt(row.assessmentAt) : ""].filter(Boolean).join(" · ")}><p className="truncate">{background}</p></TableCell> : null}
+            {showBackground ? <TableCell title={[background, row.assessmentAt ? formatAt(row.assessmentAt) : ""].filter(Boolean).join(" · ")}><p className="truncate">{background}</p>
+              {row.inferredSourceIds?.length && row.studentId ? <Link href={`/dashboard/students/${row.studentId}?tab=history#student-source-records`}><Badge variant="outline" className="mt-0.5 px-1 text-[10px]">{locale.startsWith("en") ? "Inferred · check when needed" : "资料待核对"}</Badge></Link>
+                : Boolean(row.assessmentCandidateCount) ? <Student360Trigger subject={{ studentId: row.studentId, leadId: row.leadId }} fallback={{ name: row.name, phone: row.phone, grade: row.grade }} className="text-xs text-primary">{m.assessmentCandidates} {row.assessmentCandidateCount}</Student360Trigger> : null}</TableCell> : null}
             <TableCell title={row.ownerName || m.unassigned}>{canAssign ? <StudentStageOwnerControl row={row} assignees={assignees} locale={locale} disabled={busy}
               onBusyChange={setBusy} onAssigned={assigned} /> : <p className="truncate">{row.ownerName || m.unassigned}</p>}</TableCell>
+            {showBackground ? <TableCell title={row.teacherName || m.unassigned}><p className="truncate">{row.teacherName || m.unassigned}</p></TableCell> : null}
             <TableCell title={[row.note || m.noNote, row.lastContactAt ? formatAt(row.lastContactAt) : ""].filter(Boolean).join("\n")}><p className="truncate">{row.note || m.noNote}</p></TableCell>
             <TableCell><div className="flex items-center justify-end gap-1">
               {row.canWrite ? <Button size="sm" variant="ghost" className="h-7 shrink-0 px-2 text-xs" disabled={busy} onClick={() => open(row, contactMode)}>{contactMode === "contact" ? m.contact : m.note}</Button> : null}

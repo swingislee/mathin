@@ -3,13 +3,14 @@ export type SourceUseStudent = {id:string;name:string;grade:number|null;phone:st
 export interface SourceUseContext {
   recordId:string;title:string;source:string;name:string;studentId:string|null;version:number;canConfirm:boolean;
   students:SourceUseStudent[];cells:SourceUseCell[];
+  matchState?:'inferred'|'confirmed';
 }
 export interface StudentSourceArchive {
   total:number;page:number;pageSize:number;canConfirm:boolean;
-  rows:{id:string;title:string;source:string;name:string;dateLabel:string|null;linked:boolean;version:number;cells:SourceUseCell[]}[];
+  rows:{id:string;title:string;source:string;name:string;dateLabel:string|null;linked:boolean;version:number;matchState?:'inferred'|'confirmed';cells:SourceUseCell[]}[];
 }
 export const sourceUseMessages=(locale:string)=>locale==='en'?{
-  title:'Source records',hint:'Refer to the original material when you need it. Confirm an uncertain association when you use that record.',
+  title:'Source records',hint:'Records are saved with the most likely association. Check or correct uncertain details when working with the student.',
   original:'View original details',use:'Use for a follow-up',question:'Which student does this record belong to?',
   questionHint:'Check the original details and choose the student for this follow-up. This choice will be saved for future work.',
   choose:'Choose a student',search:'Search student name or phone',searchAction:'Search',confirm:'Confirm and continue',later:'Keep for later',
@@ -21,7 +22,7 @@ export const sourceUseMessages=(locale:string)=>locale==='en'?{
   pending:'Confirm when used',linked:'Linked to this student',sourceContext:'Reference for this follow-up',sourceSaved:'View source used for this follow-up',
   empty:'No source records are linked to this student yet.',previous:'Previous',next:'Next',unknown:'Not recorded',
 }:{
-  title:'来源资料',hint:'需要了解情况时查阅原文；使用归属未确定的资料时，再确认这一次关联。',
+  title:'来源资料',hint:'资料已按现有线索保存最可能的关联；有疑点时，在实际办理到该学生时核对或修改。',
   original:'查看完整原文',use:'参考此资料记录沟通',question:'这条资料属于哪位学生？',
   questionHint:'结合原文确认本次沟通对应的学生。确认后会保存这次关联，以后可以直接使用。',
   choose:'选择学生',search:'按学生姓名或电话查找',searchAction:'查找',confirm:'确认并继续',later:'暂时保留',

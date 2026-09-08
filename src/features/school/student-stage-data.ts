@@ -7,8 +7,13 @@ import { INVITATION_KINDS, INVITATION_STATES } from "./invitation-contract";
 const rowSchema = z.object({
   key: z.string(), studentId: z.string().nullable(), leadId: z.string().nullable(), name: z.string(), phone: z.string(),
   grade: z.number().nullable(), gradeText: z.string(), ownerId: z.string().nullable(), ownerName: z.string(),
+  teacherId: z.string().nullable().optional(), teacherName: z.string().optional(),
   stage: z.enum(STUDENT_STAGE_TABS), detail: z.string(), note: z.string(), lastContactAt: z.string().nullable(), nextContactAt: z.string().nullable(),
   score: z.number().nullable(), assessmentBand: z.string().nullable(), assessmentAt: z.string().nullable(), registrationId: z.string().nullable(),
+  assessmentSource: z.enum(["assessment", "class_band"]).nullable().optional(),
+  assessmentCandidateCount: z.number().int().nonnegative().optional(),
+  inferredSourceIds: z.array(z.string()).optional(),
+  assessmentRecordId: z.string().nullable().optional(), learningBand: z.string().nullable().optional(), classBandLabel: z.string().optional(),
   courseTitle: z.string(), termName: z.string(), courseId: z.string().nullable(), termId: z.string().nullable(), createdAt: z.string(),
   canWrite: z.boolean(), canContact: z.boolean(), invitation: z.object({
     id: z.string(), leadId: z.string(), updatedAt: z.string(), kind: z.enum(INVITATION_KINDS), state: z.enum(INVITATION_STATES),

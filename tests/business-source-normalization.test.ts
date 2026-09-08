@@ -6,7 +6,11 @@ describe('source expressions use the existing business vocabulary', () => {
   it('maps only the six supported assessment bands', () => {
     expect(['X+', 'G+', 'A', 'A+', 'S', 'C'].map(normalizeSourceAssessmentBand)).toEqual([...ASSESSMENT_BANDS]);
     expect(normalizeSourceAssessmentBand(' A ＋ ')).toBe('a_plus');
-    for (const value of ['未达A', 'below_a', '优秀', 'B', '基础', '培优']) {
+    for (const value of ['未达A', 'below_a']) {
+      expect(normalizeSourceAssessmentBand(value)).toBe('x_plus');
+      expect(sourceAssessmentNote(value)).toContain('原测评等级：未达A');
+    }
+    for (const value of ['优秀', 'B', '基础', '培优']) {
       expect(normalizeSourceAssessmentBand(value)).toBeNull();
       expect(sourceAssessmentNote(value)).toContain(value === 'below_a' ? '未达A' : value);
     }
