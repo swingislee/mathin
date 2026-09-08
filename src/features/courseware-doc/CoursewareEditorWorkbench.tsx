@@ -68,7 +68,6 @@ interface CoursewareEditorDirectory {
 
 interface CoursewareEditorCanvas {
   ariaLabel: string;
-  actions?: ReactNode;
   header?: ReactNode;
   content: ReactNode;
   footer?: ReactNode;
@@ -218,6 +217,30 @@ interface CoursewareEditorChromeContextValue {
 
 const CoursewareEditorChromeContext = createContext<CoursewareEditorChromeContextValue | null>(null);
 
+function useCoursewareChromeRegistry() {
+  const [registered, setRegistered] = useState<RegisteredEditorChrome | null>(null);
+  const register = useCallback((ownerId: string, chrome: CoursewareEditorChrome) => {
+    setRegistered({ ownerId, chrome });
+  }, []);
+  const unregister = useCallback((ownerId: string) => {
+    setRegistered((current) => current?.ownerId === ownerId ? null : current);
+  }, []);
+  const chromeContext = useMemo(() => ({ register, unregister }), [register, unregister]);
+  return { registered, chromeContext };
+}
+
+const CoursewareWorkbenchScopeContext = createContext<ReturnType<typeof useCoursewareChromeRegistry> | null>(null);
+
+/** 让工作区导航与画布共用编辑状态；Provider 不增加布局层。 */
+export function CoursewareWorkbenchScope({ children }: { children: ReactNode }) {
+  const registry = useCoursewareChromeRegistry();
+  return <CoursewareWorkbenchScopeContext.Provider value={registry}>
+    <CoursewarePageManagementContext.Provider value={registry.registered?.chrome.pageActionsDisabled ?? false}>
+      {children}
+    </CoursewarePageManagementContext.Provider>
+  </CoursewareWorkbenchScopeContext.Provider>;
+}
+
 /**
  * An editor adapter registers its controls with the one workbench that owns
  * their geometry. This replaces DOM-id portals, so toolbar, save state and the
@@ -364,15 +387,9 @@ function CoursewareWorkbenchFrame({
     editable ? EDITOR_THREE_COLUMN_MIN_WIDTH : PREVIEW_SIDE_BY_SIDE_MIN_WIDTH,
   );
   const { groupRef, onLayoutChanged } = usePanelLayout(`${layoutId}:${mode}:${orientation}`);
-  const [registered, setRegistered] = useState<RegisteredEditorChrome | null>(null);
-
-  const register = useCallback((ownerId: string, chrome: CoursewareEditorChrome) => {
-    setRegistered({ ownerId, chrome });
-  }, []);
-  const unregister = useCallback((ownerId: string) => {
-    setRegistered((current) => current?.ownerId === ownerId ? null : current);
-  }, []);
-  const chromeContext = useMemo(() => ({ register, unregister }), [register, unregister]);
+  const localRegistry = useCoursewareChromeRegistry();
+  const workspaceRegistry = useContext(CoursewareWorkbenchScopeContext);
+  const { registered, chromeContext } = workspaceRegistry ?? localRegistry;
   const setContainerRef = useCallback((node: HTMLDivElement | null) => {
     measureRef.current = node;
     assignRef(containerRef, node);
@@ -398,7 +415,6 @@ function CoursewareWorkbenchFrame({
       data-fullscreen={fullscreen ? "true" : undefined}
       className={cn(
         "h-full min-h-0 min-w-0 overflow-hidden",
-        canvas.actions && "flex flex-col",
         fullscreen && "bg-paper p-3",
         className,
       )}
@@ -406,12 +422,11 @@ function CoursewareWorkbenchFrame({
     >
       <CoursewareEditorChromeContext.Provider value={chromeContext}>
         <CoursewarePageManagementContext.Provider value={registered?.chrome.pageActionsDisabled ?? false}>
-        {canvas.actions ? <div data-courseware-editor-part="lecture-actions" className="flex shrink-0 items-center justify-end gap-2 border-b border-line px-3 py-2">{canvas.actions}</div> : null}
         <ResizablePanelGroup
           groupRef={groupRef}
           orientation={orientation}
           onLayoutChanged={onLayoutChanged}
-          className={cn("size-full min-h-0 min-w-0", canvas.actions && "flex-1")}
+          className="size-full min-h-0 min-w-0"
         >
           <ResizablePanel
             id="directory"

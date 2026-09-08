@@ -69,4 +69,13 @@ describe("DEV-CW-1 Step 1 read-only unified courseware workspace", () => {
     const en = JSON.parse(read("messages", "en.json"));
     expect(Object.keys(zh.coursewareWorkspace).sort()).toEqual(Object.keys(en.coursewareWorkspace).sort());
   });
+
+  it("places publication at the right of canvas navigation, outside the editor frame", () => {
+    const workspace = read("src", "features", "courseware-studio", "UnifiedCoursewareWorkspace.tsx");
+    const navigation = workspace.slice(workspace.indexOf("navigation={("), workspace.indexOf("<AutomaticLectureAdaptation"));
+    expect(navigation).toContain('<div className="ml-auto flex shrink-0 items-center" data-courseware-publication-navigation>');
+    expect(navigation.indexOf("<FormalCoursewarePublicationDialog")).toBeGreaterThan(navigation.indexOf("<ObjectTabs"));
+    expect(workspace.slice(workspace.indexOf("<CoursewareWorkbench\n"))).not.toContain("<FormalCoursewarePublicationDialog");
+    expect(workspace).toContain("<CoursewareWorkbenchScope>");
+  });
 });

@@ -6,6 +6,7 @@ import {
   CoursewareWorkbench,
   CoursewareWorkbenchDirectoryHeader,
   CoursewareWorkbenchPager,
+  CoursewareWorkbenchScope,
 } from "@/features/courseware-doc/CoursewareEditorWorkbench";
 import { isSourceRuntimePageDoc } from "@/features/courseware-doc/source-runtime-schema";
 import { isSpatialPageDoc } from "@/features/courseware-doc/spatial";
@@ -188,6 +189,7 @@ export async function UnifiedCoursewareWorkspace({
   });
 
   return (
+    <CoursewareWorkbenchScope>
     <ObjectWorkspace
       scroll="internal"
       objectBar={<ObjectBar
@@ -210,6 +212,10 @@ export async function UnifiedCoursewareWorkspace({
               <span>{t("adaptedFallbackNotice")}</span>
             </p>
           ) : null}
+          <div className="ml-auto flex shrink-0 items-center" data-courseware-publication-navigation>
+            <FormalCoursewarePublicationDialog key={`${detail.lecture.id}:${visibleCanvas}`} lectureId={detail.lecture.id}
+              track={visibleCanvas === "compare" && (pageEditor || sourceRuntimeEditor) ? "adapted-4x3" : formalCubeEditor?.track ?? pageEditor?.track ?? sourceRuntimeEditor?.track ?? visibleTrack} />
+          </div>
         </div>
       )}
     >
@@ -240,8 +246,6 @@ export async function UnifiedCoursewareWorkspace({
         }}
         canvas={{
           ariaLabel: t("previewTitle"),
-          actions: <FormalCoursewarePublicationDialog key={`${detail.lecture.id}:${visibleCanvas}`} lectureId={detail.lecture.id}
-            track={visibleCanvas === "compare" && (pageEditor || sourceRuntimeEditor) ? "adapted-4x3" : formalCubeEditor?.track ?? pageEditor?.track ?? sourceRuntimeEditor?.track ?? visibleTrack} />,
           content: <div className="size-full min-h-0 overflow-hidden bg-moon/10">
             {formalCubeEditor ? <FormalCubePageEditor key={`${formalCubeEditor.pageDocId}:${formalCubeEditor.track}:${formalCubeEditor.revisionNo}`} page={formalCubeEditor} /> : pageEditor ? (
               <PageDocVerticalSliceEditor
@@ -306,5 +310,6 @@ export async function UnifiedCoursewareWorkspace({
       />
       </AutomaticLectureAdaptation>
     </ObjectWorkspace>
+    </CoursewareWorkbenchScope>
   );
 }

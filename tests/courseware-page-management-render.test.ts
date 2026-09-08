@@ -5,7 +5,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import en from "../messages/en.json";
 import { FormalCoursewarePageActions } from "@/features/courseware-studio/FormalCoursewarePageActions";
-import { CoursewareWorkbench, CoursewareWorkbenchPageActions } from "@/features/courseware-doc/CoursewareEditorWorkbench";
+import { CoursewareWorkbench, CoursewareWorkbenchPageActions, CoursewareWorkbenchScope, useCoursewarePageActionsDisabled } from "@/features/courseware-doc/CoursewareEditorWorkbench";
 import { CoursewareEditorAdapterSurface } from "@/features/courseware-doc/CoursewareEditorAdapterSurface";
 
 const actions = vi.hoisted(() => ({ remove: vi.fn(), reorder: vi.fn() }));
@@ -27,6 +27,9 @@ async function mount(child: ReactNode) {
   await act(async () => root.render(createElement(NextIntlClientProvider, { locale: "en", messages: en, children: child })));
 }
 function footerButton(label: string) { return host.querySelector(`button[aria-label="${label}"]`) as HTMLButtonElement; }
+function PublicationProbe() {
+  return createElement("button", { "data-publication-control": true, disabled: useCoursewarePageActionsDisabled() }, "Publish");
+}
 describe("shared page management", () => {
   it("disables boundaries and moves the complete list while preserving the selected stable URL", async () => {
     actions.reorder.mockResolvedValue({ ok: true });
@@ -61,10 +64,30 @@ describe("shared page management", () => {
     // eslint-disable-next-line react/no-children-prop
     const surface = createElement(CoursewareEditorAdapterSurface, { toolbar: null, saveControls: null, inspector: null, aspect: 4 / 3, pageActionsDisabled: true, children: null });
     await mount(createElement(CoursewareWorkbench, { mode: "formal-editor", adapter: "test", layout: "workspace",
-      directory: { ariaLabel: "Pages", header: null, content: null, footer }, canvas: { ariaLabel: "Canvas", content: surface, actions: createElement("span", { "data-publication-control": true }, "Publish") }, inspector: { ariaLabel: "Properties", header: null } }));
+      directory: { ariaLabel: "Pages", header: null, content: null, footer }, canvas: { ariaLabel: "Canvas", content: surface }, inspector: { ariaLabel: "Properties", header: null } }));
     expect([...host.querySelectorAll("[data-courseware-page-actions] button")].every((button) => (button as HTMLButtonElement).disabled)).toBe(true);
-    expect(host.querySelector("[data-publication-control]")?.closest('[data-courseware-editor-part="lecture-actions"]')).not.toBeNull();
-    expect(host.querySelector("[data-publication-control]")?.closest('[data-courseware-editor-slot="toolbar"]')).toBeNull();
-    expect(host.querySelector("[data-courseware-workbench]")?.classList.contains("flex-col")).toBe(true);
+    expect(host.querySelector('[data-courseware-editor-part="lecture-actions"]')).toBeNull();
+  });
+  it("shares unsaved protection with navigation actions outside the editor without adding a layout row", async () => {
+    async function renderWorkspace(disabled: boolean, withEditor = true) {
+      // eslint-disable-next-line react/no-children-prop
+      const surface = createElement(CoursewareEditorAdapterSurface, { toolbar: null, saveControls: null, inspector: null, aspect: 4 / 3, pageActionsDisabled: disabled, children: null });
+      await mount(createElement(CoursewareWorkbenchScope, null,
+        createElement("nav", { "data-object-workspace-navigation": true }, createElement(PublicationProbe)),
+        withEditor ? createElement(CoursewareWorkbench, { mode: "formal-editor", adapter: "test", layout: "workspace",
+          directory: { ariaLabel: "Pages", header: null, content: null }, canvas: { ariaLabel: "Canvas", content: surface }, inspector: { ariaLabel: "Properties", header: null } }) : null));
+    }
+    const control = () => host.querySelector("[data-publication-control]") as HTMLButtonElement;
+    await renderWorkspace(true);
+    expect(control().disabled).toBe(true);
+    expect(control().closest("[data-object-workspace-navigation]")).not.toBeNull();
+    expect(control().closest("[data-courseware-workbench]")).toBeNull();
+    expect(host.querySelector('[data-courseware-editor-part="lecture-actions"]')).toBeNull();
+    await renderWorkspace(false);
+    expect(control().disabled).toBe(false);
+    await renderWorkspace(true);
+    expect(control().disabled).toBe(true);
+    await renderWorkspace(true, false);
+    expect(control().disabled).toBe(false);
   });
 });
