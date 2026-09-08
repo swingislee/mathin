@@ -58,6 +58,17 @@ export function buildHistoryIdentityIndex({ tables = {}, decisions = {} } = {}) 
     let included = false;
     if (batch.import_kind === "students" && batch.source_system === "mofaxiao" && /^mofaxiao:id:\d+$/u.test(key)) {
       included = include("student", row.target_id, key);
+    } else if (batch.import_kind === "students" && batch.source_system === "source_archive"
+      && batch.template_version === "source-student-identities-v1") {
+      // 已确认的来源身份可先建档，再关联当前班级；凭据独立于旧班级成员关系。
+      const proof = row.payload ?? {};
+      const fileHash = text(proof.sourceSha256);
+      const rosterKey = `roster:sha256:${fileHash}:sheet:${encodeURIComponent(text(proof.sourceSheet))}:cell:${text(proof.sourceCell).toUpperCase()}`;
+      if (/^[a-f0-9]{64}$/u.test(fileHash) && text(proof.sourceKey) === key
+        && ((proof.kind === "roster_cell" && text(proof.sourceSheet) && /^[A-Z]{1,3}[1-9]\d*$/u.test(text(proof.sourceCell).toUpperCase()) && key === rosterKey)
+          || (proof.kind === "source_record" && /^source-record:[a-f0-9]{64}$/u.test(key) && proof.sourceRecordId === key))) {
+        included = include("student", row.target_id, key);
+      }
     } else if (batch.import_kind === "leads" && batch.source_system === "xiaoditui" && /^lead:[^:]+:.+$/u.test(key)) {
       included = include("lead", row.target_id, `xiaoditui:${key}`);
     } else if (batch.import_kind === "enrollments" && batch.source_system === "mofaxiao") {
