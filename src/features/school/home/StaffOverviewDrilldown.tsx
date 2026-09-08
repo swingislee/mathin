@@ -66,6 +66,7 @@ export function StaffOverviewDrilldown({ children, grain, date, generatedAt, sel
   }, [request, grain, date, generatedAt, selectedSupportIds]);
   const isPeriod = selection && !["pending", "capacity"].includes(selection.query.kind);
   const formatDate = (value: string) => new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: result?.timeZone ?? "Asia/Shanghai" }).format(new Date(value));
+  const formatMonth = (value: string) => new Intl.DateTimeFormat(locale, { year: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${value}-01T00:00:00Z`));
   const range = result?.range.split("/");
   return <DetailContext.Provider value={next => {
     opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -85,7 +86,7 @@ export function StaffOverviewDrilldown({ children, grain, date, generatedAt, sel
             {range && <span className="text-muted">{formatDate(range[0])}{range[1] ? ` – ${formatDate(new Date(Date.parse(range[1]) - 1).toISOString())}` : ""}</span>}
           </div>
           {(selection.query.kind === "business" || selection.query.kind === "support") && <div className="flex flex-wrap gap-1">
-            {STAFF_OVERVIEW_METRICS.map(metric => <Button variant="ghost" key={metric} type="button" aria-pressed={selection.query.metric === metric}
+            {[...STAFF_OVERVIEW_METRICS, ...(selection.query.kind === "business" ? ["activityRegistrations"] : [])].map(metric => <Button variant="ghost" key={metric} type="button" aria-pressed={selection.query.metric === metric}
               className={cn("rounded-md px-2 py-1 text-xs", selection.query.metric === metric ? "bg-moon/30 text-ink" : "text-muted hover:bg-moon/15")}
               onClick={() => void load({ ...selection, query: { ...selection.query, metric } }, appliedSearch)}>{label(metric)}</Button>)}
           </div>}
@@ -117,7 +118,10 @@ export function StaffOverviewDrilldown({ children, grain, date, generatedAt, sel
               </TableRow></TableHeader><TableBody>{result.records.map(row => <TableRow key={row.id} className="border-t border-line align-top">
                 <TableCell className="p-3"><div className="font-medium text-ink">{row.href ? <Link href={row.href} className="underline decoration-line underline-offset-4 hover:text-rose" title={m.open}>{row.name || m.unnamed}</Link> : row.name || m.unnamed}</div>
                   {row.values?.map((item, index) => <div key={index} className="mt-1 text-[11px] text-muted">{label(item.label)}: {item.label === "enrollmentOutcome" ? label(item.value) : item.value}</div>)}
-                </TableCell><TableCell className="whitespace-nowrap p-3 text-muted">{row.at ? formatDate(row.at) : "—"}</TableCell><TableCell className="p-3 text-muted">{row.person || "—"}</TableCell>
+                  {row.sourceConfirmed && <div className="mt-1 text-[11px] text-muted">{m.sourceConfirmed}</div>}
+                </TableCell><TableCell className="whitespace-nowrap p-3 text-muted">{row.at ? formatDate(row.at) : "—"}
+                  {row.sourceMonth && <div className="mt-1 text-[11px]">{m.businessMonth} · {formatMonth(row.sourceMonth)}</div>}
+                </TableCell><TableCell className="p-3 text-muted">{row.person || "—"}</TableCell>
               </TableRow>)}{result.records.length === 0 && <TableRow><TableCell colSpan={3} className="p-8 text-center text-sm text-muted">{appliedSearch ? m.noMatch : m.empty}</TableCell></TableRow>}</TableBody></Table>
             <Pagination aria-label={m.detail}><PaginationContent className="w-full justify-between text-xs"><PaginationItem>
               <Button variant="ghost" disabled={result.page === 0} className="rounded border border-line px-3 py-2 disabled:opacity-40" onClick={() => void load(selection, appliedSearch, result.page - 1)}>{m.previousPage}</Button>

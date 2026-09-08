@@ -58,7 +58,7 @@ export async function readOverviewDetail(input: unknown): Promise<OverviewDetail
   const enriched = records.map(row => {
     const lead = row.leadId ? leadNames.get(row.leadId) : undefined;
     const studentId = row.studentId ?? lead?.studentId;
-    return { ...row, studentId, name: (studentId ? studentNames.get(studentId) : undefined) || lead?.name || row.name || (row.sourceId ? sourceNames.get(row.sourceId) : undefined),
+    return { ...row, studentId, name: row.sourceName || (studentId ? studentNames.get(studentId) : undefined) || lead?.name || row.name || (row.sourceId ? sourceNames.get(row.sourceId) : undefined),
       href: row.href ?? (studentId && studentNames.has(studentId) ? `/dashboard/students/${studentId}` : undefined) };
   }).sort((a, b) => (b.at ?? "").localeCompare(a.at ?? "") || (a.name ?? "").localeCompare(b.name ?? "") || a.id.localeCompare(b.id));
   const filtered = filterOverviewDetailRecords(enriched, args.search, args.person, args.sort);

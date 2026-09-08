@@ -1,5 +1,6 @@
 import { hasSourceAssessmentConclusion, readSourceEnrollmentFacts } from "../business-source-contract";
 import { zonedDateTimeToInstant } from "../schedule";
+import { readSourceMetricFacts, uniqueSourceMetricRows, type SourceMetricKey } from "../source-metric-facts-contract";
 
 export interface OverviewActivity {
   id: string;
@@ -23,6 +24,7 @@ export interface OverviewRegistration {
   assessment_started_at: string | null;
   assessment_completed_at: string | null;
   source_enrollment_facts?: unknown;
+  source_metric_facts?: unknown;
 }
 
 export interface OverviewAssessment {
@@ -49,6 +51,7 @@ export interface OverviewCourseEnrollment {
   confirmed_at: string | null;
   created_at: string;
   source_record_id: string | null;
+  source_metric_facts?: unknown;
   course_opportunities?: { student_id: string | null; lead_id: string | null } | null;
 }
 
@@ -74,6 +77,11 @@ export interface OverviewSourceEvent {
   studentId: string | null;
   leadId: string | null;
   activityId: string | null;
+  sourceMonth?: string | null;
+  sourceId?: string | null;
+  sourceName?: string;
+  sourceConfirmed?: boolean;
+  sourcePerson?: string;
 }
 
 /** 日期以机构时区归日；缺少发生日期时保持空值。 */
@@ -96,7 +104,7 @@ export function overviewAssessmentCompleted(result: OverviewAssessment, registra
   );
 }
 
-/** 报名与入班通过已有桥接去重；导入记录沿用原业务日期，创建时间只用于原生记录。 */
+/** 报名读取独立登记和来源确认；入班记录用于花名册，日期沿用原业务事实。 */
 export function buildOverviewSourceEvents(input: {
   activities: readonly OverviewActivity[];
   registrations: readonly OverviewRegistration[];
@@ -104,16 +112,17 @@ export function buildOverviewSourceEvents(input: {
   courseEnrollments: readonly OverviewCourseEnrollment[];
   memberships: readonly OverviewMembership[];
   enrollmentAssignments: readonly OverviewEnrollmentAssignment[];
-}, timeZone: string) {
+}, timeZone: string, grain: "week" | "month" = "week") {
   const activities = new Map(input.activities.map(row => [row.id, row]));
   const registrations = new Map(input.registrations.map(row => [row.id, row]));
+  const tagByRegistration = new Map(input.registrations.map(row => [row.id, readSourceMetricFacts(row.source_metric_facts)]));
   const activityAt = (id: string) => {
     const activity = activities.get(id);
     return activity ? overviewFactInstant(activity.scheduled_at, activity.occurred_on, timeZone) : null;
   };
   const visits = new Map<string, OverviewSourceEvent>();
   for (const row of input.registrations) {
-    if (row.status !== "attended" || !activities.has(row.activity_id)) continue;
+    if (row.status !== "attended" || !activities.has(row.activity_id) || tagByRegistration.get(row.id)?.scope === "activity") continue;
     const at = activityAt(row.activity_id);
     // 同一来源到访拆成体验、测评两个产品时计一次；原生预约和另一次到访分别保留。
     const key = row.source_record_id ? JSON.stringify([row.source_record_id, at, row.student_id, row.lead_id]) : row.id;
@@ -133,27 +142,20 @@ export function buildOverviewSourceEvents(input: {
         ?? (row.source_record_id ? null : overviewFactInstant(row.created_at, null, timeZone));
       return { id: row.id, at, studentId: row.student_id ?? registration.student_id, leadId: row.lead_id ?? registration.lead_id, activityId: registration.activity_id };
     });
-  const courseIds = new Set(input.courseEnrollments.map(row => row.id));
-  const bridgedMemberships = new Set(input.enrollmentAssignments
-    .filter(row => courseIds.has(row.course_enrollment_id))
-    .map(row => row.classroom_membership_id).filter(Boolean));
   const enrollments: OverviewSourceEvent[] = [
-    ...input.courseEnrollments.map(row => ({
+    ...input.courseEnrollments.filter(row => readSourceMetricFacts(row.source_metric_facts)?.scope !== "activity").map(row => ({
       id: row.id,
       at: overviewFactInstant(null, row.registered_on, timeZone)
         ?? (row.source_record_id ? null : overviewFactInstant(row.confirmed_at ?? row.created_at, null, timeZone)),
       studentId: row.student_id ?? row.course_opportunities?.student_id ?? null,
       leadId: row.course_opportunities?.lead_id ?? null, activityId: null,
     })),
-    // 花名册导入 RPC 把 joined_at 设为导入时刻；它提供在读快照，报名日期读取独立报名登记。
-    ...input.memberships.filter(row => !bridgedMemberships.has(row.id) && !row.remark?.startsWith("班级学员导入：")).map(row => ({
-      id: row.id, at: overviewFactInstant(row.joined_at, null, timeZone), studentId: row.student_id, leadId: null, activityId: null,
-    })),
   ];
   const courseSourceIds = new Map(input.courseEnrollments.map(row => [row.id, row.source_record_id]));
   const seenSourceEnrollments = new Set<string>();
   const subjectKey = (studentId: string | null, leadId: string | null) => studentId ? `student:${studentId}` : leadId ? `lead:${leadId}` : null;
   for (const registration of input.registrations) {
+    if (tagByRegistration.get(registration.id)?.scope === "activity") continue;
     const facts = readSourceEnrollmentFacts(registration.source_enrollment_facts);
     if (!registration.source_record_id || !facts || !activities.has(registration.activity_id)) continue;
     const at = overviewFactInstant(null, facts.registeredOn, timeZone);
@@ -182,7 +184,34 @@ export function buildOverviewSourceEvents(input: {
       studentId: registration.student_id, leadId: registration.lead_id, activityId: registration.activity_id,
     });
   }
-  return { arrivals, assessments, enrollments };
+  const registrationIdsBySource = new Map<string, string[]>();
+  for (const row of input.registrations) {
+    const key = tagByRegistration.get(row.id)?.sourceKey;
+    if (key) registrationIdsBySource.set(key, [...(registrationIdsBySource.get(key) ?? []), row.id]);
+  }
+  const tagged = uniqueSourceMetricRows(input.registrations.filter(row => tagByRegistration.get(row.id)));
+  const sourceEvent = (row: OverviewRegistration, metric: SourceMetricKey): OverviewSourceEvent => {
+    const facts = tagByRegistration.get(row.id)!;
+    const at = metric === "enrollments" ? overviewFactInstant(null, readSourceEnrollmentFacts(row.source_enrollment_facts)?.registeredOn ?? null, timeZone)
+      : metric === "invitations" || metric === "activityRegistrations" ? overviewFactInstant(null, row.registered_on, timeZone) : activityAt(row.activity_id);
+    return { id: `source-${metric}:${facts.sourceKey}`, at, studentId: row.student_id, leadId: row.lead_id, activityId: row.activity_id,
+      registrationIds: registrationIdsBySource.get(facts.sourceKey),
+      sourceId: row.source_record_id, sourceName: facts.sourceName, sourceConfirmed: true,
+      sourceMonth: facts.months[metric] ?? null, sourcePerson: facts.staff[metric] ?? "" };
+  };
+  const sourceMetric = (metric: SourceMetricKey) => tagged.filter(row => activities.has(row.activity_id)
+    && tagByRegistration.get(row.id)!.confirmed[metric]).map(row => sourceEvent(row, metric));
+  const tagByAssessment = new Map(input.assessments.map(row => [row.id, tagByRegistration.get(row.activity_registration_id)]));
+  const tagByCourse = new Map(input.courseEnrollments.map(row => [row.id, readSourceMetricFacts(row.source_metric_facts)]));
+  const sourceAssessments = sourceMetric("assessments");
+  const selectedArrivals = grain === "month" ? [...arrivals.filter(row => !tagByRegistration.get(row.id)), ...sourceMetric("arrivals")] : arrivals;
+  const selectedAssessments = [...assessments.filter(row => !tagByAssessment.get(row.id)), ...sourceAssessments];
+  const selectedEnrollments = grain === "month" ? [
+    ...enrollments.filter(row => !tagByCourse.get(row.id) && !tagByRegistration.get(row.id.replace(/^source-enrollment:/, ""))),
+    ...sourceMetric("enrollments"),
+  ] : enrollments;
+  return { arrivals: selectedArrivals, assessments: selectedAssessments, enrollments: selectedEnrollments,
+    sourceInvitations: sourceMetric("invitations"), activityRegistrations: sourceMetric("activityRegistrations") };
 }
 
 /** 尚未关联档案的 Lead 保留独立身份；多个空 student_id 不合并为一个人。 */

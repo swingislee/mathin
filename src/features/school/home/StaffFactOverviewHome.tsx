@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { StaffOverviewDrilldown, OverviewDetailTrigger, OverviewDetailRow } from "./StaffOverviewDrilldown";
 import type { OverviewDetailQuery } from "./staff-overview-drilldown-contract";
+import { overviewDetailMessages } from "./staff-overview-drilldown-messages";
 import { cookies } from "next/headers";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StaffOverviewDisplayPicker } from "./StaffOverviewDisplayPicker";
@@ -542,7 +543,7 @@ export async function StaffFactOverviewHome({
   const goals = organizationScope && grain === "month" ? await readMonthlyTargets(targetMonth) : { available: true as const, plan: null };
   const selection = date === "current" || date === "previous" ? date : selectedDate;
   const liveWindow = buildStaffOverviewWindow(grain, new Date(data.generatedAt), data.timeZone);
-  const previousLabel = t(data.isComplete ? "previousComplete" : "previousShort");
+  const previousLabel = grain === "month" ? overviewDetailMessages(locale).previousMonth : t(data.isComplete ? "previousComplete" : "previousShort");
   const generatedAt = new Intl.DateTimeFormat(locale, {
     month: "numeric",
     day: "numeric",
@@ -652,7 +653,7 @@ export async function StaffFactOverviewHome({
       <div className="min-h-0 space-y-2 pb-3">
         <NotificationFocus target={focusTarget} />
         <p className="text-[10px] text-muted" data-overview-comparison={data.isComplete ? "complete" : "to-date"}>
-          {t(data.isComplete ? "completeComparison" : "progressComparison", { current: currentRange, previous: previousRange })}
+          {grain === "month" ? overviewDetailMessages(locale).monthlyComparison : t(data.isComplete ? "completeComparison" : "progressComparison", { current: currentRange, previous: previousRange })}
           {organizationScope && grain === "month" ? <span className="ml-3">{t(goals.plan ? goals.plan.basis === "source" ? "goalSource" : "goalSavedSource" : goals.available ? "goalNotSet" : "goalUnavailable", { date: goals.plan?.source.capturedOn ?? "" })}</span> : null}
         </p>
 
@@ -667,6 +668,15 @@ export async function StaffFactOverviewHome({
           goals={goals}
           t={t}
         />
+
+        {data.activityRegistrations && <div className="flex items-center gap-3 px-3 py-1 text-xs text-muted">
+          <OverviewDetailTrigger query={{ kind: "business", metric: "activityRegistrations" }} title={overviewDetailMessages(locale).activityRegistrations} className="rounded px-1 py-1">
+            {overviewDetailMessages(locale).activityRegistrations} · {t("currentShort")} {valueOrDash(data.activityRegistrations.current)}
+          </OverviewDetailTrigger>
+          <OverviewDetailTrigger query={{ kind: "business", metric: "activityRegistrations", period: "previous" }} title={overviewDetailMessages(locale).activityRegistrations} className="rounded px-1 py-1">
+            {previousLabel} {valueOrDash(data.activityRegistrations.previous)}
+          </OverviewDetailTrigger>
+        </div>}
 
         <PendingStrip
           facts={data.pendingFacts}

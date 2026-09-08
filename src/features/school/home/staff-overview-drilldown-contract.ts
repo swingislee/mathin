@@ -1,4 +1,4 @@
-import { summarizeTeacherParticipationOutcomes, type StaffOverviewMetric, type StaffOverviewWindow, type StaffOverviewTeacherParticipationEvent, type StaffOverviewEnrollmentOutcomeEvent } from "./staff-overview-contract";
+import { overviewFactInPeriod, summarizeTeacherParticipationOutcomes, type StaffOverviewMetric, type StaffOverviewWindow, type StaffOverviewTeacherParticipationEvent, type StaffOverviewEnrollmentOutcomeEvent } from "./staff-overview-contract";
 
 export interface OverviewDetailQuery {
   kind: "business" | "support" | "participation" | "capacity" | "pending";
@@ -10,6 +10,9 @@ export interface OverviewDetailQuery {
 export interface OverviewDetailRecord {
   id: string;
   at?: string;
+  sourceMonth?: string | null;
+  sourceName?: string;
+  sourceConfirmed?: boolean;
   studentId?: string | null;
   leadId?: string | null;
   sourceId?: string | null;
@@ -37,7 +40,7 @@ export type OverviewDetailSort = typeof OVERVIEW_DETAIL_SORTS[number];
 export function filterOverviewDetailRecords(records: readonly OverviewDetailRecord[], search: string, person: string, sort: OverviewDetailSort) {
   const term = search.trim().toLocaleLowerCase();
   const [field, direction] = sort.split("_");
-  const value = (row: OverviewDetailRecord) => field === "date" ? row.at : field === "name" ? row.name : row.person;
+  const value = (row: OverviewDetailRecord) => field === "date" ? row.at || row.sourceMonth : field === "name" ? row.name : row.person;
   return records.filter(row => (person === "all" || (person === "empty" ? !row.person : `person:${row.person}` === person))
     && (!term || [row.name, row.person, ...(row.values ?? []).map(item => item.value)].some(item => item?.toLocaleLowerCase().includes(term))))
     .sort((a, b) => {
@@ -49,16 +52,13 @@ export function filterOverviewDetailRecords(records: readonly OverviewDetailReco
 }
 
 /** 邀约按机构或人员分别去重，保留“其他人员”合计中的归属贡献。 */
-export function selectOverviewDetailEvents<T extends { id: string; at: string; personId: string | null }>(
+export function selectOverviewDetailEvents<T extends { id: string; at: string; sourceMonth?: string | null; personId: string | null }>(
   events: readonly T[], window: StaffOverviewWindow, query: OverviewDetailQuery, selectedSupportIds: readonly string[] = [],
 ): T[] {
   const period = query.period ?? "current";
-  const start = period === "current" ? window.currentStart : window.previousStart;
-  const cutoff = period === "current" ? window.currentCutoff : window.previousCutoff;
   const seen = new Set<string>();
   return events.filter(event => {
-    const instant = new Date(event.at);
-    if (!(instant >= start && instant < cutoff)) return false;
+    if (!overviewFactInPeriod(event, window, period)) return false;
     if (query.kind === "support" && query.scope) {
       if (query.scope === "__unassigned__" ? event.personId !== null
         : query.scope === "__other__" ? event.personId === null || selectedSupportIds.includes(event.personId)

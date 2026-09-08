@@ -7,6 +7,7 @@ import type { OverviewClassroomOccupancy } from "./staff-overview-presentation-c
 import { getOrganizationTimezoneV2 } from "@/features/school/organization-locations";
 import { createClient } from "@/lib/supabase/server";
 import { resolveSourceStaffId, sourceStaffLabel } from "../business-source-contract";
+import { readSourceMetricFacts, uniqueSourceMetricRows } from "../source-metric-facts-contract";
 import { readCurrentTermClassroomIds, readOverviewRows, STAFF_OVERVIEW_READ_LIMIT, type OverviewRowsResult } from "./staff-overview-read";
 import {
   buildOverviewAcquisitions, type OverviewLeadSubmission,
@@ -27,6 +28,7 @@ import {
   type ClassroomCapacityInput,
   type ClassroomCapacityTotals,
   type StaffOverviewComparison,
+  type StaffOverviewFactEvent,
   type StaffOverviewGrain,
   type StaffOverviewMetric,
   type StaffOverviewTrendPoint,
@@ -135,6 +137,7 @@ export interface StaffOverviewData {
   missingDateCounts: Partial<Record<StaffOverviewMetric, number>>;
   snapshot: StaffOverviewSnapshot;
   businessFacts: StaffOverviewBusinessFact[];
+  activityRegistrations?: StaffOverviewPersonMetric;
   pendingFacts: StaffOverviewPendingFact[];
   supportFunnelRows: StaffOverviewSupportFunnelRow[];
   supportDirectory: Array<{ userId: string; name: string }>;
@@ -171,6 +174,8 @@ interface CommunicationRow {
   source_record_id: string | null;
   outcome: string;
   owner_id_at_contact: string | null;
+  source_key?: string | null;
+  source_metric_facts?: unknown;
 }
 
 interface InvitationThreadSummary {
@@ -265,11 +270,11 @@ async function readOverviewCore(supabase: Awaited<ReturnType<typeof createClient
     read<OverviewActivity>("activities", () => supabase.from("business_activities" as "activities")
       .select("id,scheduled_at,occurred_on,source_invitation_id,remark,record_state").is("deleted_at", null)),
     read<OverviewRegistration>("registrations", () => supabase.from("business_activity_registrations" as "activity_registrations")
-      .select("id,activity_id,student_id,lead_id,status,record_state,registered_on,created_at,source_record_id,assessment_started_at,assessment_completed_at,source_enrollment_facts")),
+      .select("id,activity_id,student_id,lead_id,status,record_state,registered_on,created_at,source_record_id,assessment_started_at,assessment_completed_at,source_enrollment_facts,source_metric_facts")),
     read<OverviewAssessment>("assessments", () => supabase.from("business_assessment_results" as "assessment_results")
       .select("id,activity_registration_id,student_id,lead_id,assessed_by,assessed_on,created_at,source_record_id,result_source,result_finalized_at,assessment_band,score,strengths")),
     read<OverviewCourseEnrollment>("courseEnrollments", () => supabase.from("business_course_enrollments" as "course_enrollments")
-      .select("id,student_id,opportunity_id,registered_on,confirmed_at,created_at,source_record_id,course_opportunities(student_id,lead_id)")),
+      .select("id,student_id,opportunity_id,registered_on,confirmed_at,created_at,source_record_id,source_metric_facts,course_opportunities(student_id,lead_id)")),
     read<OverviewMembership>("memberships", () => supabase.from("enrollments")
       .select("id,classroom_id,student_id,joined_at,status,remark")),
     read<OverviewEnrollmentAssignment>("enrollmentAssignments", () => supabase.from("course_enrollment_assignments")
@@ -283,18 +288,19 @@ async function readOverviewCore(supabase: Awaited<ReturnType<typeof createClient
   return { activities, registrations, assessments, courseEnrollments, memberships, enrollmentAssignments, classrooms, currentTerms, currentClassIds };
 }
 
-function coreEvents(core: Awaited<ReturnType<typeof readOverviewCore>>, timeZone: string) {
+function coreEvents(core: Awaited<ReturnType<typeof readOverviewCore>>, timeZone: string, grain: StaffOverviewGrain = "week") {
   const productionClassIds = new Set((core.classrooms.data ?? []).map(row => row.id));
   return buildOverviewSourceEvents({
     activities: core.activities.data ?? [], registrations: core.registrations.data ?? [],
     assessments: core.assessments.data ?? [], courseEnrollments: core.courseEnrollments.data ?? [],
     memberships: (core.memberships.data ?? []).filter(row => productionClassIds.has(row.classroom_id)),
     enrollmentAssignments: core.enrollmentAssignments.data ?? [],
-  }, timeZone);
+  }, timeZone, grain);
 }
 
-function datedEvents<T extends { at: string | null }>(events: T[]): Array<T & { at: string }> {
-  return events.filter((event): event is T & { at: string } => event.at !== null);
+function datedEvents<T extends { at: string | null; sourceMonth?: string | null }>(events: T[], grain: StaffOverviewGrain = "week"): Array<T & { at: string }> {
+  return events.filter(event => event.at !== null || grain === "month" && event.sourceMonth)
+    .map(event => ({ ...event, at: event.at ?? "" }));
 }
 
 function exactRows<T>(result: QueryRowsResult<T>) {
@@ -348,6 +354,7 @@ export async function getStaffOverviewData({
   const read = overviewReader(sources);
   const [supabase, timeZone] = await Promise.all([createClient(), getOrganizationTimezoneV2()]);
   const window = buildStaffOverviewWindow(grain, now, timeZone, date);
+  if (grain === "month") window.previousCutoff = window.previousEnd;
   const rangeStart = window.previousStart.toISOString();
   const rangeEnd = window.currentCutoff.toISOString();
   const activeLeadStates = ["unassigned", "uncontacted", "contacted", "nurture", "intent_confirmed"];
@@ -366,7 +373,7 @@ export async function getStaffOverviewData({
     sources.has("acquisitionSources") ? readOverviewAcquisitions(supabase) : Promise.resolve({ data: [], error: null }),
     read<OverviewLeadSubmission>("leadSubmissions", () => supabase.from("lead_source_records").select("id,lead_id,submitted_at")),
     read<LeadDirectoryRow>("leads", () => supabase.from("leads").select("id,owner_id,status,student_id,created_at,source_record_id")),
-    read<CommunicationRow>("communications", () => supabase.from("business_lead_communications" as "lead_communications").select("id,lead_id,occurred_at,occurred_on,outcome,owner_id_at_contact,recorded_by,source_record_id")),
+    read<CommunicationRow>("communications", () => supabase.from("business_lead_communications" as "lead_communications").select("id,lead_id,occurred_at,occurred_on,outcome,owner_id_at_contact,recorded_by,source_record_id,source_key,source_metric_facts")),
     read<InvitationEventRow>("invitationEvents", () => supabase.from("lead_invitation_events")
       .select("invitation_id,occurred_at,to_state,lead_invitation_threads(owner_id_at_open,assessor_id)")
       .eq("to_state", "confirmed").gte("occurred_at", rangeStart).lt("occurred_at", rangeEnd)),
@@ -426,7 +433,7 @@ export async function getStaffOverviewData({
   const profiles = rows(profilesResult, "staffDirectory");
   const staffRoleMembers = rows(staffRoleMembersResult, "staffDirectory");
   const opportunities = rows(opportunitiesResult, "enrollments");
-  const sourceEvents = coreEvents(core, timeZone);
+  const sourceEvents = coreEvents(core, timeZone, grain);
   const assessmentRefs = assessments;
   const activityById = new Map(activities.map(row => [row.id, row]));
   const attended = registrations.filter(row => row.status === "attended" && row.record_state === "current"
@@ -497,7 +504,8 @@ export async function getStaffOverviewData({
   };
   const sourceSupport = new Map(activities.map(activity => [activity.id, sourceStaff(sourceStaffLabel(activity.remark, "学服老师"))]));
   const sourceTeachers = new Map(activities.map(activity => [activity.id, sourceStaff(sourceStaffLabel(activity.remark, "学科老师"))]));
-  const personForEvent = (event: { activityId: string | null; studentId: string | null; leadId: string | null; at: string }) => {
+  const personForEvent = (event: { activityId: string | null; studentId: string | null; leadId: string | null; at: string; sourcePerson?: string }) => {
+    if (event.sourcePerson !== undefined) return sourceStaff(event.sourcePerson);
     const directOwner = event.activityId ? sourceSupport.get(event.activityId) : null;
     const linkedLead = event.leadId ? leadById.get(event.leadId) : null;
     const studentId = event.studentId ?? linkedLead?.student_id;
@@ -524,26 +532,36 @@ export async function getStaffOverviewData({
     sourceLinks: [...communications, ...registrations, ...assessments],
   }, timeZone);
   const leadEvents = datedEvents(sourceLeadEvents);
-  const sourceContactEvents = communications.filter(row => row.outcome === "connected").map(row => ({
-    id: row.id, at: overviewFactInstant(row.occurred_at, row.occurred_on, timeZone),
-    personId: row.owner_id_at_contact ?? (row.source_record_id ? row.recorded_by ?? leadById.get(row.lead_id)?.owner_id ?? null : null),
-  }));
-  const contactEvents = datedEvents(sourceContactEvents);
-  const sourceInvitationEvents = registrations.filter(row => row.source_record_id && activityById.has(row.activity_id) && !activityById.get(row.activity_id)?.source_invitation_id)
+  const contactRows = grain === "month" ? uniqueSourceMetricRows(communications.filter(row => !row.source_key?.endsWith(":followup"))) : communications;
+  const sourceContactEvents = contactRows.filter(row => {
+    const facts = readSourceMetricFacts(row.source_metric_facts);
+    return grain === "month" && facts ? facts.confirmed.contacts : ["connected", "declined"].includes(row.outcome);
+  }).map(row => {
+    const facts = readSourceMetricFacts(row.source_metric_facts);
+    return { id: row.id, at: overviewFactInstant(row.occurred_at, row.occurred_on, timeZone),
+      personId: facts ? sourceStaff(facts.staff.contacts ?? "") : row.owner_id_at_contact
+        ?? (row.source_record_id ? row.recorded_by ?? leadById.get(row.lead_id)?.owner_id ?? null : null),
+      ...(facts ? { sourceMonth: facts.months.contacts, sourceName: facts.sourceName, sourceId: row.source_record_id, sourceConfirmed: true } : {}) };
+  });
+  const contactEvents = datedEvents(sourceContactEvents, grain);
+  const sourceInvitationEvents = [...registrations.filter(row => !readSourceMetricFacts(row.source_metric_facts) && row.source_record_id && activityById.has(row.activity_id) && !activityById.get(row.activity_id)?.source_invitation_id)
     .map(row => ({ id: row.source_record_id!, at: overviewFactInstant(null, row.registered_on, timeZone),
-      activityId: row.activity_id, studentId: row.student_id, leadId: row.lead_id }));
+      activityId: row.activity_id, studentId: row.student_id, leadId: row.lead_id })), ...sourceEvents.sourceInvitations];
   const invitationFactEvents = [
     ...invitationEvents.map(row => ({ id: row.invitation_id, at: row.occurred_at, personId: row.lead_invitation_threads?.owner_id_at_open ?? null })),
-    ...datedEvents(sourceInvitationEvents).map(row => ({ ...row, personId: personForEvent(row) })),
+    ...datedEvents(sourceInvitationEvents, grain).map(row => ({ ...row, personId: personForEvent(row) })),
   ];
-  const arrivalEvents = datedEvents(sourceEvents.arrivals).map(row => ({ ...row, studentId: subjectForEvent(row), personId: personForEvent(row) }));
-  const assessmentEvents = datedEvents(sourceEvents.assessments).map(row => ({ ...row, studentId: subjectForEvent(row), personId: personForEvent(row) }));
+  const arrivalEvents = datedEvents(sourceEvents.arrivals, grain).map(row => ({ ...row, studentId: subjectForEvent(row), personId: personForEvent(row) }));
+  const assessmentEvents = datedEvents(sourceEvents.assessments, grain).map(row => ({ ...row, studentId: subjectForEvent(row), personId: personForEvent(row) }));
   const opportunityOwner = new Map(opportunities.map(row => [row.id, row.owner_id]));
   const enrollmentOwner = new Map(courseEnrollments.map(row => [row.id, row.opportunity_id ? opportunityOwner.get(row.opportunity_id) : null]));
-  const enrollmentEvents = datedEvents(sourceEvents.enrollments).map(row => ({
+  const enrollmentEvents = datedEvents(sourceEvents.enrollments, grain).map(row => ({
     ...row, studentId: subjectForEvent(row),
-    personId: enrollmentOwner.get(row.id) ?? personForEvent(row) ?? (row.studentId ? supportOwnerForEnrollment(row.studentId, row.at) : null),
+    personId: row.sourcePerson !== undefined ? sourceStaff(row.sourcePerson)
+      : enrollmentOwner.get(row.id) ?? personForEvent(row) ?? (row.studentId ? supportOwnerForEnrollment(row.studentId, row.at) : null),
   }));
+  const activityRegistrationEvents = datedEvents(sourceEvents.activityRegistrations, grain).map(row => ({ ...row, personId: personForEvent(row) }));
+  const activityRegistrationComparison = sourceExact("activities") ? aggregateStaffOverviewEvents(activityRegistrationEvents, window, timeZone) : null;
   const missingDateCounts: Partial<Record<StaffOverviewMetric, number>> = {
     leads: sourceLeadEvents.filter(row => !row.at).length,
     contacts: sourceContactEvents.filter(row => !row.at).length,
@@ -627,7 +645,7 @@ export async function getStaffOverviewData({
     ...resolveClassroomCapacityPolicy(classroom.grade, classroom.capacity),
   }));
 
-  const supportAttributedEvents: Record<StaffOverviewMetric, Array<{ id: string; at: string; personId: string | null }>> = {
+  const supportAttributedEvents: Record<StaffOverviewMetric, Array<StaffOverviewFactEvent & { id: string; personId: string | null }>> = {
     leads: leadEvents,
     contacts: contactEvents,
     invitations: invitationFactEvents,
@@ -744,7 +762,8 @@ export async function getStaffOverviewData({
         })),
         ...assessmentEvents.map(event => ({
           id: event.id, studentId: event.studentId, at: event.at,
-          teacherIds: Array.from(assessorsByRegistrationId.get(assessments.find(row => row.id === event.id)!.activity_registration_id) ?? []),
+          teacherIds: Array.from(new Set((event.registrationIds ?? [assessments.find(row => row.id === event.id)?.activity_registration_id ?? ""])
+            .flatMap(id => Array.from(assessorsByRegistrationId.get(id) ?? [])))),
         })),
       ];
   const teacherOutcome = teacherParticipationAvailable
@@ -832,7 +851,8 @@ export async function getStaffOverviewData({
         return { id, leadId: row?.lead_id, sourceId: row?.source_record_id };
       }
       if (metric === "invitations") {
-        const row = registrations.find(row => row.source_record_id === id);
+        const sourceEvent = sourceEvents.sourceInvitations.find(row => row.id === id);
+        const row = registrations.find(row => row.source_record_id === (sourceEvent?.sourceId ?? id));
         return { id, leadId: row?.lead_id ?? invitationThreads.find(row => row.id === id)?.lead_id,
           studentId: row?.student_id, sourceId: row?.source_record_id };
       }
@@ -840,7 +860,7 @@ export async function getStaffOverviewData({
       const registration = registrationById.get(id.replace(/^source-enrollment:/, ""));
       const assessment = assessments.find(row => row.id === id);
       return { id, studentId: event?.studentId, leadId: event?.leadId,
-        sourceId: registration?.source_record_id ?? assessment?.source_record_id ?? courseEnrollments.find(row => row.id === id)?.source_record_id };
+        sourceId: event?.sourceId ?? registration?.source_record_id ?? assessment?.source_record_id ?? courseEnrollments.find(row => row.id === id)?.source_record_id };
     };
     let records: OverviewDetailRecord[] = [];
     let available = false;
@@ -849,7 +869,15 @@ export async function getStaffOverviewData({
       available = detail.kind === "support" ? supportMetricExact(metric) : comparisonByMetric[metric] !== null;
       records = selectOverviewDetailEvents(supportAttributedEvents[metric], window, detail, selectedSupportIds)
         .map((event, index) => ({ ...detailRef(metric, event.id), id: `${event.id}:${index}`, at: event.at,
+          sourceMonth: event.sourceMonth, sourceName: event.sourceName, sourceConfirmed: event.sourceConfirmed,
           person: event.personId ? displayName(event.personId) : undefined }));
+    } else if (detail.kind === "business" && detail.metric === "activityRegistrations") {
+      available = activityRegistrationComparison !== null;
+      records = selectOverviewDetailEvents(activityRegistrationEvents, window, detail).map(event => ({
+        id: event.id, at: event.at, studentId: event.studentId, leadId: event.leadId, sourceId: event.sourceId,
+        sourceName: event.sourceName, sourceMonth: event.sourceMonth, sourceConfirmed: event.sourceConfirmed,
+        person: event.personId ? displayName(event.personId) : undefined,
+      }));
     } else if (detail.kind === "participation") {
       available = detail.metric === "enrollments" || detail.metric === "conversion" ? teacherEnrollmentAvailable : teacherParticipationAvailable;
       records = selectOverviewParticipants(participationEvents, enrollmentEvents, window, detail).map(row => {
@@ -917,6 +945,7 @@ export async function getStaffOverviewData({
     previousCutoff: window.previousCutoff.toISOString(),
     snapshot,
     businessFacts,
+    activityRegistrations: { current: activityRegistrationComparison?.current ?? null, previous: activityRegistrationComparison?.previous ?? null },
     pendingFacts,
     supportFunnelRows,
     supportDirectory: [...profiles.map(person => ({ userId: person.id, name: displayName(person.id) })),

@@ -25,6 +25,7 @@ export function normalizeOverviewGrain(value: string | undefined): StaffOverview
 }
 
 export interface StaffOverviewWindow {
+  timeZone?: string;
   grain: StaffOverviewGrain;
   isComplete: boolean;
   currentStart: Date;
@@ -113,6 +114,7 @@ export function buildStaffOverviewWindow(
     : previousMonthComparableCutoff(currentCutoff, previousStart, previousEnd, timeZone);
 
   return {
+    timeZone,
     grain,
     isComplete,
     currentStart,
@@ -128,8 +130,23 @@ export function buildStaffOverviewWindow(
 
 export interface StaffOverviewFactEvent {
   at: string;
+  sourceMonth?: string | null;
+  sourceId?: string | null;
+  sourceName?: string;
+  sourceConfirmed?: boolean;
   /** 同一业务对象在同一周期只计一次时使用，例如反复进入“已确认”的邀约。 */
   id?: string;
+}
+
+/** 来源确认月份可以独立计入月报；日、周及每日曲线仍使用真实发生日期。 */
+export function overviewFactInPeriod(event: StaffOverviewFactEvent, window: StaffOverviewWindow, period: "current" | "previous"): boolean {
+  const start = period === "current" ? window.currentStart : window.previousStart;
+  if (window.grain === "month" && event.sourceMonth !== undefined) {
+    return event.sourceMonth === calendarDayKey(start, window.timeZone ?? "Asia/Shanghai").slice(0, 7);
+  }
+  const cutoff = period === "current" ? window.currentCutoff : window.previousCutoff;
+  const instant = new Date(event.at);
+  return instant >= start && instant < cutoff;
 }
 
 export interface StaffOverviewTrendPoint {
@@ -219,11 +236,10 @@ export function aggregateStaffOverviewEvents(
   const orderedEvents = uniquePerPeriod ? [...events].sort((a, b) => Date.parse(a.at) - Date.parse(b.at)) : events;
   for (const event of orderedEvents) {
     const instant = new Date(event.at);
-    if (Number.isNaN(instant.getTime())) continue;
-    const inCurrent = instant >= window.currentStart && instant < window.currentCutoff;
-    const inPrevious = instant >= window.previousStart && instant < window.previousCutoff;
+    const inCurrent = overviewFactInPeriod(event, window, "current");
+    const inPrevious = overviewFactInPeriod(event, window, "previous");
     const inPreviousTrend = instant >= window.previousStart && instant < previousTrendCutoff;
-    if (!inCurrent && !inPreviousTrend) continue;
+    if (!inCurrent && !inPrevious && !inPreviousTrend) continue;
     const period = inCurrent ? "current" : "previous";
     const uniqueKey = uniquePerPeriod && event.id ? `${period}:${event.id}` : null;
     if ((inCurrent || inPrevious) && (!uniqueKey || !seen.has(uniqueKey))) {
@@ -232,6 +248,8 @@ export function aggregateStaffOverviewEvents(
       if (uniqueKey) seen.add(uniqueKey);
     }
     if (uniqueKey && trendSeen.has(uniqueKey)) continue;
+    if (Number.isNaN(instant.getTime()) || window.grain === "month" && event.sourceMonth !== undefined
+      && calendarDayKey(instant, timeZone).slice(0, 7) !== event.sourceMonth) continue;
     const index = (inCurrent ? currentIndex : previousIndex).get(calendarDayKey(instant, timeZone));
     if (index === undefined) continue;
     if (uniqueKey) trendSeen.add(uniqueKey);
@@ -268,10 +286,8 @@ export function aggregateStaffOverviewEventsByPerson(
   const unassignedKey = "__unassigned__";
 
   for (const event of events) {
-    const instant = new Date(event.at);
-    if (Number.isNaN(instant.getTime())) continue;
-    const inCurrent = instant >= window.currentStart && instant < window.currentCutoff;
-    const inPrevious = instant >= window.previousStart && instant < window.previousCutoff;
+    const inCurrent = overviewFactInPeriod(event, window, "current");
+    const inPrevious = overviewFactInPeriod(event, window, "previous");
     if (!inCurrent && !inPrevious) continue;
 
     const period = inCurrent ? "current" : "previous";

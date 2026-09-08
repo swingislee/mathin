@@ -44,6 +44,7 @@ function query(table: string) {
 import { getStaffHomeWeekSummaryData, getStaffOverviewData } from "@/features/school/home/staff-overview-data";
 import { overviewFactInstant, overviewSubjectKey } from "@/features/school/home/staff-overview-source-contract";
 import { selectOverviewSupportRows } from "@/features/school/home/staff-overview-display-contract";
+import {buildSourceMetricFacts} from '../scripts/lib/source-metric-facts.mjs';
 
 const now = new Date("2026-09-08T12:00:00+08:00");
 const activity = (id: string, date: string | null) => ({ id, scheduled_at: null, occurred_on: date, source_invitation_id: null, remark: "学服老师：学服甲", record_state: "current", deleted_at: null });
@@ -68,6 +69,35 @@ beforeEach(() => {
     school_terms: [{ id: "current", name: "本学期", is_current: true }],
     profiles: [{ id: "support", display_name: "学服甲", role: "staff", is_active: true }, { id: "teacher", display_name: "老师甲", role: "staff", is_active: true }],
   };
+});
+
+it('counts month-only confirmations and source arrivals without results, with activity registration separate',async()=>{
+  const facts=(tableName:string,values:Record<string,string>,id:string)=>buildSourceMetricFacts({id,source_table_id:'export:table',source_record_id:id,
+    source_data:{format:'feishu-base',filename:'2026-09-07.base'},record_data:{tableName,names:['来源姓名'],cells:Object.entries(values).map(([fieldName,text])=>({fieldName,text}))}});
+  const selection=facts('到访数据与信息表1.0-总',{'确认月份':'9月','确认日期':'2026-08-31','到访月份':'9月','到访与否':'已到','报名月份':'9月','报名与否':'已报名','学服老师':'学服甲'},'selection');
+  const contact=facts('获客&私域信息登记表1.0-总',{'确认月份':'9月','确认人员':'学服甲'},'contact');
+  const activityFacts=facts('袋鼠报名与备考信息表',{'报名日期':'2026-09-02'},'kangaroo');
+  state.tables.activities=[activity('selection',null),activity('kangaroo','2026-09-07')];
+  state.tables.activity_registrations=[{...registration('selection','selection','lead'),registered_on:'2026-08-31',source_metric_facts:selection},
+    {...registration('combined-copy','selection','lead'),source_metric_facts:selection},
+    {...registration('kangaroo','kangaroo','lead'),registered_on:'2026-09-02',source_metric_facts:activityFacts}];
+  state.tables.lead_communications=[{id:'contact',lead_id:'lead',outcome:'connected',occurred_on:null,occurred_at:null,source_metric_facts:contact,source_key:'source:confirmation'}];
+  state.tables.course_enrollments=[{...courseEnrollment('kangaroo','2026-09-07'),source_metric_facts:activityFacts}];
+  const baseline=await getStaffOverviewData({grain:'month',now});
+  for(const metric of ['contacts','invitations','arrivals','assessments','enrollments'] as const){
+    expect(baseline.businessFacts.find(row=>row.key===metric)?.current,metric).toBe(1);
+    const detail=await getStaffOverviewData({grain:'month',now,detail:{kind:'business',metric}});
+    expect(detail.detail?.records,metric).toHaveLength(1);
+    expect(detail.detail?.records[0]).toMatchObject({sourceName:'来源姓名',sourceMonth:'2026-09',sourceConfirmed:true});
+    expect(baseline.supportFunnelRows.find(row=>row.userId==='support')?.metrics[metric].current,metric).toBe(1);
+  }
+  expect(baseline.activityRegistrations?.current).toBe(1);
+  const activityDetail=await getStaffOverviewData({grain:'month',now,detail:{kind:'business',metric:'activityRegistrations'}});
+  expect(activityDetail.detail?.records).toHaveLength(1);
+  expect(baseline.businessFacts.find(row=>row.key==='arrivals')?.trend?.every(row=>!row.current)).toBe(true);
+  const week=await getStaffOverviewData({grain:'week',now});
+  expect(week.businessFacts.find(row=>row.key==='arrivals')?.current).toBe(0);
+  expect(week.businessFacts.find(row=>row.key==='enrollments')?.current).toBe(0);
 });
 
 it("drills into the same fact records and keeps unknown data distinct from zero", async () => {
@@ -168,7 +198,7 @@ describe("staff overview reads current business sources", () => {
     expect(summary.businessFacts).toEqual(weekly.businessFacts.filter(row => ["arrivals", "assessments", "enrollments"].includes(row.key)));
   });
 
-  it("counts registrations before placement and deduplicates their linked memberships", async () => {
+  it("counts enrollment registrations independently from roster placement and edits", async () => {
     state.tables.course_enrollments = [courseEnrollment("registered", "2026-09-02"), courseEnrollment("undated", null), courseEnrollment("native", null, false), courseEnrollment("last-month", "2026-08-02")];
     state.tables.course_enrollment_assignments = [{ id: "bridge", course_enrollment_id: "registered", classroom_membership_id: "placed" }];
     state.tables.classrooms = [{ id: "class", purpose: "production", grade: 3, capacity: 20, term_id: "current", archived_at: null, trashed_at: null }];
@@ -178,7 +208,7 @@ describe("staff overview reads current business sources", () => {
       { id: "roster", classroom_id: "class", student_id: "roster", joined_at: "2026-09-02T00:00:00Z", status: "active", remark: "班级学员导入：在读名单.xlsx" },
     ];
     const data = await getStaffOverviewData({ grain: "month", now });
-    expect(data.businessFacts.find(row => row.key === "enrollments")).toMatchObject({ current: 3, previous: 1 });
+    expect(data.businessFacts.find(row => row.key === "enrollments")).toMatchObject({ current: 2, previous: 1 });
     expect(data.missingDateCounts.enrollments).toBe(1);
   });
 

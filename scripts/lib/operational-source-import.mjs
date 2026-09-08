@@ -2,6 +2,7 @@ import {createImportUuid} from './import-uuid.mjs';
 import {normalizeGradeLabel} from '../../src/lib/grade-format.mjs';
 import {historyFieldName,historicalDate} from './student-business-history.mjs';
 import {historyPayloadHash} from './history-import-trial.mjs';
+import {buildSourceMetricFacts} from './source-metric-facts.mjs';
 import {normalizeSourceAssessmentBand,sourceAssessmentNote,normalizeSourceContact,sourceScore,mergeSourceNotes,sourceVisitKinds,resolveSourceStaffId,sourceEnrollmentFacts,sourceVisitParticipation} from '../../src/features/school/business-source-contract.ts';
 
 export const OPERATIONAL_TABLES=['leads','lead_communications','activities','activity_registrations','assessment_results','course_opportunities','course_enrollments','course_enrollment_assignments'];
@@ -28,7 +29,8 @@ export function buildOperationalSourceImport(payload,snapshot) {
   const staff=(r,fieldName)=>resolveSourceStaffId(field(r,fieldName),snapshot.profiles??[]);
   const add=(table,r,key,data)=>{
     const current=table==='course_opportunities'?(snapshot[table]??[]).find(row=>row.source_record_id===r.id&&row.term_label===data.term_label):existing[table].get(r.id);
-    const row={id:current?.id??id(key),history_key:current?.history_key??key,...provenance(r),...data};
+    const row={id:current?.id??id(key),history_key:current?.history_key??key,...provenance(r),...data,
+      ...(['activity_registrations','course_enrollments'].includes(table)?{source_metric_facts:buildSourceMetricFacts(r)}:{})};
     if(current?.history_revision>0)return current.id;
     row.source_payload_sha256=historyPayloadHash(row);
     rows[table].push(row);return row.id;
@@ -60,11 +62,13 @@ export function buildOperationalSourceImport(payload,snapshot) {
         ['confirmation','确认结果','确认日期',['确认信息备注','确认人员']],
       ]) {
         const result=field(r,resultField),mapped=normalizeSourceContact(result);
+        const metricFacts=buildSourceMetricFacts(r,{phase});
+        const confirmedContact=metricFacts?.confirmed.contacts===true;
         const wechat=field(r,'用户当下加V与否'),visit=field(r,'诺访与否'),interest=field(r,'意向分类');
         const note=mergeSourceNotes(originalNotes(r,noteFields),mapped.note,originalNotes(r,['到访与否','报名与否','当下状态']));
-        if(!mapped.outcome&&!originalNotes(r,noteFields.filter(f=>!['跟进人','确认人员'].includes(f)))&&!(phase==='confirmation'&&(['已','是'].includes(wechat)||['是','已'].includes(visit))))continue;
+        if(!confirmedContact&&!mapped.outcome&&!originalNotes(r,noteFields.filter(f=>!['跟进人','确认人员'].includes(f)))&&!(phase==='confirmation'&&(['已','是'].includes(wechat)||['是','已'].includes(visit))))continue;
         const key=`operation-contact:${r.id}:${phase}`;
-        rows.lead_communications.push({id:id(key),lead_id:leadId,source_record_id:r.id,source_key:key,channel:'other',outcome:mapped.outcome,
+        rows.lead_communications.push({id:id(key),lead_id:leadId,source_record_id:r.id,source_key:key,channel:'other',outcome:mapped.outcome??(confirmedContact?'connected':null),source_metric_facts:metricFacts,
           note,occurred_at:null,occurred_on:validDate(r,dateField),recorded_by:staff(r,phase==='followup'?'跟进人':'确认人员'),
           wechat_added:phase==='confirmation'&&['已','是'].includes(wechat)?true:phase==='confirmation'&&['未','否'].includes(wechat)?false:mapped.wechatAdded,
           visit_committed:phase==='confirmation'&&['是','已'].includes(visit)?true:phase==='confirmation'&&['否','未'].includes(visit)?false:mapped.visitCommitted,
@@ -94,7 +98,7 @@ export function buildOperationalSourceImport(payload,snapshot) {
         rows.activities.push({id:activityId,history_key:oldActivity?.history_key??`${suffix}:activity`,...common,kind,title:kind==='trial_class'?'体验课':kind==='competition'?content:'1 对 1 测评',scheduled_at:null,occurred_on:date,
           remark:originalNotes(r,['参与内容','选拔产品项目','学服老师','学科老师','主线服务老师','到访时段','体/测日期'])});
         rows.activity_registrations.push({id:registrationId,history_key:oldRegistration?.history_key??`${suffix}:registration`,...common,activity_id:activityId,...target,
-          status:participation,source_enrollment_facts:enrollmentFacts,
+          status:participation,source_enrollment_facts:enrollmentFacts,source_metric_facts:buildSourceMetricFacts(r),
           registered_on:validDate(r,'确认日期','报名选拔产品日期'),outcome:originalNotes(r,['到访与否','报名与否','报名日期','班型','方案宣讲与否','选拔产品','年级/25级'])});
         emitted.push(['activity_registrations',registrationId]);
         if(kind==='trial_class')continue;
@@ -125,7 +129,7 @@ export function buildOperationalSourceImport(payload,snapshot) {
         const enrollmentId=prior?.id??id(key);
         rows.course_enrollments.push({id:enrollmentId,history_key:prior?.history_key??key,...evidence,student_id:r.student_id,status:'active',confirmed_at:null,
           registered_on:registeredOn,period_label:period,note:mergeSourceNotes(notes,prior?.note),
-          source_enrollment_facts:sourceEnrollmentFacts('是',classValue,registeredOn)});
+          source_enrollment_facts:sourceEnrollmentFacts('是',classValue,registeredOn),source_metric_facts:buildSourceMetricFacts(r)});
         const assignment=(snapshot.course_enrollment_assignments??[]).find(a=>a.course_enrollment_id===enrollmentId);
         rows.course_enrollment_assignments.push({id:assignment?.id??id(`${key}:assignment`),history_key:assignment?.history_key??`${key}:assignment`,...evidence,course_enrollment_id:enrollmentId,status:'unknown',assigned_at:null,class_label:field(r,'班级')||(band?classValue:''),teacher_label:teacher,room_label:field(r,'校区'),schedule_label:[field(r,'26秋上课周次')||field(r,'周次'),field(r,'26秋上课时段')||field(r,'上课开始时间')].filter(Boolean).join(' '),note:notes});
         emitted.push(['course_enrollments',enrollmentId]);
