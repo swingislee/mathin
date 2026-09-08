@@ -2,6 +2,19 @@
 
 状态：**已部署 / 定向机器检查通过 / 待用户实际验收**。用户本轮明确要求生产活动页热修复；本批不关闭阶段或 Gate。
 
+## 16:06 后续日期渲染热修复
+
+用户反馈第一版仍无法打开。08:00 UTC 生产日志确认查询之后的 `ActivitiesManager.filterValues` 抛出 `Invalid time value`，第一版聚合查询验证没有覆盖此渲染错误，不能作为页面恢复结论。
+
+- 只读聚合确认：当前列表 57 条活动均无 `scheduled_at`，47 条有 `occurred_on`；历史 872 条均无排课时间，740 条有发生日期。
+- 第二版提交 `df8bc6431bd33ccc8db8e412787da66f3e8d71b6`：日期筛选先验证时间，缺失或无效时使用发生日期，完全缺失归入未知；日期排序使用发生日期回退。保留前一版分批读取。
+- 中文、英文完整 ActivitiesManager 服务端渲染覆盖当前／历史／全部列表、仅日期、缺失日期、无效日期及正常排课；与分批读取测试共 5 项通过。受影响文件 ESLint、本机 typecheck、密钥扫描与生产构建通过。没有浏览器登录验收。
+- 2026-09-08 16:06（Asia/Shanghai）原子切换成功：current=`20260908-080410`，previous=`20260908-075611`。服务 active/running、NRestarts=0，Caddy health=ok，新进程日志没有应用错误。
+- 第二次写前复核主机、origin、监听、数据库指纹、锁和容量；近期课堂事件=0。第二次发布前后业务计数与下文基线一致。本次没有数据库或 Storage 写入。
+- 受控 staging=`activities-date-hotfix-df8bc643`。状态仍为已部署、待真实登录页面验收。
+
+## 15:58 首次查询热修复记录
+
 - 故障：生产 `/zh/dashboard/activities` 日志记录 `URI too long`。全部报名 UUID 一次进入两个 PostgREST `in` 查询，超过网关 URI 上限。
 - 修复提交：`6b3943df5f98e0ee62bc2211b594b73ee0c28870`。两个关联查询按每批 100 个报名 ID 读取并合并，保留错误传播、原字段和权限客户端。相对生产基线，应用源码仅修改 `src/features/school/activities.ts`。
 - 发布时间：2026-09-08 15:58（Asia/Shanghai）。current=`20260908-075611`；previous=`20260908-053849` / `3dca80786ed25956d0750181ca957b81867d07ce`。使用现有 Linux 原子发布脚本，保留健康失败自动回退。
