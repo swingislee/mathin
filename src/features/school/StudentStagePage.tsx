@@ -17,10 +17,13 @@ export async function StudentStagePage({ locale, currentUserId, permissions, sea
 }) {
   const filters = parseStudentStageFilters(searchParams, permissions.has("student.view.all") ? "all" : "mine");
   const canAssign = permissions.has("student.assign");
-  const review = permissions.has("student.view.all") && permissions.has("followup.view") ? await loadHistoryWorkflowReview() : null;
-  const [t, timeZone, staff, currentTime] = await Promise.all([getTranslations("school.students"), getOrganizationTimezoneV2(), canAssign ? listStaffMembers() : Promise.resolve([]), getNow()]);
-  const now = currentTime.getTime();
-  const data = await loadStudentStageFieldPage(filters, { locale, timeZone, now }, currentUserId);
+  const reviewPromise = permissions.has("student.view.all") && permissions.has("followup.view") ? loadHistoryWorkflowReview() : Promise.resolve(null);
+  const pagePromise = Promise.all([getTranslations("school.students"), getOrganizationTimezoneV2(), canAssign ? listStaffMembers() : Promise.resolve([]), getNow()])
+    .then(async ([t, timeZone, staff, currentTime]) => {
+      const now = currentTime.getTime();
+      return { t, timeZone, staff, now, data: await loadStudentStageFieldPage(filters, { locale, timeZone, now }, currentUserId) };
+    });
+  const [{ t, timeZone, staff, now, data }, review] = await Promise.all([pagePromise, reviewPromise]);
   const resolvedFilters = { ...filters, scope: studentStageFieldScope(data.fieldView.query), detail: "", fields: JSON.stringify(data.fieldView.query) };
   return <StudentStageWorkspace data={data} filters={resolvedFilters} locale={locale} currentUserId={currentUserId}
     canAssign={canAssign} assignees={staff.filter(member => member.isActive && member.canFollowUp).map(({ userId, displayName }) => ({ userId, displayName }))}
