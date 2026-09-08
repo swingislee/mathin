@@ -44,6 +44,7 @@ import {
 
 type TimelineFilter = "all" | "business" | "teaching" | "notes";
 const LeadIdentityControl = dynamic(() => import("./LeadIdentityControl").then((module) => module.LeadIdentityControl));
+const SchoolSupportProfileButton = dynamic(() => import("./SchoolSupportProfile").then((module) => module.SchoolSupportProfileButton));
 
 const BUSINESS_PHASES = new Set<Student360Phase>([
   "source",
@@ -441,6 +442,7 @@ function Student360PanelBody({
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1">
+            {identity?.accessScope === "full" ? <SchoolSupportProfileButton studentId={identity.studentId} leadId={identity.studentId ? null : identity.primaryLeadId} onSaved={refresh} /> : null}
             <Button
               type="button"
               variant="ghost"

@@ -17,6 +17,9 @@ import type { EnrollmentPlacementBoard } from "@/features/school/enrollment-work
 import { DashboardCommandState, DashboardCommandFilters, DashboardCommandActions } from "@/features/school/dashboard-page";
 
 const actions = vi.hoisted(() => ({ replace: vi.fn(), create: vi.fn(), move: vi.fn(), query: "view=day&date=2026-09-07&scope=mine&q=Sample&page=4&pageSize=50&lead=focus&status=uncontacted" }));
+// 补入流程有独立合同测试；这些用例继续覆盖原工作表交互。
+vi.mock("@/features/school/SchoolSupportEntry", () => ({ SchoolSupportAddButton: () => null }));
+vi.mock("@/features/school/SchoolSupportPendingRows", () => ({ SchoolSupportPendingRows: () => null }));
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(actions.query) }));
 vi.mock("@/i18n/navigation", () => ({ Link: ({ children, ...props }: ComponentProps<"a">) => createElement("a", props, children), useRouter: () => ({ replace: actions.replace, refresh: vi.fn() }), usePathname: () => "/dashboard/followups/assessments" }));

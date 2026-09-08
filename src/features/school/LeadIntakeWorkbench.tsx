@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { SchoolSupportPendingRows } from './SchoolSupportPendingRows';
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { DashboardTableColumnHeader, DashboardTableShell } from "./dashboard-page";
@@ -150,6 +151,6 @@ export function LeadIntakeWorkbench({ leads, locale, canAssign = false, canManag
       <TableHead className="sticky top-0 z-20 bg-card"><DashboardTableColumnHeader label={t("intakeProgress")} {...table.columnProps("progress")} /></TableHead>
       <TableHead className="sticky top-0 z-20 bg-card"><span className="sr-only">{t("actions")}</span></TableHead>
     </TableRow></TableHeader>
-    <TableBody>{table.visibleRows.map((lead) => <FollowupTableRecord key={lead.id} row={lead} active={activeId === lead.id} expanded={expandedId === lead.id} render={renderRow} />)}{!table.visibleRows.length ? <TableRow><TableCell colSpan={colSpan} className="h-32 text-center text-muted">{tableT("filteredEmpty")}</TableCell></TableRow> : null}</TableBody>
+    <TableBody><SchoolSupportPendingRows workspace="leads" colSpan={colSpan} />{table.visibleRows.map((lead) => <FollowupTableRecord key={lead.id} row={lead} active={activeId === lead.id} expanded={expandedId === lead.id} render={renderRow} />)}{!table.visibleRows.length ? <TableRow><TableCell colSpan={colSpan} className="h-32 text-center text-muted">{tableT("filteredEmpty")}</TableCell></TableRow> : null}</TableBody>
   </Table></DashboardTableShell>;
 }

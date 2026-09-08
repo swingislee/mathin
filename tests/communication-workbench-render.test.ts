@@ -13,6 +13,9 @@ import type { InvitationCoordinationRow } from "@/features/school/invitation-con
 import type { ActivityEnrollmentContext } from "@/features/school/enrollment-workflow-contract";
 import type { CommunicationWorkday, CommunicationWorklist } from "@/features/school/communication-workday-contract";
 
+// 补入流程有独立合同测试；这些用例继续覆盖原工作表交互。
+vi.mock("@/features/school/SchoolSupportEntry", () => ({ SchoolSupportAddButton: () => null }));
+vi.mock("@/features/school/SchoolSupportPendingRows", () => ({ SchoolSupportPendingRows: () => null }));
 vi.mock("@/features/school/actions/invitations", () => ({ updateLeadInvitationAction: vi.fn(), updateAssessorAvailabilityAction: vi.fn() }));
 vi.mock("@/features/school/actions/leads", () => ({
   recordLeadContactAction: vi.fn(), setLeadContactReminderAction: vi.fn(), assignLeadsAction: vi.fn(),

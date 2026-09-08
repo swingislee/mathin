@@ -37,6 +37,8 @@ import { renewalResult, type RenewalWorkbenchSaved } from "./renewal-workbench-c
 import type { RenewalWorkspaceData } from "./renewals";
 import { CreateCycleDialog } from "./RenewalPoolWorkspace";
 import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
+import { SchoolSupportAddButton } from './SchoolSupportEntry';
+import { SchoolSupportPendingRows } from './SchoolSupportPendingRows';
 import { businessSubjectKey, type StudentBusinessHistory } from "./student-business-history-contract";
 
 export function RenewalStudentPool({ data, supplement, canWrite, canReview, canEnroll, settings = false,
@@ -183,7 +185,7 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
       }} locale={locale} />
       <FilterSearchInput aria-label={t("search")} placeholder={t("search")} value={query} disabled={entryBusy} onChange={event => setQuery(event.target.value)} />
     </DashboardCommandFilters>
-    <DashboardCommandActions><Button size="sm" variant="ghost" disabled={entryBusy} onClick={() => setSettingsOpen(true)}><SlidersHorizontal className="size-4" />{pool("settings")}</Button>
+    <DashboardCommandActions>{canWrite && !sampleMode ? <SchoolSupportAddButton workspace="renewals" initialWork={{cycleId:cycle?.status!=="closed"?cycle?.id??null:null,termId:cycle?.targetTermId??null}} /> : null}<Button size="sm" variant="ghost" disabled={entryBusy} onClick={() => setSettingsOpen(true)}><SlidersHorizontal className="size-4" />{pool("settings")}</Button>
       <Link href="/dashboard/followups/renewals/growth" className={buttonVariants({ size: "sm", variant: "ghost" })}>{legacy("reactivationAndReferrals")}</Link>
       <Link href="/dashboard/followups/renewals/signals" className={buttonVariants({ size: "sm", variant: "ghost" })}>{legacy("teacherSignals")}</Link>
     </DashboardCommandActions>
@@ -202,7 +204,7 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
           <TableHead><DashboardTableColumnHeader label={t("paymentFacts")} {...table.columnProps("payment")} /></TableHead>
           <TableHead><DashboardTableColumnHeader label={t("nextContact")} {...table.columnProps("next")} /></TableHead>
         </TableRow></TableHeader>
-        <TableBody>{visibleRows.map((row) => <FollowupTableRecord key={`${sampleMode}:${row.id}`} row={row} active={activeId === row.id} expanded={activeId === row.id} render={renderRow} />)}
+        <TableBody>{!sampleMode ? <SchoolSupportPendingRows workspace="renewals" colSpan={7} /> : null}{visibleRows.map((row) => <FollowupTableRecord key={`${sampleMode}:${row.id}`} row={row} active={activeId === row.id} expanded={activeId === row.id} render={renderRow} />)}
           {!visibleRows.length ? <TableRow><TableCell colSpan={7} className="h-40 text-center text-muted">{pool("noRows")}{!rows.length ? <p className="mt-2 text-xs">{pool("readyHint")}</p> : null}</TableCell></TableRow> : null}
         </TableBody>
       </Table>
