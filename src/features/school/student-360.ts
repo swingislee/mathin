@@ -89,7 +89,7 @@ type AssessmentRow = Pick<TableRow<"assessment_results">,
   "id" | "activity_registration_id" | "assessment_band" | "overall_level" |
   "score" | "strengths" | "focus_areas" | "parent_concerns" |
   "teacher_recommendation" | "recommended_class" | "teacher_observation" |
-  "assessed_by" | "created_at" | "updated_at" | "source_record_id" | "assessed_on"
+  "assessed_by" | "created_at" | "updated_at" | "source_record_id" | "assessed_on" | "result_source" | "result_finalized_at"
 >;
 type RouteRow = Pick<TableRow<"activity_routes">,
   "id" | "activity_registration_id" | "route" | "note" | "routed_by" |
@@ -337,7 +337,7 @@ export async function getStudent360Snapshot(
       .select("id,kind,title,scheduled_at,occurred_on,location,remark,created_by,source_invitation_id")
       .in("id", activityIds).limit(READ_LIMIT).returns<ActivityRow[]>()) : Promise.resolve([]),
     registrationIds.length ? readRows(supabase.from("assessment_results")
-      .select("id,activity_registration_id,assessment_band,overall_level,score,strengths,focus_areas,parent_concerns,teacher_recommendation,recommended_class,teacher_observation,assessed_by,created_at,updated_at,source_record_id,assessed_on")
+      .select("id,activity_registration_id,assessment_band,overall_level,score,strengths,focus_areas,parent_concerns,teacher_recommendation,recommended_class,teacher_observation,assessed_by,created_at,updated_at,source_record_id,assessed_on,result_source,result_finalized_at")
       .in("activity_registration_id", registrationIds).order("updated_at", { ascending: false }).limit(READ_LIMIT)
       .returns<AssessmentRow[]>()) : Promise.resolve([]),
     registrationIds.length ? readRows(supabase.from("activity_routes")
@@ -808,7 +808,9 @@ export async function getStudent360Snapshot(
       communicationRows.some(row=>['connected','declined'].includes(row.outcome??'')),registrations.map(registration=>{
         const assessment=assessmentRows.find(row=>row.activity_registration_id===registration.id);
         const activity=activityById.get(registration.activity_id);
-        return {status:registration.status,hasResult:Boolean(assessment&&hasSourceAssessmentConclusion({assessmentBand:assessment.assessment_band,score:assessment.score,strengths:assessment.strengths})),
+        return {status:registration.status,hasResult:Boolean(assessment&&(registration.assessment_completed_at||assessment.result_finalized_at
+          ||(!assessment.result_source||assessment.result_source==='legacy')&&hasSourceAssessmentConclusion({assessmentBand:assessment.assessment_band,score:assessment.score,strengths:assessment.strengths,
+            focusAreas:assessment.focus_areas,parentConcerns:assessment.parent_concerns,teacherRecommendation:assessment.teacher_recommendation,teacherObservation:assessment.teacher_observation,resultSource:assessment.result_source},registration.status))),
           date:assessment?.assessed_on??activity?.occurred_on??registration.assessment_completed_at,
           band:assessment?.assessment_band??null,score:assessment?.score??null,
           teacher:nameOf(assessment?.assessed_by)||sourceStaffLabel(activity?.remark??'','学科老师')||null};

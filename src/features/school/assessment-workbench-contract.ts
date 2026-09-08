@@ -200,7 +200,7 @@ export function assessmentAppointmentClosed(row: Pick<AssessmentWorkbenchRow,'pa
 export function assessmentWorkbenchHasFinalResult(row: AssessmentWorkbenchRow): boolean {
   if(row.sourceRecordId&&['no_show','cancelled'].includes(row.participationStatus))return false;
   return Boolean(row.assessmentCompletedAt || row.assessment?.finalizedAt
-    || (row.assessment && (!row.assessment.resultSource || row.assessment.resultSource === "legacy") && !row.assessmentStartedAt && (!row.sourceRecordId||hasSourceAssessmentConclusion(row.assessment))));
+    || (row.assessment && (!row.assessment.resultSource || row.assessment.resultSource === "legacy") && !row.assessmentStartedAt && (!row.sourceRecordId||hasSourceAssessmentConclusion(row.assessment,row.participationStatus))));
 }
 
 export function assessmentWorkbenchRowsForView(

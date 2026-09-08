@@ -48,6 +48,15 @@ beforeEach(() => {
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals(); });
 
 describe("student stage workspace wiring", () => {
+  it("shows missing assessment fields alongside the completed assessment in awaiting enrollment", async () => {
+    await render("awaiting_enrollment", { detail: "assessed", assessmentSource: "assessment", assessmentAt: "2026-09-02", teacherName: "老师" });
+    const summary = container.querySelector<HTMLElement>("[data-student-stage-row]")!;
+    expect(summary.dataset.studentStage).toBe("awaiting_enrollment");
+    expect(summary.textContent).toContain("已有完成测评");
+    const badge = summary.querySelector("[data-assessment-missing-details]");
+    expect(badge?.textContent).toBe("资料待补");
+    expect(badge?.getAttribute("title")).toContain("测评分数、测评等级");
+  });
   it.each(STUDENT_STAGE_TABS)("offers row assignment and the same batch control in %s", async stage => {
     await render(stage);
     expect(container.querySelectorAll("thead [data-dashboard-table-menu]")).toHaveLength(stage === "awaiting_first_contact" || stage === "awaiting_assessment" ? 4 : 6);

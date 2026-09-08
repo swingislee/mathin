@@ -2,6 +2,7 @@ import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
 import { assessmentSourceOrder } from "./assessment-source-order";
+import { assessmentWorkbenchHasFinalResult } from "./assessment-workbench-contract";
 import type { ActivityKind } from "./activity-kinds";
 import { mergeSourceNotes, normalizeSourceAssessmentBand, sourceAssessmentNote, sourceStaffLabel, resolveSourceStaffId, hasSourceAssessmentConclusion,readSourceEnrollmentFacts } from './business-source-contract';
 import {sourceCompletionSummary} from './source-completion-contract';
@@ -512,7 +513,7 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
       const supportOwnerId=student?.assigned_to??linkedStudentOwners.get(lead?.student_id??'')??lead?.owner_id??resolveSourceStaffId(sourceSupportName,sourceSupportResult.data??[]);
       const route = routes.get(registration.id) ?? null;
       const completed = Boolean(registration.assessment_completed_at)
-        || Boolean(assessment && assessment.resultSource !== "quick_entry" && !registration.assessment_started_at && (!registration.source_record_id || registration.status==='attended' && hasSourceAssessmentConclusion(assessment)));
+        || Boolean(assessment && assessment.resultSource !== "quick_entry" && !registration.assessment_started_at && (!registration.source_record_id || registration.status==='attended' && hasSourceAssessmentConclusion(assessment,registration.status)));
       const actualAssessorId = assessmentAssessorIds.get(registration.id) ?? null;
       const actualAssessorName = assessmentAssessorNames.get(registration.id) ?? "";
       const version = registration.assessment_paper_version_id
@@ -631,7 +632,7 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
   const subjectKey=(row:AssessmentWorkbenchRow)=>row.studentId?`student:${row.studentId}`:`lead:${row.leadId}`;
   const groups=new Map<string,AssessmentWorkbenchRow[]>();
   for(const row of rows)groups.set(subjectKey(row),[...(groups.get(subjectKey(row))??[]),row]);
-  const relevantLeadIds=[...new Set([...groups.values()].filter(group=>group.some(row=>row.sourceEnrollmentFacts)||enrollmentByStudent.has(group[0].studentId??''))
+  const relevantLeadIds=[...new Set([...groups.values()].filter(group=>group.some(row=>row.sourceEnrollmentFacts||assessmentWorkbenchHasFinalResult(row))||enrollmentByStudent.has(group[0].studentId??''))
     .flatMap(group=>[...group.map(row=>row.leadId),...(subjectLeads.data??[]).filter(lead=>lead.student_id===group[0].studentId).map(lead=>lead.id)])
     .filter((id):id is string=>Boolean(id)))];
   const contacts=await readRelatedRows<{id:string;lead_id:string;outcome:string|null}>(supabase,'lead_communications','id,lead_id,outcome','lead_id',relevantLeadIds);
@@ -641,7 +642,7 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
     const leadIds=new Set([...group.map(row=>row.leadId),...(subjectLeads.data??[]).filter(lead=>lead.student_id===studentId).map(lead=>lead.id)]);
     const summary=sourceCompletionSummary([...group.map(row=>row.sourceEnrollmentFacts),...(enrollmentByStudent.get(studentId??'')??[])],
       (contacts.data??[]).some(contact=>leadIds.has(contact.lead_id)&&['connected','declined'].includes(contact.outcome??'')),
-      group.map(row=>({status:row.participationStatus,hasResult:Boolean(row.assessment&&hasSourceAssessmentConclusion(row.assessment)),
+      group.map(row=>({status:row.participationStatus,hasResult:assessmentWorkbenchHasFinalResult(row),
         date:row.occurredOn??row.assessmentCompletedAt??null,band:row.assessment?.assessmentBand??null,score:row.assessment?.score??null,
         teacher:row.assessment?.recordedByName||sourceStaffLabel(row.background,'学科老师')||null})));
     for(const row of group)row.sourceCompletion=summary;

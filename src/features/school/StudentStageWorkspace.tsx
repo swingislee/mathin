@@ -25,6 +25,7 @@ import { LeadPoolPagination } from "./LeadPoolPagination";
 import { StudentStageAssignmentControl, StudentStageOwnerControl } from "./StudentStageAssignmentControl";
 import { StudentRecontactPlan } from "./StudentRecontactPlan";
 import { Student360Trigger } from "./Student360Sheet";
+import { StudentAssessmentCompletionHint } from "./StudentAssessmentCompletionHint";
 import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
 import { studentStageMessages } from "./student-stage-messages";
 import { defaultStudentEntryMode, replaceSavedStudent, STUDENT_RECONTACT_REASONS, STUDENT_STAGE_TABS, studentRecordTableStage, studentStageHref,
@@ -188,6 +189,7 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
               {handled.has(row.key) ? <span role="img" aria-label={m.retained} title={m.retained} className="shrink-0 text-leaf-deep"><Check className="size-3.5" aria-hidden="true" /></span> : null}
             </div></TableCell>
             {showBackground ? <TableCell title={[background, row.assessmentAt ? formatAt(row.assessmentAt) : ""].filter(Boolean).join(" · ")}><p className="truncate">{background}</p>
+              <StudentAssessmentCompletionHint row={row} locale={locale} />
               {row.inferredSourceIds?.length && row.studentId ? <Link href={`/dashboard/students/${row.studentId}?tab=history#student-source-records`}><Badge variant="outline" className="mt-0.5 px-1 text-[10px]">{locale.startsWith("en") ? "Inferred · check when needed" : "资料待核对"}</Badge></Link>
                 : Boolean(row.assessmentCandidateCount) ? <Student360Trigger subject={{ studentId: row.studentId, leadId: row.leadId }} fallback={{ name: row.name, phone: row.phone, grade: row.grade }} className="text-xs text-primary">{m.assessmentCandidates} {row.assessmentCandidateCount}</Student360Trigger> : null}</TableCell> : null}
             {showBackground ? <TableCell title={row.teacherName || m.unassigned}><p className="truncate">{row.teacherName || m.unassigned}</p></TableCell> : null}

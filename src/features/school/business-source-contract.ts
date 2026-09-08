@@ -113,8 +113,11 @@ export function sourceVisitParticipation(content: string, attendance: string, as
   return content.trim() ? 'booked' : 'no_show';
 }
 
-export function hasSourceAssessmentConclusion(assessment:{assessmentBand?:string|null;score?:number|null;strengths?:string}|null|undefined):boolean {
-  return Boolean(assessment&&(assessment.assessmentBand||assessment.score!=null||/(原测评等级|学习力测评等级)：/u.test(assessment.strengths??'')));
+export function hasSourceAssessmentConclusion(assessment:{assessmentBand?:string|null;score?:number|null;strengths?:string;
+  focusAreas?:string;parentConcerns?:string;teacherRecommendation?:string;teacherObservation?:string;resultSource?:string}|null|undefined,attendance?:string):boolean {
+  return Boolean(assessment&&(assessment.assessmentBand||assessment.score!=null||/(原测评等级|学习力测评等级)：/u.test(assessment.strengths??'')
+    || attendance==='attended'&&(!assessment.resultSource||assessment.resultSource==='legacy')
+      &&[assessment.strengths,assessment.focusAreas,assessment.parentConcerns,assessment.teacherRecommendation,assessment.teacherObservation].some(value=>value?.trim())));
 }
 
 export function businessDisplayDate(scheduledAt: string | null | undefined, occurredOn: string | null | undefined, locale: string, empty = '—'): string {
