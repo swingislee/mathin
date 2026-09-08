@@ -4,6 +4,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveEnvironment } from "@/lib/auth";
 import { getStaffOverviewData } from "./staff-overview-data";
+import { getStaffOverviewAcquisitionDetail } from "./staff-overview-acquisition-detail";
 import { filterOverviewDetailRecords, OVERVIEW_DETAIL_SORTS, type OverviewDetailResult } from "./staff-overview-drilldown-contract";
 
 const inputSchema = z.object({
@@ -25,7 +26,9 @@ export async function readOverviewDetail(input: unknown): Promise<OverviewDetail
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || await getActiveEnvironment(user.id) !== "staff") throw new Error("Overview access required");
-  const data = await getStaffOverviewData({ grain: args.grain, date: args.date, now: new Date(args.generatedAt),
+  const read = args.query.metric === "leads" && ["business", "support"].includes(args.query.kind)
+    ? getStaffOverviewAcquisitionDetail : getStaffOverviewData;
+  const data = await read({ grain: args.grain, date: args.date, now: new Date(args.generatedAt),
     detail: args.query, selectedSupportIds: args.selectedSupportIds });
   const records = data.detail?.records ?? [];
   const unique = (values: Array<string | null | undefined>) => [...new Set(values.filter((id): id is string => Boolean(id)))];

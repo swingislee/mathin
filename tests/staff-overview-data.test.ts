@@ -6,6 +6,7 @@ vi.mock("@/features/school/organization-locations", () => ({ getOrganizationTime
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ from: query, rpc }) }));
 
 async function rpc(name: string, args: { p_filters?: { schoolTermId: string }; p_page?: number }) {
+  if (name === "list_staff_overview_acquisition_sources") return { data: null, error: { code: "PGRST202", message: "Legacy source fixture" } };
   if (name === "resolve_classroom_scope") return { data: [{ available_scopes: ["all"], resolved_scope: "all" }], error: null };
   if (name !== "list_classrooms_for_scope") throw new Error(name);
   const rows = (state.tables.classrooms ?? []).filter(row => row.term_id === args.p_filters?.schoolTermId && row.purpose === "production");
@@ -42,6 +43,7 @@ function query(table: string) {
 }
 
 import { getStaffHomeWeekSummaryData, getStaffOverviewData } from "@/features/school/home/staff-overview-data";
+import { getStaffOverviewAcquisitionDetail } from "@/features/school/home/staff-overview-acquisition-detail";
 import { overviewFactInstant, overviewSubjectKey, supplementOverviewContacts } from "@/features/school/home/staff-overview-source-contract";
 import { OVERVIEW_ACQUISITION_SOURCE, OVERVIEW_ACQUISITION_TABLE } from "@/features/school/home/staff-overview-acquisition-contract";
 import { selectOverviewSupportRows } from "@/features/school/home/staff-overview-display-contract";
@@ -70,6 +72,35 @@ beforeEach(() => {
     school_terms: [{ id: "current", name: "本学期", is_current: true }],
     profiles: [{ id: "support", display_name: "学服甲", role: "staff", is_active: true }, { id: "teacher", display_name: "老师甲", role: "staff", is_active: true }],
   };
+});
+
+it("matches lean acquisition detail with the overview and rejects incomplete owner links", async () => {
+  state.tables.leads = [
+    { id: "source-lead", owner_id: "support", student_id: "student", created_at: now.toISOString(), source_record_id: "source" },
+    { id: "native", owner_id: "teacher", student_id: null, created_at: now.toISOString(), source_record_id: null },
+    { id: "submitted", owner_id: "support", student_id: null, created_at: now.toISOString(), source_record_id: null },
+  ];
+  state.tables.history_import_records = [{ id: "source", lead_id: "source-lead",
+    "source_data->>filename": OVERVIEW_ACQUISITION_SOURCE, "record_data->>tableName": OVERVIEW_ACQUISITION_TABLE,
+    record_data: { cells: [{ fieldName: "获取日期", text: "2026-09-02" }, { fieldName: "学员姓名", text: "来源学员" },
+      { fieldName: "确认人员", text: "来源署名" }] } }];
+  state.tables.lead_source_records = [
+    { id: "s1", lead_id: "submitted", submitted_at: "2026-08-30T00:00:00Z" },
+    { id: "s2", lead_id: "submitted", submitted_at: "2026-09-02T00:00:00Z" },
+  ];
+  const sourceScope = `source-staff:${encodeURIComponent("来源署名")}`;
+  for (const scope of [sourceScope, "support", "__other__", "__unassigned__"]) {
+    for (const period of ["current", "previous"] as const) {
+      const args = { grain: "month" as const, date: "2026-09-01", now, selectedSupportIds: [sourceScope],
+        detail: { kind: "support" as const, metric: "leads", scope, period } };
+      const lean = await getStaffOverviewAcquisitionDetail(args), baseline = await getStaffOverviewData(args);
+      expect(JSON.parse(JSON.stringify(lean.detail))).toEqual(JSON.parse(JSON.stringify(baseline.detail)));
+    }
+  }
+  state.failures.add("lead_communications");
+  const unavailable = await getStaffOverviewAcquisitionDetail({ grain: "month", date: "2026-09-01", now,
+    detail: { kind: "business", metric: "leads" }, selectedSupportIds: [] });
+  expect(unavailable.detail).toEqual({ available: false, records: [] });
 });
 
 it('counts month-only confirmations and source arrivals without results, with activity registration separate',async()=>{

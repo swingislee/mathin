@@ -1,10 +1,40 @@
 import "server-only";
 import type { createClient } from "@/lib/supabase/server";
-import { readOverviewRows, type OverviewRowsResult } from "./staff-overview-read";
+import { STAFF_OVERVIEW_READ_LIMIT, readOverviewRows, type OverviewRowsResult } from "./staff-overview-read";
 import { OVERVIEW_ACQUISITION_FIELDS, OVERVIEW_ACQUISITION_SOURCE, OVERVIEW_ACQUISITION_TABLE, projectedOverviewAcquisition, type OverviewAcquisitionSource } from "./staff-overview-acquisition-contract";
 
-/** 原始档案包含大量单元格元数据；总览只传输计数、来源人员与姓名所需文本字段。 */
+/** 数据库逐页投影来源字段，游标沿用来源 id 的稳定顺序。 */
 export async function readOverviewAcquisitions(supabase: Awaited<ReturnType<typeof createClient>>): Promise<OverviewRowsResult<OverviewAcquisitionSource>> {
+  const records: OverviewAcquisitionSource[] = [];
+  const seen = new Set<string>();
+  let after: string | null = null;
+  while (records.length < STAFF_OVERVIEW_READ_LIMIT) {
+    const limit = Math.min(1000, STAFF_OVERVIEW_READ_LIMIT - records.length);
+    const result = await supabase.rpc("list_staff_overview_acquisition_sources", {
+      p_source_file: OVERVIEW_ACQUISITION_SOURCE, p_source_table: OVERVIEW_ACQUISITION_TABLE, p_after: after ?? undefined, p_limit: limit,
+    });
+    // 兼容尚未安装读取迁移的目标；其他错误保持原有不可用状态。
+    if (result.error?.code === "PGRST202") return readLegacyOverviewAcquisitions(supabase);
+    if (result.error) return { data: null, error: result.error };
+    const page = result.data as { records?: OverviewAcquisitionSource[]; hasMore?: boolean } | null;
+    if (!Array.isArray(page?.records) || typeof page.hasMore !== "boolean" || page.records.length > limit
+      || page.hasMore && page.records.length !== limit
+      || page.records.some(row => typeof row?.id !== "string" || !row.id || !Array.isArray(row.record_data?.cells)
+        || row.lead_id !== null && typeof row.lead_id !== "string")) {
+      return { data: null, error: { message: "OVERVIEW_INVALID_ACQUISITION_PAGE" } };
+    }
+    for (const row of page.records) {
+      if (seen.has(row.id)) return { data: null, error: { message: "OVERVIEW_REPEATED_ACQUISITION_PAGE" } };
+      seen.add(row.id); records.push(row);
+    }
+    if (!page.hasMore) return { data: records, error: null };
+    after = page.records.at(-1)!.id;
+  }
+  return { data: records, error: null };
+}
+
+/** 迁移前按列位置投影；字段布局变化时逐行补读原始档案。 */
+async function readLegacyOverviewAcquisitions(supabase: Awaited<ReturnType<typeof createClient>>): Promise<OverviewRowsResult<OverviewAcquisitionSource>> {
   const query = (selection: string) => supabase.from("history_import_records").select(selection)
     .eq("source_data->>filename", OVERVIEW_ACQUISITION_SOURCE).eq("record_data->>tableName", OVERVIEW_ACQUISITION_TABLE);
   const full = "id,lead_id,record_data";

@@ -26,7 +26,7 @@ function client(rows: OverviewAcquisitionSource[]) {
     };
     return query;
   };
-  return { supabase: { from } as unknown as Parameters<typeof readOverviewAcquisitions>[0], reads };
+  return { supabase: { from, rpc: async () => ({ data: null, error: { code: "PGRST202" } }) } as unknown as Parameters<typeof readOverviewAcquisitions>[0], reads };
 }
 const source = (id: string): OverviewAcquisitionSource => ({ id, lead_id: null, record_data: {
   cells: [...OVERVIEW_ACQUISITION_FIELDS.map((fieldName, i) => ({ fieldName, text: `${id}-${i}` })), { fieldName: "metadata", text: "large unused payload" }],
@@ -54,5 +54,46 @@ describe("acquisition field projection", () => {
     const mock = client([incomplete, source("b")]);
     expect((await readOverviewAcquisitions(mock.supabase)).data).toEqual([incomplete, source("b")]);
     expect(mock.reads.every(read => !read.projection)).toBe(true);
+  });
+});
+
+describe("acquisition cursor reads", () => {
+  function cursorClient(rows: OverviewAcquisitionSource[]) {
+    const from = vi.fn(() => { throw new Error("Unexpected legacy read"); });
+    const rpc = vi.fn(async (_: string, args: { p_after: string | null; p_limit: number }) => {
+      const start = args.p_after ? rows.findIndex(row => row.id === args.p_after) + 1 : 0;
+      return { data: { records: rows.slice(start, start + args.p_limit), hasMore: start + args.p_limit < rows.length }, error: null };
+    });
+    return { from, rpc, supabase: { from, rpc } as unknown as Parameters<typeof readOverviewAcquisitions>[0] };
+  }
+
+  it("reads all pages once in source order, independent of the REST row cap", async () => {
+    const rows = Array.from({ length: 2001 }, (_, index) => source(String(index)));
+    const mock = cursorClient(rows);
+    expect((await readOverviewAcquisitions(mock.supabase)).data).toEqual(rows);
+    expect(mock.rpc.mock.calls.map(([, args]) => args.p_after)).toEqual([undefined, "999", "1999"]);
+    expect(mock.from).not.toHaveBeenCalled();
+  });
+
+  it("retains the completeness ceiling and rejects pages that repeat records", async () => {
+    const rows = Array.from({ length: 10_001 }, (_, index) => source(String(index)));
+    const mock = cursorClient(rows);
+    expect((await readOverviewAcquisitions(mock.supabase)).data).toHaveLength(10_000);
+    expect(mock.rpc).toHaveBeenCalledTimes(10);
+    const repeated = cursorClient([source("a"), source("a")]);
+    expect((await readOverviewAcquisitions(repeated.supabase)).error?.message).toBe("OVERVIEW_REPEATED_ACQUISITION_PAGE");
+  });
+
+  it("keeps query failures and malformed pages unavailable without a legacy retry", async () => {
+    for (const response of [
+      { data: null, error: { code: "42501", message: "Denied" } },
+      { data: { records: [], hasMore: true }, error: null },
+      { data: { records: [{ id: "a", lead_id: null, record_data: null }], hasMore: false }, error: null },
+    ]) {
+      const from = vi.fn();
+      const supabase = { rpc: async () => response, from } as unknown as Parameters<typeof readOverviewAcquisitions>[0];
+      expect((await readOverviewAcquisitions(supabase)).error).not.toBeNull();
+      expect(from).not.toHaveBeenCalled();
+    }
   });
 });
