@@ -3,9 +3,9 @@ import { STUDENT_STAGE_DETAILS, type StudentStage, type StudentStageRow } from "
 import type { DashboardFieldDefinitions, DashboardFieldQuery } from "./dashboard-page/dashboard-table-field-contract";
 
 export const STUDENT_STAGE_TABLE_COLUMNS = {
-  name: ["name", "grade"], phone: ["phone"], state: ["detail"],
+  name: ["name", "grade"], phone: ["phone"], state: ["detail", "scope", "owner"],
   background: ["course", "term", "assessmentBand", "assessmentAt"],
-  owner: ["scope", "owner"], teacher: ["teacher"], recent: ["note", "lastContactAt"],
+  teacher: ["teacher"], recent: ["note", "lastContactAt"],
 } as const;
 
 export function studentStageTableFields(locale: string, stage: StudentStage, currentUserId: string): DashboardFieldDefinitions<StudentStageRow> {

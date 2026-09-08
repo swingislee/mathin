@@ -149,9 +149,8 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
             onCheckedChange={checked => setSelectedKeys(new Set(checked === true ? selectableRows.map(row => row.key) : []))} /></TableHead> : null}
           <TableHead className="w-40"><DashboardTableColumnHeader label={m.name} {...table.columnProps("name")} disabled={busy} /></TableHead>
           <TableHead className="w-28"><DashboardTableColumnHeader label={m.phone} {...table.columnProps("phone")} disabled={busy} /></TableHead>
-          <TableHead className="w-32"><DashboardTableColumnHeader label={m.state} {...table.columnProps("state")} disabled={busy} /></TableHead>
+          <TableHead className="w-56"><DashboardTableColumnHeader label={`${m.state} · ${m.owner}`} {...table.columnProps("state")} disabled={busy} /></TableHead>
           {showBackground ? <TableHead className="w-40"><DashboardTableColumnHeader label={m.background} {...table.columnProps("background")} disabled={busy} /></TableHead> : null}
-          <TableHead className="w-24"><DashboardTableColumnHeader label={m.owner} {...table.columnProps("owner")} disabled={busy} /></TableHead>
           {showBackground ? <TableHead className="w-24"><DashboardTableColumnHeader label={m.teacher} {...table.columnProps("teacher")} disabled={busy} /></TableHead> : null}
           <TableHead><DashboardTableColumnHeader label={m.recent} {...table.columnProps("recent")} disabled={busy} /></TableHead><TableHead className={locale.startsWith("en") ? "w-64 text-right" : "w-48 text-right"}>{m.actions}</TableHead>
         </TableRow></TableHeader>
@@ -171,7 +170,7 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
             onExpandedChange={value => { if (!busy) { if (value) open(row); else setActive(null); } }}
             onOutcomeChange={row.stage === "awaiting_first_contact" && row.canContact ? value => { open(row, "contact"); setOutcomeRequest({ key: row.key, value }); } : undefined}
             onSave={row.canWrite ? () => entryRefs.current.get(row.key)?.save() : undefined}
-            detailsId={`student-stage-details-${row.key}`} title={row.name} colSpan={(showBackground ? 8 : 6) + (canSelect ? 1 : 0)} selected={selectedKeys.has(row.key)}
+            detailsId={`student-stage-details-${row.key}`} title={row.name} colSpan={(showBackground ? 7 : 5) + (canSelect ? 1 : 0)} selected={selectedKeys.has(row.key)}
             rowProps={{ "data-student-stage-row": row.key, "data-student-stage": row.stage,
               className: "h-10 cursor-pointer focus-visible:outline-none [&>td]:px-2 [&>td]:py-1 [&>td]:align-middle [&>td]:whitespace-nowrap" }}
             summary={<>
@@ -184,13 +183,13 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
               {recontact && (row.sharedPhoneCount ?? 0) > 1 ? <span className="text-[10px] text-muted">{m.sharedPhone} · {row.sharedPhoneCount}</span> : null}</TableCell>
             <TableCell title={`${m.stages[row.stage]} · ${situation}`}><div className="flex min-w-0 items-center gap-1.5">
               <Badge variant="outline" className="min-w-0 max-w-full rounded-md px-1.5 py-0"><span className="truncate">{showStage ? `${m.stages[row.stage]} · ` : ""}{situation}</span></Badge>
+              <span className="ml-auto w-20 shrink-0" title={row.ownerName || m.unassigned}>{canAssign && !recontact ? <StudentStageOwnerControl row={row} assignees={assignees} locale={locale} disabled={busy}
+                onBusyChange={setBusy} onAssigned={assigned} /> : <span className="block truncate text-muted">{row.ownerName || m.unassigned}</span>}</span>
               {handled.has(row.key) ? <span role="img" aria-label={m.retained} title={m.retained} className="shrink-0 text-leaf-deep"><Check className="size-3.5" aria-hidden="true" /></span> : null}
             </div></TableCell>
             {showBackground ? <TableCell title={[background, row.assessmentAt ? formatAt(row.assessmentAt) : ""].filter(Boolean).join(" · ")}><p className="truncate">{background}</p>
               {row.inferredSourceIds?.length && row.studentId ? <Link href={`/dashboard/students/${row.studentId}?tab=history#student-source-records`}><Badge variant="outline" className="mt-0.5 px-1 text-[10px]">{locale.startsWith("en") ? "Inferred · check when needed" : "资料待核对"}</Badge></Link>
                 : Boolean(row.assessmentCandidateCount) ? <Student360Trigger subject={{ studentId: row.studentId, leadId: row.leadId }} fallback={{ name: row.name, phone: row.phone, grade: row.grade }} className="text-xs text-primary">{m.assessmentCandidates} {row.assessmentCandidateCount}</Student360Trigger> : null}</TableCell> : null}
-            <TableCell title={row.ownerName || m.unassigned}>{canAssign && !recontact ? <StudentStageOwnerControl row={row} assignees={assignees} locale={locale} disabled={busy}
-              onBusyChange={setBusy} onAssigned={assigned} /> : <p className="truncate">{row.ownerName || m.unassigned}</p>}</TableCell>
             {showBackground ? <TableCell title={row.teacherName || m.unassigned}><p className="truncate">{row.teacherName || m.unassigned}</p></TableCell> : null}
             <TableCell title={[row.note || m.noNote, row.lastContactAt ? formatAt(row.lastContactAt) : ""].filter(Boolean).join("\n")}><p className="truncate">{row.note || m.noNote}</p>
               {recontact && row.lastContactAt ? <p className="text-[10px] text-muted">{formatDashboardDate(row.lastContactAt, context, { time: false })}</p> : null}</TableCell>
@@ -206,7 +205,7 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
             {() => row.canWrite ? <Entry row={row} requestedMode={expanded ? active.mode : contactMode} locale={locale} currentUserId={currentUserId} canEnroll={canEnroll}
               ref={entry => { if (entry) entryRefs.current.set(row.key, entry); else entryRefs.current.delete(row.key); }}
               outcomeRequest={outcomeRequest?.key === row.key ? outcomeRequest : null}
-              canAdvance={index < visibleRows.length - 1} onBusyChange={setBusy} onSaved={(result, advance) => saved(row.key, result, advance)} /> : <p className="text-sm text-muted">{m.needOwner}</p>}
+              canAdvance={index < visibleRows.length - 1} onBusyChange={setBusy} onSaved={(result, advance) => saved(row.key, result, advance)} /> : <p className="text-sm text-muted">{row.ownerName && !row.ownerId ? m.needOwnerAccount.replace("{name}", row.ownerName) : m.needOwner}</p>}
           </FollowupRecordRow>;
         })}</FollowupTableBody>
       </Table>

@@ -26,9 +26,9 @@ const row: StudentStageRow = { key: `lead:${id}`, studentId: null, leadId: id, n
   score: null, assessmentBand: null, assessmentAt: null, registrationId: null, courseTitle: "", termName: "", courseId: null, termId: null,
   createdAt: "2026-09-07T12:00:00Z", canWrite: true, canContact: true, invitation: null };
 let root: Root, container: HTMLDivElement;
-async function render(stage: StudentStage = "awaiting_first_contact") {
+async function render(stage: StudentStage = "awaiting_first_contact", overrides: Partial<StudentStageRow> = {}) {
   const context = { locale: "zh", timeZone: "Asia/Shanghai", now: Date.parse(row.createdAt) };
-  const fieldPage = followupFieldPage([{ ...row, stage }], studentStageTableFields("zh", stage, "owner"), undefined, context, 1, 50);
+  const fieldPage = followupFieldPage([{ ...row, stage, ...overrides }], studentStageTableFields("zh", stage, "owner"), undefined, context, 1, 50);
   const props: ComponentProps<typeof StudentStageWorkspace> = {
     data: { ...fieldPage, counts: { [stage]: 1 } },
     filters: { stage, scope: "all", detail: "", q: "", page: 1, pageSize: 50 }, locale: "zh", currentUserId: "owner", canEnroll: false,
@@ -50,7 +50,7 @@ afterEach(async () => { await act(async () => root.unmount()); container.remove(
 describe("student stage workspace wiring", () => {
   it.each(STUDENT_STAGE_TABS)("offers row assignment and the same batch control in %s", async stage => {
     await render(stage);
-    expect(container.querySelectorAll("thead [data-dashboard-table-menu]")).toHaveLength(stage === "awaiting_first_contact" || stage === "awaiting_assessment" ? 5 : 7);
+    expect(container.querySelectorAll("thead [data-dashboard-table-menu]")).toHaveLength(stage === "awaiting_first_contact" || stage === "awaiting_assessment" ? 4 : 6);
     expect(container.querySelector("[data-dashboard-search]")).not.toBeNull();
     expect(container.querySelector("[data-followup-person]")).not.toBeNull();
     expect(container.querySelector('[aria-label="分配 · 示例学生"]')).not.toBeNull();
@@ -59,6 +59,14 @@ describe("student stage workspace wiring", () => {
     expect(container.querySelectorAll('[data-student-stage-assignment]')).toHaveLength(1);
     expect(container.querySelector('[aria-label="勾选学生 · 示例学生"]')?.getAttribute("aria-checked")).toBe("true");
     expect(actions.assign).not.toHaveBeenCalled();
+  });
+  it("shows the missed call and source learning support in one cell", async () => {
+    await render("awaiting_first_contact", { ownerId: null, ownerName: "原表学服", detail: "unreachable", canWrite: false });
+    const summary = container.querySelector("[data-student-stage-row]")!;
+    const cell = [...summary.querySelectorAll("td")].find(cell => cell.textContent?.includes("需再次联系"))!;
+    expect(cell.textContent).toContain("原表学服");
+    expect(summary.textContent).not.toContain("待分配");
+    expect(container.querySelector("thead")?.textContent).toContain("当前情况 · 学服");
   });
   it("opens the shared contact result from a row shortcut and saves its draft only with Ctrl+Enter", async () => {
     await render();

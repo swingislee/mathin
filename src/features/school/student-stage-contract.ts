@@ -12,7 +12,7 @@ export const STUDENT_RECONTACT_REASONS = ["unreachable", "assessed", "former", "
 export type StudentRecontactReason = typeof STUDENT_RECONTACT_REASONS[number];
 export const STUDENT_STAGE_DETAILS = {
   awaiting_first_contact: ["not_contacted", "unreachable", "unassigned", "invalid_number"],
-  awaiting_assessment: ["not_booked", "coordinating", "booked", "no_show", "cancelled", "in_progress"],
+  awaiting_assessment: ["not_booked", "coordinating", "booked", "no_show", "cancelled", "in_progress", "attended_without_result"],
   awaiting_enrollment: ["assessed", "awaiting_reply", "considering", "ready_to_enroll", "awaiting_class", "not_enrolling", "payment_pending", "nurturing"],
   awaiting_renewal: ["attending", "awaiting_class", "renewal_considering", "renewal_committed", "renewal_confirmed", "not_renewing"],
   former_student: ["withdrawn", "ended"],

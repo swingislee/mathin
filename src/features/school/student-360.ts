@@ -8,6 +8,7 @@ import type { PermissionKey } from "./permissions";
 import type { LeadStatus } from "./lead-contract";
 import { leadContactAllowsIdentity } from "./lead-identity-contract";
 import { readStudentLifecycle } from "./student-lifecycle-data";
+import { readLeadOrigins } from "./lead-origin-data";
 import {sourceCompletionSummary} from './source-completion-contract';
 import {hasSourceAssessmentConclusion,sourceStaffLabel} from './business-source-contract';
 import { loadStudentBusinessHistory } from "./student-business-history-data";
@@ -247,6 +248,7 @@ export async function getStudent360Snapshot(
     reviewRows,
     commercialEnrollmentRows,
     lifecycleStage,
+    leadOrigins,
   ] = await Promise.all([
     leadIds.length ? readRows(supabase.from("lead_source_records")
       .select("id,lead_id,submitted_at,source_system,batch_label,acquisition_method,promoter,location_text,raw_interest_text,remark,created_at")
@@ -301,6 +303,7 @@ export async function getStudent360Snapshot(
       .eq("student_id", studentId).order("confirmed_at", { ascending: false }).limit(READ_LIMIT)
       .returns<CommercialEnrollmentRow[]>()) : Promise.resolve([]),
     readStudentLifecycle(supabase, { studentId, leadId: directLead?.id ?? linkedLeads[0]?.id ?? null }),
+    readLeadOrigins(supabase, leadIds),
   ]);
 
   const registrations = [...new Map(
@@ -417,13 +420,14 @@ export async function getStudent360Snapshot(
 
   for (const lead of leads) {
     const hasSource = sourceRows.some((row) => row.lead_id === lead.id);
+    const origin = leadOrigins.find(row => row.leadId === lead.id);
     if (!hasSource) addEvent(events, {
       id: `lead:${lead.id}`,
       phase: "source",
       kind: "lead_created",
-      occurredAt: lead.created_at,
+      occurredAt: origin?.occurredAt ?? null,
       title: "",
-      status: `lead.${lead.status}`,
+      status: origin?.imported ? null : `lead.${lead.status}`,
       actorName: nameOf(lead.created_by),
       facts: [],
       notes: [],
@@ -451,7 +455,7 @@ export async function getStudent360Snapshot(
       id: `source:${row.id}`,
       phase: "source",
       kind: "source_intake",
-      occurredAt: row.submitted_at ?? row.created_at,
+      occurredAt: row.submitted_at,
       title: row.batch_label || row.source_system,
       status: null,
       actorName: null,

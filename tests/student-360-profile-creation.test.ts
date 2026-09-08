@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { leadContactAllowsIdentity } from "@/features/school/lead-identity-contract";
 import { getStudent360Snapshot } from "@/features/school/student-360";
 
-const state = vi.hoisted(() => ({ permissions: new Set<string>(), tables: {} as Record<string, Record<string, unknown>[]> }));
+const state = vi.hoisted(() => ({ permissions: new Set<string>(), tables: {} as Record<string, Record<string, unknown>[]>,
+  origin: { leadId: "lead", occurredAt: "2026-09-06T08:00:00Z" as string | null, imported: false, sourceOwnerName: null } }));
 vi.mock("server-only", () => ({}));
 vi.mock("next-intl/server",()=>({getLocale:async()=>"zh"}));
 vi.mock("@/features/school/student-business-history-data",()=>({loadStudentBusinessHistory:async()=>null}));
@@ -10,6 +11,7 @@ vi.mock("@/lib/auth", () => ({ getMyPerms: async () => state.permissions }));
 vi.mock("@/features/school/student-lifecycle-data", () => ({ readStudentLifecycle: async () => "awaiting_assessment" }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({
   auth: { getUser: async () => ({ data: { user: { id: "owner" } } }) },
+  rpc: async () => ({ data: [state.origin], error: null }),
   from(table: string) {
     let rows = state.tables[table] ?? [];
     let single = false;
@@ -31,12 +33,27 @@ const contact = (outcome: string) => ({ id: outcome, lead_id: "lead", channel: "
 const snapshot = () => getStudent360Snapshot({ leadId: "lead", studentId: null });
 
 beforeEach(() => {
+  state.origin = { leadId: "lead", occurredAt: at, imported: false, sourceOwnerName: null };
   state.permissions = new Set(["followup.view", "followup.write", "student.edit", "student.create"]);
   state.tables = { leads: [{ id: "lead", provisional_student_name: "孩子", phone: "", grade_hint: 3, grade_text: "3年级",
     status: "uncontacted", owner_id: "owner", student_id: null, identity_confirmed_at: null, created_by: "owner", created_at: at }] };
 });
 
 describe("student 360 profile state remains read-only", () => {
+  it("starts an imported lead at the source submission time and preserves an unknown source date", async () => {
+    state.origin = { ...state.origin, imported: true, occurredAt: "2025-12-08T07:34:00Z" };
+    const imported = (await snapshot()).events.find(event => event.id === "lead:lead");
+    expect(imported).toMatchObject({ occurredAt: "2025-12-08T07:34:00Z", status: null });
+    state.origin.occurredAt = null;
+    expect((await snapshot()).events.find(event => event.id === "lead:lead")?.occurredAt).toBeNull();
+  });
+  it("uses submitted_at for intake records and keeps manual creation time", async () => {
+    expect((await snapshot()).events.find(event => event.id === "lead:lead")?.occurredAt).toBe(at);
+    state.tables.lead_source_records = [{ id: "source", lead_id: "lead", submitted_at: "2025-12-08", created_at: at }];
+    expect((await snapshot()).events.find(event => event.id === "source:source")?.occurredAt).toBe("2025-12-08");
+    state.tables.lead_source_records[0].submitted_at = null;
+    expect((await snapshot()).events.find(event => event.id === "source:source")?.occurredAt).toBeNull();
+  });
   it('uses source event dates without turning the import timestamp into an assessment date',async()=>{
     state.tables.activity_registrations=[{id:'registration',activity_id:'visit',lead_id:'lead',student_id:null,record_state:'current',status:'attended',outcome:'',assessment_completed_at:null}];
     state.tables.activities=[{id:'visit',kind:'assessment_1v1',title:'1v1',scheduled_at:null,occurred_on:'2025-12-29',location:'',remark:''}];
