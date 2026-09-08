@@ -86,5 +86,6 @@ describe("DEV-CW-1 Step 1 read-only unified courseware workspace", () => {
     expect(workspace).toContain("data-formal-composition-comparison");
     expect(workspace).toContain('composition={formalCubeEditor?.comparison?.["native-16x9"]}');
     expect(workspace).toContain('composition={formalCubeEditor?.comparison?.["adapted-4x3"]}');
+    expect(workspace).toContain("const sourceReadOnly = !pageEditor && !sourceRuntimeEditor && !formalCubeEditor;");
   });
 });

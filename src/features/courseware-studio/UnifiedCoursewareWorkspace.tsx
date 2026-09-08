@@ -160,7 +160,7 @@ export async function UnifiedCoursewareWorkspace({
     && !sessionAdaptationAvailable && !formalCubeEditor;
   const visibleCanvas: UnifiedWorkspaceCanvas = adaptedCanvasFellBack ? "native-16x9" : canvas;
   const compositionComparison = Boolean(formalCubeEditor && visibleCanvas === "compare");
-  const activeEditor = Boolean(pageEditor || sourceRuntimeEditor || (formalCubeEditor && !compositionComparison));
+  const sourceReadOnly = !pageEditor && !sourceRuntimeEditor && !formalCubeEditor;
   const visibleTrack: CoursewareTrack = visibleCanvas === "adapted-4x3" ? "adapted-4x3" : "native-16x9";
   const selectedDoc = formalCubeEditor?.doc ?? pageEditor?.doc ?? sourceRuntimeEditor?.doc ?? (visibleCanvas === "adapted-4x3"
     ? adaptedPreview?.page.doc
@@ -308,17 +308,17 @@ export async function UnifiedCoursewareWorkspace({
             center={<span className="text-xs tabular-nums text-muted">{t("pageContext", { page: pageIndex, total: pages.length })}</span>}
           />,
         }}
-        toolbar={activeEditor ? undefined : <span className="text-xs text-muted">{t("sourceReadOnlyToolbar")}</span>}
-        saveControls={activeEditor ? undefined : <Badge variant="outline">{t("sourceReadOnlyStatus")}</Badge>}
+        toolbar={sourceReadOnly ? <span className="text-xs text-muted">{t("sourceReadOnlyToolbar")}</span> : undefined}
+        saveControls={sourceReadOnly ? <Badge variant="outline">{t("sourceReadOnlyStatus")}</Badge> : undefined}
         inspector={{
           ariaLabel: t("propertiesTitle"),
           header: <h2 className="shrink-0 text-sm font-medium text-ink">{t("propertiesTitle")}</h2>,
-          content: activeEditor ? undefined : <ScrollArea className="size-full min-h-0">
+          content: sourceReadOnly ? <ScrollArea className="size-full min-h-0">
             <div className="px-4 py-5">
               <p className="text-sm font-medium text-ink">{t("sourceReadOnlyTitle")}</p>
               <p className="mt-2 text-xs leading-5 text-muted">{t("sourceReadOnlyDescription")}</p>
             </div>
-          </ScrollArea>,
+          </ScrollArea> : undefined,
         }}
       />
       </AutomaticLectureAdaptation>
