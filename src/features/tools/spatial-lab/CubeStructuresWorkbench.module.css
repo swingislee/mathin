@@ -3,6 +3,7 @@
 .workspace[data-workbench-mode="courseware"] .views { max-width: calc(100% - 108px); overflow-x: auto; scrollbar-width: thin; }
 .viewport { container-type: size; display: grid; flex: 1; min-width: 0; min-height: 0; place-items: center; }
 .canvas { --cube-dock-bottom: 8px; position: relative; width: min(100cqw, calc(100cqh * 4 / 3)); height: min(100cqh, calc(100cqw * 3 / 4)); overflow: hidden; border: 1px solid var(--line); background: var(--paper); }
+.workspace[data-workbench-mode="courseware"] .canvas { border: 0; }
 .canvas[data-has-cube-groups="true"] { --cube-dock-bottom: 52px; }
 .dock { display: flex; gap: 2px; padding: 4px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); box-shadow: 0 1px 2px rgb(0 0 0 / 5%); }
 .tools { position: absolute; z-index: 12; right: 8px; top: 52px; bottom: var(--cube-dock-bottom); flex-direction: column; overflow: auto; scrollbar-width: thin; }

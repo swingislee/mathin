@@ -48,7 +48,6 @@ export function CubeStructuresCourseware({ payload, preview = false, classroom }
     return true;
   } } : undefined, [classroom, snapshot]);
   if ("toolbar" in payload) return <section className="flex size-full min-h-0 flex-col bg-paper" aria-label={payload.title} data-cube-courseware="cube-structures-lesson-v2">
-    <div className="truncate px-3 py-1 text-sm text-ink">{payload.title}</div>
     {syncError && <p role="alert" className="px-3 text-sm text-rose">{labels("cubeClassroomSyncError")}</p>}
     <CubeStructuresWorkbench key={JSON.stringify(payload)} locale={locale} rendererMessages={messages}
       cameraMessages={{ axisSnap: t("teaching.axisSnap"), enableAxisSnap: t("teaching.enableAxisSnap"), disableAxisSnap: t("teaching.disableAxisSnap") }}
@@ -57,7 +56,6 @@ export function CubeStructuresCourseware({ payload, preview = false, classroom }
   </section>;
   return <section className="flex size-full min-h-0 flex-col bg-paper" aria-label={payload.title}
     data-cube-courseware="cube-structures-lesson-v1" data-cube-courseware-step={step}>
-    <div className="truncate px-3 py-1 text-sm text-ink">{payload.title}</div>
     <div className="min-h-0 flex-1">
       <CubeStructuresViewport model={model} messages={messages} materialColors={colors} readOnly
         cameraInteractive={preview} cameraRequestKey={step} hiddenEdgesVisible={state.hiddenEdgesVisible}

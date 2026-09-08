@@ -124,4 +124,29 @@ describe("frozen cube courseware content", () => {
     expect(workbench).toContain("inert={readOnly}");
     expect(renderer).not.toMatch(/createCubeDraftStore|useCubeDrafts|window.location/);
   });
+
+  it("keeps the draft name as accessible metadata without a title row or nested canvas border", () => {
+    const renderer = fs.readFileSync("src/features/tools/courseware/CubeStructuresCourseware.tsx", "utf8");
+    const styles = fs.readFileSync("src/features/tools/spatial-lab/CubeStructuresWorkbench.module.css", "utf8");
+    expect(renderer.match(/aria-label=\{payload.title\}/g)).toHaveLength(2);
+    expect(renderer).not.toContain(">{payload.title}</div>");
+    expect(styles).toContain('.workspace[data-workbench-mode="courseware"] { padding: 0; }');
+    expect(styles).toContain('.workspace[data-workbench-mode="courseware"] .canvas { border: 0; }');
+  });
+
+  it("restores saved courseware after the source draft is no longer available", () => {
+    const session = operateCubeSession(startCubeRecording(initial()), { kind: "axes", visible: false });
+    const drafts = new Map([["source-draft", draft(session)]]);
+    const tool = createCubeCoursewareTool(drafts.get("source-draft")!, "recording");
+    const saved = JSON.stringify(addCoursewareCompositionTool(createEmptyCoursewareCompositionPage(), tool));
+    drafts.delete("source-draft");
+    const restored = coursewareCompositionPageSchema.parse(JSON.parse(saved)).layout.blocks[0];
+    expect(drafts.size).toBe(0);
+    expect(saved).not.toContain("source-draft");
+    expect(restored.type).toBe("tool");
+    if (restored.type !== "tool") throw new Error("Expected saved tool");
+    const restoredTool = cubeCoursewareToolSchema.parse(restored.tool);
+    expect(replayCubeHistory(restoredTool.payload.history)).toEqual(tool.payload.history.initial);
+    expect(replayCubeHistory(restoredTool.payload.history, 1)).toEqual(replayCubeHistory(session.lesson!, 1));
+  });
 });
