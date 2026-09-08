@@ -31,7 +31,7 @@ export async function loadCommunicationWorkday(userId: string, scope: LeadPoolSc
     if (scope === "mine") query = query.eq("recorded_by", userId);
     return query.order("occurred_at", { ascending: true }).order("id", { ascending: true }).range(offset, last).returns<EffectiveEvent[]>();
   });
-  const [contacts, invitationEvents, postEvents, actions, owners] = await Promise.all([
+  const [contacts, invitationEvents, postEvents, actions, owners, scheduled] = await Promise.all([
     canViewLeads ? readDay("effective_lead_communications") : Promise.resolve({ data: [] as EffectiveEvent[], error: null }),
     readDay("effective_lead_invitation_events"),
     canViewLeads ? readDay("effective_activity_followup_contacts") : Promise.resolve({ data: [] as EffectiveEvent[], error: null }),
@@ -43,6 +43,7 @@ export async function loadCommunicationWorkday(userId: string, scope: LeadPoolSc
       : Promise.resolve({ data: [] as NextAction[], error: null }),
     canViewLeads ? readSchoolQueryPages((offset, last) => supabase.from("leads").select("id,owner_id")
       .order("id", { ascending: true }).range(offset, last)) : Promise.resolve({ data: [] as { id: string; owner_id: string | null }[], error: null }),
+    canViewLeads ? loadScheduledCommunicationTasks(date) : Promise.resolve([]),
   ]);
   for (const result of [contacts, invitationEvents, postEvents, actions, owners]) if (result.error) throw new Error(result.error.message);
   const ownerByLead = new Map((owners.data ?? []).map((row) => [row.id, row.owner_id]));
@@ -79,6 +80,7 @@ export async function loadCommunicationWorkday(userId: string, scope: LeadPoolSc
     && scopeMatches(scope, ownerByLead.get(action.lead_id) ?? null, userId)).map((action) => ({
     key: `lead:${action.lead_id}`, dueAt: action.due_at, createdAt: action.created_at, completedAt: action.completed_at, kind: action.kind,
   }));
+  tasks.push(...scheduled.filter(task => scopeMatches(scope, task.ownerId, userId)));
   const postTaskIds = postRows.filter((row) => scopeMatches(scope, row.ownerId, userId)).map((row) => row.registrationId);
   const enrollmentIds = postRows.filter((row) => postTaskIds.includes(row.registrationId)).flatMap((row) => row.enrollmentId ? [row.enrollmentId] : []);
   const enrollments = await readSchoolQueryBatches(enrollmentIds, (batch, offset, last) => supabase.from("course_enrollments")
@@ -154,4 +156,9 @@ export async function getCommunicationWorklists(date?: string): Promise<Communic
 }
 export async function getCommunicationWorklist(id: string): Promise<CommunicationWorklist> {
   return communicationWorklistSchema.parse(await communicationWorkdayRpc("get_communication_worklist", { p_id: id }));
+}
+
+async function loadScheduledCommunicationTasks(date: string) {
+  return z.array(z.object({ key: z.string(), dueAt: z.string(), createdAt: z.string(), completedAt: z.string().nullable(),
+    kind: z.literal("scheduled_worklist"), ownerId: z.string() })).parse(await communicationWorkdayRpc("get_scheduled_communication_tasks", { p_date: date }));
 }

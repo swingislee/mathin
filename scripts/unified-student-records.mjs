@@ -7,7 +7,8 @@ const mode = process.argv[2];
 if (!['--preflight', '--check', '--apply'].includes(mode)) throw new Error('Use --preflight, --check or --apply');
 const projection = process.argv.includes('--projection');
 const entryContext = process.argv.includes('--entry-context');
-const root = path.resolve(entryContext ? '.tmp/student-record-entry-context' : projection ? '.tmp/student-record-projection' : '.tmp/unified-student-records');
+const recontact = process.argv.includes('--recontact');
+const root = path.resolve(recontact ? '.tmp/student-recontact-worklists' : entryContext ? '.tmp/student-record-entry-context' : projection ? '.tmp/student-record-projection' : '.tmp/unified-student-records');
 fs.mkdirSync(root, { recursive: true });
 const { sql, observed } = openHistoryLocalTarget({ attestationPath: path.join(root, 'preflight.json'),
   refresh: mode === '--preflight', errorFile: path.join(root, 'database-error.txt') });
@@ -15,7 +16,7 @@ const head = sql('begin read only;select max(version) from public.schema_migrati
 if (mode === '--preflight') {
   console.log(JSON.stringify({ localTargetVerified: true, host: observed.host, head })); process.exit(0);
 }
-const version = entryContext ? '20260908008200_student_record_entry_context' : projection ? '20260908008100_student_record_list_projection' : '20260908008000_unified_student_records';
+const version = recontact ? '20260908009000_student_recontact_worklists' : entryContext ? '20260908008200_student_record_entry_context' : projection ? '20260908008100_student_record_list_projection' : '20260908008000_unified_student_records';
 const file = `supabase/migrations/${version}.sql`, checksum = textFileSha256(file);
 const applied = sql(`begin read only;select checksum from public.schema_migrations where version='${version}';commit;`);
 if (applied && applied !== checksum) throw new Error('MIGRATION_CHECKSUM_CHANGED');
@@ -26,17 +27,17 @@ if (mode === '--apply') {
   if (check?.checksum !== checksum || check?.head !== head) throw new Error('CHECK_REQUIRED');
 }
 const tables = ['students','leads','lead_communications','lead_next_actions','activity_registrations','assessment_results',
-  'course_enrollments','enrollments','student_follow_ups','history_workflow_scopes','history_import_records','communication_worklists'];
+  'course_enrollments','enrollments','student_follow_ups','history_workflow_scopes','history_import_records','communication_worklists','communication_worklist_items'];
 const snapshot = () => sql(`begin read only;select jsonb_build_object(${tables.map(table =>
-  `'${table}',(select jsonb_build_object('count',count(*),'hash',md5(coalesce(string_agg(md5(to_jsonb(t)::text),'' order by to_jsonb(t)::text),''))) from public.${table} t)`).join(',')});commit;`);
+  `'${table}',(select jsonb_build_object('count',count(*),'hash',md5(coalesce(string_agg(md5((to_jsonb(t)-'is_scheduled')::text),'' order by (to_jsonb(t)-'is_scheduled')::text),''))) from public.${table} t)`).join(',')});commit;`);
 const before = snapshot();
-const signature = entryContext ? 'public.student_record_list_rows(jsonb,public.business_course_enrollment_subjects[])' : projection ? 'public.list_student_record_summaries(text,text,text,text)' : 'public.list_student_record_workspace(text,text,text,integer,integer,text,text)';
+const signature = recontact ? 'public.plan_student_recontact_worklist(uuid,text,date,uuid,jsonb)' : entryContext ? 'public.student_record_list_rows(jsonb,public.business_course_enrollment_subjects[])' : projection ? 'public.list_student_record_summaries(text,text,text,text)' : 'public.list_student_record_workspace(text,text,text,integer,integer,text,text)';
 const definition = () => sql(`begin read only;select md5(coalesce(pg_get_functiondef(to_regprocedure('${signature}')),''));commit;`);
 const beforeDefinition = definition();
 sql(`begin;set local lock_timeout='5s';set local statement_timeout='90s';
   select pg_advisory_xact_lock(hashtextextended('unified-student-records',0));
   ${applied ? '' : fs.readFileSync(file, 'utf8')}
-  ${fs.readFileSync(entryContext ? 'scripts/sql/student-record-entry-context-assertions.sql' : projection ? 'scripts/sql/student-record-projection-assertions.sql' : 'scripts/sql/unified-student-records-assertions.sql', 'utf8')}
+  ${fs.readFileSync(recontact ? 'scripts/sql/student-recontact-worklists-assertions.sql' : entryContext ? 'scripts/sql/student-record-entry-context-assertions.sql' : projection ? 'scripts/sql/student-record-projection-assertions.sql' : 'scripts/sql/unified-student-records-assertions.sql', 'utf8')}
   ${mode === '--check' ? 'rollback;' : `insert into public.schema_migrations(version,checksum) values('${version}','${checksum}');notify pgrst,'reload schema';commit;`}`);
 if (snapshot() !== before) throw new Error('BUSINESS_DATA_CHANGED');
 if (mode === '--check' && definition() !== beforeDefinition) throw new Error('ROLLBACK_FAILED');

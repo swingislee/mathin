@@ -24,6 +24,8 @@ export async function StudentStagePage({ locale, currentUserId, permissions, sea
   const { t, timeZone, staff, now, data } = await pagePromise;
   const resolvedFilters = { ...filters, scope: studentStageFieldScope(data.fieldView.query), detail: "", fields: JSON.stringify(data.fieldView.query) };
   return <StudentStageWorkspace data={data} filters={resolvedFilters} locale={locale} currentUserId={currentUserId}
+    canPlan={permissions.has("followup.write") && permissions.has("followup.view")}
+    canPlanOthers={canAssign && permissions.has("student.view.all")}
     canAssign={canAssign} assignees={staff.filter(member => member.isActive && member.canFollowUp).map(({ userId, displayName }) => ({ userId, displayName }))}
     canEnroll={permissions.has("enrollment.manage")} timeZone={timeZone} now={now} actions={<>
       {permissions.has("student.create") ? <NewStudentDialog /> : null}

@@ -13,6 +13,7 @@ const db = vi.hoisted(() => ({
   postReads: 0,
   contexts: [] as ActivityEnrollmentContext[],
   worklists: [] as CommunicationWorklist[],
+  scheduled: [] as { key: string; dueAt: string; createdAt: string; completedAt: null; kind: "scheduled_worklist"; ownerId: string }[],
   rpcs: [] as { name: string; args: Record<string, unknown> }[],
 }));
 vi.mock("server-only", () => ({}));
@@ -28,7 +29,7 @@ vi.mock("../src/lib/supabase/server", () => ({
   createClient: async () => ({
     rpc: async (name: string, args: Record<string, unknown>) => {
       db.rpcs.push({ name, args });
-      return { data: name === "get_communication_worklist" ? db.worklists.find((row) => row.id === args.p_id) : db.worklists, error: null };
+      return { data: name === "get_scheduled_communication_tasks" ? db.scheduled : name === "get_communication_worklist" ? db.worklists.find((row) => row.id === args.p_id) : db.worklists, error: null };
     },
     from: (table: string) => {
     const request = { table, columns: "", ids: [] as number[], range: undefined as [number, number] | undefined, search: undefined as string | undefined };
@@ -112,7 +113,18 @@ const nextAction = (id: string, leadId: string, dueAt = "2026-09-04T05:00:00Z", 
 });
 
 describe("communication merged page", () => {
-  beforeEach(() => { db.tables = {}; db.posts = []; db.requests = []; db.postReads = 0; db.worklists = []; db.contexts = []; db.rpcs = []; vi.restoreAllMocks(); });
+  beforeEach(() => { db.tables = {}; db.posts = []; db.requests = []; db.postReads = 0; db.worklists = []; db.scheduled = []; db.contexts = []; db.rpcs = []; vi.restoreAllMocks(); });
+
+  it("includes explicitly scheduled records on the owner's day without making them contact events", async () => {
+    db.tables.leads = [lead("planned"), lead("unplanned"), lead("other", "another")];
+    db.tables.operational_leads = [];
+    db.scheduled = ["planned", "other"].map(id => ({ key: `lead:${id}`, dueAt: at, createdAt: "2026-09-04T05:00:00Z", completedAt: null,
+      kind: "scheduled_worklist", ownerId: id === "other" ? "another" : "owner" }));
+    const day = await loadCommunicationWorkbench("owner", { ...filters, scope: "mine" }, true, undefined, parseCommunicationWorkQuery({ view: "day" }, "2026-09-05"));
+    expect(day.rowOrder).toEqual(["lead:planned"]);
+    expect(day.workday?.events).toEqual([]);
+    expect(day.workday?.tasks.map(task => task.key)).toEqual(["lead:planned"]);
+  });
 
   it("uses current workflow leads for the queue and preserves direct access to historical contacts", async () => {
     db.tables.leads = [lead("current"), lead("historical")];

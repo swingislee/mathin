@@ -23,23 +23,28 @@ import { FilterBar, FilterSearchInput } from "./FilterBar";
 import { FollowupPrimaryFilter } from "./FollowupPrimaryFilter";
 import { LeadPoolPagination } from "./LeadPoolPagination";
 import { StudentStageAssignmentControl, StudentStageOwnerControl } from "./StudentStageAssignmentControl";
+import { StudentRecontactPlan } from "./StudentRecontactPlan";
 import { Student360Trigger } from "./Student360Sheet";
 import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
 import { studentStageMessages } from "./student-stage-messages";
-import { defaultStudentEntryMode, replaceSavedStudent, STUDENT_STAGE_TABS, studentStageHref,
+import { defaultStudentEntryMode, replaceSavedStudent, STUDENT_RECONTACT_REASONS, STUDENT_STAGE_TABS, studentRecordTableStage, studentStageHref,
   type StudentEntryMode, type StudentStageData, type StudentStageFilters, type StudentStageRow, type StudentStageSaved, type StudentStageAssignment, type StudentStageAssignee } from "./student-stage-contract";
 
 const Entry = dynamic(() => import("./StudentStageEntry").then(m => m.StudentStageEntry));
 
-export function StudentStageWorkspace({ data, filters, locale, currentUserId, canEnroll, canAssign, assignees, actions, timeZone, now }: {
+export function StudentStageWorkspace({ data, filters, locale, currentUserId, canEnroll, canAssign, assignees, actions, timeZone, now, canPlan = false, canPlanOthers = false }: {
   data: StudentStageData; filters: StudentStageFilters; locale: string; currentUserId: string;
   canEnroll: boolean; actions: ReactNode; timeZone: string; now?: number;
   canAssign: boolean; assignees: StudentStageAssignee[];
+  canPlan?: boolean; canPlanOthers?: boolean;
 }) {
   const m = studentStageMessages(locale);
   const studentT = useTranslations("school.students");
   const router = useRouter();
-  const showBackground = filters.stage !== "awaiting_first_contact" && filters.stage !== "awaiting_assessment";
+  const recontact = filters.population === "recontact";
+  const tableStage = studentRecordTableStage(filters);
+  const showBackground = tableStage !== "awaiting_first_contact" && tableStage !== "awaiting_assessment";
+  const canSelect = canAssign || recontact && canPlan;
   const viewKey = JSON.stringify(filters);
   const [rows, setRows] = useState(data.rows);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
@@ -61,12 +66,13 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
   }
   const [clockNow] = useState(() => now ?? Date.now());
   const context = useMemo(() => ({ locale, timeZone, now: clockNow }), [locale, timeZone, clockNow]);
-  const fields = useMemo(() => studentStageTableFields(locale, filters.stage, currentUserId), [locale, filters.stage, currentUserId]);
+  const fields = useMemo(() => studentStageTableFields(locale, tableStage, currentUserId), [locale, tableStage, currentUserId]);
   const server = useFollowupServerFields(data.fieldView);
   const table = useDashboardFieldView({ rows, fields, columns: STUDENT_STAGE_TABLE_COLUMNS, context,
     server: server ? { ...server, onChange: query => { if (!busy) server.onChange(query); } } : undefined });
   const visibleRows = table.visibleRows;
   const selectedRows = visibleRows.filter(row => selectedKeys.has(row.key));
+  const selectableRows = visibleRows.filter(row => canAssign || canPlan && row.canContact);
   const fieldQuery = { version: 2 as const, filters: table.filters, sort: table.sort };
   const currentFilters = { ...filters, fields: JSON.stringify(fieldQuery) };
   const acrossStages = studentStageFieldsAcrossStages(fieldQuery);
@@ -105,36 +111,42 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
   };
   return <DashboardPage title={m.title} density="compact"
     commandPanel={<FollowupCommandPanel>
-      <DashboardCommandState><DashboardCommandTabs ariaLabel={m.title} activeValue={filters.stage} activeTone="accent"
+      <DashboardCommandState>{recontact ? <DashboardCommandTabs ariaLabel={m.recontactPopulation} activeValue={filters.reason ?? "unreachable"} activeTone="accent"
+        items={STUDENT_RECONTACT_REASONS.map(reason => ({ value: reason, label: m.recontactReasons[reason], badge: data.reasonCounts?.[reason] ?? 0,
+          href: studentStageHref(currentFilters, { reason, page: 1, fields: acrossStages, detail: "" }) }))} />
+        : <DashboardCommandTabs ariaLabel={m.title} activeValue={filters.stage} activeTone="accent"
         items={STUDENT_STAGE_TABS.map(stage => ({ value: stage, label: m.stages[stage], badge: data.counts[stage] ?? 0,
-          href: studentStageHref(currentFilters, { stage, page: 1, detail: "", q: "", fields: acrossStages }) }))} /></DashboardCommandState>
+          href: studentStageHref(currentFilters, { stage, page: 1, detail: "", q: "", fields: acrossStages }) }))} />}</DashboardCommandState>
       <DashboardCommandFilters><FollowupPrimaryFilter value={filters.population ?? "work"} label={m.population} disabled={busy}
-        options={[{ value: "work", label: m.workPopulation }, { value: "records", label: m.recordsPopulation }]}
-        onValueChange={population => navigate({ population: population as "work" | "records", q: "" })} />
+        options={[{ value: "work", label: m.workPopulation }, { value: "records", label: m.recordsPopulation }, ...(canPlan ? [{ value: "recontact", label: m.recontactPopulation }] : [])]}
+        onValueChange={population => navigate({ population: population as "work" | "records" | "recontact", q: "", detail: "", fields: acrossStages })} />
       <FilterBar onSubmit={event => {
         event.preventDefault(); const form = new FormData(event.currentTarget); navigate({ q: String(form.get("q") ?? "").trim(), detail: "" });
       }}><FilterSearchInput name="q" defaultValue={filters.q} placeholder={m.search} aria-label={m.search} disabled={busy} />
         {filters.q ? <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => navigate({ q: "", detail: "" })}>{studentT("reset")}</Button> : null}
       </FilterBar></DashboardCommandFilters>
       <DashboardCommandActions>
-        {canAssign && selectedRows.length ? <><span className="text-xs text-muted">{m.selected} {selectedRows.length}</span>
-          <StudentStageAssignmentControl rows={selectedRows} assignees={assignees} locale={locale} disabled={busy} onBusyChange={setBusy} onAssigned={assigned} />
+        {recontact && canPlan && !selectedRows.length ? <Button size="sm" variant="secondary" disabled={busy || !selectableRows.length} onClick={() => setSelectedKeys(new Set(selectableRows.slice(0, 20).map(row => row.key)))}>{m.pickTwenty}</Button> : null}
+        {canSelect && selectedRows.length ? <><span className="text-xs text-muted">{m.selected} {selectedRows.length}</span>
+          {recontact && canPlan ? <StudentRecontactPlan key={selectedRows.map(row => row.key).join(",")} rows={selectedRows} assignees={assignees} currentUserId={currentUserId}
+            canPlanOthers={canPlanOthers} locale={locale} today={new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(clockNow)} disabled={busy} onBusyChange={setBusy} />
+            : <StudentStageAssignmentControl rows={selectedRows} assignees={assignees} locale={locale} disabled={busy} onBusyChange={setBusy} onAssigned={assigned} />}
           <Button size="sm" variant="ghost" disabled={busy} onClick={() => setSelectedKeys(new Set())}>{m.clearSelection}</Button></> : null}
         <Button size="sm" variant="ghost" disabled={busy || resetRequested} onClick={() => { setResetRequested(true); router.refresh(); }}><RefreshCw className="size-3.5" />{m.refresh}</Button>
         {actions}
       </DashboardCommandActions>
     </FollowupCommandPanel>}
-    summary={<p className="text-xs text-muted">{filters.q ? m.searchHint : filters.population === "records" ? m.recordsHint : m.workHint}
+    summary={<p className="text-xs text-muted">{recontact ? m.recontactHint : filters.q ? m.searchHint : filters.population === "records" ? m.recordsHint : m.workHint}
       {filters.stage === "former_student" && !filters.q ? ` ${m.formerHint}` : ""}</p>}
     footer={<LeadPoolPagination baseHref="/dashboard/students" currentPage={data.page} totalPages={data.totalPages} totalCount={data.count}
-      pageSize={data.pageSize} scope={filters.scope} q={filters.q} extraQuery={{ stage: filters.stage, fields: currentFilters.fields, population: filters.population ?? "work" }}
+      pageSize={data.pageSize} scope={filters.scope} q={filters.q} extraQuery={{ stage: filters.stage, fields: currentFilters.fields, population: filters.population ?? "work", reason: filters.reason ?? "" }}
       disabled={busy} onPageChange={(page, pageSize) => navigate({ page, pageSize })} />}>
     <DashboardTableShell data-followup-workbench aria-busy={server?.pending}>
       <Table className={`table-fixed text-xs [&_th]:px-2 ${showBackground ? "min-w-[69rem]" : "min-w-[53rem]"}`}>
         <TableHeader className="sticky top-0 z-20 bg-paper text-xs text-muted"><TableRow>
-          {canAssign ? <TableHead className="w-9"><Checkbox aria-label={m.selectPage} disabled={busy || !visibleRows.length}
-            checked={Boolean(visibleRows.length) && selectedRows.length === visibleRows.length ? true : selectedRows.length ? "indeterminate" : false}
-            onCheckedChange={checked => setSelectedKeys(new Set(checked === true ? visibleRows.map(row => row.key) : []))} /></TableHead> : null}
+          {canSelect ? <TableHead className="w-9"><Checkbox aria-label={m.selectPage} disabled={busy || !selectableRows.length}
+            checked={Boolean(selectableRows.length) && selectedRows.length === selectableRows.length ? true : selectedRows.length ? "indeterminate" : false}
+            onCheckedChange={checked => setSelectedKeys(new Set(checked === true ? selectableRows.map(row => row.key) : []))} /></TableHead> : null}
           <TableHead className="w-40"><DashboardTableColumnHeader label={m.name} {...table.columnProps("name")} disabled={busy} /></TableHead>
           <TableHead className="w-28"><DashboardTableColumnHeader label={m.phone} {...table.columnProps("phone")} disabled={busy} /></TableHead>
           <TableHead className="w-32"><DashboardTableColumnHeader label={m.state} {...table.columnProps("state")} disabled={busy} /></TableHead>
@@ -149,7 +161,7 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
           const enrollmentLabel = row.stage === "awaiting_renewal" ? m.renewal : row.stage === "former_student" ? m.reactivate : m.enrollment;
           const grade = row.grade ? studentT("grade", { grade: row.grade }) : row.gradeText || "—";
           const situation = m.details[row.detail] ?? row.detail;
-          const showStage = Boolean(filters.q) || row.stage !== filters.stage;
+          const showStage = recontact || Boolean(filters.q) || row.stage !== filters.stage;
           const learning = [row.assessmentBand?.toUpperCase().replaceAll("_PLUS", "+"), row.score !== null ? String(row.score) : null,
             row.learningBand ? `${m.learningBand} ${row.learningBand}` : null].filter(Boolean).join(" · ");
           const background = row.assessmentSource === "class_band" ? `${m.classBandReference} · ${learning || row.classBandLabel}`
@@ -159,16 +171,17 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
             onExpandedChange={value => { if (!busy) { if (value) open(row); else setActive(null); } }}
             onOutcomeChange={row.stage === "awaiting_first_contact" && row.canContact ? value => { open(row, "contact"); setOutcomeRequest({ key: row.key, value }); } : undefined}
             onSave={row.canWrite ? () => entryRefs.current.get(row.key)?.save() : undefined}
-            detailsId={`student-stage-details-${row.key}`} title={row.name} colSpan={(showBackground ? 8 : 6) + (canAssign ? 1 : 0)} selected={selectedKeys.has(row.key)}
+            detailsId={`student-stage-details-${row.key}`} title={row.name} colSpan={(showBackground ? 8 : 6) + (canSelect ? 1 : 0)} selected={selectedKeys.has(row.key)}
             rowProps={{ "data-student-stage-row": row.key, "data-student-stage": row.stage,
               className: "h-10 cursor-pointer focus-visible:outline-none [&>td]:px-2 [&>td]:py-1 [&>td]:align-middle [&>td]:whitespace-nowrap" }}
             summary={<>
-            {canAssign ? <TableCell><Checkbox aria-label={`${m.selectStudent} · ${row.name}`} disabled={busy} checked={selectedKeys.has(row.key)}
+            {canSelect ? <TableCell><Checkbox aria-label={`${m.selectStudent} · ${row.name}`} disabled={busy || !canAssign && !row.canContact} checked={selectedKeys.has(row.key)}
               onCheckedChange={checked => setSelectedKeys(current => { const next = new Set(current); if (checked === true) next.add(row.key); else next.delete(row.key); return next; })} /></TableCell> : null}
             <TableCell><FollowupPersonCell name={row.name} phone={row.phone} grade={grade} studentGrade={row.grade} nameOnly inlineGrade
               subject={{ studentId: row.studentId, leadId: row.leadId }} expanded={expanded} detailsId={`student-stage-details-${row.key}`}
               onToggle={() => { if (!busy) { if (expanded) setActive(null); else open(row); } }} /></TableCell>
-            <TableCell title={row.phone || undefined}><p className="truncate tabular-nums text-muted">{row.phone || "—"}</p></TableCell>
+            <TableCell title={row.phone || undefined}><p className="truncate tabular-nums text-muted">{row.phone || "—"}</p>
+              {recontact && (row.sharedPhoneCount ?? 0) > 1 ? <span className="text-[10px] text-muted">{m.sharedPhone} · {row.sharedPhoneCount}</span> : null}</TableCell>
             <TableCell title={`${m.stages[row.stage]} · ${situation}`}><div className="flex min-w-0 items-center gap-1.5">
               <Badge variant="outline" className="min-w-0 max-w-full rounded-md px-1.5 py-0"><span className="truncate">{showStage ? `${m.stages[row.stage]} · ` : ""}{situation}</span></Badge>
               {handled.has(row.key) ? <span role="img" aria-label={m.retained} title={m.retained} className="shrink-0 text-leaf-deep"><Check className="size-3.5" aria-hidden="true" /></span> : null}
@@ -176,10 +189,11 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
             {showBackground ? <TableCell title={[background, row.assessmentAt ? formatAt(row.assessmentAt) : ""].filter(Boolean).join(" · ")}><p className="truncate">{background}</p>
               {row.inferredSourceIds?.length && row.studentId ? <Link href={`/dashboard/students/${row.studentId}?tab=history#student-source-records`}><Badge variant="outline" className="mt-0.5 px-1 text-[10px]">{locale.startsWith("en") ? "Inferred · check when needed" : "资料待核对"}</Badge></Link>
                 : Boolean(row.assessmentCandidateCount) ? <Student360Trigger subject={{ studentId: row.studentId, leadId: row.leadId }} fallback={{ name: row.name, phone: row.phone, grade: row.grade }} className="text-xs text-primary">{m.assessmentCandidates} {row.assessmentCandidateCount}</Student360Trigger> : null}</TableCell> : null}
-            <TableCell title={row.ownerName || m.unassigned}>{canAssign ? <StudentStageOwnerControl row={row} assignees={assignees} locale={locale} disabled={busy}
+            <TableCell title={row.ownerName || m.unassigned}>{canAssign && !recontact ? <StudentStageOwnerControl row={row} assignees={assignees} locale={locale} disabled={busy}
               onBusyChange={setBusy} onAssigned={assigned} /> : <p className="truncate">{row.ownerName || m.unassigned}</p>}</TableCell>
             {showBackground ? <TableCell title={row.teacherName || m.unassigned}><p className="truncate">{row.teacherName || m.unassigned}</p></TableCell> : null}
-            <TableCell title={[row.note || m.noNote, row.lastContactAt ? formatAt(row.lastContactAt) : ""].filter(Boolean).join("\n")}><p className="truncate">{row.note || m.noNote}</p></TableCell>
+            <TableCell title={[row.note || m.noNote, row.lastContactAt ? formatAt(row.lastContactAt) : ""].filter(Boolean).join("\n")}><p className="truncate">{row.note || m.noNote}</p>
+              {recontact && row.lastContactAt ? <p className="text-[10px] text-muted">{formatDashboardDate(row.lastContactAt, context, { time: false })}</p> : null}</TableCell>
             <TableCell><div className="flex items-center justify-end gap-1">
               {row.canWrite ? <Button size="sm" variant="ghost" className="h-7 shrink-0 px-2 text-xs" disabled={busy} onClick={() => open(row, contactMode)}>{contactMode === "contact" ? m.contact : m.note}</Button> : null}
               {row.stage === "awaiting_assessment" && row.canContact ? <Button size="sm" variant="secondary" className="h-7 shrink-0 px-2 text-xs" disabled={busy} onClick={() => open(row, "invitation")}>{row.detail === "no_show" || row.detail === "cancelled" ? m.rebook : m.book}</Button>

@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { STUDENT_STAGE_TABS, type StudentStageData, type StudentStageFilters, type StudentStageRow, type StudentStageSaved } from "./student-stage-contract";
+import { STUDENT_RECONTACT_REASONS, STUDENT_STAGE_TABS, type StudentStageData, type StudentStageFilters, type StudentStageRow, type StudentStageSaved } from "./student-stage-contract";
 import { INVITATION_KINDS, INVITATION_STATES } from "./invitation-contract";
 
 const rowSchema = z.object({
@@ -20,6 +20,7 @@ const rowSchema = z.object({
     activityId: z.string().nullable(), assessorId: z.string().nullable(), parentTimeOptions: z.array(z.string()), assessorTimeOptions: z.array(z.string()),
     scheduledAt: z.string().nullable(), locationText: z.string(), nextContactAt: z.string().nullable(),
   }).nullable(),
+  recontactReason: z.enum(STUDENT_RECONTACT_REASONS).optional(), sharedPhoneCount: z.number().int().positive().optional(),
 });
 const pageSchema = z.object({
   rows: z.array(rowSchema), counts: z.record(z.string(), z.number().int().nonnegative()),
@@ -45,7 +46,11 @@ export async function loadStudentStageData(filters: StudentStageFilters): Promis
 }
 export async function loadStudentRecordSummaries(filters: StudentStageFilters) {
   const client = await createClient();
-  return z.object({ rows: z.array(rowSchema), counts: pageSchema.shape.counts }).parse(await studentStageRpc(client, "list_student_record_summaries", {
+  const schema = z.object({ rows: z.array(rowSchema), counts: pageSchema.shape.counts, reasonCounts: z.record(z.string(), z.number().int().nonnegative()).optional() });
+  if (filters.population === "recontact") return schema.parse(await studentStageRpc(client, "list_student_recontact_summaries", {
+    p_scope: filters.scope, p_search: filters.q, p_reason: filters.reason ?? "unreachable",
+  }));
+  return schema.parse(await studentStageRpc(client, "list_student_record_summaries", {
     p_stage: filters.stage, p_scope: filters.scope, p_search: filters.q, p_population: filters.population ?? "work",
   }));
 }

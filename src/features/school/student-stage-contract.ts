@@ -8,6 +8,8 @@ import type { FollowupServerFields } from "./followup-table-page";
 export const STUDENT_STAGE_TABS = [...STUDENT_LIFECYCLE_STAGES, "former_student"] as const;
 export type StudentStage = typeof STUDENT_STAGE_TABS[number];
 export type StudentEntryMode = "note" | "contact" | "invitation" | "enrollment";
+export const STUDENT_RECONTACT_REASONS = ["unreachable", "assessed", "former", "dormant"] as const;
+export type StudentRecontactReason = typeof STUDENT_RECONTACT_REASONS[number];
 export const STUDENT_STAGE_DETAILS = {
   awaiting_first_contact: ["not_contacted", "unreachable", "unassigned", "invalid_number"],
   awaiting_assessment: ["not_booked", "coordinating", "booked", "no_show", "cancelled", "in_progress"],
@@ -33,16 +35,20 @@ export interface StudentStageRow {
   registrationId: string | null; courseTitle: string; termName: string;
   courseId: string | null; termId: string | null; createdAt: string;
   canWrite: boolean; canContact: boolean;
+  recontactReason?: StudentRecontactReason;
+  sharedPhoneCount?: number;
   invitation: (InvitationDraft & { id: string; leadId: string; updatedAt: string }) | null;
 }
 export interface StudentStageData {
   rows: StudentStageRow[]; counts: Partial<Record<StudentStage, number>>;
   count: number; page: number; pageSize: FollowupPageSize; totalPages: number;
   fieldView?: FollowupServerFields;
+  reasonCounts?: Partial<Record<StudentRecontactReason, number>>;
 }
 export interface StudentStageFilters {
   stage: StudentStage; scope: "mine" | "all" | "unassigned"; q: string;
-  population?: "work" | "records";
+  population?: "work" | "records" | "recontact";
+  reason?: StudentRecontactReason;
   detail: string; page: number; pageSize: FollowupPageSize;
   fields?: string;
 }
@@ -55,7 +61,10 @@ export function parseStudentStageFilters(raw: Record<string, string | string[] |
   const detail = pick("detail") ?? "";
   const scope = pick("scope");
   const page = Number(pick("page"));
-  return { stage, q, population: q || pick("population") === "records" ? "records" : "work",
+  const recontact = pick("population") === "recontact";
+  const reason = pick("reason");
+  return { stage, q, population: recontact ? "recontact" : q || pick("population") === "records" ? "records" : "work",
+    ...(recontact ? { reason: STUDENT_RECONTACT_REASONS.includes(reason as StudentRecontactReason) ? reason as StudentRecontactReason : "unreachable" as const } : {}),
     scope: scope === "mine" || scope === "all" || scope === "unassigned" ? scope : defaultScope,
     detail: !q && (STUDENT_STAGE_DETAILS[stage] as readonly string[]).includes(detail) ? detail : "",
     page: Number.isSafeInteger(page) && page > 0 ? Math.min(page, 1_000_000) : 1,
@@ -66,11 +75,16 @@ export function studentStageHref(filters: StudentStageFilters, change: Partial<S
   const next = { ...filters, ...change };
   const query = new URLSearchParams({ stage: next.stage, scope: next.scope, pageSize: String(next.pageSize) });
   if (next.population) query.set("population", next.population);
+  if (next.population === "recontact" && next.reason) query.set("reason", next.reason);
   if (next.q) query.set("q", next.q);
   if (next.detail) query.set("detail", next.detail);
   if (next.fields) query.set("fields", next.fields);
   if (next.page > 1) query.set("page", String(next.page));
   return `/dashboard/students?${query}`;
+}
+
+export function studentRecordTableStage(filters: StudentStageFilters): StudentStage {
+  return filters.population === "recontact" ? !filters.reason || filters.reason === "unreachable" ? "awaiting_first_contact" : "awaiting_enrollment" : filters.stage;
 }
 
 export function defaultStudentEntryMode(row: StudentStageRow): StudentEntryMode {

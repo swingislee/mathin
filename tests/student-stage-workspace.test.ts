@@ -15,6 +15,7 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({
 }) }));
 import { assignStudentStageAction, saveStudentStageEntryAction } from "@/features/school/student-stage-actions";
 import { loadStudentStageData } from "@/features/school/student-stage-data";
+import { planStudentRecontactAction } from "@/features/school/student-recontact-actions";
 
 const id = "00000000-0000-4000-8000-000000000002";
 const requestId = "00000000-0000-4000-8000-000000000003";
@@ -51,6 +52,12 @@ describe("student stage navigation and row continuity", () => {
     expect(defaultStudentEntryMode(lead)).toBe("contact");
     expect(defaultStudentEntryMode(row)).toBe("note");
   });
+  it("keeps a reconnect search and its reason separate from the current roster", () => {
+    const filters = parseStudentStageFilters({ population: "recontact", reason: "former", q: "姓名", page: "2" });
+    expect(filters).toMatchObject({ population: "recontact", reason: "former", q: "姓名" });
+    const url = new URL(studentStageHref(filters, { page: 3 }), "https://example.test");
+    expect(parseStudentStageFilters(Object.fromEntries(url.searchParams))).toEqual({ ...filters, page: 3 });
+  });
   it("provides both languages for every selectable main stage and situation", () => {
     expect(STUDENT_STAGE_TABS).toHaveLength(5);
     for (const locale of ["zh", "en"]) {
@@ -74,6 +81,20 @@ describe("student entry action and page contract", () => {
     expect(await saveStudentStageEntryAction(requestId, input)).toEqual({ ok: true, data: saved });
     expect(fixture.rpc).toHaveBeenCalledExactlyOnceWith("save_student_record_entry", { p_request_id: requestId, p_payload: input });
     expect(fixture.revalidate).toHaveBeenCalledWith("/[locale]/dashboard/students", "page");
+  });
+  it("schedules only the selected contacts with the requested owner and date", async () => {
+    fixture.rpc.mockResolvedValueOnce({ data: requestId, error: null });
+    const plan = { id: requestId, name: "Reconnect purpose", date: "2026-09-10", ownerId: fixture.user!.id,
+      subjects: [{ studentId: null, leadId: id, expectedOwnerId: null }] };
+    expect(await planStudentRecontactAction(plan)).toEqual({ ok: true, data: { id: requestId } });
+    expect(fixture.rpc).toHaveBeenCalledExactlyOnceWith("plan_student_recontact_worklist", {
+      p_id: requestId, p_name: plan.name, p_work_date: plan.date, p_owner_id: plan.ownerId, p_subjects: plan.subjects,
+    });
+    fixture.rpc.mockClear();
+    for (const invalid of [{ ...plan, subjects: [] }, { ...plan, date: "2026-02-30" }, { ...plan, name: " " }]) {
+      expect(await planStudentRecontactAction(invalid)).toEqual({ ok: false, code: "VALIDATION" });
+    }
+    expect(fixture.rpc).not.toHaveBeenCalled();
   });
   it("rejects anonymous, read-only and incomplete entries before writing", async () => {
     fixture.user = null;
