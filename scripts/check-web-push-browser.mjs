@@ -23,7 +23,7 @@ async function sendDiagnostic(subscription, payload, options) {
   const remote = [
     "import { createRequire } from 'node:module';",
     "import { createWebPushAgent } from '/home/swing/services/mathin/current/scripts/lib/web-push-network.mjs';",
-    "const require = createRequire('/home/swing/services/mathin/current/package.json');",
+    "const require = createRequire('/home/swing/services/mathin/current/scripts/r1-job-worker.mjs');",
     "let input='';for await (const chunk of process.stdin) input+=chunk;",
     "const {subscription,payload,options}=JSON.parse(input);",
     "const agent=createWebPushAgent(subscription.endpoint,new URL(subscription.endpoint).origin);",
