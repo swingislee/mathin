@@ -32,6 +32,15 @@ begin
   if not public.notification_channel_enabled('web_push') then raise exception 'TEST_CHANNEL_NOT_ENABLED'; end if;
 
   perform set_config('request.jwt.claim.sub',teacher_id::text,true);
+  begin
+    perform public.register_my_web_push_subscription(repeat('d',64),repeat('A',100),1,1,'Rejected device','shared','chrome','windows','zh');
+    raise exception 'UNSUPPORTED_BROWSER_REGISTERED';
+  exception when raise_exception then
+    if sqlerrm <> 'WEB_PUSH_BROWSER_NOT_SUPPORTED' then raise; end if;
+  end;
+  if position('web_push_recipient:' in pg_get_functiondef('public.register_my_web_push_subscription(text,text,integer,integer,text,text,text,text,text)'::regprocedure)) = 0
+    or position('web_push_recipient:' in pg_get_functiondef('public.send_my_web_push_test(uuid)'::regprocedure)) = 0
+  then raise exception 'RECIPIENT_SERIALIZATION_MISSING'; end if;
   first_device := public.register_my_web_push_subscription(repeat('a',64),repeat('A',100),1,1,'Rollback shared device','shared','edge','windows','zh');
   if not exists(select 1 from public.web_push_subscriptions where id=first_device and lease_expires_at=now()+interval '8 hours')
   then raise exception 'SHARED_LEASE_FAILED'; end if;
@@ -56,7 +65,7 @@ begin
   exception when raise_exception then
     if sqlerrm <> 'NOT_FOUND' then raise; end if;
   end;
-  second_device := public.register_my_web_push_subscription(repeat('a',64),repeat('B',100),1,1,'Rollback personal device','personal','chrome','windows','en');
+  second_device := public.register_my_web_push_subscription(repeat('a',64),repeat('B',100),1,1,'Rollback personal device','personal','edge','windows','en');
   if not exists(select 1 from public.web_push_subscriptions where id=first_device and status='revoked' and encrypted_payload is null)
     or not exists(select 1 from public.web_push_subscriptions where id=second_device and lease_expires_at=now()+interval '30 days')
   then raise exception 'SHARED_OWNER_REPLACEMENT_FAILED'; end if;

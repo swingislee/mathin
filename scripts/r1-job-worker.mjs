@@ -16,6 +16,7 @@ import {
   webPushTtlSeconds,
 } from "./lib/web-push-delivery.mjs";
 import { jobWorkerScope, runWebPushCycle } from "./lib/web-push-worker-cycle.mjs";
+import { createWebPushAgent } from "./lib/web-push-network.mjs";
 import { isSupportedWebPushDevice } from "../src/features/events/web-push-support.mjs";
 
 const MAX_BATCH = 100;
@@ -223,7 +224,7 @@ async function loadWebPushContext(deliveryId) {
   const [{ data: notification, error: notificationError }, { data: subscription, error: subscriptionError }] = await Promise.all([
     admin.from("notifications").select("id,recipient_id,archived_at").eq("id", delivery.notification_id).maybeSingle(),
     admin.from("web_push_subscriptions")
-      .select("id,recipient_id,status,endpoint_fingerprint,encrypted_payload,encryption_key_version,locale,lease_expires_at,browser_family,platform_family")
+      .select("id,recipient_id,status,endpoint_fingerprint,encrypted_payload,encryption_key_version,vapid_key_version,locale,lease_expires_at,browser_family,platform_family")
       .eq("id", delivery.subscription_id).maybeSingle(),
   ]);
   if (notificationError || !notification) throw Object.assign(new Error("Web Push notification was not found."), {
@@ -286,7 +287,8 @@ async function sendWebPush(job) {
   if (enabled !== true) return suppressWebPush(job, delivery, "CHANNEL_DISABLED", subscription);
 
   const encryptionVersion = Number(process.env.MATHIN_WEB_PUSH_ENCRYPTION_KEY_VERSION || "1");
-  if (subscription.encryption_key_version !== encryptionVersion) {
+  const vapidVersion = Number(process.env.MATHIN_WEB_PUSH_VAPID_KEY_VERSION || "1");
+  if (subscription.encryption_key_version !== encryptionVersion || subscription.vapid_key_version !== vapidVersion) {
     await degradeWebPushIntegration("WEB_PUSH_KEY_VERSION_MISMATCH");
     await updateWebPushDelivery(deliveryId, {
       status: "failed", error_code: "WEB_PUSH_KEY_VERSION_MISMATCH",
@@ -347,12 +349,15 @@ async function sendWebPush(job) {
   try {
     const client = await webPushClient();
     const payload = buildGenericWebPushPayload({ deliveryId, locale: subscription.locale, expiresAt: delivery.expires_at });
-    await client.sendNotification(browserSubscription, payload, {
-      TTL: ttl,
-      urgency: "normal",
-      timeout: 10000,
-      vapidDetails: { subject, publicKey, privateKey },
-    });
+    const agent = createWebPushAgent(browserSubscription.endpoint, process.env.MATHIN_WEB_PUSH_ALLOWED_ORIGINS || "");
+    try {
+      await client.sendNotification(browserSubscription, payload, {
+        TTL: ttl, urgency: "normal", timeout: 10000, agent,
+        vapidDetails: { subject, publicKey, privateKey },
+      });
+    } finally {
+      agent.destroy();
+    }
   } catch (error) {
     if (error?.configurationFailure || error?.code === "WEB_PUSH_PROVIDER_UNAVAILABLE") {
       const code = String(error?.code || "WEB_PUSH_PROVIDER_UNAVAILABLE").slice(0, 100);

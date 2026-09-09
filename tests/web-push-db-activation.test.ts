@@ -45,6 +45,8 @@ describe.skipIf(!enabled)("loopback-only employee push activation migration", ()
         'flags', (select md5(coalesce(string_agg(row_to_json(f)::text, '|' order by f.id), '')) from public.feature_flag_versions f),
         'integration', (select md5(row_to_json(c)::text) from public.integration_channels c where channel='web_push'),
         'eligibility', md5(pg_get_functiondef('public.is_web_push_recipient_eligible(uuid,timestamptz)'::regprocedure)),
+        'register', md5(pg_get_functiondef('public.register_my_web_push_subscription(text,text,integer,integer,text,text,text,text,text)'::regprocedure)),
+        'sendTest', md5(pg_get_functiondef('public.send_my_web_push_test(uuid)'::regprocedure)),
         'newRpc', to_regprocedure('public.claim_web_push_jobs(text,integer,integer)')::text);
       rollback;`;
     const before = sql(snapshot);

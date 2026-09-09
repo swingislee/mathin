@@ -4,6 +4,30 @@ import { jobWorkerScope, runWebPushCycle } from "../scripts/lib/web-push-worker-
 const settings = { workerId: "push-test-worker", version: "test", batchSize: 10, leaseSeconds: 60 };
 
 describe("scoped employee push worker", () => {
+  it("settles 500 targets in batches of 50 with bounded concurrency", async () => {
+    const queue = Array.from({ length: 500 }, (_, id) => ({ kind: "notification.web_push", id }));
+    const completed = new Set<number>();
+    let active = 0;
+    let peak = 0;
+    const rpc = vi.fn(async (name: string) => ({
+      data: name === "claim_web_push_jobs" ? queue.splice(0, 50) : null, error: null,
+    }));
+    const started = performance.now();
+    for (let batch = 0; batch < 10; batch++) {
+      await runWebPushCycle({ ...settings, batchSize: 50, admin: { rpc } }, async (job) => {
+        active += 1;
+        peak = Math.max(peak, active);
+        await new Promise<void>((resolve) => setTimeout(resolve, 2));
+        expect(completed.has(Number(job.id))).toBe(false);
+        completed.add(Number(job.id));
+        active -= 1;
+      });
+    }
+    expect(completed.size).toBe(500);
+    expect(peak).toBe(50);
+    expect(active).toBe(0);
+    expect(performance.now() - started).toBeLessThan(60000);
+  });
   it("claims only the push RPC and starts the batch before waiting for network responses", async () => {
     const calls: string[] = [];
     const jobs = Array.from({ length: 10 }, (_, id) => ({ kind: "notification.web_push", id }));

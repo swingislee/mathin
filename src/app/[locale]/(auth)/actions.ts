@@ -125,11 +125,12 @@ export async function signup(formData: FormData) {
 export async function logout(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
   const supabase = await createClient();
-  const revokeWebPush = supabase.rpc as unknown as (
-    name: string,
-  ) => Promise<{ error: { message: string } | null }>;
-  // Logout must continue even if the best-effort notification revocation is unavailable.
-  await revokeWebPush("revoke_all_my_web_push_subscriptions").catch(() => null);
+  // 保留客户端绑定，并兼容 RPC 的 PromiseLike；撤销不可用时仍继续安全退出。
+  try {
+    await supabase.rpc("revoke_all_my_web_push_subscriptions");
+  } catch {
+    // 登录退出独立完成，设备租期和后续账号协调继续提供撤销保护。
+  }
   await supabase.auth.signOut();
   redirect(`/${locale}`);
 }

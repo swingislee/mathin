@@ -143,3 +143,111 @@ grant execute on function public.expire_web_push_subscriptions(integer) to servi
 grant execute on function public.claim_web_push_jobs(text,integer,integer) to service_role;
 grant execute on function public.get_web_push_monitor_snapshot() to service_role;
 grant execute on function public.is_web_push_recipient_eligible(uuid,timestamptz) to service_role;
+
+
+create or replace function public.register_my_web_push_subscription(
+  p_endpoint_fingerprint text,
+  p_encrypted_payload text,
+  p_encryption_key_version integer,
+  p_vapid_key_version integer,
+  p_device_label text,
+  p_device_mode text,
+  p_browser_family text,
+  p_platform_family text,
+  p_locale text
+) returns uuid language plpgsql security definer set search_path = public, pg_temp
+as $$
+declare
+  uid uuid := auth.uid();
+  subscription_id uuid;
+  active_count integer;
+  lease_until timestamptz;
+begin
+  if uid is null then raise exception 'UNAUTHENTICATED'; end if;
+  perform pg_advisory_xact_lock(hashtextextended('web_push_recipient:' || uid::text, 0));
+  if not public.is_web_push_recipient_eligible(uid) then raise exception 'WEB_PUSH_NOT_IN_ROLLOUT'; end if;
+  if not public.notification_channel_enabled('web_push') then raise exception 'WEB_PUSH_CHANNEL_DISABLED'; end if;
+  if p_browser_family <> 'edge' or p_platform_family <> 'windows' then
+    raise exception 'WEB_PUSH_BROWSER_NOT_SUPPORTED';
+  end if;
+  if p_endpoint_fingerprint is null or p_endpoint_fingerprint !~ '^[0-9a-f]{64}$'
+    or p_encrypted_payload is null or length(p_encrypted_payload) not between 80 and 8192
+    or p_encrypted_payload !~ '^[A-Za-z0-9+/]+={0,2}$'
+    or p_encryption_key_version not between 1 and 32767
+    or p_vapid_key_version not between 1 and 32767
+    or char_length(btrim(coalesce(p_device_label, ''))) not between 1 and 80
+    or p_device_mode not in ('shared', 'personal')
+    or p_browser_family !~ '^[a-z][a-z0-9_-]{0,39}$'
+    or p_platform_family !~ '^[a-z][a-z0-9_-]{0,39}$'
+    or p_locale not in ('zh', 'en') then
+    raise exception 'VALIDATION';
+  end if;
+
+  perform pg_advisory_xact_lock(hashtextextended(p_endpoint_fingerprint, 0));
+
+  update public.web_push_subscriptions
+  set status = 'revoked', encrypted_payload = null, revoked_at = now(),
+    revoked_reason = case when recipient_id = uid then 'subscription_replaced' else 'account_switched' end,
+    updated_at = now()
+  where endpoint_fingerprint = p_endpoint_fingerprint and status = 'active';
+
+  select count(*) into active_count
+  from public.web_push_subscriptions subscription_row
+  where subscription_row.recipient_id = uid
+    and subscription_row.status = 'active'
+    and subscription_row.lease_expires_at > now();
+  if active_count >= 5 then raise exception 'WEB_PUSH_DEVICE_LIMIT'; end if;
+
+  lease_until := now() + case when p_device_mode = 'shared' then interval '8 hours' else interval '30 days' end;
+  insert into public.web_push_subscriptions(
+    recipient_id, endpoint_fingerprint, encrypted_payload, encryption_key_version,
+    vapid_key_version, device_label, device_mode, browser_family, platform_family,
+    locale, last_confirmed_at, lease_expires_at
+  ) values (
+    uid, p_endpoint_fingerprint, p_encrypted_payload, p_encryption_key_version,
+    p_vapid_key_version, btrim(p_device_label), p_device_mode, p_browser_family,
+    p_platform_family, p_locale, now(), lease_until
+  ) returning id into subscription_id;
+
+  return subscription_id;
+end
+$$;
+
+create or replace function public.send_my_web_push_test(p_subscription_id uuid)
+returns uuid language plpgsql security definer set search_path = public, pg_temp
+as $$
+declare uid uuid := auth.uid(); event_id uuid;
+begin
+  if uid is null then raise exception 'UNAUTHENTICATED'; end if;
+  perform pg_advisory_xact_lock(hashtextextended('web_push_recipient:' || uid::text, 0));
+  if not public.notification_channel_enabled('web_push')
+    or not public.is_web_push_recipient_eligible(uid) then
+    raise exception 'WEB_PUSH_CHANNEL_DISABLED';
+  end if;
+  if not exists (
+    select 1 from public.web_push_subscriptions subscription_row
+    where subscription_row.id = p_subscription_id
+      and subscription_row.recipient_id = uid
+      and subscription_row.status = 'active'
+      and subscription_row.lease_expires_at > now()
+  ) then raise exception 'WEB_PUSH_DEVICE_NOT_FOUND'; end if;
+  if exists (
+    select 1 from public.notifications notification_row
+    where notification_row.recipient_id = uid
+      and notification_row.notification_key = 'web_push.test'
+      and notification_row.created_at >= now() - interval '1 minute'
+  ) then raise exception 'RATE_LIMITED'; end if;
+
+  event_id := public.emit_domain_event(
+    'web_push.test', 'web_push_subscription', p_subscription_id,
+    jsonb_build_object('subscriptionId', p_subscription_id, 'kind', 'generic_test'),
+    uid, '/dashboard/account-security'
+  );
+  return event_id;
+end
+$$;
+
+revoke all on function public.register_my_web_push_subscription(text,text,integer,integer,text,text,text,text,text) from public, anon, authenticated;
+grant execute on function public.register_my_web_push_subscription(text,text,integer,integer,text,text,text,text,text) to authenticated;
+revoke all on function public.send_my_web_push_test(uuid) from public, anon, authenticated;
+grant execute on function public.send_my_web_push_test(uuid) to authenticated;

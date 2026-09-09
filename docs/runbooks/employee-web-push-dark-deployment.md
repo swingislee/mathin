@@ -84,6 +84,8 @@
 - `20260909009000_employee_web_push_activation_safety.sql` 必须先在已核验非生产目标通过行为/回滚断言，再按生产写前备份、同文件 rehearsal/零残留/formal 流程执行。它保持现有 feature、integration 和 rollout 原值。
 - immutable release 同时打包 `web-push-worker-cycle.mjs`、`web-push-support.mjs` 与 `web-push-monitor.py`。推送 unit 固定 `R1_JOB_SCOPE=web_push`，只调用 `claim_web_push_jobs`；心跳版本 `r1-7.3-web-push-scoped` 不由通用 worker 使用。激活前后核对其他 kind 的 job/effect 未被本 unit 领取或维护。
 - 应用与 worker 共用 owner-only VAPID、加密和 fingerprint 配置。首轮仅接受 Windows Edge 设备和已登记的 Microsoft WNS HTTPS origin，直连投递；本轮不使用 Google FCM 或 Push 代理。激活前验证 WNS 的 TLS 可达与实际 provider 201。
+- 发送包同时包含 `web-push-network.mjs`；HTTPS Agent 在 socket lookup 时核对完整 DNS 结果并直接用于连接，私网或重绑定结果停止投递。VAPID 与加密版本须与订阅一致；轮换时先关闭通道、更新应用版本/密钥并让设备重新订阅，再按激活门恢复。
+- 候选类型可以通过 `SUPABASE_META_MIGRATIONS=<增量文件名>` 和既有 `db:types` 生成；该模式只接受已核验的本机 loopback Docker，单连接临时应用、读取类型后回滚，并独立检查函数/ACL 恢复。
 - `mathin-web-push-monitor.timer` 每分钟运行独立 Python monitor；通过只读 aggregate RPC 检测超过 120 秒未更新的专用 worker 心跳、provider auth/degraded、dead/failure、持续 5 分钟的超 60 秒积压。故障变化与恢复各发一次，同一故障最多每小时补报一次。
 - `.env.web-push-alerts` 权限 `0600`，保存 `MATHIN_WEB_PUSH_SMTP_HOST/PORT/USER/PASSWORD/FROM` 与受控的 `MATHIN_WEB_PUSH_ALERT_TO`；SMTP 使用 465 TLS 或 587 STARTTLS。复用现有已验证 SMTP 时只在生产内存或 owner-only 文件中转存，凭据不进入 release/Git/日志。
 - monitor 状态文件仅记录故障类别、时间和聚合量，目录 `0700`、文件 `0600`；邮件成功后才原子更新去重状态。恢复邮件不自动重启 worker、重放 job 或修改开关。

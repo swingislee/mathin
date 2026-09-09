@@ -14,7 +14,10 @@ if (!databaseUrl && !metaSsh && !metaUrl && !metaDocker) {
   process.exit(2);
 }
 let result;
-if (metaUrl) {
+if (process.env.SUPABASE_META_MIGRATIONS) {
+  const { generateTransactionalDatabaseTypes } = await import("./lib/transactional-database-types.mjs");
+  result = generateTransactionalDatabaseTypes();
+} else if (metaUrl) {
   const endpoint = new URL("/generators/typescript?included_schemas=public", metaUrl);
   const response = await fetch(endpoint);
   result = {

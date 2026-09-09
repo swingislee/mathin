@@ -65,6 +65,11 @@ test.describe("employee Web Push dark runtime", () => {
     await expect.poll(() => page.evaluate(() => (
       window as Window & { __mathinNotificationPermissionRequestCount?: number }
     ).__mathinNotificationPermissionRequestCount ?? -1)).toBe(0);
+    await page.getByRole("button", { name: "Open site navigation", exact: true }).click();
+    await page.getByRole("button", { name: "Sign out", exact: true }).click();
+    await expect(page).toHaveURL(/\/en\/?$/);
+    await page.goto("/en/dashboard/account-security");
+    await expect(page).toHaveURL(/\/en\/login\?next=/);
   });
 
   test("administrator sees zeroed Web Push monitoring and the disabled integration", async ({ page }) => {

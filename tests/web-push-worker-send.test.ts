@@ -54,7 +54,7 @@ beforeEach(() => {
       subscription_id: subscriptionId, channel: "web_push", status: "queued", attempt_count: 0, expires_at: future },
     web_push_subscriptions: { id: subscriptionId, recipient_id: recipientId, status: "active", locale: "zh",
       browser_family: "edge", platform_family: "windows",
-      encryption_key_version: 1, lease_expires_at: future,
+      encryption_key_version: 1, vapid_key_version: 1, lease_expires_at: future,
       encrypted_payload: encryptWebPushSubscription(browserSubscription, key),
       endpoint_fingerprint: fingerprintWebPushEndpoint(browserSubscription.endpoint, fingerprintSecret) },
     integration_channels: { channel: "web_push", status: "enabled" },
@@ -76,6 +76,7 @@ beforeEach(() => {
   vi.stubEnv("MATHIN_WEB_PUSH_SUBSCRIPTION_ENCRYPTION_KEY", key);
   vi.stubEnv("MATHIN_WEB_PUSH_FINGERPRINT_SECRET", fingerprintSecret);
   vi.stubEnv("MATHIN_WEB_PUSH_ENCRYPTION_KEY_VERSION", "1");
+  vi.stubEnv("MATHIN_WEB_PUSH_VAPID_KEY_VERSION", "1");
   vi.stubEnv("MATHIN_WEB_PUSH_ALLOWED_ORIGINS", "https://wns2-sg2p.notify.windows.com");
   vi.stubEnv("MATHIN_WEB_PUSH_VAPID_SUBJECT", "https://mathin.example.test");
   vi.stubEnv("MATHIN_WEB_PUSH_VAPID_PUBLIC_KEY", "test-public");
@@ -87,6 +88,12 @@ afterEach(() => vi.unstubAllEnvs());
 async function run() { await import("../scripts/r1-job-worker.mjs"); }
 
 describe("actual Web Push sender with isolated provider", () => {
+  it.each(["encryption_key_version", "vapid_key_version"])("rejects stale %s before sending", async (field) => {
+    rows.web_push_subscriptions[field] = 2;
+    await run();
+    expect(mock.send).not.toHaveBeenCalled();
+    expect(rows.notification_deliveries.error_code).toBe("WEB_PUSH_KEY_VERSION_MISMATCH");
+  });
   it("sends a generic payload and completes the durable effect", async () => {
     await run();
     expect(mock.send).toHaveBeenCalledTimes(1);

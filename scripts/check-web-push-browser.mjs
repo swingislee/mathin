@@ -4,11 +4,44 @@ import { readFile, mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import { chromium } from "@playwright/test";
 import webpush from "web-push";
+import { createWebPushAgent } from "./lib/web-push-network.mjs";
 
 const family = process.argv[2] || "edge";
 if (family !== "edge" || process.platform !== "win32") throw new Error("Employee push testing supports Windows Edge only");
+const sshSender = process.env.MATHIN_WEB_PUSH_TEST_SSH_SENDER || "";
+if (sshSender && sshSender !== "xiaomi") throw new Error("Unknown Web Push diagnostic sender");
+async function sendDiagnostic(subscription, payload, options) {
+  if (!sshSender) {
+    const agent = createWebPushAgent(subscription.endpoint, new URL(subscription.endpoint).origin);
+    try { return await webpush.sendNotification(subscription, payload, { ...options, agent }); }
+    finally { agent.destroy(); }
+  }
+  // 临时订阅/密钥仅通过 SSH stdin 传递；生产不保存账号、订阅或诊断凭据。
+  const remote = [
+    "import { createRequire } from 'node:module';",
+    "import { createWebPushAgent } from '/home/swing/services/mathin/current/scripts/lib/web-push-network.mjs';",
+    "const require = createRequire('/home/swing/services/mathin/current/package.json');",
+    "let input='';for await (const chunk of process.stdin) input+=chunk;",
+    "const {subscription,payload,options}=JSON.parse(input);",
+    "const agent=createWebPushAgent(subscription.endpoint,new URL(subscription.endpoint).origin);",
+    "try { const r=await require('web-push').sendNotification(subscription,payload,{...options,agent});console.log(JSON.stringify({statusCode:r.statusCode})); }",
+    "catch(e) { console.log(JSON.stringify({statusCode:e.statusCode||null,code:e.code||'PUSH_NETWORK_FAILURE'}));process.exitCode=1; }",
+    "finally { agent.destroy(); }",
+  ].join("\n");
+  const command = "/home/swing/.local/bin/node --input-type=module -e \"await import('data:text/javascript;base64," + Buffer.from(remote).toString("base64") + "')\"";
+  const result = spawnSync("ssh", ["-o", "BatchMode=yes", sshSender, command], {
+    input: JSON.stringify({ subscription, payload, options }), encoding: "utf8", timeout: 30000,
+  });
+  let response;
+  try { response = JSON.parse(result.stdout || "{}"); } catch { throw new Error("REMOTE_PUSH_RESPONSE_INVALID"); }
+  if (result.status !== 0 || response.statusCode !== 201) {
+    throw Object.assign(new Error(response.code || "REMOTE_PUSH_DIAGNOSTIC_FAILED"), { statusCode: response.statusCode });
+  }
+  return response;
+}
 const sw = await readFile(new URL("../public/notification-sw.js", import.meta.url), "utf8");
 const server = createServer((req, res) => {
   if (req.url === "/notification-sw.js") {
@@ -53,7 +86,7 @@ try {
     vapidDetails: { subject: "https://mathin.club", publicKey: keys.publicKey, privateKey: keys.privateKey },
   };
   await page.close();
-  const sent = await webpush.sendNotification(subscription, payload, options);
+  const sent = await sendDiagnostic(subscription, payload, options);
   stage = "closed_tab_receipt";
   const check = await context.newPage();
   await check.goto(origin);
@@ -61,7 +94,7 @@ try {
     const registration = await navigator.serviceWorker.ready;
     return (await registration.getNotifications({ tag })).length === 1;
   }, `mathin:${deliveryId}`, { timeout: 45000 });
-  await webpush.sendNotification(subscription, payload, options);
+  await sendDiagnostic(subscription, payload, options);
   await new Promise((resolve) => setTimeout(resolve, 3000));
   const count = await check.evaluate(async (tag) => {
     const registration = await navigator.serviceWorker.ready;
@@ -69,7 +102,7 @@ try {
   }, `mathin:${deliveryId}`);
   if (count !== 1) throw new Error("DUPLICATE_NOTIFICATION");
   process.stdout.write(JSON.stringify({ browser: family, result: "PASS", providerStatus: sent.statusCode,
-    closedTab: true, notificationCount: count, windowsToastManuallyVerified: false }) + "\n");
+    sender: sshSender || "local", closedTab: true, notificationCount: count, windowsToastManuallyVerified: false }) + "\n");
 } catch (error) {
   process.stdout.write(JSON.stringify({ browser: family, stage, result: "BLOCKED", errorClass: error?.name,
     detail: String(error?.message || "").split("\n")[0].replace(/https?:\/\/\S+/g, "[URL]").replace(/[A-Za-z0-9_-]{40,}/g, "[redacted]").slice(0, 200),
