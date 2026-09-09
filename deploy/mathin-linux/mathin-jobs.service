@@ -1,7 +1,8 @@
 [Unit]
-Description=Mathin durable job worker
+Description=Mathin employee Web Push worker
 After=network-online.target mathin.service
 Wants=network-online.target
+PartOf=mathin.service
 
 [Service]
 Type=simple
@@ -9,6 +10,7 @@ WorkingDirectory=/home/swing/services/mathin/current
 EnvironmentFile=/home/swing/services/mathin/config/.env.production.local
 Environment=NODE_ENV=production
 Environment=R1_JOB_WORKER_ID=xiaomi-production-1
+Environment=R1_JOB_SCOPE=web_push
 ExecStart=/home/swing/.local/bin/node /home/swing/services/mathin/current/scripts/r1-job-worker.mjs
 Restart=on-failure
 RestartSec=5

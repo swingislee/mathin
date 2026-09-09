@@ -4,15 +4,19 @@
 >
 > **工作项**：`DEV-WEB-PUSH-1`
 >
-> **当前状态**：`PUSH-P5 COMPLETE / PRODUCTION DARK DEPLOYMENT VERIFIED / EMPLOYEE TEST NOT AUTHORIZED`
+> **当前状态**：`PUSH-P6 / EMPLOYEE TEST ACTIVE / PENDING USER ACCEPTANCE`。2026-09-09 已按产品负责人“启用生产”的指令开放 Windows Edge 员工自主测试，当前在职快照为 36 个账号。
 >
-> **当前施工目标**：`PUSH-P5` 已以生产三层开关全部关闭、无订阅、无 Web Push 投递的暗部署完成。下一步只推进 `PUSH-G5` 员工测试入口条件：补齐安全、共享电脑、真实 Edge/Chrome、生产 Push 网络、独立告警和首批人员/设备范围；在 Gate 全部通过并再次获得明确人工确认前，不配置 secret、不启动 Worker、不启用通道/开关、不写 tester cohort。
+> **当前施工目标**：收集真实员工 Windows 通知、共享电脑及有效工作日观察结果；独立邮件监控和专用 Worker 已运行。完整 G5/P7、最终保留期与人工签收仍按实际证据逐项完成。
 >
-> **员工测试入口**：只有本文 §11 的 `PUSH-G5 · EMPLOYEE-TEST-ENTRY` 全部为 `PASS`，产品负责人登记首批员工与设备范围并明确确认“进入员工测试”后，状态才可改为 `EMPLOYEE TEST ACTIVE`。开发完成、机器检查通过、生产暗部署或通知在单台开发机弹出，均不能提前进入员工测试。
+> **员工测试入口**：当前在职快照已入受控 manifest，生产开关、WNS integration、专用 Worker 与独立邮件监控已启用；员工在 Windows Edge 的账号安全→桌面通知中自主开启。机器通过、生产启用与员工实际看到 Windows 通知分别记录。
 >
-> **阶段关系**：本工作项属于 doc 04 §5.2 的独立开发轨，不改变 `R1-Live-2` 当前施工阶段，也不替代 Gate 2 的正式教师点名、持久再读和权限对照。功能在生产默认关闭；未通过本专题 Gate 时，既有站内铃铛继续作为唯一已承诺的通知入口。
+> **阶段关系**：本工作项属于 doc 04 §5.2 的独立轨，不改变 `R1-Live-2` 当前施工阶段，也不替代 Gate 2 的正式教师点名、持久再读和权限对照。员工测试已启用，站内铃铛仍是通知事实权威；真实 Windows 体验与完整生产验收分别记录。
 >
-> **核对日期**：2026-09-04；生产暗部署依据候选 `bea3d111…`、release `20260904-012426`、migration ledger `244 / 20260903000760_employee_web_push_dark_monitoring`、写前备份、回滚演练和独立暗态 postflight；员工测试条件仍依据本专题 §11。
+> **核对日期**：2026-09-09；实际启用版本、36 人快照、备份/迁移、WNS 201、告警恢复和 postflight 见[生产启用记录](../evidence/r1/employee-web-push-production-activation-20260909.md)。P5 与[准备检查点](../evidence/r1/employee-web-push-activation-preparation-20260909.md)保留为历史证据。
+
+> **2026-09-09 产品授权更新**：产品负责人明确要求直接向当前全部在职员工（含管理员，约十余个账号）开放测试，由员工逐设备自主开启；本次覆盖原 3～5 人与 25%→50%→100% 的人数安排。执行名单取启用时 `role in ('staff','admin') AND is_active AND account_status='active'` 的受控快照，新增账号不在本次快照内。告警出口确定为受控接收邮箱，既有 SMTP 已验证且负责人确认收到验证邮件。授权已取得并持续有效；实际启用仍须完成尚缺的投递安全、队列隔离、真实浏览器和告警恢复验证。授权记录不代表 G5 已通过或生产已启用。
+
+> **2026-09-09 浏览器范围更新**：产品负责人明确本轮只考虑 Edge。执行范围收敛为 Windows Edge → Microsoft WNS 直连；Chrome、Google FCM、其他浏览器与代理出口不作为本轮启用或退出前置项。页面、订阅入口和 Worker 使用同一范围；全体在职员工授权保持有效。
 
 ## 1. 目标、首发范围与产品边界
 
@@ -23,7 +27,7 @@ Mathin 为主动开启该能力的员工设备提供桌面 Web Push：员工可�
 首发范围固定为：
 
 - 主体仅限 active `staff` 与 `admin`；学生和家长继续只使用站内通知，后续如需外推必须重新完成未成年人隐私与内容分级裁决。
-- 设备以公司使用的 Windows 桌面环境为首要目标；生产验收覆盖 Edge 与 Chrome 最新两个主版本，员工测试至少覆盖当前稳定版 Edge 和 Chrome。
+- 首轮仅支持 Windows 版 Microsoft Edge；生产验收覆盖 Edge 最新两个主版本，员工测试至少覆盖当前稳定版 Edge。桌面 Push 仅使用 Microsoft WNS，Chrome/Google FCM 与其他浏览器不属于本轮支持范围；站内铃铛保持可用。
 - 站内 `notifications` 仍是通知事实和已读状态权威；Web Push 是可关闭的投递渠道，发送失败不能回滚领域事务，也不能删除或篡改站内通知。
 - 系统通知只显示通用内容，例如“Mathin 有一条新的工作提醒”；锁屏、通知中心和 Push payload 均不出现学生姓名、手机号、班级、财务、课评正文或业务 deep link。
 - 点击通知后由服务端按当前身份解析目标；当前账号不是接收人、会话过期或权限已撤销时，只进入登录/无权限状态，不泄露通知内容或目标地址。
@@ -44,10 +48,12 @@ Mathin 为主动开启该能力的员工设备提供桌面 Web Push：员工可�
 - 不开发 Electron、Windows 原生托盘程序或“浏览器进程被彻底结束后仍保证弹出”的常驻客户端。
 - 不引入离线 app shell、页面预缓存或课堂离线 PWA。Service Worker 只处理 `push`、`notificationclick` 和订阅变更，不注册 `fetch` 缓存逻辑。
 - 不用桌面通知替代站内铃铛、工作项、邮件、SMS 或微信；邮件、SMS、微信和 Webhook 仍按 doc 25 的现有安全关闭合同处理。
-- 不自动向所有员工索要浏览器权限，也不把 Edge/Chrome 企业允许策略等同于员工在 Mathin 内主动启用。
+- 不自动向所有员工索要浏览器权限，也不把 Windows Edge 企业允许策略等同于员工在 Mathin 内主动启用。
 - 不通过 Push payload 传递完整业务文案、凭据、访问令牌、可直接访问的私有 URL 或第三方跳转地址。
 
 ## 2. 当前基线与缺口
+
+本节下表保留立项时基线；2026-09-09 的运行现状以状态头和生产启用记录为准。
 
 | 层 | 当前事实 | 本工作项缺口 |
 | --- | --- | --- |
@@ -209,7 +215,7 @@ delivery: queued → sending → sent
 
 ### 6.4 权限与企业策略
 
-- 浏览器权限只在员工明确点击后请求；权限为 `denied` 时停止重复询问并给出 Edge/Chrome 与 Windows 设置路径。
+- 浏览器权限只在员工明确点击后请求；权限为 `denied` 时停止重复询问并给出 Windows Edge 与 Windows 设置路径。
 - IT 可以使用 Edge `NotificationsAllowedForUrls` 等企业策略允许 `https://mathin.club` 显示通知，但 Mathin 内的设备 opt-in、rollout cohort 和共享电脑合同仍须成立。
 - 企业策略、浏览器权限、Windows 系统通知、Mathin 用户偏好是四个独立状态；运维页面分别描述可观测范围，不把客户端上报当作不可伪造安全事实。
 
@@ -303,13 +309,13 @@ delivery: queued → sending → sent
 | --- | --- | --- | --- |
 | `PUSH-P0` 合同与威胁建模 | 事件范围、通用文案、浏览器矩阵、Push 服务 origin/网络、保留期、告警出口、secret owner 和 threat model | 产品/安全/运维裁决齐全；开发/预生产/生产边界明确 | `NOT AUTHORIZED` |
 | `PUSH-P1` 数据与服务端边界 | additive migration、RLS/RPC、订阅密文、rollout cohort、device-level delivery、feature flag | 空库重放、旧库升级/回滚、RLS/CSRF/SSRF/幂等/共享 owner 断言通过 | `NOT AUTHORIZED` |
-| `PUSH-P2` 浏览器能力与 UX | 通知专用 SW、显式权限、设备设置、测试通知、点击鉴权、zh/en | localhost/HTTPS 的 Edge+Chrome 页面开/关、权限允许/拒绝、点击与账号切换旅程通过 | `NOT AUTHORIZED` |
+| `PUSH-P2` 浏览器能力与 UX | 通知专用 SW、显式权限、设备设置、测试通知、点击鉴权、zh/en | localhost/HTTPS 的 Windows Edge 页面开/关、权限允许/拒绝、点击与账号切换旅程通过 | `NOT AUTHORIZED` |
 | `PUSH-P3` Worker、重试与监控 | Web Push handler、VAPID、响应分类、TTL/jitter、熔断、dashboard、独立告警与 runbook | 故障注入、负载、Worker 崩溃/恢复、dead replay、secret/log 扫描和告警演练通过 | `NOT AUTHORIZED` |
-| `PUSH-P4` 预生产完整验证 | 固定非生产目标、真实 Edge/Chrome Push endpoint、共享电脑、网络/防火墙、回退演练和完整 E2/E3 证据 | §13 所有 employee-test 前置项通过，无 Sev0/Sev1/未接受 Sev2 | `NOT AUTHORIZED` |
+| `PUSH-P4` 预生产完整验证 | 固定非生产目标、真实 Windows Edge Push endpoint、共享电脑、网络/防火墙、回退演练和完整 E2/E3 证据 | §13 所有 employee-test 前置项通过，无 Sev0/Sev1/未接受 Sev2 | `NOT AUTHORIZED` |
 | `PUSH-P5` 生产暗部署 | schema/app/Worker 发布，`notifications.web_push=false`、integration disabled、cohort 空；生产 postflight | 备份/current/previous/ledger、Worker 停用态、旧站内通知、业务/Storage/错误不变量通过 | `NOT AUTHORIZED` |
 | `PUSH-G5` 员工测试入口 Gate | §11 checklist、首批人员/设备 manifest、明确人工批准 | 全项 `PASS`，产品负责人明确确认“进入员工测试” | 改为 `AUTHORIZED` |
-| `PUSH-P6` 小范围员工测试 | 3～5 名员工、至少 1 个共享电脑场景、5 个工作日、≥50 个 delivery target | §12 退出条件通过；失败则 kill switch 并回到对应阶段 | `EMPLOYEE TEST ACTIVE` |
-| `PUSH-P7` 分批扩围与生产验收 | 25%→50%→100% 合格员工逐批 opt-in；14 天/≥100 target 观察 | §8 SLO、REL-03、共享设备、安全与支持记录通过，产品/运维/安全签收 | `PRODUCTION ACCEPTED` |
+| `PUSH-P6` 员工自主测试 | 当前全部在职 staff/admin 获得开启资格；至少 1 个共享电脑场景、5 个有效工作日、≥50 个 delivery target | §12 退出条件通过；失败则 kill switch 并回到对应阶段 | `EMPLOYEE TEST ACTIVE` |
+| `PUSH-P7` 生产验收 | 已授权全体员工按设备 opt-in；14 天/≥100 target 观察 | §8 SLO、REL-03、共享设备、安全与支持记录通过，产品/运维/安全签收 | `PRODUCTION ACCEPTED` |
 
 本轮不设置固定完成日期，也不把测试起止日作为代码施工前置。`PUSH-P0`～`PUSH-P5` 按可验证增量连续推进；遇到不影响暗部署 fail-closed 状态的问题时登记责任人、影响阶段和验证办法后继续。完成 `PUSH-P5` 只代表生产中已有关闭态代码与可回退底座，仍需 `PUSH-G5` 条件和人工确认才能确定员工测试窗口。
 
@@ -325,17 +331,19 @@ delivery: queued → sending → sent
 
 | ID | 当前状态 | 分级 | 暂定合同与继续方式 | 关闭条件 |
 | --- | --- | --- | --- | --- |
-| `PUSH-ISSUE-01` 员工测试窗口 | `OPEN` | `G5-BLOCK / DEV-CONTINUE` | 只登记周级或月级意向窗口；代码、预生产和 P5 不绑定具体日期 | `PUSH-G5` 前登记 3～5 名员工、设备范围和实际启动窗口 |
-| `PUSH-ISSUE-02` 外部告警出口 | `OPEN` | `G5-BLOCK / DEV-CONTINUE` | 先实现告警事件、阈值、Dashboard 和可替换 adapter；P5 保持 Web Push handler disabled | 选定独立出口并完成一次告警—确认—恢复演练 |
+| `PUSH-ISSUE-01` 员工测试范围 | `CLOSED / ACTIVE` | `FOLLOW-UP` | 2026-09-09 已保存 36 人 owner-only 快照并启用，员工逐设备 opt-in | 后续新增账号按独立授权加入 |
+| `PUSH-ISSUE-02` 外部告警出口 | `RUNNING / DRILL SENT` | `FOLLOW-UP` | 独立 SMTP 已确认基础收件；生产 worker 失联/恢复及模拟 provider 401/恢复的四封演练邮件获 SMTP 接收，定时 monitor 正常 | 保留人工演练收件确认与观察记录 |
 | `PUSH-ISSUE-03` 保留期 | `OPEN` | `G5-BLOCK / DEV-CONTINUE` | 以可配置、默认不超过 90 天实现；撤销后立即清密文 | 隐私/运维负责人签收最终天数并验证清理 job |
-| `PUSH-ISSUE-04` Push 服务与企业网络 | `OPEN` | `G5-BLOCK / DEV-CONTINUE` | origin allowlist 外置配置、默认空且 fail-closed；本地/预生产使用固定非生产目标 | 登记实际 endpoint origin，完成网络 preflight 与 Edge/Chrome 真机验证 |
+| `PUSH-ISSUE-04` Push 服务与企业网络 | `WNS PASS / USER OBSERVATION` | `FOLLOW-UP` | 已登记 WNS origin，生产实际 201、Edge 标签关闭收取与去重通过；Chrome/FCM 不在本轮范围 | 继续员工 Windows 横幅、全部窗口关闭和企业策略观察 |
 | `PUSH-ISSUE-05` 首批通知文案 | `OPEN` | `FOLLOW-UP` | 代码只接受无变量的 zh/en 通用模板，不等待最终润色 | 产品负责人签收锁屏样本与双语文案 |
 | `PUSH-ISSUE-06` 本机 Vitest 子进程权限 | `CLOSED` | `G5-BLOCK / DEV-CONTINUE` | 沙箱内 `spawn EPERM` 仍是 runner 限制；2026-09-03 已在获批的沙箱外 runner 直接运行定向文件 | `tests/web-push-production.test.ts` 9/9 通过；后续代码变化按受影响范围重跑 |
 | `PUSH-ISSUE-07` Web Push 发送库锁定 | `CLOSED` | `G5-BLOCK / DEV-CONTINUE` | 初次安装受 pnpm store/审批服务影响；不手工伪造 lockfile，Worker 保持动态加载和关闭态 | 2026-09-03 已锁定 `web-push@3.6.7`，`package.json` 与 `pnpm-lock.yaml` 同步，定向合同通过 |
-| `PUSH-ISSUE-08` 生成数据库类型 | `OPEN` | `G5-BLOCK / DEV-CONTINUE` | `src/lib/database.types.ts` 正由其他工作项修改，本地 schema 也含尚未冻结的后续 migration；当前 Web Push 代码使用窄化 RPC 边界，不覆盖并发改动 | 并发工作项收口后从完整候选 schema 重新生成，`pnpm db:types:check` 通过且无非本批漂移 |
+| `PUSH-ISSUE-08` 生成数据库类型 | `CLOSED` | `FOLLOW-UP` | 已在独立候选上通过真实 pg-meta 事务生成并回滚核对，包含生产基线和本批 RPC；类型检查通过 | 后续 migration 按候选重新生成 |
 | `PUSH-ISSUE-09` 生产基线导航双语缺键 | `CLOSED` | `FOLLOW-UP` | 生产基线 `4d20bc85…` 已独立移除两项过期复盘导航；Web Push 候选在该基线上重建并通过双语键、导航合同和 production build | release `20260904-012426` 已包含该基线，发布后 journal error 无新增 |
 
 ### 10.2 当前实现与证据检查点
+
+下表为 2026-09-04 P5 历史检查点；当前已进入 P6 员工自主测试，新增安全、发布与运行证据见状态头链接。历史的 `NOT AUTHORIZED` 不覆盖同日之后取得的全员授权。
 
 | 阶段 | 当前结果 | 仍需完成 | 员工测试状态 |
 | --- | --- | --- | --- |
@@ -343,16 +351,16 @@ delivery: queued → sending → sent
 | `PUSH-P1` | `00750/00760` additive migration 已在本机明确 loopback 目标完成 rollback/零残留/formal；flag=false、integration disabled、cohort/subscription/delivery/job 均为 0，checksum 已入 ledger | 完整空库重放、生成类型与员工测试前安全负向矩阵 | `NOT AUTHORIZED` |
 | `PUSH-P2` | 通知专用 SW、显式权限、逐设备 UI、登出撤销、点击再鉴权和 zh/en 已实现；固定员工账号暗态 Playwright 证明 permission request=0、SW registration=0、开启按钮禁用 | HTTPS 真机允许/拒绝/撤销、标签关闭与账号切换旅程 | `NOT AUTHORIZED` |
 | `PUSH-P3` | Worker sender、加密/HMAC、响应分类、Retry-After/full jitter、TTL、404/410 清密文、熔断和聚合 Dashboard 已实现；`web-push@3.6.7` 已锁定，Vitest 9/9、暗态 Playwright 2/2 通过 | provider 故障注入、容量、独立告警演练和生产 Worker 激活前检查 | `NOT AUTHORIZED` |
-| `PUSH-P4` | 尚未建立固定 HTTPS 非生产 Push 目标 | 完整 E2/E3、Edge/Chrome 真机、共享电脑与回退演练 | `NOT AUTHORIZED` |
+| `PUSH-P4` | 尚未建立固定 HTTPS 非生产 Push 目标 | 完整 E2/E3、Windows Edge 真机、共享电脑与回退演练 | `NOT AUTHORIZED` |
 | `PUSH-P5` | **COMPLETE**：候选 `bea3d111…` 已发布为 production release `20260904-012426`；两条 migration 正式提交，ledger/head=`244 / 20260903000760_employee_web_push_dark_monitoring`。feature=false、integration disabled/secret null、cohort/subscription/delivery/job=`0`，Worker inactive；备份、rehearsal、业务/Storage/错误不变量和公网健康 postflight 通过 | 无；保留写前备份与 previous `4d20bc85…`，后续转入 `PUSH-G5` | `NOT AUTHORIZED` |
 
 ## 11. `PUSH-G5 · EMPLOYEE-TEST-ENTRY`
 
-以下每项只能使用 `PASS / BLOCKED / UNKNOWN / NOT REQUIRED`。存在任一 `BLOCKED` 或 `UNKNOWN` 时，状态保持 `EMPLOYEE TEST NOT AUTHORIZED`。
+以下每项使用 `PASS / BLOCKED / UNKNOWN / NOT REQUIRED`，保留完整门尚未覆盖的证据。2026-09-09 在产品负责人明确“启用生产”的指令及当前 R1-Live 受控发布合同下，安全迁移、生产 WNS 出站、独立告警和 postflight 已通过，已进入 P6 员工自主测试；本次不把全部完整门条目或人工观察记为通过。
 
 ### 11.1 产品与范围
 
-- [ ] 首批 3～5 名员工、账号 UUID、设备类型、浏览器族和周级/月级意向窗口进入受控 manifest；实际开始时间可以在 Gate 通过后确定，仓库证据不保存姓名或联系方式。
+- [x] 启用时全部在职 staff/admin 的账号 UUID 快照进入受控 manifest；2026-09-09 实际人数 36，设备类型和浏览器族随员工自主开启登记，仓库只保存人数与摘要。
 - [ ] Web Push 只对 active staff/admin 生效；学生/家长和未列员工的订阅/投递负向用例通过。
 - [ ] 通知 title/body、Push payload 和 Windows 锁屏样本均为通用内容，无 PII、业务 deep link 或动作按钮。
 - [ ] 产品负责人完成开启、拒绝、关闭、测试通知、点击、到期和错误状态的 zh/en 人工初验。
@@ -376,23 +384,23 @@ delivery: queued → sending → sent
 
 ### 11.4 环境与完整验证
 
-- [ ] 固定 HTTPS 预生产环境的 Edge/Chrome 当前稳定版真实 Push 通过；实际 endpoint origin 已脱敏登记，Xiaomi/公司网络出站和浏览器入站可达。
-- [ ] Edge/Chrome 至少各完成：页面打开、标签页关闭、全部窗口关闭且后台允许、离线后 TTL 内恢复、权限拒绝、Windows 勿扰说明。
+- [ ] 固定 HTTPS 预生产环境的 Windows Edge 当前稳定版真实 Push 通过；实际 endpoint origin 已脱敏登记，Xiaomi/公司网络出站和浏览器入站可达。
+- [ ] Windows Edge 至少完成：页面打开、标签页关闭、全部窗口关闭且后台允许、离线后 TTL 内恢复、权限拒绝、Windows 勿扰说明。
 - [ ] 预生产 500 个 device-level delivery、50 并发目标的负载通过；95% job 在 60 秒内领取，最终未处置 dead=0。
 - [ ] migration 空库重放、旧库升级、事务回滚/零残留、生成类型、定向测试、lint、typecheck、messages、production build 和 R1-Live 共享通知/auth smoke 通过。
 - [ ] 生产暗部署完成：功能开关关闭、integration disabled、cohort 空、订阅/Push delivery=0；健康、错误增量和旧站内通知 postflight 通过。
 
 ### 11.5 人工授权
 
-- [ ] 产品负责人核对本 Gate 证据后明确记录“进入员工测试”。
+- [x] 产品负责人于 2026-09-09 明确要求现在向全部在职员工开放测试；本次授权持续有效，不要求再次提交固定措辞。
 - [ ] 运维/安全负责人确认告警值守、kill switch 操作者、测试期支持入口和停止条件。
-- [ ] 只有完成上述确认后，才为 manifest 中的员工加入 `employee_test` cohort，并按设备逐一主动开启。
+- [x] 2026-09-09 已为启用时快照内全部 36 个在职账号加入 `employee_test`；设备由员工自行开启，启用 postflight 时尚无注册设备。
 
 ## 12. 员工测试与扩围
 
 ### 12.1 首批员工测试
 
-员工测试采用宽泛观察窗口，不预先锁死具体日期；实际开始由 `PUSH-G5` 人工确认触发。退出证据至少覆盖一个完整工作周中的 5 个有效工作日、3～5 名员工、Edge 与 Chrome、至少 1 次共享电脑账号切换和至少 50 个 device-level delivery；节假日、员工缺席或样本不足时顺延，不因日历到期自动通过。可以使用明确标记的通用测试通知补足边界验证；不得制造学生、班级、财务或其他虚假正式业务记录。
+员工测试采用宽泛观察窗口，不预先锁死具体日期；本次全体在职员工的产品授权已于 2026-09-09 取得，实际开始由 `PUSH-G5` 技术验证完成与生产 postflight 决定。退出证据至少覆盖一个完整工作周中的 5 个有效工作日、实际参与员工的 Windows Edge、至少 1 次共享电脑账号切换和至少 50 个 device-level delivery；节假日、员工缺席或样本不足时顺延，不因日历到期自动通过。可以使用明确标记的通用测试通知补足边界验证；不得制造学生、班级、财务或其他虚假正式业务记录。
 
 每台设备至少完成：
 
@@ -420,11 +428,11 @@ delivery: queued → sending → sent
 
 - Sev0=0、Sev1=0、未接受 Sev2=0；跨账号/PII/secret 事件=0。
 - ≥50 个 target 中，排除主动撤销、TTL 过期和 404/410 后的最终 `sent` ≥99%；未处置 dead=0。
-- Edge、Chrome和共享电脑旅程全部通过；员工能理解开启、关闭、浏览器后台与“已接受≠已显示”状态。
+- Windows Edge 和共享电脑旅程全部通过；员工能理解开启、关闭、浏览器后台与“已接受≠已显示”状态。
 - 同一设备重复可见通知=0；正常登出/账号切换后的错误接收=0。
 - 产品、运维、安全负责人分别签收体验、值守/恢复和安全边界。
 
-通过后按 25%→50%→100% 合格员工逐批扩围，每批至少观察 1 个工作日。任一批次未达到 §8 门槛即停止扩围并回到上一 cohort。Production 1.0 的 M4 仍需 doc 25 的 14 天 RC、REL-03、完整恢复与发布审批；首批员工测试通过不能替代这些门。
+按 2026-09-09 产品授权，本次直接向快照中的全部在职员工提供开启资格，每人逐设备自主开启。未达到 §8 门槛时暂停推送并处理故障，恢复沿用本次已批准范围。Production 1.0 的 M4 仍需 doc 25 的 14 天 RC、REL-03、完整恢复与发布审批；员工测试通过不能替代这些门。
 
 ## 13. 完整验证矩阵
 
@@ -435,7 +443,7 @@ delivery: queued → sending → sent
 | API/Auth | user gesture 后注册、`getUser`、Origin/CSRF、限流、密文/HMAC、越权设备列表、账号切换、停用员工 | E2/E3 |
 | Service Worker | 安装/升级、未知 payload、push、短期去重账本、过期清理、click、existing client focus、openWindow、无 fetch/cache、tombstone 回退 | E2/E3 |
 | Worker | 2xx/4xx/5xx/网络故障、lease recovery、max attempts、dead/replay、404/410 清理、熔断、日志脱敏 | E2/E3 |
-| 浏览器/系统 | Edge/Chrome、权限三态、标签页关闭、窗口关闭、离线/恢复、勿扰、Windows 锁屏、个人/共享设备 | E3/E4 |
+| 浏览器/系统 | Windows Edge、权限三态、标签页关闭、窗口关闭、离线/恢复、勿扰、Windows 锁屏、个人/共享设备 | E3/E4 |
 | 性能/容量 | 500 delivery、50 并发、领取时延、Worker CPU/内存、队列清空、provider 限流 | E3 |
 | 安全 | CSRF、SSRF/DNS rebinding、endpoint/key 泄露、跨账号、相对路径/open redirect、员工停用、secret rotation | E2/E3 |
 | 发布/回退 | target preflight、备份、migration rollback/正式应用、app current/previous、feature flag off/on/off、SW 持久化、旧站内通知 | E3 |

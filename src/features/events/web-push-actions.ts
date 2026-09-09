@@ -10,7 +10,7 @@ import type {
   WebPushCapability,
   WebPushDevice,
 } from "./web-push-contract";
-import { WEB_PUSH_VAPID_KEY_VERSION } from "./web-push-contract";
+import { isSupportedWebPushDevice, isSupportedWebPushUserAgent, WEB_PUSH_VAPID_KEY_VERSION } from "./web-push-contract";
 import {
   encryptWebPushSubscription,
   fingerprintWebPushEndpoint,
@@ -29,6 +29,7 @@ const WEB_PUSH_CODES = [
   "WEB_PUSH_ENDPOINT_INVALID",
   "WEB_PUSH_ORIGIN_NOT_ALLOWED",
   "WEB_PUSH_ALLOWED_ORIGIN_INVALID",
+  "WEB_PUSH_BROWSER_NOT_SUPPORTED",
   "WEB_PUSH_SECRETS_UNAVAILABLE",
   "RATE_LIMITED",
   "NOT_FOUND",
@@ -194,6 +195,11 @@ export async function registerMyWebPushSubscriptionAction(
   try {
     await assertSameOrigin();
     const value = registerSchema.parse(input);
+    const userAgent = (await headers()).get("user-agent") || "";
+    if (!isSupportedWebPushUserAgent(userAgent)
+      || !isSupportedWebPushDevice(value.browserFamily, value.platformFamily)) {
+      throw new Error("WEB_PUSH_BROWSER_NOT_SUPPORTED");
+    }
     const subscription = normalizeBrowserPushSubscription(value.subscription, allowedOrigins());
     const endpointFingerprint = fingerprintWebPushEndpoint(subscription.endpoint, fingerprintSecret());
     const encryptedPayload = encryptWebPushSubscription(subscription, encryptionKey());

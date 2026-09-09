@@ -94,6 +94,7 @@
     "desktopNotifications": {
       "title": "桌面提醒",
       "loading": "正在检查这台设备。",
+      "edgeOnly": "桌面提醒目前仅支持 Windows 版 Microsoft Edge。请使用 Edge 开启；当前浏览器的站内铃铛仍可正常使用。",
       "unsupported": "当前浏览器不支持桌面 Web Push，站内铃铛仍可正常使用。",
       "insecure": "桌面提醒需要 HTTPS；当前页面继续使用站内铃铛。",
       "permissionDenied": "浏览器或 Windows 已关闭通知，请在系统设置中允许后再试。",
@@ -116,7 +117,7 @@
       "sendTest": "发送通用测试提醒",
       "testAccepted": "测试任务已进入发送队列；这不等于设备已经显示。",
       "operationFailed": "操作未完成（{code}）。",
-      "backgroundHint": "关闭 Mathin 标签页后，浏览器后台仍运行且 Windows 允许通知时可以收到；结束浏览器进程、休眠、断网或勿扰模式下不保证即时显示。",
+      "backgroundHint": "桌面提醒通过 Microsoft Edge 和微软推送服务发送。关闭 Mathin 标签页后，Edge 后台仍运行且 Windows 允许通知时可以收到；结束 Edge 进程、休眠、断网或勿扰模式下不保证即时显示。",
       "devicesTitle": "桌面通知设备",
       "noDevices": "当前账号没有登记的桌面通知设备。",
       "thisDevice": "本机",

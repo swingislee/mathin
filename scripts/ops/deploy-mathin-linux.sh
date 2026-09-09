@@ -108,24 +108,14 @@ fi
 mkdir -p "$release_tmp/scripts/lib" "$release_tmp/src/features/events"
 cp -a "$source_root/scripts/r1-job-worker.mjs" "$release_tmp/scripts/r1-job-worker.mjs"
 cp -a "$source_root/scripts/lib/web-push-delivery.mjs" "$release_tmp/scripts/lib/web-push-delivery.mjs"
+cp -a "$source_root/scripts/lib/web-push-worker-cycle.mjs" "$release_tmp/scripts/lib/web-push-worker-cycle.mjs"
+cp -a "$source_root/scripts/lib/web-push-network.mjs" "$release_tmp/scripts/lib/web-push-network.mjs"
+mkdir -p "$release_tmp/scripts/ops"
+cp -a "$source_root/scripts/ops/web-push-monitor.py" "$release_tmp/scripts/ops/web-push-monitor.py"
 cp -a "$source_root/src/features/events/web-push-runtime.mjs" "$release_tmp/src/features/events/web-push-runtime.mjs"
+cp -a "$source_root/src/features/events/web-push-support.mjs" "$release_tmp/src/features/events/web-push-support.mjs"
 
-copy_worker_package() {
-  local package_name="$1"
-  local source_package="$source_root/node_modules/$package_name"
-  local release_package="$release_tmp/node_modules/$package_name"
-  if [[ ! -e "$source_package" ]]; then
-    echo "Worker runtime dependency is missing: $package_name" >&2
-    exit 1
-  fi
-  if [[ ! -e "$release_package" ]]; then
-    mkdir -p "$(dirname "$release_package")"
-    cp -aL "$source_package" "$release_package"
-  fi
-}
-
-copy_worker_package "@supabase/supabase-js"
-copy_worker_package "web-push"
+"$node_bin" "$source_root/scripts/ops/package-worker-runtime.mjs" "$source_root" "$release_tmp"
 
 while IFS= read -r -d '' link; do
   resolved="$(readlink -f "$link" || true)"

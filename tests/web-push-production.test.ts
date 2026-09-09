@@ -20,7 +20,7 @@ const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
 const migrationPath = "supabase/migrations/20260903000750_employee_web_push_dark_runtime.sql";
 
 const subscription = {
-  endpoint: "https://push.example.test/subscriptions/device-capability-token",
+  endpoint: "https://wns2-sg2p.notify.windows.com/subscriptions/test-only-capability",
   expirationTime: null,
   keys: {
     p256dh: "BEl6u7s4I4H8cZmZq1YcA0qvS5JrW8gE3mL2nK9pQ7xV6bN5dF4hT3uR2wX1yZ0a",
@@ -32,7 +32,7 @@ describe("employee desktop Web Push production foundation", () => {
   it("encrypts capability URLs and detects ciphertext tampering", () => {
     const encryptionKey = Buffer.alloc(32, 7).toString("base64");
     const encrypted = encryptWebPushSubscription(subscription, encryptionKey);
-    expect(encrypted).not.toContain("push.example.test");
+    expect(encrypted).not.toContain("notify.windows.com");
     expect(decryptWebPushSubscription(encrypted, encryptionKey)).toEqual(subscription);
 
     const tampered = Buffer.from(encrypted, "base64");
@@ -46,20 +46,20 @@ describe("employee desktop Web Push production foundation", () => {
     const fingerprint = fingerprintWebPushEndpoint(subscription.endpoint, secret);
     expect(fingerprint).toMatch(/^[0-9a-f]{64}$/);
     expect(fingerprint).not.toContain("example");
-    expect(validateWebPushEndpoint(subscription.endpoint, "https://push.example.test"))
+    expect(validateWebPushEndpoint(subscription.endpoint, "https://wns2-sg2p.notify.windows.com"))
       .toBe(subscription.endpoint);
-    expect(() => validateWebPushEndpoint(subscription.endpoint, "https://other.example.test"))
+    expect(() => validateWebPushEndpoint(subscription.endpoint, "https://wns2-am3p.notify.windows.com"))
       .toThrow("WEB_PUSH_ORIGIN_NOT_ALLOWED");
     expect(() => validateWebPushEndpoint("https://127.0.0.1/push/token", "https://127.0.0.1"))
       .toThrow("WEB_PUSH_ENDPOINT_INVALID");
-    expect(() => validateWebPushEndpoint("http://push.example.test/push/token", "https://push.example.test"))
+    expect(() => validateWebPushEndpoint("http://wns2-sg2p.notify.windows.com/push/token", "https://wns2-sg2p.notify.windows.com"))
       .toThrow("WEB_PUSH_ENDPOINT_INVALID");
   });
 
   it("normalizes only complete browser subscriptions", () => {
-    expect(normalizeBrowserPushSubscription(subscription, ["https://push.example.test"]))
+    expect(normalizeBrowserPushSubscription(subscription, ["https://wns2-sg2p.notify.windows.com"]))
       .toEqual(subscription);
-    expect(() => normalizeBrowserPushSubscription({ ...subscription, keys: { auth: "short" } }, ["https://push.example.test"]))
+    expect(() => normalizeBrowserPushSubscription({ ...subscription, keys: { auth: "short" } }, ["https://wns2-sg2p.notify.windows.com"]))
       .toThrow("VALIDATION");
   });
 
@@ -144,18 +144,9 @@ describe("employee desktop Web Push production foundation", () => {
     expect(worker).toContain("decryptWebPushSubscription");
     expect(worker).toContain("constantTimeStringEqual");
     expect(worker).toContain("fail_web_push_job");
-    expect(deploy).toContain('copy_worker_package "web-push"');
+    expect(deploy).toContain('scripts/ops/package-worker-runtime.mjs');
     expect(deploy).toContain('cp -a "$source_root/scripts/r1-job-worker.mjs"');
     expect(read("src/features/school/PlatformOperationsPanel.tsx")).toContain("snapshot.webPush ??");
   });
 
-  it("records broad employee-test windows and makes P5 the active construction target", () => {
-    const plan = read("docs/plan/employee-desktop-web-push.md");
-    const roadmap = read("docs/plan/04-roadmap.md");
-    expect(plan).toContain("当前施工目标");
-    expect(plan).toContain("连续推进 `PUSH-P0`～`PUSH-P5`");
-    expect(plan).toContain("周级或月级意向窗口");
-    expect(plan).not.toContain("T0 + 7～10 个工作日");
-    expect(roadmap).toContain("LOCAL DARK RUNTIME VERIFIED / PUSH-P5 PENDING");
-  });
 });

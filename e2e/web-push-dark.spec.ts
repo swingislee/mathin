@@ -1,6 +1,7 @@
 import { expect, test } from "./support/credential-test";
 import { FIXED_ACCOUNT_SKIP_REASON, loadFixedAccountForMode } from "./support/fixed-accounts";
 import { loginWithFixedAccount } from "./support/login";
+import { isSupportedWebPushUserAgent } from "../src/features/events/web-push-contract";
 
 test.describe("employee Web Push dark runtime", () => {
   test("staff sees the closed channel without a permission prompt or service-worker registration", async ({ page, request }) => {
@@ -24,8 +25,12 @@ test.describe("employee Web Push dark runtime", () => {
     const desktopNotificationsTab = page.getByRole("tab", { name: "桌面提醒", exact: true });
     await expect(desktopNotificationsTab).toBeVisible();
     await desktopNotificationsTab.click();
+    const edgeSupported = isSupportedWebPushUserAgent(await page.evaluate(() => navigator.userAgent));
     await expect(page.getByRole("heading", { name: "桌面提醒", exact: true })).toBeVisible();
-    await expect(page.getByText("浏览器或 Windows 已关闭通知，请在系统设置中允许后再试。", { exact: true })).toBeVisible();
+    await expect(page.getByText(edgeSupported
+      ? "浏览器或 Windows 已关闭通知，请在系统设置中允许后再试。"
+      : "桌面提醒目前仅支持 Windows 版 Microsoft Edge。请使用 Edge 开启；当前浏览器的站内铃铛仍可正常使用。",
+    { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "在这台电脑开启", exact: true })).toBeDisabled();
 
     const browserState = await page.evaluate(async () => ({
@@ -52,11 +57,19 @@ test.describe("employee Web Push dark runtime", () => {
     await page.goto("/en/dashboard/account-security");
     await page.getByRole("tab", { name: "Desktop notifications", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Desktop notifications", exact: true })).toBeVisible();
-    await expect(page.getByText("Notifications are blocked by the browser or Windows. Allow them in system settings and try again.", { exact: true })).toBeVisible();
+    await expect(page.getByText(edgeSupported
+      ? "Notifications are blocked by the browser or Windows. Allow them in system settings and try again."
+      : "Desktop notifications currently support Microsoft Edge on Windows only. Open Mathin in Edge to enable them. In-app notifications still work in this browser.",
+    { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Enable on this computer", exact: true })).toBeDisabled();
     await expect.poll(() => page.evaluate(() => (
       window as Window & { __mathinNotificationPermissionRequestCount?: number }
     ).__mathinNotificationPermissionRequestCount ?? -1)).toBe(0);
+    await page.getByRole("button", { name: "Open site navigation", exact: true }).click();
+    await page.getByRole("button", { name: "Sign out", exact: true }).click();
+    await expect(page).toHaveURL(/\/en\/?$/);
+    await page.goto("/en/dashboard/account-security");
+    await expect(page).toHaveURL(/\/en\/login\?next=/);
   });
 
   test("administrator sees zeroed Web Push monitoring and the disabled integration", async ({ page }) => {
