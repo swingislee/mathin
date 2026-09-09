@@ -5,12 +5,13 @@ export const sessionTransferOptionSchema=z.object({sessionId:id,sourceSessionId:
 export type SessionTransferOption=z.infer<typeof sessionTransferOptionSchema>;
 export const sessionTransferSchema=z.object({id,membershipId:id,studentId:id,name:z.string(),fromClassroomId:id,toClassroomId:id,classroomName:z.string(),seat:z.number(),lectureNo:z.number().nullable(),title:z.string(),scheduledAt:z.string().nullable()});
 export type SessionTransfer=z.infer<typeof sessionTransferSchema>;
-export const placementChangeSchema=z.object({requestId:id,mode:z.enum(['permanent','temporary','withdraw','cancel_temporary']),enrollmentId:id.nullable(),membershipId:id.nullable(),fromClassroomId:id.nullable(),toClassroomId:id.nullable(),seat:z.number().int().min(1).max(60).nullable(),expectedSeat:z.number().int().positive().nullable(),reason:z.string().trim().max(2000),sessions:z.array(z.object({sessionId:id,version:z.string().min(1)}).strict()).max(100).default([]),transferId:id.nullable().default(null)}).strict()
+export const placementChangeSchema=z.object({requestId:id,mode:z.enum(['permanent','temporary','withdraw','cancel_temporary']),enrollmentId:id.nullable(),membershipId:id.nullable(),fromClassroomId:id.nullable(),toClassroomId:id.nullable(),seat:z.number().int().min(1).max(60).nullable(),expectedSeat:z.number().int().positive().nullable(),reason:z.string().trim().max(2000),allowMismatch:z.boolean().default(false),sessions:z.array(z.object({sessionId:id,version:z.string().min(1)}).strict()).max(100).default([]),transferId:id.nullable().default(null)}).strict()
   .superRefine((v,ctx)=>{
     if(!v.enrollmentId&&!v.membershipId)ctx.addIssue({code:'custom',message:'VALIDATION'});
+    if(v.allowMismatch&&(!v.reason||!['permanent','temporary'].includes(v.mode)))ctx.addIssue({code:'custom',message:'VALIDATION'});
     if(v.mode==='withdraw'&&!v.reason)ctx.addIssue({code:'custom',message:'VALIDATION'});
     if(v.mode==='temporary'&&(!v.sessions.length||new Set(v.sessions.map(s=>s.sessionId)).size!==v.sessions.length))ctx.addIssue({code:'custom',message:'VALIDATION'});
-    if((v.mode==='permanent'||v.mode==='temporary')&&(!v.membershipId||!v.fromClassroomId||!v.toClassroomId||v.fromClassroomId===v.toClassroomId||!v.seat))ctx.addIssue({code:'custom',message:'VALIDATION'});
+    if((v.mode==='permanent'||v.mode==='temporary')&&(!v.toClassroomId||v.fromClassroomId===v.toClassroomId||!v.seat||Boolean(v.membershipId)!==Boolean(v.fromClassroomId)||(v.mode==='temporary'&&!v.membershipId)))ctx.addIssue({code:'custom',message:'VALIDATION'});
     if(v.mode==='cancel_temporary'&&(!v.membershipId||!v.transferId))ctx.addIssue({code:'custom',message:'VALIDATION'});
   });
 export type PlacementChangeInput=z.input<typeof placementChangeSchema>;
@@ -26,7 +27,7 @@ export function placementChangeError(code:string,en:boolean){
     CLASS_FULL:['目标班级该讲次已满。','The target session is full.'],
     FORBIDDEN_SCOPE:['当前账号无法调整该班级。','You cannot manage this class.'],
     FORBIDDEN:['当前账号没有分班权限。','Enrollment management permission is required.'],
-    CLASS_TARGET_MISMATCH:['请选择同一课程、同一学期的班级。','Choose a class in the same course and term.'],
+    CLASS_TARGET_MISMATCH:['课程或学期与目标班不匹配，请核对并确认插班。','Course or term differs from the target class. Review and confirm the placement.'],
   };
   return errors[code]?.[en?1:0]??(en?'Unable to save. Refresh and try again.':'保存未完成，请刷新后重试。');
 }

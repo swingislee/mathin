@@ -17,14 +17,15 @@ const id=(n:number)=>`20000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
 const board:EnrollmentPlacementBoard={options:{courses:[{id:id(1),title:'数学',productCode:null,grade:3,classType:'G+'}],terms:[{id:id(2),name:'秋季',isCurrent:true,startsOn:null,endsOn:null}],classrooms:[3,4].map(n=>({id:id(n),name:n===3?'原班':'目标班',courseId:id(1),termId:id(2),capacity:3,activeCount:n===3?1:0,teacherNames:'教师',sessions:[],operationalStatus:'active'}))},enrollments:[],members:[{membershipId:id(5),studentId:id(6),name:'小林',phone:'',classroomId:id(3),enrollmentId:null,note:'',recommendation:'',seat:1,status:'active'}]};
 let cleanup=async()=>{};
 afterEach(async()=>{await cleanup();localStorage.clear();sessionStorage.clear();vi.unstubAllGlobals();});
-it('opens the transfer choice after dragging across classes and leaves the roster unchanged until confirmation',async()=>{
+it.each([false,true])('opens the transfer choice after dragging across classes (mismatch: %s) and waits for confirmation',async(mismatched)=>{
   Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
   vi.stubGlobal('crypto',{getRandomValues:globalThis.crypto.getRandomValues.bind(globalThis.crypto)});
   HTMLElement.prototype.setPointerCapture=vi.fn();HTMLElement.prototype.releasePointerCapture=vi.fn();HTMLElement.prototype.hasPointerCapture=()=>true;
   HTMLElement.prototype.scrollBy=vi.fn();
   const element=document.createElement('div');document.body.append(element);const root=createRoot(element);
   cleanup=async()=>{await act(async()=>root.unmount());element.remove();};
-  const child=createElement(EnrollmentPlacementWorkbench,{initialBoard:board,canCreateClass:false,now:Date.now()});
+  const testBoard:EnrollmentPlacementBoard=mismatched?{...board,options:{...board.options,courses:[...board.options.courses,{...board.options.courses[0],id:id(9),title:'进阶数学',grade:4}],classrooms:board.options.classrooms.map(c=>c.id===id(4)?{...c,courseId:id(9)}:c)}}:board;
+  const child=createElement(EnrollmentPlacementWorkbench,{initialBoard:testBoard,canCreateClass:false,now:Date.now()});
   const props={locale:'zh',messages,timeZone:'Asia/Shanghai',children:child};
   await act(async()=>root.render(createElement(NextIntlClientProvider,props)));
   const source=element.querySelector<HTMLElement>(`[data-placement-student="${id(5)}"]`)!;
@@ -45,7 +46,7 @@ it('opens the transfer choice after dragging across classes and leaves the roste
   expect(document.querySelector('[role="tooltip"]')).toBeNull();
   expect(destination.matches('[data-placement-drop-state="allowed"]')).toBe(true);
   expect(document.querySelector('[data-placement-drag-preview]')?.textContent).toContain('小林 → 目标班');
-  expect(document.querySelector('[data-placement-drag-preview]')?.textContent).toContain('松开后选择完全调班或临时调班');
+  expect(document.querySelector('[data-placement-drag-preview]')?.textContent).toContain(mismatched?'班级不匹配，松开后核对并确认插班。':'松开后选择完全调班或临时调班');
   document.elementFromPoint=()=>element.querySelector<HTMLElement>(`[data-placement-classroom="${id(3)}"] td`)!;
   await send('pointermove',170);
   expect(document.querySelector('[data-placement-drag-preview]')?.textContent).toContain('小林 → 原班');
@@ -54,7 +55,7 @@ it('opens the transfer choice after dragging across classes and leaves the roste
   await send('pointermove',180);await send('pointerup',180);
   expect(document.querySelector('[data-placement-drag-preview]')).toBeNull();
   expect(document.querySelector('[data-placement-drop-state]')).toBeNull();
-  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('确认调班');
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain(mismatched?'班级不匹配，请确认插班':'确认调班');
   expect(document.querySelector<HTMLInputElement>('input[value="permanent"]')?.checked).toBe(true);
   expect(document.querySelector('[role="dialog"]')?.textContent).not.toContain('号位');
   expect(document.querySelector<HTMLInputElement>('input[value="temporary"]')).not.toBeNull();

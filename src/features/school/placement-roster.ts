@@ -38,14 +38,15 @@ export function placementSeatTargetError(
   classroom: PlacementClassroom | null,
   target: { termId: string; grade: number; seat: number | null },
   members: readonly PlacementStudent[],
+  allowMismatch = false,
 ): string | null {
   if (student.status === "withdrawn") return "ENROLLMENT_CANCELLED";
-  if (student.termId !== target.termId || student.grade !== target.grade) return "CLASS_TARGET_MISMATCH";
+  if (!allowMismatch && (student.termId !== target.termId || student.grade !== target.grade)) return "CLASS_TARGET_MISMATCH";
   if (!classroom) return target.seat === null ? placementDestinationError(student, null, members) : "INVALID_SEAT";
   if (classroom.termId !== target.termId) return "CLASS_TARGET_MISMATCH";
   if (target.seat === null || !Number.isInteger(target.seat) || target.seat < 1
       || (classroom.capacity !== null && target.seat > classroom.capacity)) return "INVALID_SEAT";
-  const destinationError = placementDestinationError(student, classroom, members);
+  const destinationError = placementDestinationError(student, classroom, members, allowMismatch);
   if (destinationError) return destinationError;
 
   const classroomMembers = members.filter((member) => member.classroomId === classroom.id && member.status !== "withdrawn");

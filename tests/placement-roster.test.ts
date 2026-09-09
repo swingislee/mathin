@@ -76,3 +76,12 @@ describe("placement seat destinations", () => {
     expect(missing.seat).toBeNull();
   });
 });
+
+it("confirmed mismatches keep occupied seats, capacity and withdrawn students protected",()=>{
+  const source=member("source",1,{classroomId:"elsewhere",courseId:"different",termId:"other",grade:3});
+  expect(placementSeatTargetError(source,classroom,target(1),[])).toBe("CLASS_TARGET_MISMATCH");
+  expect(placementSeatTargetError(source,classroom,target(1),[],true)).toBeNull();
+  expect(placementSeatTargetError(source,classroom,target(1),[member("occupied",1)],true)).toBe("SEAT_OCCUPIED");
+  expect(placementSeatTargetError(source,{...classroom,activeCount:4},target(1),[],true)).toBe("CLASS_FULL");
+  expect(placementSeatTargetError({...source,status:"withdrawn"},classroom,target(1),[],true)).toBe("ENROLLMENT_CANCELLED");
+});

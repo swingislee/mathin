@@ -121,11 +121,11 @@ export function placementStudents(board: EnrollmentPlacementBoard): PlacementStu
   }))];
 }
 
-export function placementDestinationError(student: PlacementStudent, classroom: PlacementClassroom | null, members: readonly PlacementStudent[]): string | null {
+export function placementDestinationError(student: PlacementStudent, classroom: PlacementClassroom | null, members: readonly PlacementStudent[], allowMismatch = false): string | null {
   if (student.status === "withdrawn") return "ENROLLMENT_CANCELLED";
   if (!classroom) return null;
   if (classroom.id === student.classroomId) return null;
-  if (classroom.termId !== student.termId || classroom.courseId !== student.courseId) return "CLASS_TARGET_MISMATCH";
+  if (!allowMismatch && (classroom.termId !== student.termId || classroom.courseId !== student.courseId)) return "CLASS_TARGET_MISMATCH";
   const alreadyPresent = members.some((member) => member.classroomId === classroom.id && member.studentId === student.studentId && member.status !== "withdrawn");
   if (!alreadyPresent && classroom.capacity !== null && classroom.activeCount >= classroom.capacity) return "CLASS_FULL";
   return null;
