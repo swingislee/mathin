@@ -172,11 +172,11 @@ function SupportInlineForm({ workspace, columns, initialWork, onClose, onSaved, 
       disabled={column === 'note' ? busy || !ready : profileDisabled}
       onChange={event => column === 'note' ? change({ work: { ...input.work, note: event.target.value } }) : changePerson({ [column]: event.target.value })} />;
   };
-  const details = <div className="space-y-3 p-3 text-xs" data-support-entry-details onKeyDown={event => {
+  const details = <div className="space-y-3 p-3 text-xs [&_[role=combobox]]:h-8 [&_[role=combobox]]:py-1 [&_[role=combobox]]:text-xs [&_input[data-slot=input]]:h-8 [&_input[data-slot=input]]:text-xs" data-support-entry-details onKeyDown={event => {
     if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') { event.preventDefault(); void save(); }
   }}>
-    <div className="flex items-center justify-between gap-3"><span className="font-medium">{contextLabel ?? m.add}</span>
-      <Button type="button" variant="ghost" size="sm" className="size-7 p-0" aria-label={m.cancel} disabled={pending} onClick={cancel}><X className="size-4" /></Button></div>
+    {!panel?<div className="flex items-center justify-between gap-3"><span className="font-medium">{contextLabel ?? m.add}</span>
+      <Button type="button" variant="ghost" size="sm" className="size-7 p-0" aria-label={m.cancel} disabled={pending} onClick={cancel}><X className="size-4" /></Button></div>:null}
     <div className="grid gap-3 sm:grid-cols-3">{(['name', 'phone', 'grade'] as const).filter(key => panel || !columns.includes(key)).map(key => <div key={key} className="grid gap-1.5">{key === 'grade' ? null : m[key]}{field(key, !panel)}</div>)}</div>
     {input.subject ? <div className="flex items-center justify-between rounded-md border border-line bg-card p-2"><span>{en ? 'Selected profile' : '已选择档案'} · {selected?.name ?? m.details} · {selected?.phone}</span>
       <div className="flex gap-1"><Button variant="ghost" size="sm" disabled={busy||!selected} onClick={()=>{if(selected)void selectProfile(selected,true);}}>{en?'Read latest profile':'读取最新档案'}</Button>
