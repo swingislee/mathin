@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Volume2 } from "lucide-react";
 import { ClassroomVideoInkSurface } from "../input/ClassroomVideoInkSurface";
 import type { SessionEventLog } from "../sync/eventlog";
+import { isMediaControlEcho } from "../sync/media-control";
 
 const SYNC_TICK_MS = 4000;
 const DRIFT_TOLERANCE_S = 1;
@@ -39,6 +40,10 @@ export function VideoStage({
   const appliedCtl = useRef<VideoCtl | undefined>(undefined);
   const fixtureLabel = t("videoFixtureLabel");
   const videoSurfaceLabel = t("videoSurfaceAction");
+  const followRemote = Boolean(log?.ephemeral);
+  const publishControl = (action: VideoCtl["action"], time: number) => {
+    if (!followRemote || !isMediaControlEcho(action, time, ctl)) onCtl(action, time);
+  };
 
   useEffect(() => {
     if (!fixture) return;
@@ -114,7 +119,7 @@ export function VideoStage({
   }, []);
 
   useEffect(() => {
-    if (controller || !ctl || ctl === appliedCtl.current) return;
+    if ((controller && !followRemote) || !ctl || ctl === appliedCtl.current) return;
     const video = videoRef.current;
     if (!video) return;
     const apply = () => {
@@ -135,7 +140,7 @@ export function VideoStage({
       return () => video.removeEventListener("loadedmetadata", apply);
     }
     apply();
-  }, [ctl, controller, playGuarded]);
+  }, [ctl, controller, followRemote, playGuarded]);
 
   useEffect(() => {
     if (!controller || !log) return;
@@ -148,7 +153,7 @@ export function VideoStage({
   }, [controller, log, pageId]);
 
   useEffect(() => {
-    if (controller || !log) return;
+    if ((controller && !log?.ephemeral) || !log) return;
     return log.onFx((fx) => {
       if (fx.scope !== "video") return;
       const payload = fx.payload as { pageId?: unknown; time?: unknown };
@@ -173,9 +178,9 @@ export function VideoStage({
           playsInline
           preload="auto"
           className="size-full object-contain"
-          onPlay={(event) => onCtl("play", event.currentTarget.currentTime)}
-          onPause={(event) => onCtl("pause", event.currentTarget.currentTime)}
-          onSeeked={(event) => onCtl("seek", event.currentTarget.currentTime)}
+          onPlay={(event) => publishControl("play", event.currentTarget.currentTime)}
+          onPause={(event) => publishControl("pause", event.currentTarget.currentTime)}
+          onSeeked={(event) => publishControl("seek", event.currentTarget.currentTime)}
         />
         <ClassroomVideoInkSurface
           label={videoSurfaceLabel}

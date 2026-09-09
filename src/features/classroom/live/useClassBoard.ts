@@ -96,7 +96,7 @@ export function useClassBoard(
 
   // Existing v2 outbox is part of the reader contract even when the new writer flag is off.
   useEffect(() => {
-    if (!log) return;
+    if (!log || log.ephemeral) return;
     let disposed = false;
     const scope = log.ephemeral ? "rehearsal" as const : "formal" as const;
     const applyLocal = (pending: PendingBoardCheckpoint, journal: BoardMutationJournal | undefined) => {
@@ -299,9 +299,10 @@ export function useClassBoard(
 
     // 教师的持久快照到达（含晚到的 T2 重放）：跟随端整块对齐兜底
     const offEv = log.subscribe((ev, local) => {
-      if (local || editable || ev.type !== "board_snapshot" || baseVersionRef.current > 0) return;
+      if (local || ev.type !== "board_snapshot" || (!log.ephemeral && (editable || baseVersionRef.current > 0))) return;
       const payload = ev.payload as { pageKey?: unknown; items?: unknown };
       if (payload.pageKey !== boardKey || !Array.isArray(payload.items)) return;
+      if (log.ephemeral && log.rehearsalEvents.findLast((event) => event.type === "board_snapshot" && event.payload.pageKey === boardKey)?.id !== ev.id) return;
       store.getState().replaceItems(payload.items as BoardItem[]);
     });
 
@@ -324,7 +325,8 @@ export function useClassBoard(
       persistCheckpointRef.current = null;
       return;
     }
-    if (!checkpointV2Writer) {
+    // 试讲快照进入隔离的内存事件流，供其他设备和晚加入者恢复板书。
+    if (!checkpointV2Writer || log.ephemeral) {
       let timer: ReturnType<typeof setTimeout> | null = null;
       const snapshot = async () => {
         timer = null;

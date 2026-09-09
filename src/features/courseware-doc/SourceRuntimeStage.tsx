@@ -427,7 +427,7 @@ export default function SourceRuntimeStage({
       appliedCtl.current = null;
       return;
     }
-    if (!videoControl || videoControl.controller || !ctl || frameGeneration === 0
+    if (!videoControl || (videoControl.controller && !videoControl.followRemote) || !ctl || frameGeneration === 0
         || (appliedCtl.current?.renderKey === renderKey && appliedCtl.current.ctl === ctl)) return;
     appliedCtl.current = { renderKey, ctl };
     iframeRef.current?.contentWindow?.postMessage({

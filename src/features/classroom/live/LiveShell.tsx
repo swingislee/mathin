@@ -72,6 +72,7 @@ import { countH5Pages } from "../courseware/doc-preload";
 import { useSessionAssetPreload } from "./useSessionAssetPreload";
 import { DocCoursewarePage } from "./DocCoursewarePage";
 import { SessionEventLog } from "../sync/eventlog";
+import { attachRehearsalTransports, rehearsalRoomId } from "../sync/rehearsal";
 import { flushOutbox, pendingCount } from "../sync/flush";
 import {
   emptyStarLedger,
@@ -106,8 +107,10 @@ import { GamePage, MainBoard, StudentCard, ToolOverlay } from "./LivePanels";
 import { ClassroomSmartInputToggle } from "./ClassroomSmartInputToggle";
 import { ClassroomBackdrop } from "./ClassroomBackdrop";
 import { ClassroomCourseInfoBar, ClassroomEndButton } from "./ClassroomCourseInfoBar";
-import { ClassroomPreparation, type ClassroomPreparationCheck } from "../preparation/ClassroomPreparation";
+import { ClassroomPreparation, ClassroomStartConfirmation, type ClassroomPreparationCheck } from "../preparation/ClassroomPreparation";
 import { useClassroomPreparation } from "../preparation/useClassroomPreparation";
+import { RehearsalDevices } from "../preparation/RehearsalDevices";
+import { classroomRehearsalHref, isOutsideClassroomSchedule } from "../preparation/schedule-contract";
 import {
   classroomDisplayHref,
   enterFromPreparation,
@@ -172,7 +175,7 @@ interface Props {
   /** Development-only visible Gate; accepted milestones stay out of the default surface. */
   acceptanceFixture: "m3b" | "m4a" | "m4b" | "interaction-sync" | null;
   role: Role;
-  /** 试讲：教师本地预演/复盘——事件不落库不同步，随时可进（包括已下课的课次）。 */
+  /** 教师试讲可连接本人设备，临时操作与正式课堂记录分开，已下课的课次也可试讲。 */
   rehearsal?: boolean;
   entry?: ClassroomEntry;
   /** 离线演练：保留可靠 outbox，但主动禁用 T2 与服务端写入，退出后验证补同步。 */
@@ -299,6 +302,7 @@ export function LiveShell({
   const [m3H5Compatible, setM3H5Compatible] = useState(true);
   const [m4bScenario, setM4bScenario] = useState<"8" | "20" | "30">("20");
   const [endOpen, setEndOpen] = useState(false);
+  const [reopenWarningOpen, setReopenWarningOpen] = useState(false);
   const [classroomToolsOpen, setClassroomToolsOpen] = useState(false);
   const [stageWidth, setStageWidth] = useState(0);
   // 副板书/名录默认展开（用户 2026-07-08 要求可折叠腾空间给对方或主板书）
@@ -345,17 +349,22 @@ export function LiveShell({
     let toolReplayTimer: ReturnType<typeof setTimeout> | null = null;
 
     const setup = async () => {
-      const eventLog = await SessionEventLog.create(session.id, userId, { ephemeral: rehearsal });
+      const eventLog = await SessionEventLog.create(rehearsal ? rehearsalRoomId(userId, "session", session.id) : session.id, userId, { ephemeral: rehearsal });
       if (disposed) {
         eventLog.close();
         return;
       }
-      // 试讲：事件只在本窗口内存生效，不挂 T0/T1/T2、不回传——预演/复盘零副作用
+      // 试讲复用课堂事件模型，通过同一教师的独立房间连接设备。
       if (rehearsal) {
         logRef.current = eventLog;
-        eventLog.subscribe((ev) => {
-          starLedgerRef.current = reduceStarLedger(starLedgerRef.current, ev);
-          setState((prev) => reduceEvent(prev, ev));
+        eventLog.subscribe(() => {
+          const next = eventLog.rehearsalEvents.reduce(reduceEvent, initialState);
+          starLedgerRef.current = next.starLedger;
+          setState(next);
+        });
+        attachRehearsalTransports(eventLog, {
+          onHealth: (health) => { if (!disposed) setP2PHealth(health); },
+          onStatus: (connected) => { if (!disposed) setT2Connected(connected); },
         });
         setLog(eventLog);
         return;
@@ -707,11 +716,15 @@ export function LiveShell({
     }
   }, [append, isController, rehearsal, offlineDrill, router, session.id]);
 
-  const reopenClass = useCallback(() => {
+  const reopenClass = useCallback((confirmed = false) => {
     if (!isController || rehearsal || offlineDrill) return;
+    if (!confirmed && isOutsideClassroomSchedule([session], Date.now())) {
+      setReopenWarningOpen(true);
+      return;
+    }
     append("session_ctl", { action: "start" });
     void reopenClassSession(session.id).catch(() => undefined);
-  }, [append, isController, rehearsal, offlineDrill, session.id]);
+  }, [append, isController, rehearsal, offlineDrill, session]);
 
   const confirmRosterRefresh = useCallback(async () => {
     if (!rosterState.hasDifference || rosterRefreshing) return;
@@ -979,11 +992,13 @@ export function LiveShell({
   const showControlBar = isController || (myRole === "student" && role === "viewer") || Boolean(state.quiz);
 
   const connectionBadges = rehearsal ? (
-    // 试讲没有任何同步通道，连接徽标只会误导——换成单一模式标识
     <div className="flex flex-wrap items-center gap-2 text-xs">
       <span className="rounded-full bg-moon/40 px-2 py-0.5 text-ink" title={t("rehearsalHint")}>
         {t("rehearsalBadge")}
       </span>
+      <Badge variant="secondary">{t2Connected ? t("online") : t("offline")}</Badge>
+      <Badge variant="secondary">{p2pHealth.peers > 0 ? t("p2pConnected", { count: p2pHealth.peers, latency: p2pHealth.latencyMs ?? 0 }) : t("p2pWaiting")}</Badge>
+      <RehearsalDevices />
       {pending > 0 && (
         <span className="rounded-full bg-crater/10 px-2 py-0.5 text-crater" title={t("pendingHint")}>
           {t("pending", { count: pending })}
@@ -1159,7 +1174,7 @@ export function LiveShell({
     const checks: ClassroomPreparationCheck[] = checklist.map((item) => ({
       ...item,
       status: item.ok ? "ready" as const : item.warn ? "warning" as const : "pending" as const,
-    })).filter((item) => !rehearsal || !["local", "p2p", "server"].includes(item.key));
+    }));
     if (rehearsal) checks.push({
       key: "rehearsal-connection",
       status: "info",
@@ -1191,6 +1206,8 @@ export function LiveShell({
             blocked={!log}
             error={startError ? tPrep("startFailed") : null}
             onEnter={() => void startClass()}
+            schedule={[session]}
+            onRehearse={() => router.push(classroomRehearsalHref(`/classroom/${classId}/session/${session.id}/live`, window.location.search, "session"))}
             beforeChecks={attendanceSuggested && !state.started && !state.ended ? (
               <section className="mt-5 flex flex-wrap items-center gap-3 border-b border-line pb-4">
                 <div className="min-w-0 flex-1">
@@ -1232,6 +1249,10 @@ export function LiveShell({
   return (
     <>
       {preparationPanel}
+      <ClassroomStartConfirmation open={reopenWarningOpen} onOpenChange={setReopenWarningOpen}
+        schedule={[session]} disabled={!isController || !log}
+        onConfirm={() => reopenClass(true)}
+        onRehearse={() => router.push(classroomRehearsalHref(`/classroom/${classId}/session/${session.id}/live`, window.location.search, "session"))} />
       {(preparation.stageMounted || stageVisible) && <div ref={classroomRootRef} className={cn(
       !stageVisible && "invisible pointer-events-none",
       "relative isolate flex h-dvh select-none flex-col overflow-hidden px-3 [-webkit-touch-callout:none] [-webkit-user-select:none]",
@@ -1508,7 +1529,7 @@ export function LiveShell({
           {isController && (
             <button
               type="button"
-              onClick={reopenClass}
+              onClick={() => reopenClass()}
               className="rounded-full border border-line bg-card px-3 py-0.5 transition-colors hover:bg-moon/50"
             >
               {t("reopenClass")}
@@ -1577,6 +1598,7 @@ export function LiveShell({
                 key={`game-${renderPage.id}`}
                 page={renderPage}
                 isController={isController}
+                syncControllerMirror={rehearsal}
                 mirror={state.games[renderPage.id] ?? null}
                 onMirror={onGameMirror}
               />
@@ -1593,6 +1615,7 @@ export function LiveShell({
                 doc={renderDoc ?? null}
                 bindingUrls={renderDocUrls}
                 isController={isController}
+                syncControllerMirror={rehearsal}
                 steps={state.docSteps[renderPage.id]}
                 onStep={(trigger) => onDocStep(renderPage.id, trigger)}
                 videoCtl={state.video[renderPage.id]}

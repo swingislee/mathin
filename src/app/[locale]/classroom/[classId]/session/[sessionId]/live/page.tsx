@@ -63,7 +63,7 @@ export default async function LiveClassPage({
     };
   }
 
-  // 试讲模式仅教师可用：本地临时事件流，不落库、不同步、不改课次状态
+  // 教师试讲使用独立的临时事件流，可连接本人设备，正式课次状态保持不变。
   const rehearsal = mode === "rehearsal" && classroom.myRole === "teacher";
   const offlineDrill = mode === "offline-drill" && classroom.myRole === "teacher";
   const attendanceSuggested = !rehearsal && !offlineDrill && classroom.myRole === "teacher" && !session.startedAt;

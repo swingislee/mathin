@@ -27,17 +27,35 @@ export function getDeviceId(): string {
 
 type Listener = (ev: SessionEvent, local: boolean) => void;
 
+function rehearsalSnapshotKey(event: SessionEvent): string | null {
+  if (event.type === "page") return "page";
+  if (event.type === "board_snapshot") return `board:${event.payload.pageKey}`;
+  if (event.type === "game_state") return `game:${event.payload.pageId}`;
+  if (event.type === "tool_state") {
+    const payload = parseClassroomToolState(event.payload);
+    return payload ? `tool:${payload.pageId}:${classroomToolInstanceKey(payload.docId, payload.instanceId, payload.originHash)}` : null;
+  }
+  return null;
+}
+
+function compareRehearsalEvents(left: SessionEvent, right: SessionEvent) {
+  return left.seq - right.seq || left.deviceId.localeCompare(right.deviceId) || left.id.localeCompare(right.id);
+}
+
 export class SessionEventLog {
   readonly sessionId: string;
   readonly userId: string;
   readonly deviceId: string;
-  /** 试讲模式：事件只在本窗口内存里生效——不写 outbox、不回传 DB（传输层也不挂）。 */
+  /** 试讲事件留在内存，可经隔离频道联动设备；正式 outbox 与数据库保持独立。 */
   readonly ephemeral: boolean;
   private seq = 0;
   private seen = new Set<string>();
   private listeners = new Set<Listener>();
   private fxListeners = new Set<(fx: FxMessage) => void>();
   private transports: Transport[] = [];
+  private rehearsalReplay: SessionEvent[] = [];
+  /** 同一教师跨设备的临时事件使用逻辑时钟，再按写者 ID 决定同时操作的次序。 */
+  get rehearsalEvents(): readonly SessionEvent[] { return this.rehearsalReplay; }
   private restoredTools: SessionEvent[] = [];
   private toolReplay = new Map<string, { event: SessionEvent; sequences: Record<string, number> }>();
 
@@ -80,7 +98,8 @@ export class SessionEventLog {
 
   /** seq 水位取 max(meta 记录, outbox 残留)——崩溃恢复后不回退、不撞唯一约束。 */
   static async create(sessionId: string, userId: string, opts?: { ephemeral?: boolean }): Promise<SessionEventLog> {
-    const log = new SessionEventLog(sessionId, userId, getDeviceId(), Boolean(opts?.ephemeral));
+    // 新窗口可能继承 opener 的 sessionStorage；试讲为每次挂载分配独立传输身份。
+    const log = new SessionEventLog(sessionId, userId, opts?.ephemeral ? newId() : getDeviceId(), Boolean(opts?.ephemeral));
     if (log.ephemeral) return log;
     const saved = (await idbGet<number>(STORE_META, log.metaKey())) ?? 0;
     const pending = await idbListByIndex<SessionEvent>(STORE_OUTBOX, "sessionId", sessionId);
@@ -144,6 +163,8 @@ export class SessionEventLog {
   /** 传输层收到远端事件：按 id 去重后应用（同一事件可能从 T0/T2 各到一次）。 */
   ingest = (ev: SessionEvent): void => {
     if (!ev?.id || this.seen.has(ev.id)) return;
+    if (this.ephemeral && (ev.sessionId !== this.sessionId || ev.userId !== this.userId
+      || !ev.deviceId || !Number.isSafeInteger(ev.seq) || ev.seq < 1)) return;
     if (ev.type === "tool_state" && ev.sessionId !== this.sessionId) return;
     this.seen.add(ev.id);
     this.emit(ev, false);
@@ -173,9 +194,23 @@ export class SessionEventLog {
     this.listeners.clear();
     this.fxListeners.clear();
     this.toolReplay.clear();
+    this.rehearsalReplay = [];
   }
 
   private emit(ev: SessionEvent, local: boolean): void {
+    if (this.ephemeral) {
+      this.seq = Math.max(this.seq, ev.seq);
+      const key = rehearsalSnapshotKey(ev);
+      const previousIndex = key === null ? -1 : this.rehearsalReplay.findIndex((previous) => rehearsalSnapshotKey(previous) === key);
+      const isLatest = previousIndex < 0 || compareRehearsalEvents(this.rehearsalReplay[previousIndex], ev) < 0;
+      if (isLatest) {
+        // 快照每个对象只保留最新一份，板书大小随当前内容增长；语义命令保持有序回放。
+        if (previousIndex >= 0) this.rehearsalReplay.splice(previousIndex, 1);
+        const index = this.rehearsalReplay.findIndex((previous) => compareRehearsalEvents(previous, ev) > 0);
+        if (index === -1) this.rehearsalReplay.push(ev);
+        else this.rehearsalReplay.splice(index, 0, ev);
+      }
+    }
     if (ev.type === "tool_state") this.rememberToolStates([ev]);
     for (const listener of this.listeners) listener(ev, local);
   }

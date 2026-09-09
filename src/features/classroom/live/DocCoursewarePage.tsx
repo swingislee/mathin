@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { isAixuexiPageDoc } from "@/features/courseware-doc/aixuexi-schema";
 import type { CoursewareDoc } from "@/features/courseware-doc/document";
@@ -13,12 +12,16 @@ import type { GameMirrorState } from "@/features/games/types";
 import type { ClassroomToolRuntime } from "@/features/tools/courseware/cube-structures-classroom";
 import { resolveClassroomInteractionAudit } from "../sync/interaction-audit";
 import { classroomInteractionSyncAttributes } from "../sync/interaction-provider";
+import { isMediaControlEcho } from "../sync/media-control";
+import { useClassroomGameMirror } from "./useClassroomGameMirror";
 
 interface Props {
   doc: CoursewareDoc | null;
   bindingUrls: ResolvedBindingUrls;
   /** 教师端：本地点击直接驱动舞台并广播 doc_step；学生端只回放。 */
   isController: boolean;
+  syncControllerMirror?: boolean;
+  stageMode?: "board43" | "natural";
   steps: readonly InteractionTrigger[] | undefined;
   onStep: (trigger: InteractionTrigger) => void;
   videoCtl: DocVideoCtl | undefined;
@@ -35,6 +38,8 @@ export function DocCoursewarePage({
   doc,
   bindingUrls,
   isController,
+  syncControllerMirror = false,
+  stageMode = "board43",
   steps,
   onStep,
   videoCtl,
@@ -46,39 +51,40 @@ export function DocCoursewarePage({
   classroomTools,
 }: Props) {
   const t = useTranslations("classroom.live");
-  // Controller takes the persisted baseline once and then remains the single writer.
-  // Display/viewer devices keep applying every incoming mirror object.
-  const [initialGameMirror] = useState(() => gameMirror);
+  const gameSync = useClassroomGameMirror(gameMirror, isController, syncControllerMirror, onGameMirror);
   if (!doc) {
     return <p className="grid size-full place-items-center text-sm text-muted">{t("docNotReady")}</p>;
   }
   const interactionAudit = resolveClassroomInteractionAudit(doc);
   const interactive = isController && interactionAudit.status !== "read-only";
+  const publishVideoControl = (action: DocVideoCtl["action"], time: number) => {
+    if (!syncControllerMirror || !isMediaControlEcho(action, time, videoCtl)) onVideoCtl(action, time);
+  };
   const stage = isAixuexiPageDoc(doc) ? (
     <StagePreview
       doc={doc}
       bindingUrls={bindingUrls}
-      stageMode="board43"
+      stageMode={stageMode}
       interactive={interactive}
       onAdvance={interactive ? onAdvance : undefined}
-      videoControl={{ controller: isController, ctl: videoCtl, onCtl: onVideoCtl }}
+      videoControl={{ controller: isController, followRemote: syncControllerMirror, ctl: videoCtl, onCtl: publishVideoControl }}
       h5PointerBridge={h5PointerBridge}
-      gameMirror={isController ? initialGameMirror : gameMirror}
-      onGameMirror={isController ? onGameMirror : undefined}
+      gameMirror={gameSync.mirror}
+      onGameMirror={isController ? gameSync.publish : undefined}
       classroomTools={classroomTools}
     />
   ) : (
     <StagePreview
       doc={doc}
       bindingUrls={bindingUrls}
-      stageMode="board43"
+      stageMode={stageMode}
       interactive={interactive}
       onClickTrigger={interactive ? onStep : undefined}
       replaySteps={steps}
-      videoControl={{ controller: isController, ctl: videoCtl, onCtl: onVideoCtl }}
+      videoControl={{ controller: isController, followRemote: syncControllerMirror, ctl: videoCtl, onCtl: publishVideoControl }}
       h5PointerBridge={h5PointerBridge}
-      gameMirror={isController ? initialGameMirror : gameMirror}
-      onGameMirror={isController ? onGameMirror : undefined}
+      gameMirror={gameSync.mirror}
+      onGameMirror={isController ? gameSync.publish : undefined}
       classroomTools={classroomTools}
     />
   );
