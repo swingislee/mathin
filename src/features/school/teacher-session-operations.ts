@@ -45,15 +45,6 @@ interface ScopedAttendanceRow {
   historyMismatch: boolean;
 }
 
-type UntypedRpc = (name: string, args?: Record<string, unknown>) => PromiseLike<{
-  data: unknown;
-  error: { message: string } | null;
-}>;
-
-function rpc(supabase: { rpc: unknown }): UntypedRpc {
-  return supabase.rpc as UntypedRpc;
-}
-
 function parseScopedAttendanceRows(value: unknown): ScopedAttendanceRow[] | null {
   if (!Array.isArray(value)) return null;
   const rows: ScopedAttendanceRow[] = [];
@@ -120,7 +111,7 @@ export async function getTodaySessionOperations(now = new Date()): Promise<Today
       .in("session_id", batch)
       .returns<AttendanceRow[]>()),
     Promise.all(sessionIds.map(async (sessionId) => {
-      const { data, error } = await rpc(supabase)("get_session_attendance_roster_v2", {
+      const { data, error } = await supabase.rpc("get_session_attendance_roster_v2", {
         p_session_id: sessionId,
       });
       if (error) return null;

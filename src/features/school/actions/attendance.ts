@@ -12,15 +12,6 @@ import { authorizedClient } from "./guards";
 import { COMMON_CODES, parse, text, uuid } from "./schemas";
 import type { AttendanceDrawerRow, SessionChangeOptions } from "./types";
 
-type UntypedRpc = (name: string, args?: Record<string, unknown>) => PromiseLike<{
-  data: unknown;
-  error: { message: string } | null;
-}>;
-
-function rpc(supabase: { rpc: unknown }): UntypedRpc {
-  return supabase.rpc as UntypedRpc;
-}
-
 const attendanceDrawerRowsSchema = z.array(z.object({
   studentId: uuid,
   studentName: z.string(),
@@ -34,7 +25,7 @@ export async function getAttendanceDrawerData(sessionId: string): Promise<Action
   try {
     const id = parse(uuid, sessionId);
     const { supabase } = await authorizedClient("attendance.mark");
-    const { data, error } = await rpc(supabase)("get_session_attendance_roster_v2", {
+    const { data, error } = await supabase.rpc("get_session_attendance_roster_v2", {
       p_session_id: id,
     });
     if (error) throw new Error(error.message);

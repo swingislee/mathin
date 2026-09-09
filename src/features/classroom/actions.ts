@@ -339,11 +339,7 @@ export async function startClassSession(sessionId: string): Promise<SessionRoste
 
   if (!session.courseware_frozen_at) {
     if (session.selected_teacher_microcourse_id) {
-      const callRpc = supabase.rpc as unknown as (
-        name: string,
-        args: Record<string, unknown>,
-      ) => Promise<{ data: Json | null; error: { message: string } | null }>;
-      const { data: frozenMicrocourse, error: microcourseError } = await callRpc(
+      const { data: frozenMicrocourse, error: microcourseError } = await supabase.rpc(
         "freeze_selected_teacher_microcourse_source_session",
         { p_session_id: sessionId },
       );
