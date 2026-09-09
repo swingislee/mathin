@@ -1,4 +1,5 @@
 import type { DocNode } from "./schema";
+import { newId } from "@/lib/uuid";
 
 export type CoursewareInsertedNodeKind = "text" | "formula" | "shape";
 
@@ -9,10 +10,7 @@ export interface CoursewareInsertCanvas {
 
 function nodeId(kind: string, id?: string): string {
   if (id) return id;
-  const suffix = typeof crypto !== "undefined" && "randomUUID" in crypto
-    ? crypto.randomUUID()
-    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  return `mathin-${kind}-${suffix}`;
+  return `mathin-${kind}-${newId()}`;
 }
 
 function centeredTransform(

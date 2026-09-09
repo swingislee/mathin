@@ -23,6 +23,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
+import { newId } from "@/lib/uuid";
 import { useAction } from "@/components/action-form";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -261,7 +262,7 @@ export function AccountSecurityPanel({
     let avatarPath: string | null | undefined;
     try {
       if (avatarDraft.kind === "upload") {
-        avatarPath = `${snapshot.profile.userId}/${crypto.randomUUID()}.webp`;
+        avatarPath = `${snapshot.profile.userId}/${newId()}.webp`;
         const { error } = await createClient().storage.from("profile-avatars").upload(avatarPath, avatarDraft.blob, {
           contentType: "image/webp",
           cacheControl: "31536000",

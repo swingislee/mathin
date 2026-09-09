@@ -5,6 +5,16 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/lib/uuid.ts"],
+    rules: {
+      "no-restricted-properties": ["error", {
+        property: "randomUUID",
+        message: "局域网 HTTP 兼容：使用 @/lib/uuid 的 newId()；纯服务端使用 node:crypto 的命名导入（AGENTS.md）。",
+      }],
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

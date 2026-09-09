@@ -16,9 +16,10 @@ vi.mock('@/i18n/navigation',()=>({Link:({children,...props}:ComponentProps<'a'>)
 const id=(n:number)=>`20000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
 const board:EnrollmentPlacementBoard={options:{courses:[{id:id(1),title:'数学',productCode:null,grade:3,classType:'G+'}],terms:[{id:id(2),name:'秋季',isCurrent:true,startsOn:null,endsOn:null}],classrooms:[3,4].map(n=>({id:id(n),name:n===3?'原班':'目标班',courseId:id(1),termId:id(2),capacity:3,activeCount:n===3?1:0,teacherNames:'教师',sessions:[],operationalStatus:'active'}))},enrollments:[],members:[{membershipId:id(5),studentId:id(6),name:'小林',phone:'',classroomId:id(3),enrollmentId:null,note:'',recommendation:'',seat:1,status:'active'}]};
 let cleanup=async()=>{};
-afterEach(async()=>{await cleanup();localStorage.clear();sessionStorage.clear();});
+afterEach(async()=>{await cleanup();localStorage.clear();sessionStorage.clear();vi.unstubAllGlobals();});
 it('opens the transfer choice after dragging across classes and leaves the roster unchanged until confirmation',async()=>{
   Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
+  vi.stubGlobal('crypto',{getRandomValues:globalThis.crypto.getRandomValues.bind(globalThis.crypto)});
   HTMLElement.prototype.setPointerCapture=vi.fn();HTMLElement.prototype.releasePointerCapture=vi.fn();HTMLElement.prototype.hasPointerCapture=()=>true;
   HTMLElement.prototype.scrollBy=vi.fn();
   const element=document.createElement('div');document.body.append(element);const root=createRoot(element);
