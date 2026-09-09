@@ -41,16 +41,16 @@ interface SeatTarget {
   seat: number | null;
 }
 
-const SEAT_HOVER = "after:pointer-events-none after:absolute after:inset-0 after:z-10 after:bg-moon/35 after:opacity-0 after:transition-opacity hover:after:opacity-100 focus-within:after:opacity-100 hover:text-crater focus-within:text-crater";
 const NAME_GRID = "grid grid-cols-[repeat(auto-fill,minmax(3.75rem,1fr))] gap-px";
 
 function placementHoverAt(root:HTMLElement|null,x:number,y:number){
   const element=document.elementFromPoint(x,y);
   if(!element||!root?.contains(element))return null;
+  const row=element.closest<HTMLElement>('[data-placement-classroom]');
+  if(row?.dataset.placementClassroom)return `class:${row.dataset.placementClassroom}`;
   const target=element.closest<HTMLElement>('[data-placement-target]');
   if(target)return target.dataset.placementTarget??null;
-  const classroom=element.closest<HTMLElement>('[data-placement-classroom]')?.dataset.placementClassroom;
-  return classroom?`class:${classroom}`:null;
+  return null;
 }
 
 interface StudentTileRecord {
@@ -219,7 +219,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
       setHovered(null);
       const target = targets.get(targetAt(drag.clientX, drag.clientY) ?? "");
       const student = students.find((value) => value.key === drag.data);
-      if (student && target && accepts(student, target)) move(student, target);
+      if (student && target && student.classroomId !== (target.classroom?.id ?? null) && accepts(student, target)) move(student, target);
     },
     onCancel: () => { pointerPosition.current = null; setHovered(null); },
   });
@@ -261,11 +261,11 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
     const en=locale==='en';
     const error=student&&target?(reserved(target)?'TEMPORARY_SEAT_RESERVED':placementSeatTargetError(student,target.classroom,target,students)):null;
     const message=error?(error==='TEMPORARY_SEAT_RESERVED'?placementChangeError(error,en):t(enrollmentErrorKey(error)))
-      :target?.classroom?(student?.classroomId&&student.classroomId!==target.classroom.id?(en?'Release to choose permanent or temporary transfer':'松开后选择完全调班或临时调班'):en?'Release to place in this seat':'松开后安排到此座位')
-      :target?(en?'Release to return to pending placement':'松开后退回待分班'):classroom?(en?'Move to a seat to choose the destination':'移到具体座位选择落点'):en?'Drag to a target seat':'拖到目标班级的座位';
+      :target?.classroom?(student?.classroomId&&student.classroomId!==target.classroom.id?(en?'Release to choose permanent or temporary transfer':'松开后选择完全调班或临时调班'):student?.classroomId===target.classroom.id?(en?'Already in this class':'已在此班级'):en?'Release to add to this class':'松开后加入此班级')
+      :target?(en?'Release to return to pending placement':'松开后退回待分班'):classroom?(en?'Release to add to this class':'松开后加入此班级'):en?'Drag to a class':'拖到目标班级';
     return <div role="status" data-placement-drag-preview className="pointer-events-none fixed z-50 w-64 max-w-[calc(100vw-2rem)] space-y-1 rounded-md border border-crater bg-card px-3 py-2 text-xs shadow-lg"
       style={{left:Math.max(8,Math.min(drag.clientX+16,window.innerWidth-272)),top:Math.max(8,Math.min(drag.clientY+16,window.innerHeight-160))}}>
-      <p className="font-medium">{student?.name}{classroom?` → ${classroom.name}`:''}{target?.seat?` · ${en?'Seat ':''}${target.seat}${en?'':' 号位'}`:''}</p>
+      <p className="font-medium">{student?.name}{classroom?` → ${classroom.name}`:''}</p>
       {classroom?<><p className="text-muted">{[courses.get(classroom.courseId),difficulties.get(classroom.courseId)].filter(Boolean).join(' · ')}</p><p className="text-muted">{classroom.teacherNames||'—'} · {schedule(classroom)}</p></>:null}
       <p className={error?'text-rose':'text-crater'}>{message}</p>
     </div>;
@@ -294,10 +294,10 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
         event.preventDefault(); event.stopPropagation();
         if (selected && target) move(selected, target);
       }}
-      className={cn(SEAT_HOVER, "group relative flex min-h-9 min-w-0 select-none items-center justify-center px-1", movable && "touch-none cursor-grab active:cursor-grabbing", selectedKey === student.key && "ring-2 ring-inset ring-crater", student.studentId === focusStudentId && "outline-2 -outline-offset-2 outline-leaf-deep", student.placement && !matches(student.placement) && "opacity-35")}
+      className={cn("group relative flex min-h-9 min-w-0 select-none items-center justify-center px-1", movable && "touch-none cursor-grab active:cursor-grabbing", selectedKey === student.key && "ring-2 ring-inset ring-crater", student.studentId === focusStudentId && "outline-2 -outline-offset-2 outline-leaf-deep", student.placement && !matches(student.placement) && "opacity-35")}
       style={{ background: placementStudentBackground(health, renewed) }}
     >
-      {student.sourceEnrollment?<button type="button" onClick={()=>setSourceEnrollment(student.sourceEnrollment!)} className="w-full truncate py-1 text-xs hover:underline">{student.name}</button>:<Student360Trigger subject={{ studentId: student.studentId, leadId: null }} fallback={{ name: student.name, phone: student.phone, grade: student.grade || null }} className={cn("flex w-full min-w-0 flex-col items-center justify-center py-1 text-xs font-normal group-hover:text-crater group-focus-within:text-crater",movable&&"pointer-events-none")}>
+      {student.sourceEnrollment?<button type="button" onClick={()=>setSourceEnrollment(student.sourceEnrollment!)} className="w-full truncate py-1 text-xs hover:underline">{student.name}</button>:<Student360Trigger subject={{ studentId: student.studentId, leadId: null }} fallback={{ name: student.name, phone: student.phone, grade: student.grade || null }} className={cn("flex w-full min-w-0 flex-col items-center justify-center py-1 text-xs font-normal",movable&&"pointer-events-none")}>
         <span className="max-w-full truncate">{student.name}</span>
         {student.status && student.status !== "active" ? <span className="whitespace-nowrap text-[9px] leading-3 text-muted">{t(`status_${student.status}`)}</span> : null}
       </Student360Trigger>}
@@ -368,19 +368,24 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
                 const lastReservation=Math.max(0,...(board.sessionTransfers??[]).filter(t=>t.toClassroomId===classroom.id).map(t=>t.seat));
                 while(slots.length<=lastReservation)slots.push({seat:slots.length+1,student:null});
               }
-              return <Fragment key={row.key}><TableRow data-record-state={fact ? fact.record_state ?? 'historical' : 'current'} data-placement-classroom={classroom?.id} data-placement-record={row.key} className="hover:bg-transparent">
+              const reservedSeats=new Set((board.sessionTransfers??[]).filter(t=>t.toClassroomId===classroom?.id).map(t=>t.seat));
+              const nextSeat=slots.find(slot=>!slot.student&&!reservedSeats.has(slot.seat))?.seat??slots.length+1;
+              const classTarget:SeatTarget={classroom,termId:scope.termId,grade:scope.grade,seat:nextSeat};
+              const classHovered=dragging&&hovered===`class:${classroom?.id}`;
+              const classAllowed=accepts(selected,classTarget);
+              slots.sort((a,b)=>Number(Boolean(b.student))-Number(Boolean(a.student)));
+              return <Fragment key={row.key}><TableRow data-record-state={fact ? fact.record_state ?? 'historical' : 'current'} data-placement-classroom={classroom?.id} {...(classroom?registerTarget(`class:${classroom.id}`,classTarget):{})} data-placement-drop-state={classHovered?(classAllowed?'allowed':'blocked'):undefined} data-placement-record={row.key} className={cn("hover:bg-transparent [&>td]:after:pointer-events-none [&>td]:after:absolute [&>td]:after:inset-0 [&>td]:after:z-20 [&>td]:after:bg-moon/30 [&>td]:after:opacity-0 [&>td]:after:content-[''] hover:[&>td]:after:opacity-100",classHovered&&"[&>td]:after:opacity-100",classHovered&&!classAllowed&&"[&>td]:after:bg-rose/25")}>
                 <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-1"><div className="flex items-center justify-between gap-1">{classroom ? <Link href={`/dashboard/classes/${classroom.id}`} className="min-w-0 truncate font-medium hover:underline" title={className}>{className}</Link> : <span className="min-w-0 truncate font-medium" title={className}>{className}</span>}{classroom ? <span className="shrink-0 text-[10px] tabular-nums text-muted">{classroom.activeCount}/{classroom.capacity ?? "∞"}</span> : null}</div><div className="truncate text-[10px] text-muted" title={courseTitle}>{courseTitle}</div>{fact ? <p className="mt-1 text-[10px] text-muted">{fact.registered_on ?? recordM.unknown} · {fact.amount ?? fact.amount_original}</p> : null}</TableCell>
                 <TableCell className="sticky left-36 z-10 border-r border-line bg-card px-2 py-1 text-[11px]" title={time}><span className="line-clamp-2 break-words">{time}</span>{fact?.room_label ? <p className="mt-1 text-muted">{fact.room_label}</p> : null}</TableCell>
                 <TableCell className="sticky left-64 z-10 border-r border-line bg-card px-2 py-1" title={teacher}><span className="block truncate">{teacher || "—"}</span></TableCell>
                 <TableCell className="sticky left-84 z-10 border-r border-line bg-card px-2 py-1 text-center text-[11px]" title={classroom ? difficulties.get(classroom.courseId) : undefined}>{classroom ? difficulties.get(classroom.courseId) || "—" : "—"}</TableCell>
-                <TableCell className="bg-paper/50 p-0"><div className={NAME_GRID}>{(row.sourceEnrollments??[]).map(item=>studentTile({key:item.id,studentId:item.student_id,name:history?.students[businessSubjectKey(item)]??recordM.unknown,phone:history?.subjects[businessSubjectKey(item)]?.phone??'',grade:history?.subjects[businessSubjectKey(item)]?.grade??0,status:null,courseTitle:item.period_label,recommendation:'',note:item.note??'',sourceEnrollment:item}))}{classroom ? slots.map(({ seat, student }) => {
+                <TableCell className="relative bg-paper/50 p-0"><div className={NAME_GRID}>{(row.sourceEnrollments??[]).map(item=>studentTile({key:item.id,studentId:item.student_id,name:history?.students[businessSubjectKey(item)]??recordM.unknown,phone:history?.subjects[businessSubjectKey(item)]?.phone??'',grade:history?.subjects[businessSubjectKey(item)]?.grade??0,status:null,courseTitle:item.period_label,recommendation:'',note:item.note??'',sourceEnrollment:item}))}{classroom ? slots.map(({ seat, student }) => {
                   const target = { classroom, termId: scope.termId, grade: scope.grade, seat };
                   const key = `${classroom.id}:${seat}`;
                   const eligible = accepts(selected, target);
                   const reservations=(board.sessionTransfers??[]).filter(t=>t.toClassroomId===classroom.id&&t.seat===seat);
-                  return <div key={seat} {...registerTarget(key, target)} className={cn("relative min-w-0 border-b border-line", eligible && "ring-1 ring-inset ring-crater/40", hovered === key && dragging && "z-10")}>
-                    {hovered === key && dragging ? <span aria-hidden="true" data-placement-drop-state={eligible ? "allowed" : "blocked"} className={cn("pointer-events-none absolute inset-0 z-20 border-[3px]", eligible ? "border-crater bg-moon/45" : "border-rose bg-rose/25")}><span className={cn("absolute right-0 top-0 flex size-4 items-center justify-center text-xs font-bold text-paper",eligible ? "bg-crater" : "bg-rose")}>{eligible ? "✓" : "×"}</span></span> : null}
-                    {student ? studentTile(studentTileRecord(student), target) : reservations.length?<button type="button" className="min-h-9 w-full bg-moon/30 px-1 text-[10px] text-crater" title={reservations.map(r=>`${r.name} · ${r.lectureNo??""} · ${r.title}`).join("\n")} onClick={()=>{const origin=students.find(s=>s.membershipId===reservations[0].membershipId);if(origin)setPlacementChange({student:origin});}}>{[...new Set(reservations.map(r=>r.name))].join("、")}<span className="ml-0.5 text-[9px]">{locale==="en"?"Temp":"临"}</span></button>: classroom.capacity !== null && seat > classroom.capacity ? <span className="flex min-h-9 items-center justify-center text-line" aria-label={t("noSeat")}>—</span> : <button type="button" className={cn(SEAT_HOVER,"group/seat relative flex min-h-9 w-full items-center justify-center gap-1 bg-card text-[10px] tabular-nums text-muted/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-crater")} disabled={selected ? !eligible : !canAdd} aria-label={selected ? t("placeInSeat", { name: selected.name, classroom: classroom.name, seat }) : canAdd ? (locale === "en" ? `Add student · ${classroom.name} · Seat ${seat}` : `补入学生 · ${classroom.name} · ${seat} 号位`) : t("emptySeatNumber", { seat })} onClick={() => { if (selected) move(selected, target); else setSeatEntry({classroom,seat}); }}><span>{seat}</span>{eligible || canAdd ? <Plus className="absolute left-1/2 top-1/2 z-20 size-5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-line bg-card p-0.5 text-crater opacity-0 transition-opacity group-hover/seat:opacity-100 group-focus-visible/seat:opacity-100" /> : null}</button>}
+                  return <div key={seat} {...registerTarget(key, target)} className="relative min-w-0 border-b border-line">
+                    {student ? studentTile(studentTileRecord(student), target) : reservations.length?<button type="button" className="min-h-9 w-full bg-moon/30 px-1 text-[10px] text-crater" title={reservations.map(r=>`${r.name} · ${r.lectureNo??""} · ${r.title}`).join("\n")} onClick={()=>{const origin=students.find(s=>s.membershipId===reservations[0].membershipId);if(origin)setPlacementChange({student:origin});}}>{[...new Set(reservations.map(r=>r.name))].join("、")}<span className="ml-0.5 text-[9px]">{locale==="en"?"Temp":"临"}</span></button>: classroom.capacity !== null && seat > classroom.capacity ? <span className="flex min-h-9 items-center justify-center text-line" aria-label={t("noSeat")}>—</span> : <button type="button" className={cn("group/seat relative flex min-h-9 w-full items-center justify-center gap-1 bg-card text-[10px] tabular-nums text-muted/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-crater")} disabled={selected ? !eligible : !canAdd} aria-label={selected ? t("placeInSeat", { name: selected.name, classroom: classroom.name, seat }) : canAdd ? (locale === "en" ? `Add student · ${classroom.name} · Seat ${seat}` : `补入学生 · ${classroom.name} · ${seat} 号位`) : t("emptySeatNumber", { seat })} onClick={() => { if (selected) move(selected, target); else setSeatEntry({classroom,seat}); }}><span>{seat}</span>{eligible || canAdd ? <Plus className="absolute left-1/2 top-1/2 z-20 size-5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-line bg-card p-0.5 text-crater opacity-0 transition-opacity group-hover/seat:opacity-100 group-focus-visible/seat:opacity-100" /> : null}</button>}
                   </div>;
                 }) : null}</div></TableCell>
               </TableRow>{retiredRow(row.students.filter((student) => student.status === "withdrawn"), `${className} ${t("status_withdrawn")}`)}</Fragment>;

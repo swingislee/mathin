@@ -42,7 +42,7 @@ export function EnrollmentPlacementChangeDialog({student,target,withdraw=false,t
   });
   return <Dialog open onOpenChange={open=>{if(!open&&!pending)onClose();}}><DialogContent className="sm:max-w-xl"><DialogHeader>
     <DialogTitle>{withdraw?(en?'Withdraw enrollment':'确认退课'):target?(en?'Confirm class transfer':'确认调班'):(en?'Temporary transfers':'临时调班安排')}</DialogTitle>
-    <DialogDescription>{student.name}{target?` → ${target.classroom.name} · ${target.seat}${en?' seat':' 号位'}`:''}</DialogDescription>
+    <DialogDescription>{student.name}{target?` → ${target.classroom.name}`:''}</DialogDescription>
   </DialogHeader>
     {withdraw?<p className="text-sm leading-6">{en?'End this enrollment and release its seat. Attendance and course history remain available. Future temporary transfers will be cancelled. Refunds are handled in the payment workflow.':'结束本次报名并释放座位，保留已有考勤和课程记录，同时取消尚未上课的临时安排。退款在收付款流程中办理。'}</p>:target?<>
       <fieldset className="grid grid-cols-2 gap-2" disabled={pending}><legend className="sr-only">{en?'Transfer type':'调班类型'}</legend>{(['permanent','temporary'] as const).map(value=><label key={value} className="flex cursor-pointer items-center gap-2 rounded-md border border-line p-3 text-sm"><input type="radio" name="placement-transfer-mode" value={value} checked={mode===value} onChange={()=>{setMode(value);change();}}/>{value==='permanent'?(en?'Permanent transfer':'完全调班'):(en?'Temporary transfer':'临时调班')}</label>)}</fieldset>
