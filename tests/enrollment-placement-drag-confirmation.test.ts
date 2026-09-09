@@ -43,14 +43,14 @@ it('opens the transfer choice after dragging across classes and leaves the roste
   expect(vi.mocked(HTMLElement.prototype.setPointerCapture).mock.instances.at(-1)).toBe(source);
   await send('pointermove',160);
   expect(document.querySelector('[role="tooltip"]')).toBeNull();
-  expect(destination.closest('[data-placement-drop-state="allowed"]')).not.toBeNull();
+  expect(destination.matches('[data-placement-drop-state="allowed"]')).toBe(true);
   expect(document.querySelector('[data-placement-drag-preview]')?.textContent).toContain('小林 → 目标班');
   expect(document.querySelector('[data-placement-drag-preview]')?.textContent).toContain('松开后选择完全调班或临时调班');
-  document.elementFromPoint=()=>element.querySelector<HTMLElement>(`[data-placement-classroom="${id(3)}"]`)!;
+  document.elementFromPoint=()=>element.querySelector<HTMLElement>(`[data-placement-classroom="${id(3)}"] td`)!;
   await send('pointermove',170);
   expect(document.querySelector('[data-placement-drag-preview]')?.textContent).toContain('小林 → 原班');
   expect(document.querySelector('[data-placement-drag-preview]')?.textContent).toContain('已在此班级');
-  document.elementFromPoint=()=>destination.closest<HTMLElement>('[data-placement-classroom]')!;
+  document.elementFromPoint=()=>destination.closest('[data-placement-classroom]')!.querySelector<HTMLElement>('td')!;
   await send('pointermove',180);await send('pointerup',180);
   expect(document.querySelector('[data-placement-drag-preview]')).toBeNull();
   expect(document.querySelector('[data-placement-drop-state]')).toBeNull();

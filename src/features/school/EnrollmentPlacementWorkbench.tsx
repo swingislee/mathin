@@ -41,13 +41,12 @@ interface SeatTarget {
   seat: number | null;
 }
 
+const PLACEMENT_CELL_HOVER = "after:pointer-events-none after:absolute after:inset-0 after:z-20 after:bg-moon/30 after:opacity-0 after:content-[''] hover:after:opacity-100 data-[placement-drop-state]:after:opacity-100 data-[placement-drop-state=blocked]:after:bg-rose/25";
 const NAME_GRID = "grid grid-cols-[repeat(auto-fill,minmax(3.75rem,1fr))] gap-px";
 
 function placementHoverAt(root:HTMLElement|null,x:number,y:number){
   const element=document.elementFromPoint(x,y);
   if(!element||!root?.contains(element))return null;
-  const row=element.closest<HTMLElement>('[data-placement-classroom]');
-  if(row?.dataset.placementClassroom)return `class:${row.dataset.placementClassroom}`;
   const target=element.closest<HTMLElement>('[data-placement-target]');
   if(target)return target.dataset.placementTarget??null;
   return null;
@@ -191,6 +190,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   const registerTarget = (key: string, target: SeatTarget) => { targets.set(key, target); return { "data-placement-target": key }; };
   const reserved = (target: SeatTarget) => (board.sessionTransfers??[]).some(t=>t.toClassroomId===target.classroom?.id&&t.seat===target.seat);
   const accepts = (student: PlacementStudent | null, target: SeatTarget) => Boolean(student && !pending && !placementChange && !reserved(target) && !placementSeatTargetError(student, target.classroom, target, students));
+  const dropState = (key:string,target:SeatTarget) => dragging&&hovered===key?(accepts(selected,target)?"allowed":"blocked"):undefined;
   const targetAt = (clientX: number, clientY: number) => {
     return placementHoverAt(root.current,clientX,clientY);
   };
@@ -371,20 +371,22 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
               const reservedSeats=new Set((board.sessionTransfers??[]).filter(t=>t.toClassroomId===classroom?.id).map(t=>t.seat));
               const nextSeat=slots.find(slot=>!slot.student&&!reservedSeats.has(slot.seat))?.seat??slots.length+1;
               const classTarget:SeatTarget={classroom,termId:scope.termId,grade:scope.grade,seat:nextSeat};
-              const classHovered=dragging&&hovered===`class:${classroom?.id}`;
-              const classAllowed=accepts(selected,classTarget);
+              const classCell=(column:string)=>{
+                const key=`class:${classroom?.id}:${column}`;
+                return classroom?{...registerTarget(key,classTarget),'data-placement-drop-state':dropState(key,classTarget)}:{};
+              };
               slots.sort((a,b)=>Number(Boolean(b.student))-Number(Boolean(a.student)));
-              return <Fragment key={row.key}><TableRow data-record-state={fact ? fact.record_state ?? 'historical' : 'current'} data-placement-classroom={classroom?.id} {...(classroom?registerTarget(`class:${classroom.id}`,classTarget):{})} data-placement-drop-state={classHovered?(classAllowed?'allowed':'blocked'):undefined} data-placement-record={row.key} className={cn("hover:bg-transparent [&>td]:after:pointer-events-none [&>td]:after:absolute [&>td]:after:inset-0 [&>td]:after:z-20 [&>td]:after:bg-moon/30 [&>td]:after:opacity-0 [&>td]:after:content-[''] hover:[&>td]:after:opacity-100",classHovered&&"[&>td]:after:opacity-100",classHovered&&!classAllowed&&"[&>td]:after:bg-rose/25")}>
-                <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-1"><div className="flex items-center justify-between gap-1">{classroom ? <Link href={`/dashboard/classes/${classroom.id}`} className="min-w-0 truncate font-medium hover:underline" title={className}>{className}</Link> : <span className="min-w-0 truncate font-medium" title={className}>{className}</span>}{classroom ? <span className="shrink-0 text-[10px] tabular-nums text-muted">{classroom.activeCount}/{classroom.capacity ?? "∞"}</span> : null}</div><div className="truncate text-[10px] text-muted" title={courseTitle}>{courseTitle}</div>{fact ? <p className="mt-1 text-[10px] text-muted">{fact.registered_on ?? recordM.unknown} · {fact.amount ?? fact.amount_original}</p> : null}</TableCell>
-                <TableCell className="sticky left-36 z-10 border-r border-line bg-card px-2 py-1 text-[11px]" title={time}><span className="line-clamp-2 break-words">{time}</span>{fact?.room_label ? <p className="mt-1 text-muted">{fact.room_label}</p> : null}</TableCell>
-                <TableCell className="sticky left-64 z-10 border-r border-line bg-card px-2 py-1" title={teacher}><span className="block truncate">{teacher || "—"}</span></TableCell>
-                <TableCell className="sticky left-84 z-10 border-r border-line bg-card px-2 py-1 text-center text-[11px]" title={classroom ? difficulties.get(classroom.courseId) : undefined}>{classroom ? difficulties.get(classroom.courseId) || "—" : "—"}</TableCell>
+              return <Fragment key={row.key}><TableRow data-record-state={fact ? fact.record_state ?? 'historical' : 'current'} data-placement-classroom={classroom?.id} {...(classroom?registerTarget(`class:${classroom.id}`,classTarget):{})} data-placement-record={row.key} className="hover:bg-transparent">
+                <TableCell {...classCell("name")} className={cn(PLACEMENT_CELL_HOVER,"sticky left-0 z-10 border-r border-line bg-card px-2 py-1")}><div className="flex items-center justify-between gap-1">{classroom ? <Link href={`/dashboard/classes/${classroom.id}`} className="min-w-0 truncate font-medium hover:underline" title={className}>{className}</Link> : <span className="min-w-0 truncate font-medium" title={className}>{className}</span>}{classroom ? <span className="shrink-0 text-[10px] tabular-nums text-muted">{classroom.activeCount}/{classroom.capacity ?? "∞"}</span> : null}</div><div className="truncate text-[10px] text-muted" title={courseTitle}>{courseTitle}</div>{fact ? <p className="mt-1 text-[10px] text-muted">{fact.registered_on ?? recordM.unknown} · {fact.amount ?? fact.amount_original}</p> : null}</TableCell>
+                <TableCell {...classCell("time")} className={cn(PLACEMENT_CELL_HOVER,"sticky left-36 z-10 border-r border-line bg-card px-2 py-1 text-[11px]")} title={time}><span className="line-clamp-2 break-words">{time}</span>{fact?.room_label ? <p className="mt-1 text-muted">{fact.room_label}</p> : null}</TableCell>
+                <TableCell {...classCell("teacher")} className={cn(PLACEMENT_CELL_HOVER,"sticky left-64 z-10 border-r border-line bg-card px-2 py-1")} title={teacher}><span className="block truncate">{teacher || "—"}</span></TableCell>
+                <TableCell {...classCell("difficulty")} className={cn(PLACEMENT_CELL_HOVER,"sticky left-84 z-10 border-r border-line bg-card px-2 py-1 text-center text-[11px]")} title={classroom ? difficulties.get(classroom.courseId) : undefined}>{classroom ? difficulties.get(classroom.courseId) || "—" : "—"}</TableCell>
                 <TableCell className="relative bg-paper/50 p-0"><div className={NAME_GRID}>{(row.sourceEnrollments??[]).map(item=>studentTile({key:item.id,studentId:item.student_id,name:history?.students[businessSubjectKey(item)]??recordM.unknown,phone:history?.subjects[businessSubjectKey(item)]?.phone??'',grade:history?.subjects[businessSubjectKey(item)]?.grade??0,status:null,courseTitle:item.period_label,recommendation:'',note:item.note??'',sourceEnrollment:item}))}{classroom ? slots.map(({ seat, student }) => {
                   const target = { classroom, termId: scope.termId, grade: scope.grade, seat };
                   const key = `${classroom.id}:${seat}`;
                   const eligible = accepts(selected, target);
                   const reservations=(board.sessionTransfers??[]).filter(t=>t.toClassroomId===classroom.id&&t.seat===seat);
-                  return <div key={seat} {...registerTarget(key, target)} className="relative min-w-0 border-b border-line">
+                  return <div key={seat} {...registerTarget(key, classTarget)} data-placement-drop-state={dropState(key,classTarget)} className={cn(PLACEMENT_CELL_HOVER,"relative min-w-0 border-b border-line")}>
                     {student ? studentTile(studentTileRecord(student), target) : reservations.length?<button type="button" className="min-h-9 w-full bg-moon/30 px-1 text-[10px] text-crater" title={reservations.map(r=>`${r.name} · ${r.lectureNo??""} · ${r.title}`).join("\n")} onClick={()=>{const origin=students.find(s=>s.membershipId===reservations[0].membershipId);if(origin)setPlacementChange({student:origin});}}>{[...new Set(reservations.map(r=>r.name))].join("、")}<span className="ml-0.5 text-[9px]">{locale==="en"?"Temp":"临"}</span></button>: classroom.capacity !== null && seat > classroom.capacity ? <span className="flex min-h-9 items-center justify-center text-line" aria-label={t("noSeat")}>—</span> : <button type="button" className={cn("group/seat relative flex min-h-9 w-full items-center justify-center gap-1 bg-card text-[10px] tabular-nums text-muted/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-crater")} disabled={selected ? !eligible : !canAdd} aria-label={selected ? t("placeInSeat", { name: selected.name, classroom: classroom.name, seat }) : canAdd ? (locale === "en" ? `Add student · ${classroom.name} · Seat ${seat}` : `补入学生 · ${classroom.name} · ${seat} 号位`) : t("emptySeatNumber", { seat })} onClick={() => { if (selected) move(selected, target); else setSeatEntry({classroom,seat}); }}><span>{seat}</span>{eligible || canAdd ? <Plus className="absolute left-1/2 top-1/2 z-20 size-5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-line bg-card p-0.5 text-crater opacity-0 transition-opacity group-hover/seat:opacity-100 group-focus-visible/seat:opacity-100" /> : null}</button>}
                   </div>;
                 }) : null}</div></TableCell>
