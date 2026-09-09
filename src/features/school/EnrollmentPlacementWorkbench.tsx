@@ -43,6 +43,15 @@ interface SeatTarget {
 
 const NAME_GRID = "grid grid-cols-[repeat(auto-fill,minmax(3.75rem,1fr))] gap-px";
 
+function placementHoverAt(root:HTMLElement|null,x:number,y:number){
+  const element=document.elementFromPoint(x,y);
+  if(!element||!root?.contains(element))return null;
+  const target=element.closest<HTMLElement>('[data-placement-target]');
+  if(target)return target.dataset.placementTarget??null;
+  const classroom=element.closest<HTMLElement>('[data-placement-classroom]')?.dataset.placementClassroom;
+  return classroom?`class:${classroom}`:null;
+}
+
 interface StudentTileRecord {
   key: string; studentId: string | null; name: string; phone: string; grade: number;
   status: PlacementStudent['status'] | null; courseTitle: string; recommendation: string; note: string;
@@ -181,8 +190,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   const reserved = (target: SeatTarget) => (board.sessionTransfers??[]).some(t=>t.toClassroomId===target.classroom?.id&&t.seat===target.seat);
   const accepts = (student: PlacementStudent | null, target: SeatTarget) => Boolean(student && !pending && !placementChange && !reserved(target) && !placementSeatTargetError(student, target.classroom, target, students));
   const targetAt = (clientX: number, clientY: number) => {
-    const element = document.elementFromPoint(clientX, clientY)?.closest<HTMLElement>("[data-placement-target]");
-    return element && root.current?.contains(element) ? element.dataset.placementTarget ?? null : null;
+    return placementHoverAt(root.current,clientX,clientY);
   };
   const move = (student: PlacementStudent, target: SeatTarget) => {
     const { classroom, seat } = target;
@@ -229,8 +237,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
           const previousLeft = container.scrollLeft;
           container.scrollBy(speed(position.clientX, rect.left, rect.right), speed(position.clientY, rect.top, rect.bottom));
           if (container.scrollTop !== previousTop || container.scrollLeft !== previousLeft) {
-            const target = document.elementFromPoint(position.clientX, position.clientY)?.closest<HTMLElement>("[data-placement-target]");
-            setHovered(target && root.current?.contains(target) ? target.dataset.placementTarget ?? null : null);
+            setHovered(placementHoverAt(root.current,position.clientX,position.clientY));
           }
         }
       }
@@ -242,6 +249,25 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   useEffect(() => {
     if (focusStudentId) root.current?.querySelector<HTMLElement>("[data-placement-focus='true']")?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [focusStudentId]);
+
+  const dragPreview=()=>{
+    const drag=pointer.drag;
+    if(!drag)return null;
+    const student=students.find(s=>s.key===drag.data);
+    const target=targets.get(hovered??'');
+    const classroom=target?.classroom??board.options.classrooms.find(c=>hovered===`class:${c.id}`);
+    const en=locale==='en';
+    const error=student&&target?(reserved(target)?'TEMPORARY_SEAT_RESERVED':placementSeatTargetError(student,target.classroom,target,students)):null;
+    const message=error?(error==='TEMPORARY_SEAT_RESERVED'?placementChangeError(error,en):t(enrollmentErrorKey(error)))
+      :target?.classroom?(student?.classroomId&&student.classroomId!==target.classroom.id?(en?'Release to choose permanent or temporary transfer':'松开后选择完全调班或临时调班'):en?'Release to place in this seat':'松开后安排到此座位')
+      :target?(en?'Release to return to pending placement':'松开后退回待分班'):classroom?(en?'Move to a seat to choose the destination':'移到具体座位选择落点'):en?'Drag to a target seat':'拖到目标班级的座位';
+    return <div role="status" data-placement-drag-preview className="pointer-events-none fixed z-50 w-64 max-w-[calc(100vw-2rem)] space-y-1 rounded-md border border-crater bg-card px-3 py-2 text-xs shadow-lg"
+      style={{left:Math.max(8,Math.min(drag.clientX+16,window.innerWidth-272)),top:Math.max(8,Math.min(drag.clientY+16,window.innerHeight-160))}}>
+      <p className="font-medium">{student?.name}{classroom?` → ${classroom.name}`:''}{target?.seat?` · ${en?'Seat ':''}${target.seat}${en?'':' 号位'}`:''}</p>
+      {classroom?<><p className="text-muted">{[courses.get(classroom.courseId),difficulties.get(classroom.courseId)].filter(Boolean).join(' · ')}</p><p className="text-muted">{classroom.teacherNames||'—'} · {schedule(classroom)}</p></>:null}
+      <p className={error?'text-rose':'text-crater'}>{message}</p>
+    </div>;
+  };
 
   const studentTile = (student: StudentTileRecord, target?: SeatTarget) => {
     const signals = student.placement ? board.health?.[student.studentId ?? ""] ?? [] : [];
@@ -359,7 +385,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
       {placementChange?<EnrollmentPlacementChangeDialog {...placementChange} transfers={(board.sessionTransfers??[]).filter(t=>t.membershipId===placementChange.student.membershipId)} onClose={()=>setPlacementChange(null)} onSaved={value=>{setSavedBoard({base:initialBoard,value});setPlacementChange(null);setSelectedKey(null);window.dispatchEvent(new Event(STUDENT_360_REFRESH_EVENT));router.refresh();}}/>:null}
       {seatEntry?<SchoolSupportSeatEntry open onClose={()=>setSeatEntry(null)} classroomName={seatEntry.classroom.name} classroomId={seatEntry.classroom.id} courseId={seatEntry.classroom.courseId} termId={seatEntry.classroom.termId} seat={seatEntry.seat}/>:null}
       {sourceEnrollment?<SourceEnrollmentPlacementDialog record={sourceEnrollment} name={history?.students[businessSubjectKey(sourceEnrollment)]??recordM.unknown} options={board.options} locale={locale} onClose={()=>setSourceEnrollment(null)} onSaved={value=>{setSavedBoard({base:initialBoard,value});setSourceEnrollment(null);router.refresh();}}/>:null}
-      {pointer.drag ? <div aria-hidden className="pointer-events-none fixed z-50 min-w-20 rounded-sm border border-crater bg-card px-3 py-2 text-center text-xs shadow-lg" style={{ left: pointer.drag.clientX + 12, top: pointer.drag.clientY + 12 }}>{students.find((student) => student.key === pointer.drag?.data)?.name}</div> : null}
+      {dragPreview()}
     </div>
   </DashboardPage>;
 }
