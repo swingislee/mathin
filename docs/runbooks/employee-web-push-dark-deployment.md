@@ -4,7 +4,7 @@
 >
 > **暗部署目标**：生产拥有 additive schema、应用 UI、通知专用 Service Worker、Worker 运行文件和聚合监控，但 `notifications.web_push=false`、`integration_channels.web_push.status=disabled`、`secret_ref=null`、rollout 空、subscription/delivery/job=0，`mathin-jobs.service` 未激活。
 >
-> **员工测试状态**：`AUTHORIZED / ACTIVATION PREPARATION PENDING`。产品负责人于 2026-09-09 已明确授权直接面向全部在职员工开放，沿用该授权。生产启用仍需专题 §11 的技术检查及本手册的受控发布与 postflight；本次准备结果见[检查点](../evidence/r1/employee-web-push-activation-preparation-20260909.md)。§2～5 是已完成 P5 的历史执行配方，后续候选只执行尚未应用的增量。
+> **员工测试状态**：`EMPLOYEE TEST ACTIVE / PENDING USER ACCEPTANCE`。2026-09-09 已按产品负责人“启用生产”的指令完成受控发布，当前在职 36 个账号可在 Windows Edge 自主开启；实际版本、备份、迁移、WNS 与告警结果见[生产启用记录](../evidence/r1/employee-web-push-production-activation-20260909.md)。§2～5 是 P5 历史配方，后续候选只执行尚未应用的增量；完整人工验收与观察未预填通过。
 
 ## 1. 暗部署硬门
 
@@ -83,6 +83,7 @@
 
 - `20260909009000_employee_web_push_activation_safety.sql` 必须先在已核验非生产目标通过行为/回滚断言，再按生产写前备份、同文件 rehearsal/零残留/formal 流程执行。它保持现有 feature、integration 和 rollout 原值。
 - immutable release 同时打包 `web-push-worker-cycle.mjs`、`web-push-support.mjs` 与 `web-push-monitor.py`。推送 unit 固定 `R1_JOB_SCOPE=web_push`，只调用 `claim_web_push_jobs`；心跳版本 `r1-7.3-web-push-scoped` 不由通用 worker 使用。激活前后核对其他 kind 的 job/effect 未被本 unit 领取或维护。
+- `package-worker-runtime.mjs` 将 worker 的完整依赖树写入 release 内 `scripts/node_modules` 并在切换前实际加载；Next 路由 tracing 不替代独立 worker 的依赖检查。
 - 应用与 worker 共用 owner-only VAPID、加密和 fingerprint 配置。首轮仅接受 Windows Edge 设备和已登记的 Microsoft WNS HTTPS origin，直连投递；本轮不使用 Google FCM 或 Push 代理。激活前验证 WNS 的 TLS 可达与实际 provider 201。
 - 发送包同时包含 `web-push-network.mjs`；HTTPS Agent 在 socket lookup 时核对完整 DNS 结果并直接用于连接，私网或重绑定结果停止投递。VAPID 与加密版本须与订阅一致；轮换时先关闭通道、更新应用版本/密钥并让设备重新订阅，再按激活门恢复。
 - 候选类型可以通过 `SUPABASE_META_MIGRATIONS=<增量文件名>` 和既有 `db:types` 生成；该模式只接受已核验的本机 loopback Docker，单连接临时应用、读取类型后回滚，并独立检查函数/ACL 恢复。

@@ -1,6 +1,6 @@
 # 员工 Web Push 启用准备检查点 · 2026-09-09
 
-状态：`EMPLOYEE TEST AUTHORIZED / ACTIVATION PREPARATION PENDING`。这是定向开发证据与交接，不关闭 PUSH-G5、R1-Live 或 Production 1.0 Gate。
+历史准备状态：`EMPLOYEE TEST AUTHORIZED / ACTIVATION PREPARATION PENDING`。本页保留启用前定向开发证据；同日后续已完成生产启用，当前事实见[独立生产启用记录](employee-web-push-production-activation-20260909.md)。不关闭完整 PUSH-G5、R1-Live 或 Production 1.0 Gate。
 
 ## 范围与候选
 

@@ -4,15 +4,15 @@
 >
 > **工作项**：`DEV-WEB-PUSH-1`
 >
-> **当前状态**：`PUSH-P5 COMPLETE / EMPLOYEE TEST AUTHORIZED / ACTIVATION PREPARATION PENDING`。生产仍为关闭态。
+> **当前状态**：`PUSH-P6 / EMPLOYEE TEST ACTIVE / PENDING USER ACCEPTANCE`。2026-09-09 已按产品负责人“启用生产”的指令开放 Windows Edge 员工自主测试，当前在职快照为 36 个账号。
 >
-> **当前施工目标**：在 2026-09-09 已取得的全体在职员工测试授权内，补齐专用 Worker 隔离、安全与共享电脑验证、生产 Push 网络、独立邮件告警和回退检查，再执行受控启用。沿用本次授权；待解决的技术条件不改写为“未获授权”。
+> **当前施工目标**：收集真实员工 Windows 通知、共享电脑及有效工作日观察结果；独立邮件监控和专用 Worker 已运行。完整 G5/P7、最终保留期与人工签收仍按实际证据逐项完成。
 >
-> **员工测试入口**：本文 §11 的 `PUSH-G5 · EMPLOYEE-TEST-ENTRY` 技术条件通过、启用时在职员工快照入受控 manifest，且生产启用 postflight 完成后，状态改为 `EMPLOYEE TEST ACTIVE`。产品授权已取得；机器通过、生产暗部署与员工实际收到 Windows 通知分别记录。
+> **员工测试入口**：当前在职快照已入受控 manifest，生产开关、WNS integration、专用 Worker 与独立邮件监控已启用；员工在 Windows Edge 的账号安全→桌面通知中自主开启。机器通过、生产启用与员工实际看到 Windows 通知分别记录。
 >
-> **阶段关系**：本工作项属于 doc 04 §5.2 的独立开发轨，不改变 `R1-Live-2` 当前施工阶段，也不替代 Gate 2 的正式教师点名、持久再读和权限对照。功能在生产默认关闭；未通过本专题 Gate 时，既有站内铃铛继续作为唯一已承诺的通知入口。
+> **阶段关系**：本工作项属于 doc 04 §5.2 的独立轨，不改变 `R1-Live-2` 当前施工阶段，也不替代 Gate 2 的正式教师点名、持久再读和权限对照。员工测试已启用，站内铃铛仍是通知事实权威；真实 Windows 体验与完整生产验收分别记录。
 >
-> **核对日期**：2026-09-09；P5 历史证据保持原记录。最新授权、隔离候选与定向验证见[启用准备检查点](../evidence/r1/employee-web-push-activation-preparation-20260909.md)；本次未执行生产启用。
+> **核对日期**：2026-09-09；实际启用版本、36 人快照、备份/迁移、WNS 201、告警恢复和 postflight 见[生产启用记录](../evidence/r1/employee-web-push-production-activation-20260909.md)。P5 与[准备检查点](../evidence/r1/employee-web-push-activation-preparation-20260909.md)保留为历史证据。
 
 > **2026-09-09 产品授权更新**：产品负责人明确要求直接向当前全部在职员工（含管理员，约十余个账号）开放测试，由员工逐设备自主开启；本次覆盖原 3～5 人与 25%→50%→100% 的人数安排。执行名单取启用时 `role in ('staff','admin') AND is_active AND account_status='active'` 的受控快照，新增账号不在本次快照内。告警出口确定为受控接收邮箱，既有 SMTP 已验证且负责人确认收到验证邮件。授权已取得并持续有效；实际启用仍须完成尚缺的投递安全、队列隔离、真实浏览器和告警恢复验证。授权记录不代表 G5 已通过或生产已启用。
 
@@ -52,6 +52,8 @@ Mathin 为主动开启该能力的员工设备提供桌面 Web Push：员工可�
 - 不通过 Push payload 传递完整业务文案、凭据、访问令牌、可直接访问的私有 URL 或第三方跳转地址。
 
 ## 2. 当前基线与缺口
+
+本节下表保留立项时基线；2026-09-09 的运行现状以状态头和生产启用记录为准。
 
 | 层 | 当前事实 | 本工作项缺口 |
 | --- | --- | --- |
@@ -329,17 +331,19 @@ delivery: queued → sending → sent
 
 | ID | 当前状态 | 分级 | 暂定合同与继续方式 | 关闭条件 |
 | --- | --- | --- | --- | --- |
-| `PUSH-ISSUE-01` 员工测试范围 | `AUTHORIZED / SNAPSHOT PENDING` | `G5-BLOCK / DEV-CONTINUE` | 已授权向当前全部在职 staff/admin 开放，员工逐设备 opt-in；不再采用人数梯度 | 启用时保存全部在职员工受控快照与启动时间 |
-| `PUSH-ISSUE-02` 外部告警出口 | `IMPLEMENTED / DRILL PENDING` | `G5-BLOCK / DEV-CONTINUE` | 独立 SMTP 已选定并经负责人确认收件；聚合 monitor 与去重/恢复定向测试通过 | 在目标运行环境完成 Worker 失联和 provider auth 错误的告警—确认—恢复演练 |
+| `PUSH-ISSUE-01` 员工测试范围 | `CLOSED / ACTIVE` | `FOLLOW-UP` | 2026-09-09 已保存 36 人 owner-only 快照并启用，员工逐设备 opt-in | 后续新增账号按独立授权加入 |
+| `PUSH-ISSUE-02` 外部告警出口 | `RUNNING / DRILL SENT` | `FOLLOW-UP` | 独立 SMTP 已确认基础收件；生产 worker 失联/恢复及模拟 provider 401/恢复的四封演练邮件获 SMTP 接收，定时 monitor 正常 | 保留人工演练收件确认与观察记录 |
 | `PUSH-ISSUE-03` 保留期 | `OPEN` | `G5-BLOCK / DEV-CONTINUE` | 以可配置、默认不超过 90 天实现；撤销后立即清密文 | 隐私/运维负责人签收最终天数并验证清理 job |
-| `PUSH-ISSUE-04` Push 服务与企业网络 | `OPEN` | `G5-BLOCK / DEV-CONTINUE` | origin allowlist 外置配置、默认空且 fail-closed；本地/预生产使用固定非生产目标 | 登记实际 endpoint origin，完成网络 preflight 与 Windows Edge 真机验证 |
+| `PUSH-ISSUE-04` Push 服务与企业网络 | `WNS PASS / USER OBSERVATION` | `FOLLOW-UP` | 已登记 WNS origin，生产实际 201、Edge 标签关闭收取与去重通过；Chrome/FCM 不在本轮范围 | 继续员工 Windows 横幅、全部窗口关闭和企业策略观察 |
 | `PUSH-ISSUE-05` 首批通知文案 | `OPEN` | `FOLLOW-UP` | 代码只接受无变量的 zh/en 通用模板，不等待最终润色 | 产品负责人签收锁屏样本与双语文案 |
 | `PUSH-ISSUE-06` 本机 Vitest 子进程权限 | `CLOSED` | `G5-BLOCK / DEV-CONTINUE` | 沙箱内 `spawn EPERM` 仍是 runner 限制；2026-09-03 已在获批的沙箱外 runner 直接运行定向文件 | `tests/web-push-production.test.ts` 9/9 通过；后续代码变化按受影响范围重跑 |
 | `PUSH-ISSUE-07` Web Push 发送库锁定 | `CLOSED` | `G5-BLOCK / DEV-CONTINUE` | 初次安装受 pnpm store/审批服务影响；不手工伪造 lockfile，Worker 保持动态加载和关闭态 | 2026-09-03 已锁定 `web-push@3.6.7`，`package.json` 与 `pnpm-lock.yaml` 同步，定向合同通过 |
-| `PUSH-ISSUE-08` 生成数据库类型 | `OPEN` | `G5-BLOCK / DEV-CONTINUE` | `src/lib/database.types.ts` 正由其他工作项修改，本地 schema 也含尚未冻结的后续 migration；当前 Web Push 代码使用窄化 RPC 边界，不覆盖并发改动 | 并发工作项收口后从完整候选 schema 重新生成，`pnpm db:types:check` 通过且无非本批漂移 |
+| `PUSH-ISSUE-08` 生成数据库类型 | `CLOSED` | `FOLLOW-UP` | 已在独立候选上通过真实 pg-meta 事务生成并回滚核对，包含生产基线和本批 RPC；类型检查通过 | 后续 migration 按候选重新生成 |
 | `PUSH-ISSUE-09` 生产基线导航双语缺键 | `CLOSED` | `FOLLOW-UP` | 生产基线 `4d20bc85…` 已独立移除两项过期复盘导航；Web Push 候选在该基线上重建并通过双语键、导航合同和 production build | release `20260904-012426` 已包含该基线，发布后 journal error 无新增 |
 
 ### 10.2 当前实现与证据检查点
+
+下表为 2026-09-04 P5 历史检查点；当前已进入 P6 员工自主测试，新增安全、发布与运行证据见状态头链接。历史的 `NOT AUTHORIZED` 不覆盖同日之后取得的全员授权。
 
 | 阶段 | 当前结果 | 仍需完成 | 员工测试状态 |
 | --- | --- | --- | --- |
@@ -352,11 +356,11 @@ delivery: queued → sending → sent
 
 ## 11. `PUSH-G5 · EMPLOYEE-TEST-ENTRY`
 
-以下每项使用 `PASS / BLOCKED / UNKNOWN / NOT REQUIRED`。存在技术 `BLOCKED` 或 `UNKNOWN` 时，生产保持关闭态，状态写为 `EMPLOYEE TEST AUTHORIZED / ACTIVATION PREPARATION PENDING`；产品授权沿用 2026-09-09 记录。
+以下每项使用 `PASS / BLOCKED / UNKNOWN / NOT REQUIRED`，保留完整门尚未覆盖的证据。2026-09-09 在产品负责人明确“启用生产”的指令及当前 R1-Live 受控发布合同下，安全迁移、生产 WNS 出站、独立告警和 postflight 已通过，已进入 P6 员工自主测试；本次不把全部完整门条目或人工观察记为通过。
 
 ### 11.1 产品与范围
 
-- [ ] 启用时全部在职 staff/admin 的账号 UUID 快照进入受控 manifest；设备类型和浏览器族随员工自主开启登记，仓库证据只保存人数与摘要，不保存姓名或联系方式。
+- [x] 启用时全部在职 staff/admin 的账号 UUID 快照进入受控 manifest；2026-09-09 实际人数 36，设备类型和浏览器族随员工自主开启登记，仓库只保存人数与摘要。
 - [ ] Web Push 只对 active staff/admin 生效；学生/家长和未列员工的订阅/投递负向用例通过。
 - [ ] 通知 title/body、Push payload 和 Windows 锁屏样本均为通用内容，无 PII、业务 deep link 或动作按钮。
 - [ ] 产品负责人完成开启、拒绝、关闭、测试通知、点击、到期和错误状态的 zh/en 人工初验。
@@ -390,7 +394,7 @@ delivery: queued → sending → sent
 
 - [x] 产品负责人于 2026-09-09 明确要求现在向全部在职员工开放测试；本次授权持续有效，不要求再次提交固定措辞。
 - [ ] 运维/安全负责人确认告警值守、kill switch 操作者、测试期支持入口和停止条件。
-- [ ] 完成技术检查后，为启用时快照内全部在职员工加入 `employee_test` cohort，并按设备逐一主动开启。
+- [x] 2026-09-09 已为启用时快照内全部 36 个在职账号加入 `employee_test`；设备由员工自行开启，启用 postflight 时尚无注册设备。
 
 ## 12. 员工测试与扩围
 

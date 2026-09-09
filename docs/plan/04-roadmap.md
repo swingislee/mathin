@@ -230,7 +230,7 @@ Phase 1～5 的本机隔离 Supabase、固定开发身份、migration LF checksu
 
 `DEV-WEB-PUSH-1` 是产品负责人于 2026-09-03 选入的独立规划增量，权威范围与 Gate 见 [`employee-desktop-web-push.md`](employee-desktop-web-push.md)。目标是让主动开启该能力的 staff/admin 在 Mathin 标签页或浏览器窗口关闭、但浏览器后台 Push 仍可运行时，收到不含学生/财务等敏感内容的 Windows 系统通知；点击后必须按当前身份重新鉴权并解析既有站内通知。它复用 `domain_events → notifications → notification_deliveries → jobs`，新增通知专用 Service Worker、加密的逐设备订阅、共享电脑 8 小时租期、Web Push Worker、重试/熔断、独立告警、kill switch 和完整验证；不引入页面缓存 PWA，也不承诺浏览器进程被强制结束或系统勿扰时即时显示。
 
-当前状态为 **PUSH-P5 COMPLETE / EMPLOYEE TEST AUTHORIZED / ACTIVATION PREPARATION PENDING**。2026-09-04 的 P5 暗部署及关闭态 postflight 已完成，历史 release、ledger、备份与回滚证据保留在专题。产品负责人于 2026-09-09 明确要求直接向全部在职 staff/admin 开放测试，员工逐设备自主开启；本次授权持续有效，人数安排与受控快照以[专题授权更新](employee-desktop-web-push.md)为准。专用 Worker 隔离、即时撤销与独立 SMTP 监控已在隔离候选中实现，定向机器结果见[启用准备检查点](../evidence/r1/employee-web-push-activation-preparation-20260909.md)。生产仍保持关闭；`PUSH-G5` 的剩余技术条件及生产受控启用尚未完成。本次只修正授权事实，不关闭 G5、不改变 R1-Live Gate 2，也不把机器结果视为员工验收。
+当前状态为 **PUSH-P6 / EMPLOYEE TEST ACTIVE / PENDING USER ACCEPTANCE**。2026-09-09 已按产品负责人“启用生产”的指令发布 Windows Edge 专用能力，为当前全部 36 个在职 staff/admin 开放逐设备自主开启；专用 Worker 和独立邮件监控正常。候选、备份/迁移、生产 WNS 201、告警恢复与业务不变量见[生产启用记录](../evidence/r1/employee-web-push-production-activation-20260909.md)，权威范围见[专题](employee-desktop-web-push.md)。本次仅同步实际运行状态，不关闭完整 G5/P7、不改变 R1-Live Gate 2，也不把机器结果视为员工 Windows 验收。
 
 ## 6. 原 R1 工作重新定位
 

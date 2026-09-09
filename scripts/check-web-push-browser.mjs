@@ -22,7 +22,7 @@ async function sendDiagnostic(subscription, payload, options) {
   // 临时订阅/密钥仅通过 SSH stdin 传递；生产不保存账号、订阅或诊断凭据。
   const remote = [
     "import { createRequire } from 'node:module';",
-    "import { createWebPushAgent } from '/home/swing/services/mathin/current/scripts/lib/web-push-network.mjs';",
+    "import { createWebPushAgent } from 'file:///home/swing/services/mathin/current/scripts/lib/web-push-network.mjs';",
     "const require = createRequire('/home/swing/services/mathin/current/scripts/r1-job-worker.mjs');",
     "let input='';for await (const chunk of process.stdin) input+=chunk;",
     "const {subscription,payload,options}=JSON.parse(input);",
@@ -38,7 +38,8 @@ async function sendDiagnostic(subscription, payload, options) {
   let response;
   try { response = JSON.parse(result.stdout || "{}"); } catch { throw new Error("REMOTE_PUSH_RESPONSE_INVALID"); }
   if (result.status !== 0 || response.statusCode !== 201) {
-    throw Object.assign(new Error(response.code || "REMOTE_PUSH_DIAGNOSTIC_FAILED"), { statusCode: response.statusCode });
+    const failure = response.code || result.error?.code || result.stderr?.trim().split(/\r?\n/)[0] || "REMOTE_PUSH_DIAGNOSTIC_FAILED";
+    throw Object.assign(new Error(failure), { statusCode: response.statusCode });
   }
   return response;
 }
