@@ -17,11 +17,12 @@ const target={classroom,seat:4};
 let cleanup=async()=>{};
 beforeEach(()=>{
   vi.clearAllMocks();Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
+  vi.stubGlobal('crypto',{getRandomValues:globalThis.crypto.getRandomValues.bind(globalThis.crypto)});
   calls.preview.mockResolvedValue({ok:true,data:[{sessionId:id(8),sourceSessionId:id(9),lectureNo:1,title:'可调讲次',scheduledAt:null,sourceScheduledAt:null,version:'fresh-one',blocked:null},
     {sessionId:id(10),sourceSessionId:id(11),lectureNo:2,title:'锁定讲次',scheduledAt:null,sourceScheduledAt:null,version:'fresh-two',blocked:'SESSION_LOCKED'}]});
   calls.save.mockResolvedValue({ok:false,code:'PLACEMENT_CHANGED'});
 });
-afterEach(async()=>{await cleanup();});
+afterEach(async()=>{await cleanup();vi.unstubAllGlobals();});
 async function mount(child:ReactNode){const element=document.createElement('div');document.body.append(element);const root=createRoot(element);cleanup=async()=>{await act(async()=>root.unmount());element.remove();};const props={locale:'zh',messages:{},timeZone:'Asia/Shanghai',children:child};await act(async()=>root.render(createElement(NextIntlClientProvider,props)));}
 function dialog(withdraw=false){return createElement(EnrollmentPlacementChangeDialog,{student,target:withdraw?undefined:target,withdraw,onClose:calls.close,onSaved:calls.saved});}
 const button=(text:string)=>[...document.querySelectorAll<HTMLButtonElement>('button')].find(b=>b.textContent===text)!;

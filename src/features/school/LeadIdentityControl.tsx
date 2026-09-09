@@ -29,18 +29,12 @@ import {
   type LeadIdentitySubject,
 } from "./lead-identity-contract";
 import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
+import { newId } from "@/lib/uuid";
 
 type IdentityChoice = "" | "create" | `existing:${string}`;
 
 function existingId(choice: IdentityChoice): string | null {
   return choice.startsWith("existing:") ? choice.slice("existing:".length) : null;
-}
-
-function newIdempotencyKey(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return `lead-identity-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 export function LeadIdentityControl({ lead, onConfirmed, label }: {
@@ -81,7 +75,7 @@ export function LeadIdentityControl({ lead, onConfirmed, label }: {
     setServerRelationshipConflict(false);
     setAllowPossibleDuplicate(false);
     setAllowAdditionalRelationship(false);
-    setIdempotencyKey(newIdempotencyKey());
+    setIdempotencyKey(newId());
     setOpen(true);
   };
 

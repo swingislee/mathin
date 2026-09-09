@@ -3,6 +3,7 @@ import { useEffect,useState,useTransition } from 'react';
 import { useLocale } from 'next-intl';
 import { LoaderCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { newId } from '@/lib/uuid';
 import { Button } from '@/components/ui/button';
 import { Dialog,DialogContent,DialogDescription,DialogFooter,DialogHeader,DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -18,9 +19,9 @@ export function EnrollmentPlacementChangeDialog({student,target,withdraw=false,t
   const [selected,setSelected]=useState<string[]>([]);
   const [reason,setReason]=useState('');
   const [pending,start]=useTransition();
-  const [requestId,setRequestId]=useState(()=>crypto.randomUUID());
+  const [requestId,setRequestId]=useState(()=>newId());
   const [retry,setRetry]=useState(0);
-  const change=()=>setRequestId(crypto.randomUUID());
+  const change=()=>setRequestId(newId());
   useEffect(()=>{
     if(mode!=='temporary'||!target||!student.membershipId)return;
     let active=true;

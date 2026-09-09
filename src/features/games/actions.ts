@@ -1,4 +1,5 @@
 "use server";
+import { randomUUID } from "node:crypto";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -21,7 +22,7 @@ export async function startGame(gameId: string, difficulty: Difficulty): Promise
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "unauthenticated" };
 
-  const seed = crypto.randomUUID().replaceAll("-", "");
+  const seed = randomUUID().replaceAll("-", "");
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("game_sessions")

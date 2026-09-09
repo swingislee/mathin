@@ -7,6 +7,7 @@
 - `docs/plan/04-roadmap.md` 顶部“当前施工阶段”是唯一阶段入口；历史编号、旧正文和未勾选项不能覆盖它。
 - 开始前检查工作树。既有修改和未跟踪文件均视为用户或其他任务所有；不得覆盖、回滚、移动或顺手格式化。
 - Windows 文本默认按无 BOM UTF-8 处理；PowerShell 读取必须显式 `-Encoding UTF8`。乱码先按解码问题调查，不得据此重写文件。
+- 开发验收使用局域网 HTTP，浏览器代码及其共享模块生成 UUID 统一调用 `@/lib/uuid` 的 `newId()`；不得直接调用 `crypto.randomUUID()` 或假定安全上下文 API 可用。相关交互检查覆盖 `randomUUID` 缺失的环境；纯服务端需要原生 UUID 时从 `node:crypto` 导入。
 - `xiaomi`、`192.168.5.183`、`mathin.club` 和 `supabase.mathin.club` 都是生产。未取得本次明确授权并完成 [`r1-write-target-policy.md`](docs/runbooks/r1-write-target-policy.md) 的只读 preflight，禁止生产迁移、造数、业务写入、服务重载或重启。
 - 本地数据库写入前也要核对执行主机、实际 Supabase origin、监听进程和目标环境；容器名不能证明环境。任一项不明确即停止。
 - 正式身份、班级、课次、学生、考勤、冻结 release/snapshot 和受保护课程资源不得当作测试数据清理；删除、purge、不可逆迁移和生产高风险动作必须走对应授权与 runbook。
