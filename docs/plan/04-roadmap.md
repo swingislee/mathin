@@ -230,7 +230,7 @@ Phase 1～5 的本机隔离 Supabase、固定开发身份、migration LF checksu
 
 `DEV-WEB-PUSH-1` 是产品负责人于 2026-09-03 选入的独立规划增量，权威范围与 Gate 见 [`employee-desktop-web-push.md`](employee-desktop-web-push.md)。目标是让主动开启该能力的 staff/admin 在 Mathin 标签页或浏览器窗口关闭、但浏览器后台 Push 仍可运行时，收到不含学生/财务等敏感内容的 Windows 系统通知；点击后必须按当前身份重新鉴权并解析既有站内通知。它复用 `domain_events → notifications → notification_deliveries → jobs`，新增通知专用 Service Worker、加密的逐设备订阅、共享电脑 8 小时租期、Web Push Worker、重试/熔断、独立告警、kill switch 和完整验证；不引入页面缓存 PWA，也不承诺浏览器进程被强制结束或系统勿扰时即时显示。
 
-当前状态为 **PUSH-P5 COMPLETE / PRODUCTION DARK DEPLOYMENT VERIFIED / EMPLOYEE TEST NOT AUTHORIZED**。候选 `bea3d111…` 已于 2026-09-04 发布为 production release `20260904-012426`，previous=`4d20bc85…`；两条 additive migration 经过新鲜 PostgreSQL 写前备份、`SERIALIZABLE` rollback/零残留 rehearsal 后正式提交，ledger/head=`244 / 20260903000760_employee_web_push_dark_monitoring`。生产 postflight 为 feature=false、integration disabled/secret null、cohort/subscription/delivery/job=0，Worker unit inactive，公网/回环/Caddy 健康，业务、Storage 与错误基线不变。`PUSH-P5` 只关闭生产暗部署门；专题 `PUSH-G5 · EMPLOYEE-TEST-ENTRY` 的安全、共享电脑、重试、监控、回退、Edge/Chrome HTTPS 预生产、独立告警及首批人员/设备清单尚未全部通过，产品负责人也尚未明确确认“进入员工测试”，因此不得配置 secret、启动 Worker、启用通道/开关或写入 `employee_test` cohort。该工作项不改变 R1-Live Gate 2，站内铃铛继续作为当前唯一已启用通知入口。
+当前状态为 **PUSH-P5 COMPLETE / EMPLOYEE TEST AUTHORIZED / ACTIVATION PREPARATION PENDING**。2026-09-04 的 P5 暗部署及关闭态 postflight 已完成，历史 release、ledger、备份与回滚证据保留在专题。产品负责人于 2026-09-09 明确要求直接向全部在职 staff/admin 开放测试，员工逐设备自主开启；本次授权持续有效，人数安排与受控快照以[专题授权更新](employee-desktop-web-push.md)为准。专用 Worker 隔离、即时撤销与独立 SMTP 监控已在隔离候选中实现，定向机器结果见[启用准备检查点](../evidence/r1/employee-web-push-activation-preparation-20260909.md)。生产仍保持关闭；`PUSH-G5` 的剩余技术条件及生产受控启用尚未完成。本次只修正授权事实，不关闭 G5、不改变 R1-Live Gate 2，也不把机器结果视为员工验收。
 
 ## 6. 原 R1 工作重新定位
 

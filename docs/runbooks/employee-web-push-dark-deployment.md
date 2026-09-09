@@ -4,7 +4,7 @@
 >
 > **暗部署目标**：生产拥有 additive schema、应用 UI、通知专用 Service Worker、Worker 运行文件和聚合监控，但 `notifications.web_push=false`、`integration_channels.web_push.status=disabled`、`secret_ref=null`、rollout 空、subscription/delivery/job=0，`mathin-jobs.service` 未激活。
 >
-> **员工测试状态**：`NOT AUTHORIZED`。完成本手册只关闭 `PUSH-P5`；只有专题规划 §11 `PUSH-G5` 全部通过并获得产品负责人明确的“进入员工测试”确认后，才能设置 secret、启用 Worker/通道、加入首批员工并逐设备主动开启。
+> **员工测试状态**：`AUTHORIZED / ACTIVATION PREPARATION PENDING`。产品负责人于 2026-09-09 已明确授权直接面向全部在职员工开放，沿用该授权。生产启用仍需专题 §11 的技术检查及本手册的受控发布与 postflight；本次准备结果见[检查点](../evidence/r1/employee-web-push-activation-preparation-20260909.md)。§2～5 是已完成 P5 的历史执行配方，后续候选只执行尚未应用的增量。
 
 ## 1. 暗部署硬门
 
@@ -67,17 +67,27 @@
 - 应用异常：将 `current` 原子切回已核对的 `previous`，新增 schema 保留并 forward-fix；验证 health、登录、站内铃铛和匿名保护路由。
 - schema 异常：在无 subscription/delivery/job 的 P5 暗态优先 forward-fix。只有确认数据破坏、事故负责人选择明确恢复点并再次批准后，才使用本轮 custom dump 进入独立数据库恢复流程。
 - Service Worker：它无 `fetch` handler。应用回退后残留安装不会拦截页面请求；通道关闭且无新 Push 时保持静默，后续兼容版本负责升级或注销。
-- Worker：P5 未激活，因此无需停止生产 Worker。若后续 Gate 已启用，先停 unit，再关闭 integration/feature，保留 job/delivery 审计用于调查。
+- Worker：P5 未激活。启用后的停止顺序保持 feature flag off → integration disabled → 停止推送专用 unit；保留 job/delivery 审计用于调查。
 
 ## 7. `PUSH-G5` 后的共享电脑与员工测试 SOP
 
-以下步骤只能在 G5 全部通过并记录人工批准后执行：
+产品批准已于 2026-09-09 取得；完成 G5 技术检查后执行：
 
-1. 首批 3～5 名员工及设备只进入受控 manifest，仓库证据不保存姓名、联系方式、endpoint 或 key。优先为每位员工使用独立 Windows/Edge profile。
+1. 启用时查询 `role in ('staff','admin') AND is_active AND account_status='active'` 的全部员工，并把 UUID 快照保存到生产 owner-only manifest；仓库证据只保存人数与摘要。新增账号不自动加入本次快照。优先为每位员工使用独立 Windows/Edge profile。
 2. 配置 owner-only VAPID、订阅加密、fingerprint、origin allowlist 和 key version；先启动受监管 Worker并验证独立告警，再启用 integration/feature，最后加入 tester cohort。
 3. 员工必须在自己的会话中点击“在这台电脑开启”；系统默认共享电脑，租期 8 小时。管理员不能代替员工静默注册。
 4. 共享电脑必测：A 开启并收一条通用测试通知 → A 登出并撤销 → B 登录；B 不收到 A 的新投递，也不能解析 A 的旧 delivery。员工停用、rollout 移除、租期到期和 404/410 均须停止发送并清除密文。
 5. 观察窗口采用宽泛排期，但退出证据至少覆盖 5 个有效工作日、Edge+Chrome、一个共享电脑旅程和 50 个 device-level target；日历到期不会自动通过。
+
+### 7.1 专用 Worker 与独立邮件监控部署合同
+
+- `20260909009000_employee_web_push_activation_safety.sql` 必须先在已核验非生产目标通过行为/回滚断言，再按生产写前备份、同文件 rehearsal/零残留/formal 流程执行。它保持现有 feature、integration 和 rollout 原值。
+- immutable release 同时打包 `web-push-worker-cycle.mjs` 与 `web-push-monitor.py`。推送 unit 固定 `R1_JOB_SCOPE=web_push`，只调用 `claim_web_push_jobs`；心跳版本 `r1-7.3-web-push-scoped` 不由通用 worker 使用。激活前后核对其他 kind 的 job/effect 未被本 unit 领取或维护。
+- 应用与 worker 共用 owner-only VAPID、加密和 fingerprint 配置。`MATHIN_WEB_PUSH_PROXY` 只作用于 Push provider 请求；需要代理时先验证生产独立出口、TLS 和实际 provider 201，不把开发电脑的临时代理视作已满足长期出口。
+- `mathin-web-push-monitor.timer` 每分钟运行独立 Python monitor；通过只读 aggregate RPC 检测超过 120 秒未更新的专用 worker 心跳、provider auth/degraded、dead/failure、持续 5 分钟的超 60 秒积压。故障变化与恢复各发一次，同一故障最多每小时补报一次。
+- `.env.web-push-alerts` 权限 `0600`，保存 `MATHIN_WEB_PUSH_SMTP_HOST/PORT/USER/PASSWORD/FROM` 与受控的 `MATHIN_WEB_PUSH_ALERT_TO`；SMTP 使用 465 TLS 或 587 STARTTLS。复用现有已验证 SMTP 时只在生产内存或 owner-only 文件中转存，凭据不进入 release/Git/日志。
+- monitor 状态文件仅记录故障类别、时间和聚合量，目录 `0700`、文件 `0600`；邮件成功后才原子更新去重状态。恢复邮件不自动重启 worker、重放 job 或修改开关。
+- G5 前完成真实告警与恢复邮件演练，再安装启用 unit/timer。密钥仅在目标主机生成；各层开启前后独立核对，发现异常使用 §6 停止顺序。
 
 ## 8. 重试、监控与告警
 
@@ -97,4 +107,4 @@
 
 P5 证据记录 candidate/full commit、两条 migration hash、production current/previous、ledger、备份路径及摘要、起止时间、actor/approver、无 PII 数据汇总、失败票据和实际 postflight。只有真实生产 postflight 完成后，才能把专题状态改为 `PUSH-P5 COMPLETE / EMPLOYEE TEST NOT AUTHORIZED`。
 
-P5 不更新为 `EMPLOYEE TEST ACTIVE`。员工测试的唯一入口仍是专题 §11：所有项为 `PASS`，首批 manifest 和值守完成，产品负责人明确记录“进入员工测试”。
+P5 不更新为 `EMPLOYEE TEST ACTIVE`。员工测试入口仍是专题 §11：技术项通过、全部在职员工 manifest 与值守完成，并执行生产启用 postflight；产品批准沿用 2026-09-09 的全员授权。

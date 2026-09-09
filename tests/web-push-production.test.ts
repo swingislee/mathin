@@ -149,13 +149,4 @@ describe("employee desktop Web Push production foundation", () => {
     expect(read("src/features/school/PlatformOperationsPanel.tsx")).toContain("snapshot.webPush ??");
   });
 
-  it("records broad employee-test windows and makes P5 the active construction target", () => {
-    const plan = read("docs/plan/employee-desktop-web-push.md");
-    const roadmap = read("docs/plan/04-roadmap.md");
-    expect(plan).toContain("当前施工目标");
-    expect(plan).toContain("连续推进 `PUSH-P0`～`PUSH-P5`");
-    expect(plan).toContain("周级或月级意向窗口");
-    expect(plan).not.toContain("T0 + 7～10 个工作日");
-    expect(roadmap).toContain("LOCAL DARK RUNTIME VERIFIED / PUSH-P5 PENDING");
-  });
 });

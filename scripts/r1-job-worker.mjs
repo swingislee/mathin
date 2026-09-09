@@ -15,8 +15,8 @@ import {
   classifyWebPushFailure,
   webPushTtlSeconds,
 } from "./lib/web-push-delivery.mjs";
+import { jobWorkerScope, runWebPushCycle } from "./lib/web-push-worker-cycle.mjs";
 
-const VERSION = "r1-7.2-web-push";
 const MAX_BATCH = 100;
 
 async function loadLocalEnv() {
@@ -47,6 +47,8 @@ const batchSize = Math.max(1, Math.min(MAX_BATCH, Number(process.env.R1_JOB_BATC
 const leaseSeconds = Math.max(30, Math.min(3600, Number(process.env.R1_JOB_LEASE_SECONDS || 300)));
 const pollMs = Math.max(250, Math.min(60000, Number(process.env.R1_JOB_POLL_MS || 2000)));
 const once = process.env.R1_JOB_ONCE === "1";
+const scope = jobWorkerScope(process.env.R1_JOB_SCOPE || "all");
+const VERSION = scope === "web_push" ? "r1-7.3-web-push-scoped" : "r1-7.3";
 const admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 let webPushModulePromise;
 
@@ -262,6 +264,19 @@ async function sendWebPush(job) {
     return suppressWebPush(job, delivery, "SUBSCRIPTION_INACTIVE", subscription);
   }
 
+  const { data: eligible, error: eligibilityError } = await admin.rpc("is_web_push_recipient_eligible", {
+    p_recipient_id: delivery.recipient_id,
+  });
+  if (eligibilityError) throw new Error("WEB_PUSH_ELIGIBILITY_CHECK_FAILED");
+  if (eligible !== true) {
+    const { error: revokeError } = await admin.from("web_push_subscriptions").update({
+      status: "revoked", encrypted_payload: null, revoked_at: new Date().toISOString(),
+      revoked_reason: "recipient_ineligible", updated_at: new Date().toISOString(),
+    }).eq("id", subscription.id).eq("status", "active");
+    if (revokeError) throw new Error("WEB_PUSH_ELIGIBILITY_REVOKE_FAILED");
+    return suppressWebPush(job, delivery, "RECIPIENT_INELIGIBLE", subscription);
+  }
+
   const { data: enabled, error: enabledError } = await admin.rpc("notification_channel_enabled", { p_channel: "web_push" });
   if (enabledError) throw new Error(`WEB_PUSH_CHANNEL_CHECK:${enabledError.message}`);
   if (enabled !== true) return suppressWebPush(job, delivery, "CHANNEL_DISABLED", subscription);
@@ -333,6 +348,7 @@ async function sendWebPush(job) {
       urgency: "normal",
       timeout: 10000,
       vapidDetails: { subject, publicKey, privateKey },
+      ...(process.env.MATHIN_WEB_PUSH_PROXY ? { proxy: process.env.MATHIN_WEB_PUSH_PROXY } : {}),
     });
   } catch (error) {
     if (error?.configurationFailure || error?.code === "WEB_PUSH_PROVIDER_UNAVAILABLE") {
@@ -424,7 +440,9 @@ async function settle(job) {
     process.stdout.write(`${JSON.stringify({ event: "job.succeeded", jobId: job.job_id, kind: job.kind })}\n`);
   } catch (error) {
     const code = String(error?.code || String(error?.message || "JOB_FAILED").split(":", 1)[0]).slice(0, 100);
-    const message = String(error?.message || "Job failed").slice(0, 4000);
+    const message = job.kind === "notification.web_push"
+      ? "Web Push processing failed; inspect the sanitized error code."
+      : String(error?.message || "Job failed").slice(0, 4000);
     const failureRpc = job.kind === "notification.web_push" ? "fail_web_push_job" : "fail_job";
     const failureArgs = {
       p_job_id: job.job_id,
@@ -450,6 +468,9 @@ async function settle(job) {
 }
 
 async function cycle() {
+  if (scope === "web_push") {
+    return runWebPushCycle({ admin, workerId, version: VERSION, batchSize, leaseSeconds }, settle);
+  }
   const { error: heartbeatError } = await admin.rpc("heartbeat_job_worker", { p_worker_id: workerId, p_version: VERSION });
   if (heartbeatError) throw new Error(`WORKER_HEARTBEAT:${heartbeatError.message}`);
   const { error: cleanupError } = await admin.rpc("enqueue_file_cleanup_jobs", { p_limit: batchSize });
@@ -466,7 +487,7 @@ async function cycle() {
   return jobs?.length || 0;
 }
 
-process.stdout.write(`${JSON.stringify({ event: "worker.started", workerId, version: VERSION, once })}\n`);
+process.stdout.write(`${JSON.stringify({ event: "worker.started", workerId, version: VERSION, scope, once })}\n`);
 do {
   await cycle();
   if (!once) await new Promise((resolve) => setTimeout(resolve, pollMs));

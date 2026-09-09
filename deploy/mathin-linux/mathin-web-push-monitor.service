@@ -1,0 +1,20 @@
+[Unit]
+Description=Mathin Web Push independent email monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/services/mathin/current
+EnvironmentFile=%h/services/mathin/config/.env.production.local
+EnvironmentFile=%h/services/mathin/config/.env.web-push-alerts
+Environment=MATHIN_WEB_PUSH_MONITOR_STATE=%h/.local/state/mathin-web-push-monitor/state.json
+ExecStart=/usr/bin/python3 %h/services/mathin/current/scripts/ops/web-push-monitor.py
+StateDirectory=mathin-web-push-monitor
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+TimeoutStartSec=50

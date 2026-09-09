@@ -4,15 +4,17 @@
 >
 > **工作项**：`DEV-WEB-PUSH-1`
 >
-> **当前状态**：`PUSH-P5 COMPLETE / PRODUCTION DARK DEPLOYMENT VERIFIED / EMPLOYEE TEST NOT AUTHORIZED`
+> **当前状态**：`PUSH-P5 COMPLETE / EMPLOYEE TEST AUTHORIZED / ACTIVATION PREPARATION PENDING`。生产仍为关闭态。
 >
-> **当前施工目标**：`PUSH-P5` 已以生产三层开关全部关闭、无订阅、无 Web Push 投递的暗部署完成。下一步只推进 `PUSH-G5` 员工测试入口条件：补齐安全、共享电脑、真实 Edge/Chrome、生产 Push 网络、独立告警和首批人员/设备范围；在 Gate 全部通过并再次获得明确人工确认前，不配置 secret、不启动 Worker、不启用通道/开关、不写 tester cohort。
+> **当前施工目标**：在 2026-09-09 已取得的全体在职员工测试授权内，补齐专用 Worker 隔离、安全与共享电脑验证、生产 Push 网络、独立邮件告警和回退检查，再执行受控启用。沿用本次授权；待解决的技术条件不改写为“未获授权”。
 >
-> **员工测试入口**：只有本文 §11 的 `PUSH-G5 · EMPLOYEE-TEST-ENTRY` 全部为 `PASS`，产品负责人登记首批员工与设备范围并明确确认“进入员工测试”后，状态才可改为 `EMPLOYEE TEST ACTIVE`。开发完成、机器检查通过、生产暗部署或通知在单台开发机弹出，均不能提前进入员工测试。
+> **员工测试入口**：本文 §11 的 `PUSH-G5 · EMPLOYEE-TEST-ENTRY` 技术条件通过、启用时在职员工快照入受控 manifest，且生产启用 postflight 完成后，状态改为 `EMPLOYEE TEST ACTIVE`。产品授权已取得；机器通过、生产暗部署与员工实际收到 Windows 通知分别记录。
 >
 > **阶段关系**：本工作项属于 doc 04 §5.2 的独立开发轨，不改变 `R1-Live-2` 当前施工阶段，也不替代 Gate 2 的正式教师点名、持久再读和权限对照。功能在生产默认关闭；未通过本专题 Gate 时，既有站内铃铛继续作为唯一已承诺的通知入口。
 >
-> **核对日期**：2026-09-04；生产暗部署依据候选 `bea3d111…`、release `20260904-012426`、migration ledger `244 / 20260903000760_employee_web_push_dark_monitoring`、写前备份、回滚演练和独立暗态 postflight；员工测试条件仍依据本专题 §11。
+> **核对日期**：2026-09-09；P5 历史证据保持原记录。最新授权、隔离候选与定向验证见[启用准备检查点](../evidence/r1/employee-web-push-activation-preparation-20260909.md)；本次未执行生产启用。
+
+> **2026-09-09 产品授权更新**：产品负责人明确要求直接向当前全部在职员工（含管理员，约十余个账号）开放测试，由员工逐设备自主开启；本次覆盖原 3～5 人与 25%→50%→100% 的人数安排。执行名单取启用时 `role in ('staff','admin') AND is_active AND account_status='active'` 的受控快照，新增账号不在本次快照内。告警出口确定为受控接收邮箱，既有 SMTP 已验证且负责人确认收到验证邮件。授权已取得并持续有效；实际启用仍须完成尚缺的投递安全、队列隔离、真实浏览器和告警恢复验证。授权记录不代表 G5 已通过或生产已启用。
 
 ## 1. 目标、首发范围与产品边界
 
@@ -308,8 +310,8 @@ delivery: queued → sending → sent
 | `PUSH-P4` 预生产完整验证 | 固定非生产目标、真实 Edge/Chrome Push endpoint、共享电脑、网络/防火墙、回退演练和完整 E2/E3 证据 | §13 所有 employee-test 前置项通过，无 Sev0/Sev1/未接受 Sev2 | `NOT AUTHORIZED` |
 | `PUSH-P5` 生产暗部署 | schema/app/Worker 发布，`notifications.web_push=false`、integration disabled、cohort 空；生产 postflight | 备份/current/previous/ledger、Worker 停用态、旧站内通知、业务/Storage/错误不变量通过 | `NOT AUTHORIZED` |
 | `PUSH-G5` 员工测试入口 Gate | §11 checklist、首批人员/设备 manifest、明确人工批准 | 全项 `PASS`，产品负责人明确确认“进入员工测试” | 改为 `AUTHORIZED` |
-| `PUSH-P6` 小范围员工测试 | 3～5 名员工、至少 1 个共享电脑场景、5 个工作日、≥50 个 delivery target | §12 退出条件通过；失败则 kill switch 并回到对应阶段 | `EMPLOYEE TEST ACTIVE` |
-| `PUSH-P7` 分批扩围与生产验收 | 25%→50%→100% 合格员工逐批 opt-in；14 天/≥100 target 观察 | §8 SLO、REL-03、共享设备、安全与支持记录通过，产品/运维/安全签收 | `PRODUCTION ACCEPTED` |
+| `PUSH-P6` 员工自主测试 | 当前全部在职 staff/admin 获得开启资格；至少 1 个共享电脑场景、5 个有效工作日、≥50 个 delivery target | §12 退出条件通过；失败则 kill switch 并回到对应阶段 | `EMPLOYEE TEST ACTIVE` |
+| `PUSH-P7` 生产验收 | 已授权全体员工按设备 opt-in；14 天/≥100 target 观察 | §8 SLO、REL-03、共享设备、安全与支持记录通过，产品/运维/安全签收 | `PRODUCTION ACCEPTED` |
 
 本轮不设置固定完成日期，也不把测试起止日作为代码施工前置。`PUSH-P0`～`PUSH-P5` 按可验证增量连续推进；遇到不影响暗部署 fail-closed 状态的问题时登记责任人、影响阶段和验证办法后继续。完成 `PUSH-P5` 只代表生产中已有关闭态代码与可回退底座，仍需 `PUSH-G5` 条件和人工确认才能确定员工测试窗口。
 
@@ -325,8 +327,8 @@ delivery: queued → sending → sent
 
 | ID | 当前状态 | 分级 | 暂定合同与继续方式 | 关闭条件 |
 | --- | --- | --- | --- | --- |
-| `PUSH-ISSUE-01` 员工测试窗口 | `OPEN` | `G5-BLOCK / DEV-CONTINUE` | 只登记周级或月级意向窗口；代码、预生产和 P5 不绑定具体日期 | `PUSH-G5` 前登记 3～5 名员工、设备范围和实际启动窗口 |
-| `PUSH-ISSUE-02` 外部告警出口 | `OPEN` | `G5-BLOCK / DEV-CONTINUE` | 先实现告警事件、阈值、Dashboard 和可替换 adapter；P5 保持 Web Push handler disabled | 选定独立出口并完成一次告警—确认—恢复演练 |
+| `PUSH-ISSUE-01` 员工测试范围 | `AUTHORIZED / SNAPSHOT PENDING` | `G5-BLOCK / DEV-CONTINUE` | 已授权向当前全部在职 staff/admin 开放，员工逐设备 opt-in；不再采用人数梯度 | 启用时保存全部在职员工受控快照与启动时间 |
+| `PUSH-ISSUE-02` 外部告警出口 | `IMPLEMENTED / DRILL PENDING` | `G5-BLOCK / DEV-CONTINUE` | 独立 SMTP 已选定并经负责人确认收件；聚合 monitor 与去重/恢复定向测试通过 | 在目标运行环境完成 Worker 失联和 provider auth 错误的告警—确认—恢复演练 |
 | `PUSH-ISSUE-03` 保留期 | `OPEN` | `G5-BLOCK / DEV-CONTINUE` | 以可配置、默认不超过 90 天实现；撤销后立即清密文 | 隐私/运维负责人签收最终天数并验证清理 job |
 | `PUSH-ISSUE-04` Push 服务与企业网络 | `OPEN` | `G5-BLOCK / DEV-CONTINUE` | origin allowlist 外置配置、默认空且 fail-closed；本地/预生产使用固定非生产目标 | 登记实际 endpoint origin，完成网络 preflight 与 Edge/Chrome 真机验证 |
 | `PUSH-ISSUE-05` 首批通知文案 | `OPEN` | `FOLLOW-UP` | 代码只接受无变量的 zh/en 通用模板，不等待最终润色 | 产品负责人签收锁屏样本与双语文案 |
@@ -348,11 +350,11 @@ delivery: queued → sending → sent
 
 ## 11. `PUSH-G5 · EMPLOYEE-TEST-ENTRY`
 
-以下每项只能使用 `PASS / BLOCKED / UNKNOWN / NOT REQUIRED`。存在任一 `BLOCKED` 或 `UNKNOWN` 时，状态保持 `EMPLOYEE TEST NOT AUTHORIZED`。
+以下每项使用 `PASS / BLOCKED / UNKNOWN / NOT REQUIRED`。存在技术 `BLOCKED` 或 `UNKNOWN` 时，生产保持关闭态，状态写为 `EMPLOYEE TEST AUTHORIZED / ACTIVATION PREPARATION PENDING`；产品授权沿用 2026-09-09 记录。
 
 ### 11.1 产品与范围
 
-- [ ] 首批 3～5 名员工、账号 UUID、设备类型、浏览器族和周级/月级意向窗口进入受控 manifest；实际开始时间可以在 Gate 通过后确定，仓库证据不保存姓名或联系方式。
+- [ ] 启用时全部在职 staff/admin 的账号 UUID 快照进入受控 manifest；设备类型和浏览器族随员工自主开启登记，仓库证据只保存人数与摘要，不保存姓名或联系方式。
 - [ ] Web Push 只对 active staff/admin 生效；学生/家长和未列员工的订阅/投递负向用例通过。
 - [ ] 通知 title/body、Push payload 和 Windows 锁屏样本均为通用内容，无 PII、业务 deep link 或动作按钮。
 - [ ] 产品负责人完成开启、拒绝、关闭、测试通知、点击、到期和错误状态的 zh/en 人工初验。
@@ -384,15 +386,15 @@ delivery: queued → sending → sent
 
 ### 11.5 人工授权
 
-- [ ] 产品负责人核对本 Gate 证据后明确记录“进入员工测试”。
+- [x] 产品负责人于 2026-09-09 明确要求现在向全部在职员工开放测试；本次授权持续有效，不要求再次提交固定措辞。
 - [ ] 运维/安全负责人确认告警值守、kill switch 操作者、测试期支持入口和停止条件。
-- [ ] 只有完成上述确认后，才为 manifest 中的员工加入 `employee_test` cohort，并按设备逐一主动开启。
+- [ ] 完成技术检查后，为启用时快照内全部在职员工加入 `employee_test` cohort，并按设备逐一主动开启。
 
 ## 12. 员工测试与扩围
 
 ### 12.1 首批员工测试
 
-员工测试采用宽泛观察窗口，不预先锁死具体日期；实际开始由 `PUSH-G5` 人工确认触发。退出证据至少覆盖一个完整工作周中的 5 个有效工作日、3～5 名员工、Edge 与 Chrome、至少 1 次共享电脑账号切换和至少 50 个 device-level delivery；节假日、员工缺席或样本不足时顺延，不因日历到期自动通过。可以使用明确标记的通用测试通知补足边界验证；不得制造学生、班级、财务或其他虚假正式业务记录。
+员工测试采用宽泛观察窗口，不预先锁死具体日期；本次全体在职员工的产品授权已于 2026-09-09 取得，实际开始由 `PUSH-G5` 技术验证完成与生产 postflight 决定。退出证据至少覆盖一个完整工作周中的 5 个有效工作日、实际参与员工的 Edge 与 Chrome、至少 1 次共享电脑账号切换和至少 50 个 device-level delivery；节假日、员工缺席或样本不足时顺延，不因日历到期自动通过。可以使用明确标记的通用测试通知补足边界验证；不得制造学生、班级、财务或其他虚假正式业务记录。
 
 每台设备至少完成：
 
@@ -424,7 +426,7 @@ delivery: queued → sending → sent
 - 同一设备重复可见通知=0；正常登出/账号切换后的错误接收=0。
 - 产品、运维、安全负责人分别签收体验、值守/恢复和安全边界。
 
-通过后按 25%→50%→100% 合格员工逐批扩围，每批至少观察 1 个工作日。任一批次未达到 §8 门槛即停止扩围并回到上一 cohort。Production 1.0 的 M4 仍需 doc 25 的 14 天 RC、REL-03、完整恢复与发布审批；首批员工测试通过不能替代这些门。
+按 2026-09-09 产品授权，本次直接向快照中的全部在职员工提供开启资格，每人逐设备自主开启。未达到 §8 门槛时暂停推送并处理故障，恢复沿用本次已批准范围。Production 1.0 的 M4 仍需 doc 25 的 14 天 RC、REL-03、完整恢复与发布审批；员工测试通过不能替代这些门。
 
 ## 13. 完整验证矩阵
 

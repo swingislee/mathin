@@ -108,6 +108,9 @@ fi
 mkdir -p "$release_tmp/scripts/lib" "$release_tmp/src/features/events"
 cp -a "$source_root/scripts/r1-job-worker.mjs" "$release_tmp/scripts/r1-job-worker.mjs"
 cp -a "$source_root/scripts/lib/web-push-delivery.mjs" "$release_tmp/scripts/lib/web-push-delivery.mjs"
+cp -a "$source_root/scripts/lib/web-push-worker-cycle.mjs" "$release_tmp/scripts/lib/web-push-worker-cycle.mjs"
+mkdir -p "$release_tmp/scripts/ops"
+cp -a "$source_root/scripts/ops/web-push-monitor.py" "$release_tmp/scripts/ops/web-push-monitor.py"
 cp -a "$source_root/src/features/events/web-push-runtime.mjs" "$release_tmp/src/features/events/web-push-runtime.mjs"
 
 copy_worker_package() {
