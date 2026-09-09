@@ -60,6 +60,7 @@ it('uses one gutter control outside the table and inserts at the hovered boundar
   expect(element.querySelectorAll('[data-support-insertion-target]')).toHaveLength(1);
   await act(async()=>gutter.dispatchEvent(new MouseEvent('pointerout',{bubbles:true,relatedTarget:document.body})));
   expect(plus.classList.contains('opacity-0')).toBe(true);
+  expect(plus.classList.contains('transition-none')).toBe(true);
   await act(async()=>gutter.dispatchEvent(new MouseEvent('pointermove',{bubbles:true,clientX:28,clientY:180})));
   await act(async()=>plus.click());
   expect(element.querySelector('[data-support-insertion="after"]')?.nextElementSibling?.hasAttribute('data-support-entry-summary')).toBe(true);
@@ -101,6 +102,21 @@ it('automatically matches the entered name and phone and explicitly reuses the s
   expect(document.querySelector<HTMLInputElement>('input[aria-label="学生姓名"]')?.value).toBe('Known child');
   await act(async()=>button('保存').click());
   expect(calls.add.mock.calls[0][1]).toMatchObject({newPerson:null,subject:{studentId:id,leadId:null,version:'version'}});
+});
+it('waits for the ninth phone digit and clears matches when the number becomes incomplete',async()=>{
+  vi.useFakeTimers();
+  await table(); await fill('学生姓名','Known'); await fill('联系电话','60000000');
+  await act(async()=>vi.advanceTimersByTimeAsync(260));
+  expect(calls.search).not.toHaveBeenCalled();
+  expect(document.querySelector('[data-support-candidates]')?.textContent).toContain('请补完电话号码后搜索');
+  await fill('联系电话','600000009');
+  await act(async()=>vi.advanceTimersByTimeAsync(260));
+  expect(calls.search).toHaveBeenCalledWith('600000009');
+  calls.search.mockClear();
+  await fill('联系电话','60000000');
+  await act(async()=>vi.advanceTimersByTimeAsync(260));
+  expect(calls.search).not.toHaveBeenCalled();
+  expect(document.querySelectorAll('[data-support-candidates] li')).toHaveLength(0);
 });
 it('keeps the chosen class and seat and requires a confirmed student for quick placement',async()=>{
   calls.add.mockResolvedValue({ok:false,code:'SEAT_OCCUPIED'});

@@ -11,7 +11,7 @@ export interface PlacementRosterRow {
   classroom: PlacementClassroom | null; classrooms: PlacementClassroom[]; students: PlacementStudent[];
 }
 export const PLACEMENT_TABLE_COLUMNS = {
-  grade: ["grade"], term: ["term"], course: ["course"], classroom: ["classroom", "classText"],
+  grade: ["grade"], term: ["term"], course: ["course"], difficulty: ["difficulty"], classroom: ["classroom", "classText"],
   teacher: ["teacher", "teacherText"], time: ["weekday", "startTime", "endTime", "scheduleText"], health: ["student", "phone", "health"],
 } as const;
 type Translate = (key: string, values?: Record<string, string | number>) => string;
@@ -31,6 +31,7 @@ export function placementTableFields(board: EnrollmentPlacementBoard, locale: st
     : row.sourceEnrollments?.length ? row.sourceEnrollments.map(fact => ({ ...row, sourceEnrollments: [fact] })) : [row] };
   const terms = new Map(board.options.terms.map(row => [row.id, row.name]));
   const courses = new Map(board.options.courses.map(row => [row.id, row.title]));
+  const difficulties = new Map(board.options.courses.map(row => [row.id, row.classType]));
   const sessionParts = (row: PlacementRosterRow, end = false) => {
     const session = row.classroom?.sessions[0];
     return session ? zonedDateParts(new Date(Date.parse(session.at) + (end ? session.duration * 60_000 : 0)), timeZone) : null;
@@ -49,6 +50,7 @@ export function placementTableFields(board: EnrollmentPlacementBoard, locale: st
     term: { kind: "enum", label: t("term"), values: row => terms.has(row.termId) ? option(row.termId, terms.get(row.termId)) : [], sortValue: row => terms.get(row.termId) },
     course: { kind: "enum", label: m.course, related, values: row => [...new Set(row.classroom ? [row.classroom.courseId] : [...row.classrooms.map(item => item.courseId), ...row.students.map(item => item.courseId)])].flatMap(id => option(id, courses.get(id))), sortValue: row => courses.get(row.classroom?.courseId ?? "") },
     classroom: { kind: "enum", label: t("classroom"), related, values: row => classes(row).flatMap(item => option(item.id, item.name)), sortValue: row => row.classroom?.name },
+    difficulty: { kind: "enum", label: locale === "en" ? "Level" : "难度", related, values: row => classes(row).flatMap(item => option(difficulties.get(item.courseId))), sortValue: row => difficulties.get(row.classroom?.courseId ?? "") },
     classText: { kind: "text", label: m.sourceText, value: row => row.historical ? [row.historical.period_label, row.historical.class_label, row.historical.room_label].join(" ") : "", sortable: false },
     teacher: { kind: "enum", label: m.teacher, related, values: row => classes(row).flatMap(item => (item.teachers ?? []).flatMap(person => option(person.id, person.name))), sortValue: row => row.classroom?.teacherNames },
     teacherText: { kind: "text", label: m.sourceText, value: row => row.historical?.teacher_label ?? "", sortable: false },
