@@ -13,8 +13,9 @@ import { supportError, supportMessages,
   type SupportCandidate, type SupportWork, type SupportWorkspace } from './school-support-contract';
 
 export type SupportOptions = Extract<Awaited<ReturnType<typeof getSupportOptionsAction>>, {ok:true}>['data'];
-export function SupportSubjectSearch({ locale, onSelect, studentsOnly=false, disabled=false, queries, phoneQueries=[] }: {
+export function SupportSubjectSearch({ locale, onSelect, studentsOnly=false, disabled=false, queries, phoneQueries=[], onFamilySelect, familyOnly=false, excludeStudentId }: {
   locale: string; onSelect:(candidate:SupportCandidate)=>void; studentsOnly?:boolean; disabled?:boolean; queries?:string[]; phoneQueries?:string[];
+  onFamilySelect?:(candidate:SupportCandidate)=>void; familyOnly?:boolean; excludeStudentId?:string|null;
 }) {
   const m=supportMessages(locale), [query,setQuery]=useState('');
   const isPhone = !queries && /^[+\d\s()-]+$/.test(query.trim());
@@ -31,29 +32,35 @@ export function SupportSubjectSearch({ locale, onSelect, studentsOnly=false, dis
       void Promise.all(searches.map(value=>searchSupportSubjectsAction(value))).then(results=>{
         if(!active)return;
         const unique=new Map<string,SupportCandidate>();let error='';
-        for(const result of results){if(result.ok){for(const item of result.data)unique.set(item.studentId??item.leadId!,item);}else error=supportError(result.code,locale);}
+        for(const result of results){if(result.ok){for(const item of result.data){
+          const key=item.studentId??item.leadId!,previous=unique.get(key);
+          unique.set(key,{...item,phoneMatch:item.phoneMatch||Boolean(previous?.phoneMatch),nameMatch:item.nameMatch||Boolean(previous?.nameMatch)});
+        }}else error=supportError(result.code,locale);}
         setResult({key:queryKey,items:[...unique.values()],error});
       }).catch(()=>{if(active)setResult({key:queryKey,items:[],error:supportError('',locale)});});
     },250);
     return ()=>{active=false;clearTimeout(timer);};
   },[queryKey,locale]);
   const loading=result.key!==queryKey&&queryKey!=='[]';
-  const items=result.key===queryKey?result.items.filter(item=>!studentsOnly||item.studentId):[];
+  const items=result.key===queryKey?result.items.filter(item=>(!studentsOnly||item.studentId)
+    && (!excludeStudentId||item.studentId!==excludeStudentId) && (!familyOnly||item.studentId&&item.phoneMatch)):[];
   return <div className="space-y-2" data-support-candidates>
-    {queries? <p className="font-medium">{locale==='en'?'Possible student matches':'可能匹配的学生'}</p>
+    {queries? <p className="font-medium">{familyOnly?(locale==='en'?'Other students sharing this phone':'使用同一电话的其他学生'):locale==='en'?'Possible student matches':'可能匹配的学生'}</p>
       :<Label className="flex items-center gap-2"><Search className="size-4"/><Input autoFocus value={query} maxLength={100} disabled={disabled} placeholder={m.search} aria-label={m.search} onChange={e=>setQuery(e.target.value)}/></Label>}
     <p className="text-xs text-muted" role={incompletePhone?'status':undefined}>{incompletePhone
       ? (locale==='en'?'Complete the phone number to search; matching starts at 9 digits.':'请补完电话号码后搜索，输入到第 9 位时开始匹配。')
+      : familyOnly?(locale==='en'?'Choose another child to review a family link.':'如为同一家庭的另一名孩子，可选择建立家庭关联。')
       : queries?(locale==='en'?'Enter a name, phone, parent or WeChat, then select the matching profile.':'填写姓名、电话、家长或微信后，在这里核对并选择已有档案。'):m.searchFirst}</p>
     {loading?<p role="status" className="text-xs text-muted">{m.loading}</p>:null}
     {result.key===queryKey&&result.error?<p role="alert" className="text-xs text-rose">{result.error}</p>:null}
-    {queries&&queryKey!=='[]'&&!loading&&!result.error&&!items.length?<p className="text-xs text-muted">{locale==='en'?'No matching profiles. Continue with the details you have.':'暂未找到匹配档案，可继续填写现有资料。'}</p>:null}
-    <ul className="max-h-56 divide-y divide-line overflow-y-auto rounded-md border-line">{items.map(item=><li key={item.studentId??item.leadId}><Button
+    {queries&&!familyOnly&&queryKey!=='[]'&&!loading&&!result.error&&!items.length?<p className="text-xs text-muted">{locale==='en'?'No matching profiles. Continue with the details you have.':'暂未找到匹配档案，可继续填写现有资料。'}</p>:null}
+    <ul className="max-h-56 divide-y divide-line overflow-y-auto rounded-md border-line">{items.map(item=><li key={item.studentId??item.leadId} className="flex items-center gap-2"><Button
       type="button" variant="ghost" className="h-auto w-full justify-start whitespace-normal px-2 py-2 text-left"
-      disabled={disabled||!item.canWrite} onClick={()=>onSelect(item)}>
+      disabled={disabled||!item.canWrite} onClick={()=>familyOnly?onFamilySelect?.(item):onSelect(item)}>
       <span className="min-w-0"><span className="block font-medium">{item.name||m.unknown} <span className="text-xs font-normal text-muted">{item.phone}</span></span>
         <span className="block text-xs text-muted">{[item.grade?m.grade+' '+item.grade:m.unknown,item.parentName,item.school,item.ownerName].filter(Boolean).join(' · ')}</span></span>
-    </Button></li>)}</ul>
+    </Button>{onFamilySelect&&item.studentId&&item.phoneMatch?<Button type="button" variant="secondary" size="sm" className="shrink-0 text-xs" disabled={disabled||!item.canWrite}
+      onClick={()=>onFamilySelect(item)}>{locale==='en'?'Link family':'关联家庭'}</Button>:null}</li>)}</ul>
   </div>;
 }
 

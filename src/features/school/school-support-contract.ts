@@ -19,6 +19,16 @@ export const supportWorkSchema = z.object({
   courseId: id.optional(), termId: id.optional(), cycleId: id.optional(), closed: z.boolean().optional(),
 }).strict();
 export type SupportWork = z.infer<typeof supportWorkSchema>;
+export const supportProfileValuesSchema = z.object({
+  name: z.string().max(100), grade: z.number().int().min(1).max(12).nullable(), phone: z.string().max(40),
+  parentPhone: z.string().max(40).optional(), parentName: z.string().max(100).optional(), school: z.string().max(100).optional(),
+  wechat: z.string().max(80).optional(), remark: z.string().max(2000),
+}).strict();
+export const supportFamilyPreviewSchema = z.object({
+  otherStudentId: databaseUuid, otherName: z.string(), otherPhone: z.string(), otherVersion: z.string(), version: z.string(),
+  familyId: id, familyName: z.string(), alreadyLinked: z.boolean(), blocker: z.enum(['FAMILY_REVIEW_REQUIRED']).nullable(),
+});
+export type SupportFamilyPreview = z.infer<typeof supportFamilyPreviewSchema>;
 export const supportEntrySchema = z.object({
   workspace: z.enum(SUPPORT_WORKSPACES), subject: supportSubjectSchema.nullable(),
   newPerson: z.object({ name: z.string().trim().max(100), phone: z.string().trim().max(40), grade: z.number().int().min(1).max(12).nullable(),
@@ -26,7 +36,10 @@ export const supportEntrySchema = z.object({
     school: z.string().trim().max(100).optional(), wechat: z.string().trim().max(80).optional(), remark: z.string().max(2000).optional(),
     createStudent: z.boolean(), identityPending: z.boolean() }).strict().nullable(),
   work: supportWorkSchema, acknowledgeDuplicate: z.boolean(),
+  profileEdit: z.object({ version: z.string().min(1).max(60), values: supportProfileValuesSchema }).strict().nullable().optional(),
+  familyLink: z.object({ otherStudentId: databaseUuid, otherVersion: z.string().min(1).max(60), version: z.string().min(1).max(60), confirmed: z.boolean() }).strict().nullable().optional(),
 }).strict().refine(value => Boolean(value.subject) !== Boolean(value.newPerson))
+  .refine(value => !value.profileEdit || Boolean(value.subject))
   .refine(value => !value.newPerson || Boolean(value.newPerson.name || value.newPerson.phone))
   .refine(value => !value.newPerson?.createStudent || Boolean(value.newPerson.name && !value.newPerson.identityPending))
   .refine(value => !value.work.classroomId || Boolean(value.workspace === 'enrollments' && value.work.seat && (value.subject?.studentId || value.newPerson?.createStudent)));
@@ -39,13 +52,8 @@ export const supportItemSchema = z.object({
   identityPending: z.boolean(), canWrite: z.boolean(), courseTitle: z.string(), termName: z.string(),
 });
 export type SupportItem = z.infer<typeof supportItemSchema>;
-export const supportProfileValuesSchema = z.object({
-  name: z.string().max(100), grade: z.number().int().min(1).max(12).nullable(), phone: z.string().max(40),
-  parentPhone: z.string().max(40).optional(), parentName: z.string().max(100).optional(), school: z.string().max(100).optional(),
-  wechat: z.string().max(80).optional(), remark: z.string().max(2000),
-}).strict();
 export const supportProfileSchema = z.object({ studentId: id, leadId: id, version: z.string(), values: supportProfileValuesSchema,
-  canEdit: z.boolean(), identityPending: z.boolean(), changes: z.array(z.object({ id: databaseUuid,
+  canEdit: z.boolean(), canResolveIdentity: z.boolean().optional(), identityPending: z.boolean(), changes: z.array(z.object({ id: databaseUuid,
     before: supportProfileValuesSchema, after: supportProfileValuesSchema, recordedAt: z.string(), recordedBy: z.string() })) });
 export type SupportProfile = z.infer<typeof supportProfileSchema>;
 export const SUPPORT_REFRESH_EVENT = 'mathin:school-support-refresh';
@@ -96,6 +104,9 @@ export function supportMessages(locale: string) {
 
 export function supportError(code: string, locale: string) {
   const en = locale === 'en';
+  if (code === 'FAMILY_REVIEW_REQUIRED') return en ? 'These students have different family records. Review those families before linking.' : '两名学生已有不同的家庭档案，请先核对原家庭关系。';
+  if (code === 'FAMILY_PHONE_MISMATCH') return en ? 'Their contact numbers differ. Check the phone and parent phone before linking.' : '两名学生当前没有相同的联系电话，请核对联系电话与家长电话后关联。';
+  if (code === 'FAMILY_CHANGED') return en ? 'The other profile or family changed. Select it again to review the latest details.' : '对方档案或家庭关系已更新，请重新选择并核对最新资料。';
   if (['SEAT_OCCUPIED','CLASS_FULL','INVALID_SEAT','ALREADY_ENROLLED'].includes(code)) return en ? 'The seat or roster changed. Close this draft and select an available seat.' : '座位或花名册已更新，请核对当前空位后继续补入。';
   if (['PROFILE_CONFLICT','SUBJECT_CHANGED','WORK_ITEM_CONFLICT'].includes(code)) return en ? 'Details changed. Reload and check your draft before saving.' : '资料已被更新，请重新读取并核对草稿后保存。';
   if (['POSSIBLE_DUPLICATE','CONTACT_CONFLICT','ASSOCIATION_CONFLICT'].includes(code)) return en ? 'Matching records exist. Search and confirm the correct child.' : '存在匹配记录，请先检索并核对孩子身份。';

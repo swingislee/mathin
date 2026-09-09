@@ -5,16 +5,17 @@ import { NextIntlClientProvider } from 'next-intl';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { SchoolSupportInsertion, SchoolSupportSeatEntry, SchoolSupportTableEntry } from '@/features/school/SchoolSupportInlineEntry';
 
-const calls=vi.hoisted(()=>({options:vi.fn(),search:vi.fn(),add:vi.fn(),replace:vi.fn(),refresh:vi.fn()}));
-vi.mock('@/features/school/school-support-actions',()=>({getSupportOptionsAction:calls.options,searchSupportSubjectsAction:calls.search,addSupportWorkAction:calls.add}));
+const calls=vi.hoisted(()=>({options:vi.fn(),search:vi.fn(),add:vi.fn(),read:vi.fn(),family:vi.fn(),replace:vi.fn(),refresh:vi.fn()}));
+vi.mock('@/features/school/school-support-actions',()=>({getSupportOptionsAction:calls.options,searchSupportSubjectsAction:calls.search,addSupportWorkAction:calls.add,readSupportProfileAction:calls.read,readSupportFamilyAction:calls.family}));
 vi.mock('@/i18n/navigation',()=>({useRouter:()=>({replace:calls.replace,refresh:calls.refresh})}));
 vi.mock('sonner',()=>({toast:{success:vi.fn()}}));
 let cleanup=async()=>{};
 const id='10000000-0000-4000-8000-000000000001', room='10000000-0000-4000-8000-000000000002';
 beforeEach(()=>{
   vi.clearAllMocks(); Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true}); HTMLElement.prototype.scrollIntoView=vi.fn();
-  calls.options.mockResolvedValue({ok:true,data:{enrollment:{courses:[{id,title:'Course'}],terms:[{id,name:'Term'}],classrooms:[]},activities:[],currentUserId:'actor',canCreate:true,canEnroll:true}});
+  calls.options.mockResolvedValue({ok:true,data:{enrollment:{courses:[{id,title:'Course'}],terms:[{id,name:'Term'}],classrooms:[]},activities:[],currentUserId:'actor',canCreate:true,canEdit:true,canEnroll:true}});
   calls.search.mockResolvedValue({ok:true,data:[]});
+  calls.read.mockResolvedValue({ok:true,data:{studentId:id,leadId:null,version:'version',values:{name:'Known child',phone:'60000000999',grade:3,parentName:'Parent',parentPhone:'60000000998',school:'School',wechat:'parent-wechat',remark:'Original'},canEdit:true,identityPending:false,changes:[]}});
 });
 afterEach(async()=>{await cleanup();sessionStorage.clear();vi.useRealTimers();});
 async function mount(child:ReactNode){
@@ -100,8 +101,35 @@ it('automatically matches the entered name and phone and explicitly reuses the s
   expect(document.querySelectorAll('[data-support-candidates] li')).toHaveLength(1);
   await act(async()=>document.querySelector<HTMLButtonElement>('[data-support-candidates] li button')!.click());
   expect(document.querySelector<HTMLInputElement>('input[aria-label="学生姓名"]')?.value).toBe('Known child');
+  expect(document.querySelector<HTMLInputElement>('input[aria-label="学生姓名"]')?.disabled).toBe(false);
+  expect(document.querySelector<HTMLButtonElement>('[role="combobox"][aria-label="年级"]')?.disabled).toBe(false);
+  await fill('学生姓名','Corrected child'); await fill('联系电话','60000000997');
   await act(async()=>button('保存').click());
-  expect(calls.add.mock.calls[0][1]).toMatchObject({newPerson:null,subject:{studentId:id,leadId:null,version:'version'}});
+  expect(calls.add.mock.calls[0][1]).toMatchObject({newPerson:null,subject:{studentId:id,leadId:null,version:'version'},profileEdit:{version:'version',values:{name:'Corrected child',phone:'60000000997',school:'School',parentName:'Parent',remark:'Original'}}});
+  expect(document.querySelector<HTMLInputElement>('input[aria-label="学生姓名"]')?.value).toBe('Corrected child');
+  calls.read.mockResolvedValueOnce({ok:true,data:{studentId:id,leadId:null,version:'latest-version',values:{name:'Latest child',phone:'60000000999',grade:4,parentName:'Parent',parentPhone:'60000000998',school:'School',wechat:'parent-wechat',remark:'Original'},canEdit:true,identityPending:false,changes:[]}});
+  await act(async()=>button('读取最新档案').click());
+  expect(document.querySelector('[data-support-profile-review]')?.textContent).toContain('Latest child');
+  expect(button('保存').disabled).toBe(true);
+  await act(async()=>button('核对无误，保留当前修订').click());
+  await act(async()=>button('保存').click());
+  expect(calls.add.mock.calls[1][1]).toMatchObject({subject:{studentId:id,version:'latest-version'},profileEdit:{version:'latest-version',values:{name:'Corrected child',phone:'60000000997'}}});
+});
+it('keeps a new child separate and saves a family link only after explicit confirmation',async()=>{
+  vi.useFakeTimers();
+  calls.search.mockResolvedValue({ok:true,data:[{studentId:id,leadId:null,version:'version',name:'Sibling',phone:'60000000999',grade:3,parentName:'Parent',school:'School',ownerName:'Teacher',canWrite:true,phoneMatch:true,nameMatch:false}]});
+  calls.family.mockResolvedValue({ok:true,data:{otherStudentId:id,otherName:'Sibling',otherPhone:'60000000999',otherVersion:'version',version:'family-version',familyId:null,familyName:'Sibling family',alreadyLinked:false,blocker:null}});
+  calls.add.mockResolvedValue({ok:false,code:'FAMILY_CHANGED'});
+  await table(); await fill('学生姓名','Different child'); await fill('联系电话','60000000999');
+  await act(async()=>vi.advanceTimersByTimeAsync(260));
+  await act(async()=>button('关联家庭').click());
+  expect(document.querySelector<HTMLInputElement>('input[aria-label="学生姓名"]')?.value).toBe('Different child');
+  expect(button('保存').disabled).toBe(true);
+  await act(async()=>document.querySelector<HTMLButtonElement>('[role="checkbox"]')!.click());
+  await act(async()=>document.querySelector<HTMLButtonElement>('[data-support-family-review] [role="checkbox"]')!.click());
+  await act(async()=>button('保存').click());
+  expect(calls.add.mock.calls[0][1]).toMatchObject({subject:null,newPerson:{name:'Different child',createStudent:true},familyLink:{otherStudentId:id,version:'family-version',confirmed:true}});
+  expect(document.querySelector('[role="alert"]')?.textContent).toContain('家庭关系已更新');
 });
 it('waits for the ninth phone digit and clears matches when the number becomes incomplete',async()=>{
   vi.useFakeTimers();

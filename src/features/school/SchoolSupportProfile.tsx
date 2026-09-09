@@ -53,7 +53,7 @@ export function SchoolSupportProfileButton({studentId,leadId,onSaved}:{studentId
           <Label className="grid gap-1.5 text-xs sm:col-span-2">{m.remark}<Textarea value={values.remark} maxLength={2000} disabled={pending||!profile.canEdit} onChange={e=>setValues({...values,remark:e.target.value})}/></Label>
         </div>
         {profile.canEdit?<div className="flex justify-end"><Button type="button" disabled={pending||conflict} onClick={()=>void save()}>{pending?m.loading:m.save}</Button></div>:null}
-        {profile.canEdit&&!profile.studentId?<div className="space-y-3 border-t border-line pt-3">
+        {profile.canResolveIdentity&&!profile.studentId?<div className="space-y-3 border-t border-line pt-3">
           <Button type="button" size="sm" variant="secondary" disabled={pending||conflict} onClick={()=>setIdentityOpen(value=>!value)}>{m.identity}</Button>
           {identityOpen?<><SupportSubjectSearch locale={locale} studentsOnly disabled={pending} onSelect={setCandidate}/>
             {candidate?<div className="flex items-center justify-between gap-2 text-sm"><span>{candidate.name} · {candidate.phone}</span><Button type="button" disabled={pending} onClick={()=>void resolve(candidate.studentId)}>{m.link}</Button></div>:null}
