@@ -15,7 +15,7 @@ openHistoryLocalTarget({attestationPath:path.join(root,'preflight.json'),refresh
 const env=Object.fromEntries(fs.readFileSync('.env.local','utf8').split(/\r?\n/).filter(line=>/^[A-Z_]+=/.test(line)).map(line=>{
   const at=line.indexOf('=');return [line.slice(0,at),line.slice(at+1).trim().replace(/^(["'])(.*)\1$/,'$2')];
 }));
-const results=[];
+const results=[];let familySubjects;
 for(const role of ['admin','teacher','student']) {
   const account=loadFixedAccount(role);if(!account)throw new Error('FIXED_ACCOUNT_REQUIRED');
   const cookies=new Map();
@@ -27,6 +27,8 @@ for(const role of ['admin','teacher','student']) {
     const search=await client.rpc('search_school_support_subjects',{p_search:'6000000'});
     if(role==='student') {
       if(search.error?.message!=='FORBIDDEN')throw new Error('STUDENT_SEARCH_EXPOSED');
+      const family=await client.rpc('preview_school_support_family_link',{p_student_id:familySubjects[0].id,p_other_student_id:familySubjects[1].id});
+      if(family.error?.message!=='FORBIDDEN_SCOPE')throw new Error('STUDENT_FAMILY_EXPOSED');
       results.push({role,scope:'PASS'});continue;
     }
     if(search.error||!Array.isArray(search.data))throw new Error(`SUBJECT_SEARCH_FAILED:${role}`);
@@ -37,6 +39,12 @@ for(const role of ['admin','teacher','student']) {
     if(role==='admin') {
       const {data:subjects,error:subjectError}=await client.from('students').select('id').is('deleted_at',null).order('id').limit(2);
       if(subjectError||subjects?.length!==2)throw new Error('MERGE_SMOKE_SUBJECTS_REQUIRED');
+      familySubjects=subjects;
+      const family=await client.rpc('preview_school_support_family_link',{p_student_id:subjects[0].id,p_other_student_id:subjects[1].id});
+      const profile=await client.rpc('read_school_support_profile',{p_student_id:subjects[0].id,p_lead_id:null});
+      if(family.error||family.data?.otherStudentId!==subjects[1].id||typeof family.data?.version!=='string'
+        ||profile.error||profile.data?.canEdit!==true||typeof profile.data?.canResolveIdentity!=='boolean')throw new Error('PROFILE_FAMILY_RPC_STARTUP_FAILED');
+      results.push({role,familyPreview:'PASS',profilePermissions:'PASS'});
       const preview=await client.rpc('preview_student_merge',{p_kept_id:subjects[0].id,p_merged_id:subjects[1].id});
       const candidates=await client.rpc('search_student_merge_candidates',{p_student_id:subjects[0].id,p_query:subjects[1].id});
       const history=await client.rpc('get_student_merge_history',{p_student_id:subjects[0].id});

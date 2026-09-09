@@ -6,7 +6,7 @@ vi.mock('server-only',()=>({}));
 vi.mock('next/cache',()=>({revalidatePath:fixture.revalidate}));
 vi.mock('@/lib/auth',()=>({getMyPerms:async()=>fixture.permissions}));
 vi.mock('@/lib/supabase/server',()=>({createClient:async()=>({auth:{getUser:async()=>({data:{user:{id:'actor'}}})},rpc:fixture.rpc})}));
-import { addSupportWorkAction, updateSupportProfileAction, searchSupportSubjectsAction } from '@/features/school/school-support-actions';
+import { addSupportWorkAction, updateSupportProfileAction, searchSupportSubjectsAction, readSupportFamilyAction } from '@/features/school/school-support-actions';
 
 const student='10000000-0000-4000-8000-000000000001',lead='10000000-0000-4000-8000-000000000002',request='10000000-0000-4000-8000-000000000003';
 const item:SupportItem={id:request,workspace:'communication',studentId:student,leadId:lead,name:'Same family child',phone:'600000001',grade:null,
@@ -43,6 +43,17 @@ describe('manual entry identity and action boundaries',()=>{
     expect(await updateSupportProfileAction({studentId:student,leadId:null,version:'previous',values:{name:'Corrected',phone:'',grade:null,remark:''}}))
       .toEqual({ok:false,code:'PROFILE_CONFLICT'});
     expect(fixture.revalidate).not.toHaveBeenCalled();
+  });
+  it('uses followup handling permission for family review and preserves a scope rejection',async()=>{
+    fixture.permissions=new Set(['followup.view','followup.write']);
+    fixture.rpc.mockResolvedValue({data:{otherStudentId:lead,otherName:'Sibling',otherPhone:'600000001',otherVersion:'profile-version',version:'family-version',familyId:null,familyName:'Family',alreadyLinked:false,blocker:null},error:null});
+    expect((await readSupportFamilyAction(student,lead)).ok).toBe(true);
+    expect(fixture.rpc).toHaveBeenCalledWith('preview_school_support_family_link',{p_student_id:student,p_other_student_id:lead});
+    fixture.rpc.mockResolvedValue({data:null,error:{message:'FORBIDDEN_SCOPE'}});
+    expect(await readSupportFamilyAction(student,lead)).toEqual({ok:false,code:'FORBIDDEN_SCOPE'});
+    fixture.rpc.mockClear();
+    expect(await addSupportWorkAction(request,{...input,profileEdit:{version:'version',values:{name:'Name',grade:1,phone:'',remark:'',assignedTo:lead}}} as SupportEntry)).toEqual({ok:false,code:'VALIDATION'});
+    expect(fixture.rpc).not.toHaveBeenCalled();
   });
   it('opens the persisted worklist with its exact student context and clears incompatible old filters',()=>{
     const url=new URL(supportEntryHref(item),'https://test.invalid');

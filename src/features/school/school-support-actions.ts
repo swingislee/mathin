@@ -9,10 +9,10 @@ import { authorizedClient } from './actions/guards';
 import { COMMON_CODES, parse } from './actions/schemas';
 import { loadPhase3EnrollmentOptions } from './phase3-enrollment-data';
 import { listInvitationOptions } from './invitations';
-import { SUPPORT_WORKSPACES, supportCandidateSchema, supportEntrySchema, supportItemSchema, supportProfileSchema,
+import { SUPPORT_WORKSPACES, supportCandidateSchema, supportEntrySchema, supportItemSchema, supportProfileSchema, supportFamilyPreviewSchema,
   supportProfileValuesSchema, supportWorkSchema, type SupportEntry, type SupportProfile, type SupportWork, type SupportWorkspace } from './school-support-contract';
 
-const codes = [...COMMON_CODES,'FORBIDDEN_SCOPE','PROFILE_CONFLICT','SUBJECT_CHANGED','WORK_ITEM_CONFLICT','REQUEST_CONFLICT',
+const codes = ['FORBIDDEN_SCOPE',...COMMON_CODES,'PROFILE_CONFLICT','SUBJECT_CHANGED','WORK_ITEM_CONFLICT','REQUEST_CONFLICT','FAMILY_REVIEW_REQUIRED','FAMILY_PHONE_MISMATCH','FAMILY_CHANGED',
   'POSSIBLE_DUPLICATE','CONTACT_CONFLICT','ASSOCIATION_CONFLICT','IDENTITY_CHANGE_REQUIRED','IDENTITY_NOT_CONFIRMED',
   'WORK_ITEM_CLOSED','BUSINESS_CHANGE_REQUIRED','ACTIVITY_NOT_AVAILABLE','PARTICIPATION_CLOSED','COURSE_NOT_AVAILABLE',
   'CLASS_NOT_AVAILABLE','CLASS_TARGET_MISMATCH','SEAT_OCCUPIED','CLASS_FULL','INVALID_SEAT','ALREADY_ENROLLED','TERM_NOT_FOUND','INVALID_CYCLE_STATE','LEAD_CLOSED','LEAD_UNASSIGNED','NOT_FOUND'];
@@ -50,9 +50,15 @@ export async function readSupportProfileAction(subject: {studentId:string|null;l
   try { const value=parse(subjectSchema,subject); return await call('read_school_support_profile',{p_student_id:value.studentId,p_lead_id:value.leadId},supportProfileSchema,'followup.view'); }
   catch(error) { return actionError<SupportProfile>(error,codes); }
 }
+export async function readSupportFamilyAction(studentId: string | null, otherStudentId: string) {
+  try { return await call('preview_school_support_family_link',{
+    p_student_id:parse(databaseUuid.nullable(),studentId),p_other_student_id:parse(databaseUuid,otherStudentId),
+  },supportFamilyPreviewSchema,'followup.write'); }
+  catch(error) { return actionError<z.infer<typeof supportFamilyPreviewSchema>>(error,codes); }
+}
 export async function updateSupportProfileAction(profile: Pick<SupportProfile,'studentId'|'leadId'|'version'|'values'>) {
   try { const value=parse(subjectSchema,profile); return await call('update_school_support_profile',{p_student_id:value.studentId,p_lead_id:value.leadId,
-    p_expected_version:parse(version,profile.version),p_values:parse(supportProfileValuesSchema,profile.values)},supportProfileSchema,'student.edit',true); }
+    p_expected_version:parse(version,profile.version),p_values:parse(supportProfileValuesSchema,profile.values)},supportProfileSchema,'followup.write',true); }
   catch(error) { return actionError<SupportProfile>(error,codes); }
 }
 export async function resolveSupportIdentityAction(leadId: string, studentId: string | null, expectedVersion: string) {
@@ -66,6 +72,6 @@ export async function getSupportOptionsAction() {
     const { user } = await authorizedClient('followup.write');
     const [enrollment,invitations,permissions] = await Promise.all([loadPhase3EnrollmentOptions(),listInvitationOptions(),getMyPerms(user.id)]);
     return {ok:true as const,data:{enrollment,activities:invitations.activities,currentUserId:user.id,
-      canCreate:permissions.has('student.create'),canEnroll:permissions.has('enrollment.manage')}};
+      canCreate:permissions.has('student.create'),canEdit:permissions.has('followup.write'),canEnroll:permissions.has('enrollment.manage')}};
   } catch(error) { return actionError<never>(error,codes); }
 }
