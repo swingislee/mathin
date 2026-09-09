@@ -31,7 +31,16 @@ it('opens the transfer choice after dragging across classes and leaves the roste
   const destination=element.querySelector<HTMLElement>(`[data-placement-target="${id(4)}:2"]`)!;
   document.elementFromPoint=()=>destination;
   const send=async(type:string,x:number)=>{const event=new MouseEvent(type,{bubbles:true,button:0,clientX:x,clientY:100});Object.defineProperties(event,{pointerId:{value:1},isPrimary:{value:true}});await act(async()=>source.dispatchEvent(event));};
-  await send('pointerdown',20);await send('pointermove',160);await send('pointerup',160);
+  await send('pointerdown',20);await send('pointermove',160);
+  expect(document.querySelector('[data-placement-drag-preview]')?.textContent).toContain('小林 → 目标班 · 2 号位');
+  expect(document.querySelector('[data-placement-drag-preview]')?.textContent).toContain('松开后选择完全调班或临时调班');
+  document.elementFromPoint=()=>element.querySelector<HTMLElement>(`[data-placement-classroom="${id(3)}"]`)!;
+  await send('pointermove',170);
+  expect(document.querySelector('[data-placement-drag-preview]')?.textContent).toContain('小林 → 原班');
+  expect(document.querySelector('[data-placement-drag-preview]')?.textContent).toContain('移到具体座位选择落点');
+  document.elementFromPoint=()=>destination;
+  await send('pointermove',180);await send('pointerup',180);
+  expect(document.querySelector('[data-placement-drag-preview]')).toBeNull();
   expect(document.querySelector('[role="dialog"]')?.textContent).toContain('确认调班');
   expect(document.querySelector<HTMLInputElement>('input[value="permanent"]')?.checked).toBe(true);
   expect(document.querySelector<HTMLInputElement>('input[value="temporary"]')).not.toBeNull();
