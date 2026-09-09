@@ -72,6 +72,7 @@ export const enrollmentSchema = z.object({
 export type CourseEnrollmentRow = z.infer<typeof enrollmentSchema>;
 
 export interface EnrollmentPlacementBoard {
+  sessionTransfers?: import('./enrollment-placement-change-contract').SessionTransfer[];
   options: EnrollmentWorkflowOptions;
   enrollments: CourseEnrollmentRow[];
   members: PlacementMember[];

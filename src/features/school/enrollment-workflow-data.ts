@@ -1,5 +1,6 @@
 import "server-only";
 import { z } from "zod";
+import { sessionTransferSchema } from './enrollment-placement-change-contract';
 import { createClient } from "@/lib/supabase/server";
 import { readSchoolQueryBatches } from "./school-query-pages";
 import { renewalHealthSignals, type RenewalHealthFacts } from "./renewal-health-contract";
@@ -55,5 +56,6 @@ export async function loadEnrollmentPlacementBoard(): Promise<EnrollmentPlacemen
     }
     for (const facts of response.data as unknown as RenewalHealthFacts[]) health[facts.studentId] = renewalHealthSignals(facts, now);
   }
-  return { ...board, health, renewedMembershipIds };
+  const sessionTransfers=z.array(sessionTransferSchema).parse(await enrollmentWorkflowRpc('get_enrollment_session_transfers'));
+  return { ...board, health, renewedMembershipIds, sessionTransfers };
 }
