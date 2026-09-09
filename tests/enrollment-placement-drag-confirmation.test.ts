@@ -43,6 +43,7 @@ it('opens the transfer choice after dragging across classes and leaves the roste
   expect(vi.mocked(HTMLElement.prototype.setPointerCapture).mock.instances.at(-1)).toBe(source);
   await send('pointermove',160);
   expect(document.querySelector('[role="tooltip"]')).toBeNull();
+  expect(destination.querySelector('[data-placement-drop-state="allowed"]')).not.toBeNull();
   expect(document.querySelector('[data-placement-drag-preview]')?.textContent).toContain('小林 → 目标班 · 2 号位');
   expect(document.querySelector('[data-placement-drag-preview]')?.textContent).toContain('松开后选择完全调班或临时调班');
   document.elementFromPoint=()=>element.querySelector<HTMLElement>(`[data-placement-classroom="${id(3)}"]`)!;
@@ -52,6 +53,7 @@ it('opens the transfer choice after dragging across classes and leaves the roste
   document.elementFromPoint=()=>destination;
   await send('pointermove',180);await send('pointerup',180);
   expect(document.querySelector('[data-placement-drag-preview]')).toBeNull();
+  expect(document.querySelector('[data-placement-drop-state]')).toBeNull();
   expect(document.querySelector('[role="dialog"]')?.textContent).toContain('确认调班');
   expect(document.querySelector<HTMLInputElement>('input[value="permanent"]')?.checked).toBe(true);
   expect(document.querySelector<HTMLInputElement>('input[value="temporary"]')).not.toBeNull();
