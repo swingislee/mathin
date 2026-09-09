@@ -94,6 +94,7 @@
     "desktopNotifications": {
       "title": "Desktop notifications",
       "loading": "Checking this device.",
+      "edgeOnly": "Desktop notifications currently support Microsoft Edge on Windows only. Open Mathin in Edge to enable them. In-app notifications still work in this browser.",
       "unsupported": "This browser does not support desktop Web Push. In-app notifications remain available.",
       "insecure": "Desktop notifications require HTTPS. In-app notifications remain available here.",
       "permissionDenied": "Notifications are blocked by the browser or Windows. Allow them in system settings and try again.",
@@ -116,7 +117,7 @@
       "sendTest": "Send generic test notification",
       "testAccepted": "The test entered the send queue. This does not mean the device displayed it.",
       "operationFailed": "The operation did not complete ({code}).",
-      "backgroundHint": "Notifications can arrive after Mathin tabs close when the browser keeps running in the background and Windows allows notifications. Immediate display is not guaranteed after the browser process exits, during sleep, offline periods, or Do Not Disturb.",
+      "backgroundHint": "Desktop notifications use Microsoft Edge and Microsoft's push service. They can arrive after Mathin tabs close when Edge keeps running in the background and Windows allows notifications. Immediate display is not guaranteed after Edge exits, during sleep, offline periods, or Do Not Disturb.",
       "devicesTitle": "Desktop notification devices",
       "noDevices": "No desktop notification devices are registered for this account.",
       "thisDevice": "this device",

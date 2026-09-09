@@ -16,7 +16,7 @@
 - feature、integration、cohort 任一层 fail-open，或出现 subscription、Web Push delivery/job、endpoint/key 明文。
 - 旧站内通知、Auth、课堂/课件、Storage、正式身份或现有业务数据发生本批未授权变化。
 
-员工名单、具体测试日期、最终保留期、独立告警出口、生产 Push 网络与 Edge/Chrome 真机结果属于 `G5-BLOCK / DEV-CONTINUE`；它们不阻断关闭态 P5，但阻断 Worker 激活、secret 配置、cohort 写入和真实 Push。
+员工名单、具体测试日期、最终保留期、独立告警出口、生产 Push 网络与 Windows Edge 真机结果属于 `G5-BLOCK / DEV-CONTINUE`；它们不阻断关闭态 P5，但阻断 Worker 激活、secret 配置、cohort 写入和真实 Push。
 
 ## 2. 候选冻结与发布内容
 
@@ -77,13 +77,13 @@
 2. 配置 owner-only VAPID、订阅加密、fingerprint、origin allowlist 和 key version；先启动受监管 Worker并验证独立告警，再启用 integration/feature，最后加入 tester cohort。
 3. 员工必须在自己的会话中点击“在这台电脑开启”；系统默认共享电脑，租期 8 小时。管理员不能代替员工静默注册。
 4. 共享电脑必测：A 开启并收一条通用测试通知 → A 登出并撤销 → B 登录；B 不收到 A 的新投递，也不能解析 A 的旧 delivery。员工停用、rollout 移除、租期到期和 404/410 均须停止发送并清除密文。
-5. 观察窗口采用宽泛排期，但退出证据至少覆盖 5 个有效工作日、Edge+Chrome、一个共享电脑旅程和 50 个 device-level target；日历到期不会自动通过。
+5. 观察窗口采用宽泛排期，但退出证据至少覆盖 5 个有效工作日、Windows Edge、一个共享电脑旅程和 50 个 device-level target；日历到期不会自动通过。
 
 ### 7.1 专用 Worker 与独立邮件监控部署合同
 
 - `20260909009000_employee_web_push_activation_safety.sql` 必须先在已核验非生产目标通过行为/回滚断言，再按生产写前备份、同文件 rehearsal/零残留/formal 流程执行。它保持现有 feature、integration 和 rollout 原值。
-- immutable release 同时打包 `web-push-worker-cycle.mjs` 与 `web-push-monitor.py`。推送 unit 固定 `R1_JOB_SCOPE=web_push`，只调用 `claim_web_push_jobs`；心跳版本 `r1-7.3-web-push-scoped` 不由通用 worker 使用。激活前后核对其他 kind 的 job/effect 未被本 unit 领取或维护。
-- 应用与 worker 共用 owner-only VAPID、加密和 fingerprint 配置。`MATHIN_WEB_PUSH_PROXY` 只作用于 Push provider 请求；需要代理时先验证生产独立出口、TLS 和实际 provider 201，不把开发电脑的临时代理视作已满足长期出口。
+- immutable release 同时打包 `web-push-worker-cycle.mjs`、`web-push-support.mjs` 与 `web-push-monitor.py`。推送 unit 固定 `R1_JOB_SCOPE=web_push`，只调用 `claim_web_push_jobs`；心跳版本 `r1-7.3-web-push-scoped` 不由通用 worker 使用。激活前后核对其他 kind 的 job/effect 未被本 unit 领取或维护。
+- 应用与 worker 共用 owner-only VAPID、加密和 fingerprint 配置。首轮仅接受 Windows Edge 设备和已登记的 Microsoft WNS HTTPS origin，直连投递；本轮不使用 Google FCM 或 Push 代理。激活前验证 WNS 的 TLS 可达与实际 provider 201。
 - `mathin-web-push-monitor.timer` 每分钟运行独立 Python monitor；通过只读 aggregate RPC 检测超过 120 秒未更新的专用 worker 心跳、provider auth/degraded、dead/failure、持续 5 分钟的超 60 秒积压。故障变化与恢复各发一次，同一故障最多每小时补报一次。
 - `.env.web-push-alerts` 权限 `0600`，保存 `MATHIN_WEB_PUSH_SMTP_HOST/PORT/USER/PASSWORD/FROM` 与受控的 `MATHIN_WEB_PUSH_ALERT_TO`；SMTP 使用 465 TLS 或 587 STARTTLS。复用现有已验证 SMTP 时只在生产内存或 owner-only 文件中转存，凭据不进入 release/Git/日志。
 - monitor 状态文件仅记录故障类别、时间和聚合量，目录 `0700`、文件 `0600`；邮件成功后才原子更新去重状态。恢复邮件不自动重启 worker、重放 job 或修改开关。

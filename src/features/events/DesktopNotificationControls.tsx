@@ -18,6 +18,7 @@ import {
 import {
   detectBrowserFamily,
   detectPlatformFamily,
+  isSupportedWebPushUserAgent,
   serializePushSubscription,
   urlBase64ToUint8Array,
   WEB_PUSH_SERVICE_WORKER_PATH,
@@ -27,10 +28,11 @@ import {
   type WebPushDeviceMode,
 } from "./web-push-contract";
 
-type BrowserCapability = "loading" | "unsupported" | "insecure" | "ready";
+type BrowserCapability = "loading" | "edge_only" | "unsupported" | "insecure" | "ready";
 
 function browserCapability(): BrowserCapability {
   if (typeof window === "undefined") return "loading";
+  if (!isSupportedWebPushUserAgent(navigator.userAgent)) return "edge_only";
   if (!window.isSecureContext) return "insecure";
   if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
     return "unsupported";
@@ -109,9 +111,11 @@ export function DesktopNotificationControls({
   );
 
   const unavailableReason = useMemo(() => {
-    if (browser === "loading" || !capability) return t("loading");
+    if (browser === "loading") return t("loading");
+    if (browser === "edge_only") return t("edgeOnly");
     if (browser === "unsupported") return t("unsupported");
     if (browser === "insecure") return t("insecure");
+    if (!capability) return t("loading");
     if (permission === "denied") return t("permissionDenied");
     if (!capability.roleEligible) return t("roleUnavailable");
     if (!capability.rolloutEligible || !capability.featureEnabled) return t("notInRollout");
@@ -253,7 +257,7 @@ export function DesktopNotificationControls({
         </div>
       </div>
 
-      {!currentDevice && capability?.roleEligible ? (
+      {!currentDevice && capability?.roleEligible && browser !== "edge_only" ? (
         <div className="grid gap-3 sm:grid-cols-2">
           <Label className="grid gap-1.5">
             <span>{t("deviceLabel")}</span>

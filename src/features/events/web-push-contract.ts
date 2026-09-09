@@ -2,6 +2,12 @@ export const WEB_PUSH_SERVICE_WORKER_PATH = "/notification-sw.js";
 export const WEB_PUSH_SERVICE_WORKER_SCOPE = "/";
 export const WEB_PUSH_MAX_DEVICES = 5;
 export const WEB_PUSH_VAPID_KEY_VERSION = 1;
+export {
+  detectBrowserFamily,
+  detectPlatformFamily,
+  isSupportedWebPushDevice,
+  isSupportedWebPushUserAgent,
+} from "./web-push-support.mjs";
 
 export type WebPushDeviceMode = "shared" | "personal";
 export type WebPushSubscriptionStatus = "active" | "revoked" | "expired" | "gone";
@@ -66,23 +72,6 @@ export function serializePushSubscription(subscription: PushSubscription): Brows
     expirationTime: value.expirationTime ?? null,
     keys: { p256dh: value.keys.p256dh, auth: value.keys.auth },
   };
-}
-
-export function detectBrowserFamily(userAgent: string): string {
-  if (/Edg\//i.test(userAgent)) return "edge";
-  if (/Chrome\//i.test(userAgent) || /Chromium\//i.test(userAgent)) return "chrome";
-  if (/Firefox\//i.test(userAgent)) return "firefox";
-  if (/Safari\//i.test(userAgent) && !/Chrome\//i.test(userAgent)) return "safari";
-  return "unknown";
-}
-
-export function detectPlatformFamily(userAgent: string): string {
-  if (/Windows/i.test(userAgent)) return "windows";
-  if (/Android/i.test(userAgent)) return "android";
-  if (/iPhone|iPad|iPod/i.test(userAgent)) return "ios";
-  if (/Macintosh|Mac OS X/i.test(userAgent)) return "macos";
-  if (/Linux/i.test(userAgent)) return "linux";
-  return "unknown";
 }
 
 export function defaultWebPushDeviceLabel(browserFamily: string, platformFamily: string): string {

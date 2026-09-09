@@ -7,8 +7,8 @@ import { randomUUID } from "node:crypto";
 import { chromium } from "@playwright/test";
 import webpush from "web-push";
 
-const family = process.argv[2];
-if (!['chrome', 'edge'].includes(family)) throw new Error("Specify chrome or edge");
+const family = process.argv[2] || "edge";
+if (family !== "edge" || process.platform !== "win32") throw new Error("Employee push testing supports Windows Edge only");
 const sw = await readFile(new URL("../public/notification-sw.js", import.meta.url), "utf8");
 const server = createServer((req, res) => {
   if (req.url === "/notification-sw.js") {
@@ -27,7 +27,7 @@ let subscription;
 let context;
 try {
   context = await chromium.launchPersistentContext(profilePath, {
-    channel: family === "edge" ? "msedge" : "chrome", headless: true,
+    channel: "msedge", headless: true,
     permissions: ["notifications"], ignoreDefaultArgs: ["--disable-background-networking"],
   });
   const page = await context.newPage();
@@ -51,7 +51,6 @@ try {
   const payload = JSON.stringify({ v: 1, deliveryId, locale: "zh", expiresAt: Date.now() + 120000 });
   const options = { TTL: 120, timeout: 15000,
     vapidDetails: { subject: "https://mathin.club", publicKey: keys.publicKey, privateKey: keys.privateKey },
-    ...(process.env.MATHIN_WEB_PUSH_PROXY ? { proxy: process.env.MATHIN_WEB_PUSH_PROXY } : {}),
   };
   await page.close();
   const sent = await webpush.sendNotification(subscription, payload, options);

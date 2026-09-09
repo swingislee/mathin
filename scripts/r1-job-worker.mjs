@@ -16,6 +16,7 @@ import {
   webPushTtlSeconds,
 } from "./lib/web-push-delivery.mjs";
 import { jobWorkerScope, runWebPushCycle } from "./lib/web-push-worker-cycle.mjs";
+import { isSupportedWebPushDevice } from "../src/features/events/web-push-support.mjs";
 
 const MAX_BATCH = 100;
 
@@ -222,7 +223,7 @@ async function loadWebPushContext(deliveryId) {
   const [{ data: notification, error: notificationError }, { data: subscription, error: subscriptionError }] = await Promise.all([
     admin.from("notifications").select("id,recipient_id,archived_at").eq("id", delivery.notification_id).maybeSingle(),
     admin.from("web_push_subscriptions")
-      .select("id,recipient_id,status,endpoint_fingerprint,encrypted_payload,encryption_key_version,locale,lease_expires_at")
+      .select("id,recipient_id,status,endpoint_fingerprint,encrypted_payload,encryption_key_version,locale,lease_expires_at,browser_family,platform_family")
       .eq("id", delivery.subscription_id).maybeSingle(),
   ]);
   if (notificationError || !notification) throw Object.assign(new Error("Web Push notification was not found."), {
@@ -262,6 +263,9 @@ async function sendWebPush(job) {
   if (subscription.status !== "active" || !subscription.encrypted_payload
     || new Date(subscription.lease_expires_at).getTime() <= Date.now()) {
     return suppressWebPush(job, delivery, "SUBSCRIPTION_INACTIVE", subscription);
+  }
+  if (!isSupportedWebPushDevice(subscription.browser_family, subscription.platform_family)) {
+    return suppressWebPush(job, delivery, "BROWSER_NOT_SUPPORTED", subscription);
   }
 
   const { data: eligible, error: eligibilityError } = await admin.rpc("is_web_push_recipient_eligible", {
@@ -348,7 +352,6 @@ async function sendWebPush(job) {
       urgency: "normal",
       timeout: 10000,
       vapidDetails: { subject, publicKey, privateKey },
-      ...(process.env.MATHIN_WEB_PUSH_PROXY ? { proxy: process.env.MATHIN_WEB_PUSH_PROXY } : {}),
     });
   } catch (error) {
     if (error?.configurationFailure || error?.code === "WEB_PUSH_PROVIDER_UNAVAILABLE") {

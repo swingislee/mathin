@@ -22,7 +22,9 @@ function normalizeAllowedOrigins(raw) {
     if (parsed.protocol !== "https:" || parsed.username || parsed.password || parsed.pathname !== "/" || parsed.search || parsed.hash) {
       throw Object.assign(new Error("WEB_PUSH_ALLOWED_ORIGIN_INVALID"), { code: "WEB_PUSH_ALLOWED_ORIGIN_INVALID" });
     }
-    if (isIP(parsed.hostname)) throw Object.assign(new Error("WEB_PUSH_ALLOWED_ORIGIN_INVALID"), { code: "WEB_PUSH_ALLOWED_ORIGIN_INVALID" });
+    if (isIP(parsed.hostname) || parsed.port || !parsed.hostname.endsWith(".notify.windows.com")) {
+      throw Object.assign(new Error("WEB_PUSH_ALLOWED_ORIGIN_INVALID"), { code: "WEB_PUSH_ALLOWED_ORIGIN_INVALID" });
+    }
     origins.add(parsed.origin);
   }
   return origins;
@@ -43,10 +45,14 @@ export function validateWebPushEndpoint(endpoint, allowedOrigins) {
     || parsed.username
     || parsed.password
     || parsed.hash
+    || parsed.port
     || isIP(parsed.hostname)
     || parsed.pathname === "/"
   ) {
     throw Object.assign(new Error("WEB_PUSH_ENDPOINT_INVALID"), { code: "WEB_PUSH_ENDPOINT_INVALID" });
+  }
+  if (!parsed.hostname.endsWith(".notify.windows.com")) {
+    throw Object.assign(new Error("WEB_PUSH_ORIGIN_NOT_ALLOWED"), { code: "WEB_PUSH_ORIGIN_NOT_ALLOWED" });
   }
   const origins = normalizeAllowedOrigins(allowedOrigins);
   if (origins.size === 0 || !origins.has(parsed.origin)) {
