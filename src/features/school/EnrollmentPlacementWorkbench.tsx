@@ -282,7 +282,12 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
       data-placement-renewed={renewed}
       data-placement-health={health?.tone}
       data-placement-focus={student.studentId === focusStudentId}
-      onPointerDownCapture={(event) => { if (movable&&!(event.target as HTMLElement).closest('[data-placement-action]')) {setTooltipKey(null);pointer.begin(event, student.key, (event.target as HTMLElement).closest("button") ?? event.currentTarget);} }}
+      onPointerDownCapture={(event) => { if (movable&&!(event.target as HTMLElement).closest('[data-placement-action]')) {setTooltipKey(null);pointer.begin(event, student.key, event.currentTarget);} }}
+      onClick={(event) => {
+        if (movable && !(event.target as HTMLElement).closest("button")) {
+          event.currentTarget.querySelector<HTMLButtonElement>("button")?.click();
+        }
+      }}
       onClickCapture={(event) => {
         if (!swapping || (event.target as HTMLElement).closest("[data-placement-select],[data-placement-action]")) return;
         event.preventDefault(); event.stopPropagation();
@@ -291,7 +296,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
       className={cn("group relative flex min-h-9 min-w-0 select-none items-center justify-center px-1", movable && "touch-none cursor-grab active:cursor-grabbing", selectedKey === student.key && "ring-2 ring-inset ring-crater", student.studentId === focusStudentId && "outline-2 -outline-offset-2 outline-leaf-deep", student.placement && !matches(student.placement) && "opacity-35")}
       style={{ background: placementStudentBackground(health, renewed) }}
     >
-      {student.sourceEnrollment?<button type="button" onClick={()=>setSourceEnrollment(student.sourceEnrollment!)} className="w-full truncate py-1 text-xs hover:underline">{student.name}</button>:<Student360Trigger subject={{ studentId: student.studentId, leadId: null }} fallback={{ name: student.name, phone: student.phone, grade: student.grade || null }} className="flex w-full min-w-0 flex-col items-center justify-center py-1 text-xs font-normal">
+      {student.sourceEnrollment?<button type="button" onClick={()=>setSourceEnrollment(student.sourceEnrollment!)} className="w-full truncate py-1 text-xs hover:underline">{student.name}</button>:<Student360Trigger subject={{ studentId: student.studentId, leadId: null }} fallback={{ name: student.name, phone: student.phone, grade: student.grade || null }} className={cn("flex w-full min-w-0 flex-col items-center justify-center py-1 text-xs font-normal",movable&&"pointer-events-none")}>
         <span className="max-w-full truncate">{student.name}</span>
         {student.status && student.status !== "active" ? <span className="whitespace-nowrap text-[9px] leading-3 text-muted">{t(`status_${student.status}`)}</span> : null}
       </Student360Trigger>}
