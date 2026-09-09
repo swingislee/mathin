@@ -30,8 +30,12 @@ it('opens the transfer choice after dragging across classes and leaves the roste
   const source=element.querySelector<HTMLElement>(`[data-placement-student="${id(5)}"]`)!;
   const destination=element.querySelector<HTMLElement>(`[data-placement-target="${id(4)}:2"]`)!;
   document.elementFromPoint=()=>destination;
-  const send=async(type:string,x:number)=>{const event=new MouseEvent(type,{bubbles:true,button:0,clientX:x,clientY:100});Object.defineProperties(event,{pointerId:{value:1},isPrimary:{value:true}});await act(async()=>source.dispatchEvent(event));};
+  const name=source.querySelector<HTMLButtonElement>('button')!;
+  await act(async()=>name.focus());
+  expect(document.querySelector('[role="tooltip"]')).not.toBeNull();
+  const send=async(type:string,x:number)=>{const event=new MouseEvent(type,{bubbles:true,button:0,clientX:x,clientY:100});Object.defineProperties(event,{pointerId:{value:1},isPrimary:{value:true}});await act(async()=>name.dispatchEvent(event));};
   await send('pointerdown',20);await send('pointermove',160);
+  expect(document.querySelector('[role="tooltip"]')).toBeNull();
   expect(document.querySelector('[data-placement-drag-preview]')?.textContent).toContain('小林 → 目标班 · 2 号位');
   expect(document.querySelector('[data-placement-drag-preview]')?.textContent).toContain('松开后选择完全调班或临时调班');
   document.elementFromPoint=()=>element.querySelector<HTMLElement>(`[data-placement-classroom="${id(3)}"]`)!;

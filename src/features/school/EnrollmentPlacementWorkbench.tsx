@@ -117,6 +117,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   const recordM=businessRecordMessages(locale);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
+  const [tooltipKey,setTooltipKey]=useState<string|null>(null);
   const [pending, startMoving] = useTransition();
   const [seatEntry,setSeatEntry]=useState<{classroom:PlacementClassroom;seat:number}|null>(null);
   const [sourceEnrollment,setSourceEnrollment]=useState<HistoricalEnrollment|null>(null);
@@ -210,7 +211,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
     });
   };
   const pointer = useTilePointerDrag<string>({
-    onStart: (drag) => { setSelectedKey(drag.data); pointerPosition.current = drag; },
+    onStart: (drag) => { setTooltipKey(null);setSelectedKey(drag.data); pointerPosition.current = drag; },
     onMove: (drag) => { pointerPosition.current = drag; setHovered(targetAt(drag.clientX, drag.clientY)); },
     onEnd: (drag) => {
       pointerPosition.current = null;
@@ -276,12 +277,12 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
     const movable = Boolean(student.placement && student.status !== "withdrawn" && !pending && !placementChange);
     const temporary=(board.sessionTransfers??[]).filter(t=>t.membershipId===student.placement?.membershipId);
     const swapping = Boolean(student.placement && selected && selected.key !== student.key && target && accepts(selected, target));
-    return <Tooltip key={student.key}><TooltipTrigger asChild><span
+    return <Tooltip key={student.key} open={!dragging&&tooltipKey===student.key} onOpenChange={open=>setTooltipKey(current=>open&&!dragging?student.key:current===student.key?null:current)}><TooltipTrigger asChild><span
       data-placement-student={student.key}
       data-placement-renewed={renewed}
       data-placement-health={health?.tone}
       data-placement-focus={student.studentId === focusStudentId}
-      onPointerDown={(event) => { if (movable&&!(event.target as HTMLElement).closest('[data-placement-action]')) pointer.begin(event, student.key, (event.target as HTMLElement).closest("button") ?? event.currentTarget); }}
+      onPointerDownCapture={(event) => { if (movable&&!(event.target as HTMLElement).closest('[data-placement-action]')) {setTooltipKey(null);pointer.begin(event, student.key, (event.target as HTMLElement).closest("button") ?? event.currentTarget);} }}
       onClickCapture={(event) => {
         if (!swapping || (event.target as HTMLElement).closest("[data-placement-select],[data-placement-action]")) return;
         event.preventDefault(); event.stopPropagation();
@@ -296,7 +297,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
       </Student360Trigger>}
       {movable ? <button type="button" data-placement-select aria-label={t("selectStudent", { name: student.name })} aria-pressed={selectedKey === student.key} className="absolute right-0 top-0 flex h-full w-3 items-center justify-center bg-card/70 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-crater" onClick={() => setSelectedKey((value) => value === student.key ? null : student.key)}><GripVertical className="size-3" /></button> : null}
       {temporary.length>0&&student.placement?<button type="button" data-placement-action aria-label={locale==='en'?`${student.name} temporary transfers`:`${student.name}的临时调班`} className="absolute bottom-0 left-0 rounded-sm bg-moon px-0.5 text-[9px] text-crater" onClick={()=>setPlacementChange({student:student.placement!})}>{locale==='en'?'T':'临'}</button>:null}
-    </span></TooltipTrigger><TooltipContent className="max-w-80 space-y-1 text-xs leading-5">
+    </span></TooltipTrigger><TooltipContent className="pointer-events-none max-w-80 space-y-1 text-xs leading-5">
       <p className="font-medium">{student.name}{student.status && student.status !== "active" ? t(`status_${student.status}`) : ""}</p><p>{student.courseTitle}</p>{target?.seat ? <p>{t("capacitySlot", { count: target.seat })}</p> : null}
       {student.phone ? <p>{student.phone}</p> : null}{student.recommendation ? <p>{student.recommendation}</p> : null}{student.note ? <p>{student.note}</p> : null}
       {health ? <p>{t(`health_${health.tone}`)}</p> : <HistoricalRecordBadge locale={locale} />}{signals.filter((signal) => signal.level === "observed" || signal.level === "attention").map((signal) => <p key={signal.key}>{healthT(signal.key)} · {healthT(signal.level)}{signal.total ? ` (${signal.count ?? 0}/${signal.total})` : ""}</p>)}
