@@ -247,8 +247,10 @@ describe("classroom interaction synchronization audit", () => {
     expect(liveShell).toContain("gameMirror={state.games[renderPage.id] ?? null}");
     expect(liveShell).toContain("onGameMirror={(mirror) => onGameMirror(renderPage.id, mirror)}");
     expect(liveShell).toContain('append("game_state"');
-    expect(docPage).toContain("gameMirror={isController ? initialGameMirror : gameMirror}");
-    expect(docPage).toContain("onGameMirror={isController ? onGameMirror : undefined}");
+    expect(docPage).toContain("useClassroomGameMirror(gameMirror, isController, syncControllerMirror, onGameMirror)");
+    expect(liveShell).toContain("syncControllerMirror={rehearsal}");
+    expect(docPage).toContain("gameMirror={gameSync.mirror}");
+    expect(docPage).toContain("onGameMirror={isController ? gameSync.publish : undefined}");
     expect(stagePreview).toContain("mirror={props.gameMirror}");
     expect(stagePreview).toContain("onMirror={props.onGameMirror}");
     expect(gameStage).toContain("mirror={mirror}");

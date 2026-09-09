@@ -92,6 +92,7 @@ export interface DocVideoCtl {
 
 export interface DocVideoControl {
   controller: boolean;
+  followRemote?: boolean;
   ctl?: DocVideoCtl;
   onCtl?: (action: DocVideoCtl["action"], time: number) => void;
 }
@@ -166,7 +167,7 @@ function DocVideo({
   const videoSurfaceLabel = t("videoSurfaceAction");
 
   useEffect(() => {
-    if (!control || control.controller || !control.ctl || appliedCtl.current === control.ctl) return;
+    if (!control || (control.controller && !control.followRemote) || !control.ctl || appliedCtl.current === control.ctl) return;
     const ctl = control.ctl;
     const video = videoRef.current;
     if (!video) return;
@@ -296,7 +297,7 @@ function H5Frame({
   }, [control, iframeRef]);
 
   useEffect(() => {
-    if (!control || control.controller || !control.ctl || frameGeneration === 0 || appliedCtl.current === control.ctl) return;
+    if (!control || (control.controller && !control.followRemote) || !control.ctl || frameGeneration === 0 || appliedCtl.current === control.ctl) return;
     appliedCtl.current = control.ctl;
     iframeRef.current?.contentWindow?.postMessage({
       source: "mathin-classroom",

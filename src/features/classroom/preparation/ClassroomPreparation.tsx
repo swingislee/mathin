@@ -1,12 +1,14 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Check, CircleAlert, Info, LoaderCircle, MonitorPlay, Presentation, TriangleAlert } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { preparationAction, type ClassroomRunMode, type ClassroomRunState } from "./preparation-contract";
+import { classroomScheduleBounds, isOutsideClassroomSchedule, type ClassroomScheduleWindow } from "./schedule-contract";
 
 export interface ClassroomPreparationCheck {
   key: string;
@@ -28,6 +30,8 @@ export function ClassroomPreparation({
   pending = false,
   error,
   onEnter,
+  schedule,
+  onRehearse,
 }: {
   mode: ClassroomRunMode;
   runState: ClassroomRunState;
@@ -41,9 +45,18 @@ export function ClassroomPreparation({
   pending?: boolean;
   error?: string | null;
   onEnter: () => void;
+  schedule: readonly ClassroomScheduleWindow[];
+  onRehearse: () => void;
 }) {
   const t = useTranslations("classroom.preparation");
+  const [offScheduleOpen, setOffScheduleOpen] = useState(false);
   const action = preparationAction(mode, runState);
+  const disabled = pending || blocked || !canEnter;
+  const requestEntry = () => {
+    if (disabled) return;
+    if (action === "start" && isOutsideClassroomSchedule(schedule, Date.now())) setOffScheduleOpen(true);
+    else onEnter();
+  };
   return (
     <section
       className={cn("w-full py-6", preview && "grid gap-6 lg:grid-cols-[minmax(20rem,0.78fr)_minmax(34rem,1.22fr)]")}
@@ -79,7 +92,7 @@ export function ClassroomPreparation({
         </ul>
         {afterChecks}
         <div className="mt-6 flex flex-wrap items-center gap-2">
-          {canEnter && <Button size="sm" disabled={pending || blocked} onClick={onEnter}>
+          {canEnter && <Button size="sm" disabled={disabled} onClick={requestEntry}>
             {pending ? <LoaderCircle aria-hidden size={16} className="animate-spin motion-reduce:animate-none" />
               : mode === "rehearsal" ? <Presentation aria-hidden size={16} /> : <MonitorPlay aria-hidden size={16} />}
             {t(`actions.${action}`)}
@@ -89,6 +102,44 @@ export function ClassroomPreparation({
         {error && <p className="mt-3 flex items-center gap-2 text-xs text-rose" role="alert"><CircleAlert aria-hidden size={14} />{error}</p>}
       </div>
       {preview && <div className="min-w-0">{preview}</div>}
+      <ClassroomStartConfirmation open={offScheduleOpen} onOpenChange={setOffScheduleOpen}
+        schedule={schedule} disabled={disabled} onConfirm={onEnter} onRehearse={onRehearse} />
     </section>
   );
+}
+
+export function ClassroomStartConfirmation({ open, onOpenChange, schedule, disabled, onConfirm, onRehearse }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  schedule: readonly ClassroomScheduleWindow[];
+  disabled: boolean;
+  onConfirm: () => void;
+  onRehearse: () => void;
+}) {
+  const t = useTranslations("classroom.preparation");
+  const format = useFormatter();
+  return <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("offScheduleTitle")}</DialogTitle>
+            <DialogDescription>{t("offScheduleDescription")}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1 text-sm text-muted">
+            {schedule.some((window) => classroomScheduleBounds(window))
+              ? schedule.map((window, index) => {
+                const bounds = classroomScheduleBounds(window);
+                return bounds ? <p key={index}>{t("scheduledWindow", {
+                  start: format.dateTime(new Date(bounds.start), { dateStyle: "medium", timeStyle: "short" }),
+                  end: format.dateTime(new Date(bounds.end), { dateStyle: "medium", timeStyle: "short" }),
+                })}</p> : null;
+              })
+              : <p>{t("scheduleMissing")}</p>}
+          </div>
+          <DialogFooter className="flex-wrap">
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>{t("cancelStart")}</Button>
+            <Button variant="secondary" disabled={disabled} onClick={() => { onOpenChange(false); onConfirm(); }}>{t("confirmFormalStart")}</Button>
+            <Button disabled={disabled} onClick={() => { onOpenChange(false); onRehearse(); }}>{t("enterRehearsal")}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>;
 }

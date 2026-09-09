@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Hand, Moon, Star, Sun, Undo2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ import type { CoursewarePage } from "../types";
 import { classroomInputProviderAttributes } from "../input/provider";
 import { decomposeClassroomReward } from "./rewardDisplay";
 import { useClassBoard } from "./useClassBoard";
+import { useClassroomGameMirror } from "./useClassroomGameMirror";
 
 // 课堂实时首屏的展示型子组件（原 LiveShell.tsx 尾部模块级函数，P4G-7 拆出）。
 // 它们各自 props 驱动、不与 LiveShell 主体共享闭包，是天然接缝。
@@ -96,15 +97,16 @@ export function GamePage({
   isController,
   mirror,
   onMirror,
+  syncControllerMirror = false,
 }: {
   page: Extract<CoursewarePage, { type: "game" }>;
   isController: boolean;
+  syncControllerMirror?: boolean;
   mirror: GameMirrorState | null;
   onMirror: (pageId: string, mirror: GameMirrorState) => void;
 }) {
   const t = useTranslations("classroom.live");
-  // 主控端只在挂载时取一次镜像（断线重进恢复现场），此后本地即权威，防事件回环
-  const [initialMirror] = useState(() => mirror);
+  const gameSync = useClassroomGameMirror(mirror, isController, syncControllerMirror, (next) => onMirror(page.id, next));
   const game = games.find((item) => item.id === page.gameId);
   if (!game) return <p className="grid size-full place-items-center text-sm text-muted">{t("gameMissing")}</p>;
   return (
@@ -119,8 +121,8 @@ export function GamePage({
         difficulty={page.difficulty}
         finished={false}
         onComplete={() => undefined}
-        mirror={isController ? initialMirror : mirror}
-        onMirror={isController ? (state) => onMirror(page.id, state) : undefined}
+        mirror={gameSync.mirror}
+        onMirror={isController ? gameSync.publish : undefined}
         readOnly={!isController}
       />
     </div>

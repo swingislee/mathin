@@ -25,7 +25,12 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { ClassroomPreparation, type ClassroomPreparationCheck } from "@/features/classroom/preparation/ClassroomPreparation";
 import { useClassroomPreparation } from "@/features/classroom/preparation/useClassroomPreparation";
+import { classroomRehearsalHref } from "@/features/classroom/preparation/schedule-contract";
 import { useClassroomPaging } from "@/features/classroom/live/useClassroomPaging";
+import { useRehearsalRoom } from "@/features/classroom/live/useRehearsalRoom";
+import { DocCoursewarePage } from "@/features/classroom/live/DocCoursewarePage";
+import { RehearsalDevices } from "@/features/classroom/preparation/RehearsalDevices";
+import { createClassroomToolState } from "@/features/tools/courseware/cube-structures-classroom";
 import { enterFromPreparation, initialClassroomView, type ClassroomEntry, type ClassroomRunMode, type ClassroomRunState } from "@/features/classroom/preparation/preparation-contract";
 import {
   endPublicClassRunAction,
@@ -59,6 +64,8 @@ export function PublicClassRunShell({
   canRecord,
   locale,
   defaultMode,
+  userId,
+  display = false,
   rehearsal = false,
   entry = null,
 }: {
@@ -69,6 +76,8 @@ export function PublicClassRunShell({
   canRecord: boolean;
   locale: string;
   defaultMode: PublicClassLiveMode;
+  userId: string;
+  display?: boolean;
   rehearsal?: boolean;
   entry?: ClassroomEntry;
 }) {
@@ -79,7 +88,7 @@ export function PublicClassRunShell({
   const [pending, startTransition] = useTransition();
   const [mode, setMode] = useState<PublicClassLiveMode>(defaultMode);
   const [endOpen, setEndOpen] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [localSelectedIndex, setLocalSelectedIndex] = useState(0);
   const initialRunState = program.some((item) => item.segment.teachingStartedAt)
     ? program.filter((item) => item.segment.microcourseLectureId).every((item) => item.segment.teachingEndedAt)
       ? "ended"
@@ -87,12 +96,22 @@ export function PublicClassRunShell({
     : "scheduled";
   const [runState, setRunState] = useState<ClassroomRunState>(initialRunState);
   const runMode: ClassroomRunMode = rehearsal ? "rehearsal" : "formal";
-  const preparation = useClassroomPreparation(initialClassroomView({ mode: runMode, runState, entry }));
+  const preparation = useClassroomPreparation(display ? "live" : initialClassroomView({ mode: runMode, runState, entry }));
   const phase = preparation.phase === "prep" ? "candidate" : !rehearsal && runState === "ended" ? "ended" : "live";
   const pages = useMemo(() => program.flatMap((item) => item.courseware.pages.map((page) => ({
     ...page,
     segment: item.segment,
   }))), [program]);
+  const rehearsalPages = useMemo(() => pages.map((page) => ({ id: page.pageDocId, type: "doc" as const, docId: page.pageDocId, title: page.title })), [pages]);
+  const rehearsalRoom = useRehearsalRoom(userId, data.activity.id, rehearsalPages, rehearsal);
+  const canControl = canTeach && !display;
+  const selectedIndex = rehearsal ? rehearsalRoom.state.currentPage : localSelectedIndex;
+  const selectPage = (index: number) => {
+    if (!canControl) return;
+    const page = Math.max(0, Math.min(pages.length - 1, index));
+    if (rehearsal) void rehearsalRoom.log?.append("page", { page });
+    else setLocalSelectedIndex(page);
+  };
   const selectedPage = pages[selectedIndex] ?? pages[0] ?? null;
   const requiredTrialBlocks = program.filter((item) => item.segment.kind === "trial_lesson");
   const linkedOptionalBlocks = program.filter((item) => item.segment.kind === "parent_talk" && item.segment.microcourseLectureId);
@@ -106,10 +125,10 @@ export function PublicClassRunShell({
   const dashboardHref = `/dashboard/activities/${data.activity.id}?view=live`;
 
   useClassroomPaging({
-    enabled: phase === "live" && mode === "host" && canTeach && pages.length > 0,
+    enabled: phase === "live" && mode === "host" && canControl && pages.length > 0,
     rootRef: classroomRootRef,
     onPage: (direction) => {
-      setSelectedIndex((current) => Math.max(0, Math.min(pages.length - 1, current + direction)));
+      selectPage(selectedIndex + direction);
     },
   });
 
@@ -135,7 +154,7 @@ export function PublicClassRunShell({
       await enterFromPreparation({
         mode: runMode,
         runState,
-        canEnter: canTeach,
+        canEnter: canControl,
         startFormal: async () => {
           const result = await startPublicClassRunAction(data.activity.id);
           if (!result.ok) throw new Error(result.code);
@@ -180,7 +199,8 @@ export function PublicClassRunShell({
           <TabsTrigger value="roster"><UsersRound className="mr-1.5 size-3.5" />{t("modeRoster")}</TabsTrigger>
         </TabsList>
       </Tabs>
-      {canTeach && phase !== "candidate" && <Button size="sm" variant="secondary" onClick={() => {
+      {rehearsal && <><Badge variant="secondary">{tPreparation(rehearsalRoom.connected ? "devicesOnline" : "devicesOffline")}</Badge><Badge variant="secondary">{tPreparation("devicesPaired", { count: rehearsalRoom.health.peers })}</Badge><RehearsalDevices /></>}
+      {canControl && phase !== "candidate" && <Button size="sm" variant="secondary" onClick={() => {
         setMode("host");
         preparation.openPreparation();
       }}>{tPreparation("entry")}</Button>}
@@ -199,10 +219,11 @@ export function PublicClassRunShell({
       selectedIndex={selectedIndex}
       selectedPage={selectedPage}
       ready={ready}
-      canTeach={canTeach}
+      canTeach={canControl}
       pending={pending}
-      onSelectedIndexChange={setSelectedIndex}
+      onSelectedIndexChange={selectPage}
       onStart={startRun}
+      rehearsalRoom={rehearsalRoom}
     /> : null}
 
     {mode === "assessment" ? <section className="min-h-0 flex-1 pt-4">
@@ -249,6 +270,7 @@ function HostRunSurface({
   pending,
   onSelectedIndexChange,
   onStart,
+  rehearsalRoom,
 }: {
   data: PublicClassWorkbenchData;
   program: PublicClassRunProgramItem[];
@@ -265,10 +287,12 @@ function HostRunSurface({
   pending: boolean;
   onSelectedIndexChange: (index: number) => void;
   onStart: () => void;
+  rehearsalRoom: ReturnType<typeof useRehearsalRoom>;
 }) {
   const t = useTranslations("school.publicClass");
   const tPreparation = useTranslations("classroom.preparation");
   const firstPreview = pages[0] ?? null;
+  const router = useRouter();
 
   if (phase === "ended") return <section className="grid min-h-[calc(100dvh-5rem)] place-items-center px-4 py-12">
     <div className="w-full max-w-xl text-center">
@@ -306,8 +330,10 @@ function HostRunSurface({
         checks={checks}
         canEnter={canTeach}
         pending={pending}
-        blocked={runMode === "formal" && runState === "scheduled" && !ready}
+        blocked={runMode === "rehearsal" ? !rehearsalRoom.log : runMode === "formal" && runState === "scheduled" && !ready}
         onEnter={onStart}
+        schedule={program.map((item) => item.segment)}
+        onRehearse={() => router.push(classroomRehearsalHref(`/activity/${data.activity.id}/live`, window.location.search, "activity"))}
         secondaryActions={<Link href={`/dashboard/activities/${data.activity.id}?view=teaching`} className={buttonVariants({ size: "sm", variant: "secondary" })}>{t("backToPreparation")}</Link>}
         afterChecks={<>
           {!ready && runState === "scheduled" ? <p className="mt-3 flex items-start gap-2 text-xs leading-5 text-crater"><CircleAlert className="mt-0.5 size-3.5 shrink-0" />{t("runNotReadyHint")}</p> : null}
@@ -343,7 +369,28 @@ function HostRunSurface({
       selectedPageLabel={t("pageIndicator", { current: selectedIndex + 1, total: pages.length })}
       railStatus={<div className="flex flex-wrap items-center gap-1.5"><Badge variant="outline">{runMode === "rehearsal" ? tPreparation("rehearsal") : t("frozenForTeaching")}</Badge>{selectedPage?.segment.teachingCheckpointPageIds.includes(selectedPage.pageDocId) ? <Badge variant="secondary"><BadgeCheck className="mr-1 size-3" />{t("activeTeachingCheckpoint")}</Badge> : null}{selectedPage?.segment.kind === "parent_talk" && assessmentSegment ? <Badge variant="secondary"><GitBranch className="mr-1 size-3" />{t("assessmentRunningInParallel")}</Badge> : null}</div>}
       previewAspect={selectedPage ? pageAspect(selectedPage.aspect) : 4 / 3}
-      preview={selectedPage ? <StagePreview doc={selectedPage.doc} bindingUrls={selectedPage.bindingUrls} stageMode={selectedPage.aspect === "4:3" ? "board43" : "natural"} className="size-full" /> : <div className="grid size-full place-items-center text-sm text-muted">{t("candidateNoPreview")}</div>}
+      preview={selectedPage ? runMode === "rehearsal" ? <DocCoursewarePage
+        key={selectedPage.pageDocId}
+        doc={selectedPage.doc}
+        bindingUrls={selectedPage.bindingUrls}
+        stageMode={selectedPage.aspect === "4:3" ? "board43" : "natural"}
+        isController={canTeach}
+        syncControllerMirror
+        steps={rehearsalRoom.state.docSteps[selectedPage.pageDocId]}
+        onStep={(trigger) => { void rehearsalRoom.log?.append("doc_step", { pageId: selectedPage.pageDocId, ...trigger }); }}
+        videoCtl={rehearsalRoom.state.video[selectedPage.pageDocId]}
+        onVideoCtl={(action, time) => { void rehearsalRoom.log?.append("video_ctl", { pageId: selectedPage.pageDocId, action, time }); }}
+        onAdvance={() => onSelectedIndexChange(selectedIndex + 1)}
+        gameMirror={rehearsalRoom.state.games[selectedPage.pageDocId] ?? null}
+        onGameMirror={(state) => { void rehearsalRoom.log?.append("game_state", { pageId: selectedPage.pageDocId, state }); }}
+        classroomTools={{
+          docId: selectedPage.pageDocId,
+          states: rehearsalRoom.state.tools?.[selectedPage.pageDocId] ?? {},
+          onChange: canTeach ? async (instanceId, originHash, snapshot) => {
+            await rehearsalRoom.log?.append("tool_state", createClassroomToolState(selectedPage.pageDocId, selectedPage.pageDocId, instanceId, snapshot, originHash));
+          } : undefined,
+        }}
+      /> : <StagePreview doc={selectedPage.doc} bindingUrls={selectedPage.bindingUrls} stageMode={selectedPage.aspect === "4:3" ? "board43" : "natural"} className="size-full" /> : <div className="grid size-full place-items-center text-sm text-muted">{t("candidateNoPreview")}</div>}
     />
     </section>}
   </>;

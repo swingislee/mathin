@@ -63,14 +63,16 @@ export default async function PublicClassRunPage({
     : requestedMode ?? roleDefault;
 
   return <PublicClassRunShell
-    key={`${activityId}:${rehearsal}`}
+    key={`${activityId}:${rehearsal}:${query.role === "display"}`}
     data={data}
     program={program}
     assessmentSegment={assessmentSegment}
     canTeach={canTeach}
     canRecord={assignedAny || permissions.has("activity.manage") || permissions.has("activity.register") || permissions.has("review.write")}
     locale={locale}
-    defaultMode={defaultMode}
+    defaultMode={rehearsal && query.role === "display" ? "host" : defaultMode}
+    userId={user.id}
+    display={rehearsal && query.role === "display"}
     rehearsal={rehearsal}
     entry={parseClassroomEntry(query.entry)}
   />;
