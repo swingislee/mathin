@@ -13,11 +13,16 @@ import { supportError, supportMessages,
   type SupportCandidate, type SupportWork, type SupportWorkspace } from './school-support-contract';
 
 export type SupportOptions = Extract<Awaited<ReturnType<typeof getSupportOptionsAction>>, {ok:true}>['data'];
-export function SupportSubjectSearch({ locale, onSelect, studentsOnly=false, disabled=false, queries }: {
-  locale: string; onSelect:(candidate:SupportCandidate)=>void; studentsOnly?:boolean; disabled?:boolean; queries?:string[];
+export function SupportSubjectSearch({ locale, onSelect, studentsOnly=false, disabled=false, queries, phoneQueries=[] }: {
+  locale: string; onSelect:(candidate:SupportCandidate)=>void; studentsOnly?:boolean; disabled?:boolean; queries?:string[]; phoneQueries?:string[];
 }) {
   const m=supportMessages(locale), [query,setQuery]=useState('');
-  const queryKey=JSON.stringify([...new Set((queries??[query]).map(value=>value.trim()).filter(Boolean))]);
+  const isPhone = !queries && /^[+\d\s()-]+$/.test(query.trim());
+  const phones = (isPhone ? [query] : phoneQueries).map(value=>value.replace(/\D/g,'')).filter(Boolean);
+  const incompletePhone = phones.some(value=>value.length<9);
+  const queryKey=JSON.stringify(disabled || incompletePhone ? [] : [...new Set([
+    ...(queries??(isPhone?[]:[query])),...phones,
+  ].map(value=>value.trim()).filter(Boolean))]);
   const [result,setResult]=useState<{key:string;items:SupportCandidate[];error:string}>({key:'',items:[],error:''});
   useEffect(()=>{
     let active=true;
@@ -37,7 +42,9 @@ export function SupportSubjectSearch({ locale, onSelect, studentsOnly=false, dis
   return <div className="space-y-2" data-support-candidates>
     {queries? <p className="font-medium">{locale==='en'?'Possible student matches':'可能匹配的学生'}</p>
       :<Label className="flex items-center gap-2"><Search className="size-4"/><Input autoFocus value={query} maxLength={100} disabled={disabled} placeholder={m.search} aria-label={m.search} onChange={e=>setQuery(e.target.value)}/></Label>}
-    <p className="text-xs text-muted">{queries?(locale==='en'?'Enter a name, phone, parent or WeChat, then select the matching profile.':'填写姓名、电话、家长或微信后，在这里核对并选择已有档案。'):m.searchFirst}</p>
+    <p className="text-xs text-muted" role={incompletePhone?'status':undefined}>{incompletePhone
+      ? (locale==='en'?'Complete the phone number to search; matching starts at 9 digits.':'请补完电话号码后搜索，输入到第 9 位时开始匹配。')
+      : queries?(locale==='en'?'Enter a name, phone, parent or WeChat, then select the matching profile.':'填写姓名、电话、家长或微信后，在这里核对并选择已有档案。'):m.searchFirst}</p>
     {loading?<p role="status" className="text-xs text-muted">{m.loading}</p>:null}
     {result.key===queryKey&&result.error?<p role="alert" className="text-xs text-rose">{result.error}</p>:null}
     {queries&&queryKey!=='[]'&&!loading&&!result.error&&!items.length?<p className="text-xs text-muted">{locale==='en'?'No matching profiles. Continue with the details you have.':'暂未找到匹配档案，可继续填写现有资料。'}</p>:null}

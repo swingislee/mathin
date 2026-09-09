@@ -89,7 +89,7 @@ describe("enrollment placement class roster", () => {
     const historical = rows.find(row => row.attributes.includes('data-record-state="historical"'))!;
     const columnClasses = (row: typeof historical) => row.cells.map(cell => cell.attributes.match(/class="([^"]*)"/)?.[1]);
     expect(columnClasses(historical)).toEqual(columnClasses(current));
-    expect(studentKeys(historical.cells[3].content)).toEqual(['historical-enrollment']);
+    expect(studentKeys(historical.cells[4].content)).toEqual(['historical-enrollment']);
     expect(historical.content).toContain('原老师');
     expect(historical.content).toContain('1200');
     expect(historical.content).not.toMatch(/data-placement-target|data-placement-select|touch-none/);
@@ -114,15 +114,15 @@ describe("enrollment placement class roster", () => {
       expect(rows.flatMap(row => studentKeys(row.content))).not.toContain(key);
     }
     const fourth = classes.find((row) => classroomId(row.attributes) === "autumn-4")!;
-    expect(fourth.cells).toHaveLength(4);
+    expect(fourth.cells).toHaveLength(5);
     expect(studentKeys(fourth.cells.slice(0, 3).map((cell) => cell.content).join(""))).toEqual([]);
-    expect(studentKeys(fourth.cells[3].content)).toEqual(["assigned-fourth", "paused-fourth"]);
+    expect(studentKeys(fourth.cells[4].content)).toEqual(["assigned-fourth", "paused-fourth"]);
     expect(rows.filter((row) => studentKeys(row.content).includes("assigned-fourth"))).toHaveLength(1);
   });
 
   it("starts every term and grade group with pending placement, including an empty grade", () => {
     const rows = renderRoster();
-    const groupHeaders = rows.flatMap((row, index) => row.cells.length === 1 && row.cells[0].attributes.includes('colSpan="4"') ? [index] : []);
+    const groupHeaders = rows.flatMap((row, index) => row.cells.length === 1 && row.cells[0].attributes.includes('colSpan="5"') ? [index] : []);
     expect(groupHeaders.map((index) => rows[index + 1].attributes.match(/data-placement-pending="([^"]+)"/)?.[1]))
       .toEqual(["autumn:4", "autumn:5", "autumn:6"]);
     const pendingFourth = rows.find((row) => row.attributes.includes('data-placement-pending="autumn:4"'))!;
@@ -136,15 +136,15 @@ describe("enrollment placement class roster", () => {
     for (const id of ["autumn-4-empty", "autumn-6-empty"]) {
       const emptyClass = rows.find((row) => classroomId(row.attributes) === id)!;
       expect(emptyClass).toBeDefined();
-      expect(studentKeys(emptyClass.cells[3].content)).toEqual([]);
-      expect([...emptyClass.cells[3].content.matchAll(/aria-label="第(\d+)位空位"/g)].map((match) => Number(match[1]))).toEqual([1, 2, 3]);
+      expect(studentKeys(emptyClass.cells[4].content)).toEqual([]);
+      expect([...emptyClass.cells[4].content.matchAll(/aria-label="第(\d+)位空位"/g)].map((match) => Number(match[1]))).toEqual([1, 2, 3]);
     }
   });
 
   it("keeps paused students in their seats and withdrawals in separate rows", () => {
     const rows = renderRoster();
     const classIndex = rows.findIndex((row) => classroomId(row.attributes) === "autumn-4");
-    const seated = rows[classIndex].cells[3].content;
+    const seated = rows[classIndex].cells[4].content;
     expect(seated).toMatch(/data-placement-target="autumn-4:2"[^>]*><span\b[^>]*data-placement-student="paused-fourth"/);
     expect(seated).toContain(messages.school.enrollmentWorkflow.status_paused);
     expect(seated).not.toContain('data-placement-student="withdrawn-fourth"');

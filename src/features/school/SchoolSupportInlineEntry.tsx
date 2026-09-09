@@ -55,7 +55,7 @@ export function SchoolSupportTableEntry({ workspace, columns, initialWork, enabl
       {enabled && !active ? <div data-support-insertion-gutter className="absolute inset-y-0 right-full z-20 w-[min(var(--dashboard-gutter,1.75rem),1.75rem)]"
         onPointerMove={event => pointAt(event.clientY)} onPointerLeave={event => { if (!event.currentTarget.contains(document.activeElement)) setPosition(null); }}>
         <Button type="button" variant="ghost" size="sm" data-support-insertion-target={position?.key}
-          className={cn("absolute left-1/2 size-5 max-w-full -translate-x-1/2 -translate-y-1/2 rounded-full border border-line bg-card p-0 text-muted shadow-sm transition-opacity hover:bg-moon hover:text-ink focus-visible:opacity-100",position ? "opacity-100" : "pointer-events-none opacity-0")}
+          className={cn("absolute left-1/2 size-5 max-w-full -translate-x-1/2 -translate-y-1/2 rounded-full border border-line bg-card p-0 text-muted shadow-sm hover:bg-moon hover:text-ink focus-visible:opacity-100",position ? "opacity-100 transition-opacity" : "pointer-events-none opacity-0 transition-none")}
           style={{top:position?.top ?? 0}} aria-label={locale === 'en' ? 'Insert student below this row' : '在此行下方补入学生'}
           onFocus={() => { if (!position) setPosition(positions()[0] ?? null); }} onBlur={() => setPosition(null)}
           onKeyDown={event => { if (event.key==='ArrowUp' || event.key==='ArrowDown') {
@@ -141,7 +141,7 @@ function SupportInlineForm({ workspace, columns, initialWork, onClose, onSaved, 
     <div className="grid gap-3 sm:grid-cols-3">{(['name', 'phone', 'grade'] as const).filter(key => panel || !columns.includes(key)).map(key => <div key={key} className="grid gap-1.5">{key === 'grade' ? null : m[key]}{field(key, !panel)}</div>)}</div>
     {input.subject ? <div className="flex items-center justify-between rounded-md border border-line bg-card p-2"><span>{en ? 'Selected profile' : '已选择档案'} · {selected?.name ?? m.details} · {selected?.phone}</span>
       <Button variant="ghost" size="sm" disabled={pending} onClick={() => changePerson({})}>{en ? 'Change' : '重新填写'}</Button></div>
-      : <SupportSubjectSearch locale={locale} disabled={pending || !ready} studentsOnly={Boolean(initialWork?.classroomId)} queries={[person?.phone ?? '', person?.name ?? '', person?.parentPhone ?? '', person?.parentName ?? '', person?.wechat ?? '']}
+      : <SupportSubjectSearch locale={locale} disabled={pending || !ready} studentsOnly={Boolean(initialWork?.classroomId)} phoneQueries={[person?.phone ?? '', person?.parentPhone ?? '']} queries={[person?.name ?? '', person?.parentName ?? '', person?.wechat ?? '']}
         onSelect={candidate => { setSelected(candidate); change({ subject: { studentId: candidate.studentId, leadId: candidate.leadId, version: candidate.version }, newPerson: null, acknowledgeDuplicate: false }); }} />}
     {person ? <div className="grid gap-3 sm:grid-cols-3" data-support-profile-fields>
       {(['parentPhone','parentName','school','wechat'] as const).map(key => <Label key={key} className="grid gap-1.5 text-xs">{m[key]}
