@@ -11,6 +11,7 @@ const IntlProvider=NextIntlClientProvider as ComponentType<PropsWithChildren<Omi
 vi.mock("@/features/school/SchoolSupportInlineEntry", () => ({ SchoolSupportTableEntry: ({ children }: { children: import("react").ReactNode }) => children, SchoolSupportInsertion: () => null, SchoolSupportSeatEntry: () => null }));
 vi.mock("@/features/school/SchoolSupportPendingRows", () => ({ SchoolSupportPendingRows: () => null }));
 vi.mock("@/features/school/enrollment-workflow-actions", () => ({ moveEnrollmentSeatAction: vi.fn() }));
+vi.mock("@/features/school/enrollment-placement-change-actions", () => ({ changeEnrollmentPlacementAction: vi.fn(),previewEnrollmentSessionTransferAction:vi.fn() }));
 vi.mock("@/features/school/Student360Sheet", () => ({
   Student360Trigger: ({ children, className }: { children: ReactNode; className?: string }) => createElement("button", { type: "button", className }, children),
 }));

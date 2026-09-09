@@ -111,7 +111,18 @@ export async function getClassroom(id: string, sessionId?: string): Promise<Clas
     if (substituteError) throw new Error(substituteError.message);
     sessionSubstitute = Boolean(substituteSession);
   }
-  const myRole = classroomRole ?? (sessionSubstitute ? "teacher" : null);
+  let temporaryStudent=false;
+  if(!classroomRole&&!sessionSubstitute){
+    const access=await supabase.rpc('has_temporary_classroom_access',{p_classroom_id:id});
+    if(access.error)throw new Error(access.error.message);
+    temporaryStudent=access.data===true;
+    if(temporaryStudent&&sessionId){
+      const membership=await supabase.rpc('is_session_member',{sid:sessionId,uid:user.id});
+      if(membership.error)throw new Error(membership.error.message);
+      temporaryStudent=membership.data===true;
+    }
+  }
+  const myRole = classroomRole ?? (sessionSubstitute ? "teacher" : temporaryStudent?'student':null);
   if (!myRole) return null;
 
   let inviteCode: string | null = null;

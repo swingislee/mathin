@@ -112,7 +112,7 @@ describe("SML-0 release-backed courseware authority", () => {
     );
     expect(classroomActions).toContain('.eq("teacher_override", user.id)');
     expect(classroomActions).toContain(
-      'const myRole = classroomRole ?? (sessionSubstitute ? "teacher" : null)',
+      'const myRole = classroomRole ?? (sessionSubstitute ? "teacher" : temporaryStudent?\'student\':null)',
     );
     expect(classroomActions).toContain(
       'if (myRole === "teacher" && !sessionSubstitute)',
