@@ -57,3 +57,28 @@ it('validates distinct selected sessions and rejects incomplete movement',()=>{
   expect(placementChangeSchema.safeParse({...input,toClassroomId:student.classroomId}).success).toBe(false);
   expect(placementChangeSchema.safeParse({...input,mode:'withdraw',sessions:[]}).success).toBe(false);
 });
+
+it('requires a reason and explicit confirmation for a mismatched class',async()=>{
+  const mismatch={source:'3年级数学 · 秋季',destination:'4年级数学 · 春季'};
+  await mount(createElement(EnrollmentPlacementChangeDialog,{student,target,mismatch,onClose:calls.close,onSaved:calls.saved}));
+  expect(document.querySelector('[role="alert"]')?.textContent).toContain(mismatch.destination);
+  expect(calls.save).not.toHaveBeenCalled();expect(button('确认插班').disabled).toBe(true);
+  const input=document.querySelector<HTMLTextAreaElement>('textarea')!;
+  await act(async()=>{Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value')!.set!.call(input,'已核对学生进度，安排插班');input.dispatchEvent(new Event('input',{bubbles:true}));});
+  await click(button('确认插班'));
+  expect(calls.save).toHaveBeenCalledWith(expect.objectContaining({allowMismatch:true,reason:'已核对学生进度，安排插班'}));
+  await click(document.querySelector<HTMLInputElement>('input[value="temporary"]')!);
+  expect(calls.preview).toHaveBeenCalledWith(expect.objectContaining({allowMismatch:true}));
+});
+it('supports pending mismatched placement and keeps non-matching blockers visible',async()=>{
+  const pending={...student,membershipId:null,classroomId:null,seat:null};
+  const mismatch={source:'原课程',destination:'目标课程'};
+  await mount(createElement(EnrollmentPlacementChangeDialog,{student:pending,target,mismatch,blocked:'目标班级已满',onClose:calls.close,onSaved:calls.saved}));
+  expect(document.querySelector('input[value="temporary"]')).toBeNull();
+  expect(button('确认插班').disabled).toBe(true);
+  expect(document.body.textContent).toContain('目标班级已满');
+  const input={requestId:id(12),mode:'permanent',enrollmentId:student.enrollmentId,membershipId:null,fromClassroomId:null,toClassroomId:classroom.id,seat:4,expectedSeat:null,reason:'已核对',allowMismatch:true};
+  expect(placementChangeSchema.safeParse(input).success).toBe(true);
+  expect(placementChangeSchema.safeParse({...input,reason:''}).success).toBe(false);
+  expect(placementChangeSchema.safeParse({...input,allowMismatch:'true'}).success).toBe(false);
+});

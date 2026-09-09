@@ -36,10 +36,12 @@ for(const role of ['admin','student']){
       if(!target)continue;
       const preview=await client.rpc('preview_enrollment_session_transfer',{p_membership_id:member.membershipId,p_to_classroom_id:target.id,p_seat:1});
       if(preview.error||!Array.isArray(preview.data))throw new Error('TRANSFER_PREVIEW_RPC_FAILED');
+      const confirmedPreview=await client.rpc('preview_enrollment_session_transfer',{p_membership_id:member.membershipId,p_to_classroom_id:target.id,p_seat:1,p_allow_mismatch:true});
+      if(confirmedPreview.error||!Array.isArray(confirmedPreview.data))throw new Error('CONFIRMED_TRANSFER_PREVIEW_RPC_FAILED');
       previewChecked=true;break;
     }
     if(!previewChecked)throw new Error('EXISTING_TRANSFER_PREVIEW_CONTEXT_REQUIRED');
-    results.push({role,placementBoard:'PASS',temporaryTransfers:'PASS',lecturePreview:'PASS'});
+    results.push({role,placementBoard:'PASS',temporaryTransfers:'PASS',lecturePreview:'PASS',confirmedPreview:'PASS'});
     for(const locale of ['zh','en']){
       const response=await fetch(new URL(`/${locale}/dashboard/followups/enrollments`,base),{headers:{cookie:[...cookies].map(([name,value])=>`${name}=${value}`).join('; ')},redirect:'manual',signal:AbortSignal.timeout(60000)});
       const html=await response.text();

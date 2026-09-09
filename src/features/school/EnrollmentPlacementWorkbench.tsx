@@ -121,7 +121,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   const [pending, startMoving] = useTransition();
   const [seatEntry,setSeatEntry]=useState<{classroom:PlacementClassroom;seat:number}|null>(null);
   const [sourceEnrollment,setSourceEnrollment]=useState<HistoricalEnrollment|null>(null);
-  const [placementChange,setPlacementChange]=useState<{student:PlacementStudent;target?:{classroom:PlacementClassroom;seat:number};withdraw?:boolean}|null>(null);
+  const [placementChange,setPlacementChange]=useState<{student:PlacementStudent;target?:{classroom:PlacementClassroom;seat:number};mismatch?:{source:string;destination:string};blocked?:string;withdraw?:boolean}|null>(null);
   const students = useMemo(() => placementStudents(board), [board]);
   const renewedMembershipIds = new Set(board.renewedMembershipIds ?? []);
   const selected = students.find((student) => student.key === selectedKey) ?? null;
@@ -189,8 +189,8 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   const targets = new Map<string, SeatTarget>();
   const registerTarget = (key: string, target: SeatTarget) => { targets.set(key, target); return { "data-placement-target": key }; };
   const reserved = (target: SeatTarget) => (board.sessionTransfers??[]).some(t=>t.toClassroomId===target.classroom?.id&&t.seat===target.seat);
-  const accepts = (student: PlacementStudent | null, target: SeatTarget) => Boolean(student && !pending && !placementChange && !reserved(target) && !placementSeatTargetError(student, target.classroom, target, students));
-  const dropState = (key:string,target:SeatTarget) => dragging&&hovered===key?(accepts(selected,target)?"allowed":"blocked"):undefined;
+  const accepts = (student: PlacementStudent | null, target: SeatTarget, allowMismatch=false) => Boolean(student && !pending && !placementChange && !reserved(target) && !placementSeatTargetError(student, target.classroom, target, students,allowMismatch));
+  const dropState = (key:string,target:SeatTarget) => dragging&&hovered===key?(accepts(selected,target,true)?"allowed":"blocked"):undefined;
   const targetAt = (clientX: number, clientY: number) => {
     return placementHoverAt(root.current,clientX,clientY);
   };
@@ -198,6 +198,13 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
     const { classroom, seat } = target;
     if (pending || placementChange || (student.classroomId === (classroom?.id ?? null) && student.seat === seat)) return;
     const error = placementSeatTargetError(student, classroom, target, students);
+    if(error==='CLASS_TARGET_MISMATCH'&&classroom&&seat){
+      const blocker=reserved(target)?'TEMPORARY_SEAT_RESERVED':placementSeatTargetError(student,classroom,target,students,true);
+      setPlacementChange({student,target:{classroom,seat},mismatch:{
+        source:[student.courseTitle,locale==='en'?`Grade ${student.grade}`:`${student.grade}年级`,terms.get(student.termId)].filter(Boolean).join(' · '),
+        destination:[classroom.name,courses.get(classroom.courseId),locale==='en'?`Grade ${target.grade}`:`${target.grade}年级`,difficulties.get(classroom.courseId),terms.get(classroom.termId)].filter(Boolean).join(' · '),
+      },blocked:blocker?(blocker==='TEMPORARY_SEAT_RESERVED'?placementChangeError(blocker,locale==='en'):t(enrollmentErrorKey(blocker))):undefined});return;
+    }
     if (error) { toast.error(t(enrollmentErrorKey(error))); return; }
     if(reserved(target)){toast.error(placementChangeError('TEMPORARY_SEAT_RESERVED',locale==='en'));return;}
     if(student.classroomId&&classroom&&student.classroomId!==classroom.id&&seat){setPlacementChange({student,target:{classroom,seat}});return;}
@@ -219,7 +226,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
       setHovered(null);
       const target = targets.get(targetAt(drag.clientX, drag.clientY) ?? "");
       const student = students.find((value) => value.key === drag.data);
-      if (student && target && student.classroomId !== (target.classroom?.id ?? null) && accepts(student, target)) move(student, target);
+      if (student && target && student.classroomId !== (target.classroom?.id ?? null)) move(student, target);
     },
     onCancel: () => { pointerPosition.current = null; setHovered(null); },
   });
@@ -260,7 +267,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
     const classroom=target?.classroom??board.options.classrooms.find(c=>hovered===`class:${c.id}`);
     const en=locale==='en';
     const error=student&&target?(reserved(target)?'TEMPORARY_SEAT_RESERVED':placementSeatTargetError(student,target.classroom,target,students)):null;
-    const message=error?(error==='TEMPORARY_SEAT_RESERVED'?placementChangeError(error,en):t(enrollmentErrorKey(error)))
+    const message=error==='CLASS_TARGET_MISMATCH'?(en?'Class mismatch. Release to review and confirm placement.':'班级不匹配，松开后核对并确认插班。'):error?(error==='TEMPORARY_SEAT_RESERVED'?placementChangeError(error,en):t(enrollmentErrorKey(error)))
       :target?.classroom?(student?.classroomId&&student.classroomId!==target.classroom.id?(en?'Release to choose permanent or temporary transfer':'松开后选择完全调班或临时调班'):student?.classroomId===target.classroom.id?(en?'Already in this class':'已在此班级'):en?'Release to add to this class':'松开后加入此班级')
       :target?(en?'Release to return to pending placement':'松开后退回待分班'):classroom?(en?'Release to add to this class':'松开后加入此班级'):en?'Drag to a class':'拖到目标班级';
     return <div role="status" data-placement-drag-preview className="pointer-events-none fixed z-50 w-64 max-w-[calc(100vw-2rem)] space-y-1 rounded-md border border-crater bg-card px-3 py-2 text-xs shadow-lg"
