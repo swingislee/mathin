@@ -301,6 +301,10 @@ describe("staff overview reads current business sources", () => {
     const data = await getStaffOverviewData({ grain: "month", now });
     expect(data.businessFacts.find(row => row.key === "enrollments")).toMatchObject({ current: 2, previous: 1 });
     expect(data.missingDateCounts.enrollments).toBe(1);
+    const summary = await getStaffHomeWeekSummaryData({ now });
+    state.failures.add("course_enrollment_assignments");
+    expect(await getStaffOverviewData({ grain: "month", now })).toEqual(data);
+    expect(await getStaffHomeWeekSummaryData({ now })).toEqual(summary);
   });
 
   it("counts a combined source visit once and keeps its staff signature and all participating teachers", async () => {

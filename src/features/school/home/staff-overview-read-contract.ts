@@ -1,6 +1,6 @@
 import type { OverviewDetailQuery } from "./staff-overview-drilldown-contract";
 
-const SOURCES = ["activities", "registrations", "assessments", "courseEnrollments", "memberships", "enrollmentAssignments", "classrooms",
+const SOURCES = ["activities", "registrations", "assessments", "courseEnrollments", "memberships", "classrooms",
   "acquisitionSources", "leadSubmissions", "leads", "communications", "invitationEvents", "invitationThreads", "assignments",
   "leadActions", "supportTasks", "profiles", "staffRoleMembers", "opportunities", "operationalLeads"] as const;
 export type OverviewReadSource = typeof SOURCES[number];
@@ -11,7 +11,7 @@ export function overviewReadSources(detail?: OverviewDetailQuery): Set<OverviewR
   const sources = new Set<OverviewReadSource>(["profiles"]);
   const add = (...keys: OverviewReadSource[]) => keys.forEach(key => sources.add(key));
   const participation = () => add("activities", "registrations", "assessments", "leads");
-  const enrollment = () => add("activities", "registrations", "courseEnrollments", "memberships", "enrollmentAssignments", "classrooms", "opportunities");
+  const enrollment = () => add("activities", "registrations", "courseEnrollments", "memberships", "classrooms", "opportunities");
   if (detail.kind === "capacity") add("classrooms", "memberships", "assignments");
   else if (detail.kind === "participation") { participation(); enrollment(); }
   else if (detail.kind === "pending") {

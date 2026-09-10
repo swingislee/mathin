@@ -64,12 +64,6 @@ export interface OverviewMembership {
   remark: string;
 }
 
-export interface OverviewEnrollmentAssignment {
-  id: string;
-  course_enrollment_id: string;
-  classroom_membership_id: string | null;
-}
-
 export interface OverviewSourceEvent {
   id: string;
   registrationIds?: string[];
@@ -110,8 +104,6 @@ export function buildOverviewSourceEvents(input: {
   registrations: readonly OverviewRegistration[];
   assessments: readonly OverviewAssessment[];
   courseEnrollments: readonly OverviewCourseEnrollment[];
-  memberships: readonly OverviewMembership[];
-  enrollmentAssignments: readonly OverviewEnrollmentAssignment[];
 }, timeZone: string, grain: "week" | "month" = "week") {
   const activities = new Map(input.activities.map(row => [row.id, row]));
   const registrations = new Map(input.registrations.map(row => [row.id, row]));

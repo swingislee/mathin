@@ -15,7 +15,7 @@ import {
 import {
   buildOverviewSourceEvents, overviewFactInstant, overviewSubjectKey, supplementOverviewContacts,
   type OverviewActivity, type OverviewRegistration, type OverviewAssessment,
-  type OverviewCourseEnrollment, type OverviewMembership, type OverviewEnrollmentAssignment,
+  type OverviewCourseEnrollment, type OverviewMembership,
 } from "./staff-overview-source-contract";
 import {
   aggregateStaffOverviewEvents,
@@ -266,7 +266,7 @@ function overviewReader(sources: Set<OverviewReadSource>) {
 
 async function readOverviewCore(supabase: Awaited<ReturnType<typeof createClient>>, sources = overviewReadSources()) {
   const read = overviewReader(sources);
-  const [activities, registrations, assessments, courseEnrollments, memberships, enrollmentAssignments, classrooms, currentTerms] = await Promise.all([
+  const [activities, registrations, assessments, courseEnrollments, memberships, classrooms, currentTerms] = await Promise.all([
     read<OverviewActivity>("activities", () => supabase.from("business_activities" as "activities")
       .select("id,scheduled_at,occurred_on,source_invitation_id,remark,record_state").is("deleted_at", null)),
     read<OverviewRegistration>("registrations", () => supabase.from("business_activity_registrations" as "activity_registrations")
@@ -277,24 +277,19 @@ async function readOverviewCore(supabase: Awaited<ReturnType<typeof createClient
       .select("id,student_id,opportunity_id,registered_on,confirmed_at,created_at,source_record_id,source_metric_facts,course_opportunities(student_id,lead_id)")),
     read<OverviewMembership>("memberships", () => supabase.from("enrollments")
       .select("id,classroom_id,student_id,joined_at,status,remark")),
-    read<OverviewEnrollmentAssignment>("enrollmentAssignments", () => supabase.from("course_enrollment_assignments")
-      .select("id,course_enrollment_id,classroom_membership_id")),
     read<ClassroomRow>("classrooms", () => supabase.from("classrooms")
       .select("id,name,grade,capacity,archived_at,trashed_at").eq("purpose", "production")),
     sources.has("classrooms") ? supabase.from("school_terms").select("id,name").eq("is_current", true).limit(2) : Promise.resolve({ data: [], error: null }),
   ]);
   const termId = !currentTerms.error && currentTerms.data?.length === 1 ? currentTerms.data[0].id : null;
   const currentClassIds = sources.has("classrooms") ? await readCurrentTermClassroomIds(supabase, termId) : { data: [], error: null };
-  return { activities, registrations, assessments, courseEnrollments, memberships, enrollmentAssignments, classrooms, currentTerms, currentClassIds };
+  return { activities, registrations, assessments, courseEnrollments, memberships, classrooms, currentTerms, currentClassIds };
 }
 
 function coreEvents(core: Awaited<ReturnType<typeof readOverviewCore>>, timeZone: string, grain: StaffOverviewGrain = "week") {
-  const productionClassIds = new Set((core.classrooms.data ?? []).map(row => row.id));
   return buildOverviewSourceEvents({
     activities: core.activities.data ?? [], registrations: core.registrations.data ?? [],
     assessments: core.assessments.data ?? [], courseEnrollments: core.courseEnrollments.data ?? [],
-    memberships: (core.memberships.data ?? []).filter(row => productionClassIds.has(row.classroom_id)),
-    enrollmentAssignments: core.enrollmentAssignments.data ?? [],
   }, timeZone, grain);
 }
 
@@ -317,7 +312,7 @@ export async function getStaffHomeWeekSummaryData({ now = new Date() }: { now?: 
   const comparisons = {
     arrivals: arrivalsExact ? aggregateStaffOverviewEvents(datedEvents(events.arrivals), window, timeZone) : null,
     assessments: arrivalsExact && exactRows(core.assessments) ? aggregateStaffOverviewEvents(datedEvents(events.assessments), window, timeZone) : null,
-    enrollments: arrivalsExact && exactRows(core.courseEnrollments) && exactRows(core.memberships) && exactRows(core.enrollmentAssignments) && exactRows(core.classrooms)
+    enrollments: arrivalsExact && exactRows(core.courseEnrollments) && exactRows(core.memberships) && exactRows(core.classrooms)
       ? aggregateStaffOverviewEvents(datedEvents(events.enrollments), window, timeZone) : null,
   };
   const businessFacts = (["arrivals", "assessments", "enrollments"] as const).map((key): StaffOverviewBusinessFact => ({
@@ -420,7 +415,6 @@ export async function getStaffOverviewData({
   const assessments = rows(core.assessments, "assessments");
   const courseEnrollments = rows(core.courseEnrollments, "enrollments");
   const memberships = rows(core.memberships, "enrollments");
-  rows(core.enrollmentAssignments, "enrollments");
   const allClassrooms = rows(core.classrooms, "classrooms");
   const term = !core.currentTerms.error && core.currentTerms.data?.length === 1 ? core.currentTerms.data[0] : null;
   if (!term) unavailable.add("classrooms");
