@@ -46,6 +46,7 @@ type TimelineFilter = "all" | "business" | "teaching" | "notes";
 const LeadIdentityControl = dynamic(() => import("./LeadIdentityControl").then((module) => module.LeadIdentityControl));
 const StudentMergePanel = dynamic(() => import("./StudentMergePanel").then(module => module.StudentMergePanel));
 const SchoolSupportProfileButton = dynamic(() => import("./SchoolSupportProfile").then((module) => module.SchoolSupportProfileButton));
+const SchoolRecordSourceReview = dynamic(() => import("./SchoolRecordSourceReview").then(module => module.SchoolRecordSourceReview));
 
 const BUSINESS_PHASES = new Set<Student360Phase>([
   "source",
@@ -487,6 +488,10 @@ function Student360PanelBody({
           ) : null}
           <Student360LifecycleRail snapshot={snapshot} />
           {snapshot.sourceCompletion?<section className="px-5 pb-4 sm:px-7"><SourceCompletionNotice summary={snapshot.sourceCompletion} locale={locale}/></section>:null}
+          {snapshot.identity.accessScope === "full" && (snapshot.identity.studentId || snapshot.identity.primaryLeadId) ? <section className="px-5 pb-4 sm:px-7">
+            <SchoolRecordSourceReview key={snapshot.identity.studentId ?? snapshot.identity.primaryLeadId} locale={locale}
+              subject={{ studentId: snapshot.identity.studentId, leadId: snapshot.identity.studentId ? null : snapshot.identity.primaryLeadId }} />
+          </section> : null}
 
           {snapshot.identity.profileRemark ? (
             <section className="border-y border-line bg-moon/10 px-5 py-4 sm:px-7" aria-labelledby="student-360-profile-remark">

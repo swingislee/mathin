@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { FollowupChoice, followupToneClasses } from "./dashboard-page/FollowupChoice";
 import { LeadIdentityControl } from "./LeadIdentityControl";
 import { Student360Trigger } from "./Student360Sheet";
+import { PossibleDuplicateBadge } from "./PossibleDuplicateBadge";
 import { CONTACT_OUTCOME_SHORTCUTS } from "./followup-keyboard";
 import { FollowupTableBody } from "./dashboard-page/FollowupRecordRow";
 import { FollowupContactOutcome } from "./FollowupContactOutcome";
@@ -325,11 +326,13 @@ export function LeadContactEntryRow({
     detailsId={detailsId} onExpandedChange={changeDetailsOpen} onActivate={() => onActivate(lead.id)}
     onOutcomeChange={canUseEntry ? chooseOutcome : undefined} onSave={canUseEntry ? () => saveEntry(false) : undefined}
     selection={leadingSelection} historicalSummary={historicalSummary}
+    identityHint={<PossibleDuplicateBadge count={lead.possibleDuplicateCount} subject={{ studentId: lead.studentId ?? null, leadId: lead.id }} name={lead.provisionalStudentName} locale={locale} />}
     defaultCells={layout === "default" ? <>
       {canAssign && layout === "default" ? <LeadContactSelectionCell lead={lead} visibleIds={visibleIds} /> : null}
       <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-2">
         <div className="flex min-w-0 items-baseline justify-between gap-2"><Student360Trigger subject={{ studentId: lead.studentId ?? null, leadId: lead.id }} fallback={{ name: lead.provisionalStudentName, phone: lead.phone, grade: lead.gradeHint, gradeText: lead.gradeText }} className="truncate">{lead.provisionalStudentName}</Student360Trigger>
           <span className="max-w-[50%] truncate text-[10px] text-muted" title={lead.gradeText || undefined}>{lead.gradeText || (lead.gradeHint ? t("gradeValue", { grade: lead.gradeHint }) : t("unknownGrade"))}</span></div>
+        <PossibleDuplicateBadge count={lead.possibleDuplicateCount} subject={{ studentId: lead.studentId ?? null, leadId: lead.id }} name={lead.provisionalStudentName} locale={locale} />
         <div className="mt-1 flex min-w-0 items-center gap-2"><a className="shrink-0 font-mono text-[10px] hover:underline" href={`tel:${lead.phone}`}>{lead.phone}</a>{lead.sourceMarkedDuplicate ? <span className="truncate text-[10px] text-muted">{t("sourceDuplicateShort")}</span> : null}</div>
       </TableCell>
       <TableCell className="px-2 py-2"><p className="truncate" title={lead.acquisitionLocation}>{lead.acquisitionLocation || t("acquisitionLocationMissing")}</p>

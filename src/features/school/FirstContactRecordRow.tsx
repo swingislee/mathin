@@ -31,7 +31,7 @@ export function FirstContactRecordRow({
   record, locale, active, selected = false, expanded, onExpandedChange, onActivate,
   rowRef, tabIndex = 0, pending = false, layout = "communication", canAssign = false,
   detailsId, onKeyDown, onClick, selection, historicalSummary,
-  defaultCells, children, onOutcomeChange, onSave,
+  defaultCells, children, onOutcomeChange, onSave, identityHint,
 }: {
   record: FirstContactRecord;
   locale: string;
@@ -51,6 +51,7 @@ export function FirstContactRecordRow({
   selection?: ReactNode;
   historicalSummary?: { state: ReactNode; details: ReactNode; updated: ReactNode };
   defaultCells?: ReactNode;
+  identityHint?: ReactNode;
   children?: ReactNode | (() => ReactNode);
   onOutcomeChange?: ComponentProps<typeof FollowupRecordRow>["onOutcomeChange"];
   onSave?: () => void;
@@ -68,6 +69,7 @@ export function FirstContactRecordRow({
     summary={layout === "communication" ? <>
         <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-1.5">
           <FollowupPersonCell {...record.person} nameOnly selection={selection} expanded={expanded} detailsId={detailsId} onToggle={() => onExpandedChange(!expanded)} />
+          {identityHint}
         </TableCell>
         <TableCell className="px-2 py-1.5"><a className="block truncate font-mono text-[11px] hover:underline" href={`tel:${record.person.phone}`} title={record.person.phone}>{record.person.phone || "—"}</a></TableCell>
         <TableCell className="px-2 py-1.5"><p className="truncate text-[11px] text-muted" title={record.person.grade}>{record.person.grade || "—"}</p></TableCell>

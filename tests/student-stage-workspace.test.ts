@@ -58,6 +58,11 @@ describe("student stage navigation and row continuity", () => {
     const url = new URL(studentStageHref(filters, { page: 3 }), "https://example.test");
     expect(parseStudentStageFilters(Object.fromEntries(url.searchParams))).toEqual({ ...filters, page: 3 });
   });
+  it("keeps duplicate hints during ordinary entry saves and accepts a refreshed count", () => {
+    const rows = [{ ...row, possibleDuplicateCount: 2 }];
+    expect(replaceSavedStudent(rows, row.key, { ...row, note: "New note" })[0].possibleDuplicateCount).toBe(2);
+    expect(replaceSavedStudent(rows, row.key, { ...row, possibleDuplicateCount: 0 })[0].possibleDuplicateCount).toBe(0);
+  });
   it("provides both languages for every selectable main stage and situation", () => {
     expect(STUDENT_STAGE_TABS).toHaveLength(5);
     for (const locale of ["zh", "en"]) {

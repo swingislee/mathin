@@ -27,6 +27,7 @@ import { FollowupEntryLayout } from "./FollowupEntryFields";
 import { FollowupFieldIcon } from "./FollowupFieldIcon";
 import { followupFocusActivatesRow, followupKeyContext, navigateFollowupTable } from "./followup-keyboard";
 import { Student360Trigger } from "./Student360Sheet";
+import { PossibleDuplicateBadge } from "./PossibleDuplicateBadge";
 import type { LeadPoolRow } from "./lead-contract";
 
 export function LeadIntakeWorkbench({ leads, locale, canAssign = false, canManageIdentity = false, canAdd = false, currentUserId, fieldView, timeZone = "Asia/Shanghai", now }: {
@@ -100,6 +101,7 @@ export function LeadIntakeWorkbench({ leads, locale, canAssign = false, canManag
             <Student360Trigger subject={{ leadId: lead.id, studentId: lead.studentId ?? null }} fallback={{ name: lead.provisionalStudentName, phone: lead.phone, grade: lead.gradeHint, gradeText: gradeOf(lead) }} className="truncate">{lead.provisionalStudentName}</Student360Trigger>
             {lead.sourceMarkedDuplicate ? <span title={t("sourceDuplicate")} className="shrink-0 text-rose"><Copy className="size-3" aria-label={t("sourceDuplicateShort")} /></span> : null}
           </div>
+          <PossibleDuplicateBadge count={lead.possibleDuplicateCount} subject={{ studentId: lead.studentId ?? null, leadId: lead.id }} name={lead.provisionalStudentName} locale={locale} />
         </TableCell>
         <TableCell><a className="font-mono text-[11px] hover:underline" href={`tel:${lead.phone}`}>{lead.phone || "—"}</a></TableCell>
         <TableCell className="truncate text-muted" title={gradeOf(lead)}>{gradeOf(lead)}</TableCell>
@@ -131,7 +133,7 @@ export function LeadIntakeWorkbench({ leads, locale, canAssign = false, canManag
         </FollowupEntryLayout>}
       </FollowupInlineDetails>
     </Fragment>;
-  }, [canAssign, canManageIdentity, changeDetails, colSpan, formatAt, gradeOf, invitationT, progressOf, selection, t, toneOf, visibleIds]);
+  }, [canAssign, canManageIdentity, changeDetails, colSpan, formatAt, gradeOf, invitationT, locale, progressOf, selection, t, toneOf, visibleIds]);
 
   return <SchoolSupportTableEntry workspace="leads" enabled={canAdd} columns={[...(canAssign ? ["blank" as const] : []),"name","phone","grade","blank","blank","blank","blank","blank"]}><DashboardTableShell data-lead-intake-workbench data-followup-workbench data-followup-scroll>
     <Table className="w-full min-w-[58rem] table-fixed text-xs" containerClassName="overflow-auto [scrollbar-gutter:stable]"

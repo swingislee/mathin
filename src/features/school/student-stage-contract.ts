@@ -40,6 +40,7 @@ export interface StudentStageRow {
   canWrite: boolean; canContact: boolean;
   recontactReason?: StudentRecontactReason;
   sharedPhoneCount?: number;
+  possibleDuplicateCount?: number;
   invitation: (InvitationDraft & { id: string; leadId: string; updatedAt: string }) | null;
 }
 export interface StudentStageData {
@@ -116,6 +117,7 @@ export interface StudentStageOptions {
 /** 同一会话中保存后原行保持位置；身份从 Lead 关联 Student 时替换行键，不添加第二个人。 */
 export function replaceSavedStudent(rows: readonly StudentStageRow[], originalKey: string, saved: StudentStageRow): StudentStageRow[] {
   const originalPresent = rows.some(row => row.key === originalKey);
-  return rows.flatMap(row => row.key === originalKey ? [saved]
+  return rows.flatMap(row => row.key === originalKey ? [{ ...saved, ...(saved.possibleDuplicateCount === undefined && row.possibleDuplicateCount !== undefined
+    ? { possibleDuplicateCount: row.possibleDuplicateCount } : {}) }]
     : originalPresent && row.key === saved.key ? [] : [row]);
 }

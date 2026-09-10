@@ -3,6 +3,7 @@ import {normalizeGradeLabel} from '../../src/lib/grade-format.mjs';
 import {historyFieldName,historicalDate} from './student-business-history.mjs';
 import {historyPayloadHash} from './history-import-trial.mjs';
 import {buildSourceMetricFacts} from './source-metric-facts.mjs';
+import {observeSourceFields} from './source-field-coverage.mjs';
 import {normalizeSourceAssessmentBand,sourceAssessmentNote,normalizeSourceContact,sourceScore,mergeSourceNotes,sourceVisitKinds,resolveSourceStaffId,sourceEnrollmentFacts,sourceVisitParticipation} from '../../src/features/school/business-source-contract.ts';
 
 export const OPERATIONAL_TABLES=['leads','lead_communications','activities','activity_registrations','assessment_results','course_opportunities','course_enrollments','course_enrollment_assignments'];
@@ -17,6 +18,7 @@ const validDate=(r,...fields)=>fields.map(f=>historicalDate(field(r,f))).find(Bo
 
 /** 原表中的个人业务行各有稳定主键；待确认归属保留来源锚点，实际使用时绑定已有学生。 */
 export function buildOperationalSourceImport(payload,snapshot) {
+  const fieldAudit=observeSourceFields(payload.records.filter(r=>r.source_data.format==='feishu-base'));
   const id=createImportUuid(OPERATIONAL_TABLES.flatMap(table=>(snapshot[table]??[]).map(row=>row.id)));
   /** @type {Record<string, Array<Record<string, unknown>>>} */
   const rows=Object.fromEntries(OPERATIONAL_TABLES.map(t=>[t,[]]));
@@ -49,7 +51,7 @@ export function buildOperationalSourceImport(payload,snapshot) {
     return leadId;
   }
   const subject=r=>r.student_id?{student_id:r.student_id,lead_id:null}:{student_id:null,lead_id:ensureLead(r)};
-  for(const source of payload.records.filter(r=>r.source_data.format==='feishu-base'&&name(r))) {
+  for(const source of fieldAudit.records.filter(r=>name(r))) {
     const r=confirmedStudents.has(source.id)?{...source,student_id:confirmedStudents.get(source.id)}:source;
     const table=r.record_data.tableName;
     const emitted=[];
@@ -141,5 +143,6 @@ export function buildOperationalSourceImport(payload,snapshot) {
     rows[table]=[...new Map(rows[table].map(row=>[row.id,row])).values()];
     for(const row of rows[table])if(row.history_key)row.source_payload_sha256=historyPayloadHash(row);
   }
-  return {sourcePayloadHash:payload.payloadHash,sourceBatchKey:payload.batchKey,rows,leadFacts:[...leadFacts.values()],coverage,counts:Object.fromEntries(OPERATIONAL_TABLES.map(t=>[t,rows[t].length]))};
+  return {sourcePayloadHash:payload.payloadHash,sourceBatchKey:payload.batchKey,rows,leadFacts:[...leadFacts.values()],coverage,
+    fieldCoverage:fieldAudit.report(),counts:Object.fromEntries(OPERATIONAL_TABLES.map(t=>[t,rows[t].length]))};
 }

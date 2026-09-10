@@ -128,7 +128,8 @@ describe("SCHOOL-OPS Leads seed intake", () => {
     expect(table).toContain("studentSuggestion");
     expect(table).toContain("acquisitionLocation");
     expect(table).toContain("acquiredAt");
-    expect(page).toContain("listLeadPool");
+    expect(page).toContain("listLeadIntakeFieldPage");
+    expect(read("src", "features", "school", "lead-intake-table-data.ts")).toContain("listLeadPool");
     expect(panel).toContain('href="/dashboard/followups/leads"');
     expect(panel).toContain("getLeadImportBatchAction");
     expect(panel).toContain('t("acquisitionLocation")');

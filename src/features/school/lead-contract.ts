@@ -68,6 +68,7 @@ export interface LeadPoolRow {
   acquisitionPromoter: string;
   sourceCount: number;
   sourceMarkedDuplicate: boolean;
+  possibleDuplicateCount?: number;
   interests: string[];
   contactCount: number;
   lastContactAt: string | null;

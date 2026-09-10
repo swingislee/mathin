@@ -13,14 +13,15 @@ const row = { key: "student:1", studentId: "1", leadId: null, name: "Student", p
   invitation: null, detailLoaded: false };
 const page = { rows: [row], counts: { awaiting_renewal: 125 }, count: 41, page: 3, pageSize: 20, totalPages: 3,
   facets: { owner: { options: [{ value: "owner-b", label: "同名" }, { value: "owner-a", label: "同名" }], days: [] } } };
-beforeEach(() => { vi.clearAllMocks(); rpc.mockResolvedValue({ data: page, error: null }); });
+beforeEach(() => { vi.clearAllMocks(); rpc.mockImplementation(async (name: string) => ({ data: name === "read_school_record_hints" ? [{ key: row.key, possibleDuplicateCount: 1 }] : page, error: null })); });
 
 describe("student list database page adapter", () => {
   it("requests one page and keeps database totals, detail marker and scope menu", async () => {
     const result = await loadStudentStageFieldPage(filters, context, "actor");
-    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledTimes(2);
+    expect(rpc).toHaveBeenCalledWith("read_school_record_hints", { p_subjects: [{ studentId: row.studentId, leadId: null }] });
     expect(rpc).toHaveBeenCalledWith("list_student_records_page", expect.objectContaining({ p_scope: "mine", p_population: "work", p_page: 3, p_page_size: 20, p_locale: "en" }));
-    expect(result).toMatchObject({ count: 41, page: 3, totalPages: 3, rows: [{ detailLoaded: false }], counts: { awaiting_renewal: 125 } });
+    expect(result).toMatchObject({ count: 41, page: 3, totalPages: 3, rows: [{ detailLoaded: false, possibleDuplicateCount: 1 }], counts: { awaiting_renewal: 125 } });
     expect(result.fieldView?.facets.scope.options.map(option => option.value)).toEqual(["all", "mine", "group", "unassigned"]);
     expect(result.fieldView?.facets.owner.options.map(option => option.label)).toEqual(["同名 · owner-b", "同名 · owner-a"]);
   });

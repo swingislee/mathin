@@ -20,7 +20,7 @@ vi.mock("@/i18n/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }), u
 
 const lead: LeadPoolRow = {
   id: "lead", provisionalStudentName: "示例学生", phone: "13800000000", gradeHint: 3, gradeText: "3年级", status: "uncontacted",
-  ownerId: "owner", ownerName: "学服老师", suggestedStudentId: null, suggestedStudentName: "", createdAt: "2026-09-08T01:00:00Z",
+  ownerId: "owner", ownerName: "学服老师", canEdit: true, suggestedStudentId: null, suggestedStudentName: "", createdAt: "2026-09-08T01:00:00Z",
   acquiredAt: null, acquisitionLocation: "", acquisitionMethod: "", acquisitionPromoter: "", sourceCount: 1, sourceMarkedDuplicate: false,
   interests: [], contactCount: 0, lastContactAt: null, lastContactOutcome: null, lastContactNote: "上次保留的资料",
   wechatAdded: null, visitCommitted: null, interestLevel: null, nextContactAt: null, activeInvitation: null,

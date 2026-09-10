@@ -29,6 +29,7 @@ import type { SchoolCollaborationSettings } from "./school-collaboration-contrac
 import { StudentRecontactPlan } from "./StudentRecontactPlan";
 import { Student360Trigger } from "./Student360Sheet";
 import { StudentAssessmentCompletionHint } from "./StudentAssessmentCompletionHint";
+import { PossibleDuplicateBadge } from "./PossibleDuplicateBadge";
 import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
 import { studentStageMessages } from "./student-stage-messages";
 import { defaultStudentEntryMode, replaceSavedStudent, STUDENT_RECONTACT_REASONS, STUDENT_STAGE_TABS, studentRecordTableStage, studentStageHref,
@@ -183,7 +184,8 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
               onCheckedChange={checked => setSelectedKeys(current => { const next = new Set(current); if (checked === true) next.add(row.key); else next.delete(row.key); return next; })} /></TableCell> : null}
             <TableCell><FollowupPersonCell name={row.name} phone={row.phone} grade={grade} studentGrade={row.grade} nameOnly inlineGrade
               subject={{ studentId: row.studentId, leadId: row.leadId }} expanded={expanded} detailsId={`student-stage-details-${row.key}`}
-              onToggle={() => { if (!busy) { if (expanded) setActive(null); else open(row); } }} /></TableCell>
+              onToggle={() => { if (!busy) { if (expanded) setActive(null); else open(row); } }} />
+              <PossibleDuplicateBadge count={row.possibleDuplicateCount} subject={{ studentId: row.studentId, leadId: row.leadId }} name={row.name} locale={locale} /></TableCell>
             <TableCell title={row.phone || undefined}><p className="truncate tabular-nums text-muted">{row.phone || "—"}</p>
               {recontact && (row.sharedPhoneCount ?? 0) > 1 ? <span className="text-[10px] text-muted">{m.sharedPhone} · {row.sharedPhoneCount}</span> : null}</TableCell>
             <TableCell title={`${m.stages[row.stage]} · ${situation}`}><div className="flex min-w-0 items-center gap-1.5">

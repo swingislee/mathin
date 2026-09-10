@@ -10,6 +10,17 @@ const source=(id:string,tableName:string,values:Record<string,string>,studentId:
 const payload=(records:ReturnType<typeof source>[])=>({records,payloadHash:'source-fingerprint',batchKey:'source-batch'});
 
 describe('来源记录衔接当前业务模型',()=>{
+  it('reports fields the mapper never reads even when row and provenance coverage are complete',()=>{
+    const input=payload([source('acquisition','获客&私域信息登记表1.0-总',{'年级':'3','获客区位':'原地点','触达内容':'原内容','以后新增字段':'保留值'})]);
+    const before=structuredClone(input),plan=buildOperationalSourceImport(input,{});
+    expect(plan.coverage).toHaveLength(1);
+    expect(plan.rows.leads[0]).toBeDefined();
+    expect(plan.fieldCoverage).toMatchObject({semantics:'lookup_only_not_storage_or_display_proof',fieldCount:4,nonemptyCells:4});
+    expect(plan.fieldCoverage.fields.find(item=>item.field==='以后新增字段')).toMatchObject({nonemptyCells:1,lookedUpCells:0,notLookedUpCells:1});
+    expect(plan.fieldCoverage.fields.find(item=>item.field==='年级')).toMatchObject({lookedUpCells:1});
+    expect(input).toEqual(before);
+    expect(JSON.stringify(plan.fieldCoverage)).not.toContain('保留值');
+  });
   it('uses the one-to-one class band correspondence only on an attended assessment',()=>{
     const p=buildOperationalSourceImport(payload([
       source('attended','到访数据与信息表1.0-总',{'参与内容':'测评','到访与否':'已到','报名与否':'已报名','班型':'A+'}),
@@ -48,12 +59,12 @@ describe('来源记录衔接当前业务模型',()=>{
     expect(p.rows.leads[0].owner_id).toBe('support');
     expect(p.rows.activities[0].remark).toContain('学科老师：示例测评老师');
   });
-  it('未关联到学生的到访行仍可继续测评，学习力等级保持独立，未达A进入备注',()=>{
+  it('未关联到学生的到访行仍可继续测评，学习力等级保持独立，未达A映射X+并保留原文',()=>{
     const p=buildOperationalSourceImport(payload([source('visit','到访数据与信息表1.0-总',{'参与内容':'测评','思维测评等级':'未达A','学习力测评等级':'A+','年级/25级':'3','到访与否':'已到'})]),{});
     expect(p.rows.activity_registrations).toHaveLength(1);
     expect(p.rows.activity_registrations[0]).toMatchObject({student_id:null,status:'attended'});
     expect(p.rows.activity_registrations[0].lead_id).toBe(p.rows.leads[0].id);
-    expect(p.rows.assessment_results[0]).toMatchObject({assessment_band:null,score:null,score_max:null});
+    expect(p.rows.assessment_results[0]).toMatchObject({assessment_band:'x_plus',score:null,score_max:null});
     expect(p.rows.assessment_results[0].strengths).toContain('原测评等级：未达A');
     expect(p.rows.assessment_results[0].strengths).toContain('学习力测评等级：A+');
     expect(p.rows.leads[0]).toMatchObject({phone:'',phone_normalized:null,grade_hint:null});

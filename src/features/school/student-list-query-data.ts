@@ -8,6 +8,7 @@ import { studentListFieldLabels, studentListFacets, studentListRpcQuery } from "
 import { studentStageFieldScope, studentStageTableFields } from "./student-stage-table-fields";
 import type { DashboardDateContext } from "./dashboard-page/dashboard-table-date-contract";
 import type { StudentStageFilters, StudentStageData } from "./student-stage-contract";
+import { readSchoolRecordHints } from "./school-record-review-data";
 
 const pageSchema = z.object({
   rows: z.array(studentStageRowSchema), counts: z.record(z.string(), z.number().int().nonnegative()),
@@ -29,8 +30,10 @@ export async function loadStudentListQueryPage(filters: StudentStageFilters, con
     p_page: filters.page, p_page_size: filters.pageSize, p_query: studentListRpcQuery(query),
     p_locale: context.locale.startsWith("en") ? "en" : "zh", p_labels: studentListFieldLabels(fields),
   }));
+  const hints = await readSchoolRecordHints(client, page.rows.map(row => ({ studentId: row.studentId, leadId: row.leadId })));
+  const rows = page.rows.map(row => ({ ...row, possibleDuplicateCount: hints.get(row.key) ?? 0 }));
   const fieldView = { query, facets: studentListFacets(facets, fields, context.locale) };
   // 范围菜单支持直接切换；筛选与实际读写权限分别由数据库验证。
   fieldView.facets.scope = { options: fields.scope.kind === "enum" ? [...fields.scope.options ?? []] : [], days: [] };
-  return { ...page, fieldView };
+  return { ...page, rows, fieldView };
 }

@@ -23,7 +23,9 @@ snapshot.profiles=JSON.parse(sql("begin read only;select coalesce(jsonb_agg(t),'
 snapshot.history_import_associations=JSON.parse(sql("begin read only;select coalesce(jsonb_agg(t),'[]'::jsonb) from(select record_id,student_id from public.history_import_associations) t;commit;"));
 const plan=buildOperationalSourceImport(source,snapshot);
 fs.writeFileSync(path.join(root,'plan.json'),JSON.stringify(plan));
-if(mode==='--prepare'){console.log(JSON.stringify({counts:plan.counts,coverage:plan.coverage.reduce((out,row)=>(out[row.table]=(out[row.table]??0)+1,out),{})}));process.exit(0);}
+if(mode==='--prepare'){console.log(JSON.stringify({counts:plan.counts,coverage:plan.coverage.reduce((out,row)=>(out[row.table]=(out[row.table]??0)+1,out),{}),
+  fieldCoverage:{fieldCount:plan.fieldCoverage.fieldCount,nonemptyCells:plan.fieldCoverage.nonemptyCells,notLookedUpCells:plan.fieldCoverage.notLookedUpCells,
+    semantics:plan.fieldCoverage.semantics}}));process.exit(0);}
 const migration='20260907000900_operational_source_records';
 const migrationFile=`supabase/migrations/${migration}.sql`;
 const checkKey={migration:textFileSha256(migrationFile),plan:historyPayloadHash(plan),runner:textFileSha256('scripts/operational-source-import.mjs'),normalizer:textFileSha256('src/features/school/business-source-contract.ts')};

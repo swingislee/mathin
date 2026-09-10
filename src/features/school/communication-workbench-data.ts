@@ -1,4 +1,5 @@
 import "server-only";
+import { withLeadRecordHints } from "./school-record-review-data";
 
 import { createClient } from "@/lib/supabase/server";
 import { loadActivityEnrollmentContext, loadPostActivityFollowups } from "./enrollment-workflow-data";
@@ -161,9 +162,10 @@ export async function loadCommunicationWorkbench(
   const contactIds = new Set(selection.entries.flatMap((row) => row.source === "lead" && !row.invitation ? [row.leadId] : []));
   const selectedLeadIdSet = new Set(selection.entries.flatMap(row => row.source === "lead" ? [row.leadId] : []));
   const selectedInvitationIds = new Set(selection.entries.flatMap((row) => row.source === "lead" && row.invitation ? [row.invitation.id] : []));
+  const visibleLeads = await withLeadRecordHints(await createClient(), leadDetails.filter(row => selectedLeadIdSet.has(row.id)));
   return {
-    contactLeads: leadDetails.filter((row) => contactIds.has(row.id)),
-    leadDetails: leadDetails.filter(row => selectedLeadIdSet.has(row.id)),
+    contactLeads: visibleLeads.filter((row) => contactIds.has(row.id)),
+    leadDetails: visibleLeads,
     invitations: selection.entries.flatMap((row) => row.source === "lead" && row.invitation ? [row.invitation] : []),
     invitationHistory: invitations.filter((row) => selectedLeadIdSet.has(row.leadId) && !selectedInvitationIds.has(row.id)),
     postActivityRows: selection.entries.flatMap((row) => row.source === "post_activity" ? [row.row] : []),
