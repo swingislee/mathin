@@ -7,7 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Slider } from "@/components/ui/slider";
 
 export function ClassroomDisplayControls({
-  focused, onFocus, adjustable, value, min, max, onResize, onReset,
+  focused, onFocus, adjustable, value, min, max, onResize, onReset, verticalPosition, onPan,
 }: {
   focused: boolean;
   onFocus: (focused: boolean) => void;
@@ -17,6 +17,8 @@ export function ClassroomDisplayControls({
   max: number;
   onResize: (percent: number) => void;
   onReset: () => void;
+  verticalPosition: number | null;
+  onPan: (position: number) => void;
 }) {
   const t = useTranslations("classroom.live");
   const focusLabel = t(focused ? "exitFocus" : "enterFocus");
@@ -38,7 +40,17 @@ export function ClassroomDisplayControls({
           <Slider aria-label={t("coursewareDisplaySize")} aria-valuetext={t("displayWidthPercent", { value })}
             value={[value]} min={min} max={max} step={1} disabled={!adjustable || min === max}
             onValueChange={([percent]) => onResize(percent)} className="min-h-8" />
-          <p className="text-xs leading-relaxed text-muted">{t(adjustable ? "displaySizeHint" : "displaySizeNarrowHint")}</p>
+          <p className="text-xs leading-relaxed text-muted">{t(!adjustable ? "displaySizeNarrowHint" : focused ? "displaySizeFocusHint" : "displaySizeHint")}</p>
+          {verticalPosition !== null && (
+            <div className="space-y-1">
+              <span className="text-sm">{t("displayVerticalPosition")}</span>
+              <Slider aria-label={t("displayVerticalPosition")} value={[verticalPosition]} min={0} max={100} step={1}
+                onValueChange={([position]) => onPan(position)} className="min-h-8" />
+              <div className="flex justify-between text-xs text-muted">
+                <span>{t("displayTop")}</span><span>{t("displayBottom")}</span>
+              </div>
+            </div>
+          )}
           <Button type="button" variant="ghost" size="sm" className="w-full" onClick={onReset}>{t("resetDisplaySize")}</Button>
         </PopoverContent>
       </Popover>

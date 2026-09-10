@@ -21,15 +21,23 @@ export function parseClassroomDisplayPreferences(raw: string | null): ClassroomD
   }
 }
 
-/** 滑杆表示可用屏宽占比；高度和右栏最小宽度共同决定完整显示上限。 */
+/** 专注模式支持全宽放大；完整显示比例作为默认值，分栏继续保留右栏操作空间。 */
 export function classroomDisplayBounds(width: number, height: number, focused: boolean) {
   const safeWidth = Number.isFinite(width) ? Math.max(1, width) : 1;
   const safeHeight = Number.isFinite(height) ? Math.max(1, height) : 1;
   const availableWidth = focused ? safeWidth : Math.max(1, safeWidth - CLASSROOM_DISPLAY_SIDE_MIN - CLASSROOM_DISPLAY_GAP);
-  const maxWidth = Math.min(availableWidth, safeHeight * CLASSROOM_DISPLAY_ASPECT);
+  const fitWidth = Math.min(availableWidth, safeHeight * CLASSROOM_DISPLAY_ASPECT);
+  const fitPercent = Math.max(1, Math.floor(fitWidth / safeWidth * 100));
+  const maxWidth = focused ? availableWidth : fitWidth;
   const maxPercent = Math.max(1, Math.floor(maxWidth / safeWidth * 100));
-  const minPercent = Math.max(1, Math.min(40, maxPercent - 10));
-  return { minPercent, maxPercent, maxWidth };
+  const minPercent = Math.max(1, Math.min(40, fitPercent - 10));
+  return { minPercent, maxPercent, maxWidth, fitPercent };
+}
+
+/** 相对居中位置平移整块课件及板书：0 查看顶部，100 查看底部。 */
+export function classroomFocusOffset(overflow: number, position: number) {
+  const clamped = Number.isFinite(position) ? Math.max(0, Math.min(100, position)) : 50;
+  return Math.max(0, overflow) * (0.5 - clamped / 100);
 }
 
 export function clampClassroomDisplayPercent(value: number, bounds: ReturnType<typeof classroomDisplayBounds>) {

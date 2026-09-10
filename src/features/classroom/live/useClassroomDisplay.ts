@@ -5,6 +5,8 @@ import { panelLayoutStorage } from "@/lib/panel-layout-storage";
 import { pagingDialogIsOpen } from "./classroom-paging";
 import {
   classroomDisplayBounds,
+  classroomFocusOffset,
+  CLASSROOM_DISPLAY_ASPECT,
   clampClassroomDisplayPercent,
   DEFAULT_CLASSROOM_DISPLAY,
   parseClassroomDisplayPreferences,
@@ -24,6 +26,7 @@ const serverSnapshot = () => null;
 /** 显示偏好只属于当前设备和角色；课件、板书、页序与课堂事件保持原有身份。 */
 export function useClassroomDisplay(scope: string, active: boolean, stageWidth: number, splitEnabled: boolean, workspaceRef: RefObject<HTMLDivElement | null>) {
   const [focused, setFocused] = useState(false);
+  const [verticalPosition, setVerticalPosition] = useState(50);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const storageKey = `mathin:classroom-display:v1:${scope}`;
   const snapshot = useCallback(() => panelLayoutStorage.getItem(storageKey), [storageKey]);
@@ -57,8 +60,9 @@ export function useClassroomDisplay(scope: string, active: boolean, stageWidth: 
   const bounds = classroomDisplayBounds(size.width, size.height, focused);
   const preferred = focused ? preferences.focusPercent : preferences.splitPercent;
   const value = clampClassroomDisplayPercent(
-    preferred ?? (focused ? bounds.maxPercent : Math.round(stageWidth / Math.max(1, size.width) * 100)), bounds,
+    preferred ?? (focused ? bounds.fitPercent : Math.round(stageWidth / Math.max(1, size.width) * 100)), bounds,
   );
+  const focusOverflow = Math.max(0, size.width * value / 100 / CLASSROOM_DISPLAY_ASPECT - size.height);
   const save = (next: typeof preferences) => {
     panelLayoutStorage.setItem(storageKey, JSON.stringify(next));
     window.dispatchEvent(new Event(CHANGE_EVENT));
@@ -70,10 +74,14 @@ export function useClassroomDisplay(scope: string, active: boolean, stageWidth: 
     // 右栏压缩时把课程操作放到顶部；按用户偏好判断，避免高度变化反复触发换行。
     courseInfoAbove: !focused && adjustable && preferred !== null && size.width * (1 - preferred / 100) - 12 < 352,
     // 专注时仍用 4:3，同一 Canvas 随同一课件一起缩放。
-    focusWidth: `min(${preferred ?? 100}cqw, calc(100cqh * 4 / 3))`,
+    focusWidth: `${value}cqw`,
+    focusHeight: `${value / CLASSROOM_DISPLAY_ASPECT}cqw`,
+    focusOffset: classroomFocusOffset(focusOverflow, verticalPosition),
+    verticalPosition: focused && focusOverflow > 0 ? verticalPosition : null,
+    setVerticalPosition,
     resize(percent: number) {
       save({ ...preferences, [focused ? "focusPercent" : "splitPercent"]: clampClassroomDisplayPercent(percent, bounds) });
     },
-    reset() { save(DEFAULT_CLASSROOM_DISPLAY); },
+    reset() { save(DEFAULT_CLASSROOM_DISPLAY); setVerticalPosition(50); },
   };
 }

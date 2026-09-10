@@ -995,6 +995,8 @@ export function LiveShell({
       max={display.bounds.maxPercent}
       onResize={display.resize}
       onReset={display.reset}
+      verticalPosition={display.verticalPosition}
+      onPan={display.setVerticalPosition}
     />
   ) : null;
   const myAnswer = state.quiz ? state.answers[state.quiz.id]?.[userId] : undefined;
@@ -1567,21 +1569,21 @@ export function LiveShell({
         <main className={cn(
           "relative flex min-w-0 shrink-0 items-center justify-center lg:min-h-0 lg:flex-1 lg:shrink",
           teacherLayoutV2 && "min-h-[min(50dvh,32rem)] [container-type:size] lg:min-h-0",
-          focusMode && "h-full min-h-0 flex-1 [container-type:size]",
+          focusMode && "h-full min-h-0 flex-1 overflow-hidden [container-type:size]",
         )}>
           <div
             ref={stageRef}
             className={cn(
               "relative aspect-[4/3] overflow-hidden rounded-2xl border border-line bg-card",
               teacherLayoutV2 ? "max-h-full max-w-full" : "w-full",
-              focusMode && "max-h-full max-w-full rounded-none border-0",
+              focusMode && "max-h-none max-w-full shrink-0 rounded-none border-0",
             )}
             data-classroom-stage
             {...classroomInputProviderAttributes(rendererProfile.renderer, rendererProfile.provider)}
             style={{
               ...teachingSurface.surfaceStyle,
               ...(focusMode
-                ? { width: display.focusWidth, height: "auto" }
+                ? { width: display.focusWidth, height: display.focusHeight, transform: `translateY(${display.focusOffset}px)` }
                 : teacherLayoutV2
                 ? {
                   width: "min(100cqw, calc(100cqh * 4 / 3))",
