@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { actionError, type ActionResult } from "@/lib/action-result";
 import { authorizedClient } from "./actions/guards";
+import { authorizedEnrollmentPlacementClient } from './enrollment-placement-access';
 import { datetime, parse, text, uuid } from "./actions/schemas";
 import { CONTACT_CHANNELS, CONTACT_ROUTES, type ActivityEnrollmentContext, type EnrollmentPlacementBoard, type EnrollmentSourceRef, type EnrollmentWorkflowOptions } from "./enrollment-workflow-contract";
 import { enrollmentWorkflowRpc, loadActivityEnrollmentContext, loadEnrollmentPlacementBoard, loadEnrollmentWorkflowOptions } from "./enrollment-workflow-data";
@@ -70,7 +71,7 @@ export async function confirmActivityEnrollmentAction(input: z.infer<typeof enro
 export async function moveEnrollmentSeatAction(input: z.infer<typeof seatSchema>): Promise<ActionResult<EnrollmentPlacementBoard>> {
   try {
     const value = parse(seatSchema, input);
-    await authorizedClient("enrollment.manage");
+    await authorizedEnrollmentPlacementClient();
     await enrollmentWorkflowRpc("move_enrollment_to_seat", {
       p_enrollment_id: value.enrollmentId, p_membership_id: value.membershipId, p_from_classroom_id: value.fromClassroomId,
       p_to_classroom_id: value.toClassroomId, p_to_seat: value.seat, p_expected_seat: value.expectedSeat,
@@ -82,7 +83,7 @@ export async function moveEnrollmentSeatAction(input: z.infer<typeof seatSchema>
 export async function moveEnrollmentPlacementAction(input: z.infer<typeof moveSchema>): Promise<ActionResult<EnrollmentPlacementBoard>> {
   try {
     const value = parse(moveSchema, input);
-    await authorizedClient("enrollment.manage");
+    await authorizedEnrollmentPlacementClient();
     await enrollmentWorkflowRpc("move_enrollment_placement", {
       p_enrollment_id: value.enrollmentId, p_membership_id: value.membershipId,
       p_from_classroom_id: value.fromClassroomId, p_to_classroom_id: value.toClassroomId,

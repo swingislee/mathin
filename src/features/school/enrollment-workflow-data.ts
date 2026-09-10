@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { readSchoolQueryBatches } from "./school-query-pages";
 import { renewalHealthSignals, type RenewalHealthFacts } from "./renewal-health-contract";
 import {
-  enrollmentSchema, activityEnrollmentContextSchema, enrollmentWorkflowOptionsSchema, placementMemberSchema,
+  enrollmentSchema, activityEnrollmentContextSchema, enrollmentWorkflowOptionsSchema, placementMemberSchema, placementAccessSchema,
   type EnrollmentPlacementBoard, type EnrollmentSourceRef,
 } from "./enrollment-workflow-contract";
 
@@ -28,8 +28,12 @@ export async function loadEnrollmentWorkflowOptions() {
   return enrollmentWorkflowOptionsSchema.parse(await enrollmentWorkflowRpc("get_enrollment_workflow_options"));
 }
 export async function loadEnrollmentPlacementBoard(): Promise<EnrollmentPlacementBoard> {
-  const board = z.object({ options: enrollmentWorkflowOptionsSchema, enrollments: z.array(enrollmentSchema), members: z.array(placementMemberSchema) })
+  const board = z.object({ access: placementAccessSchema.optional(), options: enrollmentWorkflowOptionsSchema, enrollments: z.array(enrollmentSchema), members: z.array(placementMemberSchema) })
     .parse(await enrollmentWorkflowRpc("get_enrollment_placement_board"));
+  if (board.access?.canManageEnrollments === false) {
+    const sessionTransfers = z.array(sessionTransferSchema).parse(await enrollmentWorkflowRpc('get_enrollment_session_transfers'));
+    return { ...board, sessionTransfers };
+  }
   const supabase = await createClient();
   const teachers = await readSchoolQueryBatches(board.options.classrooms.map(row => row.id), (batch, start, end) =>
     supabase.from("classroom_staff_assignments").select("classroom_id,user_id,profiles!classroom_staff_assignments_user_id_fkey(display_name)")

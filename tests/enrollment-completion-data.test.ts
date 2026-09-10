@@ -43,4 +43,13 @@ describe('class roster renewal facts', () => {
     db.error = true;
     await expect(loadEnrollmentPlacementBoard()).rejects.toThrow('PLACEMENT_RENEWAL_FIELDS_READ');
   });
+
+  it('keeps teacher placement data scoped to the board instead of requiring management-only enrichment',async()=>{
+    db.board.access={canManageEnrollments:false,teacherClassroomIds:[id(20)],managedClassroomIds:[]};
+    db.error=true;
+    const board=await loadEnrollmentPlacementBoard();
+    expect(board.access?.teacherClassroomIds).toEqual([id(20)]);
+    expect(board.sessionTransfers).toEqual([]);
+    expect(db.requestedMemberships).toEqual([]);
+  });
 });

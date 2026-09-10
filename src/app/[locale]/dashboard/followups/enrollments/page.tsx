@@ -1,8 +1,9 @@
 import { getNow, setRequestLocale } from "next-intl/server";
 import { getOrganizationTimezoneV2 } from "@/features/school/organization-locations";
 import { EnrollmentPlacementWorkbench } from "@/features/school/EnrollmentPlacementWorkbench";
-import { loadEnrollmentPlacementBoard } from "@/features/school/enrollment-workflow-data";
-import { getMyPerms, requirePerm } from "@/lib/auth";
+import { enrollmentWorkflowRpc, loadEnrollmentPlacementBoard } from "@/features/school/enrollment-workflow-data";
+import { getMyPerms, requireDashboardEnvironment } from "@/lib/auth";
+import { redirect } from '@/i18n/navigation';
 import { loadStudentBusinessHistory } from '@/features/school/student-business-history-data';
 import { businessRecordStateFilter } from '@/features/school/business-record-state-contract';
 
@@ -15,7 +16,8 @@ export default async function CourseEnrollmentsPage({
 }) {
   const [{ locale }, query] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
-  const user = await requirePerm(locale, "enrollment.manage");
+  const { user } = await requireDashboardEnvironment(locale, ['staff']);
+  if (await enrollmentWorkflowRpc('can_access_enrollment_placement') !== true) redirect({ locale, href: '/dashboard' });
   const [board, permissions, timeZone, now] = await Promise.all([
     loadEnrollmentPlacementBoard(),
     getMyPerms(user.id),
@@ -27,13 +29,13 @@ export default async function CourseEnrollmentsPage({
       initialBoard={board}
       timeZone={timeZone}
       now={now.getTime()}
-      history={await loadStudentBusinessHistory(locale,{kind:'enrollment'})}
+      history={permissions.has('enrollment.manage') ? await loadStudentBusinessHistory(locale,{kind:'enrollment'}) : null}
       initialQuery={query.q?.slice(0,100)}
       initialRecordState={businessRecordStateFilter(query.state)}
       initialTermId={query.term}
       focusStudentId={query.student}
       canCreateClass={permissions.has("class.create")}
-      canAdd={permissions.has("followup.write") && permissions.has("followup.view")}
+      canAdd={permissions.has('enrollment.manage') && permissions.has("followup.write") && permissions.has("followup.view")}
     />
   );
 }

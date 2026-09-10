@@ -229,7 +229,7 @@ export const DASHBOARD_ROUTES = {
     href: "/dashboard/followups/enrollments",
     kind: "queue",
     environments: STAFF_ONLY,
-    permission: "enrollment.manage",
+    permissionAny: ["enrollment.manage", "class.view.mine"],
     // 商业报名由课程机会确认产生；本队列负责后续分班、批量分班与调班。
     createSurface: "derived",
     parent: "followups",

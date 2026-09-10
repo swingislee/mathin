@@ -43,6 +43,7 @@ export const placementMemberSchema = z.object({
   enrollmentId: nullableId, note: z.string(), recommendation: z.string(),
   seat: z.number().int().positive().nullable().optional(),
   status: z.enum(["active", "paused", "withdrawn"]).optional(),
+  canViewDetails: z.boolean().optional(),
 });
 export type PlacementMember = z.infer<typeof placementMemberSchema>;
 export const enrollmentSchema = z.object({
@@ -68,10 +69,18 @@ export const enrollmentSchema = z.object({
   assignedAt: z.string().nullable(),
   claimableClassroomIds: z.array(databaseUuid),
   updatedAt: z.string(),
+  canViewDetails: z.boolean().optional(),
 });
 export type CourseEnrollmentRow = z.infer<typeof enrollmentSchema>;
 
+export const placementAccessSchema = z.object({
+  canManageEnrollments: z.boolean(),
+  teacherClassroomIds: z.array(databaseUuid),
+  managedClassroomIds: z.array(databaseUuid),
+});
+
 export interface EnrollmentPlacementBoard {
+  access?: z.infer<typeof placementAccessSchema>;
   sessionTransfers?: import('./enrollment-placement-change-contract').SessionTransfer[];
   options: EnrollmentWorkflowOptions;
   enrollments: CourseEnrollmentRow[];
@@ -95,6 +104,14 @@ export interface PlacementStudent {
   recommendation: string;
   seat: number | null;
   status: "active" | "paused" | "withdrawn";
+  canViewDetails?: boolean;
+}
+
+/** 页面反馈使用服务端下发的关系；数据库在写入时再次核对实际两端。 */
+export function canMovePlacement(access: EnrollmentPlacementBoard['access'], from: string | null, to: string | null): boolean {
+  if (!access) return true;
+  return Boolean((from && access.teacherClassroomIds.includes(from)) || (to && access.teacherClassroomIds.includes(to))
+    || (access.canManageEnrollments && (!from || access.managedClassroomIds.includes(from)) && (!to || access.managedClassroomIds.includes(to))));
 }
 
 /** 花名册已经占用名额；未关联的报名不在待分班首行重复显示。 */
@@ -118,6 +135,7 @@ export function placementStudents(board: EnrollmentPlacementBoard): PlacementStu
     courseId: row.courseId, courseTitle: row.courseTitle, termId: row.termId, classroomId: row.classroomId,
     note: row.note, recommendation: "",
     seat: null, status: row.status === "cancelled" ? "withdrawn" as const : "active" as const,
+    canViewDetails: row.canViewDetails,
   }))];
 }
 

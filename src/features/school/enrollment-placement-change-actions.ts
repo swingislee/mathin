@@ -2,7 +2,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { actionError,type ActionResult } from '@/lib/action-result';
-import { authorizedClient } from './actions/guards';
+import { authorizedEnrollmentPlacementClient } from './enrollment-placement-access';
 import { parse } from './actions/schemas';
 import { enrollmentWorkflowRpc,loadEnrollmentPlacementBoard } from './enrollment-workflow-data';
 import type { EnrollmentPlacementBoard } from './enrollment-workflow-contract';
@@ -12,14 +12,14 @@ const errors=['FORBIDDEN_SCOPE','FORBIDDEN','UNAUTHENTICATED','VALIDATION','PLAC
 export async function previewEnrollmentSessionTransferAction(input:{membershipId:string;classroomId:string;seat:number;allowMismatch?:boolean}):Promise<ActionResult<SessionTransferOption[]>>{
   try{
     const v=parse(z.object({membershipId:z.string().uuid(),classroomId:z.string().uuid(),seat:z.number().int().min(1).max(60),allowMismatch:z.boolean().default(false)}).strict(),input);
-    await authorizedClient('enrollment.manage');
+    await authorizedEnrollmentPlacementClient();
     return {ok:true,data:z.array(sessionTransferOptionSchema).parse(await enrollmentWorkflowRpc('preview_enrollment_session_transfer',{p_membership_id:v.membershipId,p_to_classroom_id:v.classroomId,p_seat:v.seat,p_allow_mismatch:v.allowMismatch}))};
   }catch(error){return actionError(error,errors);}
 }
 export async function changeEnrollmentPlacementAction(input:PlacementChangeInput):Promise<ActionResult<EnrollmentPlacementBoard>>{
   try{
     const {requestId,...v}=parse(placementChangeSchema,input);
-    await authorizedClient('enrollment.manage');
+    await authorizedEnrollmentPlacementClient();
     await enrollmentWorkflowRpc('change_enrollment_placement',{p_request_id:requestId,p_input:v});
     revalidatePath('/[locale]/dashboard/followups/enrollments','page');
     revalidatePath('/[locale]/dashboard/enrollments','page');
