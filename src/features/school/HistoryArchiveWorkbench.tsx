@@ -1,4 +1,6 @@
 import { Badge } from "@/components/ui/badge";
+import { BaseBusinessFields } from "./BaseBusinessFields";
+import { baseBusinessMessages } from "./base-business-fields-contract";
 import { buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Link } from "@/i18n/navigation";
@@ -182,6 +184,9 @@ function ArchiveDetail({ detail, filters, messages, locale }: { detail: HistoryA
         </div>
       </DashboardSection>
 
+      {detail.businessFields?.length ? <DashboardSection title={baseBusinessMessages(locale).title} description={baseBusinessMessages(locale).hint}>
+        <BaseBusinessFields fields={detail.businessFields} locale={locale} />
+      </DashboardSection> : null}
       <DashboardSection title={messages.fields} description={messages.sourceLanguage}>
         <dl className="space-y-5">
           {originalFields.map((cell, index) => <ArchiveField key={`${cell.fieldId}-${index}`} cell={cell} messages={messages} />)}

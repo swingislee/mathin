@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SchoolRecordSourceReview } from "@/features/school/SchoolRecordSourceReview";
 import { PossibleDuplicateBadge } from "@/features/school/PossibleDuplicateBadge";
 import { schoolRecordContextSchema, type SchoolRecordContext } from "@/features/school/school-record-review-contract";
+import { organizeBaseRecord } from "../scripts/lib/base-business-fields.mjs";
 
 const actions = vi.hoisted(() => ({ read: vi.fn(), open: vi.fn() }));
 vi.mock("@/features/school/actions/school-record-review", () => ({ getSchoolRecordContextAction: actions.read }));
@@ -30,6 +31,19 @@ const click = async (text: string) => {
 };
 
 describe("source fields and duplicate hints", () => {
+  it("shows organized business fields with original values available in the same source record", async () => {
+    const structured = organizeBaseRecord({ id: record.id, source_data: { format: "feishu-base" },
+      record_data: { tableName: record.table, cells: record.cells.map(cell => ({ fieldId: cell.id, fieldName: cell.name, text: cell.text, type: cell.type, kind: "context" })) } })!;
+    actions.read.mockResolvedValueOnce({ ok: true, data: { ...data, sources: [{ ...record, businessFields: structured.fields }] } });
+    await act(async () => root.render(createElement(SchoolRecordSourceReview, { subject, locale: "zh" })));
+    await click("查看原表资料与相关记录");
+    expect(document.querySelector("[data-base-business-fields]")?.textContent).toContain("获客资料");
+    expect(document.querySelector("[data-base-business-fields]")?.textContent).toContain("2024-09-10");
+    expect(document.querySelector("[data-base-business-fields]")?.textContent).toContain("第一行\n原文第二行");
+    await click("查看原字段");
+    expect(document.querySelector("#source-fields-source-one-original")?.textContent).toContain("2024/09/10");
+    expect(actions.read).toHaveBeenCalledTimes(1);
+  });
   it("reads on demand and retains separate original values and unknown fields", async () => {
     expect(schoolRecordContextSchema.parse(data)).toEqual(data);
     await act(async () => root.render(createElement(SchoolRecordSourceReview, { subject, locale: "zh" })));

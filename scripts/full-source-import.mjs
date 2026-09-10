@@ -3,6 +3,7 @@ import path from 'node:path';
 import { openHistoryLocalTarget } from './lib/history-local-target.mjs';
 import { readCompleteSources, buildCompleteSourcePayload, bytesHash } from './lib/full-source-import.mjs';
 import { textFileSha256 } from './lib/text-hash.mjs';
+import { buildBaseBusinessPlan } from './lib/base-business-fields.mjs';
 
 const mode = process.argv[2];
 if (!['--preflight','--prepare','--check','--apply'].includes(mode)) throw new Error('Use --preflight, --prepare, --check or --apply');
@@ -30,7 +31,9 @@ if(mode==='--prepare') {
   const input=await readCompleteSources(sourceRoot,path.resolve('docs/test_material'));
   const tables=snapshot();
   const payload=buildCompleteSourcePayload({...input,tables});
+  const baseFields=buildBaseBusinessPlan(payload.records);
   fs.writeFileSync(planPath,JSON.stringify(payload));
+  fs.writeFileSync(path.join(output,'base-field-report.json'),JSON.stringify({summary:baseFields.summary,fields:baseFields.fields},null,2));
   fs.writeFileSync(path.join(output,'identity-snapshot.json'),JSON.stringify(tables));
   console.log(JSON.stringify({mode,files:payload.files.length,tables:payload.manifest.tableCount,rows:payload.records.length,
     contentRows:payload.manifest.summary.contentRecordCount,matched:payload.manifest.summary.matchedCount,
@@ -38,9 +41,11 @@ if(mode==='--prepare') {
   process.exit(0);
 }
 const payload=read(planPath);
+const baseFields=buildBaseBusinessPlan(payload.records);
+if(baseFields.facts.length&&sql("begin read only;select to_regprocedure('public.store_base_business_fields(jsonb)') is not null;commit;")!=='t')throw new Error('BASE_BUSINESS_FIELDS_MIGRATION_REQUIRED');
 const fresh=buildCompleteSourcePayload({...await readCompleteSources(sourceRoot,path.resolve('docs/test_material')),tables:snapshot()});
 if(fresh.payloadHash!==payload.payloadHash)throw new Error('FULL_SOURCE_CURRENT_INPUT_CHANGED_PREPARE_AGAIN');
-const checkKey={checksum,payloadHash:payload.payloadHash,script:textFileSha256('scripts/full-source-import.mjs'),library:textFileSha256('scripts/lib/full-source-import.mjs')};
+const checkKey={checksum,payloadHash:payload.payloadHash,script:textFileSha256('scripts/full-source-import.mjs'),library:textFileSha256('scripts/lib/full-source-import.mjs'),baseFields:textFileSha256('scripts/lib/base-business-fields.mjs')};
 const checkFile=path.join(output,'check.json');
 if(mode==='--apply'&&(!fs.existsSync(checkFile)||JSON.stringify(read(checkFile).checkKey)!==JSON.stringify(checkKey)))throw new Error('FULL_SOURCE_CURRENT_CHECK_REQUIRED');
 const protectedTables=['students','leads','enrollments','classrooms','class_sessions','session_attendance','contacts','families','student_follow_ups','activities','activity_registrations','assessment_results','course_opportunities','course_enrollments','course_enrollment_assignments','business_record_revisions','work_items','notifications'];
@@ -68,6 +73,7 @@ insert into public.history_import_batch_files(batch_id,source_path,file_sha256,m
 select b.id,f->>'path',f->>'sha256',f->'metadata' from complete_input i join public.history_import_batches b on b.batch_key=i.payload->>'batchKey' cross join lateral jsonb_array_elements(i.payload->'files') f on conflict(batch_id,source_path) do nothing;
 insert into public.history_import_records(id,source_sha256,source_table_id,source_record_id,payload_sha256,source_data,record_data,match_status,match_data,entity_data,candidate_data,student_id,lead_id,search_text)
 select r->>'id',r->>'source_sha256',r->>'source_table_id',r->>'source_record_id',r->>'payload_sha256',r->'source_data',r->'record_data',r->>'match_status',r->'match_data',nullif(r->'entity_data','null'::jsonb),r->'candidate_data',(r->>'student_id')::uuid,(r->>'lead_id')::uuid,r->>'search_text' from complete_input i cross join lateral jsonb_array_elements(i.payload->'records') r on conflict(id) do nothing;
+${baseFields.facts.length?`select public.store_base_business_fields(${quote(JSON.stringify(baseFields.facts))}::jsonb);`:''}
 insert into public.history_import_batch_records(batch_id,record_id,case_key)
 select b.id,r->>'id','complete_source' from complete_input i join public.history_import_batches b on b.batch_key=i.payload->>'batchKey' cross join lateral jsonb_array_elements(i.payload->'records') r on conflict(batch_id,record_id) do nothing;
 create temp table source_after on commit drop as ${fingerprints};
@@ -84,6 +90,7 @@ ${mode==='--check'?'rollback;':`${applied?'':`insert into public.schema_migratio
 sql(statement);
 if(mode==='--check'&&!applied&&sql("begin read only;select (to_regclass('public.history_import_files') is null)::text;commit;")!=='true')throw new Error('FULL_SOURCE_ROLLBACK_FAILED');
 const report={mode,checkKey,localTargetVerified:true,files:payload.files.length,tables:payload.manifest.tableCount,records:payload.records.length,
+  baseFields:baseFields.summary,
   sourceBytes:payload.manifest.sourceBytes,originalsEqual:true,priorRecordsUnchanged:true,businessUnchanged:true,protectedTables:covered.length,
   payloadFileHash:bytesHash(fs.readFileSync(planPath)),batchKey:payload.batchKey};
 fs.writeFileSync(path.join(output,mode==='--check'?'check.json':'applied.json'),JSON.stringify(report,null,2));

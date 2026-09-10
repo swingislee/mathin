@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { baseBusinessFieldsSchema } from "./base-business-fields-schema.mjs";
 
 const id = z.uuid().or(z.guid());
 export const schoolRecordSubjectSchema = z.object({ studentId: id.nullable(), leadId: id.nullable() })
@@ -8,6 +9,7 @@ export const schoolRecordHintsSchema = z.array(z.object({ key: z.string(), possi
 export const schoolRecordContextSchema = z.object({
   candidates: z.array(z.object({ studentId: id.nullable(), leadId: id.nullable(), name: z.string(), phone: z.string(), grade: z.number().nullable(), school: z.string() })),
   sources: z.array(z.object({ id: z.string(), table: z.string(), source: z.string(), date: z.string().nullable(), association: z.enum(["linked", "inferred"]),
+    businessFields: baseBusinessFieldsSchema.optional(),
     cells: z.array(z.object({ id: z.string(), name: z.string(), text: z.string(), type: z.string() })) })),
   sourceCount: z.number().int().nonnegative(), page: z.number().int().positive(), pageSize: z.number().int().positive(),
 });

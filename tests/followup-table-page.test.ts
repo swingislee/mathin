@@ -8,6 +8,7 @@ import { placementTableFields, type PlacementRosterRow } from "@/features/school
 import { renewalTableFields } from "@/features/school/renewal-table-fields";
 import { communicationTableFields, type CommunicationTableRow } from "@/features/school/communication-table-fields";
 import type { LeadPoolRow } from "@/features/school/lead-contract";
+import { applyBaseLeadAcquisition } from "@/features/school/base-lead-acquisition";
 import type { EnrollmentPlacementBoard, PlacementClassroom, PlacementStudent } from "@/features/school/enrollment-workflow-contract";
 import type { RenewalPoolRow } from "@/features/school/RenewalRecordDetails";
 import type { CommunicationWorkday } from "@/features/school/communication-workday-contract";
@@ -26,6 +27,26 @@ const lead = (id: string, extra: Partial<LeadPoolRow> = {}): LeadPoolRow => ({ i
   lastContactNote: "", wechatAdded: null, visitCommitted: null, interestLevel: null, nextContactAt: null, activeInvitation: null, ...extra });
 
 describe("five follow-up table paging and field contracts", () => {
+  it("filters original Base outreach and group fields before pagination while keeping partial dates undated", () => {
+    const source = { sourceId: "base-source", acquiredAt: null, dateLabel: "06-10", location: "原地点", method: "原渠道", promoter: "原署名", content: "领取资料\n第二行", group: "原组别" };
+    const original = lead("base", { sourceCount: 0, acquiredAt: null, acquisitionLocation: "", acquisitionMethod: "", acquisitionPromoter: "" });
+    const enriched = applyBaseLeadAcquisition(original, [source]);
+    expect(enriched).toMatchObject({ sourceCount: 1, acquiredAt: null, acquiredDateLabel: "06-10", acquisitionLocation: "原地点", ownerId: "owner-a" });
+    expect(original.sourceCount).toBe(0);
+    const fields = leadIntakeTableFields(t, t, t);
+    expect(match([enriched, lead("other")], fields, { content: textFilter("第二行"), acquisitionGroup: enumFilter("原组别") })).toEqual([enriched]);
+    expect(match([enriched], fields, { acquiredAt: { kind: "date", from: "2026-06-10", to: "2026-06-10" } })).toEqual([]);
+    expect(match([enriched], fields, { acquiredDateLabel: textFilter("06-10") })).toEqual([enriched]);
+  });
+  it("preserves existing acquisition facts and keeps additional Base source records separate", () => {
+    const original = lead("existing");
+    const sources = [{ sourceId: "first", acquiredAt: "2026-01-01", dateLabel: "2026-01-01", location: "Historical place", method: "Channel", promoter: "Name", content: "Content", group: "Group" },
+      { sourceId: "second", acquiredAt: null, dateLabel: "一月", location: "Another place", method: "Another channel", promoter: "Another name", content: "Other content", group: "Another group" }];
+    const enriched = applyBaseLeadAcquisition(original, sources);
+    expect(enriched).toMatchObject({ acquiredAt: original.acquiredAt, acquisitionLocation: original.acquisitionLocation, acquisitionMethod: original.acquisitionMethod, acquisitionPromoter: original.acquisitionPromoter, sourceCount: 3 });
+    expect(enriched.baseAcquisitionSources).toEqual(sources);
+    expect(applyBaseLeadAcquisition(original, [])).toBe(original);
+  });
   it("shares a 50-row default and clamps page bounds, empty results and size changes", () => {
     expect(FOLLOWUP_DEFAULT_PAGE_SIZE).toBe(50); expect(FOLLOWUP_PAGE_SIZES).toEqual([20, 50, 100]);
     for (const size of [undefined, null, "", 0, 49, "invalid", []]) expect(followupPageSize(size)).toBe(50);

@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/server';
 import { isLocalHistoryArchiveEnvironment, type HistoryArchiveCell, type HistoryArchiveDetail, type HistoryArchiveEntity,
   type HistoryArchiveFilters, type HistoryArchivePageData, type HistoryArchiveRow, type HistoryArchiveSummary, type HistoryMatchStatus } from './history-archive-contract';
 import { normalizeHistoryTrialSearch } from './history-import-trial-contract';
+import { baseBusinessFieldsSchema } from './base-business-fields-contract';
+import { studentStageRpc } from './student-stage-data';
 
 const archiveClient = cache(async () => {
   if (!isLocalHistoryArchiveEnvironment(process.env.NODE_ENV, process.env.NEXT_PUBLIC_SUPABASE_URL)) throw new Error('HISTORY_ARCHIVE_LOCAL_ONLY');
@@ -73,6 +75,7 @@ export async function loadHistoryArchiveDetail(id: string, page = 1): Promise<Hi
   if (error) throw new Error('HISTORY_ARCHIVE_DETAIL_READ');
   if (!data) return null;
   const stored = data as unknown as StoredRecord;
+  const businessFields = baseBusinessFieldsSchema.parse(await studentStageRpc(client, 'read_base_source_business_fields', { p_source_id: id }));
   const relatedPageSize = 10;
   let related: HistoryArchiveRow[] = [], relatedTotal = 0;
   const studentId = stored.association?.student_id ?? stored.student_id;
@@ -87,6 +90,6 @@ export async function loadHistoryArchiveDetail(id: string, page = 1): Promise<Hi
     related = (result.data as unknown as StoredRecord[]).map(hydrate);
     relatedTotal = result.count ?? 0;
   }
-  return { record:hydrate(stored), cells:stored.record_data.cells, candidates:stored.candidate_data, related, relatedTotal,
+  return { record:hydrate(stored), businessFields, cells:stored.record_data.cells, candidates:stored.candidate_data, related, relatedTotal,
     relatedPage:page, relatedPageSize, sourceHash:stored.source_sha256 };
 }

@@ -1,3 +1,5 @@
+import type { BaseBusinessField } from "./base-business-fields-contract";
+
 export const HISTORY_MATCH_STATUSES = ["matched", "review", "unmatched"] as const;
 export type HistoryMatchStatus = (typeof HISTORY_MATCH_STATUSES)[number];
 
@@ -78,6 +80,7 @@ export interface HistoryArchivePageData {
 
 export interface HistoryArchiveDetail {
   record: HistoryArchiveRow;
+  businessFields?: BaseBusinessField[];
   cells: HistoryArchiveCell[];
   candidates: HistoryArchiveEntity[];
   related: HistoryArchiveRow[];

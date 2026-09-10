@@ -2,6 +2,8 @@ import type { InvitationSummary } from "./invitation-contract";
 import { FOLLOWUP_DEFAULT_PAGE_SIZE, FOLLOWUP_PAGE_SIZES } from "./followup-table-page";
 
 /** Client-safe lead constants and DTOs shared by the server reader and table UI. */
+import type { BaseLeadAcquisition } from "./base-business-fields-contract";
+
 export const LEAD_STATUSES = [
   "uncontacted",
   "contacted",
@@ -63,6 +65,8 @@ export interface LeadPoolRow {
   suggestedStudentName: string;
   createdAt: string;
   acquiredAt: string | null;
+  acquiredDateLabel?: string;
+  baseAcquisitionSources?: BaseLeadAcquisition["sources"];
   acquisitionLocation: string;
   acquisitionMethod: string;
   acquisitionPromoter: string;

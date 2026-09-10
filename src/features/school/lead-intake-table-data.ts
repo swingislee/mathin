@@ -5,6 +5,7 @@ import { leadSearchFilter, listLeadPool } from "./leads";
 import { readSchoolQueryPages, SCHOOL_QUERY_ID_BATCH_SIZE } from "./school-query-pages";
 import { followupFieldPage } from "./followup-table-page";
 import { withLeadRecordHints } from "./school-record-review-data";
+import { withBaseLeadAcquisition } from "./base-lead-acquisition-data";
 import type { LeadPoolFilters, LeadPoolRow } from "./lead-contract";
 import type { DashboardFieldDefinitions } from "./dashboard-page/dashboard-table-field-contract";
 import type { DashboardDateContext } from "./dashboard-page/dashboard-table-date-contract";
@@ -27,9 +28,10 @@ export async function listLeadIntakeFieldPage(userId: string, filters: LeadPoolF
   const rows = new Map<string, LeadPoolRow>();
   // 复用业务读取器，限定四批并发；只把最终一页和权限内的字段候选传给浏览器。
   for (let start = 0; start < ids.length; start += SCHOOL_QUERY_ID_BATCH_SIZE * 4) {
-    const pages = await Promise.all(Array.from({ length: 4 }, (_, offset) => {
+    const pages = await Promise.all(Array.from({ length: 4 }, async (_, offset) => {
       const batch = ids.slice(start + offset * SCHOOL_QUERY_ID_BATCH_SIZE, start + (offset + 1) * SCHOOL_QUERY_ID_BATCH_SIZE);
-      return listLeadPool(userId, { ...filters, page: 1 }, batch);
+      const page = await listLeadPool(userId, { ...filters, page: 1 }, batch);
+      return { ...page, leads: await withBaseLeadAcquisition(client, page.leads) };
     }));
     for (const page of pages) for (const row of page.leads) rows.set(row.id, row);
   }

@@ -6,7 +6,7 @@ type Translate = (key: string, values?: Record<string, string | number>) => stri
 const option = (value: string | null | undefined, label = value): DashboardFieldOption[] => value ? [{ value, label: label || value }] : [];
 export const LEAD_INTAKE_TABLE_COLUMNS = {
   identity: ["name", "identity", "duplicate", "suggested"], phone: ["phone"], grade: ["grade"],
-  source: ["location", "promoter", "method", "interest", "sourceCount"], acquiredAt: ["acquiredAt"],
+  source: ["location", "promoter", "method", "content", "acquisitionGroup", "interest", "sourceCount"], acquiredAt: ["acquiredAt", "acquiredDateLabel"],
   owner: ["owner"], progress: ["status", "invitationState", "contactResult"],
 } as const;
 
@@ -21,9 +21,12 @@ export function leadIntakeTableFields(t: Translate, tableT: Translate, invitatio
     location: { kind: "enum", label: tableT("fieldLocation"), values: row => option(row.acquisitionLocation), sortValue: row => row.acquisitionLocation },
     promoter: { kind: "text", label: tableT("fieldPromoter"), value: row => row.acquisitionPromoter },
     method: { kind: "text", label: tableT("fieldMethod"), value: row => row.acquisitionMethod },
+    content: { kind: "text", label: t("acquisitionContent"), value: row => (row.baseAcquisitionSources ?? []).map(source => source.content).filter(Boolean).join("\n") },
+    acquisitionGroup: { kind: "enum", label: t("acquisitionGroup"), values: row => (row.baseAcquisitionSources ?? []).flatMap(source => option(source.group)), sortable: false },
     interest: { kind: "enum", label: tableT("fieldInterest"), values: row => row.interests.flatMap(value => option(value)), sortable: false },
     sourceCount: { kind: "number", label: tableT("fieldSourceCount"), value: row => row.sourceCount, step: 1 },
     acquiredAt: { kind: "date", label: t("acquiredAt"), value: row => row.acquiredAt },
+    acquiredDateLabel: { kind: "text", label: t("acquiredDateLabel"), value: row => (row.baseAcquisitionSources ?? []).map(source => source.dateLabel).filter(Boolean).join("\n") },
     owner: { kind: "enum", label: tableT("fieldOwner"), values: row => option(row.ownerId, row.ownerName), sortValue: row => row.ownerId ? row.ownerName : null },
     status: { kind: "enum", label: tableT("fieldStatus"), options: LEAD_STATUSES.map(value => ({ value, label: t(`status_${value}`) })),
       values: row => option(row.status, t(`status_${row.status}`)), sortValue: row => LEAD_STATUSES.indexOf(row.status) },

@@ -8,10 +8,14 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { getSchoolRecordContextAction } from "./actions/school-record-review";
 import { schoolRecordReviewMessages, type SchoolRecordSubject, type SchoolRecordContext } from "./school-record-review-contract";
 import { Student360Trigger } from "./Student360Sheet";
+import { BaseBusinessFields } from "./BaseBusinessFields";
+import { baseBusinessMessages } from "./base-business-fields-contract";
 
 function SourceRecord({ record, locale, initiallyOpen }: { record: SchoolRecordContext["sources"][number]; locale: string; initiallyOpen: boolean }) {
   const [expanded, setExpanded] = useState(initiallyOpen);
+  const [showOriginal, setShowOriginal] = useState(false);
   const m = schoolRecordReviewMessages(locale);
+  const business = baseBusinessMessages(locale);
   const id = `source-fields-${record.id}`;
   return <section className="py-3">
     <Button variant="ghost" className="h-auto w-full justify-start gap-2 whitespace-normal px-0 text-left" aria-expanded={expanded} aria-controls={id} onClick={() => setExpanded(!expanded)}>
@@ -20,7 +24,11 @@ function SourceRecord({ record, locale, initiallyOpen }: { record: SchoolRecordC
         <span className="block break-all text-xs font-normal text-muted">{record.source}</span></span>
     </Button>
     {record.association === "inferred" ? <Badge variant="outline" className="mt-1">{m.inferred}</Badge> : null}
-    {expanded ? <dl id={id} className="mt-3 grid grid-cols-[minmax(6rem,1fr)_minmax(0,3fr)] gap-x-4 gap-y-2 text-sm">
+    {expanded && record.businessFields?.length ? <div id={id} className="mt-3">
+      <BaseBusinessFields fields={record.businessFields} locale={locale} />
+      <Button variant="ghost" size="sm" className="mt-3 px-0 text-xs" aria-expanded={showOriginal} aria-controls={`${id}-original`} onClick={() => setShowOriginal(!showOriginal)}>{business.sourceFields}</Button>
+    </div> : null}
+    {expanded && (!record.businessFields?.length || showOriginal) ? <dl id={record.businessFields?.length ? `${id}-original` : id} className="mt-3 grid grid-cols-[minmax(6rem,1fr)_minmax(0,3fr)] gap-x-4 gap-y-2 text-sm">
       {record.cells.map((cell, index) => <div key={`${cell.id}:${index}`} className="contents">
         <dt className="break-words text-muted">{cell.name}</dt><dd className="whitespace-pre-wrap break-words">{cell.text}</dd>
       </div>)}

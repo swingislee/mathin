@@ -4,6 +4,7 @@ import {historyFieldName,historicalDate} from './student-business-history.mjs';
 import {historyPayloadHash} from './history-import-trial.mjs';
 import {buildSourceMetricFacts} from './source-metric-facts.mjs';
 import {observeSourceFields} from './source-field-coverage.mjs';
+import {buildBaseBusinessPlan} from './base-business-fields.mjs';
 import {normalizeSourceAssessmentBand,sourceAssessmentNote,normalizeSourceContact,sourceScore,mergeSourceNotes,sourceVisitKinds,resolveSourceStaffId,sourceEnrollmentFacts,sourceVisitParticipation} from '../../src/features/school/business-source-contract.ts';
 
 export const OPERATIONAL_TABLES=['leads','lead_communications','activities','activity_registrations','assessment_results','course_opportunities','course_enrollments','course_enrollment_assignments'];
@@ -144,5 +145,5 @@ export function buildOperationalSourceImport(payload,snapshot) {
     for(const row of rows[table])if(row.history_key)row.source_payload_sha256=historyPayloadHash(row);
   }
   return {sourcePayloadHash:payload.payloadHash,sourceBatchKey:payload.batchKey,rows,leadFacts:[...leadFacts.values()],coverage,
-    fieldCoverage:fieldAudit.report(),counts:Object.fromEntries(OPERATIONAL_TABLES.map(t=>[t,rows[t].length]))};
+    fieldCoverage:fieldAudit.report(),baseBusinessFields:buildBaseBusinessPlan(payload.records),counts:Object.fromEntries(OPERATIONAL_TABLES.map(t=>[t,rows[t].length]))};
 }
