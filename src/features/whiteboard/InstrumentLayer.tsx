@@ -1,11 +1,12 @@
 "use client";
 
 import { Move, Pencil, RotateCw, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useStore } from "zustand";
 import { newId } from "@/lib/uuid";
 import { clamp, ellipseArcPath, normalizeDegrees, shortestAngleDelta } from "./geometry";
+import { trackInstrumentPointer } from "./instrument-pointer-drag";
 import type { WhiteboardStore } from "./store";
 import type { InstrumentItem, ShapeItem } from "./types";
 
@@ -134,16 +135,26 @@ export function InstrumentLayer({ store, editable, interactionEnabled = true, dr
   const color = useStore(store, (state) => state.color);
   const sizeNorm = useStore(store, (state) => state.sizeNorm);
   const [preview, setPreview] = useState<ShapeItem | null>(null);
+  const activeDrag = useRef<(() => void) | null>(null);
+  useEffect(() => () => {
+    activeDrag.current?.();
+  }, [store, editable, interactionEnabled, drawingEnabled, width, height, instruments.length]);
   if (!editable || instruments.length === 0) return null;
 
   const boardRect = (target: SVGElement) => target.ownerSVGElement?.getBoundingClientRect() ?? target.getBoundingClientRect();
+  const trackPointer = (event: React.PointerEvent<SVGElement>, onMove: (event: PointerEvent) => void, onFinish: (cancelled: boolean) => void) => {
+    activeDrag.current = trackInstrumentPointer(event, { onMove, onFinish: (cancelled) => {
+      activeDrag.current = null;
+      onFinish(cancelled);
+    } });
+  };
 
   const beginAnchoredRotate = (
     event: React.PointerEvent<SVGElement>,
     item: InstrumentItem,
     pivotLocal: [number, number],
   ) => {
-    if (!interactionEnabled || !event.isPrimary || event.button !== 0) return;
+    if (activeDrag.current || !interactionEnabled || !event.isPrimary || event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
     const rect = boardRect(event.currentTarget);
@@ -168,20 +179,14 @@ export function InstrumentLayer({ store, editable, interactionEnabled = true, dr
         rotation,
       });
     };
-    const finish = (pointerEvent: PointerEvent) => {
-      if (pointerEvent.pointerId !== event.pointerId) return;
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", finish);
-      window.removeEventListener("pointercancel", finish);
-      if (pointerEvent.type === "pointercancel") {
+    const finish = (cancelled: boolean) => {
+      if (cancelled) {
         setPreview(null);
         store.getState().updateInstrument(item);
         return;
       }
     };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", finish);
-    window.addEventListener("pointercancel", finish);
+    trackPointer(event, move, finish);
   };
 
   const beginAdjust = (
@@ -189,7 +194,7 @@ export function InstrumentLayer({ store, editable, interactionEnabled = true, dr
     item: InstrumentItem,
     mode: "move" | "resize" | "radius",
   ) => {
-    if (!interactionEnabled || !event.isPrimary || event.button !== 0) return;
+    if (activeDrag.current || !interactionEnabled || !event.isPrimary || event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
     const rect = boardRect(event.currentTarget);
@@ -209,10 +214,10 @@ export function InstrumentLayer({ store, editable, interactionEnabled = true, dr
           y: clamp(item.y + (pointerEvent.clientY - startY) / rect.height),
         };
       } else if (mode === "resize") {
-        const dx = pointerEvent.clientX - centerX;
-        const dy = pointerEvent.clientY - centerY;
+        const dx = pointerEvent.clientX - startX;
+        const dy = pointerEvent.clientY - startY;
         const local = rotatePoint(dx, dy, -item.rotation);
-        next = { ...item, width: clamp(Math.abs(local[0]) * 2 / rect.width, 0.16, 0.85) };
+        next = { ...item, width: clamp(item.width + local[0] * 2 / rect.width, 0.16, 0.85) };
       } else {
         const pointerRadius = Math.hypot(pointerEvent.clientX - centerX, pointerEvent.clientY - centerY) / rect.width;
         const radius = initialRadius + pointerRadius - initialPointerRadius;
@@ -220,24 +225,18 @@ export function InstrumentLayer({ store, editable, interactionEnabled = true, dr
       }
       store.getState().updateInstrument(next);
     };
-    const finish = (pointerEvent: PointerEvent) => {
-      if (pointerEvent.pointerId !== event.pointerId) return;
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", finish);
-      window.removeEventListener("pointercancel", finish);
-      if (pointerEvent.type === "pointercancel") {
+    const finish = (cancelled: boolean) => {
+      if (cancelled) {
         setPreview(null);
         store.getState().updateInstrument(item);
         return;
       }
     };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", finish);
-    window.addEventListener("pointercancel", finish);
+    trackPointer(event, move, finish);
   };
 
   const beginRulerLine = (event: React.PointerEvent<SVGRectElement>, item: InstrumentItem) => {
-    if (!interactionEnabled || !drawingEnabled || !event.isPrimary || event.button !== 0) return;
+    if (activeDrag.current || !interactionEnabled || !drawingEnabled || !event.isPrimary || event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
     const rect = boardRect(event.currentTarget);
@@ -269,12 +268,8 @@ export function InstrumentLayer({ store, editable, interactionEnabled = true, dr
         rotation: Math.atan2((end[1] - start[1]) * rect.height, (end[0] - start[0]) * rect.width) * 180 / Math.PI,
       });
     };
-    const finish = (pointerEvent: PointerEvent) => {
-      if (pointerEvent.pointerId !== event.pointerId) return;
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", finish);
-      window.removeEventListener("pointercancel", finish);
-      if (pointerEvent.type === "pointercancel") {
+    const finish = (cancelled: boolean) => {
+      if (cancelled) {
         setPreview(null);
         store.getState().updateInstrument(item);
         return;
@@ -293,13 +288,11 @@ export function InstrumentLayer({ store, editable, interactionEnabled = true, dr
         setPreview(null);
       }
     };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", finish);
-    window.addEventListener("pointercancel", finish);
+    trackPointer(event, move, finish);
   };
 
   const beginCompassArc = (event: React.PointerEvent<SVGElement>, item: InstrumentItem) => {
-    if (!interactionEnabled || !drawingEnabled || !event.isPrimary || event.button !== 0) return;
+    if (activeDrag.current || !interactionEnabled || !drawingEnabled || !event.isPrimary || event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
     const rect = boardRect(event.currentTarget);
@@ -325,12 +318,8 @@ export function InstrumentLayer({ store, editable, interactionEnabled = true, dr
       };
       setPreview(finalArc);
     };
-    const finish = (pointerEvent: PointerEvent) => {
-      if (pointerEvent.pointerId !== event.pointerId) return;
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", finish);
-      window.removeEventListener("pointercancel", finish);
-      if (pointerEvent.type === "pointercancel") {
+    const finish = (cancelled: boolean) => {
+      if (cancelled) {
         setPreview(null);
         store.getState().updateInstrument(item);
         return;
@@ -340,12 +329,10 @@ export function InstrumentLayer({ store, editable, interactionEnabled = true, dr
         store.getState().commitItem({ ...finalArc, id: newId() });
       }
     };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", finish);
-    window.addEventListener("pointercancel", finish);
+    trackPointer(event, move, finish);
   };
   const beginProtractorRay = (event: React.PointerEvent<SVGElement>, item: InstrumentItem) => {
-    if (!interactionEnabled || !drawingEnabled || !event.isPrimary || event.button !== 0) return;
+    if (activeDrag.current || !interactionEnabled || !drawingEnabled || !event.isPrimary || event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
     const rect = boardRect(event.currentTarget);
@@ -372,12 +359,8 @@ export function InstrumentLayer({ store, editable, interactionEnabled = true, dr
         rotation: Math.atan2((end[1] - pivot[1]) * rect.height, (end[0] - pivot[0]) * rect.width) * 180 / Math.PI,
       });
     };
-    const finish = (pointerEvent: PointerEvent) => {
-      if (pointerEvent.pointerId !== event.pointerId) return;
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", finish);
-      window.removeEventListener("pointercancel", finish);
-      if (pointerEvent.type === "pointercancel") {
+    const finish = (cancelled: boolean) => {
+      if (cancelled) {
         setPreview(null);
         store.getState().updateInstrument(item);
         return;
@@ -392,9 +375,7 @@ export function InstrumentLayer({ store, editable, interactionEnabled = true, dr
         });
       }
     };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", finish);
-    window.addEventListener("pointercancel", finish);
+    trackPointer(event, move, finish);
   };
 
   return (
