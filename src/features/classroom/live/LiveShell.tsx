@@ -1741,7 +1741,7 @@ export function LiveShell({
             {!isController && renderPage?.type === "doc" && <div aria-hidden="true" className="absolute inset-0 z-40 touch-none" />}
           </div>
 
-          {(focusMode || display.adjustable) && (
+          {focusMode && (
             <ClassroomViewportControls focused={focusMode} height={display.size.height}
               value={display.value} min={display.bounds.minPercent} max={display.bounds.maxPercent}
               verticalPosition={display.verticalPosition} onResize={viewport.resize} onPan={viewport.pan} onCommit={viewport.commit} />

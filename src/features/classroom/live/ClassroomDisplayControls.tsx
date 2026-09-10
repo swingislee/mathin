@@ -34,9 +34,9 @@ export function ClassroomDisplayControls({
         <PopoverContent side="top" align="end" className="w-72 space-y-4 p-4">
           <div className="flex items-center justify-between gap-2 text-sm">
             <span>{t("coursewareDisplaySize")}</span>
-            <output className="font-mono text-xs text-muted">{adjustable ? t("displayWidthPercent", { value: Math.round(value) }) : "4:3"}</output>
+            <output className="font-mono text-xs text-muted">{focused && adjustable ? t("displayWidthPercent", { value: Math.round(value) }) : "4:3"}</output>
           </div>
-          <p className="text-xs leading-relaxed text-muted">{t(!adjustable ? "displaySizeNarrowHint" : focused ? "displaySizeFocusHint" : "displaySizeHint")}</p>
+          <p className="text-xs leading-relaxed text-muted">{t(focused && adjustable ? "displaySizeFocusHint" : "displaySizeNarrowHint")}</p>
           {onFollow && <Button type="button" variant="secondary" size="sm" className="w-full" disabled={following} onClick={onFollow}>{t(following ? "followingTeacherViewport" : "followTeacherViewport")}</Button>}
           {saveError && <p role="status" className="text-xs text-crater">{t("displaySyncSaveError")}</p>}
           <Button type="button" variant="ghost" size="sm" className="w-full" onClick={onReset}>{t("resetDisplaySize")}</Button>
