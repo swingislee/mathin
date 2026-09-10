@@ -8,10 +8,13 @@ export interface ZonedDateParts {
 }
 
 const WEEKDAY_INDEX: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+const datePartFormatters = new Map<string, Intl.DateTimeFormat>();
 
-/** 统一从机构 IANA 时区提取日历字段；禁止依赖浏览器或 Node 进程本地时区。 */
-export function zonedDateParts(date: Date, timeZone: string): ZonedDateParts {
-  const values = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
+/** 只复用时区格式化器；日期与业务数据每次照常计算，容量有界。 */
+function datePartsFormatter(timeZone: string): Intl.DateTimeFormat {
+  const cached = datePartFormatters.get(timeZone);
+  if (cached) return cached;
+  const formatter = new Intl.DateTimeFormat("en-US", {
     timeZone,
     year: "numeric",
     month: "2-digit",
@@ -20,7 +23,16 @@ export function zonedDateParts(date: Date, timeZone: string): ZonedDateParts {
     hour: "2-digit",
     minute: "2-digit",
     hourCycle: "h23",
-  }).formatToParts(date).filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
+  });
+  if (datePartFormatters.size >= 16) datePartFormatters.delete(datePartFormatters.keys().next().value!);
+  datePartFormatters.set(timeZone, formatter);
+  return formatter;
+}
+
+/** 统一从机构 IANA 时区提取日历字段；禁止依赖浏览器或 Node 进程本地时区。 */
+export function zonedDateParts(date: Date, timeZone: string): ZonedDateParts {
+  const values = Object.fromEntries(datePartsFormatter(timeZone).formatToParts(date)
+    .filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
   return {
     year: Number(values.year),
     month: Number(values.month) - 1,

@@ -2,7 +2,8 @@ import "server-only";
 import type { createClient } from "@/lib/supabase/server";
 
 export const STAFF_OVERVIEW_READ_LIMIT = 10_000;
-const PAGE_SIZE = 200;
+// 与 REST 的 1000 行上限对齐，减少重复执行业务视图及 RLS 的次数。
+const PAGE_SIZE = 1000;
 const PAGE_CONCURRENCY = 4;
 
 export interface OverviewRowsResult<T> {

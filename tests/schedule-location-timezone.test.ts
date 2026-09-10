@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { generateSchedulePreview } from "@/features/school/schedule-preview";
 import {
   addCalendarDays,
@@ -7,6 +7,7 @@ import {
   markConflicts,
   startOfDay,
   startOfWeek,
+  zonedDateParts,
   type ScheduleEntry,
 } from "@/features/school/schedule";
 import type { TeachingCalendarEntryV2 } from "@/features/school/teaching-calendar";
@@ -48,6 +49,25 @@ function calendarEntry(overrides: Partial<TeachingCalendarEntryV2>): TeachingCal
 }
 
 describe("organization timezone and structured room scheduling", () => {
+  it("reuses formatters while calculating each date and timezone independently", () => {
+    const NativeDateTimeFormat = Intl.DateTimeFormat;
+    const constructors = vi.spyOn(Intl, "DateTimeFormat").mockImplementation(function (locale, options) {
+      return new NativeDateTimeFormat(locale, options);
+    });
+    try {
+      for (let index = 0; index < 100; index += 1) {
+        expect(zonedDateParts(new Date("2026-01-15T00:30:00Z"), "Europe/Berlin").hour).toBe(1);
+        expect(zonedDateParts(new Date("2026-07-15T00:30:00Z"), "Europe/Berlin").hour).toBe(2);
+        expect(zonedDateParts(new Date("2026-07-15T00:30:00Z"), "Asia/Kathmandu")).toMatchObject({ hour: 6, minute: 15 });
+      }
+      expect(constructors).toHaveBeenCalledTimes(2);
+      expect(() => zonedDateParts(new Date(), "invalid/timezone")).toThrow(RangeError);
+      expect(() => zonedDateParts(new Date("invalid"), "Europe/Berlin")).toThrow(RangeError);
+    } finally {
+      constructors.mockRestore();
+    }
+  });
+
   it("uses room UUID rather than a room name for overlap conflicts", () => {
     const first = entry({ sessionId: crypto.randomUUID(), roomId: crypto.randomUUID(), roomName: "101" });
     const second = entry({ sessionId: crypto.randomUUID(), roomId: crypto.randomUUID(), roomName: "101" });

@@ -10,7 +10,7 @@ function reader(total: number, failAt = -1) {
     let from = 0, to = 0;
     const execute = async () => {
       offsets.push(from); active++; maximum = Math.max(maximum, active);
-      await new Promise(resolve => setTimeout(resolve, from === 200 ? 8 : 1));
+      await new Promise(resolve => setTimeout(resolve, from === 1000 ? 8 : 1));
       active--;
       if (from === failAt) return { data: null, error: { message: "read failed" } };
       return { data: Array.from({ length: Math.max(0, Math.min(to + 1, total) - from) }, (_, i) => ({ id: from + i })), error: null };
@@ -35,16 +35,17 @@ describe("bounded overview reads", () => {
     expect(skipped).not.toHaveBeenCalled();
   });
   it("keeps page order across out-of-order completions with at most four active reads", async () => {
-    const large = reader(1250);
+    const large = reader(6250);
     const result = await readOverviewRows<{ id: number }>(large.build);
-    expect(result.data?.map(row => row.id)).toEqual(Array.from({ length: 1250 }, (_, i) => i));
+    expect(result.data?.map(row => row.id)).toEqual(Array.from({ length: 6250 }, (_, i) => i));
     expect(large.maximum()).toBe(4);
+    expect(large.offsets).toHaveLength(9);
   });
   it("reports required-page errors and ignores speculative pages after the end", async () => {
-    expect((await readOverviewRows(reader(1250, 400).build)).error?.message).toBe("read failed");
-    const complete = await readOverviewRows(reader(210, 600).build);
+    expect((await readOverviewRows(reader(6250, 2000).build)).error?.message).toBe("read failed");
+    const complete = await readOverviewRows(reader(1010, 3000).build);
     expect(complete.error).toBeNull();
-    expect(complete.data).toHaveLength(210);
+    expect(complete.data).toHaveLength(1010);
   });
   it("retains the hard limit so callers can identify incomplete counts", async () => {
     const limited = reader(11000);
