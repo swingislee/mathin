@@ -170,7 +170,7 @@ export function useClassroomViewport({ log, controller, userId, members, initial
     },
     setFocused(focused: boolean) { change({ ...display.viewport, focused }, true); },
     resize(percent: number) {
-      if (!display.focused) { display.resize(percent); return; }
+      if (!display.focused) return;
       change({ ...display.viewport, zoom: percent / display.bounds.fitPercent });
     },
     pan(position: number) {

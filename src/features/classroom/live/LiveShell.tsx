@@ -353,7 +353,7 @@ export function LiveShell({
   const editable = isController && (rehearsal || !state.ended);
   // 展示窗/学生端跟随 start 事件进入上课（派生而非 effect，避免级联渲染）
   const effectivePhase: Phase = phase === "live" || (state.started && !isController) ? "live" : "prep";
-  const display = useClassroomDisplay(`${userId}:${role}`, preparation.stageMounted || effectivePhase === "live", stageWidth, teacherLayoutV2, displayWorkspaceRef);
+  const display = useClassroomDisplay(`${userId}:${role}`, preparation.stageMounted || effectivePhase === "live", stageWidth, displayWorkspaceRef);
   const palmDevice = usePalmEraserSettings(`${userId}:${role}`);
   const focusMode = display.focused;
   const viewport = useClassroomViewport({
@@ -1327,7 +1327,7 @@ export function LiveShell({
       <ClassroomBackdrop />
 
       {teacherLayoutV2 && !focusMode && (
-        <div className="shrink-0 xl:hidden" style={display.courseInfoAbove ? { display: "block" } : undefined} data-classroom-narrow-course-info>
+        <div className="shrink-0 xl:hidden" data-classroom-narrow-course-info>
           <ClassroomCourseInfoBar
             backHref={`/classroom/${classId}/session/${session.id}`}
             exitLabel={t("exit")}
@@ -1610,7 +1610,7 @@ export function LiveShell({
         focusMode ? "m-0 flex overflow-hidden" : teacherLayoutV2
           ? "mt-1 flex flex-col gap-1.5 overflow-y-auto lg:grid lg:grid-cols-[minmax(0,1fr)_clamp(22rem,31vw,36rem)] lg:gap-3 lg:overflow-hidden xl:mt-0"
           : "mt-2 flex flex-col gap-2 overflow-y-auto lg:flex-row lg:gap-3 lg:overflow-hidden",
-      )} style={display.splitWidth !== null ? { gridTemplateColumns: `${display.splitWidth}px minmax(0, 1fr)` } : undefined}>
+      )}>
         {/* 左：4:3 课件层 + 主板书覆盖层，尽量占满可压缩空间（08-§3.2 归一化坐标） */}
         <main className={cn(
           "relative flex min-w-0 shrink-0 items-center justify-center lg:min-h-0 lg:flex-1 lg:shrink",
@@ -1789,11 +1789,10 @@ export function LiveShell({
           )}
           inert={focusMode}
           aria-hidden={focusMode || undefined}
-          style={display.courseInfoAbove ? { gridTemplateRows: sideCollapsed ? "2.75rem minmax(0, 1fr)" : "minmax(8rem, 1fr) auto" } : undefined}
           data-classroom-right-stack-surface={teacherLayoutV2 ? "transparent" : "paper"}
         >
           {teacherLayoutV2 && (
-            <div className="hidden xl:block" style={display.courseInfoAbove ? { display: "none" } : undefined} data-classroom-wide-course-info>
+            <div className="hidden xl:block" data-classroom-wide-course-info>
               <ClassroomCourseInfoBar
                 backHref={`/classroom/${classId}/session/${session.id}`}
                 exitLabel={t("exit")}

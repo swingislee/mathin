@@ -45,18 +45,26 @@ describe("classroom display geometry", () => {
     },
   );
 
-  it("adapts saved desktop sizes to portrait focus without changing their stored values", () => {
+  it("adapts saved focus size to portrait without restoring the legacy split size", () => {
     const saved = parseClassroomDisplayPreferences('{"splitPercent":68,"focusPercent":75}');
     const bounds = classroomDisplayBounds(390, 844, true);
     expect(bounds.maxPercent).toBe(100);
     expect(clampClassroomDisplayPercent(saved.focusPercent!, bounds)).toBe(75);
-    expect(saved.splitPercent).toBe(68);
+    expect(saved).toEqual({ focusPercent: 75 });
   });
 
   it("falls back to the original layout when stored preferences are missing or malformed", () => {
     for (const raw of [null, "broken", "null", "[]", '{"splitPercent":500,"focusPercent":"70"}']) {
-      expect(parseClassroomDisplayPreferences(raw)).toEqual({ splitPercent: null, focusPercent: null });
+      expect(parseClassroomDisplayPreferences(raw)).toEqual({ focusPercent: null });
     }
-    expect(parseClassroomDisplayPreferences('{"splitPercent":55,"focusPercent":70}')).toEqual({ splitPercent: 55, focusPercent: 70 });
+    expect(parseClassroomDisplayPreferences('{"focusPercent":70}')).toEqual({ focusPercent: 70 });
+  });
+
+  it.each([40, 68, 80, 100])("ignores an old split zoom of %i while retaining the independent focus preference", (splitPercent) => {
+    const legacy = JSON.stringify({ splitPercent, focusPercent: 90 });
+    const restored = parseClassroomDisplayPreferences(legacy);
+    expect(restored).toEqual({ focusPercent: 90 });
+    expect(parseClassroomDisplayPreferences(JSON.stringify(restored))).toEqual(restored);
+    expect(parseClassroomDisplayPreferences(JSON.stringify({ splitPercent }))).toEqual({ focusPercent: null });
   });
 });

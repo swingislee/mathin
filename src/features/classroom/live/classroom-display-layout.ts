@@ -1,9 +1,8 @@
 export interface ClassroomDisplayPreferences {
-  splitPercent: number | null;
   focusPercent: number | null;
 }
 
-export const DEFAULT_CLASSROOM_DISPLAY: ClassroomDisplayPreferences = { splitPercent: null, focusPercent: null };
+export const DEFAULT_CLASSROOM_DISPLAY: ClassroomDisplayPreferences = { focusPercent: null };
 export const CLASSROOM_DISPLAY_ASPECT = 4 / 3;
 export const CLASSROOM_DISPLAY_SIDE_MIN = 256;
 export const CLASSROOM_DISPLAY_GAP = 12;
@@ -15,7 +14,8 @@ export function parseClassroomDisplayPreferences(raw: string | null): ClassroomD
     const record = value as Record<string, unknown>;
     const percent = (candidate: unknown) => typeof candidate === "number" && Number.isFinite(candidate)
       && candidate >= 10 && candidate <= 100 ? candidate : null;
-    return { splitPercent: percent(record.splitPercent), focusPercent: percent(record.focusPercent) };
+    // 旧版 splitPercent 会覆盖常规课堂的列宽；读取时只保留专注模式的偏好。
+    return { focusPercent: percent(record.focusPercent) };
   } catch {
     return DEFAULT_CLASSROOM_DISPLAY;
   }
