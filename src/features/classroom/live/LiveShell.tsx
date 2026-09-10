@@ -122,6 +122,8 @@ import {
 import { ClassroomRosterGrid, type ClassroomRosterStudent } from "./ClassroomRosterGrid";
 import { DevelopmentAcceptanceDock } from "./DevelopmentAcceptanceDock";
 import { TeacherClassroomControlBar } from "./TeacherClassroomControlBar";
+import { ClassroomDisplayControls } from "./ClassroomDisplayControls";
+import { useClassroomDisplay } from "./useClassroomDisplay";
 import { ClassroomPageControls, ClassroomToolsMenu } from "./ClassroomControlMenus";
 import { resolveClassroomTeachingSurface } from "./classroom-teaching-surface";
 import {
@@ -328,6 +330,7 @@ export function LiveShell({
   const logRef = useRef<SessionEventLog | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const classroomRootRef = useRef<HTMLDivElement | null>(null);
+  const displayWorkspaceRef = useRef<HTMLDivElement | null>(null);
   const mainInputPortRef = useRef<CanvasSurfaceInputPort | null>(null);
   const sideViewportRef = useRef<HTMLDivElement | null>(null);
   const onMainInputPort = useCallback((port: CanvasSurfaceInputPort | null) => {
@@ -339,6 +342,8 @@ export function LiveShell({
   const editable = isController && (rehearsal || !state.ended);
   // 展示窗/学生端跟随 start 事件进入上课（派生而非 effect，避免级联渲染）
   const effectivePhase: Phase = phase === "live" || (state.started && !isController) ? "live" : "prep";
+  const display = useClassroomDisplay(`${userId}:${role}`, preparation.stageMounted || effectivePhase === "live", stageWidth, teacherLayoutV2, displayWorkspaceRef);
+  const focusMode = display.focused;
 
   // --- 事件层与传输层 ---------------------------------------------------
   useEffect(() => {
@@ -969,17 +974,29 @@ export function LiveShell({
   const m4aStarCount = m4aStarStudent
     ? starCountForRosterEntry(state.starLedger, m4aStarStudent)
     : 0;
-  const toolbarStore = activeArea === "side" ? sideBoard.store : mainStore;
+  const toolbarStore = activeArea === "side" && !focusMode ? sideBoard.store : mainStore;
   // 清空对话框目标：默认勾选主板书，副板书可选加入（用户 2026-07-08 要求）
   const clearTargets = useMemo(
     () => (mainStore
       ? [
           { key: "main", label: t("clearMain"), store: mainStore, defaultChecked: true },
-          { key: "side", label: t("clearSide"), store: sideBoard.store, defaultChecked: false },
+          ...(!focusMode ? [{ key: "side", label: t("clearSide"), store: sideBoard.store, defaultChecked: false }] : []),
         ]
       : undefined),
-    [mainStore, sideBoard.store, t],
+    [focusMode, mainStore, sideBoard.store, t],
   );
+  const displayControls = myRole === "teacher" ? (
+    <ClassroomDisplayControls
+      focused={focusMode}
+      onFocus={(focused) => { setActiveArea("main"); display.setFocused(focused); }}
+      adjustable={display.adjustable}
+      value={display.value}
+      min={display.bounds.minPercent}
+      max={display.bounds.maxPercent}
+      onResize={display.resize}
+      onReset={display.reset}
+    />
+  ) : null;
   const myAnswer = state.quiz ? state.answers[state.quiz.id]?.[userId] : undefined;
   const tally = useMemo(() => {
     if (!state.quiz) return [];
@@ -1257,11 +1274,12 @@ export function LiveShell({
       !stageVisible && "invisible pointer-events-none",
       "relative isolate flex h-dvh select-none flex-col overflow-hidden px-3 [-webkit-touch-callout:none] [-webkit-user-select:none]",
       teacherLayoutV2 ? "pb-[calc(3.5rem+env(safe-area-inset-bottom))] pt-1" : "pb-2 pt-2",
-    )} inert={!stageVisible} aria-hidden={!stageVisible} data-classroom-live-shell data-classroom-selection-policy="none-during-teaching">
+      focusMode && "p-0",
+    )} inert={!stageVisible} aria-hidden={!stageVisible} data-classroom-live-shell data-classroom-display={focusMode ? "focus" : "split"} data-classroom-selection-policy="none-during-teaching">
       <ClassroomBackdrop />
 
-      {teacherLayoutV2 && (
-        <div className="shrink-0 xl:hidden" data-classroom-narrow-course-info>
+      {teacherLayoutV2 && !focusMode && (
+        <div className="shrink-0 xl:hidden" style={display.courseInfoAbove ? { display: "block" } : undefined} data-classroom-narrow-course-info>
           <ClassroomCourseInfoBar
             backHref={`/classroom/${classId}/session/${session.id}`}
             exitLabel={t("exit")}
@@ -1279,7 +1297,7 @@ export function LiveShell({
         </div>
       )}
 
-      {!teacherLayoutV2 && <header className="flex shrink-0 flex-wrap items-center gap-2 rounded-xl bg-paper/95 px-1 shadow-sm">
+      {!teacherLayoutV2 && !focusMode && <header className="flex shrink-0 flex-wrap items-center gap-2 rounded-xl bg-paper/95 px-1 shadow-sm">
         <Link
           href={`/classroom/${classId}/session/${session.id}`}
           aria-label={t("exit")}
@@ -1297,6 +1315,7 @@ export function LiveShell({
         )}
         {connectionBadges}
         {preparationButton}
+        {displayControls}
         {isController && !state.ended && !rehearsal && !offlineDrill && (
           <ClassroomEndButton
             label={t("endClass")}
@@ -1538,28 +1557,32 @@ export function LiveShell({
         </div>
       )}
 
-      <div className={cn(
+      <div ref={displayWorkspaceRef} className={cn(
         "min-h-0 flex-1",
-        teacherLayoutV2
+        focusMode ? "m-0 flex overflow-hidden" : teacherLayoutV2
           ? "mt-1 flex flex-col gap-1.5 overflow-y-auto lg:grid lg:grid-cols-[minmax(0,1fr)_clamp(22rem,31vw,36rem)] lg:gap-3 lg:overflow-hidden xl:mt-0"
           : "mt-2 flex flex-col gap-2 overflow-y-auto lg:flex-row lg:gap-3 lg:overflow-hidden",
-      )}>
+      )} style={display.splitWidth !== null ? { gridTemplateColumns: `${display.splitWidth}px minmax(0, 1fr)` } : undefined}>
         {/* 左：4:3 课件层 + 主板书覆盖层，尽量占满可压缩空间（08-§3.2 归一化坐标） */}
         <main className={cn(
           "relative flex min-w-0 shrink-0 items-center justify-center lg:min-h-0 lg:flex-1 lg:shrink",
           teacherLayoutV2 && "min-h-[min(50dvh,32rem)] [container-type:size] lg:min-h-0",
+          focusMode && "h-full min-h-0 flex-1 [container-type:size]",
         )}>
           <div
             ref={stageRef}
             className={cn(
               "relative aspect-[4/3] overflow-hidden rounded-2xl border border-line bg-card",
               teacherLayoutV2 ? "max-h-full max-w-full" : "w-full",
+              focusMode && "max-h-full max-w-full rounded-none border-0",
             )}
             data-classroom-stage
             {...classroomInputProviderAttributes(rendererProfile.renderer, rendererProfile.provider)}
             style={{
               ...teachingSurface.surfaceStyle,
-              ...(teacherLayoutV2
+              ...(focusMode
+                ? { width: display.focusWidth, height: "auto" }
+                : teacherLayoutV2
                 ? {
                   width: "min(100cqw, calc(100cqh * 4 / 3))",
                   height: "min(100cqh, calc(100cqw * 3 / 4))",
@@ -1670,7 +1693,7 @@ export function LiveShell({
             {!isController && renderPage?.type === "doc" && <div aria-hidden="true" className="absolute inset-0 z-40 touch-none" />}
           </div>
 
-          {isController && toolbarStore && !teacherLayoutV2 && (
+          {isController && toolbarStore && !teacherLayoutV2 && !focusMode && (
             <div className="absolute bottom-3 left-1/2 z-50 flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-center">
               <Toolbar
                 title={`${displayedSessionTitle}-${renderPage?.title ?? ""}`}
@@ -1702,11 +1725,15 @@ export function LiveShell({
                   : rosterCollapsed
                     ? "lg:w-[18rem] xl:w-[22rem]"
                     : "lg:w-[26rem] xl:w-[34rem]",
+            focusMode && "hidden",
           )}
+          inert={focusMode}
+          aria-hidden={focusMode || undefined}
+          style={display.courseInfoAbove ? { gridTemplateRows: sideCollapsed ? "2.75rem minmax(0, 1fr)" : "minmax(8rem, 1fr) auto" } : undefined}
           data-classroom-right-stack-surface={teacherLayoutV2 ? "transparent" : "paper"}
         >
           {teacherLayoutV2 && (
-            <div className="hidden xl:block" data-classroom-wide-course-info>
+            <div className="hidden xl:block" style={display.courseInfoAbove ? { display: "none" } : undefined} data-classroom-wide-course-info>
               <ClassroomCourseInfoBar
                 backHref={`/classroom/${classId}/session/${session.id}`}
                 exitLabel={t("exit")}
@@ -1990,7 +2017,7 @@ export function LiveShell({
         </div>
       </div>
 
-      {teacherLayoutV2 && showControlBar && (
+      {(teacherLayoutV2 || (focusMode && isController)) && showControlBar && (
         <TeacherClassroomControlBar
           inputControls={inputV2Enabled ? (
             <ClassroomSmartInputToggle
@@ -2001,6 +2028,7 @@ export function LiveShell({
           ) : null}
           utilityControls={(
             <div className="flex shrink-0 items-center gap-0.5" data-classroom-rail-group="classroom-actions">
+              {displayControls}
               {classroomLearningSetup && classroomLearningSetup.checks.length > 0 && (
                 <SessionLearningCheckPanel
                   key={classroomLearningSetupKey}
@@ -2073,6 +2101,12 @@ export function LiveShell({
             />
           )}
         />
+      )}
+
+      {focusMode && !isController && displayControls && (
+        <footer className="fixed inset-x-0 bottom-0 z-[70] flex h-12 items-center justify-end bg-paper/80 px-2 backdrop-blur-xl">
+          {displayControls}
+        </footer>
       )}
 
       <Dialog open={endOpen} onOpenChange={setEndOpen}>
