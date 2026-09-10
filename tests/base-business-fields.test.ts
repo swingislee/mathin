@@ -19,7 +19,7 @@ describe('Base business field organization', () => {
     const plan = buildBaseBusinessPlan(input);
     const fields: BaseBusinessField[][] = plan.facts.map((fact: { fields: unknown }) => baseBusinessFieldsSchema.parse(fact.fields));
     expect(plan.summary).toMatchObject({ records: 2, definitions: 7, nonemptyText: 7, unmapped: 0 });
-    expect(plan.facts[0]).toMatchObject({ source_record_id: 'row', source_payload_sha256: 'b'.repeat(64), mapping_version: 1 });
+    expect(plan.facts[0]).toMatchObject({ source_record_id: 'row', source_payload_sha256: 'b'.repeat(64), mapping_version: 2 });
     expect(baseBusinessFieldsSchema.parse(plan.facts[0].fields)).toEqual(plan.facts[0].fields);
     expect(fields[0].find(field => field.key === 'acquired_on')).toMatchObject({ display: '2026-01-29', originalText: '20260129' });
     expect(fields[0].find(field => field.key === 'content')?.value).toBe('第一行\n原文第二行');

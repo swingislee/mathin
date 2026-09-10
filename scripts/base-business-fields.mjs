@@ -2,14 +2,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { openHistoryLocalTarget } from './lib/history-local-target.mjs';
-import { buildBaseBusinessPlan } from './lib/base-business-fields.mjs';
+import { BASE_FIELD_VERSION, buildBaseBusinessPlan } from './lib/base-business-fields.mjs';
+import { auditBaseBusinessValues } from './lib/base-business-values-audit.mjs';
 import { historyPayloadHash } from './lib/history-import-trial.mjs';
 import { textFileSha256 } from './lib/text-hash.mjs';
 import { baseBusinessFieldsSchema } from '../src/features/school/base-business-fields-contract.ts';
 
 const mode = process.argv[2];
 if (!['--preflight', '--prepare', '--check', '--apply', '--verify'].includes(mode)) throw new Error('Use --preflight, --prepare, --check, --apply or --verify');
-const root = path.resolve('.tmp/base-data-organization');
+const root = path.resolve(`.tmp/base-data-organization/v${BASE_FIELD_VERSION}`);
 fs.mkdirSync(root, { recursive: true });
 const { sql, observed } = openHistoryLocalTarget({ attestationPath: path.join(root, 'preflight.json'),
   refresh: mode === '--preflight', errorFile: path.join(root, 'database-error.txt') });
@@ -24,7 +25,10 @@ const migrate = statement => {
     throw new Error('BASE_DATABASE_ERROR: inspect private error file');
   }
 };
-const version = '20260910004000_base_business_fields';
+const prerequisite = '20260910004000_base_business_fields';
+const prerequisiteChecksum = sql(`begin read only;select checksum from public.schema_migrations where version='${prerequisite}';commit;`);
+if (prerequisiteChecksum !== textFileSha256(`supabase/migrations/${prerequisite}.sql`)) throw new Error('BASE_PREREQUISITE_MIGRATION_REQUIRED');
+const version = '20260910006000_base_value_synonyms';
 const migration = `supabase/migrations/${version}.sql`;
 const quote = value => `'${String(value).replaceAll("'", "''")}'`;
 const read = name => JSON.parse(fs.readFileSync(path.join(root, name), 'utf8'));
@@ -46,13 +50,19 @@ for (const fact of plan.facts) baseBusinessFieldsSchema.parse(fact.fields);
 const planHash = historyPayloadHash(plan);
 const checkKey = { checksum, planHash, script: textFileSha256('scripts/base-business-fields.mjs'),
   library: textFileSha256('scripts/lib/base-business-fields.mjs'), contract: textFileSha256('src/features/school/base-business-fields-contract.ts'),
+  aliases: textFileSha256('scripts/lib/base-value-normalization.mjs'), grade: textFileSha256('src/lib/grade-format.mjs'),
+  valueAudit: textFileSha256('scripts/lib/base-business-values-audit.mjs'),
   schema: textFileSha256('src/features/school/base-business-fields-schema.mjs'), normalizer: textFileSha256('src/features/school/business-source-contract.ts'),
   assertions: textFileSha256('scripts/sql/base-business-fields-assertions.sql') };
 if (mode === '--prepare') {
+  const previous = sql(`begin read only;select to_jsonb(b) from public.history_source_business_facts b where mapping_version=${BASE_FIELD_VERSION - 1} order by source_record_id;commit;`)
+    .split('\n').filter(Boolean).map(line => JSON.parse(line));
+  const audit = auditBaseBusinessValues(previous, plan.facts);
+  write('value-audit.json', audit);
   write('plan.json', plan);
   write('field-report.json', { summary: plan.summary, fields: plan.fields });
   write('prepared.json', { checkKey, preparedAt: new Date().toISOString(), summary: plan.summary });
-  console.log(JSON.stringify({ mode, ...plan.summary }));
+  console.log(JSON.stringify({ mode, ...plan.summary, valuesAudit: audit.summary }));
   process.exit(0);
 }
 if (historyPayloadHash(read('plan.json')) !== planHash || (mode !== '--verify' && JSON.stringify(read('prepared.json').checkKey) !== JSON.stringify(checkKey))) throw new Error('BASE_INPUT_CHANGED_PREPARE_AGAIN');
@@ -69,11 +79,13 @@ const tables = ['students','profiles','leads','lead_source_records','lead_commun
   'class_sessions','session_attendance','payments','work_items','notifications'];
 const available = new Set(sql("begin read only;select tablename from pg_tables where schemaname='public';commit;").split('\n'));
 const covered = tables.filter(table => available.has(table));
-const fingerprints = covered.map(table => `select '${table}'::text as name,count(*) as rows,
-  md5(coalesce(string_agg(md5(to_jsonb(t)::text),'' order by md5(to_jsonb(t)::text)),'')) as digest from public.${table} t`).join('\nunion all\n');
+const fingerprints = [...covered.map(table => `select '${table}'::text as name,count(*) as rows,
+  md5(coalesce(string_agg(md5(to_jsonb(t)::text),'' order by md5(to_jsonb(t)::text)),'')) as digest from public.${table} t`),
+  `select 'base_prior_mapping_versions'::text as name,count(*) as rows,
+  md5(coalesce(string_agg(md5(to_jsonb(t)::text),'' order by md5(to_jsonb(t)::text)),'')) as digest from public.history_source_business_facts t where mapping_version<${BASE_FIELD_VERSION}`].join('\nunion all\n');
 const snapshot = () => sql(`begin read only;select jsonb_agg(t order by name) from (${fingerprints}) t;commit;`);
 const before = snapshot();
-const contextDefinition = () => sql("begin read only;select md5(pg_get_functiondef(p.oid)||coalesce(p.proacl::text,'')) from pg_proc p where p.oid='public.read_school_record_source_context(uuid,uuid,integer)'::regprocedure;commit;");
+const contextDefinition = () => sql("begin read only;select md5(string_agg(pg_get_functiondef(p.oid)||coalesce(p.proacl::text,''),'' order by p.proname)) from pg_proc p where p.oid in ('public.read_school_record_source_context(uuid,uuid,integer)'::regprocedure,'public.read_base_source_business_fields(text)'::regprocedure,'public.read_base_lead_acquisition(uuid[])'::regprocedure);commit;");
 const beforeDefinition = contextDefinition();
 const expected = JSON.stringify(plan.facts);
 const tag = '$base_business_input$';
@@ -124,9 +136,8 @@ const statement = `begin isolation level repeatable read;set local lock_timeout=
   ${mode === '--check' ? 'rollback;' : `${applied ? '' : `insert into public.schema_migrations(version,checksum) values('${version}','${checksum}');`}notify pgrst,'reload schema';commit;`}`;
 migrate(statement);
 if (snapshot() !== before) throw new Error('BASE_EXISTING_BUSINESS_CHANGED');
-if (mode === '--check' && !applied && sql("begin read only;select (to_regclass('public.history_source_business_facts') is null)::text;commit;") !== 'true') throw new Error('BASE_ROLLBACK_FAILED');
 if (mode === '--check' && contextDefinition() !== beforeDefinition) throw new Error('BASE_SOURCE_CONTEXT_ROLLBACK_FAILED');
 const result = { mode, checkKey, head, checkedAt: new Date().toISOString(), localTargetVerified: true,
-  existingBusinessUnchanged: true, protectedTables: covered.length, storedFieldsEqual: true, ...plan.summary };
+  existingBusinessUnchanged: true, priorMappingVersionsUnchanged: true, protectedTables: covered.length, storedFieldsEqual: true, ...plan.summary };
 write(mode === '--check' ? 'check.json' : 'applied.json', result);
 console.log(JSON.stringify(result));

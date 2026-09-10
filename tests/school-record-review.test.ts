@@ -31,6 +31,19 @@ const click = async (text: string) => {
 };
 
 describe("source fields and duplicate hints", () => {
+  it("shows the original alongside a normalized value and explains unresolved source values", async () => {
+    const cells = [{ fieldId: "grade", fieldName: "年级/25级", text: "一", type: "Text", kind: "context" },
+      { fieldId: "mixed", fieldName: "春季年级", text: "二升三", type: "Text", kind: "context" }];
+    const structured = organizeBaseRecord({ id: record.id, source_data: { format: "feishu-base" }, record_data: { tableName: record.table, cells } })!;
+    actions.read.mockResolvedValueOnce({ ok: true, data: { ...data, sources: [{ ...record, businessFields: structured.fields }] } });
+    await act(async () => root.render(createElement(SchoolRecordSourceReview, { subject, locale: "zh" })));
+    await click("查看原表资料与相关记录");
+    const text = document.querySelector("[data-base-business-fields]")?.textContent;
+    expect(text).toContain("1年级");
+    expect(text).toContain("原文：一");
+    expect(text).toContain("2年级升3年级");
+    expect(text).toContain("请核对适用学年");
+  });
   it("shows organized business fields with original values available in the same source record", async () => {
     const structured = organizeBaseRecord({ id: record.id, source_data: { format: "feishu-base" },
       record_data: { tableName: record.table, cells: record.cells.map(cell => ({ fieldId: cell.id, fieldName: cell.name, text: cell.text, type: cell.type, kind: "context" })) } })!;

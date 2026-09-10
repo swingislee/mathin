@@ -42,10 +42,10 @@ if(mode==='--prepare') {
 }
 const payload=read(planPath);
 const baseFields=buildBaseBusinessPlan(payload.records);
-if(baseFields.facts.length&&sql("begin read only;select to_regprocedure('public.store_base_business_fields(jsonb)') is not null;commit;")!=='t')throw new Error('BASE_BUSINESS_FIELDS_MIGRATION_REQUIRED');
+if(baseFields.facts.length&&sql("begin read only;select exists(select 1 from public.schema_migrations where version='20260910006000_base_value_synonyms');commit;")!=='t')throw new Error('BASE_BUSINESS_FIELDS_MIGRATION_REQUIRED');
 const fresh=buildCompleteSourcePayload({...await readCompleteSources(sourceRoot,path.resolve('docs/test_material')),tables:snapshot()});
 if(fresh.payloadHash!==payload.payloadHash)throw new Error('FULL_SOURCE_CURRENT_INPUT_CHANGED_PREPARE_AGAIN');
-const checkKey={checksum,payloadHash:payload.payloadHash,script:textFileSha256('scripts/full-source-import.mjs'),library:textFileSha256('scripts/lib/full-source-import.mjs'),baseFields:textFileSha256('scripts/lib/base-business-fields.mjs')};
+const checkKey={checksum,payloadHash:payload.payloadHash,script:textFileSha256('scripts/full-source-import.mjs'),library:textFileSha256('scripts/lib/full-source-import.mjs'),baseFields:textFileSha256('scripts/lib/base-business-fields.mjs'),baseAliases:textFileSha256('scripts/lib/base-value-normalization.mjs'),grade:textFileSha256('src/lib/grade-format.mjs')};
 const checkFile=path.join(output,'check.json');
 if(mode==='--apply'&&(!fs.existsSync(checkFile)||JSON.stringify(read(checkFile).checkKey)!==JSON.stringify(checkKey)))throw new Error('FULL_SOURCE_CURRENT_CHECK_REQUIRED');
 const protectedTables=['students','leads','enrollments','classrooms','class_sessions','session_attendance','contacts','families','student_follow_ups','activities','activity_registrations','assessment_results','course_opportunities','course_enrollments','course_enrollment_assignments','business_record_revisions','work_items','notifications'];

@@ -28,9 +28,9 @@ if(mode==='--prepare'){console.log(JSON.stringify({counts:plan.counts,coverage:p
   fieldCoverage:{fieldCount:plan.fieldCoverage.fieldCount,nonemptyCells:plan.fieldCoverage.nonemptyCells,notLookedUpCells:plan.fieldCoverage.notLookedUpCells,
     semantics:plan.fieldCoverage.semantics}}));process.exit(0);}
 const migration='20260907000900_operational_source_records';
-if(plan.baseBusinessFields.facts.length&&sql("begin read only;select to_regprocedure('public.store_base_business_fields(jsonb)') is not null;commit;")!=='t')throw new Error('BASE_BUSINESS_FIELDS_MIGRATION_REQUIRED');
+if(plan.baseBusinessFields.facts.length&&sql("begin read only;select exists(select 1 from public.schema_migrations where version='20260910006000_base_value_synonyms');commit;")!=='t')throw new Error('BASE_BUSINESS_FIELDS_MIGRATION_REQUIRED');
 const migrationFile=`supabase/migrations/${migration}.sql`;
-const checkKey={migration:textFileSha256(migrationFile),plan:historyPayloadHash(plan),runner:textFileSha256('scripts/operational-source-import.mjs'),normalizer:textFileSha256('src/features/school/business-source-contract.ts'),baseFields:textFileSha256('scripts/lib/base-business-fields.mjs')};
+const checkKey={migration:textFileSha256(migrationFile),plan:historyPayloadHash(plan),runner:textFileSha256('scripts/operational-source-import.mjs'),normalizer:textFileSha256('src/features/school/business-source-contract.ts'),baseFields:textFileSha256('scripts/lib/base-business-fields.mjs'),baseAliases:textFileSha256('scripts/lib/base-value-normalization.mjs'),grade:textFileSha256('src/lib/grade-format.mjs')};
 if(mode==='--apply'&&JSON.stringify(read(path.join(root,'check.json')).checkKey)!==JSON.stringify(checkKey))throw new Error('SOURCE_ALIGNMENT_CHECK_REQUIRED');
 const already=sql(`begin read only;select checksum from public.schema_migrations where version=${q(migration)};commit;`);
 if(already&&already!==checkKey.migration)throw new Error('MIGRATION_CHECKSUM_CHANGED');

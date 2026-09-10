@@ -5,6 +5,7 @@ export const baseBusinessFieldSchema = z.object({
   fieldId: z.string(), name: z.string(), section: z.enum(BASE_BUSINESS_SECTIONS), key: z.string(), kind: z.string(),
   value: z.json(), display: z.string(), originalText: z.string(), sourceType: z.string(), rawHasContent: z.boolean(),
   status: z.enum(['normalized', 'text', 'unparsed', 'reference', 'unmapped']),
+  review: z.array(z.enum(['unrecognized', 'missing', 'transition', 'multiple_grades', 'ambiguous', 'conflicting_options', 'time_period', 'scale', 'reference', 'class_label', 'field_mismatch'])).optional(),
 });
 export const baseBusinessFieldsSchema = z.array(baseBusinessFieldSchema);
 export const baseLeadAcquisitionSchema = z.array(z.object({

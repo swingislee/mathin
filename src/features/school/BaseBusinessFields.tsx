@@ -15,6 +15,7 @@ export function BaseBusinessFields({ fields, locale }: { fields: readonly BaseBu
             <dd className="whitespace-pre-wrap break-words">
               {field.display || field.originalText || m.rawOnly}
               {field.display && field.originalText.trim() && field.display !== field.originalText.trim() ? <span className="mt-1 block text-xs text-muted">{m.original}：{field.originalText}</span> : null}
+              {(field.review ?? (field.status === "unparsed" ? ["unrecognized" as const] : [])).map(reason => <span key={reason} className="mt-1 block text-xs text-muted">{m.review[reason]}</span>)}
             </dd>
           </div>)}
         </dl>

@@ -9,6 +9,7 @@ describe("年级数字规范", () => {
     const grade = "一二三四五六七".indexOf(word) + 1;
     expect(parseSchoolGrade(`${word}年级`)).toBe(grade);
     expect(parseSchoolGrade(`${grade}年级`)).toBe(grade);
+    expect(parseSchoolGrade(word)).toBe(grade);
     expect(normalizeGradeLabel(`${word}年级`)).toBe(`${grade}年级`);
     expect(normalizeGradeText(`数学${word}年级秋季 A+`)).toBe(`数学${grade}年级秋季 A+`);
   });
@@ -20,6 +21,10 @@ describe("年级数字规范", () => {
     expect(normalizeGradeText(normalized)).toBe(normalized);
     expect(normalizeGradeLabel("初一")).toBe("7年级");
     expect(normalizeGradeLabel("第 ６ 年级")).toBe("6年级");
+    expect(normalizeGradeLabel("小学一")).toBe("1年级");
+    expect(normalizeGradeLabel("第一年级")).toBe("1年级");
+    expect(parseSchoolGrade("小学七年级")).toBeNull();
+    expect(parseSchoolGrade("初中二年级")).toBe(8);
     expect(normalizeGradeLabel("大班")).toBe("大班");
     expect(parseSchoolGrade("13年级")).toBeNull();
     expect(parseSchoolGrade("同一年级")).toBeNull();

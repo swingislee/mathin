@@ -27,6 +27,14 @@ const lead = (id: string, extra: Partial<LeadPoolRow> = {}): LeadPoolRow => ({ i
   lastContactNote: "", wechatAdded: null, visitCommitted: null, interestLevel: null, nextContactAt: null, activeInvitation: null, ...extra });
 
 describe("five follow-up table paging and field contracts", () => {
+  it("uses one grade facet for Chinese, numeric and abbreviated source values before pagination", () => {
+    const rows = ["一", "一年级", "1年级", "小学一"].map((gradeText, index) => applyBaseLeadAcquisition(lead(String(index), { gradeHint: null, gradeText }), []));
+    expect(rows.map(row => [row.gradeHint, row.gradeText])).toEqual(Array.from({ length: 4 }, () => [1, "1年级"]));
+    expect(match(rows, leadIntakeTableFields(t, t, t), { grade: enumFilter("1") })).toEqual(rows);
+    const transition = lead("transition", { gradeHint: null, gradeText: "二升三" });
+    expect(applyBaseLeadAcquisition(transition, [])).toBe(transition);
+    expect(applyBaseLeadAcquisition(lead("current", { gradeHint: 2, gradeText: "一" }), [])).toMatchObject({ gradeHint: 2, gradeText: "2年级" });
+  });
   it("filters original Base outreach and group fields before pagination while keeping partial dates undated", () => {
     const source = { sourceId: "base-source", acquiredAt: null, dateLabel: "06-10", location: "原地点", method: "原渠道", promoter: "原署名", content: "领取资料\n第二行", group: "原组别" };
     const original = lead("base", { sourceCount: 0, acquiredAt: null, acquisitionLocation: "", acquisitionMethod: "", acquisitionPromoter: "" });

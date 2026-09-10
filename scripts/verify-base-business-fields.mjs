@@ -7,11 +7,12 @@ import { loadFixedAccount } from '../e2e/support/fixed-accounts.ts';
 import { openHistoryLocalTarget } from './lib/history-local-target.mjs';
 import { baseBusinessFieldsSchema, baseLeadAcquisitionSchema } from '../src/features/school/base-business-fields-schema.mjs';
 import { schoolRecordContextSchema } from '../src/features/school/school-record-review-contract.ts';
+import { BASE_FIELD_VERSION } from './lib/base-business-fields.mjs';
 
 const base = new URL(process.argv[2]);
 const hosts = new Set(['localhost', '127.0.0.1', ...Object.values(os.networkInterfaces()).flatMap(items => (items ?? []).map(item => item.address))]);
 if (base.protocol !== 'http:' || base.port !== '3130' || !hosts.has(base.hostname)) throw new Error('LOCAL_DEV_URL_REQUIRED');
-const root = path.resolve('.tmp/base-data-organization');
+const root = path.resolve(`.tmp/base-data-organization/v${BASE_FIELD_VERSION}`);
 openHistoryLocalTarget({ attestationPath: path.join(root, 'preflight.json'), refresh: true, errorFile: path.join(root, 'database-error.txt') });
 const env = Object.fromEntries(fs.readFileSync('.env.local', 'utf8').split(/\r?\n/).filter(line => /^[A-Z_]+=/.test(line)).map(line => {
   const at = line.indexOf('='); return [line.slice(0, at), line.slice(at + 1).trim().replace(/^(["'])(.*)\1$/, '$2')];

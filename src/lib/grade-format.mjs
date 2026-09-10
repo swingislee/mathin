@@ -1,6 +1,10 @@
 // 年级数字是业务值；汉字和学段简称只用于兼容外部输入。
 const GRADE_WORDS = ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十", "十一", "十二"];
 const GRADE_ALIASES = new Map(GRADE_WORDS.map((word, index) => [`${word}年级`, index + 1]));
+for (const [index, word] of GRADE_WORDS.entries()) {
+  GRADE_ALIASES.set(word, index + 1);
+  GRADE_ALIASES.set(`第${word}年级`, index + 1);
+}
 /** @type {Array<[string, number, number]>} */
 const SCHOOL_STAGES = [["小", 0, 6], ["初", 6, 3], ["高", 9, 3]];
 for (const [prefix, offset, count] of SCHOOL_STAGES) {
@@ -11,7 +15,13 @@ for (const [prefix, offset, count] of SCHOOL_STAGES) {
 
 /** @param {string} value @returns {number | null} */
 export function parseSchoolGrade(value) {
-  const compact = value.normalize("NFKC").replace(/\s+/gu, "");
+  const compact = value.normalize("NFKC").replace(/[\s\u200b\uFEFF]+/gu, "").replace(/(?:年级){2,}$/u, "年级");
+  const stage = /^(小学|初中|高中)(?:第)?([一二三四五六七八九十]+|\d{1,2})(?:年级)?$/u.exec(compact);
+  if (stage) {
+    const ordinal = /^\d+$/u.test(stage[2]) ? Number(stage[2]) : GRADE_WORDS.indexOf(stage[2]) + 1;
+    const [offset, limit] = stage[1] === "小学" ? [0, 6] : stage[1] === "初中" ? [6, 3] : [9, 3];
+    return ordinal >= 1 && ordinal <= limit ? offset + ordinal : null;
+  }
   const alias = GRADE_ALIASES.get(compact);
   if (alias !== undefined) return alias;
   const numeric = /^(?:第)?(\d{1,2})(?:年级)?$/u.exec(compact);

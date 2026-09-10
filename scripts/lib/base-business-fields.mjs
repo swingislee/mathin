@@ -1,7 +1,8 @@
 import { normalizeSourceAssessmentBand, sourceScore } from '../../src/features/school/business-source-contract.ts';
 import { normalizeGradeLabel } from '../../src/lib/grade-format.mjs';
+import { normalizeBaseSemanticValue } from './base-value-normalization.mjs';
 
-export const BASE_FIELD_VERSION = 1;
+export const BASE_FIELD_VERSION = 2;
 
 // 字段名只用于选择语义；每个来源字段 ID 和原值分别保存，不把同名字段合并。
 const definitions = new Map();
@@ -38,8 +39,8 @@ define('acquisition', 'content', 'text', '触达内容');
 define('acquisition', 'wechat_status', 'multi', '获客加V情况');
 define('acquisition', 'group_buy_started', 'boolean', '开团与否');
 define('acquisition', 'group_member_phone', 'phone', '团成员手机号');
-define('acquisition', 'group_buy_contact', 'choice', '真题拼团沟通');
-define('acquisition', 'materials_received', 'choice', '真题领取');
+define('acquisition', 'group_buy_contact', 'boolean', '真题拼团沟通');
+define('acquisition', 'materials_received', 'boolean', '真题领取');
 
 define('followup', 'occurred_on', 'date', '跟进日期|沟通日期');
 define('followup', 'month', 'period', '跟进月份');
@@ -77,7 +78,7 @@ define('visit', 'product', 'choice', '选拔产品|专题产品');
 define('visit', 'registered_on', 'date', '报名选拔产品日期');
 define('visit', 'trial_after_assessment', 'boolean', '散测后试听与否');
 define('visit', 'parent_trial_attended', 'boolean', '家长体验课旁听');
-define('visit', 'parent_orientation_attended', 'choice', '家长说明会参与情况');
+define('visit', 'parent_orientation_attended', 'boolean', '家长说明会参与情况');
 define('visit', 'plan_presented', 'boolean', '方案宣讲与否');
 
 define('assessment', 'occurred_on', 'date', '体/测日期');
@@ -93,7 +94,7 @@ define('assessment', 'family_background', 'text', '家长情况|家长情况2');
 define('assessment', 'parent_approach', 'choice', '家长理念');
 define('assessment', 'parent_concerns', 'text', '体验测评家长关注点|家长主要关注点|家长报名重视点总结');
 define('assessment', 'shared_expectations', 'text', '培养重点&核心期待&共识点');
-define('assessment', 'recommended_class', 'choice', '学员程度&推荐班型');
+define('assessment', 'recommended_class', 'class_band', '学员程度&推荐班型');
 define('assessment', 'parent_summary', 'text', '家长沟通信息总结（附整理文档）');
 define('assessment', 'scenario_document', 'text', '单人情景再现文档链接');
 define('assessment', 'report_files', 'attachment', '测评报告附件');
@@ -164,7 +165,7 @@ define('competition', 'form_completed', 'boolean', '填写与否');
 define('competition', 'level', 'choice', '竞赛级别');
 define('competition', 'short_course', 'choice', '短期班');
 define('competition', 'short_course_term', 'period', '短期班期次');
-define('competition', 'practice_status', 'choice', '备考打卡');
+define('competition', 'practice_status', 'boolean', '备考打卡');
 for (let index = 1; index <= 2; index++) define('competition', `lesson_${index}`, 'date', `短期班第${index}次课`);
 for (let index = 1; index <= 9; index++) define('competition', `practice_${index}`, 'choice', `卡${index}`);
 
@@ -256,7 +257,7 @@ export function parseBaseDate(text) {
   const yearMonth = /^(\d{4})[-/.年](\d{1,2})月?$/u.exec(normalized);
   if (yearMonth && +yearMonth[2] >= 1 && +yearMonth[2] <= 12) return { text: `${yearMonth[1]}-${pad(+yearMonth[2])}`, precision: 'month', year: +yearMonth[1], month: +yearMonth[2], day: null };
   const month = /^(\d{1,2})月$/u.exec(normalized);
-  if (month && +month[1] >= 1 && +month[1] <= 12) return { text: `${pad(+month[1])}`, precision: 'month', year: null, month: +month[1], day: null };
+  if (month && +month[1] >= 1 && +month[1] <= 12) return { text: `${pad(+month[1])}月`, precision: 'month', year: null, month: +month[1], day: null };
   const chineseMonth = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'].indexOf(normalized);
   if (chineseMonth >= 0) return { text: `${pad(chineseMonth + 1)}月`, precision: 'month', year: null, month: chineseMonth + 1, day: null };
   const year = /^(\d{4})年?$/u.exec(normalized);
@@ -311,12 +312,16 @@ function normalizeValue(kind, text) {
     return { value: label, display: label, status: 'text' };
   }
   if (kind === 'band') {
-    const value = normalizeSourceAssessmentBand(text);
+    const value = normalizeSourceAssessmentBand(text.normalize('NFKC'));
     if (value) return { value, display: { x_plus: 'X+', g_plus: 'G+', a: 'A', a_plus: 'A+', s: 'S', c: 'C' }[value], status: 'normalized' };
   }
-  if (kind === 'class_band') return { value: { label: text, band: normalizeSourceAssessmentBand(text) }, display: text, status: 'normalized' };
+  if (kind === 'class_band') {
+    const band = normalizeSourceAssessmentBand(text.normalize('NFKC'));
+    const label = band ? { x_plus: 'X+', g_plus: 'G+', a: 'A', a_plus: 'A+', s: 'S', c: 'C' }[band] : text;
+    return { value: { label, band }, display: label, status: 'normalized', ...(/[—–-]$/u.test(text) ? { review: ['class_label'] } : {}) };
+  }
   if (kind === 'score_or_band') {
-    const band = normalizeSourceAssessmentBand(text);
+    const band = normalizeSourceAssessmentBand(text.normalize('NFKC'));
     if (band) return { value: { band, score: null, maxScore: null }, display: { x_plus: 'X+', g_plus: 'G+', a: 'A', a_plus: 'A+', s: 'S', c: 'C' }[band], status: 'normalized' };
     const lowerBound = /^(\d+(?:\.\d+)?)\s*[+＋]$/u.exec(text);
     if (lowerBound) return { value: { minimum: +lowerBound[1], exact: false }, display: text, status: 'normalized' };
@@ -352,8 +357,8 @@ export function organizeBaseRecord(record) {
     if (!text && !rawHasContent) continue;
     const definition = baseFieldDefinition(record.record_data.tableName, cell.fieldName);
     const rawText = !text && ['number', 'boolean'].includes(typeof cell.rawValue) ? String(cell.rawValue) : '';
-    const value = text || rawText ? normalizeValue(definition.kind, text || rawText)
-      : { value: { sourceValue: cell.rawValue }, display: '', status: 'reference' };
+    const value = text || rawText ? normalizeBaseSemanticValue(definition, text || rawText) ?? normalizeValue(definition.kind, text || rawText)
+      : { value: { sourceValue: cell.rawValue }, display: '', status: 'reference', review: ['reference'] };
     fields.push({ fieldId: cell.fieldId, name: cell.fieldName, ...definition, ...value,
       status: definition.section === 'unmapped' ? 'unmapped' : value.status,
       originalText, sourceType: String(cell.type ?? ''), rawHasContent });
@@ -387,5 +392,6 @@ export function buildBaseBusinessPlan(records) {
   const sum = key => items.reduce((total, item) => total + item[key], 0);
   return { version: BASE_FIELD_VERSION, facts, summary: { records: facts.length, tables: new Set(baseRecords.map(record => `${record.source_sha256}:${record.source_table_id}`)).size,
     definitions: items.length, nonemptyDefinitions: items.filter(item => item.nonemptyText + item.rawOnly > 0).length,
+    reviewFields: facts.reduce((count, fact) => count + fact.fields.filter(field => field.review?.length || field.status === 'unparsed').length, 0),
     cells: sum('cells'), nonemptyText: sum('nonemptyText'), rawOnly: sum('rawOnly'), normalized: sum('normalized'), text: sum('text'), unparsed: sum('unparsed'), reference: sum('reference'), unmapped: sum('unmapped') }, fields: items };
 }

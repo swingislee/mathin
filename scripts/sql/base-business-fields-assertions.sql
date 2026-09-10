@@ -33,6 +33,17 @@ begin
   exception when others then get stacked diagnostics err=message_text; if err<>'BASE_FIELD_SOURCE_MISMATCH' then raise; end if; end;
   insert into public.history_source_business_facts(source_record_id,mapping_version,source_payload_sha256,fields)
     values(source_id,1,repeat('e',64),fields);
+  if public.read_base_source_business_fields(source_id) is distinct from fields then raise exception 'BASE_OLD_VERSION_FALLBACK_FAILED'; end if;
+  fields:=jsonb_set(jsonb_set(fields,'{1,display}','"规范场地"'),'{1,value}','"规范场地"');
+  insert into public.history_source_business_facts(source_record_id,mapping_version,source_payload_sha256,fields)
+    values(source_id,2,repeat('e',64),fields),
+      (source_id,3,repeat('e',64),jsonb_set(fields,'{1,display}','"未来版本"'));
+  if public.read_base_source_business_fields(source_id) is distinct from fields then raise exception 'BASE_SUPPORTED_LATEST_VERSION_FAILED'; end if;
+  if public.store_base_business_fields(jsonb_build_array(jsonb_build_object('source_record_id',source_id,'mapping_version',2,'source_payload_sha256',repeat('e',64),'fields',fields)))<>0 then raise exception 'BASE_SAME_VERSION_NOT_IDEMPOTENT'; end if;
+  begin
+    perform public.store_base_business_fields(jsonb_build_array(jsonb_build_object('source_record_id',source_id,'mapping_version',2,'source_payload_sha256',repeat('e',64),'fields',jsonb_set(fields,'{1,display}','"覆盖同版"'))));
+    raise exception 'BASE_SAME_VERSION_OVERWRITTEN';
+  exception when others then get stacked diagnostics err=message_text; if err<>'BASE_MAPPING_VERSION_CHANGED' then raise; end if; end;
   insert into public.students(id,name,phone,parent_phone,assigned_to,created_by,bind_code)
     values(hidden_student,'Hidden source subject','13900001234','',admin_id,admin_id,public.generate_student_bind_code());
   insert into public.history_import_records(id,source_sha256,source_table_id,source_record_id,payload_sha256,source_data,record_data,match_status,match_data,search_text,lead_id,entity_data)
@@ -52,7 +63,7 @@ begin
   if result->'sources'->0->'businessFields' is distinct from fields or jsonb_array_length(result->'sources')<>1 then raise exception 'SCOPED_BUSINESS_FIELDS_DIFFER'; end if;
   result:=public.read_base_lead_acquisition(array[lid]);
   if jsonb_array_length(result->0->'sources')<>1 or result->0->'sources'->0->>'acquiredAt' is not null or result->0->'sources'->0->>'dateLabel'<>'06-10'
-    or result->0->'sources'->0->>'location'<>'原场地' or result->0->'sources'->0->>'content'<>E'原文第一行\n原文第二行'
+    or result->0->'sources'->0->>'location'<>'规范场地' or result->0->'sources'->0->>'content'<>E'原文第一行\n原文第二行'
     then raise exception 'BASE_ACQUISITION_VALUE_OR_DATE_PRECISION'; end if;
   if exists(select 1 from public.history_source_business_facts where source_record_id=source_id) then raise exception 'TEACHER_ARCHIVE_TABLE_SCOPE'; end if;
   if has_table_privilege('authenticated','public.history_source_business_facts','INSERT')
