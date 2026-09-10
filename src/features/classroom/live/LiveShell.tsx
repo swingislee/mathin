@@ -2019,16 +2019,20 @@ export function LiveShell({
 
       {(teacherLayoutV2 || (focusMode && isController)) && showControlBar && (
         <TeacherClassroomControlBar
-          inputControls={inputV2Enabled ? (
-            <ClassroomSmartInputToggle
-              enabled={smartInputEnabled}
-              available={smartInputAvailable}
-              onChange={setSmartInputEnabled}
-            />
-          ) : null}
+          inputControls={(
+            <>
+              {inputV2Enabled && (
+                <ClassroomSmartInputToggle
+                  enabled={smartInputEnabled}
+                  available={smartInputAvailable}
+                  onChange={setSmartInputEnabled}
+                />
+              )}
+              {displayControls}
+            </>
+          )}
           utilityControls={(
             <div className="flex shrink-0 items-center gap-0.5" data-classroom-rail-group="classroom-actions">
-              {displayControls}
               {classroomLearningSetup && classroomLearningSetup.checks.length > 0 && (
                 <SessionLearningCheckPanel
                   key={classroomLearningSetupKey}
