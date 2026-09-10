@@ -126,6 +126,8 @@ import { ClassroomDisplayControls } from "./ClassroomDisplayControls";
 import { useClassroomDisplay } from "./useClassroomDisplay";
 import { useClassroomViewport } from "./useClassroomViewport";
 import { useClassroomViewportGestures } from "./useClassroomViewportGestures";
+import { usePalmEraserSettings } from "../input/usePalmEraserSettings";
+import { ClassroomPalmEraserSettings } from "./ClassroomPalmEraserSettings";
 import { ClassroomFocusOverlay } from "./ClassroomFocusOverlay";
 import { ClassroomPageControls, ClassroomToolsMenu } from "./ClassroomControlMenus";
 import { resolveClassroomTeachingSurface } from "./classroom-teaching-surface";
@@ -302,6 +304,7 @@ export function LiveShell({
   const [mainStore, setMainStore] = useState<WhiteboardStore | null>(null);
   const [activeArea, setActiveArea] = useState<"main" | "side">("main");
   const [smartInputEnabled, setSmartInputEnabled] = useState(true);
+  const [palmSettingsOpen, setPalmSettingsOpen] = useState(false);
   const [m3FixtureEnabled, setM3FixtureEnabled] = useState(() => acceptanceFixture === "m3b");
   const [m3FixtureRenderer, setM3FixtureRenderer] = useState<"mofaxiao" | "aixuexi">("mofaxiao");
   const [m3H5Compatible, setM3H5Compatible] = useState(true);
@@ -335,10 +338,14 @@ export function LiveShell({
   const classroomRootRef = useRef<HTMLDivElement | null>(null);
   const displayWorkspaceRef = useRef<HTMLDivElement | null>(null);
   const mainInputPortRef = useRef<CanvasSurfaceInputPort | null>(null);
+  const sideInputPortRef = useRef<CanvasSurfaceInputPort | null>(null);
+  const sideStageRef = useRef<HTMLDivElement | null>(null);
+  const penPointers = useRef(new Set<string>());
   const sideViewportRef = useRef<HTMLDivElement | null>(null);
   const onMainInputPort = useCallback((port: CanvasSurfaceInputPort | null) => {
     mainInputPortRef.current = port;
   }, []);
+  const onSideInputPort = useCallback((port: CanvasSurfaceInputPort | null) => { sideInputPortRef.current = port; }, []);
 
   const teacherLayoutV2 = layoutV2Enabled && isController;
   // 试讲不受「已下课」限制：复盘已结束的课次也可随手写画（本地临时，不留痕）
@@ -346,6 +353,7 @@ export function LiveShell({
   // 展示窗/学生端跟随 start 事件进入上课（派生而非 effect，避免级联渲染）
   const effectivePhase: Phase = phase === "live" || (state.started && !isController) ? "live" : "prep";
   const display = useClassroomDisplay(`${userId}:${role}`, preparation.stageMounted || effectivePhase === "live", stageWidth, teacherLayoutV2, displayWorkspaceRef);
+  const palmDevice = usePalmEraserSettings(`${userId}:${role}`);
   const focusMode = display.focused;
   const viewport = useClassroomViewport({
     log, controller: isController, userId, members, initialEvents, display,
@@ -849,6 +857,7 @@ export function LiveShell({
       : session.title || t("untitled");
   const h5FrameCount = countCoursewareH5Frames(renderDoc);
   const mainTool = useStore(mainStore ?? sideBoard.store, (boardState) => boardState.tool);
+  const sideTool = useStore(sideBoard.store, (boardState) => boardState.tool);
   const bridgeRoutingMode = resolveClassroomRoutingMode({
     smartEnabled: smartInputEnabled,
     smartAvailable: inputV2Enabled && isController,
@@ -858,6 +867,7 @@ export function LiveShell({
   const {
     host: h5PointerBridge,
     status: h5PointerBridgeStatus,
+    cancelGesture: cancelH5Gesture,
   } = useH5PointerBridge({
     stageRef,
     inputPortRef: mainInputPortRef,
@@ -891,6 +901,8 @@ export function LiveShell({
     gestureKey: renderPage?.id ?? "no-page",
     onInkStart: activateMainInput,
   });
+  const palmAvailable = palmDevice.active && editable && smartInputEnabled && inputV2Enabled
+    && effectivePhase === "live" && !palmSettingsOpen;
   useClassroomViewportGestures({
     enabled: focusMode,
     stageRef,
@@ -901,6 +913,18 @@ export function LiveShell({
     onChange: (percent, centerY) => viewport.change({ focused: true, zoom: percent / display.bounds.fitPercent, centerY }),
     onEnd: viewport.commit,
     onCancelInk: (pointerId) => mainInputPortRef.current?.cancel(pointerId),
+    palm: palmAvailable && effectiveRoutingMode === "smart" && mainTool === "pen" ? {
+      threshold: palmDevice.settings.profile!.threshold, inputPortRef: mainInputPortRef, penPointers,
+      onStart: activateMainInput, onCancelInput: cancelH5Gesture,
+    } : undefined,
+  });
+  useClassroomViewportGestures({
+    enabled: false, stageRef: sideStageRef, gestureKey: "side", percent: 100, min: 100, max: 100,
+    onChange: () => {}, onEnd: () => {}, onCancelInk: (pointerId) => sideInputPortRef.current?.cancel(pointerId),
+    palm: palmAvailable && !focusMode && !sideCollapsed && sideTool === "pen" ? {
+      threshold: palmDevice.settings.profile!.threshold, inputPortRef: sideInputPortRef, penPointers,
+      onStart: () => setActiveArea("side"),
+    } : undefined,
   });
   const assetsReady = preload.done >= preload.total;
   const activeDocBindings = activeDocBundleEntry?.bindings;
@@ -1017,6 +1041,11 @@ export function LiveShell({
       following={viewport.following}
       onFollow={isController ? undefined : viewport.follow}
       saveError={viewport.saveError}
+      inputSettings={isController && inputV2Enabled ? <Button type="button" variant="ghost" className="min-h-11 w-full justify-between gap-3"
+        onClick={() => setPalmSettingsOpen(true)}>
+        <span>{t("palmEraser.title")}</span>
+        <span className="text-xs text-muted">{t(palmDevice.active ? "palmEraser.on" : palmDevice.calibrated ? "palmEraser.off" : "palmEraser.needsCalibration")}</span>
+      </Button> : undefined}
     />
   );
   const myAnswer = state.quiz ? state.answers[state.quiz.id]?.[userId] : undefined;
@@ -1805,10 +1834,11 @@ export function LiveShell({
                   onPointerDownCapture={() => !isController && setSideFollow(false)}
                 >
                   <div
+                    ref={sideStageRef}
                     className="relative mx-auto aspect-[2/5] min-h-full min-w-full bg-card"
                     style={{ width: `${sideZoom * 100}%` }}
                   >
-                    <CanvasSurface editable={editable} store={sideBoard.store} bus={sideBoard.bus} strokeWidthBasis={stageWidth} renderProfile="classroom" />
+                    <CanvasSurface editable={editable} store={sideBoard.store} bus={sideBoard.bus} strokeWidthBasis={stageWidth} renderProfile="classroom" onInputPort={onSideInputPort} />
                   </div>
                 </div>
               )}
@@ -2142,6 +2172,7 @@ export function LiveShell({
         </footer>
       )}
 
+      {palmSettingsOpen && <ClassroomPalmEraserSettings onClose={() => setPalmSettingsOpen(false)} device={palmDevice} />}
       <Dialog open={endOpen} onOpenChange={setEndOpen}>
         <DialogContent>
           <DialogHeader>

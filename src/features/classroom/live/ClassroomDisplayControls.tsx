@@ -5,9 +5,10 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
+import type { ReactNode } from "react";
 
 export function ClassroomDisplayControls({
-  focused, onFocus, adjustable, value, min, max, onResize, onReset, onCommit, following, onFollow, saveError,
+  focused, onFocus, adjustable, value, min, max, onResize, onReset, onCommit, following, onFollow, saveError, inputSettings,
 }: {
   focused: boolean;
   onFocus: (focused: boolean) => void;
@@ -21,6 +22,7 @@ export function ClassroomDisplayControls({
   following?: boolean;
   onFollow?: () => void;
   saveError?: boolean;
+  inputSettings?: ReactNode;
 }) {
   const t = useTranslations("classroom.live");
   const focusLabel = t(focused ? "exitFocus" : "enterFocus");
@@ -46,6 +48,7 @@ export function ClassroomDisplayControls({
           {onFollow && <Button type="button" variant="secondary" size="sm" className="w-full" disabled={following} onClick={onFollow}>{t(following ? "followingTeacherViewport" : "followTeacherViewport")}</Button>}
           {saveError && <p role="status" className="text-xs text-crater">{t("displaySyncSaveError")}</p>}
           <Button type="button" variant="ghost" size="sm" className="w-full" onClick={onReset}>{t("resetDisplaySize")}</Button>
+          {inputSettings && <div className="border-t border-line pt-3">{inputSettings}</div>}
         </PopoverContent>
       </Popover>
       <Button type="button" variant="ghost" className={railClass} aria-label={focusLabel} title={focusLabel}

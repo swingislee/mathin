@@ -66,6 +66,7 @@ interface UseH5PointerBridgeOptions {
 interface UseH5PointerBridgeResult {
   host: H5PointerBridgeHost | undefined;
   status: H5PointerBridgeStatus;
+  cancelGesture: () => void;
 }
 
 const HELLO_RETRY_MS = 400;
@@ -462,5 +463,5 @@ export function useH5PointerBridge({
     };
   }, [abortActive, enabled, stageRef]);
 
-  return { host, status };
+  return { host, status, cancelGesture: abortActive };
 }

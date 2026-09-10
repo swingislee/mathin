@@ -28,13 +28,18 @@ interface RemoteCursor {
 
 export type CanvasSurfaceInputMode = "smart" | "interaction-lock" | "ink-lock";
 export type NormalizedInputPoint = [number, number];
+export interface CanvasSurfaceGestureOptions {
+  /** 临时橡皮直径占本画布宽度的比例；所选工具保持原值。 */
+  eraserWidth: number;
+}
 
-/** Smart routing writes through this port while both Canvas layers stay render-only. */
+/** 共同输入端口接收归一化笔迹；Smart 书写与临时掌擦复用同一提交链路。 */
 export interface CanvasSurfaceInputPort {
-  begin(pointerId: number, origin: NormalizedInputPoint): boolean;
+  begin(pointerId: number, origin: NormalizedInputPoint, options?: CanvasSurfaceGestureOptions): boolean;
   append(pointerId: number, points: readonly NormalizedInputPoint[]): boolean;
   finish(pointerId: number, points?: readonly NormalizedInputPoint[]): boolean;
   cancel(pointerId: number): boolean;
+  cancelActive?(): boolean;
 }
 
 /** 双层笔迹画布 + SVG 对象/尺规层。所有持久内容继续使用 0–1 归一化坐标。 */
@@ -73,6 +78,7 @@ export function CanvasSurface({
   const draftDrawnPointsRef = useRef(0);
   const remoteProgressRef = useRef(new ProgressStreamAssembler());
   const [cursor, setCursor] = useState<[number, number] | null>(null);
+  const [palmCursor, setPalmCursor] = useState<{ point: InputPoint; diameter: number } | null>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 1, height: 1 });
   const [remoteCursors, setRemoteCursors] = useState<Record<string, RemoteCursor>>({});
   const [shapePreview, setShapePreview] = useState<ShapeItem | null>(null);
@@ -253,6 +259,8 @@ export function CanvasSurface({
     let capturedPointerId: number | null = null;
     let gestureStart: [number, number] | null = null;
     let gestureEnd: [number, number] | null = null;
+    let palmDiameter: number | null = null;
+    let portGesture = false;
 
     const toPoint = (event: PointerEvent): InputPoint => {
       const rect = draft.getBoundingClientRect();
@@ -292,6 +300,7 @@ export function CanvasSurface({
       }
       const stroke = strokeRef.current;
       if (!stroke) return;
+      if (palmDiameter !== null) setPalmCursor({ point: lastPoint, diameter: palmDiameter });
       const { w, h } = dimsRef.current;
       for (const norm of norms) {
         const previous = stroke.points[stroke.points.length - 1];
@@ -303,7 +312,8 @@ export function CanvasSurface({
       if (stroke.mode === "ink") drawLocalDraftTail();
     });
 
-    const beginGesture = (pointerId: number, point: InputPoint) => {
+    const beginGesture = (pointerId: number, point: InputPoint, options?: CanvasSurfaceGestureOptions) => {
+      if (options && (tool !== "pen" || !Number.isFinite(options.eraserWidth) || options.eraserWidth <= 0 || options.eraserWidth > 1)) return false;
       if (!sink.begin(pointerId, point)) return false;
       const [x, y] = point;
       const norm = toNorm(point);
@@ -318,10 +328,13 @@ export function CanvasSurface({
         return true;
       }
       const { w, h } = dimsRef.current;
-      const erase = tool.startsWith("eraser");
+      const erase = Boolean(options) || tool.startsWith("eraser");
+      const eraseWidth = options ? Math.max(0.0005, Math.min(0.25, options.eraserWidth * w / basisW())) : ERASER_NORM[tool] ?? 0.02;
+      palmDiameter = options ? eraseWidth * basisW() : null;
+      if (palmDiameter !== null) setPalmCursor({ point, diameter: palmDiameter });
       const stroke: StrokeItem = {
         id: newStrokeId(), mode: erase ? "erase" : "ink", color,
-        wNorm: erase ? ERASER_NORM[tool] ?? 0.02 : sizeNorm,
+        wNorm: erase ? eraseWidth : sizeNorm,
         points: [[x / w, y / h]],
       };
       strokeRef.current = stroke;
@@ -361,6 +374,9 @@ export function CanvasSurface({
     };
 
     const commitGesture = () => {
+      portGesture = false;
+      palmDiameter = null;
+      setPalmCursor(null);
       if (tool === "shape") {
         const start = gestureStart;
         const end = gestureEnd;
@@ -380,6 +396,9 @@ export function CanvasSurface({
     };
 
     const discardGesture = () => {
+      portGesture = false;
+      palmDiameter = null;
+      setPalmCursor(null);
       const stroke = strokeRef.current;
       strokeRef.current = null;
       gestureStart = null;
@@ -397,11 +416,17 @@ export function CanvasSurface({
       commitGesture();
     };
     const finishLostCapture = (event: PointerEvent) => {
+      if (portGesture) return;
       if (!sink.finish(event.pointerId)) return;
       capturedPointerId = null;
       commitGesture();
     };
     const drain = () => {
+      if (palmDiameter !== null && sink.pointerId !== null) {
+        const pointerId = sink.pointerId;
+        sink.cancel(pointerId); releaseCapture(pointerId); discardGesture();
+        return;
+      }
       const pointerId = sink.drain();
       if (pointerId === null) return;
       releaseCapture(pointerId);
@@ -416,7 +441,11 @@ export function CanvasSurface({
       y * dimsRef.current.h,
     ];
     const port: CanvasSurfaceInputPort = {
-      begin: (pointerId, origin) => beginGesture(pointerId, fromNormalized(origin)),
+      begin: (pointerId, origin, options) => {
+        const started = beginGesture(pointerId, fromNormalized(origin), options);
+        if (started) portGesture = true;
+        return started;
+      },
       append: (pointerId, points) => sink.push(pointerId, points.map(fromNormalized)),
       finish: (pointerId, points = []) => {
         if (!sink.finish(pointerId, points.map(fromNormalized))) return false;
@@ -425,12 +454,14 @@ export function CanvasSurface({
       },
       cancel: (pointerId) => {
         if (!sink.cancel(pointerId)) return false;
+        releaseCapture(pointerId);
         discardGesture();
         return true;
       },
+      cancelActive: () => sink.pointerId !== null && port.cancel(sink.pointerId),
     };
 
-    if (externalRouting) onInputPort?.(port);
+    onInputPort?.(tool === "pen" ? port : null);
 
     const leave = () => setCursor(null);
     if (!externalRouting) {
@@ -451,6 +482,7 @@ export function CanvasSurface({
         onInputPort?.(null);
       } else {
         drain();
+        onInputPort?.(null);
       }
       sink.dispose();
       draft.removeEventListener("pointerdown", down);
@@ -494,6 +526,8 @@ export function CanvasSurface({
       {canvasInteractive && tool.startsWith("eraser") && cursor && eraserSize > 0 ? (
         <div aria-hidden className="pointer-events-none absolute box-border border border-muted" style={{ left: cursor[0] - eraserSize / 2, top: cursor[1] - eraserSize / 2, width: eraserSize, height: eraserSize }} />
       ) : null}
+      {palmCursor ? <div aria-hidden data-classroom-palm-eraser className="pointer-events-none absolute z-50 rounded-full border-2 border-crater bg-paper/20"
+        style={{ left: palmCursor.point[0] - palmCursor.diameter / 2, top: palmCursor.point[1] - palmCursor.diameter / 2, width: palmCursor.diameter, height: palmCursor.diameter }} /> : null}
     </div>
   );
 }

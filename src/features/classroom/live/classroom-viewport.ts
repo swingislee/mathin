@@ -3,7 +3,7 @@ import type { SessionEvent } from "../types";
 export const CLASSROOM_VIEWPORT_PROTOCOL = "mathin-classroom-viewport-v1";
 export const CLASSROOM_VIEWPORT_REQUEST = "classroom-viewport-request";
 export const CLASSROOM_VIEWPORT_RUNTIME_PARAM = "mathin_classroom_viewport";
-export const CLASSROOM_VIEWPORT_RUNTIME_VERSION = "1";
+export const CLASSROOM_VIEWPORT_RUNTIME_VERSION = "2";
 
 /** 缩放以完整显示的 4:3 为基准，各屏幕按自身宽高换算；位置为课件中心。 */
 export interface ClassroomViewport {
