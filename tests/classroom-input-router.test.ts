@@ -84,6 +84,11 @@ describe("M3a classroom input routing", () => {
       tool: "drawing",
     })).toBe("smart");
     expect(resolveClassroomRoutingMode({
+      smartEnabled: true,
+      smartAvailable: true,
+      tool: "pointer",
+    })).toBe("interaction-lock");
+    expect(resolveClassroomRoutingMode({
       smartEnabled: false,
       smartAvailable: true,
       tool: "pointer",

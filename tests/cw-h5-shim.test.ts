@@ -70,9 +70,9 @@ describe("P6-4 H5 shim", () => {
     expect(html).toContain('source: "mathin-h5-media"');
   });
 
-  it("strips source claims and injects only a registry-authoritative input profile", () => {
+  it("replaces source claims with the basic Smart profile or a registered override", () => {
     const source = '<html data-classroom-input-provider="forged" data-classroom-renderer-version="99" data-classroom-input-default="ink"><head></head></html>';
-    expect(applyH5InputProfile(source)).toBe("<html><head></head></html>");
+    expect(applyH5InputProfile(source)).toBe('<html data-classroom-input-provider="mathin-classroom-input" data-classroom-renderer-version="1" data-classroom-input-default="click"><head></head></html>');
     const profile = parseH5InputProfile({
       profile_schema: H5_INPUT_PROFILE_SCHEMA,
       provider_schema: H5_INPUT_PROVIDER_SCHEMA,

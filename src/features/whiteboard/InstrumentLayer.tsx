@@ -128,7 +128,7 @@ function ProtractorTicks({ width, height }: { width: number; height: number }) {
   );
 }
 
-export function InstrumentLayer({ store, editable, width, height }: { store: WhiteboardStore; editable: boolean; width: number; height: number }) {
+export function InstrumentLayer({ store, editable, interactionEnabled = true, drawingEnabled = true, width, height }: { store: WhiteboardStore; editable: boolean; interactionEnabled?: boolean; drawingEnabled?: boolean; width: number; height: number }) {
   const t = useTranslations("whiteboard.board.tools");
   const instruments = useStore(store, (state) => state.instruments);
   const color = useStore(store, (state) => state.color);
@@ -143,6 +143,7 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
     item: InstrumentItem,
     pivotLocal: [number, number],
   ) => {
+    if (!interactionEnabled || !event.isPrimary || event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
     const rect = boardRect(event.currentTarget);
@@ -154,6 +155,7 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
     let previousPointerAngle = Math.atan2(event.clientY - pivotY, event.clientX - pivotX) * 180 / Math.PI;
     let rotationDelta = 0;
     const move = (pointerEvent: PointerEvent) => {
+      if (pointerEvent.pointerId !== event.pointerId) return;
       const pointerAngle = Math.atan2(pointerEvent.clientY - pivotY, pointerEvent.clientX - pivotX) * 180 / Math.PI;
       rotationDelta += shortestAngleDelta(previousPointerAngle, pointerAngle);
       previousPointerAngle = pointerAngle;
@@ -166,14 +168,20 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
         rotation,
       });
     };
-    const finish = () => {
+    const finish = (pointerEvent: PointerEvent) => {
+      if (pointerEvent.pointerId !== event.pointerId) return;
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", finish);
       window.removeEventListener("pointercancel", finish);
+      if (pointerEvent.type === "pointercancel") {
+        setPreview(null);
+        store.getState().updateInstrument(item);
+        return;
+      }
     };
     window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", finish, { once: true });
-    window.addEventListener("pointercancel", finish, { once: true });
+    window.addEventListener("pointerup", finish);
+    window.addEventListener("pointercancel", finish);
   };
 
   const beginAdjust = (
@@ -181,6 +189,7 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
     item: InstrumentItem,
     mode: "move" | "resize" | "radius",
   ) => {
+    if (!interactionEnabled || !event.isPrimary || event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
     const rect = boardRect(event.currentTarget);
@@ -191,6 +200,7 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
     const initialRadius = compassRadiusNorm(item, rect.width);
     const initialPointerRadius = Math.hypot(startX - centerX, startY - centerY) / rect.width;
     const move = (pointerEvent: PointerEvent) => {
+      if (pointerEvent.pointerId !== event.pointerId) return;
       let next = item;
       if (mode === "move") {
         next = {
@@ -210,17 +220,24 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
       }
       store.getState().updateInstrument(next);
     };
-    const finish = () => {
+    const finish = (pointerEvent: PointerEvent) => {
+      if (pointerEvent.pointerId !== event.pointerId) return;
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", finish);
       window.removeEventListener("pointercancel", finish);
+      if (pointerEvent.type === "pointercancel") {
+        setPreview(null);
+        store.getState().updateInstrument(item);
+        return;
+      }
     };
     window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", finish, { once: true });
-    window.addEventListener("pointercancel", finish, { once: true });
+    window.addEventListener("pointerup", finish);
+    window.addEventListener("pointercancel", finish);
   };
 
   const beginRulerLine = (event: React.PointerEvent<SVGRectElement>, item: InstrumentItem) => {
+    if (!interactionEnabled || !drawingEnabled || !event.isPrimary || event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
     const rect = boardRect(event.currentTarget);
@@ -236,6 +253,7 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
     const start = toEdgePoint(event.nativeEvent);
     let end = start;
     const move = (pointerEvent: PointerEvent) => {
+      if (pointerEvent.pointerId !== event.pointerId) return;
       end = toEdgePoint(pointerEvent);
       setPreview({
         id: "instrument-preview",
@@ -251,10 +269,16 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
         rotation: Math.atan2((end[1] - start[1]) * rect.height, (end[0] - start[0]) * rect.width) * 180 / Math.PI,
       });
     };
-    const finish = () => {
+    const finish = (pointerEvent: PointerEvent) => {
+      if (pointerEvent.pointerId !== event.pointerId) return;
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", finish);
       window.removeEventListener("pointercancel", finish);
+      if (pointerEvent.type === "pointercancel") {
+        setPreview(null);
+        store.getState().updateInstrument(item);
+        return;
+      }
       const final = preview;
       setPreview(null);
       const distance = Math.hypot(end[0] - start[0], end[1] - start[1]);
@@ -270,11 +294,12 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
       }
     };
     window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", finish, { once: true });
-    window.addEventListener("pointercancel", finish, { once: true });
+    window.addEventListener("pointerup", finish);
+    window.addEventListener("pointercancel", finish);
   };
 
   const beginCompassArc = (event: React.PointerEvent<SVGElement>, item: InstrumentItem) => {
+    if (!interactionEnabled || !drawingEnabled || !event.isPrimary || event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
     const rect = boardRect(event.currentTarget);
@@ -287,6 +312,7 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
     let sweep = 0;
     let finalArc: ShapeItem | null = null;
     const move = (pointerEvent: PointerEvent) => {
+      if (pointerEvent.pointerId !== event.pointerId) return;
       pointerEvent.preventDefault();
       const pointerAngle = angleAt(pointerEvent);
       sweep += shortestAngleDelta(previousPointerAngle, pointerAngle);
@@ -299,20 +325,27 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
       };
       setPreview(finalArc);
     };
-    const finish = () => {
+    const finish = (pointerEvent: PointerEvent) => {
+      if (pointerEvent.pointerId !== event.pointerId) return;
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", finish);
       window.removeEventListener("pointercancel", finish);
+      if (pointerEvent.type === "pointercancel") {
+        setPreview(null);
+        store.getState().updateInstrument(item);
+        return;
+      }
       setPreview(null);
       if (finalArc && Math.abs(finalArc.sweepAngle ?? 0) > 3) {
         store.getState().commitItem({ ...finalArc, id: newId() });
       }
     };
     window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", finish, { once: true });
-    window.addEventListener("pointercancel", finish, { once: true });
+    window.addEventListener("pointerup", finish);
+    window.addEventListener("pointercancel", finish);
   };
   const beginProtractorRay = (event: React.PointerEvent<SVGElement>, item: InstrumentItem) => {
+    if (!interactionEnabled || !drawingEnabled || !event.isPrimary || event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
     const rect = boardRect(event.currentTarget);
@@ -324,6 +357,7 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
     let end = pivot;
     let shownAngle = 0;
     const move = (pointerEvent: PointerEvent) => {
+      if (pointerEvent.pointerId !== event.pointerId) return;
       const local = rotatePoint(pointerEvent.clientX - (centerX + globalPivotOffset[0]), pointerEvent.clientY - (centerY + globalPivotOffset[1]), -item.rotation);
       const localAngle = Math.max(-180, Math.min(0, Math.atan2(local[1], local[0]) * 180 / Math.PI));
       shownAngle = Math.round(Math.abs(localAngle));
@@ -338,10 +372,16 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
         rotation: Math.atan2((end[1] - pivot[1]) * rect.height, (end[0] - pivot[0]) * rect.width) * 180 / Math.PI,
       });
     };
-    const finish = () => {
+    const finish = (pointerEvent: PointerEvent) => {
+      if (pointerEvent.pointerId !== event.pointerId) return;
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", finish);
       window.removeEventListener("pointercancel", finish);
+      if (pointerEvent.type === "pointercancel") {
+        setPreview(null);
+        store.getState().updateInstrument(item);
+        return;
+      }
       setPreview(null);
       if (shownAngle > 0) {
         store.getState().commitItem({
@@ -353,12 +393,12 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
       }
     };
     window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", finish, { once: true });
-    window.addEventListener("pointercancel", finish, { once: true });
+    window.addEventListener("pointerup", finish);
+    window.addEventListener("pointercancel", finish);
   };
 
   return (
-    <svg className="pointer-events-none absolute inset-0 z-40 size-full overflow-visible" viewBox={`0 0 ${Math.max(width, 1)} ${Math.max(height, 1)}`}>
+    <svg data-classroom-input="native" className={`pointer-events-none absolute inset-0 z-40 size-full overflow-visible${interactionEnabled ? "" : " [&_*]:pointer-events-none"}`} viewBox={`0 0 ${Math.max(width, 1)} ${Math.max(height, 1)}`}>
       {preview ? (
         <g transform={`translate(${preview.x * width} ${preview.y * height}) rotate(${preview.rotation})`} opacity={0.7}>
           {preview.shape === "arc" ? (
@@ -431,7 +471,7 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
               >
                 20 cm · {Math.round(item.rotation)}°
               </text>
-              <rect x={-instrumentWidth / 2} y={-instrumentHeight / 2 - 10} width={instrumentWidth} height={18} fill="transparent" className="cursor-crosshair" onPointerDown={(event) => beginRulerLine(event, item)} />
+              {drawingEnabled ? <rect x={-instrumentWidth / 2} y={-instrumentHeight / 2 - 10} width={instrumentWidth} height={18} fill="transparent" className="cursor-crosshair" onPointerDown={(event) => beginRulerLine(event, item)} /> : null}
               <g transform={`translate(${-instrumentWidth / 2} ${-instrumentHeight / 2})`} className="cursor-move" onPointerDown={(event) => beginAdjust(event, item, "move")}>
                 <circle r={9} fill="var(--paper)" stroke="var(--crater)" strokeWidth={1.5} />
                 <Move x={-5} y={-5} width={10} height={10} pointerEvents="none" />
@@ -512,12 +552,12 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
                 <circle cx={moveBadgeX} cy={moveBadgeY} r={9} fill="var(--paper)" stroke="var(--line)" strokeWidth={1.5} />
                 <Move x={moveBadgeX - 5} y={moveBadgeY - 5} width={10} height={10} pointerEvents="none" />
               </g>
-              <g className="cursor-crosshair" onPointerDown={(event) => beginCompassArc(event, item)}>
+              {drawingEnabled ? <g className="cursor-crosshair" onPointerDown={(event) => beginCompassArc(event, item)}>
                 <line x1={pencilHitStartX} y1={pencilHitStartY} x2={tipX} y2={tipY} stroke="transparent" strokeWidth={28} strokeLinecap="round" />
                 <circle cx={tipX} cy={tipY} r={24} fill="transparent" />
                 <circle cx={tipX} cy={tipY} r={13} fill="color-mix(in srgb, var(--paper) 82%, transparent)" stroke="var(--rose)" strokeWidth={2} strokeDasharray="3 2" />
                 <Pencil x={tipX - 7} y={tipY - 7} width={14} height={14} color="var(--rose)" pointerEvents="none" />
-              </g>
+              </g> : null}
               <g className="cursor-ew-resize" onPointerDown={(event) => beginAdjust(event, item, "radius")}>
                 <circle cx={radiusHandleX} cy={radiusHandleY} r={17} fill="transparent" />
                 <circle cx={radiusHandleX} cy={radiusHandleY} r={8} fill="var(--paper)" stroke="var(--crater)" strokeWidth={2} />
@@ -559,10 +599,10 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
             <line x1={-instrumentWidth * 0.08} x2={instrumentWidth * 0.08} y1={baselineY} y2={baselineY} stroke="var(--ink)" strokeWidth={1} pointerEvents="none" />
             <line x1={0} x2={0} y1={baselineY - protractorHeight * 0.12} y2={baselineY + protractorHeight * 0.03} stroke="var(--ink)" strokeWidth={1} pointerEvents="none" />
             <circle cx={0} cy={baselineY} r={12} fill="color-mix(in srgb, var(--paper) 70%, transparent)" stroke="var(--crater)" strokeDasharray="3 2" className="cursor-move" onPointerDown={(event) => beginAdjust(event, item, "move")} />
-            <g transform={`translate(${22} ${baselineY + 15})`} className="cursor-crosshair" onPointerDown={(event) => beginProtractorRay(event, item)}>
+            {drawingEnabled ? <g transform={`translate(${22} ${baselineY + 15})`} className="cursor-crosshair" onPointerDown={(event) => beginProtractorRay(event, item)}>
               <circle r={9} fill="var(--paper)" stroke="var(--rose)" strokeWidth={1.5} />
               <Pencil x={-5} y={-5} width={10} height={10} color="var(--rose)" pointerEvents="none" />
-            </g>
+            </g> : null}
             <g transform={`translate(0 ${-protractorHeight / 2 - 18})`} className="cursor-grab" onPointerDown={(event) => beginAnchoredRotate(event, item, [0, baselineY])}>
               <circle r={9} fill="var(--paper)" stroke="var(--crater)" strokeWidth={1.5} />
               <RotateCw x={-5} y={-5} width={10} height={10} pointerEvents="none" />

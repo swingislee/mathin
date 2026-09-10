@@ -6,6 +6,7 @@ import {
   H5_POINTER_PROTOCOL_SCHEMA,
   H5_POINTER_PROTOCOL_VERSION,
   H5_POINTER_RUNTIME_VERSION,
+  aggregateH5PointerBridgeStatus,
   parseH5PointerFrameMessage,
 } from "@/features/courseware-doc/h5-pointer-protocol";
 import { H5_OPAQUE_ORIGIN_RUNTIME } from "@/features/courseware-doc/h5-shim";
@@ -101,14 +102,22 @@ describe("M3b H5 pointer bridge", () => {
     }
   });
 
-  it("injects runtime v3 with token, batching, watchdog messages, and nested relay", () => {
-    expect(H5_POINTER_RUNTIME_VERSION).toBe("3");
-    expect(H5_OPAQUE_ORIGIN_RUNTIME).toContain('data-mathin-h5-runtime="3"');
+  it("keeps ready frames available while other frames load or fall back", () => {
+    expect(aggregateH5PointerBridgeStatus(true, 3, ["ready", "incompatible", "timeout"])).toBe("ready");
+    expect(aggregateH5PointerBridgeStatus(true, 3, ["ready"])).toBe("ready");
+    expect(aggregateH5PointerBridgeStatus(true, 2, ["pending", "timeout"])).toBe("pending");
+    expect(aggregateH5PointerBridgeStatus(true, 2, ["incompatible", "timeout"])).toBe("timeout");
+    expect(aggregateH5PointerBridgeStatus(true, 1, ["incompatible"])).toBe("incompatible");
+    expect(aggregateH5PointerBridgeStatus(false, 1, ["ready"])).toBe("disabled");
+  });
+
+  it("injects runtime v4 with token, batching, watchdog messages, and nested relay", () => {
+    expect(H5_POINTER_RUNTIME_VERSION).toBe("4");
+    expect(H5_OPAQUE_ORIGIN_RUNTIME).toContain('data-mathin-h5-runtime="4"');
     expect(H5_OPAQUE_ORIGIN_RUNTIME).toContain("channelToken");
     expect(H5_OPAQUE_ORIGIN_RUNTIME).toContain('event.source === parent');
     expect(H5_OPAQUE_ORIGIN_RUNTIME).toContain("childFrameForSource(event.source)");
-    expect(H5_OPAQUE_ORIGIN_RUNTIME).toContain("allChildrenReady()");
-    expect(H5_OPAQUE_ORIGIN_RUNTIME).toContain('reportRootCapabilities(true)');
+    expect(H5_OPAQUE_ORIGIN_RUNTIME).toContain('childPointerStates.get(childFrame) === "ready"');
     expect(H5_OPAQUE_ORIGIN_RUNTIME).toContain("relayDepth >= 8");
     expect(H5_OPAQUE_ORIGIN_RUNTIME).toContain("requestAnimationFrame(flushMoves)");
     expect(H5_OPAQUE_ORIGIN_RUNTIME).toContain('data-classroom-input-provider');

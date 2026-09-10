@@ -385,13 +385,15 @@ type WhiteboardTool = Tool;
 
 有效路由由 Smart 可用性、教师开关和当前工具共同派生：
 
-| 当前工具 | Smart 开启且页面已登记 | Smart 关闭或页面不可用 |
+| 当前工具 | Smart 开启且输入桥可用 | Smart 关闭或页面不可用 |
 | --- | --- | --- |
-| 画笔/快捷颜色 | 点击已审计交互目标；移动后接管书写 | 画笔锁：全部用于书写 |
-| 指针/选择 | 保持指针语义，不产生板书 | 指针锁：全部交给课件或板书选择层 |
-| 擦除/图形/尺规 | 当前板书工具拥有输入，不套用点击接管 | 画笔锁：全部交给当前板书工具 |
+| 画笔/快捷颜色 | 轻点原生点击；普通点击区移动 8px 后书写；已登记拖拽区、尺规和已有形状直接操作 | 画笔锁：全部用于书写 |
+| 指针/选择 | 指针语义优先，只操作课件、尺规和已有形状；停用尺规画线、画弧 | 指针锁：全部交给课件或板书选择层 |
+| 擦除/图形 | 当前板书工具拥有输入，不套用点击接管 | 画笔锁：全部交给当前板书工具 |
 
-点击快捷颜色同时把 `tool` 切为 `pen`，因此也会立即进入相应的 Smart 或画笔锁。Smart 按钮使用 `aria-checked` 表示启用状态；页面未登记、H5 握手失败或开关关闭时，按钮显示不可用/关闭，实际锁状态由当前工具自然表达。页面切换、主副板切换、断线重连和试讲重置不得让按钮、工具高亮与实际路由分离。
+点击快捷颜色同时把 `tool` 切为 `pen`，因此也会立即进入相应的 Smart 或画笔锁。Smart 按钮使用 `aria-checked` 表示启用偏好，选中鼠标时仍保留该偏好，切回笔即可继续 Smart。输入桥不可用或开关关闭时，由当前工具自然表达实际路由。页面切换、主副板切换、断线重连和试讲重置保持按钮、工具高亮与实际路由一致。
+
+2026-09-10 开发增量按上述矩阵统一输入所有权：Smart 笔可直接选择、移动、缩放和旋转已有形状，也可操作尺规；形状修改沿用板书事件与撤销链路。双指手势取消临时形状变换或尺规笔迹，继续复用课件与主板书的同步视图。站内 H5 使用 §8.7 的基础配置，特殊拖拽逐区登记。当前为开发端待人工验收，生产开关与发布状态沿用现有记录。
 
 ---
 
@@ -561,7 +563,7 @@ data-classroom-input="ink"
 
 视频不得把整个元素永久登记为 `native`。控制端把画面区显式覆为 `click`：短点播放/暂停，移动超过阈值转为板书并抑制本次点击；底部原生控制条保留独立无遮挡安全区并继续为 `native`，其中进度拖动不被 Smart 接管。页面 DOM 必须通过两个实际命中区域表达该边界，router 不按坐标猜测浏览器 shadow DOM。
 
-建立版本化 `ClassroomInputCapabilityProvider`。每个 renderer 在自己的 registry 记录或 adapter 模块声明 provider，不再由课堂模块维护另一份 renderer/tool ID 白名单；新增 renderer 已经必须修改的注册记录就是唯一启用点。共同舞台与 renderer 根输出 provider schema、version、renderer 和 default capability，目标继续输出 `data-classroom-input`。router 只信任匹配 provider 边界内的目标；未声明 provider、边界缺失、renderer/version 不匹配或目标语义未知时关闭 Smart，并由指针工具派生交互锁、绘图工具派生画笔锁，不能把任意 `button` 自动视为可被中途接管的点击目标。
+建立版本化 `ClassroomInputCapabilityProvider`。原生 renderer 在自己的 registry 记录或 adapter 模块声明 provider，课堂模块复用该入口。共同舞台与 renderer 根输出 provider schema、version、renderer 和 default capability，目标继续输出 `data-classroom-input`。原生 router 只接受匹配 provider 边界内的目标；边界缺失或版本不匹配时按当前工具回退。站内 H5 由应用注入基础 `click` provider，普通轻点直接保留原生事件，特殊拖拽通过更近的 `drag/native` 区域声明覆盖，采用 §8.7 的独立 frame 握手。
 
 provider 的“显式声明”和“人工逐个验收”是两层合同：显式声明仍是运行时安全边界；是否正确接入由统一 conformance 门禁自动验证，不再要求产品负责人对每个游戏、工具或未来互动重复同一轮轻点/拖写。普通新增 renderer 复用 `click/drag/native/ink`、共同舞台状态机、z-layer 和 provider v1 时，作者只需声明 provider、标注真实区域并通过统一自动门禁。
 
@@ -589,7 +591,7 @@ Canvas base/draft、`BoardObjectLayer`、`InstrumentLayer`、课件 DOM 和课�
 
 ### 8.7 H5 课件
 
-iframe 内事件不会自然冒泡到课堂父页面。现有 H5 已使用 `H5_RUNTIME_VERSION` 和 `mathin-h5-media` bridge；指针能力扩展这套 runtime，建议升级为 v3，不另建无法统一升级和缓存失效的平行脚本。合同可命名为：
+iframe 内事件不会自然冒泡到课堂父页面。指针能力复用现有 H5 runtime 与媒体 bridge，当前基础 Smart 增量使用 runtime v4、指针协议 v1：
 
 ```text
 MathinCoursewarePointerBridge
@@ -607,18 +609,20 @@ MathinCoursewarePointerBridge
 
 opaque-origin iframe 的 `event.origin` 是 `"null"`，因此父级必须同时验证 `event.source === iframe.contentWindow`、channel token、schema、版本、消息大小与速率；子 frame relay 也要验证直接父级。指针移动按 animation frame 批量 `postMessage`，禁止每个原始 move 一条消息。桥中不得携带 auth、学生身份或其他 PII。
 
-导航、frame reload、崩溃、失联和超时必须清除父级 pending gesture。握手未完成、版本不兼容或 watchdog 超时时默认交互锁，并显示“此课件需手动切换书写”的可恢复提示；不使用坐标猜测和人工 `.click()` 模拟。
+站内 H5 delivery 替换原包的页面级 provider 声明，优先使用登记配置，未登记时注入应用的基础 `click` 配置；原包 `drag/native` 区域标记继续生效。原生表单、可编辑文本、滑块、媒体控制和 HTML 拖拽保留原生操作。普通轻点继续由真实事件完成，移动 8 CSS px 后使用既有板书接管协议；特殊自定义拖拽只需标注真实区域。
 
-runtime 版本必须进入启动 URL 与离线缓存 key。v3 上线后，已缓存的 v2 注入 HTML 要么重新注入/失效，要么明确以“媒体可用、指针桥不兼容”的交互锁降级；不能让在线首次打开正常、离线复开却悄悄运行旧桥。
+每个已握手 iframe 独立启用 Smart；嵌套子页未就绪或不兼容时，其区域保留原生交互，同页已就绪区域继续工作。只接收实际子窗口、当前 token 且已就绪的 relay。导航、frame reload、崩溃、失联和超时清除对应活动手势；全部输入桥不可用时按所选工具回退。
+
+runtime 版本进入启动 URL 与离线缓存 key；v4 使用新 URL 加载基础 Smart 脚本。旧缓存继续按握手兼容性处理，刷新课件后获取新版。
 
 ### 8.8 两个兜底状态
 
-“更多”菜单中保留：
+兜底路由由当前工具自然表达，一级界面保留单一 Smart 开关：
 
-- **交互锁**：所有输入交给课件；
-- **书写锁**：所有输入用于板书。
+- **指针工具**：交互锁，操作课件、尺规和已有板书对象；
+- **画笔工具 + Smart 关闭或不可用**：书写锁，输入用于板书。
 
-它们用于特殊设备、原生拖拽课件和未接桥的 H5 页面。正常数独课堂默认保持智能模式。锁定状态在主控制栏持续可见，切页后按 renderer 能力重新求值；H5 从不兼容页回到已审计数独页时可以提示恢复智能，但不能在教师书写过程中静默切换。
+这两个状态用于明确选择当前操作，并为未接桥的 H5 提供手动切换。Smart 偏好保持稳定；切回笔或切页后根据当前输入桥能力重新求值。
 
 ### 8.9 多点与误触保护
 

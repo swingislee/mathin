@@ -44,7 +44,7 @@ export function CanvasSurface({
   bus = boardBus,
   strokeWidthBasis,
   renderProfile = "default",
-  inputMode = "ink-lock",
+  inputMode: configuredInputMode,
   onInputPort,
 }: {
   editable: boolean;
@@ -58,6 +58,7 @@ export function CanvasSurface({
   inputMode?: CanvasSurfaceInputMode;
   onInputPort?: (port: CanvasSurfaceInputPort | null) => void;
 }) {
+  const inputMode = configuredInputMode ?? "ink-lock";
   const surfaceId = useId();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const baseRef = useRef<HTMLCanvasElement | null>(null);
@@ -469,20 +470,21 @@ export function CanvasSurface({
     && inputMode !== "interaction-lock"
     && tool !== "pointer"
     && !externalPenRouting;
-  const boardLayersEditable = editable && inputMode !== "interaction-lock" && !externalPenRouting;
+  const instrumentDrawingEnabled = inputMode !== "interaction-lock" && tool !== "pointer";
+  const instrumentInteractionEnabled = configuredInputMode === undefined || tool === "pointer" || externalPenRouting;
   const cursorStyle = !canvasInteractive ? "default" : tool.startsWith("eraser") ? "none" : "crosshair";
   const eraserSize = (ERASER_NORM[tool] ?? 0) * (strokeWidthBasis && strokeWidthBasis > 0 ? strokeWidthBasis : canvasSize.width);
 
   return (
     <div ref={containerRef} className="pointer-events-none absolute inset-0" data-input-mode={inputMode} data-render-profile={renderProfile}>
       <canvas ref={baseRef} className="absolute inset-0 h-full w-full touch-none" style={{ pointerEvents: "none" }} />
-      <BoardObjectLayer store={store} editable={boardLayersEditable} width={canvasSize.width} height={canvasSize.height} preview={shapePreview} />
+      <BoardObjectLayer store={store} editable={editable} penInteraction={externalPenRouting} width={canvasSize.width} height={canvasSize.height} preview={shapePreview} />
       <canvas
         ref={draftRef}
         className="absolute inset-0 h-full w-full touch-none"
         style={{ pointerEvents: canvasInteractive ? "auto" : "none", cursor: cursorStyle }}
       />
-      <InstrumentLayer store={store} editable={boardLayersEditable} width={canvasSize.width} height={canvasSize.height} />
+      <InstrumentLayer store={store} editable={editable} interactionEnabled={instrumentInteractionEnabled} drawingEnabled={instrumentDrawingEnabled} width={canvasSize.width} height={canvasSize.height} />
       {Object.entries(remoteCursors).map(([key, value]) => (
         <div key={key} aria-hidden className="pointer-events-none absolute z-30 -translate-x-1/2 -translate-y-1/2" style={{ left: `${value.x * 100}%`, top: `${value.y * 100}%` }}>
           <span className="block size-2.5 rounded-full border border-paper shadow" style={{ background: colorVar(COLOR_TOKENS[Math.abs([...key].reduce((acc, ch) => acc + ch.charCodeAt(0), 0)) % COLOR_TOKENS.length]) }} />

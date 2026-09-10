@@ -4,8 +4,8 @@ export type ClassroomRoutingMode = "smart" | "interaction-lock" | "ink-lock";
 export type ClassroomInputCapability = "click" | "drag" | "native" | "ink" | "unknown";
 
 /**
- * Smart is a single teacher preference. When it is off or unavailable, the
- * selected whiteboard tool provides the unambiguous v1 fallback ownership.
+ * The selected pointer always owns native interaction. Smart lets the pen
+ * borrow click and registered drag controls without changing the selected tool.
  */
 export function resolveClassroomRoutingMode({
   smartEnabled,
@@ -16,8 +16,8 @@ export function resolveClassroomRoutingMode({
   smartAvailable: boolean;
   tool: "pointer" | "drawing";
 }): ClassroomRoutingMode {
-  if (smartEnabled && smartAvailable) return "smart";
-  return tool === "pointer" ? "interaction-lock" : "ink-lock";
+  if (tool === "pointer") return "interaction-lock";
+  return smartEnabled && smartAvailable ? "smart" : "ink-lock";
 }
 
 export type ClassroomInputRouterState =

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject, type RefObject } from "react";
 import {
   H5_POINTER_MAX_MESSAGES_PER_SECOND,
+  aggregateH5PointerBridgeStatus,
   h5PointerGestureMessage,
   h5PointerParentMessage,
   parseH5PointerFrameMessage,
@@ -120,26 +121,11 @@ export function useH5PointerBridge({
   const [status, setStatus] = useState<H5PointerBridgeStatus>(enabled ? "pending" : "disabled");
 
   const recomputeStatus = useCallback(() => {
-    if (!enabledRef.current) {
-      setStatus("disabled");
-      return;
-    }
-    const frames = [...framesRef.current.values()];
-    if (frames.some((frame) => frame.status === "timeout")) {
-      setStatus("timeout");
-      return;
-    }
-    if (frames.some((frame) => frame.status === "incompatible")) {
-      setStatus("incompatible");
-      return;
-    }
-    if (expectedFrameCountRef.current > 0
-        && frames.length === expectedFrameCountRef.current
-        && frames.every((frame) => frame.status === "ready")) {
-      setStatus("ready");
-      return;
-    }
-    setStatus("pending");
+    setStatus(aggregateH5PointerBridgeStatus(
+      enabledRef.current,
+      expectedFrameCountRef.current,
+      [...framesRef.current.values()].map((frame) => frame.status),
+    ));
   }, []);
 
   const abortActive = useCallback((frame?: FrameRegistration) => {

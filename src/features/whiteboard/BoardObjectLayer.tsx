@@ -56,16 +56,19 @@ export function BoardObjectLayer({
   width,
   height,
   preview,
+  penInteraction = false,
 }: {
   store: WhiteboardStore;
   editable: boolean;
   width: number;
   height: number;
   preview: ShapeItem | null;
+  penInteraction?: boolean;
 }) {
   const t = useTranslations("whiteboard.board.tools");
   const items = useStore(store, (state) => state.items);
   const tool = useStore(store, (state) => state.tool);
+  const canInteract = editable && (tool === "pointer" || (penInteraction && tool === "pen"));
   const selectedIds = useStore(store, (state) => state.selectedIds);
   const [transient, setTransient] = useState<ShapeItem | null>(null);
   const selected = items.find((item): item is ShapeItem => selectedIds.includes(item.id) && isEditableObject(item));
@@ -77,7 +80,7 @@ export function BoardObjectLayer({
     item: ShapeItem,
     mode: "move" | "resize" | "rotate",
   ) => {
-    if (!editable || tool !== "pointer") return;
+    if (!canInteract || !event.isPrimary || event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
     store.getState().setSelectedIds([item.id]);
@@ -89,6 +92,7 @@ export function BoardObjectLayer({
     const initialAngle = pointerAngle(event.nativeEvent, centerX, centerY);
     let latest: ShapeItem = item;
     const move = (pointerEvent: PointerEvent) => {
+      if (pointerEvent.pointerId !== event.pointerId) return;
       if (mode === "move") {
         latest = {
           ...item,
@@ -107,16 +111,17 @@ export function BoardObjectLayer({
       }
       setTransient(latest);
     };
-    const finish = () => {
+    const finish = (pointerEvent: PointerEvent) => {
+      if (pointerEvent.pointerId !== event.pointerId) return;
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", finish);
       window.removeEventListener("pointercancel", finish);
       setTransient(null);
-      if (latest !== item) store.getState().updateItem(latest);
+      if (pointerEvent.type !== "pointercancel" && latest !== item) store.getState().updateItem(latest);
     };
     window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", finish, { once: true });
-    window.addEventListener("pointercancel", finish, { once: true });
+    window.addEventListener("pointerup", finish);
+    window.addEventListener("pointercancel", finish);
   };
 
   return (
@@ -129,7 +134,8 @@ export function BoardObjectLayer({
         {objects.map((item) => (
           <g
             key={item.id}
-            className={editable && tool === "pointer" ? "pointer-events-auto cursor-move" : "pointer-events-none"}
+            className={canInteract ? "pointer-events-auto cursor-move" : "pointer-events-none"}
+            data-classroom-input="drag"
             transform={`translate(${item.x * width} ${item.y * height}) rotate(${item.rotation})`}
             onPointerDown={(event) => beginTransform(event, item, "move")}
           >
@@ -150,8 +156,8 @@ export function BoardObjectLayer({
             <ObjectGraphic item={preview} canvasWidth={width} canvasHeight={height} />
           </g>
         ) : null}
-        {visibleSelected && editable && tool === "pointer" ? (
-          <g transform={`translate(${visibleSelected.x * width} ${visibleSelected.y * height}) rotate(${visibleSelected.rotation})`}>
+        {visibleSelected && canInteract ? (
+          <g data-classroom-input="drag" transform={`translate(${visibleSelected.x * width} ${visibleSelected.y * height}) rotate(${visibleSelected.rotation})`}>
             <rect
               x={-visibleSelected.width * width / 2}
               y={-visibleSelected.height * height / 2}
@@ -187,8 +193,9 @@ export function BoardObjectLayer({
           </g>
         ) : null}
       </svg>
-      {visibleSelected && editable && tool === "pointer" ? (
+      {visibleSelected && canInteract ? (
         <div
+          data-classroom-input="native"
           className="pointer-events-auto absolute z-30 flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-line bg-paper/95 p-1 shadow-md backdrop-blur"
           style={{ left: `${visibleSelected.x * 100}%`, top: `${Math.max(2, (visibleSelected.y - visibleSelected.height / 2) * 100)}%`, transform: "translate(-50%, calc(-100% - 10px))" }}
         >

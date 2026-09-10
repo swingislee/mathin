@@ -11,6 +11,14 @@ export interface H5InputProfile {
   defaultCapability: H5PointerCapability;
 }
 
+/** 基础 Smart 保留轻点；特殊拖拽通过区域标记或登记配置声明。 */
+export const H5_BASIC_INPUT_PROFILE: H5InputProfile = {
+  schemaVersion: H5_INPUT_PROFILE_SCHEMA,
+  providerSchema: H5_INPUT_PROVIDER_SCHEMA,
+  providerVersion: H5_INPUT_PROVIDER_VERSION,
+  defaultCapability: "click",
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }

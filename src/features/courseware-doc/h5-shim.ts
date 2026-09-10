@@ -14,7 +14,7 @@ import {
   H5_POINTER_PROTOCOL_VERSION,
   H5_POINTER_RUNTIME_VERSION,
 } from "./h5-pointer-protocol";
-import type { H5InputProfile } from "./h5-input-profile";
+import { H5_BASIC_INPUT_PROFILE, type H5InputProfile } from "./h5-input-profile";
 import { CLASSROOM_PAGING_RUNTIME } from "./classroom-paging-runtime";
 import { CLASSROOM_VIEWPORT_RUNTIME } from "./classroom-viewport-runtime";
 import {
@@ -146,9 +146,9 @@ export const H5_OPAQUE_ORIGIN_RUNTIME = `<script data-mathin-h5-runtime="${H5_PO
   const clamp01 = (value) => Math.max(0, Math.min(1, value));
   const rootProvider = () => {
     const root = document.documentElement;
-    const providerSchema = root.getAttribute("data-classroom-input-provider") || "unsupported";
-    const providerVersion = Number(root.getAttribute("data-classroom-renderer-version") || 0);
-    const defaultCapability = root.getAttribute("data-classroom-input-default") || "unknown";
+    const providerSchema = root.getAttribute("data-classroom-input-provider") || "${H5_BASIC_INPUT_PROFILE.providerSchema}";
+    const providerVersion = Number(root.getAttribute("data-classroom-renderer-version") || ${H5_BASIC_INPUT_PROFILE.providerVersion});
+    const defaultCapability = root.getAttribute("data-classroom-input-default") || "${H5_BASIC_INPUT_PROFILE.defaultCapability}";
     return {
       providerSchema,
       providerVersion,
@@ -225,6 +225,7 @@ export const H5_OPAQUE_ORIGIN_RUNTIME = `<script data-mathin-h5-runtime="${H5_PO
     if (!Number.isInteger(relayDepth) || relayDepth < 0 || relayDepth >= 8) return;
     if (data.type === "pointer_start") {
       if (!Number.isFinite(data.x) || !Number.isFinite(data.y)) return;
+      childPointerGestures.set(frame, { pointerId: data.pointerId, gestureToken: data.gestureToken });
       const point = remapChildPoint({ x: data.x, y: data.y }, frame);
       parent.postMessage(pointerEnvelope("pointer_start", {
         pointerId: data.pointerId,
@@ -240,6 +241,7 @@ export const H5_OPAQUE_ORIGIN_RUNTIME = `<script data-mathin-h5-runtime="${H5_PO
     }
     if (data.type === "pointer_move" || data.type === "pointer_end") {
       if (!safePoints(data.points)) return;
+      if (data.type === "pointer_end") childPointerGestures.delete(frame);
       parent.postMessage(pointerEnvelope(data.type, {
         pointerId: data.pointerId,
         gestureToken: data.gestureToken,
@@ -250,6 +252,7 @@ export const H5_OPAQUE_ORIGIN_RUNTIME = `<script data-mathin-h5-runtime="${H5_PO
       return;
     }
     if (data.type === "pointer_cancel") {
+      childPointerGestures.delete(frame);
       parent.postMessage(pointerEnvelope("pointer_cancel", {
         pointerId: data.pointerId,
         gestureToken: data.gestureToken,
@@ -266,28 +269,26 @@ export const H5_OPAQUE_ORIGIN_RUNTIME = `<script data-mathin-h5-runtime="${H5_PO
   let moveFrame = 0;
   let previousPointerStyles = null;
   let childPointerStates = new Map();
+  const childPointerGestures = new Map();
+  const cancelChildPointer = (frame) => {
+    const gesture = childPointerGestures.get(frame);
+    if (gesture) postPointer("pointer_cancel", gesture);
+    childPointerGestures.delete(frame);
+  };
 
-  const reportRootCapabilities = (forceIncompatible = false) => {
+  const reportRootCapabilities = () => {
     const provider = rootProvider();
     postPointer("pointer_capabilities", {
-      providerSchema: forceIncompatible ? "unsupported-nested-frame" : provider.providerSchema,
-      providerVersion: forceIncompatible ? 0 : provider.providerVersion,
-      defaultCapability: forceIncompatible ? "unknown" : provider.defaultCapability,
+      providerSchema: provider.providerSchema,
+      providerVersion: provider.providerVersion,
+      defaultCapability: provider.defaultCapability,
     });
-  };
-  const allChildrenReady = () => {
-    const frames = childFrames();
-    const currentFrames = new Set(frames);
-    for (const frame of childPointerStates.keys()) {
-      if (!currentFrames.has(frame)) childPointerStates.delete(frame);
-    }
-    return frames.every((frame) => childPointerStates.get(frame) === "ready");
   };
   const startChildHandshake = () => {
     const frames = childFrames();
+    childPointerGestures.clear();
     childPointerStates = new Map(frames.map((frame) => [frame, "pending"]));
-    const provider = rootProvider();
-    if (!provider.compatible || frames.length === 0) reportRootCapabilities();
+    reportRootCapabilities();
     forwardToChildren(parentPointerMessage("pointer_hello"));
   };
 
@@ -323,6 +324,11 @@ export const H5_OPAQUE_ORIGIN_RUNTIME = `<script data-mathin-h5-runtime="${H5_PO
       if (!(target instanceof Element) || !target.hasAttribute("data-classroom-input")) continue;
       const value = target.getAttribute("data-classroom-input") || "unknown";
       return capabilities.includes(value) ? { capability: value, owner: target } : { capability: "unknown", owner: target };
+    }
+    for (const target of event.composedPath()) {
+      if (target instanceof Element && target.matches('input,textarea,select,option,[contenteditable]:not([contenteditable="false"]),[role="slider"],[role="scrollbar"],video[controls],audio[controls],[draggable="true"]')) {
+        return { capability: "native", owner: target };
+      }
     }
     return { capability: rootProvider().defaultCapability, owner: event.target instanceof Element ? event.target : null };
   };
@@ -464,13 +470,8 @@ export const H5_OPAQUE_ORIGIN_RUNTIME = `<script data-mathin-h5-runtime="${H5_PO
 
   document.addEventListener("load", (event) => {
     if (!pointerSession || !(event.target instanceof HTMLIFrameElement)) return;
+    cancelChildPointer(event.target);
     childPointerStates.set(event.target, "pending");
-    if (pointerReady) {
-      pointerReady = false;
-      applyPointerMode("interaction-lock");
-      clearActivePointer();
-      reportRootCapabilities(true);
-    }
     event.target.contentWindow?.postMessage(parentPointerMessage("pointer_hello"), "*");
   }, true);
 
@@ -493,7 +494,7 @@ export const H5_OPAQUE_ORIGIN_RUNTIME = `<script data-mathin-h5-runtime="${H5_PO
       }
       if (!matchesPointerSession(data)) return;
       if (data.type === "pointer_ack") {
-        pointerReady = rootProvider().compatible && allChildrenReady();
+        pointerReady = rootProvider().compatible;
         applyPointerMode(data.mode);
         forwardToChildren(parentPointerMessage("pointer_ack", { mode: pointerMode }));
         return;
@@ -529,16 +530,12 @@ export const H5_OPAQUE_ORIGIN_RUNTIME = `<script data-mathin-h5-runtime="${H5_PO
       childPointerStates.set(childFrame, compatible ? "ready" : "incompatible");
       if (compatible) {
         childFrame.contentWindow?.postMessage(parentPointerMessage("pointer_ack", { mode: pointerMode }), "*");
-        if (allChildrenReady()) reportRootCapabilities();
       } else {
-        pointerReady = false;
-        applyPointerMode("interaction-lock");
-        clearActivePointer();
-        reportRootCapabilities(true);
+        cancelChildPointer(childFrame);
       }
       return;
     }
-    relayChildPointer(data, childFrame);
+    if (pointerReady && childPointerStates.get(childFrame) === "ready") relayChildPointer(data, childFrame);
   });
 })();
 </script>`;
@@ -607,16 +604,16 @@ export function injectHeadSnippet(html: string, snippet: string): string {
 const H5_PROVIDER_ATTRIBUTE = /\sdata-classroom-(?:input-provider|renderer-version|input-default)(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+))?/gi;
 
 /**
- * Remove every source-supplied provider declaration and attach only the
- * registry-authoritative profile. Missing profiles deliberately fail closed.
+ * 替换原包的页面级声明：采用登记配置，或应用提供的基础 Smart 配置。
+ * 区域上的 drag/native 标记继续保留，供笔直接操作控件。
  */
 export function applyH5InputProfile(html: string, profile: H5InputProfile | null = null): string {
+  const resolved = profile ?? H5_BASIC_INPUT_PROFILE;
   return html.replace(/<html\b[^>]*>/i, (root) => {
     const clean = root.replace(H5_PROVIDER_ATTRIBUTE, "");
-    if (!profile) return clean;
-    const attributes = ` data-classroom-input-provider="${profile.providerSchema}"`
-      + ` data-classroom-renderer-version="${profile.providerVersion}"`
-      + ` data-classroom-input-default="${profile.defaultCapability}"`;
+    const attributes = ` data-classroom-input-provider="${resolved.providerSchema}"`
+      + ` data-classroom-renderer-version="${resolved.providerVersion}"`
+      + ` data-classroom-input-default="${resolved.defaultCapability}"`;
     return clean.replace(/>$/, `${attributes}>`);
   });
 }

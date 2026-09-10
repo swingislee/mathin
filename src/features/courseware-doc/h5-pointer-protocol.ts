@@ -1,4 +1,4 @@
-export const H5_POINTER_RUNTIME_VERSION = "3";
+export const H5_POINTER_RUNTIME_VERSION = "4";
 export const H5_POINTER_PROTOCOL_SCHEMA = "mathin-h5-pointer";
 export const H5_POINTER_PROTOCOL_VERSION = 1;
 export const H5_POINTER_FRAME_SOURCE = "mathin-h5-pointer";
@@ -7,6 +7,18 @@ export const H5_POINTER_MAX_POINTS_PER_CHUNK = 64;
 export const H5_POINTER_MAX_MESSAGES_PER_SECOND = 240;
 
 export type H5PointerBridgeStatus = "disabled" | "pending" | "ready" | "incompatible" | "timeout";
+
+/** 每个已就绪 iframe 独立提供 Smart，其他 iframe 保持原生交互。 */
+export function aggregateH5PointerBridgeStatus(
+  enabled: boolean,
+  expectedFrameCount: number,
+  statuses: readonly H5PointerBridgeStatus[],
+): H5PointerBridgeStatus {
+  if (!enabled) return "disabled";
+  if (statuses.includes("ready")) return "ready";
+  if (statuses.length < expectedFrameCount || statuses.length === 0 || statuses.includes("pending")) return "pending";
+  return statuses.includes("timeout") ? "timeout" : "incompatible";
+}
 export type H5PointerCapability = "click" | "drag" | "native" | "ink" | "unknown";
 
 export interface H5PointerPoint {
