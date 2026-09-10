@@ -3,6 +3,7 @@ import {
   CLASSROOM_PAGING_RUNTIME_PARAM,
   CLASSROOM_PAGING_RUNTIME_VERSION,
 } from "@/features/classroom/live/classroom-paging";
+import { CLASSROOM_VIEWPORT_RUNTIME_PARAM, CLASSROOM_VIEWPORT_RUNTIME_VERSION } from "@/features/classroom/live/classroom-viewport";
 
 /** Opaque iframe 只转发允许的按键；由父窗口显式启用并校验当前 iframe 和 token。 */
 export const CLASSROOM_PAGING_RUNTIME = `<script data-mathin-classroom-paging="${CLASSROOM_PAGING_RUNTIME_VERSION}">
@@ -47,8 +48,10 @@ export const CLASSROOM_PAGING_RUNTIME = `<script data-mathin-classroom-paging="$
     try {
       const base = new URL(document.baseURI);
       const url = new URL(src, base);
-      if (url.origin !== base.origin || !url.pathname.startsWith("/api/cw-h5/") || url.searchParams.get("${CLASSROOM_PAGING_RUNTIME_PARAM}") === "${CLASSROOM_PAGING_RUNTIME_VERSION}") return;
+      if (url.origin !== base.origin || !url.pathname.startsWith("/api/cw-h5/")) return;
+      if (url.searchParams.get("${CLASSROOM_PAGING_RUNTIME_PARAM}") === "${CLASSROOM_PAGING_RUNTIME_VERSION}" && url.searchParams.get("${CLASSROOM_VIEWPORT_RUNTIME_PARAM}") === "${CLASSROOM_VIEWPORT_RUNTIME_VERSION}") return;
       url.searchParams.set("${CLASSROOM_PAGING_RUNTIME_PARAM}", "${CLASSROOM_PAGING_RUNTIME_VERSION}");
+      url.searchParams.set("${CLASSROOM_VIEWPORT_RUNTIME_PARAM}", "${CLASSROOM_VIEWPORT_RUNTIME_VERSION}");
       frame.setAttribute("src", url.href);
     } catch { /* 非应用管理的 iframe 保留自身导航。 */ }
   }); };

@@ -2,6 +2,7 @@ import { newId } from "@/lib/uuid";
 import type { SessionEvent, SessionEventType } from "../types";
 import { STORE_META, STORE_OUTBOX, idbGet, idbListByIndex, idbPut } from "./idb";
 import type { FxMessage, Transport } from "./transports";
+import { compareViewport, viewportEvent } from "../live/classroom-viewport";
 import { classroomToolInstanceKey, parseClassroomToolState } from "@/features/tools/courseware/cube-structures-classroom";
 
 // 课堂事件流（08-§3.4）：一切操作先写本地（内存 + outbox），UI 零等待网络；
@@ -28,6 +29,7 @@ export function getDeviceId(): string {
 type Listener = (ev: SessionEvent, local: boolean) => void;
 
 function rehearsalSnapshotKey(event: SessionEvent): string | null {
+  if (viewportEvent(event)) return "viewport";
   if (event.type === "page") return "page";
   if (event.type === "board_snapshot") return `board:${event.payload.pageKey}`;
   if (event.type === "game_state") return `game:${event.payload.pageId}`;
@@ -57,6 +59,21 @@ export class SessionEventLog {
   /** 同一教师跨设备的临时事件使用逻辑时钟，再按写者 ID 决定同时操作的次序。 */
   get rehearsalEvents(): readonly SessionEvent[] { return this.rehearsalReplay; }
   private restoredTools: SessionEvent[] = [];
+  private restoredViewports: SessionEvent[] = [];
+  private viewportReplay: SessionEvent | null = null;
+  get recoveredViewportEvents(): readonly SessionEvent[] { return this.restoredViewports; }
+  get latestViewportEvent(): SessionEvent | null { return this.viewportReplay; }
+
+  rememberViewportState(event: SessionEvent): void {
+    if (event.sessionId !== this.sessionId) return;
+    const next = viewportEvent(event);
+    const previous = this.viewportReplay && viewportEvent(this.viewportReplay);
+    if (next && (!previous || compareViewport(next, previous) > 0)) this.viewportReplay = event;
+  }
+
+  rebroadcastViewportState(): void {
+    if (this.viewportReplay) this.sendToolEvent(this.viewportReplay);
+  }
   private toolReplay = new Map<string, { event: SessionEvent; sequences: Record<string, number> }>();
 
   /** 刷新后补回尚未入库的本账号工具快照；试讲始终为空。 */
@@ -105,6 +122,7 @@ export class SessionEventLog {
     const pending = await idbListByIndex<SessionEvent>(STORE_OUTBOX, "sessionId", sessionId);
     log.restoredTools = pending.filter((ev) => ev.type === "tool_state" && ev.userId === userId)
       .sort((a, b) => a.at.localeCompare(b.at) || a.seq - b.seq);
+    log.restoredViewports = pending.filter((ev) => viewportEvent(ev) && ev.userId === userId);
     let maxPending = 0;
     for (const ev of pending) {
       log.seen.add(ev.id);
@@ -151,11 +169,11 @@ export class SessionEventLog {
       await idbPut(STORE_OUTBOX, ev.id, ev);
       try { await idbPut(STORE_META, this.metaKey(), this.seq); } catch (error) {
         // 工具快照已落盘，seq 可从 outbox 恢复；元数据失败不误报模型未保存。
-        if (type !== "tool_state") throw error;
+        if (type !== "tool_state" && !viewportEvent(ev)) throw error;
       }
     }
     this.emit(ev, true);
-    if (type === "tool_state") this.sendToolEvent(ev);
+    if (type === "tool_state" || viewportEvent(ev)) this.sendToolEvent(ev);
     else for (const transport of this.transports) transport.send(ev);
     return ev;
   }
@@ -165,7 +183,7 @@ export class SessionEventLog {
     if (!ev?.id || this.seen.has(ev.id)) return;
     if (this.ephemeral && (ev.sessionId !== this.sessionId || ev.userId !== this.userId
       || !ev.deviceId || !Number.isSafeInteger(ev.seq) || ev.seq < 1)) return;
-    if (ev.type === "tool_state" && ev.sessionId !== this.sessionId) return;
+    if ((ev.type === "tool_state" || viewportEvent(ev)) && ev.sessionId !== this.sessionId) return;
     this.seen.add(ev.id);
     this.emit(ev, false);
   };
@@ -194,6 +212,7 @@ export class SessionEventLog {
     this.listeners.clear();
     this.fxListeners.clear();
     this.toolReplay.clear();
+    this.viewportReplay = null;
     this.rehearsalReplay = [];
   }
 

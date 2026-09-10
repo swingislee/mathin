@@ -43,3 +43,13 @@ export function classroomFocusOffset(overflow: number, position: number) {
 export function clampClassroomDisplayPercent(value: number, bounds: ReturnType<typeof classroomDisplayBounds>) {
   return Math.max(bounds.minPercent, Math.min(bounds.maxPercent, Number.isFinite(value) ? value : bounds.maxPercent));
 }
+
+/** 名单在可见屏幕内分列，44px 行保留触控面积，长名单在内部滚动。 */
+export function classroomFocusDockLayout(width: number, height: number, count: number, open: boolean, pan: boolean) {
+  const availableHeight = Math.max(44, height - 88);
+  const rows = Math.max(1, Math.floor((availableHeight - 48) / 46));
+  const columns = Math.max(1, Math.min(width >= 1000 ? 3 : width >= 500 ? 2 : 1, Math.ceil(count / rows)));
+  const dockWidth = open ? columns * 108 : 44;
+  const dockHeight = open ? Math.min(availableHeight, Math.ceil(count / columns) * 46 + 48) : 44;
+  return { columns, width: dockWidth, height: dockHeight, xRange: Math.max(0, width - dockWidth - (pan ? 60 : 16)), yRange: Math.max(0, height - dockHeight - 88) };
+}

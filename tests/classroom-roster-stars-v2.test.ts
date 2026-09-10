@@ -203,7 +203,7 @@ describe("M4a roster identity and star v2", () => {
     expect(fixtures.refreshed).toMatchObject({ revision: 8, hasDifference: false });
     expect(fixtures.refreshed.entries).toHaveLength(4);
     expect(route).toContain('acceptance === "m4a"');
-    expect(route).toContain(': "m4b"');
+    expect(route).toContain('acceptance === "m4b" ? "m4b" : null');
     expect(shell).toContain("data-m4-roster-identity");
     expect(shell).toContain("data-m4-star-set");
     expect(shell).toContain("data-m4-roster-refresh");

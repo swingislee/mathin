@@ -4,6 +4,7 @@ export const CLASSROOM_INTERACTION_SYNC_VERSION = 1;
 export type ClassroomInteractionSyncMode = "snapshot" | "commands" | "read-only";
 export type ClassroomInteractionSyncProtocol =
   | "page-navigation-v1"
+  | "viewport-v1"
   | "game-mirror-v1"
   | "doc-step-v1"
   | "h5-state-v1"
@@ -17,7 +18,7 @@ export interface ClassroomInteractionSyncProvider {
   mode: ClassroomInteractionSyncMode;
   protocol: ClassroomInteractionSyncProtocol;
   /** Durable event type. Read-only providers deliberately publish no event. */
-  eventType: "page" | "game_state" | "doc_step" | "tool_state" | null;
+  eventType: "page" | "game_state" | "doc_step" | "tool_state" | "session_ctl" | null;
   /** Hard payload budget for one durable event. Read-only providers use zero. */
   maxPayloadBytes: number;
 }
@@ -48,6 +49,15 @@ export const CLASSROOM_PAGE_NAVIGATION_SYNC_V1 = Object.freeze({
   protocol: "page-navigation-v1",
   eventType: "page",
   maxPayloadBytes: 64,
+} satisfies ClassroomInteractionSyncProvider);
+
+export const CLASSROOM_VIEWPORT_SYNC_V1 = Object.freeze({
+  schema: CLASSROOM_INTERACTION_SYNC_SCHEMA,
+  version: CLASSROOM_INTERACTION_SYNC_VERSION,
+  mode: "snapshot",
+  protocol: "viewport-v1",
+  eventType: "session_ctl",
+  maxPayloadBytes: 1024,
 } satisfies ClassroomInteractionSyncProvider);
 
 /** Mathin-authored H5 remains classroom-read-only until it implements state replay. */
@@ -106,6 +116,7 @@ export function isClassroomInteractionSyncProvider(
   const provider = value as Partial<ClassroomInteractionSyncProvider>;
   const protocol = provider.protocol;
   const protocolValid = protocol === "page-navigation-v1"
+    || protocol === "viewport-v1"
     || protocol === "game-mirror-v1"
     || protocol === "doc-step-v1"
     || protocol === "h5-state-v1"
@@ -126,6 +137,9 @@ export function isClassroomInteractionSyncProvider(
   const activeProtocolValid = (provider.protocol === "page-navigation-v1"
       && provider.mode === "commands"
       && provider.eventType === "page")
+    || (provider.protocol === "viewport-v1"
+      && provider.mode === "snapshot"
+      && provider.eventType === "session_ctl")
     || (provider.protocol === "game-mirror-v1"
       && provider.mode === "snapshot"
       && provider.eventType === "game_state")

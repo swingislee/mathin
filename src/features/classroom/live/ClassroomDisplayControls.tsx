@@ -7,7 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Slider } from "@/components/ui/slider";
 
 export function ClassroomDisplayControls({
-  focused, onFocus, adjustable, value, min, max, onResize, onReset, verticalPosition, onPan,
+  focused, onFocus, adjustable, value, min, max, onResize, onReset, onCommit, following, onFollow, saveError,
 }: {
   focused: boolean;
   onFocus: (focused: boolean) => void;
@@ -17,8 +17,10 @@ export function ClassroomDisplayControls({
   max: number;
   onResize: (percent: number) => void;
   onReset: () => void;
-  verticalPosition: number | null;
-  onPan: (position: number) => void;
+  onCommit: () => void;
+  following?: boolean;
+  onFollow?: () => void;
+  saveError?: boolean;
 }) {
   const t = useTranslations("classroom.live");
   const focusLabel = t(focused ? "exitFocus" : "enterFocus");
@@ -35,22 +37,14 @@ export function ClassroomDisplayControls({
         <PopoverContent side="top" align="end" className="w-72 space-y-4 p-4">
           <div className="flex items-center justify-between gap-2 text-sm">
             <span>{t("coursewareDisplaySize")}</span>
-            <output className="font-mono text-xs text-muted">{adjustable ? t("displayWidthPercent", { value }) : "4:3"}</output>
+            <output className="font-mono text-xs text-muted">{adjustable ? t("displayWidthPercent", { value: Math.round(value) }) : "4:3"}</output>
           </div>
-          <Slider aria-label={t("coursewareDisplaySize")} aria-valuetext={t("displayWidthPercent", { value })}
+          <Slider aria-label={t("coursewareDisplaySize")} aria-valuetext={t("displayWidthPercent", { value: Math.round(value) })}
             value={[value]} min={min} max={max} step={1} disabled={!adjustable || min === max}
-            onValueChange={([percent]) => onResize(percent)} className="min-h-8" />
+            onValueChange={([percent]) => onResize(percent)} onValueCommit={onCommit} className="min-h-8" />
           <p className="text-xs leading-relaxed text-muted">{t(!adjustable ? "displaySizeNarrowHint" : focused ? "displaySizeFocusHint" : "displaySizeHint")}</p>
-          {verticalPosition !== null && (
-            <div className="space-y-1">
-              <span className="text-sm">{t("displayVerticalPosition")}</span>
-              <Slider aria-label={t("displayVerticalPosition")} value={[verticalPosition]} min={0} max={100} step={1}
-                onValueChange={([position]) => onPan(position)} className="min-h-8" />
-              <div className="flex justify-between text-xs text-muted">
-                <span>{t("displayTop")}</span><span>{t("displayBottom")}</span>
-              </div>
-            </div>
-          )}
+          {onFollow && <Button type="button" variant="secondary" size="sm" className="w-full" disabled={following} onClick={onFollow}>{t(following ? "followingTeacherViewport" : "followTeacherViewport")}</Button>}
+          {saveError && <p role="status" className="text-xs text-crater">{t("displaySyncSaveError")}</p>}
           <Button type="button" variant="ghost" size="sm" className="w-full" onClick={onReset}>{t("resetDisplaySize")}</Button>
         </PopoverContent>
       </Popover>

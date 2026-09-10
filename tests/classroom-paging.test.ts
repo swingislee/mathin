@@ -67,7 +67,7 @@ describe("classroom paging keys", () => {
 
   it("versions the injected runtime without changing the resource path or existing query", () => {
     const href = withClassroomPagingRuntime("/api/cw-h5/package/index.html?mathin_h5_runtime=3#slide");
-    expect(href).toBe("/api/cw-h5/package/index.html?mathin_h5_runtime=3&mathin_classroom_keys=1#slide");
+    expect(href).toBe("/api/cw-h5/package/index.html?mathin_h5_runtime=3&mathin_classroom_keys=1&mathin_classroom_viewport=1#slide");
     expect(withClassroomPagingRuntime(href)).toBe(href);
   });
 

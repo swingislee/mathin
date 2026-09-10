@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type RefObject } from "react";
 import { panelLayoutStorage } from "@/lib/panel-layout-storage";
-import { pagingDialogIsOpen } from "./classroom-paging";
+import { viewportCenter, viewportPosition, type ClassroomViewport } from "./classroom-viewport";
 import {
   classroomDisplayBounds,
   classroomFocusOffset,
@@ -23,10 +23,11 @@ function subscribe(onChange: () => void) {
 }
 const serverSnapshot = () => null;
 
-/** 显示偏好只属于当前设备和角色；课件、板书、页序与课堂事件保持原有身份。 */
+/** 按当前设备换算显示尺寸；课件、板书和页序保持原有身份。 */
 export function useClassroomDisplay(scope: string, active: boolean, stageWidth: number, splitEnabled: boolean, workspaceRef: RefObject<HTMLDivElement | null>) {
   const [focused, setFocused] = useState(false);
   const [verticalPosition, setVerticalPosition] = useState(50);
+  const [focusView, setFocusView] = useState<{ zoom: number; centerY: number } | null>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const storageKey = `mathin:classroom-display:v1:${scope}`;
   const snapshot = useCallback(() => panelLayoutStorage.getItem(storageKey), [storageKey]);
@@ -46,42 +47,42 @@ export function useClassroomDisplay(scope: string, active: boolean, stageWidth: 
     return () => observer.disconnect();
   }, [active, workspaceRef]);
 
-  useEffect(() => {
-    if (!focused || !active) return;
-    const escape = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !event.defaultPrevented && !pagingDialogIsOpen(document)) setFocused(false);
-    };
-    window.addEventListener("keydown", escape);
-    return () => window.removeEventListener("keydown", escape);
-  }, [active, focused]);
-
   const wide = size.width >= 1000;
   const adjustable = size.width > 0 && (focused || (splitEnabled && wide));
   const bounds = classroomDisplayBounds(size.width, size.height, focused);
   const preferred = focused ? preferences.focusPercent : preferences.splitPercent;
   const value = clampClassroomDisplayPercent(
-    preferred ?? (focused ? bounds.fitPercent : Math.round(stageWidth / Math.max(1, size.width) * 100)), bounds,
+    (focused && focusView ? focusView.zoom * bounds.fitPercent : preferred) ?? (focused ? bounds.fitPercent : Math.round(stageWidth / Math.max(1, size.width) * 100)), bounds,
   );
-  const focusOverflow = Math.max(0, size.width * value / 100 / CLASSROOM_DISPLAY_ASPECT - size.height);
+  const focusHeight = size.width * value / 100 / CLASSROOM_DISPLAY_ASPECT;
+  const focusOverflow = Math.max(0, focusHeight - size.height);
+  const position = focusView ? viewportPosition(focusHeight, size.height, focusView.centerY) : verticalPosition;
+  const fullBounds = classroomDisplayBounds(size.width, size.height, true);
   const save = (next: typeof preferences) => {
     panelLayoutStorage.setItem(storageKey, JSON.stringify(next));
     window.dispatchEvent(new Event(CHANGE_EVENT));
   };
 
   return {
-    focused, setFocused, adjustable, bounds, value,
+    focused, setFocused, adjustable, bounds, value, size,
+    viewport: { focused, zoom: focused ? value / bounds.fitPercent : focusView?.zoom ?? (preferences.focusPercent ?? fullBounds.fitPercent) / fullBounds.fitPercent,
+      centerY: focusView?.centerY ?? viewportCenter(focusHeight, size.height, position) } satisfies ClassroomViewport,
+    applyViewport(view: ClassroomViewport) { setFocused(view.focused); setFocusView({ zoom: view.zoom, centerY: view.centerY }); },
+    rememberViewport(view: ClassroomViewport) {
+      save({ ...preferences, focusPercent: Math.max(10, Math.min(100, view.zoom * classroomDisplayBounds(size.width, size.height, true).fitPercent)) });
+    },
     splitWidth: !focused && adjustable && preferred !== null ? size.width * value / 100 : null,
     // 右栏压缩时把课程操作放到顶部；按用户偏好判断，避免高度变化反复触发换行。
     courseInfoAbove: !focused && adjustable && preferred !== null && size.width * (1 - preferred / 100) - 12 < 352,
     // 专注时仍用 4:3，同一 Canvas 随同一课件一起缩放。
     focusWidth: `${value}cqw`,
     focusHeight: `${value / CLASSROOM_DISPLAY_ASPECT}cqw`,
-    focusOffset: classroomFocusOffset(focusOverflow, verticalPosition),
-    verticalPosition: focused && focusOverflow > 0 ? verticalPosition : null,
+    focusOffset: classroomFocusOffset(focusOverflow, position),
+    verticalPosition: focused && focusOverflow > 0 ? position : null,
     setVerticalPosition,
     resize(percent: number) {
       save({ ...preferences, [focused ? "focusPercent" : "splitPercent"]: clampClassroomDisplayPercent(percent, bounds) });
     },
-    reset() { save(DEFAULT_CLASSROOM_DISPLAY); setVerticalPosition(50); },
+    reset() { save(DEFAULT_CLASSROOM_DISPLAY); setVerticalPosition(50); setFocusView(null); },
   };
 }

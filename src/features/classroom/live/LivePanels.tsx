@@ -270,6 +270,7 @@ export function StudentCard({
   learningStatus,
   learningStatusLabel,
   compact = false,
+  touchScroll = false,
   onStar,
   onUndo,
 }: {
@@ -286,11 +287,13 @@ export function StudentCard({
   learningStatus?: LearningCheckStatus | null;
   learningStatusLabel?: string;
   compact?: boolean;
+  touchScroll?: boolean;
   onStar: () => void;
   onUndo: () => void;
 }) {
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longFired = useRef(false);
+  useEffect(() => () => { if (pressTimer.current) clearTimeout(pressTimer.current); }, []);
 
   const clearPress = () => {
     if (pressTimer.current) {
@@ -364,7 +367,8 @@ export function StudentCard({
         title={undoHint}
         aria-label={accessibleAwardLabel}
         className={cn(
-          "flex min-h-11 w-full touch-none select-none rounded-xl border transition-colors hover:bg-moon/30",
+          "flex min-h-11 w-full select-none rounded-xl border transition-colors hover:bg-moon/30",
+          touchScroll ? "touch-pan-y" : "touch-none",
           learningCardClass,
           compact ? "min-w-0 flex-col items-stretch justify-center gap-0.5 overflow-hidden bg-card/80 px-1.5 py-1 backdrop-blur-[2px]" : "items-center gap-2 px-3",
         )}

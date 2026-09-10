@@ -7,9 +7,11 @@ import { cn } from "@/lib/utils"
 
 const Slider = React.forwardRef<
   React.ElementRef<typeof SliderPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root>
+  React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root> & { thumbClassName?: string }
 >(({
   className,
+  orientation = "horizontal",
+  thumbClassName,
   "aria-label": ariaLabel,
   "aria-labelledby": ariaLabelledBy,
   "aria-describedby": ariaDescribedBy,
@@ -18,21 +20,23 @@ const Slider = React.forwardRef<
 }, ref) => (
   <SliderPrimitive.Root
     ref={ref}
+    orientation={orientation}
     className={cn(
-      "relative flex w-full touch-none select-none items-center",
+      "relative flex touch-none select-none items-center",
+      orientation === "vertical" ? "h-full flex-col" : "w-full",
       className
     )}
     {...props}
   >
-    <SliderPrimitive.Track className="relative h-1.5 w-full grow overflow-hidden rounded-full bg-line">
-      <SliderPrimitive.Range className="absolute h-full bg-rose" />
+    <SliderPrimitive.Track className={cn("relative grow overflow-hidden rounded-full bg-line", orientation === "vertical" ? "h-full w-1.5" : "h-1.5 w-full")}>
+      <SliderPrimitive.Range className={cn("absolute bg-rose", orientation === "vertical" ? "w-full" : "h-full")} />
     </SliderPrimitive.Track>
     <SliderPrimitive.Thumb
       aria-label={ariaLabel}
       aria-labelledby={ariaLabelledBy}
       aria-describedby={ariaDescribedBy}
       aria-valuetext={ariaValueText}
-      className="block h-4 w-4 rounded-full border-[1.5px] border-crater bg-card shadow-sm transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-crater disabled:pointer-events-none disabled:opacity-50"
+      className={cn("block h-4 w-4 rounded-full border-[1.5px] border-crater bg-card shadow-sm transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-crater disabled:pointer-events-none disabled:opacity-50", thumbClassName)}
     />
   </SliderPrimitive.Root>
 ))

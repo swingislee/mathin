@@ -16,6 +16,7 @@ import {
 } from "./h5-pointer-protocol";
 import type { H5InputProfile } from "./h5-input-profile";
 import { CLASSROOM_PAGING_RUNTIME } from "./classroom-paging-runtime";
+import { CLASSROOM_VIEWPORT_RUNTIME } from "./classroom-viewport-runtime";
 import {
   SOURCE_RUNTIME_NESTED_H5_PARAM,
   SOURCE_RUNTIME_PROTOCOL,
@@ -621,5 +622,5 @@ export function applyH5InputProfile(html: string, profile: H5InputProfile | null
 }
 
 export function injectH5Runtime(html: string, profile: H5InputProfile | null = null): string {
-  return injectHeadSnippet(applyH5InputProfile(html, profile), H5_OPAQUE_ORIGIN_RUNTIME + CLASSROOM_PAGING_RUNTIME);
+  return injectHeadSnippet(applyH5InputProfile(html, profile), CLASSROOM_VIEWPORT_RUNTIME + H5_OPAQUE_ORIGIN_RUNTIME + CLASSROOM_PAGING_RUNTIME);
 }

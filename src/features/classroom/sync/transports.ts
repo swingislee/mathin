@@ -1,6 +1,7 @@
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 import type { SessionEvent } from "../types";
 import { newId } from "@/lib/uuid";
+import { CLASSROOM_VIEWPORT_REQUEST } from "../live/classroom-viewport";
 
 // 课堂事件的传输层（08-§3.4）：同一事件流的多种通道，事件层对来源无感知。
 // T0 BroadcastChannel（同设备双窗，零网络依赖）——物理课堂保底形态；
@@ -393,16 +394,17 @@ export function createRealtimeTransport(
       onEvent(payload as SessionEvent);
     });
     clientChannel.on("broadcast", { event: "ev" }, ({ payload }) => {
-      // 工具权威状态只接收教师专用通道，成员通道仅可请求重新同步。
-      if ((payload as SessionEvent)?.type !== "tool_state") onEvent(payload as SessionEvent);
+      // 工具与视图权威状态接收教师专用通道；成员通道可请求重新同步。
+      const event = payload as SessionEvent;
+      if (event?.type !== "tool_state" && !(event?.type === "session_ctl" && event.payload?.action === "viewport")) onEvent(event);
     });
     authoritativeChannel.on("broadcast", { event: "fx" }, ({ payload }) => {
       onFx?.(payload as FxMessage);
     });
     clientChannel.on("broadcast", { event: "fx" }, ({ payload }) => {
       const fx = payload as FxMessage;
-      if (fx?.scope === "tool-state-request" && fx.payload?.version === 1) {
-        onFx?.({ scope: "tool-state-request", payload: { version: 1 } });
+      if ((fx?.scope === "tool-state-request" || fx?.scope === CLASSROOM_VIEWPORT_REQUEST) && fx.payload?.version === 1) {
+        onFx?.({ scope: fx.scope, payload: { version: 1 } });
       }
     });
     if (signaling) {
@@ -456,7 +458,7 @@ export function createRealtimeTransport(
       if (joined && channel) void channel.send({ type: "broadcast", event: "ev", payload: ev });
     },
     sendFx(fx) {
-      if (fx.scope === "tool-state-request") {
+      if (fx.scope === "tool-state-request" || fx.scope === CLASSROOM_VIEWPORT_REQUEST) {
         if (clientJoined && clientChannel) void clientChannel.send({ type: "broadcast", event: "fx", payload: { scope: fx.scope, payload: { version: 1 } } });
         return;
       }

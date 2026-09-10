@@ -1,3 +1,5 @@
+import { CLASSROOM_VIEWPORT_RUNTIME_PARAM, CLASSROOM_VIEWPORT_RUNTIME_VERSION } from "./classroom-viewport";
+
 export const CLASSROOM_PAGING_PROTOCOL = "mathin-classroom-paging-v1";
 export const CLASSROOM_PAGING_RUNTIME_PARAM = "mathin_classroom_keys";
 export const CLASSROOM_PAGING_RUNTIME_VERSION = "1";
@@ -18,7 +20,7 @@ export function classroomPagingDirection(event: {
 
 export function pagingTargetIsEditing(target: EventTarget | null): boolean {
   return target instanceof Element && Boolean(target.closest(
-    "input, textarea, select, [role='textbox'], [role='combobox'], [role='spinbutton'], [contenteditable]:not([contenteditable='false'])",
+    "input, textarea, select, [role='textbox'], [role='combobox'], [role='spinbutton'], [role='slider'], [data-classroom-focus-roster-handle], [contenteditable]:not([contenteditable='false'])",
   ));
 }
 
@@ -35,5 +37,6 @@ export function withClassroomPagingRuntime(href: string): string {
   const path = queryAt < 0 ? base : base.slice(0, queryAt);
   const query = new URLSearchParams(queryAt < 0 ? "" : base.slice(queryAt + 1));
   query.set(CLASSROOM_PAGING_RUNTIME_PARAM, CLASSROOM_PAGING_RUNTIME_VERSION);
+  query.set(CLASSROOM_VIEWPORT_RUNTIME_PARAM, CLASSROOM_VIEWPORT_RUNTIME_VERSION);
   return `${path}?${query}${fragments.length ? `#${fragments.join("#")}` : ""}`;
 }

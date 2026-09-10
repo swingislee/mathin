@@ -92,7 +92,7 @@ export type SessionEventType =
   | "page_insert"    // {index:number, page:CoursewarePage} 上课中临时插页（白板页等，仅教师）
   | "star"           // {studentId} 教师加星
   | "star_undo"      // {studentId} 撤销该生最新一颗星（原子语义：删事件不减计数）
-  | "session_ctl"    // {action:"start"|"end"|"quiz_open"|"quiz_close", ...}
+  | "session_ctl"    // {action:"start"|"end"|"quiz_open"|"quiz_close"|"viewport", ...}
   | "board_snapshot" // {pageKey:string, items:BoardItem[]}（main=页 uuid、side="side"）
   | "game_state"     // {pageId, state:{values,selected,...gameFields}} 游戏页镜像（单写者=教师）
   | "tool_state"     // 版本化组件快照（pageId + docId + instanceId，教师单写）

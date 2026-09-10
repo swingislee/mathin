@@ -124,6 +124,9 @@ import { DevelopmentAcceptanceDock } from "./DevelopmentAcceptanceDock";
 import { TeacherClassroomControlBar } from "./TeacherClassroomControlBar";
 import { ClassroomDisplayControls } from "./ClassroomDisplayControls";
 import { useClassroomDisplay } from "./useClassroomDisplay";
+import { useClassroomViewport } from "./useClassroomViewport";
+import { useClassroomViewportGestures } from "./useClassroomViewportGestures";
+import { ClassroomFocusOverlay } from "./ClassroomFocusOverlay";
 import { ClassroomPageControls, ClassroomToolsMenu } from "./ClassroomControlMenus";
 import { resolveClassroomTeachingSurface } from "./classroom-teaching-surface";
 import {
@@ -344,6 +347,10 @@ export function LiveShell({
   const effectivePhase: Phase = phase === "live" || (state.started && !isController) ? "live" : "prep";
   const display = useClassroomDisplay(`${userId}:${role}`, preparation.stageMounted || effectivePhase === "live", stageWidth, teacherLayoutV2, displayWorkspaceRef);
   const focusMode = display.focused;
+  const viewport = useClassroomViewport({
+    log, controller: isController, userId, members, initialEvents, display,
+    connectionKey: `${t2Connected}:${p2pHealth.state}:${p2pHealth.peers}`,
+  });
 
   // --- 事件层与传输层 ---------------------------------------------------
   useEffect(() => {
@@ -884,6 +891,17 @@ export function LiveShell({
     gestureKey: renderPage?.id ?? "no-page",
     onInkStart: activateMainInput,
   });
+  useClassroomViewportGestures({
+    enabled: focusMode,
+    stageRef,
+    gestureKey: renderPage?.id ?? "no-page",
+    percent: display.value,
+    min: display.bounds.minPercent,
+    max: display.bounds.maxPercent,
+    onChange: (percent, centerY) => viewport.change({ focused: true, zoom: percent / display.bounds.fitPercent, centerY }),
+    onEnd: viewport.commit,
+    onCancelInk: (pointerId) => mainInputPortRef.current?.cancel(pointerId),
+  });
   const assetsReady = preload.done >= preload.total;
   const activeDocBindings = activeDocBundleEntry?.bindings;
   const activeDocAssetsLoading = renderPage?.type === "doc"
@@ -985,20 +1003,22 @@ export function LiveShell({
       : undefined),
     [focusMode, mainStore, sideBoard.store, t],
   );
-  const displayControls = myRole === "teacher" ? (
+  const displayControls = (
     <ClassroomDisplayControls
       focused={focusMode}
-      onFocus={(focused) => { setActiveArea("main"); display.setFocused(focused); }}
+      onFocus={(focused) => { setActiveArea("main"); viewport.setFocused(focused); }}
       adjustable={display.adjustable}
       value={display.value}
       min={display.bounds.minPercent}
       max={display.bounds.maxPercent}
-      onResize={display.resize}
-      onReset={display.reset}
-      verticalPosition={display.verticalPosition}
-      onPan={display.setVerticalPosition}
+      onResize={viewport.resize}
+      onReset={viewport.reset}
+      onCommit={viewport.commit}
+      following={viewport.following}
+      onFollow={isController ? undefined : viewport.follow}
+      saveError={viewport.saveError}
     />
-  ) : null;
+  );
   const myAnswer = state.quiz ? state.answers[state.quiz.id]?.[userId] : undefined;
   const tally = useMemo(() => {
     if (!state.quiz) return [];
@@ -1694,6 +1714,13 @@ export function LiveShell({
 
             {!isController && renderPage?.type === "doc" && <div aria-hidden="true" className="absolute inset-0 z-40 touch-none" />}
           </div>
+
+          {focusMode && (
+            <ClassroomFocusOverlay scope={`${userId}:${role}`} size={display.size}
+              students={myRole === "student" && !showAllStudents ? rosterGridStudents.filter((student) => student.userId === userId) : rosterGridStudents}
+              verticalPosition={display.verticalPosition} onPan={viewport.pan} onCommit={viewport.commit}
+              onStar={(student) => appendStar(student, "award")} onUndo={(student) => appendStar(student, "undo")} />
+          )}
 
           {isController && toolbarStore && !teacherLayoutV2 && !focusMode && (
             <div className="absolute bottom-3 left-1/2 z-50 flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-center">
