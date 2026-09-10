@@ -45,7 +45,7 @@ describe("recontact lists keep the shared field query before pagination", () => 
   it("keeps legacy responsibility scope and lets the common menu explicitly switch to all", async () => {
     const mine = await loadStudentStageFieldPage({ ...base, scope: "mine" }, context, "owner-a");
     expect(source.mock.calls[0][0].scope).toBe("mine"); expect(mine.count).toBe(100);
-    expect(mine.fieldView.facets.scope.options.map(option => option.value)).toEqual(["all", "mine", "unassigned"]);
+    expect(mine.fieldView.facets.scope.options.map(option => option.value)).toEqual(["all", "mine", "group", "unassigned"]);
     source.mockClear();
     await loadStudentStageFieldPage({ ...base, scope: "mine", fields: encoded({}) }, context, "owner-a");
     expect(source.mock.calls[0][0].scope).toBe("all");

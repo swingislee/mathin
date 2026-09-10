@@ -2,13 +2,12 @@ import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { getBusinessRecordRevisionAction, saveBusinessRecordRevisionAction } from '@/features/school/business-record-revision-actions';
 import { businessRevisionChanges, revisionFieldValue, type BusinessRecordRevisionContext } from '@/features/school/business-record-revision-contract';
 
-const db = vi.hoisted(()=>({ rpc:vi.fn(), role:'admin', user:true }));
-vi.mock('@/lib/auth',()=>({getProfile:async()=>({role:db.role})}));
+const db = vi.hoisted(()=>({ rpc:vi.fn(), user:true }));
 vi.mock('@/lib/supabase/server',()=>({createClient:async()=>({auth:{getUser:async()=>({data:{user:db.user?{id:'actor'}:null}})},rpc:db.rpc})}));
 const recordId='10000000-0000-4000-8000-000000000001', version='a'.repeat(32);
 const assessment = { kind:'assessment' as const,recordId,expectedVersion:version,reason:'更正日期',values:{assessment_results:{assessed_on:'2024-02-29',assessment_band:'a_plus',score:null,strengths:'修订反馈'}} };
 
-beforeEach(()=>{db.role='admin';db.user=true;db.rpc.mockReset();vi.stubEnv('NODE_ENV','development');vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL','http://127.0.0.1:35421');});
+beforeEach(()=>{db.user=true;db.rpc.mockReset();vi.stubEnv('NODE_ENV','development');vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL','http://127.0.0.1:35421');});
 afterEach(()=>vi.unstubAllEnvs());
 describe('historical business revision actions',()=>{
   it('loads the exact record using the authenticated client',async()=>{
@@ -40,17 +39,14 @@ describe('historical business revision actions',()=>{
     expect(await saveBusinessRecordRevisionAction(assessment)).toEqual({ok:false,code:'REVISION_CONFLICT'});
     expect(db.rpc).toHaveBeenCalledTimes(1);
   });
-  it('requires the existing local administrator scope for both read and write',async()=>{
-    for(const role of ['staff','student','parent']) {
-      db.role=role;
-      expect(await getBusinessRecordRevisionAction({kind:'activity',recordId})).toEqual({ok:false,code:'FORBIDDEN'});
-      expect(await saveBusinessRecordRevisionAction(assessment)).toEqual({ok:false,code:'FORBIDDEN'});
-    }
-    db.role='admin';vi.stubEnv('NODE_ENV','production');
+  it('uses authenticated database subject permissions in every deployment environment',async()=>{
+    vi.stubEnv('NODE_ENV','production');
+    db.rpc.mockResolvedValue({data:'revision-id',error:null});
+    expect(await saveBusinessRecordRevisionAction(assessment)).toEqual({ok:true,data:'revision-id'});
+    db.rpc.mockResolvedValue({data:null,error:{message:'FORBIDDEN'}});
+    expect(await getBusinessRecordRevisionAction({kind:'activity',recordId})).toEqual({ok:false,code:'FORBIDDEN'});
     expect(await saveBusinessRecordRevisionAction(assessment)).toEqual({ok:false,code:'FORBIDDEN'});
-    vi.stubEnv('NODE_ENV','development');vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL','https://supabase.mathin.club');
-    expect(await saveBusinessRecordRevisionAction(assessment)).toEqual({ok:false,code:'FORBIDDEN'});
-    expect(db.rpc).not.toHaveBeenCalled();
+    expect(db.rpc).toHaveBeenCalledTimes(3);
   });
   it('rejects unsigned requests',async()=>{
     db.user=false;

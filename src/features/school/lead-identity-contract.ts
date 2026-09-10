@@ -1,7 +1,7 @@
 /** Client-safe contracts for explicit Lead -> Family / Contact / Student resolution. */
 import type { LeadPoolRow } from "./lead-contract";
 
-export type LeadIdentitySubject = Pick<LeadPoolRow, "id" | "provisionalStudentName" | "gradeHint" | "phone" | "status" | "ownerId">;
+export type LeadIdentitySubject = Pick<LeadPoolRow, "id" | "provisionalStudentName" | "gradeHint" | "phone" | "status" | "ownerId" | "canEdit">;
 
 /** 有过真实接通（包括暂无意向）即可确认身份；未接通和错号不算有效首联。 */
 export function leadContactAllowsIdentity(outcome: string | null): boolean {

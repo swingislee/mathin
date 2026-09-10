@@ -24,6 +24,8 @@ import { FilterBar, FilterSearchInput } from "./FilterBar";
 import { FollowupPrimaryFilter } from "./FollowupPrimaryFilter";
 import { LeadPoolPagination } from "./LeadPoolPagination";
 import { StudentStageAssignmentControl, StudentStageOwnerControl } from "./StudentStageAssignmentControl";
+import { SchoolCollaboratorControl } from "./SchoolCollaboratorControl";
+import type { SchoolCollaborationSettings } from "./school-collaboration-contract";
 import { StudentRecontactPlan } from "./StudentRecontactPlan";
 import { Student360Trigger } from "./Student360Sheet";
 import { StudentAssessmentCompletionHint } from "./StudentAssessmentCompletionHint";
@@ -34,11 +36,12 @@ import { defaultStudentEntryMode, replaceSavedStudent, STUDENT_RECONTACT_REASONS
 
 const Entry = dynamic(() => import("./StudentStageEntryLoader").then(m => m.StudentStageEntryLoader));
 
-export function StudentStageWorkspace({ data, filters, locale, currentUserId, canEnroll, canAssign, assignees, actions, timeZone, now, canPlan = false, canPlanOthers = false }: {
+export function StudentStageWorkspace({ data, filters, locale, currentUserId, canEnroll, canAssign, assignees, actions, timeZone, now, canPlan = false, canPlanOthers = false, collaboration }: {
   data: StudentStageData; filters: StudentStageFilters; locale: string; currentUserId: string;
   canEnroll: boolean; actions: ReactNode; timeZone: string; now?: number;
   canAssign: boolean; assignees: StudentStageAssignee[];
   canPlan?: boolean; canPlanOthers?: boolean;
+  collaboration?: SchoolCollaborationSettings;
 }) {
   const m = studentStageMessages(locale);
   const studentT = useTranslations("school.students");
@@ -102,7 +105,7 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
     setRows(current => current.flatMap(row => {
       if (!updates.has(row.key)) return [row];
       const subject = updates.get(row.key);
-      if (!subject || filters.scope === "mine" && subject.ownerId !== currentUserId || filters.scope === "unassigned" && subject.ownerId !== null) return [];
+      if (!subject || filters.scope === "mine" && !(subject.isParticipant ?? subject.ownerId === currentUserId) || filters.scope === "group" && !subject.inMyGroups || filters.scope === "unassigned" && subject.ownerId !== null) return [];
       if (!filterAndSortDashboardFields([subject], fields, fieldQuery, locale, timeZone).length) return [];
       return [subject];
     }));
@@ -185,10 +188,11 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
               {recontact && (row.sharedPhoneCount ?? 0) > 1 ? <span className="text-[10px] text-muted">{m.sharedPhone} · {row.sharedPhoneCount}</span> : null}</TableCell>
             <TableCell title={`${m.stages[row.stage]} · ${situation}`}><div className="flex min-w-0 items-center gap-1.5">
               <Badge variant="outline" className="min-w-0 max-w-full rounded-md px-1.5 py-0"><span className="truncate">{showStage ? `${m.stages[row.stage]} · ` : ""}{situation}</span></Badge>
-              <span className="ml-auto w-20 shrink-0" title={row.ownerName || m.unassigned}>{canAssign && !recontact ? <StudentStageOwnerControl row={row} assignees={assignees} locale={locale} disabled={busy}
-                onBusyChange={setBusy} onAssigned={assigned} /> : <span className="block truncate text-muted">{row.ownerName || m.unassigned}</span>}</span>
+              <span className="ml-auto w-20 shrink-0" title={row.ownerName || m.unassigned}>{canAssign && !collaboration?.canManage && !recontact
+                ? <StudentStageOwnerControl row={row} assignees={assignees} locale={locale} disabled={busy} onBusyChange={setBusy} onAssigned={assigned} />
+                : <span className="block truncate text-muted">{row.ownerName || m.unassigned}</span>}</span>
               {handled.has(row.key) ? <span role="img" aria-label={m.retained} title={m.retained} className="shrink-0 text-leaf-deep"><Check className="size-3.5" aria-hidden="true" /></span> : null}
-            </div></TableCell>
+            </div>{row.groups?.length ? <p className="truncate text-[10px] text-muted" title={row.groups.map(group => group.name).join("、")}>{row.groups.map(group => group.name).join(" · ")}</p> : null}</TableCell>
             {showBackground ? <TableCell title={[background, row.assessmentAt ? formatAt(row.assessmentAt) : ""].filter(Boolean).join(" · ")}><p className="truncate">{background}</p>
               <StudentAssessmentCompletionHint row={row} locale={locale} />
               {row.inferredSourceIds?.length && row.studentId ? <Link href={`/dashboard/students/${row.studentId}?tab=history#student-source-records`}><Badge variant="outline" className="mt-0.5 px-1 text-[10px]">{locale.startsWith("en") ? "Inferred · check when needed" : "资料待核对"}</Badge></Link>
@@ -197,6 +201,8 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
             <TableCell title={[row.note || m.noNote, row.lastContactAt ? formatAt(row.lastContactAt) : ""].filter(Boolean).join("\n")}><p className="truncate">{row.note || m.noNote}</p>
               {recontact && row.lastContactAt ? <p className="text-[10px] text-muted">{formatDashboardDate(row.lastContactAt, context, { time: false })}</p> : null}</TableCell>
             <TableCell><div className="flex items-center justify-end gap-1">
+              {collaboration?.canManage ? <SchoolCollaboratorControl row={row} settings={collaboration} locale={locale} disabled={busy}
+                onSaved={subject => setRows(current => replaceSavedStudent(current, row.key, subject))} /> : null}
               {row.canWrite ? <Button size="sm" variant="ghost" className="h-7 shrink-0 px-2 text-xs" disabled={busy} onClick={() => open(row, contactMode)}>{contactMode === "contact" ? m.contact : m.note}</Button> : null}
               {row.stage === "awaiting_assessment" && row.canContact ? <Button size="sm" variant="secondary" className="h-7 shrink-0 px-2 text-xs" disabled={busy} onClick={() => open(row, "invitation")}>{row.detail === "no_show" || row.detail === "cancelled" ? m.rebook : m.book}</Button>
                 : row.studentId && row.canWrite && row.stage !== "awaiting_first_contact" ? <Button size="sm" variant="secondary" className="h-7 shrink-0 px-2 text-xs" disabled={busy} onClick={() => open(row, "enrollment")}>{enrollmentLabel}</Button> : null}

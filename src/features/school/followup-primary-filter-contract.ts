@@ -9,7 +9,7 @@ export function leadWorkFilter(filters: LeadPoolFilters): typeof LEAD_WORK_FILTE
 
 /** 保留服务器搜索与分页大小；范围变化重新从第一页选择名单。 */
 export function leadWorkFilterQuery(filters: LeadPoolFilters, view: typeof LEAD_WORK_FILTERS[number], scope = filters.scope) {
-  const query = new URLSearchParams({ scope: view === "unassigned" ? "unassigned" : scope === "mine" ? "mine" : "all", pageSize: String(filters.pageSize) });
+  const query = new URLSearchParams({ scope: view === "unassigned" ? "unassigned" : scope === "mine" || scope === "group" ? scope : "all", pageSize: String(filters.pageSize) });
   if (view === "assigned") query.set("assignment", "assigned");
   if (filters.status) query.set("status", filters.status);
   if (filters.q) query.set("q", filters.q);

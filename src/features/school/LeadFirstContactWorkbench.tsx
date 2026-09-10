@@ -136,8 +136,8 @@ export function LeadContactEntryRow({
     setDetailsOpen(open);
     if (!open) rowRef.current?.focus({ preventScroll: true });
   };
-  const canEdit = canContact && Boolean(lead.ownerId) && lead.status !== "invalid" && lead.status !== "converted";
-  const canWriteNote = canContact && Boolean(lead.studentId);
+  const canEdit = canContact && lead.canEdit === true && lead.status !== "invalid" && lead.status !== "converted";
+  const canWriteNote = canContact && lead.canEdit === true && Boolean(lead.studentId);
   const canUseEntry = canEdit || canWriteNote;
   const submittedInputRef = useRef<LeadContactInput | null>(null);
   const [outcome, setOutcome] = useState<LeadContactOutcome | "">("");

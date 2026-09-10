@@ -212,8 +212,7 @@ export function LeadIdentityControl({ lead, onConfirmed, label }: {
         variant="secondary"
         size="sm"
         className="h-7 gap-1 px-2 text-xs"
-        disabled={!lead.ownerId}
-        title={!lead.ownerId ? t("identityNeedsOwner") : undefined}
+        disabled={!lead.canEdit}
         onClick={openControl}
       >
         <UserRoundCheck size={13} />

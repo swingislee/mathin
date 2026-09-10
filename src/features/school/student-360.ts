@@ -780,6 +780,10 @@ export async function getStudent360Snapshot(
     .filter((row) => row.status === "open")
     .sort((left, right) => left.due_at.localeCompare(right.due_at))[0];
   const primaryLead = (subject.leadId ? leadById.get(subject.leadId) : null) ?? leads[0] ?? null;
+  const { data: canEditLead, error: collaborationError } = primaryLead
+    ? await (supabase.rpc as unknown as (name: string, args: Record<string, unknown>) => Promise<{ data: boolean | null; error: { message: string } | null }>)("can_edit_school_lead", { p_lead_id: primaryLead.id, p_uid: user.id })
+    : { data: false, error: null };
+  if (collaborationError) throw new Error(collaborationError.message);
   const assignedId = student?.assigned_to ?? primaryLead?.owner_id ?? null;
   const cappedCollections = [
     linkedLeads,
@@ -817,10 +821,10 @@ export async function getStudent360Snapshot(
       })),
     identityCreation: !studentId && primaryLead ? {
       lead: { id: primaryLead.id, provisionalStudentName: primaryLead.provisional_student_name, gradeHint: primaryLead.grade_hint,
-        phone: primaryLead.phone, status: primaryLead.status as LeadStatus, ownerId: primaryLead.owner_id },
+        phone: primaryLead.phone, status: primaryLead.status as LeadStatus, ownerId: primaryLead.owner_id, canEdit: Boolean(canEditLead) },
       contactEstablished: !["invalid", "converted"].includes(primaryLead.status)
         && communicationRows.some((row) => row.lead_id === primaryLead.id && leadContactAllowsIdentity(row.outcome)),
-      canManage: Boolean(primaryLead.owner_id) && (primaryLead.owner_id === user.id || permissions.has("student.view.all"))
+      canManage: Boolean(canEditLead)
         && permissions.has("followup.write") && permissions.has("student.edit"),
     } : null,
     identity: {

@@ -30,7 +30,7 @@ export async function loadStudentListQueryPage(filters: StudentStageFilters, con
     p_locale: context.locale.startsWith("en") ? "en" : "zh", p_labels: studentListFieldLabels(fields),
   }));
   const fieldView = { query, facets: studentListFacets(facets, fields, context.locale) };
-  // 范围菜单支持直接切换，候选固定提供三个授权范围入口。
+  // 范围菜单支持直接切换；筛选与实际读写权限分别由数据库验证。
   fieldView.facets.scope = { options: fields.scope.kind === "enum" ? [...fields.scope.options ?? []] : [], days: [] };
   return { ...page, fieldView };
 }

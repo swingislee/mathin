@@ -90,7 +90,7 @@ describe("student stage workspace wiring", () => {
   });
   it.each([
     { ownerId: "owner", ownerName: "原负责人", message: "登记需要相应的办理权限" },
-    { ownerId: null, ownerName: "原表学服", message: "此档案尚未分配负责人" },
+    { ownerId: null, ownerName: "原表学服", message: "编辑需要相应的参与经历和岗位权限" },
   ])("explains the actual read-only restriction for $ownerName", async ({ message, ...owner }) => {
     await render("awaiting_assessment", { ...owner, canWrite: false, canContact: false });
     const summary = container.querySelector<HTMLElement>("[data-student-stage-row]")!;

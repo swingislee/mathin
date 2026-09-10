@@ -21,7 +21,7 @@ describe("student list database page adapter", () => {
     expect(rpc).toHaveBeenCalledTimes(1);
     expect(rpc).toHaveBeenCalledWith("list_student_records_page", expect.objectContaining({ p_scope: "mine", p_population: "work", p_page: 3, p_page_size: 20, p_locale: "en" }));
     expect(result).toMatchObject({ count: 41, page: 3, totalPages: 3, rows: [{ detailLoaded: false }], counts: { awaiting_renewal: 125 } });
-    expect(result.fieldView?.facets.scope.options.map(option => option.value)).toEqual(["all", "mine", "unassigned"]);
+    expect(result.fieldView?.facets.scope.options.map(option => option.value)).toEqual(["all", "mine", "group", "unassigned"]);
     expect(result.fieldView?.facets.owner.options.map(option => option.label)).toEqual(["同名 · owner-b", "同名 · owner-a"]);
   });
   it("normalizes field input, passes translated labels and retains the search population", async () => {

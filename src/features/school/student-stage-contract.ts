@@ -26,6 +26,9 @@ export interface StudentStageRow {
   name: string; phone: string; grade: number | null; gradeText: string;
   ownerId: string | null; ownerName: string; stage: StudentStage; detail: string;
   teacherId?: string | null; teacherName?: string;
+  participants?: Array<{ userId: string; name: string; role: "school_support" | "assessment_teacher" | "teacher" | "participant" }>;
+  groups?: Array<{ id: string; name: string }>;
+  isParticipant?: boolean; inMyGroups?: boolean;
   note: string; lastContactAt: string | null; nextContactAt: string | null;
   score: number | null; assessmentBand: string | null; assessmentAt: string | null;
   assessmentSource?: "assessment" | "class_band" | null;
@@ -46,7 +49,7 @@ export interface StudentStageData {
   reasonCounts?: Partial<Record<StudentRecontactReason, number>>;
 }
 export interface StudentStageFilters {
-  stage: StudentStage; scope: "mine" | "all" | "unassigned"; q: string;
+  stage: StudentStage; scope: "mine" | "all" | "unassigned" | "group"; q: string;
   population?: "work" | "records" | "recontact";
   reason?: StudentRecontactReason;
   detail: string; page: number; pageSize: FollowupPageSize;
@@ -65,7 +68,7 @@ export function parseStudentStageFilters(raw: Record<string, string | string[] |
   const reason = pick("reason");
   return { stage, q, population: recontact ? "recontact" : q || pick("population") === "records" ? "records" : "work",
     ...(recontact ? { reason: STUDENT_RECONTACT_REASONS.includes(reason as StudentRecontactReason) ? reason as StudentRecontactReason : "unreachable" as const } : {}),
-    scope: scope === "mine" || scope === "all" || scope === "unassigned" ? scope : defaultScope,
+    scope: scope === "mine" || scope === "all" || scope === "unassigned" || scope === "group" ? scope : defaultScope,
     detail: !q && (STUDENT_STAGE_DETAILS[stage] as readonly string[]).includes(detail) ? detail : "",
     page: Number.isSafeInteger(page) && page > 0 ? Math.min(page, 1_000_000) : 1,
     pageSize: followupPageSize(pick("pageSize")), ...(pick("fields") ? { fields: pick("fields")!.slice(0, 16_384) } : {}) };

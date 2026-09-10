@@ -16,7 +16,7 @@ export const LEAD_DEFAULT_PAGE_SIZE = FOLLOWUP_DEFAULT_PAGE_SIZE;
 
 export type LeadStatus = (typeof LEAD_STATUSES)[number];
 export type LeadPageSize = (typeof LEAD_PAGE_SIZES)[number];
-export type LeadPoolScope = "unassigned" | "mine" | "all";
+export type LeadPoolScope = "unassigned" | "mine" | "all" | "group";
 export type LeadContactOutcome = "unreachable" | "connected" | "declined" | "invalid_number";
 export type LeadInterestLevel = "A" | "B" | "C";
 
@@ -56,6 +56,7 @@ export interface LeadPoolRow {
   status: LeadStatus;
   ownerId: string | null;
   ownerName: string;
+  canEdit?: boolean;
   /** 已完成身份确认后，线索对应的真实学生；未确认线索保持为空。 */
   studentId?: string | null;
   suggestedStudentId: string | null;

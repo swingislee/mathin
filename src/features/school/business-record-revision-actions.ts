@@ -2,12 +2,10 @@
 
 import { z } from 'zod';
 import { actionError, type ActionResult } from '@/lib/action-result';
-import { getProfile } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { ACTIVITY_KINDS } from './activity-kinds';
 import { STORED_ASSESSMENT_BANDS } from './activity-workflow-contract';
 import { COMMON_CODES, dateOnly, intInRange, money, parse, requiredText, text, uuid } from './actions/schemas';
-import { isLocalHistoryArchiveEnvironment } from './history-archive-contract';
 import { BUSINESS_HISTORY_KINDS } from './student-business-history-contract';
 import type { BusinessRecordRevisionContext, BusinessRecordRevisionTarget, RevisionValues } from './business-record-revision-contract';
 
@@ -31,7 +29,6 @@ async function revisionClient() {
   const client = await createClient();
   const {data:{user}} = await client.auth.getUser();
   if(!user) throw new Error('UNAUTHENTICATED');
-  if(!isLocalHistoryArchiveEnvironment(process.env.NODE_ENV,process.env.NEXT_PUBLIC_SUPABASE_URL) || (await getProfile(user.id))?.role !== 'admin') throw new Error('FORBIDDEN');
   return client;
 }
 export async function getBusinessRecordRevisionAction(input: BusinessRecordRevisionTarget): Promise<ActionResult<BusinessRecordRevisionContext>> {

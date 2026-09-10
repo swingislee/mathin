@@ -6,7 +6,7 @@ const db = vi.hoisted(() => ({ calls: [] as unknown[][] }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ from: (table: string) => {
   db.calls.push(["from", table]);
-  const query = Object.fromEntries(["select", "is", "eq", "not", "or", "in", "order", "range"].map(method => [method,
+  const query = Object.fromEntries(["select", "is", "eq", "filter", "not", "or", "in", "order", "range"].map(method => [method,
     (...args: unknown[]) => { db.calls.push([method, ...args]); return query; },
   ])) as Record<string, (...args: unknown[]) => unknown>;
   query.returns = async () => ({ data: [], error: null, count: 42 });
@@ -30,14 +30,15 @@ describe("follow-up primary work filters", () => {
     expect(new URLSearchParams(leadWorkFilterQuery({ ...filters, scope: "unassigned" }, "assigned")).get("scope")).toBe("all");
   });
   it("keeps limited users in their permitted scope and accepts only the known assignment query", () => {
-    expect(parseLeadPoolFilters({ scope: "all", assignment: "assigned" }, false)).toMatchObject({ scope: "mine", assignment: "assigned" });
+    expect(parseLeadPoolFilters({ scope: "all", assignment: "assigned" }, false)).toMatchObject({ scope: "all", assignment: "assigned" });
+    expect(parseLeadPoolFilters({ scope: "group" }, false).scope).toBe("group");
     expect(parseLeadPoolFilters({ scope: "unassigned", assignment: "assigned" }, true).assignment).toBeUndefined();
     expect(parseLeadPoolFilters({ assignment: "owner_id.not.is.null" }, true).assignment).toBeUndefined();
   });
   it("applies assigned filtering before database pagination and the exact count, alongside mine and search", async () => {
     const result = await listLeadPool("owner", { ...filters, assignment: "assigned" });
     expect(result).toEqual({ leads: [], count: 42, pageSize: 50 });
-    expect(db.calls).toContainEqual(["eq", "owner_id", "owner"]);
+    expect(db.calls).toContainEqual(["filter", "is_participant", "eq", true]);
     expect(db.calls).toContainEqual(["not", "owner_id", "is", null]);
     expect(db.calls).toContainEqual(["eq", "status", "uncontacted"]);
     expect(db.calls).toContainEqual(["range", 150, 199]);

@@ -27,6 +27,7 @@ interface LeadDbRow {
   student_id: string | null;
   suggested_student_id: string | null;
   created_at: string;
+  can_edit: boolean;
 }
 
 interface LeadSourceDbRow {
@@ -92,7 +93,7 @@ export function parseLeadPoolFilters(
   const pageSize = parseLeadPageSize(searchParams.pageSize);
   const scope: LeadPoolScope = requestedScope === "mine"
     ? "mine"
-    : requestedScope === "unassigned"
+    : requestedScope === "group" ? "group" : requestedScope === "all" ? "all" : requestedScope === "unassigned"
       ? "unassigned"
       : canScopeAll ? "all" : "mine";
   return {
@@ -122,7 +123,7 @@ function sourceTimestamp(row: LeadSourceDbRow): number {
 }
 
 export async function listLeadPool(
-  userId: string,
+  _userId: string,
   filters: LeadPoolFilters,
   selectedLeadIds?: readonly string[],
 ): Promise<{ leads: LeadPoolRow[]; count: number; pageSize: LeadPageSize }> {
@@ -130,13 +131,14 @@ export async function listLeadPool(
   const supabase = await createClient();
   const offset = selectedLeadIds ? 0 : (filters.page - 1) * filters.pageSize;
   let query = supabase
-    .from((selectedLeadIds ? "leads" : "operational_leads") as "leads")
+    .from((selectedLeadIds ? "collaborative_lead_records" : "collaborative_leads") as "leads")
     .select(
-      "id,provisional_student_name,phone,grade_hint,grade_text,status,owner_id,student_id,suggested_student_id,created_at,note",
+      "id,provisional_student_name,phone,grade_hint,grade_text,status,owner_id,student_id,suggested_student_id,created_at,note,can_edit",
       { count: "exact" },
     );
   if (filters.scope === "unassigned") query = query.is("owner_id", null);
-  if (filters.scope === "mine") query = query.eq("owner_id", userId);
+  if (filters.scope === "mine") query = query.filter("is_participant", "eq", true);
+  if (filters.scope === "group") query = query.filter("in_my_groups", "eq", true);
   if (filters.assignment === "assigned") query = query.not("owner_id", "is", null);
   if (filters.status) query = query.eq("status", filters.status);
   if (filters.q) query = query.or(leadSearchFilter(filters.q));
@@ -299,6 +301,7 @@ export async function listLeadPool(
         // semantic cleanup migration is applied to a development database.
         status: row.status === "unassigned" ? "uncontacted" : row.status,
         ownerId: row.owner_id,
+        canEdit: row.can_edit,
         studentId: row.student_id,
         ownerName: row.owner_id ? ownerNames.get(row.owner_id) ?? "" : "",
         suggestedStudentId: row.suggested_student_id,

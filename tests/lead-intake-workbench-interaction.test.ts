@@ -166,7 +166,7 @@ describe("compact lead intake worksheet", () => {
     await render(); await click(checkbox(ids[0])); await choose(t.chooseAssignee, "owner-2");
     await act(async () => { button(t.assignSelected).click(); button(t.assignSelected).click(); });
     expect(actions.assign).toHaveBeenCalledTimes(1); expect(checkbox(ids[1]).disabled).toBe(true);
-    expect(select(t.scopeLabel).disabled).toBe(true); expect(select(t.chooseAssignee).disabled).toBe(true);
+    expect(select("查看范围").disabled).toBe(true); expect(select(t.chooseAssignee).disabled).toBe(true);
     expect([...container.querySelectorAll<HTMLButtonElement>("[data-followup-primary-filter] button")].every(button => button.disabled)).toBe(true);
     expect(button(t.clearSelection).disabled).toBe(true);
     await act(async () => finish({ ok: true }));
@@ -180,10 +180,10 @@ describe("compact lead intake worksheet", () => {
   });
   it("keeps a permission-limited view browsable without assignment or identity-write controls", async () => {
     await render({ canAssign: false });
-    expect(container.querySelector("[role=checkbox]")).toBeNull(); expect(select(t.scopeLabel)).toBeNull();
-    expect(container.querySelector('[data-followup-primary-filter]')?.textContent).not.toContain(zh.school.followupFilters.leads_unassigned);
-    expect(container.querySelectorAll('[data-followup-primary-filter] button')).toHaveLength(1);
-    expect(button(zh.school.followupFilters.leads_assigned).disabled).toBe(true);
+    expect(container.querySelector("[role=checkbox]")).toBeNull(); expect(select("查看范围")).not.toBeNull();
+    expect(container.querySelector('[data-followup-primary-filter]')?.textContent).toContain(zh.school.followupFilters.leads_unassigned);
+    expect(container.querySelectorAll('[data-followup-primary-filter] button')).toHaveLength(3);
+    expect(button(zh.school.followupFilters.leads_assigned).disabled).toBe(false);
     await key(row(ids[0]), "Enter");
     expect(container.querySelector("[data-lead-intake-details]")).not.toBeNull();
     expect(container.querySelector("[data-identity-control]")).toBeNull();
