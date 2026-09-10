@@ -23,6 +23,7 @@ export function studentStageMessages(locale: string) {
   return {
     stages, details, title: en ? "Students" : "学生", name: en ? "Student / parent" : "学生／家长", phone: en ? "Phone" : "联系电话", state: en ? "Current situation" : "当前情况",
     background: en ? "Assessment / learning" : "测评／学习", owner: en ? "Learning support" : "学服", teacher: en ? "Teacher" : "老师", recent: en ? "Latest note" : "最近记录",
+    relatedGroups: en ? "Related groups: " : "关联组：",
     classBandReference: en ? "Class band reference" : "班型参考", learningBand: en ? "Learning ability" : "学习力",
     completedAssessment: en ? "Assessment completed" : "已有完成测评", assessmentCandidates: en ? "Assessment records to verify" : "测评资料待核对",
     nextContact: en ? "Next contact" : "下次联系", actions: en ? "Actions" : "操作", search: en ? "Find by name or phone across stages" : "跨阶段搜索姓名、手机号",

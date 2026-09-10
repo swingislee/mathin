@@ -59,7 +59,7 @@ describe("student stage workspace wiring", () => {
   });
   it.each(STUDENT_STAGE_TABS)("offers row assignment and the same batch control in %s", async stage => {
     await render(stage);
-    expect(container.querySelectorAll("thead [data-dashboard-table-menu]")).toHaveLength(stage === "awaiting_first_contact" || stage === "awaiting_assessment" ? 4 : 6);
+    expect(container.querySelectorAll("thead [data-dashboard-table-menu]")).toHaveLength(stage === "awaiting_first_contact" || stage === "awaiting_assessment" ? 5 : 7);
     expect(container.querySelector("[data-dashboard-search]")).not.toBeNull();
     expect(container.querySelector("[data-followup-person]")).not.toBeNull();
     expect(container.querySelector('[aria-label="分配 · 示例学生"]')).not.toBeNull();
@@ -69,13 +69,14 @@ describe("student stage workspace wiring", () => {
     expect(container.querySelector('[aria-label="勾选学生 · 示例学生"]')?.getAttribute("aria-checked")).toBe("true");
     expect(actions.assign).not.toHaveBeenCalled();
   });
-  it("shows the missed call and source learning support in one cell", async () => {
+  it("shows the missed call and source learning support in separate columns", async () => {
     await render("awaiting_first_contact", { ownerId: null, ownerName: "原表学服", detail: "unreachable", canWrite: false });
     const summary = container.querySelector("[data-student-stage-row]")!;
     const cell = [...summary.querySelectorAll("td")].find(cell => cell.textContent?.includes("需再次联系"))!;
-    expect(cell.textContent).toContain("原表学服");
+    expect(cell.textContent).not.toContain("原表学服");
+    expect(cell.nextElementSibling?.textContent).toContain("原表学服");
     expect(summary.textContent).not.toContain("待分配");
-    expect(container.querySelector("thead")?.textContent).toContain("当前情况 · 学服");
+    expect(Array.from(container.querySelectorAll("thead th"), cell => cell.textContent)).toEqual(expect.arrayContaining(["当前情况", "学服"]));
   });
   it("opens and saves an authorized unassigned record without requiring account linking", async () => {
     await render("awaiting_first_contact", { ownerId: null, ownerName: "原表学服", canWrite: true, canContact: true });
