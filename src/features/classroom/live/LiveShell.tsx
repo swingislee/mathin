@@ -129,6 +129,7 @@ import { useClassroomViewportGestures } from "./useClassroomViewportGestures";
 import { usePalmEraserSettings } from "../input/usePalmEraserSettings";
 import { ClassroomPalmEraserSettings } from "./ClassroomPalmEraserSettings";
 import { ClassroomFocusOverlay } from "./ClassroomFocusOverlay";
+import { ClassroomViewportControls } from "./ClassroomViewportControls";
 import { ClassroomPageControls, ClassroomToolsMenu } from "./ClassroomControlMenus";
 import { resolveClassroomTeachingSurface } from "./classroom-teaching-surface";
 import {
@@ -1033,11 +1034,7 @@ export function LiveShell({
       onFocus={(focused) => { setActiveArea("main"); viewport.setFocused(focused); }}
       adjustable={display.adjustable}
       value={display.value}
-      min={display.bounds.minPercent}
-      max={display.bounds.maxPercent}
-      onResize={viewport.resize}
       onReset={viewport.reset}
-      onCommit={viewport.commit}
       following={viewport.following}
       onFollow={isController ? undefined : viewport.follow}
       saveError={viewport.saveError}
@@ -1744,10 +1741,15 @@ export function LiveShell({
             {!isController && renderPage?.type === "doc" && <div aria-hidden="true" className="absolute inset-0 z-40 touch-none" />}
           </div>
 
+          {(focusMode || display.adjustable) && (
+            <ClassroomViewportControls focused={focusMode} height={display.size.height}
+              value={display.value} min={display.bounds.minPercent} max={display.bounds.maxPercent}
+              verticalPosition={display.verticalPosition} onResize={viewport.resize} onPan={viewport.pan} onCommit={viewport.commit} />
+          )}
+
           {focusMode && (
             <ClassroomFocusOverlay scope={`${userId}:${role}`} size={display.size}
               students={myRole === "student" && !showAllStudents ? rosterGridStudents.filter((student) => student.userId === userId) : rosterGridStudents}
-              verticalPosition={display.verticalPosition} onPan={viewport.pan} onCommit={viewport.commit}
               onStar={(student) => appendStar(student, "award")} onUndo={(student) => appendStar(student, "undo")} />
           )}
 

@@ -39,17 +39,33 @@ describe("classroom viewport geometry and bounded snapshot", () => {
     expect(compareViewport({ ...parsed, writer: "z-window" }, parsed)).toBeGreaterThan(0);
   });
 
-  it("fits thirty 44px student cards at full screen and keeps the closed handle reachable", () => {
-    const desktop = classroomFocusDockLayout(1920, 1080, 30, true, true);
-    expect(desktop.columns).toBe(2);
-    expect(desktop.height).toBeGreaterThanOrEqual(15 * 44 + 44);
-    expect(desktop.height + 88).toBeLessThanOrEqual(1080);
+  it("keeps a compact scrollable roster inside the viewport at all four edges", () => {
+    const desktop = classroomFocusDockLayout(1920, 1080, 30, { x: 1, y: 0 });
+    expect(desktop.columns).toBe(3);
+    expect(desktop.height).toBeLessThanOrEqual(336);
+    expect(desktop.height).toBeLessThan(10 * 44);
     for (const [width, height] of [[390, 844], [1024, 768], [1920, 1080]]) {
-      for (const open of [true, false]) {
-        const dock = classroomFocusDockLayout(width, height, 60, open, true);
-        expect(dock.width + dock.xRange + 8).toBeLessThanOrEqual(width);
-        expect(dock.height + dock.yRange + 8).toBeLessThanOrEqual(height - 72);
+      for (const x of [0, 1]) for (const y of [0, 0.5, 1]) {
+        const dock = classroomFocusDockLayout(width, height, 60, { x, y });
+        expect(dock.left).toBeGreaterThanOrEqual(0);
+        expect(dock.left + dock.width).toBeLessThanOrEqual(width);
+        expect(dock.top).toBeGreaterThanOrEqual(0);
+        expect(dock.top + dock.height).toBeLessThanOrEqual(height - 80);
+        expect(dock.anchorLeft).toBe(x === 0 ? 0 : width - 44);
+        expect(dock.left).toBe(x === 0 ? 0 : width - dock.width);
       }
+    }
+  });
+
+  it("opens downward in the upper half and upward in the lower half around a stable button", () => {
+    for (const y of [0.1, 0.9]) {
+      const small = classroomFocusDockLayout(1280, 720, 2, { x: 0.7, y });
+      const large = classroomFocusDockLayout(1280, 720, 30, { x: 0.7, y });
+      expect(small.anchorLeft).toBe(large.anchorLeft);
+      expect(small.anchorTop).toBe(large.anchorTop);
+      expect(large.expandUp).toBe(y > 0.5);
+      if (large.expandUp) expect(large.top + large.height).toBeLessThan(large.anchorTop);
+      else expect(large.top).toBeGreaterThan(large.anchorTop + 44);
     }
   });
 });

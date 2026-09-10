@@ -271,6 +271,7 @@ export function StudentCard({
   learningStatusLabel,
   compact = false,
   touchScroll = false,
+  flat = false,
   onStar,
   onUndo,
 }: {
@@ -288,6 +289,7 @@ export function StudentCard({
   learningStatusLabel?: string;
   compact?: boolean;
   touchScroll?: boolean;
+  flat?: boolean;
   onStar: () => void;
   onUndo: () => void;
 }) {
@@ -353,6 +355,8 @@ export function StudentCard({
           "relative rounded-xl border",
           learningCardClass,
           compact ? "flex min-h-11 min-w-0 flex-col justify-center gap-0.5 overflow-hidden bg-card/80 px-1.5 py-1 backdrop-blur-[2px]" : "flex min-h-11 items-center gap-2 px-3",
+          flat && "rounded-md backdrop-blur-none",
+          flat && !learningStatus && "border-transparent bg-transparent",
         )}
       >
         {content}
@@ -371,6 +375,8 @@ export function StudentCard({
           touchScroll ? "touch-pan-y" : "touch-none",
           learningCardClass,
           compact ? "min-w-0 flex-col items-stretch justify-center gap-0.5 overflow-hidden bg-card/80 px-1.5 py-1 backdrop-blur-[2px]" : "items-center gap-2 px-3",
+          flat && "rounded-md backdrop-blur-none",
+          flat && !learningStatus && "border-transparent bg-transparent",
         )}
         onPointerDown={() => {
           longFired.current = false;

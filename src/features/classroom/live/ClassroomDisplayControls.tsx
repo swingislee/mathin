@@ -4,21 +4,16 @@ import { Maximize2, Minimize2, SlidersHorizontal } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Slider } from "@/components/ui/slider";
 import type { ReactNode } from "react";
 
 export function ClassroomDisplayControls({
-  focused, onFocus, adjustable, value, min, max, onResize, onReset, onCommit, following, onFollow, saveError, inputSettings,
+  focused, onFocus, adjustable, value, onReset, following, onFollow, saveError, inputSettings,
 }: {
   focused: boolean;
   onFocus: (focused: boolean) => void;
   adjustable: boolean;
   value: number;
-  min: number;
-  max: number;
-  onResize: (percent: number) => void;
   onReset: () => void;
-  onCommit: () => void;
   following?: boolean;
   onFollow?: () => void;
   saveError?: boolean;
@@ -41,9 +36,6 @@ export function ClassroomDisplayControls({
             <span>{t("coursewareDisplaySize")}</span>
             <output className="font-mono text-xs text-muted">{adjustable ? t("displayWidthPercent", { value: Math.round(value) }) : "4:3"}</output>
           </div>
-          <Slider aria-label={t("coursewareDisplaySize")} aria-valuetext={t("displayWidthPercent", { value: Math.round(value) })}
-            value={[value]} min={min} max={max} step={1} disabled={!adjustable || min === max}
-            onValueChange={([percent]) => onResize(percent)} onValueCommit={onCommit} className="min-h-8" />
           <p className="text-xs leading-relaxed text-muted">{t(!adjustable ? "displaySizeNarrowHint" : focused ? "displaySizeFocusHint" : "displaySizeHint")}</p>
           {onFollow && <Button type="button" variant="secondary" size="sm" className="w-full" disabled={following} onClick={onFollow}>{t(following ? "followingTeacherViewport" : "followTeacherViewport")}</Button>}
           {saveError && <p role="status" className="text-xs text-crater">{t("displaySyncSaveError")}</p>}

@@ -44,12 +44,22 @@ export function clampClassroomDisplayPercent(value: number, bounds: ReturnType<t
   return Math.max(bounds.minPercent, Math.min(bounds.maxPercent, Number.isFinite(value) ? value : bounds.maxPercent));
 }
 
-/** 名单在可见屏幕内分列，44px 行保留触控面积，长名单在内部滚动。 */
-export function classroomFocusDockLayout(width: number, height: number, count: number, open: boolean, pan: boolean) {
-  const availableHeight = Math.max(44, height - 88);
-  const rows = Math.max(1, Math.floor((availableHeight - 48) / 46));
+/** 固定 44px 按钮作为位置锚点，名单向空余较多的一侧展开；底部为课堂工具条留空。 */
+export function classroomFocusDockLayout(width: number, height: number, count: number, position: { x: number; y: number }) {
+  const safeWidth = Math.max(44, width), safeHeight = Math.max(44, height - 80);
+  const xRange = safeWidth - 44, yRange = safeHeight - 44;
+  const anchorLeft = Math.max(0, Math.min(1, position.x)) * xRange;
+  const anchorTop = Math.max(0, Math.min(1, position.y)) * yRange;
+  const below = safeHeight - anchorTop - 44, above = anchorTop;
+  const expandUp = above > below;
+  const availableHeight = Math.max(0, Math.min(336, Math.max(above, below) - 6));
+  const rows = Math.max(1, Math.floor((availableHeight - 8) / 46));
   const columns = Math.max(1, Math.min(width >= 1000 ? 3 : width >= 500 ? 2 : 1, Math.ceil(count / rows)));
-  const dockWidth = open ? columns * 108 : 44;
-  const dockHeight = open ? Math.min(availableHeight, Math.ceil(count / columns) * 46 + 48) : 44;
-  return { columns, width: dockWidth, height: dockHeight, xRange: Math.max(0, width - dockWidth - (pan ? 60 : 16)), yRange: Math.max(0, height - dockHeight - 88) };
+  const dockWidth = Math.min(safeWidth, columns * 100 + 8);
+  const dockHeight = Math.min(availableHeight, Math.ceil(count / columns) * 46 + 8);
+  return {
+    columns, width: dockWidth, height: dockHeight, xRange, yRange, anchorLeft, anchorTop, expandUp,
+    left: Math.max(0, Math.min(safeWidth - dockWidth, anchorLeft + 22 - dockWidth / 2)),
+    top: expandUp ? anchorTop - 6 - dockHeight : anchorTop + 44 + 6,
+  };
 }
