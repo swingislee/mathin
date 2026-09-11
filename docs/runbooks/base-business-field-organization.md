@@ -81,4 +81,6 @@ node --experimental-strip-types scripts/base-business-fields.mjs --verify
 
 第三版的 `plan.json`、逐字段报告、`value-audit.json`、执行指纹及错误明细保存在 gitignored `.tmp/base-data-organization/v3/`。`review-values.md` 分列待确认、子女资料和资料待补，`resolved-values.md` 记录本轮逐项处理结果。第二版证据保留在 `v2/`，第一版保留在父目录。清单和待核对记录含个人资料，按现有受控开发资料管理。共享证据只记录字段名、汇总和不含个人资料的同义表达。
 
-生产应用单独遵循生产写目标策略与发布授权。开发链接为[线索表](http://192.168.5.213:3130/zh/dashboard/followups/leads)、[学生表](http://192.168.5.213:3130/zh/dashboard/students)和[历史导入](http://192.168.5.213:3130/zh/dashboard/history-import)。机器核对、开发交付和人工业务验收分别记录。
+生产应用单独遵循生产写目标策略与发布授权。2026-09-11 已将生产现有 5,338 条 Base 来源、92,810 个字段的三个版本及四段活动推定关联发布，详见[生产发布证据](../evidence/r1/base-review-production-20260911.md)。生产清单在生产主机内按既有原档与实际对象重建；开发额外的 22 条旧快照保持开发来源身份。
+
+开发链接为[线索表](http://192.168.5.213:3130/zh/dashboard/followups/leads)、[学生表](http://192.168.5.213:3130/zh/dashboard/students)和[历史导入](http://192.168.5.213:3130/zh/dashboard/history-import)。生产业务入口为[线索表](https://mathin.club/zh/dashboard/followups/leads)与[学生表](https://mathin.club/zh/dashboard/students)中的 360 来源资料，历史导入工具沿用原环境边界。机器核对、部署状态和人工业务验收分别记录。
