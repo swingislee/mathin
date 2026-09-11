@@ -335,6 +335,7 @@ export function LiveShell({
   } | null>(null);
   const logRef = useRef<SessionEventLog | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
+  const [learningReminderContainer, setLearningReminderContainer] = useState<HTMLDivElement | null>(null);
   const classroomRootRef = useRef<HTMLDivElement | null>(null);
   const displayWorkspaceRef = useRef<HTMLDivElement | null>(null);
   const mainInputPortRef = useRef<CanvasSurfaceInputPort | null>(null);
@@ -1738,6 +1739,7 @@ export function LiveShell({
             )}
 
             {!isController && renderPage?.type === "doc" && <div aria-hidden="true" className="absolute inset-0 z-40 touch-none" />}
+            <div ref={setLearningReminderContainer} className="pointer-events-none absolute inset-0 z-50 rounded-[inherit]" data-classroom-learning-reminder-surface />
           </div>
 
           {focusMode && (
@@ -1982,6 +1984,7 @@ export function LiveShell({
                       sessionId={session.id}
                       setup={classroomLearningSetup}
                       activePageDocId={activePageDocId}
+                      reminderContainer={focusMode ? null : learningReminderContainer}
                       ephemeral={rehearsal}
                       onSummaryChange={handleLearningSummaryChange}
                       onSeatOrderChange={handleLearningSeatOrderChange}
@@ -2094,6 +2097,7 @@ export function LiveShell({
                   sessionId={session.id}
                   setup={classroomLearningSetup}
                   activePageDocId={activePageDocId}
+                  reminderContainer={learningReminderContainer}
                   attendanceRows={initialAttendanceRows}
                   attendanceIntegrated
                   ephemeral={rehearsal}

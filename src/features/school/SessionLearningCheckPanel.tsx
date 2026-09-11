@@ -13,6 +13,7 @@ import {
   type PointerEvent,
 } from "react";
 import { toast } from "sonner";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -44,6 +45,7 @@ import {
 import { LEARNING_CHECK_STATUS_STYLE } from "./session-learning-visual";
 import { applyLearningResultUpdates, classroomLearningReminder } from "./classroom-learning-reminder";
 import { SessionLearningReminderButton } from "./SessionLearningReminderButton";
+import { SessionLearningReminderEdge } from "./SessionLearningReminderEdge";
 
 interface LearningFillUndo {
   cells: Array<{ checkId: string; studentId: string }>;
@@ -128,6 +130,7 @@ export function SessionLearningCheckPanel({
   attendanceIntegrated = false,
   ephemeral = false,
   triggerVariant = "default",
+  reminderContainer,
   onSummaryChange,
   onSeatOrderChange,
 }: {
@@ -138,10 +141,12 @@ export function SessionLearningCheckPanel({
   attendanceIntegrated?: boolean;
   ephemeral?: boolean;
   triggerVariant?: "default" | "rail";
+  reminderContainer?: HTMLElement | null;
   onSummaryChange?: (snapshot: LearningCheckSummarySnapshot) => void;
   onSeatOrderChange?: (assignments: Array<{ studentId: string; position: number }>) => void;
 }) {
   const t = useTranslations("school.session");
+  const [open, setOpen] = useState(false);
   const [matrixOrientation, setMatrixOrientation] = useState<LearningCheckMatrixOrientation>("by-question");
   const [manualSelection, setManualSelection] = useState<{
     pageDocId: string | null;
@@ -493,17 +498,26 @@ export function SessionLearningCheckPanel({
     void persistSeatLayout(next);
   };
 
+  const selectCurrentPage = () => {
+    if (!automaticCheckId) return;
+    setManualSelection({ pageDocId: activePageDocId, checkId: automaticCheckId });
+    setMatrixOrientation("by-question");
+  };
+
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
+      {reminderContainer && createPortal(
+        <SessionLearningReminderEdge reminder={pageReminder} onOpen={() => {
+          selectCurrentPage();
+          setOpen(true);
+        }} />,
+        reminderContainer,
+      )}
       <DialogTrigger asChild>
         <SessionLearningReminderButton
           reminder={pageReminder}
           rail={triggerVariant === "rail"}
-          onClick={() => {
-            if (!automaticCheckId) return;
-            setManualSelection({ pageDocId: activePageDocId, checkId: automaticCheckId });
-            setMatrixOrientation("by-question");
-          }}
+          onClick={selectCurrentPage}
         />
       </DialogTrigger>
       {/* `w-full` 避免 Windows 经典滚动条下 `100vw` 多出的约 15px。 */}
