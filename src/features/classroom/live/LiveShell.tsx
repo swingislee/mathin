@@ -129,7 +129,6 @@ import { useClassroomViewportGestures } from "./useClassroomViewportGestures";
 import { usePalmEraserSettings } from "../input/usePalmEraserSettings";
 import { ClassroomPalmEraserSettings } from "./ClassroomPalmEraserSettings";
 import { ClassroomFocusOverlay } from "./ClassroomFocusOverlay";
-import { ClassroomViewportControls } from "./ClassroomViewportControls";
 import { ClassroomPageControls, ClassroomToolsMenu } from "./ClassroomControlMenus";
 import { resolveClassroomTeachingSurface } from "./classroom-teaching-surface";
 import {
@@ -1742,13 +1741,9 @@ export function LiveShell({
           </div>
 
           {focusMode && (
-            <ClassroomViewportControls focused={focusMode} height={display.size.height}
-              value={display.value} min={display.bounds.minPercent} max={display.bounds.maxPercent}
-              verticalPosition={display.verticalPosition} onResize={viewport.resize} onPan={viewport.pan} onCommit={viewport.commit} />
-          )}
-
-          {focusMode && (
             <ClassroomFocusOverlay scope={`${userId}:${role}`} size={display.size}
+              viewport={{ value: display.value, min: display.bounds.minPercent, max: display.bounds.maxPercent,
+                verticalPosition: display.verticalPosition, onResize: viewport.resize, onPan: viewport.pan, onCommit: viewport.commit }}
               students={myRole === "student" && !showAllStudents ? rosterGridStudents.filter((student) => student.userId === userId) : rosterGridStudents}
               onStar={(student) => appendStar(student, "award")} onUndo={(student) => appendStar(student, "undo")} />
           )}
