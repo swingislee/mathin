@@ -5,7 +5,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { buttonVariants } from "@/components/ui/button";
+import { MessageSquarePlus } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { useAction } from "@/components/action-form";
 import {
   Dialog,
@@ -21,6 +22,8 @@ import { withReturnTo } from "./object-workspace/return-target";
 import { enrollStudentAction, listClassroomOptions, searchStudentsForEnroll, transferStudentAction, withdrawStudentAction } from "./actions/classes";
 import { type StudentSearchResult } from "./actions/types";
 import type { RosterRow, RosterSignals, RosterViewerRole } from "./classes";
+import { DashboardInlineEntry } from "./dashboard-page/DashboardInlineEntry";
+import { QuickFollowUpEntry, type QuickFollowUpSaved } from "./QuickFollowUpEntry";
 
 /** 角色默认列（doc19 §13.4）：教师看出勤/作业/学习异常，学服看请假/欠费，主管看综合异常，其余角色沿用既有教务列。 */
 function RosterSignalColumns({ role, signals }: { role: RosterViewerRole; signals: RosterSignals | undefined }) {
@@ -48,7 +51,7 @@ function RosterSignalColumns({ role, signals }: { role: RosterViewerRole; signal
   return null;
 }
 
-export function RosterPanel({ classroomId, roster, canManage, viewerRole, signals, returnTo }: {
+export function RosterPanel({ classroomId, roster, canManage, viewerRole, signals, returnTo, canWriteFollowup = false, latestFollowUps = {} }: {
   classroomId: string;
   roster: RosterRow[];
   canManage: boolean;
@@ -56,9 +59,23 @@ export function RosterPanel({ classroomId, roster, canManage, viewerRole, signal
   signals: Record<string, RosterSignals>;
   /** 本屏地址：从名单点进学生档案，改完要回到这份名单（doc24 §6.2）。 */
   returnTo: string;
+  canWriteFollowup?: boolean;
+  latestFollowUps?: Record<string, QuickFollowUpSaved>;
 }) {
   const t = useTranslations("school.classes");
+  const workspaceT = useTranslations("school.followupWorkspace");
   const router = useRouter();
+  const [activeStudentId, setActiveStudentId] = useState<string | null>(null);
+  const [visitedStudents, setVisitedStudents] = useState<Set<string>>(() => new Set());
+  const [savedFollowUps, setSavedFollowUps] = useState<Record<string, QuickFollowUpSaved>>({});
+  const activateFollowup = (studentId: string) => {
+    setVisitedStudents(current => new Set(current).add(studentId));
+    setActiveStudentId(studentId);
+  };
+  const closeFollowup = (studentId: string) => {
+    setActiveStudentId(null);
+    document.getElementById(`roster-followup-${classroomId}-${studentId}-trigger`)?.focus();
+  };
 
   const [enrollOpen, setEnrollOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -131,14 +148,25 @@ export function RosterPanel({ classroomId, roster, canManage, viewerRole, signal
         <p className="mt-4 text-sm text-muted">{t("emptyRoster")}</p>
       ) : (
         <ul className="mt-4 divide-y divide-line">
-          {roster.map((row) => (
-            <li key={row.studentId} className="flex items-center gap-3 py-2.5 text-sm">
+          {roster.map((row, index) => {
+            const active = activeStudentId === row.studentId;
+            const detailId = `roster-followup-${classroomId}-${row.studentId}`;
+            const latest = savedFollowUps[row.studentId] && (!latestFollowUps[row.studentId] || savedFollowUps[row.studentId].createdAt >= latestFollowUps[row.studentId].createdAt)
+              ? savedFollowUps[row.studentId] : latestFollowUps[row.studentId];
+            const next = roster[index + 1];
+            return <li key={row.studentId} className="min-w-0 py-2.5 text-sm">
+              <div className="flex flex-wrap items-center gap-3">
               <Link href={withReturnTo(`/dashboard/students/${row.studentId}`, returnTo)} className="min-w-0 flex-1 truncate hover:text-crater hover:underline">
                 {row.studentName}
               </Link>
               {!row.hasAccount && <span className="rounded-full bg-line/50 px-2 py-0.5 text-xs text-muted">{t("noAccount")}</span>}
               {row.hasAccount && !row.isMember && <span className="rounded-full bg-cheek/30 px-2 py-0.5 text-xs text-ink">{t("notInClassroom")}</span>}
               <RosterSignalColumns role={viewerRole} signals={signals[row.studentId]} />
+              {canWriteFollowup ? <Button id={`${detailId}-trigger`} type="button" size="sm" variant={active ? "secondary" : "ghost"}
+                className="h-8 gap-1 px-2 text-xs" disabled={pending} aria-expanded={active} aria-controls={visitedStudents.has(row.studentId) ? detailId : undefined}
+                onClick={() => active ? closeFollowup(row.studentId) : activateFollowup(row.studentId)}>
+                <MessageSquarePlus className="size-3.5" />{t("quickFollowup")}
+              </Button> : null}
               {canManage && (
                 <>
                   <button type="button" disabled={pending} onClick={() => void openTransfer(row)} className="text-xs text-muted underline underline-offset-2 hover:text-ink disabled:opacity-40">
@@ -149,8 +177,20 @@ export function RosterPanel({ classroomId, roster, canManage, viewerRole, signal
                   </button>
                 </>
               )}
-            </li>
-          ))}
+              </div>
+              {latest ? <p className="mt-1 line-clamp-2 whitespace-pre-wrap text-xs leading-5 text-muted" title={latest.content}>{t("latestFollowup")} · {latest.content}</p> : null}
+              {canWriteFollowup && visitedStudents.has(row.studentId) ? <div id={detailId} hidden={!active} inert={!active || undefined}>
+                <DashboardInlineEntry title={`${row.studentName} · ${t("quickFollowup")}`} closeLabel={workspaceT("close")} onClose={() => closeFollowup(row.studentId)} autoFocus={active}>
+                  <QuickFollowUpEntry studentId={row.studentId}
+                    onSaved={entry => setSavedFollowUps(current => ({ ...current, [row.studentId]: entry }))}
+                    onSaveAndNext={next ? () => {
+                      setVisitedStudents(current => new Set(current).add(next.studentId));
+                      setActiveStudentId(current => current === row.studentId ? next.studentId : current);
+                    } : undefined} />
+                </DashboardInlineEntry>
+              </div> : null}
+            </li>;
+          })}
         </ul>
       )}
 

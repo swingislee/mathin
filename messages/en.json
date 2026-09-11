@@ -7338,6 +7338,8 @@
       "eventLabel_blankCoursewareFallback": "Used the blank courseware fallback",
       "eventLabel_generic": "{type}",
       "roster": "Roster ({count})",
+      "quickFollowup": "Follow-up / communication",
+      "latestFollowup": "Latest note",
       "rosterAttendance": "{count} absent/leave in last 3",
       "rosterSubmissions": "{count} pending assignments",
       "rosterAnomaly": "Learning anomaly",
@@ -8542,7 +8544,8 @@
       "close": "Close",
       "showAllCommunication": "Back to communication list",
       "contactStage": "Contact status",
-      "communicationInfo": "Communication and arrangements"
+      "communicationInfo": "Communication and arrangements",
+      "noTeachingClassForPlacement": "You have no eligible formal teaching classes yet. Once a class is assigned, its roster and placement actions will be available here."
     }
   },
   "account": {

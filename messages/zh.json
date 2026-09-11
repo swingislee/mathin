@@ -7338,6 +7338,8 @@
       "eventLabel_blankCoursewareFallback": "使用了空白课堂降级",
       "eventLabel_generic": "{type}",
       "roster": "花名册（{count}）",
+      "quickFollowup": "跟进沟通",
+      "latestFollowup": "最近记录",
       "rosterAttendance": "近3次缺勤/请假 {count}",
       "rosterSubmissions": "待交作业 {count}",
       "rosterAnomaly": "学习异常",
@@ -8542,7 +8544,8 @@
       "close": "关闭",
       "showAllCommunication": "返回沟通列表",
       "contactStage": "联系情况",
-      "communicationInfo": "沟通与安排"
+      "communicationInfo": "沟通与安排",
+      "noTeachingClassForPlacement": "当前没有可分班的正式任课班级。分配任课班级后，可在这里查看名单和办理调班。"
     }
   },
   "account": {

@@ -29,6 +29,7 @@ import { OperationalRecordsPanel } from "@/features/school/OperationalRecordsPan
 import { PublicClassSourcePanel } from "@/features/school/PublicClassSourcePanel";
 import { listPublicClassesForClassroom } from "@/features/school/public-class";
 import { RosterPanel } from "@/features/school/RosterPanel";
+import { loadRosterFollowUps } from "@/features/school/roster-followups";
 import { SessionGroupList } from "@/features/school/SessionGroupList";
 import { SessionManagementDrawer } from "@/features/school/SessionManagementDrawer";
 import {
@@ -201,9 +202,10 @@ async function ClassDetailBody({
   // 下一课由真实课次时间决定；完整工作项仍用于列表分组和风险区，各自独立加载。
   const groups = groupClassroomSessions(classroom.sessions, []);
 
-  const [rosterSignals, operationalEvents] = await Promise.all([
+  const [rosterSignals, operationalEvents, rosterFollowUps] = await Promise.all([
     activeTab === "students" ? getClassroomRosterSignals(classId) : Promise.resolve(new Map<string, RosterSignals>()),
     activeTab === "records" && canViewClassroom ? getClassroomOperationalEvents(classId) : Promise.resolve([] as OperationalEventRow[]),
+    activeTab === "students" && perms.has("followup.view") ? loadRosterFollowUps(classroom.roster.map(row => row.studentId)) : Promise.resolve({}),
   ]);
 
   // doc23 §9：身份行只保留"这是哪个班"——课程版本、年级、主讲、学服。
@@ -294,6 +296,8 @@ async function ClassDetailBody({
                 classroomId={classroom.id}
                 roster={classroom.roster}
                 canManage={perms.has("enrollment.manage")}
+                canWriteFollowup={perms.has("followup.write") && !classroom.trashedAt}
+                latestFollowUps={rosterFollowUps}
                 viewerRole={classroom.viewerRole}
                 signals={Object.fromEntries(rosterSignals)}
                 returnTo={tabHref("students")}

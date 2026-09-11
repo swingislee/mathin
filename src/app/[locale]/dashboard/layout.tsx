@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { Suspense } from "react";
 import { setRequestLocale } from "next-intl/server";
 import { SiteHeader } from "@/components/site-header";
 import { DashboardShell } from "@/features/school/DashboardShell";
@@ -8,6 +9,8 @@ import { getMyStudents } from "@/features/school/customer";
 import { filterSchoolNav, HOME_NAV_ITEM, PARENT_NAV_ITEMS, STUDENT_NAV_ITEMS, type SchoolNavItem } from "@/features/school/nav";
 import { isFeatureEnabled } from "@/features/school/organization-settings";
 import { getActiveEnvironment, getMyPerms, requireUser } from "@/lib/auth";
+import { isTeacherWorkspaceViewer } from "@/features/school/teacher-workspace";
+import { TeacherWorkspaceMemory } from "@/features/school/TeacherWorkspaceMemory";
 
 async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
   try {
@@ -33,6 +36,7 @@ export default async function DashboardLayout({
   // profiles.role——员工兼家长切换到家庭视角时，导航也要跟着换成家庭导航。
   // doc22 §10：与页面级 requireDashboardEnvironment 共用同一个（每请求缓存的）判定。
   const active = await getActiveEnvironment(user.id);
+  const rememberTeacherWorkspace = active === "staff" && await isTeacherWorkspaceViewer(user.id);
 
   let nav: readonly SchoolNavItem[] = [HOME_NAV_ITEM];
   if (active === "staff") {
@@ -50,6 +54,7 @@ export default async function DashboardLayout({
     <div className="flex h-screen h-dvh flex-col overflow-hidden">
       <SiteHeader workspace />
       <DashboardPreferenceScope userId={user.id}>
+        {rememberTeacherWorkspace ? <Suspense fallback={null}><TeacherWorkspaceMemory /></Suspense> : null}
         <DashboardShell nav={nav} initialSidebarMode={sidebarMode}>{children}</DashboardShell>
       </DashboardPreferenceScope>
     </div>

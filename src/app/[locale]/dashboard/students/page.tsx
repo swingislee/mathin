@@ -23,6 +23,8 @@ import { FOLLOW_UP_STATUSES, listStudents, parseStudentFilters, STUDENT_STATUSES
 import { Link } from "@/i18n/navigation";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { isTeacherWorkspaceViewer } from "@/features/school/teacher-workspace";
+import { TeacherWorkspaceEntry } from "@/features/school/TeacherWorkspaceMemory";
 
 async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
   try {
@@ -42,6 +44,9 @@ export default async function StudentsPage({
   const [{ locale }, rawSearchParams] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
   const user = await requireAnyPerm(locale, ["student.view.all", "student.view.assigned"]);
+  if (!Object.keys(rawSearchParams).length && await isTeacherWorkspaceViewer(user.id)) {
+    return <TeacherWorkspaceEntry workspace="students" />;
+  }
   const t = await getTranslations("school.students");
   const commonT = await getTranslations("common");
   const schoolT = await getTranslations("school");
