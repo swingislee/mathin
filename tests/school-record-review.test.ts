@@ -41,8 +41,28 @@ describe("source fields and duplicate hints", () => {
     const text = document.querySelector("[data-base-business-fields]")?.textContent;
     expect(text).toContain("1年级");
     expect(text).toContain("原文：一");
-    expect(text).toContain("2年级升3年级");
-    expect(text).toContain("请核对适用学年");
+    expect(text).toContain("3年级");
+    expect(text).toContain("原文：二升三");
+    expect(text).not.toContain("请核对适用学年");
+  });
+  it.each(["zh", "en"])("shows split fields and individual children with their source in %s", async locale => {
+    const cells = [{ fieldId: "school", fieldName: "就读学校", text: "合肥师范附小四小(四川路)\n一年级", type: "Text", kind: "context" },
+      { fieldId: "children", fieldName: "年级/25级", text: "一年级 中班", type: "Text", kind: "context" },
+      { fieldId: "address", fieldName: "年级", text: "水晶公馆", type: "Text", kind: "context" }];
+    const structured = organizeBaseRecord({ id: record.id, source_data: { format: "feishu-base" }, record_data: { tableName: record.table, cells } })!;
+    actions.read.mockResolvedValueOnce({ ok: true, data: { ...data, sources: [{ ...record, businessFields: structured.fields }] } });
+    await act(async () => root.render(createElement(SchoolRecordSourceReview, { subject, locale })));
+    await click(locale === "zh" ? "查看原表资料与相关记录" : "View original fields and related records");
+    const fields = document.querySelector("[data-base-business-fields]")!;
+    expect([...fields.querySelectorAll("dt")].map(item => item.textContent)).toContain(locale === "zh" ? "年级" : "Grade");
+    expect(fields.textContent).toContain(locale === "zh" ? "孩子1（姓名：资料待补）：1年级" : "Child 1（Name：Details to complete）：1年级");
+    expect(fields.textContent).toContain(locale === "zh" ? "孩子2（姓名：资料待补）：中班" : "Child 2（Name：Details to complete）：中班");
+    expect(fields.textContent).toContain(locale === "zh" ? "共用家庭联系方式" : "share this family's contact details");
+    expect(fields.textContent).not.toContain("信息待补");
+    const acquisition = [...fields.querySelectorAll("section")].find(section => section.querySelector("h4")?.textContent === (locale === "zh" ? "获客资料" : "Acquisition"));
+    expect(acquisition?.textContent).toContain("水晶公馆");
+    expect(acquisition?.textContent).toContain(locale === "zh" ? "原文（年级）" : "Original（年级）");
+    expect(actions.open).not.toHaveBeenCalled();
   });
   it("shows organized business fields with original values available in the same source record", async () => {
     const structured = organizeBaseRecord({ id: record.id, source_data: { format: "feishu-base" },

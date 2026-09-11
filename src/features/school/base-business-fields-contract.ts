@@ -19,11 +19,19 @@ export function baseBusinessMessages(locale: string) {
     notes: "补充备注", reference: "补充字段", unmapped: "补充字段",
   };
   return {
+    child: (index: number) => en ? `Child ${index}` : `孩子${index}`,
+    pending: en ? "Details to complete" : "资料待补", childName: en ? "Name" : "姓名",
+    childRelation: (relation: string) => en ? ({ 姐姐: "Older sister", 妹妹: "Younger sister", 哥哥: "Older brother", 弟弟: "Younger brother" } as Record<string, string>)[relation] ?? relation : relation,
+    familyChildren: en ? "Separate child entries share this family's contact details. Names can be completed for each child." : "子女分别保存，共用家庭联系方式，姓名可按孩子逐项补齐。",
+    fieldLabel: (key: string, fallback: string) => en ? ({ 子女资料: "Children", 原线索称呼: "Original household label" } as Record<string, string>)[fallback] ?? ({ grade: "Grade", school: "School", nearby_location: "Nearby location", location: "Acquisition address", channel: "Source",
+      staff: "Historical staff", interest_content: "Interests", content: "Participation", other: "Other source information", note: "Notes", activity_arrangements: "Activity arrangements" } as Record<string, string>)[key] ?? fallback : fallback,
     review: (en ? { unrecognized: "Confirm the source meaning", missing: "Source value is unspecified", transition: "Grade transition; confirm the applicable school year",
       multiple_grades: "Several grades; confirm the corresponding children", ambiguous: "Confirm the original wording", conflicting_options: "Source options conflict",
-      time_period: "Confirm AM or PM", scale: "Keep this rating scale separate", reference: "Source reference needs a readable label", class_label: "Confirm the historical class label", field_mismatch: "Check whether this value belongs in this field" }
+      time_period: "Confirm AM or PM", scale: "Keep this rating scale separate", reference: "Source reference needs a readable label", class_label: "Confirm the historical class label", field_mismatch: "Check whether this value belongs in this field",
+      child_identity: "Confirm each child's name, then keep separate profiles and link the family.", record_scope: "Several students are listed; confirm which records these arrangements belong to." }
       : { unrecognized: "请核对来源含义", missing: "原值尚未明确", transition: "升年级表达，请核对适用学年", multiple_grades: "多个年级，请核对对应孩子",
-        ambiguous: "请核对原文含义", conflicting_options: "原选项存在冲突", time_period: "请核对上下午", scale: "保留原评价尺度，对应关系待确认", reference: "来源引用待补显示名称", class_label: "请核对历史班型名称", field_mismatch: "请核对原值是否填入了对应字段" }) satisfies Record<ReviewReason, string>,
+        ambiguous: "请核对原文含义", conflicting_options: "原选项存在冲突", time_period: "请核对上下午", scale: "保留原评价尺度，对应关系待确认", reference: "来源引用待补显示名称", class_label: "请核对历史班型名称", field_mismatch: "请核对原值是否填入了对应字段",
+        child_identity: "请核对每个孩子的姓名，各自保留档案，再建立家庭关联。", record_scope: "包含多名学员的安排，请核对各自记录归属。" }) satisfies Record<ReviewReason, string>,
     sections, title: en ? "Organized source information" : "整理后的业务资料",
     hint: en ? "Information is grouped for each source record. Original dates, wording and staff labels remain available." : "按每条来源记录整理，保留原日期、原文和人员署名。",
     original: en ? "Original" : "原文", rawOnly: en ? "The source contains a value without display text. View the original field." : "原字段有值但没有显示文本，可查看原字段。",

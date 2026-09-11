@@ -1,9 +1,12 @@
 import { parseSchoolGrade } from '../../src/lib/grade-format.mjs';
+import { resolveBaseFieldPlacement } from './base-field-placement.mjs';
 
 // 每条规则绑定字段语义；原文和原字段始终由调用者原样保存。
-const compact = text => text.normalize('NFKC').replace(/[\s\u200b\uFEFF]+/gu, '').toLowerCase();
+export const normalizeBaseInputText = text => text.replace(/&(?:#x20|#32|nbsp);/giu, ' ').replace(/[\u200b\uFEFF]/gu, '').trim();
+const compact = text => normalizeBaseInputText(text).normalize('NFKC').replace(/\s+/gu, '').toLowerCase();
 const normalized = (value, display, review = []) => ({ value, display, status: 'normalized', ...(review.length ? { review } : {}) });
-const unresolved = (text, reason = 'unrecognized') => ({ value: null, display: text, status: 'unparsed', review: [reason] });
+const unresolved = (text, reason = 'unrecognized') => reason === 'missing' ? { value: null, display: '资料待补', status: 'pending' }
+  : { value: null, display: text, status: 'unparsed', review: [reason] };
 const words = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
 function ordinal(text) {
   const value = compact(text);
@@ -19,6 +22,8 @@ const unitOrdinal = (text, prefix, suffix) => {
   return number !== null && number > 0 && number <= 99 ? number : null;
 };
 function gradePoint(text) {
+  const typo = { 三奶奶及: 3, 嗣年极: 4, 一升年级: 2, '二?年级': 2, 五六年级: 6 }[compact(text).replace(/(?:年级){2,}$/u, '年级')];
+  if (typo) return { value: typo, display: `${typo}年级` };
   const grade = parseSchoolGrade(text);
   if (grade !== null) return { value: grade, display: `${grade}年级` };
   const key = compact(text);
@@ -36,7 +41,7 @@ export function normalizeBaseGrade(text) {
   const transition = /^(.*?)升(.*?)$/u.exec(key.replace(/([一二三四五六七八九\d])年升([一二三四五六七八九\d])级/u, '$1升$2'));
   if (transition) {
     const from = gradePoint(transition[1]), to = gradePoint(transition[2]);
-    if (from && to) return normalized({ transition: { from: from.value, to: to.value } }, `${from.display}升${to.display}`, ['transition']);
+    if (from && to) return normalized(to.value, to.display);
     return unresolved(text, 'ambiguous');
   }
   const parts = text.normalize('NFKC').trim().split(/[\s、,，/;；]+/u).filter(Boolean);
@@ -44,7 +49,13 @@ export function normalizeBaseGrade(text) {
   if (parts.length > 1 && points.every(Boolean)) {
     const unique = [...new Map(points.map(point => [JSON.stringify(point.value), point])).values()];
     if (unique.length === 1) return normalized(unique[0].value, unique[0].display);
-    return normalized({ grades: unique.map(point => point.value) }, unique.map(point => point.display).join('、'), ['multiple_grades']);
+    return normalized({ children: unique.map((point, index) => ({ index: index + 1, name: null, grade: point.value, gradeLabel: point.display })), identityStatus: 'pending' },
+      unique.map((point, index) => `孩子${index + 1}：${point.display}`).join('\n'), ['child_identity']);
+  }
+  const adjacent = /^([一二三四五六七八九])([一二三四五六七八九])(?:年级)+$/u.exec(key);
+  if (adjacent) {
+    const from = gradePoint(adjacent[1]), to = gradePoint(adjacent[2]);
+    if (from.value < to.value) return normalized({ range: [from.value, to.value] }, `${from.display}至${to.display}`, ['multiple_grades']);
   }
   const range = /^([一二三四五六七八九\d])(?:至|到|[-~～])([一二三四五六七八九\d])(?:年级)?$/u.exec(key);
   if (range) {
@@ -174,9 +185,11 @@ function normalizeMoney(text) {
   return normalized({ amount, currency: 'CNY' }, `${amount} 元`);
 }
 
-/** 1–7 点且未写明上下午的时刻保留歧义，不自动增加 12 小时。 */
+/** 产品负责人确认：Base 到访/教学时间中省略上下午的 1–7 点按下午处理，明确写出的时段仍优先。 */
 export function parseBaseTime(text) {
-  const value = compact(text).replace(/[；;.'‘’]/gu, ':');
+  const cleaned = compact(text);
+  const relation = cleaned.endsWith('后') ? 'after' : null;
+  const value = cleaned.replace(/后$/u, '').replace(/[；;.'‘’]/gu, ':');
   const [start, end, extra] = value.split(/至|到|[-~～—–]/u);
   if (extra !== undefined) return null;
   function point(input, inheritedPeriod = undefined) {
@@ -191,14 +204,14 @@ export function parseBaseTime(text) {
     if (period === '凌晨' && hour === 12) hour = 0;
     if (period === '晚上' && hour === 12) hour = 0;
     if (period === '中午' && hour < 11) return null;
-    return { hour, minute, second, ambiguous: !period && hour > 0 && hour < 8 };
+    if (!period && hour > 0 && hour < 8) hour += 12;
+    return { hour, minute, second };
   }
   const first = point(start), last = end === undefined ? null : point(end, /^(上午|早上|下午|晚上|中午|凌晨)/u.exec(start)?.[1]);
   if (!first || (end !== undefined && !last)) return null;
   const format = point => `${String(point.hour).padStart(2, '0')}:${String(point.minute).padStart(2, '0')}${point.second === null ? '' : `:${String(point.second).padStart(2, '0')}`}`;
-  const display = `${format(first)}${last ? `–${format(last)}` : ''}`;
-  const ambiguous = first.ambiguous || last?.ambiguous;
-  return normalized({ time: format(first), ...(last ? { endTime: format(last) } : {}), clock: ambiguous ? 'unspecified' : '24h' }, display, ambiguous ? ['time_period'] : []);
+  const display = `${format(first)}${last ? `–${format(last)}` : ''}${relation ? '后' : ''}`;
+  return normalized({ time: format(first), ...(last ? { endTime: format(last) } : {}), clock: '24h', ...(relation ? { relation } : {}) }, display);
 }
 
 function normalizePeriod(id, text) {
@@ -232,7 +245,10 @@ function normalizePeriod(id, text) {
 
 export function normalizeBaseSemanticValue(definition, text) {
   const id = `${definition.section}.${definition.key}`, { kind } = definition;
+  const placement = resolveBaseFieldPlacement(definition, text.normalize('NFKC'), normalizeBaseGrade);
+  if (placement) return placement;
   if (kind === 'grade') return normalizeBaseGrade(text);
+  if (['band', 'class_band'].includes(kind) && /^慎思[—–-]$/u.test(text)) return normalized(kind === 'band' ? 'a' : { label: 'A', band: 'a' }, 'A');
   const boolean = normalizeBoolean(id, text);
   if (boolean) return boolean;
   if (kind === 'renewal_status') return normalizeRenewal(text);
@@ -249,7 +265,7 @@ export function normalizeBaseSemanticValue(definition, text) {
     if (['女', '女生', '女性', '女孩', 'female', 'girl', 'f'].includes(key)) return normalized('female', '女');
     return unresolved(text, 'ambiguous');
   }
-  if (['visit.time_slot', 'teaching.time_slot'].includes(id)) return parseBaseTime(text) ?? unresolved(text, 'ambiguous');
+  if (['visit.time_slot', 'teaching.time_slot'].includes(id)) return parseBaseTime(text) ?? unresolved(text, /^[;；:：\s]+$/u.test(text) ? 'missing' : 'ambiguous');
   if (kind === 'date_or_time') { const time = parseBaseTime(text); if (time) return time; }
   if (kind === 'period') { const period = normalizePeriod(id, text); if (period) return period; }
   if (definition.key === 'group' && ['acquisition', 'followup', 'confirmation', 'visit', 'support'].includes(definition.section)) {
@@ -265,9 +281,13 @@ export function normalizeBaseSemanticValue(definition, text) {
     if (number) return normalized(number, `第${number}${unit}`);
   }
   if (kind === 'multi') {
-    const values = [...new Set(text.split(/[、,，;；\n]+/u).map(value => value.trim()).filter(Boolean).map(value => lookup(id, value) ?? value.normalize('NFKC')))].sort();
+    let values = [...new Set(text.split(/[、,，;；\n]+/u).map(value => value.trim()).filter(Boolean).map(value => lookup(id, value) ?? value.normalize('NFKC')))].sort();
     const review = [];
-    if (id === 'acquisition.wechat_status' && values.includes('已加微信') && values.some(value => value.startsWith('未加微信'))) review.push('conflicting_options');
+    if (id === 'acquisition.wechat_status' && values.includes('已加微信')) values = values.filter(value => !value.startsWith('未加微信'));
+    if (id === 'confirmation.result' && values.includes('暂无结果') && values.some(value => ['已加微信', '未接通'].includes(value))) {
+      values = values.filter(value => value !== '暂无结果');
+      values.push('待下次沟通');
+    }
     if (id === 'confirmation.result' && values.includes('暂无结果') && values.length > 1) review.push('conflicting_options');
     return normalized(values, values.join('、'), review);
   }
@@ -289,6 +309,6 @@ export function normalizeBaseSemanticValue(definition, text) {
     if (/\n|举一反三|数独|思维闯关|老生|(?:大|中|小)班$|体验.*时间/u.test(text)
       || !/小学|幼儿园|中学|学校/u.test(text) && /公园|停车|公馆|广场|方圆荟|附近/u.test(text)) return unresolved(text, 'field_mismatch');
   }
-  if (/^rec[a-zA-Z0-9]{8,}$/u.test(text) && ['choice', 'reference'].includes(kind)) return { value: { sourceRecordId: text }, display: text, status: 'reference', review: ['reference'] };
+  if (/^rec[a-zA-Z0-9]{8,}$/u.test(text) && ['choice', 'reference'].includes(kind)) return { value: { sourceRecordId: text }, display: '资料待补', status: 'pending' };
   return null;
 }

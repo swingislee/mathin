@@ -14,13 +14,15 @@ begin
       (hidden,'Hidden contract','hiddencontract','13900001234','13900001234','uncontacted',admin_id,admin_id);
   original:='[{"fieldId":"date","fieldName":"获取日期","text":"6/10","kind":"context","type":"Text"},
     {"fieldId":"place","fieldName":"获客区位","text":"原场地","kind":"context","type":"Text"},
-    {"fieldId":"content","fieldName":"触达内容","text":"原文第一行\n原文第二行","kind":"context","type":"Text"}]';
+    {"fieldId":"content","fieldName":"触达内容","text":"原文第一行\n原文第二行","kind":"context","type":"Text"},
+    {"fieldId":"mixed","fieldName":"就读学校","text":"原获取地址\n一年级","kind":"context","type":"Text"}]';
   insert into public.history_import_records(id,source_sha256,source_table_id,source_record_id,payload_sha256,source_data,record_data,match_status,match_data,search_text,lead_id,entity_data)
     values(source_id,repeat('d',64),'contract',source_id,repeat('e',64),'{"format":"feishu-base","filename":"contract.base"}',
       jsonb_build_object('hasContent',true,'tableName','获客&私域信息登记表1.0-总','cells',original),'matched','{}','contract',lid,'{}');
   fields:='[{"fieldId":"date","name":"获取日期","section":"acquisition","key":"acquired_on","kind":"date","value":{"text":"06-10","precision":"month_day","year":null,"month":6,"day":10},"display":"06-10","originalText":"6/10","sourceType":"Text","rawHasContent":true,"status":"normalized"},
     {"fieldId":"place","name":"获客区位","section":"acquisition","key":"location","kind":"text","value":"原场地","display":"原场地","originalText":"原场地","sourceType":"Text","rawHasContent":true,"status":"text"},
-    {"fieldId":"content","name":"触达内容","section":"acquisition","key":"content","kind":"text","value":"原文第一行\n原文第二行","display":"原文第一行\n原文第二行","originalText":"原文第一行\n原文第二行","sourceType":"Text","rawHasContent":true,"status":"text"}]';
+    {"fieldId":"content","name":"触达内容","section":"acquisition","key":"content","kind":"text","value":"原文第一行\n原文第二行","display":"原文第一行\n原文第二行","originalText":"原文第一行\n原文第二行","sourceType":"Text","rawHasContent":true,"status":"text"},
+    {"fieldId":"mixed","name":"就读学校","section":"acquisition","key":"location","kind":"text","label":"获取地址","value":"原获取地址","display":"原获取地址","originalText":"原获取地址\n一年级","sourceType":"Text","rawHasContent":true,"status":"normalized","projections":[{"section":"identity","key":"grade","kind":"grade","label":"年级","value":1,"display":"1年级","status":"normalized"}]}]';
   begin
     insert into public.history_source_business_facts(source_record_id,mapping_version,source_payload_sha256,fields)
       values(source_id,1,repeat('f',64),fields);
@@ -36,12 +38,15 @@ begin
   if public.read_base_source_business_fields(source_id) is distinct from fields then raise exception 'BASE_OLD_VERSION_FALLBACK_FAILED'; end if;
   fields:=jsonb_set(jsonb_set(fields,'{1,display}','"规范场地"'),'{1,value}','"规范场地"');
   insert into public.history_source_business_facts(source_record_id,mapping_version,source_payload_sha256,fields)
-    values(source_id,2,repeat('e',64),fields),
-      (source_id,3,repeat('e',64),jsonb_set(fields,'{1,display}','"未来版本"'));
+    values(source_id,2,repeat('e',64),jsonb_set(fields,'{1,display}','"第二版场地"'));
+  if public.read_base_source_business_fields(source_id) is distinct from jsonb_set(fields,'{1,display}','"第二版场地"') then raise exception 'BASE_SECOND_VERSION_FALLBACK_FAILED'; end if;
+  insert into public.history_source_business_facts(source_record_id,mapping_version,source_payload_sha256,fields)
+    values(source_id,3,repeat('e',64),fields),
+      (source_id,4,repeat('e',64),jsonb_set(fields,'{1,display}','"未来版本"'));
   if public.read_base_source_business_fields(source_id) is distinct from fields then raise exception 'BASE_SUPPORTED_LATEST_VERSION_FAILED'; end if;
-  if public.store_base_business_fields(jsonb_build_array(jsonb_build_object('source_record_id',source_id,'mapping_version',2,'source_payload_sha256',repeat('e',64),'fields',fields)))<>0 then raise exception 'BASE_SAME_VERSION_NOT_IDEMPOTENT'; end if;
+  if public.store_base_business_fields(jsonb_build_array(jsonb_build_object('source_record_id',source_id,'mapping_version',3,'source_payload_sha256',repeat('e',64),'fields',fields)))<>0 then raise exception 'BASE_SAME_VERSION_NOT_IDEMPOTENT'; end if;
   begin
-    perform public.store_base_business_fields(jsonb_build_array(jsonb_build_object('source_record_id',source_id,'mapping_version',2,'source_payload_sha256',repeat('e',64),'fields',jsonb_set(fields,'{1,display}','"覆盖同版"'))));
+    perform public.store_base_business_fields(jsonb_build_array(jsonb_build_object('source_record_id',source_id,'mapping_version',3,'source_payload_sha256',repeat('e',64),'fields',jsonb_set(fields,'{1,display}','"覆盖同版"'))));
     raise exception 'BASE_SAME_VERSION_OVERWRITTEN';
   exception when others then get stacked diagnostics err=message_text; if err<>'BASE_MAPPING_VERSION_CHANGED' then raise; end if; end;
   insert into public.students(id,name,phone,parent_phone,assigned_to,created_by,bind_code)
@@ -63,7 +68,9 @@ begin
   if result->'sources'->0->'businessFields' is distinct from fields or jsonb_array_length(result->'sources')<>1 then raise exception 'SCOPED_BUSINESS_FIELDS_DIFFER'; end if;
   result:=public.read_base_lead_acquisition(array[lid]);
   if jsonb_array_length(result->0->'sources')<>1 or result->0->'sources'->0->>'acquiredAt' is not null or result->0->'sources'->0->>'dateLabel'<>'06-10'
-    or result->0->'sources'->0->>'location'<>'规范场地' or result->0->'sources'->0->>'content'<>E'原文第一行\n原文第二行'
+    or not (string_to_array(result->0->'sources'->0->>'location',' / ') @> array['规范场地','原获取地址'])
+    or cardinality(string_to_array(result->0->'sources'->0->>'location',' / '))<>2
+    or result->0->'sources'->0->>'content'<>E'原文第一行\n原文第二行'
     then raise exception 'BASE_ACQUISITION_VALUE_OR_DATE_PRECISION'; end if;
   if exists(select 1 from public.history_source_business_facts where source_record_id=source_id) then raise exception 'TEACHER_ARCHIVE_TABLE_SCOPE'; end if;
   if has_table_privilege('authenticated','public.history_source_business_facts','INSERT')

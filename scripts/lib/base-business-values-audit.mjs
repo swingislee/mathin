@@ -2,10 +2,13 @@
 const canonical = value => Array.isArray(value) ? value.map(canonical) : value && typeof value === 'object'
   ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
 const valueKey = value => JSON.stringify(canonical(value));
+const businessValue = field => ({ section: field.section, key: field.key, kind: field.kind, value: field.value,
+  projections: field.projections ?? [], review: field.review ?? [], status: field.status, label: field.label ?? null });
+const reviewReasons = field => field?.review?.length ? field.review : field?.status === 'unparsed' ? ['unrecognized'] : [];
 export function auditBaseBusinessValues(previousFacts, facts) {
   const previous = new Map(previousFacts.map(fact => [fact.source_record_id, new Map(fact.fields.map(field => [field.fieldId, field]))]));
   const semantics = new Map(), issues = [], changedRecords = new Set();
-  let values = 0, changedValues = 0, changedDisplays = 0;
+  let values = 0, changedValues = 0, changedDisplays = 0, reclassifiedValues = 0, resolvedReviewValues = 0, priorReviewValues = 0, projectedValues = 0;
   for (const fact of facts) for (const field of fact.fields) {
     values++;
     const key = `${field.section}.${field.key}`;
@@ -13,9 +16,12 @@ export function auditBaseBusinessValues(previousFacts, facts) {
     const group = semantics.get(key), before = previous.get(fact.source_record_id)?.get(field.fieldId);
     group.names.add(field.name); group.values++;
     if (before && (before.name !== field.name || before.originalText !== field.originalText)) throw new Error('BASE_AUDIT_ORIGINAL_CHANGED');
-    if (before && valueKey(before.value) !== valueKey(field.value)) { changedValues++; group.changedValues++; changedRecords.add(fact.source_record_id); }
+    if (before && valueKey(businessValue(before)) !== valueKey(businessValue(field))) { changedValues++; group.changedValues++; changedRecords.add(fact.source_record_id); }
     if (before && before.display !== field.display) { changedDisplays++; group.changedDisplays++; changedRecords.add(fact.source_record_id); }
-    const reasons = field.review?.length ? field.review : field.status === 'unparsed' ? ['unrecognized'] : [];
+    if (before && (before.section !== field.section || before.key !== field.key)) reclassifiedValues++;
+    if (field.projections?.length) projectedValues++;
+    const reasons = reviewReasons(field);
+    if (reviewReasons(before).length) { priorReviewValues++; if (!reasons.length) resolvedReviewValues++; }
     if (reasons.length) { group.reviewValues++; issues.push({ sourceId: fact.source_record_id, fieldId: field.fieldId, field: field.name, semantic: key, originalText: field.originalText, display: field.display, reasons }); }
     if (field.status === 'normalized') {
       const canonicalKey = valueKey(field.value);
@@ -30,6 +36,7 @@ export function auditBaseBusinessValues(previousFacts, facts) {
     aliases: [...group.canonical.values()].filter(value => value.originals.size > 1).map(value => ({ ...value, originals: [...value.originals].map(([text, count]) => ({ text, count })) })),
   }));
   return { summary: { records: facts.length, values, semanticFields: rows.length, changedRecords: changedRecords.size, changedValues, changedDisplays,
+    reclassifiedValues, projectedValues, priorReviewValues, resolvedReviewValues,
     synonymGroups: rows.reduce((count, row) => count + row.aliases.length, 0), synonymFields: rows.filter(row => row.aliases.length).length,
     reviewValues: issues.length, reviewRecords: new Set(issues.map(issue => issue.sourceId)).size,
     reviewReasons: issues.reduce((counts, issue) => { for (const reason of issue.reasons) counts[reason] = (counts[reason] ?? 0) + 1; return counts; }, {}) }, fields: rows, issues };

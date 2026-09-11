@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { openHistoryLocalTarget } from './lib/history-local-target.mjs';
 import { BASE_FIELD_VERSION, buildBaseBusinessPlan } from './lib/base-business-fields.mjs';
 import { auditBaseBusinessValues } from './lib/base-business-values-audit.mjs';
+import { loadBaseChildEvidence } from './lib/base-family-organization.mjs';
 import { historyPayloadHash } from './lib/history-import-trial.mjs';
 import { textFileSha256 } from './lib/text-hash.mjs';
 import { baseBusinessFieldsSchema } from '../src/features/school/base-business-fields-contract.ts';
@@ -25,10 +26,10 @@ const migrate = statement => {
     throw new Error('BASE_DATABASE_ERROR: inspect private error file');
   }
 };
-const prerequisite = '20260910004000_base_business_fields';
+const prerequisite = '20260910006000_base_value_synonyms';
 const prerequisiteChecksum = sql(`begin read only;select checksum from public.schema_migrations where version='${prerequisite}';commit;`);
 if (prerequisiteChecksum !== textFileSha256(`supabase/migrations/${prerequisite}.sql`)) throw new Error('BASE_PREREQUISITE_MIGRATION_REQUIRED');
-const version = '20260910006000_base_value_synonyms';
+const version = '20260911001000_base_review_resolution';
 const migration = `supabase/migrations/${version}.sql`;
 const quote = value => `'${String(value).replaceAll("'", "''")}'`;
 const read = name => JSON.parse(fs.readFileSync(path.join(root, name), 'utf8'));
@@ -45,12 +46,14 @@ if (mode === '--preflight') {
 const records = sql(`begin isolation level repeatable read read only;
   select to_jsonb(h) from public.history_import_records h where source_data->>'format'='feishu-base' order by id;commit;`)
   .split('\n').filter(Boolean).map(line => JSON.parse(line));
-const plan = buildBaseBusinessPlan(records);
+const plan = buildBaseBusinessPlan(records, loadBaseChildEvidence(sql, records));
 for (const fact of plan.facts) baseBusinessFieldsSchema.parse(fact.fields);
 const planHash = historyPayloadHash(plan);
 const checkKey = { checksum, planHash, script: textFileSha256('scripts/base-business-fields.mjs'),
   library: textFileSha256('scripts/lib/base-business-fields.mjs'), contract: textFileSha256('src/features/school/base-business-fields-contract.ts'),
   aliases: textFileSha256('scripts/lib/base-value-normalization.mjs'), grade: textFileSha256('src/lib/grade-format.mjs'),
+  placement: textFileSha256('scripts/lib/base-field-placement.mjs'),
+  family: textFileSha256('scripts/lib/base-family-organization.mjs'),
   valueAudit: textFileSha256('scripts/lib/base-business-values-audit.mjs'),
   schema: textFileSha256('src/features/school/base-business-fields-schema.mjs'), normalizer: textFileSha256('src/features/school/business-source-contract.ts'),
   assertions: textFileSha256('scripts/sql/base-business-fields-assertions.sql') };

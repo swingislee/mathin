@@ -1,8 +1,9 @@
 import { normalizeSourceAssessmentBand, sourceScore } from '../../src/features/school/business-source-contract.ts';
 import { normalizeGradeLabel } from '../../src/lib/grade-format.mjs';
-import { normalizeBaseSemanticValue } from './base-value-normalization.mjs';
+import { normalizeBaseInputText, normalizeBaseSemanticValue } from './base-value-normalization.mjs';
+import { createBaseFamilyOrganizer } from './base-family-organization.mjs';
 
-export const BASE_FIELD_VERSION = 2;
+export const BASE_FIELD_VERSION = 3;
 
 // 字段名只用于选择语义；每个来源字段 ID 和原值分别保存，不把同名字段合并。
 const definitions = new Map();
@@ -233,7 +234,7 @@ const pad = number => String(number).padStart(2, '0');
 
 /** 日期只采用原字段明确给出的年月日，不使用文件日期、导入时间或其他步骤的年份补齐。 */
 export function parseBaseDate(text) {
-  let normalized = text.normalize('NFKC').trim();
+  let normalized = normalizeBaseInputText(text).normalize('NFKC').replace(/(?<=\d)['’]$/u, '');
   const zoneMatch = /\s+\(([A-Za-z_]+\/[A-Za-z_/]+)\)$/u.exec(normalized);
   const zone = zoneMatch?.[1] ?? null;
   if (zone) {
@@ -286,6 +287,12 @@ function normalizeValue(kind, text) {
   if (kind === 'date' || kind === 'date_or_time' || kind === 'date_or_relative') {
     const value = parseBaseDate(text);
     if (value) return { value, display: value.text, status: 'normalized' };
+    // 两个确认日期连写时保留两个日期；按原文给出的月日拆分，年份仍为空。
+    const parts = text.normalize('NFKC') === '11.1411,20' ? ['11.14', '11.20'] : text.split(/[\s、,，;；]+/u).filter(Boolean);
+    const dates = parts.map(parseBaseDate);
+    if (parts.length > 1 && dates.every(date => date && ['day', 'month_day'].includes(date.precision))) {
+      return { value: { precision: 'multiple_dates', dates }, display: dates.map(date => date.text).join('、'), status: 'normalized' };
+    }
     if (kind === 'date_or_time' && /^\d{1,2}:\d{2}(?:\s*[-~～—]\s*\d{1,2}:\d{2})?$/u.test(text)) return { value: text, display: text, status: 'text' };
     const relative = kind === 'date_or_relative' && /^第(\d+)天$/u.exec(text);
     if (relative) return { value: { text, precision: 'relative_day', day: +relative[1], anchor: null }, display: text, status: 'normalized' };
@@ -293,6 +300,7 @@ function normalizeValue(kind, text) {
   if (kind === 'phone') {
     const value = phoneValues(text);
     if (value) return { value, display: value.join('、'), status: 'normalized' };
+    return { value: null, display: '资料待补', status: 'pending' };
   }
   if (kind === 'boolean') {
     if (['是', '已', '已到', '已出勤', '出勤', '已报名', '报名', '已报', '已续', '已续报', '新报', '已缴费', '已填写', '已加', '已加V', '列入计划', '已宣讲', '已开团', '诺访', '参加', '已参加'].includes(text)) return { value: true, display: text, status: 'normalized' };
@@ -346,7 +354,7 @@ function normalizeValue(kind, text) {
   return { value: null, display: text, status: 'unparsed' };
 }
 
-export function organizeBaseRecord(record) {
+export function organizeBaseRecord(record, organizeFamily = createBaseFamilyOrganizer()) {
   if (record.source_data?.format !== 'feishu-base') return null;
   const fields = [];
   for (const cell of record.record_data.cells) {
@@ -357,19 +365,21 @@ export function organizeBaseRecord(record) {
     if (!text && !rawHasContent) continue;
     const definition = baseFieldDefinition(record.record_data.tableName, cell.fieldName);
     const rawText = !text && ['number', 'boolean'].includes(typeof cell.rawValue) ? String(cell.rawValue) : '';
-    const value = text || rawText ? normalizeBaseSemanticValue(definition, text || rawText) ?? normalizeValue(definition.kind, text || rawText)
-      : { value: { sourceValue: cell.rawValue }, display: '', status: 'reference', review: ['reference'] };
+    const input = normalizeBaseInputText(text || rawText);
+    const value = input ? normalizeBaseSemanticValue(definition, input) ?? normalizeValue(definition.kind, input)
+      : { value: { sourceValue: cell.rawValue }, display: '资料待补', status: 'pending' };
     fields.push({ fieldId: cell.fieldId, name: cell.fieldName, ...definition, ...value,
       status: definition.section === 'unmapped' ? 'unmapped' : value.status,
       originalText, sourceType: String(cell.type ?? ''), rawHasContent });
   }
-  return { source_record_id: record.id, source_payload_sha256: record.payload_sha256, mapping_version: BASE_FIELD_VERSION, fields };
+  return { source_record_id: record.id, source_payload_sha256: record.payload_sha256, mapping_version: BASE_FIELD_VERSION, fields: organizeFamily(record, fields) };
 }
 
 /** 覆盖率以逐格生成的结构化资料为准，分别报告原文表达、规范值和需要按原值办理的字段。 */
-export function buildBaseBusinessPlan(records) {
+export function buildBaseBusinessPlan(records, evidenceRecords = []) {
   const baseRecords = records.filter(record => record.source_data?.format === 'feishu-base');
-  const facts = baseRecords.map(organizeBaseRecord);
+  const organizeFamily = createBaseFamilyOrganizer([...records, ...evidenceRecords]);
+  const facts = baseRecords.map(record => organizeBaseRecord(record, organizeFamily));
   const fields = new Map();
   for (let index = 0; index < baseRecords.length; index++) {
     const record = baseRecords[index], values = new Map(facts[index].fields.map(field => [field.fieldId, field]));
@@ -380,7 +390,7 @@ export function buildBaseBusinessPlan(records) {
       if (!fields.has(key)) fields.set(key, { source: record.source_data.filename, table: record.record_data.tableName,
         tableId: record.source_table_id, fieldId: cell.fieldId, field: cell.fieldName, sourceType: String(cell.type ?? ''),
         ...definition, target: 'history_source_business_facts.fields', businessKey: `${definition.section}.${definition.key}`,
-        cells: 0, nonemptyText: 0, rawOnly: 0, normalized: 0, text: 0, unparsed: 0, reference: 0, unmapped: 0 });
+        cells: 0, nonemptyText: 0, rawOnly: 0, normalized: 0, text: 0, pending: 0, unparsed: 0, reference: 0, unmapped: 0 });
       const row = fields.get(key), value = values.get(cell.fieldId);
       row.cells++;
       if (String(cell.text ?? '').trim()) row.nonemptyText++;
@@ -393,5 +403,8 @@ export function buildBaseBusinessPlan(records) {
   return { version: BASE_FIELD_VERSION, facts, summary: { records: facts.length, tables: new Set(baseRecords.map(record => `${record.source_sha256}:${record.source_table_id}`)).size,
     definitions: items.length, nonemptyDefinitions: items.filter(item => item.nonemptyText + item.rawOnly > 0).length,
     reviewFields: facts.reduce((count, fact) => count + fact.fields.filter(field => field.review?.length || field.status === 'unparsed').length, 0),
-    cells: sum('cells'), nonemptyText: sum('nonemptyText'), rawOnly: sum('rawOnly'), normalized: sum('normalized'), text: sum('text'), unparsed: sum('unparsed'), reference: sum('reference'), unmapped: sum('unmapped') }, fields: items };
+    familySources: facts.filter(fact => fact.fields.some(field => field.value?.familyKey)).length,
+    sourceChildren: facts.flatMap(fact => fact.fields.flatMap(field => field.value?.children ?? [])).length,
+    pendingChildNames: facts.flatMap(fact => fact.fields.flatMap(field => field.value?.children ?? [])).filter(child => child.nameStatus === 'information_pending').length,
+    cells: sum('cells'), nonemptyText: sum('nonemptyText'), rawOnly: sum('rawOnly'), normalized: sum('normalized'), text: sum('text'), pending: sum('pending'), unparsed: sum('unparsed'), reference: sum('reference'), unmapped: sum('unmapped') }, fields: items };
 }

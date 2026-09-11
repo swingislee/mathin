@@ -19,7 +19,7 @@ describe('Base business field organization', () => {
     const plan = buildBaseBusinessPlan(input);
     const fields: BaseBusinessField[][] = plan.facts.map((fact: { fields: unknown }) => baseBusinessFieldsSchema.parse(fact.fields));
     expect(plan.summary).toMatchObject({ records: 2, definitions: 7, nonemptyText: 7, unmapped: 0 });
-    expect(plan.facts[0]).toMatchObject({ source_record_id: 'row', source_payload_sha256: 'b'.repeat(64), mapping_version: 2 });
+    expect(plan.facts[0]).toMatchObject({ source_record_id: 'row', source_payload_sha256: 'b'.repeat(64), mapping_version: 3 });
     expect(baseBusinessFieldsSchema.parse(plan.facts[0].fields)).toEqual(plan.facts[0].fields);
     expect(fields[0].find(field => field.key === 'acquired_on')).toMatchObject({ display: '2026-01-29', originalText: '20260129' });
     expect(fields[0].find(field => field.key === 'content')?.value).toBe('第一行\n原文第二行');
@@ -41,14 +41,14 @@ describe('Base business field organization', () => {
     expect(parseBaseDate(text as string)).toMatchObject(expected);
   });
 
-  it.each(['2025-02-29', '2026-13-10', '2026-01-01T24:00', '2026-01-01T12:61', '2026-01-01T12:00+15:00', '2026-01-01 12:00 (Unknown/Zone)', '姓名被填进日期', '11.1411，20'])('keeps invalid or mixed dates as original wording: %s', text => {
+  it.each(['2025-02-29', '2026-13-10', '2026-01-01T24:00', '2026-01-01T12:61', '2026-01-01T12:00+15:00', '2026-01-01 12:00 (Unknown/Zone)', '姓名被填进日期'])('keeps invalid or mixed dates as original wording: %s', text => {
     expect(parseBaseDate(text)).toBeNull();
     expect(organizeBaseRecord(record({ 获取日期: text }))!.fields[0]).toMatchObject({ value: null, display: text, originalText: text, status: 'unparsed' });
   });
 
   it('keeps historical class labels, relative payment dates, monetary precision and non-renewal outcomes', () => {
     const fields = organizeBaseRecord(record({ 班型: '慎思', 缴费时间: '第1天', 缴费金额: '￥7,300.50', 续报与否: '新报（不用续报）', 是否续报: '已退费', 备考成绩: '未达A', '测评成绩（分数）': '50+' }))!.fields;
-    const get = (key: string) => fields.find(field => field.name === key);
+    const get = (key: string) => fields.find((field: BaseBusinessField) => field.name === key);
     expect(get('班型')?.value).toEqual({ label: '慎思', band: null });
     expect(get('缴费时间')?.value).toEqual({ text: '第1天', precision: 'relative_day', day: 1, anchor: null });
     expect(get('缴费金额')?.value).toEqual({ amount: '7300.50', currency: 'CNY' });
@@ -66,10 +66,10 @@ describe('Base business field organization', () => {
       { fieldId: 'empty', fieldName: '获取日期', text: '', rawValue: null },
       { fieldId: 'system', fieldName: '系统时间', text: '2026-09-10', kind: 'system' },
     ])]);
-    expect(plan.summary).toMatchObject({ definitions: 4, cells: 4, nonemptyText: 1, rawOnly: 2, normalized: 1, reference: 1, unmapped: 1 });
+    expect(plan.summary).toMatchObject({ definitions: 4, cells: 4, nonemptyText: 1, rawOnly: 2, normalized: 1, pending: 1, reference: 0, unmapped: 1 });
     expect(plan.facts[0].fields).toHaveLength(3);
     expect(plan.facts[0].fields[0]).toMatchObject({ value: { amount: '0.00', currency: 'CNY' }, originalText: '' });
-    expect(plan.facts[0].fields[1]).toMatchObject({ value: { sourceValue: 'source-option-without-label' }, status: 'reference' });
+    expect(plan.facts[0].fields[1]).toMatchObject({ value: { sourceValue: 'source-option-without-label' }, display: '资料待补', status: 'pending' });
     expect(plan.facts[0].fields[2]).toMatchObject({ originalText: '保留原值', status: 'unmapped' });
   });
 

@@ -65,6 +65,22 @@ for (const role of ['admin', 'teacher', 'student']) {
       results.push({ role, actualSourcesCompared: compared, acquisitionLeads: values.filter(row => row.sources.length).length,
         rpcMs: Date.now() - started, sourceFieldsEqual: true });
       console.log(JSON.stringify(results.at(-1)));
+      const reviewSamples = [
+        fact => fact.fields.some(field => field.projections?.length),
+        fact => fact.fields.some(field => field.value?.familyKey),
+        fact => fact.fields.some(field => field.status === 'pending'),
+        fact => fact.fields.some(field => field.label === '历史职员'),
+        fact => fact.fields.some(field => field.key === 'interest_content'),
+        fact => fact.fields.some(field => field.key === 'nearby_location'),
+      ].map(matches => plan.facts.find(matches));
+      if (reviewSamples.some(fact => !fact)) throw new Error('BASE_REVIEW_SAMPLES_REQUIRED');
+      for (const sourceId of new Set(reviewSamples.map(fact => fact.source_record_id))) {
+        const actual = await client.rpc('read_base_source_business_fields', { p_source_id: sourceId });
+        if (actual.error) throw new Error('BASE_REVIEW_SOURCE_RPC');
+        assert.deepEqual(baseBusinessFieldsSchema.parse(actual.data), expected.get(sourceId));
+      }
+      results.push({ role, reviewShapes: reviewSamples.length, sourceFieldsEqual: true });
+      console.log(JSON.stringify(results.at(-1)));
     }
     const routes = role === 'admin' ? ['followups/leads?scope=all', 'history-import', 'students?scope=all'] : ['followups/leads?scope=mine'];
     for (const locale of ['zh', 'en']) for (const route of routes) {
