@@ -130,7 +130,7 @@ describe("employee desktop Web Push production foundation", () => {
     expect(accountPanel).toContain('<DesktopNotificationControls variant="full" />');
     expect(bell.match(/<DesktopNotificationControls/g)).toHaveLength(1);
     expect(bell.indexOf('<DesktopNotificationControls variant="toggle" />'))
-      .toBeLessThan(bell.indexOf("<Tabs defaultValue="));
+      .toBeLessThan(bell.indexOf("data-notification-feed"));
     expect(controls).toContain('role="switch"');
   });
 

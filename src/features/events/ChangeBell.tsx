@@ -4,45 +4,23 @@ import { Bell } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { WorkItemUrgencyBucket } from "@/features/school/stage/types";
 import { Link, useRouter } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { notificationValueKey, renderNotificationDetail, resolveNotificationDetail } from "./notification-copy";
 import { markChangeFeedItemRead, markChangeFeedRead, type ChangeEvent } from "./notifications";
 import { DesktopNotificationControls } from "./DesktopNotificationControls";
 
-export interface InboxWorkItem {
-  key: string;
-  title: string;
-  reason: string;
-  href: string;
-  urgency: WorkItemUrgencyBucket;
-  urgencyLabel: string;
-}
-
-const TASK_BADGE: Record<WorkItemUrgencyBucket, "danger" | "default" | "secondary" | "outline"> = {
-  now: "danger",
-  overdue: "danger",
-  today: "default",
-  upcoming: "outline",
-  backlog: "secondary",
-};
-
 export function ChangeBell({
   initialEvents,
-  workItems,
-  totalWorkItems,
   userId,
+  showWorkLink,
   desktopNotificationsEligible,
 }: {
   initialEvents: ChangeEvent[];
-  workItems: InboxWorkItem[];
-  totalWorkItems: number;
   userId: string;
+  showWorkLink: boolean;
   desktopNotificationsEligible: boolean;
 }) {
   const t = useTranslations("changes");
@@ -54,7 +32,6 @@ export function ChangeBell({
   const navigatingRef = useRef(false);
   const events = initialEvents.filter((event) => !dismissedEventIds.has(event.id));
   const unread = events.length;
-  const badgeCount = totalWorkItems + unread;
   const latestVisibleEvent = events[0];
 
   useEffect(() => {
@@ -135,13 +112,13 @@ export function ChangeBell({
       <PopoverTrigger asChild>
         <button
           type="button"
-          aria-label={t("label", { tasks: totalWorkItems, count: unread })}
+          aria-label={t("label", { count: unread })}
           className="edge-control relative"
         >
           <Bell size={18} />
-          {badgeCount > 0 && (
+          {unread > 0 && (
             <span className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-rose px-1 text-[10px] leading-5 text-white">
-              {Math.min(badgeCount, 99)}
+              {Math.min(unread, 99)}
             </span>
           )}
         </button>
@@ -151,36 +128,7 @@ export function ChangeBell({
           <span className="font-medium">{t("title")}</span>
           {desktopNotificationsEligible ? <DesktopNotificationControls variant="toggle" /> : null}
         </div>
-        <Tabs defaultValue={workItems.length > 0 ? "tasks" : "notifications"}>
-          <TabsList className="mx-3 mt-3 grid grid-cols-2">
-            <TabsTrigger value="tasks">{t("tasks", { count: totalWorkItems })}</TabsTrigger>
-            <TabsTrigger value="notifications">{t("notifications", { count: unread })}</TabsTrigger>
-          </TabsList>
-          <TabsContent value="tasks" className="mt-2">
-            {workItems.length === 0 ? (
-              <p className="px-4 py-6 text-sm text-muted">{t("emptyTasks")}</p>
-            ) : (
-              <ol className="max-h-80 divide-y divide-line overflow-y-auto">
-                {workItems.map((item) => (
-                  <li key={item.key}>
-                    <Link href={item.href} className="block px-4 py-3 transition hover:bg-moon/20">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="min-w-0 truncate text-sm font-medium text-ink">{item.title}</p>
-                        <Badge variant={TASK_BADGE[item.urgency]}>{item.urgencyLabel}</Badge>
-                      </div>
-                      <p className="mt-1 line-clamp-2 text-xs text-muted">{item.reason}</p>
-                    </Link>
-                  </li>
-                ))}
-              </ol>
-            )}
-            <div className="border-t border-line p-2">
-              <Link href="/dashboard" className="block rounded-lg px-3 py-2 text-center text-sm text-muted transition hover:bg-moon/20 hover:text-ink">
-                {t("viewAllTasks")}
-              </Link>
-            </div>
-          </TabsContent>
-          <TabsContent value="notifications" className="mt-2">
+        <div data-notification-feed>
             {events.length === 0 ? (
               <p className="px-4 py-6 text-sm text-muted">{t("empty")}</p>
             ) : (
@@ -207,8 +155,14 @@ export function ChangeBell({
                 </Button>
               </div>
             )}
-          </TabsContent>
-        </Tabs>
+        </div>
+        {showWorkLink && (
+          <div className="border-t border-line px-4 py-3 text-xs text-muted">
+            <Link href="/dashboard?view=work" className="underline underline-offset-4" onClick={() => setPopoverOpen(false)}>
+              {t("workMoved")}
+            </Link>
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );

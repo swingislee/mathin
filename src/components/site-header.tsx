@@ -1,8 +1,7 @@
-import { getLocale, getTranslations } from "next-intl/server";
+import { getLocale } from "next-intl/server";
 import { GlobalFloatingControls } from "@/components/global-floating-controls";
-import { ChangeBell, type InboxWorkItem } from "@/features/events/ChangeBell";
+import { ChangeBell } from "@/features/events/ChangeBell";
 import { getInitialChangeFeed, type ChangeEvent } from "@/features/events/notifications";
-import { formatWorkItemReason, listMyWorkItems, resolveWorkItemHref } from "@/features/school/work-items";
 import { Link } from "@/i18n/navigation";
 import { getProfile } from "@/lib/auth";
 import { pickActiveEnvironment, resolveAvailableEnvironments } from "@/lib/environment";
@@ -16,8 +15,6 @@ export async function SiteHeader({ workspace = false }: { workspace?: boolean } 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   let changes: ChangeEvent[] = [];
-  let inboxWorkItems: InboxWorkItem[] = [];
-  let totalWorkItems = 0;
 
   let environments: Awaited<ReturnType<typeof resolveAvailableEnvironments>> = [];
   let activeEnvironment: ReturnType<typeof pickActiveEnvironment> = null;
@@ -26,34 +23,7 @@ export async function SiteHeader({ workspace = false }: { workspace?: boolean } 
     profile = await getProfile(user.id);
     environments = await resolveAvailableEnvironments(supabase, user.id, profile?.role);
     activeEnvironment = pickActiveEnvironment(profile?.lastActiveEnvironment, environments);
-    const [nextChanges, rawWorkItems] = await Promise.all([
-      getInitialChangeFeed(),
-      activeEnvironment === "staff" ? listMyWorkItems().catch(() => []) : Promise.resolve([]),
-    ]);
-    changes = nextChanges;
-    totalWorkItems = rawWorkItems.length;
-    if (rawWorkItems.length > 0) {
-      const [workT, classesT] = await Promise.all([
-        getTranslations("school.work"),
-        getTranslations("school.classes"),
-      ]);
-      const now = new Date();
-      const urgencyLabels = {
-        now: workT("bucket_now"),
-        overdue: workT("bucket_overdue"),
-        today: workT("bucket_today"),
-        upcoming: workT("bucket_upcoming"),
-        backlog: workT("bucket_backlog"),
-      };
-      inboxWorkItems = rawWorkItems.slice(0, 8).map((item) => ({
-        key: item.workKey,
-        title: item.primaryObjectName,
-        reason: formatWorkItemReason(item, workT, classesT, locale, now),
-        href: resolveWorkItemHref(item),
-        urgency: item.urgencyBucket,
-        urgencyLabel: urgencyLabels[item.urgencyBucket],
-      }));
-    }
+    changes = await getInitialChangeFeed();
   }
 
   return (
@@ -67,9 +37,8 @@ export async function SiteHeader({ workspace = false }: { workspace?: boolean } 
         {user && <ChangeBell
           key={changes[0]?.id ?? "empty"}
           initialEvents={changes}
-          workItems={inboxWorkItems}
-          totalWorkItems={totalWorkItems}
           userId={user.id}
+          showWorkLink={activeEnvironment === "staff"}
           desktopNotificationsEligible={profile?.role === "staff" || profile?.role === "admin"}
         />}
         <UtilitySheet

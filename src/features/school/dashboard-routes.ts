@@ -1,5 +1,6 @@
 import type { PermissionKey } from "./permissions";
 import type { UserEnvironment } from "@/lib/environment";
+import { TEACHING_WORKBENCH_PERMISSIONS } from "./teaching-workbench/teaching-workbench-access";
 
 /**
  * Dashboard 路由合同（docs/plan/22 §3）。
@@ -346,6 +347,14 @@ export const DASHBOARD_ROUTES = {
     permission: "schedule.manage",
     createSurface: "dialog",
     nav: { labelKey: "academicYears", group: "teaching" },
+  },
+  teaching: {
+    href: "/dashboard/teaching",
+    kind: "queue",
+    environments: STAFF_ONLY,
+    permissionAny: TEACHING_WORKBENCH_PERMISSIONS,
+    createSurface: "none",
+    nav: { labelKey: "teachingWorkbench", group: "teaching" },
   },
   classes: {
     href: "/dashboard/classes",

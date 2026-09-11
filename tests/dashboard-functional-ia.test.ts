@@ -16,6 +16,7 @@ describe("dashboard functional information architecture", () => {
       ["coordination", "subjectOperations"],
       ["finance", "subjectOperations"],
       ["managementAnalytics", "subjectOperations"],
+      ["teachingWorkbench", "teaching"],
       ["classes", "teaching"],
       ["academicYears", "teaching"],
       ["schedule", "teaching"],
