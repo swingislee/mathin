@@ -1,7 +1,6 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { NextIntlClientProvider } from "next-intl";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import zh from "../messages/zh.json";
 import en from "../messages/en.json";
 import {
@@ -11,6 +10,17 @@ import {
 } from "@/features/school/classroom-learning-reminder";
 import { SessionLearningReminderButton } from "@/features/school/SessionLearningReminderButton";
 import { learningCheckIdAfterPageChange, learningResultKey, type LearningCheckStatus } from "@/features/school/session-learning-contract";
+
+const translations = vi.hoisted(() => ({ locale: "zh" as "zh" | "en" }));
+vi.mock("next-intl", async () => {
+  const { createTranslator } = await vi.importActual<typeof import("next-intl")>("next-intl");
+  return {
+    useTranslations: () => createTranslator({
+      locale: translations.locale, messages: translations.locale === "zh" ? zh : en,
+      namespace: "school.session", onError: error => { throw error; },
+    }),
+  };
+});
 
 const checks = [
   { id: "check-a", position: 0, title: "Same title", sourcePageId: "page-a" },
@@ -89,12 +99,10 @@ describe("page-bound classroom learning reminders", () => {
   });
 });
 
-const renderButton = (reminder: ClassroomLearningReminder | null, locale: "zh" | "en" = "zh") => renderToStaticMarkup(
-  createElement(NextIntlClientProvider, {
-    locale, timeZone: "UTC", messages: locale === "zh" ? zh : en,
-    children: createElement(SessionLearningReminderButton, { reminder, rail: true }),
-  }),
-);
+const renderButton = (reminder: ClassroomLearningReminder | null, locale: "zh" | "en" = "zh") => {
+  translations.locale = locale;
+  return renderToStaticMarkup(createElement(SessionLearningReminderButton, { reminder, rail: true }));
+};
 
 describe("learning reminder entry", () => {
   it.each(["zh", "en"] as const)("renders the current page action and progress in %s", locale => {
