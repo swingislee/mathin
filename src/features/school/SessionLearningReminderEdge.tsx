@@ -25,7 +25,7 @@ export function SessionLearningReminderEdge({ reminder, onOpen }: {
         data-classroom-learning-edge={reminder.state}
         className={cn(
           "pointer-events-none absolute inset-0 rounded-[inherit] border-2 transition-colors motion-reduce:transition-none",
-          complete ? "border-leaf/50" : empty ? "border-line" : "border-crater dark:border-moon/80",
+          complete ? "border-leaf/50" : empty ? "border-line" : "border-rose",
         )}
       />
       <Button
@@ -37,11 +37,14 @@ export function SessionLearningReminderEdge({ reminder, onOpen }: {
         onClick={onOpen}
         data-classroom-input="native"
         data-classroom-learning-bookmark={reminder.state}
-        className="pointer-events-auto absolute right-0 top-3 size-11 rounded-l-lg rounded-r-none p-1 transition-colors hover:bg-moon/30"
+        className={cn(
+          "pointer-events-auto absolute right-0 top-3 size-11 rounded-l-lg rounded-r-none p-1 transition-colors",
+          complete ? "hover:bg-leaf/15" : empty ? "hover:bg-paper/80" : "hover:bg-rose/10",
+        )}
       >
         <Icon aria-hidden className={cn(
           "!size-8 stroke-[1.5]",
-          complete ? "fill-leaf/25 text-leaf-deep" : empty ? "fill-paper text-muted" : "fill-moon text-crater dark:text-moon",
+          complete ? "fill-leaf/25 text-leaf-deep" : empty ? "fill-paper text-muted" : "fill-rose/15 text-rose",
         )} />
       </Button>
     </>
