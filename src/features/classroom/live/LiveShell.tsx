@@ -947,11 +947,10 @@ export function LiveShell({
   const classroomLearningSetup = useMemo(() => rehearsal
     ? buildRehearsalLearningSetup({
         persisted: learningSetup,
-        pages: state.pages,
         roster: students,
         fallbackTitle: t("rehearsalLearningCheck"),
       })
-    : learningSetup, [learningSetup, rehearsal, state.pages, students, t]);
+    : learningSetup, [learningSetup, rehearsal, students, t]);
   const classroomLearningSetupKey = useMemo(() => classroomLearningSetup
     ? [
         classroomLearningSetup.configured ? "configured" : "default",

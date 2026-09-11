@@ -389,13 +389,9 @@ describe("R1 classroom continuity contracts", () => {
     )).toEqual(["student-2"]);
   });
 
-  it("creates a local rehearsal learning setup from the on-air roster without inventing database writes", () => {
+  it("keeps local rehearsal observation and attendance available without marking courseware pages", () => {
     const setup = buildRehearsalLearningSetup({
       persisted: null,
-      pages: [
-        { id: "page-1", type: "doc", docId: "doc-1", title: "例题一" },
-        { id: "page-2", type: "video", path: "lesson.mp4", title: "视频" },
-      ],
       roster: [
         { studentId: "student-1", userId: null, name: "学生一", seatPosition: 3 },
         { studentId: "student-2", userId: "user-2", name: "学生二", seatPosition: 0 },
@@ -404,10 +400,10 @@ describe("R1 classroom continuity contracts", () => {
     });
 
     expect(setup.checks).toEqual([{
-      id: "rehearsal-learning:doc-1",
+      id: "rehearsal-learning:general",
       position: 0,
-      title: "例题一",
-      sourcePageId: "doc-1",
+      title: "课堂观察",
+      sourcePageId: null,
     }]);
     expect(setup.students).toEqual([
       { id: "student-1", name: "学生一", seatPosition: 3 },

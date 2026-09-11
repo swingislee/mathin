@@ -1,14 +1,12 @@
 import type { SessionLearningSetup } from "@/features/school/session-learning-contract";
-import type { CoursewarePage, SessionRosterEntry } from "../types";
+import type { SessionRosterEntry } from "../types";
 
 export function buildRehearsalLearningSetup({
   persisted,
-  pages,
   roster,
   fallbackTitle,
 }: {
   persisted: SessionLearningSetup | null;
-  pages: readonly CoursewarePage[];
   roster: readonly SessionRosterEntry[];
   fallbackTitle: string;
 }): SessionLearningSetup {
@@ -17,16 +15,8 @@ export function buildRehearsalLearningSetup({
     name: student.name,
     seatPosition: student.seatPosition,
   }));
-  const checks = persisted?.checks.length
-    ? persisted.checks
-    : pages
-      .filter((page): page is Extract<CoursewarePage, { type: "doc" }> => page.type === "doc")
-      .map((page, position) => ({
-          id: `rehearsal-learning:${page.docId}`,
-          position,
-          title: page.title || fallbackTitle,
-          sourcePageId: page.docId,
-        }));
+  const checks = persisted?.checks ?? [];
+  // 无配置时保留通用观察与点名入口；页级提醒只绑定已保存的检查页。
   const resolvedChecks = checks.length > 0
     ? checks
     : [{

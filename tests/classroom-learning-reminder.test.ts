@@ -3,12 +3,14 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import zh from "../messages/zh.json";
 import en from "../messages/en.json";
+import { buildRehearsalLearningSetup } from "@/features/classroom/live/rehearsal-learning";
 import {
   applyLearningResultUpdates,
   classroomLearningReminder,
   type ClassroomLearningReminder,
 } from "@/features/school/classroom-learning-reminder";
 import { SessionLearningReminderButton } from "@/features/school/SessionLearningReminderButton";
+import { SessionLearningReminderEdge } from "@/features/school/SessionLearningReminderEdge";
 import { learningCheckIdAfterPageChange, learningResultKey, type LearningCheckStatus } from "@/features/school/session-learning-contract";
 
 const translations = vi.hoisted(() => ({ locale: "zh" as "zh" | "en" }));
@@ -37,6 +39,34 @@ const input = {
 };
 
 describe("page-bound classroom learning reminders", () => {
+  it.each([null, false, true])("keeps every rehearsal page ordinary when no checks are selected (configured=%s)", configured => {
+    const setup = buildRehearsalLearningSetup({
+      persisted: configured === null ? null : { configured, checks: [], students, results: [] },
+      roster: students.map(student => ({ studentId: student.id, userId: null, name: student.name, seatPosition: student.seatPosition })),
+      fallbackTitle: "课堂观察",
+    });
+    for (const activePageDocId of Array.from({ length: 31 }, (_, index) => `page-${index}`)) {
+      const reminder = classroomLearningReminder({ ...input, ...setup, activePageDocId });
+      expect(reminder).toBeNull();
+      expect(renderToStaticMarkup(createElement(SessionLearningReminderEdge, { reminder, onOpen: () => undefined }))).toBe("");
+      expect(renderButton(reminder)).not.toContain("data-classroom-learning-reminder=");
+    }
+  });
+
+  it("reminds only on the saved rehearsal check page and retains its recorded progress", () => {
+    const setup = buildRehearsalLearningSetup({
+      persisted: { configured: true, checks: [checks[1]], students,
+        results: [{ checkId: "check-b", studentId: students[0].id, status: "independent" }] },
+      roster: students.map(student => ({ studentId: student.id, userId: null, name: student.name, seatPosition: student.seatPosition })),
+      fallbackTitle: "课堂观察",
+    });
+    const savedResults = new Map(setup.results.map(result => [learningResultKey(result.checkId, result.studentId), result.status]));
+    expect(classroomLearningReminder({ ...input, ...setup, savedResults, activePageDocId: "page-a" })).toBeNull();
+    expect(classroomLearningReminder({ ...input, ...setup, savedResults, activePageDocId: "page-b" })).toEqual({
+      checkId: "check-b", recorded: 1, total: 3, state: "partial",
+    });
+  });
+
   it("does not light an ordinary, media or board page when the panel retains its previous check", () => {
     expect(learningCheckIdAfterPageChange(checks, "check-a", "ordinary-page")).toBe("check-a");
     expect(classroomLearningReminder({ ...input, activePageDocId: "ordinary-page" })).toBeNull();
