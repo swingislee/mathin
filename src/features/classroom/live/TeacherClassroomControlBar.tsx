@@ -90,7 +90,7 @@ export function TeacherClassroomControlBar({
         </div>
       </div>
       <div
-        className="flex min-w-0 shrink-0 items-center justify-end gap-0 border-l border-line bg-transparent pl-0.5 shadow-none ring-0 backdrop-blur-none [&_[data-classroom-rail-button]]:!size-9 lg:gap-1 lg:pl-2 lg:[&_[data-classroom-rail-button]]:!size-11"
+        className="flex min-w-0 shrink-0 items-center justify-end gap-0 border-l border-line bg-transparent pl-0.5 shadow-none ring-0 backdrop-blur-none [&_[data-classroom-rail-button]]:!h-9 [&_[data-classroom-rail-button]:not([data-classroom-learning-reminder])]:!w-9 lg:gap-1 lg:pl-2 lg:[&_[data-classroom-rail-button]]:!h-11 lg:[&_[data-classroom-rail-button]:not([data-classroom-learning-reminder])]:!w-11"
         data-classroom-fixed-controls="compact-on-narrow"
         data-classroom-fixed-controls-surface="shared-parent-glass"
       >

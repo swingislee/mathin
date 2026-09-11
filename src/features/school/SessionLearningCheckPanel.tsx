@@ -42,6 +42,8 @@ import {
   type SessionLearningStudent,
 } from "./session-learning-contract";
 import { LEARNING_CHECK_STATUS_STYLE } from "./session-learning-visual";
+import { applyLearningResultUpdates, classroomLearningReminder } from "./classroom-learning-reminder";
+import { SessionLearningReminderButton } from "./SessionLearningReminderButton";
 
 interface LearningFillUndo {
   cells: Array<{ checkId: string; studentId: string }>;
@@ -151,6 +153,7 @@ export function SessionLearningCheckPanel({
   const [results, setResults] = useState(() => new Map(
     setup.results.map((result) => [learningResultKey(result.checkId, result.studentId), result.status as LearningCheckStatus]),
   ));
+  const [savedResults, setSavedResults] = useState(() => new Map(results));
   const [seatSlots, setSeatSlots] = useState(() => buildLearningSeatSlots(setup.students));
   const [attendanceByStudent, setAttendanceByStudent] = useState(() => new Map(
     attendanceRows.map((row) => [row.studentId, row]),
@@ -207,6 +210,15 @@ export function SessionLearningCheckPanel({
       row.marked && (row.status === "absent" || row.status === "leave") ? [studentId] : []
     )),
   ), [attendanceByStudent]);
+  const pageReminder = classroomLearningReminder({
+    checks: setup.checks,
+    students: setup.students,
+    activePageDocId,
+    savedResults,
+    savingCellKeys,
+    excludedStudentIds: fillExcludedStudentIds,
+    attendanceSavingStudentIds,
+  });
   const canUndoFill = Boolean(fillUndo?.cells.some((cell) => (
     (results.get(learningResultKey(cell.checkId, cell.studentId)) ?? "unchecked") === fillUndo.status
   )));
@@ -231,48 +243,47 @@ export function SessionLearningCheckPanel({
       return [key, results.get(key) ?? "unchecked"] as const;
     }));
     setSavingCellKeys((current) => new Set([...current, ...targetKeys]));
-    setResults((current) => {
+    setResults((current) => applyLearningResultUpdates(current, targetCells, status));
+    const commitSavedResults = () => setSavedResults((current) => applyLearningResultUpdates(current, targetCells, status));
+    const finishSaving = () => setSavingCellKeys((current) => {
+      const next = new Set(current);
+      for (const key of targetKeys) next.delete(key);
+      return next;
+    });
+    const restorePreviousResults = () => setResults((current) => {
       const next = new Map(current);
-      for (const cell of targetCells) {
-        const key = learningResultKey(cell.checkId, cell.studentId);
-        if (status === "unchecked") next.delete(key);
-        else next.set(key, status);
+      for (const [key, oldStatus] of previous) {
+        if (oldStatus === "unchecked") next.delete(key);
+        else next.set(key, oldStatus);
       }
       return next;
     });
     if (ephemeral) {
-      setSavingCellKeys((current) => {
-        const next = new Set(current);
-        for (const key of targetKeys) next.delete(key);
-        return next;
-      });
+      commitSavedResults();
+      finishSaving();
       onSuccess?.(targetCells);
       return;
     }
     startTransition(async () => {
-      const result = await markSessionLearningMatrixAction({
-        sessionId,
-        cells: targetCells,
-        status,
-      });
-      if (!result.ok) {
-        setResults((current) => {
-          const next = new Map(current);
-          for (const [key, oldStatus] of previous) {
-            if (oldStatus === "unchecked") next.delete(key);
-            else next.set(key, oldStatus);
-          }
-          return next;
+      try {
+        const result = await markSessionLearningMatrixAction({
+          sessionId,
+          cells: targetCells,
+          status,
         });
-        toast.error(t("learningSaveFailed", { code: result.code }));
-      } else {
-        onSuccess?.(targetCells);
+        if (!result.ok) {
+          restorePreviousResults();
+          toast.error(t("learningSaveFailed", { code: result.code }));
+        } else {
+          commitSavedResults();
+          onSuccess?.(targetCells);
+        }
+      } catch {
+        restorePreviousResults();
+        toast.error(t("learningSaveFailed", { code: "NETWORK_ERROR" }));
+      } finally {
+        finishSaving();
       }
-      setSavingCellKeys((current) => {
-        const next = new Set(current);
-        for (const key of targetKeys) next.delete(key);
-        return next;
-      });
     });
   };
 
@@ -485,19 +496,15 @@ export function SessionLearningCheckPanel({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <button
-          type="button"
-          title={t("learningPanelOpen")}
-          className={cn(
-            triggerVariant === "rail"
-              ? "grid size-11 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-moon/30 hover:text-ink"
-              : "inline-flex min-h-11 items-center gap-1.5 rounded-full bg-ink px-3 text-xs text-paper",
-          )}
-          data-classroom-rail-button={triggerVariant === "rail" ? "learning" : undefined}
-        >
-          <ClipboardCheck size={triggerVariant === "rail" ? 18 : 14} />
-          <span className={triggerVariant === "rail" ? "sr-only" : undefined}>{t("learningPanelOpen")}</span>
-        </button>
+        <SessionLearningReminderButton
+          reminder={pageReminder}
+          rail={triggerVariant === "rail"}
+          onClick={() => {
+            if (!automaticCheckId) return;
+            setManualSelection({ pageDocId: activePageDocId, checkId: automaticCheckId });
+            setMatrixOrientation("by-question");
+          }}
+        />
       </DialogTrigger>
       {/* `w-full` 避免 Windows 经典滚动条下 `100vw` 多出的约 15px。 */}
       <DialogContent className="z-[80] flex h-dvh max-h-none w-full max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 p-0 sm:rounded-none [&>button]:right-2.5 [&>button]:top-2.5">

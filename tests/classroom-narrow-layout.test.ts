@@ -73,7 +73,8 @@ describe("narrow classroom layout", () => {
     expect(controlBar).toContain('data-classroom-control-zone="pages"');
     expect(controlBar).toContain('data-classroom-control-zone="utility"');
     expect(controlBar).toContain('data-classroom-fixed-controls="compact-on-narrow"');
-    expect(controlBar).toContain("[&_[data-classroom-rail-button]]:!size-9");
+    expect(controlBar).toContain("[&_[data-classroom-rail-button]]:!h-9");
+    expect(controlBar).toContain("[&_[data-classroom-rail-button]:not([data-classroom-learning-reminder])]:!w-9");
     expect(controlBar).toContain("grid-cols-[minmax(0,1fr)_auto]");
     expect(controlBar).not.toContain("clamp(22rem,31vw,36rem)");
     expect(controlBar).toContain("fixed inset-x-0 bottom-0");
