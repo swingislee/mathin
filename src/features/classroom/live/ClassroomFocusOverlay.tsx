@@ -5,7 +5,6 @@ import { ChevronLeft, ChevronRight, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { panelLayoutStorage } from "@/lib/panel-layout-storage";
-import { cn } from "@/lib/utils";
 import { StudentCard } from "./LivePanels";
 import type { ClassroomRosterStudent } from "./ClassroomRosterGrid";
 import { ClassroomViewportControls, type ClassroomViewportControl, type ClassroomViewportControlsProps } from "./ClassroomViewportControls";
@@ -20,7 +19,7 @@ const subscribe = (listener: () => void) => {
 const serverSnapshot = () => null;
 const clamp = (n: number) => Math.max(0, Math.min(1, n));
 
-/** 右下角图标工具组支持整组贴边收起，学生按钮可独立拖出与重新停靠。 */
+/** 下方视图工具可贴边收起；上方学生入口保持独立，并支持拖动调整位置。 */
 export function ClassroomFocusOverlay({ scope, size, students, viewport, onStar, onUndo }: {
   scope: string;
   size: { width: number; height: number };
@@ -42,10 +41,8 @@ export function ClassroomFocusOverlay({ scope, size, students, viewport, onStar,
   const suppressClick = useRef(false);
   const hasRoster = students.length > 0;
   const docked = saved.docked && !dragPosition;
-  const showRosterSlot = hasRoster && (saved.docked || dragPosition !== null);
-  const dock = classroomFocusToolsLayout(size.width, size.height, showRosterSlot);
-  const rosterDock = classroomFocusToolsLayout(size.width, size.height, true);
-  const position = dragPosition ?? (saved.docked ? rosterDock.rosterPosition : saved);
+  const dock = classroomFocusToolsLayout(size.width, size.height);
+  const position = dragPosition ?? (saved.docked ? dock.rosterPosition : saved);
   const layout = classroomFocusToolsRosterLayout(size.width, size.height, students.length, position, docked);
   const save = (value: typeof saved) => {
     panelLayoutStorage.setItem(key, JSON.stringify(value));
@@ -77,22 +74,19 @@ export function ClassroomFocusOverlay({ scope, size, students, viewport, onStar,
               aria-label={t(saved.hidden ? "showFocusTools" : "hideFocusTools")} aria-expanded={!saved.hidden} aria-controls={toolsId}
               data-classroom-focus-tools-toggle onClick={() => {
                 setSlidersOpen({ size: false, position: false });
-                save({ ...saved, hidden: !saved.hidden, rosterOpen: false });
+                save({ ...saved, hidden: !saved.hidden });
               }}>
               {saved.hidden ? <ChevronLeft aria-hidden size={14} /> : <ChevronRight aria-hidden size={14} />}
             </Button>
             <div id={toolsId} inert={saved.hidden} aria-hidden={saved.hidden}
               className="h-full rounded-[18px] bg-paper/40 p-1 shadow-sm ring-1 ring-inset ring-paper/30 backdrop-blur-xl backdrop-saturate-150">
               <ClassroomViewportControls {...viewport} height={size.height} open={slidersOpen} onToggle={toggleSlider} />
-              {showRosterSlot && <><div aria-hidden className="flex h-2 items-center justify-center"><span className="h-px w-6 bg-muted/20" /></div><div aria-hidden className="size-11" /></>}
             </div>
           </div>
           {hasRoster && (
-            <section hidden={saved.hidden} aria-label={t("focusRoster")} data-classroom-focus-roster data-docked={docked} data-expand-direction={layout.expandUp ? "up" : "down"}>
-              <Button type="button" variant="ghost" className={cn(
-                "pointer-events-auto absolute z-10 size-11 touch-none rounded-xl p-0 text-muted hover:bg-paper/50 hover:text-ink data-[expanded=true]:bg-paper/50 data-[expanded=true]:text-ink focus-visible:ring-inset focus-visible:ring-offset-0",
-                !docked && "rounded-[18px] bg-paper/40 shadow-sm ring-1 ring-inset ring-paper/30 backdrop-blur-xl backdrop-saturate-150",
-              )}
+            <section aria-label={t("focusRoster")} data-classroom-focus-roster data-docked={docked} data-expand-direction={layout.expandUp ? "up" : "down"}>
+              <Button type="button" variant="ghost"
+                className="pointer-events-auto absolute z-10 size-11 touch-none rounded-[18px] bg-paper/40 p-0 text-muted shadow-sm ring-1 ring-inset ring-paper/30 backdrop-blur-xl backdrop-saturate-150 hover:bg-paper/50 hover:text-ink data-[expanded=true]:bg-paper/50 data-[expanded=true]:text-ink focus-visible:ring-inset focus-visible:ring-offset-0"
                 style={{ left: layout.anchorLeft, top: layout.anchorTop }}
                 aria-label={t(saved.rosterOpen ? "collapseFocusRoster" : "expandFocusRoster")} aria-expanded={saved.rosterOpen} aria-controls={rosterId}
                 data-expanded={saved.rosterOpen} data-classroom-focus-roster-handle
