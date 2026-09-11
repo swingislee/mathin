@@ -31,6 +31,17 @@ const click = async (text: string) => {
 };
 
 describe("source fields and duplicate hints", () => {
+  it.each(["zh", "en"])("reuses the inferred badge for a personal source excerpt in %s", async locale => {
+    const excerpt = { ...record, id: "source-fragment:example", association: "inferred" as const,
+      cells: [{ id: "arrangement", name: "活动安排", text: "示例甲 · 1年级 · 公开课 · 周六 10:00", type: "Text" }] };
+    actions.read.mockResolvedValueOnce({ ok: true, data: { ...data, candidates: [], sources: [excerpt], sourceCount: 1 } });
+    await act(async () => root.render(createElement(SchoolRecordSourceReview, { subject, locale })));
+    await click(locale === "zh" ? "查看原表资料与相关记录" : "View original fields and related records");
+    const badge = document.querySelector('[data-slot="badge"]');
+    expect(badge?.textContent).toBe(locale === "zh" ? "资料关联待核对" : "Association to check");
+    expect(document.body.textContent).toContain(excerpt.cells[0].text);
+    expect(actions.open).not.toHaveBeenCalled();
+  });
   it("shows the original alongside a normalized value and explains unresolved source values", async () => {
     const cells = [{ fieldId: "grade", fieldName: "年级/25级", text: "一", type: "Text", kind: "context" },
       { fieldId: "mixed", fieldName: "春季年级", text: "二升三", type: "Text", kind: "context" }];
