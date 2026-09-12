@@ -1,7 +1,7 @@
 "use client";
 
 import { Copy, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useStore } from "zustand";
 import { colorVar } from "./strokes";
@@ -9,6 +9,7 @@ import { ellipseArcPath, isEditableObject, resizeObject } from "./geometry";
 import type { WhiteboardStore } from "./store";
 import type { ShapeItem } from "./types";
 import { shapePolygonPoints } from "./geometry";
+import { trackInstrumentPointer } from "./instrument-pointer-drag";
 
 function ShapeGraphic({ item, canvasWidth, canvasHeight }: { item: ShapeItem; canvasWidth: number; canvasHeight: number }) {
   const width = item.width * canvasWidth;
@@ -71,6 +72,8 @@ export function BoardObjectLayer({
   const canInteract = editable && (tool === "pointer" || (penInteraction && tool === "pen"));
   const selectedIds = useStore(store, (state) => state.selectedIds);
   const [transient, setTransient] = useState<ShapeItem | null>(null);
+  const activeDrag = useRef<(() => void) | null>(null);
+  useEffect(() => () => { activeDrag.current?.(); }, [store, canInteract, width, height]);
   const selected = items.find((item): item is ShapeItem => selectedIds.includes(item.id) && isEditableObject(item));
   const objects = items.filter(isEditableObject).map((item) => transient?.id === item.id ? transient : item);
   const visibleSelected = transient?.id === selected?.id ? transient : selected;
@@ -80,7 +83,7 @@ export function BoardObjectLayer({
     item: ShapeItem,
     mode: "move" | "resize" | "rotate",
   ) => {
-    if (!canInteract || !event.isPrimary || event.button !== 0) return;
+    if (activeDrag.current || !canInteract || !event.isPrimary || event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
     store.getState().setSelectedIds([item.id]);
@@ -91,8 +94,11 @@ export function BoardObjectLayer({
     const centerY = rect.top + item.y * rect.height;
     const initialAngle = pointerAngle(event.nativeEvent, centerX, centerY);
     let latest: ShapeItem = item;
+    let lastX = startX, lastY = startY;
     const move = (pointerEvent: PointerEvent) => {
       if (pointerEvent.pointerId !== event.pointerId) return;
+      if (pointerEvent.clientX === lastX && pointerEvent.clientY === lastY) return;
+      lastX = pointerEvent.clientX; lastY = pointerEvent.clientY;
       if (mode === "move") {
         latest = {
           ...item,
@@ -111,24 +117,19 @@ export function BoardObjectLayer({
       }
       setTransient(latest);
     };
-    const finish = (pointerEvent: PointerEvent) => {
-      if (pointerEvent.pointerId !== event.pointerId) return;
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", finish);
-      window.removeEventListener("pointercancel", finish);
+    const finish = (cancelled: boolean) => {
+      activeDrag.current = null;
       setTransient(null);
-      if (pointerEvent.type !== "pointercancel" && latest !== item) store.getState().updateItem(latest);
+      if (!cancelled && latest !== item) store.getState().updateItem(latest);
     };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", finish);
-    window.addEventListener("pointercancel", finish);
+    activeDrag.current = trackInstrumentPointer(event, { onMove: move, onFinish: finish });
   };
 
   return (
     <>
       <svg
         aria-hidden
-        className="pointer-events-none absolute inset-0 size-full overflow-visible"
+        className="pointer-events-none absolute inset-0 size-full touch-none overflow-visible"
         viewBox={`0 0 ${Math.max(width, 1)} ${Math.max(height, 1)}`}
       >
         {objects.map((item) => (

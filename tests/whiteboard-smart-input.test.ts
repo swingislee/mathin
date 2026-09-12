@@ -109,6 +109,55 @@ describe("whiteboard object and instrument ownership", () => {
     expect(store.getState().outbox).toEqual([]);
   });
 
+  it("keeps a captured touch shape drag through stopped bubbling and commits the release position", () => {
+    const h = pointerHarness();
+    const store = createWhiteboardStore();
+    const shape = createShapeFromDrag("shape", "rectangle", [0.3, 0.3], [0.5, 0.5], "ink", null, 0.004);
+    store.setState({ tool: "pointer", items: [shape] });
+    const target = elements(BoardObjectLayer({ store, editable: true, width: 1000, height: 750, preview: null }))
+      .find((element) => element.props["data-classroom-input"] === "drag" && element.props.onPointerDown)!;
+    target.props.onPointerDown!(h.event);
+    expect(h.target.setPointerCapture).toHaveBeenCalledWith(1);
+    h.fire("pointermove", 500, 1, { pointerType: "touch", stopAtTarget: true });
+    h.fire("pointerup", 550, 1, { pointerType: "touch", stopAtTarget: true });
+    expect(store.getState().items[0]).toMatchObject({ x: shape.x + 0.15 });
+    expect(h.listenerCount()).toBe(0);
+    expect(h.target.hasPointerCapture(1)).toBe(false);
+    store.getState().undo();
+    expect(store.getState().items).toEqual([shape]);
+  });
+
+  it("cancels an unfinished shape transform on unmount without leaving listeners or committing it", () => {
+    const h = pointerHarness();
+    const store = createWhiteboardStore();
+    const shape = createShapeFromDrag("shape", "rectangle", [0.3, 0.3], [0.5, 0.5], "ink", null, 0.004);
+    store.setState({ tool: "pointer", items: [shape] });
+    elements(BoardObjectLayer({ store, editable: true, width: 1000, height: 750, preview: null }))
+      .find((element) => element.props["data-classroom-input"] === "drag" && element.props.onPointerDown)!.props.onPointerDown!(h.event);
+    h.fire("pointermove", 500, 1, { pointerType: "touch" });
+    effects.cleanups.splice(0).forEach((cleanup) => cleanup());
+    h.fire("pointerup", 600, 1, { pointerType: "touch" });
+    expect(store.getState().items).toEqual([shape]);
+    expect(store.getState().outbox).toEqual([]);
+    expect(h.listenerCount()).toBe(0);
+    expect(h.target.hasPointerCapture(1)).toBe(false);
+  });
+
+  it("selects a shape without creating an edit when the touch is released in place", () => {
+    const h = pointerHarness();
+    const store = createWhiteboardStore();
+    const shape = createShapeFromDrag("shape", "rectangle", [0.3, 0.3], [0.5, 0.5], "ink", null, 0.004);
+    store.setState({ tool: "pointer", items: [shape] });
+    elements(BoardObjectLayer({ store, editable: true, width: 1000, height: 750, preview: null }))
+      .find((element) => element.props["data-classroom-input"] === "drag" && element.props.onPointerDown)!.props.onPointerDown!(h.event);
+    h.fire("pointerup", 400, 1, { pointerType: "touch" });
+    expect(store.getState().selectedIds).toEqual([shape.id]);
+    expect(store.getState().items[0]).toBe(shape);
+    expect(store.getState().outbox).toEqual([]);
+    expect(store.getState().undoStack).toEqual([]);
+    expect(h.listenerCount()).toBe(0);
+  });
+
   it("keeps instrument movement available in pointer mode and removes all drawing handles", () => {
     const h = pointerHarness();
     const store = createWhiteboardStore();
@@ -170,6 +219,26 @@ describe("whiteboard object and instrument ownership", () => {
       expect(store.getState().instruments).toEqual([before]);
     }
     expect(store.getState().items).toEqual([]);
+  });
+
+  it("keeps a ruler moving when a child loses implicit touch capture beneath its owning handle", () => {
+    const h = pointerHarness();
+    const store = createWhiteboardStore();
+    store.getState().addInstrument("ruler");
+    const before = store.getState().instruments[0];
+    elements(InstrumentLayer({ store, editable: true, drawingEnabled: false, width: 1000, height: 750 }))
+      .find((element) => element.props.className === "cursor-move" && element.props.onPointerDown)!.props.onPointerDown!(h.event);
+    h.fire("pointermove", 410, 1, { pointerType: "touch" });
+    // 模拟原始命中子节点的捕获释放事件冒泡到正在持有捕获的拖动手柄。
+    const childCaptureLoss = Object.assign(new Event("lostpointercapture", { bubbles: true }), { pointerId: 1 });
+    Object.defineProperty(childCaptureLoss, "target", { value: new EventTarget() });
+    h.target.dispatchEvent(childCaptureLoss);
+    expect(store.getState().instruments[0].x).toBeCloseTo(before.x + 0.01);
+    expect(h.target.hasPointerCapture(1)).toBe(true);
+    h.fire("pointermove", 500, 1, { pointerType: "touch" });
+    h.fire("pointerup", 520, 1, { pointerType: "touch" });
+    expect(store.getState().instruments[0].x).toBeCloseTo(before.x + 0.12);
+    expect(h.listenerCount()).toBe(0);
   });
 
   it.each(["mouse", "pen"])("stops at the last held position when %s release is missed and capture is unavailable", (pointerType) => {

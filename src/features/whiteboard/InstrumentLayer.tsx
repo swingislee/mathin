@@ -379,7 +379,7 @@ export function InstrumentLayer({ store, editable, interactionEnabled = true, dr
   };
 
   return (
-    <svg data-classroom-input="native" className={`pointer-events-none absolute inset-0 z-40 size-full overflow-visible${interactionEnabled ? "" : " [&_*]:pointer-events-none"}`} viewBox={`0 0 ${Math.max(width, 1)} ${Math.max(height, 1)}`}>
+    <svg data-classroom-input="native" className={`pointer-events-none absolute inset-0 z-40 size-full touch-none overflow-visible${interactionEnabled ? "" : " [&_*]:pointer-events-none"}`} viewBox={`0 0 ${Math.max(width, 1)} ${Math.max(height, 1)}`}>
       {preview ? (
         <g transform={`translate(${preview.x * width} ${preview.y * height}) rotate(${preview.rotation})`} opacity={0.7}>
           {preview.shape === "arc" ? (

@@ -24,7 +24,7 @@ export function trackInstrumentPointer(start: InstrumentPointerStart, {
     host.removeEventListener("blur", cancel);
     host.removeEventListener("pagehide", cancel);
     owner?.removeEventListener("visibilitychange", visibility);
-    target.removeEventListener("lostpointercapture", cancelPointer);
+    target.removeEventListener("lostpointercapture", lostCapture);
     try {
       if (target.hasPointerCapture(pointerId)) target.releasePointerCapture(pointerId);
     } catch {
@@ -47,6 +47,10 @@ export function trackInstrumentPointer(start: InstrumentPointerStart, {
     finish(false);
   };
   const cancelPointer = (event: PointerEvent) => { if (event.pointerId === pointerId) finish(true); };
+  const lostCapture = (event: PointerEvent) => {
+    // 子节点的隐式捕获转交给手柄时也会冒泡；只处理本手柄真正失去捕获。
+    if (event.target === target) cancelPointer(event);
+  };
   const cancel = () => finish(true);
   const visibility = () => { if (owner?.visibilityState === "hidden") cancel(); };
 
@@ -56,7 +60,7 @@ export function trackInstrumentPointer(start: InstrumentPointerStart, {
   host.addEventListener("blur", cancel);
   host.addEventListener("pagehide", cancel);
   owner?.addEventListener("visibilitychange", visibility);
-  target.addEventListener("lostpointercapture", cancelPointer);
+  target.addEventListener("lostpointercapture", lostCapture);
   try {
     target.setPointerCapture(pointerId);
   } catch {
