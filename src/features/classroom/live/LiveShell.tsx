@@ -709,13 +709,13 @@ export function LiveShell({
     if (!mainStore) return;
     const side = sideBoard.store;
     const sideState = side.getState();
-    mainStore.setState({ tool: sideState.tool, color: sideState.color, sizeNorm: sideState.sizeNorm });
+    mainStore.setState({ tool: sideState.tool, lastEraser: sideState.lastEraser, color: sideState.color, sizeNorm: sideState.sizeNorm });
     const link = (from: WhiteboardStore, to: WhiteboardStore) =>
       from.subscribe((next, prev) => {
-        if (next.tool === prev.tool && next.color === prev.color && next.sizeNorm === prev.sizeNorm) return;
+        if (next.tool === prev.tool && next.lastEraser === prev.lastEraser && next.color === prev.color && next.sizeNorm === prev.sizeNorm) return;
         const target = to.getState();
-        if (target.tool !== next.tool || target.color !== next.color || target.sizeNorm !== next.sizeNorm) {
-          to.setState({ tool: next.tool, color: next.color, sizeNorm: next.sizeNorm });
+        if (target.tool !== next.tool || target.lastEraser !== next.lastEraser || target.color !== next.color || target.sizeNorm !== next.sizeNorm) {
+          to.setState({ tool: next.tool, lastEraser: next.lastEraser, color: next.color, sizeNorm: next.sizeNorm });
         }
       });
     const unlinkA = link(mainStore, side);
@@ -914,7 +914,7 @@ export function LiveShell({
     onChange: (percent, centerY) => viewport.change({ focused: true, zoom: percent / display.bounds.fitPercent, centerY }),
     onEnd: viewport.commit,
     onCancelInk: (pointerId) => mainInputPortRef.current?.cancel(pointerId),
-    palm: palmAvailable && effectiveRoutingMode === "smart" && mainTool === "pen" ? {
+    palm: palmAvailable && effectiveRoutingMode !== "interaction-lock" && mainTool === "pen" ? {
       threshold: palmDevice.settings.profile!.threshold, inputPortRef: mainInputPortRef, penPointers,
       onStart: activateMainInput, onCancelInput: cancelH5Gesture,
     } : undefined,

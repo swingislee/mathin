@@ -7,6 +7,11 @@ export type Tool =
   | "eraserL"
   | "strokeEraser";
 
+export type EraserTool = Extract<Tool, `eraser${string}` | "strokeEraser">;
+export function isEraserTool(tool: Tool): tool is EraserTool {
+  return tool === "strokeEraser" || tool.startsWith("eraser");
+}
+
 /** 画笔七色：存 token 名而非色值，绘制时解析当前主题的 CSS 变量（08-§3.2）。 */
 export const COLOR_TOKENS = ["ink", "rose", "blue", "leaf", "crater", "cheek", "moon"] as const;
 export type ColorToken = (typeof COLOR_TOKENS)[number];
@@ -14,7 +19,7 @@ export type ColorToken = (typeof COLOR_TOKENS)[number];
 export type StrokeMode = "ink" | "erase";
 
 /**
- * 一条绘制项。坐标与线宽均相对 16:9 逻辑画布归一化（0–1，以 CSS 像素为基准，
+ * 一条绘制项。坐标相对当前画布归一化，线宽相对共享参照宽度（以 CSS 像素为基准，
  * 修正旧版 CSS px / 设备 px 混用的偏差）。mode="erase" 是可重放的碎擦笔迹：
  * 快照按序重放即可完整还原画面（修正旧版快照丢碎擦的 bug）。
  */
@@ -23,6 +28,8 @@ export interface StrokeItem {
   mode: StrokeMode;
   color: ColorToken;
   wNorm: number;
+  /** 课堂新笔迹使用等宽圆头笔；缺省时按历史 perfect-freehand 参数重放。 */
+  brush?: "round-v1";
   points: Array<[number, number]>;
 }
 
@@ -126,6 +133,7 @@ export interface ProgressChunk {
   mode: StrokeMode;
   color: ColorToken;
   wNorm: number;
+  brush?: StrokeItem["brush"];
   points: Array<[number, number]>;
   done?: boolean;
 }

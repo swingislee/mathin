@@ -1,5 +1,7 @@
 import { isAixuexiPageDoc } from "@/features/courseware-doc/aixuexi-schema";
 import type { CoursewareDoc } from "@/features/courseware-doc/document";
+import type { StrokeItem } from "@/features/whiteboard/types";
+import { CHECKPOINT_CHUNK_HARD_BYTES, CHECKPOINT_MAX_CHUNKS } from "../checkpoint/limits";
 import { isCoursewareCompositionPage } from "@/features/courseware-doc/composition-page-schema";
 import { isGamePageDoc } from "@/features/courseware-doc/game-page-schema";
 import {
@@ -37,6 +39,23 @@ export interface ClassroomInteractionAuditProfile {
   status: ClassroomInteractionAuditStatus;
   provider: ClassroomInteractionSyncProvider | null;
 }
+
+/** 新课堂笔刷在进度包与 checkpoint v2 中保留版本，归档和晚加入端按同版重放。 */
+export const CLASSROOM_BOARD_BRUSH_SYNC_PROVIDERS = {
+  "round-v1": {
+    protocol: "board-checkpoint-v2",
+    rehearsalEvent: "board_snapshot",
+    authority: "classroom-controller",
+    maxChunkBytes: CHECKPOINT_CHUNK_HARD_BYTES,
+    maxChunks: CHECKPOINT_MAX_CHUNKS,
+  },
+} as const satisfies Record<NonNullable<StrokeItem["brush"]>, {
+  protocol: "board-checkpoint-v2";
+  rehearsalEvent: "board_snapshot";
+  authority: "classroom-controller";
+  maxChunkBytes: number;
+  maxChunks: number;
+}>;
 
 interface ClassroomDocInteractionRegistration {
   ownership: ClassroomInteractionAuditProfile["ownership"];

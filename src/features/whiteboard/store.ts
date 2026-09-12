@@ -6,6 +6,7 @@ import { newId } from "@/lib/uuid";
 import { cloneBoardItem } from "./geometry";
 import {
   isStrokeItem,
+  isEraserTool,
   type BoardItem,
   type BoardOp,
   type ColorToken,
@@ -14,6 +15,7 @@ import {
   type ShapeItem,
   type ShapeKind,
   type Tool,
+  type EraserTool,
 } from "./types";
 
 /** 撤销只记录本次本地动作的逆操作，不回滚协作者的并发增量。 */
@@ -48,6 +50,7 @@ interface WhiteboardState {
   savedRevision: number;
   saveState: SaveState;
   tool: Tool;
+  lastEraser: EraserTool;
   color: ColorToken;
   fill: ColorToken | null;
   sizeNorm: number;
@@ -120,6 +123,7 @@ const stateCreator: StateCreator<WhiteboardState> = (set, get) => ({
   savedRevision: 0,
   saveState: "saved",
   tool: "pen",
+  lastEraser: "strokeEraser",
   color: "ink",
   fill: null,
   sizeNorm: SIZE_PRESETS.medium,
@@ -145,7 +149,7 @@ const stateCreator: StateCreator<WhiteboardState> = (set, get) => ({
           outbox: [],
         },
   ),
-  setTool: (tool) => set({ tool, selectedIds: tool === "pointer" ? get().selectedIds : [] }),
+  setTool: (tool) => set({ tool, lastEraser: isEraserTool(tool) ? tool : get().lastEraser, selectedIds: tool === "pointer" ? get().selectedIds : [] }),
   setColor: (color) => set({ color }),
   setFill: (fill) => set({ fill }),
   setSizeNorm: (sizeNorm) => set({ sizeNorm }),

@@ -7,7 +7,7 @@ import { boardBus, type BoardBus } from "./bus";
 import { BoardObjectLayer } from "./BoardObjectLayer";
 import { createShapeFromDrag } from "./geometry";
 import { InstrumentLayer } from "./InstrumentLayer";
-import { colorVar, drawItem, hitStrokeId, newStrokeId, renderAll, resolveColor } from "./strokes";
+import { colorVar, drawItem, hitSweptStrokeIds, newStrokeId, renderAll, resolveColor } from "./strokes";
 import { useWhiteboardStore, type WhiteboardStore } from "./store";
 import { COLOR_TOKENS, isStrokeItem, type ShapeItem, type StrokeItem, type Tool } from "./types";
 import { ProgressStreamAssembler } from "./progress-stream";
@@ -75,6 +75,8 @@ export function CanvasSurface({
   }, [strokeWidthBasis]);
   const basisW = useCallback(() => (basisRef.current && basisRef.current > 0 ? basisRef.current : dimsRef.current.w), []);
   const strokeRef = useRef<StrokeItem | null>(null);
+  const strokeColorRef = useRef<string | null>(null);
+  const pendingErasedIdsRef = useRef(new Set<string>());
   const draftDrawnPointsRef = useRef(0);
   const remoteProgressRef = useRef(new ProgressStreamAssembler());
   const [cursor, setCursor] = useState<[number, number] | null>(null);
@@ -83,7 +85,6 @@ export function CanvasSurface({
   const [remoteCursors, setRemoteCursors] = useState<Record<string, RemoteCursor>>({});
   const [shapePreview, setShapePreview] = useState<ShapeItem | null>(null);
 
-  const renderMutation = useStore(store, (state) => state.renderMutation);
   const tool = useStore(store, (state) => state.tool);
   const color = useStore(store, (state) => state.color);
   const fill = useStore(store, (state) => state.fill);
@@ -96,7 +97,10 @@ export function CanvasSurface({
     const base = baseRef.current;
     const ctx = base?.getContext("2d");
     if (!base || !ctx) return;
-    renderAll(ctx, store.getState().items, dimsRef.current.w, dimsRef.current.h, base, basisW());
+    const items = store.getState().items.filter((item) => !pendingErasedIdsRef.current.has(item.id));
+    renderAll(ctx, items, dimsRef.current.w, dimsRef.current.h, base, basisW());
+    const active = strokeRef.current;
+    if (active?.mode === "erase") drawItem(ctx, active, dimsRef.current.w, dimsRef.current.h, "#000", basisW());
   }, [store, basisW]);
 
   const redrawDraft = useCallback(() => {
@@ -107,7 +111,8 @@ export function CanvasSurface({
     ctx.clearRect(0, 0, w, h);
     const local = strokeRef.current;
     if (local && local.mode === "ink") {
-      drawItem(ctx, local, w, h, resolveColor(draft, local.color), basisW());
+      strokeColorRef.current = resolveColor(draft, local.color);
+      drawItem(ctx, local, w, h, strokeColorRef.current, basisW());
       draftDrawnPointsRef.current = local.points.length;
     } else {
       draftDrawnPointsRef.current = 0;
@@ -124,9 +129,9 @@ export function CanvasSurface({
     if (!draft || !ctx || !stroke || stroke.mode !== "ink") return;
     const drawn = draftDrawnPointsRef.current;
     if (stroke.points.length <= drawn) return;
-    const from = Math.max(0, drawn - DRAFT_TAIL_OVERLAP_POINTS);
+    const from = Math.max(0, drawn - (stroke.brush === "round-v1" ? 1 : DRAFT_TAIL_OVERLAP_POINTS));
     const tail = { ...stroke, points: stroke.points.slice(from) };
-    drawItem(ctx, tail, dimsRef.current.w, dimsRef.current.h, resolveColor(draft, stroke.color), basisW());
+    drawItem(ctx, tail, dimsRef.current.w, dimsRef.current.h, strokeColorRef.current ?? resolveColor(draft, stroke.color), basisW());
     draftDrawnPointsRef.current = stroke.points.length;
   }, [basisW]);
 
@@ -180,20 +185,31 @@ export function CanvasSurface({
   }, [strokeWidthBasis, redrawBase, redrawDraft]);
 
   useEffect(() => {
-    const base = baseRef.current;
-    const ctx = base?.getContext("2d");
-    if (renderMutation.kind === "append" && base && ctx) {
-      const { w, h } = dimsRef.current;
-      for (const item of renderMutation.items) {
-        if (!isStrokeItem(item)) continue;
-        remoteProgressRef.current.finish(item.id);
-        drawItem(ctx, item, w, h, item.mode === "erase" ? "#000" : resolveColor(base, item.color), basisW());
-      }
-    } else {
-      redrawBase();
-    }
+    let paintedVersion = store.getState().renderMutation.version;
+    redrawBase();
     redrawDraft();
-  }, [renderMutation, redrawBase, redrawDraft, basisW]);
+    // 直接消费每次提交；React 合并渲染时也不会只画最后一条 append。
+    return store.subscribe((state) => {
+      const mutation = state.renderMutation;
+      if (mutation.version <= paintedVersion) return;
+      const sequential = mutation.version === paintedVersion + 1;
+      paintedVersion = mutation.version;
+      const base = baseRef.current;
+      const ctx = base?.getContext("2d");
+      for (const item of mutation.kind === "append" ? mutation.items : state.items) remoteProgressRef.current.finish(item.id);
+      const includesErase = mutation.items.some((item) => isStrokeItem(item) && item.mode === "erase");
+      if (sequential && mutation.kind === "append" && base && ctx && strokeRef.current?.mode !== "erase" && !includesErase) {
+        const { w, h } = dimsRef.current;
+        for (const item of mutation.items) {
+          if (!isStrokeItem(item) || pendingErasedIdsRef.current.has(item.id)) continue;
+          drawItem(ctx, item, w, h, item.mode === "erase" ? "#000" : resolveColor(base, item.color), basisW());
+        }
+      } else {
+        redrawBase();
+      }
+      redrawDraft();
+    });
+  }, [store, redrawBase, redrawDraft, basisW]);
 
   useEffect(() => {
     const observer = new MutationObserver(() => {
@@ -255,21 +271,22 @@ export function CanvasSurface({
     }
     const baseCtx = base.getContext("2d");
     if (!baseCtx) return;
-    const actions = store.getState();
     let capturedPointerId: number | null = null;
     let gestureStart: [number, number] | null = null;
     let gestureEnd: [number, number] | null = null;
     let palmDiameter: number | null = null;
     let portGesture = false;
+    let wholeStrokeGesture = false;
+    let lastErasePoint: InputPoint | null = null;
 
-    const toPoint = (event: PointerEvent): InputPoint => {
-      const rect = draft.getBoundingClientRect();
+    const toPoint = (event: PointerEvent, rect = draft.getBoundingClientRect()): InputPoint => {
       return [event.clientX - rect.left, event.clientY - rect.top];
     };
     const eventPoints = (event: PointerEvent): InputPoint[] => {
+      const rect = draft.getBoundingClientRect();
       const coalesced = event.getCoalescedEvents?.() ?? [];
-      const points = (coalesced.length ? coalesced : [event]).map(toPoint);
-      const current = toPoint(event);
+      const points = (coalesced.length ? coalesced : [event]).map((point) => toPoint(point, rect));
+      const current = toPoint(event, rect);
       const last = points[points.length - 1];
       if (!last || last[0] !== current[0] || last[1] !== current[1]) points.push(current);
       return points;
@@ -278,10 +295,16 @@ export function CanvasSurface({
       const { w, h } = dimsRef.current;
       return [x / w, y / h];
     };
-    const eraseHit = (x: number, y: number) => {
+    const eraseHits = (points: readonly InputPoint[]) => {
       const { w, h } = dimsRef.current;
-      const id = hitStrokeId(store.getState().items, x, y, w, h, STROKE_ERASER_THRESHOLD_PX, basisW());
-      if (id) actions.eraseLine(id);
+      const pending = pendingErasedIdsRef.current;
+      const before = pending.size;
+      for (const point of points) {
+        const items = store.getState().items.filter((item) => !pending.has(item.id));
+        for (const id of hitSweptStrokeIds(items, lastErasePoint ?? point, point, w, h, palmDiameter !== null ? palmDiameter / 2 : STROKE_ERASER_THRESHOLD_PX, basisW())) pending.add(id);
+        lastErasePoint = point;
+      }
+      if (pending.size !== before) redrawBase();
     };
 
     const sink = new BoardInputSink((points) => {
@@ -294,20 +317,18 @@ export function CanvasSurface({
         return;
       }
       if (tool.startsWith("eraser")) setCursor(lastPoint);
-      if (tool === "strokeEraser") {
-        for (const [x, y] of points) eraseHit(x, y);
+      if (palmDiameter !== null) setPalmCursor({ point: lastPoint, diameter: palmDiameter });
+      if (wholeStrokeGesture) {
+        eraseHits(points);
         return;
       }
       const stroke = strokeRef.current;
       if (!stroke) return;
-      if (palmDiameter !== null) setPalmCursor({ point: lastPoint, diameter: palmDiameter });
       const { w, h } = dimsRef.current;
-      for (const norm of norms) {
-        const previous = stroke.points[stroke.points.length - 1];
-        stroke.points.push(norm);
-        if (stroke.mode === "erase") {
-          drawItem(baseCtx, { ...stroke, points: [previous, norm] }, w, h, "#000", basisW());
-        }
+      const previous = stroke.points[stroke.points.length - 1];
+      stroke.points.push(...norms);
+      if (stroke.mode === "erase") {
+        drawItem(baseCtx, { ...stroke, points: [previous, ...norms] }, w, h, "#000", basisW());
       }
       if (stroke.mode === "ink") drawLocalDraftTail();
     });
@@ -323,22 +344,29 @@ export function CanvasSurface({
         setShapePreview(createShapeFromDrag("shape-preview", shapeKind, norm, norm, color, fill, sizeNorm, dimsRef.current.h / dimsRef.current.w));
         return true;
       }
-      if (tool === "strokeEraser") {
-        eraseHit(x, y);
-        return true;
-      }
       const { w, h } = dimsRef.current;
       const erase = Boolean(options) || tool.startsWith("eraser");
       const eraseWidth = options ? Math.max(0.0005, Math.min(0.25, options.eraserWidth * w / basisW())) : ERASER_NORM[tool] ?? 0.02;
       palmDiameter = options ? eraseWidth * basisW() : null;
       if (palmDiameter !== null) setPalmCursor({ point, diameter: palmDiameter });
+      wholeStrokeGesture = tool === "strokeEraser" || Boolean(options && store.getState().lastEraser === "strokeEraser");
+      pendingErasedIdsRef.current.clear();
+      lastErasePoint = point;
+      if (wholeStrokeGesture) {
+        eraseHits([point]);
+        return true;
+      }
       const stroke: StrokeItem = {
         id: newStrokeId(), mode: erase ? "erase" : "ink", color,
         wNorm: erase ? eraseWidth : sizeNorm,
         points: [[x / w, y / h]],
+        ...(renderProfile === "classroom" ? { brush: "round-v1" as const } : {}),
       };
       strokeRef.current = stroke;
       draftDrawnPointsRef.current = 0;
+      strokeColorRef.current = erase ? "#000" : resolveColor(draft, color);
+      if (erase) drawItem(baseCtx, stroke, w, h, "#000", basisW());
+      else drawLocalDraftTail();
       if (stroke.mode === "ink") bus.emit("local-progress-start", stroke);
       return true;
     };
@@ -356,11 +384,12 @@ export function CanvasSurface({
     };
 
     const move = (event: PointerEvent) => {
-      const point = toPoint(event);
+      const points = eventPoints(event);
+      const point = points[points.length - 1];
       const norm = toNorm(point);
       bus.emit("local-cursor", { x: norm[0], y: norm[1] });
       if (tool.startsWith("eraser")) setCursor(point);
-      sink.push(event.pointerId, eventPoints(event));
+      sink.push(event.pointerId, points);
     };
 
     const releaseCapture = (pointerId: number) => {
@@ -377,6 +406,14 @@ export function CanvasSurface({
       portGesture = false;
       palmDiameter = null;
       setPalmCursor(null);
+      if (wholeStrokeGesture) {
+        const ids = [...pendingErasedIdsRef.current];
+        pendingErasedIdsRef.current.clear();
+        wholeStrokeGesture = false;
+        lastErasePoint = null;
+        store.getState().removeItems(ids);
+        return;
+      }
       if (tool === "shape") {
         const start = gestureStart;
         const end = gestureEnd;
@@ -399,6 +436,9 @@ export function CanvasSurface({
       portGesture = false;
       palmDiameter = null;
       setPalmCursor(null);
+      wholeStrokeGesture = false;
+      lastErasePoint = null;
+      pendingErasedIdsRef.current.clear();
       const stroke = strokeRef.current;
       strokeRef.current = null;
       gestureStart = null;
@@ -495,7 +535,7 @@ export function CanvasSurface({
       window.removeEventListener("pagehide", drain);
       document.removeEventListener("visibilitychange", visibility);
     };
-  }, [editable, tool, color, fill, sizeNorm, shapeKind, store, bus, basisW, drawLocalDraftTail, inputMode, onInputPort, redrawBase, redrawDraft]);
+  }, [editable, tool, color, fill, sizeNorm, shapeKind, store, bus, basisW, drawLocalDraftTail, inputMode, onInputPort, redrawBase, redrawDraft, renderProfile]);
 
   const externalPenRouting = inputMode === "smart" && tool === "pen";
   const canvasInteractive = editable

@@ -129,7 +129,8 @@ export function useClassroomViewportGestures({ enabled, stageRef, gestureKey, pe
           palmGesture = { key, pointerId: point.pointerId, rect, origin: normalize(point, rect),
             eraserWidth: Math.min(1, palmEraserDiameter(point) / Math.max(1, rect.width)), port: null };
         }
-      } else if (palmGesture?.key === key && phase === "move" && penPointers.size === 0) {
+      }
+      if (palmGesture?.key === key && (phase === "down" || phase === "move") && penPointers.size === 0) {
         if (!palmGesture.port && isPalmContact(point, palmThreshold)) {
           const port = current.current.palm?.inputPortRef.current;
           if (port?.begin(point.pointerId, palmGesture.origin, { eraserWidth: palmGesture.eraserWidth })) {
@@ -137,7 +138,7 @@ export function useClassroomViewportGestures({ enabled, stageRef, gestureKey, pe
             current.current.palm?.onStart();
           }
         }
-        palmGesture.port?.append(point.pointerId, [normalize(point, palmGesture.rect)]);
+        if (phase === "move") palmGesture.port?.append(point.pointerId, [normalize(point, palmGesture.rect)]);
       }
       if (!reserved && phase !== "up" && phase !== "cancel") startViewport();
       if (phase === "move" && gesture && !raf) raf = requestAnimationFrame(flush);

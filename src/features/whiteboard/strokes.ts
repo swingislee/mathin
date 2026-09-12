@@ -55,12 +55,30 @@ export function drawItem(
   color: string,
   basisW: number = w,
 ): void {
+  if (item.points.length === 0) return;
   const pts = item.points.map(([xn, yn]) => [xn * w, yn * h]);
-  const path = outlinePath(pts, Math.max(item.wNorm * basisW, 1));
+  const size = Math.max(item.wNorm * basisW, 1);
   ctx.save();
   if (item.mode === "erase") ctx.globalCompositeOperation = "destination-out";
   ctx.fillStyle = item.mode === "erase" ? "#000" : color;
-  ctx.fill(path);
+  if (item.brush === "round-v1") {
+    // 与采样点重合的等宽圆头线段；分批追加与整笔重放使用同一个轮廓。
+    ctx.beginPath();
+    if (pts.every(([x, y]) => x === pts[0][0] && y === pts[0][1])) {
+      ctx.arc(pts[0][0], pts[0][1], size / 2, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.lineWidth = size;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = ctx.fillStyle;
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      for (let index = 1; index < pts.length; index++) ctx.lineTo(pts[index][0], pts[index][1]);
+      ctx.stroke();
+    }
+  } else {
+    ctx.fill(outlinePath(pts, size));
+  }
   ctx.restore();
 }
 
@@ -74,10 +92,39 @@ export function renderAll(
   basisW: number = w,
 ): void {
   ctx.clearRect(0, 0, w, h);
+  const colors = new Map<ColorToken, string>();
   for (const item of items) {
     if (!isStrokeItem(item)) continue;
-    drawItem(ctx, item, w, h, item.mode === "erase" ? "#000" : resolveColor(colorEl, item.color), basisW);
+    if (item.mode === "ink" && !colors.has(item.color)) colors.set(item.color, resolveColor(colorEl, item.color));
+    drawItem(ctx, item, w, h, colors.get(item.color) ?? "#000", basisW);
   }
+}
+
+/** 擦除轨迹是一段带半径的扫掠区，快速移动时也能命中两个采样点之间的笔迹。 */
+export function hitSweptStrokeIds(
+  items: BoardItem[], from: readonly [number, number], to: readonly [number, number],
+  w: number, h: number, thresholdPx: number, basisW: number = w,
+): string[] {
+  const [ax, ay] = from, [bx, by] = to;
+  return items.filter((item) => {
+    if (!isStrokeItem(item) || item.mode !== "ink") return false;
+    const radius = thresholdPx + item.wNorm * basisW / 2;
+    return item.points.some(([xn, yn], index, points) => {
+      const [nextX, nextY] = points[index + 1] ?? points[index];
+      const cx = xn * w, cy = yn * h, dx = nextX * w, dy = nextY * h;
+      const cross = (ux: number, uy: number, vx: number, vy: number) => ux * vy - uy * vx;
+      const determinant = cross(bx - ax, by - ay, dx - cx, dy - cy);
+      if (determinant !== 0) {
+        const t = cross(cx - ax, cy - ay, dx - cx, dy - cy) / determinant;
+        const u = cross(cx - ax, cy - ay, bx - ax, by - ay) / determinant;
+        if (t >= 0 && t <= 1 && u >= 0 && u <= 1) return true;
+      }
+      return Math.min(
+        segmentDistance(ax, ay, cx, cy, dx, dy), segmentDistance(bx, by, cx, cy, dx, dy),
+        segmentDistance(cx, cy, ax, ay, bx, by), segmentDistance(dx, dy, ax, ay, bx, by),
+      ) <= radius;
+    });
+  }).map((item) => item.id);
 }
 
 function segmentDistance(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {

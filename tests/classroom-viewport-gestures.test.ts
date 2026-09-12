@@ -91,7 +91,7 @@ describe("classroom two-finger input ownership", () => {
   it("reserves a palm, erases from its original point, and releases without changing the selected tool", () => {
     const h = harness({ palm: true, viewport: false });
     expect(h.pointer("pointerdown", 1, 960, 540, "touch", 60).defaultPrevented).toBe(true);
-    expect(h.port.begin).not.toHaveBeenCalled();
+    expect(h.port.begin).toHaveBeenCalledWith(1, [0.5, 0.5], { eraserWidth: 69 / 1920 });
     expect(h.cancelInput).toHaveBeenCalledOnce();
     expect(h.port.cancelActive).toHaveBeenCalledOnce();
     h.pointer("pointermove", 1, 1000, 540, "touch", 80);

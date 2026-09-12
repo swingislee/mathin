@@ -226,6 +226,7 @@ export function useClassBoard(
           mode: stroke.mode,
           color: stroke.color,
           wNorm: stroke.wNorm,
+          brush: stroke.brush,
           points: stroke.points.slice(active.sent),
           seq: active.seq,
         };

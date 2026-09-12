@@ -23,7 +23,8 @@ import {
 } from "./CoursewareAnnotationBoard";
 import type { PrepArtifactFile, PrepArtifactReview } from "./session-preparation-artifacts";
 import { exportSolutionRecordWebp } from "./solution-record-export";
-import { annotationContentSchema, type SolutionRecord } from "./teacher-preparation-contract";
+import type { SolutionRecord } from "./teacher-preparation-contract";
+import { parseSolutionBoardItems } from "./solution-board-items";
 
 function ReviewBadge({ review }: { review?: PrepArtifactReview }) {
   const t = useTranslations("school.session");
@@ -109,8 +110,8 @@ export function SessionSolutionArchive({
   const [downloadingPath, setDownloadingPath] = useState<string | null>(null);
   const boardRecords = useMemo(() => records.flatMap((record) => {
     if (record.source !== "board") return [];
-    const parsed = annotationContentSchema.safeParse(record.content.items ?? record.content.strokes);
-    return parsed.success ? [{ ...record, items: parsed.data }] : [];
+    const items = parseSolutionBoardItems(record.content.items ?? record.content.strokes);
+    return items ? [{ ...record, items }] : [];
   }), [records]);
   const recordCount = boardRecords.length + files.length;
 

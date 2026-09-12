@@ -165,7 +165,7 @@ export function Toolbar({
   const undo = useStore(store, (state) => state.undo);
   const clear = useStore(store, (state) => state.clear);
   const addInstrument = useStore(store, (state) => state.addInstrument);
-  const [lastEraser, setLastEraser] = useState<Tool>("strokeEraser");
+  const lastEraser = useStore(store, (state) => state.lastEraser);
   const [collapsed, setCollapsed] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
   const paletteRef = useRef<HTMLSpanElement>(null);
@@ -177,7 +177,6 @@ export function Toolbar({
   const sizeIndex = Math.max(SIZE_ORDER.findIndex((key) => SIZE_PRESETS[key] === sizeNorm), 0);
 
   const pickEraser = (next: Tool) => {
-    setLastEraser(next);
     setTool(next);
   };
   const pickColor = (next: ColorToken) => {

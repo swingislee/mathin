@@ -32,6 +32,7 @@ export class ProgressStreamAssembler {
         mode: chunk.mode,
         color: chunk.color,
         wNorm: chunk.wNorm,
+        brush: chunk.brush,
         points: [],
       },
       nextSeq: 0,
