@@ -57,6 +57,8 @@ export function resampleStrokePoints(points: Array<[number, number]>, tolerance:
 
 function resampleItem(item: BoardItem, tolerance: number): BoardItem {
   if (!isStrokeItem(item)) return { ...item };
+  // PF 压力与点列共同决定笔形；新版本保留完整采样，预算不足由现有保存错误路径处理。
+  if (item.brush === "freehand-v2" || item.samples) return item;
   return { ...item, points: resampleStrokePoints(item.points, tolerance) } satisfies StrokeItem;
 }
 

@@ -43,6 +43,8 @@ interface FrameRegistration {
 interface FrozenH5Gesture {
   frame: FrameRegistration;
   pointerId: number;
+  pointerType: string;
+  startPoint: H5PointerPoint;
   gestureToken: string;
   startClientX: number;
   startClientY: number;
@@ -84,10 +86,13 @@ function normalizedStagePoint(
 ): NormalizedInputPoint {
   const clientX = gesture.frameRect.left + point.x * gesture.frameRect.width;
   const clientY = gesture.frameRect.top + point.y * gesture.frameRect.height;
-  return [
+  const normalized: NormalizedInputPoint = [
     clamp01((clientX - gesture.stageRect.left) / Math.max(gesture.stageRect.width, 1)),
     clamp01((clientY - gesture.stageRect.top) / Math.max(gesture.stageRect.height, 1)),
   ];
+  if (point.timeStamp !== undefined) normalized[2] = { timeStamp: point.timeStamp,
+    pressure: gesture.pointerType === "pen" ? point.pressure ?? null : null };
+  return normalized;
 }
 
 function clientPoint(point: H5PointerPoint, gesture: FrozenH5Gesture): [number, number] {
@@ -281,6 +286,8 @@ export function useH5PointerBridge({
         const active: FrozenH5Gesture = {
           frame,
           pointerId: message.pointerId,
+          pointerType: message.pointerType,
+          startPoint: message,
           gestureToken: message.gestureToken,
           startClientX,
           startClientY,
@@ -301,7 +308,7 @@ export function useH5PointerBridge({
         };
         activeRef.current = active;
         if (next.kind === "inking") {
-          const point = normalizedStagePoint({ x: message.x, y: message.y }, active);
+          const point = normalizedStagePoint(message, active);
           if (!inputPortRef.current?.begin(message.pointerId, point)) {
             activeRef.current = null;
             postToFrame(frame, h5PointerGestureMessage(
@@ -350,10 +357,7 @@ export function useH5PointerBridge({
             maxMovementPx,
           });
           if (isClassroomInkTakeover(previous, active.state)) {
-            const start = normalizedStagePoint({
-              x: (active.startClientX - active.frameRect.left) / Math.max(active.frameRect.width, 1),
-              y: (active.startClientY - active.frameRect.top) / Math.max(active.frameRect.height, 1),
-            }, active);
+            const start = normalizedStagePoint(active.startPoint, active);
             if (!inputPortRef.current?.begin(message.pointerId, start)) {
               abortActive(frame);
               return;

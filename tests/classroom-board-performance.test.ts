@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { BoardInputSink } from "@/features/whiteboard/board-input-sink";
+import { BoardInputSink, type InputPoint } from "@/features/whiteboard/board-input-sink";
 import { ProgressStreamAssembler } from "@/features/whiteboard/progress-stream";
 import {
   CLASSROOM_MAX_CANVAS_PIXELS,
@@ -21,7 +21,7 @@ describe("M2 board input batching", () => {
       frame = callback;
       return 1;
     });
-    const batches: Array<Array<[number, number]>> = [];
+    const batches: InputPoint[][] = [];
     const sink = new BoardInputSink((points) => batches.push(points), {
       minDistancePx: 0.75,
       scheduler: { request, cancel: vi.fn() },
@@ -41,7 +41,7 @@ describe("M2 board input batching", () => {
   });
 
   it("cancels a routed gesture without flushing its buffered tail", () => {
-    const batches: Array<Array<[number, number]>> = [];
+    const batches: InputPoint[][] = [];
     const cancelFrame = vi.fn();
     const sink = new BoardInputSink((points) => batches.push(points), {
       scheduler: { request: () => 41, cancel: cancelFrame },

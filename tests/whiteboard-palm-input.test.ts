@@ -34,7 +34,7 @@ class RecordedPath {
 
 function harness(inputMode: "smart" | "ink-lock" = "smart", tool: "pen" | "pointer" = "pen", lastEraser: EraserTool = "eraserM") {
   const createContext = () => ({ setTransform: vi.fn(), clearRect: vi.fn(), save: vi.fn(), restore: vi.fn(), fill: vi.fn(), stroke: vi.fn(),
-    beginPath: vi.fn(), arc: vi.fn(), moveTo: vi.fn(), lineTo: vi.fn(), globalCompositeOperation: "source-over", fillStyle: "" });
+    beginPath: vi.fn(), rect: vi.fn(), clip: vi.fn(), arc: vi.fn(), moveTo: vi.fn(), lineTo: vi.fn(), globalCompositeOperation: "source-over", fillStyle: "" });
   class Surface extends EventTarget {
     clientWidth = 400; clientHeight = 300; width = 400; height = 300; dataset = {}; captures = new Set<number>();
     context = createContext();
@@ -159,7 +159,7 @@ describe("classroom ink input and base painting", () => {
     expect(h.host.requestAnimationFrame).not.toHaveBeenCalled();
     h.port!.finish(1);
     expect(h.context.fill).toHaveBeenLastCalledWith(preview);
-    expect(h.store.getState().items[0]).toMatchObject({ brush: "freehand-v1", points: [[0.2, 0.3]] });
+    expect(h.store.getState().items[0]).toMatchObject({ brush: "freehand-v2", points: [[0.2, 0.3]], samples: [[0, null]] });
   });
 
   it("draws every back-to-back commit even without a React render, including reentrant outbox draining", () => {
@@ -178,7 +178,15 @@ describe("classroom ink input and base painting", () => {
     unsubscribe();
   });
 
-  it("reads layout once per event and replaces the whole active outline without redrawing committed ink", () => {
+  it("keeps a pressure dot unchanged when pointerup supplies the same position and no contact pressure", () => {
+    const h = harness();
+    h.port!.begin(1, [0.2, 0.3, { timeStamp: 100, pressure: 0.2 }]);
+    const preview = h.draftContext.fill.mock.lastCall![0];
+    h.port!.finish(1, [[0.2, 0.3, { timeStamp: 120, pressure: null }]]);
+    expect(h.context.fill.mock.lastCall![0]).toEqual(preview);
+  });
+
+  it("reuses gesture layout and replaces the active outline within its bounds without redrawing committed ink", () => {
     const h = harness("ink-lock");
     const event = (type: string, x: number, extra = {}) => Object.assign(new Event(type), {
       pointerId: 1, isPrimary: true, button: 0, clientX: x, clientY: 90, ...extra,
@@ -187,7 +195,7 @@ describe("classroom ink input and base painting", () => {
     h.draft.getBoundingClientRect.mockClear(); h.computedStyle.mockClear(); h.draftContext.clearRect.mockClear();
     h.draft.dispatchEvent(event("pointermove", 160, { getCoalescedEvents: () => Array.from({ length: 8 }, (_, index) => ({ clientX: 80 + index * 10, clientY: 90 })) }));
     h.flush();
-    expect(h.draft.getBoundingClientRect).toHaveBeenCalledOnce();
+    expect(h.draft.getBoundingClientRect).not.toHaveBeenCalled();
     expect(h.computedStyle).not.toHaveBeenCalled();
     expect(h.draftContext.clearRect).toHaveBeenCalledOnce();
     h.draftContext.clearRect.mockClear(); h.draftContext.fill.mockClear();
@@ -200,6 +208,33 @@ describe("classroom ink input and base painting", () => {
     expect(h.context.fill).not.toHaveBeenCalled();
     h.host.dispatchEvent(event("pointerup", 185));
     expect((h.store.getState().items[0] as StrokeItem).points.at(-1)).toEqual([185 / 400, 0.3]);
+    expect(h.context.fill.mock.lastCall![0]).toEqual(h.draftContext.fill.mock.lastCall![0]);
+  });
+
+  it("captures coalesced pen pressure through direct input and invalidates layout on scrolling", () => {
+    const h = harness("ink-lock");
+    const event = (type: string, x: number, timeStamp: number, pressure: number, extra = {}) => {
+      const result = Object.assign(new Event(type), { pointerId: 1, pointerType: "pen", isPrimary: true, button: 0,
+        buttons: type === "pointerup" ? 0 : 1, clientX: x, clientY: 90, pressure, ...extra });
+      Object.defineProperty(result, "timeStamp", { value: timeStamp });
+      return result;
+    };
+    h.draft.dispatchEvent(event("pointerdown", 80, 100, 0.2));
+    h.draft.getBoundingClientRect.mockClear();
+    h.draft.dispatchEvent(event("pointermove", 300, 104, 0.9, { pointerId: 2 }));
+    h.host.dispatchEvent(event("pointerup", 300, 104, 0, { pointerId: 2 }));
+    expect(h.draft.getBoundingClientRect).not.toHaveBeenCalled();
+    h.host.dispatchEvent(new Event("scroll"));
+    h.draft.dispatchEvent(event("pointermove", 100, 116, 0.8, { getCoalescedEvents: () => [
+      { clientX: 90, clientY: 90, timeStamp: 108, pressure: 0.4, buttons: 1, pointerType: "pen" },
+      { clientX: 100, clientY: 90, timeStamp: 116, pressure: 0.8, buttons: 1, pointerType: "pen" },
+    ] }));
+    h.flush();
+    h.host.dispatchEvent(event("pointerup", 105, 120, 0));
+    expect(h.draft.getBoundingClientRect).toHaveBeenCalledOnce();
+    const saved = h.store.getState().items[0] as StrokeItem;
+    expect(saved.samples).toEqual([[0, 0.2], [8, 0.4], [16, 0.8], [20, 0.8]]);
+    expect(saved.points).toEqual([[0.2, 0.3], [0.225, 0.3], [0.25, 0.3], [0.2625, 0.3]]);
     expect(h.context.fill.mock.lastCall![0]).toEqual(h.draftContext.fill.mock.lastCall![0]);
   });
 

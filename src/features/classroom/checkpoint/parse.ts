@@ -5,6 +5,7 @@ import {
 } from "@/features/whiteboard/types";
 import { CHECKPOINT_MAX_ITEMS } from "./limits";
 import type { SessionBoardCheckpoint } from "./types";
+import { isAlignedStrokeSamples } from "@/features/whiteboard/ink-samples";
 
 const colors = new Set<string>(COLOR_TOKENS);
 const shapes = new Set<string>(SHAPE_KINDS);
@@ -33,10 +34,11 @@ function isBoardItem(value: unknown): value is BoardItem {
   if ("kind" in item || (item.mode !== "ink" && item.mode !== "erase")
     || typeof item.color !== "string" || !colors.has(item.color)
     || !numberBetween(item.wNorm, 0.0005, 0.25)
-    || (item.brush !== undefined && item.brush !== "round-v1" && item.brush !== "freehand-v1")
+    || (item.brush !== undefined && item.brush !== "round-v1" && item.brush !== "freehand-v1" && item.brush !== "freehand-v2")
     || !Array.isArray(item.points) || item.points.length < 1 || item.points.length > 4000) {
     return false;
   }
+  if (item.samples !== undefined && !isAlignedStrokeSamples(item.samples, item.points.length)) return false;
   return Array.from(item.points).every((point) => Array.isArray(point) && point.length === 2
     && numberBetween(point[0], -0.5, 1.5) && numberBetween(point[1], -0.5, 1.5));
 }

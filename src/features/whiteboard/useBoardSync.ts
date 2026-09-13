@@ -102,7 +102,9 @@ export function useBoardSync(boardId: string, canEdit: boolean, selfName: string
           mode: stroke.mode,
           color: stroke.color,
           wNorm: stroke.wNorm,
+          brush: stroke.brush,
           points: stroke.points.slice(active.sent),
+          ...(stroke.samples ? { samples: stroke.samples.slice(active.sent) } : {}),
           seq: active.seq,
         } satisfies ProgressChunk);
         active.sent = stroke.points.length;

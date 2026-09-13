@@ -18,6 +18,9 @@ export type ColorToken = (typeof COLOR_TOKENS)[number];
 
 export type StrokeMode = "ink" | "erase";
 
+/** 与 points 按索引对齐：相对起笔的毫秒数、接触压力（缺失为 null）。 */
+export type StrokeSample = [elapsedMs: number, pressure: number | null];
+
 /**
  * 一条绘制项。坐标相对当前画布归一化，线宽相对共享参照宽度（以 CSS 像素为基准，
  * 修正旧版 CSS px / 设备 px 混用的偏差）。mode="erase" 是可重放的碎擦笔迹：
@@ -29,8 +32,9 @@ export interface StrokeItem {
   color: ColorToken;
   wNorm: number;
   /** 课堂笔刷版本；缺省时按历史 perfect-freehand 参数重放。 */
-  brush?: "round-v1" | "freehand-v1";
+  brush?: "round-v1" | "freehand-v1" | "freehand-v2";
   points: Array<[number, number]>;
+  samples?: StrokeSample[];
 }
 
 export const SHAPE_KINDS = [
@@ -135,6 +139,7 @@ export interface ProgressChunk {
   wNorm: number;
   brush?: StrokeItem["brush"];
   points: Array<[number, number]>;
+  samples?: StrokeSample[];
   done?: boolean;
 }
 

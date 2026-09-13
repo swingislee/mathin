@@ -111,9 +111,9 @@ describe("M3b H5 pointer bridge", () => {
     expect(aggregateH5PointerBridgeStatus(false, 1, ["ready"])).toBe("disabled");
   });
 
-  it("injects runtime v4 with token, batching, watchdog messages, and nested relay", () => {
-    expect(H5_POINTER_RUNTIME_VERSION).toBe("4");
-    expect(H5_OPAQUE_ORIGIN_RUNTIME).toContain('data-mathin-h5-runtime="4"');
+  it("injects runtime v5 with token, batching, watchdog messages, and nested relay", () => {
+    expect(H5_POINTER_RUNTIME_VERSION).toBe("5");
+    expect(H5_OPAQUE_ORIGIN_RUNTIME).toContain('data-mathin-h5-runtime="5"');
     expect(H5_OPAQUE_ORIGIN_RUNTIME).toContain("channelToken");
     expect(H5_OPAQUE_ORIGIN_RUNTIME).toContain('event.source === parent');
     expect(H5_OPAQUE_ORIGIN_RUNTIME).toContain("childFrameForSource(event.source)");

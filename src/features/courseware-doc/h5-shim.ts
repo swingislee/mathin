@@ -207,12 +207,17 @@ export const H5_OPAQUE_ORIGIN_RUNTIME = `<script data-mathin-h5-runtime="${H5_PO
   const normalizedPoint = (event) => ({
     x: clamp01(event.clientX / Math.max(window.innerWidth, 1)),
     y: clamp01(event.clientY / Math.max(window.innerHeight, 1)),
+    timeStamp: Number.isFinite(event.timeStamp) ? event.timeStamp : 0,
+    pressure: event.pointerType === "pen" && event.buttons !== 0 && Number.isFinite(event.pressure)
+      && event.pressure >= 0 && event.pressure <= 1 ? event.pressure : null,
   });
   const remapChildPoint = (point, frame) => {
     const rect = frame.getBoundingClientRect();
     return {
       x: clamp01((rect.left + Number(point.x) * rect.width) / Math.max(window.innerWidth, 1)),
       y: clamp01((rect.top + Number(point.y) * rect.height) / Math.max(window.innerHeight, 1)),
+      ...(point.timeStamp !== undefined ? { timeStamp: point.timeStamp } : {}),
+      ...(point.pressure !== undefined ? { pressure: point.pressure } : {}),
     };
   };
   const safePoints = (value) => Array.isArray(value)
@@ -226,7 +231,7 @@ export const H5_OPAQUE_ORIGIN_RUNTIME = `<script data-mathin-h5-runtime="${H5_PO
     if (data.type === "pointer_start") {
       if (!Number.isFinite(data.x) || !Number.isFinite(data.y)) return;
       childPointerGestures.set(frame, { pointerId: data.pointerId, gestureToken: data.gestureToken });
-      const point = remapChildPoint({ x: data.x, y: data.y }, frame);
+      const point = remapChildPoint(data, frame);
       parent.postMessage(pointerEnvelope("pointer_start", {
         pointerId: data.pointerId,
         pointerType: data.pointerType,
@@ -422,6 +427,9 @@ export const H5_OPAQUE_ORIGIN_RUNTIME = `<script data-mathin-h5-runtime="${H5_PO
     const source = event.getCoalescedEvents?.() || [];
     const events = source.length ? source : [event];
     for (const pointEvent of events) active.points.push(normalizedPoint(pointEvent));
+    const current = normalizedPoint(event);
+    const last = active.points[active.points.length - 1];
+    if (!last || last.x !== current.x || last.y !== current.y || last.pressure !== current.pressure) active.points.push(current);
     if (active.points.length > MAX_POINTS * 2) flushAllMoves();
     else scheduleMoves();
     if (active.takeover) {

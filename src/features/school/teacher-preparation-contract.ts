@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { isAlignedStrokeSamples } from "@/features/whiteboard/ink-samples";
+import { strokeBrushSchema, strokeSamplesSchema } from "@/features/whiteboard/ink-samples-schema";
 import {
   COLOR_TOKENS,
   SHAPE_KINDS,
@@ -59,7 +61,9 @@ export const strokeItemSchema = z.object({
   color: colorTokenSchema,
   wNorm: z.number().finite().positive().max(0.1),
   points: z.array(pointSchema).max(10_000),
-}).strict();
+  brush: strokeBrushSchema.optional(),
+  samples: strokeSamplesSchema.optional(),
+}).strict().refine((item) => item.samples === undefined || isAlignedStrokeSamples(item.samples, item.points.length));
 
 export const shapeItemSchema = z.object({
   id: z.uuid(),

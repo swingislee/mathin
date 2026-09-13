@@ -228,6 +228,7 @@ export function useClassBoard(
           wNorm: stroke.wNorm,
           brush: stroke.brush,
           points: stroke.points.slice(active.sent),
+          ...(stroke.samples ? { samples: stroke.samples.slice(active.sent) } : {}),
           seq: active.seq,
         };
         log.sendFx({ scope: "board", payload: { key: boardKey, progress: chunk } });

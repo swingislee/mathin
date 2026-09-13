@@ -1,4 +1,5 @@
-export type InputPoint = [number, number];
+import { sameInputPoint, type InputPoint } from "./ink-input";
+export type { InputPoint } from "./ink-input";
 
 interface FrameScheduler {
   request(callback: FrameRequestCallback): number;
@@ -9,16 +10,14 @@ interface BoardInputSinkOptions {
   /** CSS pixel distance. Smaller movement is retained as the final endpoint. */
   minDistancePx?: number;
   scheduler?: FrameScheduler;
+  /** 小位移尾点只更新本地预览，稳定点继续按距离筛选并用于同步。 */
+  onPreview?: (point: InputPoint | null) => void;
 }
 
 const browserScheduler: FrameScheduler = {
   request: (callback) => window.requestAnimationFrame(callback),
   cancel: (handle) => window.cancelAnimationFrame(handle),
 };
-
-function samePoint(a: InputPoint, b: InputPoint): boolean {
-  return a[0] === b[0] && a[1] === b[1];
-}
 
 /**
  * Owns one pointer stream and emits at most one point batch per animation frame.
@@ -29,6 +28,7 @@ export class BoardInputSink {
   private readonly minDistancePx: number;
   private readonly scheduler: FrameScheduler;
   private readonly onBatch: (points: InputPoint[]) => void;
+  private readonly onPreview?: (point: InputPoint | null) => void;
   private activePointerId: number | null = null;
   private lastDelivered: InputPoint | null = null;
   private pending: InputPoint[] = [];
@@ -38,6 +38,7 @@ export class BoardInputSink {
     this.onBatch = onBatch;
     this.minDistancePx = Math.max(0, options.minDistancePx ?? 0.75);
     this.scheduler = options.scheduler ?? browserScheduler;
+    this.onPreview = options.onPreview;
   }
 
   get pointerId(): number | null {
@@ -54,7 +55,11 @@ export class BoardInputSink {
 
   push(pointerId: number, points: InputPoint[]): boolean {
     if (pointerId !== this.activePointerId || points.length === 0) return false;
-    this.pending.push(...points);
+    for (const point of points) {
+      const previous = this.pending.at(-1) ?? this.lastDelivered;
+      if (!previous || !sameInputPoint(previous, point)) this.pending.push(point);
+    }
+    if (!this.pending.length) return true;
     if (this.frame === null) {
       this.frame = this.scheduler.request(() => {
         this.frame = null;
@@ -115,7 +120,8 @@ export class BoardInputSink {
     let retained: InputPoint | null = null;
 
     for (const point of this.pending) {
-      if (!last || Math.hypot(point[0] - last[0], point[1] - last[1]) >= this.minDistancePx) {
+      if (!last || Math.hypot(point[0] - last[0], point[1] - last[1]) >= this.minDistancePx
+        || (point[2]?.pressure != null && Math.abs(point[2].pressure - (last[2]?.pressure ?? 0.5)) >= 0.02)) {
         accepted.push(point);
         last = point;
         retained = null;
@@ -125,14 +131,15 @@ export class BoardInputSink {
     }
 
     this.pending = [];
-    if (retained && final && (!last || !samePoint(retained, last))) {
+    if (retained && final && (!last || !sameInputPoint(retained, last))) {
       accepted.push(retained);
       last = retained;
     } else if (retained && !final) {
       this.pending.push(retained);
     }
 
-    if (accepted.length) {
+    this.onPreview?.(final ? null : retained);
+    if (accepted.length || (this.onPreview && retained && !final)) {
       this.lastDelivered = last;
       this.onBatch(accepted);
     }

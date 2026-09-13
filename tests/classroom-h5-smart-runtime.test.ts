@@ -55,6 +55,21 @@ function harness() {
 }
 
 describe("basic H5 Smart input", () => {
+  it("forwards individual pen sample pressure and timestamps through the injected runtime", () => {
+    const h = harness(); h.configure();
+    const target = new h.Element({ "data-classroom-input": "ink" });
+    h.pointer("pointerdown", target, 200, { timeStamp: 100, pressure: 0.2, buttons: 1 });
+    h.pointer("pointermove", target, 220, { timeStamp: 116, pressure: 0.8, buttons: 1,
+      getCoalescedEvents: () => [{ clientX: 210, clientY: 200, timeStamp: 108, pressure: 0.4, buttons: 1, pointerType: "pen" }] });
+    h.pointer("pointerup", target, 225, { timeStamp: 120, pressure: 0, buttons: 0 });
+    expect(h.packets()[0]).toMatchObject({ timeStamp: 100, pressure: 0.2 });
+    expect(h.packets().find((packet) => packet.type === "pointer_move").points).toEqual([
+      { x: 0.21, y: 200 / 750, timeStamp: 108, pressure: 0.4 },
+      { x: 0.22, y: 200 / 750, timeStamp: 116, pressure: 0.8 },
+    ]);
+    expect(h.packets().at(-1)).toMatchObject({ points: [{ x: 0.225, y: 200 / 750, timeStamp: 120, pressure: null }] });
+  });
+
   it("offers click routing without a package profile and preserves the original tap", () => {
     const h = harness();
     h.message(h.parent, h5PointerParentMessage("pointer_hello", "frame", "token"));

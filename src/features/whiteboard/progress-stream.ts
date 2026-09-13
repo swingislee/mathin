@@ -1,4 +1,16 @@
 import type { ProgressChunk, StrokeItem } from "./types";
+import { isAlignedStrokeSamples } from "./ink-samples";
+
+function appendChunk(stroke: StrokeItem, chunk: ProgressChunk): void {
+  if (chunk.samples) {
+    stroke.samples ??= stroke.points.map(() => [0, null]);
+    stroke.samples.push(...chunk.samples);
+  } else if (stroke.samples) {
+    const previous = stroke.samples.at(-1) ?? [0, null];
+    stroke.samples.push(...chunk.points.map(() => [...previous] as [number, number | null]));
+  }
+  stroke.points.push(...chunk.points);
+}
 
 interface PendingStream {
   stroke: StrokeItem;
@@ -21,6 +33,7 @@ export class ProgressStreamAssembler {
 
   ingest(chunk: ProgressChunk, committed: boolean): boolean {
     if (!chunk?.id) return false;
+    if (chunk.samples !== undefined && !isAlignedStrokeSamples(chunk.samples, chunk.points.length)) return false;
     if (chunk.done || committed) {
       return this.finish(chunk.id);
     }
@@ -45,7 +58,7 @@ export class ProgressStreamAssembler {
       const fingerprint = legacyFingerprint(chunk);
       if (stream.legacyFingerprints.has(fingerprint)) return false;
       stream.legacyFingerprints.add(fingerprint);
-      stream.stroke.points.push(...chunk.points);
+      appendChunk(stream.stroke, chunk);
       return chunk.points.length > 0;
     }
 
@@ -55,7 +68,7 @@ export class ProgressStreamAssembler {
     while (stream.buffered.has(stream.nextSeq)) {
       const next = stream.buffered.get(stream.nextSeq)!;
       stream.buffered.delete(stream.nextSeq);
-      stream.stroke.points.push(...next.points);
+      appendChunk(stream.stroke, next);
       stream.nextSeq += 1;
       changed ||= next.points.length > 0;
     }

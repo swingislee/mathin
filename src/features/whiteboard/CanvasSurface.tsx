@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useStore } from "zustand";
 import { BoardInputSink, type InputPoint } from "./board-input-sink";
+import { appendStrokeInput, pointerInkMetadata, previewStroke, sameInputPoint, strokeSample } from "./ink-input";
+import { InkDraftRenderer } from "./ink-draft-renderer";
 import { boardBus, type BoardBus } from "./bus";
 import { BoardObjectLayer } from "./BoardObjectLayer";
 import { createShapeFromDrag } from "./geometry";
@@ -27,7 +29,7 @@ interface RemoteCursor {
 }
 
 export type CanvasSurfaceInputMode = "smart" | "interaction-lock" | "ink-lock";
-export type NormalizedInputPoint = [number, number];
+export type NormalizedInputPoint = InputPoint;
 export interface CanvasSurfaceGestureOptions {
   /** 临时橡皮直径占本画布宽度的比例；所选工具保持原值。 */
   eraserWidth: number;
@@ -75,6 +77,10 @@ export function CanvasSurface({
   }, [strokeWidthBasis]);
   const basisW = useCallback(() => (basisRef.current && basisRef.current > 0 ? basisRef.current : dimsRef.current.w), []);
   const strokeRef = useRef<StrokeItem | null>(null);
+  const draftPreviewRef = useRef<InputPoint | null>(null);
+  const strokeOriginTimeRef = useRef(0);
+  const draftRendererRef = useRef(new InkDraftRenderer());
+  const draftColorsRef = useRef(new Map<StrokeItem["color"], string>());
   const strokeColorRef = useRef<string | null>(null);
   const pendingErasedIdsRef = useRef(new Set<string>());
   const draftDrawnPointsRef = useRef(0);
@@ -108,6 +114,18 @@ export function CanvasSurface({
     const ctx = draft?.getContext("2d");
     if (!draft || !ctx) return;
     const { w, h } = dimsRef.current;
+    if (renderProfile === "classroom") {
+      const active = strokeRef.current;
+      const strokes = [...remoteProgressRef.current.strokes()].filter((stroke) => stroke.id !== active?.id);
+      if (active?.mode === "ink") strokes.unshift(previewStroke(active, draftPreviewRef.current, strokeOriginTimeRef.current));
+      draftRendererRef.current.render(ctx, strokes, w, h, basisW(), (stroke) => {
+        const colors = draftColorsRef.current;
+        if (!colors.has(stroke.color)) colors.set(stroke.color, resolveColor(draft, stroke.color));
+        return colors.get(stroke.color)!;
+      });
+      draftDrawnPointsRef.current = active?.points.length ?? 0;
+      return;
+    }
     ctx.clearRect(0, 0, w, h);
     const local = strokeRef.current;
     if (local && local.mode === "ink") {
@@ -120,13 +138,17 @@ export function CanvasSurface({
     for (const pending of remoteProgressRef.current.strokes()) {
       if (pending.mode === "ink") drawItem(ctx, pending, w, h, resolveColor(draft, pending.color), basisW());
     }
-  }, [basisW]);
+  }, [basisW, renderProfile]);
 
   const drawLocalDraftTail = useCallback(() => {
     const draft = draftRef.current;
     const ctx = draft?.getContext("2d");
     const stroke = strokeRef.current;
     if (!draft || !ctx || !stroke || stroke.mode !== "ink") return;
+    if (renderProfile === "classroom") {
+      redrawDraft();
+      return;
+    }
     const drawn = draftDrawnPointsRef.current;
     if (stroke.points.length <= drawn) return;
     if (stroke.brush === "freehand-v1") {
@@ -138,7 +160,7 @@ export function CanvasSurface({
     const tail = { ...stroke, points: stroke.points.slice(from) };
     drawItem(ctx, tail, dimsRef.current.w, dimsRef.current.h, strokeColorRef.current ?? resolveColor(draft, stroke.color), basisW());
     draftDrawnPointsRef.current = stroke.points.length;
-  }, [basisW, redrawDraft]);
+  }, [basisW, redrawDraft, renderProfile]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -155,6 +177,7 @@ export function CanvasSurface({
       }
       container.dataset.effectiveDpr = dpr.toFixed(3);
       container.dataset.backingPixels = String(backingPixels);
+      draftRendererRef.current.invalidate();
       redrawBase();
       redrawDraft();
     };
@@ -219,12 +242,14 @@ export function CanvasSurface({
   useEffect(() => {
     const observer = new MutationObserver(() => {
       strokeColorRef.current = null;
+      draftColorsRef.current.clear();
+      draftRendererRef.current.invalidate();
       redrawBase();
       redrawDraft();
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "data-theme"] });
     const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = () => { strokeColorRef.current = null; redrawBase(); redrawDraft(); };
+    const onChange = () => { strokeColorRef.current = null; draftColorsRef.current.clear(); draftRendererRef.current.invalidate(); redrawBase(); redrawDraft(); };
     media.addEventListener("change", onChange);
     return () => {
       observer.disconnect();
@@ -284,39 +309,45 @@ export function CanvasSurface({
     let portGesture = false;
     let wholeStrokeGesture = false;
     let lastErasePoint: InputPoint | null = null;
+    let gestureRect: DOMRect | null = null;
+    const invalidateRect = () => { gestureRect = null; };
 
-    const toPoint = (event: PointerEvent, rect = draft.getBoundingClientRect()): InputPoint => {
-      return [event.clientX - rect.left, event.clientY - rect.top];
+    const toPoint = (event: PointerEvent): InputPoint => {
+      gestureRect ??= draft.getBoundingClientRect();
+      return [(event.clientX - gestureRect.left) * dimsRef.current.w / Math.max(gestureRect.width, 1),
+        (event.clientY - gestureRect.top) * dimsRef.current.h / Math.max(gestureRect.height, 1), pointerInkMetadata(event)];
     };
     const eventPoints = (event: PointerEvent): InputPoint[] => {
-      const rect = draft.getBoundingClientRect();
       const coalesced = event.getCoalescedEvents?.() ?? [];
-      const points = (coalesced.length ? coalesced : [event]).map((point) => toPoint(point, rect));
-      const current = toPoint(event, rect);
+      const points = (coalesced.length ? coalesced : [event]).map((point) => toPoint(point));
+      const current = toPoint(event);
       const last = points[points.length - 1];
-      if (!last || last[0] !== current[0] || last[1] !== current[1]) points.push(current);
+      if (!last || !sameInputPoint(last, current)) points.push(current);
       return points;
     };
     const toNorm = ([x, y]: InputPoint): [number, number] => {
       const { w, h } = dimsRef.current;
       return [x / w, y / h];
     };
+    const toInputNorm = (point: InputPoint): InputPoint => [...toNorm(point), point[2]];
     const eraseHits = (points: readonly InputPoint[]) => {
       const { w, h } = dimsRef.current;
       const pending = pendingErasedIdsRef.current;
       const before = pending.size;
       for (const point of points) {
         const items = store.getState().items.filter((item) => !pending.has(item.id));
-        for (const id of hitSweptStrokeIds(items, lastErasePoint ?? point, point, w, h, palmDiameter !== null ? palmDiameter / 2 : STROKE_ERASER_THRESHOLD_PX, basisW())) pending.add(id);
+        const from = lastErasePoint ?? point;
+        for (const id of hitSweptStrokeIds(items, [from[0], from[1]], [point[0], point[1]], w, h, palmDiameter !== null ? palmDiameter / 2 : STROKE_ERASER_THRESHOLD_PX, basisW())) pending.add(id);
         lastErasePoint = point;
       }
       if (pending.size !== before) redrawBase();
     };
 
     const sink = new BoardInputSink((points) => {
-      const norms = points.map(toNorm);
-      const lastPoint = points[points.length - 1];
-      const lastNorm = norms[norms.length - 1];
+      const norms = points.map(toInputNorm);
+      const preview = draftPreviewRef.current;
+      const lastNorm = preview ? [preview[0], preview[1]] as [number, number] : toNorm(points[points.length - 1]);
+      const lastPoint: [number, number] = [lastNorm[0] * dimsRef.current.w, lastNorm[1] * dimsRef.current.h];
       gestureEnd = lastNorm;
       if (tool === "shape" && gestureStart) {
         setShapePreview(createShapeFromDrag("shape-preview", shapeKind, gestureStart, lastNorm, color, fill, sizeNorm, dimsRef.current.h / dimsRef.current.w));
@@ -332,16 +363,18 @@ export function CanvasSurface({
       if (!stroke) return;
       const { w, h } = dimsRef.current;
       const previous = stroke.points[stroke.points.length - 1];
-      stroke.points.push(...norms);
+      appendStrokeInput(stroke, norms, strokeOriginTimeRef.current);
       if (stroke.mode === "erase") {
-        drawItem(baseCtx, { ...stroke, points: [previous, ...norms] }, w, h, "#000", basisW());
+        drawItem(baseCtx, { ...stroke, points: [previous, ...norms.map(([x, y]): [number, number] => [x, y])] }, w, h, "#000", basisW());
       }
       if (stroke.mode === "ink") drawLocalDraftTail();
-    });
+    }, { onPreview: renderProfile === "classroom" ? (point) => { draftPreviewRef.current = point ? toInputNorm(point) : null; } : undefined });
 
     const beginGesture = (pointerId: number, point: InputPoint, options?: CanvasSurfaceGestureOptions) => {
       if (options && (tool !== "pen" || !Number.isFinite(options.eraserWidth) || options.eraserWidth <= 0 || options.eraserWidth > 1)) return false;
       if (!sink.begin(pointerId, point)) return false;
+      draftPreviewRef.current = null;
+      strokeOriginTimeRef.current = point[2]?.timeStamp ?? 0;
       const [x, y] = point;
       const norm = toNorm(point);
       gestureStart = norm;
@@ -366,7 +399,8 @@ export function CanvasSurface({
         id: newStrokeId(), mode: erase ? "erase" : "ink", color,
         wNorm: erase ? eraseWidth : sizeNorm,
         points: [[x / w, y / h]],
-        ...(renderProfile === "classroom" ? { brush: erase ? "round-v1" as const : "freehand-v1" as const } : {}),
+        ...(renderProfile === "classroom" ? { brush: erase ? "round-v1" as const : "freehand-v2" as const,
+          ...(!erase ? { samples: [strokeSample(point, strokeOriginTimeRef.current)] } : {}) } : {}),
       };
       strokeRef.current = stroke;
       draftDrawnPointsRef.current = 0;
@@ -378,7 +412,8 @@ export function CanvasSurface({
     };
 
     const down = (event: PointerEvent) => {
-      if (!event.isPrimary || event.button !== 0) return;
+      if (!event.isPrimary || event.button !== 0 || sink.pointerId !== null) return;
+      invalidateRect();
       if (!beginGesture(event.pointerId, toPoint(event))) return;
       event.preventDefault();
       capturedPointerId = event.pointerId;
@@ -390,11 +425,13 @@ export function CanvasSurface({
     };
 
     const move = (event: PointerEvent) => {
+      if (sink.pointerId !== null && sink.pointerId !== event.pointerId) return;
+      if (sink.pointerId === null) invalidateRect();
       const points = eventPoints(event);
       const point = points[points.length - 1];
       const norm = toNorm(point);
       bus.emit("local-cursor", { x: norm[0], y: norm[1] });
-      if (tool.startsWith("eraser")) setCursor(point);
+      if (tool.startsWith("eraser")) setCursor([point[0], point[1]]);
       sink.push(event.pointerId, points);
     };
 
@@ -409,6 +446,8 @@ export function CanvasSurface({
     };
 
     const commitGesture = () => {
+      draftPreviewRef.current = null;
+      invalidateRect();
       portGesture = false;
       palmDiameter = null;
       setPalmCursor(null);
@@ -439,6 +478,8 @@ export function CanvasSurface({
     };
 
     const discardGesture = () => {
+      draftPreviewRef.current = null;
+      invalidateRect();
       portGesture = false;
       palmDiameter = null;
       setPalmCursor(null);
@@ -457,6 +498,7 @@ export function CanvasSurface({
     };
 
     const finish = (event: PointerEvent) => {
+      if (sink.pointerId !== event.pointerId) return;
       if (!sink.finish(event.pointerId, eventPoints(event))) return;
       releaseCapture(event.pointerId);
       commitGesture();
@@ -482,9 +524,10 @@ export function CanvasSurface({
       if (document.visibilityState === "hidden") drain();
     };
 
-    const fromNormalized = ([x, y]: NormalizedInputPoint): InputPoint => [
+    const fromNormalized = ([x, y, metadata]: NormalizedInputPoint): InputPoint => [
       x * dimsRef.current.w,
       y * dimsRef.current.h,
+      metadata,
     ];
     const port: CanvasSurfaceInputPort = {
       begin: (pointerId, origin, options) => {
@@ -510,6 +553,10 @@ export function CanvasSurface({
     onInputPort?.(tool === "pen" ? port : null);
 
     const leave = () => setCursor(null);
+    const geometryObserver = new ResizeObserver(invalidateRect);
+    geometryObserver.observe(draft);
+    window.addEventListener("scroll", invalidateRect, true);
+    window.addEventListener("resize", invalidateRect);
     if (!externalRouting) {
       draft.addEventListener("pointerdown", down);
       draft.addEventListener("pointermove", move);
@@ -531,6 +578,9 @@ export function CanvasSurface({
         onInputPort?.(null);
       }
       sink.dispose();
+      geometryObserver.disconnect();
+      window.removeEventListener("scroll", invalidateRect, true);
+      window.removeEventListener("resize", invalidateRect);
       draft.removeEventListener("pointerdown", down);
       draft.removeEventListener("pointermove", move);
       draft.removeEventListener("pointerleave", leave);

@@ -8,6 +8,7 @@ import {
   type ColorToken,
   type ShapeItem,
   type StrokeItem,
+  type StrokeSample,
 } from "./types";
 
 export const newStrokeId = newId;
@@ -54,6 +55,21 @@ export function classroomInkOutline(pointsPx: number[][], sizePx: number): numbe
   });
 }
 
+/** PF v2 使用笔设备的非默认压力；没有压力或始终为默认 0.5 时保留模拟粗细。 */
+export function classroomPressureOutline(pointsPx: number[][], samples: readonly StrokeSample[] | undefined, sizePx: number): number[][] {
+  // PF 会为孤立点补一段偏移轨迹；重复同一落点使起笔与同位置收笔使用稳定的点形。
+  const positions = pointsPx.length === 1 ? [pointsPx[0], pointsPx[0]] : pointsPx;
+  const hasPressure = samples?.some(([, pressure]) => pressure !== null && pressure >= 0 && pressure <= 1 && Math.abs(pressure - 0.5) > 0.001);
+  if (!hasPressure) return classroomInkOutline(positions, sizePx);
+  let previous = 0.5;
+  const points = positions.map(([x, y], index) => {
+    const pressure = samples?.[index]?.[1];
+    if (pressure != null && pressure >= 0 && pressure <= 1) previous = pressure;
+    return [x, y, previous];
+  });
+  return getStroke(points, { size: sizePx, thinning: 0.7, smoothing: 0.6, streamline: 0.1, simulatePressure: false, last: true });
+}
+
 /**
  * 画一条绘制项；erase 项以 destination-out 挖除底下的墨迹。
  * `basisW` 是线宽换算的参照宽度，默认等于 `w`（点坐标的归一化基准）；
@@ -89,8 +105,8 @@ export function drawItem(
       for (let index = 1; index < pts.length; index++) ctx.lineTo(pts[index][0], pts[index][1]);
       ctx.stroke();
     }
-  } else if (item.brush === "freehand-v1") {
-    const outline = classroomInkOutline(pts, size);
+  } else if (item.brush === "freehand-v1" || item.brush === "freehand-v2") {
+    const outline = item.brush === "freehand-v2" ? classroomPressureOutline(pts, item.samples, size) : classroomInkOutline(pts, size);
     const path = new Path2D();
     for (let index = 0; index < outline.length; index++) {
       const [x, y] = outline[index];

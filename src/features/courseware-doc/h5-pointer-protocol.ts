@@ -1,4 +1,4 @@
-export const H5_POINTER_RUNTIME_VERSION = "4";
+export const H5_POINTER_RUNTIME_VERSION = "5";
 export const H5_POINTER_PROTOCOL_SCHEMA = "mathin-h5-pointer";
 export const H5_POINTER_PROTOCOL_VERSION = 1;
 export const H5_POINTER_FRAME_SOURCE = "mathin-h5-pointer";
@@ -24,6 +24,8 @@ export type H5PointerCapability = "click" | "drag" | "native" | "ink" | "unknown
 export interface H5PointerPoint {
   x: number;
   y: number;
+  timeStamp?: number;
+  pressure?: number | null;
 }
 
 interface H5PointerFrameMessageBase {
@@ -52,6 +54,8 @@ export type H5PointerFrameMessage = H5PointerFrameMessageBase & (
       button: number;
       x: number;
       y: number;
+      timeStamp?: number;
+      pressure?: number | null;
     }
   | {
       type: "pointer_move" | "pointer_end";
@@ -98,7 +102,12 @@ function isCapability(value: unknown): value is H5PointerCapability {
 function parsePoint(value: unknown): H5PointerPoint | null {
   if (!isRecord(value) || !isFiniteNumber(value.x) || !isFiniteNumber(value.y)) return null;
   if (value.x < 0 || value.x > 1 || value.y < 0 || value.y > 1) return null;
-  return { x: value.x, y: value.y };
+  if (value.timeStamp !== undefined && (!isFiniteNumber(value.timeStamp) || value.timeStamp < 0)) return null;
+  if (value.pressure !== undefined && value.pressure !== null
+    && (!isFiniteNumber(value.pressure) || value.pressure < 0 || value.pressure > 1)) return null;
+  return { x: value.x, y: value.y,
+    ...(value.timeStamp !== undefined ? { timeStamp: value.timeStamp } : {}),
+    ...(value.pressure !== undefined ? { pressure: value.pressure } : {}) };
 }
 
 function parsePoints(value: unknown): H5PointerPoint[] | null {
@@ -144,6 +153,7 @@ export function parseH5PointerFrameMessage(value: unknown): H5PointerFrameMessag
   }
   if (value.type === "pointer_pong") return { ...base, type: value.type };
   if (value.type === "pointer_start") {
+    const point = parsePoint(value);
     if (!isPointerId(value.pointerId)
         || !isSafeId(value.pointerType, 24)
         || !isSafeId(value.gestureToken, 200)
@@ -152,7 +162,7 @@ export function parseH5PointerFrameMessage(value: unknown): H5PointerFrameMessag
         || !Number.isInteger(value.button)
         || !isFiniteNumber(value.x)
         || !isFiniteNumber(value.y)
-        || value.x < 0 || value.x > 1 || value.y < 0 || value.y > 1) return null;
+        || value.x < 0 || value.x > 1 || value.y < 0 || value.y > 1 || !point) return null;
     return {
       ...base,
       type: value.type,
@@ -162,8 +172,7 @@ export function parseH5PointerFrameMessage(value: unknown): H5PointerFrameMessag
       capability: value.capability,
       isPrimary: value.isPrimary,
       button: Number(value.button),
-      x: value.x,
-      y: value.y,
+      ...point,
     };
   }
   if (value.type === "pointer_move" || value.type === "pointer_end") {

@@ -6,6 +6,7 @@ import type {
   NormalizedInputPoint,
 } from "@/features/whiteboard/CanvasSurface";
 import type { Tool } from "@/features/whiteboard/types";
+import { pointerInkMetadata, sameInputPoint, type InkInputMetadata } from "@/features/whiteboard/ink-input";
 import {
   resolveClassroomInputCapabilityFromPath,
   type ClassroomInputCapabilityMatch,
@@ -23,6 +24,7 @@ interface FrozenGesture {
   pointerId: number;
   startClientX: number;
   startClientY: number;
+  startMetadata: InkInputMetadata;
   rect: { left: number; top: number; width: number; height: number };
   clickOwner: Element | null;
   startedAsClick: boolean;
@@ -52,20 +54,22 @@ function normalizedPoint(
   clientX: number,
   clientY: number,
   rect: FrozenGesture["rect"],
+  metadata?: InkInputMetadata,
 ): NormalizedInputPoint {
   return [
     clamp01((clientX - rect.left) / Math.max(rect.width, 1)),
     clamp01((clientY - rect.top) / Math.max(rect.height, 1)),
+    metadata,
   ];
 }
 
 function eventPoints(event: PointerEvent, rect: FrozenGesture["rect"]): NormalizedInputPoint[] {
   const coalesced = event.getCoalescedEvents?.() ?? [];
   const source = coalesced.length ? coalesced : [event];
-  const points = source.map((point) => normalizedPoint(point.clientX, point.clientY, rect));
-  const current = normalizedPoint(event.clientX, event.clientY, rect);
+  const points = source.map((point) => normalizedPoint(point.clientX, point.clientY, rect, pointerInkMetadata(point)));
+  const current = normalizedPoint(event.clientX, event.clientY, rect, pointerInkMetadata(event));
   const last = points.at(-1);
-  if (!last || last[0] !== current[0] || last[1] !== current[1]) points.push(current);
+  if (!last || !sameInputPoint(last, current)) points.push(current);
   return points;
 }
 
@@ -145,7 +149,7 @@ export function useClassroomPointerRouter({
       const port = inputPortRef.current;
       if (!port?.begin(
         event.pointerId,
-        normalizedPoint(frozen.startClientX, frozen.startClientY, frozen.rect),
+        normalizedPoint(frozen.startClientX, frozen.startClientY, frozen.rect, frozen.startMetadata),
       )) return false;
       window.getSelection()?.removeAllRanges();
       onInkStart?.();
@@ -176,6 +180,7 @@ export function useClassroomPointerRouter({
         pointerId: event.pointerId,
         startClientX: event.clientX,
         startClientY: event.clientY,
+        startMetadata: pointerInkMetadata(event),
         rect: { left: bounds.left, top: bounds.top, width: bounds.width, height: bounds.height },
         clickOwner: target.owner,
         startedAsClick: next.kind === "pending-click",
