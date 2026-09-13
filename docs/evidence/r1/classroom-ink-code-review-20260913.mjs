@@ -13,8 +13,8 @@ const cache = new Map();
 function loadSource(relativePath) {
   const file = path.resolve(root, relativePath);
   if (cache.has(file)) return cache.get(file).exports;
-  const module = { exports: {} };
-  cache.set(file, module);
+  const loadedModule = { exports: {} };
+  cache.set(file, loadedModule);
   const code = ts.transpileModule(readFileSync(file, "utf8"), {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
   }).outputText;
@@ -23,8 +23,8 @@ function loadSource(relativePath) {
     if (name.startsWith(".")) return loadSource(path.resolve(path.dirname(file), `${name}.ts`));
     return require(name);
   };
-  new Function("require", "module", "exports", code)(sourceRequire, module, module.exports);
-  return module.exports;
+  new Function("require", "module", "exports", code)(sourceRequire, loadedModule, loadedModule.exports);
+  return loadedModule.exports;
 }
 
 const { BoardInputSink } = loadSource("src/features/whiteboard/board-input-sink.ts");

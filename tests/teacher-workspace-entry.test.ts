@@ -28,6 +28,7 @@ describe("teacher entry and placement access", () => {
 
   it("uses the teacher's remembered workbench entry", async () => {
     const page = await FollowupsPage({ params });
+    if (!page) throw new Error("Teacher workspace entry did not render");
     expect(page.props.workspace).toBe("followups"); expect(mocks.redirect).not.toHaveBeenCalled();
   });
 
