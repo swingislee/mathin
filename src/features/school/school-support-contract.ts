@@ -9,6 +9,7 @@ export const supportSubjectSchema = z.object({ studentId: id, leadId: id, versio
 export const supportCandidateSchema = supportSubjectSchema.and(z.object({
   name: z.string(), phone: z.string(), grade: z.number().nullable(), parentName: z.string(), school: z.string(),
   ownerName: z.string(), canWrite: z.boolean(), phoneMatch: z.boolean(), nameMatch: z.boolean(),
+  historical: z.boolean().optional(),
 }));
 export type SupportCandidate = z.infer<typeof supportCandidateSchema>;
 export const supportWorkSchema = z.object({
@@ -36,13 +37,15 @@ export const supportEntrySchema = z.object({
     school: z.string().trim().max(100).optional(), wechat: z.string().trim().max(80).optional(), remark: z.string().max(2000).optional(),
     createStudent: z.boolean(), identityPending: z.boolean() }).strict().nullable(),
   work: supportWorkSchema, acknowledgeDuplicate: z.boolean(),
+  confirmLeadProfile: z.boolean().optional(),
   profileEdit: z.object({ version: z.string().min(1).max(60), values: supportProfileValuesSchema }).strict().nullable().optional(),
   familyLink: z.object({ otherStudentId: databaseUuid, otherVersion: z.string().min(1).max(60), version: z.string().min(1).max(60), confirmed: z.boolean() }).strict().nullable().optional(),
 }).strict().refine(value => Boolean(value.subject) !== Boolean(value.newPerson))
   .refine(value => !value.profileEdit || Boolean(value.subject))
   .refine(value => !value.newPerson || Boolean(value.newPerson.name || value.newPerson.phone))
   .refine(value => !value.newPerson?.createStudent || Boolean(value.newPerson.name && !value.newPerson.identityPending))
-  .refine(value => !value.work.classroomId || Boolean(value.workspace === 'enrollments' && value.work.seat && (value.subject?.studentId || value.newPerson?.createStudent)));
+  .refine(value => !value.confirmLeadProfile || Boolean(value.subject?.leadId && !value.subject.studentId))
+  .refine(value => !value.work.classroomId || Boolean(value.workspace === 'enrollments' && value.work.seat && (value.subject?.studentId || value.newPerson?.createStudent || value.subject?.leadId && value.confirmLeadProfile)));
 export type SupportEntry = z.infer<typeof supportEntrySchema>;
 export const supportItemSchema = z.object({
   id: databaseUuid, workspace: z.enum(SUPPORT_WORKSPACES), studentId: id, leadId: id,

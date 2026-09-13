@@ -58,6 +58,7 @@ export function SupportSubjectSearch({ locale, onSelect, studentsOnly=false, dis
       type="button" variant="ghost" className="h-auto w-full justify-start whitespace-normal px-2 py-2 text-left"
       disabled={disabled||!item.canWrite} onClick={()=>familyOnly?onFamilySelect?.(item):onSelect(item)}>
       <span className="min-w-0"><span className="block font-medium">{item.name||m.unknown} <span className="text-xs font-normal text-muted">{item.phone}</span></span>
+        {!item.studentId || item.historical ? <span className="block text-xs text-muted">{[item.historical ? (locale==='en'?'Historical record':'历史记录') : '', !item.studentId ? (locale==='en'?'Student profile to create':'待建立学生档案') : ''].filter(Boolean).join(' · ')}</span> : null}
         <span className="block text-xs text-muted">{[item.grade?m.grade+' '+item.grade:m.unknown,item.parentName,item.school,item.ownerName].filter(Boolean).join(' · ')}</span></span>
     </Button>{onFamilySelect&&item.studentId&&item.phoneMatch?<Button type="button" variant="secondary" size="sm" className="shrink-0 text-xs" disabled={disabled||!item.canWrite}
       onClick={()=>onFamilySelect(item)}>{locale==='en'?'Link family':'关联家庭'}</Button>:null}</li>)}</ul>

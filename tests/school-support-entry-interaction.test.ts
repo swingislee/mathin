@@ -17,7 +17,7 @@ beforeEach(()=>{
   calls.search.mockResolvedValue({ok:true,data:[]});
   calls.read.mockResolvedValue({ok:true,data:{studentId:id,leadId:null,version:'version',values:{name:'Known child',phone:'60000000999',grade:3,parentName:'Parent',parentPhone:'60000000998',school:'School',wechat:'parent-wechat',remark:'Original'},canEdit:true,identityPending:false,changes:[]}});
 });
-afterEach(async()=>{await cleanup();sessionStorage.clear();vi.useRealTimers();});
+afterEach(async()=>{await cleanup();sessionStorage.clear();vi.useRealTimers();vi.unstubAllGlobals();});
 async function mount(child:ReactNode){
   const element=document.createElement('div');document.body.append(element);const root=createRoot(element);
   cleanup=async()=>{await act(async()=>root.unmount());element.remove();};
@@ -157,4 +157,32 @@ it('keeps the chosen class and seat and requires a confirmed student for quick p
   expect(calls.add.mock.calls[0][1]).toMatchObject({workspace:'enrollments',newPerson:{name:'New child',createStudent:true,identityPending:false},work:{classroomId:room,courseId:id,termId:id,seat:2}});
   expect(document.querySelector('[role="alert"]')?.textContent).toContain('座位或花名册已更新');
   expect(document.querySelector<HTMLInputElement>('input[aria-label="学生姓名"]')?.value).toBe('New child');
+});
+it('reuses an unprofiled historical lead for a seat only after identity confirmation',async()=>{
+  vi.stubGlobal('crypto',{getRandomValues:globalThis.crypto.getRandomValues.bind(globalThis.crypto)});
+  vi.useFakeTimers();
+  const lead='10000000-0000-4000-8000-000000000003';
+  const candidate={studentId:null,leadId:lead,version:'lead-version',name:'Historical child',phone:'60000000999',grade:null,
+    parentName:'',school:'',ownerName:'Teacher',canWrite:true,phoneMatch:true,nameMatch:true,historical:true};
+  calls.search.mockResolvedValue({ok:true,data:[candidate]});
+  calls.read.mockResolvedValue({ok:true,data:{studentId:null,leadId:lead,version:'lead-version',
+    values:{name:candidate.name,phone:candidate.phone,grade:null,remark:''},canEdit:true,identityPending:false,changes:[]}});
+  calls.add.mockResolvedValue({ok:false,code:'SEAT_OCCUPIED'});
+  await mount(createElement(SchoolSupportSeatEntry,{open:true,onClose:vi.fn(),classroomName:'Class A',classroomId:room,courseId:id,termId:id,seat:2}));
+  await fill('学生姓名','Historical');
+  await act(async()=>vi.advanceTimersByTimeAsync(260));
+  const match=document.querySelector<HTMLButtonElement>('[data-support-candidates] li button')!;
+  expect(match.textContent).toContain('历史记录');expect(match.textContent).toContain('待建立学生档案');
+  await act(async()=>match.click());
+  expect(calls.add).not.toHaveBeenCalled();
+  expect(button('保存并补入此座位').disabled).toBe(true);
+  await act(async()=>document.querySelector<HTMLButtonElement>('[role="checkbox"]')!.click());
+  expect(button('保存并补入此座位').disabled).toBe(false);
+  await fill('学校','Reviewed school');
+  expect(button('保存并补入此座位').disabled).toBe(true);
+  await act(async()=>document.querySelector<HTMLButtonElement>('[role="checkbox"]')!.click());
+  await act(async()=>button('保存并补入此座位').click());
+  expect(calls.add.mock.calls[0][0]).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  expect(calls.add.mock.calls[0][1]).toMatchObject({subject:{studentId:null,leadId:lead,version:'lead-version'},newPerson:null,
+    confirmLeadProfile:true,profileEdit:{values:{school:'Reviewed school'}},work:{classroomId:room,seat:2}});
 });

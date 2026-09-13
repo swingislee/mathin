@@ -118,7 +118,7 @@ function SupportInlineForm({ workspace, columns, initialWork, onClose, onSaved, 
   const profileDisabled = busy || !ready || Boolean(input.subject && !profile?.canEdit);
   const changePerson = (patch: Partial<NonNullable<SupportEntry['newPerson']>>) => {
     if (input.subject) {
-      if (profile?.canEdit) change({profileEdit:{version:input.profileEdit?.version ?? profile.version,values:{...profile.values,...input.profileEdit?.values,...patch}},
+      if (profile?.canEdit) change({confirmLeadProfile:false,acknowledgeDuplicate:false,profileEdit:{version:input.profileEdit?.version ?? profile.version,values:{...profile.values,...input.profileEdit?.values,...patch}},
         familyLink:input.familyLink?{...input.familyLink,confirmed:false}:null});
     } else change({ acknowledgeDuplicate: false, familyLink:input.familyLink?{...input.familyLink,confirmed:false}:null,
       newPerson: { name: '', phone: '', grade: null, createStudent: false, identityPending: true, ...newPerson, ...patch } });
@@ -132,7 +132,7 @@ function SupportInlineForm({ workspace, columns, initialWork, onClose, onSaved, 
       if(reload){setLatestProfile(result.data);return;}
       const next=result.data;setProfile(next);setSelected({...candidate,studentId:next.studentId,leadId:next.studentId?null:next.leadId,...next.values,version:next.version});
       setFamily(null);setLatestProfile(null);
-      change({subject:{studentId:next.studentId,leadId:next.studentId?null:next.leadId,version:next.version},newPerson:null,profileEdit:null,familyLink:null,acknowledgeDuplicate:false});
+      change({subject:{studentId:next.studentId,leadId:next.studentId?null:next.leadId,version:next.version},newPerson:null,profileEdit:null,familyLink:null,acknowledgeDuplicate:false,confirmLeadProfile:false});
     } catch { if(sequence===readSequence.current)setError(supportError('',locale)); }
     finally { if(sequence===readSequence.current)setReading(false); }
   };
@@ -147,7 +147,7 @@ function SupportInlineForm({ workspace, columns, initialWork, onClose, onSaved, 
     } catch { if(sequence===readSequence.current)setError(supportError('',locale)); }
     finally { if(sequence===readSequence.current)setReading(false); }
   };
-  const canSave = !busy && !latestProfile && ready && (!newPerson || options?.canCreate) && (!input.familyLink || family && input.familyLink.confirmed && !family.blocker && (input.subject?.studentId || newPerson?.createStudent))
+  const canSave = !busy && !latestProfile && ready && (!newPerson || options?.canCreate) && (!input.familyLink || family && input.familyLink.confirmed && !family.blocker && (input.subject?.studentId || input.confirmLeadProfile || newPerson?.createStudent))
     && supportEntrySchema.safeParse(input).success;
   const cancel = () => { if (pending) return; if (storageKey) sessionStorage.removeItem(storageKey); onClose(); };
   const save = async () => {
@@ -180,9 +180,9 @@ function SupportInlineForm({ workspace, columns, initialWork, onClose, onSaved, 
     <div className="grid gap-3 sm:grid-cols-3">{(['name', 'phone', 'grade'] as const).filter(key => panel || !columns.includes(key)).map(key => <div key={key} className="grid gap-1.5">{key === 'grade' ? null : m[key]}{field(key, !panel)}</div>)}</div>
     {input.subject ? <div className="flex items-center justify-between rounded-md border border-line bg-card p-2"><span>{en ? 'Selected profile' : '已选择档案'} · {selected?.name ?? m.details} · {selected?.phone}</span>
       <div className="flex gap-1"><Button variant="ghost" size="sm" disabled={busy||!selected} onClick={()=>{if(selected)void selectProfile(selected,true);}}>{en?'Read latest profile':'读取最新档案'}</Button>
-      <Button variant="ghost" size="sm" disabled={busy} onClick={() => {setSelected(null);setProfile(null);setLatestProfile(null);setFamily(null);change({subject:null,profileEdit:null,familyLink:null,
+      <Button variant="ghost" size="sm" disabled={busy} onClick={() => {setSelected(null);setProfile(null);setLatestProfile(null);setFamily(null);change({subject:null,profileEdit:null,familyLink:null,confirmLeadProfile:false,acknowledgeDuplicate:false,
         newPerson:{name:selected?.name??'',phone:selected?.phone??'',grade:selected?.grade??null,...person,createStudent:false,identityPending:true}});}}>{en ? 'Change' : '重新填写'}</Button></div></div>
-      : <SupportSubjectSearch locale={locale} disabled={busy || !ready} studentsOnly={Boolean(initialWork?.classroomId)} phoneQueries={[person?.phone ?? '', person?.parentPhone ?? '']} queries={[person?.name ?? '', person?.parentName ?? '', person?.wechat ?? '']}
+      : <SupportSubjectSearch locale={locale} disabled={busy || !ready} phoneQueries={[person?.phone ?? '', person?.parentPhone ?? '']} queries={[person?.name ?? '', person?.parentName ?? '', person?.wechat ?? '']}
         onSelect={candidate=>void selectProfile(candidate)} onFamilySelect={options?.canEdit?candidate=>void selectFamily(candidate):undefined} />}
     {reading?<p role="status">{m.loading}</p>:null}
     {input.subject&&profile?.canEdit?<p className="text-muted">{en?'Correct any profile details above or below; changes are saved with this entry.':'可直接更正姓名、年级、电话及下方资料，修订随本次办理一起保存。'}</p>:null}
@@ -198,11 +198,15 @@ function SupportInlineForm({ workspace, columns, initialWork, onClose, onSaved, 
       {(['name','grade','phone','parentPhone','parentName','school','wechat','remark'] as const).filter(key=>(latestProfile.values[key]??'')!==(person?.[key]??'')).map(key=><p key={key}>{m[key]} · {en?'Latest':'最新'}：{latestProfile.values[key]??'—'} → {en?'Draft':'草稿'}：{person?.[key]??'—'}</p>)}
       <Button variant="secondary" size="sm" disabled={busy} onClick={()=>{const next=latestProfile;setProfile(next);setLatestProfile(null);setFamily(null);setError('');
         if(selected)setSelected({...selected,...next.values,studentId:next.studentId,leadId:next.studentId?null:next.leadId,version:next.version});
-        change({subject:{studentId:next.studentId,leadId:next.studentId?null:next.leadId,version:next.version},profileEdit:input.profileEdit?{version:next.version,values:input.profileEdit.values}:null,familyLink:null});
+        change({subject:{studentId:next.studentId,leadId:next.studentId?null:next.leadId,version:next.version},profileEdit:input.profileEdit?{version:next.version,values:input.profileEdit.values}:null,familyLink:null,confirmLeadProfile:false,acknowledgeDuplicate:false});
       }}>{en?'Details checked; keep these corrections':'核对无误，保留当前修订'}</Button></div>:null}
-    {newPerson && options?.canCreate ? <div className="flex flex-wrap gap-x-5 gap-y-2">
+    {input.subject?.leadId&&!input.subject.studentId&&options?.canCreate?<Label className="flex items-center gap-2 text-xs"><Checkbox
+      checked={input.confirmLeadProfile??false} disabled={busy||!person?.name.trim()}
+      onCheckedChange={value=>change({confirmLeadProfile:value===true})}/>{en?'Identity checked; create a profile using this record':'已核对孩子身份，沿用这条记录建立学生档案'}</Label>:null}
+    {(newPerson || input.subject?.leadId&&!input.subject.studentId) && options?.canCreate ? <div className="flex flex-wrap gap-x-5 gap-y-2">
+      {newPerson ?
       <Label className="flex items-center gap-2 text-xs"><Checkbox checked={newPerson.createStudent} disabled={busy || !newPerson.name.trim()}
-        onCheckedChange={value => changePerson({ createStudent: value === true, identityPending: value !== true })} />{m.confirmed}</Label>
+        onCheckedChange={value => changePerson({ createStudent: value === true, identityPending: value !== true })} />{m.confirmed}</Label> : null}
       <Label className="flex items-center gap-2 text-xs"><Checkbox checked={input.acknowledgeDuplicate} disabled={pending}
         onCheckedChange={value => change({ acknowledgeDuplicate: value === true })} />{m.duplicate}</Label>
     </div> : null}
