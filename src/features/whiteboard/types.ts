@@ -28,8 +28,8 @@ export interface StrokeItem {
   mode: StrokeMode;
   color: ColorToken;
   wNorm: number;
-  /** 课堂新笔迹使用等宽圆头笔；缺省时按历史 perfect-freehand 参数重放。 */
-  brush?: "round-v1";
+  /** 课堂笔刷版本；缺省时按历史 perfect-freehand 参数重放。 */
+  brush?: "round-v1" | "freehand-v1";
   points: Array<[number, number]>;
 }
 

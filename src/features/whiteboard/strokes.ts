@@ -41,6 +41,19 @@ function outlinePath(pointsPx: number[][], sizePx: number): Path2D {
   return new Path2D(d + "Z");
 }
 
+/** 当前整笔的自然轮廓：保留模拟压力，减少轨迹惯性，末点对齐当前笔尖。 */
+export function classroomInkOutline(pointsPx: number[][], sizePx: number): number[][] {
+  return getStroke(pointsPx, {
+    size: sizePx,
+    thinning: 0.7,
+    smoothing: 0.6,
+    streamline: 0.1,
+    simulatePressure: true,
+    // 每次提供当前完整点列；预览与收笔都以其末点封口，保持同一轮廓规则。
+    last: true,
+  });
+}
+
 /**
  * 画一条绘制项；erase 项以 destination-out 挖除底下的墨迹。
  * `basisW` 是线宽换算的参照宽度，默认等于 `w`（点坐标的归一化基准）；
@@ -76,6 +89,16 @@ export function drawItem(
       for (let index = 1; index < pts.length; index++) ctx.lineTo(pts[index][0], pts[index][1]);
       ctx.stroke();
     }
+  } else if (item.brush === "freehand-v1") {
+    const outline = classroomInkOutline(pts, size);
+    const path = new Path2D();
+    for (let index = 0; index < outline.length; index++) {
+      const [x, y] = outline[index];
+      if (index === 0) path.moveTo(x, y);
+      else path.lineTo(x, y);
+    }
+    path.closePath();
+    ctx.fill(path);
   } else {
     ctx.fill(outlinePath(pts, size));
   }

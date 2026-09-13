@@ -111,7 +111,7 @@ export function CanvasSurface({
     ctx.clearRect(0, 0, w, h);
     const local = strokeRef.current;
     if (local && local.mode === "ink") {
-      strokeColorRef.current = resolveColor(draft, local.color);
+      strokeColorRef.current ??= resolveColor(draft, local.color);
       drawItem(ctx, local, w, h, strokeColorRef.current, basisW());
       draftDrawnPointsRef.current = local.points.length;
     } else {
@@ -129,11 +129,16 @@ export function CanvasSurface({
     if (!draft || !ctx || !stroke || stroke.mode !== "ink") return;
     const drawn = draftDrawnPointsRef.current;
     if (stroke.points.length <= drawn) return;
+    if (stroke.brush === "freehand-v1") {
+      // 只重算活动笔画的完整轮廓，清除上帧预览，保留从起笔开始的压力/平滑状态。
+      redrawDraft();
+      return;
+    }
     const from = Math.max(0, drawn - (stroke.brush === "round-v1" ? 1 : DRAFT_TAIL_OVERLAP_POINTS));
     const tail = { ...stroke, points: stroke.points.slice(from) };
     drawItem(ctx, tail, dimsRef.current.w, dimsRef.current.h, strokeColorRef.current ?? resolveColor(draft, stroke.color), basisW());
     draftDrawnPointsRef.current = stroke.points.length;
-  }, [basisW]);
+  }, [basisW, redrawDraft]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -213,12 +218,13 @@ export function CanvasSurface({
 
   useEffect(() => {
     const observer = new MutationObserver(() => {
+      strokeColorRef.current = null;
       redrawBase();
       redrawDraft();
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "data-theme"] });
     const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = () => { redrawBase(); redrawDraft(); };
+    const onChange = () => { strokeColorRef.current = null; redrawBase(); redrawDraft(); };
     media.addEventListener("change", onChange);
     return () => {
       observer.disconnect();
@@ -360,7 +366,7 @@ export function CanvasSurface({
         id: newStrokeId(), mode: erase ? "erase" : "ink", color,
         wNorm: erase ? eraseWidth : sizeNorm,
         points: [[x / w, y / h]],
-        ...(renderProfile === "classroom" ? { brush: "round-v1" as const } : {}),
+        ...(renderProfile === "classroom" ? { brush: erase ? "round-v1" as const : "freehand-v1" as const } : {}),
       };
       strokeRef.current = stroke;
       draftDrawnPointsRef.current = 0;

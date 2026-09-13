@@ -23,6 +23,15 @@ function elements(node: ReactNode): ReactElement<Props>[] {
   return [node, ...elements(node.props.children)];
 }
 
+class RecordedPath {
+  points: Array<[number, number]> = [];
+  closed = false;
+  constructor(readonly svg?: string) {}
+  moveTo(x: number, y: number) { this.points.push([x, y]); }
+  lineTo(x: number, y: number) { this.points.push([x, y]); }
+  closePath() { this.closed = true; }
+}
+
 function harness(inputMode: "smart" | "ink-lock" = "smart", tool: "pen" | "pointer" = "pen", lastEraser: EraserTool = "eraserM") {
   const createContext = () => ({ setTransform: vi.fn(), clearRect: vi.fn(), save: vi.fn(), restore: vi.fn(), fill: vi.fn(), stroke: vi.fn(),
     beginPath: vi.fn(), arc: vi.fn(), moveTo: vi.fn(), lineTo: vi.fn(), globalCompositeOperation: "source-over", fillStyle: "" });
@@ -42,11 +51,12 @@ function harness(inputMode: "smart" | "ink-lock" = "smart", tool: "pen" | "point
     requestAnimationFrame: vi.fn((callback: FrameRequestCallback) => { frames.set(++frameId, callback); return frameId; }),
     cancelAnimationFrame: vi.fn((id: number) => frames.delete(id)) });
   vi.stubGlobal("window", host); vi.stubGlobal("document", doc);
-  const computedStyle = vi.fn(() => ({ getPropertyValue: () => "#111" }));
+  const computedStyle = vi.fn(() => ({ getPropertyValue: (): string => "#111" }));
   vi.stubGlobal("getComputedStyle", computedStyle);
-  vi.stubGlobal("Path2D", class {});
+  vi.stubGlobal("Path2D", RecordedPath);
   vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
-  vi.stubGlobal("MutationObserver", class { observe() {} disconnect() {} });
+  let themeChange = () => {};
+  vi.stubGlobal("MutationObserver", class { constructor(callback: () => void) { themeChange = callback; } observe() {} disconnect() {} });
   // 局域网 HTTP 的 UUID 兜底同样参与本次绘制。
   vi.stubGlobal("crypto", { getRandomValues: (array: Uint8Array) => { array.fill(7); return array; } });
   const store = createWhiteboardStore(); store.setState({ tool, color: "rose", sizeNorm: 0.004, lastEraser });
@@ -58,7 +68,7 @@ function harness(inputMode: "smart" | "ink-lock" = "smart", tool: "pen" | "point
   for (const effect of lifecycle.effects.splice(0)) { const cleanup = effect(); if (cleanup) lifecycle.cleanups.push(cleanup); }
   const flush = () => { const callbacks = [...frames.values()]; frames.clear(); callbacks.forEach((callback) => callback(0)); };
   return { port: port as CanvasSurfaceInputPort | null, store, host, context: nodes[1].context, draftContext: nodes[2].context,
-    progress, draft: nodes[2], flush, computedStyle };
+    progress, draft: nodes[2], flush, computedStyle, themeChange };
 }
 
 afterEach(() => { lifecycle.cleanups.splice(0).reverse().forEach((cleanup) => cleanup()); lifecycle.effects = []; vi.unstubAllGlobals(); });
@@ -140,14 +150,16 @@ describe("temporary palm eraser through the real canvas input port", () => {
 });
 
 describe("classroom ink input and base painting", () => {
-  it("paints the first dot before a frame or movement and commits the same round brush", () => {
+  it("paints the first dot before a frame or movement and commits the same natural outline", () => {
     const h = harness();
     h.port!.begin(1, [0.2, 0.3]);
-    expect(h.draftContext.arc).toHaveBeenCalledWith(80, 90, 2, 0, Math.PI * 2);
+    const preview = h.draftContext.fill.mock.lastCall![0] as RecordedPath;
+    expect(preview.points.length).toBeGreaterThan(0);
+    expect(preview.closed).toBe(true);
     expect(h.host.requestAnimationFrame).not.toHaveBeenCalled();
     h.port!.finish(1);
-    expect(h.context.arc).toHaveBeenLastCalledWith(80, 90, 2, 0, Math.PI * 2);
-    expect(h.store.getState().items[0]).toMatchObject({ brush: "round-v1", points: [[0.2, 0.3]] });
+    expect(h.context.fill).toHaveBeenLastCalledWith(preview);
+    expect(h.store.getState().items[0]).toMatchObject({ brush: "freehand-v1", points: [[0.2, 0.3]] });
   });
 
   it("draws every back-to-back commit even without a React render, including reentrant outbox draining", () => {
@@ -166,23 +178,40 @@ describe("classroom ink input and base painting", () => {
     unsubscribe();
   });
 
-  it("reads layout once per coalesced event and paints only new segments to the latest endpoint", () => {
+  it("reads layout once per event and replaces the whole active outline without redrawing committed ink", () => {
     const h = harness("ink-lock");
     const event = (type: string, x: number, extra = {}) => Object.assign(new Event(type), {
       pointerId: 1, isPrimary: true, button: 0, clientX: x, clientY: 90, ...extra,
     });
     h.draft.dispatchEvent(event("pointerdown", 80));
-    h.draft.getBoundingClientRect.mockClear(); h.computedStyle.mockClear();
+    h.draft.getBoundingClientRect.mockClear(); h.computedStyle.mockClear(); h.draftContext.clearRect.mockClear();
     h.draft.dispatchEvent(event("pointermove", 160, { getCoalescedEvents: () => Array.from({ length: 8 }, (_, index) => ({ clientX: 80 + index * 10, clientY: 90 })) }));
     h.flush();
     expect(h.draft.getBoundingClientRect).toHaveBeenCalledOnce();
     expect(h.computedStyle).not.toHaveBeenCalled();
-    expect(h.draftContext.lineTo).toHaveBeenLastCalledWith(160, 90);
-    h.draftContext.moveTo.mockClear(); h.draftContext.lineTo.mockClear();
+    expect(h.draftContext.clearRect).toHaveBeenCalledOnce();
+    h.draftContext.clearRect.mockClear(); h.draftContext.fill.mockClear();
     h.draft.dispatchEvent(event("pointermove", 180)); h.flush();
-    expect(h.draftContext.moveTo).toHaveBeenCalledWith(160, 90);
-    expect(h.draftContext.lineTo).toHaveBeenCalledExactlyOnceWith(180, 90);
+    expect(h.draftContext.clearRect).toHaveBeenCalledOnce();
+    expect(h.draftContext.fill).toHaveBeenCalledOnce();
+    const updatedOutline = h.draftContext.fill.mock.lastCall![0] as RecordedPath;
+    expect(Math.min(...updatedOutline.points.map(([x]) => x))).toBeLessThan(80);
+    expect(Math.max(...updatedOutline.points.map(([x]) => x))).toBeGreaterThan(180);
+    expect(h.context.fill).not.toHaveBeenCalled();
     h.host.dispatchEvent(event("pointerup", 185));
     expect((h.store.getState().items[0] as StrokeItem).points.at(-1)).toEqual([185 / 400, 0.3]);
+    expect(h.context.fill.mock.lastCall![0]).toEqual(h.draftContext.fill.mock.lastCall![0]);
+  });
+
+  it("refreshes the cached active ink color when the theme changes", () => {
+    const h = harness();
+    h.port!.begin(1, [0.2, 0.3]);
+    h.computedStyle.mockImplementation(() => ({ getPropertyValue: () => "#eee" }));
+    h.themeChange();
+    expect(h.draftContext.fillStyle).toBe("#eee");
+    h.computedStyle.mockClear();
+    h.port!.append(1, [[0.4, 0.3]]); h.flush();
+    expect(h.computedStyle).not.toHaveBeenCalled();
+    expect(h.draftContext.fillStyle).toBe("#eee");
   });
 });
