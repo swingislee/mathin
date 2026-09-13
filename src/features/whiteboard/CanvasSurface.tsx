@@ -399,7 +399,7 @@ export function CanvasSurface({
         id: newStrokeId(), mode: erase ? "erase" : "ink", color,
         wNorm: erase ? eraseWidth : sizeNorm,
         points: [[x / w, y / h]],
-        ...(renderProfile === "classroom" ? { brush: erase ? "round-v1" as const : "freehand-v2" as const,
+        ...(renderProfile === "classroom" ? { brush: erase ? "round-v1" as const : "freehand-v3" as const,
           ...(!erase ? { samples: [strokeSample(point, strokeOriginTimeRef.current)] } : {}) } : {}),
       };
       strokeRef.current = stroke;

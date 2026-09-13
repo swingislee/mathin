@@ -1,6 +1,7 @@
 import { getStroke } from "perfect-freehand";
 import { newId } from "@/lib/uuid";
 import { shapePolygonPoints } from "./geometry";
+import { InkPressureCache } from "./ink-pressure";
 import {
   isShapeItem,
   isStrokeItem,
@@ -70,6 +71,35 @@ export function classroomPressureOutline(pointsPx: number[][], samples: readonly
   return getStroke(points, { size: sizePx, thinning: 0.7, smoothing: 0.6, streamline: 0.1, simulatePressure: false, last: true });
 }
 
+/** v3 接收按采样时间处理的压力；短笔画显式保留压力，绕开 PF 两点补点时的默认值。 */
+export function classroomTimedOutline(points: number[][], size: number): number[][] {
+  let input = points;
+  if (points.length && points.every(([x, y]) => x === points[0][0] && y === points[0][1])) {
+    input = [points[points.length - 1], points[points.length - 1]];
+  } else if (points.length === 2) {
+    const [a, b] = points;
+    input = [a, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2], b];
+  }
+  return getStroke(input, { size, thinning: 0.7, smoothing: 0.6, streamline: 0.1, simulatePressure: false, last: true });
+}
+
+/** 活动层、落笔底图和导出共用轮廓连接方式；二次曲线始终位于轮廓点的凸包内。 */
+export function inkOutlinePath(outline: number[][], curved = false): Path2D {
+  const path = new Path2D();
+  if (curved && outline.length > 2) {
+    const first = outline[0], last = outline[outline.length - 1];
+    path.moveTo((last[0] + first[0]) / 2, (last[1] + first[1]) / 2);
+    for (let index = 0; index < outline.length; index++) {
+      const point = outline[index], next = outline[(index + 1) % outline.length];
+      path.quadraticCurveTo(point[0], point[1], (point[0] + next[0]) / 2, (point[1] + next[1]) / 2);
+    }
+  } else {
+    outline.forEach(([x, y], index) => { if (index === 0) path.moveTo(x, y); else path.lineTo(x, y); });
+  }
+  path.closePath();
+  return path;
+}
+
 /**
  * 画一条绘制项；erase 项以 destination-out 挖除底下的墨迹。
  * `basisW` 是线宽换算的参照宽度，默认等于 `w`（点坐标的归一化基准）；
@@ -85,7 +115,7 @@ export function drawItem(
   basisW: number = w,
 ): void {
   if (item.points.length === 0) return;
-  const pts = item.points.map(([xn, yn]) => [xn * w, yn * h]);
+  const pts = item.brush === "freehand-v3" ? [] : item.points.map(([xn, yn]) => [xn * w, yn * h]);
   const size = Math.max(item.wNorm * basisW, 1);
   ctx.save();
   if (item.mode === "erase") ctx.globalCompositeOperation = "destination-out";
@@ -105,16 +135,12 @@ export function drawItem(
       for (let index = 1; index < pts.length; index++) ctx.lineTo(pts[index][0], pts[index][1]);
       ctx.stroke();
     }
+  } else if (item.brush === "freehand-v3") {
+    const pressure = new InkPressureCache().update(item.points, item.samples, w, h, size);
+    ctx.fill(inkOutlinePath(classroomTimedOutline(pressure, size), true));
   } else if (item.brush === "freehand-v1" || item.brush === "freehand-v2") {
     const outline = item.brush === "freehand-v2" ? classroomPressureOutline(pts, item.samples, size) : classroomInkOutline(pts, size);
-    const path = new Path2D();
-    for (let index = 0; index < outline.length; index++) {
-      const [x, y] = outline[index];
-      if (index === 0) path.moveTo(x, y);
-      else path.lineTo(x, y);
-    }
-    path.closePath();
-    ctx.fill(path);
+    ctx.fill(inkOutlinePath(outline));
   } else {
     ctx.fill(outlinePath(pts, size));
   }

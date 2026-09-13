@@ -1,4 +1,5 @@
-import { classroomInkOutline, classroomPressureOutline, drawItem } from "./strokes";
+import { classroomInkOutline, classroomPressureOutline, classroomTimedOutline, drawItem, inkOutlinePath } from "./strokes";
+import { InkPressureCache } from "./ink-pressure";
 import type { StrokeItem } from "./types";
 
 interface Bounds { x: number; y: number; right: number; bottom: number }
@@ -10,6 +11,7 @@ interface Prepared {
   bounds: Bounds;
   path: Path2D | null;
   color: string;
+  pressure?: InkPressureCache;
 }
 
 function union(a: Bounds | null, b: Bounds): Bounds {
@@ -48,22 +50,22 @@ export class InkDraftRenderer {
         continue;
       }
       const size = Math.max(stroke.wNorm * basisW, 1);
-      const points = stroke.points.map(([x, y]) => [x * w, y * h]);
-      const outline = stroke.brush === "freehand-v2" ? classroomPressureOutline(points, stroke.samples, size)
+      const pressure = stroke.brush === "freehand-v3" ? previous?.pressure ?? new InkPressureCache() : undefined;
+      const points = pressure ? pressure.update(stroke.points, stroke.samples, w, h, size) : stroke.points.map(([x, y]) => [x * w, y * h]);
+      const outline = stroke.brush === "freehand-v3" ? classroomTimedOutline(points, size)
+        : stroke.brush === "freehand-v2" ? classroomPressureOutline(points, stroke.samples, size)
         : stroke.brush === "freehand-v1" ? classroomInkOutline(points, size) : null;
       const geometry = outline ?? points;
       let x = Infinity, y = Infinity, right = -Infinity, bottom = -Infinity;
-      const path = outline ? new Path2D() : null;
+      const path = outline ? inkOutlinePath(outline, stroke.brush === "freehand-v3") : null;
       for (let index = 0; index < geometry.length; index++) {
         const [px, py] = geometry[index];
         x = Math.min(x, px); y = Math.min(y, py); right = Math.max(right, px); bottom = Math.max(bottom, py);
-        if (index === 0) path?.moveTo(px, py); else path?.lineTo(px, py);
       }
-      path?.closePath();
       // 轮廓本身包含端帽；额外像素覆盖抗锯齿。旧笔刷按保守半径界定范围。
       const padding = outline ? 2 : size * 2 + 2;
       const bounds = { x: Math.floor(x - padding), y: Math.floor(y - padding), right: Math.ceil(right + padding), bottom: Math.ceil(bottom + padding) };
-      const prepared = { stroke, count, last, sample: stroke.samples, bounds, path, color };
+      const prepared = { stroke, count, last, sample: stroke.samples, bounds, path, color, pressure };
       next.set(stroke.id, prepared);
       dirty = union(dirty, bounds);
       if (previous) dirty = union(dirty, previous.bounds);

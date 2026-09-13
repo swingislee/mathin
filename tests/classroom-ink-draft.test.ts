@@ -7,10 +7,10 @@ vi.mock("perfect-freehand", async (original) => {
   const actual = await original<typeof import("perfect-freehand")>();
   return { ...actual, getStroke: vi.fn(actual.getStroke) };
 });
-const stroke = (id: string, x = 0.1): StrokeItem => ({ id, mode: "ink", color: "ink", wNorm: 0.006, brush: "freehand-v2",
+const stroke = (id: string, x = 0.1): StrokeItem => ({ id, mode: "ink", color: "ink", wNorm: 0.006, brush: "freehand-v3",
   points: [[x, 0.2], [x + 0.04, 0.22]], samples: [[0, 0.2], [8, 0.8]] });
 function context() {
-  vi.stubGlobal("Path2D", class { moveTo() {} lineTo() {} closePath() {} });
+  vi.stubGlobal("Path2D", class { moveTo() {} lineTo() {} quadraticCurveTo() {} closePath() {} });
   return { save: vi.fn(), restore: vi.fn(), beginPath: vi.fn(), rect: vi.fn(), clip: vi.fn(), clearRect: vi.fn(), fill: vi.fn(), fillStyle: "" };
 }
 afterEach(() => { vi.unstubAllGlobals(); vi.clearAllMocks(); });

@@ -78,8 +78,8 @@ describe("PF pressure and live input", () => {
     expect(request).toHaveBeenCalledOnce();
   });
 
-  it("preserves pressure, brush and timing through progress, checkpoint, archive, moving and undo", () => {
-    const stroke = makeStroke();
+  it.each(["freehand-v2", "freehand-v3"] as const)("preserves %s pressure and timing through progress, checkpoint, archive, moving and undo", (brush) => {
+    const stroke = { ...makeStroke(), brush };
     appendStrokeInput(stroke, [[0.1, 0.2, { timeStamp: 100, pressure: 0.2 }], [0.2, 0.3, { timeStamp: 108, pressure: 0.8 }],
       [0.3, 0.4, { timeStamp: 116, pressure: 0.3 }]], 100);
     const stream = new ProgressStreamAssembler();
@@ -95,11 +95,11 @@ describe("PF pressure and live input", () => {
     const store = createWhiteboardStore();
     store.getState().commitItem(stroke); store.getState().removeItems([stroke.id]); store.getState().undo();
     expect(store.getState().items).toEqual([stroke]);
-    expect(CLASSROOM_BOARD_BRUSH_SYNC_PROVIDERS["freehand-v2"].protocol).toBe("board-checkpoint-v2");
+    expect(CLASSROOM_BOARD_BRUSH_SYNC_PROVIDERS[brush].protocol).toBe("board-checkpoint-v2");
   });
 
-  it("keeps 4000 compact samples without resampling and rejects malformed timing or pressure alignment", () => {
-    const stroke = makeStroke();
+  it.each(["freehand-v2", "freehand-v3"] as const)("keeps 4000 %s samples and rejects malformed timing or pressure alignment", (brush) => {
+    const stroke = { ...makeStroke(), brush };
     appendStrokeInput(stroke, Array.from({ length: 4000 }, (_, i): InputPoint => [i / 3999, 0.2 + Math.sin(i / 100) * 0.1,
       { timeStamp: i * 8, pressure: 0.2 + (i % 100) / 200 }]), 0);
     const checkpoint = buildBoardCheckpoint([stroke]);

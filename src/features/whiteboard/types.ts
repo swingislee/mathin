@@ -32,7 +32,7 @@ export interface StrokeItem {
   color: ColorToken;
   wNorm: number;
   /** 课堂笔刷版本；缺省时按历史 perfect-freehand 参数重放。 */
-  brush?: "round-v1" | "freehand-v1" | "freehand-v2";
+  brush?: "round-v1" | "freehand-v1" | "freehand-v2" | "freehand-v3";
   points: Array<[number, number]>;
   samples?: StrokeSample[];
 }

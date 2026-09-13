@@ -34,7 +34,7 @@ function isBoardItem(value: unknown): value is BoardItem {
   if ("kind" in item || (item.mode !== "ink" && item.mode !== "erase")
     || typeof item.color !== "string" || !colors.has(item.color)
     || !numberBetween(item.wNorm, 0.0005, 0.25)
-    || (item.brush !== undefined && item.brush !== "round-v1" && item.brush !== "freehand-v1" && item.brush !== "freehand-v2")
+    || (item.brush !== undefined && item.brush !== "round-v1" && item.brush !== "freehand-v1" && item.brush !== "freehand-v2" && item.brush !== "freehand-v3")
     || !Array.isArray(item.points) || item.points.length < 1 || item.points.length > 4000) {
     return false;
   }

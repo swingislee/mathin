@@ -29,6 +29,7 @@ class RecordedPath {
   constructor(readonly svg?: string) {}
   moveTo(x: number, y: number) { this.points.push([x, y]); }
   lineTo(x: number, y: number) { this.points.push([x, y]); }
+  quadraticCurveTo(cx: number, cy: number, x: number, y: number) { this.points.push([cx, cy], [x, y]); }
   closePath() { this.closed = true; }
 }
 
@@ -159,7 +160,7 @@ describe("classroom ink input and base painting", () => {
     expect(h.host.requestAnimationFrame).not.toHaveBeenCalled();
     h.port!.finish(1);
     expect(h.context.fill).toHaveBeenLastCalledWith(preview);
-    expect(h.store.getState().items[0]).toMatchObject({ brush: "freehand-v2", points: [[0.2, 0.3]], samples: [[0, null]] });
+    expect(h.store.getState().items[0]).toMatchObject({ brush: "freehand-v3", points: [[0.2, 0.3]], samples: [[0, null]] });
   });
 
   it("draws every back-to-back commit even without a React render, including reentrant outbox draining", () => {

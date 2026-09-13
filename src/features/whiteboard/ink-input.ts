@@ -30,14 +30,15 @@ export function strokeSample(point: InputPoint, originTime: number, previous?: S
 
 export function appendStrokeInput(stroke: StrokeItem, points: readonly InputPoint[], originTime: number): void {
   for (const point of points) {
-    stroke.points.push(stroke.brush === "freehand-v2" ? [Math.round(point[0] * 1e6) / 1e6, Math.round(point[1] * 1e6) / 1e6] : [point[0], point[1]]);
+    stroke.points.push(stroke.brush === "freehand-v2" || stroke.brush === "freehand-v3"
+      ? [Math.round(point[0] * 1e6) / 1e6, Math.round(point[1] * 1e6) / 1e6] : [point[0], point[1]]);
     if (stroke.samples) stroke.samples.push(strokeSample(point, originTime, stroke.samples.at(-1)));
   }
 }
 
 export function previewStroke(stroke: StrokeItem, point: InputPoint | null, originTime: number): StrokeItem {
   if (!point) return stroke;
-  const position: [number, number] = stroke.brush === "freehand-v2"
+  const position: [number, number] = stroke.brush === "freehand-v2" || stroke.brush === "freehand-v3"
     ? [Math.round(point[0] * 1e6) / 1e6, Math.round(point[1] * 1e6) / 1e6] : [point[0], point[1]];
   return { ...stroke, points: [...stroke.points, position],
     ...(stroke.samples ? { samples: [...stroke.samples, strokeSample(point, originTime, stroke.samples.at(-1))] } : {}) };

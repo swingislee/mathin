@@ -42,6 +42,13 @@ export interface ClassroomInteractionAuditProfile {
 
 /** 新课堂笔刷在进度包与 checkpoint v2 中保留版本，归档和晚加入端按同版重放。 */
 export const CLASSROOM_BOARD_BRUSH_SYNC_PROVIDERS = {
+  "freehand-v3": {
+    protocol: "board-checkpoint-v2",
+    rehearsalEvent: "board_snapshot",
+    authority: "classroom-controller",
+    maxChunkBytes: CHECKPOINT_CHUNK_HARD_BYTES,
+    maxChunks: CHECKPOINT_MAX_CHUNKS,
+  },
   "freehand-v2": {
     protocol: "board-checkpoint-v2",
     rehearsalEvent: "board_snapshot",
