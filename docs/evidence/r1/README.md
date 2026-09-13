@@ -1,5 +1,7 @@
 # Mathin R1 发布证据索引
 
+- [2026-09-13 中文书写与签字栏笔迹方案选型研究](classroom-ink-engine-landscape-20260913.md)：以 PPT 绘图钢笔／铅笔及签字栏手感为参照，比较签名库、轨迹模型、专业 SDK、原生框架和封装层；核对固定源码、版本与社区反馈，复算 smooth-signature 的短点和末端行为。建议先对照 signature_pad、smooth-signature 风格、Atrament 与现有 PF，完整引擎作为后续候选；仅研究记录，应用和生产保持原样，实际书写待人工验收。
+
 - [2026-09-13 笔迹持续显示拖后的代码与社区研究](classroom-ink-display-latency-research-20260913.md)：结合 Excalidraw、Pointer Events、WHATWG 讨论及固定版本 Chromium 源码，定位普通 Canvas 与低延迟输入/提交路径的差异，记录 Windows 资源条件、透明画布交接和预测尾迹方案。优先验证输入到呈现的时间链路，保留自然笔锋；本次仅研究记录，实际大屏主因待测。
 
 - [2026-09-13 笔迹代码复查与同类实现对照](classroom-ink-code-review-20260913.md)：对照 Excalidraw/tldraw，复现最新点滞留、采样密度影响粗细、保存抽点改变笔锋及单笔点数合同不一致；附只读复算脚本。按用户补充，将可见笔迹持续落后于实际落点设为首要排查主线，区分输入、应用绘制与实际显示，其余问题分别跟踪。应用保持原样，实际大屏延迟主因仍待测定。
