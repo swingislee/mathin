@@ -12,6 +12,8 @@ import { beginCubeNetPaperDrag, finishCubeNetFoldDrag, updateCubeNetFoldDrag, ty
 import type { CubeNetWorkbenchHinge } from "./cube-net-workbench-model";
 import type { CubeNetCutEdge } from "./cube-net-cutting";
 import { CubeNetCutInteraction } from "./CubeNetCutInteraction";
+import { CubeNetFaceArrows } from "./CubeNetFaceArrows";
+import type { CubeNetRevealFace } from "./cube-net-face-reveal";
 
 type FoldCameraControls = ComponentRef<typeof OrbitControls>;
 
@@ -30,6 +32,8 @@ export interface CubeNetFoldViewportProps {
   readonly foldingEnabled?: boolean;
   readonly cutEdges?: readonly CubeNetCutEdge[];
   readonly onCutToggle?: (edgeId: string) => void;
+  readonly faceArrows?: readonly CubeNetRevealFace[];
+  readonly onFaceMove?: (faceId: string) => void;
   readonly messages: PolyhedronFoldRendererMessages;
   readonly onFoldStart: (selection: CubeNetPaperSelection) => void;
   readonly onPreview: (value: CubeNetFoldChange | null) => void;
@@ -159,6 +163,7 @@ export function CubeNetFoldViewport(props: CubeNetFoldViewportProps) {
     navigationMode={props.tool === "pan" ? "pan" : "orbit"} cameraInteractive={!props.dragging}
     messages={props.messages} materialColors={{ "solid.primary": "#8fbf88" }}
     sceneChildren={<><CubeNetFoldInteraction {...props} />
-      {props.cutEdges && <CubeNetCutInteraction model={props.model} edges={props.cutEdges} onToggle={props.onCutToggle} />}
+      {props.cutEdges && <CubeNetCutInteraction model={props.model} edges={props.cutEdges} onToggle={props.onCutToggle} blockFaces={!!props.onCutToggle || !!props.faceArrows} />}
+      {props.faceArrows && <CubeNetFaceArrows faces={props.faceArrows} onMove={props.onFaceMove} />}
       {props.axesVisible && <NetAxes model={props.model} />}</>} />;
 }

@@ -46,13 +46,14 @@ function CutEdge({ edge, onToggle }: { readonly edge: CubeNetCutEdge; readonly o
   </group>;
 }
 
-export function CubeNetCutInteraction({ model, edges, onToggle }: {
+export function CubeNetCutInteraction({ model, edges, onToggle, blockFaces = !!onToggle }: {
   readonly model: PolyhedronFoldRenderModel;
   readonly edges: readonly CubeNetCutEdge[];
   readonly onToggle?: (edgeId: string) => void;
+  readonly blockFaces?: boolean;
 }) {
   return <>
-    {onToggle && model.faces.map((face) => <CutOccluder key={face.faceId} face={face} />)}
+    {blockFaces && model.faces.map((face) => <CutOccluder key={face.faceId} face={face} />)}
     {edges.map((edge) => <CutEdge key={edge.edgeId} edge={edge} onToggle={onToggle} />)}
   </>;
 }

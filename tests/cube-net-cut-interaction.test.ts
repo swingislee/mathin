@@ -8,6 +8,8 @@ import { CubeNetCutInteraction } from "@/features/tools/spatial-lab/CubeNetCutIn
 import { createCubeNetWorkbenchResolver, frameCubeNetWorkbench } from "@/features/tools/spatial-lab/cube-net-workbench-model";
 import { cubeNetCutEdges } from "@/features/tools/spatial-lab/cube-net-cutting";
 import { useCubeNetPlayback } from "@/features/tools/spatial-lab/useCubeNetPlayback";
+import { CubeNetFaceArrows } from "@/features/tools/spatial-lab/CubeNetFaceArrows";
+import { cubeNetRevealFaces, revealCubeNetFaces, type CubeNetFaceOffsets } from "@/features/tools/spatial-lab/cube-net-face-reveal";
 
 vi.mock("three", async () => {
   const { createRequire } = await import("node:module");
@@ -30,7 +32,7 @@ afterEach(async () => {
   vi.restoreAllMocks(); vi.unstubAllGlobals();
 });
 async function setup() {
-  extend({ Mesh: THREE.Mesh, MeshBasicMaterial: THREE.MeshBasicMaterial, Group: THREE.Group, CylinderGeometry: THREE.CylinderGeometry });
+  extend({ Mesh: THREE.Mesh, MeshBasicMaterial: THREE.MeshBasicMaterial, Group: THREE.Group, CylinderGeometry: THREE.CylinderGeometry, ConeGeometry: THREE.ConeGeometry, SphereGeometry: THREE.SphereGeometry });
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const frames = new Map<number, FrameRequestCallback>(); let nextFrame = 0;
   vi.stubGlobal("window", Object.assign(new EventTarget(), {
@@ -130,5 +132,55 @@ describe("edge cutting and teaching playback input lifecycle", () => {
     vi.spyOn(window, "matchMedia").mockReturnValue({ matches: true } as MediaQueryList);
     await act(async () => { playback.start(job); });
     expect(finished).toHaveBeenCalledTimes(2); expect(playback.frame).toBeNull();
+  });
+
+  it("enables six cartoon arrows on demand, moves and restores one face by touch, and removes their hit targets when off", async () => {
+    const rig = await setup();
+    const entry = createCubeNetGalleryCatalog().entries.find((item) => item.classification === "legal")!;
+    const build = await buildCubeNetGalleryFolding(createCubeNetGalleryFoldingRequest(entry.id));
+    const angles = Object.fromEntries(build.sceneInput.hingeGraph.hinges.map((hinge) => [hinge.edgeId, 90]));
+    const closed = createCubeNetWorkbenchResolver(build, "zh").resolve(angles).model;
+    const bounds = revealCubeNetFaces(closed, Object.fromEntries(closed.faces.map((face) => [face.faceId, 1]))).bounds;
+    const cameraModel = frameCubeNetWorkbench(closed, bounds, "angle");
+    const transition = vi.fn(), moved = vi.fn();
+    let switchEnabled!: (value: boolean) => void;
+    let offsets: CubeNetFaceOffsets = {};
+    function Harness() {
+      const [enabled, setEnabled] = useState(false), [saved, setSaved] = useState<CubeNetFaceOffsets>({});
+      switchEnabled = setEnabled; offsets = saved;
+      const model = revealCubeNetFaces(closed, saved);
+      return createElement(Fragment, null,
+        createElement(SpatialCameraRig, { bookmark: cameraModel.camera, radius: cameraModel.bounds.radius, interactive: true, navigationMode: "orbit", onTransitionStateChange: transition }),
+        createElement(CubeNetCutInteraction, { model, edges: [], blockFaces: enabled }),
+        enabled && createElement(CubeNetFaceArrows, { faces: cubeNetRevealFaces(closed, saved),
+          onMove: (faceId) => { moved(faceId); setSaved((current) => ({ ...current, [faceId]: current[faceId] ? 0 : 1 })); },
+        }),
+      );
+    }
+    const hitTargets = () => { const targets: THREE.Object3D[] = []; rig.state().scene.traverse((object) => { if (object.userData.cubeNetArrowHit) targets.push(object); }); return targets; };
+    await act(async () => { rig.root.render(createElement(Harness)); }); rig.frame();
+    expect(hitTargets()).toHaveLength(0);
+    await act(async () => switchEnabled(true)); rig.frame();
+    expect(hitTargets()).toHaveLength(6);
+    const targetPoint = (object: THREE.Object3D) => {
+      const projected = object.getWorldPosition(new THREE.Vector3()).project(rig.state().camera);
+      return { x: (projected.x + 1) * 400, y: (1 - projected.y) * 300 };
+    };
+    const visible = hitTargets().find((object) => {
+      const point = object.getWorldPosition(new THREE.Vector3()).project(rig.state().camera);
+      rig.state().raycaster.setFromCamera(new THREE.Vector2(point.x, point.y), rig.state().camera);
+      return rig.state().raycaster.intersectObjects(rig.state().scene.children, true)[0]?.object === object;
+    })!;
+    expect(visible).toBeTruthy();
+    const faceId = visible.userData.cubeNetArrowHit;
+    const orientation = rig.state().camera.quaternion.clone();
+    for (let click = 0; click < 2; click++) {
+      const point = targetPoint(hitTargets().find((object) => object.userData.cubeNetArrowHit === faceId)!);
+      await rig.pointer("pointerdown", point, "touch"); await rig.pointer("pointerup", point, "touch"); await rig.pointer("click", point, "touch");
+      expect(offsets[faceId]).toBe(click === 0 ? 1 : 0);
+    }
+    expect(moved.mock.calls).toEqual([[faceId], [faceId]]);
+    expect(rig.state().camera.quaternion.angleTo(orientation)).toBeLessThan(1e-7);
+    await act(async () => switchEnabled(false)); rig.frame(); expect(hitTargets()).toHaveLength(0);
   });
 });
