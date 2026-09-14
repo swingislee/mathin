@@ -14,6 +14,7 @@ import {
 import {
   COURSEWARE_DOC_INTERACTION_AUDIT,
   MATHIN_MICROCOURSE_SYNC_PROVIDERS,
+  LOCAL_SPATIAL_WORKBENCH_SYNC_PROVIDERS,
   classroomInteractionAuditIssues,
   resolveClassroomInteractionAudit,
 } from "@/features/classroom/sync/interaction-audit";
@@ -107,6 +108,12 @@ function initialState(): LiveState {
 }
 
 describe("classroom interaction synchronization audit", () => {
+  it("keeps local per-hinge teaching separate from synchronized classroom commands", () => {
+    expect(LOCAL_SPATIAL_WORKBENCH_SYNC_PROVIDERS["cube-net-teaching-v1"])
+      .toEqual(CLASSROOM_SPATIAL_COMMAND_SYNC_REQUIRED_V1);
+    expect(LOCAL_SPATIAL_WORKBENCH_SYNC_PROVIDERS["cube-net-teaching-v1"].mode).toBe("read-only");
+  });
+
   it("requires an explicit decision for every courseware document family and authored mode", () => {
     expect(Object.keys(COURSEWARE_DOC_INTERACTION_AUDIT).sort()).toEqual([
       "aixuexi-page-doc-v1",

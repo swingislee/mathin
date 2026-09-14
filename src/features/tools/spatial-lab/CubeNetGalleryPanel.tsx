@@ -19,7 +19,7 @@ import {
 } from "@/features/spatial-math/domain";
 import { cn } from "@/lib/utils";
 
-function NetDiagram({
+export function NetDiagram({
   entry,
   label,
   compact = false,

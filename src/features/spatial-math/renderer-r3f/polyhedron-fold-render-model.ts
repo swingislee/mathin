@@ -5,6 +5,7 @@ import {
   createPolyhedronFoldFrameResolver,
   parseSpatialScene,
   type PolyhedronFoldVector3,
+  type PolyhedronHingeProgress,
   type SpatialScene,
 } from "../domain";
 
@@ -219,7 +220,7 @@ function renderBounds(points: readonly PolyhedronFoldVector3[]): PolyhedronFoldR
 }
 
 export interface PolyhedronFoldRenderModelResolver {
-  readonly resolve: (progress: number, selectedFaceIds?: readonly string[]) => PolyhedronFoldRenderModel;
+  readonly resolve: (progress: number, selectedFaceIds?: readonly string[], hingeProgress?: PolyhedronHingeProgress) => PolyhedronFoldRenderModel;
 }
 
 export function createPolyhedronFoldRenderModelResolver(
@@ -246,9 +247,9 @@ export function createPolyhedronFoldRenderModelResolver(
   )?.target;
   if (!displayTarget) throw new Error(`unknown default spatial camera bookmark: ${scene.presentation.defaultCameraId}`);
   return {
-    resolve: (progress, selectedFaceIds = []) => {
+    resolve: (progress, selectedFaceIds = [], hingeProgress) => {
       const progressMillionths = foldProgressMillionths(progress);
-      const frame = frameResolver.resolve(progressMillionths);
+      const frame = hingeProgress ? frameResolver.resolveHinges(hingeProgress) : frameResolver.resolve(progressMillionths);
       const selected = new Set(selectedFaceIds);
       const collidingFaceIds = new Set(frame.collisionPairs.flatMap((pair) => pair.faceIds));
       const faces = frame.faces.map((face): PolyhedronFoldRenderFace => {

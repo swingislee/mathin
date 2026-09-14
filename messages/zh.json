@@ -538,7 +538,31 @@
       },
       "cubeNet": {
         "title": "正方体展开图与折叠",
-        "description": "先预测 A 面的相对面，再把六个正方形从平面逐步折成正方体，用半折状态追踪每个面的方向。",
+        "description": "点选一个面，控制折叠方向和角度，逐面操作后判断当前形状。",
+        "manual": {
+          "chooseNet": "选择展开图",
+          "net": "图 {number}",
+          "selectFace": "点选要折叠的面",
+          "face": "{face} 面",
+          "fixed": "固定",
+          "fixedFace": "{face} 面为固定面",
+          "fixedHint": "选择其他面控制折叠；拖动画布可旋转观察。",
+          "hinge": "{face} 面 · 沿 {parent}—{face} 折痕",
+          "angle": "{face} 面的折叠角度",
+          "reverse": "反折 −90°",
+          "forward": "正折 90°",
+          "movingFaces": "随这条折痕一起转动：{faces}。其他折痕的角度保持不变。",
+          "undo": "撤销",
+          "redo": "重做",
+          "unfold": "全部展开",
+          "judge": "判断当前折叠",
+          "localOnly": "本页临场操作；切换图形或离开后重置。",
+          "results": {
+            "closed": "当前六个面已闭合成正方体。",
+            "open": "当前尚未闭合。可以继续调整各面的方向和角度。",
+            "intersection": "当前有面重叠或穿插。可以撤销，或调整折叠方向与角度。"
+          }
+        },
         "legalNet": "已验证的合法展开图",
         "facesAndHinges": "6个面 · 5条折叠边",
         "localOnly": "预测、折叠进度和选面只保存在当前页面。",

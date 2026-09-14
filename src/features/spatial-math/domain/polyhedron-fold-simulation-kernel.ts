@@ -16,6 +16,8 @@ import {
   POLYHEDRON_FOLD_SIMULATION_LIMITS,
   POLYHEDRON_FOLD_SIMULATION_VERSION,
   parsePolyhedronFoldProgress,
+  polyhedronHingeProgressSchema,
+  type PolyhedronHingeProgress,
   parsePolyhedronFoldSimulationRequest,
   type PolyhedronFoldSimulationRequest,
 } from "./polyhedron-fold-simulation-schema";
@@ -580,6 +582,8 @@ export interface PolyhedronFoldFrame {
 export interface PolyhedronFoldFrameResolver {
   /** Resolve a validated progress value without reparsing and preparing the fold graph. */
   readonly resolve: (progressInput: unknown) => PolyhedronFoldFrame;
+  /** 独立折痕取代全局进度；未指定的折痕平展，返回帧不以 progressMillionths 表达完成度。 */
+  readonly resolveHinges: (hingeProgressInput: unknown) => PolyhedronFoldFrame;
 }
 
 export interface PolyhedronFoldTargetAngleAnalysis {
@@ -767,7 +771,7 @@ function prepareFold(
   };
 }
 
-function computeFrameInternal(prepared: PreparedFold, progressMillionths: number): PolyhedronFoldFrame {
+function computeFrameInternal(prepared: PreparedFold, progressMillionths: number, hingeProgress?: PolyhedronHingeProgress): PolyhedronFoldFrame {
   const progress = progressMillionths / POLYHEDRON_FOLD_PROGRESS_SCALE;
   const layoutByFaceId = new Map(prepared.layout.faces.map((face) => [face.faceId, face]));
   const topologyAnalysis = analyzePolyhedronTopology(prepared.topology);
@@ -789,7 +793,8 @@ function computeFrameInternal(prepared: PreparedFold, progressMillionths: number
     const rotation = rotationAroundAxis(
       planarVector(from),
       planarVector(to),
-      degreesToRadians(angle.requestedSignedAngleMicrodegrees * progress),
+      degreesToRadians(angle.requestedSignedAngleMicrodegrees * (hingeProgress
+        ? (hingeProgress[step.hingeEdgeId] ?? 0) / POLYHEDRON_FOLD_PROGRESS_SCALE : progress)),
     );
     if (rotation) transforms.set(step.faceId, composeTransforms(parentTransform, rotation));
   });
@@ -810,7 +815,8 @@ function computeFrameInternal(prepared: PreparedFold, progressMillionths: number
       const left = worldFaces[leftIndex];
       const right = worldFaces[rightIndex];
       const pair = stablePair(left.faceId, right.faceId);
-      if (prepared.adjacentFacePairKeys.has(pair.join("|"))) continue;
+      // 手动反折不能沿用“目标立体中相邻面免检”的全局折叠假设。
+      if (!hingeProgress && prepared.adjacentFacePairKeys.has(pair.join("|"))) continue;
       if (!facesInteriorIntersect(left, right)) continue;
       if (collisionPairs.length < POLYHEDRON_FOLD_SIMULATION_LIMITS.maxCollisionPairsPerFrame) {
         collisionPairs.push({ faceIds: pair });
@@ -898,6 +904,12 @@ export function createPolyhedronFoldFrameResolver(
   if (!prepared) throw new Error(`fold frame prerequisites failed: ${issues.map((issue) => issue.code).join(",")}`);
   return {
     resolve: (progressInput) => computeFrameInternal(prepared, parsePolyhedronFoldProgress(progressInput)),
+    resolveHinges: (input) => {
+      const values = polyhedronHingeProgressSchema.parse(input);
+      const hingeIds = new Set(hingeGraph.hinges.map((hinge) => hinge.edgeId));
+      if (Object.keys(values).some((id) => !hingeIds.has(id))) throw new Error("UNKNOWN_FOLD_HINGE");
+      return computeFrameInternal(prepared, 0, values);
+    },
   };
 }
 

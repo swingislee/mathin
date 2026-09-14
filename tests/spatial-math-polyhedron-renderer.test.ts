@@ -19,6 +19,23 @@ import {
 import { cubeFoldSceneAdapterInput } from "./fixtures/spatial-polyhedron-scene";
 
 describe("polyhedron fold 4:3 render model", () => {
+  it("renders independent hinge frames while retaining face picking and legacy scalar behavior", async () => {
+    const input = cubeFoldSceneAdapterInput();
+    const built = await buildPolyhedronFoldScene(input);
+    const resolver = createPolyhedronFoldRenderModelResolver(built.scene, "polyhedron.cube", "zh");
+    const edgeId = input.hingeGraph.hinges[0].edgeId;
+    const flat = resolver.resolve(0);
+    const manual = resolver.resolve(0, ["face.z.neg"], { [edgeId]: -500_000 });
+    expect(manual.faces).not.toEqual(flat.faces);
+    expect(manual.faces.find((face) => face.faceId === "face.z.neg")?.selected).toBe(true);
+    expect(resolver.resolve(0, [], {}).faces).toEqual(flat.faces);
+    expect(resolver.resolve(0)).toEqual(flat);
+    const canvas = readFileSync(resolve("src/features/spatial-math/renderer-r3f/PolyhedronFoldCanvas.tsx"), "utf8");
+    expect(canvas).toContain("bounds: unfoldedBounds");
+    expect(canvas).toContain("model={visibleModel}");
+    expect(canvas).toContain("if (event.delta > 5) return;");
+  });
+
   it("uses kernel-owned face triangles and deterministic frames without deriving math from a mesh", async () => {
     const built = await buildPolyhedronFoldScene(cubeFoldSceneAdapterInput());
     const first = buildPolyhedronFoldRenderModel(built.scene, "polyhedron.cube", 0.5, "zh", {

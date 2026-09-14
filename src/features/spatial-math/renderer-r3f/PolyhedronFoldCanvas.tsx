@@ -13,7 +13,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import * as THREE from "three";
-import type { SpatialScene } from "../domain";
+import type { PolyhedronHingeProgress, SpatialScene } from "../domain";
 import { PolyhedronNetFallback } from "./PolyhedronNetFallback";
 import {
   POLYHEDRON_FOLD_RENDERER_MAX_DPR,
@@ -37,6 +37,7 @@ export interface PolyhedronFoldCanvasProps {
   readonly scene: SpatialScene;
   readonly entityId: string;
   readonly progress: number;
+  readonly hingeProgress?: PolyhedronHingeProgress;
   readonly locale: SpatialRendererLocale;
   readonly cameraId?: string;
   readonly selectedFaceIds?: readonly string[];
@@ -220,6 +221,8 @@ function FoldFace({
           !onFaceSelect
             ? undefined
             : (event) => {
+                // 与体素画布一致：旋转视角的拖动不作为选面。
+                if (event.delta > 5) return;
                 event.stopPropagation();
                 if (selectable) onFaceSelect(face.faceId);
               }
@@ -389,6 +392,7 @@ export function PolyhedronFoldCanvas({
   scene,
   entityId,
   progress,
+  hingeProgress,
   locale,
   cameraId,
   selectedFaceIds = [],
@@ -408,9 +412,16 @@ export function PolyhedronFoldCanvas({
     [cameraId, entityId, locale, scene],
   );
   const model = useMemo(
-    () => renderModelResolver.resolve(displayedProgress, selectedFaceIds),
-    [displayedProgress, renderModelResolver, selectedFaceIds],
+    () => renderModelResolver.resolve(displayedProgress, selectedFaceIds, hingeProgress),
+    [displayedProgress, renderModelResolver, selectedFaceIds, hingeProgress],
   );
+  // 逐面折叠保持平展时的取景中心，固定面不会随包围盒变化而漂移。
+  const manualFolding = hingeProgress !== undefined;
+  const unfoldedBounds = useMemo(
+    () => manualFolding ? renderModelResolver.resolve(0).bounds : null,
+    [renderModelResolver, manualFolding],
+  );
+  const visibleModel = unfoldedBounds ? { ...model, bounds: unfoldedBounds } : model;
   const [canvasElement, setCanvasElement] = useState<HTMLCanvasElement | null>(null);
   const [contextLost, setContextLost] = useState(false);
   const rendererElement = useRef<HTMLDivElement>(null);
@@ -474,7 +485,7 @@ export function PolyhedronFoldCanvas({
         style={{ touchAction: readOnly ? "pan-x pan-y" : "none" }}
       >
         <FoldScene
-          model={model}
+          model={visibleModel}
           palette={palette}
           readOnly={readOnly}
           axisSnapEnabled={axisSnapEnabled}

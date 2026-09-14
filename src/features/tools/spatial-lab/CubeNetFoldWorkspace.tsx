@@ -1,162 +1,199 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Box, CheckCircle2, FoldHorizontal } from "lucide-react";
+import { Check, Redo2, RotateCcw, Undo2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  CUBE_NET_GALLERY_FOLDING_VERSION,
-  SPATIAL_COMMAND_VERSION,
   buildCubeNetGalleryFolding,
   createCubeNetGalleryCatalog,
   createCubeNetGalleryFoldingRequest,
-  createInitialSpatialRuntimeState,
-  reduceSpatialRuntimeState,
+  createPolyhedronFoldFrameResolver,
   type CubeNetGalleryFoldingBuild,
-  type SpatialCommandActor,
-  type SpatialCommandPayload,
-  type SpatialRuntimeState,
 } from "@/features/spatial-math/domain";
+import { PolyhedronFoldView } from "@/features/spatial-math/renderer-r3f/PolyhedronFoldView";
+import { SpatialAxisSnapButton, useSpatialAxisSnap } from "@/features/spatial-math/renderer-r3f/SpatialCameraControls";
+import { NetDiagram } from "./CubeNetGalleryPanel";
 import {
-  PolyhedronFoldTeachingStage,
-  type PolyhedronFoldTeachingMessages,
-} from "@/features/spatial-math/renderer-r3f/PolyhedronFoldTeachingStage";
-import { CubeNetGalleryPanel } from "./CubeNetGalleryPanel";
-
-const TOOL_TEACHER: SpatialCommandActor = {
-  kind: "teacher-controller",
-  actorId: "tool.spatial-lab.cube-net.teacher",
-};
+  CUBE_NET_TEACHING_VERSION,
+  createCubeNetTeachingSession,
+  cubeNetHingeProgress,
+  cubeNetTeachingFaces,
+  judgeCubeNetFold,
+  reduceCubeNetTeachingSession,
+  type CubeNetFoldJudgment,
+  type CubeNetTeachingAction,
+} from "./cube-net-teaching-session";
 
 type CubeNetBuildState =
-  | { readonly status: "building"; readonly entryId: string }
-  | { readonly status: "error"; readonly entryId: string }
+  | { readonly status: "building" | "error"; readonly entryId: string }
   | { readonly status: "ready"; readonly entryId: string; readonly build: CubeNetGalleryFoldingBuild };
 
-function CubeNetFoldRehearsal({
-  build,
-  locale,
-  messages,
-}: {
+function CubeNetFoldRehearsal({ build, locale }: {
   readonly build: CubeNetGalleryFoldingBuild;
   readonly locale: "zh" | "en";
-  readonly messages: PolyhedronFoldTeachingMessages;
 }) {
+  const t = useTranslations("tools.spatialLab");
   const { page, sceneInput } = build;
-  const [runtime, setRuntime] = useState<SpatialRuntimeState>(() =>
-    createInitialSpatialRuntimeState(page),
-  );
-  const [selectedFaceIds, setSelectedFaceIds] = useState<readonly string[]>([]);
-  const t = useTranslations("tools.spatialLab.cubeNet");
-  const progress = runtime.netFoldProgress.find(
-    (entry) => entry.entityId === sceneInput.entityId,
-  )?.progress ?? 0;
-  const selectedLabel = selectedFaceIds.length > 0
-    ? build.sceneBuild.folding.fallback.faceLabels.find(
-        (entry) => entry.faceId === selectedFaceIds[0],
-      )?.label[locale] ?? build.sceneBuild.folding.fallback.faceLabels.find(
-        (entry) => entry.faceId === selectedFaceIds[0],
-      )?.label.zh ?? selectedFaceIds[0]
-    : null;
-
-  const applyCommandIntent = useCallback((payload: SpatialCommandPayload) => {
-    if (payload.kind === "scene.reset") setSelectedFaceIds([]);
-    setRuntime((current) => {
-      const sequence = current.lastAppliedSequence + 1;
-      return reduceSpatialRuntimeState(page, current, {
-        commandVersion: SPATIAL_COMMAND_VERSION,
-        commandId: `tool.spatial-lab.cube-net.${current.resetEpoch}.${sequence}`,
-        sceneRevisionHash: page.sceneHash,
-        resetEpoch: current.resetEpoch,
-        sequence,
-        delivery: "durable-semantic",
-        branch: current.branch,
-        actor: TOOL_TEACHER,
-        payload,
-      });
-    });
-  }, [page]);
+  const faces = useMemo(() => cubeNetTeachingFaces(build, locale), [build, locale]);
+  const [session, setSession] = useState(() => createCubeNetTeachingSession(
+    sceneInput.hingeGraph.hinges.map((hinge) => hinge.edgeId),
+  ));
+  const [selectedFaceId, setSelectedFaceId] = useState(faces.find((face) => face.edgeId)!.faceId);
+  const [previewAngle, setPreviewAngle] = useState<number | null>(null);
+  const [judgment, setJudgment] = useState<CubeNetFoldJudgment | null>(null);
+  const [cameraId, setCameraId] = useState(page.scene.presentation.defaultCameraId);
+  const [cameraRequestKey, setCameraRequestKey] = useState(0);
+  const axisSnapEnabled = useSpatialAxisSnap();
+  const selectedFace = faces.find((face) => face.faceId === selectedFaceId)!;
+  const edgeId = selectedFace.edgeId;
+  const currentAngle = edgeId ? previewAngle ?? session.angles[edgeId] : 0;
+  const hingeProgress = useMemo(() => cubeNetHingeProgress(
+    edgeId && previewAngle !== null ? { ...session.angles, [edgeId]: previewAngle } : session.angles,
+  ), [edgeId, previewAngle, session.angles]);
+  const frameResolver = useMemo(() => createPolyhedronFoldFrameResolver(
+    sceneInput.topology, sceneInput.geometry, sceneInput.hingeGraph, sceneInput.layout,
+  ), [sceneInput]);
+  const cameraMessages = {
+    axisSnap: t("teaching.axisSnap"),
+    enableAxisSnap: t("teaching.enableAxisSnap"),
+    disableAxisSnap: t("teaching.disableAxisSnap"),
+  };
+  const selectFace = (faceId: string) => {
+    setSelectedFaceId(faceId);
+    setPreviewAngle(null);
+  };
+  const apply = (action: CubeNetTeachingAction) => {
+    setPreviewAngle(null);
+    setJudgment(null);
+    setSession((current) => reduceCubeNetTeachingSession(current, action));
+  };
+  const commitAngle = (degrees: number) => {
+    if (edgeId) apply({ kind: "fold", edgeId, degrees });
+  };
+  const parentLabel = faces.find((face) => face.faceId === selectedFace.parentFaceId)?.label;
+  const movingLabels = faces.filter((face) => selectedFace.movingFaceIds.includes(face.faceId))
+    .map((face) => face.label).join(locale === "zh" ? "、" : ", ");
 
   return (
     <div
-      className="space-y-4"
-      data-cube-net-fold={CUBE_NET_GALLERY_FOLDING_VERSION}
+      className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_17rem]"
+      data-cube-net-teaching={CUBE_NET_TEACHING_VERSION}
       data-folding-entry={build.entry.id}
-      data-fold-progress={progress.toFixed(2)}
-      data-selected-face={selectedFaceIds[0] ?? ""}
+      data-selected-face={selectedFaceId}
     >
-      <PolyhedronFoldTeachingStage
-        page={page}
-        state={runtime}
-        entityId={sceneInput.entityId}
-        actor={TOOL_TEACHER}
-        locale={locale}
-        messages={messages}
-        controlsLayout="external"
-        selectedFaceIds={selectedFaceIds}
-        onSelectedFaceIdsChange={setSelectedFaceIds}
-        onCommandIntent={applyCommandIntent}
-        materialColors={{ "solid.primary": "#8fbf88" }}
-      />
+      <div className="min-w-0 space-y-2">
+        <div className="flex flex-wrap items-center gap-1" role="group" aria-label={t("teaching.cameraBookmarks")}>
+          {page.scene.presentation.cameraBookmarks.map((camera) => (
+            <Button key={camera.id} type="button" size="sm" variant="ghost"
+              aria-pressed={cameraId === camera.id}
+              onClick={() => { setCameraId(camera.id); setCameraRequestKey((current) => current + 1); }}>
+              {camera.label[locale] ?? camera.label.zh}
+            </Button>
+          ))}
+          <SpatialAxisSnapButton messages={cameraMessages} className="h-9 px-3 text-sm" />
+        </div>
+        <PolyhedronFoldView
+          scene={page.scene}
+          entityId={sceneInput.entityId}
+          progress={0}
+          hingeProgress={hingeProgress}
+          locale={locale}
+          cameraId={cameraId}
+          cameraRequestKey={cameraRequestKey}
+          axisSnapEnabled={axisSnapEnabled}
+          selectedFaceIds={[selectedFaceId]}
+          selectableFaceIds={faces.map((face) => face.faceId)}
+          onFaceSelect={selectFace}
+          messages={{ webglUnavailable: t("renderer.webglUnavailable"), contextLost: t("renderer.contextLost") }}
+          materialColors={{ "solid.primary": "#8fbf88" }}
+        />
+      </div>
 
-      <Card>
-        <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4 text-sm">
-          <div>
-            <p className="font-medium text-ink">
-              {selectedLabel ? t("predictionSelected", { face: selectedLabel }) : t("predictionPending")}
-            </p>
-            <p className="mt-1 text-muted">
-              {progress >= 1 ? t("verifiedConclusion") : t("foldToVerify")}
-            </p>
+      <div className="space-y-5 lg:pt-11">
+        <div className="space-y-2">
+          <h2 className="text-sm font-medium text-ink">{t("cubeNet.manual.selectFace")}</h2>
+          <div className="grid grid-cols-3 gap-2" role="group" aria-label={t("cubeNet.manual.selectFace")}>
+            {faces.map((face) => (
+              <Button key={face.faceId} type="button" variant={selectedFaceId === face.faceId ? "secondary" : "ghost"}
+                className="h-14 flex-col gap-0.5 px-2" aria-pressed={selectedFaceId === face.faceId}
+                onClick={() => selectFace(face.faceId)}>
+                <span>{t("cubeNet.manual.face", { face: face.label })}</span>
+                <span className="text-xs tabular-nums text-muted">
+                  {face.edgeId ? `${face.faceId === selectedFaceId ? currentAngle : session.angles[face.edgeId]}°` : t("cubeNet.manual.fixed")}
+                </span>
+              </Button>
+            ))}
           </div>
-          {progress >= 1 ? (
-            <Badge variant="secondary" className="gap-1.5">
-              <CheckCircle2 aria-hidden="true" className="size-4" />
-              {t("folded")}
-            </Badge>
-          ) : (
-            <Badge variant="outline">{t("progressValue", { percent: Math.round(progress * 100) })}</Badge>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+
+        <div className="space-y-3" data-cube-net-hinge-controls>
+          <p className="text-sm font-medium text-ink">
+            {edgeId ? t("cubeNet.manual.hinge", { face: selectedFace.label, parent: parentLabel! }) : t("cubeNet.manual.fixedFace", { face: selectedFace.label })}
+          </p>
+          <div className="flex items-center justify-between text-xs text-muted">
+            <span>{t("cubeNet.manual.reverse")}</span>
+            <output className="text-base font-medium tabular-nums text-ink">{currentAngle}°</output>
+            <span>{t("cubeNet.manual.forward")}</span>
+          </div>
+          <Slider min={-90} max={90} step={1} value={[currentAngle]} disabled={!edgeId}
+            className="h-8" thumbClassName="size-6"
+            aria-label={t("cubeNet.manual.angle", { face: selectedFace.label })}
+            aria-valuetext={`${currentAngle}°`}
+            onValueChange={([angle]) => { setPreviewAngle(angle); setJudgment(null); }}
+            onValueCommit={([angle]) => commitAngle(angle)}
+            onPointerCancel={() => setPreviewAngle(null)}
+          />
+          <div className="grid grid-cols-3 gap-2">
+            {[-90, 0, 90].map((angle) => (
+              <Button key={angle} type="button" size="sm" variant="secondary" disabled={!edgeId}
+                onClick={() => commitAngle(angle)}>{angle}°</Button>
+            ))}
+          </div>
+          <p className="min-h-10 text-xs leading-5 text-muted">
+            {edgeId ? t("cubeNet.manual.movingFaces", { faces: movingLabels }) : t("cubeNet.manual.fixedHint")}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-1">
+          <Button type="button" size="sm" variant="ghost" disabled={session.past.length === 0}
+            onClick={() => apply({ kind: "undo" })}><Undo2 aria-hidden="true" className="size-4" />{t("cubeNet.manual.undo")}</Button>
+          <Button type="button" size="sm" variant="ghost" disabled={session.future.length === 0}
+            onClick={() => apply({ kind: "redo" })}><Redo2 aria-hidden="true" className="size-4" />{t("cubeNet.manual.redo")}</Button>
+          <Button type="button" size="sm" variant="ghost" disabled={Object.values(session.angles).every((angle) => angle === 0)}
+            onClick={() => apply({ kind: "unfold" })}><RotateCcw aria-hidden="true" className="size-4" />{t("cubeNet.manual.unfold")}</Button>
+        </div>
+
+        <div className="space-y-2">
+          <Button type="button" variant="secondary" className="w-full"
+            onClick={() => setJudgment(judgeCubeNetFold(frameResolver.resolveHinges(hingeProgress)))}>
+            <Check aria-hidden="true" className="size-4" />{t("cubeNet.manual.judge")}
+          </Button>
+          <p className="min-h-12 text-sm leading-6 text-ink" role="status" data-cube-net-judgment={judgment ?? "hidden"}>
+            {judgment ? t(`cubeNet.manual.results.${judgment}`) : null}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
 
 export function CubeNetFoldWorkspace({ locale }: { readonly locale: "zh" | "en" }) {
   const t = useTranslations("tools.spatialLab");
-  const catalog = useMemo(() => createCubeNetGalleryCatalog(), []);
-  const legalEntries = useMemo(
-    () => catalog.entries.filter((entry) => entry.classification === "legal"),
-    [catalog],
-  );
-  const [selectedEntryId, setSelectedEntryId] = useState(legalEntries[0].id);
-  const selectedEntry = legalEntries.find((entry) => entry.id === selectedEntryId) ?? legalEntries[0];
-  const [buildState, setBuildState] = useState<CubeNetBuildState>({
-    status: "building",
-    entryId: selectedEntryId,
-  });
+  // 首批复用已有十一种形态；界面不预先揭示图形的合法性或相对面答案。
+  const entries = useMemo(() => createCubeNetGalleryCatalog().entries.filter((entry) => entry.classification === "legal"), []);
+  const [selectedEntryId, setSelectedEntryId] = useState(entries[0].id);
+  const [buildState, setBuildState] = useState<CubeNetBuildState>({ status: "building", entryId: selectedEntryId });
 
   useEffect(() => {
     let current = true;
     void buildCubeNetGalleryFolding(createCubeNetGalleryFoldingRequest(selectedEntryId)).then(
-      (build) => {
-        if (current) setBuildState({ status: "ready", entryId: selectedEntryId, build });
-      },
-      () => {
-        if (current) setBuildState({ status: "error", entryId: selectedEntryId });
-      },
+      (build) => { if (current) setBuildState({ status: "ready", entryId: selectedEntryId, build }); },
+      () => { if (current) setBuildState({ status: "error", entryId: selectedEntryId }); },
     );
-    return () => {
-      current = false;
-    };
+    return () => { current = false; };
   }, [selectedEntryId]);
 
   const selectEntry = useCallback((entryId: string) => {
@@ -164,79 +201,32 @@ export function CubeNetFoldWorkspace({ locale }: { readonly locale: "zh" | "en" 
     setBuildState({ status: "building", entryId });
   }, []);
 
-  const teachingMessages = useMemo<PolyhedronFoldTeachingMessages>(() => ({
-    webglUnavailable: t("renderer.webglUnavailable"),
-    contextLost: t("renderer.contextLost"),
-    previousStep: t("teaching.previousStep"),
-    nextStep: t("teaching.nextStep"),
-    playSteps: t("teaching.playSteps"),
-    pauseSteps: t("teaching.pauseSteps"),
-    resetScene: t("teaching.resetScene"),
-    foldProgress: t("cubeNet.foldProgress"),
-    cameraBookmarks: t("teaching.cameraBookmarks"),
-    axisSnap: t("teaching.axisSnap"),
-    enableAxisSnap: t("teaching.enableAxisSnap"),
-    disableAxisSnap: t("teaching.disableAxisSnap"),
-    submitChoice: t("cubeNet.keepPrediction"),
-    teacherFollow: t("teaching.teacherFollow"),
-    studentLocalExplore: t("teaching.studentLocalExplore"),
-    studentSubmit: t("teaching.studentSubmit"),
-    formatStepPosition: (current: number, total: number) =>
-      t("teaching.stepPosition", { current, total }),
-    formatProgress: (percent: number) => t("cubeNet.progressValue", { percent }),
-  }), [t]);
-
   return (
-    <div className="min-h-0 flex-1 overflow-auto p-3 md:p-5">
-      <div className="mx-auto max-w-5xl space-y-4">
-        <Card>
-          <CardHeader className="p-4 pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <FoldHorizontal aria-hidden="true" className="size-4 text-leaf-deep" />
-              {t("cubeNet.title")}
-            </CardTitle>
-            <CardDescription>{t("cubeNet.description")}</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-wrap items-center gap-2 p-4 pt-2">
-            <Badge variant="secondary" className="gap-1.5">
-              <CheckCircle2 aria-hidden="true" className="size-4" />
-              {t("cubeNet.legalNet")}
-            </Badge>
-            <Badge variant="outline" className="gap-1.5">
-              <Box aria-hidden="true" className="size-4" />
-              {t("cubeNet.facesAndHinges")}
-            </Badge>
-            <span className="text-xs leading-5 text-muted">{t("cubeNet.localOnly")}</span>
-          </CardContent>
-        </Card>
-
-        <CubeNetGalleryPanel
-          selectedLegalId={selectedEntryId}
-          onSelectedLegalIdChange={selectEntry}
-        />
-
-        <div>
-          <h2 className="text-base font-medium text-ink">
-            {t("cubeNet.foldingDemoTitle", { ordinal: selectedEntry.classificationOrdinal })}
-          </h2>
-          <p className="mt-1 text-sm leading-6 text-muted">
-            {t("cubeNet.foldingDemoDescription", { ordinal: selectedEntry.classificationOrdinal })}
-          </p>
+    <div className="min-h-0 flex-1 overflow-auto p-3 pb-20 md:p-5 md:pb-20">
+      <div className="mx-auto max-w-7xl space-y-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="mr-auto text-base font-medium text-ink">{t("cubeNet.title")}</h1>
+          <Select value={selectedEntryId} onValueChange={selectEntry}>
+            <SelectTrigger className="w-44" aria-label={t("cubeNet.manual.chooseNet")}><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {entries.map((entry, index) => (
+                <SelectItem key={entry.id} value={entry.id} textValue={t("cubeNet.manual.net", { number: index + 1 })}>
+                  <span className="flex items-center gap-3">
+                    <span className="w-12 [&_svg]:h-8"><NetDiagram entry={entry} label="" compact /></span>
+                    {t("cubeNet.manual.net", { number: index + 1 })}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-
+        <p className="text-xs text-muted">{t("cubeNet.manual.localOnly")}</p>
         {buildState.status === "ready" && buildState.entryId === selectedEntryId ? (
-          <CubeNetFoldRehearsal
-            key={buildState.build.page.sceneHash}
-            build={buildState.build}
-            locale={locale}
-            messages={teachingMessages}
-          />
+          <CubeNetFoldRehearsal key={buildState.build.page.sceneHash} build={buildState.build} locale={locale} />
         ) : (
-          <Card className="grid aspect-[4/3] place-items-center" data-layout-profile="standard-4x3">
-            <CardContent className="p-6 text-center text-sm text-muted" role="status">
-              {buildState.status === "error" ? t("common.previewError") : t("common.previewBuilding")}
-            </CardContent>
-          </Card>
+          <div className="grid aspect-[4/3] place-items-center text-sm text-muted" data-layout-profile="standard-4x3" role="status">
+            {buildState.status === "error" ? t("common.previewError") : t("common.previewBuilding")}
+          </div>
         )}
       </div>
     </div>

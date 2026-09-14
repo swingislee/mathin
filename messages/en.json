@@ -538,7 +538,31 @@
       },
       "cubeNet": {
         "title": "Cube net and folding",
-        "description": "Predict the face opposite A, then fold the six squares from a plane into a cube and use the half-folded state to track each face.",
+        "description": "Select a face, control its folding direction and angle, then check the shape you have made.",
+        "manual": {
+          "chooseNet": "Choose a net",
+          "net": "Net {number}",
+          "selectFace": "Select a face to fold",
+          "face": "Face {face}",
+          "fixed": "Fixed",
+          "fixedFace": "Face {face} stays fixed",
+          "fixedHint": "Choose another face to fold. Drag the canvas to look around.",
+          "hinge": "Face {face} · hinge {parent}–{face}",
+          "angle": "Folding angle of face {face}",
+          "reverse": "Reverse −90°",
+          "forward": "Forward 90°",
+          "movingFaces": "Faces moving with this hinge: {faces}. Other hinge angles stay unchanged.",
+          "undo": "Undo",
+          "redo": "Redo",
+          "unfold": "Unfold all",
+          "judge": "Check current fold",
+          "localOnly": "Live controls on this page; switching nets or leaving resets them.",
+          "results": {
+            "closed": "The six faces now close into a cube.",
+            "open": "The shape is not closed yet. Keep adjusting the faces’ directions and angles.",
+            "intersection": "Some faces overlap or intersect. Undo or adjust their folding directions and angles."
+          }
+        },
         "legalNet": "Verified valid cube net",
         "facesAndHinges": "6 faces · 5 fold edges",
         "localOnly": "Your prediction, fold progress, and face choice stay on this page.",

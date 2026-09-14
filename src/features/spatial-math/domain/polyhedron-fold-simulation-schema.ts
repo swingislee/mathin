@@ -15,6 +15,14 @@ export const POLYHEDRON_FOLD_SIMULATION_LIMITS = {
 
 export const polyhedronFoldProgressSchema = z.number().int().min(0).max(POLYHEDRON_FOLD_PROGRESS_SCALE);
 
+/** 独立折痕控制：负值反折；省略的折痕保持平展。旧全局进度合同不变。 */
+export const polyhedronHingeProgressSchema = z.record(
+  z.string().min(1).max(128),
+  z.number().int().min(-POLYHEDRON_FOLD_PROGRESS_SCALE).max(POLYHEDRON_FOLD_PROGRESS_SCALE),
+).refine((values) => Object.keys(values).length <= POLYHEDRON_FOLD_SIMULATION_LIMITS.maxFaces - 1);
+
+export type PolyhedronHingeProgress = Readonly<z.infer<typeof polyhedronHingeProgressSchema>>;
+
 export const polyhedronFoldSimulationRequestSchema = z
   .object({
     simulationVersion: z.literal(POLYHEDRON_FOLD_SIMULATION_VERSION),
