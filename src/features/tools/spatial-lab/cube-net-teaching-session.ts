@@ -26,7 +26,9 @@ export interface CubeNetTeachingSession extends CubeNetTeachingSnapshot {
 }
 export type CubeNetTeachingAction =
   | { readonly kind: "fold"; readonly edgeId: string; readonly degrees: number; readonly anchor?: CubeNetTeachingAnchor }
-  | { readonly kind: "undo" | "redo" | "unfold" };
+  | { readonly kind: "unfold"; readonly anchor?: CubeNetTeachingAnchor | null }
+  | { readonly kind: "undo" }
+  | { readonly kind: "redo" };
 
 export function createCubeNetTeachingSession(edgeIds: readonly string[]): CubeNetTeachingSession {
   return {
@@ -70,7 +72,7 @@ export function reduceCubeNetTeachingSession(
   } else {
     if (session.anchor === null && Object.values(session.angles).every((angle) => angle === 0)) return session;
     angles = Object.fromEntries(Object.keys(session.angles).map((edgeId) => [edgeId, 0]));
-    anchor = null;
+    anchor = action.anchor ?? null;
   }
   return {
     ...session, angles, anchor,

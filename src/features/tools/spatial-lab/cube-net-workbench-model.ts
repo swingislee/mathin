@@ -17,12 +17,34 @@ export interface CubeNetWorkbenchHinge {
   readonly direction: number;
 }
 
-function faceBasis(points: readonly PolyhedronFoldVector3[]) {
+export function cubeNetFaceBasis(points: readonly PolyhedronFoldVector3[]) {
   const vectors = points.map((point) => new Vector3(point.x, point.y, point.z));
   const x = vectors[1].clone().sub(vectors[0]).normalize();
   const normal = x.clone().cross(vectors[2].clone().sub(vectors[0])).normalize();
   const y = normal.clone().cross(x);
   return new Matrix4().makeBasis(x, y, normal).setPosition(vectors[0]);
+}
+
+export function transformCubeNetWorkbenchModel(source: PolyhedronFoldRenderModel, place: (point: PolyhedronFoldVector3, faceId: string) => PolyhedronFoldVector3): PolyhedronFoldRenderModel {
+  const faces = source.faces.map((face) => {
+    const vertices = face.vertices.map((vertex) => ({ ...vertex, position: place(vertex.position, face.faceId) }));
+    return {
+      ...face, vertices, centroid: place(face.centroid, face.faceId),
+      trianglePositions: face.triangleVertexIndices.flatMap((triangle) => triangle.flatMap((index) => {
+        const point = vertices[index].position;
+        return [point.x, point.y, point.z];
+      })),
+      edgePositions: vertices.flatMap((vertex, index) => {
+        const next = vertices[(index + 1) % vertices.length].position;
+        return [vertex.position.x, vertex.position.y, vertex.position.z, next.x, next.y, next.z];
+      }),
+    };
+  });
+  const points = faces.flatMap((face) => face.vertices.map((vertex) => vertex.position));
+  const min = { x: Math.min(...points.map((p) => p.x)), y: Math.min(...points.map((p) => p.y)), z: Math.min(...points.map((p) => p.z)) };
+  const max = { x: Math.max(...points.map((p) => p.x)), y: Math.max(...points.map((p) => p.y)), z: Math.max(...points.map((p) => p.z)) };
+  const center = { x: (min.x + max.x) / 2, y: (min.y + max.y) / 2, z: (min.z + max.z) / 2 };
+  return { ...source, faces, bounds: { min, max, center, radius: Math.max(0.5, ...points.map((p) => Math.hypot(p.x - center.x, p.y - center.y, p.z - center.z))) } };
 }
 
 export function createCubeNetWorkbenchResolver(build: CubeNetGalleryFoldingBuild, locale: "zh" | "en") {
@@ -41,35 +63,14 @@ export function createCubeNetWorkbenchResolver(build: CubeNetGalleryFoldingBuild
       // 计算内核保留原参考面；表现层将本次支撑面锁在抓取前的位置，任何一侧都可以折动。
       const support = anchor && source.faces.find((face) => face.faceId === anchor.faceId);
       const placement = anchor && support
-        ? faceBasis(anchor.vertices).multiply(faceBasis(support.vertices.map((vertex) => placeOnTable(vertex.position))).invert())
+        ? cubeNetFaceBasis(anchor.vertices).multiply(cubeNetFaceBasis(support.vertices.map((vertex) => placeOnTable(vertex.position))).invert())
         : new Matrix4();
       const place = (point: PolyhedronFoldVector3) => {
         const local = placeOnTable(point);
         const world = new Vector3(local.x, local.y, local.z).applyMatrix4(placement);
         return { x: world.x, y: world.y, z: world.z };
       };
-      const renderedFaces = source.faces.map((face) => {
-        const vertices = face.vertices.map((vertex) => ({ ...vertex, position: place(vertex.position) }));
-        return {
-          ...face, vertices, centroid: place(face.centroid),
-          trianglePositions: face.triangleVertexIndices.flatMap((triangle) => triangle.flatMap((index) => {
-            const point = vertices[index].position;
-            return [point.x, point.y, point.z];
-          })),
-          edgePositions: vertices.flatMap((vertex, index) => {
-            const next = vertices[(index + 1) % vertices.length].position;
-            return [vertex.position.x, vertex.position.y, vertex.position.z, next.x, next.y, next.z];
-          }),
-        };
-      });
-      const points = renderedFaces.flatMap((face) => face.vertices.map((vertex) => vertex.position));
-      const min = { x: Math.min(...points.map((p) => p.x)), y: Math.min(...points.map((p) => p.y)), z: Math.min(...points.map((p) => p.z)) };
-      const max = { x: Math.max(...points.map((p) => p.x)), y: Math.max(...points.map((p) => p.y)), z: Math.max(...points.map((p) => p.z)) };
-      const center = { x: (min.x + max.x) / 2, y: (min.y + max.y) / 2, z: (min.z + max.z) / 2 };
-      const model: PolyhedronFoldRenderModel = {
-        ...source, faces: renderedFaces,
-        bounds: { min, max, center, radius: Math.max(0.5, ...points.map((p) => Math.hypot(p.x - center.x, p.y - center.y, p.z - center.z))) },
-      };
+      const model = transformCubeNetWorkbenchModel(source, place);
       const hinges: CubeNetWorkbenchHinge[] = faces.flatMap((face) => {
         if (!face.edgeId || !face.parentFaceId) return [];
         const edge = edges.find((item) => item.edgeId === face.edgeId)!;

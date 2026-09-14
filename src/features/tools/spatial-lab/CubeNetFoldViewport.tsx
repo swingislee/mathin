@@ -10,6 +10,8 @@ import type { PolyhedronFoldRenderFace, PolyhedronFoldRenderModel } from "@/feat
 import { CUBE_AXIS_COLORS, CUBE_SELECTION_COLOR } from "./cube-structures-contract";
 import { beginCubeNetPaperDrag, finishCubeNetFoldDrag, updateCubeNetFoldDrag, type CubeNetPaperDrag, type CubeNetPaperSelection, type CubeNetFoldChange } from "./cube-net-fold-drag";
 import type { CubeNetWorkbenchHinge } from "./cube-net-workbench-model";
+import type { CubeNetCutEdge } from "./cube-net-cutting";
+import { CubeNetCutInteraction } from "./CubeNetCutInteraction";
 
 type FoldCameraControls = ComponentRef<typeof OrbitControls>;
 
@@ -19,12 +21,15 @@ export interface CubeNetFoldViewportProps {
   readonly model: PolyhedronFoldRenderModel;
   readonly hinges: readonly CubeNetWorkbenchHinge[];
   readonly activeEdgeId: string | null;
-  readonly tool: "orbit" | "pan" | "fold";
+  readonly tool: "orbit" | "pan" | "fold" | "cut";
   readonly locale: "zh" | "en";
   readonly axisSnapEnabled: boolean;
   readonly axesVisible: boolean;
   readonly cameraRequestKey: number;
   readonly dragging: boolean;
+  readonly foldingEnabled?: boolean;
+  readonly cutEdges?: readonly CubeNetCutEdge[];
+  readonly onCutToggle?: (edgeId: string) => void;
   readonly messages: PolyhedronFoldRendererMessages;
   readonly onFoldStart: (selection: CubeNetPaperSelection) => void;
   readonly onPreview: (value: CubeNetFoldChange | null) => void;
@@ -44,7 +49,7 @@ function PickPaper({ face, onPointerDown }: { readonly face: PolyhedronFoldRende
   </mesh>;
 }
 
-export function CubeNetFoldInteraction({ model, hinges, activeEdgeId, tool, onPreview, onCommit, onFoldStart, onDraggingChange }: CubeNetFoldViewportProps) {
+export function CubeNetFoldInteraction({ model, hinges, activeEdgeId, tool, foldingEnabled = true, onPreview, onCommit, onFoldStart, onDraggingChange }: CubeNetFoldViewportProps) {
   const camera = useThree((state) => state.camera);
   const canvas = useThree((state) => state.gl.domElement);
   const getThree = useThree((state) => state.get);
@@ -124,7 +129,7 @@ export function CubeNetFoldInteraction({ model, hinges, activeEdgeId, tool, onPr
   };
 
   return <>
-    {tool === "fold" && model.faces.map((face) => <PickPaper key={face.faceId} face={face} onPointerDown={(event) => grab(face, event)} />)}
+    {tool === "fold" && foldingEnabled && model.faces.map((face) => <PickPaper key={face.faceId} face={face} onPointerDown={(event) => grab(face, event)} />)}
     {hinges.map((hinge) => <group key={hinge.edgeId} renderOrder={7}>
       {hinge.edgeId === activeEdgeId && <Line
         points={[[hinge.start.x, hinge.start.y, hinge.start.z], [hinge.end.x, hinge.end.y, hinge.end.z]]}
@@ -153,5 +158,7 @@ export function CubeNetFoldViewport(props: CubeNetFoldViewportProps) {
     renderModelOverride={props.model} cameraRequestKey={props.cameraRequestKey} axisSnapEnabled={props.axisSnapEnabled}
     navigationMode={props.tool === "pan" ? "pan" : "orbit"} cameraInteractive={!props.dragging}
     messages={props.messages} materialColors={{ "solid.primary": "#8fbf88" }}
-    sceneChildren={<><CubeNetFoldInteraction {...props} />{props.axesVisible && <NetAxes model={props.model} />}</>} />;
+    sceneChildren={<><CubeNetFoldInteraction {...props} />
+      {props.cutEdges && <CubeNetCutInteraction model={props.model} edges={props.cutEdges} onToggle={props.onCutToggle} />}
+      {props.axesVisible && <NetAxes model={props.model} />}</>} />;
 }
