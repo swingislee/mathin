@@ -143,7 +143,7 @@ describe("spatial-lab Tools acceptance prototype", () => {
     }
     expect(source).toContain('data-layout-profile="standard-4x3"');
     expect(source).toContain('data-cube-net-drag-status');
-    expect(source).toContain('onhingeselect={selecthinge}');
+    expect(source).toContain('onfoldstart={startfold}');
     expect(source).toContain('data-cube-net-gallery={cube_net_gallery_version}');
     expect(source).toContain("buildcubenetgalleryfolding");
     expect(source).toContain("data-folding-entry={build.entry.id}");
@@ -154,7 +154,8 @@ describe("spatial-lab Tools acceptance prototype", () => {
   it("opens manual folding without preset answers, playback or a mounted validity quiz", () => {
     const source = readFileSync(resolve("src/features/tools/spatial-lab/CubeNetFoldWorkspace.tsx"), "utf8");
     expect(source).toContain("data-cube-net-teaching={CUBE_NET_TEACHING_VERSION}");
-    expect(source).toContain("onHingeSelect={selectHinge}");
+    expect(source).toContain("onFoldStart={startFold}");
+    expect(source).not.toContain("onHingeSelect");
     expect(source).toContain("onCommit={commitFold}");
     expect(source).not.toContain("<Slider");
     expect(source).toContain("CubeStructuresWorkbench.module.css");

@@ -11,20 +11,28 @@ import {
 export const CUBE_NET_TEACHING_VERSION = "cube-net-teaching-v1" as const;
 export const CUBE_NET_TEACHING_HISTORY_LIMIT = 100;
 export type CubeNetAngles = Readonly<Record<string, number>>;
-export interface CubeNetTeachingSession {
-  readonly version: typeof CUBE_NET_TEACHING_VERSION;
+export interface CubeNetTeachingAnchor {
+  readonly faceId: string;
+  readonly vertices: readonly [PolyhedronFoldVector3, PolyhedronFoldVector3, PolyhedronFoldVector3];
+}
+export interface CubeNetTeachingSnapshot {
   readonly angles: CubeNetAngles;
-  readonly past: readonly CubeNetAngles[];
-  readonly future: readonly CubeNetAngles[];
+  readonly anchor: CubeNetTeachingAnchor | null;
+}
+export interface CubeNetTeachingSession extends CubeNetTeachingSnapshot {
+  readonly version: typeof CUBE_NET_TEACHING_VERSION;
+  readonly past: readonly CubeNetTeachingSnapshot[];
+  readonly future: readonly CubeNetTeachingSnapshot[];
 }
 export type CubeNetTeachingAction =
-  | { readonly kind: "fold"; readonly edgeId: string; readonly degrees: number }
+  | { readonly kind: "fold"; readonly edgeId: string; readonly degrees: number; readonly anchor?: CubeNetTeachingAnchor }
   | { readonly kind: "undo" | "redo" | "unfold" };
 
 export function createCubeNetTeachingSession(edgeIds: readonly string[]): CubeNetTeachingSession {
   return {
     version: CUBE_NET_TEACHING_VERSION,
     angles: Object.fromEntries(edgeIds.map((edgeId) => [edgeId, 0])),
+    anchor: null,
     past: [],
     future: [],
   };
@@ -34,21 +42,23 @@ export function reduceCubeNetTeachingSession(
   session: CubeNetTeachingSession,
   action: CubeNetTeachingAction,
 ): CubeNetTeachingSession {
+  const snapshot = { angles: session.angles, anchor: session.anchor };
   if (action.kind === "undo") {
     const previous = session.past.at(-1);
     return previous ? {
-      ...session, angles: previous, past: session.past.slice(0, -1),
-      future: [session.angles, ...session.future],
+      ...session, ...previous, past: session.past.slice(0, -1),
+      future: [snapshot, ...session.future],
     } : session;
   }
   if (action.kind === "redo") {
     const next = session.future[0];
     return next ? {
-      ...session, angles: next, past: [...session.past, session.angles],
+      ...session, ...next, past: [...session.past, snapshot],
       future: session.future.slice(1),
     } : session;
   }
   let angles: CubeNetAngles;
+  let anchor = session.anchor;
   if (action.kind === "fold") {
     if (!Object.hasOwn(session.angles, action.edgeId)) throw new Error("UNKNOWN_FOLD_HINGE");
     if (!Number.isInteger(action.degrees) || Math.abs(action.degrees) > 90) {
@@ -56,13 +66,15 @@ export function reduceCubeNetTeachingSession(
     }
     if (session.angles[action.edgeId] === action.degrees) return session;
     angles = { ...session.angles, [action.edgeId]: action.degrees };
+    anchor = action.anchor ?? session.anchor;
   } else {
-    if (Object.values(session.angles).every((angle) => angle === 0)) return session;
+    if (session.anchor === null && Object.values(session.angles).every((angle) => angle === 0)) return session;
     angles = Object.fromEntries(Object.keys(session.angles).map((edgeId) => [edgeId, 0]));
+    anchor = null;
   }
   return {
-    ...session, angles,
-    past: [...session.past, session.angles].slice(-CUBE_NET_TEACHING_HISTORY_LIMIT),
+    ...session, angles, anchor,
+    past: [...session.past, snapshot].slice(-CUBE_NET_TEACHING_HISTORY_LIMIT),
     future: [],
   };
 }

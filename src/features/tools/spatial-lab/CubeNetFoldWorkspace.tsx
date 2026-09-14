@@ -20,6 +20,7 @@ import { CUBE_AXIS_COLORS, type CubeView } from "./cube-structures-contract";
 import { cubeStructuresMessages } from "./cube-structures-messages";
 import { CUBE_WORKBENCH_VIEWS } from "./cube-workbench-camera";
 import { createCubeNetWorkbenchResolver, frameCubeNetWorkbench } from "./cube-net-workbench-model";
+import type { CubeNetFoldChange, CubeNetPaperSelection } from "./cube-net-fold-drag";
 import {
   CUBE_NET_TEACHING_VERSION,
   createCubeNetTeachingSession,
@@ -50,8 +51,8 @@ function CubeNetFoldRehearsal({ build, locale, netSelector, workspaceSelector }:
   const [session, setSession] = useState(() => createCubeNetTeachingSession(
     sceneInput.hingeGraph.hinges.map((hinge) => hinge.edgeId),
   ));
-  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
-  const [preview, setPreview] = useState<{ readonly edgeId: string; readonly degrees: number } | null>(null);
+  const [activeFold, setActiveFold] = useState<CubeNetPaperSelection | null>(null);
+  const [preview, setPreview] = useState<CubeNetFoldChange | null>(null);
   const [judgment, setJudgment] = useState<CubeNetFoldJudgment | null>(null);
   const [view, setView] = useState<CubeView>("angle");
   const [frame, setFrame] = useState(() => resolver.resolve({}).model.bounds);
@@ -62,10 +63,10 @@ function CubeNetFoldRehearsal({ build, locale, netSelector, workspaceSelector }:
   const [dragging, setDragging] = useState(false);
   const axisSnapEnabled = useSpatialAxisSnap();
   const angles = useMemo(() => preview ? { ...session.angles, [preview.edgeId]: preview.degrees } : session.angles, [preview, session.angles]);
-  const current = useMemo(() => resolver.resolve(angles, selectedEdgeId), [angles, resolver, selectedEdgeId]);
+  const current = useMemo(() => resolver.resolve(angles, activeFold?.edgeId, preview?.anchor ?? session.anchor, activeFold?.movingFaceIds), [activeFold, angles, preview, resolver, session.anchor]);
   const model = useMemo(() => frameCubeNetWorkbench(current.model, frame, view), [current.model, frame, view]);
-  const selected = current.hinges.find((hinge) => hinge.edgeId === selectedEdgeId);
-  const currentAngle = selectedEdgeId ? angles[selectedEdgeId] : 0;
+  const activePaper = current.model.faces.find((face) => face.faceId === activeFold?.faceId);
+  const currentAngle = activeFold ? angles[activeFold.edgeId] : 0;
   const frameResolver = useMemo(() => createPolyhedronFoldFrameResolver(
     sceneInput.topology, sceneInput.geometry, sceneInput.hingeGraph, sceneInput.layout,
   ), [sceneInput]);
@@ -74,20 +75,21 @@ function CubeNetFoldRehearsal({ build, locale, netSelector, workspaceSelector }:
     enableAxisSnap: t("teaching.enableAxisSnap"),
     disableAxisSnap: t("teaching.disableAxisSnap"),
   };
-  const selectHinge = useCallback((edgeId: string) => {
-    setSelectedEdgeId(edgeId);
+  const startFold = useCallback((selection: CubeNetPaperSelection) => {
+    setActiveFold(selection);
     setPreview(null);
   }, []);
   const apply = useCallback((action: CubeNetTeachingAction) => {
     setPreview(null);
     setJudgment(null);
+    if (action.kind !== "fold") setActiveFold(null);
     setSession((current) => reduceCubeNetTeachingSession(current, action));
   }, []);
-  const previewFold = useCallback((value: { readonly edgeId: string; readonly degrees: number } | null) => {
+  const previewFold = useCallback((value: CubeNetFoldChange | null) => {
     setPreview(value);
     setJudgment(null);
   }, []);
-  const commitFold = useCallback((edgeId: string, degrees: number) => apply({ kind: "fold", edgeId, degrees }), [apply]);
+  const commitFold = useCallback((value: CubeNetFoldChange) => apply({ kind: "fold", ...value }), [apply]);
   const chooseView = (nextView: CubeView) => {
     setFrame(current.model.bounds);
     setView(nextView);
@@ -100,10 +102,10 @@ function CubeNetFoldRehearsal({ build, locale, netSelector, workspaceSelector }:
         <div className={styles.canvas} data-cube-workspace-frame="4:3" data-cube-net-workbench
           aria-label={t("cubeNet.title")} style={{ cursor: tool === "fold" ? dragging ? "grabbing" : "grab" : tool === "pan" ? "grab" : "default" }}>
           <CubeNetFoldViewport scene={page.scene} entityId={sceneInput.entityId} model={model} hinges={current.hinges}
-            selectedEdgeId={selectedEdgeId} angle={currentAngle} tool={tool} locale={locale}
+            activeEdgeId={activeFold?.edgeId ?? null} tool={tool} locale={locale}
             axisSnapEnabled={axisSnapEnabled} axesVisible={axesVisible} cameraRequestKey={cameraRequestKey} dragging={dragging}
             messages={{ webglUnavailable: t("renderer.webglUnavailable"), contextLost: t("renderer.contextLost") }}
-            onHingeSelect={selectHinge} onPreview={previewFold} onCommit={commitFold} onDraggingChange={setDragging} />
+            onFoldStart={startFold} onPreview={previewFold} onCommit={commitFold} onDraggingChange={setDragging} />
 
           <div className={cn(styles.dock, styles.meta)} role="toolbar" aria-label={t("cubeNet.title")}>
             <CubeIconButton label={t("cubeNet.manual.chooseNet")} active={panel === "nets"} disabled={dragging}
@@ -127,7 +129,7 @@ function CubeNetFoldRehearsal({ build, locale, netSelector, workspaceSelector }:
                 onClick={() => { setTool(id); setPreview(null); }} data-cube-net-tool={id}><Icon aria-hidden /></CubeIconButton>)}
             <CubeIconButton label={t("cubeNet.manual.judge")} disabled={dragging}
               onClick={() => setJudgment(judgeCubeNetFold(frameResolver.resolveHinges(cubeNetHingeProgress(angles))))}><Check aria-hidden /></CubeIconButton>
-            <CubeIconButton label={t("cubeNet.manual.unfold")} disabled={dragging || Object.values(session.angles).every((angle) => angle === 0)}
+            <CubeIconButton label={t("cubeNet.manual.unfold")} disabled={dragging || (session.anchor === null && Object.values(session.angles).every((angle) => angle === 0))}
               onClick={() => apply({ kind: "unfold" })}><RotateCcw aria-hidden /></CubeIconButton>
             <span className="self-stretch border-t border-line" aria-hidden />
             <CubeIconButton label={t("cubeNet.manual.undo")} disabled={dragging || session.past.length === 0}
@@ -141,8 +143,8 @@ function CubeNetFoldRehearsal({ build, locale, netSelector, workspaceSelector }:
             {panel === "nets" ? netSelector : <div className="space-y-3 text-xs">{workspaceSelector}<p className="leading-5 text-muted">{t("cubeNet.manual.localOnly")}</p></div>}
           </CubeCanvasPanel>}
           {tool === "fold" && <div className={styles.cutStatus} role="status" data-cube-net-drag-status>
-            {selected ? <><p className="font-medium">{t("cubeNet.manual.selectedHinge", { hinge: selected.label, angle: currentAngle })}</p>
-              <p>{t("cubeNet.manual.dragPaper")}</p></> : t("cubeNet.manual.pickHinge")}
+            {activePaper ? <><p className="font-medium">{t("cubeNet.manual.activePaper", { face: activePaper.label, angle: currentAngle })}</p>
+              <p>{t("cubeNet.manual.dragPaper")}</p></> : t("cubeNet.manual.grabPaper")}
           </div>}
           {judgment && <div className={styles.notice} role="status" data-cube-net-judgment={judgment}>{t(`cubeNet.manual.results.${judgment}`)}</div>}
         </div>

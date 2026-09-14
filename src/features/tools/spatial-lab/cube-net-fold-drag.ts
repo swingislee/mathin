@@ -1,5 +1,7 @@
 import type { PolyhedronFoldVector3 } from "@/features/spatial-math/domain";
+import type { PolyhedronFoldRenderFace } from "@/features/spatial-math/renderer-r3f/polyhedron-fold-render-model";
 import type { CubeNetWorkbenchHinge } from "./cube-net-workbench-model";
+import type { CubeNetTeachingAnchor } from "./cube-net-teaching-session";
 
 export interface CubeNetScreenPoint { readonly x: number; readonly y: number }
 export interface CubeNetFoldDrag {
@@ -8,6 +10,55 @@ export interface CubeNetFoldDrag {
   readonly projectedStart: CubeNetScreenPoint;
   readonly initialAngle: number;
   readonly samples: readonly { readonly degrees: number; readonly point: CubeNetScreenPoint }[];
+}
+export interface CubeNetPaperSelection {
+  readonly edgeId: string;
+  readonly faceId: string;
+  readonly movingFaceIds: readonly string[];
+  readonly anchor: CubeNetTeachingAnchor;
+}
+export interface CubeNetPaperDrag extends CubeNetFoldDrag, CubeNetPaperSelection {}
+export interface CubeNetFoldChange {
+  readonly edgeId: string;
+  readonly degrees: number;
+  readonly anchor: CubeNetTeachingAnchor;
+}
+
+/** 按抓取位置就近选择连接边，抓取所在的一侧移动，另一侧只在这一次手势中作支撑。 */
+export function cubeNetPaperSelection(
+  face: PolyhedronFoldRenderFace, faces: readonly PolyhedronFoldRenderFace[], hinges: readonly CubeNetWorkbenchHinge[], grabbed: PolyhedronFoldVector3,
+) {
+  const candidates = hinges.filter((hinge) => hinge.faceId === face.faceId || hinge.parentFaceId === face.faceId).map((hinge) => {
+    const forward = hinge.faceId === face.faceId;
+    const movingFaceIds = forward ? hinge.movingFaceIds : faces.filter((item) => !hinge.movingFaceIds.includes(item.faceId)).map((item) => item.faceId);
+    const axis = { x: hinge.end.x - hinge.start.x, y: hinge.end.y - hinge.start.y, z: hinge.end.z - hinge.start.z };
+    const offset = { x: grabbed.x - hinge.start.x, y: grabbed.y - hinge.start.y, z: grabbed.z - hinge.start.z };
+    const along = Math.max(0, Math.min(1, (offset.x * axis.x + offset.y * axis.y + offset.z * axis.z) / (axis.x ** 2 + axis.y ** 2 + axis.z ** 2)));
+    const distance = (offset.x - along * axis.x) ** 2 + (offset.y - along * axis.y) ** 2 + (offset.z - along * axis.z) ** 2;
+    return { hinge, forward, movingFaceIds, distance };
+  }).sort((left, right) => Math.abs(left.distance - right.distance) > 1e-8
+    ? left.distance - right.distance : left.movingFaceIds.length - right.movingFaceIds.length || left.hinge.edgeId.localeCompare(right.hinge.edgeId));
+  const selected = candidates[0];
+  if (!selected) return null;
+  const { hinge, forward, movingFaceIds } = selected;
+  const support = faces.find((item) => item.faceId === (forward ? hinge.parentFaceId : hinge.faceId))!;
+  const selection: CubeNetPaperSelection = {
+    edgeId: hinge.edgeId, faceId: face.faceId, movingFaceIds,
+    anchor: { faceId: support.faceId, vertices: [support.vertices[0].position, support.vertices[1].position, support.vertices[2].position] },
+  };
+  return { selection, hinge: { ...hinge, direction: hinge.direction * (forward ? 1 : -1) } };
+}
+
+export function beginCubeNetPaperDrag(
+  face: PolyhedronFoldRenderFace, faces: readonly PolyhedronFoldRenderFace[], hinges: readonly CubeNetWorkbenchHinge[], grabbed: PolyhedronFoldVector3,
+  pointer: CubeNetScreenPoint, project: (point: PolyhedronFoldVector3) => CubeNetScreenPoint,
+): CubeNetPaperDrag | null {
+  const selected = cubeNetPaperSelection(face, faces, hinges, grabbed);
+  if (!selected) return null;
+  const { hinge, selection } = selected;
+  const gesture = beginCubeNetFoldDrag(hinge, grabbed, hinge.degrees, pointer, project)
+    ?? beginCubeNetFoldDrag(hinge, face.centroid, hinge.degrees, pointer, project);
+  return gesture && { ...gesture, ...selection };
 }
 
 /** 捕获折痕轴与抓取点，投影真实圆弧；拖动不会变成与观察方向无关的横向滑杆。 */

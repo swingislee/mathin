@@ -1,23 +1,24 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import { Html, Line } from "@react-three/drei";
+import { useCallback, useEffect, useMemo, useRef, type ComponentRef } from "react";
+import { Html, Line, type OrbitControls } from "@react-three/drei";
 import { useThree, type ThreeEvent } from "@react-three/fiber";
-import { BufferGeometry, DoubleSide, Float32BufferAttribute, Quaternion, Vector3 } from "three";
+import { BufferGeometry, DoubleSide, Float32BufferAttribute, Vector3 } from "three";
 import type { SpatialScene } from "@/features/spatial-math/domain";
 import { PolyhedronFoldCanvas, type PolyhedronFoldRendererMessages } from "@/features/spatial-math/renderer-r3f/PolyhedronFoldCanvas";
 import type { PolyhedronFoldRenderFace, PolyhedronFoldRenderModel } from "@/features/spatial-math/renderer-r3f/polyhedron-fold-render-model";
 import { CUBE_AXIS_COLORS, CUBE_SELECTION_COLOR } from "./cube-structures-contract";
-import { beginCubeNetFoldDrag, finishCubeNetFoldDrag, updateCubeNetFoldDrag, type CubeNetFoldDrag } from "./cube-net-fold-drag";
+import { beginCubeNetPaperDrag, finishCubeNetFoldDrag, updateCubeNetFoldDrag, type CubeNetPaperDrag, type CubeNetPaperSelection, type CubeNetFoldChange } from "./cube-net-fold-drag";
 import type { CubeNetWorkbenchHinge } from "./cube-net-workbench-model";
+
+type FoldCameraControls = ComponentRef<typeof OrbitControls>;
 
 export interface CubeNetFoldViewportProps {
   readonly scene: SpatialScene;
   readonly entityId: string;
   readonly model: PolyhedronFoldRenderModel;
   readonly hinges: readonly CubeNetWorkbenchHinge[];
-  readonly selectedEdgeId: string | null;
-  readonly angle: number;
+  readonly activeEdgeId: string | null;
   readonly tool: "orbit" | "pan" | "fold";
   readonly locale: "zh" | "en";
   readonly axisSnapEnabled: boolean;
@@ -25,9 +26,9 @@ export interface CubeNetFoldViewportProps {
   readonly cameraRequestKey: number;
   readonly dragging: boolean;
   readonly messages: PolyhedronFoldRendererMessages;
-  readonly onHingeSelect: (edgeId: string) => void;
-  readonly onPreview: (value: { readonly edgeId: string; readonly degrees: number } | null) => void;
-  readonly onCommit: (edgeId: string, degrees: number) => void;
+  readonly onFoldStart: (selection: CubeNetPaperSelection) => void;
+  readonly onPreview: (value: CubeNetFoldChange | null) => void;
+  readonly onCommit: (value: CubeNetFoldChange) => void;
   readonly onDraggingChange: (dragging: boolean) => void;
 }
 
@@ -43,32 +44,22 @@ function PickPaper({ face, onPointerDown }: { readonly face: PolyhedronFoldRende
   </mesh>;
 }
 
-function PickHinge({ hinge, onSelect }: { readonly hinge: CubeNetWorkbenchHinge; readonly onSelect: () => void }) {
-  const start = new Vector3(hinge.start.x, hinge.start.y, hinge.start.z);
-  const end = new Vector3(hinge.end.x, hinge.end.y, hinge.end.z);
-  const midpoint = start.clone().add(end).multiplyScalar(0.5);
-  const rotation = new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), end.clone().sub(start).normalize());
-  return <mesh position={midpoint} quaternion={rotation} onPointerDown={(event) => {
-    event.stopPropagation();
-    if (event.button === 0 && event.isPrimary !== false) onSelect();
-  }}>
-    <cylinderGeometry args={[0.065, 0.065, start.distanceTo(end), 8]} />
-    <meshBasicMaterial colorWrite={false} depthWrite={false} />
-  </mesh>;
-}
-
-function FoldInteraction({ model, hinges, selectedEdgeId, tool, angle, onPreview, onCommit, onHingeSelect, onDraggingChange }: CubeNetFoldViewportProps) {
+export function CubeNetFoldInteraction({ model, hinges, activeEdgeId, tool, onPreview, onCommit, onFoldStart, onDraggingChange }: CubeNetFoldViewportProps) {
   const camera = useThree((state) => state.camera);
   const canvas = useThree((state) => state.gl.domElement);
-  const drag = useRef<{ pointerId: number; gesture: CubeNetFoldDrag; degrees: number } | null>(null);
-  const selected = hinges.find((hinge) => hinge.edgeId === selectedEdgeId);
+  const getThree = useThree((state) => state.get);
+  const drag = useRef<{
+    pointerId: number; gesture: CubeNetPaperDrag; degrees: number; moved: boolean;
+    controls: FoldCameraControls | null; controlsEnabled: boolean;
+  } | null>(null);
   const finish = useCallback((cancel: boolean) => {
     const active = drag.current;
     if (!active) return;
     drag.current = null;
     if (canvas.hasPointerCapture(active.pointerId)) canvas.releasePointerCapture(active.pointerId);
-    if (cancel) onPreview(null);
-    else onCommit(active.gesture.edgeId, finishCubeNetFoldDrag(active.degrees));
+    if (active.controls) active.controls.enabled = active.controlsEnabled;
+    if (cancel || !active.moved) onPreview(null);
+    else onCommit({ edgeId: active.gesture.edgeId, degrees: finishCubeNetFoldDrag(active.degrees), anchor: active.gesture.anchor });
     onDraggingChange(false);
   }, [canvas, onCommit, onDraggingChange, onPreview]);
 
@@ -77,10 +68,18 @@ function FoldInteraction({ model, hinges, selectedEdgeId, tool, angle, onPreview
       const active = drag.current;
       if (!active || active.pointerId !== event.pointerId) return;
       event.preventDefault();
-      active.degrees = updateCubeNetFoldDrag(active.gesture, { x: event.clientX, y: event.clientY }, active.degrees);
-      onPreview({ edgeId: active.gesture.edgeId, degrees: active.degrees });
+      const degrees = updateCubeNetFoldDrag(active.gesture, { x: event.clientX, y: event.clientY }, active.degrees);
+      active.moved ||= degrees !== active.gesture.initialAngle;
+      if (degrees !== active.degrees) {
+        active.degrees = degrees;
+        onPreview({ edgeId: active.gesture.edgeId, degrees, anchor: active.gesture.anchor });
+      }
     };
-    const up = (event: PointerEvent) => { if (drag.current?.pointerId === event.pointerId) finish(false); };
+    const up = (event: PointerEvent) => {
+      if (drag.current?.pointerId !== event.pointerId) return;
+      move(event);
+      finish(false);
+    };
     const cancelPointer = (event: PointerEvent) => { if (drag.current?.pointerId === event.pointerId) finish(true); };
     const cancel = () => finish(true);
     const key = (event: KeyboardEvent) => { if (event.key === "Escape") cancel(); };
@@ -100,33 +99,37 @@ function FoldInteraction({ model, hinges, selectedEdgeId, tool, angle, onPreview
       const active = drag.current;
       drag.current = null;
       if (active && canvas.hasPointerCapture(active.pointerId)) canvas.releasePointerCapture(active.pointerId);
+      if (active?.controls) active.controls.enabled = active.controlsEnabled;
     };
   }, [canvas, finish, onPreview]);
   useEffect(() => { if (tool !== "fold") finish(true); }, [finish, tool]);
 
   const grab = (face: PolyhedronFoldRenderFace, event: ThreeEvent<PointerEvent>) => {
     event.stopPropagation();
-    if (!selected || !selected.movingFaceIds.includes(face.faceId) || event.button !== 0 || event.isPrimary === false || drag.current) return;
+    if (event.button !== 0 || event.isPrimary === false || drag.current) return;
     const rect = canvas.getBoundingClientRect();
-    const gesture = beginCubeNetFoldDrag(selected, event.point, angle, { x: event.clientX, y: event.clientY }, (point) => {
+    const gesture = beginCubeNetPaperDrag(face, model.faces, hinges, event.point, { x: event.clientX, y: event.clientY }, (point) => {
       const projected = new Vector3(point.x, point.y, point.z).project(camera);
       return { x: rect.left + (projected.x + 1) * rect.width / 2, y: rect.top + (1 - projected.y) * rect.height / 2 };
     });
     if (!gesture) return;
-    drag.current = { pointerId: event.pointerId, gesture, degrees: angle };
+    const controls = getThree().controls as FoldCameraControls | null;
+    drag.current = { pointerId: event.pointerId, gesture, degrees: gesture.initialAngle, moved: false,
+      controls, controlsEnabled: controls?.enabled ?? false };
+    // 原生相机事件与 R3F 共用画布；在本次按下立即锁住相机，避免等待 React 更新时混入旋转。
+    if (controls) controls.enabled = false;
     canvas.setPointerCapture(event.pointerId);
+    onFoldStart({ edgeId: gesture.edgeId, faceId: gesture.faceId, movingFaceIds: gesture.movingFaceIds, anchor: gesture.anchor });
     onDraggingChange(true);
   };
 
   return <>
     {tool === "fold" && model.faces.map((face) => <PickPaper key={face.faceId} face={face} onPointerDown={(event) => grab(face, event)} />)}
     {hinges.map((hinge) => <group key={hinge.edgeId} renderOrder={7}>
-      {(tool === "fold" || hinge.edgeId === selectedEdgeId) && <Line
+      {hinge.edgeId === activeEdgeId && <Line
         points={[[hinge.start.x, hinge.start.y, hinge.start.z], [hinge.end.x, hinge.end.y, hinge.end.z]]}
-        color={CUBE_SELECTION_COLOR} lineWidth={hinge.edgeId === selectedEdgeId ? 6 : 2}
-        dashed={hinge.edgeId !== selectedEdgeId} dashSize={0.1} gapSize={0.06}
+        color={CUBE_SELECTION_COLOR} lineWidth={3}
         depthTest={false} depthWrite={false} raycast={() => null} />}
-      {tool === "fold" && <PickHinge hinge={hinge} onSelect={() => onHingeSelect(hinge.edgeId)} />}
     </group>)}
   </>;
 }
@@ -148,7 +151,7 @@ export function CubeNetFoldViewport(props: CubeNetFoldViewportProps) {
   return <PolyhedronFoldCanvas scene={props.scene} entityId={props.entityId} progress={0} locale={props.locale}
     doubleSidedLabels
     renderModelOverride={props.model} cameraRequestKey={props.cameraRequestKey} axisSnapEnabled={props.axisSnapEnabled}
-    navigationMode={props.tool === "fold" ? "object" : props.tool} cameraInteractive={!props.dragging}
+    navigationMode={props.tool === "pan" ? "pan" : "orbit"} cameraInteractive={!props.dragging}
     messages={props.messages} materialColors={{ "solid.primary": "#8fbf88" }}
-    sceneChildren={<><FoldInteraction {...props} />{props.axesVisible && <NetAxes model={props.model} />}</>} />;
+    sceneChildren={<><CubeNetFoldInteraction {...props} />{props.axesVisible && <NetAxes model={props.model} />}</>} />;
 }

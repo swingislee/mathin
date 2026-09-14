@@ -6,7 +6,8 @@ import {
   type CubeNetGalleryFoldingBuild, type PolyhedronFoldVector3,
 } from "@/features/spatial-math/domain";
 import { createCubeNetWorkbenchResolver, frameCubeNetWorkbench } from "@/features/tools/spatial-lab/cube-net-workbench-model";
-import { beginCubeNetFoldDrag, finishCubeNetFoldDrag, updateCubeNetFoldDrag } from "@/features/tools/spatial-lab/cube-net-fold-drag";
+import { beginCubeNetFoldDrag, beginCubeNetPaperDrag, cubeNetPaperSelection, finishCubeNetFoldDrag, updateCubeNetFoldDrag } from "@/features/tools/spatial-lab/cube-net-fold-drag";
+import { createCubeNetTeachingSession, reduceCubeNetTeachingSession } from "@/features/tools/spatial-lab/cube-net-teaching-session";
 import { cubeWorkbenchCamera, CUBE_WORKBENCH_VIEWS } from "@/features/tools/spatial-lab/cube-workbench-camera";
 
 describe("cube net direct paper gestures and shared workbench presentation", () => {
@@ -103,18 +104,90 @@ describe("cube net direct paper gestures and shared workbench presentation", () 
 
   it("separates paper capture from camera observation and cancels interrupted gestures", () => {
     const source = readFileSync("src/features/tools/spatial-lab/CubeNetFoldViewport.tsx", "utf8");
-    expect(source).toContain('props.tool === "fold" ? "object" : props.tool');
+    expect(source).toContain('props.tool === "pan" ? "pan" : "orbit"');
     expect(source).toContain("cameraInteractive={!props.dragging}");
     expect(source).toContain("canvas.setPointerCapture(event.pointerId)");
     expect(source).toContain('canvas.addEventListener("pointercancel", cancelPointer)');
     expect(source).toContain('canvas.addEventListener("lostpointercapture", cancelPointer)');
     expect(source).toContain('window.addEventListener("blur", cancel)');
     expect(source).toContain('event.key === "Escape"');
-    expect(source).toContain("if (cancel) onPreview(null)");
+    expect(source).toContain("if (cancel || !active.moved) onPreview(null)");
+    expect(source).toContain("if (controls) controls.enabled = false");
+    expect(source).not.toContain("PickHinge");
     expect(source).toContain("depthTest={false} depthWrite={false}");
     expect(source).toContain("doubleSidedLabels");
     const renderer = readFileSync("src/features/spatial-math/renderer-r3f/PolyhedronFoldCanvas.tsx", "utf8");
     expect(renderer).toContain("zIndexRange={[3, 0]}");
     expect(renderer).toContain("occlude={doubleSidedLabels ? true");
+  });
+
+  it("grabs either side of every connection without a selected crease or a permanent A face", () => {
+    for (const build of builds) {
+      const resolver = createCubeNetWorkbenchResolver(build, "zh");
+      const values = Object.fromEntries(build.sceneInput.hingeGraph.hinges.map((hinge, index) => [hinge.edgeId, [10, -20, 30, 40, -15][index]]));
+      const before = resolver.resolve(values);
+      const project = (point: PolyhedronFoldVector3) => ({ x: (point.x - point.z * 0.6) * 150, y: (point.x * 0.3 + point.z * 0.5 - point.y) * 150 });
+      for (const hinge of before.hinges) for (const faceId of [hinge.faceId, hinge.parentFaceId]) {
+        const face = before.model.faces.find((item) => item.faceId === faceId)!;
+        const grabbed = {
+          x: face.centroid.x * 0.3 + (hinge.start.x + hinge.end.x) * 0.35,
+          y: face.centroid.y * 0.3 + (hinge.start.y + hinge.end.y) * 0.35,
+          z: face.centroid.z * 0.3 + (hinge.start.z + hinge.end.z) * 0.35,
+        };
+        const drag = beginCubeNetPaperDrag(face, before.model.faces, before.hinges, grabbed, project(grabbed), project)!;
+        expect(drag, `${build.entry.id} ${face.label}`).not.toBeNull();
+        expect(drag.edgeId).toBe(hinge.edgeId);
+        expect(drag.initialAngle).toBe(values[hinge.edgeId]);
+        expect(drag.movingFaceIds).toContain(faceId);
+        expect(drag.movingFaceIds).not.toContain(drag.anchor.faceId);
+        // 切换本次支撑面不移动纸张；只有后续角度改变才带动抓取侧。
+        const start = resolver.resolve(values, drag.edgeId, drag.anchor, drag.movingFaceIds);
+        const after = resolver.resolve({ ...values, [hinge.edgeId]: 65 }, drag.edgeId, drag.anchor, drag.movingFaceIds);
+        for (const current of after.model.faces) {
+          const previous = before.model.faces.find((item) => item.faceId === current.faceId)!;
+          const atStart = start.model.faces.find((item) => item.faceId === current.faceId)!;
+          const gap = (left: PolyhedronFoldVector3, right: PolyhedronFoldVector3) => Math.hypot(left.x - right.x, left.y - right.y, left.z - right.z);
+          expect(atStart.vertices.every((vertex, index) => gap(vertex.position, previous.vertices[index].position) < 1e-8)).toBe(true);
+          expect(current.selected).toBe(drag.movingFaceIds.includes(current.faceId));
+          if (!current.selected) expect(current.vertices.every((vertex, index) => gap(vertex.position, previous.vertices[index].position) < 1e-8)).toBe(true);
+        }
+        const movedFace = after.model.faces.find((item) => item.faceId === faceId)!;
+        expect(new Vector3(movedFace.centroid.x, movedFace.centroid.y, movedFace.centroid.z).distanceTo(new Vector3(face.centroid.x, face.centroid.y, face.centroid.z))).toBeGreaterThan(0.1);
+        const sample = drag.samples.find((item) => item.degrees === 65)!;
+        const actual = project({
+          x: movedFace.centroid.x * 0.3 + (hinge.start.x + hinge.end.x) * 0.35,
+          y: movedFace.centroid.y * 0.3 + (hinge.start.y + hinge.end.y) * 0.35,
+          z: movedFace.centroid.z * 0.3 + (hinge.start.z + hinge.end.z) * 0.35,
+        });
+        expect(actual.x).toBeCloseTo(sample.point.x, 3);
+        expect(actual.y).toBeCloseTo(sample.point.y, 3);
+        const offset = { x: actual.x - drag.projectedStart.x + drag.pointerStart.x, y: actual.y - drag.projectedStart.y + drag.pointerStart.y };
+        expect(updateCubeNetFoldDrag(drag, offset, drag.initialAngle)).toBe(65);
+      }
+      const root = before.model.faces.find((face) => face.faceId === build.sceneInput.layout.rootFaceId)!;
+      expect(cubeNetPaperSelection(root, before.model.faces, before.hinges, root.centroid)!.selection.movingFaceIds).toContain(root.faceId);
+    }
+  });
+
+  it("preserves changing supports through undo, redo and unfold, including returning to a previously supporting face", () => {
+    const build = builds[0];
+    const resolver = createCubeNetWorkbenchResolver(build, "zh");
+    let session = createCubeNetTeachingSession(build.sceneInput.hingeGraph.hinges.map((hinge) => hinge.edgeId));
+    for (const faceId of resolver.resolve({}).model.faces.map((face) => face.faceId)) {
+      const current = resolver.resolve(session.angles, null, session.anchor);
+      const face = current.model.faces.find((item) => item.faceId === faceId)!;
+      const { selection } = cubeNetPaperSelection(face, current.model.faces, current.hinges, face.centroid)!;
+      const previous = session;
+      session = reduceCubeNetTeachingSession(session, { kind: "fold", edgeId: selection.edgeId,
+        degrees: session.angles[selection.edgeId] === 35 ? -25 : 35, anchor: selection.anchor });
+      const undo = reduceCubeNetTeachingSession(session, { kind: "undo" });
+      expect(undo.angles).toEqual(previous.angles);
+      expect(undo.anchor).toEqual(previous.anchor);
+      expect(reduceCubeNetTeachingSession(undo, { kind: "redo" })).toEqual(session);
+      const unfolded = reduceCubeNetTeachingSession(session, { kind: "unfold" });
+      expect(unfolded.anchor).toBeNull();
+      expect(Object.values(unfolded.angles).every((angle) => angle === 0)).toBe(true);
+      expect(reduceCubeNetTeachingSession(unfolded, { kind: "undo" }).anchor).toEqual(session.anchor);
+    }
   });
 });
