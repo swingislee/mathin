@@ -665,7 +665,7 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
       data-layout-profile="standard-4x3"
       data-spatial-preset={activeActivityId}
     >
-      {activeActivityId !== SPATIAL_LAB_CUBE_STRUCTURES_ID && <div className="absolute bottom-3 right-3 z-40" data-spatial-template-launcher>
+      {activeActivityId !== SPATIAL_LAB_CUBE_STRUCTURES_ID && activeActivityId !== SPATIAL_LAB_CUBE_NET_FOLD_PRESET_ID && <div className="absolute bottom-3 right-3 z-40" data-spatial-template-launcher>
         <Popover open={templatePanelOpen} onOpenChange={setTemplatePanelOpen}>
           <PopoverTrigger asChild>
             <Button type="button" size="sm" variant="secondary" className="gap-2 bg-paper shadow-sm" aria-label={t("presets.label")}>
@@ -700,7 +700,7 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
       {activeActivityId === SPATIAL_LAB_CUBE_STRUCTURES_ID ? (
         <CubeStructuresWorkbench locale={locale} rendererMessages={rendererMessages} cameraMessages={teachingMessages} workspaceSelector={workspaceSelector} />
       ) : activeActivityId === SPATIAL_LAB_CUBE_NET_FOLD_PRESET_ID ? (
-        <CubeNetFoldWorkspace locale={locale} />
+        <CubeNetFoldWorkspace locale={locale} workspaceSelector={workspaceSelector} />
       ) : <Tabs
         value={activeTab}
         onValueChange={(value) => setActiveTab(value as LabTab)}

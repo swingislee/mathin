@@ -11,6 +11,7 @@ import {
   type VoxelFaceSelection,
 } from "@/features/spatial-math/domain";
 import type { VoxelRenderModel } from "@/features/spatial-math/renderer-r3f/voxel-render-model";
+import { cubeWorkbenchCamera } from "./cube-workbench-camera";
 
 /** 本地验收草稿；正式课堂接入前保持独立版本，不改写冻结 spatial-page-v1。 */
 export const CUBE_STRUCTURES_DRAFT_VERSION = "cube-structures-draft-v3" as const;
@@ -411,9 +412,7 @@ export function buildCubeStructureRenderModel(state: CubeStructureState, selecte
   const selected = new Set(selectedIds);
   const group = state.groups.find((candidate) => candidate.id === groupId);
   const groupIds = new Set(group?.cubeIds ?? []);
-  const direction = { angle: { x: 1, y: 0.8, z: 1 }, front: { x: 0, y: 0, z: 1 }, left: { x: -1, y: 0, z: 0 }, right: { x: 1, y: 0, z: 0 }, top: { x: 0, y: 1, z: 0 } }[state.view];
   const center = state.frame.center;
-  const distance = state.frame.radius * 4;
   const projectionView = state.view === "angle" ? "front" : state.view;
   return {
     profile: "standard-4x3", entityId: "cube-structures", label, summary: label,
@@ -426,11 +425,7 @@ export function buildCubeStructureRenderModel(state: CubeStructureState, selecte
     projection: projectVoxels(createVoxelSet(visible.map((cube) => cube.position)), projectionView),
     projectionDepthRevealed: false,
     bounds: { center, radius: state.frame.radius },
-    camera: {
-      id: `cube-structures.${state.view}`, projection: "orthographic", target: center,
-      position: { x: center.x + direction.x * distance, y: center.y + direction.y * distance, z: center.z + direction.z * distance },
-      up: state.view === "top" ? { x: 0, y: 0, z: -1 } : { x: 0, y: 1, z: 0 }, zoom: 1, fovDegrees: 38,
-    },
+    camera: cubeWorkbenchCamera(state.frame, state.view),
   };
 }
 

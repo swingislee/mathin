@@ -142,8 +142,8 @@ describe("spatial-lab Tools acceptance prototype", () => {
       expect(source).not.toContain(forbidden);
     }
     expect(source).toContain('data-layout-profile="standard-4x3"');
-    expect(source).toContain('data-cube-net-hinge-controls');
-    expect(source).toContain('hingeprogress={hingeprogress}');
+    expect(source).toContain('data-cube-net-drag-status');
+    expect(source).toContain('onhingeselect={selecthinge}');
     expect(source).toContain('data-cube-net-gallery={cube_net_gallery_version}');
     expect(source).toContain("buildcubenetgalleryfolding");
     expect(source).toContain("data-folding-entry={build.entry.id}");
@@ -154,12 +154,16 @@ describe("spatial-lab Tools acceptance prototype", () => {
   it("opens manual folding without preset answers, playback or a mounted validity quiz", () => {
     const source = readFileSync(resolve("src/features/tools/spatial-lab/CubeNetFoldWorkspace.tsx"), "utf8");
     expect(source).toContain("data-cube-net-teaching={CUBE_NET_TEACHING_VERSION}");
-    expect(source).toContain("onFaceSelect={selectFace}");
-    expect(source).toContain("min={-90} max={90} step={1}");
-    expect(source).toContain("onValueCommit={([angle]) => commitAngle(angle)}");
+    expect(source).toContain("onHingeSelect={selectHinge}");
+    expect(source).toContain("onCommit={commitFold}");
+    expect(source).not.toContain("<Slider");
+    expect(source).toContain("CubeStructuresWorkbench.module.css");
+    expect(source).toContain("data-cube-view-toolbar");
+    expect(source).toContain("data-cube-tools-toolbar");
+    expect(source).toContain("<CubeViewIcon view={item}");
     expect(source).toContain("setJudgment(null)");
     expect(source).toContain("useState<CubeNetFoldJudgment | null>(null)");
-    expect(source).toContain("judgeCubeNetFold(frameResolver.resolveHinges(hingeProgress))");
+    expect(source).toContain("judgeCubeNetFold(frameResolver.resolveHinges(cubeNetHingeProgress(angles)))");
     for (const oldUi of ["<CubeNetGalleryPanel", "<PolyhedronFoldTeachingStage", 't("cubeNet.legalNet")', 't("cubeNet.verifiedConclusion")']) {
       expect(source).not.toContain(oldUi);
     }

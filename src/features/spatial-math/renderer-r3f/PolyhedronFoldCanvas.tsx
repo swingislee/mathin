@@ -4,6 +4,7 @@ import { Html } from "@react-three/drei";
 import { Canvas, useThree } from "@react-three/fiber";
 import {
   type RefObject,
+  type ReactNode,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -38,6 +39,11 @@ export interface PolyhedronFoldCanvasProps {
   readonly entityId: string;
   readonly progress: number;
   readonly hingeProgress?: PolyhedronHingeProgress;
+  readonly renderModelOverride?: PolyhedronFoldRenderModel;
+  readonly navigationMode?: "orbit" | "pan" | "object";
+  readonly cameraInteractive?: boolean;
+  readonly sceneChildren?: ReactNode;
+  readonly doubleSidedLabels?: boolean;
   readonly locale: SpatialRendererLocale;
   readonly cameraId?: string;
   readonly selectedFaceIds?: readonly string[];
@@ -168,12 +174,14 @@ function FoldFace({
   palette,
   materialColors,
   onFaceSelect,
+  doubleSidedLabels,
 }: {
   readonly face: PolyhedronFoldRenderFace;
   readonly selectable: boolean;
   readonly palette: SpatialRendererPalette;
   readonly materialColors?: Readonly<Record<string, string>>;
   readonly onFaceSelect?: (faceId: string) => void;
+  readonly doubleSidedLabels: boolean;
 }) {
   const faceMesh = useRef<THREE.Mesh>(null);
   const faceGeometry = useMemo(() => {
@@ -211,6 +219,11 @@ function FoldFace({
       face.centroid.z + normal.z * offset,
     ] as const;
   }, [face.centroid, face.vertices]);
+  const labelPositions = doubleSidedLabels ? [labelPosition, [
+    2 * face.centroid.x - labelPosition[0],
+    2 * face.centroid.y - labelPosition[1],
+    2 * face.centroid.z - labelPosition[2],
+  ] as const] : [labelPosition];
 
   return (
     <group>
@@ -237,10 +250,12 @@ function FoldFace({
           polygonOffsetUnits={1}
         />
       </mesh>
-      <Html
-        position={labelPosition}
+      {labelPositions.map((position, side) => <Html
+        key={side}
+        position={position}
         center
-        occlude={[faceMesh as RefObject<THREE.Object3D>]}
+        zIndexRange={[3, 0]}
+        occlude={doubleSidedLabels ? true : [faceMesh as RefObject<THREE.Object3D>]}
         style={{ pointerEvents: "none" }}
       >
         <span
@@ -249,7 +264,7 @@ function FoldFace({
         >
           {face.label}
         </span>
-      </Html>
+      </Html>)}
     </group>
   );
 }
@@ -338,12 +353,20 @@ function FoldScene({
   onCameraTransitionStateChange,
   axisSnapEnabled,
   cameraRequestKey,
+  navigationMode,
+  cameraInteractive,
+  sceneChildren,
+  doubleSidedLabels,
 }: {
   readonly model: PolyhedronFoldRenderModel;
   readonly palette: SpatialRendererPalette;
   readonly readOnly: boolean;
   readonly axisSnapEnabled: boolean;
   readonly cameraRequestKey?: string | number;
+  readonly navigationMode: "orbit" | "pan" | "object";
+  readonly cameraInteractive: boolean;
+  readonly sceneChildren?: ReactNode;
+  readonly doubleSidedLabels: boolean;
   readonly selectableFaceIds?: readonly string[];
   readonly materialColors?: Readonly<Record<string, string>>;
   readonly onFaceSelect?: (faceId: string) => void;
@@ -362,7 +385,8 @@ function FoldScene({
         radius={model.bounds.radius}
         axisSnapEnabled={axisSnapEnabled}
         requestKey={cameraRequestKey}
-        interactive={!readOnly}
+        interactive={!readOnly && cameraInteractive}
+        navigationMode={navigationMode}
         minDistance={0.1}
         maxDistance={Math.max(20, model.bounds.radius * 20)}
         onTransitionStateChange={onCameraTransitionStateChange}
@@ -380,9 +404,11 @@ function FoldScene({
             palette={palette}
             materialColors={materialColors}
             onFaceSelect={onFaceSelect}
+            doubleSidedLabels={doubleSidedLabels}
           />
         ))}
         {model.showEdges ? <FoldEdges faces={model.faces} color={palette.ink} /> : null}
+        {sceneChildren}
       </group>
     </>
   );
@@ -393,6 +419,11 @@ export function PolyhedronFoldCanvas({
   entityId,
   progress,
   hingeProgress,
+  renderModelOverride,
+  navigationMode = "orbit",
+  cameraInteractive = true,
+  sceneChildren,
+  doubleSidedLabels = false,
   locale,
   cameraId,
   selectedFaceIds = [],
@@ -412,11 +443,11 @@ export function PolyhedronFoldCanvas({
     [cameraId, entityId, locale, scene],
   );
   const model = useMemo(
-    () => renderModelResolver.resolve(displayedProgress, selectedFaceIds, hingeProgress),
-    [displayedProgress, renderModelResolver, selectedFaceIds, hingeProgress],
+    () => renderModelOverride ?? renderModelResolver.resolve(displayedProgress, selectedFaceIds, hingeProgress),
+    [displayedProgress, renderModelResolver, selectedFaceIds, hingeProgress, renderModelOverride],
   );
   // 逐面折叠保持平展时的取景中心，固定面不会随包围盒变化而漂移。
-  const manualFolding = hingeProgress !== undefined;
+  const manualFolding = hingeProgress !== undefined && !renderModelOverride;
   const unfoldedBounds = useMemo(
     () => manualFolding ? renderModelResolver.resolve(0).bounds : null,
     [renderModelResolver, manualFolding],
@@ -490,6 +521,10 @@ export function PolyhedronFoldCanvas({
           readOnly={readOnly}
           axisSnapEnabled={axisSnapEnabled}
           cameraRequestKey={cameraRequestKey}
+          navigationMode={navigationMode}
+          cameraInteractive={cameraInteractive}
+          sceneChildren={sceneChildren}
+          doubleSidedLabels={doubleSidedLabels}
           selectableFaceIds={selectableFaceIds}
           materialColors={materialColors}
           onFaceSelect={onFaceSelect}
