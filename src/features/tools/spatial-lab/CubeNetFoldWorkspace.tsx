@@ -5,7 +5,6 @@ import dynamic from "next/dynamic";
 import { Check, FoldHorizontal, Hand, Maximize, Move3D, Orbit, Redo2, RotateCcw, Scissors, Settings2, Shapes, Square, Undo2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   buildCubeNetGalleryFolding,
   createCubeNetGalleryCatalog,
@@ -15,7 +14,7 @@ import {
 } from "@/features/spatial-math/domain";
 import { SpatialAxisSnapButton, useSpatialAxisSnap } from "@/features/spatial-math/renderer-r3f/SpatialCameraControls";
 import { cn } from "@/lib/utils";
-import { NetDiagram } from "./CubeNetGalleryPanel";
+import { CubeNetGalleryWindow } from "./CubeNetGalleryWindow";
 import { CubeCanvasPanel, CubeIconButton, CubeViewIcon } from "./CubeWorkbenchControls";
 import { CUBE_AXIS_COLORS, type CubeView } from "./cube-structures-contract";
 import { cubeStructuresMessages } from "./cube-structures-messages";
@@ -42,6 +41,7 @@ import {
   type CubeNetTeachingAnchor,
 } from "./cube-net-teaching-session";
 import styles from "./CubeStructuresWorkbench.module.css";
+import galleryStyles from "./CubeNetGalleryWindow.module.css";
 
 const CubeNetFoldViewport = dynamic(() => import("./CubeNetFoldViewport").then((module) => module.CubeNetFoldViewport), { ssr: false });
 
@@ -70,7 +70,7 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
   const m = cubeStructuresMessages(locale);
   const [build, setBuild] = useState(builds[0]);
   const [labels, setLabels] = useState<Readonly<Record<string, string>>>({});
-  const playback = useCubeNetPlayback<CubeNetPlaybackFrame>();
+  const playback = useCubeNetPlayback<CubeNetPlaybackFrame>({ essential: true });
   const { page, sceneInput } = build;
   const resolver = useMemo(() => createCubeNetWorkbenchResolver(build, locale), [build, locale]);
   const [session, setSession] = useState(() => createCubeNetTeachingSession(
@@ -182,7 +182,7 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
     });
   };
   const closeReveal = (onFinish?: () => void) => animateFaces({}, () => {
-    setRevealEnabled(false); setFrame(paperCurrent.model.bounds); setCameraRequestKey((key) => key + 1); onFinish?.();
+    setRevealEnabled(false); onFinish?.();
   });
   const toggleReveal = () => {
     if (revealEnabled) closeReveal();
@@ -201,7 +201,7 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
         : { current: { model: placement.sample(elapsed - motion.durationMs), hinges: [] }, kind: "settle", step: 1, total: 1 },
       onFinish: () => {
         setCutting(createCubeNetCutSession()); setTool("cut"); setFaceOffsets({}); setRevealEnabled(false);
-        setFrame(closed.bounds);
+        setFrame({ ...closed.bounds, radius: Math.max(frame.radius, closed.bounds.radius) });
         setCameraRequestKey((key) => key + 1);
       },
     });
@@ -219,7 +219,7 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
       if (cutRequest.current !== request) return;
       const placement = nextBuild ? createCubeNetTableAlignment(final, createCubeNetWorkbenchResolver(nextBuild, locale).resolve({}).model, nextBuild.sceneInput.layout.rootFaceId) : null;
       preparePlayback();
-      setFrame((placement?.sample(placement.durationMs) ?? final).bounds); setCameraRequestKey((key) => key + 1);
+      // 逐面展开沿用现有取景，避免纸片开始转动时整体突然缩放或回到预设视角。
       playback.start({ durationMs: motion.durationMs + (placement?.durationMs ?? 0),
         sample: (elapsed) => {
           if (placement && elapsed >= motion.durationMs) return { current: { model: placement.sample(elapsed - motion.durationMs), hinges: [] }, kind: "settle", step: 1, total: 1 };
@@ -250,7 +250,7 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
   };
   const cancelAnimation = () => { cutRequest.current++; setBuildingCuts(false); playback.cancel(); };
   const selectEntry = (target: CubeNetGalleryFoldingBuild) => {
-    setGalleryOpen(false);
+    if (busy || cutting) return;
     if (target.entry.id === build.entry.id) return;
     const motion = unfoldMotion();
     const flat = resolver.resolve(Object.fromEntries(Object.keys(session.angles).map((id) => [id, 0])), null, session.anchor);
@@ -278,14 +278,15 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
   };
 
   return (
-    <div className={styles.workspace} data-cube-net-teaching={CUBE_NET_TEACHING_VERSION} data-folding-entry={build.entry.id}>
+    <div className={cn(styles.workspace, galleryStyles.workspace)} data-cube-net-teaching={CUBE_NET_TEACHING_VERSION} data-folding-entry={build.entry.id}>
+      <div className={galleryStyles.layout} data-gallery-open={galleryOpen}>
       <div className={styles.viewport}>
         <div className={styles.canvas} data-cube-workspace-frame="4:3" data-cube-net-workbench
           aria-label={t("cubeNet.title")} style={{ cursor: tool === "fold" ? dragging ? "grabbing" : "grab" : tool === "pan" ? "grab" : "default" }}>
           <CubeNetFoldViewport scene={page.scene} entityId={sceneInput.entityId} model={model} hinges={current.hinges}
             activeEdgeId={activeFold?.edgeId ?? null} tool={tool} locale={locale}
             axisSnapEnabled={axisSnapEnabled} axesVisible={axesVisible} cameraRequestKey={cameraRequestKey} dragging={dragging}
-            foldingEnabled={!playback.playing && !buildingCuts && !cutting} cutEdges={cutEdges} onCutToggle={tool === "cut" && !busy && !revealEnabled ? toggleCut : undefined}
+            animating={playback.playing} foldingEnabled={!playback.playing && !buildingCuts && !cutting} cutEdges={cutEdges} onCutToggle={tool === "cut" && !busy && !revealEnabled ? toggleCut : undefined}
             onCutFaceOpen={tool === "cut" && !busy && !revealEnabled && cutMoves.length > 0 ? openCutFace : undefined}
             faceArrows={faceArrows} onFaceMove={!busy ? moveFace : undefined}
             messages={{ webglUnavailable: t("renderer.webglUnavailable"), contextLost: t("renderer.contextLost") }}
@@ -317,7 +318,7 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
                 }} data-cube-net-tool={id}><Icon aria-hidden /></CubeIconButton>)}
             <CubeIconButton label={t("cubeNet.manual.cutTool")} active={tool === "cut"} disabled={busy} onClick={startCutting} data-cube-net-tool="cut"><Scissors aria-hidden /></CubeIconButton>
             <CubeIconButton label={t("cubeNet.manual.chooseNet")} active={galleryOpen} disabled={busy || !!cutting}
-              onClick={() => setGalleryOpen(true)} data-cube-net-gallery-toggle><Shapes aria-hidden /></CubeIconButton>
+              onClick={() => setGalleryOpen(!galleryOpen)} data-cube-net-gallery-toggle><Shapes aria-hidden /></CubeIconButton>
             {cutting && <CubeIconButton label={t("cubeNet.manual.faceReveal")} active={revealEnabled} disabled={busy}
               onClick={toggleReveal} data-cube-net-face-reveal-toggle><Move3D aria-hidden /></CubeIconButton>}
             <CubeIconButton label={t("cubeNet.manual.judge")} disabled={busy || !!cutting}
@@ -357,18 +358,9 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
           {restoreCutBlocked && <div className={styles.notice} role="status">{t("cubeNet.manual.restoreCutBlocked")}</div>}
         </div>
       </div>
-      <Dialog open={galleryOpen} onOpenChange={setGalleryOpen}>
-        <DialogContent className="max-w-xl" data-cube-net-picker>
-          <DialogHeader><DialogTitle>{t("cubeNet.manual.chooseNet")}</DialogTitle><DialogDescription>{t("cubeNet.manual.galleryHint")}</DialogDescription></DialogHeader>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-            {builds.map((item, index) => <Button key={item.entry.id} variant={item.entry.id === build.entry.id ? "secondary" : "ghost"}
-              className="h-24 flex-col gap-1 p-1 text-xs" aria-pressed={item.entry.id === build.entry.id} onClick={() => selectEntry(item)}>
-              <span className="w-full [&_svg]:h-14"><NetDiagram entry={item.entry} label="" compact /></span>{t("cubeNet.manual.net", { number: index + 1 })}
-            </Button>)}
-          </div>
-          <Button variant="secondary" onClick={startCutting}><Scissors aria-hidden />{t("cubeNet.manual.cutEntry")}</Button>
-        </DialogContent>
-      </Dialog>
+      {galleryOpen && <CubeNetGalleryWindow builds={builds} selectedId={build.entry.id} busy={busy || !!cutting} closeLabel={m.closePanel}
+        onSelect={selectEntry} onCut={startCutting} onClose={() => setGalleryOpen(false)} />}
+      </div>
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, type ComponentRef } from "react";
 import { Html, Line, type OrbitControls } from "@react-three/drei";
-import { useThree, type ThreeEvent } from "@react-three/fiber";
+import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { BufferGeometry, DoubleSide, Float32BufferAttribute, Vector3 } from "three";
 import type { SpatialScene } from "@/features/spatial-math/domain";
 import { PolyhedronFoldCanvas, type PolyhedronFoldRendererMessages } from "@/features/spatial-math/renderer-r3f/PolyhedronFoldCanvas";
@@ -30,6 +30,7 @@ export interface CubeNetFoldViewportProps {
   readonly cameraRequestKey: number;
   readonly dragging: boolean;
   readonly foldingEnabled?: boolean;
+  readonly animating?: boolean;
   readonly cutEdges?: readonly CubeNetCutEdge[];
   readonly onCutToggle?: (edgeId: string) => void;
   readonly onCutFaceOpen?: (faceId: string) => void;
@@ -157,13 +158,20 @@ function NetAxes({ model }: { readonly model: PolyhedronFoldRenderModel }) {
   })}</group>;
 }
 
+function CubeNetPlaybackFrames({ active }: { readonly active: boolean }) {
+  const invalidate = useThree((state) => state.invalidate);
+  useEffect(() => { if (active) invalidate(); }, [active, invalidate]);
+  useFrame(() => { if (active) invalidate(); });
+  return null;
+}
+
 export function CubeNetFoldViewport(props: CubeNetFoldViewportProps) {
   return <PolyhedronFoldCanvas scene={props.scene} entityId={props.entityId} progress={0} locale={props.locale}
     doubleSidedLabels
     renderModelOverride={props.model} cameraRequestKey={props.cameraRequestKey} axisSnapEnabled={props.axisSnapEnabled}
     navigationMode={props.tool === "pan" ? "pan" : "orbit"} cameraInteractive={!props.dragging}
     messages={props.messages} materialColors={{ "solid.primary": "#8fbf88" }}
-    sceneChildren={<><CubeNetFoldInteraction {...props} />
+    sceneChildren={<><CubeNetPlaybackFrames active={!!props.animating} /><CubeNetFoldInteraction {...props} />
       {props.cutEdges && <CubeNetCutInteraction model={props.model} edges={props.cutEdges} onToggle={props.onCutToggle} onOpen={props.onCutFaceOpen} blockFaces={!!props.onCutToggle || !!props.faceArrows} />}
       {props.faceArrows && <CubeNetFaceArrows faces={props.faceArrows} onMove={props.onFaceMove} />}
       {props.axesVisible && <NetAxes model={props.model} />}</>} />;

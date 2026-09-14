@@ -8,6 +8,11 @@ import { CubeNetCutInteraction } from "@/features/tools/spatial-lab/CubeNetCutIn
 import { createCubeNetWorkbenchResolver, frameCubeNetWorkbench } from "@/features/tools/spatial-lab/cube-net-workbench-model";
 import { cubeNetCutEdges } from "@/features/tools/spatial-lab/cube-net-cutting";
 import { useCubeNetPlayback } from "@/features/tools/spatial-lab/useCubeNetPlayback";
+import { createCubeNetCutUnfoldMotion, cubeNetAvailableCutMoves } from "@/features/tools/spatial-lab/cube-net-cut-unfold";
+import { CUBE_NET_FACE_REVEAL_MS, revealCubeNetFaces, sampleCubeNetFaceReveal } from "@/features/tools/spatial-lab/cube-net-face-reveal";
+import { createCubeNetPlanarPresentation, cubeNetPlanarTiles } from "@/features/tools/spatial-lab/cube-net-planar-presentation";
+import { planCubeNetPlanarChange } from "@/features/tools/spatial-lab/cube-net-planar-motion";
+import type { PolyhedronFoldRenderModel } from "@/features/spatial-math/renderer-r3f/polyhedron-fold-render-model";
 
 vi.mock("three", async () => {
   const { createRequire } = await import("node:module");
@@ -130,6 +135,49 @@ describe("edge cutting and teaching playback input lifecycle", () => {
     vi.spyOn(window, "matchMedia").mockReturnValue({ matches: true } as MediaQueryList);
     await act(async () => { playback.start(job); });
     expect(finished).toHaveBeenCalledTimes(2); expect(playback.frame).toBeNull();
+  });
+
+  it("samples intermediate teaching geometry for arrows, cut unfolding and net changes even with system motion reduction", async () => {
+    const rig = await setup();
+    vi.spyOn(window, "matchMedia").mockReturnValue({ matches: true } as MediaQueryList);
+    vi.stubGlobal("crypto", {});
+    const entries = createCubeNetGalleryCatalog().entries.filter((entry) => entry.classification === "legal");
+    const build = await buildCubeNetGalleryFolding(createCubeNetGalleryFoldingRequest(entries[0].id));
+    const target = await buildCubeNetGalleryFolding(createCubeNetGalleryFoldingRequest(entries[1].id));
+    const resolver = createCubeNetWorkbenchResolver(build, "zh"), flat = resolver.resolve({}).model;
+    const closed = resolver.resolve(Object.fromEntries(build.sceneInput.hingeGraph.hinges.map((hinge) => [hinge.edgeId, 90]))).model;
+    const face = closed.faces[0];
+    const cuts = cubeNetCutEdges(build.sceneInput, closed, []).filter((edge) => face.vertices.some((vertex) => vertex.position.x === edge.start.x && vertex.position.y === edge.start.y && vertex.position.z === edge.start.z)
+      && face.vertices.some((vertex) => vertex.position.x === edge.end.x && vertex.position.y === edge.end.y && vertex.position.z === edge.end.z)).slice(0, 3).map((edge) => edge.edgeId);
+    const selection = cubeNetAvailableCutMoves(build.sceneInput, cuts, closed, true).find((move) => move.faceId === face.faceId && move.movingFaceIds.length === 1)!;
+    expect(selection).toBeTruthy();
+    const unfold = createCubeNetCutUnfoldMotion(build.sceneInput, closed, { cuts, poses: {} }, selection);
+    const planar = createCubeNetPlanarPresentation(build, target, flat, planCubeNetPlanarChange(cubeNetPlanarTiles(build), target.entry.net.cells));
+    const jobs = [
+      { durationMs: CUBE_NET_FACE_REVEAL_MS, sample: (elapsed: number) => revealCubeNetFaces(closed, sampleCubeNetFaceReveal({}, { [face.faceId]: 1 }, elapsed)) },
+      { durationMs: unfold.durationMs, sample: (elapsed: number) => unfold.sample(elapsed).model },
+      { durationMs: planar.durationMs, sample: (elapsed: number) => planar.sample(elapsed).model },
+    ];
+    let playback!: ReturnType<typeof useCubeNetPlayback<PolyhedronFoldRenderModel>>;
+    function Harness() { playback = useCubeNetPlayback<PolyhedronFoldRenderModel>({ essential: true }); return null; }
+    await act(async () => { rig.root.render(createElement(Harness)); });
+    const positions = (model: PolyhedronFoldRenderModel) => model.faces.flatMap((item) => item.trianglePositions);
+    for (const job of jobs) {
+      const finished = vi.fn();
+      await act(async () => { playback.start({ ...job, onFinish: finished }); });
+      expect(playback.playing).toBe(true); expect(finished).not.toHaveBeenCalled();
+      await rig.clock(1000); expect(positions(playback.frame!)).toEqual(positions(job.sample(0)));
+      await rig.clock(1000 + job.durationMs / 2);
+      expect(positions(playback.frame!)).not.toEqual(positions(job.sample(0)));
+      expect(positions(playback.frame!)).not.toEqual(positions(job.sample(job.durationMs)));
+      expect(finished).not.toHaveBeenCalled();
+      await rig.clock(1000 + job.durationMs); expect(finished).toHaveBeenCalledOnce();
+    }
+    const cancelled = vi.fn();
+    await act(async () => { playback.start({ ...jobs[0], onFinish: cancelled }); });
+    await rig.clock(2000); await rig.clock(2200);
+    await act(async () => { window.dispatchEvent(Object.assign(new Event("keydown"), { key: "Escape" })); });
+    await rig.clock(3000); expect(playback.frame).toBeNull(); expect(cancelled).not.toHaveBeenCalled();
   });
 
   for (const pointerType of ["mouse", "touch"]) it(`${pointerType}: clicking a paper face unfolds its side while dragging still orbits`, async () => {

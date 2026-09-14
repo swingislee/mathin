@@ -545,6 +545,7 @@
           "activePaper": "Paper {face} · {angle}°",
           "dragPaper": "Fold near your grip; attached paper moves with it. Drag empty space to orbit; Esc cancels.",
           "chooseNet": "All 11 cube nets",
+          "galleryWindowHint": "Keep this window open and watch each step on the canvas as you choose a net.",
           "galleryHint": "Use the fewest planar quarter-turns to reach another net. Among equally short paths, keep as many squares in place as possible.",
           "cancelAnimation": "Cancel animation (Esc)",
           "unfolding": "Unfolding · step {step} / {total} · Esc cancels",

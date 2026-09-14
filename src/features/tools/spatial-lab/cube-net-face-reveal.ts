@@ -4,7 +4,7 @@ import { transformCubeNetWorkbenchModel } from "./cube-net-workbench-model";
 
 export type CubeNetFaceOffsets = Readonly<Record<string, number>>;
 export const CUBE_NET_FACE_REVEAL_DISTANCE = 0.95;
-export const CUBE_NET_FACE_REVEAL_MS = 420;
+export const CUBE_NET_FACE_REVEAL_MS = 650;
 
 /** 观察用移面从当前纸面顶点求外法向，不改变铰链、剪口或折叠状态。 */
 export function cubeNetRevealFaces(closed: PolyhedronFoldRenderModel, offsets: CubeNetFaceOffsets) {

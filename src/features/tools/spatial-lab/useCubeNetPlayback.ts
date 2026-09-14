@@ -9,7 +9,7 @@ export interface CubeNetPlayback<T> {
 }
 
 /** 教学动画的中间帧只作预览，完整播放后一次提交；取消回到播放前状态。 */
-export function useCubeNetPlayback<T>() {
+export function useCubeNetPlayback<T>({ essential = false }: { readonly essential?: boolean } = {}) {
   const [frame, setFrame] = useState<T | null>(null);
   const playback = useRef<{ frameId: number } | null>(null);
   const cancel = useCallback(() => {
@@ -19,7 +19,8 @@ export function useCubeNetPlayback<T>() {
   }, []);
   const start = useCallback((job: CubeNetPlayback<T>) => {
     if (playback.current) cancelAnimationFrame(playback.current.frameId);
-    if (job.durationMs <= 0 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    // 主动教学演示需要呈现空间变化过程；普通装饰动效仍沿用系统偏好。
+    if (job.durationMs <= 0 || (!essential && window.matchMedia("(prefers-reduced-motion: reduce)").matches)) {
       playback.current = null;
       setFrame(null);
       job.onFinish();
@@ -43,7 +44,7 @@ export function useCubeNetPlayback<T>() {
       }
     };
     active.frameId = requestAnimationFrame(tick);
-  }, []);
+  }, [essential]);
   useEffect(() => {
     const key = (event: KeyboardEvent) => { if (event.key === "Escape") cancel(); };
     window.addEventListener("keydown", key);
