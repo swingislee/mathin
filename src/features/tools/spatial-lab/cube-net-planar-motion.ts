@@ -1,4 +1,4 @@
-import { createCubeNetGalleryCatalog, type SquareCell } from "@/features/spatial-math/domain";
+import type { SquareCell } from "@/features/spatial-math/domain";
 
 export interface CubeNetPlanarTile extends SquareCell {
   readonly id: string;
@@ -29,13 +29,16 @@ export function transformCubeNetCell(cell: SquareCell, transform: number): Squar
   for (let i = 0; i < transform % 4; i++) [x, y] = [-y, x];
   return { x, y };
 }
-let legalShapes: Set<string> | null = null;
-function legalShapeKeys() {
-  return legalShapes ??= new Set(createCubeNetGalleryCatalog().entries.filter((entry) => entry.classification === "legal")
-    .flatMap((entry) => Array.from({ length: 8 }, (_, turn) => normalizedCubeNetShape(entry.net.cells.map((cell) => transformCubeNetCell(cell, turn))))));
+function connected(cells: readonly SquareCell[]) {
+  const visited = new Set([0]), queue = [0];
+  for (let i = 0; i < queue.length; i++) cells.forEach((cell, index) => {
+    const previous = cells[queue[i]];
+    if (!visited.has(index) && Math.abs(cell.x - previous.x) + Math.abs(cell.y - previous.y) === 1) { visited.add(index); queue.push(index); }
+  });
+  return visited.size === cells.length;
 }
 
-function nextSteps(tiles: readonly CubeNetPlanarTile[], fixedIds: ReadonlySet<string>): CubeNetPlanarStep[] {
+export function cubeNetPlanarSuccessors(tiles: readonly CubeNetPlanarTile[], fixedIds: ReadonlySet<string> = new Set()): CubeNetPlanarStep[] {
   const neighbors = tiles.map((tile) => tiles.flatMap((other, index) => Math.abs(tile.x - other.x) + Math.abs(tile.y - other.y) === 1 ? [index] : []));
   const result: CubeNetPlanarStep[] = [];
   for (let pivotIndex = 0; pivotIndex < tiles.length; pivotIndex++) for (const first of neighbors[pivotIndex]) {
@@ -56,30 +59,43 @@ function nextSteps(tiles: readonly CubeNetPlanarTile[], fixedIds: ReadonlySet<st
       const to = tiles.map((tile, index) => moving.has(index) ? {
         ...tile, x: pivot.x - direction * (tile.y - pivot.y), y: pivot.y + direction * (tile.x - pivot.x), quarterTurns: tile.quarterTurns + direction,
       } : tile);
-      if (new Set(to.map(cellKey)).size !== tiles.length || !legalShapeKeys().has(normalizedCubeNetShape(to))) continue;
+      if (new Set(to.map(cellKey)).size !== tiles.length || !connected(to)) continue;
       result.push({ pivot, direction, movingIds: [...moving].map((index) => tiles[index].id), from: tiles, to });
     }
   }
   return result;
 }
 
-/** 先穷举可移动方格数量，再广度优先找 90° 步骤；依次最小化动过的方格数与转动次数。 */
+/** 先在所有连通中间形态中求最少 90° 步数，再在最短路径中保留尽可能多的原位方格。 */
 export function planCubeNetPlanarChange(from: readonly CubeNetPlanarTile[], target: readonly SquareCell[]): CubeNetPlanarPlan {
   const targets = new Set(Array.from({ length: 8 }, (_, turn) => normalizedCubeNetShape(target.map((cell) => transformCubeNetCell(cell, turn)))));
   if (targets.has(normalizedCubeNetShape(from))) return { steps: [], movingIds: [], target: from };
-  type Node = { tiles: readonly CubeNetPlanarTile[]; fixed: ReadonlySet<string>; mask: number; previous: number; step: CubeNetPlanarStep | null };
+  type Route = { tiles: readonly CubeNetPlanarTile[]; steps: readonly CubeNetPlanarStep[] };
+  const routes: Route[] = [{ tiles: from, steps: [] }], shapes = new Set([normalizedCubeNetShape(from)]);
+  let shortest: Route | null = null;
+  for (let index = 0; index < routes.length && !shortest; index++) for (const step of cubeNetPlanarSuccessors(routes[index].tiles)) {
+    const key = normalizedCubeNetShape(step.to);
+    if (shapes.has(key)) continue;
+    shapes.add(key);
+    const route = { tiles: step.to, steps: [...routes[index].steps, step] };
+    if (targets.has(key)) { shortest = route; break; }
+    routes.push(route);
+  }
+  if (!shortest) throw new Error("CUBE_NET_PLANAR_TRANSITION_UNREACHABLE");
+  type Node = { tiles: readonly CubeNetPlanarTile[]; fixed: ReadonlySet<string>; mask: number; previous: number; depth: number; step: CubeNetPlanarStep | null };
   for (let movingCount = 1; movingCount < from.length; movingCount++) {
     const queue: Node[] = [];
     const seen = new Set<string>();
     for (let mask = 1; mask < (1 << from.length); mask++) {
       if (mask.toString(2).replaceAll("0", "").length !== movingCount) continue;
       const fixed = new Set(from.filter((_, index) => !(mask & (1 << index))).map((tile) => tile.id));
-      queue.push({ tiles: from, fixed, mask, previous: -1, step: null });
+      queue.push({ tiles: from, fixed, mask, previous: -1, depth: 0, step: null });
       seen.add(`${mask}|${shapeKey(from)}`);
     }
     for (let index = 0; index < queue.length; index++) {
       const node = queue[index];
-      for (const step of nextSteps(node.tiles, node.fixed)) {
+      if (node.depth >= shortest.steps.length) continue;
+      for (const step of cubeNetPlanarSuccessors(node.tiles, node.fixed)) {
         const key = `${node.mask}|${shapeKey(step.to)}`;
         if (seen.has(key)) continue;
         seen.add(key);
@@ -88,11 +104,11 @@ export function planCubeNetPlanarChange(from: readonly CubeNetPlanarTile[], targ
           for (let previous = index; queue[previous].step; previous = queue[previous].previous) steps.unshift(queue[previous].step!);
           return { steps, movingIds: [...new Set(steps.flatMap((item) => item.movingIds))], target: step.to };
         }
-        queue.push({ tiles: step.to, fixed: node.fixed, mask: node.mask, previous: index, step });
+        queue.push({ tiles: step.to, fixed: node.fixed, mask: node.mask, previous: index, depth: node.depth + 1, step });
       }
     }
   }
-  throw new Error("CUBE_NET_PLANAR_TRANSITION_UNREACHABLE");
+  return { steps: shortest.steps, movingIds: [...new Set(shortest.steps.flatMap((step) => step.movingIds))], target: shortest.tiles };
 }
 
 /** 方格绕相邻方格中心或共同顶点在纸面内转动；这是形态变换演示，与三维折纸手势分别表达。 */

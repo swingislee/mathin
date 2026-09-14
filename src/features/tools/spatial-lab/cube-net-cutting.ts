@@ -8,21 +8,27 @@ import {
 } from "@/features/spatial-math/domain";
 import type { PolyhedronFoldRenderModel } from "@/features/spatial-math/renderer-r3f/polyhedron-fold-render-model";
 
-export interface CubeNetCutSession {
+export type CubeNetCutPoses = Readonly<Record<string, readonly number[]>>;
+export interface CubeNetCutSnapshot {
   readonly cuts: readonly string[];
-  readonly past: readonly (readonly string[])[];
-  readonly future: readonly (readonly string[])[];
+  readonly poses: CubeNetCutPoses;
 }
-export const createCubeNetCutSession = (): CubeNetCutSession => ({ cuts: [], past: [], future: [] });
-export function reduceCubeNetCutSession(session: CubeNetCutSession, action: { kind: "toggle"; edgeId: string } | { kind: "undo" } | { kind: "redo" }): CubeNetCutSession {
+export interface CubeNetCutSession extends CubeNetCutSnapshot {
+  readonly past: readonly CubeNetCutSnapshot[];
+  readonly future: readonly CubeNetCutSnapshot[];
+}
+export const createCubeNetCutSession = (): CubeNetCutSession => ({ cuts: [], poses: {}, past: [], future: [] });
+export function reduceCubeNetCutSession(session: CubeNetCutSession, action: { kind: "toggle"; edgeId: string } | { kind: "unfold"; poses: CubeNetCutPoses } | { kind: "undo" } | { kind: "redo" }): CubeNetCutSession {
+  const snapshot = { cuts: session.cuts, poses: session.poses };
   if (action.kind === "undo") return session.past.length ? {
-    cuts: session.past[session.past.length - 1], past: session.past.slice(0, -1), future: [session.cuts, ...session.future],
+    ...session.past[session.past.length - 1], past: session.past.slice(0, -1), future: [snapshot, ...session.future],
   } : session;
   if (action.kind === "redo") return session.future.length ? {
-    cuts: session.future[0], past: [...session.past, session.cuts].slice(-100), future: session.future.slice(1),
+    ...session.future[0], past: [...session.past, snapshot].slice(-100), future: session.future.slice(1),
   } : session;
+  if (action.kind === "unfold") return { ...session, poses: action.poses, past: [...session.past, snapshot].slice(-100), future: [] };
   const cuts = session.cuts.includes(action.edgeId) ? session.cuts.filter((id) => id !== action.edgeId) : [...session.cuts, action.edgeId].sort();
-  return { cuts, past: [...session.past, session.cuts].slice(-100), future: [] };
+  return { cuts, poses: session.poses, past: [...session.past, snapshot].slice(-100), future: [] };
 }
 
 export function analyzeCubeNetCuts(base: PolyhedronSceneAdapterInput, cuts: readonly string[]) {
@@ -126,12 +132,16 @@ export async function buildCubeNetFromCuts(base: CubeNetGalleryFoldingBuild, cut
 }
 
 export function cubeNetCutEdges(base: PolyhedronSceneAdapterInput, model: PolyhedronFoldRenderModel, cuts: readonly string[]) {
-  return analyzePolyhedronTopology(base.topology).edges.map((edge) => {
-    const face = model.faces.find((item) => item.faceId === edge.faceIds[0])!;
-    return { edgeId: edge.edgeId, cut: cuts.includes(edge.edgeId),
-      start: face.vertices.find((vertex) => vertex.vertexId === edge.vertexIds[0])!.position,
-      end: face.vertices.find((vertex) => vertex.vertexId === edge.vertexIds[1])!.position,
-    };
+  return analyzePolyhedronTopology(base.topology).edges.flatMap((edge) => {
+    const copies = edge.faceIds.map((faceId) => {
+      const face = model.faces.find((item) => item.faceId === faceId)!;
+      return { key: `${edge.edgeId}:${faceId}`, edgeId: edge.edgeId, cut: cuts.includes(edge.edgeId),
+        start: face.vertices.find((vertex) => vertex.vertexId === edge.vertexIds[0])!.position,
+        end: face.vertices.find((vertex) => vertex.vertexId === edge.vertexIds[1])!.position,
+      };
+    });
+    const distance = (a: typeof copies[number]["start"], b: typeof a) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+    return distance(copies[0].start, copies[1].start) < 1e-6 && distance(copies[0].end, copies[1].end) < 1e-6 ? [copies[0]] : copies;
   });
 }
 export type CubeNetCutEdge = ReturnType<typeof cubeNetCutEdges>[number];

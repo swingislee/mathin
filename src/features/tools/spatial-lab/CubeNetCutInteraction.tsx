@@ -6,14 +6,16 @@ import type { PolyhedronFoldRenderFace, PolyhedronFoldRenderModel } from "@/feat
 import { CUBE_SELECTION_COLOR } from "./cube-structures-contract";
 import type { CubeNetCutEdge } from "./cube-net-cutting";
 
-function CutOccluder({ face }: { readonly face: PolyhedronFoldRenderFace }) {
+function CutOccluder({ face, onOpen }: { readonly face: PolyhedronFoldRenderFace; readonly onOpen?: (faceId: string) => void }) {
   const geometry = useMemo(() => {
     const result = new BufferGeometry();
     result.setAttribute("position", new Float32BufferAttribute(face.trianglePositions, 3));
     return result;
   }, [face.trianglePositions]);
   useEffect(() => () => geometry.dispose(), [geometry]);
-  return <mesh geometry={geometry} userData={{ cubeNetCutOccluder: face.faceId }} onClick={(event) => event.stopPropagation()} onPointerOver={(event) => event.stopPropagation()}>
+  return <mesh geometry={geometry} userData={{ cubeNetCutOccluder: face.faceId }} onClick={(event) => {
+    event.stopPropagation(); if (event.button === 0 && event.delta <= 5) onOpen?.(face.faceId);
+  }} onPointerOver={(event) => event.stopPropagation()}>
     <meshBasicMaterial side={DoubleSide} colorWrite={false} depthWrite={false} />
   </mesh>;
 }
@@ -46,14 +48,15 @@ function CutEdge({ edge, onToggle }: { readonly edge: CubeNetCutEdge; readonly o
   </group>;
 }
 
-export function CubeNetCutInteraction({ model, edges, onToggle, blockFaces = !!onToggle }: {
+export function CubeNetCutInteraction({ model, edges, onToggle, onOpen, blockFaces = !!onToggle }: {
   readonly model: PolyhedronFoldRenderModel;
   readonly edges: readonly CubeNetCutEdge[];
   readonly onToggle?: (edgeId: string) => void;
   readonly blockFaces?: boolean;
+  readonly onOpen?: (faceId: string) => void;
 }) {
   return <>
-    {blockFaces && model.faces.map((face) => <CutOccluder key={face.faceId} face={face} />)}
-    {edges.map((edge) => <CutEdge key={edge.edgeId} edge={edge} onToggle={onToggle} />)}
+    {blockFaces && model.faces.map((face) => <CutOccluder key={face.faceId} face={face} onOpen={onOpen} />)}
+    {edges.map((edge) => <CutEdge key={edge.key} edge={edge} onToggle={onToggle} />)}
   </>;
 }

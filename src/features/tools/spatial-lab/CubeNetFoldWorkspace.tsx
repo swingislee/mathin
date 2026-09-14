@@ -28,6 +28,8 @@ import { planCubeNetPlanarChange } from "./cube-net-planar-motion";
 import { createCubeNetPlanarPresentation, cubeNetPlanarTiles } from "./cube-net-planar-presentation";
 import { useCubeNetPlayback } from "./useCubeNetPlayback";
 import { analyzeCubeNetCuts, buildCubeNetFromCuts, createCubeNetCutSession, cubeNetCutEdges, reduceCubeNetCutSession, type CubeNetCutSession } from "./cube-net-cutting";
+import { createCubeNetCutUnfoldMotion, cubeNetAvailableCutMoves, cubeNetCutPoseModel, type CubeNetCutMove } from "./cube-net-cut-unfold";
+import { createCubeNetTableAlignment } from "./cube-net-table-alignment";
 import { CUBE_NET_FACE_REVEAL_MS, cubeNetRevealFaces, revealCubeNetFaces, sampleCubeNetFaceReveal, type CubeNetFaceOffsets } from "./cube-net-face-reveal";
 import {
   CUBE_NET_TEACHING_VERSION,
@@ -49,7 +51,7 @@ type CubeNetBuildState =
 
 interface CubeNetPlaybackFrame {
   readonly current: { readonly model: PolyhedronFoldRenderModel; readonly hinges: readonly CubeNetWorkbenchHinge[] };
-  readonly kind: "unfold" | "planar" | "close" | "reveal";
+  readonly kind: "unfold" | "planar" | "close" | "reveal" | "settle";
   readonly step: number;
   readonly total: number;
   readonly movingCount?: number;
@@ -82,6 +84,7 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
   const [faceOffsets, setFaceOffsets] = useState<CubeNetFaceOffsets>({});
   const [buildingCuts, setBuildingCuts] = useState(false);
   const [cutError, setCutError] = useState(false);
+  const [restoreCutBlocked, setRestoreCutBlocked] = useState(false);
   const cutRequest = useRef(0);
   useEffect(() => () => { cutRequest.current++; }, []);
   const [view, setView] = useState<CubeView>("angle");
@@ -95,10 +98,12 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
   const axisSnapEnabled = useSpatialAxisSnap();
   const angles = useMemo(() => cutting ? Object.fromEntries(Object.keys(session.angles).map((id) => [id, 90]))
     : preview ? { ...session.angles, [preview.edgeId]: preview.degrees } : session.angles, [cutting, preview, session.angles]);
-  const paperCurrent = useMemo(() => {
-    const resolved = resolver.resolve(angles, activeFold?.edgeId, preview?.anchor ?? session.anchor, activeFold?.movingFaceIds);
+  const sourceCurrent = useMemo(() => {
+    const resolved = resolver.resolve(angles, activeFold?.edgeId, cutting ? null : preview?.anchor ?? session.anchor, activeFold?.movingFaceIds);
     return { ...resolved, model: labelModel(resolved.model, labels) };
-  }, [activeFold, angles, labels, preview, resolver, session.anchor]);
+  }, [activeFold, angles, cutting, labels, preview, resolver, session.anchor]);
+  const paperCurrent = useMemo(() => cutting ? { ...sourceCurrent, model: cubeNetCutPoseModel(sourceCurrent.model, cutting.poses) } : sourceCurrent,
+    [cutting, sourceCurrent]);
   const manualCurrent = useMemo(() => cutting ? { ...paperCurrent, model: revealCubeNetFaces(paperCurrent.model, faceOffsets) } : paperCurrent,
     [cutting, faceOffsets, paperCurrent]);
   const revealBounds = useMemo(() => {
@@ -137,13 +142,18 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
   const commitFold = useCallback((value: CubeNetFoldChange) => apply({ kind: "fold", ...value }), [apply]);
   const busy = dragging || playback.playing || buildingCuts;
   const cutAnalysis = useMemo(() => cutting ? analyzeCubeNetCuts(sceneInput, cutting.cuts) : null, [cutting, sceneInput]);
+  const cutMoves = useMemo(() => cutting ? cubeNetAvailableCutMoves(sceneInput, cutting.cuts, paperCurrent.model, true) : [], [cutting, paperCurrent.model, sceneInput]);
   const cutEdges = useMemo(() => cutting && (!playback.playing || playback.frame?.kind === "reveal")
     ? revealEnabled ? [] : cubeNetCutEdges(sceneInput, current.model, cutting.cuts) : undefined,
     [current.model, cutting, playback.frame?.kind, playback.playing, revealEnabled, sceneInput]);
   const toggleCut = useCallback((edgeId: string) => {
     setCutError(false);
+    if (cutting?.cuts.includes(edgeId) && cubeNetCutEdges(sceneInput, paperCurrent.model, cutting.cuts).filter((edge) => edge.edgeId === edgeId).length > 1) {
+      setRestoreCutBlocked(true); return;
+    }
+    setRestoreCutBlocked(false);
     setCutting((state) => state ? reduceCubeNetCutSession(state, { kind: "toggle", edgeId }) : null);
-  }, []);
+  }, [cutting, paperCurrent.model, sceneInput]);
   const preparePlayback = () => { setPreview(null); setActiveFold(null); setJudgment(null); setPanel(null); };
   const unfoldMotion = () => createCubeNetUnfoldMotion(session, current.hinges, sceneInput.layout.rootFaceId);
   const unfoldFrame = (motion: ReturnType<typeof createCubeNetUnfoldMotion>, elapsed: number): CubeNetPlaybackFrame => {
@@ -153,9 +163,13 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
   };
   const animateUnfold = () => {
     const motion = unfoldMotion();
+    const flat = unfoldFrame(motion, motion.durationMs).current.model;
+    const placement = createCubeNetTableAlignment(flat, resolver.resolve({}).model, sceneInput.layout.rootFaceId);
     preparePlayback();
-    playback.start({ durationMs: motion.durationMs, sample: (elapsed) => unfoldFrame(motion, elapsed),
-      onFinish: () => apply({ kind: "unfold", anchor: session.anchor }) });
+    playback.start({ durationMs: motion.durationMs + placement.durationMs,
+      sample: (elapsed) => elapsed < motion.durationMs ? unfoldFrame(motion, elapsed)
+        : { current: { model: placement.sample(elapsed - motion.durationMs), hinges: [] }, kind: "settle", step: 1, total: 1 },
+      onFinish: () => apply({ kind: "unfold", anchor: placement.anchor }) });
   };
   const animateFaces = (next: CubeNetFaceOffsets, onFinish?: () => void) => {
     if ([...new Set([...Object.keys(faceOffsets), ...Object.keys(next)])].every((id) => (faceOffsets[id] ?? 0) === (next[id] ?? 0))) { onFinish?.(); return; }
@@ -179,41 +193,48 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
     setGalleryOpen(false);
     if (cutting) { if (revealEnabled) closeReveal(); setTool("cut"); return; }
     const motion = createCubeNetUnfoldMotion(session, current.hinges, sceneInput.layout.rootFaceId, 90);
-    preparePlayback(); setCutError(false);
-    playback.start({ durationMs: motion.durationMs,
-      sample: (elapsed) => ({ ...unfoldFrame(motion, elapsed), kind: "close" }),
+    const closed = resolver.resolve(motion.sample(motion.durationMs).angles).model;
+    const placement = createCubeNetTableAlignment(unfoldFrame(motion, motion.durationMs).current.model, closed, sceneInput.layout.rootFaceId, false);
+    preparePlayback(); setCutError(false); setRestoreCutBlocked(false);
+    playback.start({ durationMs: motion.durationMs + placement.durationMs,
+      sample: (elapsed) => elapsed < motion.durationMs ? { ...unfoldFrame(motion, elapsed), kind: "close" }
+        : { current: { model: placement.sample(elapsed - motion.durationMs), hinges: [] }, kind: "settle", step: 1, total: 1 },
       onFinish: () => {
         setCutting(createCubeNetCutSession()); setTool("cut"); setFaceOffsets({}); setRevealEnabled(false);
-        setFrame(resolver.resolve(motion.sample(motion.durationMs).angles, null, session.anchor).model.bounds);
+        setFrame(closed.bounds);
         setCameraRequestKey((key) => key + 1);
       },
     });
   };
-  const unfoldCuts = async () => {
-    if (!cutting || cutAnalysis?.status !== "ready") return;
+  const unfoldCuts = async (selection?: CubeNetCutMove) => {
+    if (!cutting) return;
+    const motion = createCubeNetCutUnfoldMotion(sceneInput, sourceCurrent.model, cutting, selection);
+    if (!motion.steps.length) return;
     const request = ++cutRequest.current;
-    setBuildingCuts(true); setCutError(false);
+    setBuildingCuts(true); setCutError(false); setRestoreCutBlocked(false);
     try {
-      const nextBuild = await buildCubeNetFromCuts(build, cutting.cuts);
+      const final = motion.sample(motion.durationMs).model;
+      const complete = cutAnalysis?.status === "ready" && cubeNetAvailableCutMoves(sceneInput, cutting.cuts, final).length === 0;
+      const nextBuild = complete ? await buildCubeNetFromCuts(build, cutting.cuts) : null;
       if (cutRequest.current !== request) return;
-      const support = paperCurrent.model.faces.find((face) => face.faceId === (session.anchor?.faceId ?? nextBuild.sceneInput.layout.rootFaceId))!;
-      const points = support.vertices.slice(0, 3).map((vertex) => vertex.position);
-      const anchor: CubeNetTeachingAnchor = { faceId: support.faceId, vertices: [points[0], points[1], points[2]] };
-      const initial = createCubeNetTeachingSession(nextBuild.sceneInput.hingeGraph.hinges.map((hinge) => hinge.edgeId));
-      const closed = { ...initial, anchor, angles: Object.fromEntries(Object.keys(initial.angles).map((id) => [id, 90])) };
-      const nextResolver = createCubeNetWorkbenchResolver(nextBuild, locale);
-      const motion = createCubeNetUnfoldMotion(closed, nextResolver.resolve(closed.angles, null, anchor).hinges, nextBuild.sceneInput.layout.rootFaceId);
+      const placement = nextBuild ? createCubeNetTableAlignment(final, createCubeNetWorkbenchResolver(nextBuild, locale).resolve({}).model, nextBuild.sceneInput.layout.rootFaceId) : null;
       preparePlayback();
-      setFrame(nextResolver.resolve({}, null, anchor).model.bounds); setCameraRequestKey((key) => key + 1);
-      playback.start({ durationMs: motion.durationMs,
+      setFrame((placement?.sample(placement.durationMs) ?? final).bounds); setCameraRequestKey((key) => key + 1);
+      playback.start({ durationMs: motion.durationMs + (placement?.durationMs ?? 0),
         sample: (elapsed) => {
+          if (placement && elapsed >= motion.durationMs) return { current: { model: placement.sample(elapsed - motion.durationMs), hinges: [] }, kind: "settle", step: 1, total: 1 };
           const value = motion.sample(elapsed);
-          const next = nextResolver.resolve(value.angles, value.edgeId, value.anchor, value.movingFaceIds);
-          return { current: { ...next, model: labelModel(next.model, labels) }, kind: "unfold", step: value.step, total: value.total };
+          return { current: { model: value.model, hinges: [] }, kind: "unfold", step: value.step, total: value.total };
         },
         onFinish: () => {
+          if (!nextBuild || !placement) { setCutting(reduceCubeNetCutSession(cutting, { kind: "unfold", poses: motion.target })); return; }
+          const support = paperCurrent.model.faces.find((face) => face.faceId === nextBuild.sceneInput.layout.rootFaceId)!;
+          const points = support.vertices.slice(0, 3).map((vertex) => vertex.position);
+          const anchor: CubeNetTeachingAnchor = { faceId: support.faceId, vertices: [points[0], points[1], points[2]] };
+          const initial = createCubeNetTeachingSession(nextBuild.sceneInput.hingeGraph.hinges.map((hinge) => hinge.edgeId));
+          const before = { ...initial, anchor, angles: Object.fromEntries(Object.keys(initial.angles).map((id) => [id, cutMoves.some((move) => move.edgeId === id) ? 90 : 0])) };
           setBuild(nextBuild); setCutting(null); setTool("fold"); setRevealEnabled(false); setFaceOffsets({});
-          setSession(reduceCubeNetTeachingSession(closed, { kind: "unfold", anchor }));
+          setSession(reduceCubeNetTeachingSession(before, { kind: "unfold", anchor: placement.anchor }));
         },
       });
     } catch {
@@ -222,20 +243,26 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
       if (cutRequest.current === request) setBuildingCuts(false);
     }
   };
-  const requestUnfoldCuts = () => revealEnabled ? closeReveal(() => void unfoldCuts()) : void unfoldCuts();
+  const requestUnfoldCuts = (selection?: CubeNetCutMove) => revealEnabled ? closeReveal(() => void unfoldCuts(selection)) : void unfoldCuts(selection);
+  const openCutFace = (faceId: string) => {
+    const move = cutMoves.find((candidate) => candidate.movingFaceIds.includes(faceId));
+    if (move) requestUnfoldCuts(move);
+  };
   const cancelAnimation = () => { cutRequest.current++; setBuildingCuts(false); playback.cancel(); };
   const selectEntry = (target: CubeNetGalleryFoldingBuild) => {
     setGalleryOpen(false);
     if (target.entry.id === build.entry.id) return;
     const motion = unfoldMotion();
     const flat = resolver.resolve(Object.fromEntries(Object.keys(session.angles).map((id) => [id, 0])), null, session.anchor);
+    const placement = createCubeNetTableAlignment(labelModel(flat.model, labels), resolver.resolve({}).model, sceneInput.layout.rootFaceId);
     const plan = planCubeNetPlanarChange(cubeNetPlanarTiles(build), target.entry.net.cells);
-    const transition = createCubeNetPlanarPresentation(build, target, labelModel(flat.model, labels), plan);
+    const transition = createCubeNetPlanarPresentation(build, target, placement.sample(placement.durationMs), plan);
     preparePlayback();
-    playback.start({ durationMs: motion.durationMs + transition.durationMs,
+    playback.start({ durationMs: motion.durationMs + placement.durationMs + transition.durationMs,
       sample: (elapsed) => {
         if (elapsed < motion.durationMs) return unfoldFrame(motion, elapsed);
-        const frame = transition.sample(elapsed - motion.durationMs);
+        if (elapsed < motion.durationMs + placement.durationMs) return { current: { model: placement.sample(elapsed - motion.durationMs), hinges: [] }, kind: "settle", step: 1, total: 1 };
+        const frame = transition.sample(elapsed - motion.durationMs - placement.durationMs);
         return { current: { model: frame.model, hinges: [] }, kind: "planar", step: frame.step, total: frame.total, movingCount: frame.movingCount };
       },
       onFinish: () => {
@@ -259,13 +286,12 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
             activeEdgeId={activeFold?.edgeId ?? null} tool={tool} locale={locale}
             axisSnapEnabled={axisSnapEnabled} axesVisible={axesVisible} cameraRequestKey={cameraRequestKey} dragging={dragging}
             foldingEnabled={!playback.playing && !buildingCuts && !cutting} cutEdges={cutEdges} onCutToggle={tool === "cut" && !busy && !revealEnabled ? toggleCut : undefined}
+            onCutFaceOpen={tool === "cut" && !busy && !revealEnabled && cutMoves.length > 0 ? openCutFace : undefined}
             faceArrows={faceArrows} onFaceMove={!busy ? moveFace : undefined}
             messages={{ webglUnavailable: t("renderer.webglUnavailable"), contextLost: t("renderer.contextLost") }}
             onFoldStart={startFold} onPreview={previewFold} onCommit={commitFold} onDraggingChange={setDragging} />
 
           <div className={cn(styles.dock, styles.meta)} role="toolbar" aria-label={t("cubeNet.title")}>
-            <CubeIconButton label={t("cubeNet.manual.chooseNet")} active={galleryOpen} disabled={busy || !!cutting}
-              onClick={() => setGalleryOpen(true)}><Shapes aria-hidden /></CubeIconButton>
             <CubeIconButton label={m.modelPanel} active={panel === "settings"} disabled={busy}
               onClick={() => setPanel(panel === "settings" ? null : "settings")}><Settings2 aria-hidden /></CubeIconButton>
           </div>
@@ -285,21 +311,23 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
                 onClick={() => {
                   setTool(id); setPreview(null);
                   if (id === "fold" && cutting) {
-                    setCutting(null); setCutError(false); setRevealEnabled(false); setFaceOffsets({});
+                    setCutting(null); setCutError(false); setRestoreCutBlocked(false); setRevealEnabled(false); setFaceOffsets({});
                     setFrame(resolver.resolve(session.angles, null, session.anchor).model.bounds); setCameraRequestKey((key) => key + 1);
                   }
                 }} data-cube-net-tool={id}><Icon aria-hidden /></CubeIconButton>)}
             <CubeIconButton label={t("cubeNet.manual.cutTool")} active={tool === "cut"} disabled={busy} onClick={startCutting} data-cube-net-tool="cut"><Scissors aria-hidden /></CubeIconButton>
+            <CubeIconButton label={t("cubeNet.manual.chooseNet")} active={galleryOpen} disabled={busy || !!cutting}
+              onClick={() => setGalleryOpen(true)} data-cube-net-gallery-toggle><Shapes aria-hidden /></CubeIconButton>
             {cutting && <CubeIconButton label={t("cubeNet.manual.faceReveal")} active={revealEnabled} disabled={busy}
               onClick={toggleReveal} data-cube-net-face-reveal-toggle><Move3D aria-hidden /></CubeIconButton>}
             <CubeIconButton label={t("cubeNet.manual.judge")} disabled={busy || !!cutting}
               onClick={() => setJudgment(judgeCubeNetFold(frameResolver.resolveHinges(cubeNetHingeProgress(angles))))}><Check aria-hidden /></CubeIconButton>
-            <CubeIconButton label={t(playback.playing || buildingCuts ? "cubeNet.manual.cancelAnimation" : "cubeNet.manual.unfold")}
-              disabled={dragging || (!playback.playing && !buildingCuts && (cutting ? cutAnalysis?.status !== "ready" : Object.values(session.angles).every((angle) => angle === 0)))}
-              onClick={playback.playing || buildingCuts ? cancelAnimation : cutting ? requestUnfoldCuts : animateUnfold}>{playback.playing || buildingCuts ? <Square aria-hidden /> : <RotateCcw aria-hidden />}</CubeIconButton>
+            <CubeIconButton label={t(playback.playing || buildingCuts ? "cubeNet.manual.cancelAnimation" : cutting ? "cubeNet.manual.unfoldAvailable" : "cubeNet.manual.unfold")}
+              disabled={dragging || (!playback.playing && !buildingCuts && (cutting ? cutMoves.length === 0 : Object.values(session.angles).every((angle) => angle === 0) && (!session.anchor || session.anchor.vertices.every((point) => Math.abs(point.y) < 1e-6))))}
+              onClick={playback.playing || buildingCuts ? cancelAnimation : cutting ? () => requestUnfoldCuts() : animateUnfold}>{playback.playing || buildingCuts ? <Square aria-hidden /> : <RotateCcw aria-hidden />}</CubeIconButton>
             <span className="self-stretch border-t border-line" aria-hidden />
             <CubeIconButton label={t("cubeNet.manual.undo")} disabled={busy || revealEnabled || (cutting ?? session).past.length === 0}
-              onClick={() => cutting ? setCutting(reduceCubeNetCutSession(cutting, { kind: "undo" })) : apply({ kind: "undo" })}><Undo2 aria-hidden /></CubeIconButton>
+              onClick={() => { setRestoreCutBlocked(false); if (cutting) setCutting(reduceCubeNetCutSession(cutting, { kind: "undo" })); else apply({ kind: "undo" }); }}><Undo2 aria-hidden /></CubeIconButton>
             <CubeIconButton label={t("cubeNet.manual.redo")} disabled={busy || revealEnabled || (cutting ?? session).future.length === 0}
               onClick={() => cutting ? setCutting(reduceCubeNetCutSession(cutting, { kind: "redo" })) : apply({ kind: "redo" })}><Redo2 aria-hidden /></CubeIconButton>
           </div>
@@ -309,28 +337,24 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
             <div className="space-y-3 text-xs">{workspaceSelector}<p className="leading-5 text-muted">{t("cubeNet.manual.localOnly")}</p></div>
           </CubeCanvasPanel>}
           {playback.frame ? <div className={styles.cutStatus} role="status" data-cube-net-animation={playback.frame.kind}>
-            {playback.frame.kind === "reveal" ? t("cubeNet.manual.faceMoving") : playback.frame.kind !== "planar" ? t(playback.frame.kind === "close" ? "cubeNet.manual.closing" : "cubeNet.manual.unfolding", { step: playback.frame.step, total: playback.frame.total })
+            {playback.frame.kind === "settle" ? t("cubeNet.manual.settling") : playback.frame.kind === "reveal" ? t("cubeNet.manual.faceMoving") : playback.frame.kind !== "planar" ? t(playback.frame.kind === "close" ? "cubeNet.manual.closing" : "cubeNet.manual.unfolding", { step: playback.frame.step, total: playback.frame.total })
               : t("cubeNet.manual.transforming", { count: playback.frame.movingCount ?? 0, step: playback.frame.step, total: playback.frame.total })}
           </div> : cutting && cutAnalysis ? <div className={styles.cutStatus} role="status" data-cube-net-cut-status={cutAnalysis.status}>
             <p className="font-medium">{t("cubeNet.manual.cutProgress", { count: cutting.cuts.length })}</p>
-            <p>{t(cutAnalysis.status === "ready" ? "cubeNet.manual.cutReady" : cutAnalysis.status === "disconnected" ? "cubeNet.manual.cutDisconnected" : "cubeNet.manual.cutMore", { count: cutAnalysis.remainingCuts })}</p>
+            <p>{t(cutMoves.length > 0 ? "cubeNet.manual.cutReady" : cutAnalysis.status === "disconnected" ? "cubeNet.manual.cutDisconnected" : "cubeNet.manual.cutMore")}</p>
             <p>{t(revealEnabled ? "cubeNet.manual.faceRevealHint" : "cubeNet.manual.cutHint")}</p>
             <div className="mt-1 flex flex-wrap gap-1">
-              <Button size="sm" variant="secondary" disabled={busy || cutAnalysis.status !== "ready"} onClick={requestUnfoldCuts}>{t(buildingCuts ? "common.previewBuilding" : "cubeNet.manual.unfold")}</Button>
+              <Button size="sm" variant="secondary" disabled={busy || cutMoves.length === 0} onClick={() => requestUnfoldCuts()}>{t(buildingCuts ? "common.previewBuilding" : "cubeNet.manual.unfoldAvailable")}</Button>
               {revealEnabled ? <Button size="sm" variant="ghost" disabled={busy || !Object.values(faceOffsets).some(Boolean)} onClick={() => animateFaces({})}>{t("cubeNet.manual.restoreFaces")}</Button>
-                : <Button size="sm" variant="ghost" disabled={busy} onClick={() => { setCutting(createCubeNetCutSession()); setCutError(false); }}>{t("cubeNet.manual.resetCuts")}</Button>}
+                : <Button size="sm" variant="ghost" disabled={busy} onClick={() => { setCutting(createCubeNetCutSession()); setCutError(false); setRestoreCutBlocked(false); setFrame(sourceCurrent.model.bounds); setCameraRequestKey((key) => key + 1); }}>{t("cubeNet.manual.resetCuts")}</Button>}
             </div>
-            {revealEnabled && <div className="sr-only focus-within:not-sr-only">
-              {paperCurrent.model.faces.map((face) => <button key={face.faceId} disabled={busy} onClick={() => moveFace(face.faceId)}>
-                {t(faceOffsets[face.faceId] ? "cubeNet.manual.restoreFace" : "cubeNet.manual.moveFace", { face: face.label })}
-              </button>)}
-            </div>}
           </div> : tool === "fold" && <div className={styles.cutStatus} role="status" data-cube-net-drag-status>
             {activePaper ? <><p className="font-medium">{t("cubeNet.manual.activePaper", { face: activePaper.label, angle: currentAngle })}</p>
               <p>{t("cubeNet.manual.dragPaper")}</p></> : t("cubeNet.manual.grabPaper")}
           </div>}
           {judgment && <div className={styles.notice} role="status" data-cube-net-judgment={judgment}>{t(`cubeNet.manual.results.${judgment}`)}</div>}
           {cutError && <div className={styles.notice} role="alert">{t("cubeNet.manual.cutError")}</div>}
+          {restoreCutBlocked && <div className={styles.notice} role="status">{t("cubeNet.manual.restoreCutBlocked")}</div>}
         </div>
       </div>
       <Dialog open={galleryOpen} onOpenChange={setGalleryOpen}>
