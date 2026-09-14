@@ -1,0 +1,698 @@
+{
+  "status": "read_only_reconciled_with_differences",
+  "capturedAt": "2026-09-14T06:04:07.652Z",
+  "scope": [
+    "Base embedded August and September dashboard filters",
+    "production monthly business cards and support subtotals",
+    "teacher participation",
+    "autumn active classroom memberships"
+  ],
+  "source": {
+    "filename": "2026-09-14【思维】用户与产品运营表.base",
+    "sha256": "60c36cf906ec15fc6d3f4d4dc515d34287db391c83b6ea631efbb359a01fe6dd"
+  },
+  "production": {
+    "release": "20260913-155934",
+    "commit": "3d9892bb87c2361e6662e685b606ac77a3e82e29",
+    "role": "authenticated/admin",
+    "readCounts": {
+      "leads": 3941,
+      "profiles": 37,
+      "sourceMap": 4883,
+      "activities": 945,
+      "classrooms": 32,
+      "assessments": 667,
+      "assignments": 36,
+      "memberships": 171,
+      "submissions": 1071,
+      "currentTerms": 1,
+      "opportunities": 519,
+      "registrations": 945,
+      "communications": 4050,
+      "currentClasses": 30,
+      "invitationEvents": 0,
+      "courseEnrollments": 510,
+      "invitationThreads": 0,
+      "acquisitionSources": 3634
+    },
+    "monthlyMetrics": [
+      {
+        "month": "2026-08",
+        "metrics": {
+          "leads": {
+            "current": 338,
+            "byPerson": {
+              "王晓妹": 131,
+              "章润": 205,
+              "未归属": 2
+            },
+            "personSum": 338,
+            "detailCount": 338,
+            "trendSum": 338
+          },
+          "contacts": {
+            "current": 355,
+            "byPerson": {
+              "王晓妹": 239,
+              "章润": 110,
+              "汪婷婷": 1,
+              "邱玮": 5
+            },
+            "personSum": 355,
+            "detailCount": 355,
+            "trendSum": 82
+          },
+          "invitations": {
+            "current": 95,
+            "byPerson": {
+              "王晓妹": 40,
+              "章润": 49,
+              "汪婷婷": 1,
+              "邱玮": 5
+            },
+            "personSum": 95,
+            "detailCount": 95,
+            "trendSum": 86
+          },
+          "arrivals": {
+            "current": 85,
+            "byPerson": {
+              "王晓妹": 37,
+              "章润": 36,
+              "汪婷婷": 7,
+              "邱玮": 5
+            },
+            "personSum": 85,
+            "detailCount": 85,
+            "trendSum": 81
+          },
+          "assessments": {
+            "current": 85,
+            "byPerson": {
+              "王晓妹": 37,
+              "章润": 36,
+              "汪婷婷": 7,
+              "邱玮": 5
+            },
+            "personSum": 85,
+            "detailCount": 85,
+            "trendSum": 81
+          },
+          "enrollments": {
+            "current": 27,
+            "byPerson": {
+              "王晓妹": 9,
+              "章润": 11,
+              "邱玮": 4,
+              "汪婷婷": 3
+            },
+            "personSum": 27,
+            "detailCount": 27,
+            "trendSum": 20
+          }
+        }
+      },
+      {
+        "month": "2026-09",
+        "metrics": {
+          "leads": {
+            "current": 93,
+            "byPerson": {
+              "王晓妹": 32,
+              "章润": 60,
+              "成浩": 1
+            },
+            "personSum": 93,
+            "detailCount": 93,
+            "trendSum": 93
+          },
+          "contacts": {
+            "current": 167,
+            "byPerson": {
+              "王晓妹": 110,
+              "章润": 44,
+              "邱玮": 10,
+              "汪婷婷": 3
+            },
+            "personSum": 167,
+            "detailCount": 167,
+            "trendSum": 57
+          },
+          "invitations": {
+            "current": 60,
+            "byPerson": {
+              "王晓妹": 23,
+              "章润": 24,
+              "邱玮": 10,
+              "汪婷婷": 3
+            },
+            "personSum": 60,
+            "detailCount": 60,
+            "trendSum": 60
+          },
+          "arrivals": {
+            "current": 41,
+            "byPerson": {
+              "章润": 18,
+              "王晓妹": 14,
+              "邱玮": 5,
+              "汪婷婷": 4
+            },
+            "personSum": 41,
+            "detailCount": 41,
+            "trendSum": 41
+          },
+          "assessments": {
+            "current": 41,
+            "byPerson": {
+              "章润": 18,
+              "王晓妹": 14,
+              "邱玮": 5,
+              "汪婷婷": 4
+            },
+            "personSum": 41,
+            "detailCount": 41,
+            "trendSum": 41
+          },
+          "enrollments": {
+            "current": 14,
+            "byPerson": {
+              "章润": 5,
+              "邱玮": 6,
+              "王晓妹": 1,
+              "汪婷婷": 2
+            },
+            "personSum": 14,
+            "detailCount": 14,
+            "trendSum": 13
+          }
+        }
+      }
+    ]
+  },
+  "comparison": [
+    {
+      "month": "2026-08",
+      "comparisons": {
+        "invitations": {
+          "base": 95,
+          "production": 95,
+          "missing": [],
+          "extra": []
+        },
+        "arrivals": {
+          "base": 85,
+          "production": 85,
+          "missing": [],
+          "extra": []
+        },
+        "assessments": {
+          "base": 85,
+          "production": 85,
+          "missing": [],
+          "extra": []
+        },
+        "enrollments": {
+          "base": 27,
+          "production": 27,
+          "missing": [],
+          "extra": []
+        }
+      }
+    },
+    {
+      "month": "2026-09",
+      "comparisons": {
+        "invitations": {
+          "base": 62,
+          "production": 60,
+          "missing": [
+            "tbl7Wx2zLgcqiCjs:recvv5GlzoPUO6",
+            "tbl7Wx2zLgcqiCjs:recvuGqZ5kyQL1"
+          ],
+          "extra": []
+        },
+        "arrivals": {
+          "base": 41,
+          "production": 41,
+          "missing": [],
+          "extra": []
+        },
+        "assessments": {
+          "base": 41,
+          "production": 41,
+          "missing": [],
+          "extra": []
+        },
+        "enrollments": {
+          "base": 14,
+          "production": 14,
+          "missing": [],
+          "extra": []
+        }
+      }
+    }
+  ],
+  "acquisition": [
+    {
+      "month": "2026-08",
+      "monthLabelCount": 431,
+      "withPhone": 431,
+      "byGroup": {
+        "二组": 233,
+        "三组": 198
+      },
+      "productionDateRule": 336,
+      "phoneRowsDateMissingOrDifferent": {
+        "月日缺少可靠年份或日期格式不支持": 85,
+        "获取日期为空": 10
+      }
+    },
+    {
+      "month": "2026-09",
+      "monthLabelCount": 112,
+      "withPhone": 112,
+      "byGroup": {
+        "二组": 62,
+        "三组": 50
+      },
+      "productionDateRule": 109,
+      "phoneRowsDateMissingOrDifferent": {
+        "标签与获取日期月份不同": 1,
+        "月日缺少可靠年份或日期格式不支持": 2
+      }
+    }
+  ],
+  "latestSourceSimulation": [
+    {
+      "month": "2026-08",
+      "acquisition": {
+        "currentTotal": 338,
+        "currentImported": 336,
+        "currentNative": 2,
+        "latestSourceWouldTotal": 338,
+        "latestSourceImported": 336,
+        "latestSourceNative": 2,
+        "newlyIncluded": 0,
+        "excluded": 0
+      },
+      "teacher": {
+        "participants": 70,
+        "enrollments": 25,
+        "unassigned": 20,
+        "byPerson": [
+          {
+            "name": "张灿",
+            "participants": 9,
+            "enrollments": 2
+          },
+          {
+            "name": "李海霞",
+            "participants": 18,
+            "enrollments": 9
+          },
+          {
+            "name": "汪婷婷",
+            "participants": 8,
+            "enrollments": 1
+          },
+          {
+            "name": "王成国",
+            "participants": 5,
+            "enrollments": 2
+          },
+          {
+            "name": "王晓妹",
+            "participants": 4,
+            "enrollments": 3
+          },
+          {
+            "name": "郑曼",
+            "participants": 2,
+            "enrollments": 0
+          },
+          {
+            "name": "薛立志",
+            "participants": 3,
+            "enrollments": 0
+          },
+          {
+            "name": "徐波",
+            "participants": 2,
+            "enrollments": 0
+          },
+          {
+            "name": "章润",
+            "participants": 1,
+            "enrollments": 0
+          },
+          {
+            "name": "韦顾",
+            "participants": 2,
+            "enrollments": 0
+          },
+          {
+            "name": "邱玮",
+            "participants": 2,
+            "enrollments": 6
+          },
+          {
+            "name": "徐丽",
+            "participants": 0,
+            "enrollments": 0
+          },
+          {
+            "name": "李成浩",
+            "participants": 0,
+            "enrollments": 0
+          }
+        ]
+      }
+    },
+    {
+      "month": "2026-09",
+      "acquisition": {
+        "currentTotal": 93,
+        "currentImported": 92,
+        "currentNative": 1,
+        "latestSourceWouldTotal": 110,
+        "latestSourceImported": 109,
+        "latestSourceNative": 1,
+        "newlyIncluded": 17,
+        "excluded": 0
+      },
+      "teacher": {
+        "participants": 41,
+        "enrollments": 14,
+        "unassigned": 10,
+        "byPerson": [
+          {
+            "name": "薛立志",
+            "participants": 2,
+            "enrollments": 1
+          },
+          {
+            "name": "李海霞",
+            "participants": 14,
+            "enrollments": 6
+          },
+          {
+            "name": "郑曼",
+            "participants": 3,
+            "enrollments": 0
+          },
+          {
+            "name": "王成国",
+            "participants": 4,
+            "enrollments": 3
+          },
+          {
+            "name": "张灿",
+            "participants": 4,
+            "enrollments": 2
+          },
+          {
+            "name": "汪婷婷",
+            "participants": 1,
+            "enrollments": 0
+          },
+          {
+            "name": "韦顾",
+            "participants": 3,
+            "enrollments": 0
+          },
+          {
+            "name": "王晓妹",
+            "participants": 0,
+            "enrollments": 0
+          },
+          {
+            "name": "徐波",
+            "participants": 0,
+            "enrollments": 0
+          },
+          {
+            "name": "章润",
+            "participants": 0,
+            "enrollments": 0
+          },
+          {
+            "name": "邱玮",
+            "participants": 0,
+            "enrollments": 1
+          }
+        ]
+      }
+    }
+  ],
+  "supportSubtotals": [
+    {
+      "month": "2026-08",
+      "metric": "invitations",
+      "base": {
+        "王晓妹": 40,
+        "章润": 49,
+        "邱玮": 5,
+        "汪婷婷": 1
+      },
+      "production": {
+        "王晓妹": 40,
+        "章润": 49,
+        "汪婷婷": 1,
+        "邱玮": 5
+      },
+      "differences": {}
+    },
+    {
+      "month": "2026-08",
+      "metric": "arrivals",
+      "base": {
+        "王晓妹": 37,
+        "章润": 36,
+        "邱玮": 5,
+        "汪婷婷": 7
+      },
+      "production": {
+        "王晓妹": 37,
+        "章润": 36,
+        "汪婷婷": 7,
+        "邱玮": 5
+      },
+      "differences": {}
+    },
+    {
+      "month": "2026-08",
+      "metric": "enrollments",
+      "base": {
+        "王晓妹": 9,
+        "邱玮": 4,
+        "章润": 11,
+        "汪婷婷": 3
+      },
+      "production": {
+        "王晓妹": 9,
+        "章润": 11,
+        "邱玮": 4,
+        "汪婷婷": 3
+      },
+      "differences": {}
+    },
+    {
+      "month": "2026-09",
+      "metric": "invitations",
+      "base": {
+        "章润": 26,
+        "邱玮": 10,
+        "王晓妹": 23,
+        "汪婷婷": 3
+      },
+      "production": {
+        "王晓妹": 23,
+        "章润": 24,
+        "邱玮": 10,
+        "汪婷婷": 3
+      },
+      "differences": {
+        "章润": {
+          "base": 26,
+          "production": 24
+        }
+      }
+    },
+    {
+      "month": "2026-09",
+      "metric": "arrivals",
+      "base": {
+        "章润": 18,
+        "王晓妹": 14,
+        "邱玮": 5,
+        "汪婷婷": 4
+      },
+      "production": {
+        "章润": 18,
+        "王晓妹": 14,
+        "邱玮": 5,
+        "汪婷婷": 4
+      },
+      "differences": {}
+    },
+    {
+      "month": "2026-09",
+      "metric": "enrollments",
+      "base": {
+        "章润": 5,
+        "邱玮": 6,
+        "汪婷婷": 2,
+        "王晓妹": 1
+      },
+      "production": {
+        "章润": 5,
+        "邱玮": 6,
+        "王晓妹": 1,
+        "汪婷婷": 2
+      },
+      "differences": {}
+    }
+  ],
+  "autumn": {
+    "baseRows": 161,
+    "baseIdentifiedStudents": 160,
+    "baseUnresolved": [
+      "tblAHWrD6LItmWMk:recvuIkKpXuUG8"
+    ],
+    "duplicateRows": 0,
+    "productionStudents": 159,
+    "baseNotActiveInProduction": [
+      "tblAHWrD6LItmWMk:recvueRLMIBZ97",
+      "tblAHWrD6LItmWMk:recvup6NEqXKGk",
+      "tblAHWrD6LItmWMk:recvuTcUxnBq53"
+    ],
+    "productionNotActiveInBase": [
+      {
+        "matchingSourceRows": [
+          {
+            "key": "tblAHWrD6LItmWMk:recvuNxIlfEjGm",
+            "inBase": "",
+            "mode": "新报-26-27秋寒春"
+          }
+        ],
+        "memberships": 1
+      },
+      {
+        "matchingSourceRows": [],
+        "memberships": 1
+      }
+    ],
+    "unresolvedNameChecks": [
+      {
+        "exactNameMatches": 0,
+        "activeExactNameMatches": 0
+      }
+    ],
+    "extraSourceNameMatches": [
+      {
+        "sourceKeysWithSameName": [
+          "tblAHWrD6LItmWMk:recvuNxIlfEjGm"
+        ],
+        "namePresentInProvidedBase": true
+      },
+      {
+        "sourceKeysWithSameName": [],
+        "namePresentInProvidedBase": false
+      }
+    ],
+    "byTeacher": {
+      "薛立志": {
+        "base": 42,
+        "production": 41
+      },
+      "王成国": {
+        "base": 18,
+        "production": 18
+      },
+      "左楠": {
+        "base": 3,
+        "production": 3
+      },
+      "张灿": {
+        "base": 34,
+        "production": 33
+      },
+      "李海霞": {
+        "base": 21,
+        "production": 22
+      },
+      "袁娟": {
+        "base": 39,
+        "production": 0
+      },
+      "韦顾": {
+        "base": 4,
+        "production": 2
+      },
+      "芦祎": {
+        "base": 0,
+        "production": 1
+      },
+      "袁理娟": {
+        "base": 0,
+        "production": 39
+      },
+      "成浩": {
+        "base": 0,
+        "production": 0
+      }
+    }
+  },
+  "validation": {
+    "allTwelveCardDetailAndPersonSumsMatch": true,
+    "sourceSetsMatchExceptTwoSeptemberInvitations": true,
+    "scopeReadPageCount": 2,
+    "businessWrites": 0,
+    "membershipWrites": 0
+  },
+  "code": [
+    {
+      "file": "src/features/school/business-source-contract.ts",
+      "sha256": "bd588d8a854f73274d42052a305400789eecf1e71a92f2a26579b8b646f54034"
+    },
+    {
+      "file": "src/features/school/schedule.ts",
+      "sha256": "183e7cbd24a107e892db43db1b570fd105626bb19d5f5824485069f22b558bbb"
+    },
+    {
+      "file": "src/features/school/source-metric-facts-contract.ts",
+      "sha256": "4083416ff0aa29dd74ac751332969189d81f4bf6e86442672054c073602f460f"
+    },
+    {
+      "file": "src/features/school/home/staff-overview-source-contract.ts",
+      "sha256": "48ca8de44195f317aa3e276e21aad69b37cbcd9dd170fcca90d61e3c340211b7"
+    },
+    {
+      "file": "src/features/school/home/staff-overview-acquisition-contract.ts",
+      "sha256": "78a4e12fa21e373cbc587f8347a8ce5312d358ab00136b215c26407aae2db468"
+    },
+    {
+      "file": "src/features/school/home/staff-overview-contract.ts",
+      "sha256": "637d81d6e72fb474fc59d82f05e65446b0e279b890d2afbaa9b4ffa128d05fc7"
+    }
+  ],
+  "auditCode": [
+    {
+      "file": "compute-base.mjs",
+      "sha256": "72108b356d35cfa7beaf4163748fecdc1d7a02fe0988a42e0fd5ef031b9dcea5"
+    },
+    {
+      "file": "remote-audit.mjs",
+      "sha256": "71fb7c55412d2bd821c877b688edb1b7d93d1cefdd70f0f95516b3f4421a60a7"
+    },
+    {
+      "file": "remote-compare.mjs",
+      "sha256": "3034dfae9663843c260698b3e5d5013fd5777184e6ffeaea86724528a3002b4d"
+    },
+    {
+      "file": "base-acquisition.mjs",
+      "sha256": "c9f30da5060cba3f718bc1b4d46d44622116b6d9a5ea6b679c872bb26b1648f6"
+    }
+  ]
+}
