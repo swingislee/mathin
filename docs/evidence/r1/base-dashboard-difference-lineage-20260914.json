@@ -1,0 +1,923 @@
+{
+  "status": "lineage_review_complete_no_business_writes",
+  "generatedAt": "2026-09-14T06:37:43.406Z",
+  "sourceSha256": "60c36cf906ec15fc6d3f4d4dc515d34287db391c83b6ea631efbb359a01fe6dd",
+  "baselineProductionSnapshot": "2026-09-14T06:04:07.652Z",
+  "freshMembershipsIdentical": true,
+  "authorization": {
+    "onsiteIdentityAndPhoneComparison": true,
+    "localReturnRestrictedToCountsFlagsAndUserBaseKeys": true,
+    "productionPersonalRowsExported": 0
+  },
+  "acquisitionMonths": [
+    {
+      "month": "2026-08",
+      "base": 431,
+      "date": 336,
+      "intersection": 336,
+      "reasons": {
+        "short_date_registration_lag_over_7_days": 30,
+        "empty": 10,
+        "short_date_after_registration": 7,
+        "short_date_registration_in_another_month": 20,
+        "full_2026_date_single_digit_hour_rejected": 27,
+        "explicit_2025_date": 1
+      },
+      "changedSinceOld": 18,
+      "allExcludedDatesUnchanged": true
+    },
+    {
+      "month": "2026-09",
+      "base": 112,
+      "date": 109,
+      "intersection": 109,
+      "reasons": {
+        "explicit_2025_date": 1,
+        "compact_year_month": 2
+      },
+      "changedSinceOld": 0,
+      "allExcludedDatesUnchanged": true
+    }
+  ],
+  "acquisitionDateExceptionKeys": [
+    {
+      "month": "2026-08",
+      "groups": {
+        "short_date_registration_lag_over_7_days": [
+          "tblzwPK2XgJa14EC:recvtoBh0oi3KN",
+          "tblzwPK2XgJa14EC:recvtoBh0o9HBU",
+          "tblzwPK2XgJa14EC:recvtoBh0oz2Wy",
+          "tblzwPK2XgJa14EC:recvsViqwQNJGd",
+          "tblzwPK2XgJa14EC:recvtoBh0oQ0fV",
+          "tblzwPK2XgJa14EC:recvtoBh0oO2eZ",
+          "tblzwPK2XgJa14EC:recvtoBh0o8XBv",
+          "tblzwPK2XgJa14EC:recvtoBh0o4EDn",
+          "tblzwPK2XgJa14EC:recvtoBh0oFMD5",
+          "tblzwPK2XgJa14EC:recvtoBh0oAkoz",
+          "tblzwPK2XgJa14EC:recvtoBh0oGLTg",
+          "tblzwPK2XgJa14EC:recvtoBh0oEluI",
+          "tblzwPK2XgJa14EC:recvtoBh0ogpnb",
+          "tblzwPK2XgJa14EC:recvtoBh0ockLy",
+          "tblzwPK2XgJa14EC:recvtoBh0oMNCZ",
+          "tblzwPK2XgJa14EC:recvtoBh0oGTIj",
+          "tblzwPK2XgJa14EC:recvtoBh0oHz8A",
+          "tblzwPK2XgJa14EC:recvtoBh0onjiB",
+          "tblzwPK2XgJa14EC:recvtoBh0oyRpV",
+          "tblzwPK2XgJa14EC:recvtoBh0o7YRH",
+          "tblzwPK2XgJa14EC:recvtoBh0oafi7",
+          "tblzwPK2XgJa14EC:recvtoBh0oCu7V",
+          "tblzwPK2XgJa14EC:recvtoBh0oOlfV",
+          "tblzwPK2XgJa14EC:recvtoBh0o7dxs",
+          "tblzwPK2XgJa14EC:recvtoBh0o68wM",
+          "tblzwPK2XgJa14EC:recvtoBh0ok5In",
+          "tblzwPK2XgJa14EC:recvtoBh0onOX8",
+          "tblzwPK2XgJa14EC:recvsViqSvndRv",
+          "tblzwPK2XgJa14EC:recvtoBh0o3ncc",
+          "tblzwPK2XgJa14EC:recvtoBh0o6jwy"
+        ],
+        "empty": [
+          "tblzwPK2XgJa14EC:recvseBYbP9Dp6",
+          "tblzwPK2XgJa14EC:recvsVhkf2VGQS",
+          "tblzwPK2XgJa14EC:recvsVhkf2rEgR",
+          "tblzwPK2XgJa14EC:recvsVhkf2HABG",
+          "tblzwPK2XgJa14EC:recvsVhkf2T4OS",
+          "tblzwPK2XgJa14EC:recvsVhkf2ZnhS",
+          "tblzwPK2XgJa14EC:recvsVhkf2zZey",
+          "tblzwPK2XgJa14EC:recvseBYJClRhY",
+          "tblzwPK2XgJa14EC:recvruYHQa1FvT",
+          "tblzwPK2XgJa14EC:recvsVhkf2O7Ta"
+        ],
+        "short_date_after_registration": [
+          "tblzwPK2XgJa14EC:recvruYIbEJp54",
+          "tblzwPK2XgJa14EC:recvruYIW4V99d",
+          "tblzwPK2XgJa14EC:recvrjMbGF7rPq",
+          "tblzwPK2XgJa14EC:recvr0TOKPqZI3",
+          "tblzwPK2XgJa14EC:recvruYIrxoujd",
+          "tblzwPK2XgJa14EC:recvrjMcrZw501",
+          "tblzwPK2XgJa14EC:recvrjMc3CVF4o"
+        ],
+        "short_date_registration_in_another_month": [
+          "tblzwPK2XgJa14EC:recvu1PrclpI8C",
+          "tblzwPK2XgJa14EC:recvu3aO3U0xmt",
+          "tblzwPK2XgJa14EC:recvu3aO3U8Jiv",
+          "tblzwPK2XgJa14EC:recvu3aO3U8HJU",
+          "tblzwPK2XgJa14EC:recvu3aO3UJRlB",
+          "tblzwPK2XgJa14EC:recvu1PrLcFSwg",
+          "tblzwPK2XgJa14EC:recvu3aO3UCN6k",
+          "tblzwPK2XgJa14EC:recvu3aO3U63VF",
+          "tblzwPK2XgJa14EC:recvu3aO3UPYdb",
+          "tblzwPK2XgJa14EC:recvu3aO3URdOb",
+          "tblzwPK2XgJa14EC:recvu1Psc4hKdr",
+          "tblzwPK2XgJa14EC:recvu3aO3UnuQZ",
+          "tblzwPK2XgJa14EC:recvu3aO3UZ9CP",
+          "tblzwPK2XgJa14EC:recvu3aO3UKjUc",
+          "tblzwPK2XgJa14EC:recvu3aO3U1WpK",
+          "tblzwPK2XgJa14EC:recvu1Prt2jlIm",
+          "tblzwPK2XgJa14EC:recvu3aO3USzgp",
+          "tblzwPK2XgJa14EC:recvu3aO3UHfsq",
+          "tblzwPK2XgJa14EC:recvu3aO3UW2cO",
+          "tblzwPK2XgJa14EC:recvu3aO3UY3Sn"
+        ],
+        "full_2026_date_single_digit_hour_rejected": [
+          "tblzwPK2XgJa14EC:recvtyC6ZFlpMb",
+          "tblzwPK2XgJa14EC:recvrNiZ4h5oPi",
+          "tblzwPK2XgJa14EC:recvrNiZ4hsjRv",
+          "tblzwPK2XgJa14EC:recvrNiZ4hNvBg",
+          "tblzwPK2XgJa14EC:recvrNiZ4h4kCN",
+          "tblzwPK2XgJa14EC:recvrNiZ4hHHs9",
+          "tblzwPK2XgJa14EC:recvrNiZ4hDheq",
+          "tblzwPK2XgJa14EC:recvtyC6ZFkelL",
+          "tblzwPK2XgJa14EC:recvrNiZ4himk7",
+          "tblzwPK2XgJa14EC:recvtyC6ZFOHN0",
+          "tblzwPK2XgJa14EC:recvtyC6ZFGPmM",
+          "tblzwPK2XgJa14EC:recvtyC6ZF23PS",
+          "tblzwPK2XgJa14EC:recvrNiZ4hWXcn",
+          "tblzwPK2XgJa14EC:recvrNiZ4hFioT",
+          "tblzwPK2XgJa14EC:recvtyC6ZFE0n3",
+          "tblzwPK2XgJa14EC:recvrNiZ4hZFlB",
+          "tblzwPK2XgJa14EC:recvrNiZ4hREix",
+          "tblzwPK2XgJa14EC:recvrNiZ4hG4DU",
+          "tblzwPK2XgJa14EC:recvrNiZ4hUz18",
+          "tblzwPK2XgJa14EC:recvtyC6ZF1pWq",
+          "tblzwPK2XgJa14EC:recvtyC6ZFAvZp",
+          "tblzwPK2XgJa14EC:recvtyC6ZFJhVg",
+          "tblzwPK2XgJa14EC:recvrNiZ4h2me2",
+          "tblzwPK2XgJa14EC:recvtyC6ZFk9iF",
+          "tblzwPK2XgJa14EC:recvrNiZ4hPzeU",
+          "tblzwPK2XgJa14EC:recvtyC6ZF6xN4",
+          "tblzwPK2XgJa14EC:recvrNiZ4hg6Nk"
+        ],
+        "explicit_2025_date": [
+          "tblzwPK2XgJa14EC:recv5lXqAazP7d"
+        ]
+      }
+    },
+    {
+      "month": "2026-09",
+      "groups": {
+        "explicit_2025_date": [
+          "tblzwPK2XgJa14EC:recvalA3Z0Cwdm"
+        ],
+        "compact_year_month": [
+          "tblzwPK2XgJa14EC:recvalEkDcifCE",
+          "tblzwPK2XgJa14EC:recvalEkDcr0Hv"
+        ]
+      }
+    }
+  ],
+  "acquisitionPersistence": [
+    {
+      "key": "tblzwPK2XgJa14EC:recvuGmAI0erHM",
+      "inSeptember": true,
+      "archiveCount": 1,
+      "linkedLeads": 1,
+      "directArchiveLeadLinks": 0,
+      "leadInsertPlanned": true,
+      "blankName": false,
+      "blankPhone": false
+    },
+    {
+      "key": "tblzwPK2XgJa14EC:recvuMz2yAknwP",
+      "inSeptember": true,
+      "archiveCount": 1,
+      "linkedLeads": 1,
+      "directArchiveLeadLinks": 0,
+      "leadInsertPlanned": true,
+      "blankName": false,
+      "blankPhone": false
+    },
+    {
+      "key": "tblzwPK2XgJa14EC:recvuTLBDTEOz2",
+      "inSeptember": false,
+      "archiveCount": 1,
+      "linkedLeads": 0,
+      "directArchiveLeadLinks": 0,
+      "leadInsertPlanned": false,
+      "blankName": true,
+      "blankPhone": true
+    },
+    {
+      "key": "tblzwPK2XgJa14EC:recvuGmAI0jUkK",
+      "inSeptember": true,
+      "archiveCount": 1,
+      "linkedLeads": 1,
+      "directArchiveLeadLinks": 0,
+      "leadInsertPlanned": true,
+      "blankName": false,
+      "blankPhone": false
+    },
+    {
+      "key": "tblzwPK2XgJa14EC:recvuMz2yA0CUg",
+      "inSeptember": true,
+      "archiveCount": 1,
+      "linkedLeads": 1,
+      "directArchiveLeadLinks": 0,
+      "leadInsertPlanned": true,
+      "blankName": false,
+      "blankPhone": false
+    },
+    {
+      "key": "tblzwPK2XgJa14EC:recvuOgSvGbgFp",
+      "inSeptember": true,
+      "archiveCount": 1,
+      "linkedLeads": 1,
+      "directArchiveLeadLinks": 0,
+      "leadInsertPlanned": true,
+      "blankName": false,
+      "blankPhone": false
+    },
+    {
+      "key": "tblzwPK2XgJa14EC:recvuOgSvGaKxr",
+      "inSeptember": true,
+      "archiveCount": 1,
+      "linkedLeads": 1,
+      "directArchiveLeadLinks": 0,
+      "leadInsertPlanned": true,
+      "blankName": false,
+      "blankPhone": false
+    },
+    {
+      "key": "tblzwPK2XgJa14EC:recvuGmAI0AjJR",
+      "inSeptember": true,
+      "archiveCount": 1,
+      "linkedLeads": 1,
+      "directArchiveLeadLinks": 0,
+      "leadInsertPlanned": true,
+      "blankName": false,
+      "blankPhone": false
+    },
+    {
+      "key": "tblzwPK2XgJa14EC:recvuGmAI0Ls5b",
+      "inSeptember": true,
+      "archiveCount": 1,
+      "linkedLeads": 1,
+      "directArchiveLeadLinks": 0,
+      "leadInsertPlanned": true,
+      "blankName": false,
+      "blankPhone": false
+    },
+    {
+      "key": "tblzwPK2XgJa14EC:recvuOgRYQARd9",
+      "inSeptember": true,
+      "archiveCount": 1,
+      "linkedLeads": 1,
+      "directArchiveLeadLinks": 0,
+      "leadInsertPlanned": true,
+      "blankName": false,
+      "blankPhone": false
+    },
+    {
+      "key": "tblzwPK2XgJa14EC:recvuGmAI0yGT2",
+      "inSeptember": true,
+      "archiveCount": 1,
+      "linkedLeads": 1,
+      "directArchiveLeadLinks": 0,
+      "leadInsertPlanned": true,
+      "blankName": false,
+      "blankPhone": false
+    },
+    {
+      "key": "tblzwPK2XgJa14EC:recvuGmAI0rar3",
+      "inSeptember": true,
+      "archiveCount": 1,
+      "linkedLeads": 1,
+      "directArchiveLeadLinks": 0,
+      "leadInsertPlanned": true,
+      "blankName": false,
+      "blankPhone": false
+    },
+    {
+      "key": "tblzwPK2XgJa14EC:recvuMz2yAutN6",
+      "inSeptember": true,
+      "archiveCount": 1,
+      "linkedLeads": 1,
+      "directArchiveLeadLinks": 0,
+      "leadInsertPlanned": true,
+      "blankName": false,
+      "blankPhone": false
+    },
+    {
+      "key": "tblzwPK2XgJa14EC:recvuTLBWa6GvD",
+      "inSeptember": false,
+      "archiveCount": 1,
+      "linkedLeads": 0,
+      "directArchiveLeadLinks": 0,
+      "leadInsertPlanned": false,
+      "blankName": true,
+      "blankPhone": true
+    },
+    {
+      "key": "tblzwPK2XgJa14EC:recvuMz22OLrny",
+      "inSeptember": true,
+      "archiveCount": 1,
+      "linkedLeads": 1,
+      "directArchiveLeadLinks": 0,
+      "leadInsertPlanned": true,
+      "blankName": false,
+      "blankPhone": false
+    },
+    {
+      "key": "tblzwPK2XgJa14EC:recvuGmAI0XS04",
+      "inSeptember": true,
+      "archiveCount": 1,
+      "linkedLeads": 1,
+      "directArchiveLeadLinks": 0,
+      "leadInsertPlanned": true,
+      "blankName": false,
+      "blankPhone": false
+    },
+    {
+      "key": "tblzwPK2XgJa14EC:recvuTLB8NZYhy",
+      "inSeptember": false,
+      "archiveCount": 1,
+      "linkedLeads": 0,
+      "directArchiveLeadLinks": 0,
+      "leadInsertPlanned": false,
+      "blankName": true,
+      "blankPhone": true
+    },
+    {
+      "key": "tblzwPK2XgJa14EC:recvuOgSvGQR3t",
+      "inSeptember": true,
+      "archiveCount": 1,
+      "linkedLeads": 1,
+      "directArchiveLeadLinks": 0,
+      "leadInsertPlanned": true,
+      "blankName": false,
+      "blankPhone": false
+    },
+    {
+      "key": "tblzwPK2XgJa14EC:recvuGmxq3mJ7H",
+      "inSeptember": true,
+      "archiveCount": 1,
+      "linkedLeads": 1,
+      "directArchiveLeadLinks": 0,
+      "leadInsertPlanned": true,
+      "blankName": false,
+      "blankPhone": false
+    },
+    {
+      "key": "tblzwPK2XgJa14EC:recvuGmAI0oIpH",
+      "inSeptember": true,
+      "archiveCount": 1,
+      "linkedLeads": 1,
+      "directArchiveLeadLinks": 0,
+      "leadInsertPlanned": true,
+      "blankName": false,
+      "blankPhone": false
+    }
+  ],
+  "cases": [
+    {
+      "key": "tblAHWrD6LItmWMk:recvuIkKpXuUG8",
+      "added": true,
+      "sourceUnchanged": false,
+      "linkedStudent": false,
+      "exactSourceName": null,
+      "productionNameExistsInBase": null,
+      "identityHeld": false,
+      "studentCandidates": 0,
+      "leadCandidates": 0,
+      "archiveVersions": 1,
+      "archiveReviewCount": 0,
+      "courseEnrollmentCount": 1,
+      "courseEnrollmentsWithoutStudent": 1,
+      "sourceAssignments": 1,
+      "sourceAssignmentsLinkedToMembership": 0,
+      "formalMemberships": [],
+      "registrationCount": 0,
+      "insertedBusinessRows": 2
+    },
+    {
+      "key": "tblAHWrD6LItmWMk:recvuNxIlfEjGm",
+      "added": true,
+      "sourceUnchanged": false,
+      "linkedStudent": true,
+      "exactSourceName": true,
+      "productionNameExistsInBase": true,
+      "identityHeld": false,
+      "studentCandidates": 0,
+      "leadCandidates": 0,
+      "archiveVersions": 1,
+      "archiveReviewCount": 1,
+      "courseEnrollmentCount": 0,
+      "courseEnrollmentsWithoutStudent": 0,
+      "sourceAssignments": 0,
+      "sourceAssignmentsLinkedToMembership": 0,
+      "formalMemberships": [
+        {
+          "active": true,
+          "left": false,
+          "archived": true,
+          "trashed": false,
+          "currentScope": false,
+          "productionPurpose": true,
+          "grade": null,
+          "explicitTestMarker": false
+        },
+        {
+          "active": true,
+          "left": false,
+          "archived": true,
+          "trashed": false,
+          "currentScope": false,
+          "productionPurpose": true,
+          "grade": 1,
+          "explicitTestMarker": false
+        },
+        {
+          "active": true,
+          "left": false,
+          "archived": false,
+          "trashed": false,
+          "currentScope": true,
+          "productionPurpose": true,
+          "grade": 1,
+          "explicitTestMarker": false
+        }
+      ],
+      "registrationCount": 0,
+      "insertedBusinessRows": 1
+    },
+    {
+      "key": "tblAHWrD6LItmWMk:recvueRLMIBZ97",
+      "added": false,
+      "sourceUnchanged": true,
+      "linkedStudent": true,
+      "exactSourceName": true,
+      "productionNameExistsInBase": true,
+      "identityHeld": false,
+      "studentCandidates": 0,
+      "leadCandidates": 0,
+      "archiveVersions": 1,
+      "archiveReviewCount": 1,
+      "courseEnrollmentCount": 1,
+      "courseEnrollmentsWithoutStudent": 0,
+      "sourceAssignments": 1,
+      "sourceAssignmentsLinkedToMembership": 0,
+      "formalMemberships": [],
+      "registrationCount": 0,
+      "insertedBusinessRows": 0
+    },
+    {
+      "key": "tblAHWrD6LItmWMk:recvup6NEqXKGk",
+      "added": false,
+      "sourceUnchanged": true,
+      "linkedStudent": true,
+      "exactSourceName": true,
+      "productionNameExistsInBase": true,
+      "identityHeld": false,
+      "studentCandidates": 0,
+      "leadCandidates": 0,
+      "archiveVersions": 1,
+      "archiveReviewCount": 1,
+      "courseEnrollmentCount": 1,
+      "courseEnrollmentsWithoutStudent": 0,
+      "sourceAssignments": 1,
+      "sourceAssignmentsLinkedToMembership": 0,
+      "formalMemberships": [],
+      "registrationCount": 0,
+      "insertedBusinessRows": 0
+    },
+    {
+      "key": "tblAHWrD6LItmWMk:recvuTcUxnBq53",
+      "added": true,
+      "sourceUnchanged": false,
+      "linkedStudent": true,
+      "exactSourceName": true,
+      "productionNameExistsInBase": true,
+      "identityHeld": false,
+      "studentCandidates": 0,
+      "leadCandidates": 0,
+      "archiveVersions": 1,
+      "archiveReviewCount": 1,
+      "courseEnrollmentCount": 1,
+      "courseEnrollmentsWithoutStudent": 0,
+      "sourceAssignments": 1,
+      "sourceAssignmentsLinkedToMembership": 0,
+      "formalMemberships": [],
+      "registrationCount": 0,
+      "insertedBusinessRows": 2
+    },
+    {
+      "key": "tbl7Wx2zLgcqiCjs:recvv5GlzoPUO6",
+      "added": true,
+      "sourceUnchanged": false,
+      "linkedStudent": false,
+      "exactSourceName": null,
+      "productionNameExistsInBase": null,
+      "identityHeld": false,
+      "studentCandidates": 0,
+      "leadCandidates": 0,
+      "archiveVersions": 1,
+      "archiveReviewCount": 0,
+      "courseEnrollmentCount": 0,
+      "courseEnrollmentsWithoutStudent": 0,
+      "sourceAssignments": 0,
+      "sourceAssignmentsLinkedToMembership": 0,
+      "formalMemberships": [],
+      "registrationCount": 0,
+      "insertedBusinessRows": 0
+    },
+    {
+      "key": "tbl7Wx2zLgcqiCjs:recvuGqZ5kyQL1",
+      "added": true,
+      "sourceUnchanged": false,
+      "linkedStudent": false,
+      "exactSourceName": null,
+      "productionNameExistsInBase": null,
+      "identityHeld": true,
+      "studentCandidates": 2,
+      "leadCandidates": 0,
+      "archiveVersions": 1,
+      "archiveReviewCount": 1,
+      "courseEnrollmentCount": 0,
+      "courseEnrollmentsWithoutStudent": 0,
+      "sourceAssignments": 0,
+      "sourceAssignmentsLinkedToMembership": 0,
+      "formalMemberships": [],
+      "registrationCount": 0,
+      "insertedBusinessRows": 0
+    }
+  ],
+  "extraMemberships": [
+    {
+      "nameInBase": false,
+      "testMarkerInStudentName": false,
+      "testMarkerInStudentSource": false,
+      "testMarkerInStudentRemark": true,
+      "testMarkerInMembershipRemark": false,
+      "classGrade": 5
+    },
+    {
+      "nameInBase": true,
+      "testMarkerInStudentName": false,
+      "testMarkerInStudentSource": false,
+      "testMarkerInStudentRemark": false,
+      "testMarkerInMembershipRemark": false,
+      "classGrade": 1
+    }
+  ],
+  "testMarkerClassification": [
+    {
+      "hasExplicitTestStudentPhrase": false,
+      "hasChineseTestWord": true,
+      "hasStandaloneEnglishTestWord": false,
+      "hasFixtureToken": false,
+      "hasLatestSubstring": false,
+      "hasExplicitNonTestPhrase": false,
+      "hasProtectedTrialPhrase": false
+    },
+    {
+      "hasExplicitTestStudentPhrase": false,
+      "hasChineseTestWord": false,
+      "hasStandaloneEnglishTestWord": false,
+      "hasFixtureToken": false,
+      "hasLatestSubstring": false,
+      "hasExplicitNonTestPhrase": false,
+      "hasProtectedTrialPhrase": false
+    }
+  ],
+  "teacherAlignment": {
+    "sameLabel": 118,
+    "yuanJuanToYuanLiJuan": 39,
+    "otherDifferences": 0
+  },
+  "gradeDifferences": [
+    {
+      "key": "tblAHWrD6LItmWMk:recvueRZPMcwFU",
+      "sourceGrade": 1,
+      "productionGrade": 2,
+      "userRequestedPreservedClass": false
+    },
+    {
+      "key": "tblAHWrD6LItmWMk:recvueRZPMNvf4",
+      "sourceGrade": 1,
+      "productionGrade": 2,
+      "userRequestedPreservedClass": false
+    },
+    {
+      "key": "tblAHWrD6LItmWMk:recvueRZoG8X2H",
+      "sourceGrade": 1,
+      "productionGrade": 2,
+      "userRequestedPreservedClass": false
+    }
+  ],
+  "sourceReplacement": {
+    "keys": [
+      "tblAHWrD6LItmWMk:recvueIGksnghc",
+      "tblAHWrD6LItmWMk:recvuNyzoBWNxn"
+    ],
+    "enrollments": 2,
+    "sourceCount": 2,
+    "linkedStudents": 1,
+    "formalMemberships": 1,
+    "currentEnrollments": 2
+  },
+  "monthlyEnrollmentIdentities": [
+    {
+      "month": "2026-08",
+      "enrollmentRecords": 27,
+      "uniqueSubjects": 25,
+      "duplicateGroups": [
+        [
+          "tbl7Wx2zLgcqiCjs:recvr6trwtmpQY",
+          "tbl7Wx2zLgcqiCjs:recvr6tr9ongBl"
+        ],
+        [
+          "tbl7Wx2zLgcqiCjs:recvqb1bSXKIFi",
+          "tbl7Wx2zLgcqiCjs:recvqb1buYhNBe"
+        ]
+      ],
+      "sameNameDifferentSubjects": [
+        [
+          "tbl7Wx2zLgcqiCjs:recvqb1cMl69LS",
+          "tbl7Wx2zLgcqiCjs:recvqb1decmpl6"
+        ]
+      ]
+    },
+    {
+      "month": "2026-09",
+      "enrollmentRecords": 14,
+      "uniqueSubjects": 14,
+      "duplicateGroups": [],
+      "sameNameDifferentSubjects": []
+    }
+  ],
+  "nativeEventRelationships": [
+    {
+      "month": "2026-08",
+      "hasPhone": true,
+      "hasStudent": false,
+      "sameNameCount": 200,
+      "sameNameKeys": [],
+      "samePhoneKeys": [
+        "tbl7Wx2zLgcqiCjs:recvu1IciZhdvQ",
+        "tblzwPK2XgJa14EC:recvrYiLPu1jSe",
+        "tblzwPK2XgJa14EC:recvtoBh0oGLTg"
+      ],
+      "sameNameAndPhoneKeys": [],
+      "sameStudentKeys": []
+    },
+    {
+      "month": "2026-08",
+      "hasPhone": true,
+      "hasStudent": false,
+      "sameNameCount": 27,
+      "sameNameKeys": [],
+      "samePhoneKeys": [
+        "tblzwPK2XgJa14EC:recvri35zfLXdN"
+      ],
+      "sameNameAndPhoneKeys": [],
+      "sameStudentKeys": []
+    },
+    {
+      "month": "2026-09",
+      "hasPhone": false,
+      "hasStudent": true,
+      "sameNameCount": 1,
+      "sameNameKeys": [
+        "tblAHWrD6LItmWMk:recvuBRvVR6WU5"
+      ],
+      "samePhoneKeys": [],
+      "sameNameAndPhoneKeys": [],
+      "sameStudentKeys": [
+        "tblAHWrD6LItmWMk:recvuBRvVR6WU5"
+      ]
+    }
+  ],
+  "anonymousPhoneEvidence": {
+    "leadMatches": 1,
+    "studentLinkedLeadMatches": 1,
+    "otherBaseRows": [
+      {
+        "key": "tbl7Wx2zLgcqiCjs:recvfv0wZHOsvO",
+        "hasName": true
+      },
+      {
+        "key": "tbl7Wx2zLgcqiCjs:recvuZxkAFSNcT",
+        "hasName": true
+      },
+      {
+        "key": "tblzwPK2XgJa14EC:recvaAZxYJlPJg",
+        "hasName": true
+      }
+    ]
+  },
+  "datedMetrics": [
+    {
+      "month": "2026-08",
+      "metrics": {
+        "invitations": {
+          "total": 95,
+          "dateInMonth": 86,
+          "uniqueSubjectsInDate": 76,
+          "excludedKeys": [
+            "tbl7Wx2zLgcqiCjs:recvtipdQTggnj",
+            "tbl7Wx2zLgcqiCjs:recvqb1cmNrN01",
+            "tbl7Wx2zLgcqiCjs:recvqb185jAPHv",
+            "tbl7Wx2zLgcqiCjs:recvqb19LSAJOB",
+            "tbl7Wx2zLgcqiCjs:recvqb17G0oskg",
+            "tbl7Wx2zLgcqiCjs:recvqb1b6mxaR5",
+            "tbl7Wx2zLgcqiCjs:recvqb1bSXKIFi",
+            "tbl7Wx2zLgcqiCjs:recvqb191rpVZo",
+            "tbl7Wx2zLgcqiCjs:recvqb1buYhNBe"
+          ],
+          "duplicateGroups": [
+            [
+              "tbl7Wx2zLgcqiCjs:recvth2bCCWTEU",
+              "tbl7Wx2zLgcqiCjs:recvsHOnlMsCes"
+            ],
+            [
+              "tbl7Wx2zLgcqiCjs:recvr2pFRSk9RY",
+              "tbl7Wx2zLgcqiCjs:recvr6tqNZAwKb"
+            ],
+            [
+              "tbl7Wx2zLgcqiCjs:recvth4P4dHTbE",
+              "tbl7Wx2zLgcqiCjs:recvtihSRfT0i2"
+            ],
+            [
+              "tbl7Wx2zLgcqiCjs:recvro4ztXNwhD",
+              "tbl7Wx2zLgcqiCjs:recvrnRXb8L3nY"
+            ],
+            [
+              "tbl7Wx2zLgcqiCjs:recvs8JBxE4G4G",
+              "tbl7Wx2zLgcqiCjs:recvseAEpZVwbx"
+            ],
+            [
+              "tbl7Wx2zLgcqiCjs:recvt74w4n8Hr3",
+              "tbl7Wx2zLgcqiCjs:recvt74OvoPVET"
+            ],
+            [
+              "tbl7Wx2zLgcqiCjs:recvrnRL7iCQ4I",
+              "tbl7Wx2zLgcqiCjs:recvr7QqJH3sEs"
+            ],
+            [
+              "tbl7Wx2zLgcqiCjs:recvrGExTeGAiI",
+              "tbl7Wx2zLgcqiCjs:recvrHoXNz1nlP"
+            ],
+            [
+              "tbl7Wx2zLgcqiCjs:recvrnRWvnCpF8",
+              "tbl7Wx2zLgcqiCjs:recvrMRKPayMKD"
+            ],
+            [
+              "tbl7Wx2zLgcqiCjs:recvr6trwtmpQY",
+              "tbl7Wx2zLgcqiCjs:recvr6tr9ongBl"
+            ]
+          ]
+        },
+        "arrivals": {
+          "total": 85,
+          "dateInMonth": 81,
+          "uniqueSubjectsInDate": 70,
+          "excludedKeys": [
+            "tbl7Wx2zLgcqiCjs:recvskLSvRUUQL",
+            "tbl7Wx2zLgcqiCjs:recvskLTX1imqR",
+            "tbl7Wx2zLgcqiCjs:recvtM5pKgvR8s",
+            "tbl7Wx2zLgcqiCjs:recvtM4ZkLXOmC"
+          ],
+          "duplicateGroups": [
+            [
+              "tbl7Wx2zLgcqiCjs:recvth2bCCWTEU",
+              "tbl7Wx2zLgcqiCjs:recvsHOnlMsCes"
+            ],
+            [
+              "tbl7Wx2zLgcqiCjs:recvr2pFRSk9RY",
+              "tbl7Wx2zLgcqiCjs:recvr6tqNZAwKb"
+            ],
+            [
+              "tbl7Wx2zLgcqiCjs:recvth4P4dHTbE",
+              "tbl7Wx2zLgcqiCjs:recvtihSRfT0i2"
+            ],
+            [
+              "tbl7Wx2zLgcqiCjs:recvro4ztXNwhD",
+              "tbl7Wx2zLgcqiCjs:recvrnRXb8L3nY"
+            ],
+            [
+              "tbl7Wx2zLgcqiCjs:recvs8JBxE4G4G",
+              "tbl7Wx2zLgcqiCjs:recvseAEpZVwbx"
+            ],
+            [
+              "tbl7Wx2zLgcqiCjs:recvt74w4n8Hr3",
+              "tbl7Wx2zLgcqiCjs:recvt74OvoPVET"
+            ],
+            [
+              "tbl7Wx2zLgcqiCjs:recvrnRL7iCQ4I",
+              "tbl7Wx2zLgcqiCjs:recvr7QqJH3sEs"
+            ],
+            [
+              "tbl7Wx2zLgcqiCjs:recvrGExTeGAiI",
+              "tbl7Wx2zLgcqiCjs:recvrHoXNz1nlP"
+            ],
+            [
+              "tbl7Wx2zLgcqiCjs:recvrnRWvnCpF8",
+              "tbl7Wx2zLgcqiCjs:recvrMRKPayMKD"
+            ],
+            [
+              "tbl7Wx2zLgcqiCjs:recvr6trwtmpQY",
+              "tbl7Wx2zLgcqiCjs:recvr6tr9ongBl"
+            ],
+            [
+              "tbl7Wx2zLgcqiCjs:recvqb1bSXKIFi",
+              "tbl7Wx2zLgcqiCjs:recvqb1buYhNBe"
+            ]
+          ]
+        },
+        "enrollments": {
+          "total": 27,
+          "dateInMonth": 20,
+          "uniqueSubjectsInDate": 19,
+          "excludedKeys": [
+            "tbl7Wx2zLgcqiCjs:recvqb1cMl69LS",
+            "tbl7Wx2zLgcqiCjs:recvqb1b6mxaR5",
+            "tbl7Wx2zLgcqiCjs:recvqb1bSXKIFi",
+            "tbl7Wx2zLgcqiCjs:recvqb1e8AyAbO",
+            "tbl7Wx2zLgcqiCjs:recvqb1buYhNBe",
+            "tbl7Wx2zLgcqiCjs:recvqb1decmpl6",
+            "tbl7Wx2zLgcqiCjs:recvtM4ZkLXOmC"
+          ],
+          "duplicateGroups": [
+            [
+              "tbl7Wx2zLgcqiCjs:recvr6trwtmpQY",
+              "tbl7Wx2zLgcqiCjs:recvr6tr9ongBl"
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "month": "2026-09",
+      "metrics": {
+        "invitations": {
+          "total": 60,
+          "dateInMonth": 60,
+          "uniqueSubjectsInDate": 57,
+          "excludedKeys": [],
+          "duplicateGroups": [
+            [
+              "tbl7Wx2zLgcqiCjs:recvu7HHCAAX2A",
+              "tbl7Wx2zLgcqiCjs:recvu7HIS8cy1P"
+            ],
+            [
+              "tbl7Wx2zLgcqiCjs:recvtLNodnZc3g",
+              "tbl7Wx2zLgcqiCjs:recvtLNoDRvjqe"
+            ],
+            [
+              "tbl7Wx2zLgcqiCjs:recvu7kJSJJpEM",
+              "tbl7Wx2zLgcqiCjs:recvu3dqStewan"
+            ]
+          ]
+        },
+        "arrivals": {
+          "total": 41,
+          "dateInMonth": 41,
+          "uniqueSubjectsInDate": 41,
+          "excludedKeys": [],
+          "duplicateGroups": []
+        },
+        "enrollments": {
+          "total": 14,
+          "dateInMonth": 13,
+          "uniqueSubjectsInDate": 13,
+          "excludedKeys": [
+            "tbl7Wx2zLgcqiCjs:recvqb185jAPHv"
+          ],
+          "duplicateGroups": []
+        }
+      }
+    }
+  ],
+  "checks": {
+    "dateHourReproductions": 27,
+    "sourceAcquisitionsInsertedAndReadable": 17,
+    "augustEquation": "431-27-57-10-1+2=338",
+    "septemberEquation": "112-17-3+1=93",
+    "autumnEquation": "161-4+2=159",
+    "augustParticipants": "85-4-11=70",
+    "augustEnrollmentSubjects": "27-2=25",
+    "applicationChanges": 0,
+    "businessWrites": 0
+  },
+  "scripts": [
+    {
+      "file": "source-lineage.mjs",
+      "sha256": "36c9277e2a5598f3280f16a4b0d0041a35fcc5f574bcb6376c075a1a5c7cd03a"
+    },
+    {
+      "file": "source-detail.mjs",
+      "sha256": "64dab00cd4507d0f2bee77df6ee7b0481729552b4fc7fb0d70256d25413c3d10"
+    },
+    {
+      "file": "remote-lineage.mjs",
+      "sha256": "ff7d27bb8907662dbfe58d894340d7744075f0d233e9451afd6b0a83b297bc53"
+    },
+    {
+      "file": "remote-lineage-followup.mjs",
+      "sha256": "6a4c11ed156268ef2cc1523cc8cf1c90ed0ff3ab003c449ef79305f471f25ada"
+    },
+    {
+      "file": "check-lineage.mjs",
+      "sha256": "39aa847c929a2e44fa2c2f58117a789d9a18498c1a972b163c0fa8f9811193ca"
+    }
+  ]
+}
