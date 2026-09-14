@@ -1,0 +1,346 @@
+{
+  "date": "2026-09-15",
+  "status": "applied_pending_business_review",
+  "sourceSha256": "60c36cf906ec15fc6d3f4d4dc515d34287db391c83b6ea631efbb359a01fe6dd",
+  "sourceRows": 5256,
+  "independentEnvironmentReview": true,
+  "developmentPersonalDataUploaded": false,
+  "development": {
+    "students": 3670,
+    "deleted": 0,
+    "explicitSeed": 0,
+    "seedWithImportedLink": 0,
+    "withImportedLink": 2319,
+    "baseName": 2581,
+    "basePhone": 2519,
+    "unexplainedActive": 7,
+    "sourceRows": 5256,
+    "sourceRowsMissing": 46
+  },
+  "developmentProvenance": {
+    "firstContactProfiles": 2220,
+    "linkedToLeadSource": 2220,
+    "linkedToBase": 2220,
+    "testWordWithBaseName": 4,
+    "testWordWithoutBaseName": 3,
+    "formalPurposeClasses": 138,
+    "testPurposeClasses": 3
+  },
+  "productionBefore": {
+    "students": 1469,
+    "deleted": 4,
+    "explicitSeed": 0,
+    "seedWithImportedLink": 0,
+    "withImportedLink": 1451,
+    "baseName": 373,
+    "basePhone": 301,
+    "unexplainedActive": 8,
+    "sourceRows": 5256,
+    "sourceRowsMissing": 0
+  },
+  "plan": {
+    "operations": {
+      "students": {
+        "insert": 1,
+        "update": 7
+      },
+      "enrollments": {
+        "insert": 4,
+        "update": 0
+      },
+      "course_enrollment_assignments": {
+        "insert": 0,
+        "update": 5
+      },
+      "activities": {
+        "insert": 2,
+        "update": 0
+      },
+      "activity_registrations": {
+        "insert": 2,
+        "update": 1
+      },
+      "leads": {
+        "insert": 1,
+        "update": 98
+      },
+      "course_enrollments": {
+        "insert": 0,
+        "update": 6
+      }
+    },
+    "associations": 3,
+    "memberships": [
+      {
+        "key": "tblAHWrD6LItmWMk:recvueRLMIBZ97",
+        "peerEvidence": [
+          "tblAHWrD6LItmWMk:recvueRLMIBZ97",
+          "tblAHWrD6LItmWMk:recvup6NEqXKGk"
+        ],
+        "teacherGradeUnique": true,
+        "scheduleMatches": 1
+      },
+      {
+        "key": "tblAHWrD6LItmWMk:recvup6NEqXKGk",
+        "peerEvidence": [
+          "tblAHWrD6LItmWMk:recvueRLMIBZ97",
+          "tblAHWrD6LItmWMk:recvup6NEqXKGk"
+        ],
+        "teacherGradeUnique": true,
+        "scheduleMatches": 1
+      },
+      {
+        "key": "tblAHWrD6LItmWMk:recvuTcUxnBq53",
+        "peerEvidence": [
+          "tblAHWrD6LItmWMk:recvueKlNCVQKo",
+          "tblAHWrD6LItmWMk:recvueKlNCxvEq",
+          "tblAHWrD6LItmWMk:recvueK1VfeTEW",
+          "tblAHWrD6LItmWMk:recvueKlNCP1Yr",
+          "tblAHWrD6LItmWMk:recvueKlNCW02x",
+          "tblAHWrD6LItmWMk:recvuTcUxnBq53"
+        ],
+        "teacherGradeUnique": false,
+        "scheduleMatches": 15
+      },
+      {
+        "key": "tblAHWrD6LItmWMk:recvuIkKpXuUG8",
+        "peerEvidence": [
+          "tblAHWrD6LItmWMk:recvueM5VQHW8e",
+          "tblAHWrD6LItmWMk:recvueM2pwVEtr",
+          "tblAHWrD6LItmWMk:recvueM5VQz3Zw"
+        ],
+        "teacherGradeUnique": false,
+        "scheduleMatches": 15
+      }
+    ],
+    "issues": [
+      {
+        "key": "tbl7Wx2zLgcqiCjs:recvv5GlzoPUO6",
+        "identityInferred": true,
+        "identityPending": false
+      },
+      {
+        "key": "tbl7Wx2zLgcqiCjs:recvuGqZ5kyQL1",
+        "identityInferred": false,
+        "identityPending": true
+      }
+    ],
+    "datesMarked": 98,
+    "datesWithoutLead": 0
+  },
+  "postflight": {
+    "activeMembers": 163,
+    "markedLeadNotes": 99,
+    "errorsSinceBatch": 0,
+    "markedStudentNotes": 8,
+    "testPurposeClasses": 2,
+    "inferredAssociations": 3,
+    "septemberInvitations": 62,
+    "uniqueActiveStudents": 163,
+    "oldMembershipsPreserved": 171,
+    "currentReplacementEnrollment": 1,
+    "historicalReplacementEnrollment": 1,
+    "inferredBadges": 3,
+    "persistentOperations": 127,
+    "persistentReadPassed": true,
+    "healthPassed": true,
+    "originalSourceRecords": 15433,
+    "sourceRowsUnchanged": true,
+    "existingClassRelationsPreserved": true
+  },
+  "receipt": {
+    "backupDirectory": "/home/swing/services/mathin/backups/mathin-db-prechange-20260914T163900Z-base-triangulation-20260915",
+    "backupBytes": 350656252,
+    "backupSha256": "c99802fa0337555a4d29a1e076db81f1ba076f7ada318e9f6336fa068a587edf",
+    "backupTocLines": 6504,
+    "sqlSha256": "4358909a4e93f7b85488c1ac5f372c2356452b7bf8ed0b4bc240f89f49d5774f",
+    "planSha256": "5c2f34fce9115c1a2a36ecdb3de88272ff655e3b1ed01f0b3f94b9a529070774",
+    "protectedTables": 39,
+    "batchKey": "base-triangulation-20260915"
+  },
+  "target": {
+    "host": "xiaomi",
+    "supabaseOrigin": "https://supabase.mathin.club",
+    "mainPid": 3825682,
+    "current": {
+      "release": "20260913-155934",
+      "commit": "3d9892bb87c2361e6662e685b606ac77a3e82e29",
+      "builtAt": "2026-09-13T16:02:03Z"
+    },
+    "previous": {
+      "release": "20260911-153257",
+      "commit": "aed8fec48ddb15e24049e6afa01b197d432674ba",
+      "builtAt": "2026-09-11T15:35:16Z"
+    },
+    "fingerprint": "10e3f97e32b018403c9074efa4e258d699530a487c47de89b5d307ab7ff21a0c"
+  },
+  "checks": {
+    "rehearsalPassed": true,
+    "zeroResidual": true,
+    "applyPassed": true
+  },
+  "counts": {
+    "leads": {
+      "before": 3941,
+      "after": 3942
+    },
+    "contacts": {
+      "before": 1,
+      "after": 1
+    },
+    "profiles": {
+      "before": 41,
+      "after": 41
+    },
+    "students": {
+      "before": 1469,
+      "after": 1470
+    },
+    "activities": {
+      "before": 948,
+      "after": 950
+    },
+    "classrooms": {
+      "before": 34,
+      "after": 34
+    },
+    "enrollments": {
+      "before": 171,
+      "after": 175
+    },
+    "class_sessions": {
+      "before": 429,
+      "after": 429
+    },
+    "family_contacts": {
+      "before": 1,
+      "after": 1
+    },
+    "family_students": {
+      "before": 1,
+      "after": 1
+    },
+    "student_contacts": {
+      "before": 1,
+      "after": 1
+    },
+    "classroom_members": {
+      "before": 35,
+      "after": 35
+    },
+    "schema_migrations": {
+      "before": 385,
+      "after": 385
+    },
+    "assessment_reports": {
+      "before": 1,
+      "after": 1
+    },
+    "assessment_results": {
+      "before": 667,
+      "after": 667
+    },
+    "course_enrollments": {
+      "before": 1360,
+      "after": 1360
+    },
+    "session_attendance": {
+      "before": 1,
+      "after": 1
+    },
+    "student_follow_ups": {
+      "before": 200,
+      "after": 200
+    },
+    "course_opportunities": {
+      "before": 519,
+      "after": 519
+    },
+    "student_grade_history": {
+      "before": 1575,
+      "after": 1576
+    },
+    "activity_registrations": {
+      "before": 945,
+      "after": 947
+    },
+    "history_import_batches": {
+      "before": 2,
+      "after": 3
+    },
+    "history_import_records": {
+      "before": 15433,
+      "after": 15433
+    },
+    "history_workflow_scopes": {
+      "before": 10058,
+      "after": 10058
+    },
+    "course_enrollment_events": {
+      "before": 157,
+      "after": 157
+    },
+    "business_record_revisions": {
+      "before": 0,
+      "after": 0
+    },
+    "session_student_transfers": {
+      "before": 0,
+      "after": 0
+    },
+    "assessment_workflow_states": {
+      "before": 1,
+      "after": 1
+    },
+    "history_workflow_decisions": {
+      "before": 0,
+      "after": 0
+    },
+    "student_school_year_grades": {
+      "before": 111,
+      "after": 112
+    },
+    "history_import_associations": {
+      "before": 314,
+      "after": 317
+    },
+    "school_subject_participants": {
+      "before": 9766,
+      "after": 9771
+    },
+    "history_import_batch_records": {
+      "before": 15433,
+      "after": 15540
+    },
+    "r1_object_protection_entries": {
+      "before": 12,
+      "after": 12
+    },
+    "course_enrollment_assignments": {
+      "before": 1515,
+      "after": 1515
+    },
+    "history_source_business_facts": {
+      "before": 16249,
+      "after": 16249
+    },
+    "history_business_workflow_scopes": {
+      "before": 3,
+      "after": 3
+    },
+    "history_import_association_events": {
+      "before": 314,
+      "after": 317
+    },
+    "history_import_identity_candidates": {
+      "before": 1055,
+      "after": 1057
+    }
+  },
+  "coverage": {
+    "baseActiveRows": 161,
+    "linkedDistinctStudents": 161,
+    "coveredByCurrentMembership": 161,
+    "productionAdditionalMembers": 2
+  }
+}
