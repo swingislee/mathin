@@ -62,7 +62,7 @@ function rotatedPoses(from: CubeNetCutPoses, move: CubeNetCutMove, fraction: num
   ])) };
 }
 
-export function createCubeNetCutUnfoldMotion(base: PolyhedronSceneAdapterInput, closed: PolyhedronFoldRenderModel, snapshot: CubeNetCutSnapshot, selection?: Pick<CubeNetCutMove, "edgeId" | "faceId">) {
+export function createCubeNetCutUnfoldMotion(base: PolyhedronSceneAdapterInput, closed: PolyhedronFoldRenderModel, snapshot: Pick<CubeNetCutSnapshot, "cuts" | "poses">, selection?: Pick<CubeNetCutMove, "edgeId" | "faceId">) {
   let poses = snapshot.poses;
   const steps: { move: CubeNetCutMove; from: CubeNetCutPoses; to: CubeNetCutPoses }[] = [];
   for (let index = 0; index < 5; index++) {

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
-import { Check, FoldHorizontal, Hand, Maximize, Move3D, Orbit, Redo2, RotateCcw, Scissors, Settings2, Shapes, Square, Undo2 } from "lucide-react";
+import { Check, Droplets, FoldHorizontal, Hand, Hash, LocateFixed, Maximize, Move3D, Orbit, Paintbrush, Redo2, RotateCcw, Scissors, Settings2, Shapes, Square, Stamp, Undo2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +15,9 @@ import {
 import { SpatialAxisSnapButton, useSpatialAxisSnap } from "@/features/spatial-math/renderer-r3f/SpatialCameraControls";
 import { cn } from "@/lib/utils";
 import { CubeNetGalleryWindow } from "./CubeNetGalleryWindow";
+import { CubeNetSurfacePanel, DEFAULT_CUBE_NET_BRUSH, cubeNetBrushOperation } from "./CubeNetSurfacePanel";
+import { reduceCubeNetSurfaces, type CubeNetSurfaceTool, type CubeNetSurfaceOperation } from "./cube-net-surfaces";
+import { createCubeNetRecenter } from "./cube-net-recenter";
 import { CubeCanvasPanel, CubeIconButton, CubeViewIcon } from "./CubeWorkbenchControls";
 import { CUBE_AXIS_COLORS, type CubeView } from "./cube-structures-contract";
 import { cubeStructuresMessages } from "./cube-structures-messages";
@@ -41,7 +44,6 @@ import {
   type CubeNetTeachingAnchor,
 } from "./cube-net-teaching-session";
 import styles from "./CubeStructuresWorkbench.module.css";
-import galleryStyles from "./CubeNetGalleryWindow.module.css";
 
 const CubeNetFoldViewport = dynamic(() => import("./CubeNetFoldViewport").then((module) => module.CubeNetFoldViewport), { ssr: false });
 
@@ -51,7 +53,7 @@ type CubeNetBuildState =
 
 interface CubeNetPlaybackFrame {
   readonly current: { readonly model: PolyhedronFoldRenderModel; readonly hinges: readonly CubeNetWorkbenchHinge[] };
-  readonly kind: "unfold" | "planar" | "close" | "reveal" | "settle";
+  readonly kind: "unfold" | "planar" | "close" | "reveal" | "settle" | "recenter";
   readonly step: number;
   readonly total: number;
   readonly movingCount?: number;
@@ -90,8 +92,11 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
   const [view, setView] = useState<CubeView>("angle");
   const [frame, setFrame] = useState(() => resolver.resolve({}).model.bounds);
   const [cameraRequestKey, setCameraRequestKey] = useState(0);
-  const [tool, setTool] = useState<"orbit" | "pan" | "fold" | "cut">("fold");
-  const [panel, setPanel] = useState<"settings" | null>(null);
+  const [tool, setTool] = useState<"orbit" | "pan" | "fold" | "cut" | CubeNetSurfaceTool>("fold");
+  const [panel, setPanel] = useState<"settings" | CubeNetSurfaceTool | null>(null);
+  const [brush, setBrush] = useState(DEFAULT_CUBE_NET_BRUSH);
+  const [selectedPaper, setSelectedPaper] = useState<string | null>(null);
+  const [opacityPreview, setOpacityPreview] = useState<number | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [axesVisible, setAxesVisible] = useState(true);
   const [dragging, setDragging] = useState(false);
@@ -141,6 +146,25 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
   }, []);
   const commitFold = useCallback((value: CubeNetFoldChange) => apply({ kind: "fold", ...value }), [apply]);
   const busy = dragging || playback.playing || buildingCuts;
+  const surfaces = (cutting ?? session).surfaces;
+  const previewSurfaces = selectedPaper && opacityPreview !== null ? reduceCubeNetSurfaces(surfaces, { kind: "opacity", ids: [selectedPaper], opacity: opacityPreview / 100 }) : surfaces;
+  const surfaceTool = tool === "face" || tool === "transparent" || tool === "mark" || tool === "number" ? tool : null;
+  const applySurface = (operation: CubeNetSurfaceOperation) => {
+    if (busy) return;
+    if (cutting) setCutting(reduceCubeNetCutSession(cutting, { kind: "surface", operation }));
+    else apply({ kind: "surface", operation });
+  };
+  const paintFace = (faceId: string) => {
+    const identity = current.model.faces.find((face) => face.faceId === faceId)?.label;
+    if (!surfaceTool || !identity || busy) return;
+    setSelectedPaper(identity);
+    applySurface(cubeNetBrushOperation(surfaceTool, brush, [identity]));
+  };
+  const chooseSurfaceTool = (next: CubeNetSurfaceTool) => {
+    setTool(next); setActiveFold(null); setPreview(null); setOpacityPreview(null);
+    if (tool !== next) setSelectedPaper(null);
+    setPanel(tool === next && panel === next ? null : next);
+  };
   const cutAnalysis = useMemo(() => cutting ? analyzeCubeNetCuts(sceneInput, cutting.cuts) : null, [cutting, sceneInput]);
   const cutMoves = useMemo(() => cutting ? cubeNetAvailableCutMoves(sceneInput, cutting.cuts, paperCurrent.model, true) : [], [cutting, paperCurrent.model, sceneInput]);
   const cutEdges = useMemo(() => cutting && (!playback.playing || playback.frame?.kind === "reveal")
@@ -190,7 +214,7 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
   };
   const moveFace = (faceId: string) => animateFaces({ ...faceOffsets, [faceId]: faceOffsets[faceId] ? 0 : 1 });
   const startCutting = () => {
-    setGalleryOpen(false);
+    setGalleryOpen(false); setPanel(null); setActiveFold(null);
     if (cutting) { if (revealEnabled) closeReveal(); setTool("cut"); return; }
     const motion = createCubeNetUnfoldMotion(session, current.hinges, sceneInput.layout.rootFaceId, 90);
     const closed = resolver.resolve(motion.sample(motion.durationMs).angles).model;
@@ -200,7 +224,7 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
       sample: (elapsed) => elapsed < motion.durationMs ? { ...unfoldFrame(motion, elapsed), kind: "close" }
         : { current: { model: placement.sample(elapsed - motion.durationMs), hinges: [] }, kind: "settle", step: 1, total: 1 },
       onFinish: () => {
-        setCutting(createCubeNetCutSession()); setTool("cut"); setFaceOffsets({}); setRevealEnabled(false);
+        setCutting(createCubeNetCutSession(session.surfaces)); setTool("cut"); setFaceOffsets({}); setRevealEnabled(false);
         setFrame({ ...closed.bounds, radius: Math.max(frame.radius, closed.bounds.radius) });
         setCameraRequestKey((key) => key + 1);
       },
@@ -231,7 +255,7 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
           const support = paperCurrent.model.faces.find((face) => face.faceId === nextBuild.sceneInput.layout.rootFaceId)!;
           const points = support.vertices.slice(0, 3).map((vertex) => vertex.position);
           const anchor: CubeNetTeachingAnchor = { faceId: support.faceId, vertices: [points[0], points[1], points[2]] };
-          const initial = createCubeNetTeachingSession(nextBuild.sceneInput.hingeGraph.hinges.map((hinge) => hinge.edgeId));
+          const initial = { ...createCubeNetTeachingSession(nextBuild.sceneInput.hingeGraph.hinges.map((hinge) => hinge.edgeId)), surfaces: cutting.surfaces };
           const before = { ...initial, anchor, angles: Object.fromEntries(Object.keys(initial.angles).map((id) => [id, cutMoves.some((move) => move.edgeId === id) ? 90 : 0])) };
           setBuild(nextBuild); setCutting(null); setTool("fold"); setRevealEnabled(false); setFaceOffsets({});
           setSession(reduceCubeNetTeachingSession(before, { kind: "unfold", anchor: placement.anchor }));
@@ -267,7 +291,7 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
       },
       onFinish: () => {
         setBuild(target); setLabels(transition.labels);
-        setSession({ ...createCubeNetTeachingSession(target.sceneInput.hingeGraph.hinges.map((hinge) => hinge.edgeId)), anchor: transition.anchor });
+        setSession({ ...createCubeNetTeachingSession(target.sceneInput.hingeGraph.hinges.map((hinge) => hinge.edgeId)), anchor: transition.anchor, surfaces });
       },
     });
   };
@@ -276,12 +300,26 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
     setView(nextView);
     setCameraRequestKey((current) => current + 1);
   };
+  const recenter = () => {
+    const motion = createCubeNetRecenter(paperCurrent.model, sceneInput.layout.rootFaceId, cutting?.poses);
+    const finish = () => {
+      if (motion.durationMs) {
+        if (cutting) setCutting(reduceCubeNetCutSession(cutting, { kind: "recenter", poses: motion.poses }));
+        else apply({ kind: "recenter", anchor: motion.anchor });
+      }
+      const target = revealEnabled ? revealCubeNetFaces(motion.target, Object.fromEntries(motion.target.faces.map((face) => [face.faceId, 1]))) : motion.target;
+      setFrame(target.bounds); setCameraRequestKey((key) => key + 1);
+    };
+    preparePlayback();
+    playback.start({ durationMs: motion.durationMs, sample: (elapsed) => ({
+      current: { model: revealCubeNetFaces(motion.sample(elapsed), faceOffsets), hinges: [] }, kind: "recenter", step: 1, total: 1,
+    }), onFinish: finish });
+  };
 
   return (
-    <div className={cn(styles.workspace, galleryStyles.workspace)} data-cube-net-teaching={CUBE_NET_TEACHING_VERSION} data-folding-entry={build.entry.id}>
-      <div className={galleryStyles.layout} data-gallery-open={galleryOpen}>
+    <div className={styles.workspace} data-cube-net-teaching={CUBE_NET_TEACHING_VERSION} data-folding-entry={build.entry.id}>
       <div className={styles.viewport}>
-        <div className={styles.canvas} data-cube-workspace-frame="4:3" data-cube-net-workbench
+        <div className={styles.canvas} data-cube-workspace-frame="4:3" data-cube-net-workbench data-net-gallery-open={galleryOpen}
           aria-label={t("cubeNet.title")} style={{ cursor: tool === "fold" ? dragging ? "grabbing" : "grab" : tool === "pan" ? "grab" : "default" }}>
           <CubeNetFoldViewport scene={page.scene} entityId={sceneInput.entityId} model={model} hinges={current.hinges}
             activeEdgeId={activeFold?.edgeId ?? null} tool={tool} locale={locale}
@@ -289,6 +327,7 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
             animating={playback.playing} foldingEnabled={!playback.playing && !buildingCuts && !cutting} cutEdges={cutEdges} onCutToggle={tool === "cut" && !busy && !revealEnabled ? toggleCut : undefined}
             onCutFaceOpen={tool === "cut" && !busy && !revealEnabled && cutMoves.length > 0 ? openCutFace : undefined}
             faceArrows={faceArrows} onFaceMove={!busy ? moveFace : undefined}
+            surfaces={previewSurfaces} onSurfaceFaceSelect={!busy && surfaceTool ? paintFace : undefined}
             messages={{ webglUnavailable: t("renderer.webglUnavailable"), contextLost: t("renderer.contextLost") }}
             onFoldStart={startFold} onPreview={previewFold} onCommit={commitFold} onDraggingChange={setDragging} />
 
@@ -306,39 +345,52 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
             </CubeIconButton>
           </div>
           <div className={cn(styles.dock, styles.tools)} role="toolbar" aria-label={m.tools} data-cube-tools-toolbar>
-            {([{ id: "orbit", label: m.orbit, Icon: Orbit }, { id: "pan", label: m.pan, Icon: Hand },
-              { id: "fold", label: t("cubeNet.manual.foldTool"), Icon: FoldHorizontal }] as const).map(({ id, label, Icon }) =>
+            {([{ id: "orbit", label: m.orbit, Icon: Orbit }, { id: "pan", label: m.pan, Icon: Hand }] as const).map(({ id, label, Icon }) =>
               <CubeIconButton key={id} label={label} active={tool === id} disabled={busy}
-                onClick={() => {
-                  setTool(id); setPreview(null);
-                  if (id === "fold" && cutting) {
-                    setCutting(null); setCutError(false); setRestoreCutBlocked(false); setRevealEnabled(false); setFaceOffsets({});
-                    setFrame(resolver.resolve(session.angles, null, session.anchor).model.bounds); setCameraRequestKey((key) => key + 1);
-                  }
-                }} data-cube-net-tool={id}><Icon aria-hidden /></CubeIconButton>)}
+                onClick={() => { setTool(id); setPreview(null); setActiveFold(null); setPanel(null); }} data-cube-net-tool={id}><Icon aria-hidden /></CubeIconButton>)}
+            <CubeIconButton label={t("cubeNet.manual.recenter")} disabled={busy} onClick={recenter} data-cube-net-recenter><LocateFixed aria-hidden /></CubeIconButton>
+            <span className={styles.toolSeparator} aria-hidden />
+            <CubeIconButton label={t("cubeNet.manual.foldTool")} active={tool === "fold"} disabled={busy} data-cube-net-tool="fold"
+              onClick={() => {
+                setTool("fold"); setPreview(null); setPanel(null);
+                if (cutting) {
+                  setSession((session) => ({ ...session, surfaces: cutting.surfaces }));
+                  setCutting(null); setCutError(false); setRestoreCutBlocked(false); setRevealEnabled(false); setFaceOffsets({});
+                  setFrame(resolver.resolve(session.angles, null, session.anchor).model.bounds); setCameraRequestKey((key) => key + 1);
+                }
+              }}><FoldHorizontal aria-hidden /></CubeIconButton>
             <CubeIconButton label={t("cubeNet.manual.cutTool")} active={tool === "cut"} disabled={busy} onClick={startCutting} data-cube-net-tool="cut"><Scissors aria-hidden /></CubeIconButton>
             <CubeIconButton label={t("cubeNet.manual.chooseNet")} active={galleryOpen} disabled={busy || !!cutting}
               onClick={() => setGalleryOpen(!galleryOpen)} data-cube-net-gallery-toggle><Shapes aria-hidden /></CubeIconButton>
-            {cutting && <CubeIconButton label={t("cubeNet.manual.faceReveal")} active={revealEnabled} disabled={busy}
-              onClick={toggleReveal} data-cube-net-face-reveal-toggle><Move3D aria-hidden /></CubeIconButton>}
-            <CubeIconButton label={t("cubeNet.manual.judge")} disabled={busy || !!cutting}
-              onClick={() => setJudgment(judgeCubeNetFold(frameResolver.resolveHinges(cubeNetHingeProgress(angles))))}><Check aria-hidden /></CubeIconButton>
+            <CubeIconButton label={t("cubeNet.manual.faceReveal")} active={revealEnabled} disabled={busy || !cutting}
+              onClick={toggleReveal} data-cube-net-face-reveal-toggle><Move3D aria-hidden /></CubeIconButton>
             <CubeIconButton label={t(playback.playing || buildingCuts ? "cubeNet.manual.cancelAnimation" : cutting ? "cubeNet.manual.unfoldAvailable" : "cubeNet.manual.unfold")}
               disabled={dragging || (!playback.playing && !buildingCuts && (cutting ? cutMoves.length === 0 : Object.values(session.angles).every((angle) => angle === 0) && (!session.anchor || session.anchor.vertices.every((point) => Math.abs(point.y) < 1e-6))))}
               onClick={playback.playing || buildingCuts ? cancelAnimation : cutting ? () => requestUnfoldCuts() : animateUnfold}>{playback.playing || buildingCuts ? <Square aria-hidden /> : <RotateCcw aria-hidden />}</CubeIconButton>
-            <span className="self-stretch border-t border-line" aria-hidden />
+            <CubeIconButton label={t("cubeNet.manual.judge")} disabled={busy || !!cutting}
+              onClick={() => setJudgment(judgeCubeNetFold(frameResolver.resolveHinges(cubeNetHingeProgress(angles))))}><Check aria-hidden /></CubeIconButton>
+            <span className={styles.toolSeparator} aria-hidden />
+            {([{ id: "face", label: m.face, Icon: Paintbrush }, { id: "transparent", label: m.transparent, Icon: Droplets },
+              { id: "mark", label: t("cubeNet.manual.surface.mark"), Icon: Stamp }, { id: "number", label: m.number, Icon: Hash }] as const).map(({ id, label, Icon }) =>
+              <CubeIconButton key={id} label={label} active={tool === id} disabled={busy} onClick={() => chooseSurfaceTool(id)} data-cube-net-tool={id}><Icon aria-hidden /></CubeIconButton>)}
+            <span className={styles.toolSeparator} aria-hidden />
             <CubeIconButton label={t("cubeNet.manual.undo")} disabled={busy || revealEnabled || (cutting ?? session).past.length === 0}
               onClick={() => { setRestoreCutBlocked(false); if (cutting) setCutting(reduceCubeNetCutSession(cutting, { kind: "undo" })); else apply({ kind: "undo" }); }}><Undo2 aria-hidden /></CubeIconButton>
             <CubeIconButton label={t("cubeNet.manual.redo")} disabled={busy || revealEnabled || (cutting ?? session).future.length === 0}
               onClick={() => cutting ? setCutting(reduceCubeNetCutSession(cutting, { kind: "redo" })) : apply({ kind: "redo" })}><Redo2 aria-hidden /></CubeIconButton>
           </div>
 
-          {panel && <CubeCanvasPanel title={m.modelPanel}
+          {panel === "settings" && <CubeCanvasPanel title={m.modelPanel}
             anchor="meta" closeLabel={m.closePanel} onClose={() => setPanel(null)}>
             <div className="space-y-3 text-xs">{workspaceSelector}<p className="leading-5 text-muted">{t("cubeNet.manual.localOnly")}</p></div>
           </CubeCanvasPanel>}
+          {panel && panel !== "settings" && <CubeNetSurfacePanel locale={locale} tool={panel} brush={brush} surfaces={surfaces}
+            identities={current.model.faces.map((face) => face.label)} selected={selectedPaper} busy={busy}
+            onBrush={setBrush} onApply={applySurface} onPreview={setOpacityPreview} onClose={() => setPanel(null)} />}
+          {galleryOpen && <CubeNetGalleryWindow builds={builds} selectedId={build.entry.id} busy={busy || !!cutting} closeLabel={m.closePanel}
+            onSelect={selectEntry} onClose={() => setGalleryOpen(false)} />}
           {playback.frame ? <div className={styles.cutStatus} role="status" data-cube-net-animation={playback.frame.kind}>
-            {playback.frame.kind === "settle" ? t("cubeNet.manual.settling") : playback.frame.kind === "reveal" ? t("cubeNet.manual.faceMoving") : playback.frame.kind !== "planar" ? t(playback.frame.kind === "close" ? "cubeNet.manual.closing" : "cubeNet.manual.unfolding", { step: playback.frame.step, total: playback.frame.total })
+            {playback.frame.kind === "recenter" ? t("cubeNet.manual.recentering") : playback.frame.kind === "settle" ? t("cubeNet.manual.settling") : playback.frame.kind === "reveal" ? t("cubeNet.manual.faceMoving") : playback.frame.kind !== "planar" ? t(playback.frame.kind === "close" ? "cubeNet.manual.closing" : "cubeNet.manual.unfolding", { step: playback.frame.step, total: playback.frame.total })
               : t("cubeNet.manual.transforming", { count: playback.frame.movingCount ?? 0, step: playback.frame.step, total: playback.frame.total })}
           </div> : cutting && cutAnalysis ? <div className={styles.cutStatus} role="status" data-cube-net-cut-status={cutAnalysis.status}>
             <p className="font-medium">{t("cubeNet.manual.cutProgress", { count: cutting.cuts.length })}</p>
@@ -347,7 +399,7 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
             <div className="mt-1 flex flex-wrap gap-1">
               <Button size="sm" variant="secondary" disabled={busy || cutMoves.length === 0} onClick={() => requestUnfoldCuts()}>{t(buildingCuts ? "common.previewBuilding" : "cubeNet.manual.unfoldAvailable")}</Button>
               {revealEnabled ? <Button size="sm" variant="ghost" disabled={busy || !Object.values(faceOffsets).some(Boolean)} onClick={() => animateFaces({})}>{t("cubeNet.manual.restoreFaces")}</Button>
-                : <Button size="sm" variant="ghost" disabled={busy} onClick={() => { setCutting(createCubeNetCutSession()); setCutError(false); setRestoreCutBlocked(false); setFrame(sourceCurrent.model.bounds); setCameraRequestKey((key) => key + 1); }}>{t("cubeNet.manual.resetCuts")}</Button>}
+                : <Button size="sm" variant="ghost" disabled={busy} onClick={() => { setCutting(createCubeNetCutSession(cutting.surfaces)); setCutError(false); setRestoreCutBlocked(false); setFrame(sourceCurrent.model.bounds); setCameraRequestKey((key) => key + 1); }}>{t("cubeNet.manual.resetCuts")}</Button>}
             </div>
           </div> : tool === "fold" && <div className={styles.cutStatus} role="status" data-cube-net-drag-status>
             {activePaper ? <><p className="font-medium">{t("cubeNet.manual.activePaper", { face: activePaper.label, angle: currentAngle })}</p>
@@ -357,9 +409,6 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
           {cutError && <div className={styles.notice} role="alert">{t("cubeNet.manual.cutError")}</div>}
           {restoreCutBlocked && <div className={styles.notice} role="status">{t("cubeNet.manual.restoreCutBlocked")}</div>}
         </div>
-      </div>
-      {galleryOpen && <CubeNetGalleryWindow builds={builds} selectedId={build.entry.id} busy={busy || !!cutting} closeLabel={m.closePanel}
-        onSelect={selectEntry} onCut={startCutting} onClose={() => setGalleryOpen(false)} />}
       </div>
     </div>
   );

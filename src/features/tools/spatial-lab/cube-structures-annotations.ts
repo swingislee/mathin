@@ -11,9 +11,10 @@ export const CUBE_MARK_PATHS: Record<CubeMarkShape, string> = {
   cross: "M8 2H16V8H22V16H16V22H8V16H2V8H8Z",
 };
 
-export function cubeAnnotationSvg(label: { readonly color: string; readonly shape?: CubeMarkShape; readonly value?: number }): string {
+export function cubeAnnotationSvg(label: { readonly color: string; readonly shape?: CubeMarkShape; readonly value?: number; readonly text?: string }): string {
+  const text = (label.text ?? String(label.value ?? 1)).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
   const body = label.shape ? `<path d="${CUBE_MARK_PATHS[label.shape]}" fill="${label.color}" stroke="#211e1a" stroke-width="1.2"/>`
-    : `<circle cx="12" cy="12" r="11" fill="white" fill-opacity=".94" stroke="${label.color}" stroke-width="1.2"/><text x="12" y="16.5" text-anchor="middle" font-family="Arial,sans-serif" font-size="${(label.value ?? 1) > 99 ? 10 : 14}" font-weight="700" fill="#211e1a">${label.value ?? 1}</text>`;
+    : `<circle cx="12" cy="12" r="11" fill="white" fill-opacity=".94" stroke="${label.color}" stroke-width="1.2"/><text x="12" y="16.5" text-anchor="middle" font-family="Arial,sans-serif" font-size="${text.length > 2 ? 10 : 14}" font-weight="700" fill="#211e1a">${text}</text>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 24 24">${body}</svg>`;
 }
 

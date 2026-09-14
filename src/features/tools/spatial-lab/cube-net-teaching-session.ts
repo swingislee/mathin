@@ -6,6 +6,7 @@ import {
   type PolyhedronFoldVector3,
   type PolyhedronHingeProgress,
 } from "@/features/spatial-math/domain";
+import { createCubeNetSurfaces, reduceCubeNetSurfaces, type CubeNetSurfaces, type CubeNetSurfaceOperation } from "./cube-net-surfaces";
 
 /** 当前页面的教学操作合同；独立于冻结课件及旧的全局折叠进度。 */
 export const CUBE_NET_TEACHING_VERSION = "cube-net-teaching-v1" as const;
@@ -18,6 +19,7 @@ export interface CubeNetTeachingAnchor {
 export interface CubeNetTeachingSnapshot {
   readonly angles: CubeNetAngles;
   readonly anchor: CubeNetTeachingAnchor | null;
+  readonly surfaces: CubeNetSurfaces;
 }
 export interface CubeNetTeachingSession extends CubeNetTeachingSnapshot {
   readonly version: typeof CUBE_NET_TEACHING_VERSION;
@@ -27,6 +29,8 @@ export interface CubeNetTeachingSession extends CubeNetTeachingSnapshot {
 export type CubeNetTeachingAction =
   | { readonly kind: "fold"; readonly edgeId: string; readonly degrees: number; readonly anchor?: CubeNetTeachingAnchor }
   | { readonly kind: "unfold"; readonly anchor?: CubeNetTeachingAnchor | null }
+  | { readonly kind: "recenter"; readonly anchor: CubeNetTeachingAnchor }
+  | { readonly kind: "surface"; readonly operation: CubeNetSurfaceOperation }
   | { readonly kind: "undo" }
   | { readonly kind: "redo" };
 
@@ -35,6 +39,7 @@ export function createCubeNetTeachingSession(edgeIds: readonly string[]): CubeNe
     version: CUBE_NET_TEACHING_VERSION,
     angles: Object.fromEntries(edgeIds.map((edgeId) => [edgeId, 0])),
     anchor: null,
+    surfaces: createCubeNetSurfaces(),
     past: [],
     future: [],
   };
@@ -44,7 +49,7 @@ export function reduceCubeNetTeachingSession(
   session: CubeNetTeachingSession,
   action: CubeNetTeachingAction,
 ): CubeNetTeachingSession {
-  const snapshot = { angles: session.angles, anchor: session.anchor };
+  const snapshot = { angles: session.angles, anchor: session.anchor, surfaces: session.surfaces };
   if (action.kind === "undo") {
     const previous = session.past.at(-1);
     return previous ? {
@@ -59,9 +64,16 @@ export function reduceCubeNetTeachingSession(
       future: session.future.slice(1),
     } : session;
   }
-  let angles: CubeNetAngles;
+  let angles = session.angles;
   let anchor = session.anchor;
-  if (action.kind === "fold") {
+  let surfaces = session.surfaces;
+  if (action.kind === "surface") {
+    surfaces = reduceCubeNetSurfaces(surfaces, action.operation);
+    if (surfaces === session.surfaces) return session;
+  } else if (action.kind === "recenter") {
+    if (JSON.stringify(anchor) === JSON.stringify(action.anchor)) return session;
+    anchor = action.anchor;
+  } else if (action.kind === "fold") {
     if (!Object.hasOwn(session.angles, action.edgeId)) throw new Error("UNKNOWN_FOLD_HINGE");
     if (!Number.isInteger(action.degrees) || Math.abs(action.degrees) > 90) {
       throw new Error("INVALID_FOLD_ANGLE");
@@ -75,7 +87,7 @@ export function reduceCubeNetTeachingSession(
     anchor = action.anchor ?? null;
   }
   return {
-    ...session, angles, anchor,
+    ...session, angles, anchor, surfaces,
     past: [...session.past, snapshot].slice(-CUBE_NET_TEACHING_HISTORY_LIMIT),
     future: [],
   };

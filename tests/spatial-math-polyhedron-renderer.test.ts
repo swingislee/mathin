@@ -218,7 +218,7 @@ describe("polyhedron-net-2d-v1 fallback", () => {
     expect(rig).not.toContain("!previous || reducedMotion");
   });
 
-  it("uses opaque solid faces and one instanced ink-edge draw instead of WebGL line widths", () => {
+  it("defaults to opaque faces, supports explicit per-face opacity, and keeps one instanced ink-edge draw", () => {
     const source = readFileSync(
       resolve(process.cwd(), "src/features/spatial-math/renderer-r3f/PolyhedronFoldCanvas.tsx"),
       "utf8",
@@ -240,6 +240,8 @@ describe("polyhedron-net-2d-v1 fallback", () => {
     expect(source).not.toContain("!selectable || !onFaceSelect");
     expect(source).not.toContain("<lineBasicMaterial");
     expect(source).not.toContain("transparent={true}");
-    expect(source).not.toContain("opacity={");
+    expect(source).toContain("opacity={face.opacity ?? 1}");
+    expect(source).toContain("transparent={(face.opacity ?? 1) < 1}");
+    expect(source).toContain("depthWrite={(face.opacity ?? 1) >= 1}");
   });
 });

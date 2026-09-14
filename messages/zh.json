@@ -533,7 +533,7 @@
           "surfacePainting": "表面染色 · 27块",
           "hollowing": "挖空与表面积 · 27块",
           "volumeSurface": "体积与表面积 · 4×3×2",
-          "cubeNetFold": "正方体展开与折叠 · A—F面"
+          "cubeNetFold": "正方体展开与折叠"
         }
       },
       "cubeNet": {
@@ -545,7 +545,7 @@
           "activePaper": "纸片 {face} · {angle}°",
           "dragPaper": "抓取处就近折叠，相连纸片一起移动；空白处旋转，Esc 取消。",
           "chooseNet": "11 种展开图",
-          "galleryWindowHint": "选图后窗口保持打开，观察画布中的逐步变化。",
+          "galleryWindowHint": "左右滑动查看 11 种展开图；选图后浮窗保持打开。",
           "galleryHint": "以最少的平面 90° 转动变为另一种展开图；步数相同时，尽量保留原位方格。",
           "cancelAnimation": "取消动画（Esc）",
           "unfolding": "依次展开 · 第 {step} / {total} 步 · Esc 取消",
@@ -564,7 +564,7 @@
           "resetCuts": "重新剪",
           "cutError": "本次展开未完成，剪口已保留；请重试。",
           "faceReveal": "移面观察",
-          "faceRevealHint": "点黄色箭头移开该面，点绿色箭头归位；细线连接对应面的中心。关闭右侧“移面观察”后继续剪棱。",
+          "faceRevealHint": "点黄色箭头移面，点绿色箭头归位；转动视角可找到被遮挡的箭头。关闭“移面观察”后继续剪棱。",
           "faceMoving": "移面观察 · Esc 取消本次移动",
           "restoreFaces": "全部归位",
           "moveFace": "移开 {face} 面",
@@ -574,7 +574,22 @@
           "redo": "重做",
           "unfold": "全部展开",
           "judge": "判断当前折叠",
-          "localOnly": "本页临场操作；切换图形或离开后重置。",
+          "localOnly": "本页临场操作，离开后重置；换图保留逐面样式，重新开始折叠记录。",
+          "recenter": "回到原点（保留当前形状）",
+          "recentering": "回到原点 · 保留折叠与剪口 · Esc 取消",
+          "surface": {
+            "mark": "面标注",
+            "faceHint": "选颜色，再点击要染色的面。拖动纸面或空白处仍可旋转观察。",
+            "transparentHint": "点击面应用当前透明度；选中后拖动滑块调整这个面。0% 保留棱线，仍可点选恢复。",
+            "markHint": "选择字母或图形，再点击纸片。橡皮用于清除标注；标注随纸片移动。",
+            "numberHint": "依次点击纸片，从 1 开始编号；已有编号的面不会重复增加。编号可与标注并排显示。",
+            "letters": "字母 A–F",
+            "selected": "当前纸片：{face}",
+            "pickFace": "点击纸片应用当前设置。",
+            "applyAll": "应用到全部六个面",
+            "restoreColor": "恢复当前面颜色",
+            "restoreOpacity": "全部恢复不透明"
+          },
           "results": {
             "closed": "当前六个面已闭合成正方体。",
             "open": "当前尚未闭合。可以继续调整各面的方向和角度。",

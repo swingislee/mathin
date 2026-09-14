@@ -6,7 +6,7 @@ export interface CubeNetUnfoldStep {
   readonly edgeId: string;
   readonly movingFaceIds: readonly string[];
 }
-export interface CubeNetUnfoldFrame extends CubeNetTeachingSnapshot {
+export interface CubeNetUnfoldFrame extends Pick<CubeNetTeachingSnapshot, "angles" | "anchor"> {
   readonly edgeId: string | null;
   readonly movingFaceIds: readonly string[];
   readonly step: number;
@@ -14,7 +14,7 @@ export interface CubeNetUnfoldFrame extends CubeNetTeachingSnapshot {
 }
 
 /** 从当前支撑面建立次序：末端先展开，反向逐面收成立方体，每次只改变一条连接边。 */
-export function createCubeNetUnfoldMotion(snapshot: CubeNetTeachingSnapshot, hinges: readonly CubeNetWorkbenchHinge[], rootFaceId: string, targetDegrees: 0 | 90 = 0) {
+export function createCubeNetUnfoldMotion(snapshot: Pick<CubeNetTeachingSnapshot, "angles" | "anchor">, hinges: readonly CubeNetWorkbenchHinge[], rootFaceId: string, targetDegrees: 0 | 90 = 0) {
   const root = snapshot.anchor?.faceId ?? rootFaceId;
   const visited = new Set([root]);
   const traversal: { faceId: string; parentFaceId: string; edgeId: string; depth: number }[] = [];

@@ -22,33 +22,13 @@ export function cubeNetRevealFaces(closed: PolyhedronFoldRenderModel, offsets: C
 }
 export type CubeNetRevealFace = ReturnType<typeof cubeNetRevealFaces>[number];
 
-/** 按钮位于面中心外法向的投影上；正对视线时分开入口，细引线始终对应面中心。 */
-export function layoutCubeNetFaceArrows(faces: readonly CubeNetRevealFace[], camera: Camera, width: number, height: number) {
+/** 只将外法向投影为箭头朝向；位置和遮挡交给真实三维锚点。 */
+export function cubeNetFaceArrowAngle(face: CubeNetRevealFace, camera: Camera, width: number, height: number) {
   const project = (point: Vector3) => { const result = point.clone().project(camera); return { x: (result.x + 1) * width / 2, y: (1 - result.y) * height / 2 }; };
-  const view = camera.getWorldDirection(new Vector3());
-  const result = faces.map((face) => {
-    const center = project(face.center), away = project(face.position);
-    let dx = away.x - center.x, dy = away.y - center.y;
-    const length = Math.hypot(dx, dy);
-    if (length < 1) { const sign = face.normal.dot(view) < 0 ? 1 : -1; dx = sign / Math.sqrt(2); dy = sign / Math.sqrt(2); }
-    else { dx /= length; dy /= length; }
-    const gap = Math.max(64, length);
-    return { faceId: face.faceId, x: center.x + dx * gap, y: center.y + dy * gap, center,
-      angle: Math.atan2(dy, dx) * 180 / Math.PI + (face.expanded ? 180 : 0) };
-  });
-  const constrain = () => result.forEach((item) => { item.x = Math.max(30, Math.min(width - 74, item.x)); item.y = Math.max(80, Math.min(height - 60, item.y)); });
-  constrain();
-  for (let pass = 0; pass < 12; pass++) {
-    for (let a = 0; a < result.length; a++) for (let b = a + 1; b < result.length; b++) {
-      const left = result[a], right = result[b], dx = right.x - left.x, dy = right.y - left.y, distance = Math.hypot(dx, dy);
-      if (distance >= 54) continue;
-      const x = distance > 0.01 ? dx / distance : 1, y = distance > 0.01 ? dy / distance : 0;
-      const shift = (54 - distance) / 2;
-      left.x -= x * shift; left.y -= y * shift; right.x += x * shift; right.y += y * shift;
-    }
-    constrain();
-  }
-  return result;
+  const center = project(face.center), away = project(face.position);
+  const dx = away.x - center.x, dy = away.y - center.y;
+  const angle = Math.hypot(dx, dy) < 1 ? -45 : Math.atan2(dy, dx) * 180 / Math.PI;
+  return angle + (face.expanded ? 180 : 0);
 }
 
 export function revealCubeNetFaces(closed: PolyhedronFoldRenderModel, offsets: CubeNetFaceOffsets): PolyhedronFoldRenderModel {

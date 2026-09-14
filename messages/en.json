@@ -533,7 +533,7 @@
           "surfacePainting": "Surface painting · 27 cubes",
           "hollowing": "Hollowing and area · 27 cubes",
           "volumeSurface": "Volume and surface area · 4×3×2",
-          "cubeNetFold": "Cube net and folding · faces A–F"
+          "cubeNetFold": "Cube net and folding"
         }
       },
       "cubeNet": {
@@ -545,7 +545,7 @@
           "activePaper": "Paper {face} · {angle}°",
           "dragPaper": "Fold near your grip; attached paper moves with it. Drag empty space to orbit; Esc cancels.",
           "chooseNet": "All 11 cube nets",
-          "galleryWindowHint": "Keep this window open and watch each step on the canvas as you choose a net.",
+          "galleryWindowHint": "Scroll sideways through all 11 nets. The floating window stays open after selection.",
           "galleryHint": "Use the fewest planar quarter-turns to reach another net. Among equally short paths, keep as many squares in place as possible.",
           "cancelAnimation": "Cancel animation (Esc)",
           "unfolding": "Unfolding · step {step} / {total} · Esc cancels",
@@ -564,7 +564,7 @@
           "resetCuts": "Start cuts again",
           "cutError": "Unfolding did not finish. Your cuts are preserved; please try again.",
           "faceReveal": "Move faces to explore",
-          "faceRevealHint": "Click a yellow arrow to move a face out, or a green arrow to restore it. Fine lines lead to each face center. Turn off Move faces to continue cutting.",
+          "faceRevealHint": "Click a yellow arrow to move a face out, or a green arrow to restore it. Rotate to find occluded arrows. Turn off Move faces to continue cutting.",
           "faceMoving": "Moving faces · Esc cancels this move",
           "restoreFaces": "Restore all faces",
           "moveFace": "Move face {face} out",
@@ -574,7 +574,22 @@
           "redo": "Redo",
           "unfold": "Unfold all",
           "judge": "Check current fold",
-          "localOnly": "Live controls on this page; switching nets or leaving resets them.",
+          "localOnly": "Local session, reset when leaving. Changing nets preserves face styles and starts a new folding history.",
+          "recenter": "Return to origin (keep current shape)",
+          "recentering": "Returning to origin · folds and cuts preserved · Esc to cancel",
+          "surface": {
+            "mark": "Face annotations",
+            "faceHint": "Choose a color, then click a face to paint it. Drag a face or empty space to rotate the view.",
+            "transparentHint": "Click a face to apply the opacity. Then drag the slider to adjust that face. At 0%, edges remain and the face can still be selected.",
+            "markHint": "Choose letters or a shape, then click a paper face. The eraser clears annotations. Marks travel with the paper.",
+            "numberHint": "Click faces in order to number them from 1. Already-numbered faces keep their number. Numbers can sit beside annotations.",
+            "letters": "Letters A–F",
+            "selected": "Current paper: {face}",
+            "pickFace": "Click a paper face to apply these settings.",
+            "applyAll": "Apply to all six faces",
+            "restoreColor": "Restore this face's color",
+            "restoreOpacity": "Make all faces opaque"
+          },
           "results": {
             "closed": "The six faces now close into a cube.",
             "open": "The shape is not closed yet. Keep adjusting the faces’ directions and angles.",

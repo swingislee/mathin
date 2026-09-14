@@ -19,15 +19,19 @@ describe("ordered, non-modal cube-net teaching gallery", () => {
     }
     expect(groupCubeNetTeachingGallery([...entries].reverse())).toEqual(groups);
   });
-  it("keeps the window beside the viewport, has four columns, and does not close when selecting a net", () => {
+  it("uses the shared bottom floating panel and a single scrollable icon row, without closing on selection", () => {
     const source = readFileSync("src/features/tools/spatial-lab/CubeNetFoldWorkspace.tsx", "utf8");
     const window = readFileSync("src/features/tools/spatial-lab/CubeNetGalleryWindow.tsx", "utf8");
     const styles = readFileSync("src/features/tools/spatial-lab/CubeNetGalleryWindow.module.css", "utf8");
     expect(source).not.toMatch(/<Dialog|DialogContent/);
     expect(source.slice(source.indexOf("const selectEntry ="), source.indexOf("const chooseView ="))).not.toContain("setGalleryOpen(false)");
-    expect(window).toContain('<aside'); expect(window).not.toMatch(/<h3|galleryFamily|aria-modal/);
+    expect(window).toContain('<CubeCanvasPanel'); expect(window).toContain('anchor="bottom"');
+    expect(window).not.toMatch(/<h3|galleryFamily|aria-modal/);
     expect(window).toContain('viewBox={`0 0 ${columns} ${rows}`}'); expect(window).toContain('width="1" height="1"');
-    expect(styles).toContain("repeat(4, minmax(0, 1fr))"); expect(styles).not.toMatch(/position:\s*(absolute|fixed)/);
+    expect(styles).toContain("flex-wrap: nowrap"); expect(styles).toContain("overflow-x: auto");
+    expect(styles).toContain("flex: 0 0 96px"); expect(styles).not.toContain("grid-template-columns");
+    expect(source).not.toContain("galleryStyles.layout");
+    expect(source.indexOf("<CubeNetGalleryWindow")).toBeLessThan(source.indexOf('data-cube-net-animation'));
     expect(source).toContain("{ essential: true }"); expect(source).toContain("animating={playback.playing}");
   });
 });

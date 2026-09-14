@@ -16,7 +16,7 @@ import { CUBE_AXIS_COLORS, CUBE_COLORS, CUBE_MARK_SHAPES, CUBE_STRUCTURES_LIMITS
 import { createCubeDemo, createCubeSession, cubeResumeNeedsRestore, cubeSessionScene, editCubeRecording, finishCubeRecording, moveCubeRecordedStep, operateCubeSession, pauseCubeRecording, previewCubeSession, replaceCubeRecordedStep, resumeCubeRecording, startCubeRecording, undoCubeSession, type CubeWorkbenchSession } from "./cube-structures-session";
 import { cubeStructuresMessages } from "./cube-structures-messages";
 import { cubeToolCursor } from "./cube-structures-cursor";
-import { CubeAxisIcon, CubeCanvasPanel, CubeIconButton, CubeMarkIcon, CubeViewIcon } from "./CubeWorkbenchControls";
+import { CubeAxisIcon, CubeCanvasPanel, CubeColorPicker, CubeIconButton, CubeMarkIcon, CubeViewIcon } from "./CubeWorkbenchControls";
 import { CubeRecordingPanel } from "./CubeRecordingPanel";
 import { CubeOpacitySlider } from "./CubeOpacitySlider";
 import { CubeDraftPanel } from "./CubeDraftPanel";
@@ -350,7 +350,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
           </div>}
           {panel === "color" && <div className="space-y-3 text-xs">
             <p className="leading-5 text-muted">{tool === "face" ? m.faceHint : m.colorHint}</p>
-            <div className="flex flex-wrap gap-1" aria-label={m.colorLabel}>{CUBE_COLORS.map((value, index) => <CubeIconButton key={value} label={m.colors[index]} active={color === value} onClick={() => setColor(value)}><svg viewBox="0 0 24 24" aria-hidden><circle cx="12" cy="12" r="9" fill={value} stroke="currentColor" strokeWidth=".5" /></svg></CubeIconButton>)}</div>
+            <CubeColorPicker value={color} labels={m.colors} label={m.colorLabel} onChange={setColor} />
             <p>{m.currentScope}: {scopeLabel} · {targetIds.length} {m.cubeUnit}</p>
             <div className="flex flex-wrap gap-1">
               {hasTool("color") && <CubeIconButton label={m.batchColor} disabled={!editable || !targetIds.length} onClick={() => commit({ kind: "color", ids: targetIds, color })}><PaintBucket aria-hidden /></CubeIconButton>}
@@ -384,7 +384,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
             {panel === "mark" ? <div className="flex flex-wrap gap-1">{CUBE_MARK_SHAPES.map((shape) => <CubeIconButton key={shape} label={m[`${shape}Shape`]} active={markShape === shape} onClick={() => setMarkShape(shape)}><CubeMarkIcon shape={shape} /></CubeIconButton>)}</div> : <p className="font-bold tabular-nums">{m.nextNumber}: {state.nextNumber}</p>}
             <Select value={labelPlacement} onValueChange={(value) => setLabelPlacement(value as CubeLabelPlacement)}><SelectTrigger aria-label={m.labelPlacement}><SelectValue /></SelectTrigger><SelectContent>{(["side", "face", "center"] as const).map((value) => <SelectItem key={value} value={value}>{value === "face" ? m.surface : m[value]}</SelectItem>)}</SelectContent></Select>
             {labelPlacement === "center" && <p className="leading-5 text-muted">{m.centerHint}</p>}
-            <div className="flex flex-wrap gap-1">{CUBE_COLORS.map((value, index) => <CubeIconButton key={value} label={m.colors[index]} active={color === value} onClick={() => setColor(value)}><svg viewBox="0 0 24 24" aria-hidden><circle cx="12" cy="12" r="9" fill={value} stroke="currentColor" strokeWidth=".5" /></svg></CubeIconButton>)}</div>
+            <CubeColorPicker value={color} labels={m.colors} label={m.colorLabel} onChange={setColor} />
             <p>{m.currentScope}: {scopeLabel} · {targetIds.length} {m.cubeUnit}</p>
             <div className="flex flex-wrap gap-1">
               {panel === "mark" && <CubeIconButton label={m.applyMarks} disabled={!editable || !targetIds.length} onClick={() => commit({ kind: "mark", ids: targetIds, shape: markShape, placement: labelPlacement, direction: "z+", color })}><Stamp aria-hidden /></CubeIconButton>}

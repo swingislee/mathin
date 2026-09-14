@@ -5,7 +5,7 @@ import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Axis } from "@/features/spatial-math/domain";
-import { CUBE_AXIS_COLORS, type CubeMarkShape, type CubeView } from "./cube-structures-contract";
+import { CUBE_AXIS_COLORS, CUBE_COLORS, type CubeColor, type CubeMarkShape, type CubeView } from "./cube-structures-contract";
 import { CUBE_MARK_PATHS } from "./cube-structures-annotations";
 import styles from "./CubeStructuresWorkbench.module.css";
 
@@ -20,7 +20,7 @@ export function CubeIconButton({ label, active, className, ...props }: Omit<Comp
 /** 非模态工作区侧栏：位于画布内，切换鼠标工具时可以继续保留。 */
 export function CubeCanvasPanel({ title, anchor = "tool", closeLabel, onClose, children }: {
   readonly title: string; readonly closeLabel: string; readonly onClose: () => void; readonly children: ReactNode;
-  readonly anchor?: "tool" | "meta";
+  readonly anchor?: "tool" | "meta" | "bottom";
 }) {
   return <aside className={styles.panel} aria-label={title} data-cube-canvas-panel data-cube-panel-anchor={anchor}>
     <div className={styles.panelHeader}><span>{title}</span><CubeIconButton label={closeLabel} onClick={onClose}><X aria-hidden /></CubeIconButton></div>
@@ -30,6 +30,16 @@ export function CubeCanvasPanel({ title, anchor = "tool", closeLabel, onClose, c
 
 export function CubeAxisIcon({ axis }: { readonly axis: Axis }) {
   return <svg viewBox="0 0 24 24" aria-hidden style={{ color: CUBE_AXIS_COLORS[axis] }}><text x="12" y="17" textAnchor="middle" fill="currentColor" fontFamily="sans-serif" fontWeight="700" fontSize="18">{axis.toUpperCase()}</text></svg>;
+}
+
+export function CubeColorPicker({ value, labels, label, disabled, onChange }: {
+  readonly value: CubeColor; readonly labels: readonly string[]; readonly label: string;
+  readonly disabled?: boolean; readonly onChange: (value: CubeColor) => void;
+}) {
+  return <div className="flex flex-wrap gap-1" aria-label={label}>{CUBE_COLORS.map((color, index) =>
+    <CubeIconButton key={color} label={labels[index]} active={value === color} disabled={disabled} onClick={() => onChange(color)}>
+      <svg viewBox="0 0 24 24" aria-hidden><circle cx="12" cy="12" r="9" fill={color} stroke="currentColor" strokeWidth=".5" /></svg>
+    </CubeIconButton>)}</div>;
 }
 
 export function CubeMarkIcon({ shape }: { readonly shape: CubeMarkShape }) {

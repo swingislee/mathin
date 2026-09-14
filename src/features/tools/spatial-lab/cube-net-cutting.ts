@@ -7,28 +7,34 @@ import {
   type CubeNetGalleryFoldingBuild, type PolyhedronNetLayout, type PolyhedronSceneAdapterInput,
 } from "@/features/spatial-math/domain";
 import type { PolyhedronFoldRenderModel } from "@/features/spatial-math/renderer-r3f/polyhedron-fold-render-model";
+import { createCubeNetSurfaces, reduceCubeNetSurfaces, type CubeNetSurfaces, type CubeNetSurfaceOperation } from "./cube-net-surfaces";
 
 export type CubeNetCutPoses = Readonly<Record<string, readonly number[]>>;
 export interface CubeNetCutSnapshot {
   readonly cuts: readonly string[];
   readonly poses: CubeNetCutPoses;
+  readonly surfaces: CubeNetSurfaces;
 }
 export interface CubeNetCutSession extends CubeNetCutSnapshot {
   readonly past: readonly CubeNetCutSnapshot[];
   readonly future: readonly CubeNetCutSnapshot[];
 }
-export const createCubeNetCutSession = (): CubeNetCutSession => ({ cuts: [], poses: {}, past: [], future: [] });
-export function reduceCubeNetCutSession(session: CubeNetCutSession, action: { kind: "toggle"; edgeId: string } | { kind: "unfold"; poses: CubeNetCutPoses } | { kind: "undo" } | { kind: "redo" }): CubeNetCutSession {
-  const snapshot = { cuts: session.cuts, poses: session.poses };
+export const createCubeNetCutSession = (surfaces = createCubeNetSurfaces()): CubeNetCutSession => ({ cuts: [], poses: {}, surfaces, past: [], future: [] });
+export function reduceCubeNetCutSession(session: CubeNetCutSession, action: { kind: "toggle"; edgeId: string } | { kind: "unfold"; poses: CubeNetCutPoses } | { kind: "recenter"; poses: CubeNetCutPoses } | { kind: "surface"; operation: CubeNetSurfaceOperation } | { kind: "undo" } | { kind: "redo" }): CubeNetCutSession {
+  const snapshot = { cuts: session.cuts, poses: session.poses, surfaces: session.surfaces };
   if (action.kind === "undo") return session.past.length ? {
     ...session.past[session.past.length - 1], past: session.past.slice(0, -1), future: [snapshot, ...session.future],
   } : session;
   if (action.kind === "redo") return session.future.length ? {
     ...session.future[0], past: [...session.past, snapshot].slice(-100), future: session.future.slice(1),
   } : session;
-  if (action.kind === "unfold") return { ...session, poses: action.poses, past: [...session.past, snapshot].slice(-100), future: [] };
+  if (action.kind === "surface") {
+    const surfaces = reduceCubeNetSurfaces(session.surfaces, action.operation);
+    return surfaces === session.surfaces ? session : { ...session, surfaces, past: [...session.past, snapshot].slice(-100), future: [] };
+  }
+  if (action.kind === "unfold" || action.kind === "recenter") return { ...session, poses: action.poses, past: [...session.past, snapshot].slice(-100), future: [] };
   const cuts = session.cuts.includes(action.edgeId) ? session.cuts.filter((id) => id !== action.edgeId) : [...session.cuts, action.edgeId].sort();
-  return { cuts, poses: session.poses, past: [...session.past, snapshot].slice(-100), future: [] };
+  return { cuts, poses: session.poses, surfaces: session.surfaces, past: [...session.past, snapshot].slice(-100), future: [] };
 }
 
 export function analyzeCubeNetCuts(base: PolyhedronSceneAdapterInput, cuts: readonly string[]) {

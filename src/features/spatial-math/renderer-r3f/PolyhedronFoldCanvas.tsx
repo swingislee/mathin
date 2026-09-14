@@ -243,6 +243,9 @@ function FoldFace({
       >
         <meshBasicMaterial
           color={fill}
+          opacity={face.opacity ?? 1}
+          transparent={(face.opacity ?? 1) < 1}
+          depthWrite={(face.opacity ?? 1) >= 1}
           side={THREE.DoubleSide}
           toneMapped={false}
           polygonOffset
@@ -250,7 +253,7 @@ function FoldFace({
           polygonOffsetUnits={1}
         />
       </mesh>
-      {labelPositions.map((position, side) => <Html
+      {face.label && labelPositions.map((position, side) => <Html
         key={side}
         position={position}
         center

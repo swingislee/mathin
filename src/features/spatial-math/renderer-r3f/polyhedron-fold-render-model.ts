@@ -93,6 +93,7 @@ export interface PolyhedronFoldRenderFace {
   readonly faceId: string;
   readonly label: string;
   readonly materialToken: string;
+  readonly opacity?: number;
   readonly selected: boolean;
   readonly colliding: boolean;
   readonly vertices: readonly {

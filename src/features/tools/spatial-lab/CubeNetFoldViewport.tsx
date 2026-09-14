@@ -14,6 +14,9 @@ import type { CubeNetCutEdge } from "./cube-net-cutting";
 import { CubeNetCutInteraction } from "./CubeNetCutInteraction";
 import { CubeNetFaceArrows } from "./CubeNetFaceArrows";
 import type { CubeNetRevealFace } from "./cube-net-face-reveal";
+import { CubeNetFaceAnnotations } from "./CubeNetFaceAnnotations";
+import { CUBE_COLORS } from "./cube-structures-contract";
+import { styleCubeNetModel, type CubeNetSurfaces, type CubeNetSurfaceTool } from "./cube-net-surfaces";
 
 type FoldCameraControls = ComponentRef<typeof OrbitControls>;
 
@@ -23,7 +26,9 @@ export interface CubeNetFoldViewportProps {
   readonly model: PolyhedronFoldRenderModel;
   readonly hinges: readonly CubeNetWorkbenchHinge[];
   readonly activeEdgeId: string | null;
-  readonly tool: "orbit" | "pan" | "fold" | "cut";
+  readonly tool: "orbit" | "pan" | "fold" | "cut" | CubeNetSurfaceTool;
+  readonly surfaces?: CubeNetSurfaces;
+  readonly onSurfaceFaceSelect?: (faceId: string) => void;
   readonly locale: "zh" | "en";
   readonly axisSnapEnabled: boolean;
   readonly axesVisible: boolean;
@@ -168,11 +173,13 @@ function CubeNetPlaybackFrames({ active }: { readonly active: boolean }) {
 export function CubeNetFoldViewport(props: CubeNetFoldViewportProps) {
   return <PolyhedronFoldCanvas scene={props.scene} entityId={props.entityId} progress={0} locale={props.locale}
     doubleSidedLabels
-    renderModelOverride={props.model} cameraRequestKey={props.cameraRequestKey} axisSnapEnabled={props.axisSnapEnabled}
+    renderModelOverride={props.surfaces ? styleCubeNetModel(props.model, props.surfaces) : props.model} cameraRequestKey={props.cameraRequestKey} axisSnapEnabled={props.axisSnapEnabled}
+    onFaceSelect={props.onSurfaceFaceSelect}
     navigationMode={props.tool === "pan" ? "pan" : "orbit"} cameraInteractive={!props.dragging}
-    messages={props.messages} materialColors={{ "solid.primary": "#8fbf88" }}
+    messages={props.messages} materialColors={{ "solid.primary": CUBE_COLORS[0], ...Object.fromEntries(CUBE_COLORS.map((color) => [color, color])) }}
     sceneChildren={<><CubeNetPlaybackFrames active={!!props.animating} /><CubeNetFoldInteraction {...props} />
-      {props.cutEdges && <CubeNetCutInteraction model={props.model} edges={props.cutEdges} onToggle={props.onCutToggle} onOpen={props.onCutFaceOpen} blockFaces={!!props.onCutToggle || !!props.faceArrows} />}
+      {props.surfaces && <CubeNetFaceAnnotations model={props.model} surfaces={props.surfaces} />}
+      {props.cutEdges && <CubeNetCutInteraction model={props.model} edges={props.cutEdges} onToggle={props.onCutToggle} onOpen={props.onCutFaceOpen} blockFaces={!!props.onCutToggle} />}
       {props.faceArrows && <CubeNetFaceArrows faces={props.faceArrows} onMove={props.onFaceMove} />}
       {props.axesVisible && <NetAxes model={props.model} />}</>} />;
 }

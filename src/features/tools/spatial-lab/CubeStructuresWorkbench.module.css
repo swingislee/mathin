@@ -14,6 +14,11 @@
 .groups { position: absolute; z-index: 12; bottom: 8px; right: 8px; max-width: calc(100% - 16px); overflow-x: auto; white-space: nowrap; scrollbar-width: thin; }
 .panel { position: absolute; z-index: 15; top: 52px; bottom: var(--cube-dock-bottom); right: 56px; display: flex; flex-direction: column; width: min(276px, calc(100% - 66px)); max-height: 440px; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); box-shadow: 0 1px 2px rgb(0 0 0 / 5%); }
 .panel[data-cube-panel-anchor="meta"] { right: auto; left: 8px; }
+.panel[data-cube-panel-anchor="bottom"] { top: auto; bottom: 8px; left: 8px; right: 56px; width: auto; max-height: none; }
+.panel[data-cube-panel-anchor="bottom"] .panelContent { padding: 0; overflow: hidden; }
+.canvas[data-net-gallery-open="true"] .cutStatus { bottom: 144px; }
+.canvas[data-net-gallery-open="true"] .notice { bottom: 180px; }
+.toolSeparator { align-self: stretch; flex-shrink: 0; border-top: 1px solid var(--line); margin: 3px 0; }
 .panelHeader { display: flex; flex-shrink: 0; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 8px; border-bottom: 1px solid var(--line); font-size: 12px; font-weight: 600; }
 .panelContent { overflow: auto; min-height: 0; padding: 8px; scrollbar-width: thin; }
 .notice { position: absolute; z-index: 16; left: 8px; right: 60px; bottom: calc(var(--cube-dock-bottom) + 44px); border: 1px solid var(--line); border-radius: 8px; background: var(--paper); padding: 6px 8px; font-size: 11px; line-height: 1.5; }
@@ -25,6 +30,10 @@
   .panel { bottom: calc(var(--cube-dock-bottom) + 48px); right: 8px; width: min(276px, calc(100% - 16px)); }
   .notice { bottom: calc(var(--cube-dock-bottom) + 48px); right: 8px; }
   .cutStatus { bottom: calc(var(--cube-dock-bottom) + 48px); max-width: calc(100% - 16px); }
+  .panel[data-cube-panel-anchor="bottom"] { bottom: 56px; right: 8px; width: auto; }
+  .canvas[data-net-gallery-open="true"] .cutStatus { bottom: 192px; }
+  .canvas[data-net-gallery-open="true"] .notice { bottom: 228px; }
+  .toolSeparator { border-top: 0; border-left: 1px solid var(--line); margin: 0 3px; }
 }
 @media (max-width: 380px) {
   .icon { width: 26px; height: 28px; min-width: 26px; }
