@@ -8,6 +8,7 @@ import { getMyStudents } from "@/features/school/customer";
 import { SubmissionsRoster } from "@/features/classroom/assignments/SubmissionsRoster";
 import { Link } from "@/i18n/navigation";
 import { requireUser } from "@/lib/auth";
+import { buttonVariants } from "@/components/ui/button";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -28,6 +29,7 @@ export default async function AssignmentPage({
   ]);
   if (!classroom || !assignment || assignment.classroomId !== classId) notFound();
   const isTeacher = classroom.myRole === "teacher";
+  const homeworkT = await getTranslations("school.homeworkQuestions");
   const submissions = isTeacher ? await listSubmissions(assignmentId) : null;
   const [mine, myStudents] = isTeacher
     ? [null, []]
@@ -62,7 +64,7 @@ export default async function AssignmentPage({
 
       <div className="mt-8">
         {isTeacher && submissions ? (
-          <SubmissionsRoster rows={submissions} />
+          <><Link prefetch={false} className={buttonVariants({ variant: "secondary", size: "sm", className: "mb-3" })} href={`/dashboard/teaching/assignments/${assignmentId}`}>{homeworkT("title")}</Link><SubmissionsRoster rows={submissions} /></>
         ) : (
           studentId ? <SubmissionForm assignmentId={assignmentId} studentId={studentId} mine={mine} /> : null
         )}

@@ -8,7 +8,7 @@ import { FollowupInlineDetails } from "./FollowupInlineDetails";
 /** 名单与跟进共用摘要、详情及键盘作用域；业务页面只提供列和登记内容。 */
 export function FollowupRecordRow({
   rowKey, active, expanded, onExpandedChange, onActivate, pending = false, selected = false,
-  rowRef, rowProps, detailsId, title, colSpan, keepMounted, hideTitle, summary, children, onKeyDown, onOutcomeChange, onSave, focusOnActivate = false,
+  rowRef, rowProps, detailsId, title, colSpan, keepMounted, hideTitle, summary, children, onKeyDown, onOutcomeChange, onSave, focusOnActivate = false, renderDetails = true,
 }: {
   rowKey: string;
   active: boolean;
@@ -30,6 +30,8 @@ export function FollowupRecordRow({
   onOutcomeChange?: (outcome: "" | "unreachable" | "connected" | "declined" | "invalid_number") => void;
   onSave?: () => void;
   focusOnActivate?: boolean;
+  /** 分组行的子记录由同一张表排列时，保留展开与键盘语义，交由调用方呈现子行。 */
+  renderDetails?: boolean;
 }) {
   const summaryRef = useRef<HTMLTableRowElement>(null);
   useImperativeHandle(rowRef, () => summaryRef.current!, []);
@@ -60,6 +62,7 @@ export function FollowupRecordRow({
     <TableRow tabIndex={0} {...rowProps} ref={summaryRef} data-followup-row-key={rowKey}
       aria-selected={selected} aria-expanded={expanded} aria-controls={detailsId} aria-busy={pending}
       data-followup-active={active} data-followup-expanded={expanded}
+      data-followup-group={!renderDetails || undefined}
       onFocusCapture={(event) => { if (followupFocusActivatesRow(event)) onActivate?.(); rowProps?.onFocusCapture?.(event); }}
       onClick={rowProps?.onClick ?? ((event) => {
         onActivate?.();
@@ -67,10 +70,10 @@ export function FollowupRecordRow({
       })} onKeyDown={handleKeyDown}>
       {summary}
     </TableRow>
-    <FollowupInlineDetails id={detailsId} open={expanded} onOpenChange={onExpandedChange} title={title} hideTitle={hideTitle}
+    {renderDetails && <FollowupInlineDetails id={detailsId} open={expanded} onOpenChange={onExpandedChange} title={title} hideTitle={hideTitle}
       active={active} colSpan={colSpan} pending={pending} onActivate={onActivate} onKeyDown={handleKeyDown} keepMounted={keepMounted}>
       {children}
-    </FollowupInlineDetails>
+    </FollowupInlineDetails>}
   </>;
 }
 

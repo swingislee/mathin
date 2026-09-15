@@ -1,8 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { DashboardRowDisclosure } from "./DashboardRowDisclosure";
 import { Student360Trigger } from "../Student360Sheet";
 import type { Student360SubjectRef } from "../student-360-contract";
 
@@ -14,10 +13,7 @@ export function FollowupPersonCell({ name, phone, grade, owner, selection, expan
 }) {
   return <div data-followup-person data-followup-person-name-only={nameOnly || undefined} title={nameOnly ? [name, inlineGrade && grade].filter(Boolean).join(" · ") : undefined}>
     <div className="flex min-w-0 items-center gap-1">{selection}
-      <Button type="button" size="sm" variant="ghost" className="size-5 shrink-0 rounded-sm p-0"
-        aria-expanded={expanded} aria-controls={detailsId} aria-label={name} onClick={onToggle}>
-        {expanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
-      </Button>
+      <DashboardRowDisclosure expanded={expanded} controls={detailsId} label={name} onToggle={onToggle} />
       <Student360Trigger subject={subject} fallback={{ name, phone, grade: studentGrade ?? null, gradeText: grade }} className="truncate">{name}</Student360Trigger>
       {inlineGrade ? <span className="max-w-16 shrink-0 truncate text-[11px] text-muted">{grade}</span> : null}
     </div>

@@ -7,15 +7,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SubmissionsRoster } from "@/features/classroom/assignments/SubmissionsRoster";
 import type { SubmissionRecord } from "@/features/classroom/types";
 import type { SessionPublishedAssignment } from "./classes";
+import { Link } from "@/i18n/navigation";
+import { buttonVariants } from "@/components/ui/button";
 
 export interface SessionAssignmentReviewItem {
   assignment: SessionPublishedAssignment;
   submissions: SubmissionRecord[];
 }
 
-export function SessionAssignmentReviewPanel({ items }: { items: SessionAssignmentReviewItem[] }) {
+export function SessionAssignmentReviewPanel({ items, canGradeSubmissions = true }: { items: SessionAssignmentReviewItem[]; canGradeSubmissions?: boolean }) {
   const t = useTranslations("school.session");
   const assignmentT = useTranslations("classroom.assignments");
+  const homeworkT = useTranslations("school.homeworkQuestions");
 
   return (
     <section className="rounded-2xl border border-line bg-card p-4 text-sm">
@@ -44,16 +47,17 @@ export function SessionAssignmentReviewPanel({ items }: { items: SessionAssignme
               return (
                 <TabsTrigger key={assignment.id} value={assignment.id} className="min-w-0 max-w-64 gap-2">
                   <span className="truncate">{assignment.title}</span>
-                  <span className="shrink-0 text-xs text-muted">
+                  {canGradeSubmissions && <span className="shrink-0 text-xs text-muted">
                     {assignmentT("submissionCount", { done: submitted, total: submissions.length })}
-                  </span>
+                  </span>}
                 </TabsTrigger>
               );
             })}
           </TabsList>
           {items.map(({ assignment, submissions }) => (
             <TabsContent key={assignment.id} value={assignment.id}>
-              <SubmissionsRoster rows={submissions} />
+              <div className="mb-3 flex flex-wrap items-center gap-2"><Link prefetch={false} href={`/dashboard/teaching/assignments/${assignment.id}`} className={buttonVariants({ variant: "secondary", size: "sm" })}>{homeworkT("title")}</Link><span className="text-xs text-muted">{homeworkT("paperHint")}</span></div>
+              {canGradeSubmissions && <SubmissionsRoster rows={submissions} />}
             </TabsContent>
           ))}
         </Tabs>
