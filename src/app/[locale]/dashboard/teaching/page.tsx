@@ -53,7 +53,7 @@ async function TeachingContent({ locale, searchParams }: { locale: string; searc
   const contactSize = query.contactSize === "10" ? 10 : 20;
 
   return <DashboardPage title={t("title")} density="compact" commandPanel={
-    <DashboardCommandPanel>
+    <DashboardCommandPanel className={view === "records" && !sessionId ? "followup-command-panel" : undefined}>
       <DashboardCommandState>
         <RouteTabs ariaLabel={t("views")} activeValue={view} items={[
           { value: "tasks", label: t("myTasks"), href: "/dashboard/teaching?view=tasks" },

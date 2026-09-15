@@ -11,7 +11,7 @@ import {
 import type { DashboardDateContext } from "./dashboard-table-date-contract";
 import type { DashboardFieldControl, DashboardTableFieldHeaderProps } from "./DashboardTableFieldMenu";
 
-export function useDashboardFieldView<Row, Column extends string>({ rows, fields, columns, context, persistenceKey, migrate, server, sourceSort, initialQuery }: {
+export function useDashboardFieldView<Row, Column extends string>({ rows, fields, columns, context, persistenceKey, migrate, server, sourceSort, initialQuery, onQueryChange }: {
   rows: readonly Row[];
   fields: DashboardFieldDefinitions<Row>;
   columns: Record<Column, readonly string[]>;
@@ -19,6 +19,8 @@ export function useDashboardFieldView<Row, Column extends string>({ rows, fields
   persistenceKey?: string;
   migrate?: (value: unknown) => DashboardFieldQuery;
   initialQuery?: DashboardFieldQuery;
+  /** 本地字段变化可同步上游统计范围及分页。 */
+  onQueryChange?: (query: DashboardFieldQuery) => void;
   /** 后端已经给出的默认顺序只展示方向，客户端不再执行一次相同排序。 */
   sourceSort?: DashboardFieldSort;
   server?: { query: DashboardFieldQuery; facets: Record<string, DashboardFieldFacet>; onChange: (query: DashboardFieldQuery) => void };
@@ -51,6 +53,7 @@ export function useDashboardFieldView<Row, Column extends string>({ rows, fields
     setLocal(normalized);
     preference.save(normalized);
     server?.onChange(normalized);
+    onQueryChange?.(normalized);
   };
   const setFilter = (id: string, filter: DashboardFieldFilter | undefined) => {
     const filters = { ...query.filters };

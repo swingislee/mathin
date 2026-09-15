@@ -1881,6 +1881,17 @@
     "teachingWorkbench": {
       "overview": {
         "classAndLesson": "Class / lesson",
+        "fields": {
+          "students": "Students",
+          "recordedSessions": "Recorded lessons",
+          "totalSessions": "Total lessons",
+          "attendance": "Attendance (%)",
+          "learning": "Learning ratings recorded",
+          "reviewCount": "Student reviews",
+          "reviewAt": "Feedback date",
+          "contactCount": "Contact count",
+          "contactContent": "Latest contact content"
+        },
         "collapseClass": "Collapse lessons for {name}",
         "keyboardHint": "↑ ↓ Move between rows · Enter Expand / collapse · Esc Close current details",
         "filterScope": "Filters and sorting apply to classes in this period. Teacher filters recalculate their lessons. Expanded lessons stay under their class.",

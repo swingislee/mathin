@@ -104,7 +104,7 @@ export function StudentsTable({
           {table.visibleRows.map((student) => {
             const active = activeId === student.id;
             return <Fragment key={student.id}>
-            <TableRow key={student.id} aria-expanded={active} aria-controls={active ? `student-quick-entry-${student.id}` : undefined} className={active ? "bg-blue/10 hover:bg-blue/10" : undefined}>
+            <TableRow key={student.id} data-followup-active={active} aria-expanded={active} aria-controls={active ? `student-quick-entry-${student.id}` : undefined}>
               <TableCell className="px-4 py-3 font-medium">
                 <Student360Trigger
                   subject={{ studentId: student.id, leadId: null }}

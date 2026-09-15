@@ -1881,6 +1881,17 @@
     "teachingWorkbench": {
       "overview": {
         "classAndLesson": "班级 / 课次",
+        "fields": {
+          "students": "学生人数",
+          "recordedSessions": "已记录课次",
+          "totalSessions": "总课次",
+          "attendance": "到课率（%）",
+          "learning": "已记录学情",
+          "reviewCount": "课评人次",
+          "reviewAt": "反馈时间",
+          "contactCount": "沟通条数",
+          "contactContent": "最近沟通内容"
+        },
         "collapseClass": "收起{name}的课次",
         "keyboardHint": "↑ ↓ 切换行 · Enter 展开 / 收起 · Esc 收起当前详情",
         "filterScope": "筛选与排序作用于本期班级；按老师筛选会同步汇总其课次。展开后的课次保持在所属班级下。",

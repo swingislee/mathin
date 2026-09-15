@@ -1,8 +1,6 @@
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink } from "@/components/ui/pagination";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Link } from "@/i18n/navigation";
@@ -11,6 +9,7 @@ import { withReturnTo } from "../object-workspace/return-target";
 import { LEARNING_CHECK_STATUS_STYLE } from "../session-learning-visual";
 import { ATTENDANCE_STATUS_TONE } from "../attendance-visual";
 import type { TeachingRecords } from "./teaching-records-contract";
+import { DashboardTablePagination } from "../dashboard-page/DashboardTablePagination";
 import { TeachingContactPageSize } from "./TeachingContactPageSize";
 
 export function TeachingSessionRecords({ data, locale, timeZone, returnTo, currentHref, pageSize = 20, inline }: {
@@ -34,7 +33,7 @@ export function TeachingSessionRecords({ data, locale, timeZone, returnTo, curre
     params.set("contactPage", String(page));
     return `${path}?${params}`;
   };
-  return <div className={inline ? "space-y-4" : "space-y-7"}>
+  return <div className={inline ? "space-y-3 [&_section>header]:mb-2" : "space-y-7"}>
     {!inline && <DashboardSection title={`${data.session.classroomName} · ${data.session.title || workT("untitled")}`}>
       <p className="text-sm text-muted">{data.session.scheduledAt && date(data.session.scheduledAt)} · {t(data.session.endedAt ? "ended" : data.session.startedAt ? "started" : "notStarted")}</p>
       <p className="mt-2 text-xs text-muted">{t("readHint")}</p>
@@ -42,7 +41,7 @@ export function TeachingSessionRecords({ data, locale, timeZone, returnTo, curre
     </DashboardSection>}
     <DashboardSection title={t("learning")} description={t("learningHint")}>
       {data.checks.length === 0 && <p className="mb-3 text-sm text-muted">{t("noChecks")}</p>}
-      <DashboardTableShell><Table containerClassName={inline ? undefined : "max-h-[65vh] overflow-auto"}>
+      <DashboardTableShell className={inline ? "rounded-none border-0" : undefined}><Table className={inline ? "text-xs [&_th]:h-9 [&_th]:px-2 [&_td]:px-2 [&_td]:py-1.5" : undefined} containerClassName={inline ? undefined : "max-h-[65vh] overflow-auto"}>
         <TableHeader className={inline ? "bg-card" : "sticky top-0 z-10 bg-card"}><TableRow>
           <TableHead className="min-w-24">{reportT("student")}</TableHead>
           <TableHead className="min-w-28">{reportT("attendance")}</TableHead>
@@ -81,7 +80,7 @@ export function TeachingSessionRecords({ data, locale, timeZone, returnTo, curre
     </DashboardSection>
     <DashboardSection title={t("contacts")} description={t("contactsHint")}>
       {!data.canReadContacts ? <p className="text-sm text-muted">{t("contactsRestricted")}</p> : <>
-        <DashboardTableShell><Table containerClassName={inline ? undefined : "max-h-[60vh] overflow-auto"}>
+        <DashboardTableShell className={inline ? "rounded-none border-0" : undefined}><Table className={inline ? "text-xs [&_th]:h-9 [&_th]:px-2 [&_td]:px-2 [&_td]:py-1.5" : undefined} containerClassName={inline ? undefined : "max-h-[60vh] overflow-auto"}>
           <TableHeader className={inline ? "bg-card" : "sticky top-0 z-10 bg-card"}><TableRow>
             <TableHead>{reportT("student")}</TableHead><TableHead>{t("author")}</TableHead><TableHead>{t("time")}</TableHead><TableHead>{t("content")}</TableHead>
           </TableRow></TableHeader>
@@ -92,17 +91,16 @@ export function TeachingSessionRecords({ data, locale, timeZone, returnTo, curre
             <TableCell className="min-w-64 max-w-2xl whitespace-pre-wrap break-words align-top">{contact.content}</TableCell>
           </TableRow>)}</TableBody>
         </Table></DashboardTableShell>
-        <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted">
+        {inline ? <div className="mt-1.5"><DashboardTablePagination currentPage={data.contactPage} totalPages={pages} totalCount={data.contactTotal}
+          pageSize={pageSize} pageSizes={[10, 20]} onPageChange={inline.onPageChange}
+          onPageSizeChange={size => inline.onPageSizeChange(size === 10 ? 10 : 20)} /></div> : <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted">
           <span>{workT("pagination", { page: data.contactPage, pages, count: data.contactTotal })}</span>
-          {inline ? <Select value={String(pageSize)} onValueChange={value => inline.onPageSizeChange(value === "10" ? 10 : 20)}>
-            <SelectTrigger className="h-8 w-auto" aria-label={workT("pageSize")}><SelectValue /></SelectTrigger>
-            <SelectContent>{[10, 20].map(size => <SelectItem key={size} value={String(size)}>{workT("rowsPerPage", { count: size })}</SelectItem>)}</SelectContent>
-          </Select> : <TeachingContactPageSize pageSize={pageSize} currentHref={currentHref} />}
+          <TeachingContactPageSize pageSize={pageSize} currentHref={currentHref} />
           <Pagination className="w-auto" aria-label={workT("pages")}><PaginationContent>
-            {data.contactPage > 1 && <PaginationItem><PaginationLink asChild>{inline ? <Button variant="ghost" className="w-auto px-3" onClick={() => inline.onPageChange(data.contactPage - 1)}>{workT("previousPage")}</Button> : <Link href={pageHref(data.contactPage - 1)} className="w-auto px-3">{workT("previousPage")}</Link>}</PaginationLink></PaginationItem>}
-            {data.contactPage < pages && <PaginationItem><PaginationLink asChild>{inline ? <Button variant="ghost" className="w-auto px-3" onClick={() => inline.onPageChange(data.contactPage + 1)}>{workT("nextPage")}</Button> : <Link href={pageHref(data.contactPage + 1)} className="w-auto px-3">{workT("nextPage")}</Link>}</PaginationLink></PaginationItem>}
+            {data.contactPage > 1 && <PaginationItem><PaginationLink asChild><Link href={pageHref(data.contactPage - 1)} className="w-auto px-3">{workT("previousPage")}</Link></PaginationLink></PaginationItem>}
+            {data.contactPage < pages && <PaginationItem><PaginationLink asChild><Link href={pageHref(data.contactPage + 1)} className="w-auto px-3">{workT("nextPage")}</Link></PaginationLink></PaginationItem>}
           </PaginationContent></Pagination>
-        </div>
+        </div>}
       </>}
     </DashboardSection>
     {data.supportNotes.length > 0 && <DashboardSection title={t("supportNotes")} description={t("supportHint")}>

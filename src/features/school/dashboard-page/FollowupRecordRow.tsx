@@ -62,6 +62,7 @@ export function FollowupRecordRow({
     <TableRow tabIndex={0} {...rowProps} ref={summaryRef} data-followup-row-key={rowKey}
       aria-selected={selected} aria-expanded={expanded} aria-controls={detailsId} aria-busy={pending}
       data-followup-active={active} data-followup-expanded={expanded}
+      data-followup-group={!renderDetails || undefined}
       onFocusCapture={(event) => { if (followupFocusActivatesRow(event)) onActivate?.(); rowProps?.onFocusCapture?.(event); }}
       onClick={rowProps?.onClick ?? ((event) => {
         onActivate?.();

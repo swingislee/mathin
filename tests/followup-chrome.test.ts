@@ -60,7 +60,7 @@ describe("compact follow-up chrome", () => {
     expect(read("src/features/school/LeadPoolSelection.tsx")).toContain('t("selectedHidden"');
   });
 
-  it.each(["zh", "en"] as const)("groups footer metadata and 28px navigation without auto-centering in %s", async locale => {
+  it.each(["zh", "en"] as const)("groups footer metadata and existing 24px navigation without auto-centering in %s", async locale => {
     await render(createElement(LeadPoolPagination, paging), locale);
     const t = (locale === "zh" ? zh : en).school.leads;
     const footer = container.querySelector("[data-followup-pagination]")!;
@@ -70,9 +70,9 @@ describe("compact follow-up chrome", () => {
     expect(nav.className).not.toContain("mx-auto");
     expect(nav.className).not.toContain("ml-auto");
     expect(footer.textContent).toContain(locale === "zh" ? "450 条 · 3/5 页" : "450 rows · 3/5");
-    expect(container.querySelector('[role="combobox"]')?.className).toContain("h-7");
+    expect(container.querySelector('[role="combobox"]')?.className).toContain("h-6");
     expect(nav.querySelectorAll('[data-slot="pagination-link"]')).toHaveLength(7);
-    expect([...nav.querySelectorAll('[data-slot="pagination-link"]')].every(node => node.className.includes("size-7"))).toBe(true);
+    expect([...nav.querySelectorAll('[data-slot="pagination-link"]')].every(node => node.className.includes("size-6"))).toBe(true);
     expect(nav.querySelector('[aria-current="page"]')?.textContent).toBe("3");
     for (const label of [t.previous, t.next]) {
       const link = [...nav.querySelectorAll("a")].find(node => node.getAttribute("aria-label") === label)!;
@@ -81,7 +81,7 @@ describe("compact follow-up chrome", () => {
     }
     const next = [...nav.querySelectorAll("a")].find(node => node.getAttribute("aria-label") === t.next)!;
     const query = new URL(next.href).searchParams;
-    expect(Object.fromEntries(query)).toEqual({ assignment: "assigned", scope: "all", status: "uncontacted", q: "Sample", page: "4" });
+    expect(Object.fromEntries(query)).toEqual({ assignment: "assigned", scope: "all", status: "uncontacted", q: "Sample", pageSize: "100", page: "4" });
   });
 
   it("disables the boundary arrows and retains ellipsis navigation for a long list", async () => {

@@ -35,6 +35,38 @@ afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 const Provider = NextIntlClientProvider as ComponentType<PropsWithChildren<Omit<ComponentProps<typeof NextIntlClientProvider>, "children">>>;
 
 describe("inline teaching record loading", () => {
+  it("uses the workbench field menu and recalculates a class when the teacher scope changes or clears", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+    const fetcher = vi.fn(); vi.stubGlobal("fetch", fetcher);
+    const data: TeachingClassOverview = { ...overview,
+      workbench: { ...overview.workbench, sessions: [...overview.workbench.sessions, { ...overview.workbench.sessions[0], id: "second", teachers: [{ id: "substitute", name: "代课老师" }] }] },
+      metrics: [...overview.metrics, { ...overview.metrics[0], sessionId: "second" }],
+    };
+    const container = document.createElement("div"); document.body.append(container); const root = createRoot(container);
+    const click = async (element: Element | null | undefined) => { expect(element).toBeTruthy(); await act(async () => (element as HTMLElement).click()); };
+    try {
+      await act(async () => root.render(createElement(Provider, { locale: "zh", messages, timeZone: "Asia/Shanghai" }, createElement(TeachingClassOverviewTable, {
+        data, locale: "zh", timeZone: "Asia/Shanghai", returnTo: "/dashboard/teaching?view=records",
+      }))));
+      const row = () => container.querySelector('[data-teaching-level="class"]')!;
+      expect(row().textContent).toContain("已记 2/2");
+      await click(container.querySelectorAll("[data-dashboard-table-menu]")[1]);
+      const menu = document.querySelector("[data-dashboard-field-menu]");
+      expect(menu).toBeTruthy();
+      expect(container.contains(menu)).toBe(false); // 弹层离开表格滚动与固定列的堆叠范围。
+      await click(document.querySelector('[data-field-option="substitute"]'));
+      expect(row().textContent).toContain("已记 1/1");
+      expect(row().textContent).not.toContain("任课老师");
+      expect(document.querySelector('[data-field-option="teacher"]')).toBeTruthy();
+      await click([...document.querySelectorAll("[data-dashboard-field-menu] button")].find(button => button.textContent === "清除全部条件"));
+      expect(row().textContent).toContain("已记 2/2");
+      expect(row().textContent).toContain("任课老师");
+      expect(fetcher).not.toHaveBeenCalled();
+    } finally { await act(async () => root.unmount()); container.remove(); }
+  });
+
   it("loads on expansion, uses the shared detail surface and colors, and pages without navigation", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const fetcher = vi.fn(async (_url: string, init: RequestInit) => {
@@ -73,7 +105,15 @@ describe("inline teaching record loading", () => {
       const detail = container.querySelector("[data-followup-inline-details]")!;
       expect(sessionRow.querySelector("td:first-child .lucide-chevron-down")).toBeTruthy();
       expect([...detail.querySelectorAll("thead,th")].some(node => node.className.includes("sticky"))).toBe(false);
-      expect([...container.querySelectorAll('[data-slot="table-container"]')].filter(node => node.className.includes("max-h"))).toHaveLength(1);
+      expect([...container.querySelectorAll('[data-slot="table-container"]')].filter(node => node.className.includes("max-h"))).toHaveLength(0);
+      expect(container.querySelector('[data-followup-scroll] > [data-slot="table-container"]')?.className).toContain("[scrollbar-gutter:stable]");
+      expect(classRow.querySelector("td:first-child")?.className).toContain("sticky left-0 z-10");
+      expect(sessionRow.querySelector("td:first-child")?.className).toContain("sticky left-0 z-10");
+      expect(classRow.querySelector("button[aria-expanded]")?.className).toBe(sessionRow.querySelector("button[aria-expanded]")?.className);
+      expect(container.querySelector("th:first-child")?.className).toContain("left-0 z-30");
+      const footers = [...container.querySelectorAll("[data-followup-pagination]")];
+      expect(footers).toHaveLength(2);
+      expect(footers[0].className).toBe(footers[1].className);
       expect(detail.textContent).toContain("保存的沟通正文");
       expect(detail.textContent).not.toContain("返回教学记录列表");
       expect(detail.querySelector("[data-dashboard-inline-entry]")).toBeTruthy();
