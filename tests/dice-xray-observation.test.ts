@@ -18,7 +18,7 @@ describe("in-place dice X-ray observation", () => {
   it("observes the true opposite at all 24 orientations on both handed dice without moving anything", () => {
     const scene = createDiceScene();
     for (const original of scene.dice) for (const rotation of DICE_ORIENTATIONS) for (const face of DICE_FACES) {
-      const die = { ...original, rotation, offsets: { "x+": 0.18 }, faceShifts: { "x+": { x: 0.4, y: 0.3, z: -0.2 } } };
+      const die = { ...original, rotation, offsets: { "x+": 1.1 } };
       const before = JSON.stringify(die), target = nextDiceXRayTarget(null, { id: die.id, face });
       const display = diceXRayDisplay([die], target)!;
       expect(display.die).toBe(die); expect(display.face).toBe(oppositeFace(face));
@@ -33,7 +33,7 @@ describe("in-place dice X-ray observation", () => {
     const scene = createDiceScene();
     scene.dice[0].hidden = ["z-"];
     scene.dice[0].surfaces = { "z-": { color: "#df8a84", opacity: 0.35 } };
-    scene.dice[0].offsets = { "y+": 0.18 }; scene.dice[0].faceShifts = { "y+": { x: 0.4, y: 0.3, z: 0.2 } };
+    scene.dice[0].offsets = { "y+": 1.1 };
     scene.dice[1].offsets = { "x-": 0.7 };
     scene.puzzle = { scope: "each", target: 7, revealed: false };
     const history = { past: [createDiceScene()], present: scene, future: [] }, snapshot = JSON.stringify(history);
@@ -70,7 +70,7 @@ describe("in-place dice X-ray observation", () => {
 
   it("renders the same rounded face geometry and transform, keeps opacity, and gives occluders no pip material", () => {
     const dice = createDiceScene().dice;
-    dice[0].rotation = DICE_ORIENTATIONS[7]; dice[0].offsets = { "z-": 0.18 }; dice[0].faceShifts = { "z-": { x: 0.4, y: 0.2, z: -0.1 } };
+    dice[0].rotation = DICE_ORIENTATIONS[7]; dice[0].offsets = { "z-": 1.1 };
     dice[0].surfaces = { "z-": { opacity: 0.35 } };
     const display = diceXRayDisplay(dice, { id: dice[0].id, face: "z-" })!;
     const geometries = diceFaceGeometries(), edges = geometries.map((geometry) => new EdgesGeometry(geometry, 25));

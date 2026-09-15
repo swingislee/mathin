@@ -4,6 +4,7 @@ import type { DiceSurfaceStyle } from "./dice-teaching-display";
 export const DICE_TEACHING_VERSION = "dice-teaching-v1" as const;
 export const MAX_DICE = 8;
 export const DICE_BOARD_LIMIT = 6;
+export const DICE_FACE_MOVE_DISTANCE = 1.1;
 export const DICE_FACES = ["x+", "x-", "y+", "y-", "z+", "z-"] as const;
 export type DiceFace = (typeof DICE_FACES)[number];
 export type DiceHand = "right" | "left";
@@ -17,8 +18,6 @@ export interface TeachingDie {
   rotation: DiceRotation;
   hidden: DiceFace[];
   offsets: Partial<Record<DiceFace, number>>;
-  /** 观察用错位，以骰子本地坐标保存；切换选择或转动相机时保持落点。 */
-  faceShifts?: Partial<Record<DiceFace, DiceVector>>;
   surfaces?: Partial<Record<DiceFace, DiceSurfaceStyle>>;
 }
 export interface DiceFootprint { x: number; z: number; value: number; points: DiceVector[] }
@@ -51,13 +50,20 @@ export function worldNormal(die: TeachingDie, face: DiceFace): Vector3 {
   return vector(FACE_NORMALS[face]).applyQuaternion(quaternion(die.rotation));
 }
 export function diceFaceTranslation(die: TeachingDie, face: DiceFace): Vector3 {
-  return vector(FACE_NORMALS[face]).multiplyScalar(die.offsets[face] ?? 0).add(vector(die.faceShifts?.[face] ?? { x: 0, y: 0, z: 0 }));
+  return vector(FACE_NORMALS[face]).multiplyScalar(die.offsets[face] ?? 0);
 }
 export function isDiceFaceMoved(die: TeachingDie, face: DiceFace): boolean { return diceFaceTranslation(die, face).lengthSq() > 0.000001; }
+/** 沿各面的法向直线移出；距离以骰子边长为单位，与视角和浮窗位置无关。 */
+export function openDieFaces(die: TeachingDie, faces: readonly DiceFace[]): TeachingDie {
+  if (faces.every((face) => die.offsets[face] === DICE_FACE_MOVE_DISTANCE)) return die;
+  const offsets = { ...die.offsets };
+  for (const face of faces) offsets[face] = DICE_FACE_MOVE_DISTANCE;
+  return { ...die, offsets };
+}
 export function closeDieFaces(die: TeachingDie, faces: readonly DiceFace[] = DICE_FACES): TeachingDie {
-  const offsets = { ...die.offsets }, faceShifts = { ...die.faceShifts };
-  for (const face of faces) { delete offsets[face]; delete faceShifts[face]; }
-  return { ...die, offsets, faceShifts };
+  const offsets = { ...die.offsets };
+  for (const face of faces) delete offsets[face];
+  return { ...die, offsets };
 }
 export function worldFace(die: TeachingDie, direction: DiceFace, tolerance = 0.98): DiceFace | null {
   return DICE_FACES.find((face) => worldNormal(die, face).dot(vector(FACE_NORMALS[direction])) >= tolerance) ?? null;
@@ -158,20 +164,12 @@ export function interpolateDice(from: readonly TeachingDie[], to: readonly Teach
   const t = Math.max(0, Math.min(1, progress));
   return to.map((die) => {
     const previous = from.find((item) => item.id === die.id) ?? die;
-    const offsets: TeachingDie["offsets"] = {}, faceShifts: TeachingDie["faceShifts"] = {};
-    const smooth = (value: number) => { const p = Math.max(0, Math.min(1, value)); return p * p * (3 - 2 * p); };
+    const offsets: TeachingDie["offsets"] = {};
     for (const face of DICE_FACES) {
-      const start = vector(previous.faceShifts?.[face] ?? { x: 0, y: 0, z: 0 }), end = vector(die.faceShifts?.[face] ?? { x: 0, y: 0, z: 0 });
-      const opening = start.lengthSq() < 1e-8 && end.lengthSq() > 1e-8;
-      const closing = start.lengthSq() > 1e-8 && end.lengthSq() < 1e-8;
-      // 抽出后再错位；合拢沿相反的两段路径返回。旧直线移面仍按原比例插值。
-      const normalT = opening ? smooth(t / 0.22) : closing ? smooth((t - 0.78) / 0.22) : t;
-      const shiftT = opening ? smooth((t - 0.22) / 0.78) : closing ? smooth(t / 0.78) : t;
-      offsets[face] = (previous.offsets[face] ?? 0) * (1 - normalT) + (die.offsets[face] ?? 0) * normalT;
-      if (start.lengthSq() > 1e-8 || end.lengthSq() > 1e-8) faceShifts[face] = positionData(start.lerp(end, shiftT));
+      offsets[face] = (previous.offsets[face] ?? 0) * (1 - t) + (die.offsets[face] ?? 0) * t;
     }
     return { ...die, position: positionData(vector(previous.position).lerp(vector(die.position), t)), rotation: rotationData(quaternion(previous.rotation).slerp(quaternion(die.rotation), t)),
-      offsets, faceShifts };
+      offsets };
   });
 }
 

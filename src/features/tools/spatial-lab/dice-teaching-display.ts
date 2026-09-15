@@ -23,7 +23,7 @@ export type DiceFaceArrow = CubeNetRevealFace & { dieId: string; face: DiceFace 
 export function diceFaceArrow(die: TeachingDie, face: DiceFace, label: string): DiceFaceArrow {
   const normal = worldNormal(die, face), translation = diceFaceTranslation(die, face).applyQuaternion(quaternion(die.rotation));
   const center = vector(die.position).addScaledVector(normal, 0.5).add(translation), expanded = translation.lengthSq() > 0.000001;
-  const outward = expanded && die.faceShifts?.[face] ? translation.clone().normalize() : normal.clone();
+  const outward = normal.clone();
   return { dieId: die.id, face, faceId: `${die.id}/${face}`, label, normal, translation, center,
     position: center.clone().addScaledVector(outward, 0.9), expanded, direction: outward.multiplyScalar(expanded ? -1 : 1) };
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import { Component, createRef, useEffect, useImperativeHandle, useMemo, useRef, useState, type ReactNode, type Ref, type RefObject } from "react";
-import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
+import { Component, createRef, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
+import { Canvas, type ThreeEvent } from "@react-three/fiber";
 import { Html, Line } from "@react-three/drei";
 import { CanvasTexture, DoubleSide, EdgesGeometry, FrontSide, Plane, SRGBColorSpace, Vector3, type Mesh } from "three";
 import { SpatialCameraRig } from "@/features/spatial-math/renderer-r3f/SpatialCameraRig";
@@ -10,9 +10,8 @@ import { cubeWorkbenchCamera } from "./cube-workbench-camera";
 import { CubeNetFaceArrows } from "./CubeNetFaceArrows";
 import { DICE_BOARD_LIMIT, DICE_FACES, PIP_POINTS, diceFaceTranslation, faceValue, isDiceFaceMoved, quaternion, vector, worldNormal, type DiceFace, type DiceVector, type DiceFootprint, type TeachingDie } from "./dice-teaching-model";
 import { DICE_WHITE, diceFaceArrows, dicePipShades, diceSelectionMarker, diceSurface, ignoreDiceHelperRaycast } from "./dice-teaching-display";
-import { diceFaceGeometries, DICE_UV_LENGTH } from "./dice-teaching-geometry";
+import { diceFaceCorners, diceFaceGeometries, DICE_UV_LENGTH } from "./dice-teaching-geometry";
 import { diceTeachingMessages } from "./dice-teaching-messages";
-import { diceFaceCorners, planDiceFaceObservations, type DiceObservationApi } from "./dice-face-observation";
 import { DiceXRayTransition } from "./DiceXRayTransition";
 import type { DiceXRayPresentation } from "./dice-xray-animation";
 import { createDiceTapGuard, diceXRayPick, type DiceXRayTarget } from "./dice-xray-observation";
@@ -41,7 +40,6 @@ interface DiceCanvasProps {
   xrayTarget: DiceXRayTarget | null; onClearXRay: () => void;
   onXRayPresentation: (presentation: DiceXRayPresentation) => void;
   frame: CubeFrame; view: CubeView | "bottom"; cameraKey: number;
-  observationRef: Ref<DiceObservationApi>;
   onSelect: (id: string) => void; onFace: (id: string, face: DiceFace) => void; onMoveFace: (id: string, face: DiceFace) => void; onPlace: (id: string, position: DiceVector) => void;
 }
 class DiceCanvasBoundary extends Component<{ children: ReactNode; label: string }, { failed: boolean }> {
@@ -52,16 +50,6 @@ class DiceCanvasBoundary extends Component<{ children: ReactNode; label: string 
 function DiceObjects(props: DiceCanvasProps & { isTap: () => boolean }) {
   const { dice, selectedId, locale } = props;
   const m = diceTeachingMessages(locale);
-  const getThree = useThree((state) => state.get);
-  useImperativeHandle(props.observationRef, () => ({ plan: (items, id, faces) => {
-    const { camera, gl, size } = getThree();
-    const rect = gl.domElement.getBoundingClientRect(), stage = gl.domElement.closest("[data-dice-stage]");
-    const obstacles = [...(stage?.querySelectorAll("[data-dice-overlay], [data-cube-canvas-panel], [role='toolbar']") ?? [])].map((element) => {
-      const area = element.getBoundingClientRect();
-      return { left: area.left - rect.left, right: area.right - rect.left, top: area.top - rect.top, bottom: area.bottom - rect.top };
-    });
-    return planDiceFaceObservations(items, id, faces, { camera: camera.clone(), width: size.width, height: size.height, obstacles, floor: props.floor });
-  } }), [getThree, props.floor]);
   const geometries = useMemo(() => diceFaceGeometries(), []);
   const edges = useMemo(() => geometries.map((geometry) => new EdgesGeometry(geometry, 25)), [geometries]);
   const colorKey = [...new Set([DICE_WHITE, ...dice.flatMap((die) => DICE_FACES.map((face) => diceSurface(die, face).color))])].sort().join("|");
