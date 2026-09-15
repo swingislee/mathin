@@ -31,10 +31,12 @@ export async function canReadStudentBusinessHistory(locale: string): Promise<boo
 }
 
 /** 学生档案与工作表复用现有业务记录，来源锚点支持归属尚待确认的行。 */
-export async function loadStudentBusinessHistory(locale: string, options: {studentId?: string; kind?: BusinessHistoryKind} = {}): Promise<StudentBusinessHistory | null> {
+export async function loadStudentBusinessHistory(locale: string, options: {studentId?: string; kind?: BusinessHistoryKind; projection?: 'full' | 'workbench'} = {}): Promise<StudentBusinessHistory | null> {
   if (!await canReadStudentBusinessHistory(locale)) return null;
   const supabase = await createClient();
   const { studentId, kind } = options;
+  // 工作台使用名单事实及身份标签；档案与首联继续读取完整来源和关联沟通。
+  const fullContext = options.projection !== 'workbench';
   const include = (current: BusinessHistoryKind) => !kind || kind === current;
   const renewalsQuery = supabase.from('business_course_opportunities' as 'course_opportunities').select('*').not('source_record_id','is',null).eq('opportunity_type','renewal').order('period_year', {ascending:false}).order('period_key').order('id');
   const activitiesQuery = supabase.from('business_activity_registrations' as 'activity_registrations').select('*,activities!inner(id,title,kind,occurred_on)').not('source_record_id','is',null).neq('activities.kind','assessment_1v1').order('registered_on', {ascending:false, nullsFirst:false}).order('id');
@@ -45,9 +47,9 @@ export async function loadStudentBusinessHistory(locale: string, options: {stude
   const responses = await Promise.all([
     include('renewal') ? historyPages(studentId ? renewalsQuery.eq('student_id',studentId) : renewalsQuery) : none,
     include('activity') ? historyPages(studentId ? activitiesQuery.eq('student_id',studentId) : activitiesQuery) : none,
-    include('assessment') || kind==='communication' ? historyPages(studentId ? assessmentsQuery.eq('student_id',studentId) : assessmentsQuery) : none,
+    include('assessment') || (fullContext && kind==='communication') ? historyPages(studentId ? assessmentsQuery.eq('student_id',studentId) : assessmentsQuery) : none,
     include('enrollment') ? historyPages(studentId ? enrollmentsQuery.eq('student_id',studentId) : enrollmentsQuery) : none,
-    include('communication') || kind==='renewal' || kind==='activity' ? historyPages(studentId ? communicationQuery.eq('student_id',studentId) : communicationQuery) : none,
+    include('communication') || (fullContext && (kind==='renewal' || kind==='activity')) ? historyPages(studentId ? communicationQuery.eq('student_id',studentId) : communicationQuery) : none,
   ]);
   const source = (row: {id:string;student_id:string|null;lead_id?:string|null;source_record_id:string|null;source_field_ids:string[];record_state?:string}) => {
     if(!row.source_record_id) throw new Error('BUSINESS_HISTORY_SOURCE_REQUIRED');
@@ -65,7 +67,9 @@ export async function loadStudentBusinessHistory(locale: string, options: {stude
   const allRows=[...data.renewals,...data.activities,...data.assessments,...data.enrollments,...data.communications];
   if(!allRows.length)return data;
   const studentIds=[...new Set(allRows.flatMap(row=>row.student_id?[row.student_id]:[]))];
-  const sourceIds=[...new Set([...allRows.map(row=>row.source_record_id),...data.activities.flatMap(row=>row.result_source_record_id?[row.result_source_record_id]:[])])];
+  const sourceIds=[...new Set(fullContext
+    ? [...allRows.map(row=>row.source_record_id),...data.activities.flatMap(row=>row.result_source_record_id?[row.result_source_record_id]:[])]
+    : allRows.filter(row=>!row.student_id).map(row=>row.source_record_id))];
   const [students,sources]=await Promise.all([
     contextChunks(studentIds,ids=>supabase.from('students').select('id,name,phone,parent_phone,grade').in('id',ids)),
     contextChunks(sourceIds,ids=>supabase.rpc('get_business_source_records',{p_ids:ids})),
@@ -73,11 +77,11 @@ export async function loadStudentBusinessHistory(locale: string, options: {stude
   if(students.error||sources.error)throw new Error('STUDENT_BUSINESS_HISTORY_CONTEXT');
   data.students=Object.fromEntries((students.data??[]).map(student=>[student.id,student.name]));
   data.subjects=Object.fromEntries((students.data??[]).map(student=>[student.id,{name:student.name,phone:student.parent_phone||student.phone,grade:student.grade}]));
-  data.sources=Object.fromEntries((sources.data??[]).map(source=>{
+  data.sources=fullContext ? Object.fromEntries((sources.data??[]).map(source=>{
     const sourceData=source.source_data as {filename:string};
     const record=source.record_data as {tableName:string;cells:StudentBusinessHistory['sources'][string]['cells']};
     return [source.id,{filename:sourceData.filename,tableName:record.tableName,cells:record.cells}];
-  }));
+  })) : {};
   for(const row of allRows.filter(row=>!row.student_id)) {
     const raw=sources.data.find(source=>source.id===row.source_record_id)?.record_data as {names?:string[];phones?:string[];tableName?:string;cells?:{fieldName:string;text:string}[]}|undefined;
     const name=raw?.names?.[0]??'—',key=businessSubjectKey(row);

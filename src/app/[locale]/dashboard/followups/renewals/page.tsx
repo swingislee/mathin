@@ -45,7 +45,7 @@ async function RenewalsContent({
     health={raw.tab === "health"}
     allowHealthSamples={process.env.NODE_ENV === "development"}
     healthSampleMode={process.env.NODE_ENV === "development" && raw.samples === "1"}
-    history={await loadStudentBusinessHistory(locale,{kind:'renewal'})}
+    history={await loadStudentBusinessHistory(locale,{kind:'renewal',projection:'workbench'})}
     initialQuery={typeof raw.q==='string'?raw.q.slice(0,100):undefined}
     initialRecordState={businessRecordStateFilter(raw.view==='history'?'historical':raw.state)}
   />;
