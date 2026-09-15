@@ -8,6 +8,23 @@ import { DICE_FACES, DICE_FACE_MOVE_DISTANCE, DICE_ORIENTATIONS, arrangeDice, cl
 import { closeDiceFaces, diceFaceArrow, diceFaceArrows, restoreDiceScene } from "@/features/tools/spatial-lab/dice-teaching-display";
 
 describe("straight dice face movement", () => {
+  it("keeps all six faces open at 0.9 die widths without repositioning either die", () => {
+    const scene = createDiceScene(), before = JSON.stringify(scene);
+    let moved = scene.dice[0];
+    for (const face of DICE_FACES) moved = openDieFaces(moved, [face]);
+    expect(DICE_FACE_MOVE_DISTANCE).toBe(0.9);
+    expect(moved.position).toBe(scene.dice[0].position); expect(moved.rotation).toBe(scene.dice[0].rotation);
+    const middle = interpolateDice([scene.dice[0]], [moved], 0.5)[0];
+    for (const face of DICE_FACES) {
+      expect(diceFaceTranslation(moved, face).length()).toBeCloseTo(0.9);
+      expect(diceFaceTranslation(middle, face).length()).toBeCloseTo(0.45);
+    }
+    const snapshot = JSON.stringify(moved);
+    diceFaceArrows([moved, scene.dice[1]], scene.dice[1].id, () => "face");
+    expect(JSON.stringify(moved)).toBe(snapshot); expect(JSON.stringify(scene)).toBe(before);
+    expect(DICE_FACES.every((face) => !isDiceFaceMoved(closeDieFaces(moved), face))).toBe(true);
+  });
+
   it("moves every face only along its normal, including every opening and returning frame", () => {
     for (const original of createDiceScene().dice) for (const rotation of DICE_ORIENTATIONS) for (const face of DICE_FACES) {
       const before = { ...original, rotation }, after = openDieFaces(before, [face]);

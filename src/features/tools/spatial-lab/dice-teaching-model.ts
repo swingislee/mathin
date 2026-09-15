@@ -4,7 +4,7 @@ import type { DiceSurfaceStyle } from "./dice-teaching-display";
 export const DICE_TEACHING_VERSION = "dice-teaching-v1" as const;
 export const MAX_DICE = 8;
 export const DICE_BOARD_LIMIT = 6;
-export const DICE_FACE_MOVE_DISTANCE = 1.1;
+export const DICE_FACE_MOVE_DISTANCE = 0.9;
 export const DICE_FACES = ["x+", "x-", "y+", "y-", "z+", "z-"] as const;
 export type DiceFace = (typeof DICE_FACES)[number];
 export type DiceHand = "right" | "left";
