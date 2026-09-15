@@ -31,6 +31,13 @@ const fixture = (): TeachingReplay => teachingReplaySchema.parse({
 const Provider = NextIntlClientProvider as ComponentType<PropsWithChildren<Omit<ComponentProps<typeof NextIntlClientProvider>, "children">>>;
 
 describe("local production teaching replay", () => {
+  it("distinguishes pre-launch periods from uncaptured periods at the Shanghai date boundary", () => {
+    const source = teachingReplaySchema.parse({ ...fixture(), startedOn: "2026-09-07" });
+    expect(selectTeachingReplay(source, { start: "2026-08-31T16:00:00Z", end: source.from }).beforeStart).toBe(true);
+    expect(selectTeachingReplay(source, { start: source.from, end: "2026-09-06T17:00:00Z" }).beforeStart).toBe(false);
+    expect(selectTeachingReplay(source, { start: "2026-08-31T16:00:00Z", end: source.to }).beforeStart).toBe(false);
+    expect(selectTeachingReplay(fixture(), { start: "2026-08-31T16:00:00Z", end: source.from }).beforeStart).toBe(false);
+  });
   it("filters periods and contact dates without presenting uncaptured periods as complete", () => {
     const source = fixture();
     expect(selectTeachingReplay(source, { start: source.from, end: source.to }).coverage).toBe("full");

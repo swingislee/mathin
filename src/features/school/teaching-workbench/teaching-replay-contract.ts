@@ -8,6 +8,7 @@ export const TEACHING_REPLAY_ID = "2026-09-07";
 export const teachingReplaySchema = z.object({
   version: z.union([z.literal(1), z.literal(2)]), source: z.literal("production"), capturedAt: z.string(), timeZone: z.literal("Asia/Shanghai"),
   from: z.string().datetime({ offset: true }), to: z.string().datetime({ offset: true }),
+  startedOn: z.string().date().optional(),
   terms: z.array(z.object({ id: z.string().uuid(), year: z.number().int(), term: z.number().int().min(1).max(4), startsOn: z.string().nullable(), endsOn: z.string().nullable(), isCurrent: z.boolean() })).default([]),
   teachers: z.array(z.object({ id: z.string().uuid(), name: z.string() })).min(1).max(100),
   sessions: teachingClassOverviewSchema.shape.workbench.shape.sessions.max(1000),
@@ -35,7 +36,8 @@ export function selectTeachingReplay(snapshot: TeachingReplay, window: { start: 
   }));
   const coverage = start >= Date.parse(snapshot.from) && end <= Date.parse(snapshot.to) ? "full"
     : start >= Date.parse(snapshot.to) || end <= Date.parse(snapshot.from) ? "none" : "partial";
-  return { snapshot: { ...snapshot, sessions, records }, coverage };
+  const beforeStart = !!snapshot.startedOn && calendarDayKey(new Date(end - 1), snapshot.timeZone) < snapshot.startedOn;
+  return { snapshot: { ...snapshot, sessions, records }, coverage, beforeStart };
 }
 export function teachingReplayOverview(snapshot: TeachingReplay): TeachingClassOverview {
   const classContacts = new Map<string, TeachingRecords["contacts"]>();

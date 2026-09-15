@@ -1913,7 +1913,9 @@
         "earlier_week": "Previous week", "later_week": "Next week", "earlier_month": "Previous month", "later_month": "Next month", "earlier_term": "Previous term", "later_term": "Next term",
         "choose": "Choose period", "year": "Year", "termUnavailable": "The selected term has no complete date range. Choose another term, week or month.",
         "snapshotPartial": "Records have been captured only for {from} to {to}. The available part of the selected period is shown below.",
-        "snapshotNone": "This period has not been captured. Records are available for {from} to {to}; this does not mean there were no lessons or learning records in the selected period."
+        "snapshotNone": "This period has not been captured. Records are available for {from} to {to}; this does not mean there were no lessons or learning records in the selected period.",
+        "beforeStart": "The project started on {startedOn}. The selected period is before its launch.",
+        "snapshotSinceStart": "The project started on {startedOn}. Records captured since launch through {to} are shown below."
       },
       "grouping": {
         "title": "Group classes",
@@ -1924,9 +1926,8 @@
         "count": "{classes} classes · {sessions} lessons"
       },
       "replay": {
-        "allTeachers": "All teachers",
         "source": "Read-only production snapshot · captured {captured}",
-        "hint": "Review teaching records by week, month or term, grouped by grade or teacher. Performance counts recorded student-question observations. Expand classes and lessons for the original learning records and notes.",
+        "hint": "Performance counts student-question observations. Expand classes and lessons for learning records, reviews and communication.",
         "unavailable": "The local teaching snapshot is not available yet.",
         "contacts": "Student communication / context",
         "contactsHint": "Notes for this roster communicated or entered during the selected period. Notes without a communication date or author provide student context."

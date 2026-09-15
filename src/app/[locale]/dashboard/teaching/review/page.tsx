@@ -12,7 +12,7 @@ import { teachingTimeGrain, teachingTimeWindow } from "@/features/school/teachin
 import { TeachingPeriodPicker } from "@/features/school/teaching-workbench/TeachingPeriodPicker";
 import { calendarDayKey } from "@/features/school/schedule";
 
-type ReviewQuery = { teacher?: string; group?: string; period?: string; date?: string; term?: string };
+type ReviewQuery = { group?: string; period?: string; date?: string; term?: string };
 
 export default async function TeachingReviewPage({ params, searchParams }: {
   params: Promise<{ locale: string }>; searchParams: Promise<ReviewQuery>;
@@ -33,35 +33,29 @@ async function ReviewContent({ locale, searchParams }: { locale: string; searchP
   try { snapshot = await readTeachingReplay(locale); }
   catch { return <DashboardPage title={t("title")}><p role="alert" className="py-6 text-sm text-muted">{t("replay.unavailable")}</p></DashboardPage>; }
   const query = await searchParams;
-  const teacher = snapshot.teachers.find(item => item.id === query.teacher)?.id;
   const groupBy = teachingGrouping(query.group);
   const grain = teachingTimeGrain(query.period);
   const selection = query.date ?? "previous";
   const window = teachingTimeWindow(grain, selection, query.term, snapshot.terms, snapshot.timeZone);
   const href = "/dashboard/teaching/review";
-  const groupedHref = (selectedTeacher = teacher, group = groupBy) => {
+  const groupedHref = (group = groupBy) => {
     const params = new URLSearchParams({ group, period: grain, date: selection });
     if (query.term) params.set("term", query.term);
-    if (selectedTeacher) params.set("teacher", selectedTeacher);
     return `${href}?${params}`;
   };
   const captured = new Intl.DateTimeFormat(locale, { timeZone: snapshot.timeZone, month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(snapshot.capturedAt));
   const selected = window ? selectTeachingReplay(snapshot, window) : null;
   const data = selected ? teachingReplayOverview(selected.snapshot) : null;
   return <DashboardPage title={t("title")} density="compact" commandPanel={<DashboardCommandPanel className="followup-command-panel">
-    <DashboardCommandState><RouteTabs ariaLabel={t("teacher")} activeValue={teacher ?? "all"} items={[
-      { value: "all", label: t("replay.allTeachers"), href: groupedHref("") },
-      ...snapshot.teachers.map(item => ({ value: item.id, label: item.name, href: groupedHref(item.id) })),
-    ]} /><span className="text-xs text-muted">{t("replay.source", { captured })}</span></DashboardCommandState>
-    <DashboardCommandFilters><TeachingPeriodPicker key={`${grain}:${selection}:${query.term ?? ""}`} grain={grain} window={window} baseHref={groupedHref()} terms={snapshot.terms} today={calendarDayKey(new Date(), snapshot.timeZone)} />
-    <RouteTabs ariaLabel={t("grouping.title")} activeValue={groupBy} items={[
-      { value: "grade", label: t("grouping.byGrade"), href: groupedHref(teacher, "grade") },
-      { value: "teacher", label: t("grouping.byTeacher"), href: groupedHref(teacher, "teacher") },
-    ]} /></DashboardCommandFilters>
+    <DashboardCommandState><RouteTabs ariaLabel={t("grouping.title")} activeValue={groupBy} items={[
+      { value: "grade", label: t("grouping.byGrade"), href: groupedHref("grade") },
+      { value: "teacher", label: t("grouping.byTeacher"), href: groupedHref("teacher") },
+    ]} /></DashboardCommandState>
+    <DashboardCommandFilters><TeachingPeriodPicker key={`${grain}:${selection}:${query.term ?? ""}`} grain={grain} window={window} baseHref={groupedHref()} terms={snapshot.terms} today={calendarDayKey(new Date(), snapshot.timeZone)} /></DashboardCommandFilters>
   </DashboardCommandPanel>}>
-    <p className="mb-2 text-xs leading-5 text-muted">{t("replay.hint")}</p>
-    {selected && selected.coverage !== "full" && <p role="status" className="mb-3 text-xs text-muted" data-teaching-coverage={selected.coverage}>{t(selected.coverage === "none" ? "time.snapshotNone" : "time.snapshotPartial", { from: calendarDayKey(new Date(snapshot.from), snapshot.timeZone), to: calendarDayKey(new Date(Date.parse(snapshot.to) - 1), snapshot.timeZone) })}</p>}
-    {data && window && selected?.coverage !== "none" ? <TeachingClassOverviewTable key={`${teacher ?? "all"}:${groupBy}:${window.start}:${window.end}`} data={data} locale={locale} timeZone={snapshot.timeZone} returnTo={groupedHref()} initialTeacher={teacher} replayId={TEACHING_REPLAY_ID} groupBy={groupBy} replayFrom={window.start} replayTo={window.end} />
+    <div className="mb-2 flex flex-wrap justify-between gap-x-4 text-xs leading-5 text-muted"><p>{t("replay.hint")}</p><p>{t("replay.source", { captured })}</p></div>
+    {selected && selected.coverage !== "full" && <p role="status" className="mb-3 text-xs text-muted" data-teaching-coverage={selected.coverage}>{t(selected.beforeStart ? "time.beforeStart" : selected.coverage === "none" ? "time.snapshotNone" : snapshot.startedOn && window!.date < snapshot.startedOn ? "time.snapshotSinceStart" : "time.snapshotPartial", { from: calendarDayKey(new Date(snapshot.from), snapshot.timeZone), to: calendarDayKey(new Date(Date.parse(snapshot.to) - 1), snapshot.timeZone), startedOn: snapshot.startedOn ?? "" })}</p>}
+    {data && window && selected?.coverage !== "none" ? <TeachingClassOverviewTable key={`${groupBy}:${window.start}:${window.end}`} data={data} locale={locale} timeZone={snapshot.timeZone} returnTo={groupedHref()} replayId={TEACHING_REPLAY_ID} groupBy={groupBy} replayFrom={window.start} replayTo={window.end} />
       : !window && <p role="status" className="py-6 text-sm text-muted">{t("time.termUnavailable")}</p>}
   </DashboardPage>;
 }
