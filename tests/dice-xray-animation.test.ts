@@ -92,7 +92,7 @@ describe("dice X-ray teaching transitions", () => {
     const canvas = readFileSync("src/features/tools/spatial-lab/DiceTeachingCanvas.tsx", "utf8");
     expect(canvas).toContain("<DiceXRayTransition dice={dice}"); expect(canvas).not.toContain("{xray && <DiceXRay");
     expect(canvas).toContain('interactive={props.tool === "xray" && !props.busy}');
-    expect(canvas).toContain("interactive={!preview}");
+    expect(canvas).toContain("axisSnapEnabled={props.snap} interactive navigationMode=");
     const transition = readFileSync("src/features/tools/spatial-lab/DiceXRayTransition.tsx", "utf8");
     expect(transition).toContain("Math.min(delta * 1000, 50)"); expect(transition).toContain("applyDiceXRayOpacity(group.current");
     expect(transition).toContain('presentation.phase === "opening" || presentation.phase === "closing"');

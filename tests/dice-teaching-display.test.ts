@@ -1,11 +1,25 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { BoxGeometry, Euler, GridHelper, Mesh, MeshBasicMaterial, OrthographicCamera, Raycaster, Vector2, Vector3 } from "three";
+import { BoxGeometry, Color, Euler, GridHelper, Mesh, MeshBasicMaterial, OrthographicCamera, Raycaster, Vector2, Vector3 } from "three";
 import { DICE_FACES, DICE_ORIENTATIONS, createDiceScene, diceContacts, faceValue, sampleControlledRoll, turnDie } from "@/features/tools/spatial-lab/dice-teaching-model";
-import { DICE_BLACK_PIPS, DICE_RED_PIPS, closeDiceFaces, diceFaceArrows, dicePipShades, diceSelectionMarker, diceSurface, ignoreDiceHelperRaycast, restoreDiceScene, styleDiceFaces } from "@/features/tools/spatial-lab/dice-teaching-display";
+import { DICE_BLACK_PIPS, DICE_RED_PIPS, DICE_TABLE_COLOR, DICE_TABLE_RENDERING, DICE_WHITE, closeDiceFaces, diceFaceArrows, dicePipShades, diceSelectionMarker, diceSurface, ignoreDiceHelperRaycast, restoreDiceScene, styleDiceFaces } from "@/features/tools/spatial-lab/dice-teaching-display";
 import { diceTeachingMessages } from "@/features/tools/spatial-lab/dice-teaching-messages";
 
 describe("dice display feedback", () => {
+  it("draws the table and grid behind real faces without writing occluding depth", () => {
+    expect(DICE_TABLE_RENDERING.renderOrder).toBeLessThan(0); expect(DICE_TABLE_RENDERING.depthWrite).toBe(false);
+    const source = readFileSync("src/features/tools/spatial-lab/DiceTeachingCanvas.tsx", "utf8");
+    expect(source.match(/depthWrite=\{DICE_TABLE_RENDERING.depthWrite\}/g)).toHaveLength(3);
+    expect(source.match(/renderOrder=\{DICE_TABLE_RENDERING.renderOrder\}/g)).toHaveLength(3);
+    expect(source).toContain('renderOrder={DICE_TABLE_RENDERING.renderOrder + 1} material-depthWrite={false}');
+    expect(source).toContain('depthWrite={surface.opacity >= 0.99}');
+  });
+  it("uses a darker table color distinct from white dice and the supported PCF shadow mode", () => {
+    const luminance = (value: string) => { const color = new Color(value); return color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722; };
+    expect((luminance(DICE_WHITE) + 0.05) / (luminance(DICE_TABLE_COLOR) + 0.05)).toBeGreaterThan(4.5);
+    const source = readFileSync("src/features/tools/spatial-lab/DiceTeachingCanvas.tsx", "utf8");
+    expect(source).toContain('shadows="percentage"'); expect(source).not.toContain("PCFSoftShadowMap");
+  });
   it("only builds all six arrows for the selected die and preserves other moved faces", () => {
     const scene = createDiceScene();
     scene.dice[0].offsets = { "z+": 1.1 }; scene.dice[1].offsets = { "x-": 1.1 };

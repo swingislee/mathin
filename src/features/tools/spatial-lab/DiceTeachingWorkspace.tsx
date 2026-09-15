@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { Axis } from "@/features/spatial-math/domain";
+import { SpatialAxisSnapButton, useSpatialAxisSnap } from "@/features/spatial-math/renderer-r3f/SpatialCameraControls";
 import { CubeCanvasPanel, CubeColorPicker, CubeIconButton, CubeViewIcon } from "./CubeWorkbenchControls";
 import { CubeOpacitySlider } from "./CubeOpacitySlider";
 import { CUBE_WORKBENCH_VIEWS } from "./cube-workbench-camera";
@@ -18,6 +20,8 @@ import { diceXRayDisplay, nextDiceXRayTarget, type DiceXRayTarget } from "./dice
 import type { DiceXRayPresentation } from "./dice-xray-animation";
 import { useCubeNetPlayback } from "./useCubeNetPlayback";
 import { diceTeachingMessages } from "./dice-teaching-messages";
+import { commitDiceDrag } from "./dice-drag-adapter";
+import type { CubeMoveOperation } from "./cube-structures-drag";
 import { DICE_FACES, DICE_TEACHING_VERSION, FACE_NORMALS, MAX_DICE, arrangeDice, canPlaceDie, closeDieFaces, contactVisibility, controlledRoll, createDiceScene, createDie, diceContacts, faceValue, interpolateDice, isDiceFaceMoved, nearestDiceRotation, openDieFaces, oppositeFace, sampleControlledRoll, solveDicePuzzle, turnDie, worldFace, type DiceFace, type DiceHand, type DicePuzzle, type DiceScene, type DiceVector, type RollDirection, type TeachingDie } from "./dice-teaching-model";
 import styles from "./CubeStructuresWorkbench.module.css";
 import diceStyles from "./DiceTeachingWorkspace.module.css";
@@ -42,6 +46,9 @@ function Check({ label, checked, onChange, disabled }: { label: string; checked:
 }
 export default function DiceTeachingWorkspace({ locale, workspaceSelector }: { locale: string; workspaceSelector: ReactNode }) {
   const m = diceTeachingMessages(locale);
+  const structureMessages = cubeStructuresMessages(locale === "en" ? "en" : "zh");
+  const snap = useSpatialAxisSnap();
+  const [moveAxis, setMoveAxis] = useState<Axis>("x");
   const [history, setHistory] = useState<{ past: DiceScene[]; present: DiceScene; future: DiceScene[] }>(() => ({ past: [], present: createDiceScene(), future: [] }));
   const scene = history.present;
   const [selectedId, setSelectedId] = useState("dice-1");
@@ -114,6 +121,12 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector }: { l
     if (busy) return;
     if (!canPlaceDie(scene.dice, id, position)) { setNotice(m.placeBlocked); return; }
     updateDie(id, (die) => ({ ...die, position, rotation: nearestDiceRotation(die.rotation) }), true);
+  };
+  const dragCommit = (operation: CubeMoveOperation) => {
+    if (busy) return;
+    const next = commitDiceDrag(scene, operation);
+    if (!next) { setNotice(m.placeBlocked); return; }
+    setNotice(""); commit(next);
   };
   const add = (hand: DiceHand) => {
     if (busy || scene.dice.length >= MAX_DICE) return;
@@ -200,11 +213,13 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector }: { l
     <div className={styles.viewport}><div className={`${styles.canvas} ${diceStyles.canvas}`} data-dice-stage>
       <DiceTeachingCanvas dice={displayed} trail={scene.trail} selectedId={selected.id} locale={locale} tool={tool} arrows={arrows} busy={busy} grid={grid} axes={axes} floor={floor} frame={frame} view={view} cameraKey={cameraKey}
         xrayTarget={xrayTarget} onClearXRay={() => setXRayTarget(null)} onXRayPresentation={setXRayPresentation}
-        onSelect={setSelectedId} onFace={chooseFace} onMoveFace={moveFace} onPlace={place} />
+        snap={snap} moveAxis={moveAxis} onMoveAxis={setMoveAxis} onDragCommit={dragCommit} onMoveUnavailable={() => setNotice(structureMessages.moveAxisHidden)}
+        onSelect={setSelectedId} onFace={chooseFace} onMoveFace={moveFace} />
       <div className={`${styles.dock} ${styles.meta}`} data-dice-overlay><CubeIconButton label={m.settings} active={panel === "settings"} onClick={() => selectPanel("settings")}><Settings2 /></CubeIconButton><span className="self-center pr-1 text-xs">{m.title}</span></div>
       <div className={`${styles.dock} ${styles.views} ${diceStyles.views}`} role="toolbar" aria-label={m.orbit}>
         {CUBE_WORKBENCH_VIEWS.map((item) => <CubeIconButton key={item} label={m.views[item]} active={view === item} onClick={() => selectView(item)}><CubeViewIcon view={item} /></CubeIconButton>)}
         <CubeIconButton label={m.bottom} active={view === "bottom"} onClick={() => selectView("bottom")}><CubeViewIcon view="bottom" /></CubeIconButton><CubeIconButton label={m.fit} onClick={() => fit()}><Maximize /></CubeIconButton>
+        <SpatialAxisSnapButton messages={tool === "move" ? { axisSnap: structureMessages.cellSnap, enableAxisSnap: structureMessages.enableCellSnap, disableAxisSnap: structureMessages.disableCellSnap } : m} iconOnly className={styles.icon} disabled={busy} />
       </div>
       <div className={`${styles.dock} ${styles.tools}`} role="toolbar" aria-label={m.tools}>
         <CubeIconButton label={m.orbit} active={tool === "orbit"} onClick={() => navigate("orbit")}><Orbit /></CubeIconButton>
@@ -255,6 +270,7 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector }: { l
                   : <><CubeOpacitySlider key={`${selected.id}:${selectedFace}:${surfaceScope}:${opacity}`} value={opacity} label={m.opacity} disabled={busy || !surfaceFaces.length} onPreview={setOpacityPreview} onCommit={(value) => applyStyle({ opacity: value / 100 })} />{actions([{ label: m.opaque, disabled: !surfaceFaces.length, run: () => applyStyle({ opacity: 1 }) }])}</>}
               </>}
               {panel === "arrange" && <><p className="text-muted leading-5">{m.dragHint}</p>{actions([{ label: m.addRight, run: () => add("right"), disabled: scene.dice.length >= MAX_DICE }, { label: m.addLeft, run: () => add("left"), disabled: scene.dice.length >= MAX_DICE }, { label: m.remove, run: () => { commit(changed(scene.dice.filter((die) => die.id !== selected.id))); }, disabled: scene.dice.length <= 1 }])}
+                <div className="flex items-center gap-1" role="group" aria-label={structureMessages.moveAxis}><span className="mr-1">{structureMessages.moveAxis}</span>{(["x", "y", "z"] as const).map((axis) => <Button key={axis} size="sm" variant={moveAxis === axis ? "secondary" : "ghost"} disabled={busy} aria-pressed={moveAxis === axis} onClick={() => setMoveAxis(axis)}>{axis.toUpperCase()}</Button>)}</div>
                 {actions((["row", "stack", "corner", "apart"] as const).map((layout) => ({ label: m[layout], run: () => arrange(layout) })))}
                 <p>{m.move}</p>{actions(DICE_FACES.map((face) => ({ label: `${face[1]}${face[0].toUpperCase()}`, run: () => { const d = FACE_NORMALS[face]; place(selected.id, { x: selected.position.x + d.x, y: selected.position.y + d.y, z: selected.position.z + d.z }); } })))}
                 <p>{m.turn}</p>{actions((["x", "y", "z"] as const).map((axis) => ({ label: `${axis.toUpperCase()} ↻`, run: () => updateDie(selected.id, (die) => turnDie(die, axis), true) })))}

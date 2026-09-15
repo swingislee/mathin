@@ -17,6 +17,9 @@ export interface CubeMoveInteraction {
   readonly axis: Axis;
   readonly kind: CubeMoveOperation["kind"];
   readonly snapToGrid: boolean;
+  /** 复用到中心位于半格的教学实体时，指定各轴的网格起点。 */
+  readonly gridOrigin?: Partial<Record<Axis, number>>;
+  readonly isValidOperation?: (operation: CubeMoveOperation) => boolean;
   readonly onAxisChange: (axis: Axis) => void;
   readonly onSelect: (id: string) => void;
   readonly onCommit: (operation: CubeMoveOperation) => void;
@@ -63,7 +66,8 @@ export function bindCubeAxisDrag(canvas: HTMLCanvasElement, getInteraction: () =
     stop(event);
     if (!projection) { snapshot.onUnavailable(); return; }
     const anchorCube = snapshot.state.cubes.find((cube) => hit ? cube.id === hit : ids.includes(cube.id) && !snapshot.state.hiddenCubeIds.includes(cube.id));
-    const gridAnchor = snapshot.snapToGrid ? snapshot.kind === "display-move" && anchorCube ? cubeDisplayPosition(anchorCube)[axis] : 0 : undefined;
+    const gridAnchor = snapshot.snapToGrid ? anchorCube && snapshot.gridOrigin ? cubeDisplayPosition(anchorCube)[axis] - (snapshot.gridOrigin[axis] ?? 0)
+      : snapshot.kind === "display-move" && anchorCube ? cubeDisplayPosition(anchorCube)[axis] : 0 : undefined;
     gesture = { snapshot, pointerId: event.pointerId, start: { x: event.clientX, y: event.clientY }, projection, ids, axis, hit, gridAnchor, dragged: false, operation: null, cursor: canvas.style.cursor };
     canvas.setPointerCapture(event.pointerId);
     canvas.style.cursor = "grabbing";
@@ -82,7 +86,7 @@ export function bindCubeAxisDrag(canvas: HTMLCanvasElement, getInteraction: () =
     const operation = cubeDragOperation(gesture.snapshot.kind, gesture.ids, gesture.axis, distance, gesture.gridAnchor);
     gesture.operation = operation;
     pending = { positions: cubeDragPositions(gesture.snapshot.state, gesture.ids, gesture.axis, gesture.snapshot.snapToGrid ? operation?.distance ?? 0 : distance), axis: gesture.axis,
-      distance: operation?.distance ?? 0, valid: !operation || applyCubeOperation(gesture.snapshot.state, operation) !== gesture.snapshot.state };
+      distance: operation?.distance ?? 0, valid: !operation || (gesture.snapshot.isValidOperation?.(operation) ?? (applyCubeOperation(gesture.snapshot.state, operation) !== gesture.snapshot.state)) };
     if (!frame) frame = requestAnimationFrame(() => { frame = 0; if (pending && gesture) onPreview(pending); });
   };
   const up = (event: PointerEvent) => {

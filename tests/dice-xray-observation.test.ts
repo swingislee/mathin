@@ -117,7 +117,7 @@ describe("in-place dice X-ray observation", () => {
     expect(workspace).toContain('data-dice-xray={xray ? xrayPresentation.phase : "ready"}');
     const canvas = readFileSync("src/features/tools/spatial-lab/DiceTeachingCanvas.tsx", "utf8");
     expect(canvas).toContain("onPointerMissed="); expect(canvas).toContain("props.onClearXRay()");
-    expect(canvas).toContain("onPointerMoveCapture={tap.move}"); expect(canvas).toContain('navigationMode={props.tool === "pan" ? "pan" : "orbit"}');
+    expect(canvas).toContain("onPointerMoveCapture={tap.move}"); expect(canvas).toContain('navigationMode={props.tool === "pan" ? "pan" : props.tool === "move" ? "object" : "orbit"}');
     expect(canvas).toContain('props.arrows && props.tool !== "xray"');
     expect(Object.keys(diceTeachingMessages("zh"))).toEqual(Object.keys(diceTeachingMessages("en")));
   });

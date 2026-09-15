@@ -1,8 +1,12 @@
-import type { CubeColor } from "./cube-structures-contract";
+import { CUBE_COLORS, cubeGroupOutlineColor, type CubeColor } from "./cube-structures-contract";
 import type { CubeNetRevealFace } from "./cube-net-face-reveal";
 import { DICE_FACES, IDENTITY_ROTATION, arrangeDice, closeDieFaces, diceFaceTranslation, quaternion, vector, worldNormal, type DiceFace, type DiceScene, type DiceVector, type TeachingDie } from "./dice-teaching-model";
 
 export const DICE_WHITE = "#ffffff";
+export const DICE_TABLE_COLOR = cubeGroupOutlineColor(CUBE_COLORS[3]);
+export const DICE_TABLE_GRID_COLOR = CUBE_COLORS[3];
+/** 桌面是先绘制的教学参照；不写深度，让真实下移的底面保持可见。 */
+export const DICE_TABLE_RENDERING = { renderOrder: -10, depthWrite: false } as const;
 export const DICE_RED_PIPS = ["#a71e25", "#c62e36", "#dc6469"] as const;
 export const DICE_BLACK_PIPS = ["#151719", "#26292c", "#55585a"] as const;
 export function dicePipShades(value: number) { return value === 1 || value === 4 ? DICE_RED_PIPS : DICE_BLACK_PIPS; }
