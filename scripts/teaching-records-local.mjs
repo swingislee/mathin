@@ -4,13 +4,14 @@ import { openHistoryLocalTarget } from './lib/history-local-target.mjs';
 import { textFileSha256 } from './lib/text-hash.mjs';
 
 const mode = process.argv[2];
-const overview = process.argv.includes('--overview');
+const insights = process.argv.includes('--insights');
+const overview = insights || process.argv.includes('--overview');
 if (!['--preflight', '--check', '--apply'].includes(mode)) throw new Error('Use --preflight, --check or --apply');
-const output = path.resolve(overview ? '.tmp/teaching-class-overview' : '.tmp/teaching-records');
+const output = path.resolve(insights ? '.tmp/teaching-live-observations' : overview ? '.tmp/teaching-class-overview' : '.tmp/teaching-records');
 fs.mkdirSync(output, { recursive: true });
 const { sql, observed } = openHistoryLocalTarget({ attestationPath: path.join(output, 'preflight.json'), refresh: mode === '--preflight', errorFile: path.join(output, 'database-error.txt') });
 if (mode === '--preflight') { console.log(JSON.stringify(observed)); process.exit(0); }
-const version = overview ? '20260915004000_teaching_class_overview' : '20260915003000_teaching_session_records';
+const version = insights ? '20260915007000_teaching_live_observations' : overview ? '20260915004000_teaching_class_overview' : '20260915003000_teaching_session_records';
 const file = `supabase/migrations/${version}.sql`;
 const checksum = textFileSha256(file);
 const recorded = sql(`begin read only; select checksum from public.schema_migrations where version='${version}'; commit;`);
@@ -30,7 +31,8 @@ if (mode === '--check') {
   const recordChecks = fs.readFileSync('scripts/sql/teaching-records-assertions.sql', 'utf8');
   // 概览复用同一组回滚样例，只运行本次新增聚合合同。
   const checks = overview ? recordChecks.split('set local role authenticated;')[0]
-    + fs.readFileSync('scripts/sql/teaching-class-overview-assertions.sql', 'utf8') : recordChecks;
+    + fs.readFileSync('scripts/sql/teaching-class-overview-assertions.sql', 'utf8')
+    + (insights ? fs.readFileSync('scripts/sql/teaching-live-observations-assertions.sql', 'utf8') : '') : recordChecks;
   sql(`begin; set local lock_timeout='5s'; set local statement_timeout='30s';
     ${migration}
     ${settings}

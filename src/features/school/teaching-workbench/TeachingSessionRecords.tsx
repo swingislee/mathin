@@ -46,10 +46,10 @@ export function TeachingSessionRecords({ data, locale, timeZone, returnTo, curre
     </DashboardSection>}
     <DashboardSection title={t("learning")} description={t("learningHint")}>
       <div className="mb-2"><LearningCheckStatusLegend /></div>
-      {replay && <div className="mb-3 space-y-2 text-xs" data-teaching-observations>
+      <div className="mb-3 space-y-2 text-xs" data-teaching-observations>
         <div className="flex flex-wrap gap-x-8 gap-y-2"><TeachingPerformance value={observations} /><TeachingCoverage value={observations} reviewCount={reviews.size} /><TeachingFocus value={observations} /></div>
         <p className="text-muted">{workT("observations.basis")} {workT("observations.coverageHint")}</p>
-      </div>}
+      </div>
       {data.checks.length === 0 && <p className="mb-3 text-sm text-muted">{t("noChecks")}</p>}
       <DashboardTableShell className={inline ? "rounded-none border-0" : undefined}><Table className={inline ? "text-xs [&_th]:h-9 [&_th]:px-2 [&_td]:px-2 [&_td]:py-1.5" : undefined} containerClassName={inline ? undefined : "max-h-[65vh] overflow-auto"}>
         <TableHeader className={inline ? "bg-card" : "sticky top-0 z-10 bg-card"}><TableRow>
@@ -59,7 +59,7 @@ export function TeachingSessionRecords({ data, locale, timeZone, returnTo, curre
             const marked = data.results.filter(result => result.checkId === check.id);
             const supported = marked.filter(result => ["prompted", "imitated", "incomplete"].includes(result.status)).length;
             return <TableHead key={check.id} className="min-w-16 max-w-32 whitespace-normal text-center">{index + 1}. {check.title}
-              {replay && <p className="mt-0.5 text-[11px] font-normal text-muted">{workT("observations.checkCoverage", { done: marked.length, total: data.students.length, supported })}</p>}
+              <p className="mt-0.5 text-[11px] font-normal text-muted">{workT("observations.checkCoverage", { done: marked.length, total: data.students.length, supported })}</p>
             </TableHead>;
           })}
           <TableHead className="min-w-64">{t("reviews")}</TableHead>

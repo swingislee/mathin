@@ -143,10 +143,10 @@ describe("local production teaching replay", () => {
     expect(html).not.toContain("系统上课中");
   });
 
-  it("shows per-question coverage and full original text only in the lesson detail", () => {
+  it.each([true, false])("shows per-question coverage and full original text in lesson detail (replay=%s)", replay => {
     const snapshot = fixture();
     const html = renderToStaticMarkup(createElement(Provider, { locale: "zh", messages, timeZone: "Asia/Shanghai" }, createElement(TeachingSessionRecords, {
-      data: teachingReplayDetail(snapshot, id, 1, 20), locale: "zh", timeZone: "Asia/Shanghai", returnTo: "", currentHref: "", replay: true,
+      data: teachingReplayDetail(snapshot, id, 1, 20), locale: "zh", timeZone: "Asia/Shanghai", returnTo: "", currentHref: "", replay,
       inline: { onPageChange: () => {}, onPageSizeChange: () => {} },
     })));
     expect(html).toContain("已记 2/3 人 · 支持 1");
