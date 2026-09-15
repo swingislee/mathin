@@ -1,6 +1,6 @@
 # 学生与学服读取深度修复 · 2026-09-15
 
-状态：**机器检查通过，开发端已交付，待人工验收；本批尚未部署生产。** 当前阶段保持 R1-Live-2。此前三条 SQL 补丁已部署；本批是新的两条迁移及应用候选，需要按写入目标规则取得本次发布授权。
+状态：**本批已获单独授权并部署生产，发布后机器检查通过，待人工体验验收。** 2026-09-15 10:06（Asia/Shanghai）完成应用切换；当前阶段保持 R1-Live-2，正式 Gate 状态保持。
 
 ## 修复范围
 
@@ -97,13 +97,41 @@
 | `/dashboard/followups/renewals` | 业务响应 200 | 457 | 340 |
 | `/dashboard/followups/renewals?state=historical` | 业务响应 200 | 349 | 349 |
 
-## 生产发布边界
+## 生产发布结果
 
-本轮生产只读 preflight：xiaomi，应用与进程 Supabase origin 均为 `https://supabase.mathin.club`，监听 `127.0.0.1:3131`，PID 3825682；当前 release `20260913-155934` / 应用 `3d9892bb`；账本 385，head `20260914003000_student_recontact_read_path`，指纹 `10e3f97e32b018403c9074efa4e258d699530a487c47de89b5d307ab7ff21a0c`。
+用户对独立候选 `58ebc8b4`、两条新迁移、写前备份／回滚演练及应用短暂重启明确回复“现在单独发布”。此前三条迁移仅复核摘要，本批新增两条迁移，生产账本 **385 → 387**，head 为 `20260915002000_student_recontact_pages`。
 
-待授权动作是独立发布本候选：重新 preflight、生产写前备份、保存原函数与账本摘要、两条迁移事务演练并验证回滚零残留，随后应用迁移、构建与原子切换应用。应用切换需要短暂重启应用服务；数据库及其他服务不需重启。回退先切回当前已知应用 release，再在必要时按已记录定义恢复本批读取函数；不以全库恢复覆盖现行业务。三条既有迁移只核对账本摘要，不重复应用。
+- current：`20260915-015636` / `58ebc8b486aa02fe060a6ca646fbeef957cdd62c`；previous：`20260913-155934` / `3d9892bb87c2361e6662e685b606ac77a3e82e29`。
+- 应用 PID 1432122；现有 Worker 通过 `PartOf=mathin.service` 随应用切换，PID 1432123。应用与 Worker 均指向新不可变 release；数据库和 Supabase 服务保持运行。loopback 与 Caddy 健康检查通过。
+- 备份：`/home/swing/services/mathin/backups/mathin-db-prechange-20260915T015534Z-student-read-58ebc8b486aa`，350670280 字节，TOC 6503 行；SHA-256 `e877cf4f125b16cf6e50b336662af8e57a1f943d0c64ecd5ddd9b76bbe91d28f`。原读取函数定义仅保存在生产备份目录，摘要为 `ec7c3ff8b416ac2cfb7c2a2093450c03609ee3695549db16125258d59da40e46`。
+- 生产演练与正式迁移均核对 17 组既有读取、20 个新分页结果。再联系完整行与旧名单切片一致；常规学生对照保留业务事实和计数，既有缺失的协作标签／办理标志按本次修复合同单独处理。匿名、家长／学生拒绝、私有 helper ACL、表与 RLS 元数据检查通过。
+- 演练实际恢复了原函数、移除新增函数并还原账本，再确认事务回滚后业务／目录／账本零残留。正式提交后独立快照与应用启动后复核均通过，业务摘要保持，操作错误增量 0。
+- 发布后 43 项健康、双语登录及受影响路由匿名保护检查通过；journal error 增量 0。另使用固定只读 SQL 验证下方 16 个业务读取入口，跨主机仅返回固定标签及四个数字，明细保留在 PostgreSQL 内。
 
-当前没有执行本批生产上传、备份、DDL、服务重启或切换。需要按 [R1 写入目标规则](../../runbooks/r1-write-target-policy.md)取得这两条新迁移和应用发布的明确授权；前次三条 SQL 补丁授权不登记为本批授权。用户人工体验验收与正式 Gate 均保持待完成状态。
+下表是**已发布生产库的读取耗时**，不是完整页面或浏览器渲染时间。沉默旧完整读取约 4,787.5 ms，新分页 2,246.1 ms；我的未接通约 3,649 ms 降至 401.7 ms（所选管理员此范围为空）。常规全部记录仍需约 0.46–1.47 秒，较迁移前对照未显示普遍数据库提速；本批同时修复协作事实与未分配超时，不把本机改善外推为全部生产查询均更快。
+
+| 生产读取 | ms | 当前页行数 | 总数 | RPC JSON 字节 |
+| --- | ---: | ---: | ---: | ---: |
+| `work:awaiting_first_contact` | 371.6 | 20 | 95 | 22878 |
+| `work:awaiting_assessment` | 323.9 | 20 | 111 | 24671 |
+| `work:awaiting_enrollment` | 308.8 | 20 | 25 | 28372 |
+| `work:awaiting_renewal` | 374.5 | 20 | 170 | 32566 |
+| `records:awaiting_first_contact` | 1196.1 | 20 | 2262 | 24634 |
+| `records:awaiting_assessment` | 1472.4 | 20 | 2393 | 26617 |
+| `records:awaiting_enrollment` | 611.1 | 20 | 339 | 31162 |
+| `records:awaiting_renewal` | 459.8 | 20 | 171 | 33130 |
+| `recontact:unreachable` | 1241.3 | 20 | 412 | 22724 |
+| `recontact:assessed` | 1360.3 | 20 | 123 | 36479 |
+| `recontact:former` | 1363.2 | 20 | 25 | 28282 |
+| `recontact:dormant` | 2246.1 | 20 | 2441 | 28633 |
+| `recontact:mine` | 401.7 | 0 | 0 | 492 |
+| `recontact:group` | 55.5 | 0 | 0 | 463 |
+| `recontact:unassigned` | 949.1 | 20 | 411 | 22679 |
+| `records:unassigned:assessment` | 1405.8 | 20 | 2307 | 26744 |
+
+原应用与本批写前备份均保留。应用回退采用受校验的原子指针切回原 release；读取函数回退采用备份定义及经过演练的新增函数／账本反向操作，不以全库恢复覆盖现行业务。用户实际页面验收保持 pending。
+
+生产证据归档：`/home/swing/services/mathin/staging/student-read-58ebc8b486aa-20260915/evidence.tar`，220160 字节／17 文件，SHA-256 `ff574de17a3c23dae0f9cd2512c11c23d88d14d7effd2a318f007b3a028b404d`，权限 0600；由生产维护者访问，保留至用户验收后至少 30 天。内容为聚合验证、发布元数据及回退步骤，不包含学生明细或生产凭据。
 
 ## 证据摘要
 
