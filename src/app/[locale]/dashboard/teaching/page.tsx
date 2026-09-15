@@ -12,6 +12,8 @@ import { getTeachingWorkbench } from "@/features/school/teaching-workbench/teach
 import { TeachingProgressTable } from "@/features/school/teaching-workbench/TeachingProgressTable";
 import { getTeachingRecords } from "@/features/school/teaching-workbench/teaching-records-read";
 import { TeachingSessionRecords } from "@/features/school/teaching-workbench/TeachingSessionRecords";
+import { getTeachingClassOverview } from "@/features/school/teaching-workbench/teaching-class-overview-read";
+import { TeachingClassOverviewTable } from "@/features/school/teaching-workbench/TeachingClassOverviewTable";
 import { formatWorkItemReason, listMyWorkItems, resolveWorkItemHref } from "@/features/school/work-items";
 import { Link } from "@/i18n/navigation";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
@@ -109,6 +111,12 @@ async function TeachingProgress({ from, to, scope, locale, timeZone, returnTo, m
   mode: "progress" | "records"; teacher?: string; classroom?: string;
 }) {
   const t = await getTranslations("school.teachingWorkbench");
+  if (mode === "records") {
+    let overview;
+    try { overview = await getTeachingClassOverview(from, to, scope); }
+    catch { return <p role="alert" className="py-6 text-sm text-rose">{t("loadFailed")}</p>; }
+    return <TeachingClassOverviewTable key={returnTo} data={overview} locale={locale} timeZone={timeZone} returnTo={returnTo} initialTeacher={teacher} initialClassroom={classroom} />;
+  }
   let data;
   try { data = await getTeachingWorkbench(from, to, scope); }
   catch { return <p role="alert" className="py-6 text-sm text-rose">{t("loadFailed")}</p>; }
