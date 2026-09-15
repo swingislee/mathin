@@ -8,6 +8,7 @@ import {
   SPATIAL_LAB_ACTIVITIES,
   SPATIAL_LAB_CUBE_NET_FOLD_PRESET_ID,
   SPATIAL_LAB_CUBE_STRUCTURES_ID,
+  SPATIAL_LAB_DICE_ID,
   SPATIAL_LAB_PRESET_ID,
   SPATIAL_LAB_PRESETS,
   createSpatialLabInitialDraft,
@@ -89,9 +90,11 @@ describe("spatial-lab Tools acceptance prototype", () => {
       ["spatial-lab.cube-structures.v1", "cube-structures"],
       ["spatial-lab.rectangular-prism-measurement.v1", "voxel"],
       ["spatial-lab.cube-net-fold.v1", "polyhedron-fold"],
+      ["spatial-lab.dice-teaching.v1", "dice"],
     ]);
     expect(isSpatialLabVoxelPresetId(SPATIAL_LAB_CUBE_NET_FOLD_PRESET_ID)).toBe(false);
     expect(isSpatialLabVoxelPresetId(SPATIAL_LAB_CUBE_STRUCTURES_ID)).toBe(false);
+    expect(isSpatialLabVoxelPresetId(SPATIAL_LAB_DICE_ID)).toBe(false);
     expect(() =>
       (createSpatialLabPresetDraft as (value: string) => unknown)(SPATIAL_LAB_CUBE_NET_FOLD_PRESET_ID),
     ).toThrow(/unknown spatial-lab voxel preset/);

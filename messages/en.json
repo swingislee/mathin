@@ -533,7 +533,8 @@
           "surfacePainting": "Surface painting · 27 cubes",
           "hollowing": "Hollowing and area · 27 cubes",
           "volumeSurface": "Volume and surface area · 4×3×2",
-          "cubeNetFold": "Cube net and folding"
+          "cubeNetFold": "Cube net and folding",
+          "diceTeaching": "Dice teaching"
         }
       },
       "cubeNet": {

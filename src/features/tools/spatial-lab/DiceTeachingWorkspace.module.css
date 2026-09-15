@@ -1,0 +1,7 @@
+.canvas { isolation: isolate; }
+.views { max-width: calc(100% - 112px); overflow-x: auto; scrollbar-width: thin; }
+.rollDock { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 8px 12px; }
+.rollButtons { display: flex; gap: 4px; }
+.rollButtons button { min-width: 44px; min-height: 40px; gap: 3px; }
+.rollButtons svg { width: 16px; height: 16px; }
+@container (max-width: 540px) { .rollDock { gap: 6px; padding: 8px; font-size: 11px; } }

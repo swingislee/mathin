@@ -533,7 +533,8 @@
           "surfacePainting": "表面染色 · 27块",
           "hollowing": "挖空与表面积 · 27块",
           "volumeSurface": "体积与表面积 · 4×3×2",
-          "cubeNetFold": "正方体展开与折叠"
+          "cubeNetFold": "正方体展开与折叠",
+          "diceTeaching": "骰子教学"
         }
       },
       "cubeNet": {
