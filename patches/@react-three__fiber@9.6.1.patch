@@ -1,0 +1,132 @@
+diff --git a/dist/events-583399dd.cjs.prod.js b/dist/events-583399dd.cjs.prod.js
+index 3376d706b8390ba33b9360ce93a8e54b764edae5..f6567438e8a88c3f6aa76050e3c645166cfc313f 100644
+--- a/dist/events-583399dd.cjs.prod.js
++++ b/dist/events-583399dd.cjs.prod.js
+@@ -1038,7 +1038,38 @@ const createStore = (invalidate, advance) => {
+       linear: false,
+       flat: false,
+       controls: null,
+-      clock: new THREE__namespace.Clock(),
++      // 使用 Timer 计时，保留 R3F 9 的自动启动、停表与手动帧时钟合同。
++      clock: new (class extends THREE__namespace.Timer {
++        autoStart = true;
++        running = false;
++        startTime = 0;
++        oldTime = 0;
++        elapsedTime = 0;
++        start() {
++          this.reset();
++          this.startTime = this.oldTime = performance.now();
++          this.elapsedTime = 0;
++          this.running = true;
++        }
++        stop() {
++          this.getElapsedTime();
++          this.running = false;
++          this.autoStart = false;
++        }
++        getElapsedTime() {
++          this.getDelta();
++          return this.elapsedTime;
++        }
++        getDelta() {
++          if (this.autoStart && !this.running) { this.start(); return 0; }
++          if (!this.running) return 0;
++          this.update();
++          const delta = super.getDelta();
++          this.oldTime = performance.now();
++          this.elapsedTime += delta;
++          return delta;
++        }
++      })(),
+       pointer,
+       mouse: pointer,
+       frameloop: 'always',
+diff --git a/dist/events-b389eeca.esm.js b/dist/events-b389eeca.esm.js
+index 97d829566b4da2840882b7bd9615654ae4aa97c8..7c4ebfea8431f4f7359819e0add74e073d87f94f 100644
+--- a/dist/events-b389eeca.esm.js
++++ b/dist/events-b389eeca.esm.js
+@@ -1013,7 +1013,38 @@ const createStore = (invalidate, advance) => {
+       linear: false,
+       flat: false,
+       controls: null,
+-      clock: new THREE.Clock(),
++      // 使用 Timer 计时，保留 R3F 9 的自动启动、停表与手动帧时钟合同。
++      clock: new (class extends THREE.Timer {
++        autoStart = true;
++        running = false;
++        startTime = 0;
++        oldTime = 0;
++        elapsedTime = 0;
++        start() {
++          this.reset();
++          this.startTime = this.oldTime = performance.now();
++          this.elapsedTime = 0;
++          this.running = true;
++        }
++        stop() {
++          this.getElapsedTime();
++          this.running = false;
++          this.autoStart = false;
++        }
++        getElapsedTime() {
++          this.getDelta();
++          return this.elapsedTime;
++        }
++        getDelta() {
++          if (this.autoStart && !this.running) { this.start(); return 0; }
++          if (!this.running) return 0;
++          this.update();
++          const delta = super.getDelta();
++          this.oldTime = performance.now();
++          this.elapsedTime += delta;
++          return delta;
++        }
++      })(),
+       pointer,
+       mouse: pointer,
+       frameloop: 'always',
+diff --git a/dist/events-f19bcc32.cjs.dev.js b/dist/events-f19bcc32.cjs.dev.js
+index 1b04ea65a3b51b8317b6cf5a525407afdf0be180..281be2bef4a574636961dacf611f8e9d727a746d 100644
+--- a/dist/events-f19bcc32.cjs.dev.js
++++ b/dist/events-f19bcc32.cjs.dev.js
+@@ -1038,7 +1038,38 @@ const createStore = (invalidate, advance) => {
+       linear: false,
+       flat: false,
+       controls: null,
+-      clock: new THREE__namespace.Clock(),
++      // 使用 Timer 计时，保留 R3F 9 的自动启动、停表与手动帧时钟合同。
++      clock: new (class extends THREE__namespace.Timer {
++        autoStart = true;
++        running = false;
++        startTime = 0;
++        oldTime = 0;
++        elapsedTime = 0;
++        start() {
++          this.reset();
++          this.startTime = this.oldTime = performance.now();
++          this.elapsedTime = 0;
++          this.running = true;
++        }
++        stop() {
++          this.getElapsedTime();
++          this.running = false;
++          this.autoStart = false;
++        }
++        getElapsedTime() {
++          this.getDelta();
++          return this.elapsedTime;
++        }
++        getDelta() {
++          if (this.autoStart && !this.running) { this.start(); return 0; }
++          if (!this.running) return 0;
++          this.update();
++          const delta = super.getDelta();
++          this.oldTime = performance.now();
++          this.elapsedTime += delta;
++          return delta;
++        }
++      })(),
+       pointer,
+       mouse: pointer,
+       frameloop: 'always',
