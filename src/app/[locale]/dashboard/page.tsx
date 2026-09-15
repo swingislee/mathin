@@ -1,9 +1,5 @@
 import { cookies } from "next/headers";
 import { setRequestLocale } from "next-intl/server";
-import { ParentHome } from "@/features/school/home/ParentHome";
-import { StaffFactOverviewHome } from "@/features/school/home/StaffFactOverviewHome";
-import { StudentHome } from "@/features/school/home/StudentHome";
-import { TodayWorkHome } from "@/features/school/home/TodayWorkHome";
 import {
   hasStaffHomeManagementScope,
   resolveStaffHomeView,
@@ -50,14 +46,17 @@ export default async function DashboardPage({
   const requestedView = typeof rawSearchParams.view === "string" ? rawSearchParams.view : undefined;
   const user = await requireUser(locale);
   const profile = await getProfile(user.id);
-  if (!profile) return <StudentHome locale={locale} user={user} profile={profile} />;
+  if (!profile) {
+    const { StudentHome } = await import("@/features/school/home/StudentHome");
+    return <StudentHome locale={locale} user={user} profile={profile} />;
+  }
 
   const active = await getActiveEnvironment(user.id);
 
   if (active === "staff") {
-    const [perms, workItems, cookieStore] = await Promise.all([
+    const workItems = safeListMyWorkItems();
+    const [perms, cookieStore] = await Promise.all([
       getMyPerms(user.id),
-      safeListMyWorkItems(),
       cookies(),
     ]);
     const view = resolveStaffHomeView({
@@ -70,19 +69,21 @@ export default async function DashboardPage({
     const date = (typeof rawSearchParams.date === "string"
       ? rawSearchParams.date : cookieStore.get(STAFF_OVERVIEW_DATE_COOKIE)?.value ?? "current").slice(0, 20);
     if (view === "work") {
+      const { TodayWorkHome } = await import("@/features/school/home/TodayWorkHome");
       return (
         <TodayWorkHome
           locale={locale}
           user={user}
           profile={profile}
           focusTarget={focusTarget}
-          items={workItems}
+          items={await workItems}
           perms={perms}
           overviewGrain={period}
           overviewDate={date}
         />
       );
     }
+    const { StaffFactOverviewHome } = await import("@/features/school/home/StaffFactOverviewHome");
     return (
       <StaffFactOverviewHome
         locale={locale}
@@ -91,11 +92,15 @@ export default async function DashboardPage({
         focusTarget={focusTarget}
         grain={period}
         date={date}
-        workItemCount={workItems.length}
+        workItemCount={workItems.then(items => items.length)}
         organizationScope={perms.has("organization.settings.manage")}
       />
     );
   }
-  if (active === "family") return <ParentHome locale={locale} user={user} profile={profile} />;
+  if (active === "family") {
+    const { ParentHome } = await import("@/features/school/home/ParentHome");
+    return <ParentHome locale={locale} user={user} profile={profile} />;
+  }
+  const { StudentHome } = await import("@/features/school/home/StudentHome");
   return <StudentHome locale={locale} user={user} profile={profile} />;
 }

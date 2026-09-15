@@ -75,6 +75,8 @@ const nextConfig: NextConfig = {
   // the development server on 3130 remains an internal-only process.
   output: "standalone",
   experimental: {
+    // 首次请求只加载所需路由；全站条目预载会与鉴权及页面读取争用事件循环。
+    preloadEntriesOnStart: false,
     // 这里的预算只传给 Turbopack；JavaScript 堆由 pnpm dev 的 NODE_OPTIONS 单独限制。
     // 开发期文件系统缓存保持关闭。诊断与限制边界见 local-development-memory runbook。
     turbopackMemoryLimit: devTurbopackMemoryLimit,

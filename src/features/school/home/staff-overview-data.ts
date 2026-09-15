@@ -266,7 +266,14 @@ function overviewReader(sources: Set<OverviewReadSource>) {
 
 async function readOverviewCore(supabase: Awaited<ReturnType<typeof createClient>>, sources = overviewReadSources()) {
   const read = overviewReader(sources);
-  const [activities, registrations, assessments, courseEnrollments, memberships, classrooms, currentTerms] = await Promise.all([
+  const currentTermsRead = sources.has("classrooms")
+    ? Promise.resolve(supabase.from("school_terms").select("id,name").eq("is_current", true).limit(2))
+    : Promise.resolve({ data: [], error: null });
+  // 当前学期的班级范围只依赖学期读取，和其余业务事实同时进行。
+  const currentClassIdsRead = currentTermsRead.then(terms => sources.has("classrooms")
+    ? readCurrentTermClassroomIds(supabase, !terms.error && terms.data?.length === 1 ? terms.data[0].id : null)
+    : { data: [], error: null });
+  const [activities, registrations, assessments, courseEnrollments, memberships, classrooms, currentTerms, currentClassIds] = await Promise.all([
     read<OverviewActivity>("activities", () => supabase.from("business_activities" as "activities")
       .select("id,scheduled_at,occurred_on,source_invitation_id,remark,record_state").is("deleted_at", null)),
     read<OverviewRegistration>("registrations", () => supabase.from("business_activity_registrations" as "activity_registrations")
@@ -279,10 +286,9 @@ async function readOverviewCore(supabase: Awaited<ReturnType<typeof createClient
       .select("id,classroom_id,student_id,joined_at,status,remark")),
     read<ClassroomRow>("classrooms", () => supabase.from("classrooms")
       .select("id,name,grade,capacity,archived_at,trashed_at").eq("purpose", "production")),
-    sources.has("classrooms") ? supabase.from("school_terms").select("id,name").eq("is_current", true).limit(2) : Promise.resolve({ data: [], error: null }),
+    currentTermsRead,
+    currentClassIdsRead,
   ]);
-  const termId = !currentTerms.error && currentTerms.data?.length === 1 ? currentTerms.data[0].id : null;
-  const currentClassIds = sources.has("classrooms") ? await readCurrentTermClassroomIds(supabase, termId) : { data: [], error: null };
   return { activities, registrations, assessments, courseEnrollments, memberships, classrooms, currentTerms, currentClassIds };
 }
 

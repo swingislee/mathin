@@ -149,6 +149,21 @@ export function overviewFactInPeriod(event: StaffOverviewFactEvent, window: Staf
   return instant >= start && instant < cutoff;
 }
 
+/** 同一统计批次只换算一次周期月份，避免对每条历史事实重复执行时区格式化。 */
+function overviewPeriodMatcher(window: StaffOverviewWindow) {
+  const months = window.grain === "month" ? {
+    current: calendarDayKey(window.currentStart, window.timeZone ?? "Asia/Shanghai").slice(0, 7),
+    previous: calendarDayKey(window.previousStart, window.timeZone ?? "Asia/Shanghai").slice(0, 7),
+  } : null;
+  return (event: StaffOverviewFactEvent, period: "current" | "previous") => {
+    if (months && event.sourceMonth !== undefined) return event.sourceMonth === months[period];
+    const start = period === "current" ? window.currentStart : window.previousStart;
+    const cutoff = period === "current" ? window.currentCutoff : window.previousCutoff;
+    const instant = new Date(event.at);
+    return instant >= start && instant < cutoff;
+  };
+}
+
 export interface StaffOverviewTrendPoint {
   currentDate: string | null;
   previousDate: string | null;
@@ -216,6 +231,7 @@ export function aggregateStaffOverviewEvents(
   timeZone: string,
   uniquePerPeriod = false,
 ): StaffOverviewComparison {
+  const inPeriod = overviewPeriodMatcher(window);
   const currentIndex = new Map(window.currentDays.map((day, index) => [calendarDayKey(day, timeZone), index]));
   const previousIndex = new Map(window.previousDays.map((day, index) => [calendarDayKey(day, timeZone), index]));
   const pointCount = Math.max(window.currentDays.length, window.previousDays.length);
@@ -238,8 +254,8 @@ export function aggregateStaffOverviewEvents(
   const orderedEvents = uniquePerPeriod ? [...events].sort((a, b) => Date.parse(a.at) - Date.parse(b.at)) : events;
   for (const event of orderedEvents) {
     const instant = new Date(event.at);
-    const inCurrent = overviewFactInPeriod(event, window, "current");
-    const inPrevious = overviewFactInPeriod(event, window, "previous");
+    const inCurrent = inPeriod(event, "current");
+    const inPrevious = inPeriod(event, "previous");
     const inPreviousTrend = instant >= window.previousStart && instant < previousTrendCutoff;
     if (!inCurrent && !inPrevious && !inPreviousTrend) continue;
     const period = inCurrent ? "current" : "previous";
@@ -283,13 +299,14 @@ export function aggregateStaffOverviewEventsByPerson(
   window: StaffOverviewWindow,
   uniquePerPeriod = false,
 ): StaffOverviewPersonComparison[] {
+  const inPeriod = overviewPeriodMatcher(window);
   const result = new Map<string, StaffOverviewPersonComparison>();
   const seen = new Set<string>();
   const unassignedKey = "__unassigned__";
 
   for (const event of events) {
-    const inCurrent = overviewFactInPeriod(event, window, "current");
-    const inPrevious = overviewFactInPeriod(event, window, "previous");
+    const inCurrent = inPeriod(event, "current");
+    const inPrevious = inPeriod(event, "previous");
     if (!inCurrent && !inPrevious) continue;
 
     const period = inCurrent ? "current" : "previous";
