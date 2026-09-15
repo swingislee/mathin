@@ -1,6 +1,6 @@
 import type { CubeColor } from "./cube-structures-contract";
 import type { CubeNetRevealFace } from "./cube-net-face-reveal";
-import { DICE_FACES, IDENTITY_ROTATION, arrangeDice, vector, worldNormal, type DiceFace, type DiceScene, type DiceVector, type TeachingDie } from "./dice-teaching-model";
+import { DICE_FACES, IDENTITY_ROTATION, arrangeDice, closeDieFaces, diceFaceTranslation, quaternion, vector, worldNormal, type DiceFace, type DiceScene, type DiceVector, type TeachingDie } from "./dice-teaching-model";
 
 export const DICE_WHITE = "#ffffff";
 export const DICE_RED_PIPS = ["#a71e25", "#c62e36", "#dc6469"] as const;
@@ -14,19 +14,21 @@ export function styleDiceFaces(dice: readonly TeachingDie[], id: string, faces: 
   return dice.map((die) => die.id === id ? { ...die, surfaces: { ...die.surfaces, ...Object.fromEntries(faces.map((face) => [face, { ...die.surfaces?.[face], ...style }])) } } : die);
 }
 /** 移面复原只合拢六面，保留摆放、题设、点数显隐与教学样式。 */
-export function closeDiceFaces(scene: DiceScene): DiceScene { return { ...scene, dice: scene.dice.map((die) => ({ ...die, offsets: {} })) }; }
+export function closeDiceFaces(scene: DiceScene): DiceScene { return { ...scene, dice: scene.dice.map((die) => closeDieFaces(die)) }; }
 /** 整体复原保留老师添加的骰子及手性，以一个可撤销步骤恢复白色、朝向与点数。 */
 export function restoreDiceScene(scene: DiceScene): DiceScene {
   return { ...scene, trail: [], puzzle: null, dice: arrangeDice(scene.dice, "apart").map((die) => ({ ...die, rotation: { ...IDENTITY_ROTATION }, hidden: [], offsets: {}, surfaces: {} })) };
 }
 export type DiceFaceArrow = CubeNetRevealFace & { dieId: string; face: DiceFace };
+export function diceFaceArrow(die: TeachingDie, face: DiceFace, label: string): DiceFaceArrow {
+  const normal = worldNormal(die, face), translation = diceFaceTranslation(die, face).applyQuaternion(quaternion(die.rotation));
+  const center = vector(die.position).addScaledVector(normal, 0.5).add(translation), expanded = translation.lengthSq() > 0.000001;
+  const outward = expanded && die.faceShifts?.[face] ? translation.clone().normalize() : normal.clone();
+  return { dieId: die.id, face, faceId: `${die.id}/${face}`, label, normal, translation, center,
+    position: center.clone().addScaledVector(outward, 0.9), expanded, direction: outward.multiplyScalar(expanded ? -1 : 1) };
+}
 export function diceFaceArrows(dice: readonly TeachingDie[], selectedId: string, label: (die: TeachingDie, face: DiceFace) => string): DiceFaceArrow[] {
-  return dice.filter((die) => die.id === selectedId).flatMap((die) => DICE_FACES.map((face) => {
-    const normal = worldNormal(die, face), offset = die.offsets[face] ?? 0;
-    const center = vector(die.position).addScaledVector(normal, 0.5 + offset);
-    return { dieId: die.id, face, faceId: `${die.id}/${face}`, label: label(die, face), normal, translation: normal.clone().multiplyScalar(offset), center,
-      position: center.clone().addScaledVector(normal, 0.9), expanded: offset > 0, direction: normal.clone().multiplyScalar(offset > 0 ? -1 : 1) };
-  }));
+  return dice.filter((die) => die.id === selectedId).flatMap((die) => DICE_FACES.map((face) => diceFaceArrow(die, face, label(die, face))));
 }
 /** 装饰网格／坐标／选中提示不参与拾取或遮挡判定。 */
 export function ignoreDiceHelperRaycast() {}

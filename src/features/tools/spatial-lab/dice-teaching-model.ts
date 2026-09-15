@@ -17,6 +17,8 @@ export interface TeachingDie {
   rotation: DiceRotation;
   hidden: DiceFace[];
   offsets: Partial<Record<DiceFace, number>>;
+  /** 观察用错位，以骰子本地坐标保存；切换选择或转动相机时保持落点。 */
+  faceShifts?: Partial<Record<DiceFace, DiceVector>>;
   surfaces?: Partial<Record<DiceFace, DiceSurfaceStyle>>;
 }
 export interface DiceFootprint { x: number; z: number; value: number; points: DiceVector[] }
@@ -47,6 +49,15 @@ export function createDiceScene(): DiceScene {
 }
 export function worldNormal(die: TeachingDie, face: DiceFace): Vector3 {
   return vector(FACE_NORMALS[face]).applyQuaternion(quaternion(die.rotation));
+}
+export function diceFaceTranslation(die: TeachingDie, face: DiceFace): Vector3 {
+  return vector(FACE_NORMALS[face]).multiplyScalar(die.offsets[face] ?? 0).add(vector(die.faceShifts?.[face] ?? { x: 0, y: 0, z: 0 }));
+}
+export function isDiceFaceMoved(die: TeachingDie, face: DiceFace): boolean { return diceFaceTranslation(die, face).lengthSq() > 0.000001; }
+export function closeDieFaces(die: TeachingDie, faces: readonly DiceFace[] = DICE_FACES): TeachingDie {
+  const offsets = { ...die.offsets }, faceShifts = { ...die.faceShifts };
+  for (const face of faces) { delete offsets[face]; delete faceShifts[face]; }
+  return { ...die, offsets, faceShifts };
 }
 export function worldFace(die: TeachingDie, direction: DiceFace, tolerance = 0.98): DiceFace | null {
   return DICE_FACES.find((face) => worldNormal(die, face).dot(vector(FACE_NORMALS[direction])) >= tolerance) ?? null;
@@ -81,7 +92,7 @@ export function isGridDie(die: TeachingDie): boolean {
     && Math.abs(quaternion(die.rotation).dot(quaternion(nearestDiceRotation(die.rotation)))) > 0.99999;
 }
 export function arrangeDice(dice: readonly TeachingDie[], layout: "row" | "stack" | "corner" | "apart"): TeachingDie[] {
-  return dice.map((die, index) => ({ ...die, offsets: {}, rotation: nearestDiceRotation(die.rotation), position: layout === "stack"
+  return dice.map((die, index) => ({ ...closeDieFaces(die), rotation: nearestDiceRotation(die.rotation), position: layout === "stack"
     ? { x: 0, y: index + 0.5, z: 0 }
     : layout === "corner" ? { x: index < 3 ? index - 1 : 1, y: 0.5, z: index < 3 ? 0 : index - 2 }
       : layout === "apart" ? { x: (index % 4 - (Math.min(dice.length, 4) - 1) / 2) * 2, y: 0.5, z: (Math.floor(index / 4) - (Math.ceil(dice.length / 4) - 1) / 2) * 2 }
@@ -124,11 +135,11 @@ export function sampleControlledRoll(die: TeachingDie, direction: RollDirection,
   const d = vector(FACE_NORMALS[direction]);
   const pivot = vector(die.position).addScaledVector(d, 0.5).add(new Vector3(0, -0.5, 0));
   const q = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0).cross(d), Math.max(0, Math.min(1, progress)) * Math.PI / 2);
-  return { ...die, offsets: {}, position: positionData(vector(die.position).sub(pivot).applyQuaternion(q).add(pivot)), rotation: rotationData(q.multiply(quaternion(die.rotation)).normalize()) };
+  return { ...closeDieFaces(die), position: positionData(vector(die.position).sub(pivot).applyQuaternion(q).add(pivot)), rotation: rotationData(q.multiply(quaternion(die.rotation)).normalize()) };
 }
 export function controlledRoll(scene: DiceScene, id: string, direction: RollDirection, leaveTrail: boolean): DiceScene | null {
   const die = scene.dice.find((item) => item.id === id);
-  if (!die || !isGridDie(die) || Math.abs(die.position.y - 0.5) > 0.001 || DICE_FACES.some((face) => (die.offsets[face] ?? 0) > 0.01)) return null;
+  if (!die || !isGridDie(die) || Math.abs(die.position.y - 0.5) > 0.001 || DICE_FACES.some((face) => isDiceFaceMoved(die, face))) return null;
   const next = sampleControlledRoll(die, direction, 1);
   next.position = { x: Math.round(next.position.x), y: 0.5, z: Math.round(next.position.z) };
   next.rotation = nearestDiceRotation(next.rotation);
@@ -147,8 +158,20 @@ export function interpolateDice(from: readonly TeachingDie[], to: readonly Teach
   const t = Math.max(0, Math.min(1, progress));
   return to.map((die) => {
     const previous = from.find((item) => item.id === die.id) ?? die;
+    const offsets: TeachingDie["offsets"] = {}, faceShifts: TeachingDie["faceShifts"] = {};
+    const smooth = (value: number) => { const p = Math.max(0, Math.min(1, value)); return p * p * (3 - 2 * p); };
+    for (const face of DICE_FACES) {
+      const start = vector(previous.faceShifts?.[face] ?? { x: 0, y: 0, z: 0 }), end = vector(die.faceShifts?.[face] ?? { x: 0, y: 0, z: 0 });
+      const opening = start.lengthSq() < 1e-8 && end.lengthSq() > 1e-8;
+      const closing = start.lengthSq() > 1e-8 && end.lengthSq() < 1e-8;
+      // 抽出后再错位；合拢沿相反的两段路径返回。旧直线移面仍按原比例插值。
+      const normalT = opening ? smooth(t / 0.22) : closing ? smooth((t - 0.78) / 0.22) : t;
+      const shiftT = opening ? smooth((t - 0.22) / 0.78) : closing ? smooth(t / 0.78) : t;
+      offsets[face] = (previous.offsets[face] ?? 0) * (1 - normalT) + (die.offsets[face] ?? 0) * normalT;
+      if (start.lengthSq() > 1e-8 || end.lengthSq() > 1e-8) faceShifts[face] = positionData(start.lerp(end, shiftT));
+    }
     return { ...die, position: positionData(vector(previous.position).lerp(vector(die.position), t)), rotation: rotationData(quaternion(previous.rotation).slerp(quaternion(die.rotation), t)),
-      offsets: Object.fromEntries(DICE_FACES.map((face) => [face, (previous.offsets[face] ?? 0) * (1 - t) + (die.offsets[face] ?? 0) * t])) };
+      offsets, faceShifts };
   });
 }
 
@@ -178,7 +201,7 @@ export function solveDicePuzzle(dice: readonly TeachingDie[], scope: DicePuzzle[
   if (!contacts.length) return { ok: false, reason: "no-contacts" };
   if (!Number.isInteger(target) || target < 2 || target > (scope === "each" ? 12 : contacts.length * 12)) return { ok: false, reason: "impossible" };
   const offset = Math.floor(random() * 24) % 24;
-  const options = dice.map((die) => DICE_ORIENTATIONS.map((_, i) => ({ ...die, rotation: DICE_ORIENTATIONS[(i + offset) % 24], offsets: {} })));
+  const options = dice.map((die) => DICE_ORIENTATIONS.map((_, i) => ({ ...closeDieFaces(die), rotation: DICE_ORIENTATIONS[(i + offset) % 24] })));
   if (scope === "total") {
     let sums = new Map<number, TeachingDie[]>([[0, []]]);
     for (let i = 0; i < dice.length; i++) {

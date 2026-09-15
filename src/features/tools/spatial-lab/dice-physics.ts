@@ -1,5 +1,5 @@
 import type RAPIER from "@dimforge/rapier3d-compat";
-import { DICE_BOARD_LIMIT, interpolateDice, worldFace, type TeachingDie } from "./dice-teaching-model";
+import { DICE_BOARD_LIMIT, closeDieFaces, interpolateDice, worldFace, type TeachingDie } from "./dice-teaching-model";
 
 let engine: Promise<typeof RAPIER> | undefined;
 function loadEngine() {
@@ -30,7 +30,7 @@ export async function simulateDiceThrow(dice: readonly TeachingDie[], random = M
       world.createCollider(physics.ColliderDesc.roundCuboid(0.415, 0.415, 0.415, 0.085).setFriction(0.75).setRestitution(0.32).setDensity(1), body);
       return body;
     });
-    const snapshot = () => dice.map((die, index) => ({ ...die, position: { ...bodies[index].translation() }, rotation: { ...bodies[index].rotation() }, offsets: {} }));
+    const snapshot = () => dice.map((die, index) => ({ ...closeDieFaces(die), position: { ...bodies[index].translation() }, rotation: { ...bodies[index].rotation() } }));
     const frames: TeachingDie[][] = [snapshot()];
     for (let step = 0; step < 1440; step++) {
       if (cancelled()) throw new Error("dice-throw-cancelled");

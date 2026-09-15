@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Dices, Droplets, Eye, Footprints, GitCompareArrows, Hand, LocateFixed, Maximize, Move, Move3D, Orbit, Paintbrush, Redo2, RotateCcw, Settings2, Shapes, Undo2 } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Dices, Droplets, Eye, Footprints, GitCompareArrows, Hand, LocateFixed, Maximize, Move, Move3D, Orbit, Paintbrush, Redo2, RotateCcw, ScanFace, Settings2, Shapes, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -12,20 +12,28 @@ import { CubeOpacitySlider } from "./CubeOpacitySlider";
 import { CUBE_WORKBENCH_VIEWS } from "./cube-workbench-camera";
 import { CUBE_COLORS, type CubeColor, type CubeFrame, type CubeView } from "./cube-structures-contract";
 import { cubeStructuresMessages } from "./cube-structures-messages";
-import { closeDiceFaces, diceSurface, restoreDiceScene, styleDiceFaces, type DiceSurfaceStyle } from "./dice-teaching-display";
+import { closeDiceFaces, diceFaceArrow, diceSurface, restoreDiceScene, styleDiceFaces, type DiceSurfaceStyle } from "./dice-teaching-display";
+import { DiceFaceInspection } from "./DiceFaceInspection";
+import type { DiceObservationApi, DiceObservationFailure } from "./dice-face-observation";
 import { useCubeNetPlayback } from "./useCubeNetPlayback";
 import { diceTeachingMessages } from "./dice-teaching-messages";
-import { DICE_FACES, DICE_TEACHING_VERSION, FACE_NORMALS, MAX_DICE, arrangeDice, canPlaceDie, contactVisibility, controlledRoll, createDiceScene, createDie, diceContacts, faceValue, interpolateDice, nearestDiceRotation, oppositeFace, sampleControlledRoll, solveDicePuzzle, turnDie, worldFace, type DiceFace, type DiceHand, type DicePuzzle, type DiceScene, type DiceVector, type RollDirection, type TeachingDie } from "./dice-teaching-model";
+import { DICE_FACES, DICE_TEACHING_VERSION, FACE_NORMALS, MAX_DICE, arrangeDice, canPlaceDie, closeDieFaces, contactVisibility, controlledRoll, createDiceScene, createDie, diceContacts, faceValue, interpolateDice, isDiceFaceMoved, nearestDiceRotation, oppositeFace, sampleControlledRoll, solveDicePuzzle, turnDie, worldFace, type DiceFace, type DiceHand, type DicePuzzle, type DiceScene, type DiceVector, type RollDirection, type TeachingDie } from "./dice-teaching-model";
 import styles from "./CubeStructuresWorkbench.module.css";
 import diceStyles from "./DiceTeachingWorkspace.module.css";
 
 const DiceTeachingCanvas = dynamic(() => import("./DiceTeachingCanvas"), { ssr: false });
-type Panel = "settings" | "arrange" | "pips" | "opposite" | "puzzle" | "roll" | "throwing" | "color" | "transparent" | "restore" | null;
+type Panel = "settings" | "arrange" | "pips" | "opposite" | "puzzle" | "roll" | "throwing" | "color" | "transparent" | "restore" | "observe" | null;
 const easing = (t: number) => t * t * (3 - 2 * t);
 const topOnly = (dice: TeachingDie[]) => dice.map((die) => ({ ...die, hidden: DICE_FACES.filter((face) => face !== worldFace(die, "y+")) }));
 function fitFrame(dice: readonly TeachingDie[]): CubeFrame {
   const min = { x: Infinity, y: Infinity, z: Infinity }, max = { x: -Infinity, y: -Infinity, z: -Infinity };
-  dice.forEach((die) => { for (const axis of ["x", "y", "z"] as const) { min[axis] = Math.min(min[axis], die.position[axis] - 1.3); max[axis] = Math.max(max[axis], die.position[axis] + 1.3); } });
+  dice.forEach((die) => {
+    for (const axis of ["x", "y", "z"] as const) { min[axis] = Math.min(min[axis], die.position[axis] - 1.3); max[axis] = Math.max(max[axis], die.position[axis] + 1.3); }
+    for (const face of DICE_FACES.filter((item) => isDiceFaceMoved(die, item))) {
+      const point = diceFaceArrow(die, face, "").center;
+      for (const axis of ["x", "y", "z"] as const) { min[axis] = Math.min(min[axis], point[axis] - 1); max[axis] = Math.max(max[axis], point[axis] + 1); }
+    }
+  });
   return { center: { x: (min.x + max.x) / 2, y: (min.y + max.y) / 2, z: (min.z + max.z) / 2 }, radius: Math.max(2, (max.x - min.x) / 2, (max.y - min.y) / 2, (max.z - min.z) / 2) };
 }
 function Check({ label, checked, onChange, disabled }: { label: string; checked: boolean; onChange: (value: boolean) => void; disabled?: boolean }) {
@@ -38,12 +46,15 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector }: { l
   const [selectedId, setSelectedId] = useState("dice-1");
   const selected = scene.dice.find((die) => die.id === selectedId) ?? scene.dice[0];
   const [panel, setPanel] = useState<Panel>(null);
-  const [tool, setTool] = useState<"orbit" | "pan" | "move" | "pips" | "color" | "transparent">("orbit");
+  const [tool, setTool] = useState<"orbit" | "pan" | "move" | "pips" | "color" | "transparent" | "inspect">("orbit");
   const [color, setColor] = useState<CubeColor>(CUBE_COLORS[0]);
   const [surfaceScope, setSurfaceScope] = useState<"face" | "die">("face");
   const [surfaceTarget, setSurfaceTarget] = useState<{ id: string; face: DiceFace } | null>(null);
   const [opacityPreview, setOpacityPreview] = useState<number | null>(null);
   const [arrows, setArrows] = useState(false);
+  const observationRef = useRef<DiceObservationApi>(null);
+  const [inspectionFace, setInspectionFace] = useState<DiceFace>("y+");
+  const [observationOffer, setObservationOffer] = useState<DiceObservationFailure | null>(null);
   const [grid, setGrid] = useState(true), [axes, setAxes] = useState(false), [floor, setFloor] = useState(true);
   const [view, setView] = useState<CubeView | "bottom">("angle");
   const [cameraKey, setCameraKey] = useState(0);
@@ -72,7 +83,7 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector }: { l
   }, [cancel]);
   const animate = (next: DiceScene, duration = 650, clearNotice = true) => {
     if (busy) return;
-    if (clearNotice) setNotice("");
+    if (clearNotice) { setNotice(""); setObservationOffer(null); }
     const from = scene.dice;
     playback.start({ durationMs: duration, sample: (elapsed) => interpolateDice(from, next.dice, easing(elapsed / duration)), onFinish: () => commit(next) });
   };
@@ -80,8 +91,8 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector }: { l
   const selectPanel = (next: Exclude<Panel, null>) => {
     const open = panel !== next;
     setPanel(open ? next : null);
-    setTool(!open ? "orbit" : next === "arrange" ? "move" : ["pips", "color", "transparent"].includes(next) ? next as "pips" | "color" | "transparent" : "orbit");
-    setNotice(""); setOpacityPreview(null);
+    setTool(!open ? "orbit" : next === "arrange" ? "move" : next === "observe" ? "inspect" : ["pips", "color", "transparent"].includes(next) ? next as "pips" | "color" | "transparent" : "orbit");
+    setNotice(""); setObservationOffer(null); setOpacityPreview(null);
   };
   const closePanel = () => { setPanel(null); setTool("orbit"); setOpacityPreview(null); };
   const fit = (dice = scene.dice) => { const bounds = fitFrame(dice); setFrame({ ...bounds, radius: bounds.radius + (arrows ? 1 : 0) }); setCameraKey((key) => key + 1); };
@@ -113,15 +124,29 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector }: { l
   const chooseFace = (id: string, face: DiceFace) => {
     if (busy) return;
     setSurfaceTarget({ id, face }); setOpacityPreview(null);
+    if (tool === "inspect") setInspectionFace(face);
     if (tool === "pips") toggleFace(id, face);
     if (tool === "color") commit({ ...scene, dice: styleDiceFaces(scene.dice, id, surfaceScope === "die" ? DICE_FACES : [face], { color }) });
   };
-  const moveFace = (id: string, face: DiceFace) => animate({ ...scene, dice: scene.dice.map((die) => die.id === id ? { ...die, offsets: { ...die.offsets, [face]: (die.offsets[face] ?? 0) > 0 ? 0 : 1.1 } } : die) });
-  const movePair = () => animate({ ...scene, dice: scene.dice.map((die) => die.id === selected.id ? { ...die, offsets: { ...die.offsets, [pairFace]: 1.1, [oppositeFace(pairFace)]: 1.1 } } : die) });
-  const closeFaces = () => animate({ ...scene, dice: scene.dice.map((die) => die.id === selected.id ? { ...die, offsets: {} } : die) });
+  const inspect = (id: string, face: DiceFace) => { setSelectedId(id); setInspectionFace(face); setPanel("observe"); setTool("inspect"); setOpacityPreview(null); setNotice(""); setObservationOffer(null); };
+  const openFaces = (id: string, faces: readonly DiceFace[]) => {
+    if (busy) return;
+    const result = observationRef.current?.plan(scene.dice, id, faces);
+    if (!result) return;
+    const failure = result.failures[0] ?? null;
+    setObservationOffer(failure); setNotice(failure ? failure.reason === "side-on" ? m.sideOn : m.noObservationSpace : "");
+    if (result.dice.some((die, index) => die !== scene.dice[index])) animate({ ...scene, dice: result.dice }, 850, !failure);
+  };
+  const moveFace = (id: string, face: DiceFace) => {
+    const die = scene.dice.find((item) => item.id === id);
+    if (!die || busy) return;
+    if (isDiceFaceMoved(die, face)) animate({ ...scene, dice: scene.dice.map((item) => item.id === id ? closeDieFaces(item, [face]) : item) }, 850);
+    else openFaces(id, [face]);
+  };
+  const movePair = () => openFaces(selected.id, [pairFace, oppositeFace(pairFace)]);
+  const closeFaces = () => animate({ ...scene, dice: scene.dice.map((die) => die.id === selected.id ? closeDieFaces(die) : die) }, 850);
   const toggleArrows = () => {
     if (busy) return;
-    if (!arrows) { const bounds = fitFrame(scene.dice); setFrame({ ...bounds, radius: bounds.radius + 1 }); setCameraKey((key) => key + 1); }
     setArrows((value) => !value);
   };
   const roll = (direction: RollDirection) => {
@@ -164,10 +189,10 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector }: { l
   const worldFaces = DICE_FACES.map((direction) => ({ direction, face: worldFace({ ...selected, rotation: nearestDiceRotation(selected.rotation) }, direction) }));
   const actions = (items: readonly { label: string; run: () => void; disabled?: boolean }[]) => <div className="flex flex-wrap gap-1">{items.map((item) => <Button key={item.label} type="button" size="sm" variant="secondary" disabled={busy || item.disabled} onClick={item.run}>{item.label}</Button>)}</div>;
   return <section className={styles.workspace} data-dice-teaching={DICE_TEACHING_VERSION}>
-    <div className={styles.viewport}><div className={`${styles.canvas} ${diceStyles.canvas}`}>
+    <div className={styles.viewport}><div className={`${styles.canvas} ${diceStyles.canvas}`} data-dice-stage>
       <DiceTeachingCanvas dice={displayed} trail={scene.trail} selectedId={selected.id} locale={locale} tool={tool} arrows={arrows} busy={busy} grid={grid} axes={axes} floor={floor} frame={frame} view={view} cameraKey={cameraKey}
-        onSelect={setSelectedId} onFace={chooseFace} onMoveFace={moveFace} onPlace={place} />
-      <div className={`${styles.dock} ${styles.meta}`}><CubeIconButton label={m.settings} active={panel === "settings"} onClick={() => selectPanel("settings")}><Settings2 /></CubeIconButton><span className="self-center pr-1 text-xs">{m.title}</span></div>
+        observationRef={observationRef} onSelect={setSelectedId} onFace={chooseFace} onMoveFace={moveFace} onPlace={place} />
+      <div className={`${styles.dock} ${styles.meta}`} data-dice-overlay><CubeIconButton label={m.settings} active={panel === "settings"} onClick={() => selectPanel("settings")}><Settings2 /></CubeIconButton><span className="self-center pr-1 text-xs">{m.title}</span></div>
       <div className={`${styles.dock} ${styles.views} ${diceStyles.views}`} role="toolbar" aria-label={m.orbit}>
         {CUBE_WORKBENCH_VIEWS.map((item) => <CubeIconButton key={item} label={m.views[item]} active={view === item} onClick={() => selectView(item)}><CubeViewIcon view={item} /></CubeIconButton>)}
         <CubeIconButton label={m.bottom} active={view === "bottom"} onClick={() => selectView("bottom")}><CubeViewIcon view="bottom" /></CubeIconButton><CubeIconButton label={m.fit} onClick={() => fit()}><Maximize /></CubeIconButton>
@@ -178,6 +203,7 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector }: { l
         <CubeIconButton label={m.reset} disabled={busy} onClick={() => { arrange("apart"); setView("angle"); }}><LocateFixed /></CubeIconButton>
         <CubeIconButton label={m.arrange} active={panel === "arrange"} onClick={() => selectPanel("arrange")}><Move /></CubeIconButton>
         <CubeIconButton label={m.arrows} active={arrows} disabled={busy} onClick={toggleArrows}><Move3D /></CubeIconButton>
+        <CubeIconButton label={m.observe} active={panel === "observe"} onClick={() => selectPanel("observe")}><ScanFace /></CubeIconButton>
         <CubeIconButton label={m.restore} active={panel === "restore"} onClick={() => selectPanel("restore")}><RotateCcw /></CubeIconButton>
         <div className={styles.toolSeparator} />
         <CubeIconButton label={m.pips} active={panel === "pips"} onClick={() => selectPanel("pips")}><Eye /></CubeIconButton>
@@ -203,6 +229,12 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector }: { l
               <p className="w-full text-muted">{m.rollHint}</p>
             </div> : <>
               {diePicker}
+              {panel === "observe" && <>
+                <p className="text-muted leading-5">{m.observationHint}</p>
+                <div className="grid grid-cols-2 gap-1">{worldFaces.map(({ direction, face }) => <Button key={direction} size="sm" variant={face === inspectionFace ? "secondary" : "ghost"} aria-pressed={face === inspectionFace} disabled={busy || !face} onClick={() => face && setInspectionFace(face)}>{m.faces[direction]}</Button>)}</div>
+                <DiceFaceInspection die={selected} face={inspectionFace} locale={locale} label={m.faces[worldFaces.find((item) => item.face === inspectionFace)?.direction ?? inspectionFace]} />
+                <div className="flex flex-wrap gap-1"><Button size="sm" variant="secondary" disabled={busy} onClick={() => moveFace(selected.id, inspectionFace)}>{isDiceFaceMoved(selected, inspectionFace) ? m.returnOneFace : m.moveOneFace}</Button><Button size="sm" variant="secondary" disabled={busy} onClick={() => toggleFace(selected.id, inspectionFace)}>{selected.hidden.includes(inspectionFace) ? m.revealOneFace : m.hideOneFace}</Button></div>
+              </>}
               {panel === "restore" && <><p className="leading-5 text-muted">{m.restoreHint}</p>{actions([{ label: m.closeFaces, run: closeFaces }, { label: m.closeAllFaces, run: () => animate(closeDiceFaces(scene)) }, { label: m.restoreScene, run: () => { const next = restoreDiceScene(scene); animate(next); fit(next.dice); setView("angle"); } }])}</>}
               {(panel === "color" || panel === "transparent") && <>
                 <p className="leading-5 text-muted">{panel === "color" ? m.colorHint : m.transparentHint}</p>
@@ -222,7 +254,8 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector }: { l
               </>}
               {panel === "opposite" && <><p className="leading-5 text-muted">{m.pairHint}</p><div className="grid grid-cols-2 gap-1">{worldFaces.map(({ direction, face }) => <Button key={direction} size="sm" variant={face === pairFace ? "secondary" : "ghost"} disabled={busy || !face} onClick={() => face && setPairFace(face)}>{m.faces[direction]}</Button>)}</div>
                 <p className="text-center text-lg tabular-nums">{pairValue(pairFace)} + {pairValue(oppositeFace(pairFace))} = 7</p>
-                {actions([{ label: m.revealPair, run: movePair }, { label: m.showPair, run: () => updateDie(selected.id, (die) => ({ ...die, hidden: die.hidden.filter((face) => face !== pairFace && face !== oppositeFace(pairFace)) })) }, { label: m.closeFaces, run: closeFaces }])}
+                <Button size="sm" variant="secondary" disabled={busy} onClick={movePair}>{m.revealPair}</Button>
+                {actions([{ label: m.showPair, run: () => updateDie(selected.id, (die) => ({ ...die, hidden: die.hidden.filter((face) => face !== pairFace && face !== oppositeFace(pairFace)) })) }, { label: m.closeFaces, run: closeFaces }])}
               </>}
               {panel === "puzzle" && <><p className="leading-5 text-muted">{m.puzzleHint}</p>{actions((["row", "stack", "corner"] as const).map((layout) => ({ label: m[layout], run: () => arrange(layout) })))}
                 <Select value={scope} disabled={busy} onValueChange={(value) => setScope(value as DicePuzzle["scope"])}><SelectTrigger aria-label={m.contactClue} className="h-9 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="each">{m.each}</SelectItem><SelectItem value="total">{m.total}</SelectItem></SelectContent></Select>
@@ -235,7 +268,7 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector }: { l
             </>}
         </div>
       </CubeCanvasPanel>}
-      {(notice || busy) && <div className={styles.notice} role="status">{preparing ? m.preparing : playback.playing ? m.animating : notice}{busy ? <Button variant="ghost" size="sm" onClick={cancel}>{m.cancel}</Button> : <Button variant="ghost" size="sm" onClick={() => setNotice("")}>{m.close}</Button>}</div>}
+      {(notice || busy) && <div className={styles.notice} role="status" data-dice-overlay>{preparing ? m.preparing : playback.playing ? m.animating : notice}{!busy && observationOffer && <Button variant="secondary" size="sm" onClick={() => inspect(observationOffer.id, observationOffer.face)}>{m.observe}</Button>}{busy ? <Button variant="ghost" size="sm" onClick={cancel}>{m.cancel}</Button> : <Button variant="ghost" size="sm" onClick={() => { setNotice(""); setObservationOffer(null); }}>{m.close}</Button>}</div>}
       {!panel && !busy && scene.puzzle && <p className={styles.cutStatus}>{m[scene.puzzle.scope]} = {scene.puzzle.target}</p>}
     </div></div>
   </section>;
