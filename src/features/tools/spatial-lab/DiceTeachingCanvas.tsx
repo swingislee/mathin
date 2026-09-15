@@ -4,6 +4,7 @@ import { Component, createRef, useEffect, useMemo, useState, type ReactNode, typ
 import { Canvas, type ThreeEvent } from "@react-three/fiber";
 import { Html, Line } from "@react-three/drei";
 import { CanvasTexture, DoubleSide, EdgesGeometry, FrontSide, SRGBColorSpace, type Mesh } from "three";
+import { THREE_SHADOWS } from "@/lib/three-runtime";
 import type { Axis } from "@/features/spatial-math/domain";
 import { SpatialCameraRig } from "@/features/spatial-math/renderer-r3f/SpatialCameraRig";
 import type { CubeFrame, CubeView } from "./cube-structures-contract";
@@ -134,7 +135,7 @@ export default function DiceTeachingCanvas(props: DiceCanvasProps) {
   const m = diceTeachingMessages(props.locale);
   const [tap] = useState(createDiceTapGuard);
   useEffect(() => { window.addEventListener("blur", tap.reset); return () => window.removeEventListener("blur", tap.reset); }, [tap]);
-  return <DiceCanvasBoundary label={m.fallback}><Canvas frameloop="demand" shadows="percentage" dpr={[1, 1.75]} gl={{ antialias: true, alpha: true, stencil: true }} fallback={<p>{m.fallback}</p>} style={{ touchAction: "none" }}
+  return <DiceCanvasBoundary label={m.fallback}><Canvas frameloop="demand" shadows={THREE_SHADOWS.filtered} dpr={[1, 1.75]} gl={{ antialias: true, alpha: true, stencil: true }} fallback={<p>{m.fallback}</p>} style={{ touchAction: "none" }}
     onPointerDownCapture={tap.down} onPointerMoveCapture={tap.move} onPointerUpCapture={tap.up} onPointerCancelCapture={tap.cancel}
     onPointerMissed={(event) => { if (event.type === "click" && event.button === 0 && tap.isTap() && props.tool === "xray" && !props.busy) props.onClearXRay(); }}>
     <DiceObjects {...props} isTap={tap.isTap} />

@@ -1,5 +1,5 @@
 diff --git a/dist/events-583399dd.cjs.prod.js b/dist/events-583399dd.cjs.prod.js
-index 3376d706b8390ba33b9360ce93a8e54b764edae5..f6567438e8a88c3f6aa76050e3c645166cfc313f 100644
+index 3376d706b8390ba33b9360ce93a8e54b764edae5..623d07a0d205df15786eaf694650741cc7a03f45 100644
 --- a/dist/events-583399dd.cjs.prod.js
 +++ b/dist/events-583399dd.cjs.prod.js
 @@ -1038,7 +1038,38 @@ const createStore = (invalidate, advance) => {
@@ -42,8 +42,33 @@ index 3376d706b8390ba33b9360ce93a8e54b764edae5..f6567438e8a88c3f6aa76050e3c64516
        pointer,
        mouse: pointer,
        frameloop: 'always',
+@@ -7597,19 +7628,21 @@ function createRoot(canvas) {
+         const oldType = gl.shadowMap.type;
+         gl.shadowMap.enabled = !!shadows;
+         if (is.boo(shadows)) {
+-          gl.shadowMap.type = THREE__namespace.PCFSoftShadowMap;
++          gl.shadowMap.type = THREE__namespace.PCFShadowMap;
+         } else if (is.str(shadows)) {
+           var _types$shadows;
+           const types = {
+             basic: THREE__namespace.BasicShadowMap,
+             percentage: THREE__namespace.PCFShadowMap,
+-            soft: THREE__namespace.PCFSoftShadowMap,
++            soft: THREE__namespace.PCFShadowMap,
+             variance: THREE__namespace.VSMShadowMap
+           };
+-          gl.shadowMap.type = (_types$shadows = types[shadows]) != null ? _types$shadows : THREE__namespace.PCFSoftShadowMap;
++          gl.shadowMap.type = (_types$shadows = types[shadows]) != null ? _types$shadows : THREE__namespace.PCFShadowMap;
+         } else if (is.obj(shadows)) {
+           Object.assign(gl.shadowMap, shadows);
+         }
++        // 旧对象配置与 soft 别名都归一为当前仍具柔化效果的 PCF。
++        if (gl.shadowMap.type === THREE__namespace.PCFSoftShadowMap) gl.shadowMap.type = THREE__namespace.PCFShadowMap;
+         if (oldEnabled !== gl.shadowMap.enabled || oldType !== gl.shadowMap.type) gl.shadowMap.needsUpdate = true;
+       }
+       THREE__namespace.ColorManagement.enabled = !legacy;
 diff --git a/dist/events-b389eeca.esm.js b/dist/events-b389eeca.esm.js
-index 97d829566b4da2840882b7bd9615654ae4aa97c8..7c4ebfea8431f4f7359819e0add74e073d87f94f 100644
+index 97d829566b4da2840882b7bd9615654ae4aa97c8..86ce4e03d808f6f4bb170a1b7eb93c2f629c8bb6 100644
 --- a/dist/events-b389eeca.esm.js
 +++ b/dist/events-b389eeca.esm.js
 @@ -1013,7 +1013,38 @@ const createStore = (invalidate, advance) => {
@@ -86,8 +111,33 @@ index 97d829566b4da2840882b7bd9615654ae4aa97c8..7c4ebfea8431f4f7359819e0add74e07
        pointer,
        mouse: pointer,
        frameloop: 'always',
+@@ -15769,19 +15800,21 @@ function createRoot(canvas) {
+         const oldType = gl.shadowMap.type;
+         gl.shadowMap.enabled = !!shadows;
+         if (is.boo(shadows)) {
+-          gl.shadowMap.type = THREE.PCFSoftShadowMap;
++          gl.shadowMap.type = THREE.PCFShadowMap;
+         } else if (is.str(shadows)) {
+           var _types$shadows;
+           const types = {
+             basic: THREE.BasicShadowMap,
+             percentage: THREE.PCFShadowMap,
+-            soft: THREE.PCFSoftShadowMap,
++            soft: THREE.PCFShadowMap,
+             variance: THREE.VSMShadowMap
+           };
+-          gl.shadowMap.type = (_types$shadows = types[shadows]) != null ? _types$shadows : THREE.PCFSoftShadowMap;
++          gl.shadowMap.type = (_types$shadows = types[shadows]) != null ? _types$shadows : THREE.PCFShadowMap;
+         } else if (is.obj(shadows)) {
+           Object.assign(gl.shadowMap, shadows);
+         }
++        // 旧对象配置与 soft 别名都归一为当前仍具柔化效果的 PCF。
++        if (gl.shadowMap.type === THREE.PCFSoftShadowMap) gl.shadowMap.type = THREE.PCFShadowMap;
+         if (oldEnabled !== gl.shadowMap.enabled || oldType !== gl.shadowMap.type) gl.shadowMap.needsUpdate = true;
+       }
+       THREE.ColorManagement.enabled = !legacy;
 diff --git a/dist/events-f19bcc32.cjs.dev.js b/dist/events-f19bcc32.cjs.dev.js
-index 1b04ea65a3b51b8317b6cf5a525407afdf0be180..281be2bef4a574636961dacf611f8e9d727a746d 100644
+index 1b04ea65a3b51b8317b6cf5a525407afdf0be180..4e39324dc583abc5b03432a016fe4feae4846d95 100644
 --- a/dist/events-f19bcc32.cjs.dev.js
 +++ b/dist/events-f19bcc32.cjs.dev.js
 @@ -1038,7 +1038,38 @@ const createStore = (invalidate, advance) => {
@@ -130,3 +180,28 @@ index 1b04ea65a3b51b8317b6cf5a525407afdf0be180..281be2bef4a574636961dacf611f8e9d
        pointer,
        mouse: pointer,
        frameloop: 'always',
+@@ -15794,19 +15825,21 @@ function createRoot(canvas) {
+         const oldType = gl.shadowMap.type;
+         gl.shadowMap.enabled = !!shadows;
+         if (is.boo(shadows)) {
+-          gl.shadowMap.type = THREE__namespace.PCFSoftShadowMap;
++          gl.shadowMap.type = THREE__namespace.PCFShadowMap;
+         } else if (is.str(shadows)) {
+           var _types$shadows;
+           const types = {
+             basic: THREE__namespace.BasicShadowMap,
+             percentage: THREE__namespace.PCFShadowMap,
+-            soft: THREE__namespace.PCFSoftShadowMap,
++            soft: THREE__namespace.PCFShadowMap,
+             variance: THREE__namespace.VSMShadowMap
+           };
+-          gl.shadowMap.type = (_types$shadows = types[shadows]) != null ? _types$shadows : THREE__namespace.PCFSoftShadowMap;
++          gl.shadowMap.type = (_types$shadows = types[shadows]) != null ? _types$shadows : THREE__namespace.PCFShadowMap;
+         } else if (is.obj(shadows)) {
+           Object.assign(gl.shadowMap, shadows);
+         }
++        // 旧对象配置与 soft 别名都归一为当前仍具柔化效果的 PCF。
++        if (gl.shadowMap.type === THREE__namespace.PCFSoftShadowMap) gl.shadowMap.type = THREE__namespace.PCFShadowMap;
+         if (oldEnabled !== gl.shadowMap.enabled || oldType !== gl.shadowMap.type) gl.shadowMap.needsUpdate = true;
+       }
+       THREE__namespace.ColorManagement.enabled = !legacy;

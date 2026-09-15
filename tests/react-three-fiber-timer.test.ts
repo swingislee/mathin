@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as fiber from "@react-three/fiber";
-import { Timer } from "three";
+import { BasicShadowMap, PCFShadowMap, PCFSoftShadowMap, Timer, VSMShadowMap, type WebGLRenderer } from "three";
 
 const require = createRequire(import.meta.url);
 const fiberDirectory = dirname(require.resolve("@react-three/fiber/package.json"));
@@ -51,6 +51,26 @@ function root(runtime: FiberRuntime) {
 }
 
 describe.each(builds)("Fiber Timer compatibility · $name", ({ runtime, timer }) => {
+  it("normalizes all shadow inputs and reconfiguration without changing supported modes", async () => {
+    const canvas = Object.assign(new EventTarget(), { style: {} }) as unknown as HTMLCanvasElement;
+    const renderer = { domElement: canvas, setSize() {}, setPixelRatio() {}, render() {},
+      shadowMap: { enabled: false, type: PCFShadowMap, needsUpdate: false },
+      xr: Object.assign(new EventTarget(), { isPresenting: false, setAnimationLoop() {} }) } as unknown as WebGLRenderer;
+    const handle = runtime.createRoot(canvas);
+    cleanup.push(() => runtime._roots.delete(canvas));
+    const inputs: [fiber.RenderProps<HTMLCanvasElement>["shadows"], boolean, number][] = [
+      [false, false, PCFShadowMap], [true, true, PCFShadowMap], ["soft", true, PCFShadowMap],
+      ["percentage", true, PCFShadowMap], [{ type: PCFSoftShadowMap }, true, PCFShadowMap],
+      ["basic", true, BasicShadowMap], ["variance", true, VSMShadowMap], [{ type: PCFShadowMap }, true, PCFShadowMap],
+      [false, false, PCFShadowMap],
+    ];
+    for (const [shadows, enabled, type] of inputs) {
+      await handle.configure({ gl: renderer, shadows, size: { width: 800, height: 600, top: 0, left: 0 }, frameloop: "never", dpr: 1 });
+      expect(renderer.shadowMap.enabled).toBe(enabled); expect(renderer.shadowMap.type).toBe(type);
+      expect(runtime._roots.get(canvas)!.store.getState().clock).toBeInstanceOf(timer);
+    }
+  });
+
   it("creates a Timer-backed root without invoking the deprecated Clock constructor", () => {
     const warnings = vi.spyOn(console, "warn").mockImplementation(() => {});
     const { state: { clock } } = root(runtime);

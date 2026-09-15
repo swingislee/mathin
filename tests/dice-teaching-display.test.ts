@@ -18,7 +18,7 @@ describe("dice display feedback", () => {
     const luminance = (value: string) => { const color = new Color(value); return color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722; };
     expect((luminance(DICE_WHITE) + 0.05) / (luminance(DICE_TABLE_COLOR) + 0.05)).toBeGreaterThan(4.5);
     const source = readFileSync("src/features/tools/spatial-lab/DiceTeachingCanvas.tsx", "utf8");
-    expect(source).toContain('shadows="percentage"'); expect(source).not.toContain("PCFSoftShadowMap");
+    expect(source).toContain('shadows={THREE_SHADOWS.filtered}'); expect(source).not.toContain("PCFSoftShadowMap");
   });
   it("only builds all six arrows for the selected die and preserves other moved faces", () => {
     const scene = createDiceScene();

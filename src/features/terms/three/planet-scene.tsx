@@ -4,6 +4,7 @@ import { Html, OrbitControls, Stars } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import { THREE_SHADOWS } from "@/lib/three-runtime";
 import { useRouter } from "@/i18n/navigation";
 import { GOLD, NIGHT_BG, type TermPlanet } from "../universe";
 import { IslandMount, useLowPolyGeometry, useReducedMotion } from "./scene-bits";
@@ -121,7 +122,7 @@ export default function PlanetScene({ planet, islands }: { planet: TermPlanet; i
   const router = useRouter();
   const reduced = useReducedMotion();
   return (
-    <Canvas camera={{ position: [0, 0.7, 5.4], fov: 42 }} dpr={[1, 2]} className="!absolute !inset-0">
+    <Canvas shadows={THREE_SHADOWS.disabled} camera={{ position: [0, 0.7, 5.4], fov: 42 }} dpr={[1, 2]} className="!absolute !inset-0">
       <color attach="background" args={[NIGHT_BG]} />
       <ambientLight intensity={0.6} />
       <directionalLight position={[4, 6, 7]} intensity={1.4} />

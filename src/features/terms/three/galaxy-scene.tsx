@@ -4,6 +4,7 @@ import { Html, Line, Stars } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useMemo, useRef, useState } from "react";
 import * as THREE from "three";
+import { THREE_SHADOWS } from "@/lib/three-runtime";
 import { useRouter } from "@/i18n/navigation";
 import { GOLD, NIGHT_BG, termPlanets, type TermPlanet } from "../universe";
 import { IslandMount, useLowPolyGeometry, useReducedMotion } from "./scene-bits";
@@ -135,7 +136,7 @@ export default function GalaxyScene({ planets, labels, recommendedId }: {
   const router = useRouter();
   const reduced = useReducedMotion();
   return (
-    <Canvas camera={{ position: [0, 0.25, 8.6], fov: 44 }} dpr={[1, 2]} className="!absolute !inset-0" style={{ touchAction: "pan-x" }}>
+    <Canvas shadows={THREE_SHADOWS.disabled} camera={{ position: [0, 0.25, 8.6], fov: 44 }} dpr={[1, 2]} className="!absolute !inset-0" style={{ touchAction: "pan-x" }}>
       <color attach="background" args={[NIGHT_BG]} />
       <fog attach="fog" args={[NIGHT_BG, 9, 22]} />
       <ambientLight intensity={0.65} />

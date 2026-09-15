@@ -14,6 +14,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import * as THREE from "three";
+import { THREE_SHADOWS } from "@/lib/three-runtime";
 import type { PolyhedronHingeProgress, SpatialScene } from "../domain";
 import { PolyhedronNetFallback } from "./PolyhedronNetFallback";
 import {
@@ -506,6 +507,7 @@ export function PolyhedronFoldCanvas({
       data-camera-transition-state="idle"
     >
       <Canvas
+        shadows={THREE_SHADOWS.disabled}
         className="!absolute !inset-0"
         dpr={[1, POLYHEDRON_FOLD_RENDERER_MAX_DPR]}
         frameloop="demand"

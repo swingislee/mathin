@@ -12,6 +12,7 @@ import {
   type ReactNode,
 } from "react";
 import * as THREE from "three";
+import { THREE_SHADOWS } from "@/lib/three-runtime";
 import { voxelKey, type SpatialPageDoc, type SpatialRuntimeState, type VoxelCoordinate, type VoxelFaceSelection } from "../domain";
 import { useVoxelHiddenEdges, type VoxelHiddenEdgeUniforms } from "./useVoxelHiddenEdges";
 import { voxelHiddenEdgeShaders } from "./voxel-hidden-edge-shader";
@@ -553,6 +554,7 @@ export function VoxelModelCanvas({
       data-voxel-face-paint={paintedFaces.length}
     >
       <Canvas
+        shadows={THREE_SHADOWS.disabled}
         className="!absolute !inset-0"
         dpr={[1, VOXEL_RENDERER_MAX_DPR]}
         frameloop="demand"
