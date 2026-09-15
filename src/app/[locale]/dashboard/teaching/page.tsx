@@ -20,6 +20,7 @@ import { getMyPerms, requireAnyPerm } from "@/lib/auth";
 import { teachingGrouping, type TeachingGrouping } from "@/features/school/teaching-workbench/teaching-grouping-contract";
 import { teachingTimeGrain, teachingTimeWindow } from "@/features/school/teaching-workbench/teaching-period-contract";
 import { TeachingPeriodPicker } from "@/features/school/teaching-workbench/TeachingPeriodPicker";
+import { TeachingRecordsCommandPanel } from "@/features/school/teaching-workbench/TeachingRecordsCommandPanel";
 import { listSchoolTerms } from "@/features/school/courses";
 import { calendarDayKey } from "@/features/school/schedule";
 
@@ -45,7 +46,7 @@ async function TeachingContent({ locale, searchParams }: { locale: string; searc
   const view = query.view === "tasks" ? "tasks" : query.view === "progress" ? "progress" : query.view === "records" || canViewTeam ? "records" : "tasks";
   const period = teachingTimeGrain(query.period);
   const terms = view === "tasks" ? [] : await listSchoolTerms();
-  const selection = typeof query.date === "string" ? query.date : "current";
+  const selection = typeof query.date === "string" ? query.date : view === "records" ? "previous" : "current";
   const selectedWindow = teachingTimeWindow(period, selection, typeof query.term === "string" ? query.term : undefined, terms, timeZone);
   const window = selectedWindow ?? teachingPeriodWindow("week", undefined, timeZone);
   const teacher = typeof query.teacher === "string" ? query.teacher : undefined;
@@ -63,21 +64,23 @@ async function TeachingContent({ locale, searchParams }: { locale: string; searc
   const contactPage = typeof query.contactPage === "string" && /^\d{1,5}$/.test(query.contactPage) ? Math.max(1, Number(query.contactPage)) : 1;
   const contactSize = query.contactSize === "10" ? 10 : 20;
 
-  return <DashboardPage title={t("title")} density="compact" commandPanel={
+  return <DashboardPage title={t("title")} density="compact" commandPanel={view === "records" && !sessionId ?
+    <TeachingRecordsCommandPanel groupBy={groupBy} grain={period} window={selectedWindow} baseHref={progressHref(selection)} terms={terms} today={calendarDayKey(new Date(), timeZone)} selection={selection} links={[
+      { value: "tasks", label: t("myTasks"), href: "/dashboard/teaching?view=tasks" },
+      { value: "progress", label: t(canViewTeam ? "teamProgress" : "myProgress"), href: progressHref(selection, period, "progress") },
+      { value: "allWork", label: t("allWork"), href: "/dashboard?view=work" },
+    ]} /> :
     <DashboardCommandPanel className={view === "records" && !sessionId ? "followup-command-panel" : undefined}>
       <DashboardCommandState>
         <RouteTabs ariaLabel={t("views")} activeValue={view} items={[
           { value: "tasks", label: t("myTasks"), href: "/dashboard/teaching?view=tasks" },
-          { value: "records", label: t("records.title"), href: progressHref(window.date, "month", "records") },
+          { value: "records", label: t("records.title"), href: progressHref(selection, period, "records") },
           { value: "progress", label: t(canViewTeam ? "teamProgress" : "myProgress"), href: progressHref(window.date, period, "progress") },
         ]} />
       </DashboardCommandState>
       <DashboardCommandFilters>
         {view !== "tasks" && !(view === "records" && sessionId) && <>
           <TeachingPeriodPicker key={`${period}:${selection}:${selectedWindow?.termId ?? ""}`} grain={period} window={selectedWindow} baseHref={progressHref()} terms={terms} today={calendarDayKey(new Date(), timeZone)} />
-          {view === "records" && <RouteTabs ariaLabel={t("grouping.title")} activeValue={groupBy} items={(["grade", "teacher"] as const).map(group => ({
-            value: group, label: t(group === "grade" ? "grouping.byGrade" : "grouping.byTeacher"), href: progressHref().replace(`group=${groupBy}`, `group=${group}`),
-          }))} />}
         </>}
       </DashboardCommandFilters>
       <DashboardCommandActions><Link className={buttonVariants({ variant: "secondary", size: "sm" })} href="/dashboard?view=work">{t("allWork")}</Link></DashboardCommandActions>
@@ -122,7 +125,10 @@ async function TeachingProgress({ from, to, scope, locale, timeZone, returnTo, m
     let overview;
     try { overview = await getTeachingClassOverview(from, to, scope); }
     catch { return <p role="alert" className="py-6 text-sm text-rose">{t("loadFailed")}</p>; }
-    return <TeachingClassOverviewTable key={returnTo} data={overview} locale={locale} timeZone={timeZone} returnTo={returnTo} initialTeacher={teacher} initialClassroom={classroom} groupBy={groupBy} />;
+    return <>
+      <p className="mb-2 text-xs leading-5 text-muted">{t("replay.hint")}</p>
+      <TeachingClassOverviewTable key={returnTo} data={overview} locale={locale} timeZone={timeZone} returnTo={returnTo} initialTeacher={teacher} initialClassroom={classroom} groupBy={groupBy} />
+    </>;
   }
   let data;
   try { data = await getTeachingWorkbench(from, to, scope); }
