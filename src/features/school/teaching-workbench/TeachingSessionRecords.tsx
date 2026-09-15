@@ -1,22 +1,28 @@
-import { getTranslations } from "next-intl/server";
+import { useTranslations } from "next-intl";
+import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink } from "@/components/ui/pagination";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Link } from "@/i18n/navigation";
 import { DashboardSection, DashboardTableShell } from "../dashboard-page";
 import { withReturnTo } from "../object-workspace/return-target";
 import { LEARNING_CHECK_STATUS_STYLE } from "../session-learning-visual";
+import { ATTENDANCE_STATUS_TONE } from "../attendance-visual";
 import type { TeachingRecords } from "./teaching-records-contract";
 import { TeachingContactPageSize } from "./TeachingContactPageSize";
 
-export async function TeachingSessionRecords({ data, locale, timeZone, returnTo, currentHref, pageSize = 20 }: {
+export function TeachingSessionRecords({ data, locale, timeZone, returnTo, currentHref, pageSize = 20, inline }: {
   data: TeachingRecords; locale: string; timeZone: string; returnTo: string; currentHref: string; pageSize?: 10 | 20;
+  inline?: { onPageChange: (page: number) => void; onPageSizeChange: (size: 10 | 20) => void };
 }) {
-  const t = await getTranslations("school.teachingWorkbench.records");
-  const reportT = await getTranslations("classroom.report");
-  const sessionT = await getTranslations("school.session");
-  const workT = await getTranslations("school.teachingWorkbench");
-  const date = (value: string) => new Intl.DateTimeFormat(locale, { timeZone, dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+  const t = useTranslations("school.teachingWorkbench.records");
+  const reportT = useTranslations("classroom.report");
+  const sessionT = useTranslations("school.session");
+  const workT = useTranslations("school.teachingWorkbench");
+  const formatter = useMemo(() => new Intl.DateTimeFormat(locale, { timeZone, dateStyle: "medium", timeStyle: "short" }), [locale, timeZone]);
+  const date = (value: string) => formatter.format(new Date(value));
   const students = new Map(data.students.map(row => [row.id, row.name]));
   const attendance = new Map(data.attendance.map(row => [row.studentId, row]));
   const reviews = new Map(data.reviews.map(row => [row.studentId, row]));
@@ -28,12 +34,12 @@ export async function TeachingSessionRecords({ data, locale, timeZone, returnTo,
     params.set("contactPage", String(page));
     return `${path}?${params}`;
   };
-  return <div className="space-y-7">
-    <DashboardSection title={`${data.session.classroomName} · ${data.session.title || workT("untitled")}`}>
+  return <div className={inline ? "space-y-4" : "space-y-7"}>
+    {!inline && <DashboardSection title={`${data.session.classroomName} · ${data.session.title || workT("untitled")}`}>
       <p className="text-sm text-muted">{data.session.scheduledAt && date(data.session.scheduledAt)} · {t(data.session.endedAt ? "ended" : data.session.startedAt ? "started" : "notStarted")}</p>
       <p className="mt-2 text-xs text-muted">{t("readHint")}</p>
       <Link href={returnTo} className="mt-3 inline-block text-sm underline underline-offset-4">{t("back")}</Link>
-    </DashboardSection>
+    </DashboardSection>}
     <DashboardSection title={t("learning")} description={t("learningHint")}>
       {data.checks.length === 0 && <p className="mb-3 text-sm text-muted">{t("noChecks")}</p>}
       <DashboardTableShell><Table containerClassName="max-h-[65vh] overflow-auto">
@@ -48,7 +54,7 @@ export async function TeachingSessionRecords({ data, locale, timeZone, returnTo,
           const presence = attendance.get(student.id);
           return <TableRow key={student.id}>
             <TableCell className="align-top font-medium">{student.name}</TableCell>
-            <TableCell className="align-top text-xs">{presence ? reportT(`attendance_${presence.status}`) : reportT("notCaptured")}
+            <TableCell className="align-top text-xs">{presence ? <Badge variant="outline" className={ATTENDANCE_STATUS_TONE[presence.status]}>{reportT(`attendance_${presence.status}`)}</Badge> : reportT("notCaptured")}
               {presence?.note && <p className="mt-1 max-w-48 whitespace-pre-wrap text-muted">{presence.note}</p>}
             </TableCell>
             {data.checks.map(check => {
@@ -88,10 +94,13 @@ export async function TeachingSessionRecords({ data, locale, timeZone, returnTo,
         </Table></DashboardTableShell>
         <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted">
           <span>{workT("pagination", { page: data.contactPage, pages, count: data.contactTotal })}</span>
-          <TeachingContactPageSize pageSize={pageSize} currentHref={currentHref} />
+          {inline ? <Select value={String(pageSize)} onValueChange={value => inline.onPageSizeChange(value === "10" ? 10 : 20)}>
+            <SelectTrigger className="h-8 w-auto" aria-label={workT("pageSize")}><SelectValue /></SelectTrigger>
+            <SelectContent>{[10, 20].map(size => <SelectItem key={size} value={String(size)}>{workT("rowsPerPage", { count: size })}</SelectItem>)}</SelectContent>
+          </Select> : <TeachingContactPageSize pageSize={pageSize} currentHref={currentHref} />}
           <Pagination className="w-auto" aria-label={workT("pages")}><PaginationContent>
-            {data.contactPage > 1 && <PaginationItem><PaginationLink asChild><Link href={pageHref(data.contactPage - 1)} className="w-auto px-3">{workT("previousPage")}</Link></PaginationLink></PaginationItem>}
-            {data.contactPage < pages && <PaginationItem><PaginationLink asChild><Link href={pageHref(data.contactPage + 1)} className="w-auto px-3">{workT("nextPage")}</Link></PaginationLink></PaginationItem>}
+            {data.contactPage > 1 && <PaginationItem><PaginationLink asChild>{inline ? <Button variant="ghost" className="w-auto px-3" onClick={() => inline.onPageChange(data.contactPage - 1)}>{workT("previousPage")}</Button> : <Link href={pageHref(data.contactPage - 1)} className="w-auto px-3">{workT("previousPage")}</Link>}</PaginationLink></PaginationItem>}
+            {data.contactPage < pages && <PaginationItem><PaginationLink asChild>{inline ? <Button variant="ghost" className="w-auto px-3" onClick={() => inline.onPageChange(data.contactPage + 1)}>{workT("nextPage")}</Button> : <Link href={pageHref(data.contactPage + 1)} className="w-auto px-3">{workT("nextPage")}</Link>}</PaginationLink></PaginationItem>}
           </PaginationContent></Pagination>
         </div>
       </>}
@@ -103,6 +112,6 @@ export async function TeachingSessionRecords({ data, locale, timeZone, returnTo,
         <p className="mt-1 whitespace-pre-wrap break-words text-sm">{note.note}</p>
       </li>)}</ul>
     </DashboardSection>}
-    <Link className="inline-block text-sm underline underline-offset-4" href={withReturnTo(`/dashboard/classes/${data.session.classroomId}?tab=students`, currentHref)}>{t("classStudents")}</Link>
+    {!inline && <Link className="inline-block text-sm underline underline-offset-4" href={withReturnTo(`/dashboard/classes/${data.session.classroomId}?tab=students`, currentHref)}>{t("classStudents")}</Link>}
   </div>;
 }

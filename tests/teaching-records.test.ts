@@ -1,6 +1,6 @@
 import { createElement, type ComponentProps, type ComponentType, type PropsWithChildren } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { createTranslator, NextIntlClientProvider } from "next-intl";
+import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it, vi } from "vitest";
 import messages from "../messages/zh.json";
 import { teachingContactPage, teachingRecordHref, teachingRecordsSchema, type TeachingRecords } from "../src/features/school/teaching-workbench/teaching-records-contract";
@@ -8,9 +8,6 @@ import { TeachingSessionRecords } from "../src/features/school/teaching-workbenc
 import { TeachingProgressTable } from "../src/features/school/teaching-workbench/TeachingProgressTable";
 import type { TeachingSession } from "../src/features/school/teaching-workbench/teaching-workbench-contract";
 
-vi.mock("next-intl/server", () => ({
-  getTranslations: async (namespace: string) => createTranslator({ locale: "zh", messages, namespace: namespace as "school.teachingWorkbench.records" }),
-}));
 vi.mock("@/i18n/navigation", () => ({
   Link: ({ children, ...props }: ComponentProps<"a">) => createElement("a", props, children),
   useRouter: () => ({ replace: vi.fn() }),
@@ -33,13 +30,13 @@ function render(node: import("react").ReactNode) {
 
 describe("teaching actual records", () => {
   it("renders saved observations, missing records, authors and full feedback before system start", async () => {
-    const html = render(await TeachingSessionRecords({ data: records, locale: "zh", timeZone: "Asia/Shanghai", returnTo: "/dashboard/teaching?view=records", currentHref: "/dashboard/teaching?view=records&session=session" }));
+    const html = render(createElement(TeachingSessionRecords, { data: records, locale: "zh", timeZone: "Asia/Shanghai", returnTo: "/dashboard/teaching?view=records", currentHref: "/dashboard/teaching?view=records&session=session" }));
     for (const text of ["未在系统开课", "分数题", "保存的考勤备注", "能够说明思路，还需巩固", "尚未保存课评", "家长反馈愿意继续练习", "任课老师", "跟进老师", "可能涉及其他课次"]) expect(html).toContain(text);
     expect(html).toContain("入口分数：");
     expect(html).toContain('tabular-nums">0</dd>');
   });
   it("shows an explicit restricted contact state", async () => {
-    const html = render(await TeachingSessionRecords({ data: { ...records, canReadContacts: false, contacts: [], contactTotal: 0 }, locale: "zh", timeZone: "Asia/Shanghai", returnTo: "/dashboard/teaching", currentHref: "/dashboard/teaching?session=session" }));
+    const html = render(createElement(TeachingSessionRecords, { data: { ...records, canReadContacts: false, contacts: [], contactTotal: 0 }, locale: "zh", timeZone: "Asia/Shanghai", returnTo: "/dashboard/teaching", currentHref: "/dashboard/teaching?session=session" }));
     expect(html).toContain("查看沟通正文需要沟通查看权限");
     expect(html).not.toContain("家长反馈愿意继续练习");
     expect(html).toContain("能够说明思路，还需巩固");

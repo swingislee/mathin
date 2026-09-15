@@ -1,6 +1,7 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -10,10 +11,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Link } from "@/i18n/navigation";
 import { DashboardEmptyState, DashboardSection, DashboardTableShell } from "../dashboard-page";
 import { DashboardTableColumnHeader } from "../dashboard-page/DashboardTableColumnHeader";
+import { FollowupInlineDetails } from "../dashboard-page/FollowupInlineDetails";
 import { leadPaginationTokens } from "../lead-pagination";
 import { withReturnTo } from "../object-workspace/return-target";
 import { groupTeachingClasses, hasTeachingRecords, type TeachingClassOverview, type TeachingRecordSnippet } from "./teaching-class-overview-contract";
-import { teachingRecordHref } from "./teaching-records-contract";
+import type { TeachingRecordCache } from "./teaching-records-client";
+
+const InlineRecords = dynamic(() => import("./TeachingInlineRecords").then(module => module.TeachingInlineRecords), {
+  loading: () => <InlineLoading />,
+});
+function InlineLoading() {
+  const t = useTranslations("school.teachingWorkbench");
+  return <p role="status" className="py-3 text-sm text-muted">{t("records.loading")}</p>;
+}
 
 export function TeachingClassOverviewTable({ data, locale, timeZone, returnTo, initialTeacher, initialClassroom }: {
   data: TeachingClassOverview; locale: string; timeZone: string; returnTo: string; initialTeacher?: string; initialClassroom?: string;
@@ -23,16 +33,20 @@ export function TeachingClassOverviewTable({ data, locale, timeZone, returnTo, i
   const [teacher, setTeacher] = useState(initialTeacher);
   const [classroom, setClassroom] = useState(initialClassroom);
   const [expanded, setExpanded] = useState<string | null>(initialClassroom ?? null);
+  const [expandedSession, setExpandedSession] = useState<string | null>(null);
+  const [recordCache] = useState<TeachingRecordCache>(() => new Map());
   const [pageSize, setPageSize] = useState(20);
   const [requestedPage, setPage] = useState(1);
   const [attentionOnly, setAttentionOnly] = useState<string>();
-  const allGroups = groupTeachingClasses(data);
-  const groups = groupTeachingClasses(data, teacher, classroom).filter(row => !attentionOnly || row.attention.length > 0);
-  const teachers = [...new Map(allGroups.flatMap(row => row.teachers).map(row => [row.id, row])).values()];
+  const allGroups = useMemo(() => groupTeachingClasses(data), [data]);
+  const groups = useMemo(() => (teacher || classroom ? groupTeachingClasses(data, teacher, classroom) : allGroups)
+    .filter(row => !attentionOnly || row.attention.length > 0), [data, teacher, classroom, allGroups, attentionOnly]);
+  const teachers = useMemo(() => [...new Map(allGroups.flatMap(row => row.teachers).map(row => [row.id, row])).values()], [allGroups]);
   const pages = Math.max(1, Math.ceil(groups.length / pageSize));
   const page = Math.min(requestedPage, pages);
   const rows = groups.slice((page - 1) * pageSize, page * pageSize);
-  const date = (value: string) => new Intl.DateTimeFormat(locale, { timeZone, month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+  const formatter = useMemo(() => new Intl.DateTimeFormat(locale, { timeZone, month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }), [locale, timeZone]);
+  const date = (value: string) => formatter.format(new Date(value));
   const snippet = (value: TeachingRecordSnippet | null, empty: string) => value ? <>
     <p className="line-clamp-2 break-words leading-5" title={value.content}>{value.studentName}：{value.content}</p>
     <p className="mt-0.5 truncate text-[11px] text-muted">{value.author || workT("records.unknownAuthor")} · {date(value.at)}</p>
@@ -72,7 +86,7 @@ export function TeachingClassOverviewTable({ data, locale, timeZone, returnTo, i
             <ChevronDown className={expanded === row.id ? "rotate-180" : ""} size={15} />
           </Button></TableCell>
           <TableCell className="px-2 py-2 align-top">
-            <Link href={withReturnTo(`/dashboard/classes/${row.id}`, scopedReturnTo)} className="line-clamp-2 break-words text-sm font-medium leading-5 hover:underline" title={row.name}>{row.name}</Link>
+            <Link prefetch={false} href={withReturnTo(`/dashboard/classes/${row.id}`, scopedReturnTo)} className="line-clamp-2 break-words text-sm font-medium leading-5 hover:underline" title={row.name}>{row.name}</Link>
             <p className="mt-1 truncate text-xs text-muted" title={row.teachers.map(person => person.name).join("、")}>
               {row.teachers.map(person => person.name || workT("unnamedTeacher")).join("、") || workT("unassigned")} · {t("students", { count: row.studentCount })}
             </p>
@@ -89,7 +103,7 @@ export function TeachingClassOverviewTable({ data, locale, timeZone, returnTo, i
             <p className="mt-1 text-[11px] text-muted">{t("reviewCount", { count: row.reviewCount })}</p>
           </TableCell>
           <TableCell className="px-2 py-2 align-top" title={t("attentionHint")}>
-            <p className={row.attention.length ? "font-medium text-rose" : "text-muted"}>{row.ratedCount ? t("people", { count: row.attention.length }) : t("notRecorded")}</p>
+            <p className={row.attention.length ? "font-medium text-ink" : "text-muted"}>{row.ratedCount ? t("people", { count: row.attention.length }) : t("notRecorded")}</p>
             <p className="mt-1 line-clamp-2 text-[11px] text-muted" title={row.attention.map(student => student.name).join("、")}>{row.attention.map(student => student.name).join("、")}</p>
           </TableCell>
           <TableCell className="px-2 py-2 align-top">{snippet(row.latestReview, t("noReview"))}</TableCell>
@@ -99,20 +113,27 @@ export function TeachingClassOverviewTable({ data, locale, timeZone, returnTo, i
           </> : <span className="text-muted">{t("contactsRestricted")}</span>}</TableCell>
         </TableRow>
         {expanded === row.id && <TableRow id={`class-lessons-${row.id}`}><TableCell colSpan={8} className="p-0">
-          <Table className="table-fixed text-xs" containerClassName="max-h-80 overflow-auto">
+          <Table className="table-fixed text-xs" containerClassName="max-h-[65vh] overflow-auto">
             <TableHeader className="sticky top-0 z-10 bg-card"><TableRow>
               <TableHead className="w-[27%] pl-10">{t("lesson")}</TableHead><TableHead>{workT("teacher")}</TableHead><TableHead>{t("attendance")}</TableHead><TableHead>{t("learning")}</TableHead><TableHead>{t("attention")}</TableHead><TableHead>{workT("records.open")}</TableHead>
             </TableRow></TableHeader>
-            <TableBody>{[...row.sessions].sort((a,b) => b.scheduledAt.localeCompare(a.scheduledAt)).map(session => <TableRow key={session.id}>
-              <TableCell className="py-2 pl-10"><Link className="hover:underline" href={teachingRecordHref(returnTo, session.id, teacher, row.id)}>{session.title || workT("untitled")}</Link>
+            <TableBody>{row.sessions.map(session => <Fragment key={session.id}><TableRow data-state={expandedSession === session.id ? "selected" : undefined}>
+              <TableCell className="py-2 pl-10"><Button variant="ghost" className="h-auto max-w-full justify-start whitespace-normal p-0 text-left text-xs hover:underline" aria-expanded={expandedSession === session.id} aria-controls={`session-records-${session.id}`} onClick={() => setExpandedSession(expandedSession === session.id ? null : session.id)}>{session.title || workT("untitled")}</Button>
                 <p className="mt-0.5 text-[11px] text-muted">{date(session.scheduledAt)} · {hasTeachingRecords(session.metrics) ? t("hasRecords") : workT(session.endedAt ? "records.ended" : session.startedAt ? "records.started" : "records.notStarted")}</p>
               </TableCell>
               <TableCell className="py-2">{session.teachers.map(person => person.name).join("、") || workT("unassigned")}</TableCell>
               <TableCell className="py-2">{session.metrics.attendance.marked ? t("present", { count: session.metrics.attendance.present, marked: session.metrics.attendance.marked }) : t("noAttendance")}</TableCell>
               <TableCell className="py-2">{session.metrics.checkCount ? t("ratings", { done: session.metrics.ratedCount, total: session.metrics.checkCount * session.metrics.studentIds.length }) : t("noChecks")}</TableCell>
               <TableCell className="py-2">{session.metrics.attentionStudents.map(student => student.name).join("、") || "—"}</TableCell>
-              <TableCell className="py-2"><Link className="underline underline-offset-4" href={teachingRecordHref(returnTo, session.id, teacher, row.id)}>{workT("records.open")}</Link></TableCell>
-            </TableRow>)}</TableBody>
+              <TableCell className="py-2"><Button variant="ghost" className="h-auto p-0 text-xs" aria-expanded={expandedSession === session.id} aria-controls={`session-records-${session.id}`} onClick={() => setExpandedSession(expandedSession === session.id ? null : session.id)}>
+                <ChevronDown size={14} className={expandedSession === session.id ? "rotate-180" : ""} />{workT(expandedSession === session.id ? "records.collapse" : "records.open")}
+              </Button></TableCell>
+            </TableRow>
+              <FollowupInlineDetails id={`session-records-${session.id}`} open={expandedSession === session.id} onOpenChange={open => setExpandedSession(open ? session.id : null)} colSpan={6}
+                title={`${session.title || workT("untitled")} · ${date(session.scheduledAt)}`}>
+                {() => <InlineRecords key={session.id} sessionId={session.id} locale={locale} timeZone={timeZone} cache={recordCache} />}
+              </FollowupInlineDetails>
+            </Fragment>)}</TableBody>
           </Table>
         </TableCell></TableRow>}
       </Fragment>)}</TableBody>

@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { teachingWorkbenchSchema, type TeachingSession } from "./teaching-workbench-contract";
+import { teachingWorkbenchSchema } from "./teaching-workbench-contract";
+
+// 概览客户端只接收实际展示字段，备课资料、任务等留给原完成情况页读取。
+const overviewSessionSchema = teachingWorkbenchSchema.shape.sessions.element.pick({
+  id: true, classroomId: true, classroomName: true, title: true, scheduledAt: true, teachers: true, startedAt: true, endedAt: true,
+});
 
 const snippetSchema = z.object({ content: z.string(), studentName: z.string(), author: z.string().nullable(), at: z.string() });
 const metricsSchema = z.object({
@@ -10,16 +15,17 @@ const metricsSchema = z.object({
   reviewCount: z.number(), latestReview: snippetSchema.nullable(),
 });
 export const teachingClassOverviewSchema = z.object({
-  workbench: teachingWorkbenchSchema, metrics: z.array(metricsSchema), canReadContacts: z.boolean(),
+  workbench: z.object({ sessions: z.array(overviewSessionSchema), truncated: z.boolean() }), metrics: z.array(metricsSchema), canReadContacts: z.boolean(),
   classContacts: z.array(z.object({ classroomId: z.string(), count: z.number(), studentCount: z.number(), latest: snippetSchema.nullable() })),
 });
 export type TeachingClassOverview = z.infer<typeof teachingClassOverviewSchema>;
 export type TeachingSessionMetrics = z.infer<typeof metricsSchema>;
 export type TeachingRecordSnippet = z.infer<typeof snippetSchema>;
-export type TeachingOverviewSession = TeachingSession & { metrics: TeachingSessionMetrics };
+export type TeachingOverviewSession = z.infer<typeof overviewSessionSchema> & { metrics: TeachingSessionMetrics };
 
 export function groupTeachingClasses(data: TeachingClassOverview, teacher?: string, classroom?: string) {
   const metrics = new Map(data.metrics.map(row => [row.sessionId, row]));
+  const contacts = new Map(data.classContacts.map(row => [row.classroomId, row]));
   const groups = new Map<string, { id: string; name: string; sessions: TeachingOverviewSession[] }>();
   for (const session of data.workbench.sessions) {
     if (classroom && session.classroomId !== classroom) continue;
@@ -31,7 +37,7 @@ export function groupTeachingClasses(data: TeachingClassOverview, teacher?: stri
     groups.set(group.id, group);
   }
   return [...groups.values()].map(group => {
-    const rows = group.sessions;
+    const rows = group.sessions.sort((a,b) => b.scheduledAt.localeCompare(a.scheduledAt));
     const students = new Set(rows.flatMap(row => row.metrics.studentIds));
     const attention = [...new Map(rows.flatMap(row => row.metrics.attentionStudents).map(row => [row.id, row])).values()];
     const latestReview = rows.flatMap(row => row.metrics.latestReview ? [row.metrics.latestReview] : []).sort((a,b) => b.at.localeCompare(a.at))[0] ?? null;
@@ -47,7 +53,7 @@ export function groupTeachingClasses(data: TeachingClassOverview, teacher?: stri
       ratedCount: rows.reduce((sum, row) => sum + row.metrics.ratedCount, 0),
       expectedRatings: rows.reduce((sum, row) => sum + row.metrics.checkCount * row.metrics.studentIds.length, 0),
       reviewCount: rows.reduce((sum, row) => sum + row.metrics.reviewCount, 0), latestReview,
-      contacts: data.classContacts.find(row => row.classroomId === group.id) ?? { count: 0, studentCount: 0, latest: null },
+      contacts: contacts.get(group.id) ?? { count: 0, studentCount: 0, latest: null },
     };
   }).sort((a,b) => b.attention.length - a.attention.length || b.recordedSessions - a.recordedSessions || a.name.localeCompare(b.name));
 }

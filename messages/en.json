@@ -1880,7 +1880,7 @@
   "school": {
     "teachingWorkbench": {
       "overview": {
-        "hint": "One row per class. Expand for lessons. Figures cover lessons and students in the selected period; communication uses its entry date.",
+        "hint": "One row per class. Expand a class for lessons, then expand actual records below a lesson. Figures cover lessons and students in the selected period; communication uses its entry date.",
         "summary": "{classes} classes · {sessions} lessons · {recorded} lessons with records",
         "students": "{count} students",
         "sessions": "Lesson records",
@@ -1918,6 +1918,9 @@
         "listHint": "Filter by teacher and class, then open a lesson for individual learning checks, teacher reviews and communication notes. Lessons with learning records alone are included. Choose a week or month by scheduled date.",
         "classroom": "Class",
         "open": "View actual records",
+        "collapse": "Collapse actual records",
+        "retry": "Reload records",
+        "loading": "Loading actual records…",
         "back": "Back to teaching records",
         "readHint": "This page shows saved records. Starting a lesson in the system is separate from teaching it in person; learning checks can be recorded before starting it here.",
         "ended": "Ended in system",

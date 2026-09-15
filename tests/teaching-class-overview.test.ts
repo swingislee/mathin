@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it, vi } from "vitest";
 import messages from "../messages/zh.json";
-import { groupTeachingClasses, type TeachingClassOverview, type TeachingSessionMetrics } from "../src/features/school/teaching-workbench/teaching-class-overview-contract";
+import { groupTeachingClasses, teachingClassOverviewSchema, type TeachingClassOverview, type TeachingSessionMetrics } from "../src/features/school/teaching-workbench/teaching-class-overview-contract";
 import { TeachingClassOverviewTable } from "../src/features/school/teaching-workbench/TeachingClassOverviewTable";
 import type { TeachingSession } from "../src/features/school/teaching-workbench/teaching-workbench-contract";
 
@@ -27,6 +27,12 @@ const data: TeachingClassOverview = {
 };
 
 describe("class teaching overview", () => {
+  it("sends only overview facts to the client without preparation tasks or artifacts", () => {
+    const parsed = teachingClassOverviewSchema.parse(data);
+    expect(parsed.workbench.sessions[0]).not.toHaveProperty("tasks");
+    expect(parsed.workbench.sessions[0]).not.toHaveProperty("artifacts");
+    expect(parsed.workbench.sessions[0].teachers).toEqual(data.workbench.sessions[0].teachers);
+  });
   it("groups by class, deduplicates people and preserves student-lesson denominators", () => {
     const groups = groupTeachingClasses(data);
     expect(groups).toHaveLength(1);
