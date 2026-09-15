@@ -39,9 +39,9 @@ export function FollowupInlineDetails({
   };
 
   return <TableRow ref={rowRef} id={id} tabIndex={-1} hidden={!open} aria-hidden={!open || undefined} inert={!open || undefined} data-followup-inline-details data-followup-active={active} onKeyDown={onKeyDown}
-    onFocusCapture={(event) => { if (event.currentTarget.contains(event.target)) onActivate?.(); }}
+    onFocusCapture={(event) => { if ((event.target as Element).closest("[data-followup-inline-details]") === event.currentTarget) onActivate?.(); }}
     onPointerDown={(event) => {
-      if (!event.currentTarget.contains(event.target as Node)) return;
+      if ((event.target as Element).closest("[data-followup-inline-details]") !== event.currentTarget) return;
       onActivate?.();
       const focusTarget = (event.target as Element).closest("button,a,input,textarea,select,[tabindex],[contenteditable],[role='combobox'],[role='option']");
       if (!focusTarget || focusTarget === event.currentTarget) {

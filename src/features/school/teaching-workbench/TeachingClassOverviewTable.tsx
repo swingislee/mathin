@@ -1,9 +1,9 @@
 "use client";
 
-import { Fragment, useMemo, useState, type KeyboardEvent } from "react";
+import { useMemo, useState, type KeyboardEvent } from "react";
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
-import { Table, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Link } from "@/i18n/navigation";
 import { DashboardEmptyState, DashboardTableShell } from "../dashboard-page";
 import { DashboardTableColumnHeader } from "../dashboard-page/DashboardTableColumnHeader";
@@ -36,7 +36,7 @@ export function TeachingClassOverviewTable({ data, locale, timeZone, returnTo, i
   const [teacher, setTeacher] = useState(initialTeacher);
   const [expanded, setExpanded] = useState<string | null>(initialClassroom ?? null);
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
-  const [activeKey, setActiveKey] = useState<string | null>(null);
+  const [activeKey, setActiveKey] = useState<string | null>(initialClassroom ? `class:${initialClassroom}` : null);
   const [recordCache] = useState<TeachingRecordCache>(() => new Map());
   const [pageSize, setPageSize] = useState(20);
   const [requestedPage, setPage] = useState(1);
@@ -124,40 +124,42 @@ export function TeachingClassOverviewTable({ data, locale, timeZone, returnTo, i
       })}</TableRow></TableHeader>
       <FollowupTableBody onNavigate={key => { setActiveKey(key); return true; }}>
         {rows.length === 0 && <TableRow><TableCell colSpan={8}><DashboardEmptyState>{workT(data.workbench.sessions.length ? "emptyFilter" : "emptyPeriod")}</DashboardEmptyState></TableCell></TableRow>}
-        {rows.map(row => <Fragment key={row.id}>
-          <FollowupRecordRow rowKey={`class:${row.id}`} rowProps={{ id: `teaching-summary-class:${row.id}`, "data-teaching-level": "class" }} active={activeKey === `class:${row.id}`} expanded={expanded === row.id}
-            onActivate={() => setActiveKey(`class:${row.id}`)} onExpandedChange={open => changeClass(row.id, open)} renderDetails={false}
-            detailsId={row.sessions.map(session => `teaching-summary-session:${session.id}`).join(" ")} title={row.name} colSpan={8} summary={<>
-              <TableCell className="sticky left-0 z-10 border-r border-line px-2 py-1.5 align-top"><div className="flex min-w-0 items-start gap-1">
-                <DashboardRowDisclosure expanded={expanded === row.id} label={t(expanded === row.id ? "collapseClass" : "expandClass", { name: row.name })} controls={row.sessions.map(session => `teaching-summary-session:${session.id}`).join(" ")} onToggle={() => changeClass(row.id, expanded !== row.id)} />
-                <div className="min-w-0"><Link prefetch={false} href={classHref(row.id)} className="line-clamp-2 break-words text-xs font-medium leading-5 hover:underline" title={row.name}>{row.name}</Link><p className="mt-0.5 text-[11px] text-muted">{t("students", { count: row.studentCount })}</p></div>
+        {rows.map(row => <FollowupRecordRow key={row.id} rowKey={`class:${row.id}`} rowProps={{ id: `teaching-summary-class:${row.id}`, "data-teaching-level": "class", className: "h-11 cursor-pointer" }} active={activeKey === `class:${row.id}` || expanded === row.id && row.sessions.some(session => activeKey === `session:${session.id}`)} expanded={expanded === row.id}
+            onActivate={() => setActiveKey(`class:${row.id}`)} onExpandedChange={open => changeClass(row.id, open)} hideTitle
+            detailsId={`teaching-class-details-${row.id}`} title={row.name} colSpan={8} summary={<>
+              <TableCell className="sticky left-0 z-10 border-r border-line px-2 py-1.5 align-middle"><div className="flex min-w-0 items-center gap-1">
+                <DashboardRowDisclosure expanded={expanded === row.id} label={t(expanded === row.id ? "collapseClass" : "expandClass", { name: row.name })} controls={`teaching-class-details-${row.id}`} onToggle={() => changeClass(row.id, expanded !== row.id)} />
+                <div className="min-w-0"><Link prefetch={false} href={classHref(row.id)} className="block truncate text-xs font-medium leading-5 hover:underline" title={row.name}>{row.name}</Link><p className="mt-0.5 text-[11px] text-muted">{t("students", { count: row.studentCount })}</p></div>
               </div></TableCell>
-              <TableCell className="px-2 py-1.5 align-top">{row.teachers.map(person => person.name || workT("unnamedTeacher")).join("、") || workT("unassigned")}</TableCell>
-              <TableCell className="px-2 py-1.5 align-top"><p>{t("recorded", { done: row.recordedSessions, total: row.sessions.length })}</p><p className="mt-0.5 text-[11px] text-muted">{t("ended", { count: row.endedSessions })}</p></TableCell>
-              <TableCell className="px-2 py-1.5 align-top" title={t("attendanceHint")}><p>{row.attendance.marked ? t("present", { count: row.attendance.present, marked: row.attendance.marked }) : t("noAttendance")}</p><p className="mt-0.5 text-[11px] text-muted">{row.attendance.marked ? t("absence", { absent: row.attendance.absent, late: row.attendance.late, leave: row.attendance.leave }) : t("rosterEntries", { count: row.rosterEntries })}</p></TableCell>
-              <TableCell className="px-2 py-1.5 align-top" title={t("learningHint")}><p>{row.expectedRatings ? t("ratings", { done: row.ratedCount, total: row.expectedRatings }) : t("noChecks")}</p><p className="mt-0.5 text-[11px] text-muted">{t("reviewCount", { count: row.reviewCount })}</p></TableCell>
-              <TableCell className="px-2 py-1.5 align-top" title={t("attentionHint")}><p>{row.ratedCount ? t("people", { count: row.attention.length }) : t("notRecorded")}</p><p className="mt-0.5 line-clamp-2 text-[11px] text-muted" title={row.attention.map(student => student.name).join("、")}>{row.attention.map(student => student.name).join("、")}</p></TableCell>
-              <TableCell className="px-2 py-1.5 align-top">{snippet(row.latestReview, t("noReview"))}</TableCell>
-              <TableCell className="px-2 py-1.5 align-top">{data.canReadContacts ? <><p className="mb-0.5 text-[11px] text-muted">{t("contactCount", { count: row.contacts.count, students: row.contacts.studentCount })}</p>{snippet(row.contacts.latest, t("noContacts"))}</> : t("contactsRestricted")}</TableCell>
-            </>} />
-          {expanded === row.id && row.sessions.map(session => <FollowupRecordRow key={session.id} rowKey={`session:${session.id}`} rowProps={{ id: `teaching-summary-session:${session.id}`, "data-teaching-level": "session" }} active={activeKey === `session:${session.id}`} expanded={expandedSession === session.id}
+              <TableCell className="px-2 py-1.5 align-middle">{row.teachers.map(person => person.name || workT("unnamedTeacher")).join("、") || workT("unassigned")}</TableCell>
+              <TableCell className="px-2 py-1.5 align-middle"><p>{t("recorded", { done: row.recordedSessions, total: row.sessions.length })}</p><p className="mt-0.5 text-[11px] text-muted">{t("ended", { count: row.endedSessions })}</p></TableCell>
+              <TableCell className="px-2 py-1.5 align-middle" title={t("attendanceHint")}><p>{row.attendance.marked ? t("present", { count: row.attendance.present, marked: row.attendance.marked }) : t("noAttendance")}</p><p className="mt-0.5 text-[11px] text-muted">{row.attendance.marked ? t("absence", { absent: row.attendance.absent, late: row.attendance.late, leave: row.attendance.leave }) : t("rosterEntries", { count: row.rosterEntries })}</p></TableCell>
+              <TableCell className="px-2 py-1.5 align-middle" title={t("learningHint")}><p>{row.expectedRatings ? t("ratings", { done: row.ratedCount, total: row.expectedRatings }) : t("noChecks")}</p><p className="mt-0.5 text-[11px] text-muted">{t("reviewCount", { count: row.reviewCount })}</p></TableCell>
+              <TableCell className="px-2 py-1.5 align-middle" title={t("attentionHint")}><p>{row.ratedCount ? t("people", { count: row.attention.length }) : t("notRecorded")}</p><p className="mt-0.5 line-clamp-2 text-[11px] text-muted" title={row.attention.map(student => student.name).join("、")}>{row.attention.map(student => student.name).join("、")}</p></TableCell>
+              <TableCell className="px-2 py-1.5 align-middle">{snippet(row.latestReview, t("noReview"))}</TableCell>
+              <TableCell className="px-2 py-1.5 align-middle">{data.canReadContacts ? <><p className="mb-0.5 text-[11px] text-muted">{t("contactCount", { count: row.contacts.count, students: row.contacts.studentCount })}</p>{snippet(row.contacts.latest, t("noContacts"))}</> : t("contactsRestricted")}</TableCell>
+            </>}>
+          {() => <Table data-teaching-session-table aria-label={t("classLessons", { name: row.name })} className="table-fixed bg-transparent text-xs" containerClassName="overflow-visible">
+            <colgroup>{widths.map((width, index) => <col key={index} className={width} />)}</colgroup>
+            <TableHeader className="sr-only"><TableRow>{columns.map(column => <TableHead key={column}>{labels[column]}</TableHead>)}</TableRow></TableHeader>
+            <TableBody>{row.sessions.map(session => <FollowupRecordRow key={session.id} rowKey={`session:${session.id}`} rowProps={{ id: `teaching-summary-session:${session.id}`, "data-teaching-level": "session", className: "h-11 cursor-pointer" }} active={activeKey === `session:${session.id}`} expanded={expandedSession === session.id}
             onActivate={() => setActiveKey(`session:${session.id}`)} onExpandedChange={open => changeSession(session.id, open)} onKeyDown={event => navigateDetails(event, `session:${session.id}`)}
-            detailsId={`session-records-${session.id}`} title={`${session.title || workT("untitled")} · ${date(session.scheduledAt)}`} colSpan={8} summary={<>
-              <TableCell className="sticky left-0 z-10 border-r border-line py-1.5 pl-8 pr-2 align-top"><div className="flex items-start gap-1">
+            detailsId={`session-records-${session.id}`} title={`${session.title || workT("untitled")} · ${date(session.scheduledAt)}`} hideTitle colSpan={8} summary={<>
+              <TableCell className="px-2 py-1.5 align-middle"><div className="flex items-center gap-1">
                 <DashboardRowDisclosure expanded={expandedSession === session.id} label={workT(expandedSession === session.id ? "records.collapse" : "records.open")} controls={`session-records-${session.id}`} onToggle={() => changeSession(session.id, expandedSession !== session.id)} />
                 <div className="min-w-0"><p className="line-clamp-2 leading-5">{session.title || workT("untitled")}</p><p className="mt-0.5 text-[11px] text-muted">{date(session.scheduledAt)}</p></div>
               </div></TableCell>
-              <TableCell className="px-2 py-1.5 align-top">{session.teachers.map(person => person.name).join("、") || workT("unassigned")}</TableCell>
-              <TableCell className="px-2 py-1.5 align-top">{hasTeachingRecords(session.metrics) ? t("hasRecords") : t("notRecorded")}<p className="mt-0.5 text-[11px] text-muted">{workT(session.endedAt ? "records.ended" : session.startedAt ? "records.started" : "records.notStarted")}</p></TableCell>
-              <TableCell className="px-2 py-1.5 align-top">{session.metrics.attendance.marked ? t("present", { count: session.metrics.attendance.present, marked: session.metrics.attendance.marked }) : t("noAttendance")}</TableCell>
-              <TableCell className="px-2 py-1.5 align-top">{session.metrics.checkCount ? t("ratings", { done: session.metrics.ratedCount, total: session.metrics.checkCount * session.metrics.studentIds.length }) : t("noChecks")}<p className="mt-0.5 text-[11px] text-muted">{t("reviewCount", { count: session.metrics.reviewCount })}</p></TableCell>
-              <TableCell className="px-2 py-1.5 align-top">{session.metrics.attentionStudents.map(student => student.name).join("、") || "—"}</TableCell>
-              <TableCell className="px-2 py-1.5 align-top">{snippet(session.metrics.latestReview, t("noReview"))}</TableCell>
-              <TableCell className="px-2 py-1.5 align-top text-muted">{data.canReadContacts ? t("contactsOnExpand") : t("contactsRestricted")}</TableCell>
+              <TableCell className="px-2 py-1.5 align-middle">{session.teachers.map(person => person.name).join("、") || workT("unassigned")}</TableCell>
+              <TableCell className="px-2 py-1.5 align-middle">{hasTeachingRecords(session.metrics) ? t("hasRecords") : t("notRecorded")}<p className="mt-0.5 text-[11px] text-muted">{workT(session.endedAt ? "records.ended" : session.startedAt ? "records.started" : "records.notStarted")}</p></TableCell>
+              <TableCell className="px-2 py-1.5 align-middle">{session.metrics.attendance.marked ? t("present", { count: session.metrics.attendance.present, marked: session.metrics.attendance.marked }) : t("noAttendance")}</TableCell>
+              <TableCell className="px-2 py-1.5 align-middle">{session.metrics.checkCount ? t("ratings", { done: session.metrics.ratedCount, total: session.metrics.checkCount * session.metrics.studentIds.length }) : t("noChecks")}<p className="mt-0.5 text-[11px] text-muted">{t("reviewCount", { count: session.metrics.reviewCount })}</p></TableCell>
+              <TableCell className="px-2 py-1.5 align-middle">{session.metrics.attentionStudents.map(student => student.name).join("、") || "—"}</TableCell>
+              <TableCell className="px-2 py-1.5 align-middle">{snippet(session.metrics.latestReview, t("noReview"))}</TableCell>
+              <TableCell className="px-2 py-1.5 align-middle text-muted">{data.canReadContacts ? t("contactsOnExpand") : t("contactsRestricted")}</TableCell>
             </>}>
             {() => <InlineRecords key={session.id} sessionId={session.id} locale={locale} timeZone={timeZone} cache={recordCache} />}
-          </FollowupRecordRow>)}
-        </Fragment>)}
+          </FollowupRecordRow>)}</TableBody></Table>}
+        </FollowupRecordRow>)}
       </FollowupTableBody>
     </Table></DashboardTableShell>
     <div className="shrink-0"><DashboardTablePagination currentPage={page} totalPages={pages} totalCount={groups.length}

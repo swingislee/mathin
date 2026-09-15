@@ -300,6 +300,8 @@ body:has([data-dashboard-canvas], [data-followup-workbench])::after { display: n
   --followup-side: transparent;
 }
 :where([data-followup-workbench]) [data-slot="table"] > tbody > tr { background-color: var(--card); }
+/* 教学课次属于班级展开正文，普通课次沿用详情底色。 */
+[data-slot="table"][data-teaching-session-table] > tbody > tr { background-color: var(--followup-detail); }
 [data-slot="table"] > tbody > tr:is([aria-selected="true"], [aria-expanded="true"], [data-state="selected"], [data-followup-inline-details]) {
   --muted: var(--table-selected-muted);
 }

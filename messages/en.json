@@ -1881,6 +1881,7 @@
     "teachingWorkbench": {
       "overview": {
         "classAndLesson": "Class / lesson",
+        "classLessons": "Lessons for {name}",
         "fields": {
           "students": "Students",
           "recordedSessions": "Recorded lessons",

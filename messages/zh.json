@@ -1881,6 +1881,7 @@
     "teachingWorkbench": {
       "overview": {
         "classAndLesson": "班级 / 课次",
+        "classLessons": "{name}的课次",
         "fields": {
           "students": "学生人数",
           "recordedSessions": "已记录课次",
