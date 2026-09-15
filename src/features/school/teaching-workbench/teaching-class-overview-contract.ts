@@ -1,18 +1,20 @@
 import { z } from "zod";
 import { teachingWorkbenchSchema } from "./teaching-workbench-contract";
+import { mergeTeachingObservations, teachingObservationSchema } from "./teaching-learning-summary";
 
 // 概览客户端只接收实际展示字段，备课资料、任务等留给原完成情况页读取。
 const overviewSessionSchema = teachingWorkbenchSchema.shape.sessions.element.pick({
   id: true, classroomId: true, classroomName: true, title: true, scheduledAt: true, teachers: true, startedAt: true, endedAt: true,
 });
 
-const snippetSchema = z.object({ content: z.string(), studentName: z.string(), author: z.string().nullable(), at: z.string() });
+const snippetSchema = z.object({ content: z.string(), studentName: z.string(), author: z.string().nullable(), at: z.string(), eventDate: z.string().nullable().optional() });
 const metricsSchema = z.object({
   sessionId: z.string(), studentIds: z.array(z.string()),
   attendance: z.object({ marked: z.number(), present: z.number(), late: z.number(), absent: z.number(), leave: z.number() }),
   checkCount: z.number(), ratedCount: z.number(),
   attentionStudents: z.array(z.object({ id: z.string(), name: z.string() })),
   reviewCount: z.number(), latestReview: snippetSchema.nullable(),
+  observations: teachingObservationSchema.optional(),
 });
 export const teachingClassOverviewSchema = z.object({
   workbench: z.object({ sessions: z.array(overviewSessionSchema), truncated: z.boolean() }), metrics: z.array(metricsSchema), canReadContacts: z.boolean(),
@@ -43,6 +45,7 @@ export function groupTeachingClasses(data: TeachingClassOverview, teacher?: stri
     const latestReview = rows.flatMap(row => row.metrics.latestReview ? [row.metrics.latestReview] : []).sort((a,b) => b.at.localeCompare(a.at))[0] ?? null;
     return {
       ...group, studentCount: students.size, attention,
+      observations: mergeTeachingObservations(rows.flatMap(row => row.metrics.observations ? [row.metrics.observations] : [])),
       teachers: [...new Map(rows.flatMap(row => row.teachers).map(row => [row.id, row])).values()],
       recordedSessions: rows.filter(row => hasTeachingRecords(row.metrics)).length,
       endedSessions: rows.filter(row => row.endedAt).length,

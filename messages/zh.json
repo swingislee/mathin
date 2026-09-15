@@ -1879,6 +1879,38 @@
   },
   "school": {
     "teachingWorkbench": {
+      "replay": {
+        "bothTeachers": "两位老师",
+        "source": "生产记录只读快照 · {captured} 提取",
+        "hint": "查看两位老师上周的实际教学记录。课堂表现按已记录的逐生逐题观察计数；展开班级与课次可核对原始学情和正文。",
+        "unavailable": "本地上周记录快照尚未准备好。",
+        "contacts": "学生沟通与背景",
+        "contactsHint": "本节学生在 9 月 7—13 日沟通或录入的记录。未注明沟通日期、记录人的内容作为学生背景参考；不归为任课老师当周沟通。"
+      },
+      "observations": {
+        "performance": "课堂表现（次）",
+        "autonomous": "独立 / 讲解 {count}/{total}",
+        "supportBreakdown": "提示 {prompted} · 模仿 {imitated} · 未完成 {incomplete}",
+        "basis": "分母为已记录的逐生逐题观察次数。独立 / 讲解包含独立完成、能讲解；需支持包含需提示、模仿完成、未完成。未记录不计为不会或缺席。",
+        "autonomousField": "独立完成或能讲解次数",
+        "supportField": "需支持次数",
+        "recordedChecks": "有记录的题目数",
+        "coverageTitle": "记录覆盖 / 课评",
+        "coverage": "已记 {done}/{total} 题",
+        "coverageHint": "题目有至少一条学生记录即计入有记录题目；逐题表头同时显示学生覆盖情况。",
+        "reviews": "已填课评 {count} 人次",
+        "focus": "优先查看题目",
+        "focusBasis": "优先显示已记录观察中需支持占比最高的题目；同占比时按需支持次数排列。",
+        "focusRatio": "需支持 {count}/{total} 次",
+        "noSupport": "已记观察中暂无需支持",
+        "noObservations": "尚无学情观察",
+        "sessionState": "课次 / 考勤",
+        "noAttendance": "考勤未记录",
+        "unclosed": "{count} 节未记下课",
+        "endedField": "系统已下课课次",
+        "unclosedField": "未记录下课课次",
+        "checkCoverage": "已记 {done}/{total} 人 · 支持 {supported}"
+      },
       "overview": {
         "classAndLesson": "班级 / 课次",
         "classLessons": "{name}的课次",
@@ -1963,6 +1995,8 @@
         "time": "时间",
         "content": "沟通与反馈内容",
         "unknownAuthor": "未记录姓名",
+        "unknownContactDate": "沟通日期未注明",
+        "enteredAt": "{date} 录入",
         "supportNotes": "本节联络任务备注",
         "supportHint": "这些备注直接关联本节课次。负责人表示任务分工。",
         "assignee": "负责人",

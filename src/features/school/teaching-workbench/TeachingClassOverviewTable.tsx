@@ -16,6 +16,7 @@ import type { DashboardFieldDefinitions, DashboardFieldQuery } from "../dashboar
 import { withReturnTo } from "../object-workspace/return-target";
 import { groupTeachingClasses, hasTeachingRecords, type TeachingClassOverview, type TeachingRecordSnippet } from "./teaching-class-overview-contract";
 import type { TeachingRecordCache } from "./teaching-records-client";
+import { TeachingCoverage, TeachingFocus, TeachingPerformance } from "./TeachingObservationCells";
 
 const InlineRecords = dynamic(() => import("./TeachingInlineRecords").then(module => module.TeachingInlineRecords), { loading: () => <InlineLoading /> });
 function InlineLoading() {
@@ -28,11 +29,13 @@ type Column = "classroom" | "teacher" | "sessions" | "attendance" | "learning" |
 const columns: Column[] = ["classroom", "teacher", "sessions", "attendance", "learning", "attention", "reviews", "contacts"];
 const widths = ["w-[20%]", "w-[9%]", "w-[10%]", "w-[11%]", "w-[11%]", "w-[9%]", "w-[15%]", "w-[15%]"];
 
-export function TeachingClassOverviewTable({ data, locale, timeZone, returnTo, initialTeacher, initialClassroom }: {
-  data: TeachingClassOverview; locale: string; timeZone: string; returnTo: string; initialTeacher?: string; initialClassroom?: string;
+export function TeachingClassOverviewTable({ data, locale, timeZone, returnTo, initialTeacher, initialClassroom, replayId }: {
+  data: TeachingClassOverview; locale: string; timeZone: string; returnTo: string; initialTeacher?: string; initialClassroom?: string; replayId?: "2026-09-07";
 }) {
   const t = useTranslations("school.teachingWorkbench.overview");
   const workT = useTranslations("school.teachingWorkbench");
+  const rich = data.metrics.length > 0 && data.metrics.every(metric => metric.observations);
+  const columnWidths = rich ? ["w-[20%]", "w-[8%]", "w-[10%]", "w-[13%]", "w-[10%]", "w-[14%]", "w-[12%]", "w-[13%]"] : widths;
   const [teacher, setTeacher] = useState(initialTeacher);
   const [expanded, setExpanded] = useState<string | null>(initialClassroom ?? null);
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
@@ -54,23 +57,29 @@ export function TeachingClassOverviewTable({ data, locale, timeZone, returnTo, i
         : [{ value: "unassigned", label: workT("unassigned") }] },
     sessions: { label: t("fields.recordedSessions"), kind: "number", value: row => row.recordedSessions },
     totalSessions: { label: t("fields.totalSessions"), kind: "number", value: row => row.sessions.length },
+    endedSessions: { label: workT("observations.endedField"), kind: "number", value: row => row.endedSessions },
+    unclosedSessions: { label: workT("observations.unclosedField"), kind: "number", value: row => row.sessions.length - row.endedSessions },
     attendance: { label: t("fields.attendance"), hint: t("attendanceHint"), kind: "number", step: 1,
       value: row => row.attendance.marked ? row.attendance.present / row.attendance.marked * 100 : null },
     learning: { label: t("fields.learning"), hint: t("learningHint"), kind: "number", value: row => row.ratedCount },
+    autonomous: { label: workT("observations.autonomousField"), hint: workT("observations.basis"), kind: "number", value: row => row.observations ? row.observations.independent + row.observations.explained : null },
+    support: { label: workT("observations.supportField"), hint: workT("observations.basis"), kind: "number", value: row => row.observations ? row.observations.prompted + row.observations.imitated + row.observations.incomplete : null },
+    recordedChecks: { label: workT("observations.recordedChecks"), kind: "number", value: row => row.observations?.recordedChecks },
+    focusCheck: { label: workT("observations.focus"), hint: workT("observations.focusBasis"), kind: "text", value: row => row.observations?.focusChecks[0]?.title },
     reviewCount: { label: t("fields.reviewCount"), kind: "number", value: row => row.reviewCount },
     attention: { label: t("attention"), hint: t("attentionHint"), kind: "number", value: row => row.ratedCount ? row.attention.length : null },
     reviews: { label: t("reviews"), kind: "text", value: row => row.latestReview?.content },
     reviewAt: { label: t("fields.reviewAt"), kind: "date", value: row => row.latestReview?.at },
-    contacts: { label: t("fields.contactCount"), hint: t("contactsHint"), kind: "number", value: row => data.canReadContacts ? row.contacts.count : null },
+    contacts: { label: t("fields.contactCount"), hint: replayId ? workT("replay.contactsHint") : t("contactsHint"), kind: "number", value: row => data.canReadContacts ? row.contacts.count : null },
     contactContent: { label: t("fields.contactContent"), kind: "text", value: row => data.canReadContacts ? row.contacts.latest?.content : null },
-  }), [t, workT, teacherOptions, data.canReadContacts]);
+  }), [t, workT, teacherOptions, data.canReadContacts, replayId]);
   const initialQuery = useMemo<DashboardFieldQuery>(() => ({ version: 2, sort: null, filters: {
     ...(initialTeacher ? { teacher: { kind: "enum", values: [initialTeacher] } as const } : {}),
     ...(initialClassroom ? { classroom: { kind: "enum", values: [initialClassroom] } as const } : {}),
   } }), [initialTeacher, initialClassroom]);
   const table = useDashboardFieldView({ rows: scopedGroups, fields, columns: {
-    classroom: ["classroom", "students"], teacher: ["teacher"], sessions: ["sessions", "totalSessions"],
-    attendance: ["attendance"], learning: ["learning", "reviewCount"], attention: ["attention"],
+    classroom: ["classroom", "students"], teacher: ["teacher"], sessions: rich ? ["endedSessions", "unclosedSessions", "attendance"] : ["sessions", "totalSessions"],
+    attendance: rich ? ["autonomous", "support"] : ["attendance"], learning: rich ? ["recordedChecks", "learning", "reviewCount"] : ["learning", "reviewCount"], attention: rich ? ["focusCheck", "attention"] : ["attention"],
     reviews: ["reviews", "reviewAt"], contacts: ["contacts", "contactContent"],
   }, context: { locale, timeZone, now: mountedAt }, initialQuery, onQueryChange: query => {
     const filter = query.filters.teacher;
@@ -86,7 +95,8 @@ export function TeachingClassOverviewTable({ data, locale, timeZone, returnTo, i
   const date = (value: string) => formatter.format(new Date(value));
   const snippet = (value: TeachingRecordSnippet | null, empty: string) => value ? <>
     <p className="line-clamp-2 break-words leading-5" title={value.content}>{value.studentName}：{value.content}</p>
-    <p className="mt-0.5 truncate text-[11px] text-muted">{value.author || workT("records.unknownAuthor")} · {date(value.at)}</p>
+    <p className="mt-0.5 text-[11px] text-muted">{value.author || workT("records.unknownAuthor")} · {value.eventDate === undefined ? date(value.at) : value.eventDate || workT("records.unknownContactDate")}</p>
+    {value.eventDate !== undefined && <p className="text-[11px] text-muted">{workT("records.enteredAt", { date: date(value.at) })}</p>}
   </> : <span className="text-xs text-muted">{empty}</span>;
   const changeClass = (id: string, open: boolean) => { setExpanded(open ? id : null); setExpandedSession(null); setActiveKey(`class:${id}`); };
   const changeSession = (id: string, open: boolean) => { setExpandedSession(open ? id : null); setActiveKey(`session:${id}`); };
@@ -109,15 +119,17 @@ export function TeachingClassOverviewTable({ data, locale, timeZone, returnTo, i
     element?.focus({ preventScroll: true }); element?.scrollIntoView({ block: "nearest", inline: "nearest" });
   };
   const labels: Record<Column, string> = { classroom: t("classAndLesson"), teacher: workT("teacher"), sessions: t("sessions"), attendance: t("attendance"), learning: t("learning"), attention: t("attention"), reviews: t("reviews"), contacts: t("contacts") };
+  if (rich) { labels.sessions = workT("observations.sessionState"); labels.attendance = workT("observations.performance"); labels.learning = workT("observations.coverageTitle"); labels.attention = workT("observations.focus"); }
+  if (replayId) labels.contacts = workT("replay.contacts");
 
   return <div className="flex min-h-0 flex-1 flex-col gap-1.5">
     {data.workbench.truncated && <p role="alert" className="text-sm text-rose">{workT("truncated")}</p>}
-    <p id="teaching-overview-help" className="sr-only">{t("hint")} {t("keyboardHint")}</p>
+    <p id="teaching-overview-help" className="sr-only">{replayId ? workT("replay.hint") : t("hint")} {t("keyboardHint")}</p>
     <DashboardTableShell data-followup-workbench data-followup-scroll data-teaching-overview>
     <Table aria-describedby="teaching-overview-help" className="w-full min-w-[1100px] table-fixed text-xs" containerClassName="isolate overflow-auto [scrollbar-gutter:stable]">
       <TableHeader><TableRow>{columns.map((column, index) => {
         const props = table.columnProps(column);
-        return <TableHead key={column} className={`${widths[index]} sticky top-0 h-9 bg-card px-2 ${index === 0 ? "left-0 z-30 border-r border-line" : "z-20"}`}>
+        return <TableHead key={column} className={`${columnWidths[index]} sticky top-0 h-9 bg-card px-2 ${index === 0 ? "left-0 z-30 border-r border-line" : "z-20"}`}>
           <DashboardTableColumnHeader label={labels[column]} {...props} disabled={column === "contacts" && !data.canReadContacts}
             fields={column === "teacher" ? props.fields.map(field => ({ ...field, options: teacherOptions })) : props.fields} />
         </TableHead>;
@@ -129,18 +141,18 @@ export function TeachingClassOverviewTable({ data, locale, timeZone, returnTo, i
             detailsId={`teaching-class-details-${row.id}`} title={row.name} colSpan={8} summary={<>
               <TableCell className="sticky left-0 z-10 border-r border-line px-2 py-1.5 align-middle"><div className="flex min-w-0 items-center gap-1">
                 <DashboardRowDisclosure expanded={expanded === row.id} label={t(expanded === row.id ? "collapseClass" : "expandClass", { name: row.name })} controls={`teaching-class-details-${row.id}`} onToggle={() => changeClass(row.id, expanded !== row.id)} />
-                <div className="min-w-0"><Link prefetch={false} href={classHref(row.id)} className="block truncate text-xs font-medium leading-5 hover:underline" title={row.name}>{row.name}</Link><p className="mt-0.5 text-[11px] text-muted">{t("students", { count: row.studentCount })}</p></div>
+                <div className="min-w-0">{replayId ? <p className="truncate text-xs font-medium leading-5" title={row.name}>{row.name}</p> : <Link prefetch={false} href={classHref(row.id)} className="block truncate text-xs font-medium leading-5 hover:underline" title={row.name}>{row.name}</Link>}<p className="mt-0.5 truncate text-[11px] text-muted" title={rich && row.sessions.length === 1 ? row.sessions[0].title : undefined}>{t("students", { count: row.studentCount })}{rich && row.sessions.length === 1 && ` · ${row.sessions[0].title}`}</p></div>
               </div></TableCell>
               <TableCell className="px-2 py-1.5 align-middle">{row.teachers.map(person => person.name || workT("unnamedTeacher")).join("、") || workT("unassigned")}</TableCell>
-              <TableCell className="px-2 py-1.5 align-middle"><p>{t("recorded", { done: row.recordedSessions, total: row.sessions.length })}</p><p className="mt-0.5 text-[11px] text-muted">{t("ended", { count: row.endedSessions })}</p></TableCell>
-              <TableCell className="px-2 py-1.5 align-middle" title={t("attendanceHint")}><p>{row.attendance.marked ? t("present", { count: row.attendance.present, marked: row.attendance.marked }) : t("noAttendance")}</p><p className="mt-0.5 text-[11px] text-muted">{row.attendance.marked ? t("absence", { absent: row.attendance.absent, late: row.attendance.late, leave: row.attendance.leave }) : t("rosterEntries", { count: row.rosterEntries })}</p></TableCell>
-              <TableCell className="px-2 py-1.5 align-middle" title={t("learningHint")}><p>{row.expectedRatings ? t("ratings", { done: row.ratedCount, total: row.expectedRatings }) : t("noChecks")}</p><p className="mt-0.5 text-[11px] text-muted">{t("reviewCount", { count: row.reviewCount })}</p></TableCell>
-              <TableCell className="px-2 py-1.5 align-middle" title={t("attentionHint")}><p>{row.ratedCount ? t("people", { count: row.attention.length }) : t("notRecorded")}</p><p className="mt-0.5 line-clamp-2 text-[11px] text-muted" title={row.attention.map(student => student.name).join("、")}>{row.attention.map(student => student.name).join("、")}</p></TableCell>
+              <TableCell className="px-2 py-1.5 align-middle"><p>{rich ? row.endedSessions === row.sessions.length ? t("ended", { count: row.endedSessions }) : workT("observations.unclosed", { count: row.sessions.length - row.endedSessions }) : t("recorded", { done: row.recordedSessions, total: row.sessions.length })}</p><p className="mt-0.5 text-[11px] text-muted">{rich ? row.attendance.marked ? t("present", { count: row.attendance.present, marked: row.attendance.marked }) : workT("observations.noAttendance") : t("ended", { count: row.endedSessions })}</p></TableCell>
+              <TableCell className="px-2 py-1.5 align-middle">{rich && row.observations ? <TeachingPerformance value={row.observations} /> : <div title={t("attendanceHint")}><p>{row.attendance.marked ? t("present", { count: row.attendance.present, marked: row.attendance.marked }) : t("noAttendance")}</p><p className="mt-0.5 text-[11px] text-muted">{row.attendance.marked ? t("absence", { absent: row.attendance.absent, late: row.attendance.late, leave: row.attendance.leave }) : t("rosterEntries", { count: row.rosterEntries })}</p></div>}</TableCell>
+              <TableCell className="px-2 py-1.5 align-middle">{rich && row.observations ? <TeachingCoverage value={row.observations} reviewCount={row.reviewCount} /> : <div title={t("learningHint")}><p>{row.expectedRatings ? t("ratings", { done: row.ratedCount, total: row.expectedRatings }) : t("noChecks")}</p><p className="mt-0.5 text-[11px] text-muted">{t("reviewCount", { count: row.reviewCount })}</p></div>}</TableCell>
+              <TableCell className="px-2 py-1.5 align-middle">{rich && row.observations ? <TeachingFocus value={row.observations} /> : <div title={t("attentionHint")}><p>{row.ratedCount ? t("people", { count: row.attention.length }) : t("notRecorded")}</p><p className="mt-0.5 line-clamp-2 text-[11px] text-muted" title={row.attention.map(student => student.name).join("、")}>{row.attention.map(student => student.name).join("、")}</p></div>}</TableCell>
               <TableCell className="px-2 py-1.5 align-middle">{snippet(row.latestReview, t("noReview"))}</TableCell>
               <TableCell className="px-2 py-1.5 align-middle">{data.canReadContacts ? <><p className="mb-0.5 text-[11px] text-muted">{t("contactCount", { count: row.contacts.count, students: row.contacts.studentCount })}</p>{snippet(row.contacts.latest, t("noContacts"))}</> : t("contactsRestricted")}</TableCell>
             </>}>
           {() => <Table data-teaching-session-table aria-label={t("classLessons", { name: row.name })} className="table-fixed bg-transparent text-xs" containerClassName="overflow-visible">
-            <colgroup>{widths.map((width, index) => <col key={index} className={width} />)}</colgroup>
+            <colgroup>{columnWidths.map((width, index) => <col key={index} className={width} />)}</colgroup>
             <TableHeader className="sr-only"><TableRow>{columns.map(column => <TableHead key={column}>{labels[column]}</TableHead>)}</TableRow></TableHeader>
             <TableBody>{row.sessions.map(session => <FollowupRecordRow key={session.id} rowKey={`session:${session.id}`} rowProps={{ id: `teaching-summary-session:${session.id}`, "data-teaching-level": "session", className: "h-11 cursor-pointer" }} active={activeKey === `session:${session.id}`} expanded={expandedSession === session.id}
             onActivate={() => setActiveKey(`session:${session.id}`)} onExpandedChange={open => changeSession(session.id, open)} onKeyDown={event => navigateDetails(event, `session:${session.id}`)}
@@ -150,14 +162,14 @@ export function TeachingClassOverviewTable({ data, locale, timeZone, returnTo, i
                 <div className="min-w-0"><p className="line-clamp-2 leading-5">{session.title || workT("untitled")}</p><p className="mt-0.5 text-[11px] text-muted">{date(session.scheduledAt)}</p></div>
               </div></TableCell>
               <TableCell className="px-2 py-1.5 align-middle">{session.teachers.map(person => person.name).join("、") || workT("unassigned")}</TableCell>
-              <TableCell className="px-2 py-1.5 align-middle">{hasTeachingRecords(session.metrics) ? t("hasRecords") : t("notRecorded")}<p className="mt-0.5 text-[11px] text-muted">{workT(session.endedAt ? "records.ended" : session.startedAt ? "records.started" : "records.notStarted")}</p></TableCell>
-              <TableCell className="px-2 py-1.5 align-middle">{session.metrics.attendance.marked ? t("present", { count: session.metrics.attendance.present, marked: session.metrics.attendance.marked }) : t("noAttendance")}</TableCell>
-              <TableCell className="px-2 py-1.5 align-middle">{session.metrics.checkCount ? t("ratings", { done: session.metrics.ratedCount, total: session.metrics.checkCount * session.metrics.studentIds.length }) : t("noChecks")}<p className="mt-0.5 text-[11px] text-muted">{t("reviewCount", { count: session.metrics.reviewCount })}</p></TableCell>
-              <TableCell className="px-2 py-1.5 align-middle">{session.metrics.attentionStudents.map(student => student.name).join("、") || "—"}</TableCell>
+              <TableCell className="px-2 py-1.5 align-middle">{hasTeachingRecords(session.metrics) ? t("hasRecords") : t("notRecorded")}<p className="mt-0.5 text-[11px] text-muted">{rich && !session.endedAt ? workT("observations.unclosed", { count: 1 }) : workT(session.endedAt ? "records.ended" : session.startedAt ? "records.started" : "records.notStarted")}</p></TableCell>
+              <TableCell className="px-2 py-1.5 align-middle">{rich && session.metrics.observations ? <TeachingPerformance value={session.metrics.observations} /> : session.metrics.attendance.marked ? t("present", { count: session.metrics.attendance.present, marked: session.metrics.attendance.marked }) : t("noAttendance")}</TableCell>
+              <TableCell className="px-2 py-1.5 align-middle">{rich && session.metrics.observations ? <TeachingCoverage value={session.metrics.observations} reviewCount={session.metrics.reviewCount} /> : <>{session.metrics.checkCount ? t("ratings", { done: session.metrics.ratedCount, total: session.metrics.checkCount * session.metrics.studentIds.length }) : t("noChecks")}<p className="mt-0.5 text-[11px] text-muted">{t("reviewCount", { count: session.metrics.reviewCount })}</p></>}</TableCell>
+              <TableCell className="px-2 py-1.5 align-middle">{rich && session.metrics.observations ? <TeachingFocus value={session.metrics.observations} /> : session.metrics.attentionStudents.map(student => student.name).join("、") || "—"}</TableCell>
               <TableCell className="px-2 py-1.5 align-middle">{snippet(session.metrics.latestReview, t("noReview"))}</TableCell>
               <TableCell className="px-2 py-1.5 align-middle text-muted">{data.canReadContacts ? t("contactsOnExpand") : t("contactsRestricted")}</TableCell>
             </>}>
-            {() => <InlineRecords key={session.id} sessionId={session.id} locale={locale} timeZone={timeZone} cache={recordCache} />}
+            {() => <InlineRecords key={session.id} sessionId={session.id} locale={locale} timeZone={timeZone} cache={recordCache} replayId={replayId} />}
           </FollowupRecordRow>)}</TableBody></Table>}
         </FollowupRecordRow>)}
       </FollowupTableBody>

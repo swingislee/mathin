@@ -11,10 +11,13 @@ import { ATTENDANCE_STATUS_TONE } from "../attendance-visual";
 import type { TeachingRecords } from "./teaching-records-contract";
 import { DashboardTablePagination } from "../dashboard-page/DashboardTablePagination";
 import { TeachingContactPageSize } from "./TeachingContactPageSize";
+import { hasWrittenReview, summarizeTeachingObservations } from "./teaching-learning-summary";
+import { TeachingCoverage, TeachingFocus, TeachingPerformance } from "./TeachingObservationCells";
 
-export function TeachingSessionRecords({ data, locale, timeZone, returnTo, currentHref, pageSize = 20, inline }: {
+export function TeachingSessionRecords({ data, locale, timeZone, returnTo, currentHref, pageSize = 20, inline, replay = false }: {
   data: TeachingRecords; locale: string; timeZone: string; returnTo: string; currentHref: string; pageSize?: 10 | 20;
   inline?: { onPageChange: (page: number) => void; onPageSizeChange: (size: 10 | 20) => void };
+  replay?: boolean;
 }) {
   const t = useTranslations("school.teachingWorkbench.records");
   const reportT = useTranslations("classroom.report");
@@ -24,8 +27,9 @@ export function TeachingSessionRecords({ data, locale, timeZone, returnTo, curre
   const date = (value: string) => formatter.format(new Date(value));
   const students = new Map(data.students.map(row => [row.id, row.name]));
   const attendance = new Map(data.attendance.map(row => [row.studentId, row]));
-  const reviews = new Map(data.reviews.map(row => [row.studentId, row]));
+  const reviews = new Map(data.reviews.filter(hasWrittenReview).map(row => [row.studentId, row]));
   const results = new Map(data.results.map(row => [`${row.checkId}:${row.studentId}`, row]));
+  const observations = useMemo(() => summarizeTeachingObservations(data), [data]);
   const pages = Math.max(1, Math.ceil(data.contactTotal / pageSize));
   const pageHref = (page: number) => {
     const [path, query] = currentHref.split("?");
@@ -40,12 +44,22 @@ export function TeachingSessionRecords({ data, locale, timeZone, returnTo, curre
       <Link href={returnTo} className="mt-3 inline-block text-sm underline underline-offset-4">{t("back")}</Link>
     </DashboardSection>}
     <DashboardSection title={t("learning")} description={t("learningHint")}>
+      {replay && <div className="mb-3 space-y-2 text-xs" data-teaching-observations>
+        <div className="flex flex-wrap gap-x-8 gap-y-2"><TeachingPerformance value={observations} /><TeachingCoverage value={observations} reviewCount={reviews.size} /><TeachingFocus value={observations} /></div>
+        <p className="text-muted">{workT("observations.basis")} {workT("observations.coverageHint")}</p>
+      </div>}
       {data.checks.length === 0 && <p className="mb-3 text-sm text-muted">{t("noChecks")}</p>}
       <DashboardTableShell className={inline ? "rounded-none border-0" : undefined}><Table className={inline ? "text-xs [&_th]:h-9 [&_th]:px-2 [&_td]:px-2 [&_td]:py-1.5" : undefined} containerClassName={inline ? undefined : "max-h-[65vh] overflow-auto"}>
         <TableHeader className={inline ? "bg-card" : "sticky top-0 z-10 bg-card"}><TableRow>
           <TableHead className="min-w-24">{reportT("student")}</TableHead>
           <TableHead className="min-w-28">{reportT("attendance")}</TableHead>
-          {data.checks.map((check, index) => <TableHead key={check.id} className="min-w-36 max-w-64 whitespace-normal">{index + 1}. {check.title}</TableHead>)}
+          {data.checks.map((check, index) => {
+            const marked = data.results.filter(result => result.checkId === check.id);
+            const supported = marked.filter(result => ["prompted", "imitated", "incomplete"].includes(result.status)).length;
+            return <TableHead key={check.id} className="min-w-28 max-w-64 whitespace-normal">{index + 1}. {check.title}
+              {replay && <p className="mt-0.5 text-[11px] font-normal text-muted">{workT("observations.checkCoverage", { done: marked.length, total: data.students.length, supported })}</p>}
+            </TableHead>;
+          })}
           <TableHead className="min-w-64">{t("reviews")}</TableHead>
         </TableRow></TableHeader>
         <TableBody>{data.students.length === 0 ? <TableRow><TableCell colSpan={3 + data.checks.length}>{reportT("noStudents")}</TableCell></TableRow> : data.students.map(student => {
@@ -60,8 +74,8 @@ export function TeachingSessionRecords({ data, locale, timeZone, returnTo, curre
               const result = results.get(`${check.id}:${student.id}`);
               const status = result?.status ?? "unchecked";
               return <TableCell key={check.id} className="align-top">
-                <Badge variant="outline" className={LEARNING_CHECK_STATUS_STYLE[status].icon}>{sessionT(`learningStatus_${status}`)}</Badge>
-                {result && <p className="mt-1 text-xs text-muted">{result.author || t("unknownAuthor")}<br />{date(result.markedAt)}</p>}
+                <Badge variant="outline" className={LEARNING_CHECK_STATUS_STYLE[status].icon} title={result ? `${result.author || t("unknownAuthor")} · ${date(result.markedAt)}` : undefined}>{sessionT(`learningStatus_${status}`)}</Badge>
+                {result && !inline && <p className="mt-1 text-xs text-muted">{result.author || t("unknownAuthor")}<br />{date(result.markedAt)}</p>}
               </TableCell>;
             })}
             <TableCell className="max-w-lg align-top">
@@ -78,7 +92,7 @@ export function TeachingSessionRecords({ data, locale, timeZone, returnTo, curre
         })}</TableBody>
       </Table></DashboardTableShell>
     </DashboardSection>
-    <DashboardSection title={t("contacts")} description={t("contactsHint")}>
+    <DashboardSection title={t("contacts")} description={replay ? workT("replay.contactsHint") : t("contactsHint")}>
       {!data.canReadContacts ? <p className="text-sm text-muted">{t("contactsRestricted")}</p> : <>
         <DashboardTableShell className={inline ? "rounded-none border-0" : undefined}><Table className={inline ? "text-xs [&_th]:h-9 [&_th]:px-2 [&_td]:px-2 [&_td]:py-1.5" : undefined} containerClassName={inline ? undefined : "max-h-[60vh] overflow-auto"}>
           <TableHeader className={inline ? "bg-card" : "sticky top-0 z-10 bg-card"}><TableRow>
@@ -87,7 +101,7 @@ export function TeachingSessionRecords({ data, locale, timeZone, returnTo, curre
           <TableBody>{data.contacts.length === 0 ? <TableRow><TableCell colSpan={4}>{t("noContacts")}</TableCell></TableRow> : data.contacts.map(contact => <TableRow key={contact.id}>
             <TableCell className="align-top">{students.get(contact.studentId)}</TableCell>
             <TableCell className="align-top">{contact.author || t("unknownAuthor")}</TableCell>
-            <TableCell className="align-top text-xs text-muted">{contact.occurredOn || date(contact.createdAt)}</TableCell>
+            <TableCell className="align-top text-xs text-muted"><p>{contact.occurredOn || t("unknownContactDate")}</p><p className="mt-1">{t("enteredAt", { date: date(contact.createdAt) })}</p></TableCell>
             <TableCell className="min-w-64 max-w-2xl whitespace-pre-wrap break-words align-top">{contact.content}</TableCell>
           </TableRow>)}</TableBody>
         </Table></DashboardTableShell>

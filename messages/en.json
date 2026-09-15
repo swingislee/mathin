@@ -1879,6 +1879,38 @@
   },
   "school": {
     "teachingWorkbench": {
+      "replay": {
+        "bothTeachers": "Both teachers",
+        "source": "Read-only production snapshot · captured {captured}",
+        "hint": "Review last week's actual teaching records for both teachers. Performance counts recorded student-question observations. Expand classes and lessons for the original learning records and notes.",
+        "unavailable": "The local snapshot for last week is not available yet.",
+        "contacts": "Student communication / context",
+        "contactsHint": "Notes for this roster communicated or entered on September 7–13. Notes without a communication date or author provide student context; they are not attributed to this teacher's weekly communication."
+      },
+      "observations": {
+        "performance": "Learning observations",
+        "autonomous": "Independent / explained {count}/{total}",
+        "supportBreakdown": "Prompted {prompted} · Imitated {imitated} · Incomplete {incomplete}",
+        "basis": "The denominator counts recorded student-question observations. Independent / explained combines those two statuses. Support includes prompted, imitated and incomplete. Unrecorded observations do not mean inability or absence.",
+        "autonomousField": "Independent or explained observations",
+        "supportField": "Observations needing support",
+        "recordedChecks": "Questions with records",
+        "coverageTitle": "Coverage / reviews",
+        "coverage": "{done}/{total} questions recorded",
+        "coverageHint": "A question counts as recorded when it has at least one student observation. Each question header also shows student coverage.",
+        "reviews": "Reviews with content: {count}",
+        "focus": "Questions to review first",
+        "focusBasis": "Shows the question with the largest share of recorded observations needing support; ties use the support count.",
+        "focusRatio": "Support needed {count}/{total}",
+        "noSupport": "No recorded support needs",
+        "noObservations": "No learning observations",
+        "sessionState": "Lessons / attendance",
+        "noAttendance": "Attendance unrecorded",
+        "unclosed": "{count} lessons without an end record",
+        "endedField": "Lessons ended in the system",
+        "unclosedField": "Lessons without an end record",
+        "checkCoverage": "Recorded {done}/{total} students · Support {supported}"
+      },
       "overview": {
         "classAndLesson": "Class / lesson",
         "classLessons": "Lessons for {name}",
@@ -1963,6 +1995,8 @@
         "time": "Time",
         "content": "Communication and feedback",
         "unknownAuthor": "Name not recorded",
+        "unknownContactDate": "Communication date unspecified",
+        "enteredAt": "Entered {date}",
         "supportNotes": "Contact task notes for this lesson",
         "supportHint": "These notes are linked to this lesson. The assignee identifies who is responsible for the task.",
         "assignee": "Assignee",
