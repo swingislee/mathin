@@ -14,6 +14,7 @@ import { DashboardTableShell } from "../dashboard-page";
 import { DashboardTableColumnHeader } from "../dashboard-page/DashboardTableColumnHeader";
 import { leadPaginationTokens } from "../lead-pagination";
 import { withReturnTo } from "../object-workspace/return-target";
+import { teachingRecordHref } from "./teaching-records-contract";
 import {
   ARTIFACT_KINDS, PROGRESS_FILTERS, isContactTask, preparationDueAt, preparationSubmitted,
   sessionNeedsAttention, summarizeTeachingByTeacher, summarizeTeachingSessions, taskCounts,
@@ -22,11 +23,14 @@ import {
 
 const ARTIFACT_STATUSES: ArtifactStatus[] = ["missing", "draft", "pending", "changes_requested", "approved"];
 
-export function TeachingProgressTable({ data, locale, timeZone, now, returnTo }: {
+export function TeachingProgressTable({ data, locale, timeZone, now, returnTo, mode = "progress", initialTeacher, initialClassroom }: {
   data: TeachingWorkbenchData; locale: string; timeZone: string; now: string; returnTo: string;
+  mode?: "progress" | "records"; initialTeacher?: string; initialClassroom?: string;
 }) {
   const t = useTranslations("school.teachingWorkbench");
-  const [teacher, setTeacher] = useState<string>();
+  const [teacher, setTeacher] = useState<string | undefined>(initialTeacher);
+  const [classroom, setClassroom] = useState<string | undefined>(initialClassroom);
+  const recordsMode = mode === "records";
   const [filter, setFilter] = useState<ProgressFilter>("all");
   const [artifactFilters, setArtifactFilters] = useState<Partial<Record<(typeof ARTIFACT_KINDS)[number], string>>>({});
   const [sort, setSort] = useState<"asc" | "desc">("asc");
@@ -35,8 +39,9 @@ export function TeachingProgressTable({ data, locale, timeZone, now, returnTo }:
   const [expanded, setExpanded] = useState<string | null>(null);
   const instant = new Date(now);
   const teachers = summarizeTeachingByTeacher(data.sessions, instant);
-  const scoped = data.sessions.filter(session => !teacher || (teacher === "unassigned"
-    ? session.teachers.length === 0 : session.teachers.some(person => person.id === teacher)));
+  const classrooms = [...new Map(data.sessions.map(session => [session.classroomId, session.classroomName])).entries()];
+  const scoped = data.sessions.filter(session => (!classroom || session.classroomId === classroom) && (!teacher || (teacher === "unassigned"
+    ? session.teachers.length === 0 : session.teachers.some(person => person.id === teacher))));
   const summary = summarizeTeachingSessions(scoped, instant);
   const filtered = scoped.filter(session => sessionNeedsAttention(session, filter, instant)
     && ARTIFACT_KINDS.every(kind => !artifactFilters[kind] || session.artifacts[kind].status === artifactFilters[kind]))
@@ -67,7 +72,7 @@ export function TeachingProgressTable({ data, locale, timeZone, now, returnTo }:
 
   return <div className="space-y-7">
     {data.truncated && <p role="alert" className="text-sm text-rose">{t("truncated")}</p>}
-    <DashboardSection description={t("scopeHint")}>
+    {!recordsMode && <DashboardSection description={t("scopeHint")}>
       <dl className="grid grid-cols-2 gap-x-6 gap-y-4 @3xl/page:grid-cols-5">
         {[
           [t("sessions"), summary.sessions],
@@ -77,9 +82,9 @@ export function TeachingProgressTable({ data, locale, timeZone, now, returnTo }:
           [t("overdueSessions"), summary.overdue],
         ].map(([label, value]) => <div key={label}><dt className="text-xs text-muted">{label}</dt><dd className="mt-1 text-2xl tabular-nums text-ink">{value}</dd></div>)}
       </dl>
-    </DashboardSection>
+    </DashboardSection>}
 
-    {teachers.length > 1 && <DashboardSection title={t("byTeacher")} description={t("teacherHint")}>
+    {!recordsMode && teachers.length > 1 && <DashboardSection title={t("byTeacher")} description={t("teacherHint")}>
       <DashboardTableShell><Table containerClassName="max-h-[60vh] overflow-auto">
         <TableHeader className="sticky top-0 z-10 bg-card"><TableRow>
           {["teacher", "sessions", "materialsSubmitted", "materialsApproved", "postworkClosed", "contactsCompleted", "overdueSessions"].map(key => <TableHead key={key}>{t(key)}</TableHead>)}
@@ -96,49 +101,55 @@ export function TeachingProgressTable({ data, locale, timeZone, now, returnTo }:
       </Table></DashboardTableShell>
     </DashboardSection>}
 
-    <DashboardSection title={t("sessionDetails")} description={t("detailsHint")}>
+    <DashboardSection title={t(recordsMode ? "records.title" : "sessionDetails")} description={t(recordsMode ? "records.listHint" : "detailsHint")}>
       <DashboardTableShell><Table containerClassName="max-h-[70vh] overflow-auto">
         <TableHeader className="sticky top-0 z-10 bg-card"><TableRow>
-          <TableHead className="w-9"><span className="sr-only">{t("expand")}</span></TableHead>
+          {!recordsMode && <TableHead className="w-9"><span className="sr-only">{t("expand")}</span></TableHead>}
           <TableHead className="min-w-48"><DashboardTableColumnHeader label={t("session")}
-            filterValue={filter === "all" ? undefined : filter} filterOptions={PROGRESS_FILTERS.filter(value => value !== "all").map(value => ({ value, label: t(`filter.${value}`) }))}
+            filterValue={filter === "all" ? undefined : filter} filterOptions={recordsMode ? [] : PROGRESS_FILTERS.filter(value => value !== "all").map(value => ({ value, label: t(`filter.${value}`) }))}
             sortDirection={sort} onSortChange={value => setSort(value ?? "asc")}
             onFilterChange={value => { setFilter((value ?? "all") as ProgressFilter); setPage(1); }}
             onClear={() => { setFilter("all"); setSort("asc"); setPage(1); }}
+          /></TableHead>
+          <TableHead className="min-w-36"><DashboardTableColumnHeader label={t("records.classroom")} filterValue={classroom}
+            filterOptions={classrooms.map(([value, label]) => ({ value, label }))}
+            onFilterChange={value => { setClassroom(value); setPage(1); }} onClear={() => { setClassroom(undefined); setPage(1); }}
           /></TableHead>
           <TableHead className="min-w-28"><DashboardTableColumnHeader label={t("teacher")} filterValue={teacher}
             filterOptions={teachers.map(person => ({ value: person.id, label: person.name || t("unassigned") }))}
             onFilterChange={chooseTeacher} onClear={() => chooseTeacher(undefined)}
           /></TableHead>
-          {ARTIFACT_KINDS.map(kind => <TableHead key={kind} className="min-w-28"><DashboardTableColumnHeader label={t(`artifact.${kind}`)}
+          {!recordsMode && ARTIFACT_KINDS.map(kind => <TableHead key={kind} className="min-w-28"><DashboardTableColumnHeader label={t(`artifact.${kind}`)}
             filterValue={artifactFilters[kind]} filterOptions={ARTIFACT_STATUSES.map(status => ({ value: status, label: t(`artifactStatus.${status}`) }))}
             onFilterChange={value => { setArtifactFilters(current => ({ ...current, [kind]: value })); setPage(1); }}
             onClear={() => { setArtifactFilters(current => ({ ...current, [kind]: undefined })); setPage(1); }}
           /></TableHead>)}
-          <TableHead className="min-w-36">{t("postwork")}</TableHead>
-          <TableHead className="min-w-36">{t("contacts")}</TableHead>
+          {!recordsMode && <><TableHead className="min-w-36">{t("postwork")}</TableHead>
+          <TableHead className="min-w-36">{t("contacts")}</TableHead></>}
+          <TableHead>{t("records.open")}</TableHead>
         </TableRow></TableHeader>
-        <TableBody>{rows.length === 0 ? <TableRow><TableCell colSpan={8}><DashboardEmptyState>{t(data.sessions.length ? "emptyFilter" : "emptyPeriod")}</DashboardEmptyState></TableCell></TableRow>
+        <TableBody>{rows.length === 0 ? <TableRow><TableCell colSpan={recordsMode ? 4 : 10}><DashboardEmptyState>{t(data.sessions.length ? "emptyFilter" : "emptyPeriod")}</DashboardEmptyState></TableCell></TableRow>
           : rows.map(session => <Fragment key={session.id}>
             <TableRow>
-              <TableCell><Button variant="ghost" size="sm" className="size-7 p-0" aria-label={t("expandSession", { title: session.title || session.classroomName })}
+              {!recordsMode && <TableCell><Button variant="ghost" size="sm" className="size-7 p-0" aria-label={t("expandSession", { title: session.title || session.classroomName })}
                 aria-expanded={expanded === session.id} aria-controls={`teaching-detail-${session.id}`} onClick={() => setExpanded(expanded === session.id ? null : session.id)}>
                 <ChevronDown size={15} className={expanded === session.id ? "rotate-180" : ""} />
-              </Button></TableCell>
+              </Button></TableCell>}
               <TableCell>
-                <Link href={href(session, session.endedAt ? "post" : "pre")} className="font-medium text-ink underline-offset-4 hover:underline">{session.title || t("untitled")}</Link>
-                <p className="mt-1 text-xs text-muted">{session.classroomName}</p>
-                <p className="mt-1 text-xs tabular-nums text-muted">{formatDate(session.scheduledAt)} · {t(session.endedAt ? "ended" : session.startedAt ? "live" : "scheduled")}</p>
-                {!preparationSubmitted(session) && preparationDueAt(session) < instant && <p className="mt-1 text-xs text-rose">{t("preparationOverdue")}</p>}
+                <Link href={recordsMode ? teachingRecordHref(returnTo, session.id, teacher, classroom) : href(session, session.endedAt ? "post" : "pre")} className="font-medium text-ink underline-offset-4 hover:underline">{session.title || t("untitled")}</Link>
+                <p className="mt-1 text-xs tabular-nums text-muted">{formatDate(session.scheduledAt)} · {recordsMode ? t(session.endedAt ? "records.ended" : session.startedAt ? "records.started" : "records.notStarted") : t(session.endedAt ? "ended" : session.startedAt ? "live" : "scheduled")}</p>
+                {!recordsMode && !preparationSubmitted(session) && preparationDueAt(session) < instant && <p className="mt-1 text-xs text-rose">{t("preparationOverdue")}</p>}
               </TableCell>
+              <TableCell><Link href={withReturnTo(`/dashboard/classes/${session.classroomId}`, returnTo)} className="text-sm underline-offset-4 hover:underline">{session.classroomName}</Link></TableCell>
               <TableCell className="text-sm">{session.teachers.map(person => person.name || t("unnamedTeacher")).join("、") || t("unassigned")}</TableCell>
-              {ARTIFACT_KINDS.map((kind, index) => <TableCell key={kind}>
+              {!recordsMode && ARTIFACT_KINDS.map((kind, index) => <TableCell key={kind}>
                 {session.canOpenPreparation ? <Link href={href(session, "pre", ["study", "design", "rehearsal"][index])} aria-label={t("openArtifact", { kind: t(`artifact.${kind}`), status: t(`artifactStatus.${session.artifacts[kind].status}`) })}>{statusBadge(session.artifacts[kind].status)}</Link> : statusBadge(session.artifacts[kind].status)}
               </TableCell>)}
-              <TableCell>{taskCell(session, false)}</TableCell>
-              <TableCell>{taskCell(session, true)}</TableCell>
+              {!recordsMode && <><TableCell>{taskCell(session, false)}</TableCell>
+              <TableCell>{taskCell(session, true)}</TableCell></>}
+              <TableCell><Link href={teachingRecordHref(returnTo, session.id, teacher, classroom)} className="whitespace-nowrap text-sm underline underline-offset-4">{t("records.open")}</Link></TableCell>
             </TableRow>
-            {expanded === session.id && <TableRow id={`teaching-detail-${session.id}`}><TableCell colSpan={8} className="bg-moon/15 px-5 py-4">
+            {!recordsMode && expanded === session.id && <TableRow id={`teaching-detail-${session.id}`}><TableCell colSpan={10} className="bg-moon/15 px-5 py-4">
               <div className="grid gap-5 @4xl/page:grid-cols-2">
                 <div>
                   <h3 className="mb-2 text-sm font-medium">{t("preparationDetails")}</h3>

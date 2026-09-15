@@ -10,6 +10,8 @@ import { hasTeachingManagementScope, TEACHING_WORKBENCH_PERMISSIONS } from "@/fe
 import { teachingPeriodWindow, teachingWorkItems } from "@/features/school/teaching-workbench/teaching-workbench-contract";
 import { getTeachingWorkbench } from "@/features/school/teaching-workbench/teaching-workbench-read";
 import { TeachingProgressTable } from "@/features/school/teaching-workbench/TeachingProgressTable";
+import { getTeachingRecords } from "@/features/school/teaching-workbench/teaching-records-read";
+import { TeachingSessionRecords } from "@/features/school/teaching-workbench/TeachingSessionRecords";
 import { formatWorkItemReason, listMyWorkItems, resolveWorkItemHref } from "@/features/school/work-items";
 import { Link } from "@/i18n/navigation";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
@@ -33,21 +35,32 @@ async function TeachingContent({ locale, searchParams }: { locale: string; searc
     searchParams, getMyPerms(user.id), getTranslations("school.teachingWorkbench"), getOrganizationTimezoneV2(),
   ]);
   const canViewTeam = hasTeachingManagementScope(perms);
-  const view = query.view === "tasks" ? "tasks" : query.view === "progress" || canViewTeam ? "progress" : "tasks";
-  const period = query.period === "month" ? "month" : "week";
+  const view = query.view === "tasks" ? "tasks" : query.view === "progress" ? "progress" : query.view === "records" || canViewTeam ? "records" : "tasks";
+  const period = query.period === "week" ? "week" : query.period === "month" || view === "records" ? "month" : "week";
   const window = teachingPeriodWindow(period, typeof query.date === "string" ? query.date : undefined, timeZone);
-  const progressHref = (date = window.date, grain = period) => `/dashboard/teaching?view=progress&period=${grain}&date=${date}`;
+  const teacher = typeof query.teacher === "string" ? query.teacher : undefined;
+  const classroom = typeof query.classroom === "string" ? query.classroom : undefined;
+  const progressHref = (date = window.date, grain = period, target = view) => {
+    const params = new URLSearchParams({ view: target, period: grain, date });
+    if (teacher) params.set("teacher", teacher);
+    if (classroom) params.set("classroom", classroom);
+    return `/dashboard/teaching?${params}`;
+  };
+  const sessionId = typeof query.session === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(query.session) ? query.session : undefined;
+  const contactPage = typeof query.contactPage === "string" && /^\d{1,5}$/.test(query.contactPage) ? Math.max(1, Number(query.contactPage)) : 1;
+  const contactSize = query.contactSize === "10" ? 10 : 20;
 
   return <DashboardPage title={t("title")} density="compact" commandPanel={
     <DashboardCommandPanel>
       <DashboardCommandState>
         <RouteTabs ariaLabel={t("views")} activeValue={view} items={[
           { value: "tasks", label: t("myTasks"), href: "/dashboard/teaching?view=tasks" },
-          { value: "progress", label: t(canViewTeam ? "teamProgress" : "myProgress"), href: progressHref() },
+          { value: "records", label: t("records.title"), href: progressHref(window.date, "month", "records") },
+          { value: "progress", label: t(canViewTeam ? "teamProgress" : "myProgress"), href: progressHref(window.date, period, "progress") },
         ]} />
       </DashboardCommandState>
       <DashboardCommandFilters>
-        {view === "progress" && <>
+        {view !== "tasks" && !(view === "records" && sessionId) && <>
           <RouteTabs ariaLabel={t("period")} activeValue={period} items={[
             { value: "week", label: t("week"), href: progressHref(window.date, "week") },
             { value: "month", label: t("month"), href: progressHref(window.date, "month") },
@@ -55,15 +68,17 @@ async function TeachingContent({ locale, searchParams }: { locale: string; searc
           <Link className={buttonVariants({ variant: "ghost", size: "sm" })} href={progressHref(window.previous)}>{t("previous")}</Link>
           <span className="text-xs tabular-nums text-muted">{window.date} — {window.lastDate}</span>
           <Link className={buttonVariants({ variant: "ghost", size: "sm" })} href={progressHref(window.next)}>{t("next")}</Link>
-          <Link className={buttonVariants({ variant: "ghost", size: "sm" })} href={`/dashboard/teaching?view=progress&period=${period}`}>{t("current")}</Link>
+          <Link className={buttonVariants({ variant: "ghost", size: "sm" })} href={progressHref(teachingPeriodWindow(period, undefined, timeZone).date)}>{t("current")}</Link>
         </>}
       </DashboardCommandFilters>
       <DashboardCommandActions><Link className={buttonVariants({ variant: "secondary", size: "sm" })} href="/dashboard?view=work">{t("allWork")}</Link></DashboardCommandActions>
     </DashboardCommandPanel>
   }>
-    {view === "tasks" ? <TeachingTasks locale={locale} /> : <TeachingProgress
+    {view === "tasks" ? <TeachingTasks locale={locale} /> : view === "records" && sessionId ? <TeachingRecordDetail
+      sessionId={sessionId} contactPage={contactPage} pageSize={contactSize} locale={locale} timeZone={timeZone} returnTo={progressHref()}
+    /> : <TeachingProgress
       from={window.start} to={window.end} scope={canViewTeam ? "team" : "mine"}
-      locale={locale} timeZone={timeZone} returnTo={progressHref()}
+      locale={locale} timeZone={timeZone} returnTo={progressHref()} mode={view} teacher={teacher} classroom={classroom}
     />}
   </DashboardPage>;
 }
@@ -89,12 +104,23 @@ async function TeachingTasks({ locale }: { locale: string }) {
   </DashboardSection>;
 }
 
-async function TeachingProgress({ from, to, scope, locale, timeZone, returnTo }: {
+async function TeachingProgress({ from, to, scope, locale, timeZone, returnTo, mode, teacher, classroom }: {
   from: string; to: string; scope: "mine" | "team"; locale: string; timeZone: string; returnTo: string;
+  mode: "progress" | "records"; teacher?: string; classroom?: string;
 }) {
   const t = await getTranslations("school.teachingWorkbench");
   let data;
   try { data = await getTeachingWorkbench(from, to, scope); }
   catch { return <p role="alert" className="py-6 text-sm text-rose">{t("loadFailed")}</p>; }
-  return <TeachingProgressTable key={returnTo} data={data} locale={locale} timeZone={timeZone} now={new Date().toISOString()} returnTo={returnTo} />;
+  return <TeachingProgressTable key={returnTo} data={data} locale={locale} timeZone={timeZone} now={new Date().toISOString()} returnTo={returnTo} mode={mode} initialTeacher={teacher} initialClassroom={classroom} />;
+}
+
+async function TeachingRecordDetail({ sessionId, contactPage, pageSize, locale, timeZone, returnTo }: {
+  sessionId: string; contactPage: number; pageSize: 10 | 20; locale: string; timeZone: string; returnTo: string;
+}) {
+  const t = await getTranslations("school.teachingWorkbench");
+  let data;
+  try { data = await getTeachingRecords(sessionId, contactPage, pageSize); }
+  catch { return <div className="space-y-3 py-6"><p role="alert" className="text-sm text-rose">{t("records.loadFailed")}</p><Link href={returnTo} className="text-sm underline">{t("records.back")}</Link></div>; }
+  return <TeachingSessionRecords data={data} locale={locale} timeZone={timeZone} returnTo={returnTo} pageSize={pageSize} currentHref={`${returnTo}&session=${sessionId}&contactSize=${pageSize}`} />;
 }
