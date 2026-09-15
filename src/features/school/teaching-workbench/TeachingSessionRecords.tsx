@@ -42,8 +42,8 @@ export function TeachingSessionRecords({ data, locale, timeZone, returnTo, curre
     </DashboardSection>}
     <DashboardSection title={t("learning")} description={t("learningHint")}>
       {data.checks.length === 0 && <p className="mb-3 text-sm text-muted">{t("noChecks")}</p>}
-      <DashboardTableShell><Table containerClassName="max-h-[65vh] overflow-auto">
-        <TableHeader className="sticky top-0 z-10 bg-card"><TableRow>
+      <DashboardTableShell><Table containerClassName={inline ? undefined : "max-h-[65vh] overflow-auto"}>
+        <TableHeader className={inline ? "bg-card" : "sticky top-0 z-10 bg-card"}><TableRow>
           <TableHead className="min-w-24">{reportT("student")}</TableHead>
           <TableHead className="min-w-28">{reportT("attendance")}</TableHead>
           {data.checks.map((check, index) => <TableHead key={check.id} className="min-w-36 max-w-64 whitespace-normal">{index + 1}. {check.title}</TableHead>)}
@@ -81,8 +81,8 @@ export function TeachingSessionRecords({ data, locale, timeZone, returnTo, curre
     </DashboardSection>
     <DashboardSection title={t("contacts")} description={t("contactsHint")}>
       {!data.canReadContacts ? <p className="text-sm text-muted">{t("contactsRestricted")}</p> : <>
-        <DashboardTableShell><Table containerClassName="max-h-[60vh] overflow-auto">
-          <TableHeader className="sticky top-0 z-10 bg-card"><TableRow>
+        <DashboardTableShell><Table containerClassName={inline ? undefined : "max-h-[60vh] overflow-auto"}>
+          <TableHeader className={inline ? "bg-card" : "sticky top-0 z-10 bg-card"}><TableRow>
             <TableHead>{reportT("student")}</TableHead><TableHead>{t("author")}</TableHead><TableHead>{t("time")}</TableHead><TableHead>{t("content")}</TableHead>
           </TableRow></TableHeader>
           <TableBody>{data.contacts.length === 0 ? <TableRow><TableCell colSpan={4}>{t("noContacts")}</TableCell></TableRow> : data.contacts.map(contact => <TableRow key={contact.id}>

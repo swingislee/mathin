@@ -1880,6 +1880,12 @@
   "school": {
     "teachingWorkbench": {
       "overview": {
+        "classAndLesson": "班级 / 课次",
+        "collapseClass": "收起{name}的课次",
+        "keyboardHint": "↑ ↓ 切换行 · Enter 展开 / 收起 · Esc 收起当前详情",
+        "filterScope": "筛选与排序作用于本期班级；按老师筛选会同步汇总其课次。展开后的课次保持在所属班级下。",
+        "withoutAttention": "暂无需关注学生",
+        "contactsOnExpand": "展开查看花名册学生沟通",
         "hint": "每班一行，展开班级查看课次，再展开实际记录。统计所选期间的课次与学生；日常沟通按本期录入时间汇总。",
         "summary": "本期 {classes} 个班 · {sessions} 个课次 · {recorded} 个课次已有记录",
         "students": "{count} 人",

@@ -1880,6 +1880,12 @@
   "school": {
     "teachingWorkbench": {
       "overview": {
+        "classAndLesson": "Class / lesson",
+        "collapseClass": "Collapse lessons for {name}",
+        "keyboardHint": "↑ ↓ Move between rows · Enter Expand / collapse · Esc Close current details",
+        "filterScope": "Filters and sorting apply to classes in this period. Teacher filters recalculate their lessons. Expanded lessons stay under their class.",
+        "withoutAttention": "No students flagged",
+        "contactsOnExpand": "Expand for roster students’ communication",
         "hint": "One row per class. Expand a class for lessons, then expand actual records below a lesson. Figures cover lessons and students in the selected period; communication uses its entry date.",
         "summary": "{classes} classes · {sessions} lessons · {recorded} lessons with records",
         "students": "{count} students",

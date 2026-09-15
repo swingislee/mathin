@@ -56,6 +56,14 @@ describe("inline teaching record loading", () => {
       expect(fetcher).not.toHaveBeenCalled();
       await click("展开示例班的课次");
       expect(fetcher).not.toHaveBeenCalled();
+      const classRow = container.querySelector('[data-teaching-level="class"]')!;
+      const sessionRow = container.querySelector('[data-teaching-level="session"]')!;
+      expect(classRow.parentElement).toBe(sessionRow.parentElement);
+      expect(classRow.closest("[data-followup-workbench]")).toBeTruthy();
+      expect(classRow.querySelector("td:first-child .lucide-chevron-down")).toBeTruthy();
+      expect(sessionRow.querySelector("td:first-child .lucide-chevron-right")).toBeTruthy();
+      expect(container.querySelectorAll("thead")).toHaveLength(1);
+      expect(container.querySelectorAll("thead [data-dashboard-table-menu]")).toHaveLength(8);
       await act(async () => { await import("@/features/school/teaching-workbench/TeachingInlineRecords"); });
       await click("查看实际记录");
       await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
@@ -63,6 +71,9 @@ describe("inline teaching record loading", () => {
       expect(fetcher.mock.calls[0][0]).toBe("/zh/dashboard/teaching/records-detail");
       expect(fetcher.mock.calls[0][1]).toMatchObject({ cache: "no-store", credentials: "same-origin" });
       const detail = container.querySelector("[data-followup-inline-details]")!;
+      expect(sessionRow.querySelector("td:first-child .lucide-chevron-down")).toBeTruthy();
+      expect([...detail.querySelectorAll("thead,th")].some(node => node.className.includes("sticky"))).toBe(false);
+      expect([...container.querySelectorAll('[data-slot="table-container"]')].filter(node => node.className.includes("max-h"))).toHaveLength(1);
       expect(detail.textContent).toContain("保存的沟通正文");
       expect(detail.textContent).not.toContain("返回教学记录列表");
       expect(detail.querySelector("[data-dashboard-inline-entry]")).toBeTruthy();
@@ -77,11 +88,54 @@ describe("inline teaching record loading", () => {
       await click("查看实际记录");
       expect(fetcher).toHaveBeenCalledTimes(2);
       expect(container.textContent).toContain("保存的沟通正文");
-      const expandedButton = [...container.querySelectorAll("button")].find(node => node.textContent === "收起实际记录")!;
+      const expandedButton = container.querySelector('[aria-label="收起实际记录"]')!;
       await act(async () => container.querySelector("[data-dashboard-inline-entry]")!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
       expect(container.querySelector("[data-followup-inline-details]")).toBeNull();
       // 关闭后焦点回到该课次的展开控件。
       expect(document.activeElement?.getAttribute("aria-controls")).toBe(expandedButton.getAttribute("aria-controls"));
+    } finally { await act(async () => root.unmount()); container.remove(); }
+  });
+
+  it("shares Enter, Esc and visible-row navigation across both levels and read-only detail tables", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json(records)));
+    const data: TeachingClassOverview = { ...overview,
+      workbench: { ...overview.workbench, sessions: [...overview.workbench.sessions, { ...overview.workbench.sessions[0], id: "second", title: "第二讲" }] },
+      metrics: [...overview.metrics, { ...overview.metrics[0], sessionId: "second" }],
+    };
+    const container = document.createElement("div"); document.body.append(container); const root = createRoot(container);
+    const keydown = async (target: Element, key: string, extra = {}) => {
+      const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, ...extra });
+      await act(async () => target.dispatchEvent(event)); return event;
+    };
+    try {
+      await act(async () => root.render(createElement(Provider, { locale: "zh", messages, timeZone: "Asia/Shanghai" }, createElement(TeachingClassOverviewTable, {
+        data, locale: "zh", timeZone: "Asia/Shanghai", returnTo: "/dashboard/teaching?view=records",
+      }))));
+      const parent = container.querySelector('[data-teaching-level="class"]')!;
+      await keydown(parent, "Enter");
+      const sessions = [...container.querySelectorAll('[data-teaching-level="session"]')];
+      await keydown(parent, "ArrowDown"); expect(document.activeElement).toBe(sessions[0]);
+      await keydown(sessions[0], "Enter");
+      await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
+      const detail = container.querySelector("[data-followup-inline-details]")!;
+      expect(detail).toBeTruthy();
+      const cell = detail.querySelector("tbody td")!;
+      await keydown(cell, "ArrowDown"); expect(document.activeElement).toBe(sessions[1]);
+      await keydown(sessions[1], "ArrowUp"); expect(document.activeElement).toBe(sessions[0]);
+      await keydown(sessions[0], "Escape");
+      expect(container.querySelector("[data-followup-inline-details]")).toBeNull();
+      expect(parent.getAttribute("aria-expanded")).toBe("true");
+      await keydown(sessions[0], "ArrowUp"); expect(document.activeElement).toBe(parent);
+      const input = document.createElement("input"); parent.querySelector("td")!.append(input);
+      expect((await keydown(input, "ArrowDown")).defaultPrevented).toBe(false);
+      const overlay = document.createElement("div"); overlay.setAttribute("role", "listbox"); parent.querySelector("td")!.append(overlay);
+      expect((await keydown(overlay, "Escape")).defaultPrevented).toBe(false);
+      expect((await keydown(parent, "Enter", { isComposing: true })).defaultPrevented).toBe(false);
+      await keydown(parent, "Escape");
+      expect(container.querySelectorAll('[data-teaching-level="session"]')).toHaveLength(0);
+      expect(parent.getAttribute("aria-selected")).toBe("false");
     } finally { await act(async () => root.unmount()); container.remove(); }
   });
 

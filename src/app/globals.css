@@ -18,8 +18,8 @@
   --leaf: #bbcf87;
   --leaf-deep: #6f8b48;
   --cheek: #fbc9c3;
-  --table-hover: color-mix(in srgb, var(--blue) 4%, var(--card));
-  --table-selected: color-mix(in srgb, var(--blue) 14%, var(--card));
+  --table-hover: var(--followup-hover);
+  --table-selected: var(--followup-checked);
   --table-selected-muted: color-mix(in srgb, var(--ink) 35%, var(--muted));
   --followup-hover: color-mix(in srgb, var(--moon) 10%, var(--card));
   --followup-checked: color-mix(in srgb, var(--moon) 22%, var(--card));
@@ -46,8 +46,8 @@
   --leaf: #8fa968;
   --leaf-deep: #a9c284;
   --cheek: #b98883;
-  --table-hover: color-mix(in srgb, var(--blue) 10%, var(--card));
-  --table-selected: color-mix(in srgb, var(--blue) 26%, var(--card));
+  --table-hover: var(--followup-hover);
+  --table-selected: var(--followup-checked);
   --table-selected-muted: color-mix(in srgb, var(--ink) 35%, var(--muted));
   --followup-hover: color-mix(in srgb, var(--moon) 5%, var(--card));
   --followup-checked: color-mix(in srgb, var(--moon) 9%, var(--card));
@@ -74,8 +74,8 @@
     --leaf: #8fa968;
     --leaf-deep: #a9c284;
     --cheek: #b98883;
-    --table-hover: color-mix(in srgb, var(--blue) 10%, var(--card));
-    --table-selected: color-mix(in srgb, var(--blue) 26%, var(--card));
+    --table-hover: var(--followup-hover);
+    --table-selected: var(--followup-checked);
     --table-selected-muted: color-mix(in srgb, var(--ink) 35%, var(--muted));
     --followup-hover: color-mix(in srgb, var(--moon) 5%, var(--card));
     --followup-checked: color-mix(in srgb, var(--moon) 9%, var(--card));
@@ -305,7 +305,7 @@ body:has([data-dashboard-canvas], [data-followup-workbench])::after { display: n
   background-color: inherit;
 }
 [data-slot="table"] > tbody > tr:is([aria-selected="true"], [aria-expanded="true"], [data-state="selected"]) > td:first-child {
-  box-shadow: inset 3px 0 var(--blue);
+  box-shadow: inset 3px 0 var(--followup-outline);
 }
 
 /* 跟进工作台：浅绿表达已完成业务；当前处理范围仍用浅黄，勾选、展开与焦点各自保留标志。 */
