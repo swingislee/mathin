@@ -2,6 +2,7 @@ import createMiddleware from "next-intl/middleware";
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { routing } from "@/i18n/routing";
+import { createSupabaseServerFetch } from "@/lib/supabase/server-transport";
 
 const intlMiddleware = createMiddleware(routing);
 const protectedPattern = /^\/(zh|en)\/(dashboard|classroom|whiteboard|notebook\/me|studio)(?:\/|$)/;
@@ -13,6 +14,7 @@ export async function proxy(request: NextRequest) {
   if (!url || !key) return response;
 
   const supabase = createServerClient(url, key, {
+    global: { fetch: createSupabaseServerFetch(url) },
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll: (items) => {

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { assessmentReadFrom as from, readAllAssessmentRows as readAllRows, readRelatedAssessmentRows as readRelatedRows } from "./assessment-workbench-read";
 import { assessmentSourceOrder } from "./assessment-source-order";
 import { assessmentWorkbenchHasFinalResult } from "./assessment-workbench-contract";
 import type { ActivityKind } from "./activity-kinds";
@@ -183,58 +184,6 @@ interface QuestionDbRow {
   id: string;
   question_no: string;
   knowledge_point: string;
-}
-
-interface UntypedPostgrestResult<T> {
-  data: T | null;
-  error: { message: string } | null;
-}
-
-interface UntypedPostgrestFilter {
-  eq(column: string, value: unknown): UntypedPostgrestFilter;
-  is(column: string, value: null): UntypedPostgrestFilter;
-  in(column: string, values: readonly string[]): UntypedPostgrestFilter;
-  order(column: string, options?: { ascending?: boolean; nullsFirst?: boolean }): UntypedPostgrestFilter;
-  range(from: number, to: number): UntypedPostgrestFilter;
-  returns<T>(): PromiseLike<UntypedPostgrestResult<T>>;
-}
-
-interface UntypedPostgrestQuery {
-  select(columns: string): UntypedPostgrestFilter;
-}
-
-type UntypedFrom = (relation: string) => UntypedPostgrestQuery;
-
-function from(supabase: { from: unknown }): UntypedFrom {
-  return (supabase.from as UntypedFrom).bind(supabase);
-}
-
-const READ_PAGE_SIZE = 200;
-const RELATED_BATCH_SIZE = 80;
-
-async function readAllRows<T>(buildQuery: () => UntypedPostgrestFilter): Promise<UntypedPostgrestResult<T[]>> {
-  const rows: T[] = [];
-  for (let offset = 0; ; offset += READ_PAGE_SIZE) {
-    const result = await buildQuery().order("id", { ascending: true }).range(offset, offset + READ_PAGE_SIZE - 1).returns<T[]>();
-    if (result.error) return result;
-    const page = result.data ?? [];
-    rows.push(...page);
-    if (page.length < READ_PAGE_SIZE) return { data: rows, error: null };
-  }
-}
-
-async function readRelatedRows<T>(
-  supabase: { from: unknown }, relation: string, columns: string, key: string, ids: readonly string[],
-): Promise<UntypedPostgrestResult<T[]>> {
-  const rows: T[] = [];
-  const uniqueIds = [...new Set(ids)];
-  for (let offset = 0; offset < uniqueIds.length; offset += RELATED_BATCH_SIZE) {
-    const batch = uniqueIds.slice(offset, offset + RELATED_BATCH_SIZE);
-    const result = await readAllRows<T>(() => from(supabase)(relation).select(columns).in(key, batch));
-    if (result.error) return result;
-    rows.push(...(result.data ?? []));
-  }
-  return { data: rows, error: null };
 }
 
 const INVITATION_COLUMNS = [
