@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const deps = vi.hoisted(() => ({ authorize: vi.fn(), read: vi.fn() }));
 vi.mock("@/lib/auth", () => ({ requireAnyPerm: deps.authorize }));
 vi.mock("@/features/school/teaching-workbench/teaching-records-read", () => ({ getTeachingRecords: deps.read }));
+vi.mock("@/features/school/teaching-workbench/teaching-replay-read", () => ({ readTeachingReplay: vi.fn() }));
 import { POST } from "@/app/[locale]/dashboard/teaching/records-detail/route";
 const id = "12345678-1234-4234-9234-123456789abc";
 const request = (input: unknown) => new Request("http://example.test/zh/dashboard/teaching/records-detail", { method: "POST", body: JSON.stringify(input) });
@@ -10,7 +11,10 @@ beforeEach(() => { vi.resetAllMocks(); deps.authorize.mockResolvedValue({ id: "u
 
 describe("teaching inline record endpoint", () => {
   it("validates input before reading and reuses the teaching identity gate", async () => {
-    for (const input of [{ sessionId: "bad" }, { sessionId: id, contactPage: -1 }, { sessionId: id, pageSize: 1000 }]) {
+    for (const input of [{ sessionId: "bad" }, { sessionId: id, contactPage: -1 }, { sessionId: id, pageSize: 1000 },
+      { sessionId: id, replayId: "2026-09-07", replayFrom: "2026-09-01T00:00:00Z" },
+      { sessionId: id, replayId: "2026-09-07", replayFrom: "2026-09-01T00:00:00Z", replayTo: "2026-08-01T00:00:00Z" },
+      { sessionId: id, replayId: "2026-09-07", replayFrom: "2026-09-01T00:00:00Z", replayTo: "2028-08-01T00:00:00Z" }]) {
       expect((await POST(request(input), context)).status).toBe(400);
     }
     expect(deps.read).not.toHaveBeenCalled();

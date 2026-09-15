@@ -1907,6 +1907,14 @@
       "reload": "Reload"
     },
     "teachingWorkbench": {
+      "time": {
+        "dimension": "Time period", "week": "Week", "month": "Month", "term": "Term",
+        "current_week": "This week", "previous_week": "Last week", "current_month": "This month", "previous_month": "Last month", "current_term": "This term", "previous_term": "Last term",
+        "earlier_week": "Previous week", "later_week": "Next week", "earlier_month": "Previous month", "later_month": "Next month", "earlier_term": "Previous term", "later_term": "Next term",
+        "choose": "Choose period", "year": "Year", "termUnavailable": "The selected term has no complete date range. Choose another term, week or month.",
+        "snapshotPartial": "Records have been captured only for {from} to {to}. The available part of the selected period is shown below.",
+        "snapshotNone": "This period has not been captured. Records are available for {from} to {to}; this does not mean there were no lessons or learning records in the selected period."
+      },
       "grouping": {
         "title": "Group classes",
         "byGrade": "By grade",
@@ -1918,10 +1926,10 @@
       "replay": {
         "allTeachers": "All teachers",
         "source": "Read-only production snapshot · captured {captured}",
-        "hint": "Review last week's teaching records grouped by grade or teacher. Performance counts recorded student-question observations. Expand classes and lessons for the original learning records and notes.",
-        "unavailable": "The local snapshot for last week is not available yet.",
+        "hint": "Review teaching records by week, month or term, grouped by grade or teacher. Performance counts recorded student-question observations. Expand classes and lessons for the original learning records and notes.",
+        "unavailable": "The local teaching snapshot is not available yet.",
         "contacts": "Student communication / context",
-        "contactsHint": "Notes for this roster communicated or entered on September 7–13. Notes without a communication date or author provide student context; they are not attributed to this teacher's weekly communication."
+        "contactsHint": "Notes for this roster communicated or entered during the selected period. Notes without a communication date or author provide student context."
       },
       "observations": {
         "performance": "Learning observations",

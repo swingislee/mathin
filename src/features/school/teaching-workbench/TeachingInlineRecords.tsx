@@ -7,8 +7,8 @@ import { TeachingSessionRecords } from "./TeachingSessionRecords";
 import { readTeachingInlineRecords, type TeachingRecordCache } from "./teaching-records-client";
 import type { TeachingRecords } from "./teaching-records-contract";
 
-export function TeachingInlineRecords({ sessionId, locale, timeZone, cache, replayId }: {
-  sessionId: string; locale: string; timeZone: string; cache: TeachingRecordCache; replayId?: "2026-09-07";
+export function TeachingInlineRecords({ sessionId, locale, timeZone, cache, replayId, replayFrom, replayTo }: {
+  sessionId: string; locale: string; timeZone: string; cache: TeachingRecordCache; replayId?: "2026-09-07"; replayFrom?: string; replayTo?: string;
 }) {
   const t = useTranslations("school.teachingWorkbench");
   const [contactPage, setContactPage] = useState(1);
@@ -16,14 +16,14 @@ export function TeachingInlineRecords({ sessionId, locale, timeZone, cache, repl
   const [revision, setRevision] = useState(0);
   const [result, setResult] = useState<{ key: string; data: TeachingRecords } | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
-  const key = `${replayId ?? "live"}:${locale}:${sessionId}:${contactPage}:${pageSize}:${revision}`;
+  const key = `${replayId ?? "live"}:${replayFrom ?? ""}:${replayTo ?? ""}:${locale}:${sessionId}:${contactPage}:${pageSize}:${revision}`;
   useEffect(() => {
     const controller = new AbortController();
-    void readTeachingInlineRecords(cache, locale, { sessionId, contactPage, pageSize, ...(replayId ? { replayId } : {}) }, controller.signal)
+    void readTeachingInlineRecords(cache, locale, { sessionId, contactPage, pageSize, ...(replayId ? { replayId, replayFrom, replayTo } : {}) }, controller.signal)
       .then(data => { if (!controller.signal.aborted) setResult({ key, data }); })
       .catch(() => { if (!controller.signal.aborted) setFailed(key); });
     return () => controller.abort();
-  }, [cache, locale, sessionId, contactPage, pageSize, revision, key, replayId]);
+  }, [cache, locale, sessionId, contactPage, pageSize, revision, key, replayId, replayFrom, replayTo]);
   if (failed === key) return <div role="alert" className="space-y-2 text-sm text-muted">
     <p>{t("records.loadFailed")}</p>
     <Button variant="secondary" size="sm" onClick={() => setRevision(value => value + 1)}>{t("records.retry")}</Button>

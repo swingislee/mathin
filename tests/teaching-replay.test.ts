@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it, vi } from "vitest";
 import messages from "../messages/zh.json";
-import { teachingReplayAllowed, teachingReplayDetail, teachingReplayOverview, teachingReplaySchema, type TeachingReplay } from "@/features/school/teaching-workbench/teaching-replay-contract";
+import { selectTeachingReplay, teachingReplayAllowed, teachingReplayDetail, teachingReplayOverview, teachingReplaySchema, type TeachingReplay } from "@/features/school/teaching-workbench/teaching-replay-contract";
 import { TeachingClassOverviewTable } from "@/features/school/teaching-workbench/TeachingClassOverviewTable";
 import { TeachingSessionRecords } from "@/features/school/teaching-workbench/TeachingSessionRecords";
 import { groupTeachingClasses } from "@/features/school/teaching-workbench/teaching-class-overview-contract";
@@ -31,6 +31,19 @@ const fixture = (): TeachingReplay => teachingReplaySchema.parse({
 const Provider = NextIntlClientProvider as ComponentType<PropsWithChildren<Omit<ComponentProps<typeof NextIntlClientProvider>, "children">>>;
 
 describe("local production teaching replay", () => {
+  it("filters periods and contact dates without presenting uncaptured periods as complete", () => {
+    const source = fixture();
+    expect(selectTeachingReplay(source, { start: source.from, end: source.to }).coverage).toBe("full");
+    expect(selectTeachingReplay(source, { start: "2026-08-31T16:00:00Z", end: "2026-09-30T16:00:00Z" }).coverage).toBe("partial");
+    const empty = selectTeachingReplay(source, { start: source.to, end: "2026-09-20T16:00:00Z" });
+    expect(empty.coverage).toBe("none"); expect(empty.snapshot.sessions).toEqual([]);
+    source.version = 2; source.from = "2026-08-31T16:00:00Z"; source.to = "2026-09-30T16:00:00Z";
+    source.records[id].contacts.push({ ...source.records[id].contacts[0], id: "outside", createdAt: "2026-09-20T00:00:00Z", occurredOn: null });
+    source.records[id].contacts.push({ ...source.records[id].contacts[0], id: "entered-later", createdAt: "2026-09-20T00:00:00Z", occurredOn: "2026-09-10" });
+    const week = selectTeachingReplay(teachingReplaySchema.parse(source), { start: "2026-09-06T16:00:00Z", end: "2026-09-13T16:00:00Z" });
+    expect(week.snapshot.records[id].contacts.map(row => row.id)).toEqual(["contact", "entered-later"]);
+    expect(source.records[id].contacts).toHaveLength(3);
+  });
   it("accepts a third teacher and retains explicit grades without requiring a system start", () => {
     const snapshot = fixture();
     snapshot.teachers.push({ id: "00000000-0000-4000-8000-000000000003", name: "老师丙" });
@@ -106,6 +119,10 @@ describe("local production teaching replay", () => {
       expect(fetcher).toHaveBeenCalledTimes(2);
       expect(JSON.parse(fetcher.mock.calls[1][1].body)).toMatchObject(replayQuery);
       expect(cache.size).toBe(2);
+      fetcher.mockResolvedValueOnce(Response.json(replay));
+      await readTeachingInlineRecords(cache, "zh", { ...replayQuery, replayFrom: "2026-08-31T16:00:00Z", replayTo: "2026-09-30T16:00:00Z" }, new AbortController().signal);
+      expect(fetcher).toHaveBeenCalledTimes(3);
+      expect(cache.size).toBe(3);
     } finally { vi.unstubAllGlobals(); }
   });
 

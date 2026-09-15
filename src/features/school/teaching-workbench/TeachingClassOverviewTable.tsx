@@ -30,8 +30,8 @@ type Column = "classroom" | "teacher" | "sessions" | "attendance" | "learning" |
 const columns: Column[] = ["classroom", "teacher", "sessions", "attendance", "learning", "attention", "reviews", "contacts"];
 const widths = ["w-[20%]", "w-[9%]", "w-[10%]", "w-[11%]", "w-[11%]", "w-[9%]", "w-[15%]", "w-[15%]"];
 
-export function TeachingClassOverviewTable({ data, locale, timeZone, returnTo, initialTeacher, initialClassroom, replayId, groupBy }: {
-  data: TeachingClassOverview; locale: string; timeZone: string; returnTo: string; initialTeacher?: string; initialClassroom?: string; replayId?: "2026-09-07"; groupBy?: TeachingGrouping;
+export function TeachingClassOverviewTable({ data, locale, timeZone, returnTo, initialTeacher, initialClassroom, replayId, groupBy, replayFrom, replayTo }: {
+  data: TeachingClassOverview; locale: string; timeZone: string; returnTo: string; initialTeacher?: string; initialClassroom?: string; replayId?: "2026-09-07"; groupBy?: TeachingGrouping; replayFrom?: string; replayTo?: string;
 }) {
   const t = useTranslations("school.teachingWorkbench.overview");
   const workT = useTranslations("school.teachingWorkbench");
@@ -182,7 +182,7 @@ export function TeachingClassOverviewTable({ data, locale, timeZone, returnTo, i
               <TableCell className="px-2 py-1.5 align-middle">{snippet(session.metrics.latestReview, t("noReview"))}</TableCell>
               <TableCell className="px-2 py-1.5 align-middle text-muted">{data.canReadContacts ? t("contactsOnExpand") : t("contactsRestricted")}</TableCell>
             </>}>
-            {() => <InlineRecords key={session.id} sessionId={session.id} locale={locale} timeZone={timeZone} cache={recordCache} replayId={replayId} />}
+            {() => <InlineRecords key={session.id} sessionId={session.id} locale={locale} timeZone={timeZone} cache={recordCache} replayId={replayId} replayFrom={replayFrom} replayTo={replayTo} />}
           </FollowupRecordRow>)}</TableBody></Table>}
         </FollowupRecordRow></Fragment>)}
       </FollowupTableBody>

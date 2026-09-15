@@ -18,6 +18,10 @@ import { formatWorkItemReason, listMyWorkItems, resolveWorkItemHref } from "@/fe
 import { Link } from "@/i18n/navigation";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
 import { teachingGrouping, type TeachingGrouping } from "@/features/school/teaching-workbench/teaching-grouping-contract";
+import { teachingTimeGrain, teachingTimeWindow } from "@/features/school/teaching-workbench/teaching-period-contract";
+import { TeachingPeriodPicker } from "@/features/school/teaching-workbench/TeachingPeriodPicker";
+import { listSchoolTerms } from "@/features/school/courses";
+import { calendarDayKey } from "@/features/school/schedule";
 
 type Query = Record<string, string | string[] | undefined>;
 
@@ -39,8 +43,11 @@ async function TeachingContent({ locale, searchParams }: { locale: string; searc
   ]);
   const canViewTeam = hasTeachingManagementScope(perms);
   const view = query.view === "tasks" ? "tasks" : query.view === "progress" ? "progress" : query.view === "records" || canViewTeam ? "records" : "tasks";
-  const period = query.period === "week" ? "week" : query.period === "month" || view === "records" ? "month" : "week";
-  const window = teachingPeriodWindow(period, typeof query.date === "string" ? query.date : undefined, timeZone);
+  const period = teachingTimeGrain(query.period);
+  const terms = view === "tasks" ? [] : await listSchoolTerms();
+  const selection = typeof query.date === "string" ? query.date : "current";
+  const selectedWindow = teachingTimeWindow(period, selection, typeof query.term === "string" ? query.term : undefined, terms, timeZone);
+  const window = selectedWindow ?? teachingPeriodWindow("week", undefined, timeZone);
   const teacher = typeof query.teacher === "string" ? query.teacher : undefined;
   const classroom = typeof query.classroom === "string" ? query.classroom : undefined;
   const groupBy = teachingGrouping(query.group);
@@ -49,6 +56,7 @@ async function TeachingContent({ locale, searchParams }: { locale: string; searc
     if (teacher) params.set("teacher", teacher);
     if (classroom) params.set("classroom", classroom);
     params.set("group", groupBy);
+    if (grain === "term" && selectedWindow?.termId) params.set("term", selectedWindow.termId);
     return `/dashboard/teaching?${params}`;
   };
   const sessionId = typeof query.session === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(query.session) ? query.session : undefined;
@@ -66,14 +74,7 @@ async function TeachingContent({ locale, searchParams }: { locale: string; searc
       </DashboardCommandState>
       <DashboardCommandFilters>
         {view !== "tasks" && !(view === "records" && sessionId) && <>
-          <RouteTabs ariaLabel={t("period")} activeValue={period} items={[
-            { value: "week", label: t("week"), href: progressHref(window.date, "week") },
-            { value: "month", label: t("month"), href: progressHref(window.date, "month") },
-          ]} />
-          <Link className={buttonVariants({ variant: "ghost", size: "sm" })} href={progressHref(window.previous)}>{t("previous")}</Link>
-          <span className="text-xs tabular-nums text-muted">{window.date} — {window.lastDate}</span>
-          <Link className={buttonVariants({ variant: "ghost", size: "sm" })} href={progressHref(window.next)}>{t("next")}</Link>
-          <Link className={buttonVariants({ variant: "ghost", size: "sm" })} href={progressHref(teachingPeriodWindow(period, undefined, timeZone).date)}>{t("current")}</Link>
+          <TeachingPeriodPicker key={`${period}:${selection}:${selectedWindow?.termId ?? ""}`} grain={period} window={selectedWindow} baseHref={progressHref()} terms={terms} today={calendarDayKey(new Date(), timeZone)} />
           {view === "records" && <RouteTabs ariaLabel={t("grouping.title")} activeValue={groupBy} items={(["grade", "teacher"] as const).map(group => ({
             value: group, label: t(group === "grade" ? "grouping.byGrade" : "grouping.byTeacher"), href: progressHref().replace(`group=${groupBy}`, `group=${group}`),
           }))} />}
@@ -84,7 +85,7 @@ async function TeachingContent({ locale, searchParams }: { locale: string; searc
   }>
     {view === "tasks" ? <TeachingTasks locale={locale} /> : view === "records" && sessionId ? <TeachingRecordDetail
       sessionId={sessionId} contactPage={contactPage} pageSize={contactSize} locale={locale} timeZone={timeZone} returnTo={progressHref()}
-    /> : <TeachingProgress
+    /> : !selectedWindow ? <p role="status" className="py-6 text-sm text-muted">{t("time.termUnavailable")}</p> : <TeachingProgress
       from={window.start} to={window.end} scope={canViewTeam ? "team" : "mine"}
       locale={locale} timeZone={timeZone} returnTo={progressHref()} mode={view} teacher={teacher} classroom={classroom} groupBy={groupBy}
     />}

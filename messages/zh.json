@@ -1907,6 +1907,14 @@
       "reload": "重新读取"
     },
     "teachingWorkbench": {
+      "time": {
+        "dimension": "查看时间维度", "week": "周", "month": "月", "term": "学期",
+        "current_week": "当周", "previous_week": "上周", "current_month": "当月", "previous_month": "上月", "current_term": "本学期", "previous_term": "上学期",
+        "earlier_week": "前一周", "later_week": "后一周", "earlier_month": "前一月", "later_month": "后一月", "earlier_term": "前一学期", "later_term": "后一学期",
+        "choose": "选择查看时间", "year": "年份", "termUnavailable": "所选学期尚未设置完整起止日期，请选择其他学期或周、月查看。",
+        "snapshotPartial": "当前仅采集 {from} 至 {to} 的记录，以下展示所选范围内已采集的部分。",
+        "snapshotNone": "所选范围尚未采集记录。当前可查看 {from} 至 {to}；这不代表该范围没有上课或学情。"
+      },
       "grouping": {
         "title": "班级分组方式",
         "byGrade": "按年级",
@@ -1918,10 +1926,10 @@
       "replay": {
         "allTeachers": "全部老师",
         "source": "生产记录只读快照 · {captured} 提取",
-        "hint": "查看老师们上周的实际教学记录，可按年级或老师分组。课堂表现按已记录的逐生逐题观察计数；展开班级与课次可核对原始学情和正文。",
-        "unavailable": "本地上周记录快照尚未准备好。",
+        "hint": "按周、月或学期查看实际教学记录，可按年级或老师分组。课堂表现按已记录的逐生逐题观察计数；展开班级与课次可核对原始学情和正文。",
+        "unavailable": "本地教学记录快照尚未准备好。",
         "contacts": "学生沟通与背景",
-        "contactsHint": "本节学生在 9 月 7—13 日沟通或录入的记录。未注明沟通日期、记录人的内容作为学生背景参考；不归为任课老师当周沟通。"
+        "contactsHint": "本节学生在所选时间范围内沟通或录入的记录。未注明沟通日期、记录人的内容作为学生背景参考。"
       },
       "observations": {
         "performance": "课堂表现（次）",

@@ -2,11 +2,11 @@ import { readDashboardDetail } from "../dashboard-page/readDashboardDetail";
 import { teachingRecordsSchema, type TeachingRecords } from "./teaching-records-contract";
 
 export type TeachingRecordCache = Map<string, { data: TeachingRecords; expires: number }>;
-export type TeachingRecordQuery = { sessionId: string; contactPage: number; pageSize: 10 | 20; replayId?: "2026-09-07" };
+export type TeachingRecordQuery = { sessionId: string; contactPage: number; pageSize: 10 | 20; replayId?: "2026-09-07"; replayFrom?: string; replayTo?: string };
 
 /** 缓存仅由当前工作台实例持有；短时重复展开复用，卸载后释放。 */
 export async function readTeachingInlineRecords(cache: TeachingRecordCache, locale: string, query: TeachingRecordQuery, signal: AbortSignal) {
-  const key = `${query.replayId ?? "live"}:${locale}:${query.sessionId}:${query.contactPage}:${query.pageSize}`;
+  const key = `${query.replayId ?? "live"}:${query.replayFrom ?? ""}:${query.replayTo ?? ""}:${locale}:${query.sessionId}:${query.contactPage}:${query.pageSize}`;
   signal.throwIfAborted();
   const cached = cache.get(key);
   if (cached && cached.expires > Date.now()) return cached.data;
