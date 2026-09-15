@@ -51,7 +51,7 @@ describe("P4H-8 classroom list, detail tabs and session drawer contract", () => 
     expect(queries).toContain("CLASSROOM_LIST_PAGE_SIZE = 20");
     expect(list).toContain('scope === "all"');
     expect(list).toContain("<AllClassroomsTable");
-    expect(list).toContain("<PersonalClassroomCards");
+    expect(list).toContain("<PersonalClassroomTable");
     expect(list).toContain('data-classroom-table="all"');
     expect(tableShell).toContain(sharedTableShell);
     expect(list).toContain("DashboardTableShell");

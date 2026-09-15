@@ -20,7 +20,7 @@ describe("P4I-15 postwork seam contract", () => {
     expect(workspace).toContain('stage === "post"');
     expect(workspace).toContain("AttendanceDrawer");
     expect(workspace).toContain("SessionCompletePostworkButton");
-    expect(panel).toContain("SessionStudentPostworkCards");
+    expect(panel).toContain("SessionStudentPostworkTable");
     expect(panel).toContain("SessionAssignmentReviewPanel");
     expect(panel).toContain("VideoReviewPanel");
     expect(panel).toContain("SupportTaskRecipientList");
@@ -28,14 +28,14 @@ describe("P4I-15 postwork seam contract", () => {
     expect(panel).not.toContain("<ReviewDrawer");
     expect(panel).not.toContain("SessionFollowUpQuickForm");
     expect(panel).not.toContain("<ol");
-    expect(panel.indexOf("independentPublicationsTitle")).toBeLessThan(panel.indexOf("classPerformanceTitle"));
+    expect(panel.indexOf("<SessionStudentPostworkTable")).toBeLessThan(panel.indexOf("independentPublicationsTitle"));
   });
 
-  it("跟进表单复用 addStudentFollowUp，不接 P4C 招生漏斗的 statusAfter 语义", () => {
-    const form = read("src", "features", "school", "SessionStudentPostworkCards.tsx");
-    expect(form).toContain("addStudentFollowUp");
-    expect(form).toContain('kind: "class"');
-    expect(form).toContain("statusAfter: null");
+  it("课次沟通使用显式课次写入口，招生状态沿用自身业务", () => {
+    const form = read("src", "features", "school", "SessionStudentPostworkTable.tsx");
+    expect(form).toContain("recordSessionCommunication");
+    expect(form).toContain("finishSessionCommunications");
+    expect(form).not.toContain("completeSessionTaskAction");
     expect(form).not.toContain('from "./FollowUpForm"');
   });
 

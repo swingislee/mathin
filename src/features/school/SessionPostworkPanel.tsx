@@ -1,4 +1,4 @@
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
 import { getSessionReport, listSubmissions } from "@/features/classroom/actions";
 import { getProfile } from "@/lib/auth";
@@ -9,10 +9,15 @@ import { SessionAssignmentPublisher } from "./SessionAssignmentPublisher";
 import { SessionAssignmentReviewPanel, type SessionAssignmentReviewItem } from "./SessionAssignmentReviewPanel";
 import { SessionFamilyBriefPanel } from "./SessionFamilyBriefPanel";
 import { SessionTaskActions } from "./SessionPostworkActions";
-import { SessionStudentPostworkCards, type SessionStudentPostworkRow } from "./SessionStudentPostworkCards";
+import { SessionStudentPostworkTable, type SessionStudentPostworkRow } from "./SessionStudentPostworkTable";
+import { getSessionCommunications } from "./session-communication-read";
+import { sessionCommunicationMessages } from "./session-communication-messages";
+import { getOrganizationTimezoneV2 } from "./organization-locations";
+import { calendarDayKey } from "./schedule";
+import { DashboardSection } from "./dashboard-page";
 import { SessionVideoTaskPublisher } from "./SessionVideoTaskPublisher";
 import { SupportTaskRecipientList } from "./SupportTaskRecipientList";
-import { TeachingPostworkSection, TeachingPostworkStatus } from "./TeachingPostworkSurface";
+import { TeachingPostworkStatus } from "./TeachingPostworkSurface";
 import { VideoReviewPanel } from "./VideoReviewPanel";
 import { listSessionVideos } from "./videos";
 
@@ -28,14 +33,13 @@ export async function SessionPostworkPanel({ detail }: { detail: SessionWorkspac
   const pendingRequired = detail.completionTasks.filter((task) => task.required && task.status === "pending").length;
   const requiredTotal = detail.completionTasks.filter((task) => task.required).length;
   const completedRequired = requiredTotal - pendingRequired;
-  const followupTask = detail.completionTasks.find((task) => task.kind === "followup") ?? null;
   const videoReviewTask = detail.completionTasks.find((task) => task.kind === "video_review") ?? null;
   const homeworkClient = await createClient();
   const { data: { user } } = await homeworkClient.auth.getUser();
   const homeworkPermission = user ? await homeworkClient.rpc("can_review_session", { cid: detail.classroomId, uid: user.id }) : null;
   const canPublishHomework = homeworkPermission?.data === true;
 
-  const [sessionVideos, report, reviewData, assignmentReviewItems] = await Promise.all([
+  const [sessionVideos, report, reviewData, assignmentReviewItems, communications, locale, timeZone] = await Promise.all([
     videoReviewTask && detail.capabilities.canReviewVideo ? listSessionVideos(detail.id) : Promise.resolve([]),
     getSessionReport(detail.id).catch(() => ({ rows: [], quizzes: [], learningChecks: [] })),
     detail.capabilities.canWriteReview
@@ -56,6 +60,7 @@ export async function SessionPostworkPanel({ detail }: { detail: SessionWorkspac
           assignment,
           submissions: detail.capabilities.canWriteReview ? await listSubmissions(assignment.id).catch(() => []) : [],
         }))),
+    getSessionCommunications(detail.id), getLocale(), getOrganizationTimezoneV2(),
   ]);
   const isAdmin = sessionVideos.length > 0 && (await currentProfile())?.role === "admin";
   const reviewResults = detail.learningResults.filter((result) => result.kind === "session_review");
@@ -95,6 +100,12 @@ export async function SessionPostworkPanel({ detail }: { detail: SessionWorkspac
         progressLabel={t("completionProgress", { done: completedRequired, total: requiredTotal })}
       />
 
+      <DashboardSection title={sessionCommunicationMessages(locale).title}>
+        <SessionStudentPostworkTable sessionId={detail.id} rows={studentRows} initialReviews={reviewData.records}
+          resultStatus={reviewResultStatus} canWriteReview={detail.capabilities.canWriteReview}
+          initialCommunications={communications} locale={locale} timeZone={timeZone} today={calendarDayKey(new Date(), timeZone)} />
+      </DashboardSection>
+
       <section>
         <h3 className="mb-3 font-medium text-ink">{t("independentPublicationsTitle")}</h3>
         <p className="-mt-2 mb-3 text-xs text-muted">{t("independentPublicationsHint")}</p>
@@ -106,17 +117,6 @@ export async function SessionPostworkPanel({ detail }: { detail: SessionWorkspac
           )}
         </div>
       </section>
-
-      <TeachingPostworkSection title={t("classPerformanceTitle")} description={t("classPerformanceHint")}>
-        <SessionStudentPostworkCards
-          sessionId={detail.id}
-          rows={studentRows}
-          initialReviews={reviewData.records}
-          resultStatus={reviewResultStatus}
-          canWriteReview={detail.capabilities.canWriteReview}
-          followupTask={followupTask ? { id: followupTask.id, status: followupTask.status } : null}
-        />
-      </TeachingPostworkSection>
 
       {(canPublishHomework || assignmentReviewItems.length > 0) && <SessionAssignmentReviewPanel items={assignmentReviewItems} canGradeSubmissions={detail.capabilities.canWriteReview} />}
 

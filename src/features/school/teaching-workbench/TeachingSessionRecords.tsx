@@ -14,6 +14,8 @@ import { TeachingContactPageSize } from "./TeachingContactPageSize";
 import { hasWrittenReview, summarizeTeachingObservations } from "./teaching-learning-summary";
 import { TeachingCoverage, TeachingFocus, TeachingPerformance } from "./TeachingObservationCells";
 import { AssignmentQuestionSummary } from "../AssignmentQuestionSummary";
+import { SessionCommunicationHistory } from "../SessionCommunicationHistory";
+import { sessionCommunicationMessages } from "../session-communication-messages";
 
 export function TeachingSessionRecords({ data, locale, timeZone, returnTo, currentHref, pageSize = 20, inline, replay = false }: {
   data: TeachingRecords; locale: string; timeZone: string; returnTo: string; currentHref: string; pageSize?: 10 | 20;
@@ -39,6 +41,9 @@ export function TeachingSessionRecords({ data, locale, timeZone, returnTo, curre
     return `${path}?${params}`;
   };
   return <div className={inline ? "space-y-3 [&_section>header]:mb-2" : "space-y-7"}>
+    {!replay && <Link className="inline-block text-xs underline underline-offset-4" href={withReturnTo(`/dashboard/sessions/${data.session.id}?stage=post`, currentHref || "/dashboard/teaching?view=records")}>
+      {sessionCommunicationMessages(locale).title}
+    </Link>}
     {!inline && <DashboardSection title={`${data.session.classroomName} · ${data.session.title || workT("untitled")}`}>
       <p className="text-sm text-muted">{data.session.scheduledAt && date(data.session.scheduledAt)} · {t(data.session.endedAt ? "ended" : data.session.startedAt ? "started" : "notStarted")}</p>
       <p className="mt-2 text-xs text-muted">{t("readHint")}</p>
@@ -102,6 +107,9 @@ export function TeachingSessionRecords({ data, locale, timeZone, returnTo, curre
           <AssignmentQuestionSummary data={item} />
         </div>)}
     </DashboardSection>
+    {data.sessionCommunications?.canRead && <DashboardSection title={sessionCommunicationMessages(locale).title}>
+      <SessionCommunicationHistory records={data.sessionCommunications.records} locale={locale} timeZone={timeZone} studentNames={Object.fromEntries(students)} />
+    </DashboardSection>}
     <DashboardSection title={t("contacts")} description={replay ? workT("replay.contactsHint") : t("contactsHint")}>
       {!data.canReadContacts ? <p className="text-sm text-muted">{t("contactsRestricted")}</p> : <>
         <DashboardTableShell className={inline ? "rounded-none border-0" : undefined}><Table className={inline ? "text-xs [&_th]:h-9 [&_th]:px-2 [&_td]:px-2 [&_td]:py-1.5" : undefined} containerClassName={inline ? undefined : "max-h-[60vh] overflow-auto"}>

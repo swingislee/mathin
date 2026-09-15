@@ -1,4 +1,4 @@
-import { ArrowRight, CircleAlert, School, Users } from "lucide-react";
+import { ArrowRight, CircleAlert } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -7,6 +7,8 @@ import { DashboardEmptyCard, DashboardTableShell } from "@/features/school/dashb
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import type { ClassroomListItem } from "./teaching-operations/classroom-queries";
+import { PersonalClassroomTable } from "./PersonalClassroomTable";
+import { getClassroomWorkSessions } from "./classroom-workbench-read";
 import type { ClassroomScope } from "./teaching-operations/types";
 
 const PRIMARY_ACTION_KEY: Record<ClassroomScope, string> = {
@@ -36,70 +38,6 @@ function ClassroomBadges({ classroom, t }: { classroom: ClassroomListItem; t: Tr
       <Badge variant="outline">{t(`offering_${classroom.offeringType}`)}</Badge>
       {classroom.purpose === "test" ? <Badge variant="outline">{t("test")}</Badge> : null}
     </span>
-  );
-}
-
-function PersonalClassroomCards({
-  classrooms,
-  scope,
-  t,
-  formatSession,
-}: {
-  classrooms: ClassroomListItem[];
-  scope: ClassroomScope;
-  t: Translator;
-  formatSession: (value: string) => string;
-}) {
-  return (
-    <div className="grid gap-4 @4xl/page:grid-cols-2">
-      {classrooms.map((classroom) => (
-        <article key={classroom.id} className="flex min-w-0 flex-col rounded-2xl border border-line bg-card p-4">
-          <div className="flex min-w-0 items-start gap-3">
-            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-moon/30 text-crater" aria-hidden>
-              <School className="size-5" strokeWidth={1.5} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <h2 className="truncate font-display text-lg text-ink">{classroom.name}</h2>
-                  <p className="mt-1 line-clamp-2 text-sm text-muted">{courseLabel(classroom, t)}</p>
-                </div>
-                <ClassroomBadges classroom={classroom} t={t} />
-              </div>
-              <p className="mt-3 text-sm text-muted">
-                {classroom.primaryTeacherName ?? t("noPrimaryTeacher")}
-                {classroom.learningSupportNames.length > 0 && ` · ${t("learningSupport")}: ${classroom.learningSupportNames.join("、")}`}
-              </p>
-            </div>
-          </div>
-
-          <dl className="mt-4 grid grid-cols-3 gap-3 rounded-xl bg-paper/45 p-3 text-xs">
-            <div>
-              <dt className="flex items-center gap-1 text-muted"><Users className="size-3.5" />{t("size")}</dt>
-              <dd className="mt-1 font-medium text-ink">{classroom.enrolledCount}{classroom.capacity ? ` / ${classroom.capacity}` : ""}</dd>
-            </div>
-            <div>
-              <dt className="text-muted">{t("sessionProgress")}</dt>
-              <dd className="mt-1 font-medium text-ink">{classroom.sessionDoneCount}/{classroom.sessionTotalCount}</dd>
-            </div>
-            <div>
-              <dt className="text-muted">{t("nextSession")}</dt>
-              <dd className="mt-1 truncate font-medium text-ink">{classroom.nextSessionAt ? formatSession(classroom.nextSessionAt) : t("notApplicable")}</dd>
-            </div>
-          </dl>
-
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-            <p className={cn("flex items-center gap-1 text-xs", classroom.anomalyCount > 0 || classroom.readiness === "incomplete" ? "text-rose" : "text-leaf-deep")}>
-              <CircleAlert className="size-3.5" />
-              {readinessLabel(classroom, t)}
-            </p>
-            <Link href={`/dashboard/classes/${classroom.id}`} className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "shrink-0")}>
-              {t(PRIMARY_ACTION_KEY[scope])}<ArrowRight className="size-4" />
-            </Link>
-          </div>
-        </article>
-      ))}
-    </div>
   );
 }
 
@@ -194,7 +132,7 @@ export async function ClassroomList({
   const formatSession = (value: string) => dateTime.format(new Date(value));
   const list = scope === "all"
     ? <AllClassroomsTable classrooms={classrooms} scope={scope} t={t} formatSession={formatSession} />
-    : <PersonalClassroomCards classrooms={classrooms} scope={scope} t={t} formatSession={formatSession} />;
+    : <PersonalClassroomTable classrooms={classrooms} sessions={await getClassroomWorkSessions(classrooms.map(row => row.id))} locale={locale} timeZone={timeZone} />;
 
   return (
     <div className="space-y-4">

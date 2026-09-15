@@ -129,7 +129,7 @@ describe("DEV-SCHOOL-OPS-1 public-class workbench", () => {
     expect(workspace).toContain("TeachingPostworkStatus");
     expect(workspace).toContain("TeachingPostworkSection");
     expect(formalPostwork).toContain("TeachingPostworkStatus");
-    expect(formalPostwork).toContain("TeachingPostworkSection");
+    expect(formalPostwork).toContain("SessionStudentPostworkTable");
     expect(sharedPreparation).toContain("SessionPrepSplit");
     expect(sharedPostwork).toContain("data-shared-teaching-postwork-section");
     expect(sharedCourseware).toContain("saveLearningChecksOverride");

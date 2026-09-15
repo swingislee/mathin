@@ -120,7 +120,7 @@ describe("teacher question assessment workbench", () => {
   });
 
   it("uses one semantic palette across entry and result surfaces", () => {
-    const postwork = read("src", "features", "school", "SessionStudentPostworkCards.tsx");
+    const postwork = read("src", "features", "school", "SessionStudentPostworkTable.tsx");
     const studentResults = read("src", "features", "school", "StudentLearningCheckResults.tsx");
 
     expect(LEARNING_CHECK_STATUS_STYLE.explained.active).toContain("sky");
@@ -129,7 +129,7 @@ describe("teacher question assessment workbench", () => {
     expect(LEARNING_CHECK_STATUS_STYLE.imitated.active).toContain("orange");
     expect(LEARNING_CHECK_STATUS_STYLE.incomplete.active).toContain("rose");
     expect(LEARNING_CHECK_STATUS_STYLE.imitated.active).not.toContain("violet");
-    expect(postwork).toContain("LEARNING_CHECK_STATUS_STYLE[check.status]");
+    expect(postwork).toContain("LearningCheckStatusMark");
     expect(studentResults).toContain("LEARNING_CHECK_STATUS_STYLE[record.status]");
   });
 

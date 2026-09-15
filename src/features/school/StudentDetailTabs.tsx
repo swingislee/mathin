@@ -87,6 +87,10 @@ export async function StudentFollowUpsTab({
                 )}
               </div>
               <p className="mt-2 whitespace-pre-wrap">{followUp.content}</p>
+              {followUp.sessionId && <p className="mt-2 text-xs text-muted">
+                {followUp.occurredOn} · <Link className="underline underline-offset-4" href={`/dashboard/sessions/${followUp.sessionId}?stage=post`}>{locale === "en" ? "Lesson communication" : "查看本次课沟通"}</Link>
+                {followUp.nextAction && <span> · {followUp.nextAction}</span>}
+              </p>}
               {followUp.contextSourceRecordId?<Link href={sourceFollowupHref(student.id,followUp.contextSourceRecordId)} className="mt-2 inline-block text-xs text-muted underline underline-offset-4">{sourceM.sourceSaved}</Link>:null}
             </li>
           ))}
