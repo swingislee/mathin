@@ -39,7 +39,7 @@ export default async function CourseEnrollmentsPage({
       initialBoard={board}
       timeZone={timeZone}
       now={now.getTime()}
-      history={permissions.has('enrollment.manage') ? await loadStudentBusinessHistory(locale,{kind:'enrollment'}) : null}
+      history={permissions.has('enrollment.manage') ? await loadStudentBusinessHistory(locale,{kind:'enrollment',projection:'workbench'}) : null}
       initialQuery={query.q?.slice(0,100)}
       initialRecordState={businessRecordStateFilter(query.state)}
       initialTermId={query.term}
