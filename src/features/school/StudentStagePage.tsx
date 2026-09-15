@@ -18,12 +18,13 @@ export async function StudentStagePage({ locale, currentUserId, permissions, sea
 }) {
   const filters = parseStudentStageFilters(searchParams, permissions.has("student.view.all") ? "all" : "mine");
   const canAssign = permissions.has("student.assign");
-  const pagePromise = Promise.all([getTranslations("school.students"), getOrganizationTimezoneV2(), canAssign ? listStaffMembers() : Promise.resolve([]), getNow(), readSchoolCollaborationSettings()])
-    .then(async ([t, timeZone, staff, currentTime, collaboration]) => {
-      const now = currentTime.getTime();
-      return { t, timeZone, staff, now, collaboration, data: await loadStudentStageFieldPage(filters, { locale, timeZone, now }, currentUserId) };
-    });
-  const { t, timeZone, staff, now, data, collaboration } = await pagePromise;
+  const dataPromise = Promise.all([getOrganizationTimezoneV2(), getNow()]).then(async ([timeZone, currentTime]) => {
+    const now = currentTime.getTime();
+    return { timeZone, now, data: await loadStudentStageFieldPage(filters, { locale, timeZone, now }, currentUserId) };
+  });
+  const [t, staff, collaboration, { timeZone, now, data }] = await Promise.all([
+    getTranslations("school.students"), canAssign ? listStaffMembers() : Promise.resolve([]), readSchoolCollaborationSettings(), dataPromise,
+  ]);
   const resolvedFilters = { ...filters, scope: studentStageFieldScope(data.fieldView.query), detail: "", fields: JSON.stringify(data.fieldView.query) };
   return <StudentStageWorkspace data={data} filters={resolvedFilters} locale={locale} currentUserId={currentUserId}
     collaboration={collaboration}

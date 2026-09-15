@@ -39,4 +39,20 @@ describe("student list database page adapter", () => {
     rpc.mockResolvedValueOnce({ data: { ...page, rows: [{ key: "incomplete" }] }, error: null });
     await expect(loadStudentStageFieldPage(filters, context, "actor")).rejects.toThrow();
   });
+  it("pages recontact on the database and preserves reason counts and the group filter", async () => {
+    rpc.mockResolvedValueOnce({ data: { ...page, reasonCounts: { dormant: 2438, assessed: 157 } }, error: null });
+    const result = await loadStudentStageFieldPage({ ...filters, population: "recontact", reason: "dormant", scope: "group" }, context, "actor");
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledWith("list_student_recontact_page", expect.objectContaining({ p_scope: "group", p_reason: "dormant", p_page: 3, p_page_size: 20,
+      p_query: { version: 2, filters: { scope: { kind: "enum", values: ["group"] } }, sort: null } }));
+    expect(rpc.mock.calls[0][1]).not.toHaveProperty("p_population");
+    expect(result.reasonCounts).toEqual({ dormant: 2438, assessed: 157 });
+    expect(result.count).toBe(41);
+  });
+  it("uses the recontact reason's visible fields when normalizing filters", async () => {
+    const fields = JSON.stringify({ version: 2, filters: { teacher: { kind: "presence", value: "present" }, note: { kind: "text", query: " abc " } }, sort: null });
+    await loadStudentStageFieldPage({ ...filters, population: "recontact", reason: "unreachable", fields }, context, "actor");
+    expect(rpc).toHaveBeenCalledWith("list_student_recontact_page", expect.objectContaining({ p_reason: "unreachable",
+      p_query: { version: 2, filters: { note: { kind: "text", query: "abc" } }, sort: null } }));
+  });
 });
