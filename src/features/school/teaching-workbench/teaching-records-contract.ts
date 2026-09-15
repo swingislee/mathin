@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { LEARNING_CHECK_RATED_STATUSES } from "../session-learning-contract";
+import { assignmentQuestionWorkbookSchema } from "../assignment-question-contract";
 
 export const TEACHING_CONTACT_PAGE_SIZE = 20;
 export const teachingRecordsSchema = z.object({
@@ -17,6 +18,7 @@ export const teachingRecordsSchema = z.object({
   contactTotal: z.number(),
   contactPage: z.number(),
   supportNotes: z.array(z.object({ id: z.string(), kind: z.string(), note: z.string(), status: z.string(), author: z.string().nullable(), completedAt: z.string().nullable() })),
+  homework: z.array(assignmentQuestionWorkbookSchema).optional(),
 });
 export type TeachingRecords = z.infer<typeof teachingRecordsSchema>;
 

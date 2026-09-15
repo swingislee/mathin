@@ -30,6 +30,10 @@ export async function SessionPostworkPanel({ detail }: { detail: SessionWorkspac
   const completedRequired = requiredTotal - pendingRequired;
   const followupTask = detail.completionTasks.find((task) => task.kind === "followup") ?? null;
   const videoReviewTask = detail.completionTasks.find((task) => task.kind === "video_review") ?? null;
+  const homeworkClient = await createClient();
+  const { data: { user } } = await homeworkClient.auth.getUser();
+  const homeworkPermission = user ? await homeworkClient.rpc("can_review_session", { cid: detail.classroomId, uid: user.id }) : null;
+  const canPublishHomework = homeworkPermission?.data === true;
 
   const [sessionVideos, report, reviewData, assignmentReviewItems] = await Promise.all([
     videoReviewTask && detail.capabilities.canReviewVideo ? listSessionVideos(detail.id) : Promise.resolve([]),
@@ -48,12 +52,10 @@ export async function SessionPostworkPanel({ detail }: { detail: SessionWorkspac
           })),
         }))
       : Promise.resolve({ records: [] }),
-    detail.capabilities.canWriteReview
-      ? Promise.all(detail.publishedAssignments.map(async (assignment): Promise<SessionAssignmentReviewItem> => ({
+    Promise.all(detail.publishedAssignments.map(async (assignment): Promise<SessionAssignmentReviewItem> => ({
           assignment,
-          submissions: await listSubmissions(assignment.id).catch(() => []),
-        })))
-      : Promise.resolve([]),
+          submissions: detail.capabilities.canWriteReview ? await listSubmissions(assignment.id).catch(() => []) : [],
+        }))),
   ]);
   const isAdmin = sessionVideos.length > 0 && (await currentProfile())?.role === "admin";
   const reviewResults = detail.learningResults.filter((result) => result.kind === "session_review");
@@ -98,11 +100,9 @@ export async function SessionPostworkPanel({ detail }: { detail: SessionWorkspac
         <p className="-mt-2 mb-3 text-xs text-muted">{t("independentPublicationsHint")}</p>
         <div className="grid gap-4 @4xl/page:grid-cols-3">
           <SessionFamilyBriefPanel detail={detail} />
+          {canPublishHomework && <SessionAssignmentPublisher sessionId={detail.id} assignments={detail.publishedAssignments} />}
           {detail.capabilities.canWriteReview && (
-            <>
-              <SessionAssignmentPublisher sessionId={detail.id} assignments={detail.publishedAssignments} />
-              <SessionVideoTaskPublisher sessionId={detail.id} task={detail.videoTask} />
-            </>
+            <SessionVideoTaskPublisher sessionId={detail.id} task={detail.videoTask} />
           )}
         </div>
       </section>
@@ -118,7 +118,7 @@ export async function SessionPostworkPanel({ detail }: { detail: SessionWorkspac
         />
       </TeachingPostworkSection>
 
-      {detail.capabilities.canWriteReview && <SessionAssignmentReviewPanel items={assignmentReviewItems} />}
+      {(canPublishHomework || assignmentReviewItems.length > 0) && <SessionAssignmentReviewPanel items={assignmentReviewItems} canGradeSubmissions={detail.capabilities.canWriteReview} />}
 
       {videoReviewTask && detail.capabilities.canReviewVideo && (
         <section className="rounded-2xl border border-line bg-card p-4 text-sm">

@@ -1878,6 +1878,34 @@
     "prototypeReset": "清空样机"
   },
   "school": {
+    "homeworkQuestions": {
+      "title": "作业逐题登记",
+      "view": "查看作业记录",
+      "loading": "正在读取作业逐题记录…",
+      "loadFailed": "作业记录暂时无法读取，请核对访问范围后重试。",
+      "back": "返回课后工作区",
+      "paperHint": "纸质作业可直接登记，沿用课堂六档学情。",
+      "scope": "{students} 名学生 · {questions} 道题",
+      "addQuestions": "添加题目",
+      "titlesHint": "每行一道题，可填写题号或名称；保留已有题目与记录，最多 60 题。",
+      "saveQuestions": "保存题目",
+      "questionLimit": "这份作业最多支持 60 道题。",
+      "entry": "逐题登记",
+      "entryHint": "按学生批改整份作业，或按题登记全班。数字键 1–5 登记，0 清除；未检查不计为未完成。",
+      "overview": "作业逐题学情",
+      "student": "学生",
+      "recorded": "已检查",
+      "noQuestions": "尚未设置作业题目。",
+      "noAssignments": "本节尚未发布作业。",
+      "snapshotUnavailable": "这份只读快照尚未采集作业逐题记录。",
+      "note": "{student} · {question} · 备注（选填）",
+      "saveNote": "保存备注",
+      "undo": "撤销上次登记",
+      "saved": "已保存",
+      "failed": "保存失败，请重试；当前输入已保留。",
+      "conflict": "记录已被其他操作更新。请重新读取后核对，再继续登记。",
+      "reload": "重新读取"
+    },
     "teachingWorkbench": {
       "replay": {
         "bothTeachers": "两位老师",

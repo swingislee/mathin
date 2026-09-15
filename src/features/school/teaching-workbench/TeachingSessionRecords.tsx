@@ -13,6 +13,7 @@ import { DashboardTablePagination } from "../dashboard-page/DashboardTablePagina
 import { TeachingContactPageSize } from "./TeachingContactPageSize";
 import { hasWrittenReview, summarizeTeachingObservations } from "./teaching-learning-summary";
 import { TeachingCoverage, TeachingFocus, TeachingPerformance } from "./TeachingObservationCells";
+import { AssignmentQuestionSummary } from "../AssignmentQuestionSummary";
 
 export function TeachingSessionRecords({ data, locale, timeZone, returnTo, currentHref, pageSize = 20, inline, replay = false }: {
   data: TeachingRecords; locale: string; timeZone: string; returnTo: string; currentHref: string; pageSize?: 10 | 20;
@@ -22,6 +23,7 @@ export function TeachingSessionRecords({ data, locale, timeZone, returnTo, curre
   const t = useTranslations("school.teachingWorkbench.records");
   const reportT = useTranslations("classroom.report");
   const workT = useTranslations("school.teachingWorkbench");
+  const homeworkT = useTranslations("school.homeworkQuestions");
   const formatter = useMemo(() => new Intl.DateTimeFormat(locale, { timeZone, dateStyle: "medium", timeStyle: "short" }), [locale, timeZone]);
   const date = (value: string) => formatter.format(new Date(value));
   const students = new Map(data.students.map(row => [row.id, row.name]));
@@ -91,6 +93,14 @@ export function TeachingSessionRecords({ data, locale, timeZone, returnTo, curre
           </TableRow>;
         })}</TableBody>
       </Table></DashboardTableShell>
+    </DashboardSection>
+    <DashboardSection title={homeworkT("overview")}>
+      {data.homework === undefined ? <p className="text-xs text-muted">{homeworkT("snapshotUnavailable")}</p>
+        : data.homework.length === 0 ? <p className="text-xs text-muted">{homeworkT("noAssignments")}</p>
+        : data.homework.map(item => <div key={item.assignment.id} className="mb-3 space-y-2"><div className="flex items-center gap-3"><h4 className="text-xs font-medium">{item.assignment.title}</h4>
+          {!replay && <Link prefetch={false} className="text-xs underline underline-offset-4" href={`/dashboard/teaching/assignments/${item.assignment.id}`}>{homeworkT(item.canWrite ? "title" : "view")}</Link>}</div>
+          <AssignmentQuestionSummary data={item} />
+        </div>)}
     </DashboardSection>
     <DashboardSection title={t("contacts")} description={replay ? workT("replay.contactsHint") : t("contactsHint")}>
       {!data.canReadContacts ? <p className="text-sm text-muted">{t("contactsRestricted")}</p> : <>

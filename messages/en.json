@@ -1878,6 +1878,34 @@
     "prototypeReset": "Clear prototype"
   },
   "school": {
+    "homeworkQuestions": {
+      "title": "Record homework by question",
+      "view": "View homework records",
+      "loading": "Loading question records…",
+      "loadFailed": "Homework records could not be loaded. Check your access and retry.",
+      "back": "Back to post-class work",
+      "paperHint": "Record paper homework directly with the six classroom learning statuses.",
+      "scope": "{students} students · {questions} questions",
+      "addQuestions": "Add questions",
+      "titlesHint": "One question number or title per line. Existing questions and records are kept. Up to 60 questions.",
+      "saveQuestions": "Save questions",
+      "questionLimit": "An assignment supports up to 60 questions.",
+      "entry": "Question entry",
+      "entryHint": "Review one student's assignment or one question for the class. Keys 1–5 record a status; 0 clears it. Unchecked does not mean incomplete.",
+      "overview": "Homework learning by question",
+      "student": "Student",
+      "recorded": "Checked",
+      "noQuestions": "No homework questions configured yet.",
+      "noAssignments": "No homework has been published for this lesson.",
+      "snapshotUnavailable": "This read-only snapshot does not include homework question records.",
+      "note": "{student} · {question} · Note (optional)",
+      "saveNote": "Save note",
+      "undo": "Undo last entry",
+      "saved": "Saved",
+      "failed": "Saving failed. Your input is kept; please retry.",
+      "conflict": "Another operation updated these records. Reload and review them before continuing.",
+      "reload": "Reload"
+    },
     "teachingWorkbench": {
       "replay": {
         "bothTeachers": "Both teachers",
