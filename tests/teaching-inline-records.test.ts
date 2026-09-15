@@ -125,7 +125,10 @@ describe("inline teaching record loading", () => {
       expect(detail.textContent).not.toContain("返回教学记录列表");
       expect(detail.querySelector("[data-dashboard-inline-entry]")).toBeTruthy();
       expect([...detail.querySelectorAll("span")].find(node => node.textContent === "迟到")?.className).toContain(ATTENDANCE_STATUS_TONE.late);
-      expect([...detail.querySelectorAll("span")].find(node => node.textContent === messages.school.session.learningStatus_prompted)?.className).toContain(LEARNING_CHECK_STATUS_STYLE.prompted.icon);
+      const learningMark = detail.querySelector('tbody [data-learning-status="prompted"]')!;
+      expect(learningMark.className).toContain(LEARNING_CHECK_STATUS_STYLE.prompted.active);
+      expect(learningMark.getAttribute("aria-label")).toContain(messages.school.session.learningStatus_prompted);
+      expect(learningMark.querySelector("svg")).toBeTruthy();
       await click("下一页");
       expect(fetcher).toHaveBeenCalledTimes(2);
       expect(container.textContent).toContain("下一页沟通正文");

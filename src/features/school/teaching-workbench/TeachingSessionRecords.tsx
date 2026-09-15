@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Link } from "@/i18n/navigation";
 import { DashboardSection, DashboardTableShell } from "../dashboard-page";
 import { withReturnTo } from "../object-workspace/return-target";
-import { LEARNING_CHECK_STATUS_STYLE } from "../session-learning-visual";
+import { LearningCheckStatusLegend, LearningCheckStatusMark } from "../LearningCheckStatusMark";
 import { ATTENDANCE_STATUS_TONE } from "../attendance-visual";
 import type { TeachingRecords } from "./teaching-records-contract";
 import { DashboardTablePagination } from "../dashboard-page/DashboardTablePagination";
@@ -21,7 +21,6 @@ export function TeachingSessionRecords({ data, locale, timeZone, returnTo, curre
 }) {
   const t = useTranslations("school.teachingWorkbench.records");
   const reportT = useTranslations("classroom.report");
-  const sessionT = useTranslations("school.session");
   const workT = useTranslations("school.teachingWorkbench");
   const formatter = useMemo(() => new Intl.DateTimeFormat(locale, { timeZone, dateStyle: "medium", timeStyle: "short" }), [locale, timeZone]);
   const date = (value: string) => formatter.format(new Date(value));
@@ -44,6 +43,7 @@ export function TeachingSessionRecords({ data, locale, timeZone, returnTo, curre
       <Link href={returnTo} className="mt-3 inline-block text-sm underline underline-offset-4">{t("back")}</Link>
     </DashboardSection>}
     <DashboardSection title={t("learning")} description={t("learningHint")}>
+      <div className="mb-2"><LearningCheckStatusLegend /></div>
       {replay && <div className="mb-3 space-y-2 text-xs" data-teaching-observations>
         <div className="flex flex-wrap gap-x-8 gap-y-2"><TeachingPerformance value={observations} /><TeachingCoverage value={observations} reviewCount={reviews.size} /><TeachingFocus value={observations} /></div>
         <p className="text-muted">{workT("observations.basis")} {workT("observations.coverageHint")}</p>
@@ -52,11 +52,11 @@ export function TeachingSessionRecords({ data, locale, timeZone, returnTo, curre
       <DashboardTableShell className={inline ? "rounded-none border-0" : undefined}><Table className={inline ? "text-xs [&_th]:h-9 [&_th]:px-2 [&_td]:px-2 [&_td]:py-1.5" : undefined} containerClassName={inline ? undefined : "max-h-[65vh] overflow-auto"}>
         <TableHeader className={inline ? "bg-card" : "sticky top-0 z-10 bg-card"}><TableRow>
           <TableHead className="min-w-24">{reportT("student")}</TableHead>
-          <TableHead className="min-w-28">{reportT("attendance")}</TableHead>
+          <TableHead className="min-w-20">{reportT("attendance")}</TableHead>
           {data.checks.map((check, index) => {
             const marked = data.results.filter(result => result.checkId === check.id);
             const supported = marked.filter(result => ["prompted", "imitated", "incomplete"].includes(result.status)).length;
-            return <TableHead key={check.id} className="min-w-28 max-w-64 whitespace-normal">{index + 1}. {check.title}
+            return <TableHead key={check.id} className="min-w-16 max-w-32 whitespace-normal text-center">{index + 1}. {check.title}
               {replay && <p className="mt-0.5 text-[11px] font-normal text-muted">{workT("observations.checkCoverage", { done: marked.length, total: data.students.length, supported })}</p>}
             </TableHead>;
           })}
@@ -73,8 +73,8 @@ export function TeachingSessionRecords({ data, locale, timeZone, returnTo, curre
             {data.checks.map(check => {
               const result = results.get(`${check.id}:${student.id}`);
               const status = result?.status ?? "unchecked";
-              return <TableCell key={check.id} className="align-top">
-                <Badge variant="outline" className={LEARNING_CHECK_STATUS_STYLE[status].icon} title={result ? `${result.author || t("unknownAuthor")} · ${date(result.markedAt)}` : undefined}>{sessionT(`learningStatus_${status}`)}</Badge>
+              return <TableCell key={check.id} className="text-center align-top">
+                <LearningCheckStatusMark status={status} solid detail={result ? `${student.name} · ${check.title} · ${result.author || t("unknownAuthor")} · ${date(result.markedAt)}` : `${student.name} · ${check.title}`} />
                 {result && !inline && <p className="mt-1 text-xs text-muted">{result.author || t("unknownAuthor")}<br />{date(result.markedAt)}</p>}
               </TableCell>;
             })}

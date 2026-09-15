@@ -1,12 +1,13 @@
 import { useTranslations } from "next-intl";
 import type { TeachingObservations } from "./teaching-learning-summary";
+import { LearningCheckStatusMark } from "../LearningCheckStatusMark";
+import { LEARNING_CHECK_RATED_STATUSES } from "../session-learning-contract";
 
 export function TeachingPerformance({ value }: { value: TeachingObservations }) {
   const t = useTranslations("school.teachingWorkbench.observations");
-  const supported = value.prompted + value.imitated + value.incomplete;
-  const autonomous = value.independent + value.explained;
-  return <div title={t("basis")}><p>{t("autonomous", { count: autonomous, total: autonomous + supported })}</p>
-    <p className="mt-0.5 text-[11px] text-muted">{t("supportBreakdown", { prompted: value.prompted, imitated: value.imitated, incomplete: value.incomplete })}</p></div>;
+  return <div className="grid w-fit grid-cols-3 gap-1" title={t("basis")} data-teaching-performance>
+    {LEARNING_CHECK_RATED_STATUSES.map(status => <LearningCheckStatusMark key={status} status={status} count={value[status]} />)}
+  </div>;
 }
 
 export function TeachingCoverage({ value, reviewCount }: { value: TeachingObservations; reviewCount: number }) {

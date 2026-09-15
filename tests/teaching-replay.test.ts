@@ -104,7 +104,8 @@ describe("local production teaching replay", () => {
     const html = renderToStaticMarkup(createElement(Provider, { locale: "zh", messages, timeZone: "Asia/Shanghai" }, createElement(TeachingClassOverviewTable, {
       data: teachingReplayOverview(fixture()), locale: "zh", timeZone: "Asia/Shanghai", returnTo: "/dashboard/teaching/review", replayId: "2026-09-07",
     })));
-    for (const text of ["独立 / 讲解 1/2", "练习4.1", "需支持 1/2 次", "已记 1/2 题", "已填课评 1 人次", "考勤未记录", "1 节未记下课", "沟通日期未注明"]) expect(html).toContain(text);
+    for (const text of ["独立完成 · 1", "提示完成 · 1", "练习4.1", "需支持 1/2 次", "已记 1/2 题", "已填课评 1 人次", "考勤未记录", "1 节未记下课", "沟通日期未注明"]) expect(html).toContain(text);
+    expect(html).toContain("data-teaching-performance");
     expect(html).not.toContain("/dashboard/classes/class");
     expect(html).not.toContain("系统上课中");
   });
