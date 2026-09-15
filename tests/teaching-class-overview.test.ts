@@ -6,6 +6,7 @@ import messages from "../messages/zh.json";
 import { groupTeachingClasses, teachingClassOverviewSchema, type TeachingClassOverview, type TeachingSessionMetrics } from "../src/features/school/teaching-workbench/teaching-class-overview-contract";
 import { TeachingClassOverviewTable } from "../src/features/school/teaching-workbench/TeachingClassOverviewTable";
 import type { TeachingSession } from "../src/features/school/teaching-workbench/teaching-workbench-contract";
+import { groupTeachingClassSections } from "../src/features/school/teaching-workbench/teaching-grouping-contract";
 
 vi.mock("@/i18n/navigation", () => ({ Link: ({ children, ...props }: ComponentProps<"a">) => createElement("a", props, children) }));
 const at = "2026-09-15T01:00:00Z";
@@ -27,6 +28,29 @@ const data: TeachingClassOverview = {
 };
 
 describe("class teaching overview", () => {
+  it("groups by the recorded grade in numeric order and keeps unknown grades separate", () => {
+    const grouped: TeachingClassOverview = { ...data, workbench: { truncated: false, sessions: [
+      { ...session("ten"), classroomId: "ten", classroomGrade: 10 },
+      { ...session("two"), classroomId: "two", classroomGrade: 2 },
+      { ...session("unknown"), classroomId: "unknown", classroomName: "六年级名称但无年级字段", classroomGrade: null },
+    ] }, metrics: [metric("ten"), metric("two"), metric("unknown")] };
+    const sections = groupTeachingClassSections(grouped, groupTeachingClasses(grouped), "grade", "zh");
+    expect(sections.map(section => section.grade)).toEqual([2, 10, null]);
+    expect(sections.flatMap(section => section.rows)).toHaveLength(3);
+  });
+  it("groups a teacher's actual sessions without copying another teacher's observations", () => {
+    const sections = groupTeachingClassSections(data, groupTeachingClasses(data), "teacher", "zh");
+    expect(sections).toHaveLength(2);
+    for (const section of sections) {
+      expect(section.rows[0].sessions).toHaveLength(1);
+      expect(section.rows[0].ratedCount).toBe(2);
+      expect(section.rows[0].sessions[0].teachers[0].id).toBe(section.id.slice("teacher:".length));
+    }
+    expect(groupTeachingClassSections(data, groupTeachingClasses(data, "teacher"), "teacher", "zh", "teacher")).toHaveLength(1);
+    expect(groupTeachingClassSections(data, [], "teacher", "zh")).toEqual([]);
+    const unassigned = { ...data, workbench: { ...data.workbench, sessions: [data.workbench.sessions[0], { ...data.workbench.sessions[1], teachers: [] }] } };
+    expect(groupTeachingClassSections(unassigned, groupTeachingClasses(unassigned), "teacher", "zh").at(-1)?.id).toBe("teacher:unassigned");
+  });
   it("sends only overview facts to the client without preparation tasks or artifacts", () => {
     const parsed = teachingClassOverviewSchema.parse(data);
     expect(parsed.workbench.sessions[0]).not.toHaveProperty("tasks");

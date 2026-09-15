@@ -1907,10 +1907,18 @@
       "reload": "重新读取"
     },
     "teachingWorkbench": {
+      "grouping": {
+        "title": "班级分组方式",
+        "byGrade": "按年级",
+        "byTeacher": "按老师",
+        "gradeLabel": "{grade} 年级",
+        "unknownGrade": "年级未设置",
+        "count": "{classes} 个班 · {sessions} 节课"
+      },
       "replay": {
-        "bothTeachers": "两位老师",
+        "allTeachers": "全部老师",
         "source": "生产记录只读快照 · {captured} 提取",
-        "hint": "查看两位老师上周的实际教学记录。课堂表现按已记录的逐生逐题观察计数；展开班级与课次可核对原始学情和正文。",
+        "hint": "查看老师们上周的实际教学记录，可按年级或老师分组。课堂表现按已记录的逐生逐题观察计数；展开班级与课次可核对原始学情和正文。",
         "unavailable": "本地上周记录快照尚未准备好。",
         "contacts": "学生沟通与背景",
         "contactsHint": "本节学生在 9 月 7—13 日沟通或录入的记录。未注明沟通日期、记录人的内容作为学生背景参考；不归为任课老师当周沟通。"

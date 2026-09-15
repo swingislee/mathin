@@ -151,7 +151,7 @@ describe("inline teaching record loading", () => {
     } finally { await act(async () => root.unmount()); container.remove(); }
   });
 
-  it("shares Enter, Esc and visible-row navigation across both levels and read-only detail tables", async () => {
+  it.each([undefined, "grade", "teacher"] as const)("shares Enter, Esc and row navigation with %s grouping", async groupBy => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     HTMLElement.prototype.scrollIntoView = vi.fn();
     vi.stubGlobal("fetch", vi.fn(async () => Response.json(records)));
@@ -166,7 +166,7 @@ describe("inline teaching record loading", () => {
     };
     try {
       await act(async () => root.render(createElement(Provider, { locale: "zh", messages, timeZone: "Asia/Shanghai" }, createElement(TeachingClassOverviewTable, {
-        data, locale: "zh", timeZone: "Asia/Shanghai", returnTo: "/dashboard/teaching?view=records",
+        data, locale: "zh", timeZone: "Asia/Shanghai", returnTo: "/dashboard/teaching?view=records", groupBy,
       }))));
       const parent = container.querySelector('[data-teaching-level="class"]')!;
       await keydown(parent, "Enter");
@@ -174,7 +174,8 @@ describe("inline teaching record loading", () => {
       await keydown(parent, "ArrowDown"); expect(document.activeElement).toBe(sessions[0]);
       await keydown(sessions[0], "Enter");
       await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
-      const detail = container.querySelector("#session-records-session")!;
+      const detailId = sessions[0].getAttribute("aria-controls")!;
+      const detail = document.getElementById(detailId)!;
       expect(detail).toBeTruthy();
       const cell = detail.querySelector("tbody td")!;
       await act(async () => cell.dispatchEvent(new Event("pointerdown", { bubbles: true })));
@@ -183,7 +184,7 @@ describe("inline teaching record loading", () => {
       await keydown(cell, "ArrowDown"); expect(document.activeElement).toBe(sessions[1]);
       await keydown(sessions[1], "ArrowUp"); expect(document.activeElement).toBe(sessions[0]);
       await keydown(sessions[0], "Escape");
-      expect(container.querySelector("#session-records-session")).toBeNull();
+      expect(document.getElementById(detailId)).toBeNull();
       expect(parent.getAttribute("aria-expanded")).toBe("true");
       await keydown(sessions[0], "ArrowUp"); expect(document.activeElement).toBe(parent);
       const input = document.createElement("input"); parent.querySelector("td")!.append(input);

@@ -1907,10 +1907,18 @@
       "reload": "Reload"
     },
     "teachingWorkbench": {
+      "grouping": {
+        "title": "Group classes",
+        "byGrade": "By grade",
+        "byTeacher": "By teacher",
+        "gradeLabel": "Grade {grade}",
+        "unknownGrade": "Grade unspecified",
+        "count": "{classes} classes · {sessions} lessons"
+      },
       "replay": {
-        "bothTeachers": "Both teachers",
+        "allTeachers": "All teachers",
         "source": "Read-only production snapshot · captured {captured}",
-        "hint": "Review last week's actual teaching records for both teachers. Performance counts recorded student-question observations. Expand classes and lessons for the original learning records and notes.",
+        "hint": "Review last week's teaching records grouped by grade or teacher. Performance counts recorded student-question observations. Expand classes and lessons for the original learning records and notes.",
         "unavailable": "The local snapshot for last week is not available yet.",
         "contacts": "Student communication / context",
         "contactsHint": "Notes for this roster communicated or entered on September 7–13. Notes without a communication date or author provide student context; they are not attributed to this teacher's weekly communication."

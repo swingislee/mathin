@@ -5,7 +5,7 @@ import { mergeTeachingObservations, teachingObservationSchema } from "./teaching
 // 概览客户端只接收实际展示字段，备课资料、任务等留给原完成情况页读取。
 const overviewSessionSchema = teachingWorkbenchSchema.shape.sessions.element.pick({
   id: true, classroomId: true, classroomName: true, title: true, scheduledAt: true, teachers: true, startedAt: true, endedAt: true,
-});
+}).extend({ classroomGrade: z.number().int().nullable().optional() });
 
 const snippetSchema = z.object({ content: z.string(), studentName: z.string(), author: z.string().nullable(), at: z.string(), eventDate: z.string().nullable().optional() });
 const metricsSchema = z.object({
@@ -28,13 +28,13 @@ export type TeachingOverviewSession = z.infer<typeof overviewSessionSchema> & { 
 export function groupTeachingClasses(data: TeachingClassOverview, teacher?: string, classroom?: string) {
   const metrics = new Map(data.metrics.map(row => [row.sessionId, row]));
   const contacts = new Map(data.classContacts.map(row => [row.classroomId, row]));
-  const groups = new Map<string, { id: string; name: string; sessions: TeachingOverviewSession[] }>();
+  const groups = new Map<string, { id: string; name: string; grade: number | null; sessions: TeachingOverviewSession[] }>();
   for (const session of data.workbench.sessions) {
     if (classroom && session.classroomId !== classroom) continue;
     if (teacher && (teacher === "unassigned" ? session.teachers.length > 0 : !session.teachers.some(row => row.id === teacher))) continue;
     const metric = metrics.get(session.id);
     if (!metric) throw new Error("TEACHING_SESSION_METRICS_MISSING");
-    const group = groups.get(session.classroomId) ?? { id: session.classroomId, name: session.classroomName, sessions: [] };
+    const group = groups.get(session.classroomId) ?? { id: session.classroomId, name: session.classroomName, grade: session.classroomGrade ?? null, sessions: [] };
     group.sessions.push({ ...session, metrics: metric });
     groups.set(group.id, group);
   }

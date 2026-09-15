@@ -31,6 +31,15 @@ const fixture = (): TeachingReplay => teachingReplaySchema.parse({
 const Provider = NextIntlClientProvider as ComponentType<PropsWithChildren<Omit<ComponentProps<typeof NextIntlClientProvider>, "children">>>;
 
 describe("local production teaching replay", () => {
+  it("accepts a third teacher and retains explicit grades without requiring a system start", () => {
+    const snapshot = fixture();
+    snapshot.teachers.push({ id: "00000000-0000-4000-8000-000000000003", name: "老师丙" });
+    snapshot.sessions[0] = { ...snapshot.sessions[0], teachers: [snapshot.teachers[2]], classroomGrade: 6, startedAt: null, endedAt: null };
+    const parsed = teachingReplaySchema.parse(snapshot);
+    expect(parsed.teachers).toHaveLength(3);
+    const rows = groupTeachingClasses(teachingReplayOverview(parsed), snapshot.teachers[2].id);
+    expect(rows[0]).toMatchObject({ grade: 6, ratedCount: 2, endedSessions: 0 });
+  });
   it("requires development, the exact local database origin, and both management and communication permissions", () => {
     const perms = new Set(["class.view.all", "followup.view"]);
     expect(teachingReplayAllowed("development", "http://127.0.0.1:35421", perms)).toBe(true);

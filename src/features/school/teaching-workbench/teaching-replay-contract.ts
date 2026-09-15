@@ -7,7 +7,7 @@ export const TEACHING_REPLAY_ID = "2026-09-07";
 export const teachingReplaySchema = z.object({
   version: z.literal(1), source: z.literal("production"), capturedAt: z.string(), timeZone: z.literal("Asia/Shanghai"),
   from: z.literal("2026-09-06T16:00:00.000Z"), to: z.literal("2026-09-13T16:00:00.000Z"),
-  teachers: z.array(z.object({ id: z.string().uuid(), name: z.string() })).length(2),
+  teachers: z.array(z.object({ id: z.string().uuid(), name: z.string() })).min(1).max(100),
   sessions: teachingClassOverviewSchema.shape.workbench.shape.sessions.max(100),
   records: z.record(z.string().uuid(), teachingRecordsSchema),
 });
