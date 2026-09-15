@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Dices, Droplets, Eye, Footprints, GitCompareArrows, Hand, LocateFixed, Maximize, Move, Move3D, Orbit, Paintbrush, Redo2, RotateCcw, ScanFace, Settings2, Shapes, Undo2 } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Dices, Droplets, Eye, Footprints, GitCompareArrows, Hand, LocateFixed, Maximize, Move, Move3D, Orbit, Paintbrush, Redo2, RotateCcw, ScanEye, ScanFace, Settings2, Shapes, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import { cubeStructuresMessages } from "./cube-structures-messages";
 import { closeDiceFaces, diceFaceArrow, diceSurface, restoreDiceScene, styleDiceFaces, type DiceSurfaceStyle } from "./dice-teaching-display";
 import { DiceFaceInspection } from "./DiceFaceInspection";
 import type { DiceObservationApi, DiceObservationFailure } from "./dice-face-observation";
+import { diceXRayDisplay, nextDiceXRayTarget, type DiceXRayTarget } from "./dice-xray-observation";
 import { useCubeNetPlayback } from "./useCubeNetPlayback";
 import { diceTeachingMessages } from "./dice-teaching-messages";
 import { DICE_FACES, DICE_TEACHING_VERSION, FACE_NORMALS, MAX_DICE, arrangeDice, canPlaceDie, closeDieFaces, contactVisibility, controlledRoll, createDiceScene, createDie, diceContacts, faceValue, interpolateDice, isDiceFaceMoved, nearestDiceRotation, oppositeFace, sampleControlledRoll, solveDicePuzzle, turnDie, worldFace, type DiceFace, type DiceHand, type DicePuzzle, type DiceScene, type DiceVector, type RollDirection, type TeachingDie } from "./dice-teaching-model";
@@ -46,7 +47,8 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector }: { l
   const [selectedId, setSelectedId] = useState("dice-1");
   const selected = scene.dice.find((die) => die.id === selectedId) ?? scene.dice[0];
   const [panel, setPanel] = useState<Panel>(null);
-  const [tool, setTool] = useState<"orbit" | "pan" | "move" | "pips" | "color" | "transparent" | "inspect">("orbit");
+  const [tool, setTool] = useState<"orbit" | "pan" | "move" | "pips" | "color" | "transparent" | "inspect" | "xray">("orbit");
+  const [xrayTarget, setXRayTarget] = useState<DiceXRayTarget | null>(null);
   const [color, setColor] = useState<CubeColor>(CUBE_COLORS[0]);
   const [surfaceScope, setSurfaceScope] = useState<"face" | "die">("face");
   const [surfaceTarget, setSurfaceTarget] = useState<{ id: string; face: DiceFace } | null>(null);
@@ -74,8 +76,9 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector }: { l
   const surfaceFaces = surfaceScope === "die" ? DICE_FACES : selectedFace ? [selectedFace] : [];
   const opacity = Math.round(diceSurface(selected, selectedFace ?? "y+").opacity * 100);
   const displayed = opacityPreview !== null && !busy ? styleDiceFaces(scene.dice, selected.id, surfaceFaces, { opacity: opacityPreview / 100 }) : playback.frame ?? scene.dice;
-  const commit = useCallback((next: DiceScene) => { setHistory((h) => ({ past: [...h.past, h.present].slice(-100), present: next, future: [] })); }, []);
-  const cancel = useCallback(() => { request.current++; setPreparing(false); cancelPlayback(); }, [cancelPlayback]);
+  const xray = tool === "xray" && !busy ? diceXRayDisplay(displayed, xrayTarget) : null;
+  const commit = useCallback((next: DiceScene) => { setXRayTarget(null); setHistory((h) => ({ past: [...h.past, h.present].slice(-100), present: next, future: [] })); }, []);
+  const cancel = useCallback(() => { request.current++; setPreparing(false); setXRayTarget(null); cancelPlayback(); }, [cancelPlayback]);
   useEffect(() => {
     const stop = (event: KeyboardEvent) => { if (event.key === "Escape") cancel(); };
     window.addEventListener("keydown", stop); window.addEventListener("blur", cancel);
@@ -83,6 +86,7 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector }: { l
   }, [cancel]);
   const animate = (next: DiceScene, duration = 650, clearNotice = true) => {
     if (busy) return;
+    setXRayTarget(null);
     if (clearNotice) { setNotice(""); setObservationOffer(null); }
     const from = scene.dice;
     playback.start({ durationMs: duration, sample: (elapsed) => interpolateDice(from, next.dice, easing(elapsed / duration)), onFinish: () => commit(next) });
@@ -92,9 +96,15 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector }: { l
     const open = panel !== next;
     setPanel(open ? next : null);
     setTool(!open ? "orbit" : next === "arrange" ? "move" : next === "observe" ? "inspect" : ["pips", "color", "transparent"].includes(next) ? next as "pips" | "color" | "transparent" : "orbit");
+    setNotice(""); setObservationOffer(null); setOpacityPreview(null); setXRayTarget(null);
+  };
+  const closePanel = () => { setPanel(null); setTool("orbit"); setOpacityPreview(null); setXRayTarget(null); };
+  const navigate = (next: "orbit" | "pan") => { setTool(next); setXRayTarget(null); };
+  const toggleXRay = () => {
+    if (busy) return;
+    setTool(tool === "xray" ? "orbit" : "xray"); setXRayTarget(null); setPanel(null);
     setNotice(""); setObservationOffer(null); setOpacityPreview(null);
   };
-  const closePanel = () => { setPanel(null); setTool("orbit"); setOpacityPreview(null); };
   const fit = (dice = scene.dice) => { const bounds = fitFrame(dice); setFrame({ ...bounds, radius: bounds.radius + (arrows ? 1 : 0) }); setCameraKey((key) => key + 1); };
   const selectView = (next: CubeView | "bottom") => { setView(next); setCameraKey((key) => key + 1); };
   const updateDie = (id: string, change: (die: TeachingDie) => TeachingDie, geometric = false) => {
@@ -123,12 +133,13 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector }: { l
   const applyStyle = (style: DiceSurfaceStyle) => { if (!busy && surfaceFaces.length) commit({ ...scene, dice: styleDiceFaces(scene.dice, selected.id, surfaceFaces, style) }); };
   const chooseFace = (id: string, face: DiceFace) => {
     if (busy) return;
+    if (tool === "xray") { setXRayTarget((current) => nextDiceXRayTarget(current, { id, face })); return; }
     setSurfaceTarget({ id, face }); setOpacityPreview(null);
     if (tool === "inspect") setInspectionFace(face);
     if (tool === "pips") toggleFace(id, face);
     if (tool === "color") commit({ ...scene, dice: styleDiceFaces(scene.dice, id, surfaceScope === "die" ? DICE_FACES : [face], { color }) });
   };
-  const inspect = (id: string, face: DiceFace) => { setSelectedId(id); setInspectionFace(face); setPanel("observe"); setTool("inspect"); setOpacityPreview(null); setNotice(""); setObservationOffer(null); };
+  const inspect = (id: string, face: DiceFace) => { setSelectedId(id); setInspectionFace(face); setPanel("observe"); setTool("inspect"); setXRayTarget(null); setOpacityPreview(null); setNotice(""); setObservationOffer(null); };
   const openFaces = (id: string, faces: readonly DiceFace[]) => {
     if (busy) return;
     const result = observationRef.current?.plan(scene.dice, id, faces);
@@ -147,6 +158,7 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector }: { l
   const closeFaces = () => animate({ ...scene, dice: scene.dice.map((die) => die.id === selected.id ? closeDieFaces(die) : die) }, 850);
   const toggleArrows = () => {
     if (busy) return;
+    if (tool === "xray") { setTool("orbit"); setXRayTarget(null); setArrows(true); return; }
     setArrows((value) => !value);
   };
   const roll = (direction: RollDirection) => {
@@ -191,6 +203,7 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector }: { l
   return <section className={styles.workspace} data-dice-teaching={DICE_TEACHING_VERSION}>
     <div className={styles.viewport}><div className={`${styles.canvas} ${diceStyles.canvas}`} data-dice-stage>
       <DiceTeachingCanvas dice={displayed} trail={scene.trail} selectedId={selected.id} locale={locale} tool={tool} arrows={arrows} busy={busy} grid={grid} axes={axes} floor={floor} frame={frame} view={view} cameraKey={cameraKey}
+        xrayTarget={xrayTarget} onClearXRay={() => setXRayTarget(null)}
         observationRef={observationRef} onSelect={setSelectedId} onFace={chooseFace} onMoveFace={moveFace} onPlace={place} />
       <div className={`${styles.dock} ${styles.meta}`} data-dice-overlay><CubeIconButton label={m.settings} active={panel === "settings"} onClick={() => selectPanel("settings")}><Settings2 /></CubeIconButton><span className="self-center pr-1 text-xs">{m.title}</span></div>
       <div className={`${styles.dock} ${styles.views} ${diceStyles.views}`} role="toolbar" aria-label={m.orbit}>
@@ -198,11 +211,12 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector }: { l
         <CubeIconButton label={m.bottom} active={view === "bottom"} onClick={() => selectView("bottom")}><CubeViewIcon view="bottom" /></CubeIconButton><CubeIconButton label={m.fit} onClick={() => fit()}><Maximize /></CubeIconButton>
       </div>
       <div className={`${styles.dock} ${styles.tools}`} role="toolbar" aria-label={m.tools}>
-        <CubeIconButton label={m.orbit} active={tool === "orbit"} onClick={() => setTool("orbit")}><Orbit /></CubeIconButton>
-        <CubeIconButton label={m.pan} active={tool === "pan"} onClick={() => setTool("pan")}><Hand /></CubeIconButton>
+        <CubeIconButton label={m.orbit} active={tool === "orbit"} onClick={() => navigate("orbit")}><Orbit /></CubeIconButton>
+        <CubeIconButton label={m.pan} active={tool === "pan"} onClick={() => navigate("pan")}><Hand /></CubeIconButton>
+        <CubeIconButton label={m.xray} active={tool === "xray"} disabled={busy} onClick={toggleXRay}><ScanEye /></CubeIconButton>
         <CubeIconButton label={m.reset} disabled={busy} onClick={() => { arrange("apart"); setView("angle"); }}><LocateFixed /></CubeIconButton>
         <CubeIconButton label={m.arrange} active={panel === "arrange"} onClick={() => selectPanel("arrange")}><Move /></CubeIconButton>
-        <CubeIconButton label={m.arrows} active={arrows} disabled={busy} onClick={toggleArrows}><Move3D /></CubeIconButton>
+        <CubeIconButton label={m.arrows} active={arrows && tool !== "xray"} disabled={busy} onClick={toggleArrows}><Move3D /></CubeIconButton>
         <CubeIconButton label={m.observe} active={panel === "observe"} onClick={() => selectPanel("observe")}><ScanFace /></CubeIconButton>
         <CubeIconButton label={m.restore} active={panel === "restore"} onClick={() => selectPanel("restore")}><RotateCcw /></CubeIconButton>
         <div className={styles.toolSeparator} />
@@ -215,8 +229,8 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector }: { l
         <CubeIconButton label={m.roll} active={panel === "roll"} onClick={() => selectPanel("roll")}><Footprints /></CubeIconButton>
         <CubeIconButton label={m.throwing} active={panel === "throwing"} onClick={() => selectPanel("throwing")}><Dices /></CubeIconButton>
         <div className={styles.toolSeparator} />
-        <CubeIconButton label={m.undo} disabled={busy || !history.past.length} onClick={() => setHistory((h) => ({ past: h.past.slice(0, -1), present: h.past[h.past.length - 1], future: [h.present, ...h.future] }))}><Undo2 /></CubeIconButton>
-        <CubeIconButton label={m.redo} disabled={busy || !history.future.length} onClick={() => setHistory((h) => ({ past: [...h.past, h.present], present: h.future[0], future: h.future.slice(1) }))}><Redo2 /></CubeIconButton>
+        <CubeIconButton label={m.undo} disabled={busy || !history.past.length} onClick={() => { setXRayTarget(null); setHistory((h) => ({ past: h.past.slice(0, -1), present: h.past[h.past.length - 1], future: [h.present, ...h.future] })); }}><Undo2 /></CubeIconButton>
+        <CubeIconButton label={m.redo} disabled={busy || !history.future.length} onClick={() => { setXRayTarget(null); setHistory((h) => ({ past: [...h.past, h.present], present: h.future[0], future: h.future.slice(1) })); }}><Redo2 /></CubeIconButton>
       </div>
       {panel && <CubeCanvasPanel title={m[panel]} closeLabel={m.close} onClose={closePanel} anchor={panel === "settings" ? "meta" : panel === "roll" ? "bottom" : "tool"}>
         <div className="space-y-3 text-xs">
@@ -269,7 +283,12 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector }: { l
         </div>
       </CubeCanvasPanel>}
       {(notice || busy) && <div className={styles.notice} role="status" data-dice-overlay>{preparing ? m.preparing : playback.playing ? m.animating : notice}{!busy && observationOffer && <Button variant="secondary" size="sm" onClick={() => inspect(observationOffer.id, observationOffer.face)}>{m.observe}</Button>}{busy ? <Button variant="ghost" size="sm" onClick={cancel}>{m.cancel}</Button> : <Button variant="ghost" size="sm" onClick={() => { setNotice(""); setObservationOffer(null); }}>{m.close}</Button>}</div>}
-      {!panel && !busy && scene.puzzle && <p className={styles.cutStatus}>{m[scene.puzzle.scope]} = {scene.puzzle.target}</p>}
+      {tool === "xray" && !busy && <div className={`${styles.cutStatus} ${diceStyles.xrayStatus}`} role="status" data-dice-overlay data-dice-xray={xray ? "active" : "ready"}>
+        <p className="font-medium">{xray ? `${m.xrayActive} · ${m.die} ${xray.die.id.replace("dice-", "")} · ${m.faces[xray.direction]}` : m.xray}</p>
+        <p className="text-muted">{xray ? m.xrayExitHint : m.xrayHint}</p>
+        {xray && <div className="mt-1 flex gap-1"><Button size="sm" variant="secondary" onClick={() => inspect(xray.die.id, xray.face)}>{m.observe}</Button><Button size="sm" variant="ghost" onClick={() => setXRayTarget(null)}>{m.xrayClear}</Button></div>}
+      </div>}
+      {!panel && !busy && tool !== "xray" && scene.puzzle && <p className={styles.cutStatus}>{m[scene.puzzle.scope]} = {scene.puzzle.target}</p>}
     </div></div>
   </section>;
 }

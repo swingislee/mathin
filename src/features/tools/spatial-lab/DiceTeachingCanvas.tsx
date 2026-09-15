@@ -3,7 +3,7 @@
 import { Component, createRef, useEffect, useImperativeHandle, useMemo, useRef, useState, type ReactNode, type Ref, type RefObject } from "react";
 import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
 import { Html, Line } from "@react-three/drei";
-import { CanvasTexture, DoubleSide, FrontSide, Plane, SRGBColorSpace, Vector3, type Mesh } from "three";
+import { CanvasTexture, DoubleSide, EdgesGeometry, FrontSide, Plane, SRGBColorSpace, Vector3, type Mesh } from "three";
 import { SpatialCameraRig } from "@/features/spatial-math/renderer-r3f/SpatialCameraRig";
 import type { CubeFrame, CubeView } from "./cube-structures-contract";
 import { cubeWorkbenchCamera } from "./cube-workbench-camera";
@@ -13,6 +13,8 @@ import { DICE_WHITE, diceFaceArrows, dicePipShades, diceSelectionMarker, diceSur
 import { diceFaceGeometries, DICE_UV_LENGTH } from "./dice-teaching-geometry";
 import { diceTeachingMessages } from "./dice-teaching-messages";
 import { diceFaceCorners, planDiceFaceObservations, type DiceObservationApi } from "./dice-face-observation";
+import { DiceXRayOverlay } from "./DiceXRayOverlay";
+import { createDiceTapGuard, diceXRayDisplay, diceXRayPick, type DiceXRayTarget } from "./dice-xray-observation";
 
 function pipTextures(value: number, color: string) {
   const paint = (bump: boolean) => {
@@ -34,7 +36,8 @@ function pipTextures(value: number, color: string) {
 
 interface DiceCanvasProps {
   dice: readonly TeachingDie[]; trail: readonly DiceFootprint[]; selectedId: string; locale: string;
-  tool: "orbit" | "pan" | "move" | "pips" | "color" | "transparent" | "inspect"; arrows: boolean; busy: boolean; grid: boolean; axes: boolean; floor: boolean;
+  tool: "orbit" | "pan" | "move" | "pips" | "color" | "transparent" | "inspect" | "xray"; arrows: boolean; busy: boolean; grid: boolean; axes: boolean; floor: boolean;
+  xrayTarget: DiceXRayTarget | null; onClearXRay: () => void;
   frame: CubeFrame; view: CubeView | "bottom"; cameraKey: number;
   observationRef: Ref<DiceObservationApi>;
   onSelect: (id: string) => void; onFace: (id: string, face: DiceFace) => void; onMoveFace: (id: string, face: DiceFace) => void; onPlace: (id: string, position: DiceVector) => void;
@@ -44,7 +47,7 @@ class DiceCanvasBoundary extends Component<{ children: ReactNode; label: string 
   static getDerivedStateFromError() { return { failed: true }; }
   render() { return this.state.failed ? <p role="alert" className="p-8 text-sm">{this.props.label}</p> : this.props.children; }
 }
-function DiceObjects(props: DiceCanvasProps) {
+function DiceObjects(props: DiceCanvasProps & { isTap: () => boolean }) {
   const { dice, selectedId, locale } = props;
   const m = diceTeachingMessages(locale);
   const getThree = useThree((state) => state.get);
@@ -58,8 +61,10 @@ function DiceObjects(props: DiceCanvasProps) {
     return planDiceFaceObservations(items, id, faces, { camera: camera.clone(), width: size.width, height: size.height, obstacles, floor: props.floor });
   } }), [getThree, props.floor]);
   const geometries = useMemo(() => diceFaceGeometries(), []);
+  const edges = useMemo(() => geometries.map((geometry) => new EdgesGeometry(geometry, 25)), [geometries]);
   const colorKey = [...new Set([DICE_WHITE, ...dice.flatMap((die) => DICE_FACES.map((face) => diceSurface(die, face).color))])].sort().join("|");
   const textures = useMemo(() => new Map(colorKey.split("|").map((color) => [color, Array.from({ length: 7 }, (_, value) => pipTextures(value, color))])), [colorKey]);
+  const xray = props.tool === "xray" && !props.busy ? diceXRayDisplay(dice, props.xrayTarget) : null;
   const diceIds = dice.map((die) => die.id).join(",");
   const faceRefs = useMemo(() => new Map<string, RefObject<Mesh>>(diceIds.split(",").flatMap((id) => DICE_FACES.map((face) => [`${id}/${face}`, createRef<Mesh>() as RefObject<Mesh>] as const))), [diceIds]);
   const opaqueFaceIds = dice.flatMap((die) => DICE_FACES.filter((face) => diceSurface(die, face).opacity >= 0.99).map((face) => `${die.id}/${face}`));
@@ -68,6 +73,7 @@ function DiceObjects(props: DiceCanvasProps) {
   const drag = useRef<{ id: string; plane: Plane; offset: Vector3; pointerId: number; target: { releasePointerCapture: (id: number) => void } } | null>(null);
   const [preview, setPreview] = useState<{ id: string; position: Vector3 } | null>(null);
   useEffect(() => () => { geometries.forEach((g) => g.dispose()); }, [geometries]);
+  useEffect(() => () => { edges.forEach((g) => g.dispose()); }, [edges]);
   useEffect(() => () => { textures.forEach((palette) => palette.forEach((t) => { t.map.dispose(); t.bump.dispose(); })); }, [textures]);
   useEffect(() => {
     const cancel = () => { if (drag.current) { try { drag.current.target.releasePointerCapture(drag.current.pointerId); } catch { /* 捕获已由浏览器释放。 */ } } drag.current = null; setPreview(null); };
@@ -97,6 +103,13 @@ function DiceObjects(props: DiceCanvasProps) {
     drag.current = null; setPreview(null); active.target.releasePointerCapture(active.pointerId);
     if (point) { point.add(active.offset); props.onPlace(active.id, { x: Math.round(point.x), y: Math.round(point.y - 0.5) + 0.5, z: Math.round(point.z) }); }
   };
+  const clickFace = (event: ThreeEvent<MouseEvent>, id: string, face: DiceFace) => {
+    if (props.busy || event.button !== 0 || event.delta > 3 || !props.isTap()) return;
+    event.stopPropagation();
+    const picked = diceXRayPick(xray ? props.xrayTarget : null, { id, face }, event.intersections);
+    props.onSelect(picked.id);
+    if (["pips", "color", "transparent", "inspect", "xray"].includes(props.tool)) props.onFace(picked.id, picked.face);
+  };
   const baseCamera = cubeWorkbenchCamera(props.frame, props.view === "bottom" ? "top" : props.view, "dice");
   const camera = props.view === "bottom" ? { ...baseCamera, position: { ...props.frame.center, y: props.frame.center.y - props.frame.radius * 4 }, up: { x: 0, y: 0, z: 1 } } : baseCamera;
   return <>
@@ -119,14 +132,15 @@ function DiceObjects(props: DiceCanvasProps) {
         const surface = diceSurface(die, face), texture = textures.get(surface.color)![die.hidden.includes(face) ? 0 : faceValue(die.hand, face)];
         return <mesh key={face} ref={faceRefs.get(`${die.id}/${face}`)} geometry={geometries[index]} position={diceFaceTranslation(die, face)} castShadow={surface.opacity >= 0.99} receiveShadow
           onPointerDown={(event) => down(event, die)} onPointerMove={move} onPointerUp={up}
-          onClick={(event) => { if (props.busy || event.delta > 3) return; event.stopPropagation(); props.onSelect(die.id); if (["pips", "color", "transparent", "inspect"].includes(props.tool)) props.onFace(die.id, face); }}>
+          onClick={(event) => clickFace(event, die.id, face)}>
           <meshPhysicalMaterial color="#ffffff" map={texture.map} bumpMap={texture.bump} bumpScale={0.027} roughness={0.28} clearcoat={0.35} clearcoatRoughness={0.25} side={DoubleSide} transparent={surface.opacity < 1} opacity={surface.opacity} depthWrite={surface.opacity >= 0.99} />
         </mesh>;
       })}
     </group>)}</group>
     {dice.map((die) => <DiceFaceOrigins key={die.id} die={preview?.id === die.id ? { ...die, position: preview.position } : die} selected={die.id === selectedId} />)}
     {dice.filter((die) => die.id === selectedId).map((die) => <mesh key={die.id} raycast={ignoreDiceHelperRaycast} {...diceSelectionMarker(preview?.id === die.id ? preview.position : die.position)}><ringGeometry args={[0.65, 0.68, 48]} /><meshBasicMaterial color="#c28c46" side={DoubleSide} transparent opacity={0.65} depthWrite={false} /></mesh>)}
-    {props.arrows && !props.busy && !preview && <CubeNetFaceArrows key={occlusionKey} faces={arrows} occlude={occluders} onMove={(id) => { const arrow = arrows.find((item) => item.faceId === id); if (arrow) props.onMoveFace(arrow.dieId, arrow.face); }} />}
+    {xray && <DiceXRayOverlay dice={dice} display={xray} geometries={geometries} edges={edges} texture={textures.get(xray.surface.color)![xray.textureValue]} onClick={(event) => clickFace(event, xray.die.id, xray.face)} />}
+    {props.arrows && props.tool !== "xray" && !props.busy && !preview && <CubeNetFaceArrows key={occlusionKey} faces={arrows} occlude={occluders} onMove={(id) => { const arrow = arrows.find((item) => item.faceId === id); if (arrow) props.onMoveFace(arrow.dieId, arrow.face); }} />}
   </>;
 }
 /** 无点数的原位轮廓与来源线是观察辅助，不参与拾取或箭头遮挡。 */
@@ -142,7 +156,11 @@ function DiceFaceOrigins({ die, selected }: { die: TeachingDie; selected: boolea
 }
 export default function DiceTeachingCanvas(props: DiceCanvasProps) {
   const m = diceTeachingMessages(props.locale);
-  return <DiceCanvasBoundary label={m.fallback}><Canvas frameloop="demand" shadows dpr={[1, 1.75]} gl={{ antialias: true, alpha: true }} fallback={<p>{m.fallback}</p>} style={{ touchAction: "none" }}>
-    <DiceObjects {...props} />
+  const [tap] = useState(createDiceTapGuard);
+  useEffect(() => { window.addEventListener("blur", tap.reset); return () => window.removeEventListener("blur", tap.reset); }, [tap]);
+  return <DiceCanvasBoundary label={m.fallback}><Canvas frameloop="demand" shadows dpr={[1, 1.75]} gl={{ antialias: true, alpha: true, stencil: true }} fallback={<p>{m.fallback}</p>} style={{ touchAction: "none" }}
+    onPointerDownCapture={tap.down} onPointerMoveCapture={tap.move} onPointerUpCapture={tap.up} onPointerCancelCapture={tap.cancel}
+    onPointerMissed={(event) => { if (event.type === "click" && event.button === 0 && tap.isTap() && props.tool === "xray" && !props.busy) props.onClearXRay(); }}>
+    <DiceObjects {...props} isTap={tap.isTap} />
   </Canvas></DiceCanvasBoundary>;
 }
