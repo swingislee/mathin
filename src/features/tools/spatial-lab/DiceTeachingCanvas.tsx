@@ -13,8 +13,9 @@ import { DICE_WHITE, diceFaceArrows, dicePipShades, diceSelectionMarker, diceSur
 import { diceFaceGeometries, DICE_UV_LENGTH } from "./dice-teaching-geometry";
 import { diceTeachingMessages } from "./dice-teaching-messages";
 import { diceFaceCorners, planDiceFaceObservations, type DiceObservationApi } from "./dice-face-observation";
-import { DiceXRayOverlay } from "./DiceXRayOverlay";
-import { createDiceTapGuard, diceXRayDisplay, diceXRayPick, type DiceXRayTarget } from "./dice-xray-observation";
+import { DiceXRayTransition } from "./DiceXRayTransition";
+import type { DiceXRayPresentation } from "./dice-xray-animation";
+import { createDiceTapGuard, diceXRayPick, type DiceXRayTarget } from "./dice-xray-observation";
 
 function pipTextures(value: number, color: string) {
   const paint = (bump: boolean) => {
@@ -38,6 +39,7 @@ interface DiceCanvasProps {
   dice: readonly TeachingDie[]; trail: readonly DiceFootprint[]; selectedId: string; locale: string;
   tool: "orbit" | "pan" | "move" | "pips" | "color" | "transparent" | "inspect" | "xray"; arrows: boolean; busy: boolean; grid: boolean; axes: boolean; floor: boolean;
   xrayTarget: DiceXRayTarget | null; onClearXRay: () => void;
+  onXRayPresentation: (presentation: DiceXRayPresentation) => void;
   frame: CubeFrame; view: CubeView | "bottom"; cameraKey: number;
   observationRef: Ref<DiceObservationApi>;
   onSelect: (id: string) => void; onFace: (id: string, face: DiceFace) => void; onMoveFace: (id: string, face: DiceFace) => void; onPlace: (id: string, position: DiceVector) => void;
@@ -64,7 +66,6 @@ function DiceObjects(props: DiceCanvasProps & { isTap: () => boolean }) {
   const edges = useMemo(() => geometries.map((geometry) => new EdgesGeometry(geometry, 25)), [geometries]);
   const colorKey = [...new Set([DICE_WHITE, ...dice.flatMap((die) => DICE_FACES.map((face) => diceSurface(die, face).color))])].sort().join("|");
   const textures = useMemo(() => new Map(colorKey.split("|").map((color) => [color, Array.from({ length: 7 }, (_, value) => pipTextures(value, color))])), [colorKey]);
-  const xray = props.tool === "xray" && !props.busy ? diceXRayDisplay(dice, props.xrayTarget) : null;
   const diceIds = dice.map((die) => die.id).join(",");
   const faceRefs = useMemo(() => new Map<string, RefObject<Mesh>>(diceIds.split(",").flatMap((id) => DICE_FACES.map((face) => [`${id}/${face}`, createRef<Mesh>() as RefObject<Mesh>] as const))), [diceIds]);
   const opaqueFaceIds = dice.flatMap((die) => DICE_FACES.filter((face) => diceSurface(die, face).opacity >= 0.99).map((face) => `${die.id}/${face}`));
@@ -106,7 +107,7 @@ function DiceObjects(props: DiceCanvasProps & { isTap: () => boolean }) {
   const clickFace = (event: ThreeEvent<MouseEvent>, id: string, face: DiceFace) => {
     if (props.busy || event.button !== 0 || event.delta > 3 || !props.isTap()) return;
     event.stopPropagation();
-    const picked = diceXRayPick(xray ? props.xrayTarget : null, { id, face }, event.intersections);
+    const picked = props.tool === "xray" ? diceXRayPick(props.xrayTarget, { id, face }, event.intersections) : { id, face };
     props.onSelect(picked.id);
     if (["pips", "color", "transparent", "inspect", "xray"].includes(props.tool)) props.onFace(picked.id, picked.face);
   };
@@ -139,7 +140,8 @@ function DiceObjects(props: DiceCanvasProps & { isTap: () => boolean }) {
     </group>)}</group>
     {dice.map((die) => <DiceFaceOrigins key={die.id} die={preview?.id === die.id ? { ...die, position: preview.position } : die} selected={die.id === selectedId} />)}
     {dice.filter((die) => die.id === selectedId).map((die) => <mesh key={die.id} raycast={ignoreDiceHelperRaycast} {...diceSelectionMarker(preview?.id === die.id ? preview.position : die.position)}><ringGeometry args={[0.65, 0.68, 48]} /><meshBasicMaterial color="#c28c46" side={DoubleSide} transparent opacity={0.65} depthWrite={false} /></mesh>)}
-    {xray && <DiceXRayOverlay dice={dice} display={xray} geometries={geometries} edges={edges} texture={textures.get(xray.surface.color)![xray.textureValue]} onClick={(event) => clickFace(event, xray.die.id, xray.face)} />}
+    <DiceXRayTransition dice={dice} requested={props.xrayTarget} interactive={props.tool === "xray" && !props.busy} geometries={geometries} edges={edges} textures={textures}
+      onClick={(event, target) => clickFace(event, target.id, target.face)} onPresentation={props.onXRayPresentation} />
     {props.arrows && props.tool !== "xray" && !props.busy && !preview && <CubeNetFaceArrows key={occlusionKey} faces={arrows} occlude={occluders} onMove={(id) => { const arrow = arrows.find((item) => item.faceId === id); if (arrow) props.onMoveFace(arrow.dieId, arrow.face); }} />}
   </>;
 }

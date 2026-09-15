@@ -75,13 +75,14 @@ describe("in-place dice X-ray observation", () => {
     const display = diceXRayDisplay(dice, { id: dice[0].id, face: "z-" })!;
     const geometries = diceFaceGeometries(), edges = geometries.map((geometry) => new EdgesGeometry(geometry, 25));
     const texture = { map: new Texture(), bump: new Texture() };
-    const tree = elements(DiceXRayOverlay({ dice, display, geometries, edges, texture, onClick: () => {} }));
+    const tree = elements(DiceXRayOverlay({ dice, display, geometries, edges, texture, interactive: true, onClick: () => {} }));
     const face = tree.find((node) => node.props.name === DICE_XRAY_SURFACE)!;
     expect(face.props.geometry).toBe(geometries[5]);
     expect(tree.some((node) => (node.props.position as Vector3)?.equals?.(diceFaceTranslation(dice[0], "z-")))).toBe(true);
     expect(tree.some((node) => (node.props.quaternion as ReturnType<typeof quaternion>)?.equals?.(quaternion(dice[0].rotation)))).toBe(true);
     const surface = tree.find((node) => node.type === "meshPhysicalMaterial")!;
-    expect(surface.props.map).toBe(texture.map); expect(surface.props.opacity).toBe(0.35); expect(surface.props.depthTest).toBe(false);
+    expect(surface.props.map).toBe(texture.map); expect(surface.props.opacity).toBe(0); expect(surface.props.depthTest).toBe(false);
+    expect(display.surface.opacity).toBe(0.35); expect(surface.props.name).toBe("dice-xray-face");
     const outlines = tree.filter((node) => node.type === "lineBasicMaterial" && node.props.stencilWrite);
     expect(outlines).toHaveLength(11); expect(outlines.every((node) => !node.props.map)).toBe(true);
     expect(tree.filter((node) => node.props.renderOrder).map((node) => node.props.renderOrder)).toContain(100);
@@ -94,7 +95,8 @@ describe("in-place dice X-ray observation", () => {
     expect(DICE_XRAY_WINDOW.stencilRef).toBe(DICE_XRAY_OCCLUDER.stencilRef);
     const canvas = readFileSync("src/features/tools/spatial-lab/DiceTeachingCanvas.tsx", "utf8");
     expect(canvas).toContain("stencil: true");
-    expect(canvas).toContain("textures.get(xray.surface.color)![xray.textureValue]");
+    const transition = readFileSync("src/features/tools/spatial-lab/DiceXRayTransition.tsx", "utf8");
+    expect(transition).toContain("textures.get(display.surface.color)![display.textureValue]");
   });
 
   it("distinguishes taps from orbit drags, including a return to the start, pinch and cancellation", () => {
@@ -112,7 +114,7 @@ describe("in-place dice X-ray observation", () => {
     const toggle = workspace.slice(workspace.indexOf("const toggleXRay ="), workspace.indexOf("const fit ="));
     for (const mutation of ["commit(", "animate(", "setHistory", "setFrame", "setCameraKey", "setArrows", "closeDiceFaces"]) expect(toggle).not.toContain(mutation);
     expect(workspace).toContain('<CubeIconButton label={m.xray}'); expect(workspace).toContain("<ScanEye />");
-    expect(workspace).toContain('data-dice-xray={xray ? "active" : "ready"}');
+    expect(workspace).toContain('data-dice-xray={xray ? xrayPresentation.phase : "ready"}');
     const canvas = readFileSync("src/features/tools/spatial-lab/DiceTeachingCanvas.tsx", "utf8");
     expect(canvas).toContain("onPointerMissed="); expect(canvas).toContain("props.onClearXRay()");
     expect(canvas).toContain("onPointerMoveCapture={tap.move}"); expect(canvas).toContain('navigationMode={props.tool === "pan" ? "pan" : "orbit"}');

@@ -22,8 +22,13 @@ export function diceXRayDisplay(dice: readonly TeachingDie[], target: DiceXRayTa
 }
 
 /** 透视层在真实深度后方；拾取仍优先响应屏幕上看见的目标，而不是前方实体。 */
-export function diceXRayPick(target: DiceXRayTarget | null, clicked: DiceXRayTarget, hits: readonly { object: { name: string } }[]): DiceXRayTarget {
-  return target && hits.some((hit) => hit.object.name === DICE_XRAY_SURFACE) ? target : clicked;
+export function diceXRayPick(target: DiceXRayTarget | null, clicked: DiceXRayTarget, hits: readonly { object: { name: string; userData?: Record<string, unknown> } }[]): DiceXRayTarget {
+  const hit = hits.find((item) => item.object.name === DICE_XRAY_SURFACE);
+  if (!hit) return clicked;
+  if (target) return target;
+  const { diceXRayId: id, diceXRayFace: face } = hit.object.userData ?? {};
+  // 恢复途中再点仍可见的面，继续观察同一面，而非误选它的相对面。
+  return typeof id === "string" && DICE_FACES.includes(face as DiceFace) ? { id, face: oppositeFace(face as DiceFace) } : clicked;
 }
 
 // 三次局部覆盖：同位底衬隔离点数、原面内容、遮挡物细轮廓。模板缓冲限制在目标投影内。
