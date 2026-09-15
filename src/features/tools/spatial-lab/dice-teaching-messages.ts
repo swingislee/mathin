@@ -1,4 +1,5 @@
 const zh = {
+  color: "标色", transparent: "透明", surfaceScope: "作用范围", oneFace: "单面", wholeDie: "整颗骰子", colorHint: "选颜色后点击骰子表面标色；也可在下方选面。整颗模式为当前骰子的六个面一起标色。", transparentHint: "先点击表面或下方按钮选面，再调整不透明度；整颗模式同时调整六面。0% 的面仍可选回。", opacity: "不透明度", white: "恢复白色", opaque: "恢复不透明", chooseFace: "请选择一个面", restore: "复原", closeAllFaces: "移面复原（全部骰子）", restoreScene: "整体复原", restoreHint: "移面复原只合拢各面，保留摆放与样式。整体复原保留骰子数量与手性，恢复朝向、白色和点数，并清除轨迹与题设。",
   title: "骰子教学", settings: "工作台与显示", tools: "骰子工具", close: "收起", orbit: "旋转观察", pan: "平移视野", arrange: "摆放骰子", pips: "逐面点数", arrows: "移面箭头", opposite: "相对面", puzzle: "相贴面推理", roll: "受控滚动与留点", throwing: "随机投掷", reset: "回到原点并合拢", fit: "适配视野", undo: "撤销", redo: "重做", bottom: "底面视角",
   views: { angle: "立体视角", front: "正面视角", left: "左侧视角", right: "右侧视角", top: "顶面视角" },
   faces: { "x+": "右面", "x-": "左面", "y+": "上面", "y-": "下面", "z+": "前面", "z-": "后面" },
@@ -10,6 +11,7 @@ const zh = {
 };
 type DiceMessages = { [K in keyof typeof zh]: typeof zh[K] extends string ? string : { [J in keyof typeof zh[K]]: string } };
 const en: DiceMessages = {
+  color: "Color", transparent: "Transparency", surfaceScope: "Apply to", oneFace: "One face", wholeDie: "Whole die", colorHint: "Choose a color, then click a die face or a face button. Whole-die mode colors all six faces of the selected die.", transparentHint: "Select a face in the canvas or below, then adjust opacity. Whole-die mode adjusts all six faces. Faces at 0% remain selectable.", opacity: "Opacity", white: "Restore white", opaque: "Restore opaque", chooseFace: "Select a face", restore: "Restore", closeAllFaces: "Close faces of all dice", restoreScene: "Restore whole scene", restoreHint: "Closing faces preserves arrangements and styles. Whole-scene restore keeps the dice and their handedness, restores orientations, white faces and pips, and clears trails and constraints.",
   title: "Dice teaching", settings: "Workspace & display", tools: "Dice tools", close: "Close", orbit: "Orbit", pan: "Pan view", arrange: "Arrange dice", pips: "Face pips", arrows: "Move-face arrows", opposite: "Opposite faces", puzzle: "Touching-face puzzle", roll: "Controlled roll & trail", throwing: "Random throw", reset: "Return to origin & close faces", fit: "Fit view", undo: "Undo", redo: "Redo", bottom: "Bottom view",
   views: { angle: "3D view", front: "Front view", left: "Left view", right: "Right view", top: "Top view" },
   faces: { "x+": "Right", "x-": "Left", "y+": "Top", "y-": "Bottom", "z+": "Front", "z-": "Back" },

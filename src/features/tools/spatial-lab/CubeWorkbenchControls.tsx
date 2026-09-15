@@ -46,13 +46,15 @@ export function CubeMarkIcon({ shape }: { readonly shape: CubeMarkShape }) {
   return <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1" aria-hidden><path d={CUBE_MARK_PATHS[shape]} /></svg>;
 }
 
-export function CubeViewIcon({ view }: { readonly view: CubeView }) {
+export function CubeViewIcon({ view }: { readonly view: CubeView | "bottom" }) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" aria-hidden>
+    <g transform={view === "bottom" ? "translate(0 24) scale(1 -1)" : undefined}>
     <path d="m12 2 9 5v10l-9 5-9-5V7Z" />
     <path d="m3 7 9 5 9-5M12 12v10" />
-    {view === "top" && <path d="m12 2 9 5-9 5-9-5Z" fill="currentColor" opacity=".4" />}
+    {(view === "top" || view === "bottom") && <path d="m12 2 9 5-9 5-9-5Z" fill="currentColor" opacity=".4" />}
     {(view === "front" || view === "left") && <path d="m3 7 9 5v10l-9-5Z" fill="currentColor" opacity=".4" />}
     {view === "left" && <path d="m9 12-4 2 4 2" strokeWidth="1.8" />}
     {view === "right" && <path d="m12 12 9-5v10l-9 5Z" fill="currentColor" opacity=".4" />}
+    </g>
   </svg>;
 }

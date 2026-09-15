@@ -1,4 +1,5 @@
 import { Quaternion, Vector3 } from "three";
+import type { DiceSurfaceStyle } from "./dice-teaching-display";
 
 export const DICE_TEACHING_VERSION = "dice-teaching-v1" as const;
 export const MAX_DICE = 8;
@@ -16,6 +17,7 @@ export interface TeachingDie {
   rotation: DiceRotation;
   hidden: DiceFace[];
   offsets: Partial<Record<DiceFace, number>>;
+  surfaces?: Partial<Record<DiceFace, DiceSurfaceStyle>>;
 }
 export interface DiceFootprint { x: number; z: number; value: number; points: DiceVector[] }
 export interface DicePuzzle { scope: "each" | "total"; target: number; revealed: boolean }

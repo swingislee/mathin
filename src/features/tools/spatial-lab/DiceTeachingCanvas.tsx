@@ -1,26 +1,28 @@
 "use client";
 
-import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Component, createRef, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { Canvas, type ThreeEvent } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
-import { CanvasTexture, DoubleSide, FrontSide, Plane, SRGBColorSpace, Vector3 } from "three";
+import { CanvasTexture, DoubleSide, FrontSide, Plane, SRGBColorSpace, Vector3, type Mesh } from "three";
 import { SpatialCameraRig } from "@/features/spatial-math/renderer-r3f/SpatialCameraRig";
 import type { CubeFrame, CubeView } from "./cube-structures-contract";
 import { cubeWorkbenchCamera } from "./cube-workbench-camera";
 import { CubeNetFaceArrows } from "./CubeNetFaceArrows";
-import { DICE_BOARD_LIMIT, DICE_FACES, FACE_NORMALS, PIP_POINTS, faceValue, quaternion, vector, worldNormal, type DiceFace, type DiceVector, type DiceFootprint, type TeachingDie } from "./dice-teaching-model";
+import { DICE_BOARD_LIMIT, DICE_FACES, FACE_NORMALS, PIP_POINTS, faceValue, quaternion, vector, type DiceFace, type DiceVector, type DiceFootprint, type TeachingDie } from "./dice-teaching-model";
+import { DICE_WHITE, diceFaceArrows, dicePipShades, diceSelectionMarker, diceSurface, ignoreDiceHelperRaycast } from "./dice-teaching-display";
 import { diceFaceGeometries, DICE_UV_LENGTH } from "./dice-teaching-geometry";
 import { diceTeachingMessages } from "./dice-teaching-messages";
 
-function pipTextures(value: number) {
+function pipTextures(value: number, color: string) {
   const paint = (bump: boolean) => {
     const canvas = document.createElement("canvas"); canvas.width = 256; canvas.height = 256;
     const ctx = canvas.getContext("2d")!;
-    ctx.fillStyle = bump ? "#eeeeee" : "#fffefd"; ctx.fillRect(0, 0, 256, 256);
+    ctx.fillStyle = bump ? "#eeeeee" : color; ctx.fillRect(0, 0, 256, 256);
     for (const [x, y] of PIP_POINTS[value]) {
       const px = (0.5 + x / DICE_UV_LENGTH) * 256, py = (0.5 - y / DICE_UV_LENGTH) * 256;
       const gradient = ctx.createRadialGradient(px - 1, py + 1, 1, px, py, 17);
-      gradient.addColorStop(0, bump ? "#323232" : "#151719"); gradient.addColorStop(0.72, bump ? "#555555" : "#26292c"); gradient.addColorStop(1, bump ? "#eeeeee" : "#55585a");
+      const shades = dicePipShades(value);
+      gradient.addColorStop(0, bump ? "#323232" : shades[0]); gradient.addColorStop(0.72, bump ? "#555555" : shades[1]); gradient.addColorStop(1, bump ? "#eeeeee" : shades[2]);
       ctx.fillStyle = gradient; ctx.beginPath(); ctx.arc(px, py, 17, 0, Math.PI * 2); ctx.fill();
     }
     const texture = new CanvasTexture(canvas); if (!bump) texture.colorSpace = SRGBColorSpace;
@@ -31,9 +33,9 @@ function pipTextures(value: number) {
 
 interface DiceCanvasProps {
   dice: readonly TeachingDie[]; trail: readonly DiceFootprint[]; selectedId: string; locale: string;
-  tool: "orbit" | "pan" | "move" | "pips"; arrows: boolean; busy: boolean; grid: boolean; axes: boolean; floor: boolean;
+  tool: "orbit" | "pan" | "move" | "pips" | "color" | "transparent"; arrows: boolean; busy: boolean; grid: boolean; axes: boolean; floor: boolean;
   frame: CubeFrame; view: CubeView | "bottom"; cameraKey: number;
-  onSelect: (id: string) => void; onFace: (id: string, face: DiceFace) => void; onMoveFace: (face: DiceFace) => void; onPlace: (id: string, position: DiceVector) => void;
+  onSelect: (id: string) => void; onFace: (id: string, face: DiceFace) => void; onMoveFace: (id: string, face: DiceFace) => void; onPlace: (id: string, position: DiceVector) => void;
 }
 class DiceCanvasBoundary extends Component<{ children: ReactNode; label: string }, { failed: boolean }> {
   state = { failed: false };
@@ -44,22 +46,24 @@ function DiceObjects(props: DiceCanvasProps) {
   const { dice, selectedId, locale } = props;
   const m = diceTeachingMessages(locale);
   const geometries = useMemo(() => diceFaceGeometries(), []);
-  const textures = useMemo(() => Array.from({ length: 7 }, (_, value) => pipTextures(value)), []);
+  const colorKey = [...new Set([DICE_WHITE, ...dice.flatMap((die) => DICE_FACES.map((face) => diceSurface(die, face).color))])].sort().join("|");
+  const textures = useMemo(() => new Map(colorKey.split("|").map((color) => [color, Array.from({ length: 7 }, (_, value) => pipTextures(value, color))])), [colorKey]);
+  const diceIds = dice.map((die) => die.id).join(",");
+  const faceRefs = useMemo(() => new Map<string, RefObject<Mesh>>(diceIds.split(",").flatMap((id) => DICE_FACES.map((face) => [`${id}/${face}`, createRef<Mesh>() as RefObject<Mesh>] as const))), [diceIds]);
+  const opaqueFaceIds = dice.flatMap((die) => DICE_FACES.filter((face) => diceSurface(die, face).opacity >= 0.99).map((face) => `${die.id}/${face}`));
+  const occluders = opaqueFaceIds.map((id) => faceRefs.get(id)!);
+  const occlusionKey = opaqueFaceIds.join("|");
   const drag = useRef<{ id: string; plane: Plane; offset: Vector3; pointerId: number; target: { releasePointerCapture: (id: number) => void } } | null>(null);
   const [preview, setPreview] = useState<{ id: string; position: Vector3 } | null>(null);
-  useEffect(() => () => { geometries.forEach((g) => g.dispose()); textures.forEach((t) => { t.map.dispose(); t.bump.dispose(); }); }, [geometries, textures]);
+  useEffect(() => () => { geometries.forEach((g) => g.dispose()); }, [geometries]);
+  useEffect(() => () => { textures.forEach((palette) => palette.forEach((t) => { t.map.dispose(); t.bump.dispose(); })); }, [textures]);
   useEffect(() => {
     const cancel = () => { if (drag.current) { try { drag.current.target.releasePointerCapture(drag.current.pointerId); } catch { /* 捕获已由浏览器释放。 */ } } drag.current = null; setPreview(null); };
     const key = (event: KeyboardEvent) => { if (event.key === "Escape") cancel(); };
     window.addEventListener("blur", cancel); window.addEventListener("keydown", key);
     return () => { window.removeEventListener("blur", cancel); window.removeEventListener("keydown", key); cancel(); };
   }, []);
-  const selected = dice.find((die) => die.id === selectedId);
-  const arrows = selected ? DICE_FACES.map((face) => {
-    const normal = worldNormal(selected, face), offset = selected.offsets[face] ?? 0;
-    const center = vector(selected.position).addScaledVector(normal, 0.5 + offset);
-    return { faceId: face, label: `${m.die} ${selected.id.replace("dice-", "")}`, normal, translation: normal.clone().multiplyScalar(offset), center, position: center.clone().addScaledVector(normal, 0.9), expanded: offset > 0, direction: normal.clone().multiplyScalar(offset > 0 ? -1 : 1) };
-  }) : [];
+  const arrows = diceFaceArrows(dice, selectedId, (die, face) => `${m.die} ${die.id.replace("dice-", "")} · ${m.faces[face]}`);
   const down = (event: ThreeEvent<PointerEvent>, die: TeachingDie) => {
     if (props.busy || props.tool !== "move" || event.button !== 0) return;
     event.stopPropagation(); props.onSelect(die.id);
@@ -95,21 +99,21 @@ function DiceObjects(props: DiceCanvasProps) {
         <mesh key={`z${sign}`} position={[0, 0.3, sign * DICE_BOARD_LIMIT]}><boxGeometry args={[DICE_BOARD_LIMIT * 2, 0.6, 0.3]} /><meshStandardMaterial color="#dbd6cb" /></mesh>,
       ]))}
     </group>}
-    {props.grid && <gridHelper args={[DICE_BOARD_LIMIT * 2, DICE_BOARD_LIMIT * 2, "#b6c0c7", "#d5d8d8"]} position={[0, 0.003, 0]} />}
-    {props.axes && <group><axesHelper args={[2.6]} /><Html position={[2.8, 0, 0]} center><span className="text-xs text-red-600">X</span></Html><Html position={[0, 0, 2.8]} center><span className="text-xs text-blue-600">Z</span></Html><Html position={[0, 2.8, 0]} center><span className="text-xs text-green-700">Y</span></Html></group>}
-    {props.trail.flatMap((stamp, index) => stamp.points.map((point, pip) => <mesh key={`${index}:${pip}`} position={[point.x, point.y, point.z]} rotation={[-Math.PI / 2, 0, 0]}><circleGeometry args={[0.065, 16]} /><meshBasicMaterial color="#606c7b" side={DoubleSide} /></mesh>))}
-    {dice.map((die) => <group key={die.id} position={preview?.id === die.id ? preview.position : vector(die.position)} quaternion={quaternion(die.rotation)}>
+    {props.grid && <gridHelper raycast={ignoreDiceHelperRaycast} args={[DICE_BOARD_LIMIT * 2, DICE_BOARD_LIMIT * 2, "#b6c0c7", "#d5d8d8"]} position={[0, 0.003, 0]} />}
+    {props.axes && <group><axesHelper raycast={ignoreDiceHelperRaycast} args={[2.6]} /><Html position={[2.8, 0, 0]} center><span className="text-xs text-red-600">X</span></Html><Html position={[0, 0, 2.8]} center><span className="text-xs text-blue-600">Z</span></Html><Html position={[0, 2.8, 0]} center><span className="text-xs text-green-700">Y</span></Html></group>}
+    {props.trail.flatMap((stamp, index) => stamp.points.map((point, pip) => <mesh raycast={ignoreDiceHelperRaycast} key={`${index}:${pip}`} position={[point.x, point.y, point.z]} rotation={[-Math.PI / 2, 0, 0]}><circleGeometry args={[0.065, 16]} /><meshBasicMaterial color={dicePipShades(stamp.value)[1]} side={DoubleSide} /></mesh>))}
+    <group>{dice.map((die) => <group key={die.id} position={preview?.id === die.id ? preview.position : vector(die.position)} quaternion={quaternion(die.rotation)}>
       {DICE_FACES.map((face, index) => {
-        const texture = textures[die.hidden.includes(face) ? 0 : faceValue(die.hand, face)];
-        return <mesh key={face} geometry={geometries[index]} position={vector(FACE_NORMALS[face]).multiplyScalar(die.offsets[face] ?? 0)} castShadow receiveShadow
+        const surface = diceSurface(die, face), texture = textures.get(surface.color)![die.hidden.includes(face) ? 0 : faceValue(die.hand, face)];
+        return <mesh key={face} ref={faceRefs.get(`${die.id}/${face}`)} geometry={geometries[index]} position={vector(FACE_NORMALS[face]).multiplyScalar(die.offsets[face] ?? 0)} castShadow={surface.opacity >= 0.99} receiveShadow
           onPointerDown={(event) => down(event, die)} onPointerMove={move} onPointerUp={up}
-          onClick={(event) => { if (props.busy || event.delta > 3) return; event.stopPropagation(); props.onSelect(die.id); if (props.tool === "pips") props.onFace(die.id, face); }}>
-          <meshPhysicalMaterial color="#ffffff" map={texture.map} bumpMap={texture.bump} bumpScale={0.027} roughness={0.28} clearcoat={0.35} clearcoatRoughness={0.25} side={DoubleSide} />
+          onClick={(event) => { if (props.busy || event.delta > 3) return; event.stopPropagation(); props.onSelect(die.id); if (["pips", "color", "transparent"].includes(props.tool)) props.onFace(die.id, face); }}>
+          <meshPhysicalMaterial color="#ffffff" map={texture.map} bumpMap={texture.bump} bumpScale={0.027} roughness={0.28} clearcoat={0.35} clearcoatRoughness={0.25} side={DoubleSide} transparent={surface.opacity < 1} opacity={surface.opacity} depthWrite={surface.opacity >= 0.99} />
         </mesh>;
       })}
-      {die.id === selectedId && !props.busy && <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.497, 0]}><ringGeometry args={[0.65, 0.68, 48]} /><meshBasicMaterial color="#c28c46" side={DoubleSide} transparent opacity={0.65} depthWrite={false} /></mesh>}
-    </group>)}
-    {props.arrows && !props.busy && !preview && <CubeNetFaceArrows faces={arrows} onMove={(face) => props.onMoveFace(face as DiceFace)} />}
+    </group>)}</group>
+    {dice.filter((die) => die.id === selectedId).map((die) => <mesh key={die.id} raycast={ignoreDiceHelperRaycast} {...diceSelectionMarker(preview?.id === die.id ? preview.position : die.position)}><ringGeometry args={[0.65, 0.68, 48]} /><meshBasicMaterial color="#c28c46" side={DoubleSide} transparent opacity={0.65} depthWrite={false} /></mesh>)}
+    {props.arrows && !props.busy && !preview && <CubeNetFaceArrows key={occlusionKey} faces={arrows} occlude={occluders} onMove={(id) => { const arrow = arrows.find((item) => item.faceId === id); if (arrow) props.onMoveFace(arrow.dieId, arrow.face); }} />}
   </>;
 }
 export default function DiceTeachingCanvas(props: DiceCanvasProps) {

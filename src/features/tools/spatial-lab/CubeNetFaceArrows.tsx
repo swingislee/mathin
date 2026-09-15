@@ -1,18 +1,19 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, type ComponentProps } from "react";
 import { Html } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { cubeNetFaceArrowAngle, type CubeNetRevealFace } from "./cube-net-face-reveal";
 
-function FaceArrow({ face, onMove }: { readonly face: CubeNetRevealFace; readonly onMove?: (faceId: string) => void }) {
+type ArrowOcclusion = ComponentProps<typeof Html>["occlude"];
+function FaceArrow({ face, onMove, occlude = true }: { readonly face: CubeNetRevealFace; readonly onMove?: (faceId: string) => void; readonly occlude?: ArrowOcclusion }) {
   const t = useTranslations("tools.spatialLab.cubeNet.manual");
   const { camera, size } = useThree();
   const icon = useRef<SVGSVGElement>(null);
   useFrame(() => { if (icon.current) icon.current.style.transform = `rotate(${cubeNetFaceArrowAngle(face, camera, size.width, size.height)}deg)`; });
-  return <Html position={face.position} center occlude zIndexRange={[10, 4]}>
+  return <Html position={face.position} center occlude={occlude} zIndexRange={[10, 4]}>
         <Button type="button" variant="ghost" disabled={!onMove} className="relative h-12 w-12 rounded-full p-0 hover:bg-moon/30"
           data-cube-net-arrow={face.faceId} onPointerDown={(event) => event.stopPropagation()} onPointerUp={(event) => event.stopPropagation()}
           aria-label={t(face.expanded ? "restoreFace" : "moveFace", { face: face.label })} title={t(face.expanded ? "restoreFace" : "moveFace", { face: face.label })}
@@ -25,6 +26,6 @@ function FaceArrow({ face, onMove }: { readonly face: CubeNetRevealFace; readonl
 }
 
 /** 箭头居中沿真实外法向留距，允许纸面遮挡；保留 48px 点击区，不额外绘制面名或引线。 */
-export function CubeNetFaceArrows({ faces, onMove }: { readonly faces: readonly CubeNetRevealFace[]; readonly onMove?: (faceId: string) => void }) {
-  return <group>{faces.map((face) => <FaceArrow key={face.faceId} face={face} onMove={onMove} />)}</group>;
+export function CubeNetFaceArrows({ faces, onMove, occlude }: { readonly faces: readonly CubeNetRevealFace[]; readonly onMove?: (faceId: string) => void; readonly occlude?: ArrowOcclusion }) {
+  return <group>{faces.map((face) => <FaceArrow key={face.faceId} face={face} onMove={onMove} occlude={occlude} />)}</group>;
 }

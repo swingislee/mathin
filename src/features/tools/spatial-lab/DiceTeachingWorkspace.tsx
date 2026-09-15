@@ -2,14 +2,17 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Dices, Expand, Eye, Footprints, GitCompareArrows, Hand, Move3d, Orbit, Redo2, RotateCcw, Shapes, SlidersHorizontal, Undo2, UnfoldHorizontal } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Dices, Droplets, Eye, Footprints, GitCompareArrows, Hand, LocateFixed, Maximize, Move, Move3D, Orbit, Paintbrush, Redo2, RotateCcw, Settings2, Shapes, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CubeCanvasPanel, CubeIconButton, CubeViewIcon } from "./CubeWorkbenchControls";
+import { CubeCanvasPanel, CubeColorPicker, CubeIconButton, CubeViewIcon } from "./CubeWorkbenchControls";
+import { CubeOpacitySlider } from "./CubeOpacitySlider";
 import { CUBE_WORKBENCH_VIEWS } from "./cube-workbench-camera";
-import type { CubeFrame, CubeView } from "./cube-structures-contract";
+import { CUBE_COLORS, type CubeColor, type CubeFrame, type CubeView } from "./cube-structures-contract";
+import { cubeStructuresMessages } from "./cube-structures-messages";
+import { closeDiceFaces, diceSurface, restoreDiceScene, styleDiceFaces, type DiceSurfaceStyle } from "./dice-teaching-display";
 import { useCubeNetPlayback } from "./useCubeNetPlayback";
 import { diceTeachingMessages } from "./dice-teaching-messages";
 import { DICE_FACES, DICE_TEACHING_VERSION, FACE_NORMALS, MAX_DICE, arrangeDice, canPlaceDie, contactVisibility, controlledRoll, createDiceScene, createDie, diceContacts, faceValue, interpolateDice, nearestDiceRotation, oppositeFace, sampleControlledRoll, solveDicePuzzle, turnDie, worldFace, type DiceFace, type DiceHand, type DicePuzzle, type DiceScene, type DiceVector, type RollDirection, type TeachingDie } from "./dice-teaching-model";
@@ -17,7 +20,7 @@ import styles from "./CubeStructuresWorkbench.module.css";
 import diceStyles from "./DiceTeachingWorkspace.module.css";
 
 const DiceTeachingCanvas = dynamic(() => import("./DiceTeachingCanvas"), { ssr: false });
-type Panel = "settings" | "arrange" | "pips" | "opposite" | "puzzle" | "roll" | "throwing" | null;
+type Panel = "settings" | "arrange" | "pips" | "opposite" | "puzzle" | "roll" | "throwing" | "color" | "transparent" | "restore" | null;
 const easing = (t: number) => t * t * (3 - 2 * t);
 const topOnly = (dice: TeachingDie[]) => dice.map((die) => ({ ...die, hidden: DICE_FACES.filter((face) => face !== worldFace(die, "y+")) }));
 function fitFrame(dice: readonly TeachingDie[]): CubeFrame {
@@ -35,7 +38,11 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector }: { l
   const [selectedId, setSelectedId] = useState("dice-1");
   const selected = scene.dice.find((die) => die.id === selectedId) ?? scene.dice[0];
   const [panel, setPanel] = useState<Panel>(null);
-  const [tool, setTool] = useState<"orbit" | "pan" | "move" | "pips">("orbit");
+  const [tool, setTool] = useState<"orbit" | "pan" | "move" | "pips" | "color" | "transparent">("orbit");
+  const [color, setColor] = useState<CubeColor>(CUBE_COLORS[0]);
+  const [surfaceScope, setSurfaceScope] = useState<"face" | "die">("face");
+  const [surfaceTarget, setSurfaceTarget] = useState<{ id: string; face: DiceFace } | null>(null);
+  const [opacityPreview, setOpacityPreview] = useState<number | null>(null);
   const [arrows, setArrows] = useState(false);
   const [grid, setGrid] = useState(true), [axes, setAxes] = useState(false), [floor, setFloor] = useState(true);
   const [view, setView] = useState<CubeView | "bottom">("angle");
@@ -52,7 +59,10 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector }: { l
   const playback = useCubeNetPlayback<TeachingDie[]>({ essential: true });
   const cancelPlayback = playback.cancel;
   const busy = preparing || playback.playing;
-  const displayed = playback.frame ?? scene.dice;
+  const selectedFace = surfaceTarget?.id === selected.id ? surfaceTarget.face : null;
+  const surfaceFaces = surfaceScope === "die" ? DICE_FACES : selectedFace ? [selectedFace] : [];
+  const opacity = Math.round(diceSurface(selected, selectedFace ?? "y+").opacity * 100);
+  const displayed = opacityPreview !== null && !busy ? styleDiceFaces(scene.dice, selected.id, surfaceFaces, { opacity: opacityPreview / 100 }) : playback.frame ?? scene.dice;
   const commit = useCallback((next: DiceScene) => { setHistory((h) => ({ past: [...h.past, h.present].slice(-100), present: next, future: [] })); }, []);
   const cancel = useCallback(() => { request.current++; setPreparing(false); cancelPlayback(); }, [cancelPlayback]);
   useEffect(() => {
@@ -67,8 +77,13 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector }: { l
     playback.start({ durationMs: duration, sample: (elapsed) => interpolateDice(from, next.dice, easing(elapsed / duration)), onFinish: () => commit(next) });
   };
   const changed = (dice: TeachingDie[], extra: Partial<DiceScene> = {}) => ({ ...scene, dice, puzzle: null, ...extra });
-  const selectPanel = (next: Exclude<Panel, null>) => { setPanel((previous) => previous === next ? null : next); setTool(next === "arrange" ? "move" : next === "pips" ? "pips" : "orbit"); setNotice(""); };
-  const closePanel = () => { setPanel(null); setTool("orbit"); };
+  const selectPanel = (next: Exclude<Panel, null>) => {
+    const open = panel !== next;
+    setPanel(open ? next : null);
+    setTool(!open ? "orbit" : next === "arrange" ? "move" : ["pips", "color", "transparent"].includes(next) ? next as "pips" | "color" | "transparent" : "orbit");
+    setNotice(""); setOpacityPreview(null);
+  };
+  const closePanel = () => { setPanel(null); setTool("orbit"); setOpacityPreview(null); };
   const fit = (dice = scene.dice) => { const bounds = fitFrame(dice); setFrame({ ...bounds, radius: bounds.radius + (arrows ? 1 : 0) }); setCameraKey((key) => key + 1); };
   const selectView = (next: CubeView | "bottom") => { setView(next); setCameraKey((key) => key + 1); };
   const updateDie = (id: string, change: (die: TeachingDie) => TeachingDie, geometric = false) => {
@@ -94,13 +109,19 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector }: { l
   const toggleFace = (id: string, face: DiceFace) => {
     if (!busy) updateDie(id, (die) => ({ ...die, hidden: die.hidden.includes(face) ? die.hidden.filter((item) => item !== face) : [...die.hidden, face] }));
   };
-  const moveFace = (face: DiceFace) => animate({ ...scene, dice: scene.dice.map((die) => die.id === selected.id ? { ...die, offsets: { ...die.offsets, [face]: (die.offsets[face] ?? 0) > 0 ? 0 : 1.1 } } : die) });
+  const applyStyle = (style: DiceSurfaceStyle) => { if (!busy && surfaceFaces.length) commit({ ...scene, dice: styleDiceFaces(scene.dice, selected.id, surfaceFaces, style) }); };
+  const chooseFace = (id: string, face: DiceFace) => {
+    if (busy) return;
+    setSurfaceTarget({ id, face }); setOpacityPreview(null);
+    if (tool === "pips") toggleFace(id, face);
+    if (tool === "color") commit({ ...scene, dice: styleDiceFaces(scene.dice, id, surfaceScope === "die" ? DICE_FACES : [face], { color }) });
+  };
+  const moveFace = (id: string, face: DiceFace) => animate({ ...scene, dice: scene.dice.map((die) => die.id === id ? { ...die, offsets: { ...die.offsets, [face]: (die.offsets[face] ?? 0) > 0 ? 0 : 1.1 } } : die) });
   const movePair = () => animate({ ...scene, dice: scene.dice.map((die) => die.id === selected.id ? { ...die, offsets: { ...die.offsets, [pairFace]: 1.1, [oppositeFace(pairFace)]: 1.1 } } : die) });
   const closeFaces = () => animate({ ...scene, dice: scene.dice.map((die) => die.id === selected.id ? { ...die, offsets: {} } : die) });
   const toggleArrows = () => {
     if (busy) return;
-    if (arrows) animate({ ...scene, dice: scene.dice.map((die) => ({ ...die, offsets: {} })) });
-    else { const bounds = fitFrame(scene.dice); setFrame({ ...bounds, radius: bounds.radius + 1 }); setCameraKey((key) => key + 1); }
+    if (!arrows) { const bounds = fitFrame(scene.dice); setFrame({ ...bounds, radius: bounds.radius + 1 }); setCameraKey((key) => key + 1); }
     setArrows((value) => !value);
   };
   const roll = (direction: RollDirection) => {
@@ -145,29 +166,31 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector }: { l
   return <section className={styles.workspace} data-dice-teaching={DICE_TEACHING_VERSION}>
     <div className={styles.viewport}><div className={`${styles.canvas} ${diceStyles.canvas}`}>
       <DiceTeachingCanvas dice={displayed} trail={scene.trail} selectedId={selected.id} locale={locale} tool={tool} arrows={arrows} busy={busy} grid={grid} axes={axes} floor={floor} frame={frame} view={view} cameraKey={cameraKey}
-        onSelect={setSelectedId} onFace={toggleFace} onMoveFace={moveFace} onPlace={place} />
-      <div className={`${styles.dock} ${styles.meta}`}><CubeIconButton label={m.settings} active={panel === "settings"} onClick={() => selectPanel("settings")}><Shapes /></CubeIconButton><span className="self-center pr-1 text-xs">{m.title}</span></div>
+        onSelect={setSelectedId} onFace={chooseFace} onMoveFace={moveFace} onPlace={place} />
+      <div className={`${styles.dock} ${styles.meta}`}><CubeIconButton label={m.settings} active={panel === "settings"} onClick={() => selectPanel("settings")}><Settings2 /></CubeIconButton><span className="self-center pr-1 text-xs">{m.title}</span></div>
       <div className={`${styles.dock} ${styles.views} ${diceStyles.views}`} role="toolbar" aria-label={m.orbit}>
         {CUBE_WORKBENCH_VIEWS.map((item) => <CubeIconButton key={item} label={m.views[item]} active={view === item} onClick={() => selectView(item)}><CubeViewIcon view={item} /></CubeIconButton>)}
-        <CubeIconButton label={m.bottom} active={view === "bottom"} onClick={() => selectView("bottom")}><ArrowUp /></CubeIconButton><CubeIconButton label={m.fit} onClick={() => fit()}><Expand /></CubeIconButton>
+        <CubeIconButton label={m.bottom} active={view === "bottom"} onClick={() => selectView("bottom")}><CubeViewIcon view="bottom" /></CubeIconButton><CubeIconButton label={m.fit} onClick={() => fit()}><Maximize /></CubeIconButton>
       </div>
       <div className={`${styles.dock} ${styles.tools}`} role="toolbar" aria-label={m.tools}>
         <CubeIconButton label={m.orbit} active={tool === "orbit"} onClick={() => setTool("orbit")}><Orbit /></CubeIconButton>
         <CubeIconButton label={m.pan} active={tool === "pan"} onClick={() => setTool("pan")}><Hand /></CubeIconButton>
-        <CubeIconButton label={m.arrange} active={panel === "arrange"} onClick={() => selectPanel("arrange")}><Move3d /></CubeIconButton>
+        <CubeIconButton label={m.reset} disabled={busy} onClick={() => { arrange("apart"); setView("angle"); }}><LocateFixed /></CubeIconButton>
+        <CubeIconButton label={m.arrange} active={panel === "arrange"} onClick={() => selectPanel("arrange")}><Move /></CubeIconButton>
+        <CubeIconButton label={m.arrows} active={arrows} disabled={busy} onClick={toggleArrows}><Move3D /></CubeIconButton>
+        <CubeIconButton label={m.restore} active={panel === "restore"} onClick={() => selectPanel("restore")}><RotateCcw /></CubeIconButton>
         <div className={styles.toolSeparator} />
         <CubeIconButton label={m.pips} active={panel === "pips"} onClick={() => selectPanel("pips")}><Eye /></CubeIconButton>
-        <CubeIconButton label={m.arrows} active={arrows} disabled={busy} onClick={toggleArrows}><UnfoldHorizontal /></CubeIconButton>
+        <CubeIconButton label={m.color} active={panel === "color"} onClick={() => selectPanel("color")}><Paintbrush /></CubeIconButton>
+        <CubeIconButton label={m.transparent} active={panel === "transparent"} onClick={() => selectPanel("transparent")}><Droplets /></CubeIconButton>
         <CubeIconButton label={m.opposite} active={panel === "opposite"} onClick={() => selectPanel("opposite")}><GitCompareArrows /></CubeIconButton>
         <CubeIconButton label={m.puzzle} active={panel === "puzzle"} onClick={() => selectPanel("puzzle")}><Shapes /></CubeIconButton>
         <div className={styles.toolSeparator} />
         <CubeIconButton label={m.roll} active={panel === "roll"} onClick={() => selectPanel("roll")}><Footprints /></CubeIconButton>
         <CubeIconButton label={m.throwing} active={panel === "throwing"} onClick={() => selectPanel("throwing")}><Dices /></CubeIconButton>
-        <CubeIconButton label={m.reset} disabled={busy} onClick={() => { arrange("apart"); setView("angle"); }}><RotateCcw /></CubeIconButton>
         <div className={styles.toolSeparator} />
         <CubeIconButton label={m.undo} disabled={busy || !history.past.length} onClick={() => setHistory((h) => ({ past: h.past.slice(0, -1), present: h.past[h.past.length - 1], future: [h.present, ...h.future] }))}><Undo2 /></CubeIconButton>
         <CubeIconButton label={m.redo} disabled={busy || !history.future.length} onClick={() => setHistory((h) => ({ past: [...h.past, h.present], present: h.future[0], future: h.future.slice(1) }))}><Redo2 /></CubeIconButton>
-        <CubeIconButton label={m.settings} active={panel === "settings"} onClick={() => selectPanel("settings")}><SlidersHorizontal /></CubeIconButton>
       </div>
       {panel && <CubeCanvasPanel title={m[panel]} closeLabel={m.close} onClose={closePanel} anchor={panel === "settings" ? "meta" : panel === "roll" ? "bottom" : "tool"}>
         <div className="space-y-3 text-xs">
@@ -180,6 +203,15 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector }: { l
               <p className="w-full text-muted">{m.rollHint}</p>
             </div> : <>
               {diePicker}
+              {panel === "restore" && <><p className="leading-5 text-muted">{m.restoreHint}</p>{actions([{ label: m.closeFaces, run: closeFaces }, { label: m.closeAllFaces, run: () => animate(closeDiceFaces(scene)) }, { label: m.restoreScene, run: () => { const next = restoreDiceScene(scene); animate(next); fit(next.dice); setView("angle"); } }])}</>}
+              {(panel === "color" || panel === "transparent") && <>
+                <p className="leading-5 text-muted">{panel === "color" ? m.colorHint : m.transparentHint}</p>
+                <div className="flex gap-1" role="group" aria-label={m.surfaceScope}>{(["face", "die"] as const).map((scope) => <Button key={scope} size="sm" variant={surfaceScope === scope ? "secondary" : "ghost"} disabled={busy} aria-pressed={surfaceScope === scope} onClick={() => { setSurfaceScope(scope); setOpacityPreview(null); }}>{scope === "face" ? m.oneFace : m.wholeDie}</Button>)}</div>
+                <div className="grid grid-cols-2 gap-1">{worldFaces.map(({ direction, face }) => <Button key={direction} size="sm" variant={selectedFace === face ? "secondary" : "ghost"} disabled={busy || !face} aria-pressed={selectedFace === face} onClick={() => face && chooseFace(selected.id, face)}>{m.faces[direction]}</Button>)}</div>
+                {surfaceScope === "face" && !selectedFace && <p className="text-muted">{m.chooseFace}</p>}
+                {panel === "color" ? <><CubeColorPicker value={color} labels={cubeStructuresMessages(locale === "en" ? "en" : "zh").colors} label={m.color} disabled={busy} onChange={(value) => { setColor(value); applyStyle({ color: value }); }} />{actions([{ label: m.white, disabled: !surfaceFaces.length, run: () => applyStyle({ color: undefined }) }])}</>
+                  : <><CubeOpacitySlider key={`${selected.id}:${selectedFace}:${surfaceScope}:${opacity}`} value={opacity} label={m.opacity} disabled={busy || !surfaceFaces.length} onPreview={setOpacityPreview} onCommit={(value) => applyStyle({ opacity: value / 100 })} />{actions([{ label: m.opaque, disabled: !surfaceFaces.length, run: () => applyStyle({ opacity: 1 }) }])}</>}
+              </>}
               {panel === "arrange" && <><p className="text-muted leading-5">{m.dragHint}</p>{actions([{ label: m.addRight, run: () => add("right"), disabled: scene.dice.length >= MAX_DICE }, { label: m.addLeft, run: () => add("left"), disabled: scene.dice.length >= MAX_DICE }, { label: m.remove, run: () => { commit(changed(scene.dice.filter((die) => die.id !== selected.id))); }, disabled: scene.dice.length <= 1 }])}
                 {actions((["row", "stack", "corner", "apart"] as const).map((layout) => ({ label: m[layout], run: () => arrange(layout) })))}
                 <p>{m.move}</p>{actions(DICE_FACES.map((face) => ({ label: `${face[1]}${face[0].toUpperCase()}`, run: () => { const d = FACE_NORMALS[face]; place(selected.id, { x: selected.position.x + d.x, y: selected.position.y + d.y, z: selected.position.z + d.z }); } })))}
