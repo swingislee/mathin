@@ -515,20 +515,21 @@ export async function StaffFactOverviewHome({
   focusTarget,
   grain,
   date,
-  workItemCount,
+  workItemCount: pendingWorkItemCount,
   organizationScope,
 }: HomeProps & {
   focusTarget?: string;
   grain: StaffOverviewGrain;
   date: string;
-  workItemCount: number;
+  workItemCount: number | Promise<number>;
   organizationScope: boolean;
 }) {
-  const [schoolT, t, hubT, data] = await Promise.all([
+  const [schoolT, t, hubT, data, workItemCount] = await Promise.all([
     getTranslations("school"),
     getTranslations("school.home.overview"),
     getTranslations("school.home.staffHub"),
     getStaffOverviewData({ grain, date }),
+    pendingWorkItemCount,
   ]);
   const cookieStore = await cookies();
   const remembered = (scope: OverviewDisplayScope) => cookieStore.get(staffOverviewDisplayCookie(user.id, scope))?.value;
