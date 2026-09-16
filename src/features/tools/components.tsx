@@ -3,6 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { ToolComponentProps } from "./types";
 import type { CoursewareCompositionTool } from "@/features/courseware-doc/composition-page-schema";
 import { isCubeCoursewareTool } from "./courseware/cube-structures-content";
+import { isSpatialTeachingTool } from "./courseware/spatial-teaching-content";
 import type { CubeCoursewareRuntime } from "./courseware/cube-structures-classroom";
 
 // 工具按需加载：只有真正渲染某个工具的地方（工具页、概念页的内嵌演示、embed、课堂工具窗）才付它的 JS，
@@ -17,9 +18,11 @@ const FractionLine = dynamic(() => import("./fraction-line/FractionLine").then((
 const MotionLab = dynamic(() => import("./motion-lab/MotionLab").then((m) => m.MotionLab), { loading: ToolSkeleton });
 const SpatialLab = dynamic(() => import("./spatial-lab/SpatialLab").then((m) => m.SpatialLab), { loading: ToolSkeleton });
 export const CubeCoursewarePreview = dynamic(() => import("./courseware/CubeStructuresCourseware").then((m) => m.CubeStructuresCourseware), { loading: ToolSkeleton });
+const SpatialTeachingCourseware = dynamic(() => import("./courseware/SpatialTeachingCourseware").then((m) => m.SpatialTeachingCourseware), { loading: ToolSkeleton });
 
 /** 固定课件内容不打开个人工作台，也不读取账号草稿或页面 URL。 */
 export function CoursewareToolView({ tool, classroom }: { tool: CoursewareCompositionTool; classroom?: CubeCoursewareRuntime }) {
+  if (isSpatialTeachingTool(tool)) return <SpatialTeachingCourseware tool={tool} />;
   return isCubeCoursewareTool(tool)
     ? <CubeCoursewarePreview payload={tool.payload} classroom={classroom} />
     : <ToolView id={tool.toolId} embedded />;

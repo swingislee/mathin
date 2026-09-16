@@ -50,6 +50,7 @@ interface DiceCanvasProps {
   onXRayPresentation: (presentation: DiceXRayPresentation) => void;
   frame: CubeFrame; view: CubeView | "bottom"; cameraKey: number;
   snap: boolean; moveAxis: Axis; onMoveAxis: (axis: Axis) => void; onDragCommit: (operation: CubeMoveOperation) => void; onMoveUnavailable: () => void;
+  onDraggingChange?: (dragging: boolean) => void;
   onSelect: (id: string) => void; onFace: (id: string, face: DiceFace) => void; onMoveFace: (id: string, face: DiceFace) => void;
 }
 class DiceCanvasBoundary extends Component<{ children: ReactNode; label: string }, { failed: boolean }> {
@@ -70,6 +71,10 @@ function DiceObjects(props: DiceCanvasProps & { isTap: () => boolean }) {
   const occluders = opaqueFaceIds.map((id) => faceRefs.get(id)!);
   const occlusionKey = opaqueFaceIds.join("|");
   const [preview, setPreview] = useState<CubeDragPreview | null>(null);
+  const dragging = preview !== null;
+  const onDraggingChange = props.onDraggingChange;
+  useEffect(() => { onDraggingChange?.(dragging); }, [onDraggingChange, dragging]);
+  useEffect(() => () => { onDraggingChange?.(false); }, [onDraggingChange]);
   const dragState = useMemo(() => diceDragState(dice), [dice]);
   const presentedDice = useMemo(() => preview ? dice.map((die) => ({ ...die, position: preview.positions.get(die.id) ?? die.position })) : dice, [dice, preview]);
   const dragPresentation = useMemo(() => diceDragState(presentedDice), [presentedDice]);

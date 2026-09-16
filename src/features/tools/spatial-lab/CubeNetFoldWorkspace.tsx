@@ -44,6 +44,7 @@ import {
   type CubeNetTeachingAnchor,
 } from "./cube-net-teaching-session";
 import styles from "./CubeStructuresWorkbench.module.css";
+import { cubeNetTeachingSnapshotSchema, type CubeNetTeachingSnapshot as CoursewareNetSnapshot } from "../courseware/spatial-teaching-content";
 
 const CubeNetFoldViewport = dynamic(() => import("./CubeNetFoldViewport").then((module) => module.CubeNetFoldViewport), { ssr: false });
 
@@ -63,42 +64,49 @@ const labelModel = (model: PolyhedronFoldRenderModel, labels: Readonly<Record<st
   ...model, faces: model.faces.map((face) => ({ ...face, label: labels[face.faceId] ?? face.label })),
 });
 
-function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
+function CubeNetFoldRehearsal({ builds, locale, workspaceSelector, initial, initialBuild, onSnapshot, readOnly, courseware }: {
   readonly builds: readonly CubeNetGalleryFoldingBuild[];
   readonly locale: "zh" | "en";
   readonly workspaceSelector?: ReactNode;
+  readonly initial?: CoursewareNetSnapshot;
+  readonly initialBuild?: CubeNetGalleryFoldingBuild;
+  readonly onSnapshot?: (snapshot: CoursewareNetSnapshot | null) => void;
+  readonly readOnly?: boolean;
+  readonly courseware?: boolean;
 }) {
   const t = useTranslations("tools.spatialLab");
   const m = cubeStructuresMessages(locale);
-  const [build, setBuild] = useState(builds[0]);
-  const [labels, setLabels] = useState<Readonly<Record<string, string>>>({});
+  const [build, setBuild] = useState(initialBuild ?? builds[0]);
+  const [source, setSource] = useState<CoursewareNetSnapshot["source"]>(initial?.source ?? { entryId: builds[0].entry.id, cuts: null });
+  const [labels, setLabels] = useState<Readonly<Record<string, string>>>(initial?.labels ?? {});
   const playback = useCubeNetPlayback<CubeNetPlaybackFrame>({ essential: true });
   const { page, sceneInput } = build;
   const resolver = useMemo(() => createCubeNetWorkbenchResolver(build, locale), [build, locale]);
-  const [session, setSession] = useState(() => createCubeNetTeachingSession(
-    sceneInput.hingeGraph.hinges.map((hinge) => hinge.edgeId),
-  ));
+  const [session, setSession] = useState(() => {
+    const empty = createCubeNetTeachingSession(sceneInput.hingeGraph.hinges.map((hinge) => hinge.edgeId));
+    return initial ? { ...empty, angles: initial.angles, anchor: initial.anchor, surfaces: initial.surfaces } : empty;
+  });
   const [activeFold, setActiveFold] = useState<CubeNetPaperSelection | null>(null);
   const [preview, setPreview] = useState<CubeNetFoldChange | null>(null);
   const [judgment, setJudgment] = useState<CubeNetFoldJudgment | null>(null);
-  const [cutting, setCutting] = useState<CubeNetCutSession | null>(null);
-  const [revealEnabled, setRevealEnabled] = useState(false);
-  const [faceOffsets, setFaceOffsets] = useState<CubeNetFaceOffsets>({});
+  const [cutting, setCutting] = useState<CubeNetCutSession | null>(() => initial?.cutting ? { ...initial.cutting, past: [], future: [] } : null);
+  const [revealEnabled, setRevealEnabled] = useState(initial?.revealEnabled ?? false);
+  const [faceOffsets, setFaceOffsets] = useState<CubeNetFaceOffsets>(initial?.faceOffsets ?? {});
   const [buildingCuts, setBuildingCuts] = useState(false);
   const [cutError, setCutError] = useState(false);
   const [restoreCutBlocked, setRestoreCutBlocked] = useState(false);
   const cutRequest = useRef(0);
   useEffect(() => () => { cutRequest.current++; }, []);
-  const [view, setView] = useState<CubeView>("angle");
-  const [frame, setFrame] = useState(() => resolver.resolve({}).model.bounds);
+  const [view, setView] = useState<CubeView>(initial?.view ?? "angle");
+  const [frame, setFrame] = useState(() => initial?.frame ?? resolver.resolve({}).model.bounds);
   const [cameraRequestKey, setCameraRequestKey] = useState(0);
-  const [tool, setTool] = useState<"orbit" | "pan" | "fold" | "cut" | CubeNetSurfaceTool>("fold");
+  const [tool, setTool] = useState<"orbit" | "pan" | "fold" | "cut" | CubeNetSurfaceTool>(initial?.cutting ? "cut" : "fold");
   const [panel, setPanel] = useState<"settings" | CubeNetSurfaceTool | null>(null);
   const [brush, setBrush] = useState(DEFAULT_CUBE_NET_BRUSH);
   const [selectedPaper, setSelectedPaper] = useState<string | null>(null);
   const [opacityPreview, setOpacityPreview] = useState<number | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
-  const [axesVisible, setAxesVisible] = useState(true);
+  const [axesVisible, setAxesVisible] = useState(initial?.axesVisible ?? true);
   const [dragging, setDragging] = useState(false);
   const axisSnapEnabled = useSpatialAxisSnap();
   const angles = useMemo(() => cutting ? Object.fromEntries(Object.keys(session.angles).map((id) => [id, 90]))
@@ -146,6 +154,15 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
   }, []);
   const commitFold = useCallback((value: CubeNetFoldChange) => apply({ kind: "fold", ...value }), [apply]);
   const busy = dragging || playback.playing || buildingCuts;
+  useEffect(() => {
+    // 只在手势或教学动画完成后提供完整起点；不冻结临时半帧或撤销历史。
+    if (!onSnapshot) return;
+    if (busy || opacityPreview !== null) { onSnapshot(null); return; }
+    const result = cubeNetTeachingSnapshotSchema.safeParse({ source, labels, angles: session.angles, anchor: session.anchor,
+      surfaces: session.surfaces, cutting: cutting ? { cuts: [...cutting.cuts], poses: Object.fromEntries(Object.entries(cutting.poses).map(([id, pose]) => [id, [...pose]])), surfaces: cutting.surfaces } : null,
+      faceOffsets, revealEnabled, view, axesVisible, frame });
+    onSnapshot(result.success ? result.data : null);
+  }, [onSnapshot, busy, opacityPreview, source, labels, session.angles, session.anchor, session.surfaces, cutting, faceOffsets, revealEnabled, view, axesVisible, frame]);
   const surfaces = (cutting ?? session).surfaces;
   const previewSurfaces = selectedPaper && opacityPreview !== null ? reduceCubeNetSurfaces(surfaces, { kind: "opacity", ids: [selectedPaper], opacity: opacityPreview / 100 }) : surfaces;
   const surfaceTool = tool === "face" || tool === "transparent" || tool === "mark" || tool === "number" ? tool : null;
@@ -257,7 +274,7 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
           const anchor: CubeNetTeachingAnchor = { faceId: support.faceId, vertices: [points[0], points[1], points[2]] };
           const initial = { ...createCubeNetTeachingSession(nextBuild.sceneInput.hingeGraph.hinges.map((hinge) => hinge.edgeId)), surfaces: cutting.surfaces };
           const before = { ...initial, anchor, angles: Object.fromEntries(Object.keys(initial.angles).map((id) => [id, cutMoves.some((move) => move.edgeId === id) ? 90 : 0])) };
-          setBuild(nextBuild); setCutting(null); setTool("fold"); setRevealEnabled(false); setFaceOffsets({});
+          setBuild(nextBuild); setSource({ entryId: source.entryId, cuts: [...cutting.cuts] }); setCutting(null); setTool("fold"); setRevealEnabled(false); setFaceOffsets({});
           setSession(reduceCubeNetTeachingSession(before, { kind: "unfold", anchor: placement.anchor }));
         },
       });
@@ -290,7 +307,7 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
         return { current: { model: frame.model, hinges: [] }, kind: "planar", step: frame.step, total: frame.total, movingCount: frame.movingCount };
       },
       onFinish: () => {
-        setBuild(target); setLabels(transition.labels);
+        setBuild(target); setSource({ entryId: target.entry.id, cuts: null }); setLabels(transition.labels);
         setSession({ ...createCubeNetTeachingSession(target.sceneInput.hingeGraph.hinges.map((hinge) => hinge.edgeId)), anchor: transition.anchor, surfaces });
       },
     });
@@ -317,7 +334,7 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
   };
 
   return (
-    <div className={styles.workspace} data-cube-net-teaching={CUBE_NET_TEACHING_VERSION} data-folding-entry={build.entry.id}>
+    <div className={styles.workspace} data-cube-net-teaching={CUBE_NET_TEACHING_VERSION} data-folding-entry={build.entry.id} data-workbench-mode={courseware ? "courseware" : undefined} inert={readOnly}>
       <div className={styles.viewport}>
         <div className={styles.canvas} data-cube-workspace-frame="4:3" data-cube-net-workbench data-net-gallery-open={galleryOpen}
           aria-label={t("cubeNet.title")} style={{ cursor: tool === "fold" ? dragging ? "grabbing" : "grab" : tool === "pan" ? "grab" : "default" }}>
@@ -382,7 +399,7 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
 
           {panel === "settings" && <CubeCanvasPanel title={m.modelPanel}
             anchor="meta" closeLabel={m.closePanel} onClose={() => setPanel(null)}>
-            <div className="space-y-3 text-xs">{workspaceSelector}<p className="leading-5 text-muted">{t("cubeNet.manual.localOnly")}</p></div>
+            <div className="space-y-3 text-xs">{workspaceSelector}{!courseware && <p className="leading-5 text-muted">{t("cubeNet.manual.localOnly")}</p>}</div>
           </CubeCanvasPanel>}
           {panel && panel !== "settings" && <CubeNetSurfacePanel locale={locale} tool={panel} brush={brush} surfaces={surfaces}
             identities={current.model.faces.map((face) => face.label)} selected={selectedPaper} busy={busy}
@@ -414,24 +431,36 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector }: {
   );
 }
 
-export function CubeNetFoldWorkspace({ locale, workspaceSelector }: { readonly locale: "zh" | "en"; readonly workspaceSelector?: ReactNode }) {
+export function CubeNetFoldWorkspace({ locale, workspaceSelector, initial, onSnapshot, readOnly, courseware }: {
+  readonly locale: "zh" | "en"; readonly workspaceSelector?: ReactNode; readonly initial?: CoursewareNetSnapshot;
+  readonly onSnapshot?: (snapshot: CoursewareNetSnapshot | null) => void; readonly readOnly?: boolean; readonly courseware?: boolean;
+}) {
   const t = useTranslations("tools.spatialLab");
   const entries = useMemo(() => createCubeNetGalleryCatalog().entries.filter((entry) => entry.classification === "legal"), []);
   const [buildState, setBuildState] = useState<CubeNetBuildState>({ status: "building" });
+  const [initialBuild, setInitialBuild] = useState<CubeNetGalleryFoldingBuild>();
 
   useEffect(() => {
     let current = true;
     void Promise.all(entries.map((entry) => buildCubeNetGalleryFolding(createCubeNetGalleryFoldingRequest(entry.id)))).then(
-      (builds) => { if (current) setBuildState({ status: "ready", builds }); },
+      async (builds) => {
+        try {
+          const base = initial ? builds.find((build) => build.entry.id === initial.source.entryId) : builds[0];
+          if (!base) throw new Error("UNKNOWN_CUBE_NET_SOURCE");
+          const restored = initial?.source.cuts ? await buildCubeNetFromCuts(base, initial.source.cuts) : base;
+          if (initial && restored.sceneInput.hingeGraph.hinges.some((hinge) => !Object.hasOwn(initial.angles, hinge.edgeId))) throw new Error("INVALID_CUBE_NET_HINGES");
+          if (current) { setInitialBuild(restored); setBuildState({ status: "ready", builds }); }
+        } catch { if (current) setBuildState({ status: "error" }); }
+      },
       () => { if (current) setBuildState({ status: "error" }); },
     );
     return () => { current = false; };
-  }, [entries]);
+  }, [entries, initial]);
 
   return buildState.status === "ready" ? (
-    <CubeNetFoldRehearsal builds={buildState.builds} locale={locale} workspaceSelector={workspaceSelector} />
+    <CubeNetFoldRehearsal builds={buildState.builds} initialBuild={initialBuild} locale={locale} workspaceSelector={workspaceSelector} initial={initial} onSnapshot={onSnapshot} readOnly={readOnly} courseware={courseware} />
   ) : (
-    <div className={styles.workspace}><div className={styles.viewport}>
+    <div className={styles.workspace} data-workbench-mode={courseware ? "courseware" : undefined}><div className={styles.viewport}>
       <div className={cn(styles.canvas, "grid place-items-center text-sm text-muted")} data-layout-profile="standard-4x3" role="status">
         {buildState.status === "error" ? t("common.previewError") : t("common.previewBuilding")}
       </div>

@@ -76,7 +76,9 @@ import type { DocNodeTransformPatch } from "@/features/courseware-doc/DocStage";
 import { GamePageEditor } from "@/features/games/courseware/GamePageEditor";
 import { gameCoursewareContractsForSurface } from "@/features/games/courseware/registry";
 import { getGame } from "@/features/games/registry";
-import { toolCoursewareContractsForSurface, type ToolCoursewareAuthoringSurface } from "@/features/tools/courseware/registry";
+import { toolCoursewareContractsForSurface, CUBE_NET_COURSEWARE_VERSION, DICE_COURSEWARE_VERSION, type ToolCoursewareAuthoringSurface } from "@/features/tools/courseware/registry";
+import { isSpatialTeachingTool, type SpatialTeachingTool } from "@/features/tools/courseware/spatial-teaching-content";
+import { SpatialTeachingContentEditor, SpatialTeachingSettings } from "./SpatialTeachingContentEditor";
 import { getTool } from "@/features/tools/registry";
 import { CUBE_COURSEWARE_CONTENT_VERSION, CUBE_COURSEWARE_LEGACY_VERSION, isCubeCoursewareTool, type CubeCoursewareTool } from "@/features/tools/courseware/cube-structures-content";
 import { CubeDraftCoursewarePicker, CubeFrozenCoursewarePreview } from "./CubeDraftCoursewarePicker";
@@ -528,7 +530,11 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
             ) : null}
             {selected?.type === "tool" ? (
               <div className="space-y-2 border-t border-line pt-3">
-                <p className="text-sm font-medium text-ink">{isCubeCoursewareTool(selected.tool) ? selected.tool.payload.title : selected.tool.toolId}</p>
+                <p className="text-sm font-medium text-ink">{isCubeCoursewareTool(selected.tool) || isSpatialTeachingTool(selected.tool) ? selected.tool.payload.title : selected.tool.toolId}</p>
+                {isSpatialTeachingTool(selected.tool) && <>
+                  <p className="text-xs text-muted">{t("spatialComponentFixedHint")}</p>
+                  <SpatialTeachingSettings tool={selected.tool} onChange={(tool) => updateDoc((current) => ({ ...current, layout: { ...current.layout, blocks: current.layout.blocks.map((block) => block.id === selected.id && block.type === "tool" ? { ...block, tool } : block) } }))} />
+                </>}
                 {isCubeCoursewareTool(selected.tool) && <>
                   <p className="text-xs text-muted">{t("cubeFrozenHint")}</p>
                   <CubeCoursewareToolbarSettings tool={selected.tool} onChange={(tool) => updateDoc((current) => ({ ...current, layout: { ...current.layout, blocks: current.layout.blocks.map((block) => block.id === selected.id && block.type === "tool" ? { ...block, tool } : block) } }))} />
@@ -629,14 +635,20 @@ function ToolComponentDialog({ disabled = false, surface = "microcourse", onCrea
   const contracts = toolCoursewareContractsForSurface(surface).filter((contract) => contract.contentVersion !== CUBE_COURSEWARE_LEGACY_VERSION);
   const [open, setOpen] = useState(false);
   const [cubeTool, setCubeTool] = useState<CubeCoursewareTool | null>(null);
+  const [spatialTool, setSpatialTool] = useState<SpatialTeachingTool | null>(null);
   const [selectedKey, setSelectedKey] = useState(
     contracts[0] ? `${contracts[0].toolId}:${contracts[0].contentVersion}` : "",
   );
   const selected = contracts.find((contract) => (
     `${contract.toolId}:${contract.contentVersion}` === selectedKey
   ));
+  const spatialVersion = selected?.contentVersion === DICE_COURSEWARE_VERSION || selected?.contentVersion === CUBE_NET_COURSEWARE_VERSION ? selected.contentVersion : null;
   const insert = () => {
     if (!selected) return;
+    if (spatialVersion) {
+      if (!spatialTool || spatialTool.contentVersion !== spatialVersion) return;
+      onCreated(spatialTool); setOpen(false); return;
+    }
     if (selected.contentVersion === CUBE_COURSEWARE_CONTENT_VERSION) {
       if (!cubeTool) return;
       onCreated(cubeTool);
@@ -645,13 +657,13 @@ function ToolComponentDialog({ disabled = false, surface = "microcourse", onCrea
     setOpen(false);
   };
   return (
-    <Dialog open={open} onOpenChange={(value) => { setCubeTool(null); setOpen(value); }}>
+    <Dialog open={open} onOpenChange={(value) => { setCubeTool(null); setSpatialTool(null); setOpen(value); }}>
       <DialogTrigger asChild>
         <CoursewareEditorToolbarButton aria-label={t("componentTool")} title={t("componentTool")} disabled={disabled || contracts.length === 0}>
           <Wrench className="size-4" />
         </CoursewareEditorToolbarButton>
       </DialogTrigger>
-      <DialogContent className="max-h-[90dvh] max-w-xl overflow-y-auto">
+      <DialogContent className={cn("max-h-[90dvh] max-w-xl overflow-y-auto", spatialVersion && "w-[min(960px,95vw)] max-w-none sm:max-w-none")}>
         <DialogHeader>
           <DialogTitle>{t("insertToolComponentTitle")}</DialogTitle>
           <DialogDescription>{t("toolAuthoringHint")}</DialogDescription>
@@ -662,17 +674,18 @@ function ToolComponentDialog({ disabled = false, surface = "microcourse", onCrea
             const Icon = tool?.icon ?? Wrench;
             const key = `${contract.toolId}:${contract.contentVersion}`;
             return (
-              <Button key={key} type="button" variant="secondary" aria-pressed={selectedKey === key} className={cn("h-auto justify-start rounded-xl px-4 py-3", selectedKey === key && "border-crater bg-moon/30")} onClick={() => { if (key !== selectedKey) { setCubeTool(null); setSelectedKey(key); } }}>
+              <Button key={key} type="button" variant="secondary" aria-pressed={selectedKey === key} className={cn("h-auto justify-start rounded-xl px-4 py-3", selectedKey === key && "border-crater bg-moon/30")} onClick={() => { if (key !== selectedKey) { setCubeTool(null); setSpatialTool(null); setSelectedKey(key); } }}>
                 <Icon className="size-4" />
-                {contract.contentVersion === CUBE_COURSEWARE_CONTENT_VERSION ? t("cubeSavedComponent") : tTools(`items.${contract.toolId}.name`)}
+                {contract.contentVersion === CUBE_COURSEWARE_CONTENT_VERSION ? t("cubeSavedComponent") : contract.contentVersion === DICE_COURSEWARE_VERSION ? t("diceComponent") : contract.contentVersion === CUBE_NET_COURSEWARE_VERSION ? t("cubeNetComponent") : tTools(`items.${contract.toolId}.name`)}
               </Button>
             );
           })}
         </div>
         {open && selected?.contentVersion === CUBE_COURSEWARE_CONTENT_VERSION && <CubeDraftCoursewarePicker onReady={setCubeTool} />}
+        {open && spatialVersion && <SpatialTeachingContentEditor key={spatialVersion} version={spatialVersion} onReady={setSpatialTool} />}
         <DialogFooter>
           <Button type="button" variant="secondary" onClick={() => setOpen(false)}>{t("cancel")}</Button>
-          <Button type="button" disabled={!selected || (selected.contentVersion === CUBE_COURSEWARE_CONTENT_VERSION && !cubeTool)} onClick={insert}>{t("insertComponent")}</Button>
+          <Button type="button" disabled={!selected || (selected.contentVersion === CUBE_COURSEWARE_CONTENT_VERSION && !cubeTool) || Boolean(spatialVersion && (!spatialTool || spatialTool.contentVersion !== spatialVersion))} onClick={insert}>{t("insertComponent")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

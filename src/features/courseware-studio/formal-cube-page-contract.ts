@@ -1,5 +1,6 @@
 import { coursewareCompositionPageSchema, createEmptyCoursewareCompositionPage } from "@/features/courseware-doc/composition-page-schema";
 import { cubeCoursewareV2ToolSchema, type CubeCoursewareTool } from "@/features/tools/courseware/cube-structures-content";
+import { spatialTeachingToolSchema } from "@/features/tools/courseware/spatial-teaching-content";
 
 export const FORMAL_CUBE_PAGE_SOURCE = "mathin-formal-cube" as const;
 
@@ -10,8 +11,8 @@ export const formalCubePageSchema = coursewareCompositionPageSchema.superRefine(
     || doc.overlay.nodes.some((node) => !["text", "rich_text", "shape"].includes(node.adapter)
       || node.resources.length > 0 || node.children.length > 0)
     || doc.layout.blocks.some((block) => block.type !== "node"
-      && (block.type !== "tool" || !cubeCoursewareV2ToolSchema.safeParse(block.tool).success))) {
-    context.addIssue({ code: "custom", message: "Formal cube pages contain self-contained v2 cube tools, text and shapes only" });
+      && (block.type !== "tool" || !(cubeCoursewareV2ToolSchema.safeParse(block.tool).success || spatialTeachingToolSchema.safeParse(block.tool).success)))) {
+    context.addIssue({ code: "custom", message: "Formal spatial pages contain registered self-contained spatial tools, text and shapes only" });
   }
 });
 
