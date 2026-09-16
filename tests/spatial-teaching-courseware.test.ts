@@ -74,7 +74,7 @@ describe("frozen cube-net and dice courseware", () => {
     reject({ ...initial.scene, trail: Array(129).fill(initial.scene.trail[0]) });
   });
 
-  it("uses the same documents on both authoring surfaces and keeps classroom input fail-closed", async () => {
+  it("uses the same documents on both authoring surfaces and registers only versioned classroom adapters", async () => {
     const tools = [diceTool(), netTool(await buildNet())];
     const page = createEmptyCoursewareCompositionPage();
     page.layout.blocks = tools.map((tool, index) => ({ id: `spatial-${index}`, type: "tool", tool, placement: { column: index * 6, row: 0, columnSpan: 6, rowSpan: 9 } }));
@@ -83,7 +83,7 @@ describe("frozen cube-net and dice courseware", () => {
     expect(formalManualPageSchema.parse(page)).toEqual(page);
     expect(collectCoursewareDocBindingKeys(page)).toBeNull();
     const audit = resolveClassroomInteractionAudit(page);
-    expect(audit.provider?.mode).toBe("read-only");
+    expect(audit.provider?.mode).toBe("snapshot");
     for (const tool of tools) {
       expect(spatialTeachingToolSchema.safeParse({ ...tool, draftId: "private" }).success).toBe(false);
       expect(spatialTeachingToolSchema.safeParse({ ...tool, contentVersion: "future" }).success).toBe(false);

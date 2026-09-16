@@ -1,6 +1,6 @@
 import type { InteractionTrigger } from "@/features/courseware-doc/interactions";
 import type { GameMirrorState } from "@/features/games/types";
-import { classroomToolInstanceKey, parseClassroomToolState, type ClassroomToolStates } from "@/features/tools/courseware/cube-structures-classroom";
+import { classroomToolInstanceKey, parseClassroomToolState, type ClassroomToolStates } from "@/features/tools/courseware/tool-classroom";
 import type { BoardItem } from "@/features/whiteboard/types";
 import { reduceStarLedger, type StarLedger } from "../stars";
 import type { CoursewarePage, SessionEvent } from "../types";

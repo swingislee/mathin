@@ -11,6 +11,7 @@ import { DiceXRayOverlay } from "./DiceXRayOverlay";
 interface Props {
   dice: readonly TeachingDie[];
   requested: DiceXRayTarget | null;
+  initialTarget?: DiceXRayTarget | null;
   interactive: boolean;
   geometries: readonly BufferGeometry[];
   edges: readonly BufferGeometry[];
@@ -20,12 +21,12 @@ interface Props {
 }
 
 /** 教学透明过程独立播放；相机保持可操作，逐帧只写临时材质。 */
-export function DiceXRayTransition({ dice, requested, interactive, geometries, edges, textures, onClick, onPresentation }: Props) {
+export function DiceXRayTransition({ dice, requested, initialTarget = null, interactive, geometries, edges, textures, onClick, onPresentation }: Props) {
   const invalidate = useThree((state) => state.invalidate);
-  const motion = useRef<DiceXRayMotion>({ target: null, progress: 0 });
-  const reported = useRef<DiceXRayPresentation>({ target: null, phase: "closed" });
+  const motion = useRef<DiceXRayMotion>({ target: initialTarget, progress: initialTarget ? 1 : 0 });
+  const reported = useRef<DiceXRayPresentation>({ target: initialTarget, phase: initialTarget ? "open" : "closed" });
   const group = useRef<Group>(null);
-  const [shown, setShown] = useState<DiceXRayTarget | null>(null);
+  const [shown, setShown] = useState<DiceXRayTarget | null>(initialTarget);
   const wanted = interactive && dice.some((die) => die.id === requested?.id) ? requested : null;
   const diceIds = dice.map((die) => die.id).join(",");
   useEffect(() => { invalidate(); }, [wanted?.id, wanted?.face, diceIds, invalidate]);

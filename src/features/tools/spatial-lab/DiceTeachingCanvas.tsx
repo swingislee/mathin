@@ -47,6 +47,7 @@ interface DiceCanvasProps {
   dice: readonly TeachingDie[]; trail: readonly DiceFootprint[]; selectedId: string; locale: string;
   tool: "orbit" | "pan" | "move" | "pips" | "color" | "transparent" | "inspect" | "xray"; arrows: boolean; busy: boolean; grid: boolean; axes: boolean; floor: boolean;
   xrayTarget: DiceXRayTarget | null; onClearXRay: () => void;
+  initialXRayTarget?: DiceXRayTarget | null;
   onXRayPresentation: (presentation: DiceXRayPresentation) => void;
   frame: CubeFrame; view: CubeView | "bottom"; cameraKey: number;
   snap: boolean; moveAxis: Axis; onMoveAxis: (axis: Axis) => void; onDragCommit: (operation: CubeMoveOperation) => void; onMoveUnavailable: () => void;
@@ -120,7 +121,7 @@ function DiceObjects(props: DiceCanvasProps & { isTap: () => boolean }) {
     {props.tool === "move" && !props.busy && <CubeMoveHandles presentation={dragPresentation} preview={preview} onPreview={setPreview}
       interaction={{ state: dragState, ids: [selectedId], scopeIds: dice.map((die) => die.id), axis: props.moveAxis, kind: "move", snapToGrid: props.snap, gridOrigin: DICE_DRAG_GRID_ORIGIN,
         isValidOperation: (operation) => moveDiceByDrag(dice, operation) !== null, onAxisChange: props.onMoveAxis, onSelect: props.onSelect, onCommit: props.onDragCommit, onUnavailable: props.onMoveUnavailable }} />}
-    <DiceXRayTransition dice={dice} requested={props.xrayTarget} interactive={props.tool === "xray" && !props.busy} geometries={geometries} edges={edges} textures={textures}
+    <DiceXRayTransition dice={dice} requested={props.xrayTarget} initialTarget={props.initialXRayTarget} interactive={props.tool === "xray" && !props.busy} geometries={geometries} edges={edges} textures={textures}
       onClick={(event, target) => clickFace(event, target.id, target.face)} onPresentation={props.onXRayPresentation} />
     {props.arrows && props.tool !== "xray" && !props.busy && !preview && <CubeNetFaceArrows key={occlusionKey} faces={arrows} occlude={occluders} onMove={(id) => { const arrow = arrows.find((item) => item.faceId === id); if (arrow) props.onMoveFace(arrow.dieId, arrow.face); }} />}
   </>;

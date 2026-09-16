@@ -29,12 +29,12 @@ export const TOOL_COURSEWARE_CONTRACTS = [
   {
     toolId: "spatial-lab", contentVersion: CUBE_NET_COURSEWARE_VERSION,
     authoringSurfaces: ["microcourse", "formal-courseware"] as const,
-    classroomSync: CLASSROOM_TOOL_STATE_SYNC_REQUIRED_V1,
+    classroomSync: CLASSROOM_TOOL_STATE_SYNC_V1,
   },
   {
     toolId: "spatial-lab", contentVersion: DICE_COURSEWARE_VERSION,
     authoringSurfaces: ["microcourse", "formal-courseware"] as const,
-    classroomSync: CLASSROOM_TOOL_STATE_SYNC_REQUIRED_V1,
+    classroomSync: CLASSROOM_TOOL_STATE_SYNC_V1,
   },
   {
     toolId: "spatial-lab",

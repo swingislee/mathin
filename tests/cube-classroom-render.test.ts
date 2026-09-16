@@ -7,18 +7,20 @@ import en from "../messages/en.json";
 import { CubeStructuresCourseware } from "@/features/tools/courseware/CubeStructuresCourseware";
 import type { CubeStructuresViewport } from "@/features/tools/spatial-lab/CubeStructuresViewport";
 import { createCubeCoursewareTool } from "@/features/tools/courseware/cube-structures-content";
-import { classroomToolInstanceKey, cubeCoursewareOriginHash, createClassroomToolState, cubeCoursewareInitialSession, type CubeClassroomSnapshot, type CubeCoursewareRuntime } from "@/features/tools/courseware/cube-structures-classroom";
+import { classroomToolInstanceKey, cubeCoursewareOriginHash, createClassroomToolState, cubeCoursewareInitialSession, type CubeClassroomSnapshot } from "@/features/tools/courseware/cube-structures-classroom";
 import { createCubeSession, operateCubeSession, startCubeRecording, pauseCubeRecording } from "@/features/tools/spatial-lab/cube-structures-session";
 import { cubeDraftSnapshot } from "@/features/tools/spatial-lab/cube-structures-draft";
 import { cubeStructuresMessages } from "@/features/tools/spatial-lab/cube-structures-messages";
 import CoursewareCompositionStage from "@/features/courseware-doc/CoursewareCompositionStage";
 import { createEmptyCoursewareCompositionPage } from "@/features/courseware-doc/composition-page-schema";
 import { addCoursewareCompositionTool } from "@/features/courseware-doc/composition-page-layout";
+import type { CoursewareToolRuntime } from "@/features/tools/courseware/tool-classroom";
+import { buildNet, diceTool, netTool } from "./fixtures/spatial-teaching-content";
 
 type ViewportProps = ComponentProps<typeof CubeStructuresViewport>;
 const viewport = vi.hoisted(() => ({ props: null as ViewportProps | null }));
-const renderedTools = vi.hoisted(() => new Map<string, CubeCoursewareRuntime | undefined>());
-vi.mock("@/features/tools/components", () => ({ CoursewareToolView: ({ tool, classroom }: { tool: { payload: { title: string } }; classroom?: CubeCoursewareRuntime }) => {
+const renderedTools = vi.hoisted(() => new Map<string, CoursewareToolRuntime | undefined>());
+vi.mock("@/features/tools/components", () => ({ CoursewareToolView: ({ tool, classroom }: { tool: { payload: { title: string } }; classroom?: CoursewareToolRuntime }) => {
   renderedTools.set(tool.payload.title, classroom); return null;
 } }));
 vi.mock("@/features/courseware-doc/DocStage", () => ({ default: () => null }));
@@ -71,6 +73,21 @@ async function click(selector: string) {
 }
 
 describe("cube classroom React adapter", () => {
+  it("routes both new workbenches through the registered common stage and blocks cross-version writes", async () => {
+    const dice = diceTool(), net = netTool(await buildNet());
+    const doc = addCoursewareCompositionTool(addCoursewareCompositionTool(createEmptyCoursewareCompositionPage(), dice), net);
+    const change = vi.fn().mockResolvedValue(undefined);
+    const classroomTools = { pageId: "page-new", docId: "doc-new", states: {}, onChange: change };
+    await act(async () => root.render(createElement(CoursewareCompositionStage, { doc, interactive: true, bindingUrls: {}, classroomTools })));
+    expect(host.querySelectorAll('[data-classroom-tool="synchronized"]')).toHaveLength(2);
+    expect(renderedTools.get(dice.payload.title)?.onChange).toBeDefined();
+    expect(renderedTools.get(net.payload.title)?.onChange).toBeDefined();
+    await expect(renderedTools.get(dice.payload.title)!.onChange!({ toolId: "spatial-lab", contentVersion: "cube-structures-lesson-v2", state: { session: base, view: null, cameraRevision: 0 } })).rejects.toThrow("VERSION_MISMATCH");
+    expect(change).not.toHaveBeenCalled();
+    await act(async () => root.render(createElement(CoursewareCompositionStage, { doc, interactive: false, bindingUrls: {}, classroomTools })));
+    expect(renderedTools.get(dice.payload.title)?.onChange).toBeUndefined(); expect(renderedTools.get(net.payload.title)?.onChange).toBeUndefined();
+  });
+
   it("routes live state by component and source digest, preserving new courseware copies", async () => {
     const second = { ...tool, payload: { ...tool.payload, title: "Second Cube" } };
     const doc = addCoursewareCompositionTool(addCoursewareCompositionTool(createEmptyCoursewareCompositionPage(), tool), second);
@@ -78,12 +95,15 @@ describe("cube classroom React adapter", () => {
     const snapshot: CubeClassroomSnapshot = { session: operateCubeSession(base, { kind: "axes", visible: false }), view: null, cameraRevision: 0 };
     const payload = createClassroomToolState("page-1", "doc-1", firstId, snapshot, hash);
     const change = vi.fn().mockResolvedValue(undefined);
-    const classroomTools = { docId: "doc-1", states: { [classroomToolInstanceKey("doc-1", firstId, hash)]: { payload, sequences: { writer: 1 } } }, onChange: change };
+    const classroomTools = { pageId: "page-1", docId: "doc-1", states: { [classroomToolInstanceKey("doc-1", firstId, hash)]: { payload, sequences: { writer: 1 } } }, onChange: change };
     await act(async () => root.render(createElement(CoursewareCompositionStage, { doc, interactive: true, bindingUrls: {}, classroomTools })));
-    expect(renderedTools.get(tool.payload.title)?.state).toEqual(snapshot);
+    expect(renderedTools.get(tool.payload.title)?.state).toEqual(payload);
     expect(renderedTools.get(second.payload.title)?.state).toBeUndefined();
-    await renderedTools.get(tool.payload.title)!.onChange!(snapshot);
-    expect(change).toHaveBeenCalledWith(firstId, hash, snapshot);
+    const update = { toolId: "spatial-lab" as const, contentVersion: "cube-structures-lesson-v2" as const, state: snapshot };
+    await renderedTools.get(tool.payload.title)!.onChange!(update);
+    expect(change).toHaveBeenCalledWith(firstId, hash, update);
+    await act(async () => root.render(createElement(CoursewareCompositionStage, { doc, interactive: true, bindingUrls: {}, classroomTools: { ...classroomTools, pageId: "page-2" } })));
+    expect(renderedTools.get(tool.payload.title)?.state).toBeUndefined();
     const updated = { ...doc, layout: { ...doc.layout, blocks: doc.layout.blocks.map((block) => block.id === firstId && block.type === "tool"
       ? { ...block, tool: { ...tool, payload: { ...tool.payload, toolbar: [] } } } : block) } };
     await act(async () => root.render(createElement(CoursewareCompositionStage, { doc: updated, interactive: false, bindingUrls: {}, classroomTools })));

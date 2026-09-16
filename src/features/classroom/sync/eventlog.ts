@@ -3,7 +3,7 @@ import type { SessionEvent, SessionEventType } from "../types";
 import { STORE_META, STORE_OUTBOX, idbGet, idbListByIndex, idbPut } from "./idb";
 import type { FxMessage, Transport } from "./transports";
 import { compareViewport, viewportEvent } from "../live/classroom-viewport";
-import { classroomToolInstanceKey, parseClassroomToolState } from "@/features/tools/courseware/cube-structures-classroom";
+import { classroomToolInstanceKey, parseClassroomToolState } from "@/features/tools/courseware/tool-classroom";
 
 // 课堂事件流（08-§3.4）：一切操作先写本地（内存 + outbox），UI 零等待网络；
 // 幂等靠客户端 uuid 主键 + (deviceId, seq)，排序靠单写者天然有序。

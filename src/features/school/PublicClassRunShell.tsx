@@ -30,7 +30,7 @@ import { useClassroomPaging } from "@/features/classroom/live/useClassroomPaging
 import { useRehearsalRoom } from "@/features/classroom/live/useRehearsalRoom";
 import { DocCoursewarePage } from "@/features/classroom/live/DocCoursewarePage";
 import { RehearsalDevices } from "@/features/classroom/preparation/RehearsalDevices";
-import { createClassroomToolState } from "@/features/tools/courseware/cube-structures-classroom";
+import { createClassroomToolState } from "@/features/tools/courseware/tool-classroom";
 import { enterFromPreparation, initialClassroomView, type ClassroomEntry, type ClassroomRunMode, type ClassroomRunState } from "@/features/classroom/preparation/preparation-contract";
 import {
   endPublicClassRunAction,
@@ -384,10 +384,12 @@ function HostRunSurface({
         gameMirror={rehearsalRoom.state.games[selectedPage.pageDocId] ?? null}
         onGameMirror={(state) => { void rehearsalRoom.log?.append("game_state", { pageId: selectedPage.pageDocId, state }); }}
         classroomTools={{
+          pageId: selectedPage.pageDocId,
           docId: selectedPage.pageDocId,
           states: rehearsalRoom.state.tools?.[selectedPage.pageDocId] ?? {},
-          onChange: canTeach ? async (instanceId, originHash, snapshot) => {
-            await rehearsalRoom.log?.append("tool_state", createClassroomToolState(selectedPage.pageDocId, selectedPage.pageDocId, instanceId, snapshot, originHash));
+          onChange: canTeach && rehearsalRoom.log ? async (instanceId, originHash, snapshot) => {
+            if (!rehearsalRoom.log) throw new Error("CLASSROOM_SYNC_NOT_READY");
+            await rehearsalRoom.log.append("tool_state", createClassroomToolState(selectedPage.pageDocId, selectedPage.pageDocId, instanceId, snapshot, originHash));
           } : undefined,
         }}
       /> : <StagePreview doc={selectedPage.doc} bindingUrls={selectedPage.bindingUrls} stageMode={selectedPage.aspect === "4:3" ? "board43" : "natural"} className="size-full" /> : <div className="grid size-full place-items-center text-sm text-muted">{t("candidateNoPreview")}</div>}

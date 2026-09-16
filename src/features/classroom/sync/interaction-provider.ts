@@ -70,7 +70,7 @@ export const CLASSROOM_H5_STATE_SYNC_REQUIRED_V1 = Object.freeze({
   maxPayloadBytes: 0,
 } satisfies ClassroomInteractionSyncProvider);
 
-/** 已接入的固定立方体组件逐实例回放；预算为整条 payload 的 UTF-8 字节。 */
+/** 已登记状态合同的工具逐实例回放；预算为整条 payload 的 UTF-8 字节。 */
 export const CLASSROOM_TOOL_STATE_SYNC_V1 = Object.freeze({
   schema: CLASSROOM_INTERACTION_SYNC_SCHEMA,
   version: CLASSROOM_INTERACTION_SYNC_VERSION,

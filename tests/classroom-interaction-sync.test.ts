@@ -31,6 +31,7 @@ import { emptyStarLedger } from "@/features/classroom/stars";
 import type { GameMirrorState } from "@/features/games/types";
 import { GAME_COURSEWARE_CONTRACTS } from "@/features/games/courseware/registry";
 import { TOOL_COURSEWARE_CONTRACTS } from "@/features/tools/courseware/registry";
+import { hasClassroomToolAdapter } from "@/features/tools/courseware/tool-classroom";
 
 const root = process.cwd();
 const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
@@ -133,7 +134,7 @@ describe("classroom interaction synchronization audit", () => {
     expect(TOOL_COURSEWARE_CONTRACTS.every((contract) => {
       const provider: ClassroomInteractionSyncProvider = contract.classroomSync;
       return isClassroomInteractionSyncProvider(provider)
-        && (provider.mode === "read-only" || contract.contentVersion === "cube-structures-lesson-v2")
+        && (provider.mode === "read-only" || hasClassroomToolAdapter(contract))
         && provider.protocol === "tool-state-v1";
     })).toBe(true);
     expect(isClassroomInteractionSyncProvider({

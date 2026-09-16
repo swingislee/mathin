@@ -17,7 +17,7 @@ import { cubeStructuresMessages } from "./cube-structures-messages";
 import { closeDiceFaces, diceFaceArrow, diceSurface, restoreDiceScene, styleDiceFaces, type DiceSurfaceStyle } from "./dice-teaching-display";
 import { DiceFaceInspection } from "./DiceFaceInspection";
 import { diceXRayDisplay, nextDiceXRayTarget, type DiceXRayTarget } from "./dice-xray-observation";
-import type { DiceXRayPresentation } from "./dice-xray-animation";
+import { sameDiceXRayTarget, type DiceXRayPresentation } from "./dice-xray-animation";
 import { useCubeNetPlayback } from "./useCubeNetPlayback";
 import { diceTeachingMessages } from "./dice-teaching-messages";
 import { commitDiceDrag } from "./dice-drag-adapter";
@@ -26,6 +26,9 @@ import { DICE_FACES, DICE_TEACHING_VERSION, FACE_NORMALS, MAX_DICE, arrangeDice,
 import styles from "./CubeStructuresWorkbench.module.css";
 import diceStyles from "./DiceTeachingWorkspace.module.css";
 import type { DiceTeachingSnapshot } from "../courseware/spatial-teaching-content";
+import { teachingRandom, type DiceLiveSnapshot, type DiceTeachingCommand, type TeachingWorkbenchPort } from "../courseware/workbench-classroom-contract";
+import type { DiceThrow } from "./dice-physics";
+type DiceInitial = DiceTeachingSnapshot & Partial<Pick<DiceLiveSnapshot, "xrayTarget" | "observation">>;
 
 const DiceTeachingCanvas = dynamic(() => import("./DiceTeachingCanvas"), { ssr: false });
 type Panel = "settings" | "arrange" | "pips" | "opposite" | "puzzle" | "roll" | "throwing" | "color" | "transparent" | "restore" | "observe" | null;
@@ -45,8 +48,12 @@ function fitFrame(dice: readonly TeachingDie[]): CubeFrame {
 function Check({ label, checked, onChange, disabled }: { label: string; checked: boolean; onChange: (value: boolean) => void; disabled?: boolean }) {
   return <label className="flex items-center gap-2 text-xs"><Checkbox aria-label={label} checked={checked} disabled={disabled} onCheckedChange={(value) => onChange(value === true)} />{label}</label>;
 }
-export default function DiceTeachingWorkspace({ locale, workspaceSelector, initial, onSnapshot, readOnly = false, courseware = false }: {
-  locale: string; workspaceSelector?: ReactNode; initial?: DiceTeachingSnapshot;
+function DiceActions({ items, busy }: { items: readonly { label: string; run: () => void; disabled?: boolean }[]; busy: boolean }) {
+  return <div className="flex flex-wrap gap-1">{items.map((item) => <Button key={item.label} type="button" size="sm" variant="secondary" disabled={busy || item.disabled} onClick={item.run}>{item.label}</Button>)}</div>;
+}
+export default function DiceTeachingWorkspace({ locale, workspaceSelector, initial, onSnapshot, readOnly = false, courseware = false, classroom }: {
+  locale: string; workspaceSelector?: ReactNode; initial?: DiceInitial;
+  classroom?: TeachingWorkbenchPort<DiceLiveSnapshot, DiceTeachingCommand>;
   onSnapshot?: (snapshot: DiceTeachingSnapshot | null) => void; readOnly?: boolean; courseware?: boolean;
 }) {
   const m = diceTeachingMessages(locale);
@@ -57,16 +64,16 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector, initi
   const scene = history.present;
   const [selectedId, setSelectedId] = useState(initial?.selectedId ?? "dice-1");
   const selected = scene.dice.find((die) => die.id === selectedId) ?? scene.dice[0];
-  const [panel, setPanel] = useState<Panel>(null);
-  const [tool, setTool] = useState<"orbit" | "pan" | "move" | "pips" | "color" | "transparent" | "inspect" | "xray">("orbit");
-  const [xrayTarget, setXRayTarget] = useState<DiceXRayTarget | null>(null);
-  const [xrayPresentation, setXRayPresentation] = useState<DiceXRayPresentation>({ target: null, phase: "closed" });
+  const [panel, setPanel] = useState<Panel>(initial?.observation?.panel ?? null);
+  const [tool, setTool] = useState<"orbit" | "pan" | "move" | "pips" | "color" | "transparent" | "inspect" | "xray">(initial?.xrayTarget ? "xray" : "orbit");
+  const [xrayTarget, setXRayTarget] = useState<DiceXRayTarget | null>(initial?.xrayTarget ?? null);
+  const [xrayPresentation, setXRayPresentation] = useState<DiceXRayPresentation>({ target: initial?.xrayTarget ?? null, phase: initial?.xrayTarget ? "open" : "closed" });
   const [color, setColor] = useState<CubeColor>(CUBE_COLORS[0]);
   const [surfaceScope, setSurfaceScope] = useState<"face" | "die">("face");
   const [surfaceTarget, setSurfaceTarget] = useState<{ id: string; face: DiceFace } | null>(null);
   const [opacityPreview, setOpacityPreview] = useState<number | null>(null);
   const [arrows, setArrows] = useState(initial?.arrows ?? false);
-  const [inspectionFace, setInspectionFace] = useState<DiceFace>("y+");
+  const [inspectionFace, setInspectionFace] = useState<DiceFace>(initial?.observation?.face ?? "y+");
   const [grid, setGrid] = useState(initial?.grid ?? true), [axes, setAxes] = useState(initial?.axes ?? false), [floor, setFloor] = useState(initial?.floor ?? true);
   const [view, setView] = useState<CubeView | "bottom">(initial?.view ?? "angle");
   const [cameraKey, setCameraKey] = useState(0);
@@ -76,47 +83,62 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector, initi
   const [onlyTopAfterThrow, setOnlyTopAfterThrow] = useState(true);
   const [scope, setScope] = useState<DicePuzzle["scope"]>("each");
   const [target, setTarget] = useState(7);
-  const [pairFace, setPairFace] = useState<DiceFace>("y+");
+  const [pairFace, setPairFace] = useState<DiceFace>(initial?.observation?.pair ?? "y+");
   const [preparing, setPreparing] = useState(false);
   const [dragging, setDragging] = useState(false);
   const request = useRef(0);
-  const playback = useCubeNetPlayback<TeachingDie[]>({ essential: true });
+  const playback = useCubeNetPlayback<TeachingDie[]>({ essential: true, interactive: false });
   const cancelPlayback = playback.cancel;
   const busy = preparing || playback.playing;
+  const capture = classroom?.capture;
   useEffect(() => {
-    onSnapshot?.(busy || dragging || opacityPreview !== null ? null : { scene, selectedId: selected.id, arrows, grid, axes, floor, view, frame });
-  }, [onSnapshot, busy, dragging, opacityPreview, scene, selected.id, arrows, grid, axes, floor, view, frame]);
+    const snapshot = busy || dragging || opacityPreview !== null ? null : { scene, selectedId: selected.id, arrows, grid, axes, floor, view, frame };
+    onSnapshot?.(snapshot);
+    const xraySettled = sameDiceXRayTarget(xrayTarget, xrayPresentation.target) && xrayPresentation.phase === (xrayTarget ? "open" : "closed");
+    capture?.(snapshot && xraySettled ? { ...snapshot, xrayTarget, observation: { panel: panel === "observe" || panel === "opposite" ? panel : null, face: inspectionFace, pair: pairFace } } : null, cameraKey);
+  }, [onSnapshot, capture, busy, dragging, opacityPreview, scene, selected.id, arrows, grid, axes, floor, view, frame, xrayTarget, xrayPresentation, panel, inspectionFace, pairFace, cameraKey, classroom?.pending]);
   const selectedFace = surfaceTarget?.id === selected.id ? surfaceTarget.face : null;
   const surfaceFaces = surfaceScope === "die" ? DICE_FACES : selectedFace ? [selectedFace] : [];
   const opacity = Math.round(diceSurface(selected, selectedFace ?? "y+").opacity * 100);
   const displayed = opacityPreview !== null && !busy ? styleDiceFaces(scene.dice, selected.id, surfaceFaces, { opacity: opacityPreview / 100 }) : playback.frame ?? scene.dice;
   const xray = !busy ? diceXRayDisplay(displayed, xrayPresentation.target) : null;
-  const commit = useCallback((next: DiceScene) => { setXRayTarget(null); setHistory((h) => ({ past: [...h.past, h.present].slice(-100), present: next, future: [] })); }, []);
-  const cancel = useCallback(() => { request.current++; setPreparing(false); setXRayTarget(null); cancelPlayback(); }, [cancelPlayback]);
+  const commit = useCallback((next: DiceScene) => { setXRayTarget(null); setHistory((h) => ({ past: [...h.past, h.present].slice(-100), present: next, future: [] })); }, [setXRayTarget, setHistory]);
+  const cancelClassroom = classroom?.cancel;
+  const invalidateRequest = useCallback(() => { request.current++; }, []);
+  const cancel = useCallback(() => { cancelClassroom?.(); request.current++; setPreparing(false); setXRayTarget(null); cancelPlayback(); }, [cancelPlayback, cancelClassroom, setPreparing, setXRayTarget]);
   useEffect(() => {
     const stop = (event: KeyboardEvent) => { if (event.key === "Escape") cancel(); };
-    window.addEventListener("keydown", stop); window.addEventListener("blur", cancel);
-    return () => { cancel(); window.removeEventListener("keydown", stop); window.removeEventListener("blur", cancel); };
-  }, [cancel]);
-  const animate = (next: DiceScene, duration = 650) => {
+    if (!readOnly) { window.addEventListener("keydown", stop); window.addEventListener("blur", cancel); }
+    return () => { invalidateRequest(); window.removeEventListener("keydown", stop); window.removeEventListener("blur", cancel); };
+  }, [cancel, readOnly, invalidateRequest]);
+  const animateLocal = (next: DiceScene, duration = 650) => {
     if (busy) return;
     setXRayTarget(null);
     setNotice("");
     const from = scene.dice;
     playback.start({ durationMs: duration, sample: (elapsed) => interpolateDice(from, next.dice, easing(elapsed / duration)), onFinish: () => commit(next) });
   };
+  const runCommand = (command: DiceTeachingCommand, execute: () => void | Promise<void>) => {
+    const perform = () => { playback.seekFrom(null); return execute(); };
+    if (classroom) classroom.command(command, perform); else void perform();
+  };
+  const animate = (next: DiceScene, duration = 650) => { if (!busy) runCommand({ kind: "tween", target: next, durationMs: duration }, () => animateLocal(next, duration)); };
+  const applyXRay = (target: DiceXRayTarget | null) => { if (target) { setTool("xray"); setPanel(null); } setXRayTarget(target); };
+  const requestXRay = (target: DiceXRayTarget | null) => {
+    if (!sameDiceXRayTarget(target, xrayTarget)) runCommand({ kind: "xray", target }, () => applyXRay(target));
+  };
   const changed = (dice: TeachingDie[], extra: Partial<DiceScene> = {}) => ({ ...scene, dice, puzzle: null, ...extra });
   const selectPanel = (next: Exclude<Panel, null>) => {
     const open = panel !== next;
     setPanel(open ? next : null);
     setTool(!open ? "orbit" : next === "arrange" ? "move" : next === "observe" ? "inspect" : ["pips", "color", "transparent"].includes(next) ? next as "pips" | "color" | "transparent" : "orbit");
-    setNotice(""); setOpacityPreview(null); setXRayTarget(null);
+    setNotice(""); setOpacityPreview(null); requestXRay(null);
   };
-  const closePanel = () => { setPanel(null); setTool("orbit"); setOpacityPreview(null); setXRayTarget(null); };
-  const navigate = (next: "orbit" | "pan") => { setTool(next); setXRayTarget(null); };
+  const closePanel = () => { setPanel(null); setTool("orbit"); setOpacityPreview(null); requestXRay(null); };
+  const navigate = (next: "orbit" | "pan") => { setTool(next); requestXRay(null); };
   const toggleXRay = () => {
     if (busy) return;
-    setTool(tool === "xray" ? "orbit" : "xray"); setXRayTarget(null); setPanel(null);
+    setTool(tool === "xray" ? "orbit" : "xray"); requestXRay(null); setPanel(null);
     setNotice(""); setOpacityPreview(null);
   };
   const fit = (dice = scene.dice) => { const bounds = fitFrame(dice); setFrame({ ...bounds, radius: bounds.radius + (arrows ? 1 : 0) }); setCameraKey((key) => key + 1); };
@@ -153,13 +175,13 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector, initi
   const applyStyle = (style: DiceSurfaceStyle) => { if (!busy && surfaceFaces.length) commit({ ...scene, dice: styleDiceFaces(scene.dice, selected.id, surfaceFaces, style) }); };
   const chooseFace = (id: string, face: DiceFace) => {
     if (busy) return;
-    if (tool === "xray") { setXRayTarget((current) => nextDiceXRayTarget(current, { id, face })); return; }
+    if (tool === "xray") { requestXRay(nextDiceXRayTarget(xrayTarget, { id, face })); return; }
     setSurfaceTarget({ id, face }); setOpacityPreview(null);
     if (tool === "inspect") setInspectionFace(face);
     if (tool === "pips") toggleFace(id, face);
     if (tool === "color") commit({ ...scene, dice: styleDiceFaces(scene.dice, id, surfaceScope === "die" ? DICE_FACES : [face], { color }) });
   };
-  const inspect = (id: string, face: DiceFace) => { setSelectedId(id); setInspectionFace(face); setPanel("observe"); setTool("inspect"); setXRayTarget(null); setOpacityPreview(null); setNotice(""); };
+  const inspect = (id: string, face: DiceFace) => { setSelectedId(id); setInspectionFace(face); setPanel("observe"); setTool("inspect"); requestXRay(null); setOpacityPreview(null); setNotice(""); };
   const openFaces = (id: string, faces: readonly DiceFace[]) => {
     if (busy) return;
     const dice = scene.dice.map((die) => die.id === id ? openDieFaces(die, faces) : die);
@@ -175,16 +197,16 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector, initi
   const closeFaces = () => animate({ ...scene, dice: scene.dice.map((die) => die.id === selected.id ? closeDieFaces(die) : die) }, 850);
   const toggleArrows = () => {
     if (busy) return;
-    if (tool === "xray") { setTool("orbit"); setXRayTarget(null); setArrows(true); return; }
+    if (tool === "xray") { setTool("orbit"); requestXRay(null); setArrows(true); return; }
     setArrows((value) => !value);
   };
-  const roll = (direction: RollDirection) => {
-    if (busy) return;
-    const next = controlledRoll(scene, selected.id, direction, leaveTrail);
+  const rollLocal = (id: string, direction: RollDirection, trail: boolean) => {
+    const next = controlledRoll(scene, id, direction, trail);
     if (!next) { setNotice(m.rollBlocked); return; }
     setNotice("");
-    playback.start({ durationMs: 700, sample: (elapsed) => scene.dice.map((die) => die.id === selected.id ? sampleControlledRoll(die, direction, easing(elapsed / 700)) : die), onFinish: () => commit(next) });
+    playback.start({ durationMs: 700, sample: (elapsed) => scene.dice.map((die) => die.id === id ? sampleControlledRoll(die, direction, easing(elapsed / 700)) : die), onFinish: () => commit(next) });
   };
+  const roll = (direction: RollDirection) => { if (!busy) runCommand({ kind: "roll", id: selected.id, direction, trail: leaveTrail }, () => rollLocal(selected.id, direction, leaveTrail)); };
   const generatePuzzle = () => {
     if (busy) return;
     const solution = solveDicePuzzle(scene.dice, scope, target);
@@ -196,19 +218,53 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector, initi
     const revealed = !scene.puzzle.revealed;
     commit({ ...scene, dice: contactVisibility(scene.dice, !revealed), puzzle: { ...scene.puzzle, revealed } });
   };
+  const preparedThrow = useRef<{ seed: number; result: DiceThrow } | null>(null);
+  const playThrow = async (command: Extract<DiceTeachingCommand, { kind: "throw" }>) => {
+    const token = ++request.current;
+    setNotice(""); setPreparing(true); setXRayTarget(null);
+    try {
+      const { simulateDiceThrow, sampleDiceThrow } = await import("./dice-physics");
+      const result = preparedThrow.current?.seed === command.seed ? preparedThrow.current.result
+        : await simulateDiceThrow(scene.dice, teachingRandom(command.seed), () => request.current !== token);
+      preparedThrow.current = null;
+      if (request.current !== token) return;
+      setPreparing(false); setFrame({ center: { x: 0, y: 0.7, z: 0 }, radius: 6.5 }); setCameraKey((key) => key + 1);
+      playback.start({ durationMs: command.durationMs, sample: (elapsed) => elapsed < 400 ? interpolateDice(scene.dice, result.frames[0], easing(elapsed / 400))
+        : sampleDiceThrow(result, (elapsed - 400) * result.durationMs / Math.max(1, command.durationMs - 400)),
+      onFinish: () => { commit(command.target); if (!command.settled) setNotice(m.cocked); } });
+    } catch {
+      // 物理表现加载失败时仍采用教师权威结果，不在展示端重新抽点数。
+      if (request.current === token) { setPreparing(false); commit(command.target); setNotice(m.throwFailed); }
+    }
+  };
+  const executeCommand = (command: DiceTeachingCommand) => {
+    switch (command.kind) {
+      case "tween": animateLocal(command.target, command.durationMs); break;
+      case "roll": rollLocal(command.id, command.direction, command.trail); break;
+      case "throw": return playThrow(command);
+      case "xray": applyXRay(command.target); break;
+    }
+  };
+  const replayed = useRef<unknown>(null);
+  useEffect(() => {
+    if (classroom?.replay && replayed.current !== classroom.replay) {
+      replayed.current = classroom.replay; playback.seekFrom(classroom.replay.startedAt); void executeCommand(classroom.replay.command);
+    }
+  });
   const throwDice = async () => {
     if (busy) return;
     const token = ++request.current, before = scene;
     setNotice(""); setPreparing(true);
     try {
-      const { simulateDiceThrow, sampleDiceThrow } = await import("./dice-physics");
-      const result = await simulateDiceThrow(before.dice, Math.random, () => request.current !== token);
+      const { simulateDiceThrow } = await import("./dice-physics");
+      const seed = Math.floor(Math.random() * 0x100000000);
+      const result = await simulateDiceThrow(before.dice, teachingRandom(seed), () => request.current !== token);
       if (request.current !== token) return;
-      setPreparing(false); setFrame({ center: { x: 0, y: 0.7, z: 0 }, radius: 6.5 }); setCameraKey((key) => key + 1);
       const finalDice = result.frames[result.frames.length - 1];
       const next = { ...before, dice: onlyTopAfterThrow ? topOnly(finalDice) : finalDice, puzzle: null, trail: [] };
-      playback.start({ durationMs: result.durationMs + 400, sample: (elapsed) => elapsed < 400 ? interpolateDice(before.dice, result.frames[0], easing(elapsed / 400)) : sampleDiceThrow(result, elapsed - 400),
-        onFinish: () => { commit(next); if (!result.settled) setNotice(m.cocked); } });
+      preparedThrow.current = { seed, result };
+      const command: Extract<DiceTeachingCommand, { kind: "throw" }> = { kind: "throw", seed, target: next, durationMs: result.durationMs + 400, settled: result.settled };
+      runCommand(command, () => playThrow(command));
     } catch { if (request.current === token) { setPreparing(false); setNotice(m.throwFailed); } }
   };
   const diePicker = <div className="space-y-2"><p className="text-xs text-muted">{m.selected}</p><div className="flex flex-wrap gap-1">{scene.dice.map((die) => <Button key={die.id} type="button" size="sm" variant={selected.id === die.id ? "secondary" : "ghost"} disabled={busy} onClick={() => setSelectedId(die.id)} title={`${m.die} ${die.id.replace("dice-", "")} · ${m[die.hand]}`}>
@@ -216,11 +272,10 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector, initi
   </Button>)}</div></div>;
   const pairValue = (face: DiceFace) => selected.hidden.includes(face) ? "?" : String(faceValue(selected.hand, face));
   const worldFaces = DICE_FACES.map((direction) => ({ direction, face: worldFace({ ...selected, rotation: nearestDiceRotation(selected.rotation) }, direction) }));
-  const actions = (items: readonly { label: string; run: () => void; disabled?: boolean }[]) => <div className="flex flex-wrap gap-1">{items.map((item) => <Button key={item.label} type="button" size="sm" variant="secondary" disabled={busy || item.disabled} onClick={item.run}>{item.label}</Button>)}</div>;
-  return <section className={styles.workspace} data-dice-teaching={DICE_TEACHING_VERSION} data-workbench-mode={courseware ? "courseware" : undefined} inert={readOnly}>
+  return <section className={styles.workspace} data-dice-teaching={DICE_TEACHING_VERSION} data-workbench-mode={courseware ? "courseware" : undefined} inert={readOnly || classroom?.pending}>
     <div className={styles.viewport}><div className={`${styles.canvas} ${diceStyles.canvas}`} data-dice-stage>
       <DiceTeachingCanvas dice={displayed} trail={scene.trail} selectedId={selected.id} locale={locale} tool={tool} arrows={arrows} busy={busy} grid={grid} axes={axes} floor={floor} frame={frame} view={view} cameraKey={cameraKey}
-        xrayTarget={xrayTarget} onClearXRay={() => setXRayTarget(null)} onXRayPresentation={setXRayPresentation}
+        xrayTarget={xrayTarget} initialXRayTarget={initial?.xrayTarget} onClearXRay={() => requestXRay(null)} onXRayPresentation={setXRayPresentation}
         snap={snap} moveAxis={moveAxis} onMoveAxis={setMoveAxis} onDragCommit={dragCommit} onDraggingChange={setDragging} onMoveUnavailable={() => setNotice(structureMessages.moveAxisHidden)}
         onSelect={setSelectedId} onFace={chooseFace} onMoveFace={moveFace} />
       <div className={`${styles.dock} ${styles.meta}`} data-dice-overlay><CubeIconButton label={m.settings} active={panel === "settings"} onClick={() => selectPanel("settings")}><Settings2 /></CubeIconButton><span className="self-center pr-1 text-xs">{m.title}</span></div>
@@ -258,7 +313,7 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector, initi
               <Select value={selected.id} disabled={busy} onValueChange={setSelectedId}><SelectTrigger aria-label={m.selected} className="h-9 w-auto min-w-28"><SelectValue /></SelectTrigger><SelectContent>{scene.dice.map((die) => <SelectItem key={die.id} value={die.id}>{m.die} {die.id.replace("dice-", "")} · {m[die.hand]}</SelectItem>)}</SelectContent></Select>
               <div className={diceStyles.rollButtons}>{([{ direction: "x-", label: m.rollLeft, icon: <ArrowLeft /> }, { direction: "z-", label: m.rollBack, icon: <ArrowUp /> }, { direction: "z+", label: m.rollForward, icon: <ArrowDown /> }, { direction: "x+", label: m.rollRight, icon: <ArrowRight /> }] as const).map((item) => <Button key={item.direction} size="sm" variant="secondary" disabled={busy} title={item.label} aria-label={item.label} onClick={() => roll(item.direction)}>{item.icon}{item.direction[1]}{item.direction[0].toUpperCase()}</Button>)}</div>
               <Check label={m.trail} checked={leaveTrail} onChange={setLeaveTrail} disabled={busy} />
-              {actions([{ label: m.clearTrail, run: () => commit({ ...scene, trail: [] }), disabled: !scene.trail.length }, { label: m.gridReady, run: () => arrange("apart") }])}
+              <DiceActions busy={busy} items={[{ label: m.clearTrail, run: () => commit({ ...scene, trail: [] }), disabled: !scene.trail.length }, { label: m.gridReady, run: () => arrange("apart") }]} />
               <p className="w-full text-muted">{m.rollHint}</p>
             </div> : <>
               {diePicker}
@@ -268,37 +323,37 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector, initi
                 <DiceFaceInspection die={selected} face={inspectionFace} locale={locale} label={m.faces[worldFaces.find((item) => item.face === inspectionFace)?.direction ?? inspectionFace]} />
                 <div className="flex flex-wrap gap-1"><Button size="sm" variant="secondary" disabled={busy} onClick={() => moveFace(selected.id, inspectionFace)}>{isDiceFaceMoved(selected, inspectionFace) ? m.returnOneFace : m.moveOneFace}</Button><Button size="sm" variant="secondary" disabled={busy} onClick={() => toggleFace(selected.id, inspectionFace)}>{selected.hidden.includes(inspectionFace) ? m.revealOneFace : m.hideOneFace}</Button></div>
               </>}
-              {panel === "restore" && <><p className="leading-5 text-muted">{m.restoreHint}</p>{actions([{ label: m.closeFaces, run: closeFaces }, { label: m.closeAllFaces, run: () => animate(closeDiceFaces(scene)) }, { label: m.restoreScene, run: () => { const next = restoreDiceScene(scene); animate(next); fit(next.dice); setView("angle"); } }])}</>}
+              {panel === "restore" && <><p className="leading-5 text-muted">{m.restoreHint}</p><DiceActions busy={busy} items={[{ label: m.closeFaces, run: closeFaces }, { label: m.closeAllFaces, run: () => animate(closeDiceFaces(scene)) }, { label: m.restoreScene, run: () => { const next = restoreDiceScene(scene); animate(next); fit(next.dice); setView("angle"); } }]} />{classroom && <Button size="sm" variant="secondary" disabled={busy} onClick={classroom.reset} data-teaching-reset>{classroom.resetLabel ?? m.restoreScene}</Button>}</>}
               {(panel === "color" || panel === "transparent") && <>
                 <p className="leading-5 text-muted">{panel === "color" ? m.colorHint : m.transparentHint}</p>
                 <div className="flex gap-1" role="group" aria-label={m.surfaceScope}>{(["face", "die"] as const).map((scope) => <Button key={scope} size="sm" variant={surfaceScope === scope ? "secondary" : "ghost"} disabled={busy} aria-pressed={surfaceScope === scope} onClick={() => { setSurfaceScope(scope); setOpacityPreview(null); }}>{scope === "face" ? m.oneFace : m.wholeDie}</Button>)}</div>
                 <div className="grid grid-cols-2 gap-1">{worldFaces.map(({ direction, face }) => <Button key={direction} size="sm" variant={selectedFace === face ? "secondary" : "ghost"} disabled={busy || !face} aria-pressed={selectedFace === face} onClick={() => face && chooseFace(selected.id, face)}>{m.faces[direction]}</Button>)}</div>
                 {surfaceScope === "face" && !selectedFace && <p className="text-muted">{m.chooseFace}</p>}
-                {panel === "color" ? <><CubeColorPicker value={color} labels={cubeStructuresMessages(locale === "en" ? "en" : "zh").colors} label={m.color} disabled={busy} onChange={(value) => { setColor(value); applyStyle({ color: value }); }} />{actions([{ label: m.white, disabled: !surfaceFaces.length, run: () => applyStyle({ color: undefined }) }])}</>
-                  : <><CubeOpacitySlider key={`${selected.id}:${selectedFace}:${surfaceScope}:${opacity}`} value={opacity} label={m.opacity} disabled={busy || !surfaceFaces.length} onPreview={setOpacityPreview} onCommit={(value) => applyStyle({ opacity: value / 100 })} />{actions([{ label: m.opaque, disabled: !surfaceFaces.length, run: () => applyStyle({ opacity: 1 }) }])}</>}
+                {panel === "color" ? <><CubeColorPicker value={color} labels={cubeStructuresMessages(locale === "en" ? "en" : "zh").colors} label={m.color} disabled={busy} onChange={(value) => { setColor(value); applyStyle({ color: value }); }} /><DiceActions busy={busy} items={[{ label: m.white, disabled: !surfaceFaces.length, run: () => applyStyle({ color: undefined }) }]} /></>
+                  : <><CubeOpacitySlider key={`${selected.id}:${selectedFace}:${surfaceScope}:${opacity}`} value={opacity} label={m.opacity} disabled={busy || !surfaceFaces.length} onPreview={setOpacityPreview} onCommit={(value) => applyStyle({ opacity: value / 100 })} /><DiceActions busy={busy} items={[{ label: m.opaque, disabled: !surfaceFaces.length, run: () => applyStyle({ opacity: 1 }) }]} /></>}
               </>}
-              {panel === "arrange" && <><p className="text-muted leading-5">{m.dragHint}</p>{actions([{ label: m.addRight, run: () => add("right"), disabled: scene.dice.length >= MAX_DICE }, { label: m.addLeft, run: () => add("left"), disabled: scene.dice.length >= MAX_DICE }, { label: m.remove, run: () => { commit(changed(scene.dice.filter((die) => die.id !== selected.id))); }, disabled: scene.dice.length <= 1 }])}
+              {panel === "arrange" && <><p className="text-muted leading-5">{m.dragHint}</p><DiceActions busy={busy} items={[{ label: m.addRight, run: () => add("right"), disabled: scene.dice.length >= MAX_DICE }, { label: m.addLeft, run: () => add("left"), disabled: scene.dice.length >= MAX_DICE }, { label: m.remove, run: () => { commit(changed(scene.dice.filter((die) => die.id !== selected.id))); }, disabled: scene.dice.length <= 1 }]} />
                 <div className="flex items-center gap-1" role="group" aria-label={structureMessages.moveAxis}><span className="mr-1">{structureMessages.moveAxis}</span>{(["x", "y", "z"] as const).map((axis) => <Button key={axis} size="sm" variant={moveAxis === axis ? "secondary" : "ghost"} disabled={busy} aria-pressed={moveAxis === axis} onClick={() => setMoveAxis(axis)}>{axis.toUpperCase()}</Button>)}</div>
-                {actions((["row", "stack", "corner", "apart"] as const).map((layout) => ({ label: m[layout], run: () => arrange(layout) })))}
-                <p>{m.move}</p>{actions(DICE_FACES.map((face) => ({ label: `${face[1]}${face[0].toUpperCase()}`, run: () => { const d = FACE_NORMALS[face]; place(selected.id, { x: selected.position.x + d.x, y: selected.position.y + d.y, z: selected.position.z + d.z }); } })))}
-                <p>{m.turn}</p>{actions((["x", "y", "z"] as const).map((axis) => ({ label: `${axis.toUpperCase()} ↻`, run: () => updateDie(selected.id, (die) => turnDie(die, axis), true) })))}
+                <DiceActions busy={busy} items={(["row", "stack", "corner", "apart"] as const).map((layout) => ({ label: m[layout], run: () => arrange(layout) }))} />
+                <p>{m.move}</p><DiceActions busy={busy} items={DICE_FACES.map((face) => ({ label: `${face[1]}${face[0].toUpperCase()}`, run: () => { const d = FACE_NORMALS[face]; place(selected.id, { x: selected.position.x + d.x, y: selected.position.y + d.y, z: selected.position.z + d.z }); } }))} />
+                <p>{m.turn}</p><DiceActions busy={busy} items={(["x", "y", "z"] as const).map((axis) => ({ label: `${axis.toUpperCase()} ↻`, run: () => updateDie(selected.id, (die) => turnDie(die, axis), true) }))} />
               </>}
               {panel === "pips" && <><p className="leading-5 text-muted">{m.pipHint}</p><div className="grid grid-cols-2 gap-1">{worldFaces.map(({ direction, face }) => <Button key={direction} variant="secondary" size="sm" disabled={busy || !face} aria-pressed={face ? !selected.hidden.includes(face) : false} onClick={() => face && toggleFace(selected.id, face)}>{m.faces[direction]} · {face && !selected.hidden.includes(face) ? faceValue(selected.hand, face) : "?"}</Button>)}</div>
-                {actions([{ label: m.showAll, run: () => commit({ ...scene, dice: scene.dice.map((die) => ({ ...die, hidden: [] })) }) }, { label: m.hideAll, run: () => commit({ ...scene, dice: scene.dice.map((die) => ({ ...die, hidden: [...DICE_FACES] })) }) }, { label: m.topOnly, run: () => commit({ ...scene, dice: topOnly(scene.dice) }) }])}
+                <DiceActions busy={busy} items={[{ label: m.showAll, run: () => commit({ ...scene, dice: scene.dice.map((die) => ({ ...die, hidden: [] })) }) }, { label: m.hideAll, run: () => commit({ ...scene, dice: scene.dice.map((die) => ({ ...die, hidden: [...DICE_FACES] })) }) }, { label: m.topOnly, run: () => commit({ ...scene, dice: topOnly(scene.dice) }) }]} />
               </>}
               {panel === "opposite" && <><p className="leading-5 text-muted">{m.pairHint}</p><div className="grid grid-cols-2 gap-1">{worldFaces.map(({ direction, face }) => <Button key={direction} size="sm" variant={face === pairFace ? "secondary" : "ghost"} disabled={busy || !face} onClick={() => face && setPairFace(face)}>{m.faces[direction]}</Button>)}</div>
                 <p className="text-center text-lg tabular-nums">{pairValue(pairFace)} + {pairValue(oppositeFace(pairFace))} = 7</p>
                 <Button size="sm" variant="secondary" disabled={busy} onClick={movePair}>{m.revealPair}</Button>
-                {actions([{ label: m.showPair, run: () => updateDie(selected.id, (die) => ({ ...die, hidden: die.hidden.filter((face) => face !== pairFace && face !== oppositeFace(pairFace)) })) }, { label: m.closeFaces, run: closeFaces }])}
+                <DiceActions busy={busy} items={[{ label: m.showPair, run: () => updateDie(selected.id, (die) => ({ ...die, hidden: die.hidden.filter((face) => face !== pairFace && face !== oppositeFace(pairFace)) })) }, { label: m.closeFaces, run: closeFaces }]} />
               </>}
-              {panel === "puzzle" && <><p className="leading-5 text-muted">{m.puzzleHint}</p>{actions((["row", "stack", "corner"] as const).map((layout) => ({ label: m[layout], run: () => arrange(layout) })))}
+              {panel === "puzzle" && <><p className="leading-5 text-muted">{m.puzzleHint}</p><DiceActions busy={busy} items={(["row", "stack", "corner"] as const).map((layout) => ({ label: m[layout], run: () => arrange(layout) }))} />
                 <Select value={scope} disabled={busy} onValueChange={(value) => setScope(value as DicePuzzle["scope"])}><SelectTrigger aria-label={m.contactClue} className="h-9 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="each">{m.each}</SelectItem><SelectItem value="total">{m.total}</SelectItem></SelectContent></Select>
                 <label className="flex items-center gap-2">{m.target}<Input type="number" min={2} max={144} step={1} value={target} disabled={busy} onChange={(event) => setTarget(Number(event.target.value))} className="h-8 w-20 px-2 py-1" /></label>
-                {actions([{ label: m.generate, run: generatePuzzle }, { label: scene.puzzle?.revealed ? m.hideAnswer : m.reveal, run: revealPuzzle, disabled: !scene.puzzle }])}
+                <DiceActions busy={busy} items={[{ label: m.generate, run: generatePuzzle }, { label: scene.puzzle?.revealed ? m.hideAnswer : m.reveal, run: revealPuzzle, disabled: !scene.puzzle }]} />
                 {scene.puzzle && <p>{m[scene.puzzle.scope]} = {scene.puzzle.target}</p>}
                 {scene.puzzle?.revealed && <div className="space-y-1">{diceContacts(scene.dice).map((contact) => <p key={`${contact.a}:${contact.b}`}>{m.die} {contact.a.replace("dice-", "")} ↔ {contact.b.replace("dice-", "")}：{contact.valueA} + {contact.valueB} = {contact.valueA + contact.valueB}</p>)}</div>}
               </>}
-              {panel === "throwing" && <><p className="leading-5 text-muted">{m.throwHint}</p>{actions([{ label: m.addRight, run: () => add("right"), disabled: scene.dice.length >= MAX_DICE }, { label: m.addLeft, run: () => add("left"), disabled: scene.dice.length >= MAX_DICE }])}<Check label={m.topAfterThrow} checked={onlyTopAfterThrow} onChange={setOnlyTopAfterThrow} disabled={busy} /><Button disabled={busy} onClick={() => { void throwDice(); }} className="w-full"><Dices className="mr-2 size-4" />{m.throwNow}</Button>{actions([{ label: m.showAll, run: () => commit({ ...scene, dice: scene.dice.map((die) => ({ ...die, hidden: [] })) }) }])}</>}
+              {panel === "throwing" && <><p className="leading-5 text-muted">{m.throwHint}</p><DiceActions busy={busy} items={[{ label: m.addRight, run: () => add("right"), disabled: scene.dice.length >= MAX_DICE }, { label: m.addLeft, run: () => add("left"), disabled: scene.dice.length >= MAX_DICE }]} /><Check label={m.topAfterThrow} checked={onlyTopAfterThrow} onChange={setOnlyTopAfterThrow} disabled={busy} /><Button disabled={busy} onClick={() => { void throwDice(); }} className="w-full"><Dices className="mr-2 size-4" />{m.throwNow}</Button><DiceActions busy={busy} items={[{ label: m.showAll, run: () => commit({ ...scene, dice: scene.dice.map((die) => ({ ...die, hidden: [] })) }) }]} /></>}
             </>}
         </div>
       </CubeCanvasPanel>}
@@ -306,7 +361,7 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector, initi
       {(tool === "xray" || xray) && !busy && !panel && <div className={`${styles.cutStatus} ${diceStyles.xrayStatus}`} role="status" data-dice-overlay data-dice-xray={xray ? xrayPresentation.phase : "ready"}>
         <p className="font-medium">{xray ? `${xrayPresentation.phase === "opening" ? m.xrayOpening : xrayPresentation.phase === "closing" ? m.xrayClosing : m.xrayActive} · ${m.die} ${xray.die.id.replace("dice-", "")} · ${m.faces[xray.direction]}` : m.xray}</p>
         <p className="text-muted">{xray ? m.xrayExitHint : m.xrayHint}</p>
-        {xray && <div className="mt-1 flex gap-1"><Button size="sm" variant="secondary" onClick={() => inspect(xray.die.id, xray.face)}>{m.observe}</Button><Button size="sm" variant="ghost" onClick={() => setXRayTarget(null)}>{m.xrayClear}</Button></div>}
+        {xray && <div className="mt-1 flex gap-1"><Button size="sm" variant="secondary" onClick={() => inspect(xray.die.id, xray.face)}>{m.observe}</Button><Button size="sm" variant="ghost" onClick={() => requestXRay(null)}>{m.xrayClear}</Button></div>}
       </div>}
       {!panel && !busy && tool !== "xray" && !xray && scene.puzzle && <p className={styles.cutStatus}>{m[scene.puzzle.scope]} = {scene.puzzle.target}</p>}
     </div></div>

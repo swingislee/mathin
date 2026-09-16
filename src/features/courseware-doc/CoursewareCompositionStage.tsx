@@ -5,8 +5,8 @@ import { useMemo, useState } from "react";
 import GamePageStage from "@/features/games/courseware/GamePageStage";
 import type { GameMirrorState } from "@/features/games/types";
 import { CoursewareToolView } from "@/features/tools/components";
-import { CUBE_COURSEWARE_CONTENT_VERSION } from "@/features/tools/courseware/registry";
-import { classroomToolInstanceKey, cubeCoursewareOriginHash, type ClassroomToolRuntime } from "@/features/tools/courseware/cube-structures-classroom";
+import { getToolCoursewareContract } from "@/features/tools/courseware/registry";
+import { classroomToolInstanceKey, coursewareToolOriginHash, hasClassroomToolAdapter, type ClassroomToolRuntime } from "@/features/tools/courseware/tool-classroom";
 import type { CoursewareCompositionPage } from "./composition-page-schema";
 import { coursewareCanvasStyle } from "./courseware-surface";
 import DocStage, { type DocStageProps } from "./DocStage";
@@ -40,8 +40,8 @@ export default function CoursewareCompositionStage(props: CoursewareCompositionS
   const { doc } = props;
   const classroomActive = Boolean(props.classroomTools);
   const toolOrigins = useMemo(() => classroomActive ? Object.fromEntries(doc.layout.blocks.flatMap((block) =>
-    block.type === "tool" && block.tool.contentVersion === CUBE_COURSEWARE_CONTENT_VERSION
-      ? [[block.id, cubeCoursewareOriginHash(block.tool.payload)]] : [])) : {}, [doc, classroomActive]);
+    block.type === "tool" && hasClassroomToolAdapter(block.tool) && "payload" in block.tool
+      ? [[block.id, coursewareToolOriginHash(block.tool.payload)]] : [])) : {}, [doc, classroomActive]);
   const runtimeProps: MicrocourseStageRuntimeProps = props;
   const gameBlocks = doc.layout.blocks.filter((block) => block.type === "game");
   const initialInstances = props.gameMirror?.instances
@@ -89,7 +89,8 @@ export default function CoursewareCompositionStage(props: CoursewareCompositionS
 
       {doc.layout.blocks.map((block) => {
         if (block.type === "node") return null;
-        const toolSynced = block.type === "tool" && block.tool.contentVersion === CUBE_COURSEWARE_CONTENT_VERSION && Boolean(props.classroomTools);
+        const toolSynced = block.type === "tool" && hasClassroomToolAdapter(block.tool)
+          && getToolCoursewareContract(block.tool.toolId, block.tool.contentVersion)?.classroomSync.mode === "snapshot" && Boolean(props.classroomTools);
         const toolEditable = toolSynced && props.interactive && Boolean(props.classroomTools?.onChange);
         const originHash = toolOrigins[block.id];
         const toolEntry = props.classroomTools?.states[classroomToolInstanceKey(props.classroomTools.docId, block.id, originHash)]?.payload;
@@ -114,9 +115,14 @@ export default function CoursewareCompositionStage(props: CoursewareCompositionS
                 data-classroom-tool={toolSynced ? "synchronized" : "read-only"}
                 style={{ pointerEvents: toolEditable ? "auto" : "none" }}
               >
-                <CoursewareToolView tool={block.tool} classroom={toolSynced ? {
-                  state: toolEntry && toolEntry.docId === props.classroomTools?.docId ? toolEntry.state : undefined,
-                  onChange: toolEditable ? (state) => props.classroomTools!.onChange!(block.id, originHash, state) : undefined,
+                <CoursewareToolView key={toolSynced ? `${props.classroomTools!.pageId}:${classroomToolInstanceKey(props.classroomTools!.docId, block.id, originHash)}` : block.id} tool={block.tool} classroom={toolSynced ? {
+                  state: toolEntry && toolEntry.pageId === props.classroomTools?.pageId && toolEntry.docId === props.classroomTools.docId
+                    && toolEntry.instanceId === block.id && toolEntry.originHash === originHash
+                    && toolEntry.toolId === block.tool.toolId && toolEntry.contentVersion === block.tool.contentVersion ? toolEntry : undefined,
+                  onChange: toolEditable ? (update) => {
+                    if (update.toolId !== block.tool.toolId || update.contentVersion !== block.tool.contentVersion) return Promise.reject(new Error("CLASSROOM_TOOL_VERSION_MISMATCH"));
+                    return props.classroomTools!.onChange!(block.id, originHash, update);
+                  } : undefined,
                 } : undefined} />
               </div>
             )}

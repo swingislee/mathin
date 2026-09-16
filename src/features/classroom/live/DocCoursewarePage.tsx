@@ -9,7 +9,7 @@ import type { InteractionTrigger } from "@/features/courseware-doc/interactions"
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import { StagePreview } from "@/features/courseware-studio/StagePreview";
 import type { GameMirrorState } from "@/features/games/types";
-import type { ClassroomToolRuntime } from "@/features/tools/courseware/cube-structures-classroom";
+import type { ClassroomToolRuntime } from "@/features/tools/courseware/tool-classroom";
 import { resolveClassroomInteractionAudit } from "../sync/interaction-audit";
 import { classroomInteractionSyncAttributes } from "../sync/interaction-provider";
 import { isMediaControlEcho } from "../sync/media-control";

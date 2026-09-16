@@ -44,7 +44,9 @@ import {
   type CubeNetTeachingAnchor,
 } from "./cube-net-teaching-session";
 import styles from "./CubeStructuresWorkbench.module.css";
-import { cubeNetTeachingSnapshotSchema, type CubeNetTeachingSnapshot as CoursewareNetSnapshot } from "../courseware/spatial-teaching-content";
+import { cubeNetTeachingSnapshotSchema, NET_FACE_IDS, type CubeNetTeachingSnapshot as CoursewareNetSnapshot } from "../courseware/spatial-teaching-content";
+import { netTeachingCommandSchema, type NetLiveSnapshot, type NetTeachingCommand, type TeachingWorkbenchPort } from "../courseware/workbench-classroom-contract";
+type NetInitial = CoursewareNetSnapshot & Partial<Pick<NetLiveSnapshot, "judgment" | "galleryOpen">>;
 
 const CubeNetFoldViewport = dynamic(() => import("./CubeNetFoldViewport").then((module) => module.CubeNetFoldViewport), { ssr: false });
 
@@ -64,11 +66,12 @@ const labelModel = (model: PolyhedronFoldRenderModel, labels: Readonly<Record<st
   ...model, faces: model.faces.map((face) => ({ ...face, label: labels[face.faceId] ?? face.label })),
 });
 
-function CubeNetFoldRehearsal({ builds, locale, workspaceSelector, initial, initialBuild, onSnapshot, readOnly, courseware }: {
+function CubeNetFoldRehearsal({ builds, locale, workspaceSelector, initial, initialBuild, onSnapshot, readOnly, courseware, classroom }: {
   readonly builds: readonly CubeNetGalleryFoldingBuild[];
   readonly locale: "zh" | "en";
   readonly workspaceSelector?: ReactNode;
-  readonly initial?: CoursewareNetSnapshot;
+  readonly initial?: NetInitial;
+  readonly classroom?: TeachingWorkbenchPort<NetLiveSnapshot, NetTeachingCommand>;
   readonly initialBuild?: CubeNetGalleryFoldingBuild;
   readonly onSnapshot?: (snapshot: CoursewareNetSnapshot | null) => void;
   readonly readOnly?: boolean;
@@ -79,7 +82,11 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector, initial, init
   const [build, setBuild] = useState(initialBuild ?? builds[0]);
   const [source, setSource] = useState<CoursewareNetSnapshot["source"]>(initial?.source ?? { entryId: builds[0].entry.id, cuts: null });
   const [labels, setLabels] = useState<Readonly<Record<string, string>>>(initial?.labels ?? {});
-  const playback = useCubeNetPlayback<CubeNetPlaybackFrame>({ essential: true });
+  const [buildingCuts, setBuildingCuts] = useState(false);
+  const cutRequest = useRef(0);
+  const cancelClassroom = classroom?.cancel;
+  const interrupt = useCallback(() => { cancelClassroom?.(); cutRequest.current++; setBuildingCuts(false); }, [cancelClassroom]);
+  const playback = useCubeNetPlayback<CubeNetPlaybackFrame>({ essential: true, interactive: !readOnly, onInterrupt: interrupt });
   const { page, sceneInput } = build;
   const resolver = useMemo(() => createCubeNetWorkbenchResolver(build, locale), [build, locale]);
   const [session, setSession] = useState(() => {
@@ -88,14 +95,12 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector, initial, init
   });
   const [activeFold, setActiveFold] = useState<CubeNetPaperSelection | null>(null);
   const [preview, setPreview] = useState<CubeNetFoldChange | null>(null);
-  const [judgment, setJudgment] = useState<CubeNetFoldJudgment | null>(null);
+  const [judgment, setJudgment] = useState<CubeNetFoldJudgment | null>(initial?.judgment ?? null);
   const [cutting, setCutting] = useState<CubeNetCutSession | null>(() => initial?.cutting ? { ...initial.cutting, past: [], future: [] } : null);
   const [revealEnabled, setRevealEnabled] = useState(initial?.revealEnabled ?? false);
   const [faceOffsets, setFaceOffsets] = useState<CubeNetFaceOffsets>(initial?.faceOffsets ?? {});
-  const [buildingCuts, setBuildingCuts] = useState(false);
   const [cutError, setCutError] = useState(false);
   const [restoreCutBlocked, setRestoreCutBlocked] = useState(false);
-  const cutRequest = useRef(0);
   useEffect(() => () => { cutRequest.current++; }, []);
   const [view, setView] = useState<CubeView>(initial?.view ?? "angle");
   const [frame, setFrame] = useState(() => initial?.frame ?? resolver.resolve({}).model.bounds);
@@ -105,7 +110,7 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector, initial, init
   const [brush, setBrush] = useState(DEFAULT_CUBE_NET_BRUSH);
   const [selectedPaper, setSelectedPaper] = useState<string | null>(null);
   const [opacityPreview, setOpacityPreview] = useState<number | null>(null);
-  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [galleryOpen, setGalleryOpen] = useState(initial?.galleryOpen ?? false);
   const [axesVisible, setAxesVisible] = useState(initial?.axesVisible ?? true);
   const [dragging, setDragging] = useState(false);
   const axisSnapEnabled = useSpatialAxisSnap();
@@ -152,17 +157,18 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector, initial, init
     setPreview(value);
     setJudgment(null);
   }, []);
-  const commitFold = useCallback((value: CubeNetFoldChange) => apply({ kind: "fold", ...value }), [apply]);
   const busy = dragging || playback.playing || buildingCuts;
+  const capture = classroom?.capture;
   useEffect(() => {
     // 只在手势或教学动画完成后提供完整起点；不冻结临时半帧或撤销历史。
-    if (!onSnapshot) return;
-    if (busy || opacityPreview !== null) { onSnapshot(null); return; }
+    if (!onSnapshot && !capture) return;
+    if (busy || opacityPreview !== null) { onSnapshot?.(null); capture?.(null); return; }
     const result = cubeNetTeachingSnapshotSchema.safeParse({ source, labels, angles: session.angles, anchor: session.anchor,
       surfaces: session.surfaces, cutting: cutting ? { cuts: [...cutting.cuts], poses: Object.fromEntries(Object.entries(cutting.poses).map(([id, pose]) => [id, [...pose]])), surfaces: cutting.surfaces } : null,
       faceOffsets, revealEnabled, view, axesVisible, frame });
-    onSnapshot(result.success ? result.data : null);
-  }, [onSnapshot, busy, opacityPreview, source, labels, session.angles, session.anchor, session.surfaces, cutting, faceOffsets, revealEnabled, view, axesVisible, frame]);
+    onSnapshot?.(result.success ? result.data : null);
+    capture?.(result.success ? { ...result.data, judgment, galleryOpen } : null, cameraRequestKey);
+  }, [onSnapshot, capture, busy, opacityPreview, source, labels, session.angles, session.anchor, session.surfaces, cutting, faceOffsets, revealEnabled, view, axesVisible, frame, judgment, galleryOpen, cameraRequestKey, classroom?.pending]);
   const surfaces = (cutting ?? session).surfaces;
   const previewSurfaces = selectedPaper && opacityPreview !== null ? reduceCubeNetSurfaces(surfaces, { kind: "opacity", ids: [selectedPaper], opacity: opacityPreview / 100 }) : surfaces;
   const surfaceTool = tool === "face" || tool === "transparent" || tool === "mark" || tool === "number" ? tool : null;
@@ -287,9 +293,9 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector, initial, init
   const requestUnfoldCuts = (selection?: CubeNetCutMove) => revealEnabled ? closeReveal(() => void unfoldCuts(selection)) : void unfoldCuts(selection);
   const openCutFace = (faceId: string) => {
     const move = cutMoves.find((candidate) => candidate.movingFaceIds.includes(faceId));
-    if (move) requestUnfoldCuts(move);
+    if (move) runCommand({ kind: "unfold-cuts", faceId: faceId as typeof NET_FACE_IDS[number] });
   };
-  const cancelAnimation = () => { cutRequest.current++; setBuildingCuts(false); playback.cancel(); };
+  const cancelAnimation = () => { interrupt(); playback.cancel(); };
   const selectEntry = (target: CubeNetGalleryFoldingBuild) => {
     if (busy || cutting) return;
     if (target.entry.id === build.entry.id) return;
@@ -332,9 +338,41 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector, initial, init
       current: { model: revealCubeNetFaces(motion.sample(elapsed), faceOffsets), hinges: [] }, kind: "recenter", step: 1, total: 1,
     }), onFinish: finish });
   };
+  const executeCommand = (command: NetTeachingCommand, replay = false) => {
+    switch (command.kind) {
+      case "unfold": animateUnfold(); break;
+      case "cut": startCutting(); break;
+      case "toggle-reveal": toggleReveal(); break;
+      case "restore-faces": animateFaces({}); break;
+      case "move-face": moveFace(command.faceId); break;
+      case "unfold-cuts": requestUnfoldCuts(command.faceId ? cutMoves.find((move) => move.movingFaceIds.includes(command.faceId!)) : undefined); break;
+      case "gallery": { const target = builds.find((item) => item.entry.id === command.entryId); if (target) selectEntry(target); break; }
+      case "recenter": recenter(); break;
+      case "fold": {
+        const action: CubeNetTeachingAction = { kind: "fold", edgeId: command.edgeId, degrees: command.degrees, ...(command.anchor ? { anchor: command.anchor } : {}) };
+        if (!replay) { apply(action); break; }
+        const start = session.angles[command.edgeId];
+        playback.start({ durationMs: 320, sample: (elapsed) => {
+          const next = resolver.resolve({ ...session.angles, [command.edgeId]: Math.round(start + (command.degrees - start) * elapsed / 320) }, command.edgeId, command.anchor ?? session.anchor);
+          return { current: { ...next, model: labelModel(next.model, labels) }, kind: "unfold", step: 1, total: 1 };
+        }, onFinish: () => apply(action) });
+      }
+    }
+  };
+  const runCommand = (command: NetTeachingCommand) => {
+    const execute = () => { playback.seekFrom(null); executeCommand(command); };
+    if (classroom) classroom.command(command, execute); else execute();
+  };
+  const replayed = useRef<unknown>(null);
+  useEffect(() => {
+    if (classroom?.replay && replayed.current !== classroom.replay) {
+      replayed.current = classroom.replay; playback.seekFrom(classroom.replay.startedAt); executeCommand(classroom.replay.command, true);
+    }
+  });
+  const commitFold = (value: CubeNetFoldChange) => runCommand(netTeachingCommandSchema.parse({ kind: "fold", edgeId: value.edgeId, degrees: value.degrees, anchor: value.anchor ?? null }));
 
   return (
-    <div className={styles.workspace} data-cube-net-teaching={CUBE_NET_TEACHING_VERSION} data-folding-entry={build.entry.id} data-workbench-mode={courseware ? "courseware" : undefined} inert={readOnly}>
+    <div className={styles.workspace} data-cube-net-teaching={CUBE_NET_TEACHING_VERSION} data-folding-entry={build.entry.id} data-workbench-mode={courseware ? "courseware" : undefined} inert={readOnly || classroom?.pending}>
       <div className={styles.viewport}>
         <div className={styles.canvas} data-cube-workspace-frame="4:3" data-cube-net-workbench data-net-gallery-open={galleryOpen}
           aria-label={t("cubeNet.title")} style={{ cursor: tool === "fold" ? dragging ? "grabbing" : "grab" : tool === "pan" ? "grab" : "default" }}>
@@ -343,7 +381,7 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector, initial, init
             axisSnapEnabled={axisSnapEnabled} axesVisible={axesVisible} cameraRequestKey={cameraRequestKey} dragging={dragging}
             animating={playback.playing} foldingEnabled={!playback.playing && !buildingCuts && !cutting} cutEdges={cutEdges} onCutToggle={tool === "cut" && !busy && !revealEnabled ? toggleCut : undefined}
             onCutFaceOpen={tool === "cut" && !busy && !revealEnabled && cutMoves.length > 0 ? openCutFace : undefined}
-            faceArrows={faceArrows} onFaceMove={!busy ? moveFace : undefined}
+            faceArrows={faceArrows} onFaceMove={!busy ? (faceId) => runCommand({ kind: "move-face", faceId: faceId as typeof NET_FACE_IDS[number] }) : undefined}
             surfaces={previewSurfaces} onSurfaceFaceSelect={!busy && surfaceTool ? paintFace : undefined}
             messages={{ webglUnavailable: t("renderer.webglUnavailable"), contextLost: t("renderer.contextLost") }}
             onFoldStart={startFold} onPreview={previewFold} onCommit={commitFold} onDraggingChange={setDragging} />
@@ -365,7 +403,8 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector, initial, init
             {([{ id: "orbit", label: m.orbit, Icon: Orbit }, { id: "pan", label: m.pan, Icon: Hand }] as const).map(({ id, label, Icon }) =>
               <CubeIconButton key={id} label={label} active={tool === id} disabled={busy}
                 onClick={() => { setTool(id); setPreview(null); setActiveFold(null); setPanel(null); }} data-cube-net-tool={id}><Icon aria-hidden /></CubeIconButton>)}
-            <CubeIconButton label={t("cubeNet.manual.recenter")} disabled={busy} onClick={recenter} data-cube-net-recenter><LocateFixed aria-hidden /></CubeIconButton>
+            <CubeIconButton label={t("cubeNet.manual.recenter")} disabled={busy} onClick={() => runCommand({ kind: "recenter" })} data-cube-net-recenter><LocateFixed aria-hidden /></CubeIconButton>
+            {classroom && <CubeIconButton label={classroom.resetLabel ?? t("cubeNet.manual.recenter")} disabled={busy} onClick={classroom.reset} data-teaching-reset><RotateCcw aria-hidden /></CubeIconButton>}
             <span className={styles.toolSeparator} aria-hidden />
             <CubeIconButton label={t("cubeNet.manual.foldTool")} active={tool === "fold"} disabled={busy} data-cube-net-tool="fold"
               onClick={() => {
@@ -376,14 +415,14 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector, initial, init
                   setFrame(resolver.resolve(session.angles, null, session.anchor).model.bounds); setCameraRequestKey((key) => key + 1);
                 }
               }}><FoldHorizontal aria-hidden /></CubeIconButton>
-            <CubeIconButton label={t("cubeNet.manual.cutTool")} active={tool === "cut"} disabled={busy} onClick={startCutting} data-cube-net-tool="cut"><Scissors aria-hidden /></CubeIconButton>
+            <CubeIconButton label={t("cubeNet.manual.cutTool")} active={tool === "cut"} disabled={busy} onClick={() => runCommand({ kind: "cut" })} data-cube-net-tool="cut"><Scissors aria-hidden /></CubeIconButton>
             <CubeIconButton label={t("cubeNet.manual.chooseNet")} active={galleryOpen} disabled={busy || !!cutting}
               onClick={() => setGalleryOpen(!galleryOpen)} data-cube-net-gallery-toggle><Shapes aria-hidden /></CubeIconButton>
             <CubeIconButton label={t("cubeNet.manual.faceReveal")} active={revealEnabled} disabled={busy || !cutting}
-              onClick={toggleReveal} data-cube-net-face-reveal-toggle><Move3D aria-hidden /></CubeIconButton>
+              onClick={() => runCommand({ kind: "toggle-reveal" })} data-cube-net-face-reveal-toggle><Move3D aria-hidden /></CubeIconButton>
             <CubeIconButton label={t(playback.playing || buildingCuts ? "cubeNet.manual.cancelAnimation" : cutting ? "cubeNet.manual.unfoldAvailable" : "cubeNet.manual.unfold")}
               disabled={dragging || (!playback.playing && !buildingCuts && (cutting ? cutMoves.length === 0 : Object.values(session.angles).every((angle) => angle === 0) && (!session.anchor || session.anchor.vertices.every((point) => Math.abs(point.y) < 1e-6))))}
-              onClick={playback.playing || buildingCuts ? cancelAnimation : cutting ? () => requestUnfoldCuts() : animateUnfold}>{playback.playing || buildingCuts ? <Square aria-hidden /> : <RotateCcw aria-hidden />}</CubeIconButton>
+              onClick={playback.playing || buildingCuts ? cancelAnimation : () => runCommand({ kind: cutting ? "unfold-cuts" : "unfold" })}>{playback.playing || buildingCuts ? <Square aria-hidden /> : <RotateCcw aria-hidden />}</CubeIconButton>
             <CubeIconButton label={t("cubeNet.manual.judge")} disabled={busy || !!cutting}
               onClick={() => setJudgment(judgeCubeNetFold(frameResolver.resolveHinges(cubeNetHingeProgress(angles))))}><Check aria-hidden /></CubeIconButton>
             <span className={styles.toolSeparator} aria-hidden />
@@ -405,7 +444,7 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector, initial, init
             identities={current.model.faces.map((face) => face.label)} selected={selectedPaper} busy={busy}
             onBrush={setBrush} onApply={applySurface} onPreview={setOpacityPreview} onClose={() => setPanel(null)} />}
           {galleryOpen && <CubeNetGalleryWindow builds={builds} selectedId={build.entry.id} busy={busy || !!cutting} closeLabel={m.closePanel}
-            onSelect={selectEntry} onClose={() => setGalleryOpen(false)} />}
+            onSelect={(entry) => runCommand({ kind: "gallery", entryId: entry.entry.id })} onClose={() => setGalleryOpen(false)} />}
           {playback.frame ? <div className={styles.cutStatus} role="status" data-cube-net-animation={playback.frame.kind}>
             {playback.frame.kind === "recenter" ? t("cubeNet.manual.recentering") : playback.frame.kind === "settle" ? t("cubeNet.manual.settling") : playback.frame.kind === "reveal" ? t("cubeNet.manual.faceMoving") : playback.frame.kind !== "planar" ? t(playback.frame.kind === "close" ? "cubeNet.manual.closing" : "cubeNet.manual.unfolding", { step: playback.frame.step, total: playback.frame.total })
               : t("cubeNet.manual.transforming", { count: playback.frame.movingCount ?? 0, step: playback.frame.step, total: playback.frame.total })}
@@ -414,8 +453,8 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector, initial, init
             <p>{t(cutMoves.length > 0 ? "cubeNet.manual.cutReady" : cutAnalysis.status === "disconnected" ? "cubeNet.manual.cutDisconnected" : "cubeNet.manual.cutMore")}</p>
             <p>{t(revealEnabled ? "cubeNet.manual.faceRevealHint" : "cubeNet.manual.cutHint")}</p>
             <div className="mt-1 flex flex-wrap gap-1">
-              <Button size="sm" variant="secondary" disabled={busy || cutMoves.length === 0} onClick={() => requestUnfoldCuts()}>{t(buildingCuts ? "common.previewBuilding" : "cubeNet.manual.unfoldAvailable")}</Button>
-              {revealEnabled ? <Button size="sm" variant="ghost" disabled={busy || !Object.values(faceOffsets).some(Boolean)} onClick={() => animateFaces({})}>{t("cubeNet.manual.restoreFaces")}</Button>
+              <Button size="sm" variant="secondary" disabled={busy || cutMoves.length === 0} onClick={() => runCommand({ kind: "unfold-cuts" })}>{t(buildingCuts ? "common.previewBuilding" : "cubeNet.manual.unfoldAvailable")}</Button>
+              {revealEnabled ? <Button size="sm" variant="ghost" disabled={busy || !Object.values(faceOffsets).some(Boolean)} onClick={() => runCommand({ kind: "restore-faces" })}>{t("cubeNet.manual.restoreFaces")}</Button>
                 : <Button size="sm" variant="ghost" disabled={busy} onClick={() => { setCutting(createCubeNetCutSession(cutting.surfaces)); setCutError(false); setRestoreCutBlocked(false); setFrame(sourceCurrent.model.bounds); setCameraRequestKey((key) => key + 1); }}>{t("cubeNet.manual.resetCuts")}</Button>}
             </div>
           </div> : tool === "fold" && <div className={styles.cutStatus} role="status" data-cube-net-drag-status>
@@ -431,8 +470,9 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector, initial, init
   );
 }
 
-export function CubeNetFoldWorkspace({ locale, workspaceSelector, initial, onSnapshot, readOnly, courseware }: {
-  readonly locale: "zh" | "en"; readonly workspaceSelector?: ReactNode; readonly initial?: CoursewareNetSnapshot;
+export function CubeNetFoldWorkspace({ locale, workspaceSelector, initial, onSnapshot, readOnly, courseware, classroom }: {
+  readonly locale: "zh" | "en"; readonly workspaceSelector?: ReactNode; readonly initial?: NetInitial;
+  readonly classroom?: TeachingWorkbenchPort<NetLiveSnapshot, NetTeachingCommand>;
   readonly onSnapshot?: (snapshot: CoursewareNetSnapshot | null) => void; readonly readOnly?: boolean; readonly courseware?: boolean;
 }) {
   const t = useTranslations("tools.spatialLab");
@@ -458,7 +498,7 @@ export function CubeNetFoldWorkspace({ locale, workspaceSelector, initial, onSna
   }, [entries, initial]);
 
   return buildState.status === "ready" ? (
-    <CubeNetFoldRehearsal builds={buildState.builds} initialBuild={initialBuild} locale={locale} workspaceSelector={workspaceSelector} initial={initial} onSnapshot={onSnapshot} readOnly={readOnly} courseware={courseware} />
+    <CubeNetFoldRehearsal builds={buildState.builds} initialBuild={initialBuild} locale={locale} workspaceSelector={workspaceSelector} initial={initial} onSnapshot={onSnapshot} readOnly={readOnly} courseware={courseware} classroom={classroom} />
   ) : (
     <div className={styles.workspace} data-workbench-mode={courseware ? "courseware" : undefined}><div className={styles.viewport}>
       <div className={cn(styles.canvas, "grid place-items-center text-sm text-muted")} data-layout-profile="standard-4x3" role="status">
