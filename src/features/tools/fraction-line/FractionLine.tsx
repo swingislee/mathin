@@ -4,19 +4,17 @@ import { Input } from "@/components/ui/input";
 
 import { Eraser, Plus, RotateCcw, Undo2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import type { ToolComponentProps } from "../types";
+import { FRACTION_COLORS, initialFractionScene, type FractionScene } from "../courseware/numeric-teaching-content";
+import { useSceneCapture } from "../courseware/useSceneCapture";
 
-interface Row {
-  denominator: number;
-  count: number;
-  color: string;
-}
+type Row = FractionScene["rows"][number];
 
 // 仅引用全局设计 token（不依赖星球作用域，保证任何宿主环境可解析）
-const COLORS = ["var(--rose)", "var(--leaf-deep)", "var(--ink)", "var(--crater)", "var(--rose-deep)", "var(--leaf)"];
+const COLORS = FRACTION_COLORS;
 const AXIS_Y = 96;
 const ROW_H = 50;
 const ZERO_HOME = 56;
@@ -46,18 +44,23 @@ function FractionLabel({ x, y, k, d, color }: { x: number; y: number; k: number;
   );
 }
 
-export function FractionLine({ embedded }: ToolComponentProps) {
+export function FractionLine({ embedded, initial, onSnapshot, readOnly = false }: ToolComponentProps & {
+  initial?: FractionScene; onSnapshot?: (snapshot: FractionScene | null) => void; readOnly?: boolean;
+}) {
   const t = useTranslations("tools.fractionLine");
   const wrapRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ pointerX: number; zeroX: number } | null>(null);
   const [width, setWidth] = useState(960);
-  const [rows, setRows] = useState<Row[]>([]);
-  const [denomText, setDenomText] = useState("2");
-  const [zoomPow, setZoomPow] = useState(ZOOM_POWS[1]);
+  const [origin] = useState(() => initial ?? initialFractionScene());
+  const [rows, setRows] = useState<Row[]>(origin.rows);
+  const [denomText, setDenomText] = useState(origin.denomText);
+  const [zoomPow, setZoomPow] = useState(origin.zoomPow);
   const unitLength = Math.round(Math.pow(10, zoomPow));
-  const [showTicks, setShowTicks] = useState(true);
-  const [showGuides, setShowGuides] = useState(true);
-  const [zeroX, setZeroX] = useState(ZERO_HOME);
+  const [showTicks, setShowTicks] = useState(origin.showTicks);
+  const [showGuides, setShowGuides] = useState(origin.showGuides);
+  const [zeroX, setZeroX] = useState(origin.zeroX);
+  const snapshot = useMemo<FractionScene>(() => ({ rows, denomText, zoomPow, showTicks, showGuides, zeroX }), [rows, denomText, zoomPow, showTicks, showGuides, zeroX]);
+  const capture = useSceneCapture(snapshot, onSnapshot);
 
   useEffect(() => {
     const el = wrapRef.current;
@@ -71,11 +74,12 @@ export function FractionLine({ embedded }: ToolComponentProps) {
 
   const nextPoint = () => {
     setRows((prev) => {
+      if (prev.reduce((sum, row) => sum + row.count, 0) >= 2000) return prev;
       const last = prev[prev.length - 1];
       if (last && last.denominator === denominator) {
         return [...prev.slice(0, -1), { ...last, count: last.count + 1 }];
       }
-      return [...prev, { denominator, count: 1, color: COLORS[prev.length % COLORS.length] }];
+      return prev.length >= 32 ? prev : [...prev, { denominator, count: 1, color: COLORS[prev.length % COLORS.length] }];
     });
   };
 
@@ -133,7 +137,7 @@ export function FractionLine({ embedded }: ToolComponentProps) {
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col" data-classroom-input="ink">
+    <div className="flex min-h-0 flex-1 flex-col" data-classroom-input="ink" inert={readOnly} {...capture}>
       <div
         className={`flex flex-wrap items-center gap-x-3 gap-y-2 border-b px-4 ${embedded ? "py-2" : "py-3"}`}
         data-classroom-input="native"
@@ -147,7 +151,7 @@ export function FractionLine({ embedded }: ToolComponentProps) {
               min={1}
               max={100}
               value={denomText}
-              onChange={(e) => setDenomText(e.target.value)}
+              onChange={(e) => { if (/^\d{0,5}$/.test(e.target.value)) setDenomText(e.target.value); }}
               data-classroom-input="native"
               className="w-12 border-t border-ink bg-transparent pt-0.5 text-center text-sm outline-none"
               aria-label={t("unitLabel")}

@@ -18,7 +18,7 @@
 | Story | `/story` 路由和场景壳存在；未发现完整独立章节内容目录 | 至少 1 个从入口到结尾的章节；阅读/交互 10～20 分钟或达到产品签收的完整最小章节 |
 | Games | registry 3 个游戏 | 3/3 可玩；需要排名的客户端成绩经服务端验证后入榜 |
 | Minds | `content/zh/minds` 2 篇 MDX | 2/2 发布，并关联稳定 Terms ID |
-| Tools | registry 3 个工具，其中 `spatial-lab` 是无持久化的空间数学验收样机；存在 `/embed/[tool]` | 3/3 独立使用；既定嵌入场景通过；样机不误示保存、发布或课堂同步已经可用 |
+| Tools | 分数、行程与立体教具已有实现；2026-09-18 按[可备课数学教具](prepared-teaching-tools.md)统一接入，当前仍是开发轨 | 独立教具与既定 embed 可用；配置好的教学起点可保存到课件并在课堂操作、恢复；不要求题型库、判题或检查点 |
 | Notebook | 私有列表、编辑、公开详情路由存在；commit `11885f7` 已关闭发布归属与互动隐私边界，commits `8c9cb8c`、`ffe3ec6` 已在开发库建立可追溯审核发布生命周期、平台锁、归档删除守卫和源笔记快照绑定 | 私人写作、完整审核状态机、发布/撤回/修订、公开阅读和互动完成权限/E2E 验收 |
 | 学校运营 | 学生、监护关系、员工权限、课程、班级、排课、考勤、作业、订单/支付/退款等迁移和 UI 已存在 | 管理员、教务、教师、学服、教研/内容、学生、家长及启用时的财务旅程闭环 |
 | 内容发布 | Terms/Minds 文件内容、Notebook、课程研发和 release 机制分别存在 | Terms/Story/Minds/Notebook 共用草稿/审核/发布/撤回/版本合同；课堂只读取不可变课件 release |
@@ -388,7 +388,7 @@ R1-7E 以 `user_rights_export_artifacts` 保存与请求绑定的精确 JSON 字
 | PROD-05 | Terms | 71/71 中文概念可发布；slug、公式、依赖、引用、站内链接错误=0 |
 | PROD-06 | Story | ≥1 个完整章节；入口、进度、结尾、Terms 关系和移动端阅读通过；无“即将推出”占位 |
 | PROD-07 | Games | 3/3 可玩；需要排名的伪造客户端成绩入榜数=0 |
-| PROD-08 | Tools | 3/3 独立页和既定 embed 场景通过；`spatial-lab` 明示验收样机与无持久化边界 |
+| PROD-08 | Tools | 已登记独立教具与既定 embed 场景通过；备好场景、课件保存、课堂操作与恢复按[教具合同](prepared-teaching-tools.md)验收，历史样机能力据实标注 |
 | PROD-09 | Minds | 2/2 中文文章发布；无效 Terms 关系=0 |
 | PROD-10 | Notebook | 私有写作、审核、发布/撤回、公开阅读、互动和越权 E2E 通过 |
 | PROD-11 | E 系列 | 1135 讲×2 轨源资源完整；正式 baseline 恰有 2270 条 `release_no=1`；缺失/悬空=0；正式课次引用的额外历史 release 按保护 manifest 保留 |
@@ -591,7 +591,7 @@ R1-0 已完成责任角色到 `swingislee` 的映射。增加人员或发生交�
 ### 7.3 当前专题与 1.0 后处理
 
 - `POST-LIVE-AUTH-01` 已由产品负责人在 R1-Live 期间提前选入独立热修轨：student/parent/staff/admin 及 learning/family/staff 环境沿用同一入口，以传统设置页组织个人资料、登录方式、安全与恢复、隐私与数据。第一阶段 migration `20260825000800` 与应用 `72d8127` 已部署 Xiaomi，机器 postflight 通过，待人工验收；账号级只编辑头像、全站显示名称和语言，业务档案只读关联。验证码、邮箱/手机号自助绑定与微信/QQ 尚未启用；该项不追加为 R1-Live blocker。
-- 空间数学实验室保留 SML-0 暂停点，可按独立路由、权限或 Feature Flag 并行；不因已有增量自动关闭 SML-0～8，不进入 R1-Live Gate，也不扩写 PROD-08。
+- 历史 SML-0 暂停记录保留；2026-09-18 当前教具方向由[可备课数学教具](prepared-teaching-tools.md)接替。复用数学内核、发布冻结和课堂共用层；不自动施工学生作答／判题／检查点，不因本轨交付关闭生产 Gate。
 - 补齐英文课程、Minds 和 Story 正文；UI、路由和回退已在 1.0 完成。
 - 执行 `cacheComponents` + `use cache` 专项；继续禁止 `unstable_cache`。
 - 评估原生 App、更多游戏/章节、复杂营销和高级 BI。

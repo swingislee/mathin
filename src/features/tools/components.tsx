@@ -6,6 +6,7 @@ import { isCubeCoursewareTool } from "./courseware/cube-structures-content";
 import { isSpatialTeachingTool } from "./courseware/spatial-teaching-content";
 import type { CoursewareToolRuntime } from "./courseware/tool-classroom";
 import { CUBE_COURSEWARE_CONTENT_VERSION } from "./courseware/registry";
+import { isNumericTeachingTool } from "./courseware/numeric-teaching-content";
 
 // 工具按需加载：只有真正渲染某个工具的地方（工具页、概念页的内嵌演示、embed、课堂工具窗）才付它的 JS，
 // 且只付被点开的那一个——列表页、概念图谱与 sitemap 现在一份工具代码都不下载。
@@ -20,9 +21,12 @@ const MotionLab = dynamic(() => import("./motion-lab/MotionLab").then((m) => m.M
 const SpatialLab = dynamic(() => import("./spatial-lab/SpatialLab").then((m) => m.SpatialLab), { loading: ToolSkeleton });
 export const CubeCoursewarePreview = dynamic(() => import("./courseware/CubeStructuresCourseware").then((m) => m.CubeStructuresCourseware), { loading: ToolSkeleton });
 const SpatialTeachingCourseware = dynamic(() => import("./courseware/SpatialTeachingCourseware").then((m) => m.SpatialTeachingCourseware), { loading: ToolSkeleton });
+const NumericTeachingCourseware = dynamic(() => import("./courseware/NumericTeachingCourseware").then((m) => m.NumericTeachingCourseware), { loading: ToolSkeleton });
+const PreparedToolWorkbench = dynamic(() => import("./scenes/PreparedToolWorkbench").then((m) => m.PreparedToolWorkbench), { loading: ToolSkeleton });
 
 /** 固定课件内容不打开个人工作台，也不读取账号草稿或页面 URL。 */
 export function CoursewareToolView({ tool, classroom }: { tool: CoursewareCompositionTool; classroom?: CoursewareToolRuntime }) {
+  if (isNumericTeachingTool(tool)) return <NumericTeachingCourseware tool={tool} classroom={classroom} />;
   if (isSpatialTeachingTool(tool)) return <SpatialTeachingCourseware tool={tool} classroom={classroom} />;
   return isCubeCoursewareTool(tool)
     ? <CubeCoursewarePreview payload={tool.payload} classroom={classroom ? {
@@ -33,7 +37,8 @@ export function CoursewareToolView({ tool, classroom }: { tool: CoursewareCompos
 }
 
 /** 按 id 分发工具。id 取自 `./registry` 的元数据，未知 id 渲染空。 */
-export function ToolView({ id, ...props }: ToolComponentProps & { id: string }) {
+export function ToolView({ id, preparation = false, ...props }: ToolComponentProps & { id: string; preparation?: boolean }) {
+  if (preparation && id !== "spatial-lab") return <PreparedToolWorkbench id={id} />;
   switch (id) {
     case "fraction-line":
       return <FractionLine {...props} />;
@@ -41,6 +46,12 @@ export function ToolView({ id, ...props }: ToolComponentProps & { id: string }) 
       return <MotionLab {...props} />;
     case "spatial-lab":
       return <SpatialLab {...props} />;
+    case "cube-structures":
+      return <SpatialLab {...props} activity="spatial-lab.cube-structures.v1" />;
+    case "cube-net":
+      return <SpatialLab {...props} activity="spatial-lab.cube-net-fold.v1" />;
+    case "dice":
+      return <SpatialLab {...props} activity="spatial-lab.dice-teaching.v1" />;
     default:
       return null;
   }

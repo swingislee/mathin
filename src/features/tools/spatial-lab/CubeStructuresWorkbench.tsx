@@ -24,6 +24,7 @@ import { useCubeDrafts } from "./useCubeDrafts";
 import { cubeDraftIdentity } from "./cube-structures-draft";
 import type { CubeToolbarId } from "./cube-structures-toolbar";
 import type { CubeClassroomSnapshot } from "../courseware/cube-structures-classroom";
+import { useSceneCapture } from "../courseware/useSceneCapture";
 import { EMPTY_CUBE_CUT, chooseCubeCut, cubeCutCandidate, cubeCutLayers, type CubeCutDraft, type CubeCutHit } from "./cube-structures-cut-interaction";
 import { buildCubeCutPieces, cubeCutScopeIds } from "./cube-structures-cut-scope";
 import styles from "./CubeStructuresWorkbench.module.css";
@@ -39,9 +40,10 @@ const VIEWS: readonly CubeView[] = ["angle", "front", "left", "right", "top"];
 const COLOR_MAP = Object.fromEntries(CUBE_COLORS.map((color) => [color, color]));
 type Panel = "selection" | "color" | "move" | "layers" | "recording" | "model" | "cut" | "mark" | "number" | "transparent" | null;
 
-export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessages, workspaceSelector, courseware }: {
+export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessages, workspaceSelector, courseware, onSnapshot }: {
   readonly locale: "zh" | "en"; readonly rendererMessages: VoxelRendererMessages;
   readonly cameraMessages: SpatialCameraControlMessages; readonly workspaceSelector?: ReactNode;
+  readonly onSnapshot?: (session: CubeWorkbenchSession | null) => void;
   readonly courseware?: { readonly initial: CubeWorkbenchSession; readonly toolbar: readonly CubeToolbarId[]; readonly readOnly: boolean; readonly resetLabel: string; readonly resetHint: string;
     readonly runtime?: { readonly snapshot: CubeClassroomSnapshot; readonly onChange: (next: CubeClassroomSnapshot) => boolean } };
 }) {
@@ -104,6 +106,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
   // 包括已经隐藏的单位块，恢复入口始终保留。
   const layers = useMemo(() => [...new Set(state.cubes.filter((cube) => scopeIds.includes(cube.id)).map((cube) => cube.position[axis]))].sort((a, b) => a - b), [axis, state.cubes, scopeIds]);
   const editable = !readOnly && !draftLibrary.loading && !draftLibrary.busy && !playing && !moving && (session.preview === null || replacementStep !== null);
+  const capture = useSceneCapture(moving || playing || opacityPreview !== null || replacementStep !== null ? null : session, onSnapshot);
   const hoveredCube = hoverFace ? cubeAtDisplayPosition(state, hoverFace.cell) : undefined;
   const nextPosition = hoverFace && hoveredCube ? adjacentCube({ ...hoverFace, cell: hoveredCube.position }) : hoverGround;
   const validBuild = Boolean(tool === "build" && nextPosition && applyCubeOperation(state, { kind: "build", position: nextPosition, displayOffset: hoveredCube?.displayOffset, color: CUBE_COLORS[0] }) !== state);
@@ -272,7 +275,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
   }, [playing, session.lesson, session.preview, readOnly, updateSession]);
 
   const panelTitle = panel === "selection" ? m.selectionPanel : panel === "color" ? m.colorLabel : panel === "layers" ? m.layers : panel === "recording" ? m.record : panel && panel !== "model" ? m[panel] : m.modelPanel;
-  return <div className={styles.workspace} data-cube-structures-workbench="v3" data-workbench-mode={courseware ? "courseware" : mode} inert={readOnly}>
+  return <div className={styles.workspace} data-cube-structures-workbench="v3" data-workbench-mode={courseware ? "courseware" : mode} inert={readOnly} {...capture}>
     <div className={styles.viewport}>
       <div className={styles.canvas} aria-label={m.title + " · " + m[mode]} style={{ cursor: readOnly ? "default" : cubeToolCursor(tool) }} data-active-cube-tool={tool} data-cube-workspace-frame="4:3" data-has-cube-groups={state.groups.length > 0 && hasTool("select")} data-cube-motion={moving ? "moving" : "idle"}>
         <CubeStructuresViewport model={model} messages={rendererMessages} materialColors={COLOR_MAP}

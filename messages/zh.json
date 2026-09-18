@@ -470,6 +470,50 @@
       "spatial-lab": {
         "name": "空间数学实验室",
         "desc": "4:3验收样机：按层搭建立体模型，编排多角度与逐层教学步骤，并立即试演。"
+      },
+      "cube-structures": {
+        "name": "立方体结构",
+        "desc": "搭建、移动和拆分方块，多视角观察空间结构；保存教学起点并插入课件。"
+      },
+      "cube-net": {
+        "name": "正方体展开图",
+        "desc": "逐面折叠、剪棱展开，在动态变化中观察正方体与展开图的关系。"
+      },
+      "dice": {
+        "name": "骰子",
+        "desc": "移面、标色、滚动与投掷，观察相对面和多个骰子之间的关系。"
+      }
+    },
+    "preparation": {
+      "name": "场景名称",
+      "edit": "编辑教学起点",
+      "fixedHint": "在原工具中配置起点。应用后课件保存独立副本，草稿的修改不影响已插入内容。",
+      "library": "我的场景",
+      "save": "保存场景",
+      "saveCopy": "另存一份",
+      "saved": "已保存",
+      "choose": "选择已保存的场景",
+      "empty": "暂无已保存场景",
+      "open": "打开场景",
+      "replaceHint": "打开后将替换当前工作台内容。需要保留当前内容时，请先取消并保存。",
+      "legacyCube": "导入原立方体草稿",
+      "keepRecording": "保留原有步骤",
+      "useCurrent": "只保存当前现场",
+      "recordingHint": "保留步骤会保存原来的起点与步骤；保存当前现场只保留眼前的布置。",
+      "wait": "请等待动画或拖动完成；行程演示可先复位，或将当前位置设为起点。",
+      "invalid": "请填写场景名称，并检查参数和图片是否超出场景容量。",
+      "cancel": "取消",
+      "apply": "应用",
+      "errors": {
+        "invalid": "场景数据无效，当前编辑内容仍然保留。",
+        "too-large": "场景过大，请减少图片或对象后再保存。",
+        "unavailable": "场景库暂时不可用，当前编辑内容仍然保留，请稍后重试。",
+        "conflict": "此场景已在其他页面更新。请另存一份，或重新打开最新版本。",
+        "missing": "找不到此场景，请另存一份。",
+        "auth-required": "登录后可以保存和打开个人场景。",
+        "account-security": "请先完成账号安全与授权要求，再保存场景。",
+        "account-changed": "账号已切换，请重新加载页面后再使用场景库。",
+        "limit": "场景库已达到 200 份上限。"
       }
     },
     "fractionLine": {
@@ -490,6 +534,7 @@
       "pause": "暂停",
       "resume": "继续",
       "reset": "回到起点",
+      "useCurrentPosition": "将当前位置设为起点",
       "addRunway": "添加跑道",
       "removeRunway": "移除跑道",
       "showRuler": "测距尺",
@@ -1004,7 +1049,7 @@
     "insertGameComponentTitle": "插入游戏",
     "insertH5ComponentTitle": "插入 H5组件",
     "insertToolComponentTitle": "插入工具组件",
-    "toolAuthoringHint": "选择一个工具放入网格；可继续拖动、缩放或插入更多组件。",
+    "toolAuthoringHint": "选择工具并配置教学起点，或打开已保存的场景；插入后仍可编辑、移动和缩放。",
     "cubeSavedComponent": "立方体结构 · 账号草稿",
     "cubeNetComponent": "正方体展开图",
     "diceComponent": "骰子教学",

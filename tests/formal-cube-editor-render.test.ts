@@ -39,6 +39,10 @@ vi.mock("@/features/teacher-microcourses/CubeDraftCoursewarePicker", () => ({ Cu
   createElement("button", { type: "button", "data-select-cube": true, onClick: () => onReady(createCubeCoursewareTool({ name: "Selected cube", snapshot: cubeDraftSnapshot(createCubeSession([{ x: 0, y: 0, z: 0 }]), 0) }, "current", ["cut"])) }, "Select draft"),
   CubeFrozenCoursewarePreview: () => null }));
 vi.mock("@/features/teacher-microcourses/CubeCoursewareToolbarSettings", () => ({ CubeCoursewareToolbarSettings: () => null }));
+vi.mock("@/features/tools/scenes/ToolSceneEditor", () => ({ ToolSceneSettings: () => null,
+  ToolSceneEditor: ({ onReady }: { onReady: (tool: ReturnType<typeof createCubeCoursewareTool>) => void }) =>
+    createElement("button", { type: "button", "data-prepare-tool": true, onClick: () => onReady(createCubeCoursewareTool({ name: "Selected cube", snapshot: cubeDraftSnapshot(createCubeSession([{ x: 0, y: 0, z: 0 }]), 0) }, "current", ["cut"])) }, "Configure scene"),
+}));
 vi.mock("@/features/courseware-doc/CoursewareH5AuthoringDialog", () => ({ CoursewareH5AuthoringDialog: () => null }));
 
 const pageDoc = () => createFormalCubePage(createCubeCoursewareTool({ name: "Cube", snapshot: cubeDraftSnapshot(createCubeSession([{ x: 0, y: 0, z: 0 }]), 0) }, "current", ["cut"]));
@@ -113,14 +117,15 @@ describe("formal cube editor persistence adapter", () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
-  it("starts blank and inserts the selected cube only through the existing tool-component dialog", async () => {
+  it("starts blank and inserts the configured scene through the shared tool-component dialog", async () => {
     const save = vi.fn<CompositionPagePersistence["save"]>().mockImplementation(async (input) => ({ ok: true, data: { doc: input.doc, revisionNo: 2 } }));
     await mount({ save, uploadImage: vi.fn() }, createEmptyCoursewareCompositionPage());
     expect(grid.props!.doc.layout.blocks).toEqual([]);
     expect(host.querySelector('input[type="file"]')).not.toBeNull();
     await act(async () => (host.querySelector(`button[aria-label="${en.teacherMicrocourses.componentTool}"]`) as HTMLButtonElement).click());
     expect(grid.props!.doc.layout.blocks).toEqual([]);
-    await act(async () => (document.querySelector("[data-select-cube]") as HTMLButtonElement).click());
+    expect(document.querySelector("[data-select-cube]")).toBeNull();
+    await act(async () => (document.querySelector("[data-prepare-tool]") as HTMLButtonElement).click());
     const insert = [...document.querySelectorAll("button")].find((button) => button.textContent === en.teacherMicrocourses.insertComponent)!;
     await act(async () => insert.click());
     expect(grid.props!.doc.layout.blocks).toHaveLength(1);

@@ -6,7 +6,7 @@
 >
 > **R1 暂停位置**：`R1-9 · P6-9 与 Production 1.0 完整性`；已有来源 manifest、导出器和课程结果保留，真实 1305 行 inventory、全量对象审计及 R1-10～18 不阻塞首次内部生产使用。
 >
-> **SML 暂停位置**：`SML-0 · 合同与金标冻结`；空间数学可按独立权限或 Feature Flag 并行，不进入 R1-Live Gate。
+> **教具开发轨**：2026-09-18 产品负责人授权[可备课数学教具](prepared-teaching-tools.md)：独立工具、配置教学起点、课件插入与课堂操作共用。历史 SML-0 保留暂停记录，SML-0～8 的题型／作答路线不再是本轨施工前置，不进入 R1-Live Gate。
 >
 > **当前运行状态**：Gate 1 已通过，Gate 2 仍等待正式教师点名持久再读与权限对照。2026-09-03 `DEV-CW-1` 统一课件工作区完成窄范围生产发布：数据库 ledger/head=`242 / 20260903000700_courseware_page_insertions`，应用 current/previous=`20260903-115645` / `8c50b48…` 与 `20260903-100016` / `750bd607…`。6 条 migration 已通过 PostgreSQL 写前备份、完整回滚／零残留演练和正式提交；应用已通过原子 release、健康、鉴权、canonical 路由、业务计数和错误增量 postflight。77,224 个页面及资源、release、冻结会话和 Storage 计数不变；本批没有全量备份／测试或 Storage 写入。统一课件工作区与既有功能的产品人工验收仍分别 pending，不关闭 Gate 2。
 >

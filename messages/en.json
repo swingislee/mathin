@@ -470,6 +470,50 @@
       "spatial-lab": {
         "name": "Spatial Mathematics Lab",
         "desc": "A 4:3 acceptance prototype for building layered solids, authoring views and lesson steps, and rehearsing them immediately."
+      },
+      "cube-structures": {
+        "name": "Cube structures",
+        "desc": "Build, move and split blocks, observe spatial relationships and save a starting scene for courseware."
+      },
+      "cube-net": {
+        "name": "Cube nets",
+        "desc": "Fold faces and unfold cut edges to explore the relationship between a cube and its nets."
+      },
+      "dice": {
+        "name": "Dice",
+        "desc": "Move faces, color, roll and throw dice to observe opposite faces and relationships between dice."
+      }
+    },
+    "preparation": {
+      "name": "Scene name",
+      "edit": "Edit starting scene",
+      "fixedHint": "Configure the starting scene in the original tool. Courseware keeps its own copy, independent of later draft edits.",
+      "library": "My scenes",
+      "save": "Save scene",
+      "saveCopy": "Save a copy",
+      "saved": "Saved",
+      "choose": "Choose a saved scene",
+      "empty": "No saved scenes yet",
+      "open": "Open scene",
+      "replaceHint": "Opening replaces the current workbench content. Cancel and save first if you want to keep it.",
+      "legacyCube": "Import a legacy cube draft",
+      "keepRecording": "Keep recorded steps",
+      "useCurrent": "Save the current scene only",
+      "recordingHint": "Keeping steps preserves their original starting scene. Saving the current scene retains only the visible arrangement.",
+      "wait": "Wait for animation or dragging to finish. Reset motion playback or use the current positions as the starting scene.",
+      "invalid": "Enter a scene name and check that parameters and images fit the scene limits.",
+      "cancel": "Cancel",
+      "apply": "Apply",
+      "errors": {
+        "invalid": "Invalid scene data. Your current edits are preserved.",
+        "too-large": "The scene is too large. Reduce images or objects before saving.",
+        "unavailable": "The scene library is unavailable. Your current edits are preserved; please retry later.",
+        "conflict": "Another page updated this scene. Save a copy or reopen the latest version.",
+        "missing": "This scene was not found. Please save a copy.",
+        "auth-required": "Sign in to save and open your scenes.",
+        "account-security": "Complete the account security and consent requirements before saving.",
+        "account-changed": "The account changed. Reload the page before using the scene library.",
+        "limit": "The scene library has reached its limit of 200 scenes."
       }
     },
     "fractionLine": {
@@ -490,6 +534,7 @@
       "pause": "Pause",
       "resume": "Resume",
       "reset": "Back to start",
+      "useCurrentPosition": "Use current positions as start",
       "addRunway": "Add track",
       "removeRunway": "Remove track",
       "showRuler": "Ruler",
@@ -1004,7 +1049,7 @@
     "insertGameComponentTitle": "Insert game",
     "insertH5ComponentTitle": "Insert H5 component",
     "insertToolComponentTitle": "Insert tool component",
-    "toolAuthoringHint": "Choose a tool for the grid. You can move, resize, or add more blocks afterward.",
+    "toolAuthoringHint": "Choose a tool and configure its starting scene, or open a saved scene. You can edit, move and resize it after insertion.",
     "cubeSavedComponent": "Cube structures · Saved draft",
     "cubeNetComponent": "Cube nets",
     "diceComponent": "Dice teaching",

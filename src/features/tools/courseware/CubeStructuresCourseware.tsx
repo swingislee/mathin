@@ -9,13 +9,17 @@ import { CubeStructuresWorkbench } from "../spatial-lab/CubeStructuresWorkbench"
 import { cubeCoursewareInitialSession, type CubeClassroomSnapshot, type CubeCoursewareRuntime } from "./cube-structures-classroom";
 import { buildCubeStructureRenderModel, CUBE_COLORS, replayCubeHistory } from "../spatial-lab/cube-structures-contract";
 import type { CubeCoursewarePayload } from "./cube-structures-content";
+import type { CubeWorkbenchSession } from "../spatial-lab/cube-structures-session";
+import { CUBE_TOOLBAR_IDS } from "../spatial-lab/cube-structures-toolbar";
 
 const colors = Object.fromEntries(CUBE_COLORS.map((color) => [color, color]));
 const noop = () => {};
 
 /** 编辑预览只试用固定副本；课堂由版本化事件流控制，与账号草稿分离。 */
-export function CubeStructuresCourseware({ payload, preview = false, classroom }: {
+export function CubeStructuresCourseware({ payload, preview = false, classroom, onSnapshot, preparation = false }: {
   payload: CubeCoursewarePayload; preview?: boolean; classroom?: CubeCoursewareRuntime;
+  onSnapshot?: (session: CubeWorkbenchSession | null) => void;
+  preparation?: boolean;
 }) {
   const t = useTranslations("tools.spatialLab");
   const locale = useLocale() === "en" ? "en" : "zh";
@@ -49,9 +53,9 @@ export function CubeStructuresCourseware({ payload, preview = false, classroom }
   } } : undefined, [classroom, snapshot]);
   if ("toolbar" in payload) return <section className="flex size-full min-h-0 flex-col bg-paper" aria-label={payload.title} data-cube-courseware="cube-structures-lesson-v2">
     {syncError && <p role="alert" className="px-3 text-sm text-rose">{labels("cubeClassroomSyncError")}</p>}
-    <CubeStructuresWorkbench key={JSON.stringify(payload)} locale={locale} rendererMessages={messages}
+    <CubeStructuresWorkbench key={JSON.stringify(payload)} locale={locale} rendererMessages={messages} onSnapshot={onSnapshot}
       cameraMessages={{ axisSnap: t("teaching.axisSnap"), enableAxisSnap: t("teaching.enableAxisSnap"), disableAxisSnap: t("teaching.disableAxisSnap") }}
-      courseware={{ initial, toolbar: payload.toolbar, runtime, readOnly: classroom ? !classroom.onChange || publishing : !preview,
+      courseware={{ initial, toolbar: preparation ? CUBE_TOOLBAR_IDS : payload.toolbar, runtime, readOnly: classroom ? !classroom.onChange || publishing : !preview,
         resetLabel: labels("cubeToolbarReset"), resetHint: labels("cubeClassroomOriginHint") }} />
   </section>;
   return <section className="flex size-full min-h-0 flex-col bg-paper" aria-label={payload.title}

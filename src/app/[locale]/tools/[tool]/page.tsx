@@ -55,7 +55,7 @@ export default async function ToolPage({ params }: { params: Promise<{ locale: s
         </div>
       </div>
       <div className="flex min-h-0 flex-1 flex-col">
-        <ToolView id={def.id} />
+        <ToolView id={def.id} preparation />
       </div>
     </main>
   );

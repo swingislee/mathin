@@ -39,7 +39,7 @@ export const toolThumbs: Record<string, ReactNode> = {
       <line x1={123} y1={18} x2={123} y2={26} stroke="var(--ink)" strokeWidth={1.2} />
     </svg>
   ),
-  "spatial-lab": (
+  "cube-structures": (
     <svg viewBox="0 0 200 120" className="h-full w-full" aria-hidden>
       <g stroke="var(--ink)" strokeWidth={1.3} strokeLinejoin="round">
         <path d="M44 65 64 54 84 65 64 77Z" fill="var(--leaf)" />
@@ -57,4 +57,25 @@ export const toolThumbs: Record<string, ReactNode> = {
       <path d="m163 18 1.5 6.5L171 26l-6.5 1.5L163 34l-1.5-6.5L155 26l6.5-1.5Z" fill="var(--rose)" opacity={0.35} />
     </svg>
   ),
+  "cube-net": (
+    <svg viewBox="0 0 200 120" className="h-full w-full" aria-hidden>
+      {[[1, 0], [0, 1], [1, 1], [2, 1], [3, 1], [1, 2]].map(([x, y]) => (
+        <rect key={`${x}-${y}`} x={52 + x * 24} y={24 + y * 24} width={24} height={24}
+          fill={x === 1 && y === 1 ? "var(--leaf)" : "var(--moon)"} stroke="var(--ink)" strokeWidth={1.3} />
+      ))}
+    </svg>
+  ),
+  dice: (
+    <svg viewBox="0 0 200 120" className="h-full w-full" aria-hidden>
+      <g stroke="var(--ink)" strokeWidth={1.3} strokeLinejoin="round">
+        <path d="M62 41 Q62 36 67 33 L94 19 Q100 16 106 19 L133 33 Q138 36 138 41 V79 Q138 84 133 87 L106 103 Q100 106 94 103 L67 87 Q62 84 62 79Z" fill="var(--paper)" />
+        <path d="M63 38 100 59 137 38 M100 59V104" fill="none" />
+      </g>
+      <ellipse cx={100} cy={38} rx={5} ry={3} fill="var(--rose)" />
+      {[[74, 60], [87, 84]].map(([x, y]) => <ellipse key={x} cx={x} cy={y} rx={3} ry={4} fill="var(--ink)" />)}
+      {[[111, 83], [119, 71], [128, 58]].map(([x, y]) => <ellipse key={x} cx={x} cy={y} rx={3} ry={4} fill="var(--ink)" />)}
+    </svg>
+  ),
 };
+// 旧概念页引用继续使用同一份结构线稿。
+toolThumbs["spatial-lab"] = toolThumbs["cube-structures"];

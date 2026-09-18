@@ -352,10 +352,10 @@ function ClassroomRehearsal({
   );
 }
 
-export function SpatialLab({ embedded = false }: ToolComponentProps) {
+export function SpatialLab({ embedded = false, activity }: ToolComponentProps & { activity?: SpatialLabActivityId }) {
   const t = useTranslations("tools.spatialLab");
   const locale = useLocale() === "en" ? "en" : "zh";
-  const [activeActivityId, setActiveActivityId] = useState<SpatialLabActivityId>(SPATIAL_LAB_CUBE_STRUCTURES_ID);
+  const [activeActivityId, setActiveActivityId] = useState<SpatialLabActivityId>(activity ?? SPATIAL_LAB_CUBE_STRUCTURES_ID);
   const [templatePanelOpen, setTemplatePanelOpen] = useState(false);
   const activeVoxelPresetId = isSpatialLabVoxelPresetId(activeActivityId) ? activeActivityId : null;
   const initialDraft = useMemo(
@@ -655,7 +655,7 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
     new Set(initialDraft.model.cells.map((cell) => cell[initialDraft.model.layerAxis])).size;
   const afterLayers = diff?.derived.layerSteps?.after.length ??
     new Set(draft.model.cells.map((cell) => cell[draft.model.layerAxis])).size;
-  const workspaceSelector = <Select value={activeActivityId} onValueChange={(value) => selectActivity(value as SpatialLabActivityId)}>
+  const workspaceSelector = activity ? undefined : <Select value={activeActivityId} onValueChange={(value) => selectActivity(value as SpatialLabActivityId)}>
     <SelectTrigger className="w-full" aria-label={t("presets.label")}><SelectValue /></SelectTrigger>
     <SelectContent>{SPATIAL_LAB_ACTIVITIES.map((activity) => <SelectItem key={activity.id} value={activity.id}>
       {activity.id === SPATIAL_LAB_CUBE_STRUCTURES_ID ? cubeStructuresMessages(locale).title : t(`presets.options.${activity.messageKey}`)}

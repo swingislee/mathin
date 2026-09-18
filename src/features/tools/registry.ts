@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Boxes, Route, Ruler } from "lucide-react";
+import { Boxes, Dice5, Route, Ruler, UnfoldVertical } from "lucide-react";
 import {
   CLASSROOM_PARTITIONED_INPUT_PROVIDER_V1,
   type ClassroomInputCapabilityProvider,
@@ -34,9 +34,13 @@ export const tools: ToolMeta[] = [
     classroomInput: CLASSROOM_PARTITIONED_INPUT_PROVIDER_V1,
   },
   { id: "motion-lab", no: 2, category: "motion", grades: [4, 6], icon: Route },
-  { id: "spatial-lab", no: 3, category: "geometry", grades: [1, 9], icon: Boxes },
+  { id: "cube-structures", no: 3, category: "geometry", grades: [1, 9], icon: Boxes },
+  { id: "cube-net", no: 4, category: "geometry", grades: [1, 9], icon: UnfoldVertical },
+  { id: "dice", no: 5, category: "geometry", grades: [1, 9], icon: Dice5 },
 ];
 
 export function getTool(id: string): ToolMeta | undefined {
+  // 历史链接和冻结内容仍可解析；目录只展示独立教具。
+  if (id === "spatial-lab") return { id, no: 3, category: "geometry", grades: [1, 9], icon: Boxes };
   return tools.find((t) => t.id === id);
 }

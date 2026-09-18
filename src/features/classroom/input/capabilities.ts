@@ -7,7 +7,7 @@ import type { H5PointerBridgeStatus } from "@/features/courseware-doc/h5-pointer
 import { isMicrocoursePageDoc } from "@/features/courseware-doc/microcourse-schema";
 import { isGamePageDoc } from "@/features/courseware-doc/game-page-schema";
 import { isCoursewareCompositionPage } from "@/features/courseware-doc/composition-page-schema";
-import { CUBE_COURSEWARE_CONTENT_VERSION } from "@/features/tools/courseware/registry";
+import { getToolCoursewareContract } from "@/features/tools/scenes/registry";
 import { isSourceRuntimePageDoc } from "@/features/courseware-doc/source-runtime-schema";
 import type { CoursewarePage } from "../types";
 import type { ClassroomInputCapability } from "./router";
@@ -162,7 +162,8 @@ export function resolveClassroomRendererInputProfile(
           CLASSROOM_PARTITIONED_INPUT_PROVIDER_V1,
         );
       }
-      if (doc.layout.blocks.some((block) => block.type === "tool" && block.tool.contentVersion === CUBE_COURSEWARE_CONTENT_VERSION)) {
+      if (doc.layout.blocks.some((block) => block.type === "tool"
+        && getToolCoursewareContract(block.tool.toolId, block.tool.contentVersion)?.classroomSync.mode === "snapshot")) {
         return providerProfile("document:composition:tools", CLASSROOM_PARTITIONED_INPUT_PROVIDER_V1);
       }
       if (countCoursewareH5Frames(doc) > 0) {

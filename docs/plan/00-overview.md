@@ -18,7 +18,7 @@ Mathin 以 Terms 数学概念及其关系为内容中心。1.0 同时发布下�
 | Story | 从章节入口连续阅读或交互到结尾 | 一个完整数学故事章节，并关联所涉及的 Terms |
 | Games | 进入游戏、提交成绩、查看排名 | 3 个可玩游戏；需要排名的成绩由服务端验证 |
 | Minds | 阅读数学人物/思想文章、跳转相关概念 | 2 篇中文文章及其 Terms 关系 |
-| Tools | 独立使用工具或嵌入内容/课堂 | 2 个既有工具与 1 个空间数学验收样机的独立页、嵌入页和输入结果 |
+| Tools | 独立使用数学教具，提前配置场景并插入课件，课上继续操作 | 分数、行程及独立立体教具共用场景保存、课件配置与课堂恢复；当前方向见[可备课数学教具](prepared-teaching-tools.md) |
 | Notebook | 私人写作、发布、撤回、审核、公开阅读和互动 | 私有笔记与公开文章使用同一身份和权限体系 |
 | 学校运营 | 管理学生、家庭、员工、课程、班级、排课、考勤、作业、成果及启用时的财务 | Dashboard 工作流、审计记录、通知和角色门户 |
 | 内容发布 | 编辑、审核、发布、撤回 Terms/Story/Minds/Notebook 和课程课件 | 可追溯内容版本；课堂只读取不可变 release |
@@ -130,7 +130,7 @@ R1-Live 不缩减 1.0 产品合同。它只保留两个结果 Gate：原范围�
 | `25-production-1.0-product-completeness.md` | active | 1.0 事实、缺口、发布门和生产初始化 |
 | `26-teacher-workflow-upgrade.md` | partial | 左侧备课步骤、右侧常驻课件预览、板书解析与结构化教案；独立教案管理入口和派生输出待补 |
 | `27-small-screen-workspace-adaptation.md` | active | 1024–1280px 窄屏与平板横屏的侧栏三态、工作区可拖拽分栏、4:3 全屏与容器查询收敛 |
-| `28-spatial-mathematics-lab.md` | active | SML-0 暂停点：空间数学课程能力、4:3 文档、金标、hash、权限、发布/冻结与纵向空壳合同仍未关闭；当前主线已切到 R1-Live |
+| `28-spatial-mathematics-lab.md` | reference | 历史数学内核与 SML 设计；当前教具目标及施工范围由[可备课数学教具](prepared-teaching-tools.md)接替，不以题型、判题和检查点为默认目标 |
 | `29-teacher-microcourse-browser-redesign.md` | active | DEV-TMC-4 schema/app 已在 2026-08-30 生产 preflight 中检出，先前部署证据待对账、产品验收 pending；教师微课课程切换性能缺口继续进入 `POST-LIVE-PERF-01` |
 | `30-mathin_school_ops_architecture_plan.md` | active | `DEV-SCHOOL-OPS-1` 的 Phase 0～6 里程碑；当前为 Phase 1C Leads 种子批量分配与初次电联，Phase 2 活动参与／本场测评登记保留既有开发成果；交付物是可操作业务页面而非规划页面 |
 

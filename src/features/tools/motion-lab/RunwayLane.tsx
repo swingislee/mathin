@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { ImageUp, Play, RotateCcw } from "lucide-react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ImageCropDialog } from "@/components/image-crop-dialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -48,6 +48,11 @@ export function RunwayLane({ runway, length, ppm, locked, onMove, onField, onFie
   const movedRef = useRef(false);
   const longFiredRef = useRef(false);
   const pressTimerRef = useRef<number | null>(null);
+  const stopDrag = useRef<(() => void) | null>(null);
+  useEffect(() => () => {
+    stopDrag.current?.();
+    if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
+  }, []);
 
   const charX = POST_PAD + runway.x * ppm;
   const flip = !runway.facingRight;
@@ -69,9 +74,11 @@ export function RunwayLane({ runway, length, ppm, locked, onMove, onField, onFie
   /** 角色拖拽：window 级监听，不做指针捕获，避免吞掉头像/载具/位置的点击 */
   const startDrag = (e: React.PointerEvent) => {
     if (locked || editingPos) return;
+    stopDrag.current?.();
     movedRef.current = false;
     const d = { pointerX: e.clientX, lastX: e.clientX, x0: runway.x, t0: performance.now() };
     const onMoveW = (ev: PointerEvent) => {
+      if (ev.pointerId !== e.pointerId) return;
       if (Math.abs(ev.clientX - d.pointerX) > 3) movedRef.current = true;
       if (ev.clientX - d.lastX > 2 && !runway.facingRight) onPatch(runway.id, { facingRight: true });
       if (ev.clientX - d.lastX < -2 && runway.facingRight) onPatch(runway.id, { facingRight: false });
@@ -79,14 +86,26 @@ export function RunwayLane({ runway, length, ppm, locked, onMove, onField, onFie
       onMove(runway.id, Math.max(0, Math.min(length, d.x0 + (ev.clientX - d.pointerX) / ppm)));
     };
     const onUpW = (ev: PointerEvent) => {
-      window.removeEventListener("pointermove", onMoveW);
+      if (ev.pointerId !== e.pointerId) return;
+      cleanup();
       const nx = Math.max(0, Math.min(length, d.x0 + (ev.clientX - d.pointerX) / ppm));
       const dist = Math.abs(nx - d.x0);
       const dur = (performance.now() - d.t0) / 1000;
       if (movedRef.current && dist > 0.2 && dur > 0.05) onMeasure(runway.id, dist, dur);
     };
+    const cleanup = () => {
+      window.removeEventListener("pointermove", onMoveW);
+      window.removeEventListener("pointerup", onUpW);
+      window.removeEventListener("pointercancel", cancel);
+      window.removeEventListener("blur", cancel);
+      cancelPress(); stopDrag.current = null;
+    };
+    const cancel = () => { cleanup(); };
+    stopDrag.current = cleanup;
     window.addEventListener("pointermove", onMoveW);
-    window.addEventListener("pointerup", onUpW, { once: true });
+    window.addEventListener("pointerup", onUpW);
+    window.addEventListener("pointercancel", cancel);
+    window.addEventListener("blur", cancel);
   };
 
   const fields: { key: SolveKey; label: string; unit: string }[] = [

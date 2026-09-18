@@ -110,8 +110,9 @@ describe("frozen cube courseware content", () => {
     const renderer = fs.readFileSync("src/features/tools/courseware/CubeStructuresCourseware.tsx", "utf8");
     const dispatch = fs.readFileSync("src/features/tools/components.tsx", "utf8");
     const stage = fs.readFileSync("src/features/courseware-doc/CoursewareCompositionStage.tsx", "utf8");
-    expect(dispatch).toContain("<CubeCoursewarePreview payload={tool.payload} classroom={classroom} />");
-    expect(stage).toContain("<CoursewareToolView tool={block.tool} classroom={toolSynced");
+    expect(dispatch).toContain("<CubeCoursewarePreview payload={tool.payload} classroom={classroom ? {");
+    expect(dispatch).toContain("state: classroom.state?.contentVersion === CUBE_COURSEWARE_CONTENT_VERSION ? classroom.state.state : undefined");
+    expect(stage).toContain("tool={block.tool} classroom={toolSynced");
     expect(stage).toContain('data-classroom-tool={toolSynced ? "synchronized" : "read-only"}');
     expect(renderer).toContain("preview = false");
     expect(renderer).toContain("cameraInteractive={preview}");

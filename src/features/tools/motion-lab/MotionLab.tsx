@@ -4,36 +4,41 @@ import { Input } from "@/components/ui/input";
 
 import { Minus, Pause, Play, Plus, RotateCcw } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type SetStateAction } from "react";
 import { Button } from "@/components/ui/button";
 import type { ToolComponentProps } from "../types";
 import { ApplyField } from "./NumField";
 import { RunwayLane } from "./RunwayLane";
 import { RulerOverlay } from "./RulerOverlay";
 import { DEFAULT_HEAD, DEFAULT_VEHICLE, MAX_RUNWAYS, PANEL_W, POST_PAD, VEHICLE_SPEEDS, editField, fmt, recompute, type Runway, type SolveKey } from "./shared";
+import { initialMotionScene, motionFrame, type MotionScene } from "../courseware/numeric-teaching-content";
+import { useSceneCapture } from "../courseware/useSceneCapture";
 
-let nextId = 1;
-function makeRunway(): Runway {
-  return { id: nextId++, head: DEFAULT_HEAD, vehicle: DEFAULT_VEHICLE, facingRight: true, x: 0, solve: "speed", distance: 100, time: 10, speed: 10 };
+function makeRunway(id: number): Runway {
+  return { id, head: DEFAULT_HEAD, vehicle: DEFAULT_VEHICLE, facingRight: true, x: 0, solve: "speed", distance: 100, time: 10, speed: 10 };
 }
 
-type Phase = "idle" | "running" | "paused";
-
-export function MotionLab({ embedded }: ToolComponentProps) {
+export function MotionLab({ embedded, initial, onSnapshot, readOnly = false, preparation = false }: ToolComponentProps & {
+  initial?: MotionScene; onSnapshot?: (snapshot: MotionScene | null) => void; readOnly?: boolean; preparation?: boolean;
+}) {
   const t = useTranslations("tools.motion");
-  const [length, setLength] = useState(100);
-  const [runways, setRunways] = useState<Runway[]>(() => [makeRunway()]);
-  const [phase, setPhase] = useState<Phase>("idle");
-  const [clock, setClock] = useState(0);
-  const [showRuler, setShowRuler] = useState(true);
-  const [allTime, setAllTime] = useState(10);
-  const [allSpeed, setAllSpeed] = useState(10);
+  const [scene, setScene] = useState(() => initial ?? initialMotionScene());
+  const [now, setNow] = useState(() => Date.now());
+  const { length, showRuler, allTime, allSpeed } = scene;
+  const { runways, phase, clock } = motionFrame(scene, now);
+  const setRunways = (update: SetStateAction<Runway[]>) => setScene((current) => ({ ...current,
+    runways: typeof update === "function" ? update(motionFrame(current, Date.now()).runways) : update,
+    playback: { phase: "idle", elapsedMs: 0, startedAt: 0 } }));
+  const setLength = (value: number) => setScene((current) => ({ ...current, length: value }));
+  const setShowRuler = (value: boolean) => setScene((current) => ({ ...current, showRuler: value }));
+  const setAllTime = (value: number) => setScene((current) => ({ ...current, allTime: value }));
+  const setAllSpeed = (value: number) => setScene((current) => ({ ...current, allSpeed: value }));
+  // 备课保存停下后的可见现场；课堂则保存时间锚点，展示端自行连续绘制。
+  const captured = useMemo(() => preparation && scene.playback.phase !== "idle"
+    ? null : scene, [preparation, scene]);
+  const capture = useSceneCapture(captured, onSnapshot);
   const [trackW, setTrackW] = useState(640);
   const trackRef = useRef<HTMLDivElement>(null);
-  const runStartRef = useRef(0);
-  const doneAtRef = useRef(0);
-  const startXsRef = useRef<Map<number, number>>(new Map());
-  const goSnapshotRef = useRef<Map<number, number>>(new Map());
 
   useEffect(() => {
     const el = trackRef.current;
@@ -64,52 +69,32 @@ export function MotionLab({ embedded }: ToolComponentProps) {
   };
 
   const go = () => {
-    const snap = new Map(runways.map((r) => [r.id, r.x]));
-    goSnapshotRef.current = snap;
-    startXsRef.current = snap;
-    doneAtRef.current = Math.max(0, ...runways.map((r) => (r.time > 0 && r.speed > 0 ? r.time : 0)));
-    runStartRef.current = performance.now();
-    setClock(0);
-    setPhase("running");
+    const startedAt = Date.now(); setNow(startedAt);
+    setScene((current) => ({ ...current, runways: motionFrame(current, startedAt).runways, playback: { phase: "running", elapsedMs: 0, startedAt } }));
   };
-  const pause = () => setPhase("paused");
+  const pause = () => setScene((current) => ({ ...current, playback: { phase: "paused", elapsedMs: motionFrame(current, Date.now()).clock * 1000, startedAt: 0 } }));
   const resume = () => {
-    runStartRef.current = performance.now() - clock * 1000;
-    setPhase("running");
+    const startedAt = Date.now(); setNow(startedAt);
+    setScene((current) => ({ ...current, playback: { ...current.playback, phase: "running", startedAt } }));
   };
   const reset = () => {
-    setPhase("idle");
-    setClock(0);
-    setRunways((prev) => prev.map((r) => ({ ...r, x: goSnapshotRef.current.get(r.id) ?? r.x })));
+    setScene((current) => ({ ...current, playback: { phase: "idle", elapsedMs: 0, startedAt: 0 } }));
   };
 
   useEffect(() => {
     if (phase !== "running") return;
     let raf = 0;
     const tick = () => {
-      const t = (performance.now() - runStartRef.current) / 1000;
-      const done = t >= doneAtRef.current;
-      const tt = Math.min(t, doneAtRef.current);
-      setClock(tt);
-      setRunways((prev) =>
-        prev.map((r) => {
-          const x0 = startXsRef.current.get(r.id) ?? r.x;
-          const dir = r.facingRight ? 1 : -1;
-          const x = Math.max(0, Math.min(length, x0 + dir * r.speed * Math.min(tt, r.time)));
-          return x === r.x ? r : { ...r, x };
-        }),
-      );
-      if (done) setPhase("idle");
-      else raf = requestAnimationFrame(tick);
+      setNow(Date.now()); raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [phase, length]);
+  }, [phase]);
 
   const locked = phase === "running";
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 flex-1 flex-col" inert={readOnly} {...capture}>
       <div className={`flex flex-wrap items-center gap-x-3 gap-y-2 border-b px-4 ${embedded ? "py-2" : "py-2.5"}`}>
         <label className="flex items-center gap-1.5 text-xs text-muted">
           {t("length")}
@@ -129,6 +114,7 @@ export function MotionLab({ embedded }: ToolComponentProps) {
           <Button size="sm" onClick={go}><Play size={14} />{t("start")}</Button>
         )}
         <Button variant="secondary" size="sm" onClick={reset}><RotateCcw size={13} />{t("reset")}</Button>
+        {preparation && scene.playback.phase !== "idle" && <Button variant="secondary" size="sm" onClick={() => setRunways((current) => current)}>{t("useCurrentPosition")}</Button>}
         <span className="rounded-full border px-3 py-1 text-xs tabular-nums text-muted">
           {t("clock")} <span className="text-ink">{clock.toFixed(1)}</span> s
         </span>
@@ -147,7 +133,7 @@ export function MotionLab({ embedded }: ToolComponentProps) {
             <Input type="checkbox" checked={showRuler} onChange={(e) => setShowRuler(e.target.checked)} className="accent-(--p-accent)" />
             {t("showRuler")}
           </label>
-          <Button variant="ghost" size="sm" disabled={phase !== "idle" || runways.length >= MAX_RUNWAYS} onClick={() => setRunways((p) => [...p, makeRunway()])}>
+          <Button variant="ghost" size="sm" disabled={phase !== "idle" || runways.length >= MAX_RUNWAYS} onClick={() => setRunways((p) => [...p, makeRunway(Math.max(...p.map((r) => r.id)) + 1)])}>
             <Plus size={14} />{t("addRunway")}
           </Button>
           <Button variant="ghost" size="sm" disabled={phase !== "idle" || runways.length <= 1} onClick={() => setRunways((p) => p.slice(0, -1))}>

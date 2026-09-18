@@ -2,7 +2,8 @@ import { z } from "zod";
 import { sha256HexSync } from "@/lib/sha256";
 import { CLASSROOM_TOOL_STATE_SYNC_V1, classroomInteractionPayloadWithinBudget } from "@/features/classroom/sync/interaction-provider";
 import { cubeClassroomEventSchema, type CubeClassroomSnapshot } from "./cube-structures-classroom";
-import { diceWorkbenchStateSchema, netWorkbenchStateSchema } from "./workbench-classroom-contract";
+import { diceWorkbenchStateSchema, netWorkbenchStateSchema, workbenchStateSchema } from "./workbench-classroom-contract";
+import { fractionSceneSchema, motionSceneSchema, FRACTION_COURSEWARE_VERSION, MOTION_COURSEWARE_VERSION } from "./numeric-teaching-content";
 import { CUBE_NET_COURSEWARE_VERSION, DICE_COURSEWARE_VERSION } from "./registry";
 
 // 工具只在这里登记严格状态/动作合同。传输、课堂入口与实例状态容器不再识别具体工具。
@@ -10,6 +11,8 @@ export const classroomToolEventSchema = z.discriminatedUnion("contentVersion", [
   cubeClassroomEventSchema,
   cubeClassroomEventSchema.extend({ contentVersion: z.literal(CUBE_NET_COURSEWARE_VERSION), state: netWorkbenchStateSchema }),
   cubeClassroomEventSchema.extend({ contentVersion: z.literal(DICE_COURSEWARE_VERSION), state: diceWorkbenchStateSchema }),
+  cubeClassroomEventSchema.extend({ toolId: z.literal("fraction-line"), contentVersion: z.literal(FRACTION_COURSEWARE_VERSION), state: workbenchStateSchema(fractionSceneSchema, z.never()) }),
+  cubeClassroomEventSchema.extend({ toolId: z.literal("motion-lab"), contentVersion: z.literal(MOTION_COURSEWARE_VERSION), state: workbenchStateSchema(motionSceneSchema, z.never()) }),
 ]);
 export type ClassroomToolStatePayload = z.infer<typeof classroomToolEventSchema>;
 export type ClassroomToolUpdate = ClassroomToolStatePayload extends infer P ? P extends ClassroomToolStatePayload

@@ -33,10 +33,11 @@ describe("spatial-lab Tools acceptance prototype", () => {
       category: "geometry",
       grades: [1, 9],
     });
-    expect(tools.map((tool) => tool.id)).toContain("spatial-lab");
+    expect(tools.map((tool) => tool.id)).toEqual(["fraction-line", "motion-lab", "cube-structures", "cube-net", "dice"]);
     expect(new Set(tools.map((tool) => tool.id)).size).toBe(tools.length);
     expect(new Set(tools.map((tool) => tool.no)).size).toBe(tools.length);
     expect(toolThumbs["spatial-lab"]).toBeTruthy();
+    for (const tool of tools) expect(toolThumbs[tool.id]).toBeTruthy();
   });
 
   it("builds the fixed bilingual voxel preset as one 1200 by 900 4:3 page", async () => {
@@ -166,7 +167,7 @@ describe("spatial-lab Tools acceptance prototype", () => {
     expect(source).toContain("data-cube-tools-toolbar");
     expect(source).toContain("<CubeViewIcon view={item}");
     expect(source).toContain("setJudgment(null)");
-    expect(source).toContain("useState<CubeNetFoldJudgment | null>(null)");
+    expect(source).toContain("useState<CubeNetFoldJudgment | null>(initial?.judgment ?? null)");
     expect(source).toContain("judgeCubeNetFold(frameResolver.resolveHinges(cubeNetHingeProgress(angles)))");
     for (const oldUi of ["<CubeNetGalleryPanel", "<PolyhedronFoldTeachingStage", 't("cubeNet.legalNet")', 't("cubeNet.verifiedConclusion")']) {
       expect(source).not.toContain(oldUi);

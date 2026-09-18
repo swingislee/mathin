@@ -43,7 +43,7 @@ const expectedStatuses = new Map([
   ["25", "active"],
   ["26", "partial"],
   ["27", "active"],
-  ["28", "active"],
+  ["28", "reference"],
   ["29", "active"],
   ["30", "active"],
 ]);
@@ -106,6 +106,11 @@ for (let stage = 0; stage <= 18; stage += 1) {
 }
 
 const production = sources.get(byNumber.get("25")) ?? "";
+const toolsContract = "prepared-teaching-tools.md";
+if (!existsSync(path.join(PLAN_DIR, toolsContract))) fail(`缺少 Tools 共用备课合同：${toolsContract}`);
+for (const [name, source] of [["00", overview], ["04", roadmap], ["25", production], ["28", sources.get(byNumber.get("28")) ?? ""]]) {
+  if (!source.includes(toolsContract)) fail(`doc ${name} 缺少已确认 Tools 方向的合同入口`);
+}
 const requiredProductTerms = [
   "Story",
   "Games",
@@ -297,9 +302,18 @@ if (existsSync(evidenceIndexPath)) {
 }
 
 const agents = readFileSync(path.join(ROOT, "AGENTS.md"), "utf8");
+// 根入口已采用按任务路由：检查真实可达规则，不要求把细则重新复制进根文件。
+const routedAgentFiles = ["planning", "frontend", "data-and-classroom", "operations"].map((name) => `docs/agent/${name}.md`);
+const routedAgentRules = routedAgentFiles.map((file) => {
+  if (!agents.includes(file) || !existsSync(path.join(ROOT, file))) {
+    fail(`AGENTS.md 缺少可达规则入口：${file}`); return "";
+  }
+  return readFileSync(path.join(ROOT, file), "utf8").replaceAll("../plan/", "docs/plan/");
+}).join("\n");
+const agentRules = `${agents}\n${routedAgentRules}`;
 const readme = readFileSync(path.join(ROOT, "README.md"), "utf8");
 for (const [name, source] of [
-  ["AGENTS.md", agents],
+  ["AGENTS.md 及按需规则", agentRules],
   ["README.md", readme],
 ]) {
   for (const number of ["00", "04", "25"]) {
@@ -307,7 +321,10 @@ for (const [name, source] of [
       fail(`${name} 缺少 doc ${number} 的规划入口`);
     }
   }
-  if (!source.includes("R1-Live") || !source.includes("admin 角色") || !source.includes("release_no=1")) {
+  // 精确的 admin/release-1 基线由上方 doc 25 检查，根文件保留每轮适用的数据保护边界。
+  const identityProtected = name === "README.md" ? source.includes("admin 角色") && source.includes("release_no=1")
+    : agents.includes("正式身份") && agents.includes("冻结 release/snapshot") && agents.includes("受保护课程资源");
+  if (!source.includes("R1-Live") || !identityProtected) {
     fail(`${name} 缺少 R1-Live 正式身份/release-1 安全提示`);
   }
   for (const term of ["Story", "Games", "Minds", "Terms", "Tools", "Notebook", "zh/en"]) {
@@ -325,7 +342,7 @@ for (const [name, source] of [
   ["04-roadmap.md", roadmap],
   ["05-planet-themes.md", sources.get(byNumber.get("05")) ?? ""],
   ["25-production-1.0-product-completeness.md", production],
-  ["AGENTS.md", agents],
+  ["AGENTS.md 及按需规则", agentRules],
   ["README.md", readme],
 ]) {
   if (!source.includes("小王子")) fail(`${name} 缺少全站小王子视觉合同`);
