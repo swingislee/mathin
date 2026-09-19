@@ -1,13 +1,14 @@
-/* 三种信息架构共用同一份示例事实；所有编辑只保存在本浏览器。 */
+/* 排布原型共用同一份示例事实；所有编辑只保存在本浏览器。 */
 (() => {
   'use strict';
   const root = document.getElementById('layout-lab');
-  const variant = ['a', 'b', 'c'].includes(document.body.dataset.layout) ? document.body.dataset.layout : 'a';
+  const variant = ['a', 'b', 'c', 'd'].includes(document.body.dataset.layout) ? document.body.dataset.layout : 'a';
   const storageKey = 'mathin-school-layout-demo-v1';
   const layouts = {
     a: { name: 'A 对象集中', file: 'a-objects.html', defaultPage: 'classes', caption: '学生找人，班级处理在读，活动处理场次。' },
     b: { name: 'B 业务分区', file: 'b-business.html', defaultPage: 'admissions', caption: '先选招生、教学或续班，再处理这一件事。' },
-    c: { name: 'C 工作清单', file: 'c-worklists.html', defaultPage: 'today', caption: '常做的工作直接列出来，点开就是待处理名单。' }
+    c: { name: 'C 工作清单', file: 'c-worklists.html', defaultPage: 'today', caption: '常做的工作直接列出来，点开就是待处理名单。' },
+    d: { name: 'D 十标签归并', file: 'd-merged-work.html', defaultPage: 'service', caption: '同一项工作，教师和学服从同一个入口进入。' }
   };
   const classes = [
     { id: 'c1', name: '四年级 · 周六上午班', grade: 4, teacher: '李老师', time: '周六 10:00–11:30', room: '星光教室', capacity: 6, lesson: '第 4 讲 · 和差问题', day: '09.19', next: '今天 10:00', course: '数学思维' },
@@ -44,12 +45,20 @@
     return freshData();
   }
   let data = readData();
+  function initializeMergedExamples() {
+    if (variant !== 'd' || Array.isArray(data.formerPeople)) return;
+    data.formerPeople = [
+      { id:'f1',name:'梁悦',grade:5,classId:null,stage:'已停读／课程结束',pastClass:'四年级 · 春季周六班',ended:'2026.06.27',followUp:'尚未回访',note:'春季结束后暂停，家长希望秋季再了解。',records:[] },
+      { id:'f2',name:'江予川',grade:5,classId:null,stage:'已停读／课程结束',pastClass:'四年级 · 春季周日班',ended:'2026.06.28',followUp:'下期再联系',note:'近期课外安排较多，可以寒假前再联系。',records:[] }
+    ];
+  }
+  initializeMergedExamples();
   const params = new URLSearchParams(location.search);
   let state = { page: layouts[variant].defaultPage, tab: variant === 'b' ? 'firstcontact' : 'arrange', role: ['support','teacher','manager'].includes(params.get('role')) ? params.get('role') : 'support', expanded: new Set(['c1']), search: '', grade: 'all', classroom: 'all', scene: '', editor: null, drawerTab: 'entry', saved: false, placement: null, draft: {} };
   let toastTimer;
   let returnFocus = null;
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const person = id => data.people.find(p => p.id === id);
+  const person = id => data.people.find(p => p.id === id) || data.formerPeople?.find(p => p.id === id);
   const classroom = id => classes.find(c => c.id === id);
   const members = id => data.people.filter(p => p.classId === id);
   const waiting = () => data.people.filter(p => p.stage === '等班');
@@ -64,6 +73,7 @@
   function options(values, selected) { return values.map(item => { const [value, label] = Array.isArray(item) ? item : [item,item]; return `<option value="${esc(value)}" ${value === selected ? 'selected' : ''}>${esc(label)}</option>`; }).join(''); }
   function field(label, name, values, value) { return `<label class="field"><span>${label}</span><select name="${name}">${options(values,value)}</select></label>`; }
   function pageTitle() {
+    if (variant === 'd') return { sources:'线索',firstcontact:'首联',assessments:'测评',enrollment:'报名与分班',service:'在读与续班',former:'停读回访',activities:'活动',activity:'数学探险 · 周末公开课',students:'查找学生' }[state.page] || '工作';
     const names = { today: '今天的工作', classes: variant === 'b' ? '教学' : variant === 'c' ? '在读班级' : '班级', students: variant === 'b' ? '学生档案' : variant === 'c' ? '学生资料' : '学生', admissions: '招生', firstcontact: '新客联系', assessments: '测评安排', waiting: '报名等班', renewal: variant === 'c' ? '寒假续班' : '续班', activities: '活动', activity: '数学探险 · 周末公开课' };
     return names[state.page] || '班级';
   }
@@ -71,7 +81,10 @@
   function navItem(key, label, symbol, count) { return `<button type="button" class="nav-item ${activeNav(key) ? 'active' : ''}" data-action="navigate" data-page="${key}" ${activeNav(key) ? 'aria-current="page"' : ''}><span class="nav-symbol" aria-hidden="true">${symbol}</span><span>${label}</span>${count === undefined ? '' : `<span class="nav-count">${count}</span>`}</button>`; }
   function navigation() {
     const contacts = data.people.filter(p => p.stage === '待首联').length;
-    const groups = variant === 'a' ? [
+    const groups = variant === 'd' ? [
+      ['工作', [['sources','线索','·'],['firstcontact','首联','·',contacts],['assessments','测评','·'],['enrollment','报名与分班','·'],['service','在读与续班','·'],['former','停读回访','·']]],
+      ['场次', [['activities','活动','▣']]]
+    ] : variant === 'a' ? [
       ['我的工作', [['today','今天','◷']]],
       ['学校运营', [['students','学生','◉'],['classes','班级','▦'],['activities','活动','▣']]]
     ] : variant === 'b' ? [
@@ -125,7 +138,7 @@
   function studentRows(people, mode = '') {
     return people.map(p => {
       const actionMode = mode || modeFor(p);
-      return `<tr><td>${openPersonButton(p)}<span class="sub">${p.grade} 年级 · 林老师负责</span></td><td>${p.classId ? `${classroom(p.classId).name}<span class="sub">数学思维 · 2026 秋季</span>` : `${tag(p.stage)}<span class="sub">${p.stage === '等班' ? '秋季数学已报名' : '秋季数学意向'}</span>`}</td><td>${p.classId ? tag(p.renewal === '未联系' ? '寒假待联系' : p.renewal) : tag(p.stage === '待测评' ? p.assessment : p.stage)}</td><td>${esc(p.note)}</td><td class="actions">${p.stage === '等班' ? textBtn('安排班级','place',`data-id="${p.id}"`) : textBtn(actionMode === 'assessment' ? '登记测评' : actionMode === 'teaching' ? '本课登记' : '联系登记','edit',`data-id="${p.id}" data-mode="${actionMode}"`)}</td></tr>`;
+      return `<tr><td>${openPersonButton(p)}<span class="sub">${p.grade} 年级 · ${esc(p.owner || '林老师')}负责</span></td><td>${p.classId ? `${classroom(p.classId).name}<span class="sub">数学思维 · 2026 秋季</span>` : `${tag(p.stage)}<span class="sub">${p.stage === '等班' ? '秋季数学已报名' : '秋季数学意向'}</span>`}</td><td>${p.classId ? tag(p.renewal === '未联系' ? '寒假待联系' : p.renewal) : tag(p.stage === '待测评' ? p.assessment : p.stage)}</td><td>${esc(p.note)}</td><td class="actions">${p.stage === '等班' ? textBtn('安排班级','place',`data-id="${p.id}"`) : textBtn(actionMode === 'assessment' ? '登记测评' : actionMode === 'teaching' ? '本课登记' : '联系登记','edit',`data-id="${p.id}" data-mode="${actionMode}"`)}</td></tr>`;
     });
   }
   function studentsPage() {
@@ -173,7 +186,82 @@
       ['活动','数学探险 · 周末公开课',`今天 16:00 · ${activityPeople().length} 位参与者`,'activity','现场登记']
     ].filter(row => state.role !== 'teacher' || ['renewal','activity'].includes(row[3])).map(([type,title,sub,scene,action]) => `<div class="work-row"><span class="time">${type}</span><div><h3>${title}</h3><p class="work-sub">${sub}</p></div><span class="work-owner small muted">${scene === 'activity' ? '李老师 / 林老师' : '林老师负责'}</span>${btn(action,'scene',`data-scene="${scene}"`)}</div>`).join('')}</div></section>`;
   }
+  function mergedSourceMap() {
+    if (variant !== 'd') return '';
+    const rows = [
+      ['学服：线索','线索','核对来源、安排负责人'],
+      ['学服：首联 ＋ 学生：待首联','首联','同一份联系名单与登记'],
+      ['学服：测评 ＋ 学生：待测评','测评','预约、测评与教师建议'],
+      ['学生：待报名 ＋ 原分班中的报名、等班','报名与分班','从报名沟通接着安排入班'],
+      ['学生：待续班 ＋ 学服：续班 ＋ 原分班中的班级名单','在读与续班','日常教学、家长沟通与下一期安排'],
+      ['学生：已停读／课程结束','停读回访','保留过去经历，处理再次联系']
+    ];
+    return `<details class="merge-map"><summary>这版如何归并原来的十个标签 <span>查看去向</span></summary><div class="merge-map-body">${rows.map(([from,to,purpose]) => `<div class="merge-map-row"><span>${from}</span><span aria-hidden="true">→</span><strong>${to}</strong><span class="muted">${purpose}</span></div>`).join('')}<p class="small muted">教师班级页和教学工作台中的日常登记一起进入“在读与续班”。活动仍按场次组织；查找学生始终可用。此处是试排说明，名称与合并范围均可继续调整。</p></div></details>`;
+  }
+  function globalFinder() {
+    if (variant !== 'd') return '';
+    const query = state.lookup || '';
+    const matches = query ? [...data.people,...(data.formerPeople || [])].filter(p => p.name.includes(query)).slice(0,6) : [];
+    return `<div class="global-findbar"><span class="small muted">${state.role === 'teacher' ? '李老师 · 我任教的班级' : state.role === 'manager' ? '周主管 · 全部负责范围' : '林老师 · 全部负责范围'}</span><div class="global-find"><input type="search" data-control="lookup" aria-label="随时查找学生" placeholder="随时找学生…" value="${esc(query)}">${query ? `<div class="global-results" aria-label="学生搜索结果">${matches.length ? matches.map(p => `<button type="button" data-action="edit" data-id="${p.id}" data-mode="profile"><strong>${p.name}</strong><span class="small muted">${p.grade} 年级 · ${p.stage}</span></button>`).join('') : '<p class="small muted">没有匹配的学生。</p>'}</div>` : ''}</div></div>`;
+  }
+  function mergedServicePeople() {
+    const available = new Set(scopeClasses().map(c => c.id));
+    return scopePeople().filter(p => available.has(p.classId)).filter(p => state.serviceFilter === 'lesson' ? p.attendance === '待登记' : state.serviceFilter === 'renewal' ? ['未联系','考虑中'].includes(p.renewal) : state.serviceFilter === 'declined' ? p.renewal === '本轮不续' : true);
+  }
+  function inlineDraft(p) {
+    state.inlineDrafts ||= {};
+    return state.inlineDrafts[p.id] ||= { attendance:p.attendance,renewal:p.renewal,teachingNote:p.records.find(r => r.mode === 'teaching')?.note || '',renewalNote:p.records.find(r => r.mode === 'renewal')?.note || '' };
+  }
+  function serviceInline(p) {
+    if (state.inlineId !== p.id) return '';
+    const values = inlineDraft(p);
+    return `<tr class="service-detail-row"><td colspan="5"><form id="service-row-form" class="service-inline"><div class="service-fields"><section><h3>本课记录 <span>${classroom(p.classId).lesson}</span></h3>${field('出勤','attendance',['待登记','出勤','迟到','请假','缺席'],values.attendance)}<label class="field"><span>课堂观察 / 课后沟通</span><textarea name="teachingNote" placeholder="本课理解、课堂表现、与家长的沟通…">${esc(values.teachingNote)}</textarea></label></section><section><h3>下一期安排 <span>2027 寒假数学</span></h3>${field('续班情况','renewal',['未联系','考虑中','意向确认','本轮不续'],values.renewal)}<label class="field"><span>家长想法 / 后续安排</span><textarea name="renewalNote" placeholder="可以只记本课，也可以接着处理续班…">${esc(values.renewalNote)}</textarea></label></section></div><div class="service-save"><span class="small muted">${state.inlineSaved === p.id ? '✓ 本次记录已保存' : `${p.name} · 按本次实际处理的内容填写`}</span>${btn('收起','inline-close')}${btn('保存并下一位','save-service-next')}${btn('保存','save-service','','primary')}</div></form></td></tr>`;
+  }
+  function serviceRows(people) {
+    return people.flatMap(p => [`<tr class="${state.inlineId === p.id ? 'service-active' : ''}"><td>${openPersonButton(p)}<span class="sub">${p.grade} 年级</span></td><td>${tag(p.attendance)}<span class="sub">${esc((p.records.find(r => r.mode === 'teaching')?.note || '本课记录待补充').slice(0,23))}</span></td><td>${tag(p.renewal)}<span class="sub">寒假数学 · 本轮安排</span></td><td class="service-recent">${esc(p.note)}</td><td>${textBtn(state.inlineId === p.id ? '收起' : '展开登记','inline-open',`data-id="${p.id}"`)}</td></tr>`,serviceInline(p)]).filter(Boolean);
+  }
+  function mergedServicePage() {
+    const people = mergedServicePeople();
+    const rows = state.grouping === 'student' ? serviceRows(people) : scopeClasses().flatMap(c => {
+      const list = people.filter(p => p.classId === c.id);
+      if (!list.length && state.serviceFilter && state.serviceFilter !== 'all') return [];
+      const expanded = state.expanded.has(c.id);
+      return [`<tr class="service-group"><td colspan="5"><div><button type="button" data-action="expand" data-id="${c.id}" aria-expanded="${expanded}">${expanded ? '▾' : '▸'} ${c.name} <span class="muted small">${list.length} 人 · ${c.teacher} · ${c.time}</span></button>${textBtn('班级安排','class-info',`data-id="${c.id}"`)}</div></td></tr>`,...(expanded ? serviceRows(list) : [])];
+    });
+    return heading('本期上课、家长沟通、下期续班，沿同一份名单接着处理。') + command({ classFilter:true,period:'2026 秋季在读 · 寒假续班已开启' }) + `<div class="service-controls"><label><span>处理范围</span><select data-control="serviceFilter" aria-label="在读工作范围">${options([['all','全部在读'],['lesson','本课待登记'],['renewal','续班待联系'],['declined','本轮不续，继续本期']],state.serviceFilter || 'all')}</select></label><label><span>名单排列</span><select data-control="grouping" aria-label="名单排列">${options([['class','按班级'],['student','按学生']],state.grouping || 'class')}</select></label><span class="small muted">本范围 ${people.length} 位学生</span></div>${table(['学生','本周课堂','本轮寒假续班','最近情况','登记'],rows)}<p class="view-note"><span class="note-rule"></span>姓名打开完整经历；“展开登记”在当前名单内处理。班级用于组织这份名单。</p>`;
+  }
+  function mergedEnrollmentPage() {
+    const people = scopePeople().filter(p => ['测后跟进','等班'].includes(p.stage));
+    return heading('测后沟通、确认报名、安排入班，在同一张名单里接续。') + command({period:'数学思维 · 2026 秋季'}) + table(['学生','当前情况','报名沟通','班级安排','下一步'],people.map(p => `<tr><td>${openPersonButton(p)}<span class="sub">${p.grade} 年级</span></td><td>${tag(p.stage === '等班' ? '报名已确认' : p.enrollmentResult || '测后待报名')}</td><td>${esc(p.note)}</td><td>${p.stage === '等班' ? '等待安排班级' : '<span class="muted">确认报名后安排</span>'}</td><td>${p.stage === '等班' ? btn('安排班级','place',`data-id="${p.id}"`,'accent') : textBtn('登记报名','edit',`data-id="${p.id}" data-mode="enrollment"`)}</td></tr>`)) + footer(people.length) + `<div class="inline-items">${textBtn('查看在读名单 →','navigate','data-page="service"')}<span class="small muted">入班后，日常记录在“在读与续班”继续。</span></div>`;
+  }
+  function mergedWorkPage() {
+    if (state.page === 'service') return mergedServicePage();
+    if (state.page === 'enrollment') return mergedEnrollmentPage();
+    if (state.page === 'sources') {
+      const people = scopePeople().filter(p => ['s14','s16'].includes(p.id));
+      return heading('核对获客来源，安排负责人，再进入首联。') + command({period:'本周来源名单'}) + table(['姓名','来源','负责人','当前联系情况','处理'],people.map(p => `<tr><td>${openPersonButton(p)}<span class="sub">${p.grade} 年级</span></td><td>${p.id === 's14' ? '社区体验活动' : '朋友介绍'}</td><td>${esc(p.owner || '林老师')}</td><td>${tag(p.contactOutcome || '尚未联系')}</td><td>${textBtn('分配负责人','edit',`data-id="${p.id}" data-mode="assignment"`)}</td></tr>`)) + footer(people.length) + textBtn('进入首联名单 →','navigate','data-page="firstcontact"');
+    }
+    const people = (data.formerPeople || []).filter(p => !state.search || (p.name+p.note).includes(state.search));
+    return heading('看过去的课程经历，记录暂停后的联系与重新报读想法。') + command({grade:false,period:'所有课程关系已结束'}) + table(['学生','过去的课程','结束时间','回访情况','处理'],people.map(p => `<tr><td>${openPersonButton(p)}<span class="sub">${p.grade} 年级</span></td><td>${p.pastClass}</td><td>${p.ended}</td><td>${tag(p.followUp)}<span class="sub">${esc(p.note)}</span></td><td>${textBtn('登记回访','edit',`data-id="${p.id}" data-mode="recontact"`)}</td></tr>`)) + footer(people.length);
+  }
+  function saveService(next = false) {
+    const p = person(state.inlineId); const form = root.querySelector('#service-row-form');
+    if (!p || !form) return;
+    const people = mergedServicePeople();
+    const values = Object.fromEntries(new FormData(form));
+    values.teachingNote = values.teachingNote.trim(); values.renewalNote = values.renewalNote.trim();
+    const changedTeaching = values.attendance !== p.attendance || values.teachingNote !== (p.records.find(r => r.mode === 'teaching')?.note || '');
+    const changedRenewal = values.renewal !== p.renewal || values.renewalNote !== (p.records.find(r => r.mode === 'renewal')?.note || '');
+    if (changedTeaching) { p.attendance = values.attendance; p.records.unshift({ mode:'teaching',note:values.teachingNote,result:values.attendance,context:editorContext(p,'teaching') }); }
+    if (changedRenewal) { p.renewal = values.renewal; p.records.unshift({ mode:'renewal',note:values.renewalNote,result:values.renewal,context:editorContext(p,'renewal') }); }
+    if (changedTeaching || changedRenewal) { p.note = values.renewalNote || values.teachingNote || p.note; persist(); }
+    state.inlineSaved = p.id; state.inlineDrafts[p.id] = values;
+    if (next) { const following = people[people.findIndex(row => row.id === p.id) + 1]; if (following) { state.inlineId = following.id; state.expanded.add(following.classId); } }
+    render(); root.querySelector('#service-row-form select')?.focus();
+    toast(changedTeaching || changedRenewal ? `${p.name} · 已保存本次处理内容` : next ? '继续处理下一位' : '当前记录已是最新');
+  }
   function renderPage() {
+    if (variant === 'd' && ['sources','enrollment','service','former'].includes(state.page)) return mergedWorkPage();
     if (state.page === 'classes') return classesPage();
     if (state.page === 'students') return studentsPage();
     if (state.page === 'admissions') return admissionsPage();
@@ -184,6 +272,7 @@
     return todayPage();
   }
   function sceneTarget(scene) {
+    if (variant === 'd') return scene === 'waiting' ? ['enrollment','all'] : scene === 'firstcontact' ? ['firstcontact','all'] : scene === 'activity' ? ['activity','onsite'] : ['service','all'];
     if (scene === 'classes') return ['classes',state.role === 'teacher' ? 'teaching' : 'arrange'];
     if (scene === 'waiting') return variant === 'a' ? ['classes','arrange'] : variant === 'b' ? ['admissions','waiting'] : ['waiting','all'];
     if (scene === 'renewal') return variant === 'a' ? ['classes','renewal'] : ['renewal','all'];
@@ -194,9 +283,12 @@
     if (!['classes','waiting','renewal','activity','firstcontact'].includes(scene)) return;
     [state.page,state.tab] = sceneTarget(scene);
     state.scene = scene; state.search = ''; state.grade = 'all'; state.classroom = 'all'; state.renewFilter = '全部';
+    state.serviceFilter = scene === 'renewal' ? 'renewal' : 'all';
   }
   function navigate(page) {
+    if (variant === 'd') page = ['classes','renewal','today'].includes(page) ? 'service' : ['waiting','admissions'].includes(page) ? 'enrollment' : page;
     state.page = page; state.search = ''; state.grade = 'all'; state.classroom = 'all'; state.scene = ''; state.renewFilter = '全部';
+    state.serviceFilter = 'all';
     state.tab = page === 'classes' ? (state.role === 'teacher' ? 'teaching' : 'arrange') : page === 'admissions' ? 'firstcontact' : page === 'activity' ? 'onsite' : 'all';
   }
   function persist() { try { localStorage.setItem(storageKey,JSON.stringify(data)); } catch { /* 保存结果仍保留在当前打开的示例中。 */ } }
@@ -206,8 +298,11 @@
     toastTimer = setTimeout(() => el.remove(),3200);
   }
 
-  const modeLabels = { profile: '学生资料', teaching: '本课记录', renewal: '寒假续班', contact: '联系登记', assessment: '测评登记', activity: '公开课现场', note: '沟通记录' };
+  const modeLabels = { profile: '学生资料', teaching: '本课记录', renewal: '寒假续班', contact: '联系登记', assessment: '测评登记', activity: '公开课现场', note: '沟通记录', enrollment:'报名安排',recontact:'停读回访',assignment:'线索分配' };
   function editorContext(p, mode) {
+    if (mode === 'enrollment') return '数学思维 · 2026 秋季 · 确认后继续安排班级';
+    if (mode === 'recontact') return `${p.pastClass} · 结束后的再次联系`;
+    if (mode === 'assignment') return '新线索 · 核对来源与安排负责人';
     if (mode === 'teaching') return `${classroom(p.classId)?.name || '班级'} · ${classroom(p.classId)?.lesson || '本次课'}`;
     if (mode === 'renewal') return '2026 秋季数学 → 2027 寒假数学';
     if (mode === 'activity') return '数学探险 · 09.19 周末公开课';
@@ -217,7 +312,7 @@
   }
   function createDraft(p, mode) {
     const recent = p.records.find(r => r.mode === mode);
-    return { note: recent?.note || '', attendance: p.attendance, renewal: p.renewal, activity: p.activity, contact: p.contactOutcome || '待联系', assessment: p.assessment, understanding: recent?.understanding || '能够理解，表达需引导', feedback: recent?.feedback || '', next: recent?.next || '', channel: recent?.channel || '微信', nextStep: recent?.nextStep || '继续了解课程' };
+    return { note: recent?.note || '', attendance: p.attendance, renewal: p.renewal, activity: p.activity, contact: p.contactOutcome || '待联系', assessment: p.assessment, understanding: recent?.understanding || '能够理解，表达需引导', feedback: recent?.feedback || '', next: recent?.next || '', channel: recent?.channel || '微信', nextStep: recent?.nextStep || '继续了解课程', enrollmentResult:p.enrollmentResult || (p.stage === '等班' ? '报名已确认' : '考虑中'),followUp:p.followUp || '尚未回访',owner:p.owner || '林老师' };
   }
   function openEditor(id, mode) {
     const p = person(id); if (!p) return;
@@ -228,6 +323,9 @@
     const draft = state.draft;
     const context = `<div class="form-context"><strong>${modeLabels[mode]}</strong>${editorContext(p,mode)}</div>`;
     let fields = '';
+    if (mode === 'enrollment') fields = field('本次报名情况','enrollmentResult',['考虑中','报名已确认','暂不报名'],draft.enrollmentResult);
+    if (mode === 'recontact') fields = field('本次回访结果','followUp',['尚未回访','下期再联系','重新了解课程','安排复测','暂不考虑'],draft.followUp);
+    if (mode === 'assignment') fields = field('负责人','owner',['林老师','陈老师','周主管'],draft.owner);
     if (mode === 'teaching') fields = `<div class="two-fields">${field('本课出勤','attendance',['待登记','出勤','迟到','请假','缺席'],draft.attendance)}${field('学习情况','understanding',['能够理解，表达需引导','独立完成，思路清晰','需要课后再巩固'],draft.understanding)}</div>`;
     if (mode === 'renewal') fields = field('本轮续班情况','renewal',['未联系','考虑中','意向确认','本轮不续'],draft.renewal) + `<div class="two-fields">${field('联系渠道','channel',['微信','电话','当面'],draft.channel)}<label class="field"><span>下次联系（可选）</span><input type="date" name="next" value="${esc(draft.next)}"></label></div>`;
     if (mode === 'contact') fields = `<div class="two-fields">${field('联系结果','contact',['待联系','已接通','稍后再联系','暂不考虑'],draft.contact)}${field('联系渠道','channel',['微信','电话','当面'],draft.channel)}</div>${field('接下来','nextStep',['继续了解课程','协调测评时间','邀请参加公开课','暂缓联系'],draft.nextStep)}`;
@@ -236,18 +334,19 @@
     return `<form id="entry-form">${context}${fields}<label class="field"><span>${mode === 'teaching' ? '课堂观察 / 课后沟通' : mode === 'assessment' ? '教师建议' : mode === 'activity' ? '本场观察' : '本次记录'}${mode === 'note' ? '' : '（可选）'}</span><textarea name="note" placeholder="记录实际情况，下次接着处理…">${esc(draft.note)}</textarea></label>${mode === 'teaching' ? `<p class="small muted">寒假安排 ${tag(p.renewal)} ${textBtn('办理续班 →','drawer-mode','data-mode="renewal"')}</p>` : ''}<p class="small muted">保存后，同一学生在班级、学生资料和相应工作清单中可查看这条记录。</p></form>`;
   }
   function historyMarkup(p) {
-    const base = p.classId ? [{ mode: 'teaching', title: '上周课堂记录', note: '能跟上本次内容，鼓励把解题思路完整说出来。', context: `${classroom(p.classId).name} · 第 3 讲`, time: '09.12 · 李老师' },{ mode: 'note', title: '秋季数学报名与入班', note: `已安排在${classroom(p.classId).name}。`, context: '数学思维 · 2026 秋季', time: '08.28 · 林老师' }] : [{ mode: 'note', title: '最近沟通', note: p.note, context: '秋季数学', time: '09.17 · 林老师' }];
+    const base = p.pastClass ? [{ mode: 'note', title: '课程结束', note: '本期课程已结束，过去的学习经历持续保留。', context: p.pastClass, time: p.ended + ' · 课程记录' }] : p.classId ? [{ mode: 'teaching', title: '上周课堂记录', note: '能跟上本次内容，鼓励把解题思路完整说出来。', context: `${classroom(p.classId).name} · 第 3 讲`, time: '09.12 · 李老师' },{ mode: 'note', title: '秋季数学报名与入班', note: `已安排在${classroom(p.classId).name}。`, context: '数学思维 · 2026 秋季', time: '08.28 · 林老师' }] : [{ mode: 'note', title: '最近沟通', note: p.note, context: '秋季数学', time: '09.17 · 林老师' }];
     const records = [...p.records.map(r => ({ ...r, title: modeLabels[r.mode], time: '今天 · 刚刚保存' })),...base];
     return `<div class="timeline">${records.map(r => `<article class="timeline-item"><div class="label">${tag(r.title,'blue')}<span class="muted">${esc(r.result || '')}</span></div><p>${esc(r.note || '已登记本次结果。')}</p><div class="stamp">${esc(r.context)}<br>${esc(r.time)}</div></article>`).join('')}</div><div class="drawer-quick">${btn('补充沟通','drawer-mode','data-mode="note"')}${p.classId ? btn('本课登记','drawer-mode','data-mode="teaching"') + btn('寒假续班','drawer-mode','data-mode="renewal"') : ''}</div>`;
   }
   function relationshipsMarkup(p) {
+    if (p.pastClass) return `<div class="relation"><div class="inline-items"><strong>数学思维 · 2026 春季</strong>${tag('课程已结束')}</div><p class="small muted">${p.pastClass}<br>结束于 ${p.ended}</p></div><div class="relation"><h3>再次联系</h3><p class="small muted">${esc(p.followUp)}</p>${textBtn('登记回访 →','drawer-mode','data-mode="recontact"')}</div>`;
     return `${p.classId ? `<div class="relation"><div class="inline-items"><strong>秋季数学思维</strong>${tag('在读','green')}</div><p class="small muted">${classroom(p.classId).name}<br>${classroom(p.classId).time} · ${classroom(p.classId).teacher}</p></div><div class="relation"><div class="inline-items"><strong>寒假数学思维</strong>${tag(p.renewal)}</div><p class="small muted">2027 寒假 · 本轮续班安排</p>${textBtn('登记本轮续班 →','drawer-mode','data-mode="renewal"')}</div>` : `<div class="relation"><div class="inline-items"><strong>秋季数学思维</strong>${tag(p.stage)}</div><p class="small muted">${p.stage === '等班' ? '已报名，等待安排班级' : '课程了解与测评阶段'}</p>${p.stage === '等班' ? textBtn('安排班级 →','place',`data-id="${p.id}"`) : textBtn('联系登记 →','drawer-mode','data-mode="contact"')}</div>`}${activityPeople().some(s => s.id === p.id) ? `<div class="relation"><div class="inline-items"><strong>数学探险 · 公开课</strong>${tag(p.activity)}</div><p class="small muted">9 月 19 日 · 一次活动参与</p>${textBtn('本场登记 →','drawer-mode','data-mode="activity"')}</div>` : ''}${p.id === 's1' ? `<div class="relation"><div class="inline-items"><strong>数独体验</strong>${tag('意向了解')}</div><p class="small muted">另一门课程的意向，与数学在读并存。</p></div>` : ''}`;
   }
   function drawer() {
     if (!state.editor) return '';
     const p = person(state.editor.id); if (!p) return '';
     const mode = state.editor.mode;
-    return `<div class="overlay" data-overlay="editor"><section class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title" tabindex="-1"><header class="drawer-heading"><div class="drawer-top"><div><h2 class="person-title" id="drawer-title">${p.name}</h2><span class="small muted">${p.grade} 年级 · 林老师负责</span></div><button type="button" class="close" data-action="close" aria-label="关闭学生登记">×</button></div><div class="drawer-context"><span>从${pageTitle()}进入</span><span>›</span><span>${modeLabels[mode]}</span></div></header>${tabs([...(mode !== 'profile' ? [['entry',modeLabels[mode]]] : []),['history','完整记录'],['relations','课程与活动']],state.drawerTab,'drawer-tab').replace('class="tabs"','class="tabs drawer-tabs"')}<div class="drawer-body">${state.drawerTab === 'entry' ? entryFields(p,mode) : state.drawerTab === 'relations' ? relationshipsMarkup(p) : historyMarkup(p)}</div><footer class="drawer-actions">${state.saved ? '<span class="saved" role="status">✓ 已保存到示例</span>' : '<span class="saved"></span>'}${btn('关闭','close')}${state.drawerTab === 'entry' ? btn('保存并下一位','save-next') + btn('保存','save','','primary') : ''}</footer></section></div>`;
+    return `<div class="overlay" data-overlay="editor"><section class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title" tabindex="-1"><header class="drawer-heading"><div class="drawer-top"><div><h2 class="person-title" id="drawer-title">${p.name}</h2><span class="small muted">${p.grade} 年级 · ${esc(p.owner || '林老师')}负责</span></div><button type="button" class="close" data-action="close" aria-label="关闭学生登记">×</button></div><div class="drawer-context"><span>从${pageTitle()}进入</span><span>›</span><span>${modeLabels[mode]}</span></div></header>${tabs([...(mode !== 'profile' ? [['entry',modeLabels[mode]]] : []),['history','完整记录'],['relations','课程与活动']],state.drawerTab,'drawer-tab').replace('class="tabs"','class="tabs drawer-tabs"')}<div class="drawer-body">${state.drawerTab === 'entry' ? entryFields(p,mode) : state.drawerTab === 'relations' ? relationshipsMarkup(p) : historyMarkup(p)}</div><footer class="drawer-actions">${state.saved ? '<span class="saved" role="status">✓ 已保存到示例</span>' : '<span class="saved"></span>'}${btn('关闭','close')}${state.drawerTab === 'entry' ? btn('保存并下一位','save-next') + btn('保存','save','','primary') : ''}</footer></section></div>`;
   }
   function modal() {
     if (state.info) {
@@ -270,6 +369,9 @@
     const pending = (mode === 'teaching' && values.attendance === '待登记') || (mode === 'renewal' && values.renewal === '未联系') || (mode === 'contact' && values.contact === '待联系') || (mode === 'assessment' && values.assessment === '待测评');
     if (pending && !note) { toast('选择本次结果，或填写一条实际记录后保存。'); return; }
     let result = '';
+    if (mode === 'enrollment') { result = p.enrollmentResult = values.enrollmentResult; if (result === '报名已确认') p.stage = '等班'; }
+    if (mode === 'recontact') result = p.followUp = values.followUp;
+    if (mode === 'assignment') result = p.owner = values.owner;
     if (mode === 'teaching') result = p.attendance = values.attendance;
     if (mode === 'renewal') result = p.renewal = values.renewal;
     if (mode === 'activity') result = p.activity = values.activity;
@@ -287,12 +389,13 @@
     if (note) p.note = note;
     persist(); state.saved = true; state.draft = { ...state.draft,...values };
     if (next) {
-      const pool = mode === 'renewal' ? renewals() : mode === 'activity' ? activityPeople() : mode === 'teaching' ? members(p.classId) : scopePeople().filter(s => mode === 'assessment' ? s.stage === '待测评' || s.id === p.id : ['待首联','已联系'].includes(s.stage));
+      const pool = mode === 'recontact' ? data.formerPeople || [] : mode === 'assignment' ? scopePeople().filter(s => ['s14','s16'].includes(s.id)) : mode === 'enrollment' ? scopePeople().filter(s => ['测后跟进','等班'].includes(s.stage)) : mode === 'renewal' ? renewals() : mode === 'activity' ? activityPeople() : mode === 'teaching' ? members(p.classId) : scopePeople().filter(s => mode === 'assessment' ? s.stage === '待测评' || s.id === p.id : ['待首联','已联系'].includes(s.stage));
       const index = pool.findIndex(s => s.id === p.id);
       const following = pool[index + 1];
       if (following) openEditor(following.id,mode);
       else toast('当前范围已经处理到最后一位。');
     }
+    if (variant === 'd' && state.inlineDrafts) delete state.inlineDrafts[p.id];
     render(true); toast(`${p.name} · ${modeLabels[mode]}已保存`);
   }
   function closeOverlay() {
@@ -301,11 +404,12 @@
     (match || root.querySelector('.nav-item.active'))?.focus();
   }
   function render(focusDialog = false) {
-    const searchActive = document.activeElement?.dataset?.control === 'search';
+    const activeControl = document.activeElement?.dataset?.control;
+    const searchActive = ['search','lookup'].includes(activeControl);
     const cursor = searchActive ? document.activeElement.selectionStart : null;
     const isModal = Boolean(state.editor || state.placement || state.info);
-    root.innerHTML = prototypeBar() + `<div class="app" ${isModal ? 'inert' : ''}>${navigation()}<main class="main"><div class="breadcrumbs"><span>${variant === 'c' ? '工作清单' : '学校运营'}</span><span> / </span><span>${pageTitle()}</span><span style="margin-left:auto" class="small">${layouts[variant].caption}</span></div>${renderPage()}</main></div>${drawer()}${modal()}`;
-    if (searchActive) { const input = root.querySelector('[data-control="search"]'); input?.focus(); if (input && cursor !== null) input.setSelectionRange(cursor,cursor); }
+    root.innerHTML = prototypeBar() + mergedSourceMap() + `<div class="app" ${isModal ? 'inert' : ''}>${navigation()}<main class="main">${globalFinder()}<div class="breadcrumbs"><span>${variant === 'c' ? '工作清单' : variant === 'd' ? '工作' : '学校运营'}</span><span> / </span><span>${pageTitle()}</span><span style="margin-left:auto" class="small">${layouts[variant].caption}</span></div>${renderPage()}</main></div>${drawer()}${modal()}`;
+    if (searchActive) { const input = root.querySelector(`[data-control="${activeControl}"]`); input?.focus(); if (input && cursor !== null) input.setSelectionRange(cursor,cursor); }
     if (focusDialog) root.querySelector('[role="dialog"]')?.focus();
   }
   root.addEventListener('click', event => {
@@ -317,14 +421,17 @@
     if (action === 'scene') setScene(scene);
     if (action === 'tab') { state.tab = tab; state.search = ''; state.renewFilter = '全部'; }
     if (action === 'expand') { state.expanded.has(id) ? state.expanded.delete(id) : state.expanded.add(id); }
-    if (action === 'edit') openEditor(id,mode || 'profile');
+    if (action === 'edit') { state.lookup = ''; openEditor(id,mode || 'profile'); }
+    if (action === 'inline-open') { state.inlineId = state.inlineId === id ? null : id; state.inlineSaved = null; }
+    if (action === 'inline-close') state.inlineId = null;
+    if (action === 'save-service' || action === 'save-service-next') { saveService(action === 'save-service-next'); return; }
     if (action === 'drawer-tab') state.drawerTab = tab;
     if (action === 'drawer-mode') { if (state.editor) openEditor(state.editor.id,mode); }
     if (action === 'close') { closeOverlay(); return; }
     if (action === 'save' || action === 'save-next') { saveEntry(action === 'save-next'); return; }
     if (action === 'renew-filter') state.renewFilter = target.dataset.value;
-    if (action === 'class-records') { navigate('classes'); state.tab = 'teaching'; state.classroom = id; state.scene = 'classes'; state.info = null; }
-    if (action === 'class-renewal') { setScene('renewal'); state.classroom = id; state.info = null; }
+    if (action === 'class-records') { navigate('classes'); state.tab = 'teaching'; state.classroom = id; state.scene = 'classes'; state.info = null; state.expanded.add(id); }
+    if (action === 'class-renewal') { setScene('renewal'); state.classroom = id; state.info = null; state.expanded.add(id); }
     if (action === 'class-info') state.info = id;
     if (action === 'event-info') state.info = 'event2';
     if (action === 'place') { state.placement = { studentId: id }; state.editor = null; }
@@ -335,25 +442,28 @@
       p.classId = c.id; p.stage = '在读'; p.records.unshift({ mode:'note',note:`从等班安排进入${c.name}。`,context:'数学思维 · 2026 秋季',result:'已入班' });
       persist(); state.placement = null; state.expanded.add(c.id); render(); toast(`${p.name}已安排到${c.name}`); return;
     }
-    if (action === 'reset') { data = freshData(); persist(); state.editor = null; state.placement = null; state.info = null; state.saved = false; render(); toast('已恢复这组示例的初始名单。'); return; }
+    if (action === 'reset') { data = freshData(); initializeMergedExamples(); persist(); state.editor = null; state.placement = null; state.info = null; state.saved = false; state.inlineId = null; state.inlineDrafts = {}; state.inlineSaved = null; render(); toast('已恢复这组示例的初始名单。'); return; }
     render(['edit','place','place-in-class','class-info','event-info','drawer-mode','drawer-tab'].includes(action));
   });
   root.addEventListener('change', event => {
     const el = event.target;
+    if (el.closest('#service-row-form') && el.name) { inlineDraft(person(state.inlineId))[el.name] = el.value; state.inlineSaved = null; root.querySelector('.service-save > span').textContent = '有待保存的修改'; return; }
     if (el.closest('#entry-form') && el.name) { state.draft[el.name] = el.value; state.saved = false; root.querySelector('.saved')?.replaceChildren(); return; }
-    const control = el.dataset.control; if (!control || control === 'search') return;
+    const control = el.dataset.control; if (!control || ['search','lookup'].includes(control)) return;
     state[control] = el.value;
-    if (control === 'role') { state.classroom = 'all'; state.grade = 'all'; if (state.scene) setScene(state.scene); else if (state.role === 'teacher') { state.page = 'classes'; state.tab = 'teaching'; } }
+    if (control === 'role') { state.classroom = 'all'; state.grade = 'all'; if (state.scene) setScene(state.scene); else if (state.role === 'teacher' && variant !== 'd') { state.page = 'classes'; state.tab = 'teaching'; } }
     render();
   });
   let searchTimer;
   root.addEventListener('input', event => {
     const el = event.target;
+    if (el.closest('#service-row-form') && el.name) { inlineDraft(person(state.inlineId))[el.name] = el.value; state.inlineSaved = null; root.querySelector('.service-save > span').textContent = '有待保存的修改'; }
     if (el.closest('#entry-form') && el.name) { state.draft[el.name] = el.value; state.saved = false; root.querySelector('.saved')?.replaceChildren(); }
-    if (el.dataset.control === 'search') { state.search = el.value; clearTimeout(searchTimer); searchTimer = setTimeout(() => render(),130); }
+    if (['search','lookup'].includes(el.dataset.control)) { state[el.dataset.control] = el.value; clearTimeout(searchTimer); searchTimer = setTimeout(() => render(),130); }
   });
-  root.addEventListener('submit', event => { event.preventDefault(); if (event.target.id === 'entry-form') saveEntry(); });
+  root.addEventListener('submit', event => { event.preventDefault(); if (event.target.id === 'entry-form') saveEntry(); if (event.target.id === 'service-row-form') saveService(); });
   root.addEventListener('keydown', event => {
+    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && event.target.closest('#service-row-form')) { event.preventDefault(); saveService(); return; }
     const dialog = root.querySelector('[role="dialog"]');
     if (!dialog) return;
     if (event.key === 'Escape') { event.preventDefault(); closeOverlay(); return; }
@@ -367,6 +477,6 @@
     }
   });
   if (params.has('scene')) setScene(params.get('scene'));
-  else if (state.role === 'teacher') { state.page = 'classes'; state.tab = 'teaching'; }
+  else if (state.role === 'teacher' && variant !== 'd') { state.page = 'classes'; state.tab = 'teaching'; }
   render();
 })();
