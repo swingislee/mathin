@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { Json } from "@/lib/database.types";
 import { getActiveEnvironment } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { currentWorkEntryHref } from "@/features/school/work-entry-contract";
 
 export interface ChangeEvent {
   id: string;
@@ -49,7 +50,7 @@ function familyLearningLink(type: string, payload: Record<string, unknown>): str
 function fallbackLink(type: string): string {
   if (type.startsWith("payment.") || type.startsWith("refund.")) return "/dashboard/finance";
   if (type.startsWith("classroom.")) return "/dashboard/classes";
-  if (type.startsWith("approval.")) return "/dashboard/coordination";
+  if (type.startsWith("approval.")) return "/dashboard?view=work";
   return "/dashboard";
 }
 
@@ -65,7 +66,7 @@ function actionableLink(
   if (environment === "family") {
     return familyLearningLink(type, payload) ?? link ?? fallbackLink(type);
   }
-  return link ?? fallbackLink(type);
+  return currentWorkEntryHref(link ?? fallbackLink(type));
 }
 
 function objectPayload(payload: Json): Record<string, unknown> {

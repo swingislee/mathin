@@ -56,7 +56,7 @@ export function SessionAssignmentReviewPanel({ items, canGradeSubmissions = true
           </TabsList>
           {items.map(({ assignment, submissions }) => (
             <TabsContent key={assignment.id} value={assignment.id}>
-              <div className="mb-3 flex flex-wrap items-center gap-2"><Link prefetch={false} href={`/dashboard/teaching/assignments/${assignment.id}`} className={buttonVariants({ variant: "secondary", size: "sm" })}>{homeworkT("title")}</Link><span className="text-xs text-muted">{homeworkT("paperHint")}</span></div>
+              <div className="mb-3 flex flex-wrap items-center gap-2"><Link prefetch={false} href={`/dashboard/classes/assignments/${assignment.id}`} className={buttonVariants({ variant: "secondary", size: "sm" })}>{homeworkT("title")}</Link><span className="text-xs text-muted">{homeworkT("paperHint")}</span></div>
               {canGradeSubmissions && <SubmissionsRoster rows={submissions} />}
             </TabsContent>
           ))}

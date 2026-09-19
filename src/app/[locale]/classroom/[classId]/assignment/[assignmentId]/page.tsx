@@ -64,7 +64,7 @@ export default async function AssignmentPage({
 
       <div className="mt-8">
         {isTeacher && submissions ? (
-          <><Link prefetch={false} className={buttonVariants({ variant: "secondary", size: "sm", className: "mb-3" })} href={`/dashboard/teaching/assignments/${assignmentId}`}>{homeworkT("title")}</Link><SubmissionsRoster rows={submissions} /></>
+          <><Link prefetch={false} className={buttonVariants({ variant: "secondary", size: "sm", className: "mb-3" })} href={`/dashboard/classes/assignments/${assignmentId}`}>{homeworkT("title")}</Link><SubmissionsRoster rows={submissions} /></>
         ) : (
           studentId ? <SubmissionForm assignmentId={assignmentId} studentId={studentId} mine={mine} /> : null
         )}

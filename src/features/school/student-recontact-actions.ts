@@ -21,7 +21,7 @@ export async function planStudentRecontactAction(input: z.input<typeof schema>):
       p_id: value.id, p_name: value.name, p_work_date: value.date, p_owner_id: value.ownerId, p_subjects: value.subjects,
     }));
     revalidatePath("/[locale]/dashboard/students", "page");
-    revalidatePath("/[locale]/dashboard/followups", "layout");
+    revalidatePath("/[locale]/dashboard", "layout");
     return { ok: true, data: { id } };
   } catch (error) {
     return actionError(error, [...COMMON_CODES, "ASSIGNMENT_CONFLICT", "RECONTACT_CHANGED", "TARGET_CANNOT_FOLLOW_UP", "REQUEST_CONFLICT", "FORBIDDEN_SCOPE", "SUBJECT_MISMATCH"]);

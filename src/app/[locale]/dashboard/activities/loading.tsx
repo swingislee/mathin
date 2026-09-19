@@ -1,1 +1,1 @@
-export { default } from "../enrollments/loading";
+export { default } from "../leads/loading";

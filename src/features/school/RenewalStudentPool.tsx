@@ -15,7 +15,7 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { setRenewalCycleStatusAction, snapshotRenewalCycleMembershipsAction } from "./actions/renewals";
 import { BusinessRecordStateFilter, useBusinessSearchQuery } from "./BusinessRecordStateFilter";
 import { businessRecordMessages, isCurrentBusinessRecord, matchesBusinessRecordState, type BusinessRecordStateFilter as StateFilter } from "./business-record-state-contract";
-import { DashboardPage, DashboardCommandState, DashboardCommandFilters, DashboardCommandActions, DashboardTableShell, DashboardTableColumnHeader } from "./dashboard-page";
+import { DashboardPage, DashboardCommandFilters, DashboardCommandActions, DashboardTableShell, DashboardTableColumnHeader } from "./dashboard-page";
 import { FollowupChoice } from "./dashboard-page/FollowupChoice";
 import { useDashboardFieldView } from "./dashboard-page/useDashboardFieldView";
 import { RENEWAL_TABLE_COLUMNS, renewalTableFields } from "./renewal-table-fields";
@@ -23,7 +23,6 @@ import { LeadPoolPagination } from "./LeadPoolPagination";
 import { useFollowupPagination } from "./useFollowupPagination";
 import { FilterSearchInput } from "./FilterBar";
 import { navigateFollowupTable } from "./followup-keyboard";
-import { FollowupTabs } from "./FollowupTabs";
 import { FollowupCommandPanel } from "./FollowupCommandPanel";
 import { FollowupPrimaryFilter, useFollowupWorkFilter } from "./FollowupPrimaryFilter";
 import { RENEWAL_WORK_FILTERS, renewalMatchesWorkFilter, type RenewalWorkFilter } from "./followup-primary-filter-contract";
@@ -168,7 +167,7 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
   }, [activate, canEnroll, canReview, canWrite, cycle?.id, cycle?.name, cycle?.status, cycle?.targetTermName, entryBusy, nextRow, notifySaved, policy, sampleMode, signalsFor, supplement.healthAvailable, supplement.now, supplement.observationMemberships, supplement.signals, timeZone]);
 
   return <DashboardPage title={legacy("title")} density="compact" commandPanel={<FollowupCommandPanel>
-    <DashboardCommandState><FollowupTabs /></DashboardCommandState>
+
     <DashboardCommandFilters>
       <FollowupPrimaryFilter label={filterT("workQueue")} value={effectiveWorkFilter} disabled={entryBusy}
         options={RENEWAL_WORK_FILTERS.map(value => ({ value, label: filterT(`renewals_${value}`) }))}
@@ -177,7 +176,7 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
           if (value !== "all" && recordState === "historical") setRecordState("current");
         }} />
       <FollowupChoice label={pool("cycle")} value={cycle?.id ?? "none"} presentation="select" disabled={entryBusy || !data.cycles.length} className="w-52 h-8 min-h-8 shrink-0 py-1 text-xs"
-        onValueChange={id => router.replace(`/dashboard/followups/renewals?cycle=${id}`)} options={data.cycles.length ? data.cycles.map(item => ({ value: item.id, label: item.name })) : [{ value: "none", label: legacy("noCycles") }]} />
+        onValueChange={id => router.replace(`/dashboard/renewals?cycle=${id}`)} options={data.cycles.length ? data.cycles.map(item => ({ value: item.id, label: item.name })) : [{ value: "none", label: legacy("noCycles") }]} />
       <BusinessRecordStateFilter presentation="followup" value={recordState} onChange={value => {
         if (entryBusy) return;
         setRecordState(value);
@@ -186,10 +185,10 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
       <FilterSearchInput aria-label={t("search")} placeholder={t("search")} value={query} disabled={entryBusy} onChange={event => setQuery(event.target.value)} />
     </DashboardCommandFilters>
     <DashboardCommandActions><Button size="sm" variant="ghost" disabled={entryBusy} onClick={() => setSettingsOpen(true)}><SlidersHorizontal className="size-4" />{pool("settings")}</Button>
-      <Link href="/dashboard/followups/renewals/growth" className={buttonVariants({ size: "sm", variant: "ghost" })}>{legacy("reactivationAndReferrals")}</Link>
-      <Link href="/dashboard/followups/renewals/signals" className={buttonVariants({ size: "sm", variant: "ghost" })}>{legacy("teacherSignals")}</Link>
+      <Link href="/dashboard/renewals/growth" className={buttonVariants({ size: "sm", variant: "ghost" })}>{legacy("reactivationAndReferrals")}</Link>
+      <Link href="/dashboard/renewals/signals" className={buttonVariants({ size: "sm", variant: "ghost" })}>{legacy("teacherSignals")}</Link>
     </DashboardCommandActions>
-  </FollowupCommandPanel>} footer={<LeadPoolPagination baseHref="/dashboard/followups/renewals" currentPage={pagination.page} totalPages={pagination.totalPages} totalCount={pagination.count}
+  </FollowupCommandPanel>} footer={<LeadPoolPagination baseHref="/dashboard/renewals" currentPage={pagination.page} totalPages={pagination.totalPages} totalCount={pagination.count}
     pageSize={pagination.pageSize} disabled={entryBusy} onPageChange={(page, size) => { setRetainedView(null); setActiveId(null); pagination.onPageChange(page, size); }} />}>
     <SchoolSupportTableEntry workspace="renewals" enabled={canWrite && !sampleMode} columns={["name","blank","blank","blank","blank","blank","blank"]} initialWork={{cycleId:cycle?.status!=="closed"?cycle?.id??null:null,termId:cycle?.targetTermId??null}}><DashboardTableShell data-renewal-workbench data-followup-workbench data-followup-scroll>
       <Table className="w-full min-w-[70rem] table-fixed text-xs" containerClassName="overflow-auto [scrollbar-gutter:stable]"
@@ -210,7 +209,7 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
       </Table>
     </DashboardTableShell></SchoolSupportTableEntry>
     <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}><DialogContent className="sm:max-w-3xl" aria-describedby={undefined}><DialogHeader><DialogTitle>{pool("settings")}</DialogTitle></DialogHeader>
-      <div className="space-y-5"><Label className="block">{pool("cycle")}<FollowupChoice label={pool("cycle")} value={cycle?.id ?? ""} onValueChange={id => router.replace(`/dashboard/followups/renewals?cycle=${id}`)} options={data.cycles.map(item => ({ value: item.id, label: item.name }))} className="mt-2 w-full" /></Label>
+      <div className="space-y-5"><Label className="block">{pool("cycle")}<FollowupChoice label={pool("cycle")} value={cycle?.id ?? ""} onValueChange={id => router.replace(`/dashboard/renewals?cycle=${id}`)} options={data.cycles.map(item => ({ value: item.id, label: item.name }))} className="mt-2 w-full" /></Label>
         {cycle ? <><p className="text-sm">{cycle.sourceTermName} → {cycle.targetTermName}</p><p className="text-xs text-muted">{legacy(`cycleStatus_${cycle.status}`)} · {cycle.preparationStartsOn || "—"} — {cycle.decisionDueOn || "—"}</p></> : null}
         <div className="flex flex-wrap gap-2">{canWrite ? <>
           {cycle && cycle.status !== "closed" ? <Button size="sm" variant="secondary" disabled={refresh.pending} onClick={() => refresh.run(cycle.id)}>{pool("refresh")}</Button> : null}

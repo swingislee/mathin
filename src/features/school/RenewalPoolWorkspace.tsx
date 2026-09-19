@@ -30,7 +30,6 @@ import {
   DashboardCommandFilters,
   DashboardCommandPanel,
   DashboardCommandSelection,
-  DashboardCommandState,
   DashboardEmptyState,
   DashboardPage,
   DashboardSection,
@@ -54,7 +53,6 @@ import {
   type RenewalStaffOption,
 } from "./renewal-contract";
 import type { RenewalWorkspaceData } from "./renewals";
-import { FollowupTabs } from "./FollowupTabs";
 
 const emptyErrors = { default: "" };
 
@@ -135,11 +133,11 @@ export function RenewalPoolWorkspace({
             <Button size="sm" variant="ghost" onClick={clearSelection}>{t("clearSelection")}</Button>
           </DashboardCommandSelection>
         ) : undefined}>
-          <DashboardCommandState><FollowupTabs /></DashboardCommandState>
+
           <DashboardCommandFilters>
             <Select value={selectedCycle?.id ?? "none"} onValueChange={(value) => {
               clearSelection();
-              router.replace(value === "none" ? "/dashboard/followups/renewals" : `/dashboard/followups/renewals?cycle=${value}`);
+              router.replace(value === "none" ? "/dashboard/renewals" : `/dashboard/renewals?cycle=${value}`);
             }}>
               <SelectTrigger className="w-full sm:w-56" aria-label={t("cycleFilter")}><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -264,7 +262,7 @@ export function RenewalPoolWorkspace({
                 <TableCell>{opportunity.ownerName}</TableCell>
                 <TableCell className="max-w-72 whitespace-normal">{opportunity.nextAction || "—"}</TableCell>
                 <TableCell>{localDateTime(opportunity.nextActionAt, locale)}</TableCell>
-                <TableCell className="text-right"><Link className={cn(buttonVariants({ size: "sm", variant: "ghost" }))} href={`/dashboard/followups/renewals/${opportunity.id}`}>{t("openDetail")}</Link></TableCell>
+                <TableCell className="text-right"><Link className={cn(buttonVariants({ size: "sm", variant: "ghost" }))} href={`/dashboard/renewals/${opportunity.id}`}>{t("openDetail")}</Link></TableCell>
               </TableRow>)}
               {visibleRows.length === 0 ? <TableRow><TableCell colSpan={7} className="h-40 text-center text-muted">{t("emptyPool")}</TableCell></TableRow> : null}
             </TableBody>

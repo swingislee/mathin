@@ -508,7 +508,7 @@ function InvitationHistory({ rows, formatAt }: { rows: InvitationCoordinationRow
 const sameCommunicationFact = (left: CommunicationRow, right: CommunicationRow) => left.source === right.source
   && left.value === right.value && (left.source !== "contact" || right.source !== "contact" || left.previousInvitation === right.previousInvitation);
 
-export function InvitationCoordinationWorkbench({ rows, activities, assessors, locale, currentUserId, canManageInvitation, postActivityRows = EMPTY_ROWS, searchQuery = "", contactLeads = EMPTY_CONTACT_LEADS, leadDetails = EMPTY_CONTACT_LEADS, canContact = false, canManageIdentity = false, focusLeadId, rowOrder, invitationHistory = EMPTY_ROWS, workday, worklist, selectionEnabled = false, sessionKey = "communication", workMode, historicalFirstContacts=EMPTY_ROWS, fieldView, timeZone = ASSESSMENT_TIME_ZONE, now, emptyMessage }: {
+export function InvitationCoordinationWorkbench({ rows, activities, assessors, locale, currentUserId, canManageInvitation, postActivityRows = EMPTY_ROWS, searchQuery = "", contactLeads = EMPTY_CONTACT_LEADS, leadDetails = EMPTY_CONTACT_LEADS, canContact = false, canManageIdentity = false, focusLeadId, rowOrder, invitationHistory = EMPTY_ROWS, workday, worklist, selectionEnabled = false, sessionKey = "communication", workMode, historicalFirstContacts=EMPTY_ROWS, fieldView, timeZone = ASSESSMENT_TIME_ZONE, now, emptyMessage, firstContactOnly = false }: {
   rows: InvitationCoordinationRow[]; activities: InvitationActivityOption[]; assessors: InvitationAssessorOption[]; locale: string;
   queue?: InvitationQueue; coordinationStage?: InvitationCoordinationStage | null; stageCounts?: InvitationQueueCounts["stages"];
   searchQuery?: string; currentUserId: string; canManageInvitation: boolean; postActivityRows?: ActivityEnrollmentContext[];
@@ -518,7 +518,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
   workMode?: CommunicationWorkbenchView;
   historicalFirstContacts?:HistoricalFirstContactRow[];
   fieldView?: FollowupServerFields; timeZone?: string; now?: number;
-  emptyMessage?: string;
+  emptyMessage?: string; firstContactOnly?: boolean;
 }) {
   const t = useTranslations("school.invitations");
   const leadT = useTranslations("school.leads");
@@ -616,7 +616,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
         }
         return { id: value.id, source: "invitation" as const, value };
       }),
-      ...uniqueContactLeads.filter((lead) => (!lead.activeInvitation || hasPendingInvitation(lead)) && !invitedLeadIds.has(lead.id)).map((value) => ({ id: `contact:${value.id}`, source: "contact" as const, value })),
+      ...uniqueContactLeads.filter((lead) => (firstContactOnly || !lead.activeInvitation || hasPendingInvitation(lead)) && !invitedLeadIds.has(lead.id)).map((value) => ({ id: `contact:${value.id}`, source: "contact" as const, value })),
       ...postActivityRows.filter((row) => workday || worklist || row.eligible).map((original) => ({ id: `post:${original.registrationId}`, source: "post_activity" as const,
         value: communicationFactWithOverride(original, postOverrides[original.registrationId]) })),
       ...historicalFirstContacts.map(value => ({ id: `student:${value.studentId}`, source: 'profile' as const, value })),
@@ -625,7 +625,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
     const byKey = new Map(combinedUnsorted.map(row => [communicationRowKey(row), row]));
     const combined = orderedKeys ? [...orderedKeys.flatMap(key => { const row = byKey.get(key); byKey.delete(key); return row ? [row] : []; }), ...byKey.values()] : combinedUnsorted;
     return { leadById, combined };
-  }, [workSession?.facts, leadDetails, contactLeads, leadSession.overrides, rows, rowOverrides, recontactIds, postActivityRows, postOverrides, historicalFirstContacts, fieldView, rowOrder, workday, worklist]);
+  }, [workSession?.facts, leadDetails, contactLeads, leadSession.overrides, rows, rowOverrides, recontactIds, postActivityRows, postOverrides, historicalFirstContacts, fieldView, rowOrder, workday, worklist, firstContactOnly]);
   const historyFor = useCallback((leadId: string, currentId?: string) => invitationHistory.filter((row) => row.leadId === leadId && row.id !== currentId), [invitationHistory]);
   const nameOf = useCallback((row: CommunicationRow) => row.source === "invitation" ? row.value.leadName : row.source === "contact" ? row.value.provisionalStudentName : row.value.name, []);
   const referenceRow = useCallback((row: CommunicationRow): CommunicationRow => row.source === "contact" && row.previousInvitation ? { id: row.previousInvitation.id, source: "invitation", value: row.previousInvitation } : row, []);

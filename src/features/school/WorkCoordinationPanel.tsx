@@ -1,10 +1,10 @@
 "use client";
 
-import { ClipboardCheck, History, ListPlus, LoaderCircle } from "lucide-react";
+import { ClipboardCheck, ListPlus, LoaderCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { FormEvent, useMemo, useState } from "react";
 import { useAction } from "@/components/action-form";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Link, useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/navigation";
 import { newId } from "@/lib/uuid";
 import {
   createDurableWorkItemAction,
@@ -148,9 +148,6 @@ export function WorkCoordinationPanel({
         <p className="mt-1 max-w-2xl text-sm text-muted">{t("coordinationIntro")}</p>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Link href="/dashboard/coordination" className={buttonVariants({ variant: "ghost" })}>
-          <History size={16} />{t("coordinationHistory")}
-        </Link>
         <Dialog open={workOpen} onOpenChange={setWorkOpen}>
           <DialogTrigger asChild><Button type="button" variant="secondary"><ListPlus size={16} />{t("coordinationCreateWork")}</Button></DialogTrigger>
           <DialogContent>

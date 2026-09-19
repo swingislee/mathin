@@ -333,6 +333,16 @@
 
 执行与回退见[首联自动建档操作记录](../runbooks/student-profile-first-contact.md)。本条不改变首联布局、快捷键和显式保存行为，不补记用户验收或阶段关闭。
 
+### 10.6 2026-09-19 沟通入口与五阶段编排（开发端待验收）
+
+产品负责人明确要求将首联以标签内嵌进沟通，并直接重构正式页面。本次授权覆盖原工作台导航、首联外层人群编排与路径迁移。
+
+- `/dashboard/communication` 按学生五阶段组织名单；待首联复用 `InvitationCoordinationWorkbench` 与原 `LeadContactEntryRow`，保持既有字段、详情、快捷键、显式保存及身份处理。
+- 联系工作单保留原工作安排与固定名单，迁至 `/dashboard/communication/worklists`。原首联网址退役，无兼容重定向。
+- 本次首联组件增加显式阶段名单参数，保证阶段内已有邀约的学生仍能出现在该阶段名单；其他场景的默认组合逻辑保持原样。
+- 学生页原五标签及业务推导继续共用原数据层。实施范围、班级编排及验证说明见[仪表盘工作入口重组](dashboard-work-entry-restructure.md)。
+- 状态为 **DEVELOPMENT READY / AWAITING USER ACCEPTANCE**。本条记录本次授权与开发实现，不追加用户通过或生产阶段关闭结论。
+
 ## 11. 2026-09-07 测评页面对齐首联（开发端待验收）
 
 产品负责人要求参照首联施工修复测评页面，并明确页面标题为“测评”。本批范围为 `/dashboard/followups/assessments` 的主表与行下登记；逐题测评工作面及服务端业务写入合同保持原样。

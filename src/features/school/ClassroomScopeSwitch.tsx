@@ -12,7 +12,7 @@ export async function ClassroomScopeSwitch({ activeScope, availableScopes }: { a
       items={availableScopes.map((scope) => ({
         value: scope,
         label: t(`scope_${scope}`),
-        href: `/dashboard/classes?scope=${scope}`,
+        href: `/dashboard/classes?view=directory&scope=${scope}`,
       }))}
     />
   );

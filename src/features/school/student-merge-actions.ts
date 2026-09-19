@@ -20,7 +20,7 @@ async function call<T>(name:string,args:Record<string,unknown>,schema:z.ZodType<
     const {data,error}=await rpc.call(supabase,name,args);
     if(error)throw new Error(error.message);
     const result=schema.parse(data);
-    if(write){revalidatePath('/[locale]/dashboard/students','layout');revalidatePath('/[locale]/dashboard/followups','layout');revalidatePath('/[locale]/dashboard/classes','layout');}
+    if(write){revalidatePath('/[locale]/dashboard/students','layout');revalidatePath('/[locale]/dashboard','layout');revalidatePath('/[locale]/dashboard/classes','layout');}
     return {ok:true,data:result} as ActionResult<T>;
   }catch(error){return actionError<T>(error,codes);}
 }

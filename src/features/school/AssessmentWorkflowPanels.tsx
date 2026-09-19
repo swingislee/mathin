@@ -42,7 +42,7 @@ export function AssessmentFeedbackPanel({ registrationId, workflow, hasResult, p
       {canWrite && hasResult ? <Button type="button" size="sm" variant="secondary" disabled={pending} onClick={onPrepare}>{t(workflow?.report ? "updateReport" : "prepareReport")}</Button> : null}
       {workflow?.report && registrationId ? <Link target="_blank" rel="noopener noreferrer"
         className={buttonVariants({ variant: "secondary", size: "sm" })}
-        href={`/dashboard/followups/assessments/${registrationId}/reports/${workflow.report.id}`}>
+        href={`/dashboard/assessments/${registrationId}/reports/${workflow.report.id}`}>
         {t("openReport", { version: workflow.report.version })}</Link> : null}
     </div>
     <p className="text-xs text-muted" data-assessment-report-send-status>{t(currentAssessmentReportWasSent(workflow) ? "reportSent" : "reportNotSent")}
@@ -139,7 +139,7 @@ export function AssessmentWorkflowHistory({ registrationId, revision, locale }: 
         {event.action === "revise" ? <p className="whitespace-pre-wrap text-ink">{event.reason}</p> : null}
         {event.action === "classify" && event.parentResponse ? <p className="whitespace-pre-wrap text-ink">{event.parentResponse}</p> : null}
         {event.reportId ? <Link className="ml-2 text-leaf-deep hover:underline" target="_blank" rel="noopener noreferrer"
-          href={`/dashboard/followups/assessments/${registrationId}/reports/${event.reportId}`}>{t(event.reportId === event.sentReportId ? "sentReportVersion" : "reportVersion")}</Link> : null}
+          href={`/dashboard/assessments/${registrationId}/reports/${event.reportId}`}>{t(event.reportId === event.sentReportId ? "sentReportVersion" : "reportVersion")}</Link> : null}
       </li>)}
     </ol>}
   </details>;

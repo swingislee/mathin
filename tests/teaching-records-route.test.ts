@@ -3,9 +3,9 @@ const deps = vi.hoisted(() => ({ authorize: vi.fn(), read: vi.fn() }));
 vi.mock("@/lib/auth", () => ({ requireAnyPerm: deps.authorize }));
 vi.mock("@/features/school/teaching-workbench/teaching-records-read", () => ({ getTeachingRecords: deps.read }));
 vi.mock("@/features/school/teaching-workbench/teaching-replay-read", () => ({ readTeachingReplay: vi.fn() }));
-import { POST } from "@/app/[locale]/dashboard/teaching/records-detail/route";
+import { POST } from "@/app/[locale]/dashboard/classes/records-detail/route";
 const id = "12345678-1234-4234-9234-123456789abc";
-const request = (input: unknown) => new Request("http://example.test/zh/dashboard/teaching/records-detail", { method: "POST", body: JSON.stringify(input) });
+const request = (input: unknown) => new Request("http://example.test/zh/dashboard/classes/records-detail", { method: "POST", body: JSON.stringify(input) });
 const context = { params: Promise.resolve({ locale: "zh" }) };
 beforeEach(() => { vi.resetAllMocks(); deps.authorize.mockResolvedValue({ id: "user" }); });
 

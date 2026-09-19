@@ -109,7 +109,7 @@ export function LeadIntakeWorkbench({ leads, locale, canAssign = false, canManag
         <TableCell className="tabular-nums text-muted" title={lead.acquiredAt ? formatAt(lead.acquiredAt) : lead.acquiredDateLabel}>{lead.acquiredAt ? formatAt(lead.acquiredAt, true) : lead.acquiredDateLabel || formatAt(null, true)}</TableCell>
         <TableCell className="truncate" title={lead.ownerName}>{lead.ownerName || t("unassignedOwner")}</TableCell>
         <TableCell><Badge variant="outline" className={cn("max-w-full truncate px-1.5 py-0 text-[11px] leading-5", followupToneClasses[toneOf(lead)])} title={[progressOf(lead), lead.activeInvitation ? invitationT(`kind_${lead.activeInvitation.kind}`) : "", lead.lastContactNote].filter(Boolean).join(" · ")}>{progressOf(lead)}</Badge></TableCell>
-        <TableCell><Link href={`/dashboard/followups/communication?lead=${lead.id}`} className={cn(buttonVariants({ size: "sm", variant: "ghost" }), "size-7 p-0")} title={communicationLabel} aria-label={`${communicationLabel} · ${lead.provisionalStudentName}`}><ArrowRight className="size-3.5" /></Link></TableCell>
+        <TableCell><Link href={`/dashboard/communication?lead=${lead.id}`} className={cn(buttonVariants({ size: "sm", variant: "ghost" }), "size-7 p-0")} title={communicationLabel} aria-label={`${communicationLabel} · ${lead.provisionalStudentName}`}><ArrowRight className="size-3.5" /></Link></TableCell>
       </TableRow>
       <FollowupInlineDetails open={open} hideTitle pending={selection.assignmentPending} onOpenChange={(value) => changeDetails(lead.id, value)} title={`${lead.provisionalStudentName} · ${t("sourceDetails")}`} colSpan={colSpan} id={detailsId}>
         {() => <FollowupEntryLayout data-lead-intake-details>
@@ -133,7 +133,7 @@ export function LeadIntakeWorkbench({ leads, locale, canAssign = false, canManag
             {lead.lastContactNote ? <p className="whitespace-pre-wrap break-words text-xs leading-5">{lead.lastContactNote}</p> : null}
             <div className="flex flex-wrap gap-2 text-[11px] text-muted">{lead.interestLevel ? <span>{t(`interest_${lead.interestLevel}`)}</span> : null}{lead.wechatAdded !== null ? <span>{t(lead.wechatAdded ? "wechatAdded" : "wechatNotAdded")}</span> : null}{lead.visitCommitted !== null ? <span>{t(lead.visitCommitted ? "visitCommitted" : "visitNotCommitted")}</span> : null}</div>
             {lead.nextContactAt ? <p className="text-xs text-muted">{invitationT("nextContactReminderScheduled", { time: formatAt(lead.nextContactAt) })}</p> : null}
-            <Link href={`/dashboard/followups/communication?lead=${lead.id}`} className={cn(buttonVariants({ size: "sm", variant: "ghost" }), "h-7 px-0 text-xs")}>{communicationLabel}<ArrowRight className="size-3.5" /></Link>
+            <Link href={`/dashboard/communication?lead=${lead.id}`} className={cn(buttonVariants({ size: "sm", variant: "ghost" }), "h-7 px-0 text-xs")}>{communicationLabel}<ArrowRight className="size-3.5" /></Link>
           </aside>
         </FollowupEntryLayout>}
       </FollowupInlineDetails>

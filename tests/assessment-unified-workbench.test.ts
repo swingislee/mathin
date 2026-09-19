@@ -8,11 +8,12 @@ vi.mock("../src/lib/supabase/server", () => ({
   createClient: async () => ({
     rpc: async () => ({ data: db.teacherRequired, error: null }),
     from: (table: string) => {
-      let rows = (db.tables[table] ?? []).map(row => table === "activities" ? { remark: "", record_state: "current", occurred_on: null, ...row } : row);
+      const fixtureTable = ({ business_activities: "activities", business_activity_registrations: "activity_registrations", business_assessment_results: "assessment_results" } as Record<string, string>)[table] ?? table;
+      let rows = (db.tables[fixtureTable] ?? []).map(row => fixtureTable === "activities" ? { remark: "", record_state: "current", occurred_on: null, ...row } : row);
       const query = {
         select: () => query,
         eq: (field: string, value: unknown) => {
-          if (table === "activities") db.activityFilters.push(`${field}:${value}`);
+          if (fixtureTable === "activities") db.activityFilters.push(`${field}:${value}`);
           rows = rows.filter((row) => row[field] === value);
           return query;
         },
@@ -75,12 +76,12 @@ describe("unified assessment workbench", () => {
     expect(workbench.match(/<TeacherAssessmentEntryButton/g)).toHaveLength(1);
     expect(detail).not.toContain("TeacherAssessmentEntryButton");
     expect(workbench).toContain("teacherObservation");
-    expect(workbench).toContain("<FollowupTabs />");
+    expect(workbench).not.toContain("<FollowupTabs />");
     expect(workbench).toContain("<FollowupInlineDetails");
     expect(workbench).toContain("colSpan={7}");
     expect(workbench).toContain("table-fixed");
     expect(workbench).toContain('"h-16 cursor-pointer');
-    expect(workbench).toContain("navigateFollowupTable(event");
+    expect(workbench).toContain("<FollowupTableBody onNavigate=");
     expect(workbench).toContain("keepMounted={retained}");
     expect(workbench).toContain("retained={visitedDetails.has(row.id)}");
     expect(workbench).toContain("data-followup-active={active}");
@@ -97,13 +98,13 @@ describe("unified assessment workbench", () => {
   });
 
   it("uses one canonical route with an in-row temporary assessor handoff", () => {
-    const route = source("src/app/[locale]/dashboard/followups/assessments/support-preview/page.tsx");
-    const canonical = source("src/app/[locale]/dashboard/followups/assessments/page.tsx");
+    const route = source("src/app/[locale]/dashboard/assessments/support-preview/page.tsx");
+    const canonical = source("src/app/[locale]/dashboard/assessments/page.tsx");
     const workbench = source("src/features/school/AssessmentUnifiedWorkbench.tsx");
     const action = source("src/features/school/assessment-assessor-actions.ts");
     const migration = source("supabase/migrations/20260904000400_school_ops_unified_assessment_assessor.sql");
 
-    expect(route).toContain('redirect(`/${locale}/dashboard/followups/assessments`)');
+    expect(route).toContain('redirect(`/${locale}/dashboard/assessments`)');
     expect(canonical).toContain("<AssessmentUnifiedWorkbench");
     expect(canonical).not.toContain("requestedDesk");
     expect(source("src/features/school/AssessmentRecordDetails.tsx")).toContain("data-assessor-reassignment");

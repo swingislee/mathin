@@ -497,7 +497,7 @@ export function ImportStudentsPanel({ recentBatches }: { recentBatches: StudentI
                 <CheckCircle2 size={16} />
                 {t("importCompleted", { count: batch.inserted })}
               </p>
-              <Link href="/dashboard/followups" className={buttonVariants({ size: "sm" })}>
+              <Link href="/dashboard/communication" className={buttonVariants({ size: "sm" })}>
                 {t("openLeadWorkspace")}
                 <ArrowRight size={15} />
               </Link>
@@ -543,7 +543,7 @@ export function ImportStudentsPanel({ recentBatches }: { recentBatches: StudentI
       </DashboardSection>
 
       <div className="flex justify-end">
-        <Link href="/dashboard/followups" className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>
+        <Link href="/dashboard/communication" className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>
           <FileSpreadsheet size={15} />
           {t("openLeadWorkspace")}
         </Link>

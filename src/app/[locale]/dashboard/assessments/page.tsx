@@ -1,14 +1,46 @@
-import { redirect } from "@/i18n/navigation";
+import { getNow, setRequestLocale } from "next-intl/server";
+import { AssessmentUnifiedWorkbench } from "@/features/school/AssessmentUnifiedWorkbench";
+import { listAssessmentWorkbenchRows } from "@/features/school/assessment-workbench-data";
+import { listInvitationOptions } from "@/features/school/invitations";
+import { getMyPerms, requireAnyPerm } from "@/lib/auth";
+import { getOrganizationTimezoneV2 } from "@/features/school/organization-locations";
+import { businessRecordStateFilter } from "@/features/school/business-record-state-contract";
 
-export default async function LegacyFollowupRoute({ params, searchParams }: {
+export default async function AssessmentsPage({
+  params,
+  searchParams,
+}: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
+  searchParams: Promise<{q?:string;state?:string}>;
 }) {
-  const [values, raw] = await Promise.all([params, searchParams]);
-  const query = new URLSearchParams();
-  for (const [key, value] of Object.entries(raw)) {
-    if (typeof value === "string") query.set(key, value);
-    else if (Array.isArray(value)) value.forEach((item) => query.append(key, item));
-  }
-  redirect({ locale: values.locale, href: `/dashboard/followups/assessments${query.size ? `?${query}` : ""}` });
+  const { locale } = await params;
+  const query=await searchParams;
+  setRequestLocale(locale);
+  const user = await requireAnyPerm(locale, ["review.write", "followup.view"]);
+  const permissions = await getMyPerms(user.id);
+  const canAssess = permissions.has("review.write");
+  const canSupport = permissions.has("followup.view");
+  const canManageAssessor = permissions.has("followup.write");
+  const [rows, options, timeZone, now] = await Promise.all([
+    listAssessmentWorkbenchRows(),
+    listInvitationOptions(),
+    getOrganizationTimezoneV2(),
+    getNow(),
+  ]);
+
+  return (
+    <AssessmentUnifiedWorkbench
+      initialRows={rows}
+      initialQuery={query.q?.slice(0,100)}
+      initialRecordState={businessRecordStateFilter(query.state)}
+      assessors={options.assessors}
+      locale={locale}
+      timeZone={timeZone}
+      now={now.getTime()}
+      canAssess={canAssess}
+      canSupport={canSupport}
+      canManageAssessor={canManageAssessor}
+      canQuickEntry={canAssess || permissions.has("followup.write")}
+    />
+  );
 }

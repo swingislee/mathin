@@ -16,7 +16,7 @@ const completeSchema = z.object({ sessionId: uuid });
 
 function refreshCommunication(sessionId: string) {
   revalidatePath(`/[locale]/dashboard/sessions/${sessionId}`, "page");
-  revalidatePath("/[locale]/dashboard/teaching", "layout");
+  revalidatePath("/[locale]/dashboard/classes", "layout");
   revalidatePath("/[locale]/dashboard/students", "layout");
 }
 

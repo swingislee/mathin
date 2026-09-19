@@ -806,27 +806,27 @@ export async function getStaffOverviewData({
     {
       key: "unassignedLeads",
       value: !sourceExact("leads") || !exactRows(operationalLeadsResult) ? null : openLeads.filter((row) => row.owner_id === null || row.status === "unassigned").length,
-      href: "/dashboard/followups/leads?ownership=unassigned",
+      href: "/dashboard/leads?ownership=unassigned",
     },
     {
       key: "uncontactedLeads",
       value: !sourceExact("leads") || !exactRows(operationalLeadsResult) ? null : openLeads.filter((row) => row.status === "uncontacted").length,
-      href: "/dashboard/followups/leads?status=uncontacted",
+      href: "/dashboard/communication?stage=awaiting_first_contact",
     },
     {
       key: "overdueLeadActions",
       value: !sourceExact("leads") || !exactRows(operationalLeadsResult) ? null : leadActions.filter((row) => new Date(row.due_at) < now).length,
-      href: "/dashboard/followups/leads",
+      href: "/dashboard/communication/worklists?view=unscheduled",
     },
     {
       key: "awaitingTeacher",
       value: !sourceExact("invitations") ? null : activeInvitationThreads.filter((row) => row.state === "awaiting_teacher").length,
-      href: "/dashboard/followups/communication?state=awaiting_teacher",
+      href: "/dashboard/communication?stage=awaiting_assessment&detail=coordinating",
     },
     {
       key: "awaitingParent",
       value: !sourceExact("invitations") ? null : activeInvitationThreads.filter((row) => row.state === "awaiting_parent").length,
-      href: "/dashboard/followups/communication?state=awaiting_parent",
+      href: "/dashboard/communication?stage=awaiting_assessment&detail=coordinating",
     },
     {
       key: "unassessedArrivals",

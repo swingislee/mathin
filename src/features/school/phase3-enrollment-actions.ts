@@ -93,8 +93,8 @@ const ERROR_CODES = [
 ] as const;
 
 function refreshPhase3() {
-  revalidatePath("/[locale]/dashboard/opportunities", "page");
-  revalidatePath("/[locale]/dashboard/followups/enrollments", "page");
+  revalidatePath("/[locale]/dashboard/communication", "page");
+  revalidatePath("/[locale]/dashboard/classes", "page");
   revalidatePath("/[locale]/dashboard/classes", "layout");
 }
 

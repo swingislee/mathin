@@ -7,32 +7,14 @@ const root = process.cwd();
 const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
 
 describe("dashboard functional information architecture", () => {
-  it("groups the staff sidebar by job function and keeps overview as the only top-level item", () => {
+  it("places daily work at the top level and academic years in organization", () => {
     expect(SCHOOL_NAV_ITEMS.map(({ labelKey, group }) => [labelKey, group ?? null])).toEqual([
-      ["home", null],
-      ["followups", "subjectOperations"],
-      ["students", "subjectOperations"],
-      ["activities", "subjectOperations"],
-      ["coordination", "subjectOperations"],
-      ["finance", "subjectOperations"],
-      ["managementAnalytics", "subjectOperations"],
-      ["teachingWorkbench", "teaching"],
-      ["classes", "teaching"],
-      ["academicYears", "teaching"],
-      ["schedule", "teaching"],
-      ["courses", "research"],
-      ["workbench", "research"],
-      ["coursewareReview", "research"],
-      ["sharedAssets", "research"],
-      ["organizationProfile", "organization"],
-      ["campuses", "organization"],
-      ["staff", "organization"],
-      ["roles", "organization"],
-      ["registrationInvites", "system"],
-      ["accountSupport", "system"],
-      ["operations", "system"],
-      ["testdata", "system"],
-      ["accountSecurity", "system"],
+      ["home", null], ["schedule", null], ["leads", null], ["invitations", null], ["assessments", null],
+      ["students", null], ["classes", null], ["renewals", null], ["activities", null], ["finance", null],
+      ["courses", "research"], ["workbench", "research"], ["coursewareReview", "research"], ["sharedAssets", "research"],
+      ["organizationProfile", "organization"], ["campuses", "organization"], ["staff", "organization"], ["roles", "organization"],
+      ["academicYears", "organization"], ["registrationInvites", "organization"],
+      ["accountSupport", "system"], ["operations", "system"], ["testdata", "system"], ["accountSecurity", "system"],
     ]);
   });
 

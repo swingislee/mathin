@@ -36,7 +36,7 @@ async function ReviewContent({ locale, searchParams }: { locale: string; searchP
   const grain = teachingTimeGrain(query.period);
   const selection = query.date ?? "previous";
   const window = teachingTimeWindow(grain, selection, query.term, snapshot.terms, snapshot.timeZone);
-  const href = "/dashboard/teaching/review";
+  const href = "/dashboard/classes/review";
   const groupedHref = (group = groupBy) => {
     const params = new URLSearchParams({ group, period: grain, date: selection });
     if (query.term) params.set("term", query.term);

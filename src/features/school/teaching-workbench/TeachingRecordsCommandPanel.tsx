@@ -1,4 +1,5 @@
 import { Ellipsis } from "lucide-react";
+import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -10,9 +11,10 @@ import type { TeachingTerm, TeachingTimeGrain, TeachingTimeWindow } from "./teac
 import { TeachingPeriodPicker } from "./TeachingPeriodPicker";
 
 /** 正式记录与本地复现共用同一套分组、时间和紧凑布局。 */
-export function TeachingRecordsCommandPanel({ groupBy, grain, window, baseHref, terms, today, selection, links = [] }: {
+export function TeachingRecordsCommandPanel({ groupBy, grain, window, baseHref, terms, today, selection, links = [], navigation }: {
   groupBy: TeachingGrouping; grain: TeachingTimeGrain; window: TeachingTimeWindow | null;
   baseHref: string; terms: TeachingTerm[]; today: string; selection: string; links?: RouteTab[];
+  navigation?: ReactNode;
 }) {
   const t = useTranslations("school.teachingWorkbench");
   const groupHref = (group: TeachingGrouping) => {
@@ -22,6 +24,7 @@ export function TeachingRecordsCommandPanel({ groupBy, grain, window, baseHref, 
     return `${path}?${params}`;
   };
   return <DashboardCommandPanel className="followup-command-panel">
+    {navigation ? <DashboardCommandState>{navigation}</DashboardCommandState> : null}
     <DashboardCommandState><RouteTabs ariaLabel={t("grouping.title")} activeValue={groupBy} items={([
       "grade", "teacher",
     ] as const).map(group => ({ value: group, label: t(group === "grade" ? "grouping.byGrade" : "grouping.byTeacher"), href: groupHref(group) }))} /></DashboardCommandState>

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import FollowupsPage from "../src/app/[locale]/dashboard/followups/page";
-import EnrollmentsPage from "../src/app/[locale]/dashboard/followups/enrollments/page";
+import ClassesPage from "../src/app/[locale]/dashboard/classes/page";
+import EnrollmentsPage from "../src/features/school/ClassPlacementPage";
 
 const mocks = vi.hoisted(() => ({ teacher: vi.fn(), permissions: vi.fn(), capability: vi.fn(), board: vi.fn(), history: vi.fn(), redirect: vi.fn() }));
 vi.mock("server-only", () => ({}));
@@ -14,7 +14,9 @@ vi.mock("@/features/school/organization-locations", () => ({ getOrganizationTime
 vi.mock("@/features/school/EnrollmentPlacementWorkbench", () => ({ EnrollmentPlacementWorkbench: () => null }));
 vi.mock("@/features/school/dashboard-page", () => ({ DashboardPage: () => null, DashboardEmptyCard: () => null, DashboardCommandState: () => null }));
 vi.mock("@/features/school/FollowupCommandPanel", () => ({ FollowupCommandPanel: () => null }));
-vi.mock("@/features/school/FollowupTabs", () => ({ FollowupTabs: () => null }));
+vi.mock("@/features/school/ClassWorkspaceTabs", () => ({ ClassWorkspaceTabs: () => null }));
+vi.mock("@/features/school/ClassDirectoryPage", () => ({ default: () => null }));
+vi.mock("@/features/school/teaching-workbench/TeachingWorkspacePage", () => ({ default: () => null }));
 vi.mock("@/i18n/navigation", () => ({ redirect: mocks.redirect }));
 const params = Promise.resolve({ locale: "zh" });
 const board = { options: { classrooms: [], courses: [], terms: [] }, members: [], enrollments: [] };
@@ -26,21 +28,24 @@ describe("teacher entry and placement access", () => {
     mocks.redirect.mockImplementation(() => { throw new Error("REDIRECT"); });
   });
 
-  it("uses the teacher's remembered workbench entry", async () => {
-    const page = await FollowupsPage({ params });
-    if (!page) throw new Error("Teacher workspace entry did not render");
-    expect(page.props.workspace).toBe("followups"); expect(mocks.redirect).not.toHaveBeenCalled();
+  it("starts teachers in teaching records within the common class entry", async () => {
+    const page = await ClassesPage({ params, searchParams: Promise.resolve({}) });
+    expect(await page.props.searchParams).toMatchObject({ view: "records" });
+    expect(mocks.redirect).not.toHaveBeenCalled();
   });
 
-  it("keeps the existing first-contact intake entry for nonteachers", async () => {
+  it("starts other employees in the placement workbench and respects explicit views", async () => {
     mocks.teacher.mockResolvedValue(false);
-    await expect(FollowupsPage({ params })).rejects.toThrow("REDIRECT");
-    expect(mocks.redirect).toHaveBeenCalledWith({ locale: "zh", href: "/dashboard/followups/leads" });
+    const page = await ClassesPage({ params, searchParams: Promise.resolve({}) });
+    expect(page.type).toBe(EnrollmentsPage);
+    mocks.teacher.mockResolvedValue(true);
+    const explicit = await ClassesPage({ params, searchParams: Promise.resolve({ view: "arrange" }) });
+    expect(explicit.type).toBe(EnrollmentsPage);
   });
 
   it("shows an empty placement workspace to a teacher without exposing a board or history", async () => {
     const page = await EnrollmentsPage({ params, searchParams: Promise.resolve({}) });
-    expect(page.props.title).toBe("enrollments");
+    expect(page.props.title).toBe("班级");
     expect(page.props.children.props.children).toBe("noTeachingClassForPlacement");
     expect(mocks.board).not.toHaveBeenCalled(); expect(mocks.history).not.toHaveBeenCalled(); expect(mocks.redirect).not.toHaveBeenCalled();
   });

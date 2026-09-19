@@ -11,7 +11,7 @@ export async function readTeachingInlineRecords(cache: TeachingRecordCache, loca
   const cached = cache.get(key);
   if (cached && cached.expires > Date.now()) return cached.data;
   cache.delete(key);
-  const data = teachingRecordsSchema.parse(await readDashboardDetail<unknown>(`/${locale}/dashboard/teaching/records-detail`, query, signal));
+  const data = teachingRecordsSchema.parse(await readDashboardDetail<unknown>(`/${locale}/dashboard/classes/records-detail`, query, signal));
   signal.throwIfAborted();
   cache.set(key, { data, expires: Date.now() + 30000 });
   if (cache.size > 8) cache.delete(cache.keys().next().value!);

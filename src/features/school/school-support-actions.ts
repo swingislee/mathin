@@ -26,7 +26,7 @@ async function call<T>(name: string, args: Record<string, unknown>, schema: z.Zo
     const result = await rpc.call(supabase,name,args);
     if (result.error) throw new Error(result.error.message);
     const data = schema.parse(result.data);
-    if (write) { revalidatePath('/[locale]/dashboard/followups','layout'); revalidatePath('/[locale]/dashboard/students','page'); }
+    if (write) { revalidatePath('/[locale]/dashboard','layout'); revalidatePath('/[locale]/dashboard/students','page'); }
     return {ok:true,data} as ActionResult<T>;
   } catch (error) { return actionError<T>(error,codes); }
 }

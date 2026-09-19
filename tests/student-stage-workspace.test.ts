@@ -142,7 +142,7 @@ describe("student entry action and page contract", () => {
     fixture.rpc.mockResolvedValueOnce({ data: assigned, error: null });
     expect(await assignStudentStageAction(assignment)).toEqual({ ok: true, data: assigned });
     expect(fixture.rpc).toHaveBeenCalledExactlyOnceWith("assign_student_stage_subjects", { p_subjects: assignment.subjects, p_staff_user_id: id });
-    expect(fixture.revalidate).toHaveBeenCalledWith("/[locale]/dashboard/followups", "layout");
+    expect(fixture.revalidate).toHaveBeenCalledWith("/[locale]/dashboard", "layout");
   });
   it("returns stale-owner and scope failures without reporting a partial assignment", async () => {
     fixture.permissions.add("student.assign");

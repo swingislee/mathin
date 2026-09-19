@@ -43,7 +43,7 @@ export async function assignStudentStageAction(input: z.input<typeof assignmentS
       p_subjects: value.subjects, p_staff_user_id: value.staffUserId,
     }));
     revalidatePath("/[locale]/dashboard/students", "page");
-    revalidatePath("/[locale]/dashboard/followups", "layout");
+    revalidatePath("/[locale]/dashboard", "layout");
     revalidatePath("/[locale]/dashboard/leads", "page");
     return { ok: true, data: result };
   } catch (error) { return actionError<StudentStageAssignment[]>(error, [...COMMON_CODES,"ASSIGNMENT_CONFLICT","TARGET_CANNOT_FOLLOW_UP","LEAD_SCOPE_MISMATCH","FORBIDDEN_SCOPE","SUBJECT_MISMATCH"]); }
@@ -57,7 +57,7 @@ export async function saveStudentStageEntryAction(requestId: string, input: Stud
       p_request_id: value.requestId, p_payload: value.input,
     }));
     revalidatePath("/[locale]/dashboard/students", "page");
-    revalidatePath("/[locale]/dashboard/followups", "layout");
+    revalidatePath("/[locale]/dashboard", "layout");
     return { ok: true, data: result };
   } catch (error) {
     return actionError<StudentStageSaved>(error, [...COMMON_CODES, "FORBIDDEN_SCOPE", "SUBJECT_MISMATCH", "INVITATION_CONFLICT",

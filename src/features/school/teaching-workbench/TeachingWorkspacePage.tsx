@@ -1,3 +1,5 @@
+import { ClassWorkspaceTabs } from "../ClassWorkspaceTabs";
+import { workEntryMessages, classWorkHref } from "../work-entry-contract";
 import { Suspense } from "react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { buttonVariants } from "@/components/ui/button";
@@ -32,7 +34,7 @@ export default async function TeachingPage({ params, searchParams }: {
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("school.teachingWorkbench");
-  return <Suspense fallback={<DashboardPage title={t("title")}><p role="status" className="py-8 text-sm text-muted">{t("loading")}</p></DashboardPage>}>
+  return <Suspense fallback={<DashboardPage title={workEntryMessages(locale).classes}><p role="status" className="py-8 text-sm text-muted">{t("loading")}</p></DashboardPage>}>
     <TeachingContent locale={locale} searchParams={searchParams} />
   </Suspense>;
 }
@@ -42,6 +44,7 @@ async function TeachingContent({ locale, searchParams }: { locale: string; searc
   const [query, perms, t, timeZone] = await Promise.all([
     searchParams, getMyPerms(user.id), getTranslations("school.teachingWorkbench"), getOrganizationTimezoneV2(),
   ]);
+  const m = workEntryMessages(locale);
   const canViewTeam = hasTeachingManagementScope(perms);
   const view = query.view === "tasks" ? "tasks" : query.view === "progress" ? "progress" : query.view === "records" || canViewTeam ? "records" : "tasks";
   const period = teachingTimeGrain(query.period);
@@ -58,27 +61,27 @@ async function TeachingContent({ locale, searchParams }: { locale: string; searc
     if (classroom) params.set("classroom", classroom);
     params.set("group", groupBy);
     if (grain === "term" && selectedWindow?.termId) params.set("term", selectedWindow.termId);
-    return `/dashboard/teaching?${params}`;
+    return `/dashboard/classes?${params}`;
   };
   const sessionId = typeof query.session === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(query.session) ? query.session : undefined;
   const contactPage = typeof query.contactPage === "string" && /^\d{1,5}$/.test(query.contactPage) ? Math.max(1, Number(query.contactPage)) : 1;
   const contactSize = query.contactSize === "10" ? 10 : 20;
 
-  return <DashboardPage title={t("title")} density="compact" commandPanel={view === "records" && !sessionId ?
-    <TeachingRecordsCommandPanel groupBy={groupBy} grain={period} window={selectedWindow} baseHref={progressHref(selection)} terms={terms} today={calendarDayKey(new Date(), timeZone)} selection={selection} links={[
-      { value: "tasks", label: t("myTasks"), href: "/dashboard/teaching?view=tasks" },
+  return <DashboardPage title={workEntryMessages(locale).classes} density="compact" commandPanel={view === "records" && !sessionId ?
+    <TeachingRecordsCommandPanel navigation={<ClassWorkspaceTabs active="records" canTeach query={query} />} groupBy={groupBy} grain={period} window={selectedWindow} baseHref={progressHref(selection)} terms={terms} today={calendarDayKey(new Date(), timeZone)} selection={selection} links={[
+      { value: "tasks", label: t("myTasks"), href: classWorkHref("tasks", query) },
       { value: "progress", label: t(canViewTeam ? "teamProgress" : "myProgress"), href: progressHref(selection, period, "progress") },
       { value: "allWork", label: t("allWork"), href: "/dashboard?view=work" },
     ]} /> :
     <DashboardCommandPanel className={view === "records" && !sessionId ? "followup-command-panel" : undefined}>
       <DashboardCommandState>
-        <RouteTabs ariaLabel={t("views")} activeValue={view} items={[
-          { value: "tasks", label: t("myTasks"), href: "/dashboard/teaching?view=tasks" },
-          { value: "records", label: t("records.title"), href: progressHref(selection, period, "records") },
-          { value: "progress", label: t(canViewTeam ? "teamProgress" : "myProgress"), href: progressHref(window.date, period, "progress") },
-        ]} />
+        <ClassWorkspaceTabs active={view} canTeach query={query} />
       </DashboardCommandState>
       <DashboardCommandFilters>
+        {view !== "records" ? <RouteTabs ariaLabel={m.progress} activeValue={view} items={[
+          { value: "tasks", label: m.tasks, href: classWorkHref("tasks", query) },
+          { value: "progress", label: m.progress, href: classWorkHref("progress", query) },
+        ]} /> : null}
         {view !== "tasks" && !(view === "records" && sessionId) && <>
           <TeachingPeriodPicker key={`${period}:${selection}:${selectedWindow?.termId ?? ""}`} grain={period} window={selectedWindow} baseHref={progressHref()} terms={terms} today={calendarDayKey(new Date(), timeZone)} />
         </>}
@@ -108,7 +111,7 @@ async function TeachingTasks({ locale }: { locale: string }) {
         const href = resolveWorkItemHref(item);
         const [path, rawQuery] = href.split("?");
         const params = new URLSearchParams(rawQuery);
-        params.set("returnTo", "/dashboard/teaching?view=tasks");
+        params.set("returnTo", "/dashboard/classes?view=tasks");
         return `${path}?${params}`;
       }}
       renderItemTitle={item => formatWorkItemReason(item, tw, tc, locale, now)}

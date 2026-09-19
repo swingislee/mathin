@@ -20,7 +20,6 @@ import { FollowupPersonCell } from "./dashboard-page/FollowupPersonCell";
 import { followupFocusActivatesRow } from "./followup-keyboard";
 import { FollowupTableBody } from "./dashboard-page/FollowupRecordRow";
 import { FilterSearchInput } from "./FilterBar";
-import { FollowupTabs } from "./FollowupTabs";
 import { FollowupCommandPanel } from "./FollowupCommandPanel";
 import { SchoolSupportTableEntry, SchoolSupportInsertion } from "./SchoolSupportInlineEntry";
 import { SchoolSupportPendingRows } from "./SchoolSupportPendingRows";
@@ -45,7 +44,6 @@ import {
 } from "./assessment-workbench-contract";
 import {
   DashboardCommandFilters,
-  DashboardCommandState,
   DashboardPage,
   DashboardTableColumnHeader,
   DashboardTableShell,
@@ -393,13 +391,11 @@ export function AssessmentUnifiedWorkbench({
     <DashboardPage
       title={hubT("title")}
       density="compact"
-      footer={<LeadPoolPagination baseHref="/dashboard/followups/assessments" currentPage={pagination.page} totalPages={pagination.totalPages}
+      footer={<LeadPoolPagination baseHref="/dashboard/assessments" currentPage={pagination.page} totalPages={pagination.totalPages}
         totalCount={pagination.count} pageSize={pagination.pageSize} onPageChange={(page, size) => { setRetainedView(null); pagination.onPageChange(page, size); }} />}
       commandPanel={(
         <FollowupCommandPanel>
-          <DashboardCommandState>
-            <FollowupTabs />
-          </DashboardCommandState>
+
           <DashboardCommandFilters>
             <BusinessRecordStateFilter value={recordState} onChange={setRecordState} locale={locale} />
             <FollowupPrimaryFilter label={filterT("workQueue")} value={assessmentTable.filters.status?.kind === "enum" ? assessmentTable.filters.status.values[0] : "all"}

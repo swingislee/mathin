@@ -5,6 +5,7 @@ import type { Json } from "@/lib/database.types";
 import { createClient } from "@/lib/supabase/server";
 import { withReturnTo } from "./object-workspace/return-target";
 import type { WorkItemRow } from "./stage/types";
+import { currentWorkEntryHref } from "./work-entry-contract";
 
 // ---------------------------------------------------------------------------
 // P4I-8：今日工作只读试用（docs/plan/19-p4i-final.md §6-7）的数据获取与
@@ -140,7 +141,7 @@ function jsonNumber(value: Json, key: string): number | undefined {
  */
 export function resolveWorkItemHref(item: WorkItemRow): string {
   if (item.sourceKind !== "domain_projection" && item.actionHref.startsWith("/")) {
-    return item.actionHref;
+    return currentWorkEntryHref(item.actionHref);
   }
   switch (item.primaryObjectType) {
     case "lecture": {

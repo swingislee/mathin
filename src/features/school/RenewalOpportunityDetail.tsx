@@ -12,7 +12,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   DashboardCommandPanel,
-  DashboardCommandState,
   DashboardPage,
   DashboardSection,
 } from "./dashboard-page";
@@ -25,7 +24,6 @@ import type {
   RenewalStaffOption,
   RenewalTermOption,
 } from "./renewal-contract";
-import { FollowupTabs } from "./FollowupTabs";
 import { FollowupChoice } from "./dashboard-page/FollowupChoice";
 
 const EDITABLE_STAGES = [
@@ -66,7 +64,7 @@ export function RenewalOpportunityDetail({
   const [nextAction, setNextAction] = useState(opportunity.nextAction);
   const [nextActionAt, setNextActionAt] = useState(opportunity.nextActionAt ?? "");
   const [note, setNote] = useState(opportunity.note);
-  const backHref = opportunity.opportunityType === "renewal" ? "/dashboard/followups/renewals" : "/dashboard/followups/renewals/growth";
+  const backHref = opportunity.opportunityType === "renewal" ? "/dashboard/renewals" : "/dashboard/renewals/growth";
   const action = useAction(updateLongTermOpportunityAction, {
     successMessage: t("opportunitySaved"),
     errorMessage: {
@@ -88,8 +86,8 @@ export function RenewalOpportunityDetail({
     eyebrow={t(`type_${opportunity.opportunityType}`)}
     backHref={backHref}
     backLabel={t("backToWorkspace")}
-    breadcrumbs={[{ label: t("title"), href: "/dashboard/followups/renewals" }, { label: opportunity.studentName }]}
-    commandPanel={<DashboardCommandPanel><DashboardCommandState><FollowupTabs /></DashboardCommandState></DashboardCommandPanel>}
+    breadcrumbs={[{ label: t("title"), href: "/dashboard/renewals" }, { label: opportunity.studentName }]}
+    commandPanel={<DashboardCommandPanel></DashboardCommandPanel>}
   >
     <DashboardSection>
       <dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">

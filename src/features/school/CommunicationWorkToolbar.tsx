@@ -40,7 +40,7 @@ export function CommunicationWorkToolbar({ options, scope, canViewAll, canManage
     const next = new URLSearchParams(searchParams.toString());
     next.delete("page"); next.delete("lead"); next.delete("status");
     for (const [key, value] of Object.entries(patch)) { if (value) next.set(key, value); else next.delete(key); }
-    startTransition(() => router.replace(`/dashboard/followups/communication?${next}`));
+    startTransition(() => router.replace(`/dashboard/communication/worklists?${next}`));
   };
   const shiftDay = (offset: number) => {
     const next = new Date(`${options.date}T12:00:00Z`); next.setUTCDate(next.getUTCDate() + offset);
@@ -52,7 +52,7 @@ export function CommunicationWorkToolbar({ options, scope, canViewAll, canManage
       const result = await createCommunicationWorklistAction({ name: name.trim() || t("defaultName", { date }), date, keys });
       if (!result.ok) { setError(t("createFailed")); return; }
       selection.clear(); setCreateOpen(false);
-      router.replace(`/dashboard/followups/communication?view=worklist&worklist=${result.data.id}&date=${date}&scope=mine&pageSize=${FOLLOWUP_DEFAULT_PAGE_SIZE}`);
+      router.replace(`/dashboard/communication/worklists?view=worklist&worklist=${result.data.id}&date=${date}&scope=mine&pageSize=${FOLLOWUP_DEFAULT_PAGE_SIZE}`);
     });
   };
   return <>

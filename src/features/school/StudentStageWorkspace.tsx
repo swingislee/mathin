@@ -31,20 +31,26 @@ import { Student360Trigger } from "./Student360Sheet";
 import { StudentAssessmentCompletionHint } from "./StudentAssessmentCompletionHint";
 import { PossibleDuplicateBadge } from "./PossibleDuplicateBadge";
 import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
+import { communicationEntryMode, workEntryMessages } from "./work-entry-contract";
 import { studentStageMessages } from "./student-stage-messages";
 import { defaultStudentEntryMode, replaceSavedStudent, STUDENT_RECONTACT_REASONS, STUDENT_STAGE_TABS, studentRecordTableStage, studentStageHref,
   type StudentEntryMode, type StudentStageData, type StudentStageFilters, type StudentStageRow, type StudentStageSaved, type StudentStageAssignment, type StudentStageAssignee } from "./student-stage-contract";
 
 const Entry = dynamic(() => import("./StudentStageEntryLoader").then(m => m.StudentStageEntryLoader));
 
-export function StudentStageWorkspace({ data, filters, locale, currentUserId, canEnroll, canAssign, assignees, actions, timeZone, now, canPlan = false, canPlanOthers = false, collaboration }: {
+export function StudentStageWorkspace({ data, filters, locale, currentUserId, canEnroll, canAssign, assignees, actions, timeZone, now, canPlan = false, canPlanOthers = false, collaboration, presentation = "students", firstContactContent }: {
   data: StudentStageData; filters: StudentStageFilters; locale: string; currentUserId: string;
   canEnroll: boolean; actions: ReactNode; timeZone: string; now?: number;
   canAssign: boolean; assignees: StudentStageAssignee[];
   canPlan?: boolean; canPlanOthers?: boolean;
   collaboration?: SchoolCollaborationSettings;
+  presentation?: "students" | "communication"; firstContactContent?: ReactNode;
 }) {
   const m = studentStageMessages(locale);
+  const workM = workEntryMessages(locale);
+  const baseHref = presentation === "communication" ? "/dashboard/communication" : "/dashboard/students";
+  const entryMode = presentation === "communication" ? communicationEntryMode : defaultStudentEntryMode;
+  const stageHref = (values: StudentStageFilters, changes: Partial<StudentStageFilters> = {}) => studentStageHref(values, changes, baseHref);
   const studentT = useTranslations("school.students");
   const router = useRouter();
   const recontact = filters.population === "recontact";
@@ -83,10 +89,10 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
   const currentFilters = { ...filters, fields: JSON.stringify(fieldQuery) };
   const acrossStages = studentStageFieldsAcrossStages(fieldQuery);
   const formatAt = (value: string | null) => formatDashboardDate(value, context, { time: true });
-  const navigate = (change: Partial<StudentStageFilters>) => { if (!busy) router.replace(studentStageHref(currentFilters, {
+  const navigate = (change: Partial<StudentStageFilters>) => { if (!busy) router.replace(stageHref(currentFilters, {
     page: 1, ...(change.stage !== undefined || change.q !== undefined ? { fields: acrossStages, detail: "" } : {}), ...change,
   }), { scroll: false }); };
-  const open = (row: StudentStageRow, mode: StudentEntryMode = defaultStudentEntryMode(row)) => {
+  const open = (row: StudentStageRow, mode: StudentEntryMode = entryMode(row)) => {
     if (busy) return;
     setMenuKey(null); setFocusedKey(row.key); setVisited(current => new Set(current).add(row.key)); setActive({ key: row.key, mode });
   };
@@ -98,8 +104,8 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
     setFocusedKey(advance && next ? next.key : result.subject.key);
     setHandled(current => new Set(current).add(result.subject.key));
     setVisited(current => { const values = new Set(current); values.delete(originalKey); values.add(result.subject.key); if (advance && next) values.add(next.key); return values; });
-    setActive(advance && next ? { key: next.key, mode: defaultStudentEntryMode(next) }
-      : { key: result.subject.key, mode: defaultStudentEntryMode(result.subject) });
+    setActive(advance && next ? { key: next.key, mode: entryMode(next) }
+      : { key: result.subject.key, mode: entryMode(result.subject) });
   };
   const assigned = (result: StudentStageAssignment[]) => {
     const updates = new Map(result.map(item => [item.key, item.subject]));
@@ -115,14 +121,14 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
     setOutcomeRequest(null);
     window.dispatchEvent(new Event(STUDENT_360_REFRESH_EVENT)); router.refresh();
   };
-  return <DashboardPage title={m.title} density="compact"
+  return <DashboardPage title={presentation === "communication" ? workM.communication : m.title} density="compact"
     commandPanel={<FollowupCommandPanel>
       <DashboardCommandState>{recontact ? <DashboardCommandTabs ariaLabel={m.recontactPopulation} activeValue={filters.reason ?? "unreachable"} activeTone="accent"
         items={STUDENT_RECONTACT_REASONS.map(reason => ({ value: reason, label: m.recontactReasons[reason], badge: data.reasonCounts?.[reason] ?? 0,
-          href: studentStageHref(currentFilters, { reason, page: 1, fields: acrossStages, detail: "" }) }))} />
+          href: stageHref(currentFilters, { reason, page: 1, fields: acrossStages, detail: "" }) }))} />
         : <DashboardCommandTabs ariaLabel={m.title} activeValue={filters.stage} activeTone="accent"
         items={STUDENT_STAGE_TABS.map(stage => ({ value: stage, label: m.stages[stage], badge: data.counts[stage] ?? 0,
-          href: studentStageHref(currentFilters, { stage, page: 1, detail: "", q: "", fields: acrossStages }) }))} />}</DashboardCommandState>
+          href: stageHref(currentFilters, { stage, page: 1, detail: "", q: "", fields: acrossStages }) }))} />}</DashboardCommandState>
       <DashboardCommandFilters><FollowupPrimaryFilter value={filters.population ?? "work"} label={m.population} disabled={busy}
         options={[{ value: "work", label: m.workPopulation }, { value: "records", label: m.recordsPopulation }, ...(canPlan ? [{ value: "recontact", label: m.recontactPopulation }] : [])]}
         onValueChange={population => navigate({ population: population as "work" | "records" | "recontact", q: "", detail: "", fields: acrossStages })} />
@@ -144,10 +150,10 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
     </FollowupCommandPanel>}
     summary={<p className="text-xs text-muted">{recontact ? m.recontactHint : filters.q ? m.searchHint : filters.population === "records" ? m.recordsHint : m.workHint}
       {filters.stage === "former_student" && !filters.q ? ` ${m.formerHint}` : ""}</p>}
-    footer={<LeadPoolPagination baseHref="/dashboard/students" currentPage={data.page} totalPages={data.totalPages} totalCount={data.count}
+    footer={<LeadPoolPagination baseHref={baseHref} currentPage={data.page} totalPages={data.totalPages} totalCount={data.count}
       pageSize={data.pageSize} scope={filters.scope} q={filters.q} extraQuery={{ stage: filters.stage, fields: currentFilters.fields, population: filters.population ?? "work", reason: filters.reason ?? "" }}
       disabled={busy} onPageChange={(page, pageSize) => navigate({ page, pageSize })} />}>
-    <SchoolSupportTableEntry workspace="students" enabled={canPlan} columns={[...(canSelect?["blank" as const]:[]),"name","phone","blank","blank",...(showBackground?["blank" as const,"blank" as const]:[]),"note","blank"]}><DashboardTableShell data-followup-workbench aria-busy={server?.pending}>
+    {firstContactContent ?? <SchoolSupportTableEntry workspace="students" enabled={canPlan} columns={[...(canSelect?["blank" as const]:[]),"name","phone","blank","blank",...(showBackground?["blank" as const,"blank" as const]:[]),"note","blank"]}><DashboardTableShell data-followup-workbench aria-busy={server?.pending}>
       <Table className={`table-fixed text-xs [&_th]:px-2 ${showBackground ? "min-w-[73rem]" : "min-w-[57rem]"}`}>
         <TableHeader className="sticky top-0 z-20 bg-paper text-xs text-muted"><TableRow>
           {canSelect ? <TableHead className="w-9"><Checkbox aria-label={m.selectPage} disabled={busy || !selectableRows.length}
@@ -222,7 +228,7 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
           </FollowupRecordRow><SchoolSupportInsertion after={row.key} /></Fragment>;
         })}</FollowupTableBody>
       </Table>
-    </DashboardTableShell></SchoolSupportTableEntry>
-    {visibleRows.length === 0 ? <DashboardEmptyCard>{m.empty}</DashboardEmptyCard> : null}
+    </DashboardTableShell></SchoolSupportTableEntry>}
+    {!firstContactContent && visibleRows.length === 0 ? <DashboardEmptyCard>{m.empty}</DashboardEmptyCard> : null}
   </DashboardPage>;
 }

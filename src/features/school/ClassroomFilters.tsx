@@ -20,6 +20,7 @@ export async function ClassroomFilters({ filters, scope }: { filters: Filters; s
 
   const activeCount = [filters.q, filters.teacherId, filters.supportId, filters.grade, filters.schoolTermId, filters.operationalStatus, filters.purpose, filters.readiness].filter(Boolean).length;
   return <FilterBar aria-label={t("filter")}>
+    <Input type="hidden" name="view" value="directory" />
     <Input type="hidden" name="scope" value={scope} aria-hidden="true" className="hidden" tabIndex={-1} />
     <FilterSearchInput name="q" defaultValue={filters.q} maxLength={80} placeholder={t("searchClasses")} aria-label={t("searchClasses")} />
     <FilterBarMore label={t("moreFilters")} activeCount={activeCount}>
@@ -34,6 +35,6 @@ export async function ClassroomFilters({ filters, scope }: { filters: Filters; s
       </div>
     </FilterBarMore>
     <FilterBarSubmit>{t("filter")}</FilterBarSubmit>
-    {activeCount > 0 && <FilterBarReset href={`/dashboard/classes?scope=${scope}`} label={t("clearFilters")} />}
+    {activeCount > 0 && <FilterBarReset href={`/dashboard/classes?view=directory&scope=${scope}`} label={t("clearFilters")} />}
   </FilterBar>;
 }

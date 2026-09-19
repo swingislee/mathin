@@ -1,6 +1,5 @@
 import type { PermissionKey } from "./permissions";
 import type { UserEnvironment } from "@/lib/environment";
-import { TEACHING_WORKBENCH_PERMISSIONS } from "./teaching-workbench/teaching-workbench-access";
 
 /**
  * Dashboard 路由合同（docs/plan/22 §3）。
@@ -150,15 +149,8 @@ export const DASHBOARD_ROUTES = {
     kind: "queue",
     environments: ALL_ENVIRONMENTS,
     createSurface: "none",
-    // 总览是侧栏唯一的顶层入口，不再与领域功能混成“工作”分组。
+    // 总览与课表位于日常工作入口之前。
     nav: { labelKey: "home" },
-  },
-  coordination: {
-    href: "/dashboard/coordination",
-    kind: "queue",
-    environments: STAFF_ONLY,
-    createSurface: "none",
-    nav: { labelKey: "coordination", group: "subjectOperations" },
   },
   schedule: {
     href: "/dashboard/schedule",
@@ -169,39 +161,39 @@ export const DASHBOARD_ROUTES = {
     // 课次创建属于班级上下文；课表只做跨班级/教师/课次的聚合时间视图（§5.3）。
     createSurface: "parent",
     creationOwner: "classes",
-    nav: { labelKey: "schedule", group: "teaching" },
+    nav: { labelKey: "schedule" },
   },
 
   // ── 学员服务 ────────────────────────────────────────────────────────────
   leads: {
-    href: "/dashboard/followups/leads",
+    href: "/dashboard/leads",
     kind: "queue",
     environments: STAFF_ONLY,
     permission: "followup.view",
     // 种子由外部名单和后续接触事实产生；导入时不创建学生身份。
     createSurface: "derived",
-    parent: "followups",
+    nav: { labelKey: "leads" },
   },
   invitations: {
-    href: "/dashboard/followups/communication",
+    href: "/dashboard/communication",
     kind: "queue",
     environments: STAFF_ONLY,
     permissionAny: ["followup.view", "review.write"],
     // 电联只发起邀约；时间、老师与家长确认在这里按状态接续，不创建虚构的日历待办。
     createSurface: "derived",
-    parent: "followups",
+    nav: { labelKey: "invitations" },
   },
   assessments: {
-    href: "/dashboard/followups/assessments",
+    href: "/dashboard/assessments",
     kind: "queue",
     environments: STAFF_ONLY,
     permissionAny: ["review.write", "followup.view"],
     // 已确认的 1 对 1 邀约自动进入这里；首次录入才物化到访事实，不要求提前建 Student。
     createSurface: "derived",
-    parent: "followups",
+    nav: { labelKey: "assessments" },
   },
   assessmentDetail: {
-    hrefPattern: "/dashboard/followups/assessments/[registrationId]",
+    hrefPattern: "/dashboard/assessments/[registrationId]",
     kind: "workflow",
     shellMode: "panel",
     environments: STAFF_ONLY,
@@ -210,7 +202,7 @@ export const DASHBOARD_ROUTES = {
     parent: "assessments",
   },
   assessmentReport: {
-    hrefPattern: "/dashboard/followups/assessments/[registrationId]/reports/[reportId]",
+    hrefPattern: "/dashboard/assessments/[registrationId]/reports/[reportId]",
     kind: "workflow",
     shellMode: "panel",
     environments: STAFF_ONLY,
@@ -218,34 +210,17 @@ export const DASHBOARD_ROUTES = {
     createSurface: "derived",
     parent: "assessments",
   },
-  opportunities: {
-    href: "/dashboard/opportunities",
-    kind: "queue",
-    environments: STAFF_ONLY,
-    permissionAny: ["followup.view", "enrollment.manage"],
-    // 由活动／测评结果进入报班跟进；等待产品留在等待池，确认报名后再进入分班。
-    createSurface: "derived",
-  },
-  enrollments: {
-    href: "/dashboard/followups/enrollments",
-    kind: "queue",
-    environments: STAFF_ONLY,
-    permissionAny: ["enrollment.manage", "class.view.mine"],
-    // 商业报名由课程机会确认产生；本队列负责后续分班、批量分班与调班。
-    createSurface: "derived",
-    parent: "followups",
-  },
   renewals: {
-    href: "/dashboard/followups/renewals",
+    href: "/dashboard/renewals",
     kind: "collection",
     environments: STAFF_ONLY,
     permission: "followup.view",
     // 周期只批量准备资格快照；推进状态继续由 canonical course opportunity 承载。
     createSurface: "dialog",
-    parent: "followups",
+    nav: { labelKey: "renewals" },
   },
   renewalDetail: {
-    hrefPattern: "/dashboard/followups/renewals/[opportunityId]",
+    hrefPattern: "/dashboard/renewals/[opportunityId]",
     kind: "object",
     environments: STAFF_ONLY,
     permission: "followup.view",
@@ -253,7 +228,7 @@ export const DASHBOARD_ROUTES = {
     parent: "renewals",
   },
   renewalSignals: {
-    href: "/dashboard/followups/renewals/signals",
+    href: "/dashboard/renewals/signals",
     kind: "queue",
     environments: STAFF_ONLY,
     permissionAny: ["review.write", "followup.view"],
@@ -261,21 +236,12 @@ export const DASHBOARD_ROUTES = {
     parent: "renewals",
   },
   renewalGrowth: {
-    href: "/dashboard/followups/renewals/growth",
+    href: "/dashboard/renewals/growth",
     kind: "queue",
     environments: STAFF_ONLY,
     permission: "followup.view",
     createSurface: "dialog",
     parent: "renewals",
-  },
-  followups: {
-    href: "/dashboard/followups",
-    kind: "queue",
-    environments: STAFF_ONLY,
-    permissionAny: ["followup.view", "review.write", "enrollment.manage"],
-    // 五个运营工作节点共用跟进入口。
-    createSurface: "none",
-    nav: { labelKey: "followups", group: "subjectOperations" },
   },
   students: {
     href: "/dashboard/students",
@@ -284,7 +250,7 @@ export const DASHBOARD_ROUTES = {
     permissionAny: STUDENTS_PERMS,
     // 仅在身份已确认时才直接建立学生；完整资料在详情页维护（§5.5）。
     createSurface: "dialog",
-    nav: { labelKey: "students", group: "subjectOperations" },
+    nav: { labelKey: "students" },
   },
   studentImport: {
     href: "/dashboard/students/import",
@@ -318,7 +284,7 @@ export const DASHBOARD_ROUTES = {
     permissionAny: ["activity.register", "review.write", "followup.view"],
     // 活动字段仍属轻量范围 → ActivitiesManager Dialog（§5.9）。
     createSurface: "dialog",
-    nav: { labelKey: "activities", group: "subjectOperations" },
+    nav: { labelKey: "activities" },
   },
   activityDetail: {
     hrefPattern: "/dashboard/activities/[activityId]",
@@ -346,25 +312,17 @@ export const DASHBOARD_ROUTES = {
     environments: STAFF_ONLY,
     permission: "schedule.manage",
     createSurface: "dialog",
-    nav: { labelKey: "academicYears", group: "teaching" },
-  },
-  teaching: {
-    href: "/dashboard/teaching",
-    kind: "queue",
-    environments: STAFF_ONLY,
-    permissionAny: TEACHING_WORKBENCH_PERMISSIONS,
-    createSurface: "none",
-    nav: { labelKey: "teachingWorkbench", group: "teaching" },
+    nav: { labelKey: "academicYears", group: "organization" },
   },
   classes: {
     href: "/dashboard/classes",
     kind: "collection",
     environments: STAFF_ONLY,
-    permissionAny: CLASSES_PERMS,
+    permissionAny: [...CLASSES_PERMS, "enrollment.manage"],
     // 建班要过课程版本/主讲/学服/学期/排课预览/冲突检测 → 完整 Wizard（§5.11）。
     createSurface: "page",
     createHref: "/dashboard/classes/new",
-    nav: { labelKey: "classes", group: "teaching" },
+    nav: { labelKey: "classes" },
   },
   classNew: {
     href: "/dashboard/classes/new",
@@ -530,16 +488,7 @@ export const DASHBOARD_ROUTES = {
     permissionAny: FINANCE_NAV_PERMS,
     createSurface: "none",
     // 招生、转化、续费与退费属于同一条学生生命周期，因此财务入口跟随学科运营。
-    nav: { labelKey: "finance", group: "subjectOperations" },
-  },
-  managementAnalytics: {
-    // Phase 6 管理分析只汇总可追溯业务事实；当前没有普通创建行为。
-    href: "/dashboard/management-analytics",
-    kind: "tool",
-    environments: STAFF_ONLY,
-    permission: "report.view.all",
-    createSurface: "none",
-    nav: { labelKey: "managementAnalytics", group: "subjectOperations" },
+    nav: { labelKey: "finance" },
   },
 
   // ── 组织管理 ────────────────────────────────────────────────────────────
@@ -616,7 +565,7 @@ export const DASHBOARD_ROUTES = {
     environments: STAFF_ONLY,
     permission: "registration.invite.manage",
     createSurface: "none",
-    nav: { labelKey: "registrationInvites", group: "system" },
+    nav: { labelKey: "registrationInvites", group: "organization" },
   },
   systemHealth: {
     // 展示的是系统错误/请求路径/环境/release/roster mismatch，不是业务运营（§5.25）。

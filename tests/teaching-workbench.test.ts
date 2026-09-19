@@ -92,8 +92,8 @@ describe("teaching progress", () => {
     expect(hasTeachingManagementScope(new Set(["class.view.mine"]))).toBe(false);
     expect(hasTeachingManagementScope(new Set(["staff.invite"]))).toBe(false);
     expect(hasTeachingManagementScope(new Set(["class.view.all"]))).toBe(true);
-    expect(filterSchoolNav(new Set(["class.view.mine"])).some(row => row.href === "/dashboard/teaching")).toBe(true);
-    expect(filterSchoolNav(new Set(["followup.view"])).some(row => row.href === "/dashboard/teaching")).toBe(false);
+    expect(filterSchoolNav(new Set(["class.view.mine"])).some(row => row.href === "/dashboard/classes")).toBe(true);
+    expect(filterSchoolNav(new Set(["followup.view"])).some(row => row.href === "/dashboard/classes")).toBe(false);
   });
 
   it("counts only notifications in the bell and keeps a durable task destination", () => {

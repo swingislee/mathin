@@ -50,7 +50,6 @@ import type {
 } from "./renewal-contract";
 import { TEACHER_PROFESSIONAL_SIGNAL_TYPES } from "./renewal-contract";
 import type { ProfessionalSignalsData } from "./renewals";
-import { FollowupTabs } from "./FollowupTabs";
 
 const NONE = "__none__";
 
@@ -98,7 +97,7 @@ export function TeacherProfessionalSignalsWorkspace({
     title={t("teacherSignals")}
     description={t("teacherSignalsIntro")}
     commandPanel={<DashboardCommandPanel>
-      <DashboardCommandState><FollowupTabs /><span className="text-xs text-muted">{t("signalStatus_pending")} {count("pending")} · {t("signalStatus_accepted")} {count("accepted")} · {t("signalStatus_dismissed")} {count("dismissed")} · {t("signalStatus_all")} {data.signals.length}</span></DashboardCommandState>
+      <DashboardCommandState><span className="text-xs text-muted">{t("signalStatus_pending")} {count("pending")} · {t("signalStatus_accepted")} {count("accepted")} · {t("signalStatus_dismissed")} {count("dismissed")} · {t("signalStatus_all")} {data.signals.length}</span></DashboardCommandState>
       <DashboardCommandFilters>
         <FilterSearchInput className="pl-9" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("signalSearchPlaceholder")} />
       </DashboardCommandFilters>
@@ -131,7 +130,7 @@ export function TeacherProfessionalSignalsWorkspace({
               <TableCell><Badge variant="outline" className={followupToneClasses[signal.status === "accepted" ? "healthy" : signal.status === "dismissed" ? "unhealthy" : "attention"]}>{t(`signalStatus_${signal.status}`)}</Badge></TableCell>
               <TableCell className="text-right">
                 {signal.status === "pending" && canResolve ? <ResolveSignalDialog signal={signal} data={data} owners={owners} onSaved={() => router.refresh()} /> : null}
-                {signal.opportunityId ? <Link className={cn(buttonVariants({ size: "sm", variant: "ghost" }))} href={signal.signalType === "upsell_recommendation" ? "/dashboard/opportunities" : `/dashboard/followups/renewals/${signal.opportunityId}`}>{t("openOpportunity")}</Link> : null}
+                {signal.opportunityId ? <Link className={cn(buttonVariants({ size: "sm", variant: "ghost" }))} href={signal.signalType === "upsell_recommendation" ? "/dashboard/communication" : `/dashboard/renewals/${signal.opportunityId}`}>{t("openOpportunity")}</Link> : null}
                 {signal.status !== "pending" && !signal.opportunityId ? <span className="text-xs text-muted">{signal.handledByName || "—"}</span> : null}
               </TableCell>
             </TableRow>)}

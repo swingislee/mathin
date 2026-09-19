@@ -12,10 +12,10 @@ export function RenewalNavTabs({ active, cycleId }: { active: RenewalWorkspaceTa
       ariaLabel={t("workspaceTabs")}
       activeValue={active}
       items={[
-        { value: "pool", label: t("renewalPool"), href: `/dashboard/followups/renewals${cycleId ? `?cycle=${cycleId}` : ""}` },
-        { value: "health", label: t("poolV2.health"), href: `/dashboard/followups/renewals?tab=health${cycleId ? `&cycle=${cycleId}` : ""}` },
-        { value: "settings", label: t("poolV2.settings"), href: `/dashboard/followups/renewals?tab=settings${cycleId ? `&cycle=${cycleId}` : ""}` },
-        { value: "growth", label: t("reactivationAndReferrals"), href: "/dashboard/followups/renewals/growth" },
+        { value: "pool", label: t("renewalPool"), href: `/dashboard/renewals${cycleId ? `?cycle=${cycleId}` : ""}` },
+        { value: "health", label: t("poolV2.health"), href: `/dashboard/renewals?tab=health${cycleId ? `&cycle=${cycleId}` : ""}` },
+        { value: "settings", label: t("poolV2.settings"), href: `/dashboard/renewals?tab=settings${cycleId ? `&cycle=${cycleId}` : ""}` },
+        { value: "growth", label: t("reactivationAndReferrals"), href: "/dashboard/renewals/growth" },
       ]}
     />
   );

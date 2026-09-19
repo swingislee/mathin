@@ -41,11 +41,11 @@ describe("compact follow-up chrome", () => {
   afterEach(async () => { await act(async () => root.unmount()); container.remove(); });
 
   it("keeps all five headers free of passive totals without removing the footer or batch-selection feedback", () => {
-    const files = ["src/app/[locale]/dashboard/followups/leads/page.tsx", "src/app/[locale]/dashboard/followups/communication/page.tsx",
+    const files = ["src/app/[locale]/dashboard/leads/page.tsx", "src/features/school/CommunicationWorklistPage.tsx",
       "src/features/school/AssessmentUnifiedWorkbench.tsx", "src/features/school/EnrollmentPlacementWorkbench.tsx", "src/features/school/RenewalStudentPool.tsx"];
     for (const file of files) {
       const source = read(file);
-      expect(source).toMatch(/<DashboardCommandState>\s*<FollowupTabs \/>\s*<\/DashboardCommandState>/);
+      expect(source).not.toContain("<FollowupTabs />");
       expect(source).toContain('density="compact"');
     }
     const leads = read(files[0]);
@@ -98,7 +98,7 @@ describe("compact follow-up chrome", () => {
   });
 
   it("resets the page size to page one while retaining communication scope, date, worklist, focus and query", async () => {
-    await render(createElement(LeadPoolPagination, { ...paging, baseHref: "/dashboard/followups/communication", scope: "mine",
+    await render(createElement(LeadPoolPagination, { ...paging, baseHref: "/dashboard/communication/worklists", scope: "mine",
       focusLeadId: "focused-lead", status: undefined, extraQuery: { view: "worklist", date: "2026-09-07", worklist: "fixed-list", state: "current" } }));
     const trigger = container.querySelector('[role="combobox"]')!;
     await act(async () => { trigger.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })); });
@@ -107,7 +107,7 @@ describe("compact follow-up chrome", () => {
     await act(async () => option.click());
     expect(navigation.replace).toHaveBeenCalledOnce();
     const url = new URL(navigation.replace.mock.calls[0][0], "http://example.test");
-    expect(url.pathname).toBe("/dashboard/followups/communication");
+    expect(url.pathname).toBe("/dashboard/communication/worklists");
     expect(Object.fromEntries(url.searchParams)).toEqual({ view: "worklist", date: "2026-09-07", worklist: "fixed-list", state: "current",
       scope: "mine", q: "Sample", lead: "focused-lead", pageSize: "50" });
   });

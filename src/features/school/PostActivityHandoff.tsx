@@ -97,7 +97,7 @@ function HandoffEditor({ context, onSaved, reload, enrollmentOnly }: { context: 
         {context.enrollmentId ? <p className="text-leaf-deep">{t("enrolledResult", { course: context.courseTitle ?? "", term: context.termName ?? "", placement: context.classroomName || t("pendingPlacement") })}</p> : null}
       </div>
       {context.eligible && context.canEnroll && !context.enrollmentId ? <Button size="sm" onClick={() => setEnrolling(true)}>{t("enroll")}</Button> : null}
-      {context.enrollmentId && context.canEnroll ? <Link className={buttonVariants({ size: "sm", variant: "secondary" })} href={`/dashboard/followups/enrollments?term=${context.termId}&student=${context.studentId}`}>{t("openPlacement")}</Link> : null}
+      {context.enrollmentId && context.canEnroll ? <Link className={buttonVariants({ size: "sm", variant: "secondary" })} href={`/dashboard/classes?term=${context.termId}&student=${context.studentId}`}>{t("openPlacement")}</Link> : null}
     </div>;
   return <div className="space-y-4">
     {enrollmentOnly ? summary : <FollowupEntryFields id={`post-activity-${context.registrationId}`}

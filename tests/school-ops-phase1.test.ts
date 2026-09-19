@@ -27,25 +27,23 @@ describe("DEV-SCHOOL-OPS-1 Phase 1 business surfaces", () => {
     expect(panel).toContain("duplicatesReviewed");
     expect(panel).toContain('newId();');
     expect(panel).not.toContain("crypto.randomUUID");
-    expect(panel).toContain('href="/dashboard/followups"');
+    expect(panel).toContain('href="/dashboard/communication"');
     expect(data).toContain('from("data_import_batches")');
     expect(actions).toContain("source: requiredText(100)");
     expect(panel).not.toContain("<table");
   });
 
   it("supports owner assignment, communication, and next action on the lead workspace", () => {
-    const page = read("src/app/[locale]/dashboard/followups/page.tsx");
-    const board = read("src/features/school/FollowUpBoardList.tsx");
-    const form = read("src/features/school/FollowUpForm.tsx");
-    const data = read("src/features/school/followups.ts");
+    const page = read("src/app/[locale]/dashboard/leads/page.tsx");
+    const selection = read("src/features/school/LeadPoolSelection.tsx");
+    const form = read("src/features/school/LeadFirstContactWorkbench.tsx");
+    const reminder = read("src/features/school/NextContactReminderField.tsx");
     expect(page).toContain("listStaffMembers");
     expect(page).toContain('href="/dashboard/students/import"');
-    expect(board).toContain("assignStudentAction");
-    expect(board).toContain("FollowUpForm");
-    expect(form).toContain("DateTimePicker");
-    expect(form).toContain("addStudentFollowUp");
-    expect(data).toContain("assigned_to");
-    expect(board).not.toContain("<table");
-    expect(form).not.toContain("<button");
+    expect(selection).toContain("assignLeadsAction");
+    expect(form).toContain("FollowupEntryFields");
+    expect(reminder).toContain("DateTimePicker");
+    expect(form).toContain("recordLeadContactAction");
+    expect(form).toContain("setLeadContactReminderAction");
   });
 });

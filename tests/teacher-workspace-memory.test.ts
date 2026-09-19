@@ -31,7 +31,7 @@ describe("teacher workspace entry memory", () => {
     await render(enter("students"));
     expect(navigation.router.replace).toHaveBeenLastCalledWith("/dashboard/students?stage=awaiting_renewal&scope=mine");
     await render(enter("followups"));
-    expect(navigation.router.replace).toHaveBeenLastCalledWith("/dashboard/followups/enrollments");
+    expect(navigation.router.replace).toHaveBeenLastCalledWith("/dashboard/classes");
   });
 
   it("keeps the last student stage, page and field filters separate from the support worksheet", async () => {
@@ -39,7 +39,7 @@ describe("teacher workspace entry memory", () => {
     navigation.query = new URLSearchParams({ stage: "awaiting_assessment", scope: "mine", page: "3", fields: '{"sort":null}' }).toString();
     const studentsHref = `${navigation.pathname}?${navigation.query}`;
     await render(remember());
-    navigation.pathname = "/dashboard/followups/renewals"; navigation.query = "cycle=cycle-a&state=current";
+    navigation.pathname = "/dashboard/renewals"; navigation.query = "cycle=cycle-a&state=current";
     const followupsHref = `${navigation.pathname}?${navigation.query}`;
     await render(remember());
     expect(navigation.router.replace).not.toHaveBeenCalled();
@@ -62,11 +62,11 @@ describe("teacher workspace entry memory", () => {
   });
 
   it("records an explicit worksheet without overriding its requested destination", async () => {
-    localStorage.setItem(key("teacher-a", "followups"), JSON.stringify("/dashboard/followups/enrollments"));
-    navigation.pathname = "/dashboard/followups/assessments"; navigation.query = "scope=mine&lead=temporary-focus";
+    localStorage.setItem(key("teacher-a", "followups"), JSON.stringify("/dashboard/classes"));
+    navigation.pathname = "/dashboard/assessments"; navigation.query = "scope=mine&lead=temporary-focus";
     await render(remember());
     expect(navigation.router.replace).not.toHaveBeenCalled();
-    expect(JSON.parse(localStorage.getItem(key("teacher-a", "followups"))!)).toBe("/dashboard/followups/assessments?scope=mine");
+    expect(JSON.parse(localStorage.getItem(key("teacher-a", "followups"))!)).toBe("/dashboard/assessments?scope=mine");
   });
 
   it("keeps safe defaults when storage is unavailable or contains another workspace", async () => {

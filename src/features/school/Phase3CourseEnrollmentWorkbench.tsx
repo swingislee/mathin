@@ -350,7 +350,7 @@ export function Phase3CourseEnrollmentWorkbench({
             </Select>
           </DashboardCommandFilters>
           <DashboardCommandActions>
-            <Link href="/dashboard/opportunities" className={cn(buttonVariants({ size: "sm", variant: "secondary" }))}>{t("openOpportunities")}</Link>
+            <Link href="/dashboard/communication" className={cn(buttonVariants({ size: "sm", variant: "secondary" }))}>{t("openOpportunities")}</Link>
             {canCreateClass ? <Link href="/dashboard/classes/new" className={cn(buttonVariants({ size: "sm", variant: "primary" }))}>{t("createClass")}</Link> : null}
           </DashboardCommandActions>
         </DashboardCommandPanel>

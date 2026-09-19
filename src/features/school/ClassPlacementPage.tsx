@@ -9,41 +9,48 @@ import { businessRecordStateFilter } from '@/features/school/business-record-sta
 import { isTeacherWorkspaceViewer } from "@/features/school/teacher-workspace";
 import { DashboardCommandState, DashboardEmptyCard, DashboardPage } from "@/features/school/dashboard-page";
 import { FollowupCommandPanel } from "@/features/school/FollowupCommandPanel";
-import { FollowupTabs } from "@/features/school/FollowupTabs";
+import { ClassWorkspaceTabs } from "./ClassWorkspaceTabs";
+import { workEntryMessages, type WorkEntryQuery } from "./work-entry-contract";
 
 export default async function CourseEnrollmentsPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ term?: string; student?: string; q?:string; state?:string }>;
+  searchParams: Promise<WorkEntryQuery>;
 }) {
   const [{ locale }, query] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
   const { user } = await requireDashboardEnvironment(locale, ['staff']);
+  const permissions = await getMyPerms(user.id);
+  const canTeach = permissions.has("class.view.mine") || permissions.has("class.view.all");
+  const m = workEntryMessages(locale);
   if (await enrollmentWorkflowRpc('can_access_enrollment_placement') !== true) {
     if (!await isTeacherWorkspaceViewer(user.id)) redirect({ locale, href: '/dashboard' });
     const t = await getTranslations("school.followupWorkspace");
-    return <DashboardPage title={t("enrollments")} density="compact" commandPanel={<FollowupCommandPanel>
-      <DashboardCommandState><FollowupTabs /></DashboardCommandState>
+    return <DashboardPage title={m.classes} density="compact" commandPanel={<FollowupCommandPanel>
+      <DashboardCommandState><ClassWorkspaceTabs active="arrange" canTeach={canTeach} query={query} /></DashboardCommandState>
     </FollowupCommandPanel>}><DashboardEmptyCard>{t("noTeachingClassForPlacement")}</DashboardEmptyCard></DashboardPage>;
   }
-  const [board, permissions, timeZone, now] = await Promise.all([
+  const [board, timeZone, now] = await Promise.all([
     loadEnrollmentPlacementBoard(),
-    getMyPerms(user.id),
     getOrganizationTimezoneV2(), getNow(),
   ]);
 
   return (
     <EnrollmentPlacementWorkbench
+      workspace="classes"
+      canTeach={canTeach}
+      workspaceQuery={query}
+      focusClassroomId={typeof query.classroom === "string" ? query.classroom : undefined}
       initialBoard={board}
       timeZone={timeZone}
       now={now.getTime()}
       history={permissions.has('enrollment.manage') ? await loadStudentBusinessHistory(locale,{kind:'enrollment',projection:'workbench'}) : null}
-      initialQuery={query.q?.slice(0,100)}
-      initialRecordState={businessRecordStateFilter(query.state)}
-      initialTermId={query.term}
-      focusStudentId={query.student}
+      initialQuery={typeof query.q === "string" ? query.q.slice(0,100) : undefined}
+      initialRecordState={businessRecordStateFilter(typeof query.state === "string" ? query.state : undefined)}
+      initialTermId={typeof query.term === "string" ? query.term : undefined}
+      focusStudentId={typeof query.student === "string" ? query.student : undefined}
       canCreateClass={permissions.has("class.create")}
       canAdd={permissions.has('enrollment.manage') && permissions.has("followup.write") && permissions.has("followup.view")}
     />

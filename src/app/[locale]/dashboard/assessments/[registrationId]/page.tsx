@@ -1,14 +1,17 @@
-import { redirect } from "@/i18n/navigation";
+import { setRequestLocale } from "next-intl/server";
+import { TeacherAssessmentWorkbench } from "@/features/school/TeacherAssessmentWorkbench";
+import { getTeacherAssessmentWorkbenchData } from "@/features/school/teacher-assessment-data";
+import { requireAnyPerm } from "@/lib/auth";
+import { readAssessmentWorkflow } from "@/features/school/assessment-workflow-data";
 
-export default async function LegacyFollowupRoute({ params, searchParams }: {
+export default async function TeacherAssessmentPage({
+  params,
+}: {
   params: Promise<{ locale: string; registrationId: string }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const [values, raw] = await Promise.all([params, searchParams]);
-  const query = new URLSearchParams();
-  for (const [key, value] of Object.entries(raw)) {
-    if (typeof value === "string") query.set(key, value);
-    else if (Array.isArray(value)) value.forEach((item) => query.append(key, item));
-  }
-  redirect({ locale: values.locale, href: `/dashboard/followups/assessments/${encodeURIComponent(values.registrationId)}${query.size ? `?${query}` : ""}` });
+  const { locale, registrationId } = await params;
+  setRequestLocale(locale);
+  await requireAnyPerm(locale, ["review.write"]);
+  const [data, workflow] = await Promise.all([getTeacherAssessmentWorkbenchData(registrationId), readAssessmentWorkflow(registrationId)]);
+  return <TeacherAssessmentWorkbench data={data} readOnly={Boolean(workflow?.finalizedAt)} />;
 }

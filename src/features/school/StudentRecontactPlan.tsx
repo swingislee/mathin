@@ -32,7 +32,7 @@ export function StudentRecontactPlan({ rows, assignees, currentUserId, canPlanOt
         subjects: rows.map(row => ({ studentId: row.studentId, leadId: row.leadId!, expectedOwnerId: row.ownerId })) });
       if (!result.ok) { setError(["RECONTACT_CHANGED", "ASSIGNMENT_CONFLICT", "REQUEST_CONFLICT"].includes(result.code) ? m.planChanged : m.planFailed); return; }
       setOpen(false);
-      router.push(`/dashboard/followups/communication?${new URLSearchParams({ view: "worklist", worklist: result.data.id, date, scope: "mine", pageSize: "50" })}`);
+      router.push(`/dashboard/communication?${new URLSearchParams({ view: "worklist", worklist: result.data.id, date, scope: "mine", pageSize: "50" })}`);
     } catch { setError(m.planFailed); }
     finally { setPending(false); onBusyChange(false); }
   };

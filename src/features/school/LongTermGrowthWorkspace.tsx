@@ -45,7 +45,6 @@ import {
 } from "./dashboard-page";
 import type { RenewalStaffOption, StudentReferralRow } from "./renewal-contract";
 import type { GrowthWorkspaceData } from "./renewals";
-import { FollowupTabs } from "./FollowupTabs";
 
 function localDateTime(value: string | null, locale: string) {
   if (!value) return "—";
@@ -70,7 +69,7 @@ export function LongTermGrowthWorkspace({ data, owners, canWrite }: {
     title={t("reactivationAndReferrals")}
     description={t("growthIntro")}
     commandPanel={<DashboardCommandPanel>
-      <DashboardCommandState><FollowupTabs /><span className="text-xs text-muted">{t("activeReactivations")} {activeReactivations} · {t("referralsCaptured")} {data.referrals.length} · {t("referralsReady")} {data.referrals.filter((row) => row.referredLeadStatus === "converted" && !row.opportunityId).length} · {t("referralOpportunities")} {data.referrals.filter((row) => row.opportunityId).length}</span></DashboardCommandState>
+      <DashboardCommandState><span className="text-xs text-muted">{t("activeReactivations")} {activeReactivations} · {t("referralsCaptured")} {data.referrals.length} · {t("referralsReady")} {data.referrals.filter((row) => row.referredLeadStatus === "converted" && !row.opportunityId).length} · {t("referralOpportunities")} {data.referrals.filter((row) => row.opportunityId).length}</span></DashboardCommandState>
       <DashboardCommandFilters><FilterSearchInput className="pl-9" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("growthSearchPlaceholder")} /></DashboardCommandFilters>
       {canWrite ? <DashboardCommandActions>
         <CreateReactivationDialog data={data} owners={owners} onSaved={() => router.refresh()} />
@@ -91,7 +90,7 @@ export function LongTermGrowthWorkspace({ data, owners, canWrite }: {
             <TableCell>{row.ownerName}</TableCell>
             <TableCell className="max-w-72 whitespace-normal">{row.nextAction || "—"}</TableCell>
             <TableCell>{localDateTime(row.nextActionAt, locale)}</TableCell>
-            <TableCell className="text-right"><Link className={cn(buttonVariants({ size: "sm", variant: "ghost" }))} href={`/dashboard/followups/renewals/${row.id}`}>{t("openDetail")}</Link></TableCell>
+            <TableCell className="text-right"><Link className={cn(buttonVariants({ size: "sm", variant: "ghost" }))} href={`/dashboard/renewals/${row.id}`}>{t("openDetail")}</Link></TableCell>
           </TableRow>)}
           {reactivationRows.length === 0 ? <TableRow><TableCell colSpan={7} className="h-36 text-center text-muted">{t("emptyReactivations")}</TableCell></TableRow> : null}
         </TableBody>
@@ -111,7 +110,7 @@ export function LongTermGrowthWorkspace({ data, owners, canWrite }: {
             <TableCell className="max-w-72 whitespace-normal">{referral.note || "—"}</TableCell>
             <TableCell className="text-right"><div className="flex justify-end gap-1">
               {canWrite && !referral.opportunityId && referral.referredLeadStatus === "converted" ? <ConvertReferralDialog referral={referral} data={data} owners={owners} onSaved={() => router.refresh()} /> : null}
-              {referral.opportunityId ? <Link className={cn(buttonVariants({ size: "sm", variant: "ghost" }))} href={`/dashboard/followups/renewals/${referral.opportunityId}`}>{t("openOpportunity")}</Link> : <Link className={cn(buttonVariants({ size: "sm", variant: "ghost" }))} href="/dashboard/followups/leads">{t("openLead")}</Link>}
+              {referral.opportunityId ? <Link className={cn(buttonVariants({ size: "sm", variant: "ghost" }))} href={`/dashboard/renewals/${referral.opportunityId}`}>{t("openOpportunity")}</Link> : <Link className={cn(buttonVariants({ size: "sm", variant: "ghost" }))} href="/dashboard/leads">{t("openLead")}</Link>}
             </div></TableCell>
           </TableRow>)}
           {referralRows.length === 0 ? <TableRow><TableCell colSpan={7} className="h-36 text-center text-muted">{t("emptyReferrals")}</TableCell></TableRow> : null}

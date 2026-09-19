@@ -7,6 +7,8 @@ import type { CourseEnrollmentRow, EnrollmentPlacementBoard, PlacementClassroom,
 import { EnrollmentPlacementWorkbench } from "@/features/school/EnrollmentPlacementWorkbench";
 const IntlProvider=NextIntlClientProvider as ComponentType<PropsWithChildren<Omit<ComponentProps<typeof NextIntlClientProvider>,'children'>>>;
 
+vi.mock("server-only", () => ({}));
+
 // 补入流程有独立合同测试；这些用例继续覆盖原工作表交互。
 vi.mock("@/features/school/SchoolSupportInlineEntry", () => ({ SchoolSupportTableEntry: ({ children }: { children: import("react").ReactNode }) => children, SchoolSupportInsertion: () => null, SchoolSupportSeatEntry: () => null }));
 vi.mock("@/features/school/SchoolSupportPendingRows", () => ({ SchoolSupportPendingRows: () => null }));

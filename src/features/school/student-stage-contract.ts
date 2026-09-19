@@ -75,7 +75,7 @@ export function parseStudentStageFilters(raw: Record<string, string | string[] |
     pageSize: followupPageSize(pick("pageSize")), ...(pick("fields") ? { fields: pick("fields")!.slice(0, 16_384) } : {}) };
 }
 
-export function studentStageHref(filters: StudentStageFilters, change: Partial<StudentStageFilters> = {}) {
+export function studentStageHref(filters: StudentStageFilters, change: Partial<StudentStageFilters> = {}, baseHref = "/dashboard/students") {
   const next = { ...filters, ...change };
   const query = new URLSearchParams({ stage: next.stage, scope: next.scope, pageSize: String(next.pageSize) });
   if (next.population) query.set("population", next.population);
@@ -84,7 +84,7 @@ export function studentStageHref(filters: StudentStageFilters, change: Partial<S
   if (next.detail) query.set("detail", next.detail);
   if (next.fields) query.set("fields", next.fields);
   if (next.page > 1) query.set("page", String(next.page));
-  return `/dashboard/students?${query}`;
+  return `${baseHref}?${query}`;
 }
 
 export function studentRecordTableStage(filters: StudentStageFilters): StudentStage {

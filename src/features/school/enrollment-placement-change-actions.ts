@@ -21,8 +21,8 @@ export async function changeEnrollmentPlacementAction(input:PlacementChangeInput
     const {requestId,...v}=parse(placementChangeSchema,input);
     await authorizedEnrollmentPlacementClient();
     await enrollmentWorkflowRpc('change_enrollment_placement',{p_request_id:requestId,p_input:v});
-    revalidatePath('/[locale]/dashboard/followups/enrollments','page');
-    revalidatePath('/[locale]/dashboard/enrollments','page');
+    revalidatePath('/[locale]/dashboard/classes','page');
+    revalidatePath('/[locale]/dashboard/classes','page');
     revalidatePath('/[locale]/dashboard/students','layout');
     revalidatePath('/[locale]/dashboard/classes','layout');
     revalidatePath('/[locale]/classroom','layout');

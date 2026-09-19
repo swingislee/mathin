@@ -41,7 +41,7 @@ export function TeachingSessionRecords({ data, locale, timeZone, returnTo, curre
     return `${path}?${params}`;
   };
   return <div className={inline ? "space-y-3 [&_section>header]:mb-2" : "space-y-7"}>
-    {!replay && <Link className="inline-block text-xs underline underline-offset-4" href={withReturnTo(`/dashboard/sessions/${data.session.id}?stage=post`, currentHref || "/dashboard/teaching?view=records")}>
+    {!replay && <Link className="inline-block text-xs underline underline-offset-4" href={withReturnTo(`/dashboard/sessions/${data.session.id}?stage=post`, currentHref || "/dashboard/classes?view=records")}>
       {sessionCommunicationMessages(locale).title}
     </Link>}
     {!inline && <DashboardSection title={`${data.session.classroomName} · ${data.session.title || workT("untitled")}`}>
@@ -103,7 +103,7 @@ export function TeachingSessionRecords({ data, locale, timeZone, returnTo, curre
       {data.homework === undefined ? <p className="text-xs text-muted">{homeworkT("snapshotUnavailable")}</p>
         : data.homework.length === 0 ? <p className="text-xs text-muted">{homeworkT("noAssignments")}</p>
         : data.homework.map(item => <div key={item.assignment.id} className="mb-3 space-y-2"><div className="flex items-center gap-3"><h4 className="text-xs font-medium">{item.assignment.title}</h4>
-          {!replay && <Link prefetch={false} className="text-xs underline underline-offset-4" href={`/dashboard/teaching/assignments/${item.assignment.id}`}>{homeworkT(item.canWrite ? "title" : "view")}</Link>}</div>
+          {!replay && <Link prefetch={false} className="text-xs underline underline-offset-4" href={`/dashboard/classes/assignments/${item.assignment.id}`}>{homeworkT(item.canWrite ? "title" : "view")}</Link>}</div>
           <AssignmentQuestionSummary data={item} />
         </div>)}
     </DashboardSection>

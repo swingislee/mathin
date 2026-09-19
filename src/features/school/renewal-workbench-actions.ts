@@ -35,8 +35,8 @@ export async function saveRenewalWorkbenchAction(input: z.input<typeof schema>):
     // 生成器将函数参数标为非空；SQL 接受显式 NULL，并用它区分未登记与清除。
     const { data, error } = await supabase.rpc("save_renewal_workbench_v1", args as RpcArgs);
     if (error) throw new Error(error.message);
-    revalidatePath("/[locale]/dashboard/followups/renewals", "layout");
-    revalidatePath("/[locale]/dashboard/followups/enrollments", "page");
+    revalidatePath("/[locale]/dashboard/renewals", "layout");
+    revalidatePath("/[locale]/dashboard/classes", "page");
     return { ok: true, data: data as unknown as RenewalWorkbenchSaved };
   } catch (error) {
     return actionError(error, ["VALIDATION", "UNAUTHENTICATED", "FORBIDDEN_SCOPE", "FORBIDDEN_OWNER_ASSIGNMENT", "FORBIDDEN",

@@ -24,7 +24,7 @@ async function Content({ locale, assignmentId }: { locale: string; assignmentId:
   catch { return <DashboardPage title={t("title")}><p role="alert">{t("loadFailed")}</p></DashboardPage>; }
   const version = createHash("sha256").update(JSON.stringify(data)).digest("hex");
   return <DashboardPage title={data.assignment.title} description={`${data.assignment.classroomName} · ${t("title")}`} density="compact">
-    <DashboardBackLink href={data.assignment.sessionId ? `/dashboard/sessions/${data.assignment.sessionId}?stage=post` : "/dashboard/teaching"} label={t("back")} />
+    <DashboardBackLink href={data.assignment.sessionId ? `/dashboard/sessions/${data.assignment.sessionId}?stage=post` : "/dashboard/classes"} label={t("back")} />
     <AssignmentQuestionWorkbench key={`${data.questions.length}:${version}`} initial={data} />
   </DashboardPage>;
 }

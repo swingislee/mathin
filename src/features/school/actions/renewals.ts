@@ -31,8 +31,8 @@ const EDITABLE_OPPORTUNITY_STAGES = [
 ] as const;
 
 function refreshRenewals() {
-  revalidatePath("/[locale]/dashboard/followups/renewals", "layout");
-  revalidatePath("/[locale]/dashboard/opportunities", "page");
+  revalidatePath("/[locale]/dashboard/renewals", "layout");
+  revalidatePath("/[locale]/dashboard/communication", "page");
 }
 
 const cycleSchema = z.object({

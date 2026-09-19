@@ -346,7 +346,7 @@ export function Phase3CourseOpportunityWorkbench({
             </> : null}
           </DashboardCommandFilters>
           <DashboardCommandActions>
-            <Link href="/dashboard/followups/enrollments" className={cn(buttonVariants({ size: "sm", variant: "secondary" }))}>{t("openEnrollments")}</Link>
+            <Link href="/dashboard/classes" className={cn(buttonVariants({ size: "sm", variant: "secondary" }))}>{t("openEnrollments")}</Link>
           </DashboardCommandActions>
         </DashboardCommandPanel>
       }
@@ -393,9 +393,9 @@ export function Phase3CourseOpportunityWorkbench({
                 <TableCell>{row.ownerName}</TableCell>
                 <TableCell><div className="flex min-w-max justify-end gap-2">
                   {canWrite && row.stage !== "enrolled" ? <OpportunityDialog opportunity={row} options={options} onSaved={refresh} /> : null}
-                  {row.leadId ? <Link href={`/dashboard/followups/leads?q=${encodeURIComponent(row.phone || row.name)}`} className={cn(buttonVariants({ size: "sm", variant: "secondary" }))}>{t("resolveIdentity")}</Link> : null}
+                  {row.leadId ? <Link href={`/dashboard/leads?q=${encodeURIComponent(row.phone || row.name)}`} className={cn(buttonVariants({ size: "sm", variant: "secondary" }))}>{t("resolveIdentity")}</Link> : null}
                   {canConfirm && confirmable ? <ConfirmEnrollmentButton row={row} onSaved={refresh} /> : null}
-                  {row.courseEnrollmentId ? <Link href="/dashboard/followups/enrollments" className={cn(buttonVariants({ size: "sm", variant: "secondary" }))}>{t("viewEnrollment")}</Link> : null}
+                  {row.courseEnrollmentId ? <Link href="/dashboard/classes" className={cn(buttonVariants({ size: "sm", variant: "secondary" }))}>{t("viewEnrollment")}</Link> : null}
                 </div></TableCell>
               </TableRow>;
             })}</TableBody>

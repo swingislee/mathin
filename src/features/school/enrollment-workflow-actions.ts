@@ -98,7 +98,7 @@ export async function prepareSourceEnrollmentAction(input:{enrollmentId:string;s
     await authorizedClient('enrollment.manage');
     await enrollmentWorkflowRpc('prepare_source_enrollment',{p_enrollment_id:value.enrollmentId,p_student_id:value.studentId,p_classroom_id:value.classroomId});
     refreshEnrollmentWorkflow();
-    revalidatePath('/[locale]/dashboard/followups/enrollments','page');
+    revalidatePath('/[locale]/dashboard/classes','page');
     return {ok:true,data:await loadEnrollmentPlacementBoard()};
   } catch(error){return actionError(error,ERRORS);}
 }

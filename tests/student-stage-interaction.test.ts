@@ -26,10 +26,11 @@ const row: StudentStageRow = { key: `lead:${id}`, studentId: null, leadId: id, n
   score: null, assessmentBand: null, assessmentAt: null, registrationId: null, courseTitle: "", termName: "", courseId: null, termId: null,
   createdAt: "2026-09-07T12:00:00Z", canWrite: true, canContact: true, invitation: null };
 let root: Root, container: HTMLDivElement;
-async function render(stage: StudentStage = "awaiting_first_contact", overrides: Partial<StudentStageRow> = {}) {
+async function render(stage: StudentStage = "awaiting_first_contact", overrides: Partial<StudentStageRow> = {}, presentation: "students" | "communication" = "students") {
   const context = { locale: "zh", timeZone: "Asia/Shanghai", now: Date.parse(row.createdAt) };
   const fieldPage = followupFieldPage([{ ...row, stage, ...overrides }], studentStageTableFields("zh", stage, "owner"), undefined, context, 1, 50);
   const props: ComponentProps<typeof StudentStageWorkspace> = {
+    presentation,
     data: { ...fieldPage, counts: { [stage]: 1 } },
     filters: { stage, scope: "all", detail: "", q: "", page: 1, pageSize: 50 }, locale: "zh", currentUserId: "owner", canEnroll: false,
     canAssign: true, assignees: [{ userId: "next-owner", displayName: "新负责人" }], actions: null, timeZone: "Asia/Shanghai",
@@ -48,6 +49,17 @@ beforeEach(() => {
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals(); });
 
 describe("student stage workspace wiring", () => {
+  it("uses all five communication tabs and expands the stage-specific form without changing student classification", async () => {
+    await render("awaiting_assessment", { studentId: id, detail: "not_booked" }, "communication");
+    const stageLinks = [...container.querySelectorAll<HTMLAnchorElement>('a[href^="/dashboard/communication?stage="]')];
+    expect(stageLinks).toHaveLength(5);
+    expect(container.querySelector("h1")?.textContent).toBe("沟通");
+    const summary = container.querySelector<HTMLElement>("[data-student-stage-row]")!;
+    await act(async () => { summary.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })); });
+    expect(container.querySelector('[role="tab"][data-state="active"]')?.textContent).toBe("测评／活动邀约");
+    expect(actions.save).not.toHaveBeenCalled();
+    expect(summary.dataset.studentStage).toBe("awaiting_assessment");
+  });
   it("shows missing assessment fields alongside the completed assessment in awaiting enrollment", async () => {
     await render("awaiting_enrollment", { detail: "assessed", assessmentSource: "assessment", assessmentAt: "2026-09-02", teacherName: "老师" });
     const summary = container.querySelector<HTMLElement>("[data-student-stage-row]")!;

@@ -2,7 +2,6 @@ import { getNow, getTranslations, setRequestLocale } from "next-intl/server";
 import { z } from "zod";
 import { DashboardCommandState, DashboardPage } from "@/features/school/dashboard-page";
 import { FollowupCommandPanel } from "@/features/school/FollowupCommandPanel";
-import { FollowupTabs } from "@/features/school/FollowupTabs";
 import { FollowupQueryMemory } from "@/features/school/FollowupQueryMemory";
 import { InvitationCoordinationWorkbench } from "@/features/school/InvitationCoordinationWorkbench";
 import { loadCommunicationWorkbench } from "@/features/school/communication-workbench-data";
@@ -17,12 +16,18 @@ import { businessRecordStateFilter } from '@/features/school/business-record-sta
 import { BusinessRecordStateQueryFilter } from '@/features/school/BusinessRecordStateQueryFilter';
 import { communicationTableFields } from "@/features/school/communication-table-fields";
 import { getOrganizationTimezoneV2 } from "@/features/school/organization-locations";
+import { DashboardCommandTabs } from "./dashboard-page";
+import { studentStageMessages } from "./student-stage-messages";
+import { STUDENT_STAGE_TABS } from "./student-stage-contract";
+import { workEntryMessages } from "./work-entry-contract";
 
 export default async function CommunicationPage({ params, searchParams }: {
   params: Promise<{ locale: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const [{ locale }, raw] = await Promise.all([params, searchParams]);
+  const m = workEntryMessages(locale);
+  const stageM = studentStageMessages(locale);
   setRequestLocale(locale);
   const user = await requireAnyPerm(locale, ["followup.view", "review.write"]);
   const permissions = await getMyPerms(user.id);
@@ -34,8 +39,8 @@ export default async function CommunicationPage({ params, searchParams }: {
   const scope = communicationWorkScope(raw.scope, permissions.has("student.view.all"), permissions.has("student.assign"));
   const filters = parseLeadPoolFilters({ ...raw, scope, status: undefined, assignment: undefined }, permissions.has("student.view.all"));
   const recordState=businessRecordStateFilter(raw.state);
-  const [workspaceT, t, leadT, enrollmentT, tableT, workT, timeZone, now] = await Promise.all([
-    getTranslations("school.followupWorkspace"), getTranslations("school.invitations"), getTranslations("school.leads"),
+  const [t, leadT, enrollmentT, tableT, workT, timeZone, now] = await Promise.all([
+    getTranslations("school.invitations"), getTranslations("school.leads"),
     getTranslations("school.enrollmentWorkflow"), getTranslations("school.table"), getTranslations("school.communicationWorkday"), getOrganizationTimezoneV2(), getNow(),
   ]);
   const [data, options] = await Promise.all([
@@ -52,11 +57,14 @@ export default async function CommunicationPage({ params, searchParams }: {
     ...data.invitations.filter((row) => row.state !== "completed" && row.state !== "cancelled").map((row) => `lead:${row.leadId}`),
     ...data.postActivityRows.filter((row) => row.eligible && !row.enrollmentId && row.route !== "closed").map((row) => `post:${row.registrationId}`),
   ]);
-  return <CommunicationWorkSelectionProvider key={sessionKey}><FollowupQueryMemory keys={["scope", "pageSize"]} preferenceKey="communication-entry-v2" /><DashboardPage title={workspaceT("communication")} density="compact" bodyClassName="gap-1.5" commandPanel={<FollowupCommandPanel>
-    <DashboardCommandState><FollowupTabs /></DashboardCommandState>
+  return <CommunicationWorkSelectionProvider key={sessionKey}><FollowupQueryMemory keys={["scope", "pageSize"]} preferenceKey="communication-entry-v2" /><DashboardPage title={m.communication} density="compact" bodyClassName="gap-1.5" commandPanel={<FollowupCommandPanel>
+    <DashboardCommandState><DashboardCommandTabs ariaLabel={m.communication} activeValue="worklists" items={[
+      ...STUDENT_STAGE_TABS.map(stage => ({ value: stage, label: stageM.stages[stage], href: `/dashboard/communication?stage=${stage}` })),
+      { value: "worklists", label: m.worklists, href: "/dashboard/communication/worklists" },
+    ]} /></DashboardCommandState>
     <CommunicationWorkToolbar options={workOptions} scope={filters.scope} canViewAll={permissions.has("student.view.all")} canManage={permissions.has("followup.write")} worklist={data.worklist} worklists={data.worklists} pageKeys={data.rowOrder.filter((key) => actionableKeys.has(key))} count={data.count} today={today} query={focusLeadId ? "" : filters.q} hasFieldFilters={hasFieldFilters}
       secondaryFilters={<BusinessRecordStateQueryFilter presentation="followup" value={recordState} locale={locale} query={Object.fromEntries(Object.entries(raw).filter((entry):entry is [string,string]=>typeof entry[1]==='string'))}/>} />
-  </FollowupCommandPanel>} footer={<LeadPoolPagination currentPage={data.page} totalPages={Math.max(1, Math.ceil(data.count / data.pageSize))} totalCount={data.count} pageSize={data.pageSize} scope={focusLeadId ? "all" : filters.scope} q={focusLeadId ? undefined : filters.q} focusLeadId={focusLeadId} baseHref="/dashboard/followups/communication" extraQuery={{ view: workOptions.view, date, state: recordState, ...(fieldQuery ? { fields: fieldQuery } : {}), ...(workOptions.worklistId ? { worklist: workOptions.worklistId } : {}) }} />}>
+  </FollowupCommandPanel>} footer={<LeadPoolPagination currentPage={data.page} totalPages={Math.max(1, Math.ceil(data.count / data.pageSize))} totalCount={data.count} pageSize={data.pageSize} scope={focusLeadId ? "all" : filters.scope} q={focusLeadId ? undefined : filters.q} focusLeadId={focusLeadId} baseHref="/dashboard/communication/worklists" extraQuery={{ view: workOptions.view, date, state: recordState, ...(fieldQuery ? { fields: fieldQuery } : {}), ...(workOptions.worklistId ? { worklist: workOptions.worklistId } : {}) }} />}>
     <InvitationCoordinationWorkbench fieldView={data.fieldView} timeZone={timeZone} now={now.getTime()} sessionKey={sessionKey} workMode={workOptions.view} workday={data.workday} worklist={data.worklist ?? undefined} selectionEnabled={permissions.has("followup.write") && workOptions.view !== "worklist"} rows={data.invitations} contactLeads={data.contactLeads} leadDetails={data.leadDetails} rowOrder={data.rowOrder} invitationHistory={data.invitationHistory} focusLeadId={focusLeadId} activities={options.activities} assessors={options.assessors} locale={locale} currentUserId={user.id} canManageInvitation={permissions.has("followup.write")} canContact={permissions.has("followup.write")} canManageIdentity={permissions.has("followup.write") && permissions.has("student.edit")} postActivityRows={data.postActivityRows}
       emptyMessage={workOptions.view === "unscheduled" && !filters.q && !hasFieldFilters ? workT("emptyPending") : undefined} />
   </DashboardPage></CommunicationWorkSelectionProvider>;

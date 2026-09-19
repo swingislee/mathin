@@ -33,7 +33,7 @@ export type ReviseCommunicationRecordInput = z.input<typeof revisionSchema>;
 const ERRORS = ["FORBIDDEN_SCOPE", "REVISION_CONFLICT", "CORRECTION_REQUIRES_WORKFLOW", "NOT_FOUND", ...COMMON_CODES] as const;
 
 function refreshCommunication() {
-  revalidatePath("/[locale]/dashboard/followups", "layout");
+  revalidatePath("/[locale]/dashboard", "layout");
   revalidatePath("/[locale]/dashboard/activities", "layout");
 }
 

@@ -76,7 +76,7 @@ export function TeacherAssessmentWorkbench({ data, readOnly = false }: { data: T
   const grade = data.gradeText || (data.grade === null ? t("gradePending") : t("gradeValue", { grade: data.grade }));
 
   if (readOnly) return <DashboardPage title={t("title", { name: data.subjectName })} description={workflowT("finalizedHint")}
-    backHref="/dashboard/followups/assessments" backLabel={t("backToAggregate")} density="compact">
+    backHref="/dashboard/assessments" backLabel={t("backToAggregate")} density="compact">
     <section className="space-y-4" data-assessment-questions-readonly>
       <p className="whitespace-pre-wrap text-sm leading-6">{data.teacherObservation}</p>
       <ol className="divide-y divide-line">{data.questions.map((question) => <li key={question.id} className="space-y-1 py-3 text-sm">
@@ -93,7 +93,7 @@ export function TeacherAssessmentWorkbench({ data, readOnly = false }: { data: T
         title={t("title", { name: data.subjectName })}
         description={t("choosePaperIntro")}
         meta={<span>{grade} · {schedule}{data.location ? ` · ${data.location}` : ""}</span>}
-        backHref="/dashboard/followups/assessments"
+        backHref="/dashboard/assessments"
         backLabel={t("backToAggregate")}
         density="compact"
       >
@@ -493,7 +493,7 @@ function QuestionWorkbench({
     <DashboardPage
       title={t("title", { name: data.subjectName })}
       meta={<span>{pageMeta}</span>}
-      backHref="/dashboard/followups/assessments"
+      backHref="/dashboard/assessments"
       backLabel={t("backToAggregate")}
       density="compact"
       className="flex w-full min-w-0 flex-1 flex-col panel-canvas"

@@ -2,6 +2,7 @@ import "server-only";
 
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { currentWorkEntryHref } from "@/features/school/work-entry-contract";
 
 interface RpcError {
   message: string;
@@ -33,5 +34,5 @@ export async function resolveMyWebPushDelivery(deliveryId: string): Promise<stri
   const result = resultSchema.safeParse(data);
   if (!result.success) return null;
   const deepLink = result.data[0].deep_link;
-  return deepLink.startsWith("//") || deepLink.includes("\\") ? null : deepLink;
+  return deepLink.startsWith("//") || deepLink.includes("\\") ? null : currentWorkEntryHref(deepLink);
 }

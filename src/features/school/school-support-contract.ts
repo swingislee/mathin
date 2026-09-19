@@ -74,7 +74,13 @@ export function supportEntryHref(item: SupportItem): string {
   } else if (item.workspace === 'leads') { query.set('q',item.name); query.set('scope','all'); }
   else if (item.workspace === 'assessments') { query.set('q',item.name); if (item.registrationId) query.set('registration',item.registrationId); }
   else if (item.workspace === 'renewals' && item.cycleId) query.set('cycle',item.cycleId);
-  return `/dashboard/followups/${item.workspace}?${query}`;
+  if (item.workspace === 'enrollments') {
+    query.set('view', 'arrange');
+    if (item.termId) query.set('term', item.termId);
+    if (item.studentId) query.set('student', item.studentId);
+    return `/dashboard/classes?${query}`;
+  }
+  return `/dashboard/${item.workspace}?${query}`;
 }
 
 export function supportMessages(locale: string) {

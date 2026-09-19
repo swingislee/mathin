@@ -13,7 +13,7 @@ export function LeadPoolPagination({
   scope = "all",
   status,
   q,
-  baseHref = "/dashboard/followups/leads",
+  baseHref = "/dashboard/leads",
   focusLeadId,
   extraQuery = {},
   onPageChange,
@@ -26,7 +26,7 @@ export function LeadPoolPagination({
   scope?: LeadPoolScope;
   status?: LeadStatus;
   q?: string;
-  baseHref?: `/dashboard/followups/${string}` | "/dashboard/students";
+  baseHref?: `/dashboard/${string}`;
   focusLeadId?: string;
   extraQuery?: Record<string, string>;
   onPageChange?: (page: number, pageSize: LeadPageSize) => void;
@@ -41,7 +41,7 @@ export function LeadPoolPagination({
     if (status) query.set("status", status);
     if (q) query.set("q", q);
     if (focusLeadId) query.set("lead", focusLeadId);
-    if (size !== LEAD_DEFAULT_PAGE_SIZE || baseHref === "/dashboard/followups/communication") query.set("pageSize", String(size));
+    if (size !== LEAD_DEFAULT_PAGE_SIZE || baseHref === "/dashboard/communication" || baseHref.startsWith("/dashboard/communication/")) query.set("pageSize", String(size));
     if (page > 1) query.set("page", String(page));
     const value = query.toString();
     return `${baseHref}${value ? `?${value}` : ""}`;

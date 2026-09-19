@@ -28,10 +28,10 @@ export function LeadIntakeScopeFilter({ filters, fieldQuery }: { filters: LeadPo
   return <>
     <FollowupPrimaryFilter label={filterT("workQueue")} value={view} disabled={disabled}
       options={options}
-      onValueChange={value => startTransition(() => router.replace(`/dashboard/followups/leads?${queryFor(value as typeof view)}`))} />
+      onValueChange={value => startTransition(() => router.replace(`/dashboard/leads?${queryFor(value as typeof view)}`))} />
     <FollowupChoice label={m.scope} value={filters.scope === "mine" || filters.scope === "group" ? filters.scope : "all"}
       presentation="select" disabled={disabled || view === "unassigned"} className="h-8 min-h-8 w-28 shrink-0 py-1 text-xs"
       options={[{ value: "all", label: m.all }, { value: "mine", label: m.mine }, { value: "group", label: m.group }]}
-      onValueChange={scope => startTransition(() => router.replace(`/dashboard/followups/leads?${queryFor(view, scope as "mine" | "all" | "group")}`))} />
+      onValueChange={scope => startTransition(() => router.replace(`/dashboard/leads?${queryFor(view, scope as "mine" | "all" | "group")}`))} />
   </>;
 }

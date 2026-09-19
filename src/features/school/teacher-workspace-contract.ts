@@ -1,17 +1,17 @@
 export const TEACHER_WORKSPACE_DEFAULTS = {
   students: "/dashboard/students?stage=awaiting_renewal&scope=mine",
-  followups: "/dashboard/followups/enrollments",
+  followups: "/dashboard/classes",
 } as const;
 export type TeacherWorkspace = keyof typeof TEACHER_WORKSPACE_DEFAULTS;
 
-const FOLLOWUP_PAGES = ["leads", "communication", "assessments", "enrollments", "renewals"];
+const FOLLOWUP_PAGES = ["leads", "communication", "assessments", "classes", "renewals"];
 const QUERY_KEYS = new Set(["stage", "scope", "population", "reason", "detail", "q", "page", "pageSize", "fields",
   "tab", "state", "view", "status", "assignment", "queue", "cycle", "term"]);
 
 /** 两个入口分别记住列表工作面，临时定位与对象详情继续由显式链接打开。 */
 export function teacherWorkspaceLocation(pathname: string, query: string): { workspace: TeacherWorkspace; href: string } | null {
   const workspace = pathname === "/dashboard/students" ? "students"
-    : FOLLOWUP_PAGES.some(page => pathname === `/dashboard/followups/${page}`) ? "followups" : null;
+    : FOLLOWUP_PAGES.some(page => pathname === `/dashboard/${page}`) ? "followups" : null;
   if (!workspace || query.length > 20_000) return null;
   const params = new URLSearchParams(query);
   for (const key of [...params.keys()]) if (!QUERY_KEYS.has(key)) params.delete(key);
