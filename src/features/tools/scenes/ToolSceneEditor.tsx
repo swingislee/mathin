@@ -20,7 +20,11 @@ export function ToolSceneEditor(props: EditorProps) {
 }
 
 function ToolSceneEditorSession({ version, existing, onReady, fullHeight = false }: EditorProps) {
+  const t = useTranslations("tools.preparation");
+  const tools = useTranslations("tools.items");
+  const definition = TOOL_SCENE_DEFINITIONS.find((item) => item.contentVersion === version)!;
   const [origin, setOrigin] = useState(existing);
+  const [title, setTitle] = useState(existing?.payload.title ?? tools(`${definition.catalogId}.name`));
   const [generation, setGeneration] = useState(0);
   const [libraryEpoch, setLibraryEpoch] = useState(0);
   const [ready, setReady] = useState<ToolScene | null>(null);
@@ -29,23 +33,23 @@ function ToolSceneEditorSession({ version, existing, onReady, fullHeight = false
   function open(scene: ToolScene, imported = false) {
     if (scene.contentVersion !== version) return;
     if (imported) setLibraryEpoch((n) => n + 1);
-    capture(null); setOrigin(scene); setGeneration((n) => n + 1);
+    capture(null); setOrigin(scene); setTitle(scene.payload.title); setGeneration((n) => n + 1);
   }
   return <div className={fullHeight ? "flex min-h-0 flex-1 flex-col gap-2" : "space-y-2"}>
-    <ToolSceneLibrary key={`library-${libraryEpoch}`} version={version} scene={ready} onOpen={open} />
-    {adapter.Import && createElement(adapter.Import, { key: `import-${generation}`, onOpen: (scene: ToolScene) => open(scene, true) })}
-    <ToolSceneConfiguration key={`scene-${generation}`} version={version} existing={origin} onReady={capture} fullHeight={fullHeight} />
+    <ToolSceneLibrary key={`library-${libraryEpoch}`} version={version} scene={ready} onOpen={open}>
+      <Input className="h-9 w-52 shrink-0" value={title} maxLength={80} onChange={(e) => setTitle(e.target.value)} aria-label={t("name")} />
+      {adapter.Import && createElement(adapter.Import, { key: `import-${generation}`, onOpen: (scene: ToolScene) => open(scene, true) })}
+    </ToolSceneLibrary>
+    <ToolSceneConfiguration key={`scene-${generation}`} version={version} existing={origin} title={title} onReady={capture} fullHeight={fullHeight} />
   </div>;
 }
 
-function ToolSceneConfiguration({ version, existing, onReady, fullHeight }: {
-  version: ToolSceneVersion; existing?: ToolScene; onReady: (scene: ToolScene | null) => void; fullHeight: boolean;
+function ToolSceneConfiguration({ version, existing, title, onReady, fullHeight }: {
+  version: ToolSceneVersion; existing?: ToolScene; title: string; onReady: (scene: ToolScene | null) => void; fullHeight: boolean;
 }) {
   const t = useTranslations("tools.preparation");
-  const tools = useTranslations("tools.items");
   const definition = TOOL_SCENE_DEFINITIONS.find((item) => item.contentVersion === version)!;
   const adapter = getToolWorkbenchAdapter(version);
-  const [title, setTitle] = useState(existing?.payload.title ?? tools(`${definition.catalogId}.name`));
   const [candidate, setCandidate] = useState<unknown | null>(null);
   const prepared = useMemo(() => {
     if (candidate === null) return null;
@@ -55,10 +59,9 @@ function ToolSceneConfiguration({ version, existing, onReady, fullHeight }: {
     } catch { return null; }
   }, [candidate, definition.toolId, version]);
   useEffect(() => { onReady(prepared); }, [onReady, prepared]);
-  return <div className={fullHeight ? "flex min-h-0 flex-1 flex-col gap-2" : "space-y-2"}>
-    <Input value={title} maxLength={80} onChange={(e) => setTitle(e.target.value)} aria-label={t("name")} />
+  return <div className={fullHeight ? "relative flex min-h-0 flex-1 flex-col" : "relative"} aria-busy={candidate === null} data-tool-scene-configuration>
     {createElement(adapter.Preparation, { existing, title, fullHeight, onChange: setCandidate })}
-    {!prepared && <p className="text-xs text-muted" role="status">{candidate === null ? t("wait") : t("invalid")}</p>}
+    {candidate !== null && !prepared && <p className="absolute bottom-2 left-2 z-30 max-w-[calc(100%-1rem)] rounded-md bg-paper px-2 py-1 text-xs text-rose" role="alert">{t("invalid")}</p>}
   </div>;
 }
 

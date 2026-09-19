@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { FolderOpen, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { createToolDraftStore, ToolDraftError, type ToolDraftSummary } from "./d
 import type { ToolScene, ToolSceneVersion } from "./contract";
 import { TOOL_SCENE_DEFINITIONS } from "./registry";
 
-export function ToolSceneLibrary({ version, scene, onOpen }: { version: ToolSceneVersion; scene: ToolScene | null; onOpen: (scene: ToolScene) => void }) {
+export function ToolSceneLibrary({ version, scene, onOpen, children }: { version: ToolSceneVersion; scene: ToolScene | null; onOpen: (scene: ToolScene) => void; children?: ReactNode }) {
   const t = useTranslations("tools.preparation");
   const locale = useLocale() === "en" ? "en" : "zh";
   const store = useMemo(() => createToolDraftStore({ locale }), [locale]);
@@ -43,21 +43,23 @@ export function ToolSceneLibrary({ version, scene, onOpen }: { version: ToolScen
   }
   const catalogId = TOOL_SCENE_DEFINITIONS.find((item) => item.contentVersion === version)?.catalogId;
   const items = drafts?.filter((item) => item.catalogId === catalogId) ?? [];
-  return <div className="space-y-2 px-1" data-tool-scene-library>
-    <div className="flex flex-wrap items-center gap-2">
-      <Button size="sm" variant="secondary" disabled={pending} onClick={() => { setShow(!show); if (!show) void action(async () => setDrafts(await store.list())); }}><FolderOpen className="size-4" />{t("library")}</Button>
-      <Button size="sm" variant="secondary" disabled={!scene || pending} onClick={() => save()}><Save className="size-4" />{t("save")}</Button>
-      {current && <Button size="sm" variant="ghost" disabled={!scene || pending} onClick={() => save(true)}>{t("saveCopy")}</Button>}
-      {scene && saved === JSON.stringify(scene) && <span className="text-xs text-muted" role="status">{t("saved")}</span>}
+  return <div className="relative min-w-0 shrink-0" data-tool-scene-library>
+    {/* 固定单行高度，横向滚动条、保存状态与场景选择的显隐均不改变舞台高度。 */}
+    <div className="flex h-12 min-w-0 flex-nowrap items-center gap-2 overflow-x-auto overflow-y-hidden px-1 [scrollbar-width:thin]" data-tool-scene-toolbar>
+      <Button size="sm" variant="secondary" className="shrink-0 whitespace-nowrap" disabled={pending} aria-expanded={show} onClick={() => { setShow(!show); if (!show) void action(async () => setDrafts(await store.list())); }}><FolderOpen className="size-4" />{t("library")}</Button>
+      <Button size="sm" variant="secondary" className="shrink-0 whitespace-nowrap" disabled={!scene || pending} onClick={() => save()}><Save className="size-4" />{t("save")}</Button>
+      {current && <Button size="sm" variant="ghost" className="shrink-0 whitespace-nowrap" disabled={!scene || pending} onClick={() => save(true)}>{t("saveCopy")}</Button>}
+      {show && <div className="flex shrink-0 items-center gap-2">
+        <Select value={selected} onValueChange={setSelected} disabled={pending}>
+          <SelectTrigger className="h-9 w-56" aria-label={t("library")}><SelectValue placeholder={t(items.length ? "choose" : "empty")} /></SelectTrigger>
+          <SelectContent>{items.map((item) => <SelectItem key={item.id} value={item.id}>{item.name} · v{item.revision}</SelectItem>)}</SelectContent>
+        </Select>
+        <Button size="sm" className="shrink-0 whitespace-nowrap" disabled={!selected || pending} onClick={() => setConfirm(true)}>{t("open")}</Button>
+      </div>}
+      {children}
+      {scene && saved === JSON.stringify(scene) && <span className="shrink-0 whitespace-nowrap text-xs text-muted" role="status">{t("saved")}</span>}
     </div>
-    {error && <p role="alert" className="text-xs text-rose">{error}</p>}
-    {show && <div className="flex items-center gap-2">
-      <Select value={selected} onValueChange={setSelected} disabled={pending}>
-        <SelectTrigger aria-label={t("library")}><SelectValue placeholder={t(items.length ? "choose" : "empty")} /></SelectTrigger>
-        <SelectContent>{items.map((item) => <SelectItem key={item.id} value={item.id}>{item.name} · v{item.revision}</SelectItem>)}</SelectContent>
-      </Select>
-      <Button size="sm" disabled={!selected || pending} onClick={() => setConfirm(true)}>{t("open")}</Button>
-    </div>}
+    {error && <p role="alert" className="absolute left-1 top-full z-30 max-w-full rounded-md bg-paper px-2 py-1 text-xs text-rose shadow-sm">{error}</p>}
     <AlertDialog open={confirm} onOpenChange={setConfirm}>
       <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{t("open")}</AlertDialogTitle><AlertDialogDescription>{t("replaceHint")}</AlertDialogDescription></AlertDialogHeader>
         <AlertDialogFooter><AlertDialogCancel>{t("cancel")}</AlertDialogCancel><AlertDialogAction onClick={() => void action(async () => {

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, createElement } from "react";
+import { act, createElement, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -12,10 +12,12 @@ import { cubeDraftSnapshot } from "@/features/tools/spatial-lab/cube-structures-
 import { createCubeSession, operateCubeSession, startCubeRecording } from "@/features/tools/spatial-lab/cube-structures-session";
 import { cubeCoursewareInitialSession } from "@/features/tools/courseware/cube-structures-classroom";
 import { projectionTool } from "./fixtures/projection-tool";
+import type { ToolScene } from "@/features/tools/scenes/contract";
 
 const workspace = vi.hoisted(() => ({ current: null as null | { initial?: unknown; payload?: unknown; preparation?: boolean; onSnapshot: (snapshot: unknown) => void } }));
+const library = vi.hoisted(() => ({ open: null as null | ((scene: ToolScene) => void) }));
 vi.mock("next/dynamic", () => ({ default: () => function OriginalWorkspaceStub(props: NonNullable<typeof workspace.current>) { workspace.current = props; return null; } }));
-vi.mock("@/features/tools/scenes/ToolSceneLibrary", () => ({ ToolSceneLibrary: () => null }));
+vi.mock("@/features/tools/scenes/ToolSceneLibrary", () => ({ ToolSceneLibrary: ({ children, onOpen }: { children: ReactNode; onOpen: (scene: ToolScene) => void }) => { library.open = onOpen; return children; } }));
 let root: Root, host: HTMLDivElement;
 function renderEditor(props: Parameters<typeof ToolSceneEditor>[0]) {
   // eslint-disable-next-line react/no-children-prop
@@ -45,7 +47,9 @@ describe("shared starting-scene editor", () => {
     await act(async () => workspace.current!.onSnapshot(null));
     expect(ready.mock.lastCall![0]).toBeNull();
     expect(workspace.current!.initial).toBe(initial);
-    expect(host.querySelector('[role="status"]')).not.toBeNull();
+    expect(host.textContent).not.toContain(en.tools.preparation.wait);
+    expect(host.querySelector('[data-tool-scene-configuration]')?.getAttribute("aria-busy")).toBe("true");
+    expect(host.querySelector('[role="alert"]')).toBeNull();
   });
 
   it("restores a net through its own adapter and captures a detached fixed copy", async () => {
@@ -57,6 +61,25 @@ describe("shared starting-scene editor", () => {
     expect(ready.mock.lastCall![0].payload.initial).not.toBe(changed);
     expect(workspace.current!.initial).toBe(scene.payload.initial);
     expect(scene.payload.initial.axesVisible).toBe(true);
+  });
+
+  it("updates the toolbar name and resets the workbench only when opening another scene", async () => {
+    const scene = projectionTool(), ready = vi.fn();
+    await renderEditor({ version: scene.contentVersion, existing: scene, onReady: ready, fullHeight: true });
+    await act(async () => workspace.current!.onSnapshot(scene.payload.initial));
+    const configuration = host.querySelector('[data-tool-scene-configuration]')!;
+    const stage = configuration.firstElementChild;
+    await act(async () => workspace.current!.onSnapshot(null));
+    expect(configuration.firstElementChild).toBe(stage);
+    expect(configuration.children).toHaveLength(1);
+    expect(host.textContent).not.toContain(en.tools.preparation.wait);
+    const opened = { ...scene, payload: { title: "Another projection", initial: { ...scene.payload.initial, guides: true } } };
+    await act(async () => library.open!(opened));
+    expect(host.querySelector("input")!.value).toBe(opened.payload.title);
+    expect(workspace.current!.initial).toBe(opened.payload.initial);
+    expect(ready.mock.lastCall![0]).toBeNull();
+    await act(async () => workspace.current!.onSnapshot(opened.payload.initial));
+    expect(ready.mock.lastCall![0]).toEqual(opened);
   });
 
   it("keeps cube recordings and chosen toolbar in the cube adapter, with an explicit current-scene alternative", async () => {

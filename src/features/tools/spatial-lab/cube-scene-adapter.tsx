@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cubeCoursewarePayloadSchema } from "../courseware/cube-structures-content";
 import { CUBE_COURSEWARE_CONTENT_VERSION } from "../scenes/registry";
 import { isToolScene, type ToolScene } from "../scenes/contract";
@@ -24,13 +25,13 @@ function CubeSceneImport({ onOpen }: ToolSceneImportProps) {
   const capture = useCallback((value: Parameters<typeof isToolScene>[0] | null) => {
     setScene(value && isToolScene(value) && value.contentVersion === CUBE_COURSEWARE_CONTENT_VERSION ? value : null);
   }, []);
-  return <div>
-    <Button size="sm" variant="ghost" onClick={() => { setOpen(!open); setScene(null); }}>{t("legacyCube")}</Button>
-    {open && <div className="space-y-2">
-      <CubeDraftCoursewarePicker onReady={capture} />
-      <Button size="sm" disabled={!scene} onClick={() => { if (scene) onOpen(scene); }}>{t("open")}</Button>
-    </div>}
-  </div>;
+  return <Popover open={open} onOpenChange={(value) => { setOpen(value); setScene(null); }}>
+    <PopoverTrigger asChild><Button size="sm" variant="ghost" className="shrink-0 whitespace-nowrap">{t("legacyCube")}</Button></PopoverTrigger>
+    <PopoverContent align="start" className="max-h-[70dvh] w-[min(640px,90vw)] space-y-2 overflow-y-auto" aria-label={t("legacyCube")}>
+      {open && <CubeDraftCoursewarePicker onReady={capture} />}
+      <Button size="sm" disabled={!scene} onClick={() => { if (scene) { onOpen(scene); setOpen(false); } }}>{t("open")}</Button>
+    </PopoverContent>
+  </Popover>;
 }
 
 function Preparation({ existing, title, fullHeight, onChange }: ToolPreparationProps<typeof CUBE_COURSEWARE_CONTENT_VERSION>) {
