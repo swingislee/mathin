@@ -24,9 +24,11 @@ export default async function ToolsPage({ params }: { params: Promise<{ locale: 
   return (
     <div className="scene-day scene-adaptive scene-tools min-h-dvh" data-planet="businessman">
       <SiteHeader />
-      <main className="relative min-h-[920px] overflow-hidden text-[var(--scene-ink)] md:h-dvh md:min-h-[650px]">
-        <div className="scene-illustration" aria-hidden />
-        <div className="scene-illustration-wash" aria-hidden />
+      <main className="relative min-h-[920px] overflow-x-clip text-[var(--scene-ink)] md:min-h-[max(650px,100dvh)]">
+        <div className="pointer-events-none fixed inset-0" aria-hidden>
+          <div className="scene-illustration" />
+          <div className="scene-illustration-wash" />
+        </div>
 
         <ThemePageIdentity
           sectionName={nav("tools")}
@@ -35,7 +37,8 @@ export default async function ToolsPage({ params }: { params: Promise<{ locale: 
           tone="tools"
         />
 
-        <section className="relative z-10 grid gap-5 px-6 pb-20 pt-72 sm:grid-cols-2 md:absolute md:inset-x-[27%] md:top-[29%] md:p-0" aria-label={nav("tools")}>
+        {/* 目录随工具数量增高，由页面滚动；背景保留视口构图。 */}
+        <section className="relative z-10 grid gap-5 px-6 pb-20 pt-72 sm:grid-cols-2 md:mx-[27%] md:px-0 md:pt-[max(12rem,29dvh)]" aria-label={nav("tools")}>
           {tools.map(({ id, no }, index) => (
             <Link
               key={id}
