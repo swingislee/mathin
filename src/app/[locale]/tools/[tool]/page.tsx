@@ -35,11 +35,11 @@ export default async function ToolPage({ params }: { params: Promise<{ locale: s
   const preparation = def.id !== "spatial-lab";
   const header = {
     start: <>
-      <Link href="/tools" className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-sm text-muted transition-colors duration-200 hover:text-ink">
-        <ArrowLeft size={15} />{t("backToTools")}
+      <Link href="/tools" aria-label={t("backToTools")} title={t("backToTools")} className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-sm text-muted transition-colors duration-200 hover:text-ink">
+        <ArrowLeft size={15} aria-hidden /><span className="hidden @2xl/tool-toolbar:inline">{t("backToTools")}</span>
       </Link>
-      <span aria-hidden className="h-4 w-px shrink-0 bg-line" />
-      <span className="shrink-0 whitespace-nowrap font-serif text-xs text-[var(--p-accent)]" title={t(`items.${def.id}.name`)}>Nº {String(def.no).padStart(2, "0")}</span>
+      <span aria-hidden className="hidden h-4 w-px shrink-0 bg-line @2xl/tool-toolbar:block" />
+      <span className="hidden shrink-0 whitespace-nowrap font-serif text-xs text-[var(--p-accent)] @2xl/tool-toolbar:inline" title={t(`items.${def.id}.name`)}>Nº {String(def.no).padStart(2, "0")}</span>
     </>,
     end: <>
       {relatedTerms.map(term => <Link key={term.uid} href={`/terms/concepts/${term.slug}`} className="text-xs text-muted underline underline-offset-2 hover:text-ink">{term.title}</Link>)}
@@ -47,7 +47,7 @@ export default async function ToolPage({ params }: { params: Promise<{ locale: s
     </>,
   };
   return (
-    <main data-planet="businessman" className="flex h-screen flex-col">
+    <main data-planet="businessman" className="@container/tool-toolbar flex h-screen flex-col">
       <JsonLd
         data={breadcrumbJsonLd(locale, [
           { name: common("home"), path: "" },

@@ -3,6 +3,7 @@
 import { Check, Code } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { ToolToolbarButton } from "./ToolToolbarButton";
 
 export function CopyEmbedButton({ toolId, locale }: { toolId: string; locale: string }) {
   const t = useTranslations("tools");
@@ -33,14 +34,5 @@ export function CopyEmbedButton({ toolId, locale }: { toolId: string; locale: st
       setTimeout(() => setCopied(false), 1600);
     }
   };
-  return (
-    <button
-      type="button"
-      onClick={copy}
-      className="inline-flex items-center gap-1.5 rounded-full border border-crater px-3 py-1.5 text-xs transition duration-200 hover:bg-moon/50"
-    >
-      {copied ? <Check size={13} /> : <Code size={13} />}
-      {copied ? t("copied") : t("copyEmbed")}
-    </button>
-  );
+  return <ToolToolbarButton onClick={copy} icon={copied ? Check : Code} label={copied ? t("copied") : t("copyEmbed")} />;
 }

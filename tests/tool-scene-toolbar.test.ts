@@ -12,6 +12,7 @@ import { createCubeCoursewareTool } from "@/features/tools/courseware/cube-struc
 import { cubeDraftSnapshot } from "@/features/tools/spatial-lab/cube-structures-draft";
 import { createCubeSession } from "@/features/tools/spatial-lab/cube-structures-session";
 import { useSceneCapture } from "@/features/tools/courseware/useSceneCapture";
+import { CopyEmbedButton } from "@/features/tools/copy-embed-button";
 
 const store = vi.hoisted(() => ({ list: vi.fn(), save: vi.fn(), read: vi.fn() }));
 const workspace = vi.hoisted(() => ({ capture: null as null | ((value: unknown) => void), import: null as null | ((value: unknown) => void) }));
@@ -93,6 +94,39 @@ describe("single-row Tools preparation toolbar", () => {
     expect(host.querySelector("input")).toBeNull();
   });
 
+  it("right-aligns scene actions with embed and shares compact icon-only responsive styling", async () => {
+    await render(initial, { start: createElement("a", { href: "/en/tools" }, "Tools"), end: createElement(CopyEmbedButton, { toolId: "projection", locale: "en" }) });
+    const actions = host.querySelector("[data-tool-scene-actions]")!;
+    expect(actions.classList.contains("ml-auto")).toBe(true);
+    expect(actions.contains(host.querySelector("[data-tool-scene-name]"))).toBe(false);
+    expect(host.querySelector("[data-tool-scene-library]")!.classList.contains("@container/tool-toolbar")).toBe(true);
+    await act(async () => workspace.capture!(initial.payload.initial));
+    await click(en.tools.preparation.save);
+    await click(en.tools.preparation.library);
+    const labels = [en.tools.preparation.library, en.tools.preparation.save, en.tools.preparation.saveCopy, en.tools.preparation.open, en.tools.copyEmbed];
+    for (const label of labels) {
+      const action = button(label);
+      expect(action.closest("[data-tool-scene-actions]")).toBe(actions);
+      expect(action.className).toBe(button(en.tools.copyEmbed).className);
+      expect(action.getAttribute("aria-label")).toBe(label);
+      expect(action.title).toBe(label);
+      expect(action.querySelector("svg")?.getAttribute("width")).toBe("13");
+      expect(action.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
+      expect(action.querySelector("span")!.className).toBe("hidden @5xl/tool-toolbar:inline");
+    }
+  });
+
+  it("keeps copying available from the compact embed action and announces its copied state", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+    await render(initial, { start: null, end: createElement(CopyEmbedButton, { toolId: "projection", locale: "en" }) });
+    await click(en.tools.copyEmbed);
+    expect(writeText).toHaveBeenCalledOnce();
+    expect(writeText.mock.lastCall![0]).toContain("/embed/projection?locale=en");
+    expect(button(en.tools.copied).getAttribute("aria-label")).toBe(en.tools.copied);
+    expect(button(en.tools.copied).querySelector("svg.lucide-check")).not.toBeNull();
+  });
+
   it("edits the name on demand, respects IME entry and saves it without resetting the stage", async () => {
     await render(); await act(async () => workspace.capture!(initial.payload.initial));
     const configuration = host.querySelector("[data-tool-scene-configuration]")!;
@@ -157,6 +191,9 @@ describe("single-row Tools preparation toolbar", () => {
     await render(cube);
     const toolbar = host.querySelector("[data-tool-scene-toolbar]")!;
     expect(button(en.tools.preparation.legacyCube).closest("[data-tool-scene-toolbar]")).toBe(toolbar);
+    expect(button(en.tools.preparation.legacyCube).className).toBe(button(en.tools.preparation.save).className);
+    expect(button(en.tools.preparation.legacyCube).getAttribute("aria-label")).toBe(en.tools.preparation.legacyCube);
+    expect(button(en.tools.preparation.legacyCube).querySelector("svg")).not.toBeNull();
     await click(en.tools.preparation.legacyCube);
     const popover = document.querySelector(`[role="dialog"][aria-label="${en.tools.preparation.legacyCube}"]`)!;
     expect(popover).not.toBeNull(); expect(toolbar.contains(popover)).toBe(false);

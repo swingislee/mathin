@@ -3,7 +3,9 @@
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Import } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ToolToolbarButton } from "../ToolToolbarButton";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cubeCoursewarePayloadSchema } from "../courseware/cube-structures-content";
@@ -26,7 +28,7 @@ function CubeSceneImport({ onOpen }: ToolSceneImportProps) {
     setScene(value && isToolScene(value) && value.contentVersion === CUBE_COURSEWARE_CONTENT_VERSION ? value : null);
   }, []);
   return <Popover open={open} onOpenChange={(value) => { setOpen(value); setScene(null); }}>
-    <PopoverTrigger asChild><Button size="sm" variant="ghost" className="shrink-0 whitespace-nowrap">{t("legacyCube")}</Button></PopoverTrigger>
+    <PopoverTrigger asChild><ToolToolbarButton icon={Import} label={t("legacyCube")} /></PopoverTrigger>
     <PopoverContent align="start" className="max-h-[70dvh] w-[min(640px,90vw)] space-y-2 overflow-y-auto" aria-label={t("legacyCube")}>
       {open && <CubeDraftCoursewarePicker onReady={capture} />}
       <Button size="sm" disabled={!scene} onClick={() => { if (scene) { onOpen(scene); setOpen(false); } }}>{t("open")}</Button>

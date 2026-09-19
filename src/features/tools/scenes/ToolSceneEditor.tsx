@@ -61,7 +61,7 @@ function ToolSceneName({ value, onChange }: { value: string; onChange: (value: s
     setDraft(null);
   }
   // 编辑与展示使用同一宽度，失焦确认时保存按钮保持原位。
-  return <div ref={container} className="flex h-9 w-44 shrink-0 items-center" data-tool-scene-name>
+  return <div ref={container} className="flex h-9 w-44 min-w-0 items-center" data-tool-scene-name>
     {draft === null ? <Button type="button" size="sm" variant="ghost" className="h-9 w-full justify-start rounded-md px-2 text-ink hover:bg-moon/30"
       aria-label={t("rename")} title={`${value} · ${t("rename")}`} onClick={() => setDraft(value)}>
       <span className="min-w-0 truncate">{value}</span><Pencil aria-hidden className="size-3 shrink-0 text-muted" />
