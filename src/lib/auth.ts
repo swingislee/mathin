@@ -54,7 +54,8 @@ export async function requireUser(locale: string, options: { allowAccountRecover
   return user;
 }
 
-export async function getProfile(userId: string): Promise<Profile | null> {
+// 布局、环境与权限读取在同一服务端请求内共用资料；后续请求重新读取。
+export const getProfile = cache(async (userId: string): Promise<Profile | null> => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("profiles")
@@ -80,7 +81,7 @@ export async function getProfile(userId: string): Promise<Profile | null> {
     lastActiveEnvironment: data.last_active_environment,
     passwordChangeRequired: Boolean(data.password_change_required),
   };
-}
+});
 
 export const getMyPerms = cache(async (userId: string): Promise<Set<PermissionKey>> => {
   const profile = await getProfile(userId);

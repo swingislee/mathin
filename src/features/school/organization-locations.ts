@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 
 import { createClient } from "@/lib/supabase/server";
 
@@ -115,14 +116,14 @@ export async function getOrganizationProfileV2(): Promise<OrganizationProfileV2>
   };
 }
 
-export async function getLocationCatalogV2(includeInactive = false): Promise<CampusV2[]> {
+export const getLocationCatalogV2 = cache(async (includeInactive = false): Promise<CampusV2[]> => {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_location_catalog_v2", {
     p_include_inactive: includeInactive,
   });
   if (error) throw new Error(error.message);
   return Array.isArray(data) ? data.map(campusValue) : [];
-}
+});
 
 export async function getCampusV2(campusId: string): Promise<CampusV2> {
   const supabase = await createClient();
@@ -161,9 +162,10 @@ export async function getScheduleDefaultsV2(): Promise<ScheduleDefaultsV2> {
   return { defaultDurationMinutes: duration, conflictPolicy: "warn" };
 }
 
-export async function getOrganizationTimezoneV2(): Promise<string> {
+// 多个面板的日期口径共用一次请求内读取，下一次请求仍读取最新配置。
+export const getOrganizationTimezoneV2 = cache(async (): Promise<string> => {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_organization_timezone_v2");
   if (error) throw new Error(error.message);
   return stringValue(data, "ORGANIZATION_TIMEZONE_NOT_FOUND");
-}
+});

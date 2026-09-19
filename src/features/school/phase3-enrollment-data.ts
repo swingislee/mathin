@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 
 import { z } from "zod";
 import { databaseUuid } from "@/lib/database-uuid";
@@ -146,9 +147,10 @@ export async function loadCourseEnrollmentWorkbench(): Promise<CourseEnrollmentR
   return z.array(enrollmentSchema).parse(data);
 }
 
-export async function loadPhase3EnrollmentOptions(): Promise<Phase3EnrollmentOptions> {
+// 续费与增长页面的多个读取分支共用同一请求内的课程、学期和班级选项。
+export const loadPhase3EnrollmentOptions = cache(async (): Promise<Phase3EnrollmentOptions> => {
   const supabase = await createClient();
   const { data, error } = await rpc(supabase)("get_phase3_enrollment_options");
   if (error) throw new Error(error.message);
   return optionsSchema.parse(data);
-}
+});
