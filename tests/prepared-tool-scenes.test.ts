@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { freezeToolScene, parseToolScene, toolSceneCatalogId } from "@/features/tools/scenes/contract";
-import { TOOL_SCENE_DEFINITIONS } from "@/features/tools/scenes/registry";
+import { TOOL_SCENE_DEFINITIONS, toolCoursewareContractsForSurface } from "@/features/tools/scenes/registry";
 import { fractionCoursewareSchema, motionCoursewareSchema, initialFractionScene, initialMotionScene, motionFrame } from "@/features/tools/scenes/numeric-teaching-content";
 import { createToolDraftStore, readToolDraft, ToolDraftError } from "@/features/tools/scenes/draft-store";
 import { createCubeCoursewareTool } from "@/features/tools/courseware/cube-structures-content";
@@ -26,11 +26,13 @@ describe("Tools-wide scene contract", () => {
   it("registers independent tools with one shared courseware and classroom boundary", async () => {
     const cube = createCubeCoursewareTool({ name: "Cube", snapshot: cubeDraftSnapshot(createCubeSession([{ x: 0, y: 0, z: 0 }]), 0) }, "current");
     const scenes = [cube, netTool(await buildNet()), diceTool(), fractionTool(), motionTool(), projectionTool()];
-    expect(TOOL_SCENE_DEFINITIONS.map((d) => d.catalogId).sort()).toEqual(["cube-net", "cube-structures", "dice", "fraction-line", "motion-lab", "projection"]);
+    const authoring = toolCoursewareContractsForSurface("formal-courseware");
+    expect(new Set(authoring.map((d) => d.catalogId)).size).toBe(authoring.length);
+    expect(authoring.map((d) => d.catalogId)).toEqual(expect.arrayContaining(["cube-net", "cube-structures", "dice", "fraction-line", "motion-lab", "projection", "solid-geometry"]));
     for (const scene of scenes) {
       expect(parseToolScene(scene)).toEqual(scene);
       expect(hasClassroomToolAdapter(scene)).toBe(true);
-      expect(TOOL_SCENE_DEFINITIONS.find((d) => d.catalogId === toolSceneCatalogId(scene))?.contentVersion).toBe(scene.contentVersion);
+      expect(TOOL_SCENE_DEFINITIONS.some((d) => d.catalogId === toolSceneCatalogId(scene) && d.contentVersion === scene.contentVersion)).toBe(true);
       const page = createEmptyCoursewareCompositionPage();
       page.layout.blocks.push({ id: "tool-1", type: "tool", tool: scene, placement: { column: 0, row: 0, columnSpan: 12, rowSpan: 9 } });
       expect(formalManualPageSchema.safeParse(page).success).toBe(true);

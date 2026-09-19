@@ -25,7 +25,7 @@ function Annotation({ cube, label, lane, preview = false }: { readonly cube: Str
   </mesh>;
   return <>
     {label.placement === "side" && <Line points={[[center.x, center.y, center.z], [position.x, position.y, position.z]]} color={label.color} lineWidth={1} raycast={() => null} />}
-    {label.placement === "face" ? <group position={[position.x, position.y, position.z]} rotation={[face.rotation.x, face.rotation.y, face.rotation.z]}>{content}</group>
+    {label.placement === "face" ? <group position={[position.x, position.y, position.z]} rotation={[face.rotation.x, face.rotation.y, face.rotation.z]}><group rotation={[0, 0, (label.quarterTurns ?? 0) * Math.PI / 2]}>{content}</group></group>
       : <Billboard position={[position.x, position.y, position.z]}>{content}</Billboard>}
   </>;
 }

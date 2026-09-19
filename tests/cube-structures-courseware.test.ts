@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { CUBE_COLORS, replayCubeHistory } from "@/features/tools/spatial-lab/cube-structures-contract";
 import { cubeDraftSnapshot } from "@/features/tools/spatial-lab/cube-structures-draft";
 import { createCubeSession, cubeSessionScene, operateCubeSession, pauseCubeRecording, startCubeRecording, undoCubeSession } from "@/features/tools/spatial-lab/cube-structures-session";
-import { CUBE_COURSEWARE_LEGACY_VERSION, configureCubeCoursewareToolbar, createCubeCoursewareTool, cubeCoursewareToolSchema, cubeCoursewareV1ToolSchema } from "@/features/tools/courseware/cube-structures-content";
+import { CUBE_COURSEWARE_LEGACY_VERSION, configureCubeCoursewareToolbar, createCubeCoursewareTool, cubeCoursewareToolSchema, cubeCoursewareV1ToolSchema, cubeCoursewareV2ToolSchema } from "@/features/tools/courseware/cube-structures-content";
 import { CUBE_TOOLBAR_IDS, CUBE_TOOLBAR_LABELS } from "@/features/tools/spatial-lab/cube-structures-toolbar";
 import { cubeStructuresMessages } from "@/features/tools/spatial-lab/cube-structures-messages";
 import { getToolCoursewareContract } from "@/features/tools/courseware/registry";
@@ -53,7 +53,7 @@ describe("frozen cube courseware content", () => {
     expect(resolveClassroomInteractionAudit(page).provider).toMatchObject({ mode: "snapshot", protocol: "tool-state-v1", eventType: "tool_state" });
     expect(coursewareCompositionToolSchema.safeParse({ toolId: "spatial-lab", contentVersion: "tool-embed-v1" }).success).toBe(true);
     expect(coursewareCompositionToolSchema.safeParse({ ...tool, contentVersion: "tool-embed-v1" }).success).toBe(false);
-    expect(coursewareCompositionToolSchema.safeParse({ ...tool, contentVersion: "cube-structures-lesson-v3" }).success).toBe(false);
+    expect(coursewareCompositionToolSchema.safeParse({ ...tool, contentVersion: "cube-structures-lesson-v99" }).success).toBe(false);
     expect(coursewareCompositionToolSchema.safeParse({ ...tool, toolId: "motion-lab" }).success).toBe(false);
   });
 
@@ -96,7 +96,7 @@ describe("frozen cube courseware content", () => {
   it("enforces content and combined-page budgets without lowering the old page budget", () => {
     const tool = createCubeCoursewareTool(draft(), "current");
     const groups = Array.from({ length: 2200 }, (_, index) => ({ id: `g-${index}-${"x".repeat(115)}`, name: "a".repeat(40), color: CUBE_COLORS[0], cubeIds: ["cube-1"] }));
-    const heavy = { ...tool, payload: { ...tool.payload, history: { ...tool.payload.history, initial: { ...tool.payload.history.initial, groups } } } };
+    const heavy = cubeCoursewareV2ToolSchema.parse({ ...tool, payload: { ...tool.payload, history: { ...tool.payload.history, initial: { ...tool.payload.history.initial, groups } } } });
     expect(cubeCoursewareToolSchema.safeParse(heavy).success).toBe(true);
     const page = createEmptyCoursewareCompositionPage();
     page.layout.blocks = [0, 1].map((index) => ({ id: `tool-${index}`, type: "tool", tool: heavy, placement: { column: index * 6, row: 0, columnSpan: 6, rowSpan: 9 } }));
@@ -118,7 +118,7 @@ describe("frozen cube courseware content", () => {
     expect(renderer).toContain("cameraInteractive={preview}");
     expect(renderer).toContain("<CubeStructuresViewport");
     expect(renderer).toContain("<CubeStructuresWorkbench");
-    expect(renderer).toContain("readOnly: classroom ? !classroom.onChange || publishing : !preview");
+    expect(renderer).toContain("readOnly: classroom ? !classroom.onChange || host.publishing : !preview");
     const workbench = fs.readFileSync("src/features/tools/spatial-lab/CubeStructuresWorkbench.tsx", "utf8");
     expect(workbench).toContain("enabled: !courseware");
     expect(workbench).toContain('TOOL_BUTTONS.filter(({ id }) => hasTool(id))');

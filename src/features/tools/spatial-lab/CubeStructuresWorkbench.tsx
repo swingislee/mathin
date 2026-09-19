@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ComponentProps, type ReactNode } from "react";
-import { Boxes, Circle, Droplets, Eraser, Eye, EyeOff, Hand, Hash, Layers3, Maximize, Minus, MousePointer2, Move, Orbit, Paintbrush, PaintBucket, Plus, Presentation, Redo2, RotateCcw, Scissors, Settings2, Shapes, Stamp, Trash2, Undo2, Ungroup, X } from "lucide-react";
+import { Boxes, Circle, Droplets, Eraser, Eye, EyeOff, Hand, Hash, Layers3, Maximize, Minus, MousePointer2, Move, Orbit, Paintbrush, PaintBucket, Plus, Presentation, Redo2, RotateCcw, RotateCw, Scissors, Settings2, Shapes, Stamp, Trash2, Undo2, Ungroup, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -27,6 +27,7 @@ import type { CubeClassroomSnapshot } from "../courseware/cube-structures-classr
 import { useSceneCapture } from "../courseware/useSceneCapture";
 import { EMPTY_CUBE_CUT, chooseCubeCut, cubeCutCandidate, cubeCutLayers, type CubeCutDraft, type CubeCutHit } from "./cube-structures-cut-interaction";
 import { buildCubeCutPieces, cubeCutScopeIds } from "./cube-structures-cut-scope";
+import { cubeRotationOperation } from "./cube-structures-rotation";
 import styles from "./CubeStructuresWorkbench.module.css";
 
 const CubeStructuresViewport = dynamic(() => import("./CubeStructuresViewport").then((module) => module.CubeStructuresViewport), { ssr: false });
@@ -47,6 +48,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
   readonly extension?: { readonly toolbar?: (closePanel: () => void) => ReactNode; readonly panel?: ReactNode; readonly onToolChange?: () => void;
     readonly renderScene?: ComponentProps<typeof CubeStructuresViewport>["renderSceneOverlay"] };
   readonly courseware?: { readonly initial: CubeWorkbenchSession; readonly toolbar: readonly CubeToolbarId[]; readonly readOnly: boolean; readonly resetLabel: string; readonly resetHint: string;
+    readonly allowRotation?: boolean;
     readonly onReset?: () => void;
     readonly runtime?: { readonly snapshot: CubeClassroomSnapshot; readonly onChange: (next: CubeClassroomSnapshot) => boolean } };
 }) {
@@ -54,6 +56,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
   const fieldId = useId();
   const hasTool = (id: CubeToolbarId) => !courseware || courseware.toolbar.includes(id);
   const readOnly = courseware?.readOnly ?? false;
+  const allowRotation = !courseware || courseware.allowRotation === true;
   const [prepared, setPrepared] = useState(() => courseware ? structuredClone(courseware.initial) : createCubeSession(createSpatialLabPresetDraft(SPATIAL_LAB_PRESET_ID).model.cells));
   const [demo, setDemo] = useState<CubeWorkbenchSession | null>(null);
   const [mode, setMode] = useState<"prepare" | "demonstrate">("prepare");
@@ -97,6 +100,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
   const viewOverride = runtime ? runtime.snapshot.view : localViewOverride;
   const cameraRequest = runtime?.snapshot.cameraRevision ?? localCameraRequest;
   const state = useMemo(() => cubeSessionScene(session), [session]);
+  const animationHistory = useMemo(() => session.preview !== null && session.lesson ? { ...session.lesson, cursor: session.preview } : session.work, [session.preview, session.lesson, session.work]);
   // 撤销编组或回放到编组之前时，失效的组 ID 自动回到整体范围。
   const activeGroup = state.groups.find((group) => group.id === scopeId);
   const activeGroupId = activeGroup?.id ?? null;
@@ -149,6 +153,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
   }
   function commit(operation: CubeOperation): boolean {
     if (!editable) { setNotice(m.previewHint); return false; }
+    if (operation.kind === "rotate" && !allowRotation) return false;
     if (replacementStep !== null) {
       const result = replaceCubeRecordedStep(session, replacementStep, operation);
       if (result.issue) { setNotice(m.sequenceError + " (" + (result.issue.index + 1) + ")"); return false; }
@@ -158,6 +163,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
     if (session.recording === "recording" && (session.lesson?.cursor ?? 0) >= CUBE_STRUCTURES_LIMITS.steps) { setNotice(m.limit); return false; }
     if (applyCubeOperation(state, operation) === state) {
       if (operation.kind === "move" || operation.kind === "display-move" || operation.kind === "display-reset") setNotice(m.invalidMove);
+      else if (operation.kind === "rotate") setNotice(m.invalidRotation);
       else if (operation.kind === "cut") setNotice(m.invalidCut);
       else if (operation.kind === "build") setNotice(m.blockedBuild);
       return false;
@@ -286,6 +292,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
         <CubeStructuresViewport model={model} messages={rendererMessages} materialColors={COLOR_MAP}
           renderSceneOverlay={extension?.renderScene}
           axisSnapEnabled={snap} cameraRequestKey={cameraRequest} sceneKey={runtime && courseware ? courseware.initial.work.initial : session.work.initial} onMovingChange={setMoving}
+          history={animationHistory}
           opacityPreview={opacityPreview === null ? null : { ids: targetIds, opacity: opacityPreview / 100 }}
           moveInteraction={tool === "move" && editable ? { state, ids: targetIds, scopeIds, axis: moveAxis, kind: moveMode, snapToGrid: snap,
             onAxisChange: setMoveAxis, onSelect: (id) => setSelected([id]), onCommit: commit, onUnavailable: () => setNotice(m.moveAxisHidden) } : null}
@@ -375,6 +382,17 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
             <div className="flex items-center gap-2"><label htmlFor={`${fieldId}-move-distance`} className="flex-1">{m.moveDistance}</label><Input id={`${fieldId}-move-distance`} className="h-8 w-20 text-xs" type="number" min={moveMode === "move" ? 1 : 0.5} step={moveMode === "move" ? 1 : 0.5} max={12} value={moveDistance} onChange={(event) => setMoveDistance(event.target.value)} /></div>
             {(["x", "y", "z"] as const).map((value) => <div key={value} className="flex items-center justify-between"><CubeIconButton label={m.moveAxis + " " + value.toUpperCase()} active={moveAxis === value} onClick={() => setMoveAxis(value)}><CubeAxisIcon axis={value} /></CubeIconButton><div className="flex gap-2">{([-1, 1] as const).map((sign) => <CubeIconButton key={sign} label={m.move + " " + value.toUpperCase() + " " + (sign > 0 ? "+" : "−") + moveDistance} disabled={!editable || !targetIds.length || !Number.isInteger(Number(moveDistance) * (moveMode === "move" ? 1 : 2)) || Number(moveDistance) < (moveMode === "move" ? 1 : 0.5) || Number(moveDistance) > 12} onClick={() => commit({ kind: moveMode, ids: targetIds, axis: value, distance: sign * Number(moveDistance) })}>{sign > 0 ? <Plus aria-hidden /> : <Minus aria-hidden />}</CubeIconButton>)}</div></div>)}
             <Button size="sm" variant="secondary" disabled={!editable || !hasDisplayOffsets} onClick={() => commit({ kind: "display-reset", ids: targetIds })}>{m.displayReset}</Button>
+            {allowRotation && <div className="space-y-2" data-cube-rotation-controls>
+              <p className="font-medium">{m.rotate}</p><p className="leading-5 text-muted">{m.rotationHint}</p>
+              {(["x", "y", "z"] as const).map((value) => <div key={value} className="flex items-center justify-between">
+                <span className="font-medium" style={{ color: CUBE_AXIS_COLORS[value] }}>{value.toUpperCase()}</span>
+                <div className="flex gap-2">{([-1, 1] as const).map((turn) => <CubeIconButton key={turn}
+                  label={`${m.rotate} ${value.toUpperCase()} ${turn > 0 ? "+" : "−"}90°`} disabled={!editable || !targetIds.length}
+                  onClick={() => { const operation = cubeRotationOperation(state, targetIds, value, turn); if (operation) commit(operation); }}>
+                  {turn > 0 ? <RotateCcw aria-hidden /> : <RotateCw aria-hidden />}
+                </CubeIconButton>)}</div>
+              </div>)}
+            </div>}
           </div>}
           {panel === "cut" && <div className="space-y-3 text-xs" data-cube-cut-panel>
             <p className="leading-5 text-muted">{m.cutHint}</p><p>{cutScopeDescription}</p>

@@ -60,7 +60,8 @@ function PickPaper({ face, onPointerDown }: { readonly face: PolyhedronFoldRende
   </mesh>;
 }
 
-export function CubeNetFoldInteraction({ model, hinges, activeEdgeId, tool, foldingEnabled = true, onPreview, onCommit, onFoldStart, onDraggingChange }: CubeNetFoldViewportProps) {
+export function CubeNetFoldInteraction({ model, hinges, activeEdgeId, tool, foldingEnabled = true, onPreview, onCommit, onFoldStart, onDraggingChange }: Pick<CubeNetFoldViewportProps,
+  "model" | "hinges" | "activeEdgeId" | "tool" | "foldingEnabled" | "onPreview" | "onCommit" | "onFoldStart" | "onDraggingChange"> & Partial<CubeNetFoldViewportProps>) {
   const camera = useThree((state) => state.camera);
   const canvas = useThree((state) => state.gl.domElement);
   const getThree = useThree((state) => state.get);
@@ -75,7 +76,7 @@ export function CubeNetFoldInteraction({ model, hinges, activeEdgeId, tool, fold
     if (canvas.hasPointerCapture(active.pointerId)) canvas.releasePointerCapture(active.pointerId);
     if (active.controls) active.controls.enabled = active.controlsEnabled;
     if (cancel || !active.moved) onPreview(null);
-    else onCommit({ edgeId: active.gesture.edgeId, degrees: finishCubeNetFoldDrag(active.degrees), anchor: active.gesture.anchor });
+    else onCommit({ edgeId: active.gesture.edgeId, degrees: finishCubeNetFoldDrag(active.degrees, active.gesture), anchor: active.gesture.anchor });
     onDraggingChange(false);
   }, [canvas, onCommit, onDraggingChange, onPreview]);
 

@@ -2,14 +2,15 @@
 
 import { createElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Pencil } from "lucide-react";
+import { CopyPlus, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { TOOL_SCENE_DEFINITIONS } from "./registry";
-import { freezeToolScene, parseToolScene, type ToolScene, type ToolSceneVersion } from "./contract";
+import { getToolSceneDefinition, TOOL_SCENE_DEFINITIONS } from "./registry";
+import { freezeToolScene, parseToolScene, toolSceneCatalogId, type ToolScene, type ToolSceneVersion } from "./contract";
 import { ToolSceneLibrary, type ToolScenePageHeader } from "./ToolSceneLibrary";
 import { getToolWorkbenchAdapter } from "./workbench-registry";
+import { ToolToolbarButton } from "../ToolToolbarButton";
 
 interface EditorProps {
   version: ToolSceneVersion; existing?: ToolScene; onReady?: (scene: ToolScene | null) => void; fullHeight?: boolean;
@@ -23,25 +24,30 @@ export function ToolSceneEditor(props: EditorProps) {
 
 function ToolSceneEditorSession({ version, existing, onReady, fullHeight = false, pageHeader }: EditorProps) {
   const tools = useTranslations("tools.items");
+  const t = useTranslations("tools.preparation");
   const definition = TOOL_SCENE_DEFINITIONS.find((item) => item.contentVersion === version)!;
+  const [activeVersion, setActiveVersion] = useState(version);
   const [origin, setOrigin] = useState(existing);
   const [title, setTitle] = useState(existing?.payload.title ?? tools(`${definition.catalogId}.name`));
   const [generation, setGeneration] = useState(0);
   const [libraryEpoch, setLibraryEpoch] = useState(0);
   const [ready, setReady] = useState<ToolScene | null>(null);
-  const adapter = getToolWorkbenchAdapter(version);
+  const adapter = getToolWorkbenchAdapter(activeVersion);
+  const latest = getToolWorkbenchAdapter(getToolSceneDefinition(definition.catalogId)!.contentVersion);
   const capture = useCallback((scene: ToolScene | null) => { setReady(scene); onReady?.(scene); }, [onReady]);
   function open(scene: ToolScene, imported = false) {
-    if (scene.contentVersion !== version) return;
+    if (toolSceneCatalogId(scene) !== definition.catalogId) return;
     if (imported) setLibraryEpoch((n) => n + 1);
-    capture(null); setOrigin(scene); setTitle(scene.payload.title); setGeneration((n) => n + 1);
+    capture(null); setActiveVersion(scene.contentVersion); setOrigin(scene); setTitle(scene.payload.title); setGeneration((n) => n + 1);
   }
   return <div className={fullHeight ? "flex min-h-0 flex-1 flex-col gap-2" : "space-y-2"}>
-    <ToolSceneLibrary key={`library-${libraryEpoch}`} version={version} scene={ready} onOpen={open} pageHeader={pageHeader}
+    <ToolSceneLibrary key={`library-${libraryEpoch}`} version={activeVersion} scene={ready} onOpen={open} pageHeader={pageHeader}
       title={<ToolSceneName key={`name-${generation}`} value={title} onChange={setTitle} />}>
       {adapter.Import && createElement(adapter.Import, { key: `import-${generation}`, onOpen: (scene: ToolScene) => open(scene, true) })}
+      {activeVersion !== latest.contentVersion && latest.upgrade && <ToolToolbarButton icon={CopyPlus} label={t("upgradeCopy")} disabled={!ready}
+        onClick={() => { const upgraded = ready && latest.upgrade?.(ready); if (upgraded) open(freezeToolScene(upgraded), true); }} />}
     </ToolSceneLibrary>
-    <ToolSceneConfiguration key={`scene-${generation}`} version={version} existing={origin} title={title} onReady={capture} fullHeight={fullHeight} />
+    <ToolSceneConfiguration key={`scene-${generation}`} version={activeVersion} existing={origin} title={title} onReady={capture} fullHeight={fullHeight} />
   </div>;
 }
 

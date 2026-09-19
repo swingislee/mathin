@@ -476,8 +476,8 @@
         "desc": "Build, move and split blocks, observe spatial relationships and save a starting scene for courseware."
       },
       "cube-net": {
-        "name": "Cube nets",
-        "desc": "Fold faces and unfold cut edges to explore the relationship between a cube and its nets."
+        "name": "Nets and folding",
+        "desc": "Explore cut cube nets, freely assembled square paper, and face-by-face folding of cuboids and triangular prisms."
       },
       "dice": {
         "name": "Dice",
@@ -486,6 +486,14 @@
       "projection": {
         "name": "Projection",
         "desc": "Explore a solid and its front, side and top projections together. Build or move blocks and watch their projections change."
+      },
+      "solid-geometry": {
+        "name": "Solid observation",
+        "desc": "Arrange and turn solids, explore faces, edges and vertices, and compare dimensions, colors and transparency."
+      },
+      "solid-capacity": {
+        "name": "Capacity comparison",
+        "desc": "Configure a cylinder and cone, fill and transfer liquid, and compare capacities while watching their levels change."
       }
     },
     "projection": {
@@ -501,6 +509,7 @@
     "preparation": {
       "name": "Scene name",
       "rename": "Rename scene",
+      "upgradeCopy": "Copy to the latest tool",
       "edit": "Edit starting scene",
       "fixedHint": "Configure the starting scene in the original tool. Courseware keeps its own copy, independent of later draft edits.",
       "library": "My scenes",

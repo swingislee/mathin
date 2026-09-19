@@ -8,9 +8,13 @@ import { FRACTION_COURSEWARE_VERSION, MOTION_COURSEWARE_VERSION } from "./numeri
 export const TOOL_COURSEWARE_CONTENT_VERSION = "tool-embed-v1" as const;
 export const CUBE_COURSEWARE_LEGACY_VERSION = "cube-structures-lesson-v1" as const;
 export const CUBE_COURSEWARE_CONTENT_VERSION = "cube-structures-lesson-v2" as const;
+export const CUBE_ROTATION_COURSEWARE_VERSION = "cube-structures-lesson-v3" as const;
 export const CUBE_NET_COURSEWARE_VERSION = "cube-net-lesson-v1" as const;
+export const NET_TEACHING_COURSEWARE_VERSION = "cube-net-lesson-v2" as const;
 export const DICE_COURSEWARE_VERSION = "dice-lesson-v1" as const;
 export const PROJECTION_COURSEWARE_VERSION = "projection-lesson-v1" as const;
+export const SOLID_GEOMETRY_COURSEWARE_VERSION = "solid-geometry-lesson-v1" as const;
+export const SOLID_CAPACITY_COURSEWARE_VERSION = "solid-capacity-lesson-v1" as const;
 
 export type ToolCoursewareAuthoringSurface = "microcourse" | "formal-courseware";
 
@@ -18,18 +22,27 @@ export type ToolCoursewareAuthoringSurface = "microcourse" | "formal-courseware"
 interface ToolCoursewareContractDefinition {
   toolId: string;
   catalogId?: string;
-  contentVersion: typeof TOOL_COURSEWARE_CONTENT_VERSION | typeof CUBE_COURSEWARE_CONTENT_VERSION | typeof CUBE_COURSEWARE_LEGACY_VERSION | typeof CUBE_NET_COURSEWARE_VERSION | typeof DICE_COURSEWARE_VERSION | typeof FRACTION_COURSEWARE_VERSION | typeof MOTION_COURSEWARE_VERSION | typeof PROJECTION_COURSEWARE_VERSION;
+  contentVersion: typeof TOOL_COURSEWARE_CONTENT_VERSION | typeof CUBE_COURSEWARE_CONTENT_VERSION | typeof CUBE_ROTATION_COURSEWARE_VERSION | typeof CUBE_COURSEWARE_LEGACY_VERSION | typeof CUBE_NET_COURSEWARE_VERSION | typeof NET_TEACHING_COURSEWARE_VERSION | typeof DICE_COURSEWARE_VERSION | typeof FRACTION_COURSEWARE_VERSION | typeof MOTION_COURSEWARE_VERSION | typeof PROJECTION_COURSEWARE_VERSION | typeof SOLID_GEOMETRY_COURSEWARE_VERSION | typeof SOLID_CAPACITY_COURSEWARE_VERSION;
   authoringSurfaces: readonly ToolCoursewareAuthoringSurface[];
   classroomSync: ClassroomInteractionSyncProvider;
 }
 
 export const TOOL_COURSEWARE_CONTRACTS = [
   {
+    toolId: "spatial-lab", contentVersion: CUBE_ROTATION_COURSEWARE_VERSION,
+    catalogId: "cube-structures", authoringSurfaces: ["microcourse", "formal-courseware"] as const,
+    classroomSync: CLASSROOM_TOOL_STATE_SYNC_V1,
+  },
+  {
     toolId: "spatial-lab",
     contentVersion: CUBE_COURSEWARE_CONTENT_VERSION,
     catalogId: "cube-structures",
     authoringSurfaces: ["microcourse", "formal-courseware"] as const,
     classroomSync: CLASSROOM_TOOL_STATE_SYNC_V1,
+  },
+  {
+    toolId: "spatial-lab", contentVersion: NET_TEACHING_COURSEWARE_VERSION,
+    catalogId: "cube-net", authoringSurfaces: ["microcourse", "formal-courseware"] as const, classroomSync: CLASSROOM_TOOL_STATE_SYNC_V1,
   },
   {
     toolId: "spatial-lab", contentVersion: CUBE_NET_COURSEWARE_VERSION,
@@ -53,6 +66,14 @@ export const TOOL_COURSEWARE_CONTRACTS = [
   },
   {
     toolId: "projection", catalogId: "projection", contentVersion: PROJECTION_COURSEWARE_VERSION,
+    authoringSurfaces: ["microcourse", "formal-courseware"] as const, classroomSync: CLASSROOM_TOOL_STATE_SYNC_V1,
+  },
+  {
+    toolId: "solid-geometry", catalogId: "solid-geometry", contentVersion: SOLID_GEOMETRY_COURSEWARE_VERSION,
+    authoringSurfaces: ["microcourse", "formal-courseware"] as const, classroomSync: CLASSROOM_TOOL_STATE_SYNC_V1,
+  },
+  {
+    toolId: "solid-capacity", catalogId: "solid-capacity", contentVersion: SOLID_CAPACITY_COURSEWARE_VERSION,
     authoringSurfaces: ["microcourse", "formal-courseware"] as const, classroomSync: CLASSROOM_TOOL_STATE_SYNC_V1,
   },
   {
@@ -95,9 +116,12 @@ export function getToolCoursewareContract(
 export function toolCoursewareContractsForSurface(
   surface: ToolCoursewareAuthoringSurface,
 ): readonly ToolSceneDefinition[] {
-  return TOOL_SCENE_DEFINITIONS.filter((contract) => (
-    (contract.authoringSurfaces as readonly ToolCoursewareAuthoringSurface[]).includes(surface)
-  ));
+  const seen = new Set<string>();
+  return TOOL_SCENE_DEFINITIONS.filter((contract) => {
+    if (!(contract.authoringSurfaces as readonly ToolCoursewareAuthoringSurface[]).includes(surface) || seen.has(contract.catalogId)) return false;
+    seen.add(contract.catalogId);
+    return true;
+  });
 }
 
 export const TOOL_SCENE_DEFINITIONS = TOOL_COURSEWARE_CONTRACTS.filter((definition) => "catalogId" in definition);

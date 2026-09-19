@@ -1,12 +1,15 @@
 import { z } from "zod";
-import { cubeCoursewareV2ToolSchema } from "../courseware/cube-structures-content";
+import { cubeCoursewareV2ToolSchema, cubeCoursewareV3ToolSchema } from "../courseware/cube-structures-content";
 import { spatialTeachingToolSchema } from "../courseware/spatial-teaching-content";
 import { numericTeachingToolSchema } from "./numeric-teaching-content";
 import { projectionToolSchema } from "../projection/projection-contract";
+import { solidGeometryToolSchema } from "../solid-geometry/solid-geometry-contract";
+import { netTeachingToolSchema } from "../net-teaching/contract";
+import { solidCapacityToolSchema } from "../solid-capacity/solid-capacity-contract";
 import { getToolCoursewareContract, toolCoursewareContractsForSurface } from "./registry";
 
 /** Tools 共用的自包含现场：工具身份 + 参数版本 + 严格参数；与草稿、课件、课堂宿主无关。 */
-export const toolSceneSchema = z.discriminatedUnion("contentVersion", [cubeCoursewareV2ToolSchema, ...spatialTeachingToolSchema.options, ...numericTeachingToolSchema.options, projectionToolSchema]);
+export const toolSceneSchema = z.discriminatedUnion("contentVersion", [cubeCoursewareV2ToolSchema, cubeCoursewareV3ToolSchema, ...spatialTeachingToolSchema.options, ...numericTeachingToolSchema.options, projectionToolSchema, solidGeometryToolSchema, netTeachingToolSchema, solidCapacityToolSchema]);
 export type ToolScene = z.infer<typeof toolSceneSchema>;
 export type ToolSceneVersion = ToolScene["contentVersion"];
 export const TOOL_SCENE_MAX_BYTES = 512_000;

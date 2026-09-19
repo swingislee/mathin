@@ -7,7 +7,7 @@ import { ToolToolbarButton } from "../ToolToolbarButton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { createToolDraftStore, ToolDraftError, type ToolDraftSummary } from "./draft-store";
-import type { ToolScene, ToolSceneVersion } from "./contract";
+import { toolSceneCatalogId, type ToolScene, type ToolSceneVersion } from "./contract";
 import { TOOL_SCENE_DEFINITIONS } from "./registry";
 import { cn } from "@/lib/utils";
 
@@ -75,7 +75,7 @@ export function ToolSceneLibrary({ version, scene, onOpen, title, pageHeader, ch
       <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{t("open")}</AlertDialogTitle><AlertDialogDescription>{t("replaceHint")}</AlertDialogDescription></AlertDialogHeader>
         <AlertDialogFooter><AlertDialogCancel>{t("cancel")}</AlertDialogCancel><AlertDialogAction onClick={() => void action(async () => {
           const result = await store.read(selected);
-          if (result.scene.contentVersion !== version) throw new ToolDraftError("invalid");
+          if (toolSceneCatalogId(result.scene) !== catalogId) throw new ToolDraftError("invalid");
           onOpen(result.scene); setCurrent(result); setSaved(JSON.stringify(result.scene)); setShow(false);
         })}>{t("open")}</AlertDialogAction></AlertDialogFooter>
       </AlertDialogContent>

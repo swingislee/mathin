@@ -66,10 +66,11 @@ const labelModel = (model: PolyhedronFoldRenderModel, labels: Readonly<Record<st
   ...model, faces: model.faces.map((face) => ({ ...face, label: labels[face.faceId] ?? face.label })),
 });
 
-function CubeNetFoldRehearsal({ builds, locale, workspaceSelector, initial, initialBuild, onSnapshot, readOnly, courseware, classroom }: {
+function CubeNetFoldRehearsal({ builds, locale, workspaceSelector, modeSelector, initial, initialBuild, onSnapshot, readOnly, courseware, classroom }: {
   readonly builds: readonly CubeNetGalleryFoldingBuild[];
   readonly locale: "zh" | "en";
   readonly workspaceSelector?: ReactNode;
+  readonly modeSelector?: ReactNode;
   readonly initial?: NetInitial;
   readonly classroom?: TeachingWorkbenchPort<NetLiveSnapshot, NetTeachingCommand>;
   readonly initialBuild?: CubeNetGalleryFoldingBuild;
@@ -387,6 +388,7 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector, initial, init
             onFoldStart={startFold} onPreview={previewFold} onCommit={commitFold} onDraggingChange={setDragging} />
 
           <div className={cn(styles.dock, styles.meta)} role="toolbar" aria-label={t("cubeNet.title")}>
+            {modeSelector}
             <CubeIconButton label={m.modelPanel} active={panel === "settings"} disabled={busy}
               onClick={() => setPanel(panel === "settings" ? null : "settings")}><Settings2 aria-hidden /></CubeIconButton>
           </div>
@@ -470,8 +472,8 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector, initial, init
   );
 }
 
-export function CubeNetFoldWorkspace({ locale, workspaceSelector, initial, onSnapshot, readOnly, courseware, classroom }: {
-  readonly locale: "zh" | "en"; readonly workspaceSelector?: ReactNode; readonly initial?: NetInitial;
+export function CubeNetFoldWorkspace({ locale, workspaceSelector, modeSelector, initial, onSnapshot, readOnly, courseware, classroom }: {
+  readonly locale: "zh" | "en"; readonly workspaceSelector?: ReactNode; readonly modeSelector?: ReactNode; readonly initial?: NetInitial;
   readonly classroom?: TeachingWorkbenchPort<NetLiveSnapshot, NetTeachingCommand>;
   readonly onSnapshot?: (snapshot: CoursewareNetSnapshot | null) => void; readonly readOnly?: boolean; readonly courseware?: boolean;
 }) {
@@ -498,7 +500,7 @@ export function CubeNetFoldWorkspace({ locale, workspaceSelector, initial, onSna
   }, [entries, initial]);
 
   return buildState.status === "ready" ? (
-    <CubeNetFoldRehearsal builds={buildState.builds} initialBuild={initialBuild} locale={locale} workspaceSelector={workspaceSelector} initial={initial} onSnapshot={onSnapshot} readOnly={readOnly} courseware={courseware} classroom={classroom} />
+    <CubeNetFoldRehearsal builds={buildState.builds} initialBuild={initialBuild} locale={locale} workspaceSelector={workspaceSelector} modeSelector={modeSelector} initial={initial} onSnapshot={onSnapshot} readOnly={readOnly} courseware={courseware} classroom={classroom} />
   ) : (
     <div className={styles.workspace} data-workbench-mode={courseware ? "courseware" : undefined}><div className={styles.viewport}>
       <div className={cn(styles.canvas, "grid place-items-center text-sm text-muted")} data-layout-profile="standard-4x3" role="status">

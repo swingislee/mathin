@@ -12,9 +12,12 @@ import {
 } from "@/features/spatial-math/domain";
 import type { VoxelRenderModel } from "@/features/spatial-math/renderer-r3f/voxel-render-model";
 import { cubeWorkbenchCamera } from "./cube-workbench-camera";
+import { rotatedStructureCube, type CubeRotationOperation } from "./cube-structures-rotation";
 
 /** 本地验收草稿；正式课堂接入前保持独立版本，不改写冻结 spatial-page-v1。 */
 export const CUBE_STRUCTURES_DRAFT_VERSION = "cube-structures-draft-v3" as const;
+/** 首次使用整体旋转时明确升级；旧草稿／冻结课件仍保持 v3。 */
+export const CUBE_STRUCTURES_ROTATION_DRAFT_VERSION = "cube-structures-draft-v4" as const;
 export const CUBE_STRUCTURES_LIMITS = { cubes: 512, steps: 256, coordinate: 12, displayOffset: 24 } as const;
 export const CUBE_COLORS = ["#8fbf88", "#df8a84", "#edce79", "#7da9ce", "#b39dcc", "#e7e0d0"] as const;
 export const CUBE_AXIS_COLORS = { x: "#c64848", y: "#258345", z: "#3267bd" } as const;
@@ -34,6 +37,9 @@ export interface CubeLabelStyle {
   readonly placement: CubeLabelPlacement;
   readonly direction: FaceDirection;
   readonly color: CubeColor;
+  readonly quarterTurns?: 1 | 2 | 3;
+  /** 成对面标注的留位方向同样随实体旋转；省略时沿用历史摆放。 */
+  readonly laneDirection?: FaceDirection;
 }
 
 export interface CubeGroup {
@@ -76,6 +82,7 @@ export interface CubeStructureState {
 }
 
 export type CubeOperation =
+  | CubeRotationOperation
   | { readonly kind: "build"; readonly id?: string; readonly groupId?: string; readonly position: VoxelCoordinate; readonly displayOffset?: VoxelCoordinate; readonly color: CubeColor }
   | { readonly kind: "remove"; readonly ids: readonly string[] }
   | { readonly kind: "color"; readonly ids: readonly string[]; readonly color: CubeColor }
@@ -99,7 +106,7 @@ export type CubeOperation =
   | { readonly kind: "view"; readonly view: CubeView; readonly frame: CubeFrame };
 
 export interface CubeHistory {
-  readonly version: typeof CUBE_STRUCTURES_DRAFT_VERSION;
+  readonly version: typeof CUBE_STRUCTURES_DRAFT_VERSION | typeof CUBE_STRUCTURES_ROTATION_DRAFT_VERSION;
   readonly initial: CubeStructureState;
   readonly operations: readonly CubeOperation[];
   readonly cursor: number;
@@ -276,6 +283,20 @@ export function applyCubeOperation(state: CubeStructureState, operation: CubeOpe
       if (cubeDisplayCollides(cubes, moved)) return state;
       return { ...state, cubes };
     }
+    case "rotate": {
+      const ids = new Set(operation.ids);
+      if (!ids.size || ids.size !== operation.ids.length || (operation.turn !== -1 && operation.turn !== 1)
+        || !["x", "y", "z"].includes(operation.axis) || !canPlaceCube(operation.pivot)
+        || !Object.values(operation.displayPivot).every((value) => Number.isInteger(value * 2) && Math.abs(value) <= CUBE_STRUCTURES_LIMITS.coordinate + CUBE_STRUCTURES_LIMITS.displayOffset)
+        || operation.ids.some((id) => !state.cubes.some((cube) => cube.id === id))) return state;
+      const occupied = new Set(state.cubes.filter((cube) => !ids.has(cube.id)).map((cube) => voxelKey(cube.position)));
+      const moved = state.cubes.filter((cube) => ids.has(cube.id)).map((cube) => rotatedStructureCube(cube, operation));
+      if (moved.some((cube) => !canPlaceCube(cube.position) || occupied.has(voxelKey(cube.position)) || !validDisplayOffset(cube.displayOffset))) return state;
+      const byId = new Map(moved.map((cube) => [cube.id, cube]));
+      const cubes = state.cubes.map((cube) => byId.get(cube.id) ?? cube);
+      if (cubeDisplayCollides(cubes, moved)) return state;
+      return { ...state, cubes };
+    }
     case "cut": {
       const expected = cubeCutOperation(state, operation.scopeIds, operation.axis, operation.after, operation.side, operation.distance, operation.groupId, operation.name);
       if (!expected || expected.ids.length !== operation.ids.length || expected.ids.some((id) => !operation.ids.includes(id))
@@ -350,7 +371,8 @@ export function appendCubeOperation(history: CubeHistory, operation: CubeOperati
   const before = replayCubeHistory(history);
   if (applyCubeOperation(before, operation) === before) return history;
   const captured = captureCubeOperation(before, operation);
-  return { ...history, operations: [...history.operations.slice(0, history.cursor), captured], cursor: history.cursor + 1 };
+  return { ...history, version: operation.kind === "rotate" ? CUBE_STRUCTURES_ROTATION_DRAFT_VERSION : history.version,
+    operations: [...history.operations.slice(0, history.cursor), captured], cursor: history.cursor + 1 };
 }
 
 export function captureCubeOperation(state: CubeStructureState, operation: CubeOperation): CubeOperation {
@@ -382,7 +404,7 @@ export function validateCubeSequence(initial: CubeStructureState, operations: re
     if (operation.kind === "ungroup" && !state.groups.some((group) => group.id === operation.id)) return { index, code: "missing-group" };
     if (operation.kind === "group" && (!operation.ids.length || !operation.name.trim())) return { index, code: "invalid-operation" };
     const next = applyCubeOperation(state, operation);
-    if (["move", "display-move", "cut", "build"].includes(operation.kind) && next === state) return { index, code: "collision" };
+    if (["move", "rotate", "display-move", "cut", "build"].includes(operation.kind) && next === state) return { index, code: "collision" };
     if (operation.kind === "display-reset" && next === state && state.cubes.some((cube) => operation.ids.includes(cube.id) && cube.displayOffset && Object.values(cube.displayOffset).some((value) => value !== 0))) return { index, code: "collision" };
     if (operation.kind === "number" && next === state) return { index, code: "invalid-operation" };
     state = next;

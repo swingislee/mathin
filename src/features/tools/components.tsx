@@ -19,6 +19,9 @@ const FractionLine = dynamic(() => import("./fraction-line/FractionLine").then((
 const MotionLab = dynamic(() => import("./motion-lab/MotionLab").then((m) => m.MotionLab), { loading: ToolSkeleton });
 const SpatialLab = dynamic(() => import("./spatial-lab/SpatialLab").then((m) => m.SpatialLab), { loading: ToolSkeleton });
 const ProjectionTool = dynamic(() => import("./projection/ProjectionWorkspace").then((m) => m.ProjectionTool), { loading: ToolSkeleton });
+const SolidGeometryTool = dynamic(() => import("./solid-geometry/SolidGeometryWorkspace").then((m) => m.SolidGeometryWorkspace), { loading: ToolSkeleton });
+const NetTeachingTool = dynamic(() => import("./net-teaching/NetTeachingWorkspace").then((m) => m.NetTeachingWorkspace), { loading: ToolSkeleton });
+const SolidCapacityTool = dynamic(() => import("./solid-capacity/SolidCapacityWorkspace").then((m) => m.SolidCapacityWorkspace), { loading: ToolSkeleton });
 export const CubeCoursewarePreview = dynamic(() => import("./courseware/CubeStructuresCourseware").then((m) => m.CubeStructuresCourseware), { loading: ToolSkeleton });
 const ToolScenePresentation = dynamic(() => import("./scenes/ToolScenePresentation").then((m) => m.ToolScenePresentation), { loading: ToolSkeleton });
 const PreparedToolWorkbench = dynamic(() => import("./scenes/PreparedToolWorkbench").then((m) => m.PreparedToolWorkbench), { loading: ToolSkeleton });
@@ -44,11 +47,15 @@ export function ToolView({ id, preparation = false, preparationHeader, ...props 
     case "cube-structures":
       return <SpatialLab {...props} activity="spatial-lab.cube-structures.v1" />;
     case "cube-net":
-      return <SpatialLab {...props} activity="spatial-lab.cube-net-fold.v1" />;
+      return <NetTeachingTool />;
     case "dice":
       return <SpatialLab {...props} activity="spatial-lab.dice-teaching.v1" />;
     case "projection":
       return <ProjectionTool />;
+    case "solid-geometry":
+      return <SolidGeometryTool />;
+    case "solid-capacity":
+      return <SolidCapacityTool />;
     default:
       return null;
   }

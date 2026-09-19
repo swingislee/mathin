@@ -1,5 +1,6 @@
 import { FACE_OFFSETS, type VoxelCoordinate } from "@/features/spatial-math/domain";
 import { cubeDisplayPosition, type CubeLabelStyle, type CubeMarkShape, type StructureCube } from "./cube-structures-contract";
+import { cubeLabelLaneDirection } from "./cube-structures-rotation";
 
 /** 工具按钮、悬浮预览和场景纹理复用同一份 SVG 路径。 */
 export const CUBE_MARK_PATHS: Record<CubeMarkShape, string> = {
@@ -23,6 +24,7 @@ export function cubeLabelAnchor(cube: Pick<StructureCube, "position" | "displayO
   const normal = FACE_OFFSETS[label.direction];
   const distance = label.placement === "center" ? 0 : label.placement === "side" ? 0.95 : 0.508;
   // 符号和编号同时存在时在面内并排；中心及旁注也保留各自可读空间。
-  const shift = label.direction[0] === "x" ? { x: 0, y: 0, z: 0.24 * lane } : { x: 0.24 * lane, y: 0, z: 0 };
-  return { x: position.x + normal.x * distance + shift.x, y: position.y + normal.y * distance, z: position.z + normal.z * distance + shift.z };
+  const tangent = FACE_OFFSETS[label.placement === "face" ? cubeLabelLaneDirection(label) : label.direction[0] === "x" ? "z+" : "x+"];
+  const shift = { x: tangent.x * 0.24 * lane, y: tangent.y * 0.24 * lane, z: tangent.z * 0.24 * lane };
+  return { x: position.x + normal.x * distance + shift.x, y: position.y + normal.y * distance + shift.y, z: position.z + normal.z * distance + shift.z };
 }

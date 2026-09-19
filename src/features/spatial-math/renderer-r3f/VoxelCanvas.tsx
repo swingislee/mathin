@@ -115,7 +115,7 @@ function VoxelInstances({
   preserveSelectedColors,
 }: {
   readonly model: VoxelRenderModel;
-  readonly palette: VoxelPalette;
+  readonly palette: Pick<VoxelPalette, "leaf" | "moon">;
   readonly readOnly: boolean;
   readonly materialColors?: Readonly<Record<string, string>>;
   readonly onCellSelect?: (cellKey: string) => void;
@@ -393,6 +393,46 @@ function VoxelTranslucentCube({ cell, color, paint, readOnly, onFaceSelect, onFa
   </mesh>;
 }
 
+/** 实体、逐面颜色、透明度和原粗棱边共用几何；宿主可整体施加刚体变换。 */
+export function VoxelGeometry({ model, palette, readOnly, materialColors, onCellSelect, paintedFaces = [], paintedFaceColor = VOXEL_EDGE_COLOR,
+  onFaceSelect, onFaceHover, paintedFaceGroups, hiddenEdgesVisible, preserveSelectedColors }: {
+  readonly model: VoxelRenderModel;
+  readonly palette: Pick<VoxelPalette, "leaf" | "moon">;
+  readonly readOnly: boolean;
+  readonly materialColors?: Readonly<Record<string, string>>;
+  readonly onCellSelect?: (cellKey: string) => void;
+  readonly paintedFaces?: readonly VoxelFaceSelection[];
+  readonly paintedFaceColor?: string;
+  readonly onFaceSelect?: VoxelCanvasProps["onFaceSelect"];
+  readonly onFaceHover?: VoxelCanvasProps["onFaceHover"];
+  readonly paintedFaceGroups?: VoxelCanvasProps["paintedFaceGroups"];
+  readonly hiddenEdgesVisible?: boolean;
+  readonly preserveSelectedColors?: boolean;
+}) {
+  const emphasisFaces = useMemo(() => buildVoxelEmphasisFaceGroups(model.cells), [model.cells]);
+  const hiddenEdgeUniforms = useVoxelHiddenEdges(model.cells, Boolean(hiddenEdgesVisible && model.cells.some((cell) => (cell.opacity ?? 1) < 1)));
+  const paintByCell = useMemo(() => {
+    const result = new Map<string, Partial<Record<VoxelFaceSelection["direction"], string>>>();
+    for (const group of [{ color: paintedFaceColor, faces: paintedFaces }, ...(paintedFaceGroups ?? [])]) {
+      for (const face of group.faces) {
+        const key = voxelKey(face.cell);
+        result.set(key, { ...result.get(key), [face.direction]: group.color });
+      }
+    }
+    return result;
+  }, [paintedFaceColor, paintedFaces, paintedFaceGroups]);
+  return <>
+    <VoxelInstances model={model} palette={palette} readOnly={readOnly} materialColors={materialColors} onCellSelect={onCellSelect} onFaceSelect={onFaceSelect} onFaceHover={onFaceHover} preserveSelectedColors={preserveSelectedColors} />
+    {model.cells.filter((cell) => (cell.opacity ?? 1) < 1).map((cell) => <VoxelTranslucentCube key={cell.key} cell={cell}
+      color={cell.selected && !preserveSelectedColors ? palette.moon : materialColors?.[cell.materialToken] ?? palette.leaf}
+      paint={paintByCell.get(voxelKey(cell)) ?? EMPTY_VOXEL_FACE_PAINT} readOnly={readOnly} onFaceSelect={onFaceSelect} onFaceHover={onFaceHover} onCellSelect={onCellSelect} />)}
+    <VoxelPaintFaceInstances model={model} faces={paintedFaces} color={paintedFaceColor} />
+    {paintedFaceGroups?.map((group) => <VoxelPaintFaceInstances key={group.color} model={model} faces={group.faces} color={group.color} />)}
+    <VoxelEdgeInstances model={model} hiddenEdgeUniforms={hiddenEdgeUniforms} />
+    {emphasisFaces.map((group) => <VoxelPaintFaceInstances key={group.color + ":" + group.opacity} model={model} faces={group.faces} color={group.color} opacity={group.opacity} highlight />)}
+  </>;
+}
+
 function VoxelScene({
   model,
   palette,
@@ -432,18 +472,6 @@ function VoxelScene({
   readonly cameraRequestKey: string;
   readonly onCameraTransitionStateChange: (active: boolean) => void;
 }) {
-  const emphasisFaces = useMemo(() => buildVoxelEmphasisFaceGroups(model.cells), [model.cells]);
-  const hiddenEdgeUniforms = useVoxelHiddenEdges(model.cells, Boolean(hiddenEdgesVisible && model.cells.some((cell) => (cell.opacity ?? 1) < 1)));
-  const paintByCell = useMemo(() => {
-    const result = new Map<string, Partial<Record<VoxelFaceSelection["direction"], string>>>();
-    for (const group of [{ color: paintedFaceColor, faces: paintedFaces }, ...(paintedFaceGroups ?? [])]) {
-      for (const face of group.faces) {
-        const key = voxelKey(face.cell);
-        result.set(key, { ...result.get(key), [face.direction]: group.color });
-      }
-    }
-    return result;
-  }, [paintedFaceColor, paintedFaces, paintedFaceGroups]);
   return (
     <>
       <color attach="background" args={[model.background === "night" ? palette.workspacePanel : palette.paper]} />
@@ -456,14 +484,9 @@ function VoxelScene({
         axisSnapEnabled={axisSnapEnabled}
         onTransitionStateChange={onCameraTransitionStateChange}
       />
-      <VoxelInstances model={model} palette={palette} readOnly={readOnly} materialColors={materialColors} onCellSelect={onCellSelect} onFaceSelect={onFaceSelect} onFaceHover={onFaceHover} preserveSelectedColors={preserveSelectedColors} />
-      {model.cells.filter((cell) => (cell.opacity ?? 1) < 1).map((cell) => <VoxelTranslucentCube key={cell.key} cell={cell}
-        color={cell.selected && !preserveSelectedColors ? palette.moon : materialColors?.[cell.materialToken] ?? palette.leaf}
-        paint={paintByCell.get(voxelKey(cell)) ?? EMPTY_VOXEL_FACE_PAINT} readOnly={readOnly} onFaceSelect={onFaceSelect} onFaceHover={onFaceHover} onCellSelect={onCellSelect} />)}
-      <VoxelPaintFaceInstances model={model} faces={paintedFaces} color={paintedFaceColor} />
-      {paintedFaceGroups?.map((group) => <VoxelPaintFaceInstances key={group.color} model={model} faces={group.faces} color={group.color} />)}
-      <VoxelEdgeInstances model={model} hiddenEdgeUniforms={hiddenEdgeUniforms} />
-      {emphasisFaces.map((group) => <VoxelPaintFaceInstances key={group.color + ":" + group.opacity} model={model} faces={group.faces} color={group.color} opacity={group.opacity} highlight />)}
+      <VoxelGeometry model={model} palette={palette} readOnly={readOnly} materialColors={materialColors} onCellSelect={onCellSelect}
+        onFaceSelect={onFaceSelect} onFaceHover={onFaceHover} preserveSelectedColors={preserveSelectedColors}
+        paintedFaces={paintedFaces} paintedFaceColor={paintedFaceColor} paintedFaceGroups={paintedFaceGroups} hiddenEdgesVisible={hiddenEdgesVisible} />
       {model.showAxes ? <axesHelper args={[Math.max(2, model.bounds.radius * 1.5)]} /> : null}
       {sceneOverlay}
     </>

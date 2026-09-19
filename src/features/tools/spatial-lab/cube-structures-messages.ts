@@ -12,6 +12,8 @@ const zh = {
   move: "移动单位块", moveHint: "拖动 XYZ 箭头，或选择轴后拖动方块。单击选单块；未单独选择时拖动当前分组或整体。开启右上角磁铁，拖动即对齐单元格；关闭时连续预览，松手取整格（拆开展示为半格）。每次拖动记录一步。",
   cellSnap: "单元格吸附", enableCellSnap: "开启单元格吸附", disableCellSnap: "关闭单元格吸附",
   moveAxis: "拖动轴", moveAxisHidden: "这一轴正朝向屏幕。切到立体视角再拖动，或使用该轴的步数按钮。",
+  rotate: "整体转动", rotationHint: "单块、所选块或当前分组绕中心附近的格点转动 90°，改变逻辑排列；拆开间距保持独立。正向遵循右手方向。",
+  invalidRotation: "转动终点与其他逻辑格或展示方块重叠，或超出范围。请先用逻辑移动留出空间，再转动。",
   groupColor: "编组颜色", applyGroupColor: "应用到当前分组", selectionColorHint: "黄色专门表示临时选择；编组使用独立颜色，方块底色和面染色保持不变。",
   cut: "截面切割", mark: "分类标记", number: "连续编号", transparent: "透明度",
   cutHint: "点击哪一部分，就在该部分切割。靠近棱线选线，移入面内选面；两条共面线或一个可见层界面确定截面。切割后可直接选择其他部分。视图按钮或观察旋转会保留已选线。",
@@ -86,6 +88,8 @@ const en = {
   move: "Move cubes", moveHint: "Drag an XYZ arrow, or choose an axis and drag cubes. Click to select one cube; otherwise drag the active group or whole structure. Enable the top-right magnet to align to cells while dragging. When disabled, preview continuously and release to whole units (half units for display separation). Each drag records one step.",
   cellSnap: "Cell snapping", enableCellSnap: "Enable cell snapping", disableCellSnap: "Disable cell snapping",
   moveAxis: "Drag axis", moveAxisHidden: "This axis points into the screen. Switch to 3D to drag it, or use its step buttons.",
+  rotate: "Rotate as a group", rotationHint: "Turn the selected cube, selection or active group by 90° about a nearby central grid point. This changes the logical arrangement; display gaps stay separate. Positive turns follow the right-hand rule.",
+  invalidRotation: "The destination overlaps logical cells or displayed cubes, or exceeds the workspace. Make room with a logical move, then turn.",
   groupColor: "Group color", applyGroupColor: "Apply to the active group", selectionColorHint: "Yellow is reserved for temporary selection. Groups use separate colors; cube base colors and painted faces stay unchanged.",
   cut: "Section cut", mark: "Category marks", number: "Sequential numbers", transparent: "Transparency",
   cutHint: "Click any piece to cut that piece. Move near an edge to pick a line, or inside a face to pick it. Two coplanar lines or one exposed layer face define a section. After cutting, choose any other piece directly. View buttons and Observe retain selected lines.",
@@ -165,6 +169,7 @@ export function cubeOperationLabel(operation: CubeOperation, locale: "zh" | "en"
     case "group": return `${m.groups} · ${operation.name}`;
     case "ungroup": return m.ungroup;
     case "move": return `${m.move} · ${operation.axis.toUpperCase()} ${operation.distance > 0 ? "+" : ""}${operation.distance}`;
+    case "rotate": return `${m.rotate} · ${operation.axis.toUpperCase()} ${operation.turn > 0 ? "+" : "−"}90° · ${operation.ids.length} ${m.cubeUnit}`;
     case "axes": return operation.visible ? m.showAxes : m.hideAxes;
     case "cut": return `${m.cut} · ${operation.axis.toUpperCase()} ${cubeLayerNumber({ origin }, operation.axis, operation.after)} · ${operation.name}`;
     case "display-move": return `${m.displayMove} · ${operation.axis.toUpperCase()} ${operation.distance > 0 ? "+" : ""}${operation.distance}`;

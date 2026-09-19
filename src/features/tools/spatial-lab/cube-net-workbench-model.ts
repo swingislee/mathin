@@ -15,6 +15,9 @@ export interface CubeNetWorkbenchHinge {
   readonly start: PolyhedronFoldVector3;
   readonly end: PolyhedronFoldVector3;
   readonly direction: number;
+  /** 省略时保持正方体原有的 ±90° 折叠范围。 */
+  readonly minDegrees?: number;
+  readonly maxDegrees?: number;
 }
 
 export function cubeNetFaceBasis(points: readonly PolyhedronFoldVector3[]) {

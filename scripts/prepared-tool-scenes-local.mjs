@@ -9,6 +9,7 @@ const increment = process.argv[3] ?? 'prepared';
 const increments = {
   prepared: { version: '20260918000100_prepared_tool_scenes', tests: ['prepared_tool_scenes_assertions'] },
   projection: { version: '20260919000100_projection_tool_scene', tests: ['prepared_tool_scenes_assertions', 'projection_tool_scene_assertions'] },
+  spaces: { version: '20260919000200_teaching_space_scenes', tests: ['prepared_tool_scenes_assertions', 'projection_tool_scene_assertions', 'teaching_space_scene_assertions'] },
 };
 if (!Object.hasOwn(increments, increment)) throw new Error('Unknown Tools increment');
 const { version, tests } = increments[increment];
@@ -21,7 +22,7 @@ const assertionsDigest = tests.map(test => textFileSha256(`supabase/tests/${test
 const recorded = sql(`begin read only; select checksum from public.schema_migrations where version='${version}'; commit;`);
 if (recorded && recorded !== checksum) throw new Error('TOOL_SCENES_MIGRATION_CHECKSUM_MISMATCH');
 const migration = fs.readFileSync(file, 'utf8').replace(/^(?:begin|commit);\s*$/gm, '');
-const fingerprint = () => sql("begin read only; select md5(string_agg(pg_get_functiondef(p.oid), E'\\n' order by p.proname)) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname in ('cw_courseware_composition_doc_is_valid','cw_spatial_teaching_tool_is_valid','cw_formal_cube_page_is_valid','cw_manual_composition_doc_is_valid','cube_drafts_account_ready','tool_drafts_account_ready','tool_scene_is_valid','tool_scene_catalog_id','tool_numeric_scene_is_valid','tool_projection_scene_is_valid','save_tool_scene_draft'); select pg_get_constraintdef(oid) from pg_constraint where conrelid=to_regclass('public.tool_scene_drafts') order by conname; commit;");
+const fingerprint = () => sql("begin read only; select md5(string_agg(pg_get_functiondef(p.oid), E'\\n' order by p.proname)) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and (p.proname in ('cw_courseware_composition_doc_is_valid','cw_spatial_teaching_tool_is_valid','cw_formal_cube_page_is_valid','cw_manual_composition_doc_is_valid','cube_drafts_account_ready','tool_drafts_account_ready','tool_scene_is_valid','tool_scene_catalog_id','tool_numeric_scene_is_valid','tool_projection_scene_is_valid','tool_cube_rotation_scene_is_valid','tool_net_teaching_scene_is_valid','tool_solid_geometry_scene_is_valid','tool_solid_capacity_scene_is_valid','save_tool_scene_draft') or p.proname like 'tool_space_%'); select pg_get_constraintdef(oid) from pg_constraint where conrelid=to_regclass('public.tool_scene_drafts') order by conname; commit;");
 const invariant = () => sql("begin read only; select jsonb_build_object('pages',(select count(*) from public.cw_page_docs),'revisions',(select count(*) from public.cw_page_revisions),'releases',(select count(*) from public.cw_lecture_releases),'sessions',(select count(*) from public.class_sessions),'events',(select count(*) from public.session_events)); commit;");
 if (mode === '--check') {
   const before = fingerprint(), dataBefore = invariant();

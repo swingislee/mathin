@@ -13,6 +13,8 @@ import { createCubeSession, operateCubeSession, startCubeRecording } from "@/fea
 import { cubeCoursewareInitialSession } from "@/features/tools/courseware/cube-structures-classroom";
 import { projectionTool } from "./fixtures/projection-tool";
 import type { ToolScene } from "@/features/tools/scenes/contract";
+import { createSolidGeometryInitial, solidGeometryToolSchema } from "@/features/tools/solid-geometry/solid-geometry-contract";
+import { createDefaultSolidCapacityInitial, solidCapacityToolSchema } from "@/features/tools/solid-capacity/solid-capacity-contract";
 
 const workspace = vi.hoisted(() => ({ current: null as null | { initial?: unknown; payload?: unknown; preparation?: boolean; onSnapshot: (snapshot: unknown) => void } }));
 const library = vi.hoisted(() => ({ open: null as null | ((scene: ToolScene) => void) }));
@@ -29,6 +31,8 @@ describe("shared starting-scene editor", () => {
   it.each([
     diceTool(),
     projectionTool(),
+    solidGeometryToolSchema.parse({ toolId: "solid-geometry", contentVersion: "solid-geometry-lesson-v1", payload: { title: "Solids", initial: createSolidGeometryInitial() } }),
+    solidCapacityToolSchema.parse({ toolId: "solid-capacity", contentVersion: "solid-capacity-lesson-v1", payload: { title: "Capacity", initial: createDefaultSolidCapacityInitial() } }),
     fractionCoursewareSchema.parse({ toolId: "fraction-line", contentVersion: "fraction-line-lesson-v1", payload: { title: "Fractions", initial: initialFractionScene() } }),
     motionCoursewareSchema.parse({ toolId: "motion-lab", contentVersion: "motion-lab-lesson-v1", payload: { title: "Motion", initial: initialMotionScene() } }),
   ])("captures $toolId without reinitializing the original workbench or changing its source", async (scene) => {
@@ -116,5 +120,20 @@ describe("shared starting-scene editor", () => {
     expect(host.querySelector("[data-tool-scene-name]")!.textContent).toBe("Three tracks");
     await act(async () => workspace.current!.onSnapshot(motion.payload.initial));
     expect(ready.mock.lastCall![0]).toEqual(motion);
+  });
+
+  it("opens old same-tool scenes unchanged and upgrades only after an explicit copy action", async () => {
+    const scene = netTool(await buildNet()), ready = vi.fn();
+    await renderEditor({ version: "cube-net-lesson-v2", onReady: ready });
+    await act(async () => library.open!(scene));
+    expect(workspace.current!.initial).toBe(scene.payload.initial);
+    await act(async () => workspace.current!.onSnapshot(scene.payload.initial));
+    expect(ready.mock.lastCall![0].contentVersion).toBe("cube-net-lesson-v1");
+    const upgrade = host.querySelector<HTMLButtonElement>(`button[aria-label="${en.tools.preparation.upgradeCopy}"]`)!;
+    expect(upgrade).not.toBeNull(); await act(async () => upgrade.click());
+    expect(workspace.current!.initial).toEqual({ mode: "standard", data: scene.payload.initial });
+    await act(async () => workspace.current!.onSnapshot(workspace.current!.initial));
+    expect(ready.mock.lastCall![0].contentVersion).toBe("cube-net-lesson-v2");
+    expect(scene.contentVersion).toBe("cube-net-lesson-v1");
   });
 });

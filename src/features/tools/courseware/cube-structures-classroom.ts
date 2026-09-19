@@ -1,10 +1,10 @@
 import { z } from "zod";
 import { CLASSROOM_TOOL_STATE_SYNC_V1, classroomInteractionPayloadWithinBudget } from "@/features/classroom/sync/interaction-provider";
-import { cubeHistorySchema } from "../spatial-lab/cube-structures-draft";
+import { cubeHistorySchema, legacyCubeHistorySchema } from "../spatial-lab/cube-structures-draft";
 import { cubeSnapshotHistory, type CubeWorkbenchSession } from "../spatial-lab/cube-structures-session";
 import type { CubeView } from "../spatial-lab/cube-structures-contract";
 import type { CubeCoursewarePayload } from "./cube-structures-content";
-import { CUBE_COURSEWARE_CONTENT_VERSION } from "./registry";
+import { CUBE_COURSEWARE_CONTENT_VERSION, CUBE_ROTATION_COURSEWARE_VERSION } from "./registry";
 import { toolClassroomEventSchema, toolSceneInstanceKey, toolSceneOriginHash } from "../scenes/classroom-envelope";
 
 export interface CubeClassroomSnapshot {
@@ -14,8 +14,8 @@ export interface CubeClassroomSnapshot {
   readonly cameraRevision: number;
 }
 
-const sessionSchema = z.object({
-  work: cubeHistorySchema, lesson: cubeHistorySchema.nullable(),
+function sessionSchema(history: typeof cubeHistorySchema | typeof legacyCubeHistorySchema) { return z.object({
+  work: history, lesson: history.nullable(),
   recording: z.enum(["off", "recording", "paused"]), preview: z.number().int().min(0).nullable(),
 }).strict().superRefine((session, context) => {
   if ((session.recording !== "off" && !session.lesson)
@@ -23,13 +23,15 @@ const sessionSchema = z.object({
     || (session.preview !== null && session.recording === "recording")) {
     context.addIssue({ code: "custom", message: "Invalid classroom recording cursor" });
   }
-});
+}); }
 
 export const cubeClassroomSnapshotSchema = z.object({
-  session: sessionSchema, view: z.enum(["angle", "front", "left", "right", "top"]).nullable(),
+  session: sessionSchema(legacyCubeHistorySchema), view: z.enum(["angle", "front", "left", "right", "top"]).nullable(),
   cameraRevision: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER - 1),
 }).strict() satisfies z.ZodType<CubeClassroomSnapshot>;
 export const cubeClassroomEventSchema = toolClassroomEventSchema("spatial-lab", CUBE_COURSEWARE_CONTENT_VERSION, cubeClassroomSnapshotSchema);
+export const cubeRotationClassroomSnapshotSchema = cubeClassroomSnapshotSchema.extend({ session: sessionSchema(cubeHistorySchema) });
+export const cubeRotationClassroomEventSchema = toolClassroomEventSchema("spatial-lab", CUBE_ROTATION_COURSEWARE_VERSION, cubeRotationClassroomSnapshotSchema);
 
 export type ClassroomToolStatePayload = z.infer<typeof cubeClassroomEventSchema>;
 export interface ClassroomToolStateEntry {

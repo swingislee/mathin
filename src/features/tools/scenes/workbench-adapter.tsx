@@ -24,6 +24,8 @@ export interface ToolWorkbenchAdapter {
   Preparation: ComponentType<ToolPreparationProps>;
   Presentation: ComponentType<ToolPresentationProps>;
   Import?: ComponentType<ToolSceneImportProps>;
+  /** 用户明确复制到新版时转换；读取旧课件和打开旧场景不触发升级。 */
+  upgrade?: (scene: ToolScene) => ToolScene | null;
 }
 
 function matchesVersion<V extends ToolSceneVersion>(scene: ToolScene, version: V): scene is SceneOf<V> {
@@ -35,6 +37,7 @@ export function defineToolWorkbenchAdapter<V extends ToolSceneVersion>(adapter: 
   Preparation: ComponentType<ToolPreparationProps<V>>;
   Presentation: ComponentType<ToolPresentationProps<V>>;
   Import?: ComponentType<ToolSceneImportProps>;
+  upgrade?: (scene: ToolScene) => ToolScene | null;
 }): ToolWorkbenchAdapter & { contentVersion: V } {
   return {
     contentVersion: adapter.contentVersion,
@@ -49,6 +52,7 @@ export function defineToolWorkbenchAdapter<V extends ToolSceneVersion>(adapter: 
       return createElement(adapter.Presentation, { ...props, scene });
     },
     Import: adapter.Import,
+    upgrade: adapter.upgrade,
   };
 }
 

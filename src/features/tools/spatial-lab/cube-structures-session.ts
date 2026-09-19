@@ -1,4 +1,4 @@
-import { CUBE_STRUCTURES_LIMITS, appendCubeOperation, applyCubeOperation, captureCubeOperation, createCubeHistory, replayCubeHistory, validateCubeSequence,
+import { CUBE_STRUCTURES_LIMITS, CUBE_STRUCTURES_ROTATION_DRAFT_VERSION, appendCubeOperation, applyCubeOperation, captureCubeOperation, createCubeHistory, replayCubeHistory, validateCubeSequence,
   type CubeHistory, type CubeOperation, type CubeSequenceIssue, type CubeStructureState } from "./cube-structures-contract";
 import type { VoxelCoordinate } from "@/features/spatial-math/domain";
 
@@ -14,7 +14,9 @@ export function createCubeSession(positions: readonly VoxelCoordinate[]): CubeWo
 }
 
 export function cubeSnapshotHistory(state: CubeStructureState): CubeHistory {
-  return { ...createCubeHistory([]), initial: state };
+  const history = { ...createCubeHistory([]), initial: state };
+  return state.cubes.some((cube) => [cube.mark, cube.numberLabel].some((label) => label?.quarterTurns !== undefined || label?.laneDirection !== undefined))
+    ? { ...history, version: CUBE_STRUCTURES_ROTATION_DRAFT_VERSION } : history;
 }
 
 export function cubeSessionScene(session: CubeWorkbenchSession): CubeStructureState {
@@ -84,7 +86,9 @@ export function editCubeRecording(session: CubeWorkbenchSession, operations: rea
   if (!session.lesson) return { session, issue: null };
   const issue = validateCubeSequence(session.lesson.initial, operations);
   if (issue) return { session, issue };
-  return { session: { ...session, recording: "off", lesson: { ...session.lesson, operations, cursor: operations.length },
+  return { session: { ...session, recording: "off", lesson: { ...session.lesson,
+    version: operations.some((operation) => operation.kind === "rotate") ? CUBE_STRUCTURES_ROTATION_DRAFT_VERSION : session.lesson.version,
+    operations, cursor: operations.length },
     preview: Math.min(session.preview ?? operations.length, operations.length) }, issue: null };
 }
 

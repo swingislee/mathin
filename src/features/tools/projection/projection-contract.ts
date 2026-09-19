@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { cubeStructureStateSchema } from "../spatial-lab/cube-structures-draft";
+import { legacyCubeStructureStateSchema } from "../spatial-lab/cube-structures-draft";
 import { createCubeHistory, type CubeStructureState } from "../spatial-lab/cube-structures-contract";
 import { cubeSnapshotHistory } from "../spatial-lab/cube-structures-session";
 import { cubeClassroomSnapshotSchema, type CubeClassroomSnapshot } from "../courseware/cube-structures-classroom";
@@ -12,7 +12,7 @@ const options = {
   views: z.array(z.enum(PROJECTION_VIEWS)).max(3).refine((views) => new Set(views).size === views.length),
   guides: z.boolean(),
 };
-export const projectionInitialSchema = z.object({ structure: cubeStructureStateSchema, ...options }).strict();
+export const projectionInitialSchema = z.object({ structure: legacyCubeStructureStateSchema, ...options }).strict();
 export type ProjectionInitial = z.infer<typeof projectionInitialSchema>;
 export const projectionToolSchema = z.object({
   toolId: z.literal("projection"), contentVersion: z.literal(PROJECTION_COURSEWARE_VERSION),

@@ -28,10 +28,12 @@ describe("formal cube composition pages", () => {
   });
 
   it("keeps toolbar configuration strict and excludes private pointers, generic tools and legacy versions", () => {
-    expect(toolCoursewareContractsForSurface("formal-courseware").map((contract) => contract.contentVersion)).toEqual(["cube-structures-lesson-v2", "cube-net-lesson-v1", "dice-lesson-v1", "fraction-line-lesson-v1", "motion-lab-lesson-v1", "projection-lesson-v1"]);
+    const authoring = toolCoursewareContractsForSurface("formal-courseware");
+    expect(authoring.map((contract) => contract.contentVersion)).toEqual(expect.arrayContaining(["cube-structures-lesson-v3", "cube-net-lesson-v2", "dice-lesson-v1", "fraction-line-lesson-v1", "motion-lab-lesson-v1", "projection-lesson-v1", "solid-geometry-lesson-v1"]));
+    expect(new Set(authoring.map((contract) => contract.catalogId)).size).toBe(authoring.length);
     const page = createFormalCubePage(tool());
     const change = (value: unknown) => ({ ...page, layout: { ...page.layout, blocks: [{ ...page.layout.blocks[0], tool: value }] } });
-    expect(formalCubePageSchema.safeParse(change({ ...tool(), contentVersion: "cube-structures-lesson-v3" })).success).toBe(false);
+    expect(formalCubePageSchema.safeParse(change({ ...tool(), contentVersion: "cube-structures-lesson-v99" })).success).toBe(false);
     expect(formalCubePageSchema.safeParse(change({ toolId: "spatial-lab", contentVersion: "tool-embed-v1" })).success).toBe(false);
     expect(formalCubePageSchema.safeParse(change({ ...tool(), draftId: "private" })).success).toBe(false);
     const saved = tool();

@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import en from "../messages/en.json";
 import { CubeStructuresCourseware } from "@/features/tools/courseware/CubeStructuresCourseware";
 import type { CubeStructuresViewport } from "@/features/tools/spatial-lab/CubeStructuresViewport";
-import { createCubeCoursewareTool } from "@/features/tools/courseware/cube-structures-content";
+import { createCubeCoursewareTool, cubeCoursewareV2ToolSchema } from "@/features/tools/courseware/cube-structures-content";
 import { classroomToolInstanceKey, cubeCoursewareOriginHash, createClassroomToolState, cubeCoursewareInitialSession, type CubeClassroomSnapshot } from "@/features/tools/courseware/cube-structures-classroom";
 import { createCubeSession, operateCubeSession, startCubeRecording, pauseCubeRecording } from "@/features/tools/spatial-lab/cube-structures-session";
 import { cubeDraftSnapshot } from "@/features/tools/spatial-lab/cube-structures-draft";
@@ -33,7 +33,7 @@ vi.mock("next/dynamic", () => ({ default: () => (props: ViewportProps) => {
 } }));
 
 const base = createCubeSession([{ x: 0, y: 0, z: 0 }]);
-const tool = createCubeCoursewareTool({ name: "Classroom Cube", snapshot: cubeDraftSnapshot(base, 0) }, "current", ["build", "view-left", "axes", "undo", "recording"]);
+const tool = cubeCoursewareV2ToolSchema.parse(createCubeCoursewareTool({ name: "Classroom Cube", snapshot: cubeDraftSnapshot(base, 0) }, "current", ["build", "view-left", "axes", "undo", "recording"]));
 const labels = cubeStructuresMessages("en");
 let host: HTMLDivElement, root: Root;
 beforeEach(() => {

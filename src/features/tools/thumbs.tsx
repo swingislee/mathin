@@ -2,6 +2,29 @@ import type { ReactNode } from "react";
 
 /** 工具缩略图：几何线稿占位（素材就绪后可换成截图/手绘，颜色只用 token） */
 export const toolThumbs: Record<string, ReactNode> = {
+  "solid-capacity": (
+    <svg viewBox="0 0 200 120" className="h-full w-full" aria-hidden>
+      <g stroke="var(--ink)" strokeWidth={1.3} strokeLinejoin="round">
+        <path d="M23 27 50 103 77 27" fill="var(--moon)" fillOpacity={0.5} /><ellipse cx={50} cy={27} rx={27} ry={9} fill="var(--moon)" />
+        <path d="m30 46 20 57 20-57c-5 7-35 7-40 0Z" fill="var(--cheek)" />
+        <path d="M123 27v66c0 14 54 14 54 0V27" fill="var(--moon)" fillOpacity={0.5} />
+        <ellipse cx={150} cy={27} rx={27} ry={9} fill="var(--moon)" />
+        <path d="M123 70v23c0 14 54 14 54 0V70" fill="var(--leaf)" /><ellipse cx={150} cy={70} rx={27} ry={9} fill="var(--leaf)" />
+        <path d="M84 61h25m-7-6 7 6-7 6" fill="none" stroke="var(--crater)" />
+      </g>
+    </svg>
+  ),
+  "solid-geometry": (
+    <svg viewBox="0 0 200 120" className="h-full w-full" aria-hidden>
+      <g stroke="var(--ink)" strokeWidth={1.3} strokeLinejoin="round">
+        <path d="m20 50 25-14 26 14-26 15Zm0 0v36l25 15V65m26-15v36l-26 15" fill="var(--leaf)" />
+        <path d="M83 48v39c0 14 40 14 40 0V48" fill="var(--moon)" />
+        <ellipse cx={103} cy={48} rx={20} ry={9} fill="var(--moon)" />
+        <path d="m138 91 22-57 22 57c-5 11-39 11-44 0Z" fill="var(--cheek)" />
+        <path d="M138 91c5-8 39-8 44 0" fill="none" strokeDasharray="2 3" />
+      </g>
+    </svg>
+  ),
   projection: (
     <svg viewBox="0 0 200 120" className="h-full w-full" aria-hidden>
       <g stroke="var(--crater)" strokeWidth={1.2} strokeLinejoin="round">

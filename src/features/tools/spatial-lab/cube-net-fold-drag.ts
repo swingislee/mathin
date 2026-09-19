@@ -9,6 +9,8 @@ export interface CubeNetFoldDrag {
   readonly pointerStart: CubeNetScreenPoint;
   readonly projectedStart: CubeNetScreenPoint;
   readonly initialAngle: number;
+  readonly minDegrees?: number;
+  readonly maxDegrees?: number;
   readonly samples: readonly { readonly degrees: number; readonly point: CubeNetScreenPoint }[];
 }
 export interface CubeNetPaperSelection {
@@ -76,13 +78,17 @@ export function beginCubeNetFoldDrag(
   const radial = { x: grabbed.x - pivot.x, y: grabbed.y - pivot.y, z: grabbed.z - pivot.z };
   if (Math.hypot(radial.x, radial.y, radial.z) < 0.05) return null;
   const tangent = { x: axis.y * radial.z - axis.z * radial.y, y: axis.z * radial.x - axis.x * radial.z, z: axis.x * radial.y - axis.y * radial.x };
+  const minDegrees = hinge.minDegrees ?? -90, maxDegrees = hinge.maxDegrees ?? 90;
+  if (!Number.isFinite(minDegrees) || !Number.isFinite(maxDegrees) || minDegrees < -180 || maxDegrees > 180 || minDegrees >= maxDegrees) return null;
+  // 保留整度采样手感，同时包含三棱柱随底面尺寸变化的非整数闭合角。
+  const degrees = [...new Set([minDegrees, ...Array.from({ length: Math.floor(maxDegrees) - Math.ceil(minDegrees) + 1 }, (_, index) => Math.ceil(minDegrees) + index), maxDegrees])];
   return {
     edgeId: hinge.edgeId, pointerStart: pointer, projectedStart: project(grabbed), initialAngle: angle,
-    samples: Array.from({ length: 181 }, (_, index) => {
-      const degrees = index - 90;
-      const radians = (degrees - angle) * Math.PI / 180 * hinge.direction;
+    minDegrees, maxDegrees,
+    samples: degrees.map((value) => {
+      const radians = (value - angle) * Math.PI / 180 * hinge.direction;
       const c = Math.cos(radians), s = Math.sin(radians);
-      return { degrees, point: project({ x: pivot.x + radial.x * c + tangent.x * s, y: pivot.y + radial.y * c + tangent.y * s, z: pivot.z + radial.z * c + tangent.z * s }) };
+      return { degrees: value, point: project({ x: pivot.x + radial.x * c + tangent.x * s, y: pivot.y + radial.y * c + tangent.y * s, z: pivot.z + radial.z * c + tangent.z * s }) };
     }),
   };
 }
@@ -103,8 +109,12 @@ export function updateCubeNetFoldDrag(drag: CubeNetFoldDrag, pointer: CubeNetScr
   return best;
 }
 
-export function finishCubeNetFoldDrag(angle: number): number {
+export function finishCubeNetFoldDrag(angle: number): number;
+export function finishCubeNetFoldDrag(angle: number, range: Pick<CubeNetFoldDrag, "minDegrees" | "maxDegrees">): number;
+export function finishCubeNetFoldDrag(angle: number, range?: Pick<CubeNetFoldDrag, "minDegrees" | "maxDegrees">): number {
+  const min = range?.minDegrees ?? -90, max = range?.maxDegrees ?? 90;
   if (Math.abs(angle) <= 4) return 0;
-  if (Math.abs(angle) >= 86) return Math.sign(angle) * 90;
-  return angle;
+  if (angle <= min + 4) return min;
+  if (angle >= max - 4) return max;
+  return Math.max(min, Math.min(max, angle));
 }

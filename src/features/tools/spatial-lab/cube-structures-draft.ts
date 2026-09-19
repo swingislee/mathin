@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CUBE_COLORS, CUBE_MARK_SHAPES, CUBE_STRUCTURES_DRAFT_VERSION, CUBE_STRUCTURES_LIMITS, cubeDisplayCollides, validateCubeSequence,
+import { CUBE_COLORS, CUBE_MARK_SHAPES, CUBE_STRUCTURES_DRAFT_VERSION, CUBE_STRUCTURES_ROTATION_DRAFT_VERSION, CUBE_STRUCTURES_LIMITS, cubeDisplayCollides, validateCubeSequence,
   type CubeHistory, type CubeOperation, type CubeStructureState } from "./cube-structures-contract";
 import type { CubeWorkbenchSession } from "./cube-structures-session";
 
@@ -29,19 +29,26 @@ const counter = z.number().int().min(1).max(Number.MAX_SAFE_INTEGER - 1);
 const groupName = z.string().trim().min(1).max(40);
 const opacity = z.number().min(0).max(1);
 
-export const cubeStructureStateSchema = z.object({
-  cubes: z.array(z.object({
+const legacyCubeSchema = z.object({
     id, position: coordinate, color,
     faces: z.object({ "x+": color.optional(), "x-": color.optional(), "y+": color.optional(), "y-": color.optional(), "z+": color.optional(), "z-": color.optional() }).strict(),
     displayOffset: offset.optional(), opacity: opacity.optional(),
     mark: z.object({ ...label, shape: z.enum(CUBE_MARK_SHAPES) }).strict().optional(),
     numberLabel: z.object({ ...label, value: z.number().int().min(1).max(9999) }).strict().optional(),
-  }).strict()).max(CUBE_STRUCTURES_LIMITS.cubes),
+  }).strict();
+const rotationLabel = { ...label, quarterTurns: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(), laneDirection: face.optional() };
+const currentCubeSchema = legacyCubeSchema.extend({
+  mark: z.object({ ...rotationLabel, shape: z.enum(CUBE_MARK_SHAPES) }).strict().optional(),
+  numberLabel: z.object({ ...rotationLabel, value: z.number().int().min(1).max(9999) }).strict().optional(),
+});
+const structureStateBaseSchema = z.object({
+  cubes: z.array(legacyCubeSchema).max(CUBE_STRUCTURES_LIMITS.cubes),
   hiddenCubeIds: ids,
   groups: z.array(z.object({ id, name: groupName, color, cubeIds: ids }).strict()).max(4096),
   origin: finitePoint.nullable(), axesVisible: z.boolean(), view, frame, nextCubeId: counter,
   nextNumber: z.number().int().min(1).max(10000), hiddenEdgesVisible: z.boolean(),
-}).strict().superRefine((state, context) => {
+}).strict();
+function validateStructureState(state: CubeStructureState, context: z.RefinementCtx) {
   const cubeIds = new Set(state.cubes.map((cube) => cube.id));
   const positions = new Set(state.cubes.map((cube) => `${cube.position.x},${cube.position.y},${cube.position.z}`));
   const numbers = state.cubes.flatMap((cube) => cube.numberLabel ? [cube.numberLabel.value] : []);
@@ -52,11 +59,19 @@ export const cubeStructureStateSchema = z.object({
     || numbers.length !== new Set(numbers).size || numbers.some((value) => value >= state.nextNumber)
     || state.cubes.some((cube) => /^cube-\d+$/.test(cube.id) && Number(cube.id.slice(5)) >= state.nextCubeId)
     || (state.cubes.length > 0 && state.origin === null)
+    || state.cubes.some((cube) => [cube.mark, cube.numberLabel].some((item) => item &&
+      ((item.laneDirection !== undefined && item.laneDirection[0] === item.direction[0])
+        || (item.placement !== "face" && (item.quarterTurns !== undefined || item.laneDirection !== undefined)))))
     || cubeDisplayCollides(state.cubes, state.cubes);
   if (invalid) context.addIssue({ code: "custom", message: "Invalid cube structure references or geometry" });
-}) satisfies z.ZodType<CubeStructureState>;
+}
 
-const operationSchema = z.discriminatedUnion("kind", [
+/** 原冻结内容保持原字节形态与字段边界，不添加默认旋转字段。 */
+export const legacyCubeStructureStateSchema = structureStateBaseSchema.superRefine(validateStructureState) satisfies z.ZodType<CubeStructureState>;
+export const cubeStructureStateSchema = structureStateBaseSchema.extend({ cubes: z.array(currentCubeSchema).max(CUBE_STRUCTURES_LIMITS.cubes) })
+  .superRefine(validateStructureState) satisfies z.ZodType<CubeStructureState>;
+
+const legacyOperationSchemas = [
   z.object({ kind: z.literal("build"), id, groupId: id.optional(), position: coordinate, displayOffset: offset.optional(), color }).strict(),
   z.object({ kind: z.literal("remove"), ids }).strict(),
   z.object({ kind: z.literal("color"), ids, color }).strict(),
@@ -79,16 +94,30 @@ const operationSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("hidden-edges"), visible: z.boolean() }).strict(),
   z.object({ kind: z.literal("axes"), visible: z.boolean() }).strict(),
   z.object({ kind: z.literal("view"), view, frame }).strict(),
+] as const;
+const legacyOperationSchema = z.discriminatedUnion("kind", legacyOperationSchemas);
+const rotationPivotNumber = z.number().min(-36).max(36).multipleOf(0.5);
+const operationSchema = z.discriminatedUnion("kind", [...legacyOperationSchemas,
+  z.object({ kind: z.literal("rotate"), ids: ids.refine((values) => values.length > 0), axis,
+    turn: z.union([z.literal(-1), z.literal(1)]), pivot: coordinate,
+    displayPivot: z.object({ x: rotationPivotNumber, y: rotationPivotNumber, z: rotationPivotNumber }).strict(),
+  }).strict(),
 ]) satisfies z.ZodType<CubeOperation>;
 
-export const cubeHistorySchema = z.object({
-  version: z.literal(CUBE_STRUCTURES_DRAFT_VERSION), initial: cubeStructureStateSchema,
-  operations: z.array(operationSchema).max(CUBE_STRUCTURES_LIMITS.steps), cursor: z.number().int().min(0),
-}).strict().superRefine((history, context) => {
+function validateHistory(history: CubeHistory, context: z.RefinementCtx) {
   if (history.cursor > history.operations.length || validateCubeSequence(history.initial, history.operations)) {
     context.addIssue({ code: "custom", message: "Invalid operation sequence" });
   }
-}) satisfies z.ZodType<CubeHistory>;
+}
+export const legacyCubeHistorySchema = z.object({
+  version: z.literal(CUBE_STRUCTURES_DRAFT_VERSION), initial: legacyCubeStructureStateSchema,
+  operations: z.array(legacyOperationSchema).max(CUBE_STRUCTURES_LIMITS.steps), cursor: z.number().int().min(0),
+}).strict().superRefine(validateHistory);
+export const currentCubeHistorySchema = z.object({
+  version: z.literal(CUBE_STRUCTURES_ROTATION_DRAFT_VERSION), initial: cubeStructureStateSchema,
+  operations: z.array(operationSchema).max(CUBE_STRUCTURES_LIMITS.steps), cursor: z.number().int().min(0),
+}).strict().superRefine(validateHistory);
+export const cubeHistorySchema = z.discriminatedUnion("version", [legacyCubeHistorySchema, currentCubeHistorySchema]) satisfies z.ZodType<CubeHistory>;
 
 export interface CubeDraftSnapshot {
   readonly version: typeof CUBE_SAVED_DRAFT_VERSION;
