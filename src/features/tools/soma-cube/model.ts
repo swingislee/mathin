@@ -71,8 +71,10 @@ export function somaDragPresentation(state: CubeStructureState, preview: CubeDra
   if (!id) return state;
   return { ...state, cubes: state.cubes.map((cube) => somaIdFromCell(cube.id) === id ? { ...cube, position: { ...cube.position, [preview.axis]: cube.position[preview.axis] + preview.distance } } : cube) };
 }
-export function somaRenderModel(state: CubeStructureState, snapshot: SomaSnapshot, label: string) {
+export function somaRenderModel(state: CubeStructureState, snapshot: SomaSnapshot, label: string, presentation: CubeStructureState = state) {
   const model = buildCubeStructureRenderModel({ ...state, frame: snapshot.frame, view: snapshot.view }, state.cubes.filter((cube) => somaIdFromCell(cube.id) === snapshot.selectedId).map((cube) => cube.id), label);
-  return { ...model, entityId: "soma-cube", cells: model.cells.map((cell) => ({ ...cell, materialToken: somaDefinition(somaIdFromCell(cell.key)!).color,
+  // 投影使用已确认的合法落位；拖动途中允许重叠，仅覆盖画布显示坐标。
+  const positions = new Map(presentation.cubes.map((cube) => [cube.id, cube.position]));
+  return { ...model, entityId: "soma-cube", cells: model.cells.map((cell) => ({ ...cell, ...positions.get(cell.key), materialToken: somaDefinition(somaIdFromCell(cell.key)!).color,
     emphasis: cell.emphasis ? { ...cell.emphasis, faceOpacity: 0 } : undefined })) };
 }

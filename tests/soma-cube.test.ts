@@ -69,6 +69,27 @@ describe("free choice and rigid manipulation", () => {
     expect(preview.cubes.filter((cube) => cube.id.startsWith("bao-6:")).map((cube) => cube.position)).toEqual(somaCells(moved.pieces[5]));
     expect(somaDrag(initial, { kind: "move", ids: ["bao-1:0", "bao-2:0"], axis: "x", distance: 1 })).toBeNull();
   });
+  it("renders overlapping drag previews without validating transient coordinates as a settled voxel set", () => {
+    const initial = createSomaInitial(), before = structuredClone(initial);
+    const state = somaCubeState(initial.pieces);
+    const settled = somaRenderModel(state, initial, "Soma");
+    const presentation = somaDragPresentation(state, {
+      axis: "x", distance: -3, valid: false,
+      positions: cubeDragPositions(state, ["bao-6:2"], "x", -3),
+    });
+    const rendered = somaRenderModel(state, initial, "Soma", presentation);
+    expect(rendered.cells).toHaveLength(27);
+    expect(new Set(rendered.cells.map((cell) => cell.key)).size).toBe(27);
+    expect(new Set(rendered.cells.map((cell) => `${cell.x},${cell.y},${cell.z}`)).size).toBeLessThan(27);
+    expect(rendered.cells.map(({ x, y, z }) => ({ x, y, z }))).toEqual(presentation.cubes.map((cube) => cube.position));
+    expect(rendered.projection).toEqual(settled.projection);
+    expect(rendered.cells.map((cell) => cell.materialToken)).toEqual(settled.cells.map((cell) => cell.materialToken));
+    expect(somaDrag(initial, { kind: "move", ids: ["bao-6:2"], axis: "x", distance: -3 })).toBeNull();
+    expect(initial).toEqual(before);
+    expect(somaRenderModel(state, initial, "Soma", somaDragPresentation(state, null))).toEqual(settled);
+    const moved = somaDrag(initial, { kind: "move", ids: ["bao-6:2"], axis: "y", distance: 2 })!;
+    expect(somaRenderModel(somaCubeState(moved.pieces), moved, "Soma").cells).toHaveLength(27);
+  });
   it("rejects overlaps and out-of-board moves while preserving the source", () => {
     const initial = createSomaInitial(), before = structuredClone(initial);
     expect(somaMove(initial, "bao-1", "x", 3)).toBeNull();

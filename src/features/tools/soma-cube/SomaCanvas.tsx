@@ -25,7 +25,7 @@ export default function SomaCanvas({ snapshot, messages, title, readOnly, axisSn
   const state = useMemo(() => somaCubeState(pieces), [pieces]);
   const [preview, setPreview] = useState<CubeDragPreview | null>(null);
   const presentation = useMemo(() => somaDragPresentation(state, preview), [state, preview]);
-  const model = useMemo(() => somaRenderModel(presentation, snapshot, title), [presentation, snapshot, title]);
+  const model = useMemo(() => somaRenderModel(state, snapshot, title, presentation), [state, presentation, snapshot, title]);
   const dragging = preview !== null;
   useEffect(() => { onDragging(dragging); }, [dragging, onDragging]);
   useEffect(() => () => onDragging(false), [onDragging]);
