@@ -40,6 +40,7 @@ export const tools: ToolMeta[] = [
   { id: "projection", no: 6, category: "geometry", grades: [1, 9], icon: PanelsTopLeft },
   { id: "solid-geometry", no: 7, category: "geometry", grades: [1, 9], icon: Box },
   { id: "solid-capacity", no: 8, category: "geometry", grades: [5, 9], icon: Cylinder },
+  { id: "soma-cube", no: 9, category: "geometry", grades: [1, 9], icon: Boxes },
 ];
 
 export function getTool(id: string): ToolMeta | undefined {

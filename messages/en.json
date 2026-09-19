@@ -494,6 +494,10 @@
       "solid-capacity": {
         "name": "Capacity comparison",
         "desc": "Configure a cylinder and cone, fill and transfer liquid, and compare capacities while watching their levels change."
+      },
+      "soma-cube": {
+        "name": "Soma cube",
+        "desc": "Observe the seven original Bao pieces. Choose any 1–7 pieces to move, rotate and build, and explore a 3×3×3 cube."
       }
     },
     "projection": {

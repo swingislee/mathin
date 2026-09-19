@@ -15,6 +15,8 @@ import { projectionTool } from "./fixtures/projection-tool";
 import type { ToolScene } from "@/features/tools/scenes/contract";
 import { createSolidGeometryInitial, solidGeometryToolSchema } from "@/features/tools/solid-geometry/solid-geometry-contract";
 import { createDefaultSolidCapacityInitial, solidCapacityToolSchema } from "@/features/tools/solid-capacity/solid-capacity-contract";
+import { createSomaInitial } from "@/features/tools/soma-cube/model";
+import { SOMA_VERSION, somaToolSchema } from "@/features/tools/soma-cube/contract";
 
 const workspace = vi.hoisted(() => ({ current: null as null | { initial?: unknown; payload?: unknown; preparation?: boolean; onSnapshot: (snapshot: unknown) => void } }));
 const library = vi.hoisted(() => ({ open: null as null | ((scene: ToolScene) => void) }));
@@ -30,6 +32,7 @@ afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi
 describe("shared starting-scene editor", () => {
   it.each([
     diceTool(),
+    somaToolSchema.parse({ toolId: "soma-cube", contentVersion: SOMA_VERSION, payload: { title: "Soma", initial: createSomaInitial() } }),
     projectionTool(),
     solidGeometryToolSchema.parse({ toolId: "solid-geometry", contentVersion: "solid-geometry-lesson-v1", payload: { title: "Solids", initial: createSolidGeometryInitial() } }),
     solidCapacityToolSchema.parse({ toolId: "solid-capacity", contentVersion: "solid-capacity-lesson-v1", payload: { title: "Capacity", initial: createDefaultSolidCapacityInitial() } }),
