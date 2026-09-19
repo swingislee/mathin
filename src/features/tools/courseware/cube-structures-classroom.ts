@@ -1,11 +1,11 @@
 import { z } from "zod";
-import { sha256HexSync } from "@/lib/sha256";
 import { CLASSROOM_TOOL_STATE_SYNC_V1, classroomInteractionPayloadWithinBudget } from "@/features/classroom/sync/interaction-provider";
 import { cubeHistorySchema } from "../spatial-lab/cube-structures-draft";
 import { cubeSnapshotHistory, type CubeWorkbenchSession } from "../spatial-lab/cube-structures-session";
 import type { CubeView } from "../spatial-lab/cube-structures-contract";
 import type { CubeCoursewarePayload } from "./cube-structures-content";
 import { CUBE_COURSEWARE_CONTENT_VERSION } from "./registry";
+import { toolClassroomEventSchema, toolSceneInstanceKey, toolSceneOriginHash } from "../scenes/classroom-envelope";
 
 export interface CubeClassroomSnapshot {
   readonly session: CubeWorkbenchSession;
@@ -14,8 +14,6 @@ export interface CubeClassroomSnapshot {
   readonly cameraRevision: number;
 }
 
-const identifier = z.string().min(1).max(128).regex(/^[a-zA-Z0-9_-]+$/)
-  .refine((value) => !["__proto__", "constructor", "prototype"].includes(value));
 const sessionSchema = z.object({
   work: cubeHistorySchema, lesson: cubeHistorySchema.nullable(),
   recording: z.enum(["off", "recording", "paused"]), preview: z.number().int().min(0).nullable(),
@@ -27,14 +25,9 @@ const sessionSchema = z.object({
   }
 });
 
-export const cubeClassroomEventSchema = z.object({
-  schema: z.literal("mathin-classroom-tool-state"), version: z.literal(1),
-  pageId: identifier, docId: identifier, instanceId: identifier,
-  originHash: z.string().regex(/^[a-f0-9]{64}$/),
-  toolId: z.literal("spatial-lab"), contentVersion: z.literal(CUBE_COURSEWARE_CONTENT_VERSION),
-  state: z.object({ session: sessionSchema, view: z.enum(["angle", "front", "left", "right", "top"]).nullable(),
-    cameraRevision: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER - 1) }).strict(),
-}).strict();
+export const cubeClassroomEventSchema = toolClassroomEventSchema("spatial-lab", CUBE_COURSEWARE_CONTENT_VERSION,
+  z.object({ session: sessionSchema, view: z.enum(["angle", "front", "left", "right", "top"]).nullable(),
+    cameraRevision: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER - 1) }).strict());
 
 export type ClassroomToolStatePayload = z.infer<typeof cubeClassroomEventSchema>;
 export interface ClassroomToolStateEntry {
@@ -58,21 +51,8 @@ export function cubeCoursewareInitialSession(payload: CubeCoursewarePayload): Cu
     lesson: payload.history.operations.length ? payload.history : null, recording: "off", preview: null };
 }
 
-function canonical(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(canonical);
-  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
-    .map(([key, item]) => [key, canonical(item)]));
-  return value;
-}
-
-/** 固定副本变化时使用新的状态命名空间；兼容局域网 HTTP，不依赖安全上下文。 */
-export function cubeCoursewareOriginHash(payload: CubeCoursewarePayload): string {
-  return sha256HexSync(new TextEncoder().encode(JSON.stringify(canonical(payload))));
-}
-
-export function classroomToolInstanceKey(docId: string, instanceId: string, originHash: string): string {
-  return `${docId}:${instanceId}:${originHash}`;
-}
+export const cubeCoursewareOriginHash = toolSceneOriginHash;
+export const classroomToolInstanceKey = toolSceneInstanceKey;
 
 /** 收发两端使用同一严格合同；字节预算先于昂贵的历史重放校验。 */
 export function parseClassroomToolState(value: unknown): ClassroomToolStatePayload | null {

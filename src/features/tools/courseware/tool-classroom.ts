@@ -1,18 +1,18 @@
 import { z } from "zod";
-import { sha256HexSync } from "@/lib/sha256";
 import { CLASSROOM_TOOL_STATE_SYNC_V1, classroomInteractionPayloadWithinBudget } from "@/features/classroom/sync/interaction-provider";
 import { cubeClassroomEventSchema, type CubeClassroomSnapshot } from "./cube-structures-classroom";
 import { diceWorkbenchStateSchema, netWorkbenchStateSchema, workbenchStateSchema } from "./workbench-classroom-contract";
 import { fractionSceneSchema, motionSceneSchema, FRACTION_COURSEWARE_VERSION, MOTION_COURSEWARE_VERSION } from "./numeric-teaching-content";
 import { CUBE_NET_COURSEWARE_VERSION, DICE_COURSEWARE_VERSION } from "./registry";
+import { toolClassroomEventSchema, toolSceneInstanceKey, toolSceneOriginHash } from "../scenes/classroom-envelope";
 
 // 工具只在这里登记严格状态/动作合同。传输、课堂入口与实例状态容器不再识别具体工具。
 export const classroomToolEventSchema = z.discriminatedUnion("contentVersion", [
   cubeClassroomEventSchema,
-  cubeClassroomEventSchema.extend({ contentVersion: z.literal(CUBE_NET_COURSEWARE_VERSION), state: netWorkbenchStateSchema }),
-  cubeClassroomEventSchema.extend({ contentVersion: z.literal(DICE_COURSEWARE_VERSION), state: diceWorkbenchStateSchema }),
-  cubeClassroomEventSchema.extend({ toolId: z.literal("fraction-line"), contentVersion: z.literal(FRACTION_COURSEWARE_VERSION), state: workbenchStateSchema(fractionSceneSchema, z.never()) }),
-  cubeClassroomEventSchema.extend({ toolId: z.literal("motion-lab"), contentVersion: z.literal(MOTION_COURSEWARE_VERSION), state: workbenchStateSchema(motionSceneSchema, z.never()) }),
+  toolClassroomEventSchema("spatial-lab", CUBE_NET_COURSEWARE_VERSION, netWorkbenchStateSchema),
+  toolClassroomEventSchema("spatial-lab", DICE_COURSEWARE_VERSION, diceWorkbenchStateSchema),
+  toolClassroomEventSchema("fraction-line", FRACTION_COURSEWARE_VERSION, workbenchStateSchema(fractionSceneSchema, z.never())),
+  toolClassroomEventSchema("motion-lab", MOTION_COURSEWARE_VERSION, workbenchStateSchema(motionSceneSchema, z.never())),
 ]);
 export type ClassroomToolStatePayload = z.infer<typeof classroomToolEventSchema>;
 export type ClassroomToolUpdate = ClassroomToolStatePayload extends infer P ? P extends ClassroomToolStatePayload
@@ -31,13 +31,8 @@ export interface CoursewareToolRuntime {
 export function hasClassroomToolAdapter(tool: { toolId: string; contentVersion: string }) {
   return classroomToolEventSchema.options.some((schema) => schema.shape.toolId.value === tool.toolId && schema.shape.contentVersion.value === tool.contentVersion);
 }
-function canonical(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(canonical);
-  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([key, item]) => [key, canonical(item)]));
-  return value;
-}
-export function coursewareToolOriginHash(payload: unknown) { return sha256HexSync(new TextEncoder().encode(JSON.stringify(canonical(payload)))); }
-export function classroomToolInstanceKey(docId: string, instanceId: string, originHash: string) { return `${docId}:${instanceId}:${originHash}`; }
+export const coursewareToolOriginHash = toolSceneOriginHash;
+export const classroomToolInstanceKey = toolSceneInstanceKey;
 export function parseClassroomToolState(value: unknown): ClassroomToolStatePayload | null {
   if (!classroomInteractionPayloadWithinBudget(CLASSROOM_TOOL_STATE_SYNC_V1, value)) return null;
   const result = classroomToolEventSchema.safeParse(value);
