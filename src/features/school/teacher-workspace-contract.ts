@@ -1,5 +1,5 @@
 export const TEACHER_WORKSPACE_DEFAULTS = {
-  students: "/dashboard/students?stage=awaiting_renewal&scope=mine",
+  students: "/dashboard/students?scope=mine&groupBy=classroom",
   followups: "/dashboard/classes",
 } as const;
 export type TeacherWorkspace = keyof typeof TEACHER_WORKSPACE_DEFAULTS;
@@ -7,15 +7,17 @@ export type TeacherWorkspace = keyof typeof TEACHER_WORKSPACE_DEFAULTS;
 const FOLLOWUP_PAGES = ["leads", "communication", "assessments", "classes", "renewals"];
 const QUERY_KEYS = new Set(["stage", "scope", "population", "reason", "detail", "q", "page", "pageSize", "fields",
   "tab", "state", "view", "status", "assignment", "queue", "cycle", "term"]);
+const DIRECTORY_QUERY_KEYS = new Set(["stage", "scope", "q", "page", "pageSize", "groupBy", "group"]);
 
-/** 两个入口分别记住列表工作面，临时定位与对象详情继续由显式链接打开。 */
+/** 名录与工作列表分别记录筛选，临时选定名单和对象详情由显式链接打开。 */
 export function teacherWorkspaceLocation(pathname: string, query: string): { workspace: TeacherWorkspace; href: string } | null {
   const workspace = pathname === "/dashboard/students" ? "students"
     : FOLLOWUP_PAGES.some(page => pathname === `/dashboard/${page}`) ? "followups" : null;
   if (!workspace || query.length > 20_000) return null;
   const params = new URLSearchParams(query);
-  for (const key of [...params.keys()]) if (!QUERY_KEYS.has(key)) params.delete(key);
-  // 学生裸入口在读取个人偏好前保持空白，避免覆盖上次位置。
+  if (params.has("students") || params.get("tab") === "recycle") return null;
+  const allowed = workspace === "students" ? DIRECTORY_QUERY_KEYS : QUERY_KEYS;
+  for (const key of [...params.keys()]) if (!allowed.has(key)) params.delete(key);
   if (workspace === "students" && !params.size) return null;
   return { workspace, href: `${pathname}${params.size ? `?${params}` : ""}` };
 }

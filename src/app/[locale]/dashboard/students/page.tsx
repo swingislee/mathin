@@ -18,13 +18,11 @@ import { FilterBar, FilterBarMore, FilterBarReset, FilterBarSubmit, FilterSearch
 import { NewStudentDialog } from "@/features/school/NewStudentDialog";
 import { StatusStrip, type StatusStripItem } from "@/features/school/dashboard-page";
 import { StudentsTable } from "@/features/school/StudentsTable";
-import { StudentStagePage } from "@/features/school/StudentStagePage";
+import { StudentDirectoryPage } from "@/features/school/StudentDirectoryPage";
 import { FOLLOW_UP_STATUSES, listStudents, parseStudentFilters, STUDENT_STATUSES } from "@/features/school/students";
 import { Link } from "@/i18n/navigation";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-import { isTeacherWorkspaceViewer } from "@/features/school/teacher-workspace";
-import { TeacherWorkspaceEntry } from "@/features/school/TeacherWorkspaceMemory";
 
 async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
   try {
@@ -44,9 +42,6 @@ export default async function StudentsPage({
   const [{ locale }, rawSearchParams] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
   const user = await requireAnyPerm(locale, ["student.view.all", "student.view.assigned"]);
-  if (!Object.keys(rawSearchParams).length && await isTeacherWorkspaceViewer(user.id)) {
-    return <TeacherWorkspaceEntry workspace="students" />;
-  }
   const t = await getTranslations("school.students");
   const commonT = await getTranslations("common");
   const schoolT = await getTranslations("school");
@@ -56,7 +51,7 @@ export default async function StudentsPage({
   const canDelete = perms.has("student.delete");
   const filters = parseStudentFilters(rawSearchParams);
   if (!filters.recycle) {
-    return <StudentStagePage locale={locale} currentUserId={user.id} permissions={perms} searchParams={rawSearchParams} />;
+    return <StudentDirectoryPage locale={locale} currentUserId={user.id} permissions={perms} searchParams={rawSearchParams} />;
   }
   const emptyStats: StaffStats = { enrolledCount: 0, leadCount: 0, weekSessionCount: 0, overdueFollowUpCount: 0 };
   const [{ students, count }, stats]: [Awaited<ReturnType<typeof listStudents>>, StaffStats] = await Promise.all([

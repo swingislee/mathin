@@ -26,14 +26,14 @@ const row: StudentStageRow = { key: `lead:${id}`, studentId: null, leadId: id, n
   score: null, assessmentBand: null, assessmentAt: null, registrationId: null, courseTitle: "", termName: "", courseId: null, termId: null,
   createdAt: "2026-09-07T12:00:00Z", canWrite: true, canContact: true, invitation: null };
 let root: Root, container: HTMLDivElement;
-async function render(stage: StudentStage = "awaiting_first_contact", overrides: Partial<StudentStageRow> = {}, presentation: "students" | "communication" = "students") {
+async function render(stage: StudentStage = "awaiting_first_contact", overrides: Partial<StudentStageRow> = {}, presentation: "students" | "communication" = "students", workspace: Partial<ComponentProps<typeof StudentStageWorkspace>> = {}) {
   const context = { locale: "zh", timeZone: "Asia/Shanghai", now: Date.parse(row.createdAt) };
   const fieldPage = followupFieldPage([{ ...row, stage, ...overrides }], studentStageTableFields("zh", stage, "owner"), undefined, context, 1, 50);
   const props: ComponentProps<typeof StudentStageWorkspace> = {
     presentation,
     data: { ...fieldPage, counts: { [stage]: 1 } },
     filters: { stage, scope: "all", detail: "", q: "", page: 1, pageSize: 50 }, locale: "zh", currentUserId: "owner", canEnroll: false,
-    canAssign: true, assignees: [{ userId: "next-owner", displayName: "新负责人" }], actions: null, timeZone: "Asia/Shanghai",
+    canAssign: true, assignees: [{ userId: "next-owner", displayName: "新负责人" }], actions: null, timeZone: "Asia/Shanghai", ...workspace,
   };
   const provider = { locale: "zh", messages: zh, timeZone: "Asia/Shanghai", children: createElement(StudentStageWorkspace, props) };
   await act(async () => root.render(createElement(NextIntlClientProvider, provider)));
@@ -49,6 +49,29 @@ beforeEach(() => {
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals(); });
 
 describe("student stage workspace wiring", () => {
+  it("keeps a chosen mixed-stage list in order through save-and-next without reopening the full population", async () => {
+    vi.stubGlobal("crypto", { randomUUID: undefined, getRandomValues: globalThis.crypto.getRandomValues.bind(globalThis.crypto) });
+    const first = { ...row, key: `student:${id}`, studentId: id, leadId: null };
+    const second = { ...first, key: "student:00000000-0000-4000-8000-000000000013", studentId: "00000000-0000-4000-8000-000000000013", name: "下一位学生", stage: "awaiting_renewal" as const, detail: "enrolled" };
+    const savedSubject = { ...first, stage: "awaiting_assessment", detail: "not_booked" };
+    actions.save.mockResolvedValue({ ok: true, data: { subject: savedSubject, savedAt: row.createdAt, opportunityId: null, enrollmentId: null } });
+    await render("awaiting_enrollment", {}, "communication", { canAssign: false, contactSelection: { requestedCount: 2 },
+      data: { rows: [first, second], count: 2, page: 1, totalPages: 1, pageSize: 100, counts: {} } });
+    expect(container.querySelector("h1")?.textContent).toBe("选定学生 · 2");
+    expect(container.querySelector('[data-dashboard-search]')).toBeNull();
+    expect(container.querySelector('a[href^="/dashboard/communication?stage="]')).toBeNull();
+    const summary = container.querySelector<HTMLElement>("[data-student-stage-row]")!;
+    await act(async () => summary.dispatchEvent(new KeyboardEvent("keydown", { key: "2", bubbles: true })));
+    const saveNext = [...container.querySelectorAll<HTMLButtonElement>("[data-student-stage-entry] button")].find(button => button.textContent?.includes("保存并下一位"))!;
+    expect(saveNext).toBeTruthy();
+    await act(async () => saveNext.click());
+    expect(actions.save).toHaveBeenCalledTimes(1);
+    const retained = [...container.querySelectorAll<HTMLElement>("[data-student-stage-row]")];
+    expect(retained.map(element => element.dataset.studentStageRow)).toEqual([first.key, second.key]);
+    expect(retained[0].dataset.studentStage).toBe("awaiting_assessment");
+    expect(retained[1].getAttribute("aria-expanded")).toBe("true");
+    expect(actions.replace).not.toHaveBeenCalled();
+  });
   it("uses all five communication tabs and expands the stage-specific form without changing student classification", async () => {
     await render("awaiting_assessment", { studentId: id, detail: "not_booked" }, "communication");
     const stageLinks = [...container.querySelectorAll<HTMLAnchorElement>('a[href^="/dashboard/communication?stage="]')];

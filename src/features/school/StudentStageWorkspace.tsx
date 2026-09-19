@@ -33,20 +33,23 @@ import { PossibleDuplicateBadge } from "./PossibleDuplicateBadge";
 import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
 import { communicationEntryMode, workEntryMessages } from "./work-entry-contract";
 import { studentStageMessages } from "./student-stage-messages";
+import { studentDirectoryMessages } from "./student-directory-messages";
 import { defaultStudentEntryMode, replaceSavedStudent, STUDENT_RECONTACT_REASONS, STUDENT_STAGE_TABS, studentRecordTableStage, studentStageHref,
   type StudentEntryMode, type StudentStageData, type StudentStageFilters, type StudentStageRow, type StudentStageSaved, type StudentStageAssignment, type StudentStageAssignee } from "./student-stage-contract";
 
 const Entry = dynamic(() => import("./StudentStageEntryLoader").then(m => m.StudentStageEntryLoader));
 
-export function StudentStageWorkspace({ data, filters, locale, currentUserId, canEnroll, canAssign, assignees, actions, timeZone, now, canPlan = false, canPlanOthers = false, collaboration, presentation = "students", firstContactContent }: {
+export function StudentStageWorkspace({ data, filters, locale, currentUserId, canEnroll, canAssign, assignees, actions, timeZone, now, canPlan = false, canPlanOthers = false, collaboration, presentation = "students", firstContactContent, contactSelection }: {
   data: StudentStageData; filters: StudentStageFilters; locale: string; currentUserId: string;
   canEnroll: boolean; actions: ReactNode; timeZone: string; now?: number;
   canAssign: boolean; assignees: StudentStageAssignee[];
   canPlan?: boolean; canPlanOthers?: boolean;
   collaboration?: SchoolCollaborationSettings;
   presentation?: "students" | "communication"; firstContactContent?: ReactNode;
+  contactSelection?: { requestedCount: number };
 }) {
   const m = studentStageMessages(locale);
+  const directoryM = studentDirectoryMessages(locale);
   const workM = workEntryMessages(locale);
   const baseHref = presentation === "communication" ? "/dashboard/communication" : "/dashboard/students";
   const entryMode = presentation === "communication" ? communicationEntryMode : defaultStudentEntryMode;
@@ -121,9 +124,9 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
     setOutcomeRequest(null);
     window.dispatchEvent(new Event(STUDENT_360_REFRESH_EVENT)); router.refresh();
   };
-  return <DashboardPage title={presentation === "communication" ? workM.communication : m.title} density="compact"
+  return <DashboardPage title={contactSelection ? `${directoryM.selectionTitle} · ${data.count}` : presentation === "communication" ? workM.communication : m.title} density="compact"
     commandPanel={<FollowupCommandPanel>
-      <DashboardCommandState>{recontact ? <DashboardCommandTabs ariaLabel={m.recontactPopulation} activeValue={filters.reason ?? "unreachable"} activeTone="accent"
+      {!contactSelection ? <><DashboardCommandState>{recontact ? <DashboardCommandTabs ariaLabel={m.recontactPopulation} activeValue={filters.reason ?? "unreachable"} activeTone="accent"
         items={STUDENT_RECONTACT_REASONS.map(reason => ({ value: reason, label: m.recontactReasons[reason], badge: data.reasonCounts?.[reason] ?? 0,
           href: stageHref(currentFilters, { reason, page: 1, fields: acrossStages, detail: "" }) }))} />
         : <DashboardCommandTabs ariaLabel={m.title} activeValue={filters.stage} activeTone="accent"
@@ -136,7 +139,7 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
         event.preventDefault(); const form = new FormData(event.currentTarget); navigate({ q: String(form.get("q") ?? "").trim(), detail: "" });
       }}><FilterSearchInput name="q" defaultValue={filters.q} placeholder={m.search} aria-label={m.search} disabled={busy} />
         {filters.q ? <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => navigate({ q: "", detail: "" })}>{studentT("reset")}</Button> : null}
-      </FilterBar></DashboardCommandFilters>
+      </FilterBar></DashboardCommandFilters></> : null}
       <DashboardCommandActions>
         {recontact && canPlan && !selectedRows.length ? <Button size="sm" variant="secondary" disabled={busy || !selectableRows.length} onClick={() => setSelectedKeys(new Set(selectableRows.slice(0, 20).map(row => row.key)))}>{m.pickTwenty}</Button> : null}
         {canSelect && selectedRows.length ? <><span className="text-xs text-muted">{m.selected} {selectedRows.length}</span>
@@ -148,9 +151,10 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
         {actions}
       </DashboardCommandActions>
     </FollowupCommandPanel>}
-    summary={<p className="text-xs text-muted">{recontact ? m.recontactHint : filters.q ? m.searchHint : filters.population === "records" ? m.recordsHint : m.workHint}
-      {filters.stage === "former_student" && !filters.q ? ` ${m.formerHint}` : ""}</p>}
-    footer={<LeadPoolPagination baseHref={baseHref} currentPage={data.page} totalPages={data.totalPages} totalCount={data.count}
+    summary={<p className="text-xs text-muted">{contactSelection ? directoryM.selectionHint : recontact ? m.recontactHint : filters.q ? m.searchHint : filters.population === "records" ? m.recordsHint : m.workHint}
+      {contactSelection && data.count < contactSelection.requestedCount ? ` ${directoryM.unavailable}` : ""}
+      {!contactSelection && filters.stage === "former_student" && !filters.q ? ` ${m.formerHint}` : ""}</p>}
+    footer={contactSelection ? undefined : <LeadPoolPagination baseHref={baseHref} currentPage={data.page} totalPages={data.totalPages} totalCount={data.count}
       pageSize={data.pageSize} scope={filters.scope} q={filters.q} extraQuery={{ stage: filters.stage, fields: currentFilters.fields, population: filters.population ?? "work", reason: filters.reason ?? "" }}
       disabled={busy} onPageChange={(page, pageSize) => navigate({ page, pageSize })} />}>
     {firstContactContent ?? <SchoolSupportTableEntry workspace="students" enabled={canPlan} columns={[...(canSelect?["blank" as const]:[]),"name","phone","blank","blank",...(showBackground?["blank" as const,"blank" as const]:[]),"note","blank"]}><DashboardTableShell data-followup-workbench aria-busy={server?.pending}>
@@ -173,7 +177,7 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
           const enrollmentLabel = row.stage === "awaiting_renewal" ? m.renewal : row.stage === "former_student" ? m.reactivate : m.enrollment;
           const grade = row.grade ? studentT("grade", { grade: row.grade }) : row.gradeText || "—";
           const situation = m.details[row.detail] ?? row.detail;
-          const showStage = recontact || Boolean(filters.q) || row.stage !== filters.stage;
+          const showStage = Boolean(contactSelection) || recontact || Boolean(filters.q) || row.stage !== filters.stage;
           const learning = [row.assessmentBand?.toUpperCase().replaceAll("_PLUS", "+"), row.score !== null ? String(row.score) : null,
             row.learningBand ? `${m.learningBand} ${row.learningBand}` : null].filter(Boolean).join(" · ");
           const background = row.assessmentSource === "class_band" ? `${m.classBandReference} · ${learning || row.classBandLabel}`

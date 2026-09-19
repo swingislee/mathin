@@ -27,16 +27,16 @@ describe("teacher workspace entry memory", () => {
   });
   afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.restoreAllMocks(); });
 
-  it("opens renewal-stage students and class placement on the two first visits", async () => {
+  it("opens the student directory and class placement on the two first visits", async () => {
     await render(enter("students"));
-    expect(navigation.router.replace).toHaveBeenLastCalledWith("/dashboard/students?stage=awaiting_renewal&scope=mine");
+    expect(navigation.router.replace).toHaveBeenLastCalledWith("/dashboard/students?scope=mine&groupBy=classroom");
     await render(enter("followups"));
     expect(navigation.router.replace).toHaveBeenLastCalledWith("/dashboard/classes");
   });
 
-  it("keeps the last student stage, page and field filters separate from the support worksheet", async () => {
+  it("keeps directory grouping and page separate from the support worksheet", async () => {
     navigation.pathname = "/dashboard/students";
-    navigation.query = new URLSearchParams({ stage: "awaiting_assessment", scope: "mine", page: "3", fields: '{"sort":null}' }).toString();
+    navigation.query = new URLSearchParams({ stage: "awaiting_assessment", scope: "mine", page: "3", groupBy: "classroom", group: "class-a" }).toString();
     const studentsHref = `${navigation.pathname}?${navigation.query}`;
     await render(remember());
     navigation.pathname = "/dashboard/renewals"; navigation.query = "cycle=cycle-a&state=current";
@@ -78,5 +78,8 @@ describe("teacher workspace entry memory", () => {
     }
     expect(teacherWorkspaceLocation("/dashboard/students/student-a", "tab=history")).toBeNull();
     expect(teacherWorkspaceLocation("/dashboard/followups", "")).toBeNull();
+    expect(teacherWorkspaceLocation("/dashboard/communication", "students=temporary-list&returnTo=directory")).toBeNull();
+    expect(teacherWorkspaceLocation("/dashboard/students", "tab=recycle")).toBeNull();
+    expect(teacherWorkspaceLocation("/dashboard/students", "scope=mine&population=work&fields=old&groupBy=grade")?.href).toBe("/dashboard/students?scope=mine&groupBy=grade");
   });
 });
