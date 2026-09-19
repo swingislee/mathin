@@ -14,6 +14,8 @@ import { CUBE_AXIS_COLORS, CUBE_COLORS, type CubeFrame } from "../spatial-lab/cu
 import type { SolidGeometryInitial } from "./solid-geometry-contract";
 import { SolidGeometryScene, type SolidGeometrySceneProps } from "./SolidGeometryScene";
 import { moveSolidByDrag, solidDragState } from "./solid-geometry-drag";
+import { SolidSectionHandles } from "../solid-sections/SolidSectionHandles";
+import type { SolidSectionSettings } from "../solid-sections/solid-sections-contract";
 
 const ignoreTransition = () => {};
 const ignoreRaycast = () => null;
@@ -26,6 +28,9 @@ export interface SolidGeometryCanvasProps extends SolidGeometrySceneProps {
   state: SolidGeometryInitial; frame: CubeFrame; cameraRevision: number; axisSnap: boolean; moveSnap: boolean;
   navigationMode: "orbit" | "pan" | "move"; moveAxis: Axis; onMoveAxis: (axis: Axis) => void;
   onMove: (operation: CubeMoveOperation) => void; onDragging: (dragging: boolean) => void; fallback: string;
+  sectionEditable?: boolean; sectionSettings?: SolidSectionSettings;
+  onSectionPreview?: (settings: SolidSectionSettings | null) => void; onSectionCommit?: (settings: SolidSectionSettings) => void;
+  onSectionDragging?: (dragging: boolean) => void;
 }
 function Contents(props: SolidGeometryCanvasProps) {
   const [preview, setPreview] = useState<CubeDragPreview | null>(null);
@@ -37,6 +42,7 @@ function Contents(props: SolidGeometryCanvasProps) {
   const dragPresentation = useMemo(() => solidDragState(displayed), [displayed]);
   const bookmark = cubeWorkbenchCamera(props.frame, props.state.view === "bottom" ? "top" : props.state.view, "solid-geometry");
   const camera = props.state.view === "bottom" ? { ...bookmark, position: { ...props.frame.center, y: props.frame.center.y - props.frame.radius * 4 }, up: { x: 0, y: 0, z: 1 } } : bookmark;
+  const sectionEntity = props.state.entities.find((entity) => entity.id === props.selectedId);
   return <>
     <SpatialCameraRig bookmark={camera} radius={props.frame.radius} requestKey={props.cameraRevision} interactive={!props.readOnly}
       navigationMode={props.navigationMode === "pan" ? "pan" : "orbit"} axisSnapEnabled={props.axisSnap} onTransitionStateChange={ignoreTransition} />
@@ -44,6 +50,8 @@ function Contents(props: SolidGeometryCanvasProps) {
     {props.state.grid && <gridHelper args={[24, 24, CUBE_COLORS[5], CUBE_COLORS[5]]} raycast={ignoreRaycast} />}
     {props.state.axes && <group><axesHelper args={[3]} raycast={ignoreRaycast} />{(["x", "y", "z"] as const).map((axis) => <Html key={axis} center position={axis === "x" ? [3.2, 0, 0] : axis === "y" ? [0, 3.2, 0] : [0, 0, 3.2]} style={{ pointerEvents: "none" }}><span className="text-xs" style={{ color: CUBE_AXIS_COLORS[axis] }}>{axis.toUpperCase()}</span></Html>)}</group>}
     <SolidGeometryScene {...props} entities={displayed} readOnly={props.readOnly || preview !== null} />
+    {props.onSectionCommit && <SolidSectionHandles interaction={props.sectionEditable && !props.readOnly && sectionEntity ? { entity: sectionEntity, settings: props.state.section, onCommit: props.onSectionCommit } : null}
+      displayed={props.sectionSettings ?? props.state.section} locale={props.locale ?? "zh"} onPreview={props.onSectionPreview ?? ignoreTransition} onDragging={props.onSectionDragging ?? ignoreTransition} />}
     {props.navigationMode === "move" && !props.readOnly && props.selectedId && <CubeMoveHandles presentation={dragPresentation} preview={preview} onPreview={setPreview}
       interaction={{ state: dragState, ids: [props.selectedId], scopeIds: props.state.entities.map((entity) => entity.id), axis: props.moveAxis, kind: "display-move", snapToGrid: props.moveSnap,
         isValidOperation: (operation) => moveSolidByDrag(props.state.entities, operation) !== null, onAxisChange: props.onMoveAxis,

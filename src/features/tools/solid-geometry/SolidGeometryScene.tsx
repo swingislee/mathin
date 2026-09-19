@@ -20,6 +20,7 @@ export interface SolidGeometrySceneProps {
   onPick?: (entityId: string, feature: SolidFeatureSelection | null) => void;
   renderScene?: (context: SolidSceneContext) => ReactNode;
   section?: SolidSectionFrame;
+  locale?: string;
 }
 function faceGeometry(face: SolidFace) {
   const geometry = new BufferGeometry(), points = face.vertices;
@@ -77,7 +78,7 @@ function SolidObject({ entity, selected, feature, mode, readOnly, onPick, clippi
   </group>;
 }
 /** 同一实体渲染器在互补半空间中复用；移去一侧仅改变显示透明度，不修改备课实体。 */
-function SectionedSolidObject({ frame, ...props }: Parameters<typeof SolidObject>[0] & { frame: SolidSectionFrame }) {
+function SectionedSolidObject({ frame, locale, ...props }: Parameters<typeof SolidObject>[0] & { frame: SolidSectionFrame; locale: string }) {
   const plane = useMemo(() => solidSectionPlane(props.entity, frame.normal, frame.offset), [props.entity, frame.normal, frame.offset]);
   const clips = useMemo(() => {
     const positive = new Plane().setFromNormalAndCoplanarPoint(new Vector3(...tuple(plane.normal)), new Vector3(...tuple(plane.origin)));
@@ -86,15 +87,15 @@ function SectionedSolidObject({ frame, ...props }: Parameters<typeof SolidObject
   return <>
     <SolidObject {...props} clippingPlanes={clips.positive} opacityFactor={frame.positiveOpacity} />
     <SolidObject {...props} clippingPlanes={clips.negative} opacityFactor={frame.negativeOpacity} />
-    <SolidSectionOverlay entity={props.entity} plane={plane} frame={frame} />
+    <SolidSectionOverlay entity={props.entity} plane={plane} frame={frame} locale={locale} />
   </>;
 }
 /** 可嵌入原有 3D 舞台；扩展读取同一动画展示帧，截面等不会先跳到下一组尺寸。 */
-export function SolidGeometryScene({ entities, selectedId, feature = null, pickMode = "object", readOnly = false, onPick, renderScene, section }: SolidGeometrySceneProps) {
+export function SolidGeometryScene({ entities, selectedId, feature = null, pickMode = "object", readOnly = false, onPick, renderScene, section, locale = "zh" }: SolidGeometrySceneProps) {
   return <>{entities.map((entity) => {
     const props = { entity, selected: selectedId === entity.id, feature: feature?.entityId === entity.id ? feature : null, mode: pickMode, readOnly, onPick };
     return selectedId === entity.id && section && solidSectionVisible(section) && supportsSolidSection(entity.kind)
-      ? <SectionedSolidObject key={entity.id} {...props} frame={section} /> : <SolidObject key={entity.id} {...props} />;
+      ? <SectionedSolidObject key={entity.id} {...props} selected={false} frame={section} locale={locale} /> : <SolidObject key={entity.id} {...props} />;
   })}
     {renderScene?.({ entities, selected: entities.find((entity) => entity.id === selectedId) ?? null })}
   </>;

@@ -20,9 +20,11 @@ export function sectionUnit(vector: SolidVector): SolidVector {
   return sectionScale(vector, 1 / length);
 }
 export function sectionPlaneBasis(normal: SolidVector) {
-  const n = sectionUnit(normal), reference = Math.abs(n.y) < 0.9 ? { x: 0, y: 1, z: 0 } : { x: 1, y: 0, z: 0 };
-  const u = sectionUnit(sectionCross(reference, n));
-  return { u, v: sectionCross(n, u), normal: n };
+  const n = sectionUnit(normal);
+  // 连续旋转基底，避免倾斜经过旧参考轴阈值时，切平面与正视图突然转过 90°。
+  if (n.z < -0.999999) return { u: { x: 0, y: -1, z: 0 }, v: { x: -1, y: 0, z: 0 }, normal: n };
+  const a = 1 / (1 + n.z), b = -n.x * n.y * a;
+  return { u: { x: 1 - n.x * n.x * a, y: b, z: -n.x }, v: { x: b, y: 1 - n.y * n.y * a, z: -n.y }, normal: n };
 }
 export function solidSectionNormal(settings: Pick<SolidSectionSettings, "axis" | "tiltA" | "tiltB">): SolidVector {
   const radians = Math.PI / 180, rotation = { x: 0, y: 0, z: 0 };
@@ -82,8 +84,11 @@ export function intersectSolidSection(entity: SolidEntity, plane: SolidSectionPl
 }
 export function solidSectionPlaneCorners(entity: SolidEntity, plane: SolidSectionPlane): SolidVector[] {
   const { u, v } = sectionPlaneBasis(plane.normal);
-  const radius = Math.max(...getSolidMeshData(entity).vertices.map((point) => Math.hypot(point.x, point.y, point.z))) * 1.12;
+  const radius = solidSectionGuideRadius(entity);
   return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => sectionAdd(plane.origin, sectionAdd(sectionScale(u, radius * a), sectionScale(v, radius * b))));
+}
+export function solidSectionGuideRadius(entity: SolidEntity): number {
+  return Math.max(...getSolidMeshData(entity).vertices.map((point) => Math.hypot(point.x, point.y, point.z))) * 1.12;
 }
 /** 同一平面基底用于平视预览；不改变舞台相机。 */
 export function sectionFlatPoints(result: SolidSectionResult, normal: SolidVector): { x: number; y: number }[] {

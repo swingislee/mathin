@@ -34,7 +34,10 @@ describe("cross-section in the shared teaching space", () => {
     expect(capture.mock.lastCall![0]).toBeNull(); await advance();
     expect(capture.mock.lastCall![0].section.enabled).toBe(true);
     await click(m.diagonal); await advance(100); expect(canvas.props!.section!.normal.x).toBeGreaterThan(0); expect(canvas.props!.section!.normal.x).toBeLessThan(1 / Math.sqrt(3));
-    await advance(); expect(container.querySelector("[data-solid-section-preview]")?.textContent).toContain(m.preview);
+    await advance(); expect(container.querySelector("[data-solid-section-preview]")).toBeNull();
+    expect(canvas.props!.sectionEditable).toBe(true);
+    await click(base.close); expect(container.querySelector("[data-solid-section-controls]")).toBeNull();
+    expect(canvas.props!.sectionEditable).toBe(true); expect(canvas.props!.section!.sectionOpacity).toBeGreaterThan(0);
     expect(canvas.props!.cameraRevision).toBe(originCamera);
   });
   it("fades only the removed half and restores the complete prepared scene", async () => {
@@ -43,6 +46,7 @@ describe("cross-section in the shared teaching space", () => {
     expect(canvas.props!.section!.positiveOpacity).toBeGreaterThan(0); expect(canvas.props!.section!.positiveOpacity).toBeLessThan(1); expect(canvas.props!.section!.negativeOpacity).toBe(1);
     expect(canvas.props!.state.entities[0].opacity).toBe(1); expect(capture.mock.lastCall![0]).toBeNull();
     await advance(); expect(capture.mock.lastCall![0].section.removedSide).toBe("positive");
+    expect(container.querySelector('input[type="number"]')).toBeNull(); await click(m.precise);
     await click(`${m.increase} ${m.offset}`); await advance(); expect(capture.mock.lastCall![0].section.offset).toBe(0.1);
     await click(base.reset); await advance(); expect(capture.mock.lastCall![0]).toEqual(initial); expect(canvas.props!.section!.positiveOpacity).toBe(1);
   });
@@ -66,5 +70,46 @@ describe("cross-section in the shared teaching space", () => {
     await advance(); expect(canvas.props!.section!.negativeOpacity).toBe(0); expect(sent).toHaveLength(1);
     await render(createElement(SolidGeometryWorkspace, { key: "viewer", initial, classroom: { state: sent[0] } }));
     expect(canvas.props!.section!.negativeOpacity).toBe(0); expect(canvas.props!.state.section.removedSide).toBe("negative"); expect(canvas.props!.readOnly).toBe(true);
+  });
+  it("previews on the solid, commits once on release and does not replay the movement", async () => {
+    const capture = vi.fn(); await render(createElement(SolidGeometryWorkspace, { onSnapshot: capture }));
+    await click(m.title); await advance();
+    const camera = canvas.props!.cameraRevision, next = { ...canvas.props!.state.section, offset: 0.43, tiltA: 17 };
+    await act(async () => { canvas.props!.onSectionDragging!(true); canvas.props!.onSectionPreview!(next); });
+    expect(canvas.props!.state.section.offset).toBe(0); expect(canvas.props!.section!.offset).toBe(0.43); expect(capture.mock.lastCall![0]).toBeNull();
+    await act(async () => { canvas.props!.onSectionPreview!(null); canvas.props!.onSectionDragging!(false); canvas.props!.onSectionCommit!(next); });
+    expect(canvas.props!.state.section.offset).toBe(0.43); expect(canvas.props!.section!.offset).toBe(0.43);
+    await advance(80); expect(canvas.props!.section!.offset).toBe(0.43); expect(capture.mock.lastCall![0].section).toEqual(next);
+    expect(canvas.props!.cameraRevision).toBe(camera);
+    await click(base.orbit); expect(canvas.props!.sectionEditable).toBe(false); expect(canvas.props!.section!.sectionOpacity).toBeGreaterThan(0);
+  });
+  it("keeps the dragged endpoint while waiting for classroom acknowledgement", async () => {
+    const initial = createSolidGeometryInitial(); initial.section.enabled = true;
+    const origin = solidGeometrySnapshot(initial), sent: SolidGeometrySnapshot[] = []; let accept!: () => void;
+    const pending = new Promise<void>((resolve) => { accept = resolve; });
+    function Harness() { const [state, setState] = useState(origin); return createElement(SolidGeometryWorkspace, { initial, classroom: { state, onChange: async (next) => { sent.push(next); await pending; setState(next); } } }); }
+    await render(createElement(Harness)); await click(m.title); await advance();
+    const next = { ...origin.section, offset: -0.35 };
+    await act(async () => { canvas.props!.onSectionDragging!(true); canvas.props!.onSectionPreview!(next); });
+    expect(sent).toHaveLength(0);
+    await act(async () => { canvas.props!.onSectionPreview!(null); canvas.props!.onSectionDragging!(false); canvas.props!.onSectionCommit!(next); });
+    expect(sent).toHaveLength(1); expect(canvas.props!.state.section.offset).toBe(0); expect(canvas.props!.section!.offset).toBe(-0.35);
+    await advance(100); expect(canvas.props!.section!.offset).toBe(-0.35);
+    await act(async () => accept()); expect(canvas.props!.section!.offset).toBe(-0.35);
+    await advance(100); expect(canvas.props!.section!.offset).toBe(-0.35); expect(sent).toHaveLength(1);
+  });
+  it("returns from a cancelled or failed preview without writing an unconfirmed scene", async () => {
+    const initial = createSolidGeometryInitial(); initial.section.enabled = true;
+    const capture = vi.fn(), origin = solidGeometrySnapshot(initial), sent = vi.fn(async () => { throw new Error("not saved"); });
+    await render(createElement(SolidGeometryWorkspace, { initial, onSnapshot: capture, classroom: { state: origin, onChange: sent } }));
+    await click(m.title); await advance(); const next = { ...origin.section, offset: 0.6 };
+    await act(async () => { canvas.props!.onSectionDragging!(true); canvas.props!.onSectionPreview!(next); });
+    await act(async () => { canvas.props!.onSectionPreview!(null); canvas.props!.onSectionDragging!(false); });
+    expect(sent).not.toHaveBeenCalled(); await advance(); expect(canvas.props!.section!.offset).toBe(0);
+    await act(async () => { canvas.props!.onSectionPreview!(next); });
+    await act(async () => { canvas.props!.onSectionPreview!(null); canvas.props!.onSectionCommit!(next); });
+    expect(sent).toHaveBeenCalledTimes(1); expect(canvas.props!.state.section.offset).toBe(0);
+    await advance(); expect(canvas.props!.section!.offset).toBe(0); expect(container.querySelector('[role="alert"]')).not.toBeNull();
+    expect(capture.mock.lastCall![0].section.offset).toBe(0);
   });
 });

@@ -25,13 +25,13 @@ import { solidEntitiesKey, useSolidPresentation } from "./useSolidPresentation";
 import { SolidSectionControls } from "../solid-sections/SolidSectionControls";
 import { useSolidSectionPresentation } from "../solid-sections/useSolidSectionPresentation";
 import { solidSectionsMessages } from "../solid-sections/solid-sections-messages";
-import { supportsSolidSection } from "../solid-sections/solid-sections-contract";
+import { supportsSolidSection, type SolidSectionSettings } from "../solid-sections/solid-sections-contract";
 import { MeasurementButton, MeasurementPanel } from "../solid-measurement/MeasurementControls";
 import { MeasurementOverlay } from "../solid-measurement/MeasurementOverlay";
 import { measurementDisplayEntity } from "../solid-measurement/measurement-model";
 
 const Canvas = dynamic(() => import("./SolidGeometryCanvas"), { ssr: false, loading: () => <Skeleton className="size-full" /> });
-type Tool = "orbit" | "pan" | "move" | "face" | "edge" | "vertex";
+type Tool = "orbit" | "pan" | "move" | "face" | "edge" | "vertex" | "section";
 type Panel = "add" | "objects" | "move" | "turn" | "color" | "transparent" | "face" | "edge" | "vertex" | "settings" | "section" | "measurement" | null;
 export interface SolidWorkspaceContext {
   snapshot: SolidGeometrySnapshot; selected: SolidEntity | null; disabled: boolean; locale: string;
@@ -55,17 +55,28 @@ export function SolidGeometryWorkspace({ initial, onSnapshot, classroom, readOnl
   const [axis, setAxis] = useState<Axis>("x"), [moveSnap, setMoveSnap] = useState(false), [dragging, setDragging] = useState(false);
   const [frame, setFrame] = useState(() => getSolidsFrame(origin.entities));
   const [instantKey, setInstantKey] = useState<string | null>(null);
+  const [sectionDragging, setSectionDragging] = useState(false), [sectionInstantKey, setSectionInstantKey] = useState<string | null>(null);
+  const [sectionGesture, setSectionGesture] = useState<{ source: SolidGeometrySnapshot; settings: SolidSectionSettings; pending: boolean } | null>(null);
   const axisSnap = useSpatialAxisSnap();
   const displayTargets = useMemo(() => snapshot.entities.map((entity) => entity.id === snapshot.selectedId ? measurementDisplayEntity(entity, snapshot.measurement) : entity), [snapshot.entities, snapshot.selectedId, snapshot.measurement]);
   const presentation = useSolidPresentation(displayTargets, instantKey);
-  const sectionPresentation = useSolidSectionPresentation(snapshot.section), sectionMessages = solidSectionsMessages(locale);
+  const sectionPreview = sectionGesture?.source === snapshot && (!sectionGesture.pending || !host.failed) ? sectionGesture.settings : null;
+  const sectionPresentation = useSolidSectionPresentation(snapshot.section, sectionPreview, sectionInstantKey), sectionMessages = solidSectionsMessages(locale);
   const selected = snapshot.entities.find((entity) => entity.id === snapshot.selectedId) ?? null;
   const captured = useMemo(() => solidGeometryInitial(snapshot), [snapshot]);
-  const capture = useSceneCapture(disabled || dragging || presentation.animating || sectionPresentation.animating ? null : captured, onSnapshot);
+  const capture = useSceneCapture(disabled || dragging || sectionDragging || !!sectionPreview || presentation.animating || sectionPresentation.animating ? null : captured, onSnapshot);
   const update = useCallback((next: SolidGeometrySnapshot) => {
     const parsed = solidGeometrySnapshotSchema.safeParse(next); if (!parsed.success) return false;
-    setInstantKey(null); return host.update(parsed.data);
+    setInstantKey(null); setSectionInstantKey(null); setSectionGesture(null); return host.update(parsed.data);
   }, [host]);
+  const previewSection = useCallback((settings: SolidSectionSettings | null) => setSectionGesture(settings ? { source: snapshot, settings, pending: false } : null), [snapshot]);
+  const commitSection = useCallback((section: SolidSectionSettings) => {
+    if (disabled) return;
+    if (update({ ...snapshot, section })) {
+      setSectionInstantKey(JSON.stringify(section));
+      if (classroom) setSectionGesture({ source: snapshot, settings: section, pending: true });
+    }
+  }, [disabled, update, snapshot, classroom]);
   const updateEntity = (next: SolidEntity) => update({ ...snapshot, entities: snapshot.entities.map((entity) => entity.id === next.id ? next : entity) });
   const pick = (id: string, feature: SolidFeatureSelection | null) => { if (!disabled) update({ ...snapshot, selectedId: id, feature }); };
   const open = (next: Panel, nextTool?: Tool) => { onToolChange?.(); setPanel((current) => current === next ? null : next); if (nextTool) setTool(nextTool); };
@@ -92,6 +103,8 @@ export function SolidGeometryWorkspace({ initial, onSnapshot, classroom, readOnl
   return <section className={styles.workspace} data-workbench-mode="courseware" data-solid-geometry-workspace="v1" aria-label={m.title} {...capture}>
     <div className={styles.viewport}><div className={styles.canvas}>
       <Canvas entities={presentation.entities} state={snapshot} selectedId={snapshot.selectedId} feature={snapshot.feature} pickMode={featureMode} section={sectionPresentation.frame}
+        locale={locale} sectionEditable={tool === "section" && snapshot.section.enabled && snapshot.section.showPlane && !!selected && supportsSolidSection(selected.kind) && !presentation.animating && (!sectionPresentation.animating || sectionDragging)}
+        sectionSettings={sectionPreview ?? snapshot.section} onSectionPreview={previewSection} onSectionCommit={commitSection} onSectionDragging={setSectionDragging}
         readOnly={disabled} onPick={pick} frame={frame} cameraRevision={snapshot.cameraRevision} axisSnap={axisSnap} moveSnap={moveSnap}
         navigationMode={tool === "pan" ? "pan" : tool === "move" ? "move" : "orbit"} moveAxis={axis} onMoveAxis={setAxis} onMove={drag} onDragging={setDragging} fallback={m.fallback}
         renderScene={(context) => <>{context.selected && <MeasurementOverlay entity={context.selected} settings={snapshot.measurement} feature={snapshot.feature} locale={locale} />}{renderScene?.(context)}</>} />
@@ -121,7 +134,7 @@ export function SolidGeometryWorkspace({ initial, onSnapshot, classroom, readOnl
         <CubeIconButton label={m.color} active={panel === "color"} disabled={disabled || !selected} onClick={() => open("color")}><PaintBucket aria-hidden /></CubeIconButton>
         <CubeIconButton label={m.transparent} active={panel === "transparent"} disabled={disabled || !selected} onClick={() => open("transparent")}><Droplets aria-hidden /></CubeIconButton>
         <CubeIconButton label={sectionMessages.title} active={panel === "section" || snapshot.section.enabled} disabled={disabled || !selected} onClick={() => {
-          open("section", "orbit");
+          open("section", "section");
           if (selected && supportsSolidSection(selected.kind) && !snapshot.section.enabled) update({ ...snapshot, section: { ...snapshot.section, enabled: true }, measurement: { ...snapshot.measurement, enabled: false } });
         }}><Scissors aria-hidden /></CubeIconButton>
         <MeasurementButton locale={locale} active={panel === "measurement" || snapshot.measurement.enabled} disabled={disabled || !selected} onClick={() => {
@@ -134,7 +147,7 @@ export function SolidGeometryWorkspace({ initial, onSnapshot, classroom, readOnl
       </div>
       {panel && panel !== "measurement" && <CubeCanvasPanel title={panel === "section" ? sectionMessages.title : m[panel]} anchor={panel === "settings" ? "meta" : "tool"} closeLabel={m.close} onClose={() => setPanel(null)}>
         <div className="space-y-3 text-xs">
-          {panel === "section" && <SolidSectionControls entity={selected ? presentation.entities.find((entity) => entity.id === selected.id) ?? selected : null} settings={snapshot.section} frame={sectionPresentation.frame} locale={locale} disabled={disabled} onChange={(section) => update({ ...snapshot, section, measurement: section.enabled ? { ...snapshot.measurement, enabled: false } : snapshot.measurement })} />}
+          {panel === "section" && <SolidSectionControls entity={selected} settings={snapshot.section} locale={locale} disabled={disabled || sectionDragging} onChange={(section) => update({ ...snapshot, section, measurement: section.enabled ? { ...snapshot.measurement, enabled: false } : snapshot.measurement })} />}
           {panel === "add" && <><div className="grid grid-cols-2 gap-1">{SOLID_KINDS.map((kind) => <Button key={kind} size="sm" variant="ghost" disabled={disabled} onClick={() => add(kind)}>{m.kinds[kind]}</Button>)}</div><p className="text-muted">{m.limit}</p></>}
           {panel === "objects" && <>
             <div className="flex flex-wrap gap-1">{snapshot.entities.map((entity, index) => <Button key={entity.id} size="sm" variant={entity.id === snapshot.selectedId ? "secondary" : "ghost"} disabled={disabled} onClick={() => pick(entity.id, null)}>{index + 1} · {m.kinds[entity.kind]}</Button>)}</div>
