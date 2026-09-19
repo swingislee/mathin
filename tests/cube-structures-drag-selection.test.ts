@@ -46,6 +46,25 @@ function setup(kind: CubeMoveInteraction["kind"] = "move", positions = [origin],
 }
 
 describe("axis dragging uses camera projection and one semantic release", () => {
+  it("direct dragging chooses the visible axis from the gesture, without a prior axis click", () => {
+    const drag = setup(); Object.assign(drag.interaction, { bodyAxis: "gesture", showHandles: false });
+    drag.send("pointerdown"); drag.send("pointermove", 402, 204); drag.flush();
+    expect(drag.interaction.onAxisChange).toHaveBeenLastCalledWith("y");
+    expect(drag.previews.at(-1)?.positions.get("cube-1")?.y).toBeCloseTo(1.2);
+    drag.send("pointerup", 402, 204);
+    expect(drag.session().lesson?.operations).toEqual([{ kind: "move", axis: "y", ids: ["cube-1"], distance: 1 }]); drag.dispose();
+  });
+
+  it("dragging another rigid part does not publish a selection before its movement", () => {
+    const drag = setup("move", [origin, { x: 2, y: 0, z: 0 }, { x: 2, y: 1, z: 0 }]);
+    Object.assign(drag.interaction, { bodyAxis: "gesture", showHandles: false, idsForHit: () => ["cube-2", "cube-3"] });
+    drag.send("pointerdown", 560, 300);
+    expect(drag.interaction.onSelect).not.toHaveBeenCalled();
+    drag.send("pointermove", 640, 300); drag.flush(); drag.send("pointerup", 640, 300);
+    expect(drag.interaction.onSelect).not.toHaveBeenCalled();
+    expect(drag.session().lesson?.operations).toEqual([{ kind: "move", axis: "x", ids: ["cube-2", "cube-3"], distance: 1 }]); drag.dispose();
+  });
+
   it("projects XYZ in front, side and top views, including zoom", () => {
     const front = camera();
     expect(cubeDragProjection(origin, "x", front, size)).toEqual({ x: 80, y: 0 });
@@ -217,7 +236,8 @@ describe("cut edge selection and independent selection/group colors", () => {
     const motion = readFileSync("src/features/tools/spatial-lab/useCubeDisplayMotion.ts", "utf8");
     expect(root).toContain('tool === "move" || tool === "cut" ? "object" : "orbit"');
     expect(root).not.toContain("cutInput");
-    expect(root).toContain("onCommit: commit");
+    expect(root).toContain("if (commit(operation)) setSelected(operation.ids)");
+    expect(root).toContain('spatialDirectManipulation(tool) && hasTool("move")');
     expect(root).toContain("snapToGrid: snap");
     expect(root).toContain("enableAxisSnap: m.enableCellSnap");
     expect(motion).toContain("current.current = next; setFrame(next)");

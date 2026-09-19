@@ -28,6 +28,7 @@ import { useSceneCapture } from "../courseware/useSceneCapture";
 import { EMPTY_CUBE_CUT, chooseCubeCut, cubeCutCandidate, cubeCutLayers, type CubeCutDraft, type CubeCutHit } from "./cube-structures-cut-interaction";
 import { buildCubeCutPieces, cubeCutScopeIds } from "./cube-structures-cut-scope";
 import { cubeRotationOperation } from "./cube-structures-rotation";
+import { spatialDirectManipulation } from "../spatial-interaction/policy";
 import styles from "./CubeStructuresWorkbench.module.css";
 
 const CubeStructuresViewport = dynamic(() => import("./CubeStructuresViewport").then((module) => module.CubeStructuresViewport), { ssr: false });
@@ -79,6 +80,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
   const [opacity, setOpacity] = useState(30);
   const [opacityPreview, setOpacityPreview] = useState<number | null>(null);
   const [moving, setMoving] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const [hoverFace, setHoverFace] = useState<VoxelFaceSelection | null>(null);
   const [hoverGround, setHoverGround] = useState<VoxelCoordinate | null>(null);
   const [showMetrics, setShowMetrics] = useState(false);
@@ -113,12 +115,14 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
   // 包括已经隐藏的单位块，恢复入口始终保留。
   const layers = useMemo(() => [...new Set(state.cubes.filter((cube) => scopeIds.includes(cube.id)).map((cube) => cube.position[axis]))].sort((a, b) => a - b), [axis, state.cubes, scopeIds]);
   const editable = !readOnly && !draftLibrary.loading && !draftLibrary.busy && !playing && !moving && (session.preview === null || replacementStep !== null);
-  const capture = useSceneCapture(moving || playing || opacityPreview !== null || replacementStep !== null ? null : session, onSnapshot);
+  const capture = useSceneCapture(moving || dragging || playing || opacityPreview !== null || replacementStep !== null ? null : session, onSnapshot);
   const hoveredCube = hoverFace ? cubeAtDisplayPosition(state, hoverFace.cell) : undefined;
   const nextPosition = hoverFace && hoveredCube ? adjacentCube({ ...hoverFace, cell: hoveredCube.position }) : hoverGround;
   const validBuild = Boolean(tool === "build" && nextPosition && applyCubeOperation(state, { kind: "build", position: nextPosition, displayOffset: hoveredCube?.displayOffset, color: CUBE_COLORS[0] }) !== state);
   const lockedCut = cutDraft.selection;
   const cutPieces = useMemo(() => buildCubeCutPieces(state), [state]);
+  const objectIds = (id: string) => selectedIds.includes(id) ? selectedIds : tool === "orbit"
+    ? (state.groups.find((group) => group.cubeIds.includes(id))?.cubeIds ?? cutPieces.get(id) ?? [id]).filter((member) => scopeIds.includes(member)) : [id];
   const cutTargetIds = cubeCutScopeIds(state, cutPieces, selectedIds, cutDraft, hoveredCutHit);
   const hoveredCut = cubeCutCandidate(state, cutTargetIds, cutDraft.firstLine, hoveredCutHit);
   const hoveringFace = hoveredCutHit?.kind === "face";
@@ -293,9 +297,15 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
           renderSceneOverlay={extension?.renderScene}
           axisSnapEnabled={snap} cameraRequestKey={cameraRequest} sceneKey={runtime && courseware ? courseware.initial.work.initial : session.work.initial} onMovingChange={setMoving}
           history={animationHistory}
+          onDraggingChange={setDragging}
+          rotationInteraction={spatialDirectManipulation(tool) && hasTool("move") && allowRotation && (selectedIds.length || activeGroupId) ? {
+            ids: targetIds, axis: moveAxis, onAxisChange: setMoveAxis, label: m.rotate, disabled: !editable || dragging,
+            onRotate: (axis, turn) => { const operation = cubeRotationOperation(state, targetIds, axis, turn); if (operation) commit(operation); },
+          } : null}
           opacityPreview={opacityPreview === null ? null : { ids: targetIds, opacity: opacityPreview / 100 }}
-          moveInteraction={tool === "move" && editable ? { state, ids: targetIds, scopeIds, axis: moveAxis, kind: moveMode, snapToGrid: snap,
-            onAxisChange: setMoveAxis, onSelect: (id) => setSelected([id]), onCommit: commit, onUnavailable: () => setNotice(m.moveAxisHidden) } : null}
+          moveInteraction={spatialDirectManipulation(tool) && hasTool("move") && editable ? { state, ids: targetIds, scopeIds, axis: moveAxis, kind: moveMode, snapToGrid: snap,
+            bodyAxis: "gesture", showHandles: tool === "move" || selectedIds.length > 0 || !!activeGroupId, idsForHit: objectIds,
+            onAxisChange: setMoveAxis, onSelect: (id) => setSelected(objectIds(id)), onCommit: (operation) => { if (commit(operation)) setSelected(operation.ids); }, onUnavailable: () => setNotice(m.moveAxisHidden) } : null}
           cutInteraction={tool === "cut" && editable && !lockedCut ? { state, hovered: hoveredCutHit,
             onHover: (hit) => { setHoveredCutHit(hit); setCutDraft((current) => current.issue ? { ...current, issue: null } : current); },
             onPick: (hit) => { const ids = cubeCutScopeIds(state, cutPieces, selectedIds, cutDraft, hit); const next = chooseCubeCut(state, ids, cutDraft, hit); setCutDraft(next); setHoveredCutHit(null); setNotice(""); if (next.selection && panel === "cut") setPanel(null); } } : null}

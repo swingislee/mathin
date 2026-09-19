@@ -4,6 +4,9 @@ import { act, advance, createRoot, _roots, type RootState } from "@react-three/f
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { OrthographicCamera, Quaternion, Vector3, type WebGLRenderer } from "three";
 import { SpatialCameraRig } from "@/features/spatial-math/renderer-r3f/SpatialCameraRig";
+import { bindCubeAxisDrag } from "@/features/tools/spatial-lab/cube-structures-drag-controller";
+import { createCubeHistory } from "@/features/tools/spatial-lab/cube-structures-contract";
+import { beginSpatialObjectGesture } from "@/features/spatial-math/renderer-r3f/spatial-object-gesture";
 
 // Node 下 drei 使用 CJS；统一真实 Three 构造器，避免 ESM/CJS 双实例误判相机类型。
 vi.mock("three", async () => {
@@ -19,13 +22,14 @@ const right: Bookmark = { ...front, id: "right", position: { x: 10, y: 0, z: 0 }
 const top: Bookmark = { ...front, id: "top", position: { x: 0, y: 10, z: 0 }, up: { x: 0, y: 0, z: -1 } };
 
 class CanvasSurface extends EventTarget {
-  style = { touchAction: "" };
+  style = { touchAction: "", cursor: "" };
   clientWidth = 800;
   clientHeight = 600;
   ownerDocument = Object.assign(new EventTarget(), { documentElement: { clientLeft: 0, clientTop: 0 } });
   getBoundingClientRect() { return { left: 0, top: 0, right: 800, bottom: 600, width: 800, height: 600 }; }
   getRootNode() { return this.ownerDocument; }
   setPointerCapture() {}
+  hasPointerCapture() { return false; }
   releasePointerCapture() {}
 }
 
@@ -94,8 +98,19 @@ async function setupRig(reducedMotion = false, demand = false, initialBookmark: 
 }
 
 describe("共享相机真实帧循环", () => {
+  it("对象接管保留当前姿态，不触发 Orbit 的 up 重置或继续旧视角动画", async () => {
+    const rig = await setupRig(); await rig.render(top); rig.frame(); rig.frame(720);
+    const camera = rig.state().camera, before = camera.quaternion.clone(), up = camera.up.clone();
+    beginSpatialObjectGesture(rig.surface as unknown as HTMLCanvasElement); rig.frame();
+    expect(camera.up.distanceTo(up)).toBeLessThan(1e-7);
+    expect(camera.quaternion.angleTo(before)).toBeLessThan(1e-7);
+    await rig.render(right); rig.frame(); rig.frame(240);
+    const position = camera.position.clone();
+    beginSpatialObjectGesture(rig.surface as unknown as HTMLCanvasElement); rig.frame(900);
+    expect(camera.position.distanceTo(position)).toBeLessThan(1e-7);
+  });
   for (const pointerType of ["mouse", "touch"] as const) {
-    it(`${pointerType} 对象移动占用左键/单指，滚轮缩放与右键平移仍可用`, async () => {
+    it(`${pointerType} 对象模式保留空白旋转、滚轮缩放与右键平移`, async () => {
       const rig = await setupRig();
       await rig.render(front, 0, "object");
       const camera = rig.state().camera as OrthographicCamera;
@@ -105,7 +120,7 @@ describe("共享相机真实帧循环", () => {
       pointer(rig.surface, "pointermove", 490, 340, 0, pointerType);
       pointer(rig.surface, "pointerup", 490, 340, 0, pointerType);
       rig.frame();
-      expect(camera.quaternion.angleTo(before)).toBeLessThan(1e-7);
+      expect(camera.quaternion.angleTo(before)).toBeGreaterThan(0.1);
       expect(controls.target.length()).toBeLessThan(1e-7);
       const zoom = camera.zoom;
       rig.surface.dispatchEvent(Object.assign(new Event("wheel"), { deltaY: -100 }));
@@ -114,6 +129,29 @@ describe("共享相机真实帧循环", () => {
       pointer(rig.surface, "pointermove", 440, 340, 2);
       pointer(rig.surface, "pointerup", 440, 340, 2);
       expect(controls.target.length()).toBeGreaterThan(0.1);
+    });
+
+    it(`${pointerType} 命中物体只移动物体，随后拖空白无需切换按钮即可旋转`, async () => {
+      const rig = await setupRig(); await rig.render(front, 0, "object");
+      const camera = rig.state().camera, controls = rig.state().controls as unknown as Orbit;
+      const state = createCubeHistory([{ x: 0, y: 0, z: 0 }]).initial, commit = vi.fn();
+      // Node EventTarget 没有 DOM 树阶段；按浏览器的 capture → bubble 顺序注册。
+      controls.dispose();
+      const dispose = bindCubeAxisDrag(rig.surface as unknown as HTMLCanvasElement, () => ({ state, ids: ["cube-1"], scopeIds: ["cube-1"], axis: "x", kind: "move", snapToGrid: true,
+        onAxisChange: vi.fn(), onSelect: vi.fn(), onCommit: commit, onUnavailable: vi.fn() }), () => camera, vi.fn(), (active) => { if (active) beginSpatialObjectGesture(rig.surface as unknown as HTMLCanvasElement); });
+      controls.connect(rig.surface as unknown as HTMLElement);
+      const before = camera.quaternion.clone();
+      pointer(rig.surface, "pointerdown", 400, 300, 0, pointerType);
+      pointer(rig.surface, "pointermove", 480, 300, 0, pointerType);
+      pointer(rig.surface, "pointerup", 480, 300, 0, pointerType);
+      expect(commit).toHaveBeenCalledTimes(1);
+      expect(commit.mock.calls[0][0]).toMatchObject({ axis: "x", ids: ["cube-1"] });
+      expect(camera.quaternion.angleTo(before)).toBeLessThan(1e-7);
+      pointer(rig.surface, "pointerdown", 60, 60, 0, pointerType);
+      pointer(rig.surface, "pointermove", 120, 100, 0, pointerType);
+      pointer(rig.surface, "pointerup", 120, 100, 0, pointerType);
+      expect(camera.quaternion.angleTo(before)).toBeGreaterThan(0.1);
+      expect(commit).toHaveBeenCalledTimes(1); dispose();
     });
 
     it(`${pointerType} 点击俯视后，手动旋转仍围绕世界 Y 轴`, async () => {

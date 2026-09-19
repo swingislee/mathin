@@ -29,6 +29,9 @@ import { supportsSolidSection, type SolidSectionSettings } from "../solid-sectio
 import { MeasurementButton, MeasurementPanel } from "../solid-measurement/MeasurementControls";
 import { MeasurementOverlay } from "../solid-measurement/MeasurementOverlay";
 import { measurementDisplayEntity } from "../solid-measurement/measurement-model";
+import { spatialDirectManipulation } from "../spatial-interaction/policy";
+import { spatialQuarterTurn } from "../spatial-interaction/rigid-motion";
+import { useSpatialDirectCommit } from "../spatial-interaction/useSpatialDirectCommit";
 
 const Canvas = dynamic(() => import("./SolidGeometryCanvas"), { ssr: false, loading: () => <Skeleton className="size-full" /> });
 type Tool = "orbit" | "pan" | "move" | "face" | "edge" | "vertex" | "section";
@@ -58,7 +61,9 @@ export function SolidGeometryWorkspace({ initial, onSnapshot, classroom, readOnl
   const [sectionDragging, setSectionDragging] = useState(false), [sectionInstantKey, setSectionInstantKey] = useState<string | null>(null);
   const [sectionGesture, setSectionGesture] = useState<{ source: SolidGeometrySnapshot; settings: SolidSectionSettings; pending: boolean } | null>(null);
   const axisSnap = useSpatialAxisSnap();
-  const displayTargets = useMemo(() => snapshot.entities.map((entity) => entity.id === snapshot.selectedId ? measurementDisplayEntity(entity, snapshot.measurement) : entity), [snapshot.entities, snapshot.selectedId, snapshot.measurement]);
+  const directMove = useSpatialDirectCommit(snapshot, host.failed);
+  const displaySnapshot = directMove.displayed;
+  const displayTargets = useMemo(() => displaySnapshot.entities.map((entity) => entity.id === displaySnapshot.selectedId ? measurementDisplayEntity(entity, displaySnapshot.measurement) : entity), [displaySnapshot.entities, displaySnapshot.selectedId, displaySnapshot.measurement]);
   const presentation = useSolidPresentation(displayTargets, instantKey);
   const sectionPreview = sectionGesture?.source === snapshot && (!sectionGesture.pending || !host.failed) ? sectionGesture.settings : null;
   const sectionPresentation = useSolidSectionPresentation(snapshot.section, sectionPreview, sectionInstantKey), sectionMessages = solidSectionsMessages(locale);
@@ -67,8 +72,8 @@ export function SolidGeometryWorkspace({ initial, onSnapshot, classroom, readOnl
   const capture = useSceneCapture(disabled || dragging || sectionDragging || !!sectionPreview || presentation.animating || sectionPresentation.animating ? null : captured, onSnapshot);
   const update = useCallback((next: SolidGeometrySnapshot) => {
     const parsed = solidGeometrySnapshotSchema.safeParse(next); if (!parsed.success) return false;
-    setInstantKey(null); setSectionInstantKey(null); setSectionGesture(null); return host.update(parsed.data);
-  }, [host]);
+    setInstantKey(null); directMove.clear(); setSectionInstantKey(null); setSectionGesture(null); return host.update(parsed.data);
+  }, [host, directMove]);
   const previewSection = useCallback((settings: SolidSectionSettings | null) => setSectionGesture(settings ? { source: snapshot, settings, pending: false } : null), [snapshot]);
   const commitSection = useCallback((section: SolidSectionSettings) => {
     if (disabled) return;
@@ -91,10 +96,11 @@ export function SolidGeometryWorkspace({ initial, onSnapshot, classroom, readOnl
   };
   const remove = () => { if (!selected) return; const entities = snapshot.entities.filter((entity) => entity.id !== selected.id); update({ ...snapshot, entities, selectedId: entities.at(-1)?.id ?? null, feature: null }); };
   const move = (operation: CubeMoveOperation, direct = false) => { const entities = moveSolidByDrag(snapshot.entities, operation); if (!entities) return;
-    if (update({ ...snapshot, entities }) && direct) setInstantKey(solidEntitiesKey(entities.map((entity) => entity.id === snapshot.selectedId ? measurementDisplayEntity(entity, snapshot.measurement) : entity))); };
+    const next = { ...snapshot, entities, selectedId: operation.ids[0], feature: snapshot.selectedId === operation.ids[0] ? snapshot.feature : null };
+    if (update(next) && direct) { directMove.hold(next); setInstantKey(solidEntitiesKey(entities.map((entity) => entity.id === operation.ids[0] ? measurementDisplayEntity(entity, snapshot.measurement) : entity))); } };
   const drag = (operation: CubeMoveOperation) => move(operation, true);
-  const rotate = (axis: Axis, sign: number) => { if (!selected) return; const value = selected.rotation[axis] + sign * Math.PI / 2;
-    updateEntity({ ...selected, rotation: { ...selected.rotation, [axis]: Math.atan2(Math.sin(value), Math.cos(value)) } }); };
+  const rotate = (axis: Axis, sign: number) => { if (!selected) return;
+    updateEntity({ ...selected, rotation: spatialQuarterTurn(selected.rotation, axis, sign > 0 ? 1 : -1) }); };
   const featureMode = tool === "face" || tool === "edge" || tool === "vertex" ? tool : "object";
   const topology = selected ? getSolidTopology(selected) : null;
   const parts = panel === "face" ? topology?.faces : panel === "edge" ? topology?.edges : panel === "vertex" ? topology?.vertices : null;
@@ -106,7 +112,9 @@ export function SolidGeometryWorkspace({ initial, onSnapshot, classroom, readOnl
         locale={locale} sectionEditable={tool === "section" && snapshot.section.enabled && snapshot.section.showPlane && !!selected && supportsSolidSection(selected.kind) && !presentation.animating && (!sectionPresentation.animating || sectionDragging)}
         sectionSettings={sectionPreview ?? snapshot.section} onSectionPreview={previewSection} onSectionCommit={commitSection} onSectionDragging={setSectionDragging}
         readOnly={disabled} onPick={pick} frame={frame} cameraRevision={snapshot.cameraRevision} axisSnap={axisSnap} moveSnap={moveSnap}
+        cameraInteractive={!readOnly && !(classroom && !classroom.onChange)}
         navigationMode={tool === "pan" ? "pan" : tool === "move" ? "move" : "orbit"} moveAxis={axis} onMoveAxis={setAxis} onMove={drag} onDragging={setDragging} fallback={m.fallback}
+        objectManipulation={spatialDirectManipulation(tool)} objectAnimating={presentation.animating} rotationAction={{ axis, onAxisChange: setAxis, onRotate: rotate, label: m.turn }}
         renderScene={(context) => <>{context.selected && <MeasurementOverlay entity={context.selected} settings={snapshot.measurement} feature={snapshot.feature} locale={locale} />}{renderScene?.(context)}</>} />
       {!snapshot.entities.length && <p className="pointer-events-none absolute left-4 top-16 text-sm text-muted">{m.empty}</p>}
       {host.failed && <p role="alert" className={styles.notice}>{m.syncError}</p>}

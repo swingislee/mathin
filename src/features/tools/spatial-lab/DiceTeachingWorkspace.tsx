@@ -156,7 +156,7 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector, initi
     if (busy) return;
     const next = commitDiceDrag(scene, operation);
     if (!next) { setNotice(m.placeBlocked); return; }
-    setNotice(""); commit(next);
+    setNotice(""); setSelectedId(operation.ids[0]); commit(next);
   };
   const add = (hand: DiceHand) => {
     if (busy || scene.dice.length >= MAX_DICE) return;
@@ -277,7 +277,7 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector, initi
       <DiceTeachingCanvas dice={displayed} trail={scene.trail} selectedId={selected.id} locale={locale} tool={tool} arrows={arrows} busy={busy} grid={grid} axes={axes} floor={floor} frame={frame} view={view} cameraKey={cameraKey}
         xrayTarget={xrayTarget} initialXRayTarget={initial?.xrayTarget} onClearXRay={() => requestXRay(null)} onXRayPresentation={setXRayPresentation}
         snap={snap} moveAxis={moveAxis} onMoveAxis={setMoveAxis} onDragCommit={dragCommit} onDraggingChange={setDragging} onMoveUnavailable={() => setNotice(structureMessages.moveAxisHidden)}
-        onSelect={setSelectedId} onFace={chooseFace} onMoveFace={moveFace} />
+        onSelect={setSelectedId} onFace={chooseFace} onMoveFace={moveFace} onRotate={(axis, turn) => updateDie(selected.id, (die) => turnDie(die, axis, turn), true)} />
       <div className={`${styles.dock} ${styles.meta}`} data-dice-overlay><CubeIconButton label={m.settings} active={panel === "settings"} onClick={() => selectPanel("settings")}><Settings2 /></CubeIconButton><span className="self-center pr-1 text-xs">{m.title}</span></div>
       <div className={`${styles.dock} ${styles.views} ${diceStyles.views}`} role="toolbar" aria-label={m.orbit}>
         {CUBE_WORKBENCH_VIEWS.map((item) => <CubeIconButton key={item} label={m.views[item]} active={view === item} onClick={() => selectView(item)}><CubeViewIcon view={item} /></CubeIconButton>)}

@@ -30,9 +30,23 @@ afterEach(async () => { await act(async () => root.unmount()); container.remove(
 async function render(element: ReactElement) { await act(async () => root.render(createElement(StrictMode, null, element))); }
 async function click(label: string) { const button = container.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`); expect(button).not.toBeNull(); await act(async () => button!.click()); }
 async function textClick(label: string) { const button = [...container.querySelectorAll<HTMLButtonElement>("button")].find((item) => item.textContent === label); expect(button).toBeDefined(); await act(async () => button!.click()); }
-async function advance(ms = 400) { now += ms; const pending = [...frames.values()]; frames.clear(); await act(async () => { for (const frame of pending) frame(now); }); }
+async function advance(ms = 400) { for (let elapsed = 0; elapsed <= ms; elapsed += 16) {
+  now += 16; const pending = [...frames.values()]; frames.clear(); await act(async () => { for (const frame of pending) frame(now); });
+} }
 
 describe("solid geometry teacher workspace", () => {
+  it("directly moves another entity while clearing the previous entity's feature selection", async () => {
+    const initial = createSolidGeometryInitial(), capture = vi.fn();
+    initial.entities.push(createSolidEntity("cube", "other", { x: 4, y: 1, z: 0 }));
+    initial.feature = { entityId: "solid-origin", kind: "face", id: "front" };
+    await render(createElement(SolidGeometryWorkspace, { initial, onSnapshot: capture }));
+    expect(canvas.props!.objectManipulation).toBe(true);
+    await act(async () => canvas.props!.onMove({ kind: "display-move", ids: ["other"], axis: "y", distance: 1 }));
+    expect(capture.mock.lastCall![0].selectedId).toBe("other"); expect(capture.mock.lastCall![0].feature).toBeNull();
+    expect(canvas.props!.entities[1].position.y).toBe(2);
+    await click(m.face); expect(canvas.props!.objectManipulation).toBe(false);
+    await click(m.orbit); expect(canvas.props!.objectManipulation).toBe(true);
+  });
   it("prepares multiple true solids with shared right-toolbar and non-modal panel primitives", async () => {
     const initial = createSolidGeometryInitial(), capture = vi.fn();
     await render(createElement(SolidGeometryWorkspace, { initial, onSnapshot: capture }));

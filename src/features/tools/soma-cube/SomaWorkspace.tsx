@@ -20,6 +20,8 @@ import { createSomaInitial, SOMA_CUBE_EXAMPLE, somaApart, somaChoose, somaDrag, 
 import { SOMA_IDS, SOMA_PIECES, somaDefinition, type SomaId } from "./pieces";
 import { somaMessages } from "./messages";
 import { SomaPieceIcon } from "./SomaPieceIcon";
+import { somaRigidPoses } from "./motion";
+import { useSpatialDirectCommit } from "../spatial-interaction/useSpatialDirectCommit";
 
 const Canvas = dynamic(() => import("./SomaCanvas"), { ssr: false, loading: () => <Skeleton className="size-full" /> });
 type Panel = "pieces" | "move" | "rotate" | "settings" | null;
@@ -34,7 +36,9 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
   const [panel, setPanel] = useState<Panel>(null), [navigation, setNavigation] = useState<"orbit" | "pan" | "move">("move");
   const [axis, setAxis] = useState<Axis>("x"), [notice, setNotice] = useState("");
   const [dragging, setDragging] = useState(false), [history, setHistory] = useState<{ past: SomaSnapshot[]; future: SomaSnapshot[] }>({ past: [], future: [] });
-  const viewer = readOnly || Boolean(classroom && !classroom.onChange), busy = viewer || host.publishing, disabled = busy || dragging;
+  const [moving, setMoving] = useState(false);
+  const directMove = useSpatialDirectCommit(snapshot, host.failed);
+  const viewer = readOnly || Boolean(classroom && !classroom.onChange), busy = viewer || host.publishing, disabled = busy || dragging || moving;
   const snap = useSpatialAxisSnap();
   const capture = useSceneCapture(disabled ? null : snapshot, onSnapshot);
   const messages = useMemo<VoxelRendererMessages>(() => ({
@@ -44,14 +48,15 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
     formatTotalCount: (count) => spatial("renderer.totalCount", { count }), formatHiddenByLayerCount: (count) => spatial("renderer.hiddenByLayer", { count }),
     formatProjectedCell: (u, v, count) => count === null ? spatial("renderer.projectedCellUnrevealed", { u, v }) : spatial("renderer.projectedCell", { u, v, count }),
   }), [spatial]);
-  const commit = useCallback((next: SomaSnapshot | null, record = true) => {
+  const commit = useCallback((next: SomaSnapshot | null, record = true, direct = false) => {
     if (busy) return false;
     const parsed = somaSnapshotSchema.safeParse(next);
     if (!parsed.success) { setNotice(m.blocked); return false; }
     if (!next || !host.update(next)) return false;
+    if (direct) directMove.hold(next); else directMove.clear();
     if (record && !classroom) setHistory((value) => ({ past: [...value.past, snapshot].slice(-60), future: [] }));
     setNotice(""); return true;
-  }, [busy, host, classroom, snapshot, m.blocked]);
+  }, [busy, host, classroom, snapshot, m.blocked, directMove]);
   const select = useCallback((id: SomaId) => {
     const next = { ...snapshot, selectedId: id };
     commit(snapshot.mode === "observe" ? somaFit(next) : next, false);
@@ -64,7 +69,7 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
   const mode = (value: SomaSnapshot["mode"]) => {
     if (commit(somaFit({ ...snapshot, mode: value }), false)) { setNavigation(value === "observe" ? "orbit" : "move"); setPanel(null); }
   };
-  const open = (value: Panel) => { setPanel(panel === value ? null : value); if (value === "move") setNavigation("move"); };
+  const open = (value: Panel) => { setPanel(panel === value ? null : value); if (value === "move" || value === "rotate") setNavigation("move"); };
   const travel = (direction: "past" | "future") => {
     const values = history[direction], next = values.at(-1); if (!next) return;
     if (commit({ ...next, cameraRevision: (snapshot.cameraRevision + 1) % 1_000_001 }, false)) setHistory((value) => direction === "past"
@@ -74,8 +79,10 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
   const selected = somaDefinition(snapshot.selectedId), assembling = snapshot.mode === "assemble";
   return <section className={styles.workspace} data-workbench-mode="courseware" data-soma-workspace="v1" aria-label={m.title} {...capture}>
     <div className={styles.viewport}><div className={styles.canvas} data-has-cube-groups="true">
-      <Canvas snapshot={snapshot} messages={messages} title={m.title} readOnly={busy} axisSnap={snap} navigation={navigation} moveAxis={axis}
-        onMoveAxis={setAxis} onSelect={select} onMove={(operation) => commit(somaDrag(snapshot, operation))} onUnavailable={() => setNotice(m.hiddenAxis)} onDragging={setDragging} />
+      <Canvas snapshot={directMove.displayed} messages={messages} title={m.title} readOnly={busy} cameraInteractive={!viewer} axisSnap={snap} navigation={navigation} moveAxis={axis}
+        instantKey={directMove.target ? JSON.stringify(somaRigidPoses(directMove.target.pieces)) : null} locale={locale} onMoving={setMoving}
+        onRotate={(axis, turn) => { if (!disabled) commit(somaRotate(snapshot, axis, turn)); }}
+        onMoveAxis={setAxis} onSelect={select} onMove={(operation) => commit(somaDrag(snapshot, operation), true, true)} onUnavailable={() => setNotice(m.hiddenAxis)} onDragging={setDragging} />
       <div className={`${styles.dock} ${styles.meta}`}>
         <CubeIconButton label={m.observe} active={!assembling} disabled={disabled} onClick={() => mode("observe")}><Eye aria-hidden /></CubeIconButton>
         <CubeIconButton label={m.assemble} active={assembling} disabled={disabled} onClick={() => mode("assemble")}><Boxes aria-hidden /></CubeIconButton>

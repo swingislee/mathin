@@ -23,7 +23,9 @@ beforeEach(() => {
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 async function render(element: ReactElement) { await act(async () => root.render(createElement(StrictMode, null, element))); }
 async function click(label: string) { const button = [...container.querySelectorAll<HTMLButtonElement>("button")].find((item) => item.getAttribute("aria-label") === label || item.textContent === label); expect(button).toBeDefined(); await act(async () => button!.click()); }
-async function advance(ms = 400) { now += ms; const pending = [...frames.values()]; frames.clear(); await act(async () => { for (const frame of pending) frame(now); }); }
+async function advance(ms = 400) { for (let elapsed = 0; elapsed <= ms; elapsed += 16) {
+  now += 16; const pending = [...frames.values()]; frames.clear(); await act(async () => { for (const frame of pending) frame(now); });
+} }
 
 describe("cross-section in the shared teaching space", () => {
   it("opens from the right toolbar without a modal and captures only a settled section", async () => {

@@ -6,23 +6,25 @@ import { Html, Line } from "@react-three/drei";
 import { CUBE_AXIS_COLORS, type CubeStructureState } from "./cube-structures-contract";
 import { CUBE_DRAG_AXES, CUBE_MOVE_HANDLE_LENGTH, cubeMoveCenter } from "./cube-structures-drag";
 import { bindCubeAxisDrag, type CubeDragPreview, type CubeMoveInteraction } from "./cube-structures-drag-controller";
+import { pickSpatialObject } from "../spatial-interaction/picking";
+import { beginSpatialObjectGesture } from "@/features/spatial-math/renderer-r3f/spatial-object-gesture";
 
-export function CubeMoveHandles({ interaction, presentation, preview, onPreview }: {
+export function CubeMoveHandles({ interaction, presentation, preview, onPreview, pickRenderedObjects = false }: {
   readonly interaction: CubeMoveInteraction;
   readonly presentation: CubeStructureState;
   readonly preview: CubeDragPreview | null;
   readonly onPreview: (preview: CubeDragPreview | null) => void;
+  readonly pickRenderedObjects?: boolean;
 }) {
   const { gl, get } = useThree();
   const current = useRef(interaction);
   useLayoutEffect(() => { current.current = interaction; }, [interaction]);
-  useEffect(() => bindCubeAxisDrag(gl.domElement, () => current.current, () => get().camera, onPreview, (active) => {
+  useEffect(() => bindCubeAxisDrag(gl.domElement, () => pickRenderedObjects ? { ...current.current, hitTest: (raycaster) => pickSpatialObject(raycaster, get().scene) } : current.current, () => get().camera, onPreview, (active) => {
     // 对象拖动也接管尚未完成的视角动画，手势期间保持投影稳定。
-    const controls = get().controls as { dispatchEvent: (event: { type: "start" | "end" }) => void } | null;
-    controls?.dispatchEvent({ type: active ? "start" : "end" });
-  }), [gl, get, onPreview]);
-  const center = cubeMoveCenter(presentation, interaction.ids);
-  if (!center) return null;
+    if (active) beginSpatialObjectGesture(gl.domElement);
+  }), [gl, get, onPreview, pickRenderedObjects]);
+  const center = cubeMoveCenter(presentation, preview?.ids ?? interaction.ids);
+  if (!center || (interaction.showHandles === false && !preview)) return null;
   const length = CUBE_MOVE_HANDLE_LENGTH;
   return <group>
     {CUBE_DRAG_AXES.map((axis) => {

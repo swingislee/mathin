@@ -91,4 +91,26 @@ describe("Soma teaching workspace", () => {
     await click(m.move); await click(`${m.move} Y +1`);
     expect(onChange).toHaveBeenCalledTimes(1); expect(canvas.props!.snapshot).toBe(initial); expect(container.textContent).toContain(m.syncError);
   });
+  it("holds an already dragged endpoint during classroom persistence and does not replay its echo", async () => {
+    const initial = createSomaInitial(), writes: SomaSnapshot[] = []; let accept!: () => void;
+    const pending = new Promise<void>((resolve) => { accept = resolve; });
+    function Teacher() {
+      const [state, setState] = useState(initial);
+      return createElement(SomaWorkspace, { initial, classroom: { state, onChange: async (next) => { writes.push(next); await pending; setState(structuredClone(next)); } } });
+    }
+    await render(createElement(Teacher));
+    await act(async () => canvas.props!.onMove({ kind: "move", ids: ["bao-2:0"], axis: "y", distance: 1 }));
+    expect(writes).toHaveLength(1); expect(canvas.props!.snapshot.selectedId).toBe("bao-2");
+    expect(canvas.props!.snapshot.pieces[1].position.y).toBe(1); expect(canvas.props!.readOnly).toBe(true);
+    const instant = canvas.props!.instantKey;
+    await act(async () => accept());
+    expect(canvas.props!.snapshot.pieces[1].position.y).toBe(1); expect(canvas.props!.instantKey).toBe(instant);
+  });
+  it("a failed direct classroom move returns to the confirmed pose", async () => {
+    const initial = createSomaInitial(), onChange = vi.fn().mockRejectedValue(new Error("offline"));
+    await render(createElement(SomaWorkspace, { initial, classroom: { state: initial, onChange } }));
+    await act(async () => canvas.props!.onMove({ kind: "move", ids: ["bao-1:0"], axis: "y", distance: 1 }));
+    expect(onChange).toHaveBeenCalledTimes(1); expect(canvas.props!.snapshot).toBe(initial);
+    expect(container.textContent).toContain(m.syncError);
+  });
 });

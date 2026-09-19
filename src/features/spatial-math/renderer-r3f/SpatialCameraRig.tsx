@@ -2,8 +2,9 @@
 
 import { OrbitControls } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useCallback, useLayoutEffect, useMemo, useRef, useSyncExternalStore, type ComponentRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSyncExternalStore, type ComponentRef } from "react";
 import * as THREE from "three";
+import { SPATIAL_OBJECT_GESTURE_START } from "./spatial-object-gesture";
 import {
   SPATIAL_AXIS_SNAP_TRANSITION_MS,
   SPATIAL_CAMERA_TRANSITION_MS,
@@ -76,6 +77,7 @@ export function SpatialCameraRig({ bookmark, radius, interactive, navigationMode
   const renderedCamera = useThree((state) => state.camera);
   const setThree = useThree((state) => state.set);
   const invalidate = useThree((state) => state.invalidate);
+  const canvas = useThree((state) => state.gl.domElement);
   const reducedMotion = useSyncExternalStore(subscribeReducedMotion,
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches, () => false);
   const orthographicRef = useRef(new THREE.OrthographicCamera());
@@ -103,6 +105,17 @@ export function SpatialCameraRig({ bookmark, radius, interactive, navigationMode
   }), [bookmark.position.x, bookmark.position.y, bookmark.position.z,
     bookmark.target.x, bookmark.target.y, bookmark.target.z, bookmark.up.x, bookmark.up.y, bookmark.up.z]);
   const projectionTarget = bookmark.projection === "orthographic" ? bookmark.zoom : bookmark.fovDegrees;
+
+  useEffect(() => {
+    const claim = () => {
+      // 操作物体时保留相机姿态与 up，只有真正拖动空白才进入 Orbit 的世界 Y 轴手势。
+      transition.current = null;
+      onTransitionStateChange(false);
+      invalidate();
+    };
+    canvas.addEventListener(SPATIAL_OBJECT_GESTURE_START, claim);
+    return () => canvas.removeEventListener(SPATIAL_OBJECT_GESTURE_START, claim);
+  }, [canvas, invalidate, onTransitionStateChange]);
 
   useLayoutEffect(() => {
     const orthographic = orthographicRef.current;
@@ -201,7 +214,8 @@ export function SpatialCameraRig({ bookmark, radius, interactive, navigationMode
       makeDefault
       camera={renderedCamera}
       enablePan={interactive}
-      enableRotate={interactive && navigationMode === "orbit"}
+      // 物体手势在命中时捕获指针；空白处始终可以旋转，不设互斥的相机锁。
+      enableRotate={interactive && navigationMode !== "pan"}
       enableZoom={interactive}
       mouseButtons={{ LEFT: navigationMode === "pan" ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN }}
       touches={{ ONE: navigationMode === "pan" ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}

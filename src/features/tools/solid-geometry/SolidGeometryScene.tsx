@@ -52,7 +52,7 @@ function SolidObject({ entity, selected, feature, mode, readOnly, onPick, clippi
     if (readOnly || opacityFactor < 0.02 || event.button !== 0 || event.delta > 4 || clippingPlanes?.some((plane) => plane.distanceToPoint(event.point) < -1e-7)) return;
     event.stopPropagation(); onPick?.(entity.id, mode === kind ? { entityId: entity.id, kind, id } : null);
   };
-  return <group name={`solid:${entity.id}`} position={tuple(entity.position)} rotation={tuple(entity.rotation)}>
+  return <group name={`solid:${entity.id}`} userData={{ spatialObjectId: entity.id }} position={tuple(entity.position)} rotation={tuple(entity.rotation)}>
     <group scale={scale}>
       {topology.faces.map((face) => { const highlighted = feature?.kind === "face" && feature.id === face.id;
         return <mesh key={face.id} geometry={geometries.get(face.id)} onClick={(event) => pick(event, "face", face.id)}>

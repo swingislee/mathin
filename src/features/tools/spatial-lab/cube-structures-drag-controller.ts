@@ -9,6 +9,7 @@ export interface CubeDragPreview {
   readonly axis: Axis;
   readonly distance: number;
   readonly valid: boolean;
+  readonly ids?: readonly string[];
 }
 export interface CubeMoveInteraction {
   readonly state: CubeStructureState;
@@ -17,6 +18,10 @@ export interface CubeMoveInteraction {
   readonly axis: Axis;
   readonly kind: CubeMoveOperation["kind"];
   readonly snapToGrid: boolean;
+  readonly bodyAxis?: "selected" | "gesture";
+  readonly showHandles?: boolean;
+  readonly idsForHit?: (id: string) => readonly string[];
+  readonly hitTest?: (raycaster: Raycaster) => string | null;
   /** 复用到中心位于半格的教学实体时，指定各轴的网格起点。 */
   readonly gridOrigin?: Partial<Record<Axis, number>>;
   readonly isValidOperation?: (operation: CubeMoveOperation) => boolean;
@@ -28,7 +33,7 @@ export interface CubeMoveInteraction {
 
 /** 一次指针手势只在松手写入终点；捕获、取消和预览均局限在当前画布。 */
 export function bindCubeAxisDrag(canvas: HTMLCanvasElement, getInteraction: () => CubeMoveInteraction, getCamera: () => Camera, onPreview: (preview: CubeDragPreview | null) => void, onGesture?: (active: boolean) => void) {
-  type Gesture = { snapshot: CubeMoveInteraction; pointerId: number; start: CubeScreenPoint; projection: CubeScreenPoint; ids: readonly string[]; axis: Axis; hit: string | null; gridAnchor: number | undefined; dragged: boolean; operation: CubeMoveOperation | null; cursor: string };
+  type Gesture = { snapshot: CubeMoveInteraction; pointerId: number; start: CubeScreenPoint; projection: CubeScreenPoint; projections: Partial<Record<Axis, CubeScreenPoint>>; autoAxis: boolean; ids: readonly string[]; axis: Axis; hit: string | null; gridAnchor: number | undefined; dragged: boolean; operation: CubeMoveOperation | null; cursor: string };
   let gesture: Gesture | null = null;
   let frame = 0;
   let pending: CubeDragPreview | null = null;
@@ -56,36 +61,55 @@ export function bindCubeAxisDrag(canvas: HTMLCanvasElement, getInteraction: () =
     const point = { x: event.clientX - size.left, y: event.clientY - size.top };
     const center = cubeMoveCenter(snapshot.state, snapshot.ids);
     if (!center) return;
-    const handle = cubeDragHandleAxis(point, center, camera, size);
+    const handle = snapshot.showHandles === false ? null : cubeDragHandleAxis(point, center, camera, size);
     raycaster.setFromCamera(new Vector2(point.x / size.width * 2 - 1, 1 - point.y / size.height * 2), camera);
-    const hit = handle ? null : cubeDragHit(snapshot.state, raycaster.ray);
+    const hit = handle ? null : snapshot.hitTest ? snapshot.hitTest(raycaster) : cubeDragHit(snapshot.state, raycaster.ray);
     if (!handle && (!hit || !snapshot.scopeIds.includes(hit))) return;
-    const ids = hit && !snapshot.ids.includes(hit) ? [hit] : snapshot.ids;
-    const axis = handle ?? snapshot.axis;
-    const projection = cubeDragProjection(center, axis, camera, size);
+    const ids = hit ? snapshot.idsForHit?.(hit) ?? (snapshot.ids.includes(hit) ? snapshot.ids : [hit]) : snapshot.ids;
+    const anchor = cubeMoveCenter(snapshot.state, ids) ?? center;
+    const projections = Object.fromEntries((["x", "y", "z"] as const).flatMap((axis) => {
+      const projected = cubeDragProjection(anchor, axis, camera, size); return projected ? [[axis, projected]] : [];
+    })) as Partial<Record<Axis, CubeScreenPoint>>;
+    const autoAxis = !handle && snapshot.bodyAxis === "gesture";
+    const axis = handle ?? (projections[snapshot.axis] ? snapshot.axis : autoAxis ? (["x", "y", "z"] as const).find((axis) => projections[axis]) ?? snapshot.axis : snapshot.axis);
+    const projection = projections[axis];
     stop(event);
     if (!projection) { snapshot.onUnavailable(); return; }
     const anchorCube = snapshot.state.cubes.find((cube) => hit ? cube.id === hit : ids.includes(cube.id) && !snapshot.state.hiddenCubeIds.includes(cube.id));
     const gridAnchor = snapshot.snapToGrid ? anchorCube && snapshot.gridOrigin ? cubeDisplayPosition(anchorCube)[axis] - (snapshot.gridOrigin[axis] ?? 0)
       : snapshot.kind === "display-move" && anchorCube ? cubeDisplayPosition(anchorCube)[axis] : 0 : undefined;
-    gesture = { snapshot, pointerId: event.pointerId, start: { x: event.clientX, y: event.clientY }, projection, ids, axis, hit, gridAnchor, dragged: false, operation: null, cursor: canvas.style.cursor };
+    gesture = { snapshot, pointerId: event.pointerId, start: { x: event.clientX, y: event.clientY }, projection, projections, autoAxis, ids, axis, hit, gridAnchor, dragged: false, operation: null, cursor: canvas.style.cursor };
     canvas.setPointerCapture(event.pointerId);
     canvas.style.cursor = "grabbing";
     onGesture?.(true);
     if (handle) snapshot.onAxisChange(axis);
-    if (hit && !snapshot.ids.includes(hit)) snapshot.onSelect(hit);
+    // 选择在轻点松手时提交；拖动另一物体直接提交它的终点，不先发一条选择快照。
   };
   const update = (event: PointerEvent) => {
     if (!gesture || gesture.pointerId !== event.pointerId) return;
     stop(event);
     if (getInteraction().state !== gesture.snapshot.state) { clear(); return; }
     const delta = { x: event.clientX - gesture.start.x, y: event.clientY - gesture.start.y };
-    gesture.dragged ||= Math.hypot(delta.x, delta.y) > 3;
+    if (!gesture.dragged && Math.hypot(delta.x, delta.y) > 3) {
+      gesture.dragged = true;
+      if (gesture.autoAxis) {
+        let score = -1;
+        for (const axis of [gesture.axis, ...(["x", "y", "z"] as const).filter((axis) => axis !== gesture!.axis)]) {
+          const projection = gesture.projections[axis]; if (!projection) continue;
+          const aligned = Math.abs(delta.x * projection.x + delta.y * projection.y) / Math.hypot(projection.x, projection.y);
+          if (aligned > score + 1e-6) { score = aligned; gesture.axis = axis; gesture.projection = projection; }
+        }
+        const cube = gesture.snapshot.state.cubes.find((cube) => gesture!.hit ? cube.id === gesture!.hit : gesture!.ids.includes(cube.id));
+        gesture.gridAnchor = gesture.snapshot.snapToGrid ? cube && gesture.snapshot.gridOrigin ? cubeDisplayPosition(cube)[gesture.axis] - (gesture.snapshot.gridOrigin[gesture.axis] ?? 0)
+          : gesture.snapshot.kind === "display-move" && cube ? cubeDisplayPosition(cube)[gesture.axis] : 0 : undefined;
+        gesture.snapshot.onAxisChange(gesture.axis);
+      }
+    }
     if (!gesture.dragged) return;
     const distance = Math.max(-48, Math.min(48, cubeDragDistance(delta, gesture.projection)));
     const operation = cubeDragOperation(gesture.snapshot.kind, gesture.ids, gesture.axis, distance, gesture.gridAnchor);
     gesture.operation = operation;
-    pending = { positions: cubeDragPositions(gesture.snapshot.state, gesture.ids, gesture.axis, gesture.snapshot.snapToGrid ? operation?.distance ?? 0 : distance), axis: gesture.axis,
+    pending = { positions: cubeDragPositions(gesture.snapshot.state, gesture.ids, gesture.axis, gesture.snapshot.snapToGrid ? operation?.distance ?? 0 : distance), axis: gesture.axis, ids: gesture.ids,
       distance: operation?.distance ?? 0, valid: !operation || (gesture.snapshot.isValidOperation?.(operation) ?? (applyCubeOperation(gesture.snapshot.state, operation) !== gesture.snapshot.state)) };
     if (!frame) frame = requestAnimationFrame(() => { frame = 0; if (pending && gesture) onPreview(pending); });
   };

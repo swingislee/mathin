@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, type ComponentProps, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ComponentProps, type ReactNode } from "react";
 import { VoxelGeometry, VoxelModelCanvas, type VoxelModelCanvasProps } from "@/features/spatial-math/renderer-r3f/VoxelCanvas";
 import { CubeStructuresScene } from "./CubeStructuresScene";
 import { CUBE_COLORS, CUBE_SELECTION_COLOR, cubeDisplayPosition, cubePaintGroups, type CubeHistory, type CubeStructureState } from "./cube-structures-contract";
@@ -10,9 +10,11 @@ import { CubeMoveHandles } from "./CubeMoveHandles";
 import type { CubeDragPreview, CubeMoveInteraction } from "./cube-structures-drag-controller";
 import { CubeCutPicker } from "./CubeCutPicker";
 import type { CubeCutInteraction } from "./cube-structures-cut-controller";
+import { SpatialRotationControls, type SpatialRotationAction } from "../spatial-interaction/SpatialRotationControls";
+import { cubeRotationOperation } from "./cube-structures-rotation";
 
 /** Three/R3F 与场景预览一起按需加载，工具栏保持在轻量客户端边界。 */
-export function CubeStructuresViewport({ scene, sceneKey, history, opacityPreview, moveInteraction, cutInteraction, onMovingChange, renderSceneOverlay, ...props }: VoxelModelCanvasProps & {
+export function CubeStructuresViewport({ scene, sceneKey, history, opacityPreview, moveInteraction, cutInteraction, onMovingChange, onDraggingChange, rotationInteraction, renderSceneOverlay, ...props }: VoxelModelCanvasProps & {
   readonly scene: ComponentProps<typeof CubeStructuresScene>;
   readonly sceneKey: object;
   readonly history?: CubeHistory;
@@ -20,9 +22,13 @@ export function CubeStructuresViewport({ scene, sceneKey, history, opacityPrevie
   readonly onMovingChange: (moving: boolean) => void;
   readonly moveInteraction: CubeMoveInteraction | null;
   readonly cutInteraction: CubeCutInteraction | null;
+  readonly onDraggingChange?: (dragging: boolean) => void;
+  readonly rotationInteraction?: (SpatialRotationAction & { ids: readonly string[] }) | null;
   readonly renderSceneOverlay?: (presentation: CubeStructureState) => ReactNode;
 }) {
   const [dragPreview, setDragPreview] = useState<CubeDragPreview | null>(null);
+  useEffect(() => { onDraggingChange?.(dragPreview !== null); }, [onDraggingChange, dragPreview]);
+  useEffect(() => () => onDraggingChange?.(false), [onDraggingChange]);
   const { presentation, moving, previewPositions, rotation } = useCubeDisplayMotion(scene.state, sceneKey, onMovingChange, history);
   const previewDrag = useCallback((preview: CubeDragPreview | null) => { setDragPreview(preview); previewPositions(preview?.positions ?? null); }, [previewPositions]);
   const model = useMemo(() => {
@@ -39,6 +45,7 @@ export function CubeStructuresViewport({ scene, sceneKey, history, opacityPrevie
     return { state, model: { ...props.model, cells: props.model.cells.filter((cell) => positions.has(cell.key)).map((cell) => ({ ...cell, ...positions.get(cell.key)! })) }, paints: cubePaintGroups(state) };
   }, [rotation, props.model]);
   const pivot = rotation?.operation.displayPivot;
+  const rotationPivot = rotationInteraction ? cubeRotationOperation(presentation, rotationInteraction.ids, rotationInteraction.axis, 1)?.displayPivot : null;
   return <VoxelModelCanvas {...props} model={model} paintedFaceGroups={paints} readOnly={props.readOnly || moving}
     preserveSelectedColors sceneOverlay={<>{renderSceneOverlay?.(presentation)}<CubeStructuresScene {...scene} state={stationary} tool={moving ? "orbit" : scene.tool} />
       {rotation && rotating && pivot && <group name="cube-rigid-rotation" position={[pivot.x, pivot.y, pivot.z]}
@@ -50,6 +57,7 @@ export function CubeStructuresViewport({ scene, sceneKey, history, opacityPrevie
         </group>
       </group>}
       {moveInteraction && !moving && <CubeMoveHandles interaction={moveInteraction} presentation={presentation} preview={dragPreview} onPreview={previewDrag} />}
+      {rotationInteraction && rotationPivot && !dragPreview && <SpatialRotationControls center={rotationPivot} action={{ ...rotationInteraction, disabled: rotationInteraction.disabled || moving }} />}
       {cutInteraction && !moving && <CubeCutPicker interaction={cutInteraction} />}
     </>} />;
 }

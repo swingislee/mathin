@@ -6,6 +6,7 @@ import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { BufferGeometry, DoubleSide, Float32BufferAttribute, Vector3 } from "three";
 import type { SpatialScene } from "@/features/spatial-math/domain";
 import { PolyhedronFoldCanvas, type PolyhedronFoldRendererMessages } from "@/features/spatial-math/renderer-r3f/PolyhedronFoldCanvas";
+import { beginSpatialObjectGesture } from "@/features/spatial-math/renderer-r3f/spatial-object-gesture";
 import type { PolyhedronFoldRenderFace, PolyhedronFoldRenderModel } from "@/features/spatial-math/renderer-r3f/polyhedron-fold-render-model";
 import { CUBE_AXIS_COLORS, CUBE_SELECTION_COLOR } from "./cube-structures-contract";
 import { beginCubeNetPaperDrag, finishCubeNetFoldDrag, updateCubeNetFoldDrag, type CubeNetPaperDrag, type CubeNetPaperSelection, type CubeNetFoldChange } from "./cube-net-fold-drag";
@@ -130,6 +131,7 @@ export function CubeNetFoldInteraction({ model, hinges, activeEdgeId, tool, fold
       return { x: rect.left + (projected.x + 1) * rect.width / 2, y: rect.top + (1 - projected.y) * rect.height / 2 };
     });
     if (!gesture) return;
+    beginSpatialObjectGesture(canvas);
     const controls = getThree().controls as FoldCameraControls | null;
     drag.current = { pointerId: event.pointerId, gesture, degrees: gesture.initialAngle, moved: false,
       controls, controlsEnabled: controls?.enabled ?? false };

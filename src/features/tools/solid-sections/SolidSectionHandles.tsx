@@ -7,6 +7,7 @@ import { MoveVertical, RotateCw } from "lucide-react";
 import type { SolidSectionSettings } from "./solid-sections-contract";
 import { bindSolidSectionDrag, sectionDragHandles, type SectionDragInteraction } from "./solid-section-drag";
 import { solidSectionsMessages } from "./solid-sections-messages";
+import { beginSpatialObjectGesture } from "@/features/spatial-math/renderer-r3f/spatial-object-gesture";
 
 export function SolidSectionHandles({ interaction, displayed, locale, onPreview, onDragging }: {
   interaction: SectionDragInteraction | null; displayed: SolidSectionSettings; locale: string;
@@ -17,8 +18,7 @@ export function SolidSectionHandles({ interaction, displayed, locale, onPreview,
   useEffect(() => bindSolidSectionDrag(gl.domElement, () => current.current.interaction, () => get().camera,
     (next) => current.current.onPreview(next), (active) => {
       // 沿用共享轴拖动的相机手势边界，接管未完成的视角动画。
-      const controls = get().controls as { dispatchEvent: (event: { type: "start" | "end" }) => void } | null;
-      controls?.dispatchEvent({ type: active ? "start" : "end" });
+      if (active) beginSpatialObjectGesture(gl.domElement);
       current.current.onDragging(active);
     }), [gl, get]);
   if (!interaction) return null;

@@ -76,11 +76,16 @@ describe("drag preview connects to the existing motion hook", () => {
     expect(rig.initial.cubes[0].position.x).toBe(0);
   });
 
-  it("reduced-motion still follows the pointer, then returns directly on cancellation", async () => {
+  it("reduced-motion still follows the pointer and keeps a short visible cancellation", async () => {
     const rig = await setup(true);
     await act(async () => rig.motion().previewPositions(cubeDragPositions(rig.initial, ["cube-1"], "x", 1.2)));
     expect(cubeDisplayPosition(rig.motion().presentation.cubes[0]).x).toBe(1.2);
     await act(async () => rig.motion().previewPositions(null));
+    expect(cubeDisplayPosition(rig.motion().presentation.cubes[0]).x).toBe(1.2);
+    await rig.frame(); await rig.frame(120);
+    expect(cubeDisplayPosition(rig.motion().presentation.cubes[0]).x).toBeGreaterThan(0);
+    expect(cubeDisplayPosition(rig.motion().presentation.cubes[0]).x).toBeLessThan(1.2);
+    await rig.frame(240);
     expect(cubeDisplayPosition(rig.motion().presentation.cubes[0]).x).toBe(0);
     expect(rig.motion().moving).toBe(false);
   });
