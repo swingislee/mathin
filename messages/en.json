@@ -500,6 +500,7 @@
     },
     "preparation": {
       "name": "Scene name",
+      "rename": "Rename scene",
       "edit": "Edit starting scene",
       "fixedHint": "Configure the starting scene in the original tool. Courseware keeps its own copy, independent of later draft edits.",
       "library": "My scenes",

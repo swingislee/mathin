@@ -32,6 +32,20 @@ export default async function ToolPage({ params }: { params: Promise<{ locale: s
   const relatedTerms = getTermsForTool(locale, tool);
   const nav = await getTranslations("nav");
   const common = await getTranslations("common");
+  const preparation = def.id !== "spatial-lab";
+  const header = {
+    start: <>
+      <Link href="/tools" className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-sm text-muted transition-colors duration-200 hover:text-ink">
+        <ArrowLeft size={15} />{t("backToTools")}
+      </Link>
+      <span aria-hidden className="h-4 w-px shrink-0 bg-line" />
+      <span className="shrink-0 whitespace-nowrap font-serif text-xs text-[var(--p-accent)]" title={t(`items.${def.id}.name`)}>Nº {String(def.no).padStart(2, "0")}</span>
+    </>,
+    end: <>
+      {relatedTerms.map(term => <Link key={term.uid} href={`/terms/concepts/${term.slug}`} className="text-xs text-muted underline underline-offset-2 hover:text-ink">{term.title}</Link>)}
+      <CopyEmbedButton toolId={def.id} locale={locale} />
+    </>,
+  };
   return (
     <main data-planet="businessman" className="flex h-screen flex-col">
       <JsonLd
@@ -41,21 +55,13 @@ export default async function ToolPage({ params }: { params: Promise<{ locale: s
           { name: t(`items.${def.id}.name`) },
         ])}
       />
-      <div className="flex items-center gap-3 border-b px-4 py-2">
-        <Link href="/tools" className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors duration-200 hover:text-ink">
-          <ArrowLeft size={15} />
-          {t("backToTools")}
-        </Link>
-        <span aria-hidden className="h-4 w-px bg-line" />
-        <span className="font-serif text-xs text-[var(--p-accent)]">Nº {String(def.no).padStart(2, "0")}</span>
+      {!preparation && <div className="flex items-center gap-3 border-b px-4 py-2">
+        {header.start}
         <span className="text-sm font-medium">{t(`items.${def.id}.name`)}</span>
-        <div className="ml-auto">
-          {relatedTerms.map(term=><Link key={term.uid} href={`/terms/concepts/${term.slug}`} className="mr-3 text-xs text-muted underline underline-offset-2 hover:text-ink">{term.title}</Link>)}
-          <CopyEmbedButton toolId={def.id} locale={locale} />
-        </div>
-      </div>
+        <div className="ml-auto flex items-center gap-3">{header.end}</div>
+      </div>}
       <div className="flex min-h-0 flex-1 flex-col">
-        <ToolView id={def.id} preparation />
+        <ToolView id={def.id} preparation={preparation} preparationHeader={preparation ? header : undefined} />
       </div>
     </main>
   );

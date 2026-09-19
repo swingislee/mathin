@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, createElement, type ReactNode } from "react";
+import { act, createElement, Fragment, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -17,7 +17,7 @@ import type { ToolScene } from "@/features/tools/scenes/contract";
 const workspace = vi.hoisted(() => ({ current: null as null | { initial?: unknown; payload?: unknown; preparation?: boolean; onSnapshot: (snapshot: unknown) => void } }));
 const library = vi.hoisted(() => ({ open: null as null | ((scene: ToolScene) => void) }));
 vi.mock("next/dynamic", () => ({ default: () => function OriginalWorkspaceStub(props: NonNullable<typeof workspace.current>) { workspace.current = props; return null; } }));
-vi.mock("@/features/tools/scenes/ToolSceneLibrary", () => ({ ToolSceneLibrary: ({ children, onOpen }: { children: ReactNode; onOpen: (scene: ToolScene) => void }) => { library.open = onOpen; return children; } }));
+vi.mock("@/features/tools/scenes/ToolSceneLibrary", () => ({ ToolSceneLibrary: ({ title, children, onOpen }: { title: ReactNode; children: ReactNode; onOpen: (scene: ToolScene) => void }) => { library.open = onOpen; return createElement(Fragment, null, title, children); } }));
 let root: Root, host: HTMLDivElement;
 function renderEditor(props: Parameters<typeof ToolSceneEditor>[0]) {
   // eslint-disable-next-line react/no-children-prop
@@ -75,7 +75,8 @@ describe("shared starting-scene editor", () => {
     expect(host.textContent).not.toContain(en.tools.preparation.wait);
     const opened = { ...scene, payload: { title: "Another projection", initial: { ...scene.payload.initial, guides: true } } };
     await act(async () => library.open!(opened));
-    expect(host.querySelector("input")!.value).toBe(opened.payload.title);
+    expect(host.querySelector("[data-tool-scene-name]")!.textContent).toBe(opened.payload.title);
+    expect(host.querySelector("input")).toBeNull();
     expect(workspace.current!.initial).toBe(opened.payload.initial);
     expect(ready.mock.lastCall![0]).toBeNull();
     await act(async () => workspace.current!.onSnapshot(opened.payload.initial));
@@ -112,7 +113,7 @@ describe("shared starting-scene editor", () => {
     await renderEditor({ version: motion.contentVersion, existing: motion, onReady: ready });
     expect(ready.mock.lastCall![0]).toBeNull();
     expect(workspace.current!.initial).toBe(motion.payload.initial);
-    expect(host.querySelector("input")!.value).toBe("Three tracks");
+    expect(host.querySelector("[data-tool-scene-name]")!.textContent).toBe("Three tracks");
     await act(async () => workspace.current!.onSnapshot(motion.payload.initial));
     expect(ready.mock.lastCall![0]).toEqual(motion);
   });

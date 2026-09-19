@@ -1,17 +1,19 @@
 "use client";
 
-import { createElement, useCallback, useEffect, useMemo, useState } from "react";
+import { createElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { TOOL_SCENE_DEFINITIONS } from "./registry";
 import { freezeToolScene, parseToolScene, type ToolScene, type ToolSceneVersion } from "./contract";
-import { ToolSceneLibrary } from "./ToolSceneLibrary";
+import { ToolSceneLibrary, type ToolScenePageHeader } from "./ToolSceneLibrary";
 import { getToolWorkbenchAdapter } from "./workbench-registry";
 
 interface EditorProps {
   version: ToolSceneVersion; existing?: ToolScene; onReady?: (scene: ToolScene | null) => void; fullHeight?: boolean;
+  pageHeader?: ToolScenePageHeader;
 }
 
 /** 共用宿主负责场景生命周期，工具专属参数和选项由登记的接线提供。 */
@@ -19,8 +21,7 @@ export function ToolSceneEditor(props: EditorProps) {
   return <ToolSceneEditorSession key={props.version} {...props} />;
 }
 
-function ToolSceneEditorSession({ version, existing, onReady, fullHeight = false }: EditorProps) {
-  const t = useTranslations("tools.preparation");
+function ToolSceneEditorSession({ version, existing, onReady, fullHeight = false, pageHeader }: EditorProps) {
   const tools = useTranslations("tools.items");
   const definition = TOOL_SCENE_DEFINITIONS.find((item) => item.contentVersion === version)!;
   const [origin, setOrigin] = useState(existing);
@@ -36,11 +37,43 @@ function ToolSceneEditorSession({ version, existing, onReady, fullHeight = false
     capture(null); setOrigin(scene); setTitle(scene.payload.title); setGeneration((n) => n + 1);
   }
   return <div className={fullHeight ? "flex min-h-0 flex-1 flex-col gap-2" : "space-y-2"}>
-    <ToolSceneLibrary key={`library-${libraryEpoch}`} version={version} scene={ready} onOpen={open}>
-      <Input className="h-9 w-52 shrink-0" value={title} maxLength={80} onChange={(e) => setTitle(e.target.value)} aria-label={t("name")} />
+    <ToolSceneLibrary key={`library-${libraryEpoch}`} version={version} scene={ready} onOpen={open} pageHeader={pageHeader}
+      title={<ToolSceneName key={`name-${generation}`} value={title} onChange={setTitle} />}>
       {adapter.Import && createElement(adapter.Import, { key: `import-${generation}`, onOpen: (scene: ToolScene) => open(scene, true) })}
     </ToolSceneLibrary>
     <ToolSceneConfiguration key={`scene-${generation}`} version={version} existing={origin} title={title} onReady={capture} fullHeight={fullHeight} />
+  </div>;
+}
+
+function ToolSceneName({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const t = useTranslations("tools.preparation");
+  const [draft, setDraft] = useState<string | null>(null);
+  const container = useRef<HTMLDivElement>(null);
+  const returnFocus = useRef(false);
+  useEffect(() => {
+    if (draft === null && returnFocus.current) {
+      container.current?.querySelector("button")?.focus();
+      returnFocus.current = false;
+    }
+  }, [draft]);
+  function finish(cancel = false) {
+    if (!cancel && draft?.trim()) onChange(draft.trim());
+    setDraft(null);
+  }
+  // 编辑与展示使用同一宽度，失焦确认时保存按钮保持原位。
+  return <div ref={container} className="flex h-9 w-44 shrink-0 items-center" data-tool-scene-name>
+    {draft === null ? <Button type="button" size="sm" variant="ghost" className="h-9 w-full justify-start rounded-md px-2 text-ink hover:bg-moon/30"
+      aria-label={t("rename")} title={`${value} · ${t("rename")}`} onClick={() => setDraft(value)}>
+      <span className="min-w-0 truncate">{value}</span><Pencil aria-hidden className="size-3 shrink-0 text-muted" />
+    </Button> : <Input className="h-9 w-full" value={draft} maxLength={80} aria-label={t("name")} autoFocus
+      onFocus={(event) => event.currentTarget.select()} onChange={(event) => setDraft(event.target.value)} onBlur={() => finish()}
+      onKeyDown={(event) => {
+        event.stopPropagation();
+        if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
+        if (event.key === "Enter" || event.key === "Escape") {
+          event.preventDefault(); returnFocus.current = true; finish(event.key === "Escape");
+        }
+      }} />}
   </div>;
 }
 
