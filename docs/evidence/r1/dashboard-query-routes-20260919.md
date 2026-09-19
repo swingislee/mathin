@@ -113,5 +113,7 @@ UTF-8 文本按 LF 归一化后计算 SHA-256；原始文件仅保留于本机�
 | `production-asset-variants.txt` | `70deb4c805854341f4b2a351b6177fef9588d2c8a4c0c045413a58b1b3091519` |
 | `asset-equivalence.json` | `9146dc97b313a2675089095e51eb265658466d945de46bdc0b1d8eeecff292a2` |
 | `progress-equivalence.jsonl` | `dc4e0d1d1f25d532e5afc725013043855548fb2aa792cd7c6aac195f9c5a6f2a` |
+| `production-asset-ui-plans.txt` | `80eb980a1e210d80df90a0d99813f2201c7ded966297f94d57573799b4cf1cfe` |
+| `http-smoke.json` | `03abcb7c68162cf671748595fc3a8d06f0035c3b5f41aba1a8a7b57d12afac28` |
 | `dashboard-query-local/check.json` | `fa686afcb1d6a47a7b5b96837c01c7dafa04609dca703bbefe94bbf1d243e803` |
 | `dashboard-query-local/apply.json` | `9098601638e2d355c14a008737434b8dd19fda712b6c9a26f48efb9ac44d3f5c` |
