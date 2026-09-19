@@ -16,6 +16,8 @@ import { createCubeCoursewareTool } from "@/features/tools/courseware/cube-struc
 import { cubeDraftSnapshot } from "@/features/tools/spatial-lab/cube-structures-draft";
 import { createCubeSession } from "@/features/tools/spatial-lab/cube-structures-session";
 import { buildNet, diceTool, netTool } from "./fixtures/spatial-teaching-content";
+import { projectionTool } from "./fixtures/projection-tool";
+import { projectionSnapshot } from "@/features/tools/projection/projection-contract";
 
 const rendered = vi.hoisted(() => [] as Record<string, unknown>[]);
 vi.mock("next/dynamic", () => ({ default: () => function WorkspaceStub(props: Record<string, unknown>) { rendered.push(props); return null; } }));
@@ -41,15 +43,18 @@ describe("Tools workbench registration boundary", () => {
     expect(() => renderToStaticMarkup(createElement(adapter.Preparation, { existing: fraction(), title: "Ready", fullHeight: false, onChange: () => {} }))).not.toThrow();
   });
 
-  it("dispatches all five fixed scenes without mounting the preparation library or reading personal drafts", async () => {
+  it("dispatches all fixed scenes without mounting the preparation library or reading personal drafts", async () => {
     const fetcher = vi.fn(); vi.stubGlobal("fetch", fetcher);
     const cube = createCubeCoursewareTool({ name: "Cube", snapshot: cubeDraftSnapshot(createCubeSession([{ x: 0, y: 0, z: 0 }]), 0) }, "current");
-    const scenes = [cube, netTool(await buildNet()), diceTool(), fraction(), motion()];
+    const scenes = [cube, netTool(await buildNet()), diceTool(), fraction(), motion(), projectionTool()];
     for (const scene of scenes) {
       rendered.length = 0;
       renderToStaticMarkup(createElement(ToolScenePresentation, { scene }));
       expect(rendered).toHaveLength(1);
-      expect(rendered[0].tool ?? rendered[0].payload).toBe(scene.contentVersion === "cube-structures-lesson-v2" ? scene.payload : scene);
+      if (scene.contentVersion === "projection-lesson-v1") {
+        expect(rendered[0].initial).toBe(scene.payload.initial);
+        expect(rendered[0].readOnly).toBe(true);
+      } else expect(rendered[0].tool ?? rendered[0].payload).toBe(scene.contentVersion === "cube-structures-lesson-v2" ? scene.payload : scene);
       expect(rendered[0].classroom).toBeUndefined();
       expect(rendered[0].preparation).toBeUndefined();
       expect(rendered[0].onSnapshot).toBeUndefined();
@@ -61,6 +66,11 @@ describe("Tools workbench registration boundary", () => {
         const state = { session: createCubeSession([{ x: 0, y: 0, z: 0 }]), view: null, cameraRevision: 0 };
         await (rendered[0].classroom as CubeCoursewareRuntime).onChange!(state);
         expect(onChange).toHaveBeenCalledExactlyOnceWith({ toolId: scene.toolId, contentVersion: scene.contentVersion, state });
+      } else if (scene.contentVersion === "projection-lesson-v1") {
+        const state = projectionSnapshot(scene.payload.initial);
+        await (rendered[0].classroom as { onChange: (state: unknown) => Promise<void> }).onChange(state);
+        expect(onChange).toHaveBeenCalledExactlyOnceWith({ toolId: "projection", contentVersion: scene.contentVersion, state });
+        expect(rendered[0].readOnly).toBe(false);
       } else expect(rendered[0].classroom).toBe(classroom);
     }
     expect(fetcher).not.toHaveBeenCalled();

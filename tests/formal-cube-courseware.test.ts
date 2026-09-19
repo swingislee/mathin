@@ -28,7 +28,7 @@ describe("formal cube composition pages", () => {
   });
 
   it("keeps toolbar configuration strict and excludes private pointers, generic tools and legacy versions", () => {
-    expect(toolCoursewareContractsForSurface("formal-courseware").map((contract) => contract.contentVersion)).toEqual(["cube-structures-lesson-v2", "cube-net-lesson-v1", "dice-lesson-v1", "fraction-line-lesson-v1", "motion-lab-lesson-v1"]);
+    expect(toolCoursewareContractsForSurface("formal-courseware").map((contract) => contract.contentVersion)).toEqual(["cube-structures-lesson-v2", "cube-net-lesson-v1", "dice-lesson-v1", "fraction-line-lesson-v1", "motion-lab-lesson-v1", "projection-lesson-v1"]);
     const page = createFormalCubePage(tool());
     const change = (value: unknown) => ({ ...page, layout: { ...page.layout, blocks: [{ ...page.layout.blocks[0], tool: value }] } });
     expect(formalCubePageSchema.safeParse(change({ ...tool(), contentVersion: "cube-structures-lesson-v3" })).success).toBe(false);

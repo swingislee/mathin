@@ -92,10 +92,15 @@ function projectionBounds(cells: readonly ProjectedVoxelCell[]): ProjectionBound
 }
 
 export function projectVoxels(voxels: VoxelSet, view: OrthographicView): OrthographicProjection {
+  return projectUnitCubePositions(voxels.cells, view);
+}
+
+/** 同一正投影算法也用于拖动中的单位方块；小数展示坐标不进入整数体素文档。 */
+export function projectUnitCubePositions(positions: readonly VoxelCoordinate[], view: OrthographicView): OrthographicProjection {
   const transform = VIEW_TRANSFORMS[view];
   const rays = new Map<string, ProjectedVoxelCell>();
 
-  for (const cell of voxels.cells) {
+  for (const cell of positions) {
     const u = signedAxisValue(cell, transform.horizontalAxis);
     const v = signedAxisValue(cell, transform.verticalAxis);
     const depth = signedAxisValue(cell, transform.depthAxis);
@@ -134,7 +139,7 @@ export function projectVoxels(voxels: VoxelSet, view: OrthographicView): Orthogr
     cells,
     bounds: projectionBounds(cells),
     visibleVoxelCount: cells.length,
-    hiddenVoxelCount: voxels.size - cells.length,
+    hiddenVoxelCount: positions.length - cells.length,
   };
 }
 

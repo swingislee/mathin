@@ -5,6 +5,7 @@ import { motionSceneAdapter } from "../motion-lab/scene-adapter";
 import { cubeSceneAdapter } from "../spatial-lab/cube-scene-adapter";
 import { netSceneAdapter } from "../spatial-lab/net-scene-adapter";
 import { diceSceneAdapter } from "../spatial-lab/dice-scene-adapter";
+import { projectionSceneAdapter } from "../projection/scene-adapter";
 import type { ToolSceneVersion } from "./contract";
 import type { ToolWorkbenchAdapter } from "./workbench-adapter";
 
@@ -15,6 +16,7 @@ const adapters = {
   [diceSceneAdapter.contentVersion]: diceSceneAdapter,
   [fractionSceneAdapter.contentVersion]: fractionSceneAdapter,
   [motionSceneAdapter.contentVersion]: motionSceneAdapter,
+  [projectionSceneAdapter.contentVersion]: projectionSceneAdapter,
 } satisfies Record<ToolSceneVersion, ToolWorkbenchAdapter>;
 
 export function getToolWorkbenchAdapter(version: ToolSceneVersion): ToolWorkbenchAdapter {

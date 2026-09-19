@@ -482,7 +482,21 @@
       "dice": {
         "name": "Dice",
         "desc": "Move faces, color, roll and throw dice to observe opposite faces and relationships between dice."
+      },
+      "projection": {
+        "name": "Projection",
+        "desc": "Explore a solid and its front, side and top projections together. Build or move blocks and watch their projections change."
       }
+    },
+    "projection": {
+      "title": "Projection",
+      "settings": "Projections and rays",
+      "front": "Front projection",
+      "right": "Right projection",
+      "top": "Top projection",
+      "guides": "Projection rays",
+      "close": "Close projection settings",
+      "hint": "Choose the projection planes to display. Build, move or hide layers to observe changes; drag empty space to explore their spatial relationships."
     },
     "preparation": {
       "name": "Scene name",

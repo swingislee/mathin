@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import type { VoxelRendererMessages } from "@/features/spatial-math/renderer-r3f/VoxelFallback";
@@ -11,6 +11,7 @@ import { buildCubeStructureRenderModel, CUBE_COLORS, replayCubeHistory } from ".
 import type { CubeCoursewarePayload } from "./cube-structures-content";
 import type { CubeWorkbenchSession } from "../spatial-lab/cube-structures-session";
 import { CUBE_TOOLBAR_IDS } from "../spatial-lab/cube-structures-toolbar";
+import { useToolSnapshot } from "../scenes/useToolSnapshot";
 
 const colors = Object.fromEntries(CUBE_COLORS.map((color) => [color, color]));
 const noop = () => {};
@@ -26,9 +27,6 @@ export function CubeStructuresCourseware({ payload, preview = false, classroom, 
   const labels = useTranslations("teacherMicrocourses");
   const [cursor, setCursor] = useState(0);
   const [moving, setMoving] = useState(false);
-  const [publishing, setPublishing] = useState(false);
-  const [syncError, setSyncError] = useState(false);
-  const pending = useRef(false);
   const step = preview ? Math.min(cursor, payload.history.operations.length) : 0;
   const state = useMemo(() => replayCubeHistory(payload.history, step), [payload.history, step]);
   const model = useMemo(() => buildCubeStructureRenderModel(state, [], payload.title), [state, payload.title]);
@@ -44,18 +42,14 @@ export function CubeStructuresCourseware({ payload, preview = false, classroom, 
       : t("renderer.projectedCell", { u, v, count }),
   }), [t]);
   const initial = useMemo(() => cubeCoursewareInitialSession(payload), [payload]);
-  const snapshot = useMemo<CubeClassroomSnapshot>(() => classroom?.state ?? { session: initial, view: null, cameraRevision: 0 }, [classroom?.state, initial]);
-  const runtime = useMemo(() => classroom ? { snapshot, onChange: (next: CubeClassroomSnapshot) => {
-    if (!classroom.onChange || pending.current) return false;
-    pending.current = true; setPublishing(true); setSyncError(false);
-    void classroom.onChange(next).catch(() => setSyncError(true)).finally(() => { pending.current = false; setPublishing(false); });
-    return true;
-  } } : undefined, [classroom, snapshot]);
+  const origin = useMemo<CubeClassroomSnapshot>(() => ({ session: initial, view: null, cameraRevision: 0 }), [initial]);
+  const host = useToolSnapshot(origin, classroom);
+  const runtime = useMemo(() => classroom ? { snapshot: host.snapshot, onChange: host.update } : undefined, [classroom, host.snapshot, host.update]);
   if ("toolbar" in payload) return <section className="flex size-full min-h-0 flex-col bg-paper" aria-label={payload.title} data-cube-courseware="cube-structures-lesson-v2">
-    {syncError && <p role="alert" className="px-3 text-sm text-rose">{labels("cubeClassroomSyncError")}</p>}
+    {host.failed && <p role="alert" className="px-3 text-sm text-rose">{labels("cubeClassroomSyncError")}</p>}
     <CubeStructuresWorkbench key={JSON.stringify(payload)} locale={locale} rendererMessages={messages} onSnapshot={onSnapshot}
       cameraMessages={{ axisSnap: t("teaching.axisSnap"), enableAxisSnap: t("teaching.enableAxisSnap"), disableAxisSnap: t("teaching.disableAxisSnap") }}
-      courseware={{ initial, toolbar: preparation ? CUBE_TOOLBAR_IDS : payload.toolbar, runtime, readOnly: classroom ? !classroom.onChange || publishing : !preview,
+      courseware={{ initial, toolbar: preparation ? CUBE_TOOLBAR_IDS : payload.toolbar, runtime, readOnly: classroom ? !classroom.onChange || host.publishing : !preview,
         resetLabel: labels("cubeToolbarReset"), resetHint: labels("cubeClassroomOriginHint") }} />
   </section>;
   return <section className="flex size-full min-h-0 flex-col bg-paper" aria-label={payload.title}

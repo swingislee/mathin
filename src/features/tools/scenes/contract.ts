@@ -2,10 +2,11 @@ import { z } from "zod";
 import { cubeCoursewareV2ToolSchema } from "../courseware/cube-structures-content";
 import { spatialTeachingToolSchema } from "../courseware/spatial-teaching-content";
 import { numericTeachingToolSchema } from "./numeric-teaching-content";
+import { projectionToolSchema } from "../projection/projection-contract";
 import { getToolCoursewareContract, toolCoursewareContractsForSurface } from "./registry";
 
 /** Tools 共用的自包含现场：工具身份 + 参数版本 + 严格参数；与草稿、课件、课堂宿主无关。 */
-export const toolSceneSchema = z.discriminatedUnion("contentVersion", [cubeCoursewareV2ToolSchema, ...spatialTeachingToolSchema.options, ...numericTeachingToolSchema.options]);
+export const toolSceneSchema = z.discriminatedUnion("contentVersion", [cubeCoursewareV2ToolSchema, ...spatialTeachingToolSchema.options, ...numericTeachingToolSchema.options, projectionToolSchema]);
 export type ToolScene = z.infer<typeof toolSceneSchema>;
 export type ToolSceneVersion = ToolScene["contentVersion"];
 export const TOOL_SCENE_MAX_BYTES = 512_000;

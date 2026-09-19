@@ -17,6 +17,7 @@ function ToolSkeleton() {
 const FractionLine = dynamic(() => import("./fraction-line/FractionLine").then((m) => m.FractionLine), { loading: ToolSkeleton });
 const MotionLab = dynamic(() => import("./motion-lab/MotionLab").then((m) => m.MotionLab), { loading: ToolSkeleton });
 const SpatialLab = dynamic(() => import("./spatial-lab/SpatialLab").then((m) => m.SpatialLab), { loading: ToolSkeleton });
+const ProjectionTool = dynamic(() => import("./projection/ProjectionWorkspace").then((m) => m.ProjectionTool), { loading: ToolSkeleton });
 export const CubeCoursewarePreview = dynamic(() => import("./courseware/CubeStructuresCourseware").then((m) => m.CubeStructuresCourseware), { loading: ToolSkeleton });
 const ToolScenePresentation = dynamic(() => import("./scenes/ToolScenePresentation").then((m) => m.ToolScenePresentation), { loading: ToolSkeleton });
 const PreparedToolWorkbench = dynamic(() => import("./scenes/PreparedToolWorkbench").then((m) => m.PreparedToolWorkbench), { loading: ToolSkeleton });
@@ -45,6 +46,8 @@ export function ToolView({ id, preparation = false, ...props }: ToolComponentPro
       return <SpatialLab {...props} activity="spatial-lab.cube-net-fold.v1" />;
     case "dice":
       return <SpatialLab {...props} activity="spatial-lab.dice-teaching.v1" />;
+    case "projection":
+      return <ProjectionTool />;
     default:
       return null;
   }

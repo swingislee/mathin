@@ -12,6 +12,7 @@ import { formalManualPageSchema } from "@/features/courseware-studio/formal-manu
 import { formalCubePageSchema } from "@/features/courseware-studio/formal-cube-page-contract";
 import { resolveClassroomRendererInputProfile } from "@/features/classroom/input/capabilities";
 import { buildNet, diceTool, netTool } from "./fixtures/spatial-teaching-content";
+import { projectionTool } from "./fixtures/projection-tool";
 
 export const fractionTool = () => fractionCoursewareSchema.parse({ toolId: "fraction-line", contentVersion: "fraction-line-lesson-v1", payload: { title: "Fractions", initial: { ...initialFractionScene(), rows: [{ denominator: 3, count: 5, color: "var(--rose)" }] } } });
 export const motionTool = () => motionCoursewareSchema.parse({ toolId: "motion-lab", contentVersion: "motion-lab-lesson-v1", payload: { title: "Three tracks", initial: { ...initialMotionScene(), runways: [1, 2, 3].map((id) => ({ ...initialMotionScene().runways[0], id, speed: id, time: 10, distance: id * 10, x: id * 2 })) } } });
@@ -22,10 +23,10 @@ const meta = { id, name: "Three tracks", catalogId: "motion-lab", revision: 1, c
 const envelope = (data: unknown, accountId = owner) => Response.json({ data, accountId });
 
 describe("Tools-wide scene contract", () => {
-  it("registers five independent tools with one shared courseware and classroom boundary", async () => {
+  it("registers independent tools with one shared courseware and classroom boundary", async () => {
     const cube = createCubeCoursewareTool({ name: "Cube", snapshot: cubeDraftSnapshot(createCubeSession([{ x: 0, y: 0, z: 0 }]), 0) }, "current");
-    const scenes = [cube, netTool(await buildNet()), diceTool(), fractionTool(), motionTool()];
-    expect(TOOL_SCENE_DEFINITIONS.map((d) => d.catalogId).sort()).toEqual(["cube-net", "cube-structures", "dice", "fraction-line", "motion-lab"]);
+    const scenes = [cube, netTool(await buildNet()), diceTool(), fractionTool(), motionTool(), projectionTool()];
+    expect(TOOL_SCENE_DEFINITIONS.map((d) => d.catalogId).sort()).toEqual(["cube-net", "cube-structures", "dice", "fraction-line", "motion-lab", "projection"]);
     for (const scene of scenes) {
       expect(parseToolScene(scene)).toEqual(scene);
       expect(hasClassroomToolAdapter(scene)).toBe(true);

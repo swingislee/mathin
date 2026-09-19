@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import { Boxes, Circle, Droplets, Eraser, Eye, EyeOff, Hand, Hash, Layers3, Maximize, Minus, MousePointer2, Move, Orbit, Paintbrush, PaintBucket, Plus, Presentation, Redo2, RotateCcw, Scissors, Settings2, Shapes, Stamp, Trash2, Undo2, Ungroup, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,11 +40,14 @@ const VIEWS: readonly CubeView[] = ["angle", "front", "left", "right", "top"];
 const COLOR_MAP = Object.fromEntries(CUBE_COLORS.map((color) => [color, color]));
 type Panel = "selection" | "color" | "move" | "layers" | "recording" | "model" | "cut" | "mark" | "number" | "transparent" | null;
 
-export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessages, workspaceSelector, courseware, onSnapshot }: {
+export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessages, workspaceSelector, courseware, onSnapshot, extension }: {
   readonly locale: "zh" | "en"; readonly rendererMessages: VoxelRendererMessages;
   readonly cameraMessages: SpatialCameraControlMessages; readonly workspaceSelector?: ReactNode;
   readonly onSnapshot?: (session: CubeWorkbenchSession | null) => void;
+  readonly extension?: { readonly toolbar?: (closePanel: () => void) => ReactNode; readonly panel?: ReactNode; readonly onToolChange?: () => void;
+    readonly renderScene?: ComponentProps<typeof CubeStructuresViewport>["renderSceneOverlay"] };
   readonly courseware?: { readonly initial: CubeWorkbenchSession; readonly toolbar: readonly CubeToolbarId[]; readonly readOnly: boolean; readonly resetLabel: string; readonly resetHint: string;
+    readonly onReset?: () => void;
     readonly runtime?: { readonly snapshot: CubeClassroomSnapshot; readonly onChange: (next: CubeClassroomSnapshot) => boolean } };
 }) {
   const m = cubeStructuresMessages(locale);
@@ -193,6 +196,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
   }
   function chooseTool(value: CubeTool) {
     if (readOnly || !hasTool(value)) return;
+    extension?.onToolChange?.();
     const nextPanel: Panel = value === "layer" ? "layers" : value === "color" || value === "face" ? "color" : value === "select" ? "selection"
       : value === "move" || value === "cut" || value === "mark" || value === "number" || value === "transparent" ? value : null;
     if (value === tool && nextPanel) { setPanel(panel === nextPanel ? null : nextPanel); return; }
@@ -236,7 +240,8 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
     else if (confirmation === "record") updateSession(startCubeRecording);
     else if (confirmation === "resume") updateSession(resumeCubeRecording);
     else if (confirmation === "demo") {
-      if (courseware) { updateSession(() => structuredClone(courseware.initial), null, true); identity.current = cubeDraftIdentity(courseware.initial); }
+      if (courseware?.onReset) courseware.onReset();
+      else if (courseware) { updateSession(() => structuredClone(courseware.initial), null, true); identity.current = cubeDraftIdentity(courseware.initial); }
       else setDemo(createCubeDemo(prepared));
     }
     setConfirmation(null); resetTransient();
@@ -279,6 +284,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
     <div className={styles.viewport}>
       <div className={styles.canvas} aria-label={m.title + " · " + m[mode]} style={{ cursor: readOnly ? "default" : cubeToolCursor(tool) }} data-active-cube-tool={tool} data-cube-workspace-frame="4:3" data-has-cube-groups={state.groups.length > 0 && hasTool("select")} data-cube-motion={moving ? "moving" : "idle"}>
         <CubeStructuresViewport model={model} messages={rendererMessages} materialColors={COLOR_MAP}
+          renderSceneOverlay={extension?.renderScene}
           axisSnapEnabled={snap} cameraRequestKey={cameraRequest} sceneKey={runtime && courseware ? courseware.initial.work.initial : session.work.initial} onMovingChange={setMoving}
           opacityPreview={opacityPreview === null ? null : { ids: targetIds, opacity: opacityPreview / 100 }}
           moveInteraction={tool === "move" && editable ? { state, ids: targetIds, scopeIds, axis: moveAxis, kind: moveMode, snapToGrid: snap,
@@ -320,12 +326,14 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
           </CubeIconButton>}
         </div>}
         {(TOOL_BUTTONS.some(({ id }) => hasTool(id)) || hasTool("recording") || hasTool("undo") || hasTool("redo")) && <div className={cn(styles.dock, styles.tools)} role="toolbar" aria-label={m.tools} data-cube-tools-toolbar>
+          {extension?.toolbar && <>{extension.toolbar(() => setPanel(null))}<span className={styles.toolSeparator} aria-hidden /></>}
           {TOOL_BUTTONS.filter(({ id }) => hasTool(id)).map(({ id, Icon }) => <CubeIconButton key={id} label={m[id]} active={tool === id} onClick={() => chooseTool(id)} data-cube-tool={id}><Icon aria-hidden /></CubeIconButton>)}
           {hasTool("recording") && <CubeIconButton label={m.record} active={panel === "recording"} onClick={() => setPanel(panel === "recording" ? null : "recording")}><Circle aria-hidden className={session.recording === "recording" ? "fill-rose text-rose" : undefined} /></CubeIconButton>}
           {(hasTool("undo") || hasTool("redo")) && <span className="self-stretch border-t border-line" aria-hidden />}
           {hasTool("undo") && <CubeIconButton label={m.previous} disabled={!editable || !session.work.cursor || replacementStep !== null} onClick={() => { updateSession((current) => undoCubeSession(current, -1), null, true); clearPointer(); setCameraRequest((value) => value + 1); }}><Undo2 aria-hidden /></CubeIconButton>}
           {hasTool("redo") && <CubeIconButton label={m.next} disabled={!editable || session.work.cursor >= session.work.operations.length || replacementStep !== null} onClick={() => { updateSession((current) => undoCubeSession(current, 1), null, true); clearPointer(); setCameraRequest((value) => value + 1); }}><Redo2 aria-hidden /></CubeIconButton>}
         </div>}
+        {extension?.panel}
         {session.recording !== "off" && <p className={styles.recordStatus} role="status">{session.recording === "recording" ? "● " : "Ⅱ "}{session.recording === "recording" ? m.recordingActive : m.recordingPaused}</p>}
         {state.groups.length > 0 && hasTool("select") && <div className={cn(styles.dock, styles.groups)} aria-label={m.groups} data-cube-group-scope>
           <Button size="sm" variant={activeGroupId === null ? "secondary" : "ghost"} className="h-7 px-2 py-0 text-xs" aria-pressed={activeGroupId === null} onClick={() => { setScopeId(null); setSelected([]); clearPointer(); }}>{m.allGroups}</Button>

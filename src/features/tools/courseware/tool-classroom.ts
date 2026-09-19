@@ -5,6 +5,7 @@ import { diceWorkbenchStateSchema, netWorkbenchStateSchema, workbenchStateSchema
 import { fractionSceneSchema, motionSceneSchema, FRACTION_COURSEWARE_VERSION, MOTION_COURSEWARE_VERSION } from "./numeric-teaching-content";
 import { CUBE_NET_COURSEWARE_VERSION, DICE_COURSEWARE_VERSION } from "./registry";
 import { toolClassroomEventSchema, toolSceneInstanceKey, toolSceneOriginHash } from "../scenes/classroom-envelope";
+import { PROJECTION_COURSEWARE_VERSION, projectionSnapshotSchema } from "../projection/projection-contract";
 
 // 工具只在这里登记严格状态/动作合同。传输、课堂入口与实例状态容器不再识别具体工具。
 export const classroomToolEventSchema = z.discriminatedUnion("contentVersion", [
@@ -13,6 +14,7 @@ export const classroomToolEventSchema = z.discriminatedUnion("contentVersion", [
   toolClassroomEventSchema("spatial-lab", DICE_COURSEWARE_VERSION, diceWorkbenchStateSchema),
   toolClassroomEventSchema("fraction-line", FRACTION_COURSEWARE_VERSION, workbenchStateSchema(fractionSceneSchema, z.never())),
   toolClassroomEventSchema("motion-lab", MOTION_COURSEWARE_VERSION, workbenchStateSchema(motionSceneSchema, z.never())),
+  toolClassroomEventSchema("projection", PROJECTION_COURSEWARE_VERSION, projectionSnapshotSchema),
 ]);
 export type ClassroomToolStatePayload = z.infer<typeof classroomToolEventSchema>;
 export type ClassroomToolUpdate = ClassroomToolStatePayload extends infer P ? P extends ClassroomToolStatePayload

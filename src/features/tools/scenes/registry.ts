@@ -10,6 +10,7 @@ export const CUBE_COURSEWARE_LEGACY_VERSION = "cube-structures-lesson-v1" as con
 export const CUBE_COURSEWARE_CONTENT_VERSION = "cube-structures-lesson-v2" as const;
 export const CUBE_NET_COURSEWARE_VERSION = "cube-net-lesson-v1" as const;
 export const DICE_COURSEWARE_VERSION = "dice-lesson-v1" as const;
+export const PROJECTION_COURSEWARE_VERSION = "projection-lesson-v1" as const;
 
 export type ToolCoursewareAuthoringSurface = "microcourse" | "formal-courseware";
 
@@ -17,7 +18,7 @@ export type ToolCoursewareAuthoringSurface = "microcourse" | "formal-courseware"
 interface ToolCoursewareContractDefinition {
   toolId: string;
   catalogId?: string;
-  contentVersion: typeof TOOL_COURSEWARE_CONTENT_VERSION | typeof CUBE_COURSEWARE_CONTENT_VERSION | typeof CUBE_COURSEWARE_LEGACY_VERSION | typeof CUBE_NET_COURSEWARE_VERSION | typeof DICE_COURSEWARE_VERSION | typeof FRACTION_COURSEWARE_VERSION | typeof MOTION_COURSEWARE_VERSION;
+  contentVersion: typeof TOOL_COURSEWARE_CONTENT_VERSION | typeof CUBE_COURSEWARE_CONTENT_VERSION | typeof CUBE_COURSEWARE_LEGACY_VERSION | typeof CUBE_NET_COURSEWARE_VERSION | typeof DICE_COURSEWARE_VERSION | typeof FRACTION_COURSEWARE_VERSION | typeof MOTION_COURSEWARE_VERSION | typeof PROJECTION_COURSEWARE_VERSION;
   authoringSurfaces: readonly ToolCoursewareAuthoringSurface[];
   classroomSync: ClassroomInteractionSyncProvider;
 }
@@ -48,6 +49,10 @@ export const TOOL_COURSEWARE_CONTRACTS = [
   },
   {
     toolId: "motion-lab", catalogId: "motion-lab", contentVersion: MOTION_COURSEWARE_VERSION,
+    authoringSurfaces: ["microcourse", "formal-courseware"] as const, classroomSync: CLASSROOM_TOOL_STATE_SYNC_V1,
+  },
+  {
+    toolId: "projection", catalogId: "projection", contentVersion: PROJECTION_COURSEWARE_VERSION,
     authoringSurfaces: ["microcourse", "formal-courseware"] as const, classroomSync: CLASSROOM_TOOL_STATE_SYNC_V1,
   },
   {

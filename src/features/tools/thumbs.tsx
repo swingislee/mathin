@@ -2,6 +2,17 @@ import type { ReactNode } from "react";
 
 /** 工具缩略图：几何线稿占位（素材就绪后可换成截图/手绘，颜色只用 token） */
 export const toolThumbs: Record<string, ReactNode> = {
+  projection: (
+    <svg viewBox="0 0 200 120" className="h-full w-full" aria-hidden>
+      <g stroke="var(--crater)" strokeWidth={1.2} strokeLinejoin="round">
+        <path d="M28 28h34v48H28Z" fill="var(--cheek)" />
+        <path d="m74 93 32 18 44-23-32-18Z" fill="var(--moon)" />
+        <path d="M154 28h25v48h-25Z" fill="var(--leaf)" />
+        <path d="M65 44 98 25l32 19-32 18ZM65 44v38l33 18V62m32-18v38l-32 18" fill="var(--leaf)" stroke="var(--ink)" />
+        <path d="m65 44-20-6m85 6 33-6M98 100v9" fill="none" strokeDasharray="2 3" />
+      </g>
+    </svg>
+  ),
   "fraction-line": (
     <svg viewBox="0 0 200 120" className="h-full w-full" aria-hidden>
       <line x1={16} y1={62} x2={184} y2={62} stroke="var(--ink)" strokeWidth={1.5} />

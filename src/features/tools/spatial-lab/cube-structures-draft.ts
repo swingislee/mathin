@@ -29,7 +29,7 @@ const counter = z.number().int().min(1).max(Number.MAX_SAFE_INTEGER - 1);
 const groupName = z.string().trim().min(1).max(40);
 const opacity = z.number().min(0).max(1);
 
-const stateSchema = z.object({
+export const cubeStructureStateSchema = z.object({
   cubes: z.array(z.object({
     id, position: coordinate, color,
     faces: z.object({ "x+": color.optional(), "x-": color.optional(), "y+": color.optional(), "y-": color.optional(), "z+": color.optional(), "z-": color.optional() }).strict(),
@@ -82,7 +82,7 @@ const operationSchema = z.discriminatedUnion("kind", [
 ]) satisfies z.ZodType<CubeOperation>;
 
 export const cubeHistorySchema = z.object({
-  version: z.literal(CUBE_STRUCTURES_DRAFT_VERSION), initial: stateSchema,
+  version: z.literal(CUBE_STRUCTURES_DRAFT_VERSION), initial: cubeStructureStateSchema,
   operations: z.array(operationSchema).max(CUBE_STRUCTURES_LIMITS.steps), cursor: z.number().int().min(0),
 }).strict().superRefine((history, context) => {
   if (history.cursor > history.operations.length || validateCubeSequence(history.initial, history.operations)) {

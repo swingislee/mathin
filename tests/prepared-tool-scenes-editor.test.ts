@@ -11,6 +11,7 @@ import { createCubeCoursewareTool } from "@/features/tools/courseware/cube-struc
 import { cubeDraftSnapshot } from "@/features/tools/spatial-lab/cube-structures-draft";
 import { createCubeSession, operateCubeSession, startCubeRecording } from "@/features/tools/spatial-lab/cube-structures-session";
 import { cubeCoursewareInitialSession } from "@/features/tools/courseware/cube-structures-classroom";
+import { projectionTool } from "./fixtures/projection-tool";
 
 const workspace = vi.hoisted(() => ({ current: null as null | { initial?: unknown; payload?: unknown; preparation?: boolean; onSnapshot: (snapshot: unknown) => void } }));
 vi.mock("next/dynamic", () => ({ default: () => function OriginalWorkspaceStub(props: NonNullable<typeof workspace.current>) { workspace.current = props; return null; } }));
@@ -25,6 +26,7 @@ afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi
 describe("shared starting-scene editor", () => {
   it.each([
     diceTool(),
+    projectionTool(),
     fractionCoursewareSchema.parse({ toolId: "fraction-line", contentVersion: "fraction-line-lesson-v1", payload: { title: "Fractions", initial: initialFractionScene() } }),
     motionCoursewareSchema.parse({ toolId: "motion-lab", contentVersion: "motion-lab-lesson-v1", payload: { title: "Motion", initial: initialMotionScene() } }),
   ])("captures $toolId without reinitializing the original workbench or changing its source", async (scene) => {

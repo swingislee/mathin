@@ -25,9 +25,11 @@ const sessionSchema = z.object({
   }
 });
 
-export const cubeClassroomEventSchema = toolClassroomEventSchema("spatial-lab", CUBE_COURSEWARE_CONTENT_VERSION,
-  z.object({ session: sessionSchema, view: z.enum(["angle", "front", "left", "right", "top"]).nullable(),
-    cameraRevision: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER - 1) }).strict());
+export const cubeClassroomSnapshotSchema = z.object({
+  session: sessionSchema, view: z.enum(["angle", "front", "left", "right", "top"]).nullable(),
+  cameraRevision: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER - 1),
+}).strict() satisfies z.ZodType<CubeClassroomSnapshot>;
+export const cubeClassroomEventSchema = toolClassroomEventSchema("spatial-lab", CUBE_COURSEWARE_CONTENT_VERSION, cubeClassroomSnapshotSchema);
 
 export type ClassroomToolStatePayload = z.infer<typeof cubeClassroomEventSchema>;
 export interface ClassroomToolStateEntry {
