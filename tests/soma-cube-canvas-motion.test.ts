@@ -15,7 +15,8 @@ import { CUBE_COLORS, CUBE_SELECTION_COLOR } from "@/features/tools/spatial-lab/
 import type { SpatialObjectToolbarTarget } from "@/features/tools/spatial-interaction/SpatialObjectToolbar";
 import { unitCubeCorners } from "@/features/tools/spatial-interaction/rolling";
 import { spatialRigidPoint } from "@/features/tools/spatial-interaction/rigid-geometry";
-import { somaDefinition } from "@/features/tools/soma-cube/pieces";
+import { SOMA_IDS, somaDefinition } from "@/features/tools/soma-cube/pieces";
+import { rotateSpatialPose } from "@/features/tools/spatial-interaction/transform-handles";
 import { spatialMoveBasis } from "@/features/tools/spatial-interaction/object-gesture-math";
 
 const controls = vi.hoisted(() => ({ interaction: null as CubeMoveInteraction | null, toolbar: null as SpatialObjectToolbarTarget | null }));
@@ -63,6 +64,22 @@ async function setup(reduced = false) {
 }
 
 describe("Soma renders the shared rigid animation instead of replacing cells", () => {
+  it("uses the same fixed-pivot axis rings for all seven pieces, with free rotation as an option", async () => {
+    const rig = await setup(), onPoseCommit = vi.fn(() => true);
+    for (const id of SOMA_IDS) {
+      const snapshot = { ...rig.initial, selectedId: id, pieces: [{ id, orientation: 0, position: { x: 0, y: 5, z: 0 } }] };
+      await rig.render({ snapshot, onPoseCommit, navigation: "rotate", instantKey: JSON.stringify(somaRigidPoses(snapshot.pieces)) });
+      const body = controls.interaction!.bodyGesture!, target = body.selected!;
+      expect(body.handles).toMatchObject({ mode: "rotate", center: target.pivot });
+      expect(body.selectOnly).toBe(true); expect(body.rotate).toBe(false);
+      const pose = rotateSpatialPose(target.pose, target.pivot, "z", 0.6), landing = body.resolve(target, pose, "rotate", { kind: "axis-rotation", axis: "z" });
+      await act(async () => body.onPreview({ target, pose, landing: landing.pose, valid: landing.valid, phase: "drag", constraint: { kind: "axis-rotation", axis: "z" }, handles: body.handles }));
+      expect(rig.scene().getObjectByName(`soma-rigid:${id}`)!.quaternion.angleTo(new Quaternion(...pose.quaternion))).toBeLessThan(1e-7);
+      await act(async () => body.onPreview(null));
+    }
+    await rig.render({ onPoseCommit, navigation: "rotate", rotationStyle: "free" });
+    expect(controls.interaction!.bodyGesture!.rotate).toBe(true); expect(controls.interaction!.bodyGesture!.handles).toBeUndefined();
+  });
   it("links the passive plane guide, live camera readout and next drag, retaining the plane throughout a drag", async () => {
     const rig = await setup(), onMoveViewChange = vi.fn(), onPoseCommit = () => true;
     const props = { movePlane: "auto" as const, lowViewAngle: 20, onMoveViewChange, onPoseCommit };
@@ -104,7 +121,7 @@ describe("Soma renders the shared rigid animation instead of replacing cells", (
     await rig.render({ snapshot, onPoseCommit: () => true, instantKey: JSON.stringify(somaRigidPoses(snapshot.pieces)) });
     const pose = somaRigidPoses(snapshot.pieces)[0];
     expect(controls.toolbar!.vertices).toEqual(unitCubeCorners(somaDefinition("bao-1").cells).map((p) => spatialRigidPoint(p, pose)));
-    expect(controls.toolbar!.moveHandles!.axes).toEqual(["y"]);
+    expect(controls.toolbar!.moveHandles!.axes).toEqual(["x", "y", "z"]);
     await rig.render({ snapshot, onPoseCommit: () => true, preciseAxes: true });
     expect(controls.toolbar!.moveHandles!.axes).toEqual(["x", "y", "z"]);
     await rig.render({ snapshot, onPoseCommit: () => true, navigation: "rotate" });

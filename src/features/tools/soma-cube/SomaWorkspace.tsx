@@ -49,6 +49,7 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
   const { panel, tool: navigation, setTool: setNavigation, setPanel } = controls;
   const [axis, setAxis] = useState<Axis>("x"), [notice, setNotice] = useState("");
   const [rotationAxis, setRotationAxis] = useState<Axis>("y");
+  const [rotationStyle, setRotationStyle] = useState<"axis" | "free">("axis");
   const [movePlane, setMovePlane] = useState<SpatialMovePlane>("table");
   const [moveView, setMoveView] = useState<SpatialMoveViewInfo | null>(null);
   const [lowViewAngle, setLowViewAngle] = useState<number>(SPATIAL_LOW_VIEW_ANGLE.default);
@@ -108,7 +109,7 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
     <div className={styles.viewport}><div className={styles.canvas} data-has-cube-groups="true">
       <Canvas snapshot={directMove.displayed} messages={messages} title={m.title} readOnly={busy} cameraInteractive={!viewer} axisSnap={snap} navigation={navigation} moveAxis={axis}
         movePlane={movePlane} lowViewAngle={lowViewAngle} preciseAxes={panel === "move"} rotationAxis={rotationAxis} onRotationAxis={setRotationAxis} onMoveViewChange={setMoveView}
-        freeRotation={freeRotation} rotationSnap={rotationSnap} onToggleRotation={() => open("rotate")}
+        freeRotation={freeRotation} rotationStyle={rotationStyle} rotationSnap={rotationSnap} onToggleRotation={() => open("rotate")}
         onPoseCommit={(next) => commit(next, true, true)} onPlaneUnavailable={() => setNotice(m.planeEdgeOn)} onGestureBlocked={() => setNotice(m.gestureBlocked)}
         instantKey={directMove.target ? JSON.stringify(somaRigidPoses(directMove.target.pieces)) : null} locale={locale} onMoving={setMoving}
         rollAction={panel === "roll" ? rollAction : undefined}
@@ -157,6 +158,10 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
           </>}
           {(panel === "move" || panel === "rotate") && <>
             <p>{m.selected} · {selected.name}</p>
+            {panel === "rotate" && <ToggleGroup type="single" value={rotationStyle} onValueChange={(value) => { if (value) setRotationStyle(value as "axis" | "free"); }} variant="outline" size="sm" disabled={disabled} aria-label={m.rotationStyle} className="grid grid-cols-2">
+              <ToggleGroupItem value="axis" className="min-h-11 px-2 text-xs">{m.axisRotation}</ToggleGroupItem>
+              <ToggleGroupItem value="free" className="min-h-11 px-2 text-xs">{m.freeRotation}</ToggleGroupItem>
+            </ToggleGroup>}
             {panel === "move" && <div className="space-y-1"><p className="text-muted">{m.moveFeel}</p>
               <ToggleGroup type="single" value={movePlane} onValueChange={(value) => { if (value) setMovePlane(value as SpatialMovePlane); }}
                 variant="outline" size="sm" disabled={disabled} aria-label={m.moveFeel} className="grid grid-cols-2">
@@ -200,7 +205,7 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
         <strong>{assembling ? m.assemble : m.observe} · {assembling ? `${snapshot.pieces.length} ${m.countUnit}` : selected.name}</strong>
         <span className="ml-2 text-muted">{assembling ? snapshot.pieces.reduce((sum, piece) => sum + somaDefinition(piece.id).cells.length, 0) : selected.cells.length} {m.cubes}</span>
         {showMoveReadout ? <div className="mt-1 text-muted" data-soma-move-readout>
-          <p>{m.moveFeel}：{moveLabels[movePlane]}{movePlane === "auto" && moveView ? ` → ${moveLabels[moveView.plane]}` : ""}</p>
+          <p>{m.moveFeel}：{dragging && moveView ? moveLabels[moveView.plane] : moveLabels[movePlane]}{!dragging && movePlane === "auto" && moveView ? ` → ${moveLabels[moveView.plane]}` : ""}</p>
           {movePlane === "auto" && moveView ? <>
             <p>{m.viewElevation} {moveView.elevation}° · {m.movePlaneHints[moveView.plane]}</p>
             <p>{dragging ? m.moveDirectionLocked : m.autoMoveRule}</p>

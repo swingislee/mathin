@@ -1,11 +1,23 @@
 import { Box3, Vector3, type Camera, type Ray } from "three";
 import type { Axis, VoxelCoordinate } from "@/features/spatial-math/domain";
-import { cubeDisplayPosition, type CubeOperation, type CubeStructureState } from "./cube-structures-contract";
+import { applyCubeOperation, cubeDisplayPosition, type CubeOperation, type CubeStructureState } from "./cube-structures-contract";
 import { cubeDisplayPositions } from "./cube-structures-motion";
 
 export interface CubeScreenPoint { readonly x: number; readonly y: number }
 export type CubeMoveOperation = Extract<CubeOperation, { kind: "move" | "display-move" }>;
 export const CUBE_DRAG_AXES = ["x", "y", "z"] as const;
+
+/** 平面落点沿用已有语义步骤；先完整校验，再一次发布，避免只执行一半。 */
+export function cubePlaneOperations(state: CubeStructureState, ids: readonly string[], kind: CubeMoveOperation["kind"], delta: VoxelCoordinate): CubeMoveOperation[] | null {
+  const operations = CUBE_DRAG_AXES.filter((axis) => Math.abs(delta[axis]) > 1e-8).map((axis) => ({ kind, ids, axis, distance: delta[axis] }));
+  if (operations.length > 2) return null;
+  for (const ordered of [operations, [...operations].reverse()]) {
+    let current = state, valid = true;
+    for (const operation of ordered) { const next = applyCubeOperation(current, operation); if (next === current) { valid = false; break; } current = next; }
+    if (valid) return ordered;
+  }
+  return null;
+}
 
 export function cubeMoveCenter(state: CubeStructureState, ids: readonly string[]): VoxelCoordinate | null {
   const cubes = state.cubes.filter((cube) => ids.includes(cube.id) && !state.hiddenCubeIds.includes(cube.id));

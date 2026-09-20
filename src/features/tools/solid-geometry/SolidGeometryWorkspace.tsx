@@ -128,6 +128,13 @@ export function SolidGeometryWorkspace({ initial, onSnapshot, classroom, readOnl
         cameraInteractive={!readOnly && !(classroom && !classroom.onChange)}
         navigationMode={tool === "pan" ? "pan" : tool === "move" ? "move" : "orbit"} moveAxis={axis} onMoveAxis={setAxis} onMove={drag} onDragging={setDragging} fallback={m.fallback}
         objectManipulation={spatialDirectManipulation(tool)} objectAnimating={presentation.animating} rotationAction={{ axis, onAxisChange: setAxis, onRotate: rotate, label: m.turn }}
+        rotationHandles={panel === "turn"} onToggleRotationHandles={() => open("turn")}
+        onTransform={(entity) => {
+          if (disabled) return false;
+          const next = { ...snapshot, entities: snapshot.entities.map((item) => item.id === entity.id ? entity : item) };
+          if (!update(next)) return false;
+          directMove.hold(next); setInstantKey(solidEntitiesKey(next.entities.map((item) => item.id === next.selectedId ? measurementDisplayEntity(item, snapshot.measurement) : item))); return true;
+        }}
         rollAction={panel === "roll" ? rollAction : undefined}
         renderScene={(context) => <>{context.selected && <MeasurementOverlay entity={context.selected} settings={snapshot.measurement} feature={snapshot.feature} locale={locale} />}{renderScene?.(context)}</>} />
       {!snapshot.entities.length && <p className="pointer-events-none absolute left-4 top-16 text-sm text-muted">{m.empty}</p>}

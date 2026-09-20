@@ -3,14 +3,14 @@
 import { Component, createRef, useEffect, useMemo, useState, type ReactNode, type RefObject } from "react";
 import { Canvas, type ThreeEvent } from "@react-three/fiber";
 import { Html, Line } from "@react-three/drei";
-import { CanvasTexture, DoubleSide, EdgesGeometry, FrontSide, SRGBColorSpace, type Mesh } from "three";
+import { CanvasTexture, DoubleSide, EdgesGeometry, FrontSide, Quaternion, SRGBColorSpace, type Mesh } from "three";
 import { THREE_SHADOWS } from "@/lib/three-runtime";
 import type { Axis } from "@/features/spatial-math/domain";
 import { SpatialCameraRig } from "@/features/spatial-math/renderer-r3f/SpatialCameraRig";
 import type { CubeFrame, CubeView } from "./cube-structures-contract";
 import { cubeWorkbenchCamera } from "./cube-workbench-camera";
 import { CubeNetFaceArrows } from "./CubeNetFaceArrows";
-import { DICE_BOARD_LIMIT, DICE_FACES, PIP_POINTS, diceFaceTranslation, faceValue, isDiceFaceMoved, quaternion, vector, worldNormal, type DiceFace, type DiceFootprint, type TeachingDie } from "./dice-teaching-model";
+import { DICE_BOARD_LIMIT, DICE_FACES, PIP_POINTS, canPlaceDie, diceFaceTranslation, faceValue, isDiceFaceMoved, quaternion, rotationData, turnDie, vector, worldNormal, type DiceFace, type DiceFootprint, type TeachingDie } from "./dice-teaching-model";
 import { DICE_WHITE, DICE_TABLE_COLOR, DICE_TABLE_GRID_COLOR, DICE_TABLE_RENDERING, diceFaceArrows, dicePipShades, diceSelectionMarker, diceSurface, ignoreDiceHelperRaycast } from "./dice-teaching-display";
 import { CubeMoveHandles } from "./CubeMoveHandles";
 import type { CubeDragPreview } from "./cube-structures-drag-controller";
@@ -23,6 +23,8 @@ import type { DiceXRayPresentation } from "./dice-xray-animation";
 import { createDiceTapGuard, diceXRayPick, type DiceXRayTarget } from "./dice-xray-observation";
 import { spatialDirectManipulation } from "../spatial-interaction/policy";
 import { SpatialRotationControls } from "../spatial-interaction/SpatialRotationControls";
+import { spatialGizmoInteraction, spatialGizmoPoint, snapSpatialTranslation } from "../spatial-interaction/gizmo-adapter";
+import type { SpatialObjectPreview } from "../spatial-interaction/object-gesture-controller";
 import { SpatialRollControls } from "../spatial-interaction/SpatialRollControls";
 import type { SpatialRollAction } from "../spatial-interaction/SpatialRollButtons";
 
@@ -58,6 +60,7 @@ interface DiceCanvasProps {
   onDraggingChange?: (dragging: boolean) => void;
   onSelect: (id: string) => void; onFace: (id: string, face: DiceFace) => void; onMoveFace: (id: string, face: DiceFace) => void;
   onRotate?: (axis: Axis, turn: -1 | 1) => void;
+  onTransform?: (die: TeachingDie) => boolean;
   rollAction?: SpatialRollAction;
 }
 class DiceCanvasBoundary extends Component<{ children: ReactNode; label: string }, { failed: boolean }> {
@@ -78,13 +81,28 @@ function DiceObjects(props: DiceCanvasProps & { isTap: () => boolean }) {
   const occluders = opaqueFaceIds.map((id) => faceRefs.get(id)!);
   const occlusionKey = opaqueFaceIds.join("|");
   const [preview, setPreview] = useState<CubeDragPreview | null>(null);
-  const dragging = preview !== null;
+  const [handleFrame, setHandleFrame] = useState<{ frame: SpatialObjectPreview; dice: readonly TeachingDie[] } | null>(null);
+  const [handleDragging, setHandleDragging] = useState(false), [rotationHandles, setRotationHandles] = useState(false);
+  const dragging = preview !== null || handleDragging;
   const onDraggingChange = props.onDraggingChange;
   useEffect(() => { onDraggingChange?.(dragging); }, [onDraggingChange, dragging]);
   useEffect(() => () => { onDraggingChange?.(false); }, [onDraggingChange]);
   const dragState = useMemo(() => diceDragState(dice), [dice]);
-  const presentedDice = useMemo(() => preview ? dice.map((die) => ({ ...die, position: preview.positions.get(die.id) ?? die.position })) : dice, [dice, preview]);
+  const presentedDice = useMemo(() => handleFrame ? handleFrame.dice.map((die) => die.id === handleFrame.frame.target.pose.id ? { ...die,
+    position: spatialGizmoPoint(handleFrame.frame, die.position), rotation: rotationData(new Quaternion(...handleFrame.frame.pose.quaternion).multiply(quaternion(die.rotation))),
+  } : die) : preview ? dice.map((die) => ({ ...die, position: preview.positions.get(die.id) ?? die.position })) : dice, [dice, preview, handleFrame]);
   const dragPresentation = useMemo(() => diceDragState(presentedDice), [presentedDice]);
+  const sourceDie = dice.find((die) => die.id === selectedId);
+  const handleInteraction = props.onTransform && sourceDie ? spatialGizmoInteraction({ key: dice, id: selectedId, center: sourceDie.position, radius: 1.25,
+    mode: rotationHandles ? "rotate" : "move", enabled: !props.busy && !preview && !props.rollAction,
+    translate: (delta) => {
+      const snapped = snapSpatialTranslation(delta, 1, props.snap ? sourceDie.position : undefined, DICE_DRAG_GRID_ORIGIN);
+      const next = { ...sourceDie, position: { x: sourceDie.position.x + snapped.x, y: sourceDie.position.y + snapped.y, z: sourceDie.position.z + snapped.z } };
+      return { delta: snapped, valid: canPlaceDie(dice, selectedId, next.position), apply: () => props.onTransform!(next) };
+    },
+    rotate: (axis, turn) => ({ valid: true, apply: () => props.onTransform!(turnDie(sourceDie, axis, turn)) }),
+    onPreview: (frame) => setHandleFrame(frame ? { frame, dice } : null), onDragging: setHandleDragging, onUnavailable: props.onMoveUnavailable,
+  }) : undefined;
   useEffect(() => () => { geometries.forEach((g) => g.dispose()); }, [geometries]);
   useEffect(() => () => { edges.forEach((g) => g.dispose()); }, [edges]);
   useEffect(() => () => { textures.forEach((palette) => palette.forEach((t) => { t.map.dispose(); t.bump.dispose(); })); }, [textures]);
@@ -124,16 +142,18 @@ function DiceObjects(props: DiceCanvasProps & { isTap: () => boolean }) {
     </group>)}</group>
     {presentedDice.map((die) => <DiceFaceOrigins key={die.id} die={die} selected={die.id === selectedId} />)}
     {presentedDice.filter((die) => die.id === selectedId).map((die) => <mesh key={die.id} raycast={ignoreDiceHelperRaycast} {...diceSelectionMarker(die.position)}><ringGeometry args={[0.65, 0.68, 48]} /><meshBasicMaterial color="#c28c46" side={DoubleSide} transparent opacity={0.65} depthWrite={false} /></mesh>)}
-    {spatialDirectManipulation(props.tool) && !props.busy && <CubeMoveHandles presentation={dragPresentation} preview={preview} onPreview={setPreview} pickRenderedObjects
+    {spatialDirectManipulation(props.tool) && (!props.busy || handleFrame) && <CubeMoveHandles presentation={dragPresentation} preview={preview} onPreview={setPreview} pickRenderedObjects
       interaction={{ state: dragState, ids: [selectedId], scopeIds: dice.map((die) => die.id), axis: props.moveAxis, kind: "move", snapToGrid: props.snap, gridOrigin: DICE_DRAG_GRID_ORIGIN,
-        bodyAxis: "gesture",
+        bodyAxis: "gesture", enabled: !props.busy && !handleDragging, bodyGesture: handleInteraction, bodyPreview: handleFrame?.frame,
+        showHandles: !handleFrame && !props.rollAction && !rotationHandles,
         isValidOperation: (operation) => moveDiceByDrag(dice, operation) !== null, onAxisChange: props.onMoveAxis, onSelect: props.onSelect, onCommit: props.onDragCommit, onUnavailable: props.onMoveUnavailable }} />}
-    {spatialDirectManipulation(props.tool) && !props.rollAction && props.onRotate && !preview && presentedDice.filter((die) => die.id === selectedId).map((die) => <SpatialRotationControls key={die.id} center={die.position} vertices={DICE_FACES.flatMap((face) => diceFaceCorners(die, face))}
-      action={{ axis: props.moveAxis, onAxisChange: props.onMoveAxis, onRotate: props.onRotate!, label: m.turn, disabled: props.busy }} />)}
+    {spatialDirectManipulation(props.tool) && !props.rollAction && props.onRotate && !preview && !handleFrame && presentedDice.filter((die) => die.id === selectedId).map((die) => <SpatialRotationControls key={die.id} center={die.position} vertices={DICE_FACES.flatMap((face) => diceFaceCorners(die, face))}
+      action={{ axis: props.moveAxis, onAxisChange: props.onMoveAxis, onRotate: props.onRotate!, label: m.turn, disabled: props.busy,
+        gestureLabel: props.onTransform ? m.turn : undefined, gestureMode: { active: rotationHandles, onToggle: () => setRotationHandles((value) => !value) } }} />)}
     {spatialDirectManipulation(props.tool) && props.rollAction && !preview && presentedDice.filter((die) => die.id === selectedId).map((die) => <SpatialRollControls key={die.id} center={die.position} vertices={DICE_FACES.flatMap((face) => diceFaceCorners(die, face))} action={{ ...props.rollAction!, disabled: props.busy }} />)}
     <DiceXRayTransition dice={dice} requested={props.xrayTarget} initialTarget={props.initialXRayTarget} interactive={props.tool === "xray" && !props.busy} geometries={geometries} edges={edges} textures={textures}
       onClick={(event, target) => clickFace(event, target.id, target.face)} onPresentation={props.onXRayPresentation} />
-    {props.arrows && props.tool !== "xray" && !props.busy && !preview && <CubeNetFaceArrows key={occlusionKey} faces={arrows} occlude={occluders} onMove={(id) => { const arrow = arrows.find((item) => item.faceId === id); if (arrow) props.onMoveFace(arrow.dieId, arrow.face); }} />}
+    {props.arrows && props.tool !== "xray" && !props.busy && !preview && !handleFrame && <CubeNetFaceArrows key={occlusionKey} faces={arrows} occlude={occluders} onMove={(id) => { const arrow = arrows.find((item) => item.faceId === id); if (arrow) props.onMoveFace(arrow.dieId, arrow.face); }} />}
   </>;
 }
 /** 无点数的原位轮廓与来源线是观察辅助，不参与拾取或箭头遮挡。 */

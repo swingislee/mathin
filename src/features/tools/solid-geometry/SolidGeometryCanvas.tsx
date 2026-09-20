@@ -11,7 +11,7 @@ import type { CubeDragPreview } from "../spatial-lab/cube-structures-drag-contro
 import type { CubeMoveOperation } from "../spatial-lab/cube-structures-drag";
 import { cubeWorkbenchCamera } from "../spatial-lab/cube-workbench-camera";
 import { CUBE_AXIS_COLORS, CUBE_COLORS, type CubeFrame } from "../spatial-lab/cube-structures-contract";
-import type { SolidGeometryInitial } from "./solid-geometry-contract";
+import { solidEntitySchema, type SolidEntity, type SolidGeometryInitial } from "./solid-geometry-contract";
 import { SolidGeometryScene, type SolidGeometrySceneProps } from "./SolidGeometryScene";
 import { moveSolidByDrag, solidDragState } from "./solid-geometry-drag";
 import { SolidSectionHandles } from "../solid-sections/SolidSectionHandles";
@@ -20,6 +20,9 @@ import { SpatialRotationControls, type SpatialRotationAction } from "../spatial-
 import { getSolidBounds } from "./solid-geometry";
 import { SpatialRollControls } from "../spatial-interaction/SpatialRollControls";
 import type { SpatialRollAction } from "../spatial-interaction/SpatialRollButtons";
+import { spatialGizmoEuler, spatialGizmoInteraction, spatialGizmoPoint, snapSpatialTranslation } from "../spatial-interaction/gizmo-adapter";
+import type { SpatialObjectPreview } from "../spatial-interaction/object-gesture-controller";
+import { spatialQuarterTurn } from "../spatial-interaction/rigid-motion";
 
 const ignoreTransition = () => {};
 const ignoreRaycast = () => null;
@@ -38,13 +41,20 @@ export interface SolidGeometryCanvasProps extends SolidGeometrySceneProps {
   objectManipulation?: boolean; objectAnimating?: boolean; rotationAction?: SpatialRotationAction;
   cameraInteractive?: boolean;
   rollAction?: SpatialRollAction;
+  onTransform?: (entity: SolidEntity) => boolean;
+  rotationHandles?: boolean;
+  onToggleRotationHandles?: () => void;
 }
 function Contents(props: SolidGeometryCanvasProps) {
   const [preview, setPreview] = useState<CubeDragPreview | null>(null);
+  const [handleFrame, setHandleFrame] = useState<{ frame: SpatialObjectPreview; entities: readonly SolidEntity[] } | null>(null);
+  const [handleDragging, setHandleDragging] = useState(false);
   const onDragging = props.onDragging;
-  useEffect(() => { onDragging(preview !== null); }, [onDragging, preview]);
+  useEffect(() => { onDragging(preview !== null || handleDragging); }, [onDragging, preview, handleDragging]);
   useEffect(() => () => onDragging(false), [onDragging]);
-  const displayed = useMemo(() => preview ? props.entities.map((entity) => ({ ...entity, position: preview.positions.get(entity.id) ?? entity.position })) : props.entities, [props.entities, preview]);
+  const displayed = useMemo(() => handleFrame ? handleFrame.entities.map((entity) => entity.id === handleFrame.frame.target.pose.id ? { ...entity,
+    position: spatialGizmoPoint(handleFrame.frame, entity.position), rotation: spatialGizmoEuler(handleFrame.frame, entity.rotation),
+  } : entity) : preview ? props.entities.map((entity) => ({ ...entity, position: preview.positions.get(entity.id) ?? entity.position })) : props.entities, [props.entities, preview, handleFrame]);
   const dragState = useMemo(() => solidDragState(props.state.entities), [props.state.entities]);
   const dragPresentation = useMemo(() => solidDragState(displayed), [displayed]);
   const bookmark = cubeWorkbenchCamera(props.frame, props.state.view === "bottom" ? "top" : props.state.view, "solid-geometry");
@@ -52,6 +62,16 @@ function Contents(props: SolidGeometryCanvasProps) {
   const sectionEntity = props.state.entities.find((entity) => entity.id === props.selectedId);
   const rotationEntity = displayed.find((entity) => entity.id === props.selectedId);
   const bounds = rotationEntity && getSolidBounds(rotationEntity);
+  const source = props.state.entities.find((entity) => entity.id === props.selectedId);
+  const handleInteraction = props.onTransform && source ? spatialGizmoInteraction({ key: props.state.entities, id: source.id, center: source.position,
+    radius: (bounds?.radius ?? 1) + 0.35, mode: props.rotationHandles ? "rotate" : "move", enabled: !props.readOnly && !props.objectAnimating && !preview && !props.rollAction,
+    translate: (delta) => {
+      const snapped = snapSpatialTranslation(delta, props.moveSnap ? 1 : 0.5, props.moveSnap ? source.position : undefined), next = { ...source, position: { x: source.position.x + snapped.x, y: source.position.y + snapped.y, z: source.position.z + snapped.z } };
+      return { delta: snapped, valid: solidEntitySchema.safeParse(next).success, apply: () => props.onTransform!(next) };
+    },
+    rotate: (axis, turn) => { const next = { ...source, rotation: spatialQuarterTurn(source.rotation, axis, turn) }; return { valid: solidEntitySchema.safeParse(next).success, apply: () => props.onTransform!(next) }; },
+    onPreview: (frame) => setHandleFrame(frame ? { frame, entities: props.entities } : null), onDragging: setHandleDragging, onUnavailable: ignoreTransition,
+  }) : undefined;
   const toolbarVertices = bounds ? [bounds.min.x, bounds.max.x].flatMap((x) => [bounds.min.y, bounds.max.y].flatMap((y) => [bounds.min.z, bounds.max.z].map((z) => ({ x, y, z })))) : [];
   return <>
     <SpatialCameraRig bookmark={camera} radius={props.frame.radius} requestKey={props.cameraRevision} interactive={props.cameraInteractive ?? !props.readOnly}
@@ -62,13 +82,15 @@ function Contents(props: SolidGeometryCanvasProps) {
     <SolidGeometryScene {...props} entities={displayed} readOnly={props.readOnly || preview !== null} />
     {props.onSectionCommit && <SolidSectionHandles interaction={props.sectionEditable && !props.readOnly && sectionEntity ? { entity: sectionEntity, settings: props.state.section, onCommit: props.onSectionCommit } : null}
       displayed={props.sectionSettings ?? props.state.section} locale={props.locale ?? "zh"} onPreview={props.onSectionPreview ?? ignoreTransition} onDragging={props.onSectionDragging ?? ignoreTransition} />}
-    {props.objectManipulation && !props.objectAnimating && !props.readOnly && props.selectedId && <CubeMoveHandles presentation={dragPresentation} preview={preview} onPreview={setPreview} pickRenderedObjects
+    {props.objectManipulation && ((!props.objectAnimating && !props.readOnly) || handleFrame) && props.selectedId && <CubeMoveHandles presentation={dragPresentation} preview={preview} onPreview={setPreview} pickRenderedObjects
       interaction={{ state: dragState, ids: [props.selectedId], scopeIds: props.state.entities.map((entity) => entity.id), axis: props.moveAxis, kind: "display-move", snapToGrid: props.moveSnap,
-        bodyAxis: "gesture",
+        bodyAxis: "gesture", enabled: !props.readOnly && !props.objectAnimating && !handleDragging, bodyGesture: handleInteraction, bodyPreview: handleFrame?.frame,
+        showHandles: !handleFrame && !props.rotationHandles && !props.rollAction,
         isValidOperation: (operation) => moveSolidByDrag(props.state.entities, operation) !== null, onAxisChange: props.onMoveAxis,
         onSelect: (id) => props.onPick?.(id, null), onCommit: props.onMove, onUnavailable: ignoreTransition }} />}
-    {props.objectManipulation && !props.rollAction && props.rotationAction && rotationEntity && !preview && <SpatialRotationControls center={rotationEntity.position} vertices={toolbarVertices} radius={bounds!.radius}
-      action={{ ...props.rotationAction, disabled: props.readOnly || props.objectAnimating }} />}
+    {props.objectManipulation && !props.rollAction && props.rotationAction && rotationEntity && !preview && !handleFrame && <SpatialRotationControls center={rotationEntity.position} vertices={toolbarVertices} radius={bounds!.radius}
+      action={{ ...props.rotationAction, disabled: props.readOnly || props.objectAnimating, gestureLabel: props.onTransform ? props.rotationAction.label : undefined,
+        gestureMode: props.onToggleRotationHandles ? { active: !!props.rotationHandles, onToggle: props.onToggleRotationHandles } : undefined }} />}
     {props.objectManipulation && props.rollAction && rotationEntity && !preview && <SpatialRollControls center={rotationEntity.position} vertices={toolbarVertices} radius={bounds!.radius}
       action={{ ...props.rollAction, disabled: props.rollAction.disabled || props.readOnly || props.objectAnimating }} />}
   </>;

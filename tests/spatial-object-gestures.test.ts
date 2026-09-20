@@ -5,10 +5,13 @@ import { OrthographicCamera, Quaternion, Vector3 } from "three";
 import { bindSpatialObjectGestures, isSpatialCameraHandoff, startSpatialRotationGrip, type SpatialGestureTarget, type SpatialObjectInteraction, type SpatialObjectPreview } from "@/features/tools/spatial-interaction/object-gesture-controller";
 import { createSpatialMovePlaneResolver, resolveSpatialMovePlane, spatialMoveDelta, spatialMoveProjection } from "@/features/tools/spatial-interaction/object-gesture-math";
 import { spatialArcball, spatialArcballRotation } from "@/features/tools/spatial-interaction/arcball";
+import { pickSpatialTransformHandle, planeHandleCorners, rotationRingPoint, spatialAxisVector, type SpatialTransformHandlesSpec } from "@/features/tools/spatial-interaction/transform-handles";
 import { somaGestureLanding } from "@/features/tools/soma-cube/manipulation";
 import { createSomaInitial, somaAnchorIndex, somaOrientAroundAnchor, somaRotate, somaRotationPivot } from "@/features/tools/soma-cube/model";
 import { somaRigidPoses } from "@/features/tools/soma-cube/motion";
 import { SOMA_IDS, SOMA_ROTATIONS, somaDefinition, somaTurn } from "@/features/tools/soma-cube/pieces";
+import { bindCubeAxisDrag } from "@/features/tools/spatial-lab/cube-structures-drag-controller";
+import { createCubeHistory } from "@/features/tools/spatial-lab/cube-structures-contract";
 
 vi.mock("three", async () => {
   const { createRequire } = await import("node:module"); return createRequire(import.meta.url)("three");
@@ -31,7 +34,7 @@ class TestPointerEvent extends MouseEvent {
 const disposers: (() => void)[] = [];
 beforeEach(() => vi.stubGlobal("PointerEvent", TestPointerEvent));
 afterEach(() => { disposers.splice(0).forEach((dispose) => dispose()); vi.unstubAllGlobals(); });
-function setup() {
+function setup(withAxisController = false) {
   const canvas = document.createElement("canvas"); document.body.append(canvas);
   canvas.getBoundingClientRect = () => viewport as DOMRect;
   const captured = new Set<number>();
@@ -48,15 +51,81 @@ function setup() {
     resolve: vi.fn((_target, pose) => ({ pose: { ...pose, position: { x: Math.round(pose.position.x), y: Math.round(pose.position.y), z: Math.round(pose.position.z) } }, valid: true, apply })),
     onPreview: (frame) => previews.push(frame), onSelect: vi.fn(), onDragging: vi.fn(), onUnavailable: vi.fn(),
   };
-  const c = camera(); const dispose = bindSpatialObjectGestures(canvas, () => interaction, () => c);
+  const c = camera(), axisCommit = vi.fn();
+  const axis = withAxisController ? bindCubeAxisDrag(canvas, () => ({ state: createCubeHistory([origin]).initial, ids: ["cube-1"], scopeIds: ["cube-1"], axis: "x", kind: "move", snapToGrid: true,
+    bodyAxis: "gesture", bodyGesture: interaction, onAxisChange: vi.fn(), onSelect: vi.fn(), onCommit: axisCommit, onUnavailable: vi.fn() }), () => c, vi.fn()) : () => {};
+  const body = bindSpatialObjectGestures(canvas, () => interaction, () => c), dispose = () => { axis(); body(); };
   disposers.push(() => { dispose(); canvas.remove(); });
   const send = (type: string, init: PointerEventInit = {}) => {
     const event = new PointerEvent(type, { bubbles: true, cancelable: true, clientX: point.x, clientY: point.y, button: 0, buttons: 1, ...init });
     canvas.dispatchEvent(event); return event;
   };
   const flush = (time: number) => { const pending = [...frames.values()]; frames.clear(); pending.forEach((callback) => callback(time)); };
-  return { canvas, target, previews, interaction, apply, send, flush, dispose, camera: c, captured };
+  return { canvas, target, previews, interaction, apply, send, flush, dispose, camera: c, captured, axisCommit };
 }
+
+function pointerAt(p: Vector3, c: OrthographicCamera, pointerType = "mouse") {
+  const n = p.clone().project(c);
+  return { clientX: viewport.left + (n.x + 1) * viewport.width / 2, clientY: viewport.top + (1 - n.y) * viewport.height / 2, pointerType };
+}
+describe("shared explicit transform handles", () => {
+  it("gives the visible plane grip priority over the legacy axis and body controller", () => {
+    const g = setup(true), spec: SpatialTransformHandlesSpec = { center: origin, mode: "move", radius: 2 };
+    g.interaction.handles = spec;
+    const corners = planeHandleCorners(spec, "xy"), start = pointerAt(corners[0].clone().lerp(corners[2], 0.5), g.camera, "touch");
+    g.send("pointerdown", start); const end = { ...start, clientX: start.clientX + 55, clientY: start.clientY - 35 };
+    g.send("pointermove", end); g.send("pointerup", end);
+    expect(g.apply).toHaveBeenCalledTimes(1); expect(g.axisCommit).not.toHaveBeenCalled();
+    expect(g.previews.find((frame) => frame?.phase === "drag")!.constraint).toEqual({ kind: "plane", plane: "xy" });
+  });
+  it.each(["mouse", "touch"])("%s drags each plane grip without needing to grab the object", (pointerType) => {
+    for (const [plane, fixed] of [["table", "y"], ["xy", "z"], ["yz", "x"]] as const) {
+      const g = setup(), spec: SpatialTransformHandlesSpec = { center: origin, mode: "move", radius: 2 };
+      g.interaction.handles = spec; g.interaction.pick = vi.fn(() => null);
+      const corners = planeHandleCorners(spec, plane), start = pointerAt(corners[0].clone().lerp(corners[2], 0.5), g.camera, pointerType);
+      expect(pickSpatialTransformHandle(spec, { x: start.clientX, y: start.clientY }, g.camera, viewport, pointerType === "touch")).toEqual({ kind: "plane", plane });
+      expect(g.send("pointerdown", start).defaultPrevented).toBe(true);
+      // 起拖后修改 UI 选面，已抓住的平面仍保持锁定。
+      g.interaction.plane = plane === "xy" ? "yz" : "xy";
+      const end = { ...start, clientX: start.clientX + 60, clientY: start.clientY - 33 };
+      g.send("pointermove", end);
+      expect(g.previews.at(-1)!.constraint).toEqual({ kind: "plane", plane });
+      expect(g.previews.at(-1)!.pose.position[fixed]).toBeCloseTo(0);
+      expect(g.interaction.pick).not.toHaveBeenCalled();
+      g.send("pointerup", end); g.flush(0); g.flush(160);
+      expect(g.apply).toHaveBeenCalledTimes(1); expect(g.previews.at(-1)).toBeNull();
+      g.dispose();
+    }
+  });
+  it.each(["x", "y", "z"] as const)("the %s ring follows the pointer with a fixed world axis", (axis) => {
+    const g = setup(), spec: SpatialTransformHandlesSpec = { center: origin, mode: "rotate", radius: 2 };
+    g.interaction.handles = spec; g.interaction.pick = () => null;
+    const startVector = rotationRingPoint(spec, axis, 0.6), start = pointerAt(startVector, g.camera, "touch");
+    expect(pickSpatialTransformHandle(spec, { x: start.clientX, y: start.clientY }, g.camera, viewport, true)).toMatchObject({ kind: "axis-rotation", axis });
+    g.send("pointerdown", start);
+    const rotation = new Quaternion().setFromAxisAngle(spatialAxisVector(axis), 0.7);
+    const end = pointerAt(startVector.applyQuaternion(rotation), g.camera, "touch");
+    g.send("pointermove", end);
+    expect(new Quaternion(...g.previews.at(-1)!.pose.quaternion).angleTo(rotation)).toBeLessThan(1e-7);
+    expect(g.previews.at(-1)!.pose.position).toEqual(origin); expect(g.previews.at(-1)!.arcball).toBeUndefined();
+    g.send("pointerup", end); expect(g.apply).toHaveBeenCalledTimes(1);
+  });
+  it("edge-on handles do not silently select a different plane", () => {
+    const spec: SpatialTransformHandlesSpec = { center: origin, mode: "move", radius: 2 }, c = camera([0, 0, 10]);
+    const p = pointerAt(planeHandleCorners(spec, "table")[0], c);
+    expect(pickSpatialTransformHandle(spec, { x: p.clientX, y: p.clientY }, c, viewport)).toBeNull();
+  });
+  it("ring mode selects other objects, keeps Shift free rotation, and leaves blank space to the camera", () => {
+    const g = setup(); g.interaction.selectOnly = true;
+    g.send("pointerdown"); g.send("pointerup"); expect(g.interaction.onSelect).toHaveBeenCalledWith("piece");
+    g.send("pointerdown"); g.send("pointermove", { clientX: point.x + 50 }); g.send("pointerup", { clientX: point.x + 50 });
+    expect(g.apply).not.toHaveBeenCalled();
+    g.send("pointerdown", { shiftKey: true }); g.send("pointermove", { clientX: point.x + 50, shiftKey: true });
+    expect(g.previews.at(-1)!.arcball).toBeDefined();
+    g.send("pointerup", { clientX: point.x + 50, shiftKey: true });
+    g.interaction.pick = () => null; expect(g.send("pointerdown").defaultPrevented).toBe(false);
+  });
+});
 
 describe("continuous plane and camera-relative object gestures", () => {
   it.each([ ["table", "y", [7, 8, 10]], ["xy", "z", [0, 0, 10]], ["yz", "x", [10, 0, 0]] ] as const)("%s keeps %s fixed and the grab point under the pointer", (mode, fixedAxis, position) => {

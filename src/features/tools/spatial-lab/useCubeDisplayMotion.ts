@@ -12,7 +12,11 @@ function subscribeReducedMotion(onChange: () => void) {
   return () => media.removeEventListener("change", onChange);
 }
 
-export function useCubeDisplayMotion(state: CubeStructureState, sceneKey: object, onMovingChange: (moving: boolean) => void, history?: CubeHistory) {
+// 均色单块旋转前后的几何可能完全相同，语义游标也必须参与去重。
+export const cubeDisplayMotionKey = (state: CubeStructureState, history?: CubeHistory) => JSON.stringify([state.cubes, history]);
+
+export function useCubeDisplayMotion(state: CubeStructureState, sceneKey: object, onMovingChange: (moving: boolean) => void, history?: CubeHistory, instantKey?: string | null) {
+  const instant = instantKey === cubeDisplayMotionKey(state, history);
   const reduced = useSyncExternalStore(subscribeReducedMotion, () => window.matchMedia("(prefers-reduced-motion: reduce)").matches, () => false);
   const target = useMemo(() => cubeDisplayPositions(state.cubes), [state.cubes]);
   const [frame, setFrame] = useState<{ positions: CubeDisplayPositions; sceneKey: object; rotation: CubeRotationFrame | null;
@@ -31,10 +35,10 @@ export function useCubeDisplayMotion(state: CubeStructureState, sceneKey: object
       return;
     }
     const from = current.current.positions;
-    const rotation = current.current.sceneKey === sceneKey ? cubeRotationMotion(semantic.current.state, state, semantic.current.history, history) : null;
+    const rotation = !instant && current.current.sceneKey === sceneKey ? cubeRotationMotion(semantic.current.state, state, semantic.current.history, history) : null;
     semantic.current = { state, history };
     const distance = cubeMotionDistance(from, target);
-    const snap = current.current.sceneKey !== sceneKey || (distance === 0 && !rotation);
+    const snap = instant || current.current.sceneKey !== sceneKey || (distance === 0 && !rotation);
     onMovingChange(!snap);
     return animateSpatialAction(snap ? 0 : reduced ? SPATIAL_REDUCED_ACTION_DURATION_MS : rotation ? SPATIAL_ACTION_DURATION_MS : cubeMotionDuration(distance), (progress) => {
       const next = { positions: rotation ? cubeRotationPositions(rotation, target, progress) : interpolateCubePositions(from, target, progress), sceneKey, semantic: { state, history },
@@ -42,11 +46,11 @@ export function useCubeDisplayMotion(state: CubeStructureState, sceneKey: object
       current.current = next; setFrame(next);
       if (progress === 1) onMovingChange(false);
     });
-  }, [target, reduced, sceneKey, onMovingChange, preview, state, history]);
+  }, [target, reduced, sceneKey, onMovingChange, preview, state, history, instant]);
   const positions = preview ?? (frame.sceneKey !== sceneKey ? target : frame.positions);
-  const pendingRotation = useMemo(() => frame.rotation ? null : cubeRotationMotion(frame.semantic.state, state, frame.semantic.history, history), [frame, state, history]);
-  const rotation = !preview && frame.sceneKey === sceneKey ? frame.rotation ?? (pendingRotation ? { ...pendingRotation, angle: 0 } : null) : null;
-  const moving = !preview && (cubeMotionDistance(positions, target) > 0 || rotation !== null);
+  const pendingRotation = useMemo(() => instant || frame.rotation ? null : cubeRotationMotion(frame.semantic.state, state, frame.semantic.history, history), [frame, state, history, instant]);
+  const rotation = !instant && !preview && frame.sceneKey === sceneKey ? frame.rotation ?? (pendingRotation ? { ...pendingRotation, angle: 0 } : null) : null;
+  const moving = !instant && !preview && (cubeMotionDistance(positions, target) > 0 || rotation !== null);
   const presentation = useMemo(() => cubePresentationState(state, positions), [state, positions]);
   return { presentation, moving, previewPositions, rotation };
 }

@@ -286,7 +286,11 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector, initi
         rollAction={panel === "roll" ? rollAction : undefined}
         xrayTarget={xrayTarget} initialXRayTarget={initial?.xrayTarget} onClearXRay={() => requestXRay(null)} onXRayPresentation={setXRayPresentation}
         snap={snap} moveAxis={moveAxis} onMoveAxis={setMoveAxis} onDragCommit={dragCommit} onDraggingChange={setDragging} onMoveUnavailable={() => setNotice(structureMessages.moveAxisHidden)}
-        onSelect={setSelectedId} onFace={chooseFace} onMoveFace={moveFace} onRotate={(axis, turn) => updateDie(selected.id, (die) => turnDie(die, axis, turn), true)} />
+        onSelect={setSelectedId} onFace={chooseFace} onMoveFace={moveFace} onRotate={(axis, turn) => updateDie(selected.id, (die) => turnDie(die, axis, turn), true)}
+        onTransform={(die) => {
+          if (busy || readOnly || !canPlaceDie(scene.dice, die.id, die.position)) return false;
+          commit(changed(scene.dice.map((item) => item.id === die.id ? die : item))); return true;
+        }} />
       <div className={`${styles.dock} ${styles.meta}`} data-dice-overlay><CubeIconButton label={m.settings} active={panel === "settings"} onClick={() => selectPanel("settings")}><Settings2 /></CubeIconButton><span className="self-center pr-1 text-xs">{m.title}</span></div>
       <div className={`${styles.dock} ${styles.views} ${diceStyles.views}`} role="toolbar" aria-label={m.orbit}>
         {CUBE_WORKBENCH_VIEWS.map((item) => <CubeIconButton key={item} label={m.views[item]} active={view === item} onClick={() => selectView(item)}><CubeViewIcon view={item} /></CubeIconButton>)}

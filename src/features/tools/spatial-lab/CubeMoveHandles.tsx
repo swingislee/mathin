@@ -9,6 +9,7 @@ import { bindCubeAxisDrag, type CubeDragPreview, type CubeMoveInteraction } from
 import { pickSpatialObject } from "../spatial-interaction/picking";
 import { beginSpatialObjectGesture } from "@/features/spatial-math/renderer-r3f/spatial-object-gesture";
 import { bindSpatialObjectGestures } from "../spatial-interaction/object-gesture-controller";
+import { SpatialTransformHandles } from "../spatial-interaction/SpatialTransformHandles";
 
 export function CubeMoveHandles({ interaction, presentation, preview, onPreview, pickRenderedObjects = false }: {
   readonly interaction: CubeMoveInteraction;
@@ -29,10 +30,12 @@ export function CubeMoveHandles({ interaction, presentation, preview, onPreview,
     return () => { axis(); body?.(); };
   }, [gl, get, onPreview, pickRenderedObjects, hasBodyGesture]);
   const center = cubeMoveCenter(presentation, preview?.ids ?? interaction.ids);
-  if (!center || (interaction.showHandles === false && !preview)) return null;
+  const handles = interaction.bodyGesture?.handles;
+  if (!center) return null;
   const length = CUBE_MOVE_HANDLE_LENGTH;
   return <group>
-    {(interaction.handleAxes ?? CUBE_DRAG_AXES).map((axis) => {
+    {handles && (interaction.bodyGesture?.enabled || interaction.bodyPreview) && (!interaction.bodyPreview || interaction.bodyPreview.constraint) && <SpatialTransformHandles spec={handles} preview={interaction.bodyPreview} />}
+    {(interaction.showHandles === false && !preview ? [] : interaction.handleAxes ?? CUBE_DRAG_AXES).map((axis) => {
       const end = { ...center, [axis]: center[axis] + length };
       const color = preview?.valid === false && axis === preview.axis ? CUBE_AXIS_COLORS.x : CUBE_AXIS_COLORS[axis];
       return <group key={axis}>

@@ -3,7 +3,7 @@ import type { Axis } from "@/features/spatial-math/domain";
 import { applyCubeOperation, cubeDisplayPosition, type CubeStructureState } from "./cube-structures-contract";
 import { cubeDragDistance, cubeDragHandleAxis, cubeDragHit, cubeDragOperation, cubeDragPositions, cubeDragProjection, cubeMoveCenter, type CubeMoveOperation, type CubeScreenPoint } from "./cube-structures-drag";
 import type { CubeDisplayPositions } from "./cube-structures-motion";
-import { isSpatialCameraHandoff, type SpatialObjectInteraction } from "../spatial-interaction/object-gesture-controller";
+import { isSpatialCameraHandoff, spatialObjectHandleHit, type SpatialObjectInteraction, type SpatialObjectPreview } from "../spatial-interaction/object-gesture-controller";
 
 export interface CubeDragPreview {
   readonly positions: CubeDisplayPositions;
@@ -24,6 +24,7 @@ export interface CubeMoveInteraction {
   readonly handleAxes?: readonly Axis[];
   readonly continuousPreview?: boolean;
   readonly bodyGesture?: SpatialObjectInteraction;
+  readonly bodyPreview?: SpatialObjectPreview | null;
   readonly showHandles?: boolean;
   readonly idsForHit?: (id: string) => readonly string[];
   readonly hitTest?: (raycaster: Raycaster) => string | null;
@@ -66,6 +67,7 @@ export function bindCubeAxisDrag(canvas: HTMLCanvasElement, getInteraction: () =
     if (snapshot.bodyGesture && event.shiftKey) return;
     const camera = getCamera();
     const size = canvas.getBoundingClientRect();
+    if (snapshot.bodyGesture && spatialObjectHandleHit(snapshot.bodyGesture, event, camera, size)) return;
     const point = { x: event.clientX - size.left, y: event.clientY - size.top };
     const center = cubeMoveCenter(snapshot.state, snapshot.ids);
     if (!center) return;

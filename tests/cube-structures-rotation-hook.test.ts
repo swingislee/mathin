@@ -4,15 +4,15 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { WebGLRenderer } from "three";
 import { appendCubeOperation, createCubeHistory, replayCubeHistory, type CubeHistory } from "@/features/tools/spatial-lab/cube-structures-contract";
 import { cubeRotationOperation } from "@/features/tools/spatial-lab/cube-structures-rotation";
-import { useCubeDisplayMotion } from "@/features/tools/spatial-lab/useCubeDisplayMotion";
+import { cubeDisplayMotionKey, useCubeDisplayMotion } from "@/features/tools/spatial-lab/useCubeDisplayMotion";
 import { cubeRollOperation } from "@/features/tools/spatial-lab/cube-structures-roll";
 import { cubeDisplayPosition } from "@/features/tools/spatial-lab/cube-structures-contract";
 import { SPATIAL_REDUCED_ACTION_DURATION_MS } from "@/features/tools/spatial-interaction/policy";
 
 type Motion = ReturnType<typeof useCubeDisplayMotion>;
-function Probe({ history, sceneKey, onMoving, observe }: { history: CubeHistory; sceneKey: object; onMoving: (moving: boolean) => void; observe: (motion: Motion) => void }) {
+function Probe({ history, sceneKey, onMoving, observe, instantKey }: { history: CubeHistory; sceneKey: object; onMoving: (moving: boolean) => void; observe: (motion: Motion) => void; instantKey?: string | null }) {
   const state = useMemo(() => replayCubeHistory(history), [history]);
-  const motion = useCubeDisplayMotion(state, sceneKey, onMoving, history);
+  const motion = useCubeDisplayMotion(state, sceneKey, onMoving, history, instantKey);
   useLayoutEffect(() => observe(motion), [motion, observe]);
   return null;
 }
@@ -33,7 +33,7 @@ async function setup(reduced = false) {
   let motion: Motion;
   const onMoving = vi.fn();
   const observe = (value: Motion) => { motion = value; };
-  const render = async (history: CubeHistory) => act(async () => { root.render(createElement(Probe, { history, sceneKey: initial.initial, onMoving, observe })); });
+  const render = async (history: CubeHistory, instantKey?: string | null) => act(async () => { root.render(createElement(Probe, { history, sceneKey: initial.initial, onMoving, observe, instantKey })); });
   const frame = async (elapsed = 16) => { now += elapsed; const pending = [...frames.values()]; frames.clear(); await act(async () => { for (const callback of pending) callback(now); }); };
   await render(initial); await frame();
   cleanups.push(async () => { await act(async () => root.unmount()); });
@@ -41,6 +41,16 @@ async function setup(reduced = false) {
 }
 
 describe("rotation motion hook", () => {
+  it("keeps a ring gesture endpoint without replay, while undo still animates", async () => {
+    const rig = await setup(), next = appendCubeOperation(rig.initial, cubeRotationOperation(rig.initial.initial, ["cube-1"], "y", 1)!);
+    const key = cubeDisplayMotionKey(replayCubeHistory(next), next);
+    await rig.render(next, key); await rig.frame();
+    expect(rig.motion().rotation).toBeNull(); expect(rig.motion().moving).toBe(false);
+    await rig.render(structuredClone(next), key); await rig.frame();
+    expect(rig.motion().rotation).toBeNull();
+    await rig.render({ ...next, cursor: 0 }, key); await rig.frame(); await rig.frame(325);
+    expect(rig.motion().rotation?.angle).toBeCloseTo(-Math.PI / 4);
+  });
   it("animates a stationary-center cube, reverses on undo and does not repeat on acknowledgement", async () => {
     const rig = await setup();
     const next = appendCubeOperation(rig.initial, cubeRotationOperation(rig.initial.initial, ["cube-1"], "y", 1)!);

@@ -138,6 +138,19 @@ describe("solid geometry teacher workspace", () => {
   });
 });
 describe("solid geometry common classroom writer", () => {
+  it("holds a direct plane/ring endpoint through one classroom acknowledgement without replay", async () => {
+    const initial = createSolidGeometryInitial(); let accept!: () => void;
+    const pending = new Promise<void>((resolve) => { accept = resolve; }), sent: SolidGeometrySnapshot[] = [];
+    function Harness() { const [state, setState] = useState(solidGeometrySnapshot(initial)); return createElement(SolidGeometryWorkspace, { initial, classroom: { state, onChange: async (next) => { sent.push(next); await pending; setState(next); } } }); }
+    await render(createElement(Harness));
+    const next = { ...initial.entities[0], position: { x: 2, y: 3.5, z: 0 }, rotation: { x: 0, y: 0, z: Math.PI / 2 } };
+    await act(async () => { expect(canvas.props!.onTransform!(next)).toBe(true); });
+    expect(sent).toHaveLength(1); expect(canvas.props!.entities[0]).toEqual(next); expect(canvas.props!.objectAnimating).toBe(false);
+    await act(async () => { expect(canvas.props!.onTransform!(next)).toBe(false); });
+    await act(async () => accept()); await advance(120);
+    expect(sent).toHaveLength(1); expect(canvas.props!.entities[0]).toEqual(next); expect(canvas.props!.objectAnimating).toBe(false);
+    expect(initial.entities[0].position).not.toEqual(next.position);
+  });
   it("publishes one discrete change and waits for durable acceptance before animating", async () => {
     const initial = createSolidGeometryInitial(), origin = solidGeometrySnapshot(initial); let accept!: () => void;
     const pending = new Promise<void>((resolve) => { accept = resolve; }); const sent: SolidGeometrySnapshot[] = [];

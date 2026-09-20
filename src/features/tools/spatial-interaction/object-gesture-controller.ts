@@ -1,21 +1,24 @@
-import type { Camera, Raycaster } from "three";
+import type { Camera, Raycaster, Vector3 } from "three";
 import type { VoxelCoordinate } from "@/features/spatial-math/domain";
 import { beginSpatialObjectGesture } from "@/features/spatial-math/renderer-r3f/spatial-object-gesture";
 import { animateSpatialAction } from "./policy";
 import { interpolateRigidPoses, type SpatialRigidPose } from "./rigid-motion";
 import { resolveSpatialMovePlane, spatialMoveDelta, spatialMoveProjection, spatialPointerRay, type SpatialMoveBasis, type SpatialMovePlane, type SpatialStandardMovePlane, type SpatialObjectAction, type SpatialPointerViewport } from "./object-gesture-math";
 import { spatialArcball, spatialArcballRotation, type SpatialArcball } from "./arcball";
+import { pickSpatialTransformHandle, rotateSpatialPose, spatialRingAngle, spatialRingVector, type SpatialHandleConstraint, type SpatialTransformHandlesSpec } from "./transform-handles";
 
 export interface SpatialGestureTarget { pose: SpatialRigidPose; pivot: VoxelCoordinate; grabPoint: VoxelCoordinate; radius?: number }
 export interface SpatialGestureLanding { pose: SpatialRigidPose; valid: boolean; apply: () => boolean; snapped?: boolean }
-export interface SpatialObjectPreview { target: SpatialGestureTarget; pose: SpatialRigidPose; landing: SpatialRigidPose; valid: boolean; phase: "drag" | "settle"; arcball?: SpatialArcball; snapped?: boolean; moveBasis?: SpatialMoveBasis }
+export interface SpatialObjectPreview { target: SpatialGestureTarget; pose: SpatialRigidPose; landing: SpatialRigidPose; valid: boolean; phase: "drag" | "settle"; arcball?: SpatialArcball; snapped?: boolean; moveBasis?: SpatialMoveBasis; constraint?: SpatialHandleConstraint; handles?: SpatialTransformHandlesSpec }
 export interface SpatialObjectInteraction {
   key: object; enabled: boolean; plane: SpatialMovePlane; rotate?: boolean;
   resolvePlane?: (camera: Camera) => SpatialStandardMovePlane;
+  handles?: SpatialTransformHandlesSpec;
+  selectOnly?: boolean;
   selected: SpatialGestureTarget | null;
   pick: (raycaster: Raycaster) => SpatialGestureTarget | null;
   handlesHit?: (event: PointerEvent, camera: Camera, size: SpatialPointerViewport) => boolean;
-  resolve: (target: SpatialGestureTarget, pose: SpatialRigidPose, action: SpatialObjectAction) => SpatialGestureLanding;
+  resolve: (target: SpatialGestureTarget, pose: SpatialRigidPose, action: SpatialObjectAction, constraint?: SpatialHandleConstraint) => SpatialGestureLanding;
   onPreview: (preview: SpatialObjectPreview | null) => void;
   onDragging: (active: boolean) => void;
   onSelect: (id: string) => void;
@@ -28,11 +31,15 @@ export function startSpatialRotationGrip(canvas: HTMLCanvasElement, event: Point
   canvas.dispatchEvent(new CustomEvent(ROTATE_GRIP, { detail: event }));
 }
 export const SPATIAL_GESTURE_SETTLE_MS = 160;
+export function spatialObjectHandleHit(interaction: SpatialObjectInteraction, event: PointerEvent, camera: Camera, size: SpatialPointerViewport) {
+  return interaction.enabled && interaction.handles && interaction.selected ? pickSpatialTransformHandle(interaction.handles, { x: event.clientX, y: event.clientY }, camera, size, event.pointerType === "touch") : null;
+}
 
 /** 共用对象手势入口。数学落点由教具提供；相机、连续预览和一次提交不在各教具复制。 */
 export function bindSpatialObjectGestures(canvas: HTMLCanvasElement, current: () => SpatialObjectInteraction, getCamera: () => Camera): () => void {
   type Gesture = { interaction: SpatialObjectInteraction; key: object; target: SpatialGestureTarget; action: SpatialObjectAction; camera: Camera; size: SpatialPointerViewport;
-    start: PointerEvent; ball: SpatialArcball; projection: ReturnType<typeof spatialMoveProjection>; moved: boolean; frame: SpatialObjectPreview | null; landing: SpatialGestureLanding | null; cursor: string };
+    start: PointerEvent; ball: SpatialArcball; projection: ReturnType<typeof spatialMoveProjection>; moved: boolean; frame: SpatialObjectPreview | null; landing: SpatialGestureLanding | null; cursor: string;
+    constraint?: SpatialHandleConstraint; ringVector: Vector3 | null; ringAngle: number; selectOnly: boolean };
   let gesture: Gesture | null = null, settling: (() => void) | null = null;
   const cameraPointers = new Set<number>();
   const stop = (event: Event) => { event.preventDefault(); event.stopImmediatePropagation(); };
@@ -54,7 +61,7 @@ export function bindSpatialObjectGestures(canvas: HTMLCanvasElement, current: ()
     if (samePosition && dot > 1 - 1e-12) { finishPreview(finished.interaction); return; }
     settling = animateSpatialAction(SPATIAL_GESTURE_SETTLE_MS, (progress) => {
       if (progress === 1) { settling = null; finishPreview(finished.interaction); return; }
-      finished.interaction.onPreview({ target: finished.target, pose: interpolateRigidPoses([from], [to], progress)[0], landing: to, valid: true, phase: "settle" });
+      finished.interaction.onPreview({ target: finished.target, pose: interpolateRigidPoses([from], [to], progress)[0], landing: to, valid: true, phase: "settle", constraint: finished.constraint, handles: finished.interaction.handles });
     });
   };
   const cancel = (animate = true) => {
@@ -78,17 +85,20 @@ export function bindSpatialObjectGestures(canvas: HTMLCanvasElement, current: ()
     const interaction = current();
     if (!interaction.enabled || event.button !== 0 || event.isPrimary === false) return;
     const camera = getCamera().clone(), size = canvas.getBoundingClientRect();
-    if (!forced && interaction.handlesHit?.(event, camera, size)) return;
+    const constraint = forced ? undefined : spatialObjectHandleHit(interaction, event, camera, size) ?? undefined;
+    if (!forced && !constraint && interaction.handlesHit?.(event, camera, size)) return;
     const raycaster = spatialPointerRay({ x: event.clientX, y: event.clientY }, camera, size);
-    const target = forced ? interaction.selected : interaction.pick(raycaster);
+    const target = forced || constraint ? interaction.selected : interaction.pick(raycaster);
     if (!target) return;
     stop(event); stopSettle();
-    const action: SpatialObjectAction = forced || event.shiftKey || interaction.rotate ? "rotate" : "translate";
-    const projection = action === "translate" ? spatialMoveProjection({ x: event.clientX, y: event.clientY }, target.grabPoint,
-      interaction.resolvePlane?.(camera) ?? resolveSpatialMovePlane(interaction.plane, camera), camera, size) : null;
+    const action: SpatialObjectAction = constraint ? constraint.kind === "axis-rotation" ? "rotate" : "translate" : forced || event.shiftKey || interaction.rotate ? "rotate" : "translate";
+    const projection = action === "translate" ? spatialMoveProjection({ x: event.clientX, y: event.clientY }, constraint?.kind === "plane" ? interaction.handles!.center : target.grabPoint,
+      constraint?.kind === "plane" ? constraint.plane : interaction.resolvePlane?.(camera) ?? resolveSpatialMovePlane(interaction.plane, camera), camera, size) : null;
     // 侧看桌面仍允许轻点选择；达到起拖阈值时再提示不可解的移动平面。
     gesture = { interaction, key: interaction.key, target, action, camera, size, start: event,
-      ball: spatialArcball(target.pivot, target.radius ?? 1, camera, size), projection, moved: false, frame: null, landing: null, cursor: canvas.style.cursor };
+      ball: spatialArcball(target.pivot, target.radius ?? 1, camera, size), projection, moved: false, frame: null, landing: null, cursor: canvas.style.cursor,
+      constraint, ringVector: constraint?.kind === "axis-rotation" ? spatialRingVector({ x: event.clientX, y: event.clientY }, target.pivot, constraint.axis, camera, size) : null,
+      ringAngle: 0, selectOnly: !!interaction.selectOnly && !constraint && !forced && !event.shiftKey };
     canvas.setPointerCapture(event.pointerId); canvas.style.cursor = "grabbing";
     beginSpatialObjectGesture(canvas);
   };
@@ -100,16 +110,23 @@ export function bindSpatialObjectGestures(canvas: HTMLCanvasElement, current: ()
     const delta = { x: event.clientX - g.start.clientX, y: event.clientY - g.start.clientY };
     if (!g.moved && Math.hypot(delta.x, delta.y) <= (g.start.pointerType === "touch" ? 8 : 3)) return;
     if (!g.moved) { g.moved = true; g.interaction.onDragging(true); }
+    if (g.selectOnly) return;
     let pose = g.target.pose;
-    if (g.action === "rotate") pose = spatialArcballRotation(pose, g.target.pivot, { x: g.start.clientX, y: g.start.clientY }, { x: event.clientX, y: event.clientY }, g.ball);
+    if (g.constraint?.kind === "axis-rotation") {
+      const next = spatialRingVector({ x: event.clientX, y: event.clientY }, g.target.pivot, g.constraint.axis, g.camera, g.size);
+      if (!next || !g.ringVector) return;
+      g.ringAngle += spatialRingAngle(g.ringVector, next, g.constraint.axis); g.ringVector = next;
+      const limit = g.constraint.maxAngle ?? Infinity;
+      pose = rotateSpatialPose(pose, g.target.pivot, g.constraint.axis, Math.max(-limit, Math.min(limit, g.ringAngle)));
+    } else if (g.action === "rotate") pose = spatialArcballRotation(pose, g.target.pivot, { x: g.start.clientX, y: g.start.clientY }, { x: event.clientX, y: event.clientY }, g.ball);
     else {
       const translation = g.projection && spatialMoveDelta(g.projection, { x: event.clientX, y: event.clientY }, g.camera, g.size);
       if (!translation) { g.interaction.onUnavailable("plane"); return; }
       pose = { ...pose, position: { x: pose.position.x + translation.x, y: pose.position.y + translation.y, z: pose.position.z + translation.z } };
     }
-    g.landing = g.interaction.resolve(g.target, pose, g.action);
-    g.frame = { target: g.target, pose, landing: g.landing.pose, valid: g.landing.valid, phase: "drag", arcball: g.action === "rotate" ? g.ball : undefined, snapped: g.landing.snapped,
-      moveBasis: g.projection?.basis };
+    g.landing = g.constraint ? g.interaction.resolve(g.target, pose, g.action, g.constraint) : g.interaction.resolve(g.target, pose, g.action);
+    g.frame = { target: g.target, pose, landing: g.landing.pose, valid: g.landing.valid, phase: "drag", arcball: g.action === "rotate" && !g.constraint ? g.ball : undefined, snapped: g.landing.snapped,
+      moveBasis: g.projection?.basis, constraint: g.constraint, handles: g.interaction.handles };
     g.interaction.onPreview(g.frame);
   };
   const up = (event: PointerEvent) => {

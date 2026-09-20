@@ -13,7 +13,7 @@ import { SpatialAxisSnapButton, useSpatialAxisSnap, type SpatialCameraControlMes
 import type { VoxelRendererMessages } from "@/features/spatial-math/renderer-r3f/VoxelFallback";
 import { SPATIAL_LAB_MEASUREMENT_PRESET_ID, SPATIAL_LAB_PRESET_ID, SPATIAL_LAB_PRESETS, createSpatialLabPresetDraft, type SpatialLabPresetId } from "./preset";
 import { CUBE_AXIS_COLORS, CUBE_COLORS, CUBE_MARK_SHAPES, CUBE_STRUCTURES_LIMITS, adjacentCube, applyCubeOperation, buildCubeStructureRenderModel, canPlaceCube, cubeAtDisplayPosition, cubeCutOperation, cubeFrame, cubeIsVisible, cubeLayerNumber, cubeLayerOperation, cubeScopeIds, cubeStructureMetrics, exteriorPaintOperation, type CubeColor, type CubeLabelPlacement, type CubeMarkShape, type CubeOperation, type CubeTool, type CubeView } from "./cube-structures-contract";
-import { createCubeDemo, createCubeSession, cubeResumeNeedsRestore, cubeSessionScene, editCubeRecording, finishCubeRecording, moveCubeRecordedStep, operateCubeSession, pauseCubeRecording, previewCubeSession, replaceCubeRecordedStep, resumeCubeRecording, startCubeRecording, undoCubeSession, type CubeWorkbenchSession } from "./cube-structures-session";
+import { createCubeDemo, createCubeSession, cubeResumeNeedsRestore, cubeSessionScene, editCubeRecording, finishCubeRecording, moveCubeRecordedStep, operateCubeSession, operateCubeSessionBatch, pauseCubeRecording, previewCubeSession, replaceCubeRecordedStep, resumeCubeRecording, startCubeRecording, undoCubeSession, type CubeWorkbenchSession } from "./cube-structures-session";
 import { cubeStructuresMessages } from "./cube-structures-messages";
 import { cubeToolCursor } from "./cube-structures-cursor";
 import { CubeAxisIcon, CubeCanvasPanel, CubeColorPicker, CubeIconButton, CubeMarkIcon, CubeViewIcon } from "./CubeWorkbenchControls";
@@ -310,6 +310,13 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
           axisSnapEnabled={snap} cameraRequestKey={cameraRequest} sceneKey={runtime && courseware ? courseware.initial.work.initial : session.work.initial} onMovingChange={setMoving}
           history={animationHistory}
           onDraggingChange={setDragging}
+          onTransformOperations={replacementStep === null ? (operations) => {
+            if (!editable || operations.some((operation) => operation.kind === "rotate" && !allowRotation)) return null;
+            const next = operateCubeSessionBatch(session, operations);
+            if (next === session || !updateSession(() => next)) return null;
+            const operation = operations[0]; if (operation && "ids" in operation && operation.ids) setSelected(operation.ids);
+            clearPointer(); return next.work;
+          } : undefined}
           rollInteraction={panel === "roll" && allowRotation && (selectedIds.length || activeGroupId) ? { ...rollAction, ids: targetIds } : null}
           rotationInteraction={panel !== "roll" && spatialDirectManipulation(tool) && hasTool("move") && allowRotation && (selectedIds.length || activeGroupId) ? {
             ids: targetIds, axis: moveAxis, onAxisChange: setMoveAxis, label: m.rotate, disabled: !editable || dragging,

@@ -38,6 +38,14 @@ export function operateCubeSession(session: CubeWorkbenchSession, operation: Cub
   return { ...session, work, lesson: session.recording === "recording" && session.lesson ? appendCubeOperation(session.lesson, captured) : session.lesson };
 }
 
+/** 一个平面手势可包含两条已有轴向语义步骤，完整成功后由宿主一次提交。 */
+export function operateCubeSessionBatch(session: CubeWorkbenchSession, operations: readonly CubeOperation[]): CubeWorkbenchSession {
+  if (!operations.length || session.preview !== null || (session.recording === "recording" && (session.lesson?.cursor ?? 0) + operations.length > CUBE_STRUCTURES_LIMITS.steps)) return session;
+  let next = session;
+  for (const operation of operations) { const applied = operateCubeSession(next, operation); if (applied === next) return session; next = applied; }
+  return next;
+}
+
 export function startCubeRecording(session: CubeWorkbenchSession): CubeWorkbenchSession {
   const snapshot = cubeSnapshotHistory(cubeSessionScene(session));
   return { ...session, work: snapshot, lesson: snapshot, recording: "recording", preview: null };

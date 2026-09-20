@@ -44,9 +44,10 @@ export interface SomaCanvasProps {
   freeRotation?: boolean; rotationSnap?: SpatialRotationSnapLevel; onToggleRotation?: () => void;
   onMoveViewChange?: (view: SpatialMoveViewInfo) => void;
   lowViewAngle?: number;
+  rotationStyle?: "axis" | "free";
 }
 export default function SomaCanvas({ snapshot, messages, title, readOnly, axisSnap, navigation, moveAxis, onMoveAxis, onSelect, onMove, onUnavailable, onDragging, onMoving, onRotate, instantKey, locale, rollAction, cameraInteractive = !readOnly,
-  movePlane = "table", preciseAxes = false, rotationAxis = "y", onRotationAxis = onMoveAxis, onPoseCommit, onPlaneUnavailable = onUnavailable, onGestureBlocked = onUnavailable, freeRotation = true, rotationSnap = DEFAULT_SPATIAL_ROTATION_SNAP, onToggleRotation, onMoveViewChange, lowViewAngle = SPATIAL_LOW_VIEW_ANGLE.default }: SomaCanvasProps) {
+  movePlane = "table", preciseAxes = false, rotationAxis = "y", onRotationAxis = onMoveAxis, onPoseCommit, onPlaneUnavailable = onUnavailable, onGestureBlocked = onUnavailable, freeRotation = true, rotationSnap = DEFAULT_SPATIAL_ROTATION_SNAP, onToggleRotation, onMoveViewChange, lowViewAngle = SPATIAL_LOW_VIEW_ANGLE.default, rotationStyle = "axis" }: SomaCanvasProps) {
   const planeResolver = useMemo(() => createSpatialMovePlaneResolver(), []);
   const resolvePlane = useCallback((camera: Camera) => planeResolver(movePlane, camera, lowViewAngle), [planeResolver, movePlane, lowViewAngle]);
   const visible = useMemo(() => somaVisiblePieces(snapshot), [snapshot]);
@@ -89,11 +90,14 @@ export default function SomaCanvas({ snapshot, messages, title, readOnly, axisSn
     const pivot = { x: v.x, y: v.y, z: v.z };
     return { pose, pivot, grabPoint: pivot, radius: somaRotationRadius(id) };
   };
-  const handleAxes: readonly Axis[] = navigation === "rotate" ? [] : preciseAxes || !onPoseCommit ? ["x", "y", "z"] : ["y"];
+  const handleAxes: readonly Axis[] = navigation === "rotate" || !!rollAction ? [] : ["x", "y", "z"];
   const toolbarVertices = useMemo(() => selectedPose ? unitCubeCorners(somaDefinition(snapshot.selectedId).cells).map((p) => spatialRigidPoint(p, selectedPose)) : [], [selectedPose, snapshot.selectedId]);
   const toolbarHandles = { center: cubeMoveCenter(state, selectedIds) ?? center!, axes: handleAxes };
   const bodyGesture: SpatialObjectInteraction | undefined = onPoseCommit ? {
-    key: state, enabled: !readOnly && !motion.animating && !preview, plane: movePlane, resolvePlane, rotate: navigation === "rotate", selected: targetFor(snapshot.selectedId),
+    key: state, enabled: !readOnly && !motion.animating && !preview, plane: movePlane, resolvePlane, rotate: navigation === "rotate" && rotationStyle === "free", selectOnly: navigation === "rotate" && rotationStyle === "axis", selected: targetFor(snapshot.selectedId),
+    handles: !rollAction && (!readOnly || !!objectPreview) && pivot && (navigation !== "rotate" || rotationStyle === "axis") ? {
+      mode: navigation === "rotate" ? "rotate" : "move", center: navigation === "rotate" ? pivot : toolbarHandles.center, radius: somaRotationRadius(snapshot.selectedId) + 0.35,
+    } : undefined,
     pick: (raycaster) => {
       const hits = target.flatMap((pose) => {
         const hit = spatialPickRigidCells(raycaster.ray, pose, somaDefinition(pose.id as SomaId).cells);
@@ -114,7 +118,8 @@ export default function SomaCanvas({ snapshot, messages, title, readOnly, axisSn
     onPreview: setObjectPreview, onDragging: setObjectDragging, onSelect: (id) => onSelect(id as SomaId),
     onUnavailable: (reason) => reason === "plane" ? onPlaneUnavailable() : onGestureBlocked(),
   } : undefined;
-  const ghost = objectPreview?.phase === "drag" && (!freeRotation || !objectPreview.arcball || objectPreview.snapped) ? shapes.find((shape) => shape.id === objectPreview.target.pose.id) : null;
+  const rotatingObject = !!objectPreview?.arcball || objectPreview?.constraint?.kind === "axis-rotation";
+  const ghost = objectPreview?.phase === "drag" && (!freeRotation || !rotatingObject || objectPreview.snapped) ? shapes.find((shape) => shape.id === objectPreview.target.pose.id) : null;
   const activeAnchor = objectPreview && localPivot(objectPreview.pose.id as SomaId);
   const activePivot = objectPreview && activeAnchor ? new Vector3(activeAnchor.x, activeAnchor.y, activeAnchor.z).applyQuaternion(new Quaternion(...objectPreview.pose.quaternion))
     .add(new Vector3(objectPreview.pose.position.x, objectPreview.pose.position.y, objectPreview.pose.position.z)) : null;
@@ -138,7 +143,7 @@ export default function SomaCanvas({ snapshot, messages, title, readOnly, axisSn
       </group>}
       {activePivot && <SpatialRotationAnchor center={activePivot} />}
       {objectPreview?.arcball && <SpatialArcballGuide ball={objectPreview.arcball} />}
-      {direct && onPoseCommit && !readOnly && pivot && navigation !== "rotate" && !rollAction && !objectPreview?.arcball && <SpatialMoveGuide
+      {direct && onPoseCommit && !readOnly && pivot && navigation !== "rotate" && !rollAction && !rotatingObject && <SpatialMoveGuide
         center={activePivot ?? pivot} radius={somaRotationRadius((objectPreview?.pose.id as SomaId | undefined) ?? snapshot.selectedId)} plane={movePlane}
         visible={!preview && !motion.animating && (preciseAxes || movePlane !== "table" || !!objectPreview?.moveBasis)}
         lockedBasis={objectPreview?.moveBasis} resolvePlane={resolvePlane} groundY={-0.505} onViewChange={onMoveViewChange} />}
@@ -153,7 +158,7 @@ export default function SomaCanvas({ snapshot, messages, title, readOnly, axisSn
       })}
       {direct && <CubeMoveHandles presentation={presentation} preview={preview} onPreview={setPreview}
         interaction={{ state, ids: selectedIds, scopeIds: state.cubes.map((cube) => cube.id), bodyAxis: onPoseCommit ? "handles" : "gesture", handleAxes,
-          enabled: !readOnly && !motion.animating && !objectDragging, continuousPreview: !!onPoseCommit, bodyGesture, showHandles: !objectPreview && !readOnly && !motion.animating,
+          enabled: !readOnly && !motion.animating && !objectDragging, continuousPreview: !!onPoseCommit, bodyGesture, bodyPreview: objectPreview, showHandles: !objectPreview && !readOnly && !motion.animating,
           idsForHit: (id) => state.cubes.filter((cube) => somaIdFromCell(cube.id) === somaIdFromCell(id)).map((cube) => cube.id),
           axis: moveAxis, kind: "move", snapToGrid: true, isValidOperation: (operation) => somaDrag(snapshot, operation) !== null,
           onAxisChange: onMoveAxis, onSelect: selectCell, onCommit: onMove, onUnavailable }} />}
