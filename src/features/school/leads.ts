@@ -14,6 +14,7 @@ import {
 } from "./lead-contract";
 import type { InvitationKind, InvitationState } from "./invitation-contract";
 import { mergeSourceNotes, sourceLeadContactFacts } from './business-source-contract';
+import { readSchoolQueryPages } from "./school-query-pages";
 
 interface LeadDbRow {
   note: string;
@@ -159,63 +160,70 @@ export async function listLeadPool(
     .map((row) => row.suggested_student_id)
     .filter((id): id is string => Boolean(id)))];
   const [sourceResult, interestResult, communicationResult, initialInvitationResult, reminderResult, ownerResult, studentResult, communicationDates] = await Promise.all([
-    supabase
+    readSchoolQueryPages((start, end) => supabase
       .from("lead_source_records")
       .select("id,lead_id,submitted_at,acquisition_method,promoter,location_text,source_marked_duplicate,created_at")
       .in("lead_id", leadIds)
       .order("submitted_at", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false })
-      .limit(5_000)
-      .returns<LeadSourceDbRow[]>(),
-    supabase
+      .order("id", { ascending: true })
+      .range(start, end)
+      .returns<LeadSourceDbRow[]>()),
+    readSchoolQueryPages((start, end) => supabase
       .from("lead_interest_selections")
       .select("lead_id,label")
       .in("lead_id", leadIds)
-      .limit(5_000)
-      .returns<LeadInterestDbRow[]>(),
-    supabase
+      .order("id", { ascending: true })
+      .range(start, end)
+      .returns<LeadInterestDbRow[]>()),
+    readSchoolQueryPages((start, end) => supabase
       .from("effective_lead_communications" as "lead_communications")
       .select("id,lead_id,outcome,channel,note,wechat_added,visit_committed,interest_level,occurred_at")
       .in("lead_id", leadIds)
       .order("original_occurred_at", { ascending: false, nullsFirst: false })
       .order("id", { ascending: false })
-      .limit(5_000)
-      .returns<LeadCommunicationDbRow[]>(),
-    supabase
+      .range(start, end)
+      .returns<LeadCommunicationDbRow[]>()),
+    readSchoolQueryPages((start, end) => supabase
       .from("lead_invitation_threads")
       .select("id,lead_id,kind,state,activity_id,assessor_id,proposed_time_text,parent_time_options,assessor_time_options,scheduled_at,location_text,updated_at")
       .in("lead_id", leadIds)
       .not("state", "in", "(completed,cancelled)")
       .order("updated_at", { ascending: false })
-      .limit(5_000)
-      .returns<LeadInvitationDbRow[]>(),
-    supabase
+      .order("id", { ascending: true })
+      .range(start, end)
+      .returns<LeadInvitationDbRow[]>()),
+    readSchoolQueryPages((start, end) => supabase
       .from("lead_next_actions")
       .select("lead_id,due_at")
       .in("lead_id", leadIds)
       .eq("status", "open")
       .neq("kind", "initial_contact")
-      .returns<LeadNextActionDbRow[]>(),
+      .order("id", { ascending: true })
+      .range(start, end)
+      .returns<LeadNextActionDbRow[]>()),
     ownerIds.length > 0
       ? supabase.from("profiles").select("id,display_name").in("id", ownerIds)
       : Promise.resolve({ data: [], error: null }),
     suggestedStudentIds.length > 0
       ? supabase.from("students").select("id,name").in("id", suggestedStudentIds).is("deleted_at", null)
       : Promise.resolve({ data: [], error: null }),
-    supabase.from('lead_communications').select('id,occurred_on').in('lead_id',leadIds),
+    readSchoolQueryPages((start, end) => supabase.from('lead_communications').select('id,occurred_on').in('lead_id',leadIds)
+      .order('id', { ascending: true }).range(start, end)),
   ]);
   let invitationResult = initialInvitationResult;
   if (invitationResult.error?.code === "PGRST204"
       || invitationResult.error?.code === "42703"
       || invitationResult.error?.message?.includes("parent_time_options")) {
-    invitationResult = await supabase
+    invitationResult = await readSchoolQueryPages((start, end) => supabase
       .from("lead_invitation_threads")
       .select("id,lead_id,kind,state,activity_id,assessor_id,proposed_time_text,location_text,updated_at")
       .in("lead_id", leadIds)
       .not("state", "in", "(completed,cancelled)")
       .order("updated_at", { ascending: false })
-      .limit(5_000)
-      .returns<LeadInvitationDbRow[]>();
+      .order("id", { ascending: true })
+      .range(start, end)
+      .returns<LeadInvitationDbRow[]>());
   }
   if (sourceResult.error) throw new Error(sourceResult.error.message);
   if (interestResult.error) throw new Error(interestResult.error.message);
