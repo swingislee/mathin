@@ -6,7 +6,8 @@ import * as THREE from "three";
 import SomaCanvas, { type SomaCanvasProps } from "@/features/tools/soma-cube/SomaCanvas";
 import { createSomaInitial, somaRotate, somaRoll } from "@/features/tools/soma-cube/model";
 import { somaRigidPoses } from "@/features/tools/soma-cube/motion";
-import type { CubeMoveInteraction } from "@/features/tools/spatial-lab/cube-structures-drag-controller";
+import type { CubeDragPreview, CubeMoveInteraction } from "@/features/tools/spatial-lab/cube-structures-drag-controller";
+import { cubeDragPositions } from "@/features/tools/spatial-lab/cube-structures-drag";
 import { spatialArcball, spatialArcballRotation } from "@/features/tools/spatial-interaction/arcball";
 import type { SpatialGestureTarget } from "@/features/tools/spatial-interaction/object-gesture-controller";
 import { somaRotationPivot } from "@/features/tools/soma-cube/model";
@@ -19,7 +20,7 @@ import { SOMA_IDS, somaDefinition } from "@/features/tools/soma-cube/pieces";
 import { rotateSpatialPose } from "@/features/tools/spatial-interaction/transform-handles";
 import { spatialMoveBasis } from "@/features/tools/spatial-interaction/object-gesture-math";
 
-const controls = vi.hoisted(() => ({ interaction: null as CubeMoveInteraction | null, toolbar: null as SpatialObjectToolbarTarget | null }));
+const controls = vi.hoisted(() => ({ interaction: null as CubeMoveInteraction | null, toolbar: null as SpatialObjectToolbarTarget | null, preview: null as ((preview: CubeDragPreview | null) => void) | null }));
 
 vi.mock("three", async () => {
   const { createRequire } = await import("node:module"); return createRequire(import.meta.url)("three");
@@ -28,7 +29,7 @@ vi.mock("three", async () => {
 vi.mock("@/features/spatial-math/renderer-r3f/VoxelCanvas", async (original) => ({
   ...await original<object>(), VoxelModelCanvas: ({ sceneOverlay }: { sceneOverlay: ReactNode }) => sceneOverlay,
 }));
-vi.mock("@/features/tools/spatial-lab/CubeMoveHandles", () => ({ CubeMoveHandles: ({ interaction }: { interaction: CubeMoveInteraction }) => { controls.interaction = interaction; return null; } }));
+vi.mock("@/features/tools/spatial-lab/CubeMoveHandles", () => ({ CubeMoveHandles: ({ interaction, onPreview }: { interaction: CubeMoveInteraction; onPreview: (preview: CubeDragPreview | null) => void }) => { controls.interaction = interaction; controls.preview = onPreview; return null; } }));
 vi.mock("@/features/tools/spatial-interaction/SpatialRotationControls", () => ({ SpatialRotationControls: (props: SpatialObjectToolbarTarget) => { controls.toolbar = props; return null; }, SpatialRotationAnchor: () => null }));
 vi.mock("@/features/tools/spatial-interaction/SpatialArcballGuide", () => ({ SpatialArcballGuide: () => null }));
 const cleanups: (() => Promise<void>)[] = [];
@@ -80,40 +81,42 @@ describe("Soma renders the shared rigid animation instead of replacing cells", (
     await rig.render({ onPoseCommit, navigation: "rotate", rotationStyle: "free" });
     expect(controls.interaction!.bodyGesture!.rotate).toBe(true); expect(controls.interaction!.bodyGesture!.handles).toBeUndefined();
   });
-  it("links the passive plane guide, live camera readout and next drag, retaining the plane throughout a drag", async () => {
-    const rig = await setup(), onMoveViewChange = vi.fn(), onPoseCommit = () => true;
-    const props = { movePlane: "auto" as const, lowViewAngle: 20, onMoveViewChange, onPoseCommit };
+  it("keeps only a vertical height guide, following plane and axis drags without intercepting picks", async () => {
+    const rig = await setup(), props = { onPoseCommit: () => true };
     await rig.render(props);
-    const guide = () => rig.scene().getObjectByName("spatial-move-plane")!;
-    const normal = () => new Vector3(0, 0, 1).applyQuaternion(guide().quaternion);
-    await rig.viewFrame(35);
-    expect(onMoveViewChange).toHaveBeenLastCalledWith({ plane: "table", elevation: 35 });
-    expect(Math.abs(normal().y)).toBeCloseTo(1);
-    await rig.viewFrame(15);
-    expect(onMoveViewChange).toHaveBeenLastCalledWith({ plane: "xy", elevation: 15 });
-    const camera = await rig.viewFrame(22); // 共享 4° 缓冲，起拖与可视方向相同。
+    expect(rig.scene().getObjectByName("spatial-move-plane")).toBeUndefined();
+    const guide = () => rig.scene().getObjectByName("spatial-move-height-guide")!;
+    const endpoints = () => {
+      const geometry = (guide().children[0] as THREE.Mesh).geometry;
+      return { start: new Vector3().fromBufferAttribute(geometry.getAttribute("instanceStart"), 0), end: new Vector3().fromBufferAttribute(geometry.getAttribute("instanceEnd"), 0) };
+    };
+    const initial = endpoints();
+    expect(initial.end.y).toBeCloseTo(-0.505); expect(initial.end.x).toBe(initial.start.x); expect(initial.end.z).toBe(initial.start.z);
+    expect(guide().children[0]).toHaveProperty("material.dashed", true);
+    expect(guide().children[0]).toHaveProperty("material.linewidth", 1);
+    await rig.viewFrame(15); expect(endpoints()).toEqual(initial);
     const body = controls.interaction!.bodyGesture!;
-    expect(body.resolvePlane!(camera)).toBe("xy");
-    expect(onMoveViewChange).toHaveBeenLastCalledWith({ plane: "xy", elevation: 22 });
-    expect(Math.abs(normal().z)).toBeCloseTo(1);
-    expect(guide().children).toHaveLength(9);
+    expect(body.plane).toBe("table"); expect(body.resolvePlane).toBeUndefined();
+    expect(body.handles?.mode).toBe("move");
+    expect(guide().children).toHaveLength(3);
     for (const line of guide().children) {
       expect(line).toHaveProperty("isLine2", true);
       expect(new THREE.Raycaster().intersectObject(line)).toEqual([]);
     }
-    const target = body.selected!;
-    await act(async () => body.onPreview({ target, pose: target.pose, landing: target.pose, valid: true, phase: "drag", moveBasis: spatialMoveBasis("xy") }));
-    await rig.viewFrame(45, 90);
-    expect(onMoveViewChange).toHaveBeenLastCalledWith({ plane: "xy", elevation: 45 });
-    expect(Math.abs(normal().z)).toBeCloseTo(1);
+    const target = body.selected!, pose = { ...target.pose, position: { ...target.pose.position, x: target.pose.position.x + 1, y: target.pose.position.y + 2 } };
+    await act(async () => body.onPreview({ target, pose, landing: pose, valid: true, phase: "drag", moveBasis: spatialMoveBasis("xy"), constraint: { kind: "plane", plane: "xy" } }));
+    const moved = endpoints();
+    expect(moved.start.y).toBeCloseTo(initial.start.y + 2); expect(moved.start.x).toBeCloseTo(initial.start.x + 1);
+    expect(moved.end.x).toBe(moved.start.x); expect(moved.end.z).toBe(moved.start.z); expect(moved.end.y).toBeCloseTo(-0.505);
     await act(async () => body.onPreview(null));
-    await rig.viewFrame(15, 90);
-    expect(onMoveViewChange).toHaveBeenLastCalledWith({ plane: "yz", elevation: 15 });
-    expect(Math.abs(normal().x)).toBeCloseTo(1);
+    const axis = controls.interaction!;
+    await act(async () => controls.preview!({ positions: cubeDragPositions(axis.state, axis.ids, "y", 1.25), axis: "y", ids: axis.ids, distance: 1.25, valid: true }));
+    expect(endpoints().start.y).toBeCloseTo(initial.start.y + 1.25); expect(endpoints().end.y).toBeCloseTo(-0.505);
+    await act(async () => controls.preview!(null));
     await rig.render({ ...props, navigation: "rotate" });
-    expect(rig.scene().getObjectByName("spatial-move-guide")).toBeUndefined();
+    expect(rig.scene().getObjectByName("spatial-move-height-guide")).toBeUndefined();
     await rig.render({ ...props, readOnly: true });
-    expect(rig.scene().getObjectByName("spatial-move-guide")).toBeUndefined();
+    expect(rig.scene().getObjectByName("spatial-move-height-guide")).toBeUndefined();
   });
   it("gives the shared toolbar real rotated vertices and the visible movement handles", async () => {
     const rig = await setup();
@@ -122,7 +125,7 @@ describe("Soma renders the shared rigid animation instead of replacing cells", (
     const pose = somaRigidPoses(snapshot.pieces)[0];
     expect(controls.toolbar!.vertices).toEqual(unitCubeCorners(somaDefinition("bao-1").cells).map((p) => spatialRigidPoint(p, pose)));
     expect(controls.toolbar!.moveHandles!.axes).toEqual(["x", "y", "z"]);
-    await rig.render({ snapshot, onPoseCommit: () => true, preciseAxes: true });
+    await rig.render({ snapshot, onPoseCommit: () => true, navigation: "move" });
     expect(controls.toolbar!.moveHandles!.axes).toEqual(["x", "y", "z"]);
     await rig.render({ snapshot, onPoseCommit: () => true, navigation: "rotate" });
     expect(controls.toolbar!.moveHandles!.axes).toEqual([]);
