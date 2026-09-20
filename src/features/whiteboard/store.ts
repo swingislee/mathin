@@ -87,7 +87,7 @@ interface WhiteboardState {
   markSaved: (revision: number) => void;
 }
 
-export const SIZE_PRESETS = { thin: 0.003, medium: 0.006, thick: 0.012 } as const;
+export const SIZE_PRESETS = { extraThin: 0.0015, thin: 0.003, medium: 0.006, thick: 0.012 } as const;
 
 function appendMissing(items: BoardItem[], incoming: BoardItem[]): BoardItem[] {
   const known = new Set(items.map((item) => item.id));

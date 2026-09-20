@@ -29,6 +29,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Slider } from "@/components/ui/slider";
 import {
   Dialog,
   DialogContent,
@@ -44,10 +45,10 @@ import { SIZE_PRESETS, useWhiteboardStore, type WhiteboardStore } from "./store"
 import { COLOR_TOKENS, isShapeItem, type ColorToken, type InstrumentKind, type ShapeKind, type Tool } from "./types";
 
 const ERASER_TOOLS: Tool[] = ["strokeEraser", "eraserS", "eraserM", "eraserL"];
-const SIZE_ORDER = ["thin", "medium", "thick"] as const;
+const SIZE_ORDER = ["extraThin", "thin", "medium", "thick"] as const;
 const QUICK_COLOR_TOKENS = ["ink", "rose", "blue"] as const satisfies readonly ColorToken[];
 const MORE_COLOR_TOKENS = COLOR_TOKENS.filter((token) => !QUICK_COLOR_TOKENS.includes(token as (typeof QUICK_COLOR_TOKENS)[number]));
-type SizeLabelKey = "sizeThin" | "sizeMedium" | "sizeThick";
+type SizeLabelKey = "sizeExtraThin" | "sizeThin" | "sizeMedium" | "sizeThick";
 type QuickColorLabelKey = "quickColorPrimary" | "quickColorRed" | "quickColorBlue";
 const INSERT_SHAPES: ShapeKind[] = ["line", "arrow", "rectangle", "ellipse", "triangle", "rightTriangle", "diamond", "pentagon", "hexagon", "star"];
 
@@ -174,7 +175,10 @@ export function Toolbar({
   );
   const isRail = variant === "rail";
   const isEraser = ERASER_TOOLS.includes(tool);
-  const sizeIndex = Math.max(SIZE_ORDER.findIndex((key) => SIZE_PRESETS[key] === sizeNorm), 0);
+  const sizePreset = SIZE_ORDER.find((key) => SIZE_PRESETS[key] === sizeNorm);
+  // 界面按统一线宽标尺显示；写入时仍使用画布参照宽度的归一化值。
+  const sizeValue = Math.round(sizeNorm * 10_000) / 10;
+  const sizeLabel = sizePreset ? t(`size${sizePreset.charAt(0).toUpperCase()}${sizePreset.slice(1)}` as SizeLabelKey) : t("sizeCustom");
 
   const pickEraser = (next: Tool) => {
     setTool(next);
@@ -309,15 +313,33 @@ export function Toolbar({
 
       <Popover>
         <PopoverTrigger asChild>
-          <button type="button" aria-label={t("size")} title={t("size")} className={cn("grid shrink-0 place-items-center rounded-full text-ink transition-colors hover:bg-moon/30", largeTargets ? "size-11" : "size-9")}><span aria-hidden className="rounded-full bg-current" style={{ width: 4 + sizeIndex * 3, height: 4 + sizeIndex * 3 }} /></button>
+          <button type="button" aria-label={t("size")} title={t("size")} className={cn("grid shrink-0 place-items-center rounded-full text-ink transition-colors hover:bg-moon/30", largeTargets ? "size-11" : "size-9")}><span aria-hidden className="rounded-full bg-current" style={{ width: Math.max(2, sizeValue), height: Math.max(2, sizeValue) }} /></button>
         </PopoverTrigger>
-        <PopoverContent side="top" className="w-auto p-1.5">
+        <PopoverContent side="top" className="w-64 p-3">
+          <div className="mb-2 flex items-center justify-between text-xs text-muted">
+            <span>{t("size")}</span>
+            <span className="tabular-nums text-ink">{sizeLabel} · {sizeValue.toFixed(1)}</span>
+          </div>
           <div className="flex items-center gap-1">
             {SIZE_ORDER.map((key, index) => {
               const labelKey = `size${key.charAt(0).toUpperCase()}${key.slice(1)}` as SizeLabelKey;
-              return <button key={key} type="button" aria-label={t(labelKey)} title={t(labelKey)} onClick={() => setSizeNorm(SIZE_PRESETS[key])} className={cn("grid size-9 place-items-center rounded-lg transition-colors", sizeNorm === SIZE_PRESETS[key] ? "bg-moon/60" : "hover:bg-moon/30")}><span className="rounded-full bg-ink" style={{ width: 4 + index * 4, height: 4 + index * 4 }} /></button>;
+              return (
+                <Button key={key} type="button" variant="ghost" aria-label={t(labelKey)} aria-pressed={sizeNorm === SIZE_PRESETS[key]}
+                  onClick={() => setSizeNorm(SIZE_PRESETS[key])}
+                  className={cn("h-12 flex-1 flex-col gap-1 rounded-lg px-0 py-1 font-normal", sizeNorm === SIZE_PRESETS[key] ? "bg-moon/60 text-ink" : "hover:bg-moon/30")}>
+                  <span aria-hidden className="grid h-5 place-items-center"><span className="rounded-full bg-ink" style={{ width: 2 + index * 4, height: 2 + index * 4 }} /></span>
+                  <span className="text-xs">{t(labelKey)}</span>
+                </Button>
+              );
             })}
           </div>
+          <div aria-hidden className="mt-2 flex h-7 items-center px-1" style={swatchStyle}>
+            <span className="w-full rounded-full" style={{ height: Math.max(1, sizeValue), backgroundColor: colorVar(color) }} />
+          </div>
+          <Slider aria-label={t("sizeAdjust")} aria-valuetext={t("sizeValue", { value: sizeValue.toFixed(1) })}
+            value={[sizeValue]} min={0.5} max={SIZE_PRESETS.thick * 1000} step={0.1}
+            onValueChange={([next]) => setSizeNorm(Math.round(next * 10) / 10_000)}
+            className="h-11" thumbClassName="size-5" />
         </PopoverContent>
       </Popover>
       </div>
