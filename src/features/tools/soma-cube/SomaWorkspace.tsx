@@ -30,7 +30,7 @@ import { SpatialRollButtons, type SpatialRollAction } from "../spatial-interacti
 import { spatialActionMessages } from "../spatial-interaction/messages";
 import { somaRoll } from "./model";
 import { somaCells } from "./pieces";
-import type { SpatialMovePlane } from "../spatial-interaction/object-gesture-math";
+import { SPATIAL_MOVE_PLANES, type SpatialMovePlane } from "../spatial-interaction/object-gesture-math";
 import { DEFAULT_SPATIAL_ROTATION_SNAP, SPATIAL_ROTATION_SNAP_DEGREES, SPATIAL_ROTATION_SNAP_LEVELS, type SpatialRotationSnapLevel } from "../spatial-interaction/rotation-snap";
 
 const Canvas = dynamic(() => import("./SomaCanvas"), { ssr: false, loading: () => <Skeleton className="size-full" /> });
@@ -104,7 +104,7 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
       <Canvas snapshot={directMove.displayed} messages={messages} title={m.title} readOnly={busy} cameraInteractive={!viewer} axisSnap={snap} navigation={navigation} moveAxis={axis}
         movePlane={movePlane} preciseAxes={panel === "move"} rotationAxis={rotationAxis} onRotationAxis={setRotationAxis}
         freeRotation={freeRotation} rotationSnap={rotationSnap} onToggleRotation={() => open("rotate")}
-        onPoseCommit={(next) => commit(next, true, true)} onPlaneUnavailable={() => setNotice(m.tableEdgeOn)} onGestureBlocked={() => setNotice(m.gestureBlocked)}
+        onPoseCommit={(next) => commit(next, true, true)} onPlaneUnavailable={() => setNotice(m.planeEdgeOn)} onGestureBlocked={() => setNotice(m.gestureBlocked)}
         instantKey={directMove.target ? JSON.stringify(somaRigidPoses(directMove.target.pieces)) : null} locale={locale} onMoving={setMoving}
         rollAction={panel === "roll" ? rollAction : undefined}
         onRotate={(axis, turn) => { if (!disabled) commit(somaRotate(snapshot, axis, turn, freeRotation, rotationSnap)); }}
@@ -152,10 +152,14 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
           </>}
           {(panel === "move" || panel === "rotate") && <>
             <p>{m.selected} · {selected.name}</p>
-            {panel === "move" && <div className="space-y-1"><p className="text-muted">{m.moveFeel}</p><div className="flex gap-1">
-              {(["table", "screen"] as const).map((plane) => <Button key={plane} size="sm" variant={movePlane === plane ? "secondary" : "ghost"}
-                aria-pressed={movePlane === plane} disabled={disabled} onClick={() => setMovePlane(plane)}>{plane === "table" ? m.tableMove : m.screenMove}</Button>)}
-            </div></div>}
+            {panel === "move" && <div className="space-y-1"><p className="text-muted">{m.moveFeel}</p>
+              <ToggleGroup type="single" value={movePlane} onValueChange={(value) => { if (value) setMovePlane(value as SpatialMovePlane); }}
+                variant="outline" size="sm" disabled={disabled} aria-label={m.moveFeel} className="grid grid-cols-2">
+                {SPATIAL_MOVE_PLANES.map((plane) => <ToggleGroupItem key={plane} value={plane} className="min-h-11 px-2 text-xs">
+                  {{ table: m.tableMove, xy: m.xyMove, yz: m.yzMove, screen: m.screenMove }[plane]}
+                </ToggleGroupItem>)}
+              </ToggleGroup>
+            </div>}
             {(["x", "y", "z"] as const).map((value) => <div key={value} className="flex items-center gap-2">
               <CubeIconButton label={`${value.toUpperCase()} ${m[panel]}`} active={(panel === "rotate" ? rotationAxis : axis) === value} disabled={disabled}
                 onClick={() => panel === "rotate" ? setRotationAxis(value) : setAxis(value)}><CubeAxisIcon axis={value} /></CubeIconButton>

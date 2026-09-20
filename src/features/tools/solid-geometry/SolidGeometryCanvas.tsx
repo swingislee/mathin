@@ -51,6 +51,8 @@ function Contents(props: SolidGeometryCanvasProps) {
   const camera = props.state.view === "bottom" ? { ...bookmark, position: { ...props.frame.center, y: props.frame.center.y - props.frame.radius * 4 }, up: { x: 0, y: 0, z: 1 } } : bookmark;
   const sectionEntity = props.state.entities.find((entity) => entity.id === props.selectedId);
   const rotationEntity = displayed.find((entity) => entity.id === props.selectedId);
+  const bounds = rotationEntity && getSolidBounds(rotationEntity);
+  const toolbarVertices = bounds ? [bounds.min.x, bounds.max.x].flatMap((x) => [bounds.min.y, bounds.max.y].flatMap((y) => [bounds.min.z, bounds.max.z].map((z) => ({ x, y, z })))) : [];
   return <>
     <SpatialCameraRig bookmark={camera} radius={props.frame.radius} requestKey={props.cameraRevision} interactive={props.cameraInteractive ?? !props.readOnly}
       navigationMode={props.navigationMode === "pan" ? "pan" : "orbit"} axisSnapEnabled={props.axisSnap} onTransitionStateChange={ignoreTransition} />
@@ -65,9 +67,9 @@ function Contents(props: SolidGeometryCanvasProps) {
         bodyAxis: "gesture",
         isValidOperation: (operation) => moveSolidByDrag(props.state.entities, operation) !== null, onAxisChange: props.onMoveAxis,
         onSelect: (id) => props.onPick?.(id, null), onCommit: props.onMove, onUnavailable: ignoreTransition }} />}
-    {props.objectManipulation && !props.rollAction && props.rotationAction && rotationEntity && !preview && <SpatialRotationControls center={rotationEntity.position} radius={getSolidBounds(rotationEntity).radius}
+    {props.objectManipulation && !props.rollAction && props.rotationAction && rotationEntity && !preview && <SpatialRotationControls center={rotationEntity.position} vertices={toolbarVertices} radius={bounds!.radius}
       action={{ ...props.rotationAction, disabled: props.readOnly || props.objectAnimating }} />}
-    {props.objectManipulation && props.rollAction && rotationEntity && !preview && <SpatialRollControls center={rotationEntity.position} radius={getSolidBounds(rotationEntity).radius}
+    {props.objectManipulation && props.rollAction && rotationEntity && !preview && <SpatialRollControls center={rotationEntity.position} vertices={toolbarVertices} radius={bounds!.radius}
       action={{ ...props.rollAction, disabled: props.rollAction.disabled || props.readOnly || props.objectAnimating }} />}
   </>;
 }

@@ -1,7 +1,8 @@
 import { Plane, Raycaster, Vector2, Vector3, type Camera } from "three";
 import type { VoxelCoordinate } from "@/features/spatial-math/domain";
 
-export type SpatialMovePlane = "table" | "screen";
+export const SPATIAL_MOVE_PLANES = ["table", "xy", "yz", "screen"] as const;
+export type SpatialMovePlane = typeof SPATIAL_MOVE_PLANES[number];
 export type SpatialObjectAction = "translate" | "rotate";
 export interface SpatialPointerPoint { x: number; y: number }
 export interface SpatialPointerViewport { left: number; top: number; width: number; height: number }
@@ -14,10 +15,11 @@ export function spatialPointerRay(point: SpatialPointerPoint, camera: Camera, si
   return raycaster;
 }
 
-/** 手势开始时固定平面与抓取点，不根据最初几个像素猜轴。近乎侧看桌面时明确提示换视角。 */
+/** 手势开始时固定所选平面与抓取点；侧看该平面时提示换平面或视角。 */
 export function spatialMoveProjection(point: SpatialPointerPoint, anchor: VoxelCoordinate, mode: SpatialMovePlane, camera: Camera, size: SpatialPointerViewport) {
   const ray = spatialPointerRay(point, camera, size).ray;
-  const normal = mode === "table" ? new Vector3(0, 1, 0) : camera.getWorldDirection(new Vector3());
+  const normal = mode === "screen" ? camera.getWorldDirection(new Vector3())
+    : mode === "xy" ? new Vector3(0, 0, 1) : mode === "yz" ? new Vector3(1, 0, 0) : new Vector3(0, 1, 0);
   if (Math.abs(normal.dot(ray.direction)) < 0.12) return null;
   const plane = new Plane().setFromNormalAndCoplanarPoint(normal, vector(anchor));
   const start = ray.intersectPlane(plane, new Vector3());

@@ -14,6 +14,8 @@ import { SpatialRotationControls, type SpatialRotationAction } from "../spatial-
 import { cubeRotationOperation } from "./cube-structures-rotation";
 import { SpatialRollControls } from "../spatial-interaction/SpatialRollControls";
 import type { SpatialRollAction } from "../spatial-interaction/SpatialRollButtons";
+import { unitCubeCorners } from "../spatial-interaction/rolling";
+import { cubeMoveCenter } from "./cube-structures-drag";
 
 /** Three/R3F 与场景预览一起按需加载，工具栏保持在轻量客户端边界。 */
 export function CubeStructuresViewport({ scene, sceneKey, history, opacityPreview, moveInteraction, cutInteraction, onMovingChange, onDraggingChange, rotationInteraction, rollInteraction, renderSceneOverlay, ...props }: VoxelModelCanvasProps & {
@@ -51,6 +53,9 @@ export function CubeStructuresViewport({ scene, sceneKey, history, opacityPrevie
   const rotationPivot = rotationInteraction ? cubeRotationOperation(presentation, rotationInteraction.ids, rotationInteraction.axis, 1)?.displayPivot : null;
   const rolled = rollInteraction ? presentation.cubes.filter((cube) => rollInteraction.ids.includes(cube.id)).map(cubeDisplayPosition) : [];
   const rollCenter = rolled.length ? Object.fromEntries((["x", "y", "z"] as const).map((axis) => [axis, (Math.min(...rolled.map((p) => p[axis])) + Math.max(...rolled.map((p) => p[axis]))) / 2])) as { x: number; y: number; z: number } : null;
+  const rotationVertices = unitCubeCorners(presentation.cubes.filter((cube) => rotationInteraction?.ids.includes(cube.id) && !presentation.hiddenCubeIds.includes(cube.id)).map(cubeDisplayPosition));
+  const handleCenter = moveInteraction && cubeMoveCenter(presentation, moveInteraction.ids);
+  const toolbarHandles = handleCenter ? { center: handleCenter, axes: moveInteraction?.handleAxes ?? ["x", "y", "z"] as const } : undefined;
   return <VoxelModelCanvas {...props} model={model} paintedFaceGroups={paints} readOnly={props.readOnly || moving}
     preserveSelectedColors sceneOverlay={<>{renderSceneOverlay?.(presentation)}<CubeStructuresScene {...scene} state={stationary} tool={moving ? "orbit" : scene.tool} />
       {rotation && rotating && pivot && <group name="cube-rigid-rotation" position={[pivot.x, pivot.y, pivot.z]}
@@ -62,8 +67,8 @@ export function CubeStructuresViewport({ scene, sceneKey, history, opacityPrevie
         </group>
       </group>}
       {moveInteraction && !moving && <CubeMoveHandles interaction={moveInteraction} presentation={presentation} preview={dragPreview} onPreview={previewDrag} />}
-      {rotationInteraction && rotationPivot && !dragPreview && <SpatialRotationControls center={rotationPivot} action={{ ...rotationInteraction, disabled: rotationInteraction.disabled || moving }} />}
-      {rollInteraction && rollCenter && !dragPreview && <SpatialRollControls center={rollCenter} action={{ ...rollInteraction, disabled: rollInteraction.disabled || moving }} />}
+      {rotationInteraction && rotationPivot && !dragPreview && <SpatialRotationControls center={rotationPivot} vertices={rotationVertices} moveHandles={toolbarHandles} action={{ ...rotationInteraction, disabled: rotationInteraction.disabled || moving }} />}
+      {rollInteraction && rollCenter && !dragPreview && <SpatialRollControls center={rollCenter} vertices={unitCubeCorners(rolled)} moveHandles={toolbarHandles} action={{ ...rollInteraction, disabled: rollInteraction.disabled || moving }} />}
       {cutInteraction && !moving && <CubeCutPicker interaction={cutInteraction} />}
     </>} />;
 }

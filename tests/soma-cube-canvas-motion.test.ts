@@ -12,8 +12,12 @@ import type { SpatialGestureTarget } from "@/features/tools/spatial-interaction/
 import { somaRotationPivot } from "@/features/tools/soma-cube/model";
 import { interpolateRigidPoses } from "@/features/tools/spatial-interaction/rigid-motion";
 import { CUBE_COLORS, CUBE_SELECTION_COLOR } from "@/features/tools/spatial-lab/cube-structures-contract";
+import type { SpatialObjectToolbarTarget } from "@/features/tools/spatial-interaction/SpatialObjectToolbar";
+import { unitCubeCorners } from "@/features/tools/spatial-interaction/rolling";
+import { spatialRigidPoint } from "@/features/tools/spatial-interaction/rigid-geometry";
+import { somaDefinition } from "@/features/tools/soma-cube/pieces";
 
-const controls = vi.hoisted(() => ({ interaction: null as CubeMoveInteraction | null }));
+const controls = vi.hoisted(() => ({ interaction: null as CubeMoveInteraction | null, toolbar: null as SpatialObjectToolbarTarget | null }));
 
 vi.mock("three", async () => {
   const { createRequire } = await import("node:module"); return createRequire(import.meta.url)("three");
@@ -23,7 +27,7 @@ vi.mock("@/features/spatial-math/renderer-r3f/VoxelCanvas", async (original) => 
   ...await original<object>(), VoxelModelCanvas: ({ sceneOverlay }: { sceneOverlay: ReactNode }) => sceneOverlay,
 }));
 vi.mock("@/features/tools/spatial-lab/CubeMoveHandles", () => ({ CubeMoveHandles: ({ interaction }: { interaction: CubeMoveInteraction }) => { controls.interaction = interaction; return null; } }));
-vi.mock("@/features/tools/spatial-interaction/SpatialRotationControls", () => ({ SpatialRotationControls: () => null, SpatialRotationAnchor: () => null }));
+vi.mock("@/features/tools/spatial-interaction/SpatialRotationControls", () => ({ SpatialRotationControls: (props: SpatialObjectToolbarTarget) => { controls.toolbar = props; return null; }, SpatialRotationAnchor: () => null }));
 vi.mock("@/features/tools/spatial-interaction/SpatialArcballGuide", () => ({ SpatialArcballGuide: () => null }));
 const cleanups: (() => Promise<void>)[] = [];
 afterEach(async () => { for (const cleanup of cleanups.splice(0)) await cleanup(); vi.unstubAllGlobals(); });
@@ -51,6 +55,18 @@ async function setup(reduced = false) {
 }
 
 describe("Soma renders the shared rigid animation instead of replacing cells", () => {
+  it("gives the shared toolbar real rotated vertices and the visible movement handles", async () => {
+    const rig = await setup();
+    const snapshot = { ...rig.initial, pieces: [{ id: "bao-1" as const, position: { x: 0, y: 3, z: 0 }, quaternion: new Quaternion().setFromAxisAngle(new THREE.Vector3(1, 2, 0).normalize(), 0.7).toArray() as [number, number, number, number] }] };
+    await rig.render({ snapshot, onPoseCommit: () => true, instantKey: JSON.stringify(somaRigidPoses(snapshot.pieces)) });
+    const pose = somaRigidPoses(snapshot.pieces)[0];
+    expect(controls.toolbar!.vertices).toEqual(unitCubeCorners(somaDefinition("bao-1").cells).map((p) => spatialRigidPoint(p, pose)));
+    expect(controls.toolbar!.moveHandles!.axes).toEqual(["y"]);
+    await rig.render({ snapshot, onPoseCommit: () => true, preciseAxes: true });
+    expect(controls.toolbar!.moveHandles!.axes).toEqual(["x", "y", "z"]);
+    await rig.render({ snapshot, onPoseCommit: () => true, navigation: "rotate" });
+    expect(controls.toolbar!.moveHandles!.axes).toEqual([]);
+  });
   it("shows a nearby snap ghost without replacing the freely dragged pose, then keeps the settled classroom endpoint", async () => {
     const rig = await setup(), onPoseCommit = vi.fn<(next: SomaCanvasProps["snapshot"]) => boolean>(() => true);
     const source = { ...rig.initial, pieces: [{ ...rig.initial.pieces[0], position: { x: 0, y: 4, z: 0 } }] };

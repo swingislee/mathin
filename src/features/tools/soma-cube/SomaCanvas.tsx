@@ -24,7 +24,8 @@ import type { SpatialRollAction } from "../spatial-interaction/SpatialRollButton
 import type { SpatialMovePlane } from "../spatial-interaction/object-gesture-math";
 import type { SpatialGestureTarget, SpatialObjectInteraction, SpatialObjectPreview } from "../spatial-interaction/object-gesture-controller";
 import { somaGestureLanding } from "./manipulation";
-import { spatialPickRigidCells } from "../spatial-interaction/rigid-geometry";
+import { spatialPickRigidCells, spatialRigidPoint } from "../spatial-interaction/rigid-geometry";
+import { unitCubeCorners } from "../spatial-interaction/rolling";
 import { SpatialArcballGuide } from "../spatial-interaction/SpatialArcballGuide";
 import { DEFAULT_SPATIAL_ROTATION_SNAP, type SpatialRotationSnapLevel } from "../spatial-interaction/rotation-snap";
 import { SpatialLandingOutline } from "../spatial-interaction/SpatialLandingOutline";
@@ -84,6 +85,8 @@ export default function SomaCanvas({ snapshot, messages, title, readOnly, axisSn
     return { pose, pivot, grabPoint: pivot, radius: somaRotationRadius(id) };
   };
   const handleAxes: readonly Axis[] = navigation === "rotate" ? [] : preciseAxes || !onPoseCommit ? ["x", "y", "z"] : ["y"];
+  const toolbarVertices = useMemo(() => selectedPose ? unitCubeCorners(somaDefinition(snapshot.selectedId).cells).map((p) => spatialRigidPoint(p, selectedPose)) : [], [selectedPose, snapshot.selectedId]);
+  const toolbarHandles = { center: cubeMoveCenter(state, selectedIds) ?? center!, axes: handleAxes };
   const bodyGesture: SpatialObjectInteraction | undefined = onPoseCommit ? {
     key: state, enabled: !readOnly && !motion.animating && !preview, plane: movePlane, rotate: navigation === "rotate", selected: targetFor(snapshot.selectedId),
     pick: (raycaster) => {
@@ -146,8 +149,8 @@ export default function SomaCanvas({ snapshot, messages, title, readOnly, axisSn
           axis: moveAxis, kind: "move", snapToGrid: true, isValidOperation: (operation) => somaDrag(snapshot, operation) !== null,
           onAxisChange: onMoveAxis, onSelect: selectCell, onCommit: onMove, onUnavailable }} />}
       {direct && !readOnly && center && !preview && !objectPreview && (rollAction
-        ? <SpatialRollControls center={center} action={{ ...rollAction, disabled: rollAction.disabled || motion.animating }} />
-        : <SpatialRotationControls center={onPoseCommit && pivot ? pivot : center} action={{ axis: rotationAxis, onAxisChange: onRotationAxis, onRotate, label: somaMessages(locale).rotate, disabled: motion.animating,
+        ? <SpatialRollControls center={center} vertices={toolbarVertices} moveHandles={toolbarHandles} action={{ ...rollAction, disabled: rollAction.disabled || motion.animating }} />
+        : <SpatialRotationControls center={onPoseCommit && pivot ? pivot : center} vertices={toolbarVertices} moveHandles={toolbarHandles} action={{ axis: rotationAxis, onAxisChange: onRotationAxis, onRotate, label: somaMessages(locale).rotate, disabled: motion.animating,
           gestureLabel: onPoseCommit ? somaMessages(locale).rotateDrag : undefined, precise: !onPoseCommit || navigation === "rotate",
           gestureMode: onToggleRotation ? { active: navigation === "rotate", onToggle: onToggleRotation } : undefined }} />)}
     </>} />;

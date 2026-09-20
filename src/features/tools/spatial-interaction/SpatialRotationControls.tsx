@@ -1,14 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Html, Line } from "@react-three/drei";
+import { Line } from "@react-three/drei";
 import { Rotate3D, RotateCcw, RotateCw } from "lucide-react";
 import { useThree } from "@react-three/fiber";
-import { Quaternion, Vector3, type Camera, type Object3D } from "three";
+import { Quaternion, Vector3 } from "three";
 import type { Axis, VoxelCoordinate } from "@/features/spatial-math/domain";
 import { CUBE_AXIS_COLORS } from "../spatial-lab/cube-structures-contract";
 import { CubeIconButton } from "../spatial-lab/CubeWorkbenchControls";
 import { startSpatialRotationGrip } from "./object-gesture-controller";
+import { SpatialObjectToolbar, type SpatialObjectToolbarTarget } from "./SpatialObjectToolbar";
 
 export interface SpatialRotationAction {
   axis: Axis; onAxisChange: (axis: Axis) => void;
@@ -17,11 +18,6 @@ export interface SpatialRotationAction {
   gestureLabel?: string; precise?: boolean;
   gestureMode?: { active: boolean; onToggle: () => void };
 }
-export function spatialToolbarPosition(object: Object3D, camera: Camera, size: { width: number; height: number }): [number, number] {
-  const p = new Vector3().setFromMatrixPosition(object.matrixWorld).project(camera);
-  const margin = Math.min(88, size.width / 2);
-  return [Math.max(margin, Math.min(size.width - margin, (p.x + 1) * size.width / 2)), Math.max(76, Math.min(size.height - 32, (1 - p.y) * size.height / 2))];
-}
 export function SpatialRotationAnchor({ center }: { center: VoxelCoordinate }) {
   return <group name="spatial-rotation-anchor">
     {(["x", "y", "z"] as const).map((axis) => <Line key={axis} points={[-1, 1].map((sign) => [center.x + (axis === "x" ? sign * 0.13 : 0), center.y + (axis === "y" ? sign * 0.13 : 0), center.z + (axis === "z" ? sign * 0.13 : 0)] as [number, number, number])}
@@ -29,8 +25,8 @@ export function SpatialRotationAnchor({ center }: { center: VoxelCoordinate }) {
   </group>;
 }
 /** 同一组世界轴、方向预告和 90° 入口用于结构、Soma、实体和骰子。 */
-export function SpatialRotationControls({ center, radius = 1, action }: {
-  center: VoxelCoordinate; radius?: number; action: SpatialRotationAction;
+export function SpatialRotationControls({ center, vertices, moveHandles, radius = 1, action }: SpatialObjectToolbarTarget & {
+  radius?: number; action: SpatialRotationAction;
 }) {
   const canvas = useThree((state) => state.gl.domElement);
   const [hint, setHint] = useState(false);
@@ -51,7 +47,7 @@ export function SpatialRotationControls({ center, radius = 1, action }: {
       </mesh>}
       <Line points={[[center.x, center.y, center.z], [center.x + (axis === "x" ? r : 0), center.y + (axis === "y" ? r : 0), center.z + (axis === "z" ? r : 0)]]} color={color} lineWidth={2} depthTest={false} raycast={() => null} />
     </>}
-    <Html position={[center.x, center.y + r + 0.35, center.z]} center calculatePosition={spatialToolbarPosition} zIndexRange={[7, 0]}>
+    <SpatialObjectToolbar center={center} vertices={vertices} moveHandles={moveHandles}>
       <div className="flex gap-0.5 rounded-xl border border-line bg-paper/95 p-1 shadow-sm" role="toolbar" aria-label={action.label}
         data-spatial-object-actions onPointerDown={(event) => event.stopPropagation()} onPointerEnter={() => setHint(true)} onPointerLeave={() => { setHint(false); setDirection(null); }}
         onFocus={() => setHint(true)} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setHint(false); }}>
@@ -65,6 +61,6 @@ export function SpatialRotationControls({ center, radius = 1, action }: {
           {turn > 0 ? <RotateCcw aria-hidden style={{ color }} /> : <RotateCw aria-hidden style={{ color }} />}
         </CubeIconButton>)}
       </div>
-    </Html>
+    </SpatialObjectToolbar>
   </group>;
 }

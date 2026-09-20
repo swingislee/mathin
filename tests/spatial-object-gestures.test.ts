@@ -59,6 +59,31 @@ function setup() {
 }
 
 describe("continuous plane and camera-relative object gestures", () => {
+  it.each([ ["table", "y", [7, 8, 10]], ["xy", "z", [0, 0, 10]], ["yz", "x", [10, 0, 0]] ] as const)("%s keeps %s fixed and the grab point under the pointer", (mode, fixedAxis, position) => {
+    const c = camera([...position]), anchor = { x: 1.25, y: 2.5, z: -0.75 };
+    const projection = spatialMoveProjection(point, anchor, mode, c, viewport)!;
+    const next = { x: point.x + 63, y: point.y + 35 }, delta = spatialMoveDelta(projection, next, c, viewport)!;
+    expect(delta[fixedAxis]).toBeCloseTo(0);
+    for (const axis of ["x", "y", "z"] as const) if (axis !== fixedAxis) expect(Math.abs(delta[axis])).toBeGreaterThan(0.1);
+    const projected = projection.start.clone().add(new Vector3(delta.x, delta.y, delta.z)).project(c);
+    expect(viewport.left + (projected.x + 1) * viewport.width / 2).toBeCloseTo(next.x);
+    expect(viewport.top + (1 - projected.y) * viewport.height / 2).toBeCloseTo(next.y);
+    expect(projection.start[fixedAxis]).toBeCloseTo(anchor[fixedAxis]);
+  });
+  it.each(["mouse", "touch"])("%s locks the chosen plane for the entire gesture", (pointerType) => {
+    const g = setup(); g.interaction.plane = "xy";
+    g.send("pointerdown", { pointerType });
+    g.interaction.plane = "yz";
+    g.send("pointermove", { pointerType, clientX: point.x + 65, clientY: point.y - 41 });
+    expect(g.previews.at(-1)!.pose.position.z).toBeCloseTo(0);
+    expect(Math.abs(g.previews.at(-1)!.pose.position.y)).toBeGreaterThan(0.1);
+    g.send("pointerup", { pointerType, clientX: point.x + 65, clientY: point.y - 41 });
+    expect(g.apply).toHaveBeenCalledTimes(1);
+  });
+  it("keeps edge-on XY and YZ explicit instead of changing plane silently", () => {
+    expect(spatialMoveProjection(point, origin, "xy", camera([10, 0, 0]), viewport)).toBeNull();
+    expect(spatialMoveProjection(point, origin, "yz", camera([0, 0, 10]), viewport)).toBeNull();
+  });
   it("keeps the grab point under the pointer on the table, with two axes free and height fixed", () => {
     const c = camera(), projection = spatialMoveProjection(point, origin, "table", c, viewport)!;
     const next = { x: point.x + 63, y: point.y + 35 }, delta = spatialMoveDelta(projection, next, c, viewport)!;

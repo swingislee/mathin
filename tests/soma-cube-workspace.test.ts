@@ -36,6 +36,21 @@ async function click(label: string) {
   await act(async () => button!.click());
 }
 describe("Soma teaching workspace", () => {
+  it("adds XY and YZ without changing the default, saved scene or camera", async () => {
+    const initial = createSomaInitial(), onChange = vi.fn();
+    await render(createElement(SomaWorkspace, { initial, classroom: { state: initial, onChange } }));
+    expect(canvas.props!.movePlane).toBe("table");
+    const snap = canvas.props!.axisSnap;
+    await click(m.move);
+    for (const [plane, label] of [["xy", m.xyMove], ["yz", m.yzMove], ["table", m.tableMove], ["screen", m.screenMove]] as const) {
+      await click(label); expect(canvas.props!.movePlane).toBe(plane);
+      expect(canvas.props!.snapshot).toBe(initial); expect(canvas.props!.axisSnap).toBe(snap);
+    }
+    await click(m.screenMove); expect(canvas.props!.movePlane).toBe("screen");
+    await click(m.close); await click(m.move);
+    expect(canvas.props!.movePlane).toBe("screen"); expect(onChange).not.toHaveBeenCalled();
+    expect(container.querySelectorAll(`[aria-label="${m.moveFeel}"] [data-state="on"]`)).toHaveLength(1);
+  });
   it("offers local drag-plane trials and keeps movement and rotation axes independent", async () => {
     const initial = createSomaInitial(); await render(createElement(SomaWorkspace, { initial }));
     expect(canvas.props!.movePlane).toBe("table"); expect(canvas.props!.preciseAxes).toBe(false);
