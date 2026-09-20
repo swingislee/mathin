@@ -1,10 +1,10 @@
 import { getNow, getTranslations, setRequestLocale } from "next-intl/server";
 import { AssessmentPagedWorkbench } from "@/features/school/AssessmentPagedWorkbench";
-import { listAssessmentWorkbenchRows } from "@/features/school/assessment-workbench-data";
+import { loadAssessmentWorkbenchPage } from "@/features/school/assessment-list-data";
 import { listAssessmentAssessorOptions } from "@/features/school/invitations";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
 import { getOrganizationTimezoneV2 } from "@/features/school/organization-locations";
-import { assessmentPageStage, assessmentWorkbenchFieldPage, type AssessmentPageQuery } from "@/features/school/assessment-workbench-page";
+import { assessmentPageStage, type AssessmentPageQuery } from "@/features/school/assessment-workbench-page";
 import { assessmentTableFields } from "@/features/school/assessment-table-fields";
 
 export default async function AssessmentsPage({
@@ -22,8 +22,7 @@ export default async function AssessmentsPage({
   const canAssess = permissions.has("review.write");
   const canSupport = permissions.has("followup.view");
   const canManageAssessor = permissions.has("followup.write");
-  const [rows, assessors, timeZone, now, tableT, assessmentT, t, teacherT, quickT] = await Promise.all([
-    listAssessmentWorkbenchRows(),
+  const [assessors, timeZone, now, tableT, assessmentT, t, teacherT, quickT] = await Promise.all([
     listAssessmentAssessorOptions(),
     getOrganizationTimezoneV2(),
     getNow(),
@@ -31,7 +30,7 @@ export default async function AssessmentsPage({
     getTranslations("school.teacherAssessment"), getTranslations("school.assessmentQuickEntry"),
   ]);
   const fields = assessmentTableFields({ locale, timeZone, tableT, assessmentT, t, teacherT, quickT, stageFor: assessmentPageStage });
-  const data = assessmentWorkbenchFieldPage(rows, fields, query, { locale, timeZone, now: now.getTime() });
+  const data = await loadAssessmentWorkbenchPage(fields, query, { locale, timeZone, now: now.getTime() });
 
   return (
     <AssessmentPagedWorkbench

@@ -5,7 +5,6 @@ import dynamic from "next/dynamic";
 import { FollowupTableRecord, type FollowupRowState } from "./dashboard-page/FollowupTableRecord";
 
 import { BusinessRecordRevisionButton } from './BusinessRecordRevisionButton';
-import {SourceCompletionNotice} from './SourceCompletionNotice';
 import {sourceCompletionMessages} from './source-completion-contract';
 
 import { BusinessRecordStateFilter, useBusinessSearchQuery } from './BusinessRecordStateFilter';
@@ -68,7 +67,7 @@ interface SupportDraft {
   route: ActivityRouteKind | null;
 }
 
-const AssessmentRecordDetails = dynamic(() => import("./AssessmentRecordDetails").then(module => module.AssessmentRecordDetails));
+const AssessmentRecordDetails = dynamic(() => import("./AssessmentLoadedDetails").then(module => module.AssessmentLoadedDetails));
 
 function draftFromRow(row: AssessmentWorkbenchRow): SupportDraft {
   return {
@@ -360,12 +359,13 @@ export function AssessmentUnifiedWorkbench({
           loadingLabel={locale.startsWith("en") ? "Loading…" : "正在读取…"}
           onOpenChange={(open) => changeDetails(row.id, open)} title={row.name} hideTitle
           active={active} onActivate={() => setActiveId(row.id)} colSpan={7} id={`assessment-details-${row.id}`}>
-          {row.sourceCompletion?<div className="px-4 py-3"><SourceCompletionNotice summary={row.sourceCompletion} locale={locale}/></div>:null}
           {closed?<div className="flex items-center justify-between gap-2 px-4 py-3 text-xs text-muted">
             <span>{sourceM.closedHint}</span>
             {row.sourceRecordId&&row.registrationId?<BusinessRecordRevisionButton kind="activity" recordId={row.registrationId} subject={row.name}/>:null}
           </div>:null}
-          {!closed?<AssessmentRecordDetails row={row} stage={stage} conclusion={conclusion} locale={locale}
+          <AssessmentRecordDetails row={row} stage={stage} conclusion={conclusion} locale={locale}
+            onLoaded={detail => setRows(current => current.map(candidate => candidate.id === detail.id && candidate.listSummary
+              && candidate.updatedAt === row.updatedAt ? detail : candidate))}
             canAssess={mayAssess} canSupport={maySupport} canManageAssessor={canManageAssessor}
             canQuickEntry={current && canQuickEntry} canRoute={current && canManageAssessor}
             assessors={assessors} reassigning={reassigningId === row.id} onReassign={(id) => reassignAssessor(row, id)}
@@ -375,7 +375,7 @@ export function AssessmentUnifiedWorkbench({
               updateDraft(row.id, (current) => ({ ...current, route: context.route }));
               setRows(current => current.map(candidate => candidate.id === row.id || candidate.registrationId === context.registrationId
                 ? { ...candidate, enrollmentId: context.enrollmentId } : candidate));
-            }} />:null}
+            }} />
         </FollowupInlineDetails>
       </ActivityAssessmentDraftProvider>
     );

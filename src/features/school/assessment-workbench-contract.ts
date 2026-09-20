@@ -81,6 +81,8 @@ export interface AssessmentWorkbenchPublicClassRecord {
 
 /** 学生测评总表的统一数据合同，覆盖单独预约和活动集中测评。 */
 export interface AssessmentWorkbenchRow {
+  /** 列表摘要在展开时读取完整证据与编辑上下文。 */
+  listSummary?: boolean;
   id: string;
   recordState?: 'current' | 'historical';
   occurredOn?: string | null;

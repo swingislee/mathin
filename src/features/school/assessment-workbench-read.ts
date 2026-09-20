@@ -6,6 +6,7 @@ interface ReadResult<T> {
 }
 
 interface ReadQuery {
+  or(filters: string): ReadQuery;
   eq(column: string, value: unknown): ReadQuery;
   is(column: string, value: null): ReadQuery;
   in(column: string, values: readonly string[]): ReadQuery;
@@ -39,6 +40,7 @@ export async function readAllAssessmentRows<T>(buildQuery: () => ReadQuery): Pro
 /** 四组关联键并行读取，合并顺序沿用输入批次；每批继续读完其全部分页。 */
 export async function readRelatedAssessmentRows<T>(
   supabase: { from: unknown }, relation: string, columns: string, key: string, ids: readonly string[],
+  constrain?: (query: ReadQuery) => ReadQuery,
 ): Promise<ReadResult<T[]>> {
   const rows: T[] = [];
   const uniqueIds = [...new Set(ids)];
@@ -46,7 +48,10 @@ export async function readRelatedAssessmentRows<T>(
     const batches = Array.from({ length: Math.min(RELATED_CONCURRENCY, Math.ceil((uniqueIds.length - offset) / RELATED_BATCH_SIZE)) }, (_, index) => {
       const start = offset + index * RELATED_BATCH_SIZE;
       const batch = uniqueIds.slice(start, start + RELATED_BATCH_SIZE);
-      return readAllAssessmentRows<T>(() => assessmentReadFrom(supabase)(relation).select(columns).in(key, batch));
+      return readAllAssessmentRows<T>(() => {
+        const query = assessmentReadFrom(supabase)(relation).select(columns).in(key, batch);
+        return constrain ? constrain(query) : query;
+      });
     });
     const results = await Promise.allSettled(batches);
     for (const result of results) {

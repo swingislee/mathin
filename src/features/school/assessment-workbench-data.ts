@@ -218,18 +218,41 @@ const REGISTRATION_COLUMNS = [
   "leads(id,provisional_student_name,phone,grade_hint,grade_text,student_id,owner_id)",
 ].join(",");
 
-export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbenchRow[]> {
+export async function listAssessmentWorkbenchRows(subject?: { studentId: string | null; leadId: string | null }): Promise<AssessmentWorkbenchRow[]> {
   const supabase = await createClient();
+  let subjectLeadIds: string[] | undefined, subjectActivityIds: string[] | undefined, subjectRegistrationIds: string[] | undefined;
+  if (subject) {
+    if (!subject.studentId && !subject.leadId) return [];
+    const leadResult = await readAllRows<{ id: string }>(() => {
+      const query = from(supabase)("leads").select("id");
+      return subject.studentId ? query.eq("student_id", subject.studentId) : query.eq("id", subject.leadId);
+    });
+    if (leadResult.error) throw new Error(leadResult.error.message);
+    subjectLeadIds = [...new Set([...(leadResult.data ?? []).map(row => row.id), ...(subject.leadId ? [subject.leadId] : [])])];
+    const clauses = [...(subject.studentId ? [`student_id.eq.${subject.studentId}`] : []),
+      ...(subjectLeadIds.length ? [`lead_id.in.(${subjectLeadIds.join(",")})`] : [])];
+    const registrations = clauses.length ? await readAllRows<{ id: string; activity_id: string }>(() => from(supabase)("business_activity_registrations")
+      .select("id,activity_id").or(clauses.join(","))) : { data: [], error: null };
+    if (registrations.error) throw new Error(registrations.error.message);
+    subjectRegistrationIds = (registrations.data ?? []).map(row => row.id);
+    subjectActivityIds = [...new Set((registrations.data ?? []).map(row => row.activity_id))];
+  }
   const [activityResult, confirmedInvitationResult, requiredResult, orderResult] = await Promise.all([
-    readAllRows<ActivityDbRow>(() => from(supabase)("business_activities")
+    subjectActivityIds ? readRelatedRows<ActivityDbRow>(supabase, "business_activities", ACTIVITY_COLUMNS, "id", subjectActivityIds,
+      query => query.is("deleted_at", null))
+      : readAllRows<ActivityDbRow>(() => from(supabase)("business_activities")
       .select(ACTIVITY_COLUMNS)
       .is("deleted_at", null)),
-    readAllRows<InvitationDbRow>(() => from(supabase)("lead_invitation_threads")
+    subjectLeadIds?.length === 0 ? Promise.resolve({ data: [] as InvitationDbRow[], error: null }) : readAllRows<InvitationDbRow>(() => {
+      let query = from(supabase)("lead_invitation_threads")
       .select(INVITATION_COLUMNS)
       .eq("kind", "assessment_1v1")
-      .in("state", ["confirmed", "cancelled"])),
+      .in("state", ["confirmed", "cancelled"]);
+      if (subjectLeadIds) query = query.in("lead_id", subjectLeadIds);
+      return query;
+    }),
     supabase.rpc("is_feature_enabled", { p_flag_key: REQUIRE_TEACHER_ASSESSMENT_FLAG }),
-    readAllRows<{ id: string }>(() => from(supabase)("assessment_workbench_read_order")
+    subject ? Promise.resolve({ data: [] as { id: string }[], error: null }) : readAllRows<{ id: string }>(() => from(supabase)("assessment_workbench_read_order")
       .select("id")
       .order("assessment_at", { ascending: false, nullsFirst: false })),
   ]);
@@ -238,8 +261,9 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
   if (requiredResult.error) throw new Error(requiredResult.error.message);
   if (orderResult.error) throw new Error("ASSESSMENT_SOURCE_ORDER_READ");
 
-  const activities = activityResult.data ?? [];
-  const registrationResult = await readRelatedRows<RegistrationDbRow>(supabase, "business_activity_registrations", REGISTRATION_COLUMNS, "activity_id", activities.map((activity) => activity.id));
+  const activities = (activityResult.data ?? []);
+  const registrationResult = await readRelatedRows<RegistrationDbRow>(supabase, "business_activity_registrations", REGISTRATION_COLUMNS,
+    subjectRegistrationIds ? "id" : "activity_id", subjectRegistrationIds ?? activities.map((activity) => activity.id));
   if (registrationResult.error) throw new Error(registrationResult.error.message);
   const activityById = new Map(activities.map((activity) => [activity.id, activity]));
   const registrations = (registrationResult.data ?? []).flatMap((registration) => {
@@ -597,6 +621,11 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
         date:row.occurredOn??row.assessmentCompletedAt??null,band:row.assessment?.assessmentBand??null,score:row.assessment?.score??null,
         teacher:row.assessment?.recordedByName||sourceStaffLabel(row.background,'学科老师')||null})));
     for(const row of group)row.sourceCompletion=summary;
+  }
+  if (subject) {
+    const order = await readRelatedRows<{ id: string; assessment_at: string | null }>(supabase, "assessment_workbench_read_order", "id,assessment_at", "id", rows.map(row => row.id));
+    if (order.error) throw new Error("ASSESSMENT_SOURCE_ORDER_READ");
+    return assessmentSourceOrder(rows, (order.data ?? []).sort((a, b) => (b.assessment_at ?? "").localeCompare(a.assessment_at ?? "") || a.id.localeCompare(b.id)));
   }
   return assessmentSourceOrder(rows,orderResult.data??[]);
 }
