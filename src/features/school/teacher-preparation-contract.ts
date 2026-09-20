@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { isAlignedStrokeSamples } from "@/features/whiteboard/ink-samples";
 import { strokeBrushSchema, strokeSamplesSchema } from "@/features/whiteboard/ink-samples-schema";
+import { boardColorSchema } from "@/features/whiteboard/board-color-schema";
 import {
-  COLOR_TOKENS,
   SHAPE_KINDS,
   type BoardItem,
 } from "@/features/whiteboard/types";
@@ -53,12 +53,10 @@ const pointSchema = z.tuple([
   z.number().finite().min(0).max(1),
 ]);
 
-const colorTokenSchema = z.enum(COLOR_TOKENS);
-
 export const strokeItemSchema = z.object({
   id: z.uuid(),
   mode: z.enum(["ink", "erase"]),
-  color: colorTokenSchema,
+  color: boardColorSchema,
   wNorm: z.number().finite().positive().max(0.1),
   points: z.array(pointSchema).max(10_000),
   brush: strokeBrushSchema.optional(),
@@ -69,8 +67,8 @@ export const shapeItemSchema = z.object({
   id: z.uuid(),
   kind: z.literal("shape"),
   shape: z.enum(SHAPE_KINDS),
-  color: colorTokenSchema,
-  fill: colorTokenSchema.nullable(),
+  color: boardColorSchema,
+  fill: boardColorSchema.nullable(),
   strokeWidthNorm: z.number().finite().positive().max(0.1),
   x: z.number().finite().min(0).max(1),
   y: z.number().finite().min(0).max(1),

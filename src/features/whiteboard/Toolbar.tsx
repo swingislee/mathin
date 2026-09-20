@@ -40,9 +40,11 @@ import {
 } from "@/components/ui/dialog";
 import { useStore } from "zustand";
 import { cn } from "@/lib/utils";
-import { colorVar, exportPng } from "./strokes";
+import { colorVar, exportPng, resolveColor } from "./strokes";
+import { CustomColorPicker } from "./CustomColorPicker";
+import { isHexColor } from "./board-color";
 import { SIZE_PRESETS, useWhiteboardStore, type WhiteboardStore } from "./store";
-import { COLOR_TOKENS, isShapeItem, type ColorToken, type InstrumentKind, type ShapeKind, type Tool } from "./types";
+import { COLOR_TOKENS, isShapeItem, type BoardColor, type ColorToken, type InstrumentKind, type ShapeKind, type Tool } from "./types";
 
 const ERASER_TOOLS: Tool[] = ["strokeEraser", "eraserS", "eraserM", "eraserL"];
 const SIZE_ORDER = ["extraThin", "thin", "medium", "thick"] as const;
@@ -169,6 +171,8 @@ export function Toolbar({
   const lastEraser = useStore(store, (state) => state.lastEraser);
   const [collapsed, setCollapsed] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
+  const [colorsOpen, setColorsOpen] = useState(false);
+  const [fillOpen, setFillOpen] = useState(false);
   const paletteRef = useRef<HTMLSpanElement>(null);
   const [clearSelected, setClearSelected] = useState<Set<string>>(
     () => new Set(clearTargets?.filter((target) => target.defaultChecked).map((target) => target.key) ?? []),
@@ -183,12 +187,12 @@ export function Toolbar({
   const pickEraser = (next: Tool) => {
     setTool(next);
   };
-  const pickColor = (next: ColorToken) => {
+  const pickColor = (next: BoardColor) => {
     setColor(next);
     if (selectedIds.length) store.getState().styleSelected({ color: next });
     setTool("pen");
   };
-  const pickFill = (next: (typeof COLOR_TOKENS)[number] | null) => {
+  const pickFill = (next: BoardColor | null) => {
     setFill(next);
     if (selectedHasShape) store.getState().styleSelected({ fill: next });
   };
@@ -298,16 +302,23 @@ export function Toolbar({
         })}
       </div>
 
-      <Popover>
+      <Popover open={colorsOpen} onOpenChange={setColorsOpen}>
         <PopoverTrigger asChild>
-          <button type="button" aria-label={t("moreColors")} title={t("moreColors")} className={cn("grid shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-moon/30 hover:text-ink", largeTargets ? "size-11" : "size-9")}><Palette size={18} /></button>
+          <button type="button" aria-label={isHexColor(color) ? t("currentCustomColor", { color }) : t("moreColors")} title={t("moreColors")} className={cn("relative grid shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-moon/30 hover:text-ink", largeTargets ? "size-11" : "size-9", tool === "pen" && isHexColor(color) && "bg-moon/30 ring-2 ring-inset ring-crater")}>
+            <Palette size={18} />
+            {isHexColor(color) ? <span aria-hidden className="absolute bottom-1 right-1 size-3 rounded-full border border-line" style={{ backgroundColor: color }} /> : null}
+          </button>
         </PopoverTrigger>
-        <PopoverContent side="top" className="w-auto p-2">
-          <div className="grid grid-cols-2 gap-2">
+        <PopoverContent side="top" className="w-64 p-3">
+          <div className="grid grid-cols-4 gap-2">
             {MORE_COLOR_TOKENS.map((token) => (
-              <button key={token} type="button" aria-label={colorNames(token)} title={colorNames(token)} onClick={() => pickColor(token)} className={cn("size-7 rounded-full border border-line transition-transform hover:scale-110", color === token && "ring-2 ring-crater ring-offset-2 ring-offset-paper")} style={{ ...swatchStyle, background: colorVar(token) }} />
+              <button key={token} type="button" aria-label={colorNames(token)} title={colorNames(token)} aria-pressed={color === token} onClick={() => pickColor(token)} className={cn("grid size-11 place-items-center rounded-full transition-colors hover:bg-moon/30", color === token && "ring-2 ring-crater")}>
+                <span aria-hidden className="size-7 rounded-full border border-line" style={{ ...swatchStyle, background: colorVar(token) }} />
+              </button>
             ))}
           </div>
+          <CustomColorPicker key={color} resolveInitialColor={() => resolveColor(paletteRef.current ?? document.documentElement, color)}
+            onApply={(next) => { pickColor(next); setColorsOpen(false); }} />
         </PopoverContent>
       </Popover>
 
@@ -384,17 +395,21 @@ export function Toolbar({
         </PopoverContent>
       </Popover>
 
-      <Popover>
+      <Popover open={fillOpen} onOpenChange={setFillOpen}>
         <PopoverTrigger asChild>
           <button type="button" aria-label={t("fill")} title={t("fill")} className={cn("grid shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-moon/30 hover:text-ink", largeTargets ? "size-11" : "size-9")}><PaintBucket size={18} /></button>
         </PopoverTrigger>
-        <PopoverContent side="top" className="w-auto p-2">
+        <PopoverContent side="top" className="w-64 p-3">
           <div className="grid grid-cols-4 gap-2">
-            <button type="button" aria-label={t("fillNone")} title={t("fillNone")} onClick={() => pickFill(null)} className={cn("relative size-7 rounded-full border border-line bg-paper", fill === null && "ring-2 ring-crater ring-offset-2 ring-offset-paper")} style={swatchStyle}><span className="absolute inset-1/2 h-px w-6 -translate-x-1/2 -rotate-45 bg-rose" /></button>
+            <button type="button" aria-label={t("fillNone")} title={t("fillNone")} aria-pressed={fill === null} onClick={() => pickFill(null)} className={cn("relative grid size-11 place-items-center rounded-full hover:bg-moon/30", fill === null && "ring-2 ring-crater")} style={swatchStyle}><span aria-hidden className="size-7 rounded-full border border-line bg-paper" /><span className="absolute inset-1/2 h-px w-6 -translate-x-1/2 -rotate-45 bg-rose" /></button>
             {COLOR_TOKENS.map((token) => (
-              <button key={token} type="button" aria-label={colorNames(token)} title={colorNames(token)} onClick={() => pickFill(token)} className={cn("size-7 rounded-full border border-line", fill === token && "ring-2 ring-crater ring-offset-2 ring-offset-paper")} style={{ ...swatchStyle, background: colorVar(token) }} />
+              <button key={token} type="button" aria-label={colorNames(token)} title={colorNames(token)} aria-pressed={fill === token} onClick={() => pickFill(token)} className={cn("grid size-11 place-items-center rounded-full hover:bg-moon/30", fill === token && "ring-2 ring-crater")}>
+                <span aria-hidden className="size-7 rounded-full border border-line" style={{ ...swatchStyle, background: colorVar(token) }} />
+              </button>
             ))}
           </div>
+          <CustomColorPicker key={fill ?? "none"} resolveInitialColor={() => resolveColor(paletteRef.current ?? document.documentElement, fill ?? color)}
+            onApply={(next) => { pickFill(next); setFillOpen(false); }} />
         </PopoverContent>
       </Popover>
       </div>

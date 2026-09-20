@@ -1,13 +1,12 @@
 import {
-  COLOR_TOKENS,
   SHAPE_KINDS,
   type BoardItem,
 } from "@/features/whiteboard/types";
 import { CHECKPOINT_MAX_ITEMS } from "./limits";
 import type { SessionBoardCheckpoint } from "./types";
 import { isAlignedStrokeSamples } from "@/features/whiteboard/ink-samples";
+import { isBoardColor } from "@/features/whiteboard/board-color";
 
-const colors = new Set<string>(COLOR_TOKENS);
 const shapes = new Set<string>(SHAPE_KINDS);
 
 function numberBetween(value: unknown, minimum: number, maximum: number): value is number {
@@ -20,8 +19,8 @@ function isBoardItem(value: unknown): value is BoardItem {
   if (typeof item.id !== "string" || item.id.length < 1 || item.id.length > 64) return false;
   if (item.kind === "shape") {
     return typeof item.shape === "string" && shapes.has(item.shape)
-      && typeof item.color === "string" && colors.has(item.color)
-      && (item.fill === null || (typeof item.fill === "string" && colors.has(item.fill)))
+      && isBoardColor(item.color)
+      && (item.fill === null || isBoardColor(item.fill))
       && numberBetween(item.strokeWidthNorm, 0.0005, 0.1)
       && numberBetween(item.x, -0.5, 1.5)
       && numberBetween(item.y, -0.5, 1.5)
@@ -32,7 +31,7 @@ function isBoardItem(value: unknown): value is BoardItem {
       && (item.sweepAngle === undefined || numberBetween(item.sweepAngle, -3600, 3600));
   }
   if ("kind" in item || (item.mode !== "ink" && item.mode !== "erase")
-    || typeof item.color !== "string" || !colors.has(item.color)
+    || !isBoardColor(item.color)
     || !numberBetween(item.wNorm, 0.0005, 0.25)
     || (item.brush !== undefined && item.brush !== "round-v1" && item.brush !== "freehand-v1" && item.brush !== "freehand-v2" && item.brush !== "freehand-v3")
     || !Array.isArray(item.points) || item.points.length < 1 || item.points.length > 4000) {

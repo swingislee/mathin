@@ -2,10 +2,12 @@ import { getStroke } from "perfect-freehand";
 import { newId } from "@/lib/uuid";
 import { shapePolygonPoints } from "./geometry";
 import { InkPressureCache } from "./ink-pressure";
+import { isHexColor } from "./board-color";
 import {
   isShapeItem,
   isStrokeItem,
   type BoardItem,
+  type BoardColor,
   type ColorToken,
   type ShapeItem,
   type StrokeItem,
@@ -25,12 +27,14 @@ const COLOR_VARS: Record<ColorToken, string> = {
 };
 
 /** 解析 token 在当前主题下的实际色值；el 用于取生效的级联作用域。 */
-export function resolveColor(el: Element, token: ColorToken): string {
+export function resolveColor(el: Element, token: BoardColor): string {
+  if (isHexColor(token)) return token;
   const value = getComputedStyle(el).getPropertyValue(COLOR_VARS[token] ?? "--ink").trim();
   return value || "#888";
 }
 
-export function colorVar(token: ColorToken): string {
+export function colorVar(token: BoardColor): string {
+  if (isHexColor(token)) return token;
   return `var(${COLOR_VARS[token] ?? "--ink"})`;
 }
 
@@ -157,7 +161,7 @@ export function renderAll(
   basisW: number = w,
 ): void {
   ctx.clearRect(0, 0, w, h);
-  const colors = new Map<ColorToken, string>();
+  const colors = new Map<BoardColor, string>();
   for (const item of items) {
     if (!isStrokeItem(item)) continue;
     if (item.mode === "ink" && !colors.has(item.color)) colors.set(item.color, resolveColor(colorEl, item.color));

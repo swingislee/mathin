@@ -4,8 +4,8 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { isAlignedStrokeSamples } from "./ink-samples";
 import { strokeBrushSchema, strokeSamplesSchema } from "./ink-samples-schema";
+import { boardColorSchema } from "./board-color-schema";
 import {
-  COLOR_TOKENS,
   SHAPE_KINDS,
   type BoardItem,
   type WhiteboardMemberInfo,
@@ -20,7 +20,7 @@ const baseIdSchema = z.string().min(1).max(64);
 const strokeSchema = z.object({
   id: baseIdSchema,
   mode: z.enum(["ink", "erase"]),
-  color: z.enum(COLOR_TOKENS),
+  color: boardColorSchema,
   wNorm: z.number().min(0.0005).max(0.25),
   points: z.array(z.tuple([coordinateSchema, coordinateSchema])).min(1).max(4000),
   brush: strokeBrushSchema.optional(),
@@ -30,8 +30,8 @@ const shapeSchema = z.object({
   id: baseIdSchema,
   kind: z.literal("shape"),
   shape: z.enum(SHAPE_KINDS),
-  color: z.enum(COLOR_TOKENS),
-  fill: z.enum(COLOR_TOKENS).nullable(),
+  color: boardColorSchema,
+  fill: boardColorSchema.nullable(),
   strokeWidthNorm: z.number().min(0.0005).max(0.1),
   x: coordinateSchema,
   y: coordinateSchema,

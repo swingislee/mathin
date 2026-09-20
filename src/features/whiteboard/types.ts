@@ -12,9 +12,11 @@ export function isEraserTool(tool: Tool): tool is EraserTool {
   return tool === "strokeEraser" || tool.startsWith("eraser");
 }
 
-/** 画笔七色：存 token 名而非色值，绘制时解析当前主题的 CSS 变量（08-§3.2）。 */
+/** 常用色保留主题语义；自定义色以六位 HEX 原样保存和回放。 */
 export const COLOR_TOKENS = ["ink", "rose", "blue", "leaf", "crater", "cheek", "moon"] as const;
 export type ColorToken = (typeof COLOR_TOKENS)[number];
+export type HexColor = `#${string}`;
+export type BoardColor = ColorToken | HexColor;
 
 export type StrokeMode = "ink" | "erase";
 
@@ -29,7 +31,7 @@ export type StrokeSample = [elapsedMs: number, pressure: number | null];
 export interface StrokeItem {
   id: string;
   mode: StrokeMode;
-  color: ColorToken;
+  color: BoardColor;
   wNorm: number;
   /** 课堂笔刷版本；缺省时按历史 perfect-freehand 参数重放。 */
   brush?: "round-v1" | "freehand-v1" | "freehand-v2" | "freehand-v3";
@@ -60,8 +62,8 @@ export interface ShapeItem {
   id: string;
   kind: "shape";
   shape: ShapeKind;
-  color: ColorToken;
-  fill: ColorToken | null;
+  color: BoardColor;
+  fill: BoardColor | null;
   strokeWidthNorm: number;
   x: number;
   y: number;
@@ -135,7 +137,7 @@ export interface ProgressChunk {
   seq?: number;
   id: string;
   mode: StrokeMode;
-  color: ColorToken;
+  color: BoardColor;
   wNorm: number;
   brush?: StrokeItem["brush"];
   points: Array<[number, number]>;

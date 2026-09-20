@@ -9,7 +9,7 @@ import {
   isEraserTool,
   type BoardItem,
   type BoardOp,
-  type ColorToken,
+  type BoardColor,
   type InstrumentItem,
   type InstrumentKind,
   type ShapeItem,
@@ -51,8 +51,8 @@ interface WhiteboardState {
   saveState: SaveState;
   tool: Tool;
   lastEraser: EraserTool;
-  color: ColorToken;
-  fill: ColorToken | null;
+  color: BoardColor;
+  fill: BoardColor | null;
   sizeNorm: number;
   shapeKind: ShapeKind;
   selectedIds: string[];
@@ -62,8 +62,8 @@ interface WhiteboardState {
   outbox: BoardOp[];
   hydrate: (boardId: string, items: BoardItem[]) => void;
   setTool: (tool: Tool) => void;
-  setColor: (color: ColorToken) => void;
-  setFill: (fill: ColorToken | null) => void;
+  setColor: (color: BoardColor) => void;
+  setFill: (fill: BoardColor | null) => void;
   setSizeNorm: (sizeNorm: number) => void;
   setShapeKind: (shapeKind: ShapeKind) => void;
   setSelectedIds: (ids: string[]) => void;
@@ -72,7 +72,7 @@ interface WhiteboardState {
   eraseLine: (id: string) => void;
   removeItems: (ids: string[]) => void;
   duplicateSelected: () => void;
-  styleSelected: (style: { color?: ColorToken; fill?: ColorToken | null }) => void;
+  styleSelected: (style: { color?: BoardColor; fill?: BoardColor | null }) => void;
   clear: () => void;
   undo: () => void;
   /** 应用远端 op：不进撤销栈、不置脏（八股见 08-§3.2）。 */
