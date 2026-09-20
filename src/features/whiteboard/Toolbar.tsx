@@ -77,6 +77,16 @@ function ProtractorIcon({ size = 18 }: { size?: number }) {
   return <svg aria-hidden width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 19a9 9 0 0 1 18 0H3Z" /><path d="M12 19v-4m-6.5 4 1.3-3.6M18.5 19l-1.3-3.6" /></svg>;
 }
 
+function StrokeWidthIcon() {
+  return (
+    <svg aria-hidden width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round">
+      <path d="M4 5h16" strokeWidth={1.5} />
+      <path d="M4 11h16" strokeWidth={3} />
+      <path d="M4 18h16" strokeWidth={4.5} />
+    </svg>
+  );
+}
+
 function ShapeIcon({ shape, size = 18 }: { shape: ShapeKind; size?: number }) {
   if (shape === "rightTriangle") return <RightTriangleIcon size={size} />;
   if (shape === "pentagon") return <PentagonIcon size={size} />;
@@ -324,7 +334,7 @@ export function Toolbar({
 
       <Popover>
         <PopoverTrigger asChild>
-          <button type="button" aria-label={t("size")} title={t("size")} className={cn("grid shrink-0 place-items-center rounded-full text-ink transition-colors hover:bg-moon/30", largeTargets ? "size-11" : "size-9")}><span aria-hidden className="rounded-full bg-current" style={{ width: Math.max(2, sizeValue), height: Math.max(2, sizeValue) }} /></button>
+          <button type="button" aria-label={t("size")} title={t("size")} className={cn("grid shrink-0 place-items-center rounded-full text-ink transition-colors hover:bg-moon/30", largeTargets ? "size-11" : "size-9")}><StrokeWidthIcon /></button>
         </PopoverTrigger>
         <PopoverContent side="top" className="w-64 p-3">
           <div className="mb-2 flex items-center justify-between text-xs text-muted">
