@@ -1,4 +1,6 @@
-.workspace { display: flex; flex: 1; min-width: 0; min-height: 0; padding: 8px; }
+/* 舞台文字作为操作标识，参数输入仍支持正常选字与编辑。 */
+.workspace { display: flex; flex: 1; min-width: 0; min-height: 0; padding: 8px; -webkit-user-select: none; user-select: none; }
+.workspace :is(input, textarea, [contenteditable]:not([contenteditable="false"])) { -webkit-user-select: text; user-select: text; }
 .workspace[data-workbench-mode="courseware"] { padding: 0; }
 .workspace[data-workbench-mode="courseware"] .views { max-width: calc(100% - 108px); overflow-x: auto; scrollbar-width: thin; }
 .viewport { container-type: size; display: grid; flex: 1; min-width: 0; min-height: 0; place-items: center; }
