@@ -87,6 +87,9 @@ interface StudentRow {
   profiles: { display_name: string } | null;
 }
 
+type StudentSummaryRow = Pick<StudentRow, "id" | "name" | "grade" | "status" | "follow_up_status" | "profiles"
+  | "last_follow_up_at" | "next_follow_up_at" | "deleted_at">;
+
 interface FollowUpRow {
   id: string;
   content: string;
@@ -149,7 +152,7 @@ export function studentSearchFilter(raw: string): string {
   return clauses.join(",");
 }
 
-function toSummary(row: StudentRow, lastFollowUpContent = ""): StudentSummary {
+function toSummary(row: StudentSummaryRow, lastFollowUpContent = ""): StudentSummary {
   return {
     id: row.id,
     name: row.name,
@@ -173,7 +176,7 @@ export async function listStudents(
   const to = from + PAGE_SIZE - 1;
   let query = supabase
     .from("students")
-    .select("id,name,gender,birthday,phone,wechat,school,public_school_class,region,source,market_activity,grade,status,follow_up_status,parent_name,parent_relation,parent_phone,bind_code,remark,assigned_to,user_id,deleted_at,last_follow_up_at,next_follow_up_at,profiles!students_assigned_to_fkey(display_name)", { count: "estimated" });
+    .select("id,name,grade,status,follow_up_status,deleted_at,last_follow_up_at,next_follow_up_at,profiles!students_assigned_to_fkey(display_name)", { count: "estimated" });
 
   query = filters.recycle ? query.not("deleted_at", "is", null) : query.is("deleted_at", null);
 
@@ -185,7 +188,7 @@ export async function listStudents(
   const { data, error, count } = await query
     .order("updated_at", { ascending: false })
     .range(from, to)
-    .returns<StudentRow[]>();
+    .returns<StudentSummaryRow[]>();
   if (error) throw new Error(error.message);
   const rows = data ?? [];
   const latestFollowUps = new Map<string, string>();
@@ -325,15 +328,16 @@ interface SubmissionLearningRow {
 export async function getStudentLearning(studentId: string): Promise<StudentLearning> {
   const supabase = await createClient();
 
-  const { data: studentRow, error: studentError } = await supabase
-    .from("students")
-    .select("user_id")
-    .eq("id", studentId)
-    .maybeSingle<{ user_id: string | null }>();
-  if (studentError) throw new Error(studentError.message);
-  const userId = studentRow?.user_id ?? null;
-
-  const [{ data: enrollmentRows, error: enrollmentError }, { data: attendanceRows, error: attendanceError }] = await Promise.all([
+  // 各段读取使用同一学生范围与既有 RLS，仅账号作业和未来课次等待其关联键。
+  const [
+    { data: studentRow, error: studentError },
+    { data: enrollmentRows, error: enrollmentError },
+    { data: attendanceRows, error: attendanceError },
+    { data: starTotalData, error: starTotalError },
+    { data: reviewRows, error: reviewError },
+    { data: videoRows, error: videoError },
+  ] = await Promise.all([
+    supabase.from("students").select("user_id").eq("id", studentId).maybeSingle<{ user_id: string | null }>(),
     supabase
       .from("enrollments")
       .select("classroom_id,status,joined_at,left_at,classrooms(name,courses(title))")
@@ -345,64 +349,62 @@ export async function getStudentLearning(studentId: string): Promise<StudentLear
       .select("status")
       .eq("student_id", studentId)
       .returns<Array<{ status: AttendanceStatus }>>(),
+    supabase.rpc("get_student_star_total", { p_student_id: studentId }),
+    supabase.from("session_reviews").select("session_id,entry_score,exit_score,focus,participation,mastery,comment,class_sessions(title,scheduled_at)").eq("student_id",studentId).order("updated_at",{ascending:false}).limit(200).returns<Array<{session_id:string;entry_score:number|null;exit_score:number|null;focus:number|null;participation:number|null;mastery:number|null;comment:string;class_sessions:{title:string;scheduled_at:string}|null}>>(),
+    supabase.from("session_videos").select("id,session_id,submitted_at,reviewed_at,review_score,review_comment,class_sessions(title)").eq("student_id",studentId).is("deleted_at",null).order("submitted_at",{ascending:false}).limit(200).returns<Array<{id:string;session_id:string;submitted_at:string;reviewed_at:string|null;review_score:number|null;review_comment:string;class_sessions:{title:string}|null}>>(),
   ]);
+  if (studentError) throw new Error(studentError.message);
   if (enrollmentError) throw new Error(enrollmentError.message);
   if (attendanceError) throw new Error(attendanceError.message);
+  if (starTotalError) throw new Error(starTotalError.message);
+  if (reviewError) throw new Error(reviewError.message);
+  if (videoError) throw new Error(videoError.message);
+  const userId = studentRow?.user_id ?? null;
 
   const activeClassroomIds = (enrollmentRows ?? [])
     .filter((row) => row.status === "active")
     .map((row) => row.classroom_id);
 
-  let upcomingSessions: StudentUpcomingSession[] = [];
-  if (activeClassroomIds.length > 0) {
-    const sessionRows = await collectPostgrestRowsInBatches<string, UpcomingSessionRow>(activeClassroomIds, (batch) => supabase
-      .from("class_sessions")
-      .select("id,title,scheduled_at,classrooms(name)")
-      .in("classroom_id", batch)
-      .is("deleted_at", null)
-      .gte("scheduled_at", new Date().toISOString())
-      .order("scheduled_at", { ascending: true })
-      .limit(10)
-      .returns<UpcomingSessionRow[]>());
-    upcomingSessions = sessionRows
-      .sort((left, right) => left.scheduled_at.localeCompare(right.scheduled_at))
-      .slice(0, 10)
-      .map((row) => ({
-        sessionId: row.id,
-        classroomName: row.classrooms?.name || "",
-        lectureName: row.title,
-        scheduledAt: row.scheduled_at,
-      }));
-  }
+  const submissionRead = Promise.resolve(userId ? supabase.from("submissions")
+    .select("assignment_id,score,feedback,submitted_at,graded_at,assignments(title)")
+    .eq("user_id", userId).order("submitted_at", { ascending: false, nullsFirst: false }).limit(200)
+    .returns<SubmissionLearningRow[]>() : { data: [], error: null });
+  const upcomingRead = (async () => {
+    let upcomingSessions: StudentUpcomingSession[] = [];
+    if (activeClassroomIds.length > 0) {
+      const sessionRows = await collectPostgrestRowsInBatches<string, UpcomingSessionRow>(activeClassroomIds, (batch) => supabase
+        .from("class_sessions")
+        .select("id,title,scheduled_at,classrooms(name)")
+        .in("classroom_id", batch)
+        .is("deleted_at", null)
+        .gte("scheduled_at", new Date().toISOString())
+        .order("scheduled_at", { ascending: true })
+        .limit(10)
+        .returns<UpcomingSessionRow[]>());
+      upcomingSessions = sessionRows
+        .sort((left, right) => left.scheduled_at.localeCompare(right.scheduled_at))
+        .slice(0, 10)
+        .map((row) => ({
+          sessionId: row.id,
+          classroomName: row.classrooms?.name || "",
+          lectureName: row.title,
+          scheduledAt: row.scheduled_at,
+        }));
+    }
+    return upcomingSessions;
+  })();
 
-  const { data: starTotalData, error: starTotalError } = await supabase.rpc("get_student_star_total", {
-    p_student_id: studentId,
-  });
-  if (starTotalError) throw new Error(starTotalError.message);
+  const [upcomingSessions, { data: submissionRows, error: submissionError }] = await Promise.all([upcomingRead, submissionRead]);
+  if (submissionError) throw new Error(submissionError.message);
   const starTotal = starTotalData ?? 0;
-  let submissions: StudentSubmissionRow[] = [];
-  if (userId) {
-    const { data: submissionRows, error: submissionError } = await supabase
-      .from("submissions")
-      .select("assignment_id,score,feedback,submitted_at,graded_at,assignments(title)")
-      .eq("user_id", userId)
-      .order("submitted_at", { ascending: false, nullsFirst: false })
-      .limit(200)
-      .returns<SubmissionLearningRow[]>();
-    if (submissionError) throw new Error(submissionError.message);
-    submissions = (submissionRows ?? []).map((row) => ({
-      assignmentId: row.assignment_id,
-      assignmentTitle: row.assignments?.title || "",
-      score: row.score,
-      feedback: row.feedback,
-      submittedAt: row.submitted_at,
-      gradedAt: row.graded_at,
-    }));
-  }
-
-  const {data:reviewRows,error:reviewError}=await supabase.from("session_reviews").select("session_id,entry_score,exit_score,focus,participation,mastery,comment,class_sessions(title,scheduled_at)").eq("student_id",studentId).order("updated_at",{ascending:false}).limit(200).returns<Array<{session_id:string;entry_score:number|null;exit_score:number|null;focus:number|null;participation:number|null;mastery:number|null;comment:string;class_sessions:{title:string;scheduled_at:string}|null}>>();
-  if(reviewError)throw new Error(reviewError.message);
-  const{data:videoRows,error:videoError}=await supabase.from("session_videos").select("id,session_id,submitted_at,reviewed_at,review_score,review_comment,class_sessions(title)").eq("student_id",studentId).is("deleted_at",null).order("submitted_at",{ascending:false}).limit(200).returns<Array<{id:string;session_id:string;submitted_at:string;reviewed_at:string|null;review_score:number|null;review_comment:string;class_sessions:{title:string}|null}>>();if(videoError)throw new Error(videoError.message);
+  const submissions: StudentSubmissionRow[] = (submissionRows ?? []).map((row) => ({
+    assignmentId: row.assignment_id,
+    assignmentTitle: row.assignments?.title || "",
+    score: row.score,
+    feedback: row.feedback,
+    submittedAt: row.submitted_at,
+    gradedAt: row.graded_at,
+  }));
 
   return {
     hasAccount: Boolean(userId),

@@ -1,5 +1,6 @@
 import 'server-only';
 import { createClient } from '@/lib/supabase/server';
+import { postgrestFilterBatches } from '@/lib/supabase/postgrest-batches';
 import type { RenewalWorkspaceData } from './renewals';
 import type { RenewalHealthFacts } from './renewal-health-contract';
 import { DEFAULT_RENEWAL_HEALTH_POLICY, isRenewalHealthPolicy, type RenewalHealthPolicy } from './renewal-health-policy';
@@ -55,11 +56,16 @@ export async function loadRenewalPoolSupplement(data:RenewalWorkspaceData,actorI
     .in('classroom_id',classes).eq('responsibility','primary_teacher'): {data:[],error:null};
   if(teachers.error) throw new Error(teachers.error.message);
   const teacherNames=new Map((teachers.data??[]).map(row=>[row.classroom_id,row.profiles?.display_name??'']));
-  const teacherClasses=new Set(await Promise.all(classes.map(async cid=>{
-    const {data,error}=await supabase.rpc('is_classroom_teacher',{cid,uid:actorId});
-    if(error) throw new Error(error.message);
-    return data?cid:null;
-  })));
+  const teacherClasses=new Set<string>();
+  // 管理员的观察范围已由 is_admin 确认；其他员工沿用逐班授权，并限制同时发出的请求。
+  if(!admin.data) for(const batch of postgrestFilterBatches(classes,4)) {
+    const results=await Promise.all(batch.map(async cid=>{
+      const {data,error}=await supabase.rpc('is_classroom_teacher',{cid,uid:actorId});
+      if(error) throw new Error(error.message);
+      return data?cid:null;
+    }));
+    for(const cid of results) if(cid) teacherClasses.add(cid);
+  }
   const observationMemberships=(memberships.data??[]).filter(row=>['active','completed'].includes(row.status)&&(admin.data||teacherClasses.has(row.classroom_id))).map(row=>row.id);
   const records=(details.data??[]).map(row=>({opportunityId:row.opportunity_id,revision:row.revision,
     contactMethod:row.contact_method,seasons:row.seasons,paidOn:row.paid_on,paymentMethod:row.payment_method,updatedAt:row.updated_at})) as RenewalWorkbenchRecord[];

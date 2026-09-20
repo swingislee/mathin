@@ -58,31 +58,12 @@ export interface TemplateProgressRow {
   total: number;
 }
 
-/** 课件模板完成度：按年级分行（教研 templateProgress 贴）。两次轻量行查询内存分组，不拉模板 jsonb。 */
+/** 在数据库内按可见年级汇总，返回完整计数与小型 DTO。 */
 export async function getTemplateProgress(): Promise<TemplateProgressRow[]> {
   const supabase = await createClient();
-  const [totalRes, readyRes] = await Promise.all([
-    supabase.from("course_lectures").select("courses!inner(grade)").limit(10000).returns<Array<{ courses: { grade: number } }>>(),
-    supabase
-      .from("course_lectures")
-      .select("courses!inner(grade)")
-      .neq("courseware_template", "[]")
-      .limit(10000)
-      .returns<Array<{ courses: { grade: number } }>>(),
-  ]);
-  if (totalRes.error) throw new Error(totalRes.error.message);
-  if (readyRes.error) throw new Error(readyRes.error.message);
-  const rows = new Map<number, TemplateProgressRow>();
-  for (const row of totalRes.data ?? []) {
-    const entry = rows.get(row.courses.grade) ?? { grade: row.courses.grade, ready: 0, total: 0 };
-    entry.total += 1;
-    rows.set(row.courses.grade, entry);
-  }
-  for (const row of readyRes.data ?? []) {
-    const entry = rows.get(row.courses.grade);
-    if (entry) entry.ready += 1;
-  }
-  return Array.from(rows.values()).sort((a, b) => a.grade - b.grade);
+  const { data, error } = await supabase.rpc("get_courseware_template_progress");
+  if (error) throw new Error(error.message);
+  return data ?? [];
 }
 
 export interface RosterMismatch {
