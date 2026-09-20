@@ -1,0 +1,349 @@
+{
+  "status": "production_committed_machine_verified_business_review_pending",
+  "source": {
+    "id": "feishu-base:28a6f6af56504cab716f01eead37d73b5098d0830ed4b02b55c06dc93e135dc6",
+    "filename": "2026-09-20【思维】用户与产品运营表.base",
+    "sha256": "fcc8d200f822ece4fa5aed13c9867990513ef111a78ccb57f0b7b055574a0095",
+    "format": "feishu-base"
+  },
+  "totals": {
+    "addedRecords": 215,
+    "absentRecords": 20,
+    "changedRecords": 189,
+    "changedFields": 657,
+    "representationChangedRecords": 4698,
+    "representationChangedFields": 17799
+  },
+  "operations": {
+    "leads": {
+      "insert": 206,
+      "update": 91
+    },
+    "lead_communications": {
+      "insert": 118,
+      "update": 29
+    },
+    "activities": {
+      "insert": 6,
+      "update": 20
+    },
+    "activity_registrations": {
+      "insert": 6,
+      "update": 61
+    },
+    "assessment_results": {
+      "insert": 7,
+      "update": 13
+    },
+    "course_opportunities": {
+      "insert": 0,
+      "update": 3
+    },
+    "course_enrollments": {
+      "insert": 2,
+      "update": 2
+    },
+    "course_enrollment_assignments": {
+      "insert": 2,
+      "update": 2
+    },
+    "students": {
+      "insert": 2,
+      "update": 1
+    },
+    "enrollments": {
+      "insert": 2,
+      "update": 0
+    }
+  },
+  "sourceRecords": 404,
+  "sourceFieldCount": 5880,
+  "metadataChanges": [
+    {
+      "key": "tbl7Wx2zLgcqiCjs:recvu7QzIAjH0e",
+      "fields": [
+        "phone",
+        "phone_normalized"
+      ]
+    },
+    {
+      "key": "tbl7Wx2zLgcqiCjs:recvueJu4VMAcJ",
+      "fields": [
+        "phone",
+        "phone_normalized"
+      ]
+    },
+    {
+      "key": "tblzwPK2XgJa14EC:recvtzpqxBTkmC",
+      "fields": [
+        "phone",
+        "phone_normalized"
+      ]
+    },
+    {
+      "key": "tblzwPK2XgJa14EC:recvtyC6ZF6xN4",
+      "duplicateIdentityReview": true
+    },
+    {
+      "key": "tblzwPK2XgJa14EC:recvu3cjtguWzS",
+      "guardianLabelReview": true
+    }
+  ],
+  "heldIdentities": [
+    {
+      "key": "tbl7Wx2zLgcqiCjs:recvoiESRRH3oO",
+      "reason": "changed_person_name_without_shared_phone"
+    }
+  ],
+  "conflicts": [
+    {
+      "table": "activity_registrations",
+      "fields": [
+        "outcome"
+      ]
+    },
+    {
+      "table": "leads",
+      "fields": [
+        "note"
+      ]
+    },
+    {
+      "table": "leads",
+      "fields": [
+        "note"
+      ]
+    },
+    {
+      "table": "leads",
+      "fields": [
+        "note"
+      ]
+    },
+    {
+      "table": "leads",
+      "fields": [
+        "note"
+      ]
+    }
+  ],
+  "manualPreserved": 3,
+  "suppressed": 1,
+  "target": {
+    "host": "xiaomi",
+    "ssh": true,
+    "supabaseOrigin": "https://supabase.mathin.club",
+    "processOrigin": "https://supabase.mathin.club",
+    "mainPid": 1560245,
+    "listen": "State  Recv-Q Send-Q Local Address:Port Peer Address:PortProcess                                       \nLISTEN 0      511        127.0.0.1:3131      0.0.0.0:*    users:((\"next-server (v1\",pid=1560245,fd=21))\n",
+    "current": {
+      "release": "20260920-005221",
+      "commit": "1eaab0fbe3285d44f89924b8c1f771c5417ef657",
+      "builtAt": "2026-09-20T00:54:40Z"
+    },
+    "previous": {
+      "release": "20260915-080520",
+      "commit": "2ded3c75ef984cedcb594a97ce63ebc459c850e3",
+      "builtAt": "2026-09-15T08:07:40Z"
+    },
+    "fingerprint": "10e3f97e32b018403c9074efa4e258d699530a487c47de89b5d307ab7ff21a0c",
+    "capturedAt": "2026-09-20T16:26:37.151Z"
+  },
+  "backup": {
+    "backupPath": "/home/swing/services/mathin/backups/mathin-db-prechange-20260920T161145Z-base-incremental-20260920",
+    "dumpBytes": 351733421,
+    "dumpSha256": "e7cfeef2f28a6a088b92f7d7a47a8d4e008945bc5dc9075002d4b2e280ada8bc",
+    "tocLines": 6569,
+    "planHash": "48d58b9c087a7dacc2e17f621ef8568ff7a860f03afd74208c284c3b119ff4b6",
+    "sourceSha256": "fcc8d200f822ece4fa5aed13c9867990513ef111a78ccb57f0b7b055574a0095",
+    "beforeHash": "b5edb549166325d87921da53c0872857ea17e9a3520d24b0a5a3528dc68e136e",
+    "createdAt": "2026-09-20T16:12:28.273Z"
+  },
+  "binding": {
+    "previousPlanHash": "4d74bf1a686cb699b1d0197108d1de694e76abf6435525ef17b211133b40634e",
+    "planHash": "2f750c3171e17dd81f8e9feb6ddb17865881e2cd9585d79e26c8d9a3f6698714",
+    "sqlSha256": "2b495f2384f39d3b99f0fad0cb35542538a461114ad0d8a4cc5f0ce93fc76a14",
+    "databaseUnchanged": true,
+    "backupVerified": true,
+    "checkedAt": "2026-09-20T16:21:08.909Z"
+  },
+  "batch": {
+    "batchKey": "base-incremental-20260920-fcc8d200f822ece4",
+    "planHash": "2f750c3171e17dd81f8e9feb6ddb17865881e2cd9585d79e26c8d9a3f6698714",
+    "sqlSha256": "2b495f2384f39d3b99f0fad0cb35542538a461114ad0d8a4cc5f0ce93fc76a14",
+    "appliedAt": "2026-09-20T16:22:10.282Z"
+  },
+  "verification": {
+    "rehearsalZeroResidual": true,
+    "persistentReadPassed": true,
+    "protectedExistingRows": true,
+    "counts": {
+      "leads": {
+        "before": 3942,
+        "after": 4148
+      },
+      "profiles": {
+        "before": 41,
+        "after": 41
+      },
+      "students": {
+        "before": 1470,
+        "after": 1472
+      },
+      "activities": {
+        "before": 950,
+        "after": 956
+      },
+      "classrooms": {
+        "before": 34,
+        "after": 34
+      },
+      "enrollments": {
+        "before": 176,
+        "after": 178
+      },
+      "class_sessions": {
+        "before": 429,
+        "after": 429
+      },
+      "schema_migrations": {
+        "before": 395,
+        "after": 395
+      },
+      "assessment_results": {
+        "before": 667,
+        "after": 674
+      },
+      "course_enrollments": {
+        "before": 1360,
+        "after": 1362
+      },
+      "session_attendance": {
+        "before": 39,
+        "after": 39
+      },
+      "student_follow_ups": {
+        "before": 250,
+        "after": 250
+      },
+      "lead_communications": {
+        "before": 4050,
+        "after": 4168
+      },
+      "course_opportunities": {
+        "before": 519,
+        "after": 519
+      },
+      "history_import_files": {
+        "before": 1122,
+        "after": 1123
+      },
+      "activity_registrations": {
+        "before": 947,
+        "after": 953
+      },
+      "history_import_batches": {
+        "before": 3,
+        "after": 4
+      },
+      "history_import_records": {
+        "before": 15433,
+        "after": 15837
+      },
+      "history_workflow_scopes": {
+        "before": 10058,
+        "after": 10160
+      },
+      "business_record_revisions": {
+        "before": 0,
+        "after": 0
+      },
+      "history_import_batch_files": {
+        "before": 1122,
+        "after": 1123
+      },
+      "history_workflow_decisions": {
+        "before": 0,
+        "after": 0
+      },
+      "history_import_associations": {
+        "before": 317,
+        "after": 336
+      },
+      "school_subject_participants": {
+        "before": 9822,
+        "after": 9951
+      },
+      "history_import_batch_records": {
+        "before": 15540,
+        "after": 15944
+      },
+      "course_enrollment_assignments": {
+        "before": 1516,
+        "after": 1518
+      },
+      "history_source_business_facts": {
+        "before": 16249,
+        "after": 16653
+      },
+      "history_business_workflow_scopes": {
+        "before": 3,
+        "after": 3
+      },
+      "history_import_association_events": {
+        "before": 317,
+        "after": 337
+      },
+      "history_import_identity_candidates": {
+        "before": 1057,
+        "after": 1076
+      }
+    },
+    "coverage": {
+      "sourceRows": 5451,
+      "exactSourceRows": 5451,
+      "retiredEmptyColumnRows": 785,
+      "retiredEmptyColumns": [
+        "英语测评成绩（年级限定下）",
+        "是否体验/测评英语",
+        "体/测日期",
+        "是否报名英语",
+        "沟通日期",
+        "体验测评家长关注点",
+        "家长报名重视点总结",
+        "是否沟通英语",
+        "英语报名日期"
+      ],
+      "missing": [],
+      "different": [],
+      "missingOldRowsPreserved": 20,
+      "baseActiveAutumn": 162,
+      "baseActiveWithoutFormalMembership": [],
+      "productionCurrentMemberships": 165,
+      "productionCurrentUniqueStudents": 165,
+      "newMembershipsVerified": 2,
+      "correctedInference": {
+        "leadAnchored": 1,
+        "registrationUsesLead": 1,
+        "historicalInferenceMarked": 1
+      },
+      "verifiedAt": "2026-09-20T16:26:44.087Z"
+    },
+    "authenticatedRead": {
+      "role": "authenticated",
+      "fields": 5880,
+      "rpcMatches": 404,
+      "fieldRecords": 404
+    },
+    "errors": {
+      "count": 2018,
+      "latest": "2026-09-19T06:18:16.082+00:00"
+    },
+    "mergeCasesPassed": 5
+  },
+  "limitations": [
+    "获客总览在当前生产版本仍固定读取 2026-09-07 来源，数据库增量不代表该页面全部新增已显示。",
+    "推定身份与班级、重复线索和亲属角色由一线核对；原有正式班级保持。"
+  ],
+  "privacy": "生产个人明细及 SQL 仅留生产；未读取或上传开发个人资料。"
+}
