@@ -1,10 +1,10 @@
 import { ClassWorkspaceTabs } from "../ClassWorkspaceTabs";
+import { ClassWorkspaceCommandPanel } from "../ClassWorkspaceCommandPanel";
+import { ClassWorkspaceActions } from "../ClassWorkspaceActions";
 import { workEntryMessages, classWorkHref } from "../work-entry-contract";
 import { Suspense } from "react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { buttonVariants } from "@/components/ui/button";
-import { DashboardPage, DashboardCommandPanel, DashboardCommandState, DashboardCommandFilters, DashboardCommandActions, DashboardSection } from "@/features/school/dashboard-page";
-import { RouteTabs } from "@/features/school/navigation/RouteTabs";
+import { DashboardPage, DashboardSection } from "@/features/school/dashboard-page";
 import { getOrganizationTimezoneV2 } from "@/features/school/organization-locations";
 import { WorkItemList } from "@/features/school/stage/WorkItemList";
 import { WORK_ITEM_URGENCY_ORDER } from "@/features/school/stage/types";
@@ -44,7 +44,6 @@ async function TeachingContent({ locale, searchParams }: { locale: string; searc
   const [query, perms, t, timeZone] = await Promise.all([
     searchParams, getMyPerms(user.id), getTranslations("school.teachingWorkbench"), getOrganizationTimezoneV2(),
   ]);
-  const m = workEntryMessages(locale);
   const canViewTeam = hasTeachingManagementScope(perms);
   const view = query.view === "tasks" ? "tasks" : query.view === "progress" ? "progress" : query.view === "records" || canViewTeam ? "records" : "tasks";
   const period = teachingTimeGrain(query.period);
@@ -73,21 +72,11 @@ async function TeachingContent({ locale, searchParams }: { locale: string; searc
       { value: "progress", label: t(canViewTeam ? "teamProgress" : "myProgress"), href: progressHref(selection, period, "progress") },
       { value: "allWork", label: t("allWork"), href: "/dashboard?view=work" },
     ]} /> :
-    <DashboardCommandPanel className={view === "records" && !sessionId ? "followup-command-panel" : undefined}>
-      <DashboardCommandState>
-        <ClassWorkspaceTabs active={view} canTeach query={query} />
-      </DashboardCommandState>
-      <DashboardCommandFilters>
-        {view !== "records" ? <RouteTabs ariaLabel={m.progress} activeValue={view} items={[
-          { value: "tasks", label: m.tasks, href: classWorkHref("tasks", query) },
-          { value: "progress", label: m.progress, href: classWorkHref("progress", query) },
-        ]} /> : null}
-        {view !== "tasks" && !(view === "records" && sessionId) && <>
-          <TeachingPeriodPicker key={`${period}:${selection}:${selectedWindow?.termId ?? ""}`} grain={period} window={selectedWindow} baseHref={progressHref()} terms={terms} today={calendarDayKey(new Date(), timeZone)} />
-        </>}
-      </DashboardCommandFilters>
-      <DashboardCommandActions><Link className={buttonVariants({ variant: "secondary", size: "sm" })} href="/dashboard?view=work">{t("allWork")}</Link></DashboardCommandActions>
-    </DashboardCommandPanel>
+    <ClassWorkspaceCommandPanel
+      navigation={<ClassWorkspaceTabs active={view} canTeach query={query} />}
+      period={view !== "tasks" && !(view === "records" && sessionId) ? <TeachingPeriodPicker key={`${period}:${selection}:${selectedWindow?.termId ?? ""}`} grain={period} window={selectedWindow} baseHref={progressHref()} terms={terms} today={calendarDayKey(new Date(), timeZone)} /> : null}
+      actions={<ClassWorkspaceActions canTeach query={query} />}
+    />
   }>
     {view === "tasks" ? <TeachingTasks locale={locale} /> : view === "records" && sessionId ? <TeachingRecordDetail
       sessionId={sessionId} contactPage={contactPage} pageSize={contactSize} locale={locale} timeZone={timeZone} returnTo={progressHref()}

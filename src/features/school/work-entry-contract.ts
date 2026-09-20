@@ -41,9 +41,10 @@ export function workEntryHref(path: string, query: WorkEntryQuery = {}, override
 }
 
 export function classWorkHref(view: ClassWorkView, query: WorkEntryQuery = {}) {
+  const term = query.term === "all" && view !== "arrange" ? undefined : typeof query.term === "string" ? query.term : undefined;
   return workEntryHref("/dashboard/classes", query, { view,
-    period: view === "records" && query.term && !query.period ? "term" : typeof query.period === "string" ? query.period : undefined,
-    page: undefined, contactPage: undefined,
+    term, period: view === "records" && term && !query.period ? "term" : typeof query.period === "string" ? query.period : undefined,
+    page: undefined, contactPage: undefined, state: undefined,
     // 字段筛选的列定义属于各自视图；班级、老师、期次等共同定位继续保留。
     fields: undefined, session: view === "records" && typeof query.session === "string" ? query.session : undefined });
 }
@@ -58,11 +59,13 @@ export function communicationEntryMode(row: StudentStageRow): StudentEntryMode {
 export function workEntryMessages(locale: string) {
   return locale.startsWith("en") ? {
     classes: "Classes", arrange: "Class rosters", records: "Teaching records", progress: "Completion", tasks: "My tasks", classActions: "Class actions",
+    allTerms: "All terms", rosterFilters: "Roster filters", clearRosterFilters: "Clear roster filters", filteredRoster: "Roster filters applied",
     directory: "Class directory", communication: "Communication", worklists: "Contact worklists", stages: "Student stages",
     communicationHint: "Expand a person to record the next step. Save and continue with the next person.",
     openRecords: "Teaching records", openRenewal: "Renewal", backStages: "Stage lists",
   } : {
     classes: "班级", arrange: "班级名册", records: "教学记录", progress: "完成情况", tasks: "我的待办", classActions: "班级操作",
+    allTerms: "全部学期", rosterFilters: "名册筛选", clearRosterFilters: "清除名册筛选", filteredRoster: "已设置名册筛选",
     directory: "班级目录", communication: "沟通", worklists: "联系工作单", stages: "学生阶段",
     communicationHint: "展开学生，按当前阶段登记；保存后可继续下一位。",
     openRecords: "教学登记", openRenewal: "续班", backStages: "阶段名单",

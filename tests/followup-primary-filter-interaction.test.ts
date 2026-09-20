@@ -38,7 +38,7 @@ async function render(children: ReactNode, locale: "zh" | "en" = "zh") {
   await act(async () => root.render(createElement(NextIntlClientProvider, provider)));
 }
 const click = async (button: HTMLElement) => { expect(button).toBeTruthy(); await act(async () => button.click()); };
-const primary = (label: string) => [...container.querySelectorAll<HTMLButtonElement>("[data-followup-primary-filter] button")].find(button => button.textContent === label)!;
+const primary = (label: string) => [...document.querySelectorAll<HTMLButtonElement>("[data-followup-primary-filter] button")].find(button => button.textContent === label)!;
 const keys = (attribute: string) => [...container.querySelectorAll(`[${attribute}]`)].map(row => row.getAttribute(attribute));
 const at = "2026-09-07T01:00:00Z";
 
@@ -114,21 +114,39 @@ describe("title-bar primary filters", () => {
   it("keeps target classrooms and occupied seats visible for pending placement and filters by real class capacity", async () => {
     const classroom = (id: string, grade: number, capacity: number | null, activeCount: number) => ({ id, name: id, courseId: `course-${grade}`, termId: "term",
       capacity, activeCount, operationalStatus: "active" as const, teacherNames: "", sessions: [] });
-    const board: EnrollmentPlacementBoard = { options: { terms: [{ id: "term", name: "Term", isCurrent: true, startsOn: null, endsOn: null }],
+    const board: EnrollmentPlacementBoard = { options: { terms: [
+      { id: "term", name: "Term", isCurrent: true, startsOn: "2026-09-01", endsOn: "2027-01-01" },
+      { id: "previous", name: "Previous term", isCurrent: false, startsOn: "2026-02-01", endsOn: "2026-06-30" }],
       courses: [3, 4].map(grade => ({ id: `course-${grade}`, title: "Course", grade, productCode: null, classType: "standard" })),
-      classrooms: [classroom("open", 3, 2, 1), classroom("full", 3, 1, 1), classroom("unlimited", 4, null, 0)] },
+      classrooms: [classroom("open", 3, 2, 1), classroom("full", 3, 1, 1), classroom("unlimited", 4, null, 0), { ...classroom("previous-class", 3, 2, 0), termId: "previous" }] },
       members: ["open", "full"].map(classroomId => ({ membershipId: classroomId, classroomId, studentId: classroomId, name: `Occupant ${classroomId}`,
         phone: "", enrollmentId: null, note: "", recommendation: "", seat: 1 })),
       enrollments: [{ id: "pending", opportunityId: "pending", studentId: "pending", studentName: "Pending", studentPhone: "", courseId: "course-3", courseTitle: "Course",
         termId: "term", termName: "Term", status: "active", note: "", confirmedAt: at, confirmedByName: "", cancelledAt: null, cancelledByName: null,
         assignmentId: null, classroomId: null, classroomName: null, membershipId: null, assignedAt: null, claimableClassroomIds: [], updatedAt: at }] };
-    await render(createElement(EnrollmentPlacementWorkbench, { initialBoard: board, canCreateClass: false }));
+    await render(createElement(EnrollmentPlacementWorkbench, { initialBoard: board, canCreateClass: true, canTeach: true, workspace: "classes", workspaceQuery: { state: "historical" } }));
     const labels = zh.school.followupFilters;
+    const panel = container.querySelector('[data-dashboard-command-panel]')!;
+    expect([...panel.children].map(child => child.getAttribute("data-dashboard-command-slot"))).toEqual(["state", "filters", "actions"]);
+    expect(panel.textContent).toContain("班级名册"); expect(panel.textContent).toContain("教学记录");
+    expect(panel.textContent).not.toContain("建班");
+    expect(container.querySelector('[data-followup-primary-filter]')).toBeNull();
+    await click(container.querySelector<HTMLButtonElement>('button[aria-label="班级操作"]')!);
+    expect(document.body.textContent).not.toMatch(/当前工作|历史记录|全部记录/);
     await click(primary(labels.enrollments_pending));
     expect(keys("data-placement-classroom")).toEqual(["full", "open"]);
     expect(container.textContent).toContain("Occupant full"); expect(container.textContent).toContain("Occupant open");
     await click(primary(labels.enrollments_vacancies)); expect(keys("data-placement-classroom")).toEqual(["open", "unlimited"]);
     await click(primary(labels.enrollments_full)); expect(keys("data-placement-classroom")).toEqual(["full"]);
+    await click(primary(labels.enrollments_all));
+    await act(async () => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+    await click([...container.querySelectorAll<HTMLButtonElement>("button")].find(button => button.textContent === zh.school.teachingWorkbench.time.previous_term)!);
+    expect(keys("data-placement-classroom")).toEqual(["previous-class"]);
+    const teaching = [...panel.querySelectorAll("a")].find(link => link.textContent === "教学记录")!;
+    expect(new URL(teaching.href).searchParams.get("term")).toBe("previous");
+    expect(new URL(teaching.href).searchParams.has("state")).toBe(false);
+    await click([...container.querySelectorAll<HTMLButtonElement>("button")].find(button => button.textContent === zh.school.teachingWorkbench.time.current_term)!);
+    expect(keys("data-placement-classroom")).toEqual(["full", "open", "unlimited"]);
     expect(actions.move).not.toHaveBeenCalled();
   });
 });

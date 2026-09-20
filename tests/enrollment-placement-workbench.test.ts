@@ -99,7 +99,7 @@ describe("enrollment placement class roster", () => {
         source_record_id: 'existing-source', source_field_ids: ['enrollment'], registered_on: '2025-01-02', period_label: '往期寒假',
         amount: 1200, amount_original: '1200', class_label: '原寒假班', teacher_label: '原老师', room_label: '原教室', schedule_label: '周六上午' }],
     };
-    const rows = renderRoster(undefined, { initialBoard, history, initialRecordState: 'all' });
+    const rows = renderRoster(undefined, { initialBoard, history });
     expect(rows.flatMap(row => classroomId(row.attributes) ? [classroomId(row.attributes)] : []).sort())
       .toEqual(board.options.classrooms.map(value => value.id).sort());
     const current = rows.find(row => classroomId(row.attributes) === 'autumn-4')!;
@@ -110,17 +110,36 @@ describe("enrollment placement class roster", () => {
     expect(historical.content).toContain('原老师');
     expect(historical.content).toContain('1200');
     expect(historical.content).not.toMatch(/data-placement-target|data-placement-select|touch-none/);
-    for(const initialRecordState of ['current','historical'] as const){
-      const visible=renderRoster(undefined,{initialBoard,history,initialRecordState});
-      expect(visible.some(row=>row.attributes.includes('data-record-state="historical"'))).toBe(initialRecordState==='historical');
-      expect(visible.some(row=>classroomId(row.attributes))).toBe(initialRecordState==='current');
+    for(const state of ['current','historical','all']){
+      const visible=renderRoster(undefined,{initialBoard,history,workspaceQuery:{state}});
+      expect(visible.some(row=>row.attributes.includes('data-record-state="historical"'))).toBe(true);
+      expect(visible.some(row=>classroomId(row.attributes))).toBe(true);
     }
     const mixed = { ...history, enrollments: [...history.enrollments, { ...history.enrollments[0], id: 'active-source', record_state: 'current' as const }] };
     const visible = renderRoster(undefined, { initialBoard, history: mixed });
     const keys = visible.flatMap(row => studentKeys(row.content));
     expect(keys).toContain('active-source');
-    expect(keys).not.toContain('historical-enrollment');
+    expect(keys).toContain('historical-enrollment');
     expect(visible.find(row => studentKeys(row.content).includes('active-source'))?.attributes).toContain('data-record-state="current"');
+  });
+
+  it("groups full rosters under each teacher while retaining the original classroom and grade", () => {
+    const initialBoard = { ...board, options: { ...board.options, classrooms: board.options.classrooms.map(value => ({
+      ...value, teachers: value.id === "autumn-4" ? [{ id: "teacher-a", name: "甲老师" }, { id: "teacher-b", name: "乙老师" }] : [{ id: "teacher-a", name: "甲老师" }],
+    })) } };
+    const rows = renderRoster(undefined, { initialBoard, workspace: "classes", workspaceQuery: { group: "teacher" } });
+    const sections = rows.filter(row => row.attributes.includes('data-class-roster-group="teacher:'));
+    expect(sections.map(row => row.content.includes("甲老师") ? "甲" : "乙")).toEqual(["甲", "乙"]);
+    const shared = rows.filter(row => classroomId(row.attributes) === "autumn-4");
+    expect(shared).toHaveLength(2);
+    for (const row of shared) expect(studentKeys(row.cells[4].content)).toEqual(["assigned-fourth", "paused-fourth"]);
+    expect(rows.flatMap(row => studentKeys(row.content)).filter(key => key === "pending-fourth")).toHaveLength(1);
+  });
+
+  it("lets the explicit all-terms choice include every period even with a current term", () => {
+    const rows = renderRoster("all");
+    expect(rows.flatMap(row => classroomId(row.attributes) ? [classroomId(row.attributes)] : []).sort())
+      .toEqual(board.options.classrooms.map(row => row.id).sort());
   });
 
   it("defaults to the current school-year period and keeps each class and its students together", () => {

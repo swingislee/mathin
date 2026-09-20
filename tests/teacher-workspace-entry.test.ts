@@ -12,8 +12,9 @@ vi.mock("@/features/school/enrollment-workflow-data", () => ({ enrollmentWorkflo
 vi.mock("@/features/school/student-business-history-data", () => ({ loadStudentBusinessHistory: mocks.history }));
 vi.mock("@/features/school/organization-locations", () => ({ getOrganizationTimezoneV2: async () => "Asia/Shanghai" }));
 vi.mock("@/features/school/EnrollmentPlacementWorkbench", () => ({ EnrollmentPlacementWorkbench: () => null }));
-vi.mock("@/features/school/dashboard-page", () => ({ DashboardPage: () => null, DashboardEmptyCard: () => null, DashboardCommandActions: () => null }));
-vi.mock("@/features/school/FollowupCommandPanel", () => ({ FollowupCommandPanel: () => null }));
+vi.mock("@/features/school/dashboard-page", () => ({ DashboardPage: () => null, DashboardEmptyCard: () => null }));
+vi.mock("@/features/school/ClassWorkspaceCommandPanel", () => ({ ClassWorkspaceCommandPanel: () => null }));
+vi.mock("@/features/school/ClassWorkspaceTabs", () => ({ ClassWorkspaceTabs: () => null }));
 vi.mock("@/features/school/ClassWorkspaceActions", () => ({ ClassWorkspaceActions: () => null }));
 vi.mock("@/features/school/ClassDirectoryPage", () => ({ default: () => null }));
 vi.mock("@/features/school/teaching-workbench/TeachingWorkspacePage", () => ({ default: () => null }));
@@ -63,9 +64,10 @@ describe("teacher entry and placement access", () => {
 
   it("loads the existing board when the placement capability is present", async () => {
     mocks.capability.mockResolvedValue(true);
-    const page = await EnrollmentsPage({ params, searchParams: Promise.resolve({ term: "requested-term" }) });
+    const page = await EnrollmentsPage({ params, searchParams: Promise.resolve({ term: "requested-term", state: "historical" }) });
     expect(page.props.initialBoard).toBe(board); expect(page.props.initialTermId).toBe("requested-term");
     expect(mocks.board).toHaveBeenCalledOnce(); expect(mocks.teacher).not.toHaveBeenCalled();
     expect(page.props.history).toBeNull(); expect(page.props.canAdd).toBe(false);
+    expect(page.props).not.toHaveProperty("initialRecordState");
   });
 });

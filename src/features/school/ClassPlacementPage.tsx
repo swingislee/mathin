@@ -5,10 +5,10 @@ import { enrollmentWorkflowRpc, loadEnrollmentPlacementBoard } from "@/features/
 import { getMyPerms, requireDashboardEnvironment } from "@/lib/auth";
 import { redirect } from '@/i18n/navigation';
 import { loadStudentBusinessHistory } from '@/features/school/student-business-history-data';
-import { businessRecordStateFilter } from '@/features/school/business-record-state-contract';
 import { isTeacherWorkspaceViewer } from "@/features/school/teacher-workspace";
-import { DashboardCommandActions, DashboardEmptyCard, DashboardPage } from "@/features/school/dashboard-page";
-import { FollowupCommandPanel } from "@/features/school/FollowupCommandPanel";
+import { DashboardEmptyCard, DashboardPage } from "@/features/school/dashboard-page";
+import { ClassWorkspaceCommandPanel } from "./ClassWorkspaceCommandPanel";
+import { ClassWorkspaceTabs } from "./ClassWorkspaceTabs";
 import { ClassWorkspaceActions } from "./ClassWorkspaceActions";
 import { workEntryMessages, type WorkEntryQuery } from "./work-entry-contract";
 
@@ -28,9 +28,10 @@ export default async function CourseEnrollmentsPage({
   if (await enrollmentWorkflowRpc('can_access_enrollment_placement') !== true) {
     if (!await isTeacherWorkspaceViewer(user.id)) redirect({ locale, href: '/dashboard' });
     const t = await getTranslations("school.followupWorkspace");
-    return <DashboardPage title={m.classes} density="compact" commandPanel={<FollowupCommandPanel>
-      <DashboardCommandActions><ClassWorkspaceActions canTeach={canTeach} query={query} /></DashboardCommandActions>
-    </FollowupCommandPanel>}><DashboardEmptyCard>{t("noTeachingClassForPlacement")}</DashboardEmptyCard></DashboardPage>;
+    return <DashboardPage title={m.classes} density="compact" commandPanel={<ClassWorkspaceCommandPanel
+      navigation={<ClassWorkspaceTabs active="arrange" canTeach={canTeach} query={query} />}
+      actions={<ClassWorkspaceActions canTeach={canTeach} query={query} />}
+    />}><DashboardEmptyCard>{t("noTeachingClassForPlacement")}</DashboardEmptyCard></DashboardPage>;
   }
   const [board, timeZone, now] = await Promise.all([
     loadEnrollmentPlacementBoard(),
@@ -39,6 +40,7 @@ export default async function CourseEnrollmentsPage({
 
   return (
     <EnrollmentPlacementWorkbench
+      key={`${query.term ?? ""}:${query.student ?? ""}:${query.classroom ?? ""}`}
       workspace="classes"
       canTeach={canTeach}
       workspaceQuery={query}
@@ -48,7 +50,6 @@ export default async function CourseEnrollmentsPage({
       now={now.getTime()}
       history={permissions.has('enrollment.manage') ? await loadStudentBusinessHistory(locale,{kind:'enrollment',projection:'workbench'}) : null}
       initialQuery={typeof query.q === "string" ? query.q.slice(0,100) : undefined}
-      initialRecordState={businessRecordStateFilter(typeof query.state === "string" ? query.state : undefined)}
       initialTermId={typeof query.term === "string" ? query.term : undefined}
       focusStudentId={typeof query.student === "string" ? query.student : undefined}
       canCreateClass={permissions.has("class.create")}

@@ -17,6 +17,8 @@ describe("work entry context", () => {
     const query = new URL(href, "http://test.invalid").searchParams;
     expect(Object.fromEntries(query)).toEqual({ classroom: "class-a", teacher: "teacher-a", term: "term-a", view: "records", period: "term" });
     expect(classWorkHref("arrange", { classroom: "class-a", session: "lesson-a" })).not.toContain("session=");
+    expect(classWorkHref("arrange", { term: "all", state: "historical" })).toBe("/dashboard/classes?term=all&view=arrange");
+    expect(classWorkHref("records", { term: "all", period: "term", group: "teacher", state: "current" })).toBe("/dashboard/classes?period=term&group=teacher&view=records");
   });
 
   it("keeps the student's existing route default and scopes communication pagination to communication", () => {
