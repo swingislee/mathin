@@ -3,14 +3,15 @@ import type { VoxelCoordinate } from "@/features/spatial-math/domain";
 import { beginSpatialObjectGesture } from "@/features/spatial-math/renderer-r3f/spatial-object-gesture";
 import { animateSpatialAction } from "./policy";
 import { interpolateRigidPoses, type SpatialRigidPose } from "./rigid-motion";
-import { spatialMoveDelta, spatialMoveProjection, spatialPointerRay, type SpatialMovePlane, type SpatialObjectAction, type SpatialPointerViewport } from "./object-gesture-math";
+import { resolveSpatialMovePlane, spatialMoveDelta, spatialMoveProjection, spatialPointerRay, type SpatialMoveBasis, type SpatialMovePlane, type SpatialStandardMovePlane, type SpatialObjectAction, type SpatialPointerViewport } from "./object-gesture-math";
 import { spatialArcball, spatialArcballRotation, type SpatialArcball } from "./arcball";
 
 export interface SpatialGestureTarget { pose: SpatialRigidPose; pivot: VoxelCoordinate; grabPoint: VoxelCoordinate; radius?: number }
 export interface SpatialGestureLanding { pose: SpatialRigidPose; valid: boolean; apply: () => boolean; snapped?: boolean }
-export interface SpatialObjectPreview { target: SpatialGestureTarget; pose: SpatialRigidPose; landing: SpatialRigidPose; valid: boolean; phase: "drag" | "settle"; arcball?: SpatialArcball; snapped?: boolean }
+export interface SpatialObjectPreview { target: SpatialGestureTarget; pose: SpatialRigidPose; landing: SpatialRigidPose; valid: boolean; phase: "drag" | "settle"; arcball?: SpatialArcball; snapped?: boolean; moveBasis?: SpatialMoveBasis }
 export interface SpatialObjectInteraction {
   key: object; enabled: boolean; plane: SpatialMovePlane; rotate?: boolean;
+  resolvePlane?: (camera: Camera) => SpatialStandardMovePlane;
   selected: SpatialGestureTarget | null;
   pick: (raycaster: Raycaster) => SpatialGestureTarget | null;
   handlesHit?: (event: PointerEvent, camera: Camera, size: SpatialPointerViewport) => boolean;
@@ -83,7 +84,8 @@ export function bindSpatialObjectGestures(canvas: HTMLCanvasElement, current: ()
     if (!target) return;
     stop(event); stopSettle();
     const action: SpatialObjectAction = forced || event.shiftKey || interaction.rotate ? "rotate" : "translate";
-    const projection = action === "translate" ? spatialMoveProjection({ x: event.clientX, y: event.clientY }, target.grabPoint, interaction.plane, camera, size) : null;
+    const projection = action === "translate" ? spatialMoveProjection({ x: event.clientX, y: event.clientY }, target.grabPoint,
+      interaction.resolvePlane?.(camera) ?? resolveSpatialMovePlane(interaction.plane, camera), camera, size) : null;
     // 侧看桌面仍允许轻点选择；达到起拖阈值时再提示不可解的移动平面。
     gesture = { interaction, key: interaction.key, target, action, camera, size, start: event,
       ball: spatialArcball(target.pivot, target.radius ?? 1, camera, size), projection, moved: false, frame: null, landing: null, cursor: canvas.style.cursor };
@@ -106,7 +108,8 @@ export function bindSpatialObjectGestures(canvas: HTMLCanvasElement, current: ()
       pose = { ...pose, position: { x: pose.position.x + translation.x, y: pose.position.y + translation.y, z: pose.position.z + translation.z } };
     }
     g.landing = g.interaction.resolve(g.target, pose, g.action);
-    g.frame = { target: g.target, pose, landing: g.landing.pose, valid: g.landing.valid, phase: "drag", arcball: g.action === "rotate" ? g.ball : undefined, snapped: g.landing.snapped };
+    g.frame = { target: g.target, pose, landing: g.landing.pose, valid: g.landing.valid, phase: "drag", arcball: g.action === "rotate" ? g.ball : undefined, snapped: g.landing.snapped,
+      moveBasis: g.projection?.basis };
     g.interaction.onPreview(g.frame);
   };
   const up = (event: PointerEvent) => {

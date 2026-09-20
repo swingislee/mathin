@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createRequire } from "node:module";
 import { OrthographicCamera, Quaternion, Vector3 } from "three";
 import { bindSpatialObjectGestures, isSpatialCameraHandoff, startSpatialRotationGrip, type SpatialGestureTarget, type SpatialObjectInteraction, type SpatialObjectPreview } from "@/features/tools/spatial-interaction/object-gesture-controller";
-import { spatialMoveDelta, spatialMoveProjection } from "@/features/tools/spatial-interaction/object-gesture-math";
+import { createSpatialMovePlaneResolver, resolveSpatialMovePlane, spatialMoveDelta, spatialMoveProjection } from "@/features/tools/spatial-interaction/object-gesture-math";
 import { spatialArcball, spatialArcballRotation } from "@/features/tools/spatial-interaction/arcball";
 import { somaGestureLanding } from "@/features/tools/soma-cube/manipulation";
 import { createSomaInitial, somaAnchorIndex, somaOrientAroundAnchor, somaRotate, somaRotationPivot } from "@/features/tools/soma-cube/model";
@@ -93,16 +93,35 @@ describe("continuous plane and camera-relative object gestures", () => {
     expect(viewport.top + (1 - projected.y) * viewport.height / 2).toBeCloseTo(next.y);
     expect(spatialMoveDelta(projection, point, c, viewport)).toEqual(origin);
   });
-  it.each([[0, 0, 10], [10, 4, -3]])("screen-plane dragging follows pixels at a zoomed view %s", (...position) => {
+  it.each([[0, 0, 10], [10, 4, -3]])("the auto-selected standard plane follows pixels at a zoomed view %s", (...position) => {
     const c = camera(position); c.zoom = 2; c.updateProjectionMatrix();
-    const projection = spatialMoveProjection(point, origin, "screen", c, viewport)!;
+    const plane = resolveSpatialMovePlane("auto", c);
+    const projection = spatialMoveProjection(point, origin, plane, c, viewport)!;
     const delta = spatialMoveDelta(projection, { x: point.x + 80, y: point.y + 40 }, c, viewport)!;
     const screen = projection.start.clone().add(new Vector3(delta.x, delta.y, delta.z)).project(c);
     expect(screen.x * viewport.width / 2).toBeCloseTo(80); expect(-screen.y * viewport.height / 2).toBeCloseTo(40);
   });
   it("does not silently change movement rules when the table is edge-on", () => {
     expect(spatialMoveProjection(point, origin, "table", camera([0, 0, 10]), viewport)).toBeNull();
-    expect(spatialMoveProjection(point, origin, "screen", camera([0, 0, 10]), viewport)).not.toBeNull();
+    expect(spatialMoveProjection(point, origin, resolveSpatialMovePlane("auto", camera([0, 0, 10])), camera([0, 0, 10]), viewport)).not.toBeNull();
+  });
+  it.each(["mouse", "touch"])("%s uses the displayed auto plane, locks it, and publishes once", (pointerType) => {
+    const g = setup(), choose = createSpatialMovePlaneResolver();
+    g.interaction.plane = "auto";
+    g.interaction.resolvePlane = (c) => choose("auto", c);
+    g.camera.position.set(0, 3, 10); g.camera.lookAt(0, 0, 0); g.camera.updateMatrixWorld();
+    expect(g.interaction.resolvePlane(g.camera)).toBe("xy");
+    // 22° 处继续沿用刚刚显示的 XY，而不是起拖时重新无状态选成 XZ。
+    g.camera.position.set(0, Math.tan(22 * Math.PI / 180) * 10, 10); g.camera.lookAt(0, 0, 0); g.camera.updateMatrixWorld();
+    expect(g.interaction.resolvePlane(g.camera)).toBe("xy");
+    g.send("pointerdown", { pointerType });
+    g.camera.position.set(10, 8, 0); g.camera.lookAt(0, 0, 0); g.camera.updateMatrixWorld();
+    g.send("pointermove", { pointerType, clientX: point.x + 60, clientY: point.y - 35 });
+    const frame = g.previews.at(-1)!;
+    expect(frame.moveBasis!.plane).toBe("xy"); expect(frame.pose.position.z).toBeCloseTo(0);
+    expect(Math.abs(frame.pose.position.y)).toBeGreaterThan(0.1);
+    g.send("pointerup", { pointerType, clientX: point.x + 60, clientY: point.y - 35 });
+    expect(g.apply).toHaveBeenCalledTimes(1);
   });
   it("shows unsnapped positions, commits once, and animates only the short landing adjustment", () => {
     const g = setup(); g.send("pointerdown"); g.send("pointermove", { clientX: point.x + 63, clientY: point.y - 47 });

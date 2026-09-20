@@ -16,6 +16,7 @@ import type { SpatialObjectToolbarTarget } from "@/features/tools/spatial-intera
 import { unitCubeCorners } from "@/features/tools/spatial-interaction/rolling";
 import { spatialRigidPoint } from "@/features/tools/spatial-interaction/rigid-geometry";
 import { somaDefinition } from "@/features/tools/soma-cube/pieces";
+import { spatialMoveBasis } from "@/features/tools/spatial-interaction/object-gesture-math";
 
 const controls = vi.hoisted(() => ({ interaction: null as CubeMoveInteraction | null, toolbar: null as SpatialObjectToolbarTarget | null }));
 
@@ -50,11 +51,53 @@ async function setup(reduced = false) {
   await render({});
   const frame = async (ms = 16) => { now += ms; const pending = [...frames.values()]; frames.clear(); await act(async () => pending.forEach((callback) => callback(now))); };
   const group = () => _roots.get(canvas)!.store.getState().scene.getObjectByName("soma-rigid:bao-1")!;
+  const viewFrame = async (elevation: number, azimuth = 0) => {
+    const state = _roots.get(canvas)!.store.getState(), pitch = elevation * Math.PI / 180, yaw = azimuth * Math.PI / 180;
+    state.camera.position.set(10 * Math.cos(pitch) * Math.sin(yaw), 10 * Math.sin(pitch), 10 * Math.cos(pitch) * Math.cos(yaw));
+    state.camera.lookAt(0, 0, 0); state.camera.updateMatrixWorld();
+    await act(async () => state.advance((now += 16) / 1000));
+    return state.camera;
+  };
   cleanups.push(async () => { await act(async () => root.unmount()); });
-  return { initial, render, frame, group, onMoving, scene: () => _roots.get(canvas)!.store.getState().scene };
+  return { initial, render, frame, viewFrame, group, onMoving, scene: () => _roots.get(canvas)!.store.getState().scene };
 }
 
 describe("Soma renders the shared rigid animation instead of replacing cells", () => {
+  it("links the passive plane guide, live camera readout and next drag, retaining the plane throughout a drag", async () => {
+    const rig = await setup(), onMoveViewChange = vi.fn(), onPoseCommit = () => true;
+    const props = { movePlane: "auto" as const, lowViewAngle: 20, onMoveViewChange, onPoseCommit };
+    await rig.render(props);
+    const guide = () => rig.scene().getObjectByName("spatial-move-plane")!;
+    const normal = () => new Vector3(0, 0, 1).applyQuaternion(guide().quaternion);
+    await rig.viewFrame(35);
+    expect(onMoveViewChange).toHaveBeenLastCalledWith({ plane: "table", elevation: 35 });
+    expect(Math.abs(normal().y)).toBeCloseTo(1);
+    await rig.viewFrame(15);
+    expect(onMoveViewChange).toHaveBeenLastCalledWith({ plane: "xy", elevation: 15 });
+    const camera = await rig.viewFrame(22); // 共享 4° 缓冲，起拖与可视方向相同。
+    const body = controls.interaction!.bodyGesture!;
+    expect(body.resolvePlane!(camera)).toBe("xy");
+    expect(onMoveViewChange).toHaveBeenLastCalledWith({ plane: "xy", elevation: 22 });
+    expect(Math.abs(normal().z)).toBeCloseTo(1);
+    expect(guide().children).toHaveLength(9);
+    for (const line of guide().children) {
+      expect(line).toHaveProperty("isLine2", true);
+      expect(new THREE.Raycaster().intersectObject(line)).toEqual([]);
+    }
+    const target = body.selected!;
+    await act(async () => body.onPreview({ target, pose: target.pose, landing: target.pose, valid: true, phase: "drag", moveBasis: spatialMoveBasis("xy") }));
+    await rig.viewFrame(45, 90);
+    expect(onMoveViewChange).toHaveBeenLastCalledWith({ plane: "xy", elevation: 45 });
+    expect(Math.abs(normal().z)).toBeCloseTo(1);
+    await act(async () => body.onPreview(null));
+    await rig.viewFrame(15, 90);
+    expect(onMoveViewChange).toHaveBeenLastCalledWith({ plane: "yz", elevation: 15 });
+    expect(Math.abs(normal().x)).toBeCloseTo(1);
+    await rig.render({ ...props, navigation: "rotate" });
+    expect(rig.scene().getObjectByName("spatial-move-guide")).toBeUndefined();
+    await rig.render({ ...props, readOnly: true });
+    expect(rig.scene().getObjectByName("spatial-move-guide")).toBeUndefined();
+  });
   it("gives the shared toolbar real rotated vertices and the visible movement handles", async () => {
     const rig = await setup();
     const snapshot = { ...rig.initial, pieces: [{ id: "bao-1" as const, position: { x: 0, y: 3, z: 0 }, quaternion: new Quaternion().setFromAxisAngle(new THREE.Vector3(1, 2, 0).normalize(), 0.7).toArray() as [number, number, number, number] }] };

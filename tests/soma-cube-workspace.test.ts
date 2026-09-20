@@ -22,6 +22,7 @@ function freeTurn(initial: SomaSnapshot) {
 }
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true); vi.stubGlobal("crypto", {});
+  vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
   container = document.createElement("div"); document.body.append(container); root = createRoot(container);
 });
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals(); });
@@ -42,24 +43,42 @@ describe("Soma teaching workspace", () => {
     expect(canvas.props!.movePlane).toBe("table");
     const snap = canvas.props!.axisSnap;
     await click(m.move);
-    for (const [plane, label] of [["xy", m.xyMove], ["yz", m.yzMove], ["table", m.tableMove], ["screen", m.screenMove]] as const) {
+    for (const [plane, label] of [["xy", m.xyMove], ["yz", m.yzMove], ["table", m.tableMove], ["auto", m.autoMove]] as const) {
       await click(label); expect(canvas.props!.movePlane).toBe(plane);
       expect(canvas.props!.snapshot).toBe(initial); expect(canvas.props!.axisSnap).toBe(snap);
     }
-    await click(m.screenMove); expect(canvas.props!.movePlane).toBe("screen");
+    await click(m.autoMove); expect(canvas.props!.movePlane).toBe("auto");
     await click(m.close); await click(m.move);
-    expect(canvas.props!.movePlane).toBe("screen"); expect(onChange).not.toHaveBeenCalled();
+    expect(canvas.props!.movePlane).toBe("auto"); expect(onChange).not.toHaveBeenCalled();
     expect(container.querySelectorAll(`[aria-label="${m.moveFeel}"] [data-state="on"]`)).toHaveLength(1);
   });
   it("offers local drag-plane trials and keeps movement and rotation axes independent", async () => {
     const initial = createSomaInitial(); await render(createElement(SomaWorkspace, { initial }));
     expect(canvas.props!.movePlane).toBe("table"); expect(canvas.props!.preciseAxes).toBe(false);
     await click(m.move); expect(canvas.props!.preciseAxes).toBe(true);
-    await click(m.screenMove); await click(`Z ${m.move}`);
-    expect(canvas.props!.movePlane).toBe("screen"); expect(canvas.props!.snapshot).toBe(initial);
+    await click(m.autoMove); await click(`Z ${m.move}`);
+    expect(canvas.props!.movePlane).toBe("auto"); expect(canvas.props!.snapshot).toBe(initial);
     await click(m.rotate); expect(canvas.props!.navigation).toBe("rotate"); expect(canvas.props!.preciseAxes).toBe(false);
     await click(`X ${m.rotate}`); expect(canvas.props!.rotationAxis).toBe("x"); expect(canvas.props!.moveAxis).toBe("z");
-    await click(m.close); expect(canvas.props!.navigation).toBe("orbit"); expect(canvas.props!.movePlane).toBe("screen");
+    await click(m.close); expect(canvas.props!.navigation).toBe("orbit"); expect(canvas.props!.movePlane).toBe("auto");
+  });
+  it("explains automatic standard planes, shows the real camera result and keeps the threshold local", async () => {
+    const initial = createSomaInitial(), onChange = vi.fn();
+    await render(createElement(SomaWorkspace, { initial, classroom: { state: initial, onChange } }));
+    await click(m.move); await click(m.autoMove);
+    expect(container.querySelector("[data-soma-move-explanation]")!.textContent).toBe(m.movePlaneHints.auto);
+    expect(canvas.props!.lowViewAngle).toBe(20);
+    const slider = container.querySelector<HTMLElement>(`[role="slider"][aria-label="${m.lowViewAngle}"]`)!;
+    await act(async () => slider.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true })));
+    expect(canvas.props!.lowViewAngle).toBe(15);
+    await act(async () => canvas.props!.onMoveViewChange!({ plane: "xy", elevation: 12 }));
+    const readout = () => container.querySelector("[data-soma-move-readout]")!.textContent;
+    expect(readout()).toContain(m.xyMove); expect(readout()).toContain("12°"); expect(readout()).toContain(m.movePlaneHints.xy);
+    await click(m.close); expect(readout()).toContain(m.xyMove);
+    await act(async () => canvas.props!.onMoveViewChange!({ plane: "table", elevation: 38 }));
+    expect(readout()).toContain(m.tableMove); expect(readout()).not.toContain(m.xyMove);
+    expect(canvas.props!.snapshot).toBe(initial); expect(onChange).not.toHaveBeenCalled();
+    await click(m.move); expect(canvas.props!.lowViewAngle).toBe(15);
   });
   it("commits a free gesture once and preserves its endpoint through a cloned classroom echo", async () => {
     const initial = createSomaInitial(), writes: SomaSnapshot[] = []; let accept!: () => void;
