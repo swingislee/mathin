@@ -36,6 +36,16 @@ const queries = [];
 for (const file of files) {
   const source = ts.createSourceFile(file, fs.readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true);
   const imports = new Set();
+  // 读取器常通过本地别名导入；调用点仍按原 helper 的参数合同识别。
+  const importedNames = new Map();
+  for (const statement of source.statements) {
+    if (!ts.isImportDeclaration(statement) || statement.importClause?.isTypeOnly) continue;
+    const bindings = statement.importClause?.namedBindings;
+    if (bindings && ts.isNamedImports(bindings)) for (const item of bindings.elements) {
+      if (!item.isTypeOnly) importedNames.set(item.name.text, item.propertyName?.text ?? item.name.text);
+    }
+  }
+  const identifierName = node => ts.isIdentifier(node) ? importedNames.get(node.text) ?? node.text : '';
   const addImport = specifier => { const target = resolveImport(specifier, file); if (target) imports.add(target); };
   const visit = node => {
     if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier
@@ -48,10 +58,10 @@ for (const file of files) {
       }
       const expression = unwrap(node.expression);
       const direct = ts.isPropertyAccessExpression(expression) && ['from', 'rpc'].includes(expression.name.text);
-      const helperRead = ts.isIdentifier(expression) && expression.text === 'readRelatedAssessmentRows';
+      const helperRead = identifierName(expression) === 'readRelatedAssessmentRows';
       const fromFactory = ts.isCallExpression(expression) && ts.isIdentifier(expression.expression)
-        && ['from', 'assessmentReadFrom'].includes(expression.expression.text);
-      const namedFrom = ts.isIdentifier(expression) && ['from', 'effective'].includes(expression.text);
+        && ['from', 'assessmentReadFrom'].includes(identifierName(expression.expression));
+      const namedFrom = ['from', 'effective'].includes(identifierName(expression));
       const factorySetup = namedFrom && ts.isCallExpression(node.parent) && node.parent.expression === node;
       const argumentIndex = direct || fromFactory ? 0 : helperRead ? 1 : namedFrom ? (node.arguments.length > 1 ? 1 : 0) : node.arguments.findIndex(argument => {
         const name = value(argument);
