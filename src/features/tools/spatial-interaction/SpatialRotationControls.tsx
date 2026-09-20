@@ -13,7 +13,7 @@ export interface SpatialRotationAction {
   onRotate: (axis: Axis, turn: -1 | 1) => void;
   label: string; disabled?: boolean;
 }
-function toolbarPosition(object: Object3D, camera: Camera, size: { width: number; height: number }): [number, number] {
+export function spatialToolbarPosition(object: Object3D, camera: Camera, size: { width: number; height: number }): [number, number] {
   const p = new Vector3().setFromMatrixPosition(object.matrixWorld).project(camera);
   const margin = Math.min(88, size.width / 2);
   return [Math.max(margin, Math.min(size.width - margin, (p.x + 1) * size.width / 2)), Math.max(76, Math.min(size.height - 32, (1 - p.y) * size.height / 2))];
@@ -39,7 +39,7 @@ export function SpatialRotationControls({ center, radius = 1, action }: {
       </mesh>}
       <Line points={[[center.x, center.y, center.z], [center.x + (axis === "x" ? r : 0), center.y + (axis === "y" ? r : 0), center.z + (axis === "z" ? r : 0)]]} color={color} lineWidth={2} depthTest={false} raycast={() => null} />
     </>}
-    <Html position={[center.x, center.y + r + 0.35, center.z]} center calculatePosition={toolbarPosition} zIndexRange={[7, 0]}>
+    <Html position={[center.x, center.y + r + 0.35, center.z]} center calculatePosition={spatialToolbarPosition} zIndexRange={[7, 0]}>
       <div className="flex gap-0.5 rounded-xl border border-line bg-paper/95 p-1 shadow-sm" role="toolbar" aria-label={action.label}
         data-spatial-object-actions onPointerDown={(event) => event.stopPropagation()} onPointerEnter={() => setHint(true)} onPointerLeave={() => { setHint(false); setDirection(null); }}
         onFocus={() => setHint(true)} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setHint(false); }}>

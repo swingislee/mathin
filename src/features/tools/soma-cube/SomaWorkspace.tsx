@@ -22,18 +22,26 @@ import { somaMessages } from "./messages";
 import { SomaPieceIcon } from "./SomaPieceIcon";
 import { somaRigidPoses } from "./motion";
 import { useSpatialDirectCommit } from "../spatial-interaction/useSpatialDirectCommit";
+import { useSpatialToolState } from "../spatial-interaction/useSpatialToolState";
+import { Footprints } from "lucide-react";
+import { SPATIAL_ROLL_DIRECTIONS, planSpatialRoll, unitCubeCorners } from "../spatial-interaction/rolling";
+import { SpatialRollButtons, type SpatialRollAction } from "../spatial-interaction/SpatialRollButtons";
+import { spatialActionMessages } from "../spatial-interaction/messages";
+import { somaRoll } from "./model";
+import { somaCells } from "./pieces";
 
 const Canvas = dynamic(() => import("./SomaCanvas"), { ssr: false, loading: () => <Skeleton className="size-full" /> });
-type Panel = "pieces" | "move" | "rotate" | "settings" | null;
+type Panel = "pieces" | "move" | "rotate" | "roll" | "settings" | null;
 export interface SomaWorkspaceProps {
   initial?: SomaSnapshot; onSnapshot?: (snapshot: SomaSnapshot | null) => void; readOnly?: boolean;
   classroom?: { state?: SomaSnapshot; onChange?: (next: SomaSnapshot) => Promise<void> };
 }
 export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom }: SomaWorkspaceProps) {
-  const locale = useLocale(), m = somaMessages(locale), spatial = useTranslations("tools.spatialLab");
+  const locale = useLocale(), m = { ...somaMessages(locale), ...spatialActionMessages(locale) }, spatial = useTranslations("tools.spatialLab");
   const origin = useMemo(() => initial ?? createSomaInitial(), [initial]);
   const host = useToolSnapshot(origin, classroom), snapshot = host.snapshot;
-  const [panel, setPanel] = useState<Panel>(null), [navigation, setNavigation] = useState<"orbit" | "pan" | "move">("move");
+  const controls = useSpatialToolState<"orbit" | "pan" | "move", Exclude<Panel, null>>({ defaultTool: "orbit", panels: { pieces: "orbit", move: "move", rotate: "move", roll: "orbit", settings: "orbit" } }, { tool: "move" });
+  const { panel, tool: navigation, setTool: setNavigation, setPanel } = controls;
   const [axis, setAxis] = useState<Axis>("x"), [notice, setNotice] = useState("");
   const [dragging, setDragging] = useState(false), [history, setHistory] = useState<{ past: SomaSnapshot[]; future: SomaSnapshot[] }>({ past: [], future: [] });
   const [moving, setMoving] = useState(false);
@@ -67,9 +75,9 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
     choose([...ids, ...SOMA_IDS.filter((id) => !ids.includes(id))].slice(0, size));
   };
   const mode = (value: SomaSnapshot["mode"]) => {
-    if (commit(somaFit({ ...snapshot, mode: value }), false)) { setNavigation(value === "observe" ? "orbit" : "move"); setPanel(null); }
+    if (commit(somaFit({ ...snapshot, mode: value }), false)) setNavigation(value === "observe" ? "orbit" : "move");
   };
-  const open = (value: Panel) => { setPanel(panel === value ? null : value); if (value === "move" || value === "rotate") setNavigation("move"); };
+  const open = (value: Exclude<Panel, null>) => controls.togglePanel(value);
   const travel = (direction: "past" | "future") => {
     const values = history[direction], next = values.at(-1); if (!next) return;
     if (commit({ ...next, cameraRevision: (snapshot.cameraRevision + 1) % 1_000_001 }, false)) setHistory((value) => direction === "past"
@@ -77,10 +85,17 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
       : { past: [...value.past, snapshot], future: value.future.slice(0, -1) });
   };
   const selected = somaDefinition(snapshot.selectedId), assembling = snapshot.mode === "assemble";
-  return <section className={styles.workspace} data-workbench-mode="courseware" data-soma-workspace="v1" aria-label={m.title} {...capture}>
+  const rollPlans = useMemo(() => panel === "roll" ? Object.fromEntries(SPATIAL_ROLL_DIRECTIONS.flatMap((direction) => {
+    const piece = snapshot.pieces.find((piece) => piece.id === snapshot.selectedId);
+    const plan = piece && somaRoll(snapshot, direction) && planSpatialRoll(unitCubeCorners(somaCells(piece)), direction);
+    return plan ? [[direction, plan]] : [];
+  })) : {}, [panel, snapshot]);
+  const rollAction: SpatialRollAction = { label: m.roll, disabled, plans: rollPlans, onRoll: (direction) => { if (!disabled) commit(somaRoll(snapshot, direction)); } };
+  return <section className={styles.workspace} data-workbench-mode="courseware" data-soma-workspace="v1" aria-label={m.title} {...capture} {...controls.bindings}>
     <div className={styles.viewport}><div className={styles.canvas} data-has-cube-groups="true">
       <Canvas snapshot={directMove.displayed} messages={messages} title={m.title} readOnly={busy} cameraInteractive={!viewer} axisSnap={snap} navigation={navigation} moveAxis={axis}
         instantKey={directMove.target ? JSON.stringify(somaRigidPoses(directMove.target.pieces)) : null} locale={locale} onMoving={setMoving}
+        rollAction={panel === "roll" ? rollAction : undefined}
         onRotate={(axis, turn) => { if (!disabled) commit(somaRotate(snapshot, axis, turn)); }}
         onMoveAxis={setAxis} onSelect={select} onMove={(operation) => commit(somaDrag(snapshot, operation), true, true)} onUnavailable={() => setNotice(m.hiddenAxis)} onDragging={setDragging} />
       <div className={`${styles.dock} ${styles.meta}`}>
@@ -95,10 +110,11 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
         <SpatialAxisSnapButton messages={m} disabled={disabled} iconOnly className={styles.icon} />
       </div>
       <div className={`${styles.dock} ${styles.tools}`} role="toolbar" aria-label={m.title}>
-        <CubeIconButton label={m.orbit} active={navigation === "orbit"} disabled={disabled} onClick={() => setNavigation("orbit")}><Orbit aria-hidden /></CubeIconButton>
-        <CubeIconButton label={m.pan} active={navigation === "pan"} disabled={disabled} onClick={() => setNavigation("pan")}><Hand aria-hidden /></CubeIconButton>
+        <CubeIconButton label={m.orbit} active={navigation === "orbit"} disabled={disabled} onClick={() => controls.chooseTool("orbit")}><Orbit aria-hidden /></CubeIconButton>
+        <CubeIconButton label={m.pan} active={navigation === "pan"} disabled={disabled} onClick={() => controls.chooseTool("pan")}><Hand aria-hidden /></CubeIconButton>
         <CubeIconButton label={m.move} active={navigation === "move" && assembling} disabled={disabled || !assembling} onClick={() => open("move")}><Move3D aria-hidden /></CubeIconButton>
         <CubeIconButton label={m.rotate} active={panel === "rotate"} disabled={disabled || !assembling} onClick={() => open("rotate")}><Rotate3D aria-hidden /></CubeIconButton>
+        <CubeIconButton label={m.roll} active={panel === "roll"} disabled={disabled || !assembling} onClick={() => open("roll")}><Footprints aria-hidden /></CubeIconButton>
         <span className={styles.toolSeparator} />
         <CubeIconButton label={m.apart} disabled={disabled} onClick={() => commit(somaFit({ ...snapshot, pieces: somaApart(snapshot.pieces.map((piece) => piece.id)), mode: "assemble" }))}><Boxes aria-hidden /></CubeIconButton>
         <CubeIconButton label={m.settings} active={panel === "settings"} disabled={disabled} onClick={() => open("settings")}><Settings2 aria-hidden /></CubeIconButton>
@@ -108,6 +124,7 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
       </div>
       {panel && <CubeCanvasPanel title={m[panel]} closeLabel={m.close} onClose={() => setPanel(null)} anchor={panel === "pieces" ? "meta" : "tool"}>
         <div className="space-y-3 text-xs">
+          {panel === "roll" && <><p className="text-muted">{m.rollHint}</p><SpatialRollButtons action={rollAction} /><p className="text-muted">{m.rollBlocked}</p></>}
           {panel === "pieces" && <>
             <p>{m.count}</p><div className="flex flex-wrap gap-1">{SOMA_IDS.map((id, index) => <Button key={id} size="sm" variant={snapshot.pieces.length === index + 1 ? "secondary" : "ghost"}
               aria-label={`${index + 1} ${m.countUnit}`} aria-pressed={snapshot.pieces.length === index + 1} disabled={disabled} onClick={() => count(index + 1)}>{index + 1}</Button>)}</div>

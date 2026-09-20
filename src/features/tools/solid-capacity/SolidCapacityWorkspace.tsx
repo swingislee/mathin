@@ -21,6 +21,7 @@ import { capacityCenters, equalBaseAndHeight, matchCapacityDimensions, resizeCap
 import { solidCapacityMessages } from "./solid-capacity-messages";
 import { useCapacityPresentation } from "./useCapacityPresentation";
 import { SolidCapacityLiquids } from "./SolidCapacityLiquids";
+import { useSpatialToolState } from "../spatial-interaction/useSpatialToolState";
 
 const Canvas = dynamic(() => import("../solid-geometry/SolidGeometryCanvas"), { ssr: false, loading: () => <Skeleton className="size-full" /> });
 const noop = () => {};
@@ -45,7 +46,8 @@ export function SolidCapacityWorkspace({ initial, onSnapshot, classroom, readOnl
   const presentation = useCapacityPresentation(snapshot);
   const readOnlyView = readOnly || Boolean(classroom && !classroom.onChange);
   const disabled = readOnlyView || host.publishing || presentation.animating;
-  const [panel, setPanel] = useState<Panel>(null), [navigation, setNavigation] = useState<"orbit" | "pan">("orbit");
+  const controls = useSpatialToolState<"orbit" | "pan", Exclude<Panel, null>>({ defaultTool: "orbit", panels: { liquid: "orbit", dimensions: "orbit", settings: "orbit" } });
+  const { panel, tool: navigation, setPanel } = controls;
   const [portion, setPortion] = useState<"all" | "halfCone" | "oneCone">("all");
   const axisSnap = useSpatialAxisSnap();
   const entities = useMemo(() => shells(presentation.frame, presentation.frame.coneAngle), [presentation.frame]);
@@ -62,15 +64,15 @@ export function SolidCapacityWorkspace({ initial, onSnapshot, classroom, readOnl
   const empty = () => update({ ...snapshot, cone: { ...snapshot.cone, fill: 0 }, cylinder: { ...snapshot.cylinder, fill: 0 } });
   const requested = portion === "all" ? Infinity : vesselCapacity(snapshot.cone, "cone") * (portion === "halfCone" ? 0.5 : 1);
   const pour = (kind: CapacityVesselKind) => { const result = transferLiquid(snapshot, kind, requested); if (result.amount > 0) update(result.snapshot); };
-  const open = (next: Panel) => setPanel((current) => current === next ? null : next);
-  return <section className={styles.workspace} data-workbench-mode="courseware" data-solid-capacity-workspace="v1" aria-label={m.title} {...capture}>
+  const open = (next: Exclude<Panel, null>) => controls.togglePanel(next);
+  return <section className={styles.workspace} data-workbench-mode="courseware" data-solid-capacity-workspace="v1" aria-label={m.title} {...capture} {...controls.bindings}>
     <div className={styles.viewport}><div className={styles.canvas}>
       <Canvas state={state} entities={entities} selectedId={null} frame={frame} cameraRevision={snapshot.cameraRevision} axisSnap={axisSnap} moveSnap={false}
         navigationMode={navigation} moveAxis="x" onMoveAxis={noop} onMove={noop} onDragging={noop} readOnly={readOnlyView} fallback={m.fallback}
         renderScene={() => <SolidCapacityLiquids frame={presentation.frame} snapshot={snapshot} locale={locale} />} />
       <div className={`${styles.dock} ${styles.meta}`}>
         <CubeIconButton label={m.settings} active={panel === "settings"} disabled={readOnlyView} onClick={() => open("settings")}><Settings2 aria-hidden /></CubeIconButton>
-        <CubeIconButton label={m.reset} disabled={disabled} onClick={() => { update({ ...structuredClone(origin), cameraRevision: snapshot.cameraRevision + 1 }); setNavigation("orbit"); setPanel(null); }}><RotateCcw aria-hidden /></CubeIconButton>
+        <CubeIconButton label={m.reset} disabled={disabled} onClick={() => { update({ ...structuredClone(origin), cameraRevision: snapshot.cameraRevision + 1 }); controls.closePanel(); }}><RotateCcw aria-hidden /></CubeIconButton>
       </div>
       <div className={`${styles.dock} ${styles.views}`} aria-label={m.fit}>
         {(["angle", "front", "left", "right", "top", "bottom"] as const).map((view) => <CubeIconButton key={view} label={m.views[view]} active={snapshot.view === view} disabled={disabled}
@@ -79,8 +81,8 @@ export function SolidCapacityWorkspace({ initial, onSnapshot, classroom, readOnl
         <SpatialAxisSnapButton messages={m} disabled={readOnlyView} iconOnly className={styles.icon} />
       </div>
       <div className={`${styles.dock} ${styles.tools}`} role="toolbar" aria-label={m.tools} data-capacity-tools-toolbar>
-        <CubeIconButton label={m.orbit} active={navigation === "orbit"} disabled={readOnlyView} onClick={() => setNavigation("orbit")}><Orbit aria-hidden /></CubeIconButton>
-        <CubeIconButton label={m.pan} active={navigation === "pan"} disabled={readOnlyView} onClick={() => setNavigation("pan")}><Hand aria-hidden /></CubeIconButton>
+        <CubeIconButton label={m.orbit} active={navigation === "orbit"} disabled={readOnlyView} onClick={() => controls.chooseTool("orbit")}><Orbit aria-hidden /></CubeIconButton>
+        <CubeIconButton label={m.pan} active={navigation === "pan"} disabled={readOnlyView} onClick={() => controls.chooseTool("pan")}><Hand aria-hidden /></CubeIconButton>
         <span className={styles.toolSeparator} />
         <CubeIconButton label={m.liquid} active={panel === "liquid"} disabled={readOnlyView} onClick={() => open("liquid")}><Droplets aria-hidden /></CubeIconButton>
         <CubeIconButton label={m.dimensions} active={panel === "dimensions"} disabled={readOnlyView} onClick={() => open("dimensions")}><Ruler aria-hidden /></CubeIconButton>

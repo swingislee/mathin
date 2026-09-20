@@ -19,6 +19,8 @@ import { spatialDirectManipulation } from "../spatial-interaction/policy";
 import { SpatialRotationControls } from "../spatial-interaction/SpatialRotationControls";
 import { CUBE_COLORS, CUBE_SELECTION_COLOR } from "../spatial-lab/cube-structures-contract";
 import { somaMessages } from "./messages";
+import { SpatialRollControls } from "../spatial-interaction/SpatialRollControls";
+import type { SpatialRollAction } from "../spatial-interaction/SpatialRollButtons";
 
 const colors = Object.fromEntries(SOMA_PIECES.map((piece) => [piece.color, piece.color]));
 export interface SomaCanvasProps {
@@ -27,8 +29,9 @@ export interface SomaCanvasProps {
   onSelect: (id: SomaId) => void; onMove: (operation: CubeMoveOperation) => void; onUnavailable: () => void; onDragging: (value: boolean) => void;
   onRotate: (axis: Axis, turn: -1 | 1) => void; onMoving: (value: boolean) => void; instantKey?: string | null; locale: string;
   cameraInteractive?: boolean;
+  rollAction?: SpatialRollAction;
 }
-export default function SomaCanvas({ snapshot, messages, title, readOnly, axisSnap, navigation, moveAxis, onMoveAxis, onSelect, onMove, onUnavailable, onDragging, onMoving, onRotate, instantKey, locale, cameraInteractive = !readOnly }: SomaCanvasProps) {
+export default function SomaCanvas({ snapshot, messages, title, readOnly, axisSnap, navigation, moveAxis, onMoveAxis, onSelect, onMove, onUnavailable, onDragging, onMoving, onRotate, instantKey, locale, rollAction, cameraInteractive = !readOnly }: SomaCanvasProps) {
   const visible = useMemo(() => somaVisiblePieces(snapshot), [snapshot]);
   // 选择另一宝时只改变手柄目标；同一拼搭的命中几何保持身份，保留正在开始的拖动。
   const pieces = snapshot.mode === "assemble" ? snapshot.pieces : visible;
@@ -83,6 +86,8 @@ export default function SomaCanvas({ snapshot, messages, title, readOnly, axisSn
           idsForHit: (id) => state.cubes.filter((cube) => somaIdFromCell(cube.id) === somaIdFromCell(id)).map((cube) => cube.id),
           axis: moveAxis, kind: "move", snapToGrid: true, isValidOperation: (operation) => somaDrag(snapshot, operation) !== null,
           onAxisChange: onMoveAxis, onSelect: selectCell, onCommit: onMove, onUnavailable }} />}
-      {direct && !readOnly && center && !preview && <SpatialRotationControls center={center} action={{ axis: moveAxis, onAxisChange: onMoveAxis, onRotate, label: somaMessages(locale).rotate, disabled: motion.animating }} />}
+      {direct && !readOnly && center && !preview && (rollAction
+        ? <SpatialRollControls center={center} action={{ ...rollAction, disabled: rollAction.disabled || motion.animating }} />
+        : <SpatialRotationControls center={center} action={{ axis: moveAxis, onAxisChange: onMoveAxis, onRotate, label: somaMessages(locale).rotate, disabled: motion.animating }} />)}
     </>} />;
 }

@@ -97,9 +97,11 @@ const legacyOperationSchemas = [
 ] as const;
 const legacyOperationSchema = z.discriminatedUnion("kind", legacyOperationSchemas);
 const rotationPivotNumber = z.number().min(-36).max(36).multipleOf(0.5);
+// 方块中心为整数，底部接触棱为半整数；旋转后的逻辑格仍由 validateHistory 校验。
+const contactPivotNumber = z.number().min(-CUBE_STRUCTURES_LIMITS.coordinate - 0.5).max(CUBE_STRUCTURES_LIMITS.coordinate + 0.5).multipleOf(0.5);
 const operationSchema = z.discriminatedUnion("kind", [...legacyOperationSchemas,
   z.object({ kind: z.literal("rotate"), ids: ids.refine((values) => values.length > 0), axis,
-    turn: z.union([z.literal(-1), z.literal(1)]), pivot: coordinate,
+    turn: z.union([z.literal(-1), z.literal(1)]), pivot: z.object({ x: contactPivotNumber, y: contactPivotNumber, z: contactPivotNumber }).strict(),
     displayPivot: z.object({ x: rotationPivotNumber, y: rotationPivotNumber, z: rotationPivotNumber }).strict(),
   }).strict(),
 ]) satisfies z.ZodType<CubeOperation>;

@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Quaternion, Vector3, type WebGLRenderer } from "three";
 import * as THREE from "three";
 import SomaCanvas, { type SomaCanvasProps } from "@/features/tools/soma-cube/SomaCanvas";
-import { createSomaInitial, somaRotate } from "@/features/tools/soma-cube/model";
+import { createSomaInitial, somaRotate, somaRoll } from "@/features/tools/soma-cube/model";
 import { somaRigidPoses } from "@/features/tools/soma-cube/motion";
 
 vi.mock("three", async () => {
@@ -68,5 +68,16 @@ describe("Soma renders the shared rigid animation instead of replacing cells", (
     await rig.render({ snapshot: { ...next, selectedId: "bao-2" }, instantKey: null }); await rig.frame(300);
     expect(rig.group().position.x).toBe(poses[0].position.x);
     expect(rig.onMoving).toHaveBeenLastCalledWith(false);
+  });
+  it("renders the same rigid contact-edge arc for a roll received from a classroom snapshot", async () => {
+    const rig = await setup();
+    const source = { ...rig.initial, pieces: [rig.initial.pieces[0]] };
+    await rig.render({ snapshot: source });
+    const next = somaRoll(source, "z-")!; expect(next).not.toBeNull();
+    await rig.render({ snapshot: structuredClone(next) }); await rig.frame(); await rig.frame(325);
+    const target = somaRigidPoses(next.pieces)[0];
+    expect(rig.group().quaternion.angleTo(new Quaternion(...target.quaternion))).toBeCloseTo(Math.PI / 4);
+    expect(rig.group().position.y).toBeGreaterThan(target.position.y);
+    await rig.frame(650); expect(rig.group().position.distanceTo(new Vector3(target.position.x, target.position.y, target.position.z))).toBeLessThan(1e-7);
   });
 });

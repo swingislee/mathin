@@ -5,6 +5,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSyncExternalStore, type ComponentRef } from "react";
 import * as THREE from "three";
 import { SPATIAL_OBJECT_GESTURE_START } from "./spatial-object-gesture";
+import { bindSpatialPointerGuard } from "./spatial-pointer-guard";
 import {
   SPATIAL_AXIS_SNAP_TRANSITION_MS,
   SPATIAL_CAMERA_TRANSITION_MS,
@@ -78,6 +79,7 @@ export function SpatialCameraRig({ bookmark, radius, interactive, navigationMode
   const setThree = useThree((state) => state.set);
   const invalidate = useThree((state) => state.invalidate);
   const canvas = useThree((state) => state.gl.domElement);
+  useEffect(() => bindSpatialPointerGuard(canvas), [canvas]);
   const reducedMotion = useSyncExternalStore(subscribeReducedMotion,
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches, () => false);
   const orthographicRef = useRef(new THREE.OrthographicCamera());

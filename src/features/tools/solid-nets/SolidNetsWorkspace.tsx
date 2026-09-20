@@ -21,6 +21,7 @@ import { createDefaultSolidNetsSnapshot, resizeSolidNet, SOLID_NETS_LIMITS, soli
 import { solidNetGeometry, type SolidNetDimensions } from "./geometry";
 import { solidNetAllMotion, solidNetSnapshotTransition } from "./model";
 import { solidNetsMessages } from "./messages";
+import { useSpatialToolState } from "../spatial-interaction/useSpatialToolState";
 
 const SolidNetsViewport = dynamic(() => import("./SolidNetsViewport").then((module) => module.SolidNetsViewport), { ssr: false });
 export interface SolidNetsWorkspaceProps {
@@ -41,8 +42,9 @@ export function SolidNetsWorkspace({ locale, initial, runtime, onSnapshot, readO
   const readonly = readOnly || (!!runtime && !runtime.onChange);
   const interrupt = useCallback(() => { historyIntent.current = null; setPreview(null); }, []);
   const playback = useCubeNetPlayback<SolidNetsSnapshot>({ essential: true, interactive: !readonly, onInterrupt: interrupt });
-  const [tool, setTool] = useState<"fold" | "orbit" | "pan" | "select">("fold");
-  const [panel, setPanel] = useState<"shape" | "style" | null>(null), [selected, setSelected] = useState<string | null>("base");
+  const controls = useSpatialToolState<"fold" | "orbit" | "pan" | "select", "shape" | "style">({ defaultTool: "fold", panels: { shape: "select", style: "select" } });
+  const { tool, panel, chooseTool, togglePanel, closePanel } = controls;
+  const [selected, setSelected] = useState<string | null>("base");
   const [active, setActive] = useState<CubeNetPaperSelection | null>(null), [dragging, setDragging] = useState(false), [cameraKey, setCameraKey] = useState(0);
   const [past, setPast] = useState<SolidNetsSnapshot[]>([]), [future, setFuture] = useState<SolidNetsSnapshot[]>([]), previous = useRef(snapshot);
   const m = solidNetsMessages(locale), shared = cubeStructuresMessages(locale), axisSnap = useSpatialAxisSnap();
@@ -96,7 +98,7 @@ export function SolidNetsWorkspace({ locale, initial, runtime, onSnapshot, readO
   const surfaceChange = (change: { color?: CubeColor; label?: string; opacity?: number }) => {
     if (selected && selectedSurface) commit({ ...snapshot, surfaces: { ...snapshot.surfaces, [selected]: { ...selectedSurface, ...change } } });
   };
-  return <div className={styles.workspace} data-workbench-mode={courseware ? "courseware" : undefined} data-solid-nets-workbench aria-busy={busy}>
+  return <div className={styles.workspace} data-workbench-mode={courseware ? "courseware" : undefined} data-solid-nets-workbench aria-busy={busy} {...controls.bindings}>
     <div className={styles.viewport}><div className={styles.canvas} data-cube-workspace-frame="4:3">
       <SolidNetsViewport snapshot={visible} locale={locale} tool={tool} dragging={dragging} active={active} selected={selected}
         axisSnapEnabled={axisSnap} cameraRequestKey={cameraKey} interactive={!readonly && !publishing && !playback.playing}
@@ -108,12 +110,12 @@ export function SolidNetsWorkspace({ locale, initial, runtime, onSnapshot, readO
         <SpatialAxisSnapButton iconOnly className={styles.icon} messages={{ axisSnap: m.snap, enableAxisSnap: m.snapOn, disableAxisSnap: m.snapOff }} disabled={busy} />
       </div>
       <div className={cn(styles.dock, styles.tools)} role="toolbar" aria-label={shared.tools}>
-        <CubeIconButton label={m.fold} active={tool === "fold"} disabled={readonly || busy} onClick={() => { setTool("fold"); setPanel(null); }}><FoldHorizontal aria-hidden /></CubeIconButton>
-        <CubeIconButton label={shared.orbit} active={tool === "orbit"} disabled={readonly || busy} onClick={() => setTool("orbit")}><Orbit aria-hidden /></CubeIconButton>
-        <CubeIconButton label={shared.pan} active={tool === "pan"} disabled={readonly || busy} onClick={() => setTool("pan")}><Hand aria-hidden /></CubeIconButton>
+        <CubeIconButton label={m.fold} active={tool === "fold"} disabled={readonly || busy} onClick={() => chooseTool("fold")}><FoldHorizontal aria-hidden /></CubeIconButton>
+        <CubeIconButton label={shared.orbit} active={tool === "orbit"} disabled={readonly || busy} onClick={() => chooseTool("orbit")}><Orbit aria-hidden /></CubeIconButton>
+        <CubeIconButton label={shared.pan} active={tool === "pan"} disabled={readonly || busy} onClick={() => chooseTool("pan")}><Hand aria-hidden /></CubeIconButton>
         <span className={styles.toolSeparator} aria-hidden />
-        <CubeIconButton label={m.shape} active={panel === "shape"} disabled={readonly || busy} onClick={() => { setPanel(panel === "shape" ? null : "shape"); setTool("select"); }}><Ruler aria-hidden /></CubeIconButton>
-        <CubeIconButton label={m.style} active={panel === "style"} disabled={readonly || busy} onClick={() => { setPanel(panel === "style" ? null : "style"); setTool("select"); }}><Paintbrush aria-hidden /></CubeIconButton>
+        <CubeIconButton label={m.shape} active={panel === "shape"} disabled={readonly || busy} onClick={() => togglePanel("shape")}><Ruler aria-hidden /></CubeIconButton>
+        <CubeIconButton label={m.style} active={panel === "style"} disabled={readonly || busy} onClick={() => togglePanel("style")}><Paintbrush aria-hidden /></CubeIconButton>
         <CubeIconButton label={m.labels} active={snapshot.labelsVisible} disabled={readonly || busy} onClick={() => commit({ ...snapshot, labelsVisible: !snapshot.labelsVisible })}><Hash aria-hidden /></CubeIconButton>
         <span className={styles.toolSeparator} aria-hidden />
         <CubeIconButton label={m.foldAll} disabled={readonly || busy || closed} onClick={() => all(true)}><Box aria-hidden /></CubeIconButton>
@@ -122,7 +124,7 @@ export function SolidNetsWorkspace({ locale, initial, runtime, onSnapshot, readO
         <CubeIconButton label={m.redo} disabled={readonly || busy || !future.length} onClick={() => { historyIntent.current = "redo"; animateTo(future[0]); }}><Redo2 aria-hidden /></CubeIconButton>
         <CubeIconButton label={m.reset} disabled={readonly || busy} onClick={() => { animateTo(start); setActive(null); setCameraKey((value) => value + 1); }}><RotateCcw aria-hidden /></CubeIconButton>
       </div>
-      {panel && <CubeCanvasPanel title={panel === "shape" ? m.shape : m.style} closeLabel={shared.closePanel} onClose={() => setPanel(null)}>
+      {panel && <CubeCanvasPanel title={panel === "shape" ? m.shape : m.style} closeLabel={shared.closePanel} onClose={closePanel}>
         <div className="space-y-3">
           {panel === "shape" && <>
             <div className="flex flex-wrap gap-1">{(["cuboid", "triangular-prism"] as const).map((kind) => <Button key={kind} size="sm" variant={snapshot.kind === kind ? "secondary" : "ghost"}

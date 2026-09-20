@@ -286,7 +286,8 @@ export function applyCubeOperation(state: CubeStructureState, operation: CubeOpe
     case "rotate": {
       const ids = new Set(operation.ids);
       if (!ids.size || ids.size !== operation.ids.length || (operation.turn !== -1 && operation.turn !== 1)
-        || !["x", "y", "z"].includes(operation.axis) || !canPlaceCube(operation.pivot)
+        || !["x", "y", "z"].includes(operation.axis)
+        || !Object.values(operation.pivot).every((value) => Number.isInteger(value * 2) && Math.abs(value) <= CUBE_STRUCTURES_LIMITS.coordinate + 0.5)
         || !Object.values(operation.displayPivot).every((value) => Number.isInteger(value * 2) && Math.abs(value) <= CUBE_STRUCTURES_LIMITS.coordinate + CUBE_STRUCTURES_LIMITS.displayOffset)
         || operation.ids.some((id) => !state.cubes.some((cube) => cube.id === id))) return state;
       const occupied = new Set(state.cubes.filter((cube) => !ids.has(cube.id)).map((cube) => voxelKey(cube.position)));

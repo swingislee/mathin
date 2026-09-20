@@ -1,8 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Dices, Droplets, Eye, Footprints, GitCompareArrows, Hand, LocateFixed, Maximize, Move, Move3D, Orbit, Paintbrush, Redo2, RotateCcw, ScanEye, ScanFace, Settings2, Shapes, Undo2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Dices, Droplets, Eye, Footprints, GitCompareArrows, Hand, LocateFixed, Maximize, Move, Move3D, Orbit, Paintbrush, Redo2, RotateCcw, ScanEye, ScanFace, Settings2, Shapes, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,9 @@ import diceStyles from "./DiceTeachingWorkspace.module.css";
 import type { DiceTeachingSnapshot } from "../courseware/spatial-teaching-content";
 import { teachingRandom, type DiceLiveSnapshot, type DiceTeachingCommand, type TeachingWorkbenchPort } from "../courseware/workbench-classroom-contract";
 import type { DiceThrow } from "./dice-physics";
+import { useSpatialToolState } from "../spatial-interaction/useSpatialToolState";
+import { SPATIAL_ROLL_DIRECTIONS, planSpatialRoll, unitCubeCorners } from "../spatial-interaction/rolling";
+import { SpatialRollButtons, type SpatialRollAction } from "../spatial-interaction/SpatialRollButtons";
 type DiceInitial = DiceTeachingSnapshot & Partial<Pick<DiceLiveSnapshot, "xrayTarget" | "observation">>;
 
 const DiceTeachingCanvas = dynamic(() => import("./DiceTeachingCanvas"), { ssr: false });
@@ -64,8 +67,10 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector, initi
   const scene = history.present;
   const [selectedId, setSelectedId] = useState(initial?.selectedId ?? "dice-1");
   const selected = scene.dice.find((die) => die.id === selectedId) ?? scene.dice[0];
-  const [panel, setPanel] = useState<Panel>(initial?.observation?.panel ?? null);
-  const [tool, setTool] = useState<"orbit" | "pan" | "move" | "pips" | "color" | "transparent" | "inspect" | "xray">(initial?.xrayTarget ? "xray" : "orbit");
+  const controls = useSpatialToolState<"orbit" | "pan" | "move" | "pips" | "color" | "transparent" | "inspect" | "xray", Exclude<Panel, null>>({ defaultTool: "orbit", panels: {
+    settings: "orbit", arrange: "move", pips: "pips", opposite: "orbit", puzzle: "orbit", roll: "orbit", throwing: "orbit", color: "color", transparent: "transparent", restore: "orbit", observe: "inspect",
+  } }, { tool: initial?.xrayTarget ? "xray" : undefined, panel: initial?.observation?.panel ?? null });
+  const { tool, panel, setTool, setPanel } = controls;
   const [xrayTarget, setXRayTarget] = useState<DiceXRayTarget | null>(initial?.xrayTarget ?? null);
   const [xrayPresentation, setXRayPresentation] = useState<DiceXRayPresentation>({ target: initial?.xrayTarget ?? null, phase: initial?.xrayTarget ? "open" : "closed" });
   const [color, setColor] = useState<CubeColor>(CUBE_COLORS[0]);
@@ -123,22 +128,20 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector, initi
     if (classroom) classroom.command(command, perform); else void perform();
   };
   const animate = (next: DiceScene, duration = 650) => { if (!busy) runCommand({ kind: "tween", target: next, durationMs: duration }, () => animateLocal(next, duration)); };
-  const applyXRay = (target: DiceXRayTarget | null) => { if (target) { setTool("xray"); setPanel(null); } setXRayTarget(target); };
+  const applyXRay = (target: DiceXRayTarget | null) => { if (target) setTool("xray"); setXRayTarget(target); };
   const requestXRay = (target: DiceXRayTarget | null) => {
     if (!sameDiceXRayTarget(target, xrayTarget)) runCommand({ kind: "xray", target }, () => applyXRay(target));
   };
   const changed = (dice: TeachingDie[], extra: Partial<DiceScene> = {}) => ({ ...scene, dice, puzzle: null, ...extra });
   const selectPanel = (next: Exclude<Panel, null>) => {
-    const open = panel !== next;
-    setPanel(open ? next : null);
-    setTool(!open ? "orbit" : next === "arrange" ? "move" : next === "observe" ? "inspect" : ["pips", "color", "transparent"].includes(next) ? next as "pips" | "color" | "transparent" : "orbit");
+    controls.togglePanel(next);
     setNotice(""); setOpacityPreview(null); requestXRay(null);
   };
-  const closePanel = () => { setPanel(null); setTool("orbit"); setOpacityPreview(null); requestXRay(null); };
-  const navigate = (next: "orbit" | "pan") => { setTool(next); requestXRay(null); };
+  const closePanel = () => { controls.closePanel(); setOpacityPreview(null); requestXRay(null); };
+  const navigate = (next: "orbit" | "pan") => { controls.chooseTool(next); requestXRay(null); };
   const toggleXRay = () => {
     if (busy) return;
-    setTool(tool === "xray" ? "orbit" : "xray"); requestXRay(null); setPanel(null);
+    controls.chooseTool("xray"); requestXRay(null);
     setNotice(""); setOpacityPreview(null);
   };
   const fit = (dice = scene.dice) => { const bounds = fitFrame(dice); setFrame({ ...bounds, radius: bounds.radius + (arrows ? 1 : 0) }); setCameraKey((key) => key + 1); };
@@ -181,7 +184,7 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector, initi
     if (tool === "pips") toggleFace(id, face);
     if (tool === "color") commit({ ...scene, dice: styleDiceFaces(scene.dice, id, surfaceScope === "die" ? DICE_FACES : [face], { color }) });
   };
-  const inspect = (id: string, face: DiceFace) => { setSelectedId(id); setInspectionFace(face); setPanel("observe"); setTool("inspect"); requestXRay(null); setOpacityPreview(null); setNotice(""); };
+  const inspect = (id: string, face: DiceFace) => { setSelectedId(id); setInspectionFace(face); setPanel("observe"); requestXRay(null); setOpacityPreview(null); setNotice(""); };
   const openFaces = (id: string, faces: readonly DiceFace[]) => {
     if (busy) return;
     const dice = scene.dice.map((die) => die.id === id ? openDieFaces(die, faces) : die);
@@ -207,6 +210,11 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector, initi
     playback.start({ durationMs: 700, sample: (elapsed) => scene.dice.map((die) => die.id === id ? sampleControlledRoll(die, direction, easing(elapsed / 700)) : die), onFinish: () => commit(next) });
   };
   const roll = (direction: RollDirection) => { if (!busy) runCommand({ kind: "roll", id: selected.id, direction, trail: leaveTrail }, () => rollLocal(selected.id, direction, leaveTrail)); };
+  const rollPlans = useMemo(() => panel === "roll" ? Object.fromEntries(SPATIAL_ROLL_DIRECTIONS.flatMap((direction) => {
+    const plan = controlledRoll(scene, selected.id, direction, false) && planSpatialRoll(unitCubeCorners([selected.position]), direction);
+    return plan ? [[direction, plan]] : [];
+  })) : {}, [panel, scene, selected]);
+  const rollAction: SpatialRollAction = { label: m.roll, disabled: busy, onRoll: roll, plans: rollPlans };
   const generatePuzzle = () => {
     if (busy) return;
     const solution = solveDicePuzzle(scene.dice, scope, target);
@@ -272,9 +280,10 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector, initi
   </Button>)}</div></div>;
   const pairValue = (face: DiceFace) => selected.hidden.includes(face) ? "?" : String(faceValue(selected.hand, face));
   const worldFaces = DICE_FACES.map((direction) => ({ direction, face: worldFace({ ...selected, rotation: nearestDiceRotation(selected.rotation) }, direction) }));
-  return <section className={styles.workspace} data-dice-teaching={DICE_TEACHING_VERSION} data-workbench-mode={courseware ? "courseware" : undefined} inert={readOnly || classroom?.pending}>
+  return <section className={styles.workspace} data-dice-teaching={DICE_TEACHING_VERSION} data-workbench-mode={courseware ? "courseware" : undefined} inert={readOnly || classroom?.pending} {...controls.bindings}>
     <div className={styles.viewport}><div className={`${styles.canvas} ${diceStyles.canvas}`} data-dice-stage>
       <DiceTeachingCanvas dice={displayed} trail={scene.trail} selectedId={selected.id} locale={locale} tool={tool} arrows={arrows} busy={busy} grid={grid} axes={axes} floor={floor} frame={frame} view={view} cameraKey={cameraKey}
+        rollAction={panel === "roll" ? rollAction : undefined}
         xrayTarget={xrayTarget} initialXRayTarget={initial?.xrayTarget} onClearXRay={() => requestXRay(null)} onXRayPresentation={setXRayPresentation}
         snap={snap} moveAxis={moveAxis} onMoveAxis={setMoveAxis} onDragCommit={dragCommit} onDraggingChange={setDragging} onMoveUnavailable={() => setNotice(structureMessages.moveAxisHidden)}
         onSelect={setSelectedId} onFace={chooseFace} onMoveFace={moveFace} onRotate={(axis, turn) => updateDie(selected.id, (die) => turnDie(die, axis, turn), true)} />
@@ -311,7 +320,7 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector, initi
           {panel === "settings" ? <>{workspaceSelector}<div className="space-y-2"><Check label={m.floor} checked={floor} onChange={setFloor} /><Check label={m.grid} checked={grid} onChange={setGrid} /><Check label={m.axes} checked={axes} onChange={setAxes} /></div>{!courseware && <p className="leading-5 text-muted">{m.memory}</p>}</>
             : panel === "roll" ? <div className={diceStyles.rollDock}>
               <Select value={selected.id} disabled={busy} onValueChange={setSelectedId}><SelectTrigger aria-label={m.selected} className="h-9 w-auto min-w-28"><SelectValue /></SelectTrigger><SelectContent>{scene.dice.map((die) => <SelectItem key={die.id} value={die.id}>{m.die} {die.id.replace("dice-", "")} · {m[die.hand]}</SelectItem>)}</SelectContent></Select>
-              <div className={diceStyles.rollButtons}>{([{ direction: "x-", label: m.rollLeft, icon: <ArrowLeft /> }, { direction: "z-", label: m.rollBack, icon: <ArrowUp /> }, { direction: "z+", label: m.rollForward, icon: <ArrowDown /> }, { direction: "x+", label: m.rollRight, icon: <ArrowRight /> }] as const).map((item) => <Button key={item.direction} size="sm" variant="secondary" disabled={busy} title={item.label} aria-label={item.label} onClick={() => roll(item.direction)}>{item.icon}{item.direction[1]}{item.direction[0].toUpperCase()}</Button>)}</div>
+              <SpatialRollButtons action={rollAction} />
               <Check label={m.trail} checked={leaveTrail} onChange={setLeaveTrail} disabled={busy} />
               <DiceActions busy={busy} items={[{ label: m.clearTrail, run: () => commit({ ...scene, trail: [] }), disabled: !scene.trail.length }, { label: m.gridReady, run: () => arrange("apart") }]} />
               <p className="w-full text-muted">{m.rollHint}</p>

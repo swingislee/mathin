@@ -4,6 +4,7 @@ import type { CubeMoveOperation } from "../spatial-lab/cube-structures-drag";
 import type { CubeDragPreview } from "../spatial-lab/cube-structures-drag-controller";
 import type { SomaSnapshot } from "./contract";
 import { SOMA_IDS, somaCells, somaDefinition, somaPlacementValid, somaTurn, type SomaId, type SomaPiece } from "./pieces";
+import { planSpatialRoll, spatialRollPoint, unitCubeCorners, voxelRollIsClear, type SpatialRollDirection } from "../spatial-interaction/rolling";
 
 export function somaApart(ids: readonly SomaId[]): SomaPiece[] {
   const columns = Math.min(ids.length, 4);
@@ -53,6 +54,17 @@ export function somaMove(snapshot: SomaSnapshot, id: SomaId, axis: Axis, distanc
 }
 export function somaRotate(snapshot: SomaSnapshot, axis: Axis, direction: -1 | 1): SomaSnapshot | null {
   const pieces = snapshot.pieces.map((piece) => piece.id === snapshot.selectedId ? { ...piece, orientation: somaTurn(piece.orientation, axis, direction) } : piece);
+  return somaPlacementValid(pieces) ? { ...snapshot, pieces } : null;
+}
+export function somaRoll(snapshot: SomaSnapshot, direction: SpatialRollDirection): SomaSnapshot | null {
+  const piece = snapshot.pieces.find((piece) => piece.id === snapshot.selectedId);
+  if (!piece || snapshot.mode !== "assemble") return null;
+  const points = somaCells(piece), plan = planSpatialRoll(unitCubeCorners(points), direction);
+  if (!plan || !voxelRollIsClear(points, snapshot.pieces.filter((p) => p.id !== piece.id).flatMap(somaCells), plan)) return null;
+  const rolled = points.map((point) => spatialRollPoint(point, plan));
+  const position = { x: Math.min(...rolled.map((p) => p.x)), y: Math.min(...rolled.map((p) => p.y)), z: Math.min(...rolled.map((p) => p.z)) };
+  const target = { ...piece, orientation: somaTurn(piece.orientation, plan.axis, plan.turn), position };
+  const pieces = snapshot.pieces.map((p) => p.id === piece.id ? target : p);
   return somaPlacementValid(pieces) ? { ...snapshot, pieces } : null;
 }
 export function somaIdFromCell(cellId: string): SomaId | null {

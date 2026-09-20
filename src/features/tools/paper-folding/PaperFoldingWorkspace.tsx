@@ -20,6 +20,7 @@ import { createDefaultPaperFoldingSnapshot, editPaperLayout, PAPER_FOLDING_LIMIT
 import { paperSnapshotTransition, paperUnfoldMotion } from "./model";
 import { PaperLayoutEditor } from "./PaperLayoutEditor";
 import { paperFoldingMessages } from "./messages";
+import { useSpatialToolState } from "../spatial-interaction/useSpatialToolState";
 
 const PaperFoldingViewport = dynamic(() => import("./PaperFoldingViewport").then((module) => module.PaperFoldingViewport), { ssr: false });
 
@@ -42,8 +43,8 @@ export function PaperFoldingWorkspace({ locale, initial, runtime, onSnapshot, re
   const { update, publishing } = state;
   const m = paperFoldingMessages(locale), shared = cubeStructuresMessages(locale);
   const playback = useCubeNetPlayback<PaperFoldingSnapshot>({ essential: true, interactive: !readOnly });
-  const [tool, setTool] = useState<"fold" | "orbit" | "pan" | "select">("fold");
-  const [panel, setPanel] = useState<"layout" | "style" | null>(null);
+  const controls = useSpatialToolState<"fold" | "orbit" | "pan" | "select", "layout" | "style">({ defaultTool: "fold", panels: { layout: "select", style: "select" } });
+  const { tool, panel, chooseTool, togglePanel, closePanel } = controls;
   const [selected, setSelected] = useState<string | null>(snapshot.squares[0].id);
   const [active, setActive] = useState<CubeNetPaperSelection | null>(null);
   const [dragging, setDragging] = useState(false), [cameraKey, setCameraKey] = useState(0);
@@ -113,7 +114,7 @@ export function PaperFoldingWorkspace({ locale, initial, runtime, onSnapshot, re
     interactive: !readonly && !state.publishing && !playback.playing, onFoldStart: beginFold, onPreview: previewFold, onCommit: commitFold, onDraggingChange: setDragging, onFaceSelect: select }),
   [visible, locale, tool, dragging, active, axisSnap, cameraKey, readonly, state.publishing, playback.playing, beginFold, previewFold, commitFold, select]);
 
-  return <div className={styles.workspace} data-workbench-mode={courseware ? "courseware" : undefined} data-paper-folding-workbench aria-busy={busy}>
+  return <div className={styles.workspace} data-workbench-mode={courseware ? "courseware" : undefined} data-paper-folding-workbench aria-busy={busy} {...controls.bindings}>
     <div className={styles.viewport}><div className={styles.canvas} data-cube-workspace-frame="4:3">
       <PaperFoldingViewport {...viewportProps} />
       {workspaceSelector && <div className={cn(styles.dock, styles.meta)}>{workspaceSelector}</div>}
@@ -123,12 +124,12 @@ export function PaperFoldingWorkspace({ locale, initial, runtime, onSnapshot, re
         <SpatialAxisSnapButton iconOnly className={styles.icon} messages={{ axisSnap: m.snap, enableAxisSnap: m.snapOn, disableAxisSnap: m.snapOff }} disabled={busy} />
       </div>
       <div className={cn(styles.dock, styles.tools)} role="toolbar" aria-label={shared.tools}>
-        <CubeIconButton label={m.fold} active={tool === "fold"} disabled={readonly || busy} onClick={() => { setTool("fold"); setPanel(null); }}><FoldHorizontal aria-hidden /></CubeIconButton>
-        <CubeIconButton label={shared.orbit} active={tool === "orbit"} disabled={readonly || busy} onClick={() => setTool("orbit")}><Orbit aria-hidden /></CubeIconButton>
-        <CubeIconButton label={shared.pan} active={tool === "pan"} disabled={readonly || busy} onClick={() => setTool("pan")}><Hand aria-hidden /></CubeIconButton>
+        <CubeIconButton label={m.fold} active={tool === "fold"} disabled={readonly || busy} onClick={() => chooseTool("fold")}><FoldHorizontal aria-hidden /></CubeIconButton>
+        <CubeIconButton label={shared.orbit} active={tool === "orbit"} disabled={readonly || busy} onClick={() => chooseTool("orbit")}><Orbit aria-hidden /></CubeIconButton>
+        <CubeIconButton label={shared.pan} active={tool === "pan"} disabled={readonly || busy} onClick={() => chooseTool("pan")}><Hand aria-hidden /></CubeIconButton>
         <span className={styles.toolSeparator} aria-hidden />
-        <CubeIconButton label={m.layout} active={panel === "layout"} disabled={readonly || busy} onClick={() => { setPanel(panel === "layout" ? null : "layout"); setTool("select"); }}><Grid2X2 aria-hidden /></CubeIconButton>
-        <CubeIconButton label={m.style} active={panel === "style"} disabled={readonly || busy} onClick={() => { setPanel(panel === "style" ? null : "style"); setTool("select"); }}><Paintbrush aria-hidden /></CubeIconButton>
+        <CubeIconButton label={m.layout} active={panel === "layout"} disabled={readonly || busy} onClick={() => togglePanel("layout")}><Grid2X2 aria-hidden /></CubeIconButton>
+        <CubeIconButton label={m.style} active={panel === "style"} disabled={readonly || busy} onClick={() => togglePanel("style")}><Paintbrush aria-hidden /></CubeIconButton>
         <CubeIconButton label={m.labels} active={snapshot.labelsVisible} disabled={readonly || busy} onClick={() => commit({ ...snapshot, labelsVisible: !snapshot.labelsVisible })}><Hash aria-hidden /></CubeIconButton>
         <span className={styles.toolSeparator} aria-hidden />
         <CubeIconButton label={m.unfold} disabled={readonly || busy || (!snapshot.anchor && Object.values(snapshot.angles).every((angle) => angle === 0))} onClick={unfold}><FoldHorizontal className="rotate-90" aria-hidden /></CubeIconButton>
@@ -136,7 +137,7 @@ export function PaperFoldingWorkspace({ locale, initial, runtime, onSnapshot, re
         <CubeIconButton label={m.redo} disabled={readonly || busy || !future.length} onClick={() => { historyIntent.current = "redo"; if (!commit(future[0])) historyIntent.current = null; }}><Redo2 aria-hidden /></CubeIconButton>
         <CubeIconButton label={m.reset} disabled={readonly || busy} onClick={() => { commit(start); setActive(null); setCameraKey((value) => value + 1); }}><RotateCcw aria-hidden /></CubeIconButton>
       </div>
-      {panel && <CubeCanvasPanel title={panel === "layout" ? m.layout : m.style} closeLabel={shared.closePanel} onClose={() => setPanel(null)}>
+      {panel && <CubeCanvasPanel title={panel === "layout" ? m.layout : m.style} closeLabel={shared.closePanel} onClose={closePanel}>
         <div className="space-y-3">
           {panel === "layout" && <><p className="text-xs text-muted">{m.layoutHelp}</p><PaperLayoutEditor snapshot={snapshot} locale={locale} selected={selected} disabled={busy || readonly} onSelect={select} onAdd={(x, z) => edit({ kind: "add", x, z })} />
             <Button variant="secondary" size="sm" disabled={!selectedFace || busy || readonly} onClick={() => selected && edit({ kind: "remove", id: selected })}><Trash2 className="size-3.5" aria-hidden />{m.remove}</Button></>}

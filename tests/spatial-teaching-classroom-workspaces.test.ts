@@ -78,6 +78,19 @@ async function netRig(initial: NetLiveSnapshot, incoming?: NetState, writer = tr
 }
 
 describe("original workbenches with the shared classroom port", () => {
+  it("uses the shared rolling buttons but keeps the original dice command, animation and footprints", async () => {
+    const initial = initialDice(), m = diceTeachingMessages("en");
+    initial.scene.dice = [initial.scene.dice[0]];
+    const rig = await diceRig(initial), before = initial.scene.dice[0];
+    await click(m.roll); expect(canvases.dice!.rollAction?.plans["z-"]).toBeDefined();
+    await click(`${m.roll} Z-`);
+    expect(rig.sent.at(-1)?.motion?.command).toMatchObject({ kind: "roll", direction: "z-", trail: true });
+    await tick(0); await tick(350);
+    expect(canvases.dice!.dice[0].position.y).toBeGreaterThan(before.position.y);
+    await finish(); expect(canvases.dice!.dice[0].position.z).toBe(before.position.z - 1);
+    expect(canvases.dice!.trail).toHaveLength(2);
+    await click(m.close); expect(canvases.dice!.tool).toBe("orbit"); expect(canvases.dice!.rollAction).toBeUndefined();
+  });
   it("syncs a stable dice drag once without repeating its animation, and animates normal face displacement", async () => {
     const initial = initialDice(), rig = await diceRig(initial), die = initial.scene.dice[0];
     expect(rig.sent).toHaveLength(0);

@@ -1,5 +1,7 @@
 "use client";
 
+import { useSpatialToolState } from "../spatial-interaction/useSpatialToolState";
+
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { Check, Droplets, FoldHorizontal, Hand, Hash, LocateFixed, Maximize, Move3D, Orbit, Paintbrush, Redo2, RotateCcw, Scissors, Settings2, Shapes, Square, Stamp, Undo2 } from "lucide-react";
@@ -106,8 +108,10 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector, modeSelector,
   const [view, setView] = useState<CubeView>(initial?.view ?? "angle");
   const [frame, setFrame] = useState(() => initial?.frame ?? resolver.resolve({}).model.bounds);
   const [cameraRequestKey, setCameraRequestKey] = useState(0);
-  const [tool, setTool] = useState<"orbit" | "pan" | "fold" | "cut" | CubeNetSurfaceTool>(initial?.cutting ? "cut" : "fold");
-  const [panel, setPanel] = useState<"settings" | CubeNetSurfaceTool | null>(null);
+  const controls = useSpatialToolState<"orbit" | "pan" | "fold" | "cut" | CubeNetSurfaceTool, "settings" | CubeNetSurfaceTool>({ defaultTool: cutting ? "cut" : "fold", panels: {
+    settings: cutting ? "cut" : "fold", face: "face", transparent: "transparent", mark: "mark", number: "number",
+  } });
+  const { tool, panel, setTool, setPanel } = controls;
   const [brush, setBrush] = useState(DEFAULT_CUBE_NET_BRUSH);
   const [selectedPaper, setSelectedPaper] = useState<string | null>(null);
   const [opacityPreview, setOpacityPreview] = useState<number | null>(null);
@@ -185,9 +189,8 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector, modeSelector,
     applySurface(cubeNetBrushOperation(surfaceTool, brush, [identity]));
   };
   const chooseSurfaceTool = (next: CubeNetSurfaceTool) => {
-    setTool(next); setActiveFold(null); setPreview(null); setOpacityPreview(null);
+    controls.togglePanel(next); setActiveFold(null); setPreview(null); setOpacityPreview(null);
     if (tool !== next) setSelectedPaper(null);
-    setPanel(tool === next && panel === next ? null : next);
   };
   const cutAnalysis = useMemo(() => cutting ? analyzeCubeNetCuts(sceneInput, cutting.cuts) : null, [cutting, sceneInput]);
   const cutMoves = useMemo(() => cutting ? cubeNetAvailableCutMoves(sceneInput, cutting.cuts, paperCurrent.model, true) : [], [cutting, paperCurrent.model, sceneInput]);
@@ -373,7 +376,7 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector, modeSelector,
   const commitFold = (value: CubeNetFoldChange) => runCommand(netTeachingCommandSchema.parse({ kind: "fold", edgeId: value.edgeId, degrees: value.degrees, anchor: value.anchor ?? null }));
 
   return (
-    <div className={styles.workspace} data-cube-net-teaching={CUBE_NET_TEACHING_VERSION} data-folding-entry={build.entry.id} data-workbench-mode={courseware ? "courseware" : undefined} inert={readOnly || classroom?.pending}>
+    <div className={styles.workspace} data-cube-net-teaching={CUBE_NET_TEACHING_VERSION} data-folding-entry={build.entry.id} data-workbench-mode={courseware ? "courseware" : undefined} inert={readOnly || classroom?.pending} {...controls.bindings}>
       <div className={styles.viewport}>
         <div className={styles.canvas} data-cube-workspace-frame="4:3" data-cube-net-workbench data-net-gallery-open={galleryOpen}
           aria-label={t("cubeNet.title")} style={{ cursor: tool === "fold" ? dragging ? "grabbing" : "grab" : tool === "pan" ? "grab" : "default" }}>
@@ -404,13 +407,13 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector, modeSelector,
           <div className={cn(styles.dock, styles.tools)} role="toolbar" aria-label={m.tools} data-cube-tools-toolbar>
             {([{ id: "orbit", label: m.orbit, Icon: Orbit }, { id: "pan", label: m.pan, Icon: Hand }] as const).map(({ id, label, Icon }) =>
               <CubeIconButton key={id} label={label} active={tool === id} disabled={busy}
-                onClick={() => { setTool(id); setPreview(null); setActiveFold(null); setPanel(null); }} data-cube-net-tool={id}><Icon aria-hidden /></CubeIconButton>)}
+                onClick={() => { controls.chooseTool(id); setPreview(null); setActiveFold(null); }} data-cube-net-tool={id}><Icon aria-hidden /></CubeIconButton>)}
             <CubeIconButton label={t("cubeNet.manual.recenter")} disabled={busy} onClick={() => runCommand({ kind: "recenter" })} data-cube-net-recenter><LocateFixed aria-hidden /></CubeIconButton>
             {classroom && <CubeIconButton label={classroom.resetLabel ?? t("cubeNet.manual.recenter")} disabled={busy} onClick={classroom.reset} data-teaching-reset><RotateCcw aria-hidden /></CubeIconButton>}
             <span className={styles.toolSeparator} aria-hidden />
             <CubeIconButton label={t("cubeNet.manual.foldTool")} active={tool === "fold"} disabled={busy} data-cube-net-tool="fold"
               onClick={() => {
-                setTool("fold"); setPreview(null); setPanel(null);
+                setTool("fold"); setPreview(null);
                 if (cutting) {
                   setSession((session) => ({ ...session, surfaces: cutting.surfaces }));
                   setCutting(null); setCutError(false); setRestoreCutBlocked(false); setRevealEnabled(false); setFaceOffsets({});

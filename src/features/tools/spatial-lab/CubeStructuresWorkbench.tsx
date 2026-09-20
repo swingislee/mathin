@@ -29,6 +29,12 @@ import { EMPTY_CUBE_CUT, chooseCubeCut, cubeCutCandidate, cubeCutLayers, type Cu
 import { buildCubeCutPieces, cubeCutScopeIds } from "./cube-structures-cut-scope";
 import { cubeRotationOperation } from "./cube-structures-rotation";
 import { spatialDirectManipulation } from "../spatial-interaction/policy";
+import { useSpatialToolState } from "../spatial-interaction/useSpatialToolState";
+import { Footprints } from "lucide-react";
+import { cubeRollOperation } from "./cube-structures-roll";
+import { SPATIAL_ROLL_DIRECTIONS, type SpatialRollDirection } from "../spatial-interaction/rolling";
+import { SpatialRollButtons, type SpatialRollAction } from "../spatial-interaction/SpatialRollButtons";
+import { spatialActionMessages } from "../spatial-interaction/messages";
 import styles from "./CubeStructuresWorkbench.module.css";
 
 const CubeStructuresViewport = dynamic(() => import("./CubeStructuresViewport").then((module) => module.CubeStructuresViewport), { ssr: false });
@@ -40,7 +46,7 @@ const TOOL_BUTTONS = [
 ] as const;
 const VIEWS: readonly CubeView[] = ["angle", "front", "left", "right", "top"];
 const COLOR_MAP = Object.fromEntries(CUBE_COLORS.map((color) => [color, color]));
-type Panel = "selection" | "color" | "move" | "layers" | "recording" | "model" | "cut" | "mark" | "number" | "transparent" | null;
+type Panel = "selection" | "color" | "move" | "roll" | "layers" | "recording" | "model" | "cut" | "mark" | "number" | "transparent" | null;
 
 export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessages, workspaceSelector, courseware, onSnapshot, extension }: {
   readonly locale: "zh" | "en"; readonly rendererMessages: VoxelRendererMessages;
@@ -53,7 +59,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
     readonly onReset?: () => void;
     readonly runtime?: { readonly snapshot: CubeClassroomSnapshot; readonly onChange: (next: CubeClassroomSnapshot) => boolean } };
 }) {
-  const m = cubeStructuresMessages(locale);
+  const m = { ...cubeStructuresMessages(locale), ...spatialActionMessages(locale) };
   const fieldId = useId();
   const hasTool = (id: CubeToolbarId) => !courseware || courseware.toolbar.includes(id);
   const readOnly = courseware?.readOnly ?? false;
@@ -61,8 +67,10 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
   const [prepared, setPrepared] = useState(() => courseware ? structuredClone(courseware.initial) : createCubeSession(createSpatialLabPresetDraft(SPATIAL_LAB_PRESET_ID).model.cells));
   const [demo, setDemo] = useState<CubeWorkbenchSession | null>(null);
   const [mode, setMode] = useState<"prepare" | "demonstrate">("prepare");
-  const [tool, setTool] = useState<CubeTool>(() => TOOL_BUTTONS.find(({ id }) => hasTool(id))?.id ?? "orbit");
-  const [panel, setPanel] = useState<Panel>(null);
+  const controls = useSpatialToolState<CubeTool, Exclude<Panel, null>>({ defaultTool: "orbit", panels: {
+    selection: "select", color: "color", move: "move", roll: "orbit", layers: "layer", recording: "orbit", model: "orbit", cut: "cut", mark: "mark", number: "number", transparent: "transparent",
+  } }, { tool: TOOL_BUTTONS.find(({ id }) => hasTool(id))?.id ?? "orbit" });
+  const { tool, panel, setTool, setPanel } = controls;
   const [color, setColor] = useState<CubeColor>(CUBE_COLORS[1]);
   const [selected, setSelected] = useState<readonly string[]>([]);
   const [scopeId, setScopeId] = useState<string | null>(null);
@@ -109,6 +117,8 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
   const scopeIds = useMemo(() => cubeScopeIds(state, activeGroupId), [state, activeGroupId]);
   const selectedIds = useMemo(() => selected.filter((id) => scopeIds.includes(id)), [selected, scopeIds]);
   const targetIds = selectedIds.length ? selectedIds : scopeIds;
+  const rollOperations = useMemo(() => panel === "roll" && (selectedIds.length || activeGroupId)
+    ? Object.fromEntries(SPATIAL_ROLL_DIRECTIONS.map((direction) => [direction, cubeRollOperation(state, targetIds, direction)])) : {}, [panel, selectedIds, activeGroupId, state, targetIds]);
   const scopeLabel = activeGroup?.name ?? m.allGroups;
   const model = useMemo(() => buildCubeStructureRenderModel(viewOverride ? { ...state, view: viewOverride } : state, selectedIds, m.title, activeGroupId), [state, selectedIds, m.title, viewOverride, activeGroupId]);
   const metrics = useMemo(() => cubeStructureMetrics(state), [state]);
@@ -182,6 +192,10 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
     if (state.cubes.length >= CUBE_STRUCTURES_LIMITS.cubes) { setNotice(m.limit); return; }
     commit({ kind: "build", id: "added-" + nextIdentity(), groupId: activeGroupId ?? undefined, position, displayOffset, color: CUBE_COLORS[0] });
   }
+  const rollAction: SpatialRollAction = { label: m.roll, disabled: !editable || dragging,
+    plans: Object.fromEntries(Object.entries(rollOperations).flatMap(([direction, operation]) => operation ? [[direction, { axis: operation.axis, turn: operation.turn, pivot: operation.displayPivot }]] : [])),
+    onRoll: (direction: SpatialRollDirection) => { const operation = rollOperations[direction]; if (operation) commit(operation); else setNotice(m.rollBlocked); },
+  };
   function clickFace(face: VoxelFaceSelection) {
     const cube = cubeAtDisplayPosition(state, face.cell);
     if (!cube) return;
@@ -209,12 +223,10 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
     extension?.onToolChange?.();
     const nextPanel: Panel = value === "layer" ? "layers" : value === "color" || value === "face" ? "color" : value === "select" ? "selection"
       : value === "move" || value === "cut" || value === "mark" || value === "number" || value === "transparent" ? value : null;
-    if (value === tool && nextPanel) { setPanel(panel === nextPanel ? null : nextPanel); return; }
-    setTool(value);
+    controls.chooseTool(value, nextPanel);
     if (["cut", "orbit", "pan"].includes(tool) && ["cut", "orbit", "pan"].includes(value)) {
       setHoverFace(null); setHoverGround(null); setHoveredCutHit(null); setNotice("");
     } else clearPointer();
-    if (nextPanel) setPanel(nextPanel);
   }
   function performCut() {
     if (!lockedCut || !validCutGap) return;
@@ -290,7 +302,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
   }, [playing, session.lesson, session.preview, readOnly, updateSession]);
 
   const panelTitle = panel === "selection" ? m.selectionPanel : panel === "color" ? m.colorLabel : panel === "layers" ? m.layers : panel === "recording" ? m.record : panel && panel !== "model" ? m[panel] : m.modelPanel;
-  return <div className={styles.workspace} data-cube-structures-workbench="v3" data-workbench-mode={courseware ? "courseware" : mode} inert={readOnly} {...capture}>
+  return <div className={styles.workspace} data-cube-structures-workbench="v3" data-workbench-mode={courseware ? "courseware" : mode} inert={readOnly} {...capture} {...controls.bindings}>
     <div className={styles.viewport}>
       <div className={styles.canvas} aria-label={m.title + " · " + m[mode]} style={{ cursor: readOnly ? "default" : cubeToolCursor(tool) }} data-active-cube-tool={tool} data-cube-workspace-frame="4:3" data-has-cube-groups={state.groups.length > 0 && hasTool("select")} data-cube-motion={moving ? "moving" : "idle"}>
         <CubeStructuresViewport model={model} messages={rendererMessages} materialColors={COLOR_MAP}
@@ -298,7 +310,8 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
           axisSnapEnabled={snap} cameraRequestKey={cameraRequest} sceneKey={runtime && courseware ? courseware.initial.work.initial : session.work.initial} onMovingChange={setMoving}
           history={animationHistory}
           onDraggingChange={setDragging}
-          rotationInteraction={spatialDirectManipulation(tool) && hasTool("move") && allowRotation && (selectedIds.length || activeGroupId) ? {
+          rollInteraction={panel === "roll" && allowRotation && (selectedIds.length || activeGroupId) ? { ...rollAction, ids: targetIds } : null}
+          rotationInteraction={panel !== "roll" && spatialDirectManipulation(tool) && hasTool("move") && allowRotation && (selectedIds.length || activeGroupId) ? {
             ids: targetIds, axis: moveAxis, onAxisChange: setMoveAxis, label: m.rotate, disabled: !editable || dragging,
             onRotate: (axis, turn) => { const operation = cubeRotationOperation(state, targetIds, axis, turn); if (operation) commit(operation); },
           } : null}
@@ -308,7 +321,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
             onAxisChange: setMoveAxis, onSelect: (id) => setSelected(objectIds(id)), onCommit: (operation) => { if (commit(operation)) setSelected(operation.ids); }, onUnavailable: () => setNotice(m.moveAxisHidden) } : null}
           cutInteraction={tool === "cut" && editable && !lockedCut ? { state, hovered: hoveredCutHit,
             onHover: (hit) => { setHoveredCutHit(hit); setCutDraft((current) => current.issue ? { ...current, issue: null } : current); },
-            onPick: (hit) => { const ids = cubeCutScopeIds(state, cutPieces, selectedIds, cutDraft, hit); const next = chooseCubeCut(state, ids, cutDraft, hit); setCutDraft(next); setHoveredCutHit(null); setNotice(""); if (next.selection && panel === "cut") setPanel(null); } } : null}
+            onPick: (hit) => { const ids = cubeCutScopeIds(state, cutPieces, selectedIds, cutDraft, hit); const next = chooseCubeCut(state, ids, cutDraft, hit); setCutDraft(next); setHoveredCutHit(null); setNotice(""); if (next.selection && panel === "cut") controls.hidePanel(); } } : null}
           hiddenEdgesVisible={state.hiddenEdgesVisible}
           readOnly={readOnly || playing || (!editable && tool !== "select")} cameraInteractive={!readOnly && (hasTool("orbit") || hasTool("pan"))} navigationMode={tool === "pan" ? "pan" : tool === "move" || tool === "cut" ? "object" : "orbit"}
           onFaceSelect={["orbit", "pan", "move", "cut"].includes(tool) ? undefined : clickFace}
@@ -345,6 +358,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
         {(TOOL_BUTTONS.some(({ id }) => hasTool(id)) || hasTool("recording") || hasTool("undo") || hasTool("redo")) && <div className={cn(styles.dock, styles.tools)} role="toolbar" aria-label={m.tools} data-cube-tools-toolbar>
           {extension?.toolbar && <>{extension.toolbar(() => setPanel(null))}<span className={styles.toolSeparator} aria-hidden /></>}
           {TOOL_BUTTONS.filter(({ id }) => hasTool(id)).map(({ id, Icon }) => <CubeIconButton key={id} label={m[id]} active={tool === id} onClick={() => chooseTool(id)} data-cube-tool={id}><Icon aria-hidden /></CubeIconButton>)}
+          {hasTool("move") && allowRotation && <CubeIconButton label={m.roll} active={panel === "roll"} disabled={!editable} onClick={() => { extension?.onToolChange?.(); controls.togglePanel("roll"); clearPointer(); }} data-cube-tool="roll"><Footprints aria-hidden /></CubeIconButton>}
           {hasTool("recording") && <CubeIconButton label={m.record} active={panel === "recording"} onClick={() => setPanel(panel === "recording" ? null : "recording")}><Circle aria-hidden className={session.recording === "recording" ? "fill-rose text-rose" : undefined} /></CubeIconButton>}
           {(hasTool("undo") || hasTool("redo")) && <span className="self-stretch border-t border-line" aria-hidden />}
           {hasTool("undo") && <CubeIconButton label={m.previous} disabled={!editable || !session.work.cursor || replacementStep !== null} onClick={() => { updateSession((current) => undoCubeSession(current, -1), null, true); clearPointer(); setCameraRequest((value) => value + 1); }}><Undo2 aria-hidden /></CubeIconButton>}
@@ -358,6 +372,7 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
         </div>}
 
         {panel && <CubeCanvasPanel title={panelTitle} anchor={panel === "model" ? "meta" : "tool"} closeLabel={m.closePanel} onClose={() => setPanel(null)}>
+          {panel === "roll" && <div className="space-y-3 text-xs"><p className="text-muted">{selectedIds.length || activeGroupId ? m.rollHint : m.rollSelect}</p><SpatialRollButtons action={rollAction} /><p className="text-muted">{m.rollBlocked}</p></div>}
           {panel === "selection" && <div className="space-y-3 text-xs">
             <p className="leading-5 text-muted">{m.selectHint}</p><p>{m.selected}: {selectedIds.length} · {m.currentScope}: {scopeLabel}</p>
             <div className="flex flex-wrap gap-1">

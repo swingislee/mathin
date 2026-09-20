@@ -18,6 +18,8 @@ import { SolidSectionHandles } from "../solid-sections/SolidSectionHandles";
 import type { SolidSectionSettings } from "../solid-sections/solid-sections-contract";
 import { SpatialRotationControls, type SpatialRotationAction } from "../spatial-interaction/SpatialRotationControls";
 import { getSolidBounds } from "./solid-geometry";
+import { SpatialRollControls } from "../spatial-interaction/SpatialRollControls";
+import type { SpatialRollAction } from "../spatial-interaction/SpatialRollButtons";
 
 const ignoreTransition = () => {};
 const ignoreRaycast = () => null;
@@ -35,6 +37,7 @@ export interface SolidGeometryCanvasProps extends SolidGeometrySceneProps {
   onSectionDragging?: (dragging: boolean) => void;
   objectManipulation?: boolean; objectAnimating?: boolean; rotationAction?: SpatialRotationAction;
   cameraInteractive?: boolean;
+  rollAction?: SpatialRollAction;
 }
 function Contents(props: SolidGeometryCanvasProps) {
   const [preview, setPreview] = useState<CubeDragPreview | null>(null);
@@ -62,8 +65,10 @@ function Contents(props: SolidGeometryCanvasProps) {
         bodyAxis: "gesture",
         isValidOperation: (operation) => moveSolidByDrag(props.state.entities, operation) !== null, onAxisChange: props.onMoveAxis,
         onSelect: (id) => props.onPick?.(id, null), onCommit: props.onMove, onUnavailable: ignoreTransition }} />}
-    {props.objectManipulation && props.rotationAction && rotationEntity && !preview && <SpatialRotationControls center={rotationEntity.position} radius={getSolidBounds(rotationEntity).radius}
+    {props.objectManipulation && !props.rollAction && props.rotationAction && rotationEntity && !preview && <SpatialRotationControls center={rotationEntity.position} radius={getSolidBounds(rotationEntity).radius}
       action={{ ...props.rotationAction, disabled: props.readOnly || props.objectAnimating }} />}
+    {props.objectManipulation && props.rollAction && rotationEntity && !preview && <SpatialRollControls center={rotationEntity.position} radius={getSolidBounds(rotationEntity).radius}
+      action={{ ...props.rollAction, disabled: props.rollAction.disabled || props.readOnly || props.objectAnimating }} />}
   </>;
 }
 export default function SolidGeometryCanvas(props: SolidGeometryCanvasProps) {

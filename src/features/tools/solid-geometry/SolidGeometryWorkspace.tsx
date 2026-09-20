@@ -32,10 +32,16 @@ import { measurementDisplayEntity } from "../solid-measurement/measurement-model
 import { spatialDirectManipulation } from "../spatial-interaction/policy";
 import { spatialQuarterTurn } from "../spatial-interaction/rigid-motion";
 import { useSpatialDirectCommit } from "../spatial-interaction/useSpatialDirectCommit";
+import { useSpatialToolState } from "../spatial-interaction/useSpatialToolState";
+import { Footprints } from "lucide-react";
+import { solidRollTarget } from "./solid-geometry-roll";
+import { SPATIAL_ROLL_DIRECTIONS } from "../spatial-interaction/rolling";
+import { SpatialRollButtons, type SpatialRollAction } from "../spatial-interaction/SpatialRollButtons";
+import { spatialActionMessages } from "../spatial-interaction/messages";
 
 const Canvas = dynamic(() => import("./SolidGeometryCanvas"), { ssr: false, loading: () => <Skeleton className="size-full" /> });
 type Tool = "orbit" | "pan" | "move" | "face" | "edge" | "vertex" | "section";
-type Panel = "add" | "objects" | "move" | "turn" | "color" | "transparent" | "face" | "edge" | "vertex" | "settings" | "section" | "measurement" | null;
+type Panel = "add" | "objects" | "move" | "turn" | "roll" | "color" | "transparent" | "face" | "edge" | "vertex" | "settings" | "section" | "measurement" | null;
 export interface SolidWorkspaceContext {
   snapshot: SolidGeometrySnapshot; selected: SolidEntity | null; disabled: boolean; locale: string;
   update: (next: SolidGeometrySnapshot) => boolean; closePanel: () => void;
@@ -50,11 +56,14 @@ export interface SolidGeometryWorkspaceProps {
 }
 /** 共用备课/课堂宿主只管理离散参数；截面、测量通过三个扩展槽接入同一空间。 */
 export function SolidGeometryWorkspace({ initial, onSnapshot, classroom, readOnly = false, renderScene, renderToolbar, renderPanel, onToolChange }: SolidGeometryWorkspaceProps) {
-  const locale = useLocale() === "en" ? "en" : "zh", m = solidGeometryMessages(locale);
+  const locale = useLocale() === "en" ? "en" : "zh", m = { ...solidGeometryMessages(locale), ...spatialActionMessages(locale) };
   const origin = useMemo(() => solidGeometrySnapshot(initial ?? createSolidGeometryInitial()), [initial]);
   const host = useToolSnapshot(origin, classroom), snapshot = host.snapshot;
   const disabled = readOnly || host.publishing || Boolean(classroom && !classroom.onChange);
-  const [tool, setTool] = useState<Tool>("orbit"), [panel, setPanel] = useState<Panel>(null);
+  const controls = useSpatialToolState<Tool, Exclude<Panel, null>>({ defaultTool: "orbit", panels: {
+    add: "orbit", objects: "orbit", move: "move", turn: "orbit", roll: "orbit", color: "orbit", transparent: "orbit", face: "face", edge: "edge", vertex: "vertex", settings: "orbit", section: "section", measurement: "orbit",
+  } });
+  const { tool, panel, setPanel } = controls;
   const [axis, setAxis] = useState<Axis>("x"), [moveSnap, setMoveSnap] = useState(false), [dragging, setDragging] = useState(false);
   const [frame, setFrame] = useState(() => getSolidsFrame(origin.entities));
   const [instantKey, setInstantKey] = useState<string | null>(null);
@@ -68,6 +77,7 @@ export function SolidGeometryWorkspace({ initial, onSnapshot, classroom, readOnl
   const sectionPreview = sectionGesture?.source === snapshot && (!sectionGesture.pending || !host.failed) ? sectionGesture.settings : null;
   const sectionPresentation = useSolidSectionPresentation(snapshot.section, sectionPreview, sectionInstantKey), sectionMessages = solidSectionsMessages(locale);
   const selected = snapshot.entities.find((entity) => entity.id === snapshot.selectedId) ?? null;
+  const rollTargets = useMemo(() => panel === "roll" && selected ? Object.fromEntries(SPATIAL_ROLL_DIRECTIONS.map((direction) => [direction, solidRollTarget(selected, direction, snapshot.entities)])) : {}, [panel, selected, snapshot.entities]);
   const captured = useMemo(() => solidGeometryInitial(snapshot), [snapshot]);
   const capture = useSceneCapture(disabled || dragging || sectionDragging || !!sectionPreview || presentation.animating || sectionPresentation.animating ? null : captured, onSnapshot);
   const update = useCallback((next: SolidGeometrySnapshot) => {
@@ -84,8 +94,8 @@ export function SolidGeometryWorkspace({ initial, onSnapshot, classroom, readOnl
   }, [disabled, update, snapshot, classroom]);
   const updateEntity = (next: SolidEntity) => update({ ...snapshot, entities: snapshot.entities.map((entity) => entity.id === next.id ? next : entity) });
   const pick = (id: string, feature: SolidFeatureSelection | null) => { if (!disabled) update({ ...snapshot, selectedId: id, feature }); };
-  const open = (next: Panel, nextTool?: Tool) => { onToolChange?.(); setPanel((current) => current === next ? null : next); if (nextTool) setTool(nextTool); };
-  const navigate = (next: Tool) => { setTool(next); setPanel(null); onToolChange?.(); };
+  const open = (next: Exclude<Panel, null>, nextTool?: Tool) => { onToolChange?.(); controls.togglePanel(next, nextTool); };
+  const navigate = (next: Tool) => { controls.chooseTool(next); onToolChange?.(); };
   const fit = () => { setFrame(getSolidsFrame(snapshot.entities)); update({ ...snapshot, cameraRevision: snapshot.cameraRevision + 1 }); };
   const add = (kind: SolidKind) => {
     if (snapshot.entities.length >= SOLID_LIMITS.entities) return;
@@ -101,26 +111,30 @@ export function SolidGeometryWorkspace({ initial, onSnapshot, classroom, readOnl
   const drag = (operation: CubeMoveOperation) => move(operation, true);
   const rotate = (axis: Axis, sign: number) => { if (!selected) return;
     updateEntity({ ...selected, rotation: spatialQuarterTurn(selected.rotation, axis, sign > 0 ? 1 : -1) }); };
+  const rollAction: SpatialRollAction = { label: m.roll, disabled: disabled || presentation.animating || dragging, plans: Object.fromEntries(Object.entries(rollTargets).flatMap(([direction, result]) => result ? [[direction, result.plan]] : [])),
+    onRoll: (direction) => { const result = rollTargets[direction]; if (result && !disabled && !presentation.animating) updateEntity(result.target); },
+  };
   const featureMode = tool === "face" || tool === "edge" || tool === "vertex" ? tool : "object";
   const topology = selected ? getSolidTopology(selected) : null;
   const parts = panel === "face" ? topology?.faces : panel === "edge" ? topology?.edges : panel === "vertex" ? topology?.vertices : null;
   const featureLabel = (id: string, index: number) => id in m.faces ? m.faces[id as keyof typeof m.faces] : id.startsWith("rim-") ? `${m.boundary} ${index + 1}` : `${panel === "edge" ? m.edge : m.vertex} ${index + 1}`;
   const context: SolidWorkspaceContext = { snapshot, selected, disabled, locale, update, closePanel: () => setPanel(null) };
-  return <section className={styles.workspace} data-workbench-mode="courseware" data-solid-geometry-workspace="v1" aria-label={m.title} {...capture}>
+  return <section className={styles.workspace} data-workbench-mode="courseware" data-solid-geometry-workspace="v1" aria-label={m.title} {...capture} {...controls.bindings}>
     <div className={styles.viewport}><div className={styles.canvas}>
       <Canvas entities={presentation.entities} state={snapshot} selectedId={snapshot.selectedId} feature={snapshot.feature} pickMode={featureMode} section={sectionPresentation.frame}
-        locale={locale} sectionEditable={tool === "section" && snapshot.section.enabled && snapshot.section.showPlane && !!selected && supportsSolidSection(selected.kind) && !presentation.animating && (!sectionPresentation.animating || sectionDragging)}
+        locale={locale} sectionEditable={(tool === "section" || spatialDirectManipulation(tool)) && snapshot.section.enabled && snapshot.section.showPlane && !!selected && supportsSolidSection(selected.kind) && !presentation.animating && (!sectionPresentation.animating || sectionDragging)}
         sectionSettings={sectionPreview ?? snapshot.section} onSectionPreview={previewSection} onSectionCommit={commitSection} onSectionDragging={setSectionDragging}
         readOnly={disabled} onPick={pick} frame={frame} cameraRevision={snapshot.cameraRevision} axisSnap={axisSnap} moveSnap={moveSnap}
         cameraInteractive={!readOnly && !(classroom && !classroom.onChange)}
         navigationMode={tool === "pan" ? "pan" : tool === "move" ? "move" : "orbit"} moveAxis={axis} onMoveAxis={setAxis} onMove={drag} onDragging={setDragging} fallback={m.fallback}
         objectManipulation={spatialDirectManipulation(tool)} objectAnimating={presentation.animating} rotationAction={{ axis, onAxisChange: setAxis, onRotate: rotate, label: m.turn }}
+        rollAction={panel === "roll" ? rollAction : undefined}
         renderScene={(context) => <>{context.selected && <MeasurementOverlay entity={context.selected} settings={snapshot.measurement} feature={snapshot.feature} locale={locale} />}{renderScene?.(context)}</>} />
       {!snapshot.entities.length && <p className="pointer-events-none absolute left-4 top-16 text-sm text-muted">{m.empty}</p>}
       {host.failed && <p role="alert" className={styles.notice}>{m.syncError}</p>}
       <div className={`${styles.dock} ${styles.meta}`}>
         <CubeIconButton label={m.settings} active={panel === "settings"} disabled={disabled} onClick={() => open("settings")}><Settings2 aria-hidden /></CubeIconButton>
-        <CubeIconButton label={m.reset} disabled={disabled} onClick={() => { setFrame(getSolidsFrame(origin.entities)); update({ ...structuredClone(origin), cameraRevision: snapshot.cameraRevision + 1 }); setTool("orbit"); setPanel(null); onToolChange?.(); }}><RotateCcw aria-hidden /></CubeIconButton>
+        <CubeIconButton label={m.reset} disabled={disabled} onClick={() => { setFrame(getSolidsFrame(origin.entities)); update({ ...structuredClone(origin), cameraRevision: snapshot.cameraRevision + 1 }); controls.closePanel(); onToolChange?.(); }}><RotateCcw aria-hidden /></CubeIconButton>
       </div>
       <div className={`${styles.dock} ${styles.views}`} aria-label={m.fit}>
         {(["angle", "front", "left", "right", "top", "bottom"] as const).map((view) => <CubeIconButton key={view} label={m.views[view]} active={snapshot.view === view} disabled={disabled}
@@ -135,6 +149,7 @@ export function SolidGeometryWorkspace({ initial, onSnapshot, classroom, readOnl
         <CubeIconButton label={m.objects} active={panel === "objects"} disabled={disabled || !selected} onClick={() => open("objects")}><Box aria-hidden /></CubeIconButton>
         <CubeIconButton label={m.move} active={tool === "move"} disabled={disabled || !selected} onClick={() => open("move", "move")}><Move aria-hidden /></CubeIconButton>
         <CubeIconButton label={m.turn} active={panel === "turn"} disabled={disabled || !selected} onClick={() => open("turn", "orbit")}><RotateCw aria-hidden /></CubeIconButton>
+        <CubeIconButton label={m.roll} active={panel === "roll"} disabled={disabled || !selected || (selected.kind !== "cube" && selected.kind !== "cuboid")} onClick={() => open("roll")}><Footprints aria-hidden /></CubeIconButton>
         <span className={styles.toolSeparator} />
         <CubeIconButton label={m.face} active={tool === "face"} disabled={disabled || !selected} onClick={() => open("face", "face")}><Square aria-hidden /></CubeIconButton>
         <CubeIconButton label={m.edge} active={tool === "edge"} disabled={disabled || !selected} onClick={() => open("edge", "edge")}><Spline aria-hidden /></CubeIconButton>
@@ -155,6 +170,7 @@ export function SolidGeometryWorkspace({ initial, onSnapshot, classroom, readOnl
       </div>
       {panel && panel !== "measurement" && <CubeCanvasPanel title={panel === "section" ? sectionMessages.title : m[panel]} anchor={panel === "settings" ? "meta" : "tool"} closeLabel={m.close} onClose={() => setPanel(null)}>
         <div className="space-y-3 text-xs">
+          {panel === "roll" && <><p className="text-muted">{m.rollHint}</p><SpatialRollButtons action={rollAction} /><p className="text-muted">{m.rollBlocked}</p></>}
           {panel === "section" && <SolidSectionControls entity={selected} settings={snapshot.section} locale={locale} disabled={disabled || sectionDragging} onChange={(section) => update({ ...snapshot, section, measurement: section.enabled ? { ...snapshot.measurement, enabled: false } : snapshot.measurement })} />}
           {panel === "add" && <><div className="grid grid-cols-2 gap-1">{SOLID_KINDS.map((kind) => <Button key={kind} size="sm" variant="ghost" disabled={disabled} onClick={() => add(kind)}>{m.kinds[kind]}</Button>)}</div><p className="text-muted">{m.limit}</p></>}
           {panel === "objects" && <>

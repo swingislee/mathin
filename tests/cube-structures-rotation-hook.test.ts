@@ -5,6 +5,9 @@ import type { WebGLRenderer } from "three";
 import { appendCubeOperation, createCubeHistory, replayCubeHistory, type CubeHistory } from "@/features/tools/spatial-lab/cube-structures-contract";
 import { cubeRotationOperation } from "@/features/tools/spatial-lab/cube-structures-rotation";
 import { useCubeDisplayMotion } from "@/features/tools/spatial-lab/useCubeDisplayMotion";
+import { cubeRollOperation } from "@/features/tools/spatial-lab/cube-structures-roll";
+import { cubeDisplayPosition } from "@/features/tools/spatial-lab/cube-structures-contract";
+import { SPATIAL_REDUCED_ACTION_DURATION_MS } from "@/features/tools/spatial-interaction/policy";
 
 type Motion = ReturnType<typeof useCubeDisplayMotion>;
 function Probe({ history, sceneKey, onMoving, observe }: { history: CubeHistory; sceneKey: object; onMoving: (moving: boolean) => void; observe: (motion: Motion) => void }) {
@@ -58,11 +61,27 @@ describe("rotation motion hook", () => {
     expect(rig.onMoving).toHaveBeenLastCalledWith(false);
   });
 
-  it("uses the final semantic state immediately for reduced motion", async () => {
+  it("keeps a short visible process for reduced motion", async () => {
     const rig = await setup(true);
     const next = appendCubeOperation(rig.initial, cubeRotationOperation(rig.initial.initial, ["cube-1"], "z", 1)!);
     await rig.render(next); await rig.frame();
+    await rig.frame(SPATIAL_REDUCED_ACTION_DURATION_MS / 2);
+    expect(rig.motion().rotation?.angle).toBeCloseTo(Math.PI / 4);
+    await rig.frame(SPATIAL_REDUCED_ACTION_DURATION_MS / 2);
     expect(rig.motion().rotation).toBeNull();
     expect(rig.motion().moving).toBe(false);
+  });
+  it("replays rolling about its contact edge and reverses the same arc on undo", async () => {
+    const rig = await setup();
+    const operation = cubeRollOperation(rig.initial.initial, ["cube-1"], "x+")!;
+    const next = appendCubeOperation(rig.initial, operation);
+    await rig.render(next); await rig.frame(); await rig.frame(325);
+    const point = cubeDisplayPosition(rig.motion().presentation.cubes[0]);
+    expect(point.x).toBeCloseTo(0.5); expect(point.y).toBeCloseTo(Math.SQRT1_2 - 0.5);
+    expect(rig.motion().rotation?.operation.displayPivot).toEqual(operation.displayPivot);
+    await rig.frame(400); expect(cubeDisplayPosition(rig.motion().presentation.cubes[0])).toEqual({ x: 1, y: 0, z: 0 });
+    await rig.render({ ...next, cursor: 0 }); await rig.frame(); await rig.frame(325);
+    expect(cubeDisplayPosition(rig.motion().presentation.cubes[0]).y).toBeCloseTo(Math.SQRT1_2 - 0.5);
+    await rig.frame(400); expect(rig.motion().presentation.cubes[0].position).toEqual({ x: 0, y: 0, z: 0 });
   });
 });

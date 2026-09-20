@@ -8,6 +8,8 @@ import { createSolidEntity, createSolidGeometryInitial, solidGeometrySnapshot, t
 import { solidGeometryMessages } from "@/features/tools/solid-geometry/solid-geometry-messages";
 import { measurementMessages } from "@/features/tools/solid-measurement/measurement-messages";
 import { solidSectionsMessages } from "@/features/tools/solid-sections/solid-sections-messages";
+import { SOLID_TRANSITION_MS } from "@/features/tools/solid-geometry/solid-geometry-motion";
+import { spatialActionMessages } from "@/features/tools/spatial-interaction/messages";
 
 const canvas = vi.hoisted(() => ({ props: null as SolidGeometryCanvasProps | null }));
 vi.mock("next-intl", () => ({ useLocale: () => "en" }));
@@ -30,11 +32,30 @@ afterEach(async () => { await act(async () => root.unmount()); container.remove(
 async function render(element: ReactElement) { await act(async () => root.render(createElement(StrictMode, null, element))); }
 async function click(label: string) { const button = container.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`); expect(button).not.toBeNull(); await act(async () => button!.click()); }
 async function textClick(label: string) { const button = [...container.querySelectorAll<HTMLButtonElement>("button")].find((item) => item.textContent === label); expect(button).toBeDefined(); await act(async () => button!.click()); }
-async function advance(ms = 400) { for (let elapsed = 0; elapsed <= ms; elapsed += 16) {
+async function advance(ms = SOLID_TRANSITION_MS + 80) { for (let elapsed = 0; elapsed <= ms; elapsed += 16) {
   now += 16; const pending = [...frames.values()]; frames.clear(); await act(async () => { for (const frame of pending) frame(now); });
 } }
 
 describe("solid geometry teacher workspace", () => {
+  it("exits specialist picking on panel close, repeat activation and switching to another panel", async () => {
+    await render(createElement(SolidGeometryWorkspace));
+    await click(m.face); expect(canvas.props!.pickMode).toBe("face");
+    await click(m.close); expect(canvas.props!.objectManipulation).toBe(true); expect(canvas.props!.pickMode).toBe("object");
+    await click(m.edge); await click(m.edge); expect(canvas.props!.objectManipulation).toBe(true);
+    await click(m.face); await click(m.color); expect(canvas.props!.pickMode).toBe("object");
+    await act(async () => container.querySelector("section")!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+    expect(container.querySelector("[data-cube-canvas-panel]")).toBeNull(); expect(canvas.props!.objectManipulation).toBe(true);
+  });
+  it("rolls a cuboid through a visible contact-edge arc and saves only its exact endpoint", async () => {
+    const capture = vi.fn(), label = spatialActionMessages("en").roll;
+    await render(createElement(SolidGeometryWorkspace, { onSnapshot: capture }));
+    await click(label); expect(canvas.props!.rollAction?.plans["x+"]).toBeDefined();
+    await click(`${label} X+`); expect(capture.mock.lastCall![0]).toBeNull();
+    await advance(320); expect(canvas.props!.entities[0].position.x).toBeGreaterThan(0); expect(canvas.props!.entities[0].position.x).toBeLessThan(2.5);
+    expect(canvas.props!.entities[0].position.y).toBeGreaterThan(1.5);
+    await advance(); expect(capture.mock.lastCall![0].entities[0].position).toEqual({ x: 2.5, y: 1.5, z: 0 });
+    await click(m.close); expect(canvas.props!.rollAction).toBeUndefined(); expect(canvas.props!.objectManipulation).toBe(true);
+  });
   it("directly moves another entity while clearing the previous entity's feature selection", async () => {
     const initial = createSolidGeometryInitial(), capture = vi.fn();
     initial.entities.push(createSolidEntity("cube", "other", { x: 4, y: 1, z: 0 }));

@@ -30,6 +30,16 @@ async function click(label: string) {
   await act(async () => button!.click());
 }
 describe("Soma teaching workspace", () => {
+  it("uses the shared rolling action and leaves no hidden operation behind a closed panel", async () => {
+    const initial = createSomaInitial(); initial.pieces = [initial.pieces[0]];
+    await render(createElement(SomaWorkspace, { initial }));
+    await click("Roll along a direction");
+    const action = canvas.props!.rollAction!; expect(action.plans["z-"]).toBeDefined();
+    await click("Roll along a direction Z-");
+    expect(canvas.props!.snapshot.pieces[0].orientation).not.toBe(0);
+    await click(m.close); expect(canvas.props!.navigation).toBe("orbit"); expect(canvas.props!.rollAction).toBeUndefined();
+    await click(m.rotate); await click(m.rotate); expect(canvas.props!.navigation).toBe("orbit");
+  });
   it("chooses any piece count, permits a nonconsecutive subset, and retains one piece", async () => {
     await render(createElement(SomaWorkspace)); await click(m.pieces);
     for (let size = 1; size <= 7; size++) { await click(`${size} ${m.countUnit}`); expect(canvas.props!.snapshot.pieces).toHaveLength(size); }

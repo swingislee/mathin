@@ -23,6 +23,8 @@ import type { DiceXRayPresentation } from "./dice-xray-animation";
 import { createDiceTapGuard, diceXRayPick, type DiceXRayTarget } from "./dice-xray-observation";
 import { spatialDirectManipulation } from "../spatial-interaction/policy";
 import { SpatialRotationControls } from "../spatial-interaction/SpatialRotationControls";
+import { SpatialRollControls } from "../spatial-interaction/SpatialRollControls";
+import type { SpatialRollAction } from "../spatial-interaction/SpatialRollButtons";
 
 // 拖拽预览逐帧重绘时保持回调身份，避免相机误判为新的视角切换。
 const ignoreCameraTransition = () => {};
@@ -56,6 +58,7 @@ interface DiceCanvasProps {
   onDraggingChange?: (dragging: boolean) => void;
   onSelect: (id: string) => void; onFace: (id: string, face: DiceFace) => void; onMoveFace: (id: string, face: DiceFace) => void;
   onRotate?: (axis: Axis, turn: -1 | 1) => void;
+  rollAction?: SpatialRollAction;
 }
 class DiceCanvasBoundary extends Component<{ children: ReactNode; label: string }, { failed: boolean }> {
   state = { failed: false };
@@ -125,8 +128,9 @@ function DiceObjects(props: DiceCanvasProps & { isTap: () => boolean }) {
       interaction={{ state: dragState, ids: [selectedId], scopeIds: dice.map((die) => die.id), axis: props.moveAxis, kind: "move", snapToGrid: props.snap, gridOrigin: DICE_DRAG_GRID_ORIGIN,
         bodyAxis: "gesture",
         isValidOperation: (operation) => moveDiceByDrag(dice, operation) !== null, onAxisChange: props.onMoveAxis, onSelect: props.onSelect, onCommit: props.onDragCommit, onUnavailable: props.onMoveUnavailable }} />}
-    {spatialDirectManipulation(props.tool) && props.onRotate && !preview && presentedDice.filter((die) => die.id === selectedId).map((die) => <SpatialRotationControls key={die.id} center={die.position}
+    {spatialDirectManipulation(props.tool) && !props.rollAction && props.onRotate && !preview && presentedDice.filter((die) => die.id === selectedId).map((die) => <SpatialRotationControls key={die.id} center={die.position}
       action={{ axis: props.moveAxis, onAxisChange: props.onMoveAxis, onRotate: props.onRotate!, label: m.turn, disabled: props.busy }} />)}
+    {spatialDirectManipulation(props.tool) && props.rollAction && !preview && presentedDice.filter((die) => die.id === selectedId).map((die) => <SpatialRollControls key={die.id} center={die.position} action={{ ...props.rollAction!, disabled: props.busy }} />)}
     <DiceXRayTransition dice={dice} requested={props.xrayTarget} initialTarget={props.initialXRayTarget} interactive={props.tool === "xray" && !props.busy} geometries={geometries} edges={edges} textures={textures}
       onClick={(event, target) => clickFace(event, target.id, target.face)} onPresentation={props.onXRayPresentation} />
     {props.arrows && props.tool !== "xray" && !props.busy && !preview && <CubeNetFaceArrows key={occlusionKey} faces={arrows} occlude={occluders} onMove={(id) => { const arrow = arrows.find((item) => item.faceId === id); if (arrow) props.onMoveFace(arrow.dieId, arrow.face); }} />}
