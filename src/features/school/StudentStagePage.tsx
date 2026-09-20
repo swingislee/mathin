@@ -4,7 +4,7 @@ import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import type { PermissionKey } from "./permissions";
 import { NewStudentDialog } from "./NewStudentDialog";
-import { parseStudentStageFilters } from "./student-stage-contract";
+import { parseCommunicationStageFilters, parseStudentStageFilters } from "./student-stage-contract";
 import { loadStudentStageFieldPage } from "./student-stage-table-data";
 import { studentStageFieldScope } from "./student-stage-table-fields";
 import { StudentStageWorkspace } from "./StudentStageWorkspace";
@@ -22,11 +22,14 @@ export async function StudentStagePage({ locale, currentUserId, permissions, sea
   locale: string; currentUserId: string; permissions: Set<PermissionKey>; searchParams: Record<string, string | string[] | undefined>;
   presentation?: "students" | "communication";
 }) {
-  const filters = parseStudentStageFilters(searchParams, permissions.has("student.view.all") ? "all" : "mine");
+  const filters = (presentation === "communication" ? parseCommunicationStageFilters : parseStudentStageFilters)(searchParams, permissions.has("student.view.all") ? "all" : "mine");
+  const firstContact = presentation === "communication" && filters.stage === "awaiting_first_contact" && !filters.q;
   const canAssign = permissions.has("student.assign");
   const dataPromise = Promise.all([getOrganizationTimezoneV2(), getNow()]).then(async ([timeZone, currentTime]) => {
     const now = currentTime.getTime();
-    return { timeZone, now, data: await loadStudentStageFieldPage(filters, { locale, timeZone, now }, currentUserId) };
+    // 内嵌首联使用自己的行与列筛选；外层只负责阶段、名单和分页。
+    return { timeZone, now, data: await loadStudentStageFieldPage(filters, { locale, timeZone, now }, currentUserId,
+      { includeRecordHints: !firstContact, includeFieldFacets: !firstContact }) };
   });
   const [t, staff, collaboration, { timeZone, now, data }] = await Promise.all([
     getTranslations("school.students"), canAssign ? listStaffMembers() : Promise.resolve([]), readSchoolCollaborationSettings(), dataPromise,
@@ -34,7 +37,7 @@ export async function StudentStagePage({ locale, currentUserId, permissions, sea
   const resolvedFilters = { ...filters, scope: studentStageFieldScope(data.fieldView.query), detail: "", fields: JSON.stringify(data.fieldView.query) };
   const m = workEntryMessages(locale);
   let firstContactContent;
-  if (presentation === "communication" && filters.population !== "recontact" && filters.stage === "awaiting_first_contact" && !filters.q) {
+  if (firstContact) {
     const [{ leads }, options] = await Promise.all([
       listLeadPool(currentUserId, { scope: resolvedFilters.scope, page: 1, pageSize: filters.pageSize }, data.rows.flatMap(row => row.leadId ? [row.leadId] : [])),
       listInvitationOptions(),

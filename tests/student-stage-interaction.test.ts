@@ -77,6 +77,8 @@ describe("student stage workspace wiring", () => {
     const stageLinks = [...container.querySelectorAll<HTMLAnchorElement>('a[href^="/dashboard/communication?stage="]')];
     expect(stageLinks).toHaveLength(5);
     expect(container.querySelector("h1")?.textContent).toBe("沟通");
+    expect(container.textContent).not.toMatch(/本轮工作|全部档案|具体办理日期/);
+    expect(stageLinks.every(link => !link.href.includes("population=") && !link.href.includes("reason="))).toBe(true);
     const summary = container.querySelector<HTMLElement>("[data-student-stage-row]")!;
     await act(async () => { summary.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })); });
     expect(container.querySelector('[role="tab"][data-state="active"]')?.textContent).toBe("测评／活动邀约");

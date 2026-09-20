@@ -171,6 +171,14 @@ export async function listInvitationOptions(): Promise<{
   };
 }
 
+/** 测评表只需可安排的老师，活动选项在邀约入口读取。 */
+export async function listAssessmentAssessorOptions(): Promise<InvitationAssessorOption[]> {
+  const supabase = await createClient();
+  const result = await supabase.rpc("list_invitation_assessors");
+  if (result.error && !relationUnavailable(result.error)) throw new Error(result.error.message);
+  return (result.data ?? []).map(row => ({ userId: row.user_id, displayName: row.display_name }));
+}
+
 export async function listInvitationCoordination(
   filters: InvitationFilters,
   selection: { leadIds?: readonly string[]; assessorId?: string } = {},

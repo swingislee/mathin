@@ -132,9 +132,9 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
         : <DashboardCommandTabs ariaLabel={m.title} activeValue={filters.stage} activeTone="accent"
         items={STUDENT_STAGE_TABS.map(stage => ({ value: stage, label: m.stages[stage], badge: data.counts[stage] ?? 0,
           href: stageHref(currentFilters, { stage, page: 1, detail: "", q: "", fields: acrossStages }) }))} />}</DashboardCommandState>
-      <DashboardCommandFilters><FollowupPrimaryFilter value={filters.population ?? "work"} label={m.population} disabled={busy}
+      <DashboardCommandFilters>{presentation !== "communication" ? <FollowupPrimaryFilter value={filters.population ?? "work"} label={m.population} disabled={busy}
         options={[{ value: "work", label: m.workPopulation }, { value: "records", label: m.recordsPopulation }, ...(canPlan ? [{ value: "recontact", label: m.recontactPopulation }] : [])]}
-        onValueChange={population => navigate({ population: population as "work" | "records" | "recontact", q: "", detail: "", fields: acrossStages })} />
+        onValueChange={population => navigate({ population: population as "work" | "records" | "recontact", q: "", detail: "", fields: acrossStages })} /> : null}
       <FilterBar onSubmit={event => {
         event.preventDefault(); const form = new FormData(event.currentTarget); navigate({ q: String(form.get("q") ?? "").trim(), detail: "" });
       }}><FilterSearchInput name="q" defaultValue={filters.q} placeholder={m.search} aria-label={m.search} disabled={busy} />
@@ -151,11 +151,12 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
         {actions}
       </DashboardCommandActions>
     </FollowupCommandPanel>}
-    summary={<p className="text-xs text-muted">{contactSelection ? directoryM.selectionHint : recontact ? m.recontactHint : filters.q ? m.searchHint : filters.population === "records" ? m.recordsHint : m.workHint}
+    summary={presentation === "communication" && !contactSelection ? undefined : <p className="text-xs text-muted">{contactSelection ? directoryM.selectionHint : recontact ? m.recontactHint : filters.q ? m.searchHint : filters.population === "records" ? m.recordsHint : m.workHint}
       {contactSelection && data.count < contactSelection.requestedCount ? ` ${directoryM.unavailable}` : ""}
       {!contactSelection && filters.stage === "former_student" && !filters.q ? ` ${m.formerHint}` : ""}</p>}
     footer={contactSelection ? undefined : <LeadPoolPagination baseHref={baseHref} currentPage={data.page} totalPages={data.totalPages} totalCount={data.count}
-      pageSize={data.pageSize} scope={filters.scope} q={filters.q} extraQuery={{ stage: filters.stage, fields: currentFilters.fields, population: filters.population ?? "work", reason: filters.reason ?? "" }}
+      pageSize={data.pageSize} scope={filters.scope} q={filters.q} extraQuery={{ stage: filters.stage, fields: currentFilters.fields,
+        ...(presentation === "communication" ? {} : { population: filters.population ?? "work", reason: filters.reason ?? "" }) }}
       disabled={busy} onPageChange={(page, pageSize) => navigate({ page, pageSize })} />}>
     {firstContactContent ?? <SchoolSupportTableEntry workspace="students" enabled={canPlan} columns={[...(canSelect?["blank" as const]:[]),"name","phone","blank","blank",...(showBackground?["blank" as const,"blank" as const]:[]),"note","blank"]}><DashboardTableShell data-followup-workbench aria-busy={server?.pending}>
       <Table className={`table-fixed text-xs [&_th]:px-2 ${showBackground ? "min-w-[73rem]" : "min-w-[57rem]"}`}>

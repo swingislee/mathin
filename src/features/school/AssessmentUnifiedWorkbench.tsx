@@ -1,5 +1,7 @@
 "use client";
 
+import dynamic from "next/dynamic";
+
 import { FollowupTableRecord, type FollowupRowState } from "./dashboard-page/FollowupTableRecord";
 
 import { BusinessRecordRevisionButton } from './BusinessRecordRevisionButton';
@@ -7,7 +9,7 @@ import {SourceCompletionNotice} from './SourceCompletionNotice';
 import {sourceCompletionMessages} from './source-completion-contract';
 
 import { BusinessRecordStateFilter, useBusinessSearchQuery } from './BusinessRecordStateFilter';
-import { isCurrentBusinessRecord, matchesBusinessRecordState, type BusinessRecordStateFilter as StateFilter } from './business-record-state-contract';
+import { isCurrentBusinessRecord, type BusinessRecordStateFilter as StateFilter } from './business-record-state-contract';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CalendarClock, UserCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -24,8 +26,7 @@ import { FollowupCommandPanel } from "./FollowupCommandPanel";
 import { SchoolSupportTableEntry, SchoolSupportInsertion } from "./SchoolSupportInlineEntry";
 import { SchoolSupportPendingRows } from "./SchoolSupportPendingRows";
 import { FollowupPrimaryFilter } from "./FollowupPrimaryFilter";
-import { ActivityAssessmentDraftProvider } from "./ActivityAssessmentDetails";
-import { AssessmentRecordDetails } from "./AssessmentRecordDetails";
+import { ActivityAssessmentDraftProvider } from "./ActivityAssessmentDraftProvider";
 import { AssessmentStatusTags } from "./AssessmentStatusTags";
 import { TeacherAssessmentEntryButton } from "./TeacherAssessmentEntryButton";
 import { reassignAssessmentAssessorAction } from "./assessment-assessor-actions";
@@ -59,10 +60,15 @@ import {
 import type { InvitationAssessorOption } from "./invitation-contract";
 import { LeadPoolPagination } from "./LeadPoolPagination";
 import { useFollowupPagination } from "./useFollowupPagination";
+import { assessmentSearchRows, type AssessmentWorkbenchPage } from "./assessment-workbench-page";
+import type { DashboardFieldQuery } from "./dashboard-page/dashboard-table-field-contract";
+import type { FollowupPageSize } from "./followup-table-page";
 
 interface SupportDraft {
   route: ActivityRouteKind | null;
 }
+
+const AssessmentRecordDetails = dynamic(() => import("./AssessmentRecordDetails").then(module => module.AssessmentRecordDetails));
 
 function draftFromRow(row: AssessmentWorkbenchRow): SupportDraft {
   return {
@@ -96,6 +102,7 @@ export function AssessmentUnifiedWorkbench({
   initialRecordState = 'current',
   timeZone = "Asia/Shanghai",
   now,
+  pageControl,
 }: {
   initialRows: AssessmentWorkbenchRow[];
   assessors: InvitationAssessorOption[];
@@ -108,6 +115,9 @@ export function AssessmentUnifiedWorkbench({
   initialRecordState?: StateFilter;
   timeZone?: string;
   now?: number;
+  pageControl?: { data: AssessmentWorkbenchPage; pending: boolean; q: string; state: StateFilter; fields: DashboardFieldQuery;
+    onSearch: (query: string) => void; onState: (state: StateFilter) => void; onFields: (query: DashboardFieldQuery) => void;
+    onPage: (page: number, pageSize: FollowupPageSize) => void };
 }) {
   const t = useTranslations("school.supportAssessment");
   const filterT = useTranslations("school.followupFilters");
@@ -136,8 +146,10 @@ export function AssessmentUnifiedWorkbench({
     return initialRows.map(row => isCurrentBusinessRecord(row.recordState) ? currentById.get(row.id) ?? row : row);
   }, [currentRows, initialRows]);
   const [drafts, setDrafts] = useState<Record<string, SupportDraft>>(initialDrafts);
-  const [query, setQuery] = useBusinessSearchQuery("assessments",initialQuery);
-  const [recordState, setRecordState] = useState(initialRecordState);
+  const [localQuery, setLocalQuery] = useBusinessSearchQuery("assessments",initialQuery);
+  const [localRecordState, setLocalRecordState] = useState(initialRecordState);
+  const query = pageControl?.q ?? localQuery, setQuery = pageControl?.onSearch ?? setLocalQuery;
+  const recordState = pageControl?.state ?? localRecordState, setRecordState = pageControl?.onState ?? setLocalRecordState;
   const [clockNow] = useState(() => now ?? Date.now());
   const dateContext = useMemo(() => ({ locale, timeZone, now: clockNow }), [locale, timeZone, clockNow]);
   const fieldM = useMemo(() => dashboardFieldMessages(locale), [locale]);
@@ -147,41 +159,22 @@ export function AssessmentUnifiedWorkbench({
   const [visitedDetails, setVisitedDetails] = useState<Set<string>>(() => new Set());
   const [retainedView, setRetainedView] = useState<{ key: string; ids: string[] } | null>(null);
   const [reassigningId, setReassigningId] = useState<string | null>(null);
-  const scopedRows = useMemo(() => {
-    const needle = query.trim().toLocaleLowerCase(locale);
-    return rows.filter((row) => {
-      if (!matchesBusinessRecordState(row.recordState, recordState)) return false;
-      if (!needle) return true;
-      const assessment = row.assessment;
-      return [
-        row.name,
-        row.phone,
-        row.gradeText,
-        row.location,
-        row.assessorName,
-        row.background,
-        row.activityTitle,
-        assessment?.teacherObservation ?? "",
-        assessment?.teacherRecommendation ?? "",
-        assessment?.strengths ?? "",
-        assessment?.focusAreas ?? "",
-        assessment?.parentConcerns ?? "",
-        row.questionSummary?.paperTitle ?? "",
-      ].some((value) => value.toLocaleLowerCase(locale).includes(needle));
-    });
-  }, [locale, query, rows, recordState]);
+  const paged = Boolean(pageControl);
+  const scopedRows = useMemo(() => paged ? rows : assessmentSearchRows(rows, query, recordState, locale), [paged, locale, query, rows, recordState]);
   const fields = useMemo(() => assessmentTableFields({ locale, timeZone, tableT, assessmentT, t, teacherT, quickT,
     stageFor: row => queueFor(row, drafts[row.id]),
   }), [locale, timeZone, tableT, assessmentT, t, teacherT, quickT, drafts]);
   const assessmentTable = useDashboardFieldView({ rows: scopedRows, fields, columns: ASSESSMENT_TABLE_COLUMNS,
     context: dateContext, persistenceKey: "followup-assessments", migrate: migrateAssessmentFieldQuery,
+    server: pageControl ? { ...pageControl.data.fieldView, query: pageControl.fields, onChange: pageControl.onFields } : undefined,
     sourceSort: ASSESSMENT_SOURCE_SORT });
-  const filterKey = JSON.stringify([query, recordState, assessmentTable.filters, assessmentTable.sort]);
+  const filterKey = JSON.stringify([query, recordState, assessmentTable.filters, assessmentTable.sort, pageControl?.data.page, pageControl?.data.pageSize]);
   if (retainedView && retainedView.key !== filterKey) setRetainedView(null);
   const rowById = useMemo(() => new Map(rows.map((row) => [row.id, row])), [rows]);
   const orderedVisibleRows = useMemo(() => retainedView?.key === filterKey
     ? retainedView.ids.flatMap(id => rowById.has(id) ? [rowById.get(id)!] : []) : assessmentTable.visibleRows, [assessmentTable.visibleRows, filterKey, retainedView, rowById]);
-  const pagination = useFollowupPagination(orderedVisibleRows, filterKey);
+  const localPagination = useFollowupPagination(orderedVisibleRows, filterKey);
+  const pagination = pageControl ? { ...pageControl.data, rows: orderedVisibleRows, onPageChange: pageControl.onPage } : localPagination;
   const viewKey = JSON.stringify([filterKey, pagination.page, pagination.pageSize]);
   const latestInteraction = useRef({ activeId, expandedId, viewKey });
   useEffect(() => { latestInteraction.current = { activeId, expandedId, viewKey }; }, [activeId, expandedId, viewKey]);
@@ -364,6 +357,7 @@ export function AssessmentUnifiedWorkbench({
         </TableRow>
 
         <FollowupInlineDetails open={expanded} keepMounted={retained}
+          loadingLabel={locale.startsWith("en") ? "Loading…" : "正在读取…"}
           onOpenChange={(open) => changeDetails(row.id, open)} title={row.name} hideTitle
           active={active} onActivate={() => setActiveId(row.id)} colSpan={7} id={`assessment-details-${row.id}`}>
           {row.sourceCompletion?<div className="px-4 py-3"><SourceCompletionNotice summary={row.sourceCompletion} locale={locale}/></div>:null}
@@ -414,7 +408,7 @@ export function AssessmentUnifiedWorkbench({
       )}
     >
       {
-        <SchoolSupportTableEntry workspace="assessments" enabled={canSupport} columns={["name","blank","blank","blank","blank","blank","blank"]}><DashboardTableShell data-assessment-unified-workbench data-followup-workbench data-followup-scroll>
+        <SchoolSupportTableEntry workspace="assessments" enabled={canSupport} columns={["name","blank","blank","blank","blank","blank","blank"]}><DashboardTableShell data-assessment-unified-workbench data-followup-workbench data-followup-scroll aria-busy={pageControl?.pending}>
           <Table className="w-full min-w-[68rem] table-fixed text-xs" containerClassName="overflow-auto [scrollbar-gutter:stable]">
             <TableHeader>
               <TableRow className="hover:bg-transparent">

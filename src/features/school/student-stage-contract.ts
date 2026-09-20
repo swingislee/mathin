@@ -78,13 +78,20 @@ export function parseStudentStageFilters(raw: Record<string, string | string[] |
 export function studentStageHref(filters: StudentStageFilters, change: Partial<StudentStageFilters> = {}, baseHref = "/dashboard/students") {
   const next = { ...filters, ...change };
   const query = new URLSearchParams({ stage: next.stage, scope: next.scope, pageSize: String(next.pageSize) });
-  if (next.population) query.set("population", next.population);
-  if (next.population === "recontact" && next.reason) query.set("reason", next.reason);
+  if (baseHref !== "/dashboard/communication") {
+    if (next.population) query.set("population", next.population);
+    if (next.population === "recontact" && next.reason) query.set("reason", next.reason);
+  }
   if (next.q) query.set("q", next.q);
   if (next.detail) query.set("detail", next.detail);
   if (next.fields) query.set("fields", next.fields);
   if (next.page > 1) query.set("page", String(next.page));
   return `${baseHref}?${query}`;
+}
+
+/** 沟通按实际阶段和可见范围找人；旧工作批次参数不再改变名单。 */
+export function parseCommunicationStageFilters(raw: Record<string, string | string[] | undefined>, defaultScope: "mine" | "all" = "mine") {
+  return parseStudentStageFilters({ ...raw, population: "records", reason: undefined }, defaultScope);
 }
 
 export function studentRecordTableStage(filters: StudentStageFilters): StudentStage {

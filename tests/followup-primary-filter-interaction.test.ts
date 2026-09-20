@@ -111,6 +111,27 @@ describe("title-bar primary filters", () => {
     await click(primary(labels.assessments_handled)); expect(keys("data-followup-row-key")).toEqual(["feedback", "handled"]);
     await click(primary(labels.assessments_all)); expect(keys("data-followup-row-key")).toHaveLength(4);
   });
+  it("shows the next server page after saving a row on the previous page", async () => {
+    const row = (id: string): AssessmentWorkbenchRow => ({ id, assessmentKind: "one_to_one", activityId: null,
+      activityTitle: "", publicClassRecord: null, invitationId: id, registrationId: null, studentId: null, leadId: null,
+      name: id, phone: "", grade: 3, gradeText: "", scheduledAt: at, location: "", assessorId: null, assessorName: "",
+      assessorSource: "assigned", background: "", participationStatus: "booked", assessmentStartedAt: null, assessmentCompletedAt: null,
+      assessment: null, questionSummary: null, route: null, updatedAt: at });
+    const page = async (number: number) => {
+      const rows = [row(`page-${number}`)];
+      const fields = { version: 2 as const, filters: {}, sort: null };
+      await render(createElement(AssessmentUnifiedWorkbench, { initialRows: rows, assessors: [], locale: "zh", canAssess: false,
+        canSupport: true, canManageAssessor: false, pageControl: { q: "", state: "current", fields, pending: false,
+          onSearch: vi.fn(), onState: vi.fn(), onFields: vi.fn(), onPage: vi.fn(),
+          data: { rows, count: 21, page: number, pageSize: 20, totalPages: 2, q: "", state: "current", fieldView: { query: fields, facets: {} } } } }));
+    };
+    await page(1);
+    await click(container.querySelector<HTMLElement>('[data-followup-row-key="page-1"]')!);
+    await click([...container.querySelectorAll("button")].find(button => button.textContent === "Save classification")!);
+    expect(keys("data-followup-row-key")).toEqual(["page-1"]);
+    await page(2);
+    expect(keys("data-followup-row-key")).toEqual(["page-2"]);
+  });
   it("keeps target classrooms and occupied seats visible for pending placement and filters by real class capacity", async () => {
     const classroom = (id: string, grade: number, capacity: number | null, activeCount: number) => ({ id, name: id, courseId: `course-${grade}`, termId: "term",
       capacity, activeCount, operationalStatus: "active" as const, teacherNames: "", sessions: [] });

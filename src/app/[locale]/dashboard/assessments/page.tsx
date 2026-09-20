@@ -1,17 +1,18 @@
-import { getNow, setRequestLocale } from "next-intl/server";
-import { AssessmentUnifiedWorkbench } from "@/features/school/AssessmentUnifiedWorkbench";
+import { getNow, getTranslations, setRequestLocale } from "next-intl/server";
+import { AssessmentPagedWorkbench } from "@/features/school/AssessmentPagedWorkbench";
 import { listAssessmentWorkbenchRows } from "@/features/school/assessment-workbench-data";
-import { listInvitationOptions } from "@/features/school/invitations";
+import { listAssessmentAssessorOptions } from "@/features/school/invitations";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
 import { getOrganizationTimezoneV2 } from "@/features/school/organization-locations";
-import { businessRecordStateFilter } from "@/features/school/business-record-state-contract";
+import { assessmentPageStage, assessmentWorkbenchFieldPage, type AssessmentPageQuery } from "@/features/school/assessment-workbench-page";
+import { assessmentTableFields } from "@/features/school/assessment-table-fields";
 
 export default async function AssessmentsPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{q?:string;state?:string}>;
+  searchParams: Promise<AssessmentPageQuery>;
 }) {
   const { locale } = await params;
   const query=await searchParams;
@@ -21,19 +22,21 @@ export default async function AssessmentsPage({
   const canAssess = permissions.has("review.write");
   const canSupport = permissions.has("followup.view");
   const canManageAssessor = permissions.has("followup.write");
-  const [rows, options, timeZone, now] = await Promise.all([
+  const [rows, assessors, timeZone, now, tableT, assessmentT, t, teacherT, quickT] = await Promise.all([
     listAssessmentWorkbenchRows(),
-    listInvitationOptions(),
+    listAssessmentAssessorOptions(),
     getOrganizationTimezoneV2(),
     getNow(),
+    getTranslations("school.table"), getTranslations("school.assessments"), getTranslations("school.supportAssessment"),
+    getTranslations("school.teacherAssessment"), getTranslations("school.assessmentQuickEntry"),
   ]);
+  const fields = assessmentTableFields({ locale, timeZone, tableT, assessmentT, t, teacherT, quickT, stageFor: assessmentPageStage });
+  const data = assessmentWorkbenchFieldPage(rows, fields, query, { locale, timeZone, now: now.getTime() });
 
   return (
-    <AssessmentUnifiedWorkbench
-      initialRows={rows}
-      initialQuery={query.q?.slice(0,100)}
-      initialRecordState={businessRecordStateFilter(query.state)}
-      assessors={options.assessors}
+    <AssessmentPagedWorkbench
+      data={data}
+      assessors={assessors}
       locale={locale}
       timeZone={timeZone}
       now={now.getTime()}

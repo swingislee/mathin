@@ -75,7 +75,7 @@ describe("unified assessment workbench", () => {
     expect(workbench).toContain('className="sticky left-0');
     expect(workbench.match(/<TeacherAssessmentEntryButton/g)).toHaveLength(1);
     expect(detail).not.toContain("TeacherAssessmentEntryButton");
-    expect(workbench).toContain("teacherObservation");
+    expect(source("src/features/school/assessment-workbench-page.ts")).toContain("teacherObservation");
     expect(workbench).not.toContain("<FollowupTabs />");
     expect(workbench).toContain("<FollowupInlineDetails");
     expect(workbench).toContain("colSpan={7}");
@@ -90,7 +90,8 @@ describe("unified assessment workbench", () => {
     expect(workbench).not.toContain("bg-blue/10");
     expect(workbench).not.toContain('from "./dashboard-page/FollowupDetails"');
     expect(workbench).toContain('persistenceKey: "followup-assessments"');
-    expect(workbench).toContain("ActivityAssessmentDetails");
+    expect(workbench).toContain("ActivityAssessmentDraftProvider");
+    expect(detail).toContain("ActivityAssessmentDetails");
     expect(workbench).toContain('assessmentTable.columnProps("kind")');
     expect(workbench).not.toContain("<Tabs");
     expect(detail).toContain("LEARNING_CHECK_STATUS_STYLE[status]");
@@ -105,7 +106,8 @@ describe("unified assessment workbench", () => {
     const migration = source("supabase/migrations/20260904000400_school_ops_unified_assessment_assessor.sql");
 
     expect(route).toContain('redirect(`/${locale}/dashboard/assessments`)');
-    expect(canonical).toContain("<AssessmentUnifiedWorkbench");
+    expect(canonical).toContain("<AssessmentPagedWorkbench");
+    expect(source("src/features/school/AssessmentPagedWorkbench.tsx")).toContain("<AssessmentUnifiedWorkbench");
     expect(canonical).not.toContain("requestedDesk");
     expect(source("src/features/school/AssessmentRecordDetails.tsx")).toContain("data-assessor-reassignment");
     expect(workbench).toContain("reassignAssessmentAssessorAction");
