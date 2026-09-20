@@ -170,14 +170,41 @@ describe("enrollment placement class roster", () => {
     expect(emptyGrade.content).toContain(messages.school.enrollmentWorkflow.noPending);
   });
 
-  it("keeps empty classes visible with their available seats", () => {
+  it("keeps empty classes visible with one entry summarizing their available seats", () => {
     const rows = renderRoster();
     for (const id of ["autumn-4-empty", "autumn-6-empty"]) {
       const emptyClass = rows.find((row) => classroomId(row.attributes) === id)!;
       expect(emptyClass).toBeDefined();
       expect(studentKeys(emptyClass.cells[4].content)).toEqual([]);
-      expect([...emptyClass.cells[4].content.matchAll(/aria-label="第(\d+)位空位"/g)].map((match) => Number(match[1]))).toEqual([1, 2, 3]);
+      expect([...emptyClass.cells[4].content.matchAll(/aria-label="空 (\d+) 位 · 第(\d+)位空位"/g)].map(match => [Number(match[1]), Number(match[2])])).toEqual([[3, 1]]);
     }
+  });
+
+  it.each([20, null])("preserves sparse student seats and temporary reservations with capacity %s", capacity => {
+    const id = "autumn-4";
+    const initialBoard: EnrollmentPlacementBoard = {
+      ...board,
+      options: { ...board.options, classrooms: [classroom(id, "math-4", "autumn", { capacity, activeCount: 2 })] },
+      members: [member("second", id, 2), member("twelfth", id, 12)],
+      sessionTransfers: [{ id: "temporary", membershipId: "source-member", studentId: "source-student", name: "临时学生",
+        fromClassroomId: "source", toClassroomId: id, classroomName: id, seat: 1, lectureNo: 1, title: "本课", scheduledAt: null }],
+    };
+    const row = renderRoster(undefined, { initialBoard, canAdd: true }).find(row => classroomId(row.attributes) === id)!;
+    const content = row.cells[4].content;
+    expect(studentKeys(content)).toEqual(["second", "twelfth"]);
+    expect(content).toContain("临时学生");
+    expect([...content.matchAll(/data-placement-target="autumn-4:(\d+)"/g)].map(match => Number(match[1]))).toEqual([2, 12, 1, 3]);
+    expect(content).toContain('aria-label="补入学生 · autumn-4 · 3 号位"');
+    expect(content).toContain(capacity === null ? ">空位</span>" : ">空 17 位</span>");
+  });
+
+  it("keeps a full roster without a vacancy entry", () => {
+    const id = "autumn-4";
+    const initialBoard = { ...board, options: { ...board.options, classrooms: [classroom(id, "math-4", "autumn", { activeCount: 3 })] },
+      members: [member("first", id, 1), member("second", id, 2), member("third", id, 3)] };
+    const row = renderRoster(undefined, { initialBoard, canAdd: true }).find(row => classroomId(row.attributes) === id)!;
+    expect(studentKeys(row.cells[4].content)).toEqual(["first", "second", "third"]);
+    expect(row.cells[4].content).not.toContain('aria-label="补入学生');
   });
 
   it("keeps paused students in their seats and withdrawals in separate rows", () => {

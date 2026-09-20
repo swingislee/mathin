@@ -2362,6 +2362,8 @@
       "health_high": "Available observations are positive. Missing observations do not affect the color. Evidence follows.",
       "placeInSeat": "Place {name} in {classroom}, seat {seat}",
       "emptySeatNumber": "Seat {seat}, available",
+      "availableSeats": "{count} open",
+      "availableSeat": "Open seat",
       "errorSeatOccupied": "This seat is occupied. Choose an empty seat, or swap within the same class.",
       "errorSeat": "This seat exceeds class capacity. Choose another seat.",
       "followupSeat": "Seat",

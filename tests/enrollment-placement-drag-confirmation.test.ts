@@ -31,7 +31,7 @@ it.each([[false,null,"grade"],[true,null,"grade"],[false,3,"grade"],[false,4,"gr
   const props={locale:'zh',messages,timeZone:'Asia/Shanghai',children:child};
   await act(async()=>root.render(createElement(NextIntlClientProvider,props)));
   const source=element.querySelector<HTMLElement>(`[data-placement-student="${id(5)}"]`)!;
-  const destination=element.querySelector<HTMLElement>(`[data-placement-target="${id(4)}:2"]`)!;
+  const destination=element.querySelector<HTMLElement>(`[data-placement-target="${id(4)}:1"]`)!;
   document.elementFromPoint=()=>destination;
   const name=source.querySelector<HTMLButtonElement>('button')!;
   await act(async()=>name.focus());
@@ -77,7 +77,7 @@ it('blocks dragging between unrelated classes and keeps commercial withdrawal hi
   const props={locale:'zh',messages,timeZone:'Asia/Shanghai',children:child};
   await act(async()=>root.render(createElement(NextIntlClientProvider,props)));
   const source=element.querySelector<HTMLElement>(`[data-placement-student="${id(5)}"]`)!;
-  const destination=element.querySelector<HTMLElement>(`[data-placement-target="${id(4)}:2"]`)!;
+  const destination=element.querySelector<HTMLElement>(`[data-placement-target="${id(4)}:1"]`)!;
   document.elementFromPoint=()=>destination;
   const send=async(type:string,x:number)=>{const event=new MouseEvent(type,{bubbles:true,button:0,clientX:x,clientY:100});Object.defineProperties(event,{pointerId:{value:1},isPrimary:{value:true}});await act(async()=>source.dispatchEvent(event));};
   await send('pointerdown',20);await send('pointermove',160);

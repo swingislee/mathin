@@ -2362,6 +2362,8 @@
       "health_high": "已观察部分较好；缺测指标不参与颜色。以下是近期依据。",
       "placeInSeat": "将{name}放入{classroom}第{seat}位",
       "emptySeatNumber": "第{seat}位空位",
+      "availableSeats": "空 {count} 位",
+      "availableSeat": "空位",
       "errorSeatOccupied": "该位置已有学生，请选择空位；同班可拖动交换。",
       "errorSeat": "座次超出班级容量，请重新选择。",
       "followupSeat": "座次",
