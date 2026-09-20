@@ -11,6 +11,7 @@ import { spatialArcball, spatialArcballRotation } from "@/features/tools/spatial
 import type { SpatialGestureTarget } from "@/features/tools/spatial-interaction/object-gesture-controller";
 import { somaRotationPivot } from "@/features/tools/soma-cube/model";
 import { interpolateRigidPoses } from "@/features/tools/spatial-interaction/rigid-motion";
+import { CUBE_COLORS, CUBE_SELECTION_COLOR } from "@/features/tools/spatial-lab/cube-structures-contract";
 
 const controls = vi.hoisted(() => ({ interaction: null as CubeMoveInteraction | null }));
 
@@ -28,7 +29,8 @@ const cleanups: (() => Promise<void>)[] = [];
 afterEach(async () => { for (const cleanup of cleanups.splice(0)) await cleanup(); vi.unstubAllGlobals(); });
 
 async function setup(reduced = false) {
-  extend({ Group: THREE.Group, Mesh: THREE.Mesh, InstancedMesh: THREE.InstancedMesh, BoxGeometry: THREE.BoxGeometry, PlaneGeometry: THREE.PlaneGeometry, MeshBasicMaterial: THREE.MeshBasicMaterial });
+  extend({ Group: THREE.Group, Mesh: THREE.Mesh, InstancedMesh: THREE.InstancedMesh, BoxGeometry: THREE.BoxGeometry, PlaneGeometry: THREE.PlaneGeometry, MeshBasicMaterial: THREE.MeshBasicMaterial,
+    LineSegments: THREE.LineSegments, BufferGeometry: THREE.BufferGeometry, BufferAttribute: THREE.BufferAttribute, LineDashedMaterial: THREE.LineDashedMaterial });
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.stubGlobal("window", { devicePixelRatio: 1, matchMedia: () => ({ matches: reduced }) });
   const frames = new Map<number, FrameRequestCallback>(); let id = 0, now = 100;
@@ -61,6 +63,12 @@ describe("Soma renders the shared rigid animation instead of replacing cells", (
     await act(async () => { body.onDragging(true); body.onPreview({ target, pose, landing: landing.pose, valid: landing.valid, phase: "drag", arcball, snapped: landing.snapped }); });
     const ghost = rig.scene().getObjectByName("soma-landing-preview")!;
     expect(ghost).toBeDefined(); expect(ghost.quaternion.angleTo(new Quaternion(...landing.pose.quaternion))).toBeLessThan(1e-7);
+    expect(ghost.children).toHaveLength(1);
+    const outline = ghost.children[0] as THREE.LineSegments<THREE.BufferGeometry, THREE.LineDashedMaterial>;
+    expect(outline.isLineSegments).toBe(true); expect(outline.material.isLineDashedMaterial).toBe(true);
+    expect(outline.material.linewidth).toBe(1); expect(outline.material.dashSize).toBeGreaterThan(0); expect(outline.material.gapSize).toBeGreaterThan(0);
+    expect(outline.geometry.getAttribute("lineDistance").count).toBe(outline.geometry.getAttribute("position").count);
+    expect(outline.material.depthWrite).toBe(false); expect(new THREE.Raycaster().intersectObject(outline)).toEqual([]);
     expect(rig.group().quaternion.angleTo(new Quaternion(...pose.quaternion))).toBeLessThan(1e-7); expect(onPoseCommit).not.toHaveBeenCalled();
     expect(landing.apply()).toBe(true); const next = onPoseCommit.mock.lastCall![0];
     await rig.render({ snapshot: next, onPoseCommit, instantKey: JSON.stringify(somaRigidPoses(next.pieces)), readOnly: true });
@@ -77,7 +85,7 @@ describe("Soma renders the shared rigid animation instead of replacing cells", (
   it("keeps the free rotation after release and through the classroom commit without an extra landing", async () => {
     const rig = await setup(), onPoseCommit = vi.fn<(next: SomaCanvasProps["snapshot"]) => boolean>(() => true);
     const source = { ...rig.initial, pieces: [ { ...rig.initial.pieces[0], position: { x: 0, y: 4, z: 0 } } ] };
-    await rig.render({ snapshot: source, onPoseCommit, instantKey: JSON.stringify(somaRigidPoses(source.pieces)) });
+    await rig.render({ snapshot: source, onPoseCommit, rotationSnap: "free", instantKey: JSON.stringify(somaRigidPoses(source.pieces)) });
     const body = controls.interaction!.bodyGesture!, target = body.selected as SpatialGestureTarget;
     const c = new THREE.OrthographicCamera(-5, 5, 4, -4, 0.1, 100); c.position.set(0, 0, 10); c.lookAt(0, 0, 0); c.updateMatrixWorld();
     const arcball = spatialArcball(target.pivot, target.radius!, c, { left: 0, top: 0, width: 800, height: 600 });
@@ -97,6 +105,20 @@ describe("Soma renders the shared rigid animation instead of replacing cells", (
     const reopened = await setup();
     await reopened.render({ snapshot: JSON.parse(JSON.stringify(next)), readOnly: true, instantKey: JSON.stringify(somaRigidPoses(next.pieces)) });
     expect(reopened.group().quaternion.angleTo(new Quaternion(...pose.quaternion))).toBeLessThan(1e-7);
+  });
+  it.each([true, false])("translation shares the thin unfilled dashed landing outline (valid=%s)", async (valid) => {
+    const rig = await setup(); await rig.render({ onPoseCommit: () => true });
+    const body = controls.interaction!.bodyGesture!, target = body.selected!;
+    const pose = { ...target.pose, position: { ...target.pose.position, x: target.pose.position.x + 1.2 } };
+    const landing = body.resolve(target, pose, "translate");
+    await act(async () => body.onPreview({ target, pose, landing: landing.pose, valid, phase: "drag" }));
+    const ghost = rig.scene().getObjectByName("soma-landing-preview")!;
+    expect(ghost.position.x).toBe(landing.pose.position.x); expect(rig.group().position.x).toBe(pose.position.x);
+    expect(ghost.children).toHaveLength(1);
+    const outline = ghost.children[0] as THREE.LineSegments<THREE.BufferGeometry, THREE.LineDashedMaterial>;
+    expect(outline.isLineSegments).toBe(true); expect(outline.material.isLineDashedMaterial).toBe(true); expect(outline.material.linewidth).toBe(1);
+    expect(outline.material.color.getHexString()).toBe(new THREE.Color(valid ? CUBE_COLORS[0] : CUBE_SELECTION_COLOR).getHexString());
+    await act(async () => body.onPreview(null)); expect(rig.scene().getObjectByName("soma-landing-preview")).toBeUndefined();
   });
   it.each([false, true])("shows intermediate rotation with reduced motion = %s and ends at the exact pose", async (reduced) => {
     const rig = await setup(reduced), before = rig.group().quaternion.clone();

@@ -8,7 +8,7 @@ import { SOMA_IDS, SOMA_ROTATIONS, somaCells, somaDefinition, somaLocalCells, so
 import { planSpatialRoll, spatialRollPoint, unitCubeCorners, voxelRollIsClear, type SpatialRollDirection } from "../spatial-interaction/rolling";
 import { spatialRigidPoint } from "../spatial-interaction/rigid-geometry";
 import { spatialBasisQuaternion } from "../spatial-interaction/rigid-motion";
-import { spatialRotationSnap } from "../spatial-interaction/rotation-snap";
+import { DEFAULT_SPATIAL_ROTATION_SNAP, spatialRotationSnap, spatialRotationSnapAngle, type SpatialRotationSnapLevel } from "../spatial-interaction/rotation-snap";
 
 const rotationCandidates = SOMA_ROTATIONS.map(spatialBasisQuaternion);
 
@@ -84,7 +84,7 @@ export function somaOrientAroundAnchor(piece: SomaGridPiece, orientation: number
   const pivot = somaRotationPivot(piece), local = somaLocalCells(piece.id, orientation)[somaAnchorIndex(piece.id)];
   return { ...piece, orientation, position: { x: pivot.x - local.x, y: pivot.y - local.y, z: pivot.z - local.z } };
 }
-export function somaRotate(snapshot: SomaSnapshot, axis: Axis, direction: -1 | 1, free = false, rotationSnap = true): SomaSnapshot | null {
+export function somaRotate(snapshot: SomaSnapshot, axis: Axis, direction: -1 | 1, free = false, rotationSnap: SpatialRotationSnapLevel = DEFAULT_SPATIAL_ROTATION_SNAP): SomaSnapshot | null {
   const pieces = snapshot.pieces.map((piece): SomaPiece => {
     if (piece.id !== snapshot.selectedId) return piece;
     if (!free && !piece.quaternion) return somaOrientAroundAnchor(piece, somaTurn(piece.orientation, axis, direction));
@@ -93,14 +93,14 @@ export function somaRotate(snapshot: SomaSnapshot, axis: Axis, direction: -1 | 1
     const p = new Vector3(pose.position.x - pivot.x, pose.position.y - pivot.y, pose.position.z - pivot.z).applyQuaternion(q);
     return { id: piece.id, position: { x: pivot.x + p.x, y: pivot.y + p.y, z: pivot.z + p.z }, quaternion: q.multiply(new Quaternion(...pose.quaternion)).normalize().toArray() };
   });
-  const next = { ...snapshot, pieces }, landed = free && rotationSnap ? somaSnapRotation(next, snapshot.pieces.find((piece) => piece.id === snapshot.selectedId)) : next;
+  const next = { ...snapshot, pieces }, landed = free ? somaSnapRotation(next, snapshot.pieces.find((piece) => piece.id === snapshot.selectedId), rotationSnap) : next;
   return somaPlacementValid(landed.pieces) ? landed : null;
 }
 /** 松手附近有合法网格落点时自动收拢；远角度、冲突或超界均保留自由姿态。 */
-export function somaSnapRotation(snapshot: SomaSnapshot, source?: SomaPiece): SomaSnapshot {
+export function somaSnapRotation(snapshot: SomaSnapshot, source?: SomaPiece, rotationSnap: SpatialRotationSnapLevel = DEFAULT_SPATIAL_ROTATION_SNAP): SomaSnapshot {
   const piece = snapshot.pieces.find((p) => p.id === snapshot.selectedId)!;
   if (!piece.quaternion) return snapshot;
-  const nearest = spatialRotationSnap(piece.quaternion, rotationCandidates);
+  const nearest = spatialRotationSnap(piece.quaternion, rotationCandidates, spatialRotationSnapAngle(rotationSnap));
   if (!nearest) return snapshot;
   const center = somaRotationPivot(piece, true);
   const template: SomaGridPiece = { id: piece.id, orientation: nearest.index, position: { x: 0, y: 0, z: 0 } };

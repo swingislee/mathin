@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { Boxes, Eye, Grid2X2, Hand, Maximize, Move3D, Orbit, Redo2, Rotate3D, RotateCcw, Settings2, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Axis } from "@/features/spatial-math/domain";
 import type { VoxelRendererMessages } from "@/features/spatial-math/renderer-r3f/VoxelFallback";
@@ -30,6 +31,7 @@ import { spatialActionMessages } from "../spatial-interaction/messages";
 import { somaRoll } from "./model";
 import { somaCells } from "./pieces";
 import type { SpatialMovePlane } from "../spatial-interaction/object-gesture-math";
+import { DEFAULT_SPATIAL_ROTATION_SNAP, SPATIAL_ROTATION_SNAP_DEGREES, SPATIAL_ROTATION_SNAP_LEVELS, type SpatialRotationSnapLevel } from "../spatial-interaction/rotation-snap";
 
 const Canvas = dynamic(() => import("./SomaCanvas"), { ssr: false, loading: () => <Skeleton className="size-full" /> });
 type Panel = "pieces" | "move" | "rotate" | "roll" | "settings" | null;
@@ -47,7 +49,7 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
   const [axis, setAxis] = useState<Axis>("x"), [notice, setNotice] = useState("");
   const [rotationAxis, setRotationAxis] = useState<Axis>("y");
   const [movePlane, setMovePlane] = useState<SpatialMovePlane>("table");
-  const [rotationSnap, setRotationSnap] = useState(true);
+  const [rotationSnap, setRotationSnap] = useState<SpatialRotationSnapLevel>(DEFAULT_SPATIAL_ROTATION_SNAP);
   const [dragging, setDragging] = useState(false), [history, setHistory] = useState<{ past: SomaSnapshot[]; future: SomaSnapshot[] }>({ past: [], future: [] });
   const [moving, setMoving] = useState(false);
   const directMove = useSpatialDirectCommit(snapshot, host.failed);
@@ -163,9 +165,15 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
                 {direction > 0 ? "+" : "−"}{panel === "rotate" ? "90°" : "1"}
               </Button>)}
             </div>)}<p className="leading-5 text-muted">{panel === "move" ? m.moveHint : freeRotation ? m.rotateHint : m.legacyRotateHint}</p>
-            {panel === "rotate" && freeRotation && <label className="flex items-center gap-2">
-              <Checkbox aria-label={m.rotationSnap} checked={rotationSnap} disabled={disabled} onCheckedChange={(checked) => setRotationSnap(checked === true)} />{m.rotationSnap}
-            </label>}
+            {panel === "rotate" && freeRotation && <div className="space-y-1">
+              <p>{m.rotationSnap}</p>
+              <ToggleGroup type="single" value={rotationSnap} onValueChange={(value) => { if (value) setRotationSnap(value as SpatialRotationSnapLevel); }}
+                variant="outline" size="sm" disabled={disabled} aria-label={m.rotationSnap} className="grid grid-cols-2">
+                {SPATIAL_ROTATION_SNAP_LEVELS.map((level) => <ToggleGroupItem key={level} value={level} className="min-h-11 px-2 text-xs">
+                  {m.rotationSnapLevels[level]}{SPATIAL_ROTATION_SNAP_DEGREES[level] === null ? "" : ` ${SPATIAL_ROTATION_SNAP_DEGREES[level]}°`}
+                </ToggleGroupItem>)}
+              </ToggleGroup>
+            </div>}
           </>}
           {panel === "settings" && (["grid", "axes", "labels"] as const).map((key) => <label key={key} className="flex items-center gap-2">
             <Checkbox aria-label={m[key]} checked={snapshot[key]} disabled={disabled} onCheckedChange={(checked) => commit({ ...snapshot, [key]: checked === true }, false)} />{m[key]}

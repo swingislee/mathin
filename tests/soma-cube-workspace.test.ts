@@ -78,16 +78,30 @@ describe("Soma teaching workspace", () => {
   it("defaults to release snapping, separates it from view snapping and applies the choice to precise buttons", async () => {
     const initial = createSomaInitial(); await render(createElement(SomaWorkspace, { initial }));
     const cameraSnap = canvas.props!.axisSnap;
-    expect(canvas.props!.rotationSnap).toBe(true);
+    expect(canvas.props!.rotationSnap).toBe("standard");
     await click(m.rotate); expect(container.textContent).not.toContain("Align to grid");
     await click(`${m.rotate} Y +90°`); expect(canvas.props!.snapshot.pieces[0].orientation).toBeTypeOf("number");
     await click(m.undo); expect(canvas.props!.snapshot.pieces).toEqual(initial.pieces);
-    await click(m.rotationSnap); expect(canvas.props!.rotationSnap).toBe(false);
+    await click(m.rotationSnapLevels.free); expect(canvas.props!.rotationSnap).toBe("free");
     expect(canvas.props!.axisSnap).toBe(cameraSnap);
     await click(`${m.rotate} Y +90°`); expect(canvas.props!.snapshot.pieces[0].quaternion).toBeDefined();
     const free = canvas.props!.snapshot;
-    await click(m.rotationSnap); expect(canvas.props!.rotationSnap).toBe(true);
+    await click(`${m.rotationSnapLevels.standard} 30°`); expect(canvas.props!.rotationSnap).toBe("standard");
     expect(canvas.props!.snapshot).toBe(free); // 开关只影响后续手势，不改写准备好的现场。
+  });
+  it("keeps one strength selected across panel toggles without changing the scene or camera", async () => {
+    const initial = createSomaInitial(); await render(createElement(SomaWorkspace, { initial }));
+    const cameraSnap = canvas.props!.axisSnap;
+    await click(m.rotate);
+    for (const [level, degrees] of [["light", 15], ["strong", 45], ["standard", 30]] as const) {
+      await click(`${m.rotationSnapLevels[level]} ${degrees}°`);
+      expect(canvas.props!.rotationSnap).toBe(level); expect(canvas.props!.snapshot).toBe(initial);
+      expect(canvas.props!.axisSnap).toBe(cameraSnap);
+    }
+    await click(`${m.rotationSnapLevels.strong} 45°`); await click(`${m.rotationSnapLevels.strong} 45°`);
+    expect(canvas.props!.rotationSnap).toBe("strong");
+    await click(m.close); await click(m.rotate); expect(canvas.props!.rotationSnap).toBe("strong");
+    expect(container.querySelectorAll(`[aria-label="${m.rotationSnap}"] [data-state="on"]`)).toHaveLength(1);
   });
   it("publishes only the snapped endpoint and reuses it through the classroom echo, undo and restore", async () => {
     const initial = createSomaInitial(), writes: SomaSnapshot[] = [];

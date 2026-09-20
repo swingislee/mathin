@@ -26,6 +26,8 @@ import type { SpatialGestureTarget, SpatialObjectInteraction, SpatialObjectPrevi
 import { somaGestureLanding } from "./manipulation";
 import { spatialPickRigidCells } from "../spatial-interaction/rigid-geometry";
 import { SpatialArcballGuide } from "../spatial-interaction/SpatialArcballGuide";
+import { DEFAULT_SPATIAL_ROTATION_SNAP, type SpatialRotationSnapLevel } from "../spatial-interaction/rotation-snap";
+import { SpatialLandingOutline } from "../spatial-interaction/SpatialLandingOutline";
 
 const colors = Object.fromEntries(SOMA_PIECES.map((piece) => [piece.color, piece.color]));
 export interface SomaCanvasProps {
@@ -37,10 +39,10 @@ export interface SomaCanvasProps {
   rollAction?: SpatialRollAction;
   movePlane?: SpatialMovePlane; preciseAxes?: boolean; rotationAxis?: Axis; onRotationAxis?: (axis: Axis) => void;
   onPoseCommit?: (next: SomaSnapshot) => boolean; onPlaneUnavailable?: () => void; onGestureBlocked?: () => void;
-  freeRotation?: boolean; rotationSnap?: boolean; onToggleRotation?: () => void;
+  freeRotation?: boolean; rotationSnap?: SpatialRotationSnapLevel; onToggleRotation?: () => void;
 }
 export default function SomaCanvas({ snapshot, messages, title, readOnly, axisSnap, navigation, moveAxis, onMoveAxis, onSelect, onMove, onUnavailable, onDragging, onMoving, onRotate, instantKey, locale, rollAction, cameraInteractive = !readOnly,
-  movePlane = "table", preciseAxes = false, rotationAxis = "y", onRotationAxis = onMoveAxis, onPoseCommit, onPlaneUnavailable = onUnavailable, onGestureBlocked = onUnavailable, freeRotation = true, rotationSnap = true, onToggleRotation }: SomaCanvasProps) {
+  movePlane = "table", preciseAxes = false, rotationAxis = "y", onRotationAxis = onMoveAxis, onPoseCommit, onPlaneUnavailable = onUnavailable, onGestureBlocked = onUnavailable, freeRotation = true, rotationSnap = DEFAULT_SPATIAL_ROTATION_SNAP, onToggleRotation }: SomaCanvasProps) {
   const visible = useMemo(() => somaVisiblePieces(snapshot), [snapshot]);
   // 选择另一宝时只改变手柄目标；同一拼搭的命中几何保持身份，保留正在开始的拖动。
   const pieces = snapshot.mode === "assemble" ? snapshot.pieces : visible;
@@ -124,8 +126,7 @@ export default function SomaCanvas({ snapshot, messages, title, readOnly, axisSn
         </group>;
       })}
       {ghost && objectPreview && <group name="soma-landing-preview" position={[objectPreview.landing.position.x, objectPreview.landing.position.y, objectPreview.landing.position.z]} quaternion={objectPreview.landing.quaternion}>
-        <VoxelGeometry model={{ ...ghost.model, cells: ghost.model.cells.map((cell) => ({ ...cell, opacity: 0.12, emphasis: { color: objectPreview.valid ? CUBE_COLORS[0] : CUBE_SELECTION_COLOR, edgeColor: objectPreview.valid ? CUBE_COLORS[0] : CUBE_SELECTION_COLOR, faceOpacity: 0.12, priority: 2 } })) }}
-          palette={{ leaf: CUBE_COLORS[0], moon: CUBE_SELECTION_COLOR }} materialColors={colors} readOnly />
+        <SpatialLandingOutline cells={ghost.model.cells} color={objectPreview.valid ? CUBE_COLORS[0] : CUBE_SELECTION_COLOR} />
       </group>}
       {activePivot && <SpatialRotationAnchor center={activePivot} />}
       {objectPreview?.arcball && <SpatialArcballGuide ball={objectPreview.arcball} />}

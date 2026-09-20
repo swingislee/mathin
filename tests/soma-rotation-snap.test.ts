@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Quaternion, Vector3 } from "three";
-import { spatialRotationSnap, SPATIAL_ROTATION_SNAP_ANGLE } from "@/features/tools/spatial-interaction/rotation-snap";
+import { spatialRotationSnap, SPATIAL_ROTATION_SNAP_ANGLE, type SpatialRotationSnapLevel } from "@/features/tools/spatial-interaction/rotation-snap";
 import { spatialBasisQuaternion, type SpatialRigidPose } from "@/features/tools/spatial-interaction/rigid-motion";
 import { createSomaInitial, somaLocalCenter, somaRotate, somaRotationPivot, somaRoll } from "@/features/tools/soma-cube/model";
 import { somaGestureLanding } from "@/features/tools/soma-cube/manipulation";
@@ -34,23 +34,37 @@ describe("automatic rotation snapping", () => {
   });
   it("retains far angles or explicitly disabled snapping, and does not alter approved translation", () => {
     const snapshot = initial(), piece = snapshot.pieces[0] as SomaGridPiece;
-    for (const [angle, enabled] of [[0.62, true], [0.1, false]] as const) {
-      const pose = tilted(piece, angle), landing = somaGestureLanding(snapshot, piece.id, pose, "rotate", true, enabled);
+    for (const [angle, level] of [[0.62, "standard"], [0.1, "free"]] as const) {
+      const pose = tilted(piece, angle), landing = somaGestureLanding(snapshot, piece.id, pose, "rotate", true, level);
       expect(landing.snapped).toBe(false); expect(landing.valid).toBe(true);
       expect(new Quaternion(...landing.pose.quaternion).angleTo(new Quaternion(...pose.quaternion))).toBeLessThan(1e-7);
       expect(landing.pose.position).toEqual(pose.position);
     }
-    const free = somaGestureLanding(snapshot, piece.id, tilted(piece, 0.1), "rotate", true, false);
+    const free = somaGestureLanding(snapshot, piece.id, tilted(piece, 0.1), "rotate", true, "free");
     const moved = somaGestureLanding(free.snapshot, piece.id, { ...free.pose, position: { ...free.pose.position, x: free.pose.position.x + 1.2 } }, "translate", true);
     expect(moved.snapped).toBe(false); expect(moved.pose.quaternion).toEqual(free.pose.quaternion);
     expect(moved.pose.position.x).toBeCloseTo(free.pose.position.x + 1);
   });
-  it("preserves a legal free endpoint when the nearest grid would collide, without moving another Bao", () => {
+  it.each<{ level: SpatialRotationSnapLevel; degrees: number; snaps: boolean }>([
+    { level: "free", degrees: 0, snaps: false },
+    { level: "light", degrees: 15, snaps: true }, { level: "light", degrees: 20, snaps: false },
+    { level: "standard", degrees: 20, snaps: true }, { level: "standard", degrees: 30, snaps: true }, { level: "standard", degrees: 40, snaps: false },
+    { level: "strong", degrees: 40, snaps: true }, { level: "strong", degrees: 45, snaps: true },
+  ])("$level catches $degrees degrees: $snaps", ({ level, degrees, snaps }) => {
+    const snapshot = initial(), piece = snapshot.pieces[0] as SomaGridPiece, pose = tilted(piece, degrees * Math.PI / 180);
+    const landing = somaGestureLanding(snapshot, piece.id, pose, "rotate", true, level);
+    expect(landing.snapped).toBe(snaps); expect(landing.valid).toBe(true);
+    if (snaps) expect(landing.snapshot.pieces[0]).toEqual(piece);
+    else expect(new Quaternion(...landing.pose.quaternion).angleTo(new Quaternion(...pose.quaternion))).toBeLessThan(1e-7);
+    const turned = somaRotate({ ...snapshot, pieces: [{ ...pose, id: piece.id }] }, "y", 1, true, level)!;
+    expect(turned.pieces[0].orientation !== undefined).toBe(snaps);
+  });
+  it.each(["light", "standard", "strong"] as const)("%s preserves a legal free endpoint when the nearest grid would collide", (level) => {
     const snapshot = initial(), pose = { id: "bao-1" as const, position: { x: 0.49, y: 3, z: 0 }, quaternion: [0, 0, 0, 1] as [number, number, number, number] };
     snapshot.pieces.push({ id: "bao-2", position: { x: -0.6, y: 3, z: 0 }, quaternion: [0, 0, 0, 1] });
     snapshot.pieces[0] = pose;
     expect(somaPlacementValid(snapshot.pieces)).toBe(true);
-    const landing = somaGestureLanding(snapshot, "bao-1", pose, "rotate", true);
+    const landing = somaGestureLanding(snapshot, "bao-1", pose, "rotate", true, level);
     expect(landing.valid).toBe(true); expect(landing.snapped).toBe(false); expect(landing.pose).toEqual(pose);
     expect(landing.snapshot.pieces[1]).toBe(snapshot.pieces[1]);
   });
@@ -73,6 +87,6 @@ describe("automatic rotation snapping", () => {
     }
     const next = somaRotate(initial(), "y", 1, true)!;
     expect(somaRoll(next, "x+")).not.toBeNull();
-    expect(somaRotate(initial(), "y", 1, true, false)!.pieces[0].quaternion).toBeDefined();
+    expect(somaRotate(initial(), "y", 1, true, "free")!.pieces[0].quaternion).toBeDefined();
   });
 });
