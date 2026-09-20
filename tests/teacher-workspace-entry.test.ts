@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import ClassesPage from "../src/app/[locale]/dashboard/classes/page";
 import EnrollmentsPage from "../src/features/school/ClassPlacementPage";
 
-const mocks = vi.hoisted(() => ({ teacher: vi.fn(), permissions: vi.fn(), capability: vi.fn(), board: vi.fn(), history: vi.fn(), redirect: vi.fn() }));
+const mocks = vi.hoisted(() => ({ teacher: vi.fn(), permissions: vi.fn(), capability: vi.fn(), board: vi.fn(), history: vi.fn(), redirect: vi.fn(), sessions: vi.fn() }));
 vi.mock("server-only", () => ({}));
 vi.mock("next-intl/server", () => ({ setRequestLocale: vi.fn(), getTranslations: async () => (key: string) => key, getNow: async () => new Date("2026-09-11T00:00:00Z") }));
 vi.mock("@/lib/auth", () => ({ requireUser: async () => ({ id: "teacher-a" }), requireDashboardEnvironment: async () => ({ user: { id: "teacher-a" } }), getMyPerms: mocks.permissions }));
@@ -16,6 +16,7 @@ vi.mock("@/features/school/dashboard-page", () => ({ DashboardPage: () => null, 
 vi.mock("@/features/school/ClassWorkspaceCommandPanel", () => ({ ClassWorkspaceCommandPanel: () => null }));
 vi.mock("@/features/school/ClassWorkspaceTabs", () => ({ ClassWorkspaceTabs: () => null }));
 vi.mock("@/features/school/ClassWorkspaceActions", () => ({ ClassWorkspaceActions: () => null }));
+vi.mock("@/features/school/class-roster-session-read", () => ({ getClassRosterSessions: mocks.sessions }));
 vi.mock("@/features/school/ClassDirectoryPage", () => ({ default: () => null }));
 vi.mock("@/features/school/teaching-workbench/TeachingWorkspacePage", () => ({ default: () => null }));
 vi.mock("@/i18n/navigation", () => ({ redirect: mocks.redirect }));
@@ -26,6 +27,7 @@ describe("teacher entry and placement access", () => {
   beforeEach(() => {
     vi.clearAllMocks(); mocks.teacher.mockResolvedValue(true); mocks.capability.mockResolvedValue(false);
     mocks.permissions.mockResolvedValue(new Set(["followup.view", "class.view.mine"])); mocks.board.mockResolvedValue(board);
+    mocks.sessions.mockResolvedValue([]);
     mocks.redirect.mockImplementation(() => { throw new Error("REDIRECT"); });
   });
 
@@ -45,7 +47,7 @@ describe("teacher entry and placement access", () => {
     const explicit = await ClassesPage({ params, searchParams: Promise.resolve({ view: "arrange" }) });
     expect(explicit.type).toBe(EnrollmentsPage);
     const records = await ClassesPage({ params, searchParams: Promise.resolve({ view: "records", classroom: "class-a", term: "term-a" }) });
-    expect(records.type).not.toBe(EnrollmentsPage);
+    expect(records.type).toBe(EnrollmentsPage);
     expect(await records.props.searchParams).toEqual({ view: "records", classroom: "class-a", term: "term-a" });
   });
 
@@ -69,5 +71,12 @@ describe("teacher entry and placement access", () => {
     expect(mocks.board).toHaveBeenCalledOnce(); expect(mocks.teacher).not.toHaveBeenCalled();
     expect(page.props.history).toBeNull(); expect(page.props.canAdd).toBe(false);
     expect(page.props).not.toHaveProperty("initialRecordState");
+  });
+  it("uses the actual lesson's class and term when a deep link carries a stale term", async () => {
+    mocks.capability.mockResolvedValue(true);
+    mocks.board.mockResolvedValue({ ...board, options: { ...board.options, classrooms: [{ id: "actual-class", termId: "actual-term" }] } });
+    mocks.sessions.mockResolvedValue([{ id: "lesson", classroomId: "actual-class" }]);
+    const page = await EnrollmentsPage({ params, searchParams: Promise.resolve({ session: "lesson", classroom: "stale-class", term: "stale-term" }) });
+    expect(page.props).toMatchObject({ focusSessionId: "lesson", focusClassroomId: "actual-class", initialTermId: "actual-term" });
   });
 });

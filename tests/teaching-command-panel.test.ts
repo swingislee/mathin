@@ -49,9 +49,9 @@ describe("teaching records shared command panel", () => {
   it("wires live and replay routes to the shared panel and preserves the selected time grain", () => {
     const live = readFileSync("src/features/school/teaching-workbench/TeachingWorkspacePage.tsx", "utf8");
     const replay = readFileSync("src/app/[locale]/dashboard/classes/review/page.tsx", "utf8");
-    for (const source of [live, replay]) expect(source).toContain("<TeachingRecordsCommandPanel");
-    expect(live).toContain('view === "records" ? "previous" : "current"');
-    expect(live).toContain('<ClassWorkspaceTabs active="records"');
+    expect(replay).toContain("<TeachingRecordsCommandPanel");
+    expect(live).toContain("<ClassWorkspaceCommandPanel");
+    expect(live).not.toContain('<ClassWorkspaceTabs active="records"');
     expect(live).not.toContain('progressHref(window.date, "month", "records")');
   });
 });

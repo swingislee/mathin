@@ -128,7 +128,7 @@ describe("title-bar primary filters", () => {
     const labels = zh.school.followupFilters;
     const panel = container.querySelector('[data-dashboard-command-panel]')!;
     expect([...panel.children].map(child => child.getAttribute("data-dashboard-command-slot"))).toEqual(["state", "filters", "actions"]);
-    expect(panel.textContent).toContain("班级名册"); expect(panel.textContent).toContain("教学记录");
+    expect(panel.textContent).not.toContain("班级名册"); expect(panel.textContent).not.toContain("教学记录");
     expect(panel.textContent).not.toContain("建班");
     expect(container.querySelector('[data-followup-primary-filter]')).toBeNull();
     await click(container.querySelector<HTMLButtonElement>('button[aria-label="班级操作"]')!);
@@ -142,9 +142,11 @@ describe("title-bar primary filters", () => {
     await act(async () => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
     await click([...container.querySelectorAll<HTMLButtonElement>("button")].find(button => button.textContent === zh.school.teachingWorkbench.time.previous_term)!);
     expect(keys("data-placement-classroom")).toEqual(["previous-class"]);
-    const teaching = [...panel.querySelectorAll("a")].find(link => link.textContent === "教学记录")!;
+    await click(container.querySelector<HTMLButtonElement>('button[aria-label="班级操作"]')!);
+    const teaching = [...document.querySelectorAll("a")].find(link => link.textContent === "完成情况")!;
     expect(new URL(teaching.href).searchParams.get("term")).toBe("previous");
     expect(new URL(teaching.href).searchParams.has("state")).toBe(false);
+    await act(async () => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
     await click([...container.querySelectorAll<HTMLButtonElement>("button")].find(button => button.textContent === zh.school.teachingWorkbench.time.current_term)!);
     expect(keys("data-placement-classroom")).toEqual(["full", "open", "unlimited"]);
     expect(actions.move).not.toHaveBeenCalled();

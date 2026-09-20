@@ -15,7 +15,7 @@ export default async function ClassesPage({ params, searchParams }: {
   const canTeach = permissions.has("class.view.mine") || permissions.has("class.view.all");
   const view = typeof query.view === "string" ? query.view : "arrange";
   if (view === "directory" || !query.view && query.scope === "test") return <ClassDirectoryPage params={params} searchParams={searchParams} />;
-  if (canTeach && ["records", "progress", "tasks"].includes(String(view))) {
+  if (canTeach && ["progress", "tasks"].includes(String(view))) {
     return <TeachingWorkspacePage params={params} searchParams={Promise.resolve({ ...query, view: String(view) })} />;
   }
   return <ClassPlacementPage params={params} searchParams={searchParams} />;

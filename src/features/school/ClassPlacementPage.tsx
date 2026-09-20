@@ -8,7 +8,7 @@ import { loadStudentBusinessHistory } from '@/features/school/student-business-h
 import { isTeacherWorkspaceViewer } from "@/features/school/teacher-workspace";
 import { DashboardEmptyCard, DashboardPage } from "@/features/school/dashboard-page";
 import { ClassWorkspaceCommandPanel } from "./ClassWorkspaceCommandPanel";
-import { ClassWorkspaceTabs } from "./ClassWorkspaceTabs";
+import { getClassRosterSessions } from "./class-roster-session-read";
 import { ClassWorkspaceActions } from "./ClassWorkspaceActions";
 import { workEntryMessages, type WorkEntryQuery } from "./work-entry-contract";
 
@@ -29,7 +29,6 @@ export default async function CourseEnrollmentsPage({
     if (!await isTeacherWorkspaceViewer(user.id)) redirect({ locale, href: '/dashboard' });
     const t = await getTranslations("school.followupWorkspace");
     return <DashboardPage title={m.classes} density="compact" commandPanel={<ClassWorkspaceCommandPanel
-      navigation={<ClassWorkspaceTabs active="arrange" canTeach={canTeach} query={query} />}
       actions={<ClassWorkspaceActions canTeach={canTeach} query={query} />}
     />}><DashboardEmptyCard>{t("noTeachingClassForPlacement")}</DashboardEmptyCard></DashboardPage>;
   }
@@ -37,20 +36,29 @@ export default async function CourseEnrollmentsPage({
     loadEnrollmentPlacementBoard(),
     getOrganizationTimezoneV2(), getNow(),
   ]);
+  let sessionsFailed = false;
+  const sessions = canTeach ? await getClassRosterSessions(board.options.classrooms.map(row => row.id)).catch(() => { sessionsFailed = true; return []; }) : [];
+  const focusSessionId = typeof query.session === "string" ? query.session : undefined;
+  const focusedSession = sessions.find(session => session.id === focusSessionId);
+  const focusClassroomId = focusedSession?.classroomId ?? (typeof query.classroom === "string" ? query.classroom : undefined);
+  const focusTermId = focusedSession ? board.options.classrooms.find(row => row.id === focusedSession.classroomId)?.termId : undefined;
 
   return (
     <EnrollmentPlacementWorkbench
-      key={`${query.term ?? ""}:${query.student ?? ""}:${query.classroom ?? ""}`}
+      key={`${query.term ?? ""}:${query.student ?? ""}:${focusClassroomId ?? ""}:${focusSessionId ?? ""}`}
       workspace="classes"
       canTeach={canTeach}
       workspaceQuery={query}
-      focusClassroomId={typeof query.classroom === "string" ? query.classroom : undefined}
+      focusClassroomId={focusClassroomId}
+      focusSessionId={focusSessionId}
+      sessions={sessions}
+      sessionsFailed={sessionsFailed}
       initialBoard={board}
       timeZone={timeZone}
       now={now.getTime()}
       history={permissions.has('enrollment.manage') ? await loadStudentBusinessHistory(locale,{kind:'enrollment',projection:'workbench'}) : null}
       initialQuery={typeof query.q === "string" ? query.q.slice(0,100) : undefined}
-      initialTermId={typeof query.term === "string" ? query.term : undefined}
+      initialTermId={focusTermId ?? (typeof query.term === "string" ? query.term : undefined)}
       focusStudentId={typeof query.student === "string" ? query.student : undefined}
       canCreateClass={permissions.has("class.create")}
       canAdd={permissions.has('enrollment.manage') && permissions.has("followup.write") && permissions.has("followup.view")}

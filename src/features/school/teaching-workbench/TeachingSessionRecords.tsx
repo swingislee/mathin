@@ -1,5 +1,5 @@
 import { useTranslations } from "next-intl";
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink } from "@/components/ui/pagination";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -17,10 +17,11 @@ import { AssignmentQuestionSummary } from "../AssignmentQuestionSummary";
 import { SessionCommunicationHistory } from "../SessionCommunicationHistory";
 import { sessionCommunicationMessages } from "../session-communication-messages";
 
-export function TeachingSessionRecords({ data, locale, timeZone, returnTo, currentHref, pageSize = 20, inline, replay = false }: {
+export function TeachingSessionRecords({ data, locale, timeZone, returnTo, currentHref, pageSize = 20, inline, replay = false, studentWork }: {
   data: TeachingRecords; locale: string; timeZone: string; returnTo: string; currentHref: string; pageSize?: 10 | 20;
   inline?: { onPageChange: (page: number) => void; onPageSizeChange: (size: 10 | 20) => void };
   replay?: boolean;
+  studentWork?: ReactNode;
 }) {
   const t = useTranslations("school.teachingWorkbench.records");
   const reportT = useTranslations("classroom.report");
@@ -41,7 +42,7 @@ export function TeachingSessionRecords({ data, locale, timeZone, returnTo, curre
     return `${path}?${params}`;
   };
   return <div className={inline ? "space-y-3 [&_section>header]:mb-2" : "space-y-7"}>
-    {!replay && <Link className="inline-block text-xs underline underline-offset-4" href={withReturnTo(`/dashboard/sessions/${data.session.id}?stage=post`, currentHref || "/dashboard/classes?view=records")}>
+    {!replay && !studentWork && <Link className="inline-block text-xs underline underline-offset-4" href={withReturnTo(`/dashboard/sessions/${data.session.id}?stage=post`, currentHref || "/dashboard/classes")}>
       {sessionCommunicationMessages(locale).title}
     </Link>}
     {!inline && <DashboardSection title={`${data.session.classroomName} · ${data.session.title || workT("untitled")}`}>
@@ -56,7 +57,7 @@ export function TeachingSessionRecords({ data, locale, timeZone, returnTo, curre
         <p className="text-muted">{workT("observations.basis")} {workT("observations.coverageHint")}</p>
       </div>
       {data.checks.length === 0 && <p className="mb-3 text-sm text-muted">{t("noChecks")}</p>}
-      <DashboardTableShell className={inline ? "rounded-none border-0" : undefined}><Table className={inline ? "text-xs [&_th]:h-9 [&_th]:px-2 [&_td]:px-2 [&_td]:py-1.5" : undefined} containerClassName={inline ? undefined : "max-h-[65vh] overflow-auto"}>
+      {studentWork ?? <DashboardTableShell className={inline ? "rounded-none border-0" : undefined}><Table className={inline ? "text-xs [&_th]:h-9 [&_th]:px-2 [&_td]:px-2 [&_td]:py-1.5" : undefined} containerClassName={inline ? undefined : "max-h-[65vh] overflow-auto"}>
         <TableHeader className={inline ? "bg-card" : "sticky top-0 z-10 bg-card"}><TableRow>
           <TableHead className="min-w-24">{reportT("student")}</TableHead>
           <TableHead className="min-w-20">{reportT("attendance")}</TableHead>
@@ -97,7 +98,7 @@ export function TeachingSessionRecords({ data, locale, timeZone, returnTo, curre
             </TableCell>
           </TableRow>;
         })}</TableBody>
-      </Table></DashboardTableShell>
+      </Table></DashboardTableShell>}
     </DashboardSection>
     <DashboardSection title={homeworkT("overview")}>
       {data.homework === undefined ? <p className="text-xs text-muted">{homeworkT("snapshotUnavailable")}</p>
@@ -107,7 +108,7 @@ export function TeachingSessionRecords({ data, locale, timeZone, returnTo, curre
           <AssignmentQuestionSummary data={item} />
         </div>)}
     </DashboardSection>
-    {data.sessionCommunications?.canRead && <DashboardSection title={sessionCommunicationMessages(locale).title}>
+    {!studentWork && data.sessionCommunications?.canRead && <DashboardSection title={sessionCommunicationMessages(locale).title}>
       <SessionCommunicationHistory records={data.sessionCommunications.records} locale={locale} timeZone={timeZone} studentNames={Object.fromEntries(students)} />
     </DashboardSection>}
     <DashboardSection title={t("contacts")} description={replay ? workT("replay.contactsHint") : t("contactsHint")}>

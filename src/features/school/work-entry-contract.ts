@@ -41,12 +41,14 @@ export function workEntryHref(path: string, query: WorkEntryQuery = {}, override
 }
 
 export function classWorkHref(view: ClassWorkView, query: WorkEntryQuery = {}) {
+  if (view === "records") view = "arrange";
   const term = query.term === "all" && view !== "arrange" ? undefined : typeof query.term === "string" ? query.term : undefined;
   return workEntryHref("/dashboard/classes", query, { view,
-    term, period: view === "records" && term && !query.period ? "term" : typeof query.period === "string" ? query.period : undefined,
+    term, period: view === "arrange" ? undefined : typeof query.period === "string" ? query.period : undefined,
+    date: view === "arrange" ? undefined : typeof query.date === "string" ? query.date : undefined,
     page: undefined, contactPage: undefined, state: undefined,
     // 字段筛选的列定义属于各自视图；班级、老师、期次等共同定位继续保留。
-    fields: undefined, session: view === "records" && typeof query.session === "string" ? query.session : undefined });
+    fields: undefined, session: view === "arrange" && typeof query.session === "string" ? query.session : undefined });
 }
 
 export function communicationEntryMode(row: StudentStageRow): StudentEntryMode {

@@ -15,10 +15,10 @@ describe("work entry context", () => {
   it("retains class, teacher and period while clearing view-specific paging and fields", () => {
     const href = classWorkHref("records", { classroom: "class-a", teacher: "teacher-a", term: "term-a", page: "3", contactPage: "2", fields: "old" });
     const query = new URL(href, "http://test.invalid").searchParams;
-    expect(Object.fromEntries(query)).toEqual({ classroom: "class-a", teacher: "teacher-a", term: "term-a", view: "records", period: "term" });
-    expect(classWorkHref("arrange", { classroom: "class-a", session: "lesson-a" })).not.toContain("session=");
+    expect(Object.fromEntries(query)).toEqual({ classroom: "class-a", teacher: "teacher-a", term: "term-a", view: "arrange" });
+    expect(classWorkHref("arrange", { classroom: "class-a", session: "lesson-a" })).toContain("session=lesson-a");
     expect(classWorkHref("arrange", { term: "all", state: "historical" })).toBe("/dashboard/classes?term=all&view=arrange");
-    expect(classWorkHref("records", { term: "all", period: "term", group: "teacher", state: "current" })).toBe("/dashboard/classes?period=term&group=teacher&view=records");
+    expect(classWorkHref("records", { term: "all", period: "term", group: "teacher", state: "current" })).toBe("/dashboard/classes?term=all&group=teacher&view=arrange");
   });
 
   it("keeps the student's existing route default and scopes communication pagination to communication", () => {

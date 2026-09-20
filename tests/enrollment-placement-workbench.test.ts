@@ -88,7 +88,8 @@ describe("enrollment placement class roster", () => {
     expect(row.cells[3].content).toContain("standard");
     expect(studentKeys(row.cells[4].content)).toEqual(["assigned-fourth", "paused-fourth"]);
     expect(row.cells[0].content).toContain('href="/dashboard/classes/autumn-4"');
-    expect(row.cells[0].content).toContain('href="/dashboard/classes?classroom=autumn-4&amp;term=autumn&amp;period=term&amp;view=records"');
+    expect(row.cells[0].content).not.toContain('view=records');
+    expect(rows.find(row => row.attributes.includes('data-class-session-strip="autumn-4"'))?.content).toContain("尚未安排课次");
   });
   it("includes all periods and source arrangements when no current period is configured", () => {
     const initialBoard = { ...board, options: { ...board.options, terms: board.options.terms.map(term => ({ ...term, isCurrent: false })) } };

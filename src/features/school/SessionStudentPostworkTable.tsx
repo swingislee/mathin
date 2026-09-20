@@ -26,15 +26,19 @@ import { SessionCommunicationEntry } from "./SessionCommunicationEntry";
 import { SessionCommunicationHistory } from "./SessionCommunicationHistory";
 
 export interface SessionStudentPostworkRow {
-  studentId: string; displayName: string; attendanceStatus: "present" | "absent" | "late" | "leave" | null; stars: number;
+  studentId: string; displayName: string; attendanceStatus: "present" | "absent" | "late" | "leave" | null; stars: number | null;
+  attendanceNote?: string;
+  reviewSource?: { author: string | null; at: string };
   checks: Array<{ id: string; title: string; status: "explained" | "independent" | "prompted" | "imitated" | "incomplete" | "unchecked" }>;
 }
 
 const GROUP_KEY = "class";
 
-export function SessionStudentPostworkTable({ sessionId, rows, initialReviews, resultStatus, canWriteReview, initialCommunications, locale, timeZone, today }: {
+export function SessionStudentPostworkTable({ sessionId, rows, initialReviews, resultStatus, canWriteReview, initialCommunications, locale, timeZone, today, onDirtyChange, onReviewsSaved }: {
   sessionId: string; rows: SessionStudentPostworkRow[]; initialReviews: ReviewRecord[]; resultStatus: LearningResultStatus;
   canWriteReview: boolean; initialCommunications: SessionCommunications; locale: string; timeZone: string; today: string;
+  onDirtyChange?: (dirty: boolean) => void;
+  onReviewsSaved?: (records: ReviewRecord[]) => void;
 }) {
   const t = useTranslations("school.session");
   const reviewT = useTranslations("school.reviews");
@@ -45,6 +49,10 @@ export function SessionStudentPostworkTable({ sessionId, rows, initialReviews, r
   const [status, setStatus] = useState(resultStatus);
   const [reviewSaveState, setReviewSaveState] = useState<"saved" | "saving" | "error">("saved");
   const reviewsRef = useRef(reviews);
+  const savedReviewsRef = useRef(initialReviews);
+  const onReviewsSavedRef = useRef(onReviewsSaved);
+  useEffect(() => { onReviewsSavedRef.current = onReviewsSaved; }, [onReviewsSaved]);
+  const dirtyReviewsRef = useRef(new Set<string>());
   const sequenceRef = useRef(0);
   const savedSequenceRef = useRef(0);
   const timerRef = useRef<number | null>(null);
@@ -69,10 +77,15 @@ export function SessionStudentPostworkTable({ sessionId, rows, initialReviews, r
     if (savedSequenceRef.current === sequenceRef.current) return true;
     const sequence = sequenceRef.current;
     setReviewSaveState("saving");
-    const request = saveSessionReviewsAction(sessionId, reviewsRef.current).then(result => {
+    const changed = reviewsRef.current.filter(review => dirtyReviewsRef.current.has(review.studentId));
+    const request = saveSessionReviewsAction(sessionId, changed).then(result => {
       if (!result.ok) { setReviewSaveState("error"); return false; }
+      const saved = new Map(changed.map(review => [review.studentId, review]));
+      savedReviewsRef.current = savedReviewsRef.current.map(review => saved.get(review.studentId) ?? review);
+      onReviewsSavedRef.current?.(changed);
+      for (const review of changed) if (reviewsRef.current.find(current => current.studentId === review.studentId) === review) dirtyReviewsRef.current.delete(review.studentId);
       savedSequenceRef.current = sequence;
-      setReviewSaveState("saved");
+      setReviewSaveState(sequenceRef.current === sequence ? "saved" : "saving");
       setStatus(current => current === "published" || current === "withdrawn" ? "revised" : current);
       if (sequenceRef.current !== sequence) timerRef.current = window.setTimeout(() => void flushRef.current(), 1000);
       return true;
@@ -82,12 +95,15 @@ export function SessionStudentPostworkTable({ sessionId, rows, initialReviews, r
   }, [sessionId]);
   useEffect(() => { flushRef.current = flushReviews; }, [flushReviews]);
   useEffect(() => () => { if (timerRef.current) window.clearTimeout(timerRef.current); void flushReviews(); }, [flushReviews]);
+  const hasDrafts = Object.values(dirty).some(Boolean) || reviewSaveState !== "saved" || Boolean(pendingKey);
+  useEffect(() => { onDirtyChange?.(hasDrafts); }, [hasDrafts, onDirtyChange]);
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
   useEffect(() => {
-    if (!Object.values(dirty).some(Boolean)) return;
+    if (!hasDrafts) return;
     const onUnload = (event: BeforeUnloadEvent) => { event.preventDefault(); };
     window.addEventListener("beforeunload", onUnload);
     return () => window.removeEventListener("beforeunload", onUnload);
-  }, [dirty]);
+  }, [hasDrafts]);
   useEffect(() => {
     if (focusNextRef.current && expanded && drafts[expanded]) {
       document.getElementById(`communication-${drafts[expanded].id}-content`)?.focus();
@@ -100,6 +116,7 @@ export function SessionStudentPostworkTable({ sessionId, rows, initialReviews, r
   }, { successMessage: t("studentReviewsPublishedToast"), errorMessage: { default: reviewT("failed") },
     onSuccess: () => { setStatus("published"); router.refresh(); } });
   const updateComment = (studentId: string, comment: string) => {
+    dirtyReviewsRef.current.add(studentId);
     const next = reviewsRef.current.map(review => review.studentId === studentId ? { ...review, comment } : review);
     reviewsRef.current = next; setReviews(next); sequenceRef.current += 1; setReviewSaveState("saving");
     if (timerRef.current) window.clearTimeout(timerRef.current);
@@ -154,7 +171,12 @@ export function SessionStudentPostworkTable({ sessionId, rows, initialReviews, r
       <DashboardCommandActions>
         {communications.canWrite && !communications.completed && <Button size="sm" variant="secondary" disabled={Boolean(pendingKey) || !progress.canComplete || Object.values(dirty).some(Boolean)} onClick={() => void finish()}>{m.complete}</Button>}
         {canWriteReview && status === "published" && <LearningResultWithdrawButton mode="sessionReviews" targetId={sessionId} disabled={pendingReviews} onSuccess={() => setStatus("withdrawn")} />}
-        {canWriteReview && reviewSaveState === "error" && <Button size="sm" variant="ghost" onClick={() => void flushReviews()}>{t("retry")}</Button>}
+        {canWriteReview && reviewSaveState === "error" && <><Button size="sm" variant="ghost" onClick={() => void flushReviews()}>{t("retry")}</Button>
+          <Button size="sm" variant="ghost" onClick={() => {
+            if (timerRef.current) window.clearTimeout(timerRef.current);
+            dirtyReviewsRef.current.clear(); sequenceRef.current = savedSequenceRef.current;
+            reviewsRef.current = savedReviewsRef.current; setReviews(savedReviewsRef.current); setReviewSaveState("saved");
+          }}>{locale.startsWith("en") ? "Discard unsaved feedback" : "放弃未保存课评"}</Button></>}
         {canWriteReview && <Button size="sm" disabled={pendingReviews} onClick={() => publishReviews.run()}>{t(["published", "withdrawn", "revised"].includes(status) ? "republish" : "publishStudentReviews")}</Button>}
       </DashboardCommandActions>
     </DashboardCommandPanel>
@@ -178,7 +200,7 @@ export function SessionStudentPostworkTable({ sessionId, rows, initialReviews, r
             detailsId={detailsId} title={title} colSpan={6} summary={<>
               <TableCell className="sticky left-0 z-10 bg-inherit"><div className="flex items-center gap-1"><DashboardRowDisclosure expanded={expanded === key} controls={detailsId} label={title} onToggle={() => open(key, expanded !== key)} />
                 <span className="font-medium">{title}</span></div>{dirty[key] && <p className="text-[11px] text-muted">{m.draft}</p>}</TableCell>
-              <TableCell>{row ? row.attendanceStatus ? reportT(`attendance_${row.attendanceStatus}`) : reportT("notCaptured") : m.allStudents}</TableCell>
+              <TableCell>{row ? row.attendanceStatus ? reportT(`attendance_${row.attendanceStatus}`) : reportT("notCaptured") : m.allStudents}{row?.attendanceNote && <p className="mt-1 max-w-40 whitespace-pre-wrap text-muted">{row.attendanceNote}</p>}</TableCell>
               <TableCell><div className="flex max-w-40 flex-wrap gap-1">{row?.checks.map(check => <LearningCheckStatusMark key={check.id} status={check.status} detail={check.title} solid />)}</div></TableCell>
               <TableCell className="max-w-56"><p className="line-clamp-2 whitespace-pre-wrap">{review?.comment || "—"}</p></TableCell>
               <TableCell><span>{communications.canRead ? latest ? m.outcomes[latest.outcome] : m.pending : "—"}</span><p className="mt-1 max-w-56 line-clamp-2 text-muted">{latest?.content}</p></TableCell>
@@ -186,12 +208,15 @@ export function SessionStudentPostworkTable({ sessionId, rows, initialReviews, r
             </>}>
             <div className="grid gap-4 @4xl/followup-entry:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
               <div className="space-y-3">
-                {row && <div className="flex flex-wrap items-center gap-2">{row.checks.map(check => <span key={check.id} className="inline-flex items-center gap-1"><LearningCheckStatusMark status={check.status} detail={check.title} solid />{check.title}</span>)}<span className="text-muted">★ {row.stars}</span></div>}
-                {canWriteReview && review && <div><Label htmlFor={`review-${key}`} className="text-xs">{m.teacherFeedback}</Label><Input id={`review-${key}`} value={review.comment} maxLength={2000} onChange={event => updateComment(key, event.target.value)} placeholder={t("studentReviewInputPlaceholder")} /></div>}
+                {row && <div className="flex flex-wrap items-center gap-2">{row.checks.map(check => <span key={check.id} className="inline-flex items-center gap-1"><LearningCheckStatusMark status={check.status} detail={check.title} solid />{check.title}</span>)}{row.stars !== null && <span className="text-muted">★ {row.stars}</span>}</div>}
+                {review && <dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">{(["entryScore", "exitScore", "focus", "participation", "mastery"] as const).filter(field => review[field] !== null).map(field => <div key={field}><dt className="inline">{reviewT(field === "entryScore" ? "entry" : field === "exitScore" ? "exit" : field)}：</dt><dd className="inline">{review[field]}</dd></div>)}</dl>}
+                {row?.reviewSource?.at && <p className="text-xs text-muted">{row.reviewSource.author} · {new Intl.DateTimeFormat(locale, { timeZone, dateStyle: "medium", timeStyle: "short" }).format(new Date(row.reviewSource.at))}</p>}
+                {canWriteReview && review && <div><Label htmlFor={`review-${sessionId}-${key}`} className="text-xs">{m.teacherFeedback}</Label><Input id={`review-${sessionId}-${key}`} value={review.comment} maxLength={2000} onChange={event => updateComment(key, event.target.value)} placeholder={t("studentReviewInputPlaceholder")} /></div>}
                 {communications.canWrite && (drafts[key] ? <SessionCommunicationEntry draft={drafts[key]} locale={locale} pending={pendingKey === key} group={!row}
                   error={error[key]} hasNext={keys.indexOf(key) < keys.length - 1} onSave={next => void save(key, next)}
                   onChange={patch => { setDrafts(current => ({ ...current, [key]: { ...current[key], ...patch } })); setDirty(current => ({ ...current, [key]: true })); setFeedback(current => ({ ...current, [key]: "" })); }} />
                   : <div className="flex items-center gap-2"><span role="status" className="text-xs text-leaf-deep">{feedback[key]}</span><Button size="sm" variant="secondary" onClick={() => open(key)}>{m.addAnother}</Button></div>)}
+                {dirty[key] && <Button size="sm" variant="ghost" disabled={Boolean(pendingKey)} onClick={() => { setDrafts(current => removeCommunicationDraft(current, key)); setDirty(current => ({ ...current, [key]: false })); }}>{locale.startsWith("en") ? "Discard this draft" : "放弃本条沟通草稿"}</Button>}
               </div>
               {communications.canRead && <SessionCommunicationHistory records={communications.records.filter(record => record.studentId === (row ? key : null))} locale={locale} timeZone={timeZone} />}
             </div>

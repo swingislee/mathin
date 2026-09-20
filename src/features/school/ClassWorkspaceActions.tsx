@@ -8,13 +8,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Link } from "@/i18n/navigation";
 import { classWorkHref, workEntryMessages, type ClassWorkView, type WorkEntryQuery } from "./work-entry-contract";
 
-/** 视图由主标签切换；筛选、建班与辅助管理统一放入更多操作。 */
+/** 班级主体连续办理；统计、筛选、建班与辅助管理放入更多操作。 */
 export function ClassWorkspaceActions({ canTeach, query, canCreateClass = false, filters, filtered = false }: {
   canTeach: boolean; query: WorkEntryQuery; canCreateClass?: boolean; filters?: ReactNode; filtered?: boolean;
 }) {
   const m = workEntryMessages(useLocale());
   const t = useTranslations("school.enrollmentWorkflow");
-  const views: ClassWorkView[] = [...(canTeach ? ["tasks"] as const : []), "directory"];
+  const views: ClassWorkView[] = [...(canTeach ? ["progress", "tasks"] as const : []), "directory"];
   return <Popover><PopoverTrigger asChild><Button variant="ghost" size="sm" className="relative size-8 p-0" aria-label={filtered ? `${m.classActions} · ${m.filteredRoster}` : m.classActions} title={m.classActions}><Ellipsis className="size-4" aria-hidden />{filtered ? <span aria-hidden className="absolute right-0.5 top-0.5 size-1.5 rounded-full bg-rose" /> : null}</Button></PopoverTrigger>
     <PopoverContent align="end" className={filters ? "w-80 max-w-[calc(100vw-2rem)] space-y-3 p-3" : "w-44 p-1"}>
       {filters ? <section aria-label={m.rosterFilters} className="space-y-2"><p className="text-xs font-medium">{m.rosterFilters}</p>{filters}</section> : null}
