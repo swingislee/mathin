@@ -29,15 +29,18 @@ function detail(sessionId: string): ClassSessionDetail {
 }
 const sessions: ClassRosterSession[] = ["previous", "today"].map((id, index) => ({ id, classroomId: "class", title: id,
   scheduledAt: index ? "2026-09-20T02:00:00Z" : "2026-09-13T02:00:00Z", startedAt: null, endedAt: null, attendanceCount: index, reviewCount: index }));
-function Harness() {
-  const [expanded, setExpanded] = useState(false), [dirty, setDirty] = useState(false);
+function Harness({ requestedId, empty = false }: { requestedId?: string; empty?: boolean }) {
+  const [expanded, setExpanded] = useState(Boolean(requestedId)), [dirty, setDirty] = useState(false);
   return h(NextIntlClientProvider, { locale: "zh", messages, timeZone: "Asia/Shanghai", children: h("table", {}, h("tbody", {},
-    h(ClassRosterSessionRow, { classroomId: "class", sessions, locale: "zh", timeZone: "Asia/Shanghai", now: Date.parse("2026-09-20T01:00:00Z"),
-      expanded, canChange: () => !dirty, onExpandedChange: setExpanded, onDirtyChange: setDirty }))) });
+    h(ClassRosterSessionRow, { classroomId: "class", classroomName: "示例班", sessions: empty ? [] : sessions, locale: "zh", timeZone: "Asia/Shanghai", now: Date.parse("2026-09-20T01:00:00Z"), requestedId,
+      rowProps: { "data-test-class": true }, expanded, canChange: () => !dirty, onExpandedChange: setExpanded, onDirtyChange: setDirty,
+      children: disclosure => h("td", { colSpan: 5 }, disclosure, "示例班 · 老师 · 时间 · 难度 · 全班学生") }))) });
 }
 let root: Root, container: HTMLDivElement;
 const click = async (element: HTMLElement) => { expect(element).toBeTruthy(); await act(async () => element.click()); };
 const button = (label: string) => [...container.querySelectorAll<HTMLButtonElement>("button")].find(item => item.textContent?.includes(label))!;
+const classToggle = () => container.querySelector<HTMLButtonElement>('[data-test-class] button')!;
+const sessionRow = (id: string) => container.querySelector<HTMLElement>(`[data-class-session-row="${id}"]`)!;
 async function fill(input: HTMLInputElement | HTMLTextAreaElement, text: string) {
   expect(input).toBeTruthy();
   await act(async () => { Object.getOwnPropertyDescriptor(input instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype, "value")!.set!.call(input, text);
@@ -59,15 +62,23 @@ beforeEach(async () => {
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe("班级下直接连续登记", () => {
-  it("首次只显示课次条；展开本课、保存并下一位，草稿阻止切课且失败保留", async () => {
+  it("班级行下展开课次后再打开登记，草稿阻止切课且失败保留，保存后连续填写下一位", async () => {
     expect(deps.fetch).not.toHaveBeenCalled();
-    expect(container.textContent).toContain("考勤 1 · 课评 1");
-    await click(button("查看 / 登记"));
+    expect(container.querySelectorAll("tr")).toHaveLength(1);
+    expect(container.querySelector('[role="combobox"]')).toBeNull();
+    await click(classToggle());
+    expect(deps.fetch).not.toHaveBeenCalled();
+    expect([...container.querySelectorAll("[data-class-session-row]")].map(row => row.getAttribute("data-class-session-row"))).toEqual(["today", "previous"]);
+    expect(sessionRow("today").textContent).toContain("考勤 1");
+    expect(sessionRow("today").textContent).toContain("课评 1");
+    await click(sessionRow("today"));
     expect(deps.fetch.mock.calls[0][0]).toContain("/classes/session-detail");
     expect(container.querySelector('[data-session-id="today"]')).not.toBeNull();
     await click(container.querySelector<HTMLElement>(`[data-followup-row-key="${first}"]`)!);
     await fill(container.querySelector("textarea")!, "已沟通的内容");
-    await click(container.querySelector<HTMLButtonElement>('[aria-label="上一课"]')!);
+    await click(sessionRow("previous"));
+    expect(container.querySelector('[data-session-id="today"]')).not.toBeNull();
+    await click(classToggle());
     expect(container.querySelector('[data-session-id="today"]')).not.toBeNull();
     deps.record.mockResolvedValueOnce({ ok: false, code: "ERROR" });
     await click(button("保存并下一位"));
@@ -75,19 +86,38 @@ describe("班级下直接连续登记", () => {
     await click(button("保存并下一位"));
     expect(deps.record).toHaveBeenLastCalledWith(expect.objectContaining({ sessionId: "today", studentId: first, content: "已沟通的内容" }));
     expect(container.querySelector(`[data-followup-row-key="${second}"]`)?.getAttribute("aria-expanded")).toBe("true");
-    await click(container.querySelector<HTMLButtonElement>('[aria-label="上一课"]')!);
+    await click(sessionRow("previous"));
     expect(container.querySelector('[data-session-id="previous"]')).not.toBeNull();
+    expect(container.querySelector('[data-session-id="today"]')).toBeNull();
   });
   it("课评只保存编辑过的学生，自动保存完成后才能切换", async () => {
-    await click(button("查看 / 登记"));
+    await click(classToggle());
+    await click(sessionRow("today"));
     await click(container.querySelector<HTMLElement>(`[data-followup-row-key="${second}"]`)!);
     vi.useFakeTimers();
     await fill(container.querySelector<HTMLInputElement>(`input[id="review-today-${second}"]`)!, "临时学生的点评");
-    await click(container.querySelector<HTMLButtonElement>('[aria-label="上一课"]')!);
+    await click(sessionRow("previous"));
     expect(container.querySelector('[data-session-id="today"]')).not.toBeNull();
     await act(async () => { await vi.advanceTimersByTimeAsync(1100); });
     expect(deps.save).toHaveBeenCalledExactlyOnceWith("today", [expect.objectContaining({ studentId: second, comment: "临时学生的点评" })]);
-    await click(container.querySelector<HTMLButtonElement>('[aria-label="上一课"]')!);
+    await click(sessionRow("previous"));
     expect(container.querySelector('[data-session-id="previous"]')).not.toBeNull();
+  });
+  it("课次深链接展开两层，收起再打开班级只显示课次名单", async () => {
+    await act(async () => root.render(h(Harness, { key: "focused", requestedId: "previous" })));
+    expect(container.querySelector('[data-session-id="previous"]')).not.toBeNull();
+    expect(sessionRow("previous").nextElementSibling?.querySelector('[data-session-id="previous"]')).not.toBeNull();
+    await click(classToggle());
+    expect(container.querySelectorAll("tr")).toHaveLength(1);
+    await click(classToggle());
+    expect(container.querySelectorAll("[data-class-session-row]")).toHaveLength(2);
+    expect(container.querySelector("[data-class-session-editor]")).toBeNull();
+  });
+  it("未排课只在班级展开后显示空状态", async () => {
+    await act(async () => root.render(h(Harness, { key: "empty", empty: true })));
+    expect(container.textContent).not.toContain("尚未安排课次");
+    await click(classToggle());
+    expect(container.textContent).toContain("尚未安排课次");
+    expect(deps.fetch).not.toHaveBeenCalled();
   });
 });

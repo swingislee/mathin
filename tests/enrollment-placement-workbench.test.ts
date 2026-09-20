@@ -89,7 +89,9 @@ describe("enrollment placement class roster", () => {
     expect(studentKeys(row.cells[4].content)).toEqual(["assigned-fourth", "paused-fourth"]);
     expect(row.cells[0].content).toContain('href="/dashboard/classes/autumn-4"');
     expect(row.cells[0].content).not.toContain('view=records');
-    expect(rows.find(row => row.attributes.includes('data-class-session-strip="autumn-4"'))?.content).toContain("尚未安排课次");
+    expect(rows.some(row => row.attributes.includes('data-class-session-strip'))).toBe(false);
+    expect(row.cells[0].content).toContain('aria-label="展开autumn-4的课次"');
+    expect(rows.some(row => row.content.includes('选择课次'))).toBe(false);
   });
   it("includes all periods and source arrangements when no current period is configured", () => {
     const initialBoard = { ...board, options: { ...board.options, terms: board.options.terms.map(term => ({ ...term, isCurrent: false })) } };
