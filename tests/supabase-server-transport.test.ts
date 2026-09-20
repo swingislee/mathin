@@ -51,6 +51,70 @@ describe("server Supabase transport", () => {
     }
   });
 
+  it("preserves a signing Request's credentials, payload and cancellation", async () => {
+    const controller = new AbortController();
+    const transport = vi.fn<typeof fetch>().mockResolvedValue(Response.json([]));
+    const send = createSupabaseServerFetch(canonical, gateway, transport)!;
+    const request = new Request(`${canonical}/storage/v1/object/sign/avatars`, {
+      method: "POST", body: JSON.stringify({ paths: ["a.png"], expiresIn: 60 }),
+      headers: { authorization: "Bearer fixture-user", apikey: "fixture-publishable" },
+      signal: controller.signal, cache: "no-store",
+    });
+    await send(request);
+    const forwarded = transport.mock.calls[0][0] as Request;
+    expect(forwarded.url).toBe(`${gateway}/storage/v1/object/sign/avatars`);
+    expect(forwarded.method).toBe("POST");
+    expect(await forwarded.json()).toEqual({ paths: ["a.png"], expiresIn: 60 });
+    expect(forwarded.headers.get("authorization")).toBe("Bearer fixture-user");
+    expect(forwarded.headers.get("apikey")).toBe("fixture-publishable");
+    expect(forwarded.cache).toBe("no-store");
+    controller.abort();
+    expect(forwarded.signal.aborted).toBe(true);
+  });
+
+  it("uses the caller's method override when routing signing requests", async () => {
+    const transport = vi.fn<typeof fetch>().mockResolvedValue(Response.json([]));
+    const send = createSupabaseServerFetch(canonical, gateway, transport)!;
+    const request = new Request(`${canonical}/storage/v1/object/sign/avatars`);
+    const init = { method: "post", body: '{"paths":["a.png"],"expiresIn":60}' };
+    await send(request, init);
+    expect((transport.mock.calls[0][0] as Request).url).toBe(`${gateway}/storage/v1/object/sign/avatars`);
+    expect(transport.mock.calls[0][1]).toBe(init);
+    const postRequest = new Request(request, { method: "POST" });
+    await send(postRequest, { method: "GET" });
+    expect(transport.mock.lastCall?.[0]).toBe(postRequest);
+  });
+
+  it.each([
+    ["GET", `${canonical}/storage/v1/object/sign/avatars/a.png?token=fixture`],
+    ["HEAD", `${canonical}/storage/v1/object/sign/avatars/a.png?token=fixture`],
+    ["DELETE", `${canonical}/storage/v1/object/sign/avatars/a.png`],
+    ["POST", `${canonical}/storage/v1/object/upload/sign/avatars/a.png`],
+    ["POST", `${canonical}/storage/v1/object/avatars/a.png`],
+    ["POST", `${canonical}/storage/v1/object/signature/avatars/a.png`],
+    ["POST", "https://another.example.test/storage/v1/object/sign/avatars"],
+  ])("keeps non-signing traffic on its current transport: %s %s", async (method, input) => {
+    const transport = vi.fn<typeof fetch>().mockResolvedValue(Response.json({}));
+    const send = createSupabaseServerFetch(canonical, gateway, transport)!;
+    const init = { method };
+    await send(input, init);
+    expect(transport.mock.calls[0]).toEqual([input, init]);
+  });
+
+  it("returns signing failures without retrying or changing credentials", async () => {
+    const denied = Response.json({ message: "permission denied" }, { status: 403 });
+    const transport = vi.fn<typeof fetch>().mockResolvedValue(denied);
+    const send = createSupabaseServerFetch(canonical, gateway, transport)!;
+    const init = { method: "POST", headers: { authorization: "Bearer fixture-user" } };
+    const url = `${canonical}/storage/v1/object/sign/avatars`;
+    expect(await send(url, init)).toBe(denied);
+    expect(transport).toHaveBeenCalledTimes(1);
+    expect(transport.mock.calls[0][1]).toBe(init);
+    transport.mockRejectedValueOnce(new Error("connection refused"));
+    await expect(send(url, init)).rejects.toThrow("connection refused");
+    expect(transport).toHaveBeenCalledTimes(2);
+  });
+
   it("returns authentication and database failures without retrying through another origin", async () => {
     const denied = Response.json({ message: "permission denied" }, { status: 403 });
     const transport = vi.fn<typeof fetch>().mockResolvedValue(denied);
@@ -70,6 +134,14 @@ describe("server Supabase transport", () => {
       const transport: typeof fetch = async (input, init) => {
         const url = String(input);
         requests.push({ url, authorization: new Headers(init?.headers).get("authorization") });
+        if (url.includes("/storage/v1/object/sign/")) {
+          expect(init?.method).toBe("POST");
+          const body = JSON.parse(String(init?.body));
+          expect(body.expiresIn).toBe(60);
+          return Response.json(Array.isArray(body.paths)
+            ? body.paths.map((path: string) => ({ path, error: null, signedURL: `/object/sign/avatars/${path}?token=fixture-${identity}` }))
+            : { signedURL: `/object/sign/avatars/a.png?token=fixture-${identity}` });
+        }
         return Response.json(url.includes("/token?")
           ? { access_token: token, token_type: "bearer", expires_in: 3600, refresh_token: `fixture-refresh-${identity}`, user: { id: identity, app_metadata: {}, user_metadata: {}, aud: "authenticated", created_at: "2026-01-01T00:00:00Z" } }
           : [{ visible_to: identity }]);
@@ -83,6 +155,14 @@ describe("server Supabase transport", () => {
       expect(requests.at(-1)?.authorization).toBe(`Bearer ${token}`);
       expect(cookieWrites.some(cookie => cookie.name.startsWith("sb-project-auth-token"))).toBe(true);
       expect(client.storage.from("avatars").getPublicUrl("a.png").data.publicUrl).toBe(`${canonical}/storage/v1/object/public/avatars/a.png`);
+      const single = await client.storage.from("avatars").createSignedUrl("a.png", 60);
+      expect(single.error).toBeNull();
+      expect(single.data?.signedUrl).toBe(`${canonical}/storage/v1/object/sign/avatars/a.png?token=fixture-${identity}`);
+      expect(requests.at(-1)?.authorization).toBe(`Bearer ${token}`);
+      const batch = await client.storage.from("avatars").createSignedUrls(["a.png", "b.png"], 60);
+      expect(batch.error).toBeNull();
+      expect(batch.data?.map(item => item.signedUrl)).toEqual(["a.png", "b.png"].map(path => `${canonical}/storage/v1/object/sign/avatars/${path}?token=fixture-${identity}`));
+      expect(requests.at(-1)?.authorization).toBe(`Bearer ${token}`);
     }
     expect(requests.every(request => request.url.startsWith(gateway))).toBe(true);
   });

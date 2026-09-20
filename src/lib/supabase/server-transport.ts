@@ -16,7 +16,10 @@ export function createSupabaseServerFetch(
   const canonical = new URL(publicUrl);
   return (input, init) => {
     const url = new URL(input instanceof Request ? input.url : input);
-    const isDataRequest = url.pathname.startsWith("/auth/v1/") || url.pathname.startsWith("/rest/v1/");
+    const method = (init?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase();
+    // 签名也是页面读取的一环；仅转发签名 POST，SDK 仍生成公开域名的资源链接。
+    const isStorageSigning = method === "POST" && url.pathname.startsWith("/storage/v1/object/sign/");
+    const isDataRequest = url.pathname.startsWith("/auth/v1/") || url.pathname.startsWith("/rest/v1/") || isStorageSigning;
     if (url.origin !== canonical.origin || !isDataRequest) return transport(input, init);
     const target = new URL(url.pathname + url.search, destination);
     return transport(input instanceof Request ? new Request(target, input) : target, init);
