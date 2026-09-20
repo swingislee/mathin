@@ -73,6 +73,7 @@ interface UseH5PointerBridgeResult {
 
 const HELLO_RETRY_MS = 400;
 const HANDSHAKE_TIMEOUT_MS = 2_000;
+const RECONNECT_DELAY_MS = 2_000;
 const PING_INTERVAL_MS = 2_000;
 const WATCHDOG_TIMEOUT_MS = 6_000;
 
@@ -194,7 +195,7 @@ export function useH5PointerBridge({
     if (gestureKeyRef.current !== gestureKey) {
       gestureKeyRef.current = gestureKey;
       abortActive();
-      framesRef.current.clear();
+      // iframe 自己的注册 effect 负责换页清理；子组件可能已注册新页，父 effect 保留该连接。
     }
     const bridgeMode = enabled && mode === "smart" && tool === "pen" ? "smart" : "interaction-lock";
     for (const frame of framesRef.current.values()) {
@@ -405,9 +406,19 @@ export function useH5PointerBridge({
     const timer = window.setInterval(() => {
       const now = performance.now();
       for (const frame of framesRef.current.values()) {
+        if (frame.status === "timeout") {
+          if (now - frame.lastHelloAt < RECONNECT_DELAY_MS) continue;
+          frame.channelToken = newId();
+          frame.status = "pending";
+          frame.registeredAt = frame.lastHelloAt = frame.lastSeenAt = frame.lastPingAt = frame.rateWindowAt = now;
+          frame.rateCount = 0;
+          postToFrame(frame, h5PointerParentMessage("pointer_hello", frame.frameId, frame.channelToken));
+          continue;
+        }
         if (frame.status === "pending") {
           if (now - frame.registeredAt >= HANDSHAKE_TIMEOUT_MS) {
             frame.status = "timeout";
+            frame.lastHelloAt = now;
             continue;
           }
           if (now - frame.lastHelloAt >= HELLO_RETRY_MS) {
@@ -429,6 +440,7 @@ export function useH5PointerBridge({
             { mode: "interaction-lock" },
           ));
           frame.status = "timeout";
+          frame.lastHelloAt = now;
           abortActive(frame);
           continue;
         }
