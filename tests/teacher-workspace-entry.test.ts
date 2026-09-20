@@ -79,4 +79,17 @@ describe("teacher entry and placement access", () => {
     const page = await EnrollmentsPage({ params, searchParams: Promise.resolve({ session: "lesson", classroom: "stale-class", term: "stale-term" }) });
     expect(page.props).toMatchObject({ focusSessionId: "lesson", focusClassroomId: "actual-class", initialTermId: "actual-term" });
   });
+  it("loads authorized history while the board is pending and waits for the board before reading lessons", async () => {
+    mocks.capability.mockResolvedValue(true);
+    mocks.permissions.mockResolvedValue(new Set(["enrollment.manage", "class.view.all"]));
+    let release!: (value: typeof board) => void;
+    mocks.board.mockImplementation(()=>new Promise(resolve=>{release=resolve;}));
+    mocks.history.mockResolvedValue({enrollments:[]});
+    const pending=EnrollmentsPage({params,searchParams:Promise.resolve({})});
+    await vi.waitFor(()=>expect(mocks.history).toHaveBeenCalledWith("zh",{kind:"enrollment",projection:"workbench"}));
+    expect(mocks.sessions).not.toHaveBeenCalled();
+    release(board);
+    expect((await pending).props.history).toEqual({enrollments:[]});
+    expect(mocks.sessions).toHaveBeenCalledWith([]);
+  });
 });

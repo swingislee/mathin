@@ -31,12 +31,15 @@ async function RenewalsContent({
   const permissions = await getMyPerms(user.id);
   const canWrite = permissions.has("followup.write");
   const cycle = typeof raw.cycle === "string" ? raw.cycle : null;
-  const data = await loadRenewalWorkspace(cycle);
-  const supplement = await loadRenewalPoolSupplement(data, user.id);
+  const [{ data, supplement }, timeZone, history] = await Promise.all([
+    loadRenewalWorkspace(cycle).then(async data => ({ data, supplement: await loadRenewalPoolSupplement(data, user.id) })),
+    getOrganizationTimezoneV2(),
+    loadStudentBusinessHistory(locale, { kind: 'renewal', projection: 'workbench' }),
+  ]);
   return <RenewalStudentPool
     key={`${data.selectedCycleId ?? "none"}:${typeof raw.tab === "string" ? raw.tab : "pool"}:${raw.samples === "1"}`}
     data={data}
-    timeZone={await getOrganizationTimezoneV2()}
+    timeZone={timeZone}
     supplement={supplement}
     canWrite={canWrite}
     canReview={permissions.has("review.write")}
@@ -45,7 +48,7 @@ async function RenewalsContent({
     health={raw.tab === "health"}
     allowHealthSamples={process.env.NODE_ENV === "development"}
     healthSampleMode={process.env.NODE_ENV === "development" && raw.samples === "1"}
-    history={await loadStudentBusinessHistory(locale,{kind:'renewal',projection:'workbench'})}
+    history={history}
     initialQuery={typeof raw.q==='string'?raw.q.slice(0,100):undefined}
     initialRecordState={businessRecordStateFilter(raw.view==='history'?'historical':raw.state)}
   />;

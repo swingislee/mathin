@@ -32,12 +32,16 @@ export default async function CourseEnrollmentsPage({
       actions={<ClassWorkspaceActions canTeach={canTeach} query={query} />}
     />}><DashboardEmptyCard>{t("noTeachingClassForPlacement")}</DashboardEmptyCard></DashboardPage>;
   }
-  const [board, timeZone, now] = await Promise.all([
-    loadEnrollmentPlacementBoard(),
+  const [{ board, sessions, sessionsFailed }, timeZone, now, history] = await Promise.all([
+    loadEnrollmentPlacementBoard().then(async board => {
+      let sessionsFailed = false;
+      const sessions = canTeach ? await getClassRosterSessions(board.options.classrooms.map(row => row.id))
+        .catch(() => { sessionsFailed = true; return []; }) : [];
+      return { board, sessions, sessionsFailed };
+    }),
     getOrganizationTimezoneV2(), getNow(),
+    permissions.has('enrollment.manage') ? loadStudentBusinessHistory(locale, { kind: 'enrollment', projection: 'workbench' }) : null,
   ]);
-  let sessionsFailed = false;
-  const sessions = canTeach ? await getClassRosterSessions(board.options.classrooms.map(row => row.id)).catch(() => { sessionsFailed = true; return []; }) : [];
   const focusSessionId = typeof query.session === "string" ? query.session : undefined;
   const focusedSession = sessions.find(session => session.id === focusSessionId);
   const focusClassroomId = focusedSession?.classroomId ?? (typeof query.classroom === "string" ? query.classroom : undefined);
@@ -56,7 +60,7 @@ export default async function CourseEnrollmentsPage({
       initialBoard={board}
       timeZone={timeZone}
       now={now.getTime()}
-      history={permissions.has('enrollment.manage') ? await loadStudentBusinessHistory(locale,{kind:'enrollment',projection:'workbench'}) : null}
+      history={history}
       initialQuery={typeof query.q === "string" ? query.q.slice(0,100) : undefined}
       initialTermId={focusTermId ?? (typeof query.term === "string" ? query.term : undefined)}
       focusStudentId={typeof query.student === "string" ? query.student : undefined}

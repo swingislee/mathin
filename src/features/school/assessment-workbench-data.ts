@@ -2,6 +2,7 @@ import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
 import { assessmentReadFrom as from, readAllAssessmentRows as readAllRows, readRelatedAssessmentRows as readRelatedRows } from "./assessment-workbench-read";
+import { readSchoolQueryBatches } from "./school-query-pages";
 import { assessmentSourceOrder } from "./assessment-source-order";
 import { assessmentWorkbenchHasFinalResult } from "./assessment-workbench-contract";
 import type { ActivityKind } from "./activity-kinds";
@@ -258,22 +259,23 @@ export async function listAssessmentWorkbenchRows(): Promise<AssessmentWorkbench
     ...(confirmedInvitationResult.data ?? []).map((invitation) => invitation.leads?.student_id ?? null),
   ].filter((id): id is string => Boolean(id)))];
   const linkedStudentIds=[...new Set([...registrations.map(({registration})=>registration.leads?.student_id),...(confirmedInvitationResult.data??[]).map(invitation=>invitation.leads?.student_id)].filter((id):id is string=>Boolean(id)))];
-  const linkedStudentOwnerResult=await readRelatedRows<{id:string;assigned_to:string|null}>(supabase,'students','id,assigned_to','id',linkedStudentIds);
-  if(linkedStudentOwnerResult.error)throw new Error('ASSESSMENT_LINKED_STUDENT_OWNER_READ');
-  const linkedStudentOwners=new Map((linkedStudentOwnerResult.data??[]).map(student=>[student.id,student.assigned_to]));
-  const supportOwnerIds=[...new Set([...registrations.flatMap(({registration})=>[registration.students?.assigned_to,registration.leads?.owner_id]),...(confirmedInvitationResult.data??[]).map(invitation=>invitation.leads?.owner_id),...linkedStudentOwners.values()].filter((id):id is string=>Boolean(id)))];
   const sourceSupportByActivity=new Map(activities.map(activity=>[activity.id,sourceStaffLabel(activity.remark,'学服老师')]));
   const missingSourceIds=[...new Set(registrations.filter(({activity})=>!sourceSupportByActivity.get(activity.id))
     .map(({registration})=>registration.source_record_id).filter((id):id is string=>Boolean(id)))];
+  const [linkedStudentOwnerResult,sourceResult]=await Promise.all([
+    readRelatedRows<{id:string;assigned_to:string|null}>(supabase,'students','id,assigned_to','id',linkedStudentIds),
+    // 来源 RPC 每个 ID 至多一行；共用助手每批 80 个、最多同时读取四批。
+    readSchoolQueryBatches(missingSourceIds,batch=>supabase.rpc('get_business_source_records',{p_ids:batch})),
+  ]);
+  if(linkedStudentOwnerResult.error)throw new Error('ASSESSMENT_LINKED_STUDENT_OWNER_READ');
+  if(sourceResult.error)throw new Error('ASSESSMENT_SOURCE_SUPPORT_READ');
+  const linkedStudentOwners=new Map((linkedStudentOwnerResult.data??[]).map(student=>[student.id,student.assigned_to]));
+  const supportOwnerIds=[...new Set([...registrations.flatMap(({registration})=>[registration.students?.assigned_to,registration.leads?.owner_id]),...(confirmedInvitationResult.data??[]).map(invitation=>invitation.leads?.owner_id),...linkedStudentOwners.values()].filter((id):id is string=>Boolean(id)))];
   const sourceSupportByRecord=new Map<string,string>();
-  for(let offset=0;offset<missingSourceIds.length;offset+=100){
-    const result=await supabase.rpc('get_business_source_records',{p_ids:missingSourceIds.slice(offset,offset+100)});
-    if(result.error)throw new Error('ASSESSMENT_SOURCE_SUPPORT_READ');
-    for(const source of result.data??[]){
-      const record=source.record_data as {cells?:{fieldName:string;text:string}[]}|null;
-      const names=[...new Set((record?.cells??[]).filter(cell=>cell.fieldName==='学服老师').map(cell=>cell.text.trim()).filter(Boolean))];
-      if(names.length===1)sourceSupportByRecord.set(source.id,names[0]);
-    }
+  for(const source of sourceResult.data??[]){
+    const record=source.record_data as {cells?:{fieldName:string;text:string}[]}|null;
+    const names=[...new Set((record?.cells??[]).filter(cell=>cell.fieldName==='学服老师').map(cell=>cell.text.trim()).filter(Boolean))];
+    if(names.length===1)sourceSupportByRecord.set(source.id,names[0]);
   }
   for(const {activity,registration} of registrations){
     if(!sourceSupportByActivity.get(activity.id)&&registration.source_record_id){
