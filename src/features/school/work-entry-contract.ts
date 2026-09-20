@@ -57,12 +57,12 @@ export function communicationEntryMode(row: StudentStageRow): StudentEntryMode {
 
 export function workEntryMessages(locale: string) {
   return locale.startsWith("en") ? {
-    classes: "Classes", arrange: "Classes & placement", records: "Teaching records", progress: "Completion", tasks: "My tasks",
+    classes: "Classes", arrange: "Class rosters", records: "Teaching records", progress: "Completion", tasks: "My tasks", classActions: "Class actions",
     directory: "Class directory", communication: "Communication", worklists: "Contact worklists", stages: "Student stages",
     communicationHint: "Expand a person to record the next step. Save and continue with the next person.",
     openRecords: "Teaching records", openRenewal: "Renewal", backStages: "Stage lists",
   } : {
-    classes: "班级", arrange: "班级与分班", records: "教学登记", progress: "完成情况", tasks: "我的待办",
+    classes: "班级", arrange: "班级名册", records: "教学记录", progress: "完成情况", tasks: "我的待办", classActions: "班级操作",
     directory: "班级目录", communication: "沟通", worklists: "联系工作单", stages: "学生阶段",
     communicationHint: "展开学生，按当前阶段登记；保存后可继续下一位。",
     openRecords: "教学登记", openRenewal: "续班", backStages: "阶段名单",

@@ -19,6 +19,15 @@ const Provider = NextIntlClientProvider as ComponentType<PropsWithChildren<Omit<
 const window = teachingTimeWindow("week", "previous", undefined, [], "Asia/Shanghai", new Date("2026-09-15T04:00:00Z"));
 
 describe("teaching records shared command panel", () => {
+  it("keeps class navigation and grouping in one layout slot", () => {
+    const html = renderToStaticMarkup(createElement(Provider, { locale: "zh", messages: zh, timeZone: "Asia/Shanghai" }, createElement(TeachingRecordsCommandPanel, {
+      groupBy: "teacher", grain: "week", window, baseHref: "/dashboard/classes?view=records", terms: [], today: "2026-09-15", selection: "previous",
+      navigation: createElement("a", { href: "/dashboard/classes" }, "班级名册"),
+    })));
+    expect(html.match(/data-dashboard-command-slot="state"/g)).toHaveLength(1);
+    expect(html).toContain("班级名册");
+    expect(html).toContain(zh.school.teachingWorkbench.grouping.byTeacher);
+  });
   it.each(["zh", "en"] as const)("keeps grouping before time controls for both entry points (%s)", locale => {
     const messages = locale === "zh" ? zh : en;
     const t = messages.school.teachingWorkbench;

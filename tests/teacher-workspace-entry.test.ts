@@ -12,9 +12,9 @@ vi.mock("@/features/school/enrollment-workflow-data", () => ({ enrollmentWorkflo
 vi.mock("@/features/school/student-business-history-data", () => ({ loadStudentBusinessHistory: mocks.history }));
 vi.mock("@/features/school/organization-locations", () => ({ getOrganizationTimezoneV2: async () => "Asia/Shanghai" }));
 vi.mock("@/features/school/EnrollmentPlacementWorkbench", () => ({ EnrollmentPlacementWorkbench: () => null }));
-vi.mock("@/features/school/dashboard-page", () => ({ DashboardPage: () => null, DashboardEmptyCard: () => null, DashboardCommandState: () => null }));
+vi.mock("@/features/school/dashboard-page", () => ({ DashboardPage: () => null, DashboardEmptyCard: () => null, DashboardCommandActions: () => null }));
 vi.mock("@/features/school/FollowupCommandPanel", () => ({ FollowupCommandPanel: () => null }));
-vi.mock("@/features/school/ClassWorkspaceTabs", () => ({ ClassWorkspaceTabs: () => null }));
+vi.mock("@/features/school/ClassWorkspaceActions", () => ({ ClassWorkspaceActions: () => null }));
 vi.mock("@/features/school/ClassDirectoryPage", () => ({ default: () => null }));
 vi.mock("@/features/school/teaching-workbench/TeachingWorkspacePage", () => ({ default: () => null }));
 vi.mock("@/i18n/navigation", () => ({ redirect: mocks.redirect }));
@@ -28,9 +28,11 @@ describe("teacher entry and placement access", () => {
     mocks.redirect.mockImplementation(() => { throw new Error("REDIRECT"); });
   });
 
-  it("starts teachers in teaching records within the common class entry", async () => {
+  it("starts teachers in the placement roster without a role-based view switch", async () => {
     const page = await ClassesPage({ params, searchParams: Promise.resolve({}) });
-    expect(await page.props.searchParams).toMatchObject({ view: "records" });
+    expect(page.type).toBe(EnrollmentsPage);
+    expect(await page.props.searchParams).toEqual({});
+    expect(mocks.teacher).not.toHaveBeenCalled();
     expect(mocks.redirect).not.toHaveBeenCalled();
   });
 
@@ -41,6 +43,9 @@ describe("teacher entry and placement access", () => {
     mocks.teacher.mockResolvedValue(true);
     const explicit = await ClassesPage({ params, searchParams: Promise.resolve({ view: "arrange" }) });
     expect(explicit.type).toBe(EnrollmentsPage);
+    const records = await ClassesPage({ params, searchParams: Promise.resolve({ view: "records", classroom: "class-a", term: "term-a" }) });
+    expect(records.type).not.toBe(EnrollmentsPage);
+    expect(await records.props.searchParams).toEqual({ view: "records", classroom: "class-a", term: "term-a" });
   });
 
   it("shows an empty placement workspace to a teacher without exposing a board or history", async () => {

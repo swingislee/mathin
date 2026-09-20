@@ -7,9 +7,9 @@ import { redirect } from '@/i18n/navigation';
 import { loadStudentBusinessHistory } from '@/features/school/student-business-history-data';
 import { businessRecordStateFilter } from '@/features/school/business-record-state-contract';
 import { isTeacherWorkspaceViewer } from "@/features/school/teacher-workspace";
-import { DashboardCommandState, DashboardEmptyCard, DashboardPage } from "@/features/school/dashboard-page";
+import { DashboardCommandActions, DashboardEmptyCard, DashboardPage } from "@/features/school/dashboard-page";
 import { FollowupCommandPanel } from "@/features/school/FollowupCommandPanel";
-import { ClassWorkspaceTabs } from "./ClassWorkspaceTabs";
+import { ClassWorkspaceActions } from "./ClassWorkspaceActions";
 import { workEntryMessages, type WorkEntryQuery } from "./work-entry-contract";
 
 export default async function CourseEnrollmentsPage({
@@ -29,7 +29,7 @@ export default async function CourseEnrollmentsPage({
     if (!await isTeacherWorkspaceViewer(user.id)) redirect({ locale, href: '/dashboard' });
     const t = await getTranslations("school.followupWorkspace");
     return <DashboardPage title={m.classes} density="compact" commandPanel={<FollowupCommandPanel>
-      <DashboardCommandState><ClassWorkspaceTabs active="arrange" canTeach={canTeach} query={query} /></DashboardCommandState>
+      <DashboardCommandActions><ClassWorkspaceActions canTeach={canTeach} query={query} /></DashboardCommandActions>
     </FollowupCommandPanel>}><DashboardEmptyCard>{t("noTeachingClassForPlacement")}</DashboardEmptyCard></DashboardPage>;
   }
   const [board, timeZone, now] = await Promise.all([

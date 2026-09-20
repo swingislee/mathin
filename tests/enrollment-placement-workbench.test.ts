@@ -76,6 +76,20 @@ const studentKeys = (content: string) => [...content.matchAll(/data-placement-st
 const classroomId = (attributes: string) => attributes.match(/data-placement-classroom="([^"]+)"/)?.[1];
 
 describe("enrollment placement class roster", () => {
+  it("uses the placement structure as the classes home with full rosters and class-specific teaching entry", () => {
+    const initialBoard = { ...board, options: { ...board.options, classrooms: board.options.classrooms.map(value => value.id === "autumn-4" ? {
+      ...value, teacherNames: "甲老师、乙老师", sessions: [{ at: "2026-09-05T02:00:00Z", duration: 90 }],
+    } : value) } };
+    const rows = renderRoster(undefined, { initialBoard, workspace: "classes", canTeach: true });
+    const row = rows.find(row => classroomId(row.attributes) === "autumn-4")!;
+    expect(row.cells).toHaveLength(5);
+    expect(row.cells[1].content).toContain("10:00–11:30");
+    expect(row.cells[2].content).toContain("甲老师、乙老师");
+    expect(row.cells[3].content).toContain("standard");
+    expect(studentKeys(row.cells[4].content)).toEqual(["assigned-fourth", "paused-fourth"]);
+    expect(row.cells[0].content).toContain('href="/dashboard/classes/autumn-4"');
+    expect(row.cells[0].content).toContain('href="/dashboard/classes?classroom=autumn-4&amp;term=autumn&amp;period=term&amp;view=records"');
+  });
   it("includes all periods and source arrangements when no current period is configured", () => {
     const initialBoard = { ...board, options: { ...board.options, terms: board.options.terms.map(term => ({ ...term, isCurrent: false })) } };
     const history: NonNullable<ComponentProps<typeof EnrollmentPlacementWorkbench>['history']> = {

@@ -24,8 +24,7 @@ export function TeachingRecordsCommandPanel({ groupBy, grain, window, baseHref, 
     return `${path}?${params}`;
   };
   return <DashboardCommandPanel className="followup-command-panel">
-    {navigation ? <DashboardCommandState>{navigation}</DashboardCommandState> : null}
-    <DashboardCommandState><RouteTabs ariaLabel={t("grouping.title")} activeValue={groupBy} items={([
+    <DashboardCommandState>{navigation}<RouteTabs ariaLabel={t("grouping.title")} activeValue={groupBy} items={([
       "grade", "teacher",
     ] as const).map(group => ({ value: group, label: t(group === "grade" ? "grouping.byGrade" : "grouping.byTeacher"), href: groupHref(group) }))} /></DashboardCommandState>
     <DashboardCommandFilters><TeachingPeriodPicker key={`${grain}:${selection}:${window?.termId ?? ""}`} grain={grain} window={window} baseHref={baseHref} terms={terms} today={today} /></DashboardCommandFilters>
