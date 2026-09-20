@@ -61,7 +61,7 @@ describe("Soma teaching workspace", () => {
     await render(createElement(SomaWorkspace, { key: "viewer", initial, classroom: { state: JSON.parse(JSON.stringify(next)) } }));
     expect(canvas.props!.snapshot).toEqual(next); expect(canvas.props!.readOnly).toBe(true);
   });
-  it("captures, undoes and restores arbitrary rotation, with a touch mode toggle and explicit grid alignment", async () => {
+  it("captures, undoes and restores arbitrary rotation, with a touch mode toggle", async () => {
     const initial = createSomaInitial(), capture = vi.fn();
     await render(createElement(SomaWorkspace, { initial, onSnapshot: capture }));
     await act(async () => canvas.props!.onToggleRotation!()); expect(canvas.props!.navigation).toBe("rotate");
@@ -69,13 +69,43 @@ describe("Soma teaching workspace", () => {
     await act(async () => { canvas.props!.onDragging(true); }); expect(capture.mock.lastCall![0]).toBeNull();
     await act(async () => { canvas.props!.onPoseCommit!(next); canvas.props!.onDragging(false); });
     expect(capture.mock.lastCall![0]).toEqual(next);
-    await click(m.alignGrid); expect(canvas.props!.snapshot.pieces[0].quaternion).toBeUndefined();
-    await click(m.undo); expect(canvas.props!.snapshot.pieces).toEqual(next.pieces);
     await click(m.undo); expect(canvas.props!.snapshot.pieces).toEqual(initial.pieces);
     await click(m.redo); expect(canvas.props!.snapshot.pieces).toEqual(next.pieces);
     await click(m.reset); expect(canvas.props!.snapshot.pieces).toEqual(initial.pieces);
     await render(createElement(SomaWorkspace, { key: "reopen", initial: JSON.parse(JSON.stringify(next)) }));
     expect(canvas.props!.snapshot.pieces).toEqual(next.pieces);
+  });
+  it("defaults to release snapping, separates it from view snapping and applies the choice to precise buttons", async () => {
+    const initial = createSomaInitial(); await render(createElement(SomaWorkspace, { initial }));
+    const cameraSnap = canvas.props!.axisSnap;
+    expect(canvas.props!.rotationSnap).toBe(true);
+    await click(m.rotate); expect(container.textContent).not.toContain("Align to grid");
+    await click(`${m.rotate} Y +90°`); expect(canvas.props!.snapshot.pieces[0].orientation).toBeTypeOf("number");
+    await click(m.undo); expect(canvas.props!.snapshot.pieces).toEqual(initial.pieces);
+    await click(m.rotationSnap); expect(canvas.props!.rotationSnap).toBe(false);
+    expect(canvas.props!.axisSnap).toBe(cameraSnap);
+    await click(`${m.rotate} Y +90°`); expect(canvas.props!.snapshot.pieces[0].quaternion).toBeDefined();
+    const free = canvas.props!.snapshot;
+    await click(m.rotationSnap); expect(canvas.props!.rotationSnap).toBe(true);
+    expect(canvas.props!.snapshot).toBe(free); // 开关只影响后续手势，不改写准备好的现场。
+  });
+  it("publishes only the snapped endpoint and reuses it through the classroom echo, undo and restore", async () => {
+    const initial = createSomaInitial(), writes: SomaSnapshot[] = [];
+    function Teacher() {
+      const [state, setState] = useState(initial);
+      return createElement(SomaWorkspace, { initial, classroom: { state, onChange: async (next) => { writes.push(next); setState(structuredClone(next)); } } });
+    }
+    await render(createElement(Teacher));
+    const pose = somaPose(initial.pieces[0]);
+    const next = somaGestureLanding(initial, "bao-1", { ...pose, quaternion: [0, Math.sin(Math.PI / 4 - 0.03), 0, Math.cos(Math.PI / 4 - 0.03)] }, "rotate", true, canvas.props!.rotationSnap).snapshot;
+    await act(async () => { canvas.props!.onPoseCommit!(next); });
+    expect(writes).toEqual([next]); expect(canvas.props!.snapshot).toEqual(next); expect(next.pieces[0].quaternion).toBeUndefined();
+    expect(canvas.props!.instantKey).not.toBeNull();
+    await render(createElement(SomaWorkspace, { key: "local", initial }));
+    await act(async () => { canvas.props!.onPoseCommit!(next); });
+    await click(m.undo); expect(canvas.props!.snapshot.pieces).toEqual(initial.pieces);
+    await click(m.redo); expect(canvas.props!.snapshot.pieces).toEqual(next.pieces);
+    await click(m.reset); expect(canvas.props!.snapshot.pieces).toEqual(initial.pieces);
   });
   it("retains the v1 contract and rejects arbitrary poses from a stale or incorrect adapter", async () => {
     const initial = createSomaInitial();
@@ -114,9 +144,9 @@ describe("Soma teaching workspace", () => {
     await click(m.move); await click(`${m.move} Y +1`);
     expect(canvas.props!.snapshot.pieces[4].position.y).toBe(1);
     await click(m.rotate); await click(`${m.rotate} Y +90°`);
-    expect(canvas.props!.snapshot.pieces[4].quaternion).toBeDefined();
+    expect(canvas.props!.snapshot.pieces[4].orientation).not.toBe(0);
     await click(m.undo); expect(canvas.props!.snapshot.pieces[4].orientation).toBe(0);
-    await click(m.redo); expect(canvas.props!.snapshot.pieces[4].quaternion).toBeDefined();
+    await click(m.redo); expect(canvas.props!.snapshot.pieces[4].orientation).not.toBe(0);
     await click(m.reset); expect(capture.mock.lastCall![0].pieces).toEqual(initial.pieces);
   });
   it("preserves a drag target and captures only the committed full-piece endpoint", async () => {

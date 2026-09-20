@@ -10,6 +10,7 @@ import type { CubeMoveInteraction } from "@/features/tools/spatial-lab/cube-stru
 import { spatialArcball, spatialArcballRotation } from "@/features/tools/spatial-interaction/arcball";
 import type { SpatialGestureTarget } from "@/features/tools/spatial-interaction/object-gesture-controller";
 import { somaRotationPivot } from "@/features/tools/soma-cube/model";
+import { interpolateRigidPoses } from "@/features/tools/spatial-interaction/rigid-motion";
 
 const controls = vi.hoisted(() => ({ interaction: null as CubeMoveInteraction | null }));
 
@@ -48,6 +49,31 @@ async function setup(reduced = false) {
 }
 
 describe("Soma renders the shared rigid animation instead of replacing cells", () => {
+  it("shows a nearby snap ghost without replacing the freely dragged pose, then keeps the settled classroom endpoint", async () => {
+    const rig = await setup(), onPoseCommit = vi.fn<(next: SomaCanvasProps["snapshot"]) => boolean>(() => true);
+    const source = { ...rig.initial, pieces: [{ ...rig.initial.pieces[0], position: { x: 0, y: 4, z: 0 } }] };
+    await rig.render({ snapshot: source, onPoseCommit, instantKey: JSON.stringify(somaRigidPoses(source.pieces)) });
+    const body = controls.interaction!.bodyGesture!, target = body.selected!;
+    const c = new THREE.OrthographicCamera(-5, 5, 4, -4, 0.1, 100); c.position.set(0, 0, 10); c.lookAt(0, 0, 0); c.updateMatrixWorld();
+    const arcball = spatialArcball(target.pivot, target.radius!, c, { left: 0, top: 0, width: 800, height: 600 });
+    const pose = spatialArcballRotation(target.pose, target.pivot, arcball.center, { x: arcball.center.x + arcball.radius * Math.sin(40 * Math.PI / 180), y: arcball.center.y }, arcball);
+    const landing = body.resolve(target, pose, "rotate"); expect(landing.snapped).toBe(true);
+    await act(async () => { body.onDragging(true); body.onPreview({ target, pose, landing: landing.pose, valid: landing.valid, phase: "drag", arcball, snapped: landing.snapped }); });
+    const ghost = rig.scene().getObjectByName("soma-landing-preview")!;
+    expect(ghost).toBeDefined(); expect(ghost.quaternion.angleTo(new Quaternion(...landing.pose.quaternion))).toBeLessThan(1e-7);
+    expect(rig.group().quaternion.angleTo(new Quaternion(...pose.quaternion))).toBeLessThan(1e-7); expect(onPoseCommit).not.toHaveBeenCalled();
+    expect(landing.apply()).toBe(true); const next = onPoseCommit.mock.lastCall![0];
+    await rig.render({ snapshot: next, onPoseCommit, instantKey: JSON.stringify(somaRigidPoses(next.pieces)), readOnly: true });
+    const middle = interpolateRigidPoses([pose], [landing.pose], 0.5)[0];
+    await act(async () => body.onPreview({ target, pose: middle, landing: landing.pose, valid: true, phase: "settle" }));
+    expect(rig.scene().getObjectByName("soma-landing-preview")).toBeUndefined();
+    expect(rig.group().quaternion.angleTo(new Quaternion(...landing.pose.quaternion))).toBeCloseTo(5 * Math.PI / 180);
+    await act(async () => { body.onPreview(null); body.onDragging(false); });
+    expect(rig.group().quaternion.angleTo(new Quaternion(...landing.pose.quaternion))).toBeLessThan(1e-7);
+    await rig.render({ snapshot: structuredClone(next), onPoseCommit, instantKey: JSON.stringify(somaRigidPoses(next.pieces)), readOnly: true }); await rig.frame(650);
+    expect(rig.group().quaternion.angleTo(new Quaternion(...landing.pose.quaternion))).toBeLessThan(1e-7);
+    expect(rig.onMoving).toHaveBeenLastCalledWith(false); expect(onPoseCommit).toHaveBeenCalledTimes(1);
+  });
   it("keeps the free rotation after release and through the classroom commit without an extra landing", async () => {
     const rig = await setup(), onPoseCommit = vi.fn<(next: SomaCanvasProps["snapshot"]) => boolean>(() => true);
     const source = { ...rig.initial, pieces: [ { ...rig.initial.pieces[0], position: { x: 0, y: 4, z: 0 } } ] };

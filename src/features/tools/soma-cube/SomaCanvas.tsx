@@ -37,10 +37,10 @@ export interface SomaCanvasProps {
   rollAction?: SpatialRollAction;
   movePlane?: SpatialMovePlane; preciseAxes?: boolean; rotationAxis?: Axis; onRotationAxis?: (axis: Axis) => void;
   onPoseCommit?: (next: SomaSnapshot) => boolean; onPlaneUnavailable?: () => void; onGestureBlocked?: () => void;
-  freeRotation?: boolean; onToggleRotation?: () => void;
+  freeRotation?: boolean; rotationSnap?: boolean; onToggleRotation?: () => void;
 }
 export default function SomaCanvas({ snapshot, messages, title, readOnly, axisSnap, navigation, moveAxis, onMoveAxis, onSelect, onMove, onUnavailable, onDragging, onMoving, onRotate, instantKey, locale, rollAction, cameraInteractive = !readOnly,
-  movePlane = "table", preciseAxes = false, rotationAxis = "y", onRotationAxis = onMoveAxis, onPoseCommit, onPlaneUnavailable = onUnavailable, onGestureBlocked = onUnavailable, freeRotation = true, onToggleRotation }: SomaCanvasProps) {
+  movePlane = "table", preciseAxes = false, rotationAxis = "y", onRotationAxis = onMoveAxis, onPoseCommit, onPlaneUnavailable = onUnavailable, onGestureBlocked = onUnavailable, freeRotation = true, rotationSnap = true, onToggleRotation }: SomaCanvasProps) {
   const visible = useMemo(() => somaVisiblePieces(snapshot), [snapshot]);
   // 选择另一宝时只改变手柄目标；同一拼搭的命中几何保持身份，保留正在开始的拖动。
   const pieces = snapshot.mode === "assemble" ? snapshot.pieces : visible;
@@ -98,13 +98,13 @@ export default function SomaCanvas({ snapshot, messages, title, readOnly, axisSn
       return !!center && !!cubeDragHandleAxis({ x: event.clientX - size.left, y: event.clientY - size.top }, center, camera, size, handleAxes, event.pointerType === "touch" ? 22 : 12);
     },
     resolve: (selected, pose, action) => {
-      const landing = somaGestureLanding(snapshot, selected.pose.id as SomaId, pose, action, freeRotation);
+      const landing = somaGestureLanding(snapshot, selected.pose.id as SomaId, pose, action, freeRotation, rotationSnap);
       return { ...landing, apply: () => JSON.stringify(landing.snapshot) === JSON.stringify(snapshot) || onPoseCommit(landing.snapshot) };
     },
     onPreview: setObjectPreview, onDragging: setObjectDragging, onSelect: (id) => onSelect(id as SomaId),
     onUnavailable: (reason) => reason === "plane" ? onPlaneUnavailable() : onGestureBlocked(),
   } : undefined;
-  const ghost = objectPreview?.phase === "drag" && (!freeRotation || !objectPreview.arcball) ? shapes.find((shape) => shape.id === objectPreview.target.pose.id) : null;
+  const ghost = objectPreview?.phase === "drag" && (!freeRotation || !objectPreview.arcball || objectPreview.snapped) ? shapes.find((shape) => shape.id === objectPreview.target.pose.id) : null;
   const activeAnchor = objectPreview && localPivot(objectPreview.pose.id as SomaId);
   const activePivot = objectPreview && activeAnchor ? new Vector3(activeAnchor.x, activeAnchor.y, activeAnchor.z).applyQuaternion(new Quaternion(...objectPreview.pose.quaternion))
     .add(new Vector3(objectPreview.pose.position.x, objectPreview.pose.position.y, objectPreview.pose.position.z)) : null;

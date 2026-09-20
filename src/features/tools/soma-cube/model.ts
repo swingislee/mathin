@@ -8,6 +8,9 @@ import { SOMA_IDS, SOMA_ROTATIONS, somaCells, somaDefinition, somaLocalCells, so
 import { planSpatialRoll, spatialRollPoint, unitCubeCorners, voxelRollIsClear, type SpatialRollDirection } from "../spatial-interaction/rolling";
 import { spatialRigidPoint } from "../spatial-interaction/rigid-geometry";
 import { spatialBasisQuaternion } from "../spatial-interaction/rigid-motion";
+import { spatialRotationSnap } from "../spatial-interaction/rotation-snap";
+
+const rotationCandidates = SOMA_ROTATIONS.map(spatialBasisQuaternion);
 
 export function somaApart(ids: readonly SomaId[]): SomaGridPiece[] {
   const columns = Math.min(ids.length, 4);
@@ -81,7 +84,7 @@ export function somaOrientAroundAnchor(piece: SomaGridPiece, orientation: number
   const pivot = somaRotationPivot(piece), local = somaLocalCells(piece.id, orientation)[somaAnchorIndex(piece.id)];
   return { ...piece, orientation, position: { x: pivot.x - local.x, y: pivot.y - local.y, z: pivot.z - local.z } };
 }
-export function somaRotate(snapshot: SomaSnapshot, axis: Axis, direction: -1 | 1, free = false): SomaSnapshot | null {
+export function somaRotate(snapshot: SomaSnapshot, axis: Axis, direction: -1 | 1, free = false, rotationSnap = true): SomaSnapshot | null {
   const pieces = snapshot.pieces.map((piece): SomaPiece => {
     if (piece.id !== snapshot.selectedId) return piece;
     if (!free && !piece.quaternion) return somaOrientAroundAnchor(piece, somaTurn(piece.orientation, axis, direction));
@@ -90,20 +93,36 @@ export function somaRotate(snapshot: SomaSnapshot, axis: Axis, direction: -1 | 1
     const p = new Vector3(pose.position.x - pivot.x, pose.position.y - pivot.y, pose.position.z - pivot.z).applyQuaternion(q);
     return { id: piece.id, position: { x: pivot.x + p.x, y: pivot.y + p.y, z: pivot.z + p.z }, quaternion: q.multiply(new Quaternion(...pose.quaternion)).normalize().toArray() };
   });
-  return somaPlacementValid(pieces) ? { ...snapshot, pieces } : null;
+  const next = { ...snapshot, pieces }, landed = free && rotationSnap ? somaSnapRotation(next, snapshot.pieces.find((piece) => piece.id === snapshot.selectedId)) : next;
+  return somaPlacementValid(landed.pieces) ? landed : null;
 }
-/** 显式回到拼搭网格：最近的合法立方体朝向和格点；空间不足时保留现场，不偷偷挪开其他宝。 */
-export function somaAlignToGrid(snapshot: SomaSnapshot): SomaSnapshot | null {
+/** 松手附近有合法网格落点时自动收拢；远角度、冲突或超界均保留自由姿态。 */
+export function somaSnapRotation(snapshot: SomaSnapshot, source?: SomaPiece): SomaSnapshot {
   const piece = snapshot.pieces.find((p) => p.id === snapshot.selectedId)!;
   if (!piece.quaternion) return snapshot;
-  const q = new Quaternion(...piece.quaternion), center = somaRotationPivot(piece, true);
-  let orientation = 0, distance = Infinity;
-  SOMA_ROTATIONS.forEach((basis, index) => { const angle = q.angleTo(new Quaternion(...spatialBasisQuaternion(basis))); if (angle < distance - 1e-7) { orientation = index; distance = angle; } });
-  const template: SomaGridPiece = { id: piece.id, orientation, position: { x: 0, y: 0, z: 0 } };
+  const nearest = spatialRotationSnap(piece.quaternion, rotationCandidates);
+  if (!nearest) return snapshot;
+  const center = somaRotationPivot(piece, true);
+  const template: SomaGridPiece = { id: piece.id, orientation: nearest.index, position: { x: 0, y: 0, z: 0 } };
   const localCenter = somaRotationPivot(template, true);
-  const position = { x: Math.round(center.x - localCenter.x), y: Math.round(center.y - localCenter.y), z: Math.round(center.z - localCenter.z) };
-  const pieces = snapshot.pieces.map((p) => p.id === piece.id ? { ...template, position } : p);
-  return somaPlacementValid(pieces) ? { ...snapshot, pieces } : null;
+  // 每轴最多修正半格；半格等距时尝试两侧，不把拼块搬到更远的空位。
+  const nearestGrid = (value: number) => [...new Set([Math.round(value), Math.floor(value), Math.ceil(value)])]
+    .filter((candidate) => Math.abs(candidate - value) <= 0.5 + 1e-7).map((candidate) => candidate || 0);
+  const candidates: SomaGridPiece[] = [];
+  for (const x of nearestGrid(center.x - localCenter.x)) for (const y of nearestGrid(center.y - localCenter.y)) for (const z of nearestGrid(center.z - localCenter.z)) {
+    candidates.push({ ...template, position: { x, y, z } });
+  }
+  // 半格等距优先保留原来的同一单元锚点，避免连续 90° 旋转因同向取整逐步漂移。
+  if (source) {
+    const anchor = somaCells(source)[somaAnchorIndex(piece.id)], local = somaLocalCells(piece.id, template.orientation)[somaAnchorIndex(piece.id)];
+    const distance = (candidate: SomaGridPiece) => (candidate.position.x + local.x - anchor.x) ** 2 + (candidate.position.y + local.y - anchor.y) ** 2 + (candidate.position.z + local.z - anchor.z) ** 2;
+    candidates.sort((a, b) => { const delta = distance(a) - distance(b); return Math.abs(delta) < 1e-7 ? 0 : delta; });
+  }
+  for (const candidate of candidates) {
+    const pieces = snapshot.pieces.map((p) => p.id === piece.id ? candidate : p);
+    if (somaPlacementValid(pieces)) return { ...snapshot, pieces };
+  }
+  return snapshot;
 }
 export function somaRoll(snapshot: SomaSnapshot, direction: SpatialRollDirection): SomaSnapshot | null {
   const piece = snapshot.pieces.find((piece) => piece.id === snapshot.selectedId);

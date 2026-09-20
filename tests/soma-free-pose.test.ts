@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { Quaternion, Vector3 } from "three";
 import { SOMA_VERSION, SOMA_LEGACY_VERSION, somaLegacyToolSchema, somaSnapshotSchema, somaToolSchema } from "@/features/tools/soma-cube/contract";
-import { createSomaInitial, somaAlignToGrid, somaLocalCenter, somaMove, somaRoll, somaRotate, somaRotationPivot, somaCubeState, somaRenderModel } from "@/features/tools/soma-cube/model";
+import { createSomaInitial, somaLocalCenter, somaMove, somaRoll, somaRotate, somaRotationPivot, somaCubeState, somaRenderModel } from "@/features/tools/soma-cube/model";
 import { somaGestureLanding } from "@/features/tools/soma-cube/manipulation";
 import { somaPose, somaCells, somaPlacementValid, type SomaFreePiece } from "@/features/tools/soma-cube/pieces";
 import { spatialRigidPoint } from "@/features/tools/spatial-interaction/rigid-geometry";
@@ -16,7 +16,7 @@ function freeState() {
   return somaGestureLanding(state, piece.id, { id: piece.id, quaternion, position: { x: pivot.x - offset.x, y: pivot.y - offset.y, z: pivot.z - offset.z } }, "rotate", true).snapshot;
 }
 describe("versioned Soma free poses", () => {
-  it("persists arbitrary angles, with explicit alignment and exact quarter-turn controls", () => {
+  it("persists arbitrary angles outside the snap range, with exact quarter-turn controls", () => {
     const source = initial(), state = freeState();
     expect(somaSnapshotSchema.safeParse(state).success).toBe(true);
     expect(state.pieces[0].orientation).toBeUndefined(); expect(state.pieces[0].quaternion).toBeDefined();
@@ -27,8 +27,6 @@ describe("versioned Soma free poses", () => {
     const nextPivot = somaRotationPivot(turned.pieces[0], true);
     expect(Math.hypot(nextPivot.x - pivot.x, nextPivot.y - pivot.y, nextPivot.z - pivot.z)).toBeLessThan(1e-8);
     expect(somaRoll(state, "x+")).toBeNull();
-    const aligned = somaAlignToGrid(state)!; expect(aligned.pieces[0].quaternion).toBeUndefined();
-    expect(aligned.pieces[0].orientation).toBeDefined(); expect(somaPlacementValid(aligned.pieces)).toBe(true);
     expect(source).toEqual(initial());
     expect(() => somaRenderModel(somaCubeState(state.pieces), state, "Soma")).not.toThrow();
   });

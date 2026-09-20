@@ -116,6 +116,29 @@ describe("continuous plane and camera-relative object gestures", () => {
     g.interaction.pick = () => null;
     expect(g.send("pointerdown").defaultPrevented).toBe(false);
   });
+  it.each(["mouse", "touch"])("%s rotation previews a nearby grid landing, then smoothly snaps only on release", (pointerType) => {
+    const g = setup(), snapshot = createSomaInitial(); snapshot.pieces = [snapshot.pieces[0]];
+    const piece = snapshot.pieces[0], pivot = somaRotationPivot(piece, true);
+    Object.assign(g.target, { pose: somaRigidPoses([piece])[0], pivot, grabPoint: pivot });
+    g.camera.position.set(pivot.x, pivot.y, pivot.z + 10); g.camera.lookAt(pivot.x, pivot.y, pivot.z); g.camera.updateMatrixWorld();
+    g.interaction.rotate = true;
+    g.interaction.resolve = (_target, pose) => ({ ...somaGestureLanding(snapshot, piece.id, pose, "rotate", true), apply: g.apply });
+    const ball = spatialArcball(pivot, 1, g.camera, viewport);
+    const start = { clientX: ball.center.x, clientY: ball.center.y, pointerType };
+    const end = { ...start, clientX: ball.center.x + ball.radius * Math.sin(40 * Math.PI / 180) };
+    g.send("pointerdown", start); g.send("pointermove", end);
+    const preview = g.previews.at(-1)!;
+    expect(preview.snapped).toBe(true); expect(g.apply).not.toHaveBeenCalled();
+    const goal = new Quaternion(...preview.landing.quaternion), free = new Quaternion(...preview.pose.quaternion);
+    expect(free.angleTo(goal)).toBeCloseTo(10 * Math.PI / 180);
+    g.send("pointerup", end); expect(g.apply).toHaveBeenCalledTimes(1);
+    g.flush(100); expect(g.previews.at(-1)?.pose).toEqual(preview.pose);
+    g.flush(180); expect(g.previews.at(-1)?.phase).toBe("settle");
+    expect(new Quaternion(...g.previews.at(-1)!.pose.quaternion).angleTo(goal)).toBeCloseTo(5 * Math.PI / 180);
+    g.flush(260); expect(g.previews.at(-1)).toBeNull(); expect(g.interaction.onDragging).toHaveBeenLastCalledWith(false);
+    g.send("pointerup", end); expect(g.apply).toHaveBeenCalledTimes(1);
+    g.interaction.pick = () => null; expect(g.send("pointerdown").defaultPrevented).toBe(false);
+  });
   it("hands both initial touches to the camera before movement, without moving or selecting an object", () => {
     const g = setup(), cameraDown: { id: number; replay: boolean }[] = [];
     g.canvas.addEventListener("pointerdown", (event) => cameraDown.push({ id: event.pointerId, replay: isSpatialCameraHandoff(event) }));

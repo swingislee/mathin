@@ -7,8 +7,8 @@ import { spatialMoveDelta, spatialMoveProjection, spatialPointerRay, type Spatia
 import { spatialArcball, spatialArcballRotation, type SpatialArcball } from "./arcball";
 
 export interface SpatialGestureTarget { pose: SpatialRigidPose; pivot: VoxelCoordinate; grabPoint: VoxelCoordinate; radius?: number }
-export interface SpatialGestureLanding { pose: SpatialRigidPose; valid: boolean; apply: () => boolean }
-export interface SpatialObjectPreview { target: SpatialGestureTarget; pose: SpatialRigidPose; landing: SpatialRigidPose; valid: boolean; phase: "drag" | "settle"; arcball?: SpatialArcball }
+export interface SpatialGestureLanding { pose: SpatialRigidPose; valid: boolean; apply: () => boolean; snapped?: boolean }
+export interface SpatialObjectPreview { target: SpatialGestureTarget; pose: SpatialRigidPose; landing: SpatialRigidPose; valid: boolean; phase: "drag" | "settle"; arcball?: SpatialArcball; snapped?: boolean }
 export interface SpatialObjectInteraction {
   key: object; enabled: boolean; plane: SpatialMovePlane; rotate?: boolean;
   selected: SpatialGestureTarget | null;
@@ -106,7 +106,7 @@ export function bindSpatialObjectGestures(canvas: HTMLCanvasElement, current: ()
       pose = { ...pose, position: { x: pose.position.x + translation.x, y: pose.position.y + translation.y, z: pose.position.z + translation.z } };
     }
     g.landing = g.interaction.resolve(g.target, pose, g.action);
-    g.frame = { target: g.target, pose, landing: g.landing.pose, valid: g.landing.valid, phase: "drag", arcball: g.action === "rotate" ? g.ball : undefined };
+    g.frame = { target: g.target, pose, landing: g.landing.pose, valid: g.landing.valid, phase: "drag", arcball: g.action === "rotate" ? g.ball : undefined, snapped: g.landing.snapped };
     g.interaction.onPreview(g.frame);
   };
   const up = (event: PointerEvent) => {

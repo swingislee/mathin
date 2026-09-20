@@ -2,14 +2,14 @@ import { Quaternion } from "three";
 import type { SpatialObjectAction } from "../spatial-interaction/object-gesture-math";
 import { spatialBasisQuaternion, type SpatialRigidPose } from "../spatial-interaction/rigid-motion";
 import type { SomaSnapshot } from "./contract";
-import { somaOrientAroundAnchor } from "./model";
+import { somaOrientAroundAnchor, somaSnapRotation } from "./model";
 import { somaRigidPoses } from "./motion";
 import { SOMA_ROTATIONS, somaPlacementValid, type SomaId } from "./pieces";
 
 const orientations = SOMA_ROTATIONS.map((basis) => new Quaternion(...spatialBasisQuaternion(basis)));
 const snapDelta = (value: number) => Math.sign(value) * Math.round(Math.abs(value)) || 0;
-/** 位置保留既有的相对整格落点；v2 自由旋转直接保存末帧，v1 保持自己的离散合同。 */
-export function somaGestureLanding(snapshot: SomaSnapshot, id: SomaId, pose: SpatialRigidPose, action: SpatialObjectAction, free = false) {
+/** 位置保留相对整格落点；v2 自由旋转可在松手附近吸附，v1 保持自己的离散合同。 */
+export function somaGestureLanding(snapshot: SomaSnapshot, id: SomaId, pose: SpatialRigidPose, action: SpatialObjectAction, free = false, rotationSnap = true) {
   const source = snapshot.pieces.find((piece) => piece.id === id)!;
   const original = somaRigidPoses([source])[0];
   let target = source;
@@ -26,5 +26,6 @@ export function somaGestureLanding(snapshot: SomaSnapshot, id: SomaId, pose: Spa
     target = somaOrientAroundAnchor(source, nearest);
   }
   const next = { ...snapshot, selectedId: id, pieces: snapshot.pieces.map((piece) => piece.id === id ? target : piece) };
-  return { snapshot: next, pose: somaRigidPoses([target])[0], valid: somaPlacementValid(next.pieces) };
+  const landed = action === "rotate" && rotationSnap && (free || source.quaternion) ? somaSnapRotation(next, source) : next;
+  return { snapshot: landed, pose: somaRigidPoses(landed.pieces).find((piece) => piece.id === id)!, valid: somaPlacementValid(landed.pieces), snapped: landed !== next };
 }
