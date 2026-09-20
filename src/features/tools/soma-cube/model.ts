@@ -1,9 +1,9 @@
-import type { Axis } from "@/features/spatial-math/domain";
+import type { Axis, VoxelCoordinate } from "@/features/spatial-math/domain";
 import { CUBE_COLORS, buildCubeStructureRenderModel, cubeFrame, type CubeStructureState } from "../spatial-lab/cube-structures-contract";
 import type { CubeMoveOperation } from "../spatial-lab/cube-structures-drag";
 import type { CubeDragPreview } from "../spatial-lab/cube-structures-drag-controller";
 import type { SomaSnapshot } from "./contract";
-import { SOMA_IDS, somaCells, somaDefinition, somaPlacementValid, somaTurn, type SomaId, type SomaPiece } from "./pieces";
+import { SOMA_IDS, somaCells, somaDefinition, somaLocalCells, somaPlacementValid, somaTurn, type SomaId, type SomaPiece } from "./pieces";
 import { planSpatialRoll, spatialRollPoint, unitCubeCorners, voxelRollIsClear, type SpatialRollDirection } from "../spatial-interaction/rolling";
 
 export function somaApart(ids: readonly SomaId[]): SomaPiece[] {
@@ -52,8 +52,23 @@ export function somaMove(snapshot: SomaSnapshot, id: SomaId, axis: Axis, distanc
   const pieces = snapshot.pieces.map((piece) => piece.id === id ? { ...piece, position: { ...piece.position, [axis]: piece.position[axis] + distance } } : piece);
   return somaPlacementValid(pieces) ? { ...snapshot, pieces, selectedId: id } : null;
 }
+/** 锚点绑定同一个单元块，随姿态转换而非随包围盒重选；其中心始终可精确落在整数格。 */
+export function somaAnchorIndex(id: SomaId): number {
+  const cells = somaDefinition(id).cells;
+  const middle = { x: 0, y: 0, z: 0 };
+  for (const p of cells) for (const axis of ["x", "y", "z"] as const) middle[axis] += p[axis] / cells.length;
+  return cells.reduce((best, p, index) => {
+    const distance = (q: VoxelCoordinate) => (q.x - middle.x) ** 2 + (q.y - middle.y) ** 2 + (q.z - middle.z) ** 2;
+    return distance(p) < distance(cells[best]) - 1e-7 ? index : best;
+  }, 0);
+}
+export function somaRotationPivot(piece: SomaPiece): VoxelCoordinate { return somaCells(piece)[somaAnchorIndex(piece.id)]; }
+export function somaOrientAroundAnchor(piece: SomaPiece, orientation: number): SomaPiece {
+  const pivot = somaRotationPivot(piece), local = somaLocalCells(piece.id, orientation)[somaAnchorIndex(piece.id)];
+  return { ...piece, orientation, position: { x: pivot.x - local.x, y: pivot.y - local.y, z: pivot.z - local.z } };
+}
 export function somaRotate(snapshot: SomaSnapshot, axis: Axis, direction: -1 | 1): SomaSnapshot | null {
-  const pieces = snapshot.pieces.map((piece) => piece.id === snapshot.selectedId ? { ...piece, orientation: somaTurn(piece.orientation, axis, direction) } : piece);
+  const pieces = snapshot.pieces.map((piece) => piece.id === snapshot.selectedId ? somaOrientAroundAnchor(piece, somaTurn(piece.orientation, axis, direction)) : piece);
   return somaPlacementValid(pieces) ? { ...snapshot, pieces } : null;
 }
 export function somaRoll(snapshot: SomaSnapshot, direction: SpatialRollDirection): SomaSnapshot | null {
@@ -81,7 +96,8 @@ export function somaDragPresentation(state: CubeStructureState, preview: CubeDra
   const moved = state.cubes.find((cube) => preview.positions.get(cube.id)?.[preview.axis] !== cube.position[preview.axis]);
   const id = moved && somaIdFromCell(moved.id);
   if (!id) return state;
-  return { ...state, cubes: state.cubes.map((cube) => somaIdFromCell(cube.id) === id ? { ...cube, position: { ...cube.position, [preview.axis]: cube.position[preview.axis] + preview.distance } } : cube) };
+  const distance = preview.positions.get(moved!.id)![preview.axis] - moved!.position[preview.axis];
+  return { ...state, cubes: state.cubes.map((cube) => somaIdFromCell(cube.id) === id ? { ...cube, position: { ...cube.position, [preview.axis]: cube.position[preview.axis] + distance } } : cube) };
 }
 export function somaRenderModel(state: CubeStructureState, snapshot: SomaSnapshot, label: string, presentation: CubeStructureState = state) {
   const model = buildCubeStructureRenderModel({ ...state, frame: snapshot.frame, view: snapshot.view }, state.cubes.filter((cube) => somaIdFromCell(cube.id) === snapshot.selectedId).map((cube) => cube.id), label);

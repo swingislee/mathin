@@ -36,12 +36,12 @@ export function cubeDragDistance(delta: CubeScreenPoint, projection: CubeScreenP
 // 手柄与命中共用世界长度；相机缩放时两者自动同比例投影。
 export const CUBE_MOVE_HANDLE_LENGTH = 1.6;
 
-export function cubeDragHandleAxis(point: CubeScreenPoint, center: VoxelCoordinate, camera: Camera, size: { width: number; height: number }): Axis | null {
+export function cubeDragHandleAxis(point: CubeScreenPoint, center: VoxelCoordinate, camera: Camera, size: { width: number; height: number }, axes: readonly Axis[] = CUBE_DRAG_AXES, hitRadius = 12): Axis | null {
   const from = cubeScreenPoint(center, camera, size);
   const length = CUBE_MOVE_HANDLE_LENGTH;
-  let closest = 12;
+  let closest = hitRadius;
   let hit: Axis | null = null;
-  for (const axis of CUBE_DRAG_AXES) {
+  for (const axis of axes) {
     const projection = cubeDragProjection(center, axis, camera, size);
     if (!projection) continue;
     const t = cubeDragDistance({ x: point.x - from.x, y: point.y - from.y }, projection);

@@ -29,6 +29,7 @@ import { SpatialRollButtons, type SpatialRollAction } from "../spatial-interacti
 import { spatialActionMessages } from "../spatial-interaction/messages";
 import { somaRoll } from "./model";
 import { somaCells } from "./pieces";
+import type { SpatialMovePlane } from "../spatial-interaction/object-gesture-math";
 
 const Canvas = dynamic(() => import("./SomaCanvas"), { ssr: false, loading: () => <Skeleton className="size-full" /> });
 type Panel = "pieces" | "move" | "rotate" | "roll" | "settings" | null;
@@ -40,9 +41,11 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
   const locale = useLocale(), m = { ...somaMessages(locale), ...spatialActionMessages(locale) }, spatial = useTranslations("tools.spatialLab");
   const origin = useMemo(() => initial ?? createSomaInitial(), [initial]);
   const host = useToolSnapshot(origin, classroom), snapshot = host.snapshot;
-  const controls = useSpatialToolState<"orbit" | "pan" | "move", Exclude<Panel, null>>({ defaultTool: "orbit", panels: { pieces: "orbit", move: "move", rotate: "move", roll: "orbit", settings: "orbit" } }, { tool: "move" });
+  const controls = useSpatialToolState<"orbit" | "pan" | "move" | "rotate", Exclude<Panel, null>>({ defaultTool: "orbit", panels: { pieces: "orbit", move: "move", rotate: "rotate", roll: "orbit", settings: "orbit" } }, { tool: "move" });
   const { panel, tool: navigation, setTool: setNavigation, setPanel } = controls;
   const [axis, setAxis] = useState<Axis>("x"), [notice, setNotice] = useState("");
+  const [rotationAxis, setRotationAxis] = useState<Axis>("y");
+  const [movePlane, setMovePlane] = useState<SpatialMovePlane>("table");
   const [dragging, setDragging] = useState(false), [history, setHistory] = useState<{ past: SomaSnapshot[]; future: SomaSnapshot[] }>({ past: [], future: [] });
   const [moving, setMoving] = useState(false);
   const directMove = useSpatialDirectCommit(snapshot, host.failed);
@@ -94,6 +97,8 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
   return <section className={styles.workspace} data-workbench-mode="courseware" data-soma-workspace="v1" aria-label={m.title} {...capture} {...controls.bindings}>
     <div className={styles.viewport}><div className={styles.canvas} data-has-cube-groups="true">
       <Canvas snapshot={directMove.displayed} messages={messages} title={m.title} readOnly={busy} cameraInteractive={!viewer} axisSnap={snap} navigation={navigation} moveAxis={axis}
+        movePlane={movePlane} preciseAxes={panel === "move"} rotationAxis={rotationAxis} onRotationAxis={setRotationAxis}
+        onPoseCommit={(next) => commit(next, true, true)} onPlaneUnavailable={() => setNotice(m.tableEdgeOn)} onGestureBlocked={() => setNotice(m.gestureBlocked)}
         instantKey={directMove.target ? JSON.stringify(somaRigidPoses(directMove.target.pieces)) : null} locale={locale} onMoving={setMoving}
         rollAction={panel === "roll" ? rollAction : undefined}
         onRotate={(axis, turn) => { if (!disabled) commit(somaRotate(snapshot, axis, turn)); }}
@@ -141,8 +146,13 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
           </>}
           {(panel === "move" || panel === "rotate") && <>
             <p>{m.selected} · {selected.name}</p>
+            {panel === "move" && <div className="space-y-1"><p className="text-muted">{m.moveFeel}</p><div className="flex gap-1">
+              {(["table", "screen"] as const).map((plane) => <Button key={plane} size="sm" variant={movePlane === plane ? "secondary" : "ghost"}
+                aria-pressed={movePlane === plane} disabled={disabled} onClick={() => setMovePlane(plane)}>{plane === "table" ? m.tableMove : m.screenMove}</Button>)}
+            </div></div>}
             {(["x", "y", "z"] as const).map((value) => <div key={value} className="flex items-center gap-2">
-              <CubeIconButton label={`${value.toUpperCase()} ${m.move}`} active={axis === value} disabled={disabled} onClick={() => setAxis(value)}><CubeAxisIcon axis={value} /></CubeIconButton>
+              <CubeIconButton label={`${value.toUpperCase()} ${m[panel]}`} active={(panel === "rotate" ? rotationAxis : axis) === value} disabled={disabled}
+                onClick={() => panel === "rotate" ? setRotationAxis(value) : setAxis(value)}><CubeAxisIcon axis={value} /></CubeIconButton>
               {([-1, 1] as const).map((direction) => <Button key={direction} size="sm" variant="secondary" disabled={disabled || !assembling}
                 aria-label={`${m[panel]} ${value.toUpperCase()} ${direction > 0 ? "+" : "−"}${panel === "rotate" ? "90°" : "1"}`}
                 onClick={() => commit(panel === "rotate" ? somaRotate(snapshot, value, direction) : somaMove(snapshot, snapshot.selectedId, value, direction))}>

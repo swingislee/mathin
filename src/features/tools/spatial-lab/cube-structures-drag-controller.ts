@@ -3,6 +3,7 @@ import type { Axis } from "@/features/spatial-math/domain";
 import { applyCubeOperation, cubeDisplayPosition, type CubeStructureState } from "./cube-structures-contract";
 import { cubeDragDistance, cubeDragHandleAxis, cubeDragHit, cubeDragOperation, cubeDragPositions, cubeDragProjection, cubeMoveCenter, type CubeMoveOperation, type CubeScreenPoint } from "./cube-structures-drag";
 import type { CubeDisplayPositions } from "./cube-structures-motion";
+import { isSpatialCameraHandoff, type SpatialObjectInteraction } from "../spatial-interaction/object-gesture-controller";
 
 export interface CubeDragPreview {
   readonly positions: CubeDisplayPositions;
@@ -18,7 +19,11 @@ export interface CubeMoveInteraction {
   readonly axis: Axis;
   readonly kind: CubeMoveOperation["kind"];
   readonly snapToGrid: boolean;
-  readonly bodyAxis?: "selected" | "gesture";
+  readonly bodyAxis?: "selected" | "gesture" | "handles";
+  readonly enabled?: boolean;
+  readonly handleAxes?: readonly Axis[];
+  readonly continuousPreview?: boolean;
+  readonly bodyGesture?: SpatialObjectInteraction;
   readonly showHandles?: boolean;
   readonly idsForHit?: (id: string) => readonly string[];
   readonly hitTest?: (raycaster: Raycaster) => string | null;
@@ -53,15 +58,19 @@ export function bindCubeAxisDrag(canvas: HTMLCanvasElement, getInteraction: () =
     return previous;
   };
   const down = (event: PointerEvent) => {
-    if (gesture) { clear(); return; }
+    if (isSpatialCameraHandoff(event)) return;
+    if (gesture) { stop(event); return; }
     if (event.button !== 0 || event.isPrimary === false) return;
     const snapshot = getInteraction();
+    if (snapshot.enabled === false) return;
+    if (snapshot.bodyGesture && event.shiftKey) return;
     const camera = getCamera();
     const size = canvas.getBoundingClientRect();
     const point = { x: event.clientX - size.left, y: event.clientY - size.top };
     const center = cubeMoveCenter(snapshot.state, snapshot.ids);
     if (!center) return;
-    const handle = snapshot.showHandles === false ? null : cubeDragHandleAxis(point, center, camera, size);
+    const handle = snapshot.showHandles === false ? null : cubeDragHandleAxis(point, center, camera, size, snapshot.handleAxes, event.pointerType === "touch" ? 22 : 12);
+    if (!handle && snapshot.bodyAxis === "handles") return;
     raycaster.setFromCamera(new Vector2(point.x / size.width * 2 - 1, 1 - point.y / size.height * 2), camera);
     const hit = handle ? null : snapshot.hitTest ? snapshot.hitTest(raycaster) : cubeDragHit(snapshot.state, raycaster.ray);
     if (!handle && (!hit || !snapshot.scopeIds.includes(hit))) return;
@@ -88,7 +97,8 @@ export function bindCubeAxisDrag(canvas: HTMLCanvasElement, getInteraction: () =
   const update = (event: PointerEvent) => {
     if (!gesture || gesture.pointerId !== event.pointerId) return;
     stop(event);
-    if (getInteraction().state !== gesture.snapshot.state) { clear(); return; }
+    const current = getInteraction();
+    if (current.enabled === false || current.state !== gesture.snapshot.state) { clear(); return; }
     const delta = { x: event.clientX - gesture.start.x, y: event.clientY - gesture.start.y };
     if (!gesture.dragged && Math.hypot(delta.x, delta.y) > 3) {
       gesture.dragged = true;
@@ -109,7 +119,7 @@ export function bindCubeAxisDrag(canvas: HTMLCanvasElement, getInteraction: () =
     const distance = Math.max(-48, Math.min(48, cubeDragDistance(delta, gesture.projection)));
     const operation = cubeDragOperation(gesture.snapshot.kind, gesture.ids, gesture.axis, distance, gesture.gridAnchor);
     gesture.operation = operation;
-    pending = { positions: cubeDragPositions(gesture.snapshot.state, gesture.ids, gesture.axis, gesture.snapshot.snapToGrid ? operation?.distance ?? 0 : distance), axis: gesture.axis, ids: gesture.ids,
+    pending = { positions: cubeDragPositions(gesture.snapshot.state, gesture.ids, gesture.axis, gesture.snapshot.snapToGrid && !gesture.snapshot.continuousPreview ? operation?.distance ?? 0 : distance), axis: gesture.axis, ids: gesture.ids,
       distance: operation?.distance ?? 0, valid: !operation || (gesture.snapshot.isValidOperation?.(operation) ?? (applyCubeOperation(gesture.snapshot.state, operation) !== gesture.snapshot.state)) };
     if (!frame) frame = requestAnimationFrame(() => { frame = 0; if (pending && gesture) onPreview(pending); });
   };

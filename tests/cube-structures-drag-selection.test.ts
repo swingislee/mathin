@@ -46,6 +46,15 @@ function setup(kind: CubeMoveInteraction["kind"] = "move", positions = [origin],
 }
 
 describe("axis dragging uses camera projection and one semantic release", () => {
+  it("permits continuous precise-axis previews with an exact endpoint, and cancels when disabled", () => {
+    const drag = setup("move", [origin], ["cube-1"], true);
+    Object.assign(drag.interaction, { continuousPreview: true });
+    drag.send("pointerdown"); drag.send("pointermove", 496); drag.flush();
+    expect(drag.previews.at(-1)?.positions.get("cube-1")?.x).toBeCloseTo(1.2);
+    expect(drag.previews.at(-1)?.distance).toBe(1);
+    Object.assign(drag.interaction, { enabled: false }); drag.send("pointerup", 496);
+    expect(drag.session().lesson?.operations).toHaveLength(0); expect(drag.previews.at(-1)).toBeNull(); drag.dispose();
+  });
   it("direct dragging chooses the visible axis from the gesture, without a prior axis click", () => {
     const drag = setup(); Object.assign(drag.interaction, { bodyAxis: "gesture", showHandles: false });
     drag.send("pointerdown"); drag.send("pointermove", 402, 204); drag.flush();

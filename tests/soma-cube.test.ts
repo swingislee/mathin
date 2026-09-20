@@ -97,9 +97,10 @@ describe("free choice and rigid manipulation", () => {
     expect(somaMove(initial, "bao-1", "x", 0.5)).toBeNull();
     expect(somaMove(initial, "bao-1", "x", 50)).toBeNull();
     expect(initial).toEqual(before);
-    let alone = somaChoose(initial, ["bao-1"])!;
+    let alone = somaMove(somaChoose(initial, ["bao-1"])!, "bao-1", "y", 3)!;
+    const lifted = alone.pieces;
     for (let i = 0; i < 4; i++) alone = somaRotate(alone, "z", 1)!;
-    expect(alone.pieces).toEqual([initial.pieces[0]]);
+    expect(alone.pieces).toEqual(lifted);
   });
   it("isolates observation without changing any stored assembly positions", () => {
     const initial = { ...createSomaInitial(), pieces: structuredClone([...SOMA_CUBE_EXAMPLE]) };

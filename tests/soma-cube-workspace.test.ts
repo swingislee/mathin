@@ -30,6 +30,29 @@ async function click(label: string) {
   await act(async () => button!.click());
 }
 describe("Soma teaching workspace", () => {
+  it("offers local drag-plane trials and keeps movement and rotation axes independent", async () => {
+    const initial = createSomaInitial(); await render(createElement(SomaWorkspace, { initial }));
+    expect(canvas.props!.movePlane).toBe("table"); expect(canvas.props!.preciseAxes).toBe(false);
+    await click(m.move); expect(canvas.props!.preciseAxes).toBe(true);
+    await click(m.screenMove); await click(`Z ${m.move}`);
+    expect(canvas.props!.movePlane).toBe("screen"); expect(canvas.props!.snapshot).toBe(initial);
+    await click(m.rotate); expect(canvas.props!.navigation).toBe("rotate"); expect(canvas.props!.preciseAxes).toBe(false);
+    await click(`X ${m.rotate}`); expect(canvas.props!.rotationAxis).toBe("x"); expect(canvas.props!.moveAxis).toBe("z");
+    await click(m.close); expect(canvas.props!.navigation).toBe("orbit"); expect(canvas.props!.movePlane).toBe("screen");
+  });
+  it("commits a free gesture once and preserves its endpoint through a cloned classroom echo", async () => {
+    const initial = createSomaInitial(), writes: SomaSnapshot[] = []; let accept!: () => void;
+    const pending = new Promise<void>((resolve) => { accept = resolve; });
+    function Teacher() {
+      const [state, setState] = useState(initial);
+      return createElement(SomaWorkspace, { initial, classroom: { state, onChange: async (next) => { writes.push(next); await pending; setState(structuredClone(next)); } } });
+    }
+    await render(createElement(Teacher));
+    const next = { ...initial, pieces: initial.pieces.map((piece, i) => i ? piece : { ...piece, position: { ...piece.position, y: 2, z: piece.position.z - 1 } }) };
+    await act(async () => { expect(canvas.props!.onPoseCommit!(next)).toBe(true); });
+    expect(writes).toEqual([next]); expect(canvas.props!.snapshot).toBe(next); const key = canvas.props!.instantKey;
+    await act(async () => accept()); expect(canvas.props!.snapshot).toEqual(next); expect(canvas.props!.instantKey).toBe(key);
+  });
   it("uses the shared rolling action and leaves no hidden operation behind a closed panel", async () => {
     const initial = createSomaInitial(); initial.pieces = [initial.pieces[0]];
     await render(createElement(SomaWorkspace, { initial }));
