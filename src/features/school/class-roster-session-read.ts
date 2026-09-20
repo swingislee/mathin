@@ -2,8 +2,27 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { getClassroomWorkSessions } from "./classroom-workbench-read";
 import { readSchoolQueryBatches } from "./school-query-pages";
-import { getTeachingRecords } from "./teaching-workbench/teaching-records-read";
+import { getTeachingRecords, getTeachingSessionRecords } from "./teaching-workbench/teaching-records-read";
 import { classSessionDetailSchema, type ClassRosterSession } from "./class-roster-session-contract";
+import { summarizeTeachingObservations, type TeachingObservations } from "./teaching-workbench/teaching-learning-summary";
+
+/** 只读取展开班级的课次，限制并发；失败保留为未知，避免将未读到的数据显示成零。 */
+export async function getClassSessionObservations(classroomId: string, sessionIds: string[]) {
+  const summaries: Array<{ sessionId: string; observations: TeachingObservations | null }> = [];
+  const ids = [...new Set(sessionIds)];
+  for (let offset = 0; offset < ids.length; offset += 4) {
+    summaries.push(...await Promise.all(ids.slice(offset, offset + 4).map(async sessionId => {
+      try {
+        const records = await getTeachingSessionRecords(sessionId);
+        if (records.session.classroomId !== classroomId) return { sessionId, observations: null };
+        return { sessionId, observations: summarizeTeachingObservations(records) };
+      } catch {
+        return { sessionId, observations: null };
+      }
+    })));
+  }
+  return summaries;
+}
 
 export async function getClassRosterSessions(classroomIds: string[]): Promise<ClassRosterSession[]> {
   const sessions = await getClassroomWorkSessions(classroomIds);

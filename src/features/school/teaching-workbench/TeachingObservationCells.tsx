@@ -3,9 +3,9 @@ import type { TeachingObservations } from "./teaching-learning-summary";
 import { LearningCheckStatusMark } from "../LearningCheckStatusMark";
 import { LEARNING_CHECK_RATED_STATUSES } from "../session-learning-contract";
 
-export function TeachingPerformance({ value }: { value: TeachingObservations }) {
+export function TeachingPerformance({ value, inline = false }: { value: TeachingObservations; inline?: boolean }) {
   const t = useTranslations("school.teachingWorkbench.observations");
-  return <div className="grid w-fit grid-cols-3 gap-1" title={t("basis")} data-teaching-performance>
+  return <div className={inline ? "flex flex-wrap gap-1" : "grid w-fit grid-cols-3 gap-1"} title={t("basis")} data-teaching-performance>
     {LEARNING_CHECK_RATED_STATUSES.map(status => <LearningCheckStatusMark key={status} status={status} count={value[status]} />)}
   </div>;
 }

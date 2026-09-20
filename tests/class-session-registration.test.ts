@@ -21,6 +21,8 @@ vi.mock("@/features/school/teaching-workbench/TeachingSessionRecords", () => ({ 
 vi.mock("next/dynamic", () => ({ default: () => ClassRosterSessionDetail }));
 const first = "12345678-1234-4234-9234-123456789abc", second = "12345678-1234-4234-9234-123456789def";
 const communications = { canRead: true, canWrite: true, completed: false, records: [] };
+const observations = { explained: 2, independent: 7, prompted: 3, imitated: 1, incomplete: 0, recordedChecks: 3, totalChecks: 8, focusChecks: [] };
+const summary = (sessionId: string) => ({ sessionId, observations: sessionId === "today" ? observations : { ...observations, explained: 0, independent: 0, prompted: 0, imitated: 0, recordedChecks: 0 } });
 function detail(sessionId: string): ClassSessionDetail {
   return { canWriteReview: true, resultStatus: "draft", records: {
     session: { id: sessionId, classroomId: "class", classroomName: "Class", title: sessionId, scheduledAt: "2026-09-20T02:00:00Z", startedAt: null, endedAt: null },
@@ -59,7 +61,10 @@ beforeEach(async () => {
   vi.stubGlobal("fetch", deps.fetch);
   HTMLElement.prototype.scrollIntoView = vi.fn();
   vi.clearAllMocks();
-  deps.fetch.mockImplementation(async (_url: string, options: RequestInit) => ({ ok: true, json: async () => detail(JSON.parse(String(options.body)).sessionId) }));
+  deps.fetch.mockImplementation(async (url: string, options: RequestInit) => ({ ok: true, json: async () => {
+    const input = JSON.parse(String(options.body));
+    return url.endsWith("session-observations") ? input.sessionIds.map(summary) : detail(input.sessionId);
+  } }));
   deps.save.mockResolvedValue({ ok: true });
   deps.record.mockImplementation(async (input: { id: string; sessionId: string; studentId: string; content: string }) => ({ ok: true, data: { ...communications,
     records: [{ id: input.id, studentId: input.studentId, content: input.content, occurredOn: "2026-09-20", channel: "wechat", outcome: "contacted", nextAction: "", nextFollowUpOn: null, author: "Teacher", createdAt: "2026-09-20T01:00:00Z" }] } }));
@@ -74,12 +79,13 @@ describe("班级下直接连续登记", () => {
     expect(container.querySelectorAll("tr")).toHaveLength(1);
     expect(container.querySelector('[role="combobox"]')).toBeNull();
     await click(classToggle());
-    expect(deps.fetch).not.toHaveBeenCalled();
+    expect(deps.fetch).toHaveBeenCalledOnce();
+    expect(deps.fetch.mock.calls[0][0]).toContain("/classes/session-observations");
     expect([...container.querySelectorAll("[data-class-session-row]")].map(row => row.getAttribute("data-class-session-row"))).toEqual(["today", "previous"]);
     expect(sessionRow("today").textContent).toContain("考勤 1");
-    expect(sessionRow("today").textContent).toContain("课评 1");
+    expect(sessionRow("today").textContent).toContain("已填课评 1 人次");
     await click(sessionRow("today"));
-    expect(deps.fetch.mock.calls[0][0]).toContain("/classes/session-detail");
+    expect(deps.fetch.mock.calls.at(-1)![0]).toContain("/classes/session-detail");
     expect(container.querySelector('[data-session-id="today"]')).not.toBeNull();
     await click(container.querySelector<HTMLElement>(`[data-followup-row-key="${first}"]`)!);
     await fill(container.querySelector("textarea")!, "已沟通的内容");
@@ -96,6 +102,35 @@ describe("班级下直接连续登记", () => {
     await click(sessionRow("previous"));
     expect(container.querySelector('[data-session-id="previous"]')).not.toBeNull();
     expect(container.querySelector('[data-session-id="today"]')).toBeNull();
+  });
+  it("展开班级即可看到逐课五种答题 SVG 和覆盖情况，重开复用摘要", async () => {
+    await click(classToggle());
+    for (const [status, count] of Object.entries({ explained: 2, independent: 7, prompted: 3, imitated: 1, incomplete: 0 })) {
+      const mark = sessionRow("today").querySelector(`[data-learning-status="${status}"]`)!;
+      expect(mark.querySelector("svg")).not.toBeNull();
+      expect(mark.getAttribute("aria-label")).toContain(` · ${count}`);
+    }
+    expect(sessionRow("today").textContent).toContain("已记 3/8 题");
+    expect(sessionRow("previous").textContent).toContain("已记 0/8 题");
+    expect(container.querySelector("[data-class-session-editor]")).toBeNull();
+    await click(classToggle()); await click(classToggle());
+    expect(deps.fetch).toHaveBeenCalledOnce();
+    expect(sessionRow("today").querySelectorAll("[data-learning-status]")).toHaveLength(5);
+  });
+
+  it("摘要未返回或失败时不伪造零次，行内重试保持课次收起", async () => {
+    let resolve!: (value: unknown) => void;
+    deps.fetch.mockImplementationOnce(() => new Promise(done => { resolve = done; }));
+    await click(classToggle());
+    expect(sessionRow("today").textContent).toContain("正在读取答题记录");
+    expect(sessionRow("today").querySelector("[data-teaching-performance]")).toBeNull();
+    await act(async () => resolve({ ok: false }));
+    expect(sessionRow("today").textContent).toContain("答题记录未读到");
+    const retry = [...sessionRow("today").querySelectorAll("button")].find(item => item.textContent === "重试")!;
+    await click(retry);
+    expect(sessionRow("today").querySelectorAll("[data-learning-status]")).toHaveLength(5);
+    expect(container.querySelector("[data-class-session-editor]")).toBeNull();
+    expect(JSON.parse(deps.fetch.mock.calls.at(-1)![1].body).sessionIds).toEqual(["today"]);
   });
   it("课评只保存编辑过的学生，自动保存完成后才能切换", async () => {
     await click(classToggle());

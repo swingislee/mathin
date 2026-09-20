@@ -3,6 +3,7 @@ import type { ReviewRecord } from "./review-actions";
 import type { SessionStudentPostworkRow } from "./SessionStudentPostworkTable";
 import type { ClassroomWorkSession } from "./classroom-workbench-contract";
 import { teachingRecordsSchema, type TeachingRecords } from "./teaching-workbench/teaching-records-contract";
+import { teachingObservationSchema } from "./teaching-workbench/teaching-learning-summary";
 
 export type ClassRosterSession = ClassroomWorkSession & { attendanceCount: number; reviewCount: number };
 export const classSessionDetailSchema = z.object({
@@ -11,6 +12,8 @@ export const classSessionDetailSchema = z.object({
   resultStatus: z.enum(["draft", "review", "published", "withdrawn", "revised"]),
 });
 export type ClassSessionDetail = z.infer<typeof classSessionDetailSchema>;
+export const CLASS_SESSION_OBSERVATION_BATCH_SIZE = 40;
+export const classSessionObservationsSchema = z.array(z.object({ sessionId: z.string(), observations: teachingObservationSchema.nullable() }));
 
 export function orderedClassSessions(sessions: readonly ClassRosterSession[], classroomId: string) {
   return sessions.filter(session => session.classroomId === classroomId)
@@ -44,11 +47,13 @@ export function classSessionMessages(locale: string) {
     loading: "Loading lesson records…", failed: "Lesson records could not be loaded.", retry: "Retry", draft: "Save the current entries before switching lessons or changing the list.",
     roster: "Students below belong to the selected lesson.", workspace: "Open lesson workspace", back: "Back to classes",
     noAccess: "No accessible lesson is available for this link.",
+    observationsLoading: "Loading responses…", observationsFailed: "Responses unavailable",
   } : {
     session: "课次", noSessions: "尚未安排课次",
     open: "查看 / 登记", attendance: "考勤", reviews: "课评", noDate: "待排时间", untitled: "未命名课次",
     loading: "正在读取本课记录…", failed: "本课记录读取失败。", retry: "重试", draft: "请先保存当前登记，再切换课次或调整名单。",
     roster: "下方按所选课次的实际学生名单登记。", workspace: "进入课次工作区", back: "返回班级",
     noAccess: "此链接暂无可查看的课次。",
+    observationsLoading: "正在读取答题记录…", observationsFailed: "答题记录未读到",
   };
 }
