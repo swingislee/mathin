@@ -8,8 +8,8 @@ import { SOMA_ROTATIONS, somaPlacementValid, type SomaId } from "./pieces";
 
 const orientations = SOMA_ROTATIONS.map((basis) => new Quaternion(...spatialBasisQuaternion(basis)));
 const snapDelta = (value: number) => Math.sign(value) * Math.round(Math.abs(value)) || 0;
-/** 连续手势只输出一个准确候选；显示中间角度不扩展已有的 24 朝向/整数坐标合同。 */
-export function somaGestureLanding(snapshot: SomaSnapshot, id: SomaId, pose: SpatialRigidPose, action: SpatialObjectAction) {
+/** 位置保留既有的相对整格落点；v2 自由旋转直接保存末帧，v1 保持自己的离散合同。 */
+export function somaGestureLanding(snapshot: SomaSnapshot, id: SomaId, pose: SpatialRigidPose, action: SpatialObjectAction, free = false) {
   const source = snapshot.pieces.find((piece) => piece.id === id)!;
   const original = somaRigidPoses([source])[0];
   let target = source;
@@ -18,6 +18,7 @@ export function somaGestureLanding(snapshot: SomaSnapshot, id: SomaId, pose: Spa
     y: source.position.y + snapDelta(pose.position.y - original.position.y),
     z: source.position.z + snapDelta(pose.position.z - original.position.z),
   } };
+  else if (free || source.quaternion) target = { id, position: { ...pose.position }, quaternion: new Quaternion(...pose.quaternion).normalize().toArray() };
   else {
     const rotation = new Quaternion(...pose.quaternion).normalize();
     let nearest = source.orientation, angle = orientations[nearest].angleTo(rotation);

@@ -9,11 +9,17 @@ import type { SomaCanvasProps } from "@/features/tools/soma-cube/SomaCanvas";
 import { createSomaInitial, SOMA_CUBE_EXAMPLE } from "@/features/tools/soma-cube/model";
 import type { SomaSnapshot } from "@/features/tools/soma-cube/contract";
 import { somaMessages } from "@/features/tools/soma-cube/messages";
+import { somaGestureLanding } from "@/features/tools/soma-cube/manipulation";
+import { somaPose } from "@/features/tools/soma-cube/pieces";
 
 const canvas = vi.hoisted(() => ({ props: null as SomaCanvasProps | null }));
 vi.mock("next/dynamic", () => ({ default: () => function CanvasStub(props: SomaCanvasProps) { canvas.props = props; return null; } }));
 let root: Root, container: HTMLDivElement;
 const m = somaMessages("en");
+function freeTurn(initial: SomaSnapshot) {
+  const piece = initial.pieces[0], pose = somaPose(piece);
+  return somaGestureLanding(initial, piece.id, { ...pose, quaternion: [0, Math.sin(0.31), 0, Math.cos(0.31)] }, "rotate", true).snapshot;
+}
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true); vi.stubGlobal("crypto", {});
   container = document.createElement("div"); document.body.append(container); root = createRoot(container);
@@ -48,10 +54,38 @@ describe("Soma teaching workspace", () => {
       return createElement(SomaWorkspace, { initial, classroom: { state, onChange: async (next) => { writes.push(next); await pending; setState(structuredClone(next)); } } });
     }
     await render(createElement(Teacher));
-    const next = { ...initial, pieces: initial.pieces.map((piece, i) => i ? piece : { ...piece, position: { ...piece.position, y: 2, z: piece.position.z - 1 } }) };
+    const next = freeTurn(initial);
     await act(async () => { expect(canvas.props!.onPoseCommit!(next)).toBe(true); });
     expect(writes).toEqual([next]); expect(canvas.props!.snapshot).toBe(next); const key = canvas.props!.instantKey;
     await act(async () => accept()); expect(canvas.props!.snapshot).toEqual(next); expect(canvas.props!.instantKey).toBe(key);
+    await render(createElement(SomaWorkspace, { key: "viewer", initial, classroom: { state: JSON.parse(JSON.stringify(next)) } }));
+    expect(canvas.props!.snapshot).toEqual(next); expect(canvas.props!.readOnly).toBe(true);
+  });
+  it("captures, undoes and restores arbitrary rotation, with a touch mode toggle and explicit grid alignment", async () => {
+    const initial = createSomaInitial(), capture = vi.fn();
+    await render(createElement(SomaWorkspace, { initial, onSnapshot: capture }));
+    await act(async () => canvas.props!.onToggleRotation!()); expect(canvas.props!.navigation).toBe("rotate");
+    const next = freeTurn(initial);
+    await act(async () => { canvas.props!.onDragging(true); }); expect(capture.mock.lastCall![0]).toBeNull();
+    await act(async () => { canvas.props!.onPoseCommit!(next); canvas.props!.onDragging(false); });
+    expect(capture.mock.lastCall![0]).toEqual(next);
+    await click(m.alignGrid); expect(canvas.props!.snapshot.pieces[0].quaternion).toBeUndefined();
+    await click(m.undo); expect(canvas.props!.snapshot.pieces).toEqual(next.pieces);
+    await click(m.undo); expect(canvas.props!.snapshot.pieces).toEqual(initial.pieces);
+    await click(m.redo); expect(canvas.props!.snapshot.pieces).toEqual(next.pieces);
+    await click(m.reset); expect(canvas.props!.snapshot.pieces).toEqual(initial.pieces);
+    await render(createElement(SomaWorkspace, { key: "reopen", initial: JSON.parse(JSON.stringify(next)) }));
+    expect(canvas.props!.snapshot.pieces).toEqual(next.pieces);
+  });
+  it("retains the v1 contract and rejects arbitrary poses from a stale or incorrect adapter", async () => {
+    const initial = createSomaInitial();
+    await render(createElement(SomaWorkspace, { initial, freeRotation: false }));
+    expect(canvas.props!.freeRotation).toBe(false);
+    await act(async () => { expect(canvas.props!.onPoseCommit!(freeTurn(initial))).toBe(false); });
+    expect(canvas.props!.snapshot).toBe(initial);
+    await click(m.rotate); await click(`${m.rotate} Y +90°`);
+    expect(canvas.props!.snapshot.pieces[0].orientation).toBeTypeOf("number");
+    expect(canvas.props!.snapshot.pieces[0].quaternion).toBeUndefined();
   });
   it("uses the shared rolling action and leaves no hidden operation behind a closed panel", async () => {
     const initial = createSomaInitial(); initial.pieces = [initial.pieces[0]];
@@ -80,9 +114,9 @@ describe("Soma teaching workspace", () => {
     await click(m.move); await click(`${m.move} Y +1`);
     expect(canvas.props!.snapshot.pieces[4].position.y).toBe(1);
     await click(m.rotate); await click(`${m.rotate} Y +90°`);
-    expect(canvas.props!.snapshot.pieces[4].orientation).not.toBe(0);
+    expect(canvas.props!.snapshot.pieces[4].quaternion).toBeDefined();
     await click(m.undo); expect(canvas.props!.snapshot.pieces[4].orientation).toBe(0);
-    await click(m.redo); expect(canvas.props!.snapshot.pieces[4].orientation).not.toBe(0);
+    await click(m.redo); expect(canvas.props!.snapshot.pieces[4].quaternion).toBeDefined();
     await click(m.reset); expect(capture.mock.lastCall![0].pieces).toEqual(initial.pieces);
   });
   it("preserves a drag target and captures only the committed full-piece endpoint", async () => {
@@ -145,5 +179,11 @@ describe("Soma teaching workspace", () => {
     await act(async () => canvas.props!.onMove({ kind: "move", ids: ["bao-1:0"], axis: "y", distance: 1 }));
     expect(onChange).toHaveBeenCalledTimes(1); expect(canvas.props!.snapshot).toBe(initial);
     expect(container.textContent).toContain(m.syncError);
+  });
+  it("a failed free rotation returns to the confirmed classroom pose", async () => {
+    const initial = createSomaInitial(), onChange = vi.fn().mockRejectedValue(new Error("offline"));
+    await render(createElement(SomaWorkspace, { initial, classroom: { state: initial, onChange } }));
+    await act(async () => { canvas.props!.onPoseCommit!(freeTurn(initial)); });
+    expect(onChange).toHaveBeenCalledTimes(1); expect(canvas.props!.snapshot).toBe(initial); expect(container.textContent).toContain(m.syncError);
   });
 });

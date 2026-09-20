@@ -7,7 +7,7 @@ import SomaCanvas, { type SomaCanvasProps } from "@/features/tools/soma-cube/Som
 import { createSomaInitial, somaRotate, somaRoll } from "@/features/tools/soma-cube/model";
 import { somaRigidPoses } from "@/features/tools/soma-cube/motion";
 import type { CubeMoveInteraction } from "@/features/tools/spatial-lab/cube-structures-drag-controller";
-import { spatialDragRotation } from "@/features/tools/spatial-interaction/object-gesture-math";
+import { spatialArcball, spatialArcballRotation } from "@/features/tools/spatial-interaction/arcball";
 import type { SpatialGestureTarget } from "@/features/tools/spatial-interaction/object-gesture-controller";
 import { somaRotationPivot } from "@/features/tools/soma-cube/model";
 
@@ -22,6 +22,7 @@ vi.mock("@/features/spatial-math/renderer-r3f/VoxelCanvas", async (original) => 
 }));
 vi.mock("@/features/tools/spatial-lab/CubeMoveHandles", () => ({ CubeMoveHandles: ({ interaction }: { interaction: CubeMoveInteraction }) => { controls.interaction = interaction; return null; } }));
 vi.mock("@/features/tools/spatial-interaction/SpatialRotationControls", () => ({ SpatialRotationControls: () => null, SpatialRotationAnchor: () => null }));
+vi.mock("@/features/tools/spatial-interaction/SpatialArcballGuide", () => ({ SpatialArcballGuide: () => null }));
 const cleanups: (() => Promise<void>)[] = [];
 afterEach(async () => { for (const cleanup of cleanups.splice(0)) await cleanup(); vi.unstubAllGlobals(); });
 
@@ -47,16 +48,17 @@ async function setup(reduced = false) {
 }
 
 describe("Soma renders the shared rigid animation instead of replacing cells", () => {
-  it("renders continuous body rotation and landing separately, holding the preview through a commit", async () => {
+  it("keeps the free rotation after release and through the classroom commit without an extra landing", async () => {
     const rig = await setup(), onPoseCommit = vi.fn<(next: SomaCanvasProps["snapshot"]) => boolean>(() => true);
     const source = { ...rig.initial, pieces: [ { ...rig.initial.pieces[0], position: { x: 0, y: 4, z: 0 } } ] };
     await rig.render({ snapshot: source, onPoseCommit, instantKey: JSON.stringify(somaRigidPoses(source.pieces)) });
     const body = controls.interaction!.bodyGesture!, target = body.selected as SpatialGestureTarget;
     const c = new THREE.OrthographicCamera(-5, 5, 4, -4, 0.1, 100); c.position.set(0, 0, 10); c.lookAt(0, 0, 0); c.updateMatrixWorld();
-    const pose = spatialDragRotation(target.pose, target.pivot, { x: 95, y: 17 }, c), landing = body.resolve(target, pose, "rotate");
-    await act(async () => { body.onDragging(true); body.onPreview({ target, pose, landing: landing.pose, valid: landing.valid, phase: "drag" }); });
+    const arcball = spatialArcball(target.pivot, target.radius!, c, { left: 0, top: 0, width: 800, height: 600 });
+    const pose = spatialArcballRotation(target.pose, target.pivot, arcball.center, { x: arcball.center.x + 95, y: arcball.center.y + 17 }, arcball), landing = body.resolve(target, pose, "rotate");
+    await act(async () => { body.onDragging(true); body.onPreview({ target, pose, landing: landing.pose, valid: landing.valid, phase: "drag", arcball }); });
     expect(rig.group().quaternion.angleTo(new Quaternion(...pose.quaternion))).toBeLessThan(1e-7);
-    expect(rig.scene().getObjectByName("soma-landing-preview")).toBeDefined(); expect(onPoseCommit).not.toHaveBeenCalled();
+    expect(rig.scene().getObjectByName("soma-landing-preview")).toBeUndefined(); expect(onPoseCommit).not.toHaveBeenCalled();
     expect(controls.interaction!.enabled).toBe(false); expect(controls.interaction!.bodyGesture!.enabled).toBe(true);
     expect(landing.apply()).toBe(true); const next = onPoseCommit.mock.lastCall![0];
     await rig.render({ snapshot: next, onPoseCommit, instantKey: JSON.stringify(somaRigidPoses(next.pieces)), readOnly: true });
@@ -64,7 +66,11 @@ describe("Soma renders the shared rigid animation instead of replacing cells", (
     await act(async () => { body.onPreview(null); body.onDragging(false); });
     expect(rig.group().quaternion.angleTo(new Quaternion(...landing.pose.quaternion))).toBeLessThan(1e-7);
     expect(rig.scene().getObjectByName("soma-landing-preview")).toBeUndefined(); expect(onPoseCommit).toHaveBeenCalledTimes(1);
-    expect(somaRotationPivot(next.pieces[0])).toEqual(somaRotationPivot(source.pieces[0]));
+    expect(somaRotationPivot(next.pieces[0], true)).toEqual(somaRotationPivot(source.pieces[0], true));
+    expect(new Quaternion(...landing.pose.quaternion).angleTo(new Quaternion(...pose.quaternion))).toBeLessThan(1e-7);
+    const reopened = await setup();
+    await reopened.render({ snapshot: JSON.parse(JSON.stringify(next)), readOnly: true, instantKey: JSON.stringify(somaRigidPoses(next.pieces)) });
+    expect(reopened.group().quaternion.angleTo(new Quaternion(...pose.quaternion))).toBeLessThan(1e-7);
   });
   it.each([false, true])("shows intermediate rotation with reduced motion = %s and ends at the exact pose", async (reduced) => {
     const rig = await setup(reduced), before = rig.group().quaternion.clone();

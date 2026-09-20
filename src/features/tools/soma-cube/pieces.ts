@@ -1,4 +1,6 @@
 import type { Axis, VoxelCoordinate } from "@/features/spatial-math/domain";
+import { spatialBasisQuaternion, type SpatialRigidPose } from "../spatial-interaction/rigid-motion";
+import { spatialRigidAxes, spatialRigidPoint, spatialUnitCubesOverlap } from "../spatial-interaction/rigid-geometry";
 
 export const SOMA_IDS = ["bao-1", "bao-2", "bao-3", "bao-4", "bao-5", "bao-6", "bao-7"] as const;
 export type SomaId = (typeof SOMA_IDS)[number];
@@ -45,19 +47,47 @@ export function somaLocalCells(id: SomaId, orientation: number): VoxelCoordinate
   const min = point(Math.min(...cells.map((p) => p.x)), Math.min(...cells.map((p) => p.y)), Math.min(...cells.map((p) => p.z)));
   return cells.map((p) => point(p.x - min.x, p.y - min.y, p.z - min.z));
 }
-export interface SomaPiece { id: SomaId; position: VoxelCoordinate; orientation: number }
+export interface SomaGridPiece { id: SomaId; position: VoxelCoordinate; orientation: number; quaternion?: never }
+/** v2 自由姿态的位置是源模型原点；与 v1 的格点包围盒位置互斥，避免两份朝向真相。 */
+export interface SomaFreePiece { id: SomaId; position: VoxelCoordinate; quaternion: SpatialRigidPose["quaternion"]; orientation?: never }
+export type SomaPiece = SomaGridPiece | SomaFreePiece;
+export function somaPose(piece: SomaPiece): SpatialRigidPose {
+  if (piece.quaternion) return { id: piece.id, position: piece.position, quaternion: piece.quaternion };
+  const quaternion = spatialBasisQuaternion(SOMA_ROTATIONS[piece.orientation]);
+  const origin = { id: piece.id, quaternion, position: point(0, 0, 0) };
+  const cells = somaDefinition(piece.id).cells.map((p) => spatialRigidPoint(p, origin));
+  const position = { ...piece.position };
+  for (const axis of ["x", "y", "z"] as const) position[axis] -= Math.round(Math.min(...cells.map((p) => p[axis])));
+  return { ...origin, position };
+}
 export function somaCells(piece: SomaPiece): VoxelCoordinate[] {
+  if (piece.quaternion) return somaDefinition(piece.id).cells.map((p) => spatialRigidPoint(p, somaPose(piece)));
   return somaLocalCells(piece.id, piece.orientation).map((p) => point(p.x + piece.position.x, p.y + piece.position.y, p.z + piece.position.z));
 }
 export function somaPlacementValid(pieces: readonly SomaPiece[]): boolean {
   const occupied = new Set<string>();
   for (const piece of pieces) {
-    if (!SOMA_IDS.includes(piece.id) || !Number.isInteger(piece.orientation) || piece.orientation < 0 || piece.orientation >= SOMA_ROTATIONS.length) return false;
+    if (!SOMA_IDS.includes(piece.id) || !Object.values(piece.position).every(Number.isFinite)) return false;
+    if (piece.quaternion) {
+      if (piece.orientation !== undefined || piece.quaternion.length !== 4 || !piece.quaternion.every(Number.isFinite)
+        || Math.abs(piece.quaternion.reduce((sum, n) => sum + n * n, 0) - 1) > 1e-6
+        || Object.values(piece.position).some((n) => Math.abs(n) > 16)) return false;
+    } else if (!Number.isInteger(piece.orientation) || piece.orientation < 0 || piece.orientation >= SOMA_ROTATIONS.length) return false;
     for (const p of somaCells(piece)) {
+      if (piece.quaternion) {
+        if (Object.values(p).some((n) => !Number.isFinite(n) || Math.abs(n) > SOMA_LIMIT + 1e-7)) return false;
+        continue;
+      }
       if (![p.x, p.y, p.z].every(Number.isInteger) || Math.abs(p.x) > SOMA_LIMIT || Math.abs(p.z) > SOMA_LIMIT || p.y < 0 || p.y > SOMA_LIMIT) return false;
       const key = `${p.x},${p.y},${p.z}`;
       if (occupied.has(key)) return false;
       occupied.add(key);
+    }
+  }
+  if (pieces.some((piece) => piece.quaternion)) {
+    const geometry = pieces.map((piece) => ({ cells: somaCells(piece), axes: spatialRigidAxes(somaPose(piece).quaternion) }));
+    for (let i = 0; i < geometry.length; i++) for (let j = 0; j < i; j++) {
+      if (geometry[i].cells.some((a) => geometry[j].cells.some((b) => spatialUnitCubesOverlap(a, geometry[i].axes, b, geometry[j].axes)))) return false;
     }
   }
   return true;

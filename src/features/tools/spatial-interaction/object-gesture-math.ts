@@ -1,6 +1,5 @@
-import { Plane, Quaternion, Raycaster, Vector2, Vector3, type Camera } from "three";
+import { Plane, Raycaster, Vector2, Vector3, type Camera } from "three";
 import type { VoxelCoordinate } from "@/features/spatial-math/domain";
-import type { SpatialRigidPose } from "./rigid-motion";
 
 export type SpatialMovePlane = "table" | "screen";
 export type SpatialObjectAction = "translate" | "rotate";
@@ -29,14 +28,4 @@ export function spatialMoveDelta(projection: NonNullable<ReturnType<typeof spati
   if (Math.abs(projection.plane.normal.dot(ray.direction)) < 0.12) return null;
   const next = ray.intersectPlane(projection.plane, new Vector3());
   return next ? coordinate(next.sub(projection.start)) : null;
-}
-
-/** 左右拖转向、上下拖倾斜；按当前画面方向控制，整次手势使用同一个可见锚点。 */
-export function spatialDragRotation(source: SpatialRigidPose, pivot: VoxelCoordinate, delta: SpatialPointerPoint, camera: Camera, pixelsPerRadian = 80): SpatialRigidPose {
-  const length = Math.hypot(delta.x, delta.y);
-  if (length < 1e-9) return source;
-  const axis = new Vector3(delta.y, delta.x, 0).normalize().applyQuaternion(camera.getWorldQuaternion(new Quaternion()));
-  const rotation = new Quaternion().setFromAxisAngle(axis, length / pixelsPerRadian);
-  const position = vector(source.position).sub(vector(pivot)).applyQuaternion(rotation).add(vector(pivot));
-  return { ...source, position: coordinate(position), quaternion: rotation.multiply(new Quaternion(...source.quaternion)).toArray() };
 }

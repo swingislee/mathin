@@ -3,11 +3,12 @@ import type { VoxelCoordinate } from "@/features/spatial-math/domain";
 import { beginSpatialObjectGesture } from "@/features/spatial-math/renderer-r3f/spatial-object-gesture";
 import { animateSpatialAction } from "./policy";
 import { interpolateRigidPoses, type SpatialRigidPose } from "./rigid-motion";
-import { spatialDragRotation, spatialMoveDelta, spatialMoveProjection, spatialPointerRay, type SpatialMovePlane, type SpatialObjectAction, type SpatialPointerViewport } from "./object-gesture-math";
+import { spatialMoveDelta, spatialMoveProjection, spatialPointerRay, type SpatialMovePlane, type SpatialObjectAction, type SpatialPointerViewport } from "./object-gesture-math";
+import { spatialArcball, spatialArcballRotation, type SpatialArcball } from "./arcball";
 
-export interface SpatialGestureTarget { pose: SpatialRigidPose; pivot: VoxelCoordinate; grabPoint: VoxelCoordinate }
+export interface SpatialGestureTarget { pose: SpatialRigidPose; pivot: VoxelCoordinate; grabPoint: VoxelCoordinate; radius?: number }
 export interface SpatialGestureLanding { pose: SpatialRigidPose; valid: boolean; apply: () => boolean }
-export interface SpatialObjectPreview { target: SpatialGestureTarget; pose: SpatialRigidPose; landing: SpatialRigidPose; valid: boolean; phase: "drag" | "settle" }
+export interface SpatialObjectPreview { target: SpatialGestureTarget; pose: SpatialRigidPose; landing: SpatialRigidPose; valid: boolean; phase: "drag" | "settle"; arcball?: SpatialArcball }
 export interface SpatialObjectInteraction {
   key: object; enabled: boolean; plane: SpatialMovePlane; rotate?: boolean;
   selected: SpatialGestureTarget | null;
@@ -30,7 +31,7 @@ export const SPATIAL_GESTURE_SETTLE_MS = 160;
 /** 共用对象手势入口。数学落点由教具提供；相机、连续预览和一次提交不在各教具复制。 */
 export function bindSpatialObjectGestures(canvas: HTMLCanvasElement, current: () => SpatialObjectInteraction, getCamera: () => Camera): () => void {
   type Gesture = { interaction: SpatialObjectInteraction; key: object; target: SpatialGestureTarget; action: SpatialObjectAction; camera: Camera; size: SpatialPointerViewport;
-    start: PointerEvent; projection: ReturnType<typeof spatialMoveProjection>; moved: boolean; frame: SpatialObjectPreview | null; landing: SpatialGestureLanding | null; cursor: string };
+    start: PointerEvent; ball: SpatialArcball; projection: ReturnType<typeof spatialMoveProjection>; moved: boolean; frame: SpatialObjectPreview | null; landing: SpatialGestureLanding | null; cursor: string };
   let gesture: Gesture | null = null, settling: (() => void) | null = null;
   const cameraPointers = new Set<number>();
   const stop = (event: Event) => { event.preventDefault(); event.stopImmediatePropagation(); };
@@ -46,6 +47,10 @@ export function bindSpatialObjectGestures(canvas: HTMLCanvasElement, current: ()
   const finishPreview = (interaction: SpatialObjectInteraction) => { interaction.onPreview(null); interaction.onDragging(false); };
   const settle = (finished: Gesture, to: SpatialRigidPose) => {
     const from = finished.frame?.pose ?? finished.target.pose;
+    // 自由旋转终点就是最后预览帧，不追加落位等待，也不重播已完成的手势。
+    const samePosition = Math.hypot(from.position.x - to.position.x, from.position.y - to.position.y, from.position.z - to.position.z) < 1e-8;
+    const dot = Math.abs(from.quaternion.reduce((sum, value, index) => sum + value * to.quaternion[index], 0));
+    if (samePosition && dot > 1 - 1e-12) { finishPreview(finished.interaction); return; }
     settling = animateSpatialAction(SPATIAL_GESTURE_SETTLE_MS, (progress) => {
       if (progress === 1) { settling = null; finishPreview(finished.interaction); return; }
       finished.interaction.onPreview({ target: finished.target, pose: interpolateRigidPoses([from], [to], progress)[0], landing: to, valid: true, phase: "settle" });
@@ -80,7 +85,8 @@ export function bindSpatialObjectGestures(canvas: HTMLCanvasElement, current: ()
     const action: SpatialObjectAction = forced || event.shiftKey || interaction.rotate ? "rotate" : "translate";
     const projection = action === "translate" ? spatialMoveProjection({ x: event.clientX, y: event.clientY }, target.grabPoint, interaction.plane, camera, size) : null;
     // 侧看桌面仍允许轻点选择；达到起拖阈值时再提示不可解的移动平面。
-    gesture = { interaction, key: interaction.key, target, action, camera, size, start: event, projection, moved: false, frame: null, landing: null, cursor: canvas.style.cursor };
+    gesture = { interaction, key: interaction.key, target, action, camera, size, start: event,
+      ball: spatialArcball(target.pivot, target.radius ?? 1, camera, size), projection, moved: false, frame: null, landing: null, cursor: canvas.style.cursor };
     canvas.setPointerCapture(event.pointerId); canvas.style.cursor = "grabbing";
     beginSpatialObjectGesture(canvas);
   };
@@ -93,14 +99,14 @@ export function bindSpatialObjectGestures(canvas: HTMLCanvasElement, current: ()
     if (!g.moved && Math.hypot(delta.x, delta.y) <= (g.start.pointerType === "touch" ? 8 : 3)) return;
     if (!g.moved) { g.moved = true; g.interaction.onDragging(true); }
     let pose = g.target.pose;
-    if (g.action === "rotate") pose = spatialDragRotation(pose, g.target.pivot, delta, g.camera);
+    if (g.action === "rotate") pose = spatialArcballRotation(pose, g.target.pivot, { x: g.start.clientX, y: g.start.clientY }, { x: event.clientX, y: event.clientY }, g.ball);
     else {
       const translation = g.projection && spatialMoveDelta(g.projection, { x: event.clientX, y: event.clientY }, g.camera, g.size);
       if (!translation) { g.interaction.onUnavailable("plane"); return; }
       pose = { ...pose, position: { x: pose.position.x + translation.x, y: pose.position.y + translation.y, z: pose.position.z + translation.z } };
     }
     g.landing = g.interaction.resolve(g.target, pose, g.action);
-    g.frame = { target: g.target, pose, landing: g.landing.pose, valid: g.landing.valid, phase: "drag" };
+    g.frame = { target: g.target, pose, landing: g.landing.pose, valid: g.landing.valid, phase: "drag", arcball: g.action === "rotate" ? g.ball : undefined };
     g.interaction.onPreview(g.frame);
   };
   const up = (event: PointerEvent) => {

@@ -15,8 +15,8 @@ import { CUBE_WORKBENCH_VIEWS } from "../spatial-lab/cube-workbench-camera";
 import { useToolSnapshot } from "../scenes/useToolSnapshot";
 import { useSceneCapture } from "../courseware/useSceneCapture";
 import styles from "../spatial-lab/CubeStructuresWorkbench.module.css";
-import { somaSnapshotSchema, type SomaSnapshot } from "./contract";
-import { createSomaInitial, SOMA_CUBE_EXAMPLE, somaApart, somaChoose, somaDrag, somaFit, somaMove, somaRotate } from "./model";
+import { somaSnapshotSchema, somaLegacySnapshotSchema, type SomaSnapshot } from "./contract";
+import { createSomaInitial, SOMA_CUBE_EXAMPLE, somaAlignToGrid, somaApart, somaChoose, somaDrag, somaFit, somaMove, somaRotate } from "./model";
 import { SOMA_IDS, SOMA_PIECES, somaDefinition, type SomaId } from "./pieces";
 import { somaMessages } from "./messages";
 import { SomaPieceIcon } from "./SomaPieceIcon";
@@ -36,8 +36,9 @@ type Panel = "pieces" | "move" | "rotate" | "roll" | "settings" | null;
 export interface SomaWorkspaceProps {
   initial?: SomaSnapshot; onSnapshot?: (snapshot: SomaSnapshot | null) => void; readOnly?: boolean;
   classroom?: { state?: SomaSnapshot; onChange?: (next: SomaSnapshot) => Promise<void> };
+  freeRotation?: boolean;
 }
-export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom }: SomaWorkspaceProps) {
+export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom, freeRotation = true }: SomaWorkspaceProps) {
   const locale = useLocale(), m = { ...somaMessages(locale), ...spatialActionMessages(locale) }, spatial = useTranslations("tools.spatialLab");
   const origin = useMemo(() => initial ?? createSomaInitial(), [initial]);
   const host = useToolSnapshot(origin, classroom), snapshot = host.snapshot;
@@ -61,13 +62,13 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
   }), [spatial]);
   const commit = useCallback((next: SomaSnapshot | null, record = true, direct = false) => {
     if (busy) return false;
-    const parsed = somaSnapshotSchema.safeParse(next);
+    const parsed = (freeRotation ? somaSnapshotSchema : somaLegacySnapshotSchema).safeParse(next);
     if (!parsed.success) { setNotice(m.blocked); return false; }
     if (!next || !host.update(next)) return false;
     if (direct) directMove.hold(next); else directMove.clear();
     if (record && !classroom) setHistory((value) => ({ past: [...value.past, snapshot].slice(-60), future: [] }));
     setNotice(""); return true;
-  }, [busy, host, classroom, snapshot, m.blocked, directMove]);
+  }, [busy, host, classroom, snapshot, m.blocked, directMove, freeRotation]);
   const select = useCallback((id: SomaId) => {
     const next = { ...snapshot, selectedId: id };
     commit(snapshot.mode === "observe" ? somaFit(next) : next, false);
@@ -94,14 +95,17 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
     return plan ? [[direction, plan]] : [];
   })) : {}, [panel, snapshot]);
   const rollAction: SpatialRollAction = { label: m.roll, disabled, plans: rollPlans, onRoll: (direction) => { if (!disabled) commit(somaRoll(snapshot, direction)); } };
-  return <section className={styles.workspace} data-workbench-mode="courseware" data-soma-workspace="v1" aria-label={m.title} {...capture} {...controls.bindings}>
+  const align = () => { if (!commit(somaAlignToGrid(snapshot))) setNotice(m.alignBlocked); };
+  const freePiece = !!snapshot.pieces.find((piece) => piece.id === snapshot.selectedId)?.quaternion;
+  return <section className={styles.workspace} data-workbench-mode="courseware" data-soma-workspace={freeRotation ? "v2" : "v1"} aria-label={m.title} {...capture} {...controls.bindings}>
     <div className={styles.viewport}><div className={styles.canvas} data-has-cube-groups="true">
       <Canvas snapshot={directMove.displayed} messages={messages} title={m.title} readOnly={busy} cameraInteractive={!viewer} axisSnap={snap} navigation={navigation} moveAxis={axis}
         movePlane={movePlane} preciseAxes={panel === "move"} rotationAxis={rotationAxis} onRotationAxis={setRotationAxis}
+        freeRotation={freeRotation} onToggleRotation={() => open("rotate")}
         onPoseCommit={(next) => commit(next, true, true)} onPlaneUnavailable={() => setNotice(m.tableEdgeOn)} onGestureBlocked={() => setNotice(m.gestureBlocked)}
         instantKey={directMove.target ? JSON.stringify(somaRigidPoses(directMove.target.pieces)) : null} locale={locale} onMoving={setMoving}
         rollAction={panel === "roll" ? rollAction : undefined}
-        onRotate={(axis, turn) => { if (!disabled) commit(somaRotate(snapshot, axis, turn)); }}
+        onRotate={(axis, turn) => { if (!disabled) commit(somaRotate(snapshot, axis, turn, freeRotation)); }}
         onMoveAxis={setAxis} onSelect={select} onMove={(operation) => commit(somaDrag(snapshot, operation), true, true)} onUnavailable={() => setNotice(m.hiddenAxis)} onDragging={setDragging} />
       <div className={`${styles.dock} ${styles.meta}`}>
         <CubeIconButton label={m.observe} active={!assembling} disabled={disabled} onClick={() => mode("observe")}><Eye aria-hidden /></CubeIconButton>
@@ -129,7 +133,9 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
       </div>
       {panel && <CubeCanvasPanel title={m[panel]} closeLabel={m.close} onClose={() => setPanel(null)} anchor={panel === "pieces" ? "meta" : "tool"}>
         <div className="space-y-3 text-xs">
-          {panel === "roll" && <><p className="text-muted">{m.rollHint}</p><SpatialRollButtons action={rollAction} /><p className="text-muted">{m.rollBlocked}</p></>}
+          {panel === "roll" && <><p className="text-muted">{m.rollHint}</p><SpatialRollButtons action={rollAction} />{freePiece
+            ? <><p className="text-muted">{m.alignForRoll}</p><Button size="sm" variant="secondary" disabled={disabled} onClick={align}>{m.alignGrid}</Button></>
+            : <p className="text-muted">{m.rollBlocked}</p>}</>}
           {panel === "pieces" && <>
             <p>{m.count}</p><div className="flex flex-wrap gap-1">{SOMA_IDS.map((id, index) => <Button key={id} size="sm" variant={snapshot.pieces.length === index + 1 ? "secondary" : "ghost"}
               aria-label={`${index + 1} ${m.countUnit}`} aria-pressed={snapshot.pieces.length === index + 1} disabled={disabled} onClick={() => count(index + 1)}>{index + 1}</Button>)}</div>
@@ -155,10 +161,11 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
                 onClick={() => panel === "rotate" ? setRotationAxis(value) : setAxis(value)}><CubeAxisIcon axis={value} /></CubeIconButton>
               {([-1, 1] as const).map((direction) => <Button key={direction} size="sm" variant="secondary" disabled={disabled || !assembling}
                 aria-label={`${m[panel]} ${value.toUpperCase()} ${direction > 0 ? "+" : "−"}${panel === "rotate" ? "90°" : "1"}`}
-                onClick={() => commit(panel === "rotate" ? somaRotate(snapshot, value, direction) : somaMove(snapshot, snapshot.selectedId, value, direction))}>
+                onClick={() => commit(panel === "rotate" ? somaRotate(snapshot, value, direction, freeRotation) : somaMove(snapshot, snapshot.selectedId, value, direction))}>
                 {direction > 0 ? "+" : "−"}{panel === "rotate" ? "90°" : "1"}
               </Button>)}
-            </div>)}<p className="leading-5 text-muted">{panel === "move" ? m.moveHint : m.rotateHint}</p>
+            </div>)}<p className="leading-5 text-muted">{panel === "move" ? m.moveHint : freeRotation ? m.rotateHint : m.legacyRotateHint}</p>
+            {panel === "rotate" && freeRotation && <Button size="sm" variant="secondary" disabled={disabled || !freePiece} onClick={align}>{m.alignGrid}</Button>}
           </>}
           {panel === "settings" && (["grid", "axes", "labels"] as const).map((key) => <label key={key} className="flex items-center gap-2">
             <Checkbox aria-label={m[key]} checked={snapshot[key]} disabled={disabled} onCheckedChange={(checked) => commit({ ...snapshot, [key]: checked === true }, false)} />{m[key]}

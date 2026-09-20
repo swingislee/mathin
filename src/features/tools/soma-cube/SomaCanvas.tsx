@@ -2,14 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Html } from "@react-three/drei";
-import { Box3, Quaternion, Vector3 } from "three";
+import { Quaternion, Vector3 } from "three";
 import type { Axis } from "@/features/spatial-math/domain";
 import { VoxelGeometry, VoxelModelCanvas } from "@/features/spatial-math/renderer-r3f/VoxelCanvas";
 import type { VoxelRendererMessages } from "@/features/spatial-math/renderer-r3f/VoxelFallback";
 import { CubeMoveHandles } from "../spatial-lab/CubeMoveHandles";
 import type { CubeDragPreview } from "../spatial-lab/cube-structures-drag-controller";
-import { cubeDragHandleAxis, cubeDragHit, cubeMoveCenter, type CubeMoveOperation } from "../spatial-lab/cube-structures-drag";
-import { somaAnchorIndex, somaCubeState, somaDrag, somaDragPresentation, somaIdFromCell, somaRenderModel, somaVisiblePieces } from "./model";
+import { cubeDragHandleAxis, cubeMoveCenter, type CubeMoveOperation } from "../spatial-lab/cube-structures-drag";
+import { somaAnchorIndex, somaLocalCenter, somaRotationRadius, somaCubeState, somaDrag, somaDragPresentation, somaIdFromCell, somaRenderModel, somaVisiblePieces } from "./model";
 import { SOMA_PIECES, somaDefinition, type SomaId } from "./pieces";
 import type { SomaSnapshot } from "./contract";
 import { somaRigidPoses } from "./motion";
@@ -24,6 +24,8 @@ import type { SpatialRollAction } from "../spatial-interaction/SpatialRollButton
 import type { SpatialMovePlane } from "../spatial-interaction/object-gesture-math";
 import type { SpatialGestureTarget, SpatialObjectInteraction, SpatialObjectPreview } from "../spatial-interaction/object-gesture-controller";
 import { somaGestureLanding } from "./manipulation";
+import { spatialPickRigidCells } from "../spatial-interaction/rigid-geometry";
+import { SpatialArcballGuide } from "../spatial-interaction/SpatialArcballGuide";
 
 const colors = Object.fromEntries(SOMA_PIECES.map((piece) => [piece.color, piece.color]));
 export interface SomaCanvasProps {
@@ -35,9 +37,10 @@ export interface SomaCanvasProps {
   rollAction?: SpatialRollAction;
   movePlane?: SpatialMovePlane; preciseAxes?: boolean; rotationAxis?: Axis; onRotationAxis?: (axis: Axis) => void;
   onPoseCommit?: (next: SomaSnapshot) => boolean; onPlaneUnavailable?: () => void; onGestureBlocked?: () => void;
+  freeRotation?: boolean; onToggleRotation?: () => void;
 }
 export default function SomaCanvas({ snapshot, messages, title, readOnly, axisSnap, navigation, moveAxis, onMoveAxis, onSelect, onMove, onUnavailable, onDragging, onMoving, onRotate, instantKey, locale, rollAction, cameraInteractive = !readOnly,
-  movePlane = "table", preciseAxes = false, rotationAxis = "y", onRotationAxis = onMoveAxis, onPoseCommit, onPlaneUnavailable = onUnavailable, onGestureBlocked = onUnavailable }: SomaCanvasProps) {
+  movePlane = "table", preciseAxes = false, rotationAxis = "y", onRotationAxis = onMoveAxis, onPoseCommit, onPlaneUnavailable = onUnavailable, onGestureBlocked = onUnavailable, freeRotation = true, onToggleRotation }: SomaCanvasProps) {
   const visible = useMemo(() => somaVisiblePieces(snapshot), [snapshot]);
   // 选择另一宝时只改变手柄目标；同一拼搭的命中几何保持身份，保留正在开始的拖动。
   const pieces = snapshot.mode === "assemble" ? snapshot.pieces : visible;
@@ -50,8 +53,9 @@ export default function SomaCanvas({ snapshot, messages, title, readOnly, axisSn
   const target = useMemo(() => somaRigidPoses(pieces), [pieces]);
   const motion = useSpatialPresentation({ target, key: JSON.stringify(target), interpolate: interpolateRigidPoses, instantKey });
   const shapes = useMemo(() => pieces.map((piece) => {
-    const canonical = somaCubeState([{ ...piece, orientation: 0, position: { x: 0, y: 0, z: 0 } }]);
-    return { id: piece.id, model: somaRenderModel(canonical, snapshot, title) };
+    const canonicalPiece = { id: piece.id, orientation: 0, position: { x: 0, y: 0, z: 0 } };
+    const canonical = somaCubeState([canonicalPiece]);
+    return { id: piece.id, model: somaRenderModel(canonical, { ...snapshot, pieces: [canonicalPiece] }, title) };
   }), [pieces, snapshot, title]);
   const direct = (spatialDirectManipulation(navigation) || navigation === "rotate") && snapshot.mode === "assemble";
   const selectedIds = state.cubes.filter((cube) => somaIdFromCell(cube.id) === snapshot.selectedId).map((cube) => cube.id);
@@ -60,7 +64,8 @@ export default function SomaCanvas({ snapshot, messages, title, readOnly, axisSn
     .add(new Vector3(selectedPose.position.x, selectedPose.position.y, selectedPose.position.z))) : [];
   const middle = (axis: Axis) => (Math.min(...points.map((p) => p[axis])) + Math.max(...points.map((p) => p[axis]))) / 2;
   const center = points.length ? { x: middle("x"), y: middle("y"), z: middle("z") } : null;
-  const anchorCell = somaDefinition(snapshot.selectedId).cells[somaAnchorIndex(snapshot.selectedId)];
+  const localPivot = (id: SomaId) => freeRotation ? somaLocalCenter(id) : somaDefinition(id).cells[somaAnchorIndex(id)];
+  const anchorCell = localPivot(snapshot.selectedId);
   const pivotVector = selectedPose ? new Vector3(anchorCell.x, anchorCell.y, anchorCell.z).applyQuaternion(new Quaternion(...selectedPose.quaternion)).add(new Vector3(selectedPose.position.x, selectedPose.position.y, selectedPose.position.z)) : null;
   const pivot = pivotVector ? { x: pivotVector.x, y: pivotVector.y, z: pivotVector.z } : null;
   useEffect(() => { onMoving(motion.animating); }, [motion.animating, onMoving]);
@@ -71,20 +76,21 @@ export default function SomaCanvas({ snapshot, messages, title, readOnly, axisSn
   const selectCell = useCallback((cell: string) => { const id = somaIdFromCell(cell); if (id) onSelect(id); }, [onSelect]);
   const targetFor = (id: SomaId): SpatialGestureTarget | null => {
     const pose = target.find((pose) => pose.id === id); if (!pose) return null;
-    const local = somaDefinition(id).cells[somaAnchorIndex(id)];
+    const local = localPivot(id);
     const v = new Vector3(local.x, local.y, local.z).applyQuaternion(new Quaternion(...pose.quaternion)).add(new Vector3(pose.position.x, pose.position.y, pose.position.z));
     const pivot = { x: v.x, y: v.y, z: v.z };
-    return { pose, pivot, grabPoint: pivot };
+    return { pose, pivot, grabPoint: pivot, radius: somaRotationRadius(id) };
   };
   const handleAxes: readonly Axis[] = navigation === "rotate" ? [] : preciseAxes || !onPoseCommit ? ["x", "y", "z"] : ["y"];
   const bodyGesture: SpatialObjectInteraction | undefined = onPoseCommit ? {
     key: state, enabled: !readOnly && !motion.animating && !preview, plane: movePlane, rotate: navigation === "rotate", selected: targetFor(snapshot.selectedId),
     pick: (raycaster) => {
-      const hit = cubeDragHit(state, raycaster.ray), id = hit && somaIdFromCell(hit), selected = id && targetFor(id);
-      if (!selected) return null;
-      const cube = state.cubes.find((cube) => cube.id === hit)!;
-      const p = cube.position, point = raycaster.ray.intersectBox(new Box3(new Vector3(p.x - 0.5, p.y - 0.5, p.z - 0.5), new Vector3(p.x + 0.5, p.y + 0.5, p.z + 0.5)), new Vector3());
-      return { ...selected, grabPoint: point ? { x: point.x, y: point.y, z: point.z } : selected.pivot };
+      const hits = target.flatMap((pose) => {
+        const hit = spatialPickRigidCells(raycaster.ray, pose, somaDefinition(pose.id as SomaId).cells);
+        return hit ? [{ ...hit, id: pose.id as SomaId }] : [];
+      }).sort((a, b) => a.distance - b.distance);
+      const hit = hits[0], selected = hit && targetFor(hit.id);
+      return selected ? { ...selected, grabPoint: hit.point } : null;
     },
     handlesHit: (event, camera, size) => {
       if (event.shiftKey || navigation === "rotate") return false;
@@ -92,14 +98,14 @@ export default function SomaCanvas({ snapshot, messages, title, readOnly, axisSn
       return !!center && !!cubeDragHandleAxis({ x: event.clientX - size.left, y: event.clientY - size.top }, center, camera, size, handleAxes, event.pointerType === "touch" ? 22 : 12);
     },
     resolve: (selected, pose, action) => {
-      const landing = somaGestureLanding(snapshot, selected.pose.id as SomaId, pose, action);
+      const landing = somaGestureLanding(snapshot, selected.pose.id as SomaId, pose, action, freeRotation);
       return { ...landing, apply: () => JSON.stringify(landing.snapshot) === JSON.stringify(snapshot) || onPoseCommit(landing.snapshot) };
     },
     onPreview: setObjectPreview, onDragging: setObjectDragging, onSelect: (id) => onSelect(id as SomaId),
     onUnavailable: (reason) => reason === "plane" ? onPlaneUnavailable() : onGestureBlocked(),
   } : undefined;
-  const ghost = objectPreview?.phase === "drag" ? shapes.find((shape) => shape.id === objectPreview.target.pose.id) : null;
-  const activeAnchor = objectPreview && somaDefinition(objectPreview.pose.id as SomaId).cells[somaAnchorIndex(objectPreview.pose.id as SomaId)];
+  const ghost = objectPreview?.phase === "drag" && (!freeRotation || !objectPreview.arcball) ? shapes.find((shape) => shape.id === objectPreview.target.pose.id) : null;
+  const activeAnchor = objectPreview && localPivot(objectPreview.pose.id as SomaId);
   const activePivot = objectPreview && activeAnchor ? new Vector3(activeAnchor.x, activeAnchor.y, activeAnchor.z).applyQuaternion(new Quaternion(...objectPreview.pose.quaternion))
     .add(new Vector3(objectPreview.pose.position.x, objectPreview.pose.position.y, objectPreview.pose.position.z)) : null;
   return <VoxelModelCanvas model={{ ...model, cells: [] }} messages={messages} materialColors={colors} preserveSelectedColors
@@ -122,6 +128,7 @@ export default function SomaCanvas({ snapshot, messages, title, readOnly, axisSn
           palette={{ leaf: CUBE_COLORS[0], moon: CUBE_SELECTION_COLOR }} materialColors={colors} readOnly />
       </group>}
       {activePivot && <SpatialRotationAnchor center={activePivot} />}
+      {objectPreview?.arcball && <SpatialArcballGuide ball={objectPreview.arcball} />}
       {snapshot.grid && <gridHelper args={[25, 25, "#b8b0a3", "#d9d3c8"]} position={[0, -0.505, 0]} raycast={() => null} />}
       {snapshot.axes && <axesHelper args={[3]} position={[-0.5, -0.5, -0.5]} raycast={() => null} />}
       {snapshot.labels && !motion.animating && pieces.filter((piece) => (!direct || piece.id !== snapshot.selectedId) && piece.id !== objectPreview?.pose.id).map((piece) => {
@@ -140,6 +147,7 @@ export default function SomaCanvas({ snapshot, messages, title, readOnly, axisSn
       {direct && !readOnly && center && !preview && !objectPreview && (rollAction
         ? <SpatialRollControls center={center} action={{ ...rollAction, disabled: rollAction.disabled || motion.animating }} />
         : <SpatialRotationControls center={onPoseCommit && pivot ? pivot : center} action={{ axis: rotationAxis, onAxisChange: onRotationAxis, onRotate, label: somaMessages(locale).rotate, disabled: motion.animating,
-          gestureLabel: onPoseCommit ? somaMessages(locale).rotateDrag : undefined, precise: !onPoseCommit || navigation === "rotate" }} />)}
+          gestureLabel: onPoseCommit ? somaMessages(locale).rotateDrag : undefined, precise: !onPoseCommit || navigation === "rotate",
+          gestureMode: onToggleRotation ? { active: navigation === "rotate", onToggle: onToggleRotation } : undefined }} />)}
     </>} />;
 }

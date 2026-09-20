@@ -11,6 +11,7 @@ const increments = {
   projection: { version: '20260919000100_projection_tool_scene', tests: ['prepared_tool_scenes_assertions', 'projection_tool_scene_assertions'] },
   spaces: { version: '20260919000200_teaching_space_scenes', tests: ['prepared_tool_scenes_assertions', 'projection_tool_scene_assertions', 'teaching_space_scene_assertions'] },
   soma: { version: '20260919000300_soma_cube_tool_scene', tests: ['prepared_tool_scenes_assertions', 'soma_cube_scene_assertions'] },
+  'soma-free': { version: '20260920160000_soma_free_rotation_scene', tests: ['prepared_tool_scenes_assertions', 'soma_cube_scene_assertions', 'soma_free_scene_assertions'] },
 };
 if (!Object.hasOwn(increments, increment)) throw new Error('Unknown Tools increment');
 const { version, tests } = increments[increment];

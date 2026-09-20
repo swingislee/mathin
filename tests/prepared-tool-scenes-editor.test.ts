@@ -16,9 +16,9 @@ import type { ToolScene } from "@/features/tools/scenes/contract";
 import { createSolidGeometryInitial, solidGeometryToolSchema } from "@/features/tools/solid-geometry/solid-geometry-contract";
 import { createDefaultSolidCapacityInitial, solidCapacityToolSchema } from "@/features/tools/solid-capacity/solid-capacity-contract";
 import { createSomaInitial } from "@/features/tools/soma-cube/model";
-import { SOMA_VERSION, somaToolSchema } from "@/features/tools/soma-cube/contract";
+import { SOMA_VERSION, SOMA_LEGACY_VERSION, somaToolSchema, somaLegacyToolSchema } from "@/features/tools/soma-cube/contract";
 
-const workspace = vi.hoisted(() => ({ current: null as null | { initial?: unknown; payload?: unknown; preparation?: boolean; onSnapshot: (snapshot: unknown) => void } }));
+const workspace = vi.hoisted(() => ({ current: null as null | { initial?: unknown; payload?: unknown; preparation?: boolean; freeRotation?: boolean; onSnapshot: (snapshot: unknown) => void } }));
 const library = vi.hoisted(() => ({ open: null as null | ((scene: ToolScene) => void) }));
 vi.mock("next/dynamic", () => ({ default: () => function OriginalWorkspaceStub(props: NonNullable<typeof workspace.current>) { workspace.current = props; return null; } }));
 vi.mock("@/features/tools/scenes/ToolSceneLibrary", () => ({ ToolSceneLibrary: ({ title, children, onOpen }: { title: ReactNode; children: ReactNode; onOpen: (scene: ToolScene) => void }) => { library.open = onOpen; return createElement(Fragment, null, title, children); } }));
@@ -138,5 +138,20 @@ describe("shared starting-scene editor", () => {
     await act(async () => workspace.current!.onSnapshot(workspace.current!.initial));
     expect(ready.mock.lastCall![0].contentVersion).toBe("cube-net-lesson-v2");
     expect(scene.contentVersion).toBe("cube-net-lesson-v1");
+  });
+  it("keeps a legacy Soma scene on its adapter until the teacher explicitly copies it to v2", async () => {
+    const scene = somaLegacyToolSchema.parse({ toolId: "soma-cube", contentVersion: SOMA_LEGACY_VERSION, payload: { title: "Old assembly", initial: createSomaInitial() } });
+    const before = structuredClone(scene), ready = vi.fn();
+    await renderEditor({ version: SOMA_VERSION, onReady: ready });
+    expect(workspace.current!.freeRotation).toBe(true);
+    await act(async () => library.open!(scene));
+    expect(workspace.current!.freeRotation).toBe(false);
+    await act(async () => workspace.current!.onSnapshot(scene.payload.initial));
+    expect(ready.mock.lastCall![0]).toEqual(scene);
+    const upgrade = host.querySelector<HTMLButtonElement>(`button[aria-label="${en.tools.preparation.upgradeCopy}"]`)!;
+    expect(upgrade).not.toBeNull(); await act(async () => upgrade.click());
+    expect(workspace.current!.freeRotation).toBe(true); expect(workspace.current!.initial).toEqual(scene.payload.initial);
+    await act(async () => workspace.current!.onSnapshot(workspace.current!.initial));
+    expect(ready.mock.lastCall![0].contentVersion).toBe(SOMA_VERSION); expect(scene).toEqual(before);
   });
 });

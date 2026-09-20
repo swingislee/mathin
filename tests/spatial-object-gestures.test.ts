@@ -3,7 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createRequire } from "node:module";
 import { OrthographicCamera, Quaternion, Vector3 } from "three";
 import { bindSpatialObjectGestures, isSpatialCameraHandoff, startSpatialRotationGrip, type SpatialGestureTarget, type SpatialObjectInteraction, type SpatialObjectPreview } from "@/features/tools/spatial-interaction/object-gesture-controller";
-import { spatialDragRotation, spatialMoveDelta, spatialMoveProjection } from "@/features/tools/spatial-interaction/object-gesture-math";
+import { spatialMoveDelta, spatialMoveProjection } from "@/features/tools/spatial-interaction/object-gesture-math";
+import { spatialArcball, spatialArcballRotation } from "@/features/tools/spatial-interaction/arcball";
 import { somaGestureLanding } from "@/features/tools/soma-cube/manipulation";
 import { createSomaInitial, somaAnchorIndex, somaOrientAroundAnchor, somaRotate, somaRotationPivot } from "@/features/tools/soma-cube/model";
 import { somaRigidPoses } from "@/features/tools/soma-cube/motion";
@@ -104,6 +105,17 @@ describe("continuous plane and camera-relative object gestures", () => {
     g.interaction.pick = () => g.target; expect(g.send("pointerdown", { button: 2 }).defaultPrevented).toBe(false);
     g.send("pointerdown"); g.send("pointerup"); expect(g.interaction.onSelect).toHaveBeenCalledWith("piece"); expect(g.apply).not.toHaveBeenCalled();
   });
+  it("releases a free endpoint immediately with one commit, then allows blank-space orbit", () => {
+    const g = setup(); g.interaction.rotate = true;
+    g.interaction.resolve = (_target, pose) => ({ pose, valid: true, apply: g.apply });
+    g.send("pointerdown"); g.send("pointermove", { clientX: point.x + 45, clientY: point.y + 12 });
+    const preview = g.previews.at(-1)!; expect(preview.arcball).toBeDefined();
+    g.send("pointerup", { clientX: point.x + 45, clientY: point.y + 12 });
+    expect(g.apply).toHaveBeenCalledTimes(1); expect(g.previews.at(-1)).toBeNull();
+    expect(g.interaction.onDragging).toHaveBeenLastCalledWith(false);
+    g.interaction.pick = () => null;
+    expect(g.send("pointerdown").defaultPrevented).toBe(false);
+  });
   it("hands both initial touches to the camera before movement, without moving or selecting an object", () => {
     const g = setup(), cameraDown: { id: number; replay: boolean }[] = [];
     g.canvas.addEventListener("pointerdown", (event) => cameraDown.push({ id: event.pointerId, replay: isSpatialCameraHandoff(event) }));
@@ -166,7 +178,8 @@ describe("Soma gesture landing preserves exact mathematical state", () => {
     for (const id of SOMA_IDS) {
       const snapshot = { ...createSomaInitial(), selectedId: id, pieces: [{ id, orientation: 0, position: { x: 0, y: 5, z: 0 } }] };
       const source = snapshot.pieces[0], pivot = somaRotationPivot(source), local = somaDefinition(id).cells[somaAnchorIndex(id)];
-      const preview = spatialDragRotation(somaRigidPoses([source])[0], pivot, { x: 67, y: -49 }, c);
+      const ball = spatialArcball(pivot, 1.5, c, viewport);
+      const preview = spatialArcballRotation(somaRigidPoses([source])[0], pivot, ball.center, { x: ball.center.x + 67, y: ball.center.y - 49 }, ball);
       const marked = new Vector3(local.x, local.y, local.z).applyQuaternion(new Quaternion(...preview.quaternion)).add(new Vector3(preview.position.x, preview.position.y, preview.position.z));
       expect(marked.distanceTo(new Vector3(pivot.x, pivot.y, pivot.z))).toBeLessThan(1e-8);
       const landing = somaGestureLanding(snapshot, id, preview, "rotate"); expect(landing.valid).toBe(true);

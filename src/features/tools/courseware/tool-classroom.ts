@@ -9,7 +9,7 @@ import { PROJECTION_COURSEWARE_VERSION, projectionSnapshotSchema } from "../proj
 import { SOLID_GEOMETRY_VERSION, solidGeometrySnapshotSchema } from "../solid-geometry/solid-geometry-contract";
 import { NET_TEACHING_VERSION, netTeachingStateSchema } from "../net-teaching/contract";
 import { SOLID_CAPACITY_VERSION, solidCapacitySnapshotSchema } from "../solid-capacity/solid-capacity-contract";
-import { SOMA_VERSION, somaSnapshotSchema } from "../soma-cube/contract";
+import { SOMA_VERSION, SOMA_LEGACY_VERSION, somaSnapshotSchema, somaLegacySnapshotSchema } from "../soma-cube/contract";
 
 // 工具只在这里登记严格状态/动作合同。传输、课堂入口与实例状态容器不再识别具体工具。
 export const classroomToolEventSchema = z.discriminatedUnion("contentVersion", [
@@ -24,6 +24,7 @@ export const classroomToolEventSchema = z.discriminatedUnion("contentVersion", [
   toolClassroomEventSchema("spatial-lab", NET_TEACHING_VERSION, netTeachingStateSchema),
   toolClassroomEventSchema("solid-capacity", SOLID_CAPACITY_VERSION, solidCapacitySnapshotSchema),
   toolClassroomEventSchema("soma-cube", SOMA_VERSION, somaSnapshotSchema),
+  toolClassroomEventSchema("soma-cube", SOMA_LEGACY_VERSION, somaLegacySnapshotSchema),
 ]);
 export type ClassroomToolStatePayload = z.infer<typeof classroomToolEventSchema>;
 export type ClassroomToolUpdate = ClassroomToolStatePayload extends infer P ? P extends ClassroomToolStatePayload

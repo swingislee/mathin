@@ -9,7 +9,7 @@ import { projectionSceneAdapter } from "../projection/scene-adapter";
 import { solidGeometrySceneAdapter } from "../solid-geometry/scene-adapter";
 import { netTeachingSceneAdapter } from "../net-teaching/scene-adapter";
 import { solidCapacitySceneAdapter } from "../solid-capacity/scene-adapter";
-import { somaSceneAdapter } from "../soma-cube/scene-adapter";
+import { somaSceneAdapter, somaLegacySceneAdapter } from "../soma-cube/scene-adapter";
 import type { ToolSceneVersion } from "./contract";
 import type { ToolWorkbenchAdapter } from "./workbench-adapter";
 
@@ -26,6 +26,7 @@ const adapters = {
   [netTeachingSceneAdapter.contentVersion]: netTeachingSceneAdapter,
   [solidCapacitySceneAdapter.contentVersion]: solidCapacitySceneAdapter,
   [somaSceneAdapter.contentVersion]: somaSceneAdapter,
+  [somaLegacySceneAdapter.contentVersion]: somaLegacySceneAdapter,
 } satisfies Record<ToolSceneVersion, ToolWorkbenchAdapter>;
 
 export function getToolWorkbenchAdapter(version: ToolSceneVersion): ToolWorkbenchAdapter {

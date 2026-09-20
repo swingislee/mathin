@@ -126,7 +126,7 @@ describe("common scene and classroom contracts", () => {
     const event = createClassroomToolState("page", "doc", "soma", { toolId: "soma-cube", contentVersion: SOMA_VERSION, state }, coursewareToolOriginHash(source.payload));
     expect(parseClassroomToolState(event)?.state).toEqual(state);
     expect(parseClassroomToolState({ ...event, toolId: "dice" })).toBeNull();
-    source.payload.initial.pieces[0].position.x = 9;
+    source.payload.initial.pieces[0].position = { ...source.payload.initial.pieces[0].position, x: 9 };
     expect(frozen.payload).not.toEqual(source.payload);
   });
   it("rejects duplicate pieces, unknown versions, invalid orientation, selection and collisions", () => {
@@ -140,6 +140,6 @@ describe("common scene and classroom contracts", () => {
       { ...initial, sourceDraftId: "private" },
     ];
     for (const value of invalid) expect(somaSnapshotSchema.safeParse(value).success).toBe(false);
-    expect(() => parseToolScene({ ...scene(), contentVersion: "soma-cube-lesson-v2" })).toThrow();
+    expect(() => parseToolScene({ ...scene(), contentVersion: "soma-cube-lesson-v999" })).toThrow();
   });
 });
