@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { TeachingSessionRecords } from "./TeachingSessionRecords";
+import { FollowupDetailLoading } from "../dashboard-page/FollowupInlineDetails";
 import { readTeachingInlineRecords, type TeachingRecordCache } from "./teaching-records-client";
 import type { TeachingRecords } from "./teaching-records-contract";
 
@@ -28,7 +29,7 @@ export function TeachingInlineRecords({ sessionId, locale, timeZone, cache, repl
     <p>{t("records.loadFailed")}</p>
     <Button variant="secondary" size="sm" onClick={() => setRevision(value => value + 1)}>{t("records.retry")}</Button>
   </div>;
-  if (result?.key !== key) return <p role="status" className="py-3 text-sm text-muted">{t("records.loading")}</p>;
+  if (result?.key !== key) return <FollowupDetailLoading>{t("records.loading")}</FollowupDetailLoading>;
   return <TeachingSessionRecords data={result.data} locale={locale} timeZone={timeZone} pageSize={pageSize} returnTo="" currentHref="" replay={Boolean(replayId)}
     inline={{ onPageChange: setContactPage, onPageSizeChange: size => { setPageSize(size); setContactPage(1); } }} />;
 }

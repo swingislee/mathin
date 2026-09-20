@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState, type KeyboardEvent } from "react";
+import { Fragment, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -8,7 +8,6 @@ import { Link } from "@/i18n/navigation";
 import { DashboardEmptyState, DashboardTableShell } from "../dashboard-page";
 import { DashboardTableColumnHeader } from "../dashboard-page/DashboardTableColumnHeader";
 import { FollowupRecordRow, FollowupTableBody } from "../dashboard-page/FollowupRecordRow";
-import { adjacentFollowupKey, followupKeyboardCommand, followupKeyContext } from "../followup-keyboard";
 import { DashboardRowDisclosure } from "../dashboard-page/DashboardRowDisclosure";
 import { DashboardTablePagination } from "../dashboard-page/DashboardTablePagination";
 import { useDashboardFieldView } from "../dashboard-page/useDashboardFieldView";
@@ -19,11 +18,7 @@ import type { TeachingRecordCache } from "./teaching-records-client";
 import { TeachingCoverage, TeachingFocus, TeachingPerformance } from "./TeachingObservationCells";
 import { groupTeachingClassSections, type TeachingGrouping } from "./teaching-grouping-contract";
 
-const InlineRecords = dynamic(() => import("./TeachingInlineRecords").then(module => module.TeachingInlineRecords), { loading: () => <InlineLoading /> });
-function InlineLoading() {
-  const t = useTranslations("school.teachingWorkbench.records");
-  return <p role="status" className="py-3 text-sm text-muted">{t("loading")}</p>;
-}
+const InlineRecords = dynamic(() => import("./TeachingInlineRecords").then(module => module.TeachingInlineRecords));
 
 type ClassRow = ReturnType<typeof groupTeachingClasses>[number];
 type Column = "classroom" | "teacher" | "sessions" | "attendance" | "learning" | "attention" | "reviews" | "contacts";
@@ -99,7 +94,6 @@ export function TeachingClassOverviewTable({ data, locale, timeZone, returnTo, i
   const page = Math.min(requestedPage, pages);
   const rows = groups.slice((page - 1) * pageSize, page * pageSize);
   const sessionKey = (rowId: string, sessionId: string) => groupBy ? `${rowId}/${sessionId}` : sessionId;
-  const visibleKeys = rows.flatMap(row => [`class:${row.id}`, ...(expanded === row.id ? row.sessions.map(session => `session:${sessionKey(row.id, session.id)}`) : [])]);
   const formatter = useMemo(() => new Intl.DateTimeFormat(locale, { timeZone, month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }), [locale, timeZone]);
   const date = (value: string) => formatter.format(new Date(value));
   const snippet = (value: TeachingRecordSnippet | null, empty: string) => value ? <>
@@ -114,18 +108,6 @@ export function TeachingClassOverviewTable({ data, locale, timeZone, returnTo, i
     if (teacher) params.set("teacher", teacher); else params.delete("teacher");
     if (table.filters.classroom?.kind === "enum") params.set("classroom", table.filters.classroom.values[0]); else params.delete("classroom");
     return withReturnTo(`/dashboard/classes/${id}`, `${path}?${params}`);
-  };
-  // 逐生记录内部也有表格；方向键以所属课次为起点，沿同一可见行序列移动。
-  const navigateDetails = (event: KeyboardEvent<HTMLElement>, key: string) => {
-    if (!event.currentTarget.hasAttribute("data-followup-inline-details")) return;
-    const command = followupKeyboardCommand({ ...event, isComposing: event.nativeEvent.isComposing }, followupKeyContext(event));
-    if (command?.type !== "move") return;
-    event.preventDefault(); event.stopPropagation();
-    const next = adjacentFollowupKey(visibleKeys, key, command.direction);
-    if (!next) return;
-    setActiveKey(next);
-    const element = document.getElementById(`teaching-summary-${next}`);
-    element?.focus({ preventScroll: true }); element?.scrollIntoView({ block: "nearest", inline: "nearest" });
   };
   const labels: Record<Column, string> = { classroom: t("classAndLesson"), teacher: workT("teacher"), sessions: t("sessions"), attendance: t("attendance"), learning: t("learning"), attention: t("attention"), reviews: t("reviews"), contacts: t("contacts") };
   if (rich) { labels.sessions = workT("observations.sessionState"); labels.attendance = workT("observations.performance"); labels.learning = workT("observations.coverageTitle"); labels.attention = workT("observations.focus"); }
@@ -143,7 +125,7 @@ export function TeachingClassOverviewTable({ data, locale, timeZone, returnTo, i
             fields={column === "teacher" ? props.fields.map(field => ({ ...field, options: teacherOptions })) : props.fields} />
         </TableHead>;
       })}</TableRow></TableHeader>
-      <FollowupTableBody onNavigate={key => { setActiveKey(key); return true; }}>
+      <FollowupTableBody navigation="tree" onNavigate={key => { setActiveKey(key); return true; }}>
         {rows.length === 0 && <TableRow><TableCell colSpan={8}><DashboardEmptyState>{workT(data.workbench.sessions.length ? "emptyFilter" : "emptyPeriod")}</DashboardEmptyState></TableCell></TableRow>}
         {rows.map((row, index) => <Fragment key={row.id}>
           {groupBy && (index === 0 || rows[index - 1].section.id !== row.section.id) && <TableRow data-teaching-group={row.section.id} className="bg-moon/20 hover:bg-moon/20">
@@ -168,7 +150,7 @@ export function TeachingClassOverviewTable({ data, locale, timeZone, returnTo, i
             <colgroup>{columnWidths.map((width, index) => <col key={index} className={width} />)}</colgroup>
             <TableHeader className="sr-only"><TableRow>{columns.map(column => <TableHead key={column}>{labels[column]}</TableHead>)}</TableRow></TableHeader>
             <TableBody>{row.sessions.map(session => <FollowupRecordRow key={session.id} rowKey={`session:${sessionKey(row.id, session.id)}`} rowProps={{ id: `teaching-summary-session:${sessionKey(row.id, session.id)}`, "data-teaching-level": "session", className: "h-11 cursor-pointer" }} active={activeKey === `session:${sessionKey(row.id, session.id)}`} expanded={expandedSession === sessionKey(row.id, session.id)}
-            onActivate={() => setActiveKey(`session:${sessionKey(row.id, session.id)}`)} onExpandedChange={open => changeSession(sessionKey(row.id, session.id), open)} onKeyDown={event => navigateDetails(event, `session:${sessionKey(row.id, session.id)}`)}
+            onActivate={() => setActiveKey(`session:${sessionKey(row.id, session.id)}`)} onExpandedChange={open => changeSession(sessionKey(row.id, session.id), open)} loadingLabel={workT("records.loading")}
             detailsId={`session-records-${sessionKey(row.id, session.id)}`} title={`${session.title || workT("untitled")} · ${date(session.scheduledAt)}`} hideTitle colSpan={8} summary={<>
               <TableCell className="px-2 py-1.5 align-middle"><div className="flex items-center gap-1">
                 <DashboardRowDisclosure expanded={expandedSession === sessionKey(row.id, session.id)} label={workT(expandedSession === sessionKey(row.id, session.id) ? "records.collapse" : "records.open")} controls={`session-records-${sessionKey(row.id, session.id)}`} onToggle={() => changeSession(sessionKey(row.id, session.id), expandedSession !== sessionKey(row.id, session.id))} />

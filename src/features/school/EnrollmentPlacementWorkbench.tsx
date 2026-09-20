@@ -6,7 +6,7 @@ import { GripVertical, LoaderCircle, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Link, useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
@@ -24,6 +24,7 @@ import { classWorkHref, workEntryMessages, type WorkEntryQuery } from "./work-en
 import { FollowupPrimaryFilter, useFollowupWorkFilter } from "./FollowupPrimaryFilter";
 import { PLACEMENT_WORK_FILTERS, placementClassMatchesWorkFilter, type PlacementWorkFilter } from "./followup-primary-filter-contract";
 import { DashboardPage, DashboardTableColumnHeader, DashboardTableShell } from "./dashboard-page";
+import { FollowupTableBody } from "./dashboard-page/FollowupRecordRow";
 import { useDashboardFieldView } from "./dashboard-page/useDashboardFieldView";
 import { PLACEMENT_TABLE_COLUMNS, placementTableFields, type PlacementRosterRow as RosterRow } from "./placement-table-fields";
 import { LeadPoolPagination } from "./LeadPoolPagination";
@@ -118,6 +119,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   const groupBy = teachingGrouping(workspaceQuery.group);
   const [clockNow] = useState(() => now ?? Date.now());
   const [openSessionRow, setOpenSessionRow] = useState<string | null>();
+  const [activeRecordKey, setActiveRecordKey] = useState<string | null>(null);
   const [hasSessionDraft, setHasSessionDraft] = useState(false);
   const sessionM = classSessionMessages(locale);
   const canChangeSession = () => { if (hasSessionDraft) toast.info(sessionM.draft); return !hasSessionDraft; };
@@ -408,7 +410,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
           <TableHead className="sticky left-84 top-0 z-30 border-r border-line bg-card [&_svg]:size-2 [&_button]:gap-0.5 [&_button]:text-[10px]"><DashboardTableColumnHeader label={locale === "en" ? "Level" : "难度"} {...table.columnProps("difficulty")} /></TableHead>
           <TableHead className="sticky top-0 z-20 bg-card"><DashboardTableColumnHeader label={t("student")} {...table.columnProps("health")} /></TableHead>
         </TableRow></TableHeader>
-        <TableBody>{board.access?.canManageEnrollments!==false?<SchoolSupportPendingRows workspace="enrollments" colSpan={5} />:null}{sections.map((section) => {
+        <FollowupTableBody navigation="tree" onNavigate={key => { setActiveRecordKey(key); return true; }}>{board.access?.canManageEnrollments!==false?<SchoolSupportPendingRows workspace="enrollments" colSpan={5} />:null}{sections.map((section) => {
           const group = section.key;
           const first = section.rows[0];
           const scope = section.teacherName !== undefined ? first : rows.find((row) => row.group === group && !row.classroom)!;
@@ -461,6 +463,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
                 }) : null}</div></TableCell>
               </>;
               return <Fragment key={row.key}>{classroom && canTeach && !sessionsFailed ? <ClassRosterSessionRow classroomId={classroom.id} classroomName={className} rowProps={classRowProps} sessions={orderedClassSessions(sessions, classroom.id)} locale={locale} timeZone={timeZone} now={clockNow}
+                recordKey={`class:${group}:${classroom.id}`} activeKey={activeRecordKey} onActivate={setActiveRecordKey}
                 requestedId={focusSessionId} expanded={expandedSessionRow === `${group}:${classroom.id}`} canChange={canChangeSession}
                 onExpandedChange={value => setOpenSessionRow(value ? `${group}:${classroom.id}` : null)} onDirtyChange={setHasSessionDraft}>{classCells}</ClassRosterSessionRow> : <TableRow {...classRowProps}>{classCells()}</TableRow>}
                 {retiredRow(row.students.filter((student) => student.status === "withdrawn"), `${className} ${t("status_withdrawn")}`)}
@@ -469,7 +472,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
             {section.teacherName === undefined ? retiredRow(scope.students.filter((student) => !student.classroomId && student.status === "withdrawn"), t("status_withdrawn")) : null}
             {section.teacherName === undefined ? retiredRow(scope.students.filter((student) => student.classroomId && !scope.classrooms.some((classroom) => classroom.id === student.classroomId)), t("unavailableClass")) : null}
           </Fragment>;
-        })}{!sections.length ? <TableRow><TableCell colSpan={5} className="h-40 text-center text-muted">{t("emptyPlacement")}</TableCell></TableRow> : null}</TableBody>
+        })}{!sections.length ? <TableRow><TableCell colSpan={5} className="h-40 text-center text-muted">{t("emptyPlacement")}</TableCell></TableRow> : null}</FollowupTableBody>
       </Table></DashboardTableShell></TooltipProvider>
       {placementChange?<EnrollmentPlacementChangeDialog {...placementChange} transfers={(board.sessionTransfers??[]).filter(t=>t.membershipId===placementChange.student.membershipId)} onClose={()=>setPlacementChange(null)} onSaved={value=>{setSavedBoard({base:initialBoard,value});setPlacementChange(null);setSelectedKey(null);window.dispatchEvent(new Event(STUDENT_360_REFRESH_EVENT));router.refresh();}}/>:null}
       {seatEntry?<SchoolSupportSeatEntry open onClose={()=>setSeatEntry(null)} classroomName={seatEntry.classroom.name} classroomId={seatEntry.classroom.id} courseId={seatEntry.classroom.courseId} termId={seatEntry.classroom.termId} seat={seatEntry.seat}/>:null}

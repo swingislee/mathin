@@ -106,7 +106,7 @@ describe("inline teaching record loading", () => {
       await click("查看实际记录");
       await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
       expect(fetcher).toHaveBeenCalledTimes(1);
-      expect(fetcher.mock.calls[0][0]).toBe("/zh/dashboard/teaching/records-detail");
+      expect(fetcher.mock.calls[0][0]).toBe("/zh/dashboard/classes/records-detail");
       expect(fetcher.mock.calls[0][1]).toMatchObject({ cache: "no-store", credentials: "same-origin" });
       const detail = container.querySelector("#session-records-session")!;
       expect(sessionRow.querySelector("td:first-child .lucide-chevron-down")).toBeTruthy();

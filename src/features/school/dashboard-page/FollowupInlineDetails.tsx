@@ -1,13 +1,18 @@
 "use client";
 
-import { useRef, type KeyboardEventHandler, type ReactNode } from "react";
+import { Suspense, useRef, type KeyboardEventHandler, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { DashboardInlineEntry } from "./DashboardInlineEntry";
 
+/** 模块下载与详情读取共用行内占位，保持外围名册与焦点挂载。 */
+export function FollowupDetailLoading({ children }: { children: ReactNode }) {
+  return <p role="status" className="py-3 text-xs text-muted">{children}</p>;
+}
+
 /** 详情单独占据当前记录的下一行；数据行和固定列宽保持原样。 */
 export function FollowupInlineDetails({
-  open, onOpenChange, title, colSpan, children, pending = false, autoFocus = false, onSubmit, id, hideTitle = false, active = true, onKeyDown, onActivate, keepMounted = false,
+  open, onOpenChange, title, colSpan, children, pending = false, autoFocus = false, onSubmit, id, hideTitle = false, active = true, onKeyDown, onActivate, keepMounted = false, loadingLabel,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -25,6 +30,8 @@ export function FollowupInlineDetails({
   onActivate?: () => void;
   /** 已打开的测评登记可收起并保留草稿；其他入口沿用关闭即卸载的默认行为。 */
   keepMounted?: boolean;
+  /** 异步详情在本行接住 Suspense；同步表单继续沿用原挂载行为。 */
+  loadingLabel?: string;
 }) {
   const t = useTranslations("school.followupWorkspace");
   const rowRef = useRef<HTMLTableRowElement>(null);
@@ -50,7 +57,9 @@ export function FollowupInlineDetails({
     }}>
     <TableCell colSpan={colSpan} className="p-3 align-top whitespace-normal">
       <DashboardInlineEntry title={title} hideTitle={hideTitle} closeLabel={t("close")} onClose={close} onSubmit={onSubmit} pending={pending} autoFocus={autoFocus} flush>
-        <div className="@container/followup-entry min-w-0 max-w-full space-y-3 break-words pt-2">{typeof children === "function" ? children() : children}</div>
+        <div className="@container/followup-entry min-w-0 max-w-full space-y-3 break-words pt-2">{loadingLabel
+          ? <Suspense fallback={<FollowupDetailLoading>{loadingLabel}</FollowupDetailLoading>}>{typeof children === "function" ? children() : children}</Suspense>
+          : typeof children === "function" ? children() : children}</div>
       </DashboardInlineEntry>
     </TableCell>
   </TableRow>;

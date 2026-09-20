@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
-import { act, createElement, useState } from "react";
+import { act, createElement, Suspense, useState } from "react";
+import dynamic from "next/dynamic";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FollowupRecordRow, FollowupTableBody } from "@/features/school/dashboard-page/FollowupRecordRow";
 
 vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
+vi.mock("next/dynamic", async () => ({ default: (await import("next/dist/shared/lib/app-dynamic")).default }));
 let root: Root, container: HTMLDivElement;
 const save = vi.fn(), outcome = vi.fn();
 function Harness({ pending = false }: { pending?: boolean }) {
@@ -34,6 +36,32 @@ beforeEach(() => {
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); });
 
 describe("shared student and follow-up record interaction", () => {
+  it("contains a real cold dynamic import inside the detail instead of replacing the page fallback", async () => {
+    const ready = Promise.withResolvers<{ default: () => ReturnType<typeof createElement> }>();
+    const Detail = dynamic(() => ready.promise);
+    function AsyncHarness() {
+      const [expanded, setExpanded] = useState(false);
+      return createElement(Suspense, { fallback: createElement("p", { "data-page-loading": true }, "Page loading") },
+        createElement("table", null, createElement(FollowupTableBody, { onNavigate: () => true },
+          createElement(FollowupRecordRow, { rowKey: "cold", active: true, expanded, onExpandedChange: setExpanded,
+            detailsId: "detail-cold", title: "Cold detail", colSpan: 1, loadingLabel: "Reading this row…", summary: createElement("td", null, "Roster stays here") },
+          createElement(Detail)),
+        )),
+      );
+    }
+    await act(async () => root.render(createElement(AsyncHarness)));
+    const summary = row("cold");
+    summary.focus();
+    await keydown(summary, "Enter");
+    expect(container.querySelector("[data-page-loading]")).toBeNull();
+    expect(detail("cold").querySelector('[role="status"]')?.textContent).toBe("Reading this row…");
+    expect(row("cold")).toBe(summary);
+    expect(document.activeElement).toBe(summary);
+    await act(async () => ready.resolve({ default: () => createElement("textarea", { defaultValue: "Loaded record" }) }));
+    expect(detail("cold").querySelector("textarea")?.value).toBe("Loaded record");
+    expect(container.querySelector("[data-page-loading]")).toBeNull();
+    expect(row("cold")).toBe(summary);
+  });
   it("opens with Enter, navigates from details and retains a draft without saving", async () => {
     await act(async () => root.render(createElement(Harness)));
     await keydown(row("a"), "Enter");

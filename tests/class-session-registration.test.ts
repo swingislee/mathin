@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import messages from "../messages/zh.json";
 import { ClassRosterSessionDetail } from "@/features/school/ClassRosterSessionDetail";
 import { ClassRosterSessionRow } from "@/features/school/ClassRosterSessionRow";
+import { FollowupTableBody } from "@/features/school/dashboard-page/FollowupRecordRow";
 import type { ClassRosterSession, ClassSessionDetail } from "@/features/school/class-roster-session-contract";
 
 const deps = vi.hoisted(() => ({ save: vi.fn(), record: vi.fn(), refresh: vi.fn(), fetch: vi.fn() }));
@@ -31,8 +32,10 @@ const sessions: ClassRosterSession[] = ["previous", "today"].map((id, index) => 
   scheduledAt: index ? "2026-09-20T02:00:00Z" : "2026-09-13T02:00:00Z", startedAt: null, endedAt: null, attendanceCount: index, reviewCount: index }));
 function Harness({ requestedId, empty = false }: { requestedId?: string; empty?: boolean }) {
   const [expanded, setExpanded] = useState(Boolean(requestedId)), [dirty, setDirty] = useState(false);
-  return h(NextIntlClientProvider, { locale: "zh", messages, timeZone: "Asia/Shanghai", children: h("table", {}, h("tbody", {},
+  const [activeKey, setActiveKey] = useState<string | null>(null);
+  return h(NextIntlClientProvider, { locale: "zh", messages, timeZone: "Asia/Shanghai", children: h("table", {}, h(FollowupTableBody, { navigation: "tree", onNavigate: key => { setActiveKey(key); return true; } },
     h(ClassRosterSessionRow, { classroomId: "class", classroomName: "示例班", sessions: empty ? [] : sessions, locale: "zh", timeZone: "Asia/Shanghai", now: Date.parse("2026-09-20T01:00:00Z"), requestedId,
+      recordKey: "class:example", activeKey, onActivate: setActiveKey,
       rowProps: { "data-test-class": true }, expanded, canChange: () => !dirty, onExpandedChange: setExpanded, onDirtyChange: setDirty,
       children: disclosure => h("td", { colSpan: 5 }, disclosure, "示例班 · 老师 · 时间 · 难度 · 全班学生") }))) });
 }
@@ -41,6 +44,10 @@ const click = async (element: HTMLElement) => { expect(element).toBeTruthy(); aw
 const button = (label: string) => [...container.querySelectorAll<HTMLButtonElement>("button")].find(item => item.textContent?.includes(label))!;
 const classToggle = () => container.querySelector<HTMLButtonElement>('[data-test-class] button')!;
 const sessionRow = (id: string) => container.querySelector<HTMLElement>(`[data-class-session-row="${id}"]`)!;
+async function keydown(target: Element, key: string, extra = {}) {
+  const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, ...extra });
+  await act(async () => { target.dispatchEvent(event); }); return event;
+}
 async function fill(input: HTMLInputElement | HTMLTextAreaElement, text: string) {
   expect(input).toBeTruthy();
   await act(async () => { Object.getOwnPropertyDescriptor(input instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype, "value")!.set!.call(input, text);
@@ -119,5 +126,34 @@ describe("班级下直接连续登记", () => {
     await click(classToggle());
     expect(container.textContent).toContain("尚未安排课次");
     expect(deps.fetch).not.toHaveBeenCalled();
+  });
+  it("班级与课次共用方向键、Enter 和 Esc，逐生表有独立快捷键范围并支持键盘保存", async () => {
+    const parent = container.querySelector<HTMLElement>("[data-test-class]")!;
+    await keydown(parent, "Enter");
+    await keydown(parent, "ArrowDown");
+    expect(document.activeElement).toBe(sessionRow("today"));
+    expect(sessionRow("today").getAttribute("data-followup-active")).toBe("true");
+    await keydown(sessionRow("today"), "Enter");
+    await keydown(sessionRow("today"), "ArrowDown");
+    expect(document.activeElement).toBe(sessionRow("previous"));
+    await keydown(sessionRow("previous"), "ArrowUp");
+    expect(document.activeElement).toBe(sessionRow("today"));
+    const student = container.querySelector<HTMLElement>(`[data-followup-row-key="${first}"]`)!;
+    await keydown(student, "Enter");
+    const input = container.querySelector("textarea")!;
+    await fill(input, "键盘提交记录");
+    expect((await keydown(input, "ArrowDown")).defaultPrevented).toBe(false);
+    expect((await keydown(input, "Enter", { ctrlKey: true, isComposing: true })).defaultPrevented).toBe(false);
+    await keydown(input, "Enter", { ctrlKey: true });
+    expect(deps.record).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ studentId: first, content: "键盘提交记录" }));
+    await keydown(student, "ArrowDown");
+    expect(document.activeElement?.getAttribute("data-followup-row-key")).toBe(second);
+    await keydown(sessionRow("today"), "Escape");
+    expect(parent.getAttribute("aria-expanded")).toBe("true");
+    expect(container.querySelector("[data-class-session-editor]")).toBeNull();
+    await keydown(sessionRow("today"), "ArrowUp");
+    expect(document.activeElement).toBe(parent);
+    await keydown(parent, "Escape");
+    expect(container.querySelector("[data-class-session-list]")).toBeNull();
   });
 });

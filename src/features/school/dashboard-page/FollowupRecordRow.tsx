@@ -2,13 +2,13 @@
 
 import { useEffect, useImperativeHandle, useRef, type ComponentProps, type KeyboardEventHandler, type ReactNode, type Ref } from "react";
 import { TableBody, TableRow } from "@/components/ui/table";
-import { followupFocusActivatesRow, followupKeyboardCommand, followupKeyContext, navigateFollowupTable } from "../followup-keyboard";
+import { followupFocusActivatesRow, followupKeyboardCommand, followupKeyContext, navigateFollowupTable, type FollowupNavigationMode } from "../followup-keyboard";
 import { FollowupInlineDetails } from "./FollowupInlineDetails";
 
 /** 名单与跟进共用摘要、详情及键盘作用域；业务页面只提供列和登记内容。 */
 export function FollowupRecordRow({
   rowKey, active, expanded, onExpandedChange, onActivate, pending = false, selected = false,
-  rowRef, rowProps, detailsId, title, colSpan, keepMounted, hideTitle, summary, children, onKeyDown, onOutcomeChange, onSave, focusOnActivate = false, renderDetails = true,
+  rowRef, rowProps, detailsId, title, colSpan, keepMounted, hideTitle, summary, children, onKeyDown, onOutcomeChange, onSave, focusOnActivate = false, renderDetails = true, loadingLabel, ignoreClickSelector,
 }: {
   rowKey: string;
   active: boolean;
@@ -32,6 +32,9 @@ export function FollowupRecordRow({
   focusOnActivate?: boolean;
   /** 分组行的子记录由同一张表排列时，保留展开与键盘语义，交由调用方呈现子行。 */
   renderDetails?: boolean;
+  loadingLabel?: string;
+  /** 名册拖拽格等自带点击行为的区域，由共用行统一避让。 */
+  ignoreClickSelector?: string;
 }) {
   const summaryRef = useRef<HTMLTableRowElement>(null);
   useImperativeHandle(rowRef, () => summaryRef.current!, []);
@@ -66,20 +69,24 @@ export function FollowupRecordRow({
       onFocusCapture={(event) => { if (followupFocusActivatesRow(event)) onActivate?.(); rowProps?.onFocusCapture?.(event); }}
       onClick={rowProps?.onClick ?? ((event) => {
         onActivate?.();
-        if (!pending && !(event.target as Element).closest("button,a,input,textarea,select,[role='combobox'],[role='option'],[role='checkbox']")) onExpandedChange(!expanded);
+        const target = event.target as Element;
+        if (!pending && !target.closest("button,a,input,textarea,select,[role='combobox'],[role='option'],[role='checkbox']")
+          && !(ignoreClickSelector && target.closest(ignoreClickSelector))) onExpandedChange(!expanded);
       })} onKeyDown={handleKeyDown}>
       {summary}
     </TableRow>
     {renderDetails && <FollowupInlineDetails id={detailsId} open={expanded} onOpenChange={onExpandedChange} title={title} hideTitle={hideTitle}
-      active={active} colSpan={colSpan} pending={pending} onActivate={onActivate} onKeyDown={handleKeyDown} keepMounted={keepMounted}>
+      active={active} colSpan={colSpan} pending={pending} onActivate={onActivate} onKeyDown={handleKeyDown} keepMounted={keepMounted} loadingLabel={loadingLabel}>
       {children}
     </FollowupInlineDetails>}
   </>;
 }
 
 /** 所有记录表沿同一个可见行序列移动焦点，编辑器和弹层保留自己的方向键。 */
-export function FollowupTableBody({ onNavigate, ...props }: Omit<ComponentProps<typeof TableBody>, "onKeyDown"> & {
+export function FollowupTableBody({ onNavigate, navigation = "records", ...props }: Omit<ComponentProps<typeof TableBody>, "onKeyDown"> & {
   onNavigate: (key: string) => boolean;
+  /** tree 贯通展开的父子行，内嵌登记表仍拥有自己的键盘范围。 */
+  navigation?: FollowupNavigationMode;
 }) {
-  return <TableBody {...props} onKeyDown={(event) => navigateFollowupTable(event, onNavigate)} />;
+  return <TableBody {...props} data-followup-navigation={navigation} onKeyDown={(event) => navigateFollowupTable(event, onNavigate, navigation)} />;
 }

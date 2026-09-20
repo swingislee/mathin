@@ -4,6 +4,8 @@ import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
 import { FollowupTableRecord, type FollowupRowState } from "@/features/school/dashboard-page/FollowupTableRecord";
 
+vi.mock("@/features/school/SchoolSupportInlineEntry", () => ({ SchoolSupportInsertion: () => null }));
+
 describe("follow-up record rendering", () => {
   it("updates only affected records and retains mounted draft fields when focus moves", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });

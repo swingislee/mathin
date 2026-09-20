@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 import { readDashboardDetail } from "./dashboard-page/readDashboardDetail";
+import { FollowupDetailLoading } from "./dashboard-page/FollowupInlineDetails";
 import { classSessionDetailSchema, classSessionMessages, classSessionStudentWork, type ClassSessionDetail } from "./class-roster-session-contract";
 import { SessionStudentPostworkTable } from "./SessionStudentPostworkTable";
 import { TeachingSessionRecords } from "./teaching-workbench/TeachingSessionRecords";
@@ -44,7 +45,7 @@ export function ClassRosterSessionDetail({ sessionId, classroomId, locale, timeZ
       .catch(() => { if (!controller.signal.aborted) setFailed(true); });
     return () => controller.abort();
   }, [locale, sessionId, page, pageSize, attempt, contactRequested]);
-  if (!data) return failed ? <div role="alert" className="flex items-center gap-3 text-xs text-muted">{m.failed}<Button variant="ghost" size="sm" onClick={() => setAttempt(value => value + 1)}>{m.retry}</Button></div> : <p role="status" className="text-xs text-muted">{m.loading}</p>;
+  if (!data) return failed ? <div role="alert" className="flex items-center gap-3 text-xs text-muted">{m.failed}<Button variant="ghost" size="sm" onClick={() => setAttempt(value => value + 1)}>{m.retry}</Button></div> : <FollowupDetailLoading>{m.loading}</FollowupDetailLoading>;
   const work = classSessionStudentWork(data.records);
   return <div className="space-y-3">
     <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted"><p>{m.roster}</p><Link href={`/dashboard/sessions/${sessionId}?stage=post`} className="underline underline-offset-4">{m.workspace}</Link></div>

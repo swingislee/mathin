@@ -43,14 +43,28 @@ export function adjacentFollowupKey(keys: readonly string[], current: string, di
 }
 
 /** 摘要和详情共用可见行顺序；切换只移动工作焦点，不保存或完成记录。 */
-export function navigateFollowupTable(event: KeyboardEvent<HTMLElement>, onNavigate: (key: string) => boolean) {
+export type FollowupNavigationMode = "records" | "tree";
+
+function nestedRecordOrigin(target: Element, root: HTMLElement, rows: HTMLElement[]) {
+  let origin = target.closest<HTMLElement>("tr");
+  while (origin && root.contains(origin)) {
+    const summary = origin.hasAttribute("data-followup-inline-details") ? origin.previousElementSibling : origin;
+    if (summary && rows.includes(summary as HTMLElement)) return summary as HTMLElement;
+    origin = origin.parentElement?.closest<HTMLElement>("tr") ?? null;
+  }
+  return null;
+}
+
+export function navigateFollowupTable(event: KeyboardEvent<HTMLElement>, onNavigate: (key: string) => boolean, mode: FollowupNavigationMode = "records") {
   const command = followupKeyboardCommand({ ...event, isComposing: event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229 }, followupKeyContext(event));
   if (command?.type !== "move") return;
+  const rows = [...event.currentTarget.querySelectorAll<HTMLElement>("tr[data-followup-row-key]")].filter(row => mode !== "tree"
+    || row.closest("[data-followup-navigation]") === event.currentTarget && !row.closest("[hidden],[inert]"));
   const origin = (event.target as Element).closest("tr");
-  const summary = origin?.hasAttribute("data-followup-inline-details") ? origin.previousElementSibling : origin;
+  const summary = mode === "tree" ? nestedRecordOrigin(event.target as Element, event.currentTarget, rows)
+    : origin?.hasAttribute("data-followup-inline-details") ? origin.previousElementSibling : origin;
   const currentKey = summary?.getAttribute("data-followup-row-key");
   if (!currentKey) return;
-  const rows = [...event.currentTarget.querySelectorAll<HTMLElement>("tr[data-followup-row-key]")];
   const keys = rows.map((row) => row.dataset.followupRowKey!);
   const nextKey = adjacentFollowupKey(keys, currentKey, command.direction);
   event.preventDefault();
