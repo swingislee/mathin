@@ -33,7 +33,7 @@ describe("spatial-lab Tools acceptance prototype", () => {
       category: "geometry",
       grades: [1, 9],
     });
-    expect(tools.map((tool) => tool.id)).toEqual(["fraction-line", "motion-lab", "cube-structures", "cube-net", "dice", "projection", "solid-geometry", "solid-capacity", "soma-cube"]);
+    expect(tools.map((tool) => tool.id)).toEqual(["fraction-line", "motion-lab", "cube-structures", "cube-net", "solid-nets", "dice", "projection", "solid-geometry", "solid-capacity", "solid-revolution", "soma-cube"]);
     expect(new Set(tools.map((tool) => tool.id)).size).toBe(tools.length);
     expect(new Set(tools.map((tool) => tool.no)).size).toBe(tools.length);
     expect(toolThumbs["spatial-lab"]).toBeTruthy();
