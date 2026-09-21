@@ -136,9 +136,9 @@ export function SolidGeometryWorkspace({ initial, onSnapshot, classroom, readOnl
         rotationHandles={panel === "turn"} onToggleRotationHandles={() => open("turn")}
         onTransform={(entity) => {
           if (disabled) return false;
-          const next = { ...snapshot, entities: snapshot.entities.map((item) => item.id === entity.id ? entity : item) };
+          const next = { ...snapshot, entities: snapshot.entities.map((item) => item.id === entity.id ? entity : item), selectedId: entity.id, feature: snapshot.selectedId === entity.id ? snapshot.feature : null };
           if (!update(next)) return false;
-          directMove.hold(next); setInstantKey(solidEntitiesKey(next.entities.map((item) => item.id === next.selectedId ? measurementDisplayEntity(item, snapshot.measurement) : item))); return true;
+          activateSelection(); directMove.hold(next); setInstantKey(solidEntitiesKey(next.entities.map((item) => item.id === next.selectedId ? measurementDisplayEntity(item, snapshot.measurement) : item))); return true;
         }}
         rollAction={panel === "roll" ? rollAction : undefined}
         renderScene={(context) => <>{context.selected && <MeasurementOverlay entity={context.selected} settings={snapshot.measurement} feature={snapshot.feature} locale={locale} />}{renderScene?.(context)}</>} />

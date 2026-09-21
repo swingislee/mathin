@@ -90,7 +90,7 @@ export default function SomaCanvas({ snapshot, messages, title, readOnly, axisSn
   const toolbarVertices = useMemo(() => selectedPose ? unitCubeCorners(somaDefinition(snapshot.selectedId).cells).map((p) => spatialRigidPoint(p, selectedPose)) : [], [selectedPose, snapshot.selectedId]);
   const toolbarHandles = { center: cubeMoveCenter(state, selectedIds) ?? center!, axes: handleAxes };
   const bodyGesture: SpatialObjectInteraction | undefined = onPoseCommit ? {
-    key: state, enabled: !readOnly && !motion.animating && !preview, plane: "table", rotate: navigation === "rotate" && rotationStyle === "free", selectOnly: navigation === "rotate" && rotationStyle === "axis", selected: targetFor(snapshot.selectedId),
+    key: state, enabled: !readOnly && !motion.animating && !preview, plane: "table", rotate: navigation === "rotate" && rotationStyle === "free", selected: targetFor(snapshot.selectedId),
     handles: selectionActive && !rollAction && (!readOnly || !!objectPreview) && pivot && (navigation !== "rotate" || rotationStyle === "axis") ? {
       mode: navigation === "rotate" ? "rotate" : "move", center: navigation === "rotate" ? pivot : toolbarHandles.center, radius: somaRotationRadius(snapshot.selectedId) + 0.35,
     } : undefined,

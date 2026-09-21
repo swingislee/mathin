@@ -84,7 +84,7 @@ describe("Soma renders the shared rigid animation instead of replacing cells", (
       await rig.render({ snapshot, onPoseCommit, navigation: "rotate", instantKey: JSON.stringify(somaRigidPoses(snapshot.pieces)) });
       const body = controls.interaction!.bodyGesture!, target = body.selected!;
       expect(body.handles).toMatchObject({ mode: "rotate", center: target.pivot });
-      expect(body.selectOnly).toBe(true); expect(body.rotate).toBe(false);
+      expect(body.selectOnly).toBeUndefined(); expect(body.rotate).toBe(false); expect(body.plane).toBe("table");
       const pose = rotateSpatialPose(target.pose, target.pivot, "z", 0.6), landing = body.resolve(target, pose, "rotate", { kind: "axis-rotation", axis: "z" });
       await act(async () => body.onPreview({ target, pose, landing: landing.pose, valid: landing.valid, phase: "drag", constraint: { kind: "axis-rotation", axis: "z" }, handles: body.handles }));
       expect(rig.scene().getObjectByName(`soma-rigid:${id}`)!.quaternion.angleTo(new Quaternion(...pose.quaternion))).toBeLessThan(1e-7);

@@ -32,6 +32,9 @@ describe("future spatial workbench integration guard", () => {
     for (const file of ["soma-cube/SomaCanvas.tsx", "spatial-lab/DiceTeachingCanvas.tsx", "spatial-lab/CubeStructuresViewport.tsx", "solid-geometry/SolidGeometryCanvas.tsx"]) {
       const source = readFileSync(resolve("src/features/tools", file), "utf8");
       expect(source).toContain("CubeMoveHandles"); expect(source).toContain("SpatialRotationControls"); expect(source).toContain("SpatialRollControls");
+      expect(source, `${file}: body picking must enter the shared gesture controller`).toContain("bodyGesture");
+      expect(source).not.toContain("selectOnly:");
+      expect(source).toMatch(/spatialGizmoInteraction|SpatialObjectInteraction/);
     }
     for (const file of ["soma-cube/model.ts", "spatial-lab/cube-structures-roll.ts", "solid-geometry/solid-geometry-roll.ts"]) {
       expect(readFileSync(resolve("src/features/tools", file), "utf8")).toContain("planSpatialRoll");

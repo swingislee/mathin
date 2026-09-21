@@ -106,6 +106,25 @@ function pointerAt(p: Vector3, c: OrthographicCamera, pointerType = "mouse") {
   return { clientX: viewport.left + (n.x + 1) * viewport.width / 2, clientY: viewport.top + (1 - n.y) * viewport.height / 2, pointerType };
 }
 describe("shared explicit transform handles", () => {
+  it.each(["mouse", "touch"])("%s dragging the body bypasses legacy guessed axes and moves freely on XZ", (pointerType) => {
+    const g = setup(true), end = { pointerType, clientX: point.x + 63, clientY: point.y + 35 };
+    g.interaction.freeRotation = false;
+    g.send("pointerdown", { pointerType }); g.send("pointermove", end);
+    const frame = g.previews.at(-1)!;
+    expect(frame.pose.position.y).toBeCloseTo(0);
+    expect(Math.abs(frame.pose.position.x)).toBeGreaterThan(0.1);
+    expect(Math.abs(frame.pose.position.z)).toBeGreaterThan(0.1);
+    expect(frame.constraint).toBeUndefined(); expect(frame.arcball).toBeUndefined();
+    g.send("pointerup", end); g.flush(0); g.flush(160);
+    expect(g.apply).toHaveBeenCalledTimes(1); expect(g.axisCommit).not.toHaveBeenCalled();
+  });
+  it("keeps discrete tools on XZ when Shift is held, without reserving a free-rotation gesture", () => {
+    const g = setup(true); g.interaction.freeRotation = false;
+    g.send("pointerdown", { shiftKey: true }); g.send("pointermove", { shiftKey: true, clientX: point.x + 63, clientY: point.y + 35 });
+    expect(g.previews.at(-1)!.pose.position.y).toBeCloseTo(0); expect(g.previews.at(-1)!.arcball).toBeUndefined();
+    g.send("pointerup", { shiftKey: true, clientX: point.x + 63, clientY: point.y + 35 });
+    expect(g.apply).toHaveBeenCalledTimes(1); expect(g.axisCommit).not.toHaveBeenCalled();
+  });
   it("gives the visible plane grip priority over the legacy axis and body controller", () => {
     const g = setup(true), spec: SpatialTransformHandlesSpec = { center: origin, mode: "move", radius: 2 };
     g.interaction.handles = spec;

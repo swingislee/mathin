@@ -11,7 +11,7 @@ export interface SpatialGestureTarget { pose: SpatialRigidPose; pivot: VoxelCoor
 export interface SpatialGestureLanding { pose: SpatialRigidPose; valid: boolean; apply: () => boolean; snapped?: boolean }
 export interface SpatialObjectPreview { target: SpatialGestureTarget; pose: SpatialRigidPose; landing: SpatialRigidPose; valid: boolean; phase: "drag" | "settle"; arcball?: SpatialArcball; snapped?: boolean; moveBasis?: SpatialMoveBasis; constraint?: SpatialHandleConstraint; handles?: SpatialTransformHandlesSpec }
 export interface SpatialObjectInteraction {
-  key: object; enabled: boolean; plane: SpatialMovePlane; rotate?: boolean;
+  key: object; enabled: boolean; plane: SpatialMovePlane; rotate?: boolean; freeRotation?: boolean;
   resolvePlane?: (camera: Camera) => SpatialStandardMovePlane;
   handles?: SpatialTransformHandlesSpec;
   selectOnly?: boolean;
@@ -93,6 +93,7 @@ export function bindSpatialObjectGestures(canvas: HTMLCanvasElement, current: ()
     }
     const interaction = current();
     if (!interaction?.enabled || event.button !== 0 || event.isPrimary === false) return;
+    if (forced && interaction.freeRotation === false) return;
     const camera = getCamera().clone(), size = canvas.getBoundingClientRect();
     const constraint = forced ? undefined : spatialObjectHandleHit(interaction, event, camera, size) ?? undefined;
     if (!forced && !constraint && interaction.handlesHit?.(event, camera, size)) return;
@@ -100,7 +101,7 @@ export function bindSpatialObjectGestures(canvas: HTMLCanvasElement, current: ()
     const target = forced || constraint ? interaction.selected : interaction.pick(raycaster);
     if (!target) return;
     stop(event); stopSettle();
-    const action: SpatialObjectAction = constraint ? constraint.kind === "axis-rotation" ? "rotate" : "translate" : forced || event.shiftKey || interaction.rotate ? "rotate" : "translate";
+    const action: SpatialObjectAction = constraint ? constraint.kind === "axis-rotation" ? "rotate" : "translate" : interaction.freeRotation !== false && (forced || event.shiftKey || interaction.rotate) ? "rotate" : "translate";
     const projection = action === "translate" ? spatialMoveProjection({ x: event.clientX, y: event.clientY }, constraint?.kind === "plane" ? interaction.handles!.center : target.grabPoint,
       constraint?.kind === "plane" ? constraint.plane : interaction.resolvePlane?.(camera) ?? resolveSpatialMovePlane(interaction.plane, camera), camera, size) : null;
     // 侧看桌面仍允许轻点选择；达到起拖阈值时再提示不可解的移动平面。

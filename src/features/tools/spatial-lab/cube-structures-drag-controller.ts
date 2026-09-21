@@ -19,6 +19,7 @@ export interface CubeMoveInteraction {
   readonly axis: Axis;
   readonly kind: CubeMoveOperation["kind"];
   readonly snapToGrid: boolean;
+  /** 无 bodyGesture 的旧调用边界；接入共用对象手势后，本控制器仅处理轴箭头。 */
   readonly bodyAxis?: "selected" | "gesture" | "handles";
   readonly enabled?: boolean;
   readonly handleAxes?: readonly Axis[];
@@ -64,7 +65,7 @@ export function bindCubeAxisDrag(canvas: HTMLCanvasElement, getInteraction: () =
     if (event.button !== 0 || event.isPrimary === false) return;
     const snapshot = getInteraction();
     if (snapshot.enabled === false) return;
-    if (snapshot.bodyGesture && event.shiftKey) return;
+    if (snapshot.bodyGesture && snapshot.bodyGesture.freeRotation !== false && event.shiftKey) return;
     const camera = getCamera();
     const size = canvas.getBoundingClientRect();
     if (snapshot.bodyGesture && spatialObjectHandleHit(snapshot.bodyGesture, event, camera, size)) return;
@@ -72,7 +73,8 @@ export function bindCubeAxisDrag(canvas: HTMLCanvasElement, getInteraction: () =
     const center = cubeMoveCenter(snapshot.state, snapshot.ids);
     if (!center) return;
     const handle = snapshot.showHandles === false ? null : cubeDragHandleAxis(point, center, camera, size, snapshot.handleAxes, event.pointerType === "touch" ? 22 : 12);
-    if (!handle && snapshot.bodyAxis === "handles") return;
+    // 共用对象控制器拥有本体手势；旧轴拖动只接管明确命中的轴箭头。
+    if (!handle && (snapshot.bodyGesture || snapshot.bodyAxis === "handles")) return;
     raycaster.setFromCamera(new Vector2(point.x / size.width * 2 - 1, 1 - point.y / size.height * 2), camera);
     const hit = handle ? null : snapshot.hitTest ? snapshot.hitTest(raycaster) : cubeDragHit(snapshot.state, raycaster.ray);
     if (!handle && (!hit || !snapshot.scopeIds.includes(hit))) return;

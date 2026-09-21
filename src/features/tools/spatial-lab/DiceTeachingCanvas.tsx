@@ -1,7 +1,7 @@
 "use client";
 
 import { Component, createRef, useEffect, useMemo, useState, type ReactNode, type RefObject } from "react";
-import { Canvas, type ThreeEvent } from "@react-three/fiber";
+import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
 import { Html, Line } from "@react-three/drei";
 import { CanvasTexture, DoubleSide, EdgesGeometry, FrontSide, Quaternion, SRGBColorSpace, type Mesh } from "three";
 import { THREE_SHADOWS } from "@/lib/three-runtime";
@@ -27,6 +27,7 @@ import { spatialGizmoInteraction, spatialGizmoPoint, snapSpatialTranslation } fr
 import type { SpatialObjectPreview } from "../spatial-interaction/object-gesture-controller";
 import { SpatialRollControls } from "../spatial-interaction/SpatialRollControls";
 import type { SpatialRollAction } from "../spatial-interaction/SpatialRollButtons";
+import { pickSpatialObjectHit } from "../spatial-interaction/picking";
 
 // 拖拽预览逐帧重绘时保持回调身份，避免相机误判为新的视角切换。
 const ignoreCameraTransition = () => {};
@@ -70,6 +71,7 @@ class DiceCanvasBoundary extends Component<{ children: ReactNode; label: string 
   render() { return this.state.failed ? <p role="alert" className="p-8 text-sm">{this.props.label}</p> : this.props.children; }
 }
 function DiceObjects(props: DiceCanvasProps & { isTap: () => boolean }) {
+  const get = useThree((state) => state.get);
   const { dice, selectedId, locale } = props;
   const m = diceTeachingMessages(locale);
   const geometries = useMemo(() => diceFaceGeometries(), []);
@@ -93,15 +95,20 @@ function DiceObjects(props: DiceCanvasProps & { isTap: () => boolean }) {
     position: spatialGizmoPoint(handleFrame.frame, die.position), rotation: rotationData(new Quaternion(...handleFrame.frame.pose.quaternion).multiply(quaternion(die.rotation))),
   } : die) : preview ? dice.map((die) => ({ ...die, position: preview.positions.get(die.id) ?? die.position })) : dice, [dice, preview, handleFrame]);
   const dragPresentation = useMemo(() => diceDragState(presentedDice), [presentedDice]);
-  const sourceDie = dice.find((die) => die.id === selectedId);
-  const handleInteraction = props.selectionActive !== false && props.onTransform && sourceDie ? spatialGizmoInteraction({ key: dice, id: selectedId, center: sourceDie.position, radius: 1.25,
-    mode: rotationHandles ? "rotate" : "move", enabled: !props.busy && !preview && !props.rollAction,
-    translate: (delta) => {
-      const snapped = snapSpatialTranslation(delta, 1, props.snap ? sourceDie.position : undefined, DICE_DRAG_GRID_ORIGIN);
-      const next = { ...sourceDie, position: { x: sourceDie.position.x + snapped.x, y: sourceDie.position.y + snapped.y, z: sourceDie.position.z + snapped.z } };
-      return { delta: snapped, valid: canPlaceDie(dice, selectedId, next.position), apply: () => props.onTransform!(next) };
+  const handleInteraction = props.onTransform ? spatialGizmoInteraction({ key: dice, selectedId,
+    mode: rotationHandles ? "rotate" : "move", enabled: !props.busy && !preview,
+    showHandles: props.selectionActive !== false && !props.rollAction,
+    pick: (raycaster) => pickSpatialObjectHit(raycaster, get().scene), onSelect: props.onSelect,
+    objectFor: (id) => {
+      const die = dice.find((item) => item.id === id); if (!die) return null;
+      return { id, center: die.position, radius: 1.25,
+        translate: (delta) => {
+          const snapped = snapSpatialTranslation(delta, props.snap ? 1 : 0, props.snap ? die.position : undefined, DICE_DRAG_GRID_ORIGIN);
+          const next = { ...die, position: { x: die.position.x + snapped.x, y: die.position.y + snapped.y, z: die.position.z + snapped.z } };
+          return { delta: snapped, valid: canPlaceDie(dice, id, next.position), apply: () => props.onTransform!(next) };
+        }, rotate: (axis, turn) => ({ valid: true, apply: () => props.onTransform!(turnDie(die, axis, turn)) }),
+      };
     },
-    rotate: (axis, turn) => ({ valid: true, apply: () => props.onTransform!(turnDie(sourceDie, axis, turn)) }),
     onPreview: (frame) => setHandleFrame(frame ? { frame, dice } : null), onDragging: setHandleDragging, onUnavailable: props.onMoveUnavailable,
   }) : undefined;
   useEffect(() => () => { geometries.forEach((g) => g.dispose()); }, [geometries]);
@@ -118,7 +125,7 @@ function DiceObjects(props: DiceCanvasProps & { isTap: () => boolean }) {
   const baseCamera = cubeWorkbenchCamera(props.frame, props.view === "bottom" ? "top" : props.view, "dice");
   const camera = props.view === "bottom" ? { ...baseCamera, position: { ...props.frame.center, y: props.frame.center.y - props.frame.radius * 4 }, up: { x: 0, y: 0, z: 1 } } : baseCamera;
   return <>
-    <SpatialCameraRig bookmark={camera} radius={props.frame.radius} requestKey={props.cameraKey} axisSnapEnabled={props.snap} interactive navigationMode={props.tool === "pan" ? "pan" : props.tool === "move" ? "object" : "orbit"} onTransitionStateChange={ignoreCameraTransition} />
+    <SpatialCameraRig bookmark={camera} radius={props.frame.radius} requestKey={props.cameraKey} axisSnapEnabled={props.snap} interactive navigationMode={props.tool === "pan" ? "pan" : "orbit"} onTransitionStateChange={ignoreCameraTransition} />
     <ambientLight intensity={1.35} /><hemisphereLight args={["#ffffff", "#8f9aa5", 1.4]} />
     <directionalLight position={[4, 9, 5]} intensity={3} castShadow shadow-mapSize={[1024, 1024]} shadow-camera-left={-8} shadow-camera-right={8} shadow-camera-top={8} shadow-camera-bottom={-8} shadow-bias={-0.0005} />
     <directionalLight position={[-5, -3, -5]} intensity={1.6} />

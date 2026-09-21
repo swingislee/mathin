@@ -78,9 +78,9 @@ export function cubeDragPositions(state: CubeStructureState, ids: readonly strin
 }
 
 /** 拖动沿用完整单位块命中，隐藏块不可选；组外实体仍遮挡后方的命中。 */
-export function cubeDragHit(state: CubeStructureState, ray: Ray): string | null {
+export function cubeDragPick(state: CubeStructureState, ray: Ray): { id: string; point: VoxelCoordinate } | null {
   let nearest = Infinity;
-  let id: string | null = null;
+  let hit: { id: string; point: VoxelCoordinate } | null = null;
   const point = new Vector3();
   for (const cube of state.cubes) {
     if (state.hiddenCubeIds.includes(cube.id)) continue;
@@ -88,7 +88,11 @@ export function cubeDragHit(state: CubeStructureState, ray: Ray): string | null 
     const box = new Box3(new Vector3(p.x - 0.5, p.y - 0.5, p.z - 0.5), new Vector3(p.x + 0.5, p.y + 0.5, p.z + 0.5));
     if (!ray.intersectBox(box, point)) continue;
     const distance = ray.origin.distanceToSquared(point);
-    if (distance < nearest) { nearest = distance; id = cube.id; }
+    if (distance < nearest) { nearest = distance; hit = { id: cube.id, point: { x: point.x, y: point.y, z: point.z } }; }
   }
-  return id;
+  return hit;
+}
+
+export function cubeDragHit(state: CubeStructureState, ray: Ray): string | null {
+  return cubeDragPick(state, ray)?.id ?? null;
 }

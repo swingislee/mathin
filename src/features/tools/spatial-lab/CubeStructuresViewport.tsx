@@ -15,7 +15,7 @@ import { cubeRotationOperation } from "./cube-structures-rotation";
 import { SpatialRollControls } from "../spatial-interaction/SpatialRollControls";
 import type { SpatialRollAction } from "../spatial-interaction/SpatialRollButtons";
 import { unitCubeCorners } from "../spatial-interaction/rolling";
-import { cubeMoveCenter, cubePlaneOperations } from "./cube-structures-drag";
+import { cubeDragPick, cubeMoveCenter, cubePlaneOperations } from "./cube-structures-drag";
 import { spatialGizmoInteraction, spatialGizmoPoint, snapSpatialTranslation } from "../spatial-interaction/gizmo-adapter";
 import type { SpatialObjectPreview } from "../spatial-interaction/object-gesture-controller";
 
@@ -69,9 +69,9 @@ export function CubeStructuresViewport({ scene, sceneKey, history, opacityPrevie
   const rotationVertices = unitCubeCorners(presentation.cubes.filter((cube) => rotationInteraction?.ids.includes(cube.id) && !presentation.hiddenCubeIds.includes(cube.id)).map(cubeDisplayPosition));
   const handleCenter = moveInteraction && cubeMoveCenter(presentation, moveInteraction.ids);
   const toolbarHandles = handleCenter ? { center: handleCenter, axes: moveInteraction?.handleAxes ?? ["x", "y", "z"] as const } : undefined;
-  const sourceCenter = activeMove && cubeMoveCenter(scene.state, activeMove.ids);
-  const sourcePivot = rotationInteraction && cubeRotationOperation(scene.state, rotationInteraction.ids, rotationInteraction.axis, 1)?.displayPivot;
-  const center = rotationHandles && sourcePivot ? sourcePivot : sourceCenter;
+  const idsForTarget = (id: string) => activeMove
+    ? (activeMove.idsForHit?.(id) ?? (activeMove.ids.includes(id) ? activeMove.ids : [id])).filter((member) => activeMove.scopeIds.includes(member))
+    : [];
   const apply = (operations: readonly CubeOperation[]) => {
     if (!operations.length) return true;
     const next = operations.reduce(applyCubeOperation, scene.state);
@@ -79,17 +79,29 @@ export function CubeStructuresViewport({ scene, sceneKey, history, opacityPrevie
     if (!committed) return false;
     setInstantKey(cubeDisplayMotionKey(next, committed)); return true;
   };
-  const handleInteraction = onTransformOperations && activeMove && center && activeMove.showHandles !== false ? spatialGizmoInteraction({
-    key: scene.state, id: activeMove.ids.join("/"), center, radius: Math.max(1.4, ...rotationVertices.map((p) => Math.hypot(p.x - center.x, p.y - center.y, p.z - center.z))) + 0.3,
-    mode: rotationHandles && rotationInteraction ? "rotate" : "move", enabled: !moving && !props.readOnly && !dragPreview && !rollInteraction,
-    translate: (delta) => { const snapped = snapSpatialTranslation(delta, activeMove.kind === "move" ? 1 : 0.5);
-      const operations = cubePlaneOperations(scene.state, activeMove.ids, activeMove.kind, snapped);
-      return { delta: snapped, valid: operations !== null, apply: () => operations !== null && apply(operations) }; },
-    rotate: (axis, turn) => { const operation = cubeRotationOperation(scene.state, activeMove.ids, axis, turn);
-      return { valid: !!operation && applyCubeOperation(scene.state, operation) !== scene.state, apply: () => !!operation && apply([operation]) }; },
+  const handleInteraction = onTransformOperations && activeMove ? spatialGizmoInteraction({
+    key: scene.state, selectedId: activeMove.ids[0] ?? null,
+    mode: rotationHandles && rotationInteraction ? "rotate" : "move", enabled: !moving && !props.readOnly && !dragPreview,
+    showHandles: activeMove.showHandles !== false && !rollInteraction,
+    pick: (raycaster) => { const hit = cubeDragPick(scene.state, raycaster.ray); return hit && activeMove.scopeIds.includes(hit.id) ? hit : null; },
+    objectFor: (id) => {
+      const ids = idsForTarget(id);
+      const center = (rotationHandles && rotationInteraction ? cubeRotationOperation(scene.state, ids, rotationInteraction.axis, 1)?.displayPivot : null) ?? cubeMoveCenter(scene.state, ids);
+      if (!center || !ids.length) return null;
+      const vertices = unitCubeCorners(scene.state.cubes.filter((cube) => ids.includes(cube.id)).map(cubeDisplayPosition));
+      return { id, center, radius: Math.max(1.4, ...vertices.map((p) => Math.hypot(p.x - center.x, p.y - center.y, p.z - center.z))) + 0.3,
+        translate: (delta) => { const snapped = snapSpatialTranslation(delta, activeMove.kind === "move" ? 1 : 0.5);
+          const operations = cubePlaneOperations(scene.state, ids, activeMove.kind, snapped);
+          return { delta: snapped, valid: operations !== null, apply: () => operations !== null && apply(operations) }; },
+        rotate: (axis, turn) => { const operation = cubeRotationOperation(scene.state, ids, axis, turn);
+          return { valid: !!operation && applyCubeOperation(scene.state, operation) !== scene.state, apply: () => !!operation && apply([operation]) }; },
+      };
+    },
+    onSelect: activeMove.onSelect,
     onPreview: (frame) => {
-      setHandleFrame(frame ? { frame, source: scene.state, ids: activeMove.ids, interaction: activeMove } : null);
-      previewPositions(frame ? new Map(scene.state.cubes.map((cube) => [cube.id, activeMove.ids.includes(cube.id) ? spatialGizmoPoint(frame, cubeDisplayPosition(cube)) : cubeDisplayPosition(cube)])) : null);
+      const ids = frame ? idsForTarget(frame.target.pose.id) : [];
+      setHandleFrame(frame ? { frame, source: scene.state, ids, interaction: activeMove } : null);
+      previewPositions(frame ? new Map(scene.state.cubes.map((cube) => [cube.id, ids.includes(cube.id) ? spatialGizmoPoint(frame, cubeDisplayPosition(cube)) : cubeDisplayPosition(cube)])) : null);
     }, onDragging: setHandleDragging, onUnavailable: activeMove.onUnavailable,
   }) : undefined;
   return <VoxelModelCanvas {...props} model={model} paintedFaceGroups={paints} readOnly={props.readOnly || moving}

@@ -298,6 +298,7 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector, initi
         onSelect={setSelectedId} onFace={chooseFace} onMoveFace={moveFace} onRotate={(axis, turn) => updateDie(selected.id, (die) => turnDie(die, axis, turn), true)}
         onTransform={(die) => {
           if (busy || readOnly || !canPlaceDie(scene.dice, die.id, die.position)) return false;
+          setSelectedId(die.id); setSurfaceTarget(null);
           commit(changed(scene.dice.map((item) => item.id === die.id ? die : item))); return true;
         }} />
       <div className={`${styles.dock} ${styles.meta}`} data-dice-overlay><SpatialActionButton action="settings" label={m.settings} active={panel === "settings"} onClick={() => selectPanel("settings")} /><span className="self-center pr-1 text-xs">{m.title}</span></div>

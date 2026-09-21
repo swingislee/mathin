@@ -25,6 +25,12 @@ describe("dice selection lifecycle", () => {
       await act(async () => canvas.props!.onSelect(scene.dice[1].id));
       expect(canvas.props!.selectionActive).toBe(true); expect(canvas.props!.selectedId).toBe(scene.dice[1].id);
       expect(canvas.props!.dice[0].offsets).toEqual({ "y-": 0.9 });
+      await act(async () => canvas.props!.onPointerMissed!(new MouseEvent("click", { button: 0 })));
+      const moved = { ...scene.dice[0], position: { x: -1.23, y: 0.5, z: 0.37 } };
+      await act(async () => { expect(canvas.props!.onTransform!(moved)).toBe(true); });
+      expect(canvas.props!.selectionActive).toBe(true); expect(canvas.props!.selectedId).toBe(moved.id);
+      expect(canvas.props!.dice[0]).toEqual(moved); expect(canvas.props!.busy).toBe(false);
+      expect(capture.mock.lastCall![0].scene.dice[0]).toEqual(moved);
     } finally { await act(async () => root.unmount()); host.remove(); }
   });
 });

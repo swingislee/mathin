@@ -78,6 +78,18 @@ describe("solid geometry teacher workspace", () => {
     await click(m.face); expect(canvas.props!.objectManipulation).toBe(false);
     await click(m.orbit); expect(canvas.props!.objectManipulation).toBe(true);
   });
+  it("body-plane drag reselects its actual entity and does not replay the fractional endpoint", async () => {
+    const initial = createSolidGeometryInitial(), capture = vi.fn();
+    initial.entities.push(createSolidEntity("cube", "other", { x: 4, y: 1, z: 0 }));
+    initial.feature = { entityId: "solid-origin", kind: "face", id: "front" };
+    await render(createElement(SolidGeometryWorkspace, { initial, onSnapshot: capture }));
+    await act(async () => canvas.props!.onPointerMissed!(new MouseEvent("click", { button: 0 })));
+    const moved = { ...initial.entities[1], position: { x: 4.23, y: 1, z: 0.37 } };
+    await act(async () => { expect(canvas.props!.onTransform!(moved)).toBe(true); });
+    expect(canvas.props!.selectionActive).toBe(true); expect(canvas.props!.selectedId).toBe("other");
+    expect(capture.mock.lastCall![0].feature).toBeNull(); expect(canvas.props!.entities[1]).toEqual(moved);
+    await advance(120); expect(canvas.props!.entities[1]).toEqual(moved); expect(canvas.props!.objectAnimating).toBe(false);
+  });
   it("prepares multiple true solids with shared right-toolbar and non-modal panel primitives", async () => {
     const initial = createSolidGeometryInitial(), capture = vi.fn();
     await render(createElement(SolidGeometryWorkspace, { initial, onSnapshot: capture }));
