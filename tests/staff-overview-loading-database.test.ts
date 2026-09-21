@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import { createHash } from "node:crypto";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it, vi } from "vitest";
 import { openHistoryLocalTarget } from "../scripts/lib/history-local-target.mjs";
 import { loadFixedAccount } from "../e2e/support/fixed-accounts";
@@ -9,7 +9,7 @@ import { listMyWorkItems } from "@/features/school/work-items";
 import { readMonthlyTargets } from "@/features/school/home/monthly-targets-data";
 import { calendarDayKey } from "@/features/school/schedule";
 
-const state = vi.hoisted(() => ({ client: null as unknown as ReturnType<typeof createClient> }));
+const state = vi.hoisted(() => ({ client: null as unknown as SupabaseClient }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => state.client }));
 
