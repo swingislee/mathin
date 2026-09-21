@@ -16,7 +16,6 @@ import { FilterBar, FilterBarSubmit, FilterSearchInput } from "@/features/school
 import { withReturnTo } from "@/features/school/object-workspace/return-target";
 import {
   COURSEWARE_TASK_TABS,
-  loadCoursewareTaskQueue,
   type CoursewareTaskItem,
   type CoursewareTaskTab,
 } from "@/features/courseware-studio/data";
@@ -27,6 +26,7 @@ type Props = {
   locale: string;
   tab: CoursewareTaskTab;
   query: string;
+  tasks: CoursewareTaskItem[];
 };
 
 export function hrefFor(tab: CoursewareTaskTab, query: string) {
@@ -82,11 +82,10 @@ export async function CoursewareTaskCommandPanel({ tab, query }: { tab: Coursewa
   );
 }
 
-export async function CoursewareTaskQueue({ locale, tab, query }: Props) {
-  const [t, tCourses, tasks] = await Promise.all([
+export async function CoursewareTaskQueue({ locale, tab, query, tasks }: Props) {
+  const [t, tCourses] = await Promise.all([
     getTranslations("coursewareStudio"),
     getTranslations("school.courses"),
-    loadCoursewareTaskQueue(tab, query),
   ]);
   const dateTime = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" });
   const baseHref = hrefFor(tab, query);

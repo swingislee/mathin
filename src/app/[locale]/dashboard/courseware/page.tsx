@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { getTemplateProgress } from "@/features/school/dashboard";
-import { loadLecturePreview, parseCoursewareTrack } from "@/features/courseware-studio/data";
+import { loadCoursewareTaskQueue, loadLecturePreview, parseCoursewareTrack } from "@/features/courseware-studio/data";
 import { CoursewareTaskCommandPanel, CoursewareTaskQueue, hrefFor } from "@/features/courseware-studio/CoursewareTaskQueue";
 import {
   COURSEWARE_STUDIO_PERMS,
@@ -84,7 +84,8 @@ async function CoursewareTasksContent({
   const baseHref = hrefFor(tab, taskQuery);
   const canTemplateProgress = perms.has("course.manage");
 
-  const [templateProgress, preview] = await Promise.all([
+  const [tasks, templateProgress, preview] = await Promise.all([
+    loadCoursewareTaskQueue(tab, taskQuery),
     canTemplateProgress ? safe(getTemplateProgress, []) : Promise.resolve([]),
     (async () => {
       const lectureId = first(query.lecture);
@@ -105,6 +106,7 @@ async function CoursewareTasksContent({
       locale={locale}
       tab={tab}
       query={taskQuery}
+      tasks={tasks}
     />
     {preview && (
       <LecturePreviewDialog title={tCourses("lecturePreviewTitle", { no: preview.lecture.no, name: preview.lecture.name })} closeHref={baseHref}>
