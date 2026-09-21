@@ -1,0 +1,1141 @@
+{
+  "checkedAt": "2026-09-21T08:40:33.130Z",
+  "source": {
+    "id": "feishu-base:28a6f6af56504cab716f01eead37d73b5098d0830ed4b02b55c06dc93e135dc6",
+    "filename": "2026-09-20【思维】用户与产品运营表.base",
+    "sha256": "fcc8d200f822ece4fa5aed13c9867990513ef111a78ccb57f0b7b055574a0095",
+    "format": "feishu-base"
+  },
+  "target": {
+    "host": "xiaomi",
+    "ssh": true,
+    "supabaseOrigin": "https://supabase.mathin.club",
+    "processOrigin": "https://supabase.mathin.club",
+    "mainPid": 214265,
+    "listen": "State  Recv-Q Send-Q Local Address:Port Peer Address:PortProcess                                      \nLISTEN 0      511        127.0.0.1:3131      0.0.0.0:*    users:((\"next-server (v1\",pid=214265,fd=21))\n",
+    "current": {
+      "release": "20260920-165809",
+      "commit": "234b5a3513ebd5bcdd041906a1a472dd4233ea0d",
+      "builtAt": "2026-09-20T17:00:52Z"
+    },
+    "previous": {
+      "release": "20260920-005221",
+      "commit": "1eaab0fbe3285d44f89924b8c1f771c5417ef657",
+      "builtAt": "2026-09-20T00:54:40Z"
+    },
+    "fingerprint": "10e3f97e32b018403c9074efa4e258d699530a487c47de89b5d307ab7ff21a0c",
+    "capturedAt": "2026-09-21T08:45:11.399Z"
+  },
+  "production": {
+    "capturedAt": "2026-09-21T08:40:33.130Z",
+    "role": "authenticated/admin",
+    "acquisitionFile": "2026-09-07【思维】用户与产品运营表.base",
+    "sourceCounts": {
+      "leads": 4148,
+      "profiles": 37,
+      "sourceMap": 5287,
+      "activities": 953,
+      "classrooms": 32,
+      "assessments": 674,
+      "assignments": 36,
+      "memberships": 178,
+      "submissions": 1071,
+      "currentTerms": 1,
+      "opportunities": 519,
+      "registrations": 953,
+      "communications": 4168,
+      "currentClasses": 30,
+      "invitationEvents": 0,
+      "courseEnrollments": 512,
+      "invitationThreads": 0,
+      "acquisitionSources": 3634
+    },
+    "months": [
+      {
+        "month": "2026-08",
+        "metrics": {
+          "leads": {
+            "current": 338,
+            "personSum": 338,
+            "detailCount": 338,
+            "trendSum": 338,
+            "bySourceStaff": [
+              {
+                "key": "tblAHWrD6LItmWMk:recvueJsQ4Um5m",
+                "field": "fldUc132x1",
+                "count": 131
+              },
+              {
+                "key": "tblAHWrD6LItmWMk:recvuePBr8lyvl",
+                "field": "fldUc132x1",
+                "count": 205
+              },
+              {
+                "key": null,
+                "count": 2
+              }
+            ]
+          },
+          "contacts": {
+            "current": 356,
+            "personSum": 356,
+            "detailCount": 356,
+            "trendSum": 82,
+            "bySourceStaff": [
+              {
+                "key": "tblAHWrD6LItmWMk:recvueJsQ4Um5m",
+                "field": "fldUc132x1",
+                "count": 239
+              },
+              {
+                "key": "tblAHWrD6LItmWMk:recvuePBr8lyvl",
+                "field": "fldUc132x1",
+                "count": 111
+              },
+              {
+                "key": "tblAHWrD6LItmWMk:recvuNxIlfEjGm",
+                "field": "fldUc132x1",
+                "count": 1
+              },
+              {
+                "key": "tblAHWrD6LItmWMk:recvueRnrZmXBX",
+                "field": "fldUc132x1",
+                "count": 5
+              }
+            ]
+          },
+          "invitations": {
+            "current": 95,
+            "personSum": 95,
+            "detailCount": 95,
+            "trendSum": 86,
+            "bySourceStaff": [
+              {
+                "key": "tblAHWrD6LItmWMk:recvueJsQ4Um5m",
+                "field": "fldUc132x1",
+                "count": 40
+              },
+              {
+                "key": "tblAHWrD6LItmWMk:recvuePBr8lyvl",
+                "field": "fldUc132x1",
+                "count": 49
+              },
+              {
+                "key": "tblAHWrD6LItmWMk:recvuNxIlfEjGm",
+                "field": "fldUc132x1",
+                "count": 1
+              },
+              {
+                "key": "tblAHWrD6LItmWMk:recvueRnrZmXBX",
+                "field": "fldUc132x1",
+                "count": 5
+              }
+            ]
+          },
+          "arrivals": {
+            "current": 85,
+            "personSum": 85,
+            "detailCount": 85,
+            "trendSum": 79,
+            "bySourceStaff": [
+              {
+                "key": "tblAHWrD6LItmWMk:recvueJsQ4Um5m",
+                "field": "fldUc132x1",
+                "count": 37
+              },
+              {
+                "key": "tblAHWrD6LItmWMk:recvuePBr8lyvl",
+                "field": "fldUc132x1",
+                "count": 36
+              },
+              {
+                "key": "tblAHWrD6LItmWMk:recvuNxIlfEjGm",
+                "field": "fldUc132x1",
+                "count": 7
+              },
+              {
+                "key": "tblAHWrD6LItmWMk:recvueRnrZmXBX",
+                "field": "fldUc132x1",
+                "count": 5
+              }
+            ]
+          },
+          "assessments": {
+            "current": 85,
+            "personSum": 85,
+            "detailCount": 85,
+            "trendSum": 79,
+            "bySourceStaff": [
+              {
+                "key": "tblAHWrD6LItmWMk:recvueJsQ4Um5m",
+                "field": "fldUc132x1",
+                "count": 37
+              },
+              {
+                "key": "tblAHWrD6LItmWMk:recvuePBr8lyvl",
+                "field": "fldUc132x1",
+                "count": 36
+              },
+              {
+                "key": "tblAHWrD6LItmWMk:recvuNxIlfEjGm",
+                "field": "fldUc132x1",
+                "count": 7
+              },
+              {
+                "key": "tblAHWrD6LItmWMk:recvueRnrZmXBX",
+                "field": "fldUc132x1",
+                "count": 5
+              }
+            ]
+          },
+          "enrollments": {
+            "current": 27,
+            "personSum": 27,
+            "detailCount": 27,
+            "trendSum": 20,
+            "bySourceStaff": [
+              {
+                "key": "tblAHWrD6LItmWMk:recvueJsQ4Um5m",
+                "field": "fldUc132x1",
+                "count": 9
+              },
+              {
+                "key": "tblAHWrD6LItmWMk:recvuePBr8lyvl",
+                "field": "fldUc132x1",
+                "count": 11
+              },
+              {
+                "key": "tblAHWrD6LItmWMk:recvueRnrZmXBX",
+                "field": "fldUc132x1",
+                "count": 4
+              },
+              {
+                "key": "tblAHWrD6LItmWMk:recvuNxIlfEjGm",
+                "field": "fldUc132x1",
+                "count": 3
+              }
+            ]
+          }
+        }
+      },
+      {
+        "month": "2026-09",
+        "metrics": {
+          "leads": {
+            "current": 93,
+            "personSum": 93,
+            "detailCount": 93,
+            "trendSum": 93,
+            "bySourceStaff": [
+              {
+                "key": "tblAHWrD6LItmWMk:recvueJsQ4Um5m",
+                "field": "fldUc132x1",
+                "count": 32
+              },
+              {
+                "key": "tblAHWrD6LItmWMk:recvuePBr8lyvl",
+                "field": "fldUc132x1",
+                "count": 60
+              },
+              {
+                "key": null,
+                "count": 1
+              }
+            ]
+          },
+          "contacts": {
+            "current": 249,
+            "personSum": 249,
+            "detailCount": 249,
+            "trendSum": 65,
+            "bySourceStaff": [
+              {
+                "key": "tblAHWrD6LItmWMk:recvueJsQ4Um5m",
+                "field": "fldUc132x1",
+                "count": 166
+              },
+              {
+                "key": "tblAHWrD6LItmWMk:recvuePBr8lyvl",
+                "field": "fldUc132x1",
+                "count": 69
+              },
+              {
+                "key": "tblAHWrD6LItmWMk:recvueRnrZmXBX",
+                "field": "fldUc132x1",
+                "count": 11
+              },
+              {
+                "key": "tblAHWrD6LItmWMk:recvuNxIlfEjGm",
+                "field": "fldUc132x1",
+                "count": 3
+              }
+            ]
+          },
+          "invitations": {
+            "current": 68,
+            "personSum": 68,
+            "detailCount": 68,
+            "trendSum": 68,
+            "bySourceStaff": [
+              {
+                "key": "tblAHWrD6LItmWMk:recvueJsQ4Um5m",
+                "field": "fldUc132x1",
+                "count": 25
+              },
+              {
+                "key": "tblAHWrD6LItmWMk:recvuePBr8lyvl",
+                "field": "fldUc132x1",
+                "count": 29
+              },
+              {
+                "key": "tblAHWrD6LItmWMk:recvueRnrZmXBX",
+                "field": "fldUc132x1",
+                "count": 11
+              },
+              {
+                "key": "tblAHWrD6LItmWMk:recvuNxIlfEjGm",
+                "field": "fldUc132x1",
+                "count": 3
+              }
+            ]
+          },
+          "arrivals": {
+            "current": 47,
+            "personSum": 47,
+            "detailCount": 47,
+            "trendSum": 47,
+            "bySourceStaff": [
+              {
+                "key": "tblAHWrD6LItmWMk:recvuePBr8lyvl",
+                "field": "fldUc132x1",
+                "count": 20
+              },
+              {
+                "key": "tblAHWrD6LItmWMk:recvueJsQ4Um5m",
+                "field": "fldUc132x1",
+                "count": 17
+              },
+              {
+                "key": "tblAHWrD6LItmWMk:recvueRnrZmXBX",
+                "field": "fldUc132x1",
+                "count": 6
+              },
+              {
+                "key": "tblAHWrD6LItmWMk:recvuNxIlfEjGm",
+                "field": "fldUc132x1",
+                "count": 4
+              }
+            ]
+          },
+          "assessments": {
+            "current": 47,
+            "personSum": 47,
+            "detailCount": 47,
+            "trendSum": 47,
+            "bySourceStaff": [
+              {
+                "key": "tblAHWrD6LItmWMk:recvuePBr8lyvl",
+                "field": "fldUc132x1",
+                "count": 20
+              },
+              {
+                "key": "tblAHWrD6LItmWMk:recvueJsQ4Um5m",
+                "field": "fldUc132x1",
+                "count": 17
+              },
+              {
+                "key": "tblAHWrD6LItmWMk:recvueRnrZmXBX",
+                "field": "fldUc132x1",
+                "count": 6
+              },
+              {
+                "key": "tblAHWrD6LItmWMk:recvuNxIlfEjGm",
+                "field": "fldUc132x1",
+                "count": 4
+              }
+            ]
+          },
+          "enrollments": {
+            "current": 16,
+            "personSum": 16,
+            "detailCount": 16,
+            "trendSum": 15,
+            "bySourceStaff": [
+              {
+                "key": "tblAHWrD6LItmWMk:recvuePBr8lyvl",
+                "field": "fldUc132x1",
+                "count": 5
+              },
+              {
+                "key": "tblAHWrD6LItmWMk:recvueRnrZmXBX",
+                "field": "fldUc132x1",
+                "count": 7
+              },
+              {
+                "key": "tblAHWrD6LItmWMk:recvueJsQ4Um5m",
+                "field": "fldUc132x1",
+                "count": 2
+              },
+              {
+                "key": "tblAHWrD6LItmWMk:recvuNxIlfEjGm",
+                "field": "fldUc132x1",
+                "count": 2
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "classrooms": {
+      "count": 30,
+      "activeMemberships": 165,
+      "students": 165,
+      "bySourceTeacher": [
+        {
+          "key": "tblAHWrD6LItmWMk:recvueM2pwVEtr",
+          "field": "fldWAEbK7U",
+          "count": 42
+        },
+        {
+          "key": "tbl7Wx2zLgcqiCjs:recvmNb797B1sh",
+          "field": "flduC9wFP5",
+          "count": 39
+        },
+        {
+          "key": null,
+          "count": 0
+        },
+        {
+          "key": "tblAHWrD6LItmWMk:recvueODSXesDF",
+          "field": "fldWAEbK7U",
+          "count": 22
+        },
+        {
+          "key": "tblAHWrD6LItmWMk:recvueJsQ4QkP0",
+          "field": "fldWAEbK7U",
+          "count": 34
+        },
+        {
+          "key": null,
+          "count": 1
+        },
+        {
+          "key": "tblAHWrD6LItmWMk:recvueRLMIBZ97",
+          "field": "fldWAEbK7U",
+          "count": 5
+        },
+        {
+          "key": "tblAHWrD6LItmWMk:recvueQ4p5Z5P2",
+          "field": "fldWAEbK7U",
+          "count": 19
+        },
+        {
+          "key": "tblAHWrD6LItmWMk:recvueRZPMcwFU",
+          "field": "fldWAEbK7U",
+          "count": 3
+        }
+      ],
+      "byGrade": {
+        "1": 23,
+        "2": 38,
+        "3": 57,
+        "4": 21,
+        "5": 11,
+        "6": 13,
+        "7": 2,
+        "8": 0,
+        "9": 0
+      }
+    }
+  },
+  "comparison": {
+    "capturedAt": "2026-09-21T08:42:26.914Z",
+    "comparisons": {
+      "invitations": {
+        "base": 53,
+        "production": 68,
+        "missing": [],
+        "extra": [
+          "tbl7Wx2zLgcqiCjs:recvueJvwFdiN6",
+          "tbl7Wx2zLgcqiCjs:recvu7R9QlorK6",
+          "tbl7Wx2zLgcqiCjs:recvul5aLDtMgn",
+          "tbl7Wx2zLgcqiCjs:recvu7HIS8cy1P",
+          "tbl7Wx2zLgcqiCjs:recvuquIR19UIA",
+          "tbl7Wx2zLgcqiCjs:recvu7RdTsPiD5",
+          "tbl7Wx2zLgcqiCjs:recvu7kJSJJpEM",
+          "tbl7Wx2zLgcqiCjs:recvu1IciZhdvQ",
+          "tbl7Wx2zLgcqiCjs:recvukRB2xJZw9",
+          "tbl7Wx2zLgcqiCjs:recvu3drIg0UGu",
+          "tbl7Wx2zLgcqiCjs:recvu7RgT9Bicp",
+          "tbl7Wx2zLgcqiCjs:recvu7R3CYHo2y",
+          "tbl7Wx2zLgcqiCjs:recvu7kRX6yboD",
+          "tbl7Wx2zLgcqiCjs:recvtLNoDRvjqe",
+          "tbl7Wx2zLgcqiCjs:recvtLuf6A0Opq"
+        ],
+        "extraRemoved": [
+          "tbl7Wx2zLgcqiCjs:recvueJvwFdiN6",
+          "tbl7Wx2zLgcqiCjs:recvu7R9QlorK6",
+          "tbl7Wx2zLgcqiCjs:recvul5aLDtMgn",
+          "tbl7Wx2zLgcqiCjs:recvu7HIS8cy1P",
+          "tbl7Wx2zLgcqiCjs:recvuquIR19UIA",
+          "tbl7Wx2zLgcqiCjs:recvu7RdTsPiD5",
+          "tbl7Wx2zLgcqiCjs:recvu7kJSJJpEM",
+          "tbl7Wx2zLgcqiCjs:recvu1IciZhdvQ",
+          "tbl7Wx2zLgcqiCjs:recvukRB2xJZw9",
+          "tbl7Wx2zLgcqiCjs:recvu3drIg0UGu",
+          "tbl7Wx2zLgcqiCjs:recvu7RgT9Bicp",
+          "tbl7Wx2zLgcqiCjs:recvu7R3CYHo2y",
+          "tbl7Wx2zLgcqiCjs:recvu7kRX6yboD",
+          "tbl7Wx2zLgcqiCjs:recvtLNoDRvjqe",
+          "tbl7Wx2zLgcqiCjs:recvtLuf6A0Opq"
+        ],
+        "extraStillInBase": [],
+        "extraOther": 0
+      },
+      "arrivals": {
+        "base": 35,
+        "production": 47,
+        "missing": [],
+        "extra": [
+          "tbl7Wx2zLgcqiCjs:recvueJvwFdiN6",
+          "tbl7Wx2zLgcqiCjs:recvu7R9QlorK6",
+          "tbl7Wx2zLgcqiCjs:recvul5aLDtMgn",
+          "tbl7Wx2zLgcqiCjs:recvuquIR19UIA",
+          "tbl7Wx2zLgcqiCjs:recvu7RdTsPiD5",
+          "tbl7Wx2zLgcqiCjs:recvu1IciZhdvQ",
+          "tbl7Wx2zLgcqiCjs:recvukRB2xJZw9",
+          "tbl7Wx2zLgcqiCjs:recvu3drIg0UGu",
+          "tbl7Wx2zLgcqiCjs:recvu7RgT9Bicp",
+          "tbl7Wx2zLgcqiCjs:recvu7R3CYHo2y",
+          "tbl7Wx2zLgcqiCjs:recvu7kRX6yboD",
+          "tbl7Wx2zLgcqiCjs:recvtLuf6A0Opq"
+        ],
+        "extraRemoved": [
+          "tbl7Wx2zLgcqiCjs:recvueJvwFdiN6",
+          "tbl7Wx2zLgcqiCjs:recvu7R9QlorK6",
+          "tbl7Wx2zLgcqiCjs:recvul5aLDtMgn",
+          "tbl7Wx2zLgcqiCjs:recvuquIR19UIA",
+          "tbl7Wx2zLgcqiCjs:recvu7RdTsPiD5",
+          "tbl7Wx2zLgcqiCjs:recvu1IciZhdvQ",
+          "tbl7Wx2zLgcqiCjs:recvukRB2xJZw9",
+          "tbl7Wx2zLgcqiCjs:recvu3drIg0UGu",
+          "tbl7Wx2zLgcqiCjs:recvu7RgT9Bicp",
+          "tbl7Wx2zLgcqiCjs:recvu7R3CYHo2y",
+          "tbl7Wx2zLgcqiCjs:recvu7kRX6yboD",
+          "tbl7Wx2zLgcqiCjs:recvtLuf6A0Opq"
+        ],
+        "extraStillInBase": [],
+        "extraOther": 0
+      },
+      "enrollments": {
+        "base": 16,
+        "production": 16,
+        "missing": [],
+        "extra": [],
+        "extraRemoved": [],
+        "extraStillInBase": [],
+        "extraOther": 0
+      },
+      "assessments": {
+        "base": 35,
+        "production": 47,
+        "missing": [],
+        "extra": [
+          "tbl7Wx2zLgcqiCjs:recvueJvwFdiN6",
+          "tbl7Wx2zLgcqiCjs:recvu7R9QlorK6",
+          "tbl7Wx2zLgcqiCjs:recvul5aLDtMgn",
+          "tbl7Wx2zLgcqiCjs:recvuquIR19UIA",
+          "tbl7Wx2zLgcqiCjs:recvu7RdTsPiD5",
+          "tbl7Wx2zLgcqiCjs:recvu1IciZhdvQ",
+          "tbl7Wx2zLgcqiCjs:recvukRB2xJZw9",
+          "tbl7Wx2zLgcqiCjs:recvu3drIg0UGu",
+          "tbl7Wx2zLgcqiCjs:recvu7RgT9Bicp",
+          "tbl7Wx2zLgcqiCjs:recvu7R3CYHo2y",
+          "tbl7Wx2zLgcqiCjs:recvu7kRX6yboD",
+          "tbl7Wx2zLgcqiCjs:recvtLuf6A0Opq"
+        ],
+        "extraRemoved": [
+          "tbl7Wx2zLgcqiCjs:recvueJvwFdiN6",
+          "tbl7Wx2zLgcqiCjs:recvu7R9QlorK6",
+          "tbl7Wx2zLgcqiCjs:recvul5aLDtMgn",
+          "tbl7Wx2zLgcqiCjs:recvuquIR19UIA",
+          "tbl7Wx2zLgcqiCjs:recvu7RdTsPiD5",
+          "tbl7Wx2zLgcqiCjs:recvu1IciZhdvQ",
+          "tbl7Wx2zLgcqiCjs:recvukRB2xJZw9",
+          "tbl7Wx2zLgcqiCjs:recvu3drIg0UGu",
+          "tbl7Wx2zLgcqiCjs:recvu7RgT9Bicp",
+          "tbl7Wx2zLgcqiCjs:recvu7R3CYHo2y",
+          "tbl7Wx2zLgcqiCjs:recvu7kRX6yboD",
+          "tbl7Wx2zLgcqiCjs:recvtLuf6A0Opq"
+        ],
+        "extraStillInBase": [],
+        "extraOther": 0
+      }
+    },
+    "acquisition": {
+      "baseLabelled": 317,
+      "currentTotal": 93,
+      "currentImported": 92,
+      "currentNative": 1,
+      "latestWouldTotal": 312,
+      "latestImported": 311,
+      "latestNative": 1,
+      "newlyIncludedKeys": [
+        "tblzwPK2XgJa14EC:recvuGmxq3mJ7H",
+        "tblzwPK2XgJa14EC:recvvxoh7QPaci",
+        "tblzwPK2XgJa14EC:recvvxduTZcpeU",
+        "tblzwPK2XgJa14EC:recvvxdKgWjRlf",
+        "tblzwPK2XgJa14EC:recvvxduTZGAco",
+        "tblzwPK2XgJa14EC:recvvxduTZfrGk",
+        "tblzwPK2XgJa14EC:recvvxduTZRojD",
+        "tblzwPK2XgJa14EC:recvvxduTZPRkR",
+        "tblzwPK2XgJa14EC:recvvxduTZ0WGF",
+        "tblzwPK2XgJa14EC:recvvxduTZeEzd",
+        "tblzwPK2XgJa14EC:recvvxduTZz5R4",
+        "tblzwPK2XgJa14EC:recvvxduTZoc0w",
+        "tblzwPK2XgJa14EC:recvvxdKgWQMMC",
+        "tblzwPK2XgJa14EC:recvvxduTZXYCj",
+        "tblzwPK2XgJa14EC:recvvIFJCzBGbq",
+        "tblzwPK2XgJa14EC:recvvxduTZ7Tww",
+        "tblzwPK2XgJa14EC:recvvxduTZQtFx",
+        "tblzwPK2XgJa14EC:recvvxdKgWvNRX",
+        "tblzwPK2XgJa14EC:recvvxdKgWiNcy",
+        "tblzwPK2XgJa14EC:recvvxduTZpiZq",
+        "tblzwPK2XgJa14EC:recvvxduTZzi1A",
+        "tblzwPK2XgJa14EC:recvvxduTZ1bh5",
+        "tblzwPK2XgJa14EC:recvvxduTZVSmg",
+        "tblzwPK2XgJa14EC:recvvxduTZ24sG",
+        "tblzwPK2XgJa14EC:recvvxoh7QQ3Fi",
+        "tblzwPK2XgJa14EC:recvvIFJCzZ6UL",
+        "tblzwPK2XgJa14EC:recvuGmAI0jUkK",
+        "tblzwPK2XgJa14EC:recvvxoh7QoTXL",
+        "tblzwPK2XgJa14EC:recvvxduTZLLJb",
+        "tblzwPK2XgJa14EC:recvvxduTZQGnV",
+        "tblzwPK2XgJa14EC:recvvxduTZcqp9",
+        "tblzwPK2XgJa14EC:recvvxoh7Qm9uz",
+        "tblzwPK2XgJa14EC:recvuMz2yAknwP",
+        "tblzwPK2XgJa14EC:recvvxduTZlE0M",
+        "tblzwPK2XgJa14EC:recvvxduTZnooT",
+        "tblzwPK2XgJa14EC:recvvxduTZyvSs",
+        "tblzwPK2XgJa14EC:recvvxduTZYzcx",
+        "tblzwPK2XgJa14EC:recvuOgSvGaKxr",
+        "tblzwPK2XgJa14EC:recvvxdKgWW5NZ",
+        "tblzwPK2XgJa14EC:recvvxduTZHoQu",
+        "tblzwPK2XgJa14EC:recvvxdKgWEqmx",
+        "tblzwPK2XgJa14EC:recvvxduTZnBYe",
+        "tblzwPK2XgJa14EC:recvvxoh7QFbMU",
+        "tblzwPK2XgJa14EC:recvvxdKgWoQgF",
+        "tblzwPK2XgJa14EC:recvvxduTZTCgv",
+        "tblzwPK2XgJa14EC:recvvxduTZg49T",
+        "tblzwPK2XgJa14EC:recvvxduTZZzWa",
+        "tblzwPK2XgJa14EC:recvvxduTZjvab",
+        "tblzwPK2XgJa14EC:recvvxduTZwdrd",
+        "tblzwPK2XgJa14EC:recvvxduTZ29Sl",
+        "tblzwPK2XgJa14EC:recvvxduTZTISR",
+        "tblzwPK2XgJa14EC:recvvxoh7Q3d4V",
+        "tblzwPK2XgJa14EC:recvvxduTZbhGP",
+        "tblzwPK2XgJa14EC:recvvxduTZFuMn",
+        "tblzwPK2XgJa14EC:recvvIFJCzfObC",
+        "tblzwPK2XgJa14EC:recvvxduTZ7UJE",
+        "tblzwPK2XgJa14EC:recvvxdKgWitk8",
+        "tblzwPK2XgJa14EC:recvvxdqksOGmt",
+        "tblzwPK2XgJa14EC:recvvxduTZIR0q",
+        "tblzwPK2XgJa14EC:recvvIFJCzw6P7",
+        "tblzwPK2XgJa14EC:recvvxoh7Q9aqW",
+        "tblzwPK2XgJa14EC:recvvxduTZyPDA",
+        "tblzwPK2XgJa14EC:recvvxoh7QrHL2",
+        "tblzwPK2XgJa14EC:recvvIFJCzrS7N",
+        "tblzwPK2XgJa14EC:recvvxduTZnQVQ",
+        "tblzwPK2XgJa14EC:recvvxduTZHlJJ",
+        "tblzwPK2XgJa14EC:recvuMz2yA0CUg",
+        "tblzwPK2XgJa14EC:recvvxdKgWBYHc",
+        "tblzwPK2XgJa14EC:recvvxduTZzcBS",
+        "tblzwPK2XgJa14EC:recvvxduTZz70h",
+        "tblzwPK2XgJa14EC:recvvxdKgWd3EW",
+        "tblzwPK2XgJa14EC:recvvxduTZB1y3",
+        "tblzwPK2XgJa14EC:recvvxduTZDrJv",
+        "tblzwPK2XgJa14EC:recvvIFJCzE4nQ",
+        "tblzwPK2XgJa14EC:recvvxdKgWR4MK",
+        "tblzwPK2XgJa14EC:recvvxdKgWpnIz",
+        "tblzwPK2XgJa14EC:recvvxduTZGG3F",
+        "tblzwPK2XgJa14EC:recvvxdKgWCUbL",
+        "tblzwPK2XgJa14EC:recvvxdKgWVrFA",
+        "tblzwPK2XgJa14EC:recvvxduTZDLCA",
+        "tblzwPK2XgJa14EC:recvvxoh7QVo3g",
+        "tblzwPK2XgJa14EC:recvvxduTZoqAH",
+        "tblzwPK2XgJa14EC:recvvxdKgWfpg8",
+        "tblzwPK2XgJa14EC:recvvxduTZgPEe",
+        "tblzwPK2XgJa14EC:recvvxduTZmQ9P",
+        "tblzwPK2XgJa14EC:recvvxduTZzSWj",
+        "tblzwPK2XgJa14EC:recvvxduTZx1uc",
+        "tblzwPK2XgJa14EC:recvvxdKgWXn5u",
+        "tblzwPK2XgJa14EC:recvvxduTZnJhk",
+        "tblzwPK2XgJa14EC:recvvIFJCzL1fw",
+        "tblzwPK2XgJa14EC:recvvxdKgWSYra",
+        "tblzwPK2XgJa14EC:recvuGmAI0AjJR",
+        "tblzwPK2XgJa14EC:recvvxduTZPQOc",
+        "tblzwPK2XgJa14EC:recvvxduTZfmVM",
+        "tblzwPK2XgJa14EC:recvvxduTZhUn9",
+        "tblzwPK2XgJa14EC:recvvxdpVMOE7h",
+        "tblzwPK2XgJa14EC:recvvxduTZofy4",
+        "tblzwPK2XgJa14EC:recvvxduTZ1v6C",
+        "tblzwPK2XgJa14EC:recvvxduTZjzAL",
+        "tblzwPK2XgJa14EC:recvvxduTZoC6o",
+        "tblzwPK2XgJa14EC:recvvxduTZIHDv",
+        "tblzwPK2XgJa14EC:recvvxduTZIIfj",
+        "tblzwPK2XgJa14EC:recvvxduTZByUX",
+        "tblzwPK2XgJa14EC:recvvxdKgWvoHD",
+        "tblzwPK2XgJa14EC:recvvxduTZgVtl",
+        "tblzwPK2XgJa14EC:recvvxdKgWHmVc",
+        "tblzwPK2XgJa14EC:recvvIFJCztRFE",
+        "tblzwPK2XgJa14EC:recvvxdKgWf6Fx",
+        "tblzwPK2XgJa14EC:recvvxduTZDIrW",
+        "tblzwPK2XgJa14EC:recvvxduTZsvXH",
+        "tblzwPK2XgJa14EC:recvvxdKgWSFZx",
+        "tblzwPK2XgJa14EC:recvvxduTZfXuh",
+        "tblzwPK2XgJa14EC:recvvIFJCzOtED",
+        "tblzwPK2XgJa14EC:recvvxdKgWQXCo",
+        "tblzwPK2XgJa14EC:recvvxoh7QBBzv",
+        "tblzwPK2XgJa14EC:recvvxduTZ6Yqr",
+        "tblzwPK2XgJa14EC:recvvxduTZJYx0",
+        "tblzwPK2XgJa14EC:recvuGmAI0yGT2",
+        "tblzwPK2XgJa14EC:recvvIFJCz8M7d",
+        "tblzwPK2XgJa14EC:recvvxduTZ9TJC",
+        "tblzwPK2XgJa14EC:recvvxdKgWIfsZ",
+        "tblzwPK2XgJa14EC:recvvxdKgWEhBr",
+        "tblzwPK2XgJa14EC:recvvxdKgW5SyC",
+        "tblzwPK2XgJa14EC:recvvxduTZuD8n",
+        "tblzwPK2XgJa14EC:recvvxduTZL5Ea",
+        "tblzwPK2XgJa14EC:recvvxdKgWHkU1",
+        "tblzwPK2XgJa14EC:recvvxoh7QuDzD",
+        "tblzwPK2XgJa14EC:recvvxdKgWdsoX",
+        "tblzwPK2XgJa14EC:recvvxdKgWGDdl",
+        "tblzwPK2XgJa14EC:recvuGmAI0XS04",
+        "tblzwPK2XgJa14EC:recvvxdKgWoy9S",
+        "tblzwPK2XgJa14EC:recvuGmAI0erHM",
+        "tblzwPK2XgJa14EC:recvvIFJCzJQOw",
+        "tblzwPK2XgJa14EC:recvvxduTZ85SZ",
+        "tblzwPK2XgJa14EC:recvvxduTZqrSq",
+        "tblzwPK2XgJa14EC:recvvxduTZ5LU7",
+        "tblzwPK2XgJa14EC:recvvxdKgW8jbD",
+        "tblzwPK2XgJa14EC:recvvxduTZntcm",
+        "tblzwPK2XgJa14EC:recvvxduTZVYUZ",
+        "tblzwPK2XgJa14EC:recvvxdKgW1GSB",
+        "tblzwPK2XgJa14EC:recvvxduTZuBfB",
+        "tblzwPK2XgJa14EC:recvvxduTZkFjt",
+        "tblzwPK2XgJa14EC:recvvxduTZ8VwC",
+        "tblzwPK2XgJa14EC:recvvxdKgWTu4h",
+        "tblzwPK2XgJa14EC:recvvxdKgWM65y",
+        "tblzwPK2XgJa14EC:recvvxduTZjO9G",
+        "tblzwPK2XgJa14EC:recvvxdKgWV0bO",
+        "tblzwPK2XgJa14EC:recvvxdKgWIc8Y",
+        "tblzwPK2XgJa14EC:recvvxdKgWOzwd",
+        "tblzwPK2XgJa14EC:recvvxoh7QbAB0",
+        "tblzwPK2XgJa14EC:recvuMz2yAutN6",
+        "tblzwPK2XgJa14EC:recvvxduTZXWxJ",
+        "tblzwPK2XgJa14EC:recvvxdKgWph8E",
+        "tblzwPK2XgJa14EC:recvvxdKgWDy3Q",
+        "tblzwPK2XgJa14EC:recvvxduTZmN3l",
+        "tblzwPK2XgJa14EC:recvvIFJCzwgUw",
+        "tblzwPK2XgJa14EC:recvvxduTZG1aG",
+        "tblzwPK2XgJa14EC:recvvxduTZU9r4",
+        "tblzwPK2XgJa14EC:recvvxduTZVvYQ",
+        "tblzwPK2XgJa14EC:recvvxduTZiuxQ",
+        "tblzwPK2XgJa14EC:recvvxdKgWRs0d",
+        "tblzwPK2XgJa14EC:recvvxoh7Q5xBX",
+        "tblzwPK2XgJa14EC:recvvxdKgWeA54",
+        "tblzwPK2XgJa14EC:recvvxoh7QBsMk",
+        "tblzwPK2XgJa14EC:recvvxdKgWF1W2",
+        "tblzwPK2XgJa14EC:recvvxdKgWds1Y",
+        "tblzwPK2XgJa14EC:recvvxduTZEpr5",
+        "tblzwPK2XgJa14EC:recvvxdKgWzb4e",
+        "tblzwPK2XgJa14EC:recvuOgRYQARd9",
+        "tblzwPK2XgJa14EC:recvvxdKgWxkf5",
+        "tblzwPK2XgJa14EC:recvvxduTZqomn",
+        "tblzwPK2XgJa14EC:recvvxduTZXLTK",
+        "tblzwPK2XgJa14EC:recvvxduTZisCr",
+        "tblzwPK2XgJa14EC:recvvxdKgWaUrN",
+        "tblzwPK2XgJa14EC:recvvxduTZ2yvm",
+        "tblzwPK2XgJa14EC:recvuMz22OLrny",
+        "tblzwPK2XgJa14EC:recvvxduTZt6E7",
+        "tblzwPK2XgJa14EC:recvvxduTZaTxH",
+        "tblzwPK2XgJa14EC:recvuOgSvGbgFp",
+        "tblzwPK2XgJa14EC:recvvxdKgWPYs3",
+        "tblzwPK2XgJa14EC:recvuGmAI0oIpH",
+        "tblzwPK2XgJa14EC:recvvxdKgWcLnC",
+        "tblzwPK2XgJa14EC:recvvIFJCz0cvw",
+        "tblzwPK2XgJa14EC:recvvxoh7QHtDM",
+        "tblzwPK2XgJa14EC:recvvxduTZavyZ",
+        "tblzwPK2XgJa14EC:recvvxdKgWwldC",
+        "tblzwPK2XgJa14EC:recvvxdKgWC0RU",
+        "tblzwPK2XgJa14EC:recvvxduTZabNO",
+        "tblzwPK2XgJa14EC:recvuOgSvGQR3t",
+        "tblzwPK2XgJa14EC:recvvxduTZRqo2",
+        "tblzwPK2XgJa14EC:recvvxdKgWT0gQ",
+        "tblzwPK2XgJa14EC:recvvIFJCzqqPp",
+        "tblzwPK2XgJa14EC:recvvxduTZGIIE",
+        "tblzwPK2XgJa14EC:recvvxduTZTvp9",
+        "tblzwPK2XgJa14EC:recvvxdKgWPpZE",
+        "tblzwPK2XgJa14EC:recvvxdKgW6cnk",
+        "tblzwPK2XgJa14EC:recvvxdKgW3b0R",
+        "tblzwPK2XgJa14EC:recvvxduTZXHHp",
+        "tblzwPK2XgJa14EC:recvvxdKgWM9So",
+        "tblzwPK2XgJa14EC:recvuGmAI0Ls5b",
+        "tblzwPK2XgJa14EC:recvvxduTZNIGC",
+        "tblzwPK2XgJa14EC:recvvxduTZwI9n",
+        "tblzwPK2XgJa14EC:recvvxdKgW0MbE",
+        "tblzwPK2XgJa14EC:recvvIFIXrr0Jg",
+        "tblzwPK2XgJa14EC:recvvxduTZs4hy",
+        "tblzwPK2XgJa14EC:recvvxdKgWOtKS",
+        "tblzwPK2XgJa14EC:recvvxdKgWHXeb",
+        "tblzwPK2XgJa14EC:recvvxduTZwjp5",
+        "tblzwPK2XgJa14EC:recvvxdKgWQ0Ok",
+        "tblzwPK2XgJa14EC:recvuGmAI0rar3",
+        "tblzwPK2XgJa14EC:recvvxduTZwUKP",
+        "tblzwPK2XgJa14EC:recvvxduTZcqQK",
+        "tblzwPK2XgJa14EC:recvvxdKgWuCVm",
+        "tblzwPK2XgJa14EC:recvvxdKgWKd2A",
+        "tblzwPK2XgJa14EC:recvvxduTZvt5L",
+        "tblzwPK2XgJa14EC:recvvxdKgWtvZq",
+        "tblzwPK2XgJa14EC:recvvxdKgWmWM4",
+        "tblzwPK2XgJa14EC:recvvIFJCzAmtZ",
+        "tblzwPK2XgJa14EC:recvvxoh7Q08H5"
+      ],
+      "removedFromCurrent": []
+    },
+    "contacts": {
+      "production": 249,
+      "noEquivalentDashboardWidget": true,
+      "fromAcquisition": 184,
+      "fromVisits": 65,
+      "removedSourceKeys": [
+        "tbl7Wx2zLgcqiCjs:recvueJvwFdiN6",
+        "tbl7Wx2zLgcqiCjs:recvu7R9QlorK6",
+        "tbl7Wx2zLgcqiCjs:recvul5aLDtMgn",
+        "tbl7Wx2zLgcqiCjs:recvu7HIS8cy1P",
+        "tbl7Wx2zLgcqiCjs:recvuquIR19UIA",
+        "tbl7Wx2zLgcqiCjs:recvu7RdTsPiD5",
+        "tbl7Wx2zLgcqiCjs:recvu7kJSJJpEM",
+        "tbl7Wx2zLgcqiCjs:recvu1IciZhdvQ",
+        "tbl7Wx2zLgcqiCjs:recvukRB2xJZw9",
+        "tbl7Wx2zLgcqiCjs:recvu3drIg0UGu",
+        "tbl7Wx2zLgcqiCjs:recvu7RgT9Bicp",
+        "tbl7Wx2zLgcqiCjs:recvu7R3CYHo2y",
+        "tbl7Wx2zLgcqiCjs:recvu7kRX6yboD",
+        "tbl7Wx2zLgcqiCjs:recvtLuf6A0Opq"
+      ],
+      "other": 0
+    },
+    "roster": {
+      "baseActive": 162,
+      "productionActive": 165,
+      "baseWithoutProduction": [],
+      "extras": [
+        {
+          "currentBaseRows": [
+            {
+              "key": "tblAHWrD6LItmWMk:recvuNxIlfEjGm",
+              "inStudy": false
+            }
+          ],
+          "removedBaseRows": []
+        },
+        {
+          "currentBaseRows": [],
+          "removedBaseRows": []
+        },
+        {
+          "currentBaseRows": [],
+          "removedBaseRows": [
+            "tblAHWrD6LItmWMk:recvula6244E9t"
+          ]
+        }
+      ]
+    },
+    "trendTotals": {
+      "leads": {
+        "total": 93,
+        "datedTrendTotal": 93,
+        "withoutDateInCurrentMonth": 0
+      },
+      "contacts": {
+        "total": 249,
+        "datedTrendTotal": 65,
+        "withoutDateInCurrentMonth": 184
+      },
+      "invitations": {
+        "total": 68,
+        "datedTrendTotal": 68,
+        "withoutDateInCurrentMonth": 0
+      },
+      "arrivals": {
+        "total": 47,
+        "datedTrendTotal": 47,
+        "withoutDateInCurrentMonth": 0
+      },
+      "assessments": {
+        "total": 47,
+        "datedTrendTotal": 47,
+        "withoutDateInCurrentMonth": 0
+      },
+      "enrollments": {
+        "total": 16,
+        "datedTrendTotal": 15,
+        "withoutDateInCurrentMonth": 1
+      }
+    }
+  },
+  "details": {
+    "teachers": {
+      "participants": 47,
+      "enrollments": 16,
+      "unattributed": 11,
+      "byBaseLabel": [
+        {
+          "key": "tblAHWrD6LItmWMk:recvueM2pwVEtr",
+          "field": "fldWAEbK7U",
+          "participants": 2,
+          "enrollments": 1
+        },
+        {
+          "key": "tblAHWrD6LItmWMk:recvueODSXesDF",
+          "field": "fldWAEbK7U",
+          "participants": 15,
+          "enrollments": 6
+        },
+        {
+          "key": "tblAHWrD6LItmWMk:recvueJsQ4QkP0",
+          "field": "fldWAEbK7U",
+          "participants": 5,
+          "enrollments": 2
+        },
+        {
+          "key": "tbl7Wx2zLgcqiCjs:recvtycRbhMrSm",
+          "field": "flduC9wFP5",
+          "participants": 3,
+          "enrollments": 0
+        },
+        {
+          "key": "tblAHWrD6LItmWMk:recvueQ4p5Z5P2",
+          "field": "fldWAEbK7U",
+          "participants": 5,
+          "enrollments": 4
+        },
+        {
+          "key": "tblAHWrD6LItmWMk:recvuNxIlfEjGm",
+          "field": "fldUc132x1",
+          "participants": 2,
+          "enrollments": 0
+        },
+        {
+          "key": "tblAHWrD6LItmWMk:recvueRLMIBZ97",
+          "field": "fldWAEbK7U",
+          "participants": 4,
+          "enrollments": 1
+        },
+        {
+          "key": "tblAHWrD6LItmWMk:recvueJsQ4Um5m",
+          "field": "fldUc132x1",
+          "participants": 0,
+          "enrollments": 0
+        },
+        {
+          "key": "tblAHWrD6LItmWMk:recvuePBr8lyvl",
+          "field": "fldUc132x1",
+          "participants": 0,
+          "enrollments": 0
+        },
+        {
+          "key": "tblAHWrD6LItmWMk:recvueRnrZmXBX",
+          "field": "fldUc132x1",
+          "participants": 0,
+          "enrollments": 1
+        }
+      ]
+    },
+    "classes": {
+      "total": 30,
+      "withStudents": 27,
+      "empty": 3,
+      "membersWhoseClassHasNoActiveStaffTeacher": 0
+    },
+    "dates": {
+      "contacts": {
+        "total": 249,
+        "missingDate": 184,
+        "otherMonthDate": 0
+      },
+      "enrollments": {
+        "total": 16,
+        "missingDate": 1,
+        "otherMonthDate": 0
+      }
+    }
+  },
+  "sourceDashboard": {
+    "boardIndex": 8,
+    "acquisitions": 317,
+    "acquisitionGroups": {
+      "group2": 248,
+      "group3": 69
+    },
+    "invitations": 53,
+    "arrivals": 35,
+    "assessments": 35,
+    "enrollments": 16,
+    "activeStudents": 162,
+    "estimatedTeacherGradeScheduleGroups": 26,
+    "goals": {
+      "invitations": 217,
+      "arrivals": 174,
+      "enrollments": 58
+    },
+    "assessmentReportAttachments": 0
+  },
+  "dateExclusions": [
+    {
+      "key": "tblzwPK2XgJa14EC:recvuTLBWa6GvD",
+      "date": "9.16",
+      "registered": "2026/09/11"
+    },
+    {
+      "key": "tblzwPK2XgJa14EC:recvuTLBDTEOz2",
+      "date": "9.16",
+      "registered": "2026/09/11"
+    },
+    {
+      "key": "tblzwPK2XgJa14EC:recvalA3Z0Cwdm",
+      "date": "2025/9/24",
+      "registered": "2026/02/05"
+    },
+    {
+      "key": "tblzwPK2XgJa14EC:recvuTLB8NZYhy",
+      "date": "9.16",
+      "registered": "2026/09/11"
+    },
+    {
+      "key": "tblzwPK2XgJa14EC:recvalEkDcifCE",
+      "date": "202409",
+      "registered": "2026/02/05"
+    },
+    {
+      "key": "tblzwPK2XgJa14EC:recvalEkDcr0Hv",
+      "date": "202509",
+      "registered": "2026/02/05"
+    }
+  ],
+  "supportComparison": [
+    {
+      "name": "王晓妹",
+      "invitations": {
+        "base": 17,
+        "production": 25
+      },
+      "arrivals": {
+        "base": 10,
+        "production": 17
+      },
+      "enrollments": {
+        "base": 2,
+        "production": 2
+      }
+    },
+    {
+      "name": "章润",
+      "invitations": {
+        "base": 23,
+        "production": 29
+      },
+      "arrivals": {
+        "base": 16,
+        "production": 20
+      },
+      "enrollments": {
+        "base": 5,
+        "production": 5
+      }
+    },
+    {
+      "name": "邱玮",
+      "invitations": {
+        "base": 10,
+        "production": 11
+      },
+      "arrivals": {
+        "base": 5,
+        "production": 6
+      },
+      "enrollments": {
+        "base": 7,
+        "production": 7
+      }
+    },
+    {
+      "name": "汪婷婷",
+      "invitations": {
+        "base": 3,
+        "production": 3
+      },
+      "arrivals": {
+        "base": 4,
+        "production": 4
+      },
+      "enrollments": {
+        "base": 2,
+        "production": 2
+      }
+    }
+  ],
+  "teacherComparison": [
+    {
+      "name": "薛立志",
+      "baseParticipants": 2,
+      "productionParticipants": 2,
+      "enrollments": 1
+    },
+    {
+      "name": "李海霞",
+      "baseParticipants": 14,
+      "productionParticipants": 15,
+      "enrollments": 6
+    },
+    {
+      "name": "张灿",
+      "baseParticipants": 5,
+      "productionParticipants": 5,
+      "enrollments": 2
+    },
+    {
+      "name": "郑曼",
+      "baseParticipants": 0,
+      "productionParticipants": 3,
+      "enrollments": 0
+    },
+    {
+      "name": "王成国",
+      "baseParticipants": 5,
+      "productionParticipants": 5,
+      "enrollments": 4
+    },
+    {
+      "name": "汪婷婷",
+      "baseParticipants": 1,
+      "productionParticipants": 2,
+      "enrollments": 0
+    },
+    {
+      "name": "韦顾",
+      "baseParticipants": 4,
+      "productionParticipants": 4,
+      "enrollments": 1
+    },
+    {
+      "name": "邱玮",
+      "baseParticipants": 0,
+      "productionParticipants": 0,
+      "enrollments": 1
+    }
+  ],
+  "readOnly": true,
+  "privacy": "仅上传统计代码；生产使用现场已有 Base，回传计数及 Base 来源/字段键，人员标签在本机从用户 Base 映射。"
+}
