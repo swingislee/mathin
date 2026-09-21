@@ -47,7 +47,12 @@ export function encodeOverviewDisplaySelection(ids: readonly string[], options: 
 }
 
 export function selectOverviewDisplayIds(options: readonly OverviewStaffOption[], defaults: readonly string[], remembered?: string) {
-  const directory = Array.from(new Map(options.map(person => [person.userId, person])).values()).sort((a, b) => a.name.localeCompare(b.name));
+  const byId = new Map<string, OverviewStaffOption>();
+  for (const person of options) {
+    const previous = byId.get(person.userId);
+    byId.set(person.userId, { ...person, aliasIds: [...new Set([...(previous?.aliasIds ?? []), ...(person.aliasIds ?? [])])] });
+  }
+  const directory = Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name));
   const validIds = new Set(directory.map(person => person.userId));
   const parsed = readOverviewDisplaySelection(remembered);
   const aliases = new Map(directory.flatMap(person => (person.aliasIds ?? []).map(alias => [alias, person.userId] as const)));

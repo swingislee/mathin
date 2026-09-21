@@ -11,7 +11,7 @@ const row = (id: string | null, value: number): StaffOverviewSupportFunnelRow =>
 
 it("keeps remembered alias selections on the canonical account", () => {
   const oldId=`source-staff:${encodeURIComponent("旧称")}`;
-  const options=[{userId:"existing-account",name:"默认姓名",aliasIds:[oldId]}];
+  const options=[{userId:"existing-account",name:"默认姓名",aliasIds:[oldId]}, {userId:"existing-account",name:"默认姓名"}];
   expect(selectOverviewDisplayIds(options,[],JSON.stringify([oldId,"existing-account"])).selectedIds).toEqual(["existing-account"]);
 });
 
