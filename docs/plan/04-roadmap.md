@@ -152,6 +152,10 @@ Gate 1 已按以下顺序关闭：
 
 本机提交 `e1e8c87` 已落地共享 `DashboardTableShell`，并迁移 Dashboard 与学校运营组件内全部 shadcn `Table` 使用点；机构资料、学年、排课默认、活动列表与个人班级摘要已移除逐项分割线。定向 Vitest 3 文件 14/14、TypeScript、全量 ESLint、doc 24 Dashboard 审计、固定管理员 Playwright 1/1 和本地/生产双 build 通过；该代码已随 `34f07e8…` 上线。Chrome 自动刷新超时，因此生产视觉签收仍为 pending。
 
+#### DEV-DASH-READ-1 · 统计汇总与列表读取升级
+
+2026-09-21 产品负责人要求沿“写入时整理统计字段、数据库按权限聚合、明细按页读取”的方向进行升级设计。实施合同见 [Dashboard 统计与列表读取升级设计](dashboard-statistics-read-model-upgrade.md)：先核对总览口径与写入口，再依次处理沟通/获客、其他总览指标、明细分页和沟通等列表残余读取。当前为 **设计已形成 / 待实现（E0）**，不代表运行性能已达标；沿用当前 R1-Live-2 阶段及既有生产晋级流程。
+
 #### HOTFIX-20260829 · 自由班自动排课与来源 H5 透明层
 
 产品负责人已在开发版本通过自由班排课改动并授权上线。`557fc51` 把来源 H5 容器白底改为透明，`7601c86` 让自由班按选中周几与教学日历依次自动排课、允许逐讲改时间并复用冲突检查；应用候选 `7601c86…` 已通过本地/远端 production build 和无浏览器 postflight 上线。两讲暑期 A+ 内容不重导，数据库、课程 release 与 Storage 写前写后完全一致。来源/审阅工具 `26adab7` 是 localhost-only 私有 CLI 提交，没有独立生产服务；详细边界见 [`free-class-h5-hotfix-production.md`](../evidence/r1/free-class-h5-hotfix-production.md)。
