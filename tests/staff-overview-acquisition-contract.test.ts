@@ -49,6 +49,19 @@ describe("overview acquisition source dates", () => {
     expect(result[0].personId).toBeNull();
   });
 
+  it("uses old version links for the latest row without counting the same submitted lead twice", () => {
+    const current = { ...source("latest", null, "9.2"), source_alias_ids: ["old", "latest"] };
+    for (const viaCommunication of [false, true]) {
+      const result = buildOverviewAcquisitions({ sources: [current],
+        leads: [lead("one", viaCommunication ? null : "old")],
+        sourceLinks: viaCommunication ? [{ source_record_id: "old", lead_id: "one" }] : [],
+        submissions: [{ id: "submission", lead_id: "one", submitted_at: "2026-09-02T01:00:00Z" }],
+      }, "Asia/Shanghai");
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({ id: "latest", personId: "support", at: "2026-09-01T16:00:00.000Z" });
+    }
+  });
+
   it("retains source staff signatures in priority order for historical acquisition attribution", () => {
     const sources = [
       { "确认人员": "学服乙", "跟进人": "学服丙", "沟通人员": "学服丁" },

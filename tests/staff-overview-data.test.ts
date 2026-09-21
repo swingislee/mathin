@@ -5,8 +5,13 @@ vi.mock("server-only", () => ({}));
 vi.mock("@/features/school/organization-locations", () => ({ getOrganizationTimezoneV2: async () => "Asia/Shanghai" }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ from: query, rpc }) }));
 
-async function rpc(name: string, args: { p_filters?: { schoolTermId: string }; p_page?: number }) {
-  if (name === "list_staff_overview_acquisition_sources") return { data: null, error: { code: "PGRST202", message: "Legacy source fixture" } };
+async function rpc(name: string, args: { p_filters?: { schoolTermId: string }; p_page?: number; p_after?: string; p_limit?: number }) {
+  if (name === "list_current_staff_overview_acquisition_sources") {
+    if (state.failures.has("history_import_records")) return { data: null, error: { message: "UNAVAILABLE" } };
+    const rows = (state.tables.history_import_records ?? []).filter(row => !args.p_after || String(row.id) > args.p_after);
+    return { data: { records: rows.slice(0, args.p_limit).map(row => ({ ...row, source_alias_ids: row.source_alias_ids ?? [row.id] })),
+      hasMore: rows.length > (args.p_limit ?? 1000), revision: "fixture" }, error: null };
+  }
   if (name === "resolve_classroom_scope") return { data: [{ available_scopes: ["all"], resolved_scope: "all" }], error: null };
   if (name !== "list_classrooms_for_scope") throw new Error(name);
   const rows = (state.tables.classrooms ?? []).filter(row => row.term_id === args.p_filters?.schoolTermId && row.purpose === "production");
@@ -45,7 +50,6 @@ function query(table: string) {
 import { getStaffHomeWeekSummaryData, getStaffOverviewData } from "@/features/school/home/staff-overview-data";
 import { getStaffOverviewAcquisitionDetail } from "@/features/school/home/staff-overview-acquisition-detail";
 import { overviewFactInstant, overviewSubjectKey, supplementOverviewContacts } from "@/features/school/home/staff-overview-source-contract";
-import { OVERVIEW_ACQUISITION_SOURCE, OVERVIEW_ACQUISITION_TABLE } from "@/features/school/home/staff-overview-acquisition-contract";
 import { selectOverviewSupportRows } from "@/features/school/home/staff-overview-display-contract";
 import {buildSourceMetricFacts} from '../scripts/lib/source-metric-facts.mjs';
 
@@ -76,12 +80,11 @@ beforeEach(() => {
 
 it("matches lean acquisition detail with the overview and rejects incomplete owner links", async () => {
   state.tables.leads = [
-    { id: "source-lead", owner_id: "support", student_id: "student", created_at: now.toISOString(), source_record_id: "source" },
+    { id: "source-lead", owner_id: "support", student_id: "student", created_at: now.toISOString(), source_record_id: "old-source" },
     { id: "native", owner_id: "teacher", student_id: null, created_at: now.toISOString(), source_record_id: null },
     { id: "submitted", owner_id: "support", student_id: null, created_at: now.toISOString(), source_record_id: null },
   ];
-  state.tables.history_import_records = [{ id: "source", lead_id: "source-lead",
-    "source_data->>filename": OVERVIEW_ACQUISITION_SOURCE, "record_data->>tableName": OVERVIEW_ACQUISITION_TABLE,
+  state.tables.history_import_records = [{ id: "source", lead_id: null, source_alias_ids: ["source", "old-source"],
     record_data: { cells: [{ fieldName: "获取日期", text: "2026-09-02" }, { fieldName: "学员姓名", text: "来源学员" },
       { fieldName: "确认人员", text: "来源署名" }] } }];
   state.tables.lead_source_records = [
@@ -135,7 +138,6 @@ it('counts month-only confirmations and source arrivals without results, with ac
 it("attributes source acquisitions to their staff signature in the table and details", async () => {
   state.tables.leads = [{ id: "lead", source_record_id: "source", owner_id: "support", status: "contacted", student_id: null, created_at: now.toISOString() }];
   state.tables.history_import_records = [{ id: "source", lead_id: "lead",
-    "source_data->>filename": OVERVIEW_ACQUISITION_SOURCE, "record_data->>tableName": OVERVIEW_ACQUISITION_TABLE,
     record_data: { cells: [{ fieldName: "获取日期", text: "2026-09-02" }, { fieldName: "学员姓名", text: "来源姓名" },
       { fieldName: "确认人员", text: "来源学服乙" }] },
   }];

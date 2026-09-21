@@ -49,7 +49,8 @@ export async function getStaffOverviewAcquisitionDetail({ grain, date, now, deta
   const sourceById = new Map(sources.map(source => [source.id, source]));
   const records: OverviewDetailRecord[] = selectOverviewDetailEvents(events, window, detail, selectedSupportIds).map((event, index) => {
     const source = sourceById.get(event.id);
-    const lead = leadById.get(event.id.replace(/^submission:/, "")) ?? leadBySource.get(event.id);
+    const lead = leadById.get(event.id.replace(/^submission:/, "")) ?? (source?.lead_id ? leadById.get(source.lead_id) : undefined)
+      ?? leadBySource.get(event.id) ?? source?.source_alias_ids?.map(id => leadBySource.get(id)).find(Boolean);
     return { id: `${event.id}:${index}`, at: event.at, sourceName: event.sourceName,
       leadId: lead?.id ?? source?.lead_id, studentId: lead?.student_id, sourceId: source?.id,
       name: source?.record_data.cells?.find(cell => cell.fieldName === "学员姓名")?.text,

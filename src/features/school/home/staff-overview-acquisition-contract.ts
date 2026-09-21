@@ -1,12 +1,9 @@
 import { overviewFactInstant } from "./staff-overview-source-contract";
 
-/** 当前封存业务主来源；更换批次时按 source-reconciliation runbook 核对字段合同。 */
-export const OVERVIEW_ACQUISITION_SOURCE = "2026-09-07【思维】用户与产品运营表.base";
-export const OVERVIEW_ACQUISITION_TABLE = "获客&私域信息登记表1.0-总";
-
 export interface OverviewAcquisitionSource {
   id: string;
   lead_id: string | null;
+  source_alias_ids?: string[];
   record_data: { cells?: Array<{ fieldName: string; text: string }> };
 }
 
@@ -63,9 +60,11 @@ export function buildOverviewAcquisitions(input: {
   sourceLinks: readonly { source_record_id: string | null; lead_id: string | null }[];
 }, timeZone: string) {
   const leadById = new Map(input.leads.map(row => [row.id, row]));
+  const currentSourceIds = new Map(input.sources.flatMap(row => [row.id, ...row.source_alias_ids ?? []].map(id => [id, row.id] as const)));
   const sourceLeads = new Map<string, Set<string>>();
   const link = (sourceId: string | null, leadId: string | null) => {
     if (!sourceId || !leadId || !leadById.has(leadId)) return;
+    sourceId = currentSourceIds.get(sourceId) ?? sourceId;
     const values = sourceLeads.get(sourceId) ?? new Set<string>();
     values.add(leadId);
     sourceLeads.set(sourceId, values);

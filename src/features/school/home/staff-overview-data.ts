@@ -851,7 +851,8 @@ export async function getStaffOverviewData({
     const detailRef = (metric: StaffOverviewMetric, id: string): OverviewDetailRecord => {
       if (metric === "leads") {
         const source = sourceById.get(id);
-        const lead = leadById.get(id.replace(/^submission:/, "")) ?? leadDirectory.find(row => row.source_record_id === id);
+        const lead = leadById.get(id.replace(/^submission:/, "")) ?? (source?.lead_id ? leadById.get(source.lead_id) : undefined)
+          ?? leadDirectory.find(row => row.source_record_id === id || row.source_record_id && source?.source_alias_ids?.includes(row.source_record_id));
         return { id, leadId: lead?.id ?? source?.lead_id, studentId: lead?.student_id, sourceId: source?.id,
           name: source?.record_data.cells?.find(cell => cell.fieldName === "学员姓名")?.text };
       }
