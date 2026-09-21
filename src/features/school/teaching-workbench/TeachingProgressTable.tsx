@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Link } from "@/i18n/navigation";
 import { DashboardEmptyState, DashboardSection } from "../dashboard-page/DashboardSection";
 import { DashboardTableShell } from "../dashboard-page";
+import { FollowupInlineDetails } from "../dashboard-page/FollowupInlineDetails";
 import { DashboardTableColumnHeader } from "../dashboard-page/DashboardTableColumnHeader";
 import { leadPaginationTokens } from "../lead-pagination";
 import { withReturnTo } from "../object-workspace/return-target";
@@ -149,7 +150,7 @@ export function TeachingProgressTable({ data, locale, timeZone, now, returnTo, m
               <TableCell>{taskCell(session, true)}</TableCell></>}
               <TableCell><Link href={teachingRecordHref(returnTo, session.id, teacher, classroom)} className="whitespace-nowrap text-sm underline underline-offset-4">{t("records.open")}</Link></TableCell>
             </TableRow>
-            {!recordsMode && expanded === session.id && <TableRow id={`teaching-detail-${session.id}`}><TableCell colSpan={10} className="bg-moon/15 px-5 py-4">
+            {!recordsMode && <FollowupInlineDetails id={`teaching-detail-${session.id}`} open={expanded === session.id} onOpenChange={open => setExpanded(open ? session.id : null)} colSpan={10} title={session.title || t("untitled")} hideTitle>
               <div className="grid gap-5 @4xl/page:grid-cols-2">
                 <div>
                   <h3 className="mb-2 text-sm font-medium">{t("preparationDetails")}</h3>
@@ -173,7 +174,7 @@ export function TeachingProgressTable({ data, locale, timeZone, now, returnTo, m
                   <Link href={href(session, "post")} className="mt-3 inline-block text-xs underline underline-offset-4">{t("openPostwork")}</Link>
                 </div>
               </div>
-            </TableCell></TableRow>}
+            </FollowupInlineDetails>}
           </Fragment>)}
         </TableBody>
       </Table></DashboardTableShell>

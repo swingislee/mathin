@@ -149,6 +149,8 @@ Dashboard、Classroom、Whiteboard 和 Courseware Studio 默认使用连续工�
 
 通用表格强调（2026-09-15 产品反馈）：通用表格直接共用学服的行状态规则。`--table-hover`、`--table-selected` 分别复用 `--followup-hover`、`--followup-checked`；勾选与展开使用浅黄，当前行使用 `--followup-edit`，详情使用更浅的 `--followup-detail`，主行与详情外缘以 `--followup-outline` 绘制 1px 连续轮廓。分组摘要保留完整边界，键盘焦点落在展开控件上。浅色、显式深色和系统深色三个通道保持同一语义。展开按钮使用 `DashboardRowDisclosure`；紧凑分页使用从现有学服提取的 `DashboardTablePagination`。蓝色继续服务已定义的业务色与画布内容，不用于通用表格选中态。
 
+行下连续录入的加载边界（2026-09-21 产品反馈）：同类表格通过 `FollowupRecordRow`／`FollowupInlineDetails` 使用共用详情面板，列表型面板通过 `DashboardInlineEntry` 使用同一底层 `DashboardInlineDetailBoundary`。边界默认启用，加载文案仅覆盖显示文字；模块下载、异步内容及延迟构造均在当前详情内等待，外围表格、焦点和已有草稿保持挂载。详情读取使用行内状态，展开与关闭只更新本地状态；业务保存继续执行原权限与刷新规则。各页面提供业务字段、读写函数和草稿保留策略，共用层维护加载、关闭、保存快捷键与输入／弹层避让。
+
 学服表格的强调方案见 [共用跟进面板合同 §6](school-support-followup-panel-contract.md#6-表格强调方案设计依据与笔记本布局)；首联部分的当前视觉与交互已由产品负责人验收，其状态区分、浅黄表面、轮廓、图标配色及后续升级参考，以 [§10 已验收保护基线](school-support-followup-panel-contract.md#10-首联已验收保护基线) 为准。其他工作面板分别验收，不据此批量更改其他专业页面。
 
 分隔线按拥有者只出现一次：

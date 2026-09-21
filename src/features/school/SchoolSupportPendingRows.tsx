@@ -11,16 +11,18 @@ import { getStudentStageSubjectAction } from './student-stage-actions';
 import { SUPPORT_REFRESH_EVENT, supportError, supportMessages, type SupportItem, type SupportWork, type SupportWorkspace } from './school-support-contract';
 import { SupportWorkFields, type SupportOptions } from './SchoolSupportEntry';
 import { SchoolSupportInsertion } from "./SchoolSupportInlineEntry";
+import { FollowupInlineDetails } from "./dashboard-page/FollowupInlineDetails";
 import { SchoolSupportProfileButton } from './SchoolSupportProfile';
 import { StudentStageEntry } from './StudentStageEntry';
 import type { StudentStageRow } from './student-stage-contract';
 import { Student360Trigger } from './Student360Sheet';
 import { STUDENT_360_REFRESH_EVENT } from './student-360-contract';
 
-function PendingWorkEditor({item,onSaved}:{item:SupportItem;onSaved:()=>void}) {
+function PendingWorkEditor({item,onSaved,onBusyChange}:{item:SupportItem;onSaved:()=>void;onBusyChange:(busy:boolean)=>void}) {
   const locale=useLocale(),m=supportMessages(locale),router=useRouter();
   const [work,setWork]=useState<SupportWork>({note:item.note,courseId:item.courseId,termId:item.termId,date:item.workDate,cycleId:item.cycleId});
   const [options,setOptions]=useState<SupportOptions|null>(null),[row,setRow]=useState<StudentStageRow|null>(null),[error,setError]=useState(''),[pending,setPending]=useState(false),[showEntry,setShowEntry]=useState(false);
+  useEffect(()=>{onBusyChange(pending);return()=>onBusyChange(false);},[pending,onBusyChange]);
   useEffect(()=>{let active=true;void getSupportOptionsAction().then(result=>{if(active){if(result.ok)setOptions(result.data);else setError(supportError(result.code,locale));}}).catch(()=>{if(active)setError(supportError('',locale));});return()=>{active=false;};},[locale]);
   const save=async(closed=false)=>{
     setPending(true);setError('');
@@ -49,6 +51,7 @@ function PendingWorkEditor({item,onSaved}:{item:SupportItem;onSaved:()=>void}) {
 export function SchoolSupportPendingRows({workspace,colSpan}:{workspace:SupportWorkspace;colSpan:number}) {
   const locale=useLocale(),m=supportMessages(locale),query=useSearchParams();
   const [items,setItems]=useState<SupportItem[]>([]),[expanded,setExpanded]=useState<string|null>(query.get('manual')),[error,setError]=useState(''),[revision,setRevision]=useState(0);
+  const [pending,setPending]=useState(false);
   const focus=query.get('manual');
   const [acceptedFocus,setAcceptedFocus]=useState(focus);
   if(focus!==acceptedFocus){setAcceptedFocus(focus);if(focus)setExpanded(focus);}
@@ -58,9 +61,11 @@ export function SchoolSupportPendingRows({workspace,colSpan}:{workspace:SupportW
     <TableCell colSpan={colSpan} className="px-3 py-2"><div className="flex flex-wrap items-center gap-x-4 gap-y-2">
       <Student360Trigger subject={{studentId:item.studentId,leadId:item.leadId}} fallback={{name:item.name,phone:item.phone,grade:item.grade}}>{item.name}</Student360Trigger>
       <span className="text-xs text-muted">{item.phone} · {m.pending}{item.identityPending?` · ${m.identity}`:''}</span><span className="min-w-0 flex-1 text-xs">{[item.courseTitle,item.termName,item.note].filter(Boolean).join(' · ')}</span>
-      <Button type="button" variant="secondary" size="sm" aria-expanded={expanded===item.id} onClick={()=>setExpanded(value=>value===item.id?null:item.id)}>{m.continue}</Button>
+      <Button type="button" variant="secondary" size="sm" disabled={pending} aria-expanded={expanded===item.id} onClick={()=>setExpanded(value=>value===item.id?null:item.id)}>{m.continue}</Button>
     </div></TableCell>
-  </TableRow>{expanded===item.id?<TableRow><TableCell colSpan={colSpan} className="p-0"><PendingWorkEditor item={item} onSaved={()=>setRevision(value=>value+1)}/></TableCell></TableRow>:null}<SchoolSupportInsertion after={`manual:${item.id}`} /></Fragment>)}
+  </TableRow><FollowupInlineDetails open={expanded===item.id} onOpenChange={open=>{if(!pending)setExpanded(open?item.id:null);}} colSpan={colSpan} title={item.name} hideTitle flush pending={pending}>
+    <PendingWorkEditor item={item} onSaved={()=>setRevision(value=>value+1)} onBusyChange={setPending}/>
+  </FollowupInlineDetails><SchoolSupportInsertion after={`manual:${item.id}`} /></Fragment>)}
     {error?<TableRow><TableCell colSpan={colSpan} className="text-xs text-rose"><span role="alert">{error}</span><Button variant="ghost" size="sm" onClick={()=>setRevision(value=>value+1)}>{m.retry}</Button></TableCell></TableRow>:null}
   </>;
 }

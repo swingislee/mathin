@@ -1,11 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const read = vi.hoisted(() => vi.fn());
-vi.mock("@/features/school/student-stage-actions", () => ({ getStudentStageSubjectAction: read }));
-import { POST } from "@/app/[locale]/dashboard/students/entry-detail/route";
+const readers = vi.hoisted(() => ({ detail: vi.fn(), options: vi.fn() }));
+vi.mock("@/features/school/student-stage-actions", () => ({ getStudentStageSubjectAction: readers.detail, getStudentStageOptionsAction: readers.options }));
+import { POST as detailPOST } from "@/app/[locale]/dashboard/students/entry-detail/route";
+import { POST as optionsPOST } from "@/app/[locale]/dashboard/students/entry-options/route";
 
 const request = (body: string) => new Request("http://example.test/zh/dashboard/students/entry-detail", { method: "POST", body });
-describe("student detail transport", () => {
+describe.each([
+  { name: "detail", POST: detailPOST, read: readers.detail },
+  { name: "options", POST: optionsPOST, read: readers.options },
+])("student $name transport", ({ POST, read }) => {
   beforeEach(() => read.mockReset());
   it("reuses the authorized reader and returns uncached detail", async () => {
     const input = { studentId: "student", leadId: null };

@@ -18,7 +18,8 @@ import { invitationDraftIsComplete, invitationCanHaveNextContactReminder, INVITA
 import { emptyInvitationDraft } from "./followup-entry-contract";
 import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
 import { studentStageMessages } from "./student-stage-messages";
-import { getStudentStageOptionsAction, saveStudentStageEntryAction } from "./student-stage-actions";
+import { saveStudentStageEntryAction, type getStudentStageOptionsAction } from "./student-stage-actions";
+import { readDashboardDetail } from "./dashboard-page/readDashboardDetail";
 import type { StudentEntryMode, StudentStageEntryInput, StudentStageOptions, StudentStageRow, StudentStageSaved } from "./student-stage-contract";
 
 const draftSchema = z.object({
@@ -80,13 +81,16 @@ export function StudentStageEntry({ row, requestedMode, locale, currentUserId, c
   useEffect(() => {
     if (!needsOptions || options) return;
     let active = true;
-    void getStudentStageOptionsAction({ studentId: row.studentId, leadId: row.leadId }).then(result => {
+    const controller = new AbortController();
+    void readDashboardDetail<Awaited<ReturnType<typeof getStudentStageOptionsAction>>>(
+      `/${locale}/dashboard/students/entry-options`, { studentId: row.studentId, leadId: row.leadId }, controller.signal,
+    ).then(result => {
       if (!active) return;
       if (result.ok) { setOptions(result.data); setLoadError(false); } else setLoadError(true);
       setLoading(false);
     }).catch(() => { if (active) { setLoadError(true); setLoading(false); } });
-    return () => { active = false; };
-  }, [row.studentId, row.leadId, revision, needsOptions, options]);
+    return () => { active = false; controller.abort(); };
+  }, [row.studentId, row.leadId, revision, needsOptions, options, locale]);
   const enrollmentType = enrollmentContext?.type ?? (row.stage === "awaiting_renewal" ? "renewal" : row.stage === "former_student" ? "reactivate" : "new");
   const matchingOpportunity = options?.opportunities.find(o => o.course_id === draft.courseId && o.term_id === draft.termId && o.opportunity_type === enrollmentType);
   const reminderAllowed = mode === "contact" ? draft.outcome === "unreachable" || draft.outcome === "declined"

@@ -140,8 +140,8 @@ describe("DEV-SCHOOL-OPS-1 public-class workbench", () => {
     const manager = read("src", "features", "school", "ActivitiesManager.tsx");
     const workspace = read("src", "features", "school", "PublicClassWorkspace.tsx");
 
-    expect(manager).toContain("?view=onsite");
-    expect(manager).toContain("openActivityPreparation");
+    expect(manager).toContain("<FollowupInlineDetails");
+    expect(manager).toContain("<PublicClassRegistrationPanel");
     expect(manager).toContain("?view=teaching");
     expect(workspace).not.toContain("ObjectTabs");
     expect(workspace).not.toContain("objectTabTeaching");

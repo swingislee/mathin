@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useLocale } from 'next-intl';
-import { Plus, X } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useRouter } from '@/i18n/navigation';
 import { newId } from '@/lib/uuid';
 import { cn } from '@/lib/utils';
+import { FollowupInlineDetails } from './dashboard-page/FollowupInlineDetails';
 import { addSupportWorkAction, getSupportOptionsAction, readSupportProfileAction, readSupportFamilyAction } from './school-support-actions';
 import { SupportChoice, SupportSubjectSearch, SupportWorkFields, type SupportOptions } from './SchoolSupportEntry';
 import { SUPPORT_REFRESH_EVENT, supportEntryHref, supportEntrySchema, supportError, supportMessages, supportProfileSchema, supportFamilyPreviewSchema,
@@ -175,8 +176,7 @@ function SupportInlineForm({ workspace, columns, initialWork, onClose, onSaved, 
   const details = <div className="space-y-3 p-3 text-xs [&_[role=combobox]]:h-8 [&_[role=combobox]]:py-1 [&_[role=combobox]]:text-xs [&_input[data-slot=input]]:h-8 [&_input[data-slot=input]]:text-xs" data-support-entry-details onKeyDown={event => {
     if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') { event.preventDefault(); void save(); }
   }}>
-    {!panel?<div className="flex items-center justify-between gap-3"><span className="font-medium">{contextLabel ?? m.add}</span>
-      <Button type="button" variant="ghost" size="sm" className="size-7 p-0" aria-label={m.cancel} disabled={pending} onClick={cancel}><X className="size-4" /></Button></div>:null}
+    {!panel?<div className="font-medium">{contextLabel ?? m.add}</div>:null}
     <div className="grid gap-3 sm:grid-cols-3">{(['name', 'phone', 'grade'] as const).filter(key => panel || !columns.includes(key)).map(key => <div key={key} className="grid gap-1.5">{key === 'grade' ? null : m[key]}{field(key, !panel)}</div>)}</div>
     {input.subject ? <div className="flex items-center justify-between rounded-md border border-line bg-card p-2"><span>{en ? 'Selected profile' : '已选择档案'} · {selected?.name ?? m.details} · {selected?.phone}</span>
       <div className="flex gap-1"><Button variant="ghost" size="sm" disabled={busy||!selected} onClick={()=>{if(selected)void selectProfile(selected,true);}}>{en?'Read latest profile':'读取最新档案'}</Button>
@@ -231,7 +231,8 @@ function SupportInlineForm({ workspace, columns, initialWork, onClose, onSaved, 
   </div>;
   return panel ? details : <>
     <TableRow data-support-entry-summary onKeyDown={event=>{if((event.ctrlKey||event.metaKey)&&event.key==="Enter"&&!event.nativeEvent.isComposing){event.preventDefault();void save();}}} className="bg-moon/25 [&>td]:px-2 [&>td]:py-1">{columns.map((column, index) => <TableCell key={index}>{field(column)}</TableCell>)}</TableRow>
-    <TableRow className="bg-moon/15"><TableCell colSpan={columns.length} className="p-0">{details}</TableCell></TableRow>
+    <FollowupInlineDetails open colSpan={columns.length} title={contextLabel ?? m.add} hideTitle flush pending={busy} closeLabel={m.cancel}
+      onOpenChange={open=>{if(!open)cancel();}} onSubmit={()=>void save()}>{details}</FollowupInlineDetails>
   </>;
 }
 

@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState, type ComponentProps } from "react";
-import { LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StudentStageEntry } from "./StudentStageEntry";
 import type { getStudentStageSubjectAction } from "./student-stage-actions";
 import { readDashboardDetail } from "./dashboard-page/readDashboardDetail";
+import { FollowupDetailLoading } from "./dashboard-page/FollowupInlineDetails";
 import { studentStageMessages } from "./student-stage-messages";
 import type { StudentStageRow } from "./student-stage-contract";
 
@@ -35,5 +35,5 @@ export function StudentStageEntryLoader(props: ComponentProps<typeof StudentStag
   return failed === row.key ? <div role="alert" className="space-y-2 text-sm text-muted">
     <p>{m.loadFailed}</p>
     <Button variant="secondary" size="sm" onClick={() => { setFailed(null); setRevision(value => value + 1); }}>{m.retry}</Button>
-  </div> : <p role="status" className="flex items-center gap-2 text-sm text-muted"><LoaderCircle className="size-4 animate-spin" />{m.loading}</p>;
+  </div> : <FollowupDetailLoading>{m.loading}</FollowupDetailLoading>;
 }

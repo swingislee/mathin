@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FollowupRecordRow, FollowupTableBody } from "@/features/school/dashboard-page/FollowupRecordRow";
+import { DashboardInlineEntry } from "@/features/school/dashboard-page/DashboardInlineEntry";
 
 vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
 vi.mock("next/dynamic", async () => ({ default: (await import("next/dist/shared/lib/app-dynamic")).default }));
@@ -36,7 +37,31 @@ beforeEach(() => {
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); });
 
 describe("shared student and follow-up record interaction", () => {
-  it("contains a real cold dynamic import inside the detail instead of replacing the page fallback", async () => {
+  it("also contains deferred content in a directly used inline panel and keeps its close shortcut available", async () => {
+    const ready = Promise.withResolvers<void>();
+    let loaded = false;
+    const read = () => { if (!loaded) throw ready.promise; return createElement("textarea", { defaultValue: "Ready" }); };
+    function PanelHarness() {
+      const [open, setOpen] = useState(false);
+      const entryProps = { title: "Inline panel", onClose: () => setOpen(false), children: read };
+      return createElement(Suspense, { fallback: createElement("p", { "data-page-loading": true }, "Page loading") },
+        createElement("button", { onClick: () => setOpen(true), "data-open": true }, "Open"),
+        open && createElement(DashboardInlineEntry, entryProps),
+      );
+    }
+    await act(async () => root.render(createElement(PanelHarness)));
+    const trigger = container.querySelector<HTMLButtonElement>("[data-open]")!;
+    await act(async () => trigger.click());
+    expect(container.querySelector("[data-page-loading]")).toBeNull();
+    expect(container.querySelector('[data-dashboard-inline-entry] [role="status"]')?.textContent).toBe("loadingDetails");
+    await keydown(container.querySelector<HTMLElement>("[data-dashboard-inline-entry]")!, "Escape");
+    expect(container.querySelector("[data-dashboard-inline-entry]")).toBeNull();
+    await act(async () => { loaded = true; ready.resolve(); });
+    await act(async () => trigger.click());
+    expect(container.querySelector("textarea")?.value).toBe("Ready");
+    expect(container.querySelector("[data-open]")).toBe(trigger);
+  });
+  it.each([undefined, "Reading this row…"])("contains a cold dynamic import in the row with loading label %s", async loadingLabel => {
     const ready = Promise.withResolvers<{ default: () => ReturnType<typeof createElement> }>();
     const Detail = dynamic(() => ready.promise);
     function AsyncHarness() {
@@ -44,7 +69,7 @@ describe("shared student and follow-up record interaction", () => {
       return createElement(Suspense, { fallback: createElement("p", { "data-page-loading": true }, "Page loading") },
         createElement("table", null, createElement(FollowupTableBody, { onNavigate: () => true },
           createElement(FollowupRecordRow, { rowKey: "cold", active: true, expanded, onExpandedChange: setExpanded,
-            detailsId: "detail-cold", title: "Cold detail", colSpan: 1, loadingLabel: "Reading this row…", summary: createElement("td", null, "Roster stays here") },
+            detailsId: "detail-cold", title: "Cold detail", colSpan: 1, loadingLabel, summary: createElement("td", null, "Roster stays here") },
           createElement(Detail)),
         )),
       );
@@ -54,7 +79,7 @@ describe("shared student and follow-up record interaction", () => {
     summary.focus();
     await keydown(summary, "Enter");
     expect(container.querySelector("[data-page-loading]")).toBeNull();
-    expect(detail("cold").querySelector('[role="status"]')?.textContent).toBe("Reading this row…");
+    expect(detail("cold").querySelector('[role="status"]')?.textContent).toBe(loadingLabel ?? "loadingDetails");
     expect(row("cold")).toBe(summary);
     expect(document.activeElement).toBe(summary);
     await act(async () => ready.resolve({ default: () => createElement("textarea", { defaultValue: "Loaded record" }) }));

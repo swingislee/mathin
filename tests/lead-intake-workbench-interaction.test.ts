@@ -118,7 +118,7 @@ describe("compact lead intake worksheet", () => {
     expect(details.querySelector("[data-followup-business] [data-identity-control]")).not.toBeNull();
     expect(details.querySelector("[data-followup-notes]")?.textContent).toContain("Saved family concern");
     expect(details.querySelector("textarea,input,[data-followup-progress]")).toBeNull();
-    expect(details.querySelector("a")?.getAttribute("href")).toBe(`/dashboard/followups/communication?lead=${ids[2]}`);
+    expect(details.querySelector("a")?.getAttribute("href")).toBe(`/dashboard/communication?lead=${ids[2]}`);
     await key(row(ids[2]), "Escape");
     expect(container.querySelector("[data-lead-intake-details]")).toBeNull();
   });

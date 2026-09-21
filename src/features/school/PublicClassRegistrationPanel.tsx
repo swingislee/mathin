@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { DashboardCommandFilters, DashboardCommandPanel, DashboardCommandState, DashboardTableColumnHeader, DashboardTableShell, type DashboardTableColumnDefinition, useDashboardTableView } from "./dashboard-page";
-import { DashboardInlineEntry } from "./dashboard-page/DashboardInlineEntry";
+import { FollowupInlineDetails } from "./dashboard-page/FollowupInlineDetails";
 import { PostActivityHandoff } from "./EnrollmentHandoffButton";
 import { Student360Trigger } from "./Student360Sheet";
 import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
@@ -109,7 +109,7 @@ function ParticipantRow({ participant, data, active, toggle, saved, refresh }: {
       <TableCell className="truncate px-2" title={summary.family}>{summary.family || "—"}</TableCell>
       <TableCell className="truncate px-2" title={summary.recommendation}>{summary.recommendation || "—"}</TableCell>
     </TableRow>
-    {active ? <TableRow className="hover:bg-transparent"><TableCell colSpan={5} className="p-0"><DashboardInlineEntry flush pending={pending} onSubmit={editable && changed.length ? save : undefined} onClose={toggle} closeLabel={t("close")}>
+    <FollowupInlineDetails open={active} onOpenChange={open => { if (open !== active) toggle(); }} colSpan={5} title={participant.name} hideTitle flush pending={pending} onSubmit={editable && changed.length ? save : undefined} closeLabel={t("close")}>
       <div className="grid divide-line xl:grid-cols-3 xl:divide-x">{data.segments.map((segment) => {
         const draft = drafts.find((record) => record.segmentId === segment.id);
         if (!draft) return null;
@@ -120,7 +120,7 @@ function ParticipantRow({ participant, data, active, toggle, saved, refresh }: {
       })}</div>
       <div className="flex items-center justify-between gap-3 px-3 pb-3"><span className="text-[11px] text-muted">{t("saveHint")}</span>{editable ? <Button size="sm" disabled={pending || changed.length === 0} onClick={save}>{pending ? <LoaderCircle className="size-3.5 animate-spin" /> : null}{t("saveStudent")}</Button> : null}</div>
       {data.canFollowUp && participant.status !== "cancelled" ? <div className="border-t border-line p-3"><PostActivityHandoff source={{ registrationId: participant.registrationId, invitationId: null }} onSaved={() => { void refresh(); }} /></div> : null}
-    </DashboardInlineEntry></TableCell></TableRow> : null}
+    </FollowupInlineDetails>
   </Fragment>;
 }
 

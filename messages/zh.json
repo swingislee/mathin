@@ -8865,6 +8865,7 @@
       "renewals": "续班",
       "count": "{count} 条",
       "close": "关闭",
+      "loadingDetails": "正在读取…",
       "showAllCommunication": "返回沟通列表",
       "contactStage": "联系情况",
       "communicationInfo": "沟通与安排",

@@ -8865,6 +8865,7 @@
       "renewals": "Renewals",
       "count": "{count} records",
       "close": "Close",
+      "loadingDetails": "Loading…",
       "showAllCommunication": "Back to communication list",
       "contactStage": "Contact status",
       "communicationInfo": "Communication and arrangements",

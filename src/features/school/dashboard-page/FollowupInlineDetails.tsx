@@ -1,18 +1,16 @@
 "use client";
 
-import { Suspense, useRef, type KeyboardEventHandler, type ReactNode } from "react";
+import { useRef, type KeyboardEventHandler, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { DashboardInlineEntry } from "./DashboardInlineEntry";
+import { cn } from "@/lib/utils";
 
-/** 模块下载与详情读取共用行内占位，保持外围名册与焦点挂载。 */
-export function FollowupDetailLoading({ children }: { children: ReactNode }) {
-  return <p role="status" className="py-3 text-xs text-muted">{children}</p>;
-}
+export { FollowupDetailLoading } from "./DashboardInlineDetailBoundary";
 
 /** 详情单独占据当前记录的下一行；数据行和固定列宽保持原样。 */
 export function FollowupInlineDetails({
-  open, onOpenChange, title, colSpan, children, pending = false, autoFocus = false, onSubmit, id, hideTitle = false, active = true, onKeyDown, onActivate, keepMounted = false, loadingLabel,
+  open, onOpenChange, title, colSpan, children, pending = false, autoFocus = false, onSubmit, id, hideTitle = false, active = true, onKeyDown, onActivate, keepMounted = false, loadingLabel, closeLabel, flush = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -30,8 +28,11 @@ export function FollowupInlineDetails({
   onActivate?: () => void;
   /** 已打开的测评登记可收起并保留草稿；其他入口沿用关闭即卸载的默认行为。 */
   keepMounted?: boolean;
-  /** 异步详情在本行接住 Suspense；同步表单继续沿用原挂载行为。 */
+  /** 可覆盖共用加载文案；每个详情始终拥有行内 Suspense 边界。 */
   loadingLabel?: string;
+  closeLabel?: string;
+  /** 已有详情内容自行提供内边距时，共用外壳贴合其布局。 */
+  flush?: boolean;
 }) {
   const t = useTranslations("school.followupWorkspace");
   const rowRef = useRef<HTMLTableRowElement>(null);
@@ -55,11 +56,9 @@ export function FollowupInlineDetails({
         event.currentTarget.focus({ preventScroll: true });
       }
     }}>
-    <TableCell colSpan={colSpan} className="p-3 align-top whitespace-normal">
-      <DashboardInlineEntry title={title} hideTitle={hideTitle} closeLabel={t("close")} onClose={close} onSubmit={onSubmit} pending={pending} autoFocus={autoFocus} flush>
-        <div className="@container/followup-entry min-w-0 max-w-full space-y-3 break-words pt-2">{loadingLabel
-          ? <Suspense fallback={<FollowupDetailLoading>{loadingLabel}</FollowupDetailLoading>}>{typeof children === "function" ? children() : children}</Suspense>
-          : typeof children === "function" ? children() : children}</div>
+    <TableCell colSpan={colSpan} className={cn("align-top whitespace-normal", flush ? "p-0" : "p-3")}>
+      <DashboardInlineEntry title={title} hideTitle={hideTitle} closeLabel={closeLabel ?? t("close")} onClose={close} onSubmit={onSubmit} pending={pending} autoFocus={autoFocus} loadingLabel={loadingLabel} flush>
+        {() => <div className={cn("@container/followup-entry min-w-0 max-w-full space-y-3 break-words", !flush && "pt-2")}>{typeof children === "function" ? children() : children}</div>}
       </DashboardInlineEntry>
     </TableCell>
   </TableRow>;

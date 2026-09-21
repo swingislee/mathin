@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { NextIntlClientProvider } from 'next-intl';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { SchoolSupportInsertion, SchoolSupportSeatEntry, SchoolSupportTableEntry } from '@/features/school/SchoolSupportInlineEntry';
+import zh from '../messages/zh.json';
 
 const calls=vi.hoisted(()=>({options:vi.fn(),search:vi.fn(),add:vi.fn(),read:vi.fn(),family:vi.fn(),replace:vi.fn(),refresh:vi.fn()}));
 vi.mock('@/features/school/school-support-actions',()=>({getSupportOptionsAction:calls.options,searchSupportSubjectsAction:calls.search,addSupportWorkAction:calls.add,readSupportProfileAction:calls.read,readSupportFamilyAction:calls.family}));
@@ -21,7 +22,7 @@ afterEach(async()=>{await cleanup();sessionStorage.clear();vi.useRealTimers();vi
 async function mount(child:ReactNode){
   const element=document.createElement('div');document.body.append(element);const root=createRoot(element);
   cleanup=async()=>{await act(async()=>root.unmount());element.remove();};
-  const props={locale:'zh',messages:{},timeZone:'Asia/Shanghai',children:child};
+  const props={locale:'zh',messages:zh,timeZone:'Asia/Shanghai',children:child};
   await act(async()=>root.render(createElement(NextIntlClientProvider,props)));
   return element;
 }

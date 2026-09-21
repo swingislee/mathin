@@ -30,7 +30,7 @@ import { ActivityGradesDialog } from "./ActivityGradesDialog";
 import { businessDisplayDate } from './business-source-contract';
 import { BusinessRecordRevisionButton } from './BusinessRecordRevisionButton';
 import { inputClass } from "./controls";
-import { DashboardInlineEntry } from "./dashboard-page/DashboardInlineEntry";
+import { FollowupInlineDetails } from "./dashboard-page/FollowupInlineDetails";
 import type { PublicClassRegistrationData } from "./public-class-registration-contract";
 import { getStudentBusinessHistoryMessages } from "./student-business-history-messages";
 import { BusinessRecordStateFilter, HistoricalRecordBadge, useBusinessSearchQuery } from './BusinessRecordStateFilter';
@@ -263,7 +263,9 @@ export function ActivitiesManager({
                     </Link> : !current ? activity.registrations.map(row => row.studentId ? <Link key={row.id} href={`/dashboard/students/${row.studentId}?tab=history`} className={buttonVariants({ size: "sm", variant: "secondary" })}>{recordM.viewStudent}<ArrowRight size={15} /></Link> : null) : null}
                   </div>
                 </TableCell>
-              </TableRow>{canRegister && expanded ? <TableRow className="hover:bg-transparent"><TableCell colSpan={6} className="p-0"><DashboardInlineEntry flush title={activity.title} onClose={() => setActiveActivityId(null)} closeLabel={t("closeRegistration")}><PublicClassRegistrationPanel activityId={activity.id} initialData={initialRegistrationData?.activity.id === activity.id ? initialRegistrationData : undefined} /></DashboardInlineEntry></TableCell></TableRow> : null}</Fragment>;
+              </TableRow>{canRegister ? <FollowupInlineDetails open={expanded} onOpenChange={open => setActiveActivityId(open ? activity.id : null)} colSpan={6} flush title={activity.title} closeLabel={t("closeRegistration")}>
+                <PublicClassRegistrationPanel activityId={activity.id} initialData={initialRegistrationData?.activity.id === activity.id ? initialRegistrationData : undefined} />
+              </FollowupInlineDetails> : null}</Fragment>;
             })}
             {activityTable.visibleRows.length === 0 ? <TableRow><TableCell colSpan={6} className="h-40 text-center text-muted">{activities.length === 0 ? t("empty") : tableT("filteredEmpty")}</TableCell></TableRow> : null}
           </TableBody>

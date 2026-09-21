@@ -24,6 +24,7 @@ it('records a manually added renewal using its chosen course and term even when 
   calls.options.mockResolvedValue({ok:true,data:{row,invitations:{activities:[],assessors:[]},enrollment:{courses:[{id:course,title:'Course',grade:3,productCode:null,classType:''}],terms:[{id:term,name:'Term',isCurrent:true}],classrooms:[]},
     opportunities:[{id:opportunity,course_id:course,term_id:term,opportunity_type:'renewal',stage:'planning',updated_at:row.createdAt}]}});
   calls.save.mockResolvedValue({ok:false,code:'NETWORK'});
+  vi.stubGlobal('fetch',vi.fn(async(_url:string,init:RequestInit)=>({ok:true,json:async()=>calls.options(JSON.parse(String(init.body)))})));
   const ref=createRef<{save:()=>void}>();
   const provider={locale:'zh',messages:zh,timeZone:'Asia/Shanghai',children:createElement(StudentStageEntry,{row,locale:'zh',currentUserId:'actor',requestedMode:'enrollment',canEnroll:true,
     enrollmentContext:{type:'renewal',courseId:course,termId:term},canAdvance:false,outcomeRequest:null,onBusyChange:vi.fn(),onSaved:vi.fn(),ref})};

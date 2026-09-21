@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { inlineEntryCommand } from "./inline-entry-keyboard";
+import { DashboardInlineDetailBoundary } from "./DashboardInlineDetailBoundary";
 
 /** 表格内连续录入的共享展开容器；保留当前记录及周围行的位置。 */
 export function DashboardInlineEntry({
@@ -17,8 +18,9 @@ export function DashboardInlineEntry({
   autoFocus = false,
   flush = false,
   hideTitle = false,
+  loadingLabel,
 }: {
-  children: ReactNode;
+  children: ReactNode | (() => ReactNode);
   title?: string;
   closeLabel?: string;
   onClose?: () => void;
@@ -27,6 +29,7 @@ export function DashboardInlineEntry({
   autoFocus?: boolean;
   flush?: boolean;
   hideTitle?: boolean;
+  loadingLabel?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -61,7 +64,7 @@ export function DashboardInlineEntry({
         {title && !hideTitle ? <h3 className="text-xs font-medium text-ink">{title}</h3> : null}
         {onClose ? <Button type="button" size="sm" variant="ghost" className="size-7 p-0" disabled={pending} aria-label={closeLabel} onClick={onClose}><X className="size-3.5" /></Button> : null}
       </div> : null}
-      {children}
+      <DashboardInlineDetailBoundary loadingLabel={loadingLabel}>{children}</DashboardInlineDetailBoundary>
     </div>
   );
 }

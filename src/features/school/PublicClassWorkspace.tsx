@@ -21,6 +21,7 @@ import {
 import Image from "next/image";
 import { useLocale, useTranslations } from "next-intl";
 import { Fragment, useMemo, useState, useTransition } from "react";
+import { FollowupInlineDetails } from "./dashboard-page/FollowupInlineDetails";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -847,9 +848,8 @@ function ParticipantRows({
       <TableCell className="truncate px-2 py-2 text-muted">{summary || t("recordEmpty")}</TableCell>
       <TableCell className="px-2 py-2">{summary ? <Badge variant="secondary">{t("recorded")}</Badge> : <Badge variant="outline">{t("notRecorded")}</Badge>}</TableCell>
     </TableRow>
-    {expanded ? <TableRow className="bg-moon/10 hover:bg-moon/10">
-      <TableCell colSpan={4} className="p-0">
-        <div className="grid gap-3 border-l-2 border-crater/40 px-4 py-4 @3xl/page:grid-cols-2">
+    <FollowupInlineDetails open={expanded} onOpenChange={setExpanded} colSpan={4} title={participant.name} hideTitle pending={pending} onSubmit={canRecord ? save : undefined}>
+        <div className="grid gap-3 @3xl/page:grid-cols-2">
           {segment.kind !== "parent_talk" ? <>
             <Label className="grid gap-1.5 text-xs text-muted">{t("learningObservation")}
               <Textarea rows={3} value={learningObservation} disabled={!canRecord} onChange={(event) => setLearningObservation(event.target.value)} placeholder={t("learningObservationHint")} />
@@ -869,8 +869,7 @@ function ParticipantRows({
             {canRecord ? <Button size="sm" disabled={pending} onClick={save}>{pending && <LoaderCircle className="size-4 animate-spin" />}{t("saveRecord")}</Button> : null}
           </div>
         </div>
-      </TableCell>
-    </TableRow> : null}
+    </FollowupInlineDetails>
   </Fragment>;
 }
 

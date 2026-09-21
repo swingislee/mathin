@@ -43,6 +43,7 @@ beforeEach(() => {
   vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
   HTMLElement.prototype.scrollIntoView = vi.fn(); sessionStorage.clear(); vi.clearAllMocks();
   actions.options.mockResolvedValue({ ok: false, code: "FORBIDDEN" });
+  vi.stubGlobal("fetch", vi.fn(async (_url: string, init: RequestInit) => ({ ok: true, json: async () => actions.options(JSON.parse(String(init.body))) })));
   actions.save.mockResolvedValue({ ok: true, data: { subject: { ...row, studentId: id, key: `student:${id}`, stage: "awaiting_assessment", detail: "not_booked" }, savedAt: row.createdAt, opportunityId: null, enrollmentId: null } });
   container = document.createElement("div"); document.body.append(container); root = createRoot(container);
 });
