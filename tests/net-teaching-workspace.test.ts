@@ -7,7 +7,9 @@ import en from "../messages/en.json";
 import { NetTeachingWorkspace } from "@/features/tools/net-teaching/NetTeachingWorkspace";
 import { createDefaultPaperFoldingSnapshot } from "@/features/tools/paper-folding/contract";
 import { createDefaultSolidNetsSnapshot } from "@/features/tools/solid-nets/contract";
-import { netInitialState, type NetTeachingInitial } from "@/features/tools/net-teaching/contract";
+import { NET_TEACHING_VERSION, netInitialState, type NetTeachingInitial } from "@/features/tools/net-teaching/contract";
+import { createNetTeachingInitial } from "@/features/tools/net-teaching/defaults";
+import { ToolPreparationStage } from "@/features/tools/scenes/workbench-adapter";
 
 const workspace = vi.hoisted(() => ({ current: null as null | {
   initial: unknown; onSnapshot: (next: unknown) => void; workspaceSelector?: ReactNode; modeSelector?: ReactNode;
@@ -20,9 +22,11 @@ let root: Root, host: HTMLDivElement;
 beforeEach(() => { vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true); host = document.createElement("div"); document.body.append(host); root = createRoot(host); });
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals(); });
 const paper = (): Extract<NetTeachingInitial, { mode: "free-paper" }> => ({ mode: "free-paper", data: createDefaultPaperFoldingSnapshot() });
-async function render(props: Parameters<typeof NetTeachingWorkspace>[0]) {
+async function render(props: Parameters<typeof NetTeachingWorkspace>[0], fullHeight = true) {
   // eslint-disable-next-line react/no-children-prop
-  await act(async () => root.render(createElement(NextIntlClientProvider, { locale: "en", messages: en, timeZone: "UTC", children: createElement(NetTeachingWorkspace, props) })));
+  const stage = createElement(ToolPreparationStage, { version: NET_TEACHING_VERSION, fullHeight, children: createElement(NetTeachingWorkspace, props) });
+  // eslint-disable-next-line react/no-children-prop
+  await act(async () => root.render(createElement(NextIntlClientProvider, { locale: "en", messages: en, timeZone: "UTC", children: stage })));
 }
 async function select(label: string) {
   await act(async () => host.querySelector<HTMLButtonElement>('button[aria-label="Folding workspace"]')!.click());
@@ -30,6 +34,22 @@ async function select(label: string) {
   expect(button).toBeTruthy(); await act(async () => button.click());
 }
 describe("one folding tool hosts distinct teaching spaces", () => {
+  it.each([true, false])("preserves the flex height chain for every folding mode (fullHeight=%s)", async (fullHeight) => {
+    await render({ initial: await createNetTeachingInitial("standard") }, fullHeight);
+    expect(host.querySelector('[role="alert"]')).toBeNull();
+    expect(workspace.current!.initial).toMatchObject({ source: { entryId: expect.any(String) }, angles: expect.any(Object) });
+    const assertStage = (mode: string) => {
+      const stage = host.querySelector(`[data-tool-scene-editor="${NET_TEACHING_VERSION}"] > [data-net-teaching-mode="${mode}"]`);
+      expect(stage).not.toBeNull();
+      // 子舞台依赖 flex: 1 和尺寸容器；每个展开方式都需要连续的高度传递。
+      expect([...stage!.classList]).toEqual(expect.arrayContaining(["flex", "flex-1", "flex-col", "min-h-0", "min-w-0"]));
+    };
+    assertStage("standard");
+    await select("Free paper");
+    assertStage("free-paper");
+    await select("Cuboid and prism");
+    assertStage("solid-net");
+  });
   it("switches modes through a compact nonmodal control and retains each prepared scene", async () => {
     const initial = paper(), capture = vi.fn(); await render({ initial, onSnapshot: capture });
     const edited = { ...createDefaultPaperFoldingSnapshot(), labelsVisible: false };

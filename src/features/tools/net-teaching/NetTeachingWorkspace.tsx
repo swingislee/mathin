@@ -86,7 +86,8 @@ function ReadyWorkspace({ initial, runtime, onSnapshot, readOnly = false }: {
     {(["standard", "free-paper", "solid-net"] as const).map((id) => <Button key={id} className="w-full justify-start" size="sm" variant={mode === id ? "secondary" : "ghost"}
       aria-pressed={mode === id} disabled={disabled} onClick={() => void changeMode(id)}>{labels[id]}</Button>)}
   </PopoverContent></Popover>;
-  return <section className="relative size-full min-h-0" data-net-teaching-mode={mode} aria-busy={switching}>
+  // 子舞台使用尺寸容器，纵向 flex 将宿主高度传到内部的 4:3 画布。
+  return <section className="relative flex size-full min-h-0 min-w-0 flex-1 flex-col" data-net-teaching-mode={mode} aria-busy={switching}>
     {failed && <p role="alert" className="absolute left-3 top-14 z-40 text-xs text-rose">{locale === "zh" ? "切换未保存，请重试。" : "The change was not saved. Please retry."}</p>}
     <ModeWorkspace key={mode} initial={starting} current={current} runtime={runtime} selector={selector} readOnly={interactionDisabled} locale={locale}
       captureNet={captureNet} capturePaper={capturePaper} captureSolid={captureSolid} />
