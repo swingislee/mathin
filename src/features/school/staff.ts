@@ -14,6 +14,7 @@ export interface StaffMember {
   canFollowUp: boolean;
   isActive: boolean;
   passwordChangeRequired: boolean;
+  purpose?: "production" | "test";
 }
 
 interface StaffMemberRpcRow {
@@ -33,6 +34,9 @@ export async function listStaffMembers(): Promise<StaffMember[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("list_staff_members");
   if (error) throw new Error(error.message);
+  const purposes = await supabase.from("profiles").select("id,purpose").in("role", ["staff", "admin"]);
+  if (purposes.error) throw new Error(purposes.error.message);
+  const purposeById = new Map((purposes.data ?? []).map(row => [row.id, row.purpose]));
   return ((data ?? []) as StaffMemberRpcRow[])
     .map((row) => ({
       userId: row.user_id,
@@ -44,6 +48,7 @@ export async function listStaffMembers(): Promise<StaffMember[]> {
       canFollowUp: Boolean(row.can_follow_up),
       isActive: Boolean(row.is_active),
       passwordChangeRequired: Boolean(row.password_change_required),
+      purpose: purposeById.get(row.user_id) === "test" ? "test" as const : "production" as const,
     }))
     .sort((a, b) => a.isActive!==b.isActive?(a.isActive?-1:1):
       a.identity !== b.identity ? (a.identity === "admin" ? -1 : 1) : a.displayName.localeCompare(b.displayName, "zh"));
@@ -64,7 +69,7 @@ export async function listStaffRoles(): Promise<StaffRoleInfo[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("staff_roles")
-    .select("id,key,name,is_system,role_permissions(perm_key),staff_role_members(user_id)")
+    .select("id,key,name,is_system,role_permissions(perm_key),staff_role_members:statistics_staff_role_members(user_id)")
     .order("created_at", { ascending: true })
     .returns<
       Array<{

@@ -453,14 +453,14 @@ export async function getManagementAnalyticsData({
   ].join(",");
   const [sourceCohortResult, activityResult, sessionResult, unassignedResult, overdueResult, dueSoonResult] = await Promise.all([
     supabase
-      .from("lead_source_records")
+      .from("statistics_lead_source_records" as "lead_source_records")
       .select("lead_id,batch_id,batch_label,source_system,acquisition_method,submitted_at,created_at")
       .or(sourceWindowFilter)
       .order("created_at", { ascending: true })
       .limit(READ_LIMIT)
       .returns<LeadSourceRow[]>(),
     supabase
-      .from("activities")
+      .from("statistics_activities" as "activities")
       .select("id,title,kind,scheduled_at,capacity,source_invitation_id")
       .is("deleted_at", null)
       .gte("scheduled_at", rangeStart)
@@ -469,7 +469,7 @@ export async function getManagementAnalyticsData({
       .limit(READ_LIMIT)
       .returns<ActivityRow[]>(),
     supabase
-      .from("class_sessions")
+      .from("statistics_class_sessions" as "class_sessions")
       .select("id,classroom_id,title,scheduled_at")
       .not("scheduled_at", "is", null)
       .is("voided_at", null)
@@ -480,17 +480,17 @@ export async function getManagementAnalyticsData({
       .limit(READ_LIMIT)
       .returns<ClassSessionRow[]>(),
     supabase
-      .from("leads")
+      .from("statistics_leads" as "leads")
       .select("id", { count: "exact", head: true })
       .in("status", activeLeadStates)
       .is("owner_id", null),
     supabase
-      .from("lead_next_actions")
+      .from("statistics_lead_next_actions" as "lead_next_actions")
       .select("lead_id", { count: "exact", head: true })
       .eq("status", "open")
       .lt("due_at", now.toISOString()),
     supabase
-      .from("lead_next_actions")
+      .from("statistics_lead_next_actions" as "lead_next_actions")
       .select("lead_id", { count: "exact", head: true })
       .eq("status", "open")
       .gte("due_at", now.toISOString())
@@ -515,20 +515,20 @@ export async function getManagementAnalyticsData({
     attendanceRead,
   ] = await Promise.all([
     readByIds<LeadRow>(candidateLeadIds, (ids) => supabase
-      .from("leads")
+      .from("statistics_leads" as "leads")
       .select("id,student_id,owner_id")
       .in("id", [...ids])
       .limit(READ_LIMIT)
       .returns<LeadRow[]>()),
     readByIds<LeadSourceRow>(candidateLeadIds, (ids) => supabase
-      .from("lead_source_records")
+      .from("statistics_lead_source_records" as "lead_source_records")
       .select("lead_id,batch_id,batch_label,source_system,acquisition_method,submitted_at,created_at")
       .in("lead_id", [...ids])
       .order("created_at", { ascending: true })
       .limit(READ_LIMIT)
       .returns<LeadSourceRow[]>()),
     readByIds<CommunicationRow>(candidateLeadIds, (ids) => supabase
-      .from("lead_communications")
+      .from("statistics_lead_communications" as "lead_communications")
       .select("lead_id,occurred_at,owner_id_at_contact")
       .in("lead_id", [...ids])
       .eq("outcome", "connected")
@@ -536,25 +536,25 @@ export async function getManagementAnalyticsData({
       .limit(READ_LIMIT)
       .returns<CommunicationRow[]>()),
     readByIds<InvitationThreadRow>(candidateLeadIds, (ids) => supabase
-      .from("lead_invitation_threads")
+      .from("statistics_lead_invitation_threads" as "lead_invitation_threads")
       .select("id,lead_id,activity_id,owner_id_at_open,created_at")
       .in("lead_id", [...ids])
       .limit(READ_LIMIT)
       .returns<InvitationThreadRow[]>()),
     readByIds<RegistrationRow>(activityIds, (ids) => supabase
-      .from("activity_registrations")
+      .from("statistics_activity_registrations" as "activity_registrations")
       .select("id,activity_id,lead_id,student_id,status")
       .in("activity_id", [...ids])
       .limit(READ_LIMIT)
       .returns<RegistrationRow[]>()),
     readByIds<ClassMembershipRow>(classroomIds, (ids) => supabase
-      .from("enrollments")
+      .from("statistics_enrollments" as "enrollments")
       .select("classroom_id,student_id,joined_at,left_at")
       .in("classroom_id", [...ids])
       .limit(READ_LIMIT)
       .returns<ClassMembershipRow[]>()),
     readByIds<SessionAttendanceRow>(sessionIds, (ids) => supabase
-      .from("session_attendance")
+      .from("statistics_session_attendance" as "session_attendance")
       .select("session_id,student_id,status")
       .in("session_id", [...ids])
       .limit(READ_LIMIT)
@@ -575,7 +575,7 @@ export async function getManagementAnalyticsData({
   const registrationIds = registrationsRead.rows.map((row) => row.id);
   const [invitationEventsRead, assessmentsRead] = await Promise.all([
     readByIds<InvitationEventRow>(invitationIds, (ids) => supabase
-      .from("lead_invitation_events")
+      .from("statistics_lead_invitation_events" as "lead_invitation_events")
       .select("invitation_id,occurred_at")
       .in("invitation_id", [...ids])
       .eq("to_state", "confirmed")
@@ -583,7 +583,7 @@ export async function getManagementAnalyticsData({
       .limit(READ_LIMIT)
       .returns<InvitationEventRow[]>()),
     readByIds<AssessmentRow>(registrationIds, (ids) => supabase
-      .from("assessment_results")
+      .from("statistics_assessment_results" as "assessment_results")
       .select("id,activity_registration_id,lead_id,student_id,created_at")
       .in("activity_registration_id", [...ids])
       .lt("created_at", rangeEnd)
@@ -596,7 +596,7 @@ export async function getManagementAnalyticsData({
     ...invitationThreadsRead.rows.map((row) => row.owner_id_at_open),
   ].filter((id): id is string => Boolean(id)))];
   const profilesRead = await readByIds<ProfileRow>(ownerIds, (ids) => supabase
-    .from("profiles")
+    .from("statistics_profiles" as "profiles")
     .select("id,display_name")
     .in("id", [...ids])
     .limit(READ_LIMIT)

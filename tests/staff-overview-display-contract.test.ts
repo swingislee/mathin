@@ -9,6 +9,12 @@ const row = (id: string | null, value: number): StaffOverviewSupportFunnelRow =>
   metrics: Object.fromEntries(STAFF_OVERVIEW_METRICS.map(metric => [metric, { current: value, previous: value + 1 }])) as StaffOverviewSupportFunnelRow["metrics"],
 });
 
+it("keeps remembered alias selections on the canonical account", () => {
+  const oldId=`source-staff:${encodeURIComponent("旧称")}`;
+  const options=[{userId:"existing-account",name:"默认姓名",aliasIds:[oldId]}];
+  expect(selectOverviewDisplayIds(options,[],JSON.stringify([oldId,"existing-account"])).selectedIds).toEqual(["existing-account"]);
+});
+
 describe("overview staff display", () => {
   const rows = [row("a", 2), row("b", 4), row(null, 3)];
   const directory = [{ userId: "a", name: "A" }, { userId: "b", name: "B" }, { userId: "c", name: "C" }];

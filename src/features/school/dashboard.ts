@@ -21,15 +21,15 @@ export async function getStaffStats(): Promise<StaffStats> {
   const weekStart = startOfWeek(now, timeZone);
   const weekEnd = addCalendarDays(weekStart, 7, timeZone);
   const [enrolled, leads, sessions, overdue] = await Promise.all([
-    supabase.from("students").select("*", { count: "exact", head: true }).is("deleted_at", null).eq("status", "enrolled"),
-    supabase.from("students").select("*", { count: "exact", head: true }).is("deleted_at", null).in("status", ["lead", "trialing"]),
+    supabase.from("statistics_students" as "students").select("*", { count: "exact", head: true }).is("deleted_at", null).eq("status", "enrolled"),
+    supabase.from("statistics_students" as "students").select("*", { count: "exact", head: true }).is("deleted_at", null).in("status", ["lead", "trialing"]),
     supabase
-      .from("class_sessions")
+      .from("statistics_class_sessions" as "class_sessions")
       .select("*", { count: "exact", head: true })
       .is("deleted_at", null)
       .gte("scheduled_at", weekStart.toISOString())
       .lt("scheduled_at", weekEnd.toISOString()),
-    supabase.from("students").select("*", { count: "exact", head: true }).is("deleted_at", null).lt("next_follow_up_at", now.toISOString()),
+    supabase.from("statistics_students" as "students").select("*", { count: "exact", head: true }).is("deleted_at", null).lt("next_follow_up_at", now.toISOString()),
   ]);
   return {
     enrolledCount: enrolled.count ?? 0,
@@ -47,7 +47,7 @@ export interface FollowUpFunnelBucket {
 export async function getFollowUpFunnel(): Promise<FollowUpFunnelBucket[]> {
   const supabase = await createClient();
   const results = await Promise.all(
-    FOLLOW_UP_STATUSES.map((status) => supabase.from("students").select("*", { count: "exact", head: true }).is("deleted_at", null).eq("follow_up_status", status)),
+    FOLLOW_UP_STATUSES.map((status) => supabase.from("statistics_students" as "students").select("*", { count: "exact", head: true }).is("deleted_at", null).eq("follow_up_status", status)),
   );
   return FOLLOW_UP_STATUSES.map((status, i) => ({ status, count: results[i].count ?? 0 }));
 }
@@ -78,14 +78,14 @@ export async function getRosterMismatchCount(): Promise<RosterMismatch> {
   const supabase = await createClient();
   const [enrollRes, memberRes] = await Promise.all([
     supabase
-      .from("enrollments")
+      .from("statistics_enrollments" as "enrollments")
       .select("classroom_id,student_id,students!inner(user_id)")
       .is("students.deleted_at", null)
       .eq("status", "active")
       .limit(5000)
       .returns<Array<{ classroom_id: string; student_id: string; students: { user_id: string | null } | null }>>(),
     supabase
-      .from("classroom_members")
+      .from("statistics_classroom_members" as "classroom_members")
       .select("classroom_id,user_id,classrooms!inner(course_id)")
       .eq("role", "student")
       .not("classrooms.course_id", "is", null)
@@ -120,15 +120,15 @@ export async function getFinanceOverview(): Promise<FinanceOverview> {
   const [supabase, timeZone] = await Promise.all([createClient(), getOrganizationTimezoneV2()]);
   const monthStart = startOfMonth(new Date(), timeZone);
   const [dueRes, paidRes, refundRes, overdueRes] = await Promise.all([
-    supabase.from("orders").select("amount_due").gte("created_at", monthStart.toISOString()).returns<Array<{ amount_due: number }>>(),
-    supabase.from("payments").select("amount").gte("paid_at", monthStart.toISOString()).returns<Array<{ amount: number }>>(),
+    supabase.from("statistics_orders" as "orders").select("amount_due").gte("created_at", monthStart.toISOString()).returns<Array<{ amount_due: number }>>(),
+    supabase.from("statistics_payments" as "payments").select("amount").gte("paid_at", monthStart.toISOString()).returns<Array<{ amount: number }>>(),
     supabase
-      .from("refunds")
+      .from("statistics_refunds" as "refunds")
       .select("amount")
       .eq("status", "done")
       .gte("approved_at", monthStart.toISOString())
       .returns<Array<{ amount: number }>>(),
-    supabase.from("orders").select("*", { count: "exact", head: true }).in("status", ["unpaid", "partial"]),
+    supabase.from("statistics_orders" as "orders").select("*", { count: "exact", head: true }).in("status", ["unpaid", "partial"]),
   ]);
   if (dueRes.error) throw new Error(dueRes.error.message);
   if (paidRes.error) throw new Error(paidRes.error.message);

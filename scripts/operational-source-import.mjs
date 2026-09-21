@@ -21,7 +21,7 @@ const source=read('.tmp/full-source-import/plan.json');
 const batch=JSON.parse(sql(`begin read only;select to_jsonb(b) from public.history_import_batches b where batch_key=${q(source.batchKey)};commit;`));
 if(batch.payload_sha256!==source.payloadHash)throw new Error('SOURCE_BATCH_CHANGED');
 const snapshot=Object.fromEntries(OPERATIONAL_TABLES.map(table=>[table,JSON.parse(sql(`begin read only;select coalesce(jsonb_agg(t),'[]'::jsonb) from public.${table} t;commit;`))]));
-snapshot.profiles=JSON.parse(sql("begin read only;select coalesce(jsonb_agg(t),'[]'::jsonb) from(select id,display_name,role,is_active,account_status from public.profiles where role in ('staff','admin')) t;commit;"));
+snapshot.profiles=JSON.parse(sql("begin read only;select coalesce(jsonb_agg(t),'[]'::jsonb) from(select id,display_name,staff_aliases,role,is_active,account_status from public.profiles where role in ('staff','admin')) t;commit;"));
 snapshot.history_import_associations=JSON.parse(sql("begin read only;select coalesce(jsonb_agg(t),'[]'::jsonb) from(select record_id,student_id from public.history_import_associations) t;commit;"));
 const plan=buildOperationalSourceImport(source,snapshot);
 plan.baseBusinessFields=buildBaseBusinessPlan(source.records,loadBaseChildEvidence(sql,source.records));

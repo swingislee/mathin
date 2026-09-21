@@ -1,7 +1,7 @@
 import { STAFF_OVERVIEW_METRICS } from "./staff-overview-contract";
 import type { StaffOverviewSupportFunnelRow, StaffOverviewTeacherParticipationRow, StaffOverviewTeacherParticipationSummary } from "./staff-overview-data";
 
-export interface OverviewStaffOption { userId: string; name: string }
+export interface OverviewStaffOption { userId: string; name: string; aliasIds?: string[] }
 export type OverviewDisplayScope = "support" | "participation" | "capacity_teachers" | "capacity_grades";
 export interface OverviewDisplayGroup {
   scope: OverviewDisplayScope;
@@ -50,7 +50,8 @@ export function selectOverviewDisplayIds(options: readonly OverviewStaffOption[]
   const directory = Array.from(new Map(options.map(person => [person.userId, person])).values()).sort((a, b) => a.name.localeCompare(b.name));
   const validIds = new Set(directory.map(person => person.userId));
   const parsed = readOverviewDisplaySelection(remembered);
-  const ids = parsed === "all" ? directory.map(person => person.userId) : parsed ?? defaults;
+  const aliases = new Map(directory.flatMap(person => (person.aliasIds ?? []).map(alias => [alias, person.userId] as const)));
+  const ids = (parsed === "all" ? directory.map(person => person.userId) : parsed ?? defaults).map(id => aliases.get(id) ?? id);
   return { options: directory, selectedIds: Array.from(new Set(ids.filter(id => validIds.has(id)))) };
 }
 

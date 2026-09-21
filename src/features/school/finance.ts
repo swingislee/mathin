@@ -287,7 +287,7 @@ export async function listPendingRefunds(): Promise<PendingRefundRow[]> {
 
 export async function countPendingRefunds(): Promise<number> {
   const supabase = await createClient();
-  const { count, error } = await supabase.from("refunds").select("*", { count: "exact", head: true }).eq("status", "pending");
+  const { count, error } = await supabase.from("statistics_refunds" as "refunds").select("*", { count: "exact", head: true }).eq("status", "pending");
   if (error) throw new Error(error.message);
   return count ?? 0;
 }

@@ -44,6 +44,12 @@ describe('source expressions use the existing business vocabulary', () => {
     expect(resolveSourceStaffId('示例老师',[{...profile,is_active:false}])).toBeNull();
     expect(resolveSourceStaffId('示例老师',[{...profile,role:'parent'}])).toBeNull();
   });
+  it('resolves confirmed aliases to the existing account and rejects ambiguity',()=>{
+    const profile={id:'staff',display_name:'默认老师',staff_aliases:['旧称'],role:'staff',is_active:true};
+    expect(resolveSourceStaffId(' 旧称 ',[profile])).toBe('staff');
+    expect(resolveSourceStaffId('旧称',[profile,{...profile,id:'other',display_name:'旧称'}])).toBeNull();
+    expect(resolveSourceStaffId('旧称',[{...profile,account_status:'locked'}])).toBeNull();
+  });
   it('retains explicit negative contact facts and interest without inventing a conversation',()=>{
     expect(sourceLeadContactFacts('用户当下加V与否：未\n诺访与否：否\n意向分类：C')).toEqual({wechatAdded:false,visitCommitted:false,interestLevel:'C'});
     expect(sourceLeadContactFacts('意向分类：A\n意向分类：C')).toEqual({wechatAdded:null,visitCommitted:null,interestLevel:null});

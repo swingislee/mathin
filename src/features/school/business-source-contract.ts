@@ -56,9 +56,9 @@ export function mergeSourceNotes(...values: (string | null | undefined)[]): stri
   return [...new Set(values.flatMap(value => value?.split(/\r?\n/) ?? []).map(line => line.trim()).filter(Boolean))].join('\n');
 }
 
-export function resolveSourceStaffId(label: string, profiles: readonly {id:string;display_name:string;role:string;is_active:boolean;account_status?:string}[]): string | null {
+export function resolveSourceStaffId(label: string, profiles: readonly {id:string;display_name:string;staff_aliases?:readonly string[];role:string;is_active:boolean;account_status?:string}[]): string | null {
   if(!label.trim())return null;
-  const matches=profiles.filter(profile=>profile.display_name.trim()===label.trim()&&['staff','admin'].includes(profile.role)&&profile.is_active&&profile.account_status!=='locked');
+  const matches=profiles.filter(profile=>(profile.display_name.trim()===label.trim()||profile.staff_aliases?.some(alias=>alias.trim()===label.trim()))&&['staff','admin'].includes(profile.role)&&profile.is_active&&profile.account_status!=='locked');
   return matches.length===1?matches[0].id:null;
 }
 

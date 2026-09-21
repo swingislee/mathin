@@ -21,7 +21,7 @@ async function rpc(name: string, args: { p_filters?: { schoolTermId: string }; p
 
 // 模拟 API 单次最多 1000 行，分页必须读取后面的真实记录。
 function query(table: string) {
-  const canonical = table.replace(/^(business_|operational_)/, "");
+  const canonical = table.replace(/^statistics_/, "").replace(/^(business_|operational_)/, "");
   const predicates: Array<(row: Record<string, unknown>) => boolean> = [];
   let start = 0, end = 999;
   const execute = () => Promise.resolve(state.failures.has(table) || state.failures.has(canonical)

@@ -10,7 +10,7 @@ import { readOverviewRows, STAFF_OVERVIEW_READ_LIMIT } from "./staff-overview-re
 
 type Lead = OverviewAcquisitionLead & { student_id: string | null };
 type SourceLink = { source_record_id: string | null; lead_id: string | null };
-type Profile = { id: string; display_name: string; role: string; is_active: boolean };
+type Profile = { staff_aliases: string[]; id: string; display_name: string; role: string; is_active: boolean };
 
 /** 获客明细复用总览的来源事件与范围合同；关联事实只读取归属所需的两个键。 */
 export async function getStaffOverviewAcquisitionDetail({ grain, date, now, detail, selectedSupportIds }: {
@@ -21,12 +21,12 @@ export async function getStaffOverviewAcquisitionDetail({ grain, date, now, deta
   if (grain === "month") window.previousCutoff = window.previousEnd;
   const [sourcesResult, leadsResult, submissionsResult, profilesResult, ...linkResults] = await Promise.all([
     readOverviewAcquisitions(supabase),
-    readOverviewRows<Lead>(() => supabase.from("leads").select("id,owner_id,student_id,created_at,source_record_id")),
-    readOverviewRows<OverviewLeadSubmission>(() => supabase.from("lead_source_records").select("id,lead_id,submitted_at")),
-    readOverviewRows<Profile>(() => supabase.from("profiles").select("id,display_name,role,is_active").in("role", ["staff", "admin"]).eq("is_active", true)),
-    readOverviewRows<SourceLink>(() => supabase.from("business_lead_communications" as "lead_communications").select("source_record_id,lead_id")),
-    readOverviewRows<SourceLink>(() => supabase.from("business_activity_registrations" as "activity_registrations").select("source_record_id,lead_id")),
-    readOverviewRows<SourceLink>(() => supabase.from("business_assessment_results" as "assessment_results").select("source_record_id,lead_id")),
+    readOverviewRows<Lead>(() => supabase.from("statistics_leads" as "leads").select("id,owner_id,student_id,created_at,source_record_id")),
+    readOverviewRows<OverviewLeadSubmission>(() => supabase.from("statistics_lead_source_records" as "lead_source_records").select("id,lead_id,submitted_at")),
+    readOverviewRows<Profile>(() => supabase.from("statistics_profiles" as "profiles").select("id,display_name,staff_aliases,role,is_active").in("role", ["staff", "admin"]).eq("is_active", true)),
+    readOverviewRows<SourceLink>(() => supabase.from("statistics_lead_communications" as "lead_communications").select("source_record_id,lead_id")),
+    readOverviewRows<SourceLink>(() => supabase.from("statistics_activity_registrations" as "activity_registrations").select("source_record_id,lead_id")),
+    readOverviewRows<SourceLink>(() => supabase.from("statistics_assessment_results" as "assessment_results").select("source_record_id,lead_id")),
   ]);
   const sources = sourcesResult.data ?? [], leads = leadsResult.data ?? [], profiles = profilesResult.data ?? [];
   const complete = [sourcesResult, leadsResult, submissionsResult, profilesResult, ...linkResults]

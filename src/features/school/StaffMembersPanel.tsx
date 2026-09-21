@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Copy, LoaderCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -62,6 +62,7 @@ export function StaffMembersPanel({
   canManageStaff: boolean;
 }) {
   const t = useTranslations("school.staff");
+  const locale = useLocale();
   const router = useRouter();
 
   // 授岗弹窗：目标成员 + 勾选集（打开时从成员当前岗位初始化，保存时按差异 grant/revoke）
@@ -214,6 +215,7 @@ export function StaffMembersPanel({
               <TableRow key={member.userId}>
                 <TableCell className="px-4 py-3 font-medium">
                   {member.displayName}
+                  {member.purpose === "test" && <Badge variant="outline" className="ml-2">{locale === "en" ? "Test" : "测试"}</Badge>}
                   {!member.isActive && <Badge variant="secondary" className="ml-2">{t("inactive")}</Badge>}
                   {member.passwordChangeRequired && <Badge variant="outline" className="ml-2">{t("initialPasswordPending")}</Badge>}
                 </TableCell>

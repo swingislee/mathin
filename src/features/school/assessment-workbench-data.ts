@@ -44,7 +44,7 @@ interface StudentSubjectRow {
   assigned_to: string | null;
 }
 
-interface SupportOwnerDbRow {id:string;display_name:string;role:string;is_active:boolean;account_status:string}
+interface SupportOwnerDbRow {id:string;display_name:string;staff_aliases?:string[];role:string;is_active:boolean;account_status:string}
 
 interface InvitationDbRow {
   id: string;
@@ -334,8 +334,13 @@ export async function listAssessmentWorkbenchRows(subject?: { studentId: string 
     readRelatedRows<QuickEntryDbRow>(supabase, "assessment_quick_entries", "id,registration_id,entry,revision,recorded_by,updated_at,finalized_at,recorder:profiles!assessment_quick_entries_recorded_by_fkey(display_name)", "registration_id", registrationIds),
     readRelatedRows<EntryActorDbRow>(supabase, "assessment_entry_actors", "id,registration_id,entry_kind,recorded_by,recorded_at,display_name", "registration_id", registrationIds),
     readRelatedRows<AssessmentWorkflowDbRow>(supabase, "assessment_workflow_states", ASSESSMENT_WORKFLOW_COLUMNS, "registration_id", registrationIds),
-    readRelatedRows<SupportOwnerDbRow>(supabase,'profiles','id,display_name,role,is_active,account_status','id',supportOwnerIds),
-    readRelatedRows<SupportOwnerDbRow>(supabase,'profiles','id,display_name,role,is_active,account_status','display_name',sourceSupportNames),
+    readRelatedRows<SupportOwnerDbRow>(supabase,'profiles','id,display_name,staff_aliases,role,is_active,account_status','id',supportOwnerIds),
+    Promise.all([
+      readRelatedRows<SupportOwnerDbRow>(supabase,'profiles','id,display_name,staff_aliases,role,is_active,account_status','display_name',sourceSupportNames),
+      sourceSupportNames.length ? supabase.from('profiles').select('id,display_name,staff_aliases,role,is_active,account_status')
+        .overlaps('staff_aliases',sourceSupportNames).in('role',['staff','admin']).limit(1000)
+        : Promise.resolve({data:[],error:null}),
+    ]).then(([names,aliases])=>({data:[...new Map([...(names.data??[]),...(aliases.data??[])].map(row=>[row.id,row])).values()],error:names.error??aliases.error})),
   ]);
   if (assessmentResult.error) throw new Error(assessmentResult.error.message);
   if (routeResult.error) throw new Error(routeResult.error.message);

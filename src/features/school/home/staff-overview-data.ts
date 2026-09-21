@@ -140,7 +140,7 @@ export interface StaffOverviewData {
   activityRegistrations?: StaffOverviewPersonMetric;
   pendingFacts: StaffOverviewPendingFact[];
   supportFunnelRows: StaffOverviewSupportFunnelRow[];
-  supportDirectory: Array<{ userId: string; name: string }>;
+  supportDirectory: Array<{ userId: string; name: string; aliasIds?: string[] }>;
   teacherParticipationRows: StaffOverviewTeacherParticipationRow[];
   teacherParticipationSummary: StaffOverviewTeacherParticipationSummary;
   capacityByGrade: StaffOverviewCapacityRow[];
@@ -235,6 +235,7 @@ interface SupportTaskRow {
 }
 
 interface ProfileRow {
+  staff_aliases: string[];
   id: string;
   display_name: string;
   role: string;
@@ -274,17 +275,17 @@ async function readOverviewCore(supabase: Awaited<ReturnType<typeof createClient
     ? readCurrentTermClassroomIds(supabase, !terms.error && terms.data?.length === 1 ? terms.data[0].id : null)
     : { data: [], error: null });
   const [activities, registrations, assessments, courseEnrollments, memberships, classrooms, currentTerms, currentClassIds] = await Promise.all([
-    read<OverviewActivity>("activities", () => supabase.from("business_activities" as "activities")
+    read<OverviewActivity>("activities", () => supabase.from("statistics_activities" as "activities")
       .select("id,scheduled_at,occurred_on,source_invitation_id,remark,record_state").is("deleted_at", null)),
-    read<OverviewRegistration>("registrations", () => supabase.from("business_activity_registrations" as "activity_registrations")
+    read<OverviewRegistration>("registrations", () => supabase.from("statistics_activity_registrations" as "activity_registrations")
       .select("id,activity_id,student_id,lead_id,status,record_state,registered_on,created_at,source_record_id,assessment_started_at,assessment_completed_at,source_enrollment_facts,source_metric_facts")),
-    read<OverviewAssessment>("assessments", () => supabase.from("business_assessment_results" as "assessment_results")
+    read<OverviewAssessment>("assessments", () => supabase.from("statistics_assessment_results" as "assessment_results")
       .select("id,activity_registration_id,student_id,lead_id,assessed_by,assessed_on,created_at,source_record_id,result_source,result_finalized_at,assessment_band,score,strengths")),
-    read<OverviewCourseEnrollment>("courseEnrollments", () => supabase.from("business_course_enrollments" as "course_enrollments")
+    read<OverviewCourseEnrollment>("courseEnrollments", () => supabase.from("statistics_course_enrollments" as "course_enrollments")
       .select("id,student_id,opportunity_id,registered_on,confirmed_at,created_at,source_record_id,source_metric_facts,course_opportunities(student_id,lead_id)")),
-    read<OverviewMembership>("memberships", () => supabase.from("enrollments")
+    read<OverviewMembership>("memberships", () => supabase.from("statistics_enrollments" as "enrollments")
       .select("id,classroom_id,student_id,joined_at,status,remark")),
-    read<ClassroomRow>("classrooms", () => supabase.from("classrooms")
+    read<ClassroomRow>("classrooms", () => supabase.from("statistics_classrooms" as "classrooms")
       .select("id,name,grade,capacity,archived_at,trashed_at").eq("purpose", "production")),
     currentTermsRead,
     currentClassIdsRead,
@@ -372,22 +373,22 @@ export async function getStaffOverviewData({
     staffRoleMembersResult, opportunitiesResult, operationalLeadsResult] = await Promise.all([
     readOverviewCore(supabase, sources),
     sources.has("acquisitionSources") ? readOverviewAcquisitions(supabase) : Promise.resolve({ data: [], error: null }),
-    read<OverviewLeadSubmission>("leadSubmissions", () => supabase.from("lead_source_records").select("id,lead_id,submitted_at")),
-    read<LeadDirectoryRow>("leads", () => supabase.from("leads").select("id,owner_id,status,student_id,created_at,source_record_id")),
-    read<CommunicationRow>("communications", () => supabase.from("business_lead_communications" as "lead_communications").select("id,lead_id,occurred_at,occurred_on,outcome,owner_id_at_contact,recorded_by,source_record_id,source_key,source_metric_facts")),
-    read<InvitationEventRow>("invitationEvents", () => supabase.from("lead_invitation_events")
+    read<OverviewLeadSubmission>("leadSubmissions", () => supabase.from("statistics_lead_source_records" as "lead_source_records").select("id,lead_id,submitted_at")),
+    read<LeadDirectoryRow>("leads", () => supabase.from("statistics_leads" as "leads").select("id,owner_id,status,student_id,created_at,source_record_id")),
+    read<CommunicationRow>("communications", () => supabase.from("statistics_lead_communications" as "lead_communications").select("id,lead_id,occurred_at,occurred_on,outcome,owner_id_at_contact,recorded_by,source_record_id,source_key,source_metric_facts")),
+    read<InvitationEventRow>("invitationEvents", () => supabase.from("statistics_lead_invitation_events" as "lead_invitation_events")
       .select("invitation_id,occurred_at,to_state,lead_invitation_threads(owner_id_at_open,assessor_id)")
       .eq("to_state", "confirmed").gte("occurred_at", rangeStart).lt("occurred_at", rangeEnd)),
-    read<InvitationThreadRow>("invitationThreads", () => supabase.from("lead_invitation_threads")
+    read<InvitationThreadRow>("invitationThreads", () => supabase.from("statistics_lead_invitation_threads" as "lead_invitation_threads")
       .select("id,activity_id,lead_id,kind,state,owner_id_at_open,assessor_id,scheduled_at,closed_at,created_at,updated_at")),
-    read<AssignmentRow>("assignments", () => supabase.from("classroom_staff_assignments")
+    read<AssignmentRow>("assignments", () => supabase.from("statistics_classroom_staff_assignments" as "classroom_staff_assignments")
       .select("classroom_id,user_id,responsibility,profiles!classroom_staff_assignments_user_id_fkey(display_name)"), ["classroom_id", "user_id", "responsibility"]),
-    read<LeadActionRow>("leadActions", () => supabase.from("lead_next_actions").select("lead_id,due_at").eq("status", "open").neq("kind", "initial_contact")),
-    read<SupportTaskRow>("supportTasks", () => supabase.from("class_support_tasks").select("id,assigned_to,classroom_id,student_id,due_at,note").eq("status", "pending")),
-    read<ProfileRow>("profiles", () => supabase.from("profiles").select("id,display_name,role,is_active").in("role", ["staff", "admin"]).eq("is_active", true)),
-    read<StaffRoleMemberRow>("staffRoleMembers", () => supabase.from("staff_role_members")
+    read<LeadActionRow>("leadActions", () => supabase.from("statistics_lead_next_actions" as "lead_next_actions").select("lead_id,due_at").eq("status", "open").neq("kind", "initial_contact")),
+    read<SupportTaskRow>("supportTasks", () => supabase.from("statistics_class_support_tasks" as "class_support_tasks").select("id,assigned_to,classroom_id,student_id,due_at,note").eq("status", "pending")),
+    read<ProfileRow>("profiles", () => supabase.from("statistics_profiles" as "profiles").select("id,display_name,staff_aliases,role,is_active").in("role", ["staff", "admin"]).eq("is_active", true)),
+    read<StaffRoleMemberRow>("staffRoleMembers", () => supabase.from("statistics_staff_role_members" as "staff_role_members")
       .select("user_id,staff_roles!staff_role_members_role_id_fkey(key)"), ["user_id", "role_id"]),
-    read<{ id: string; owner_id: string | null }>("opportunities", () => supabase.from("course_opportunities").select("id,owner_id")),
+    read<{ id: string; owner_id: string | null }>("opportunities", () => supabase.from("statistics_course_opportunities" as "course_opportunities").select("id,owner_id")),
     read<{ id: string }>("operationalLeads", () => supabase.from("operational_leads" as "leads").select("id")),
   ]);
 
@@ -963,7 +964,7 @@ export async function getStaffOverviewData({
     activityRegistrations: { current: activityRegistrationComparison?.current ?? null, previous: activityRegistrationComparison?.previous ?? null },
     pendingFacts,
     supportFunnelRows,
-    supportDirectory: [...profiles.map(person => ({ userId: person.id, name: displayName(person.id) })),
+    supportDirectory: [...profiles.map(person => ({ userId: person.id, name: displayName(person.id), aliasIds: [person.display_name, ...(person.staff_aliases ?? [])].map(name => `source-staff:${encodeURIComponent(name)}`) })),
       ...Array.from(sourceStaffNames, ([userId, name]) => ({ userId, name }))],
     teacherParticipationRows,
     teacherParticipationSummary,
