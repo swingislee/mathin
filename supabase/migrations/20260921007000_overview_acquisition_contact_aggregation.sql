@@ -119,7 +119,7 @@ begin
   if not exists(select 1 from pg_proc where oid='public.business_source_is_authoritative(text)'::regprocedure and prosecdef and provolatile='s')
     then raise exception 'OVERVIEW_SOURCE_AUTHORITY_ACCESS_CHANGED';end if;
   foreach relation in array array['lead_communications','activity_registrations','assessment_results','activities'] loop
-    if pg_get_viewdef(('public.business_'||relation)::regclass,true) !~ 'WHERE business_source_is_authoritative\(r.source_record_id\);$'
+    if pg_get_viewdef(('public.business_'||relation)::regclass,true) !~ 'WHERE business_source_is_authoritative\((r\.)?source_record_id\);$'
       or not exists(select 1 from pg_class where oid=('public.business_'||relation)::regclass and reloptions @> array['security_invoker=true'])
       then raise exception 'OVERVIEW_BUSINESS_SCOPE_CHANGED';end if;
   end loop;

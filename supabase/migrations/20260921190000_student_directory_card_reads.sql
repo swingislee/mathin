@@ -234,13 +234,13 @@ begin
       is distinct from item.hash then raise exception 'DIRECTORY_BUSINESS_RULE_CHANGED: %',item.signature;end if;
   end loop;
   for item in select * from (values
-    ('business_activities','6b6770af825c89c6584e66021ea49374'),
-    ('business_activity_registrations','591e0418c08b0c5d42fbafffab01965f'),
-    ('business_assessment_results','12da195b6e922f4aea45139f8f98d7a8'),
-    ('business_course_opportunities','436c3243ecf6d78ba0b4f76fcbf41290'),
-    ('business_lead_communications','58bc9ae6a940d095cad768ceb604309f')
+    ('business_activities','25d8835dfd898998fa65178cfe07cad1'),
+    ('business_activity_registrations','1ec33a600b88535608a110120b3b108a'),
+    ('business_assessment_results','390275ac00bbd037dbfd015ad96a3c4f'),
+    ('business_course_opportunities','925038913f68c8c9930a5b9171f6915e'),
+    ('business_lead_communications','31b64c3c4de40e9b30a35e41aa0b0578')
   ) expected(name,hash) loop
-    if md5(btrim(replace(pg_get_viewdef(('public.'||item.name)::regclass,true),chr(13),''),E' \n\r\t')) is distinct from item.hash
+    if md5(btrim(regexp_replace(replace(pg_get_viewdef(('public.'||item.name)::regclass,true),chr(13),''),'\mr\.','','g'),E' \n\r\t')) is distinct from item.hash
       or not exists(select 1 from pg_class where oid=('public.'||item.name)::regclass and reloptions @> array['security_invoker=true']) then
       raise exception 'DIRECTORY_BUSINESS_VIEW_CHANGED: %',item.name;end if;
   end loop;
