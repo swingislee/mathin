@@ -8,11 +8,13 @@ export interface StudentDirectoryFilters {
   groupBy: DirectoryGrouping; group: string; page: number; pageSize: 20 | 50 | 100;
 }
 export interface DirectoryGroup { id: string; name: string }
-export interface StudentDirectoryCard {
-  id: string; name: string; grade: number | null; gradeText: string; phoneTail: string;
-  stage: StudentStage; detail: string; groups: DirectoryGroup[]; canContact: boolean;
-  assessment: { band: string | null; score: number | null; at: string | null } | null;
-}
+export const studentDirectoryCardSchema = z.object({
+  id: z.string().uuid(), name: z.string(), grade: z.number().nullable(), gradeText: z.string(),
+  phoneTail: z.string().regex(/^[0-9]{0,4}$/), stage: z.enum(STUDENT_STAGE_TABS), detail: z.string(),
+  groups: z.array(z.object({ id: z.string(), name: z.string() })), canContact: z.boolean(),
+  assessment: z.object({ band: z.string().nullable(), score: z.number().nullable(), at: z.string().nullable() }).nullable(),
+});
+export type StudentDirectoryCard = z.infer<typeof studentDirectoryCardSchema>;
 export interface StudentDirectoryData {
   students: StudentDirectoryCard[]; count: number; page: number; totalPages: number; pageSize: 20 | 50 | 100;
   groups: Array<DirectoryGroup & { count: number }>; counts: Partial<Record<StudentStage, number>>;

@@ -55,12 +55,22 @@ describe("student directory boundaries", () => {
     for (const path of ["https://outside.test", "//outside.test", "/dashboard/students/../settings", "/dashboard/communication"]) expect(directoryReturnHref(path)).toBe("/dashboard/students");
   });
   it("uses server-side filters before paging and projects a minimal client DTO", async () => {
+    fixture.rpc.mockResolvedValueOnce({ data: { ...page, rows: [toStudentDirectoryCard(row)] }, error: null });
     const filters = parseStudentDirectoryFilters({ scope: "mine", groupBy: "classroom", group: "class-a", page: "3" });
     const data = await loadStudentDirectory(filters);
-    expect(fixture.rpc).toHaveBeenCalledWith("list_student_directory", expect.objectContaining({ p_scope: "mine", p_group_by: "classroom", p_group: "class-a", p_page: 3, p_selected: null }));
+    expect(fixture.rpc).toHaveBeenCalledWith("list_student_directory_cards", expect.objectContaining({ p_scope: "mine", p_group_by: "classroom", p_group: "class-a", p_page: 3 }));
     expect(JSON.stringify(data)).not.toContain(row.phone);
     expect(JSON.stringify(data)).not.toContain(row.note);
     expect(data.students[0].phoneTail).toBe("1234");
+  });
+  it("rejects malformed cards and database errors without retrying the full-record query", async () => {
+    const filters = parseStudentDirectoryFilters({ scope: "all" });
+    fixture.rpc.mockResolvedValueOnce({ data: { ...page, rows: [{ ...toStudentDirectoryCard(row), phoneTail: row.phone }] }, error: null });
+    await expect(loadStudentDirectory(filters)).rejects.toThrow();
+    expect(fixture.rpc).toHaveBeenCalledTimes(1);
+    fixture.rpc.mockResolvedValueOnce({ data: null, error: { message: "FORBIDDEN" } });
+    await expect(loadStudentDirectory(filters)).rejects.toThrow("FORBIDDEN");
+    expect(fixture.rpc.mock.calls.every(([name]) => name === "list_student_directory_cards")).toBe(true);
   });
   it("reads exactly the selected identities through the same permission-scoped RPC", async () => {
     await loadDirectoryContactSelection([otherId, id, otherId]);

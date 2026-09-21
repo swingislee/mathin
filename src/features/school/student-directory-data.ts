@@ -2,7 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { studentStageRowSchema, studentStageRpc } from "./student-stage-data";
-import { directorySelectionSchema, toStudentDirectoryCard, type StudentDirectoryFilters } from "./student-directory-contract";
+import { directorySelectionSchema, studentDirectoryCardSchema, type StudentDirectoryFilters } from "./student-directory-contract";
 
 const pageSchema = z.object({
   rows: z.array(studentStageRowSchema.extend({ studentId: z.string().uuid(), directoryGroups: z.array(z.object({ id: z.string(), name: z.string() })) })),
@@ -17,9 +17,13 @@ async function readDirectory(filters: StudentDirectoryFilters, selected?: string
     p_page: filters.page, p_page_size: filters.pageSize, p_selected: selected ?? null,
   }));
 }
+const cardPageSchema = pageSchema.extend({ rows: z.array(studentDirectoryCardSchema) });
 export async function loadStudentDirectory(filters: StudentDirectoryFilters) {
-  const { rows, ...page } = await readDirectory(filters);
-  return { ...page, students: rows.flatMap(row => { const card = toStudentDirectoryCard(row); return card ? [card] : []; }) };
+  const { rows, ...page } = cardPageSchema.parse(await studentStageRpc(await createClient(), "list_student_directory_cards", {
+    p_scope: filters.scope, p_search: filters.q, p_stage: filters.stage, p_group_by: filters.groupBy, p_group: filters.group,
+    p_page: filters.page, p_page_size: filters.pageSize,
+  }));
+  return { ...page, students: rows };
 }
 export async function loadDirectoryContactSelection(ids: string[]) {
   const selected = directorySelectionSchema.parse(ids);
