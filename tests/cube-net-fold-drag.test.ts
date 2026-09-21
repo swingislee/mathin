@@ -111,7 +111,7 @@ describe("cube net direct paper gestures and shared workbench presentation", () 
     expect(source).toContain('canvas.addEventListener("lostpointercapture", cancelPointer)');
     expect(source).toContain('window.addEventListener("blur", cancel)');
     expect(source).toContain('event.key === "Escape"');
-    expect(source).toContain("if (cancel || !active.moved) onPreview(null)");
+    expect(source).toContain("if (cancel || !active.moved) callbacks.current.onPreview(null)");
     expect(source).toContain("if (controls) controls.enabled = false");
     expect(source).not.toContain("PickHinge");
     expect(source).toContain("depthTest={false} depthWrite={false}");

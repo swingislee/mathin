@@ -8,6 +8,34 @@ import { CubeNetFoldInteraction } from "@/features/tools/spatial-lab/CubeNetFold
 import { createCubeNetWorkbenchResolver, frameCubeNetWorkbench } from "@/features/tools/spatial-lab/cube-net-workbench-model";
 import { beginCubeNetPaperDrag, type CubeNetFoldChange, type CubeNetPaperSelection } from "@/features/tools/spatial-lab/cube-net-fold-drag";
 import { createCubeNetTeachingSession, reduceCubeNetTeachingSession } from "@/features/tools/spatial-lab/cube-net-teaching-session";
+import { createDefaultPaperFoldingSnapshot } from "@/features/tools/paper-folding/contract";
+import { resolvePaperFolding } from "@/features/tools/paper-folding/model";
+import { createDefaultSolidNetsSnapshot } from "@/features/tools/solid-nets/contract";
+import { resolveSolidNet } from "@/features/tools/solid-nets/model";
+
+type PaperKind = "cube" | "free-paper" | "cuboid" | "triangular-prism";
+type PaperFrame = ReturnType<ReturnType<typeof createCubeNetWorkbenchResolver>["resolve"]>;
+type PaperResolver = (angles: Readonly<Record<string, number>>, edgeId?: string | null,
+  anchor?: CubeNetPaperSelection["anchor"] | null, moving?: readonly string[]) => Pick<PaperFrame, "model" | "hinges">;
+
+async function createPaperFixture(kind: PaperKind) {
+  if (kind === "cube") {
+    const entry = createCubeNetGalleryCatalog().entries.find((item) => item.classification === "legal")!;
+    const build = await buildCubeNetGalleryFolding(createCubeNetGalleryFoldingRequest(entry.id));
+    const resolver = createCubeNetWorkbenchResolver(build, "zh");
+    return { resolve: resolver.resolve as PaperResolver, rootFaceId: build.sceneInput.layout.rootFaceId };
+  }
+  if (kind === "free-paper") {
+    const initial = createDefaultPaperFoldingSnapshot();
+    const resolve: PaperResolver = (angles, _edgeId, anchor, moving) => resolvePaperFolding({ ...initial, angles: { ...initial.angles, ...angles },
+      anchor: anchor ? { ...anchor, vertices: [...anchor.vertices] } : null }, moving);
+    return { resolve, rootFaceId: initial.squares[0].id };
+  }
+  const initial = createDefaultSolidNetsSnapshot(kind);
+  const resolve: PaperResolver = (angles, _edgeId, anchor, moving) => resolveSolidNet({ ...initial, angles: { ...initial.angles, ...angles },
+    anchor: anchor ? { ...anchor, vertices: [...anchor.vertices] } : null }, moving);
+  return { resolve, rootFaceId: "base" };
+}
 
 vi.mock("three", async () => {
   const { createRequire } = await import("node:module");
@@ -37,7 +65,7 @@ afterEach(async () => {
 });
 
 // 真实 R3F 射线命中、原生指针捕获和 OrbitControls；仅替换 GPU 输出，不启动浏览器。
-async function setupPaper() {
+async function setupPaper(kind: PaperKind = "cube") {
   extend({ Mesh: THREE.Mesh, MeshBasicMaterial: THREE.MeshBasicMaterial, Group: THREE.Group });
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.stubGlobal("window", Object.assign(new EventTarget(), {
@@ -46,9 +74,7 @@ async function setupPaper() {
   }));
   vi.stubGlobal("requestAnimationFrame", () => 1);
   vi.stubGlobal("cancelAnimationFrame", () => {});
-  const entry = createCubeNetGalleryCatalog().entries.find((item) => item.classification === "legal")!;
-  const build = await buildCubeNetGalleryFolding(createCubeNetGalleryFoldingRequest(entry.id));
-  const resolver = createCubeNetWorkbenchResolver(build, "zh");
+  const resolver = await createPaperFixture(kind);
   const flat = resolver.resolve({});
   const surface = new CanvasSurface();
   const canvas = surface as unknown as HTMLCanvasElement;
@@ -63,11 +89,19 @@ async function setupPaper() {
   const starts = vi.fn();
   const commits = vi.fn();
   const transition = vi.fn();
+  const draggingChanges = vi.fn();
+  type Interaction = { mounted: boolean; tool: "fold" | "orbit"; enabled: boolean };
+  let configure!: (next: Partial<Interaction>) => void;
+  let isDragging = false;
+  let currentPreview: CubeNetFoldChange | null = null;
   function Harness() {
     const [saved, setSaved] = useState(session);
     const [preview, setPreview] = useState<CubeNetFoldChange | null>(null);
     const [active, setActive] = useState<CubeNetPaperSelection | null>(null);
     const [dragging, setDragging] = useState(false);
+    const [interaction, setInteraction] = useState<Interaction>({ mounted: true, tool: "fold", enabled: true });
+    configure = (next) => setInteraction((previous) => ({ ...previous, ...next }));
+    isDragging = dragging; currentPreview = preview;
     const start = useCallback((selection: CubeNetPaperSelection) => { starts(selection); setActive(selection); }, []);
     const commit = useCallback((value: CubeNetFoldChange) => {
       commits(value);
@@ -81,11 +115,12 @@ async function setupPaper() {
     return createElement(Fragment, null,
       createElement(SpatialCameraRig, { bookmark: model.camera, radius: model.bounds.radius, interactive: !dragging,
         navigationMode: "orbit", onTransitionStateChange: transition }),
-      createElement(CubeNetFoldInteraction, { scene: build.page.scene, entityId: build.sceneInput.entityId,
-        model, hinges: current.hinges, activeEdgeId: active?.edgeId ?? null, tool: "fold", locale: "zh",
+      interaction.mounted && createElement(CubeNetFoldInteraction, {
+        model, hinges: current.hinges, activeEdgeId: active?.edgeId ?? null, tool: interaction.tool, foldingEnabled: interaction.enabled, locale: "zh",
         axisSnapEnabled: false, axesVisible: false, cameraRequestKey: 0, dragging,
-        messages: { webglUnavailable: "", contextLost: "" }, onFoldStart: start, onPreview: setPreview,
-        onCommit: commit, onDraggingChange: setDragging }),
+        // 与真实工作台一致：选中、预览和宿主更新都可能提供新的回调引用。
+        messages: { webglUnavailable: "", contextLost: "" }, onFoldStart: start, onPreview: (value) => setPreview(value),
+        onCommit: (value) => commit(value), onDraggingChange: (value) => { draggingChanges(value); setDragging(value); } }),
     );
   }
   const state = () => _roots.get(canvas)!.store.getState();
@@ -108,13 +143,15 @@ async function setupPaper() {
     });
     frame();
   };
-  return { surface, state, pointer, project, starts, commits, current: () => current, session: () => session, rootFaceId: build.sceneInput.layout.rootFaceId };
+  return { surface, state, pointer, project, starts, commits, draggingChanges, dragging: () => isDragging, preview: () => currentPreview,
+    configure: async (next: Partial<Interaction>) => { await act(async () => configure(next)); frame(); },
+    current: () => current, session: () => session, rootFaceId: resolver.rootFaceId };
 }
 
 describe("one-gesture paper folding and empty-space observation", () => {
-  for (const pointerType of ["mouse", "touch"]) {
-    it(`${pointerType}: directly folds A, then rotates from empty space without switching tools`, async () => {
-      const rig = await setupPaper();
+  for (const kind of ["cube", "free-paper", "cuboid", "triangular-prism"] as const) for (const pointerType of ["mouse", "touch"]) {
+    it(`${kind}/${pointerType}: keeps folding through callback refreshes and then observes from empty space`, async () => {
+      const rig = await setupPaper(kind);
       const current = rig.current();
       const face = current.model.faces.find((item) => item.faceId === rig.rootFaceId)!;
       const initial = rig.project(face.centroid);
@@ -132,11 +169,41 @@ describe("one-gesture paper folding and empty-space observation", () => {
       expect(rig.session().angles[gesture.edgeId]).toBe(40);
       expect(rig.session().past).toHaveLength(1);
       expect(rig.surface.hasPointerCapture(1)).toBe(false);
+      expect(rig.dragging()).toBe(false);
+      expect(rig.draggingChanges.mock.calls.map(([value]) => value)).toEqual([true, false]);
       await rig.pointer("pointerdown", { x: 30, y: 40 }, pointerType);
       await rig.pointer("pointermove", { x: 110, y: 65 }, pointerType);
       await rig.pointer("pointerup", { x: 110, y: 65 }, pointerType);
       expect(rig.state().camera.quaternion.angleTo(orientation)).toBeGreaterThan(0.1);
       expect(rig.commits).toHaveBeenCalledOnce();
+    });
+  }
+
+  for (const reason of ["pointercancel", "lostpointercapture", "blur", "mode", "disabled", "unmount"] as const) {
+    it(`${reason}: clears preview and dragging without committing, and releases empty-space observation`, async () => {
+      const rig = await setupPaper();
+      const current = rig.current(), face = current.model.faces[0], initial = rig.project(face.centroid);
+      const gesture = beginCubeNetPaperDrag(face, current.model.faces, current.hinges, face.centroid, initial, rig.project)!;
+      await rig.pointer("pointerdown", initial);
+      await rig.pointer("pointermove", gesture.samples.find((sample) => sample.degrees === 35)!.point);
+      expect(rig.dragging()).toBe(true);
+      expect(rig.preview()).not.toBeNull();
+      if (reason === "mode") await rig.configure({ tool: "orbit" });
+      else if (reason === "disabled") await rig.configure({ enabled: false });
+      else if (reason === "unmount") await rig.configure({ mounted: false });
+      else if (reason === "blur") await act(async () => window.dispatchEvent(new Event("blur")));
+      else if (reason === "lostpointercapture") await act(async () => rig.surface.releasePointerCapture(1));
+      else await rig.pointer("pointercancel", initial);
+      expect(rig.commits).not.toHaveBeenCalled();
+      expect(rig.preview()).toBeNull();
+      expect(rig.dragging()).toBe(false);
+      expect(rig.draggingChanges.mock.calls.map(([value]) => value)).toEqual([true, false]);
+      expect(rig.surface.hasPointerCapture(1)).toBe(false);
+      const orientation = rig.state().camera.quaternion.clone();
+      await rig.pointer("pointerdown", { x: 30, y: 40 });
+      await rig.pointer("pointermove", { x: 110, y: 65 });
+      await rig.pointer("pointerup", { x: 110, y: 65 });
+      expect(rig.state().camera.quaternion.angleTo(orientation)).toBeGreaterThan(0.1);
     });
   }
 

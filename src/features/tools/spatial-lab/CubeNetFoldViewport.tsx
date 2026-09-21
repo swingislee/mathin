@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, type ComponentRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, type ComponentRef } from "react";
 import { Html, Line, type OrbitControls } from "@react-three/drei";
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { BufferGeometry, DoubleSide, Float32BufferAttribute, Vector3 } from "three";
@@ -67,6 +67,9 @@ export function CubeNetFoldInteraction({ model, hinges, activeEdgeId, tool, fold
   const camera = useThree((state) => state.camera);
   const canvas = useThree((state) => state.gl.domElement);
   const getThree = useThree((state) => state.get);
+  // 工作台在选中、预览和课堂回显时会更新回调；指针会话只随画布挂载和退出。
+  const callbacks = useRef({ onPreview, onCommit, onDraggingChange });
+  useLayoutEffect(() => { callbacks.current = { onPreview, onCommit, onDraggingChange }; }, [onPreview, onCommit, onDraggingChange]);
   const drag = useRef<{
     pointerId: number; gesture: CubeNetPaperDrag; degrees: number; moved: boolean;
     controls: FoldCameraControls | null; controlsEnabled: boolean;
@@ -75,12 +78,15 @@ export function CubeNetFoldInteraction({ model, hinges, activeEdgeId, tool, fold
     const active = drag.current;
     if (!active) return;
     drag.current = null;
-    if (canvas.hasPointerCapture(active.pointerId)) canvas.releasePointerCapture(active.pointerId);
     if (active.controls) active.controls.enabled = active.controlsEnabled;
-    if (cancel || !active.moved) onPreview(null);
-    else onCommit({ edgeId: active.gesture.edgeId, degrees: finishCubeNetFoldDrag(active.degrees, active.gesture), anchor: active.gesture.anchor });
-    onDraggingChange(false);
-  }, [canvas, onCommit, onDraggingChange, onPreview]);
+    try {
+      if (canvas.hasPointerCapture(active.pointerId)) canvas.releasePointerCapture(active.pointerId);
+      if (cancel || !active.moved) callbacks.current.onPreview(null);
+      else callbacks.current.onCommit({ edgeId: active.gesture.edgeId, degrees: finishCubeNetFoldDrag(active.degrees, active.gesture), anchor: active.gesture.anchor });
+    } finally {
+      callbacks.current.onDraggingChange(false);
+    }
+  }, [canvas]);
 
   useEffect(() => {
     const move = (event: PointerEvent) => {
@@ -91,7 +97,7 @@ export function CubeNetFoldInteraction({ model, hinges, activeEdgeId, tool, fold
       active.moved ||= degrees !== active.gesture.initialAngle;
       if (degrees !== active.degrees) {
         active.degrees = degrees;
-        onPreview({ edgeId: active.gesture.edgeId, degrees, anchor: active.gesture.anchor });
+        callbacks.current.onPreview({ edgeId: active.gesture.edgeId, degrees, anchor: active.gesture.anchor });
       }
     };
     const up = (event: PointerEvent) => {
@@ -115,13 +121,10 @@ export function CubeNetFoldInteraction({ model, hinges, activeEdgeId, tool, fold
       canvas.removeEventListener("lostpointercapture", cancelPointer);
       window.removeEventListener("blur", cancel);
       window.removeEventListener("keydown", key);
-      const active = drag.current;
-      drag.current = null;
-      if (active && canvas.hasPointerCapture(active.pointerId)) canvas.releasePointerCapture(active.pointerId);
-      if (active?.controls) active.controls.enabled = active.controlsEnabled;
+      finish(true);
     };
-  }, [canvas, finish, onPreview]);
-  useEffect(() => { if (tool !== "fold") finish(true); }, [finish, tool]);
+  }, [canvas, finish]);
+  useEffect(() => { if (tool !== "fold" || !foldingEnabled) finish(true); }, [finish, tool, foldingEnabled]);
 
   const grab = (face: PolyhedronFoldRenderFace, event: ThreeEvent<PointerEvent>) => {
     event.stopPropagation();

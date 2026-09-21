@@ -387,7 +387,7 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector, modeSelector,
             onPointerMissed={!readOnly && !busy && !classroom?.pending ? controls.onPointerMissed : undefined}
             activeEdgeId={activeFold?.edgeId ?? null} tool={tool} locale={locale}
             axisSnapEnabled={axisSnapEnabled} axesVisible={axesVisible} cameraRequestKey={cameraRequestKey} dragging={dragging}
-            animating={playback.playing} foldingEnabled={!playback.playing && !buildingCuts && !cutting} cutEdges={cutEdges} onCutToggle={tool === "cut" && !busy && !revealEnabled ? toggleCut : undefined}
+            animating={playback.playing} foldingEnabled={!readOnly && !classroom?.pending && !playback.playing && !buildingCuts && !cutting} cutEdges={cutEdges} onCutToggle={tool === "cut" && !busy && !revealEnabled ? toggleCut : undefined}
             onCutFaceOpen={tool === "cut" && !busy && !revealEnabled && cutMoves.length > 0 ? openCutFace : undefined}
             faceArrows={faceArrows} onFaceMove={!busy ? (faceId) => runCommand({ kind: "move-face", faceId: faceId as typeof NET_FACE_IDS[number] }) : undefined}
             surfaces={previewSurfaces} onSurfaceFaceSelect={!busy && surfaceTool ? paintFace : undefined}
