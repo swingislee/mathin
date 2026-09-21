@@ -25,6 +25,15 @@ pnpm dev
 
 局域网访问地址：<http://192.168.5.213:3130>。
 
+## 原生家长端
+
+微信小程序、iOS 和 Android 工程位于 `apps/`，独立构建并共用现有后端。当前提供四个入口、中英文文案与浅色/深色外壳，业务接入按增量推进。导入工程、工具链和验证说明见 [家长端开发入口](apps/README.md)，接口规范见 [parent-api](contracts/parent-api/README.md)。
+
+```bash
+pnpm parents:check
+pnpm parents:doctor
+```
+
 ## 检查
 
 ```bash

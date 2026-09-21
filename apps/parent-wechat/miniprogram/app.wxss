@@ -1,0 +1,22 @@
+page {
+  --paper: #fffdf8;
+  --ink: #29251f;
+  --muted: #766f65;
+  --line: #e8e1d5;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  page {
+    --paper: #191d2b;
+    --ink: #f2eddf;
+    --muted: #9ba0b0;
+    --line: #333a4e;
+  }
+}
+.page { padding: 64rpx 40rpx; padding-bottom: calc(48rpx + env(safe-area-inset-bottom)); }
+.brand { display: block; color: var(--muted); font-size: 26rpx; letter-spacing: 4rpx; }
+.title { display: block; margin-top: 28rpx; font-size: 52rpx; font-weight: 600; }
+.description { display: block; margin-top: 24rpx; font-size: 32rpx; line-height: 1.8; }
+.availability { margin-top: 80rpx; padding-top: 32rpx; border-top: 1rpx solid var(--line); color: var(--muted); font-size: 28rpx; line-height: 1.8; }

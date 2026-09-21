@@ -1,0 +1,65 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Mathin 家长端接入接口",
+    "version": "0.1.0",
+    "description": "工程基础仅登记现有只读健康接口。课程、错题、作业和身份接口按实际实现增量加入。"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {
+    "/api/health": {
+      "get": {
+        "operationId": "getHealth",
+        "summary": "检查网页服务是否存活",
+        "description": "不连接 Supabase，不证明数据库或家长业务可用。",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "服务存活",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HealthResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "status",
+          "service",
+          "environment"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok"
+            ]
+          },
+          "service": {
+            "type": "string",
+            "enum": [
+              "mathin"
+            ]
+          },
+          "environment": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

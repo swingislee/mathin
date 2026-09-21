@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Mathin</string>
+    <string name="tab_courses">Courses</string>
+    <string name="tab_mistakes">Review</string>
+    <string name="tab_homework">Homework</string>
+    <string name="tab_account">Account</string>
+    <string name="description_courses">Explore the schedule and find the right courses for your child.</string>
+    <string name="description_mistakes">Revisit mistakes and explanations together with your child.</string>
+    <string name="description_homework">View daily assignments and follow your child\'s progress.</string>
+    <string name="description_account">Manage your parent account and your children\'s information here.</string>
+    <string name="feature_availability">This feature is coming soon.</string>
+</resources>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Mathin</string>
+    <string name="tab_courses">课程</string>
+    <string name="tab_mistakes">错题</string>
+    <string name="tab_homework">作业</string>
+    <string name="tab_account">我的</string>
+    <string name="description_courses">了解课程安排，为孩子选择合适的课程。</string>
+    <string name="description_mistakes">回顾错题与解析，陪孩子梳理学习中的疑问。</string>
+    <string name="description_homework">查看每日作业，记录孩子的练习与进步。</string>
+    <string name="description_account">在这里管理家长账号与孩子信息。</string>
+    <string name="feature_availability">此功能正在准备中。</string>
+</resources>

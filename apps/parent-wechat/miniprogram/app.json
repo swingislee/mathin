@@ -1,0 +1,42 @@
+{
+  "pages": [
+    "pages/courses/index",
+    "pages/mistakes/index",
+    "pages/homework/index",
+    "pages/account/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "Mathin",
+    "navigationBarTextStyle": "@navigationText",
+    "navigationBarBackgroundColor": "@paper",
+    "backgroundColor": "@paper"
+  },
+  "tabBar": {
+    "color": "@muted",
+    "selectedColor": "@ink",
+    "backgroundColor": "@paper",
+    "borderStyle": "@borderStyle",
+    "list": [
+      {
+        "pagePath": "pages/courses/index",
+        "text": "课程"
+      },
+      {
+        "pagePath": "pages/mistakes/index",
+        "text": "错题"
+      },
+      {
+        "pagePath": "pages/homework/index",
+        "text": "作业"
+      },
+      {
+        "pagePath": "pages/account/index",
+        "text": "我的"
+      }
+    ]
+  },
+  "darkmode": true,
+  "themeLocation": "theme.json",
+  "sitemapLocation": "sitemap.json",
+  "style": "v2"
+}

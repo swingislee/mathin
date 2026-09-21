@@ -1,0 +1,6 @@
+<view class="page">
+  <text class="brand">MATHIN</text>
+  <text class="title" role="heading">{{title}}</text>
+  <text class="description">{{description}}</text>
+  <view class="availability">{{availability}}</view>
+</view>

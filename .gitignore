@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+**/node_modules/
 /.pnpm-store/
 /.pnp
 .pnp.*
@@ -69,3 +70,22 @@ next-env.d.ts
 /.tmp-*
 /.web-push-rc-*/
 /.worktrees/
+
+# 原生家长端的本机配置、签名与构建产物
+/apps/**/.gradle/
+/apps/**/.kotlin/
+/apps/**/.idea/
+/apps/**/build/
+/apps/**/local.properties
+/apps/**/config.local.ts
+/apps/**/project.private.config.json
+/apps/**/Local.xcconfig
+/apps/**/DerivedData/
+/apps/**/xcuserdata/
+/apps/**/gradle.properties.local
+/apps/parent-wechat/miniprogram/**/*.js
+/apps/parent-wechat/miniprogram/**/*.js.map
+*.jks
+*.keystore
+*.p12
+*.mobileprovision

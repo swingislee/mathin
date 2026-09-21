@@ -1,0 +1,16 @@
+{
+  "light": {
+    "paper": "#FFFDF8",
+    "ink": "#29251F",
+    "muted": "#766F65",
+    "navigationText": "black",
+    "borderStyle": "white"
+  },
+  "dark": {
+    "paper": "#191D2B",
+    "ink": "#F2EDDF",
+    "muted": "#9BA0B0",
+    "navigationText": "white",
+    "borderStyle": "black"
+  }
+}

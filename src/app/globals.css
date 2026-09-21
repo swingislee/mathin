@@ -1,5 +1,6 @@
 @import "../../public/fonts/lxgw-wenkai/lxgwwenkai-regular.css";
 @import "tailwindcss";
+@source not "../../apps";
 
 /* 设计 token 来源：docs/plan/01-design-system.md（色值取样自 public/Main.png） */
 :root {

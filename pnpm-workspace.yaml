@@ -1,3 +1,6 @@
+packages:
+  - apps/parent-wechat
+
 allowBuilds:
   '@parcel/watcher': true
   '@swc/core': true
