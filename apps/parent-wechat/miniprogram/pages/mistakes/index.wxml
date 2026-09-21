@@ -1,6 +1,18 @@
 <view class="page">
-  <text class="brand">{{brandName}}</text>
-  <text class="title" role="heading">{{title}}</text>
-  <text class="description">{{description}}</text>
-  <view class="availability">{{availability}}</view>
+  <text class="eyebrow">{{brandName}}</text><text class="title">{{title}}</text><text class="description">{{description}}</text>
+  <text wx:if="{{locale === 'en' && reports.length}}" class="muted small block">{{copy.originalContent}}</text>
+  <view wx:if="{{!authenticated}}" class="empty"><text class="block">{{copy.loginRequired}}</text><text class="muted block">{{copy.loginRequiredNote}}</text><button class="primary" bindtap="login">{{copy.login}}</button></view>
+  <view wx:elif="{{error}}" class="notice" role="alert">{{error}}<button class="text-button" bindtap="load">{{copy.retry}}</button></view>
+  <text wx:elif="{{loading}}" class="empty">{{copy.loading}}</text>
+  <view wx:elif="{{!reports.length}}" class="empty"><text class="block">{{copy.noReports}}</text><text class="muted block">{{copy.noReportsNote}}</text></view>
+  <view wx:for="{{reports}}" wx:key="id" class="list-row">
+    <text class="tag">{{item.kind === 'assessment' ? copy.assessment : copy.feedback}}</text>
+    <text class="row-title">{{item.title}}</text><text class="muted small">{{item.participantName}} · {{item.when}}</text><text class="prose">{{item.summary}}</text>
+    <view wx:if="{{expanded === item.id}}">
+      <view wx:if="{{item.score !== null}}" class="result-score"><text>{{copy.score}}</text><text>{{item.score}}{{item.totalScore !== null ? ' / ' + item.totalScore : ''}}</text></view>
+      <block wx:if="{{item.strengths}}"><text class="subheading">{{copy.strengths}}</text><text class="prose">{{item.strengths}}</text></block>
+      <block wx:if="{{item.focusAreas}}"><text class="subheading">{{copy.focusAreas}}</text><text class="prose">{{item.focusAreas}}</text></block>
+      <block wx:if="{{item.recommendation}}"><text class="subheading">{{copy.recommendation}}</text><text class="prose">{{item.recommendation}}</text></block>
+    </view><button class="text-button align-left" data-id="{{item.id}}" bindtap="toggle">{{expanded === item.id ? copy.collapse : copy.details}}</button>
+  </view>
 </view>

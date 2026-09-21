@@ -13,17 +13,17 @@ export const messages: Record<Locale, Messages> = {
       courses: {
         title: "思维探索",
         tabLabel: "探索",
-        description: "从观察、推理到表达，发现思维探索的主题与安排。",
+        description: "发现新主题，开启一次思维探索。",
       },
       mistakes: {
         title: "思考回顾",
         tabLabel: "回顾",
-        description: "回看练习中的疑问与思路，把每一步想明白。",
+        description: "查看测评结果与老师反馈，发现下一步的方向。",
       },
       homework: {
         title: "每日练习",
         tabLabel: "练习",
-        description: "查看每日练习，提交思考过程，记录点滴进步。",
+        description: "用照片与视频记录思考，让每个发现留下痕迹。",
       },
       account: {
         title: "我的",
@@ -38,17 +38,17 @@ export const messages: Record<Locale, Messages> = {
       courses: {
         title: "Explore Ideas",
         tabLabel: "Explore",
-        description: "Discover themes and schedules for exploring observation, reasoning and expression.",
+        description: "Discover a new theme and begin an exploration.",
       },
       mistakes: {
         title: "Reflect on Ideas",
         tabLabel: "Reflect",
-        description: "Revisit questions and approaches to understand each step more clearly.",
+        description: "Read assessments and feedback to find your next direction.",
       },
       homework: {
         title: "Daily Practice",
         tabLabel: "Practice",
-        description: "View daily practice, share your approach, and track your progress.",
+        description: "Capture your thinking through photos and videos.",
       },
       account: {
         title: "Account",

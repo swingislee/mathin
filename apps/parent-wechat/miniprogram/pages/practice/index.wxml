@@ -1,0 +1,14 @@
+<view class="page">
+  <text class="eyebrow">{{brandName}}</text><text wx:if="{{loading}}" class="empty">{{copy.loading}}</text>
+  <text wx:if="{{locale === 'en' && practice}}" class="muted small block">{{copy.originalContent}}</text>
+  <block wx:if="{{practice}}"><text class="title">{{practice.title}}</text><text class="muted block">{{practice.participantName}}<text wx:if="{{when}}"> · {{when}}</text></text><text class="subheading">{{copy.instructions}}</text><text class="prose">{{practice.instructions || copy.noInstructions}}</text>
+    <view wx:if="{{saved && !editing}}" class="form-section"><text class="tag success">{{copy.saved}}</text><text class="description">{{copy.savedNote}}</text><text class="prose">{{saved.note}}</text><button wx:for="{{saved.media}}" wx:key="id" class="list-row row" data-id="{{item.id}}" bindtap="openSaved"><text>{{copy.attachment}} {{index + 1}} · {{item.kind === 'video' ? '▶' : '▧'}}</text><text>{{copy.preview}} ↗</text></button><button class="secondary" bindtap="again">{{copy.submitAgain}}</button></view>
+    <block wx:if="{{editing}}">
+      <view class="media-grid"><view wx:for="{{files}}" wx:key="key" class="media-item"><image src="{{item.thumb}}" mode="aspectFill" data-key="{{item.key}}" bindtap="preview" aria-label="{{copy.preview}}" /><text wx:if="{{item.kind === 'video'}}" class="video-mark">▶</text><button class="media-remove" data-key="{{item.key}}" bindtap="remove" disabled="{{busy}}">{{copy.remove}}</button><text wx:if="{{busy}}" class="small">{{item.progress}}%</text></view></view>
+      <button class="secondary" bindtap="choose" disabled="{{busy || files.length >= 9}}">＋ {{copy.chooseMedia}}</button><text class="muted small block">{{copy.mediaHelp}}</text>
+      <textarea class="input textarea" placeholder="{{copy.note}}" value="{{note}}" bindinput="noteInput" maxlength="2000" disabled="{{busy}}" />
+      <text wx:if="{{saved}}" class="muted small">{{copy.newRecord}}</text><view wx:if="{{busy}}" class="upload-status"><text>{{copy.uploading}} {{progress}}%</text><progress percent="{{progress}}" stroke-width="3" /></view>
+      <button class="primary" bindtap="submit" loading="{{busy}}" disabled="{{busy || !files.length}}">{{busy ? copy.submitting : copy.submit}}</button>
+    </block>
+  </block><view wx:if="{{error}}" class="notice" role="alert">{{error}}<button wx:if="{{!editing || !practice}}" class="text-button" bindtap="load" disabled="{{busy || loading}}">{{copy.retry}}</button></view>
+</view>

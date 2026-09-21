@@ -3,7 +3,10 @@
     "pages/courses/index",
     "pages/mistakes/index",
     "pages/homework/index",
-    "pages/account/index"
+    "pages/account/index",
+    "pages/register/index",
+    "pages/activity/index",
+    "pages/practice/index"
   ],
   "window": {
     "navigationBarTitleText": "格致未来思维",

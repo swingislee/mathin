@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "node ../../scripts/prepare-parent-wechat.mjs && tsc --noEmit -p tsconfig.json"
   },
   "devDependencies": {
     "miniprogram-api-typings": "5.2.3",

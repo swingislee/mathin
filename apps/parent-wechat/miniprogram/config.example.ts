@@ -1,5 +1,5 @@
-// 复制为 config.local.ts；当前页面外壳不发起网络请求。
-// 本机联调时填写开发服务 origin，后续接口适配器从这里读取。
+// 复制为 config.local.ts 并填写 API origin；正式环境使用已配置的 HTTPS 合法域名。
+// 此处保持空值，避免把开发地址或服务端凭据放入共享代码。
 export const config = {
   apiOrigin: "",
 } as const;

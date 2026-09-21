@@ -1,6 +1,14 @@
 <view class="page">
-  <text class="brand">{{brandName}}</text>
-  <text class="title" role="heading">{{title}}</text>
-  <text class="description">{{description}}</text>
-  <view class="availability">{{availability}}</view>
+  <text class="eyebrow">{{brandName}}</text><text class="title">{{title}}</text>
+  <view wx:if="{{!authenticated}}" class="form-section"><text class="description">{{copy.loginNote}}</text>
+    <label class="field-label">{{copy.identifier}}<input class="input" value="{{identifier}}" bindinput="identifierInput" maxlength="254" placeholder="{{copy.identifier}}" /></label>
+    <label class="field-label">{{copy.password}}<input class="input" value="{{password}}" bindinput="passwordInput" password maxlength="128" placeholder="{{copy.password}}" /></label>
+    <button class="primary" bindtap="signIn" loading="{{busy}}" disabled="{{busy || !identifier || !password}}">{{copy.login}}</button>
+  </view>
+  <block wx:else>
+    <view class="account-heading"><text class="row-title">{{account.displayName}}</text><button class="text-button" bindtap="signOut" disabled="{{busy}}">{{copy.logout}}</button></view>
+    <text class="subheading">{{copy.participant}}</text><text wx:if="{{account && !account.participants.length}}" class="muted block">{{copy.noParticipants}}</text><text wx:for="{{account.participants}}" wx:key="id" class="participant-pill">{{item.name}}</text>
+    <view class="section-heading">{{copy.myBookings}}</view><text wx:if="{{loading}}" class="muted">{{copy.loading}}</text><text wx:elif="{{!bookings.length}}" class="empty">{{copy.noBookings}}</text>
+    <view wx:for="{{bookings}}" wx:key="id" class="list-row"><text class="tag">{{item.statusText}}</text><text class="row-title">{{item.label}}</text><text class="muted small block">{{item.participantName}} · {{item.when}}</text><text class="muted small block">{{item.location}}</text><button wx:if="{{item.status === 'booked'}}" class="text-button align-left" data-id="{{item.id}}" bindtap="cancel" disabled="{{busy}}">{{copy.cancelBooking}}</button></view>
+  </block><view wx:if="{{error}}" class="notice" role="alert">{{error}}<button wx:if="{{authenticated}}" class="text-button" bindtap="load">{{copy.retry}}</button></view>
 </view>

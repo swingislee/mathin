@@ -1,6 +1,13 @@
 <view class="page">
   <text class="brand">{{brandName}}</text>
-  <text class="title" role="heading">{{title}}</text>
-  <text class="description">{{description}}</text>
-  <view class="availability">{{availability}}</view>
+  <view class="hero"><text class="eyebrow">{{copy.welcomeNote}}</text><text class="hero-title">{{copy.welcome}}</text><text class="description">{{description}}</text><view class="orbit" aria-hidden="true"><view class="orbit-dot"></view></view></view>
+  <button class="entry" bindtap="register" hover-class="pressed"><view><text class="entry-title">{{copy.register}}</text><text class="muted">{{copy.registerNote}}</text></view><text class="arrow">↗</text></button>
+  <view class="section-heading"><text>{{copy.activities}}</text><text class="small muted">{{activities.length}}</text></view>
+  <view wx:if="{{error}}" class="notice" role="alert"><text>{{error}}</text><button class="text-button" bindtap="load">{{copy.retry}}</button></view>
+  <text wx:elif="{{loading && !activities.length}}" class="empty">{{copy.loading}}</text>
+  <view wx:elif="{{!activities.length}}" class="empty"><text class="block">{{copy.noActivities}}</text><text class="muted block">{{copy.noActivitiesNote}}</text></view>
+  <button wx:for="{{activities}}" wx:key="id" class="list-row activity-row" data-id="{{item.id}}" bindtap="openActivity" hover-class="pressed">
+    <view class="row"><text class="tag">{{item.bookable ? (item.remaining === 0 ? copy.full : copy.unlimited) : copy.closed}}</text><text class="arrow">↗</text></view>
+    <text class="row-title">{{item.label}}</text><text class="muted block">{{item.when}}</text><text class="muted small block">{{item.location}}</text>
+  </button>
 </view>

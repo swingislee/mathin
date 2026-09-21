@@ -1,0 +1,15 @@
+import {get,post,requestId} from "../../lib/api";
+import type {IntakeForm} from "../../lib/api-types";
+import {pageData,syncPage,text,errorText} from "../../lib/page";
+type FieldView={id:string;type:string;label:string;required:boolean;value:string;index:number;options:{id:string;label:string;checked:boolean}[]};
+Page({
+  data:{...pageData("courses"),slug:"welcome",source:"",requestId:"",form:null as IntakeForm|null,formTitle:"",formDescription:"",privacy:"",fields:[] as FieldView[],answers:{} as Record<string,string|string[]>,consent:false,busy:false,submitted:false},
+  onLoad(query:Record<string,string>){this.setData({slug:query.form||"welcome",source:(query.source||query.scene||"").slice(0,120),requestId:requestId()});syncPage(this,"courses","source");void this.load();},
+  async load(){this.setData({loading:true,error:""});try{const form=await get<IntakeForm>("form","&form="+encodeURIComponent(this.data.slug),false);this.setData({form,formTitle:text(form.title),formDescription:text(form.description),privacy:text(form.privacyNotice),fields:form.fields.map(field=>({id:field.id,type:field.type,label:text(field.label),required:field.required,value:"",index:0,options:(field.options||[]).map(option=>({id:option.id,label:text(option.label),checked:false}))})),answers:{},consent:false});}catch(error){this.setData({error:errorText(error)});}finally{this.setData({loading:false});}},
+  input(e:WechatMiniprogram.Input){const index=Number(e.currentTarget.dataset.index),field=this.data.fields[index];this.setData({[`answers.${field.id}`]:e.detail.value,[`fields[${index}].value`]:e.detail.value});},
+  select(e:WechatMiniprogram.PickerChange){const index=Number(e.currentTarget.dataset.index),field=this.data.fields[index],selected=Number(e.detail.value),option=field.options[selected];if(option)this.setData({[`answers.${field.id}`]:option.id,[`fields[${index}].value`]:option.label,[`fields[${index}].index`]:selected});},
+  check(e:WechatMiniprogram.CheckboxGroupChange){const index=Number(e.currentTarget.dataset.index),field=this.data.fields[index];this.setData({[`answers.${field.id}`]:e.detail.value,[`fields[${index}].options`]:field.options.map(option=>({...option,checked:e.detail.value.includes(option.id)}))});},
+  consent(e:WechatMiniprogram.CheckboxGroupChange){this.setData({consent:e.detail.value.includes("agree")});},
+  async submit(){if(this.data.busy||!this.data.form)return;const missing=this.data.fields.some(field=>{const value=this.data.answers[field.id];return field.required&&(!value||(typeof value==="string"?!value.trim():!value.length));});if(missing||!this.data.consent){this.setData({error:this.data.copy.missing});return;}this.setData({busy:true,error:""});try{await post({action:"intake",form:this.data.slug,version:this.data.form.version,requestId:this.data.requestId,source:this.data.source,answers:this.data.answers,consent:true},false);this.setData({submitted:true,answers:{},fields:[]});}catch(error){this.setData({error:errorText(error)});}finally{this.setData({busy:false});}},
+  explore(){wx.switchTab({url:"/pages/courses/index"});},
+});

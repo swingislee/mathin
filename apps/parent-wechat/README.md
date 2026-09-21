@@ -5,15 +5,16 @@
 1. 在仓库根目录运行 `corepack pnpm install --frozen-lockfile`。
 2. 微信开发者工具选择“导入项目”，目录指向当前文件夹（包含 project.config.json）。
 3. 当前 AppID 为产品负责人选择的“格致未来思维”；登录具有该小程序开发权限的微信账号。
-4. 使用工具内置 TypeScript 编译，打开四个底部入口查看外壳。无需启动 Next.js 或 Supabase。
+4. 启动本机 Next.js 和隔离 Supabase；将 `miniprogram/config.example.ts` 复制为已忽略的 `config.local.ts`，填写开发 API origin。
+5. 使用工具内置 TypeScript 编译，打开“探索、回顾、练习、我的”查看业务页面。当前本机已接通后端；后台字段设置、测试数据和验收操作见[业务配置说明](docs/portal.md)。
 
-文案跟随微信语言：英文使用 en，其他语言回退中文；每次进入页面同步原生标题与 tabBar。主题跟随系统外观。
+文案跟随微信语言：英文使用 en，其他语言回退中文；页面首次进入或语言变化时同步标题与 tabBar。后台发布内容保留原文，主题跟随系统外观。
 
 ## 对外文案
 
-小程序对外品牌统一为“格致未来思维”，中英文界面保留这一专有名称。页面围绕思维探索、思路回顾和日常练习说明用途，采用面向使用者的中性表达，弱化年龄与家庭角色。底部入口采用“探索、回顾、练习、我的”，页面标题分别为“思维探索、思考回顾、每日练习、我的”。说明中保留主题与参与安排、疑问回顾和练习提交等具体动作。后续功能沿用这一表达方向，中英文同步维护。
+小程序对外品牌统一为“格致未来思维”，中英文界面保留这一专有名称。页面围绕思维探索、结果回顾和日常练习说明用途，采用“参与人”等中性表达，弱化年龄与家庭角色。底部入口采用“探索、回顾、练习、我的”，页面标题分别为“思维探索、思考回顾、每日练习、我的”。说明中保留登记、预约、查看反馈与提交照片或视频等具体动作，中英文同步维护。
 
-路由和接口中的 `courses`、`mistakes`、`homework` 继续标识原有业务范围；对外文案集中维护在 `miniprogram/lib/locale.ts`，默认中文底部入口同时维护在 `miniprogram/app.json`。
+路由中的 `courses`、`mistakes`、`homework` 保留既有路径；对外文案集中维护在 `miniprogram/lib/locale.ts` 和 `copy.ts`，默认中文底部入口同时维护在 `miniprogram/app.json`。登记字段及活动展示内容由 Supabase 提供。
 
 ```sh
 corepack pnpm parents:wechat:typecheck
@@ -41,10 +42,10 @@ corepack pnpm parents:wechat:typecheck
 
 官方 CLI 会校验 AppID，`touristappid` 可能返回 `APPID_ERROR`；此时先选择有开发权限的真实 AppID 或接口测试号，再配置项目。`compile` 的成功仅表示刷新请求已接收，运行结果结合 `logs`、`info` 和模拟器判断。业务页面的视觉与操作体验由产品负责人验收。
 
-本机已完成官方 Skill 0.3.9、Codex 连接授权和“格致未来思维”AppID 配置；模拟器、编译触发、控制台、网络记录与页面状态读取已验证。个人配置开启热重载并保留域名校验。首次启动后若 `info` 返回自动化响应超时，先读取日志判断页面是否启动，再用 `open-full` 打开调试窗口后复查一次。
+本机已完成官方 Skill 0.3.9、Codex 连接授权和“格致未来思维”AppID 配置；模拟器、编译触发、控制台、网络记录与页面状态读取已验证。按产品负责人 2026-09-22 的明确授权，个人配置开启热重载并仅为局域网 HTTP 联调关闭域名校验。首次启动后若 `info` 返回自动化响应超时，先读取日志判断页面是否启动，再用 `open-full` 打开调试窗口后复查一次。
 
 快捷入口在工具失败时返回退出码 `1`，在等待授权、登录或版本尚未就绪时返回 `2`，便于 Codex 正确保留未完成步骤。
 
-当前不读取 API 配置。后续联调可将 `miniprogram/config.example.ts` 复制为 `config.local.ts` 并填写开发 origin；该文件已忽略。正式网络接入时配置合法 HTTPS 请求/上传域名；局域网 HTTP 仅在开发者工具的本地调试设置中使用。项目默认保留域名校验。
+API origin 从 `miniprogram/config.local.ts` 读取；运行类型检查时只会为缺失配置复制空值示例。正式网络接入配置合法 HTTPS 请求、上传与下载域名；共享 `project.config.json` 保留域名校验，局域网 HTTP 例外只写在已忽略的 `project.private.config.json`。
 
 开发者工具生成的 JS、source map 和 project.private.config.json 不提交。

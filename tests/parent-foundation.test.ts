@@ -59,13 +59,16 @@ describe("家长端工程基础", () => {
       setTabBarItem,
     };
     const locale = loadModule("lib/locale.ts", {});
-    const pageModule = loadModule("lib/placeholder-page.ts", { wx }, { "./locale": locale });
-    const createPage = pageModule.createPlaceholderPage as (section: string) => {
-      onShow: (this: { setData: typeof setData }) => void;
-    };
-    createPage("homework").onShow.call({ setData });
+    const copy = loadModule("lib/copy.ts", {});
+    const pageModule = loadModule("lib/page.ts", { wx }, { "./locale": locale, "./copy": copy, "./api": { ApiError: Error } });
+    const syncPage = pageModule.syncPage as (page: { data: { locale: string }; setData: typeof setData }, section: string) => string;
+    const page = { data: { locale: "" }, setData };
+    page.data.locale = syncPage(page, "homework");
     expect(setData).toHaveBeenCalledWith(expect.objectContaining({ title }));
     expect(setNavigationBarTitle).toHaveBeenCalledWith({ title });
     expect(setTabBarItem.mock.calls.map(([item]) => item.text)).toEqual(tabs);
+    syncPage(page, "homework");
+    expect(setData).toHaveBeenCalledTimes(1);
+    expect(setTabBarItem).toHaveBeenCalledTimes(4);
   });
 });

@@ -1,6 +1,12 @@
 <view class="page">
-  <text class="brand">{{brandName}}</text>
-  <text class="title" role="heading">{{title}}</text>
-  <text class="description">{{description}}</text>
-  <view class="availability">{{availability}}</view>
+  <text class="eyebrow">{{brandName}}</text><text class="title">{{title}}</text><text class="description">{{description}}</text>
+  <text wx:if="{{locale === 'en' && practices.length}}" class="muted small block">{{copy.originalContent}}</text>
+  <view wx:if="{{!authenticated}}" class="empty"><text class="block">{{copy.loginRequired}}</text><text class="muted block">{{copy.loginRequiredNote}}</text><button class="primary" bindtap="login">{{copy.login}}</button></view>
+  <view wx:elif="{{error}}" class="notice" role="alert">{{error}}<button class="text-button" bindtap="load">{{copy.retry}}</button></view>
+  <text wx:elif="{{loading}}" class="empty">{{copy.loading}}</text>
+  <view wx:elif="{{!practices.length}}" class="empty"><text class="block">{{copy.noPractices}}</text><text class="muted block">{{copy.noPracticesNote}}</text></view>
+  <button wx:for="{{practices}}" wx:key="key" class="list-row" data-id="{{item.id}}" data-participant="{{item.participantId}}" bindtap="open" hover-class="pressed">
+    <view class="row"><text class="tag {{item.submittedAt ? 'success' : ''}}">{{item.submittedAt ? copy.submitted : copy.pending}}</text><text class="arrow">↗</text></view>
+    <text class="row-title">{{item.title}}</text><text class="muted small block">{{item.participantName}}</text><text wx:if="{{item.when}}" class="muted small block">{{copy.due}} · {{item.when}}</text>
+  </button>
 </view>

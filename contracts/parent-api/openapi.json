@@ -1,9 +1,9 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Mathin 家长端接入接口",
-    "version": "0.1.0",
-    "description": "工程基础仅登记现有只读健康接口。课程、错题、作业和身份接口按实际实现增量加入。"
+    "title": "格致未来思维 · 家长端接口",
+    "version": "0.2.0",
+    "description": "原生客户端通过版本化 HTTP 接入现有 Supabase 身份和业务数据。登记与活动浏览免登录；预约、结果及练习须核验账号和参与人权限。"
   },
   "servers": [
     {
@@ -30,9 +30,712 @@
           }
         }
       }
+    },
+    "/api/v1/parent/auth": {
+      "post": {
+        "operationId": "parentAuth",
+        "summary": "已有账号登录、刷新或退出",
+        "description": "login/refresh 不需要 Bearer；logout 必须提供 Bearer。校验 active 账号、首次改密及必要同意。使用已有手机号/邮箱和密码，不包含微信 code 兑换。JSON 请求最多 32 KiB。",
+        "security": [
+          {},
+          {
+            "parentBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/Login"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Refresh"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Logout"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "action"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "login/refresh 返回 Session；logout 返回 ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Session"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OkResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "输入格式或字段内容无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "需要有效登录令牌",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "账号状态、关联范围或媒体权限不足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "请求、文件或存储空间超过限制",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "请求过于频繁",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "服务暂不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/parent/portal": {
+      "get": {
+        "operationId": "getParentPortal",
+        "summary": "读取登记、活动及个人记录",
+        "description": "form、activities 免登录；其余 resource 需要 Bearer。activities 最多 100 条未来活动；bookings/practices 最多 100 条；reports 最多 200 条，测评只读已发送版本，课后反馈读取最近 366 天已发布结果。submission 返回指定练习和参与人的最新提交，尚未提交时返回 null。所有读取实时核验权限，不使用 Cookie。",
+        "security": [
+          {},
+          {
+            "parentBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "resource",
+            "in": "query",
+            "required": true,
+            "description": "选择资源",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "form",
+                "activities",
+                "account",
+                "bookings",
+                "reports",
+                "practices",
+                "submission"
+              ]
+            }
+          },
+          {
+            "name": "form",
+            "in": "query",
+            "required": false,
+            "description": "resource=form 使用",
+            "schema": {
+              "type": "string",
+              "default": "welcome",
+              "pattern": "^[a-z0-9-]{1,64}$"
+            }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "description": "resource=submission 必填，练习 ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "participant",
+            "in": "query",
+            "required": false,
+            "description": "resource=submission 必填，参与人 ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "响应由 resource 决定",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/IntakeForm"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Activity"
+                      }
+                    },
+                    {
+                      "$ref": "#/components/schemas/Account"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Booking"
+                      }
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Report"
+                      }
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Practice"
+                      }
+                    },
+                    {
+                      "$ref": "#/components/schemas/PracticeSubmission"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "输入格式或字段内容无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "需要有效登录令牌",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "账号状态、关联范围或媒体权限不足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "内容不存在、不可见或签名失效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "服务暂不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "writeParentPortal",
+        "summary": "登记、预约、取消及提交练习",
+        "description": "intake 允许匿名；其他 action 必须提供 Bearer。登记 requestId、提交 id 用作重试去重，同号不同内容返回 CONFLICT。预约同一活动/参与人重复点击返回同一预约。提交只接受本人已上传且属于当前练习/参与人的文件。JSON 请求最多 32 KiB。",
+        "security": [
+          {},
+          {
+            "parentBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/Intake"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Book"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Cancel"
+                  },
+                  {
+                    "$ref": "#/components/schemas/SubmitPractice"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "action"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "book 返回 id；cancel 返回 ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/IdResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OkResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "intake/submit 创建或幂等返回已有记录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "输入格式或字段内容无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "需要有效登录令牌",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "账号状态、关联范围或媒体权限不足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "内容不存在、不可见或签名失效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "配置版本、名额、时间或请求号发生冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "请求、文件或存储空间超过限制",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "请求过于频繁",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "服务暂不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/parent/media": {
+      "post": {
+        "operationId": "uploadParentMedia",
+        "summary": "上传一份练习照片或视频",
+        "description": "照片 12 MiB，视频 64 MiB；单账号总预留空间 1 GiB。根据二进制签名识别 JPEG/PNG/WebP/HEIC/MP4/MOV。视频额外检查 video 范围。文件进入私有 Storage，提交练习前仅为附件；客户端每次练习最多选择 9 个。",
+        "security": [
+          {
+            "parentBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-assignment-id",
+            "in": "header",
+            "required": true,
+            "description": "当前练习",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "x-participant-id",
+            "in": "header",
+            "required": true,
+            "description": "当前参与人",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "已上传，可使用 id 提交练习",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Media"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "输入格式或字段内容无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "需要有效登录令牌",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "账号状态、关联范围或媒体权限不足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "请求、文件或存储空间超过限制",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "不支持的文件类型",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "请求过于频繁",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "服务暂不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "readParentMedia",
+        "summary": "签发私有预览地址或读取已签名媒体",
+        "description": "id 模式需要 Bearer，返回有效期 300 秒的相对 URL。download+token 模式使用该签名读取二进制，不再携带 Bearer；签名由 Storage 验证对象路径及过期时间。支持 Range 视频读取。",
+        "security": [
+          {},
+          {
+            "parentBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "description": "签发 URL 时必填",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "download",
+            "in": "query",
+            "required": false,
+            "description": "读取二进制时必填",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "description": "与 download 配合使用的 Storage 临时签名",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Range",
+            "in": "header",
+            "required": false,
+            "description": "可选字节区间，仅用于 download",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "签发结果或完整媒体",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignedMedia"
+                }
+              },
+              "image/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "video/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "206": {
+            "description": "签名媒体的部分字节，响应带 Content-Range",
+            "content": {
+              "video/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "输入格式或字段内容无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "需要有效登录令牌",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "账号状态、关联范围或媒体权限不足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "内容不存在、不可见或签名失效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "服务暂不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
+    "securitySchemes": {
+      "parentBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Supabase JWT"
+      }
+    },
     "schemas": {
       "HealthResponse": {
         "type": "object",
@@ -57,6 +760,746 @@
           },
           "environment": {
             "type": "string"
+          }
+        }
+      },
+      "ApiError": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "VALIDATION",
+              "UNAUTHENTICATED",
+              "FORBIDDEN",
+              "ACCOUNT_SECURITY",
+              "NOT_FOUND",
+              "FORM_CHANGED",
+              "ACTIVITY_FULL",
+              "BOOKING_CLOSED",
+              "CONFLICT",
+              "TOO_LARGE",
+              "FILE_TYPE",
+              "RATE_LIMIT",
+              "UNAVAILABLE"
+            ]
+          }
+        }
+      },
+      "LocalizedText": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "zh",
+          "en"
+        ],
+        "properties": {
+          "zh": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "en": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          }
+        }
+      },
+      "FormOption": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "label"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,39}$"
+          },
+          "label": {
+            "$ref": "#/components/schemas/LocalizedText"
+          }
+        }
+      },
+      "FormField": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "type",
+          "label",
+          "required"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,39}$"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "text",
+              "phone",
+              "textarea",
+              "select",
+              "multiselect"
+            ]
+          },
+          "label": {
+            "$ref": "#/components/schemas/LocalizedText"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FormOption"
+            },
+            "minItems": 1,
+            "maxItems": 30
+          }
+        },
+        "description": "字段及选项 ID 唯一且稳定；constructor、prototype 不可用；选择型字段必须提供 options。"
+      },
+      "IntakeForm": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "slug",
+          "version",
+          "title",
+          "description",
+          "privacyNotice",
+          "fields"
+        ],
+        "properties": {
+          "slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]{1,64}$"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "title": {
+            "$ref": "#/components/schemas/LocalizedText"
+          },
+          "description": {
+            "$ref": "#/components/schemas/LocalizedText"
+          },
+          "privacyNotice": {
+            "$ref": "#/components/schemas/LocalizedText"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FormField"
+            },
+            "minItems": 1,
+            "maxItems": 20
+          }
+        }
+      },
+      "Participant": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "Account": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "displayName",
+          "participants"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "participants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Participant"
+            }
+          }
+        }
+      },
+      "Session": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "accessToken",
+          "refreshToken",
+          "expiresAt"
+        ],
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          },
+          "refreshToken": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "integer",
+            "description": "访问令牌过期时间，Unix 秒"
+          }
+        }
+      },
+      "Activity": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "title",
+          "description",
+          "location",
+          "startsAt",
+          "durationMinutes",
+          "remaining",
+          "bookable"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "$ref": "#/components/schemas/LocalizedText"
+          },
+          "description": {
+            "$ref": "#/components/schemas/LocalizedText"
+          },
+          "location": {
+            "type": "string"
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "durationMinutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "remaining": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bookable": {
+            "type": "boolean",
+            "description": "是否在预约开放时间内；仍须检查 remaining 和提交时的实时名额"
+          }
+        }
+      },
+      "Booking": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "activityId",
+          "participantId",
+          "participantName",
+          "title",
+          "startsAt",
+          "location",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "activityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "participantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "participantName": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/LocalizedText"
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "location": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "booked",
+              "attended",
+              "no_show",
+              "cancelled"
+            ]
+          }
+        }
+      },
+      "Report": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "participantName",
+          "date",
+          "summary",
+          "strengths",
+          "focusAreas",
+          "recommendation",
+          "score",
+          "totalScore"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "assessment",
+              "feedback"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "participantName": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "strengths": {
+            "type": "string"
+          },
+          "focusAreas": {
+            "type": "string"
+          },
+          "recommendation": {
+            "type": "string"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "totalScore": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "Practice": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "participantId",
+          "participantName",
+          "title",
+          "instructions",
+          "dueAt",
+          "submittedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "participantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "participantName": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "instructions": {
+            "type": "string"
+          },
+          "dueAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "submittedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "Media": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "kind",
+          "name",
+          "bytes"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "image",
+              "video"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "PracticeSubmission": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "submittedAt",
+          "note",
+          "media"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "note": {
+            "type": "string"
+          },
+          "media": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Media"
+            },
+            "maxItems": 9
+          }
+        }
+      },
+      "IdResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "OkResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ok"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": true
+          }
+        }
+      },
+      "SignedMedia": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "url",
+          "expiresIn"
+        ],
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "同一 API origin 下的相对下载 URL，含临时签名；不要记录或持久化"
+          },
+          "expiresIn": {
+            "type": "integer",
+            "const": 300
+          }
+        }
+      },
+      "Login": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action",
+          "identifier",
+          "password"
+        ],
+        "properties": {
+          "action": {
+            "const": "login"
+          },
+          "identifier": {
+            "type": "string",
+            "description": "已有账号的手机号或邮箱"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 6,
+            "maxLength": 128
+          }
+        }
+      },
+      "Refresh": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action",
+          "refreshToken"
+        ],
+        "properties": {
+          "action": {
+            "const": "refresh"
+          },
+          "refreshToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 8192
+          }
+        }
+      },
+      "Logout": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "const": "logout"
+          }
+        }
+      },
+      "Intake": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action",
+          "form",
+          "version",
+          "requestId",
+          "consent",
+          "answers"
+        ],
+        "properties": {
+          "action": {
+            "const": "intake"
+          },
+          "form": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]{1,64}$"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "requestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "source": {
+            "type": "string",
+            "maxLength": 120,
+            "default": ""
+          },
+          "consent": {
+            "type": "boolean",
+            "const": true
+          },
+          "answers": {
+            "type": "object",
+            "additionalProperties": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "maxLength": 40
+                  },
+                  "maxItems": 30,
+                  "uniqueItems": true
+                }
+              ]
+            },
+            "description": "只接受当前表单字段 ID；选择值使用选项 ID。文本最多 200 字，textarea 最多 2000 字，电话格式另行校验。"
+          }
+        }
+      },
+      "Book": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action",
+          "activityId",
+          "participantId"
+        ],
+        "properties": {
+          "action": {
+            "const": "book"
+          },
+          "activityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "participantId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "Cancel": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action",
+          "id"
+        ],
+        "properties": {
+          "action": {
+            "const": "cancel"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "SubmitPractice": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action",
+          "id",
+          "assignmentId",
+          "participantId",
+          "note",
+          "uploadIds"
+        ],
+        "properties": {
+          "action": {
+            "const": "submit"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assignmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "participantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "uploadIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "minItems": 1,
+            "maxItems": 9,
+            "uniqueItems": true
           }
         }
       }

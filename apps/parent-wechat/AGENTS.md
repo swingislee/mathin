@@ -7,4 +7,5 @@
 - 本地常用顺序：`open` → 修改代码及相关静态检查 → `compile` → `logs` / `info`。`open-full` 显示完整调试窗口，`network` 读取网络记录。
 - `compile` 成功只代表已触发刷新，须结合运行时结果判断；视觉和业务体验由产品负责人在模拟器与手机验收。
 - AppID 使用用户选择且有开发权限的值。访问令牌放在用户私有配置或会话环境 `MATHIN_WECHATIDE_TOKEN`；共享代码与日志不记录令牌。
-- 本机偏好放入已忽略的 `project.private.config.json`，保留域名校验。预览上传、生产 API 与云资源写入按本次明确授权范围执行。
+- 本机偏好放入已忽略的 `project.private.config.json`。共享配置与正式发布保留域名校验；产品负责人已于 2026-09-22 授权仅在本机私有配置关闭校验，以连接局域网 HTTP 开发 API。预览上传、生产 API 与云资源写入按本次明确授权范围执行。
+- 四个业务入口及 Supabase 配置按 [业务配置说明](docs/portal.md) 维护，公共 DTO 从 `contracts/parent-api/portal.ts` 生成。
