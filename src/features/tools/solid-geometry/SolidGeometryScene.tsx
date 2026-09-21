@@ -6,7 +6,8 @@ import type { ThreeEvent } from "@react-three/fiber";
 import { BufferGeometry, CylinderGeometry, DoubleSide, Float32BufferAttribute, Plane, SphereGeometry, Vector3 } from "three";
 import { CUBE_SELECTION_COLOR, cubeGroupOutlineColor } from "../spatial-lab/cube-structures-contract";
 import { createSolidEntity, type SolidEntity, type SolidFeatureSelection, type SolidKind, type SolidVector } from "./solid-geometry-contract";
-import { getSolidTopology, type SolidFace } from "./solid-geometry";
+import { getSolidTopology, type SolidFace, type SolidMeshData } from "./solid-geometry";
+import { solidMeshTopology } from "./exploration-contract";
 import { supportsSolidSection } from "../solid-sections/solid-sections-contract";
 import { solidSectionPlane } from "../solid-sections/solid-sections";
 import { solidSectionVisible, type SolidSectionFrame } from "../solid-sections/solid-sections-motion";
@@ -22,8 +23,10 @@ export interface SolidGeometrySceneProps {
   renderScene?: (context: SolidSceneContext) => ReactNode;
   section?: SolidSectionFrame;
   locale?: string;
+  meshes?: ReadonlyMap<string, SolidMeshData>;
+  cutColors?: ReadonlyMap<string, string>;
 }
-function faceGeometry(face: SolidFace) {
+export function solidFaceGeometry(face: SolidFace) {
   const geometry = new BufferGeometry(), points = face.vertices;
   const positions = [];
   for (let i = 1; i < points.length - 1; i++) for (const point of [points[0], points[i], points[i + 1]]) positions.push(point.x, point.y, point.z);
@@ -39,25 +42,26 @@ function geometryScale(entity: SolidEntity): [number, number, number] {
 }
 function tuple(p: SolidVector): [number, number, number] { return [p.x, p.y, p.z]; }
 const ignoreRaycast = () => null;
-function SolidObject({ entity, selected, feature, mode, readOnly, onPick, clippingPlanes, opacityFactor = 1 }: {
+function SolidObject({ entity, selected, feature, mode, readOnly, onPick, clippingPlanes, opacityFactor = 1, customMesh, cutColor }: {
   entity: SolidEntity; selected: boolean; feature: SolidFeatureSelection | null; mode: SolidPickMode; readOnly: boolean;
   onPick?: SolidGeometrySceneProps["onPick"];
   clippingPlanes?: Plane[]; opacityFactor?: number;
+  customMesh?: SolidMeshData; cutColor?: string;
 }) {
-  const topology = useMemo(() => getSolidTopology(canonicalSolid(entity.kind)), [entity.kind]);
-  const geometries = useMemo(() => new Map(topology.faces.map((face) => [face.id, face.surface === "plane" ? faceGeometry(face)
+  const topology = useMemo(() => customMesh ? solidMeshTopology(customMesh) : getSolidTopology(canonicalSolid(entity.kind)), [entity.kind, customMesh]);
+  const geometries = useMemo(() => new Map(topology.faces.map((face) => [face.id, face.surface === "plane" ? solidFaceGeometry(face)
     : entity.kind === "sphere" ? new SphereGeometry(0.5, 64, 32) : new CylinderGeometry(entity.kind === "cone" ? 0 : 0.5, 0.5, 1, 64, 1, true)])), [entity.kind, topology]);
   useEffect(() => () => geometries.forEach((geometry) => geometry.dispose()), [geometries]);
-  const scale = geometryScale(entity);
+  const scale: [number, number, number] = customMesh ? [1, 1, 1] : geometryScale(entity);
   const pick = (event: ThreeEvent<MouseEvent>, kind: SolidFeatureSelection["kind"], id: string) => {
     if (readOnly || opacityFactor < 0.02 || event.button !== 0 || event.delta > 4 || clippingPlanes?.some((plane) => plane.distanceToPoint(event.point) < -1e-7)) return;
     event.stopPropagation(); onPick?.(entity.id, mode === kind ? { entityId: entity.id, kind, id } : null);
   };
   return <group name={`solid:${entity.id}`} userData={{ spatialObjectId: entity.id }} position={tuple(entity.position)} rotation={tuple(entity.rotation)}>
     <group scale={scale}>
-      {topology.faces.map((face) => { const highlighted = feature?.kind === "face" && feature.id === face.id;
+      {topology.faces.map((face) => { const highlighted = feature?.kind === "face" && feature.id === face.id, faceColor = face.id === "cut" ? cutColor ?? entity.color : entity.color;
         return <mesh key={face.id} geometry={geometries.get(face.id)} onClick={(event) => pick(event, "face", face.id)}>
-          <meshStandardMaterial color={highlighted ? CUBE_SELECTION_COLOR : entity.color} side={DoubleSide} roughness={0.78}
+          <meshStandardMaterial color={highlighted ? CUBE_SELECTION_COLOR : faceColor} side={DoubleSide} roughness={0.78}
             transparent={entity.opacity * opacityFactor < 1} opacity={entity.opacity * opacityFactor} depthWrite={entity.opacity * opacityFactor >= 0.99} clippingPlanes={clippingPlanes}
             emissive={highlighted ? CUBE_SELECTION_COLOR : entity.color} emissiveIntensity={highlighted ? 0.15 : 0.035} />
         </mesh>;
@@ -92,10 +96,10 @@ function SectionedSolidObject({ frame, locale, ...props }: Parameters<typeof Sol
   </>;
 }
 /** 可嵌入原有 3D 舞台；扩展读取同一动画展示帧，截面等不会先跳到下一组尺寸。 */
-export function SolidGeometryScene({ entities, selectedId, feature = null, pickMode = "object", readOnly = false, onPick, renderScene, section, locale = "zh", selectionActive = true }: SolidGeometrySceneProps) {
+export function SolidGeometryScene({ entities, selectedId, feature = null, pickMode = "object", readOnly = false, onPick, renderScene, section, locale = "zh", selectionActive = true, meshes, cutColors }: SolidGeometrySceneProps) {
   return <>{entities.map((entity) => {
-    const props = { entity, selected: selectionActive && selectedId === entity.id, feature: selectionActive && feature?.entityId === entity.id ? feature : null, mode: pickMode, readOnly, onPick };
-    return selectedId === entity.id && section && solidSectionVisible(section) && supportsSolidSection(entity.kind)
+    const props = { entity, selected: selectionActive && selectedId === entity.id, feature: selectionActive && feature?.entityId === entity.id ? feature : null, mode: pickMode, readOnly, onPick, customMesh: meshes?.get(entity.id), cutColor: cutColors?.get(entity.id) };
+    return !props.customMesh && selectedId === entity.id && section && solidSectionVisible(section) && supportsSolidSection(entity.kind)
       ? <SectionedSolidObject key={entity.id} {...props} selected={false} frame={section} locale={locale} /> : <SolidObject key={entity.id} {...props} />;
   })}
     {renderScene?.({ entities, selected: entities.find((entity) => entity.id === selectedId) ?? null })}

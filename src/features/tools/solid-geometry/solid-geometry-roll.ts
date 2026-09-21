@@ -13,7 +13,7 @@ export function solidRollTarget(entity: SolidEntity, direction: SpatialRollDirec
   if (!plan) return null;
   const target = { ...entity, position: spatialRollPoint(entity.position, plan), rotation: spatialQuarterTurn(entity.rotation, plan.axis, plan.turn) };
   if (!solidEntitySchema.safeParse(target).success) return null;
-  const occupied = others.filter((other) => other.id !== entity.id).map(getSolidBounds);
+  const occupied = others.filter((other) => other.id !== entity.id).map((other) => getSolidBounds(other));
   for (let step = 0; step <= 24 && occupied.length; step++) {
     const points = vertices.map((p) => spatialRollPoint(p, plan, step / 24));
     if (occupied.some((other) => (["x", "y", "z"] as const).every((axis) => Math.max(...points.map((p) => p[axis])) > other.min[axis] + 1e-6 && Math.min(...points.map((p) => p[axis])) < other.max[axis] - 1e-6))) return null;

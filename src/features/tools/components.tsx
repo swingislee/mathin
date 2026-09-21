@@ -19,10 +19,11 @@ const FractionLine = dynamic(() => import("./fraction-line/FractionLine").then((
 const MotionLab = dynamic(() => import("./motion-lab/MotionLab").then((m) => m.MotionLab), { loading: ToolSkeleton });
 const SpatialLab = dynamic(() => import("./spatial-lab/SpatialLab").then((m) => m.SpatialLab), { loading: ToolSkeleton });
 const ProjectionTool = dynamic(() => import("./projection/ProjectionWorkspace").then((m) => m.ProjectionTool), { loading: ToolSkeleton });
-const SolidGeometryTool = dynamic(() => import("./solid-geometry/SolidGeometryWorkspace").then((m) => m.SolidGeometryWorkspace), { loading: ToolSkeleton });
+const SolidGeometryTool = dynamic(() => import("./solid-geometry/SolidGeometryExplorationWorkspace").then((m) => m.SolidGeometryExplorationWorkspace), { loading: ToolSkeleton });
 const CubeNetExplorationTool = dynamic(() => import("./net-teaching/CubeNetExplorationWorkspace").then((m) => m.CubeNetExplorationWorkspace), { loading: ToolSkeleton });
-const SolidNetsTool = dynamic(() => import("./solid-nets/SolidNetsTool").then((m) => m.SolidNetsTool), { loading: ToolSkeleton });
-const SolidCapacityTool = dynamic(() => import("./solid-capacity/SolidCapacityWorkspace").then((m) => m.SolidCapacityWorkspace), { loading: ToolSkeleton });
+const SolidNetsTool = dynamic(() => import("./solid-nets/SolidNetsCompleteWorkspace").then((m) => m.SolidNetsCompleteWorkspace), { loading: ToolSkeleton });
+const SolidCapacityTool = dynamic(() => import("./solid-capacity/SolidCapacityTeachingWorkspace").then((m) => m.SolidCapacityTeachingWorkspace), { loading: ToolSkeleton });
+const SolidRevolutionTool = dynamic(() => import("./solid-revolution/SolidRevolutionWorkspace").then((m) => m.SolidRevolutionWorkspace), { loading: ToolSkeleton });
 const SomaTool = dynamic(() => import("./soma-cube/SomaWorkspace").then((m) => m.SomaWorkspace), { loading: ToolSkeleton });
 export const CubeCoursewarePreview = dynamic(() => import("./courseware/CubeStructuresCourseware").then((m) => m.CubeStructuresCourseware), { loading: ToolSkeleton });
 const ToolScenePresentation = dynamic(() => import("./scenes/ToolScenePresentation").then((m) => m.ToolScenePresentation), { loading: ToolSkeleton });
@@ -60,6 +61,8 @@ export function ToolView({ id, preparation = false, preparationHeader, ...props 
       return <SolidGeometryTool />;
     case "solid-capacity":
       return <SolidCapacityTool />;
+    case "solid-revolution":
+      return <SolidRevolutionTool />;
     case "soma-cube":
       return <SomaTool />;
     default:

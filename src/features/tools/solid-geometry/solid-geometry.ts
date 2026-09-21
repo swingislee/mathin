@@ -85,13 +85,13 @@ export function rotateSolidPoint(point: SolidVector, rotation: SolidVector): Sol
   return solidVector(b.x, b.y * Math.cos(rotation.x) - b.z * Math.sin(rotation.x), b.y * Math.sin(rotation.x) + b.z * Math.cos(rotation.x));
 }
 export function solidLocalToWorld(point: SolidVector, entity: SolidEntity): SolidVector { const p = rotateSolidPoint(point, entity.rotation); return solidVector(p.x + entity.position.x, p.y + entity.position.y, p.z + entity.position.z); }
-export function getSolidBounds(entity: SolidEntity): { min: SolidVector; max: SolidVector; center: SolidVector; radius: number } {
+export function getSolidBounds(entity: SolidEntity, mesh?: SolidMeshData): { min: SolidVector; max: SolidVector; center: SolidVector; radius: number } {
   const { width: w, height: h, depth: d, radius: r } = entity.dimensions;
   const extents = entity.kind === "sphere" ? [r, r, r] : entity.kind === "cone" || entity.kind === "cylinder" ? [r, h / 2, r] : [w / 2, h / 2, d / 2];
-  const points = [-1, 1].flatMap((x) => [-1, 1].flatMap((y) => [-1, 1].map((z) => solidLocalToWorld(solidVector(x * extents[0], y * extents[1], z * extents[2]), entity))));
-  return { min: solidVector(...(["x", "y", "z"] as const).map((axis) => Math.min(...points.map((p) => p[axis]))) as [number, number, number]), max: solidVector(...(["x", "y", "z"] as const).map((axis) => Math.max(...points.map((p) => p[axis]))) as [number, number, number]), center: { ...entity.position }, radius: Math.hypot(...extents) };
+  const points = mesh ? mesh.vertices.map((point) => solidLocalToWorld(point, entity)) : [-1, 1].flatMap((x) => [-1, 1].flatMap((y) => [-1, 1].map((z) => solidLocalToWorld(solidVector(x * extents[0], y * extents[1], z * extents[2]), entity))));
+  return { min: solidVector(...(["x", "y", "z"] as const).map((axis) => Math.min(...points.map((p) => p[axis]))) as [number, number, number]), max: solidVector(...(["x", "y", "z"] as const).map((axis) => Math.max(...points.map((p) => p[axis]))) as [number, number, number]), center: { ...entity.position }, radius: mesh ? Math.max(...mesh.vertices.map((p) => Math.hypot(p.x, p.y, p.z))) : Math.hypot(...extents) };
 }
-export function getSolidsFrame(entities: readonly SolidEntity[]) { const bounds = entities.map(getSolidBounds); if (!bounds.length) return { center: solidVector(0, 1, 0), radius: 3 };
+export function getSolidsFrame(entities: readonly SolidEntity[], meshes?: ReadonlyMap<string, SolidMeshData>) { const bounds = entities.map((entity) => getSolidBounds(entity, meshes?.get(entity.id))); if (!bounds.length) return { center: solidVector(0, 1, 0), radius: 3 };
   const min = solidVector(...(["x", "y", "z"] as const).map((axis) => Math.min(...bounds.map((b) => b.min[axis]))) as [number, number, number]);
   const max = solidVector(...(["x", "y", "z"] as const).map((axis) => Math.max(...bounds.map((b) => b.max[axis]))) as [number, number, number]);
   return { center: mean([min, max]), radius: Math.max(2.4, Math.hypot(max.x - min.x, max.y - min.y, max.z - min.z) / 2) };

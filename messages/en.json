@@ -481,7 +481,7 @@
       },
       "solid-nets": {
         "name": "Solid nets",
-        "desc": "Fold and unfold cubes, cuboids, triangular prisms and right square pyramids face by face. Change dimensions, colors and labels to connect solids with their nets."
+        "desc": "Fold cubes, cuboids, triangular prisms, square pyramids, cylinders and cones. Drag the paper to connect lengths, circular rims and nets."
       },
       "dice": {
         "name": "Dice",
@@ -493,11 +493,15 @@
       },
       "solid-geometry": {
         "name": "Solid observation",
-        "desc": "Arrange and turn solids, explore faces, edges and vertices, and compare dimensions, colors and transparency."
+        "desc": "Explore faces, edges and vertices; cut solids and move, turn or reassemble the pieces. Build length, area and volume in centimeters, decimeters and meters."
       },
       "solid-capacity": {
         "name": "Capacity comparison",
-        "desc": "Configure a cylinder and cone, fill and transfer liquid, and compare capacities while watching their levels change."
+        "desc": "Compare cylinder and cone capacities by pouring, or gradually immerse a regular or irregular object to observe water levels and displaced volume."
+      },
+      "solid-revolution": {
+        "name": "Solids of revolution",
+        "desc": "Drag a rectangle or right triangle around an edge, rotate slowly, pause and retain the swept shape to compare how cylinders and cones form."
       },
       "soma-cube": {
         "name": "Soma cube",

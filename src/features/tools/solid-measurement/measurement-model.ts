@@ -2,7 +2,8 @@ import { buildRectangularPrismMeasurement } from "@/features/spatial-math/domain
 import { RECTANGULAR_PRISM_MEASUREMENT_LIMITS, type RectangularPrismDimensions } from "@/features/spatial-math/domain/rectangular-prism-measurement-schema";
 import type { SolidEntity, SolidVector } from "../solid-geometry/solid-geometry-contract";
 import { getSolidMetrics, getSolidTopology } from "../solid-geometry/solid-geometry";
-import type { MeasurementSettings } from "./measurement-contract";
+import type { AnyMeasurementSettings as MeasurementSettings } from "./measurement-v2-contract";
+import { formatModelMeasurement } from "./measurement-units";
 
 export type MeasurementFillUnavailable = "select-solid" | "cuboid-only" | "whole-units" | "unit-limit";
 type MeasurementShape = Pick<SolidEntity, "kind" | "dimensions">;
@@ -37,7 +38,7 @@ export function measurementTargetLayers(entity: SolidEntity | null, settings: Me
 
 /** 仅用于展示的壳体透明度。教师保存的材质/透明度以及数学实体保持原样。 */
 export function measurementDisplayEntity(entity: SolidEntity, settings: MeasurementSettings): SolidEntity {
-  return settings.enabled && settings.unitFill && measurementUnitFillAvailability(entity).available
+  return settings.enabled && ((settings.unitFill && measurementUnitFillAvailability(entity).available) || ("accumulation" in settings && settings.accumulation !== "none"))
     ? { ...entity, opacity: Math.min(entity.opacity, 0.1) } : entity;
 }
 
@@ -108,14 +109,15 @@ export function measurementUnitGrid(entity: SolidEntity): MeasurementSegment[] {
   return lines;
 }
 
-export function formatMeasurementValue(value: number, locale: string, exponent: 1 | 2 | 3 = 1): string {
+export function formatMeasurementValue(value: number, locale: string, exponent: 1 | 2 | 3 = 1, settings?: MeasurementSettings): string {
+  if (settings && "version" in settings) return formatModelMeasurement(value, locale, exponent, settings);
   const rounded = Math.round(value * 1000) / 1000;
   const approximate = Math.abs(value - rounded) > 1e-8;
   return `${approximate ? "≈ " : ""}${new Intl.NumberFormat(locale === "en" ? "en" : "zh", { maximumFractionDigits: 3 }).format(rounded)} u${exponent === 1 ? "" : exponent === 2 ? "²" : "³"}`;
 }
 
-export function formatMeasurementEquation(symbol: "S" | "V", value: number, locale: string, exponent: 2 | 3): string {
-  const formatted = formatMeasurementValue(value, locale, exponent);
+export function formatMeasurementEquation(symbol: "S" | "V", value: number, locale: string, exponent: 2 | 3, settings?: MeasurementSettings): string {
+  const formatted = formatMeasurementValue(value, locale, exponent, settings);
   return `${symbol} ${formatted.startsWith("≈") ? formatted : `= ${formatted}`}`;
 }
 

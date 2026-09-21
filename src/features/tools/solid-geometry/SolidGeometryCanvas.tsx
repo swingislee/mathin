@@ -12,6 +12,7 @@ import type { CubeMoveOperation } from "../spatial-lab/cube-structures-drag";
 import { cubeWorkbenchCamera } from "../spatial-lab/cube-workbench-camera";
 import { CUBE_AXIS_COLORS, CUBE_COLORS, type CubeFrame } from "../spatial-lab/cube-structures-contract";
 import { solidEntitySchema, type SolidEntity, type SolidGeometryInitial } from "./solid-geometry-contract";
+import type { SolidGeometryExplorationInitial } from "./exploration-contract";
 import { SolidGeometryScene, type SolidGeometrySceneProps } from "./SolidGeometryScene";
 import { moveSolidByDrag, solidDragState } from "./solid-geometry-drag";
 import { SolidSectionHandles } from "../solid-sections/SolidSectionHandles";
@@ -33,7 +34,7 @@ class SolidCanvasBoundary extends Component<{ children: ReactNode; label: string
   render() { return this.state.failed ? <p role="alert" className="p-8 text-sm">{this.props.label}</p> : this.props.children; }
 }
 export interface SolidGeometryCanvasProps extends SolidGeometrySceneProps {
-  state: SolidGeometryInitial; frame: CubeFrame; cameraRevision: number; axisSnap: boolean; moveSnap: boolean;
+  state: SolidGeometryInitial | SolidGeometryExplorationInitial; frame: CubeFrame; cameraRevision: number; axisSnap: boolean; moveSnap: boolean;
   navigationMode: "orbit" | "pan" | "move"; moveAxis: Axis; onMoveAxis: (axis: Axis) => void;
   onMove: (operation: CubeMoveOperation) => void; onDragging: (dragging: boolean) => void; fallback: string;
   sectionEditable?: boolean; sectionSettings?: SolidSectionSettings;
@@ -64,14 +65,14 @@ function Contents(props: SolidGeometryCanvasProps) {
   const camera = props.state.view === "bottom" ? { ...bookmark, position: { ...props.frame.center, y: props.frame.center.y - props.frame.radius * 4 }, up: { x: 0, y: 0, z: 1 } } : bookmark;
   const sectionEntity = props.state.entities.find((entity) => entity.id === props.selectedId);
   const rotationEntity = props.selectionActive === false ? undefined : displayed.find((entity) => entity.id === props.selectedId);
-  const bounds = rotationEntity && getSolidBounds(rotationEntity);
+  const bounds = rotationEntity && getSolidBounds(rotationEntity, props.meshes?.get(rotationEntity.id));
   const handleInteraction = props.onTransform ? spatialGizmoInteraction({ key: props.state.entities, selectedId: props.selectedId ?? null,
     mode: props.rotationHandles ? "rotate" : "move", enabled: !props.readOnly && !props.objectAnimating && !preview,
     showHandles: props.selectionActive !== false && !props.rollAction,
     pick: (raycaster) => pickSpatialObjectHit(raycaster, get().scene), onSelect: (id) => props.onPick?.(id, null),
     objectFor: (id) => {
       const source = props.state.entities.find((entity) => entity.id === id); if (!source) return null;
-      return { id, center: source.position, radius: getSolidBounds(source).radius + 0.35,
+      return { id, center: source.position, radius: getSolidBounds(source, props.meshes?.get(id)).radius + 0.35,
         translate: (delta) => {
           const snapped = snapSpatialTranslation(delta, props.moveSnap ? 1 : 0, props.moveSnap ? source.position : undefined), next = { ...source, position: { x: source.position.x + snapped.x, y: source.position.y + snapped.y, z: source.position.z + snapped.z } };
           return { delta: snapped, valid: solidEntitySchema.safeParse(next).success, apply: () => props.onTransform!(next) };

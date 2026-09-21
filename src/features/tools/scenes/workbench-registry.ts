@@ -11,12 +11,20 @@ import { netTeachingSceneAdapter } from "../net-teaching/scene-adapter";
 import { cubeNetExplorationSceneAdapter } from "../net-teaching/exploration-scene-adapter";
 import { solidNetsSceneAdapter, solidNetsPolyhedraSceneAdapter } from "../solid-nets/scene-adapter";
 import { solidCapacitySceneAdapter } from "../solid-capacity/scene-adapter";
+import { solidNetsCompleteSceneAdapter } from "../solid-nets/complete-scene-adapter";
+import { solidCapacityTeachingSceneAdapter } from "../solid-capacity/scene-adapter";
+import { solidGeometryExplorationSceneAdapter } from "../solid-geometry/exploration-scene-adapter";
+import { solidRevolutionSceneAdapter } from "../solid-revolution/scene-adapter";
 import { somaSceneAdapter, somaLegacySceneAdapter } from "../soma-cube/scene-adapter";
 import type { ToolSceneVersion } from "./contract";
 import type { ToolWorkbenchAdapter } from "./workbench-adapter";
 
 /** 仅客户端工作台加载接线；公开目录与服务端合同继续使用轻量 registry。 */
 const adapters = {
+  [solidNetsCompleteSceneAdapter.contentVersion]: solidNetsCompleteSceneAdapter,
+  [solidCapacityTeachingSceneAdapter.contentVersion]: solidCapacityTeachingSceneAdapter,
+  [solidGeometryExplorationSceneAdapter.contentVersion]: solidGeometryExplorationSceneAdapter,
+  [solidRevolutionSceneAdapter.contentVersion]: solidRevolutionSceneAdapter,
   [cubeSceneAdapter.contentVersion]: cubeSceneAdapter,
   [cubeRotationSceneAdapter.contentVersion]: cubeRotationSceneAdapter,
   [netSceneAdapter.contentVersion]: netSceneAdapter,

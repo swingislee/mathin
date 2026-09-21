@@ -24,6 +24,8 @@ export interface CubeMoveInteraction {
   readonly enabled?: boolean;
   readonly handleAxes?: readonly Axis[];
   readonly continuousPreview?: boolean;
+  /** 连续物理量专用；仅在 display-move 且关闭格点吸附时按实际距离提交。 */
+  readonly continuousDistance?: boolean;
   readonly bodyGesture?: SpatialObjectInteraction;
   readonly bodyPreview?: SpatialObjectPreview | null;
   readonly showHandles?: boolean;
@@ -121,7 +123,7 @@ export function bindCubeAxisDrag(canvas: HTMLCanvasElement, getInteraction: () =
     }
     if (!gesture.dragged) return;
     const distance = Math.max(-48, Math.min(48, cubeDragDistance(delta, gesture.projection)));
-    const operation = cubeDragOperation(gesture.snapshot.kind, gesture.ids, gesture.axis, distance, gesture.gridAnchor);
+    const operation = cubeDragOperation(gesture.snapshot.kind, gesture.ids, gesture.axis, distance, gesture.gridAnchor, !gesture.snapshot.snapToGrid && gesture.snapshot.continuousDistance);
     gesture.operation = operation;
     pending = { positions: cubeDragPositions(gesture.snapshot.state, gesture.ids, gesture.axis, gesture.snapshot.snapToGrid && !gesture.snapshot.continuousPreview ? operation?.distance ?? 0 : distance), axis: gesture.axis, ids: gesture.ids,
       distance: operation?.distance ?? 0, valid: !operation || (gesture.snapshot.isValidOperation?.(operation) ?? (applyCubeOperation(gesture.snapshot.state, operation) !== gesture.snapshot.state)) };

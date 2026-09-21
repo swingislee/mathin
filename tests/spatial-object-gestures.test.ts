@@ -106,6 +106,33 @@ function pointerAt(p: Vector3, c: OrthographicCamera, pointerType = "mouse") {
   return { clientX: viewport.left + (n.x + 1) * viewport.width / 2, clientY: viewport.top + (1 - n.y) * viewport.height / 2, pointerType };
 }
 describe("shared explicit transform handles", () => {
+  it.each(["mouse", "touch"])("%s body can explicitly revolve around its teaching edge without changing default rigid-body XZ", (pointerType) => {
+    const g = setup();
+    g.interaction.selected = null;
+    g.interaction.freeRotation = false;
+    g.interaction.bodyConstraint = () => ({ kind: "axis-rotation", axis: "y", maxAngle: Math.PI * 2 });
+    const startVector = new Vector3(2, 0, 0), start = pointerAt(startVector, g.camera, pointerType);
+    g.send("pointerdown", start);
+    for (const angle of [Math.PI / 2, Math.PI, Math.PI * 1.5, Math.PI * 2]) {
+      const rotation = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), angle);
+      g.send("pointermove", pointerAt(startVector.clone().applyQuaternion(rotation), g.camera, pointerType));
+      expect(g.previews.at(-1)!.constraint).toMatchObject({ kind: "axis-rotation", axis: "y" });
+      expect(new Quaternion(...g.previews.at(-1)!.pose.quaternion).angleTo(rotation)).toBeLessThan(1e-7);
+    }
+    // 四元数的负单位保留已走过整圈；相同姿态不等于从未旋转。
+    expect(g.previews.at(-1)!.pose.quaternion[3]).toBeCloseTo(-1);
+    g.send("pointerup", start);
+    expect(g.apply).toHaveBeenCalledTimes(1); expect(g.frames.size).toBe(0);
+    expect(g.previews.at(-1)).toBeNull();
+  });
+  it("cancels an edge-constrained body gesture with no commit and releases the pointer", () => {
+    const g = setup(); g.interaction.bodyConstraint = () => ({ kind: "axis-rotation", axis: "y" });
+    g.send("pointerdown", pointerAt(new Vector3(2, 0, 0), g.camera));
+    g.send("pointermove", pointerAt(new Vector3(0, 0, -2), g.camera));
+    g.send("pointercancel"); g.flush(0); g.flush(160);
+    expect(g.apply).not.toHaveBeenCalled(); expect(g.captured.size).toBe(0); expect(g.previews.at(-1)).toBeNull();
+    g.interaction.pick = () => null; expect(g.send("pointerdown").defaultPrevented).toBe(false);
+  });
   it.each(["mouse", "touch"])("%s dragging the body bypasses legacy guessed axes and moves freely on XZ", (pointerType) => {
     const g = setup(true), end = { pointerType, clientX: point.x + 63, clientY: point.y + 35 };
     g.interaction.freeRotation = false;

@@ -65,8 +65,10 @@ export function cubeDragHandleAxis(point: CubeScreenPoint, center: VoxelCoordina
 }
 
 /** 开启吸附时以被拖动块为锚点对齐单元格；整组选用同一位移，保留相对位置。 */
-export function cubeDragOperation(kind: CubeMoveOperation["kind"], ids: readonly string[], axis: Axis, distance: number, gridAnchor?: number): CubeMoveOperation | null {
+export function cubeDragOperation(kind: CubeMoveOperation["kind"], ids: readonly string[], axis: Axis, distance: number, gridAnchor?: number, continuousDistance = false): CubeMoveOperation | null {
   if (!Number.isFinite(distance) || Math.abs(distance) < 1e-9 || (gridAnchor !== undefined && !Number.isFinite(gridAnchor))) return null;
+  // 液面等连续教具参数明确选择连续提交；实体单元块仍使用原有格点规则。
+  if (continuousDistance && kind === "display-move" && gridAnchor === undefined) return { kind, ids: [...ids], axis, distance: Math.max(-48, Math.min(48, distance)) };
   const scale = kind === "move" ? 1 : 2;
   const snapped = gridAnchor === undefined ? Math.sign(distance) * Math.round(Math.abs(distance) * scale) / scale
     : (distance > 0 ? Math.floor(gridAnchor + distance + 0.5) : Math.ceil(gridAnchor + distance - 0.5)) - gridAnchor;

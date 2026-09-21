@@ -37,6 +37,7 @@ export const SPATIAL_ACTIONS = {
   measure: { zh: "长度、面积与体积", en: "Measurement", icon: "Ruler", group: "inspect" },
   dimensions: { zh: "设置形状与尺寸", en: "Shape dimensions", icon: "Dimensions", group: "inspect" },
   projection: { zh: "投影视图", en: "Projection", icon: "PanelsTopLeft", group: "inspect" },
+  sweep: { zh: "保留旋转扫过的形体", en: "Show swept solid", icon: "Sweep", group: "inspect" },
   faceReveal: { zh: "移面展示", en: "Move faces outward", icon: "FaceReveal", group: "inspect" },
   faceInspect: { zh: "单面观察", en: "Inspect one face", icon: "ScanFace", group: "inspect" },
   xray: { zh: "透视相对面", en: "X-ray opposite face", icon: "ScanEye", group: "inspect" },

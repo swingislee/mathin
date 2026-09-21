@@ -117,6 +117,15 @@ export const toolThumbs: Record<string, ReactNode> = {
       </g>
     </svg>
   ),
+  "solid-revolution": (
+    <svg viewBox="0 0 200 120" className="h-full w-full" aria-hidden>
+      <path d="M56 18v87m-4-83 4-6 4 6" fill="none" stroke="var(--ink)" strokeWidth={1.3} />
+      <path d="M56 26h35v63H56Z" fill="var(--moon)" stroke="var(--ink)" strokeWidth={1.3} />
+      <path d="M139 21 171 89a32 10 0 0 1-64 0Z" fill="var(--leaf)" fillOpacity={0.55} stroke="var(--ink)" strokeWidth={1.3} />
+      <ellipse cx={139} cy={89} rx={32} ry={10} fill="none" stroke="var(--ink)" strokeWidth={1.2} />
+      <path d="M27 93c0 15 72 15 72 0m-5 5 5-5 4 5M139 21v78" fill="none" stroke="var(--rose)" strokeWidth={1.5} strokeDasharray="3 3" />
+    </svg>
+  ),
   dice: (
     <svg viewBox="0 0 200 120" className="h-full w-full" aria-hidden>
       <g stroke="var(--ink)" strokeWidth={1.3} strokeLinejoin="round">

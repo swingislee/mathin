@@ -30,11 +30,11 @@ const SolidNetsViewport = dynamic(() => import("./SolidNetsViewport").then((modu
 export interface SolidNetsWorkspaceProps {
   locale: "zh" | "en"; initial?: SolidNetsSnapshot; onSnapshot?: (value: SolidNetsSnapshot | null) => void;
   runtime?: { state?: SolidNetsSnapshot; onChange?: (next: SolidNetsSnapshot) => Promise<void> };
-  readOnly?: boolean; courseware?: boolean; workspaceSelector?: ReactNode;
+  readOnly?: boolean; courseware?: boolean; workspaceSelector?: ReactNode; shapeSelector?: ReactNode; onReset?: () => void;
 }
 const same = (a: SolidNetsSnapshot, b: SolidNetsSnapshot) => JSON.stringify(a) === JSON.stringify(b);
 
-export function SolidNetsWorkspace({ locale, initial, runtime, onSnapshot, readOnly = false, courseware, workspaceSelector }: SolidNetsWorkspaceProps) {
+export function SolidNetsWorkspace({ locale, initial, runtime, onSnapshot, readOnly = false, courseware, workspaceSelector, shapeSelector, onReset }: SolidNetsWorkspaceProps) {
   const [start] = useState(() => anySolidNetsSnapshotSchema.parse(initial ?? createDefaultSolidNetsSnapshot()));
   const [preview, setPreview] = useState<SolidNetsSnapshot | null>(null), pendingLocal = useRef<SolidNetsSnapshot | null>(null);
   const historyIntent = useRef<"undo" | "redo" | null>(null);
@@ -130,17 +130,17 @@ export function SolidNetsWorkspace({ locale, initial, runtime, onSnapshot, readO
         <SpatialActionButton action="unfold" label={m.unfold} disabled={readonly || busy || (flat && !snapshot.anchor)} onClick={() => all(false)} />
         <SpatialActionButton action="undo" label={m.undo} disabled={readonly || busy || !past.length} onClick={() => { historyIntent.current = "undo"; animateTo(past.at(-1)!); }} />
         <SpatialActionButton action="redo" label={m.redo} disabled={readonly || busy || !future.length} onClick={() => { historyIntent.current = "redo"; animateTo(future[0]); }} />
-        <SpatialActionButton action="reset" label={m.reset} disabled={readonly || busy} onClick={() => { animateTo(start); setActive(null); setCameraKey((value) => value + 1); }} />
+        <SpatialActionButton action="reset" label={m.reset} disabled={readonly || busy} onClick={() => { if (onReset) onReset(); else animateTo(start); setActive(null); setCameraKey((value) => value + 1); }} />
       </div>
       {panel && <SpatialCanvasPanel title={panel === "shape" ? m.shape : m.style} closeLabel={shared.closePanel} onClose={closePanel}>
         <div className="space-y-3">
           {panel === "shape" && <>
-            <div className="flex flex-wrap gap-1">{kinds.map((kind) => <Button key={kind} size="sm" variant={snapshot.kind === kind ? "secondary" : "ghost"}
+            {shapeSelector ?? <div className="flex flex-wrap gap-1">{kinds.map((kind) => <Button key={kind} size="sm" variant={snapshot.kind === kind ? "secondary" : "ghost"}
               aria-pressed={snapshot.kind === kind} disabled={readonly || busy} onClick={() => {
                 if (kind === snapshot.kind) return;
                 const next = createSolidNetForVersion(start.version, kind);
                 commit(next); setSelected("base"); setActive(null); setCameraKey((value) => value + 1);
-              }}>{kind === "cube" ? m.cube : kind === "cuboid" ? m.cuboid : kind === "square-pyramid" ? m.pyramid : m.prism}</Button>)}</div>
+              }}>{kind === "cube" ? m.cube : kind === "cuboid" ? m.cuboid : kind === "square-pyramid" ? m.pyramid : m.prism}</Button>)}</div>}
             {(snapshot.kind === "cube" ? ["width"] as const : snapshot.kind === "square-pyramid" ? ["width", "height"] as const : ["width", "height", "depth"] as const).map((key) => <Label key={key} className="grid gap-1 text-xs">
               {snapshot.kind === "cube" ? m.edge : snapshot.kind === "square-pyramid" ? key === "width" ? m.baseEdge : m.pyramidHeight
                 : snapshot.kind === "cuboid" ? m[key] : key === "width" ? m.baseWidth : key === "height" ? m.baseHeight : m.prismLength}

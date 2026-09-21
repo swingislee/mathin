@@ -17,6 +17,8 @@ export interface SpatialObjectInteraction {
   selectOnly?: boolean;
   selected: SpatialGestureTarget | null;
   pick: (raycaster: Raycaster) => SpatialGestureTarget | null;
+  /** 教具过程的明确本体约束，例如纸片绕选定棱扫体；普通刚体继续默认 XZ。 */
+  bodyConstraint?: (target: SpatialGestureTarget) => SpatialHandleConstraint | undefined;
   handlesHit?: (event: PointerEvent, camera: Camera, size: SpatialPointerViewport) => boolean;
   resolve: (target: SpatialGestureTarget, pose: SpatialRigidPose, action: SpatialObjectAction, constraint?: SpatialHandleConstraint) => SpatialGestureLanding;
   onPreview: (preview: SpatialObjectPreview | null) => void;
@@ -95,14 +97,15 @@ export function bindSpatialObjectGestures(canvas: HTMLCanvasElement, current: ()
     if (!interaction?.enabled || event.button !== 0 || event.isPrimary === false) return;
     if (forced && interaction.freeRotation === false) return;
     const camera = getCamera().clone(), size = canvas.getBoundingClientRect();
-    const constraint = forced ? undefined : spatialObjectHandleHit(interaction, event, camera, size) ?? undefined;
-    if (!forced && !constraint && interaction.handlesHit?.(event, camera, size)) return;
+    const handleConstraint = forced ? undefined : spatialObjectHandleHit(interaction, event, camera, size) ?? undefined;
+    if (!forced && !handleConstraint && interaction.handlesHit?.(event, camera, size)) return;
     const raycaster = spatialPointerRay({ x: event.clientX, y: event.clientY }, camera, size);
-    const target = forced || constraint ? interaction.selected : interaction.pick(raycaster);
+    const target = forced || handleConstraint ? interaction.selected : interaction.pick(raycaster);
     if (!target) return;
+    const constraint = handleConstraint ?? (forced ? undefined : interaction.bodyConstraint?.(target));
     stop(event); stopSettle();
     const action: SpatialObjectAction = constraint ? constraint.kind === "axis-rotation" ? "rotate" : "translate" : interaction.freeRotation !== false && (forced || event.shiftKey || interaction.rotate) ? "rotate" : "translate";
-    const projection = action === "translate" ? spatialMoveProjection({ x: event.clientX, y: event.clientY }, constraint?.kind === "plane" ? interaction.handles!.center : target.grabPoint,
+    const projection = action === "translate" ? spatialMoveProjection({ x: event.clientX, y: event.clientY }, handleConstraint?.kind === "plane" ? interaction.handles!.center : target.grabPoint,
       constraint?.kind === "plane" ? constraint.plane : interaction.resolvePlane?.(camera) ?? resolveSpatialMovePlane(interaction.plane, camera), camera, size) : null;
     // 侧看桌面仍允许轻点选择；达到起拖阈值时再提示不可解的移动平面。
     gesture = { interaction, key: interaction.key, target, action, camera, size, start: event,
@@ -125,7 +128,7 @@ export function bindSpatialObjectGestures(canvas: HTMLCanvasElement, current: ()
     let pose = g.target.pose;
     if (g.constraint?.kind === "axis-rotation") {
       const next = spatialRingVector({ x: event.clientX, y: event.clientY }, g.target.pivot, g.constraint.axis, g.camera, g.size);
-      if (!next || !g.ringVector) return;
+      if (!next || !g.ringVector) { g.interaction.onUnavailable("plane"); return; }
       g.ringAngle += spatialRingAngle(g.ringVector, next, g.constraint.axis); g.ringVector = next;
       const limit = g.constraint.maxAngle ?? Infinity;
       pose = rotateSpatialPose(pose, g.target.pivot, g.constraint.axis, Math.max(-limit, Math.min(limit, g.ringAngle)));

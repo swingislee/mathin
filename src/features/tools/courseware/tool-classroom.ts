@@ -11,9 +11,17 @@ import { CUBE_NET_EXPLORATION_VERSION, cubeNetExplorationStateSchema, NET_TEACHI
 import { SOLID_NETS_LESSON_VERSION, solidNetsTeachingSnapshotSchema, SOLID_NETS_POLYHEDRA_LESSON_VERSION, solidNetsPolyhedraSnapshotSchema } from "../solid-nets/contract";
 import { SOLID_CAPACITY_VERSION, solidCapacitySnapshotSchema } from "../solid-capacity/solid-capacity-contract";
 import { SOMA_VERSION, SOMA_LEGACY_VERSION, somaSnapshotSchema, somaLegacySnapshotSchema } from "../soma-cube/contract";
+import { SOLID_NETS_COMPLETE_VERSION, solidNetsCompleteSnapshotSchema } from "../solid-nets/curved-contract";
+import { SOLID_CAPACITY_TEACHING_VERSION, solidCapacityTeachingSnapshotSchema } from "../solid-capacity/solid-capacity-teaching-contract";
+import { SOLID_GEOMETRY_EXPLORATION_VERSION, solidGeometryExplorationSnapshotSchema } from "../solid-geometry/exploration-contract";
+import { SOLID_REVOLUTION_VERSION, solidRevolutionSnapshotSchema } from "../solid-revolution/contract";
 
 // 工具只在这里登记严格状态/动作合同。传输、课堂入口与实例状态容器不再识别具体工具。
 export const classroomToolEventSchema = z.discriminatedUnion("contentVersion", [
+  toolClassroomEventSchema("solid-nets", SOLID_NETS_COMPLETE_VERSION, solidNetsCompleteSnapshotSchema),
+  toolClassroomEventSchema("solid-capacity", SOLID_CAPACITY_TEACHING_VERSION, solidCapacityTeachingSnapshotSchema),
+  toolClassroomEventSchema("solid-geometry", SOLID_GEOMETRY_EXPLORATION_VERSION, solidGeometryExplorationSnapshotSchema),
+  toolClassroomEventSchema("solid-revolution", SOLID_REVOLUTION_VERSION, solidRevolutionSnapshotSchema),
   cubeClassroomEventSchema,
   cubeRotationClassroomEventSchema,
   toolClassroomEventSchema("spatial-lab", CUBE_NET_COURSEWARE_VERSION, netWorkbenchStateSchema),

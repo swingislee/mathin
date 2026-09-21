@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Box, Boxes, Cylinder, Dice5, FoldVertical, PanelsTopLeft, Route, Ruler, UnfoldVertical } from "lucide-react";
+import { Box, Boxes, Cylinder, Dice5, FoldVertical, Orbit, PanelsTopLeft, Route, Ruler, UnfoldVertical } from "lucide-react";
 import {
   CLASSROOM_PARTITIONED_INPUT_PROVIDER_V1,
   type ClassroomInputCapabilityProvider,
@@ -41,6 +41,7 @@ export const tools: ToolMeta[] = [
   { id: "projection", no: 6, category: "geometry", grades: [1, 9], icon: PanelsTopLeft },
   { id: "solid-geometry", no: 7, category: "geometry", grades: [1, 9], icon: Box },
   { id: "solid-capacity", no: 8, category: "geometry", grades: [5, 9], icon: Cylinder },
+  { id: "solid-revolution", no: 11, category: "geometry", grades: [5, 9], icon: Orbit },
   { id: "soma-cube", no: 9, category: "geometry", grades: [1, 9], icon: Boxes },
 ];
 

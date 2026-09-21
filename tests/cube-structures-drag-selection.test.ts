@@ -46,6 +46,19 @@ function setup(kind: CubeMoveInteraction["kind"] = "move", positions = [origin],
 }
 
 describe("axis dragging uses camera projection and one semantic release", () => {
+  it("continuous teaching parameters opt in without changing block or grid snapping", () => {
+    expect(cubeDragOperation("display-move", ["body"], "y", 0.137, undefined, true)?.distance).toBe(0.137);
+    expect(cubeDragOperation("display-move", ["body"], "y", 99, undefined, true)?.distance).toBe(48);
+    expect(cubeDragOperation("display-move", ["body"], "y", NaN, undefined, true)).toBeNull();
+    expect(cubeDragOperation("display-move", ["body"], "y", 0.137)).toBeNull();
+    expect(cubeDragOperation("display-move", ["body"], "y", 0.137, 0, true)).toBeNull();
+    expect(cubeDragOperation("move", ["body"], "y", 0.137, undefined, true)).toBeNull();
+    const drag = setup("display-move"); const commit = vi.fn();
+    Object.assign(drag.interaction, { continuousDistance: true, onCommit: commit });
+    drag.send("pointerdown"); drag.send("pointermove", 411); drag.send("pointerup", 411);
+    expect(commit).toHaveBeenCalledTimes(1); expect(commit.mock.calls[0][0].distance).toBeCloseTo(0.1375);
+    drag.dispose();
+  });
   it("permits continuous precise-axis previews with an exact endpoint, and cancels when disabled", () => {
     const drag = setup("move", [origin], ["cube-1"], true);
     Object.assign(drag.interaction, { continuousPreview: true });

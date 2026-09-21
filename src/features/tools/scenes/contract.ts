@@ -8,10 +8,14 @@ import { cubeNetExplorationToolSchema, netTeachingToolSchema } from "../net-teac
 import { solidNetsToolSchema, solidNetsPolyhedraToolSchema } from "../solid-nets/contract";
 import { solidCapacityToolSchema } from "../solid-capacity/solid-capacity-contract";
 import { somaToolSchema, somaLegacyToolSchema } from "../soma-cube/contract";
+import { solidNetsCompleteToolSchema } from "../solid-nets/curved-contract";
+import { solidCapacityTeachingToolSchema } from "../solid-capacity/solid-capacity-teaching-contract";
+import { solidGeometryExplorationToolSchema } from "../solid-geometry/exploration-contract";
+import { solidRevolutionToolSchema } from "../solid-revolution/contract";
 import { getToolCoursewareContract, toolCoursewareContractsForSurface } from "./registry";
 
 /** Tools 共用的自包含现场：工具身份 + 参数版本 + 严格参数；与草稿、课件、课堂宿主无关。 */
-export const toolSceneSchema = z.discriminatedUnion("contentVersion", [cubeCoursewareV2ToolSchema, cubeCoursewareV3ToolSchema, ...spatialTeachingToolSchema.options, ...numericTeachingToolSchema.options, projectionToolSchema, solidGeometryToolSchema, netTeachingToolSchema, cubeNetExplorationToolSchema, solidNetsToolSchema, solidNetsPolyhedraToolSchema, solidCapacityToolSchema, somaToolSchema, somaLegacyToolSchema]);
+export const toolSceneSchema = z.discriminatedUnion("contentVersion", [solidNetsCompleteToolSchema, solidCapacityTeachingToolSchema, solidGeometryExplorationToolSchema, solidRevolutionToolSchema, cubeCoursewareV2ToolSchema, cubeCoursewareV3ToolSchema, ...spatialTeachingToolSchema.options, ...numericTeachingToolSchema.options, projectionToolSchema, solidGeometryToolSchema, netTeachingToolSchema, cubeNetExplorationToolSchema, solidNetsToolSchema, solidNetsPolyhedraToolSchema, solidCapacityToolSchema, somaToolSchema, somaLegacyToolSchema]);
 export type ToolScene = z.infer<typeof toolSceneSchema>;
 export type ToolSceneVersion = ToolScene["contentVersion"];
 export const TOOL_SCENE_MAX_BYTES = 512_000;

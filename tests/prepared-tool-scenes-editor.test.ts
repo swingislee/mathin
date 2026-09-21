@@ -176,7 +176,7 @@ describe("shared starting-scene editor", () => {
     await act(async () => workspace.current!.onSnapshot(workspace.current!.initial));
     expect(ready.mock.lastCall![0].contentVersion).toBe(SOMA_VERSION); expect(scene).toEqual(before);
   });
-  it("keeps old solid-net copies unchanged until explicitly copied into the pyramid-capable version", async () => {
+  it("keeps old solid-net copies unchanged until explicitly copied into the complete solid-net version", async () => {
     const scene = solidNetsToolSchema.parse({ toolId: "solid-nets", contentVersion: SOLID_NETS_LESSON_VERSION,
       payload: { title: "Existing cuboid", initial: createDefaultSolidNetsTeachingSnapshot("cuboid") } });
     scene.payload.initial.surfaces.front.label = "front"; scene.payload.initial.angles["base-left"] = 33;
@@ -189,10 +189,10 @@ describe("shared starting-scene editor", () => {
     expect(ready.mock.lastCall![0]).toEqual(scene);
     const upgrade = host.querySelector<HTMLButtonElement>(`button[aria-label="${en.tools.preparation.upgradeCopy}"]`)!;
     expect(upgrade).not.toBeNull(); await act(async () => upgrade.click());
-    expect(workspace.current!.version).toBe("solid-nets-v3");
-    expect(workspace.current!.initial).toEqual({ ...scene.payload.initial, version: "solid-nets-v3" });
+    expect(workspace.current!.version).toBeUndefined();
+    expect(workspace.current!.initial).toEqual({ mode: "polyhedron", data: { ...scene.payload.initial, version: "solid-nets-v3" } });
     await act(async () => workspace.current!.onSnapshot(workspace.current!.initial));
-    expect(ready.mock.lastCall![0].contentVersion).toBe(SOLID_NETS_POLYHEDRA_LESSON_VERSION);
+    expect(ready.mock.lastCall![0].contentVersion).toBe("solid-nets-lesson-v3");
     expect(scene).toEqual(before);
   });
 });

@@ -5,7 +5,7 @@ import { SpatialViewButtons, SPATIAL_ALL_VIEWS } from "../spatial-interaction/Sp
 import { SpatialActionIcon } from "../spatial-interaction/SpatialActionIcon";
 
 import dynamic from "next/dynamic";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useLocale } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,7 @@ const noop = () => {};
 type Panel = "liquid" | "dimensions" | "settings" | null;
 export interface SolidCapacityWorkspaceProps {
   initial?: SolidCapacityInitial; onSnapshot?: (initial: SolidCapacityInitial | null) => void; readOnly?: boolean;
+  workspaceSelector?: ReactNode;
   classroom?: { state?: SolidCapacitySnapshot; onChange?: (next: SolidCapacitySnapshot) => Promise<void> };
 }
 function shells(state: Pick<SolidCapacityInitial, "cone" | "cylinder">, coneAngle: number): SolidEntity[] {
@@ -43,7 +44,7 @@ function shells(state: Pick<SolidCapacityInitial, "cone" | "cylinder">, coneAngl
   });
 }
 /** 容积比较单独提供两容器语义，其备课、课堂写者、视角与工作台外观仍走共用能力。 */
-export function SolidCapacityWorkspace({ initial, onSnapshot, classroom, readOnly = false }: SolidCapacityWorkspaceProps) {
+export function SolidCapacityWorkspace({ initial, onSnapshot, classroom, readOnly = false, workspaceSelector }: SolidCapacityWorkspaceProps) {
   const locale = useLocale() === "en" ? "en" : "zh", m = solidCapacityMessages(locale);
   const origin = useMemo(() => solidCapacitySnapshot(initial ?? createDefaultSolidCapacityInitial()), [initial]);
   const host = useToolSnapshot(origin, classroom), snapshot = host.snapshot;
@@ -76,6 +77,7 @@ export function SolidCapacityWorkspace({ initial, onSnapshot, classroom, readOnl
         navigationMode={navigation} moveAxis="x" onMoveAxis={noop} onMove={noop} onDragging={noop} readOnly={readOnlyView} fallback={m.fallback}
         renderScene={() => <SolidCapacityLiquids frame={presentation.frame} snapshot={snapshot} locale={locale} />} />
       <div className={`${styles.dock} ${styles.meta}`}>
+        {workspaceSelector}
         <SpatialActionButton action="settings" label={m.settings} active={panel === "settings"} disabled={readOnlyView} onClick={() => open("settings")} />
         <SpatialActionButton action="reset" label={m.reset} disabled={disabled} onClick={() => { update({ ...structuredClone(origin), cameraRevision: snapshot.cameraRevision + 1 }); controls.closePanel(); }} />
       </div>

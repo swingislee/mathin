@@ -50,7 +50,7 @@ describe("shared spatial controls catalog", () => {
   it("builds the side-by-side comparison from the same components and source bindings", () => {
     const usages = Object.fromEntries(SPATIAL_WORKBENCH_INVENTORY.map((stage) => [stage.id, usedActions(stage.files.map(source).join("\n"))]));
     const html = renderSpatialControlsCatalog(usages);
-    expect(SPATIAL_WORKBENCH_INVENTORY).toHaveLength(9); expect(html).toContain("<svg");
+    expect(SPATIAL_WORKBENCH_INVENTORY).toHaveLength(10); expect(html).toContain("<svg");
     for (const action of keys) expect(html).toContain(`data-spatial-icon="${action}"`);
     expect(usages.dice).toContain("faceReveal"); expect(usages["cube-structures"]).toContain("move");
     if (process.env.MATHIN_WRITE_SPATIAL_CATALOG === "1") {
