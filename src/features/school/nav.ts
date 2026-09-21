@@ -38,19 +38,19 @@ function navItem(key: DashboardRouteKey, options?: { withGroup?: boolean }): Sch
 export const HOME_NAV_ITEM: SchoolNavItem = navItem("home", { withGroup: false });
 
 /**
- * 员工先按要做的工作进入；总览、课表与六个日常工作入口直接可达。
- * 教学资源、组织和系统配置继续按管理范围分组。
+ * 总览独立置顶；员工按教学、学科运营、教研、组织和系统的工作目的找入口。
+ * 教学从课表进入班级与学生；学科运营按线索、沟通、测评到持续服务排列。
  */
 const STAFF_NAV_KEYS: readonly DashboardRouteKey[] = [
   "home",
   "schedule",
+  "classes",
+  "students",
   "leads",
   "invitations",
   "assessments",
-  "students",
-  "classes",
-  "renewals",
   "activities",
+  "renewals",
   "finance",
   "courses",
   "courseware",

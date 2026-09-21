@@ -7,10 +7,12 @@ const root = process.cwd();
 const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
 
 describe("dashboard functional information architecture", () => {
-  it("places daily work at the top level and academic years in organization", () => {
+  it("groups daily work by purpose with teaching first and academic years in organization", () => {
     expect(SCHOOL_NAV_ITEMS.map(({ labelKey, group }) => [labelKey, group ?? null])).toEqual([
-      ["home", null], ["schedule", null], ["leads", null], ["invitations", null], ["assessments", null],
-      ["students", null], ["classes", null], ["renewals", null], ["activities", null], ["finance", null],
+      ["home", null],
+      ["schedule", "teaching"], ["classes", "teaching"], ["students", "teaching"],
+      ["leads", "subjectOperations"], ["invitations", "subjectOperations"], ["assessments", "subjectOperations"],
+      ["activities", "subjectOperations"], ["renewals", "subjectOperations"], ["finance", "subjectOperations"],
       ["courses", "research"], ["workbench", "research"], ["coursewareReview", "research"], ["sharedAssets", "research"],
       ["organizationProfile", "organization"], ["campuses", "organization"], ["staff", "organization"], ["roles", "organization"],
       ["academicYears", "organization"], ["registrationInvites", "organization"],

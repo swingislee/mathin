@@ -138,7 +138,7 @@ const COURSEWARE_PERMS: readonly PermissionKey[] = [
 ];
 
 /**
- * 声明顺序即员工侧栏顺序（家庭/学习侧栏在 ./nav.ts 内按各自顺序显式挑选）。
+ * 本合同声明路由归属；员工、家庭和学习侧栏的展示顺序由 ./nav.ts 显式挑选。
  *
  * 注意 `/dashboard` 本身按当前激活环境分派三套首页（§5.1），环境切换不改根 URL。
  */
@@ -149,7 +149,7 @@ export const DASHBOARD_ROUTES = {
     kind: "queue",
     environments: ALL_ENVIRONMENTS,
     createSurface: "none",
-    // 总览与课表位于日常工作入口之前。
+    // 总览独立置顶，日常工作按领域分组。
     nav: { labelKey: "home" },
   },
   schedule: {
@@ -161,7 +161,7 @@ export const DASHBOARD_ROUTES = {
     // 课次创建属于班级上下文；课表只做跨班级/教师/课次的聚合时间视图（§5.3）。
     createSurface: "parent",
     creationOwner: "classes",
-    nav: { labelKey: "schedule" },
+    nav: { labelKey: "schedule", group: "teaching" },
   },
 
   // ── 学员服务 ────────────────────────────────────────────────────────────
@@ -172,7 +172,7 @@ export const DASHBOARD_ROUTES = {
     permission: "followup.view",
     // 种子由外部名单和后续接触事实产生；导入时不创建学生身份。
     createSurface: "derived",
-    nav: { labelKey: "leads" },
+    nav: { labelKey: "leads", group: "subjectOperations" },
   },
   invitations: {
     href: "/dashboard/communication",
@@ -181,7 +181,7 @@ export const DASHBOARD_ROUTES = {
     permissionAny: ["followup.view", "review.write"],
     // 电联只发起邀约；时间、老师与家长确认在这里按状态接续，不创建虚构的日历待办。
     createSurface: "derived",
-    nav: { labelKey: "invitations" },
+    nav: { labelKey: "invitations", group: "subjectOperations" },
   },
   assessments: {
     href: "/dashboard/assessments",
@@ -190,7 +190,7 @@ export const DASHBOARD_ROUTES = {
     permissionAny: ["review.write", "followup.view"],
     // 已确认的 1 对 1 邀约自动进入这里；首次录入才物化到访事实，不要求提前建 Student。
     createSurface: "derived",
-    nav: { labelKey: "assessments" },
+    nav: { labelKey: "assessments", group: "subjectOperations" },
   },
   assessmentDetail: {
     hrefPattern: "/dashboard/assessments/[registrationId]",
@@ -217,7 +217,7 @@ export const DASHBOARD_ROUTES = {
     permission: "followup.view",
     // 周期只批量准备资格快照；推进状态继续由 canonical course opportunity 承载。
     createSurface: "dialog",
-    nav: { labelKey: "renewals" },
+    nav: { labelKey: "renewals", group: "subjectOperations" },
   },
   renewalDetail: {
     hrefPattern: "/dashboard/renewals/[opportunityId]",
@@ -250,7 +250,7 @@ export const DASHBOARD_ROUTES = {
     permissionAny: STUDENTS_PERMS,
     // 仅在身份已确认时才直接建立学生；完整资料在详情页维护（§5.5）。
     createSurface: "dialog",
-    nav: { labelKey: "students" },
+    nav: { labelKey: "students", group: "teaching" },
   },
   studentImport: {
     href: "/dashboard/students/import",
@@ -284,7 +284,7 @@ export const DASHBOARD_ROUTES = {
     permissionAny: ["activity.register", "review.write", "followup.view"],
     // 活动字段仍属轻量范围 → ActivitiesManager Dialog（§5.9）。
     createSurface: "dialog",
-    nav: { labelKey: "activities" },
+    nav: { labelKey: "activities", group: "subjectOperations" },
   },
   activityDetail: {
     hrefPattern: "/dashboard/activities/[activityId]",
@@ -322,7 +322,7 @@ export const DASHBOARD_ROUTES = {
     // 建班要过课程版本/主讲/学服/学期/排课预览/冲突检测 → 完整 Wizard（§5.11）。
     createSurface: "page",
     createHref: "/dashboard/classes/new",
-    nav: { labelKey: "classes" },
+    nav: { labelKey: "classes", group: "teaching" },
   },
   classNew: {
     href: "/dashboard/classes/new",
@@ -488,7 +488,7 @@ export const DASHBOARD_ROUTES = {
     permissionAny: FINANCE_NAV_PERMS,
     createSurface: "none",
     // 招生、转化、续费与退费属于同一条学生生命周期，因此财务入口跟随学科运营。
-    nav: { labelKey: "finance" },
+    nav: { labelKey: "finance", group: "subjectOperations" },
   },
 
   // ── 组织管理 ────────────────────────────────────────────────────────────
