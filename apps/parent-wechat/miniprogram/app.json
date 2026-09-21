@@ -6,7 +6,7 @@
     "pages/account/index"
   ],
   "window": {
-    "navigationBarTitleText": "Mathin",
+    "navigationBarTitleText": "格致未来思维",
     "navigationBarTextStyle": "@navigationText",
     "navigationBarBackgroundColor": "@paper",
     "backgroundColor": "@paper"

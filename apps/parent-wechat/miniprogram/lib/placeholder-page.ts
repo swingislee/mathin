@@ -1,8 +1,9 @@
-import { messages, resolveLocale, sections, type Section } from "./locale";
+import { brandName, messages, resolveLocale, sections, type Section } from "./locale";
 
 export function createPlaceholderPage(section: Section) {
   return {
     data: {
+      brandName,
       ...messages.zh.sections[section],
       availability: messages.zh.availability,
     },
@@ -16,7 +17,7 @@ export function createPlaceholderPage(section: Section) {
       });
     },
   } as WechatMiniprogram.Page.Options<
-    { title: string; tabLabel: string; description: string; availability: string },
+    { brandName: string; title: string; tabLabel: string; description: string; availability: string },
     Record<string, never>
   >;
 }

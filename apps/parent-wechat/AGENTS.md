@@ -1,5 +1,6 @@
 # 微信开发者工具协同
 
+- 对外品牌与文案按 [README 的对外文案约定](README.md#对外文案)维护。
 - 本工程使用官方 `wechatide-skill`。涉及开发者工具时先加载该 Skill，再按对应场景操作；本机首次接入已安装到 Codex 个人技能目录。
 - 快捷入口为仓库根目录的 `corepack pnpm parents:wechat help`。入口从脚本位置计算工程绝对路径，支持 Windows 的中文和空格安装路径；自定义安装位置使用 `WECHATIDE_CLI`。
 - 会话首次调用先执行 `parents:wechat status`，核对登录、Skill 版本和令牌要求；沿用官方 Skill 的授权任务处理方式。CLI 在可访问本机桌面的非沙箱环境运行。
