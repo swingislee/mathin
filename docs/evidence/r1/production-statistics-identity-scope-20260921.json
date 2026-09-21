@@ -1,0 +1,256 @@
+{
+  "task": "production-statistics-identity-scope",
+  "status": "DEPLOYED / PENDING USER ACCEPTANCE",
+  "manifest": {
+    "commit": "f6156402b6c5d66635b9e1929cfac0fd1fa8b3f3",
+    "implementationCommit": "e4a822d2e31a55823e9969c18e64a32cc1dd2330",
+    "previous": "271cbab93a487684fa504938568fb4b5b3d0231a",
+    "migration": "20260921110000_production_statistics_identity_scope",
+    "migrationHash": "c5b5f6ca63a247239c977b04dc769c3c22857abef7d33d5c4d1663ea82523dca",
+    "createdAt": "2026-09-21T14:25:11.253Z",
+    "additionalImplementationCommit": "67a99b1f2cda4b38b54dc98640c40b9bd6a85756"
+  },
+  "backup": {
+    "backupPath": "/home/swing/services/mathin/backups/mathin-db-prechange-20260921T142745Z-statistics-e7d536761d3f",
+    "dumpSha256": "f72fad4c7e5bae4ef324040316a643d7ac693bda4b1be9bd842add62f4628b8d",
+    "dumpBytes": 355857601,
+    "tocLines": 6667,
+    "commit": "e7d536761d3fef078f311ea95cfb3a4520ef0231",
+    "migrationHash": "c5b5f6ca63a247239c977b04dc769c3c22857abef7d33d5c4d1663ea82523dca",
+    "head": "20260921003000_current_overview_acquisition_sources",
+    "before": {
+      "classes": 30,
+      "students": 165
+    },
+    "profileTests": 12,
+    "studentTests": 6,
+    "classroomsMarkedTest": 1,
+    "canonicalStaffAccounts": 2,
+    "createdAt": "2026-09-21T14:28:29.740Z"
+  },
+  "rehearsal": {
+    "mode": "rehearse",
+    "commit": "e7d536761d3fef078f311ea95cfb3a4520ef0231",
+    "migrationHash": "c5b5f6ca63a247239c977b04dc769c3c22857abef7d33d5c4d1663ea82523dca",
+    "zeroResidual": true,
+    "protectedDataUnchanged": true,
+    "before": {
+      "classes": 30,
+      "students": 165
+    },
+    "after": {
+      "classes": 29,
+      "students": 164
+    },
+    "formalStudents": 164,
+    "profileTests": 12,
+    "studentTests": 6,
+    "classroomsMarkedTest": 1,
+    "canonicalStaffAccounts": 2,
+    "checkedAt": "2026-09-21T14:29:34.979Z"
+  },
+  "apply": {
+    "mode": "apply",
+    "commit": "f6156402b6c5d66635b9e1929cfac0fd1fa8b3f3",
+    "migrationHash": "c5b5f6ca63a247239c977b04dc769c3c22857abef7d33d5c4d1663ea82523dca",
+    "zeroResidual": false,
+    "protectedDataUnchanged": true,
+    "before": {
+      "classes": 30,
+      "students": 165
+    },
+    "after": {
+      "classes": 29,
+      "students": 164
+    },
+    "formalStudents": 164,
+    "profileTests": 12,
+    "studentTests": 6,
+    "classroomsMarkedTest": 1,
+    "canonicalStaffAccounts": 2,
+    "checkedAt": "2026-09-21T14:38:36.454Z"
+  },
+  "verify": {
+    "commit": "f6156402b6c5d66635b9e1929cfac0fd1fa8b3f3",
+    "protectedDataUnchanged": true,
+    "before": {
+      "classes": 30,
+      "students": 165
+    },
+    "after": {
+      "classes": 29,
+      "students": 164
+    },
+    "excluded": {
+      "leads": {
+        "all": 4148,
+        "formal": 4148
+      },
+      "orders": {
+        "all": 1,
+        "formal": 0
+      },
+      "refunds": {
+        "all": 1,
+        "formal": 0
+      },
+      "payments": {
+        "all": 3,
+        "formal": 0
+      },
+      "profiles": {
+        "all": 41,
+        "formal": 29
+      },
+      "students": {
+        "all": 1472,
+        "formal": 1466
+      },
+      "classrooms": {
+        "all": 34,
+        "formal": 31
+      },
+      "enrollments": {
+        "all": 178,
+        "formal": 177
+      },
+      "assessment_results": {
+        "all": 674,
+        "formal": 674
+      },
+      "course_enrollments": {
+        "all": 512,
+        "formal": 512
+      },
+      "lead_communications": {
+        "all": 4168,
+        "formal": 4168
+      },
+      "activity_registrations": {
+        "all": 953,
+        "formal": 953
+      },
+      "classroom_staff_assignments": {
+        "all": 36,
+        "formal": 32
+      }
+    },
+    "profileTests": 12,
+    "studentTests": 6,
+    "classroomsMarkedTest": 1,
+    "canonicalStaffAccounts": 2,
+    "checkedAt": "2026-09-21T14:38:56.686Z"
+  },
+  "finalCounts": {
+    "aliasMatches": [
+      1,
+      1,
+      1,
+      1
+    ],
+    "canonicalStaff": 2,
+    "obsoleteStaffNames": 0,
+    "currentAcquisitionSources": 3861
+  },
+  "queryTiming": {
+    "acquisition": {
+      "planningMs": 0.041,
+      "executionMs": 4371.122
+    },
+    "communications": {
+      "planningMs": 0.396,
+      "executionMs": 4487.936
+    },
+    "registrations": {
+      "planningMs": 1.699,
+      "executionMs": 1970.3
+    }
+  },
+  "releaseChecks": {
+    "commit": "f6156402b6c5d66635b9e1929cfac0fd1fa8b3f3",
+    "checkedAt": "2026-09-21T14:38:19.974463+00:00",
+    "checks": [
+      {
+        "release": "previous",
+        "health": true,
+        "loginLocales": 2,
+        "anonymousGuards": 2
+      },
+      {
+        "release": "candidate",
+        "health": true,
+        "loginLocales": 2,
+        "anonymousGuards": 2
+      }
+    ],
+    "secretScanFiles": 5022,
+    "secretScan": true,
+    "oldActionsRetained": 431,
+    "environmentSha256": "34f40dddb025f4aecadd54151cb70b00c2f346a8ff0f26dc343c7a6c6aeeee90",
+    "pointerRoundTrip": true,
+    "livePointersUnchanged": true
+  },
+  "activation": {
+    "commit": "f6156402b6c5d66635b9e1929cfac0fd1fa8b3f3",
+    "release": "20260921-143430",
+    "previous": "20260921-092132",
+    "startedAt": "2026-09-21T14:38:38.159734+00:00",
+    "activated": true,
+    "jobsRestarted": true,
+    "health": true,
+    "environmentUnchanged": true
+  },
+  "postflight": {
+    "commit": "f6156402b6c5d66635b9e1929cfac0fd1fa8b3f3",
+    "checkedAt": "2026-09-21T14:38:42.420995+00:00",
+    "publicChecks": 6,
+    "journalErrors": 0,
+    "runtimeVerified": true,
+    "environmentUnchanged": true
+  },
+  "archive": {
+    "path": "/home/swing/services/mathin/backups/mathin-db-prechange-20260921T142745Z-statistics-e7d536761d3f/statistics-audit.tar.gz",
+    "sha256": "9ec3042a29c650344b7b900fb452953145b67918edb7b5bd9a6becc3e994d816",
+    "bytes": 31383737,
+    "ownerOnly": true,
+    "retainUntil": "2026-12-20",
+    "stagingCleaned": true
+  },
+  "local": {
+    "http": {
+      "checkedAt": "2026-09-21T14:23:32.218Z",
+      "passed": true,
+      "unavailable": [],
+      "testProfiles": 10
+    },
+    "target": {
+      "host": "WhiteHouse",
+      "supabaseOrigin": "http://127.0.0.1:35421",
+      "systemIdentifier": "7673999900474441767",
+      "listeners": [
+        {
+          "Address": "127.0.0.1",
+          "Port": 35421,
+          "Process": "com.docker.backend",
+          "pid": 36364
+        },
+        {
+          "Address": "0.0.0.0",
+          "Port": 3130,
+          "Process": "node",
+          "pid": 35700
+        }
+      ],
+      "checkedAt": "2026-09-21T14:23:28.594Z"
+    },
+    "unitTests": 47,
+    "typecheck": true,
+    "eslint": true,
+    "databaseAssertions": "passed, rolled back"
+  },
+  "privacy": {
+    "productionPersonalDetailsStayedOnProduction": true,
+    "developmentIdentityDataTransferred": false,
+    "productionApiImpersonationAudit": "rejected by automatic review and abandoned; no JWT minted or production secret extracted"
+  }
+}
