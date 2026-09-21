@@ -68,4 +68,4 @@
 
 私有证据位于 gitignored `.tmp/overview-production-slow-20260922/`。原始 HAR 保留在用户下载路径，没有复制或提交 Cookie、Token、业务正文。共享记录仅含脱敏时长、计划摘要及集合一致性；访问限授权维护人员，保留至 2026-10-22。
 
-证据 manifest 规范化 SHA-256：`ec1a3e00fba2a6d174d24e7c13084c230138b20a76a2861d959e2390a11bcb0c`，包含本次计时与计划、旧慢样本和最近发布 postflight 的文件哈希。
+证据 manifest 规范化 SHA-256：`6254416e7893d4a6f5e42afea9c6cbc472f9ed10cc92e4c301e24aec6e6246da`，包含本次计时与计划、旧慢样本和最近发布 postflight 的文件哈希。生产 preflight 在后续授权修复前于 UTC 2026-09-21 21:40 重新核对，manifest 保留此前摘要与更新原因；HAR 和 SQL 诊断证据未改。后续部署结果见[统计分类修复](statistics-batch-repair-20260922.md)。
