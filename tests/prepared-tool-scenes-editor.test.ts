@@ -19,9 +19,10 @@ import { createSomaInitial } from "@/features/tools/soma-cube/model";
 import { SOMA_VERSION, SOMA_LEGACY_VERSION, somaToolSchema, somaLegacyToolSchema } from "@/features/tools/soma-cube/contract";
 import { cubeNetExplorationToolSchema, CUBE_NET_EXPLORATION_VERSION, netTeachingToolSchema, NET_TEACHING_VERSION } from "@/features/tools/net-teaching/contract";
 import { createDefaultPaperFoldingSnapshot } from "@/features/tools/paper-folding/contract";
-import { createDefaultSolidNetsSnapshot, createDefaultSolidNetsTeachingSnapshot, solidNetsToolSchema, SOLID_NETS_LESSON_VERSION } from "@/features/tools/solid-nets/contract";
+import { createDefaultSolidNetsSnapshot, createDefaultSolidNetsTeachingSnapshot, solidNetsToolSchema, SOLID_NETS_LESSON_VERSION,
+  createDefaultSolidNetsPolyhedraSnapshot, solidNetsPolyhedraToolSchema, SOLID_NETS_POLYHEDRA_LESSON_VERSION } from "@/features/tools/solid-nets/contract";
 
-const workspace = vi.hoisted(() => ({ current: null as null | { initial?: unknown; payload?: unknown; preparation?: boolean; freeRotation?: boolean; onSnapshot: (snapshot: unknown) => void } }));
+const workspace = vi.hoisted(() => ({ current: null as null | { initial?: unknown; version?: string; payload?: unknown; preparation?: boolean; freeRotation?: boolean; onSnapshot: (snapshot: unknown) => void } }));
 const library = vi.hoisted(() => ({ open: null as null | ((scene: ToolScene) => void) }));
 vi.mock("next/dynamic", () => ({ default: () => function OriginalWorkspaceStub(props: NonNullable<typeof workspace.current>) { workspace.current = props; return null; } }));
 vi.mock("@/features/tools/scenes/ToolSceneLibrary", () => ({ ToolSceneLibrary: ({ title, children, onOpen }: { title: ReactNode; children: ReactNode; onOpen: (scene: ToolScene) => void }) => { library.open = onOpen; return createElement(Fragment, null, title, children); } }));
@@ -36,6 +37,7 @@ describe("shared starting-scene editor", () => {
   it.each([
     cubeNetExplorationToolSchema.parse({ toolId: "spatial-lab", contentVersion: CUBE_NET_EXPLORATION_VERSION, payload: { title: "Cube exploration", initial: { mode: "free-paper", data: createDefaultPaperFoldingSnapshot() } } }),
     solidNetsToolSchema.parse({ toolId: "solid-nets", contentVersion: SOLID_NETS_LESSON_VERSION, payload: { title: "Solid nets", initial: createDefaultSolidNetsTeachingSnapshot() } }),
+    solidNetsPolyhedraToolSchema.parse({ toolId: "solid-nets", contentVersion: SOLID_NETS_POLYHEDRA_LESSON_VERSION, payload: { title: "Pyramid", initial: createDefaultSolidNetsPolyhedraSnapshot("square-pyramid") } }),
     diceTool(),
     somaToolSchema.parse({ toolId: "soma-cube", contentVersion: SOMA_VERSION, payload: { title: "Soma", initial: createSomaInitial() } }),
     projectionTool(),
@@ -173,5 +175,24 @@ describe("shared starting-scene editor", () => {
     expect(workspace.current!.freeRotation).toBe(true); expect(workspace.current!.initial).toEqual(scene.payload.initial);
     await act(async () => workspace.current!.onSnapshot(workspace.current!.initial));
     expect(ready.mock.lastCall![0].contentVersion).toBe(SOMA_VERSION); expect(scene).toEqual(before);
+  });
+  it("keeps old solid-net copies unchanged until explicitly copied into the pyramid-capable version", async () => {
+    const scene = solidNetsToolSchema.parse({ toolId: "solid-nets", contentVersion: SOLID_NETS_LESSON_VERSION,
+      payload: { title: "Existing cuboid", initial: createDefaultSolidNetsTeachingSnapshot("cuboid") } });
+    scene.payload.initial.surfaces.front.label = "front"; scene.payload.initial.angles["base-left"] = 33;
+    const before = structuredClone(scene), ready = vi.fn();
+    await renderEditor({ version: SOLID_NETS_POLYHEDRA_LESSON_VERSION, onReady: ready });
+    expect(workspace.current!.version).toBe("solid-nets-v3");
+    await act(async () => library.open!(scene));
+    expect(workspace.current!.version).toBe("solid-nets-v2");
+    await act(async () => workspace.current!.onSnapshot(scene.payload.initial));
+    expect(ready.mock.lastCall![0]).toEqual(scene);
+    const upgrade = host.querySelector<HTMLButtonElement>(`button[aria-label="${en.tools.preparation.upgradeCopy}"]`)!;
+    expect(upgrade).not.toBeNull(); await act(async () => upgrade.click());
+    expect(workspace.current!.version).toBe("solid-nets-v3");
+    expect(workspace.current!.initial).toEqual({ ...scene.payload.initial, version: "solid-nets-v3" });
+    await act(async () => workspace.current!.onSnapshot(workspace.current!.initial));
+    expect(ready.mock.lastCall![0].contentVersion).toBe(SOLID_NETS_POLYHEDRA_LESSON_VERSION);
+    expect(scene).toEqual(before);
   });
 });

@@ -10,10 +10,10 @@ import { beginCubeNetPaperDrag, type CubeNetFoldChange, type CubeNetPaperSelecti
 import { createCubeNetTeachingSession, reduceCubeNetTeachingSession } from "@/features/tools/spatial-lab/cube-net-teaching-session";
 import { createDefaultPaperFoldingSnapshot } from "@/features/tools/paper-folding/contract";
 import { resolvePaperFolding } from "@/features/tools/paper-folding/model";
-import { createDefaultSolidNetsSnapshot } from "@/features/tools/solid-nets/contract";
+import { createDefaultSolidNetsSnapshot, createDefaultSolidNetsPolyhedraSnapshot } from "@/features/tools/solid-nets/contract";
 import { resolveSolidNet } from "@/features/tools/solid-nets/model";
 
-type PaperKind = "cube" | "free-paper" | "cuboid" | "triangular-prism";
+type PaperKind = "cube" | "free-paper" | "cuboid" | "triangular-prism" | "square-pyramid";
 type PaperFrame = ReturnType<ReturnType<typeof createCubeNetWorkbenchResolver>["resolve"]>;
 type PaperResolver = (angles: Readonly<Record<string, number>>, edgeId?: string | null,
   anchor?: CubeNetPaperSelection["anchor"] | null, moving?: readonly string[]) => Pick<PaperFrame, "model" | "hinges">;
@@ -31,7 +31,7 @@ async function createPaperFixture(kind: PaperKind) {
       anchor: anchor ? { ...anchor, vertices: [...anchor.vertices] } : null }, moving);
     return { resolve, rootFaceId: initial.squares[0].id };
   }
-  const initial = createDefaultSolidNetsSnapshot(kind);
+  const initial = kind === "square-pyramid" ? createDefaultSolidNetsPolyhedraSnapshot(kind) : createDefaultSolidNetsSnapshot(kind);
   const resolve: PaperResolver = (angles, _edgeId, anchor, moving) => resolveSolidNet({ ...initial, angles: { ...initial.angles, ...angles },
     anchor: anchor ? { ...anchor, vertices: [...anchor.vertices] } : null }, moving);
   return { resolve, rootFaceId: "base" };
@@ -149,7 +149,7 @@ async function setupPaper(kind: PaperKind = "cube") {
 }
 
 describe("one-gesture paper folding and empty-space observation", () => {
-  for (const kind of ["cube", "free-paper", "cuboid", "triangular-prism"] as const) for (const pointerType of ["mouse", "touch"]) {
+  for (const kind of ["cube", "free-paper", "cuboid", "triangular-prism", "square-pyramid"] as const) for (const pointerType of ["mouse", "touch"]) {
     it(`${kind}/${pointerType}: keeps folding through callback refreshes and then observes from empty space`, async () => {
       const rig = await setupPaper(kind);
       const current = rig.current();

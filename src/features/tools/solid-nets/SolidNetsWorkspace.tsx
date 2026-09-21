@@ -20,7 +20,7 @@ import type { CubeNetFoldChange, CubeNetPaperSelection } from "../spatial-lab/cu
 import { useCubeNetPlayback } from "../spatial-lab/useCubeNetPlayback";
 import { useToolSnapshot } from "../scenes/useToolSnapshot";
 import styles from "../spatial-lab/CubeStructuresWorkbench.module.css";
-import { createDefaultSolidNetsSnapshot, createDefaultSolidNetsTeachingSnapshot, resizeSolidNet, SOLID_NETS_LIMITS, SOLID_NETS_VERSION, SOLID_NET_KINDS, anySolidNetsSnapshotSchema, type AnySolidNetsSnapshot as SolidNetsSnapshot } from "./contract";
+import { createDefaultSolidNetsSnapshot, createSolidNetForVersion, solidNetKindsForVersion, resizeSolidNet, SOLID_NETS_LIMITS, anySolidNetsSnapshotSchema, type AnySolidNetsSnapshot as SolidNetsSnapshot } from "./contract";
 import { solidNetGeometry, type SolidNetDimensions } from "./geometry";
 import { solidNetAllMotion, solidNetSnapshotTransition } from "./model";
 import { solidNetsMessages } from "./messages";
@@ -57,7 +57,7 @@ export function SolidNetsWorkspace({ locale, initial, runtime, onSnapshot, readO
   const closed = geometry.hinges.every((hinge) => Math.abs(snapshot.angles[hinge.id] - hinge.closedDegrees) < 1e-8);
   const selectedSurface = selected ? snapshot.surfaces[selected] : null;
   const selectedHinge = geometry.hinges.find((hinge) => hinge.faceId === selected);
-  const kinds = start.version === SOLID_NETS_VERSION ? ["cuboid", "triangular-prism"] as const : SOLID_NET_KINDS;
+  const kinds = solidNetKindsForVersion(start.version);
   const animationStart = playback.start;
   useLayoutEffect(() => {
     const old = previous.current; if (same(old, snapshot)) return; previous.current = snapshot;
@@ -97,7 +97,9 @@ export function SolidNetsWorkspace({ locale, initial, runtime, onSnapshot, readO
   };
   const dimensionChange = (key: keyof SolidNetDimensions, raw: string) => {
     const value = Number(raw); if (!Number.isFinite(value) || value < SOLID_NETS_LIMITS.minDimension || value > SOLID_NETS_LIMITS.maxDimension) return;
-    const dimensions = snapshot.kind === "cube" ? { width: value, height: value, depth: value } : { ...snapshot.dimensions, [key]: value };
+    const dimensions = snapshot.kind === "cube" ? { width: value, height: value, depth: value }
+      : snapshot.kind === "square-pyramid" && key === "width" ? { ...snapshot.dimensions, width: value, depth: value }
+        : { ...snapshot.dimensions, [key]: value };
     commit(resizeSolidNet(snapshot, dimensions)); setActive(null); setCameraKey((v) => v + 1);
   };
   const surfaceChange = (change: { color?: CubeColor; label?: string; opacity?: number }) => {
@@ -136,11 +138,12 @@ export function SolidNetsWorkspace({ locale, initial, runtime, onSnapshot, readO
             <div className="flex flex-wrap gap-1">{kinds.map((kind) => <Button key={kind} size="sm" variant={snapshot.kind === kind ? "secondary" : "ghost"}
               aria-pressed={snapshot.kind === kind} disabled={readonly || busy} onClick={() => {
                 if (kind === snapshot.kind) return;
-                const next = start.version === SOLID_NETS_VERSION && kind !== "cube" ? createDefaultSolidNetsSnapshot(kind) : createDefaultSolidNetsTeachingSnapshot(kind);
+                const next = createSolidNetForVersion(start.version, kind);
                 commit(next); setSelected("base"); setActive(null); setCameraKey((value) => value + 1);
-              }}>{kind === "cube" ? m.cube : kind === "cuboid" ? m.cuboid : m.prism}</Button>)}</div>
-            {(snapshot.kind === "cube" ? ["width"] as const : ["width", "height", "depth"] as const).map((key) => <Label key={key} className="grid gap-1 text-xs">
-              {snapshot.kind === "cube" ? m.edge : snapshot.kind === "cuboid" ? m[key] : key === "width" ? m.baseWidth : key === "height" ? m.baseHeight : m.prismLength}
+              }}>{kind === "cube" ? m.cube : kind === "cuboid" ? m.cuboid : kind === "square-pyramid" ? m.pyramid : m.prism}</Button>)}</div>
+            {(snapshot.kind === "cube" ? ["width"] as const : snapshot.kind === "square-pyramid" ? ["width", "height"] as const : ["width", "height", "depth"] as const).map((key) => <Label key={key} className="grid gap-1 text-xs">
+              {snapshot.kind === "cube" ? m.edge : snapshot.kind === "square-pyramid" ? key === "width" ? m.baseEdge : m.pyramidHeight
+                : snapshot.kind === "cuboid" ? m[key] : key === "width" ? m.baseWidth : key === "height" ? m.baseHeight : m.prismLength}
               <Input type="number" min={SOLID_NETS_LIMITS.minDimension} max={SOLID_NETS_LIMITS.maxDimension} step={0.25}
                 value={snapshot.dimensions[key]} disabled={readonly || busy || !flat} onKeyDown={(event) => event.stopPropagation()} onChange={(event) => dimensionChange(key, event.target.value)} />
             </Label>)}

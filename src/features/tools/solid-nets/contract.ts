@@ -6,6 +6,9 @@ export const SOLID_NETS_VERSION = "solid-nets-v1" as const;
 export const SOLID_NETS_SNAPSHOT_VERSION = "solid-nets-v2" as const;
 export const SOLID_NETS_LESSON_VERSION = "solid-nets-lesson-v1" as const;
 export const SOLID_NET_KINDS = ["cube", "cuboid", "triangular-prism"] as const;
+export const SOLID_NETS_POLYHEDRA_VERSION = "solid-nets-v3" as const;
+export const SOLID_NETS_POLYHEDRA_LESSON_VERSION = "solid-nets-lesson-v2" as const;
+export const SOLID_NET_POLYHEDRA_KINDS = [...SOLID_NET_KINDS, "square-pyramid"] as const;
 export const SOLID_NETS_LIMITS = { minDimension: 0.25, maxDimension: 8, history: 30 } as const;
 const dimension = z.number().finite().min(SOLID_NETS_LIMITS.minDimension).max(SOLID_NETS_LIMITS.maxDimension);
 const point = z.object({ x: z.number().finite().min(-100).max(100), y: z.number().finite().min(-100).max(100), z: z.number().finite().min(-100).max(100) }).strict();
@@ -22,9 +25,13 @@ const snapshot = z.object({
 }).strict();
 
 const teachingSnapshot = snapshot.extend({ version: z.literal(SOLID_NETS_SNAPSHOT_VERSION), kind: z.enum(SOLID_NET_KINDS) });
-function validateSnapshot(value: z.infer<typeof snapshot> | z.infer<typeof teachingSnapshot>, ctx: z.RefinementCtx) {
+const polyhedraSnapshot = snapshot.extend({ version: z.literal(SOLID_NETS_POLYHEDRA_VERSION), kind: z.enum(SOLID_NET_POLYHEDRA_KINDS) });
+function validateSnapshot(value: z.infer<typeof snapshot> | z.infer<typeof teachingSnapshot> | z.infer<typeof polyhedraSnapshot>, ctx: z.RefinementCtx) {
   if (value.kind === "cube" && (value.dimensions.width !== value.dimensions.height || value.dimensions.width !== value.dimensions.depth)) {
     ctx.addIssue({ code: "custom", message: "SOLID_NET_CUBE_DIMENSIONS" });
+  }
+  if (value.kind === "square-pyramid" && value.dimensions.width !== value.dimensions.depth) {
+    ctx.addIssue({ code: "custom", message: "SOLID_NET_SQUARE_BASE" });
   }
   const geometry = solidNetGeometry(value.kind, value.dimensions), add = (message: string) => ctx.addIssue({ code: "custom", message });
   const faces = new Set(geometry.faces.map((face) => face.id));
@@ -44,15 +51,23 @@ function validateSnapshot(value: z.infer<typeof snapshot> | z.infer<typeof teach
 }
 export const solidNetsSnapshotSchema = snapshot.superRefine(validateSnapshot);
 export const solidNetsTeachingSnapshotSchema = teachingSnapshot.superRefine(validateSnapshot);
-export const anySolidNetsSnapshotSchema = z.discriminatedUnion("version", [solidNetsSnapshotSchema, solidNetsTeachingSnapshotSchema]);
+export const solidNetsPolyhedraSnapshotSchema = polyhedraSnapshot.superRefine(validateSnapshot);
+export const preparedSolidNetsSnapshotSchema = z.discriminatedUnion("version", [solidNetsTeachingSnapshotSchema, solidNetsPolyhedraSnapshotSchema]);
+export const anySolidNetsSnapshotSchema = z.discriminatedUnion("version", [solidNetsSnapshotSchema, solidNetsTeachingSnapshotSchema, solidNetsPolyhedraSnapshotSchema]);
 export type SolidNetsSnapshot = z.infer<typeof solidNetsSnapshotSchema>;
 export type SolidNetsTeachingSnapshot = z.infer<typeof solidNetsTeachingSnapshotSchema>;
+export type SolidNetsPolyhedraSnapshot = z.infer<typeof solidNetsPolyhedraSnapshotSchema>;
+export type PreparedSolidNetsSnapshot = z.infer<typeof preparedSolidNetsSnapshotSchema>;
 export type AnySolidNetsSnapshot = z.infer<typeof anySolidNetsSnapshotSchema>;
 export const solidNetsContentSchema = z.object({ title: z.string().trim().min(1).max(80), initial: solidNetsSnapshotSchema }).strict();
 export const solidNetsToolSchema = z.object({
   toolId: z.literal("solid-nets"), contentVersion: z.literal(SOLID_NETS_LESSON_VERSION),
   payload: solidNetsContentSchema.extend({ initial: solidNetsTeachingSnapshotSchema }),
 }).strict();
+export const solidNetsPolyhedraToolSchema = solidNetsToolSchema.extend({
+  contentVersion: z.literal(SOLID_NETS_POLYHEDRA_LESSON_VERSION),
+  payload: solidNetsContentSchema.extend({ initial: solidNetsPolyhedraSnapshotSchema }),
+});
 
 function initialSolidNet(kind: SolidNetKind, dimensions: SolidNetDimensions) {
   const geometry = solidNetGeometry(kind, dimensions);
@@ -66,14 +81,34 @@ export function createDefaultSolidNetsSnapshot(kind: LegacySolidNetKind = "cuboi
   return solidNetsSnapshotSchema.parse({ ...initialSolidNet(kind, dimensions), version: SOLID_NETS_VERSION });
 }
 
-export function createDefaultSolidNetsTeachingSnapshot(kind: SolidNetKind = "cube", dimensions?: SolidNetDimensions): SolidNetsTeachingSnapshot {
+export function createDefaultSolidNetsTeachingSnapshot(kind: typeof SOLID_NET_KINDS[number] = "cube", dimensions?: SolidNetDimensions): SolidNetsTeachingSnapshot {
   return solidNetsTeachingSnapshotSchema.parse({
     ...initialSolidNet(kind, dimensions ?? (kind === "cube" ? { width: 2, height: 2, depth: 2 } : { width: 3, height: 2, depth: 2.5 })),
     version: SOLID_NETS_SNAPSHOT_VERSION,
   });
 }
 
+export function createDefaultSolidNetsPolyhedraSnapshot(kind: SolidNetKind = "cube", dimensions?: SolidNetDimensions): SolidNetsPolyhedraSnapshot {
+  return solidNetsPolyhedraSnapshotSchema.parse({
+    ...initialSolidNet(kind, dimensions ?? (kind === "cube" ? { width: 2, height: 2, depth: 2 }
+      : kind === "square-pyramid" ? { width: 3, height: 2, depth: 3 } : { width: 3, height: 2, depth: 2.5 })),
+    version: SOLID_NETS_POLYHEDRA_VERSION,
+  });
+}
+
+/** 各冻结版本保留自己的形体边界，尺寸修改和形体切换使用同一个入口。 */
+export function createSolidNetForVersion(version: AnySolidNetsSnapshot["version"], kind: SolidNetKind, dimensions?: SolidNetDimensions): AnySolidNetsSnapshot {
+  if (version === SOLID_NETS_POLYHEDRA_VERSION) return createDefaultSolidNetsPolyhedraSnapshot(kind, dimensions);
+  if (kind === "square-pyramid" || (version === SOLID_NETS_VERSION && kind === "cube")) throw new Error("SOLID_NET_VERSION_KIND");
+  return version === SOLID_NETS_VERSION && kind !== "cube" ? createDefaultSolidNetsSnapshot(kind, dimensions) : createDefaultSolidNetsTeachingSnapshot(kind, dimensions);
+}
+
+export function solidNetKindsForVersion(version: AnySolidNetsSnapshot["version"]) {
+  return version === SOLID_NETS_VERSION ? ["cuboid", "triangular-prism"] as const
+    : version === SOLID_NETS_SNAPSHOT_VERSION ? SOLID_NET_KINDS : SOLID_NET_POLYHEDRA_KINDS;
+}
+
 export function resizeSolidNet(value: AnySolidNetsSnapshot, dimensions: SolidNetDimensions): AnySolidNetsSnapshot {
-  const next = value.version === SOLID_NETS_VERSION ? createDefaultSolidNetsSnapshot(value.kind, dimensions) : createDefaultSolidNetsTeachingSnapshot(value.kind, dimensions);
+  const next = createSolidNetForVersion(value.version, value.kind, dimensions);
   return anySolidNetsSnapshotSchema.parse({ ...next, surfaces: value.surfaces, labelsVisible: value.labelsVisible, view: value.view });
 }

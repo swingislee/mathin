@@ -481,7 +481,7 @@
       },
       "solid-nets": {
         "name": "Solid nets",
-        "desc": "Fold and unfold cubes, cuboids and triangular prisms face by face. Change dimensions, colors and labels to connect solids with their nets."
+        "desc": "Fold and unfold cubes, cuboids, triangular prisms and right square pyramids face by face. Change dimensions, colors and labels to connect solids with their nets."
       },
       "dice": {
         "name": "Dice",

@@ -8,7 +8,7 @@ import { toolClassroomEventSchema, toolSceneInstanceKey, toolSceneOriginHash } f
 import { PROJECTION_COURSEWARE_VERSION, projectionSnapshotSchema } from "../projection/projection-contract";
 import { SOLID_GEOMETRY_VERSION, solidGeometrySnapshotSchema } from "../solid-geometry/solid-geometry-contract";
 import { CUBE_NET_EXPLORATION_VERSION, cubeNetExplorationStateSchema, NET_TEACHING_VERSION, netTeachingStateSchema } from "../net-teaching/contract";
-import { SOLID_NETS_LESSON_VERSION, solidNetsTeachingSnapshotSchema } from "../solid-nets/contract";
+import { SOLID_NETS_LESSON_VERSION, solidNetsTeachingSnapshotSchema, SOLID_NETS_POLYHEDRA_LESSON_VERSION, solidNetsPolyhedraSnapshotSchema } from "../solid-nets/contract";
 import { SOLID_CAPACITY_VERSION, solidCapacitySnapshotSchema } from "../solid-capacity/solid-capacity-contract";
 import { SOMA_VERSION, SOMA_LEGACY_VERSION, somaSnapshotSchema, somaLegacySnapshotSchema } from "../soma-cube/contract";
 
@@ -25,6 +25,7 @@ export const classroomToolEventSchema = z.discriminatedUnion("contentVersion", [
   toolClassroomEventSchema("spatial-lab", NET_TEACHING_VERSION, netTeachingStateSchema),
   toolClassroomEventSchema("spatial-lab", CUBE_NET_EXPLORATION_VERSION, cubeNetExplorationStateSchema),
   toolClassroomEventSchema("solid-nets", SOLID_NETS_LESSON_VERSION, solidNetsTeachingSnapshotSchema),
+  toolClassroomEventSchema("solid-nets", SOLID_NETS_POLYHEDRA_LESSON_VERSION, solidNetsPolyhedraSnapshotSchema),
   toolClassroomEventSchema("solid-capacity", SOLID_CAPACITY_VERSION, solidCapacitySnapshotSchema),
   toolClassroomEventSchema("soma-cube", SOMA_VERSION, somaSnapshotSchema),
   toolClassroomEventSchema("soma-cube", SOMA_LEGACY_VERSION, somaLegacySnapshotSchema),
