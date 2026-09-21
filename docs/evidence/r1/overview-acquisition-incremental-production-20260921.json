@@ -1,0 +1,152 @@
+{
+  "checkedAt": "2026-09-21T09:26:29.195Z",
+  "status": "DEPLOYED / PENDING USER ACCEPTANCE",
+  "scope": "Current Base acquisition statistics and drilldown only",
+  "manifest": {
+    "commit": "271cbab93a487684fa504938568fb4b5b3d0231a",
+    "implementationCommit": "bd92302d48e403ad406a1ab27d9bb7c79d5cadca",
+    "previous": "234b5a3513ebd5bcdd041906a1a472dd4233ea0d",
+    "migration": "20260921003000_current_overview_acquisition_sources",
+    "migrationHash": "f11d14b9134effd7265d8c67c58f39cdbf9f64a37fdec44eedc29b3ead77b4c1",
+    "createdAt": "2026-09-21T09:14:10.347Z"
+  },
+  "archive": {
+    "path": "/home/swing/services/mathin/backups/mathin-db-prechange-20260921T091831Z-acquisition-271cbab93a48/acquisition-audit.tar.gz",
+    "sha256": "7e7a9090b971ffa345610309e35be21bcaa621fa6dfc9c22120133f328ff4bf4",
+    "bytes": 35589574,
+    "ownerOnly": true,
+    "retainUntil": "2026-12-20",
+    "stagingCleaned": true
+  },
+  "target": {
+    "host": "xiaomi",
+    "ssh": true,
+    "supabaseOrigin": "https://supabase.mathin.club",
+    "fingerprint": "10e3f97e32b018403c9074efa4e258d699530a487c47de89b5d307ab7ff21a0c"
+  },
+  "verification": {
+    "unitFiles": 3,
+    "unitTests": 29,
+    "typecheck": true,
+    "targetedEslint": true,
+    "databaseTypes": true,
+    "localDatabase": {
+      "checkedAt": "2026-09-21T09:06:19.867Z",
+      "checksum": "f11d14b9134effd7265d8c67c58f39cdbf9f64a37fdec44eedc29b3ead77b4c1",
+      "fixtureChecksum": "39cf6aab16a7e18d558803b1b08c82d359f87c8e4078f91e90672a6bae3e1722",
+      "incrementalMerge": true,
+      "unchangedRowsRetained": true,
+      "lateOldImportIgnored": true,
+      "renamedSourceAccepted": true,
+      "unrelatedSourcesExcluded": true,
+      "pagination": true,
+      "fieldProjection": true,
+      "oldAliasesRetained": true,
+      "nonAdminRls": true,
+      "anonymousAndServiceRoleDenied": true,
+      "rollbackUnchanged": true
+    },
+    "backup": {
+      "backupPath": "/home/swing/services/mathin/backups/mathin-db-prechange-20260921T091831Z-acquisition-271cbab93a48",
+      "dumpSha256": "a3c6cea48516fcc39002afcbd8445f5063761499b10b321f36cb2c33c51d30d4",
+      "dumpBytes": 355852956,
+      "tocLines": 6664,
+      "commit": "271cbab93a487684fa504938568fb4b5b3d0231a",
+      "migrationHash": "f11d14b9134effd7265d8c67c58f39cdbf9f64a37fdec44eedc29b3ead77b4c1",
+      "head": "20260921002000_communication_page_before_enrichment",
+      "createdAt": "2026-09-21T09:19:15.946Z"
+    },
+    "rehearse": {
+      "mode": "rehearse",
+      "commit": "271cbab93a487684fa504938568fb4b5b3d0231a",
+      "migrationHash": "f11d14b9134effd7265d8c67c58f39cdbf9f64a37fdec44eedc29b3ead77b4c1",
+      "zeroResidual": true,
+      "protectedDataUnchanged": true,
+      "afterHead": "20260921002000_communication_page_before_enrichment",
+      "checkedAt": "2026-09-21T09:20:02.187Z",
+      "previousTotal": 93,
+      "currentTotal": 312,
+      "expectedFromBaseAndNative": 312,
+      "sourceCount": 311,
+      "nativeCount": 1,
+      "allCurrentSourceRows": 3861,
+      "archiveVersions": 4125,
+      "sourceSetMatches": true
+    },
+    "applied": {
+      "mode": "apply",
+      "commit": "271cbab93a487684fa504938568fb4b5b3d0231a",
+      "migrationHash": "f11d14b9134effd7265d8c67c58f39cdbf9f64a37fdec44eedc29b3ead77b4c1",
+      "zeroResidual": false,
+      "protectedDataUnchanged": true,
+      "afterHead": "20260921003000_current_overview_acquisition_sources",
+      "checkedAt": "2026-09-21T09:25:39.726Z",
+      "previousTotal": 93,
+      "currentTotal": 312,
+      "expectedFromBaseAndNative": 312,
+      "sourceCount": 311,
+      "nativeCount": 1,
+      "allCurrentSourceRows": 3861,
+      "archiveVersions": 4125,
+      "sourceSetMatches": true
+    },
+    "verified": {
+      "checkedAt": "2026-09-21T09:26:29.195Z",
+      "previousTotal": 93,
+      "currentTotal": 312,
+      "expectedFromBaseAndNative": 312,
+      "sourceCount": 311,
+      "nativeCount": 1,
+      "allCurrentSourceRows": 3861,
+      "archiveVersions": 4125,
+      "sourceSetMatches": true
+    },
+    "release": {
+      "commit": "271cbab93a487684fa504938568fb4b5b3d0231a",
+      "release": "20260921-092132",
+      "previous": "20260920-165809",
+      "startedAt": "2026-09-21T09:25:59.179287+00:00",
+      "activated": true,
+      "jobsRestarted": true,
+      "health": true,
+      "environmentUnchanged": true
+    },
+    "checks": {
+      "commit": "271cbab93a487684fa504938568fb4b5b3d0231a",
+      "checkedAt": "2026-09-21T09:24:59.001684+00:00",
+      "checks": [
+        {
+          "release": "previous",
+          "health": true,
+          "loginLocales": 2,
+          "anonymousGuards": 2
+        },
+        {
+          "release": "candidate",
+          "health": true,
+          "loginLocales": 2,
+          "anonymousGuards": 2
+        }
+      ],
+      "secretScanFiles": 5022,
+      "secretScan": true,
+      "oldActionsRetained": 431,
+      "environmentSha256": "34f40dddb025f4aecadd54151cb70b00c2f346a8ff0f26dc343c7a6c6aeeee90",
+      "pointerRoundTrip": true,
+      "livePointersUnchanged": true
+    },
+    "postflight": {
+      "commit": "271cbab93a487684fa504938568fb4b5b3d0231a",
+      "checkedAt": "2026-09-21T09:26:21.647135+00:00",
+      "publicChecks": 6,
+      "journalErrors": 0,
+      "runtimeVerified": true,
+      "environmentUnchanged": true
+    }
+  },
+  "privacy": {
+    "productionDetailsRetainedOnHost": true,
+    "developmentDataTransferred": false,
+    "returnedCountsAndStatusesOnly": true
+  }
+}
