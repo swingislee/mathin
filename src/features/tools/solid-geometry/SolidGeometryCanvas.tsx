@@ -25,6 +25,7 @@ import { spatialGizmoEuler, spatialGizmoInteraction, spatialGizmoPoint, snapSpat
 import type { SpatialObjectPreview } from "../spatial-interaction/object-gesture-controller";
 import { spatialQuarterTurn } from "../spatial-interaction/rigid-motion";
 import { pickSpatialObjectHit } from "../spatial-interaction/picking";
+import type { SpatialTransformMode } from "../spatial-interaction/tool-state";
 
 const ignoreTransition = () => {};
 const ignoreRaycast = () => null;
@@ -44,7 +45,7 @@ export interface SolidGeometryCanvasProps extends SolidGeometrySceneProps {
   cameraInteractive?: boolean;
   rollAction?: SpatialRollAction;
   onTransform?: (entity: SolidEntity) => boolean;
-  rotationHandles?: boolean;
+  transformMode?: SpatialTransformMode | null;
   onToggleRotationHandles?: () => void;
   onPointerMissed?: (event: MouseEvent) => void;
 }
@@ -67,7 +68,7 @@ function Contents(props: SolidGeometryCanvasProps) {
   const rotationEntity = props.selectionActive === false ? undefined : displayed.find((entity) => entity.id === props.selectedId);
   const bounds = rotationEntity && getSolidBounds(rotationEntity, props.meshes?.get(rotationEntity.id));
   const handleInteraction = props.onTransform ? spatialGizmoInteraction({ key: props.state.entities, selectedId: props.selectedId ?? null,
-    mode: props.rotationHandles ? "rotate" : "move", enabled: !props.readOnly && !props.objectAnimating && !preview,
+    mode: props.transformMode ?? null, enabled: !props.readOnly && !props.objectAnimating && !preview,
     showHandles: props.selectionActive !== false && !props.rollAction,
     pick: (raycaster) => pickSpatialObjectHit(raycaster, get().scene), onSelect: (id) => props.onPick?.(id, null),
     objectFor: (id) => {
@@ -94,12 +95,12 @@ function Contents(props: SolidGeometryCanvasProps) {
     {props.objectManipulation && ((!props.objectAnimating && !props.readOnly) || handleFrame) && <CubeMoveHandles presentation={dragPresentation} preview={preview} onPreview={setPreview} pickRenderedObjects
       interaction={{ state: dragState, ids: props.selectedId ? [props.selectedId] : [], scopeIds: props.state.entities.map((entity) => entity.id), axis: props.moveAxis, kind: "display-move", snapToGrid: props.moveSnap,
         bodyAxis: "gesture", enabled: !props.readOnly && !props.objectAnimating && !handleDragging, bodyGesture: handleInteraction, bodyPreview: handleFrame?.frame,
-        showHandles: props.selectionActive !== false && !handleFrame && !props.rotationHandles && !props.rollAction,
+        showHandles: props.transformMode === "move" && props.selectionActive !== false && !handleFrame && !props.rollAction,
         isValidOperation: (operation) => moveSolidByDrag(props.state.entities, operation) !== null, onAxisChange: props.onMoveAxis,
         onSelect: (id) => props.onPick?.(id, null), onCommit: props.onMove, onUnavailable: ignoreTransition }} />}
-    {props.objectManipulation && !props.rollAction && props.rotationAction && rotationEntity && !preview && !handleFrame && <SpatialRotationControls center={rotationEntity.position} vertices={toolbarVertices} radius={bounds!.radius}
+    {props.transformMode === "rotate" && props.objectManipulation && !props.rollAction && props.rotationAction && rotationEntity && !preview && !handleFrame && <SpatialRotationControls center={rotationEntity.position} vertices={toolbarVertices} radius={bounds!.radius}
       action={{ ...props.rotationAction, disabled: props.readOnly || props.objectAnimating, gestureLabel: props.onTransform ? props.rotationAction.label : undefined,
-        gestureMode: props.onToggleRotationHandles ? { active: !!props.rotationHandles, onToggle: props.onToggleRotationHandles } : undefined }} />}
+        gestureMode: props.onToggleRotationHandles ? { active: true, onToggle: props.onToggleRotationHandles } : undefined }} />}
     {props.objectManipulation && props.rollAction && rotationEntity && !preview && <SpatialRollControls center={rotationEntity.position} vertices={toolbarVertices} radius={bounds!.radius}
       action={{ ...props.rollAction, disabled: props.rollAction.disabled || props.readOnly || props.objectAnimating }} />}
   </>;

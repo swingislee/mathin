@@ -67,21 +67,24 @@ async function setup(reduced = false) {
 describe("Soma renders the shared rigid animation instead of replacing cells", () => {
   it("hides every selection handle and highlight while keeping body gestures available", async () => {
     const rig = await setup(), onPoseCommit = vi.fn(() => true);
-    await rig.render({ onPoseCommit });
-    expect(controls.interaction!.showHandles).toBe(true);
     controls.toolbar = null;
-    await rig.render({ onPoseCommit, selectionActive: false });
+    await rig.render({ onPoseCommit });
+    expect(controls.interaction!.showHandles).toBe(false); expect(controls.interaction!.bodyGesture!.handles).toBeUndefined();
+    expect(controls.toolbar).toBeNull(); expect(controls.interaction!.bodyGesture!.enabled).toBe(true);
+    await rig.render({ onPoseCommit, selectionActive: false, transformMode: "move" });
     expect(controls.interaction!.showHandles).toBe(false); expect(controls.interaction!.bodyGesture!.handles).toBeUndefined();
     expect(controls.interaction!.bodyGesture!.enabled).toBe(true); expect(controls.toolbar).toBeNull();
     expect(rig.scene().getObjectByName("spatial-move-height-guide")).toBeUndefined();
     await rig.render({ onPoseCommit, selectionActive: true });
+    expect(controls.interaction!.showHandles).toBe(false); expect(controls.interaction!.bodyGesture!.handles).toBeUndefined();
+    await rig.render({ onPoseCommit, selectionActive: true, transformMode: "move" });
     expect(controls.interaction!.showHandles).toBe(true); expect(controls.interaction!.bodyGesture!.handles).toBeDefined();
   });
   it("uses the same fixed-pivot axis rings for all seven pieces, with free rotation as an option", async () => {
     const rig = await setup(), onPoseCommit = vi.fn(() => true);
     for (const id of SOMA_IDS) {
       const snapshot = { ...rig.initial, selectedId: id, pieces: [{ id, orientation: 0, position: { x: 0, y: 5, z: 0 } }] };
-      await rig.render({ snapshot, onPoseCommit, navigation: "rotate", instantKey: JSON.stringify(somaRigidPoses(snapshot.pieces)) });
+      await rig.render({ snapshot, onPoseCommit, navigation: "rotate", transformMode: "rotate", instantKey: JSON.stringify(somaRigidPoses(snapshot.pieces)) });
       const body = controls.interaction!.bodyGesture!, target = body.selected!;
       expect(body.handles).toMatchObject({ mode: "rotate", center: target.pivot });
       expect(body.selectOnly).toBeUndefined(); expect(body.rotate).toBe(false); expect(body.plane).toBe("table");
@@ -90,7 +93,7 @@ describe("Soma renders the shared rigid animation instead of replacing cells", (
       expect(rig.scene().getObjectByName(`soma-rigid:${id}`)!.quaternion.angleTo(new Quaternion(...pose.quaternion))).toBeLessThan(1e-7);
       await act(async () => body.onPreview(null));
     }
-    await rig.render({ onPoseCommit, navigation: "rotate", rotationStyle: "free" });
+    await rig.render({ onPoseCommit, navigation: "rotate", transformMode: "rotate", rotationStyle: "free" });
     expect(controls.interaction!.bodyGesture!.rotate).toBe(true); expect(controls.interaction!.bodyGesture!.handles).toBeUndefined();
   });
   it("keeps only a vertical height guide, following plane and axis drags without intercepting picks", async () => {
@@ -107,6 +110,8 @@ describe("Soma renders the shared rigid animation instead of replacing cells", (
     expect(guide().children[0]).toHaveProperty("material.dashed", true);
     expect(guide().children[0]).toHaveProperty("material.linewidth", 1);
     await rig.viewFrame(15); expect(endpoints()).toEqual(initial);
+    expect(controls.interaction!.bodyGesture!.handles).toBeUndefined();
+    await rig.render({ ...props, transformMode: "move" });
     const body = controls.interaction!.bodyGesture!;
     expect(body.plane).toBe("table"); expect(body.resolvePlane).toBeUndefined();
     expect(body.handles?.mode).toBe("move");
@@ -130,17 +135,22 @@ describe("Soma renders the shared rigid animation instead of replacing cells", (
     await rig.render({ ...props, readOnly: true });
     expect(rig.scene().getObjectByName("spatial-move-height-guide")).toBeUndefined();
   });
-  it("gives the shared toolbar real rotated vertices and the visible movement handles", async () => {
+  it("mounts the floating rotation toolbar only during explicit rotation, with real rotated vertices", async () => {
     const rig = await setup();
     const snapshot = { ...rig.initial, pieces: [{ id: "bao-1" as const, position: { x: 0, y: 3, z: 0 }, quaternion: new Quaternion().setFromAxisAngle(new THREE.Vector3(1, 2, 0).normalize(), 0.7).toArray() as [number, number, number, number] }] };
+    controls.toolbar = null;
     await rig.render({ snapshot, onPoseCommit: () => true, instantKey: JSON.stringify(somaRigidPoses(snapshot.pieces)) });
+    expect(controls.toolbar).toBeNull();
+    await rig.render({ snapshot, onPoseCommit: () => true, navigation: "move", transformMode: "move" });
+    expect(controls.toolbar).toBeNull(); expect(controls.interaction!.showHandles).toBe(true);
+    await rig.render({ snapshot, onPoseCommit: () => true, navigation: "rotate", transformMode: "rotate" });
     const pose = somaRigidPoses(snapshot.pieces)[0];
     expect(controls.toolbar!.vertices).toEqual(unitCubeCorners(somaDefinition("bao-1").cells).map((p) => spatialRigidPoint(p, pose)));
-    expect(controls.toolbar!.moveHandles!.axes).toEqual(["x", "y", "z"]);
-    await rig.render({ snapshot, onPoseCommit: () => true, navigation: "move" });
-    expect(controls.toolbar!.moveHandles!.axes).toEqual(["x", "y", "z"]);
-    await rig.render({ snapshot, onPoseCommit: () => true, navigation: "rotate" });
     expect(controls.toolbar!.moveHandles!.axes).toEqual([]);
+    expect(controls.interaction!.showHandles).toBe(false);
+    controls.toolbar = null;
+    await rig.render({ snapshot, onPoseCommit: () => true });
+    expect(controls.toolbar).toBeNull(); expect(controls.interaction!.bodyGesture!.handles).toBeUndefined();
   });
   it("shows a nearby snap ghost without replacing the freely dragged pose, then keeps the settled classroom endpoint", async () => {
     const rig = await setup(), onPoseCommit = vi.fn<(next: SomaCanvasProps["snapshot"]) => boolean>(() => true);

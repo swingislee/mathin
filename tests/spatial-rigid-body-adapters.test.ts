@@ -31,7 +31,7 @@ beforeEach(() => {
 });
 afterEach(async () => { for (const cleanup of cleanups.splice(0)) await cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 async function setup() {
-  extend({ Group: THREE.Group, Mesh: THREE.Mesh, BoxGeometry: THREE.BoxGeometry, PlaneGeometry: THREE.PlaneGeometry,
+  extend({ Group: THREE.Group, Mesh: THREE.Mesh, BoxGeometry: THREE.BoxGeometry, PlaneGeometry: THREE.PlaneGeometry, RingGeometry: THREE.RingGeometry,
     MeshBasicMaterial: THREE.MeshBasicMaterial, MeshPhysicalMaterial: THREE.MeshPhysicalMaterial, MeshStandardMaterial: THREE.MeshStandardMaterial,
     AmbientLight: THREE.AmbientLight, DirectionalLight: THREE.DirectionalLight, HemisphereLight: THREE.HemisphereLight });
   const canvas = document.createElement("canvas"), root = createRoot(canvas);
@@ -73,12 +73,18 @@ describe("current rigid tools bind the shared body contract, not only shared ico
     await rig.render(createElement(DiceTeachingCanvas, { ...props, snap: true }));
     const snapped = rig.body().resolve(rig.hit(dice[1].position), { ...pose, position: { x: 1.8, y: 0.5, z: 0.7 } }, "translate");
     expect(snapped.pose.position).toEqual({ x: 2, y: 0.5, z: 1 });
+    for (const transformMode of [null, "move", "rotate", null] as const) {
+      await rig.render(createElement(DiceTeachingCanvas, { ...props, selectionActive: true, transformMode }));
+      expect(rig.body().handles?.mode).toBe(transformMode ?? undefined);
+      expect(captured.interaction!.showHandles).toBe(transformMode === "move"); expect(rig.body().enabled).toBe(true);
+    }
   });
   it("solid geometry can pick and translate with no selected entity, including fractional coordinates", async () => {
     const rig = await setup(), state = createSolidGeometryInitial(), commit = vi.fn<(entity: SolidEntity) => boolean>(() => true);
     state.entities = [createSolidEntity("sphere", "sphere", { x: 4, y: 2, z: 0 })]; state.selectedId = null; state.axes = false;
-    await rig.render(createElement(SolidGeometryCanvas, { state, entities: state.entities, selectedId: null, selectionActive: false, objectManipulation: true, frame: { center: { x: 0, y: 0, z: 0 }, radius: 4 },
-      cameraRevision: 0, axisSnap: false, moveSnap: false, navigationMode: "orbit", moveAxis: "x", onMoveAxis: noop, onMove: noop, onDragging: noop, fallback: "", onTransform: commit }));
+    const props: ComponentProps<typeof SolidGeometryCanvas> = { state, entities: state.entities, selectedId: null, selectionActive: false, objectManipulation: true, frame: { center: { x: 0, y: 0, z: 0 }, radius: 4 },
+      cameraRevision: 0, axisSnap: false, moveSnap: false, navigationMode: "orbit", moveAxis: "x", onMoveAxis: noop, onMove: noop, onDragging: noop, fallback: "", onTransform: commit };
+    await rig.render(createElement(SolidGeometryCanvas, props));
     const body = rig.body(), target = rig.hit(state.entities[0].position);
     expect(target.pose.id).toBe("sphere"); expect(body.selected).toBeNull();
     const pose = { ...target.pose, position: { x: 4.23, y: 2, z: -0.37 } }, landing = body.resolve(target, pose, "translate");
@@ -86,6 +92,12 @@ describe("current rigid tools bind the shared body contract, not only shared ico
     await act(async () => body.onPreview({ target, pose, landing: landing.pose, valid: true, phase: "drag" }));
     expect(rig.scene().getObjectByName("solid:sphere")!.position.toArray()).toEqual([4.23, 2, -0.37]);
     landing.apply(); expect(commit.mock.lastCall![0]).toMatchObject({ id: "sphere", position: pose.position });
+    await act(async () => body.onPreview(null));
+    for (const transformMode of [null, "move", "rotate", null] as const) {
+      await rig.render(createElement(SolidGeometryCanvas, { ...props, selectedId: "sphere", selectionActive: true, transformMode }));
+      expect(rig.body().handles?.mode).toBe(transformMode ?? undefined);
+      expect(captured.interaction!.showHandles).toBe(transformMode === "move"); expect(rig.body().enabled).toBe(true);
+    }
   });
   it("cube structures translate the picked group atomically, not the previously selected group", async () => {
     const rig = await setup(), history = createCubeHistory([{ x: -3, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, { x: 2, y: 0, z: 0 }]), state = history.initial;
@@ -94,8 +106,9 @@ describe("current rigid tools bind the shared body contract, not only shared ico
       ground: null, origin: null, axesVisible: false, axisLength: 4, validBuild: false, onGroundHover: noop, onGroundClick: noop };
     const interaction: CubeMoveInteraction = { state, ids: ["cube-1"], scopeIds: state.cubes.map((cube) => cube.id), showHandles: false, kind: "move", axis: "x", snapToGrid: true,
       idsForHit: (id) => id === "cube-1" ? [id] : ["cube-2", "cube-3"], onAxisChange: noop, onSelect: noop, onCommit: noop, onUnavailable: noop };
-    await rig.render(createElement(CubeStructuresViewport, { scene, sceneKey: state, onMovingChange: noop, moveInteraction: interaction, cutInteraction: null, opacityPreview: null,
-      model: { cells: [] } as unknown as VoxelModelCanvasProps["model"], messages: {} as VoxelModelCanvasProps["messages"], onTransformOperations: commit }));
+    const props: ComponentProps<typeof CubeStructuresViewport> = { scene, sceneKey: state, onMovingChange: noop, moveInteraction: interaction, cutInteraction: null, opacityPreview: null,
+      model: { cells: [] } as unknown as VoxelModelCanvasProps["model"], messages: {} as VoxelModelCanvasProps["messages"], onTransformOperations: commit };
+    await rig.render(createElement(CubeStructuresViewport, props));
     const body = rig.body(), target = rig.hit({ x: 2, y: 0, z: 0 });
     expect(target.pose.id).toBe("cube-3"); expect(target.pose.position).toEqual({ x: 1.5, y: 0, z: 0 });
     const pose = { ...target.pose, position: { x: 2.6, y: 0, z: 1.8 } }, landing = body.resolve(target, pose, "translate");
@@ -104,5 +117,11 @@ describe("current rigid tools bind the shared body contract, not only shared ico
     expect(commit).toHaveBeenCalledTimes(1); expect(commit.mock.lastCall![0]).toEqual([
       { kind: "move", ids: ["cube-2", "cube-3"], axis: "x", distance: 1 }, { kind: "move", ids: ["cube-2", "cube-3"], axis: "z", distance: 2 },
     ]);
+    for (const transformMode of [null, "move", "rotate", null] as const) {
+      await rig.render(createElement(CubeStructuresViewport, { ...props, transformMode, moveInteraction: { ...interaction, showHandles: transformMode === "move" },
+        rotationInteraction: transformMode === "rotate" ? { ids: ["cube-1"], axis: "y", onAxisChange: noop, onRotate: noop, label: "Rotate" } : null }));
+      expect(rig.body().handles?.mode).toBe(transformMode ?? undefined);
+      expect(captured.interaction!.showHandles).toBe(transformMode === "move"); expect(rig.body().enabled).toBe(true);
+    }
   });
 });

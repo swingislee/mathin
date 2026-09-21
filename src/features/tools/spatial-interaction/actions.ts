@@ -9,7 +9,7 @@ export const SPATIAL_ACTIONS = {
   select: { zh: "选择对象", en: "Select objects", icon: "MousePointer2", group: "object" },
   selectAll: { zh: "选择范围内全部对象", en: "Select all in scope", icon: "SquareDashedMousePointer", group: "object" },
   deselect: { zh: "取消选中", en: "Deselect", icon: "SquareDashed", group: "object" },
-  move: { zh: "移动整个对象", en: "Move object", icon: "Move3D", group: "object" },
+  move: { zh: "精确移动", en: "Precise move", icon: "Move3D", group: "object" },
   rotate: { zh: "旋转整个对象", en: "Rotate object", icon: "Rotate3D", group: "object" },
   roll: { zh: "沿支撑棱翻滚", en: "Roll over an edge", icon: "Footprints", group: "object" },
   moveSnap: { zh: "移动落点吸附", en: "Position snap", icon: "MoveSnap", group: "object" },

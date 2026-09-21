@@ -1,7 +1,7 @@
 const zh = {
   title: "索玛立方体", observe: "单块观察", assemble: "自由拼搭", pieces: "选择拼块", count: "拼块数量", countUnit: "块", cubes: "个小立方体",
   selectHint: "任意组合 1–7 宝；勾选加入，取消勾选移出。", observeHint: "点击下方切换观察对象；拖动画面转动视角，滚轮缩放。返回拼搭可继续原来的作品。",
-  assembleHint: "拖拼块沿桌面移动；轴间方片选平面，彩色圆环旋转。点空白或按 Esc 取消选中，拖空白转视角。",
+  assembleHint: "拖拼块沿 XZ 桌面移动，拖空白转视角。需要手柄时，点右侧精确移动或旋转；再次点击、点空白或按 Esc 收起。",
   move: "移动拼块", rotate: "旋转拼块", orbit: "转动视角", pan: "平移视角", fit: "完整显示", undo: "撤销", redo: "重做", reset: "恢复起点",
   settings: "显示设置", grid: "底面网格", axes: "坐标轴", labels: "拼块名称", close: "关闭", apart: "分开摆放", example: "3×3×3 示例", selected: "当前选择",
   moveHint: "直接拖轴间的 XZ、XY、YZ 小方片，在对应平面连续移动；XYZ 箭头沿单轴移动。直接拖拼块沿 XZ 桌面移动，松手按整格落位；纵向虚线提示离地高度。",
@@ -19,7 +19,7 @@ const zh = {
 const en: typeof zh = {
   title: "Soma cube", observe: "Observe one", assemble: "Build freely", pieces: "Choose pieces", count: "Piece count", countUnit: "pieces", cubes: "unit cubes",
   selectHint: "Combine any 1–7 Bao. Check to add a piece, uncheck to remove it.", observeHint: "Select a piece below. Drag to orbit and scroll to zoom. Return to building to continue your assembly.",
-  assembleHint: "Drag pieces across the table, square grips within a plane, or colored rings to rotate. Tap blank space or press Esc to deselect; drag blank space to orbit.",
+  assembleHint: "Drag pieces across XZ; drag blank space to orbit. Open Precise move or Rotate on the right for handles. Tap again, tap blank space or press Esc to dismiss.",
   move: "Move piece", rotate: "Rotate piece", orbit: "Orbit view", pan: "Pan view", fit: "Fit all", undo: "Undo", redo: "Redo", reset: "Restore start",
   settings: "Display settings", grid: "Ground grid", axes: "Axes", labels: "Piece names", close: "Close", apart: "Spread pieces", example: "3×3×3 example", selected: "Selected",
   moveHint: "Drag the XZ, XY or YZ square to move within that plane; arrows move along one axis. Dragging the piece moves across the XZ table. Release lands on the grid; the vertical dashed line shows height above the ground.",

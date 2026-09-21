@@ -2,6 +2,7 @@ import { Euler, Quaternion, Vector3, type Raycaster } from "three";
 import type { Axis, VoxelCoordinate } from "@/features/spatial-math/domain";
 import type { SpatialGestureTarget, SpatialObjectInteraction, SpatialObjectPreview } from "./object-gesture-controller";
 import { rotateSpatialPose } from "./transform-handles";
+import type { SpatialTransformMode } from "./tool-state";
 
 export interface SpatialGizmoTranslation { delta: VoxelCoordinate; valid: boolean; apply: () => boolean }
 export interface SpatialGizmoObject {
@@ -11,7 +12,7 @@ export interface SpatialGizmoObject {
 }
 /** 刚体本体沿 XZ 拖动，明确手柄覆盖约束；领域只提供命中对象和合法终点。 */
 export function spatialGizmoInteraction(options: {
-  key: object; selectedId: string | null; mode: "move" | "rotate"; enabled: boolean; showHandles?: boolean;
+  key: object; selectedId: string | null; mode: SpatialTransformMode | null; enabled: boolean; showHandles?: boolean;
   objectFor: (id: string) => SpatialGizmoObject | null;
   pick: (raycaster: Raycaster) => { id: string; point: VoxelCoordinate } | null;
   onSelect: (id: string) => void;
@@ -24,7 +25,7 @@ export function spatialGizmoInteraction(options: {
   const selected = options.selectedId ? targetFor(options.selectedId) : null;
   return {
     key: options.key, enabled: options.enabled, plane: "table", freeRotation: false, selected,
-    handles: selected && options.showHandles !== false ? { center: selected.pivot, radius: selected.radius!, mode: options.mode, maxAngle: Math.PI / 2 } : undefined,
+    handles: selected && options.mode && options.showHandles === true ? { center: selected.pivot, radius: selected.radius!, mode: options.mode, maxAngle: Math.PI / 2 } : undefined,
     pick: (raycaster) => { const hit = options.pick(raycaster); return hit ? targetFor(hit.id, hit.point) : null; },
     onSelect: options.onSelect, onPreview: options.onPreview, onDragging: options.onDragging, onUnavailable: options.onUnavailable,
     resolve: (target, moved, action, constraint) => {

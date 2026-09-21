@@ -74,7 +74,7 @@ export function bindCubeAxisDrag(canvas: HTMLCanvasElement, getInteraction: () =
     const point = { x: event.clientX - size.left, y: event.clientY - size.top };
     const center = cubeMoveCenter(snapshot.state, snapshot.ids);
     if (!center) return;
-    const handle = snapshot.showHandles === false ? null : cubeDragHandleAxis(point, center, camera, size, snapshot.handleAxes, event.pointerType === "touch" ? 22 : 12);
+    const handle = snapshot.showHandles !== true ? null : cubeDragHandleAxis(point, center, camera, size, snapshot.handleAxes, event.pointerType === "touch" ? 22 : 12);
     // 共用对象控制器拥有本体手势；旧轴拖动只接管明确命中的轴箭头。
     if (!handle && (snapshot.bodyGesture || snapshot.bodyAxis === "handles")) return;
     raycaster.setFromCamera(new Vector2(point.x / size.width * 2 - 1, 1 - point.y / size.height * 2), camera);

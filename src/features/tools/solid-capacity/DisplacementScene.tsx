@@ -16,11 +16,12 @@ const ID = "displacement-body", ignoreRaycast = () => null, noop = () => {};
 const number = (value: number) => Number(value.toFixed(2)).toString();
 export interface DisplacementSceneProps {
   snapshot: DisplacementSnapshot; frame: DisplacementSnapshot; locale: string; disabled: boolean; selectionActive: boolean;
+  showMoveHandle?: boolean;
   onSelect: () => void; onPreview: (next: DisplacementSnapshot | null) => void; onDragging: (active: boolean) => void;
   onCommit: (next: DisplacementSnapshot) => boolean; onLimit: (limit: DisplacementLimit) => void;
 }
 /** 浸入演示只允许竖向手柄；指针捕获、取消与相机仍由共用舞台管理。 */
-export function DisplacementScene({ snapshot, frame, locale, disabled, selectionActive, onSelect, onPreview, onDragging, onCommit, onLimit }: DisplacementSceneProps) {
+export function DisplacementScene({ snapshot, frame, locale, disabled, selectionActive, showMoveHandle = false, onSelect, onPreview, onDragging, onCommit, onLimit }: DisplacementSceneProps) {
   const [preview, setPreview] = useState<CubeDragPreview | null>(null);
   const m = displacementMessages(locale), { tank, body } = frame, result = solveDisplacement(frame);
   const state = useMemo(() => solidDragState([createSolidEntity("cuboid", ID, { x: 0, y: snapshot.body.bottom + snapshot.body.height + 0.05, z: 0 })]), [snapshot]);
@@ -55,7 +56,7 @@ export function DisplacementScene({ snapshot, frame, locale, disabled, selection
     </group>
     {selectionActive && <Line points={[[0, 0, 0], [0, body.bottom, 0]]} color={CUBE_AXIS_COLORS.y} lineWidth={1} dashed dashSize={0.1} gapSize={0.08} raycast={ignoreRaycast} depthWrite={false} />}
     <CubeMoveHandles presentation={presentation} preview={preview} onPreview={handlePreview} interaction={{ state, ids: [ID], scopeIds: [ID], axis: "y", kind: "display-move", snapToGrid: false,
-      bodyAxis: "handles", handleAxes: ["y"], continuousPreview: true, continuousDistance: true, enabled: !disabled, showHandles: selectionActive,
+      bodyAxis: "handles", handleAxes: ["y"], continuousPreview: true, continuousDistance: true, enabled: !disabled, showHandles: showMoveHandle && selectionActive,
       onAxisChange: noop, onSelect, onUnavailable: noop, isValidOperation: () => true,
       onCommit: (operation) => { const placed = placeDisplacementBody(snapshot, snapshot.body.bottom + operation.distance); onLimit(placed.limit); onCommit(placed.state); onSelect(); },
     }} />

@@ -31,6 +31,19 @@ async function finish() { await advance(1); await advance(700); }
 function sceneProps() { return (canvas.props!.renderScene!({ entities: [], selected: null }) as ReactElement<DisplacementSceneProps>).props; }
 
 describe("displacement teacher workbench", () => {
+  it("shows the immersion handle only in its operation, without changing saved teaching state", async () => {
+    const initial = createDefaultDisplacementInitial(), capture = vi.fn();
+    await render(createElement(DisplacementWorkspace, { initial, onSnapshot: capture }));
+    expect(sceneProps().showMoveHandle).toBe(false);
+    await act(async () => sceneProps().onSelect()); expect(sceneProps().showMoveHandle).toBe(false);
+    await click(m.move); expect(sceneProps().showMoveHandle).toBe(true);
+    await click(m.move); expect(sceneProps().showMoveHandle).toBe(false);
+    await click(m.move); await click(m.dimensions); expect(sceneProps().showMoveHandle).toBe(false);
+    await click(m.move); await click(m.close); expect(sceneProps().showMoveHandle).toBe(false);
+    await click(m.move); await act(async () => canvas.props!.onPointerMissed!(new MouseEvent("click", { button: 0 })));
+    expect(sceneProps().showMoveHandle).toBe(false); expect(sceneProps().selectionActive).toBe(false);
+    expect(capture.mock.lastCall![0]).toEqual(initial);
+  });
   it("animates immersion through actual middle states and restores the prepared origin", async () => {
     const initial = createDefaultDisplacementInitial(), capture = vi.fn();
     await render(createElement(DisplacementWorkspace, { initial, onSnapshot: capture })); expect(capture.mock.lastCall![0]).toEqual(initial);

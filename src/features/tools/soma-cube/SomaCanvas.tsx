@@ -29,6 +29,7 @@ import { SpatialArcballGuide } from "../spatial-interaction/SpatialArcballGuide"
 import { DEFAULT_SPATIAL_ROTATION_SNAP, type SpatialRotationSnapLevel } from "../spatial-interaction/rotation-snap";
 import { SpatialLandingOutline } from "../spatial-interaction/SpatialLandingOutline";
 import { SpatialHeightGuide } from "../spatial-interaction/SpatialHeightGuide";
+import type { SpatialTransformMode } from "../spatial-interaction/tool-state";
 
 const colors = Object.fromEntries(SOMA_PIECES.map((piece) => [piece.color, piece.color]));
 export interface SomaCanvasProps {
@@ -38,6 +39,7 @@ export interface SomaCanvasProps {
   onRotate: (axis: Axis, turn: -1 | 1) => void; onMoving: (value: boolean) => void; instantKey?: string | null; locale: string;
   cameraInteractive?: boolean;
   selectionActive?: boolean; onPointerMissed?: (event: MouseEvent) => void;
+  transformMode?: SpatialTransformMode | null;
   rollAction?: SpatialRollAction;
   rotationAxis?: Axis; onRotationAxis?: (axis: Axis) => void;
   onPoseCommit?: (next: SomaSnapshot) => boolean; onPlaneUnavailable?: () => void; onGestureBlocked?: () => void;
@@ -45,7 +47,7 @@ export interface SomaCanvasProps {
   rotationStyle?: "axis" | "free";
 }
 export default function SomaCanvas({ snapshot, messages, title, readOnly, axisSnap, navigation, moveAxis, onMoveAxis, onSelect, onMove, onUnavailable, onDragging, onMoving, onRotate, instantKey, locale, rollAction, cameraInteractive = !readOnly,
-  rotationAxis = "y", onRotationAxis = onMoveAxis, onPoseCommit, onPlaneUnavailable = onUnavailable, onGestureBlocked = onUnavailable, freeRotation = true, rotationSnap = DEFAULT_SPATIAL_ROTATION_SNAP, onToggleRotation, rotationStyle = "axis", selectionActive = true, onPointerMissed }: SomaCanvasProps) {
+  rotationAxis = "y", onRotationAxis = onMoveAxis, onPoseCommit, onPlaneUnavailable = onUnavailable, onGestureBlocked = onUnavailable, freeRotation = true, rotationSnap = DEFAULT_SPATIAL_ROTATION_SNAP, onToggleRotation, rotationStyle = "axis", selectionActive = true, transformMode = null, onPointerMissed }: SomaCanvasProps) {
   const visible = useMemo(() => somaVisiblePieces(snapshot), [snapshot]);
   // 选择另一宝时只改变手柄目标；同一拼搭的命中几何保持身份，保留正在开始的拖动。
   const pieces = snapshot.mode === "assemble" ? snapshot.pieces : visible;
@@ -86,13 +88,13 @@ export default function SomaCanvas({ snapshot, messages, title, readOnly, axisSn
     const pivot = { x: v.x, y: v.y, z: v.z };
     return { pose, pivot, grabPoint: pivot, radius: somaRotationRadius(id) };
   };
-  const handleAxes: readonly Axis[] = navigation === "rotate" || !!rollAction ? [] : ["x", "y", "z"];
+  const handleAxes: readonly Axis[] = transformMode === "move" && !rollAction ? ["x", "y", "z"] : [];
   const toolbarVertices = useMemo(() => selectedPose ? unitCubeCorners(somaDefinition(snapshot.selectedId).cells).map((p) => spatialRigidPoint(p, selectedPose)) : [], [selectedPose, snapshot.selectedId]);
   const toolbarHandles = { center: cubeMoveCenter(state, selectedIds) ?? center!, axes: handleAxes };
   const bodyGesture: SpatialObjectInteraction | undefined = onPoseCommit ? {
     key: state, enabled: !readOnly && !motion.animating && !preview, plane: "table", rotate: navigation === "rotate" && rotationStyle === "free", selected: targetFor(snapshot.selectedId),
-    handles: selectionActive && !rollAction && (!readOnly || !!objectPreview) && pivot && (navigation !== "rotate" || rotationStyle === "axis") ? {
-      mode: navigation === "rotate" ? "rotate" : "move", center: navigation === "rotate" ? pivot : toolbarHandles.center, radius: somaRotationRadius(snapshot.selectedId) + 0.35,
+    handles: transformMode && selectionActive && !rollAction && (!readOnly || !!objectPreview) && pivot && (transformMode !== "rotate" || rotationStyle === "axis") ? {
+      mode: transformMode, center: transformMode === "rotate" ? pivot : toolbarHandles.center, radius: somaRotationRadius(snapshot.selectedId) + 0.35,
     } : undefined,
     pick: (raycaster) => {
       const hits = target.flatMap((pose) => {
@@ -103,7 +105,7 @@ export default function SomaCanvas({ snapshot, messages, title, readOnly, axisSn
       return selected ? { ...selected, grabPoint: hit.point } : null;
     },
     handlesHit: (event, camera, size) => {
-      if (!selectionActive || event.shiftKey || navigation === "rotate") return false;
+      if (transformMode !== "move" || !selectionActive || event.shiftKey) return false;
       const center = cubeMoveCenter(state, selectedIds);
       return !!center && !!cubeDragHandleAxis({ x: event.clientX - size.left, y: event.clientY - size.top }, center, camera, size, handleAxes, event.pointerType === "touch" ? 22 : 12);
     },
@@ -145,7 +147,7 @@ export default function SomaCanvas({ snapshot, messages, title, readOnly, axisSn
         visible={!motion.animating} groundY={-0.505} />}
       {snapshot.grid && <gridHelper args={[25, 25, "#b8b0a3", "#d9d3c8"]} position={[0, -0.505, 0]} raycast={() => null} />}
       {snapshot.axes && <axesHelper args={[3]} position={[-0.5, -0.5, -0.5]} raycast={() => null} />}
-      {snapshot.labels && !motion.animating && pieces.filter((piece) => (!direct || !selectionActive || piece.id !== snapshot.selectedId) && piece.id !== objectPreview?.pose.id).map((piece) => {
+      {snapshot.labels && !motion.animating && pieces.filter((piece) => (!direct || !transformMode || !selectionActive || piece.id !== snapshot.selectedId) && piece.id !== objectPreview?.pose.id).map((piece) => {
         const cells = presentation.cubes.filter((cube) => somaIdFromCell(cube.id) === piece.id);
         const center = (axis: Axis) => (Math.min(...cells.map((cube) => cube.position[axis])) + Math.max(...cells.map((cube) => cube.position[axis]))) / 2;
         return <Html key={piece.id} position={[center("x"), Math.max(...cells.map((cube) => cube.position.y)) + 0.85, center("z")]} center zIndexRange={[4, 0]} style={{ pointerEvents: "none" }}>
@@ -154,11 +156,11 @@ export default function SomaCanvas({ snapshot, messages, title, readOnly, axisSn
       })}
       {direct && <CubeMoveHandles presentation={presentation} preview={preview} onPreview={setPreview}
         interaction={{ state, ids: selectedIds, scopeIds: state.cubes.map((cube) => cube.id), bodyAxis: onPoseCommit ? "handles" : "gesture", handleAxes,
-          enabled: !readOnly && !motion.animating && !objectDragging, continuousPreview: !!onPoseCommit, bodyGesture, bodyPreview: objectPreview, showHandles: selectionActive && !objectPreview && !readOnly && !motion.animating,
+          enabled: !readOnly && !motion.animating && !objectDragging, continuousPreview: !!onPoseCommit, bodyGesture, bodyPreview: objectPreview, showHandles: transformMode === "move" && selectionActive && !objectPreview && !readOnly && !motion.animating,
           idsForHit: (id) => state.cubes.filter((cube) => somaIdFromCell(cube.id) === somaIdFromCell(id)).map((cube) => cube.id),
           axis: moveAxis, kind: "move", snapToGrid: true, isValidOperation: (operation) => somaDrag(snapshot, operation) !== null,
           onAxisChange: onMoveAxis, onSelect: selectCell, onCommit: onMove, onUnavailable }} />}
-      {direct && selectionActive && !readOnly && center && !preview && !objectPreview && (rollAction
+      {direct && selectionActive && !readOnly && center && !preview && !objectPreview && (rollAction || transformMode === "rotate") && (rollAction
         ? <SpatialRollControls center={center} vertices={toolbarVertices} moveHandles={toolbarHandles} action={{ ...rollAction, disabled: rollAction.disabled || motion.animating }} />
         : <SpatialRotationControls center={onPoseCommit && pivot ? pivot : center} vertices={toolbarVertices} moveHandles={toolbarHandles} action={{ axis: rotationAxis, onAxisChange: onRotationAxis, onRotate, label: somaMessages(locale).rotate, disabled: motion.animating,
           gestureLabel: onPoseCommit ? somaMessages(locale).rotateDrag : undefined, precise: !onPoseCommit || navigation === "rotate",

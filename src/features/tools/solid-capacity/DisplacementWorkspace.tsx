@@ -40,7 +40,7 @@ export function DisplacementWorkspace({ initial, onSnapshot, classroom, readOnly
   const readOnlyView = readOnly || Boolean(classroom && !classroom.onChange);
   const interactionDisabled = readOnlyView || host.publishing || presentation.animating;
   const disabled = interactionDisabled || dragging;
-  const controls = useSpatialToolState<"orbit" | "pan", Panel>({ defaultTool: "orbit", panels: { move: "orbit", liquid: "orbit", dimensions: "orbit", settings: "orbit" } });
+  const controls = useSpatialToolState<"orbit" | "pan", Panel>({ defaultTool: "orbit", transformPanels: { move: "move" }, panels: { move: "orbit", liquid: "orbit", dimensions: "orbit", settings: "orbit" } });
   const axisSnap = useSpatialAxisSnap(), result = solveDisplacement(presentation.frame);
   const frame = useMemo(() => ({ center: { x: 0, y: (snapshot.tank.height + snapshot.body.height + 0.4) / 2, z: 0 }, radius: Math.hypot(snapshot.tank.width, snapshot.tank.depth, snapshot.tank.height + snapshot.body.height + 1) / 2 }), [snapshot.tank.width, snapshot.tank.depth, snapshot.tank.height, snapshot.body.height]);
   const canvasState = useMemo(() => ({ ...createSolidGeometryInitial(), entities: [], selectedId: null, axes: snapshot.axes, grid: snapshot.grid, view: snapshot.view }), [snapshot.axes, snapshot.grid, snapshot.view]);
@@ -73,7 +73,7 @@ export function DisplacementWorkspace({ initial, onSnapshot, classroom, readOnly
     <div className={styles.viewport}><div className={styles.canvas}>
       <Canvas state={canvasState} entities={emptyEntities} selectedId={null} frame={frame} cameraRevision={snapshot.cameraRevision} axisSnap={axisSnap} moveSnap={false}
         onPointerMissed={!disabled ? controls.onPointerMissed : undefined} navigationMode={controls.tool} moveAxis="y" onMoveAxis={noop} onMove={noop} onDragging={noop} readOnly={readOnlyView} fallback={m.fallback}
-        renderScene={() => <DisplacementScene snapshot={snapshot} frame={presentation.frame} locale={locale} disabled={interactionDisabled} selectionActive={controls.selectionActive}
+        renderScene={() => <DisplacementScene snapshot={snapshot} frame={presentation.frame} locale={locale} disabled={interactionDisabled} selectionActive={controls.selectionActive} showMoveHandle={controls.transformMode === "move"}
           onSelect={controls.activateSelection} onPreview={presentation.preview} onDragging={setDragging} onCommit={commitDirect} onLimit={setLimit} />} />
       <div className={`${styles.dock} ${styles.meta}`}>
         {workspaceSelector}

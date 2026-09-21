@@ -37,6 +37,23 @@ async function advance(ms = SOLID_TRANSITION_MS + 80) { for (let elapsed = 0; el
 } }
 
 describe("solid geometry teacher workspace", () => {
+  it("keeps measurement, feature and styling panels clear of transform and section handles", async () => {
+    const initial = createSolidGeometryInitial(); initial.section.enabled = true;
+    await render(createElement(SolidGeometryWorkspace, { initial }));
+    expect(canvas.props!.transformMode).toBeNull(); expect(canvas.props!.sectionEditable).toBe(false);
+    await act(async () => canvas.props!.onPick!(initial.selectedId!, null));
+    expect(canvas.props!.transformMode).toBeNull();
+    await click(spatialActionMessages("en").preciseMove); expect(canvas.props!.transformMode).toBe("move");
+    await click(m.turn); expect(canvas.props!.transformMode).toBe("rotate");
+    await click(m.turn); expect(canvas.props!.transformMode).toBeNull();
+    for (const label of [m.objects, m.face, m.edge, m.vertex, m.color, m.transparent, m.settings, measurementMessages("en").title]) {
+      await click(label); await advance();
+      expect(canvas.props!.transformMode).toBeNull(); expect(canvas.props!.sectionEditable).toBe(false);
+    }
+    await click(solidSectionsMessages("en").title); await advance();
+    expect(canvas.props!.sectionEditable).toBe(true); expect(canvas.props!.transformMode).toBeNull();
+    await click(m.close); expect(canvas.props!.sectionEditable).toBe(false); expect(canvas.props!.state.section.enabled).toBe(true);
+  });
   it("deselects locally without removing the section or measurement teaching state", async () => {
     const initial = createSolidGeometryInitial(), onChange = vi.fn(async () => {}); initial.section.enabled = true;
     const snapshot = solidGeometrySnapshot(initial);
@@ -124,7 +141,7 @@ describe("solid geometry teacher workspace", () => {
     await click(m.face); await textClick(m.faces.front);
     expect(capture.mock.lastCall![0].feature).toEqual({ entityId: "solid-origin", kind: "face", id: "front" });
     await click(m.turn); await click(`${m.turn} Y 90°`); await advance(); expect(capture.mock.lastCall![0].entities[0].rotation.y).toBeCloseTo(Math.PI / 2);
-    await click(m.move); expect(container.textContent).toContain(m.moveSnap);
+    await click(spatialActionMessages("en").preciseMove); expect(container.textContent).toContain(m.moveSnap);
     await act(async () => canvas.props!.onMove({ kind: "display-move", ids: ["solid-origin"], axis: "x", distance: 1.5 }));
     expect(canvas.props!.entities[0].position.x).toBe(1.5); expect(canvas.props!.state.entities[0].position.x).toBe(1.5);
     await advance(100); expect(canvas.props!.entities[0].position.x).toBe(1.5);
@@ -149,7 +166,7 @@ describe("solid geometry teacher workspace", () => {
     expect(canvas.props!.entities[0].opacity).toBeGreaterThan(0.1); expect(canvas.props!.entities[0].opacity).toBeLessThan(1);
     await advance(); expect(canvas.props!.entities[0].opacity).toBe(0.1);
     expect(capture.mock.lastCall![0].entities[0].opacity).toBe(1);
-    await click(m.move);
+    await click(spatialActionMessages("en").preciseMove);
     await act(async () => canvas.props!.onMove({ kind: "display-move", ids: ["solid-origin"], axis: "x", distance: 1.5 }));
     expect(canvas.props!.entities[0].position.x).toBe(1.5);
     await click(solidSectionsMessages("en").title); await advance();

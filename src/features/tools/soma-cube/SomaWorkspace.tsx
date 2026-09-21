@@ -47,7 +47,7 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
   const locale = useLocale(), m = { ...somaMessages(locale), ...spatialActionMessages(locale) }, spatial = useTranslations("tools.spatialLab");
   const origin = useMemo(() => initial ?? createSomaInitial(), [initial]);
   const host = useToolSnapshot(origin, classroom), snapshot = host.snapshot;
-  const controls = useSpatialToolState<"orbit" | "pan" | "move" | "rotate", Exclude<Panel, null>>({ defaultTool: "orbit", panels: { pieces: "orbit", move: "move", rotate: "rotate", roll: "orbit", settings: "orbit" } }, { tool: "move" });
+  const controls = useSpatialToolState<"orbit" | "pan" | "move" | "rotate", Exclude<Panel, null>>({ defaultTool: "orbit", transformPanels: { move: "move", rotate: "rotate" }, panels: { pieces: "orbit", move: "move", rotate: "rotate", roll: "orbit", settings: "orbit" } });
   const { panel, tool: navigation, setTool: setNavigation, setPanel, selectionActive, activateSelection } = controls;
   const [axis, setAxis] = useState<Axis>("x"), [notice, setNotice] = useState("");
   const [rotationAxis, setRotationAxis] = useState<Axis>("y");
@@ -87,7 +87,7 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
     choose([...ids, ...SOMA_IDS.filter((id) => !ids.includes(id))].slice(0, size));
   };
   const mode = (value: SomaSnapshot["mode"]) => {
-    if (commit(somaFit({ ...snapshot, mode: value }), false)) setNavigation(value === "observe" ? "orbit" : "move");
+    if (commit(somaFit({ ...snapshot, mode: value }), false)) setNavigation("orbit");
   };
   const open = (value: Exclude<Panel, null>) => { if (["move", "rotate", "roll"].includes(value)) activateSelection(); controls.togglePanel(value); };
   const travel = (direction: "past" | "future") => {
@@ -107,7 +107,7 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
   return <section className={styles.workspace} data-workbench-mode="courseware" data-soma-workspace={freeRotation ? "v2" : "v1"} aria-label={m.title} {...capture} {...controls.bindings}>
     <div className={styles.viewport}><div className={styles.canvas} data-has-cube-groups="true">
       <Canvas snapshot={directMove.displayed} messages={messages} title={m.title} readOnly={busy} cameraInteractive={!viewer} axisSnap={snap} navigation={navigation} moveAxis={axis}
-        selectionActive={selectionActive} onPointerMissed={disabled ? undefined : controls.onPointerMissed}
+        selectionActive={selectionActive} transformMode={controls.transformMode} onPointerMissed={disabled ? undefined : controls.onPointerMissed}
         rotationAxis={rotationAxis} onRotationAxis={setRotationAxis}
         freeRotation={freeRotation} rotationStyle={rotationStyle} rotationSnap={rotationSnap} onToggleRotation={() => open("rotate")}
         onPoseCommit={(next) => commit(next, true, true)} onPlaneUnavailable={() => setNotice(m.planeEdgeOn)} onGestureBlocked={() => setNotice(m.gestureBlocked)}
@@ -128,7 +128,7 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
       <div className={`${styles.dock} ${styles.tools}`} role="toolbar" aria-label={m.title}>
         <SpatialActionButton action="orbit" label={m.orbit} active={navigation === "orbit"} disabled={disabled} onClick={() => controls.chooseTool("orbit")} />
         <SpatialActionButton action="pan" label={m.pan} active={navigation === "pan"} disabled={disabled} onClick={() => controls.chooseTool("pan")} />
-        <SpatialActionButton action="move" label={m.move} active={navigation === "move" && assembling} disabled={disabled || !assembling} onClick={() => open("move")} />
+        <SpatialActionButton action="move" label={m.preciseMove} active={controls.transformMode === "move" && assembling} disabled={disabled || !assembling} onClick={() => open("move")} />
         <SpatialActionButton action="rotate" label={m.rotate} active={panel === "rotate"} disabled={disabled || !assembling} onClick={() => open("rotate")} />
         <SpatialActionButton action="roll" label={m.roll} active={panel === "roll"} disabled={disabled || !assembling} onClick={() => open("roll")} />
         <span className={styles.toolSeparator} />
@@ -136,7 +136,7 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
         <SpatialActionButton action="settings" label={m.settings} active={panel === "settings"} disabled={disabled} onClick={() => open("settings")} />
         <SpatialActionButton action="undo" label={m.undo} disabled={disabled || !history.past.length} onClick={() => travel("past")} />
         <SpatialActionButton action="redo" label={m.redo} disabled={disabled || !history.future.length} onClick={() => travel("future")} />
-        <SpatialActionButton action="reset" label={m.reset} disabled={disabled} onClick={() => { if (commit({ ...structuredClone(origin), cameraRevision: (snapshot.cameraRevision + 1) % 1_000_001 })) { setPanel(null); setNavigation(origin.mode === "observe" ? "orbit" : "move"); } }} />
+        <SpatialActionButton action="reset" label={m.reset} disabled={disabled} onClick={() => { if (commit({ ...structuredClone(origin), cameraRevision: (snapshot.cameraRevision + 1) % 1_000_001 })) { setPanel(null); setNavigation("orbit"); } }} />
       </div>
       {panel && <SpatialCanvasPanel title={m[panel]} closeLabel={m.close} onClose={() => setPanel(null)} anchor={panel === "pieces" ? "meta" : "tool"}>
         <div className="space-y-3 text-xs">
@@ -153,7 +153,7 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
                 <SomaPieceIcon id={piece.id} /><span>{piece.name}</span>
               </label>;
             })}</div>
-            <Button size="sm" variant="secondary" disabled={disabled} onClick={() => { if (commit(somaFit({ ...snapshot, pieces: structuredClone([...SOMA_CUBE_EXAMPLE]), mode: "assemble" }))) { setPanel(null); setNavigation("move"); } }}>{m.example}</Button>
+            <Button size="sm" variant="secondary" disabled={disabled} onClick={() => { if (commit(somaFit({ ...snapshot, pieces: structuredClone([...SOMA_CUBE_EXAMPLE]), mode: "assemble" }))) { setPanel(null); setNavigation("orbit"); } }}>{m.example}</Button>
           </>}
           {(panel === "move" || panel === "rotate") && <>
             <p>{m.selected} · {selected.name}</p>

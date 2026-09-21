@@ -18,9 +18,10 @@ import { unitCubeCorners } from "../spatial-interaction/rolling";
 import { cubeDragPick, cubeMoveCenter, cubePlaneOperations } from "./cube-structures-drag";
 import { spatialGizmoInteraction, spatialGizmoPoint, snapSpatialTranslation } from "../spatial-interaction/gizmo-adapter";
 import type { SpatialObjectPreview } from "../spatial-interaction/object-gesture-controller";
+import type { SpatialTransformMode } from "../spatial-interaction/tool-state";
 
 /** Three/R3F 与场景预览一起按需加载，工具栏保持在轻量客户端边界。 */
-export function CubeStructuresViewport({ scene, sceneKey, history, opacityPreview, moveInteraction, cutInteraction, onMovingChange, onDraggingChange, rotationInteraction, rollInteraction, renderSceneOverlay, onTransformOperations, ...props }: VoxelModelCanvasProps & {
+export function CubeStructuresViewport({ scene, sceneKey, history, opacityPreview, moveInteraction, cutInteraction, onMovingChange, onDraggingChange, rotationInteraction, rollInteraction, renderSceneOverlay, onTransformOperations, transformMode = null, ...props }: VoxelModelCanvasProps & {
   readonly scene: ComponentProps<typeof CubeStructuresScene>;
   readonly sceneKey: object;
   readonly history?: CubeHistory;
@@ -33,12 +34,13 @@ export function CubeStructuresViewport({ scene, sceneKey, history, opacityPrevie
   readonly rollInteraction?: (SpatialRollAction & { ids: readonly string[] }) | null;
   readonly renderSceneOverlay?: (presentation: CubeStructureState) => ReactNode;
   readonly onTransformOperations?: (operations: readonly CubeOperation[]) => CubeHistory | null;
+  readonly transformMode?: SpatialTransformMode | null;
 }) {
   const [dragPreview, setDragPreview] = useState<CubeDragPreview | null>(null);
   const [handleFrame, setHandleFrame] = useState<{ frame: SpatialObjectPreview; source: CubeStructureState; ids: readonly string[]; interaction: CubeMoveInteraction } | null>(null);
   // 松手发布期间宿主会停用新写入，当前落位动画仍保留同一指针控制器到结束。
   const activeMove = moveInteraction ?? handleFrame?.interaction ?? null;
-  const [handleDragging, setHandleDragging] = useState(false), [rotationHandles, setRotationHandles] = useState(false), [instantKey, setInstantKey] = useState<string | null>(null);
+  const [handleDragging, setHandleDragging] = useState(false), [instantKey, setInstantKey] = useState<string | null>(null);
   useEffect(() => { onDraggingChange?.(dragPreview !== null || handleDragging); }, [onDraggingChange, dragPreview, handleDragging]);
   useEffect(() => () => onDraggingChange?.(false), [onDraggingChange]);
   const { presentation, moving, previewPositions, rotation: animationRotation } = useCubeDisplayMotion(scene.state, sceneKey, onMovingChange, history, instantKey);
@@ -68,7 +70,7 @@ export function CubeStructuresViewport({ scene, sceneKey, history, opacityPrevie
   const rollCenter = rolled.length ? Object.fromEntries((["x", "y", "z"] as const).map((axis) => [axis, (Math.min(...rolled.map((p) => p[axis])) + Math.max(...rolled.map((p) => p[axis]))) / 2])) as { x: number; y: number; z: number } : null;
   const rotationVertices = unitCubeCorners(presentation.cubes.filter((cube) => rotationInteraction?.ids.includes(cube.id) && !presentation.hiddenCubeIds.includes(cube.id)).map(cubeDisplayPosition));
   const handleCenter = moveInteraction && cubeMoveCenter(presentation, moveInteraction.ids);
-  const toolbarHandles = handleCenter ? { center: handleCenter, axes: moveInteraction?.handleAxes ?? ["x", "y", "z"] as const } : undefined;
+  const toolbarHandles = handleCenter && transformMode === "move" ? { center: handleCenter, axes: moveInteraction?.handleAxes ?? ["x", "y", "z"] as const } : undefined;
   const idsForTarget = (id: string) => activeMove
     ? (activeMove.idsForHit?.(id) ?? (activeMove.ids.includes(id) ? activeMove.ids : [id])).filter((member) => activeMove.scopeIds.includes(member))
     : [];
@@ -81,12 +83,12 @@ export function CubeStructuresViewport({ scene, sceneKey, history, opacityPrevie
   };
   const handleInteraction = onTransformOperations && activeMove ? spatialGizmoInteraction({
     key: scene.state, selectedId: activeMove.ids[0] ?? null,
-    mode: rotationHandles && rotationInteraction ? "rotate" : "move", enabled: !moving && !props.readOnly && !dragPreview,
-    showHandles: activeMove.showHandles !== false && !rollInteraction,
+    mode: transformMode, enabled: !moving && !props.readOnly && !dragPreview,
+    showHandles: (activeMove.showHandles === true || transformMode === "rotate" && !!rotationInteraction) && !rollInteraction,
     pick: (raycaster) => { const hit = cubeDragPick(scene.state, raycaster.ray); return hit && activeMove.scopeIds.includes(hit.id) ? hit : null; },
     objectFor: (id) => {
       const ids = idsForTarget(id);
-      const center = (rotationHandles && rotationInteraction ? cubeRotationOperation(scene.state, ids, rotationInteraction.axis, 1)?.displayPivot : null) ?? cubeMoveCenter(scene.state, ids);
+      const center = (transformMode === "rotate" && rotationInteraction ? cubeRotationOperation(scene.state, ids, rotationInteraction.axis, 1)?.displayPivot : null) ?? cubeMoveCenter(scene.state, ids);
       if (!center || !ids.length) return null;
       const vertices = unitCubeCorners(scene.state.cubes.filter((cube) => ids.includes(cube.id)).map(cubeDisplayPosition));
       return { id, center, radius: Math.max(1.4, ...vertices.map((p) => Math.hypot(p.x - center.x, p.y - center.y, p.z - center.z))) + 0.3,
@@ -115,9 +117,9 @@ export function CubeStructuresViewport({ scene, sceneKey, history, opacityPrevie
         </group>
       </group>}
       {activeMove && (!moving || handleFrame) && <CubeMoveHandles interaction={{ ...activeMove, enabled: !moving && !handleDragging && !props.readOnly,
-        bodyGesture: handleInteraction, bodyPreview: handleFrame?.frame, showHandles: activeMove.showHandles !== false && !handleFrame && !rotationHandles && !rollInteraction }} presentation={presentation} preview={dragPreview} onPreview={previewDrag} />}
-      {rotationInteraction && rotationPivot && !dragPreview && !handleFrame && <SpatialRotationControls center={rotationPivot} vertices={rotationVertices} moveHandles={toolbarHandles} action={{ ...rotationInteraction, disabled: rotationInteraction.disabled || moving,
-        gestureLabel: onTransformOperations ? rotationInteraction.label : undefined, gestureMode: { active: rotationHandles, onToggle: () => setRotationHandles((value) => !value) } }} />}
+        bodyGesture: handleInteraction, bodyPreview: handleFrame?.frame, showHandles: transformMode === "move" && activeMove.showHandles === true && !handleFrame && !rollInteraction }} presentation={presentation} preview={dragPreview} onPreview={previewDrag} />}
+      {transformMode === "rotate" && rotationInteraction && rotationPivot && !dragPreview && !handleFrame && <SpatialRotationControls center={rotationPivot} vertices={rotationVertices} moveHandles={toolbarHandles} action={{ ...rotationInteraction, disabled: rotationInteraction.disabled || moving,
+        gestureLabel: onTransformOperations ? rotationInteraction.label : undefined }} />}
       {rollInteraction && rollCenter && !dragPreview && <SpatialRollControls center={rollCenter} vertices={unitCubeCorners(rolled)} moveHandles={toolbarHandles} action={{ ...rollInteraction, disabled: rollInteraction.disabled || moving }} />}
       {cutInteraction && !moving && <CubeCutPicker interaction={cutInteraction} />}
     </>} />;

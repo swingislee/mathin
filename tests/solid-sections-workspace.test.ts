@@ -39,7 +39,7 @@ describe("cross-section in the shared teaching space", () => {
     await advance(); expect(container.querySelector("[data-solid-section-preview]")).toBeNull();
     expect(canvas.props!.sectionEditable).toBe(true);
     await click(base.close); expect(container.querySelector("[data-solid-section-controls]")).toBeNull();
-    expect(canvas.props!.sectionEditable).toBe(true); expect(canvas.props!.section!.sectionOpacity).toBeGreaterThan(0);
+    expect(canvas.props!.sectionEditable).toBe(false); expect(canvas.props!.section!.sectionOpacity).toBeGreaterThan(0);
     expect(canvas.props!.cameraRevision).toBe(originCamera);
   });
   it("fades only the removed half and restores the complete prepared scene", async () => {
@@ -83,7 +83,7 @@ describe("cross-section in the shared teaching space", () => {
     expect(canvas.props!.state.section.offset).toBe(0.43); expect(canvas.props!.section!.offset).toBe(0.43);
     await advance(80); expect(canvas.props!.section!.offset).toBe(0.43); expect(capture.mock.lastCall![0].section).toEqual(next);
     expect(canvas.props!.cameraRevision).toBe(camera);
-    await click(base.orbit); expect(canvas.props!.sectionEditable).toBe(true); expect(canvas.props!.objectManipulation).toBe(true);
+    await click(base.orbit); expect(canvas.props!.sectionEditable).toBe(false); expect(canvas.props!.objectManipulation).toBe(true);
     expect(canvas.props!.section!.sectionOpacity).toBeGreaterThan(0);
   });
   it("keeps the dragged endpoint while waiting for classroom acknowledgement", async () => {

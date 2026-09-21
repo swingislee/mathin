@@ -35,7 +35,7 @@ export function CubeMoveHandles({ interaction, presentation, preview, onPreview,
   const length = CUBE_MOVE_HANDLE_LENGTH;
   return <group>
     {handles && (interaction.bodyGesture?.enabled || interaction.bodyPreview) && (!interaction.bodyPreview || interaction.bodyPreview.constraint) && <SpatialTransformHandles spec={handles} preview={interaction.bodyPreview} />}
-    {(interaction.showHandles === false && !preview ? [] : interaction.handleAxes ?? CUBE_DRAG_AXES).map((axis) => {
+    {(interaction.showHandles !== true && !preview ? [] : interaction.handleAxes ?? CUBE_DRAG_AXES).map((axis) => {
       const end = { ...center, [axis]: center[axis] + length };
       const color = preview?.valid === false && axis === preview.axis ? CUBE_AXIS_COLORS.x : CUBE_AXIS_COLORS[axis];
       return <group key={axis}>

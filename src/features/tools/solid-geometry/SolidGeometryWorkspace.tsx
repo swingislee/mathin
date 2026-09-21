@@ -83,7 +83,7 @@ export function SolidGeometrySharedWorkspace(props: SolidGeometryWorkspaceProps 
   const objects = useMemo(() => objectsFor(snapshot), [snapshot]);
   const canvasState = useMemo(() => "cuts" in snapshot && snapshot.cuts.length ? { ...snapshot, entities: objects.entities } : snapshot, [snapshot, objects.entities]);
   const disabled = readOnly || host.publishing || Boolean(classroom && !classroom.onChange);
-  const controls = useSpatialToolState<Tool, Exclude<Panel, null>>({ defaultTool: "orbit", panels: {
+  const controls = useSpatialToolState<Tool, Exclude<Panel, null>>({ defaultTool: "orbit", transformPanels: { move: "move", turn: "rotate" }, panels: {
     add: "orbit", objects: "orbit", move: "move", turn: "orbit", roll: "orbit", color: "orbit", transparent: "orbit", face: "face", edge: "edge", vertex: "vertex", settings: "orbit", section: "section", measurement: "orbit",
   } });
   const { tool, panel, setPanel, selectionActive, activateSelection } = controls;
@@ -163,13 +163,13 @@ export function SolidGeometrySharedWorkspace(props: SolidGeometryWorkspaceProps 
     <div className={styles.viewport}><div className={styles.canvas}>
       <Canvas entities={presentation.entities} state={canvasState} meshes={objects.meshes} cutColors={objects.cutColors} selectedId={snapshot.selectedId} feature={snapshot.feature} pickMode={featureMode} section={sectionPresentation.frame}
         selectionActive={selectionActive} onPointerMissed={!disabled && !dragging && !sectionDragging && !presentation.animating ? controls.onPointerMissed : undefined}
-        locale={locale} sectionEditable={!selectedCut && selectionActive && (tool === "section" || spatialDirectManipulation(tool)) && snapshot.section.enabled && snapshot.section.showPlane && !!selected && supportsSolidSection(selected.kind) && !presentation.animating && (!sectionPresentation.animating || sectionDragging)}
+        locale={locale} sectionEditable={!selectedCut && selectionActive && tool === "section" && snapshot.section.enabled && snapshot.section.showPlane && !!selected && supportsSolidSection(selected.kind) && !presentation.animating && (!sectionPresentation.animating || sectionDragging)}
         sectionSettings={sectionPreview ?? snapshot.section} onSectionPreview={previewSection} onSectionCommit={commitSection} onSectionDragging={setSectionDragging}
         readOnly={disabled} onPick={pick} frame={frame} cameraRevision={snapshot.cameraRevision} axisSnap={axisSnap} moveSnap={moveSnap}
         cameraInteractive={!readOnly && !(classroom && !classroom.onChange)}
         navigationMode={tool === "pan" ? "pan" : tool === "move" ? "move" : "orbit"} moveAxis={axis} onMoveAxis={setAxis} onMove={drag} onDragging={setDragging} fallback={m.fallback}
         objectManipulation={spatialDirectManipulation(tool)} objectAnimating={presentation.animating} rotationAction={{ axis, onAxisChange: setAxis, onRotate: rotate, label: m.turn }}
-        rotationHandles={panel === "turn"} onToggleRotationHandles={() => open("turn")}
+        transformMode={controls.transformMode} onToggleRotationHandles={() => open("turn")}
         onTransform={(entity) => {
           if (disabled) return false;
           const next = { ...replaceEntity(snapshot, entity), selectedId: entity.id, feature: snapshot.selectedId === entity.id ? snapshot.feature : null };
@@ -194,7 +194,7 @@ export function SolidGeometrySharedWorkspace(props: SolidGeometryWorkspaceProps 
         <SpatialActionButton action="pan" label={m.pan} active={tool === "pan"} disabled={disabled} onClick={() => navigate("pan")} />
         <SpatialActionButton action="add" label={m.add} active={panel === "add"} disabled={disabled || snapshot.entities.length >= SOLID_LIMITS.entities} onClick={() => open("add")} />
         <SpatialActionButton action="objects" label={m.objects} active={panel === "objects"} disabled={disabled || !selected} onClick={() => open("objects")} />
-        <SpatialActionButton action="move" label={m.move} active={tool === "move"} disabled={disabled || !selected} onClick={() => open("move", "move")} />
+        <SpatialActionButton action="move" label={m.preciseMove} active={controls.transformMode === "move"} disabled={disabled || !selected} onClick={() => open("move", "move")} />
         <SpatialActionButton action="rotate" label={m.turn} active={panel === "turn"} disabled={disabled || !selected} onClick={() => open("turn", "orbit")} />
         <SpatialActionButton action="roll" label={m.roll} active={panel === "roll"} disabled={disabled || !selected || !!selectedCut || (selected.kind !== "cube" && selected.kind !== "cuboid")} onClick={() => open("roll")} />
         <span className={styles.toolSeparator} />

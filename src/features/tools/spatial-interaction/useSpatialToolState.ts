@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState, type KeyboardEvent, type PointerEvent } from "react";
-import { reduceSpatialToolState, type SpatialToolDefinition, type SpatialToolEvent, type SpatialToolState } from "./tool-state";
+import { reduceSpatialToolState, spatialTransformMode, type SpatialToolDefinition, type SpatialToolEvent, type SpatialToolState } from "./tool-state";
 
 /** 模式、参数面板与退出共用一次原子更新；显示开关和一次性命令留在领域状态中。 */
 export function useSpatialToolState<T extends string, P extends string>(definition: SpatialToolDefinition<T, P>, initial?: Partial<SpatialToolState<T, P>>) {
@@ -9,11 +9,14 @@ export function useSpatialToolState<T extends string, P extends string>(definiti
   // 旧快照可要求保留当前对象 ID；取消选中只关闭本机操作焦点，不升级保存合同。
   const [selectionActive, setSelectionActive] = useState(true);
   const activateSelection = useCallback(() => setSelectionActive(true), []);
-  const dispatch = (event: SpatialToolEvent<T, P>) => setState((current) => reduceSpatialToolState(current, event, definition));
+  const dispatch = (event: SpatialToolEvent<T, P>) => {
+    if ((event.kind === "panel" || event.kind === "tool") && event.panel && definition.transformPanels?.[event.panel]) activateSelection();
+    setState((current) => reduceSpatialToolState(current, event, definition));
+  };
   const closePanel = () => dispatch({ kind: "close" });
   const clearSelection = () => { setSelectionActive(false); definition.onClearSelection?.(); closePanel(); };
   return {
-    ...state, closePanel, selectionActive, activateSelection, clearSelection,
+    ...state, transformMode: spatialTransformMode(state, definition), closePanel, selectionActive, activateSelection, clearSelection,
     // Canvas 的 missed 只在共用指针保护放行的轻点后生效；拖动、双指和取消不会到达这里。
     onPointerMissed: (event: MouseEvent) => {
       if (event.type === "click" && event.button === 0 && !event.defaultPrevented) clearSelection();
@@ -30,6 +33,7 @@ export function useSpatialToolState<T extends string, P extends string>(definiti
       },
       "data-spatial-tool": state.tool,
       "data-spatial-panel": state.panel ?? "none",
+      "data-spatial-transform": spatialTransformMode(state, definition) ?? "none",
       // 限于当前工作台；多个课件工具实例不会互相关闭。输入框保留自身键盘行为。
       onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
         if (event.key === "Escape" && !event.defaultPrevented && !(event.target as HTMLElement).closest("input, textarea, [contenteditable=true]")) clearSelection();

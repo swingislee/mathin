@@ -35,12 +35,20 @@ describe("future spatial workbench integration guard", () => {
       expect(source, `${file}: body picking must enter the shared gesture controller`).toContain("bodyGesture");
       expect(source).not.toContain("selectOnly:");
       expect(source).toMatch(/spatialGizmoInteraction|SpatialObjectInteraction/);
+      expect(source, `${file}: selection alone must not expose transform handles`).toContain("transformMode");
+      expect(source, `${file}: do not reintroduce a private handle toggle`).not.toContain("setRotationHandles");
     }
     for (const file of ["soma-cube/model.ts", "spatial-lab/cube-structures-roll.ts", "solid-geometry/solid-geometry-roll.ts"]) {
       expect(readFileSync(resolve("src/features/tools", file), "utf8")).toContain("planSpatialRoll");
     }
     for (const file of ["VoxelCanvas.tsx", "PolyhedronFoldCanvas.tsx"]) {
       expect(readFileSync(resolve("src/features/spatial-math/renderer-r3f", file), "utf8")).toContain("onPointerMissed={");
+    }
+  });
+  it("declares transform operations explicitly in each owning workbench", () => {
+    for (const file of ["soma-cube/SomaWorkspace.tsx", "spatial-lab/DiceTeachingWorkspace.tsx", "spatial-lab/CubeStructuresWorkbench.tsx", "solid-geometry/SolidGeometryWorkspace.tsx", "solid-capacity/DisplacementWorkspace.tsx"]) {
+      const source = readFileSync(resolve("src/features/tools", file), "utf8");
+      expect(source).toContain("transformPanels:"); expect(source).toContain("controls.transformMode");
     }
   });
   it("hides only the passive workspace focus outline, preserving control focus styles", () => {

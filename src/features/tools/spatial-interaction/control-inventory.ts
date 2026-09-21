@@ -34,7 +34,7 @@ export const SPATIAL_WORKBENCH_INVENTORY = [
 
 /** 本轮确认过的同义异图／异义同图；旧图仅用于核对，不参与实际按钮渲染。 */
 export const SPATIAL_ICON_CHANGES = [
-  { action: "move", previous: ["Move", "Move3D"], note: "结构、实体、骰子与 Soma 的整体移动统一为三轴箭头。" },
+  { action: "move", previous: ["Move", "Move3D"], note: "结构、实体、骰子与 Soma 用三轴箭头表示精确移动入口；选中不显示手柄，显式开启才出现轴与平面方片。" },
   { action: "faceReveal", previous: ["Move3D"], note: "骰子、剪棱展开共用“面从立方体向外移出”，与移动整个对象分开。" },
   { action: "rotate", previous: ["RotateCw", "Rotate3D"], note: "对象旋转入口统一为三维旋转；正负 90° 参数仍有明确方向。" },
   { action: "opacity", previous: ["Droplets"], note: "半透明圆表示透明度，不再与容积工具的液量图标混用。" },

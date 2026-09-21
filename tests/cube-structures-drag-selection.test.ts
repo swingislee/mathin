@@ -184,10 +184,14 @@ describe("axis dragging uses camera projection and one semantic release", () => 
     drag.dispose();
   });
 
-  it("click selects without moving; dragging a handle chooses that axis", () => {
+  it("click only selects; a hidden handle cannot capture a blank drag until explicitly opened", () => {
     const drag = setup(); drag.send("pointerdown"); drag.send("pointerup");
     expect(drag.interaction.onSelect).toHaveBeenCalledWith("cube-1");
     expect(drag.session().lesson?.operations).toHaveLength(0);
+    drag.send("pointerdown", 400, 240); drag.send("pointermove", 400, 160); drag.send("pointerup", 400, 160);
+    expect(drag.interaction.onAxisChange).not.toHaveBeenCalled();
+    expect(drag.session().lesson?.operations).toHaveLength(0);
+    Object.assign(drag.interaction, { showHandles: true });
     drag.send("pointerdown", 400, 240); drag.send("pointermove", 400, 160); drag.send("pointerup", 400, 160);
     expect(drag.interaction.onAxisChange).toHaveBeenCalledWith("y");
     expect(drag.state().cubes[0].position.y).toBe(1); drag.dispose();

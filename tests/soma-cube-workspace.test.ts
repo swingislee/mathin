@@ -11,6 +11,7 @@ import type { SomaSnapshot } from "@/features/tools/soma-cube/contract";
 import { somaMessages } from "@/features/tools/soma-cube/messages";
 import { somaGestureLanding } from "@/features/tools/soma-cube/manipulation";
 import { somaPose } from "@/features/tools/soma-cube/pieces";
+import { spatialActionMessages } from "@/features/tools/spatial-interaction/messages";
 
 const canvas = vi.hoisted(() => ({ props: null as SomaCanvasProps | null }));
 vi.mock("next/dynamic", () => ({ default: () => function CanvasStub(props: SomaCanvasProps) { canvas.props = props; return null; } }));
@@ -37,6 +38,17 @@ async function click(label: string) {
   await act(async () => button!.click());
 }
 describe("Soma teaching workspace", () => {
+  it("opens transform handles from explicit toolbar actions, not selection or teaching settings", async () => {
+    const initial = createSomaInitial(); await render(createElement(SomaWorkspace, { initial }));
+    expect(canvas.props!.transformMode).toBeNull(); expect(canvas.props!.navigation).toBe("orbit");
+    await act(async () => canvas.props!.onSelect(initial.selectedId)); expect(canvas.props!.transformMode).toBeNull();
+    await click(spatialActionMessages("en").preciseMove); expect(canvas.props!.transformMode).toBe("move");
+    await click(m.rotate); expect(canvas.props!.transformMode).toBe("rotate");
+    await click(m.settings); expect(canvas.props!.transformMode).toBeNull();
+    await click(m.rotate); await click(m.rotate); expect(canvas.props!.transformMode).toBeNull();
+    await click(spatialActionMessages("en").preciseMove); await click(m.reset); expect(canvas.props!.transformMode).toBeNull();
+    expect(canvas.props!.snapshot.pieces).toEqual(initial.pieces);
+  });
   it("deselects on a blank tap or Escape without changing the prepared scene, and permits reselection", async () => {
     const initial = createSomaInitial(), onChange = vi.fn(async () => {});
     await render(createElement(SomaWorkspace, { initial, classroom: { state: initial, onChange } }));
@@ -52,7 +64,7 @@ describe("Soma teaching workspace", () => {
     const initial = createSomaInitial(), onChange = vi.fn();
     await render(createElement(SomaWorkspace, { initial, classroom: { state: initial, onChange } }));
     const snap = canvas.props!.axisSnap;
-    await click(m.move);
+    await click(spatialActionMessages("en").preciseMove);
     expect(container.querySelector('[aria-label="Movement plane"]')).toBeNull();
     expect(container.querySelector('[aria-label="Low-view switch angle"]')).toBeNull();
     expect(container.querySelector("[data-soma-move-readout]")).toBeNull();
@@ -62,7 +74,7 @@ describe("Soma teaching workspace", () => {
   });
   it("keeps movement and rotation axes independent after removing plane choices", async () => {
     const initial = createSomaInitial(); await render(createElement(SomaWorkspace, { initial }));
-    await click(m.move); await click(`Z ${m.move}`);
+    await click(spatialActionMessages("en").preciseMove); await click(`Z ${m.move}`);
     expect(canvas.props!.snapshot).toBe(initial);
     await click(m.rotate); expect(canvas.props!.navigation).toBe("rotate");
     await click(`X ${m.rotate}`); expect(canvas.props!.rotationAxis).toBe("x"); expect(canvas.props!.moveAxis).toBe("z");
@@ -177,7 +189,7 @@ describe("Soma teaching workspace", () => {
     await click(`${m.choose} 5宝`); await click(m.observe);
     expect(canvas.props!.snapshot.mode).toBe("observe"); expect(canvas.props!.snapshot.pieces).toBe(initial.pieces);
     await click(m.assemble); expect(canvas.props!.snapshot.pieces).toBe(initial.pieces);
-    await click(m.move); await click(`${m.move} Y +1`);
+    await click(spatialActionMessages("en").preciseMove); await click(`${m.move} Y +1`);
     expect(canvas.props!.snapshot.pieces[4].position.y).toBe(1);
     await click(m.rotate); await click(`${m.rotate} Y +90°`);
     expect(canvas.props!.snapshot.pieces[4].orientation).not.toBe(0);
@@ -210,7 +222,7 @@ describe("Soma teaching workspace", () => {
       const [state, setState] = useState(initial);
       return createElement(SomaWorkspace, { initial, classroom: { state, onChange: async (next) => { writes.push(next); await pending; setState(next); } } });
     }
-    await render(createElement(Teacher)); await click(m.move); await click(`${m.move} Y +1`);
+    await render(createElement(Teacher)); await click(spatialActionMessages("en").preciseMove); await click(`${m.move} Y +1`);
     expect(writes).toHaveLength(1); expect(canvas.props!.snapshot.pieces[0].position.y).toBe(0); expect(canvas.props!.readOnly).toBe(true);
     await act(async () => accept()); expect(canvas.props!.snapshot.pieces[0].position.y).toBe(1); expect(canvas.props!.readOnly).toBe(false);
     await render(createElement(SomaWorkspace, { initial, classroom: { state: writes[0] } }));
@@ -221,7 +233,7 @@ describe("Soma teaching workspace", () => {
   it("preserves the prior classroom state after a rejected write", async () => {
     const initial = createSomaInitial(), onChange = vi.fn().mockRejectedValue(new Error("offline"));
     await render(createElement(SomaWorkspace, { initial, classroom: { state: initial, onChange } }));
-    await click(m.move); await click(`${m.move} Y +1`);
+    await click(spatialActionMessages("en").preciseMove); await click(`${m.move} Y +1`);
     expect(onChange).toHaveBeenCalledTimes(1); expect(canvas.props!.snapshot).toBe(initial); expect(container.textContent).toContain(m.syncError);
   });
   it("holds an already dragged endpoint during classroom persistence and does not replay its echo", async () => {

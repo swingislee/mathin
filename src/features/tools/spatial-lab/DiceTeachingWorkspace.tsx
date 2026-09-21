@@ -1,6 +1,7 @@
 "use client";
 
 import { SpatialActionButton } from "../spatial-interaction/SpatialActionButton";
+import { SPATIAL_ACTIONS } from "../spatial-interaction/actions";
 import { SpatialViewButtons, SPATIAL_ALL_VIEWS } from "../spatial-interaction/SpatialViewButtons";
 import { SpatialAxisSteps } from "../spatial-interaction/SpatialAxisSteps";
 import { SpatialActionIcon } from "../spatial-interaction/SpatialActionIcon";
@@ -39,7 +40,7 @@ import { SpatialRollButtons, type SpatialRollAction } from "../spatial-interacti
 type DiceInitial = DiceTeachingSnapshot & Partial<Pick<DiceLiveSnapshot, "xrayTarget" | "observation">>;
 
 const DiceTeachingCanvas = dynamic(() => import("./DiceTeachingCanvas"), { ssr: false });
-type Panel = "settings" | "arrange" | "pips" | "opposite" | "puzzle" | "roll" | "throwing" | "color" | "transparent" | "restore" | "observe" | null;
+type Panel = "settings" | "arrange" | "turn" | "pips" | "opposite" | "puzzle" | "roll" | "throwing" | "color" | "transparent" | "restore" | "observe" | null;
 const easing = (t: number) => t * t * (3 - 2 * t);
 const topOnly = (dice: TeachingDie[]) => dice.map((die) => ({ ...die, hidden: DICE_FACES.filter((face) => face !== worldFace(die, "y+")) }));
 function fitFrame(dice: readonly TeachingDie[]): CubeFrame {
@@ -72,8 +73,8 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector, initi
   const scene = history.present;
   const [selectedId, storeSelectedId] = useState(initial?.selectedId ?? "dice-1");
   const selected = scene.dice.find((die) => die.id === selectedId) ?? scene.dice[0];
-  const controls = useSpatialToolState<"orbit" | "pan" | "move" | "pips" | "color" | "transparent" | "inspect" | "xray", Exclude<Panel, null>>({ defaultTool: "orbit", onClearSelection: () => { setSurfaceTarget(null); setOpacityPreview(null); }, panels: {
-    settings: "orbit", arrange: "move", pips: "pips", opposite: "orbit", puzzle: "orbit", roll: "orbit", throwing: "orbit", color: "color", transparent: "transparent", restore: "orbit", observe: "inspect",
+  const controls = useSpatialToolState<"orbit" | "pan" | "move" | "pips" | "color" | "transparent" | "inspect" | "xray", Exclude<Panel, null>>({ defaultTool: "orbit", transformPanels: { arrange: "move", turn: "rotate" }, onClearSelection: () => { setSurfaceTarget(null); setOpacityPreview(null); }, panels: {
+    settings: "orbit", arrange: "move", turn: "orbit", pips: "pips", opposite: "orbit", puzzle: "orbit", roll: "orbit", throwing: "orbit", color: "color", transparent: "transparent", restore: "orbit", observe: "inspect",
   } }, { tool: initial?.xrayTarget ? "xray" : undefined, panel: initial?.observation?.panel ?? null });
   const { tool, panel, setTool, setPanel, selectionActive, activateSelection } = controls;
   const setSelectedId = useCallback((id: string) => { activateSelection(); storeSelectedId(id); }, [activateSelection]);
@@ -291,7 +292,7 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector, initi
   return <section className={styles.workspace} data-dice-teaching={DICE_TEACHING_VERSION} data-workbench-mode={courseware ? "courseware" : undefined} inert={readOnly || classroom?.pending} {...controls.bindings}>
     <div className={styles.viewport}><div className={`${styles.canvas} ${diceStyles.canvas}`} data-dice-stage>
       <DiceTeachingCanvas dice={displayed} trail={scene.trail} selectedId={selected.id} locale={locale} tool={tool} arrows={arrows} busy={busy} grid={grid} axes={axes} floor={floor} frame={frame} view={view} cameraKey={cameraKey}
-        selectionActive={selectionActive} onPointerMissed={!readOnly && !busy && !dragging ? controls.onPointerMissed : undefined}
+        selectionActive={selectionActive} transformMode={controls.transformMode} onToggleRotation={() => selectPanel("turn")} onPointerMissed={!readOnly && !busy && !dragging ? controls.onPointerMissed : undefined}
         rollAction={panel === "roll" ? rollAction : undefined}
         xrayTarget={xrayTarget} initialXRayTarget={initial?.xrayTarget} onClearXRay={() => requestXRay(null)} onXRayPresentation={setXRayPresentation}
         snap={snap} moveAxis={moveAxis} onMoveAxis={setMoveAxis} onDragCommit={dragCommit} onDraggingChange={setDragging} onMoveUnavailable={() => setNotice(structureMessages.moveAxisHidden)}
@@ -311,7 +312,8 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector, initi
         <SpatialActionButton action="pan" label={m.pan} active={tool === "pan"} onClick={() => navigate("pan")} />
         <SpatialActionButton action="xray" label={m.xray} active={tool === "xray"} disabled={busy} onClick={toggleXRay} />
         <SpatialActionButton action="recenter" label={m.reset} disabled={busy} onClick={() => { arrange("apart"); setView("angle"); }} />
-        <SpatialActionButton action="move" label={m.arrange} active={panel === "arrange"} onClick={() => selectPanel("arrange")} />
+        <SpatialActionButton action="move" label={SPATIAL_ACTIONS.move[locale === "en" ? "en" : "zh"]} active={panel === "arrange"} disabled={busy || dragging} onClick={() => selectPanel("arrange")} />
+        <SpatialActionButton action="rotate" label={SPATIAL_ACTIONS.rotate[locale === "en" ? "en" : "zh"]} active={panel === "turn"} disabled={busy || dragging} onClick={() => selectPanel("turn")} />
         <SpatialActionButton action="faceReveal" label={m.arrows} active={arrows && tool !== "xray"} disabled={busy} onClick={toggleArrows} />
         <SpatialActionButton action="faceInspect" label={m.observe} active={panel === "observe"} onClick={() => selectPanel("observe")} />
         <SpatialActionButton action="reset" label={m.restore} active={panel === "restore"} onClick={() => selectPanel("restore")} />
@@ -358,7 +360,8 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector, initi
                 <DiceActions busy={busy} items={(["row", "stack", "corner", "apart"] as const).map((layout) => ({ label: m[layout], run: () => arrange(layout) }))} />
                 <p>{m.move}</p><SpatialAxisSteps label={m.move} step={1} disabled={busy} axis={moveAxis} onAxisChange={setMoveAxis}
                   onStep={(axis, sign) => place(selected.id, { ...selected.position, [axis]: selected.position[axis] + sign })} />
-                <p>{m.turn}</p><SpatialAxisSteps label={m.turn} step={90} unit="°" disabled={busy}
+              </>}
+              {panel === "turn" && <><SpatialAxisSteps label={m.turn} step={90} unit="°" disabled={busy} axis={moveAxis} onAxisChange={setMoveAxis}
                   onStep={(axis, sign) => updateDie(selected.id, (die) => turnDie(die, axis, sign), true)} />
               </>}
               {panel === "pips" && <><p className="leading-5 text-muted">{m.pipHint}</p><div className="grid grid-cols-2 gap-1">{worldFaces.map(({ direction, face }) => <Button key={direction} variant="secondary" size="sm" disabled={busy || !face} aria-pressed={face ? !selected.hidden.includes(face) : false} onClick={() => face && toggleFace(selected.id, face)}>{m.faces[direction]} · {face && !selected.hidden.includes(face) ? faceValue(selected.hand, face) : "?"}</Button>)}</div>

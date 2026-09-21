@@ -7,6 +7,18 @@ import { createCubeSession, cubeSessionScene, operateCubeSessionBatch, startCube
 import { CUBE_STRUCTURES_LIMITS, replayCubeHistory } from "@/features/tools/spatial-lab/cube-structures-contract";
 
 describe("shared transform adapter and domain endpoints", () => {
+  it.each([null, "move", "rotate"] as const)("keeps handles opt-in and body dragging available with mode %s", (mode) => {
+    const options = { key: {}, selectedId: "object", mode, enabled: true,
+      objectFor: (id: string) => ({ id, center: { x: 0, y: 1, z: 0 }, radius: 1, translate: (delta: { x: number; y: number; z: number }) => ({ delta, valid: true, apply: () => true }) }),
+      pick: () => ({ id: "object", point: { x: 0, y: 1.5, z: 0 } }), onSelect: vi.fn(), onPreview: vi.fn(), onDragging: vi.fn(), onUnavailable: vi.fn() };
+    for (const showHandles of [undefined, false, true]) {
+      const g = spatialGizmoInteraction({ ...options, showHandles });
+      expect(g.handles?.mode).toBe(showHandles && mode ? mode : undefined);
+      expect(g.enabled).toBe(true); expect(g.plane).toBe("table");
+      const target = g.pick(new Raycaster())!, pose = { ...target.pose, position: { x: 0.3, y: 1, z: -0.4 } };
+      expect(g.resolve(target, pose, "translate").pose).toEqual(pose);
+    }
+  });
   it("preserves the untouched axis and uses each tool's existing grid origin", () => {
     expect(snapSpatialTranslation({ x: 0.6, y: 0, z: -0.6 }, 1, { x: 0.2, y: 0.75, z: 0.2 })).toEqual({ x: 0.8, y: 0, z: -0.2 });
     expect(snapSpatialTranslation({ x: -0.5, y: 1.1, z: 0 }, 1, { x: 0, y: 0.5, z: 0 }, { y: 0.5 })).toEqual({ x: -1, y: 1, z: 0 });
