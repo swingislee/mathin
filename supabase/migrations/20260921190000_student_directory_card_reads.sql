@@ -261,10 +261,12 @@ $business_sets$;
 
 -- 分组、过滤、计数、排序与分页只有一个实现；两种出口在选页后选择所需投影。
 do $core$
-declare definition text; owner_name text;
+declare definition text; owner_name text; reader_owner text;
 begin
   select pg_get_functiondef(oid),pg_get_userbyid(proowner) into definition,owner_name
     from pg_proc where oid='public.list_student_directory(text,text,text,text,text,integer,integer,uuid[])'::regprocedure;
+  select pg_get_userbyid(proowner) into reader_owner from pg_proc
+    where oid='public.student_record_index_with_enrollments(text,text,public.business_course_enrollment_subjects[])'::regprocedure;
   definition:=replace(definition,'FUNCTION public.list_student_directory(', 'FUNCTION public.student_directory_page(');
   definition:=replace(definition,'p_selected uuid[] DEFAULT NULL::uuid[])','p_selected uuid[] DEFAULT NULL::uuid[], p_cards_only boolean DEFAULT false)');
   definition:=replace(definition,'public.student_record_index_with_enrollments(p_scope,p_search,facts)',
@@ -299,7 +301,9 @@ begin
     raise exception 'DIRECTORY_CARD_REWRITE_FAILED'; end if;
   execute definition;
   execute format('alter function public.student_directory_page(text,text,text,text,text,integer,integer,uuid[],boolean) owner to %I',owner_name);
-  execute format('alter function public.student_directory_card_rows(jsonb,public.business_course_enrollment_subjects[]) owner to %I',owner_name);
+  -- 卡片读取沿用已授权的私有名录读取器身份；只向现有名录入口的执行身份开放调用。
+  execute format('alter function public.student_directory_card_rows(jsonb,public.business_course_enrollment_subjects[]) owner to %I',reader_owner);
+  execute format('grant execute on function public.student_directory_card_rows(jsonb,public.business_course_enrollment_subjects[]) to %I',owner_name);
 end;
 $core$;
 revoke all on function public.student_directory_page(text,text,text,text,text,integer,integer,uuid[],boolean) from public,anon,authenticated,service_role;
