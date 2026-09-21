@@ -13,34 +13,28 @@ function client(rows: OverviewAcquisitionSource[]) {
   return { from, rpc, supabase: { from, rpc } as unknown as Parameters<typeof readOverviewAcquisitions>[0] };
 }
 
-describe("current acquisition cursor reads", () => {
-  it("reads every page through the current-source RPC without a dated file argument", async () => {
+describe("current acquisition snapshot reads", () => {
+  it("reads all authorized sources in one database snapshot without a dated file argument", async () => {
     const rows = Array.from({ length: 2001 }, (_, index) => source(String(index)));
     const mock = client(rows);
     expect((await readOverviewAcquisitions(mock.supabase)).data).toEqual(rows);
-    expect(mock.rpc.mock.calls).toEqual([undefined, "999", "1999"].map(p_after => [
-      "list_current_staff_overview_acquisition_sources", { p_after, p_limit: 1000 },
-    ]));
+    expect(mock.rpc.mock.calls).toEqual([["list_current_staff_overview_acquisition_sources", { p_limit: 10_000 }]]);
     expect(mock.from).not.toHaveBeenCalled();
   });
 
   it("retains the completeness ceiling and rejects repeated records", async () => {
     const mock = client(Array.from({ length: 10_001 }, (_, index) => source(String(index))));
     expect((await readOverviewAcquisitions(mock.supabase)).data).toHaveLength(10_000);
-    expect(mock.rpc).toHaveBeenCalledTimes(10);
+    expect(mock.rpc).toHaveBeenCalledTimes(1);
     expect((await readOverviewAcquisitions(client([source("a"), source("a")]).supabase)).error?.message)
       .toBe("OVERVIEW_REPEATED_ACQUISITION_PAGE");
   });
 
-  it("rejects a concurrent import between pages instead of presenting a mixed snapshot", async () => {
+  it("rejects a server with the old page ceiling rather than silently truncating the snapshot", async () => {
     const mock = client(Array.from({ length: 1001 }, (_, index) => source(String(index))));
-    const original = mock.rpc.getMockImplementation()!;
-    mock.rpc.mockImplementation(async (...args) => {
-      const result = await original(...args);
-      result.data.revision = args[1].p_after ? "new-import" : "before-import";
-      return result;
-    });
-    expect((await readOverviewAcquisitions(mock.supabase)).error?.message).toBe("OVERVIEW_SOURCE_CHANGED");
+    mock.rpc.mockResolvedValue({ data: { records: Array.from({ length: 1000 }, (_, index) => source(String(index))), hasMore: true, revision: "r" }, error: null });
+    expect((await readOverviewAcquisitions(mock.supabase)).error?.message).toBe("OVERVIEW_INVALID_ACQUISITION_PAGE");
+    expect(mock.rpc).toHaveBeenCalledTimes(1);
   });
 
   it("keeps missing migrations, denied queries and malformed pages unavailable without an old-file fallback", async () => {

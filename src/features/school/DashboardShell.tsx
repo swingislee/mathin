@@ -58,6 +58,7 @@ import {
 } from "./dashboard-sidebar";
 import { resolveActiveNavHref, type SchoolNavItem } from "./nav";
 import { Student360Workspace } from "./Student360Sheet";
+import { DashboardIntentLink } from "./dashboard-page/DashboardIntentLink";
 
 const ICONS: Record<string, ComponentType<{ size?: number; strokeWidth?: number }>> = {
   home: LayoutDashboard,
@@ -134,7 +135,7 @@ function NavList({
         const active = item.href === activeHref;
         const label = navT(item.labelKey);
         const link = (
-          <Link
+          <DashboardIntentLink
             href={item.href}
             onClick={onNavigate}
             aria-current={active ? "page" : undefined}
@@ -147,7 +148,7 @@ function NavList({
           >
             <Icon size={collapsed ? 17 : 15} strokeWidth={1.75} />
             {collapsed ? null : label}
-          </Link>
+          </DashboardIntentLink>
         );
         return (
           <Fragment key={item.href}>
