@@ -17,6 +17,13 @@ export function revolutionProfile(source: RevolutionGeometry, degrees = 0): Revo
   return (source.shape === "rectangle" ? [[0, 0], [radius, 0], [radius, height], [0, height]] : [[0, 0], [radius, 0], [0, height]])
     .map(([r, y]) => revolutionPoint(r, y, degrees));
 }
+/** 纸片离轴顶点扫出的边界：矩形上下各一条圆弧，三角形只有底部；轴上顶点保持不动。 */
+export function revolutionBoundaryArcs(source: RevolutionGeometry, degrees: number): RevolutionPoint[][] {
+  const angle = normalizeRevolutionAngle(degrees);
+  if (angle === 0) return [];
+  return revolutionProfile(source).filter((point) => Math.hypot(point.x, point.z) > 0).map((point) =>
+    Array.from({ length: 121 }, (_, index) => revolutionPoint(Math.hypot(point.x, point.z), point.y, angle * index / 120)));
+}
 export function revolutionTrianglePositions(points: readonly RevolutionPoint[]) {
   const positions: number[] = [];
   for (let i = 1; i < points.length - 1; i++) for (const p of [points[0], points[i], points[i + 1]]) positions.push(p.x, p.y, p.z);

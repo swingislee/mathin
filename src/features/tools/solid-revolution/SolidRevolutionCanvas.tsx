@@ -9,7 +9,7 @@ import { SpatialCameraRig } from "@/features/spatial-math/renderer-r3f/SpatialCa
 import { CUBE_AXIS_COLORS, CUBE_COLORS, cubeGroupOutlineColor } from "../spatial-lab/cube-structures-contract";
 import { cubeWorkbenchCamera } from "../spatial-lab/cube-workbench-camera";
 import type { SolidRevolutionSnapshot } from "./contract";
-import { revolutionDimensions, revolutionPoint, revolutionProfile, revolutionSweepPositions, revolutionTrianglePositions } from "./model";
+import { revolutionBoundaryArcs, revolutionDimensions, revolutionPoint, revolutionProfile, revolutionSweepPositions, revolutionTrianglePositions } from "./model";
 import { solidRevolutionMessages } from "./messages";
 import { RevolutionInteraction } from "./RevolutionInteraction";
 
@@ -45,7 +45,7 @@ function Contents(props: SolidRevolutionCanvasProps) {
   const startPositions = useMemo(() => revolutionTrianglePositions(start), [start]);
   const points = (source: typeof profile) => source.map((p) => [p.x, p.y, p.z] as [number, number, number]);
   const current = revolutionPoint(radius, 0, angle);
-  const arc = Array.from({ length: 121 }, (_, index) => revolutionPoint(radius, 0.006, angle * index / 120));
+  const arcs = useMemo(() => revolutionBoundaryArcs(snapshot, angle), [snapshot, angle]);
   return <>
     <SpatialCameraRig bookmark={camera} radius={frame.radius} requestKey={snapshot.cameraRevision} interactive={props.interactive}
       navigationMode={props.navigation} axisSnapEnabled={props.axisSnap} onTransitionStateChange={noop} />
@@ -59,7 +59,8 @@ function Contents(props: SolidRevolutionCanvasProps) {
     <Surface positions={paper} color={CUBE_COLORS[2]} opacity={0.9} paper />
     <Line points={points([...profile, profile[0]])} color={paperOutline} lineWidth={props.selected ? 2.5 : 2} raycast={ignoreRaycast} />
     <Line points={[[0, -0.25, 0], [0, height + 0.45, 0]]} color={CUBE_AXIS_COLORS.y} lineWidth={3} raycast={ignoreRaycast} />
-    {angle > 0 && <Line points={points(arc)} color={paperOutline} lineWidth={2} raycast={ignoreRaycast} />}
+    {arcs.map((arc, index) => <Line key={index} name={`revolution-boundary-${index}`} points={points(arc)} position={[0, arc[0].y === 0 ? 0.006 : 0, 0]}
+      color={paperOutline} lineWidth={2} renderOrder={2} depthWrite={false} raycast={ignoreRaycast} />)}
     <mesh position={[current.x, current.y, current.z]} raycast={ignoreRaycast}><sphereGeometry args={[Math.min(radius, height) * 0.027, 16, 10]} /><meshBasicMaterial color={paperOutline} /></mesh>
     <Html position={[current.x, height * 0.45, current.z]} center zIndexRange={[4, 0]} style={{ pointerEvents: "none" }}>
       <span className="rounded bg-paper/90 px-1 text-xs text-ink">{Math.round(angle)}°</span>

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { Quaternion, Vector3 } from "three";
 import { createDefaultSolidRevolutionInitial, solidRevolutionInitial, solidRevolutionInitialSchema, solidRevolutionSnapshot, solidRevolutionSnapshotSchema, solidRevolutionToolSchema } from "@/features/tools/solid-revolution/contract";
-import { normalizeRevolutionAngle, pauseRevolution, planRevolution, resumeRevolution, revolutionAngleAt, revolutionDimensions, revolutionPlaying, revolutionPoint, revolutionProfile, revolutionSweepPositions, revolutionVolume } from "@/features/tools/solid-revolution/model";
+import { normalizeRevolutionAngle, pauseRevolution, planRevolution, resumeRevolution, revolutionAngleAt, revolutionBoundaryArcs, revolutionDimensions, revolutionPlaying, revolutionPoint, revolutionProfile, revolutionSweepPositions, revolutionVolume } from "@/features/tools/solid-revolution/model";
 import { revolutionGestureAngle } from "@/features/tools/solid-revolution/RevolutionInteraction";
 
 const initial = createDefaultSolidRevolutionInitial();
@@ -16,6 +16,24 @@ function meshVolume(positions: number[]) {
   return total;
 }
 describe("revolution analytic geometry", () => {
+  it.each(["rectangle", "right-triangle"] as const)("%s traces every off-axis vertex, in sync with either rotation axis", (shape) => {
+    for (const axis of ["height", "width"] as const) {
+      const source = { ...initial, shape, axis }, { radius, height } = revolutionDimensions(source);
+      expect(revolutionBoundaryArcs(source, 0)).toEqual([]);
+      for (const angle of [0.1, 45, 90, 180, 270, 359.9, 360]) {
+        const arcs = revolutionBoundaryArcs(source, angle);
+        expect(arcs).toHaveLength(shape === "rectangle" ? 2 : 1);
+        const ends = revolutionProfile(source, angle).filter((point) => Math.hypot(point.x, point.z) > 0);
+        arcs.forEach((arc, index) => {
+          const y = index === 0 ? 0 : height;
+          expect(arc).toHaveLength(121); expect(arc[0]).toEqual(revolutionPoint(radius, y, 0));
+          expect(arc.at(-1)).toEqual(ends[index]);
+          arc.forEach((point) => { expect(point.y).toBe(y); expect(Math.hypot(point.x, point.z)).toBeCloseTo(radius); });
+          if (angle === 360) { expect(arc.at(-1)!.x).toBeCloseTo(arc[0].x); expect(arc.at(-1)!.z).toBeCloseTo(arc[0].z); }
+        });
+      }
+    }
+  });
   it("exchanges axis length and radius without changing either original paper edge", () => {
     expect(revolutionDimensions(initial)).toEqual({ radius: 2, height: 3 });
     expect(revolutionDimensions({ ...initial, axis: "width" })).toEqual({ radius: 3, height: 2 });
