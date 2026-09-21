@@ -20,7 +20,7 @@ import type { CubeNetFoldChange, CubeNetPaperSelection } from "../spatial-lab/cu
 import { useCubeNetPlayback } from "../spatial-lab/useCubeNetPlayback";
 import { useToolSnapshot } from "../scenes/useToolSnapshot";
 import styles from "../spatial-lab/CubeStructuresWorkbench.module.css";
-import { createDefaultSolidNetsSnapshot, resizeSolidNet, SOLID_NETS_LIMITS, solidNetsSnapshotSchema, type SolidNetsSnapshot } from "./contract";
+import { createDefaultSolidNetsSnapshot, createDefaultSolidNetsTeachingSnapshot, resizeSolidNet, SOLID_NETS_LIMITS, SOLID_NETS_VERSION, SOLID_NET_KINDS, anySolidNetsSnapshotSchema, type AnySolidNetsSnapshot as SolidNetsSnapshot } from "./contract";
 import { solidNetGeometry, type SolidNetDimensions } from "./geometry";
 import { solidNetAllMotion, solidNetSnapshotTransition } from "./model";
 import { solidNetsMessages } from "./messages";
@@ -35,7 +35,7 @@ export interface SolidNetsWorkspaceProps {
 const same = (a: SolidNetsSnapshot, b: SolidNetsSnapshot) => JSON.stringify(a) === JSON.stringify(b);
 
 export function SolidNetsWorkspace({ locale, initial, runtime, onSnapshot, readOnly = false, courseware, workspaceSelector }: SolidNetsWorkspaceProps) {
-  const [start] = useState(() => solidNetsSnapshotSchema.parse(initial ?? createDefaultSolidNetsSnapshot()));
+  const [start] = useState(() => anySolidNetsSnapshotSchema.parse(initial ?? createDefaultSolidNetsSnapshot()));
   const [preview, setPreview] = useState<SolidNetsSnapshot | null>(null), pendingLocal = useRef<SolidNetsSnapshot | null>(null);
   const historyIntent = useRef<"undo" | "redo" | null>(null);
   const protectedRuntime = useMemo(() => runtime && { state: runtime.state, onChange: runtime.onChange ? async (next: SolidNetsSnapshot) => {
@@ -57,6 +57,7 @@ export function SolidNetsWorkspace({ locale, initial, runtime, onSnapshot, readO
   const closed = geometry.hinges.every((hinge) => Math.abs(snapshot.angles[hinge.id] - hinge.closedDegrees) < 1e-8);
   const selectedSurface = selected ? snapshot.surfaces[selected] : null;
   const selectedHinge = geometry.hinges.find((hinge) => hinge.faceId === selected);
+  const kinds = start.version === SOLID_NETS_VERSION ? ["cuboid", "triangular-prism"] as const : SOLID_NET_KINDS;
   const animationStart = playback.start;
   useLayoutEffect(() => {
     const old = previous.current; if (same(old, snapshot)) return; previous.current = snapshot;
@@ -71,13 +72,13 @@ export function SolidNetsWorkspace({ locale, initial, runtime, onSnapshot, readO
   useEffect(() => { onSnapshot?.(busy || preview ? null : snapshot); }, [busy, preview, snapshot, onSnapshot]);
   const commit = useCallback((next: SolidNetsSnapshot, displayed = false) => {
     if (readonly || publishing) return false;
-    const parsed = solidNetsSnapshotSchema.safeParse(next);
-    if (!parsed.success || same(parsed.data, snapshot)) { setPreview(null); return false; }
+    const parsed = anySolidNetsSnapshotSchema.safeParse(next);
+    if (!parsed.success || parsed.data.version !== start.version || same(parsed.data, snapshot)) { setPreview(null); return false; }
     if (displayed) pendingLocal.current = parsed.data;
     if (!update(parsed.data)) { pendingLocal.current = null; return false; }
     if (displayed && runtime) setPreview(parsed.data);
     return true;
-  }, [readonly, publishing, update, snapshot, runtime]);
+  }, [readonly, publishing, update, snapshot, runtime, start.version]);
   const previewFold = useCallback((change: CubeNetFoldChange | null) => setPreview(change
     ? { ...snapshot, angles: { ...snapshot.angles, [change.edgeId]: change.degrees }, anchor: { ...change.anchor, vertices: [...change.anchor.vertices] } } : null), [snapshot]);
   const commitFold = useCallback((change: CubeNetFoldChange) => {
@@ -96,7 +97,8 @@ export function SolidNetsWorkspace({ locale, initial, runtime, onSnapshot, readO
   };
   const dimensionChange = (key: keyof SolidNetDimensions, raw: string) => {
     const value = Number(raw); if (!Number.isFinite(value) || value < SOLID_NETS_LIMITS.minDimension || value > SOLID_NETS_LIMITS.maxDimension) return;
-    commit(resizeSolidNet(snapshot, { ...snapshot.dimensions, [key]: value })); setActive(null); setCameraKey((v) => v + 1);
+    const dimensions = snapshot.kind === "cube" ? { width: value, height: value, depth: value } : { ...snapshot.dimensions, [key]: value };
+    commit(resizeSolidNet(snapshot, dimensions)); setActive(null); setCameraKey((v) => v + 1);
   };
   const surfaceChange = (change: { color?: CubeColor; label?: string; opacity?: number }) => {
     if (selected && selectedSurface) commit({ ...snapshot, surfaces: { ...snapshot.surfaces, [selected]: { ...selectedSurface, ...change } } });
@@ -131,10 +133,14 @@ export function SolidNetsWorkspace({ locale, initial, runtime, onSnapshot, readO
       {panel && <SpatialCanvasPanel title={panel === "shape" ? m.shape : m.style} closeLabel={shared.closePanel} onClose={closePanel}>
         <div className="space-y-3">
           {panel === "shape" && <>
-            <div className="flex flex-wrap gap-1">{(["cuboid", "triangular-prism"] as const).map((kind) => <Button key={kind} size="sm" variant={snapshot.kind === kind ? "secondary" : "ghost"}
-              aria-pressed={snapshot.kind === kind} disabled={readonly || busy} onClick={() => { if (kind === snapshot.kind) return; commit(createDefaultSolidNetsSnapshot(kind)); setSelected("base"); setActive(null); setCameraKey((value) => value + 1); }}>{kind === "cuboid" ? m.cuboid : m.prism}</Button>)}</div>
-            {(["width", "height", "depth"] as const).map((key) => <Label key={key} className="grid gap-1 text-xs">
-              {snapshot.kind === "cuboid" ? m[key] : key === "width" ? m.baseWidth : key === "height" ? m.baseHeight : m.prismLength}
+            <div className="flex flex-wrap gap-1">{kinds.map((kind) => <Button key={kind} size="sm" variant={snapshot.kind === kind ? "secondary" : "ghost"}
+              aria-pressed={snapshot.kind === kind} disabled={readonly || busy} onClick={() => {
+                if (kind === snapshot.kind) return;
+                const next = start.version === SOLID_NETS_VERSION && kind !== "cube" ? createDefaultSolidNetsSnapshot(kind) : createDefaultSolidNetsTeachingSnapshot(kind);
+                commit(next); setSelected("base"); setActive(null); setCameraKey((value) => value + 1);
+              }}>{kind === "cube" ? m.cube : kind === "cuboid" ? m.cuboid : m.prism}</Button>)}</div>
+            {(snapshot.kind === "cube" ? ["width"] as const : ["width", "height", "depth"] as const).map((key) => <Label key={key} className="grid gap-1 text-xs">
+              {snapshot.kind === "cube" ? m.edge : snapshot.kind === "cuboid" ? m[key] : key === "width" ? m.baseWidth : key === "height" ? m.baseHeight : m.prismLength}
               <Input type="number" min={SOLID_NETS_LIMITS.minDimension} max={SOLID_NETS_LIMITS.maxDimension} step={0.25}
                 value={snapshot.dimensions[key]} disabled={readonly || busy || !flat} onKeyDown={(event) => event.stopPropagation()} onChange={(event) => dimensionChange(key, event.target.value)} />
             </Label>)}

@@ -476,8 +476,12 @@
         "desc": "Build, move and split blocks, observe spatial relationships and save a starting scene for courseware."
       },
       "cube-net": {
-        "name": "Nets and folding",
-        "desc": "Explore cut cube nets, freely assembled square paper, and face-by-face folding of cuboids and triangular prisms."
+        "name": "Cube net exploration",
+        "desc": "Explore the 11 cube nets through shape transitions, edge cutting and free paper folding to observe relationships between faces."
+      },
+      "solid-nets": {
+        "name": "Solid nets",
+        "desc": "Fold and unfold cubes, cuboids and triangular prisms face by face. Change dimensions, colors and labels to connect solids with their nets."
       },
       "dice": {
         "name": "Dice",

@@ -2,7 +2,7 @@ import { Matrix4, Quaternion, Vector3 } from "three";
 import type { PolyhedronFoldRenderFace, PolyhedronFoldRenderModel } from "@/features/spatial-math/renderer-r3f/polyhedron-fold-render-model";
 import { cubeNetFaceBasis, transformCubeNetWorkbenchModel, type CubeNetWorkbenchHinge } from "../spatial-lab/cube-net-workbench-model";
 import { cubeWorkbenchCamera } from "../spatial-lab/cube-workbench-camera";
-import type { SolidNetsSnapshot } from "./contract";
+import type { AnySolidNetsSnapshot as SolidNetsSnapshot } from "./contract";
 import { solidNetGeometry, type SolidNetPoint } from "./geometry";
 
 const point = (v: Vector3): SolidNetPoint => ({ x: v.x, y: v.y, z: v.z });

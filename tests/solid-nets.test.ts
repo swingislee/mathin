@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Vector3 } from "three";
-import { createDefaultSolidNetsSnapshot, resizeSolidNet, solidNetsSnapshotSchema, type SolidNetsSnapshot } from "@/features/tools/solid-nets/contract";
+import { createDefaultSolidNetsSnapshot, resizeSolidNet, solidNetsSnapshotSchema, type AnySolidNetsSnapshot as SolidNetsSnapshot } from "@/features/tools/solid-nets/contract";
 import { solidNetFaceArea, solidNetGeometry, type SolidNetPoint } from "@/features/tools/solid-nets/geometry";
 import { resolveSolidNet, solidNetAllMotion, solidNetSnapshotTransition } from "@/features/tools/solid-nets/model";
 import { beginCubeNetFoldDrag, cubeNetPaperSelection, finishCubeNetFoldDrag, updateCubeNetFoldDrag } from "@/features/tools/spatial-lab/cube-net-fold-drag";

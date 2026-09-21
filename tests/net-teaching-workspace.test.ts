@@ -33,7 +33,24 @@ async function select(label: string) {
   const button = [...document.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === label)!;
   expect(button).toBeTruthy(); await act(async () => button.click());
 }
-describe("one folding tool hosts distinct teaching spaces", () => {
+describe("legacy folding host and scoped cube exploration", () => {
+  it("limits new cube exploration to eleven nets and free paper", async () => {
+    const capture = vi.fn();
+    await render({ initial: await createNetTeachingInitial("standard"), scope: "cube", onSnapshot: capture });
+    await select("Free paper");
+    await act(async () => host.querySelector<HTMLButtonElement>('button[aria-label="Folding workspace"]')!.click());
+    const labels = [...document.querySelectorAll('[role="dialog"] button')].map((button) => button.textContent);
+    expect(labels).toContain("Explore the 11 cube nets");
+    expect(labels).toContain("Free paper");
+    expect(labels).not.toContain("Cuboid and prism");
+    const explore = [...document.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === "Explore the 11 cube nets")!;
+    await act(async () => explore.click());
+    expect(workspace.current!.initial).toMatchObject({ source: { entryId: expect.any(String) } });
+    await act(async () => workspace.current!.onSnapshot(workspace.current!.initial));
+    expect(capture.mock.lastCall![0].mode).toBe("standard");
+    await select("Free paper");
+    expect(workspace.current!.initial).toEqual(paper().data);
+  });
   it.each([true, false])("preserves the flex height chain for every folding mode (fullHeight=%s)", async (fullHeight) => {
     await render({ initial: await createNetTeachingInitial("standard") }, fullHeight);
     expect(host.querySelector('[role="alert"]')).toBeNull();

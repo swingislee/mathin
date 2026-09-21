@@ -104,6 +104,19 @@ export const toolThumbs: Record<string, ReactNode> = {
       ))}
     </svg>
   ),
+  "solid-nets": (
+    <svg viewBox="0 0 200 120" className="h-full w-full" aria-hidden>
+      <g stroke="var(--ink)" strokeWidth={1.3} strokeLinejoin="round">
+        {[[32, 50, 26, 18], [16, 50, 16, 18], [58, 50, 16, 18], [32, 34, 26, 16], [32, 68, 26, 16], [32, 84, 26, 18]].map(([x, y, width, height]) => (
+          <rect key={`${x}-${y}`} x={x} y={y} width={width} height={height} fill={y === 50 ? "var(--leaf)" : "var(--moon)"} />
+        ))}
+        <rect x={118} y={40} width={18} height={34} fill="var(--moon)" />
+        <rect x={136} y={40} width={26} height={34} fill="var(--leaf)" />
+        <rect x={162} y={40} width={18} height={34} fill="var(--moon)" />
+        <path d="m136 40 13-13 13 13Zm0 34 13 13 13-13Z" fill="var(--cheek)" />
+      </g>
+    </svg>
+  ),
   dice: (
     <svg viewBox="0 0 200 120" className="h-full w-full" aria-hidden>
       <g stroke="var(--ink)" strokeWidth={1.3} strokeLinejoin="round">

@@ -13,9 +13,9 @@ import { useTeachingWorkbench } from "../courseware/useTeachingWorkbench";
 import type { NetLiveSnapshot, NetTeachingCommand } from "../courseware/workbench-classroom-contract";
 import type { CubeNetTeachingSnapshot } from "../courseware/spatial-teaching-content";
 import type { PaperFoldingSnapshot } from "../paper-folding/contract";
-import type { SolidNetsSnapshot } from "../solid-nets/contract";
+import { solidNetsSnapshotSchema, type SolidNetsSnapshot, type AnySolidNetsSnapshot } from "../solid-nets/contract";
 
-import { netInitialState, type NetTeachingInitial, type NetTeachingState, type NetTeachingMode } from "./contract";
+import { CUBE_NET_EXPLORATION_MODES, netInitialState, type NetTeachingInitial, type NetTeachingState, type NetTeachingMode } from "./contract";
 import { createNetTeachingInitial } from "./defaults";
 
 const Net = dynamic(() => import("../spatial-lab/CubeNetFoldWorkspace").then((m) => m.CubeNetFoldWorkspace), { ssr: false });
@@ -42,16 +42,18 @@ function ModeWorkspace({ initial, current, runtime, selector, readOnly, locale, 
 }) {
   // 每次进入方式时固定该次起点，课堂更新仍通过 runtime 驱动，避免重建纸片场景。
   const [origin] = useState(initial);
+  const captureLegacySolid = useCallback((data: AnySolidNetsSnapshot | null) => captureSolid(data ? solidNetsSnapshotSchema.parse(data) : null), [captureSolid]);
   if (origin.mode === "standard") return <StandardNet locale={locale} initial={origin.data} selector={selector} onSnapshot={captureNet} readOnly={readOnly}
     runtime={runtime ? { state: current.mode === "standard" ? current.data : undefined, onChange: runtime.onChange ? (data) => runtime.onChange!({ mode: "standard", data }) : undefined } : undefined} />;
-  if (origin.mode === "solid-net") return <SolidNet locale={locale} initial={origin.data} workspaceSelector={selector} onSnapshot={captureSolid} readOnly={readOnly} courseware
-    runtime={runtime ? { state: current.mode === "solid-net" ? current.data : undefined, onChange: runtime.onChange ? (data) => runtime.onChange!({ mode: "solid-net", data }) : undefined } : undefined} />;
+  if (origin.mode === "solid-net") return <SolidNet locale={locale} initial={origin.data} workspaceSelector={selector}
+    onSnapshot={captureLegacySolid} readOnly={readOnly} courseware
+    runtime={runtime ? { state: current.mode === "solid-net" ? current.data : undefined, onChange: runtime.onChange ? (data) => runtime.onChange!({ mode: "solid-net", data: solidNetsSnapshotSchema.parse(data) }) : undefined } : undefined} />;
   return <Paper locale={locale} initial={origin.data} workspaceSelector={selector} onSnapshot={capturePaper} readOnly={readOnly} courseware
     runtime={runtime ? { state: current.mode === "free-paper" ? current.data : undefined, onChange: runtime.onChange ? (data) => runtime.onChange!({ mode: "free-paper", data }) : undefined } : undefined} />;
 }
 
-function ReadyWorkspace({ initial, runtime, onSnapshot, readOnly = false }: {
-  initial: NetTeachingInitial; runtime?: Runtime; onSnapshot?: (next: NetTeachingInitial | null) => void; readOnly?: boolean;
+function ReadyWorkspace({ initial, runtime, onSnapshot, readOnly = false, scope = "legacy" }: {
+  initial: NetTeachingInitial; runtime?: Runtime; onSnapshot?: (next: NetTeachingInitial | null) => void; readOnly?: boolean; scope?: "legacy" | "cube";
 }) {
   const locale = useLocale() === "en" ? "en" : "zh";
   const [local, setLocal] = useState(initial), [switching, setSwitching] = useState(false), [failed, setFailed] = useState(false), [menu, setMenu] = useState(false);
@@ -61,6 +63,7 @@ function ReadyWorkspace({ initial, runtime, onSnapshot, readOnly = false }: {
   const starting = cache[mode] ?? (current.mode === "standard" ? { mode: "standard", data: current.data.snapshot } : current);
   const interactionDisabled = readOnly || switching || Boolean(runtime && !runtime.onChange);
   const disabled = interactionDisabled || childBusy;
+  const modes: readonly NetTeachingMode[] = scope === "cube" ? CUBE_NET_EXPLORATION_MODES : ["standard", "free-paper", "solid-net"];
   const capture = useCallback((next: NetTeachingInitial | null) => {
     setChildBusy(next === null);
     if (next) setCache((previous) => previous[next.mode] === next ? previous : { ...previous, [next.mode]: next });
@@ -70,7 +73,7 @@ function ReadyWorkspace({ initial, runtime, onSnapshot, readOnly = false }: {
   const capturePaper = useCallback((data: PaperFoldingSnapshot | null) => capture(data ? { mode: "free-paper", data } : null), [capture]);
   const captureSolid = useCallback((data: SolidNetsSnapshot | null) => capture(data ? { mode: "solid-net", data } : null), [capture]);
   const changeMode = async (next: NetTeachingMode) => {
-    if (disabled || next === mode) return;
+    if (disabled || next === mode || !modes.includes(next)) return;
     setSwitching(true); setFailed(false); onSnapshot?.(null);
     try {
       const value = cache[next] ?? await createNetTeachingInitial(next);
@@ -79,11 +82,11 @@ function ReadyWorkspace({ initial, runtime, onSnapshot, readOnly = false }: {
       setMenu(false);
     } catch { setFailed(true); } finally { setSwitching(false); }
   };
-  const labels = locale === "zh" ? { title: "展开方式", standard: "正方体展开", "free-paper": "自由拼纸", "solid-net": "长方体与三棱柱" } : { title: "Folding workspace", standard: "Cube nets", "free-paper": "Free paper", "solid-net": "Cuboid and prism" };
+  const labels = locale === "zh" ? { title: "展开方式", standard: scope === "cube" ? "11 种展开图探究" : "正方体展开", "free-paper": "自由拼纸", "solid-net": "长方体与三棱柱" } : { title: "Folding workspace", standard: scope === "cube" ? "Explore the 11 cube nets" : "Cube nets", "free-paper": "Free paper", "solid-net": "Cuboid and prism" };
   const selector = <Popover open={menu} onOpenChange={setMenu}><PopoverTrigger asChild>
     <SpatialActionButton action="foldMode" label={labels.title} disabled={disabled} />
   </PopoverTrigger><PopoverContent align="start" className="w-44 space-y-1 p-2" aria-label={labels.title}>
-    {(["standard", "free-paper", "solid-net"] as const).map((id) => <Button key={id} className="w-full justify-start" size="sm" variant={mode === id ? "secondary" : "ghost"}
+    {modes.map((id) => <Button key={id} className="w-full justify-start" size="sm" variant={mode === id ? "secondary" : "ghost"}
       aria-pressed={mode === id} disabled={disabled} onClick={() => void changeMode(id)}>{labels[id]}</Button>)}
   </PopoverContent></Popover>;
   // 子舞台使用尺寸容器，纵向 flex 将宿主高度传到内部的 4:3 画布。
@@ -94,7 +97,7 @@ function ReadyWorkspace({ initial, runtime, onSnapshot, readOnly = false }: {
   </section>;
 }
 
-export function NetTeachingWorkspace(props: { initial?: NetTeachingInitial; runtime?: Runtime; onSnapshot?: (next: NetTeachingInitial | null) => void; readOnly?: boolean }) {
+export function NetTeachingWorkspace(props: { initial?: NetTeachingInitial; runtime?: Runtime; onSnapshot?: (next: NetTeachingInitial | null) => void; readOnly?: boolean; scope?: "legacy" | "cube" }) {
   const locale = useLocale();
   const [defaultInitial, setDefault] = useState<NetTeachingInitial | null>(null), [failed, setFailed] = useState(false);
   useEffect(() => { if (props.initial) return; let active = true;

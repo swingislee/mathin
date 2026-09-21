@@ -34,6 +34,7 @@ function ToolSceneEditorSession({ version, existing, onReady, fullHeight = false
   const [ready, setReady] = useState<ToolScene | null>(null);
   const adapter = getToolWorkbenchAdapter(activeVersion);
   const latest = getToolWorkbenchAdapter(getToolSceneDefinition(definition.catalogId)!.contentVersion);
+  const upgradeCopy = useMemo(() => activeVersion !== latest.contentVersion && ready ? latest.upgrade?.(ready) ?? null : null, [activeVersion, latest, ready]);
   const capture = useCallback((scene: ToolScene | null) => { setReady(scene); onReady?.(scene); }, [onReady]);
   function open(scene: ToolScene, imported = false) {
     if (toolSceneCatalogId(scene) !== definition.catalogId) return;
@@ -44,8 +45,8 @@ function ToolSceneEditorSession({ version, existing, onReady, fullHeight = false
     <ToolSceneLibrary key={`library-${libraryEpoch}`} version={activeVersion} scene={ready} onOpen={open} pageHeader={pageHeader}
       title={<ToolSceneName key={`name-${generation}`} value={title} onChange={setTitle} />}>
       {adapter.Import && createElement(adapter.Import, { key: `import-${generation}`, onOpen: (scene: ToolScene) => open(scene, true) })}
-      {activeVersion !== latest.contentVersion && latest.upgrade && <ToolToolbarButton icon={CopyPlus} label={t("upgradeCopy")} disabled={!ready}
-        onClick={() => { const upgraded = ready && latest.upgrade?.(ready); if (upgraded) open(freezeToolScene(upgraded), true); }} />}
+      {upgradeCopy && <ToolToolbarButton icon={CopyPlus} label={t("upgradeCopy")}
+        onClick={() => open(freezeToolScene(upgradeCopy), true)} />}
     </ToolSceneLibrary>
     <ToolSceneConfiguration key={`scene-${generation}`} version={activeVersion} existing={origin} title={title} onReady={capture} fullHeight={fullHeight} />
   </div>;

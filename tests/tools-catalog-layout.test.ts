@@ -7,6 +7,7 @@ import zh from "../messages/zh.json";
 import en from "../messages/en.json";
 import ToolsPage from "@/app/[locale]/tools/page";
 import { tools } from "@/features/tools/registry";
+import { toolThumbs } from "@/features/tools/thumbs";
 
 const request = vi.hoisted(() => ({ locale: "zh" as "zh" | "en" }));
 vi.mock("next-intl/server", () => ({
@@ -26,7 +27,9 @@ describe.each(["zh", "en"] as const)("%s tools catalog scrolling contract", (loc
     const catalog = main.querySelector("section")!;
     const links = [...catalog.querySelectorAll("a")];
     expect(links.map((link) => link.getAttribute("href"))).toEqual(tools.map(({ id }) => `/${locale}/tools/${id}`));
-    expect(links.at(-1)!.textContent).toContain((locale === "en" ? en : zh).tools.items.projection.name);
+    const lastId = tools.at(-1)!.id as keyof typeof en.tools.items;
+    expect(links.at(-1)!.textContent).toContain((locale === "en" ? en : zh).tools.items[lastId].name);
+    for (const tool of tools) expect(toolThumbs[tool.id]).toBeTruthy();
     // 桌面断点也保留内容高度，不再由绝对定位和一屏高度裁掉后续行。
     for (const element of [main, catalog]) {
       const utilities = [...element.classList].map((name) => name.split(":").at(-1));

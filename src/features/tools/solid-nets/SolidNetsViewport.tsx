@@ -10,7 +10,7 @@ import type { PolyhedronFoldRenderFace } from "@/features/spatial-math/renderer-
 import { CubeNetFoldInteraction } from "../spatial-lab/CubeNetFoldViewport";
 import { CUBE_COLORS, CUBE_SELECTION_COLOR, cubeGroupOutlineColor } from "../spatial-lab/cube-structures-contract";
 import type { CubeNetFoldChange, CubeNetPaperSelection } from "../spatial-lab/cube-net-fold-drag";
-import type { SolidNetsSnapshot } from "./contract";
+import type { AnySolidNetsSnapshot as SolidNetsSnapshot } from "./contract";
 import { resolveSolidNet } from "./model";
 import { solidNetsMessages } from "./messages";
 

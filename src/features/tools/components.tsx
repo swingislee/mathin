@@ -20,7 +20,8 @@ const MotionLab = dynamic(() => import("./motion-lab/MotionLab").then((m) => m.M
 const SpatialLab = dynamic(() => import("./spatial-lab/SpatialLab").then((m) => m.SpatialLab), { loading: ToolSkeleton });
 const ProjectionTool = dynamic(() => import("./projection/ProjectionWorkspace").then((m) => m.ProjectionTool), { loading: ToolSkeleton });
 const SolidGeometryTool = dynamic(() => import("./solid-geometry/SolidGeometryWorkspace").then((m) => m.SolidGeometryWorkspace), { loading: ToolSkeleton });
-const NetTeachingTool = dynamic(() => import("./net-teaching/NetTeachingWorkspace").then((m) => m.NetTeachingWorkspace), { loading: ToolSkeleton });
+const CubeNetExplorationTool = dynamic(() => import("./net-teaching/CubeNetExplorationWorkspace").then((m) => m.CubeNetExplorationWorkspace), { loading: ToolSkeleton });
+const SolidNetsTool = dynamic(() => import("./solid-nets/SolidNetsTool").then((m) => m.SolidNetsTool), { loading: ToolSkeleton });
 const SolidCapacityTool = dynamic(() => import("./solid-capacity/SolidCapacityWorkspace").then((m) => m.SolidCapacityWorkspace), { loading: ToolSkeleton });
 const SomaTool = dynamic(() => import("./soma-cube/SomaWorkspace").then((m) => m.SomaWorkspace), { loading: ToolSkeleton });
 export const CubeCoursewarePreview = dynamic(() => import("./courseware/CubeStructuresCourseware").then((m) => m.CubeStructuresCourseware), { loading: ToolSkeleton });
@@ -48,7 +49,9 @@ export function ToolView({ id, preparation = false, preparationHeader, ...props 
     case "cube-structures":
       return <SpatialLab {...props} activity="spatial-lab.cube-structures.v1" />;
     case "cube-net":
-      return <NetTeachingTool />;
+      return <CubeNetExplorationTool />;
+    case "solid-nets":
+      return <SolidNetsTool />;
     case "dice":
       return <SpatialLab {...props} activity="spatial-lab.dice-teaching.v1" />;
     case "projection":

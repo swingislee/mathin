@@ -9,7 +9,7 @@ import { cubeDraftSnapshot } from "@/features/tools/spatial-lab/cube-structures-
 import { createCubeSession, cubeSessionScene, operateCubeSession, startCubeRecording } from "@/features/tools/spatial-lab/cube-structures-session";
 import { cubeRotationOperation } from "@/features/tools/spatial-lab/cube-structures-rotation";
 import { createSolidGeometryInitial, solidGeometryToolSchema, solidGeometrySnapshot } from "@/features/tools/solid-geometry/solid-geometry-contract";
-import { NET_TEACHING_VERSION, netTeachingToolSchema, netInitialState } from "@/features/tools/net-teaching/contract";
+import { CUBE_NET_EXPLORATION_VERSION, NET_TEACHING_VERSION, netTeachingToolSchema, netInitialState } from "@/features/tools/net-teaching/contract";
 import { createDefaultPaperFoldingSnapshot } from "@/features/tools/paper-folding/contract";
 import { createDefaultSolidNetsSnapshot } from "@/features/tools/solid-nets/contract";
 import { createDefaultSolidCapacityInitial, solidCapacityToolSchema, solidCapacitySnapshot } from "@/features/tools/solid-capacity/solid-capacity-contract";
@@ -22,7 +22,7 @@ const capacity = () => solidCapacityToolSchema.parse({ toolId: "solid-capacity",
 describe("teaching spaces use one preparation and classroom boundary", () => {
   it("keeps one authoring entry per tool while old frozen versions remain readable", async () => {
     expect(getToolSceneDefinition("cube-structures")!.contentVersion).toBe("cube-structures-lesson-v3");
-    expect(getToolSceneDefinition("cube-net")!.contentVersion).toBe(NET_TEACHING_VERSION);
+    expect(getToolSceneDefinition("cube-net")!.contentVersion).toBe(CUBE_NET_EXPLORATION_VERSION);
     const definitions = toolCoursewareContractsForSurface("formal-courseware");
     expect(new Set(definitions.map((entry) => entry.catalogId)).size).toBe(definitions.length);
     const oldNet = netTool(await buildNet());

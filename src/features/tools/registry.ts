@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Box, Boxes, Cylinder, Dice5, PanelsTopLeft, Route, Ruler, UnfoldVertical } from "lucide-react";
+import { Box, Boxes, Cylinder, Dice5, FoldVertical, PanelsTopLeft, Route, Ruler, UnfoldVertical } from "lucide-react";
 import {
   CLASSROOM_PARTITIONED_INPUT_PROVIDER_V1,
   type ClassroomInputCapabilityProvider,
@@ -36,6 +36,7 @@ export const tools: ToolMeta[] = [
   { id: "motion-lab", no: 2, category: "motion", grades: [4, 6], icon: Route },
   { id: "cube-structures", no: 3, category: "geometry", grades: [1, 9], icon: Boxes },
   { id: "cube-net", no: 4, category: "geometry", grades: [1, 9], icon: UnfoldVertical },
+  { id: "solid-nets", no: 10, category: "geometry", grades: [1, 9], icon: FoldVertical },
   { id: "dice", no: 5, category: "geometry", grades: [1, 9], icon: Dice5 },
   { id: "projection", no: 6, category: "geometry", grades: [1, 9], icon: PanelsTopLeft },
   { id: "solid-geometry", no: 7, category: "geometry", grades: [1, 9], icon: Box },

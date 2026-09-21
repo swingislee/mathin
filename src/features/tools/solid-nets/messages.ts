@@ -1,5 +1,5 @@
 const zh = {
-  title: "其它立体展开", fold: "抓住纸片折叠", shape: "立体与尺寸", style: "面色与标注", labels: "显示面标注", selected: "当前面", label: "面标注", opacity: "不透明度",
+  title: "立体展开图", cube: "正方体", edge: "棱长", fold: "抓住纸片折叠", shape: "立体与尺寸", style: "面色与标注", labels: "显示面标注", selected: "当前面", label: "面标注", opacity: "不透明度",
   foldAll: "依次折成立体", unfold: "依次全部展开", reset: "恢复备课起点", undo: "撤销", redo: "重做", snap: "视角吸附", snapOn: "开启视角吸附", snapOff: "关闭视角吸附",
   cuboid: "长方体", prism: "三棱柱（等腰底面）", width: "长", height: "高", depth: "宽", baseWidth: "三角形底边", baseHeight: "三角形高", prismLength: "柱长",
   sizeHelp: "先全部展开，再修改尺寸。", selectHelp: "点击纸片选择要标色或标注的面。", foldFace: "折起这个面", openFace: "放平这个面",
@@ -9,7 +9,7 @@ const zh = {
 };
 type Messages = { [K in keyof typeof zh]: string };
 const en: Messages = {
-  title: "Other solid nets", fold: "Grab and fold paper", shape: "Solid & dimensions", style: "Face colors & labels", labels: "Show face labels", selected: "Selected face", label: "Face label", opacity: "Opacity",
+  title: "Solid nets", cube: "Cube", edge: "Edge length", fold: "Grab and fold paper", shape: "Solid & dimensions", style: "Face colors & labels", labels: "Show face labels", selected: "Selected face", label: "Face label", opacity: "Opacity",
   foldAll: "Fold into a solid in sequence", unfold: "Unfold all in sequence", reset: "Restore prepared start", undo: "Undo", redo: "Redo", snap: "View snapping", snapOn: "Enable view snapping", snapOff: "Disable view snapping",
   cuboid: "Cuboid", prism: "Triangular prism (isosceles base)", width: "Length", height: "Height", depth: "Width", baseWidth: "Triangle base", baseHeight: "Triangle height", prismLength: "Prism length",
   sizeHelp: "Unfold all before changing dimensions.", selectHelp: "Click a paper face to change its color or label.", foldFace: "Fold this face", openFace: "Flatten this face",

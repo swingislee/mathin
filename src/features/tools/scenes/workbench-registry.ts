@@ -8,6 +8,8 @@ import { diceSceneAdapter } from "../spatial-lab/dice-scene-adapter";
 import { projectionSceneAdapter } from "../projection/scene-adapter";
 import { solidGeometrySceneAdapter } from "../solid-geometry/scene-adapter";
 import { netTeachingSceneAdapter } from "../net-teaching/scene-adapter";
+import { cubeNetExplorationSceneAdapter } from "../net-teaching/exploration-scene-adapter";
+import { solidNetsSceneAdapter } from "../solid-nets/scene-adapter";
 import { solidCapacitySceneAdapter } from "../solid-capacity/scene-adapter";
 import { somaSceneAdapter, somaLegacySceneAdapter } from "../soma-cube/scene-adapter";
 import type { ToolSceneVersion } from "./contract";
@@ -24,6 +26,8 @@ const adapters = {
   [projectionSceneAdapter.contentVersion]: projectionSceneAdapter,
   [solidGeometrySceneAdapter.contentVersion]: solidGeometrySceneAdapter,
   [netTeachingSceneAdapter.contentVersion]: netTeachingSceneAdapter,
+  [cubeNetExplorationSceneAdapter.contentVersion]: cubeNetExplorationSceneAdapter,
+  [solidNetsSceneAdapter.contentVersion]: solidNetsSceneAdapter,
   [solidCapacitySceneAdapter.contentVersion]: solidCapacitySceneAdapter,
   [somaSceneAdapter.contentVersion]: somaSceneAdapter,
   [somaLegacySceneAdapter.contentVersion]: somaLegacySceneAdapter,

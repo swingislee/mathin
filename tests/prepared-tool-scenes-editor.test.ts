@@ -17,6 +17,9 @@ import { createSolidGeometryInitial, solidGeometryToolSchema } from "@/features/
 import { createDefaultSolidCapacityInitial, solidCapacityToolSchema } from "@/features/tools/solid-capacity/solid-capacity-contract";
 import { createSomaInitial } from "@/features/tools/soma-cube/model";
 import { SOMA_VERSION, SOMA_LEGACY_VERSION, somaToolSchema, somaLegacyToolSchema } from "@/features/tools/soma-cube/contract";
+import { cubeNetExplorationToolSchema, CUBE_NET_EXPLORATION_VERSION, netTeachingToolSchema, NET_TEACHING_VERSION } from "@/features/tools/net-teaching/contract";
+import { createDefaultPaperFoldingSnapshot } from "@/features/tools/paper-folding/contract";
+import { createDefaultSolidNetsSnapshot, createDefaultSolidNetsTeachingSnapshot, solidNetsToolSchema, SOLID_NETS_LESSON_VERSION } from "@/features/tools/solid-nets/contract";
 
 const workspace = vi.hoisted(() => ({ current: null as null | { initial?: unknown; payload?: unknown; preparation?: boolean; freeRotation?: boolean; onSnapshot: (snapshot: unknown) => void } }));
 const library = vi.hoisted(() => ({ open: null as null | ((scene: ToolScene) => void) }));
@@ -31,6 +34,8 @@ beforeEach(() => { vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true); workspace.cu
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals(); });
 describe("shared starting-scene editor", () => {
   it.each([
+    cubeNetExplorationToolSchema.parse({ toolId: "spatial-lab", contentVersion: CUBE_NET_EXPLORATION_VERSION, payload: { title: "Cube exploration", initial: { mode: "free-paper", data: createDefaultPaperFoldingSnapshot() } } }),
+    solidNetsToolSchema.parse({ toolId: "solid-nets", contentVersion: SOLID_NETS_LESSON_VERSION, payload: { title: "Solid nets", initial: createDefaultSolidNetsTeachingSnapshot() } }),
     diceTool(),
     somaToolSchema.parse({ toolId: "soma-cube", contentVersion: SOMA_VERSION, payload: { title: "Soma", initial: createSomaInitial() } }),
     projectionTool(),
@@ -68,6 +73,21 @@ describe("shared starting-scene editor", () => {
     expect(ready.mock.lastCall![0].payload.initial).not.toBe(changed);
     expect(workspace.current!.initial).toBe(scene.payload.initial);
     expect(scene.payload.initial.axesVisible).toBe(true);
+  });
+
+  it("opens a legacy prism without relabeling it as a new cube exploration or offering an invalid upgrade", async () => {
+    const scene = netTeachingToolSchema.parse({ toolId: "spatial-lab", contentVersion: NET_TEACHING_VERSION,
+      payload: { title: "Legacy prism", initial: { mode: "solid-net", data: createDefaultSolidNetsSnapshot("triangular-prism") } } });
+    const ready = vi.fn(); await renderEditor({ version: CUBE_NET_EXPLORATION_VERSION, onReady: ready });
+    await act(async () => library.open!(scene));
+    expect(workspace.current!.initial).toEqual(scene.payload.initial);
+    await act(async () => workspace.current!.onSnapshot(scene.payload.initial));
+    expect(ready.mock.lastCall![0]).toEqual(scene);
+    expect([...host.querySelectorAll("button")].some((button) => button.getAttribute("aria-label") === en.tools.preparation.upgradeCopy)).toBe(false);
+    const before = workspace.current!.initial;
+    const other = solidNetsToolSchema.parse({ toolId: "solid-nets", contentVersion: SOLID_NETS_LESSON_VERSION, payload: { title: "New solid", initial: createDefaultSolidNetsTeachingSnapshot() } });
+    await act(async () => library.open!(other));
+    expect(workspace.current!.initial).toBe(before);
   });
 
   it("updates the toolbar name and resets the workbench only when opening another scene", async () => {
@@ -136,7 +156,7 @@ describe("shared starting-scene editor", () => {
     expect(upgrade).not.toBeNull(); await act(async () => upgrade.click());
     expect(workspace.current!.initial).toEqual({ mode: "standard", data: scene.payload.initial });
     await act(async () => workspace.current!.onSnapshot(workspace.current!.initial));
-    expect(ready.mock.lastCall![0].contentVersion).toBe("cube-net-lesson-v2");
+    expect(ready.mock.lastCall![0].contentVersion).toBe("cube-net-lesson-v3");
     expect(scene.contentVersion).toBe("cube-net-lesson-v1");
   });
   it("keeps a legacy Soma scene on its adapter until the teacher explicitly copies it to v2", async () => {

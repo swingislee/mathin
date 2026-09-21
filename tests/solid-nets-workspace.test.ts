@@ -4,7 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SolidNetsWorkspace, type SolidNetsWorkspaceProps } from "@/features/tools/solid-nets/SolidNetsWorkspace";
 import type { SolidNetsViewportProps } from "@/features/tools/solid-nets/SolidNetsViewport";
-import { createDefaultSolidNetsSnapshot, type SolidNetsSnapshot } from "@/features/tools/solid-nets/contract";
+import { createDefaultSolidNetsSnapshot, createDefaultSolidNetsTeachingSnapshot, type AnySolidNetsSnapshot as SolidNetsSnapshot } from "@/features/tools/solid-nets/contract";
 import { resolveSolidNet, solidNetAllMotion } from "@/features/tools/solid-nets/model";
 import { cubeNetPaperSelection } from "@/features/tools/spatial-lab/cube-net-fold-drag";
 
@@ -33,6 +33,25 @@ function foldChange(initial: SolidNetsSnapshot, degrees: number) {
 }
 
 describe("solid nets prepared teaching space", () => {
+  it("offers cube, cuboid and prism in the new tool, with one linked cube dimension", async () => {
+    const capture = vi.fn(); await render({ initial: createDefaultSolidNetsTeachingSnapshot(), onSnapshot: capture });
+    await click("Solid & dimensions");
+    expect(button("Cube").getAttribute("aria-pressed")).toBe("true");
+    const inputs = [...host.querySelectorAll<HTMLInputElement>('input[type="number"]')];
+    expect(inputs).toHaveLength(1);
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(inputs[0], "3");
+      inputs[0].dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(capture.mock.lastCall![0].dimensions).toEqual({ width: 3, height: 3, depth: 3 });
+    await click("Cuboid");
+    expect(host.querySelectorAll('input[type="number"]')).toHaveLength(3);
+    expect(capture.mock.lastCall![0]).toMatchObject({ version: "solid-nets-v2", kind: "cuboid" });
+    await click("Triangular prism (isosceles base)");
+    expect(capture.mock.lastCall![0].kind).toBe("triangular-prism");
+    await click("Restore prepared start");
+    expect(capture.mock.lastCall![0]).toEqual(createDefaultSolidNetsTeachingSnapshot());
+  });
   it("clears face and hinge selection without unfolding or publishing a new scene", async () => {
     const initial = createDefaultSolidNetsSnapshot(), capture = vi.fn(); await render({ initial, onSnapshot: capture });
     const saved = viewport.current!.snapshot;
@@ -45,6 +64,7 @@ describe("solid nets prepared teaching space", () => {
     const canvas = host.querySelector('[data-cube-workspace-frame="4:3"]');
     expect(canvas?.contains(host.querySelector("[data-modes]"))).toBe(true);
     await click("Solid & dimensions");
+    expect([...host.querySelectorAll("button")].some((item) => item.textContent === "Cube")).toBe(false);
     expect(host.querySelector("[data-cube-canvas-panel]")).not.toBeNull();
     await click("Triangular prism (isosceles base)");
     expect(viewport.current!.snapshot.kind).toBe("triangular-prism");
