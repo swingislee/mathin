@@ -1,14 +1,18 @@
 "use client";
 
+import { SpatialActionButton } from "../spatial-interaction/SpatialActionButton";
+import { SpatialViewButtons } from "../spatial-interaction/SpatialViewButtons";
+import { SpatialActionIcon } from "../spatial-interaction/SpatialActionIcon";
+
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
-import { FoldHorizontal, Grid2X2, Hand, Hash, Orbit, Paintbrush, Redo2, RotateCcw, Trash2, Undo2 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { SpatialAxisSnapButton, useSpatialAxisSnap } from "@/features/spatial-math/renderer-r3f/SpatialCameraControls";
-import { CubeCanvasPanel, CubeColorPicker, CubeIconButton, CubeViewIcon } from "../spatial-lab/CubeWorkbenchControls";
+import { SpatialCanvasPanel, SpatialColorPicker } from "../spatial-interaction/SpatialWorkbenchControls";
 import { CUBE_WORKBENCH_VIEWS } from "../spatial-lab/cube-workbench-camera";
 import { cubeStructuresMessages } from "../spatial-lab/cube-structures-messages";
 import type { CubeColor } from "../spatial-lab/cube-structures-contract";
@@ -119,34 +123,34 @@ export function PaperFoldingWorkspace({ locale, initial, runtime, onSnapshot, re
       <PaperFoldingViewport {...viewportProps} onPointerMissed={!readonly && !busy ? controls.onPointerMissed : undefined} />
       {workspaceSelector && <div className={cn(styles.dock, styles.meta)}>{workspaceSelector}</div>}
       <div className={cn(styles.dock, styles.views)} role="toolbar" aria-label={shared.view}>
-        {CUBE_WORKBENCH_VIEWS.map((view) => <CubeIconButton key={view} label={shared[view]} active={snapshot.view === view} disabled={readonly || busy}
-          onClick={() => { commit({ ...snapshot, view }); setCameraKey((value) => value + 1); }}><CubeViewIcon view={view} /></CubeIconButton>)}
+        <SpatialViewButtons views={CUBE_WORKBENCH_VIEWS} value={snapshot.view} labels={shared} disabled={readonly || busy}
+          onChange={(view) => { commit({ ...snapshot, view }); setCameraKey((value) => value + 1); }} />
         <SpatialAxisSnapButton iconOnly className={styles.icon} messages={{ axisSnap: m.snap, enableAxisSnap: m.snapOn, disableAxisSnap: m.snapOff }} disabled={busy} />
       </div>
       <div className={cn(styles.dock, styles.tools)} role="toolbar" aria-label={shared.tools}>
-        <CubeIconButton label={m.fold} active={tool === "fold"} disabled={readonly || busy} onClick={() => chooseTool("fold")}><FoldHorizontal aria-hidden /></CubeIconButton>
-        <CubeIconButton label={shared.orbit} active={tool === "orbit"} disabled={readonly || busy} onClick={() => chooseTool("orbit")}><Orbit aria-hidden /></CubeIconButton>
-        <CubeIconButton label={shared.pan} active={tool === "pan"} disabled={readonly || busy} onClick={() => chooseTool("pan")}><Hand aria-hidden /></CubeIconButton>
+        <SpatialActionButton action="fold" label={m.fold} active={tool === "fold"} disabled={readonly || busy} onClick={() => chooseTool("fold")} />
+        <SpatialActionButton action="orbit" label={shared.orbit} active={tool === "orbit"} disabled={readonly || busy} onClick={() => chooseTool("orbit")} />
+        <SpatialActionButton action="pan" label={shared.pan} active={tool === "pan"} disabled={readonly || busy} onClick={() => chooseTool("pan")} />
         <span className={styles.toolSeparator} aria-hidden />
-        <CubeIconButton label={m.layout} active={panel === "layout"} disabled={readonly || busy} onClick={() => togglePanel("layout")}><Grid2X2 aria-hidden /></CubeIconButton>
-        <CubeIconButton label={m.style} active={panel === "style"} disabled={readonly || busy} onClick={() => togglePanel("style")}><Paintbrush aria-hidden /></CubeIconButton>
-        <CubeIconButton label={m.labels} active={snapshot.labelsVisible} disabled={readonly || busy} onClick={() => commit({ ...snapshot, labelsVisible: !snapshot.labelsVisible })}><Hash aria-hidden /></CubeIconButton>
+        <SpatialActionButton action="paperLayout" label={m.layout} active={panel === "layout"} disabled={readonly || busy} onClick={() => togglePanel("layout")} />
+        <SpatialActionButton action="faceColor" label={m.style} active={panel === "style"} disabled={readonly || busy} onClick={() => togglePanel("style")} />
+        <SpatialActionButton action="labels" label={m.labels} active={snapshot.labelsVisible} disabled={readonly || busy} onClick={() => commit({ ...snapshot, labelsVisible: !snapshot.labelsVisible })} />
         <span className={styles.toolSeparator} aria-hidden />
-        <CubeIconButton label={m.unfold} disabled={readonly || busy || (!snapshot.anchor && Object.values(snapshot.angles).every((angle) => angle === 0))} onClick={unfold}><FoldHorizontal className="rotate-90" aria-hidden /></CubeIconButton>
-        <CubeIconButton label={m.undo} disabled={readonly || busy || !past.length} onClick={() => { historyIntent.current = "undo"; if (!commit(past.at(-1)!)) historyIntent.current = null; }}><Undo2 aria-hidden /></CubeIconButton>
-        <CubeIconButton label={m.redo} disabled={readonly || busy || !future.length} onClick={() => { historyIntent.current = "redo"; if (!commit(future[0])) historyIntent.current = null; }}><Redo2 aria-hidden /></CubeIconButton>
-        <CubeIconButton label={m.reset} disabled={readonly || busy} onClick={() => { commit(start); setActive(null); setCameraKey((value) => value + 1); }}><RotateCcw aria-hidden /></CubeIconButton>
+        <SpatialActionButton action="unfold" label={m.unfold} disabled={readonly || busy || (!snapshot.anchor && Object.values(snapshot.angles).every((angle) => angle === 0))} onClick={unfold} />
+        <SpatialActionButton action="undo" label={m.undo} disabled={readonly || busy || !past.length} onClick={() => { historyIntent.current = "undo"; if (!commit(past.at(-1)!)) historyIntent.current = null; }} />
+        <SpatialActionButton action="redo" label={m.redo} disabled={readonly || busy || !future.length} onClick={() => { historyIntent.current = "redo"; if (!commit(future[0])) historyIntent.current = null; }} />
+        <SpatialActionButton action="reset" label={m.reset} disabled={readonly || busy} onClick={() => { commit(start); setActive(null); setCameraKey((value) => value + 1); }} />
       </div>
-      {panel && <CubeCanvasPanel title={panel === "layout" ? m.layout : m.style} closeLabel={shared.closePanel} onClose={closePanel}>
+      {panel && <SpatialCanvasPanel title={panel === "layout" ? m.layout : m.style} closeLabel={shared.closePanel} onClose={closePanel}>
         <div className="space-y-3">
           {panel === "layout" && <><p className="text-xs text-muted">{m.layoutHelp}</p><PaperLayoutEditor snapshot={snapshot} locale={locale} selected={selected} disabled={busy || readonly} onSelect={select} onAdd={(x, z) => edit({ kind: "add", x, z })} />
-            <Button variant="secondary" size="sm" disabled={!selectedFace || busy || readonly} onClick={() => selected && edit({ kind: "remove", id: selected })}><Trash2 className="size-3.5" aria-hidden />{m.remove}</Button></>}
+            <Button variant="secondary" size="sm" disabled={!selectedFace || busy || readonly} onClick={() => selected && edit({ kind: "remove", id: selected })}><SpatialActionIcon action="remove" className="size-3.5" aria-hidden />{m.remove}</Button></>}
           {selectedFace && <><p className="text-xs text-muted">{m.selected}: {selectedFace.label || selectedFace.id}</p>
-            <CubeColorPicker value={selectedFace.color} labels={shared.colors} label={shared.colorLabel} disabled={busy || readonly} onChange={(color) => setSurface({ color })} />
+            <SpatialColorPicker value={selectedFace.color} labels={shared.colors} label={shared.colorLabel} disabled={busy || readonly} onChange={(color) => setSurface({ color })} />
             <Label className="grid gap-1 text-xs">{m.label}<Input value={selectedFace.label} maxLength={8} disabled={busy || readonly} onKeyDown={(event) => event.stopPropagation()} onChange={(event) => setSurface({ label: event.target.value })} /></Label>
           </>}
         </div>
-      </CubeCanvasPanel>}
+      </SpatialCanvasPanel>}
       {(notice || state.failed) && <div className={styles.notice} role="status">{state.failed ? m.failed : notice}</div>}
       <p className="sr-only">{m.help}</p>
     </div></div>

@@ -1,11 +1,14 @@
 "use client";
 
+import { SpatialActionButton } from "../spatial-interaction/SpatialActionButton";
+import { SpatialActionIcon } from "../spatial-interaction/SpatialActionIcon";
+
 import { useId } from "react";
-import { Minus, Plus, Ruler } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { CubeCanvasPanel, CubeIconButton } from "../spatial-lab/CubeWorkbenchControls";
+import { SpatialCanvasPanel } from "../spatial-interaction/SpatialWorkbenchControls";
 import type { SolidEntity, SolidFeatureSelection } from "../solid-geometry/solid-geometry-contract";
 import { getSolidMetrics, getSolidTopology } from "../solid-geometry/solid-geometry";
 import { solidGeometryMessages } from "../solid-geometry/solid-geometry-messages";
@@ -15,7 +18,7 @@ import { measurementMessages } from "./measurement-messages";
 
 export interface MeasurementButtonProps { locale: string; active: boolean; disabled?: boolean; onClick: () => void }
 export function MeasurementButton({ locale, active, disabled, onClick }: MeasurementButtonProps) {
-  return <CubeIconButton label={measurementMessages(locale).title} active={active} disabled={disabled} onClick={onClick} data-solid-measurement-button><Ruler aria-hidden /></CubeIconButton>;
+  return <SpatialActionButton action="measure" label={measurementMessages(locale).title} active={active} disabled={disabled} onClick={onClick} data-solid-measurement-button />;
 }
 
 export interface MeasurementPanelProps {
@@ -40,7 +43,7 @@ export function MeasurementPanel({ locale, settings, selected, feature = null, d
   const changeLayers = (layers: number) => onChange({ ...settings, enabled: true, unitFill: true, fillLayers: layers });
   const faceLabel = (faceId: string) => faceId in solidMessages.faces ? solidMessages.faces[faceId as keyof typeof solidMessages.faces] : faceId;
   const supportHint = support.available ? null : support.reason === "select-solid" ? m.selectSolid : support.reason === "cuboid-only" ? m.cuboidOnly : support.reason === "whole-units" ? m.fillWhole : m.fillLimit;
-  return <CubeCanvasPanel title={m.title} closeLabel={m.close} onClose={onClose}>
+  return <SpatialCanvasPanel title={m.title} closeLabel={m.close} onClose={onClose}>
     <div className="space-y-3 text-xs" data-solid-measurement-panel data-unit-fill-available={support.available}>
       {toggle("enabled")}
       <p className="leading-5 text-muted">{m.units}</p>
@@ -66,8 +69,8 @@ export function MeasurementPanel({ locale, settings, selected, feature = null, d
         {settings.enabled && settings.unitFill && support.available && <div className="space-y-2" data-measurement-layer-controls>
           <p>{m.perLayer} · {support.perLayer} u³</p>
           <div className="flex flex-wrap items-center justify-between gap-2"><span>{m.targetLayers} · {target} / {support.layers}</span>
-            <div className="flex gap-1"><Button type="button" size="sm" variant="secondary" aria-label={m.removeLayer} disabled={inactive || target === 0} onClick={() => changeLayers(target - 1)}><Minus aria-hidden className="size-4" /></Button>
-              <Button type="button" size="sm" variant="secondary" aria-label={m.addLayer} disabled={inactive || target === support.layers} onClick={() => changeLayers(target + 1)}><Plus aria-hidden className="size-4" /></Button></div></div>
+            <div className="flex gap-1"><Button type="button" size="sm" variant="secondary" aria-label={m.removeLayer} disabled={inactive || target === 0} onClick={() => changeLayers(target - 1)}><SpatialActionIcon action="decrease" aria-hidden className="size-4" /></Button>
+              <Button type="button" size="sm" variant="secondary" aria-label={m.addLayer} disabled={inactive || target === support.layers} onClick={() => changeLayers(target + 1)}><SpatialActionIcon action="increase" aria-hidden className="size-4" /></Button></div></div>
           <p data-measurement-target-count={target * support.perLayer}>{m.filled} · {target * support.perLayer} / {support.total}</p>
           <div className="flex flex-wrap gap-1"><Button type="button" size="sm" variant="secondary" disabled={inactive || target === support.layers} onClick={() => changeLayers(support.layers)}>{m.fillAll}</Button>
             <Button type="button" size="sm" variant="ghost" disabled={inactive || target === 0} onClick={() => changeLayers(0)}>{m.clear}</Button></div>
@@ -76,5 +79,5 @@ export function MeasurementPanel({ locale, settings, selected, feature = null, d
         <p className="leading-5 text-muted">{m.sourceSolid}</p>
       </>}
     </div>
-  </CubeCanvasPanel>;
+  </SpatialCanvasPanel>;
 }

@@ -1,9 +1,13 @@
 "use client";
 
+import { SpatialActionButton } from "../spatial-interaction/SpatialActionButton";
+import { SpatialViewButtons } from "../spatial-interaction/SpatialViewButtons";
+import { SpatialAxisSteps } from "../spatial-interaction/SpatialAxisSteps";
+
 import dynamic from "next/dynamic";
 import { useCallback, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Boxes, Eye, Grid2X2, Hand, Maximize, Move3D, Orbit, Redo2, Rotate3D, RotateCcw, Settings2, Undo2 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -11,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { Axis } from "@/features/spatial-math/domain";
 import type { VoxelRendererMessages } from "@/features/spatial-math/renderer-r3f/VoxelFallback";
 import { SpatialAxisSnapButton, useSpatialAxisSnap } from "@/features/spatial-math/renderer-r3f/SpatialCameraControls";
-import { CubeAxisIcon, CubeCanvasPanel, CubeIconButton, CubeViewIcon } from "../spatial-lab/CubeWorkbenchControls";
+import { SpatialCanvasPanel } from "../spatial-interaction/SpatialWorkbenchControls";
 import { CUBE_WORKBENCH_VIEWS } from "../spatial-lab/cube-workbench-camera";
 import { useToolSnapshot } from "../scenes/useToolSnapshot";
 import { useSceneCapture } from "../courseware/useSceneCapture";
@@ -24,7 +28,7 @@ import { SomaPieceIcon } from "./SomaPieceIcon";
 import { somaRigidPoses } from "./motion";
 import { useSpatialDirectCommit } from "../spatial-interaction/useSpatialDirectCommit";
 import { useSpatialToolState } from "../spatial-interaction/useSpatialToolState";
-import { Footprints } from "lucide-react";
+
 import { SPATIAL_ROLL_DIRECTIONS, planSpatialRoll, unitCubeCorners } from "../spatial-interaction/rolling";
 import { SpatialRollButtons, type SpatialRollAction } from "../spatial-interaction/SpatialRollButtons";
 import { spatialActionMessages } from "../spatial-interaction/messages";
@@ -112,30 +116,29 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
         onRotate={(axis, turn) => { if (!disabled) commit(somaRotate(snapshot, axis, turn, freeRotation, rotationSnap)); }}
         onMoveAxis={setAxis} onSelect={select} onMove={(operation) => commit(somaDrag(snapshot, operation), true, true)} onUnavailable={() => setNotice(m.hiddenAxis)} onDragging={setDragging} />
       <div className={`${styles.dock} ${styles.meta}`}>
-        <CubeIconButton label={m.observe} active={!assembling} disabled={disabled} onClick={() => mode("observe")}><Eye aria-hidden /></CubeIconButton>
-        <CubeIconButton label={m.assemble} active={assembling} disabled={disabled} onClick={() => mode("assemble")}><Boxes aria-hidden /></CubeIconButton>
-        <CubeIconButton label={m.pieces} active={panel === "pieces"} disabled={disabled} onClick={() => open("pieces")}><Grid2X2 aria-hidden /></CubeIconButton>
+        <SpatialActionButton action="observe" label={m.observe} active={!assembling} disabled={disabled} onClick={() => mode("observe")} />
+        <SpatialActionButton action="assemble" label={m.assemble} active={assembling} disabled={disabled} onClick={() => mode("assemble")} />
+        <SpatialActionButton action="pieces" label={m.pieces} active={panel === "pieces"} disabled={disabled} onClick={() => open("pieces")} />
       </div>
       <div className={`${styles.dock} ${styles.views}`} aria-label={m.fit}>
-        {CUBE_WORKBENCH_VIEWS.map((view) => <CubeIconButton key={view} label={m.views[view]} active={snapshot.view === view} disabled={disabled}
-          onClick={() => commit({ ...snapshot, view, cameraRevision: (snapshot.cameraRevision + 1) % 1_000_001 }, false)}><CubeViewIcon view={view} /></CubeIconButton>)}
-        <CubeIconButton label={m.fit} disabled={disabled} onClick={() => commit(somaFit(snapshot), false)}><Maximize aria-hidden /></CubeIconButton>
+        <SpatialViewButtons views={CUBE_WORKBENCH_VIEWS} value={snapshot.view} labels={m.views} disabled={disabled}
+          onChange={(view) => commit({ ...snapshot, view, cameraRevision: (snapshot.cameraRevision + 1) % 1_000_001 }, false)} fit={{ label: m.fit, onClick: () => commit(somaFit(snapshot), false) }} />
         <SpatialAxisSnapButton messages={m} disabled={disabled} iconOnly className={styles.icon} />
       </div>
       <div className={`${styles.dock} ${styles.tools}`} role="toolbar" aria-label={m.title}>
-        <CubeIconButton label={m.orbit} active={navigation === "orbit"} disabled={disabled} onClick={() => controls.chooseTool("orbit")}><Orbit aria-hidden /></CubeIconButton>
-        <CubeIconButton label={m.pan} active={navigation === "pan"} disabled={disabled} onClick={() => controls.chooseTool("pan")}><Hand aria-hidden /></CubeIconButton>
-        <CubeIconButton label={m.move} active={navigation === "move" && assembling} disabled={disabled || !assembling} onClick={() => open("move")}><Move3D aria-hidden /></CubeIconButton>
-        <CubeIconButton label={m.rotate} active={panel === "rotate"} disabled={disabled || !assembling} onClick={() => open("rotate")}><Rotate3D aria-hidden /></CubeIconButton>
-        <CubeIconButton label={m.roll} active={panel === "roll"} disabled={disabled || !assembling} onClick={() => open("roll")}><Footprints aria-hidden /></CubeIconButton>
+        <SpatialActionButton action="orbit" label={m.orbit} active={navigation === "orbit"} disabled={disabled} onClick={() => controls.chooseTool("orbit")} />
+        <SpatialActionButton action="pan" label={m.pan} active={navigation === "pan"} disabled={disabled} onClick={() => controls.chooseTool("pan")} />
+        <SpatialActionButton action="move" label={m.move} active={navigation === "move" && assembling} disabled={disabled || !assembling} onClick={() => open("move")} />
+        <SpatialActionButton action="rotate" label={m.rotate} active={panel === "rotate"} disabled={disabled || !assembling} onClick={() => open("rotate")} />
+        <SpatialActionButton action="roll" label={m.roll} active={panel === "roll"} disabled={disabled || !assembling} onClick={() => open("roll")} />
         <span className={styles.toolSeparator} />
-        <CubeIconButton label={m.apart} disabled={disabled} onClick={() => commit(somaFit({ ...snapshot, pieces: somaApart(snapshot.pieces.map((piece) => piece.id)), mode: "assemble" }))}><Boxes aria-hidden /></CubeIconButton>
-        <CubeIconButton label={m.settings} active={panel === "settings"} disabled={disabled} onClick={() => open("settings")}><Settings2 aria-hidden /></CubeIconButton>
-        <CubeIconButton label={m.undo} disabled={disabled || !history.past.length} onClick={() => travel("past")}><Undo2 aria-hidden /></CubeIconButton>
-        <CubeIconButton label={m.redo} disabled={disabled || !history.future.length} onClick={() => travel("future")}><Redo2 aria-hidden /></CubeIconButton>
-        <CubeIconButton label={m.reset} disabled={disabled} onClick={() => { if (commit({ ...structuredClone(origin), cameraRevision: (snapshot.cameraRevision + 1) % 1_000_001 })) { setPanel(null); setNavigation(origin.mode === "observe" ? "orbit" : "move"); } }}><RotateCcw aria-hidden /></CubeIconButton>
+        <SpatialActionButton action="separate" label={m.apart} disabled={disabled} onClick={() => commit(somaFit({ ...snapshot, pieces: somaApart(snapshot.pieces.map((piece) => piece.id)), mode: "assemble" }))} />
+        <SpatialActionButton action="settings" label={m.settings} active={panel === "settings"} disabled={disabled} onClick={() => open("settings")} />
+        <SpatialActionButton action="undo" label={m.undo} disabled={disabled || !history.past.length} onClick={() => travel("past")} />
+        <SpatialActionButton action="redo" label={m.redo} disabled={disabled || !history.future.length} onClick={() => travel("future")} />
+        <SpatialActionButton action="reset" label={m.reset} disabled={disabled} onClick={() => { if (commit({ ...structuredClone(origin), cameraRevision: (snapshot.cameraRevision + 1) % 1_000_001 })) { setPanel(null); setNavigation(origin.mode === "observe" ? "orbit" : "move"); } }} />
       </div>
-      {panel && <CubeCanvasPanel title={m[panel]} closeLabel={m.close} onClose={() => setPanel(null)} anchor={panel === "pieces" ? "meta" : "tool"}>
+      {panel && <SpatialCanvasPanel title={m[panel]} closeLabel={m.close} onClose={() => setPanel(null)} anchor={panel === "pieces" ? "meta" : "tool"}>
         <div className="space-y-3 text-xs">
           {panel === "roll" && <><p className="text-muted">{m.rollHint}</p><SpatialRollButtons action={{ ...rollAction, disabled: disabled || !selectionActive }} /><p className="text-muted">{freePiece ? m.snapForRoll : m.rollBlocked}</p></>}
           {panel === "pieces" && <>
@@ -158,15 +161,10 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
               <ToggleGroupItem value="axis" className="min-h-11 px-2 text-xs">{m.axisRotation}</ToggleGroupItem>
               <ToggleGroupItem value="free" className="min-h-11 px-2 text-xs">{m.freeRotation}</ToggleGroupItem>
             </ToggleGroup>}
-            {(["x", "y", "z"] as const).map((value) => <div key={value} className="flex items-center gap-2">
-              <CubeIconButton label={`${value.toUpperCase()} ${m[panel]}`} active={(panel === "rotate" ? rotationAxis : axis) === value} disabled={disabled}
-                onClick={() => panel === "rotate" ? setRotationAxis(value) : setAxis(value)}><CubeAxisIcon axis={value} /></CubeIconButton>
-              {([-1, 1] as const).map((direction) => <Button key={direction} size="sm" variant="secondary" disabled={disabled || !assembling || !selectionActive}
-                aria-label={`${m[panel]} ${value.toUpperCase()} ${direction > 0 ? "+" : "−"}${panel === "rotate" ? "90°" : "1"}`}
-                onClick={() => commit(panel === "rotate" ? somaRotate(snapshot, value, direction, freeRotation, rotationSnap) : somaMove(snapshot, snapshot.selectedId, value, direction))}>
-                {direction > 0 ? "+" : "−"}{panel === "rotate" ? "90°" : "1"}
-              </Button>)}
-            </div>)}<p className="leading-5 text-muted">{panel === "move" ? m.moveHint : freeRotation ? m.rotateHint : m.legacyRotateHint}</p>
+            <SpatialAxisSteps label={m[panel]} step={panel === "rotate" ? 90 : 1} unit={panel === "rotate" ? "°" : ""} disabled={disabled || !assembling || !selectionActive}
+              axis={panel === "rotate" ? rotationAxis : axis} onAxisChange={panel === "rotate" ? setRotationAxis : setAxis}
+              onStep={(value, direction) => commit(panel === "rotate" ? somaRotate(snapshot, value, direction, freeRotation, rotationSnap) : somaMove(snapshot, snapshot.selectedId, value, direction))} />
+            <p className="leading-5 text-muted">{panel === "move" ? m.moveHint : freeRotation ? m.rotateHint : m.legacyRotateHint}</p>
             {panel === "rotate" && freeRotation && <div className="space-y-1">
               <p>{m.rotationSnap}</p>
               <ToggleGroup type="single" value={rotationSnap} onValueChange={(value) => { if (value) setRotationSnap(value as SpatialRotationSnapLevel); }}
@@ -181,7 +179,7 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
             <Checkbox aria-label={m[key]} checked={snapshot[key]} disabled={disabled} onCheckedChange={(checked) => commit({ ...snapshot, [key]: checked === true }, false)} />{m[key]}
           </label>)}
         </div>
-      </CubeCanvasPanel>}
+      </SpatialCanvasPanel>}
       <div className={styles.cutStatus}>
         <strong>{assembling ? m.assemble : m.observe} · {assembling ? `${snapshot.pieces.length} ${m.countUnit}` : selected.name}</strong>
         <span className="ml-2 text-muted">{assembling ? snapshot.pieces.reduce((sum, piece) => sum + somaDefinition(piece.id).cells.length, 0) : selected.cells.length} {m.cubes}</span>

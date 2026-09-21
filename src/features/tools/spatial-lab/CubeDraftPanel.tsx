@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FolderOpen, RefreshCw, Save } from "lucide-react";
+import { SpatialActionIcon } from "../spatial-interaction/SpatialActionIcon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -81,15 +81,15 @@ export function CubeDraftPanel({ locale, library, preparation, disabled = false 
     <Label htmlFor="cube-draft-name" className="text-xs">{m.name}</Label>
     <Input id="cube-draft-name" className="h-8 text-xs" value={library.name} maxLength={CUBE_DRAFT_NAME_MAX} placeholder={m.placeholder} disabled={unavailable} onChange={(event) => library.setName(event.target.value)} />
     <div className="flex flex-wrap gap-1">
-      <Button size="sm" disabled={unavailable || !library.name.trim()} onClick={() => { void library.save(); }}><Save className="size-3.5" aria-hidden />{m.save}</Button>
+      <Button size="sm" disabled={unavailable || !library.name.trim()} onClick={() => { void library.save(); }}><SpatialActionIcon action="saveScene" className="size-3.5" />{m.save}</Button>
       {library.current && <Button size="sm" variant="secondary" disabled={unavailable || !library.name.trim()} onClick={() => { void library.save(true); }}>{m.saveAs}</Button>}
     </div>
-    <div className="flex items-center justify-between gap-2"><span>{m.library}</span><Button size="sm" variant="ghost" className="size-7 p-0" aria-label={m.refresh} disabled={library.loading || library.busy} onClick={() => { void library.refresh(); }}><RefreshCw className="size-3.5" aria-hidden /></Button></div>
+    <div className="flex items-center justify-between gap-2"><span>{m.library}</span><Button size="sm" variant="ghost" className="size-7 p-0" aria-label={m.refresh} disabled={library.loading || library.busy} onClick={() => { void library.refresh(); }}><SpatialActionIcon action="refreshScenes" className="size-3.5" /></Button></div>
     {library.drafts.length ? <div className="flex items-center gap-1">
       <Select value={draftId} onValueChange={setSelected} disabled={unavailable}><SelectTrigger aria-label={m.library} className="min-w-0 flex-1 text-xs"><SelectValue placeholder={m.choose} /></SelectTrigger><SelectContent>
         {library.drafts.map((draft) => <SelectItem key={draft.id} value={draft.id}>{draft.name}</SelectItem>)}
       </SelectContent></Select>
-      <Button size="sm" variant="secondary" className="size-8 shrink-0 p-0" aria-label={m.open} disabled={unavailable || !draftId} onClick={open}><FolderOpen className="size-4" aria-hidden /></Button>
+      <Button size="sm" variant="secondary" className="size-8 shrink-0 p-0" aria-label={m.open} disabled={unavailable || !draftId} onClick={open}><SpatialActionIcon action="openScene" className="size-4" /></Button>
     </div> : <p className="text-muted">{m.empty}</p>}
     {!preparation && <p className="leading-5 text-muted">{m.demo}</p>}
     {library.error && <p className="leading-5 text-rose" role="alert">{m.errors[library.error]}</p>}

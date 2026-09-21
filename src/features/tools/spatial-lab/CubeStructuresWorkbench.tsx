@@ -1,8 +1,12 @@
 "use client";
 
+import { SpatialActionButton } from "../spatial-interaction/SpatialActionButton";
+import { SpatialActionIcon } from "../spatial-interaction/SpatialActionIcon";
+
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ComponentProps, type ReactNode } from "react";
-import { Boxes, Circle, Droplets, Eraser, Eye, EyeOff, Hand, Hash, Layers3, Maximize, Minus, MousePointer2, Move, Orbit, Paintbrush, PaintBucket, Plus, Presentation, Redo2, RotateCcw, RotateCw, Scissors, Settings2, Shapes, Stamp, Trash2, Undo2, Ungroup, X } from "lucide-react";
+import { SpatialViewButtons } from "../spatial-interaction/SpatialViewButtons";
+import { SpatialAxisSteps } from "../spatial-interaction/SpatialAxisSteps";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -17,9 +21,9 @@ import { createCubeDemo, createCubeSession, cubeResumeNeedsRestore, cubeSessionS
 import { cubeStructuresMessages } from "./cube-structures-messages";
 import { cubeToolCursor } from "./cube-structures-cursor";
 import { cubeDisplayPosition } from "./cube-structures-contract";
-import { CubeAxisIcon, CubeCanvasPanel, CubeColorPicker, CubeIconButton, CubeMarkIcon, CubeViewIcon } from "./CubeWorkbenchControls";
+import { SpatialAxisIcon, SpatialCanvasPanel, SpatialColorPicker, SpatialIconButton, SpatialMarkIcon } from "../spatial-interaction/SpatialWorkbenchControls";
 import { CubeRecordingPanel } from "./CubeRecordingPanel";
-import { CubeOpacitySlider } from "./CubeOpacitySlider";
+import { SpatialOpacitySlider } from "../spatial-interaction/SpatialOpacitySlider";
 import { CubeDraftPanel } from "./CubeDraftPanel";
 import { useCubeDrafts } from "./useCubeDrafts";
 import { cubeDraftIdentity } from "./cube-structures-draft";
@@ -31,7 +35,7 @@ import { buildCubeCutPieces, cubeCutScopeIds } from "./cube-structures-cut-scope
 import { cubeRotationOperation } from "./cube-structures-rotation";
 import { spatialDirectManipulation } from "../spatial-interaction/policy";
 import { useSpatialToolState } from "../spatial-interaction/useSpatialToolState";
-import { Footprints } from "lucide-react";
+
 import { cubeRollOperation } from "./cube-structures-roll";
 import { SPATIAL_ROLL_DIRECTIONS, planSpatialRoll, unitCubeCorners, type SpatialRollDirection } from "../spatial-interaction/rolling";
 import { SpatialRollButtons, type SpatialRollAction } from "../spatial-interaction/SpatialRollButtons";
@@ -40,10 +44,10 @@ import styles from "./CubeStructuresWorkbench.module.css";
 
 const CubeStructuresViewport = dynamic(() => import("./CubeStructuresViewport").then((module) => module.CubeStructuresViewport), { ssr: false });
 const TOOL_BUTTONS = [
-  { id: "orbit", Icon: Orbit }, { id: "pan", Icon: Hand }, { id: "select", Icon: MousePointer2 },
-  { id: "build", Icon: Plus }, { id: "remove", Icon: Eraser }, { id: "color", Icon: PaintBucket },
-  { id: "face", Icon: Paintbrush }, { id: "move", Icon: Move }, { id: "layer", Icon: Layers3 },
-  { id: "cut", Icon: Scissors }, { id: "mark", Icon: Stamp }, { id: "number", Icon: Hash }, { id: "transparent", Icon: Droplets },
+  { id: "orbit", action: "orbit" }, { id: "pan", action: "pan" }, { id: "select", action: "select" },
+  { id: "build", action: "add" }, { id: "remove", action: "remove" }, { id: "color", action: "color" },
+  { id: "face", action: "faceColor" }, { id: "move", action: "move" }, { id: "layer", action: "layers" },
+  { id: "cut", action: "cut" }, { id: "mark", action: "mark" }, { id: "number", action: "number" }, { id: "transparent", action: "opacity" },
 ] as const;
 const VIEWS: readonly CubeView[] = ["angle", "front", "left", "right", "top"];
 const COLOR_MAP = Object.fromEntries(CUBE_COLORS.map((color) => [color, color]));
@@ -350,9 +354,9 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
             onGroundHover: (position) => { setHoverGround(position); if (position) setHoverFace(null); }, onGroundClick: build }} />
 
         {(!courseware || hasTool("metrics") || hasTool("reset")) && <div className={cn(styles.dock, styles.meta)} role="toolbar" aria-label={courseware ? m.tools : m.modes}>
-          {!courseware && <CubeIconButton label={m[mode] + " · " + (mode === "prepare" ? m.demonstrate : m.prepare)} onClick={chooseMode} active={mode === "demonstrate"}>{mode === "prepare" ? <Shapes aria-hidden /> : <Presentation aria-hidden />}</CubeIconButton>}
-          {hasTool("metrics") && <CubeIconButton label={courseware ? m.metrics : m.modelPanel} active={panel === "model"} onClick={() => setPanel(panel === "model" ? null : "model")}><Settings2 aria-hidden /></CubeIconButton>}
-          {courseware && hasTool("reset") && <CubeIconButton label={courseware.resetLabel} onClick={() => setConfirmation("demo")}><RotateCcw aria-hidden /></CubeIconButton>}
+          {!courseware && <SpatialIconButton label={m[mode] + " · " + (mode === "prepare" ? m.demonstrate : m.prepare)} onClick={chooseMode} active={mode === "demonstrate"}><SpatialActionIcon action={mode === "prepare" ? "demonstrate" : "prepare"} /></SpatialIconButton>}
+          {hasTool("metrics") && <SpatialActionButton action="settings" label={courseware ? m.metrics : m.modelPanel} active={panel === "model"} onClick={() => setPanel(panel === "model" ? null : "model")} />}
+          {courseware && hasTool("reset") && <SpatialActionButton action="reset" label={courseware.resetLabel} onClick={() => setConfirmation("demo")} />}
         </div>}
         {tool === "cut" && editable && !lockedCut && <div className={styles.cutStatus} data-cube-cut-progress={cutDraft.firstLine ? "second-line" : "first-pick"}>
           <p role="status">{cutStatus}</p>
@@ -360,21 +364,19 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
           {(cutDraft.firstLine || cutDraft.face) && <Button size="sm" variant="ghost" className="h-7 px-1 text-xs" onClick={clearPointer}>{m.cutRestart}</Button>}
         </div>}
         {(VIEWS.some((view) => hasTool(`view-${view}`)) || hasTool("fit") || hasTool("axis-snap") || hasTool("axes")) && <div className={cn(styles.dock, styles.views)} role="toolbar" aria-label={m.view} data-cube-view-toolbar>
-          {VIEWS.filter((view) => hasTool(`view-${view}`)).map((view) => <CubeIconButton key={view} label={m[view]} active={(viewOverride ?? state.view) === view} onClick={() => chooseView(view)}><CubeViewIcon view={view} /></CubeIconButton>)}
-          {hasTool("fit") && <CubeIconButton label={m.fit} onClick={() => chooseView(viewOverride ?? state.view)}><Maximize aria-hidden /></CubeIconButton>}
-          {hasTool("axis-snap") && <SpatialAxisSnapButton messages={tool === "move" ? { axisSnap: m.cellSnap, enableAxisSnap: m.enableCellSnap, disableAxisSnap: m.disableCellSnap } : cameraMessages} iconOnly className={styles.icon} />}
-          {hasTool("axes") && <CubeIconButton label={state.axesVisible ? m.hideAxes : m.showAxes} active={state.axesVisible} disabled={!editable} onClick={() => commit({ kind: "axes", visible: !state.axesVisible })}>
-            <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" aria-hidden><path d="M5 19h15" stroke={CUBE_AXIS_COLORS.x} /><path d="M5 19V3" stroke={CUBE_AXIS_COLORS.y} /><path d="m5 19 11-10" stroke={CUBE_AXIS_COLORS.z} /></svg>
-          </CubeIconButton>}
+          <SpatialViewButtons views={VIEWS.filter((view) => hasTool(`view-${view}`))} value={viewOverride ?? state.view} labels={m} onChange={chooseView}
+            fit={hasTool("fit") ? { label: m.fit, onClick: () => chooseView(viewOverride ?? state.view) } : undefined} />
+          {hasTool("axis-snap") && <SpatialAxisSnapButton action={tool === "move" ? "moveSnap" : "cameraSnap"} messages={tool === "move" ? { axisSnap: m.cellSnap, enableAxisSnap: m.enableCellSnap, disableAxisSnap: m.disableCellSnap } : cameraMessages} iconOnly className={styles.icon} />}
+          {hasTool("axes") && <SpatialActionButton action="axes" label={state.axesVisible ? m.hideAxes : m.showAxes} active={state.axesVisible} disabled={!editable} onClick={() => commit({ kind: "axes", visible: !state.axesVisible })} />}
         </div>}
         {(TOOL_BUTTONS.some(({ id }) => hasTool(id)) || hasTool("recording") || hasTool("undo") || hasTool("redo")) && <div className={cn(styles.dock, styles.tools)} role="toolbar" aria-label={m.tools} data-cube-tools-toolbar>
           {extension?.toolbar && <>{extension.toolbar(() => setPanel(null))}<span className={styles.toolSeparator} aria-hidden /></>}
-          {TOOL_BUTTONS.filter(({ id }) => hasTool(id)).map(({ id, Icon }) => <CubeIconButton key={id} label={m[id]} active={tool === id} onClick={() => chooseTool(id)} data-cube-tool={id}><Icon aria-hidden /></CubeIconButton>)}
-          {hasTool("move") && allowRotation && <CubeIconButton label={m.roll} active={panel === "roll"} disabled={!editable} onClick={() => { extension?.onToolChange?.(); controls.togglePanel("roll"); clearPointer(); }} data-cube-tool="roll"><Footprints aria-hidden /></CubeIconButton>}
-          {hasTool("recording") && <CubeIconButton label={m.record} active={panel === "recording"} onClick={() => setPanel(panel === "recording" ? null : "recording")}><Circle aria-hidden className={session.recording === "recording" ? "fill-rose text-rose" : undefined} /></CubeIconButton>}
+          {TOOL_BUTTONS.filter(({ id }) => hasTool(id)).map(({ id, action }) => <SpatialActionButton key={id} action={action} label={m[id]} active={tool === id} onClick={() => chooseTool(id)} data-cube-tool={id} />)}
+          {hasTool("move") && allowRotation && <SpatialActionButton action="roll" label={m.roll} active={panel === "roll"} disabled={!editable} onClick={() => { extension?.onToolChange?.(); controls.togglePanel("roll"); clearPointer(); }} data-cube-tool="roll" />}
+          {hasTool("recording") && <SpatialActionButton action="record" label={m.record} active={panel === "recording"} onClick={() => setPanel(panel === "recording" ? null : "recording")} iconClassName={session.recording === "recording" ? "fill-rose text-rose" : undefined} />}
           {(hasTool("undo") || hasTool("redo")) && <span className="self-stretch border-t border-line" aria-hidden />}
-          {hasTool("undo") && <CubeIconButton label={m.previous} disabled={!editable || !session.work.cursor || replacementStep !== null} onClick={() => { updateSession((current) => undoCubeSession(current, -1), null, true); clearPointer(); setCameraRequest((value) => value + 1); }}><Undo2 aria-hidden /></CubeIconButton>}
-          {hasTool("redo") && <CubeIconButton label={m.next} disabled={!editable || session.work.cursor >= session.work.operations.length || replacementStep !== null} onClick={() => { updateSession((current) => undoCubeSession(current, 1), null, true); clearPointer(); setCameraRequest((value) => value + 1); }}><Redo2 aria-hidden /></CubeIconButton>}
+          {hasTool("undo") && <SpatialActionButton action="undo" label={m.previous} disabled={!editable || !session.work.cursor || replacementStep !== null} onClick={() => { updateSession((current) => undoCubeSession(current, -1), null, true); clearPointer(); setCameraRequest((value) => value + 1); }} />}
+          {hasTool("redo") && <SpatialActionButton action="redo" label={m.next} disabled={!editable || session.work.cursor >= session.work.operations.length || replacementStep !== null} onClick={() => { updateSession((current) => undoCubeSession(current, 1), null, true); clearPointer(); setCameraRequest((value) => value + 1); }} />}
         </div>}
         {extension?.panel}
         {session.recording !== "off" && <p className={styles.recordStatus} role="status">{session.recording === "recording" ? "● " : "Ⅱ "}{session.recording === "recording" ? m.recordingActive : m.recordingPaused}</p>}
@@ -383,52 +385,48 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
           {state.groups.map((group) => <Button key={group.id} size="sm" variant={activeGroupId === group.id ? "secondary" : "ghost"} className="h-7 max-w-36 gap-1.5 px-2 py-0 text-xs" aria-pressed={activeGroupId === group.id} title={group.name} onClick={() => { setScopeId(group.id); setSelected([]); clearPointer(); }}><span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: group.color }} aria-hidden /><span className="truncate">{group.name}</span></Button>)}
         </div>}
 
-        {panel && <CubeCanvasPanel title={panelTitle} anchor={panel === "model" ? "meta" : "tool"} closeLabel={m.closePanel} onClose={() => setPanel(null)}>
+        {panel && <SpatialCanvasPanel title={panelTitle} anchor={panel === "model" ? "meta" : "tool"} closeLabel={m.closePanel} onClose={() => setPanel(null)}>
           {panel === "roll" && <div className="space-y-3 text-xs"><p className="text-muted">{selectedIds.length || activeGroupId ? m.rollHint : m.rollSelect}</p><SpatialRollButtons action={rollAction} /><p className="text-muted">{m.rollBlocked}</p></div>}
           {panel === "selection" && <div className="space-y-3 text-xs">
             <p className="leading-5 text-muted">{m.selectHint}</p><p>{m.selected}: {selectedIds.length} · {m.currentScope}: {scopeLabel}</p>
             <div className="flex flex-wrap gap-1">
-              <CubeIconButton label={m.selectScope} onClick={() => setSelected(scopeIds)}><Boxes aria-hidden /></CubeIconButton>
-              <CubeIconButton label={m.clearSelection} onClick={() => setSelected([])}><X aria-hidden /></CubeIconButton>
-              {hasTool("remove") && <CubeIconButton label={m.removeSelected} disabled={!editable || !selectedIds.length} onClick={() => commit({ kind: "remove", ids: selectedIds })}><Trash2 aria-hidden /></CubeIconButton>}
+              <SpatialActionButton action="selectAll" label={m.selectScope} onClick={() => setSelected(scopeIds)} />
+              <SpatialActionButton action="deselect" label={m.clearSelection} onClick={() => setSelected([])} />
+              {hasTool("remove") && <SpatialActionButton action="remove" label={m.removeSelected} disabled={!editable || !selectedIds.length} onClick={() => commit({ kind: "remove", ids: selectedIds })} />}
             </div>
             <label className="block" htmlFor={`${fieldId}-group-name`}>{m.groupName}</label>
             <div className="flex gap-1"><Input id={`${fieldId}-group-name`} maxLength={40} value={groupName} placeholder={m.newGroup + " " + (state.groups.length + 1)} onChange={(event) => setGroupName(event.target.value)} className="h-8 min-w-0 text-xs" />
-              <CubeIconButton label={m.createGroup} disabled={!editable || !selectedIds.length} onClick={createGroup}><Boxes aria-hidden /></CubeIconButton>
-              <CubeIconButton label={m.ungroup} disabled={!editable || !activeGroupId} onClick={() => { if (activeGroupId && commit({ kind: "ungroup", id: activeGroupId })) { setScopeId(null); setSelected([]); } }}><Ungroup aria-hidden /></CubeIconButton>
+              <SpatialActionButton action="group" label={m.createGroup} disabled={!editable || !selectedIds.length} onClick={createGroup} />
+              <SpatialActionButton action="ungroup" label={m.ungroup} disabled={!editable || !activeGroupId} onClick={() => { if (activeGroupId && commit({ kind: "ungroup", id: activeGroupId })) { setScopeId(null); setSelected([]); } }} />
             </div>
             {activeGroupId && <p className="leading-5 text-muted">{m.groupProtected}</p>}
             <p>{m.groupColor}</p>
-            <div className="flex flex-wrap gap-1" aria-label={m.groupColor}>{CUBE_COLORS.map((value, index) => <CubeIconButton key={value} label={m.colors[index]} active={groupColor === value} onClick={() => setGroupColor(value)}><svg viewBox="0 0 24 24" aria-hidden><circle cx="12" cy="12" r="9" fill={value} stroke="currentColor" strokeWidth=".5" /></svg></CubeIconButton>)}</div>
+            <SpatialColorPicker label={m.groupColor} labels={m.colors} value={groupColor} onChange={setGroupColor} />
             {activeGroup && <Button size="sm" variant="secondary" disabled={!editable || activeGroup.color === groupColor} onClick={() => commit({ kind: "group", id: activeGroup.id, name: activeGroup.name, ids: activeGroup.cubeIds, color: groupColor })}>{m.applyGroupColor}</Button>}
             <p className="leading-5 text-muted">{m.selectionColorHint}</p>
           </div>}
           {panel === "color" && <div className="space-y-3 text-xs">
             <p className="leading-5 text-muted">{tool === "face" ? m.faceHint : m.colorHint}</p>
-            <CubeColorPicker value={color} labels={m.colors} label={m.colorLabel} onChange={setColor} />
+            <SpatialColorPicker value={color} labels={m.colors} label={m.colorLabel} onChange={setColor} />
             <p>{m.currentScope}: {scopeLabel} · {targetIds.length} {m.cubeUnit}</p>
             <div className="flex flex-wrap gap-1">
-              {hasTool("color") && <CubeIconButton label={m.batchColor} disabled={!editable || !targetIds.length} onClick={() => commit({ kind: "color", ids: targetIds, color })}><PaintBucket aria-hidden /></CubeIconButton>}
-              {hasTool("face") && <><CubeIconButton label={m.batchPaint} disabled={!editable || !targetIds.length} onClick={() => commit(exteriorPaintOperation(state, targetIds, color))}><Paintbrush aria-hidden /></CubeIconButton>
-              <CubeIconButton label={m.clearPaint} disabled={!editable || !targetIds.length} onClick={() => commit({ kind: "clear-paint", ids: targetIds })}><Eraser aria-hidden /></CubeIconButton></>}
+              {hasTool("color") && <SpatialActionButton action="color" label={m.batchColor} disabled={!editable || !targetIds.length} onClick={() => commit({ kind: "color", ids: targetIds, color })} />}
+              {hasTool("face") && <><SpatialActionButton action="faceColor" label={m.batchPaint} disabled={!editable || !targetIds.length} onClick={() => commit(exteriorPaintOperation(state, targetIds, color))} />
+              <SpatialActionButton action="clear" label={m.clearPaint} disabled={!editable || !targetIds.length} onClick={() => commit({ kind: "clear-paint", ids: targetIds })} /></>}
             </div>
           </div>}
           {panel === "move" && <div className="space-y-3 text-xs">
             <Select value={moveMode} onValueChange={(value) => setMoveMode(value as typeof moveMode)}><SelectTrigger aria-label={m.move}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="move">{m.logicalMove}</SelectItem><SelectItem value="display-move">{m.displayMove}</SelectItem></SelectContent></Select>
             <p className="leading-5 text-muted">{m.moveHint}</p>{moveMode === "display-move" && <p className="leading-5 text-muted">{m.displayHint}</p>}<p>{m.currentScope}: {scopeLabel} · {targetIds.length} {m.cubeUnit}</p>
             <div className="flex items-center gap-2"><label htmlFor={`${fieldId}-move-distance`} className="flex-1">{m.moveDistance}</label><Input id={`${fieldId}-move-distance`} className="h-8 w-20 text-xs" type="number" min={moveMode === "move" ? 1 : 0.5} step={moveMode === "move" ? 1 : 0.5} max={12} value={moveDistance} onChange={(event) => setMoveDistance(event.target.value)} /></div>
-            {(["x", "y", "z"] as const).map((value) => <div key={value} className="flex items-center justify-between"><CubeIconButton label={m.moveAxis + " " + value.toUpperCase()} active={moveAxis === value} onClick={() => setMoveAxis(value)}><CubeAxisIcon axis={value} /></CubeIconButton><div className="flex gap-2">{([-1, 1] as const).map((sign) => <CubeIconButton key={sign} label={m.move + " " + value.toUpperCase() + " " + (sign > 0 ? "+" : "−") + moveDistance} disabled={!editable || !targetIds.length || !Number.isInteger(Number(moveDistance) * (moveMode === "move" ? 1 : 2)) || Number(moveDistance) < (moveMode === "move" ? 1 : 0.5) || Number(moveDistance) > 12} onClick={() => commit({ kind: moveMode, ids: targetIds, axis: value, distance: sign * Number(moveDistance) })}>{sign > 0 ? <Plus aria-hidden /> : <Minus aria-hidden />}</CubeIconButton>)}</div></div>)}
+            <SpatialAxisSteps label={m.move} step={Number(moveDistance)} axis={moveAxis} onAxisChange={setMoveAxis}
+              disabled={!editable || !targetIds.length || !Number.isInteger(Number(moveDistance) * (moveMode === "move" ? 1 : 2)) || Number(moveDistance) < (moveMode === "move" ? 1 : 0.5) || Number(moveDistance) > 12}
+              onStep={(axis, sign) => commit({ kind: moveMode, ids: targetIds, axis, distance: sign * Number(moveDistance) })} />
             <Button size="sm" variant="secondary" disabled={!editable || !hasDisplayOffsets} onClick={() => commit({ kind: "display-reset", ids: targetIds })}>{m.displayReset}</Button>
             {allowRotation && <div className="space-y-2" data-cube-rotation-controls>
               <p className="font-medium">{m.rotate}</p><p className="leading-5 text-muted">{m.rotationHint}</p>
-              {(["x", "y", "z"] as const).map((value) => <div key={value} className="flex items-center justify-between">
-                <span className="font-medium" style={{ color: CUBE_AXIS_COLORS[value] }}>{value.toUpperCase()}</span>
-                <div className="flex gap-2">{([-1, 1] as const).map((turn) => <CubeIconButton key={turn}
-                  label={`${m.rotate} ${value.toUpperCase()} ${turn > 0 ? "+" : "−"}90°`} disabled={!editable || !targetIds.length}
-                  onClick={() => { const operation = cubeRotationOperation(state, targetIds, value, turn); if (operation) commit(operation); }}>
-                  {turn > 0 ? <RotateCcw aria-hidden /> : <RotateCw aria-hidden />}
-                </CubeIconButton>)}</div>
-              </div>)}
+              <SpatialAxisSteps label={m.rotate} step={90} unit="°" disabled={!editable || !targetIds.length}
+                onStep={(axis, turn) => { const operation = cubeRotationOperation(state, targetIds, axis, turn); if (operation) commit(operation); }} />
             </div>}
           </div>}
           {panel === "cut" && <div className="space-y-3 text-xs" data-cube-cut-panel>
@@ -440,35 +438,35 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
             {lockedCut && !lockedCut.lines && <><label className="block">{m.cutAfter}</label>
               <Select value={String(lockedCut.after)} onValueChange={(value) => setCutDraft((current) => current.selection ? { ...current, face: null, selection: { ...current.selection, after: Number(value), face: undefined, anchor: { ...current.selection.anchor, [current.selection.axis]: current.selection.anchor[current.selection.axis] + Number(value) - current.selection.after } } } : current)}><SelectTrigger aria-label={m.cutAfter}><SelectValue /></SelectTrigger><SelectContent>{cutLayers.map((value) => <SelectItem key={value} value={String(value)}>{lockedCut.axis.toUpperCase()} {cubeLayerNumber(state, lockedCut.axis, value)} {m.layerUnit}</SelectItem>)}</SelectContent></Select></>}
             <div className="flex items-center gap-2"><label htmlFor={`${fieldId}-cut-gap`} className="flex-1">{m.cutGap}</label><Input id={`${fieldId}-cut-gap`} className="h-8 w-20 text-xs" type="number" min={0.5} max={8} step={0.5} value={cutGap} onChange={(event) => setCutGap(event.target.value)} /></div>
-            {lockedCut && <div className="flex items-center gap-2"><span className="flex-1">{m.cutSide}</span>{([-1, 1] as const).map((side) => <CubeIconButton key={side} label={lockedCut.axis.toUpperCase() + (side > 0 ? "+" : "−")} active={lockedCut.side === side} onClick={() => setCutDraft((current) => current.selection ? { ...current, selection: { ...current.selection, side } } : current)}>{side > 0 ? <Plus aria-hidden /> : <Minus aria-hidden />}</CubeIconButton>)}</div>}
+            {lockedCut && <div className="flex items-center gap-2"><span className="flex-1">{m.cutSide}</span>{([-1, 1] as const).map((side) => <SpatialIconButton key={side} label={lockedCut.axis.toUpperCase() + (side > 0 ? "+" : "−")} active={lockedCut.side === side} onClick={() => setCutDraft((current) => current.selection ? { ...current, selection: { ...current.selection, side } } : current)}>{side > 0 ? <SpatialActionIcon action="increase" aria-hidden /> : <SpatialActionIcon action="decrease" aria-hidden />}</SpatialIconButton>)}</div>}
             {(lockedCut || cutDraft.firstLine || cutDraft.face) && <Button size="sm" variant="ghost" onClick={clearPointer}>{m.cutRestart}</Button>}
             <p className="leading-5 text-muted">{m.displayHint}</p>
             <div className="flex flex-wrap gap-1"><Button size="sm" variant="secondary" disabled={!editable || !hasCutDisplayOffsets} onClick={() => commit({ kind: "display-reset", ids: cutTargetIds })}>{m.displayResetPart}</Button><Button size="sm" variant="secondary" disabled={!editable || !hasDisplayOffsets} onClick={() => commit({ kind: "display-reset", ids: state.cubes.map((cube) => cube.id) })}>{m.displayResetAll}</Button></div>
           </div>}
           {(panel === "mark" || panel === "number") && <div className="space-y-3 text-xs" data-cube-annotation-panel>
             <p className="leading-5 text-muted">{panel === "mark" ? m.markHint : m.numberHint}</p>
-            {panel === "mark" ? <div className="flex flex-wrap gap-1">{CUBE_MARK_SHAPES.map((shape) => <CubeIconButton key={shape} label={m[`${shape}Shape`]} active={markShape === shape} onClick={() => setMarkShape(shape)}><CubeMarkIcon shape={shape} /></CubeIconButton>)}</div> : <p className="font-bold tabular-nums">{m.nextNumber}: {state.nextNumber}</p>}
+            {panel === "mark" ? <div className="flex flex-wrap gap-1">{CUBE_MARK_SHAPES.map((shape) => <SpatialIconButton key={shape} label={m[`${shape}Shape`]} active={markShape === shape} onClick={() => setMarkShape(shape)}><SpatialMarkIcon shape={shape} /></SpatialIconButton>)}</div> : <p className="font-bold tabular-nums">{m.nextNumber}: {state.nextNumber}</p>}
             <Select value={labelPlacement} onValueChange={(value) => setLabelPlacement(value as CubeLabelPlacement)}><SelectTrigger aria-label={m.labelPlacement}><SelectValue /></SelectTrigger><SelectContent>{(["side", "face", "center"] as const).map((value) => <SelectItem key={value} value={value}>{value === "face" ? m.surface : m[value]}</SelectItem>)}</SelectContent></Select>
             {labelPlacement === "center" && <p className="leading-5 text-muted">{m.centerHint}</p>}
-            <CubeColorPicker value={color} labels={m.colors} label={m.colorLabel} onChange={setColor} />
+            <SpatialColorPicker value={color} labels={m.colors} label={m.colorLabel} onChange={setColor} />
             <p>{m.currentScope}: {scopeLabel} · {targetIds.length} {m.cubeUnit}</p>
             <div className="flex flex-wrap gap-1">
-              {panel === "mark" && <CubeIconButton label={m.applyMarks} disabled={!editable || !targetIds.length} onClick={() => commit({ kind: "mark", ids: targetIds, shape: markShape, placement: labelPlacement, direction: "z+", color })}><Stamp aria-hidden /></CubeIconButton>}
-              <CubeIconButton label={panel === "mark" ? m.clearMarks : m.clearNumbers} disabled={!editable || !targetIds.length} onClick={() => commit({ kind: "clear-labels", ids: targetIds, target: panel === "mark" ? "mark" : "number" })}><Eraser aria-hidden /></CubeIconButton>
+              {panel === "mark" && <SpatialActionButton action="mark" label={m.applyMarks} disabled={!editable || !targetIds.length} onClick={() => commit({ kind: "mark", ids: targetIds, shape: markShape, placement: labelPlacement, direction: "z+", color })} />}
+              <SpatialActionButton action="clear" label={panel === "mark" ? m.clearMarks : m.clearNumbers} disabled={!editable || !targetIds.length} onClick={() => commit({ kind: "clear-labels", ids: targetIds, target: panel === "mark" ? "mark" : "number" })} />
               {panel === "number" && <Button size="sm" variant="secondary" disabled={!editable} onClick={() => commit({ kind: "restart-numbering" })}>{m.restartNumbering}</Button>}
             </div>
           </div>}
           {panel === "transparent" && <div className="space-y-3 text-xs" data-cube-transparency-panel>
             <p className="leading-5 text-muted">{m.transparencyHint}</p>
-            <CubeOpacitySlider key={targetIds.join(":")} label={m.opacityLabel} value={opacity} disabled={!editable || !targetIds.length} onPreview={setOpacityPreview}
+            <SpatialOpacitySlider key={targetIds.join(":")} label={m.opacityLabel} value={opacity} disabled={!editable || !targetIds.length} onPreview={setOpacityPreview}
               onCommit={(value) => { setOpacity(value); commit({ kind: "opacity", ids: targetIds, opacity: value / 100 }); }} />
             <p>{m.currentScope}: {scopeLabel} · {targetIds.length} {m.cubeUnit}</p>
             <div className="flex flex-wrap gap-1"><Button size="sm" disabled={!editable || !targetIds.length} onClick={() => commit({ kind: "opacity", ids: targetIds, opacity: opacity / 100 })}>{m.applyOpacity}</Button><Button size="sm" variant="secondary" disabled={!editable || !targetIds.length} onClick={() => commit({ kind: "opacity", ids: targetIds, opacity: 1 })}>{m.restoreOpacity}</Button></div>
             <Button size="sm" variant={state.hiddenEdgesVisible ? "secondary" : "ghost"} aria-pressed={state.hiddenEdgesVisible} disabled={!editable} onClick={() => commit({ kind: "hidden-edges", visible: !state.hiddenEdgesVisible })}>{m.hiddenEdges}</Button>
           </div>}
           {panel === "layers" && <div className="space-y-2 text-xs" data-cube-layer-panel>
-            <div className="flex items-center gap-1" role="toolbar" aria-label={m.layerAxis}>{(["x", "y", "z"] as const).map((value) => <CubeIconButton key={value} label={m.layerAxis + " " + value.toUpperCase()} active={axis === value} onClick={() => setAxis(value)}><CubeAxisIcon axis={value} /></CubeIconButton>)}
-              <CubeIconButton label={m.showAll} disabled={!editable || !state.hiddenCubeIds.some((id) => scopeIds.includes(id))} onClick={() => commit({ kind: "show-all", ids: scopeIds })}><Eye aria-hidden /></CubeIconButton>
+            <div className="flex items-center gap-1" role="toolbar" aria-label={m.layerAxis}>{(["x", "y", "z"] as const).map((value) => <SpatialIconButton key={value} label={m.layerAxis + " " + value.toUpperCase()} active={axis === value} onClick={() => setAxis(value)}><SpatialAxisIcon axis={value} /></SpatialIconButton>)}
+              <SpatialActionButton action="show" label={m.showAll} disabled={!editable || !state.hiddenCubeIds.some((id) => scopeIds.includes(id))} onClick={() => commit({ kind: "show-all", ids: scopeIds })} />
             </div>
             <p className="leading-5 text-muted">{m.layerHint}</p>
             {layers.map((index) => {
@@ -476,8 +474,8 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
               const hidden = members.every((cube) => !cubeIsVisible(state, cube));
               const number = cubeLayerNumber(state, axis, index);
               return <div key={index} className="flex items-center gap-2"><span className="flex-1" style={{ color: CUBE_AXIS_COLORS[axis] }}>{axis.toUpperCase()} {number} {m.layerUnit}{showMetrics ? " · " + members.length : ""}</span>
-                <CubeIconButton label={(hidden ? m.show : m.hide) + " " + axis.toUpperCase() + " " + number + " " + m.layerUnit} active={!hidden} disabled={!editable} onClick={() => commit(cubeLayerOperation(state, axis, index, hidden, scopeIds))}>{hidden ? <EyeOff aria-hidden /> : <Eye aria-hidden />}</CubeIconButton>
-                <CubeIconButton label={m.selectLayer + " " + axis.toUpperCase() + " " + number} onClick={() => setSelected(members.map((cube) => cube.id))}><MousePointer2 aria-hidden /></CubeIconButton>
+                <SpatialActionButton action={hidden ? "show" : "hide"} label={(hidden ? m.show : m.hide) + " " + axis.toUpperCase() + " " + number + " " + m.layerUnit} active={!hidden} disabled={!editable} onClick={() => commit(cubeLayerOperation(state, axis, index, hidden, scopeIds))} />
+                <SpatialActionButton action="select" label={m.selectLayer + " " + axis.toUpperCase() + " " + number} onClick={() => setSelected(members.map((cube) => cube.id))} />
               </div>;
             })}
           </div>}
@@ -493,16 +491,16 @@ export function CubeStructuresWorkbench({ locale, rendererMessages, cameraMessag
             {workspaceSelector}
             <label className="block">{m.library}</label>
             <div className="flex gap-1"><Select value={preset} onValueChange={(value) => setPreset(value as SpatialLabPresetId | "empty")}><SelectTrigger className="min-w-0 flex-1" aria-label={m.library}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="empty">{m.empty}</SelectItem>{SPATIAL_LAB_PRESETS.filter((item) => item.id !== SPATIAL_LAB_MEASUREMENT_PRESET_ID).map((item) => <SelectItem key={item.id} value={item.id}>{m[item.messageKey as "layeredCounting" | "hiddenCubes" | "threeViews" | "surfacePainting" | "hollowing"]}</SelectItem>)}</SelectContent></Select>
-              <CubeIconButton label={m.loadPreset} disabled={draftLibrary.loading || draftLibrary.busy} onClick={() => setConfirmation("load")}><RotateCcw aria-hidden /></CubeIconButton>
+              <SpatialActionButton action="reset" label={m.loadPreset} disabled={draftLibrary.loading || draftLibrary.busy} onClick={() => setConfirmation("load")} />
             </div></>}
             <p className="leading-5 text-muted">{m.edgeNote}</p><p className="leading-5 text-muted">{m.axisNote}</p>
-            <div className="flex items-center justify-between"><span>{m.metrics}</span><CubeIconButton label={showMetrics ? m.hideMetrics : m.showMetrics} active={showMetrics} onClick={() => setShowMetrics((value) => !value)}>{showMetrics ? <EyeOff aria-hidden /> : <Eye aria-hidden />}</CubeIconButton></div>
+            <div className="flex items-center justify-between"><span>{m.metrics}</span><SpatialActionButton action={showMetrics ? "hide" : "show"} label={showMetrics ? m.hideMetrics : m.showMetrics} active={showMetrics} onClick={() => setShowMetrics((value) => !value)} /></div>
             {showMetrics && <><dl className="grid grid-cols-[1fr_auto] gap-1 tabular-nums"><dt>{m.volume}</dt><dd>{metrics.volume}</dd><dt>{m.totalArea}</dt><dd>{metrics.totalUnitFaces}</dd><dt>{m.exteriorArea}</dt><dd>{metrics.exteriorUnitFaces}</dd><dt>{m.interiorArea}</dt><dd>{metrics.interiorUnitFaces}</dd></dl><p>{m.paintHistogram}</p><p className="font-mono">{metrics.paintedHistogram.map((count, faces) => faces + "→" + count).join(" · ")}</p><p className="leading-5 text-muted">{m.geometryNote}</p></>}
-            {mode === "demonstrate" && <CubeIconButton label={m.restartDemo} onClick={() => setConfirmation("demo")}><RotateCcw aria-hidden /></CubeIconButton>}
+            {mode === "demonstrate" && <SpatialActionButton action="reset" label={m.restartDemo} onClick={() => setConfirmation("demo")} />}
             {!courseware && <p className="leading-5 text-muted">{m.pending}</p>}
           </div>}
-        </CubeCanvasPanel>}
-        {(notice || (session.preview !== null && panel !== "recording")) && <div className={styles.notice} role="status"><div className="flex items-center gap-2"><p className="flex-1">{notice || (replacementStep !== null ? m.editingStep : m.previewHint)}</p><CubeIconButton label={notice ? m.closePanel : m.exitPreview} onClick={() => { if (notice) setNotice(""); else seek(null); }}><X aria-hidden /></CubeIconButton></div></div>}
+        </SpatialCanvasPanel>}
+        {(notice || (session.preview !== null && panel !== "recording")) && <div className={styles.notice} role="status"><div className="flex items-center gap-2"><p className="flex-1">{notice || (replacementStep !== null ? m.editingStep : m.previewHint)}</p><SpatialActionButton action="close" label={notice ? m.closePanel : m.exitPreview} onClick={() => { if (notice) setNotice(""); else seek(null); }} /></div></div>}
       </div>
     </div>
     <AlertDialog open={confirmation !== null} onOpenChange={(open) => { if (!open) setConfirmation(null); }}><AlertDialogContent><AlertDialogHeader>

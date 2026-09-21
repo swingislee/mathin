@@ -113,7 +113,7 @@ describe("in-place dice X-ray observation", () => {
     const workspace = readFileSync("src/features/tools/spatial-lab/DiceTeachingWorkspace.tsx", "utf8");
     const toggle = workspace.slice(workspace.indexOf("const toggleXRay ="), workspace.indexOf("const fit ="));
     for (const mutation of ["commit(", "animate(", "setHistory", "setFrame", "setCameraKey", "setArrows", "closeDiceFaces"]) expect(toggle).not.toContain(mutation);
-    expect(workspace).toContain('<CubeIconButton label={m.xray}'); expect(workspace).toContain("<ScanEye />");
+    expect(workspace).toContain('<SpatialActionButton action="xray" label={m.xray}');
     expect(workspace).toContain('data-dice-xray={xray ? xrayPresentation.phase : "ready"}');
     const canvas = readFileSync("src/features/tools/spatial-lab/DiceTeachingCanvas.tsx", "utf8");
     expect(canvas).toContain("onPointerMissed="); expect(canvas).toContain("props.onClearXRay()");

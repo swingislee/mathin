@@ -1,7 +1,9 @@
 "use client";
 
+import { SpatialActionIcon } from "@/features/tools/spatial-interaction/SpatialActionIcon";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Camera, ChevronLeft, ChevronRight, Eye, EyeOff, Layers3, Pause, Play, RotateCcw } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -167,7 +169,7 @@ export function VoxelTeachingStage({
           className="pointer-events-auto flex max-w-[62%] flex-wrap justify-end gap-1 rounded-2xl border border-line bg-card/95 p-1.5 shadow-sm backdrop-blur-sm"
           aria-label={messages.cameraBookmarks}
         >
-          <Camera aria-hidden="true" className="m-1 size-4 text-muted" />
+          <SpatialActionIcon action="viewPresets" aria-hidden="true" className="m-1 size-4 text-muted" />
           {view.cameras.map((camera) => (
             <Button
               key={camera.id}
@@ -192,7 +194,7 @@ export function VoxelTeachingStage({
 
       <aside className="absolute bottom-24 right-3 top-20 z-20 flex w-[min(16rem,38%)] flex-col overflow-hidden rounded-2xl border border-line bg-card/95 p-3 shadow-sm backdrop-blur-sm">
         <div className="flex items-center gap-2 text-sm font-medium text-ink">
-          <Layers3 aria-hidden="true" className="size-4 text-muted" />
+          <SpatialActionIcon action="layers" aria-hidden="true" className="size-4 text-muted" />
           {messages.layers}
         </div>
         <div className="mt-2 min-h-0 flex-1 space-y-1 overflow-auto">
@@ -208,7 +210,7 @@ export function VoxelTeachingStage({
               aria-pressed={layer.visible}
               onClick={() => emit({ kind: "layer.toggle", layerId: layer.id })}
             >
-              {layer.visible ? <Eye aria-hidden="true" className="size-3.5 shrink-0" /> : <EyeOff aria-hidden="true" className="size-3.5 shrink-0" />}
+              {layer.visible ? <SpatialActionIcon action="show" aria-hidden="true" className="size-3.5 shrink-0" /> : <SpatialActionIcon action="hide" aria-hidden="true" className="size-3.5 shrink-0" />}
               <span className="min-w-0 flex-1 truncate">{layer.label}</span>
               <span className="tabular-nums text-muted">{layer.count ?? messages.unrevealedCount}</span>
             </Button>
@@ -244,13 +246,13 @@ export function VoxelTeachingStage({
       <footer className="absolute inset-x-3 bottom-3 z-20 rounded-2xl border border-line bg-card/95 p-3 shadow-sm backdrop-blur-sm">
         <div className="flex items-center gap-2">
           <Button type="button" size="sm" variant="secondary" className="size-8 p-0" aria-label={messages.previousStep} disabled={!view.canGoPrevious} onClick={() => { setPlaying(false); emit({ kind: "step.previous" }); }}>
-            <ChevronLeft aria-hidden="true" className="size-4" />
+            <SpatialActionIcon action="previousStep" aria-hidden="true" className="size-4" />
           </Button>
           <Button type="button" size="sm" variant="secondary" className="size-8 p-0" aria-label={playbackActive ? messages.pauseSteps : messages.playSteps} disabled={!view.canManipulateScene || view.steps.length < 2} onClick={togglePlayback}>
-            {playbackActive ? <Pause aria-hidden="true" className="size-4" /> : <Play aria-hidden="true" className="size-4" />}
+            {playbackActive ? <SpatialActionIcon action="pause" aria-hidden="true" className="size-4" /> : <SpatialActionIcon action="play" aria-hidden="true" className="size-4" />}
           </Button>
           <Button type="button" size="sm" variant="secondary" className="size-8 p-0" aria-label={messages.nextStep} disabled={!view.canGoNext} onClick={() => { setPlaying(false); emit({ kind: "step.next" }); }}>
-            <ChevronRight aria-hidden="true" className="size-4" />
+            <SpatialActionIcon action="nextStep" aria-hidden="true" className="size-4" />
           </Button>
           <div className="min-w-0 flex-1 px-2">
             <p className="truncate text-sm font-medium text-ink">{view.activeStep?.label ?? view.entityLabel}</p>
@@ -258,7 +260,7 @@ export function VoxelTeachingStage({
           </div>
           {view.canReset ? (
             <Button type="button" size="sm" variant="ghost" className="size-8 p-0" aria-label={messages.resetScene} onClick={() => { setPlaying(false); emit({ kind: "scene.reset" }); }}>
-              <RotateCcw aria-hidden="true" className="size-4" />
+              <SpatialActionIcon action="reset" aria-hidden="true" className="size-4" />
             </Button>
           ) : null}
         </div>

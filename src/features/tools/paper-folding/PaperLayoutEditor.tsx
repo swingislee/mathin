@@ -1,7 +1,9 @@
 "use client";
 
+import { SpatialActionIcon } from "../spatial-interaction/SpatialActionIcon";
+
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+
 import { paperSquareId, type PaperFoldingSnapshot } from "./contract";
 import { paperFoldingMessages } from "./messages";
 
@@ -25,7 +27,7 @@ export function PaperLayoutEditor({ snapshot, locale, selected, disabled, onSele
           aria-pressed={square ? selected === id : undefined} title={square ? m.square(square.label || square.id) : m.addAt(x, z)}
           style={square ? { backgroundColor: square.color, color: "var(--ink)" } : undefined}
           onClick={() => square ? onSelect(id) : onAdd(x, z)}>
-          {square ? (snapshot.labelsVisible ? square.label : null) : <Plus className="size-3" aria-hidden />}
+          {square ? (snapshot.labelsVisible ? square.label : null) : <SpatialActionIcon action="increase" className="size-3" aria-hidden />}
         </Button>;
       })}
     </div>

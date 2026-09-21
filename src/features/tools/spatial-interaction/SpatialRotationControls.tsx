@@ -1,13 +1,15 @@
 "use client";
 
+import { SpatialActionButton } from "./SpatialActionButton";
+
 import { useState } from "react";
 import { Line } from "@react-three/drei";
-import { Rotate3D, RotateCcw, RotateCw } from "lucide-react";
+
 import { useThree } from "@react-three/fiber";
 import { Quaternion, Vector3 } from "three";
 import type { Axis, VoxelCoordinate } from "@/features/spatial-math/domain";
 import { CUBE_AXIS_COLORS } from "../spatial-lab/cube-structures-contract";
-import { CubeIconButton } from "../spatial-lab/CubeWorkbenchControls";
+import { SpatialIconButton } from "./SpatialWorkbenchControls";
 import { startSpatialRotationGrip } from "./object-gesture-controller";
 import { SpatialObjectToolbar, type SpatialObjectToolbarTarget } from "./SpatialObjectToolbar";
 
@@ -51,15 +53,15 @@ export function SpatialRotationControls({ center, vertices, moveHandles, radius 
       <div className="flex gap-0.5 rounded-xl border border-line bg-paper/95 p-1 shadow-sm" role="toolbar" aria-label={action.label}
         data-spatial-object-actions onPointerDown={(event) => event.stopPropagation()} onPointerEnter={() => setHint(true)} onPointerLeave={() => { setHint(false); setDirection(null); }}
         onFocus={() => setHint(true)} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setHint(false); }}>
-        {action.gestureLabel && <CubeIconButton label={action.gestureLabel} active={action.gestureMode?.active} disabled={action.disabled} data-spatial-rotation-grip style={{ width: 44, height: 44, minWidth: 44, touchAction: "none" }}
+        {action.gestureLabel && <SpatialActionButton action="rotate" label={action.gestureLabel} active={action.gestureMode?.active} disabled={action.disabled} data-spatial-rotation-grip style={{ width: 44, height: 44, minWidth: 44, touchAction: "none" }}
           onPointerDown={(event) => { if (!action.gestureMode) { event.preventDefault(); event.stopPropagation(); startSpatialRotationGrip(canvas, event.nativeEvent); } }}
-          onClick={(event) => { if (action.gestureMode) action.gestureMode.onToggle(); else if (event.detail === 0) action.onRotate(axis, 1); }}><Rotate3D aria-hidden /></CubeIconButton>}
-        {action.precise !== false && (["x", "y", "z"] as const).map((value) => <CubeIconButton key={value} label={`${action.label} ${value.toUpperCase()}`} active={axis === value} disabled={action.disabled} onClick={() => action.onAxisChange(value)}>
+          onClick={(event) => { if (action.gestureMode) action.gestureMode.onToggle(); else if (event.detail === 0) action.onRotate(axis, 1); }} />}
+        {action.precise !== false && (["x", "y", "z"] as const).map((value) => <SpatialIconButton key={value} label={`${action.label} ${value.toUpperCase()}`} active={axis === value} disabled={action.disabled} onClick={() => action.onAxisChange(value)}>
           <span className="text-xs font-bold" style={{ color: CUBE_AXIS_COLORS[value] }}>{value.toUpperCase()}</span>
-        </CubeIconButton>)}
-        {action.precise !== false && ([-1, 1] as const).map((turn) => <CubeIconButton key={turn} label={`${action.label} ${axis.toUpperCase()} ${turn > 0 ? "+" : "−"}90°`} disabled={action.disabled} onPointerEnter={() => setDirection(turn)} onFocus={() => setDirection(turn)} onClick={() => action.onRotate(axis, turn)}>
-          {turn > 0 ? <RotateCcw aria-hidden style={{ color }} /> : <RotateCw aria-hidden style={{ color }} />}
-        </CubeIconButton>)}
+        </SpatialIconButton>)}
+        {action.precise !== false && ([-1, 1] as const).map((turn) => <SpatialActionButton key={turn} action={turn > 0 ? "positiveTurn" : "negativeTurn"}
+          label={`${action.label} ${axis.toUpperCase()} ${turn > 0 ? "+" : "−"}90°`} disabled={action.disabled} iconStyle={{ color }}
+          onPointerEnter={() => setDirection(turn)} onFocus={() => setDirection(turn)} onClick={() => action.onRotate(axis, turn)} />)}
       </div>
     </SpatialObjectToolbar>
   </group>;

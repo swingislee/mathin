@@ -1,7 +1,9 @@
 "use client";
 
+import { SpatialActionIcon } from "../spatial-interaction/SpatialActionIcon";
+
 import { useEffect, useRef } from "react";
-import { Minus, Plus, RotateCcw, Ruler } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -78,7 +80,7 @@ export function RectangularPrismMeasurementPanel({
       >
         <CardHeader className="p-4 pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Ruler aria-hidden="true" className="size-4 text-rose" />
+            <SpatialActionIcon action="measure" aria-hidden="true" className="size-4 text-rose" />
             {messages.invalidShapeTitle}
           </CardTitle>
           <CardDescription>{messages.invalidShapeDescription}</CardDescription>
@@ -96,7 +98,7 @@ export function RectangularPrismMeasurementPanel({
               onRestore();
             }}
           >
-            <RotateCcw aria-hidden="true" className="size-4" />
+            <SpatialActionIcon action="reset" aria-hidden="true" className="size-4" />
             {messages.restorePrism}
           </Button>
         </CardContent>
@@ -124,7 +126,7 @@ export function RectangularPrismMeasurementPanel({
       <CardHeader className="gap-2 p-4 pb-2 md:flex-row md:items-start md:justify-between">
         <div className="space-y-1">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Ruler aria-hidden="true" className="size-4 text-rose" />
+            <SpatialActionIcon action="measure" aria-hidden="true" className="size-4 text-rose" />
             {messages.title}
           </CardTitle>
           <CardDescription>{messages.description}</CardDescription>
@@ -154,7 +156,7 @@ export function RectangularPrismMeasurementPanel({
                       aria-label={messages.decreaseDimension(label)}
                       onClick={() => onDimensionsChange({ ...dimensions, [key]: value - 1 })}
                     >
-                      <Minus aria-hidden="true" className="size-4" />
+                      <SpatialActionIcon action="decrease" aria-hidden="true" className="size-4" />
                     </Button>
                     <span className="w-8 text-center text-lg font-medium tabular-nums">
                       {value}
@@ -168,7 +170,7 @@ export function RectangularPrismMeasurementPanel({
                       aria-label={messages.increaseDimension(label)}
                       onClick={() => onDimensionsChange({ ...dimensions, [key]: value + 1 })}
                     >
-                      <Plus aria-hidden="true" className="size-4" />
+                      <SpatialActionIcon action="increase" aria-hidden="true" className="size-4" />
                     </Button>
                   </div>
                 </div>
@@ -186,7 +188,7 @@ export function RectangularPrismMeasurementPanel({
               onRestore();
             }}
           >
-            <RotateCcw aria-hidden="true" className="size-4" />
+            <SpatialActionIcon action="reset" aria-hidden="true" className="size-4" />
             {messages.restorePrism}
           </Button>
         </div>

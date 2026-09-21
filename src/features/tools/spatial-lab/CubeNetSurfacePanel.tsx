@@ -1,10 +1,12 @@
 "use client";
 
-import { Eraser } from "lucide-react";
+import { SpatialActionButton } from "../spatial-interaction/SpatialActionButton";
+
+
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { CubeCanvasPanel, CubeColorPicker, CubeIconButton, CubeMarkIcon } from "./CubeWorkbenchControls";
-import { CubeOpacitySlider } from "./CubeOpacitySlider";
+import { SpatialCanvasPanel, SpatialColorPicker, SpatialIconButton, SpatialMarkIcon } from "../spatial-interaction/SpatialWorkbenchControls";
+import { SpatialOpacitySlider } from "../spatial-interaction/SpatialOpacitySlider";
 import { CUBE_COLORS, CUBE_MARK_SHAPES, type CubeColor, type CubeMarkShape } from "./cube-structures-contract";
 import { cubeStructuresMessages } from "./cube-structures-messages";
 import type { CubeNetSurfaces, CubeNetSurfaceOperation, CubeNetSurfaceTool } from "./cube-net-surfaces";
@@ -29,16 +31,16 @@ export function CubeNetSurfacePanel({ locale, tool, brush, surfaces, identities,
   const t = useTranslations("tools.spatialLab.cubeNet.manual.surface");
   const m = cubeStructuresMessages(locale);
   const title = tool === "mark" ? t("mark") : m[tool];
-  return <CubeCanvasPanel title={title} closeLabel={m.closePanel} onClose={onClose}>
+  return <SpatialCanvasPanel title={title} closeLabel={m.closePanel} onClose={onClose}>
     <div className="space-y-3 text-xs" data-cube-net-surface-panel={tool}>
       <p className="leading-5 text-muted">{t(`${tool}Hint`)}</p>
-      {tool !== "transparent" && <CubeColorPicker value={brush.color} labels={m.colors} label={m.colorLabel} disabled={busy} onChange={(color) => onBrush({ ...brush, color })} />}
+      {tool !== "transparent" && <SpatialColorPicker value={brush.color} labels={m.colors} label={m.colorLabel} disabled={busy} onChange={(color) => onBrush({ ...brush, color })} />}
       {tool === "mark" && <div className="flex flex-wrap gap-1">
         <Button size="sm" variant={brush.mark === "letter" ? "secondary" : "ghost"} aria-pressed={brush.mark === "letter"} disabled={busy} onClick={() => onBrush({ ...brush, mark: "letter" })}>{t("letters")}</Button>
-        {CUBE_MARK_SHAPES.map((shape) => <CubeIconButton key={shape} label={m[`${shape}Shape`]} active={brush.mark === shape} disabled={busy} onClick={() => onBrush({ ...brush, mark: shape })}><CubeMarkIcon shape={shape} /></CubeIconButton>)}
-        <CubeIconButton label={m.clearMarks} active={brush.mark === null} disabled={busy} onClick={() => onBrush({ ...brush, mark: null })}><Eraser aria-hidden /></CubeIconButton>
+        {CUBE_MARK_SHAPES.map((shape) => <SpatialIconButton key={shape} label={m[`${shape}Shape`]} active={brush.mark === shape} disabled={busy} onClick={() => onBrush({ ...brush, mark: shape })}><SpatialMarkIcon shape={shape} /></SpatialIconButton>)}
+        <SpatialActionButton action="clear" label={m.clearMarks} active={brush.mark === null} disabled={busy} onClick={() => onBrush({ ...brush, mark: null })} />
       </div>}
-      {tool === "transparent" && <CubeOpacitySlider key={`${selected}:${brush.opacity}`} value={brush.opacity} label={m.opacityLabel} disabled={busy}
+      {tool === "transparent" && <SpatialOpacitySlider key={`${selected}:${brush.opacity}`} value={brush.opacity} label={m.opacityLabel} disabled={busy}
         onPreview={onPreview} onCommit={(opacity) => { onBrush({ ...brush, opacity }); if (selected) onApply({ kind: "opacity", ids: [selected], opacity: opacity / 100 }); }} />}
       {tool === "number" && <p className="font-bold tabular-nums">{m.nextNumber}: {surfaces.nextNumber}</p>}
       <p className="text-muted">{selected ? t("selected", { face: selected }) : t("pickFace")}</p>
@@ -52,5 +54,5 @@ export function CubeNetSurfacePanel({ locale, tool, brush, surfaces, identities,
         </>}
       </div>
     </div>
-  </CubeCanvasPanel>;
+  </SpatialCanvasPanel>;
 }

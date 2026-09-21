@@ -1,9 +1,10 @@
 "use client";
 
+import { SpatialActionIcon } from "../spatial-interaction/SpatialActionIcon";
+
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { Html } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
-import { MoveVertical, RotateCw } from "lucide-react";
 import type { SolidSectionSettings } from "./solid-sections-contract";
 import { bindSolidSectionDrag, sectionDragHandles, type SectionDragInteraction } from "./solid-section-drag";
 import { solidSectionsMessages } from "./solid-sections-messages";
@@ -29,7 +30,7 @@ export function SolidSectionHandles({ interaction, displayed, locale, onPreview,
       const anchor = handles[part], label = part === "offset" ? m.dragPlane : `${m.tilt} ${axes[index - 1]}`;
       return <Html key={part} position={[anchor.x, anchor.y, anchor.z]} center zIndexRange={[7, 0]} style={{ pointerEvents: "none" }}>
         <span className="flex size-9 items-center justify-center rounded-full border border-crater bg-paper text-ink shadow-sm" title={label} aria-hidden="true">
-          {part === "offset" ? <MoveVertical className="size-4" /> : <RotateCw className={`size-4 ${part === "tiltB" ? "-scale-x-100" : ""}`} />}
+          <SpatialActionIcon action={part === "offset" ? "sectionOffset" : "rotate"} className={`size-4 ${part === "tiltB" ? "-scale-x-100" : ""}`} />
         </span>
       </Html>;
     })}

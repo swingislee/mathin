@@ -1,15 +1,19 @@
 "use client";
 
+import { SpatialActionButton } from "../spatial-interaction/SpatialActionButton";
+import { SpatialViewButtons, SPATIAL_ALL_VIEWS } from "../spatial-interaction/SpatialViewButtons";
+import { SpatialActionIcon } from "../spatial-interaction/SpatialActionIcon";
+
 import dynamic from "next/dynamic";
 import { useCallback, useMemo, useState } from "react";
 import { useLocale } from "next-intl";
-import { Axis3d, Droplets, Eraser, Grid2X2, Hand, Hash, Maximize, Orbit, RotateCcw, Ruler, Settings2 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SpatialAxisSnapButton, useSpatialAxisSnap } from "@/features/spatial-math/renderer-r3f/SpatialCameraControls";
-import { CubeCanvasPanel, CubeIconButton, CubeViewIcon } from "../spatial-lab/CubeWorkbenchControls";
+import { SpatialCanvasPanel } from "../spatial-interaction/SpatialWorkbenchControls";
 import { CUBE_COLORS } from "../spatial-lab/cube-structures-contract";
 import { useToolSnapshot } from "../scenes/useToolSnapshot";
 import { useSceneCapture } from "../courseware/useSceneCapture";
@@ -72,25 +76,24 @@ export function SolidCapacityWorkspace({ initial, onSnapshot, classroom, readOnl
         navigationMode={navigation} moveAxis="x" onMoveAxis={noop} onMove={noop} onDragging={noop} readOnly={readOnlyView} fallback={m.fallback}
         renderScene={() => <SolidCapacityLiquids frame={presentation.frame} snapshot={snapshot} locale={locale} />} />
       <div className={`${styles.dock} ${styles.meta}`}>
-        <CubeIconButton label={m.settings} active={panel === "settings"} disabled={readOnlyView} onClick={() => open("settings")}><Settings2 aria-hidden /></CubeIconButton>
-        <CubeIconButton label={m.reset} disabled={disabled} onClick={() => { update({ ...structuredClone(origin), cameraRevision: snapshot.cameraRevision + 1 }); controls.closePanel(); }}><RotateCcw aria-hidden /></CubeIconButton>
+        <SpatialActionButton action="settings" label={m.settings} active={panel === "settings"} disabled={readOnlyView} onClick={() => open("settings")} />
+        <SpatialActionButton action="reset" label={m.reset} disabled={disabled} onClick={() => { update({ ...structuredClone(origin), cameraRevision: snapshot.cameraRevision + 1 }); controls.closePanel(); }} />
       </div>
       <div className={`${styles.dock} ${styles.views}`} aria-label={m.fit}>
-        {(["angle", "front", "left", "right", "top", "bottom"] as const).map((view) => <CubeIconButton key={view} label={m.views[view]} active={snapshot.view === view} disabled={disabled}
-          onClick={() => update({ ...snapshot, view, cameraRevision: snapshot.cameraRevision + 1 })}><CubeViewIcon view={view} /></CubeIconButton>)}
-        <CubeIconButton label={m.fit} disabled={disabled} onClick={() => update({ ...snapshot, cameraRevision: snapshot.cameraRevision + 1 })}><Maximize aria-hidden /></CubeIconButton>
+        <SpatialViewButtons views={SPATIAL_ALL_VIEWS} value={snapshot.view} labels={m.views} disabled={disabled}
+          onChange={(view) => update({ ...snapshot, view, cameraRevision: snapshot.cameraRevision + 1 })} fit={{ label: m.fit, onClick: () => update({ ...snapshot, cameraRevision: snapshot.cameraRevision + 1 }) }} />
         <SpatialAxisSnapButton messages={m} disabled={readOnlyView} iconOnly className={styles.icon} />
       </div>
       <div className={`${styles.dock} ${styles.tools}`} role="toolbar" aria-label={m.tools} data-capacity-tools-toolbar>
-        <CubeIconButton label={m.orbit} active={navigation === "orbit"} disabled={readOnlyView} onClick={() => controls.chooseTool("orbit")}><Orbit aria-hidden /></CubeIconButton>
-        <CubeIconButton label={m.pan} active={navigation === "pan"} disabled={readOnlyView} onClick={() => controls.chooseTool("pan")}><Hand aria-hidden /></CubeIconButton>
+        <SpatialActionButton action="orbit" label={m.orbit} active={navigation === "orbit"} disabled={readOnlyView} onClick={() => controls.chooseTool("orbit")} />
+        <SpatialActionButton action="pan" label={m.pan} active={navigation === "pan"} disabled={readOnlyView} onClick={() => controls.chooseTool("pan")} />
         <span className={styles.toolSeparator} />
-        <CubeIconButton label={m.liquid} active={panel === "liquid"} disabled={readOnlyView} onClick={() => open("liquid")}><Droplets aria-hidden /></CubeIconButton>
-        <CubeIconButton label={m.dimensions} active={panel === "dimensions"} disabled={readOnlyView} onClick={() => open("dimensions")}><Ruler aria-hidden /></CubeIconButton>
-        <CubeIconButton label={m.numbers} active={snapshot.showAmounts} disabled={disabled} onClick={() => update({ ...snapshot, showAmounts: !snapshot.showAmounts })}><Hash aria-hidden /></CubeIconButton>
-        <CubeIconButton label={m.clear} disabled={disabled || (snapshot.cone.fill === 0 && snapshot.cylinder.fill === 0)} onClick={empty}><Eraser aria-hidden /></CubeIconButton>
+        <SpatialActionButton action="liquid" label={m.liquid} active={panel === "liquid"} disabled={readOnlyView} onClick={() => open("liquid")} />
+        <SpatialActionButton action="dimensions" label={m.dimensions} active={panel === "dimensions"} disabled={readOnlyView} onClick={() => open("dimensions")} />
+        <SpatialActionButton action="amounts" label={m.numbers} active={snapshot.showAmounts} disabled={disabled} onClick={() => update({ ...snapshot, showAmounts: !snapshot.showAmounts })} />
+        <SpatialActionButton action="emptyLiquid" label={m.clear} disabled={disabled || (snapshot.cone.fill === 0 && snapshot.cylinder.fill === 0)} onClick={empty} />
       </div>
-      {panel && <CubeCanvasPanel title={m[panel]} closeLabel={m.close} anchor={panel === "settings" ? "meta" : "tool"} onClose={() => setPanel(null)}>
+      {panel && <SpatialCanvasPanel title={m[panel]} closeLabel={m.close} anchor={panel === "settings" ? "meta" : "tool"} onClose={() => setPanel(null)}>
         <div className="space-y-3 text-xs">
           {panel === "liquid" && <>
             <div className="grid grid-cols-2 gap-1">
@@ -121,12 +124,12 @@ export function SolidCapacityWorkspace({ initial, onSnapshot, classroom, readOnl
             <div className="flex flex-wrap gap-1">{(["tip-down", "tip-up"] as const).map((orientation) => <Button key={orientation} size="sm" variant={snapshot.coneOrientation === orientation ? "secondary" : "ghost"} disabled={disabled}
               onClick={() => { if (snapshot.coneOrientation !== orientation) update({ ...snapshot, coneOrientation: orientation, cone: { ...snapshot.cone, fill: 0 } }); }}>{orientation === "tip-down" ? m.tipDown : m.tipUp}</Button>)}</div>
             <p className="leading-5 text-muted">{m.orientationHint}</p>
-            <div className="flex flex-wrap gap-1"><Button size="sm" variant={snapshot.showDimensions ? "secondary" : "ghost"} aria-pressed={snapshot.showDimensions} disabled={disabled} onClick={() => update({ ...snapshot, showDimensions: !snapshot.showDimensions })}><Ruler className="size-4" />{m.dimensionLabels}</Button>
-              <Button size="sm" variant={snapshot.axes ? "secondary" : "ghost"} aria-pressed={snapshot.axes} disabled={disabled} onClick={() => update({ ...snapshot, axes: !snapshot.axes })}><Axis3d className="size-4" />{m.axes}</Button>
-              <Button size="sm" variant={snapshot.grid ? "secondary" : "ghost"} aria-pressed={snapshot.grid} disabled={disabled} onClick={() => update({ ...snapshot, grid: !snapshot.grid })}><Grid2X2 className="size-4" />{m.grid}</Button></div>
+            <div className="flex flex-wrap gap-1"><Button size="sm" variant={snapshot.showDimensions ? "secondary" : "ghost"} aria-pressed={snapshot.showDimensions} disabled={disabled} onClick={() => update({ ...snapshot, showDimensions: !snapshot.showDimensions })}><SpatialActionIcon action="measure" className="size-4" />{m.dimensionLabels}</Button>
+              <Button size="sm" variant={snapshot.axes ? "secondary" : "ghost"} aria-pressed={snapshot.axes} disabled={disabled} onClick={() => update({ ...snapshot, axes: !snapshot.axes })}><SpatialActionIcon action="axes" className="size-4" />{m.axes}</Button>
+              <Button size="sm" variant={snapshot.grid ? "secondary" : "ghost"} aria-pressed={snapshot.grid} disabled={disabled} onClick={() => update({ ...snapshot, grid: !snapshot.grid })}><SpatialActionIcon action="grid" className="size-4" />{m.grid}</Button></div>
           </>}
         </div>
-      </CubeCanvasPanel>}
+      </SpatialCanvasPanel>}
       {snapshot.showAmounts && <p className={styles.cutStatus}>{equalBaseAndHeight(snapshot) ? m.ratio : m.ratioDifferent}</p>}
       {host.failed && <p role="alert" className={styles.notice}>{m.syncError}</p>}
     </div></div>

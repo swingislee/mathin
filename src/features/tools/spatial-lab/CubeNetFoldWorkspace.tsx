@@ -1,10 +1,13 @@
 "use client";
 
+import { SpatialActionButton } from "../spatial-interaction/SpatialActionButton";
+import { SpatialActionIcon } from "../spatial-interaction/SpatialActionIcon";
+
 import { useSpatialToolState } from "../spatial-interaction/useSpatialToolState";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
-import { Check, Droplets, FoldHorizontal, Hand, Hash, LocateFixed, Maximize, Move3D, Orbit, Paintbrush, Redo2, RotateCcw, Scissors, Settings2, Shapes, Square, Stamp, Undo2 } from "lucide-react";
+import { SpatialViewButtons } from "../spatial-interaction/SpatialViewButtons";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,8 +23,8 @@ import { CubeNetGalleryWindow } from "./CubeNetGalleryWindow";
 import { CubeNetSurfacePanel, DEFAULT_CUBE_NET_BRUSH, cubeNetBrushOperation } from "./CubeNetSurfacePanel";
 import { reduceCubeNetSurfaces, type CubeNetSurfaceTool, type CubeNetSurfaceOperation } from "./cube-net-surfaces";
 import { createCubeNetRecenter } from "./cube-net-recenter";
-import { CubeCanvasPanel, CubeIconButton, CubeViewIcon } from "./CubeWorkbenchControls";
-import { CUBE_AXIS_COLORS, type CubeView } from "./cube-structures-contract";
+import { SpatialCanvasPanel, SpatialIconButton } from "../spatial-interaction/SpatialWorkbenchControls";
+import { type CubeView } from "./cube-structures-contract";
 import { cubeStructuresMessages } from "./cube-structures-messages";
 import { CUBE_WORKBENCH_VIEWS } from "./cube-workbench-camera";
 import { createCubeNetWorkbenchResolver, frameCubeNetWorkbench, type CubeNetWorkbenchHinge } from "./cube-net-workbench-model";
@@ -393,26 +396,22 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector, modeSelector,
 
           <div className={cn(styles.dock, styles.meta)} role="toolbar" aria-label={t("cubeNet.title")}>
             {modeSelector}
-            <CubeIconButton label={m.modelPanel} active={panel === "settings"} disabled={busy}
-              onClick={() => setPanel(panel === "settings" ? null : "settings")}><Settings2 aria-hidden /></CubeIconButton>
+            <SpatialActionButton action="settings" label={m.modelPanel} active={panel === "settings"} disabled={busy}
+              onClick={() => setPanel(panel === "settings" ? null : "settings")} />
           </div>
           <div className={cn(styles.dock, styles.views)} role="toolbar" aria-label={m.view} data-cube-view-toolbar>
-            {CUBE_WORKBENCH_VIEWS.map((item) => <CubeIconButton key={item} label={m[item]} active={view === item}
-              disabled={dragging} onClick={() => chooseView(item)}><CubeViewIcon view={item} /></CubeIconButton>)}
-            <CubeIconButton label={m.fit} disabled={dragging} onClick={() => chooseView(view)}><Maximize aria-hidden /></CubeIconButton>
+            <SpatialViewButtons views={CUBE_WORKBENCH_VIEWS} value={view} labels={m} disabled={dragging} onChange={chooseView} fit={{ label: m.fit, onClick: () => chooseView(view) }} />
             <SpatialAxisSnapButton messages={cameraMessages} iconOnly className={styles.icon} disabled={dragging} />
-            <CubeIconButton label={axesVisible ? m.hideAxes : m.showAxes} active={axesVisible} onClick={() => setAxesVisible(!axesVisible)}>
-              <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" aria-hidden><path d="M5 19h15" stroke={CUBE_AXIS_COLORS.x} /><path d="M5 19V3" stroke={CUBE_AXIS_COLORS.y} /><path d="m5 19 11-10" stroke={CUBE_AXIS_COLORS.z} /></svg>
-            </CubeIconButton>
+            <SpatialActionButton action="axes" label={axesVisible ? m.hideAxes : m.showAxes} active={axesVisible} onClick={() => setAxesVisible(!axesVisible)} />
           </div>
           <div className={cn(styles.dock, styles.tools)} role="toolbar" aria-label={m.tools} data-cube-tools-toolbar>
-            {([{ id: "orbit", label: m.orbit, Icon: Orbit }, { id: "pan", label: m.pan, Icon: Hand }] as const).map(({ id, label, Icon }) =>
-              <CubeIconButton key={id} label={label} active={tool === id} disabled={busy}
-                onClick={() => { controls.chooseTool(id); setPreview(null); setActiveFold(null); }} data-cube-net-tool={id}><Icon aria-hidden /></CubeIconButton>)}
-            <CubeIconButton label={t("cubeNet.manual.recenter")} disabled={busy} onClick={() => runCommand({ kind: "recenter" })} data-cube-net-recenter><LocateFixed aria-hidden /></CubeIconButton>
-            {classroom && <CubeIconButton label={classroom.resetLabel ?? t("cubeNet.manual.recenter")} disabled={busy} onClick={classroom.reset} data-teaching-reset><RotateCcw aria-hidden /></CubeIconButton>}
+            {([{ id: "orbit", label: m.orbit }, { id: "pan", label: m.pan }] as const).map(({ id, label }) =>
+              <SpatialActionButton action={id} key={id} label={label} active={tool === id} disabled={busy}
+                onClick={() => { controls.chooseTool(id); setPreview(null); setActiveFold(null); }} data-cube-net-tool={id} />)}
+            <SpatialActionButton action="recenter" label={t("cubeNet.manual.recenter")} disabled={busy} onClick={() => runCommand({ kind: "recenter" })} data-cube-net-recenter />
+            {classroom && <SpatialActionButton action="reset" label={classroom.resetLabel ?? t("cubeNet.manual.recenter")} disabled={busy} onClick={classroom.reset} data-teaching-reset />}
             <span className={styles.toolSeparator} aria-hidden />
-            <CubeIconButton label={t("cubeNet.manual.foldTool")} active={tool === "fold"} disabled={busy} data-cube-net-tool="fold"
+            <SpatialActionButton action="fold" label={t("cubeNet.manual.foldTool")} active={tool === "fold"} disabled={busy} data-cube-net-tool="fold"
               onClick={() => {
                 setTool("fold"); setPreview(null);
                 if (cutting) {
@@ -420,32 +419,32 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector, modeSelector,
                   setCutting(null); setCutError(false); setRestoreCutBlocked(false); setRevealEnabled(false); setFaceOffsets({});
                   setFrame(resolver.resolve(session.angles, null, session.anchor).model.bounds); setCameraRequestKey((key) => key + 1);
                 }
-              }}><FoldHorizontal aria-hidden /></CubeIconButton>
-            <CubeIconButton label={t("cubeNet.manual.cutTool")} active={tool === "cut"} disabled={busy} onClick={() => runCommand({ kind: "cut" })} data-cube-net-tool="cut"><Scissors aria-hidden /></CubeIconButton>
-            <CubeIconButton label={t("cubeNet.manual.chooseNet")} active={galleryOpen} disabled={busy || !!cutting}
-              onClick={() => setGalleryOpen(!galleryOpen)} data-cube-net-gallery-toggle><Shapes aria-hidden /></CubeIconButton>
-            <CubeIconButton label={t("cubeNet.manual.faceReveal")} active={revealEnabled} disabled={busy || !cutting}
-              onClick={() => runCommand({ kind: "toggle-reveal" })} data-cube-net-face-reveal-toggle><Move3D aria-hidden /></CubeIconButton>
-            <CubeIconButton label={t(playback.playing || buildingCuts ? "cubeNet.manual.cancelAnimation" : cutting ? "cubeNet.manual.unfoldAvailable" : "cubeNet.manual.unfold")}
+              }} />
+            <SpatialActionButton action="cut" label={t("cubeNet.manual.cutTool")} active={tool === "cut"} disabled={busy} onClick={() => runCommand({ kind: "cut" })} data-cube-net-tool="cut" />
+            <SpatialActionButton action="netGallery" label={t("cubeNet.manual.chooseNet")} active={galleryOpen} disabled={busy || !!cutting}
+              onClick={() => setGalleryOpen(!galleryOpen)} data-cube-net-gallery-toggle />
+            <SpatialActionButton action="faceReveal" label={t("cubeNet.manual.faceReveal")} active={revealEnabled} disabled={busy || !cutting}
+              onClick={() => runCommand({ kind: "toggle-reveal" })} data-cube-net-face-reveal-toggle />
+            <SpatialIconButton label={t(playback.playing || buildingCuts ? "cubeNet.manual.cancelAnimation" : cutting ? "cubeNet.manual.unfoldAvailable" : "cubeNet.manual.unfold")}
               disabled={dragging || (!playback.playing && !buildingCuts && (cutting ? cutMoves.length === 0 : Object.values(session.angles).every((angle) => angle === 0) && (!session.anchor || session.anchor.vertices.every((point) => Math.abs(point.y) < 1e-6))))}
-              onClick={playback.playing || buildingCuts ? cancelAnimation : () => runCommand({ kind: cutting ? "unfold-cuts" : "unfold" })}>{playback.playing || buildingCuts ? <Square aria-hidden /> : <RotateCcw aria-hidden />}</CubeIconButton>
-            <CubeIconButton label={t("cubeNet.manual.judge")} disabled={busy || !!cutting}
-              onClick={() => setJudgment(judgeCubeNetFold(frameResolver.resolveHinges(cubeNetHingeProgress(angles))))}><Check aria-hidden /></CubeIconButton>
+              onClick={playback.playing || buildingCuts ? cancelAnimation : () => runCommand({ kind: cutting ? "unfold-cuts" : "unfold" })}>{playback.playing || buildingCuts ? <SpatialActionIcon action="stop" aria-hidden /> : <SpatialActionIcon action="unfold" aria-hidden />}</SpatialIconButton>
+            <SpatialActionButton action="validateFold" label={t("cubeNet.manual.judge")} disabled={busy || !!cutting}
+              onClick={() => setJudgment(judgeCubeNetFold(frameResolver.resolveHinges(cubeNetHingeProgress(angles))))} />
             <span className={styles.toolSeparator} aria-hidden />
-            {([{ id: "face", label: m.face, Icon: Paintbrush }, { id: "transparent", label: m.transparent, Icon: Droplets },
-              { id: "mark", label: t("cubeNet.manual.surface.mark"), Icon: Stamp }, { id: "number", label: m.number, Icon: Hash }] as const).map(({ id, label, Icon }) =>
-              <CubeIconButton key={id} label={label} active={tool === id} disabled={busy} onClick={() => chooseSurfaceTool(id)} data-cube-net-tool={id}><Icon aria-hidden /></CubeIconButton>)}
+            {([{ id: "face", label: m.face, action: "faceColor" }, { id: "transparent", label: m.transparent, action: "opacity" },
+              { id: "mark", label: t("cubeNet.manual.surface.mark"), action: "mark" }, { id: "number", label: m.number, action: "number" }] as const).map(({ id, label, action }) =>
+              <SpatialActionButton action={action} key={id} label={label} active={tool === id} disabled={busy} onClick={() => chooseSurfaceTool(id)} data-cube-net-tool={id} />)}
             <span className={styles.toolSeparator} aria-hidden />
-            <CubeIconButton label={t("cubeNet.manual.undo")} disabled={busy || revealEnabled || (cutting ?? session).past.length === 0}
-              onClick={() => { setRestoreCutBlocked(false); if (cutting) setCutting(reduceCubeNetCutSession(cutting, { kind: "undo" })); else apply({ kind: "undo" }); }}><Undo2 aria-hidden /></CubeIconButton>
-            <CubeIconButton label={t("cubeNet.manual.redo")} disabled={busy || revealEnabled || (cutting ?? session).future.length === 0}
-              onClick={() => cutting ? setCutting(reduceCubeNetCutSession(cutting, { kind: "redo" })) : apply({ kind: "redo" })}><Redo2 aria-hidden /></CubeIconButton>
+            <SpatialActionButton action="undo" label={t("cubeNet.manual.undo")} disabled={busy || revealEnabled || (cutting ?? session).past.length === 0}
+              onClick={() => { setRestoreCutBlocked(false); if (cutting) setCutting(reduceCubeNetCutSession(cutting, { kind: "undo" })); else apply({ kind: "undo" }); }} />
+            <SpatialActionButton action="redo" label={t("cubeNet.manual.redo")} disabled={busy || revealEnabled || (cutting ?? session).future.length === 0}
+              onClick={() => cutting ? setCutting(reduceCubeNetCutSession(cutting, { kind: "redo" })) : apply({ kind: "redo" })} />
           </div>
 
-          {panel === "settings" && <CubeCanvasPanel title={m.modelPanel}
+          {panel === "settings" && <SpatialCanvasPanel title={m.modelPanel}
             anchor="meta" closeLabel={m.closePanel} onClose={() => setPanel(null)}>
             <div className="space-y-3 text-xs">{workspaceSelector}{!courseware && <p className="leading-5 text-muted">{t("cubeNet.manual.localOnly")}</p>}</div>
-          </CubeCanvasPanel>}
+          </SpatialCanvasPanel>}
           {panel && panel !== "settings" && <CubeNetSurfacePanel locale={locale} tool={panel} brush={brush} surfaces={surfaces}
             identities={current.model.faces.map((face) => face.label)} selected={selectedPaper} busy={busy}
             onBrush={setBrush} onApply={applySurface} onPreview={setOpacityPreview} onClose={() => setPanel(null)} />}

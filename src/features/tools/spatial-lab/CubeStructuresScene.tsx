@@ -1,9 +1,11 @@
 "use client";
 
+import { SpatialActionIcon } from "../spatial-interaction/SpatialActionIcon";
+
 import type { ThreeEvent } from "@react-three/fiber";
 import { Html, Line } from "@react-three/drei";
 import { DoubleSide, Vector3 } from "three";
-import { Scissors, X } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import type { VoxelCoordinate, VoxelFaceSelection } from "@/features/spatial-math/domain";
 import { buildVoxelPaintFaceInstances } from "@/features/spatial-math/renderer-r3f/voxel-visual-model";
@@ -58,7 +60,7 @@ export function CubeStructuresScene({ state, cut, cutLines, cutConfirmation, ann
       }}>
       <div className="w-40 cursor-default rounded-lg border border-line bg-paper p-1.5 shadow-sm" data-cube-cut-confirmation onPointerDown={(event) => event.stopPropagation()} onKeyDown={(event) => { if (event.key === "Escape") cutConfirmation.onCancel(); }}>
         <p className="mb-1 px-1 text-xs text-muted">{cutConfirmation.title}</p>
-        <div className="flex items-center gap-1"><Button size="sm" className="h-8 gap-1 px-2 text-xs" disabled={cutConfirmation.disabled} onClick={cutConfirmation.onConfirm}><Scissors aria-hidden className="size-3.5" />{cutConfirmation.confirmLabel}</Button><Button size="sm" variant="ghost" className="h-8 gap-1 px-2 text-xs" onClick={cutConfirmation.onCancel}><X aria-hidden className="size-3.5" />{cutConfirmation.cancelLabel}</Button></div>
+        <div className="flex items-center gap-1"><Button size="sm" className="h-8 gap-1 px-2 text-xs" disabled={cutConfirmation.disabled} onClick={cutConfirmation.onConfirm}><SpatialActionIcon action="cut" aria-hidden className="size-3.5" />{cutConfirmation.confirmLabel}</Button><Button size="sm" variant="ghost" className="h-8 gap-1 px-2 text-xs" onClick={cutConfirmation.onCancel}><SpatialActionIcon action="close" aria-hidden className="size-3.5" />{cutConfirmation.cancelLabel}</Button></div>
       </div>
     </Html>}
     {axesVisible && origin && <group>

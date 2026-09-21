@@ -150,7 +150,7 @@ describe("direct face cuts and presentation-only cube motion", () => {
   });
 
   it("keeps slider input independent, previews once per frame, and commits once on release", () => {
-    const slider = readFileSync("src/features/tools/spatial-lab/CubeOpacitySlider.tsx", "utf8");
+    const slider = readFileSync("src/features/tools/spatial-interaction/SpatialOpacitySlider.tsx", "utf8");
     const viewport = readFileSync("src/features/tools/spatial-lab/CubeStructuresViewport.tsx", "utf8");
     const motion = readFileSync("src/features/tools/spatial-lab/useCubeDisplayMotion.ts", "utf8");
     expect(slider).toContain("step={1}");

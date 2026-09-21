@@ -1,8 +1,10 @@
 "use client";
 
+import { SpatialActionIcon } from "../spatial-interaction/SpatialActionIcon";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { Beaker, Box, Eraser, GitCompareArrows, Hammer, Minimize2, Paintbrush, Palette, Presentation, Shapes, SlidersHorizontal } from "lucide-react";
+import { Beaker, Hammer, Minimize2, Palette, SlidersHorizontal } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -251,7 +253,7 @@ function ClassroomRehearsal({
                 disabled={paintSummary.complete}
                 onClick={() => setPaint((current) => paintAllExteriorVoxelFaces(voxels, current))}
               >
-                <Paintbrush aria-hidden="true" className="size-4" />
+                <SpatialActionIcon action="faceColor" aria-hidden="true" className="size-4" />
                 {paintMessages.paintAll}
               </Button>
               <Button
@@ -261,7 +263,7 @@ function ClassroomRehearsal({
                 disabled={paintSummary.paintedUnitFaces === 0}
                 onClick={() => setPaint((current) => clearVoxelFacePaint(current))}
               >
-                <Eraser aria-hidden="true" className="size-4" />
+                <SpatialActionIcon action="clear" aria-hidden="true" className="size-4" />
                 {paintMessages.clear}
               </Button>
             </div>
@@ -309,7 +311,7 @@ function ClassroomRehearsal({
                   aria-pressed={carvingProfile === profile.id}
                   onClick={() => applyCarvingProfile(profile.id)}
                 >
-                  {profile.id === "solid" ? <Box aria-hidden="true" className="size-4" /> : null}
+                  {profile.id === "solid" ? <SpatialActionIcon action="objects" aria-hidden="true" className="size-4" /> : null}
                   {carvingMessages.profile(profile.id)}
                 </Button>
               ))}
@@ -715,15 +717,15 @@ export function SpatialLab({ embedded = false, activity }: ToolComponentProps & 
         <div className="overflow-x-auto border-b border-line px-4 py-2 md:px-6">
           <TabsList aria-label={t("workspaceTabs")} className="min-w-max">
             <TabsTrigger value="authoring" className="gap-2">
-              <Shapes aria-hidden="true" className="size-4" />
+              <SpatialActionIcon action="prepare" aria-hidden="true" className="size-4" />
               {t("authoringTab")}
             </TabsTrigger>
             <TabsTrigger value="classroom" className="gap-2">
-              <Presentation aria-hidden="true" className="size-4" />
+              <SpatialActionIcon action="demonstrate" aria-hidden="true" className="size-4" />
               {t("classroomTab")}
             </TabsTrigger>
             <TabsTrigger value="changes" className="gap-2">
-              <GitCompareArrows aria-hidden="true" className="size-4" />
+              <SpatialActionIcon action="compareScenes" aria-hidden="true" className="size-4" />
               {t("changesTab")}
             </TabsTrigger>
           </TabsList>
@@ -766,7 +768,7 @@ export function SpatialLab({ embedded = false, activity }: ToolComponentProps & 
             <Card>
               <CardHeader className="p-4">
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <Presentation aria-hidden="true" className="size-4 text-leaf-deep" />
+                  <SpatialActionIcon action="demonstrate" aria-hidden="true" className="size-4 text-leaf-deep" />
                   {t("classroom.title")}
                 </CardTitle>
                 <CardDescription>{t("classroom.description")}</CardDescription>

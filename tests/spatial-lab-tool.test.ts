@@ -33,7 +33,7 @@ describe("spatial-lab Tools acceptance prototype", () => {
       category: "geometry",
       grades: [1, 9],
     });
-    expect(tools.map((tool) => tool.id)).toEqual(["fraction-line", "motion-lab", "cube-structures", "cube-net", "dice", "projection"]);
+    expect(tools.map((tool) => tool.id)).toEqual(["fraction-line", "motion-lab", "cube-structures", "cube-net", "dice", "projection", "solid-geometry", "solid-capacity", "soma-cube"]);
     expect(new Set(tools.map((tool) => tool.id)).size).toBe(tools.length);
     expect(new Set(tools.map((tool) => tool.no)).size).toBe(tools.length);
     expect(toolThumbs["spatial-lab"]).toBeTruthy();
@@ -165,7 +165,7 @@ describe("spatial-lab Tools acceptance prototype", () => {
     expect(source).toContain("CubeStructuresWorkbench.module.css");
     expect(source).toContain("data-cube-view-toolbar");
     expect(source).toContain("data-cube-tools-toolbar");
-    expect(source).toContain("<CubeViewIcon view={item}");
+    expect(source).toContain("<SpatialViewButtons views={CUBE_WORKBENCH_VIEWS}");
     expect(source).toContain("setJudgment(null)");
     expect(source).toContain("useState<CubeNetFoldJudgment | null>(initial?.judgment ?? null)");
     expect(source).toContain("judgeCubeNetFold(frameResolver.resolveHinges(cubeNetHingeProgress(angles)))");

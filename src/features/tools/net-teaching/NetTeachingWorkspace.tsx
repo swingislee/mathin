@@ -1,9 +1,11 @@
 "use client";
 
+import { SpatialActionButton } from "../spatial-interaction/SpatialActionButton";
+
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useLocale } from "next-intl";
-import { Shapes } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -12,7 +14,7 @@ import type { NetLiveSnapshot, NetTeachingCommand } from "../courseware/workbenc
 import type { CubeNetTeachingSnapshot } from "../courseware/spatial-teaching-content";
 import type { PaperFoldingSnapshot } from "../paper-folding/contract";
 import type { SolidNetsSnapshot } from "../solid-nets/contract";
-import { CubeIconButton } from "../spatial-lab/CubeWorkbenchControls";
+
 import { netInitialState, type NetTeachingInitial, type NetTeachingState, type NetTeachingMode } from "./contract";
 import { createNetTeachingInitial } from "./defaults";
 
@@ -79,7 +81,7 @@ function ReadyWorkspace({ initial, runtime, onSnapshot, readOnly = false }: {
   };
   const labels = locale === "zh" ? { title: "展开方式", standard: "正方体展开", "free-paper": "自由拼纸", "solid-net": "长方体与三棱柱" } : { title: "Folding workspace", standard: "Cube nets", "free-paper": "Free paper", "solid-net": "Cuboid and prism" };
   const selector = <Popover open={menu} onOpenChange={setMenu}><PopoverTrigger asChild>
-    <CubeIconButton label={labels.title} disabled={disabled}><Shapes aria-hidden /></CubeIconButton>
+    <SpatialActionButton action="foldMode" label={labels.title} disabled={disabled} />
   </PopoverTrigger><PopoverContent align="start" className="w-44 space-y-1 p-2" aria-label={labels.title}>
     {(["standard", "free-paper", "solid-net"] as const).map((id) => <Button key={id} className="w-full justify-start" size="sm" variant={mode === id ? "secondary" : "ghost"}
       aria-pressed={mode === id} disabled={disabled} onClick={() => void changeMode(id)}>{labels[id]}</Button>)}

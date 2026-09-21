@@ -18,7 +18,7 @@ describe("future spatial workbench integration guard", () => {
         return usesSharedState(resolve(dirname(file), `${match[1]}.tsx`), visited);
       });
     };
-    const workspaces = [...sources].filter(([, source]) => source.includes("CubeIconButton"));
+    const workspaces = [...sources].filter(([, source]) => /SpatialActionButton|SpatialIconButton|CubeIconButton/.test(source));
     expect(workspaces.length).toBeGreaterThanOrEqual(8);
     for (const [file, source] of workspaces) {
       expect(usesSharedState(file), `${file}: use the shared state or shared workbench`).toBe(true);

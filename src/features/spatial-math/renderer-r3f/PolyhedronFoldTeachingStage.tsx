@@ -1,7 +1,9 @@
 "use client";
 
+import { SpatialActionIcon } from "@/features/tools/spatial-interaction/SpatialActionIcon";
+
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
-import { Camera, Check, ChevronLeft, ChevronRight, Pause, Play, RotateCcw } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -222,7 +224,7 @@ export function PolyhedronFoldTeachingStage({
               aria-pressed={selected}
               onClick={() => selectFace(option.id)}
             >
-              {selected ? <Check aria-hidden="true" className="size-3.5" /> : null}
+              {selected ? <SpatialActionIcon action="confirm" aria-hidden="true" className="size-3.5" /> : null}
               {option.label}
             </Button>
           );
@@ -254,7 +256,7 @@ export function PolyhedronFoldTeachingStage({
         emit({ kind: "step.previous" });
       }}
     >
-      <ChevronLeft aria-hidden="true" className="size-4" />
+      <SpatialActionIcon action="previousStep" aria-hidden="true" className="size-4" />
     </Button>
   );
   const playbackButton = (
@@ -267,7 +269,7 @@ export function PolyhedronFoldTeachingStage({
       disabled={!view.canManipulateScene || view.steps.length < 2}
       onClick={togglePlayback}
     >
-      {playbackActive ? <Pause aria-hidden="true" className="size-4" /> : <Play aria-hidden="true" className="size-4" />}
+      {playbackActive ? <SpatialActionIcon action="pause" aria-hidden="true" className="size-4" /> : <SpatialActionIcon action="play" aria-hidden="true" className="size-4" />}
     </Button>
   );
   const nextButton = (
@@ -283,7 +285,7 @@ export function PolyhedronFoldTeachingStage({
         emit({ kind: "step.next" });
       }}
     >
-      <ChevronRight aria-hidden="true" className="size-4" />
+      <SpatialActionIcon action="nextStep" aria-hidden="true" className="size-4" />
     </Button>
   );
   const resetButton = view.canReset ? (
@@ -299,7 +301,7 @@ export function PolyhedronFoldTeachingStage({
         emit({ kind: "scene.reset" });
       }}
     >
-      <RotateCcw aria-hidden="true" className="size-4" />
+      <SpatialActionIcon action="reset" aria-hidden="true" className="size-4" />
     </Button>
   ) : null;
   const progressSlider = (
@@ -355,7 +357,7 @@ export function PolyhedronFoldTeachingStage({
             </div>
             <div role="group" aria-label={messages.cameraBookmarks}>
               <p className="mb-2 flex items-center gap-2 text-sm font-medium text-ink">
-                <Camera aria-hidden="true" className="size-4 text-muted" />
+                <SpatialActionIcon action="viewPresets" aria-hidden="true" className="size-4 text-muted" />
                 {messages.cameraBookmarks}
               </p>
               <div className="flex flex-wrap gap-2">{cameraButtons}{axisSnapButton}</div>
@@ -410,7 +412,7 @@ export function PolyhedronFoldTeachingStage({
           role="group"
           aria-label={messages.cameraBookmarks}
         >
-          <Camera aria-hidden="true" className="m-1 size-4 text-muted" />
+          <SpatialActionIcon action="viewPresets" aria-hidden="true" className="m-1 size-4 text-muted" />
           {cameraButtons}
           {axisSnapButton}
         </div>

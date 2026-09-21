@@ -1,17 +1,22 @@
 "use client";
 
+import { SpatialActionButton } from "../spatial-interaction/SpatialActionButton";
+import { SpatialViewButtons, SPATIAL_ALL_VIEWS } from "../spatial-interaction/SpatialViewButtons";
+import { SpatialAxisSteps } from "../spatial-interaction/SpatialAxisSteps";
+import { SpatialActionIcon } from "../spatial-interaction/SpatialActionIcon";
+
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Dices, Droplets, Eye, Footprints, GitCompareArrows, Hand, LocateFixed, Maximize, Move, Move3D, Orbit, Paintbrush, Redo2, RotateCcw, ScanEye, ScanFace, Settings2, Shapes, Undo2 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Axis } from "@/features/spatial-math/domain";
 import { SpatialAxisSnapButton, useSpatialAxisSnap } from "@/features/spatial-math/renderer-r3f/SpatialCameraControls";
-import { CubeCanvasPanel, CubeColorPicker, CubeIconButton, CubeViewIcon } from "./CubeWorkbenchControls";
-import { CubeOpacitySlider } from "./CubeOpacitySlider";
-import { CUBE_WORKBENCH_VIEWS } from "./cube-workbench-camera";
+import { SpatialCanvasPanel, SpatialColorPicker } from "../spatial-interaction/SpatialWorkbenchControls";
+import { SpatialOpacitySlider } from "../spatial-interaction/SpatialOpacitySlider";
+
 import { CUBE_COLORS, type CubeColor, type CubeFrame, type CubeView } from "./cube-structures-contract";
 import { cubeStructuresMessages } from "./cube-structures-messages";
 import { closeDiceFaces, diceFaceArrow, diceSurface, restoreDiceScene, styleDiceFaces, type DiceSurfaceStyle } from "./dice-teaching-display";
@@ -22,7 +27,7 @@ import { useCubeNetPlayback } from "./useCubeNetPlayback";
 import { diceTeachingMessages } from "./dice-teaching-messages";
 import { commitDiceDrag } from "./dice-drag-adapter";
 import type { CubeMoveOperation } from "./cube-structures-drag";
-import { DICE_FACES, DICE_TEACHING_VERSION, FACE_NORMALS, MAX_DICE, arrangeDice, canPlaceDie, closeDieFaces, contactVisibility, controlledRoll, createDiceScene, createDie, diceContacts, faceValue, interpolateDice, isDiceFaceMoved, nearestDiceRotation, openDieFaces, oppositeFace, sampleControlledRoll, solveDicePuzzle, turnDie, worldFace, type DiceFace, type DiceHand, type DicePuzzle, type DiceScene, type DiceVector, type RollDirection, type TeachingDie } from "./dice-teaching-model";
+import { DICE_FACES, DICE_TEACHING_VERSION, MAX_DICE, arrangeDice, canPlaceDie, closeDieFaces, contactVisibility, controlledRoll, createDiceScene, createDie, diceContacts, faceValue, interpolateDice, isDiceFaceMoved, nearestDiceRotation, openDieFaces, oppositeFace, sampleControlledRoll, solveDicePuzzle, turnDie, worldFace, type DiceFace, type DiceHand, type DicePuzzle, type DiceScene, type DiceVector, type RollDirection, type TeachingDie } from "./dice-teaching-model";
 import styles from "./CubeStructuresWorkbench.module.css";
 import diceStyles from "./DiceTeachingWorkspace.module.css";
 import type { DiceTeachingSnapshot } from "../courseware/spatial-teaching-content";
@@ -295,35 +300,34 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector, initi
           if (busy || readOnly || !canPlaceDie(scene.dice, die.id, die.position)) return false;
           commit(changed(scene.dice.map((item) => item.id === die.id ? die : item))); return true;
         }} />
-      <div className={`${styles.dock} ${styles.meta}`} data-dice-overlay><CubeIconButton label={m.settings} active={panel === "settings"} onClick={() => selectPanel("settings")}><Settings2 /></CubeIconButton><span className="self-center pr-1 text-xs">{m.title}</span></div>
+      <div className={`${styles.dock} ${styles.meta}`} data-dice-overlay><SpatialActionButton action="settings" label={m.settings} active={panel === "settings"} onClick={() => selectPanel("settings")} /><span className="self-center pr-1 text-xs">{m.title}</span></div>
       <div className={`${styles.dock} ${styles.views} ${diceStyles.views}`} role="toolbar" aria-label={m.orbit}>
-        {CUBE_WORKBENCH_VIEWS.map((item) => <CubeIconButton key={item} label={m.views[item]} active={view === item} onClick={() => selectView(item)}><CubeViewIcon view={item} /></CubeIconButton>)}
-        <CubeIconButton label={m.bottom} active={view === "bottom"} onClick={() => selectView("bottom")}><CubeViewIcon view="bottom" /></CubeIconButton><CubeIconButton label={m.fit} onClick={() => fit()}><Maximize /></CubeIconButton>
-        <SpatialAxisSnapButton messages={tool === "move" ? { axisSnap: structureMessages.cellSnap, enableAxisSnap: structureMessages.enableCellSnap, disableAxisSnap: structureMessages.disableCellSnap } : m} iconOnly className={styles.icon} disabled={busy} />
+        <SpatialViewButtons views={SPATIAL_ALL_VIEWS} value={view} labels={{ ...m.views, bottom: m.bottom }} onChange={selectView} fit={{ label: m.fit, onClick: () => fit() }} />
+        <SpatialAxisSnapButton action={tool === "move" ? "moveSnap" : "cameraSnap"} messages={tool === "move" ? { axisSnap: structureMessages.cellSnap, enableAxisSnap: structureMessages.enableCellSnap, disableAxisSnap: structureMessages.disableCellSnap } : m} iconOnly className={styles.icon} disabled={busy} />
       </div>
       <div className={`${styles.dock} ${styles.tools}`} role="toolbar" aria-label={m.tools}>
-        <CubeIconButton label={m.orbit} active={tool === "orbit"} onClick={() => navigate("orbit")}><Orbit /></CubeIconButton>
-        <CubeIconButton label={m.pan} active={tool === "pan"} onClick={() => navigate("pan")}><Hand /></CubeIconButton>
-        <CubeIconButton label={m.xray} active={tool === "xray"} disabled={busy} onClick={toggleXRay}><ScanEye /></CubeIconButton>
-        <CubeIconButton label={m.reset} disabled={busy} onClick={() => { arrange("apart"); setView("angle"); }}><LocateFixed /></CubeIconButton>
-        <CubeIconButton label={m.arrange} active={panel === "arrange"} onClick={() => selectPanel("arrange")}><Move /></CubeIconButton>
-        <CubeIconButton label={m.arrows} active={arrows && tool !== "xray"} disabled={busy} onClick={toggleArrows}><Move3D /></CubeIconButton>
-        <CubeIconButton label={m.observe} active={panel === "observe"} onClick={() => selectPanel("observe")}><ScanFace /></CubeIconButton>
-        <CubeIconButton label={m.restore} active={panel === "restore"} onClick={() => selectPanel("restore")}><RotateCcw /></CubeIconButton>
+        <SpatialActionButton action="orbit" label={m.orbit} active={tool === "orbit"} onClick={() => navigate("orbit")} />
+        <SpatialActionButton action="pan" label={m.pan} active={tool === "pan"} onClick={() => navigate("pan")} />
+        <SpatialActionButton action="xray" label={m.xray} active={tool === "xray"} disabled={busy} onClick={toggleXRay} />
+        <SpatialActionButton action="recenter" label={m.reset} disabled={busy} onClick={() => { arrange("apart"); setView("angle"); }} />
+        <SpatialActionButton action="move" label={m.arrange} active={panel === "arrange"} onClick={() => selectPanel("arrange")} />
+        <SpatialActionButton action="faceReveal" label={m.arrows} active={arrows && tool !== "xray"} disabled={busy} onClick={toggleArrows} />
+        <SpatialActionButton action="faceInspect" label={m.observe} active={panel === "observe"} onClick={() => selectPanel("observe")} />
+        <SpatialActionButton action="reset" label={m.restore} active={panel === "restore"} onClick={() => selectPanel("restore")} />
         <div className={styles.toolSeparator} />
-        <CubeIconButton label={m.pips} active={panel === "pips"} onClick={() => selectPanel("pips")}><Eye /></CubeIconButton>
-        <CubeIconButton label={m.color} active={panel === "color"} onClick={() => selectPanel("color")}><Paintbrush /></CubeIconButton>
-        <CubeIconButton label={m.transparent} active={panel === "transparent"} onClick={() => selectPanel("transparent")}><Droplets /></CubeIconButton>
-        <CubeIconButton label={m.opposite} active={panel === "opposite"} onClick={() => selectPanel("opposite")}><GitCompareArrows /></CubeIconButton>
-        <CubeIconButton label={m.puzzle} active={panel === "puzzle"} onClick={() => selectPanel("puzzle")}><Shapes /></CubeIconButton>
+        <SpatialActionButton action="pips" label={m.pips} active={panel === "pips"} onClick={() => selectPanel("pips")} />
+        <SpatialActionButton action="faceColor" label={m.color} active={panel === "color"} onClick={() => selectPanel("color")} />
+        <SpatialActionButton action="opacity" label={m.transparent} active={panel === "transparent"} onClick={() => selectPanel("transparent")} />
+        <SpatialActionButton action="opposite" label={m.opposite} active={panel === "opposite"} onClick={() => selectPanel("opposite")} />
+        <SpatialActionButton action="contact" label={m.puzzle} active={panel === "puzzle"} onClick={() => selectPanel("puzzle")} />
         <div className={styles.toolSeparator} />
-        <CubeIconButton label={m.roll} active={panel === "roll"} onClick={() => selectPanel("roll")}><Footprints /></CubeIconButton>
-        <CubeIconButton label={m.throwing} active={panel === "throwing"} onClick={() => selectPanel("throwing")}><Dices /></CubeIconButton>
+        <SpatialActionButton action="roll" label={m.roll} active={panel === "roll"} onClick={() => selectPanel("roll")} />
+        <SpatialActionButton action="throwDice" label={m.throwing} active={panel === "throwing"} onClick={() => selectPanel("throwing")} />
         <div className={styles.toolSeparator} />
-        <CubeIconButton label={m.undo} disabled={busy || !history.past.length} onClick={() => { setXRayTarget(null); setHistory((h) => ({ past: h.past.slice(0, -1), present: h.past[h.past.length - 1], future: [h.present, ...h.future] })); }}><Undo2 /></CubeIconButton>
-        <CubeIconButton label={m.redo} disabled={busy || !history.future.length} onClick={() => { setXRayTarget(null); setHistory((h) => ({ past: [...h.past, h.present], present: h.future[0], future: h.future.slice(1) })); }}><Redo2 /></CubeIconButton>
+        <SpatialActionButton action="undo" label={m.undo} disabled={busy || !history.past.length} onClick={() => { setXRayTarget(null); setHistory((h) => ({ past: h.past.slice(0, -1), present: h.past[h.past.length - 1], future: [h.present, ...h.future] })); }} />
+        <SpatialActionButton action="redo" label={m.redo} disabled={busy || !history.future.length} onClick={() => { setXRayTarget(null); setHistory((h) => ({ past: [...h.past, h.present], present: h.future[0], future: h.future.slice(1) })); }} />
       </div>
-      {panel && <CubeCanvasPanel title={m[panel]} closeLabel={m.close} onClose={closePanel} anchor={panel === "settings" ? "meta" : panel === "roll" ? "bottom" : "tool"}>
+      {panel && <SpatialCanvasPanel title={m[panel]} closeLabel={m.close} onClose={closePanel} anchor={panel === "settings" ? "meta" : panel === "roll" ? "bottom" : "tool"}>
         <div className="space-y-3 text-xs">
           {panel === "settings" ? <>{workspaceSelector}<div className="space-y-2"><Check label={m.floor} checked={floor} onChange={setFloor} /><Check label={m.grid} checked={grid} onChange={setGrid} /><Check label={m.axes} checked={axes} onChange={setAxes} /></div>{!courseware && <p className="leading-5 text-muted">{m.memory}</p>}</>
             : panel === "roll" ? <div className={diceStyles.rollDock}>
@@ -346,14 +350,15 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector, initi
                 <div className="flex gap-1" role="group" aria-label={m.surfaceScope}>{(["face", "die"] as const).map((scope) => <Button key={scope} size="sm" variant={surfaceScope === scope ? "secondary" : "ghost"} disabled={busy} aria-pressed={surfaceScope === scope} onClick={() => { setSurfaceScope(scope); setOpacityPreview(null); }}>{scope === "face" ? m.oneFace : m.wholeDie}</Button>)}</div>
                 <div className="grid grid-cols-2 gap-1">{worldFaces.map(({ direction, face }) => <Button key={direction} size="sm" variant={selectedFace === face ? "secondary" : "ghost"} disabled={busy || !face} aria-pressed={selectedFace === face} onClick={() => face && chooseFace(selected.id, face)}>{m.faces[direction]}</Button>)}</div>
                 {surfaceScope === "face" && !selectedFace && <p className="text-muted">{m.chooseFace}</p>}
-                {panel === "color" ? <><CubeColorPicker value={color} labels={cubeStructuresMessages(locale === "en" ? "en" : "zh").colors} label={m.color} disabled={busy} onChange={(value) => { setColor(value); applyStyle({ color: value }); }} /><DiceActions busy={busy} items={[{ label: m.white, disabled: !surfaceFaces.length, run: () => applyStyle({ color: undefined }) }]} /></>
-                  : <><CubeOpacitySlider key={`${selected.id}:${selectedFace}:${surfaceScope}:${opacity}`} value={opacity} label={m.opacity} disabled={busy || !surfaceFaces.length} onPreview={setOpacityPreview} onCommit={(value) => applyStyle({ opacity: value / 100 })} /><DiceActions busy={busy} items={[{ label: m.opaque, disabled: !surfaceFaces.length, run: () => applyStyle({ opacity: 1 }) }]} /></>}
+                {panel === "color" ? <><SpatialColorPicker value={color} labels={cubeStructuresMessages(locale === "en" ? "en" : "zh").colors} label={m.color} disabled={busy} onChange={(value) => { setColor(value); applyStyle({ color: value }); }} /><DiceActions busy={busy} items={[{ label: m.white, disabled: !surfaceFaces.length, run: () => applyStyle({ color: undefined }) }]} /></>
+                  : <><SpatialOpacitySlider key={`${selected.id}:${selectedFace}:${surfaceScope}:${opacity}`} value={opacity} label={m.opacity} disabled={busy || !surfaceFaces.length} onPreview={setOpacityPreview} onCommit={(value) => applyStyle({ opacity: value / 100 })} /><DiceActions busy={busy} items={[{ label: m.opaque, disabled: !surfaceFaces.length, run: () => applyStyle({ opacity: 1 }) }]} /></>}
               </>}
               {panel === "arrange" && <><p className="text-muted leading-5">{m.dragHint}</p><DiceActions busy={busy} items={[{ label: m.addRight, run: () => add("right"), disabled: scene.dice.length >= MAX_DICE }, { label: m.addLeft, run: () => add("left"), disabled: scene.dice.length >= MAX_DICE }, { label: m.remove, run: () => { commit(changed(scene.dice.filter((die) => die.id !== selected.id))); }, disabled: scene.dice.length <= 1 }]} />
-                <div className="flex items-center gap-1" role="group" aria-label={structureMessages.moveAxis}><span className="mr-1">{structureMessages.moveAxis}</span>{(["x", "y", "z"] as const).map((axis) => <Button key={axis} size="sm" variant={moveAxis === axis ? "secondary" : "ghost"} disabled={busy} aria-pressed={moveAxis === axis} onClick={() => setMoveAxis(axis)}>{axis.toUpperCase()}</Button>)}</div>
                 <DiceActions busy={busy} items={(["row", "stack", "corner", "apart"] as const).map((layout) => ({ label: m[layout], run: () => arrange(layout) }))} />
-                <p>{m.move}</p><DiceActions busy={busy} items={DICE_FACES.map((face) => ({ label: `${face[1]}${face[0].toUpperCase()}`, run: () => { const d = FACE_NORMALS[face]; place(selected.id, { x: selected.position.x + d.x, y: selected.position.y + d.y, z: selected.position.z + d.z }); } }))} />
-                <p>{m.turn}</p><DiceActions busy={busy} items={(["x", "y", "z"] as const).map((axis) => ({ label: `${axis.toUpperCase()} ↻`, run: () => updateDie(selected.id, (die) => turnDie(die, axis), true) }))} />
+                <p>{m.move}</p><SpatialAxisSteps label={m.move} step={1} disabled={busy} axis={moveAxis} onAxisChange={setMoveAxis}
+                  onStep={(axis, sign) => place(selected.id, { ...selected.position, [axis]: selected.position[axis] + sign })} />
+                <p>{m.turn}</p><SpatialAxisSteps label={m.turn} step={90} unit="°" disabled={busy}
+                  onStep={(axis, sign) => updateDie(selected.id, (die) => turnDie(die, axis, sign), true)} />
               </>}
               {panel === "pips" && <><p className="leading-5 text-muted">{m.pipHint}</p><div className="grid grid-cols-2 gap-1">{worldFaces.map(({ direction, face }) => <Button key={direction} variant="secondary" size="sm" disabled={busy || !face} aria-pressed={face ? !selected.hidden.includes(face) : false} onClick={() => face && toggleFace(selected.id, face)}>{m.faces[direction]} · {face && !selected.hidden.includes(face) ? faceValue(selected.hand, face) : "?"}</Button>)}</div>
                 <DiceActions busy={busy} items={[{ label: m.showAll, run: () => commit({ ...scene, dice: scene.dice.map((die) => ({ ...die, hidden: [] })) }) }, { label: m.hideAll, run: () => commit({ ...scene, dice: scene.dice.map((die) => ({ ...die, hidden: [...DICE_FACES] })) }) }, { label: m.topOnly, run: () => commit({ ...scene, dice: topOnly(scene.dice) }) }]} />
@@ -370,10 +375,10 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector, initi
                 {scene.puzzle && <p>{m[scene.puzzle.scope]} = {scene.puzzle.target}</p>}
                 {scene.puzzle?.revealed && <div className="space-y-1">{diceContacts(scene.dice).map((contact) => <p key={`${contact.a}:${contact.b}`}>{m.die} {contact.a.replace("dice-", "")} ↔ {contact.b.replace("dice-", "")}：{contact.valueA} + {contact.valueB} = {contact.valueA + contact.valueB}</p>)}</div>}
               </>}
-              {panel === "throwing" && <><p className="leading-5 text-muted">{m.throwHint}</p><DiceActions busy={busy} items={[{ label: m.addRight, run: () => add("right"), disabled: scene.dice.length >= MAX_DICE }, { label: m.addLeft, run: () => add("left"), disabled: scene.dice.length >= MAX_DICE }]} /><Check label={m.topAfterThrow} checked={onlyTopAfterThrow} onChange={setOnlyTopAfterThrow} disabled={busy} /><Button disabled={busy} onClick={() => { void throwDice(); }} className="w-full"><Dices className="mr-2 size-4" />{m.throwNow}</Button><DiceActions busy={busy} items={[{ label: m.showAll, run: () => commit({ ...scene, dice: scene.dice.map((die) => ({ ...die, hidden: [] })) }) }]} /></>}
+              {panel === "throwing" && <><p className="leading-5 text-muted">{m.throwHint}</p><DiceActions busy={busy} items={[{ label: m.addRight, run: () => add("right"), disabled: scene.dice.length >= MAX_DICE }, { label: m.addLeft, run: () => add("left"), disabled: scene.dice.length >= MAX_DICE }]} /><Check label={m.topAfterThrow} checked={onlyTopAfterThrow} onChange={setOnlyTopAfterThrow} disabled={busy} /><Button disabled={busy} onClick={() => { void throwDice(); }} className="w-full"><SpatialActionIcon action="throwDice" className="mr-2 size-4" />{m.throwNow}</Button><DiceActions busy={busy} items={[{ label: m.showAll, run: () => commit({ ...scene, dice: scene.dice.map((die) => ({ ...die, hidden: [] })) }) }]} /></>}
             </>}
         </div>
-      </CubeCanvasPanel>}
+      </SpatialCanvasPanel>}
       {(notice || busy) && <div className={styles.notice} role="status" data-dice-overlay>{preparing ? m.preparing : playback.playing ? m.animating : notice}{busy ? <Button variant="ghost" size="sm" onClick={cancel}>{m.cancel}</Button> : <Button variant="ghost" size="sm" onClick={() => setNotice("")}>{m.close}</Button>}</div>}
       {(tool === "xray" || xray) && !busy && !panel && <div className={`${styles.cutStatus} ${diceStyles.xrayStatus}`} role="status" data-dice-overlay data-dice-xray={xray ? xrayPresentation.phase : "ready"}>
         <p className="font-medium">{xray ? `${xrayPresentation.phase === "opening" ? m.xrayOpening : xrayPresentation.phase === "closing" ? m.xrayClosing : m.xrayActive} · ${m.die} ${xray.die.id.replace("dice-", "")} · ${m.faces[xray.direction]}` : m.xray}</p>

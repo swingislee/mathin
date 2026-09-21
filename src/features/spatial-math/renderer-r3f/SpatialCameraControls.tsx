@@ -1,7 +1,8 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { Magnet } from "lucide-react";
+import { SpatialActionButton } from "@/features/tools/spatial-interaction/SpatialActionButton";
+import { SpatialActionIcon } from "@/features/tools/spatial-interaction/SpatialActionIcon";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -26,13 +27,16 @@ function toggleAxisSnap() {
   listeners.forEach((listener) => listener());
 }
 
-export function SpatialAxisSnapButton({ messages, disabled, className, iconOnly = false }: {
+export function SpatialAxisSnapButton({ messages, disabled, className, iconOnly = false, action = "cameraSnap" }: {
   readonly messages: SpatialCameraControlMessages;
   readonly disabled?: boolean;
   readonly className?: string;
   readonly iconOnly?: boolean;
+  readonly action?: "cameraSnap" | "moveSnap";
 }) {
   const enabled = useSpatialAxisSnap();
+  if (iconOnly) return <SpatialActionButton action={action} label={enabled ? messages.disableAxisSnap : messages.enableAxisSnap}
+    active={enabled} disabled={disabled} className={className} onClick={toggleAxisSnap} />;
   return (
     <Button
       type="button"
@@ -45,7 +49,7 @@ export function SpatialAxisSnapButton({ messages, disabled, className, iconOnly 
       aria-pressed={enabled}
       onClick={toggleAxisSnap}
     >
-      <Magnet aria-hidden="true" className="size-3.5" />
+      <SpatialActionIcon action={action} className="size-3.5" />
       {!iconOnly && messages.axisSnap}
     </Button>
   );

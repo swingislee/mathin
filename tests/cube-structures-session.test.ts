@@ -215,7 +215,7 @@ describe("groups, recoverable layers and fixed axes", () => {
   it("keeps icon docks and persistent layer/group controls inside the 4:3 frame", () => {
     const source = readFileSync("src/features/tools/spatial-lab/CubeStructuresWorkbench.tsx", "utf8");
     const css = readFileSync("src/features/tools/spatial-lab/CubeStructuresWorkbench.module.css", "utf8");
-    const controls = readFileSync("src/features/tools/spatial-lab/CubeWorkbenchControls.tsx", "utf8");
+    const controls = readFileSync("src/features/tools/spatial-interaction/SpatialWorkbenchControls.tsx", "utf8");
     expect(source).toContain('data-cube-workspace-frame="4:3"');
     expect(source).toContain("data-cube-view-toolbar");
     expect(source).toContain("data-cube-group-scope");

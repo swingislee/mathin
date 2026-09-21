@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import type { CubeNetGalleryFoldingBuild } from "@/features/spatial-math/domain";
-import { CubeCanvasPanel } from "./CubeWorkbenchControls";
+import { SpatialCanvasPanel } from "../spatial-interaction/SpatialWorkbenchControls";
 import { CUBE_NET_THUMBNAIL, groupCubeNetTeachingGallery } from "./cube-net-teaching-gallery";
 import styles from "./CubeNetGalleryWindow.module.css";
 
@@ -20,7 +20,7 @@ export function CubeNetGalleryWindow({ builds, selectedId, busy, closeLabel, onS
   const t = useTranslations("tools.spatialLab.cubeNet.manual");
   const items = useMemo(() => groupCubeNetTeachingGallery(builds.map((build) => build.entry)).flatMap((group) => group.items), [builds]);
   const { columns, rows, cellPx } = CUBE_NET_THUMBNAIL;
-  return <CubeCanvasPanel title={t("chooseNet")} anchor="bottom" closeLabel={closeLabel} onClose={onClose}>
+  return <SpatialCanvasPanel title={t("chooseNet")} anchor="bottom" closeLabel={closeLabel} onClose={onClose}>
           <div className={styles.strip} data-cube-net-picker="floating-strip" aria-label={t("galleryWindowHint")}>
             {items.map((item, index) => {
               const width = Math.max(...item.cells.map((cell) => cell.x)) + 1, height = Math.max(...item.cells.map((cell) => cell.y)) + 1;
@@ -35,5 +35,5 @@ export function CubeNetGalleryWindow({ builds, selectedId, busy, closeLabel, onS
               </Button>;
             })}
           </div>
-  </CubeCanvasPanel>;
+  </SpatialCanvasPanel>;
 }

@@ -176,7 +176,7 @@ describe("voxel-teaching-controller-v1 and 4:3 render model", () => {
     expect(stage).toContain("<SpatialAxisSnapButton");
     expect(stage).toContain("useSpatialAxisSnap()");
     const controls = readFileSync(resolve(process.cwd(), "src/features/spatial-math/renderer-r3f/SpatialCameraControls.tsx"), "utf8");
-    expect(controls).toContain("<Magnet");
+    expect(controls).toContain('action = "cameraSnap"');
     expect(controls).toContain("aria-pressed={enabled}");
     expect(stage).toContain("onCommandIntent(payload)");
     expect(stage).not.toContain("session_events");

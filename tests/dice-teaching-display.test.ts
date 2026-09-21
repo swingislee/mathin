@@ -107,7 +107,7 @@ describe("dice display feedback", () => {
   });
   it("reuses existing controls/icons and keeps selection outside the scene mutation path", () => {
     const source = readFileSync("src/features/tools/spatial-lab/DiceTeachingWorkspace.tsx", "utf8");
-    for (const shared of ["<CubeColorPicker", "<CubeOpacitySlider", "<Move3D", "<Move", "<Maximize", "<Settings2", "<Paintbrush", "<Droplets", '<CubeViewIcon view="bottom"', "onSelect={setSelectedId}"]) expect(source).toContain(shared);
+    for (const shared of ["<SpatialColorPicker", "<SpatialOpacitySlider", 'action="faceReveal"', 'action="move"', 'action="settings"', 'action="faceColor"', 'action="opacity"', "<SpatialViewButtons views={SPATIAL_ALL_VIEWS}", "onSelect={setSelectedId}"]) expect(source).toContain(shared);
     const toggle = source.slice(source.indexOf("const toggleArrows ="), source.indexOf("const roll ="));
     expect(toggle).not.toContain("animate("); expect(toggle).not.toContain("closeDiceFaces");
     const canvas = readFileSync("src/features/tools/spatial-lab/DiceTeachingCanvas.tsx", "utf8");

@@ -1,7 +1,12 @@
 import type { ReactNode } from "react";
+import { SomaPieceIcon } from "./soma-cube/SomaPieceIcon";
+import { SOMA_IDS } from "./soma-cube/pieces";
 
 /** 工具缩略图：几何线稿占位（素材就绪后可换成截图/手绘，颜色只用 token） */
 export const toolThumbs: Record<string, ReactNode> = {
+  "soma-cube": <div className="flex h-full w-full flex-wrap items-center justify-center gap-1 p-4" aria-hidden>
+    {SOMA_IDS.map((id) => <SomaPieceIcon key={id} id={id} />)}
+  </div>,
   "solid-capacity": (
     <svg viewBox="0 0 200 120" className="h-full w-full" aria-hidden>
       <g stroke="var(--ink)" strokeWidth={1.3} strokeLinejoin="round">

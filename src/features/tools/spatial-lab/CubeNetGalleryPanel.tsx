@@ -1,7 +1,9 @@
 "use client";
 
+import { SpatialActionIcon } from "../spatial-interaction/SpatialActionIcon";
+
 import { useMemo, useState } from "react";
-import { ArrowLeft, ArrowRight, CheckCircle2, Shapes, XCircle } from "lucide-react";
+import { CheckCircle2, XCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -109,7 +111,7 @@ export function CubeNetGalleryPanel({
     >
       <CardHeader className="p-4 pb-2 sm:p-5 sm:pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
-          <Shapes aria-hidden="true" className="size-4 text-leaf-deep" />
+          <SpatialActionIcon action="netGallery" aria-hidden="true" className="size-4 text-leaf-deep" />
           {t("title")}
         </CardTitle>
         <CardDescription>{t("description")}</CardDescription>
@@ -205,7 +207,7 @@ export function CubeNetGalleryPanel({
                     disabled={questionIndex === 0}
                     onClick={() => selectQuestion(questionIndex - 1)}
                   >
-                    <ArrowLeft aria-hidden="true" className="size-4" />
+                    <SpatialActionIcon action="left" aria-hidden="true" className="size-4" />
                     {t("previousQuestion")}
                   </Button>
                   <Button
@@ -217,7 +219,7 @@ export function CubeNetGalleryPanel({
                     onClick={() => selectQuestion(questionIndex + 1)}
                   >
                     {t("nextQuestion")}
-                    <ArrowRight aria-hidden="true" className="size-4" />
+                    <SpatialActionIcon action="right" aria-hidden="true" className="size-4" />
                   </Button>
                 </div>
               </div>

@@ -1,15 +1,18 @@
 "use client";
 
+import { SpatialActionButton } from "../spatial-interaction/SpatialActionButton";
+import { SpatialViewButtons } from "../spatial-interaction/SpatialViewButtons";
+
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
-import { Box, FoldHorizontal, Hand, Hash, Orbit, Paintbrush, Redo2, RotateCcw, Ruler, Undo2 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import { SpatialAxisSnapButton, useSpatialAxisSnap } from "@/features/spatial-math/renderer-r3f/SpatialCameraControls";
-import { CubeCanvasPanel, CubeColorPicker, CubeIconButton, CubeViewIcon } from "../spatial-lab/CubeWorkbenchControls";
+import { SpatialCanvasPanel, SpatialColorPicker } from "../spatial-interaction/SpatialWorkbenchControls";
 import { CUBE_WORKBENCH_VIEWS } from "../spatial-lab/cube-workbench-camera";
 import { cubeStructuresMessages } from "../spatial-lab/cube-structures-messages";
 import type { CubeColor } from "../spatial-lab/cube-structures-contract";
@@ -106,26 +109,26 @@ export function SolidNetsWorkspace({ locale, initial, runtime, onSnapshot, readO
         onFoldStart={beginFold} onPreview={previewFold} onCommit={commitFold} onDraggingChange={setDragging} onFaceSelect={select} />
       {workspaceSelector && <div className={cn(styles.dock, styles.meta)}>{workspaceSelector}</div>}
       <div className={cn(styles.dock, styles.views)} role="toolbar" aria-label={shared.view}>
-        {CUBE_WORKBENCH_VIEWS.map((view) => <CubeIconButton key={view} label={shared[view]} active={snapshot.view === view} disabled={readonly || busy}
-          onClick={() => { commit({ ...snapshot, view }); setCameraKey((value) => value + 1); }}><CubeViewIcon view={view} /></CubeIconButton>)}
+        <SpatialViewButtons views={CUBE_WORKBENCH_VIEWS} value={snapshot.view} labels={shared} disabled={readonly || busy}
+          onChange={(view) => { commit({ ...snapshot, view }); setCameraKey((value) => value + 1); }} />
         <SpatialAxisSnapButton iconOnly className={styles.icon} messages={{ axisSnap: m.snap, enableAxisSnap: m.snapOn, disableAxisSnap: m.snapOff }} disabled={busy} />
       </div>
       <div className={cn(styles.dock, styles.tools)} role="toolbar" aria-label={shared.tools}>
-        <CubeIconButton label={m.fold} active={tool === "fold"} disabled={readonly || busy} onClick={() => chooseTool("fold")}><FoldHorizontal aria-hidden /></CubeIconButton>
-        <CubeIconButton label={shared.orbit} active={tool === "orbit"} disabled={readonly || busy} onClick={() => chooseTool("orbit")}><Orbit aria-hidden /></CubeIconButton>
-        <CubeIconButton label={shared.pan} active={tool === "pan"} disabled={readonly || busy} onClick={() => chooseTool("pan")}><Hand aria-hidden /></CubeIconButton>
+        <SpatialActionButton action="fold" label={m.fold} active={tool === "fold"} disabled={readonly || busy} onClick={() => chooseTool("fold")} />
+        <SpatialActionButton action="orbit" label={shared.orbit} active={tool === "orbit"} disabled={readonly || busy} onClick={() => chooseTool("orbit")} />
+        <SpatialActionButton action="pan" label={shared.pan} active={tool === "pan"} disabled={readonly || busy} onClick={() => chooseTool("pan")} />
         <span className={styles.toolSeparator} aria-hidden />
-        <CubeIconButton label={m.shape} active={panel === "shape"} disabled={readonly || busy} onClick={() => togglePanel("shape")}><Ruler aria-hidden /></CubeIconButton>
-        <CubeIconButton label={m.style} active={panel === "style"} disabled={readonly || busy} onClick={() => togglePanel("style")}><Paintbrush aria-hidden /></CubeIconButton>
-        <CubeIconButton label={m.labels} active={snapshot.labelsVisible} disabled={readonly || busy} onClick={() => commit({ ...snapshot, labelsVisible: !snapshot.labelsVisible })}><Hash aria-hidden /></CubeIconButton>
+        <SpatialActionButton action="dimensions" label={m.shape} active={panel === "shape"} disabled={readonly || busy} onClick={() => togglePanel("shape")} />
+        <SpatialActionButton action="faceColor" label={m.style} active={panel === "style"} disabled={readonly || busy} onClick={() => togglePanel("style")} />
+        <SpatialActionButton action="labels" label={m.labels} active={snapshot.labelsVisible} disabled={readonly || busy} onClick={() => commit({ ...snapshot, labelsVisible: !snapshot.labelsVisible })} />
         <span className={styles.toolSeparator} aria-hidden />
-        <CubeIconButton label={m.foldAll} disabled={readonly || busy || closed} onClick={() => all(true)}><Box aria-hidden /></CubeIconButton>
-        <CubeIconButton label={m.unfold} disabled={readonly || busy || (flat && !snapshot.anchor)} onClick={() => all(false)}><FoldHorizontal className="rotate-90" aria-hidden /></CubeIconButton>
-        <CubeIconButton label={m.undo} disabled={readonly || busy || !past.length} onClick={() => { historyIntent.current = "undo"; animateTo(past.at(-1)!); }}><Undo2 aria-hidden /></CubeIconButton>
-        <CubeIconButton label={m.redo} disabled={readonly || busy || !future.length} onClick={() => { historyIntent.current = "redo"; animateTo(future[0]); }}><Redo2 aria-hidden /></CubeIconButton>
-        <CubeIconButton label={m.reset} disabled={readonly || busy} onClick={() => { animateTo(start); setActive(null); setCameraKey((value) => value + 1); }}><RotateCcw aria-hidden /></CubeIconButton>
+        <SpatialActionButton action="foldAll" label={m.foldAll} disabled={readonly || busy || closed} onClick={() => all(true)} />
+        <SpatialActionButton action="unfold" label={m.unfold} disabled={readonly || busy || (flat && !snapshot.anchor)} onClick={() => all(false)} />
+        <SpatialActionButton action="undo" label={m.undo} disabled={readonly || busy || !past.length} onClick={() => { historyIntent.current = "undo"; animateTo(past.at(-1)!); }} />
+        <SpatialActionButton action="redo" label={m.redo} disabled={readonly || busy || !future.length} onClick={() => { historyIntent.current = "redo"; animateTo(future[0]); }} />
+        <SpatialActionButton action="reset" label={m.reset} disabled={readonly || busy} onClick={() => { animateTo(start); setActive(null); setCameraKey((value) => value + 1); }} />
       </div>
-      {panel && <CubeCanvasPanel title={panel === "shape" ? m.shape : m.style} closeLabel={shared.closePanel} onClose={closePanel}>
+      {panel && <SpatialCanvasPanel title={panel === "shape" ? m.shape : m.style} closeLabel={shared.closePanel} onClose={closePanel}>
         <div className="space-y-3">
           {panel === "shape" && <>
             <div className="flex flex-wrap gap-1">{(["cuboid", "triangular-prism"] as const).map((kind) => <Button key={kind} size="sm" variant={snapshot.kind === kind ? "secondary" : "ghost"}
@@ -142,7 +145,7 @@ export function SolidNetsWorkspace({ locale, initial, runtime, onSnapshot, readO
               onClick={() => select(face.id)}>{snapshot.surfaces[face.id].label || face.id}</Button>)}</div>
             {selectedSurface && <>
               <p className="text-xs text-muted">{m.selected}: {selectedSurface.label || selected}</p>
-              <CubeColorPicker value={selectedSurface.color} labels={shared.colors} label={shared.colorLabel} disabled={readonly || busy} onChange={(color) => surfaceChange({ color })} />
+              <SpatialColorPicker value={selectedSurface.color} labels={shared.colors} label={shared.colorLabel} disabled={readonly || busy} onChange={(color) => surfaceChange({ color })} />
               <Label className="grid gap-1 text-xs">{m.label}<Input value={selectedSurface.label} maxLength={8} disabled={readonly || busy} onKeyDown={(event) => event.stopPropagation()} onChange={(event) => surfaceChange({ label: event.target.value })} /></Label>
               <Label className="grid gap-2 text-xs">{m.opacity}<Slider value={[Math.round(selectedSurface.opacity * 100)]} min={0} max={100} step={10} disabled={readonly || busy} aria-label={m.opacity} onValueChange={([value]) => surfaceChange({ opacity: value / 100 })} /></Label>
               {selectedHinge && <div className="flex flex-wrap gap-1">
@@ -152,7 +155,7 @@ export function SolidNetsWorkspace({ locale, initial, runtime, onSnapshot, readO
             </>}
           </>}
         </div>
-      </CubeCanvasPanel>}
+      </SpatialCanvasPanel>}
       {state.failed && <div className={styles.notice} role="status">{m.failed}</div>}
       <p className="sr-only">{m.help}</p>
     </div></div>
