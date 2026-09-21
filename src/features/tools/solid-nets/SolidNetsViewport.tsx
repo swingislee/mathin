@@ -36,9 +36,10 @@ export interface SolidNetsViewportProps {
   active: CubeNetPaperSelection | null; selected: string | null; axisSnapEnabled: boolean; cameraRequestKey: number; interactive: boolean;
   onFoldStart: (value: CubeNetPaperSelection) => void; onPreview: (value: CubeNetFoldChange | null) => void;
   onCommit: (value: CubeNetFoldChange) => void; onDraggingChange: (value: boolean) => void; onFaceSelect: (id: string) => void;
+  onPointerMissed?: (event: MouseEvent) => void;
 }
 export function SolidNetsViewport({ snapshot, locale, tool, dragging, active, selected, axisSnapEnabled, cameraRequestKey, interactive,
-  onFoldStart, onPreview, onCommit, onDraggingChange, onFaceSelect }: SolidNetsViewportProps) {
+  onFoldStart, onPreview, onCommit, onDraggingChange, onFaceSelect, onPointerMissed }: SolidNetsViewportProps) {
   const resolved = useMemo(() => resolveSolidNet(snapshot, active?.movingFaceIds ?? (tool === "select" && selected ? [selected] : [])), [snapshot, active, tool, selected]);
   const [ink, setInk] = useState(cubeGroupOutlineColor(CUBE_COLORS[5]));
   useEffect(() => {
@@ -49,6 +50,7 @@ export function SolidNetsViewport({ snapshot, locale, tool, dragging, active, se
   }, []);
   const transition = useCallback(() => {}, []), m = solidNetsMessages(locale);
   return <Canvas className="!absolute !inset-0" dpr={[1, 1.5]} frameloop="demand" shadows={THREE_SHADOWS.disabled}
+    onPointerMissed={interactive && !dragging ? onPointerMissed : undefined}
     fallback={<div className="grid h-full place-items-center p-4 text-sm text-muted">{m.webgl}</div>}
     gl={{ antialias: true, alpha: true }} style={{ touchAction: interactive ? "none" : "pan-x pan-y" }} aria-label={m.title}>
     <SpatialCameraRig bookmark={resolved.model.camera} radius={resolved.frame.radius} interactive={interactive && !dragging}

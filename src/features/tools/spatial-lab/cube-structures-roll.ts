@@ -11,7 +11,7 @@ export function cubeRollOperation(state: CubeStructureState, ids: readonly strin
   // 展示分离的多个组并非一个接触实体；各组可以先分别翻滚。
   const first = moving[0].displayOffset;
   if (moving.some((cube) => (["x", "y", "z"] as const).some((axis) => (cube.displayOffset?.[axis] ?? 0) !== (first?.[axis] ?? 0)))) return null;
-  const operation: CubeRotationOperation = { kind: "rotate", ids: moving.map((cube) => cube.id), ...logical, displayPivot: display.pivot };
+  const operation: CubeRotationOperation = { kind: "rotate", ids: moving.map((cube) => cube.id), axis: logical.axis, turn: logical.turn, pivot: logical.pivot, displayPivot: display.pivot };
   if (applyCubeOperation(state, operation) === state) return null;
   return voxelRollIsClear(displayed, state.cubes.filter((cube) => !ids.includes(cube.id)).map(cubeDisplayPosition), display) ? operation : null;
 }

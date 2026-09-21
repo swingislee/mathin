@@ -40,7 +40,23 @@ describe("shared contact-edge rolling", () => {
       const state = createCubeHistory([{ x: 0, y: 0, z: 0 }, other]).initial;
       expect(cubeRollOperation(state, [state.cubes[0].id], "x+")).toBeNull();
     }
-    expect(planSpatialRoll(unitCubeCorners([{ x: 0, y: 0, z: 0 }, { x: 1, y: 1, z: 0 }]), "x+")).toBeNull();
+  });
+  it.each(SPATIAL_ROLL_DIRECTIONS)("uses the bounding-box edge when %s has no physical support", (direction) => {
+    const along = direction[0] as "x" | "z", sign = direction[1] === "+" ? 1 : -1;
+    const cells = [{ x: 0, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }, { x: 0, y: 1, z: 0, [along]: sign }];
+    const vertices = unitCubeCorners(cells), plan = planSpatialRoll(vertices, direction)!;
+    expect(plan.support?.virtual).toBe(true); expect(plan.pivot.y).toBe(-0.5); expect(plan.pivot[along]).toBe(sign * 1.5);
+    expect(plan.support!.to[plan.axis] - plan.support!.from[plan.axis]).toBe(1);
+    for (let step = 0; step <= 20; step++) for (const vertex of vertices) expect(spatialRollPoint(vertex, plan, step / 20).y).toBeGreaterThanOrEqual(-0.500001);
+    const history = createCubeHistory(cells), ids = history.initial.cubes.map((cube) => cube.id), operation = cubeRollOperation(history.initial, ids, direction)!;
+    expect(operation).not.toBeNull(); expect(operation).not.toHaveProperty("support");
+    const after = applyCubeOperation(history.initial, operation);
+    expect(after.cubes.map((cube) => cube.position)).toEqual(history.initial.cubes.map((cube) => spatialRollPoint(cube.position, plan)));
+    expect(cubeHistorySchema.safeParse(appendCubeOperation(history, operation)).success).toBe(true);
+    expect(applyCubeOperation(after, { ...operation, turn: -operation.turn as -1 | 1 })).toEqual(history.initial);
+    const obstacle = spatialRollPoint(cells[0], plan), blocked = createCubeHistory([...cells, obstacle]).initial;
+    const movingIds = blocked.cubes.filter((cube) => cells.some((p) => p.x === cube.position.x && p.y === cube.position.y && p.z === cube.position.z)).map((cube) => cube.id);
+    expect(cubeRollOperation(blocked, movingIds, direction)).toBeNull();
   });
   it.each(SOMA_IDS)("keeps %s rigid and floor contact throughout each available roll", (id) => {
     for (let orientation = 0; orientation < 24; orientation++) for (const direction of SPATIAL_ROLL_DIRECTIONS) {

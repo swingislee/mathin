@@ -31,11 +31,12 @@ function PaperFace({ face, outline, onSelect }: { face: PolyhedronFoldRenderFace
 }
 
 export function PaperFoldingViewport({ snapshot, locale, tool, dragging, active, axisSnapEnabled, cameraRequestKey, interactive,
-  onFoldStart, onPreview, onCommit, onDraggingChange, onFaceSelect }: {
+  onFoldStart, onPreview, onCommit, onDraggingChange, onFaceSelect, onPointerMissed }: {
   snapshot: PaperFoldingSnapshot; locale: "zh" | "en"; tool: "fold" | "orbit" | "pan" | "select"; dragging: boolean; active: CubeNetPaperSelection | null;
   axisSnapEnabled: boolean; cameraRequestKey: number; interactive: boolean;
   onFoldStart: (value: CubeNetPaperSelection) => void; onPreview: (value: CubeNetFoldChange | null) => void;
   onCommit: (value: CubeNetFoldChange) => void; onDraggingChange: (value: boolean) => void; onFaceSelect: (id: string) => void;
+  onPointerMissed?: (event: MouseEvent) => void;
 }) {
   const resolved = useMemo(() => resolvePaperFolding(snapshot, active?.movingFaceIds), [snapshot, active]);
   const [ink, setInk] = useState(snapshot.squares[0].color as string);
@@ -48,6 +49,7 @@ export function PaperFoldingViewport({ snapshot, locale, tool, dragging, active,
   const cameraTransition = useCallback(() => {}, []);
   const m = paperFoldingMessages(locale), fallback = <div className="grid h-full place-items-center p-4 text-sm text-muted">{m.webgl}</div>;
   return <Canvas className="!absolute !inset-0" dpr={[1, 1.5]} frameloop="demand" shadows={THREE_SHADOWS.disabled} fallback={fallback}
+    onPointerMissed={interactive && !dragging ? onPointerMissed : undefined}
     gl={{ antialias: true, alpha: true }} style={{ touchAction: interactive ? "none" : "pan-x pan-y" }} aria-label={m.title}>
     <SpatialCameraRig bookmark={resolved.model.camera} radius={resolved.frame.radius} interactive={interactive && !dragging}
       navigationMode={tool === "pan" ? "pan" : "orbit"} axisSnapEnabled={axisSnapEnabled} requestKey={cameraRequestKey}

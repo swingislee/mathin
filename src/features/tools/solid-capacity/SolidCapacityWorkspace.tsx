@@ -68,6 +68,7 @@ export function SolidCapacityWorkspace({ initial, onSnapshot, classroom, readOnl
   return <section className={styles.workspace} data-workbench-mode="courseware" data-solid-capacity-workspace="v1" aria-label={m.title} {...capture} {...controls.bindings}>
     <div className={styles.viewport}><div className={styles.canvas}>
       <Canvas state={state} entities={entities} selectedId={null} frame={frame} cameraRevision={snapshot.cameraRevision} axisSnap={axisSnap} moveSnap={false}
+        onPointerMissed={!disabled ? controls.onPointerMissed : undefined}
         navigationMode={navigation} moveAxis="x" onMoveAxis={noop} onMove={noop} onDragging={noop} readOnly={readOnlyView} fallback={m.fallback}
         renderScene={() => <SolidCapacityLiquids frame={presentation.frame} snapshot={snapshot} locale={locale} />} />
       <div className={`${styles.dock} ${styles.meta}`}>

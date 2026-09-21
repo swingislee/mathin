@@ -48,6 +48,7 @@ export interface VoxelCanvasProps {
   readonly navigationMode?: "orbit" | "pan" | "object";
   readonly cameraRequestKey?: string | number;
   readonly onCellSelect?: (cellKey: string) => void;
+  readonly onPointerMissed?: (event: MouseEvent) => void;
   readonly paintedFaces?: readonly VoxelFaceSelection[];
   readonly paintedFaceMaterialToken?: string;
   readonly onFaceSelect?: (face: VoxelFaceSelection, point?: VoxelCoordinate) => void;
@@ -521,6 +522,7 @@ export function VoxelModelCanvas({
   navigationMode = "orbit",
   cameraRequestKey,
   onCellSelect,
+  onPointerMissed,
   paintedFaces = [],
   paintedFaceMaterialToken = "voxel.paint",
   onFaceSelect,
@@ -577,6 +579,7 @@ export function VoxelModelCanvas({
       data-voxel-face-paint={paintedFaces.length}
     >
       <Canvas
+        onPointerMissed={readOnly ? undefined : onPointerMissed}
         shadows={THREE_SHADOWS.disabled}
         className="!absolute !inset-0"
         dpr={[1, VOXEL_RENDERER_MAX_DPR]}

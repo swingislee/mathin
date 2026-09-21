@@ -65,6 +65,18 @@ async function setup(reduced = false) {
 }
 
 describe("Soma renders the shared rigid animation instead of replacing cells", () => {
+  it("hides every selection handle and highlight while keeping body gestures available", async () => {
+    const rig = await setup(), onPoseCommit = vi.fn(() => true);
+    await rig.render({ onPoseCommit });
+    expect(controls.interaction!.showHandles).toBe(true);
+    controls.toolbar = null;
+    await rig.render({ onPoseCommit, selectionActive: false });
+    expect(controls.interaction!.showHandles).toBe(false); expect(controls.interaction!.bodyGesture!.handles).toBeUndefined();
+    expect(controls.interaction!.bodyGesture!.enabled).toBe(true); expect(controls.toolbar).toBeNull();
+    expect(rig.scene().getObjectByName("spatial-move-height-guide")).toBeUndefined();
+    await rig.render({ onPoseCommit, selectionActive: true });
+    expect(controls.interaction!.showHandles).toBe(true); expect(controls.interaction!.bodyGesture!.handles).toBeDefined();
+  });
   it("uses the same fixed-pivot axis rings for all seven pieces, with free rotation as an option", async () => {
     const rig = await setup(), onPoseCommit = vi.fn(() => true);
     for (const id of SOMA_IDS) {

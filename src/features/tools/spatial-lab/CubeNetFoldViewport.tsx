@@ -30,6 +30,7 @@ export interface CubeNetFoldViewportProps {
   readonly tool: "orbit" | "pan" | "fold" | "cut" | CubeNetSurfaceTool;
   readonly surfaces?: CubeNetSurfaces;
   readonly onSurfaceFaceSelect?: (faceId: string) => void;
+  readonly onPointerMissed?: (event: MouseEvent) => void;
   readonly locale: "zh" | "en";
   readonly axisSnapEnabled: boolean;
   readonly axesVisible: boolean;
@@ -178,6 +179,7 @@ export function CubeNetFoldViewport(props: CubeNetFoldViewportProps) {
     doubleSidedLabels
     renderModelOverride={props.surfaces ? styleCubeNetModel(props.model, props.surfaces) : props.model} cameraRequestKey={props.cameraRequestKey} axisSnapEnabled={props.axisSnapEnabled}
     onFaceSelect={props.onSurfaceFaceSelect}
+    onPointerMissed={props.onPointerMissed}
     navigationMode={props.tool === "pan" ? "pan" : "orbit"} cameraInteractive={!props.dragging}
     messages={props.messages} materialColors={{ "solid.primary": CUBE_COLORS[0], ...Object.fromEntries(CUBE_COLORS.map((color) => [color, color])) }}
     sceneChildren={<><CubeNetPlaybackFrames active={!!props.animating} /><CubeNetFoldInteraction {...props} />

@@ -22,7 +22,27 @@ describe("future spatial workbench integration guard", () => {
     expect(workspaces.length).toBeGreaterThanOrEqual(8);
     for (const [file, source] of workspaces) {
       expect(usesSharedState(file), `${file}: use the shared state or shared workbench`).toBe(true);
-      if (source.includes("useSpatialToolState")) expect(source, `${file}: scope Escape and mode feedback to this workspace`).toContain("controls.bindings");
+      if (source.includes("useSpatialToolState")) {
+        expect(source, `${file}: scope Escape and mode feedback to this workspace`).toContain("controls.bindings");
+        expect(source, `${file}: wire blank taps to the shared deselection contract`).toContain("controls.onPointerMissed");
+      }
     }
+  });
+  it("keeps rigid-object handles and support planning on the shared implementation", () => {
+    for (const file of ["soma-cube/SomaCanvas.tsx", "spatial-lab/DiceTeachingCanvas.tsx", "spatial-lab/CubeStructuresViewport.tsx", "solid-geometry/SolidGeometryCanvas.tsx"]) {
+      const source = readFileSync(resolve("src/features/tools", file), "utf8");
+      expect(source).toContain("CubeMoveHandles"); expect(source).toContain("SpatialRotationControls"); expect(source).toContain("SpatialRollControls");
+    }
+    for (const file of ["soma-cube/model.ts", "spatial-lab/cube-structures-roll.ts", "solid-geometry/solid-geometry-roll.ts"]) {
+      expect(readFileSync(resolve("src/features/tools", file), "utf8")).toContain("planSpatialRoll");
+    }
+    for (const file of ["VoxelCanvas.tsx", "PolyhedronFoldCanvas.tsx"]) {
+      expect(readFileSync(resolve("src/features/spatial-math/renderer-r3f", file), "utf8")).toContain("onPointerMissed={");
+    }
+  });
+  it("hides only the passive workspace focus outline, preserving control focus styles", () => {
+    const css = readFileSync("src/features/tools/spatial-lab/CubeStructuresWorkbench.module.css", "utf8");
+    expect(css).toMatch(/\.workspace:focus\s*\{[^}]*outline:\s*none/);
+    expect(css).not.toMatch(/\.workspace\s+[^{}]*:focus[^{}]*\{[^}]*outline:\s*none/);
   });
 });

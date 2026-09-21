@@ -53,6 +53,7 @@ export interface PolyhedronFoldCanvasProps {
   readonly axisSnapEnabled?: boolean;
   readonly cameraRequestKey?: string | number;
   readonly onFaceSelect?: (faceId: string) => void;
+  readonly onPointerMissed?: (event: MouseEvent) => void;
   readonly messages: PolyhedronFoldRendererMessages;
   readonly materialColors?: Readonly<Record<string, string>>;
   readonly transition?: {
@@ -436,6 +437,7 @@ export function PolyhedronFoldCanvas({
   axisSnapEnabled = false,
   cameraRequestKey,
   onFaceSelect,
+  onPointerMissed,
   messages,
   materialColors,
   transition,
@@ -507,6 +509,7 @@ export function PolyhedronFoldCanvas({
       data-camera-transition-state="idle"
     >
       <Canvas
+        onPointerMissed={onPointerMissed}
         shadows={THREE_SHADOWS.disabled}
         className="!absolute !inset-0"
         dpr={[1, POLYHEDRON_FOLD_RENDERER_MAX_DPR]}

@@ -33,6 +33,13 @@ function foldChange(initial: SolidNetsSnapshot, degrees: number) {
 }
 
 describe("solid nets prepared teaching space", () => {
+  it("clears face and hinge selection without unfolding or publishing a new scene", async () => {
+    const initial = createDefaultSolidNetsSnapshot(), capture = vi.fn(); await render({ initial, onSnapshot: capture });
+    const saved = viewport.current!.snapshot;
+    await act(async () => viewport.current!.onPointerMissed!(new MouseEvent("click", { button: 0 })));
+    expect(viewport.current!.selected).toBeNull(); expect(viewport.current!.active).toBeNull();
+    expect(viewport.current!.snapshot).toBe(saved); expect(capture.mock.lastCall![0]).toEqual(initial);
+  });
   it("uses a stable 4:3 canvas and switches solids inside a floating panel", async () => {
     await render({ workspaceSelector: createElement("span", { "data-modes": true }, "modes") });
     const canvas = host.querySelector('[data-cube-workspace-frame="4:3"]');

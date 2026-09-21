@@ -62,6 +62,7 @@ interface DiceCanvasProps {
   onRotate?: (axis: Axis, turn: -1 | 1) => void;
   onTransform?: (die: TeachingDie) => boolean;
   rollAction?: SpatialRollAction;
+  selectionActive?: boolean; onPointerMissed?: (event: MouseEvent) => void;
 }
 class DiceCanvasBoundary extends Component<{ children: ReactNode; label: string }, { failed: boolean }> {
   state = { failed: false };
@@ -93,7 +94,7 @@ function DiceObjects(props: DiceCanvasProps & { isTap: () => boolean }) {
   } : die) : preview ? dice.map((die) => ({ ...die, position: preview.positions.get(die.id) ?? die.position })) : dice, [dice, preview, handleFrame]);
   const dragPresentation = useMemo(() => diceDragState(presentedDice), [presentedDice]);
   const sourceDie = dice.find((die) => die.id === selectedId);
-  const handleInteraction = props.onTransform && sourceDie ? spatialGizmoInteraction({ key: dice, id: selectedId, center: sourceDie.position, radius: 1.25,
+  const handleInteraction = props.selectionActive !== false && props.onTransform && sourceDie ? spatialGizmoInteraction({ key: dice, id: selectedId, center: sourceDie.position, radius: 1.25,
     mode: rotationHandles ? "rotate" : "move", enabled: !props.busy && !preview && !props.rollAction,
     translate: (delta) => {
       const snapped = snapSpatialTranslation(delta, 1, props.snap ? sourceDie.position : undefined, DICE_DRAG_GRID_ORIGIN);
@@ -140,20 +141,20 @@ function DiceObjects(props: DiceCanvasProps & { isTap: () => boolean }) {
         </mesh>;
       })}
     </group>)}</group>
-    {presentedDice.map((die) => <DiceFaceOrigins key={die.id} die={die} selected={die.id === selectedId} />)}
-    {presentedDice.filter((die) => die.id === selectedId).map((die) => <mesh key={die.id} raycast={ignoreDiceHelperRaycast} {...diceSelectionMarker(die.position)}><ringGeometry args={[0.65, 0.68, 48]} /><meshBasicMaterial color="#c28c46" side={DoubleSide} transparent opacity={0.65} depthWrite={false} /></mesh>)}
+    {presentedDice.map((die) => <DiceFaceOrigins key={die.id} die={die} selected={props.selectionActive !== false && die.id === selectedId} />)}
+    {props.selectionActive !== false && presentedDice.filter((die) => die.id === selectedId).map((die) => <mesh key={die.id} raycast={ignoreDiceHelperRaycast} {...diceSelectionMarker(die.position)}><ringGeometry args={[0.65, 0.68, 48]} /><meshBasicMaterial color="#c28c46" side={DoubleSide} transparent opacity={0.65} depthWrite={false} /></mesh>)}
     {spatialDirectManipulation(props.tool) && (!props.busy || handleFrame) && <CubeMoveHandles presentation={dragPresentation} preview={preview} onPreview={setPreview} pickRenderedObjects
       interaction={{ state: dragState, ids: [selectedId], scopeIds: dice.map((die) => die.id), axis: props.moveAxis, kind: "move", snapToGrid: props.snap, gridOrigin: DICE_DRAG_GRID_ORIGIN,
         bodyAxis: "gesture", enabled: !props.busy && !handleDragging, bodyGesture: handleInteraction, bodyPreview: handleFrame?.frame,
-        showHandles: !handleFrame && !props.rollAction && !rotationHandles,
+        showHandles: props.selectionActive !== false && !handleFrame && !props.rollAction && !rotationHandles,
         isValidOperation: (operation) => moveDiceByDrag(dice, operation) !== null, onAxisChange: props.onMoveAxis, onSelect: props.onSelect, onCommit: props.onDragCommit, onUnavailable: props.onMoveUnavailable }} />}
-    {spatialDirectManipulation(props.tool) && !props.rollAction && props.onRotate && !preview && !handleFrame && presentedDice.filter((die) => die.id === selectedId).map((die) => <SpatialRotationControls key={die.id} center={die.position} vertices={DICE_FACES.flatMap((face) => diceFaceCorners(die, face))}
+    {props.selectionActive !== false && spatialDirectManipulation(props.tool) && !props.rollAction && props.onRotate && !preview && !handleFrame && presentedDice.filter((die) => die.id === selectedId).map((die) => <SpatialRotationControls key={die.id} center={die.position} vertices={DICE_FACES.flatMap((face) => diceFaceCorners(die, face))}
       action={{ axis: props.moveAxis, onAxisChange: props.onMoveAxis, onRotate: props.onRotate!, label: m.turn, disabled: props.busy,
         gestureLabel: props.onTransform ? m.turn : undefined, gestureMode: { active: rotationHandles, onToggle: () => setRotationHandles((value) => !value) } }} />)}
-    {spatialDirectManipulation(props.tool) && props.rollAction && !preview && presentedDice.filter((die) => die.id === selectedId).map((die) => <SpatialRollControls key={die.id} center={die.position} vertices={DICE_FACES.flatMap((face) => diceFaceCorners(die, face))} action={{ ...props.rollAction!, disabled: props.busy }} />)}
+    {props.selectionActive !== false && spatialDirectManipulation(props.tool) && props.rollAction && !preview && presentedDice.filter((die) => die.id === selectedId).map((die) => <SpatialRollControls key={die.id} center={die.position} vertices={DICE_FACES.flatMap((face) => diceFaceCorners(die, face))} action={{ ...props.rollAction!, disabled: props.busy }} />)}
     <DiceXRayTransition dice={dice} requested={props.xrayTarget} initialTarget={props.initialXRayTarget} interactive={props.tool === "xray" && !props.busy} geometries={geometries} edges={edges} textures={textures}
       onClick={(event, target) => clickFace(event, target.id, target.face)} onPresentation={props.onXRayPresentation} />
-    {props.arrows && props.tool !== "xray" && !props.busy && !preview && !handleFrame && <CubeNetFaceArrows key={occlusionKey} faces={arrows} occlude={occluders} onMove={(id) => { const arrow = arrows.find((item) => item.faceId === id); if (arrow) props.onMoveFace(arrow.dieId, arrow.face); }} />}
+    {props.selectionActive !== false && props.arrows && props.tool !== "xray" && !props.busy && !preview && !handleFrame && <CubeNetFaceArrows key={occlusionKey} faces={arrows} occlude={occluders} onMove={(id) => { const arrow = arrows.find((item) => item.faceId === id); if (arrow) props.onMoveFace(arrow.dieId, arrow.face); }} />}
   </>;
 }
 /** 无点数的原位轮廓与来源线是观察辅助，不参与拾取或箭头遮挡。 */
@@ -173,7 +174,10 @@ export default function DiceTeachingCanvas(props: DiceCanvasProps) {
   useEffect(() => { window.addEventListener("blur", tap.reset); return () => window.removeEventListener("blur", tap.reset); }, [tap]);
   return <DiceCanvasBoundary label={m.fallback}><Canvas frameloop="demand" shadows={THREE_SHADOWS.filtered} dpr={[1, 1.75]} gl={{ antialias: true, alpha: true, stencil: true }} fallback={<p>{m.fallback}</p>} style={{ touchAction: "none" }}
     onPointerDownCapture={tap.down} onPointerMoveCapture={tap.move} onPointerUpCapture={tap.up} onPointerCancelCapture={tap.cancel}
-    onPointerMissed={(event) => { if (event.type === "click" && event.button === 0 && tap.isTap() && props.tool === "xray" && !props.busy) props.onClearXRay(); }}>
+    onPointerMissed={(event) => { if (event.type === "click" && event.button === 0 && tap.isTap() && !props.busy) {
+      if (props.tool === "xray") props.onClearXRay();
+      props.onPointerMissed?.(event);
+    } }}>
     <DiceObjects {...props} isTap={tap.isTap} />
   </Canvas></DiceCanvasBoundary>;
 }

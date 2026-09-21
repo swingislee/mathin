@@ -37,6 +37,16 @@ async function advance(ms = SOLID_TRANSITION_MS + 80) { for (let elapsed = 0; el
 } }
 
 describe("solid geometry teacher workspace", () => {
+  it("deselects locally without removing the section or measurement teaching state", async () => {
+    const initial = createSolidGeometryInitial(), onChange = vi.fn(async () => {}); initial.section.enabled = true;
+    const snapshot = solidGeometrySnapshot(initial);
+    await render(createElement(SolidGeometryWorkspace, { initial, classroom: { state: snapshot, onChange } }));
+    await act(async () => canvas.props!.onPointerMissed!(new MouseEvent("click", { button: 0 })));
+    expect(canvas.props!.selectionActive).toBe(false); expect(canvas.props!.sectionEditable).toBe(false);
+    expect(canvas.props!.state).toBe(snapshot); expect(canvas.props!.state.section.enabled).toBe(true); expect(onChange).not.toHaveBeenCalled();
+    await act(async () => canvas.props!.onPick!(initial.selectedId!, null));
+    expect(canvas.props!.selectionActive).toBe(true);
+  });
   it("exits specialist picking on panel close, repeat activation and switching to another panel", async () => {
     await render(createElement(SolidGeometryWorkspace));
     await click(m.face); expect(canvas.props!.pickMode).toBe("face");

@@ -44,7 +44,7 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
   const origin = useMemo(() => initial ?? createSomaInitial(), [initial]);
   const host = useToolSnapshot(origin, classroom), snapshot = host.snapshot;
   const controls = useSpatialToolState<"orbit" | "pan" | "move" | "rotate", Exclude<Panel, null>>({ defaultTool: "orbit", panels: { pieces: "orbit", move: "move", rotate: "rotate", roll: "orbit", settings: "orbit" } }, { tool: "move" });
-  const { panel, tool: navigation, setTool: setNavigation, setPanel } = controls;
+  const { panel, tool: navigation, setTool: setNavigation, setPanel, selectionActive, activateSelection } = controls;
   const [axis, setAxis] = useState<Axis>("x"), [notice, setNotice] = useState("");
   const [rotationAxis, setRotationAxis] = useState<Axis>("y");
   const [rotationStyle, setRotationStyle] = useState<"axis" | "free">("axis");
@@ -67,14 +67,16 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
     const parsed = (freeRotation ? somaSnapshotSchema : somaLegacySnapshotSchema).safeParse(next);
     if (!parsed.success) { setNotice(m.blocked); return false; }
     if (!next || !host.update(next)) return false;
-    if (direct) directMove.hold(next); else directMove.clear();
+    if (direct) { directMove.hold(next); activateSelection(); } else directMove.clear();
     if (record && !classroom) setHistory((value) => ({ past: [...value.past, snapshot].slice(-60), future: [] }));
     setNotice(""); return true;
-  }, [busy, host, classroom, snapshot, m.blocked, directMove, freeRotation]);
+  }, [busy, host, classroom, snapshot, m.blocked, directMove, freeRotation, activateSelection]);
   const select = useCallback((id: SomaId) => {
+    activateSelection();
+    if (id === snapshot.selectedId && snapshot.mode === "assemble") return;
     const next = { ...snapshot, selectedId: id };
     commit(snapshot.mode === "observe" ? somaFit(next) : next, false);
-  }, [snapshot, commit]);
+  }, [snapshot, commit, activateSelection]);
   const choose = (ids: readonly SomaId[]) => commit(somaChoose(snapshot, ids));
   const count = (size: number) => {
     const ids = snapshot.pieces.map((piece) => piece.id);
@@ -83,7 +85,7 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
   const mode = (value: SomaSnapshot["mode"]) => {
     if (commit(somaFit({ ...snapshot, mode: value }), false)) setNavigation(value === "observe" ? "orbit" : "move");
   };
-  const open = (value: Exclude<Panel, null>) => controls.togglePanel(value);
+  const open = (value: Exclude<Panel, null>) => { if (["move", "rotate", "roll"].includes(value)) activateSelection(); controls.togglePanel(value); };
   const travel = (direction: "past" | "future") => {
     const values = history[direction], next = values.at(-1); if (!next) return;
     if (commit({ ...next, cameraRevision: (snapshot.cameraRevision + 1) % 1_000_001 }, false)) setHistory((value) => direction === "past"
@@ -101,6 +103,7 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
   return <section className={styles.workspace} data-workbench-mode="courseware" data-soma-workspace={freeRotation ? "v2" : "v1"} aria-label={m.title} {...capture} {...controls.bindings}>
     <div className={styles.viewport}><div className={styles.canvas} data-has-cube-groups="true">
       <Canvas snapshot={directMove.displayed} messages={messages} title={m.title} readOnly={busy} cameraInteractive={!viewer} axisSnap={snap} navigation={navigation} moveAxis={axis}
+        selectionActive={selectionActive} onPointerMissed={disabled ? undefined : controls.onPointerMissed}
         rotationAxis={rotationAxis} onRotationAxis={setRotationAxis}
         freeRotation={freeRotation} rotationStyle={rotationStyle} rotationSnap={rotationSnap} onToggleRotation={() => open("rotate")}
         onPoseCommit={(next) => commit(next, true, true)} onPlaneUnavailable={() => setNotice(m.planeEdgeOn)} onGestureBlocked={() => setNotice(m.gestureBlocked)}
@@ -134,7 +137,7 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
       </div>
       {panel && <CubeCanvasPanel title={m[panel]} closeLabel={m.close} onClose={() => setPanel(null)} anchor={panel === "pieces" ? "meta" : "tool"}>
         <div className="space-y-3 text-xs">
-          {panel === "roll" && <><p className="text-muted">{m.rollHint}</p><SpatialRollButtons action={rollAction} /><p className="text-muted">{freePiece ? m.snapForRoll : m.rollBlocked}</p></>}
+          {panel === "roll" && <><p className="text-muted">{m.rollHint}</p><SpatialRollButtons action={{ ...rollAction, disabled: disabled || !selectionActive }} /><p className="text-muted">{freePiece ? m.snapForRoll : m.rollBlocked}</p></>}
           {panel === "pieces" && <>
             <p>{m.count}</p><div className="flex flex-wrap gap-1">{SOMA_IDS.map((id, index) => <Button key={id} size="sm" variant={snapshot.pieces.length === index + 1 ? "secondary" : "ghost"}
               aria-label={`${index + 1} ${m.countUnit}`} aria-pressed={snapshot.pieces.length === index + 1} disabled={disabled} onClick={() => count(index + 1)}>{index + 1}</Button>)}</div>
@@ -158,7 +161,7 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
             {(["x", "y", "z"] as const).map((value) => <div key={value} className="flex items-center gap-2">
               <CubeIconButton label={`${value.toUpperCase()} ${m[panel]}`} active={(panel === "rotate" ? rotationAxis : axis) === value} disabled={disabled}
                 onClick={() => panel === "rotate" ? setRotationAxis(value) : setAxis(value)}><CubeAxisIcon axis={value} /></CubeIconButton>
-              {([-1, 1] as const).map((direction) => <Button key={direction} size="sm" variant="secondary" disabled={disabled || !assembling}
+              {([-1, 1] as const).map((direction) => <Button key={direction} size="sm" variant="secondary" disabled={disabled || !assembling || !selectionActive}
                 aria-label={`${m[panel]} ${value.toUpperCase()} ${direction > 0 ? "+" : "−"}${panel === "rotate" ? "90°" : "1"}`}
                 onClick={() => commit(panel === "rotate" ? somaRotate(snapshot, value, direction, freeRotation, rotationSnap) : somaMove(snapshot, snapshot.selectedId, value, direction))}>
                 {direction > 0 ? "+" : "−"}{panel === "rotate" ? "90°" : "1"}
@@ -185,8 +188,8 @@ export function SomaWorkspace({ initial, onSnapshot, readOnly = false, classroom
         <p className="mt-1 text-muted">{assembling ? m.assembleHint : m.observeHint}</p>
       </div>
       <div className={`${styles.dock} ${styles.groups}`} role="toolbar" aria-label={m.selected}>
-        {snapshot.pieces.map((piece) => <Button key={piece.id} size="sm" variant={snapshot.selectedId === piece.id ? "secondary" : "ghost"} className="h-9 shrink-0 gap-1 px-2"
-          aria-label={`${m.choose} ${somaDefinition(piece.id).name}`} aria-pressed={snapshot.selectedId === piece.id} disabled={disabled} onClick={() => select(piece.id)}>
+        {snapshot.pieces.map((piece) => <Button key={piece.id} size="sm" variant={selectionActive && snapshot.selectedId === piece.id ? "secondary" : "ghost"} className="h-9 shrink-0 gap-1 px-2"
+          aria-label={`${m.choose} ${somaDefinition(piece.id).name}`} aria-pressed={selectionActive && snapshot.selectedId === piece.id} disabled={disabled} onClick={() => select(piece.id)}>
           <span className="size-3 rounded-sm border border-ink/30" style={{ backgroundColor: somaDefinition(piece.id).color }} />{somaDefinition(piece.id).name}
         </Button>)}
       </div>

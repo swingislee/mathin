@@ -14,7 +14,9 @@ export function SpatialRollControls({ center, vertices, moveHandles, radius = 1,
   return <group name="spatial-object-roll">
     {plan && <>
       <Line points={Array.from({ length: 33 }, (_, i) => { const p = spatialRollPoint(center, plan, i / 32); return [p.x, p.y, p.z] as [number, number, number]; })} color={color} lineWidth={2} depthTest={false} raycast={() => null} />
-      <Line points={[-1, 1].map((sign) => [plan.pivot.x + (plan.axis === "x" ? center.x + sign * r : 0), plan.pivot.y, plan.pivot.z + (plan.axis === "z" ? center.z + sign * r : 0)] as [number, number, number])} color={color} lineWidth={3} depthTest={false} raycast={() => null} />
+      <Line points={plan.support ? [plan.support.from, plan.support.to].map((p) => [p.x, p.y, p.z] as [number, number, number])
+        : [-1, 1].map((sign) => [plan.pivot.x + (plan.axis === "x" ? center.x + sign * r : 0), plan.pivot.y, plan.pivot.z + (plan.axis === "z" ? center.z + sign * r : 0)] as [number, number, number])}
+        color={color} lineWidth={plan.support?.virtual ? 1 : 3} dashed={plan.support?.virtual} dashSize={0.1} gapSize={0.1} depthTest={false} raycast={() => null} />
     </>}
     <SpatialObjectToolbar center={center} vertices={vertices} moveHandles={moveHandles}>
       <div className="rounded-xl border border-line bg-paper/95 p-1 shadow-sm" role="toolbar" aria-label={action.label} data-spatial-object-actions onPointerDown={(event) => event.stopPropagation()}>

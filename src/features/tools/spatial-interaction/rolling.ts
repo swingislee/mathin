@@ -2,7 +2,11 @@ import type { VoxelCoordinate } from "@/features/spatial-math/domain";
 
 export const SPATIAL_ROLL_DIRECTIONS = ["x+", "x-", "z+", "z-"] as const;
 export type SpatialRollDirection = typeof SPATIAL_ROLL_DIRECTIONS[number];
-export interface SpatialRollPlan { axis: "x" | "z"; turn: -1 | 1; pivot: VoxelCoordinate }
+export interface SpatialRollPlan {
+  axis: "x" | "z"; turn: -1 | 1; pivot: VoxelCoordinate;
+  /** 展示用元数据；保存仍只携带领域旋转终点/语义命令。 */
+  support?: { virtual: boolean; from: VoxelCoordinate; to: VoxelCoordinate };
+}
 const EPSILON = 1e-7;
 
 /** 绕行进方向的底部支撑棱翻 90°；不以平移加原地转动代替翻滚。 */
@@ -11,10 +15,14 @@ export function planSpatialRoll(vertices: readonly VoxelCoordinate[], direction:
   const along = direction[0] as "x" | "z", sign = direction[1] === "+" ? 1 : -1;
   const edge = sign > 0 ? Math.max(...vertices.map((p) => p[along])) : Math.min(...vertices.map((p) => p[along]));
   const bottom = Math.min(...vertices.map((p) => p.y));
-  // 悬伸部位没有这条接触棱时，不假装已经有支撑。
-  if (!vertices.some((p) => Math.abs(p[along] - edge) < EPSILON && Math.abs(p.y - bottom) < EPSILON)) return null;
+  const axis = along === "x" ? "z" : "x";
+  // 凹形/悬伸拼块用当前世界轴最小外接长方体的底棱作虚拟支撑；不改变模型形状。
+  const contacts = vertices.filter((p) => Math.abs(p[along] - edge) < EPSILON && Math.abs(p.y - bottom) < EPSILON);
+  const virtual = !contacts.some((p) => contacts.some((q) => Math.abs(p[axis] - q[axis]) > EPSILON));
   const pivot = { x: 0, y: bottom, z: 0, [along]: edge };
-  return { pivot, axis: along === "x" ? "z" : "x", turn: (along === "x" ? -sign : sign) as -1 | 1 };
+  return { pivot, axis, turn: (along === "x" ? -sign : sign) as -1 | 1,
+    support: { virtual, from: { ...pivot, [axis]: Math.min(...vertices.map((p) => p[axis])) },
+      to: { ...pivot, [axis]: Math.max(...vertices.map((p) => p[axis])) } } };
 }
 export function spatialRollPoint(point: VoxelCoordinate, plan: SpatialRollPlan, progress = 1): VoxelCoordinate {
   const { pivot, axis, turn } = plan, angle = turn * Math.PI / 2 * Math.max(0, Math.min(1, progress));

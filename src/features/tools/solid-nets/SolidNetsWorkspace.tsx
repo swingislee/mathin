@@ -42,7 +42,7 @@ export function SolidNetsWorkspace({ locale, initial, runtime, onSnapshot, readO
   const readonly = readOnly || (!!runtime && !runtime.onChange);
   const interrupt = useCallback(() => { historyIntent.current = null; setPreview(null); }, []);
   const playback = useCubeNetPlayback<SolidNetsSnapshot>({ essential: true, interactive: !readonly, onInterrupt: interrupt });
-  const controls = useSpatialToolState<"fold" | "orbit" | "pan" | "select", "shape" | "style">({ defaultTool: "fold", panels: { shape: "select", style: "select" } });
+  const controls = useSpatialToolState<"fold" | "orbit" | "pan" | "select", "shape" | "style">({ defaultTool: "fold", onClearSelection: () => { setSelected(null); setActive(null); }, panels: { shape: "select", style: "select" } });
   const { tool, panel, chooseTool, togglePanel, closePanel } = controls;
   const [selected, setSelected] = useState<string | null>("base");
   const [active, setActive] = useState<CubeNetPaperSelection | null>(null), [dragging, setDragging] = useState(false), [cameraKey, setCameraKey] = useState(0);
@@ -101,6 +101,7 @@ export function SolidNetsWorkspace({ locale, initial, runtime, onSnapshot, readO
   return <div className={styles.workspace} data-workbench-mode={courseware ? "courseware" : undefined} data-solid-nets-workbench aria-busy={busy} {...controls.bindings}>
     <div className={styles.viewport}><div className={styles.canvas} data-cube-workspace-frame="4:3">
       <SolidNetsViewport snapshot={visible} locale={locale} tool={tool} dragging={dragging} active={active} selected={selected}
+        onPointerMissed={!readonly && !busy ? controls.onPointerMissed : undefined}
         axisSnapEnabled={axisSnap} cameraRequestKey={cameraKey} interactive={!readonly && !publishing && !playback.playing}
         onFoldStart={beginFold} onPreview={previewFold} onCommit={commitFold} onDraggingChange={setDragging} onFaceSelect={select} />
       {workspaceSelector && <div className={cn(styles.dock, styles.meta)}>{workspaceSelector}</div>}

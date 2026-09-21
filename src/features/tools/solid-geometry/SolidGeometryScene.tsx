@@ -16,6 +16,7 @@ export type SolidPickMode = "object" | "face" | "edge" | "vertex";
 export interface SolidSceneContext { entities: readonly SolidEntity[]; selected: SolidEntity | null }
 export interface SolidGeometrySceneProps {
   entities: readonly SolidEntity[]; selectedId: string | null; feature?: SolidFeatureSelection | null;
+  selectionActive?: boolean;
   pickMode?: SolidPickMode; readOnly?: boolean;
   onPick?: (entityId: string, feature: SolidFeatureSelection | null) => void;
   renderScene?: (context: SolidSceneContext) => ReactNode;
@@ -91,9 +92,9 @@ function SectionedSolidObject({ frame, locale, ...props }: Parameters<typeof Sol
   </>;
 }
 /** 可嵌入原有 3D 舞台；扩展读取同一动画展示帧，截面等不会先跳到下一组尺寸。 */
-export function SolidGeometryScene({ entities, selectedId, feature = null, pickMode = "object", readOnly = false, onPick, renderScene, section, locale = "zh" }: SolidGeometrySceneProps) {
+export function SolidGeometryScene({ entities, selectedId, feature = null, pickMode = "object", readOnly = false, onPick, renderScene, section, locale = "zh", selectionActive = true }: SolidGeometrySceneProps) {
   return <>{entities.map((entity) => {
-    const props = { entity, selected: selectedId === entity.id, feature: feature?.entityId === entity.id ? feature : null, mode: pickMode, readOnly, onPick };
+    const props = { entity, selected: selectionActive && selectedId === entity.id, feature: selectionActive && feature?.entityId === entity.id ? feature : null, mode: pickMode, readOnly, onPick };
     return selectedId === entity.id && section && solidSectionVisible(section) && supportsSolidSection(entity.kind)
       ? <SectionedSolidObject key={entity.id} {...props} selected={false} frame={section} locale={locale} /> : <SolidObject key={entity.id} {...props} />;
   })}

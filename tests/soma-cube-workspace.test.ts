@@ -37,6 +37,17 @@ async function click(label: string) {
   await act(async () => button!.click());
 }
 describe("Soma teaching workspace", () => {
+  it("deselects on a blank tap or Escape without changing the prepared scene, and permits reselection", async () => {
+    const initial = createSomaInitial(), onChange = vi.fn(async () => {});
+    await render(createElement(SomaWorkspace, { initial, classroom: { state: initial, onChange } }));
+    await act(async () => canvas.props!.onPointerMissed!(new MouseEvent("click", { button: 0 })));
+    expect(canvas.props!.selectionActive).toBe(false); expect(canvas.props!.snapshot).toBe(initial); expect(onChange).not.toHaveBeenCalled();
+    expect(container.querySelector('[aria-pressed="true"][aria-label^="Choose"]')).toBeNull();
+    await act(async () => canvas.props!.onSelect(initial.selectedId));
+    expect(canvas.props!.selectionActive).toBe(true);
+    await act(async () => container.querySelector("section")!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+    expect(canvas.props!.selectionActive).toBe(false); expect(canvas.props!.navigation).toBe("orbit");
+  });
   it("removes legacy plane options and readout while preserving precise axis moves", async () => {
     const initial = createSomaInitial(), onChange = vi.fn();
     await render(createElement(SomaWorkspace, { initial, classroom: { state: initial, onChange } }));

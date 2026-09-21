@@ -63,7 +63,7 @@ export function SolidGeometryWorkspace({ initial, onSnapshot, classroom, readOnl
   const controls = useSpatialToolState<Tool, Exclude<Panel, null>>({ defaultTool: "orbit", panels: {
     add: "orbit", objects: "orbit", move: "move", turn: "orbit", roll: "orbit", color: "orbit", transparent: "orbit", face: "face", edge: "edge", vertex: "vertex", settings: "orbit", section: "section", measurement: "orbit",
   } });
-  const { tool, panel, setPanel } = controls;
+  const { tool, panel, setPanel, selectionActive, activateSelection } = controls;
   const [axis, setAxis] = useState<Axis>("x"), [moveSnap, setMoveSnap] = useState(false), [dragging, setDragging] = useState(false);
   const [frame, setFrame] = useState(() => getSolidsFrame(origin.entities));
   const [instantKey, setInstantKey] = useState<string | null>(null);
@@ -93,8 +93,8 @@ export function SolidGeometryWorkspace({ initial, onSnapshot, classroom, readOnl
     }
   }, [disabled, update, snapshot, classroom]);
   const updateEntity = (next: SolidEntity) => update({ ...snapshot, entities: snapshot.entities.map((entity) => entity.id === next.id ? next : entity) });
-  const pick = (id: string, feature: SolidFeatureSelection | null) => { if (!disabled) update({ ...snapshot, selectedId: id, feature }); };
-  const open = (next: Exclude<Panel, null>, nextTool?: Tool) => { onToolChange?.(); controls.togglePanel(next, nextTool); };
+  const pick = (id: string, feature: SolidFeatureSelection | null) => { if (!disabled) { activateSelection(); update({ ...snapshot, selectedId: id, feature }); } };
+  const open = (next: Exclude<Panel, null>, nextTool?: Tool) => { onToolChange?.(); if (next !== "settings" && next !== "add") activateSelection(); controls.togglePanel(next, nextTool); };
   const navigate = (next: Tool) => { controls.chooseTool(next); onToolChange?.(); };
   const fit = () => { setFrame(getSolidsFrame(snapshot.entities)); update({ ...snapshot, cameraRevision: snapshot.cameraRevision + 1 }); };
   const add = (kind: SolidKind) => {
@@ -102,12 +102,12 @@ export function SolidGeometryWorkspace({ initial, onSnapshot, classroom, readOnl
     const index = snapshot.entities.length;
     const entity = createSolidEntity(kind, newId(), { x: (index % 4) * 3, y: 1, z: Math.floor(index / 4) * 3 });
     const entities = [...snapshot.entities, entity];
-    if (update({ ...snapshot, entities, selectedId: entity.id, feature: null, cameraRevision: snapshot.cameraRevision + 1 })) { setFrame(getSolidsFrame(entities)); setPanel("objects"); }
+    if (update({ ...snapshot, entities, selectedId: entity.id, feature: null, cameraRevision: snapshot.cameraRevision + 1 })) { activateSelection(); setFrame(getSolidsFrame(entities)); setPanel("objects"); }
   };
   const remove = () => { if (!selected) return; const entities = snapshot.entities.filter((entity) => entity.id !== selected.id); update({ ...snapshot, entities, selectedId: entities.at(-1)?.id ?? null, feature: null }); };
   const move = (operation: CubeMoveOperation, direct = false) => { const entities = moveSolidByDrag(snapshot.entities, operation); if (!entities) return;
     const next = { ...snapshot, entities, selectedId: operation.ids[0], feature: snapshot.selectedId === operation.ids[0] ? snapshot.feature : null };
-    if (update(next) && direct) { directMove.hold(next); setInstantKey(solidEntitiesKey(entities.map((entity) => entity.id === operation.ids[0] ? measurementDisplayEntity(entity, snapshot.measurement) : entity))); } };
+    if (update(next) && direct) { activateSelection(); directMove.hold(next); setInstantKey(solidEntitiesKey(entities.map((entity) => entity.id === operation.ids[0] ? measurementDisplayEntity(entity, snapshot.measurement) : entity))); } };
   const drag = (operation: CubeMoveOperation) => move(operation, true);
   const rotate = (axis: Axis, sign: number) => { if (!selected) return;
     updateEntity({ ...selected, rotation: spatialQuarterTurn(selected.rotation, axis, sign > 0 ? 1 : -1) }); };
@@ -122,7 +122,8 @@ export function SolidGeometryWorkspace({ initial, onSnapshot, classroom, readOnl
   return <section className={styles.workspace} data-workbench-mode="courseware" data-solid-geometry-workspace="v1" aria-label={m.title} {...capture} {...controls.bindings}>
     <div className={styles.viewport}><div className={styles.canvas}>
       <Canvas entities={presentation.entities} state={snapshot} selectedId={snapshot.selectedId} feature={snapshot.feature} pickMode={featureMode} section={sectionPresentation.frame}
-        locale={locale} sectionEditable={(tool === "section" || spatialDirectManipulation(tool)) && snapshot.section.enabled && snapshot.section.showPlane && !!selected && supportsSolidSection(selected.kind) && !presentation.animating && (!sectionPresentation.animating || sectionDragging)}
+        selectionActive={selectionActive} onPointerMissed={!disabled && !dragging && !sectionDragging && !presentation.animating ? controls.onPointerMissed : undefined}
+        locale={locale} sectionEditable={selectionActive && (tool === "section" || spatialDirectManipulation(tool)) && snapshot.section.enabled && snapshot.section.showPlane && !!selected && supportsSolidSection(selected.kind) && !presentation.animating && (!sectionPresentation.animating || sectionDragging)}
         sectionSettings={sectionPreview ?? snapshot.section} onSectionPreview={previewSection} onSectionCommit={commitSection} onSectionDragging={setSectionDragging}
         readOnly={disabled} onPick={pick} frame={frame} cameraRevision={snapshot.cameraRevision} axisSnap={axisSnap} moveSnap={moveSnap}
         cameraInteractive={!readOnly && !(classroom && !classroom.onChange)}
@@ -181,7 +182,7 @@ export function SolidGeometryWorkspace({ initial, onSnapshot, classroom, readOnl
           {panel === "section" && <SolidSectionControls entity={selected} settings={snapshot.section} locale={locale} disabled={disabled || sectionDragging} onChange={(section) => update({ ...snapshot, section, measurement: section.enabled ? { ...snapshot.measurement, enabled: false } : snapshot.measurement })} />}
           {panel === "add" && <><div className="grid grid-cols-2 gap-1">{SOLID_KINDS.map((kind) => <Button key={kind} size="sm" variant="ghost" disabled={disabled} onClick={() => add(kind)}>{m.kinds[kind]}</Button>)}</div><p className="text-muted">{m.limit}</p></>}
           {panel === "objects" && <>
-            <div className="flex flex-wrap gap-1">{snapshot.entities.map((entity, index) => <Button key={entity.id} size="sm" variant={entity.id === snapshot.selectedId ? "secondary" : "ghost"} disabled={disabled} onClick={() => pick(entity.id, null)}>{index + 1} · {m.kinds[entity.kind]}</Button>)}</div>
+            <div className="flex flex-wrap gap-1">{snapshot.entities.map((entity, index) => <Button key={entity.id} size="sm" variant={selectionActive && entity.id === snapshot.selectedId ? "secondary" : "ghost"} disabled={disabled} onClick={() => pick(entity.id, null)}>{index + 1} · {m.kinds[entity.kind]}</Button>)}</div>
             {selected && solidDimensionKeys(selected.kind).map((key) => <div key={`${selected.id}-${key}`} className="flex items-center gap-2"><Label className="w-12" htmlFor={`solid-${selected.id}-${key}`}>{m.dimensions[key]}</Label>
               <Input key={selected.dimensions[key]} id={`solid-${selected.id}-${key}`} type="number" defaultValue={selected.dimensions[key]} min={SOLID_LIMITS.dimensionMin} max={SOLID_LIMITS.dimensionMax} step={0.1} className="h-8 w-24" disabled={disabled}
                 onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} onBlur={(event) => { const value = Number(event.currentTarget.value);

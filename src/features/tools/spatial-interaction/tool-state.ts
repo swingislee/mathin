@@ -1,6 +1,10 @@
 /** 面板明确声明其拾取方式；新增面板必须决定它操作对象、面、棱还是纸片。 */
 export interface SpatialToolState<T extends string, P extends string> { tool: T; panel: P | null }
-export interface SpatialToolDefinition<T extends string, P extends string> { defaultTool: T; panels: Record<P, T> }
+export interface SpatialToolDefinition<T extends string, P extends string> {
+  defaultTool: T; panels: Record<P, T>;
+  /** 清理本机选中/拾取反馈，不复原模型或写入教学快照。 */
+  onClearSelection?: () => void;
+}
 export type SpatialToolEvent<T extends string, P extends string> =
   | { kind: "tool"; tool: T; panel?: P | null; toggle?: boolean }
   | { kind: "panel"; panel: P; tool?: T; toggle?: boolean }

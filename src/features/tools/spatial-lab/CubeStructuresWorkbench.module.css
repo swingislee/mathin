@@ -42,3 +42,7 @@
   .views { gap: 0; }
   .meta { gap: 0; }
 }
+.workspace:focus {
+  /* 舞台容器接收 Esc，不显示对象选中框；内部控件保留各自的焦点样式。 */
+  outline: none;
+}

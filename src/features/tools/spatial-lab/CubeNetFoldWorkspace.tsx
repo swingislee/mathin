@@ -108,7 +108,7 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector, modeSelector,
   const [view, setView] = useState<CubeView>(initial?.view ?? "angle");
   const [frame, setFrame] = useState(() => initial?.frame ?? resolver.resolve({}).model.bounds);
   const [cameraRequestKey, setCameraRequestKey] = useState(0);
-  const controls = useSpatialToolState<"orbit" | "pan" | "fold" | "cut" | CubeNetSurfaceTool, "settings" | CubeNetSurfaceTool>({ defaultTool: cutting ? "cut" : "fold", panels: {
+  const controls = useSpatialToolState<"orbit" | "pan" | "fold" | "cut" | CubeNetSurfaceTool, "settings" | CubeNetSurfaceTool>({ defaultTool: cutting ? "cut" : "fold", onClearSelection: () => { setSelectedPaper(null); setActiveFold(null); setOpacityPreview(null); }, panels: {
     settings: cutting ? "cut" : "fold", face: "face", transparent: "transparent", mark: "mark", number: "number",
   } });
   const { tool, panel, setTool, setPanel } = controls;
@@ -381,6 +381,7 @@ function CubeNetFoldRehearsal({ builds, locale, workspaceSelector, modeSelector,
         <div className={styles.canvas} data-cube-workspace-frame="4:3" data-cube-net-workbench data-net-gallery-open={galleryOpen}
           aria-label={t("cubeNet.title")} style={{ cursor: tool === "fold" ? dragging ? "grabbing" : "grab" : tool === "pan" ? "grab" : "default" }}>
           <CubeNetFoldViewport scene={page.scene} entityId={sceneInput.entityId} model={model} hinges={current.hinges}
+            onPointerMissed={!readOnly && !busy && !classroom?.pending ? controls.onPointerMissed : undefined}
             activeEdgeId={activeFold?.edgeId ?? null} tool={tool} locale={locale}
             axisSnapEnabled={axisSnapEnabled} axesVisible={axesVisible} cameraRequestKey={cameraRequestKey} dragging={dragging}
             animating={playback.playing} foldingEnabled={!playback.playing && !buildingCuts && !cutting} cutEdges={cutEdges} onCutToggle={tool === "cut" && !busy && !revealEnabled ? toggleCut : undefined}

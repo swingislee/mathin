@@ -44,6 +44,7 @@ export interface SolidGeometryCanvasProps extends SolidGeometrySceneProps {
   onTransform?: (entity: SolidEntity) => boolean;
   rotationHandles?: boolean;
   onToggleRotationHandles?: () => void;
+  onPointerMissed?: (event: MouseEvent) => void;
 }
 function Contents(props: SolidGeometryCanvasProps) {
   const [preview, setPreview] = useState<CubeDragPreview | null>(null);
@@ -60,10 +61,10 @@ function Contents(props: SolidGeometryCanvasProps) {
   const bookmark = cubeWorkbenchCamera(props.frame, props.state.view === "bottom" ? "top" : props.state.view, "solid-geometry");
   const camera = props.state.view === "bottom" ? { ...bookmark, position: { ...props.frame.center, y: props.frame.center.y - props.frame.radius * 4 }, up: { x: 0, y: 0, z: 1 } } : bookmark;
   const sectionEntity = props.state.entities.find((entity) => entity.id === props.selectedId);
-  const rotationEntity = displayed.find((entity) => entity.id === props.selectedId);
+  const rotationEntity = props.selectionActive === false ? undefined : displayed.find((entity) => entity.id === props.selectedId);
   const bounds = rotationEntity && getSolidBounds(rotationEntity);
   const source = props.state.entities.find((entity) => entity.id === props.selectedId);
-  const handleInteraction = props.onTransform && source ? spatialGizmoInteraction({ key: props.state.entities, id: source.id, center: source.position,
+  const handleInteraction = props.selectionActive !== false && props.onTransform && source ? spatialGizmoInteraction({ key: props.state.entities, id: source.id, center: source.position,
     radius: (bounds?.radius ?? 1) + 0.35, mode: props.rotationHandles ? "rotate" : "move", enabled: !props.readOnly && !props.objectAnimating && !preview && !props.rollAction,
     translate: (delta) => {
       const snapped = snapSpatialTranslation(delta, props.moveSnap ? 1 : 0.5, props.moveSnap ? source.position : undefined), next = { ...source, position: { x: source.position.x + snapped.x, y: source.position.y + snapped.y, z: source.position.z + snapped.z } };
@@ -85,7 +86,7 @@ function Contents(props: SolidGeometryCanvasProps) {
     {props.objectManipulation && ((!props.objectAnimating && !props.readOnly) || handleFrame) && props.selectedId && <CubeMoveHandles presentation={dragPresentation} preview={preview} onPreview={setPreview} pickRenderedObjects
       interaction={{ state: dragState, ids: [props.selectedId], scopeIds: props.state.entities.map((entity) => entity.id), axis: props.moveAxis, kind: "display-move", snapToGrid: props.moveSnap,
         bodyAxis: "gesture", enabled: !props.readOnly && !props.objectAnimating && !handleDragging, bodyGesture: handleInteraction, bodyPreview: handleFrame?.frame,
-        showHandles: !handleFrame && !props.rotationHandles && !props.rollAction,
+        showHandles: props.selectionActive !== false && !handleFrame && !props.rotationHandles && !props.rollAction,
         isValidOperation: (operation) => moveSolidByDrag(props.state.entities, operation) !== null, onAxisChange: props.onMoveAxis,
         onSelect: (id) => props.onPick?.(id, null), onCommit: props.onMove, onUnavailable: ignoreTransition }} />}
     {props.objectManipulation && !props.rollAction && props.rotationAction && rotationEntity && !preview && !handleFrame && <SpatialRotationControls center={rotationEntity.position} vertices={toolbarVertices} radius={bounds!.radius}
@@ -97,6 +98,7 @@ function Contents(props: SolidGeometryCanvasProps) {
 }
 export default function SolidGeometryCanvas(props: SolidGeometryCanvasProps) {
   return <SolidCanvasBoundary label={props.fallback}><Canvas frameloop="demand" shadows={THREE_SHADOWS.disabled} dpr={[1, 1.75]}
+    onPointerMissed={props.readOnly ? undefined : props.onPointerMissed}
     gl={{ antialias: true, alpha: true, localClippingEnabled: true }} fallback={<p className="p-8 text-sm">{props.fallback}</p>} style={{ touchAction: "none" }}>
     <Contents {...props} />
   </Canvas></SolidCanvasBoundary>;

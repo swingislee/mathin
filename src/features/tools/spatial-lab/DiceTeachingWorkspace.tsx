@@ -65,12 +65,13 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector, initi
   const [moveAxis, setMoveAxis] = useState<Axis>("x");
   const [history, setHistory] = useState<{ past: DiceScene[]; present: DiceScene; future: DiceScene[] }>(() => ({ past: [], present: initial?.scene ?? createDiceScene(), future: [] }));
   const scene = history.present;
-  const [selectedId, setSelectedId] = useState(initial?.selectedId ?? "dice-1");
+  const [selectedId, storeSelectedId] = useState(initial?.selectedId ?? "dice-1");
   const selected = scene.dice.find((die) => die.id === selectedId) ?? scene.dice[0];
-  const controls = useSpatialToolState<"orbit" | "pan" | "move" | "pips" | "color" | "transparent" | "inspect" | "xray", Exclude<Panel, null>>({ defaultTool: "orbit", panels: {
+  const controls = useSpatialToolState<"orbit" | "pan" | "move" | "pips" | "color" | "transparent" | "inspect" | "xray", Exclude<Panel, null>>({ defaultTool: "orbit", onClearSelection: () => { setSurfaceTarget(null); setOpacityPreview(null); }, panels: {
     settings: "orbit", arrange: "move", pips: "pips", opposite: "orbit", puzzle: "orbit", roll: "orbit", throwing: "orbit", color: "color", transparent: "transparent", restore: "orbit", observe: "inspect",
   } }, { tool: initial?.xrayTarget ? "xray" : undefined, panel: initial?.observation?.panel ?? null });
-  const { tool, panel, setTool, setPanel } = controls;
+  const { tool, panel, setTool, setPanel, selectionActive, activateSelection } = controls;
+  const setSelectedId = useCallback((id: string) => { activateSelection(); storeSelectedId(id); }, [activateSelection]);
   const [xrayTarget, setXRayTarget] = useState<DiceXRayTarget | null>(initial?.xrayTarget ?? null);
   const [xrayPresentation, setXRayPresentation] = useState<DiceXRayPresentation>({ target: initial?.xrayTarget ?? null, phase: initial?.xrayTarget ? "open" : "closed" });
   const [color, setColor] = useState<CubeColor>(CUBE_COLORS[0]);
@@ -134,6 +135,8 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector, initi
   };
   const changed = (dice: TeachingDie[], extra: Partial<DiceScene> = {}) => ({ ...scene, dice, puzzle: null, ...extra });
   const selectPanel = (next: Exclude<Panel, null>) => {
+    // 打开对象参数时明确恢复上一次对象，舞台和参数保持同一可见目标。
+    if (next !== "settings") activateSelection();
     controls.togglePanel(next);
     setNotice(""); setOpacityPreview(null); requestXRay(null);
   };
@@ -275,7 +278,7 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector, initi
       runCommand(command, () => playThrow(command));
     } catch { if (request.current === token) { setPreparing(false); setNotice(m.throwFailed); } }
   };
-  const diePicker = <div className="space-y-2"><p className="text-xs text-muted">{m.selected}</p><div className="flex flex-wrap gap-1">{scene.dice.map((die) => <Button key={die.id} type="button" size="sm" variant={selected.id === die.id ? "secondary" : "ghost"} disabled={busy} onClick={() => setSelectedId(die.id)} title={`${m.die} ${die.id.replace("dice-", "")} · ${m[die.hand]}`}>
+  const diePicker = <div className="space-y-2"><p className="text-xs text-muted">{m.selected}</p><div className="flex flex-wrap gap-1">{scene.dice.map((die) => <Button key={die.id} type="button" size="sm" variant={selectionActive && selected.id === die.id ? "secondary" : "ghost"} disabled={busy} onClick={() => setSelectedId(die.id)} title={`${m.die} ${die.id.replace("dice-", "")} · ${m[die.hand]}`}>
     {die.id.replace("dice-", "")} · {m[die.hand]}
   </Button>)}</div></div>;
   const pairValue = (face: DiceFace) => selected.hidden.includes(face) ? "?" : String(faceValue(selected.hand, face));
@@ -283,6 +286,7 @@ export default function DiceTeachingWorkspace({ locale, workspaceSelector, initi
   return <section className={styles.workspace} data-dice-teaching={DICE_TEACHING_VERSION} data-workbench-mode={courseware ? "courseware" : undefined} inert={readOnly || classroom?.pending} {...controls.bindings}>
     <div className={styles.viewport}><div className={`${styles.canvas} ${diceStyles.canvas}`} data-dice-stage>
       <DiceTeachingCanvas dice={displayed} trail={scene.trail} selectedId={selected.id} locale={locale} tool={tool} arrows={arrows} busy={busy} grid={grid} axes={axes} floor={floor} frame={frame} view={view} cameraKey={cameraKey}
+        selectionActive={selectionActive} onPointerMissed={!readOnly && !busy && !dragging ? controls.onPointerMissed : undefined}
         rollAction={panel === "roll" ? rollAction : undefined}
         xrayTarget={xrayTarget} initialXRayTarget={initial?.xrayTarget} onClearXRay={() => requestXRay(null)} onXRayPresentation={setXRayPresentation}
         snap={snap} moveAxis={moveAxis} onMoveAxis={setMoveAxis} onDragCommit={dragCommit} onDraggingChange={setDragging} onMoveUnavailable={() => setNotice(structureMessages.moveAxisHidden)}

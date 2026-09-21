@@ -43,7 +43,7 @@ export function PaperFoldingWorkspace({ locale, initial, runtime, onSnapshot, re
   const { update, publishing } = state;
   const m = paperFoldingMessages(locale), shared = cubeStructuresMessages(locale);
   const playback = useCubeNetPlayback<PaperFoldingSnapshot>({ essential: true, interactive: !readOnly });
-  const controls = useSpatialToolState<"fold" | "orbit" | "pan" | "select", "layout" | "style">({ defaultTool: "fold", panels: { layout: "select", style: "select" } });
+  const controls = useSpatialToolState<"fold" | "orbit" | "pan" | "select", "layout" | "style">({ defaultTool: "fold", onClearSelection: () => { setSelected(null); setActive(null); }, panels: { layout: "select", style: "select" } });
   const { tool, panel, chooseTool, togglePanel, closePanel } = controls;
   const [selected, setSelected] = useState<string | null>(snapshot.squares[0].id);
   const [active, setActive] = useState<CubeNetPaperSelection | null>(null);
@@ -116,7 +116,7 @@ export function PaperFoldingWorkspace({ locale, initial, runtime, onSnapshot, re
 
   return <div className={styles.workspace} data-workbench-mode={courseware ? "courseware" : undefined} data-paper-folding-workbench aria-busy={busy} {...controls.bindings}>
     <div className={styles.viewport}><div className={styles.canvas} data-cube-workspace-frame="4:3">
-      <PaperFoldingViewport {...viewportProps} />
+      <PaperFoldingViewport {...viewportProps} onPointerMissed={!readonly && !busy ? controls.onPointerMissed : undefined} />
       {workspaceSelector && <div className={cn(styles.dock, styles.meta)}>{workspaceSelector}</div>}
       <div className={cn(styles.dock, styles.views)} role="toolbar" aria-label={shared.view}>
         {CUBE_WORKBENCH_VIEWS.map((view) => <CubeIconButton key={view} label={shared[view]} active={snapshot.view === view} disabled={readonly || busy}
