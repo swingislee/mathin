@@ -29,7 +29,7 @@ export async function SiteHeader({ workspace = false }: { workspace?: boolean } 
   return (
     <header className="pointer-events-none fixed inset-x-0 top-0 z-40 flex items-start justify-between gap-6 px-4 py-4 md:px-7 md:py-6">
       {workspace ? <span /> : (
-        <Link href="/" className="pointer-events-auto font-display text-2xl tracking-tight text-ink drop-shadow-sm md:text-3xl">
+        <Link href="/" className="pointer-events-auto font-display text-2xl tracking-tight text-ink/75 drop-shadow-sm md:text-3xl">
           Mathin｜数学笔记
         </Link>
       )}
