@@ -19,15 +19,15 @@
     "list": [
       {
         "pagePath": "pages/courses/index",
-        "text": "课程"
+        "text": "探索"
       },
       {
         "pagePath": "pages/mistakes/index",
-        "text": "错题"
+        "text": "回顾"
       },
       {
         "pagePath": "pages/homework/index",
-        "text": "作业"
+        "text": "练习"
       },
       {
         "pagePath": "pages/account/index",

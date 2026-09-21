@@ -46,9 +46,9 @@ describe("家长端工程基础", () => {
   });
 
   it.each([
-    ["zh_CN", "作业", ["课程", "错题", "作业", "我的"]],
-    ["en_US", "Homework", ["Courses", "Review", "Homework", "Account"]],
-    ["fr", "作业", ["课程", "错题", "作业", "我的"]],
+    ["zh_CN", "每日练习", ["探索", "回顾", "练习", "我的"]],
+    ["en_US", "Daily Practice", ["Explore", "Reflect", "Practice", "Account"]],
+    ["fr", "每日练习", ["探索", "回顾", "练习", "我的"]],
   ])("微信 %s 同步页面、系统标题和底部导航，且不依赖浏览器 API", (language, title, tabs) => {
     const setData = vi.fn();
     const setNavigationBarTitle = vi.fn();

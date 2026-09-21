@@ -12,11 +12,11 @@ export function createPlaceholderPage(section: Section) {
       this.setData({ ...copy.sections[section], availability: copy.availability });
       wx.setNavigationBarTitle({ title: copy.sections[section].title });
       sections.forEach((key, index) => {
-        wx.setTabBarItem({ index, text: copy.sections[key].title });
+        wx.setTabBarItem({ index, text: copy.sections[key].tabLabel });
       });
     },
   } as WechatMiniprogram.Page.Options<
-    { title: string; description: string; availability: string },
+    { title: string; tabLabel: string; description: string; availability: string },
     Record<string, never>
   >;
 }
