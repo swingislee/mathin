@@ -36,14 +36,20 @@ export function spatialObjectHandleHit(interaction: SpatialObjectInteraction, ev
 }
 
 /** 共用对象手势入口。数学落点由教具提供；相机、连续预览和一次提交不在各教具复制。 */
-export function bindSpatialObjectGestures(canvas: HTMLCanvasElement, current: () => SpatialObjectInteraction, getCamera: () => Camera): () => void {
+export function bindSpatialObjectGestures(canvas: HTMLCanvasElement, current: () => SpatialObjectInteraction | null | undefined, getCamera: () => Camera): () => void {
   type Gesture = { interaction: SpatialObjectInteraction; key: object; target: SpatialGestureTarget; action: SpatialObjectAction; camera: Camera; size: SpatialPointerViewport;
     start: PointerEvent; ball: SpatialArcball; projection: ReturnType<typeof spatialMoveProjection>; moved: boolean; frame: SpatialObjectPreview | null; landing: SpatialGestureLanding | null; cursor: string;
     constraint?: SpatialHandleConstraint; ringVector: Vector3 | null; ringAngle: number; selectOnly: boolean };
-  let gesture: Gesture | null = null, settling: (() => void) | null = null;
+  let gesture: Gesture | null = null;
+  let settling: { interaction: SpatialObjectInteraction; stop: () => void } | null = null;
+  let disposed = false;
   const cameraPointers = new Set<number>();
   const stop = (event: Event) => { event.preventDefault(); event.stopImmediatePropagation(); };
-  const stopSettle = () => { settling?.(); settling = null; };
+  const finishPreview = (interaction: SpatialObjectInteraction) => { interaction.onPreview(null); interaction.onDragging(false); };
+  const stopSettle = () => {
+    const previous = settling; settling = null;
+    if (previous) { previous.stop(); finishPreview(previous.interaction); }
+  };
   const release = () => {
     const previous = gesture; gesture = null;
     if (previous) {
@@ -52,14 +58,17 @@ export function bindSpatialObjectGestures(canvas: HTMLCanvasElement, current: ()
     }
     return previous;
   };
-  const finishPreview = (interaction: SpatialObjectInteraction) => { interaction.onPreview(null); interaction.onDragging(false); };
   const settle = (finished: Gesture, to: SpatialRigidPose) => {
+    if (disposed) { finishPreview(finished.interaction); return; }
     const from = finished.frame?.pose ?? finished.target.pose;
     // 自由旋转终点就是最后预览帧，不追加落位等待，也不重播已完成的手势。
     const samePosition = Math.hypot(from.position.x - to.position.x, from.position.y - to.position.y, from.position.z - to.position.z) < 1e-8;
     const dot = Math.abs(from.quaternion.reduce((sum, value, index) => sum + value * to.quaternion[index], 0));
     if (samePosition && dot > 1 - 1e-12) { finishPreview(finished.interaction); return; }
-    settling = animateSpatialAction(SPATIAL_GESTURE_SETTLE_MS, (progress) => {
+    const animation = { interaction: finished.interaction, stop: () => {} };
+    settling = animation;
+    animation.stop = animateSpatialAction(SPATIAL_GESTURE_SETTLE_MS, (progress) => {
+      if (settling !== animation) return;
       if (progress === 1) { settling = null; finishPreview(finished.interaction); return; }
       finished.interaction.onPreview({ target: finished.target, pose: interpolateRigidPoses([from], [to], progress)[0], landing: to, valid: true, phase: "settle", constraint: finished.constraint, handles: finished.interaction.handles });
     });
@@ -83,7 +92,7 @@ export function bindSpatialObjectGestures(canvas: HTMLCanvasElement, current: ()
       return;
     }
     const interaction = current();
-    if (!interaction.enabled || event.button !== 0 || event.isPrimary === false) return;
+    if (!interaction?.enabled || event.button !== 0 || event.isPrimary === false) return;
     const camera = getCamera().clone(), size = canvas.getBoundingClientRect();
     const constraint = forced ? undefined : spatialObjectHandleHit(interaction, event, camera, size) ?? undefined;
     if (!forced && !constraint && interaction.handlesHit?.(event, camera, size)) return;
@@ -106,7 +115,8 @@ export function bindSpatialObjectGestures(canvas: HTMLCanvasElement, current: ()
     if (!gesture || event.pointerId !== gesture.start.pointerId) return;
     stop(event);
     const g = gesture;
-    if (current().key !== g.key || !current().enabled) { cancel(false); return; }
+    const interaction = current();
+    if (!interaction?.enabled || interaction.key !== g.key) { cancel(false); return; }
     const delta = { x: event.clientX - g.start.clientX, y: event.clientY - g.start.clientY };
     if (!g.moved && Math.hypot(delta.x, delta.y) <= (g.start.pointerType === "touch" ? 8 : 3)) return;
     if (!g.moved) { g.moved = true; g.interaction.onDragging(true); }
@@ -157,9 +167,12 @@ export function bindSpatialObjectGestures(canvas: HTMLCanvasElement, current: ()
   document.addEventListener("keydown", key, true);
   document.defaultView?.addEventListener("blur", blur);
   return () => {
-    cancel(false); stopSettle(); finishPreview(current());
+    if (disposed) return;
+    disposed = true;
     canvas.removeEventListener("pointerdown", start, true); canvas.removeEventListener(ROTATE_GRIP, grip); canvas.removeEventListener("lostpointercapture", lost); canvas.removeEventListener("wheel", wheel, true);
     document.removeEventListener("pointermove", move, true); document.removeEventListener("pointerup", up, true); document.removeEventListener("pointercancel", cancelled, true);
     document.removeEventListener("keydown", key, true); document.defaultView?.removeEventListener("blur", blur);
+    // ref 可先于 effect 清理变为空或新对象；只结束本绑定实际持有的手势与动画。
+    cameraPointers.clear(); cancel(false); stopSettle();
   };
 }

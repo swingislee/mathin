@@ -51,18 +51,55 @@ function setup(withAxisController = false) {
     resolve: vi.fn((_target, pose) => ({ pose: { ...pose, position: { x: Math.round(pose.position.x), y: Math.round(pose.position.y), z: Math.round(pose.position.z) } }, valid: true, apply })),
     onPreview: (frame) => previews.push(frame), onSelect: vi.fn(), onDragging: vi.fn(), onUnavailable: vi.fn(),
   };
+  let activeInteraction: SpatialObjectInteraction | null | undefined = interaction;
   const c = camera(), axisCommit = vi.fn();
   const axis = withAxisController ? bindCubeAxisDrag(canvas, () => ({ state: createCubeHistory([origin]).initial, ids: ["cube-1"], scopeIds: ["cube-1"], axis: "x", kind: "move", snapToGrid: true,
     bodyAxis: "gesture", bodyGesture: interaction, onAxisChange: vi.fn(), onSelect: vi.fn(), onCommit: axisCommit, onUnavailable: vi.fn() }), () => c, vi.fn()) : () => {};
-  const body = bindSpatialObjectGestures(canvas, () => interaction, () => c), dispose = () => { axis(); body(); };
+  const body = bindSpatialObjectGestures(canvas, () => activeInteraction, () => c), dispose = () => { axis(); body(); };
   disposers.push(() => { dispose(); canvas.remove(); });
   const send = (type: string, init: PointerEventInit = {}) => {
     const event = new PointerEvent(type, { bubbles: true, cancelable: true, clientX: point.x, clientY: point.y, button: 0, buttons: 1, ...init });
     canvas.dispatchEvent(event); return event;
   };
   const flush = (time: number) => { const pending = [...frames.values()]; frames.clear(); pending.forEach((callback) => callback(time)); };
-  return { canvas, target, previews, interaction, apply, send, flush, dispose, camera: c, captured, axisCommit };
+  return { canvas, target, previews, interaction, apply, send, flush, dispose, camera: c, captured, axisCommit, frames,
+    setInteraction: (next: SpatialObjectInteraction | null | undefined) => { activeInteraction = next; } };
 }
+
+describe("shared object gesture ownership during deselection", () => {
+  it.each([undefined, null])("leaves blank events alone when the interaction is %s before cleanup", (missing) => {
+    const g = setup(); g.setInteraction(missing);
+    expect(g.send("pointerdown").defaultPrevented).toBe(false);
+    expect(g.send("pointermove").defaultPrevented).toBe(false);
+    expect(g.send("pointerup").defaultPrevented).toBe(false);
+    expect(() => { g.dispose(); g.dispose(); }).not.toThrow();
+    expect(g.previews).toHaveLength(0); expect(g.interaction.onDragging).not.toHaveBeenCalled();
+    expect(g.apply).not.toHaveBeenCalled();
+  });
+  it.each(["move", "release", "dispose"])("%s cancels an active gesture after its interaction is removed", (next) => {
+    const g = setup(); g.send("pointerdown"); g.send("pointermove", { clientX: point.x + 50 });
+    g.setInteraction(undefined);
+    if (next === "dispose") g.dispose();
+    else g.send(next === "move" ? "pointermove" : "pointerup", { clientX: point.x + 60 });
+    expect(g.apply).not.toHaveBeenCalled(); expect(g.interaction.onSelect).not.toHaveBeenCalled();
+    expect(g.previews.at(-1)).toBeNull(); expect(g.interaction.onDragging).toHaveBeenLastCalledWith(false);
+    expect(g.captured.size).toBe(0); expect(g.canvas.style.cursor).toBe(""); expect(g.frames.size).toBe(0);
+    g.dispose(); expect(g.send("pointerdown").defaultPrevented).toBe(false);
+  });
+  it.each(["removed", "replaced"])("cleans the settling owner, not the %s current interaction", (change) => {
+    const g = setup(); g.send("pointerdown"); g.send("pointerup", { clientX: point.x + 43 });
+    expect(g.apply).toHaveBeenCalledTimes(1); expect(g.frames.size).toBe(1);
+    g.flush(100); expect(g.previews.at(-1)?.phase).toBe("settle");
+    const replacement = { ...g.interaction, key: {}, onPreview: vi.fn(), onDragging: vi.fn() };
+    g.setInteraction(change === "removed" ? undefined : replacement);
+    g.dispose();
+    expect(g.frames.size).toBe(0); expect(g.previews.at(-1)).toBeNull();
+    expect(g.interaction.onDragging).toHaveBeenLastCalledWith(false);
+    expect(replacement.onPreview).not.toHaveBeenCalled(); expect(replacement.onDragging).not.toHaveBeenCalled();
+    const count = g.previews.length; g.flush(400); g.dispose();
+    expect(g.previews).toHaveLength(count); expect(g.apply).toHaveBeenCalledTimes(1);
+  });
+});
 
 function pointerAt(p: Vector3, c: OrthographicCamera, pointerType = "mouse") {
   const n = p.clone().project(c);

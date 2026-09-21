@@ -26,7 +26,7 @@ export function CubeMoveHandles({ interaction, presentation, preview, onPreview,
     const axis = bindCubeAxisDrag(gl.domElement, () => pickRenderedObjects ? { ...current.current, hitTest: (raycaster) => pickSpatialObject(raycaster, get().scene) } : current.current, () => get().camera, onPreview, (active) => {
       if (active) beginSpatialObjectGesture(gl.domElement);
     });
-    const body = hasBodyGesture ? bindSpatialObjectGestures(gl.domElement, () => current.current.bodyGesture!, () => get().camera) : null;
+    const body = hasBodyGesture ? bindSpatialObjectGestures(gl.domElement, () => current.current.bodyGesture, () => get().camera) : null;
     return () => { axis(); body?.(); };
   }, [gl, get, onPreview, pickRenderedObjects, hasBodyGesture]);
   const center = cubeMoveCenter(presentation, preview?.ids ?? interaction.ids);
