@@ -1,0 +1,3748 @@
+{
+  "status": "ANALYSIS_PROPOSAL_NOT_EXECUTED",
+  "version": 1,
+  "scope": "2026-09-07、09-14、09-20 三个 Base 导出中的字段定义；不含业务个人值",
+  "sourceSha256": [
+    {
+      "snapshot": "07",
+      "sha256": "7d3f20af508fc3c8c7e468e64cfd9dba4d01af3f6043e4cdce1bd3b4f1063509"
+    },
+    {
+      "snapshot": "14",
+      "sha256": "60c36cf906ec15fc6d3f4d4dc515d34287db391c83b6ea631efbb359a01fe6dd"
+    },
+    {
+      "snapshot": "20",
+      "sha256": "fcc8d200f822ece4fa5aed13c9867990513ef111a78ccb57f0b7b055574a0095"
+    }
+  ],
+  "preservation": "全部原始文件、schema、字段 ID、选项 ID、rawValue、文本、空值和历史版本完整保留；以下为建议业务解释，不是已执行的数据库映射。",
+  "baseReviewSchema": "src/features/school/base-business-fields-schema.mjs",
+  "reviewApplication": "规则的 review 数组是可选候选，不自动全部套用。沿用已有用户文案含义：record_scope 仅用于多人安排，time_period 仅用于上下午歧义，multiple_grades 用于多个孩子年级。跨项目或跨来源时点不明使用 ambiguous 和已有备注；明确归属历史项目本身不是错误。",
+  "rules": {
+    "identity": {
+      "target": "学生身份与背景资料",
+      "meaning": "称呼、性别、学校、年级及其学年分别保留；来源行先关联身份候选。",
+      "review": [
+        "child_identity",
+        "multiple_grades",
+        "ambiguous"
+      ]
+    },
+    "guardian": {
+      "target": "家庭联系方式",
+      "meaning": "保留号码原文、规范号码与联系对象；家庭号码不作为学生唯一键。",
+      "review": [
+        "child_identity",
+        "ambiguous"
+      ]
+    },
+    "acquisition": {
+      "target": "获客记录",
+      "meaning": "渠道、区位、获取人、来源周期和触达内容归入本次来源上下文。",
+      "review": [
+        "ambiguous",
+        "time_period"
+      ]
+    },
+    "confirmation": {
+      "target": "确认联系摘要",
+      "meaning": "月份和人员共同存在按已开展确认联系保留；具体结果、日期和备注分列，摘要允许有版本。",
+      "review": [
+        "missing",
+        "ambiguous",
+        "conflicting_options"
+      ]
+    },
+    "followup": {
+      "target": "后续跟进摘要",
+      "meaning": "保留跟进原文和维护版本；新增或修改摘要不自动产生独立沟通事件。",
+      "review": [
+        "ambiguous",
+        "time_period"
+      ]
+    },
+    "current_state": {
+      "target": "微信与意向状态",
+      "meaning": "保存状态维度、所处环节、适用时间；未知、未加、已加分别保留。",
+      "review": [
+        "conflicting_options",
+        "ambiguous"
+      ]
+    },
+    "source_milestone": {
+      "target": "邀约、到访与报名声明",
+      "meaning": "先保留来源声明，再按产品、周期和身份关联已知事件；已到不直接等于测评。",
+      "review": [
+        "ambiguous"
+      ]
+    },
+    "support": {
+      "target": "学服归属与阶段署名",
+      "meaning": "区分当前学服负责人、历史经办人和阶段老师；同人可兼任两个职责。",
+      "review": [
+        "reference",
+        "ambiguous"
+      ]
+    },
+    "product": {
+      "target": "产品与校区上下文",
+      "meaning": "给邀约、到访、测评和报名限定项目或课程范围。",
+      "review": [
+        "reference"
+      ]
+    },
+    "invitation": {
+      "target": "诺访确认摘要",
+      "meaning": "到访表的确认月份和确认日期属于诺访确认，不重复生成招生首次联系。",
+      "review": [
+        "missing",
+        "time_period"
+      ]
+    },
+    "visit": {
+      "target": "预约与到访事实",
+      "meaning": "保留预约日期时段和已到、未到状态；预约时间不证明实际出席。",
+      "review": [
+        "time_period",
+        "ambiguous"
+      ]
+    },
+    "assessment": {
+      "target": "测评与体验服务",
+      "meaning": "参与内容拆为测评、体验、说明会、沟通；各评价量表独立保存，分数和等级不混算。",
+      "review": [
+        "scale",
+        "ambiguous"
+      ]
+    },
+    "enrollment": {
+      "target": "体系课报名",
+      "meaning": "保留报名声明、时间、班型与培养共识；未指定班级的报名可保留待分班。",
+      "review": [
+        "missing",
+        "class_label"
+      ]
+    },
+    "voucher": {
+      "target": "奖学券与服务交付",
+      "meaning": "推送、领取等独立保存；推送不是收入或付款。",
+      "review": []
+    },
+    "roster": {
+      "target": "学期在读与班级安排",
+      "meaning": "按学年学期保存班级候选、在读声明及待报状态；名单行数不直接当在读人数。",
+      "review": [
+        "class_label",
+        "ambiguous"
+      ]
+    },
+    "renewal": {
+      "target": "续报周期与沟通",
+      "meaning": "旧学期班级、目标学期报名、续报结果和角色分开；连报可对应多个学期，不增加学生身份。",
+      "review": [
+        "class_label",
+        "ambiguous"
+      ]
+    },
+    "payment": {
+      "target": "缴费来源信息",
+      "meaning": "保存通道和原始缴费时间；第几天不是具体日期，无金额不生成收款流水。",
+      "review": [
+        "time_period",
+        "missing"
+      ]
+    },
+    "competition": {
+      "target": "袋鼠项目运营",
+      "meaning": "开团、领取、打卡、注册及项目沟通独立保存；团成员号码不是本行学生号码。",
+      "review": [
+        "child_identity",
+        "ambiguous",
+        "record_scope"
+      ]
+    },
+    "english_history": {
+      "target": "历史英语业务",
+      "meaning": "保留旧版本字段与内容，和思维业务隔离；新导出不含该列不撤销旧业务。",
+      "review": [
+        "reference"
+      ]
+    },
+    "teaching_reference": {
+      "target": "学习与教学资料",
+      "meaning": "保留课次、作业和学习记录；关联班级课次后再投影，缺失外部引用保留待核。",
+      "review": [
+        "reference",
+        "record_scope"
+      ]
+    },
+    "operations_reference": {
+      "target": "运营计划、内容与资料",
+      "meaning": "保留目标、素材、日报和框架；不得将目标数、人员署名或模板空行生成学生事实。",
+      "review": [
+        "reference"
+      ]
+    },
+    "source_system": {
+      "target": "原始来源元数据",
+      "meaning": "登记时间、序号和表格布局用于追溯，不当作业务时间或学生计数。",
+      "review": []
+    },
+    "attachment": {
+      "target": "原始附件引用",
+      "meaning": "保留附件引用及可用性；文件未包含于导出时不能声明已备份文件本体。",
+      "review": [
+        "reference"
+      ]
+    },
+    "reference_only": {
+      "target": "原始字段待解释",
+      "meaning": "完整保留来源字段与值，暂不影响身份、事件、阶段或统计。",
+      "review": [
+        "unrecognized"
+      ]
+    }
+  },
+  "tables": [
+    {
+      "tableId": "tblAHWrD6LItmWMk",
+      "table": "2026秋季在读学员表格",
+      "latestRows": 174,
+      "fields": [
+        {
+          "fieldId": "fldYWWs6DI",
+          "name": "校区",
+          "type": 3,
+          "group": null,
+          "latestFilled": 172,
+          "rule": "roster",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld94Qqqzq",
+          "name": "单师班序（仅多维统计用）",
+          "type": 3,
+          "group": null,
+          "latestFilled": 174,
+          "rule": "roster",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldurEcoo6",
+          "name": "班型",
+          "type": 3,
+          "group": null,
+          "latestFilled": 172,
+          "rule": "roster",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldbar92Sl",
+          "name": "姓名",
+          "type": 1,
+          "group": null,
+          "latestFilled": 172,
+          "rule": "identity",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldUc132x1",
+          "name": "报名服务老师",
+          "type": 3,
+          "group": null,
+          "latestFilled": 11,
+          "rule": "roster",
+          "supplementary": [
+            "对应阶段老师或学服署名"
+          ],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldKeVJOWS",
+          "name": "26秋报名模式",
+          "type": 3,
+          "group": null,
+          "latestFilled": 11,
+          "rule": "roster",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldoSc9ANk",
+          "name": "报名缴费日期",
+          "type": 1,
+          "group": null,
+          "latestFilled": 0,
+          "rule": "payment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldcMTRGLU",
+          "name": "26秋上课时段",
+          "type": 3,
+          "group": null,
+          "latestFilled": 172,
+          "rule": "roster",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldeOKZIs3",
+          "name": "26秋在读",
+          "type": 3,
+          "group": null,
+          "latestFilled": 162,
+          "rule": "roster",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldWAEbK7U",
+          "name": "授课学科老师",
+          "type": 3,
+          "group": null,
+          "latestFilled": 172,
+          "rule": "roster",
+          "supplementary": [
+            "对应阶段老师或学服署名"
+          ],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld7o6j6Hr",
+          "name": "26秋上课周次",
+          "type": 3,
+          "group": null,
+          "latestFilled": 172,
+          "rule": "roster",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldZ7IbFf5",
+          "name": "序号",
+          "type": 1005,
+          "group": null,
+          "latestFilled": 174,
+          "rule": "source_system",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld4KYfbBJ",
+          "name": "年级",
+          "type": 3,
+          "group": null,
+          "latestFilled": 172,
+          "rule": "identity",
+          "supplementary": [],
+          "presence": "current"
+        }
+      ]
+    },
+    {
+      "tableId": "tbl7Wx2zLgcqiCjs",
+      "table": "到访数据与信息表1.0-总",
+      "latestRows": 854,
+      "fields": [
+        {
+          "fieldId": "fld7t9ptIt",
+          "name": "报名周次",
+          "type": 3,
+          "group": "体系课报名信息（教务老师填写）",
+          "latestFilled": 142,
+          "rule": "enrollment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld3p2ChSS",
+          "name": "家长理念",
+          "type": 3,
+          "group": "到访数据与信息（学科老师填写）",
+          "latestFilled": 343,
+          "rule": "assessment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldfqUPK8M",
+          "name": "推送日期",
+          "type": 5,
+          "group": "奖学券情况（教务填写）",
+          "latestFilled": 16,
+          "rule": "voucher",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "flde6q5M83",
+          "name": "相关附件",
+          "type": 17,
+          "group": "诺访确认数据与信息（学服老师填写）",
+          "latestFilled": 0,
+          "rule": "attachment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "flddeEf0RM",
+          "name": "选拔交付组别",
+          "type": 3,
+          "group": "组织信息",
+          "latestFilled": 516,
+          "rule": "support",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldApH12JA",
+          "name": "调价运营用户情况",
+          "type": 1,
+          "group": "学员基础信息",
+          "latestFilled": 59,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldIYBEO6K",
+          "name": "单人情景再现文档链接",
+          "type": 1,
+          "group": "到访数据与信息（学科老师填写）",
+          "latestFilled": 2,
+          "rule": "assessment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld7RWBK8y",
+          "name": "性别",
+          "type": 3,
+          "group": "学员基础信息",
+          "latestFilled": 544,
+          "rule": "identity",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldVACBy5a",
+          "name": "报名月份",
+          "type": 3,
+          "group": "体系课报名信息（教务老师填写）",
+          "latestFilled": 147,
+          "rule": "enrollment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldQ9zzyLb",
+          "name": "学员情况",
+          "type": 1,
+          "group": "诺访确认数据与信息（学服老师填写）",
+          "latestFilled": 579,
+          "rule": "invitation",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldxRrSVcO",
+          "name": "选拔产品",
+          "type": 3,
+          "group": "产品信息",
+          "latestFilled": 616,
+          "rule": "product",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldnx76oyu",
+          "name": "是否列入调价运营对象（临时字段）",
+          "type": 3,
+          "group": "学员基础信息",
+          "latestFilled": 49,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld9fgxpDy",
+          "name": "学习力测评等级",
+          "type": 3,
+          "group": "到访数据与信息（学科老师填写）",
+          "latestFilled": 111,
+          "rule": "assessment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldjuCzMdo",
+          "name": "到访周次",
+          "type": 3,
+          "group": "诺访&到访数据",
+          "latestFilled": 618,
+          "rule": "visit",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldewfVzZd",
+          "name": "确认月份",
+          "type": 3,
+          "group": "诺访确认数据与信息（学服老师填写）",
+          "latestFilled": 730,
+          "rule": "invitation",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldtkjNyk9",
+          "name": "培养重点&核心期待&共识点",
+          "type": 1,
+          "group": "体系课报名信息（教务老师填写）",
+          "latestFilled": 17,
+          "rule": "enrollment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldoAI7aiG",
+          "name": "学员姓名",
+          "type": 1,
+          "group": "学员基础信息",
+          "latestFilled": 710,
+          "rule": "identity",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldpJICWpH",
+          "name": "参与内容",
+          "type": 4,
+          "group": "到访数据与信息（学科老师填写）",
+          "latestFilled": 429,
+          "rule": "assessment",
+          "supplementary": [
+            "测评参与",
+            "体验课参与",
+            "说明会参与",
+            "一对一沟通参与"
+          ],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldGn6fjFl",
+          "name": "年级/25级",
+          "type": 3,
+          "group": "学员基础信息",
+          "latestFilled": 706,
+          "rule": "identity",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldVk2ejR1",
+          "name": "班型",
+          "type": 3,
+          "group": "体系课报名信息（教务老师填写）",
+          "latestFilled": 152,
+          "rule": "enrollment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldgjPMdjk",
+          "name": "到访时段",
+          "type": 1,
+          "group": "诺访&到访数据",
+          "latestFilled": 618,
+          "rule": "visit",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldUcp4uMo",
+          "name": "家长情况2",
+          "type": 1,
+          "group": "到访数据与信息（学科老师填写）",
+          "latestFilled": 303,
+          "rule": "assessment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldDPjShkp",
+          "name": "备考成绩",
+          "type": 3,
+          "group": "诺访&到访数据",
+          "latestFilled": 49,
+          "rule": "assessment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldAsu3Cws",
+          "name": "校区",
+          "type": 3,
+          "group": "产品信息",
+          "latestFilled": 623,
+          "rule": "product",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldDhCEwuM",
+          "name": "专题产品",
+          "type": 3,
+          "group": "产品信息",
+          "latestFilled": 15,
+          "rule": "product",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldfQugCRC",
+          "name": "确认日期",
+          "type": 5,
+          "group": "诺访确认数据与信息（学服老师填写）",
+          "latestFilled": 653,
+          "rule": "invitation",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldWJpSogz",
+          "name": "备考情况",
+          "type": 3,
+          "group": "诺访&到访数据",
+          "latestFilled": 5,
+          "rule": "assessment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldcrSim46",
+          "name": "学服老师",
+          "type": 11,
+          "group": "组织信息",
+          "latestFilled": 764,
+          "rule": "support",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldTs5Fc0g",
+          "name": "到访组别",
+          "type": 3,
+          "group": "组织信息",
+          "latestFilled": 694,
+          "rule": "support",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldtXG4SoA",
+          "name": "就读学校",
+          "type": 1,
+          "group": "学员基础信息",
+          "latestFilled": 587,
+          "rule": "identity",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "flduC9wFP5",
+          "name": "学科老师",
+          "type": 11,
+          "group": "组织信息",
+          "latestFilled": 441,
+          "rule": "support",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld7jIItzM",
+          "name": "手机号",
+          "type": 13,
+          "group": "学员基础信息",
+          "latestFilled": 525,
+          "rule": "guardian",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "flde4R1yhp",
+          "name": "到访日期",
+          "type": 5,
+          "group": "诺访&到访数据",
+          "latestFilled": 631,
+          "rule": "visit",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldnGgcQuf",
+          "name": "思维测评等级",
+          "type": 3,
+          "group": "到访数据与信息（学科老师填写）",
+          "latestFilled": 354,
+          "rule": "assessment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldKpDFVqj",
+          "name": "其他老师",
+          "type": 3,
+          "group": "组织信息",
+          "latestFilled": 26,
+          "rule": "support",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldu2UIppJ",
+          "name": "到访与否",
+          "type": 3,
+          "group": "诺访&到访数据",
+          "latestFilled": 646,
+          "rule": "visit",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "flddeKZNIf",
+          "name": "报名日期",
+          "type": 5,
+          "group": "体系课报名信息（教务老师填写）",
+          "latestFilled": 133,
+          "rule": "enrollment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldniWivZo",
+          "name": "渠道",
+          "type": 1,
+          "group": null,
+          "latestFilled": 603,
+          "rule": "acquisition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld27vDpvp",
+          "name": "奖学券推送情况",
+          "type": 4,
+          "group": "奖学券情况（教务填写）",
+          "latestFilled": 14,
+          "rule": "voucher",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldw1BzMtw",
+          "name": "报名与否",
+          "type": 3,
+          "group": "体系课报名信息（教务老师填写）",
+          "latestFilled": 317,
+          "rule": "enrollment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldfaOMXkk",
+          "name": "到访月份",
+          "type": 3,
+          "group": "诺访&到访数据",
+          "latestFilled": 670,
+          "rule": "visit",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "flds1XloM8",
+          "name": "学员情况2",
+          "type": 1,
+          "group": "到访数据与信息（学科老师填写）",
+          "latestFilled": 335,
+          "rule": "assessment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld06opqXy",
+          "name": "确认周次",
+          "type": 3,
+          "group": "诺访确认数据与信息（学服老师填写）",
+          "latestFilled": 676,
+          "rule": "invitation",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld46V0X0p",
+          "name": "家长情况",
+          "type": 1,
+          "group": "诺访确认数据与信息（学服老师填写）",
+          "latestFilled": 566,
+          "rule": "invitation",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldYwHSlfg",
+          "name": "测评报告附件",
+          "type": 17,
+          "group": "到访数据与信息（学科老师填写）",
+          "latestFilled": 0,
+          "rule": "attachment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldYOmveMa",
+          "name": "方案宣讲与否",
+          "type": 3,
+          "group": "到访数据与信息（学科老师填写）",
+          "latestFilled": 5,
+          "rule": "assessment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldNUY44aU",
+          "name": "英语报名日期",
+          "type": 5,
+          "group": "英语运营数据",
+          "latestFilled": 0,
+          "previousFilled": 12,
+          "rule": "english_history",
+          "supplementary": [],
+          "presence": "historical_only"
+        },
+        {
+          "fieldId": "fldH2qyD7K",
+          "name": "沟通日期",
+          "type": 5,
+          "group": "英语运营数据",
+          "latestFilled": 0,
+          "previousFilled": 29,
+          "rule": "english_history",
+          "supplementary": [],
+          "presence": "historical_only"
+        },
+        {
+          "fieldId": "fldJ3GPHox",
+          "name": "是否沟通英语",
+          "type": 3,
+          "group": "英语运营数据",
+          "latestFilled": 0,
+          "previousFilled": 43,
+          "rule": "english_history",
+          "supplementary": [],
+          "presence": "historical_only"
+        },
+        {
+          "fieldId": "flddFEz9DO",
+          "name": "英语测评成绩（年级限定下）",
+          "type": 3,
+          "group": "英语运营数据",
+          "latestFilled": 0,
+          "previousFilled": 19,
+          "rule": "english_history",
+          "supplementary": [],
+          "presence": "historical_only"
+        },
+        {
+          "fieldId": "fldXXqM7WM",
+          "name": "是否报名英语",
+          "type": 3,
+          "group": "英语运营数据",
+          "latestFilled": 0,
+          "previousFilled": 13,
+          "rule": "english_history",
+          "supplementary": [],
+          "presence": "historical_only"
+        },
+        {
+          "fieldId": "fldFUDLIJ5",
+          "name": "体/测日期",
+          "type": 5,
+          "group": "英语运营数据",
+          "latestFilled": 0,
+          "previousFilled": 16,
+          "rule": "english_history",
+          "supplementary": [],
+          "presence": "historical_only"
+        },
+        {
+          "fieldId": "fldYfkruQn",
+          "name": "体验测评家长关注点",
+          "type": 1,
+          "group": "英语运营数据",
+          "latestFilled": 0,
+          "previousFilled": 12,
+          "rule": "english_history",
+          "supplementary": [],
+          "presence": "historical_only"
+        },
+        {
+          "fieldId": "fldfWgngcq",
+          "name": "是否体验/测评英语",
+          "type": 3,
+          "group": "英语运营数据",
+          "latestFilled": 0,
+          "previousFilled": 25,
+          "rule": "english_history",
+          "supplementary": [],
+          "presence": "historical_only"
+        },
+        {
+          "fieldId": "fldGqxh6lW",
+          "name": "家长报名重视点总结",
+          "type": 1,
+          "group": "英语运营数据",
+          "latestFilled": 0,
+          "previousFilled": 4,
+          "rule": "english_history",
+          "supplementary": [],
+          "presence": "historical_only"
+        }
+      ]
+    },
+    {
+      "tableId": "tblzwPK2XgJa14EC",
+      "table": "获客&私域信息登记表1.0-总",
+      "latestRows": 3859,
+      "fields": [
+        {
+          "fieldId": "fldYNf4EOj",
+          "name": "年级/25级",
+          "type": 1,
+          "group": "学员基础信息",
+          "latestFilled": 3676,
+          "rule": "identity",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld4o6YHXF",
+          "name": "沟通情况",
+          "type": 1,
+          "group": "袋鼠活动",
+          "latestFilled": 311,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldAUxZoKg",
+          "name": "确认周次",
+          "type": 3,
+          "group": "首次确认信息（必填列）",
+          "latestFilled": 2593,
+          "rule": "confirmation",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldDgNfMpZ",
+          "name": "真题拼团沟通",
+          "type": 3,
+          "group": "袋鼠活动",
+          "latestFilled": 318,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld4SUKixk",
+          "name": "学员姓名",
+          "type": 1,
+          "group": "学员基础信息",
+          "latestFilled": 3688,
+          "rule": "identity",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldMsKU1pY",
+          "name": "报名与否",
+          "type": 3,
+          "group": "后续环节",
+          "latestFilled": 363,
+          "rule": "source_milestone",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldWYMZgQI",
+          "name": "真题领取",
+          "type": 3,
+          "group": "袋鼠活动",
+          "latestFilled": 28,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldeZNpvp4",
+          "name": "获取人员",
+          "type": 1,
+          "group": "渠道内容信息",
+          "latestFilled": 2893,
+          "rule": "acquisition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldfxqSjlo",
+          "name": "获客加V情况",
+          "type": 4,
+          "group": "渠道内容信息",
+          "latestFilled": 1395,
+          "rule": "acquisition",
+          "supplementary": [
+            "获客时微信状态",
+            "获客时群状态"
+          ],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldKgI4bOP",
+          "name": "确认月份",
+          "type": 3,
+          "group": "首次确认信息（必填列）",
+          "latestFilled": 2692,
+          "rule": "confirmation",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldwNK02fD",
+          "name": "到访与否",
+          "type": 3,
+          "group": "后续环节",
+          "latestFilled": 398,
+          "rule": "source_milestone",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldWNZ7ZLq",
+          "name": "跟进月份",
+          "type": 3,
+          "group": "跟进信息",
+          "latestFilled": 1009,
+          "rule": "followup",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldwsVNGlG",
+          "name": "获客区位",
+          "type": 1,
+          "group": "学员基础信息",
+          "latestFilled": 3268,
+          "rule": "acquisition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld85yv2Wc",
+          "name": "跟进结果",
+          "type": 3,
+          "group": "跟进信息",
+          "latestFilled": 1128,
+          "rule": "followup",
+          "supplementary": [
+            "联系结果",
+            "微信状态",
+            "群状态",
+            "诺访意向",
+            "再次联系要求"
+          ],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldXYQlC8Q",
+          "name": "确认组别",
+          "type": 3,
+          "group": "首次确认信息（必填列）",
+          "latestFilled": 2855,
+          "rule": "confirmation",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldMuFQGjf",
+          "name": "家长电话",
+          "type": 13,
+          "group": "学员基础信息",
+          "latestFilled": 3549,
+          "rule": "guardian",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldC9AhueH",
+          "name": "获取日期",
+          "type": 1,
+          "group": "渠道内容信息",
+          "latestFilled": 2874,
+          "rule": "acquisition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld6Q0ZlhF",
+          "name": "性别",
+          "type": 3,
+          "group": "学员基础信息",
+          "latestFilled": 98,
+          "rule": "identity",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldZBLzBJQ",
+          "name": "获取渠道",
+          "type": 3,
+          "group": "渠道内容信息",
+          "latestFilled": 3342,
+          "rule": "acquisition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldF4EpRxu",
+          "name": "确认结果",
+          "type": 4,
+          "group": "首次确认信息（必填列）",
+          "latestFilled": 1833,
+          "rule": "confirmation",
+          "supplementary": [
+            "联系结果",
+            "微信状态",
+            "群状态",
+            "诺访意向",
+            "再次联系要求"
+          ],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldQ0Og2xs",
+          "name": "跟进人",
+          "type": 11,
+          "group": "跟进信息",
+          "latestFilled": 680,
+          "rule": "followup",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldIQPqVDC",
+          "name": "沟通人员",
+          "type": 11,
+          "group": "袋鼠活动",
+          "latestFilled": 327,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldpWlHnq6",
+          "name": "获取周次",
+          "type": 3,
+          "group": "渠道内容信息",
+          "latestFilled": 2516,
+          "rule": "acquisition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldTVgbM4O",
+          "name": "团成员手机号",
+          "type": 13,
+          "group": "袋鼠活动",
+          "latestFilled": 21,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldusgD2qP",
+          "name": "确认信息备注",
+          "type": 1,
+          "group": "首次确认信息（必填列）",
+          "latestFilled": 2814,
+          "rule": "confirmation",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld0s0Silf",
+          "name": "用户当下加V与否",
+          "type": 3,
+          "group": null,
+          "latestFilled": 873,
+          "rule": "current_state",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldGS86D0n",
+          "name": "跟进组别",
+          "type": 3,
+          "group": "跟进信息",
+          "latestFilled": 695,
+          "rule": "followup",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldYymiJYj",
+          "name": "当下状态",
+          "type": 4,
+          "group": "袋鼠活动",
+          "latestFilled": 264,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldr27Ziif",
+          "name": "登记日期（此列不用填，自动生成）",
+          "type": 5,
+          "group": "渠道内容信息",
+          "latestFilled": 3582,
+          "rule": "source_system",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldUmVyEi7",
+          "name": "诺访与否",
+          "type": 3,
+          "group": "后续环节",
+          "latestFilled": 438,
+          "rule": "source_milestone",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldNg7yUyS",
+          "name": "开团与否",
+          "type": 3,
+          "group": "袋鼠活动",
+          "latestFilled": 178,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldKyRnLbI",
+          "name": "跟进日期",
+          "type": 5,
+          "group": "跟进信息",
+          "latestFilled": 939,
+          "rule": "followup",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldxtUfB3m",
+          "name": "确认日期",
+          "type": 1,
+          "group": "首次确认信息（必填列）",
+          "latestFilled": 2839,
+          "rule": "confirmation",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldUUKxkBz",
+          "name": "确认人员",
+          "type": 11,
+          "group": "首次确认信息（必填列）",
+          "latestFilled": 3499,
+          "rule": "confirmation",
+          "supplementary": [
+            "当前学服负责人候选",
+            "历史确认署名"
+          ],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldgZ1gkAx",
+          "name": "就读学校",
+          "type": 1,
+          "group": "学员基础信息",
+          "latestFilled": 1543,
+          "rule": "identity",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldv3jgNL3",
+          "name": "意向分类",
+          "type": 3,
+          "group": "首次确认信息（必填列）",
+          "latestFilled": 1891,
+          "rule": "confirmation",
+          "supplementary": [
+            "确认阶段意向快照"
+          ],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldO7AkPtA",
+          "name": "获客组别",
+          "type": 3,
+          "group": "渠道内容信息",
+          "latestFilled": 3658,
+          "rule": "acquisition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldnvgwS5B",
+          "name": "获取月份",
+          "type": 3,
+          "group": "渠道内容信息",
+          "latestFilled": 3232,
+          "rule": "acquisition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldcjpCBkG",
+          "name": "跟进信息",
+          "type": 1,
+          "group": "跟进信息",
+          "latestFilled": 668,
+          "rule": "followup",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldGIAuMJI",
+          "name": "跟进周次",
+          "type": 3,
+          "group": "跟进信息",
+          "latestFilled": 969,
+          "rule": "followup",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldZKvzepl",
+          "name": "触达内容",
+          "type": 1,
+          "group": "渠道内容信息",
+          "latestFilled": 2889,
+          "rule": "acquisition",
+          "supplementary": [],
+          "presence": "current"
+        }
+      ]
+    },
+    {
+      "tableId": "tblWwIRi0grkcwEg",
+      "table": "袋鼠报名与备考信息表",
+      "latestRows": 61,
+      "fields": [
+        {
+          "fieldId": "fldvZsQv5T",
+          "name": "非在读-学服",
+          "type": 3,
+          "group": "运营信息",
+          "latestFilled": 9,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldoVkItlI",
+          "name": "所在班级",
+          "type": 1,
+          "group": "注册信息",
+          "latestFilled": 0,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld4fHwvAG",
+          "name": "卡4",
+          "type": 3,
+          "group": "备考情况",
+          "latestFilled": 0,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldQmm6fCv",
+          "name": "邮箱",
+          "type": 1,
+          "group": "注册信息",
+          "latestFilled": 0,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldpQBw0C5",
+          "name": "短期班第1次课",
+          "type": 3,
+          "group": "备考情况",
+          "latestFilled": 0,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldnV6dg6S",
+          "name": "卡3",
+          "type": 3,
+          "group": "备考情况",
+          "latestFilled": 0,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldYLeJbN7",
+          "name": "卡6",
+          "type": 3,
+          "group": "备考情况",
+          "latestFilled": 0,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldGexwkYP",
+          "name": "思维在读-老师",
+          "type": 3,
+          "group": "运营信息",
+          "latestFilled": 52,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldRAK7do2",
+          "name": "出生日期",
+          "type": 5,
+          "group": "注册信息",
+          "latestFilled": 0,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldX4fFO5Z",
+          "name": "卡9",
+          "type": 3,
+          "group": "备考情况",
+          "latestFilled": 0,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldt3GroRN",
+          "name": "卡5",
+          "type": 3,
+          "group": "备考情况",
+          "latestFilled": 0,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldDzr5v0F",
+          "name": "学员类型",
+          "type": 3,
+          "group": "运营信息",
+          "latestFilled": 61,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldoh31n0W",
+          "name": "姓名",
+          "type": 1,
+          "group": "基础信息",
+          "latestFilled": 61,
+          "rule": "identity",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldVNeeDFp",
+          "name": "卡2",
+          "type": 3,
+          "group": "备考情况",
+          "latestFilled": 0,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldVTVFjyo",
+          "name": "短期班期次",
+          "type": 3,
+          "group": "备考情况",
+          "latestFilled": 0,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld2wJXgyO",
+          "name": "备考打卡",
+          "type": 3,
+          "group": "备考情况",
+          "latestFilled": 12,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldgBgBHgv",
+          "name": "手机号码",
+          "type": 1,
+          "group": "基础信息",
+          "latestFilled": 61,
+          "rule": "guardian",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldtEJlp17",
+          "name": "年级",
+          "type": 3,
+          "group": "基础信息",
+          "latestFilled": 61,
+          "rule": "identity",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld9oLKm0v",
+          "name": "短期班",
+          "type": 3,
+          "group": "备考情况",
+          "latestFilled": 0,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld84Q2Cex",
+          "name": "短期班第2次课",
+          "type": 3,
+          "group": "备考情况",
+          "latestFilled": 0,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldjqS7hHZ",
+          "name": "卡8",
+          "type": 3,
+          "group": "备考情况",
+          "latestFilled": 0,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldEI4RnYm",
+          "name": "真题领取",
+          "type": 3,
+          "group": "备考情况",
+          "latestFilled": 48,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldZJEIS9I",
+          "name": "性别",
+          "type": 3,
+          "group": "基础信息",
+          "latestFilled": 61,
+          "rule": "identity",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldAiALoz1",
+          "name": "卡1",
+          "type": 3,
+          "group": "备考情况",
+          "latestFilled": 0,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldJXzAFwC",
+          "name": "竞赛级别",
+          "type": 3,
+          "group": "注册信息",
+          "latestFilled": 0,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldEE5RnEW",
+          "name": "填写与否",
+          "type": 3,
+          "group": "注册信息",
+          "latestFilled": 61,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldiTTDLh1",
+          "name": "报名日期",
+          "type": 5,
+          "group": "运营信息",
+          "latestFilled": 61,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldSihV6DD",
+          "name": "证件号码",
+          "type": 1,
+          "group": "注册信息",
+          "latestFilled": 0,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldUZR1gjw",
+          "name": "卡7",
+          "type": 3,
+          "group": "备考情况",
+          "latestFilled": 0,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldZqbnnUJ",
+          "name": "就读学校",
+          "type": 1,
+          "group": "注册信息",
+          "latestFilled": 0,
+          "rule": "competition",
+          "supplementary": [],
+          "presence": "current"
+        }
+      ]
+    },
+    {
+      "tableId": "tblcR88ZBWRbjzL0",
+      "table": "袋鼠推广",
+      "latestRows": 16,
+      "fields": [
+        {
+          "fieldId": "fldk4hZRWq",
+          "name": "题目附件",
+          "type": 17,
+          "group": null,
+          "latestFilled": 0,
+          "rule": "attachment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldXYKJ341",
+          "name": "沟通基础文案",
+          "type": 1,
+          "group": null,
+          "latestFilled": 1,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldVmyCk9H",
+          "name": "文本",
+          "type": 1,
+          "group": null,
+          "latestFilled": 0,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldQIO1p86",
+          "name": "项目",
+          "type": 1,
+          "group": null,
+          "latestFilled": 15,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldwMOslWU",
+          "name": "海报&PDF附件",
+          "type": 17,
+          "group": null,
+          "latestFilled": 0,
+          "rule": "attachment",
+          "supplementary": [],
+          "presence": "current"
+        }
+      ]
+    },
+    {
+      "tableId": "tbl5Ucch6Ohr7Y3K",
+      "table": "（老数据）各选拔产品协作信息表-总",
+      "latestRows": 101,
+      "fields": [
+        {
+          "fieldId": "fldChSiYqz",
+          "name": "家长说明会参与情况",
+          "type": 3,
+          "group": "交付服务信息",
+          "latestFilled": 49,
+          "rule": "assessment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld9UIRDfq",
+          "name": "学生来源渠道",
+          "type": 1,
+          "group": "用户来源与基本信息",
+          "latestFilled": 99,
+          "rule": "acquisition",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldEydDbPK",
+          "name": "学员性别",
+          "type": 3,
+          "group": "学员信息",
+          "latestFilled": 99,
+          "rule": "identity",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld2gArQbN",
+          "name": "散测后试听与否",
+          "type": 3,
+          "group": "选拔产品相关信息",
+          "latestFilled": 82,
+          "rule": "product",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld3BJIYEo",
+          "name": "家长出勤情况",
+          "type": 3,
+          "group": "交付服务信息",
+          "latestFilled": 89,
+          "rule": "assessment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldEqKPtq7",
+          "name": "报名体系日期",
+          "type": 5,
+          "group": "体系报名情况",
+          "latestFilled": 32,
+          "rule": "enrollment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldTQS6Eey",
+          "name": "参加选拔产品日期",
+          "type": 5,
+          "group": "选拔产品相关信息",
+          "latestFilled": 99,
+          "rule": "product",
+          "supplementary": [
+            "项目报名或参与时间"
+          ],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldSGOqrYE",
+          "name": "家长体验课旁听",
+          "type": 3,
+          "group": "交付服务信息",
+          "latestFilled": 78,
+          "rule": "assessment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldxNUfJqe",
+          "name": "家长理念",
+          "type": 3,
+          "group": "交付服务信息",
+          "latestFilled": 42,
+          "rule": "assessment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldt1LsLHu",
+          "name": "校区",
+          "type": 3,
+          "group": "选拔产品相关信息",
+          "latestFilled": 97,
+          "rule": "product",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldCURrgWp",
+          "name": "主线服务老师",
+          "type": 11,
+          "group": "交付服务信息",
+          "latestFilled": 98,
+          "rule": "support",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld4p8U1cc",
+          "name": "学员ID",
+          "type": 1,
+          "group": "学员信息",
+          "latestFilled": 0,
+          "rule": "identity",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldYHU9w61",
+          "name": "家长沟通信息总结（附整理文档）",
+          "type": 17,
+          "group": "交付服务信息",
+          "latestFilled": 0,
+          "rule": "attachment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldOhUC5Ke",
+          "name": "学员程度&推荐班型",
+          "type": 3,
+          "group": "交付服务信息",
+          "latestFilled": 60,
+          "rule": "assessment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld5cnaTU5",
+          "name": "周次",
+          "type": 3,
+          "group": "选拔产品相关信息",
+          "latestFilled": 65,
+          "rule": "product",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldeJ3ZbMb",
+          "name": "加V与否（学服）",
+          "type": 3,
+          "group": "用户来源与基本信息",
+          "latestFilled": 99,
+          "rule": "confirmation",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldvPf3b4i",
+          "name": "初步信息（首轮）",
+          "type": 1,
+          "group": "用户来源与基本信息",
+          "latestFilled": 98,
+          "rule": "confirmation",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld9HtLrYl",
+          "name": "确认日期",
+          "type": 5,
+          "group": "用户来源与基本信息",
+          "latestFilled": 99,
+          "rule": "confirmation",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld9En0NtY",
+          "name": "学服老师",
+          "type": 11,
+          "group": "用户来源与基本信息",
+          "latestFilled": 99,
+          "rule": "support",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldv5JTKNY",
+          "name": "报名选拔产品日期",
+          "type": 5,
+          "group": "选拔产品相关信息",
+          "latestFilled": 97,
+          "rule": "product",
+          "supplementary": [
+            "项目报名或参与时间"
+          ],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldcaB7WRV",
+          "name": "体系兴趣度",
+          "type": 3,
+          "group": "交付服务信息",
+          "latestFilled": 36,
+          "rule": "assessment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld6NfLHzj",
+          "name": "报名体系与否",
+          "type": 3,
+          "group": "体系报名情况",
+          "latestFilled": 99,
+          "rule": "enrollment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldOVsBuSd",
+          "name": "学员姓名",
+          "type": 1,
+          "group": "学员信息",
+          "latestFilled": 99,
+          "rule": "identity",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldls0UO0W",
+          "name": "学员出勤情况",
+          "type": 3,
+          "group": "交付服务信息",
+          "latestFilled": 94,
+          "rule": "assessment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldLqYHtll",
+          "name": "年级",
+          "type": 3,
+          "group": "学员信息",
+          "latestFilled": 98,
+          "rule": "identity",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldk6XPe1x",
+          "name": "家长主要关注点",
+          "type": 1,
+          "group": "交付服务信息",
+          "latestFilled": 35,
+          "rule": "assessment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldNKybQSc",
+          "name": "时间段",
+          "type": 1,
+          "group": "选拔产品相关信息",
+          "latestFilled": 96,
+          "rule": "product",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldyIHCym6",
+          "name": "测评成绩（分数）",
+          "type": 1,
+          "group": "交付服务信息",
+          "latestFilled": 15,
+          "rule": "assessment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldmgODCU7",
+          "name": "加V与否（老师）",
+          "type": 3,
+          "group": "交付服务信息",
+          "latestFilled": 74,
+          "rule": "assessment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldyRk059z",
+          "name": "附件",
+          "type": 17,
+          "group": "交付服务信息",
+          "latestFilled": 0,
+          "rule": "attachment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldRpTJ35c",
+          "name": "选拔产品项目",
+          "type": 4,
+          "group": "选拔产品相关信息",
+          "latestFilled": 98,
+          "rule": "product",
+          "supplementary": [],
+          "presence": "current"
+        }
+      ]
+    },
+    {
+      "tableId": "tblRazr8H2BaV1LX",
+      "table": "学科内容产出表1.0-总",
+      "latestRows": 55,
+      "fields": [
+        {
+          "fieldId": "fldyg2JFdY",
+          "name": "发布日期",
+          "type": 5,
+          "group": null,
+          "latestFilled": 52,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld08qiqRN",
+          "name": "发布渠道",
+          "type": 4,
+          "group": null,
+          "latestFilled": 48,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldT9qt3os",
+          "name": "服务类型",
+          "type": 4,
+          "group": null,
+          "latestFilled": 52,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldv1AJXhW",
+          "name": "月份",
+          "type": 3,
+          "group": null,
+          "latestFilled": 52,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld01LvgKH",
+          "name": "周次",
+          "type": 3,
+          "group": null,
+          "latestFilled": 52,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld7DdaG1q",
+          "name": "组别",
+          "type": 3,
+          "group": null,
+          "latestFilled": 53,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld6bY1hg7",
+          "name": "产出老师",
+          "type": 11,
+          "group": null,
+          "latestFilled": 52,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldrSaSwIg",
+          "name": "序号",
+          "type": 1005,
+          "group": null,
+          "latestFilled": 55,
+          "rule": "source_system",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldsAq22cj",
+          "name": "方案维度",
+          "type": 4,
+          "group": null,
+          "latestFilled": 52,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldHsKJS4d",
+          "name": "用户学段",
+          "type": 3,
+          "group": null,
+          "latestFilled": 52,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldqzpmBdn",
+          "name": "内容形态",
+          "type": 3,
+          "group": null,
+          "latestFilled": 52,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldCpcm1do",
+          "name": "内容主题",
+          "type": 1,
+          "group": null,
+          "latestFilled": 52,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldY3Wwog4",
+          "name": "备注",
+          "type": 1,
+          "group": null,
+          "latestFilled": 3,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        }
+      ]
+    },
+    {
+      "tableId": "tbl1hmIhSRi30hnT",
+      "table": "解决方案与内容产出框架",
+      "latestRows": 10,
+      "fields": [
+        {
+          "fieldId": "fldZTkDMWk",
+          "name": "文本",
+          "type": 1,
+          "group": null,
+          "latestFilled": 0,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldikdCt5x",
+          "name": "单选",
+          "type": 3,
+          "group": null,
+          "latestFilled": 0,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldAgr1tuo",
+          "name": "日期",
+          "type": 5,
+          "group": null,
+          "latestFilled": 0,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldcQ05cBC",
+          "name": "附件",
+          "type": 17,
+          "group": null,
+          "latestFilled": 0,
+          "rule": "attachment",
+          "supplementary": [],
+          "presence": "current"
+        }
+      ]
+    },
+    {
+      "tableId": "tblldN0prtFX4HoB",
+      "table": "一组12月前端目标拆解",
+      "latestRows": 5,
+      "fields": [
+        {
+          "fieldId": "fldY1MmABq",
+          "name": "新增私域目标（加V）",
+          "type": 1,
+          "group": null,
+          "latestFilled": 0,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldJrVTufk",
+          "name": "渠道数目标",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "flduApfjc5",
+          "name": "摆台点目标",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldi6xQcac",
+          "name": "精准获客目标（直邀诺访）",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldq4lPu41",
+          "name": "诺访目标",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldbCXFMPQ",
+          "name": "学服资源数",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldk0PQzMB",
+          "name": "到访目标",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldECbJXZI",
+          "name": "小红书账号数目标",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldeMlTypI",
+          "name": "周期",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldq3cJfzD",
+          "name": "报名目标",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldFt1LeRz",
+          "name": "整体获客目标",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldXv6SeKI",
+          "name": "有效兼职人数目标",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld7oSHbjs",
+          "name": "有效获客目标(确认加V）",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        }
+      ]
+    },
+    {
+      "tableId": "tblLCbMKm0vUJVCi",
+      "table": "二组12月前端目标拆解",
+      "latestRows": 5,
+      "fields": [
+        {
+          "fieldId": "fldY1MmABq",
+          "name": "新增私域目标（加V）",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldXv6SeKI",
+          "name": "有效兼职人数目标",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "flduApfjc5",
+          "name": "摆台点目标",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldq4lPu41",
+          "name": "诺访目标",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldq3cJfzD",
+          "name": "报名目标",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldECbJXZI",
+          "name": "小红书账号数目标",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld7oSHbjs",
+          "name": "有效获客目标(确认加V）",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldeuie81Y",
+          "name": "整体获客目标",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldi6xQcac",
+          "name": "精准获客目标（直邀诺访）",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldbCXFMPQ",
+          "name": "学服资源数",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldk0PQzMB",
+          "name": "到访目标",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldJrVTufk",
+          "name": "渠道数目标",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldeMlTypI",
+          "name": "周期",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        }
+      ]
+    },
+    {
+      "tableId": "tblFYQHoWGBjclk2",
+      "table": "三组12月前端目标拆解",
+      "latestRows": 7,
+      "fields": [
+        {
+          "fieldId": "fldECbJXZI",
+          "name": "小红书账号数目标",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldbCXFMPQ",
+          "name": "学服资源数",
+          "type": 1,
+          "group": null,
+          "latestFilled": 0,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldXv6SeKI",
+          "name": "有效兼职人数目标",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldq4lPu41",
+          "name": "诺访目标",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldq3cJfzD",
+          "name": "报名目标",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldJrVTufk",
+          "name": "渠道数目标",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld7oSHbjs",
+          "name": "有效获客目标(确认加V）",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "flduApfjc5",
+          "name": "摆台点目标",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldY1MmABq",
+          "name": "新增私域目标（加V）",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldeMlTypI",
+          "name": "周期",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldwkyhlmb",
+          "name": "整体获客目标",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldk0PQzMB",
+          "name": "到访目标",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldi6xQcac",
+          "name": "精准获客目标（直邀诺访）",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        }
+      ]
+    },
+    {
+      "tableId": "tblTyoP2DS8016pV",
+      "table": "调价续报与新报用户运营数据表-初中",
+      "latestRows": 28,
+      "fields": [
+        {
+          "fieldId": "fldCZ4rOrJ",
+          "name": "续报与近期新报情况",
+          "type": 3,
+          "group": null,
+          "latestFilled": 15,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldjRkI9xk",
+          "name": "调价运营结果",
+          "type": 3,
+          "group": null,
+          "latestFilled": 0,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldSeOEJEE",
+          "name": "配合跟进学服老师",
+          "type": 11,
+          "group": null,
+          "latestFilled": 0,
+          "rule": "renewal",
+          "supplementary": [
+            "对应学期授课老师或续报学服署名"
+          ],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldte4dzVn",
+          "name": "用户沟通情况（授课老师填写项）",
+          "type": 1,
+          "group": null,
+          "latestFilled": 0,
+          "rule": "renewal",
+          "supplementary": [
+            "对应学期授课老师或续报学服署名"
+          ],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldS2g47DY",
+          "name": "学员姓名",
+          "type": 1,
+          "group": null,
+          "latestFilled": 15,
+          "rule": "identity",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldUTRMaaJ",
+          "name": "校区",
+          "type": 3,
+          "group": null,
+          "latestFilled": 15,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldxdbm2OD",
+          "name": "用户运营情况（学服老师填写项）",
+          "type": 1,
+          "group": null,
+          "latestFilled": 0,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldjp7vLZR",
+          "name": "学期情况",
+          "type": 3,
+          "group": null,
+          "latestFilled": 15,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld5SEVEGS",
+          "name": "班型",
+          "type": 3,
+          "group": null,
+          "latestFilled": 15,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldn4Nq2YX",
+          "name": "周次",
+          "type": 3,
+          "group": null,
+          "latestFilled": 15,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldmbpH310",
+          "name": "续报与否",
+          "type": 3,
+          "group": null,
+          "latestFilled": 15,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldxk4TEEu",
+          "name": "上课开始时间",
+          "type": 3,
+          "group": null,
+          "latestFilled": 15,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldjJvrGL1",
+          "name": "组别",
+          "type": 3,
+          "group": null,
+          "latestFilled": 15,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldvnrH1Ee",
+          "name": "年级",
+          "type": 3,
+          "group": null,
+          "latestFilled": 15,
+          "rule": "identity",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldDmabgTb",
+          "name": "特别备注说明",
+          "type": 1,
+          "group": null,
+          "latestFilled": 0,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldUNniKps",
+          "name": "授课老师",
+          "type": 3,
+          "group": null,
+          "latestFilled": 15,
+          "rule": "renewal",
+          "supplementary": [
+            "对应学期授课老师或续报学服署名"
+          ],
+          "presence": "current"
+        }
+      ]
+    },
+    {
+      "tableId": "tblAbZf7qWUpXTEZ",
+      "table": "一组学员学习信息",
+      "latestRows": 2,
+      "fields": [
+        {
+          "fieldId": "flduVlPb4A",
+          "name": "第2天",
+          "type": 3,
+          "group": "天天练",
+          "latestFilled": 0,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld3iT94XB",
+          "name": "进门测得分",
+          "type": 3,
+          "group": null,
+          "latestFilled": 1,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldZkrBFJk",
+          "name": "出勤情况",
+          "type": 3,
+          "group": "上课信息",
+          "latestFilled": 0,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldHaDOqe5",
+          "name": "讲次知识模块",
+          "type": 3,
+          "group": "讲次信息",
+          "latestFilled": 0,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldXwVldsR",
+          "name": "所在周次",
+          "type": 3,
+          "group": "上课信息",
+          "latestFilled": 1,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldRf3nGhb",
+          "name": "加油站情况",
+          "type": 4,
+          "group": "作业情况",
+          "latestFilled": 0,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldyL18N4W",
+          "name": "计算周总结",
+          "type": 3,
+          "group": "计算信息",
+          "latestFilled": 0,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld1LxhoCw",
+          "name": "补调情况",
+          "type": 1,
+          "group": "班级基础信息",
+          "latestFilled": 0,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldvaSE0D4",
+          "name": "性别",
+          "type": 3,
+          "group": "学员基础信息",
+          "latestFilled": 0,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldNJjrwYz",
+          "name": "校区",
+          "type": 3,
+          "group": "班级基础信息",
+          "latestFilled": 0,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldpIJxmsO",
+          "name": "姓名",
+          "type": 1,
+          "group": "学员基础信息",
+          "latestFilled": 1,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldZIpmdur",
+          "name": "第6天",
+          "type": 3,
+          "group": "天天练",
+          "latestFilled": 0,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldWSnB3X9",
+          "name": "上课时间",
+          "type": 5,
+          "group": "上课信息",
+          "latestFilled": 1,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldNjzp9hl",
+          "name": "文本 7",
+          "type": 1,
+          "group": null,
+          "latestFilled": 0,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldVOeA4hU",
+          "name": "讲次名称",
+          "type": 1,
+          "group": "讲次信息",
+          "latestFilled": 0,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldUmIs9UK",
+          "name": "班级名称",
+          "type": 1,
+          "group": "班级基础信息",
+          "latestFilled": 0,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldPvRbZSq",
+          "name": "第4天",
+          "type": 3,
+          "group": "天天练",
+          "latestFilled": 1,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldeRcTtSZ",
+          "name": "家长手机号",
+          "type": 1,
+          "group": "学员基础信息",
+          "latestFilled": 2,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldRp4spNI",
+          "name": "打卡附件",
+          "type": 17,
+          "group": "计算信息",
+          "latestFilled": 0,
+          "rule": "attachment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldW6aDpM9",
+          "name": "本周书写",
+          "type": 3,
+          "group": "作业情况",
+          "latestFilled": 0,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldtq8tTbn",
+          "name": "讲次",
+          "type": 3,
+          "group": "讲次信息",
+          "latestFilled": 1,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld2R7WSNM",
+          "name": "学期",
+          "type": 3,
+          "group": "讲次信息",
+          "latestFilled": 1,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldizvejlo",
+          "name": "调课请假与否",
+          "type": 3,
+          "group": "班级基础信息",
+          "latestFilled": 0,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldg190wui",
+          "name": "错题类型",
+          "type": 18,
+          "group": "作业情况",
+          "latestFilled": 0,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld09DE6AQ",
+          "name": "年度",
+          "type": 3,
+          "group": "讲次信息",
+          "latestFilled": 1,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldIEUHEj3",
+          "name": "错题预号",
+          "type": 3,
+          "group": null,
+          "latestFilled": 1,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldcXMVVxb",
+          "name": "所在月份",
+          "type": 3,
+          "group": "上课信息",
+          "latestFilled": 1,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldNLwwMMc",
+          "name": "进门测错误类型",
+          "type": 3,
+          "group": null,
+          "latestFilled": 1,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldezLhTao",
+          "name": "第3天",
+          "type": 18,
+          "group": "天天练",
+          "latestFilled": 1,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld43M8l4E",
+          "name": "班型",
+          "type": 1,
+          "group": "班级基础信息",
+          "latestFilled": 0,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld4xbuOVl",
+          "name": "预习评价",
+          "type": 3,
+          "group": null,
+          "latestFilled": 1,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldOKzXw25",
+          "name": "第5天",
+          "type": 3,
+          "group": "天天练",
+          "latestFilled": 1,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldvMdvPCl",
+          "name": "第1天",
+          "type": 3,
+          "group": "天天练",
+          "latestFilled": 0,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldBmQUsWk",
+          "name": "拓展情况",
+          "type": 4,
+          "group": "作业情况",
+          "latestFilled": 0,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        }
+      ]
+    },
+    {
+      "tableId": "tbltDB9A7TMuPHhX",
+      "table": "一组教学服务信息",
+      "latestRows": 5,
+      "fields": [
+        {
+          "fieldId": "fldKND4HR4",
+          "name": "家长手机号",
+          "type": 13,
+          "group": null,
+          "latestFilled": 0,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldhYMzRCJ",
+          "name": "学员姓名",
+          "type": 1,
+          "group": null,
+          "latestFilled": 0,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldBJ0wB6T",
+          "name": "性别",
+          "type": 3,
+          "group": null,
+          "latestFilled": 0,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldpWxIEMN",
+          "name": "就读小学",
+          "type": 1,
+          "group": null,
+          "latestFilled": 0,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldErFF6Bp",
+          "name": "班级名称",
+          "type": 1,
+          "group": null,
+          "latestFilled": 0,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldOLgu1tD",
+          "name": "班型",
+          "type": 3,
+          "group": null,
+          "latestFilled": 0,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldXo0ey57",
+          "name": "第一讲次",
+          "type": 1,
+          "group": null,
+          "latestFilled": 0,
+          "rule": "teaching_reference",
+          "supplementary": [],
+          "presence": "current"
+        }
+      ]
+    },
+    {
+      "tableId": "tbldmx0IPqal6jnZ",
+      "table": "一组市场获客信息",
+      "latestRows": 5,
+      "fields": [
+        {
+          "fieldId": "fldoPIGceJ",
+          "name": "文本",
+          "type": 1,
+          "group": null,
+          "latestFilled": 0,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        }
+      ]
+    },
+    {
+      "tableId": "tblJyqjfVT4kW7FI",
+      "table": "一组信息日报",
+      "latestRows": 5,
+      "fields": [
+        {
+          "fieldId": "fldb8KU1r3",
+          "name": "日报人",
+          "type": 11,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld3eZeS3M",
+          "name": "当日信息内容",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldjXuBZet",
+          "name": "解决思路建议",
+          "type": 1,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldYvN9RrL",
+          "name": "抄送人",
+          "type": 11,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldaEbUgZM",
+          "name": "运营场景",
+          "type": 1,
+          "group": null,
+          "latestFilled": 1,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldA5LJbpD",
+          "name": "信息对应日期",
+          "type": 5,
+          "group": null,
+          "latestFilled": 1,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldpKFXI8F",
+          "name": "填报日期",
+          "type": 5,
+          "group": null,
+          "latestFilled": 5,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        }
+      ]
+    },
+    {
+      "tableId": "tblMBMATv7AlBpnI",
+      "table": "运营相关图片-私域可用（公域勿用）",
+      "latestRows": 5,
+      "fields": [
+        {
+          "fieldId": "fldjmlssBK",
+          "name": "说明",
+          "type": 1,
+          "group": null,
+          "latestFilled": 2,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldKpJLFme",
+          "name": "附件",
+          "type": 17,
+          "group": null,
+          "latestFilled": 0,
+          "rule": "attachment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldwOB2zk0",
+          "name": "类别",
+          "type": 1,
+          "group": null,
+          "latestFilled": 0,
+          "rule": "operations_reference",
+          "supplementary": [],
+          "presence": "current"
+        }
+      ]
+    },
+    {
+      "tableId": "tblzUVkUeG3EyLqt",
+      "table": "调价续报与新报用户运营数据表-小学",
+      "latestRows": 138,
+      "fields": [
+        {
+          "fieldId": "fldjJvrGL1",
+          "name": "组别",
+          "type": 3,
+          "group": null,
+          "latestFilled": 138,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldte4dzVn",
+          "name": "用户沟通情况（授课老师填写项）",
+          "type": 1,
+          "group": null,
+          "latestFilled": 0,
+          "rule": "renewal",
+          "supplementary": [
+            "对应学期授课老师或续报学服署名"
+          ],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldjRkI9xk",
+          "name": "调价运营结果",
+          "type": 3,
+          "group": null,
+          "latestFilled": 23,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldvnrH1Ee",
+          "name": "年级",
+          "type": 3,
+          "group": null,
+          "latestFilled": 138,
+          "rule": "identity",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldUNniKps",
+          "name": "授课老师",
+          "type": 3,
+          "group": null,
+          "latestFilled": 138,
+          "rule": "renewal",
+          "supplementary": [
+            "对应学期授课老师或续报学服署名"
+          ],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldxdbm2OD",
+          "name": "用户运营情况（学服老师填写项）",
+          "type": 1,
+          "group": null,
+          "latestFilled": 46,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldCZ4rOrJ",
+          "name": "续报与近期新报情况",
+          "type": 3,
+          "group": null,
+          "latestFilled": 134,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldjp7vLZR",
+          "name": "学期情况",
+          "type": 3,
+          "group": null,
+          "latestFilled": 124,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldgAsxRNG",
+          "name": "管区",
+          "type": 3,
+          "group": null,
+          "latestFilled": 138,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldSLiE6wx",
+          "name": "配合学服组别",
+          "type": 3,
+          "group": null,
+          "latestFilled": 137,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldS2g47DY",
+          "name": "学员姓名",
+          "type": 1,
+          "group": null,
+          "latestFilled": 138,
+          "rule": "identity",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld3xFft55",
+          "name": "补续日期",
+          "type": 5,
+          "group": null,
+          "latestFilled": 31,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldcLkRu3A",
+          "name": "学期",
+          "type": 3,
+          "group": null,
+          "latestFilled": 0,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldn4Nq2YX",
+          "name": "周次",
+          "type": 3,
+          "group": null,
+          "latestFilled": 138,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldSeOEJEE",
+          "name": "配合跟进学服老师",
+          "type": 11,
+          "group": null,
+          "latestFilled": 137,
+          "rule": "renewal",
+          "supplementary": [
+            "对应学期授课老师或续报学服署名"
+          ],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldMbEu3MK",
+          "name": "老师班序（暂按周内时间先后）",
+          "type": 3,
+          "group": null,
+          "latestFilled": 138,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldBPrnogZ",
+          "name": "续&未报家长情况说明",
+          "type": 1,
+          "group": null,
+          "latestFilled": 1,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld5SEVEGS",
+          "name": "班型",
+          "type": 3,
+          "group": null,
+          "latestFilled": 138,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldmbpH310",
+          "name": "续报与否",
+          "type": 3,
+          "group": null,
+          "latestFilled": 138,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldDmabgTb",
+          "name": "特别备注说明",
+          "type": 1,
+          "group": null,
+          "latestFilled": 9,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldUTRMaaJ",
+          "name": "校区",
+          "type": 3,
+          "group": null,
+          "latestFilled": 138,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldxk4TEEu",
+          "name": "上课开始时间",
+          "type": 3,
+          "group": null,
+          "latestFilled": 138,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        }
+      ]
+    },
+    {
+      "tableId": "tblYvjE48OKfyRBg",
+      "table": "2026暑秋续报数据表",
+      "latestRows": 116,
+      "fields": [
+        {
+          "fieldId": "fld8I4KyGs",
+          "name": "联系方式",
+          "type": 2,
+          "group": null,
+          "latestFilled": 114,
+          "rule": "guardian",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldDFc8C3V",
+          "name": "未报/连报情况",
+          "type": 1,
+          "group": null,
+          "latestFilled": 26,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld6h4ZZ6m",
+          "name": "缴费通道",
+          "type": 3,
+          "group": null,
+          "latestFilled": 69,
+          "rule": "payment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldosKMabz",
+          "name": "上课时间",
+          "type": 3,
+          "group": null,
+          "latestFilled": 114,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "flds2SG2RZ",
+          "name": "春季班型",
+          "type": 3,
+          "group": null,
+          "latestFilled": 109,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldlUPRFUA",
+          "name": "春季年级",
+          "type": 3,
+          "group": null,
+          "latestFilled": 114,
+          "rule": "identity",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldG6I8fvQ",
+          "name": "续报类型",
+          "type": 3,
+          "group": null,
+          "latestFilled": 78,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldKO6CwIA",
+          "name": "姓名",
+          "type": 1,
+          "group": null,
+          "latestFilled": 114,
+          "rule": "identity",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldgK4r8qy",
+          "name": "校区",
+          "type": 3,
+          "group": null,
+          "latestFilled": 114,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldS2MowHk",
+          "name": "带课老师",
+          "type": 3,
+          "group": null,
+          "latestFilled": 114,
+          "rule": "renewal",
+          "supplementary": [
+            "对应学期授课老师或续报学服署名"
+          ],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldEuRnasx",
+          "name": "是否续报",
+          "type": 3,
+          "group": null,
+          "latestFilled": 78,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld6yiny2e",
+          "name": "缴费时间",
+          "type": 3,
+          "group": null,
+          "latestFilled": 74,
+          "rule": "payment",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fld9scGw77",
+          "name": "学段",
+          "type": 3,
+          "group": null,
+          "latestFilled": 114,
+          "rule": "identity",
+          "supplementary": [],
+          "presence": "current"
+        },
+        {
+          "fieldId": "fldXx3LrcR",
+          "name": "周类",
+          "type": 3,
+          "group": null,
+          "latestFilled": 114,
+          "rule": "renewal",
+          "supplementary": [],
+          "presence": "current"
+        }
+      ]
+    }
+  ]
+}
