@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { openOverviewAggregateLocal, aggregateRoot as root, aggregateMigration as migration, aggregateAssertions as assertions } from "../scripts/lib/overview-aggregate-local.mjs";
 import { textFileSha256 } from "../scripts/lib/text-hash.mjs";
 import { loadFixedAccount } from "../e2e/support/fixed-accounts";
-import { getStaffOverviewData } from "@/features/school/home/staff-overview-data";
+import { getStaffOverviewLegacyData as getStaffOverviewData } from "@/features/school/home/staff-overview-data";
 import { buildStaffOverviewWindow } from "@/features/school/home/staff-overview-contract";
 import { readSourceMetricFacts } from "@/features/school/source-metric-facts-contract";
 import { overviewAcquiredOn } from "@/features/school/home/staff-overview-acquisition-contract";

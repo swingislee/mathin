@@ -26,6 +26,11 @@ const metric = z.object({
 /** 两项指标的数据库结果；不包含来源原文或全量业务记录。 */
 export const overviewAcquisitionContactSummarySchema = z.object({
   schemaVersion: z.literal(2),
+  // 不可用获客的计数仍为 null；保留原本可见的人员行身份。
+  leadPersonIds: z.array(z.string().nullable()),
+  sourceStaffIds: z.array(z.string().startsWith("source-staff:").refine(value => {
+    try { return encodeURIComponent(decodeURIComponent(value.slice(13))) === value.slice(13); } catch { return false; }
+  })),
   metrics: z.object({ leads: metric, contacts: metric }),
 });
 export type OverviewAcquisitionContactSummary = z.infer<typeof overviewAcquisitionContactSummarySchema>;

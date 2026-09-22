@@ -4,7 +4,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it, vi } from "vitest";
 import { openHistoryLocalTarget } from "../scripts/lib/history-local-target.mjs";
 import { loadFixedAccount } from "../e2e/support/fixed-accounts";
-import { getStaffOverviewData } from "@/features/school/home/staff-overview-data";
+import { getStaffOverviewLegacyData as getStaffOverviewData } from "@/features/school/home/staff-overview-data";
 import { listMyWorkItems } from "@/features/school/work-items";
 import { readMonthlyTargets } from "@/features/school/home/monthly-targets-data";
 import { calendarDayKey } from "@/features/school/schedule";
