@@ -1,6 +1,7 @@
 {
   "status": "ANALYSIS_PROPOSAL_NOT_EXECUTED",
   "version": 1,
+  "latestBusinessRuleAddendum": "base-five-stage-source-audit-20260922.md",
   "scope": "2026-09-07、09-14、09-20 三个 Base 导出中的字段定义；不含业务个人值",
   "sourceSha256": [
     {

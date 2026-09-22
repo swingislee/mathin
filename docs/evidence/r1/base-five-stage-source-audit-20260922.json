@@ -1,0 +1,168 @@
+{
+  "status": "SOURCE_ANALYSIS_WITH_USER_RULE_CLARIFICATIONS_NOT_IMPLEMENTED",
+  "asOf": "2026-09-22",
+  "latestSnapshot": "2026-09-20",
+  "sourceSha256": [
+    {
+      "snapshot": "07",
+      "sha256": "7d3f20af508fc3c8c7e468e64cfd9dba4d01af3f6043e4cdce1bd3b4f1063509"
+    },
+    {
+      "snapshot": "14",
+      "sha256": "60c36cf906ec15fc6d3f4d4dc515d34287db391c83b6ea631efbb359a01fe6dd"
+    },
+    {
+      "snapshot": "20",
+      "sha256": "fcc8d200f822ece4fa5aed13c9867990513ef111a78ccb57f0b7b055574a0095"
+    }
+  ],
+  "scope": {
+    "tables": 19,
+    "latestRows": 5451,
+    "studentSourceTables": 9,
+    "studentSourceRows": 5333,
+    "namedSourceRows": 4998,
+    "unit": "source rows and candidate groups, not distinct students",
+    "testExclusionApplied": false,
+    "productionRead": false,
+    "databaseWrite": false
+  },
+  "userConfirmed": {
+    "oneStudentManyAcquisitions": true,
+    "separateEveryKnownCall": true,
+    "unsuccessfulOnlyRemainsFirstContact": true,
+    "confirmationContextAndBlankResultExitsFirstContact": true,
+    "trialWithoutResultIsAwaitingAssessment": true,
+    "sameStaffMayFillSupportAndTeacher": true,
+    "plannedClassNotFormalAttendance": true,
+    "naturalCourseEndIsFormer": true,
+    "naturalCourseEndDetail": "课程结束／未续报",
+    "registeredMissingClassAction": "cross-check other forms before deciding stage"
+  },
+  "stageNames": [
+    "待首联",
+    "待测评",
+    "待报名",
+    "待续保",
+    "已停课"
+  ],
+  "identity": {
+    "mainPhoneOnly": true,
+    "acqExactNamePhoneDuplicateGroups": 253,
+    "duplicateRows": 523,
+    "crossStaffGroups": 114,
+    "crossKnownGroupGroups": 51,
+    "crossGroupDifferentEvidence": 13,
+    "duplicateDifferentEvidence": 88,
+    "duplicateGenericNameGroups": 3,
+    "samePhoneDifferentNameGroups": 180,
+    "rowsWithMultipleMainPhones": 0,
+    "namedNoMainPhone": 759
+  },
+  "assessment": {
+    "visitRows": 854,
+    "resultRows": 365,
+    "arrivedRows": 491,
+    "arrivedNoResult": 136,
+    "arrivedTrialNoResult": 25,
+    "assessmentCheckedNoResult": 51,
+    "resultExplicitNoShow": 0,
+    "resultBlankArrival": 10,
+    "registeredNoResult": 38,
+    "notesMentioningAssessment": 1022,
+    "notesWithoutStructuredResult": 903,
+    "notesWithResultHint": 36
+  },
+  "registrationCrosscheck": {
+    "status": "CROSS_FORM_EVIDENCE_NOT_CONFIRMED_IDENTITY",
+    "all": {
+      "rows": 145,
+      "withActiveAutumnNameCandidate": 91,
+      "activeWithSameOrNextGrade": 81,
+      "activeWithAdditionalStaffMatch": 33,
+      "withAutumnPendingNameCandidate": 0,
+      "withSummerAutumnPaidNameCandidate": 16,
+      "withSummerAutumnPaidNamePhone": 15,
+      "withHistoricalClassNameCandidate": 21,
+      "withHistoricalRefundNameCandidate": 1,
+      "withOtherTableClassEvidence": 109,
+      "withoutOtherTableClassEvidence": 36,
+      "sameNameDifferentPhoneCandidates": 13
+    },
+    "missingClassType": {
+      "rows": 41,
+      "withActiveAutumnNameCandidate": 26,
+      "activeWithSameOrNextGrade": 21,
+      "activeWithAdditionalStaffMatch": 4,
+      "withAutumnPendingNameCandidate": 0,
+      "withSummerAutumnPaidNameCandidate": 2,
+      "withSummerAutumnPaidNamePhone": 2,
+      "withHistoricalClassNameCandidate": 1,
+      "withHistoricalRefundNameCandidate": 0,
+      "withOtherTableClassEvidence": 29,
+      "withoutOtherTableClassEvidence": 12,
+      "sameNameDifferentPhoneCandidates": 4
+    },
+    "noAssessment": {
+      "rows": 38,
+      "withActiveAutumnNameCandidate": 27,
+      "activeWithSameOrNextGrade": 19,
+      "activeWithAdditionalStaffMatch": 10,
+      "withAutumnPendingNameCandidate": 0,
+      "withSummerAutumnPaidNameCandidate": 1,
+      "withSummerAutumnPaidNamePhone": 1,
+      "withHistoricalClassNameCandidate": 2,
+      "withHistoricalRefundNameCandidate": 0,
+      "withOtherTableClassEvidence": 28,
+      "withoutOtherTableClassEvidence": 10,
+      "sameNameDifferentPhoneCandidates": 5
+    }
+  },
+  "autumn": {
+    "rows": 174,
+    "named": 172,
+    "explicitActive": 162,
+    "pending": 9,
+    "pendingAlsoActive": 0,
+    "pendingWithParentheticalContext": 8,
+    "pendingWithNameCandidate": 6,
+    "pendingWithAssessmentCandidate": 4,
+    "identityCandidateOnly": true
+  },
+  "stop": {
+    "structuredRefundRows": 4,
+    "keywordRows": 5,
+    "candidateRows": 9,
+    "candidatesAlsoAutumnActiveName": 0,
+    "autumnHasExplicitNegativeStatus": false
+  },
+  "history": {
+    "oldStudentRowsAbsentLatest": 22,
+    "absentWithResult": 0,
+    "absentWithActive": 2,
+    "absentWithRegistration": 1
+  },
+  "contactAuditCaveats": {
+    "unreachableResultSourceRows": 449,
+    "withOtherCandidateEvidence": 113,
+    "withoutOtherEvidenceInThatRow": 336,
+    "blankOrUnsuccessfulRowsWithExactOtherSource": 8,
+    "blankOrUnsuccessfulRowsWithPriorSourceEvidence": 23,
+    "noteSemantics": "short negative-only notes recognized by a bounded heuristic; longer or mixed text requires review; these are not final stage counts"
+  },
+  "issues": [
+    "ambiguous",
+    "missing",
+    "reference",
+    "class_label",
+    "child_identity",
+    "conflicting_options"
+  ],
+  "notYetEstablished": [
+    "fully deduplicated student population",
+    "final five-stage headcounts",
+    "all current class/withdrawal relations",
+    "chronology of every overwritten note",
+    "business handling of confirmed registration whose class relationship remains unverified"
+  ]
+}
