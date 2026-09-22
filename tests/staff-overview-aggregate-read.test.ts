@@ -10,7 +10,7 @@ const unavailable = { available: false, missingDates: 3, comparison: null, peopl
 const available = { available: true, missingDates: 0, comparison: { current: 0, previous: 0, trend: [] }, people: [] };
 beforeEach(() => {
   state.rpc.mockReset();
-  state.rpc.mockResolvedValue({ error: null, data: { schemaVersion: 2, metrics: { leads: unavailable, contacts: available } } });
+  state.rpc.mockResolvedValue({ error: null, data: { schemaVersion: 2, sourceStaffIds: [], leadPersonIds: [], metrics: { leads: unavailable, contacts: available } } });
 });
 
 it("reads summaries once and preserves complete previous month and partial weekly cutoffs", async () => {
@@ -25,9 +25,12 @@ it("reads summaries once and preserves complete previous month and partial weekl
 });
 
 it("keeps unavailable metrics distinct from zero and refuses inconsistent responses", () => {
-  expect(overviewAcquisitionContactSummarySchema.safeParse({ schemaVersion: 2, metrics: { leads: unavailable, contacts: available } }).success).toBe(true);
+  expect(overviewAcquisitionContactSummarySchema.safeParse({ schemaVersion: 2, sourceStaffIds: [], leadPersonIds: [], metrics: { leads: unavailable, contacts: available } }).success).toBe(true);
   for (const bad of [{ ...unavailable, comparison: available.comparison }, { ...available, comparison: null }, { ...available, missingDates: -1 }]) {
-    expect(overviewAcquisitionContactSummarySchema.safeParse({ schemaVersion: 2, metrics: { leads: bad, contacts: available } }).success).toBe(false);
+    expect(overviewAcquisitionContactSummarySchema.safeParse({ schemaVersion: 2, sourceStaffIds: [], leadPersonIds: [], metrics: { leads: bad, contacts: available } }).success).toBe(false);
+  }
+  for (const sourceStaffIds of [undefined, ["source-staff:%broken"], ["wrong-prefix"]]) {
+    expect(overviewAcquisitionContactSummarySchema.safeParse({ schemaVersion: 2, sourceStaffIds, leadPersonIds: [], metrics: { leads: available, contacts: available } }).success).toBe(false);
   }
 });
 

@@ -1,6 +1,7 @@
 import "server-only";
 import { overviewReadSources, type OverviewReadSource } from "./staff-overview-read-contract";
 import { readOverviewAcquisitions } from "./staff-overview-acquisition-read";
+import { readOverviewAcquisitionContactSummary } from "./staff-overview-aggregate-read";
 import { selectOverviewDetailEvents, selectOverviewParticipants, type OverviewDetailQuery, type OverviewDetailRecord } from "./staff-overview-drilldown-contract";
 
 import type { OverviewClassroomOccupancy } from "./staff-overview-presentation-contract";
@@ -339,20 +340,37 @@ export async function getStaffHomeWeekSummaryData({ now = new Date() }: { now?: 
   } };
 }
 
-export async function getStaffOverviewData({
-  grain,
-  now = new Date(),
-  date,
-  detail,
-  selectedSupportIds = [],
-}: {
+type OverviewDataOptions = {
   grain: StaffOverviewGrain;
   now?: Date;
   date?: string;
   detail?: OverviewDetailQuery;
   selectedSupportIds?: string[];
-}): Promise<StaffOverviewData> {
+};
+
+/** 明细沿用逐条事实；也作为汇总接入时的独立口径对照。 */
+export function getStaffOverviewLegacyData(options: OverviewDataOptions): Promise<StaffOverviewData> {
+  return readStaffOverviewData(options, false);
+}
+
+/** 首页使用数据库汇总；获客来源、提交及沟通明细按展开操作读取。 */
+export function getStaffOverviewData(options: OverviewDataOptions): Promise<StaffOverviewData> {
+  return readStaffOverviewData(options, !options.detail);
+}
+
+async function readStaffOverviewData({
+  grain,
+  now = new Date(),
+  date,
+  detail,
+  selectedSupportIds = [],
+}: OverviewDataOptions, useSummary: boolean): Promise<StaffOverviewData> {
   const sources = overviewReadSources(detail);
+  if (useSummary) {
+    sources.delete("acquisitionSources");
+    sources.delete("leadSubmissions");
+    sources.delete("communications");
+  }
   const read = overviewReader(sources);
   const [supabase, timeZone] = await Promise.all([createClient(), getOrganizationTimezoneV2()]);
   const window = buildStaffOverviewWindow(grain, now, timeZone, date);
@@ -370,7 +388,7 @@ export async function getStaffOverviewData({
 
   const [core, acquisitionSourcesResult, leadSubmissionsResult, leadDirectoryResult, communicationsResult, invitationEventsResult,
     invitationThreadsResult, assignmentsResult, leadActionsResult, supportTasksResult, profilesResult,
-    staffRoleMembersResult, opportunitiesResult, operationalLeadsResult] = await Promise.all([
+    staffRoleMembersResult, opportunitiesResult, operationalLeadsResult, aggregateResult] = await Promise.all([
     readOverviewCore(supabase, sources),
     sources.has("acquisitionSources") ? readOverviewAcquisitions(supabase) : Promise.resolve({ data: [], error: null }),
     read<OverviewLeadSubmission>("leadSubmissions", () => supabase.from("statistics_lead_source_records" as "lead_source_records").select("id,lead_id,submitted_at")),
@@ -390,10 +408,13 @@ export async function getStaffOverviewData({
       .select("user_id,staff_roles!staff_role_members_role_id_fkey(key)"), ["user_id", "role_id"]),
     read<{ id: string; owner_id: string | null }>("opportunities", () => supabase.from("statistics_course_opportunities" as "course_opportunities").select("id,owner_id")),
     read<{ id: string }>("operationalLeads", () => supabase.from("operational_leads" as "leads").select("id")),
+    useSummary ? readOverviewAcquisitionContactSummary(supabase, window, timeZone)
+      .then(data => ({ data, error: false }), () => ({ data: null, error: true })) : null,
   ]);
 
   const unavailable = new Set<StaffOverviewSourceKey>();
   const truncated = new Set<StaffOverviewSourceKey>();
+  const aggregate = aggregateResult?.data;
   function rows<T>(result: QueryRowsResult<T>, source: StaffOverviewSourceKey): T[] {
     if (result.error) {
       unavailable.add(source);
@@ -408,8 +429,9 @@ export async function getStaffOverviewData({
   const leadSubmissions = leadSubmissionsResult.data ?? [];
   const leadDirectory = rows(leadDirectoryResult, "leads");
   // 原始来源沿用管理员 RLS；当前身份无法读取时，获客统计明确显示不可用。
-  const acquisitionReadable = !acquisitionSourcesResult.error && !leadSubmissionsResult.error
-    && !(acquisitionSources.length === 0 && leadDirectory.some(row => row.source_record_id));
+  const acquisitionReadable = useSummary ? aggregate?.metrics.leads.available === true
+    : !acquisitionSourcesResult.error && !leadSubmissionsResult.error
+      && !(acquisitionSources.length === 0 && leadDirectory.some(row => row.source_record_id));
   const acquisitionAvailable = acquisitionReadable && exactRows(acquisitionSourcesResult) && exactRows(leadSubmissionsResult);
   const operationalLeadIds = new Set((operationalLeadsResult.data ?? []).map(row => row.id));
   const openLeads = leadDirectory.filter((row) => operationalLeadIds.has(row.id) && activeLeadStates.includes(row.status));
@@ -505,6 +527,7 @@ export async function getStaffOverviewData({
   };
   const sourceSupport = new Map(activities.map(activity => [activity.id, sourceStaff(sourceStaffLabel(activity.remark, "学服老师"))]));
   const sourceTeachers = new Map(activities.map(activity => [activity.id, sourceStaff(sourceStaffLabel(activity.remark, "学科老师"))]));
+  for (const id of aggregate?.sourceStaffIds ?? []) sourceStaffNames.set(id, decodeURIComponent(id.slice(13)));
   const personForEvent = (event: { activityId: string | null; studentId: string | null; leadId: string | null; at: string; sourcePerson?: string }) => {
     if (event.sourcePerson !== undefined) return sourceStaff(event.sourcePerson);
     const directOwner = event.activityId ? sourceSupport.get(event.activityId) : null;
@@ -528,7 +551,7 @@ export async function getStaffOverviewData({
     const teacherId = sourceTeachers.get(registration.activity_id);
     if (teacherId) assessorsByRegistrationId.set(registration.id, new Set([teacherId]));
   }
-  const sourceLeadEvents = buildOverviewAcquisitions({
+  const sourceLeadEvents = useSummary ? [] : buildOverviewAcquisitions({
     sources: acquisitionSources, leads: leadDirectory, submissions: leadSubmissions,
     sourceLinks: [...communications, ...registrations, ...assessments],
   }, timeZone);
@@ -547,7 +570,7 @@ export async function getStaffOverviewData({
         ?? (row.source_record_id ? row.recorded_by ?? leadById.get(row.lead_id)?.owner_id ?? null : null),
       ...(facts ? { sourceMonth: facts.months.contacts, sourceName: facts.sourceName, sourceId: row.source_record_id, sourceConfirmed: true } : {}) };
   });
-  const sourceContactEvents = supplementOverviewContacts(communicationFactEvents, sourceEvents.sourceContacts.map(event => ({
+  const sourceContactEvents = useSummary ? [] : supplementOverviewContacts(communicationFactEvents, sourceEvents.sourceContacts.map(event => ({
     ...event, subjectId: subjectForEvent(event), personId: personForEvent({ ...event, at: event.at ?? "" }),
   })), grain, timeZone);
   const contactEvents = datedEvents(sourceContactEvents, grain);
@@ -572,8 +595,8 @@ export async function getStaffOverviewData({
   const activityRegistrationEvents = datedEvents(sourceEvents.activityRegistrations, grain).map(row => ({ ...row, personId: personForEvent(row) }));
   const activityRegistrationComparison = sourceExact("activities") ? aggregateStaffOverviewEvents(activityRegistrationEvents, window, timeZone) : null;
   const missingDateCounts: Partial<Record<StaffOverviewMetric, number>> = {
-    leads: sourceLeadEvents.filter(row => !row.at).length,
-    contacts: sourceContactEvents.filter(row => !row.at).length,
+    leads: useSummary ? aggregate?.metrics.leads.missingDates ?? 0 : sourceLeadEvents.filter(row => !row.at).length,
+    contacts: useSummary ? aggregate?.metrics.contacts.missingDates ?? 0 : sourceContactEvents.filter(row => !row.at).length,
     invitations: new Set(sourceInvitationEvents.filter(row => !row.at).map(row => row.id)).size,
     arrivals: sourceEvents.arrivals.filter(row => !row.at).length,
     assessments: sourceEvents.assessments.filter(row => !row.at).length,
@@ -581,8 +604,10 @@ export async function getStaffOverviewData({
   };
 
   const comparisonByMetric: Record<StaffOverviewMetric, StaffOverviewComparison | null> = {
-    leads: !sourceExact("leads") || !acquisitionAvailable ? null : aggregateStaffOverviewEvents(leadEvents, window, timeZone),
-    contacts: !sourceExact("communications") || !sourceExact("activities") || !sourceExact("leads") || !sourceExact("staffDirectory")
+    leads: useSummary ? aggregate?.metrics.leads.comparison ?? null
+      : !sourceExact("leads") || !acquisitionAvailable ? null : aggregateStaffOverviewEvents(leadEvents, window, timeZone),
+    contacts: useSummary ? aggregate?.metrics.contacts.comparison ?? null
+      : !sourceExact("communications") || !sourceExact("activities") || !sourceExact("leads") || !sourceExact("staffDirectory")
       ? null : aggregateStaffOverviewEvents(contactEvents, window, timeZone),
     invitations: !sourceExact("invitations") || !sourceExact("activities")
       ? null
@@ -671,8 +696,9 @@ export async function getStaffOverviewData({
     assessments: ["assessments", "activities", "invitations", "leads", "staffDirectory"],
     enrollments: ["enrollments", "activities", "invitations", "leads", "classrooms", "staffDirectory"],
   };
-  const supportMetricExact = (metric: StaffOverviewMetric) => supportMetricSources[metric].every(sourceExact)
-    && (metric !== "leads" || acquisitionAvailable);
+  const supportMetricExact = (metric: StaffOverviewMetric) => useSummary && (metric === "leads" || metric === "contacts")
+    ? aggregate?.metrics[metric].available === true && sourceExact("staffDirectory")
+    : supportMetricSources[metric].every(sourceExact) && (metric !== "leads" || acquisitionAvailable);
   const personKey = (userId: string | null) => userId ?? "__unassigned__";
   const supportComparisons = new Map<StaffOverviewMetric, Map<string, StaffOverviewPersonMetric>>();
   const supportIds = new Set<string>();
@@ -680,9 +706,13 @@ export async function getStaffOverviewData({
   assignments.forEach((row) => { if (row.responsibility === "learning_support") supportIds.add(row.user_id); });
   supportTasks.forEach((row) => { if (row.assigned_to) supportIds.add(row.assigned_to); });
   let hasUnassignedSupportFacts = false;
+  for (const personId of aggregate?.leadPersonIds ?? []) {
+    if (personId) supportIds.add(personId);
+    else hasUnassignedSupportFacts = true;
+  }
 
   for (const metricKey of STAFF_OVERVIEW_METRICS) {
-    const comparisons = aggregateStaffOverviewEventsByPerson(
+    const comparisons = useSummary && (metricKey === "leads" || metricKey === "contacts") ? aggregate?.metrics[metricKey].people ?? [] : aggregateStaffOverviewEventsByPerson(
       supportAttributedEvents[metricKey],
       window,
       metricKey === "invitations",
@@ -946,6 +976,7 @@ export async function getStaffOverviewData({
   }
   if (!acquisitionReadable) unavailable.add("leads");
   else if (!acquisitionAvailable) truncated.add("leads");
+  if (useSummary && !aggregate?.metrics.contacts.available) unavailable.add("communications");
   return {
     ...(detailResult ? { detail: detailResult } : {}),
     currentTermName: term?.name ?? null,

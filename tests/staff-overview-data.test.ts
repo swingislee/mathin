@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const state = vi.hoisted(() => ({ tables: {} as Record<string, Record<string, unknown>[]>, failures: new Set<string>() }));
+const state = vi.hoisted(() => ({ tables: {} as Record<string, Record<string, unknown>[]>, failures: new Set<string>(), reads: [] as string[], summary: null as unknown }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/features/school/organization-locations", () => ({ getOrganizationTimezoneV2: async () => "Asia/Shanghai" }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ from: query, rpc }) }));
 
 async function rpc(name: string, args: { p_filters?: { schoolTermId: string }; p_page?: number; p_after?: string; p_limit?: number }) {
+  state.reads.push(name);
+  if (name === "get_staff_overview_acquisition_contacts_v2") return { data: state.summary, error: null };
   if (name === "list_current_staff_overview_acquisition_sources") {
     if (state.failures.has("history_import_records")) return { data: null, error: { message: "UNAVAILABLE" } };
     const rows = (state.tables.history_import_records ?? []).filter(row => !args.p_after || String(row.id) > args.p_after);
@@ -21,6 +23,7 @@ async function rpc(name: string, args: { p_filters?: { schoolTermId: string }; p
 
 // 模拟 API 单次最多 1000 行，分页必须读取后面的真实记录。
 function query(table: string) {
+  state.reads.push(table);
   const canonical = table.replace(/^statistics_/, "").replace(/^(business_|operational_)/, "");
   const predicates: Array<(row: Record<string, unknown>) => boolean> = [];
   let start = 0, end = 999;
@@ -47,7 +50,7 @@ function query(table: string) {
   return api;
 }
 
-import { getStaffHomeWeekSummaryData, getStaffOverviewData } from "@/features/school/home/staff-overview-data";
+import { getStaffHomeWeekSummaryData, getStaffOverviewLegacyData as getStaffOverviewData, getStaffOverviewData as getStaffOverviewSummaryData } from "@/features/school/home/staff-overview-data";
 import { getStaffOverviewAcquisitionDetail } from "@/features/school/home/staff-overview-acquisition-detail";
 import { overviewFactInstant, overviewSubjectKey, supplementOverviewContacts } from "@/features/school/home/staff-overview-source-contract";
 import { selectOverviewSupportRows } from "@/features/school/home/staff-overview-display-contract";
@@ -72,10 +75,51 @@ const courseEnrollment = (id: string, date: string | null, source = true) => ({
 
 beforeEach(() => {
   state.failures.clear();
+  state.reads = [];
+  state.summary = null;
   state.tables = {
     school_terms: [{ id: "current", name: "本学期", is_current: true }],
     profiles: [{ id: "support", display_name: "学服甲", role: "staff", is_active: true }, { id: "teacher", display_name: "老师甲", role: "staff", is_active: true }],
   };
+});
+
+it("uses database totals, trends and attribution without downloading acquisition and communication rows", async () => {
+  const sourceId = `source-staff:${encodeURIComponent("历史署名")}`;
+  const summary = (current: number) => ({ available: true, missingDates: 2,
+    comparison: { current, previous: 3, trend: [{ currentDate: now.toISOString(), previousDate: null, current, previous: null }] },
+    people: [{ personId: sourceId, current, previous: 3 }] });
+  state.summary = { schemaVersion: 2, sourceStaffIds: [sourceId], leadPersonIds: [sourceId], metrics: { leads: summary(21), contacts: summary(12) } };
+  const data = await getStaffOverviewSummaryData({ grain: "month", now });
+  expect(data.businessFacts.find(row => row.key === "leads")).toMatchObject({ current: 21, previous: 3, trend: summary(21).comparison.trend });
+  expect(data.businessFacts.find(row => row.key === "contacts")).toMatchObject({ current: 12, previous: 3 });
+  expect(data.supportFunnelRows.find(row => row.userId === sourceId)).toMatchObject({ name: "历史署名", metrics: { leads: { current: 21, previous: 3 }, contacts: { current: 12, previous: 3 } } });
+  expect(data.supportDirectory).toContainEqual({ userId: sourceId, name: "历史署名" });
+  expect(data.missingDateCounts).toMatchObject({ leads: 2, contacts: 2 });
+  expect(state.reads.filter(name => name === "get_staff_overview_acquisition_contacts_v2")).toHaveLength(1);
+  expect(state.reads).not.toContain("list_current_staff_overview_acquisition_sources");
+  expect(state.reads).not.toContain("statistics_lead_source_records");
+  expect(state.reads).not.toContain("statistics_lead_communications");
+});
+
+it("marks missing or malformed summaries unavailable without silently restoring full-history reads", async () => {
+  for (const value of [null, { schemaVersion: 2, metrics: {} }]) {
+    state.summary = value;
+    const data = await getStaffOverviewSummaryData({ grain: "month", now });
+    expect(data.businessFacts.filter(row => row.key === "leads" || row.key === "contacts").every(row => row.current === null && row.previous === null)).toBe(true);
+    expect(data.unavailableSources).toEqual(expect.arrayContaining(["leads", "communications"]));
+    expect(state.reads).not.toContain("list_current_staff_overview_acquisition_sources");
+    expect(state.reads).not.toContain("statistics_lead_communications");
+  }
+});
+
+it("retains visible staff and unassigned rows when acquisition totals are unavailable", async () => {
+  state.summary = { schemaVersion: 2, sourceStaffIds: [], leadPersonIds: ["support", null], metrics: {
+    leads: { available: false, missingDates: 0, comparison: null, people: [] },
+    contacts: { available: true, missingDates: 0, comparison: { current: 0, previous: 0, trend: [] }, people: [] },
+  } };
+  const data = await getStaffOverviewSummaryData({ grain: "month", now });
+  expect(data.supportFunnelRows.map(row => row.userId)).toEqual(expect.arrayContaining(["support", null]));
+  expect(data.supportFunnelRows.every(row => row.metrics.leads.current === null && row.metrics.contacts.current === 0)).toBe(true);
 });
 
 it("matches lean acquisition detail with the overview and rejects incomplete owner links", async () => {
