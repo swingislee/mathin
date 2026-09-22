@@ -10,7 +10,7 @@ import {
   scanRepository,
   scanText,
 } from "../scripts/check-repository-secrets.mjs";
-import { scanGitHistory } from "../scripts/check-repository-secret-history.mjs";
+import { pushedObjectIds, scanGitHistory } from "../scripts/check-repository-secret-history.mjs";
 import { scanStagedSecrets } from "../scripts/check-staged-secrets.mjs";
 
 function jwt(payload: Record<string, unknown>) {
@@ -256,6 +256,29 @@ describe("R1 repository secret scan", () => {
     expect(workflow).toContain("fetch-depth: 0");
     expect(workflow).toContain("pnpm secrets:check");
     expect(workflow).toContain("pnpm secrets:history");
+    expect(readFileSync(path.join(process.cwd(), ".githooks", "pre-push"), "utf8")).toContain("--pre-push");
+  });
+
+  it("checks an explicitly pushed old SHA even when no branch points to it", () => {
+    withTemporaryDirectory((directory) => {
+      const git = (...args: string[]) => execFileSync("git", args, { cwd: directory });
+      git("init", "--quiet");
+      git("config", "user.name", "Mathin Test");
+      git("config", "user.email", "test@mathin.invalid");
+      const appid = "wx" + crypto.randomBytes(8).toString("hex");
+      git("commit", "--quiet", "--allow-empty", "-m", `Application ${appid}`);
+      const old = git("rev-parse", "HEAD").toString().trim();
+      git("commit", "--quiet", "--allow-empty", "--amend", "-m", "clean replacement");
+      expect(scanGitHistory(directory).findings).toEqual([]);
+      const refs = pushedObjectIds(`${old} ${old} refs/heads/restored ${"0".repeat(40)}\n`);
+      expect(refs).toEqual([old]);
+      const result = scanGitHistory(directory, refs);
+      expect(result.findings.map((finding) => finding.rule)).toContain("wechat-app-id");
+      expect(JSON.stringify(result)).not.toContain(appid);
+      expect(pushedObjectIds(`(delete) ${"0".repeat(40)} refs/heads/old ${old}\n`)).toEqual([]);
+      expect(() => pushedObjectIds("malformed input")).toThrow("Invalid pre-push");
+      expect(() => scanGitHistory(directory, ["--all"])).toThrow("full object IDs");
+    });
   });
 
   it("finds no high-confidence secret in the tracked repository", () => {
