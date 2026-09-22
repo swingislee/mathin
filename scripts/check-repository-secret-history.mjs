@@ -36,21 +36,26 @@ function reachableObjects(root) {
   return entries;
 }
 
-function blobEntries(root, entries) {
+function scannableEntries(root, entries) {
   const input = `${entries.map((entry) => entry.objectId).join("\n")}\n`;
   const output = git(root, ["cat-file", "--batch-check=%(objectname) %(objecttype) %(objectsize)"], {
     encoding: "utf8",
     input,
   });
   const byId = new Map(entries.map((entry) => [entry.objectId, entry]));
-  const blobs = [];
+  const objects = [];
   for (const line of output.split(/\r?\n/)) {
-    const match = /^([0-9a-f]{40,64}) blob (\d+)$/.exec(line);
+    const match = /^([0-9a-f]{40,64}) (blob|commit|tag) (\d+)$/.exec(line);
     if (!match) continue;
     const entry = byId.get(match[1]);
-    if (entry) blobs.push({ ...entry, size: Number(match[2]) });
+    if (entry) objects.push({
+      ...entry,
+      kind: match[2],
+      size: Number(match[3]),
+      filePath: match[2] === "blob" ? entry.filePath : `(${match[2]}:${entry.objectId.slice(0, 12)})`,
+    });
   }
-  return blobs;
+  return objects;
 }
 
 function batches(entries) {
@@ -79,7 +84,7 @@ function readBatch(root, entries) {
     const newline = output.indexOf(10, offset);
     if (newline < 0) throw new Error("git cat-file returned a truncated header");
     const header = output.subarray(offset, newline).toString("ascii");
-    const match = /^([0-9a-f]{40,64}) blob (\d+)$/.exec(header);
+    const match = /^([0-9a-f]{40,64}) (?:blob|commit|tag) (\d+)$/.exec(header);
     if (!match) throw new Error("git cat-file returned an unexpected object");
     const size = Number(match[2]);
     const start = newline + 1;
@@ -103,11 +108,11 @@ export function scanGitHistory(root = process.cwd()) {
     line: 1,
     rule: "forbidden-secret-file-in-history",
   }));
-  const blobs = blobEntries(root, reachableObjects(root));
+  const objects = scannableEntries(root, reachableObjects(root));
   const scannable = [];
-  for (const blob of blobs) {
+  for (const blob of objects) {
     if (blob.size > MAX_HISTORY_BLOB_BYTES) {
-      findings.push({ filePath: blob.filePath, line: 1, rule: "history-blob-too-large" });
+      findings.push({ filePath: blob.filePath, line: 1, rule: "history-object-too-large" });
     } else {
       scannable.push(blob);
     }
@@ -122,7 +127,11 @@ export function scanGitHistory(root = process.cwd()) {
     }
   }
 
-  return { blobCount: blobs.length, findings };
+  return {
+    blobCount: objects.filter((object) => object.kind === "blob").length,
+    metadataCount: objects.filter((object) => object.kind !== "blob").length,
+    findings,
+  };
 }
 
 function main() {
@@ -132,7 +141,7 @@ function main() {
     for (const finding of result.findings) console.error(`- ${finding.filePath}:${finding.line} [${finding.rule}]`);
     process.exit(1);
   }
-  console.log(`Repository history secret scan passed (${result.blobCount} reachable blobs; values redacted; hits=0)`);
+  console.log(`Repository history secret scan passed (${result.blobCount} reachable blobs; ${result.metadataCount} commits/tags; values redacted; hits=0)`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) main();

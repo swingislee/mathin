@@ -79,15 +79,25 @@ describe("R1 repository secret scan", () => {
     expect(JSON.stringify(findings)).not.toContain(secret);
   });
 
-  it("detects literal WeChat AppSecret values while distinguishing application identifiers", () => {
+  it("detects literal WeChat AppSecret values without printing them", () => {
     const secret = crypto.randomBytes(16).toString("hex");
     for (const name of ["appSecret", "app_secret", "WECHAT_APP_SECRET", "WX_APPSECRET"]) {
       const findings = scanText("project.json", JSON.stringify({ [name]: secret }));
       expect(findings.map((finding) => finding.rule)).toEqual(["wechat-app-secret"]);
       expect(JSON.stringify(findings)).not.toContain(secret);
     }
-    expect(scanText("project.json", JSON.stringify({ appid: "wx" + crypto.randomBytes(8).toString("hex") }))).toEqual([]);
     expect(scanText("server.ts", "const appSecret = process.env.WECHAT_APP_SECRET;")).toEqual([]);
+  });
+
+  it("keeps WeChat application identifiers private in any file or prose", () => {
+    const appid = "wx" + crypto.randomBytes(8).toString("hex");
+    for (const filePath of ["project.json", "scripts/connect.mjs", "docs/incident.md"]) {
+      const findings = scanText(filePath, `Application: ${appid}`);
+      expect(findings.map((finding) => finding.rule)).toEqual(["wechat-app-id"]);
+      expect(JSON.stringify(findings)).not.toContain(appid);
+    }
+    expect(scanText("project.json", JSON.stringify({ appid: "touristappid" }))).toEqual([]);
+    expect(scanText("config.ts", "const appid = process.env.WECHAT_APP_ID;")).toEqual([]);
   });
 
   it("detects private keys, remote credential URLs, literal assignments, and service-role JWTs", () => {
@@ -202,6 +212,42 @@ describe("R1 repository secret scan", () => {
       const result = scanGitHistory(directory);
       expect(result.findings.map((finding) => finding.rule)).toContain("github-token");
       expect(JSON.stringify(result.findings)).not.toContain(secret);
+    });
+  });
+
+  it("rejects old AppID history even after the current file is replaced", () => {
+    withTemporaryDirectory((directory) => {
+      const git = (...args: string[]) => execFileSync("git", args, { cwd: directory });
+      git("init", "--quiet");
+      git("config", "user.name", "Mathin Test");
+      git("config", "user.email", "test@mathin.invalid");
+      const appid = "wx" + crypto.randomBytes(8).toString("hex");
+      writeFileSync(path.join(directory, "config.json"), JSON.stringify({ appid }));
+      git("add", "config.json");
+      git("commit", "--quiet", "-m", "historical application configuration");
+      writeFileSync(path.join(directory, "config.json"), JSON.stringify({ appid: "touristappid" }));
+      git("commit", "--quiet", "-am", "use private configuration");
+      expect(scanRepository(directory).findings).toEqual([]);
+      const result = scanGitHistory(directory);
+      expect(result.findings.map((finding) => finding.rule)).toContain("wechat-app-id");
+      expect(JSON.stringify(result)).not.toContain(appid);
+    });
+  });
+
+  it("also checks commit and annotated tag messages without echoing their values", () => {
+    withTemporaryDirectory((directory) => {
+      const git = (...args: string[]) => execFileSync("git", args, { cwd: directory });
+      git("init", "--quiet");
+      git("config", "user.name", "Mathin Test");
+      git("config", "user.email", "test@mathin.invalid");
+      const appid = "wx" + crypto.randomBytes(8).toString("hex");
+      git("commit", "--quiet", "--allow-empty", "-m", `Application ${appid}`);
+      git("tag", "-a", "fixture", "-m", `Application ${appid}`);
+      const result = scanGitHistory(directory);
+      expect(result.blobCount).toBe(0);
+      expect(result.metadataCount).toBe(2);
+      expect(result.findings.map((finding) => finding.rule)).toEqual(["wechat-app-id", "wechat-app-id"]);
+      expect(JSON.stringify(result)).not.toContain(appid);
     });
   });
 

@@ -14,6 +14,7 @@ const TOKEN_RULES = [
   ["stripe-live-secret", /\b(?:sk|rk)_live_[0-9A-Za-z]{16,255}\b/g],
   ["slack-token", /\bxox[baprs]-[0-9A-Za-z-]{20,255}\b/g],
   ["supabase-secret-key", /\bsb_secret_[0-9A-Za-z._-]{20,255}\b/g],
+  ["wechat-app-id", /\bwx[a-f0-9]{16}\b/gi],
   ["wechat-app-secret", /\b(?:wechat[_-]?|wx[_-]?)?app[_-]?secret["']?\s*[:=]\s*["'][a-f0-9]{32}["']/gi],
 ];
 
