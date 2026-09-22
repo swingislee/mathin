@@ -5129,6 +5129,7 @@
       "acquiredDateLabel": "Original acquisition date",
       "acquisitionContent": "Outreach content",
       "acquisitionGroup": "Acquisition group",
+      "supportGroup": "Support group",
       "acquisitionLocationMissing": "Location missing",
       "acquisitionTimeMissing": "Acquisition time missing",
       "promoterValue": "Promoter: {name}",

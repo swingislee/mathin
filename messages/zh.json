@@ -5129,6 +5129,7 @@
       "acquiredDateLabel": "原获取日期",
       "acquisitionContent": "触达内容",
       "acquisitionGroup": "获客组别",
+      "supportGroup": "学服分组",
       "acquisitionLocationMissing": "获取地点缺失",
       "acquisitionTimeMissing": "获取时间缺失",
       "promoterValue": "推广员：{name}",

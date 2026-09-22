@@ -75,6 +75,12 @@ export function sourceStaffLabel(notes:string,field:'学科老师'|'学服老师
   return values.length===1?values[0]:'';
 }
 
+/** 来源字段表达实际学服分工；确认人员与学服负责人使用同一口径。 */
+export function sourceSupportLabel(readField: (name: string) => string): string {
+  return ['学服老师', '主线服务老师', '报名服务老师', '非在读-学服', '确认人员']
+    .map(readField).map(value => value.trim()).find(Boolean) ?? '';
+}
+
 export function sourceVisitKinds(content:string,assessmentBand:string,learningBand:string,score:string):Array<'assessment_1v1'|'trial_class'|'competition'> {
   const kinds:Array<'assessment_1v1'|'trial_class'|'competition'>=[];
   if(/思闯|数独/u.test(content))kinds.push('competition');

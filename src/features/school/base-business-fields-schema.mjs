@@ -12,7 +12,7 @@ export const baseBusinessFieldSchema = z.object({
 });
 export const baseBusinessFieldsSchema = z.array(baseBusinessFieldSchema);
 export const baseLeadAcquisitionSchema = z.array(z.object({
-  leadId: z.string(), sources: z.array(z.object({
+  leadId: z.string(), supportLabel: z.string().optional(), sources: z.array(z.object({
     sourceId: z.string(), acquiredAt: z.string().nullable(), dateLabel: z.string(), location: z.string(),
     method: z.string(), promoter: z.string(), content: z.string(), group: z.string(),
   })),

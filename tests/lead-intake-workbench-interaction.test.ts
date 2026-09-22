@@ -182,7 +182,7 @@ describe("compact lead intake worksheet", () => {
     await render({ canAssign: false });
     expect(container.querySelector("[role=checkbox]")).toBeNull(); expect(select("查看范围")).not.toBeNull();
     expect(container.querySelector('[data-followup-primary-filter]')?.textContent).toContain(zh.school.followupFilters.leads_unassigned);
-    expect(container.querySelectorAll('[data-followup-primary-filter] button')).toHaveLength(3);
+    expect(container.querySelector('[data-followup-primary-filter]')?.querySelectorAll('button')).toHaveLength(3);
     expect(button(zh.school.followupFilters.leads_assigned).disabled).toBe(false);
     await key(row(ids[0]), "Enter");
     expect(container.querySelector("[data-lead-intake-details]")).not.toBeNull();

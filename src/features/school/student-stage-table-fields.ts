@@ -13,8 +13,6 @@ export function studentStageTableFields(locale: string, stage: StudentStage, cur
   const m = studentStageMessages(locale), en = locale.startsWith("en");
   const collaboration = schoolCollaborationMessages(locale);
   const option = (value: string | null, label: string) => value ? [{ value, label: label || value }] : [];
-  const people = (row: StudentStageRow, teaching: boolean) => row.participants?.filter(person => teaching
-    ? person.role === "teacher" || person.role === "assessment_teacher" : person.role === "school_support").map(person => ({ value: person.userId, label: person.name })) ?? [];
   const fields: DashboardFieldDefinitions<StudentStageRow> = {
     name: { kind: "text", label: m.name, value: row => row.name },
     phone: { kind: "text", label: m.phone, value: row => row.phone },
@@ -25,14 +23,14 @@ export function studentStageTableFields(locale: string, stage: StudentStage, cur
       options: [{ value: "all", label: m.all }, { value: "mine", label: m.mine }, { value: "group", label: collaboration.group }, { value: "unassigned", label: m.unassigned }],
       values: row => [{ value: "all", label: m.all }, ...(row.isParticipant ?? row.ownerId === currentUserId ? [{ value: "mine", label: m.mine }] : []),
         ...(row.inMyGroups ? [{ value: "group", label: collaboration.group }] : []), ...(!row.ownerId ? [{ value: "unassigned", label: m.unassigned }] : [])] },
-    group: { kind: "enum", label: collaboration.title, values: row => (row.groups ?? []).map(group => ({ value: group.id, label: group.name })),
+    group: { kind: "enum", label: collaboration.supportGroup, values: row => (row.groups ?? []).map(group => ({ value: group.id, label: group.name })),
       sortValue: row => row.groups?.map(group => group.name).join("、") || null },
-    owner: { kind: "enum", label: m.owner, values: row => people(row, false).length ? people(row, false) : option(row.ownerName ? row.ownerId ?? `source:${row.ownerName}` : null, row.ownerName), sortValue: row => row.ownerName || null },
+    owner: { kind: "enum", label: m.owner, values: row => option(row.ownerName ? row.ownerId ?? `source:${row.ownerName}` : null, row.ownerName), sortValue: row => row.ownerName || null },
     note: { kind: "text", label: m.recent, value: row => row.note, sortable: false },
     lastContactAt: { kind: "date", label: en ? "Last contact" : "最近联系时间", value: row => row.lastContactAt },
   };
   if (stage !== "awaiting_first_contact" && stage !== "awaiting_assessment") Object.assign(fields, {
-    teacher: { kind: "enum", label: m.teacher, values: (row: StudentStageRow) => people(row, true).length ? people(row, true) : option(row.teacherId ?? (row.teacherName ? `source:${row.teacherName}` : null), row.teacherName ?? ""), sortValue: (row: StudentStageRow) => row.teacherName || null },
+    teacher: { kind: "enum", label: m.teacher, values: (row: StudentStageRow) => option(row.teacherId ?? (row.teacherName ? `source:${row.teacherName}` : null), row.teacherName ?? ""), sortValue: (row: StudentStageRow) => row.teacherName || null },
     course: { kind: "enum", label: m.course, values: (row: StudentStageRow) => option(row.courseId, row.courseTitle) },
     term: { kind: "enum", label: m.term, values: (row: StudentStageRow) => option(row.termId, row.termName) },
     assessmentBand: { kind: "enum", label: en ? "Assessment band" : "测评级别", values: (row: StudentStageRow) => option(row.assessmentBand, row.assessmentBand?.toUpperCase().replaceAll("_PLUS", "+") ?? "") },

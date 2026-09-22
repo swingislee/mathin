@@ -16,6 +16,13 @@ const rows = Array.from({ length: 165 }, (_, index) => row(index));
 const fields = studentStageTableFields("zh", "awaiting_first_contact", "owner-a");
 
 describe("recontact lists keep the shared field query before pagination", () => {
+  it("filters current support and stage teacher independently of past participants", () => {
+    const person = row(1, { ownerId: 'current', ownerName: '当前学服', teacherId: 'current', teacherName: '当前测评老师',
+      participants: [{ userId: 'previous', name: '历史老师', role: 'school_support' }, { userId: 'previous', name: '历史老师', role: 'teacher' }] });
+    const stageFields=studentStageTableFields('zh','awaiting_enrollment','current');
+    expect(followupFieldPage([person],stageFields,query({owner:{kind:'enum',values:['previous']}}),context,1,20).count).toBe(0);
+    expect(followupFieldPage([person],stageFields,query({owner:{kind:'enum',values:['current']},teacher:{kind:'enum',values:['current']}}),context,1,20).count).toBe(1);
+  });
   it("finds and sorts records beyond the first source page, and exposes full-scope facets", () => {
     const result = followupFieldPage(rows, fields, { ...query({ grade: { kind: "enum", values: ["4"] } }), sort: { field: "name", direction: "desc" } }, context, 2, 50);
     expect(result).toMatchObject({ count: 65, page: 2, totalPages: 2 });

@@ -25,7 +25,7 @@ import { FollowupPrimaryFilter } from "./FollowupPrimaryFilter";
 import { LeadPoolPagination } from "./LeadPoolPagination";
 import { StudentStageAssignmentControl, StudentStageOwnerControl } from "./StudentStageAssignmentControl";
 import { SchoolCollaboratorControl } from "./SchoolCollaboratorControl";
-import type { SchoolCollaborationSettings } from "./school-collaboration-contract";
+import { schoolCollaborationMessages, schoolSupportGroupFilter, type SchoolCollaborationSettings } from "./school-collaboration-contract";
 import { StudentRecontactPlan } from "./StudentRecontactPlan";
 import { Student360Trigger } from "./Student360Sheet";
 import { StudentAssessmentCompletionHint } from "./StudentAssessmentCompletionHint";
@@ -49,6 +49,7 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
   contactSelection?: { requestedCount: number };
 }) {
   const m = studentStageMessages(locale);
+  const collaborationM = schoolCollaborationMessages(locale);
   const directoryM = studentDirectoryMessages(locale);
   const workM = workEntryMessages(locale);
   const baseHref = presentation === "communication" ? "/dashboard/communication" : "/dashboard/students";
@@ -135,6 +136,10 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
       <DashboardCommandFilters>{presentation !== "communication" ? <FollowupPrimaryFilter value={filters.population ?? "work"} label={m.population} disabled={busy}
         options={[{ value: "work", label: m.workPopulation }, { value: "records", label: m.recordsPopulation }, ...(canPlan ? [{ value: "recontact", label: m.recontactPopulation }] : [])]}
         onValueChange={population => navigate({ population: population as "work" | "records" | "recontact", q: "", detail: "", fields: acrossStages })} /> : null}
+      {collaboration ? <FollowupPrimaryFilter label={collaborationM.supportGroup}
+        value={fieldQuery.filters.group?.kind === "enum" && fieldQuery.filters.group.values.length === 1 ? fieldQuery.filters.group.values[0] : "all"}
+        disabled={busy} options={[{ value: "all", label: collaborationM.allSupportGroups }, ...collaboration.groups.map(group => ({ value: group.id, label: group.name }))]}
+        onValueChange={value => navigate({ fields: JSON.stringify(schoolSupportGroupFilter(fieldQuery, value)) })} /> : null}
       <FilterBar onSubmit={event => {
         event.preventDefault(); const form = new FormData(event.currentTarget); navigate({ q: String(form.get("q") ?? "").trim(), detail: "" });
       }}><FilterSearchInput name="q" defaultValue={filters.q} placeholder={m.search} aria-label={m.search} disabled={busy} />

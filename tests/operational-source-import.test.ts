@@ -4,12 +4,34 @@ import {z} from 'zod';
 import {buildOperationalSourceImport} from '../scripts/lib/operational-source-import.mjs';
 
 const source=(id:string,tableName:string,values:Record<string,string>,studentId:string|null=null)=>({
-  id,student_id:studentId,lead_id:null,source_data:{format:'feishu-base',filename:'业务表.base'},
+  id,student_id:studentId,lead_id:null as string|null,source_data:{format:'feishu-base',filename:'业务表.base'},
   record_data:{names:['示例学员'],phones:[],tableName,cells:Object.entries(values).map(([fieldName,text],index)=>({fieldId:`field-${index}`,fieldName,text,kind:'text'}))},
 });
 const payload=(records:ReturnType<typeof source>[])=>({records,payloadHash:'source-fingerprint',batchKey:'source-batch'});
 
 describe('来源记录衔接当前业务模型',()=>{
+  it('uses the confirmation operator as support while retaining a separate assessment role',()=>{
+    const profile={id:'staff-a',display_name:'合成学服',staff_aliases:['合成别称'],role:'staff',is_active:true,account_status:'active'};
+    const p=buildOperationalSourceImport(payload([
+      source('confirm','获客&私域信息登记表1.0-总',{'确认人员':'合成别称','确认结果':'加V'}),
+      source('dual','到访数据与信息表1.0-总',{'学服老师':'合成学服','学科老师':'合成学服','选拔产品':'散测','到访与否':'已到','学员情况':'已完成观察'}),
+      source('booked','到访数据与信息表1.0-总',{'选拔产品':'体验课','到访与否':''}),
+    ]),{profiles:[profile]});
+    expect(p.rows.leads.find(r=>r.source_record_id==='confirm')).toMatchObject({owner_id:'staff-a',status:'contacted'});
+    expect(p.rows.lead_communications[0]).toMatchObject({recorded_by:'staff-a',owner_id_at_contact:'staff-a'});
+    expect(p.rows.leads.find(r=>r.source_record_id==='dual')).toMatchObject({owner_id:'staff-a',status:'contacted'});
+    expect(p.rows.assessment_results.find(r=>r.source_record_id==='dual')).toMatchObject({assessed_by:'staff-a'});
+    expect(p.rows.activities.find(r=>r.source_record_id==='booked')).toMatchObject({kind:'trial_class'});
+    expect(p.rows.activity_registrations.find(r=>r.source_record_id==='booked')).toMatchObject({status:'booked'});
+  });
+  it('fills a reused unassigned lead only when source owners agree and preserves existing assignments',()=>{
+    const profiles=['one','two'].map(id=>({id,display_name:`合成${id}`,role:'staff',is_active:true}));
+    const r={...source('reuse','获客&私域信息登记表1.0-总',{'确认人员':'合成one'}),lead_id:'existing'};
+    expect(buildOperationalSourceImport(payload([r]),{profiles,leads:[{id:'existing',owner_id:null}]}).ownerFacts).toEqual([{id:'existing',owner_id:'one'}]);
+    expect(buildOperationalSourceImport(payload([r]),{profiles,leads:[{id:'existing',owner_id:'manual'}]}).ownerFacts).toEqual([]);
+    const other={...source('other','获客&私域信息登记表1.0-总',{'确认人员':'合成two'}),lead_id:'existing'};
+    expect(buildOperationalSourceImport(payload([r,other]),{profiles,leads:[{id:'existing',owner_id:null}]}).ownerFacts).toEqual([]);
+  });
   it('reports fields the mapper never reads even when row and provenance coverage are complete',()=>{
     const input=payload([source('acquisition','获客&私域信息登记表1.0-总',{'年级':'3','获客区位':'原地点','触达内容':'原内容','以后新增字段':'保留值'})]);
     const before=structuredClone(input),plan=buildOperationalSourceImport(input,{});

@@ -5,7 +5,7 @@ import {historyPayloadHash} from './history-import-trial.mjs';
 import {buildSourceMetricFacts} from './source-metric-facts.mjs';
 import {observeSourceFields} from './source-field-coverage.mjs';
 import {buildBaseBusinessPlan} from './base-business-fields.mjs';
-import {normalizeSourceAssessmentBand,sourceAssessmentNote,normalizeSourceContact,sourceScore,mergeSourceNotes,sourceVisitKinds,resolveSourceStaffId,sourceEnrollmentFacts,sourceVisitParticipation} from '../../src/features/school/business-source-contract.ts';
+import {normalizeSourceAssessmentBand,sourceAssessmentNote,normalizeSourceContact,sourceScore,mergeSourceNotes,sourceVisitKinds,resolveSourceStaffId,sourceEnrollmentFacts,sourceVisitParticipation,sourceSupportLabel} from '../../src/features/school/business-source-contract.ts';
 
 export const OPERATIONAL_TABLES=['leads','lead_communications','activities','activity_registrations','assessment_results','course_opportunities','course_enrollments','course_enrollment_assignments'];
 const field=(r,name)=>r.record_data.cells.find(c=>historyFieldName(c.fieldName)===name)?.text.trim()??'';
@@ -29,7 +29,10 @@ export function buildOperationalSourceImport(payload,snapshot) {
   const confirmedStudents=new Map((snapshot.history_import_associations??[]).map(row=>[row.record_id,row.student_id]));
   const coverage=[];
   const leadFacts=new Map();
+  const ownerCandidates=new Map();
   const staff=(r,fieldName)=>resolveSourceStaffId(field(r,fieldName),snapshot.profiles??[]);
+  const support=r=>resolveSourceStaffId(sourceSupportLabel(name=>field(r,name)),snapshot.profiles??[]);
+  const rememberOwner=(leadId,r)=>{const owner=support(r);if(owner){const candidates=ownerCandidates.get(leadId)??new Set();candidates.add(owner);ownerCandidates.set(leadId,candidates);}return leadId;};
   const add=(table,r,key,data)=>{
     const current=table==='course_opportunities'?(snapshot[table]??[]).find(row=>row.source_record_id===r.id&&row.term_label===data.term_label):existing[table].get(r.id);
     const row={id:current?.id??id(key),history_key:current?.history_key??key,...provenance(r),...data,
@@ -39,17 +42,17 @@ export function buildOperationalSourceImport(payload,snapshot) {
     rows[table].push(row);return row.id;
   };
   function ensureLead(r) {
-    if(r.lead_id)return r.lead_id;
-    if(r.student_id&&studentLeads.has(r.student_id))return studentLeads.get(r.student_id);
+    if(r.lead_id)return rememberOwner(r.lead_id,r);
+    if(r.student_id&&studentLeads.has(r.student_id))return rememberOwner(studentLeads.get(r.student_id),r);
     const tel=phone(r),normalized=normalizedName(name(r)),key=tel?`${tel}:${normalized}`:null;
-    if(key&&leadsByExact.has(key))return leadsByExact.get(key);
+    if(key&&leadsByExact.has(key))return rememberOwner(leadsByExact.get(key),r);
     const leadId=id(`operation-lead:${r.id}`);
     rows.leads.push({id:leadId,provisional_student_name:name(r),normalized_name:normalized,phone:tel,phone_normalized:tel||null,
-      grade_hint:grade(r),grade_text:normalizeGradeLabel(field(r,'年级')||field(r,'年级/25级')),status:'unassigned',source_record_id:r.id,owner_id:staff(r,'学服老师'),
+      grade_hint:grade(r),grade_text:normalizeGradeLabel(field(r,'年级')||field(r,'年级/25级')),status:'unassigned',source_record_id:r.id,owner_id:support(r),
       note:originalNotes(r,['年级/25级','就读学校','获取渠道','渠道','获取人员','跟进人','确认人员','跟进结果','确认结果','意向分类','用户当下加V与否','诺访与否'])});
     if(key)leadsByExact.set(key,leadId);
     if(r.student_id)studentLeads.set(r.student_id,leadId);
-    return leadId;
+    return rememberOwner(leadId,r);
   }
   const subject=r=>r.student_id?{student_id:r.student_id,lead_id:null}:{student_id:null,lead_id:ensureLead(r)};
   for(const source of fieldAudit.records.filter(r=>name(r))) {
@@ -72,7 +75,7 @@ export function buildOperationalSourceImport(payload,snapshot) {
         if(!confirmedContact&&!mapped.outcome&&!originalNotes(r,noteFields.filter(f=>!['跟进人','确认人员'].includes(f)))&&!(phase==='confirmation'&&(['已','是'].includes(wechat)||['是','已'].includes(visit))))continue;
         const key=`operation-contact:${r.id}:${phase}`;
         rows.lead_communications.push({id:id(key),lead_id:leadId,source_record_id:r.id,source_key:key,channel:'other',outcome:mapped.outcome??(confirmedContact?'connected':null),source_metric_facts:metricFacts,
-          note,occurred_at:null,occurred_on:validDate(r,dateField),recorded_by:staff(r,phase==='followup'?'跟进人':'确认人员'),
+          note,occurred_at:null,occurred_on:validDate(r,dateField),recorded_by:staff(r,phase==='followup'?'跟进人':'确认人员'),owner_id_at_contact:support(r),
           wechat_added:phase==='confirmation'&&['已','是'].includes(wechat)?true:phase==='confirmation'&&['未','否'].includes(wechat)?false:mapped.wechatAdded,
           visit_committed:phase==='confirmation'&&['是','已'].includes(visit)?true:phase==='confirmation'&&['否','未'].includes(visit)?false:mapped.visitCommitted,
           interest_level:phase==='confirmation'&&['A','B','C'].includes(interest)?interest:null});
@@ -85,7 +88,7 @@ export function buildOperationalSourceImport(payload,snapshot) {
       emitted.push(['activity_registrations',add('activity_registrations',r,`${key}:registration`,{...target,activity_id:activityId,status:'booked',registered_on:validDate(r,'报名日期'),outcome:originalNotes(r,['竞赛级别','填写与否','学员类型','所在班级','报名日期'])})]);
     }
     if(table==='到访数据与信息表1.0-总'||table==='（老数据）各选拔产品协作信息表-总') {
-      const bandValue=field(r,'思维测评等级'),content=field(r,'参与内容')||field(r,'选拔产品项目');
+      const bandValue=field(r,'思维测评等级'),content=field(r,'参与内容')||field(r,'选拔产品项目')||field(r,'选拔产品');
       const date=validDate(r,'体/测日期','参加选拔产品日期','到访日期');
       const participation=sourceVisitParticipation(content,field(r,'到访与否')||field(r,'学员出勤情况'),bandValue,field(r,'学习力测评等级'),field(r,'测评成绩（分数）'));
       const enrollmentFacts=sourceEnrollmentFacts(field(r,'报名与否'),field(r,'班型'),validDate(r,'报名日期'));
@@ -144,6 +147,12 @@ export function buildOperationalSourceImport(payload,snapshot) {
     rows[table]=[...new Map(rows[table].map(row=>[row.id,row])).values()];
     for(const row of rows[table])if(row.history_key)row.source_payload_sha256=historyPayloadHash(row);
   }
-  return {sourcePayloadHash:payload.payloadHash,sourceBatchKey:payload.batchKey,rows,leadFacts:[...leadFacts.values()],coverage,
+  // 导入拥有后续业务事实的线索时同步首联状态，不伪造一次联系记录。
+  const reached=new Set([...rows.lead_communications.filter(r=>['connected','declined'].includes(r.outcome)).map(r=>r.lead_id),
+    ...rows.activity_registrations.filter(r=>r.status==='attended').map(r=>r.lead_id)]);
+  for(const lead of rows.leads)if(reached.has(lead.id))lead.status='contacted';
+  const ownerFacts=[...ownerCandidates].filter(([leadId,candidates])=>candidates.size===1&&!(snapshot.leads??[]).find(l=>l.id===leadId)?.owner_id)
+    .map(([id,candidates])=>({id,owner_id:[...candidates][0]}));
+  return {sourcePayloadHash:payload.payloadHash,sourceBatchKey:payload.batchKey,rows,leadFacts:[...leadFacts.values()],ownerFacts,coverage,
     fieldCoverage:fieldAudit.report(),baseBusinessFields:buildBaseBusinessPlan(payload.records),counts:Object.fromEntries(OPERATIONAL_TABLES.map(t=>[t,rows[t].length]))};
 }

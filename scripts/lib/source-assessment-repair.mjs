@@ -48,7 +48,7 @@ export function buildSourceAssessmentRepair(snapshot,{associations=[],enrollment
       ||(snapshot.assessment_workflows??[]).some(row=>row.registration_id===registration.id)
       ||(snapshot.assessment_quick_entries??[]).some(row=>row.registration_id===registration.id)
       ||assessment&&assessment.result_source!=='legacy';
-    const content=field(source,'参与内容')||field(source,'选拔产品项目');
+    const content=field(source,'参与内容')||field(source,'选拔产品项目')||field(source,'选拔产品');
     const expected=sourceVisitParticipation(content,field(source,'到访与否')||field(source,'学员出勤情况'),field(source,'思维测评等级'),field(source,'学习力测评等级'),field(source,'测评成绩（分数）'));
     const facts=sourceEnrollmentFacts(field(source,'报名与否'),field(source,'班型'),date(source,'报名日期'));
     const changes={source_enrollment_facts:facts};

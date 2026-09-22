@@ -6,12 +6,13 @@ import { readSchoolQueryPages, SCHOOL_QUERY_ID_BATCH_SIZE } from "./school-query
 import { followupFieldPage } from "./followup-table-page";
 import { withLeadRecordHints } from "./school-record-review-data";
 import { withBaseLeadAcquisition } from "./base-lead-acquisition-data";
+import { schoolSupportGroups, type SchoolCollaborationSettings } from "./school-collaboration-contract";
 import type { LeadPoolFilters, LeadPoolRow } from "./lead-contract";
 import type { DashboardFieldDefinitions } from "./dashboard-page/dashboard-table-field-contract";
 import type { DashboardDateContext } from "./dashboard-page/dashboard-table-date-contract";
 
 export async function listLeadIntakeFieldPage(userId: string, filters: LeadPoolFilters,
-  fields: DashboardFieldDefinitions<LeadPoolRow>, raw: unknown, context: DashboardDateContext) {
+  fields: DashboardFieldDefinitions<LeadPoolRow>, raw: unknown, context: DashboardDateContext, groups: SchoolCollaborationSettings["groups"] = []) {
   const client = await createClient();
   const result = await readSchoolQueryPages((start, end) => {
     let query = client.from("collaborative_leads" as "leads").select("id");
@@ -35,7 +36,7 @@ export async function listLeadIntakeFieldPage(userId: string, filters: LeadPoolF
     }));
     for (const page of pages) for (const row of page.leads) rows.set(row.id, row);
   }
-  const ordered = ids.flatMap(id => rows.has(id) ? [rows.get(id)!] : []);
+  const ordered = ids.flatMap(id => rows.has(id) ? [{ ...rows.get(id)!, supportGroups: schoolSupportGroups(rows.get(id)!.ownerId, groups) }] : []);
   const page = followupFieldPage(ordered, fields, raw, context, filters.page, filters.pageSize);
   return { ...page, rows: await withLeadRecordHints(client, page.rows),
     assignableIds: ordered.filter(row => row.status !== "invalid" && row.status !== "converted").map(row => row.id) };

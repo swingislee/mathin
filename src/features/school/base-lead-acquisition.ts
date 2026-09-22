@@ -3,7 +3,8 @@ import type { BaseLeadAcquisition } from "./base-business-fields-contract";
 import { parseSchoolGrade } from "@/lib/grade-format.mjs";
 
 /** 原有来源仍作为原主行；Base 的每次获客分别保留，缺少原主行时才采用 Base 最近一条。 */
-export function applyBaseLeadAcquisition(row: LeadPoolRow, sources: BaseLeadAcquisition["sources"]): LeadPoolRow {
+export function applyBaseLeadAcquisition(row: LeadPoolRow, sources: BaseLeadAcquisition["sources"], supportLabel?: string): LeadPoolRow {
+  if (!row.ownerId && !row.ownerName && supportLabel) row = { ...row, ownerName: supportLabel };
   const parsedGrade = parseSchoolGrade(row.gradeText);
   if (parsedGrade !== null) {
     const gradeHint = row.gradeHint ?? parsedGrade;

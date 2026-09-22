@@ -58,6 +58,7 @@ export interface LeadPoolRow {
   status: LeadStatus;
   ownerId: string | null;
   ownerName: string;
+  supportGroups?: Array<{ id: string; name: string }>;
   canEdit?: boolean;
   /** 已完成身份确认后，线索对应的真实学生；未确认线索保持为空。 */
   studentId?: string | null;

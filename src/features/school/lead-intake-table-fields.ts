@@ -7,7 +7,7 @@ const option = (value: string | null | undefined, label = value): DashboardField
 export const LEAD_INTAKE_TABLE_COLUMNS = {
   identity: ["name", "identity", "duplicate", "suggested"], phone: ["phone"], grade: ["grade"],
   source: ["location", "promoter", "method", "content", "acquisitionGroup", "interest", "sourceCount"], acquiredAt: ["acquiredAt", "acquiredDateLabel"],
-  owner: ["owner"], progress: ["status", "invitationState", "contactResult"],
+  owner: ["owner", "group"], progress: ["status", "invitationState", "contactResult"],
 } as const;
 
 export function leadIntakeTableFields(t: Translate, tableT: Translate, invitationT: Translate): DashboardFieldDefinitions<LeadPoolRow> {
@@ -27,7 +27,8 @@ export function leadIntakeTableFields(t: Translate, tableT: Translate, invitatio
     sourceCount: { kind: "number", label: tableT("fieldSourceCount"), value: row => row.sourceCount, step: 1 },
     acquiredAt: { kind: "date", label: t("acquiredAt"), value: row => row.acquiredAt },
     acquiredDateLabel: { kind: "text", label: t("acquiredDateLabel"), value: row => (row.baseAcquisitionSources ?? []).map(source => source.dateLabel).filter(Boolean).join("\n") },
-    owner: { kind: "enum", label: tableT("fieldOwner"), values: row => option(row.ownerId, row.ownerName), sortValue: row => row.ownerId ? row.ownerName : null },
+    owner: { kind: "enum", label: tableT("fieldOwner"), values: row => option(row.ownerId ?? (row.ownerName ? `source:${row.ownerName}` : null), row.ownerName), sortValue: row => row.ownerName || null },
+    group: { kind: "enum", label: t("supportGroup"), values: row => (row.supportGroups ?? []).map(group => ({ value: group.id, label: group.name })), sortable: false },
     status: { kind: "enum", label: tableT("fieldStatus"), options: LEAD_STATUSES.map(value => ({ value, label: t(`status_${value}`) })),
       values: row => option(row.status, t(`status_${row.status}`)), sortValue: row => LEAD_STATUSES.indexOf(row.status) },
     invitationState: { kind: "enum", label: invitationT("title"), options: INVITATION_STATES.map(value => ({ value, label: invitationT(`state_${value}`) })),

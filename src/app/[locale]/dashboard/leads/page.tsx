@@ -14,6 +14,7 @@ import { listLeadIntakeFieldPage } from "@/features/school/lead-intake-table-dat
 import { leadIntakeTableFields } from "@/features/school/lead-intake-table-fields";
 import { getOrganizationTimezoneV2 } from "@/features/school/organization-locations";
 import { listStaffMembers } from "@/features/school/staff";
+import { readSchoolCollaborationSettings } from "@/features/school/school-collaboration-data";
 import { Link } from "@/i18n/navigation";
 import { getMyPerms, requirePerm } from "@/lib/auth";
 
@@ -29,8 +30,9 @@ export default async function LeadsPage({ params, searchParams }: {
   const canAssign = perms.has("student.assign");
   const canContact = perms.has("followup.write");
   const filters = parseLeadPoolFilters(raw, perms.has("student.view.all"));
+  const collaboration = await readSchoolCollaborationSettings();
   const [{ rows: leads, count, page, pageSize, fieldView, assignableIds }, assignees] = await Promise.all([
-    listLeadIntakeFieldPage(user.id, filters, leadIntakeTableFields(t, tableT, invitationT), raw.fields, { locale, timeZone, now: now.getTime() }),
+    listLeadIntakeFieldPage(user.id, filters, leadIntakeTableFields(t, tableT, invitationT), raw.fields, { locale, timeZone, now: now.getTime() }, collaboration.groups),
     canAssign ? listStaffMembers().then((members) => members.filter((member) => member.isActive && member.canFollowUp).map((member) => ({ userId: member.userId, displayName: member.displayName }))) : Promise.resolve([]),
   ]);
   const fieldQuery = JSON.stringify(fieldView.query);
@@ -39,7 +41,7 @@ export default async function LeadsPage({ params, searchParams }: {
     <DashboardPage title={workspaceT("leads")} density="compact" bodyClassName="gap-1.5" commandPanel={<FollowupCommandPanel>
 
       <DashboardCommandFilters>
-        <LeadIntakeScopeFilter filters={filters} fieldQuery={fieldQuery} canScopeAll={perms.has("student.view.all")} />
+        <LeadIntakeScopeFilter filters={filters} fieldQuery={fieldQuery} canScopeAll={perms.has("student.view.all")} groups={collaboration.groups} />
         <FilterBar className="flex-none" action={`/${locale}/dashboard/leads`} method="get" aria-label={t("filter")}>
           <Input type="hidden" name="scope" value={filters.scope} />
           {filters.assignment ? <Input type="hidden" name="assignment" value={filters.assignment} /> : null}

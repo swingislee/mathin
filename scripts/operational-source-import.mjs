@@ -63,6 +63,8 @@ ${plan.baseBusinessFields.facts.length?`select public.store_base_business_fields
 ${inserts}
 update public.leads l set source_record_id=coalesce(l.source_record_id,f.source_record_id),note=case when l.note='' then f.note when position(f.note in l.note)>0 then l.note else l.note||E'\n'||f.note end
  from jsonb_to_recordset(${q(JSON.stringify(plan.leadFacts))}::jsonb) f(id uuid,source_record_id text,note text) where l.id=f.id;
+update public.leads l set owner_id=f.owner_id from jsonb_to_recordset(${q(JSON.stringify(plan.ownerFacts))}::jsonb) f(id uuid,owner_id uuid)
+ where l.id=f.id and l.owner_id is null;
 create temp table protected_after on commit drop as ${fingerprint};
 create temp table manual_after on commit drop as ${originalRows};
 do $verify$ begin
