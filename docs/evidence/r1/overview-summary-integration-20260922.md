@@ -1,6 +1,6 @@
 # 数据总览汇总接入与共享候选优化
 
-状态：**开发库与页面已接入，机器检查通过，待人工验收；本轮未发布生产。** 阶段保持 R1-Live-2。
+状态：**开发库与页面已接入；后续已随 `176600ec` 发布生产，机器检查通过，待人工验收。** 本文保留原开发对照，生产结果与守卫修正见[发布记录](overview-summary-production-20260922.md)。阶段保持 R1-Live-2。
 
 ## 发现与变更
 
@@ -37,7 +37,7 @@
 - 事务回滚后函数、视图、策略、迁移账本及八张业务表摘要一致。本机候选修订仅在同一事务中恢复迁移前定义并核对原候选校验和；脚本固定本机 attestation，不能用于生产修订账本。
 - 定向 Vitest 四文件共 33 项通过，含真实 PostgREST 16 组完整数据对照、缺失汇总、人员归属与明细合同；TypeScript、定向 ESLint 和迁移类型摘要通过。两条函数签名与本机实际生成类型一致。
 - `tests/staff-overview-summary-http.test.ts` 在 `MATHIN_OVERVIEW_SUMMARY_HTTP_TEST=1` 下验证真实默认读取入口；管理员读取须小于 1 s、解码数据小于 3.5 MB，且不请求已移除的三个明细入口。这个门槛是读取层预算，不代替浏览器验收。
-- 本轮开发库已应用；生产发布需要数据库函数与应用一并切换，先函数后应用。生产原有应用仍可使用新函数定义；应用回退应先恢复旧应用，再按备份恢复两条函数。实际生产备份、目标 preflight 与发布属于后续已授权发布批次。
+- 开发库及生产均已应用，生产采用先函数后应用的切换顺序。原有应用仍可使用新函数定义；应用回退应先恢复旧应用，再按备份恢复两条函数。实际生产备份、目标 preflight 与发布结果见后续[已授权发布记录](overview-summary-production-20260922.md)。
 
 开发验收：[数据总览](http://192.168.5.213:3130/zh/dashboard?view=overview&period=month&date=current)。
 
@@ -47,5 +47,5 @@
 
 私有证据在 `.tmp/overview-summary-20260922/`，包括 `check.json`、`local-applied.json`、`http.json`、`http.private.json`、`http-after.json` 与本机目标核对。完整结果只用于本机授权对照；仓库只登记摘要。访问角色为项目负责人和授权开发运维，保留至 2026-12-21；规范化文件摘要见该目录 `manifest.json`。
 
-- 迁移规范化 SHA-256：`994b3d61ae5a69c94dc45dc4c45bf22eb0ddf4f3fd6434c1800c730ca0525775`。
-- 证据 manifest 规范化 SHA-256：`cb59a4d312cbd22b76753e3823476faae0fdbf7e1e09787bf2dcb3e37f09d50c`。
+- 原开发候选迁移规范化 SHA-256：`994b3d61ae5a69c94dc45dc4c45bf22eb0ddf4f3fd6434c1800c730ca0525775`；生产兼容守卫修订后的最终摘要见发布记录。
+- 原开发证据 manifest 规范化 SHA-256：`cb59a4d312cbd22b76753e3823476faae0fdbf7e1e09787bf2dcb3e37f09d50c`；修订后文件重新登记在 `manifest-post-guard.json`，不以旧 manifest 冒充更新后的文件摘要。
