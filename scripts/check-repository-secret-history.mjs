@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process";
+import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { forbiddenTrackedPath, scanBytes } from "./check-repository-secrets.mjs";
@@ -23,8 +24,8 @@ function git(root, args, options = {}) {
   return result.stdout;
 }
 
-function reachableObjects(root) {
-  const output = git(root, ["rev-list", "--objects", "--all"], { encoding: "utf8" });
+function reachableObjects(root, additionalRefs) {
+  const output = git(root, ["rev-list", "--objects", "--all", ...additionalRefs], { encoding: "utf8" });
   const entries = [];
   const seen = new Set();
   for (const line of output.split(/\r?\n/)) {
@@ -96,19 +97,34 @@ function readBatch(root, entries) {
   return blobs;
 }
 
-function historicalHighRiskPaths(root) {
-  const output = git(root, ["log", "--all", "--pretty=format:", "--name-only", "-z"], { encoding: "utf8" });
+function historicalHighRiskPaths(root, additionalRefs) {
+  const output = git(root, ["log", "--all", "--pretty=format:", "--name-only", "-z", ...additionalRefs], { encoding: "utf8" });
   return [...new Set(output.split("\0").map((name) => name.replace(/^\r?\n+/, "")).filter(Boolean))]
     .filter(forbiddenTrackedPath);
 }
 
-export function scanGitHistory(root = process.cwd()) {
-  const findings = historicalHighRiskPaths(root).map((filePath) => ({
+export function pushedObjectIds(input) {
+  const ids = new Set();
+  for (const line of input.split(/\r?\n/).filter(Boolean)) {
+    const fields = line.trim().split(/\s+/);
+    if (fields.length !== 4 || !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(fields[1])) {
+      throw new Error("Invalid pre-push reference input; values redacted");
+    }
+    if (!/^0+$/.test(fields[1])) ids.add(fields[1]);
+  }
+  return [...ids];
+}
+
+export function scanGitHistory(root = process.cwd(), additionalRefs = []) {
+  if (additionalRefs.some((ref) => !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(ref))) {
+    throw new Error("Additional scan targets must be full object IDs; values redacted");
+  }
+  const findings = historicalHighRiskPaths(root, additionalRefs).map((filePath) => ({
     filePath,
     line: 1,
     rule: "forbidden-secret-file-in-history",
   }));
-  const objects = scannableEntries(root, reachableObjects(root));
+  const objects = scannableEntries(root, reachableObjects(root, additionalRefs));
   const scannable = [];
   for (const blob of objects) {
     if (blob.size > MAX_HISTORY_BLOB_BYTES) {
@@ -135,7 +151,8 @@ export function scanGitHistory(root = process.cwd()) {
 }
 
 function main() {
-  const result = scanGitHistory();
+  const additionalRefs = process.argv.includes("--pre-push") ? pushedObjectIds(fs.readFileSync(0, "utf8")) : [];
+  const result = scanGitHistory(process.cwd(), additionalRefs);
   if (result.findings.length > 0) {
     console.error(`Repository history secret scan failed: ${result.findings.length} finding(s). Values are redacted.`);
     for (const finding of result.findings) console.error(`- ${finding.filePath}:${finding.line} [${finding.rule}]`);
