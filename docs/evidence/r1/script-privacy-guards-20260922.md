@@ -2,6 +2,8 @@
 
 > 状态：2026-09-22 机器检查通过；本机 Git hooks 已启用。该记录不代表扫描能够识别全部个人数据，也不代表历史 AppID 已清除。
 
+> 后续更新：产品负责人追加历史清理要求后，已完成可达历史改写及远端更新，服务器旧对象和缓存待 GitHub 处理。详见[历史清理记录](wechat-appid-history-cleanup-20260922.md)；以下保留首次保护增量的实施范围。
+
 用户指出公开历史提交中的微信 AppID，并要求防止 Agent 连接脚本带入隐私。腾讯文档区分 AppID（应用标识）与 AppSecret（凭证密钥）；本次所指字段是 AppID，未发现 AppSecret 泄露证据。
 
 - 共享小程序配置恢复为 `touristappid`；本机实际 AppID 保存在已忽略的 `project.private.config.json`，保留热重载、局域网域名校验等现有偏好。工程检查和暂存检查阻止实际 AppID 再次入库。
