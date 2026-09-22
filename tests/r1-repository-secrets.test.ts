@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -11,6 +11,7 @@ import {
   scanText,
 } from "../scripts/check-repository-secrets.mjs";
 import { scanGitHistory } from "../scripts/check-repository-secret-history.mjs";
+import { scanStagedSecrets } from "../scripts/check-staged-secrets.mjs";
 
 function jwt(payload: Record<string, unknown>) {
   const encode = (value: Record<string, unknown>) => Buffer.from(JSON.stringify(value)).toString("base64url");
@@ -78,6 +79,17 @@ describe("R1 repository secret scan", () => {
     expect(JSON.stringify(findings)).not.toContain(secret);
   });
 
+  it("detects literal WeChat AppSecret values while distinguishing application identifiers", () => {
+    const secret = crypto.randomBytes(16).toString("hex");
+    for (const name of ["appSecret", "app_secret", "WECHAT_APP_SECRET", "WX_APPSECRET"]) {
+      const findings = scanText("project.json", JSON.stringify({ [name]: secret }));
+      expect(findings.map((finding) => finding.rule)).toEqual(["wechat-app-secret"]);
+      expect(JSON.stringify(findings)).not.toContain(secret);
+    }
+    expect(scanText("project.json", JSON.stringify({ appid: "wx" + crypto.randomBytes(8).toString("hex") }))).toEqual([]);
+    expect(scanText("server.ts", "const appSecret = process.env.WECHAT_APP_SECRET;")).toEqual([]);
+  });
+
   it("detects private keys, remote credential URLs, literal assignments, and service-role JWTs", () => {
     const serviceRole = jwt({ role: "service_role", ref: "private-project" });
     const text = [
@@ -92,6 +104,60 @@ describe("R1 repository secret scan", () => {
       "supabase-service-role-jwt",
       "literal-secret-assignment",
     ]);
+  });
+
+  it("detects embedded connection credentials and script assignments without printing values", () => {
+    const secret = crypto.randomBytes(20).toString("hex");
+    const cases = [
+      [`https://person:${secret}@api.example.com/`, "credential-url"],
+      [`https://api.example.com/?access_token=${secret}`, "credential-url-query"],
+      [`Authorization: Bearer ${secret}`, "literal-bearer-credential"],
+      [`const password = '${secret}';`, "literal-script-credential"],
+      [`$apiKey = '${secret}'`, "literal-script-credential"],
+      [JSON.stringify({ accessToken: secret }), "literal-script-credential"],
+    ];
+    for (const [text, rule] of cases) {
+      const findings = scanText("scripts/connect.mjs", text);
+      expect(findings.map((finding) => finding.rule)).toContain(rule);
+      expect(JSON.stringify(findings)).not.toContain(secret);
+    }
+    expect(scanText("scripts/connect.mjs", "const password = process.env.PASSWORD; const token = 'replace-with-api-token';")).toEqual([]);
+  });
+
+  it("scans staged blobs even when the working copy has already removed a credential", () => {
+    withTemporaryDirectory((directory) => {
+      const git = (...args: string[]) => execFileSync("git", args, { cwd: directory });
+      git("init", "--quiet");
+      const secret = `${"gh"}p_${crypto.randomBytes(24).toString("hex")}`;
+      writeFileSync(path.join(directory, "connect.mjs"), `const token = '${secret}';\n`);
+      git("add", "connect.mjs");
+      writeFileSync(path.join(directory, "connect.mjs"), "const token = process.env.API_TOKEN;\n");
+      const result = scanStagedSecrets(directory);
+      expect(result.findings.map((finding) => finding.rule)).toContain("github-token");
+      expect(JSON.stringify(result)).not.toContain(secret);
+      git("add", "connect.mjs");
+      expect(scanStagedSecrets(directory).findings).toEqual([]);
+    });
+  });
+
+  it("blocks forced private files and real application IDs in staged public configuration", () => {
+    withTemporaryDirectory((directory) => {
+      const git = (...args: string[]) => execFileSync("git", args, { cwd: directory });
+      git("init", "--quiet");
+      const app = path.join(directory, "apps", "parent-wechat");
+      mkdirSync(app, { recursive: true });
+      mkdirSync(path.join(directory, ".tmp"));
+      writeFileSync(path.join(directory, ".gitignore"), ".tmp/\n**/project.private.config.json\n");
+      const appid = "wx" + crypto.randomBytes(8).toString("hex");
+      writeFileSync(path.join(app, "project.config.json"), JSON.stringify({ appid }));
+      writeFileSync(path.join(app, "project.private.config.json"), JSON.stringify({ appid }));
+      writeFileSync(path.join(directory, ".tmp", "connect.mjs"), "// private investigation\n");
+      git("add", "-f", "apps/parent-wechat/project.config.json", "apps/parent-wechat/project.private.config.json", ".tmp/connect.mjs");
+      const result = scanStagedSecrets(directory);
+      expect(result.findings.filter((finding) => finding.rule === "forbidden-private-file")).toHaveLength(2);
+      expect(result.findings.map((finding) => finding.rule)).toContain("wechat-appid-requires-private-config");
+      expect(JSON.stringify(result)).not.toContain(appid);
+    });
   });
 
   it("ASCII-scans binary files and redacts detected values", () => {
@@ -116,6 +182,9 @@ describe("R1 repository secret scan", () => {
     expect(forbiddenTrackedPath("exports/credentials.zip")).toBe(true);
     expect(forbiddenTrackedPath("vault/team.kdbx")).toBe(true);
     expect(forbiddenTrackedPath(".env.example")).toBe(false);
+    for (const name of [".tmp/connect.mjs", "apps/parent-wechat/project.private.config.json", "config.local.ts", "capture.har", "storage-state.json", "cookies.json"]) {
+      expect(forbiddenTrackedPath(name)).toBe(true);
+    }
   });
 
   it("finds a secret removed from HEAD by scanning reachable Git blobs without echoing it", () => {
