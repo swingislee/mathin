@@ -14,9 +14,14 @@ const TOKEN_RULES = [
   ["stripe-live-secret", /\b(?:sk|rk)_live_[0-9A-Za-z]{16,255}\b/g],
   ["slack-token", /\bxox[baprs]-[0-9A-Za-z-]{20,255}\b/g],
   ["supabase-secret-key", /\bsb_secret_[0-9A-Za-z._-]{20,255}\b/g],
+  ["wechat-app-secret", /\b(?:wechat[_-]?|wx[_-]?)?app[_-]?secret["']?\s*[:=]\s*["'][a-f0-9]{32}["']/gi],
 ];
 
-const CREDENTIAL_URL = /\b(?:postgres(?:ql)?|mysql|mariadb|mongodb(?:\+srv)?):\/\/([^:\s/@]+):([^@\s/]+)@([^/\s'"`]+)/gi;
+const CREDENTIAL_URL = /\b(?:https?|postgres(?:ql)?|mysql|mariadb|mongodb(?:\+srv)?):\/\/([^:\s/@]+):([^@\s/]+)@([^/\s'"`]+)/gi;
+const URL_SECRET = /[?&](?:access_token|refresh_token|api_key|appsecret|password|secret|token)=([^&#\s"'<>`]{16,})/gi;
+const BEARER_SECRET = /\bBearer[ \t]+([A-Za-z0-9._~+\/-]{24,}={0,2})/g;
+const SCRIPT_ASSIGNMENT = /\b([A-Za-z_][A-Za-z0-9_]*)["']?\s*[:=]\s*(["'])([^"'\r\n]{8,})\2/g;
+const SENSITIVE_SCRIPT_NAME = /(?:password|passwd|secret|token|(?:api|private|service[_-]?role)[_-]?key)$/i;
 const JWT = /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g;
 const ENV_ASSIGNMENT = /^(?:export[ \t]+)?([A-Z][A-Z0-9_]*)[ \t]*=[ \t]*([^\s#]{8,})[ \t]*$/gm;
 const SENSITIVE_ENV_NAME = /PASSWORD|PASS|SECRET|TOKEN|PRIVATE_KEY|SERVICE_ROLE_KEY|API_KEY/;
@@ -24,6 +29,7 @@ const STRICT_PLACEHOLDERS = new Set([
   "not-a-secret",
   "not-a-real-secret",
   "ci-placeholder-publishable-key",
+  "test-only-capability",
 ]);
 const HIGH_RISK_EXTENSIONS = new Set([
   ".7z",
@@ -57,7 +63,7 @@ export function placeholder(value) {
 
 function runtimeReference(value) {
   const unquoted = value.replace(/^(?:'([^']*)'|"([^"]*)")$/, "$1$2");
-  return /^\$\{[A-Z_][A-Z0-9_]*\}$/.test(unquoted)
+  return /^\$\{[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*\}$/.test(unquoted)
     || /^process\.env\.[A-Z_][A-Z0-9_]*$/.test(unquoted);
 }
 
@@ -103,6 +109,27 @@ export function scanText(filePath, text) {
     }
   }
 
+  for (const match of text.matchAll(URL_SECRET)) {
+    const value = match[1];
+    if (!nonLiteralValue(value) && !value.includes("${")) {
+      addFinding(findings, filePath, text, match.index, "credential-url-query");
+    }
+  }
+
+  for (const match of text.matchAll(BEARER_SECRET)) {
+    if (!nonLiteralValue(match[1]) && decodeJwtPayload(match[1])?.role !== "anon") {
+      addFinding(findings, filePath, text, match.index, "literal-bearer-credential");
+    }
+  }
+
+  if (/^(?:scripts|ops|tools)\//i.test(filePath.replaceAll("\\", "/")) || /\.(?:ps1|py|sh|mjs|cjs)$/i.test(filePath)) {
+    for (const match of text.matchAll(SCRIPT_ASSIGNMENT)) {
+      if (SENSITIVE_SCRIPT_NAME.test(match[1]) && !nonLiteralValue(match[3]) && !match[3].includes("${")) {
+        addFinding(findings, filePath, text, match.index, "literal-script-credential");
+      }
+    }
+  }
+
   for (const match of text.matchAll(ENV_ASSIGNMENT)) {
     if (SENSITIVE_ENV_NAME.test(match[1]) && !nonLiteralValue(match[2])) {
       addFinding(findings, filePath, text, match.index, "literal-secret-assignment");
@@ -115,6 +142,9 @@ export function scanText(filePath, text) {
 export function forbiddenTrackedPath(filePath) {
   const normalized = filePath.replaceAll("\\", "/");
   const basename = path.posix.basename(normalized).toLowerCase();
+  if (normalized.split("/").some((part) => [".tmp", ".prod-backups"].includes(part.toLowerCase()))) return true;
+  if (["project.private.config.json", "config.local.ts", "local.xcconfig"].includes(basename)) return true;
+  if (/\.har$/i.test(basename) || /^(?:storage[-_.]?state|cookies?)(?:[._-].*)?\.json$/i.test(basename)) return true;
   if (basename !== ".env.example"
     && (basename === ".env" || basename.startsWith(".env.") || basename.endsWith(".env"))) return true;
   if (HIGH_RISK_EXTENSIONS.has(path.posix.extname(basename))) return true;

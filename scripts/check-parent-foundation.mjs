@@ -30,6 +30,7 @@ for (const page of app.pages) {
   }
 }
 const project = json("apps/parent-wechat/project.config.json");
+assert.equal(project.appid, "touristappid", "真实 AppID 应保留在已忽略的 project.private.config.json");
 assert.equal(project.miniprogramRoot, "miniprogram/");
 assert(project.setting.useCompilerPlugins.includes("typescript"));
 assert.equal(project.setting.urlCheck, true);

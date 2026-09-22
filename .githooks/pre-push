@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+node scripts/check-repository-secrets.mjs
+exec node scripts/check-repository-secret-history.mjs

@@ -4,7 +4,7 @@
 
 1. 在仓库根目录运行 `corepack pnpm install --frozen-lockfile`。
 2. 微信开发者工具选择“导入项目”，目录指向当前文件夹（包含 project.config.json）。
-3. 当前 AppID 为产品负责人选择的“格致未来思维”；登录具有该小程序开发权限的微信账号。
+3. 共享配置使用 `touristappid`。在已忽略的 `project.private.config.json` 顶层填写自己的 `appid`，并登录具有该小程序开发权限的微信账号；保留已有的 `setting` 等本机偏好。
 4. 使用工具内置 TypeScript 编译，打开四个底部入口查看外壳。无需启动 Next.js 或 Supabase。
 
 文案跟随微信语言：英文使用 en，其他语言回退中文；每次进入页面同步原生标题与 tabBar。主题跟随系统外观。
@@ -39,7 +39,7 @@ corepack pnpm parents:wechat:typecheck
 
 脚本自动定位 Windows/macOS 的常见安装目录，也支持环境变量 `WECHATIDE_CLI` 指定官方命令完整路径。Windows 调用保留中文和空格参数；官方 Skill 0.3.9 的安装自检若将 `C:\Program Files...` 截成 `C:\Program`，应使用带引号的完整路径读取 CLI 帮助并核对版本，记录为路径引用问题。实际连接可继续通过 `status` 核验。
 
-官方 CLI 会校验 AppID，`touristappid` 可能返回 `APPID_ERROR`；此时先选择有开发权限的真实 AppID 或接口测试号，再配置项目。`compile` 的成功仅表示刷新请求已接收，运行结果结合 `logs`、`info` 和模拟器判断。业务页面的视觉与操作体验由产品负责人验收。
+官方 CLI 会校验 AppID，`touristappid` 可能返回 `APPID_ERROR`；此时选择有开发权限的真实 AppID 或接口测试号，写入 `project.private.config.json` 的 `appid`，共享配置保留占位值。`compile` 的成功仅表示刷新请求已接收，运行结果结合 `logs`、`info` 和模拟器判断。业务页面的视觉与操作体验由产品负责人验收。
 
 本机已完成官方 Skill 0.3.9、Codex 连接授权和“格致未来思维”AppID 配置；模拟器、编译触发、控制台、网络记录与页面状态读取已验证。个人配置开启热重载并保留域名校验。首次启动后若 `info` 返回自动化响应超时，先读取日志判断页面是否启动，再用 `open-full` 打开调试窗口后复查一次。
 
