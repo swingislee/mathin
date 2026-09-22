@@ -6,7 +6,8 @@ begin
   if md5(replace((select prosrc from pg_proc where oid='public.staff_overview_acquisition_contact_facts_v2(text,text)'::regprocedure),chr(13),''))<>'e3f7be0adc4df46195e7e9d0f5394ae5'
     then raise exception 'OVERVIEW_FACTS_CONTRACT_CHANGED';end if;
   foreach relation in array array['lead_communications','activity_registrations','assessment_results','activities'] loop
-    if pg_get_viewdef(('public.business_'||relation)::regclass,true) !~ 'WHERE business_source_is_authoritative\(r.source_record_id\);$'
+    -- PostgreSQL 会省略无歧义列的表别名；两种输出要求同一个完整权威过滤条件。
+    if pg_get_viewdef(('public.business_'||relation)::regclass,true) !~ 'WHERE business_source_is_authoritative\((r\.)?source_record_id\);$'
       or not exists(select 1 from pg_class where oid=('public.business_'||relation)::regclass and reloptions @> array['security_invoker=true'])
       then raise exception 'OVERVIEW_BUSINESS_SCOPE_CHANGED';end if;
   end loop;
