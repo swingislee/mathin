@@ -23,6 +23,8 @@ if(batch.payload_sha256!==source.payloadHash)throw new Error('SOURCE_BATCH_CHANG
 const snapshot=Object.fromEntries(OPERATIONAL_TABLES.map(table=>[table,JSON.parse(sql(`begin read only;select coalesce(jsonb_agg(t),'[]'::jsonb) from public.${table} t;commit;`))]));
 snapshot.profiles=JSON.parse(sql("begin read only;select coalesce(jsonb_agg(t),'[]'::jsonb) from(select id,display_name,staff_aliases,role,is_active,account_status from public.profiles where role in ('staff','admin')) t;commit;"));
 snapshot.history_import_associations=JSON.parse(sql("begin read only;select coalesce(jsonb_agg(t),'[]'::jsonb) from(select record_id,student_id from public.history_import_associations) t;commit;"));
+snapshot.history_import_records=JSON.parse(sql("begin read only;select coalesce(jsonb_agg(t),'[]'::jsonb) from(select id,jsonb_build_object('tableId',record_data->>'tableId','sourceRecordId',source_record_id) as record_data from public.history_import_records where source_data->>'format'='feishu-base') t;commit;"));
+snapshot.communication_record_revisions=JSON.parse(sql("begin read only;select coalesce(jsonb_agg(t),'[]'::jsonb) from(select distinct event_id from public.communication_record_revisions where source='contact') t;commit;"));
 const plan=buildOperationalSourceImport(source,snapshot);
 plan.baseBusinessFields=buildBaseBusinessPlan(source.records,loadBaseChildEvidence(sql,source.records));
 fs.writeFileSync(path.join(root,'plan.json'),JSON.stringify(plan));

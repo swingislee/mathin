@@ -18,6 +18,11 @@ describe('来源记录衔接当前业务模型',()=>{
     const repeated=buildOperationalSourceImport(payload([second]),{...initial.rows,history_import_records:[first]});
     expect(repeated.rows.leads).toHaveLength(0);
     expect(repeated.rows.lead_communications[0]).toMatchObject({id:initial.rows.lead_communications[0].id,source_record_id:'new-version',lead_id:initial.rows.leads[0].id});
+    const failed={...second,record_data:{...second.record_data,cells:source('x','获客&私域信息登记表1.0-总',{'确认结果':'未通'}).record_data.cells}};
+    const next=buildOperationalSourceImport(payload([failed]),{...initial.rows,history_import_records:[first]});
+    expect(next.rows.lead_communications[0]).toMatchObject({outcome:'unreachable',source_metric_facts:{effectiveContact:true}});
+    const revised=buildOperationalSourceImport(payload([second]),{...initial.rows,history_import_records:[first],communication_record_revisions:[{event_id:initial.rows.lead_communications[0].id}]});
+    expect(revised.rows.lead_communications).toHaveLength(0);
   });
   it('uses the confirmation operator as support while retaining a separate assessment role',()=>{
     const profile={id:'staff-a',display_name:'合成学服',staff_aliases:['合成别称'],role:'staff',is_active:true,account_status:'active'};

@@ -32,7 +32,7 @@ export function buildOperationalSourceImport(payload,snapshot) {
   const existing=Object.fromEntries(OPERATIONAL_TABLES.map(t=>[t,new Map((snapshot[t]??[]).filter(r=>r.source_record_id).map(r=>[sourceId(r.source_record_id),r]))]));
   const leadsByExact=new Map((snapshot.leads??[]).filter(l=>l.phone_normalized).map(l=>[`${l.phone_normalized}:${l.normalized_name}`,l.id]));
   const studentLeads=new Map((snapshot.leads??[]).filter(l=>l.student_id).map(l=>[l.student_id,l.id]));
-  const confirmedStudents=new Map((snapshot.history_import_associations??[]).map(row=>[row.record_id,row.student_id]));
+  const confirmedStudents=new Map((snapshot.history_import_associations??[]).map(row=>[sourceId(row.record_id),row.student_id]));
   const coverage=[];
   const leadFacts=new Map();
   const ownerCandidates=new Map();
@@ -84,6 +84,8 @@ export function buildOperationalSourceImport(payload,snapshot) {
         if(!confirmedContact&&!mapped.outcome&&!originalNotes(r,noteFields.filter(f=>!['跟进人','确认人员','沟通人员'].includes(f)))&&!(phase==='confirmation'&&metricFacts.effectiveContact))continue;
         const key=`operation-contact:${logical(r)}:${phase}`;
         const previous=(snapshot.lead_communications??[]).find(c=>sameSource(c.source_record_id,r)&&c.source_key?.endsWith(`:${phase}`));
+        if(previous&&(snapshot.communication_record_revisions??[]).some(v=>v.event_id===previous.id)){emitted.push(['lead_communications',previous.id]);continue;}
+        if(previous?.source_metric_facts?.effectiveContact)metricFacts.effectiveContact=true;
         const contactId=previous?.id??id(key);
         const failed=['unreachable','invalid_number'].includes(mapped.outcome);
         rows.lead_communications.push({id:contactId,lead_id:leadId,source_record_id:r.id,source_key:previous?.source_key??key,channel:'other',outcome:mapped.outcome??(confirmedContact?'connected':null),source_metric_facts:metricFacts,

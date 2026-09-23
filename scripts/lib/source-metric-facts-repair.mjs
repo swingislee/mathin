@@ -13,9 +13,11 @@ export function buildSourceMetricFactsRepair(snapshot){
   const patches=[],inserts=[],unresolved=[],excluded=[];
   const patch=(table,row,changes)=>{if(Object.entries(changes).some(([key,value])=>!isDeepStrictEqual(row[key]??null,value)))patches.push({table,id:row.id,before:row,changes});};
   for(const table of SOURCE_METRIC_TABLES){for(const row of snapshot[table]){
+    if(row.source_metric_facts?.supersededProjection)continue;
     const source=sourceById.get(row.source_record_id);if(!source)continue;
     const phase=table==='lead_communications'&&row.source_key?.endsWith(':followup')?'followup':row.source_key?.endsWith(':project')?'project':'confirmation';
     const facts=buildSourceMetricFacts(source,{phase});
+    if(row.source_metric_facts?.effectiveContact)facts.effectiveContact=true;
     const changes={source_metric_facts:facts};
     if(table==='lead_communications'&&!row.outcome&&facts?.confirmed.contacts)changes.outcome='connected';
     patch(table,row,changes);
@@ -32,6 +34,7 @@ export function buildSourceMetricFactsRepair(snapshot){
     const facts=buildSourceMetricFacts(source);if(facts?.scope!=='acquisition'||!facts.confirmed.contacts)continue;
     if(!source.record_data.names?.length){excluded.push({sourceId:source.id,reason:'unnamed_source_not_imported'});continue;}
     const key=`operation-contact:${source.id}:confirmation`;if(originalByKey.has(key))continue;
+    if(snapshot.lead_communications.some(c=>c.source_key?.endsWith(':confirmation')&&sourceById.has(c.source_record_id)&&canonical(sourceById.get(c.source_record_id))===canonical(source)))continue;
     const related=snapshot.lead_communications.filter(c=>c.source_record_id===source.id).map(c=>c.lead_id);
     const direct=snapshot.leads.filter(l=>l.source_record_id===source.id).map(l=>l.id);
     const phone=(source.record_data.phones??[]).map(p=>p.replace(/\D/g,''));

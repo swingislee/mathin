@@ -8,6 +8,13 @@ const source=(tableName:string,values:Record<string,string>,extra={})=>({id:'sou
   source_data:{format:'feishu-base',filename:'2026-09-07-export.base'},
   record_data:{tableName,names:['来源学员'],phones:['12345678901'],cells:Object.entries(values).map(([fieldName,text])=>({fieldName,text}))},...extra});
 describe('来源确认标签',()=>{
+  it('补标不会跨导出重复建确认记录，也不会恢复已经撤销的错误阶段',()=>{
+    const old=source('获客&私域信息登记表1.0-总',{'确认月份':'9月','确认人员':'学服甲'});
+    const latest={...old,id:'new-version',source_data:{...old.source_data,filename:'2026-09-23-export.base'}};
+    const contact={id:'contact',lead_id:'lead',source_record_id:'source',source_key:'base-contact:table:row:confirmation',source_metric_facts:{...buildSourceMetricFacts(old),supersededProjection:true}};
+    const plan=buildSourceMetricFactsRepair({history_import_records:[old,latest],leads:[{id:'lead'}],profiles:[],activity_registrations:[],course_enrollments:[],lead_communications:[contact]});
+    expect(plan.patches).toHaveLength(0);expect(plan.inserts).toHaveLength(0);
+  });
   it('后续导入自动写入确认标签，袋鼠保留活动标签',()=>{
     const contact=source('获客&私域信息登记表1.0-总',{'确认月份':'9月','确认人员':'学服甲'});
     const kangaroo=source('袋鼠报名与备考信息表',{'报名日期':'2026-03-12'},{id:'kangaroo',source_record_id:'kangaroo'});
