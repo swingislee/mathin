@@ -70,6 +70,7 @@ returns table(key text,status jsonb) language sql stable security definer set se
   order by ref.key,h.record_data->>'tableId',h.source_record_id,h.source_data->>'filename' desc,h.id
  ), reviews as(
   select l.key,count(*)::integer as count from latest l join public.history_source_business_facts f on f.source_record_id=l.id
+    and f.mapping_version=(select max(v.mapping_version) from public.history_source_business_facts v where v.source_record_id=l.id)
   cross join lateral jsonb_array_elements(f.fields) c where jsonb_array_length(coalesce(c->'review','[]'))>0 group by l.key
  ), opportunity_refs as materialized(
   select s.key,o.id from subjects s join public.course_opportunities o on o.student_id=s.student_id
