@@ -11,6 +11,7 @@ const zh = {
   recordedAt: "记录时间", recordedHint: "当前记录取最近更新时间；来源资料取实际发生日期。", recordedResult: "其他已记录结果",
   scheduledAt: "安排／发生日期", unknownPaper: "试卷版本未记录", progress: "答题进度（%）", progressHint: "已答题数占总题数，独立于成绩。",
   supportOwner: "学服老师",
+  optionsLoading: "正在读取全部可见记录的筛选选项…", optionsFailed: "筛选选项读取失败", retry: "重试",
 } as const;
 
 const en: Record<keyof typeof zh, string> = {
@@ -26,6 +27,7 @@ const en: Record<keyof typeof zh, string> = {
   recordedAt: "Record date", recordedHint: "Latest update for current records; actual occurrence date for source records.", recordedResult: "Other recorded result",
   scheduledAt: "Scheduled / occurrence date", unknownPaper: "Paper version not recorded", progress: "Answered (%)", progressHint: "Answered questions out of all questions; separate from the score.",
   supportOwner: "Responsible support teacher",
+  optionsLoading: "Loading options from all accessible records…", optionsFailed: "Could not load filter options", retry: "Retry",
 };
 
 export function dashboardFieldMessages(locale: string): Record<keyof typeof zh, string> {

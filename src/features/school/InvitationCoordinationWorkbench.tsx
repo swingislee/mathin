@@ -33,6 +33,9 @@ import { formatDashboardDate, type DashboardDateContext } from "./dashboard-page
 import { COMMUNICATION_TABLE_COLUMNS, communicationFieldDayEvents, communicationTableFields, communicationTableRowKey as communicationRowKey, type CommunicationTableRow as CommunicationRow } from "./communication-table-fields";
 import type { FollowupServerFields } from "./followup-table-page";
 import { useFollowupServerFields } from "./useFollowupServerFields";
+import { useFirstContactFacets } from "./useFirstContactFacets";
+import { firstContactTableFields, FIRST_CONTACT_TABLE_COLUMNS } from "./first-contact-table-fields";
+import type { StudentStageRow } from "./student-stage-contract";
 import {
   clearInvitationDraftSession,
   InvitationDraftFields,
@@ -508,7 +511,7 @@ function InvitationHistory({ rows, formatAt }: { rows: InvitationCoordinationRow
 const sameCommunicationFact = (left: CommunicationRow, right: CommunicationRow) => left.source === right.source
   && left.value === right.value && (left.source !== "contact" || right.source !== "contact" || left.previousInvitation === right.previousInvitation);
 
-export function InvitationCoordinationWorkbench({ rows, activities, assessors, locale, currentUserId, canManageInvitation, postActivityRows = EMPTY_ROWS, searchQuery = "", contactLeads = EMPTY_CONTACT_LEADS, leadDetails = EMPTY_CONTACT_LEADS, canContact = false, canManageIdentity = false, focusLeadId, rowOrder, invitationHistory = EMPTY_ROWS, workday, worklist, selectionEnabled = false, sessionKey = "communication", workMode, historicalFirstContacts=EMPTY_ROWS, fieldView, timeZone = ASSESSMENT_TIME_ZONE, now, emptyMessage, firstContactOnly = false }: {
+export function InvitationCoordinationWorkbench({ rows, activities, assessors, locale, currentUserId, canManageInvitation, postActivityRows = EMPTY_ROWS, searchQuery = "", contactLeads = EMPTY_CONTACT_LEADS, leadDetails = EMPTY_CONTACT_LEADS, canContact = false, canManageIdentity = false, focusLeadId, rowOrder, invitationHistory = EMPTY_ROWS, workday, worklist, selectionEnabled = false, sessionKey = "communication", workMode, historicalFirstContacts=EMPTY_ROWS, fieldView, firstContactRows, timeZone = ASSESSMENT_TIME_ZONE, now, emptyMessage, firstContactOnly = false }: {
   rows: InvitationCoordinationRow[]; activities: InvitationActivityOption[]; assessors: InvitationAssessorOption[]; locale: string;
   queue?: InvitationQueue; coordinationStage?: InvitationCoordinationStage | null; stageCounts?: InvitationQueueCounts["stages"];
   searchQuery?: string; currentUserId: string; canManageInvitation: boolean; postActivityRows?: ActivityEnrollmentContext[];
@@ -518,6 +521,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
   workMode?: CommunicationWorkbenchView;
   historicalFirstContacts?:HistoricalFirstContactRow[];
   fieldView?: FollowupServerFields; timeZone?: string; now?: number;
+  firstContactRows?: StudentStageRow[];
   emptyMessage?: string; firstContactOnly?: boolean;
 }) {
   const t = useTranslations("school.invitations");
@@ -647,11 +651,20 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
     return latest ? [latest.lastContactOutcome ? leadT(`contactOutcome_${latest.lastContactOutcome}`) : "", latest.lastContactNote].filter(Boolean).join(" · ") : row.value.summary;
   }, [laterContactFor, leadT, referenceRow]);
   const filtered = useMemo(() => combined.filter((row) => [nameOf(row), row.value.phone, ...(recordsMode ? dayEventsFor(row).flatMap((event) => [event.note, dayOutcomeLabel(event), t(`channel_${event.channel}`)]) : [arrangementOf(row), noteOf(row)])].join(" ").toLocaleLowerCase(locale).includes(searchQuery.toLocaleLowerCase(locale))), [arrangementOf, combined, dayEventsFor, dayOutcomeLabel, locale, nameOf, noteOf, recordsMode, searchQuery, t]);
-  const serverFields = useFollowupServerFields(fieldView);
-  const fields = useMemo(() => communicationTableFields({ locale, t, leadT, enrollmentT, tableT, workT, leads: leadById, workday, recordsMode }),
-    [locale, t, leadT, enrollmentT, tableT, workT, leadById, workday, recordsMode]);
-  const table = useDashboardFieldView({ rows: serverFields ? combined : filtered, fields, columns: COMMUNICATION_TABLE_COLUMNS, context: dateContext, server: serverFields,
-    persistenceKey: focusLeadId ? undefined : `school.followup.communication.fields-v2.${recordsMode ? "records" : workday ? "workday" : "all"}.${worklist?.id ?? currentUserId}` });
+  const deferred = useFirstContactFacets(firstContactRows ? fieldView : undefined, locale, currentUserId);
+  const serverFields = useFollowupServerFields(firstContactRows ? deferred.fieldView : fieldView);
+  const fields = useMemo(() => firstContactRows ? firstContactTableFields(locale, currentUserId, firstContactRows)
+    : communicationTableFields({ locale, t, leadT, enrollmentT, tableT, workT, leads: leadById, workday, recordsMode }),
+    [firstContactRows, currentUserId, locale, t, leadT, enrollmentT, tableT, workT, leadById, workday, recordsMode]);
+  const table = useDashboardFieldView({ rows: serverFields ? combined : filtered, fields,
+    columns: firstContactRows ? FIRST_CONTACT_TABLE_COLUMNS : COMMUNICATION_TABLE_COLUMNS, context: dateContext, server: serverFields,
+    persistenceKey: firstContactRows || focusLeadId ? undefined : `school.followup.communication.fields-v2.${recordsMode ? "records" : workday ? "workday" : "all"}.${worklist?.id ?? currentUserId}` });
+  const columnProps = (column: keyof typeof COMMUNICATION_TABLE_COLUMNS) => {
+    const props = table.columnProps(column);
+    return { ...props, ...(firstContactRows ? { disabled: savingIds.size > 0 } : {}),
+      ...(firstContactRows && props.fields.some(field => field.kind === "enum" || field.kind === "date")
+        ? { onLoadFacets: deferred.onLoadFacets, facetsStatus: deferred.facetsStatus } : {}) };
+  };
   const selectionSignature = JSON.stringify({ filters: table.filters, sort: table.sort });
   const currentSession = reconcileCommunicationWorkSession(workSession, { boundary: sessionKey, selection: selectionSignature,
     rows: combined, selectedRows: table.visibleRows, authorizedKeys: rowOrder ? [...rowOrder, ...historicalFirstContacts.map(row => `student:${row.studentId}`)] : undefined, keyOf: communicationRowKey, sameFact: sameCommunicationFact });
@@ -867,13 +880,13 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
         <TableHead className="sticky left-0 top-0 z-30 h-9 border-r border-line bg-card px-2"><div className="flex min-w-0 items-center gap-1.5">
           {selectionEnabled ? <Checkbox checked={selectableKeys.length > 0 && selectedVisible === selectableKeys.length ? true : selectedVisible ? "indeterminate" : false}
             disabled={!selectableKeys.length} aria-label={workT("selectVisible")} onCheckedChange={(checked) => workSelection.toggleMany(selectableKeys, checked === true)} /> : null}
-          <DashboardTableColumnHeader label={rowM.name} {...table.columnProps("name")} /></div></TableHead>
-        <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={rowM.phone} {...table.columnProps("phone")} /></TableHead>
-        <TableHead className="sticky top-0 z-20 h-9 bg-card px-1 [&>div]:ml-0 [&_[data-dashboard-table-menu]]:px-1"><DashboardTableColumnHeader label={rowM.grade} {...table.columnProps("grade")} /></TableHead>
-        <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={rowM.owner} {...table.columnProps("owner")} /></TableHead>
-        <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={recordsMode ? workT("dayResultColumn") : workspaceT("contactStage")} {...table.columnProps("state")} /></TableHead>
-        <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={recordsMode ? workT("dayCommunicationColumn") : rowM.notes} {...table.columnProps("note")} /></TableHead>
-        <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={recordsMode ? workT("occurredAtColumn") : rowM.updated} {...table.columnProps("updated")} /></TableHead>
+          <DashboardTableColumnHeader label={rowM.name} {...columnProps("name")} /></div></TableHead>
+        <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={rowM.phone} {...columnProps("phone")} /></TableHead>
+        <TableHead className="sticky top-0 z-20 h-9 bg-card px-1 [&>div]:ml-0 [&_[data-dashboard-table-menu]]:px-1"><DashboardTableColumnHeader label={rowM.grade} {...columnProps("grade")} /></TableHead>
+        <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={rowM.owner} {...columnProps("owner")} /></TableHead>
+        <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={recordsMode ? workT("dayResultColumn") : workspaceT("contactStage")} {...columnProps("state")} /></TableHead>
+        <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={recordsMode ? workT("dayCommunicationColumn") : rowM.notes} {...columnProps("note")} /></TableHead>
+        <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={recordsMode ? workT("occurredAtColumn") : rowM.updated} {...columnProps("updated")} /></TableHead>
       </TableRow></TableHeader>
       <FollowupTableBody onNavigate={(key) => {
         if (activeId && isSavingKey(activeId)) return false;

@@ -8,6 +8,8 @@ export type FollowupPageSize = (typeof FOLLOWUP_PAGE_SIZES)[number];
 export interface FollowupServerFields {
   query: DashboardFieldQuery;
   facets: Record<string, DashboardFieldFacet>;
+  /** 快速分页尚未计算候选；打开筛选菜单时独立读取。 */
+  facetsDeferred?: boolean;
 }
 
 export function followupPageSize(value: unknown): FollowupPageSize {

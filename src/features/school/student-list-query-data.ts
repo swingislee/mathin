@@ -37,7 +37,8 @@ export async function loadStudentListQueryPage(filters: StudentStageFilters, con
   }));
   const hints = recontact || options.includeRecordHints === false ? null : await readSchoolRecordHints(client, page.rows.map(row => ({ studentId: row.studentId, leadId: row.leadId })));
   const rows = hints ? page.rows.map(row => ({ ...row, possibleDuplicateCount: hints.get(row.key) ?? 0 })) : page.rows;
-  const fieldView = { query, facets: studentListFacets(facets, fields, context.locale) };
+  const fieldView: FollowupServerFields = { query, facets: studentListFacets(facets, fields, context.locale),
+    ...(options.includeFieldFacets === false && Object.keys(facets).length === 0 ? { facetsDeferred: true } : {}) };
   // 范围菜单支持直接切换；筛选与实际读写权限分别由数据库验证。
   fieldView.facets.scope = { options: fields.scope.kind === "enum" ? [...fields.scope.options ?? []] : [], days: [] };
   return { ...page, rows, fieldView };

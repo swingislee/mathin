@@ -27,7 +27,7 @@ export async function StudentStagePage({ locale, currentUserId, permissions, sea
   const canAssign = permissions.has("student.assign");
   const dataPromise = Promise.all([getOrganizationTimezoneV2(), getNow()]).then(async ([timeZone, currentTime]) => {
     const now = currentTime.getTime();
-    // 内嵌首联使用自己的行与列筛选；外层只负责阶段、名单和分页。
+    // 首联先返回当前页；筛选菜单按需读取完整候选，列条件统一由数据库执行。
     return { timeZone, now, data: await loadStudentStageFieldPage(filters, { locale, timeZone, now }, currentUserId,
       { includeRecordHints: !firstContact, includeFieldFacets: !firstContact }) };
   });
@@ -45,6 +45,7 @@ export async function StudentStagePage({ locale, currentUserId, permissions, sea
     const sessionKey = `communication-stages:${JSON.stringify(resolvedFilters)}`;
     firstContactContent = <CommunicationWorkSelectionProvider key={sessionKey}>
       <InvitationCoordinationWorkbench firstContactOnly sessionKey={sessionKey} rows={[]} contactLeads={leads} leadDetails={leads}
+        fieldView={data.fieldView} firstContactRows={data.rows}
         historicalFirstContacts={data.rows.flatMap(row => !row.leadId && row.studentId ? [{ studentId: row.studentId, name: row.name, phone: row.phone, grade: row.grade, context: row.note }] : [])}
         rowOrder={data.rows.map(row => row.leadId ? `lead:${row.leadId}` : `student:${row.studentId}`)}
         activities={options.activities} assessors={options.assessors} locale={locale} currentUserId={currentUserId}

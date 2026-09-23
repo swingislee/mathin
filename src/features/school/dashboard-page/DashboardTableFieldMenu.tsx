@@ -40,6 +40,8 @@ export interface DashboardTableFieldHeaderProps {
   context: DashboardDateContext;
   onClearColumn: () => void;
   onClearAll: () => void;
+  onLoadFacets?: () => void;
+  facetsStatus?: "loading" | "error";
 }
 
 function PresenceControl({ field, locale }: { field: DashboardFieldControl; locale: string }) {
@@ -92,7 +94,7 @@ function DateRange({ field, locale }: { field: DashboardFieldControl; locale: st
   </div>;
 }
 
-function DateField({ field, context }: { field: DashboardFieldControl; context: DashboardDateContext }) {
+function DateField({ field, context, facetsReady = true }: { field: DashboardFieldControl; context: DashboardDateContext; facetsReady?: boolean }) {
   const m = dashboardFieldMessages(context.locale);
   const [grain, setGrain] = useState<DashboardDateGrain>("day");
   const ranges = new Map(field.days.map(day => {
@@ -100,7 +102,7 @@ function DateField({ field, context }: { field: DashboardFieldControl; context: 
     return [range.from, range];
   }));
   return <div className="space-y-2">
-    <ToggleGroup type="single" value={grain} aria-label={`${field.label} · ${m.fields}`} className="justify-start gap-0.5"
+    {facetsReady ? <><ToggleGroup type="single" value={grain} aria-label={`${field.label} · ${m.fields}`} className="justify-start gap-0.5"
       onValueChange={value => { if (DASHBOARD_DATE_GRAINS.includes(value as DashboardDateGrain)) setGrain(value as DashboardDateGrain); }}>
       {DASHBOARD_DATE_GRAINS.map(value => <ToggleGroupItem key={value} value={value} className="h-7 min-w-0 px-2 text-xs">{m[value]}</ToggleGroupItem>)}
     </ToggleGroup>
@@ -118,7 +120,7 @@ function DateField({ field, context }: { field: DashboardFieldControl; context: 
           </CommandItem>;
         })}
       </CommandList>
-    </Command>
+    </Command></> : null}
     <DateRange key={JSON.stringify(field.filter ?? null)} field={field} locale={context.locale} />
   </div>;
 }
@@ -144,7 +146,7 @@ function EnumField({ field, locale }: { field: DashboardFieldControl; locale: st
   </Command>;
 }
 
-function FieldPanel({ field, context, selected }: { field: DashboardFieldControl; context: DashboardDateContext; selected: boolean }) {
+function FieldPanel({ field, context, selected, facetsStatus }: { field: DashboardFieldControl; context: DashboardDateContext; selected: boolean; facetsStatus?: "loading" | "error" }) {
   const m = dashboardFieldMessages(context.locale), id = useId();
   return <section data-table-field={field.id} aria-label={field.label}
     className={cn("min-w-0 flex-col gap-2 p-3", selected ? "flex" : "hidden md:flex")}>
@@ -164,14 +166,15 @@ function FieldPanel({ field, context, selected }: { field: DashboardFieldControl
     {field.kind === "text" ? <Input aria-label={`${field.label} · ${m.search}`} aria-describedby={field.hint ? `${id}-hint` : undefined}
       placeholder={m.search} value={field.filter?.kind === "text" ? field.filter.query : ""} maxLength={160} disabled={field.disabled}
       onChange={event => field.onFilterChange(event.target.value ? { kind: "text", query: event.target.value } : undefined)} className="h-8 text-xs" /> : null}
-    {field.kind === "enum" ? <EnumField field={field} locale={context.locale} /> : null}
-    {field.kind === "date" ? <DateField field={field} context={context} /> : null}
+    {facetsStatus && (field.kind === "enum" || field.kind === "date") ? <p role="status" className="py-2 text-xs text-muted">{facetsStatus === "loading" ? m.optionsLoading : m.optionsFailed}</p> : null}
+    {field.kind === "enum" && !facetsStatus ? <EnumField field={field} locale={context.locale} /> : null}
+    {field.kind === "date" ? <DateField field={field} context={context} facetsReady={!facetsStatus} /> : null}
     {field.kind === "number" ? <NumberRange key={JSON.stringify(field.filter ?? null)} field={field} locale={context.locale} /> : null}
   </section>;
 }
 
 /** 一个主表列只打开一层 Popover；逻辑字段各自持有检索、条件和排序。 */
-export function DashboardTableFieldMenu({ label, fields, context, onClearColumn, onClearAll, disabled = false }: DashboardTableFieldHeaderProps) {
+export function DashboardTableFieldMenu({ label, fields, context, onClearColumn, onClearAll, disabled = false, onLoadFacets, facetsStatus }: DashboardTableFieldHeaderProps) {
   const m = dashboardFieldMessages(context.locale);
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(fields[0]?.id);
@@ -180,7 +183,7 @@ export function DashboardTableFieldMenu({ label, fields, context, onClearColumn,
   const direction = sorted?.sortDirection === "asc" ? m.ascending : m.descending;
   const panelColumns = fields.length === 4 || fields.length === 5 ? fields.length : Math.min(3, fields.length);
   return <div className="-ml-2 inline-flex max-w-full items-center">
-    <Popover open={open && !disabled} onOpenChange={setOpen}>
+    <Popover open={open && !disabled} onOpenChange={value => { setOpen(value); if (value) onLoadFacets?.(); }}>
       <PopoverTrigger asChild><Button type="button" variant="ghost" size="sm"
         disabled={disabled}
         className="h-7 min-w-0 gap-1 px-2 text-xs font-medium text-muted hover:text-ink"
@@ -195,9 +198,10 @@ export function DashboardTableFieldMenu({ label, fields, context, onClearColumn,
           {fields.map(field => <ToggleGroupItem key={field.id} value={field.id} className="h-7 shrink-0 px-2 text-xs">{field.label}{field.filter ? " ·" : ""}</ToggleGroupItem>)}
         </ToggleGroup> : null}
         <div className={cn("grid divide-line md:divide-x", panelColumns === 1 ? "md:grid-cols-1" : panelColumns === 2 ? "md:grid-cols-2" : panelColumns === 4 ? "md:grid-cols-4" : panelColumns === 5 ? "md:grid-cols-5" : "md:grid-cols-3")}>
-          {fields.map(field => <FieldPanel key={field.id} field={field} context={context} selected={selected === field.id} />)}
+          {fields.map(field => <FieldPanel key={field.id} field={field} context={context} selected={selected === field.id} facetsStatus={facetsStatus} />)}
         </div>
         <div className="flex flex-wrap items-center justify-end gap-1 border-t border-line px-2 py-1.5">
+          {facetsStatus === "error" ? <Button type="button" variant="ghost" size="sm" className="mr-auto h-7 px-2 text-xs" onClick={onLoadFacets}>{m.retry}</Button> : null}
           <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={onClearColumn}>{m.clearColumn}</Button>
           <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={onClearAll}>{m.clearAll}</Button>
         </div>
