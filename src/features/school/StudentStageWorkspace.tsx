@@ -208,7 +208,10 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
             <TableCell title={`${m.stages[row.stage]} · ${situation}`}><div className="flex min-w-0 items-center gap-1.5">
               <Badge variant="outline" className="min-w-0 max-w-full whitespace-normal rounded-md px-1.5 py-0 text-left leading-4">{showStage ? `${m.stages[row.stage]} · ` : ""}{situation}</Badge>
               {handled.has(row.key) ? <span role="img" aria-label={m.retained} title={m.retained} className="shrink-0 text-leaf-deep"><Check className="size-3.5" aria-hidden="true" /></span> : null}
-            </div></TableCell>
+            </div>
+              {row.sourceArrangement ? <p title={row.sourceArrangement} className="mt-0.5 truncate text-[11px] text-muted">{locale.startsWith("en") ? "Planned · " : "拟入班 · "}{row.sourceArrangement}</p> : null}
+              {(row.sourceReviewCount ?? 0) > 0 ? <Student360Trigger subject={{ studentId: row.studentId, leadId: row.leadId }} fallback={{ name: row.name, phone: row.phone, grade: row.grade }} className="text-[11px] text-primary">{locale.startsWith("en") ? "Source review" : "资料待核对"} · {row.sourceReviewCount}</Student360Trigger> : null}
+            </TableCell>
             <TableCell><div title={row.ownerName || m.unassigned}>{canAssign && !collaboration?.canManage && !recontact
                 ? <StudentStageOwnerControl row={row} assignees={assignees} locale={locale} disabled={busy} onBusyChange={setBusy} onAssigned={assigned} />
                 : <span className="block whitespace-normal text-muted">{row.ownerName || m.unassigned}</span>}</div>

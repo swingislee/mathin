@@ -1,5 +1,5 @@
 import {historicalDate,historyFieldName} from './student-business-history.mjs';
-import {normalizeSourceContact} from '../../src/features/school/business-source-contract.ts';
+import {sourceContactEvidence,sourceContactFlags,sourceHasAssessmentResult,sourceNoteIsEffective} from '../../src/features/school/source-lifecycle-evidence.mjs';
 
 const field=(source,name)=>source.record_data.cells.find(c=>historyFieldName(c.fieldName)===name)?.text?.trim()??'';
 const monthNumber=value=>{const match=/^(?:\d{4}[-年/])?\s*(1[0-2]|[1-9])\s*月?$/.exec(value);return match?Number(match[1]):null;};
@@ -40,27 +40,29 @@ export function buildSourceMetricFacts(source,{phase='confirmation',sourceVersio
   };
   if(table==='获客&私域信息登记表1.0-总'){
     facts.scope='acquisition';
-    const outcomes=['确认结果','跟进结果'].map(name=>normalizeSourceContact(field(source,name)).outcome);
-    const positive=outcomes.some(outcome=>['connected','declined'].includes(outcome));
-    const negative=outcomes.some(outcome=>['unreachable','invalid_number'].includes(outcome))
-      || ['确认结果','跟进结果'].some(name=>/(?:未通|未接通|未接听|无人接听|号码无效|无效号码|空号|停机)/.test(field(source,name)));
-    const confirmedSource=Boolean(field(source,'确认月份')&&field(source,'确认人员'));
-    const downstream=['已到','是'].includes(field(source,'到访与否'))||['已报名','是','已报'].includes(field(source,'报名与否'));
-    const confirmed=phase==='confirmation'&&(positive||!negative&&(confirmedSource||downstream));
-    put('contacts',confirmed,'确认月份','确认人员',positive?['确认结果','跟进结果']:downstream?['到访与否','报名与否']:['确认月份','确认人员'],{fallback:true});
-    facts.months.contacts=sourceContactReportingMonth(field(source,'确认月份'),field(source,'确认日期'),version);
-    facts.staff.contacts=field(source,'确认人员')||field(source,'沟通人员')||field(source,'跟进人');
+    const read=name=>field(source,name),contact=sourceContactEvidence(read,phase),flags=sourceContactFlags(read);
+    facts.effectiveContact=contact.effective||phase==='confirmation'&&(flags.wechatAdded===true||flags.visitCommitted===true||/(?:已加V|已加|加V)/u.test(read('获客加V情况')));
+    facts.phase=phase;
+    if(phase==='project')facts.scope='activity';
+    const prefix=phase==='confirmation'?'确认':phase==='followup'?'跟进':'沟通';
+    put('contacts',phase!=='project'&&contact.effective,`${prefix}月份`,phase==='confirmation'?'确认人员':phase==='followup'?'跟进人':'沟通人员',contact.evidence,{fallback:true});
+    facts.months.contacts=sourceContactReportingMonth(field(source,`${prefix}月份`),field(source,`${prefix}日期`),version);
+    facts.staff.contacts=field(source,phase==='confirmation'?'确认人员':phase==='followup'?'跟进人':'沟通人员');
   }else if(table==='到访数据与信息表1.0-总'){
     facts.scope='selection';
     const arrived=field(source,'到访与否')==='已到';
+    facts.effectiveContact=arrived||Boolean(field(source,'确认日期'))
+      || Boolean(field(source,'确认月份')&&field(source,'学服老师'))
+      || ['学员情况','学员情况2','家长情况','家长情况2','家长沟通信息总结（附整理文档）'].some(name=>sourceNoteIsEffective(field(source,name)));
     put('contacts',Boolean(field(source,'确认日期')),'确认月份','学服老师',['确认日期','学服老师']);
     facts.months.contacts=sourceContactReportingMonth(field(source,'确认月份'),field(source,'确认日期'),version);
     put('invitations',Boolean(field(source,'确认日期')),'确认月份','学服老师',['确认月份','确认日期']);
     put('arrivals',arrived,'到访月份','学服老师',['到访月份','到访与否']);
-    put('assessments',arrived,'到访月份','学服老师',['到访月份','到访与否']);
+    put('assessments',sourceHasAssessmentResult(name=>field(source,name)),'到访月份','学服老师',['思维测评等级','学习力测评等级','测评成绩（分数）']);
     put('enrollments',field(source,'报名与否')==='已报名','报名月份','学服老师',['报名月份','报名与否']);
   }else if(table==='袋鼠报名与备考信息表'){
     facts.scope='activity';facts.confirmed.activityRegistrations=true;
+    facts.effectiveContact=Boolean(field(source,'报名日期'))||['是','已'].includes(field(source,'填写与否'));
     facts.months.activityRegistrations=historicalDate(field(source,'报名日期'))?.slice(0,7)??null;
     facts.staff.activityRegistrations=field(source,'学服老师')||field(source,'跟进人');facts.evidence.push('袋鼠报名与备考信息表','报名日期');
   }else if(table==='（老数据）各选拔产品协作信息表-总'){

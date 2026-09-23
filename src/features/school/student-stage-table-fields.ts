@@ -4,7 +4,7 @@ import { STUDENT_STAGE_DETAILS, type StudentStage, type StudentStageRow } from "
 import type { DashboardFieldDefinitions, DashboardFieldQuery } from "./dashboard-page/dashboard-table-field-contract";
 
 export const STUDENT_STAGE_TABLE_COLUMNS = {
-  name: ["name", "grade"], phone: ["phone"], state: ["detail"], owner: ["owner", "group", "scope"],
+  name: ["name", "grade"], phone: ["phone"], state: ["detail", "sourceReview", "sourceArrangement"], owner: ["owner", "group", "scope"],
   background: ["course", "term", "assessmentBand", "assessmentAt"],
   teacher: ["teacher"], recent: ["note", "lastContactAt"],
 } as const;
@@ -19,6 +19,12 @@ export function studentStageTableFields(locale: string, stage: StudentStage, cur
     grade: { kind: "enum", label: en ? "Grade" : "年级", values: row => option(row.grade ? String(row.grade) : row.gradeText, row.gradeText || (row.grade ? String(row.grade) : "")), sortValue: row => row.grade ?? row.gradeText },
     detail: { kind: "enum", label: m.state, values: row => option(row.detail, m.details[row.detail] ?? row.detail),
       options: [...new Set(Object.values(STUDENT_STAGE_DETAILS).flat())].map(value => ({ value, label: m.details[value] ?? value })) },
+    sourceReview: { kind: "enum", label: en ? "Source review" : "资料核对", sortable: false,
+      options: [{ value: "required", label: en ? "Needs review" : "资料待核对" }, { value: "clear", label: en ? "No flagged issue" : "未标记问题" }],
+      values: row => option((row.sourceReviewCount ?? 0) > 0 ? "required" : "clear", (row.sourceReviewCount ?? 0) > 0 ? (en ? "Needs review" : "资料待核对") : (en ? "No flagged issue" : "未标记问题")) },
+    sourceArrangement: { kind: "enum", label: en ? "Planned class" : "拟入班安排", sortable: false,
+      options: [{ value: "planned", label: en ? "Arrangement to confirm" : "有安排 · 待确认" }, { value: "none", label: en ? "No pending arrangement" : "无待确认安排" }],
+      values: row => option(row.sourceArrangement ? "planned" : "none", row.sourceArrangement ? (en ? "Arrangement to confirm" : "有安排 · 待确认") : (en ? "No pending arrangement" : "无待确认安排")) },
     scope: { kind: "enum", label: collaboration.scope, multiple: false, sortable: false,
       options: [{ value: "all", label: m.all }, { value: "mine", label: m.mine }, { value: "group", label: collaboration.group }, { value: "unassigned", label: m.unassigned }],
       values: row => [{ value: "all", label: m.all }, ...(row.isParticipant ?? row.ownerId === currentUserId ? [{ value: "mine", label: m.mine }] : []),

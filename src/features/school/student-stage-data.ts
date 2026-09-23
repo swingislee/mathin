@@ -15,6 +15,8 @@ export const studentStageRowSchema = z.object({
   score: z.number().nullable(), assessmentBand: z.string().nullable(), assessmentAt: z.string().nullable(), registrationId: z.string().nullable(),
   assessmentSource: z.enum(["assessment", "class_band"]).nullable().optional(),
   assessmentCandidateCount: z.number().int().nonnegative().optional(),
+  sourceReviewCount: z.number().int().nonnegative().optional(),
+  sourceArrangement: z.string().nullable().optional(),
   inferredSourceIds: z.array(z.string()).optional(),
   possibleDuplicateCount: z.number().int().nonnegative().optional(),
   assessmentRecordId: z.string().nullable().optional(), learningBand: z.string().nullable().optional(), classBandLabel: z.string().optional(),

@@ -5,7 +5,7 @@ import type { Phase3EnrollmentOptions } from "./phase3-enrollment-contract";
 import { followupPageSize, type FollowupPageSize } from "./followup-table-page";
 import type { FollowupServerFields } from "./followup-table-page";
 
-export const STUDENT_STAGE_TABS = [...STUDENT_LIFECYCLE_STAGES, "former_student"] as const;
+export const STUDENT_STAGE_TABS = STUDENT_LIFECYCLE_STAGES;
 export type StudentStage = typeof STUDENT_STAGE_TABS[number];
 export type StudentEntryMode = "note" | "contact" | "invitation" | "enrollment";
 export const STUDENT_RECONTACT_REASONS = ["unreachable", "assessed", "former", "dormant"] as const;
@@ -33,6 +33,8 @@ export interface StudentStageRow {
   score: number | null; assessmentBand: string | null; assessmentAt: string | null;
   assessmentSource?: "assessment" | "class_band" | null;
   assessmentCandidateCount?: number;
+  sourceReviewCount?: number;
+  sourceArrangement?: string | null;
   inferredSourceIds?: string[];
   assessmentRecordId?: string | null; learningBand?: string | null; classBandLabel?: string;
   registrationId: string | null; courseTitle: string; termName: string;

@@ -9,7 +9,7 @@ describe("student lifecycle read", () => {
     const rpc = vi.fn().mockResolvedValue({ data: "awaiting_renewal", error: null });
     const client = { rpc } as unknown as Parameters<typeof readStudentLifecycle>[0];
     expect(await readStudentLifecycle(client, { studentId: "student", leadId: null })).toBe("awaiting_renewal");
-    expect(rpc).toHaveBeenCalledWith("get_student_lifecycle", { p_student_id: "student", p_lead_id: null });
+    expect(rpc).toHaveBeenCalledWith("get_student_lifecycle_v2", { p_student_id: "student", p_lead_id: null });
   });
 
   it("surfaces scope and malformed contract errors rather than inventing a lower stage", async () => {

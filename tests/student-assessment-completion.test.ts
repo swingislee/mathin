@@ -7,10 +7,10 @@ import { SourceCompletionNotice } from "@/features/school/SourceCompletionNotice
 import { StudentAssessmentCompletionHint } from "@/features/school/StudentAssessmentCompletionHint";
 import type { StudentStageRow } from "@/features/school/student-stage-contract";
 
-describe("qualitative assessments keep progress and expose missing details", () => {
-  it.each(["strengths", "focusAreas", "parentConcerns", "teacherRecommendation", "teacherObservation"])("recognizes attended legacy %s without inventing a score", field => {
+describe("actual assessments keep progress and expose missing details", () => {
+  it.each(["strengths", "focusAreas", "parentConcerns", "teacherRecommendation", "teacherObservation"])("keeps a generic legacy %s as contact evidence without inventing an assessment", field => {
     const assessment = { [field]: "已有文字反馈", score: null, assessmentBand: null, resultSource: "legacy" };
-    expect(hasSourceAssessmentConclusion(assessment, "attended")).toBe(true);
+    expect(hasSourceAssessmentConclusion(assessment, "attended")).toBe(false);
     for (const attendance of [undefined, "booked", "no_show", "cancelled"]) expect(hasSourceAssessmentConclusion(assessment, attendance)).toBe(false);
     for (const resultSource of ["quick_entry", "teacher"]) expect(hasSourceAssessmentConclusion({ ...assessment, resultSource }, "attended")).toBe(false);
     expect(hasSourceAssessmentConclusion({ [field]: " \t\n\u00a0\u3000" }, "attended")).toBe(false);

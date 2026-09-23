@@ -24,9 +24,9 @@ describe('来源确认标签',()=>{
     expect(sourceReportingMonth('12月','2026-09-07')).toBe('2025-12');
     expect(sourceReportingMonth('','2026-09-07')).toBeNull();
   });
-  it('到访表沿用 Base 标签，袋鼠单列活动报名',()=>{
+  it('到访与实际测评结果分别计数，袋鼠单列活动报名',()=>{
     const facts=readSourceMetricFacts(buildSourceMetricFacts(source('到访数据与信息表1.0-总',{'确认日期':'9月','确认月份':'9月','到访月份':'9月','到访与否':'已到','报名月份':'8月','报名与否':'已报名'})))!;
-    expect(facts.confirmed).toEqual({contacts:true,invitations:true,arrivals:true,assessments:true,enrollments:true});
+    expect(facts.confirmed).toEqual({contacts:true,invitations:true,arrivals:true,assessments:false,enrollments:true});
     expect(facts.months.enrollments).toBe('2026-08');expect(readSourceMetricFacts(facts)).toEqual(facts);
     const kangaroo=readSourceMetricFacts(buildSourceMetricFacts(source('袋鼠报名与备考信息表',{'报名日期':'2026-03-12'})))!;
     expect(kangaroo).toMatchObject({scope:'activity',confirmed:{activityRegistrations:true},months:{activityRegistrations:'2026-03'}});
@@ -41,10 +41,10 @@ describe('来源确认标签',()=>{
   });
   it('确认月份留空时从有效沟通的月日补月份，保留日期精度与失败结果',()=>{
     const original=source('获客&私域信息登记表1.0-总',{'确认日期':'9.5','确认结果':'加V','沟通人员':'学服乙'},{lead_id:'lead'});
-    expect(buildSourceMetricFacts(original)).toMatchObject({confirmed:{contacts:true},months:{contacts:'2026-09'},staff:{contacts:'学服乙'}});
+    expect(buildSourceMetricFacts(original)).toMatchObject({confirmed:{contacts:true},months:{contacts:'2026-09'},staff:{contacts:''}});
     const plan=buildSourceMetricFactsRepair({history_import_records:[original],leads:[{id:'lead'}],profiles:[],activity_registrations:[],course_enrollments:[],lead_communications:[]});
     expect(plan.inserts[0].row).toMatchObject({occurred_on:null,occurred_at:null,source_metric_facts:{months:{contacts:'2026-09'}}});
-    for(const result of ['未通','暂无结果',''])expect(readSourceMetricFacts(buildSourceMetricFacts(source('获客&私域信息登记表1.0-总',{'确认日期':'8.21','确认人员':'学服乙','确认结果':result})))!.confirmed.contacts).toBe(false);
+    for(const result of ['未通','暂无结果',''])expect(readSourceMetricFacts(buildSourceMetricFacts(source('获客&私域信息登记表1.0-总',{'确认日期':'8.21','确认人员':'学服乙','确认结果':result})))!.confirmed.contacts).toBe(result!=='未通');
     expect(sourceContactReportingMonth('','8.21','2026-09-07')).toBe('2026-08');
     expect(sourceContactReportingMonth('','2025/9/5','2026-09-07')).toBe('2025-09');
     expect(sourceContactReportingMonth('8月','9.5','2026-09-07')).toBe('2026-08');

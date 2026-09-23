@@ -9,7 +9,7 @@ export async function readStudentLifecycle(
   client: Awaited<ReturnType<typeof createClient>>,
   subject: Student360SubjectRef,
 ) {
-  const result = await client.rpc("get_student_lifecycle", {
+  const result = await client.rpc("get_student_lifecycle_v2", {
     p_student_id: nullableRpcArg(subject.studentId), p_lead_id: nullableRpcArg(subject.leadId),
   });
   if (result.error) throw new Error(result.error.message);

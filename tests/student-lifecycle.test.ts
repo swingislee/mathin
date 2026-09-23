@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest";
 import { parseStudentLifecycleStage, STUDENT_LIFECYCLE_ROADMAP, STUDENT_LIFECYCLE_STAGES } from "@/features/school/student-lifecycle-contract";
 
 describe("student lifecycle tags", () => {
-  it("accepts exactly the four original business stages", () => {
+  it("accepts the five mutually exclusive business stages", () => {
     expect(STUDENT_LIFECYCLE_STAGES).toEqual([
-      "awaiting_first_contact", "awaiting_assessment", "awaiting_enrollment", "awaiting_renewal",
+      "awaiting_first_contact", "awaiting_assessment", "awaiting_enrollment", "awaiting_renewal", "former_student",
     ]);
     for (const stage of STUDENT_LIFECYCLE_STAGES) expect(parseStudentLifecycleStage(stage)).toBe(stage);
     for (const transient of ["unassigned", "unreachable", "awaiting_parent", "awaiting_class", "", null]) {
@@ -22,7 +22,7 @@ describe("student lifecycle tags", () => {
       { table: "renewals", stage: null },
     ]);
     expect(STUDENT_LIFECYCLE_ROADMAP.flatMap(({ stage }) => stage ? [stage] : []))
-      .toEqual(STUDENT_LIFECYCLE_STAGES);
+      .toEqual(STUDENT_LIFECYCLE_STAGES.filter(stage => stage !== "former_student"));
   });
 
   it("separates process labels from circular stage nodes and highlights the current position", () => {
@@ -61,8 +61,8 @@ describe("student lifecycle tags", () => {
       const school = JSON.parse(fs.readFileSync(`messages/${locale}.json`, "utf8")).school;
       const copy = school.student360;
       expect(STUDENT_LIFECYCLE_STAGES.map((stage) => copy[`lifecycle_${stage}`])).toEqual(locale === "zh"
-        ? ["待首联", "待测评", "待报名", "待续费"]
-        : ["Awaiting first contact", "Awaiting assessment", "Awaiting enrollment", "Awaiting renewal"]);
+        ? ["待首联", "待测评", "待报名", "待续保", "已停课"]
+        : ["Awaiting first contact", "Awaiting assessment", "Awaiting enrollment", "Awaiting renewal", "Classes ended or paused"]);
       for (const { table } of STUDENT_LIFECYCLE_ROADMAP) expect(school.followupWorkspace[table]).toBeTruthy();
       expect(school.followupWorkspace.enrollments).toBe(locale === "zh" ? "分班" : "Class placement");
       expect(school.courseEnrollments.title).toBe(locale === "zh" ? "分班" : "Class placement");

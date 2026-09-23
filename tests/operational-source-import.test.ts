@@ -10,6 +10,15 @@ const source=(id:string,tableName:string,values:Record<string,string>,studentId:
 const payload=(records:ReturnType<typeof source>[])=>({records,payloadHash:'source-fingerprint',batchKey:'source-batch'});
 
 describe('来源记录衔接当前业务模型',()=>{
+  it('reuses a logical source across exports and preserves a failed phase beside WeChat evidence',()=>{
+    const first={...source('old-version','获客&私域信息登记表1.0-总',{'确认结果':'未通','用户当下加V与否':'已加V'}),record_data:{...source('x','获客&私域信息登记表1.0-总',{'确认结果':'未通','用户当下加V与否':'已加V'}).record_data,tableId:'table-a',sourceRecordId:'row-a'}};
+    const initial=buildOperationalSourceImport(payload([first]),{});
+    expect(initial.rows.lead_communications[0]).toMatchObject({outcome:'unreachable',wechat_added:null,source_metric_facts:{effectiveContact:true}});
+    const second={...first,id:'new-version'};
+    const repeated=buildOperationalSourceImport(payload([second]),{...initial.rows,history_import_records:[first]});
+    expect(repeated.rows.leads).toHaveLength(0);
+    expect(repeated.rows.lead_communications[0]).toMatchObject({id:initial.rows.lead_communications[0].id,source_record_id:'new-version',lead_id:initial.rows.leads[0].id});
+  });
   it('uses the confirmation operator as support while retaining a separate assessment role',()=>{
     const profile={id:'staff-a',display_name:'合成学服',staff_aliases:['合成别称'],role:'staff',is_active:true,account_status:'active'};
     const p=buildOperationalSourceImport(payload([
@@ -43,13 +52,12 @@ describe('来源记录衔接当前业务模型',()=>{
     expect(input).toEqual(before);
     expect(JSON.stringify(plan.fieldCoverage)).not.toContain('保留值');
   });
-  it('uses the one-to-one class band correspondence only on an attended assessment',()=>{
+  it('preserves class band as enrollment evidence without inventing an assessment result',()=>{
     const p=buildOperationalSourceImport(payload([
       source('attended','到访数据与信息表1.0-总',{'参与内容':'测评','到访与否':'已到','报名与否':'已报名','班型':'A+'}),
       source('missed','到访数据与信息表1.0-总',{'参与内容':'','报名与否':'已报名','班型':'A+'}),
     ]),{});
-    expect(p.rows.assessment_results).toHaveLength(1);
-    expect(p.rows.assessment_results[0]).toMatchObject({source_record_id:'attended',assessment_band:'a_plus',score:null});
+    expect(p.rows.assessment_results).toHaveLength(0);
     expect(p.rows.activity_registrations.find(row=>row.source_record_id==='missed')).toMatchObject({status:'no_show',source_enrollment_facts:{assessmentBand:'a_plus'}});
   });
   it('preserves confirmed source identities and an already reconciled enrollment date',()=>{
@@ -70,7 +78,8 @@ describe('来源记录衔接当前业务模型',()=>{
     }
     const previous=Object.fromEntries(Object.entries(fresh.rows).map(([table,rows])=>[table,rows.map(row=>Object.fromEntries(Object.entries(row).map(([key,value])=>[key,typeof value==='string'?(legacy.get(value)??value):value])))]));
     const repeated=buildOperationalSourceImport(input,previous);
-    for(const [table,rows] of Object.entries(repeated.rows))expect(rows.map(row=>row.id)).toEqual(previous[table].map(row=>row.id));
+    expect(repeated.rows.leads).toHaveLength(0);
+    for(const [table,rows] of Object.entries(repeated.rows).filter(([table])=>table!=='leads'))expect(rows.map(row=>row.id)).toEqual(previous[table].map(row=>row.id));
     expect(repeated.rows.activity_registrations[0].lead_id).toBe(previous.leads[0].id);
     expect(repeated.rows.assessment_results[0].activity_registration_id).toBe(previous.activity_registrations[0].id);
   });

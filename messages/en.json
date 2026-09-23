@@ -5680,6 +5680,7 @@
       "lifecycle_awaiting_assessment": "Awaiting assessment",
       "lifecycle_awaiting_enrollment": "Awaiting enrollment",
       "lifecycle_awaiting_renewal": "Awaiting renewal",
+      "lifecycle_former_student": "Classes ended or paused",
       "phase_source": "Source",
       "phase_contact": "Contact",
       "phase_invitation": "Invitation",

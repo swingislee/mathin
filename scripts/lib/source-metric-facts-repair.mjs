@@ -14,7 +14,7 @@ export function buildSourceMetricFactsRepair(snapshot){
   const patch=(table,row,changes)=>{if(Object.entries(changes).some(([key,value])=>!isDeepStrictEqual(row[key]??null,value)))patches.push({table,id:row.id,before:row,changes});};
   for(const table of SOURCE_METRIC_TABLES){for(const row of snapshot[table]){
     const source=sourceById.get(row.source_record_id);if(!source)continue;
-    const phase=table==='lead_communications'&&row.source_key?.endsWith(':followup')?'followup':'confirmation';
+    const phase=table==='lead_communications'&&row.source_key?.endsWith(':followup')?'followup':row.source_key?.endsWith(':project')?'project':'confirmation';
     const facts=buildSourceMetricFacts(source,{phase});
     const changes={source_metric_facts:facts};
     if(table==='lead_communications'&&!row.outcome&&facts?.confirmed.contacts)changes.outcome='connected';

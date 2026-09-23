@@ -1,9 +1,10 @@
-/** 四个当前业务阶段；表内临时状态与当前/历史工作范围分别表达。 */
+/** 五个互斥当前阶段；细分状态和来源视图分别表达。 */
 export const STUDENT_LIFECYCLE_STAGES = [
   "awaiting_first_contact",
   "awaiting_assessment",
   "awaiting_enrollment",
   "awaiting_renewal",
+  "former_student",
 ] as const;
 
 export type StudentLifecycleStage = (typeof STUDENT_LIFECYCLE_STAGES)[number];

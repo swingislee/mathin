@@ -5,7 +5,7 @@ export function studentStageMessages(locale: string) {
   const stages: Record<StudentStage, string> = en ? {
     awaiting_first_contact: "First contact", awaiting_assessment: "Awaiting assessment", awaiting_enrollment: "Awaiting enrollment",
     awaiting_renewal: "Ongoing & renewal", former_student: "Former students",
-  } : { awaiting_first_contact: "待首联", awaiting_assessment: "待测评", awaiting_enrollment: "待报名", awaiting_renewal: "待续班", former_student: "已停读／课程结束" };
+  } : { awaiting_first_contact: "待首联", awaiting_assessment: "待测评", awaiting_enrollment: "待报名", awaiting_renewal: "待续保", former_student: "已停课" };
   const details: Record<string, string> = en ? {
     not_contacted: "Not contacted", unreachable: "Not reached · retry", unassigned: "Unassigned", invalid_number: "Invalid number",
     attended_without_result: "Attended · no assessment result",
@@ -18,7 +18,7 @@ export function studentStageMessages(locale: string) {
     attended_without_result: "已到场 · 暂无测评结果",
     not_booked: "尚未预约", coordinating: "测评协调中", booked: "已约待测", no_show: "未到待重约", cancelled: "取消后待沟通",
     in_progress: "测评待完成", assessed: "测后未报", awaiting_reply: "待回复", considering: "考虑中", ready_to_enroll: "有意报名",
-    awaiting_class: "等班", not_enrolling: "暂不报名", attending: "在读", withdrawn: "已退课", ended: "课程已结束", payment_pending: "缴费待核实", nurturing: "长期关注",
+    awaiting_class: "已报名 · 待入班", not_enrolling: "暂不报名", attending: "在读", withdrawn: "已退课／停课", ended: "课程结束／未续报", payment_pending: "缴费待核实", nurturing: "长期关注",
     renewal_considering: "续班考虑中", renewal_committed: "有意续班", renewal_confirmed: "本轮已续", not_renewing: "本轮不续" };
   return {
     stages, details, title: en ? "Students" : "学生", name: en ? "Student / parent" : "学生／家长", phone: en ? "Phone" : "联系电话", state: en ? "Current situation" : "当前情况",

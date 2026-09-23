@@ -62,12 +62,12 @@ export function resolveSourceStaffId(label: string, profiles: readonly {id:strin
   return matches.length===1?matches[0].id:null;
 }
 
-/** 独立登记的加微、诺访、意向可用于首联工作表；这些字段本身不表示发生过联系。 */
+/** 加微和诺访保留来源值，也作为已经建立联系的证据。 */
 export function sourceLeadContactFacts(notes: string): {wechatAdded:boolean|null;visitCommitted:boolean|null;interestLevel:'A'|'B'|'C'|null} {
   const values=(field:string)=>[...new Set(notes.split(/\r?\n/u).filter(line=>line.startsWith(`${field}：`)).map(line=>line.slice(field.length+1).trim()).filter(Boolean))];
   const single=(field:string)=>{const all=values(field);return all.length===1?all[0]:'';};
   const interest=single('意向分类');
-  return {wechatAdded:normalizeSourceBoolean(single('用户当下加V与否'),['是','已'],['否','未']),visitCommitted:normalizeSourceBoolean(single('诺访与否'),['是','已'],['否','未']),interestLevel:interest==='A'||interest==='B'||interest==='C'?interest:null};
+  return {wechatAdded:normalizeSourceBoolean(single('用户当下加V与否'),['是','已','已加V','加V','已加'],['否','未','未加V','未加']),visitCommitted:normalizeSourceBoolean(single('诺访与否'),['是','已','诺访','已诺访'],['否','未','未诺访']),interestLevel:interest==='A'||interest==='B'||interest==='C'?interest:null};
 }
 
 export function sourceStaffLabel(notes:string,field:'学科老师'|'学服老师'):string {
@@ -90,7 +90,7 @@ export function sourceVisitKinds(content:string,assessmentBand:string,learningBa
   return kinds;
 }
 
-/** 报名确认前序阶段；班型对应学生已知等级，所属测评场次另行核对。 */
+/** 报名与班型是独立事实；assessmentBand 兼容旧格式，仅用于班型参考。 */
 export interface SourceEnrollmentFacts {
   version: 1;
   confirmed: true;
@@ -99,7 +99,7 @@ export interface SourceEnrollmentFacts {
 }
 
 export function sourceEnrollmentFacts(result: string, classBand: string, registeredOn: string | null): SourceEnrollmentFacts | null {
-  if (!['已报名', '已报', '是', '已续', '新报', '已缴费'].includes(result.trim())) return null;
+  if (!['已报名', '已报', '是', '已续', '新报', '新报（不用续报）', '已缴费'].includes(result.trim())) return null;
   return { version: 1, confirmed: true, assessmentBand: normalizeSourceAssessmentBand(classBand), registeredOn };
 }
 
@@ -120,10 +120,9 @@ export function sourceVisitParticipation(content: string, attendance: string, as
 }
 
 export function hasSourceAssessmentConclusion(assessment:{assessmentBand?:string|null;score?:number|null;strengths?:string;
-  focusAreas?:string;parentConcerns?:string;teacherRecommendation?:string;teacherObservation?:string;resultSource?:string}|null|undefined,attendance?:string):boolean {
-  return Boolean(assessment&&(assessment.assessmentBand||assessment.score!=null||/(原测评等级|学习力测评等级)：/u.test(assessment.strengths??'')
-    || attendance==='attended'&&(!assessment.resultSource||assessment.resultSource==='legacy')
-      &&[assessment.strengths,assessment.focusAreas,assessment.parentConcerns,assessment.teacherRecommendation,assessment.teacherObservation].some(value=>value?.trim())));
+  focusAreas?:string;parentConcerns?:string;teacherRecommendation?:string;teacherObservation?:string;resultSource?:string}|null|undefined,_attendance?:string):boolean {
+  return Boolean(assessment&&(assessment.assessmentBand||assessment.score!=null
+    || /(?:^|[\r\n])(?:原测评等级|学习力测评等级)：\s*(?:未达A|[XG][+＋]|A[+＋]?|S|C)(?:\s|$)/u.test(assessment.strengths??'')));
 }
 
 export function businessDisplayDate(scheduledAt: string | null | undefined, occurredOn: string | null | undefined, locale: string, empty = '—'): string {

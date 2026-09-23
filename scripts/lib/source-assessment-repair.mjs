@@ -1,7 +1,5 @@
 import {historyFieldName,historicalDate} from './student-business-history.mjs';
 import {isDeepStrictEqual} from 'node:util';
-import {createImportUuid} from './import-uuid.mjs';
-import {historyPayloadHash} from './history-import-trial.mjs';
 import {sourceEnrollmentFacts,sourceVisitParticipation,mergeSourceNotes} from '../../src/features/school/business-source-contract.ts';
 
 export const SOURCE_REPAIR_TABLES=['leads','activity_registrations','assessment_results','course_enrollments'];
@@ -13,7 +11,6 @@ const visitTables=new Set(['到访数据与信息表1.0-总','（老数据）各
 export function buildSourceAssessmentRepair(snapshot,{associations=[],enrollmentDates=[],actorId=null}={}) {
   const sourceById=new Map(snapshot.history_import_records.map(row=>[row.id,row]));
   const patches=new Map(),inserts=[],skipped=[],confirmedAssociations=[];
-  const id=createImportUuid((snapshot.assessment_results??[]).map(row=>row.id));
   const patch=(table,row,changes,reason)=>{
     const key=`${table}:${row.id}`;
     const prior=patches.get(key);
@@ -54,22 +51,7 @@ export function buildSourceAssessmentRepair(snapshot,{associations=[],enrollment
     const changes={source_enrollment_facts:facts};
     if(registration.status==='booked'&&!protectedWork&&expected!=='booked')changes.status=expected;
     patch('activity_registrations',registration,changes,'source_enrollment_and_attendance');
-    const effectiveStatus=changes.status??registration.status;
-    const activity=snapshot.activities?.find(row=>row.id===registration.activity_id);
-    if(!facts?.assessmentBand||field(source,'思维测评等级')||effectiveStatus!=='attended'||protectedWork||activity?.kind!=='assessment_1v1')continue;
-    if(assessment){
-      if(assessment.history_revision===0&&!assessment.assessment_band)
-        patch('assessment_results',assessment,{assessment_band:facts.assessmentBand,strengths:mergeSourceNotes(assessment.strengths,'测评等级依据：报名班型')},'class_band_correspondence');
-    }else{
-      const key=`operation-visit:${source.id}:assessment_1v1:result`;
-      const row={id:id(key),activity_registration_id:registration.id,student_id:registration.student_id??binding.get(source.id)??null,
-        lead_id:registration.student_id||binding.has(source.id)?null:registration.lead_id,assessment_band:facts.assessmentBand,
-        assessed_on:date(source,'体/测日期','参加选拔产品日期','到访日期'),score:null,score_max:null,
-        strengths:'测评等级依据：报名班型',record_state:registration.record_state,history_key:key,
-        history_batch_id:registration.history_batch_id,source_record_id:source.id,source_field_ids:registration.source_field_ids,
-        history_imported_at:registration.history_imported_at};
-      row.source_payload_sha256=historyPayloadHash(row);inserts.push({table:'assessment_results',row});
-    }
+    // 班型只保留在报名事实中。测评结果必须来自测评字段或正式提交的报告。
   }
   for(const enrollment of snapshot.course_enrollments){
     const source=sourceById.get(enrollment.source_record_id);

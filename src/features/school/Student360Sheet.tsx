@@ -565,6 +565,7 @@ function Student360LifecycleRail({ snapshot }: { snapshot: Student360Snapshot })
   const currentIndex = STUDENT_LIFECYCLE_STAGES.indexOf(snapshot.lifecycleStage);
   return (
     <section className="px-5 py-5 sm:px-7" aria-label={t("lifecycleLabel")} data-student-lifecycle={snapshot.lifecycleStage}>
+      {snapshot.lifecycleStage === "former_student" ? <Badge variant="outline" className="mb-3">{t("lifecycle_former_student")}</Badge> : null}
       <ol className="grid grid-cols-5 grid-rows-[auto_auto] gap-y-2">
         {STUDENT_LIFECYCLE_ROADMAP.map(({ table, stage }, index) => {
           const current = stage === snapshot.lifecycleStage;
