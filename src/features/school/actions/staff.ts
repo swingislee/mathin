@@ -7,12 +7,13 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { hasLocalDevelopmentMfaExemption } from "@/lib/local-development-security";
 import { getProfile } from "@/lib/auth";
 import { actionError, type ActionResult } from "@/lib/action-result";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { isPermissionKey } from "../permissions";
-import { generateStaffInitialPassword, staffInitialPasswordDigest } from "../staff-initial-password";
+import { generateStaffInitialPassword, generateStaffTemporaryPassword, staffInitialPasswordDigest, staffTemporaryPasswordDigest } from "../staff-initial-password";
 import { authorizedClient, nullableRpcArg } from "./guards";
 import { COMMON_CODES, parse, requiredText, uuid } from "./schemas";
 import type { FoundProfile, StaffHandoverPreview } from "./types";
@@ -39,6 +40,10 @@ const STAFF_ERROR_CODES = new Set([
   "PASSWORD_REISSUE_IN_PROGRESS",
   "PASSWORD_REISSUE_FINALIZE_FAILED",
   "PASSWORD_REISSUE_ROLLBACK_FAILED",
+  "TARGET_NOT_RESETTABLE",
+  "PASSWORD_RESET_IN_PROGRESS",
+  "PASSWORD_RESET_FINALIZE_FAILED",
+  "PASSWORD_RESET_ROLLBACK_FAILED",
   "AUTH_PROVIDER_FAILED",
 ]);
 
@@ -48,6 +53,11 @@ interface PreparedInitialPasswordReissue {
 
 export interface StaffInitialPasswordReissue {
   initialPassword: string;
+  auditPending: boolean;
+}
+
+export interface StaffPasswordReset {
+  temporaryPassword: string;
   auditPending: boolean;
 }
 
@@ -225,6 +235,68 @@ export async function reissueStaffInitialPasswordAction(
     };
   } catch (error) {
     return actionError<StaffInitialPasswordReissue>(error, [...STAFF_ERROR_CODES]);
+  }
+}
+
+/** Admin-only reset for an active staff account after its onboarding password change. */
+export async function resetStaffPasswordAction(target: string): Promise<ActionResult<StaffPasswordReset>> {
+  try {
+    const targetId = parse(uuid, target);
+    const { supabase, user } = await authorizedClient("staff.manage");
+    const actorProfile = await getProfile(user.id);
+    if (actorProfile?.role !== "admin" || actorProfile.passwordChangeRequired) {
+      return { ok: false, code: "FORBIDDEN" };
+    }
+
+    const localDevelopmentMfaExempt = hasLocalDevelopmentMfaExemption(user.app_metadata, {
+      nodeEnv: process.env.NODE_ENV,
+      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    });
+    if (!localDevelopmentMfaExempt) {
+      const { data: assurance, error: assuranceError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (assuranceError || assurance?.currentLevel !== "aal2") return { ok: false, code: "FORBIDDEN" };
+    }
+
+    const temporaryPassword = generateStaffTemporaryPassword();
+    const temporaryPasswordHash = staffTemporaryPasswordDigest(temporaryPassword);
+    const admin = createAdminClient();
+    const { data: preparedData, error: prepareError } = await admin.rpc("prepare_staff_password_reset", {
+      p_actor_id: user.id,
+      p_user_id: targetId,
+      p_temporary_password_hash: temporaryPasswordHash,
+    });
+    if (prepareError) throw new Error(prepareError.message);
+    const prepared = ((preparedData ?? []) as Array<{ reset_id: string }>)[0];
+    if (!prepared) throw new Error("PASSWORD_RESET_FINALIZE_FAILED");
+
+    const { error: authError } = await admin.auth.admin.updateUserById(targetId, {
+      password: temporaryPassword,
+    });
+    if (authError) {
+      const { error: rollbackError } = await admin.rpc("rollback_staff_password_reset", {
+        p_reset_id: prepared.reset_id,
+        p_actor_id: user.id,
+        p_expected_temporary_password_hash: temporaryPasswordHash,
+      });
+      if (rollbackError) throw new Error("PASSWORD_RESET_ROLLBACK_FAILED");
+      throw new Error("AUTH_PROVIDER_FAILED");
+    }
+
+    const { error: completionError } = await admin.rpc("complete_staff_password_reset", {
+      p_reset_id: prepared.reset_id,
+      p_actor_id: user.id,
+      p_expected_temporary_password_hash: temporaryPasswordHash,
+    });
+    revalidatePath("/[locale]/dashboard/staff", "page");
+    return {
+      ok: true,
+      data: {
+        temporaryPassword,
+        auditPending: Boolean(completionError),
+      },
+    };
+  } catch (error) {
+    return actionError<StaffPasswordReset>(error, [...STAFF_ERROR_CODES]);
   }
 }
 

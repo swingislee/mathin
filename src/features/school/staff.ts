@@ -1,4 +1,7 @@
+import "server-only";
+
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { isPermissionKey, type PermissionKey } from "./permissions";
 import { normalizeStaffRoleName } from "./staff-role-input";
 
@@ -14,6 +17,7 @@ export interface StaffMember {
   canFollowUp: boolean;
   isActive: boolean;
   passwordChangeRequired: boolean;
+  passwordResetPending: boolean;
   purpose?: "production" | "test";
 }
 
@@ -34,10 +38,17 @@ export async function listStaffMembers(): Promise<StaffMember[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("list_staff_members");
   if (error) throw new Error(error.message);
+  const rows = (data ?? []) as StaffMemberRpcRow[];
+  const userIds = rows.map((row) => row.user_id);
+  const { data: resetTargetIds, error: resetError } = userIds.length
+    ? await createAdminClient().rpc("list_staff_password_reset_targets", { p_user_ids: userIds })
+    : { data: [], error: null };
+  if (resetError) throw new Error(resetError.message);
+  const resetTargets = new Set(resetTargetIds ?? []);
   const purposes = await supabase.from("profiles").select("id,purpose").in("role", ["staff", "admin"]);
   if (purposes.error) throw new Error(purposes.error.message);
   const purposeById = new Map((purposes.data ?? []).map(row => [row.id, row.purpose]));
-  return ((data ?? []) as StaffMemberRpcRow[])
+  return rows
     .map((row) => ({
       userId: row.user_id,
       displayName: row.display_name,
@@ -48,6 +59,7 @@ export async function listStaffMembers(): Promise<StaffMember[]> {
       canFollowUp: Boolean(row.can_follow_up),
       isActive: Boolean(row.is_active),
       passwordChangeRequired: Boolean(row.password_change_required),
+      passwordResetPending: resetTargets.has(row.user_id),
       purpose: purposeById.get(row.user_id) === "test" ? "test" as const : "production" as const,
     }))
     .sort((a, b) => a.isActive!==b.isActive?(a.isActive?-1:1):

@@ -8,7 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { authorizedClient } from "@/features/school/actions/guards";
 import { COMMON_CODES, parse, requiredText, text, uuid } from "@/features/school/actions/schemas";
-import { staffInitialPasswordDigest } from "@/features/school/staff-initial-password";
+import { staffInitialPasswordDigest, staffTemporaryPasswordDigest } from "@/features/school/staff-initial-password";
 import type { AccountSupportTarget } from "./account-security";
 
 const consentSchema = z.object({
@@ -74,7 +74,7 @@ const SELF_CODES = [
   "AVATAR_PATH_INVALID", "PROFILE_UPDATE_FAILED",
 ];
 const INITIAL_PASSWORD_CODES = [
-  "SAME_AS_INITIAL", "INITIAL_PASSWORD_RECORD_MISSING", "AUTH_PROVIDER_FAILED", ...COMMON_CODES,
+  "SAME_AS_INITIAL", "SAME_AS_TEMPORARY_PASSWORD", "PASSWORD_RESET_IN_PROGRESS", "INITIAL_PASSWORD_RECORD_MISSING", "AUTH_PROVIDER_FAILED", ...COMMON_CODES,
 ] as const;
 const SUPPORT_CODES = [
   "TARGET_NOT_FOUND", "LAST_ACTIVE_ADMIN", "INVALID_ACTION", "INVALID_REASON", "INVALID_STATUS",
@@ -173,24 +173,31 @@ export async function changeInitialPasswordAction(input: unknown): Promise<Actio
     if (!profile.password_change_required) return { ok: true };
 
     const admin = createAdminClient();
-    const { data: invitation, error: invitationError } = await admin
-      .from("staff_invitations")
-      .select("code_hash")
-      .eq("accepted_by", user.id)
-      .eq("provisioning_mode", "direct")
-      .order("accepted_at", { ascending: false })
-      .limit(1)
-      .maybeSingle<{ code_hash: string }>();
-    if (invitationError || !invitation) throw new Error("INITIAL_PASSWORD_RECORD_MISSING");
-    const nextHash = staffInitialPasswordDigest(value.password);
-    if (nextHash === invitation.code_hash) throw new Error("SAME_AS_INITIAL");
+    const nextHash = staffTemporaryPasswordDigest(value.password);
+    const { data: passwordResetPending, error: resetCheckError } = await admin.rpc("validate_staff_password_change", {
+      p_user_id: user.id,
+      p_candidate_password_hash: nextHash,
+    });
+    if (resetCheckError) throw new Error(resetCheckError.message);
+    if (!passwordResetPending) {
+      const { data: invitation, error: invitationError } = await admin
+        .from("staff_invitations")
+        .select("code_hash")
+        .eq("accepted_by", user.id)
+        .eq("provisioning_mode", "direct")
+        .order("accepted_at", { ascending: false })
+        .limit(1)
+        .maybeSingle<{ code_hash: string }>();
+      if (invitationError || !invitation) throw new Error("INITIAL_PASSWORD_RECORD_MISSING");
+      if (staffInitialPasswordDigest(value.password) === invitation.code_hash) throw new Error("SAME_AS_INITIAL");
+    }
 
     const { error: passwordError } = await supabase.auth.updateUser({ password: value.password });
     if (passwordError) throw new Error("AUTH_PROVIDER_FAILED");
-    const { error: completionError } = await admin.rpc(
-      "complete_initial_password_change",
-      { p_user_id: user.id },
-    );
+    const { error: completionError } = await admin.rpc("complete_staff_password_change", {
+      p_user_id: user.id,
+      p_candidate_password_hash: nextHash,
+    });
     if (completionError) throw new Error(completionError.message);
     revalidatePath("/[locale]/dashboard", "layout");
     revalidatePath("/[locale]/dashboard/account-security", "page");

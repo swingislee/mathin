@@ -25,7 +25,7 @@ import {
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { fromSelectValue, inputClass, toSelectValue } from "./controls";
-import { deactivateStaffAction, findProfileByEmailAction, getStaffHandoverPreviewAction, grantStaffRoleAction, promoteToStaffAction, reissueStaffInitialPasswordAction, revokeStaffRoleAction } from "./actions/staff";
+import { deactivateStaffAction, findProfileByEmailAction, getStaffHandoverPreviewAction, grantStaffRoleAction, promoteToStaffAction, reissueStaffInitialPasswordAction, resetStaffPasswordAction, revokeStaffRoleAction } from "./actions/staff";
 import { type FoundProfile, type StaffImportBatchSummary } from "./actions/types";
 import type { ActionResult } from "@/lib/action-result";
 import type { StaffMember, StaffRoleInfo } from "./staff";
@@ -72,8 +72,9 @@ export function StaffMembersPanel({
   const [reassignTo, setReassignTo] = useState("");
   const [handoverPreview,setHandoverPreview]=useState<{studentCount:number;futureOverrideCount:number;classroomCount:number}|null>(null);
   const [reissueTarget, setReissueTarget] = useState<StaffMember | null>(null);
-  const [reissuedPassword, setReissuedPassword] = useState<string | null>(null);
-  const [reissueAuditPending, setReissueAuditPending] = useState(false);
+  const [passwordDialogKind, setPasswordDialogKind] = useState<"initial" | "reset">("initial");
+  const [issuedPassword, setIssuedPassword] = useState<string | null>(null);
+  const [passwordAuditPending, setPasswordAuditPending] = useState(false);
 
   // 添加员工：邮箱查找 → 命中显示姓名+身份；student/parent 且 admin 才有「提升为员工」
   const [email, setEmail] = useState("");
@@ -165,33 +166,57 @@ export function StaffMembersPanel({
       default: t("actionFailed"),
     },
     onSuccess: (value) => {
-      setReissuedPassword(value.initialPassword);
-      setReissueAuditPending(value.auditPending);
+      setIssuedPassword(value.initialPassword);
+      setPasswordAuditPending(value.auditPending);
+      router.refresh();
+    },
+  });
+  const resetRun = useAction(resetStaffPasswordAction, {
+    successMessage: t("staffPasswordReset"),
+    errorMessage: {
+      FORBIDDEN: t("err_FORBIDDEN"),
+      TARGET_NOT_RESETTABLE: t("err_TARGET_NOT_RESETTABLE"),
+      PASSWORD_RESET_IN_PROGRESS: t("err_PASSWORD_RESET_IN_PROGRESS"),
+      PASSWORD_RESET_FINALIZE_FAILED: t("err_PASSWORD_RESET_FINALIZE_FAILED"),
+      PASSWORD_RESET_ROLLBACK_FAILED: t("err_PASSWORD_RESET_ROLLBACK_FAILED"),
+      AUTH_PROVIDER_FAILED: t("err_RESET_AUTH_PROVIDER_FAILED"),
+      default: t("actionFailed"),
+    },
+    onSuccess: (value) => {
+      setIssuedPassword(value.temporaryPassword);
+      setPasswordAuditPending(value.auditPending);
       router.refresh();
     },
   });
 
   const openReissue = (member: StaffMember) => {
     setReissueTarget(member);
-    setReissuedPassword(null);
-    setReissueAuditPending(false);
+    setPasswordDialogKind("initial");
+    setIssuedPassword(null);
+    setPasswordAuditPending(false);
+  };
+  const openReset = (member: StaffMember) => {
+    setReissueTarget(member);
+    setPasswordDialogKind("reset");
+    setIssuedPassword(null);
+    setPasswordAuditPending(false);
   };
   const closeReissue = () => {
     setReissueTarget(null);
-    setReissuedPassword(null);
-    setReissueAuditPending(false);
+    setIssuedPassword(null);
+    setPasswordAuditPending(false);
   };
-  const copyReissuedPassword = async () => {
-    if (!reissuedPassword) return;
+  const copyIssuedPassword = async () => {
+    if (!issuedPassword) return;
     try {
-      await navigator.clipboard.writeText(reissuedPassword);
-      toast.success(t("initialPasswordCopied"));
+      await navigator.clipboard.writeText(issuedPassword);
+      toast.success(passwordDialogKind === "initial" ? t("initialPasswordCopied") : t("staffPasswordCopied"));
     } catch {
-      toast.error(t("initialPasswordCopyFailed"));
+      toast.error(passwordDialogKind === "initial" ? t("initialPasswordCopyFailed") : t("staffPasswordCopyFailed"));
     }
   };
 
-  const pending = saveRolesRun.pending || promoteRun.pending || deactivateRun.pending || reissueRun.pending;
+  const pending = saveRolesRun.pending || promoteRun.pending || deactivateRun.pending || reissueRun.pending || resetRun.pending;
   const canManageRoles = (member: StaffMember) => canManageStaff && (member.userId !== selfId || isAdmin);
 
   // 查到的已是员工：直接从成员列表里找到对应行进授岗弹窗
@@ -244,7 +269,7 @@ export function StaffMembersPanel({
                     {canManageRoles(member) && (
                       <button type="button" onClick={() => openDialog(member)} className="text-xs text-muted underline underline-offset-2 hover:text-ink">{t("manageRoles")}</button>
                     )}
-                    {canInviteStaff && member.passwordChangeRequired && member.isActive && (
+                    {canInviteStaff && member.passwordChangeRequired && !member.passwordResetPending && member.isActive && (
                       <Button
                         type="button"
                         variant="ghost"
@@ -253,6 +278,17 @@ export function StaffMembersPanel({
                         onClick={() => openReissue(member)}
                       >
                         {t("reissueInitialPassword")}
+                      </Button>
+                    )}
+                    {isAdmin && member.identity === "staff" && (!member.passwordChangeRequired || member.passwordResetPending) && member.isActive && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-auto px-0 py-0 text-xs underline underline-offset-2"
+                        onClick={() => openReset(member)}
+                      >
+                        {member.passwordResetPending ? t("reissueStaffPasswordReset") : t("resetStaffPassword")}
                       </Button>
                     )}
                     {canManageStaff && member.userId !== selfId && member.isActive && <button type="button" onClick={() => { setDeactivateTarget(member); setReassignTo(""); setHandoverPreview(null); void getStaffHandoverPreviewAction(member.userId).then(setHandoverPreview).catch(()=>{}); }} className="text-xs text-rose underline underline-offset-2">{t("deactivate")}</button>}
@@ -353,50 +389,62 @@ export function StaffMembersPanel({
       <Dialog
         open={Boolean(reissueTarget)}
         onOpenChange={(open) => {
-          if (!open && !reissueRun.pending) closeReissue();
+          if (!open && !reissueRun.pending && !resetRun.pending) closeReissue();
         }}
       >
         <DialogContent
-          showCloseButton={!reissueRun.pending}
-          onEscapeKeyDown={(event) => { if (reissueRun.pending) event.preventDefault(); }}
-          onPointerDownOutside={(event) => { if (reissueRun.pending) event.preventDefault(); }}
+          showCloseButton={!reissueRun.pending && !resetRun.pending}
+          onEscapeKeyDown={(event) => { if (reissueRun.pending || resetRun.pending) event.preventDefault(); }}
+          onPointerDownOutside={(event) => { if (reissueRun.pending || resetRun.pending) event.preventDefault(); }}
         >
           <DialogHeader>
-            <DialogTitle>{t("reissueInitialPasswordTitle", { name: reissueTarget?.displayName ?? "" })}</DialogTitle>
-            <DialogDescription>{t("reissueInitialPasswordDescription")}</DialogDescription>
+            <DialogTitle>{passwordDialogKind === "initial"
+              ? t("reissueInitialPasswordTitle", { name: reissueTarget?.displayName ?? "" })
+              : reissueTarget?.passwordResetPending
+                ? t("reissueStaffPasswordResetTitle", { name: reissueTarget?.displayName ?? "" })
+                : t("resetStaffPasswordTitle", { name: reissueTarget?.displayName ?? "" })}</DialogTitle>
+            <DialogDescription>{passwordDialogKind === "initial"
+              ? t("reissueInitialPasswordDescription")
+              : reissueTarget?.passwordResetPending
+                ? t("reissueStaffPasswordResetDescription")
+                : t("resetStaffPasswordDescription")}</DialogDescription>
           </DialogHeader>
-          {reissuedPassword ? (
+          {issuedPassword ? (
             <div role="status" className="space-y-4">
               <div className="grid gap-1.5 border-y border-line py-4 text-sm">
-                <span className="text-xs text-muted">{t("reissueInitialPasswordLogin")}</span>
+                <span className="text-xs text-muted">{passwordDialogKind === "initial" ? t("reissueInitialPasswordLogin") : t("staffPasswordResetLogin")}</span>
                 <span>{reissueTarget?.email}</span>
-                <span className="mt-2 text-xs text-muted">{t("reissueInitialPasswordValue")}</span>
-                <span className="select-all font-mono text-lg tracking-wider text-ink">{reissuedPassword}</span>
+                <span className="mt-2 text-xs text-muted">{passwordDialogKind === "initial" ? t("reissueInitialPasswordValue") : t("staffPasswordResetValue")}</span>
+                <span className="select-all font-mono text-lg tracking-wider text-ink">{issuedPassword}</span>
               </div>
-              <p className="text-xs leading-5 text-rose">{t("reissueInitialPasswordOneTime")}</p>
-              {reissueAuditPending ? (
-                <p role="alert" className="text-xs leading-5 text-muted">{t("reissueInitialPasswordAuditPending")}</p>
+              <p className="text-xs leading-5 text-rose">{passwordDialogKind === "initial" ? t("reissueInitialPasswordOneTime") : t("staffPasswordResetOneTime")}</p>
+              {passwordAuditPending ? (
+                <p role="alert" className="text-xs leading-5 text-muted">{passwordDialogKind === "initial" ? t("reissueInitialPasswordAuditPending") : t("staffPasswordResetAuditPending")}</p>
               ) : null}
               <DialogFooter>
-                <Button type="button" variant="secondary" onClick={() => void copyReissuedPassword()}>
+                <Button type="button" variant="secondary" onClick={() => void copyIssuedPassword()}>
                   <Copy className="size-4" aria-hidden />
-                  {t("copyInitialPassword")}
+                  {passwordDialogKind === "initial" ? t("copyInitialPassword") : t("copyStaffPassword")}
                 </Button>
                 <Button type="button" onClick={closeReissue}>{t("done")}</Button>
               </DialogFooter>
             </div>
           ) : (
             <DialogFooter>
-              <Button type="button" variant="ghost" disabled={reissueRun.pending} onClick={closeReissue}>
+              <Button type="button" variant="ghost" disabled={reissueRun.pending || resetRun.pending} onClick={closeReissue}>
                 {t("cancel")}
               </Button>
               <Button
                 type="button"
-                disabled={reissueRun.pending || !reissueTarget}
-                onClick={() => { if (reissueTarget) reissueRun.run(reissueTarget.userId); }}
+                disabled={reissueRun.pending || resetRun.pending || !reissueTarget}
+                onClick={() => {
+                  if (!reissueTarget) return;
+                  if (passwordDialogKind === "initial") reissueRun.run(reissueTarget.userId);
+                  else resetRun.run(reissueTarget.userId);
+                }}
               >
-                {reissueRun.pending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
-                {t("confirmReissueInitialPassword")}
+                {reissueRun.pending || resetRun.pending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
+                {passwordDialogKind === "initial" ? t("confirmReissueInitialPassword") : t("confirmStaffPasswordReset")}
               </Button>
             </DialogFooter>
           )}

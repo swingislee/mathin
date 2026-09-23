@@ -227,6 +227,8 @@ export function AccountSecurityPanel({
     errorMessage: {
       VALIDATION: t("passwordInvalid"),
       SAME_AS_INITIAL: t("sameAsInitialPassword"),
+      SAME_AS_TEMPORARY_PASSWORD: t("sameAsInitialPassword"),
+      PASSWORD_RESET_IN_PROGRESS: t("passwordResetInProgress"),
       INITIAL_PASSWORD_RECORD_MISSING: t("actionFailed"),
       AUTH_PROVIDER_FAILED: t("actionFailed"),
       default: t("actionFailed"),
