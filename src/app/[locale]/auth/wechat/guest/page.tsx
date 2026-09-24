@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { redirect } from "next/navigation";
 import { Link } from "@/i18n/navigation";
+import { LoginLink } from "@/components/auth/LoginLink";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Star4 } from "@/components/star4";
@@ -27,7 +28,7 @@ async function GuestBody({ locale }: { locale: string }) {
     <p className="mt-6 leading-7 text-muted">{t("guestNotice")}</p>
     <p className="mt-3 text-sm leading-6 text-muted">{t("guestRoles")}</p>
     <div className="mt-7 flex flex-wrap gap-3">
-      <Link className={buttonVariants()} href={{ pathname: "/login", query: { next: `/${locale}/dashboard/account-security?section=identities` } }}>{t("existingAccount")}</Link>
+      <LoginLink className={buttonVariants()} next={`/${locale}/dashboard/account-security?section=identities`}>{t("existingAccount")}</LoginLink>
       <Link className={buttonVariants({ variant: "secondary" })} href="/">{t("browse")}</Link>
     </div>
     <p className="mt-5 text-xs leading-5 text-muted">{t("guestExpiry")}</p>

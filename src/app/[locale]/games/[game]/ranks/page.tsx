@@ -8,6 +8,7 @@ import { formatMs } from "@/features/games/format";
 import { getGame } from "@/features/games/registry";
 import type { Difficulty } from "@/features/games/types";
 import { Link } from "@/i18n/navigation";
+import { LoginLink } from "@/components/auth/LoginLink";
 import { buildMetadata } from "@/lib/seo";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -131,9 +132,9 @@ export default async function RanksPage({ params, searchParams }: {
 
       {!user && (
         <p className="mt-4 text-center text-xs text-muted">
-          <Link href={`/login?next=/${locale}/games/${game}/ranks`} className="underline underline-offset-2 hover:text-ink">
+          <LoginLink next={`/${locale}/games/${game}/ranks`} className="underline underline-offset-2 hover:text-ink">
             {t("loginToRank")}
-          </Link>
+          </LoginLink>
         </p>
       )}
     </main>

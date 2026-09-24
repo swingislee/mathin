@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { LoginLink } from "@/components/auth/LoginLink";
+import { Link } from "@/i18n/navigation";
 import { SpatialActionIcon } from "../spatial-interaction/SpatialActionIcon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +18,7 @@ const zh = {
   loading: "正在读取账号草稿…", busy: "正在处理…", unsaved: "尚未保存", dirty: "有未保存更改", saved: "已保存",
   location: "保存到当前账号，其他设备登录同一账号、访问同一网站即可打开。每个账号最多 200 份草稿，每份 4 MB。",
   reopening: "保存包含备课现场、撤销记录和教学步骤；录制重新打开时暂停。保存或打开后刷新本页，会恢复该草稿的已保存版本。",
-  login: "在新标签页登录", security: "在新标签页完成账号安全验证", returnAfterLogin: "完成后回到此页，点刷新草稿列表，当前现场保留。",
+  login: "登录账号", security: "在新标签页完成账号安全验证", returnAfterLogin: "完成后刷新草稿列表即可继续，当前现场保留。",
   demo: "回到备课模式后保存或打开。临场演示操作不会覆盖备课草稿。",
   openTitle: "打开另一份草稿？", openDescription: "当前未保存的修改会被替换。可以取消并先保存；已保存的其他草稿保持不变。",
   cancel: "取消", confirmOpen: "确认打开",
@@ -39,7 +41,7 @@ const en = {
   loading: "Reading account drafts…", busy: "Working…", unsaved: "Not saved yet", dirty: "Unsaved changes", saved: "Saved",
   location: "Saved to your account. Sign in to the same website on another device to open it. Up to 200 drafts per account, 4 MB each.",
   reopening: "Saves include preparation, undo history and lesson steps; recording reopens paused. After saving or opening, refreshing this page restores that draft's saved version.",
-  login: "Sign in in a new tab", security: "Complete account security in a new tab", returnAfterLogin: "Return here and refresh the draft list when finished. Your current work stays open.",
+  login: "Sign in", security: "Complete account security in a new tab", returnAfterLogin: "Refresh the draft list when finished. Your current work stays open.",
   demo: "Return to Preparation to save or open. Live demo changes never overwrite your preparation draft.",
   openTitle: "Open another draft?", openDescription: "Unsaved changes will be replaced. Cancel to save first. Other saved drafts stay unchanged.",
   cancel: "Cancel", confirmOpen: "Open draft",
@@ -94,7 +96,8 @@ export function CubeDraftPanel({ locale, library, preparation, disabled = false 
     {!preparation && <p className="leading-5 text-muted">{m.demo}</p>}
     {library.error && <p className="leading-5 text-rose" role="alert">{m.errors[library.error]}</p>}
     {library.error && ["auth-required", "account-security", "account-changed"].includes(library.error) && <div className="space-y-1">
-      <a className="font-semibold text-primary underline" href={library.error === "account-security" ? `/${locale}/dashboard/account-security` : `/${locale}/login`} target="_blank" rel="noopener noreferrer">{library.error === "account-security" ? m.security : m.login}</a>
+      {library.error === "account-security" ? <Link className="font-semibold text-primary underline" href="/dashboard/account-security" target="_blank" rel="noopener noreferrer">{m.security}</Link>
+        : <LoginLink className="font-semibold text-primary underline" fallbackTarget="_blank" rel="noopener noreferrer">{m.login}</LoginLink>}
       <p className="leading-5 text-muted">{m.returnAfterLogin}</p>
     </div>}
     <p className="leading-5 text-muted">{m.location}</p>

@@ -9,6 +9,7 @@ import { getSupabaseConfig } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { WECHAT_FLOW_COOKIE, WECHAT_GUEST_COOKIE } from "@/features/wechat/contract";
+import type { LoginState } from "@/components/auth/login-contract";
 
 const loginSchema = z.object({
   identifier: loginIdentifierSchema,
@@ -50,22 +51,42 @@ async function phonePasswordAvailable() {
   }
 }
 
-export async function login(formData: FormData) {
-  const locale = safeLocale(formData.get("locale"));
-  const next = safeNext(formData.get("next"), locale);
+async function authenticatePassword(formData: FormData): Promise<LoginState> {
   const parsed = loginSchema.safeParse({
     identifier: formData.get("username"),
     password: formData.get("password"),
   });
-  if (!parsed.success) redirect(`/${locale}/login?error=credentials&next=${encodeURIComponent(next)}`);
+  if (!parsed.success) return { ok: false, code: "credentials" };
 
-  const supabase = await createClient();
   const credentials = parsed.data.identifier.kind === "email"
     ? { email: parsed.data.identifier.value, password: parsed.data.password }
     : { phone: parsed.data.identifier.value, password: parsed.data.password };
-  const { error } = await supabase.auth.signInWithPassword(credentials);
-  if (error) redirect(`/${locale}/login?error=credentials&next=${encodeURIComponent(next)}`);
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.signInWithPassword(credentials);
+    if (error) return { ok: false, code: error.status && error.status >= 500 ? "unavailable" : "credentials" };
+    return { ok: true };
+  } catch { return { ok: false, code: "unavailable" }; }
+}
+
+export async function login(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const next = safeNext(formData.get("next"), locale);
+  const result = await authenticatePassword(formData);
+  if (!result.ok) redirect(`/${locale}/login?error=${result.code}&next=${encodeURIComponent(next)}`);
   redirect(next);
+}
+
+const loginPresentationSchema = z.enum(["page", "dialog"]);
+
+/** 浮窗错误留在卡片中；受限页的完整登录仍由服务端跳回安全 next。 */
+export async function submitLogin(_previous: LoginState, formData: FormData): Promise<LoginState> {
+  const presentation = loginPresentationSchema.safeParse(formData.get("presentation"));
+  if (!presentation.success) return { ok: false, code: "credentials" };
+  const result = await authenticatePassword(formData);
+  if (!result.ok || presentation.data === "dialog") return result;
+  const locale = safeLocale(formData.get("locale"));
+  redirect(safeNext(formData.get("next"), locale));
 }
 
 export async function signup(formData: FormData) {

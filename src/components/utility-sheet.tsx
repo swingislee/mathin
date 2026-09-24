@@ -4,6 +4,7 @@ import { BookOpen, GraduationCap, Home as HomeIcon, LayoutDashboard, Lightbulb, 
 import { useTranslations } from "next-intl";
 import { logout } from "@/app/[locale]/(auth)/actions";
 import { Input } from "@/components/ui/input";
+import { LoginLink } from "@/components/auth/LoginLink";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { setActiveEnvironmentAction } from "@/features/school/environment-actions";
@@ -48,7 +49,7 @@ export function UtilitySheet({
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <button aria-label={home("openDrawer")} className="edge-control"><Menu size={18} /></button>
+        <button aria-label={home("openDrawer")} data-auth-dialog-focus-fallback className="edge-control"><Menu size={18} /></button>
       </SheetTrigger>
       <SheetContent side="right" closeLabel={home("closeDrawer")} className="grid h-dvh w-[min(90vw,380px)] grid-rows-[auto_minmax(0,1fr)_auto] p-0">
         <div className="flex items-center gap-3 border-b border-line px-5 py-3 pr-16">
@@ -65,12 +66,12 @@ export function UtilitySheet({
             </div>
           ) : (
             <SheetClose asChild>
-              <Link href="/login" className="flex items-center gap-3 rounded-xl py-1 text-sm font-medium text-ink">
+              <LoginLink className="flex items-center gap-3 rounded-xl py-1 text-sm font-medium text-ink">
                 <span className="grid size-10 place-items-center rounded-full border border-line bg-moon/45">
                   <LogIn size={18} strokeWidth={1.75} />
                 </span>
                 <span>{common("login")}</span>
-              </Link>
+              </LoginLink>
             </SheetClose>
           )}
           {isLoggedIn && (

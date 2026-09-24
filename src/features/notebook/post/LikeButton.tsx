@@ -3,22 +3,22 @@
 import { Heart } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
-import { Link } from "@/i18n/navigation";
+import { LoginLink } from "@/components/auth/LoginLink";
 import { toggleLike } from "../actions";
 
-export function LikeButton({ postId, initialLiked, initialCount, isLoggedIn, loginHref }: {
+export function LikeButton({ postId, initialLiked, initialCount, isLoggedIn, loginReturnTo }: {
   postId: string;
   initialLiked: boolean;
   initialCount: number;
   isLoggedIn: boolean;
-  loginHref: string;
+  loginReturnTo: string;
 }) {
   const t = useTranslations("notebook.public");
   const [liked, setLiked] = useState(initialLiked);
   const [count, setCount] = useState(initialCount);
   const [pending, startTransition] = useTransition();
   if (!isLoggedIn) {
-    return <Link href={loginHref} className="inline-flex items-center gap-2 rounded-full border border-crater px-4 py-2 text-sm"><Heart size={17} />{t("loginToLike")} · {count}</Link>;
+    return <LoginLink next={loginReturnTo} className="inline-flex items-center gap-2 rounded-full border border-crater px-4 py-2 text-sm"><Heart size={17} />{t("loginToLike")} · {count}</LoginLink>;
   }
   return (
     <button

@@ -1,5 +1,5 @@
 import { getTranslations } from "next-intl/server";
-import { login, signup } from "@/app/[locale]/(auth)/actions";
+import { signup } from "@/app/[locale]/(auth)/actions";
 import { Star4 } from "@/components/star4";
 import { buttonVariants } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -7,14 +7,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
-import { WechatLoginButton } from "@/features/wechat/WechatLoginButton";
-import { wechatError as parseWechatError } from "@/features/wechat/contract";
+import { Card } from "@/components/ui/card";
+import { LoginCard } from "@/components/auth/LoginCard";
+import { getWechatConfig } from "@/features/wechat/config";
 
 export async function AuthForm({ mode, locale, error, next, wechatError }: { mode: "login" | "signup"; locale: string; error?: string; next?: string; wechatError?: string }) {
   const t = await getTranslations("auth");
-  const wechat = await getTranslations("wechat");
   const common = await getTranslations("common");
-  const action = mode === "login" ? login : signup;
+  if (mode === "login") {
+    // 用户指定的独立登录卡；页面与浮窗使用同一组字段和 OAuth 按钮。
+    return <main className="grid min-h-dvh place-items-center px-4 py-10 sm:px-6">
+      <Card className="w-full max-w-[26rem] overflow-hidden"><LoginCard locale={locale} next={next} error={error} wechatError={wechatError} wechatAvailable={Boolean(getWechatConfig())} /></Card>
+    </main>;
+  }
   const errorMessage = error === "invite"
     ? t("invalidInvite")
     : error === "validation"
@@ -31,9 +36,9 @@ export async function AuthForm({ mode, locale, error, next, wechatError }: { mod
     <main className="grid min-h-dvh place-items-center px-6 py-16">
       <div className="flex w-full max-w-md flex-col items-center">
         <Star4 size={24} className="mb-6" />
-        <form action={action} autoComplete="on" className="w-full rounded-[2rem] border bg-card p-8 shadow-sm">
+        <form action={signup} autoComplete="on" className="w-full rounded-[2rem] border bg-card p-8 shadow-sm">
           <Link href="/" className="font-display text-xl">Mathin</Link>
-          <h1 className="mb-7 mt-7 font-display text-3xl">{t(mode === "login" ? "loginTitle" : "signupTitle")}</h1>
+          <h1 className="mb-7 mt-7 font-display text-3xl">{t("signupTitle")}</h1>
           <Input type="hidden" name="locale" value={locale} />
           {next && <Input type="hidden" name="next" value={next} />}
 
@@ -48,9 +53,9 @@ export async function AuthForm({ mode, locale, error, next, wechatError }: { mod
 
           <Label className="mb-2 block" htmlFor="username">{t("identifier")}</Label>
           <Input className="h-11 rounded-full bg-transparent px-4" id="username" name="username" type="text" required autoComplete="username" autoCapitalize="none" spellCheck={false} placeholder={t("identifierPlaceholder")} />
-          <p className="mb-5 mt-2 text-xs leading-5 text-muted">{t(mode === "signup" ? "signupIdentifierHint" : "loginIdentifierHint")}</p>
+          <p className="mb-5 mt-2 text-xs leading-5 text-muted">{t("signupIdentifierHint")}</p>
           <Label className="mb-2 block" htmlFor="password">{t("password")}</Label>
-          <Input className="h-11 rounded-full bg-transparent px-4" id="password" name="password" type="password" minLength={mode === "login" ? 6 : 8} maxLength={128} required autoComplete={mode === "login" ? "current-password" : "new-password"} />
+          <Input className="h-11 rounded-full bg-transparent px-4" id="password" name="password" type="password" minLength={8} maxLength={128} required autoComplete="new-password" />
 
           {mode === "signup" && (
             <>
@@ -78,14 +83,11 @@ export async function AuthForm({ mode, locale, error, next, wechatError }: { mod
 
           {errorMessage && <p className="mt-4 text-sm text-rose" role="alert">{errorMessage}</p>}
           <button className={cn(buttonVariants({ size: "lg" }), "mt-7 w-full")} type="submit">{t(mode)}</button>
-          {mode === "login" && <div className="mt-3 flex justify-center text-sm text-crater"><Link href="/forgot-password" className="underline underline-offset-2">{t("forgotPassword")}</Link></div>}
           <p className="mt-6 text-center text-sm text-muted">
-            {t(mode === "login" ? "noAccount" : "hasAccount")} {" "}
-            <Link className="underline transition-colors duration-200 hover:text-ink" href={mode === "login" ? "/signup" : "/login"}>{t(mode === "login" ? "signup" : "login")}</Link>
+            {t("hasAccount")} {" "}
+            <Link className="underline transition-colors duration-200 hover:text-ink" href="/login">{t("login")}</Link>
           </p>
         </form>
-        {wechatError ? <p role="alert" className="mt-4 text-sm text-rose">{wechat(`errors.${parseWechatError(wechatError)}`)}</p> : null}
-        {mode === "login" ? <WechatLoginButton locale={locale} next={next} /> : null}
       </div>
     </main>
   );

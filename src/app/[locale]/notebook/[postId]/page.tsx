@@ -92,7 +92,7 @@ export default async function NotebookPostPage({ params }: { params: Promise<{ l
         )}
         {isPublic && (
           <div className="mt-10 border-t pt-6">
-            <LikeButton postId={post.id} initialLiked={liked} initialCount={post.like_count} isLoggedIn={Boolean(user)} loginHref={`/login?next=${encodeURIComponent(nextPath)}`} />
+            <LikeButton postId={post.id} initialLiked={liked} initialCount={post.like_count} isLoggedIn={Boolean(user)} loginReturnTo={nextPath} />
           </div>
         )}
       </article>

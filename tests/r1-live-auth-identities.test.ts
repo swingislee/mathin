@@ -31,7 +31,10 @@ describe("R1-Live email and phone password identities", () => {
     expect(actions).toContain("phone_confirm: true");
     expect(form).toContain('id="username" name="username"');
     expect(form).toContain('autoComplete="username"');
-    expect(form).toContain('autoComplete={mode === "login" ? "current-password" : "new-password"}');
+    expect(form).toContain('autoComplete="new-password"');
+    const loginCard = read("src/components/auth/LoginCard.tsx");
+    expect(loginCard).toContain('autoComplete="current-password"');
+    expect(loginCard).toContain('name="username"');
     expect(actions).toContain('formData.get("username")');
     expect(actions).not.toContain('formData.get("identifier")');
     expect(form).toContain('name="passwordConfirm"');
