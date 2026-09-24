@@ -30,8 +30,17 @@ begin
     if not public.allow_wechat_oauth_attempt(repeat('5',64),8) then raise exception 'RATE_LIMIT_EARLY'; end if;
   end loop;
   if public.allow_wechat_oauth_attempt(repeat('5',64),8) then raise exception 'RATE_LIMIT_MISSING'; end if;
+  insert into public.wechat_oauth_tickets(token_hash,kind,browser_hash,payload,expires_at)
+  values(repeat('6',64),'guest',repeat('6',64),'{}',now()+interval '1 minute');
+  insert into public.wechat_oauth_rate_limits(key_hash,attempts,expires_at)
+  values(repeat('7',64),1,now()-interval '1 minute');
+  set local role service_role;
   perform public.prune_wechat_oauth_tickets();
   if exists(select 1 from public.wechat_oauth_tickets where token_hash=repeat('4',64)) then raise exception 'EXPIRED_PII_NOT_PRUNED'; end if;
+  if not exists(select 1 from public.wechat_oauth_tickets where token_hash=repeat('6',64)) then raise exception 'LIVE_GUEST_PROOF_PRUNED'; end if;
+  reset role;
+  if exists(select 1 from public.wechat_oauth_rate_limits where key_hash=repeat('7',64)) then raise exception 'EXPIRED_RATE_LIMIT_NOT_PRUNED'; end if;
+  if not exists(select 1 from public.wechat_oauth_rate_limits where key_hash=repeat('5',64)) then raise exception 'ACTIVE_RATE_LIMIT_PRUNED'; end if;
   if not exists(select 1 from pg_indexes where schemaname='auth' and indexname='auth_identities_one_wechat_per_user') then raise exception 'WECHAT_ACCOUNT_UNIQUENESS_MISSING'; end if;
 end $$;
 

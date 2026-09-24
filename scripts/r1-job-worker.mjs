@@ -18,6 +18,7 @@ import {
 import { jobWorkerScope, runWebPushCycle } from "./lib/web-push-worker-cycle.mjs";
 import { createWebPushAgent } from "./lib/web-push-network.mjs";
 import { isSupportedWebPushDevice } from "../src/features/events/web-push-support.mjs";
+import { runWechatOAuthMaintenance } from "./lib/wechat-oauth-maintenance.mjs";
 
 const MAX_BATCH = 100;
 
@@ -47,10 +48,10 @@ if (!url || !key) {
 const workerId = (process.env.R1_JOB_WORKER_ID || `${os.hostname()}:${process.pid}`).slice(0, 160);
 const batchSize = Math.max(1, Math.min(MAX_BATCH, Number(process.env.R1_JOB_BATCH || 10)));
 const leaseSeconds = Math.max(30, Math.min(3600, Number(process.env.R1_JOB_LEASE_SECONDS || 300)));
-const pollMs = Math.max(250, Math.min(60000, Number(process.env.R1_JOB_POLL_MS || 2000)));
 const once = process.env.R1_JOB_ONCE === "1";
 const scope = jobWorkerScope(process.env.R1_JOB_SCOPE || "all");
-const VERSION = scope === "web_push" ? "r1-7.3-web-push-scoped" : "r1-7.3";
+const pollMs = scope === "wechat_oauth" ? 60_000 : Math.max(250, Math.min(60000, Number(process.env.R1_JOB_POLL_MS || 2000)));
+const VERSION = scope === "wechat_oauth" ? "wechat-oauth-maintenance-v1" : scope === "web_push" ? "r1-7.3-web-push-scoped" : "r1-7.3";
 const admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 let webPushModulePromise;
 
@@ -476,6 +477,11 @@ async function settle(job) {
 }
 
 async function cycle() {
+  if (scope === "wechat_oauth") {
+    await runWechatOAuthMaintenance({ admin, workerId });
+    process.stdout.write(`${JSON.stringify({ event: "wechat_oauth.maintenance_ok" })}\n`);
+    return 0;
+  }
   if (scope === "web_push") {
     return runWebPushCycle({ admin, workerId, version: VERSION, batchSize, leaseSeconds }, settle);
   }

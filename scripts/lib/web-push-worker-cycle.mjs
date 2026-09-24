@@ -1,6 +1,6 @@
 // 推送 Worker 独立领取队列，租约恢复和到期处理也只作用于 Web Push。
 export function jobWorkerScope(value = "all") {
-  if (value !== "all" && value !== "web_push") throw new Error("JOB_WORKER_SCOPE_INVALID");
+  if (!["all", "web_push", "wechat_oauth"].includes(value)) throw new Error("JOB_WORKER_SCOPE_INVALID");
   return value;
 }
 
