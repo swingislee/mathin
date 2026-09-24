@@ -32,8 +32,20 @@ node scripts/wechat-auth-compat-local.mjs --patched
 
 回归直接运行真实 `linkIdentityToUser()` 与本机数据库。它复用清单中的固定教师 UUID，仅在外层回滚事务中模拟手机号／邮箱 identity；邮件使用 mock。每个分支返回普通 rollback 哨兵，包括 Auth 的 `CommitWithError` 路径，防止测试意外提交。不创建新用户或 profile，不调用会清表的 upstream 测试初始化器；仅运行 `TestMathinPhoneOnlyIdentityLinkRollback`。
 
+## SDK 联调与候选镜像
+
+2026-09-25 继续完成以下本机检查：
+
+- `node scripts/wechat-auth-sdk-local.mjs`：仓库实际安装的 Supabase JS SDK 调用真实 Auth HTTPS handler。邮箱与 +86 纯手机号均完成密码登录、`linkIdentity`、两段 S256 PKCE、回调、微信重新登录原 UUID、跨账号冲突拒绝、Auth 停用拒绝、解绑后原密码登录，以及未知 OAuth 身份拒绝注册。已验证的 TOTP MFA 在绑定后保留，客户端仍识别 AAL2 要求。
+- SDK fixture 使用固定教师／学生身份，所有请求共享外层数据库回滚事务，场景之间使用 savepoint；Auth 内部嵌套事务不会提交外层事务。邮件为 mock，外部微信由符合桥接协议的临时 provider 替代，监听只映射至本机 loopback。自签名证书只在该 fixture 中信任；Next.js 与正式 Auth 的 TLS 配置保持原样。
+- SDK 结束后，用户、身份、profile 内容指纹与 session、refresh token、MFA、OAuth flow、provider、微信审计计数均恢复。临时容器被移除，检查结果及私有日志位于 `.tmp/wechat-auth-compat/sdk-http.json` / `sdk-http.log`。
+- `node scripts/wechat-auth-image-local.mjs`：从固定 commit 压缩包另行解压构建源，核对并应用最小补丁。依赖使用 `go.mod` / `go.sum`，编译及镜像组装关闭网络。运行层固定到原版镜像 digest，仅替换 Auth 二进制，生成本机 `mathin/gotrue:v2.189.0-wechat.1`，版本为 `v2.189.0-mathin.wechat.1`。
+- `node scripts/wechat-auth-image-smoke-local.mjs`：候选镜像及固定 previous 镜像分别运行临时实例，连接强制 `default_transaction_read_only=on`，健康与版本检查通过。原 `supabase-auth` 服务未重启、替换或改配置。构建摘要与检查记录保留在 `.tmp/wechat-auth-compat/image/`。
+
+上述 SDK 检查覆盖原生 Auth 协议与数据库集成。应用的浏览器 Cookie／会话关联、MFA 与原密码门另由 `tests/wechat-session.test.ts` 和现有 broker／callback 测试覆盖；它们不代替真实 HTTPS 站点和微信扫码验收。临时镜像的启动检查也不表示已切换开发或生产服务。
+
 ## 启用前仍需完成
 
-这些结果验证了原生函数及候选补丁。后续需要构建可追溯的 Auth 镜像，验证镜像回退，并用固定账号完成 SDK／HTTP 两段 PKCE、原密码登录、MFA、冲突、回调与绑定后的微信登录联调。网站应用审核通过、配置真实凭据后再做真实扫码验收。完成这些条件前保持 `WECHAT_AUTH_COMPATIBILITY_VERIFIED`、`WECHAT_PHONE_LINKING_VERIFIED` 和 `WECHAT_OAUTH_ENABLED` 关闭。
+在选定 HTTPS 站点接通实际 Next.js 桥接、候选 Auth 镜像及 provider 配置，验证同一浏览器 Cookie、回调来源、代理／日志设置与过期票据清理。网站应用审核通过并配置服务端私有凭据后，完成真实扫码、原账号绑定及微信再次登录验收。完成这些条件前保持 `WECHAT_AUTH_COMPATIBILITY_VERIFIED`、`WECHAT_PHONE_LINKING_VERIFIED` 和 `WECHAT_OAUTH_ENABLED` 关闭。
 
 生产 Auth 升级与数据库迁移另按[写入目标规则](../../docs/runbooks/r1-write-target-policy.md)完成只读 preflight 和本次授权。本目录的检查脚本只接受既定的本机隔离目标。

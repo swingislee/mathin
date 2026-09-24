@@ -2,7 +2,7 @@
 
 > 2026-09-24 开发实现。用户已确认：首次扫码为游客，只浏览公开内容并绑定已有账号；游客不创建独立 Auth 用户，不保存笔记或成绩。本文件不表示生产已启用。
 
-> **2026-09-25 当前检查结果**：定向源码测试、TypeScript、受影响文件 ESLint、双语消息一致性已通过；zh/en 登录页可访问，微信入口保持关闭。Docker 已恢复，候选 SQL 的权限、RLS、绑定唯一性、审计与完整事务回滚检查通过；纯手机号的 Auth 原生候选补丁五项回归通过。微信迁移已在本机持久应用并生成增量类型；固定 Auth 候选镜像已构建。SDK 联调与真实微信扫码仍待完成。开发端 UI 待人工验收，没有生产写入。
+> **2026-09-25 当前检查结果**：定向源码测试、TypeScript、受影响文件 ESLint、双语消息一致性已通过；zh/en 登录页可访问，微信入口保持关闭。Docker 已恢复，SQL 的权限、RLS、绑定唯一性、审计与完整事务回滚检查通过。微信迁移已在本机持久应用并生成增量类型。原生兼容补丁回归，以及 Supabase SDK 的邮箱／纯手机号绑定、再次登录原账号、冲突、停用、MFA、解绑和未知身份拒绝注册通过；候选 Auth 镜像与 previous 镜像的临时只读启动检查通过。仍待实际 Next.js HTTPS 桥接与真实微信扫码验收。开发端 UI 待人工验收，没有生产写入。
 
 > **类型状态**：`20260925001000_wechat_oauth_tickets.sql` 已进入正式迁移目录，并在本机隔离库登记账本。四张表、四个 RPC 的类型从该数据库实际生成，通过定向合并保留其它功能定义；`db:types:check` 与 TypeScript 通过。全量生成器还会改变既有统计 view 的关系及可写类型，这部分漂移保留给原功能处理，本次只合并微信新增项。
 
@@ -106,6 +106,8 @@ Auth 需要 `GOTRUE_SECURITY_MANUAL_LINKING_ENABLED=true`，应用回调加入�
 候选修复位置：[v2.189.0 identity.go](https://github.com/supabase/auth/blob/v2.189.0/internal/api/identity.go)。`UpdateUserEmailFromIdentities()` 之后，只有 `targetUser.GetEmail() != ""` 时才执行邮箱确认及 `Confirm()`。保留原来的匿名转正和 provider 更新逻辑。可采用包含相同修复的正式 Auth 版本，或在固定版本上应用可追溯的最小补丁；变更 Auth 镜像单独验证和保留 previous。
 
 2026-09-25 已将候选保存为 [`v2.189.0-phone-only.patch`](../../supabase/auth-compat/v2.189.0-phone-only.patch)，固定到上游 commit `4fa66ba71d8c55b5c95cd5635766ed8bbae6d96a`。本机真实数据库事务中，原版复现两条无邮箱路径失败；补丁版五项通过，包括原 UUID／密码／手机号保持、identity 归属、重复绑定和邮箱确认语义。每个用例全部回滚，固定身份记录指纹恢复；没有更换正在运行的 Auth 镜像。复现步骤与验证边界见 [Auth 兼容说明](../../supabase/auth-compat/README.md)。
+
+随后使用仓库 Supabase SDK 与真实 Auth HTTPS handler 完成邮箱和 +86 纯手机号的绑定／登录／解绑闭环，并验证两段 PKCE、回调重放、跨账号冲突、停用与未知身份注册拒绝，MFA factor 和 AAL2 要求保留。SDK fixture 的所有数据库请求位于回滚事务，结束后账号内容及会话／身份计数恢复。候选镜像 `mathin/gotrue:v2.189.0-wechat.1` 已构建并进行候选／previous 启动检查；这些检查仍不替代实际站点 Cookie、代理、微信上游及真实身份的最终验收。
 
 纯手机号账号必须实测：无伪造邮箱、绑定前后 user/profile 数量与 UUID 不变、phone/password 仍可登录、微信再次登录回到原 UUID、冲突不留残余 identity、原有验证码/邮箱确认语义不变。通过后才将 `WECHAT_PHONE_LINKING_VERIFIED` 设为 true。未通过时页面明确提示该限制。
 
