@@ -2,7 +2,7 @@
 
 import { useFormStatus } from "react-dom";
 import { useTranslations } from "next-intl";
-import { MessageCircle } from "lucide-react";
+import { WechatLogo } from "@/components/icons/WechatLogo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { beginWechatLogin } from "./actions";
@@ -10,9 +10,9 @@ import { beginWechatLogin } from "./actions";
 function WechatSubmit({ available, disabled }: { available: boolean; disabled: boolean }) {
   const t = useTranslations("wechat");
   const { pending } = useFormStatus();
-  return <Button type="submit" variant="secondary" className="h-11 w-full rounded-xl border-line" disabled={!available || disabled || pending}
+  return <Button type="submit" variant="secondary" className="h-11 w-full" disabled={!available || disabled || pending}
     aria-label={t("login")} title={available ? t("login") : t("errors.unavailable")}>
-    <MessageCircle className="size-5" aria-hidden />{t("title")}
+    <WechatLogo className="size-5" />{t("title")}
   </Button>;
 }
 

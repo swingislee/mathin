@@ -51,7 +51,7 @@ export function LoginDialogProvider({ children, wechatAvailable }: { children: R
   return <LoginDialogContext.Provider value={open}>
     {children}
     <Dialog open={Boolean(request && request.pathname === pathname)} onOpenChange={(value) => { if (!value) close(); }}>
-      <DialogContent className="max-w-[26rem] gap-0 p-0" showCloseButton={false} onCloseAutoFocus={(event) => {
+      <DialogContent className="max-w-md gap-0 rounded-[2rem] p-0" showCloseButton={false} onCloseAutoFocus={(event) => {
         event.preventDefault();
         const trigger = triggerRef.current;
         if (trigger?.isConnected) trigger.focus();

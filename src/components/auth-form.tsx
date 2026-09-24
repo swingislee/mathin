@@ -17,7 +17,10 @@ export async function AuthForm({ mode, locale, error, next, wechatError }: { mod
   if (mode === "login") {
     // 用户指定的独立登录卡；页面与浮窗使用同一组字段和 OAuth 按钮。
     return <main className="grid min-h-dvh place-items-center px-4 py-10 sm:px-6">
-      <Card className="w-full max-w-[26rem] overflow-hidden"><LoginCard locale={locale} next={next} error={error} wechatError={wechatError} wechatAvailable={Boolean(getWechatConfig())} /></Card>
+      <div className="flex w-full max-w-md flex-col items-center">
+        <Star4 size={24} className="mb-6" />
+        <Card className="w-full overflow-hidden rounded-[2rem]"><LoginCard locale={locale} next={next} error={error} wechatError={wechatError} wechatAvailable={Boolean(getWechatConfig())} /></Card>
+      </div>
     </main>;
   }
   const errorMessage = error === "invite"

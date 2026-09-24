@@ -8,11 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Star4 } from "@/components/star4";
 import { Link } from "@/i18n/navigation";
 import { WechatLoginButton } from "@/features/wechat/WechatLoginButton";
 import { wechatError as parseWechatError } from "@/features/wechat/contract";
 import type { LoginState } from "./login-contract";
+import { EmailLoginInput, PhoneLoginInput } from "./LoginIdentifierFields";
+import { emailInputIdentifier, phoneInputIdentifier } from "./login-identifier-input";
 
 export type LoginCardProps = {
   locale: string;
@@ -31,7 +32,8 @@ export function LoginCard({ locale, wechatAvailable, next, error, wechatError, d
   const wechat = useTranslations("wechat");
   const id = useId();
   const [method, setMethod] = useState("email");
-  const [identifiers, setIdentifiers] = useState({ email: "", phone: "" });
+  const [email, setEmail] = useState({ localPart: "", domain: locale === "zh" ? "qq.com" : "gmail.com" });
+  const [phone, setPhone] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [recoveryHelp, setRecoveryHelp] = useState(false);
   const [state, action, pending] = useActionState<LoginState, FormData>(submitLogin, { ok: false });
@@ -43,28 +45,23 @@ export function LoginCard({ locale, wechatAvailable, next, error, wechatError, d
   useEffect(() => { if (state.ok) onSuccess?.(); }, [state.ok, onSuccess]);
 
   return <div className="p-6 sm:p-8" data-login-card>
-    <div className="mb-7 text-center">
-      <Link href="/" onNavigate={onNavigate} className="mb-4 inline-flex items-center gap-2 font-display text-xl"><Star4 size={22} />Mathin</Link>
-      <Heading className="font-display text-2xl">{t("loginTitle")}</Heading>
-      <p className="mt-2 text-sm text-muted">{t("welcomeBack")}</p>
+    <div className="mb-7">
+      <Link href="/" onNavigate={onNavigate} className="font-display text-xl">Mathin</Link>
+      <Heading className="mt-7 font-display text-3xl">{t("loginTitle")}</Heading>
     </div>
 
     <form action={action} autoComplete="on" aria-busy={busy}>
       <Input type="hidden" name="locale" value={locale} />
       <Input type="hidden" name="presentation" value={dialog ? "dialog" : "page"} />
+      <Input type="hidden" name="username" value={method === "email" ? emailInputIdentifier(email) : phoneInputIdentifier(phone)} />
       {next ? <Input type="hidden" name="next" value={next} /> : null}
       <Tabs value={method} onValueChange={(value) => { setMethod(value); setRecoveryHelp(false); }}>
         <TabsList className="mb-5 grid h-10 w-full grid-cols-2 rounded-xl" aria-label={t("passwordMethod")}>
           <TabsTrigger value="email" disabled={busy} className="rounded-lg">{t("email")}</TabsTrigger>
           <TabsTrigger value="phone" disabled={busy} className="rounded-lg">{t("phoneNumber")}</TabsTrigger>
         </TabsList>
-        {(["email", "phone"] as const).map((kind) => <TabsContent key={kind} value={kind} className="mt-0 space-y-2">
-          <Label htmlFor={`${id}-${kind}`}>{t(kind === "email" ? "email" : "phoneNumber")}</Label>
-          <Input id={`${id}-${kind}`} name="username" type={kind === "email" ? "email" : "tel"} inputMode={kind === "email" ? "email" : "tel"}
-            className="h-11 rounded-xl bg-transparent px-3" autoComplete="username" autoCapitalize="none" spellCheck={false} required autoFocus={dialog && method === kind}
-            placeholder={t(kind === "email" ? "emailPlaceholder" : "phonePlaceholder")} value={identifiers[kind]}
-            maxLength={kind === "email" ? 254 : 40} readOnly={busy} onChange={(event) => setIdentifiers({ ...identifiers, [kind]: event.target.value })} />
-        </TabsContent>)}
+        <TabsContent value="email" className="mt-0"><EmailLoginInput id={`${id}-email`} disabled={busy} autoFocus={dialog} value={email} onChange={setEmail} /></TabsContent>
+        <TabsContent value="phone" className="mt-0"><PhoneLoginInput id={`${id}-phone`} disabled={busy} autoFocus={dialog} value={phone} onChange={setPhone} /></TabsContent>
       </Tabs>
 
       <div className="mb-2 mt-5 flex items-center justify-between gap-3">
@@ -74,7 +71,7 @@ export function LoginCard({ locale, wechatAvailable, next, error, wechatError, d
       </div>
       <div className="relative">
         <Input id={`${id}-password`} name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" required minLength={6} maxLength={128}
-          className="h-11 rounded-xl bg-transparent pl-3 pr-12" readOnly={busy} />
+          className="h-11 rounded-full bg-transparent pl-4 pr-12" readOnly={busy} />
         <Button type="button" variant="ghost" className="absolute right-1 top-1 size-9 p-0 text-muted" onClick={() => setShowPassword(!showPassword)}
           aria-label={t(showPassword ? "hidePassword" : "showPassword")} aria-pressed={showPassword}>
           {showPassword ? <EyeOff className="size-4" aria-hidden /> : <Eye className="size-4" aria-hidden />}
@@ -82,7 +79,7 @@ export function LoginCard({ locale, wechatAvailable, next, error, wechatError, d
       </div>
       {recoveryHelp ? <p className="mt-3 text-sm text-muted" role="status">{t("phoneRecoveryHelp")}</p> : null}
       {errorMessage ? <p className="mt-3 text-sm text-rose" role="alert">{errorMessage}</p> : null}
-      <Button type="submit" className="mt-6 h-11 w-full rounded-xl bg-ink text-card hover:bg-ink/90" disabled={busy}>
+      <Button type="submit" size="lg" className="mt-7 w-full" disabled={busy}>
         {busy ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}{t(busy ? "signingIn" : "login")}
       </Button>
     </form>

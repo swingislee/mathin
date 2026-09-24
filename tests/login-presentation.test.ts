@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { dialogReturnTo, dialogRouterHref, isPlainLoginClick, type LoginState } from "@/components/auth/login-contract";
+import { emailInputIdentifier, mainlandPhoneInput, phoneInputIdentifier, splitEmailInput } from "@/components/auth/login-identifier-input";
 
 vi.mock("server-only", () => ({}));
 const h = vi.hoisted(() => ({ signIn: vi.fn(), createClient: vi.fn() }));
@@ -28,6 +29,35 @@ describe("password login presentation", () => {
   it("uses the same phone normalization without creating or merging accounts", async () => {
     await expect(submitLogin(initial, form("138 0000 0000"))).resolves.toEqual({ ok: true });
     expect(h.signIn).toHaveBeenCalledWith({ phone: "+8613800000000", password: "test-only-password" });
+  });
+  it("submits a pasted full email with a custom domain through the existing login action", async () => {
+    const parts = splitEmailInput(" Member+tag@School.Example ", "qq.com");
+    expect(parts).toEqual({ localPart: "Member+tag", domain: "school.example" });
+    await expect(submitLogin(initial, form(emailInputIdentifier(parts)))).resolves.toEqual({ ok: true });
+    expect(h.signIn).toHaveBeenCalledWith({ email: "member+tag@school.example", password: "test-only-password" });
+  });
+  it("retains the selected email provider while editing the username", async () => {
+    const parts = splitEmailInput(" member ", "outlook.com");
+    await expect(submitLogin(initial, form(emailInputIdentifier(parts)))).resolves.toEqual({ ok: true });
+    expect(h.signIn).toHaveBeenCalledWith({ email: "member@outlook.com", password: "test-only-password" });
+  });
+  it("rejects incomplete or malformed split email input before contacting Auth", async () => {
+    for (const parts of [{ localPart: "", domain: "qq.com" }, { localPart: "member", domain: "" }, splitEmailInput("member@@example.com", "qq.com")]) {
+      await expect(submitLogin(initial, form(emailInputIdentifier(parts)))).resolves.toEqual({ ok: false, code: "credentials" });
+    }
+    expect(h.signIn).not.toHaveBeenCalled();
+  });
+  it.each(["13800000000", "+86 138 0000 0000", "0086 (138) 0000-0000", "8613800000000"])("submits one country prefix for pasted phone %s", async (input) => {
+    const national = mainlandPhoneInput(input);
+    expect(national).toBe("13800000000");
+    await expect(submitLogin(initial, form(phoneInputIdentifier(national)))).resolves.toEqual({ ok: true });
+    expect(h.signIn).toHaveBeenCalledWith({ phone: "+8613800000000", password: "test-only-password" });
+  });
+  it("keeps empty and unsupported phone input invalid with the +86-only picker", async () => {
+    for (const phone of ["", "+86", "+1 415 555 2671"]) {
+      await expect(submitLogin(initial, form(phoneInputIdentifier(phone)))).resolves.toEqual({ ok: false, code: "credentials" });
+    }
+    expect(h.signIn).not.toHaveBeenCalled();
   });
   it("keeps validation and provider failures in the card and does not reveal provider details", async () => {
     await expect(submitLogin(initial, form("invalid"))).resolves.toEqual({ ok: false, code: "credentials" });
