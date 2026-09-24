@@ -2,9 +2,9 @@
 
 > 2026-09-24 开发实现。用户已确认：首次扫码为游客，只浏览公开内容并绑定已有账号；游客不创建独立 Auth 用户，不保存笔记或成绩。本文件不表示生产已启用。
 
-> **2026-09-25 当前检查结果**：定向源码测试、TypeScript、受影响文件 ESLint、双语消息一致性已通过；zh/en 登录页可访问，微信入口保持关闭。Docker 已恢复，候选 SQL 的权限、RLS、绑定唯一性、审计与完整事务回滚检查通过；纯手机号的 Auth 原生候选补丁五项回归通过。类型晋级、Auth 镜像／SDK 联调与真实微信扫码仍待完成。开发端 UI 待人工验收，没有生产写入。
+> **2026-09-25 当前检查结果**：定向源码测试、TypeScript、受影响文件 ESLint、双语消息一致性已通过；zh/en 登录页可访问，微信入口保持关闭。Docker 已恢复，候选 SQL 的权限、RLS、绑定唯一性、审计与完整事务回滚检查通过；纯手机号的 Auth 原生候选补丁五项回归通过。微信迁移已在本机持久应用并生成增量类型；固定 Auth 候选镜像已构建。SDK 联调与真实微信扫码仍待完成。开发端 UI 待人工验收，没有生产写入。
 
-> **类型状态**：正式迁移的 `db:types:check` 已恢复通过；微信 SQL 仍在 `supabase/pending/`，尚未应用到持久数据库或进入生成类型，该结果不代表微信 schema 已晋级。
+> **类型状态**：`20260925001000_wechat_oauth_tickets.sql` 已进入正式迁移目录，并在本机隔离库登记账本。四张表、四个 RPC 的类型从该数据库实际生成，通过定向合并保留其它功能定义；`db:types:check` 与 TypeScript 通过。全量生成器还会改变既有统计 view 的关系及可写类型，这部分漂移保留给原功能处理，本次只合并微信新增项。
 
 > **2026-09-24 登录界面更新**：密码与微信入口共用一张登录卡。邮箱、手机号用页签选择；微信只显示按钮，尚未满足启用条件时保留禁用状态。站内主动登录通过统一 `LoginLink` 打开 Dialog，失败留在卡片内，成功刷新原页面或进入显式绑定目标；直接访问及受限路由跳转仍使用完整登录页。微信 OAuth 本身继续通过外部授权回调完成，同源 Cookie、账号绑定和角色规则保持原合同。此更新不表示微信已开放。开发验收入口为 `/zh/` 导航菜单的「登录」与 `/zh/login`（英文对应 `/en/`、`/en/login`）。
 
@@ -113,9 +113,9 @@ Auth 需要 `GOTRUE_SECURITY_MANUAL_LINKING_ENABLED=true`，应用回调加入�
 
 定向源码测试覆盖微信协议、最小资料、PKCE、未知微信游客、单次消费、会话切换、身份冲突、锁定、密码/MFA 门、最后登录方式保护和两段回调。
 
-数据库变更保留在 `supabase/pending/20260924000100_wechat_oauth_tickets.sql`，尚未进入正式 migration ledger。SQL 断言位于 `supabase/tests/wechat_oauth_assertions.sql`。2026-09-25 在核对主机、实际 origin、监听、隔离网络和指纹后，已完成 `BEGIN → 候选 SQL → assertions → ROLLBACK`：权限、RLS、单次消费、过期、限流、身份唯一性、快照归属及解绑清除、不可变审计均通过，原函数／relation 权限与账号计数恢复。实测发现并修复了数据库默认权限赋予 `service_role` 多余权限的问题：四张新表先撤销默认权限，再逐项授予所需操作。没有持久化新 schema 或身份。
+数据库迁移为 `supabase/migrations/20260925001000_wechat_oauth_tickets.sql`，已在本机隔离数据库持久应用并进入 ledger；生产未应用。SQL 断言位于 `supabase/tests/wechat_oauth_assertions.sql`。2026-09-25 在核对主机、实际 origin、监听、隔离网络和指纹后，已完成 `BEGIN → 候选 SQL → assertions → ROLLBACK`：权限、RLS、单次消费、过期、限流、身份唯一性、快照归属及解绑清除、不可变审计均通过，原函数／relation 权限与账号计数恢复。实测发现并修复了数据库默认权限赋予 `service_role` 多余权限的问题：四张新表先撤销默认权限，再逐项授予所需操作。事务验证后另行保存 schema 备份并应用加法迁移，四张新表为空，已有 user／profile／identity 计数保持不变。
 
-数据库检查可以通过 `node scripts/wechat-oauth-local.mjs --preflight` 与 `node scripts/wechat-oauth-local.mjs --check` 复现；输出只含状态与摘要，原始日志保留在 `.tmp/wechat-oauth-local/`。后续将候选晋级 `supabase/migrations/`，生成真实数据库类型，再执行固定账号的 Auth 集成与回退验证。保持数据库检查结果与正式 migration／类型晋级状态分别记录。
+数据库检查可通过 `node scripts/wechat-oauth-local.mjs --preflight` 与 `--check` 复现；`--apply` 只接受同一目标、相同文件摘要且一小时内的成功检查，写前保存 schema 备份。应用后使用 `node scripts/wechat-oauth-types.mjs` 生成微信类型。输出只含状态与摘要，原始日志保留在 `.tmp/wechat-oauth-local/`。本机迁移与类型已完成，后续继续固定账号的 Auth 集成与回退验证；生产部署另行记录。
 
 开发检查入口：
 

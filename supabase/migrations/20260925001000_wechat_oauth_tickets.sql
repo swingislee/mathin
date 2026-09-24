@@ -1,4 +1,4 @@
--- 待隔离数据库事务验证与类型生成后晋级 migrations；当前不进入迁移账本。
+-- 微信网站应用 OAuth；SQL/RLS/回滚已在隔离目标验证，功能启用独立于 schema 部署。
 -- 微信桥接只保存短期票据。游客不创建 auth user/profile，业务角色继续走管理员邀请。
 create unique index auth_identities_one_wechat_per_user on auth.identities(user_id) where provider = 'custom:wechat';
 create table public.wechat_oauth_tickets (
