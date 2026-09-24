@@ -20,12 +20,13 @@ import { LEAD_INTAKE_TABLE_COLUMNS, leadIntakeTableFields } from "./lead-intake-
 import { useFollowupServerFields } from "./useFollowupServerFields";
 import type { FollowupServerFields } from "./followup-table-page";
 import { FollowupInlineDetails } from "./dashboard-page/FollowupInlineDetails";
+import { restoreCollapsedRow } from "./dashboard-page/restore-collapsed-row";
 import { followupToneClasses, type FollowupTone } from "./dashboard-page/FollowupChoice";
 import { LeadIdentityControl } from "./LeadIdentityControl";
 import { useLeadPoolSelection } from "./LeadPoolSelection";
 import { FollowupEntryLayout } from "./FollowupEntryFields";
 import { FollowupFieldIcon } from "./FollowupFieldIcon";
-import { followupFocusActivatesRow, followupKeyContext, navigateFollowupTable } from "./followup-keyboard";
+import { followupFocusActivatesRow, followupKeyboardCommand, followupKeyContext, navigateFollowupTable } from "./followup-keyboard";
 import { Student360Trigger } from "./Student360Sheet";
 import { PossibleDuplicateBadge } from "./PossibleDuplicateBadge";
 import type { LeadPoolRow } from "./lead-contract";
@@ -92,7 +93,7 @@ export function LeadIntakeWorkbench({ leads, locale, canAssign = false, canManag
             if (event.key === "Enter") { event.preventDefault(); changeDetails(lead.id, !open); }
             if (event.key === " " && canAssign && !["invalid", "converted"].includes(lead.status)) { event.preventDefault(); selection.toggleLead(lead.id, !selection.selected.has(lead.id), visibleIds, event.shiftKey); }
           }
-          if (event.key === "Escape" && open) { event.preventDefault(); changeDetails(lead.id, false); }
+          if (followupKeyboardCommand(event)?.type === "close" && open) { event.preventDefault(); event.stopPropagation(); changeDetails(lead.id, false); restoreCollapsedRow(event.currentTarget, detailsId); }
         }}>
         {canAssign ? <TableCell className="sticky left-0 z-10"><Checkbox checked={selection.selected.has(lead.id)} disabled={selection.assignmentPending || ["invalid", "converted"].includes(lead.status)} onClick={(event) => { rangeRef.current = event.shiftKey; }} onCheckedChange={(checked) => { selection.toggleLead(lead.id, checked === true, visibleIds, rangeRef.current); rangeRef.current = false; }} aria-label={t("selectLead", { name: lead.provisionalStudentName })} /></TableCell> : null}
         <TableCell className={cn("sticky z-10 border-r border-line", canAssign ? "left-8" : "left-0")}>

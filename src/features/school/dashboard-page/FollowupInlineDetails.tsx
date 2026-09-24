@@ -4,6 +4,7 @@ import { useRef, type KeyboardEventHandler, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { DashboardInlineEntry } from "./DashboardInlineEntry";
+import { restoreCollapsedRow } from "./restore-collapsed-row";
 import { cn } from "@/lib/utils";
 
 export { FollowupDetailLoading } from "./DashboardInlineDetailBoundary";
@@ -41,9 +42,8 @@ export function FollowupInlineDetails({
   const close = () => {
     if (pending) return;
     const summary = rowRef.current?.previousElementSibling as HTMLElement | null;
-    const trigger = summary?.querySelector<HTMLElement>("button[aria-expanded='true']");
     onOpenChange(false);
-    (trigger ?? summary)?.focus({ preventScroll: true });
+    restoreCollapsedRow(summary, id);
   };
 
   return <TableRow ref={rowRef} id={id} tabIndex={-1} hidden={!open} aria-hidden={!open || undefined} inert={!open || undefined} data-followup-inline-details data-followup-active={active} onKeyDown={onKeyDown}

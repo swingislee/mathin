@@ -132,6 +132,21 @@ describe("compact lead intake worksheet", () => {
     expect(row(ids[1]).getAttribute("aria-expanded")).toBe("true");
     expect(actions.assign).not.toHaveBeenCalled();
   });
+  it.each(["zh", "en"] as const)("returns from both custom summary and detail Escape in %s", async locale => {
+    await render({ locale });
+    const summary = row(ids[2]), trigger = summary.querySelector<HTMLButtonElement>("[data-lead-details-trigger]")!;
+    const scroll = vi.mocked(HTMLElement.prototype.scrollIntoView);
+    for (const origin of ["summary", "detail"]) {
+      await click(trigger); scroll.mockClear();
+      const target = origin === "summary" ? trigger : container.querySelector<HTMLElement>("[data-dashboard-inline-entry]")!;
+      await key(target, "Escape");
+      expect(summary.getAttribute("aria-expanded")).toBe("false");
+      expect(document.activeElement).toBe(trigger);
+      await vi.waitFor(() => expect(scroll.mock.instances).toEqual([summary]));
+    }
+    expect(actions.assign).not.toHaveBeenCalled();
+    expect(actions.refresh).not.toHaveBeenCalled();
+  });
   it("combines grade and owner filters, shows hidden selections, and assigns the explicit selected set", async () => {
     await render(); await choose(t.grade, "1");
     await click(container.querySelector<HTMLButtonElement>("thead [role=checkbox]")!);

@@ -17,8 +17,9 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { FollowupInlineDetails } from "./dashboard-page/FollowupInlineDetails";
+import { restoreCollapsedRow } from "./dashboard-page/restore-collapsed-row";
 import { FollowupPersonCell } from "./dashboard-page/FollowupPersonCell";
-import { followupFocusActivatesRow } from "./followup-keyboard";
+import { followupFocusActivatesRow, followupKeyboardCommand, followupKeyContext } from "./followup-keyboard";
 import { FollowupTableBody } from "./dashboard-page/FollowupRecordRow";
 import { FilterSearchInput } from "./FilterBar";
 import { FollowupCommandPanel } from "./FollowupCommandPanel";
@@ -272,9 +273,9 @@ export function AssessmentUnifiedWorkbench({
             if (!(event.target as HTMLElement).closest("button,a,input,textarea,[role='combobox'],[role='option'],[role='checkbox']")) changeDetails(row.id, !expanded);
           }}
           onKeyDown={(event) => {
-            if (event.defaultPrevented || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229 || event.repeat || event.target !== event.currentTarget) return;
-            if (event.key === "Enter" && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) { event.preventDefault(); changeDetails(row.id, !expanded); }
-            if (event.key === "Escape" && expanded) { event.preventDefault(); changeDetails(row.id, false); }
+            if (event.defaultPrevented || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229 || event.repeat) return;
+            if (event.target === event.currentTarget && event.key === "Enter" && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) { event.preventDefault(); changeDetails(row.id, !expanded); }
+            if (followupKeyboardCommand(event, followupKeyContext(event))?.type === "close" && expanded) { event.preventDefault(); event.stopPropagation(); changeDetails(row.id, false); restoreCollapsedRow(event.currentTarget, `assessment-details-${row.id}`); }
           }}
           data-assessment-workbench-row={row.id}
         >

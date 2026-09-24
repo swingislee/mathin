@@ -24,6 +24,7 @@ import { FollowupChoice, followupToneClasses, type FollowupTone } from "./dashbo
 import { FollowupInlineDetails } from "./dashboard-page/FollowupInlineDetails";
 import { FollowupPersonCell } from "./dashboard-page/FollowupPersonCell";
 import { inlineEntryCommand } from "./dashboard-page/inline-entry-keyboard";
+import { restoreCollapsedRow } from "./dashboard-page/restore-collapsed-row";
 import { TEACHER_PROFESSIONAL_SIGNAL_TYPES, type TeacherProfessionalSignalType } from "./renewal-contract";
 import { renewalHealthLevel, type RenewalHealthSignal } from "./renewal-health-contract";
 import type { HealthRuleKey, RenewalHealthPolicy } from "./renewal-health-policy";
@@ -179,6 +180,10 @@ export function RenewalEntryRow({ row, cycleId, cycleName, targetTerm, health, h
     if (command?.type === "choice" && RENEWAL_RESULTS[command.index] && writable) {
       event.preventDefault(); choose(RENEWAL_RESULTS[command.index]);
     } else if (command?.type === "submit" && active) { event.preventDefault(); submit(false); }
+    else if (command?.type === "close" && active && event.currentTarget.tagName === "TR") {
+      event.preventDefault(); event.stopPropagation(); onClose();
+      restoreCollapsedRow(event.currentTarget.closest("tr"), detailId);
+    }
   };
   const resultLabel = savedResult === "unknown" ? recordM.outcomeUnknown : t(`result_${savedResult}`);
   const grade = row.grade === null ? "" : t("grade", { grade: row.grade });

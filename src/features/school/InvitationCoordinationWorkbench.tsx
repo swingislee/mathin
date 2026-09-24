@@ -62,6 +62,8 @@ import { isFutureNextContactReminder } from "./NextContactReminderField";
 import { zonedDateTimeToInstant } from "./schedule";
 import { FollowupChoice, followupToneClasses } from "./dashboard-page/FollowupChoice";
 import { FollowupInlineDetails } from "./dashboard-page/FollowupInlineDetails";
+import { restoreCollapsedRow } from "./dashboard-page/restore-collapsed-row";
+import { followupKeyboardCommand, followupKeyContext } from "./followup-keyboard";
 import { FollowupEntryFields } from "./FollowupEntryFields";
 import { FollowupPersonCell } from "./dashboard-page/FollowupPersonCell";
 import { invitationForAdvance } from "./followup-entry-contract";
@@ -837,7 +839,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
         onKeyDown={(event) => {
           if (event.defaultPrevented || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229 || event.repeat) return;
           if (event.target === event.currentTarget && event.key === "Enter" && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) { event.preventDefault(); changeDetails(canonicalKey, !expanded); }
-          if (event.key === "Escape" && expanded) { event.preventDefault(); changeDetails(canonicalKey, false); }
+          if (followupKeyboardCommand(event, followupKeyContext(event))?.type === "close" && expanded) { event.preventDefault(); event.stopPropagation(); changeDetails(canonicalKey, false); restoreCollapsedRow(event.currentTarget, detailsId); }
         }}>
         <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-1.5">
           <FollowupPersonCell nameOnly name={nameOf(row)} phone={row.value.phone} grade={row.value.gradeText || t("gradePending")}

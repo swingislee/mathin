@@ -4,6 +4,7 @@ import { useEffect, useImperativeHandle, useRef, type ComponentProps, type Keybo
 import { TableBody, TableRow } from "@/components/ui/table";
 import { followupFocusActivatesRow, followupKeyboardCommand, followupKeyContext, navigateFollowupTable, type FollowupNavigationMode } from "../followup-keyboard";
 import { FollowupInlineDetails } from "./FollowupInlineDetails";
+import { restoreCollapsedRow } from "./restore-collapsed-row";
 
 /** 名单与跟进共用摘要、详情及键盘作用域；业务页面只提供列和登记内容。 */
 export function FollowupRecordRow({
@@ -56,9 +57,8 @@ export function FollowupRecordRow({
     } else if (event.target === event.currentTarget && event.key === "Enter" && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) {
       event.preventDefault(); onExpandedChange(!expanded);
     } else if (followupKeyboardCommand(event, context)?.type === "close" && expanded) {
-      event.preventDefault(); onExpandedChange(false);
-      const summary = event.currentTarget.hasAttribute("data-followup-inline-details") ? event.currentTarget.previousElementSibling : event.currentTarget;
-      (summary as HTMLElement | null)?.focus({ preventScroll: true });
+      event.preventDefault(); event.stopPropagation(); onExpandedChange(false);
+      restoreCollapsedRow(summaryRef.current, detailsId);
     }
   };
   return <>

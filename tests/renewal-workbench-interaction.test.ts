@@ -89,6 +89,24 @@ describe("renewal worksheet interaction", () => {
   });
   afterEach(async () => { await act(async () => root.unmount()); container.remove(); });
 
+  it.each(["zh", "en"] as const)("returns from summary and input Escape with the renewal draft intact in %s", async locale => {
+    await mount({}, locale); await fill(note(), "Keep after Escape");
+    const summary = container.querySelector<HTMLElement>("[data-renewal-pool-row]")!;
+    const trigger = summary.querySelector<HTMLButtonElement>("button[aria-expanded]")!;
+    const scroll = vi.mocked(HTMLElement.prototype.scrollIntoView);
+    for (const target of [trigger, note()]) {
+      scroll.mockClear();
+      await act(async () => target.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })));
+      expect(summary.getAttribute("aria-expanded")).toBe("false");
+      expect(document.activeElement).toBe(trigger);
+      await vi.waitFor(() => expect(scroll.mock.instances).toEqual([summary]));
+      await click(trigger);
+      expect(note().value).toBe("Keep after Escape");
+    }
+    expect(actions.save).not.toHaveBeenCalled();
+    expect(actions.refresh).not.toHaveBeenCalled();
+  });
+
   it.each(["zh", "en"] as const)("keeps one tag strip and right sidebar above/beside every %s step without saving on navigation", async locale => {
     await mount({}, locale);
     const tags = container.querySelector("[data-renewal-tags]")!, sidebar = container.querySelector("[data-followup-notes]")!;
