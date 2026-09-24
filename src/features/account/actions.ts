@@ -194,10 +194,12 @@ export async function changeInitialPasswordAction(input: unknown): Promise<Actio
 
     const { error: passwordError } = await supabase.auth.updateUser({ password: value.password });
     if (passwordError) throw new Error("AUTH_PROVIDER_FAILED");
-    const { error: completionError } = await admin.rpc("complete_staff_password_change", {
-      p_user_id: user.id,
-      p_candidate_password_hash: nextHash,
-    });
+    const { error: completionError } = passwordResetPending
+      ? await admin.rpc("complete_staff_password_change", {
+        p_user_id: user.id,
+        p_candidate_password_hash: nextHash,
+      })
+      : await admin.rpc("complete_initial_password_change", { p_user_id: user.id });
     if (completionError) throw new Error(completionError.message);
     revalidatePath("/[locale]/dashboard", "layout");
     revalidatePath("/[locale]/dashboard/account-security", "page");
