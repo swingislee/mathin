@@ -4,6 +4,8 @@ import type { User } from "@supabase/supabase-js";
 import type { Profile, ProfileRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeStaffRoleName } from "@/features/school/staff-role-input";
+import { getWechatAccountState } from "@/features/wechat/account";
+import type { WechatAccountState } from "@/features/wechat/contract";
 
 export type ConsentKind = "privacy" | "children_privacy";
 export type ConsentDecision = "granted" | "withdrawn" | null;
@@ -45,6 +47,7 @@ export type AccountIdentifierKind = "email" | "phone";
 export type AccountIdentifierVerification = "unbound" | "unverified" | "invite_attested" | "provider_verified";
 
 export interface AccountCenterSnapshot extends AccountSecuritySnapshot {
+  wechat?: WechatAccountState;
   profile: {
     userId: string;
     accountId: string;
@@ -190,6 +193,7 @@ export async function getAccountCenterSnapshot(user: User, profile: Profile): Pr
 
   return {
     ...(securityResult.data as unknown as AccountSecuritySnapshot),
+    wechat: await getWechatAccountState(user),
     profile: {
       userId: user.id,
       accountId: user.id.slice(0, 8).toUpperCase(),

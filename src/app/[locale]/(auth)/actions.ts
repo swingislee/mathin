@@ -7,6 +7,8 @@ import { resolveSafeReturnTo } from "@/lib/safe-redirect";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSupabaseConfig } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
+import { cookies } from "next/headers";
+import { WECHAT_FLOW_COOKIE, WECHAT_GUEST_COOKIE } from "@/features/wechat/contract";
 
 const loginSchema = z.object({
   identifier: loginIdentifierSchema,
@@ -55,14 +57,14 @@ export async function login(formData: FormData) {
     identifier: formData.get("username"),
     password: formData.get("password"),
   });
-  if (!parsed.success) redirect(`/${locale}/login?error=credentials`);
+  if (!parsed.success) redirect(`/${locale}/login?error=credentials&next=${encodeURIComponent(next)}`);
 
   const supabase = await createClient();
   const credentials = parsed.data.identifier.kind === "email"
     ? { email: parsed.data.identifier.value, password: parsed.data.password }
     : { phone: parsed.data.identifier.value, password: parsed.data.password };
   const { error } = await supabase.auth.signInWithPassword(credentials);
-  if (error) redirect(`/${locale}/login?error=credentials`);
+  if (error) redirect(`/${locale}/login?error=credentials&next=${encodeURIComponent(next)}`);
   redirect(next);
 }
 
@@ -131,6 +133,9 @@ export async function logout(formData: FormData) {
     // 通知撤销为尽力清理；调用异常时继续执行会话退出。
   }
   await supabase.auth.signOut();
+  const cookieStore = await cookies();
+  cookieStore.delete(WECHAT_FLOW_COOKIE);
+  cookieStore.delete(WECHAT_GUEST_COOKIE);
   redirect(`/${locale}`);
 }
 

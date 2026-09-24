@@ -14,7 +14,6 @@ import {
   LoaderCircle,
   LogOut,
   Mail,
-  MessageCircle,
   MessagesSquare,
   MonitorSmartphone,
   ShieldCheck,
@@ -43,6 +42,7 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { revokeAllMyWebPushSubscriptionsAction } from "@/features/events/web-push-actions";
 import { cn } from "@/lib/utils";
+import { WechatIdentitySettings } from "@/features/wechat/WechatIdentitySettings";
 import type {
   AccountCenterSnapshot,
   AccountIdentifierVerification,
@@ -497,7 +497,8 @@ export function AccountSecurityPanel({
                   <Button type="button" variant="secondary" size="sm" disabled>{identifier.maskedValue ? t("changeIdentity") : t("bindIdentity")}</Button>
                 </div>;
               })}
-              {([["wechat", MessageCircle], ["qq", MessagesSquare]] as const).map(([provider, Icon]) => <div key={provider} className="grid gap-3 py-4 md:grid-cols-[minmax(11rem,1.1fr)_minmax(9rem,1fr)_minmax(10rem,1fr)_auto] md:items-center">
+              <WechatIdentitySettings state={snapshot.wechat ?? { available: false, phoneLinkingAvailable: false, linked: false, nickname: null, avatarUrl: null, pendingNickname: null }} />
+              {([["qq", MessagesSquare]] as const).map(([provider, Icon]) => <div key={provider} className="grid gap-3 py-4 md:grid-cols-[minmax(11rem,1.1fr)_minmax(9rem,1fr)_minmax(10rem,1fr)_auto] md:items-center">
                 <div className="flex items-center gap-3"><Icon className="size-5 text-crater" aria-hidden /><div><p className="text-sm font-medium">{t(`identifier_${provider}`)}</p><p className="text-xs text-muted">{t("futureProvider")}</p></div></div>
                 <span className="text-sm text-muted">{t("unbound")}</span><span className="text-sm text-muted">{t("manualLinkOnly")}</span><Button type="button" variant="secondary" size="sm" disabled>{t("notAvailable")}</Button>
               </div>)}

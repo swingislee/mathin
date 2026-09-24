@@ -6,17 +6,18 @@ import { getAccountCenterSnapshot } from "@/features/account/account-security";
 import { DashboardPage } from "@/features/school/dashboard-page";
 import { DashboardListSkeleton } from "@/features/school/list-skeleton";
 import { getProfile, requireUser } from "@/lib/auth";
+import { wechatError } from "@/features/wechat/contract";
 
 type AccountRequirement = "password" | "mfa" | "consent" | null;
 
-async function AccountSecurityBody({ locale, required }: { locale: string; required: AccountRequirement }) {
+async function AccountSecurityBody({ locale, required, identities }: { locale: string; required: AccountRequirement; identities: boolean }) {
   const user = await requireUser(locale, { allowAccountRecovery: true });
   const profile = await getProfile(user.id);
   if (!profile) throw new Error("PROFILE_NOT_FOUND");
   const snapshot = await getAccountCenterSnapshot(user, profile);
   return <AccountSecurityPanel
     snapshot={snapshot}
-    initialSection={required === "mfa" || profile.passwordChangeRequired ? "security" : required === "consent" ? "privacy" : "profile"}
+    initialSection={required === "mfa" || profile.passwordChangeRequired ? "security" : required === "consent" ? "privacy" : identities ? "identities" : "profile"}
     forcePasswordChange={profile.passwordChangeRequired}
   />;
 }
@@ -31,6 +32,7 @@ export default async function AccountSecurityPage({
   const [{ locale }, query] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
   const t = await getTranslations("account.security");
+  const wechat = await getTranslations("wechat");
   const rawRequired = Array.isArray(query.required) ? query.required[0] : query.required;
   const required = rawRequired === "password" || rawRequired === "mfa" || rawRequired === "consent"
     ? rawRequired
@@ -47,6 +49,8 @@ export default async function AccountSecurityPage({
       : "requiredConsentBody";
 
   return <DashboardPage title={t("title")} description={t("intro")}>
+    {query.wechatError ? <p role="alert" className="mb-5 text-sm text-rose">{wechat(`errors.${wechatError(query.wechatError)}`)}</p> : null}
+    {query.wechatResult === "linked" || query.wechatResult === "unlinked" ? <p role="status" className="mb-5 text-sm text-leaf-deep">{wechat(query.wechatResult === "linked" ? "linkComplete" : "unlinkComplete")}</p> : null}
     {required && (
       <div role="alert" className="mb-5 flex items-start gap-3 rounded-2xl border border-amber-400/60 bg-amber-50 p-4 text-amber-950 dark:bg-amber-950/30 dark:text-amber-100">
         <CircleAlert className="mt-0.5 size-5 shrink-0" aria-hidden />
@@ -59,6 +63,6 @@ export default async function AccountSecurityPage({
         </div>
       </div>
     )}
-    <Suspense fallback={<DashboardListSkeleton />}><AccountSecurityBody locale={locale} required={required} /></Suspense>
+    <Suspense fallback={<DashboardListSkeleton />}><AccountSecurityBody locale={locale} required={required} identities={query.section === "identities"} /></Suspense>
   </DashboardPage>;
 }

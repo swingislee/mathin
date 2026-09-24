@@ -74,6 +74,8 @@ const nextConfig: NextConfig = {
   // Public production runs from the immutable standalone output on port 3131;
   // the development server on 3130 remains an internal-only process.
   output: "standalone",
+  // OAuth query 含一次性 code/state，开发请求日志也不记录这些路径。
+  logging: { incomingRequests: { ignore: [/\/(?:zh|en)\/auth\/(?:callback|wechat)(?:[/?]|$)/] } },
   experimental: {
     // 首次请求只加载所需路由；全站条目预载会与鉴权及页面读取争用事件循环。
     preloadEntriesOnStart: false,
@@ -89,7 +91,11 @@ const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR || ".next",
   allowedDevOrigins: ["192.168.5.213", "127.0.0.1", "localhost"],
   serverExternalPackages: ["@blocknote/server-util"],
-  images: { remotePatterns: supabaseImagePatterns() },
+  images: { remotePatterns: [
+    ...supabaseImagePatterns(),
+    new URL("https://thirdwx.qlogo.cn/**"),
+    new URL("https://wx.qlogo.cn/**"),
+  ] },
   async headers() {
     return [
       {

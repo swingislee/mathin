@@ -3,6 +3,8 @@
 > **规划状态**：`reference`
 >
 > **当前用途**：冻结邮箱、手机号、验证码、微信和 QQ 的账号边界与分阶段接口；当前施工顺序仍由 doc 04 决定。
+
+> **2026-09-24 用户确认的微信增量**：首次网站微信扫码可进入短期游客页，只浏览公开内容并绑定已有账号；游客不创建 `auth.users`/`profiles`，不保存笔记或成绩。绑定原账号须证明原密码并满足既有 MFA；员工、家长、学生身份来自管理员现有建档/邀请和档案关系。该确认细化下文“未绑定 OAuth 不创建账号”的行为，不开放自动注册或角色自选。开发接入、回调域和未完成的联调条件见[网站微信 OAuth 操作记录](../runbooks/wechat-website-oauth.md)，不改变生产阶段或 Gate。
 >
 > **当前实现状态**：2026-08-25 产品负责人把“手机号或邮箱 + password”提升为内部使用 P0。本机隔离目标完成通用 identifier 表单、手机号绑定员工邀请、provider-unverified 保障记录、手机号/password Auth 开关和数据库断言后，migration `20260825000600`、Auth phone provider 与热修 `8ec0ba0` 已部署 Xiaomi；`SMS_AUTOCONFIRM=false`。2026-09-02 开发增量 `DEV-STAFF-ONBOARD-1` 又在本机把新员工入口调整为主管直接建 Auth 账号/员工档案/岗位、首次登录强制改密，仍复用唯一 `auth.users.id` 和 provider-unverified 保障边界；该增量尚未部署 Xiaomi，不改写生产既有 claim 邀请与正式教师登录事实。验证码、邮箱/手机号自助绑定、微信/QQ 和真实手机号新流程验收仍未完成。
 >

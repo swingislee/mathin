@@ -10142,5 +10142,43 @@
     "appearsIn": "Where it appears",
     "lit": "Lit",
     "unlit": "Not yet lit"
+  },
+  "wechat": {
+    "title": "WeChat",
+    "login": "Continue with WeChat",
+    "disabled": "WeChat sign-in will open after configuration and authorization testing are complete.",
+    "loginNotice": "Authorization shares your WeChat name, avatar and identity. First-time visitors can browse as guests or sign in to an existing account to link it.",
+    "privacy": "Privacy information",
+    "linked": "Linked",
+    "unbound": "Not linked",
+    "bind": "Verify account and link WeChat",
+    "unlink": "Verify account and unlink WeChat",
+    "working": "Working…",
+    "linkedNotice": "Use this WeChat identity to sign in to the same account. Your personal profile and business access remain managed by you and your administrator.",
+    "bindNotice": "Verify your current account password, then authorize WeChat. Staff, parent and student access comes from administrator invitations and existing records.",
+    "pendingNotice": "WeChat authorization for “{name}” is ready. Verify your current password and confirm to link it to this account.",
+    "phoneNotice": "WeChat website login does not provide a phone number. Use your original phone number and account password to sign in. SMS verification and Mini Program phone consent are separate features.",
+    "password": "Current account password",
+    "bindConfirm": "I confirm that this WeChat identity should be linked to my current account for future sign-ins.",
+    "unlinkConfirm": "I confirm unlinking WeChat while retaining email or phone password access. Other devices will need to sign in again.",
+    "linkComplete": "WeChat is linked. You can now use it to sign in to your original account.",
+    "unlinkComplete": "WeChat is unlinked. Your account and business records are preserved.",
+    "guestLabel": "Guest",
+    "guestTitle": "Welcome to Mathin",
+    "guestNotice": "WeChat authorization is complete. Browse public content, or sign in with your existing email or phone number and confirm linking WeChat.",
+    "guestRoles": "Guests see public content only. Staff, parent and student workspaces require an administrator invitation and an established relationship.",
+    "guestExpiry": "This authorization proof lasts 14 minutes. Scan again if it expires. Guest visits do not create a separate account or save personal notes or scores.",
+    "existingAccount": "Sign in to link an existing account",
+    "browse": "Browse public content",
+    "leave": "Leave and clear this authorization",
+    "errors": {
+      "unavailable": "WeChat sign-in is not available yet. Sign in with your existing email or phone password.",
+      "expired": "This authorization expired, was already used, or the signed-in account changed. Please start again.",
+      "conflict": "This WeChat identity or account already has a binding. Sign in to the original account or contact your administrator. Both accounts remain intact.",
+      "credentials": "Check your current password and confirm your intent. Complete multi-factor verification if enabled.",
+      "phoneCompatibility": "WeChat linking for phone-only accounts has not passed compatibility testing on this authentication service. Continue using your phone password.",
+      "rateLimited": "Too many attempts. Please try again in 10 minutes.",
+      "failed": "WeChat authorization did not complete. Retry or sign in with your existing password."
+    }
   }
 }

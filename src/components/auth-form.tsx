@@ -7,9 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
+import { WechatLoginButton } from "@/features/wechat/WechatLoginButton";
+import { wechatError as parseWechatError } from "@/features/wechat/contract";
 
-export async function AuthForm({ mode, locale, error, next }: { mode: "login" | "signup"; locale: string; error?: string; next?: string }) {
+export async function AuthForm({ mode, locale, error, next, wechatError }: { mode: "login" | "signup"; locale: string; error?: string; next?: string; wechatError?: string }) {
   const t = await getTranslations("auth");
+  const wechat = await getTranslations("wechat");
   const common = await getTranslations("common");
   const action = mode === "login" ? login : signup;
   const errorMessage = error === "invite"
@@ -81,6 +84,8 @@ export async function AuthForm({ mode, locale, error, next }: { mode: "login" | 
             <Link className="underline transition-colors duration-200 hover:text-ink" href={mode === "login" ? "/signup" : "/login"}>{t(mode === "login" ? "signup" : "login")}</Link>
           </p>
         </form>
+        {wechatError ? <p role="alert" className="mt-4 text-sm text-rose">{wechat(`errors.${parseWechatError(wechatError)}`)}</p> : null}
+        {mode === "login" ? <WechatLoginButton locale={locale} next={next} /> : null}
       </div>
     </main>
   );
