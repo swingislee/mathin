@@ -103,6 +103,22 @@ describe("班级下直接连续登记", () => {
     expect(container.querySelector('[data-session-id="previous"]')).not.toBeNull();
     expect(container.querySelector('[data-session-id="today"]')).toBeNull();
   });
+  it("跨学生填写后批量提交，失败学生保留草稿并可单独重试", async () => {
+    await click(classToggle()); await click(sessionRow("today"));
+    await click(container.querySelector<HTMLElement>(`[data-followup-row-key="${first}"]`)!);
+    await fill(container.querySelector("textarea")!, "甲的记录");
+    await click(container.querySelector<HTMLElement>(`[data-followup-row-key="${second}"]`)!);
+    await fill(container.querySelector("textarea")!, "乙的记录");
+    deps.record.mockResolvedValueOnce({ ok: true, data: communications }).mockResolvedValueOnce({ ok: false, code: "ERROR" });
+    await click(button("提交全部已填记录"));
+    expect(deps.record.mock.calls.map(call => call[0].studentId)).toEqual([first, second]);
+    expect(container.textContent).toContain("成功提交 1 位学生");
+    expect(container.querySelector("textarea")!.value).toBe("乙的记录");
+    await click(button("提交全部已填记录"));
+    expect(deps.record).toHaveBeenCalledTimes(3);
+    expect(deps.record.mock.calls[2][0].studentId).toBe(second);
+  });
+
   it("展开班级即可看到逐课五种答题 SVG 和覆盖情况，重开复用摘要", async () => {
     await click(classToggle());
     for (const [status, count] of Object.entries({ explained: 2, independent: 7, prompted: 3, imitated: 1, incomplete: 0 })) {

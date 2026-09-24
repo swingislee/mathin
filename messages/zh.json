@@ -4189,6 +4189,8 @@
       "savedInSession": "已保存，本行保留在当前名单中。"
     },
     "quickFollowUp": {
+      "batchSave": "批量提交（{count} 人）",
+      "batchSaved": "成功提交 {count} 位学生的跟进记录。",
       "title": "本次情况",
       "placeholder": "记录家长反馈、现场问题或教师观察；可以只保存这一句。",
       "independentHint": "独立记录，不会自动创建联系任务或日期。",

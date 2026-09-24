@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
 import { addStudentFollowUp } from "./actions/followups";
 import { FollowupEntryFields } from "./FollowupEntryFields";
+import type { StudentFollowUpBatchEntry } from "./use-student-followup-batch";
 
 export interface QuickFollowUpSaved {
   content: string;
@@ -27,15 +28,19 @@ export function QuickFollowUpEntry({
   onSaved,
   onSaveAndNext,
   layout = "standalone",
+  batch,
 }: {
   studentId: string;
   onSaved?: (entry: QuickFollowUpSaved) => void;
   onSaveAndNext?: () => void;
   layout?: "standalone" | "followup";
+  batch?: StudentFollowUpBatchEntry;
 }) {
   const t = useTranslations("school.quickFollowUp");
   const entryId = useId();
-  const [content, setContent] = useState("");
+  const [localContent, setLocalContent] = useState("");
+  const content = batch?.content ?? localContent;
+  const setContent = batch?.onChange ?? setLocalContent;
   const advanceRef = useRef(false);
   const submittedContentRef = useRef("");
   const run = useAction(addStudentFollowUp, {
@@ -55,6 +60,10 @@ export function QuickFollowUpEntry({
   });
 
   const submit = (advance: boolean) => {
+    if (batch) {
+      void batch.save().then(saved => { if (saved && advance) onSaveAndNext?.(); });
+      return;
+    }
     const value = content.trim();
     if (!value || run.pending) return;
     advanceRef.current = advance;
@@ -66,6 +75,8 @@ export function QuickFollowUpEntry({
       statusAfter: null,
     });
   };
+  const pending = batch?.pending ?? run.pending;
+  const canSave = batch ? batch.count > 0 : Boolean(content.trim());
 
   return (
     <form
@@ -85,7 +96,7 @@ export function QuickFollowUpEntry({
       }}
     >
       {layout === "followup" ? <FollowupEntryFields id={`assessment-note-${entryId}`} note={content} noteLabel={t("title")}
-        onNoteChange={setContent} placeholder={t("placeholder")} pending={run.pending} saveDisabled={!content.trim()}
+        onNoteChange={setContent} placeholder={t("placeholder")} pending={pending} saveDisabled={!canSave}
         onSave={submit} canAdvance={Boolean(onSaveAndNext)} hint={t("independentHint")} /> : <>
       <label className="block space-y-1 text-xs text-muted">
         <span>{t("title")}</span>
@@ -94,7 +105,7 @@ export function QuickFollowUpEntry({
           onChange={(event) => setContent(event.target.value)}
           rows={3}
           maxLength={2000}
-          disabled={run.pending}
+          disabled={pending}
           aria-label={t("placeholder")}
           placeholder={t("placeholder")}
           className="resize-y text-xs"
@@ -102,13 +113,13 @@ export function QuickFollowUpEntry({
       </label>
       <div className="flex flex-wrap items-center justify-end gap-2">
         <span className="mr-auto text-[11px] text-muted">{t("independentHint")}</span>
-        <Button type="submit" size="sm" variant="secondary" disabled={run.pending || !content.trim()}>
-          {run.pending ? <LoaderCircle className="size-3.5 animate-spin" /> : <MessageSquarePlus className="size-3.5" />}
-          {t("save")}
+        <Button type="submit" size="sm" variant="secondary" disabled={pending || !canSave}>
+          {pending ? <LoaderCircle className="size-3.5 animate-spin" /> : <MessageSquarePlus className="size-3.5" />}
+          {batch ? t("batchSave", { count: batch.count }) : t("save")}
           <kbd className="text-[10px] opacity-70">Ctrl ↵</kbd>
         </Button>
         {onSaveAndNext ? (
-          <Button type="button" size="sm" disabled={run.pending || !content.trim()} onClick={() => submit(true)}>
+          <Button type="button" size="sm" disabled={pending || !canSave} onClick={() => submit(true)}>
             {t("saveAndNext")}
           </Button>
         ) : null}

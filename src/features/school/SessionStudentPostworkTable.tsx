@@ -67,6 +67,7 @@ export function SessionStudentPostworkTable({ sessionId, rows, initialReviews, r
   const submittingRef = useRef(false);
   const focusNextRef = useRef(false);
   const [feedback, setFeedback] = useState<Record<string, string>>({});
+  const [batchFeedback, setBatchFeedback] = useState("");
   const [error, setError] = useState<Record<string, string>>({});
   const studentIds = rows.map(row => row.studentId);
   const keys = [GROUP_KEY, ...studentIds];
@@ -129,23 +130,39 @@ export function SessionStudentPostworkTable({ sessionId, rows, initialReviews, r
     } });
   };
   const save = async (key: string, next: boolean) => {
-    const draft = drafts[key];
-    if (!draft || submittingRef.current) return;
-    const content = draft.content.trim() || (draft.outcome === "not_needed" ? m.notNeededNote : "");
-    if (!draft.occurredOn || !content || (draft.outcome === "follow_up" && (!draft.nextAction.trim() || !draft.nextFollowUpOn))) {
-      setError(current => ({ ...current, [key]: m.validation })); return;
-    }
-    submittingRef.current = true; setPendingKey(key); setError(current => ({ ...current, [key]: "" }));
+    if (submittingRef.current) return;
+    const entries = keys.flatMap(target => {
+      const draft = drafts[target];
+      return draft && (draft.content.trim() || draft.nextAction.trim() || draft.nextFollowUpOn || (dirty[target] && draft.outcome === "not_needed")) ? [{ key: target, draft }] : [];
+    });
+    if (!entries.length) return;
+    submittingRef.current = true; setPendingKey("batch"); setBatchFeedback("");
+    let savedStudents = 0;
+    let savedGroup = false;
+    let failed = false;
+    let currentSaved = false;
     try {
-      const result = await recordSessionCommunication({ ...draft, sessionId, studentId: key === GROUP_KEY ? null : key, content,
-        nextAction: draft.outcome === "follow_up" ? draft.nextAction : "", nextFollowUpOn: draft.outcome === "follow_up" ? draft.nextFollowUpOn : null });
-      if (!result.ok) { setError(current => ({ ...current, [key]: result.code === "SUBMISSION_CONFLICT" ? m.concurrent : result.code === "VALIDATION" ? m.validation : m.failed })); return; }
-      setCommunications(result.data); setDrafts(current => removeCommunicationDraft(current, key));
-      setDirty(current => ({ ...current, [key]: false })); setFeedback(current => ({ ...current, [key]: m.saved }));
+      for (const { key: target, draft } of entries) {
+        const content = draft.content.trim() || (draft.outcome === "not_needed" ? m.notNeededNote : "");
+        setError(current => ({ ...current, [target]: "" }));
+        if (!draft.occurredOn || !content || (draft.outcome === "follow_up" && (!draft.nextAction.trim() || !draft.nextFollowUpOn))) {
+          setError(current => ({ ...current, [target]: m.validation })); failed = true; continue;
+        }
+        try {
+          const result = await recordSessionCommunication({ ...draft, sessionId, studentId: target === GROUP_KEY ? null : target, content,
+            nextAction: draft.outcome === "follow_up" ? draft.nextAction : "", nextFollowUpOn: draft.outcome === "follow_up" ? draft.nextFollowUpOn : null });
+          if (!result.ok) { setError(current => ({ ...current, [target]: result.code === "SUBMISSION_CONFLICT" ? m.concurrent : result.code === "VALIDATION" ? m.validation : m.failed })); failed = true; continue; }
+          setCommunications(result.data); setDrafts(current => removeCommunicationDraft(current, target));
+          setDirty(current => ({ ...current, [target]: false })); setFeedback(current => ({ ...current, [target]: m.saved }));
+          if (target === GROUP_KEY) savedGroup = true; else savedStudents++;
+          if (target === key) currentSaved = true;
+        } catch { setError(current => ({ ...current, [target]: m.failed })); failed = true; }
+      }
+      setBatchFeedback(`${m.batchSaved(savedStudents)}${savedGroup ? m.groupSaved : ""}${failed ? m.batchFailed : ""}`);
       const nextKey = keys[keys.indexOf(key) + 1];
-      if (next && nextKey) { focusNextRef.current = true; open(nextKey); }
-      router.refresh();
-    } catch { setError(current => ({ ...current, [key]: m.failed })); }
+      if (next && nextKey && currentSaved && !failed) { focusNextRef.current = true; open(nextKey); }
+      if (savedStudents || savedGroup) router.refresh();
+    }
     finally { submittingRef.current = false; setPendingKey(null); }
   };
   const finish = async () => {
@@ -169,6 +186,7 @@ export function SessionStudentPostworkTable({ sessionId, rows, initialReviews, r
           {t(reviewSaveState === "saving" ? "studentReviewsSaving" : reviewSaveState === "error" ? "studentReviewsSaveFailed" : "studentReviewsSavedAuto")}</span>}
       </DashboardCommandState>
       <DashboardCommandActions>
+        {communications.canWrite && <Button size="sm" disabled={Boolean(pendingKey) || !Object.values(dirty).some(Boolean)} onClick={() => void save(active ?? GROUP_KEY, false)}>{m.batchSave}</Button>}
         {communications.canWrite && !communications.completed && <Button size="sm" variant="secondary" disabled={Boolean(pendingKey) || !progress.canComplete || Object.values(dirty).some(Boolean)} onClick={() => void finish()}>{m.complete}</Button>}
         {canWriteReview && status === "published" && <LearningResultWithdrawButton mode="sessionReviews" targetId={sessionId} disabled={pendingReviews} onSuccess={() => setStatus("withdrawn")} />}
         {canWriteReview && reviewSaveState === "error" && <><Button size="sm" variant="ghost" onClick={() => void flushReviews()}>{t("retry")}</Button>
@@ -180,6 +198,7 @@ export function SessionStudentPostworkTable({ sessionId, rows, initialReviews, r
         {canWriteReview && <Button size="sm" disabled={pendingReviews} onClick={() => publishReviews.run()}>{t(["published", "withdrawn", "revised"].includes(status) ? "republish" : "publishStudentReviews")}</Button>}
       </DashboardCommandActions>
     </DashboardCommandPanel>
+    {batchFeedback && <p role="status" className="text-xs">{batchFeedback}</p>}
     {error.finish && <p role="alert" className="text-xs text-rose">{error.finish}</p>}
     <p className="text-xs text-muted">{m.shortcut}</p>
     {!communications.canRead && <p className="text-xs text-muted">{m.noPermission}</p>}
@@ -212,7 +231,7 @@ export function SessionStudentPostworkTable({ sessionId, rows, initialReviews, r
                 {review && <dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">{(["entryScore", "exitScore", "focus", "participation", "mastery"] as const).filter(field => review[field] !== null).map(field => <div key={field}><dt className="inline">{reviewT(field === "entryScore" ? "entry" : field === "exitScore" ? "exit" : field)}：</dt><dd className="inline">{review[field]}</dd></div>)}</dl>}
                 {row?.reviewSource?.at && <p className="text-xs text-muted">{row.reviewSource.author} · {new Intl.DateTimeFormat(locale, { timeZone, dateStyle: "medium", timeStyle: "short" }).format(new Date(row.reviewSource.at))}</p>}
                 {canWriteReview && review && <div><Label htmlFor={`review-${sessionId}-${key}`} className="text-xs">{m.teacherFeedback}</Label><Input id={`review-${sessionId}-${key}`} value={review.comment} maxLength={2000} onChange={event => updateComment(key, event.target.value)} placeholder={t("studentReviewInputPlaceholder")} /></div>}
-                {communications.canWrite && (drafts[key] ? <SessionCommunicationEntry draft={drafts[key]} locale={locale} pending={pendingKey === key} group={!row}
+                {communications.canWrite && (drafts[key] ? <SessionCommunicationEntry draft={drafts[key]} locale={locale} pending={Boolean(pendingKey)} group={!row}
                   error={error[key]} hasNext={keys.indexOf(key) < keys.length - 1} onSave={next => void save(key, next)}
                   onChange={patch => { setDrafts(current => ({ ...current, [key]: { ...current[key], ...patch } })); setDirty(current => ({ ...current, [key]: true })); setFeedback(current => ({ ...current, [key]: "" })); }} />
                   : <div className="flex items-center gap-2"><span role="status" className="text-xs text-leaf-deep">{feedback[key]}</span><Button size="sm" variant="secondary" onClick={() => open(key)}>{m.addAnother}</Button></div>)}

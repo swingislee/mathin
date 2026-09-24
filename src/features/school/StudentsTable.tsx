@@ -20,6 +20,7 @@ import {
 } from "./student-list-contract";
 import { FollowupInlineDetails } from "./dashboard-page/FollowupInlineDetails";
 import { QuickFollowUpEntry } from "./QuickFollowUpEntry";
+import { useStudentFollowUpBatch } from "./use-student-followup-batch";
 import { Student360Trigger } from "./Student360Sheet";
 
 const EMPTY_VALUE = "$empty";
@@ -42,6 +43,9 @@ export function StudentsTable({
   const t = useTranslations("school.students");
   const tableT = useTranslations("school.table");
   const [rows, setRows] = useState(students);
+  const followupBatch = useStudentFollowUpBatch(saved => setRows(current => current.map(row => saved[row.id] ? {
+    ...row, lastFollowUpContent: saved[row.id].content, lastFollowUpAt: saved[row.id].createdAt,
+  } : row)));
   const [activeId, setActiveId] = useState<string | null>(null);
   const dateFormatter = useMemo(
     () => new Intl.DateTimeFormat(locale, { dateStyle: "medium" }),
@@ -87,6 +91,8 @@ export function StudentsTable({
   const table = useDashboardTableView({ rows, columns, locale });
 
   return (
+    <>
+    {followupBatch.feedback && <p role="status" className="text-xs">{followupBatch.feedback}</p>}
     <DashboardTableShell>
       <Table className="w-full min-w-[44rem] border-collapse text-left text-sm">
         <TableHeader className="border-b border-line text-xs text-muted">
@@ -157,6 +163,7 @@ export function StudentsTable({
             >
               <QuickFollowUpEntry
                 studentId={student.id}
+                batch={followupBatch.entry(student.id)}
                 onSaved={(entry) => setRows((current) => current.map((row) => row.id === student.id ? {
                   ...row,
                   lastFollowUpContent: entry.content,
@@ -172,5 +179,6 @@ export function StudentsTable({
         </TableBody>
       </Table>
     </DashboardTableShell>
+    </>
   );
 }

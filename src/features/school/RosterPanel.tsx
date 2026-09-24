@@ -24,6 +24,7 @@ import { type StudentSearchResult } from "./actions/types";
 import type { RosterRow, RosterSignals, RosterViewerRole } from "./classes";
 import { DashboardInlineEntry } from "./dashboard-page/DashboardInlineEntry";
 import { QuickFollowUpEntry, type QuickFollowUpSaved } from "./QuickFollowUpEntry";
+import { useStudentFollowUpBatch } from "./use-student-followup-batch";
 
 /** 角色默认列（doc19 §13.4）：教师看出勤/作业/学习异常，学服看请假/欠费，主管看综合异常，其余角色沿用既有教务列。 */
 function RosterSignalColumns({ role, signals }: { role: RosterViewerRole; signals: RosterSignals | undefined }) {
@@ -68,6 +69,7 @@ export function RosterPanel({ classroomId, roster, canManage, viewerRole, signal
   const [activeStudentId, setActiveStudentId] = useState<string | null>(null);
   const [visitedStudents, setVisitedStudents] = useState<Set<string>>(() => new Set());
   const [savedFollowUps, setSavedFollowUps] = useState<Record<string, QuickFollowUpSaved>>({});
+  const followupBatch = useStudentFollowUpBatch(rows => setSavedFollowUps(current => ({ ...current, ...rows })));
   const activateFollowup = (studentId: string) => {
     setVisitedStudents(current => new Set(current).add(studentId));
     setActiveStudentId(studentId);
@@ -144,6 +146,7 @@ export function RosterPanel({ classroomId, roster, canManage, viewerRole, signal
         )}
       </div>
 
+      {followupBatch.feedback && <p role="status" className="mt-2 text-xs">{followupBatch.feedback}</p>}
       {roster.length === 0 ? (
         <p className="mt-4 text-sm text-muted">{t("emptyRoster")}</p>
       ) : (
@@ -182,6 +185,7 @@ export function RosterPanel({ classroomId, roster, canManage, viewerRole, signal
               {canWriteFollowup && visitedStudents.has(row.studentId) ? <div id={detailId} hidden={!active} inert={!active || undefined}>
                 <DashboardInlineEntry title={`${row.studentName} · ${t("quickFollowup")}`} closeLabel={workspaceT("close")} onClose={() => closeFollowup(row.studentId)} autoFocus={active}>
                   <QuickFollowUpEntry studentId={row.studentId}
+                    batch={followupBatch.entry(row.studentId)}
                     onSaved={entry => setSavedFollowUps(current => ({ ...current, [row.studentId]: entry }))}
                     onSaveAndNext={next ? () => {
                       setVisitedStudents(current => new Set(current).add(next.studentId));

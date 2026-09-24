@@ -4189,6 +4189,8 @@
       "savedInSession": "Saved. This row stays in the current list."
     },
     "quickFollowUp": {
+      "batchSave": "Submit all ({count} students)",
+      "batchSaved": "Submitted follow-up records for {count} students.",
       "title": "Current situation",
       "placeholder": "Record family feedback, an on-site issue, or a teacher observation. This can stand alone.",
       "independentHint": "Independent note; no contact task or date is created automatically.",

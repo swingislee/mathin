@@ -33,7 +33,7 @@ export function SessionCommunicationEntry({ draft, onChange, onSave, pending, lo
     </div>}
     <div className="flex flex-wrap items-center justify-end gap-2">
       {error && <p role="alert" className="mr-auto text-xs text-rose">{error}</p>}
-      <Button size="sm" variant="secondary" disabled={pending} onClick={() => onSave(false)}>{pending ? m.saving : m.save}</Button>
+      <Button size="sm" variant="secondary" disabled={pending} onClick={() => onSave(false)}>{pending ? m.saving : m.batchSave}</Button>
       {hasNext && <Button size="sm" disabled={pending} onClick={() => onSave(true)}>{m.saveNext}</Button>}
     </div>
   </div>;

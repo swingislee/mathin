@@ -43,3 +43,20 @@ export async function addStudentFollowUp(
     return actionError(error, [...COMMON_CODES,'SOURCE_ASSOCIATION_REQUIRED']);
   }
 }
+
+const batchFollowUpSchema = z.array(followUpSchema.pick({ studentId: true, content: true })).min(1).max(200)
+  .refine(rows => new Set(rows.map(row => row.studentId)).size === rows.length);
+
+/** 同一请求原子保存所有已填写学生；任一权限或校验失败时保留整批草稿。 */
+export async function addStudentFollowUps(input: Array<{ studentId: string; content: string }>): Promise<ActionResult> {
+  try {
+    const rows = parse(batchFollowUpSchema, input);
+    const { supabase, user } = await authorizedClient("followup.write");
+    const { error } = await supabase.from("student_follow_ups").insert(rows.map(row => ({
+      student_id: row.studentId, author_id: user.id, content: row.content, kind: "note" as const,
+      next_follow_up_at: null, status_after: null,
+    })));
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) { return actionError(error, [...COMMON_CODES, "SOURCE_ASSOCIATION_REQUIRED"]); }
+}

@@ -8,7 +8,7 @@ import zh from "../messages/zh.json";
 import en from "../messages/en.json";
 
 const actions = vi.hoisted(() => ({ save: vi.fn(), refresh: vi.fn(), error: vi.fn() }));
-vi.mock("@/features/school/actions/followups", () => ({ addStudentFollowUp: actions.save }));
+vi.mock("@/features/school/actions/followups", () => ({ addStudentFollowUp: vi.fn(), addStudentFollowUps: actions.save }));
 vi.mock("@/features/school/actions/classes", () => ({ enrollStudentAction: vi.fn(), listClassroomOptions: vi.fn(), searchStudentsForEnroll: vi.fn(), transferStudentAction: vi.fn(), withdrawStudentAction: vi.fn() }));
 vi.mock("@/i18n/navigation", () => ({ Link: ({ children, ...props }: ComponentProps<"a">) => createElement("a", props, children), useRouter: () => ({ refresh: actions.refresh }) }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: actions.error } }));
@@ -44,7 +44,7 @@ describe("class roster reuses quick follow-up entry", () => {
     await mount(locale); expect(container.textContent).toContain("Previously saved note");
     await click(trigger("student-a")); await fill("student-a", "Classroom observation and parent feedback");
     await click(saveNext("student-a", locale));
-    expect(actions.save).toHaveBeenCalledExactlyOnceWith("student-a", { content: "Classroom observation and parent feedback", kind: "note", nextFollowUpAt: null, statusAfter: null });
+    expect(actions.save).toHaveBeenCalledExactlyOnceWith([{ studentId: "student-a", content: "Classroom observation and parent feedback" }]);
     expect(detail("student-a").hidden).toBe(true); expect(detail("student-b").hidden).toBe(false);
     expect(detail("student-b").querySelector("textarea")!.value).toBe("");
     expect(container.textContent).toContain("Classroom observation and parent feedback");
@@ -65,7 +65,7 @@ describe("class roster reuses quick follow-up entry", () => {
     await click(saveNext("student-a"));
     expect(detail("student-a").hidden).toBe(false); expect(detail("student-a").querySelector("textarea")!.value).toBe("Keep for retry");
     expect(trigger("student-b").getAttribute("aria-expanded")).toBe("false");
-    expect(actions.error).toHaveBeenCalled();
+    expect(container.textContent).toContain(zh.school.quickFollowUp.saveFailed);
   });
 
   it("keeps a manually selected student when an earlier save finishes", async () => {
@@ -75,12 +75,36 @@ describe("class roster reuses quick follow-up entry", () => {
     await click(saveNext("student-a")); await click(trigger("student-c"));
     await act(async () => finish({ ok: true }));
     expect(trigger("student-c").getAttribute("aria-expanded")).toBe("true");
-    expect(actions.save.mock.calls[0][0]).toBe("student-a");
+    expect(actions.save.mock.calls[0][0]).toEqual([{ studentId: "student-a", content: "For A only" }]);
   });
 
   it("shows the saved summary without a write control for a read-only viewer", async () => {
     await mount("zh", false);
     expect(container.textContent).toContain("Previously saved note");
     expect(container.querySelector("button[aria-expanded],textarea")).toBeNull();
+  });
+
+  it("submits every filled student from a blank selected row and reports the count", async () => {
+    await mount(); await click(trigger("student-a")); await fill("student-a", "Draft A");
+    await click(trigger("student-b")); await fill("student-b", "Draft B");
+    await click(trigger("student-c")); await fill("student-c", "   ");
+    await click(detail("student-c").querySelector<HTMLButtonElement>('button[type="submit"]')!);
+    expect(actions.save).toHaveBeenCalledExactlyOnceWith([{ studentId: "student-a", content: "Draft A" }, { studentId: "student-b", content: "Draft B" }]);
+    expect(container.textContent).toContain("成功提交 2 位学生");
+    expect(detail("student-a").querySelector("textarea")!.value).toBe("");
+    expect(detail("student-b").querySelector("textarea")!.value).toBe("");
+  });
+
+  it("retains the entire batch after failure and submits it once on retry", async () => {
+    actions.save.mockResolvedValueOnce({ ok: false, code: "FORBIDDEN" });
+    await mount(); await click(trigger("student-a")); await fill("student-a", "Draft A");
+    await click(trigger("student-b")); await fill("student-b", "Draft B");
+    const save = detail("student-b").querySelector<HTMLButtonElement>('button[type="submit"]')!;
+    await click(save);
+    expect(detail("student-a").querySelector("textarea")!.value).toBe("Draft A");
+    expect(detail("student-b").querySelector("textarea")!.value).toBe("Draft B");
+    await click(save);
+    expect(actions.save).toHaveBeenCalledTimes(2);
+    expect(container.textContent).toContain("成功提交 2 位学生");
   });
 });
