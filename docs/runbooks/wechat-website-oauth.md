@@ -2,9 +2,9 @@
 
 > 2026-09-24 开发实现。用户已确认：首次扫码为游客，只浏览公开内容并绑定已有账号；游客不创建独立 Auth 用户，不保存笔记或成绩。本文件不表示生产已启用。
 
-> **当前检查结果**：定向源码测试、TypeScript、受影响文件 ESLint、双语消息一致性已通过；zh/en 登录页 HTTP 200，微信入口保持关闭。开发端 UI 待人工验收。Docker Desktop 因本机 `dockerInference` 运行时套接字不可访问而启动失败，隔离数据库断言、类型生成、Auth 原生联调与真实微信扫码尚未完成；没有生产操作。
+> **2026-09-25 当前检查结果**：定向源码测试、TypeScript、受影响文件 ESLint、双语消息一致性已通过；zh/en 登录页可访问，微信入口保持关闭。Docker 已恢复，候选 SQL 的权限、RLS、绑定唯一性、审计与完整事务回滚检查通过；纯手机号的 Auth 原生候选补丁五项回归通过。类型晋级、Auth 镜像／SDK 联调与真实微信扫码仍待完成。开发端 UI 待人工验收，没有生产写入。
 
-> **既有类型检查问题**：`db:types:check` 的记录摘要为 `8c910721d412…`，正式迁移目录为 `f6c65c7eaf27…`。已只读比较 HEAD 与工作树的 440 个正式迁移，两者摘要完全一致；该问题早于本增量，未通过改写摘要掩盖。恢复隔离数据库后统一核对并重新生成类型。
+> **类型状态**：正式迁移的 `db:types:check` 已恢复通过；微信 SQL 仍在 `supabase/pending/`，尚未应用到持久数据库或进入生成类型，该结果不代表微信 schema 已晋级。
 
 > **2026-09-24 登录界面更新**：密码与微信入口共用一张登录卡。邮箱、手机号用页签选择；微信只显示按钮，尚未满足启用条件时保留禁用状态。站内主动登录通过统一 `LoginLink` 打开 Dialog，失败留在卡片内，成功刷新原页面或进入显式绑定目标；直接访问及受限路由跳转仍使用完整登录页。微信 OAuth 本身继续通过外部授权回调完成，同源 Cookie、账号绑定和角色规则保持原合同。此更新不表示微信已开放。开发验收入口为 `/zh/` 导航菜单的「登录」与 `/zh/login`（英文对应 `/en/`、`/en/login`）。
 
@@ -19,6 +19,8 @@
 | Supabase provider | `custom:wechat` |
 
 上述微信回调由 Next.js 处理微信 code，随后桥接到 Supabase。微信 code 与 Supabase code 属于不同协议步骤，分别消费。开放平台填写 `mathin.club`，不是 `supabase.mathin.club`。正式回调只有在本增量获准部署、配置和联调后才可用；现有域名不代表新路由已上线。
+
+2026-09-25 用户已提交网站应用审核，提交成功页提示审核后取得 AppID/AppSecret；服务端尚未配置凭据。只读 HTTP 核查：生产首页跳转至中文页，`/zh/login` 返回 200，微信 callback 路由返回 404。因此当前是“已有可访问网站、网站应用审核中、微信后端尚未部署”。可以在审核期间先准备并部署保持入口关闭的回调版本，获得凭据后完成授权联调再开放按钮；该部署仍须按生产流程单独验收和授权。提交成功本身不代表审核通过。
 
 开发页面仍使用 `http://192.168.5.213:3130/zh/login`。局域网 HTTP 不承接真实微信回调：本实现的 OAuth 凭据 Cookie 使用 Secure。开发扫码需要另行登记的 HTTPS 开发域、独立应用/授权域和与之匹配的隔离 Supabase；同一浏览器的开始、微信回调和应用回调需同源。开发域不能连接生产 Auth 或数据库。
 
@@ -103,13 +105,17 @@ Auth 需要 `GOTRUE_SECURITY_MANUAL_LINKING_ENABLED=true`，应用回调加入�
 
 候选修复位置：[v2.189.0 identity.go](https://github.com/supabase/auth/blob/v2.189.0/internal/api/identity.go)。`UpdateUserEmailFromIdentities()` 之后，只有 `targetUser.GetEmail() != ""` 时才执行邮箱确认及 `Confirm()`。保留原来的匿名转正和 provider 更新逻辑。可采用包含相同修复的正式 Auth 版本，或在固定版本上应用可追溯的最小补丁；变更 Auth 镜像单独验证和保留 previous。
 
+2026-09-25 已将候选保存为 [`v2.189.0-phone-only.patch`](../../supabase/auth-compat/v2.189.0-phone-only.patch)，固定到上游 commit `4fa66ba71d8c55b5c95cd5635766ed8bbae6d96a`。本机真实数据库事务中，原版复现两条无邮箱路径失败；补丁版五项通过，包括原 UUID／密码／手机号保持、identity 归属、重复绑定和邮箱确认语义。每个用例全部回滚，固定身份记录指纹恢复；没有更换正在运行的 Auth 镜像。复现步骤与验证边界见 [Auth 兼容说明](../../supabase/auth-compat/README.md)。
+
 纯手机号账号必须实测：无伪造邮箱、绑定前后 user/profile 数量与 UUID 不变、phone/password 仍可登录、微信再次登录回到原 UUID、冲突不留残余 identity、原有验证码/邮箱确认语义不变。通过后才将 `WECHAT_PHONE_LINKING_VERIFIED` 设为 true。未通过时页面明确提示该限制。
 
 ## 验证、上线与回退
 
 定向源码测试覆盖微信协议、最小资料、PKCE、未知微信游客、单次消费、会话切换、身份冲突、锁定、密码/MFA 门、最后登录方式保护和两段回调。
 
-数据库变更保留在 `supabase/pending/20260924000100_wechat_oauth_tickets.sql`，尚未进入正式 migration ledger，也未改写生成类型的摘要。SQL 断言位于 `supabase/tests/wechat_oauth_assertions.sql`。恢复本机 Docker 后，先确认 Windows 主机、loopback Supabase origin、端口监听和数据库指纹；在该隔离目标按 `BEGIN → 候选 SQL → assertions → ROLLBACK` 验证，复核原函数、索引、表、用户及 identity 计数不变。随后将候选晋级 `supabase/migrations/`，生成真实数据库类型，再执行固定账号的 Auth 集成与回退验证。不要仅修改类型文件的 digest 来假装 schema 已验证。
+数据库变更保留在 `supabase/pending/20260924000100_wechat_oauth_tickets.sql`，尚未进入正式 migration ledger。SQL 断言位于 `supabase/tests/wechat_oauth_assertions.sql`。2026-09-25 在核对主机、实际 origin、监听、隔离网络和指纹后，已完成 `BEGIN → 候选 SQL → assertions → ROLLBACK`：权限、RLS、单次消费、过期、限流、身份唯一性、快照归属及解绑清除、不可变审计均通过，原函数／relation 权限与账号计数恢复。实测发现并修复了数据库默认权限赋予 `service_role` 多余权限的问题：四张新表先撤销默认权限，再逐项授予所需操作。没有持久化新 schema 或身份。
+
+数据库检查可以通过 `node scripts/wechat-oauth-local.mjs --preflight` 与 `node scripts/wechat-oauth-local.mjs --check` 复现；输出只含状态与摘要，原始日志保留在 `.tmp/wechat-oauth-local/`。后续将候选晋级 `supabase/migrations/`，生成真实数据库类型，再执行固定账号的 Auth 集成与回退验证。保持数据库检查结果与正式 migration／类型晋级状态分别记录。
 
 开发检查入口：
 

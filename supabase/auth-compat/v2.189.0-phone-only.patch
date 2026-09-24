@@ -1,0 +1,20 @@
+diff --git a/internal/api/identity.go b/internal/api/identity.go
+index c125aff1..ca884afc 100644
+--- a/internal/api/identity.go
++++ b/internal/api/identity.go
+@@ -146,2 +146,8 @@ func (a *API) linkIdentityToUser(r *http.Request, ctx context.Context, tx *stora
+-		if !userData.Metadata.EmailVerified {
+-			if terr := a.sendConfirmation(r, tx, targetUser, models.ImplicitFlow); terr != nil {
++		if targetUser.GetEmail() != "" {
++			if !userData.Metadata.EmailVerified {
++				if terr := a.sendConfirmation(r, tx, targetUser, models.ImplicitFlow); terr != nil {
++					return nil, terr
++				}
++				return nil, storage.NewCommitWithError(apierrors.NewUnprocessableEntityError(apierrors.ErrorCodeEmailNotConfirmed, "Unverified email with %v. A confirmation email has been sent to your %v email", providerType, providerType))
++			}
++			if terr := targetUser.Confirm(tx); terr != nil {
+@@ -150,4 +155,0 @@ func (a *API) linkIdentityToUser(r *http.Request, ctx context.Context, tx *stora
+-			return nil, storage.NewCommitWithError(apierrors.NewUnprocessableEntityError(apierrors.ErrorCodeEmailNotConfirmed, "Unverified email with %v. A confirmation email has been sent to your %v email", providerType, providerType))
+-		}
+-		if terr := targetUser.Confirm(tx); terr != nil {
+-			return nil, terr

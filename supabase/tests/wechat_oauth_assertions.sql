@@ -34,3 +34,68 @@ begin
   if exists(select 1 from public.wechat_oauth_tickets where token_hash=repeat('4',64)) then raise exception 'EXPIRED_PII_NOT_PRUNED'; end if;
   if not exists(select 1 from pg_indexes where schemaname='auth' and indexname='auth_identities_one_wechat_per_user') then raise exception 'WECHAT_ACCOUNT_UNIQUENESS_MISSING'; end if;
 end $$;
+
+-- 复用本机 manifest 中的固定开发身份；所有合成身份关系随外层事务回滚。
+do $$
+declare
+  owner_id uuid := current_setting('mathin.wechat_test.owner')::uuid;
+  other_id uuid := current_setting('mathin.wechat_test.other')::uuid;
+begin
+  if owner_id is null or other_id is null or owner_id=other_id then raise exception 'FIXED_IDENTITIES_REQUIRED'; end if;
+  if exists(select 1 from auth.identities where user_id in (owner_id,other_id) and provider='custom:wechat') then raise exception 'FIXTURE_ALREADY_LINKED'; end if;
+  insert into auth.identities(id,user_id,provider,provider_id,identity_data)
+    values(gen_random_uuid(),owner_id,'custom:wechat','assertion:wechat-owner','{"sub":"assertion:wechat-owner"}');
+  if public.find_wechat_auth_user('assertion:wechat-owner') is distinct from owner_id then raise exception 'EXACT_IDENTITY_LOOKUP_FAILED'; end if;
+  if public.find_wechat_auth_user('assertion:unknown') is not null then raise exception 'UNKNOWN_IDENTITY_MATCHED'; end if;
+  if not exists(select 1 from public.wechat_binding_audits where user_id=owner_id and event='linked') then raise exception 'LINK_AUDIT_MISSING'; end if;
+  begin
+    insert into auth.identities(id,user_id,provider,provider_id,identity_data)
+      values(gen_random_uuid(),owner_id,'custom:wechat','assertion:second-wechat','{"sub":"assertion:second-wechat"}');
+    raise exception 'SECOND_WECHAT_IDENTITY_ALLOWED';
+  exception when unique_violation then null;
+  end;
+  begin
+    insert into auth.identities(id,user_id,provider,provider_id,identity_data)
+      values(gen_random_uuid(),other_id,'custom:wechat','assertion:wechat-owner','{"sub":"assertion:wechat-owner"}');
+    raise exception 'CROSS_ACCOUNT_IDENTITY_ALLOWED';
+  exception when unique_violation then null;
+  end;
+  insert into public.wechat_profile_snapshots(user_id,subject,openid,unionid,nickname,authorized_at)
+    values(owner_id,'assertion:wechat-owner','synthetic-openid','synthetic-unionid','Synthetic',now());
+  begin
+    insert into public.wechat_profile_snapshots(user_id,subject,openid,unionid,nickname,authorized_at)
+      values(other_id,'assertion:missing-identity','synthetic-other','synthetic-other','Synthetic',now());
+    raise exception 'SNAPSHOT_WITHOUT_IDENTITY_ALLOWED';
+  exception when raise_exception then
+    if sqlerrm <> 'WECHAT_IDENTITY_MISSING' then raise; end if;
+  end;
+end $$;
+
+set local role authenticated;
+select set_config('request.jwt.claims', json_build_object('sub',current_setting('mathin.wechat_test.owner'),'role','authenticated')::text,true);
+do $$ begin
+  if (select count(*) from public.wechat_profile_snapshots) <> 1 then raise exception 'OWNER_SNAPSHOT_READ_FAILED'; end if;
+  if (select count(*) from public.wechat_binding_audits) <> 1 then raise exception 'OWNER_AUDIT_READ_FAILED'; end if;
+  begin
+    perform 1 from public.wechat_oauth_tickets;
+    raise exception 'AUTHENTICATED_TICKET_READ_ALLOWED';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+select set_config('request.jwt.claims', json_build_object('sub',current_setting('mathin.wechat_test.other'),'role','authenticated')::text,true);
+do $$ begin
+  if exists(select 1 from public.wechat_profile_snapshots) or exists(select 1 from public.wechat_binding_audits) then raise exception 'CROSS_ACCOUNT_PII_READ_ALLOWED'; end if;
+end $$;
+reset role;
+
+delete from auth.identities where user_id=current_setting('mathin.wechat_test.owner')::uuid and provider='custom:wechat';
+do $$ begin
+  if exists(select 1 from public.wechat_profile_snapshots) then raise exception 'UNLINK_LEFT_PII'; end if;
+  if not exists(select 1 from public.wechat_binding_audits where event='unlinked') then raise exception 'UNLINK_AUDIT_MISSING'; end if;
+  begin
+    delete from public.wechat_binding_audits;
+    raise exception 'AUDIT_DELETE_ALLOWED';
+  exception when raise_exception then
+    if sqlerrm <> 'SECURITY_LEDGER_APPEND_ONLY' then raise; end if;
+  end;
+end $$;

@@ -11,7 +11,7 @@ create table public.wechat_oauth_tickets (
 );
 create index wechat_oauth_tickets_expiry_idx on public.wechat_oauth_tickets(expires_at);
 alter table public.wechat_oauth_tickets enable row level security;
-revoke all on public.wechat_oauth_tickets from public, anon, authenticated;
+revoke all on public.wechat_oauth_tickets from public, anon, authenticated, service_role;
 grant select, insert, delete on public.wechat_oauth_tickets to service_role;
 
 create function public.consume_wechat_oauth_ticket(p_token_hash text, p_kind text, p_browser_hash text)
@@ -38,7 +38,7 @@ create table public.wechat_oauth_rate_limits (
   expires_at timestamptz not null
 );
 alter table public.wechat_oauth_rate_limits enable row level security;
-revoke all on public.wechat_oauth_rate_limits from public, anon, authenticated;
+revoke all on public.wechat_oauth_rate_limits from public, anon, authenticated, service_role;
 create function public.allow_wechat_oauth_attempt(p_key_hash text, p_limit integer)
 returns boolean language plpgsql security definer set search_path = '' as $$
 declare count_now integer;
@@ -82,7 +82,7 @@ create table public.wechat_profile_snapshots (
   authorized_at timestamptz not null
 );
 alter table public.wechat_profile_snapshots enable row level security;
-revoke all on public.wechat_profile_snapshots from public, anon, authenticated;
+revoke all on public.wechat_profile_snapshots from public, anon, authenticated, service_role;
 grant select on public.wechat_profile_snapshots to authenticated;
 grant select, insert, update, delete on public.wechat_profile_snapshots to service_role;
 create policy wechat_snapshot_self_read on public.wechat_profile_snapshots for select to authenticated using (user_id = auth.uid());
@@ -107,7 +107,7 @@ create table public.wechat_binding_audits (
   created_at timestamptz not null default now()
 );
 alter table public.wechat_binding_audits enable row level security;
-revoke all on public.wechat_binding_audits from public, anon, authenticated;
+revoke all on public.wechat_binding_audits from public, anon, authenticated, service_role;
 grant select on public.wechat_binding_audits to authenticated;
 grant select, insert on public.wechat_binding_audits to service_role;
 create policy wechat_binding_audit_self_read on public.wechat_binding_audits for select to authenticated using (user_id = auth.uid());
