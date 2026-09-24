@@ -16,7 +16,7 @@ export function EmailLoginInput({ id, disabled, autoFocus, value, onChange }: Fi
     <Label htmlFor={`${id}-local`}>{t("email")}</Label>
     <div className={groupClass} role="group" aria-label={t("email")}>
       <Input id={`${id}-local`} name="emailLocalPart" type="text" inputMode="email" autoComplete="username" autoCapitalize="none" spellCheck={false}
-        className={`${inputClass} w-0 flex-1 rounded-l-full pl-4 pr-1`} value={value.localPart} placeholder={t("emailLocalPart")}
+        className={`${inputClass} w-0 flex-[2] rounded-l-full pl-4 pr-1`} value={value.localPart} placeholder={t("emailLocalPart")}
         aria-label={t("emailLocalPart")} pattern={"[^@\\s]+"} required maxLength={254} readOnly={disabled} autoFocus={autoFocus}
         onChange={(event) => onChange(splitEmailInput(event.target.value, value.domain))} />
       <span className="shrink-0 px-1 text-sm text-muted" aria-hidden>@</span>
