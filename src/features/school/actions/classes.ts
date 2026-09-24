@@ -1347,12 +1347,15 @@ export async function publishSessionAssignmentAction(input: {
   try {
     const value = parse(sessionAssignmentPublicationSchema, input);
     const { supabase } = await authorizedClient("review.write");
-    const { error } = await supabase.rpc("publish_session_assignment", {
+    const args = {
       p_session_id: value.sessionId,
       p_title: value.title,
       p_content: value.content,
       p_due_at: nullableRpcArg(value.dueAt),
-    });
+    };
+    let { error } = await supabase.rpc("publish_session_template_assignment", args);
+    // 管理角色原有发布权限独立于逐题编辑；模板事务拒绝时沿用原发布范围。
+    if (error?.message === "FORBIDDEN") ({ error } = await supabase.rpc("publish_session_assignment", args));
     if (error) throw new Error(error.message);
     return { ok: true };
   } catch (error) {

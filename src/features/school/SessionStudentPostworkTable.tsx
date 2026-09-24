@@ -24,6 +24,8 @@ import { latestSessionCommunication, removeCommunicationDraft, sessionCommunicat
 import { sessionCommunicationMessages } from "./session-communication-messages";
 import { SessionCommunicationEntry } from "./SessionCommunicationEntry";
 import { SessionCommunicationHistory } from "./SessionCommunicationHistory";
+import { PostclassLearningEditor } from "./PostclassLearningEditor";
+import type { PostclassLearning } from "./postclass-learning-contract";
 
 export interface SessionStudentPostworkRow {
   studentId: string; displayName: string; attendanceStatus: "present" | "absent" | "late" | "leave" | null; stars: number | null;
@@ -45,6 +47,7 @@ export function SessionStudentPostworkTable({ sessionId, rows, initialReviews, r
   const reportT = useTranslations("classroom.report");
   const m = sessionCommunicationMessages(locale);
   const router = useRouter();
+  const [learningEdit, setLearningEdit] = useState<PostclassLearning | null>(null);
   const [reviews, setReviews] = useState(initialReviews);
   const [status, setStatus] = useState(resultStatus);
   const [reviewSaveState, setReviewSaveState] = useState<"saved" | "saving" | "error">("saved");
@@ -186,6 +189,11 @@ export function SessionStudentPostworkTable({ sessionId, rows, initialReviews, r
           {t(reviewSaveState === "saving" ? "studentReviewsSaving" : reviewSaveState === "error" ? "studentReviewsSaveFailed" : "studentReviewsSavedAuto")}</span>}
       </DashboardCommandState>
       <DashboardCommandActions>
+        {canWriteReview && <PostclassLearningEditor sessionId={sessionId} disabled={hasDrafts || pendingReviews} onSaved={data => {
+          setLearningEdit(data); setReviews(data.reviews); reviewsRef.current = data.reviews; savedReviewsRef.current = data.reviews;
+          onReviewsSavedRef.current?.(data.reviews.filter(review => review.comment.trim() || [review.entryScore, review.exitScore, review.focus, review.participation, review.mastery].some(value => value !== null)));
+          setStatus(current => current === "published" ? "revised" : current); router.refresh();
+        }} />}
         {communications.canWrite && <Button size="sm" disabled={Boolean(pendingKey) || !Object.values(dirty).some(Boolean)} onClick={() => void save(active ?? GROUP_KEY, false)}>{m.batchSave}</Button>}
         {communications.canWrite && !communications.completed && <Button size="sm" variant="secondary" disabled={Boolean(pendingKey) || !progress.canComplete || Object.values(dirty).some(Boolean)} onClick={() => void finish()}>{m.complete}</Button>}
         {canWriteReview && status === "published" && <LearningResultWithdrawButton mode="sessionReviews" targetId={sessionId} disabled={pendingReviews} onSuccess={() => setStatus("withdrawn")} />}
@@ -208,7 +216,9 @@ export function SessionStudentPostworkTable({ sessionId, rows, initialReviews, r
         <TableHead>{m.outcome}</TableHead><TableHead>{m.nextAction}</TableHead></TableRow></TableHeader>
       <FollowupTableBody onNavigate={key => { setActive(key); return true; }}>
         {keys.map(key => {
-          const row = rows.find(student => student.studentId === key);
+          const original = rows.find(student => student.studentId === key);
+          const row = original && learningEdit ? { ...original, checks: learningEdit.checks.map(check => ({ id: check.id, title: check.title,
+            status: learningEdit.results.find(result => result.studentId === key && result.checkId === check.id)?.status ?? "unchecked" as const })) } : original;
           if (!row && !communications.canRead) return null;
           const review = reviewByStudent.get(key);
           const latest = latestSessionCommunication(communications.records, row ? key : null);
@@ -233,7 +243,8 @@ export function SessionStudentPostworkTable({ sessionId, rows, initialReviews, r
                 {canWriteReview && review && <div><Label htmlFor={`review-${sessionId}-${key}`} className="text-xs">{m.teacherFeedback}</Label><Input id={`review-${sessionId}-${key}`} value={review.comment} maxLength={2000} onChange={event => updateComment(key, event.target.value)} placeholder={t("studentReviewInputPlaceholder")} /></div>}
                 {communications.canWrite && (drafts[key] ? <SessionCommunicationEntry draft={drafts[key]} locale={locale} pending={Boolean(pendingKey)} group={!row}
                   error={error[key]} hasNext={keys.indexOf(key) < keys.length - 1} onSave={next => void save(key, next)}
-                  onChange={patch => { setDrafts(current => ({ ...current, [key]: { ...current[key], ...patch } })); setDirty(current => ({ ...current, [key]: true })); setFeedback(current => ({ ...current, [key]: "" })); }} />
+                  onChange={patch => { const updated = { ...drafts[key], ...patch }; setDrafts(current => ({ ...current, [key]: updated }));
+                    setDirty(current => ({ ...current, [key]: Boolean(updated.content.trim() || updated.nextAction.trim() || updated.nextFollowUpOn || updated.outcome === "not_needed") })); setFeedback(current => ({ ...current, [key]: "" })); }} />
                   : <div className="flex items-center gap-2"><span role="status" className="text-xs text-leaf-deep">{feedback[key]}</span><Button size="sm" variant="secondary" onClick={() => open(key)}>{m.addAnother}</Button></div>)}
                 {dirty[key] && <Button size="sm" variant="ghost" disabled={Boolean(pendingKey)} onClick={() => { setDrafts(current => removeCommunicationDraft(current, key)); setDirty(current => ({ ...current, [key]: false })); }}>{locale.startsWith("en") ? "Discard this draft" : "放弃本条沟通草稿"}</Button>}
               </div>

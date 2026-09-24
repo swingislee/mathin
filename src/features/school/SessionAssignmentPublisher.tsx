@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "@/i18n/navigation";
 import { publishSessionAssignmentAction } from "./actions/classes";
 import type { SessionPublishedAssignment } from "./classes";
+import { HomeworkDocumentEditor } from "./HomeworkDocumentEditor";
 
 export function SessionAssignmentPublisher({
   sessionId,
@@ -86,6 +87,7 @@ export function SessionAssignmentPublisher({
                 <time className="text-xs text-muted">{new Date(assignment.dueAt).toLocaleString()}</time>
               )}
               <Badge variant="outline">{t("published")}</Badge>
+              <HomeworkDocumentEditor scope="assignment" targetId={assignment.id} />
             </li>
           ))}
         </ul>

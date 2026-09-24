@@ -12,6 +12,8 @@ import {
   WorkspaceSplitShell,
 } from "@/features/school/object-workspace";
 import { StatusStrip } from "@/features/school/dashboard-page";
+import { DashboardCommandActions, DashboardCommandPanel, DashboardCommandState } from "@/features/school/dashboard-page";
+import { HomeworkDocumentEditor } from "@/features/school/HomeworkDocumentEditor";
 import type { StaffOption } from "@/features/school/classes";
 import { ResponsibilityPanel } from "@/features/school/teaching-operations/ResponsibilityPanel";
 import { Link } from "@/i18n/navigation";
@@ -101,14 +103,14 @@ export async function LectureWorkspaceBody({
       status={detail.tracks.find((row) => row.hasUnpublishedChanges) ? <AlertTriangle size={16} className="text-amber-700 dark:text-amber-300" aria-label={t("hasUnpublishedChanges")} /> : undefined}
       primaryAction={primaryAction}
     />}
-    navigation={<TrackSwitcher
+    navigation={<DashboardCommandPanel><DashboardCommandState><TrackSwitcher
       items={[
         { value: "native-16x9", label: t("trackNative"), href: trackHref(baseHref, "native-16x9", returnTo) },
         { value: "adapted-4x3", label: t("trackAdapted"), href: trackHref(baseHref, "adapted-4x3", returnTo) },
       ]}
       activeValue={track}
       ariaLabel={t("trackSwitcherLabel")}
-    />}
+    /></DashboardCommandState><DashboardCommandActions><HomeworkDocumentEditor scope="lecture" targetId={detail.lecture.id} /></DashboardCommandActions></DashboardCommandPanel>}
     statusStrip={<StatusStrip items={statusItems} />}
   >
     <WorkspaceSplitShell

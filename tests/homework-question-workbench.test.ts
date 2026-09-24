@@ -10,6 +10,7 @@ import { saveAssignmentQuestionResultsAction } from "@/features/school/assignmen
 
 vi.mock("@/i18n/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/features/school/assignment-question-actions", () => ({ addAssignmentQuestionsAction: vi.fn(), saveAssignmentQuestionResultsAction: vi.fn() }));
+vi.mock("@/features/school/homework-document-actions", () => ({ readHomeworkDocument: vi.fn(), saveHomeworkDocument: vi.fn() }));
 const student = "00000000-0000-4000-8000-000000000001";
 const question = "00000000-0000-4000-8000-000000000002";
 const second = "00000000-0000-4000-8000-000000000003";

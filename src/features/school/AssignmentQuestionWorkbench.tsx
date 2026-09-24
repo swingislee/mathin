@@ -11,6 +11,7 @@ import { LearningCheckStatusLegend } from "./LearningCheckStatusMark";
 import { AssignmentQuestionSummary } from "./AssignmentQuestionSummary";
 import { DashboardCommandActions, DashboardCommandPanel, DashboardCommandState, DashboardSection } from "./dashboard-page";
 import { addAssignmentQuestionsAction, saveAssignmentQuestionResultsAction } from "./assignment-question-actions";
+import { HomeworkDocumentEditor } from "./HomeworkDocumentEditor";
 import { assignmentQuestionKey, assignmentQuestionUndo, mergeAssignmentQuestionResults, type AssignmentQuestionChange, type AssignmentQuestionWorkbook } from "./assignment-question-contract";
 
 export function AssignmentQuestionWorkbench({ initial }: { initial: AssignmentQuestionWorkbook }) {
@@ -49,6 +50,10 @@ export function AssignmentQuestionWorkbench({ initial }: { initial: AssignmentQu
     <DashboardCommandPanel>
       <DashboardCommandState><span className="text-xs text-muted">{t("scope", { students: data.students.length, questions: data.questions.length })}</span><span className="text-xs text-muted">{t("paperHint")}</span></DashboardCommandState>
       <DashboardCommandActions>{data.canWrite && <Button size="sm" variant="secondary" onClick={() => setAdding(value => !value)} disabled={pending || data.questions.length >= 60}>{t("addQuestions")}</Button>}
+        <HomeworkDocumentEditor scope="assignment" targetId={data.assignment.id} onSaved={saved => {
+          setData(current => ({ ...current, assignment: { ...current.assignment, title: saved.document.topic }, questions: saved.document.questions.map((row, position) => ({ id: row.id, title: [row.group, row.label].filter(Boolean).join(" · "), position })) }));
+          setAdding(false);
+        }} />
         <Button size="sm" variant="ghost" disabled={pending} onClick={() => router.refresh()}>{t("reload")}</Button>
       </DashboardCommandActions>
     </DashboardCommandPanel>

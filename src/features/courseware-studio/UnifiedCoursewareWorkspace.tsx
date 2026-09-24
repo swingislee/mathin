@@ -16,6 +16,8 @@ import {
   ObjectWorkspace,
 } from "@/features/school/object-workspace";
 import type { LectureWorkspaceDetail } from "@/features/school/curriculum/types";
+import { HomeworkDocumentEditor } from "@/features/school/HomeworkDocumentEditor";
+import { DashboardCommandActions, DashboardCommandPanel, DashboardCommandState } from "@/features/school/dashboard-page";
 import type { CoursewareLecturePreview, CoursewareTrack } from "./data";
 import { CoursewareFormalPageRail } from "./CoursewareFormalPageRail";
 import { FittedCoursewareCanvas } from "./FittedCoursewareCanvas";
@@ -212,7 +214,7 @@ export async function UnifiedCoursewareWorkspace({
         status={<Badge variant="outline">{t(pageEditor || formalCubeEditor ? "formalEditorStatus" : sourceRuntimeEditor ? "sourceEditorStatus" : "sourceReadOnlyStatus")}</Badge>}
       />}
       navigation={(
-        <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
+        <DashboardCommandPanel><DashboardCommandState>
           <ObjectTabs items={canvasItems} activeValue={visibleCanvas} ariaLabel={t("canvasNavigation")} />
           {adaptedCanvasFellBack ? (
             <p className="flex min-w-0 flex-1 items-center gap-2 text-xs leading-5 text-amber-700 dark:text-amber-300" role="status">
@@ -220,11 +222,13 @@ export async function UnifiedCoursewareWorkspace({
               <span>{t("adaptedFallbackNotice")}</span>
             </p>
           ) : null}
+          </DashboardCommandState><DashboardCommandActions>
+          <HomeworkDocumentEditor scope="lecture" targetId={detail.lecture.id} />
           <div className="ml-auto flex shrink-0 items-center" data-courseware-publication-navigation>
             <FormalCoursewarePublicationDialog key={`${detail.lecture.id}:${visibleCanvas}`} lectureId={detail.lecture.id}
               track={visibleCanvas === "compare" && (pageEditor || sourceRuntimeEditor) ? "adapted-4x3" : formalCubeEditor?.track ?? pageEditor?.track ?? sourceRuntimeEditor?.track ?? visibleTrack} />
           </div>
-        </div>
+          </DashboardCommandActions></DashboardCommandPanel>
       )}
     >
       <AutomaticLectureAdaptation key={detail.lecture.id} lectureId={detail.lecture.id} missingCount={formalWorkspacePages?.filter((page) => page.nativeAvailable && !page.adaptedAvailable).length ?? 0}>

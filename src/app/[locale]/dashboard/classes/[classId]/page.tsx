@@ -29,6 +29,7 @@ import { OperationalRecordsPanel } from "@/features/school/OperationalRecordsPan
 import { PublicClassSourcePanel } from "@/features/school/PublicClassSourcePanel";
 import { listPublicClassesForClassroom } from "@/features/school/public-class";
 import { RosterPanel } from "@/features/school/RosterPanel";
+import { HomeworkDocumentEditor } from "@/features/school/HomeworkDocumentEditor";
 import { loadRosterFollowUps } from "@/features/school/roster-followups";
 import { SessionGroupList } from "@/features/school/SessionGroupList";
 import { SessionManagementDrawer } from "@/features/school/SessionManagementDrawer";
@@ -255,8 +256,9 @@ async function ClassDetailBody({
                 ariaLabel={t("tabsLabel")}
               />
             </DashboardCommandState>
-            {(primaryAction || isManagementView) ? (
+            {(primaryAction || isManagementView || perms.has("review.write")) ? (
               <DashboardCommandActions>
+                {perms.has("review.write") && <HomeworkDocumentEditor scope="classroom" targetId={classroom.id} />}
                 {primaryAction}
                 {isManagementView ? (
                   <Suspense fallback={<span aria-label={t("settings")} className="size-8 animate-pulse rounded-md bg-muted/10" />}>
