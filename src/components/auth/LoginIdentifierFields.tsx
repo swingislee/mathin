@@ -12,6 +12,8 @@ const inputClass = "h-full min-w-0 border-0 bg-transparent shadow-none focus-vis
 
 export function EmailLoginInput({ id, disabled, autoFocus, value, onChange }: FieldProps & { value: EmailInputParts; onChange: (value: EmailInputParts) => void }) {
   const t = useTranslations("auth");
+  // 下拉框只同步已知选项；自定义文本不进入原生 select，避免被空值事件清除。
+  const selectedDomain = COMMON_EMAIL_DOMAINS.find((domain) => domain === value.domain) ?? "";
   return <div className="space-y-2">
     <Label htmlFor={`${id}-local`}>{t("email")}</Label>
     <div className={groupClass} role="group" aria-label={t("email")}>
@@ -24,7 +26,7 @@ export function EmailLoginInput({ id, disabled, autoFocus, value, onChange }: Fi
         className={`${inputClass} w-0 flex-1 px-1`} value={value.domain} placeholder={t("emailDomainPlaceholder")}
         aria-label={t("emailDomain")} pattern={"[^@\\s]+\\.[^@\\s]+"} required maxLength={253} readOnly={disabled}
         onChange={(event) => onChange({ ...value, domain: event.target.value.replace(/^@/, "") })} />
-      <Select value={value.domain} onValueChange={(domain) => onChange({ ...value, domain })} disabled={disabled}>
+      <Select value={selectedDomain} onValueChange={(domain) => { if (domain) onChange({ ...value, domain }); }} disabled={disabled}>
         <SelectTrigger aria-label={t("commonEmailDomains")} className="mr-1 h-9 w-8 shrink-0 justify-center rounded-full border-0 bg-transparent p-0 shadow-none hover:translate-y-0 focus:ring-0">
           <span className="sr-only">{value.domain}</span>
         </SelectTrigger>
