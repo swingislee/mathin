@@ -42,10 +42,16 @@ node scripts/wechat-auth-compat-local.mjs --patched
 - `node scripts/wechat-auth-image-local.mjs`：从固定 commit 压缩包另行解压构建源，核对并应用最小补丁。依赖使用 `go.mod` / `go.sum`，编译及镜像组装关闭网络。运行层固定到原版镜像 digest，仅替换 Auth 二进制，生成本机 `mathin/gotrue:v2.189.0-wechat.1`，版本为 `v2.189.0-mathin.wechat.1`。
 - `node scripts/wechat-auth-image-smoke-local.mjs`：候选镜像及固定 previous 镜像分别运行临时实例，连接强制 `default_transaction_read_only=on`，健康与版本检查通过。原 `supabase-auth` 服务未重启、替换或改配置。构建摘要与检查记录保留在 `.tmp/wechat-auth-compat/image/`。
 
-上述 SDK 检查覆盖原生 Auth 协议与数据库集成。应用的浏览器 Cookie／会话关联、MFA 与原密码门另由 `tests/wechat-session.test.ts` 和现有 broker／callback 测试覆盖；它们不代替真实 HTTPS 站点和微信扫码验收。临时镜像的启动检查也不表示已切换开发或生产服务。
+上述 SDK 检查覆盖原生 Auth 协议与数据库集成。应用的会话关联、MFA 与原密码门另由 `tests/wechat-session.test.ts` 和现有 broker／callback 测试覆盖。临时镜像的启动检查不表示已切换开发或生产服务。
+
+2026-09-25 新增 `node scripts/wechat-next-local.mjs`：独立 Next.js 运行时通过 HTTPS 执行当前 broker、callback 与 SSR Cookie 代码，原生 Auth 仍连接同一个回滚事务。中文邮箱／英文 +86 手机号完成游客扫码、原密码登录、复用游客证明绑定、微信重新登录原 UUID；并检查跨浏览器、切换会话、重复回调拒绝及临时 Cookie 清除。协议替身只替换微信上游和票据 REST，数据库/RLS 由原 SQL 检查单独覆盖。测试不控制浏览器，不替代人工页面验收。
+
+该 runner 需要 Git for Windows 的 OpenSSL、上述补丁源与 Go 缓存。证书只在 `.tmp/wechat-next/` 生成，Next 子进程与 Auth fixture 单独信任；微信 HTTP 拦截器仅在该子进程加载，产品没有 mock 开关。临时监听仅绑定 loopback，日志和回执不进入 Git；结束后清除进程／容器并验证账号及会话数据回滚。
+
+独立应用只加载相关 Route Handler，并用测试入口调用共用会话函数；产品的 Server Action、Proxy、页面与业务 RLS 继续由原有定向检查和人工验收覆盖。该隔离检查通过不等于完整生产部署通过。
 
 ## 启用前仍需完成
 
-在选定 HTTPS 站点接通实际 Next.js 桥接、候选 Auth 镜像及 provider 配置，验证同一浏览器 Cookie、回调来源、代理／日志设置与过期票据清理。网站应用审核通过并配置服务端私有凭据后，完成真实扫码、原账号绑定及微信再次登录验收。完成这些条件前保持 `WECHAT_AUTH_COMPATIBILITY_VERIFIED`、`WECHAT_PHONE_LINKING_VERIFIED` 和 `WECHAT_OAUTH_ENABLED` 关闭。
+在选定部署环境接通 Next.js、实际 REST 数据库、候选 Auth 镜像及 provider 配置，验证代理／日志设置与定期清理运行。网站应用审核通过并配置服务端私有凭据后，完成真实扫码、原账号绑定及微信再次登录验收。完成这些条件前保持 `WECHAT_AUTH_COMPATIBILITY_VERIFIED`、`WECHAT_PHONE_LINKING_VERIFIED` 和 `WECHAT_OAUTH_ENABLED` 关闭。
 
 生产 Auth 升级与数据库迁移另按[写入目标规则](../../docs/runbooks/r1-write-target-policy.md)完成只读 preflight 和本次授权。本目录的检查脚本只接受既定的本机隔离目标。

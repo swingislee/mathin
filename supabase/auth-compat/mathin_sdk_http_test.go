@@ -5,6 +5,7 @@ package api
 import (
 	"context"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -59,6 +60,14 @@ func TestMathinWechatSDKRollback(t *testing.T) {
 			return errors.New("fixed password identity required")
 		}
 		authorizeURL, tokenURL, userinfoURL := "https://127.0.0.1:9091/mock/authorize", "https://127.0.0.1:9091/mock/token", "https://127.0.0.1:9091/mock/userinfo"
+		bridge, bridgeErr := url.Parse(os.Getenv("MATHIN_NEXT_SITE_ORIGIN"))
+		bridgeEnabled := os.Getenv("MATHIN_NEXT_SITE_ORIGIN") != ""
+		if bridgeEnabled {
+			if bridgeErr != nil || bridge.Scheme != "https" || bridge.Hostname() != "localhost" || bridge.Port() == "" || bridge.Path != "" || bridge.RawQuery != "" || bridge.User != nil {
+				return errors.New("local Next fixture origin required")
+			}
+			authorizeURL, tokenURL, userinfoURL = bridge.String()+"/zh/auth/wechat/authorize", bridge.String()+"/zh/auth/wechat/token", bridge.String()+"/zh/auth/wechat/userinfo"
+		}
 		provider := &models.CustomOAuthProvider{
 			ID: uuid.Must(uuid.NewV4()), ProviderType: models.ProviderTypeOAuth2, Identifier: "custom:wechat", Name: "Mathin transaction fixture",
 			ClientID: "mathin-wechat", ClientSecret: os.Getenv("MATHIN_FIXTURE_KEY"), Scopes: slices.String{}, PKCEEnabled: true, EmailOptional: true, Enabled: true,
@@ -229,7 +238,26 @@ func TestMathinWechatSDKRollback(t *testing.T) {
 		defer server.Close()
 		// 仅此 fixture 信任 httptest 的证书，应用与正式 Auth 的 TLS 验证保持原样。
 		originalTransport := http.DefaultTransport
-		http.DefaultTransport = server.Client().Transport
+		transport := server.Client().Transport.(*http.Transport).Clone()
+		if bridgeEnabled {
+			pem, err := os.ReadFile("/next-fixture-ca.pem")
+			if err != nil {
+				return errors.New("Next fixture certificate missing")
+			}
+			if transport.TLSClientConfig.RootCAs == nil {
+				transport.TLSClientConfig.RootCAs = x509.NewCertPool()
+			}
+			if !transport.TLSClientConfig.RootCAs.AppendCertsFromPEM(pem) {
+				return errors.New("Next fixture certificate invalid")
+			}
+			transport.DialContext = func(ctx context.Context, network, address string) (net.Conn, error) {
+				if address == bridge.Host {
+					address = net.JoinHostPort("host.docker.internal", bridge.Port())
+				}
+				return (&net.Dialer{Timeout: 10 * time.Second}).DialContext(ctx, network, address)
+			}
+		}
+		http.DefaultTransport = transport
 		defer func() { http.DefaultTransport = originalTransport }()
 		select {
 		case <-done:
