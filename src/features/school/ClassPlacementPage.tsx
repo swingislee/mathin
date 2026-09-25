@@ -10,6 +10,7 @@ import { DashboardEmptyCard, DashboardPage } from "@/features/school/dashboard-p
 import { ClassWorkspaceCommandPanel } from "./ClassWorkspaceCommandPanel";
 import { getClassRosterSessions } from "./class-roster-session-read";
 import { ClassWorkspaceActions } from "./ClassWorkspaceActions";
+import { ClassWorkspaceMemory } from "./ClassWorkspaceMemory";
 import { workEntryMessages, type WorkEntryQuery } from "./work-entry-contract";
 
 export default async function CourseEnrollmentsPage({
@@ -29,6 +30,7 @@ export default async function CourseEnrollmentsPage({
     if (!await isTeacherWorkspaceViewer(user.id)) redirect({ locale, href: '/dashboard' });
     const t = await getTranslations("school.followupWorkspace");
     return <DashboardPage title={m.classes} density="compact" commandPanel={<ClassWorkspaceCommandPanel
+      navigation={<ClassWorkspaceMemory query={{ ...query, view: "arrange", scope: "all" }} />}
       actions={<ClassWorkspaceActions canTeach={canTeach} query={query} />}
     />}><DashboardEmptyCard>{t("noTeachingClassForPlacement")}</DashboardEmptyCard></DashboardPage>;
   }
@@ -49,7 +51,7 @@ export default async function CourseEnrollmentsPage({
 
   return (
     <EnrollmentPlacementWorkbench
-      key={`${query.term ?? ""}:${query.student ?? ""}:${focusClassroomId ?? ""}:${focusSessionId ?? ""}`}
+      key={`${query.scope ?? ""}:${query.fields ?? ""}:${query.term ?? ""}:${query.student ?? ""}:${focusClassroomId ?? ""}:${focusSessionId ?? ""}`}
       workspace="classes"
       canTeach={canTeach}
       workspaceQuery={query}

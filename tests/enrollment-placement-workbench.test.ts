@@ -59,10 +59,14 @@ const board: EnrollmentPlacementBoard = {
   enrollments: [enrollment("pending-fourth"), enrollment("pending-fifth", "math-5"), enrollment("pending-spring", "math-4", "spring"), enrollment("withdrawn-pending", "math-4", "autumn", "cancelled")],
 };
 
-function renderRoster(initialTermId?: string, props: Partial<ComponentProps<typeof EnrollmentPlacementWorkbench>> = {}) {
-  const markup = renderToStaticMarkup(createElement(IntlProvider, {
+function renderWorkbench(props: Partial<ComponentProps<typeof EnrollmentPlacementWorkbench>> = {}) {
+  return renderToStaticMarkup(createElement(IntlProvider, {
     locale: "zh", timeZone: "Asia/Shanghai", now: new Date("2026-09-05T00:00:00Z"), messages,
-  },createElement(EnrollmentPlacementWorkbench, { initialBoard: board, initialTermId, canCreateClass: false, ...props })));
+  },createElement(EnrollmentPlacementWorkbench, { initialBoard: board, canCreateClass: false, ...props })));
+}
+
+function renderRoster(initialTermId?: string, props: Partial<ComponentProps<typeof EnrollmentPlacementWorkbench>> = {}) {
+  const markup = renderWorkbench({ initialTermId, ...props });
   const body = markup.match(/<tbody\b[^>]*>([\s\S]*?)<\/tbody>/)?.[1];
   expect(body, "the workbench renders its class roster as a table body").toBeDefined();
   return [...body!.matchAll(/<tr\b([^>]*)>([\s\S]*?)<\/tr>/g)].map((match) => ({
@@ -76,6 +80,50 @@ const studentKeys = (content: string) => [...content.matchAll(/data-placement-st
 const classroomId = (attributes: string) => attributes.match(/data-placement-classroom="([^"]+)"/)?.[1];
 
 describe("enrollment placement class roster", () => {
+  const teachingBoard = (ids = ["autumn-4"]): EnrollmentPlacementBoard => ({ ...board,
+    access: { canManageEnrollments: true, teacherClassroomIds: ids, managedClassroomIds: board.options.classrooms.map(row => row.id) } });
+
+  it("defaults actual teachers to their own classes and keeps all permitted classes available", () => {
+    const props = { initialBoard: teachingBoard(), workspace: "classes" as const, canTeach: true };
+    const mine = renderRoster(undefined, props);
+    expect(mine.map(row => classroomId(row.attributes)).filter(Boolean)).toEqual(["autumn-4"]);
+    expect(mine.some(row => row.attributes.includes("data-placement-pending"))).toBe(false);
+    expect(mine.flatMap(row => studentKeys(row.content))).not.toContain("assigned-fifth");
+    const markup = renderWorkbench(props);
+    expect(markup).toMatch(/aria-current="page"[^>]*>我的班级<\/a>/);
+    expect(markup).toContain("全部可见班级");
+    const all = renderRoster(undefined, { ...props, workspaceQuery: { scope: "all" } });
+    expect(all.map(row => classroomId(row.attributes)).filter(Boolean).sort()).toEqual(board.options.classrooms.filter(row => row.termId === "autumn").map(row => row.id).sort());
+    expect(all.flatMap(row => studentKeys(row.content))).toContain("pending-fourth");
+  });
+
+  it("shows no personal tab without an available taught class, even with class permissions or stale memory", () => {
+    for (const initialBoard of [board, teachingBoard([]), teachingBoard(["removed-class"])]) {
+      const props = { initialBoard, workspace: "classes" as const, canTeach: true, workspaceQuery: { scope: "mine" } };
+      expect(renderWorkbench(props)).not.toContain("我的班级");
+      expect(renderRoster(undefined, props).map(row => classroomId(row.attributes)).filter(Boolean)).toContain("autumn-5");
+    }
+  });
+
+  it("selects a taught term when none of the teacher's classes is in the current term", () => {
+    const rows = renderRoster(undefined, { initialBoard: teachingBoard(["spring-4"]), workspace: "classes" });
+    expect(rows.map(row => classroomId(row.attributes)).filter(Boolean)).toEqual(["spring-4"]);
+    expect(rows.flatMap(row => studentKeys(row.content))).toEqual(["assigned-spring"]);
+  });
+
+  it("lets classroom deep links locate a permitted class outside the teacher's own roster", () => {
+    const rows = renderRoster(undefined, { initialBoard: teachingBoard(), workspace: "classes", focusClassroomId: "autumn-5" });
+    expect(rows.map(row => classroomId(row.attributes)).filter(Boolean)).toEqual(["autumn-5"]);
+  });
+
+  it("restores multiple column choices even when one classroom is selected", () => {
+    const fields = JSON.stringify({ version: 2, filters: { classroom: { kind: "enum", values: ["autumn-4"] }, grade: { kind: "enum", values: ["5"] } } });
+    const rows = renderRoster(undefined, { workspace: "classes", focusClassroomId: "autumn-4", workspaceQuery: { scope: "all", fields } });
+    expect(rows.map(row => classroomId(row.attributes)).filter(Boolean)).toEqual([]);
+    const invalid = renderRoster(undefined, { workspace: "classes", focusClassroomId: "autumn-4", workspaceQuery: { fields: "invalid json" } });
+    expect(invalid.map(row => classroomId(row.attributes)).filter(Boolean)).toEqual(["autumn-4"]);
+  });
+
   it("uses the placement structure as the classes home with full rosters and class-specific teaching entry", () => {
     const initialBoard = { ...board, options: { ...board.options, classrooms: board.options.classrooms.map(value => value.id === "autumn-4" ? {
       ...value, teacherNames: "甲老师、乙老师", sessions: [{ at: "2026-09-05T02:00:00Z", duration: 90 }],

@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils";
 import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
 import { Student360Trigger } from "./Student360Sheet";
 import { ClassWorkspaceActions } from "./ClassWorkspaceActions";
+import { ClassWorkspaceMemory } from "./ClassWorkspaceMemory";
+import { classRosterScope, myRosterClassroomIds } from "./class-workspace-preferences";
 import { ClassRosterSessionRow } from "./ClassRosterSessionRow";
 import { classSessionMessages, orderedClassSessions, type ClassRosterSession } from "./class-roster-session-contract";
 import { ClassWorkspaceCommandPanel } from "./ClassWorkspaceCommandPanel";
@@ -26,6 +28,7 @@ import { PLACEMENT_WORK_FILTERS, placementClassMatchesWorkFilter, type Placement
 import { DashboardPage, DashboardTableColumnHeader, DashboardTableShell } from "./dashboard-page";
 import { FollowupTableBody } from "./dashboard-page/FollowupRecordRow";
 import { useDashboardFieldView } from "./dashboard-page/useDashboardFieldView";
+import { normalizeDashboardFieldQuery } from "./dashboard-page/dashboard-table-field-contract";
 import { PLACEMENT_TABLE_COLUMNS, placementTableFields, type PlacementRosterRow as RosterRow } from "./placement-table-fields";
 import { LeadPoolPagination } from "./LeadPoolPagination";
 import { useFollowupPagination } from "./useFollowupPagination";
@@ -144,6 +147,8 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   const pointerPosition = useRef<{ clientX: number; clientY: number } | null>(null);
   const [savedBoard, setSavedBoard] = useState<{ base: EnrollmentPlacementBoard; value: EnrollmentPlacementBoard } | null>(null);
   const board = savedBoard?.base === initialBoard ? savedBoard.value : initialBoard;
+  const myClassroomIds = useMemo(() => myRosterClassroomIds(board), [board]);
+  const rosterScope = workspace === "classes" ? classRosterScope(workspaceQuery.scope, myClassroomIds.size > 0, Boolean(focusClassroomId || focusStudentId)) : "all";
   const [query, setQuery] = useBusinessSearchQuery("class-roster",initialQuery);
   const [workFilter, setWorkFilter] = useFollowupWorkFilter("class-roster", PLACEMENT_WORK_FILTERS, "all");
   const recordM=businessRecordMessages(locale);
@@ -157,7 +162,10 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   const students = useMemo(() => placementStudents(board), [board]);
   const renewedMembershipIds = new Set(board.renewedMembershipIds ?? []);
   const selected = students.find((student) => student.key === selectedKey) ?? null;
-  const rows = useMemo(() => [...rosterRows(board, students),...sourceRosterRows(board,history)], [board, students,history]);
+  const rows = useMemo(() => rosterScope === "mine"
+    ? rosterRows({ ...board, options: { ...board.options, classrooms: board.options.classrooms.filter(row => myClassroomIds.has(row.id)) } },
+      students.filter(row => row.classroomId && myClassroomIds.has(row.classroomId)))
+    : [...rosterRows(board, students), ...sourceRosterRows(board, history)], [board, students, history, rosterScope, myClassroomIds]);
   const terms = new Map(board.options.terms.map((term) => [term.id, term.name]));
   const courses = new Map(board.options.courses.map((course) => [course.id, course.title]));
   const difficulties = new Map(board.options.courses.map((course) => [course.id, course.classType]));
@@ -170,15 +178,21 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   const explicitTerm = board.options.terms.find((term) => term.id === initialTermId)?.id;
   const currentTerm = board.options.terms.find((term) => term.isCurrent)?.id;
   const focusClassroom = board.options.classrooms.find(classroom => classroom.id === focusClassroomId);
-  const defaultTerm = initialTermId === "all" ? undefined : explicitTerm ?? focused?.termId ?? focusClassroom?.termId ?? currentTerm;
+  const myTerms = new Set(board.options.classrooms.filter(row => myClassroomIds.has(row.id)).map(row => row.termId));
+  const myTerm = currentTerm && myTerms.has(currentTerm) ? currentTerm : board.options.terms.find(term => myTerms.has(term.id))?.id;
+  const defaultTerm = initialTermId === "all" ? undefined : explicitTerm ?? focused?.termId ?? focusClassroom?.termId ?? (rosterScope === "mine" ? myTerm : currentTerm);
+  const restoredFields = useMemo(() => {
+    if (typeof workspaceQuery.fields !== "string" || focusStudentId || focusSessionId) return undefined;
+    try { return normalizeDashboardFieldQuery(fields, JSON.parse(workspaceQuery.fields)); } catch { return undefined; }
+  }, [workspaceQuery.fields, fields, focusStudentId, focusSessionId]);
   const searchableRows=rows.filter(row=>!query.trim()||[
     row.classroom?.name??'',...row.students.flatMap(student=>[student.name,student.phone]),
     ...(row.sourceEnrollments??[]).flatMap(fact=>[history?.students[businessSubjectKey(fact)]??'',history?.subjects[businessSubjectKey(fact)]?.phone??'',fact.period_label,fact.class_label,fact.teacher_label,fact.note??'']),
   ].join(' ').toLocaleLowerCase(locale).includes(query.trim().toLocaleLowerCase(locale)));
   // 当前周期隶属已启用学年；按周期保存展示偏好，指定入口保留自身定位。
   const table = useDashboardFieldView({ rows: searchableRows, fields, columns: PLACEMENT_TABLE_COLUMNS, context,
-    persistenceKey: initialTermId || focused || focusClassroom ? undefined : `class-roster-fields-v4:${currentTerm ?? "all"}`,
-    initialQuery: { version: 2, filters: {
+    persistenceKey: initialTermId || focused || focusClassroom || restoredFields ? undefined : `class-roster-fields-v4:${rosterScope === "mine" ? "mine:" : ""}${currentTerm ?? "all"}`,
+    initialQuery: restoredFields ?? { version: 2, filters: {
       ...(defaultTerm ? { term: { kind: "enum", values: [defaultTerm] } } : {}),
       ...(!explicitTerm && focused ? { grade: { kind: "enum", values: [String(focused.grade)] } } : {}),
       ...(focusClassroom ? { classroom: { kind: "enum", values: [focusClassroom.id] } } : {}),
@@ -193,6 +207,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   }).map(row => row.group));
   // 待分班保留同组目标班级及已占座位；班额筛选只收窄班级，不生成虚假空位。
   const matchedRows = table.visibleRows.filter(row => {
+    if (rosterScope === "mine" && !row.classroom) return false;
     if (effectiveWorkFilter === "all") return true;
     if (row.historical || !matchingGroups.has(row.group)) return false;
     return row.classroom ? placementClassMatchesWorkFilter(row.classroom, effectiveWorkFilter) : true;
@@ -360,7 +375,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   const retiredRow = (retired: PlacementStudent[], label: string) => retired.length ? <TableRow className="hover:bg-transparent"><TableCell colSpan={4} className="sticky left-0 z-10 border-r border-line bg-card px-2 py-1 text-[11px] text-muted">{label}</TableCell><TableCell className="p-0"><div className={NAME_GRID}>{retired.map((student) => studentTile(studentTileRecord(student)))}</div></TableCell></TableRow> : null;
   const selectedTermId = table.filters.term?.kind === "enum" && table.filters.term.values.length === 1 ? table.filters.term.values[0] : undefined;
   const selectedClassroomId = table.filters.classroom?.kind === "enum" && table.filters.classroom.values.length === 1 ? table.filters.classroom.values[0] : undefined;
-  const rosterQuery: WorkEntryQuery = { ...workspaceQuery, group: groupBy, term: selectedTermId ?? "all", classroom: selectedClassroomId,
+  const rosterQuery: WorkEntryQuery = { ...workspaceQuery, scope: rosterScope, group: groupBy, term: selectedTermId ?? "all", classroom: selectedClassroomId,
     session: expandedSessionRow && selectedClassroomId === focusClassroomId ? focusSessionId : undefined,
     period: "term", date: undefined, state: undefined, q: query || undefined };
   const hasFilters = Boolean(query.trim() || workFilter !== "all" || Object.keys(table.filters).some(key => key !== "term"));
@@ -379,7 +394,14 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
       pointer.cancel(); setSelectedKey(null); setQuery(""); setWorkFilter("all"); table.columnProps("classroom").onClearAll?.();
     }}>{workM.clearRosterFilters}</Button> : null}
   </>;
-  return <div data-class-workspace className="contents"><DashboardPage title={workM.classes} density="compact" commandPanel={<ClassWorkspaceCommandPanel
+  return <div data-class-workspace className="contents">
+    {workspace === "classes" ? <ClassWorkspaceMemory query={{ ...rosterQuery, session: workspaceQuery.session, student: workspaceQuery.student,
+      fields: JSON.stringify({ version: 2, filters: table.filters, sort: table.sort }) }} /> : null}
+    <DashboardPage title={workM.classes} density="compact" commandPanel={<ClassWorkspaceCommandPanel
+    navigation={workspace === "classes" && myClassroomIds.size > 0 ? <RouteTabs ariaLabel={workM.classScope} activeValue={rosterScope} activeTone="accent" items={(["mine", "all"] as const).map(scope => ({
+      value: scope, label: scope === "mine" ? workM.myClasses : workM.visibleClasses,
+      href: classWorkHref("arrange", { ...rosterQuery, scope, classroom: undefined, session: undefined, student: undefined }),
+    }))} /> : null}
     grouping={<RouteTabs ariaLabel={teachingT("grouping.title")} activeValue={groupBy} items={(["grade", "teacher"] as const).map(group => ({
       value: group, label: teachingT(group === "grade" ? "grouping.byGrade" : "grouping.byTeacher"), href: classWorkHref("arrange", { ...rosterQuery, group }),
     }))} />}
@@ -410,7 +432,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
           <TableHead className="sticky left-80 top-0 z-30 border-r border-line bg-card [&>div]:ml-0 [&_svg]:size-2 [&_button]:gap-0.5 [&_button]:px-0 [&_button]:text-[10px]"><DashboardTableColumnHeader label={locale === "en" ? "Level" : "难度"} {...table.columnProps("difficulty")} /></TableHead>
           <TableHead className="sticky top-0 z-20 bg-card"><DashboardTableColumnHeader label={t("student")} {...table.columnProps("health")} /></TableHead>
         </TableRow></TableHeader>
-        <FollowupTableBody navigation="tree" onNavigate={key => { setActiveRecordKey(key); return true; }}>{board.access?.canManageEnrollments!==false?<SchoolSupportPendingRows workspace="enrollments" colSpan={5} />:null}{sections.map((section) => {
+        <FollowupTableBody navigation="tree" onNavigate={key => { setActiveRecordKey(key); return true; }}>{rosterScope === "all" && board.access?.canManageEnrollments!==false?<SchoolSupportPendingRows workspace="enrollments" colSpan={5} />:null}{sections.map((section) => {
           const group = section.key;
           const first = section.rows[0];
           const scope = section.teacherName !== undefined ? first : rows.find((row) => row.group === group && !row.classroom)!;

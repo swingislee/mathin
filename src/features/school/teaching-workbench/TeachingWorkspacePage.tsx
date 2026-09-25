@@ -1,4 +1,5 @@
 import { ClassWorkspaceTabs } from "../ClassWorkspaceTabs";
+import { ClassWorkspaceMemory } from "../ClassWorkspaceMemory";
 import { ClassWorkspaceCommandPanel } from "../ClassWorkspaceCommandPanel";
 import { ClassWorkspaceActions } from "../ClassWorkspaceActions";
 import { workEntryMessages } from "../work-entry-contract";
@@ -56,7 +57,7 @@ async function TeachingContent({ locale, searchParams }: { locale: string; searc
   };
   return <DashboardPage title={workEntryMessages(locale).classes} density="compact" commandPanel={
     <ClassWorkspaceCommandPanel
-      navigation={<ClassWorkspaceTabs active={view} canTeach query={query} />}
+      navigation={<><ClassWorkspaceMemory query={{ ...query, view }} /><ClassWorkspaceTabs active={view} canTeach query={query} /></>}
       period={view !== "tasks" ? <TeachingPeriodPicker key={`${period}:${selection}:${selectedWindow?.termId ?? ""}`} grain={period} window={selectedWindow} baseHref={progressHref()} terms={terms} today={calendarDayKey(new Date(), timeZone)} /> : null}
       actions={<ClassWorkspaceActions canTeach query={query} />}
     />

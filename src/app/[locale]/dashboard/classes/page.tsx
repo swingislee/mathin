@@ -2,6 +2,7 @@ import { setRequestLocale } from "next-intl/server";
 import { getMyPerms, requireDashboardEnvironment } from "@/lib/auth";
 import ClassPlacementPage from "@/features/school/ClassPlacementPage";
 import ClassDirectoryPage from "@/features/school/ClassDirectoryPage";
+import { ClassWorkspaceEntry } from "@/features/school/ClassWorkspaceMemory";
 import TeachingWorkspacePage from "@/features/school/teaching-workbench/TeachingWorkspacePage";
 import type { WorkEntryQuery } from "@/features/school/work-entry-contract";
 
@@ -11,6 +12,7 @@ export default async function ClassesPage({ params, searchParams }: {
   const [{ locale }, query] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
   const { user } = await requireDashboardEnvironment(locale, ["staff"]);
+  if (!Object.keys(query).length) return <ClassWorkspaceEntry />;
   const permissions = await getMyPerms(user.id);
   const canTeach = permissions.has("class.view.mine") || permissions.has("class.view.all");
   const view = typeof query.view === "string" ? query.view : "arrange";

@@ -1,4 +1,5 @@
 import { ClassWorkspaceTabs } from "./ClassWorkspaceTabs";
+import { ClassWorkspaceMemory } from "./ClassWorkspaceMemory";
 import { Suspense } from "react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { buttonVariants } from "@/components/ui/button";
@@ -66,6 +67,7 @@ async function ClassroomCommandPanel({ locale, searchParams }: { locale: string;
   const filters = parseClassroomListFilters(rawSearchParams);
   return (
     <DashboardCommandPanel>
+      <ClassWorkspaceMemory query={{ ...rawSearchParams, view: "directory", scope: scope.scope }} />
       <DashboardCommandState>
         <ClassWorkspaceTabs active="directory" canTeach={perms.has("class.view.mine") || perms.has("class.view.all")} query={rawSearchParams} />
         <ClassroomScopeSwitch activeScope={scope.scope} availableScopes={scope.availableScopes} />

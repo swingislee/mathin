@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ClassesPage from "../src/app/[locale]/dashboard/classes/page";
 import EnrollmentsPage from "../src/features/school/ClassPlacementPage";
+import { ClassWorkspaceEntry } from "../src/features/school/ClassWorkspaceMemory";
 
 const mocks = vi.hoisted(() => ({ teacher: vi.fn(), permissions: vi.fn(), capability: vi.fn(), board: vi.fn(), history: vi.fn(), redirect: vi.fn(), sessions: vi.fn() }));
 vi.mock("server-only", () => ({}));
@@ -8,6 +9,7 @@ vi.mock("next-intl/server", () => ({ setRequestLocale: vi.fn(), getTranslations:
 vi.mock("@/lib/auth", () => ({ requireUser: async () => ({ id: "teacher-a" }), requireDashboardEnvironment: async () => ({ user: { id: "teacher-a" } }), getMyPerms: mocks.permissions }));
 vi.mock("@/features/school/teacher-workspace", () => ({ isTeacherWorkspaceViewer: mocks.teacher }));
 vi.mock("@/features/school/TeacherWorkspaceMemory", () => ({ TeacherWorkspaceEntry: () => null }));
+vi.mock("@/features/school/ClassWorkspaceMemory", () => ({ ClassWorkspaceEntry: () => null, ClassWorkspaceMemory: () => null }));
 vi.mock("@/features/school/enrollment-workflow-data", () => ({ enrollmentWorkflowRpc: mocks.capability, loadEnrollmentPlacementBoard: mocks.board }));
 vi.mock("@/features/school/student-business-history-data", () => ({ loadStudentBusinessHistory: mocks.history }));
 vi.mock("@/features/school/organization-locations", () => ({ getOrganizationTimezoneV2: async () => "Asia/Shanghai" }));
@@ -31,18 +33,18 @@ describe("teacher entry and placement access", () => {
     mocks.redirect.mockImplementation(() => { throw new Error("REDIRECT"); });
   });
 
-  it("starts teachers in the placement roster without a role-based view switch", async () => {
+  it("restores the teacher's last selection before loading a class view", async () => {
     const page = await ClassesPage({ params, searchParams: Promise.resolve({}) });
-    expect(page.type).toBe(EnrollmentsPage);
-    expect(await page.props.searchParams).toEqual({});
+    expect(page.type).toBe(ClassWorkspaceEntry);
+    expect(mocks.permissions).not.toHaveBeenCalled();
     expect(mocks.teacher).not.toHaveBeenCalled();
     expect(mocks.redirect).not.toHaveBeenCalled();
   });
 
-  it("starts other employees in the placement workbench and respects explicit views", async () => {
+  it("restores other employees' selection and respects explicit views", async () => {
     mocks.teacher.mockResolvedValue(false);
     const page = await ClassesPage({ params, searchParams: Promise.resolve({}) });
-    expect(page.type).toBe(EnrollmentsPage);
+    expect(page.type).toBe(ClassWorkspaceEntry);
     mocks.teacher.mockResolvedValue(true);
     const explicit = await ClassesPage({ params, searchParams: Promise.resolve({ view: "arrange" }) });
     expect(explicit.type).toBe(EnrollmentsPage);
