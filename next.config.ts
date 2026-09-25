@@ -77,6 +77,8 @@ const nextConfig: NextConfig = {
   // OAuth query 含一次性 code/state，开发请求日志也不记录这些路径。
   logging: { incomingRequests: { ignore: [/\/(?:zh|en)\/auth\/(?:callback|wechat)(?:[/?]|$)/] } },
   experimental: {
+    // 交互题目文档与图片/H5 上传仍在各 Action 按内容类型单独限量。
+    serverActions: { bodySizeLimit: "16mb" },
     // 首次请求只加载所需路由；全站条目预载会与鉴权及页面读取争用事件循环。
     preloadEntriesOnStart: false,
     // 这里的预算只传给 Turbopack；JavaScript 堆由 pnpm dev 的 NODE_OPTIONS 单独限制。

@@ -1,0 +1,736 @@
+{
+  "text": {
+    "docVersion": "courseware-composition-v1",
+    "canvas": {
+      "width": 960,
+      "height": 720,
+      "backgroundColor": "#ffffff"
+    },
+    "source": null,
+    "overlay": {
+      "docVersion": "page-doc-v1",
+      "sourceCoursewareId": "teacher-composition-overlay",
+      "sourcePageId": null,
+      "sourcePageDatabaseId": 1,
+      "sourceSnapshotId": 1,
+      "sourceContentHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "canvas": {
+        "width": 960,
+        "height": 720,
+        "backgroundColor": null,
+        "backgroundBindingKey": null
+      },
+      "nodes": [
+        {
+          "id": "fixture-text",
+          "nodePath": "$.mathin.inserted.fixture-text",
+          "sourceType": "mathin:text",
+          "sourceResourceId": null,
+          "adapter": "text",
+          "name": "text",
+          "supported": true,
+          "visible": true,
+          "interactive": false,
+          "zIndex": 1001,
+          "order": 1001,
+          "crop": null,
+          "transform": {
+            "x": 0,
+            "y": 0,
+            "width": 480,
+            "height": 320,
+            "rotation": 0,
+            "scaleX": 1,
+            "scaleY": 1,
+            "anchorX": 0,
+            "anchorY": 0,
+            "opacity": 1,
+            "flipX": false,
+            "flipY": false,
+            "clip": true
+          },
+          "style": {
+            "objectFit": "contain",
+            "backgroundColor": null,
+            "color": "#2d2a26",
+            "borderColor": null,
+            "borderWidth": 0,
+            "borderRadius": 0,
+            "fontFamily": null,
+            "fontSize": 32,
+            "fontWeight": 500,
+            "lineHeight": 1.4,
+            "letterSpacing": null,
+            "whiteSpace": "pre-wrap",
+            "textAlign": "left",
+            "overflow": "hidden"
+          },
+          "content": {
+            "kind": "text",
+            "text": "新文本"
+          },
+          "resources": [],
+          "children": []
+        }
+      ],
+      "interactions": []
+    },
+    "layout": {
+      "version": "courseware-composition-grid-v1",
+      "columns": 12,
+      "rows": 9,
+      "blocks": [
+        {
+          "id": "node-fixture-text",
+          "placement": {
+            "column": 0,
+            "row": 0,
+            "columnSpan": 6,
+            "rowSpan": 4
+          },
+          "type": "node",
+          "nodeId": "fixture-text"
+        }
+      ]
+    }
+  },
+  "formula": {
+    "docVersion": "courseware-composition-v1",
+    "canvas": {
+      "width": 960,
+      "height": 720,
+      "backgroundColor": "#ffffff"
+    },
+    "source": null,
+    "overlay": {
+      "docVersion": "page-doc-v1",
+      "sourceCoursewareId": "teacher-composition-overlay",
+      "sourcePageId": null,
+      "sourcePageDatabaseId": 1,
+      "sourceSnapshotId": 1,
+      "sourceContentHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "canvas": {
+        "width": 960,
+        "height": 720,
+        "backgroundColor": null,
+        "backgroundBindingKey": null
+      },
+      "nodes": [
+        {
+          "id": "fixture-formula",
+          "nodePath": "$.mathin.inserted.fixture-formula",
+          "sourceType": "mathin:formula",
+          "sourceResourceId": null,
+          "adapter": "rich_text",
+          "name": "formula",
+          "supported": true,
+          "visible": true,
+          "interactive": false,
+          "zIndex": 1001,
+          "order": 1001,
+          "crop": null,
+          "transform": {
+            "x": 0,
+            "y": 0,
+            "width": 480,
+            "height": 320,
+            "rotation": 0,
+            "scaleX": 1,
+            "scaleY": 1,
+            "anchorX": 0,
+            "anchorY": 0,
+            "opacity": 1,
+            "flipX": false,
+            "flipY": false,
+            "clip": true
+          },
+          "style": {
+            "objectFit": "contain",
+            "backgroundColor": null,
+            "color": "#2d2a26",
+            "borderColor": null,
+            "borderWidth": 0,
+            "borderRadius": 0,
+            "fontFamily": null,
+            "fontSize": 34,
+            "fontWeight": 600,
+            "lineHeight": 1.4,
+            "letterSpacing": null,
+            "whiteSpace": "pre-wrap",
+            "textAlign": "left",
+            "overflow": "hidden"
+          },
+          "content": {
+            "kind": "rich_text",
+            "html": "<p><span class=\"math-tex\">\\(x^2+y^2=z^2\\)</span></p>",
+            "sanitized": true
+          },
+          "resources": [],
+          "children": []
+        }
+      ],
+      "interactions": []
+    },
+    "layout": {
+      "version": "courseware-composition-grid-v1",
+      "columns": 12,
+      "rows": 9,
+      "blocks": [
+        {
+          "id": "node-fixture-formula",
+          "placement": {
+            "column": 0,
+            "row": 0,
+            "columnSpan": 6,
+            "rowSpan": 4
+          },
+          "type": "node",
+          "nodeId": "fixture-formula"
+        }
+      ]
+    }
+  },
+  "shape": {
+    "docVersion": "courseware-composition-v1",
+    "canvas": {
+      "width": 960,
+      "height": 720,
+      "backgroundColor": "#ffffff"
+    },
+    "source": null,
+    "overlay": {
+      "docVersion": "page-doc-v1",
+      "sourceCoursewareId": "teacher-composition-overlay",
+      "sourcePageId": null,
+      "sourcePageDatabaseId": 1,
+      "sourceSnapshotId": 1,
+      "sourceContentHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "canvas": {
+        "width": 960,
+        "height": 720,
+        "backgroundColor": null,
+        "backgroundBindingKey": null
+      },
+      "nodes": [
+        {
+          "id": "fixture-shape",
+          "nodePath": "$.mathin.inserted.fixture-shape",
+          "sourceType": "mathin:shape",
+          "sourceResourceId": null,
+          "adapter": "shape",
+          "name": "shape",
+          "supported": true,
+          "visible": true,
+          "interactive": false,
+          "zIndex": 1001,
+          "order": 1001,
+          "crop": null,
+          "transform": {
+            "x": 0,
+            "y": 0,
+            "width": 480,
+            "height": 320,
+            "rotation": 0,
+            "scaleX": 1,
+            "scaleY": 1,
+            "anchorX": 0,
+            "anchorY": 0,
+            "opacity": 1,
+            "flipX": false,
+            "flipY": false,
+            "clip": true
+          },
+          "style": {
+            "objectFit": "contain",
+            "backgroundColor": "#fff4dc",
+            "color": "#2d2a26",
+            "borderColor": "#dd765c",
+            "borderWidth": 2,
+            "borderRadius": 18,
+            "fontFamily": null,
+            "fontSize": 32,
+            "fontWeight": 500,
+            "lineHeight": 1.4,
+            "letterSpacing": null,
+            "whiteSpace": "pre-wrap",
+            "textAlign": "left",
+            "overflow": "hidden"
+          },
+          "content": {
+            "kind": "shape",
+            "svg": "",
+            "shapeType": "rectangle"
+          },
+          "resources": [],
+          "children": []
+        }
+      ],
+      "interactions": []
+    },
+    "layout": {
+      "version": "courseware-composition-grid-v1",
+      "columns": 12,
+      "rows": 9,
+      "blocks": [
+        {
+          "id": "node-fixture-shape",
+          "placement": {
+            "column": 0,
+            "row": 0,
+            "columnSpan": 6,
+            "rowSpan": 4
+          },
+          "type": "node",
+          "nodeId": "fixture-shape"
+        }
+      ]
+    }
+  },
+  "image": {
+    "docVersion": "courseware-composition-v1",
+    "canvas": {
+      "width": 960,
+      "height": 720,
+      "backgroundColor": "#ffffff"
+    },
+    "source": null,
+    "overlay": {
+      "docVersion": "page-doc-v1",
+      "sourceCoursewareId": "teacher-composition-overlay",
+      "sourcePageId": null,
+      "sourcePageDatabaseId": 1,
+      "sourceSnapshotId": 1,
+      "sourceContentHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "canvas": {
+        "width": 960,
+        "height": 720,
+        "backgroundColor": null,
+        "backgroundBindingKey": null
+      },
+      "nodes": [
+        {
+          "id": "fixture-image",
+          "nodePath": "$.mathin.inserted.fixture-image",
+          "sourceType": "mathin:image",
+          "sourceResourceId": null,
+          "adapter": "image",
+          "name": "image",
+          "supported": true,
+          "visible": true,
+          "interactive": false,
+          "zIndex": 1001,
+          "order": 1001,
+          "crop": null,
+          "transform": {
+            "x": 0,
+            "y": 0,
+            "width": 480,
+            "height": 320,
+            "rotation": 0,
+            "scaleX": 1,
+            "scaleY": 1,
+            "anchorX": 0,
+            "anchorY": 0,
+            "opacity": 1,
+            "flipX": false,
+            "flipY": false,
+            "clip": true
+          },
+          "style": {
+            "objectFit": "contain",
+            "backgroundColor": null,
+            "color": null,
+            "borderColor": null,
+            "borderWidth": 0,
+            "borderRadius": 0,
+            "fontFamily": null,
+            "fontSize": null,
+            "fontWeight": null,
+            "lineHeight": null,
+            "letterSpacing": null,
+            "whiteSpace": null,
+            "textAlign": "left",
+            "overflow": "hidden"
+          },
+          "content": null,
+          "resources": [
+            {
+              "bindingKey": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "bindingPath": "$.src",
+              "role": "image",
+              "kind": "image"
+            }
+          ],
+          "children": []
+        }
+      ],
+      "interactions": []
+    },
+    "layout": {
+      "version": "courseware-composition-grid-v1",
+      "columns": 12,
+      "rows": 9,
+      "blocks": [
+        {
+          "id": "node-fixture-image",
+          "placement": {
+            "column": 0,
+            "row": 0,
+            "columnSpan": 6,
+            "rowSpan": 4
+          },
+          "type": "node",
+          "nodeId": "fixture-image"
+        }
+      ]
+    }
+  },
+  "h5": {
+    "docVersion": "courseware-composition-v1",
+    "canvas": {
+      "width": 960,
+      "height": 720,
+      "backgroundColor": "#ffffff"
+    },
+    "source": null,
+    "overlay": {
+      "docVersion": "page-doc-v1",
+      "sourceCoursewareId": "teacher-composition-overlay",
+      "sourcePageId": null,
+      "sourcePageDatabaseId": 1,
+      "sourceSnapshotId": 1,
+      "sourceContentHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "canvas": {
+        "width": 960,
+        "height": 720,
+        "backgroundColor": null,
+        "backgroundBindingKey": null
+      },
+      "nodes": [
+        {
+          "id": "fixture-h5",
+          "nodePath": "$.mathin.inserted.fixture-h5",
+          "sourceType": "mathin:h5",
+          "sourceResourceId": null,
+          "adapter": "h5",
+          "name": "h5",
+          "supported": true,
+          "visible": true,
+          "interactive": true,
+          "zIndex": 1001,
+          "order": 1001,
+          "crop": null,
+          "transform": {
+            "x": 0,
+            "y": 0,
+            "width": 480,
+            "height": 320,
+            "rotation": 0,
+            "scaleX": 1,
+            "scaleY": 1,
+            "anchorX": 0,
+            "anchorY": 0,
+            "opacity": 1,
+            "flipX": false,
+            "flipY": false,
+            "clip": true
+          },
+          "style": {
+            "objectFit": "contain",
+            "backgroundColor": null,
+            "color": null,
+            "borderColor": null,
+            "borderWidth": 0,
+            "borderRadius": 0,
+            "fontFamily": null,
+            "fontSize": null,
+            "fontWeight": null,
+            "lineHeight": null,
+            "letterSpacing": null,
+            "whiteSpace": null,
+            "textAlign": "left",
+            "overflow": "hidden"
+          },
+          "content": {
+            "kind": "h5",
+            "status": "offline"
+          },
+          "resources": [
+            {
+              "bindingKey": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "bindingPath": "$.entry",
+              "role": "entry",
+              "kind": "h5"
+            }
+          ],
+          "children": []
+        }
+      ],
+      "interactions": []
+    },
+    "layout": {
+      "version": "courseware-composition-grid-v1",
+      "columns": 12,
+      "rows": 9,
+      "blocks": [
+        {
+          "id": "node-fixture-h5",
+          "placement": {
+            "column": 0,
+            "row": 0,
+            "columnSpan": 6,
+            "rowSpan": 4
+          },
+          "type": "node",
+          "nodeId": "fixture-h5"
+        }
+      ]
+    }
+  },
+  "game": {
+    "docVersion": "courseware-composition-v1",
+    "canvas": {
+      "width": 960,
+      "height": 720,
+      "backgroundColor": "#ffffff"
+    },
+    "source": null,
+    "overlay": {
+      "docVersion": "page-doc-v1",
+      "sourceCoursewareId": "teacher-composition-overlay",
+      "sourcePageId": null,
+      "sourcePageDatabaseId": 1,
+      "sourceSnapshotId": 1,
+      "sourceContentHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "canvas": {
+        "width": 960,
+        "height": 720,
+        "backgroundColor": null,
+        "backgroundBindingKey": null
+      },
+      "nodes": [],
+      "interactions": []
+    },
+    "layout": {
+      "version": "courseware-composition-grid-v1",
+      "columns": 12,
+      "rows": 9,
+      "blocks": [
+        {
+          "id": "game-1",
+          "placement": {
+            "column": 0,
+            "row": 0,
+            "columnSpan": 12,
+            "rowSpan": 9
+          },
+          "type": "game",
+          "game": {
+            "docVersion": "game-page-v1",
+            "canvas": {
+              "width": 960,
+              "height": 720,
+              "backgroundColor": null
+            },
+            "gameId": "sudoku",
+            "contentVersion": "sudoku-authored-v2",
+            "payload": {
+              "kind": "authored-activity",
+              "variantId": "classic-9x9",
+              "puzzle": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              "goal": {
+                "kind": "teacher-led"
+              },
+              "display": {
+                "showCoordinates": true,
+                "allowCandidates": true,
+                "allowAnswerReveal": false,
+                "showTeachingTools": true
+              }
+            },
+            "validation": {
+              "payloadHash": "0000000000000000000000000000000000000000000000000000000000000000",
+              "validatorVersion": "sudoku-authored-v2@1",
+              "publishable": false,
+              "code": "DRAFT",
+              "details": null
+            }
+          }
+        }
+      ]
+    }
+  },
+  "tool": {
+    "docVersion": "courseware-composition-v1",
+    "canvas": {
+      "width": 960,
+      "height": 720,
+      "backgroundColor": "#ffffff"
+    },
+    "source": null,
+    "overlay": {
+      "docVersion": "page-doc-v1",
+      "sourceCoursewareId": "teacher-composition-overlay",
+      "sourcePageId": null,
+      "sourcePageDatabaseId": 1,
+      "sourceSnapshotId": 1,
+      "sourceContentHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "canvas": {
+        "width": 960,
+        "height": 720,
+        "backgroundColor": null,
+        "backgroundBindingKey": null
+      },
+      "nodes": [],
+      "interactions": []
+    },
+    "layout": {
+      "version": "courseware-composition-grid-v1",
+      "columns": 12,
+      "rows": 9,
+      "blocks": [
+        {
+          "id": "tool-1",
+          "placement": {
+            "column": 0,
+            "row": 0,
+            "columnSpan": 12,
+            "rowSpan": 9
+          },
+          "type": "tool",
+          "tool": {
+            "toolId": "spatial-lab",
+            "contentVersion": "cube-structures-lesson-v3",
+            "payload": {
+              "title": "Fixture cube",
+              "history": {
+                "version": "cube-structures-draft-v3",
+                "initial": {
+                  "cubes": [
+                    {
+                      "id": "cube-1",
+                      "position": {
+                        "x": 0,
+                        "y": 0,
+                        "z": 0
+                      },
+                      "color": "#8fbf88",
+                      "faces": {}
+                    }
+                  ],
+                  "hiddenCubeIds": [],
+                  "groups": [],
+                  "origin": {
+                    "x": -0.5,
+                    "y": -0.5,
+                    "z": -0.5
+                  },
+                  "axesVisible": true,
+                  "view": "angle",
+                  "frame": {
+                    "center": {
+                      "x": 0,
+                      "y": 0,
+                      "z": 0
+                    },
+                    "radius": 2.5
+                  },
+                  "nextCubeId": 2,
+                  "nextNumber": 1,
+                  "hiddenEdgesVisible": true
+                },
+                "operations": [],
+                "cursor": 0
+              },
+              "toolbar": [
+                "cut"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}

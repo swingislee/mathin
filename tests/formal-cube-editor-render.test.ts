@@ -7,10 +7,12 @@ import en from "../messages/en.json";
 import { CoursewareCompositionWorkbench, type CompositionPagePersistence } from "@/features/teacher-microcourses/CoursewareCompositionWorkbench";
 import type { CoursewareCompositionGridEditor } from "@/features/courseware-doc/CoursewareCompositionGridEditor";
 import { createFormalCubePage } from "@/features/courseware-studio/formal-cube-page-contract";
-import { createCubeCoursewareTool } from "@/features/tools/courseware/cube-structures-content";
+import { createCubeCoursewareTool, cubeCoursewareV3ToolSchema } from "@/features/tools/courseware/cube-structures-content";
 import { cubeDraftSnapshot } from "@/features/tools/spatial-lab/cube-structures-draft";
 import { createCubeSession } from "@/features/tools/spatial-lab/cube-structures-session";
 import { createEmptyCoursewareCompositionPage } from "@/features/courseware-doc/composition-page-schema";
+import { gamePageDocSchema } from "@/features/courseware-doc/game-page-schema";
+import { createDefaultGameCoursewarePayload } from "@/features/games/courseware/contracts";
 import { CreateBlankCoursewarePageButton, FormalCubePageEditor } from "@/features/courseware-studio/FormalCubePageEditor";
 import { CoursewareWorkbenchAddPageButton, CoursewareWorkbenchDirectoryHeader } from "@/features/courseware-doc/CoursewareEditorWorkbench";
 
@@ -41,7 +43,7 @@ vi.mock("@/features/teacher-microcourses/CubeDraftCoursewarePicker", () => ({ Cu
 vi.mock("@/features/teacher-microcourses/CubeCoursewareToolbarSettings", () => ({ CubeCoursewareToolbarSettings: () => null }));
 vi.mock("@/features/tools/scenes/ToolSceneEditor", () => ({ ToolSceneSettings: () => null,
   ToolSceneEditor: ({ onReady }: { onReady: (tool: ReturnType<typeof createCubeCoursewareTool>) => void }) =>
-    createElement("button", { type: "button", "data-prepare-tool": true, onClick: () => onReady(createCubeCoursewareTool({ name: "Selected cube", snapshot: cubeDraftSnapshot(createCubeSession([{ x: 0, y: 0, z: 0 }]), 0) }, "current", ["cut"])) }, "Configure scene"),
+    createElement("button", { type: "button", "data-prepare-tool": true, onClick: () => onReady(cubeCoursewareV3ToolSchema.parse({ ...createCubeCoursewareTool({ name: "Selected cube", snapshot: cubeDraftSnapshot(createCubeSession([{ x: 0, y: 0, z: 0 }]), 0) }, "current", ["cut"]), contentVersion: "cube-structures-lesson-v3" })) }, "Configure scene"),
 }));
 vi.mock("@/features/courseware-doc/CoursewareH5AuthoringDialog", () => ({ CoursewareH5AuthoringDialog: () => null }));
 
@@ -54,8 +56,8 @@ beforeEach(() => {
 });
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
-async function mount(persistence?: CompositionPagePersistence, doc = pageDoc()) {
-  const props = { page: { pageDocId: "77777777-7777-4777-8777-777777777777", title: "Cube", revisionNo: 1, doc, bindingUrls: {} }, onPersisted: vi.fn(), onStatus: vi.fn() };
+async function mount(persistence?: CompositionPagePersistence, doc = pageDoc(), onDraftChange = vi.fn()) {
+  const props = { page: { pageDocId: "77777777-7777-4777-8777-777777777777", title: "Cube", revisionNo: 1, doc, bindingUrls: {} }, onPersisted: vi.fn(), onStatus: vi.fn(), onDraftChange };
   const editor = persistence
     ? createElement(CoursewareCompositionWorkbench, { ...props, persistence })
     : createElement(CoursewareCompositionWorkbench, { ...props, microcourseId: "88888888-8888-4888-8888-888888888888" });
@@ -125,11 +127,14 @@ describe("formal cube editor persistence adapter", () => {
     await act(async () => (host.querySelector(`button[aria-label="${en.teacherMicrocourses.componentTool}"]`) as HTMLButtonElement).click());
     expect(grid.props!.doc.layout.blocks).toEqual([]);
     expect(document.querySelector("[data-select-cube]")).toBeNull();
+    // 工具目录可扩展；明确选择夹具提供的立方体版本，不依赖目录首项。
+    const cubeOptions = [...document.querySelectorAll("button")].filter(button => button.textContent === en.tools.items["cube-structures"].name);
+    await act(async () => cubeOptions[0].click());
     await act(async () => (document.querySelector("[data-prepare-tool]") as HTMLButtonElement).click());
     const insert = [...document.querySelectorAll("button")].find((button) => button.textContent === en.teacherMicrocourses.insertComponent)!;
     await act(async () => insert.click());
     expect(grid.props!.doc.layout.blocks).toHaveLength(1);
-    expect(grid.props!.doc.layout.blocks[0]).toMatchObject({ type: "tool", tool: { contentVersion: "cube-structures-lesson-v2", payload: { title: "Selected cube", toolbar: ["cut"] } } });
+    expect(grid.props!.doc.layout.blocks[0]).toMatchObject({ type: "tool", tool: { contentVersion: "cube-structures-lesson-v3", payload: { title: "Selected cube", toolbar: ["cut"] } } });
     await act(async () => vi.advanceTimersByTimeAsync(800));
     expect(save).toHaveBeenCalledTimes(1);
     expect(microcourseSave).not.toHaveBeenCalled();
@@ -143,6 +148,24 @@ describe("formal cube editor persistence adapter", () => {
     expect(disabled).toContain(en.coursewareWorkspace.prototypeInsertH5);
     expect(host.querySelector('input[type="file"]')).toBeNull();
     expect(grid.props!.doc.docVersion).toBe("courseware-composition-v1");
+    expect(microcourseSave).not.toHaveBeenCalled();
+  });
+
+  it("injects homework game creation and reports the draft before the autosave timer", async () => {
+    const game = gamePageDocSchema.parse({ docVersion: "game-page-v1", canvas: { width: 960, height: 720, backgroundColor: null }, gameId: "sudoku", contentVersion: "sudoku-authored-v2",
+      payload: createDefaultGameCoursewarePayload("sudoku", "sudoku-authored-v2"), validation: { payloadHash: "0".repeat(64), validatorVersion: "test", publishable: false, code: "DRAFT", details: null } });
+    const createGame = vi.fn<NonNullable<CompositionPagePersistence["createGame"]>>().mockResolvedValue({ ok: true, data: { game } });
+    const save = vi.fn<CompositionPagePersistence["save"]>().mockImplementation(async input => ({ ok: true, data: { doc: input.doc, revisionNo: 2 } }));
+    const onDraftChange = vi.fn();
+    await mount({ save, createGame, toolSurface: "microcourse", savedLabel: "Homework draft" }, createEmptyCoursewareCompositionPage(), onDraftChange);
+    await act(async () => (host.querySelector(`button[aria-label="${en.teacherMicrocourses.componentGame}"]`) as HTMLButtonElement).click());
+    const insert = [...document.querySelectorAll("button")].find(button => button.textContent === en.teacherMicrocourses.insertComponent)!;
+    await act(async () => insert.click());
+    expect(createGame).toHaveBeenCalledWith({ gameId: "sudoku", contentVersion: "sudoku-authored-v2" });
+    expect(onDraftChange).toHaveBeenCalledWith(expect.objectContaining({ layout: expect.objectContaining({ blocks: [expect.objectContaining({ type: "game" })] }) }));
+    expect(save).not.toHaveBeenCalled();
+    await act(async () => vi.advanceTimersByTimeAsync(800));
+    expect(host.textContent).toContain("Homework draft");
     expect(microcourseSave).not.toHaveBeenCalled();
   });
 

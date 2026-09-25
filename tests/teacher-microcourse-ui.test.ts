@@ -68,7 +68,7 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
     const gameStage = read("src", "features", "games", "courseware", "GamePageStage.tsx");
 
     expect(editor).toContain("createTeacherCompositionPageAction");
-    expect(editor).toContain("<CoursewareCompositionWorkbench");
+    expect(editor).toContain("<InteractiveQuestionEditor");
     expect(compositionWorkbench).toContain("createTeacherGameComponentAction");
     expect(compositionWorkbench).toContain("createTeacherH5ComponentArtifactAction");
     expect(compositionWorkbench).toContain("gameCoursewareContractsForSurface");
@@ -112,7 +112,8 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
     expect(catalogAccessMigration).toContain("public.has_perm(uid, 'courseware.microcourse.author')");
     expect(catalogAccessMigration).toContain("p_course_kind = 'curriculum'");
     expect(runtimeFixesMigration).toContain("'type', 'doc'");
-    expect(liveShell).toContain("session.lectureId || docPageKey");
+    expect(liveShell).toContain("useSessionAssetPreload(");
+    expect(read("src", "features", "classroom", "live", "useSessionAssetPreload.ts")).toContain("loadDocs: hasLecture || Boolean(docPageKey)");
   });
 
   it("keeps intermediate-review H5 private and only promotes the final frozen snapshot", () => {

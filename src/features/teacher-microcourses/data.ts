@@ -128,6 +128,7 @@ export interface TeacherMicrocoursePage {
 export interface TeacherMicrocourseEditor extends TeacherMicrocourseSummary {
   topics: TeacherMicrocourseTopic[];
   pages: TeacherMicrocoursePage[];
+  questionGroups?: import("@/features/interactive-questions/contract").QuestionGroupState;
 }
 
 const topicSchema = z.object({
@@ -313,7 +314,10 @@ export async function getTeacherMicrocourseEditor(microcourseId: string): Promis
     ...page,
     bindingUrls: bindingUrlsByPage.get(page.pageDocId) ?? {},
   }));
-  return { ...editor, pages };
+  const { data: groups, error: groupsError } = await supabase.rpc("get_teacher_microcourse_question_groups", { p_microcourse_id: parsed.data });
+  if (groupsError) throw new Error(groupsError.message);
+  const { questionGroupStateSchema } = await import("@/features/interactive-questions/contract");
+  return { ...editor, pages, questionGroups: questionGroupStateSchema.parse(groups) };
 }
 
 export interface TeacherMicrocourseSourceLecture {

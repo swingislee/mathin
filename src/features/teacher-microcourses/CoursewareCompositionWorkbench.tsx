@@ -109,6 +109,10 @@ export interface CompositionPagePersistence {
   save: (input: { pageDocId: string; doc: CoursewareCompositionPage; baseRevisionNo: number; title: string; note: string }) => Promise<ActionResult<{ doc: CoursewareCompositionPage; revisionNo: number }>>;
   uploadImage?: (file: File) => Promise<ActionResult<{ bindingKey: string; url: string }>>;
   createH5?: (html: string) => Promise<ActionResult<{ bindingKey: string; url: string }>>;
+  loadH5?: (bindingKey: string) => Promise<string>;
+  createGame?: (input: { gameId: string; contentVersion: string }) => Promise<ActionResult<{ game: GamePageDoc }>>;
+  toolSurface?: ToolCoursewareAuthoringSurface;
+  savedLabel?: string;
 }
 
 function blockLabel(
@@ -137,12 +141,16 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
   };
   onPersisted: (draft: PersistedCompositionPage) => void;
   onStatus: (message: string) => void;
+  onDraftChange?: (doc: CoursewareCompositionPage) => void;
+  onPendingChange?: (pending: boolean) => void;
 } & ({ microcourseId: string; persistence?: never } | { microcourseId?: never; persistence: CompositionPagePersistence })>(function CoursewareCompositionWorkbench({
   microcourseId,
   persistence,
   page,
   onPersisted,
   onStatus,
+  onDraftChange,
+  onPendingChange,
 }, ref) {
   const t = useTranslations("teacherMicrocourses");
   const elementEditorT = useTranslations("coursewareElementEditor");
@@ -153,6 +161,7 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
   const [message, setMessage] = useState("");
   const [saveState, setSaveState] = useState<"saved" | "saving" | "dirty" | "error">("saved");
   const [pending, startTransition] = useTransition();
+  useEffect(() => { onPendingChange?.(pending); return () => onPendingChange?.(false); }, [pending, onPendingChange]);
   const titleRef = useRef(page.title);
   const docRef = useRef(structuredClone(page.doc));
   const revisionRef = useRef(page.revisionNo);
@@ -233,10 +242,11 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
 
   const markDirty = useCallback(() => {
     sequenceRef.current += 1;
+    onDraftChange?.(structuredClone(docRef.current));
     setSaveState("dirty");
     if (timerRef.current) window.clearTimeout(timerRef.current);
     timerRef.current = window.setTimeout(() => void flushRef.current(), 800);
-  }, []);
+  }, [onDraftChange]);
 
   const restoreFromHistory = useCallback((value: CoursewareCompositionPage) => {
     docRef.current = value;
@@ -434,8 +444,8 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
               <ImagePlus className="size-4" />
           </CoursewareEditorToolbarLabel>
         ) : undefined,
-        game: microcourseId ? (
-          <GameComponentDialog microcourseId={microcourseId} disabled={pending} iconOnly onCreated={(game) => {
+        game: microcourseId || persistence?.createGame ? (
+          <GameComponentDialog microcourseId={microcourseId} createGame={persistence?.createGame} disabled={pending} iconOnly onCreated={(game) => {
               const previousIds = new Set(docRef.current.layout.blocks.map((block) => block.id));
               const next = addCoursewareCompositionGame(docRef.current, game);
               updateDoc(next);
@@ -460,7 +470,7 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
           }} />
         ) : undefined,
         tool: (
-          <ToolComponentDialog disabled={pending} surface={persistence ? "formal-courseware" : "microcourse"} onCreated={(tool) => {
+          <ToolComponentDialog disabled={pending} surface={persistence?.toolSurface ?? (persistence ? "formal-courseware" : "microcourse")} onCreated={(tool) => {
               const previousIds = new Set(docRef.current.layout.blocks.map((block) => block.id));
               let next: CoursewareCompositionPage;
               try { next = addCoursewareCompositionTool(docRef.current, tool); }
@@ -481,7 +491,7 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
     <CoursewareEditorSaveControls
       state={saveState}
       labels={{
-        saved: t("pageAutosaved"),
+        saved: persistence?.savedLabel ?? t("pageAutosaved"),
         saving: t("pageAutosaving"),
         dirty: t("pageUnsaved"),
         error: t("pageAutosaveFailed"),
@@ -517,6 +527,15 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
                 onTransformChange={(patch) => handleNodeTransformChange(selectedNode.nodePath, patch)}
               />
             ) : null}
+            {selectedNode?.adapter === "h5" && persistence?.createH5 && persistence.loadH5 && <CoursewareH5AuthoringDialog
+              existing
+              loadHtml={() => persistence.loadH5!(selectedNode.resources[0].bindingKey)}
+              submit={persistence.createH5}
+              onSaved={(asset) => {
+                setBindingUrls(current => ({ ...current, [asset.bindingKey]: asset.url }));
+                patchSelectedNode(node => { node.resources = [{ bindingKey: asset.bindingKey, bindingPath: "$.entry", role: "entry", kind: "h5" }]; });
+              }}
+            />}
             {selected?.type === "game" ? (
               <div className="border-t border-line pt-3">
                 <GamePageEditor doc={selected.game} onChange={patchSelectedGame} embedded />
@@ -578,8 +597,9 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
   );
 });
 
-function GameComponentDialog({ microcourseId, disabled = false, iconOnly = false, onCreated }: {
-  microcourseId: string;
+function GameComponentDialog({ microcourseId, createGame, disabled = false, iconOnly = false, onCreated }: {
+  microcourseId?: string;
+  createGame?: CompositionPagePersistence["createGame"];
   disabled?: boolean;
   iconOnly?: boolean;
   onCreated: (game: GamePageDoc) => void;
@@ -594,7 +614,8 @@ function GameComponentDialog({ microcourseId, disabled = false, iconOnly = false
   const selected = contracts.find((contract) => `${contract.gameId}:${contract.contentVersion}` === selectedKey);
   const create = () => startTransition(async () => {
     if (!selected) return;
-    const result = await createTeacherGameComponentAction({ microcourseId, gameId: selected.gameId, contentVersion: selected.contentVersion });
+    const input = { gameId: selected.gameId, contentVersion: selected.contentVersion };
+    const result = createGame ? await createGame(input) : await createTeacherGameComponentAction({ microcourseId: microcourseId!, ...input });
     if (!result.ok) {
       setMessage(t("actionFailed", { code: result.code }));
       return;

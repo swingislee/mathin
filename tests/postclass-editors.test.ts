@@ -74,4 +74,20 @@ describe("作业题库与模板", () => {
     await click(button("保存")); expect(onSaved).toHaveBeenCalledOnce();
     expect(deps.saveHomework).toHaveBeenLastCalledWith(expect.objectContaining({ revision: "saved-version", document: expect.objectContaining({ topic: "新主题" }) }));
   });
+  it("题干和答案分列连续录入，新增分组可独立保存", async () => {
+    deps.saveHomework.mockResolvedValue({ ok: false, code: "CONFLICT" });
+    await render(h(HomeworkDocumentEditor, { scope: "lecture", targetId: id })); await click(button("本讲作业与标准教案"));
+    const headers = [...document.querySelectorAll("th")].map(row => row.textContent);
+    expect(headers.slice(0, 3)).toEqual(["题号", "题目／题干", "答案／解析"]);
+    await fill(document.querySelector<HTMLTextAreaElement>('textarea[aria-label="题目／题干"]')!, "连续录入题目");
+    await fill(document.querySelector<HTMLTextAreaElement>('textarea[aria-label="答案／解析"]')!, "连续录入答案");
+    await fill(document.querySelector<HTMLInputElement>('input[aria-label="分组名称"]')!, "能力提升");
+    await click(button("新建分组")); await click(button("新增题目")); await click(button("保存"));
+    const documentValue = deps.saveHomework.mock.calls[0][0].document;
+    expect(documentValue.groups).toEqual(["基础", "能力提升"]);
+    expect(documentValue.questions).toHaveLength(2);
+    expect(documentValue.questions[0]).toMatchObject({ content: "连续录入题目", answer: "连续录入答案" });
+    expect(documentValue.questions[1]).toMatchObject({ group: "能力提升", label: "1" });
+    expect(document.body.textContent).toContain("草稿已保留");
+  });
 });

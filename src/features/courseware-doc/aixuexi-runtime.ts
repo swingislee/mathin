@@ -36,7 +36,8 @@ function integrityForSha256(hash: string): string {
 }
 
 export function aixuexiRuntimeFileUrl(entryUrl: string, packagePath: string): string {
-  const entry = new URL(entryUrl, window.location.origin);
+  // 只返回同源路径，服务端与浏览器使用相同基准解析，避免首屏依赖 window。
+  const entry = new URL(entryUrl, "https://runtime.invalid");
   const segments = entry.pathname.split("/");
   segments.pop();
   entry.pathname = `${segments.join("/")}/${packagePath.split("/").map(encodeURIComponent).join("/")}`;

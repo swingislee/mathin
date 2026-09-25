@@ -13,7 +13,7 @@ describe("teacher microcourse Dashboard semantics", () => {
     const migration = read("supabase", "migrations", "20260830000700_teacher_microcourse_editor_unification.sql");
 
     expect(pageDoc).toContain("teacherMicrocoursePageDocSchema = coursewareCompositionPageSchema");
-    expect(editor).toContain("<CoursewareCompositionWorkbench");
+    expect(editor).toContain("<InteractiveQuestionEditor");
     expect(editor).not.toContain("MicrocoursePageWorkbench");
     expect(actions).toContain('"save_teacher_courseware_composition_page"');
     expect(actions).not.toContain('"save_teacher_microcourse_page"');
@@ -51,7 +51,8 @@ describe("teacher microcourse Dashboard semantics", () => {
     const variant = read("src", "features", "teacher-microcourses", "MicrocourseVariantPreview.tsx");
     const settings = read("src", "features", "school", "teaching-operations", "TeacherMicrocourseSceneManager.tsx");
 
-    expect(browser).toContain('className="size-9 shrink-0 p-0" aria-label={t("search")}');
+    expect(browser).toContain('<FilterSearchInput id="microcourse-search"');
+    expect(browser).toContain('onSearch={searchCourses}');
     expect(browser).toContain("@5xl/page:grid-cols-[15rem_minmax(0,1fr)_20rem]");
     expect(browser).toContain("desktopPreviewRef.current?.getClientRects().length");
     expect(browser).toContain("model.courses.some((course) => course.id === selectedCourseIdCandidate)");

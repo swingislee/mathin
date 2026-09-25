@@ -59,7 +59,7 @@ describe("teacher microcourse authoring UX", () => {
     expect(workbench).toContain("window.setTimeout(() => void flushRef.current(), 800)");
     expect(workbench).toContain("saveTeacherMicrocoursePageAction");
     expect(editor).toContain("createTeacherCompositionPageAction");
-    expect(editor).toContain("CoursewareCompositionWorkbench");
+    expect(editor).toContain("InteractiveQuestionEditor");
     expect(editor).toContain('data-teacher-microcourse-editor="composition"');
     expect(workbench).toContain('statusTestId="microcourse-autosave-status"');
     expect(editor).toContain("CoursewareWorkbench");

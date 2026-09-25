@@ -29,7 +29,7 @@ export default async function TeacherMicrocoursePage({
   const t = await getTranslations("teacherMicrocourses");
   return (
     <DashboardPage
-      title={t("pageTitle")}
+      title={t("workspaceTitle")}
       backHref={`/dashboard/sessions/${sessionId}?stage=pre`}
       backLabel={t("backToSession")}
     >

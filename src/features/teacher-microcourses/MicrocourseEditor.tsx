@@ -10,6 +10,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { newId } from "@/lib/uuid";
+import { DashboardCommandActions, DashboardCommandPanel } from "@/features/school/dashboard-page";
+import { QuestionGroupControls, ALL_QUESTION_GROUPS, UNGROUPED_QUESTIONS } from "@/features/interactive-questions/QuestionGroupControls";
+import { orderedQuestionIds, type QuestionGroup, type QuestionGroupState } from "@/features/interactive-questions/contract";
+import { saveMicrocourseQuestionGroups } from "./question-group-actions";
 import type { CoursewareCompositionPage } from "@/features/courseware-doc/composition-page-schema";
 import {
   CoursewareWorkbench,
@@ -31,7 +36,7 @@ import {
   withdrawTeacherMicrocourseAction,
   withdrawTeacherMicrocourseReviewAction,
 } from "./actions";
-import { CoursewareCompositionWorkbench, type CoursewareCompositionWorkbenchHandle } from "./CoursewareCompositionWorkbench";
+import { InteractiveQuestionEditor, type InteractiveQuestionEditorHandle } from "@/features/interactive-questions/InteractiveQuestionEditor";
 import type { TeacherMicrocourseEditor as EditorData } from "./data";
 import { MicrocourseSourcePicker } from "./MicrocourseSourcePicker";
 
@@ -51,7 +56,7 @@ interface MicrocourseEditorContext {
   saveLabel: string;
 }
 
-/** One teacher authoring shell backed exclusively by CoursewareCompositionWorkbench. */
+/** 微课通过共享交互题目编辑器制作内容，分组维护有序题目目录。 */
 export function MicrocourseEditor({ session, context, editor, canTeach }: {
   session?: { id: string; title: string; classroomId: string; coursewareFrozenAt: string | null };
   context?: MicrocourseEditorContext;
@@ -74,21 +79,30 @@ export function MicrocourseEditor({ session, context, editor, canTeach }: {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [pageDrafts, setPageDrafts] = useState<Record<string, PersistedPageDraft>>({});
   const [pageTitleDrafts, setPageTitleDrafts] = useState<Record<string, string>>({});
+  const [questionGroups, setQuestionGroups] = useState<QuestionGroupState>(editor.questionGroups ?? { version: 0, groups: [] });
+  const [selectedGroup, setSelectedGroup] = useState(ALL_QUESTION_GROUPS);
   const [selectedPageId, setSelectedPageId] = useState<string | null>(editor.pages[0]?.pageDocId ?? null);
   const [deletePageId, setDeletePageId] = useState<string | null>(null);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [pageSwitching, setPageSwitching] = useState(false);
+  const [contentPending, setContentPending] = useState(false);
   const pageSwitchingRef = useRef(false);
-  const workbenchRef = useRef<CoursewareCompositionWorkbenchHandle>(null);
+  const workbenchRef = useRef<InteractiveQuestionEditorHandle>(null);
   const [pending, startTransition] = useTransition();
 
-  const pages = useMemo(() => editor.pages.map((page) => {
+  const allPages = useMemo(() => editor.pages.map((page) => {
     const draft = pageDrafts[page.pageDocId];
     const resolved = draft ? { ...page, title: draft.title, doc: draft.doc, revisionNo: draft.revisionNo } : page;
     return pageTitleDrafts[page.pageDocId] === undefined
       ? resolved
       : { ...resolved, title: pageTitleDrafts[page.pageDocId] };
   }), [editor.pages, pageDrafts, pageTitleDrafts]);
+  const assignedIds = new Set(questionGroups.groups.flatMap(group => group.questionIds));
+  const orderedIds = orderedQuestionIds(allPages.map(page => page.pageDocId), questionGroups.groups);
+  const pages = orderedIds.flatMap(id => {
+    const page = allPages.find(item => item.pageDocId === id)!;
+    return selectedGroup === ALL_QUESTION_GROUPS || (selectedGroup === UNGROUPED_QUESTIONS ? !assignedIds.has(id) : questionGroups.groups.find(g => g.id === selectedGroup)?.questionIds.includes(id)) ? [page] : [];
+  });
   const currentPage = pages.find((page) => page.pageDocId === selectedPageId) ?? pages[0] ?? null;
   const currentPageIndex = currentPage ? pages.findIndex((page) => page.pageDocId === currentPage.pageDocId) : -1;
   const stage = editor.workflow?.stage ?? "idle";
@@ -100,10 +114,31 @@ export function MicrocourseEditor({ session, context, editor, canTeach }: {
     router.refresh();
   };
   const persistCurrentPage = useCallback(async () => {
+    if (contentPending) { setMessage(locale === "en" ? "Wait for the component to finish uploading." : "请等待组件上传完成。"); return false; }
     const saved = await (workbenchRef.current?.flush() ?? Promise.resolve(true));
     if (!saved) setMessage(t("pageAutosaveFailed"));
     return saved;
-  }, [t]);
+  }, [t, contentPending, locale]);
+  const saveGroups = async (groups: QuestionGroup[], select?: string) => {
+    if (!await persistCurrentPage()) return false;
+    try {
+      const result = await saveMicrocourseQuestionGroups({ microcourseId: editor.id, version: questionGroups.version, groups });
+      if (!result.ok) { setMessage(result.code === "CONFLICT" ? (locale === "en" ? "Groups changed elsewhere. Reload before trying again." : "分组已被其他人更新，请刷新后再调整；当前题目已保存。") : t("actionFailed", { code: result.code })); return false; }
+      setQuestionGroups(result.data); if (select) setSelectedGroup(select); router.refresh(); return true;
+    } catch { setMessage(t("pageAutosaveFailed")); return false; }
+  };
+  const mutateGroups = async (groups: QuestionGroup[], select?: string) => {
+    if (pageSwitchingRef.current) return false;
+    pageSwitchingRef.current = true; setPageSwitching(true);
+    try { return await saveGroups(groups, select); }
+    finally { pageSwitchingRef.current = false; setPageSwitching(false); }
+  };
+  const changeGroup = async (groupId: string) => {
+    if (pageSwitchingRef.current) return;
+    pageSwitchingRef.current = true; setPageSwitching(true);
+    if (await persistCurrentPage()) { setSelectedGroup(groupId); setSelectedPageId(null); }
+    pageSwitchingRef.current = false; setPageSwitching(false);
+  };
   const selectPage = async (pageDocId: string) => {
     if (pageDocId === currentPage?.pageDocId || pageSwitchingRef.current) return;
     pageSwitchingRef.current = true;
@@ -151,7 +186,7 @@ export function MicrocourseEditor({ session, context, editor, canTeach }: {
       setMessage(t("actionFailed", { code: metadataResult.code }));
       return;
     }
-    if (session && canTeach && !session.coursewareFrozenAt && !editor.selectedForSession && pages.length > 0) {
+    if (session && canTeach && !session.coursewareFrozenAt && !editor.selectedForSession && allPages.length > 0) {
       const selectionResult = await selectTeacherMicrocourseVariantAction({
         sessionId: session.id,
         microcourseId: editor.id,
@@ -196,6 +231,10 @@ export function MicrocourseEditor({ session, context, editor, canTeach }: {
       source: { kind: "blank" },
     });
     if (result.ok) {
+      if (questionGroups.groups.some(group => group.id === selectedGroup)) {
+        const saved = await saveGroups(questionGroups.groups.map(group => group.id === selectedGroup ? { ...group, questionIds: [...group.questionIds, result.data.pageId] } : group));
+        if (!saved) { setSelectedGroup(ALL_QUESTION_GROUPS); router.refresh(); return; }
+      }
       setSelectedPageId(result.data.pageId);
       refresh(t("pageAdded"));
     } else setMessage(t("actionFailed", { code: result.code }));
@@ -208,7 +247,13 @@ export function MicrocourseEditor({ session, context, editor, canTeach }: {
     const next = [...pages];
     [next[index], next[target]] = [next[target], next[index]];
     startTransition(async () => {
-      const result = await reorderTeacherMicrocoursePagesAction({ microcourseId: editor.id, pageIds: next.map((page) => page.pageDocId) });
+      if (!await persistCurrentPage()) return;
+      const group = questionGroups.groups.find(g => g.questionIds.includes(currentPage.pageDocId));
+      const destinationGroup = questionGroups.groups.find(g => g.questionIds.includes(pages[target].pageDocId));
+      if (group?.id !== destinationGroup?.id) { setMessage(locale === "en" ? "Use Move to group to move this question between groups." : "跨组移动请使用“移入分组”。"); return; }
+      if (group) { await saveGroups(questionGroups.groups.map(g => g.id === group.id ? { ...g, questionIds: next.filter(p => group.questionIds.includes(p.pageDocId)).map(p => p.pageDocId) } : g)); return; }
+      const rest = allPages.filter(p => !next.some(item => item.pageDocId === p.pageDocId));
+      const result = await reorderTeacherMicrocoursePagesAction({ microcourseId: editor.id, pageIds: [...rest, ...next].map((page) => page.pageDocId) });
       if (result.ok) refresh(t("pageOrderSaved"));
       else setMessage(t("actionFailed", { code: result.code }));
     });
@@ -217,6 +262,7 @@ export function MicrocourseEditor({ session, context, editor, canTeach }: {
     if (!deletePageId) return;
     const result = await deleteTeacherMicrocoursePageAction(deletePageId);
     if (result.ok) {
+      setQuestionGroups(current => ({ ...current, groups: current.groups.map(group => ({ ...group, questionIds: group.questionIds.filter(id => id !== deletePageId) })) }));
       setDeletePageId(null);
       setSelectedPageId(pages.find((page) => page.pageDocId !== deletePageId)?.pageDocId ?? null);
       refresh(t("pageDeleted"));
@@ -224,6 +270,7 @@ export function MicrocourseEditor({ session, context, editor, canTeach }: {
   });
   const handlePageAdded = async (pageId: string, nextMessage: string) => {
     if (await persistCurrentPage()) {
+      setSelectedGroup(ALL_QUESTION_GROUPS);
       setSelectedPageId(pageId);
       setMessage(nextMessage);
     }
@@ -271,7 +318,7 @@ export function MicrocourseEditor({ session, context, editor, canTeach }: {
               <div className="flex flex-wrap items-center gap-2">
                 {inReview
                   ? <Button type="button" variant="secondary" size="sm" disabled={pending || !editor.workflow?.activeReviewCycleId} onClick={withdrawReview}><Undo2 className="size-4" />{t("withdrawReview")}</Button>
-                  : <Button type="button" variant="secondary" size="sm" disabled={pending || pages.length === 0} onClick={submit}><Send className="size-4" />{published ? t("submitNewVersion") : t("submitReview")}</Button>}
+                  : <Button type="button" variant="secondary" size="sm" disabled={pending || allPages.length === 0} onClick={submit}><Send className="size-4" />{published ? t("submitNewVersion") : t("submitReview")}</Button>}
                 {published && !editor.withdrawnAt ? <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => setWithdrawOpen(true)}>{t("withdrawPublication")}</Button> : null}
               </div>
             </div>
@@ -281,7 +328,20 @@ export function MicrocourseEditor({ session, context, editor, canTeach }: {
         {message ? <p role="status" className="mt-2 text-xs text-muted">{message}</p> : null}
       </section>
 
-      {/* Product-approved shared courseware editor: one workbench, source-specific adapters. */}
+      <DashboardCommandPanel><DashboardCommandActions>
+        <QuestionGroupControls groups={questionGroups.groups.map(group => ({ id: group.id, name: group.name, count: group.questionIds.filter(id => allPages.some(p => p.pageDocId === id)).length }))}
+          selected={selectedGroup} onSelect={id => void changeGroup(id)} disabled={pending || pageSwitching}
+          onAdd={name => { const group = { id: newId(), name, questionIds: [] }; return mutateGroups([...questionGroups.groups, group], group.id); }}
+          onRename={(id, name) => mutateGroups(questionGroups.groups.map(group => group.id === id ? { ...group, name } : group))}
+          onMove={(id, direction) => { const next = [...questionGroups.groups]; const index = next.findIndex(g => g.id === id); [next[index], next[index + direction]] = [next[index + direction], next[index]]; void mutateGroups(next); }} />
+        {currentPage && <Select value={questionGroups.groups.find(group => group.questionIds.includes(currentPage.pageDocId))?.id ?? UNGROUPED_QUESTIONS}
+          disabled={pending || pageSwitching} onValueChange={id => startTransition(async () => { await saveGroups(questionGroups.groups.map(group => ({ ...group, questionIds: [...group.questionIds.filter(qid => qid !== currentPage.pageDocId), ...(group.id === id ? [currentPage.pageDocId] : [])] })), id); })}>
+          <SelectTrigger className="w-48" aria-label={locale === "en" ? "Move question to group" : "移入分组"}><SelectValue /></SelectTrigger>
+          <SelectContent><SelectItem value={UNGROUPED_QUESTIONS}>{locale === "en" ? "Ungrouped" : "未分组"}</SelectItem>{questionGroups.groups.map(group => <SelectItem key={group.id} value={group.id}>{group.name}</SelectItem>)}</SelectContent>
+        </Select>}
+      </DashboardCommandActions></DashboardCommandPanel>
+
+      {/* 微课目录与作业共用交互题目编辑器。 */}
       <CoursewareWorkbench
         mode="microcourse-editor"
         adapter="courseware-composition-v1"
@@ -296,17 +356,18 @@ export function MicrocourseEditor({ session, context, editor, canTeach }: {
           />,
           content: <div className="flex size-full min-h-0 flex-col pt-3">
             <div className="shrink-0 px-3 pb-3"><MicrocourseSourcePicker microcourseId={editor.id} afterPageDocId={currentPage?.pageDocId ?? null} disabled={pending || pageSwitching} onAdded={(id, count) => void handlePageAdded(id, t("pagesAdded", { count }))} /></div>
-            <CoursewareWorkbenchPageRail
-              items={directoryItems}
-              selectedIndex={currentPageIndex}
-              onItemTitleChange={(_item, _index, value) => renameCurrentPage(value)}
-              titleInputLabel={t("renamePage")}
-              titleInputDisabled={pending || pageSwitching}
-              onSelectedIndexChange={(index) => {
-                const page = pages[index];
-                if (page) void selectPage(page.pageDocId);
-              }}
-            />
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              {[...questionGroups.groups, { id: UNGROUPED_QUESTIONS, name: locale === "en" ? "Ungrouped" : "未分组", questionIds: allPages.filter(p => !assignedIds.has(p.pageDocId)).map(p => p.pageDocId) }]
+                .filter(group => selectedGroup === ALL_QUESTION_GROUPS || selectedGroup === group.id).map(group => {
+                  const items = directoryItems.filter(item => group.questionIds.includes(item.id));
+                  return <section key={group.id} data-question-group={group.id}>
+                    <h3 className="px-3 py-2 text-xs font-medium">{group.name} · {items.length}</h3>
+                    <CoursewareWorkbenchPageRail items={items} selectedIndex={items.findIndex(item => item.id === currentPage?.pageDocId)}
+                      onItemTitleChange={(_item, _index, value) => renameCurrentPage(value)} titleInputLabel={t("renamePage")} titleInputDisabled={pending || pageSwitching}
+                      onSelectedIndexChange={index => { if (items[index]) void selectPage(items[index].id); }} />
+                  </section>;
+                })}
+            </div>
           </div>,
           footer: <CoursewareWorkbenchPageActions selectedIndex={currentPageIndex} total={pages.length}
             disabled={pending || pageSwitching} onMove={movePage} onDelete={() => setDeletePageId(currentPage?.pageDocId ?? null)} />,
@@ -314,13 +375,14 @@ export function MicrocourseEditor({ session, context, editor, canTeach }: {
         canvas={{
           ariaLabel: t("workspaceTitle"),
           content: currentPage
-            ? <CoursewareCompositionWorkbench
+            ? <InteractiveQuestionEditor
                 ref={workbenchRef}
                 key={currentPage.pageDocId}
                 microcourseId={editor.id}
                 page={currentPage}
                 onPersisted={handlePagePersisted}
                 onStatus={setMessage}
+                onPendingChange={setContentPending}
               />
             : <section className="grid size-full place-items-center"><p className="text-sm text-muted">{t("emptyPages")}</p></section>,
           footer: <CoursewareWorkbenchPager

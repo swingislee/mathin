@@ -309,7 +309,7 @@ export function CoursewareEditorSaveControls({
 }
 
 type CoursewareAuthoringWorkbenchProps = Omit<ComponentProps<typeof Card>, "children"> & {
-  mode: "formal-editor" | "microcourse-editor";
+  mode: "formal-editor" | "microcourse-editor" | "interactive-question-editor";
   adapter: string;
   layout: "viewport" | "workspace";
   layoutId?: string;
@@ -344,7 +344,7 @@ export interface CoursewarePreviewWorkbenchProps {
   className?: string;
 }
 
-export type CoursewareWorkbenchMode = "preview" | "formal-editor" | "microcourse-editor";
+export type CoursewareWorkbenchMode = "preview" | "formal-editor" | "microcourse-editor" | "interactive-question-editor";
 
 // Directory, canvas toolbar and inspector title are one visual row. Keep the
 // height contract here so adapter content cannot make one product drift taller.
