@@ -80,7 +80,7 @@ export function ClassRosterSessionRow({ classroomId, classroomName, sessions, lo
       <colgroup><col /><col className="w-24" /><col className="w-56" /><col className="w-32" /></colgroup>
       <TableHeader className="sr-only"><TableRow><TableHead>{m.session}</TableHead><TableHead>{t("observations.sessionState")}</TableHead><TableHead>{t("observations.performance")}</TableHead><TableHead>{t("observations.coverageTitle")}</TableHead></TableRow></TableHeader>
       <TableBody>
-        {[...sessions].reverse().map(session => {
+        {sessions.map(session => {
           const id = `${detailId}-${session.id}`;
           const isOpen = expandedSession === session.id;
           const observation = observations[session.id];
