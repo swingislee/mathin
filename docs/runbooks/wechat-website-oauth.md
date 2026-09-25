@@ -2,7 +2,9 @@
 
 > 2026-09-24 开发实现。用户已确认：首次扫码为游客，只浏览公开内容并绑定已有账号；游客不创建独立 Auth 用户，不保存笔记或成绩。本文件不表示生产已启用。
 
-> **2026-09-25 当前检查结果**：定向源码测试、TypeScript、受影响文件 ESLint、双语消息一致性已通过；zh/en 登录页可访问，微信入口保持关闭。Docker 已恢复，SQL 的权限、RLS、绑定唯一性、审计与完整事务回滚检查通过。微信迁移已在本机持久应用并生成增量类型。原生兼容补丁回归，以及 Supabase SDK 的邮箱／纯手机号绑定、再次登录原账号、冲突、停用、MFA、解绑和未知身份拒绝注册通过；候选 Auth 镜像与 previous 镜像的临时只读启动检查通过。实际 Next.js HTTPS 路由与原生 Auth 的隔离联调通过，REST 和微信上游使用协议替身。仍待选定部署环境的完整配置联调及真实微信扫码验收。开发端 UI 待人工验收，没有生产写入。
+> **2026-09-25 生产状态**：用户明确授权后，登录卡、浮窗、微信回调、增量迁移、Auth 纯手机号兼容补丁、禁用 provider 及专用清理／监测已部署。应用 `2a0b12ba`，ledger 437；回调已可访问，微信三个开关和 provider 继续关闭，manual linking 保持关闭。备份、回滚演练、构建及公网检查通过，原有账号和业务数据保持不变。网站应用审核凭据、完整配置联调、真实扫码与人工界面验收仍待完成。见[生产发布记录](../evidence/r1/wechat-oauth-production-20260925.md)。
+
+> **开发验证基础**：定向源码测试、TypeScript、受影响文件 ESLint、双语消息一致性已通过。SQL 权限、RLS、绑定唯一性、审计与完整事务回滚检查通过，已在本机持久应用并生成增量类型。原生补丁回归及 Supabase SDK 的邮箱／纯手机号绑定、再次登录原账号、冲突、停用、MFA、解绑和未知身份拒绝注册通过。实际 Next.js HTTPS 路由与原生 Auth 的隔离联调通过，REST 和微信上游使用协议替身；这些结果不替代真实微信扫码验收。
 
 > **类型状态**：`20260925001000_wechat_oauth_tickets.sql` 已进入正式迁移目录，并在本机隔离库登记账本。四张表、四个 RPC 的类型从该数据库实际生成，通过定向合并保留其它功能定义；`db:types:check` 与 TypeScript 通过。全量生成器还会改变既有统计 view 的关系及可写类型，这部分漂移保留给原功能处理，本次只合并微信新增项。
 
@@ -18,9 +20,9 @@
 | 微信 scope | `snsapi_login` |
 | Supabase provider | `custom:wechat` |
 
-上述微信回调由 Next.js 处理微信 code，随后桥接到 Supabase。微信 code 与 Supabase code 属于不同协议步骤，分别消费。开放平台填写 `mathin.club`，不是 `supabase.mathin.club`。正式回调只有在本增量获准部署、配置和联调后才可用；现有域名不代表新路由已上线。
+上述微信回调由 Next.js 处理微信 code，随后桥接到 Supabase。微信 code 与 Supabase code 属于不同协议步骤，分别消费。开放平台填写 `mathin.club`，不是 `supabase.mathin.club`。正式回调已于 2026-09-25 部署；入口关闭时返回登录页的未启用状态，配置和真实扫码联调完成后才开放授权。
 
-2026-09-25 用户已提交网站应用审核，提交成功页提示审核后取得 AppID/AppSecret；服务端尚未配置凭据。只读 HTTP 核查：生产首页跳转至中文页，`/zh/login` 返回 200，微信 callback 路由返回 404。因此当前是“已有可访问网站、网站应用审核中、微信后端尚未部署”。可以在审核期间先准备并部署保持入口关闭的回调版本，获得凭据后完成授权联调再开放按钮；该部署仍须按生产流程单独验收和授权。提交成功本身不代表审核通过。
+2026-09-25 用户已提交网站应用审核，提交成功页提示审核后取得 AppID/AppSecret；服务端尚未配置凭据。部署前微信 callback 返回 404，本次授权部署后已返回 303；登录页继续返回 200。当前是“已有可访问网站、网站应用审核中、微信基础功能已部署且入口关闭”。获得凭据后完成授权联调再开放按钮，提交成功本身不代表审核通过。
 
 开发页面仍使用 `http://192.168.5.213:3130/zh/login`。局域网 HTTP 不承接真实微信回调：本实现的 OAuth 凭据 Cookie 使用 Secure。开发扫码需要另行登记的 HTTPS 开发域、独立应用/授权域和与之匹配的隔离 Supabase；同一浏览器的开始、微信回调和应用回调需同源。开发域不能连接生产 Auth 或数据库。
 
@@ -99,7 +101,7 @@ Auth 需要 `GOTRUE_SECURITY_MANUAL_LINKING_ENABLED=true`，应用回调加入�
 
 迁移在存在 pg_cron 时注册每分钟清理任务；没有 pg_cron 时，使用现有 Worker 的专用 scope：在受控服务配置中设置 `R1_JOB_SCOPE=wechat_oauth`，运行 `node scripts/r1-job-worker.mjs`。它每分钟调用 `prune_wechat_oauth_tickets()`，同时清除过期票据和限流记录，仅用 HEAD 计数检查超期两分钟的游客资料是否残留，并记录 Worker 心跳。该 scope 不领取业务队列、不清除账号、绑定快照或审计；`all` 和 `web_push` 的处理范围保持原样。
 
-成功日志仅含 `wechat_oauth.maintenance_ok`；RPC、监测失败或超期残留会以固定错误码退出。部署时为服务设置稳定的 `R1_JOB_WORKER_ID`、失败重启策略，并将进程退出与心跳超过三分钟纳入监测。一次性检查设置 `R1_JOB_ONCE=1`，运行前仍须核对目标与对应写入授权。选择 pg_cron 或专用 Worker 作为清理调度者，部署后核查连续运行与心跳；关闭微信入口回退时继续保留清理任务。本机已完成代码和事务检查，尚未启动常驻清理 Worker。微信域名及 Supabase API 回调等正常 OAuth URL 会包含短期 code/state，应纳入日志脱敏和访问控制。
+成功日志仅含 `wechat_oauth.maintenance_ok`；RPC、监测失败或超期残留会以固定错误码退出。部署时为服务设置稳定的 `R1_JOB_WORKER_ID`、失败重启策略，并将进程退出与心跳超过三分钟纳入监测。一次性检查设置 `R1_JOB_ONCE=1`，运行前仍须核对目标与对应写入授权。选择 pg_cron 或专用 Worker 作为清理调度者，部署后核查连续运行与心跳；关闭微信入口回退时继续保留清理任务。生产已启用专用 Worker 和每分钟心跳监测，Worker 固定到本次不可变 release，应用回切 previous 后仍继续清理。微信域名及 Supabase API 回调等正常 OAuth URL 会包含短期 code/state，应纳入全链路日志脱敏和访问控制。
 
 ## 纯手机号兼容门
 
@@ -119,9 +121,9 @@ Auth 需要 `GOTRUE_SECURITY_MANUAL_LINKING_ENABLED=true`，应用回调加入�
 
 定向源码测试覆盖微信协议、最小资料、PKCE、未知微信游客、单次消费、会话切换、身份冲突、锁定、密码/MFA 门、最后登录方式保护和两段回调。
 
-数据库迁移为 `supabase/migrations/20260925001000_wechat_oauth_tickets.sql`，已在本机隔离数据库持久应用并进入 ledger；生产未应用。SQL 断言位于 `supabase/tests/wechat_oauth_assertions.sql`。2026-09-25 在核对主机、实际 origin、监听、隔离网络和指纹后，已完成 `BEGIN → 候选 SQL → assertions → ROLLBACK`：权限、RLS、单次消费、过期、限流、身份唯一性、快照归属及解绑清除、不可变审计均通过，原函数／relation 权限与账号计数恢复。实测发现并修复了数据库默认权限赋予 `service_role` 多余权限的问题：四张新表先撤销默认权限，再逐项授予所需操作。事务验证后另行保存 schema 备份并应用加法迁移，四张新表为空，已有 user／profile／identity 计数保持不变。
+数据库迁移为 `supabase/migrations/20260925001000_wechat_oauth_tickets.sql`，已在本机隔离数据库及生产持久应用并进入各自 ledger。SQL 断言位于 `supabase/tests/wechat_oauth_assertions.sql`。2026-09-25 在核对主机、实际 origin、监听、隔离网络和指纹后，已完成 `BEGIN → 候选 SQL → assertions → ROLLBACK`：权限、RLS、单次消费、过期、限流、身份唯一性、快照归属及解绑清除、不可变审计均通过，原函数／relation 权限与账号计数恢复。实测发现并修复了数据库默认权限赋予 `service_role` 多余权限的问题：四张新表先撤销默认权限，再逐项授予所需操作。事务验证后另行保存 schema 备份并应用加法迁移，四张新表为空，已有 user／profile／identity 计数保持不变。
 
-数据库检查可通过 `node scripts/wechat-oauth-local.mjs --preflight` 与 `--check` 复现；`--apply` 只接受同一目标、相同文件摘要且一小时内的成功检查，写前保存 schema 备份。应用后使用 `node scripts/wechat-oauth-types.mjs` 生成微信类型。输出只含状态与摘要，原始日志保留在 `.tmp/wechat-oauth-local/`。本机迁移与类型已完成，后续继续固定账号的 Auth 集成与回退验证；生产部署另行记录。
+数据库检查可通过 `node scripts/wechat-oauth-local.mjs --preflight` 与 `--check` 复现；`--apply` 只接受同一目标、相同文件摘要且一小时内的成功检查，写前保存 schema 备份。应用后使用 `node scripts/wechat-oauth-types.mjs` 生成微信类型。输出只含状态与摘要，原始日志保留在 `.tmp/wechat-oauth-local/`。本机迁移、类型及隔离 Auth 集成与回退验证已完成；生产写前备份、迁移和运行验证见本文件顶部发布记录。
 
 开发检查入口：
 
@@ -131,12 +133,12 @@ pnpm typecheck
 pnpm messages:check
 ```
 
-上线前仍需：
+开放微信登录前的流程：
 
 1. 网站应用及登录权限审核通过；真实凭据通过服务端私有配置交付，不写进任务消息或 Git。
 2. 对照 `r1-write-target-policy.md` 完成生产只读 preflight、当前备份和本次精确部署授权。
 3. 在开发目标用固定账号和 mock provider 验证邮箱/纯手机号/MFA/锁定/冲突/回放/并发/双语回调/原密码登录，验证生产未知微信不会创建 auth user/profile。
-4. 部署迁移及 Auth 兼容修复、注册 provider，核对两段 PKCE、精确 callback allowlist、代理 IP 和日志脱敏、定时清理。入口保持关闭直到联调通过。
+4. 迁移、Auth 兼容修复、禁用 provider 与定时清理已部署；开放前继续核对完整两段 PKCE、精确 callback allowlist、代理链真实 IP 和各层日志脱敏。入口保持关闭直到联调通过。
 5. 使用获准的正式身份完成真实微信扫码与绑定人工验收，不创建一次性生产测试账号。只有本次明确部署授权后才能修改生产。
 
 回退顺序：先关闭 `WECHAT_OAUTH_ENABLED` 与 custom provider 的新授权，再回切应用/Auth previous。已绑定的微信 identity、原账号和审计保留；邮箱/手机号密码仍可使用。关闭新授权不删除任何 identity，不回退已发生的业务事实。加法迁移可留在库内，过期清理继续运行。具体 Auth 镜像回退兼容性在启用前验证。
