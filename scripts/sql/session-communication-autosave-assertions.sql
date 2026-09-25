@@ -1,0 +1,46 @@
+-- 在外层回滚事务中复用固定教师与管理员身份。
+set local role authenticated;
+do $$
+declare sid uuid:=current_setting('teaching.test.session')::uuid; uid uuid:=current_setting('teaching.test.teacher')::uuid;
+  student uuid; entry_id uuid:=gen_random_uuid(); group_id uuid:=gen_random_uuid(); legacy_id uuid:=gen_random_uuid(); result jsonb;
+begin
+  perform set_config('request.jwt.claim.sub',uid::text,true);
+  perform set_config('request.jwt.claims',jsonb_build_object('sub',uid,'role','authenticated','aal','aal2')::text,true);
+  select student_id into student from public.session_attendance where session_id=sid limit 1;
+  result:=public.save_session_communication(group_id,sid,null,'2040-01-10','class_group','contacted','Class note','',null,0);
+  if (result #>> '{communications,completed}')::boolean then raise exception 'GROUP_COMPLETED_STUDENT'; end if;
+  result:=public.save_session_communication(entry_id,sid,student,'2040-01-10','phone','contacted','Initial note','',null,0);
+  if result->>'revision'<>'1' or not (result #>> '{communications,completed}')::boolean then raise exception 'AUTO_COMPLETION_FAILED'; end if;
+  result:=public.save_session_communication(entry_id,sid,student,'2040-01-10','phone','contacted','Initial note','',null,0);
+  if result->>'revision'<>'1' or jsonb_array_length(result #> '{communications,records}')<>2 then raise exception 'RETRY_DUPLICATED'; end if;
+  result:=public.save_session_communication(entry_id,sid,student,'2040-01-10','phone','contacted','Complete note','',null,1);
+  if result->>'revision'<>'2' or jsonb_array_length(result #> '{communications,records}')<>2 then raise exception 'EDIT_DUPLICATED'; end if;
+  if not exists(select 1 from public.student_follow_ups where id=entry_id and content='Complete note' and communication_revision=2) then raise exception 'HISTORY_NOT_UPDATED'; end if;
+  begin perform public.save_session_communication(entry_id,sid,student,'2040-01-10','phone','contacted','Stale note','',null,1); raise exception 'STALE_OVERWRITE';
+  exception when raise_exception then if sqlerrm<>'SUBMISSION_CONFLICT' then raise; end if; end;
+  result:=public.save_session_communication(entry_id,sid,student,'2040-01-10','phone','follow_up','Follow up','Call again','2040-01-11',2);
+  if (result #>> '{communications,completed}')::boolean or not exists(select 1 from public.session_completion_tasks where session_id=sid and kind='followup' and status='pending') then raise exception 'FOLLOWUP_NOT_REOPENED'; end if;
+  begin perform public.save_session_communication(entry_id,sid,student,'2040-01-10','phone','follow_up','Incomplete','',null,3); raise exception 'INCOMPLETE_SAVED';
+  exception when raise_exception then if sqlerrm<>'VALIDATION' then raise; end if; end;
+  result:=public.save_session_communication(entry_id,sid,student,'2040-01-10','phone','not_needed','No further contact','',null,3);
+  if not (result #>> '{communications,completed}')::boolean then raise exception 'RESOLVED_NOT_COMPLETED'; end if;
+  result:=public.save_session_communication(group_id,sid,null,'2040-01-10','class_group','follow_up','Group question','Reply','2040-01-11',1);
+  if (result #>> '{communications,completed}')::boolean then raise exception 'GROUP_FOLLOWUP_IGNORED'; end if;
+  perform public.record_session_communication(legacy_id,sid,student,'2040-01-10','phone','contacted','Historical note','',null);
+  begin perform public.save_session_communication(legacy_id,sid,student,'2040-01-10','phone','contacted','Changed history','',null,0); raise exception 'LEGACY_CHANGED';
+  exception when raise_exception then if sqlerrm<>'SUBMISSION_CONFLICT' then raise; end if; end;
+  begin perform public.save_session_communication(gen_random_uuid(),current_setting('teaching.test.other')::uuid,student,'2040-01-10','phone','contacted','Outside lesson','',null,0); raise exception 'OUTSIDE_LESSON_ALLOWED';
+  exception when raise_exception then if sqlerrm<>'FORBIDDEN' then raise; end if; end;
+  begin perform public.save_session_communication(gen_random_uuid(),sid,gen_random_uuid(),'2040-01-10','phone','contacted','Outside roster','',null,0); raise exception 'OUTSIDE_ROSTER_ALLOWED';
+  exception when raise_exception then if sqlerrm<>'FORBIDDEN' then raise; end if; end;
+  perform set_config('request.jwt.claim.sub',current_setting('teaching.test.admin'),true);
+  perform set_config('request.jwt.claims',jsonb_build_object('sub',current_setting('teaching.test.admin'),'role','authenticated','aal','aal2')::text,true);
+  begin perform public.save_session_communication(entry_id,sid,student,'2040-01-10','phone','contacted','Other author','',null,4); raise exception 'OTHER_AUTHOR_ALLOWED';
+  exception when raise_exception then if sqlerrm<>'FORBIDDEN' then raise; end if; end;
+  perform set_config('request.jwt.claim.sub',current_setting('teaching.test.outsider'),true);
+  perform set_config('request.jwt.claims',jsonb_build_object('sub',current_setting('teaching.test.outsider'),'role','authenticated')::text,true);
+  begin perform public.save_session_communication(gen_random_uuid(),sid,student,'2040-01-10','phone','contacted','Unauthorized','',null,0); raise exception 'OUTSIDER_ALLOWED';
+  exception when raise_exception then if sqlerrm<>'FORBIDDEN' then raise; end if; end;
+end;
+$$;
+reset role;

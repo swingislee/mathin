@@ -13,11 +13,28 @@ const communicationSchema = z.object({
   content: requiredText(2000), nextAction: text(1000), nextFollowUpOn: dateOnly.pipe(z.iso.date()).nullable(),
 }).refine(value => value.outcome !== "follow_up" || Boolean(value.nextAction && value.nextFollowUpOn));
 const completeSchema = z.object({ sessionId: uuid });
+const autosaveSchema = communicationSchema.safeExtend({ expectedRevision: z.number().int().nonnegative() });
 
 function refreshCommunication(sessionId: string) {
   revalidatePath(`/[locale]/dashboard/sessions/${sessionId}`, "page");
   revalidatePath("/[locale]/dashboard/classes", "layout");
   revalidatePath("/[locale]/dashboard/students", "layout");
+}
+
+export async function saveSessionCommunication(input: z.infer<typeof autosaveSchema>): Promise<ActionResult<{ communications: SessionCommunications; revision: number }>> {
+  try {
+    const value = parse(autosaveSchema, input);
+    const { supabase } = await authorizedClient("followup.write");
+    const { data, error } = await supabase.rpc("save_session_communication", {
+      p_id: value.id, p_session_id: value.sessionId, p_student_id: nullableRpcArg(value.studentId),
+      p_occurred_on: value.occurredOn, p_channel: value.channel, p_outcome: value.outcome,
+      p_content: value.content, p_next_action: value.nextAction, p_next_follow_up_on: nullableRpcArg(value.nextFollowUpOn),
+      p_expected_revision: value.expectedRevision,
+    });
+    if (error) throw new Error(error.message);
+    refreshCommunication(value.sessionId);
+    return { ok: true, data: z.object({ communications: sessionCommunicationsSchema, revision: z.number().int().positive() }).parse(data) };
+  } catch (error) { return actionError(error, [...COMMON_CODES, "SUBMISSION_CONFLICT"]); }
 }
 
 export async function recordSessionCommunication(input: z.infer<typeof communicationSchema>): Promise<ActionResult<SessionCommunications>> {

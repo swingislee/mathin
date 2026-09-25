@@ -33,8 +33,8 @@ describe("P4I-15 postwork seam contract", () => {
 
   it("课次沟通使用显式课次写入口，招生状态沿用自身业务", () => {
     const form = read("src", "features", "school", "SessionStudentPostworkTable.tsx");
-    expect(form).toContain("recordSessionCommunication");
-    expect(form).toContain("finishSessionCommunications");
+    expect(form).toContain("useSessionCommunicationAutosave");
+    expect(read("src", "features", "school", "use-session-communication-autosave.ts")).toContain("saveSessionCommunication");
     expect(form).not.toContain("completeSessionTaskAction");
     expect(form).not.toContain('from "./FollowUpForm"');
   });

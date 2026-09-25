@@ -4,6 +4,7 @@ import { getClassroomWorkSessions } from "./classroom-workbench-read";
 import { readSchoolQueryBatches } from "./school-query-pages";
 import { getTeachingRecords, getTeachingSessionRecords } from "./teaching-workbench/teaching-records-read";
 import { classSessionDetailSchema, type ClassRosterSession } from "./class-roster-session-contract";
+import { getSessionQuickRow } from "./classes";
 import { summarizeTeachingObservations, type TeachingObservations } from "./teaching-workbench/teaching-learning-summary";
 
 /** 只读取展开班级的课次，限制并发；失败保留为未知，避免将未读到的数据显示成零。 */
@@ -45,6 +46,10 @@ export async function getClassRosterSessions(classroomIds: string[]): Promise<Cl
 }
 
 export async function getClassSessionDetail(sessionId: string, classroomId: string, userId: string, canReview: boolean) {
+  const quick = await getSessionQuickRow(sessionId);
+  if (!quick || quick.classroomId !== classroomId || quick.deletedAt || !quick.capabilities.canOpenManagement || ["cancelled", "voided"].includes(quick.state)) throw new Error("SESSION_NOT_FOUND");
+  if (quick.state === "scheduled") return classSessionDetailSchema.parse({ stage: "pre",
+    canPrepare: quick.capabilities.canPrepare, canEnterLive: quick.capabilities.canEnterLive, canMarkAttendance: quick.capabilities.canMarkAttendance });
   // 先由现有 RPC 核对课次可见范围，再读取编辑能力；客户端传入的班级不能改变授权范围。
   const records = await getTeachingRecords(sessionId, 1);
   if (records.session.classroomId !== classroomId) throw new Error("SESSION_NOT_FOUND");

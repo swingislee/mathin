@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { DashboardRowDisclosure } from "./dashboard-page/DashboardRowDisclosure";
 import { FollowupRecordRow } from "./dashboard-page/FollowupRecordRow";
-import { CLASS_SESSION_OBSERVATION_BATCH_SIZE, classSessionMessages, classSessionObservationsSchema, type ClassRosterSession } from "./class-roster-session-contract";
+import { CLASS_SESSION_OBSERVATION_BATCH_SIZE, classSessionMessages, classSessionObservationsSchema, hasClassSessionStarted, type ClassRosterSession } from "./class-roster-session-contract";
 import { readDashboardDetail } from "./dashboard-page/readDashboardDetail";
 import { TeachingCoverage, TeachingPerformance } from "./teaching-workbench/TeachingObservationCells";
 import type { TeachingObservations } from "./teaching-workbench/teaching-learning-summary";
@@ -30,7 +30,7 @@ export function ClassRosterSessionRow({ classroomId, classroomName, sessions, lo
   const [observations, setObservations] = useState<Record<string, TeachingObservations | null>>({});
   const observationCache = useRef<typeof observations>({});
   const [attempt, setAttempt] = useState(0);
-  const sessionIds = sessions.map(session => session.id).join(",");
+  const sessionIds = sessions.filter(hasClassSessionStarted).map(session => session.id).join(",");
   useEffect(() => {
     if (!expanded) return;
     const ids = sessionIds.split(",").filter(id => id && !Object.hasOwn(observationCache.current, id));
@@ -85,6 +85,7 @@ export function ClassRosterSessionRow({ classroomId, classroomName, sessions, lo
           const isOpen = expandedSession === session.id;
           const observation = observations[session.id];
           const reviewCount = reviewCounts[session.id] ?? session.reviewCount;
+          const started = hasClassSessionStarted(session);
           return <FollowupRecordRow key={session.id} rowKey={sessionKey(session.id)} rowProps={{ "data-class-session-row": session.id, className: "cursor-pointer [&>td]:px-2 [&>td]:py-1.5" }}
             active={activeKey === sessionKey(session.id)} expanded={isOpen} onActivate={() => onActivate(sessionKey(session.id))} loadingLabel={m.loading}
             onExpandedChange={open => changeSession(session.id, open)} detailsId={id} title={`${session.title || m.untitled} · ${date(session.scheduledAt)}`} colSpan={4} hideTitle
@@ -93,10 +94,11 @@ export function ClassRosterSessionRow({ classroomId, classroomName, sessions, lo
                 <div className="min-w-0"><p className="truncate leading-5">{session.title || m.untitled}</p><p className="text-[11px] text-muted">{date(session.scheduledAt)}</p></div>
               </div></TableCell>
               <TableCell className="text-muted"><p>{t(session.endedAt ? "records.ended" : session.startedAt ? "records.started" : "records.notStarted")}</p><p className="mt-0.5 text-[11px]">{m.attendance} {session.attendanceCount}</p></TableCell>
-              <TableCell>{observation ? <TeachingPerformance value={observation} inline /> : observation === null
+              {started ? <><TableCell>{observation ? <TeachingPerformance value={observation} inline /> : observation === null
                 ? <div className="flex items-center gap-1 text-[11px] text-muted"><span>{m.observationsFailed}</span><Button variant="ghost" size="sm" className="h-7 px-1 text-[11px]" onClick={() => retryObservation(session.id)}>{m.retry}</Button></div>
                 : <span role="status" className="text-[11px] text-muted">{m.observationsLoading}</span>}</TableCell>
-              <TableCell className="text-muted">{observation ? <TeachingCoverage value={observation} reviewCount={reviewCount} /> : <span>{m.reviews} {reviewCount}</span>}</TableCell>
+              <TableCell className="text-muted">{observation ? <TeachingCoverage value={observation} reviewCount={reviewCount} /> : <span>{m.reviews} {reviewCount}</span>}</TableCell></>
+                : <TableCell colSpan={2} className="text-right text-muted">{m.preparation}</TableCell>}
             </>}>
             {() => <div data-class-session-editor data-session-id={session.id}>
               <ClassRosterSessionDetail sessionId={session.id} classroomId={classroomId} locale={locale} timeZone={timeZone} now={now} onDirtyChange={onDirtyChange}

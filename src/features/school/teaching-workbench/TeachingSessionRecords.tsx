@@ -50,13 +50,13 @@ export function TeachingSessionRecords({ data, locale, timeZone, returnTo, curre
       <p className="mt-2 text-xs text-muted">{t("readHint")}</p>
       <Link href={returnTo} className="mt-3 inline-block text-sm underline underline-offset-4">{t("back")}</Link>
     </DashboardSection>}
-    <DashboardSection title={t("learning")} description={t("learningHint")}>
-      <div className="mb-2"><LearningCheckStatusLegend /></div>
+    <DashboardSection title={studentWork ? undefined : t("learning")} description={studentWork ? undefined : t("learningHint")}>
+      {!studentWork && <><div className="mb-2"><LearningCheckStatusLegend /></div>
       <div className="mb-3 space-y-2 text-xs" data-teaching-observations>
         <div className="flex flex-wrap gap-x-8 gap-y-2"><TeachingPerformance value={observations} /><TeachingCoverage value={observations} reviewCount={reviews.size} /><TeachingFocus value={observations} /></div>
         <p className="text-muted">{workT("observations.basis")} {workT("observations.coverageHint")}</p>
       </div>
-      {data.checks.length === 0 && <p className="mb-3 text-sm text-muted">{t("noChecks")}</p>}
+      {data.checks.length === 0 && <p className="mb-3 text-sm text-muted">{t("noChecks")}</p>}</>}
       {studentWork ?? <DashboardTableShell className={inline ? "rounded-none border-0" : undefined}><Table className={inline ? "text-xs [&_th]:h-9 [&_th]:px-2 [&_td]:px-2 [&_td]:py-1.5" : undefined} containerClassName={inline ? undefined : "max-h-[65vh] overflow-auto"}>
         <TableHeader className={inline ? "bg-card" : "sticky top-0 z-10 bg-card"}><TableRow>
           <TableHead className="min-w-24">{reportT("student")}</TableHead>

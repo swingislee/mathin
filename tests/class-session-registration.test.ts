@@ -12,7 +12,8 @@ import type { ClassRosterSession, ClassSessionDetail } from "@/features/school/c
 const deps = vi.hoisted(() => ({ save: vi.fn(), record: vi.fn(), refresh: vi.fn(), fetch: vi.fn() }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/features/school/review-actions", () => ({ saveSessionReviewsAction: deps.save }));
-vi.mock("@/features/school/session-communication-actions", () => ({ recordSessionCommunication: deps.record, finishSessionCommunications: vi.fn() }));
+vi.mock("@/features/school/session-communication-actions", () => ({ saveSessionCommunication: deps.record }));
+vi.mock("@/features/school/AttendanceDrawer", () => ({ AttendanceDrawer: () => h("button", {}, "点名") }));
 vi.mock("@/features/school/learning-result-actions", () => ({ publishSessionReviewsAction: vi.fn() }));
 vi.mock("@/features/school/LearningResultWithdrawButton", () => ({ LearningResultWithdrawButton: () => null }));
 vi.mock("@/i18n/navigation", () => ({ useRouter: () => ({ refresh: deps.refresh }), Link: ({ children }: { children: ReactNode }) => h("span", {}, children) }));
@@ -25,18 +26,18 @@ const observations = { explained: 2, independent: 7, prompted: 3, imitated: 1, i
 const summary = (sessionId: string) => ({ sessionId, observations: sessionId === "today" ? observations : { ...observations, explained: 0, independent: 0, prompted: 0, imitated: 0, recordedChecks: 0 } });
 function detail(sessionId: string): ClassSessionDetail {
   return { canWriteReview: true, resultStatus: "draft", records: {
-    session: { id: sessionId, classroomId: "class", classroomName: "Class", title: sessionId, scheduledAt: "2026-09-20T02:00:00Z", startedAt: null, endedAt: null },
+    session: { id: sessionId, classroomId: "class", classroomName: "Class", title: sessionId, scheduledAt: "2026-09-20T02:00:00Z", startedAt: "2026-09-20T02:00:00Z", endedAt: "2026-09-20T03:00:00Z" },
     students: [{ id: first, name: "本课学生甲" }, { id: second, name: "临时学生乙" }],
     attendance: [], checks: [], results: [], reviews: [], canReadContacts: true, contacts: [], contactPage: 1, contactTotal: 0, supportNotes: [], sessionCommunications: communications,
   } };
 }
 const sessions: ClassRosterSession[] = ["previous", "today"].map((id, index) => ({ id, classroomId: "class", title: id,
-  scheduledAt: index ? "2026-09-20T02:00:00Z" : "2026-09-13T02:00:00Z", startedAt: null, endedAt: null, attendanceCount: index, reviewCount: index }));
-function Harness({ requestedId, empty = false }: { requestedId?: string; empty?: boolean }) {
+  scheduledAt: index ? "2026-09-20T02:00:00Z" : "2026-09-13T02:00:00Z", startedAt: "2026-09-20T02:00:00Z", endedAt: "2026-09-20T03:00:00Z", attendanceCount: index, reviewCount: index }));
+function Harness({ requestedId, empty = false, upcoming = false }: { requestedId?: string; empty?: boolean; upcoming?: boolean }) {
   const [expanded, setExpanded] = useState(Boolean(requestedId)), [dirty, setDirty] = useState(false);
   const [activeKey, setActiveKey] = useState<string | null>(null);
   return h(NextIntlClientProvider, { locale: "zh", messages, timeZone: "Asia/Shanghai", children: h("table", {}, h(FollowupTableBody, { navigation: "tree", onNavigate: key => { setActiveKey(key); return true; } },
-    h(ClassRosterSessionRow, { classroomId: "class", classroomName: "示例班", sessions: empty ? [] : sessions, locale: "zh", timeZone: "Asia/Shanghai", now: Date.parse("2026-09-20T01:00:00Z"), requestedId,
+    h(ClassRosterSessionRow, { classroomId: "class", classroomName: "示例班", sessions: empty ? [] : upcoming ? sessions.map(session => ({ ...session, startedAt: null, endedAt: null })) : sessions, locale: "zh", timeZone: "Asia/Shanghai", now: Date.parse("2026-09-20T01:00:00Z"), requestedId,
       recordKey: "class:example", activeKey, onActivate: setActiveKey,
       rowProps: { "data-test-class": true }, expanded, canChange: () => !dirty, onExpandedChange: setExpanded, onDirtyChange: setDirty,
       children: disclosure => h("td", { colSpan: 5 }, disclosure, "示例班 · 老师 · 时间 · 难度 · 全班学生") }))) });
@@ -66,15 +67,15 @@ beforeEach(async () => {
     return url.endsWith("session-observations") ? input.sessionIds.map(summary) : detail(input.sessionId);
   } }));
   deps.save.mockResolvedValue({ ok: true });
-  deps.record.mockImplementation(async (input: { id: string; sessionId: string; studentId: string; content: string }) => ({ ok: true, data: { ...communications,
-    records: [{ id: input.id, studentId: input.studentId, content: input.content, occurredOn: "2026-09-20", channel: "wechat", outcome: "contacted", nextAction: "", nextFollowUpOn: null, author: "Teacher", createdAt: "2026-09-20T01:00:00Z" }] } }));
+  deps.record.mockImplementation(async (input: { id: string; sessionId: string; studentId: string; content: string; expectedRevision: number }) => ({ ok: true, data: { revision: input.expectedRevision + 1, communications: { ...communications,
+    records: [{ id: input.id, studentId: input.studentId, content: input.content, occurredOn: "2026-09-20", channel: "wechat", outcome: "contacted", nextAction: "", nextFollowUpOn: null, author: "Teacher", createdAt: "2026-09-20T01:00:00Z" }] } } }));
   container = document.createElement("div"); document.body.append(container); root = createRoot(container);
   await act(async () => root.render(h(Harness)));
 });
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe("班级下直接连续登记", () => {
-  it("班级行下展开课次后再打开登记，草稿阻止切课且失败保留，保存后连续填写下一位", async () => {
+  it("输入后自动保存，失败保留并阻止切课，重试后可以继续下一位", async () => {
     expect(deps.fetch).not.toHaveBeenCalled();
     expect(container.querySelectorAll("tr")).toHaveLength(1);
     expect(container.querySelector('[role="combobox"]')).toBeNull();
@@ -88,35 +89,62 @@ describe("班级下直接连续登记", () => {
     expect(deps.fetch.mock.calls.at(-1)![0]).toContain("/classes/session-detail");
     expect(container.querySelector('[data-session-id="today"]')).not.toBeNull();
     await click(container.querySelector<HTMLElement>(`[data-followup-row-key="${first}"]`)!);
+    vi.useFakeTimers();
+    deps.record.mockResolvedValueOnce({ ok: false, code: "ERROR" });
     await fill(container.querySelector("textarea")!, "已沟通的内容");
     await click(sessionRow("previous"));
     expect(container.querySelector('[data-session-id="today"]')).not.toBeNull();
     await click(classToggle());
     expect(container.querySelector('[data-session-id="today"]')).not.toBeNull();
-    deps.record.mockResolvedValueOnce({ ok: false, code: "ERROR" });
-    await click(button("保存并下一位"));
+    await act(async () => { await vi.advanceTimersByTimeAsync(1100); });
     expect(container.querySelector<HTMLTextAreaElement>("textarea")!.value).toBe("已沟通的内容");
-    await click(button("保存并下一位"));
+    expect(container.textContent).toContain("保存失败");
+    expect(button("提交全部已填记录")).toBeUndefined();
+    expect(button("确认本次沟通完成")).toBeUndefined();
+    await click(button("重试"));
     expect(deps.record).toHaveBeenLastCalledWith(expect.objectContaining({ sessionId: "today", studentId: first, content: "已沟通的内容" }));
+    await click(button("下一位"));
     expect(container.querySelector(`[data-followup-row-key="${second}"]`)?.getAttribute("aria-expanded")).toBe("true");
     await click(sessionRow("previous"));
     expect(container.querySelector('[data-session-id="previous"]')).not.toBeNull();
     expect(container.querySelector('[data-session-id="today"]')).toBeNull();
   });
-  it("跨学生填写后批量提交，失败学生保留草稿并可单独重试", async () => {
+  it("跨学生自动保存，失败学生保留草稿并可单独重试", async () => {
     await click(classToggle()); await click(sessionRow("today"));
+    vi.useFakeTimers();
     await click(container.querySelector<HTMLElement>(`[data-followup-row-key="${first}"]`)!);
     await fill(container.querySelector("textarea")!, "甲的记录");
     await click(container.querySelector<HTMLElement>(`[data-followup-row-key="${second}"]`)!);
+    expect(deps.record).toHaveBeenCalledTimes(1);
+    deps.record.mockResolvedValueOnce({ ok: false, code: "ERROR" });
     await fill(container.querySelector("textarea")!, "乙的记录");
-    deps.record.mockResolvedValueOnce({ ok: true, data: communications }).mockResolvedValueOnce({ ok: false, code: "ERROR" });
-    await click(button("提交全部已填记录"));
+    await act(async () => { await vi.advanceTimersByTimeAsync(1100); });
     expect(deps.record.mock.calls.map(call => call[0].studentId)).toEqual([first, second]);
-    expect(container.textContent).toContain("成功提交 1 位学生");
     expect(container.querySelector("textarea")!.value).toBe("乙的记录");
-    await click(button("提交全部已填记录"));
+    await click(button("重试"));
     expect(deps.record).toHaveBeenCalledTimes(3);
     expect(deps.record.mock.calls[2][0].studentId).toBe(second);
+  });
+
+  it("未开课只显示课前操作，不读取或展示空白学情与课后表单", async () => {
+    await act(async () => root.render(h(Harness, { key: "upcoming", upcoming: true })));
+    await click(classToggle());
+    expect(deps.fetch).not.toHaveBeenCalled();
+    expect(container.querySelector("[data-learning-status]")).toBeNull();
+    deps.fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ stage: "pre", canPrepare: true, canEnterLive: true, canMarkAttendance: true }) });
+    await click(sessionRow("today"));
+    expect(container.textContent).toContain("备课"); expect(container.textContent).toContain("进入课堂"); expect(button("点名")).toBeTruthy();
+    expect(container.querySelector("[data-session-postwork-table]")).toBeNull();
+    expect(container.textContent).not.toContain("本节逐生学情");
+    expect(deps.record).not.toHaveBeenCalled();
+  });
+
+  it("只读角色看到备课查看入口，教室和点名按服务端能力显示", async () => {
+    await act(async () => root.render(h(Harness, { key: "readonly", upcoming: true })));
+    await click(classToggle());
+    deps.fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ stage: "pre", canPrepare: false, canEnterLive: false, canMarkAttendance: false }) });
+    await click(sessionRow("today"));
+    expect(container.textContent).toContain("查看备课"); expect(container.textContent).not.toContain("进入课堂"); expect(button("点名")).toBeUndefined();
   });
 
   it("展开班级即可看到逐课五种答题 SVG 和覆盖情况，重开复用摘要", async () => {
@@ -160,6 +188,41 @@ describe("班级下直接连续登记", () => {
     expect(deps.save).toHaveBeenCalledExactlyOnceWith("today", [expect.objectContaining({ studentId: second, comment: "临时学生的点评" })]);
     await click(sessionRow("previous"));
     expect(container.querySelector('[data-session-id="previous"]')).not.toBeNull();
+  });
+  it.each([true, false])("点击页面链接先等待自动保存，失败时留在当前页面：%s", async success => {
+    await click(classToggle()); await click(sessionRow("today"));
+    await click(container.querySelector<HTMLElement>(`[data-followup-row-key="${first}"]`)!);
+    vi.useFakeTimers();
+    let resolve!: (value: unknown) => void;
+    deps.record.mockImplementationOnce(() => new Promise(done => { resolve = done; }));
+    await fill(container.querySelector("textarea")!, "离开前保留");
+    const link = document.createElement("a"); link.href = "/next-page"; document.body.append(link);
+    const navigate = vi.fn((event: MouseEvent) => event.preventDefault()); link.addEventListener("click", navigate);
+    try {
+      await click(link); expect(navigate).not.toHaveBeenCalled();
+      await act(async () => resolve(success ? { ok: true, data: { revision: 1, communications } } : { ok: false, code: "ERROR" }));
+      expect(navigate).toHaveBeenCalledTimes(success ? 1 : 0);
+      if (!success) expect(container.querySelector("textarea")!.value).toBe("离开前保留");
+    } finally { link.remove(); }
+  });
+  it("课评保存期间继续输入，页面跳转等待最新一版保存", async () => {
+    await click(classToggle()); await click(sessionRow("today"));
+    await click(container.querySelector<HTMLElement>(`[data-followup-row-key="${first}"]`)!);
+    vi.useFakeTimers();
+    let firstDone!: (value: unknown) => void, lastDone!: (value: unknown) => void;
+    deps.save.mockImplementationOnce(() => new Promise(done => { firstDone = done; })).mockImplementationOnce(() => new Promise(done => { lastDone = done; }));
+    const input = container.querySelector<HTMLInputElement>(`input[id="review-today-${first}"]`)!;
+    await fill(input, "第一版课评"); await act(async () => { await vi.advanceTimersByTimeAsync(1100); });
+    await fill(input, "最后一版课评");
+    const link = document.createElement("a"); link.href = "/next-page"; document.body.append(link);
+    const navigate = vi.fn((event: MouseEvent) => event.preventDefault()); link.addEventListener("click", navigate);
+    try {
+      await click(link); expect(navigate).not.toHaveBeenCalled();
+      await act(async () => firstDone({ ok: true }));
+      expect(deps.save).toHaveBeenLastCalledWith("today", [expect.objectContaining({ comment: "最后一版课评" })]);
+      expect(navigate).not.toHaveBeenCalled();
+      await act(async () => lastDone({ ok: true })); expect(navigate).toHaveBeenCalledOnce();
+    } finally { link.remove(); }
   });
   it("课次深链接展开两层，收起再打开班级只显示课次名单", async () => {
     await act(async () => root.render(h(Harness, { key: "focused", requestedId: "previous" })));

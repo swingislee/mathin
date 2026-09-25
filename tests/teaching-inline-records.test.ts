@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import messages from "../messages/zh.json";
 import { TeachingClassOverviewTable } from "@/features/school/teaching-workbench/TeachingClassOverviewTable";
 import { TeachingInlineRecords } from "@/features/school/teaching-workbench/TeachingInlineRecords";
+import { TeachingSessionRecords } from "@/features/school/teaching-workbench/TeachingSessionRecords";
 import { ATTENDANCE_STATUS_TONE } from "@/features/school/attendance-visual";
 import { LEARNING_CHECK_STATUS_STYLE } from "@/features/school/session-learning-visual";
 import { readTeachingInlineRecords, type TeachingRecordCache } from "@/features/school/teaching-workbench/teaching-records-client";
@@ -35,6 +36,21 @@ afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 const Provider = NextIntlClientProvider as ComponentType<PropsWithChildren<Omit<ComponentProps<typeof NextIntlClientProvider>, "children">>>;
 
 describe("inline teaching record loading", () => {
+  it("连续录入直接显示学生工作表，课次统计、图例和说明只在课次行呈现", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const container = document.createElement("div"), root = createRoot(container);
+    try {
+      await act(async () => root.render(createElement(Provider, { locale: "zh", messages, timeZone: "Asia/Shanghai" }, createElement(TeachingSessionRecords, {
+        data: records, locale: "zh", timeZone: "Asia/Shanghai", returnTo: "", currentHref: "", inline: { onPageChange: vi.fn(), onPageSizeChange: vi.fn() },
+        studentWork: createElement("div", { "data-student-work": true }, "学生工作表"),
+      }))));
+      expect(container.querySelector("[data-student-work]")).not.toBeNull();
+      expect(container.querySelector("[data-teaching-observations]")).toBeNull();
+      expect(container.textContent).not.toContain(messages.school.teachingWorkbench.records.learningHint);
+      expect(container.textContent).not.toContain(messages.school.teachingWorkbench.observations.coverageHint);
+      expect(container.textContent).toContain("保存的沟通正文");
+    } finally { await act(async () => root.unmount()); }
+  });
   it("uses the workbench field menu and recalculates a class when the teacher scope changes or clears", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
