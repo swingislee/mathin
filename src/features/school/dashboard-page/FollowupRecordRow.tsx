@@ -2,7 +2,7 @@
 
 import { useEffect, useImperativeHandle, useRef, type ComponentProps, type KeyboardEventHandler, type ReactNode, type Ref } from "react";
 import { TableBody, TableRow } from "@/components/ui/table";
-import { followupFocusActivatesRow, followupKeyboardCommand, followupKeyContext, navigateFollowupTable, type FollowupNavigationMode } from "../followup-keyboard";
+import { followupFocusActivatesRow, followupKeyboardCommand, followupKeyContext, navigateFollowupTable, registerFollowupNavigation, type FollowupNavigationMode } from "../followup-keyboard";
 import { FollowupInlineDetails } from "./FollowupInlineDetails";
 import { restoreCollapsedRow } from "./restore-collapsed-row";
 
@@ -83,10 +83,13 @@ export function FollowupRecordRow({
 }
 
 /** 所有记录表沿同一个可见行序列移动焦点，编辑器和弹层保留自己的方向键。 */
-export function FollowupTableBody({ onNavigate, navigation = "records", ...props }: Omit<ComponentProps<typeof TableBody>, "onKeyDown"> & {
+export function FollowupTableBody({ onNavigate, navigation = "records", ref, ...props }: Omit<ComponentProps<typeof TableBody>, "onKeyDown"> & {
   onNavigate: (key: string) => boolean;
-  /** tree 贯通展开的父子行，内嵌登记表仍拥有自己的键盘范围。 */
+  /** tree 贯通展开的父子行，并支持 Alt + 方向键跳过子行切换同层记录。 */
   navigation?: FollowupNavigationMode;
 }) {
-  return <TableBody {...props} data-followup-navigation={navigation} onKeyDown={(event) => navigateFollowupTable(event, onNavigate, navigation)} />;
+  const bodyRef = useRef<HTMLTableSectionElement>(null);
+  useImperativeHandle(ref, () => bodyRef.current!, []);
+  useEffect(() => bodyRef.current ? registerFollowupNavigation(bodyRef.current, onNavigate) : undefined, [onNavigate]);
+  return <TableBody {...props} ref={bodyRef} data-followup-navigation={navigation} onKeyDown={(event) => navigateFollowupTable(event, onNavigate, navigation)} />;
 }

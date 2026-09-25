@@ -8,7 +8,8 @@ import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { FollowupTableBody } from "./dashboard-page/FollowupRecordRow";
 import { SchoolSupportTableEntry, SchoolSupportInsertion } from "./SchoolSupportInlineEntry";
 import { SchoolSupportPendingRows } from './SchoolSupportPendingRows';
 import { Link } from "@/i18n/navigation";
@@ -26,7 +27,7 @@ import { LeadIdentityControl } from "./LeadIdentityControl";
 import { useLeadPoolSelection } from "./LeadPoolSelection";
 import { FollowupEntryLayout } from "./FollowupEntryFields";
 import { FollowupFieldIcon } from "./FollowupFieldIcon";
-import { followupFocusActivatesRow, followupKeyboardCommand, followupKeyContext, navigateFollowupTable } from "./followup-keyboard";
+import { followupFocusActivatesRow, followupKeyboardCommand, followupKeyContext } from "./followup-keyboard";
 import { Student360Trigger } from "./Student360Sheet";
 import { PossibleDuplicateBadge } from "./PossibleDuplicateBadge";
 import type { LeadPoolRow } from "./lead-contract";
@@ -142,13 +143,7 @@ export function LeadIntakeWorkbench({ leads, locale, canAssign = false, canManag
   }, [canAssign, canManageIdentity, changeDetails, colSpan, formatAt, gradeOf, invitationT, locale, progressOf, selection, t, toneOf, visibleIds]);
 
   return <SchoolSupportTableEntry workspace="leads" enabled={canAdd} columns={[...(canAssign ? ["blank" as const] : []),"name","phone","grade","blank","blank","blank","blank","blank"]}><DashboardTableShell data-lead-intake-workbench data-followup-workbench data-followup-scroll>
-    <Table className="w-full min-w-[58rem] table-fixed text-xs" containerClassName="overflow-auto [scrollbar-gutter:stable]"
-      onKeyDown={(event) => navigateFollowupTable(event, (id) => {
-        if (selection.assignmentPending) return false;
-        setActiveId(id);
-        if (expandedId) setExpandedId(id);
-        return true;
-      })}>
+    <Table className="w-full min-w-[58rem] table-fixed text-xs" containerClassName="overflow-auto [scrollbar-gutter:stable]">
     <colgroup>{canAssign ? <col className="w-8" /> : null}<col className="w-44" /><col className="w-32" /><col className="w-20" /><col /><col className="w-28" /><col className="w-28" /><col className="w-32" /><col className="w-10" /></colgroup>
     <TableHeader inert={selection.assignmentPending || undefined}><TableRow className="[&>th]:h-9 [&>th]:px-2">
       {canAssign ? <TableHead className="sticky left-0 top-0 z-30 bg-card"><Checkbox checked={visibleIds.length > 0 && selectedCount === visibleIds.length ? true : selectedCount > 0 ? "indeterminate" : false} disabled={!visibleIds.length || selection.assignmentPending} onCheckedChange={(checked) => selection.setVisibleSelection(visibleIds, checked === true)} aria-label={t("selectPage")} title={t("rangeSelectionHint")} /></TableHead> : null}
@@ -161,6 +156,11 @@ export function LeadIntakeWorkbench({ leads, locale, canAssign = false, canManag
       <TableHead className="sticky top-0 z-20 bg-card"><DashboardTableColumnHeader label={t("intakeProgress")} {...table.columnProps("progress")} /></TableHead>
       <TableHead className="sticky top-0 z-20 bg-card"><span className="sr-only">{t("actions")}</span></TableHead>
     </TableRow></TableHeader>
-    <TableBody><SchoolSupportInsertion after="start" /><SchoolSupportPendingRows workspace="leads" colSpan={colSpan} />{table.visibleRows.map((lead) => <FollowupTableRecord key={lead.id} row={lead} active={activeId === lead.id} expanded={expandedId === lead.id} render={renderRow} />)}{!table.visibleRows.length ? <TableRow><TableCell colSpan={colSpan} className="h-32 text-center text-muted">{tableT("filteredEmpty")}</TableCell></TableRow> : null}</TableBody>
+    <FollowupTableBody onNavigate={id => {
+      if (selection.assignmentPending) return false;
+      setActiveId(id);
+      if (expandedId) setExpandedId(id);
+      return true;
+    }}><SchoolSupportInsertion after="start" /><SchoolSupportPendingRows workspace="leads" colSpan={colSpan} />{table.visibleRows.map((lead) => <FollowupTableRecord key={lead.id} row={lead} active={activeId === lead.id} expanded={expandedId === lead.id} render={renderRow} />)}{!table.visibleRows.length ? <TableRow><TableCell colSpan={colSpan} className="h-32 text-center text-muted">{tableT("filteredEmpty")}</TableCell></TableRow> : null}</FollowupTableBody>
   </Table></DashboardTableShell></SchoolSupportTableEntry>;
 }

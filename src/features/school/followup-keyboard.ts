@@ -44,6 +44,17 @@ export function adjacentFollowupKey(keys: readonly string[], current: string, di
 
 /** 摘要和详情共用可见行顺序；切换只移动工作焦点，不保存或完成记录。 */
 export type FollowupNavigationMode = "records" | "tree";
+type Navigate = (key: string) => boolean;
+const navigationScopes = new WeakMap<HTMLElement, Navigate>();
+const ROW = "tr[data-followup-row-key]";
+const SCOPE = "[data-followup-navigation]";
+const HIDDEN = "[hidden],[inert],[aria-hidden='true']";
+
+/** 跨入子表时由子表激活记录，父表继续维护自己的行与保存保护。 */
+export function registerFollowupNavigation(root: HTMLElement, onNavigate: Navigate) {
+  navigationScopes.set(root, onNavigate);
+  return () => { navigationScopes.delete(root); };
+}
 
 function nestedRecordOrigin(target: Element, root: HTMLElement, rows: HTMLElement[]) {
   let origin = target.closest<HTMLElement>("tr");
@@ -55,22 +66,53 @@ function nestedRecordOrigin(target: Element, root: HTMLElement, rows: HTMLElemen
   return null;
 }
 
-export function navigateFollowupTable(event: KeyboardEvent<HTMLElement>, onNavigate: (key: string) => boolean, mode: FollowupNavigationMode = "records") {
-  const command = followupKeyboardCommand({ ...event, isComposing: event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229 }, followupKeyContext(event));
-  if (command?.type !== "move") return;
-  const rows = [...event.currentTarget.querySelectorAll<HTMLElement>("tr[data-followup-row-key]")].filter(row => mode !== "tree"
-    || row.closest("[data-followup-navigation]") === event.currentTarget && !row.closest("[hidden],[inert]"));
-  const origin = (event.target as Element).closest("tr");
-  const summary = mode === "tree" ? nestedRecordOrigin(event.target as Element, event.currentTarget, rows)
-    : origin?.hasAttribute("data-followup-inline-details") ? origin.previousElementSibling : origin;
-  const currentKey = summary?.getAttribute("data-followup-row-key");
-  if (!currentKey) return;
-  const keys = rows.map((row) => row.dataset.followupRowKey!);
-  const nextKey = adjacentFollowupKey(keys, currentKey, command.direction);
+function parallelTableRow(summary: HTMLElement, direction: number) {
+  const current = summary.closest("table");
+  const detail = current?.parentElement?.closest("[data-followup-inline-details]") ?? null;
+  const region = detail ?? current?.closest("main") ?? summary.ownerDocument.body;
+  const tables = [...region.querySelectorAll<HTMLTableElement>("table")].filter(table =>
+    (table.parentElement?.closest("[data-followup-inline-details]") ?? null) === detail
+    && !table.closest(HIDDEN) && [...table.querySelectorAll<HTMLElement>(ROW)].some(row => row.closest("table") === table && !row.closest(HIDDEN)));
+  const index = current ? tables.indexOf(current) : -1;
+  const table = index < 0 ? undefined : tables[index + direction];
+  const rows = table ? [...table.querySelectorAll<HTMLElement>(ROW)].filter(row => row.closest("table") === table && !row.closest(HIDDEN)) : [];
+  return rows.find(row => row.dataset.followupActive === "true") ?? rows[0];
+}
+
+export function navigateFollowupTable(event: KeyboardEvent<HTMLElement>, onNavigate: Navigate, mode: FollowupNavigationMode = "records") {
+  const context = followupKeyContext(event);
+  const composing = event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229;
+  const command = followupKeyboardCommand({ ...event, isComposing: composing }, context);
+  const siblingMove = event.altKey && !event.shiftKey && (event.key === "ArrowDown" || event.key === "ArrowUp");
+  const tableMove = event.key === "Tab" && !event.altKey;
+  if (context.overlay || context.editing || event.defaultPrevented || composing || event.repeat || event.ctrlKey || event.metaKey
+    || command?.type !== "move" && !siblingMove && !tableMove) return;
+  const target = event.target as Element;
+  // 表单、链接及按钮保留原生 Tab 顺序；行或详情背景用 Tab 切换并列表格。
+  if (tableMove && target.closest("button,a,input,textarea,select,[contenteditable],[role='checkbox'],[role='tab']")) return;
+  let root = event.currentTarget;
+  let ancestor = root.parentElement?.closest<HTMLElement>(SCOPE);
+  while (ancestor) { root = ancestor; ancestor = root.parentElement?.closest<HTMLElement>(SCOPE); }
+  const rows = [...root.querySelectorAll<HTMLElement>(ROW)].filter(row => !row.closest(HIDDEN));
+  const summary = nestedRecordOrigin(target, root, rows);
+  if (!summary) return;
+  if (siblingMove && mode !== "tree" && root.dataset.followupNavigation !== "tree"
+    && !rows.some(row => row.closest("table") !== summary.closest("table"))) return;
+  const direction = tableMove ? event.shiftKey ? -1 : 1 : event.key === "ArrowDown" ? 1 : -1;
+  const siblings = siblingMove ? rows.filter(row => row.parentElement === summary.parentElement) : rows;
+  const next = tableMove ? parallelTableRow(summary, direction) : siblings[siblings.indexOf(summary) + direction];
+  if (tableMove && !next) return;
   event.preventDefault();
   event.stopPropagation();
-  if (summary?.getAttribute("aria-busy") === "true" || !nextKey || !onNavigate(nextKey)) return;
-  const next = rows[keys.indexOf(nextKey)];
+  if (summary.getAttribute("aria-busy") === "true" || !next || next.getAttribute("aria-busy") === "true") return;
+  const sourceScope = summary.closest<HTMLElement>(SCOPE) ?? event.currentTarget;
+  const destinationScope = next.closest<HTMLElement>(SCOPE) ?? event.currentTarget;
+  const navigate = destinationScope === event.currentTarget ? onNavigate : navigationScopes.get(destinationScope);
+  if (!navigate) return;
+  const currentKey = summary.dataset.followupRowKey!;
+  const leave = sourceScope === event.currentTarget ? onNavigate : navigationScopes.get(sourceScope);
+  if (sourceScope !== destinationScope && !leave?.(currentKey)) return;
+  if (!navigate(next.dataset.followupRowKey!)) return;
   next.focus({ preventScroll: true });
   next.scrollIntoView({ block: "nearest", inline: "nearest" });
 }

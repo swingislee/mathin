@@ -178,7 +178,7 @@ describe("班级下直接连续登记", () => {
     expect(container.textContent).toContain("尚未安排课次");
     expect(deps.fetch).not.toHaveBeenCalled();
   });
-  it("班级与课次共用方向键、Enter 和 Esc，逐生表有独立快捷键范围并支持键盘保存", async () => {
+  it("方向键贯通班级、课次与逐生记录，Alt 跳同层，保留 Enter、Esc 与键盘保存", async () => {
     const parent = container.querySelector<HTMLElement>("[data-test-class]")!;
     await keydown(parent, "Enter");
     await keydown(parent, "ArrowDown");
@@ -186,10 +186,20 @@ describe("班级下直接连续登记", () => {
     expect(sessionRow("previous").getAttribute("data-followup-active")).toBe("true");
     await keydown(sessionRow("previous"), "Enter");
     await keydown(sessionRow("previous"), "ArrowDown");
-    expect(document.activeElement).toBe(sessionRow("today"));
-    await keydown(sessionRow("today"), "ArrowUp");
-    expect(document.activeElement).toBe(sessionRow("previous"));
+    const group = container.querySelector<HTMLElement>('[data-session-postwork-table] [data-followup-row-key="class"]')!;
     const student = container.querySelector<HTMLElement>(`[data-followup-row-key="${first}"]`)!;
+    expect(document.activeElement).toBe(group);
+    await keydown(group, "ArrowDown");
+    expect(document.activeElement).toBe(student);
+    expect(student.getAttribute("data-followup-active")).toBe("true");
+    await keydown(student, "ArrowUp");
+    expect(document.activeElement).toBe(group);
+    await keydown(group, "ArrowUp");
+    expect(document.activeElement).toBe(sessionRow("previous"));
+    await keydown(sessionRow("previous"), "ArrowDown", { altKey: true });
+    expect(document.activeElement).toBe(sessionRow("today"));
+    await keydown(sessionRow("today"), "ArrowUp", { altKey: true });
+    expect(document.activeElement).toBe(sessionRow("previous"));
     await keydown(student, "Enter");
     const input = container.querySelector("textarea")!;
     await fill(input, "键盘提交记录");

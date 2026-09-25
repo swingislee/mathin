@@ -10,7 +10,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Link, useRouter } from "@/i18n/navigation";
 import { setRenewalCycleStatusAction, snapshotRenewalCycleMembershipsAction } from "./actions/renewals";
 import { BusinessRecordStateFilter, useBusinessSearchQuery } from "./BusinessRecordStateFilter";
@@ -22,7 +22,7 @@ import { RENEWAL_TABLE_COLUMNS, renewalTableFields } from "./renewal-table-field
 import { LeadPoolPagination } from "./LeadPoolPagination";
 import { useFollowupPagination } from "./useFollowupPagination";
 import { FilterSearchInput } from "./FilterBar";
-import { navigateFollowupTable } from "./followup-keyboard";
+import { FollowupTableBody } from "./dashboard-page/FollowupRecordRow";
 import { FollowupCommandPanel } from "./FollowupCommandPanel";
 import { FollowupPrimaryFilter, useFollowupWorkFilter } from "./FollowupPrimaryFilter";
 import { RENEWAL_WORK_FILTERS, renewalMatchesWorkFilter, type RenewalWorkFilter } from "./followup-primary-filter-contract";
@@ -191,8 +191,7 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
   </FollowupCommandPanel>} footer={<LeadPoolPagination baseHref="/dashboard/renewals" currentPage={pagination.page} totalPages={pagination.totalPages} totalCount={pagination.count}
     pageSize={pagination.pageSize} disabled={entryBusy} onPageChange={(page, size) => { setRetainedView(null); setActiveId(null); pagination.onPageChange(page, size); }} />}>
     <SchoolSupportTableEntry workspace="renewals" enabled={canWrite && !sampleMode} columns={["name","blank","blank","blank","blank","blank","blank"]} initialWork={{cycleId:cycle?.status!=="closed"?cycle?.id??null:null,termId:cycle?.targetTermId??null}}><DashboardTableShell data-renewal-workbench data-followup-workbench data-followup-scroll>
-      <Table className="w-full min-w-[70rem] table-fixed text-xs" containerClassName="overflow-auto [scrollbar-gutter:stable]"
-        onKeyDown={event => navigateFollowupTable(event, id => { if (entryBusy) return false; activate(id); return true; })}>
+      <Table className="w-full min-w-[70rem] table-fixed text-xs" containerClassName="overflow-auto [scrollbar-gutter:stable]">
         <colgroup><col className="w-48" /><col className="w-48" /><col className="w-28" /><col /><col className="w-32" /><col className="w-40" /><col className="w-36" /></colgroup>
         <TableHeader className="sticky top-0 z-20 bg-card" inert={entryBusy || undefined}><TableRow className="[&>th]:h-9 [&>th]:px-2">
           <TableHead className="sticky left-0 z-30 border-r border-line bg-card"><DashboardTableColumnHeader label={`${pool("student")} / ${pool("owner")}`} {...table.columnProps("name")} /></TableHead>
@@ -203,9 +202,9 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
           <TableHead><DashboardTableColumnHeader label={t("paymentFacts")} {...table.columnProps("payment")} /></TableHead>
           <TableHead><DashboardTableColumnHeader label={t("nextContact")} {...table.columnProps("next")} /></TableHead>
         </TableRow></TableHeader>
-        <TableBody><SchoolSupportInsertion after="start" />{!sampleMode ? <SchoolSupportPendingRows workspace="renewals" colSpan={7} /> : null}{visibleRows.map((row) => <FollowupTableRecord key={`${sampleMode}:${row.id}`} row={row} active={activeId === row.id} expanded={activeId === row.id} render={renderRow} />)}
+        <FollowupTableBody onNavigate={id => { if (entryBusy) return false; activate(id); return true; }}><SchoolSupportInsertion after="start" />{!sampleMode ? <SchoolSupportPendingRows workspace="renewals" colSpan={7} /> : null}{visibleRows.map((row) => <FollowupTableRecord key={`${sampleMode}:${row.id}`} row={row} active={activeId === row.id} expanded={activeId === row.id} render={renderRow} />)}
           {!visibleRows.length ? <TableRow><TableCell colSpan={7} className="h-40 text-center text-muted">{pool("noRows")}{!rows.length ? <p className="mt-2 text-xs">{pool("readyHint")}</p> : null}</TableCell></TableRow> : null}
-        </TableBody>
+        </FollowupTableBody>
       </Table>
     </DashboardTableShell></SchoolSupportTableEntry>
     <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}><DialogContent className="sm:max-w-3xl" aria-describedby={undefined}><DialogHeader><DialogTitle>{pool("settings")}</DialogTitle></DialogHeader>

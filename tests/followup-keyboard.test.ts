@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { readFileSync } from "node:fs";
 import type { KeyboardEvent } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -7,14 +8,19 @@ const key = (value: string, extra = {}) => ({ key: value, altKey: false, ctrlKey
   repeat: false, defaultPrevented: false, ...extra });
 
 function tableEvent(value: string, { detail = false, editing = false, portal = false, busy = false, index = 1, ...extra } = {}) {
-  const rows = ["lead:a", "lead:b", "post:c"].map((id) => ({
-    dataset: { followupRowKey: id }, focus: vi.fn(), scrollIntoView: vi.fn(),
-    hasAttribute: () => false, getAttribute: (name: string) => name === "data-followup-row-key" ? id : name === "aria-busy" && busy ? "true" : null,
-  }));
-  const origin = detail ? { hasAttribute: () => true, previousElementSibling: rows[index] } : rows[index];
+  const body = document.createElement("tbody");
+  const rows = ["lead:a", "lead:b", "post:c"].map(id => {
+    const row = document.createElement("tr"); row.dataset.followupRowKey = id;
+    row.setAttribute("aria-busy", String(busy)); row.append(document.createElement("td")); body.append(row);
+    row.focus = vi.fn(); row.scrollIntoView = vi.fn();
+    return row;
+  });
+  const origin = detail ? document.createElement("tr") : rows[index];
+  if (detail) { origin.dataset.followupInlineDetails = ""; origin.append(document.createElement("td")); rows[index].after(origin); }
+  const target = document.createElement(editing ? "input" : "span");
+  if (!portal) origin.firstElementChild!.append(target);
   const event = { ...key(value, extra), nativeEvent: { isComposing: false },
-    target: { closest: (selector: string) => selector === "tr" ? origin : editing && selector.startsWith("input,") ? {} : null },
-    currentTarget: { contains: () => !portal, querySelectorAll: () => rows }, preventDefault: vi.fn(), stopPropagation: vi.fn(),
+    target, currentTarget: body, preventDefault: vi.fn(), stopPropagation: vi.fn(),
   };
   return { rows, event, dispatch: (navigate = vi.fn(() => true)) => { navigateFollowupTable(event as unknown as KeyboardEvent<HTMLElement>, navigate); return navigate; } };
 }
@@ -68,11 +74,11 @@ describe("follow-up keyboard scope", () => {
     expect(locked.rows[2].focus).not.toHaveBeenCalled();
   });
   it("uses one record component for student and contact summaries/details", () => {
-    const source = readFileSync(new URL("../src/features/school/LeadFirstContactWorkbench.tsx", import.meta.url), "utf8");
-    const details = readFileSync(new URL("../src/features/school/dashboard-page/FollowupInlineDetails.tsx", import.meta.url), "utf8");
-    const recordRow = readFileSync(new URL("../src/features/school/FirstContactRecordRow.tsx", import.meta.url), "utf8");
-    const shared = readFileSync(new URL("../src/features/school/dashboard-page/FollowupRecordRow.tsx", import.meta.url), "utf8");
-    const students = readFileSync(new URL("../src/features/school/StudentStageWorkspace.tsx", import.meta.url), "utf8");
+    const source = readFileSync("src/features/school/LeadFirstContactWorkbench.tsx", "utf8");
+    const details = readFileSync("src/features/school/dashboard-page/FollowupInlineDetails.tsx", "utf8");
+    const recordRow = readFileSync("src/features/school/FirstContactRecordRow.tsx", "utf8");
+    const shared = readFileSync("src/features/school/dashboard-page/FollowupRecordRow.tsx", "utf8");
+    const students = readFileSync("src/features/school/StudentStageWorkspace.tsx", "utf8");
     expect(source).toContain("<FirstContactRecordRow");
     expect(recordRow).toContain("<FollowupRecordRow");
     expect(students).toContain("<FollowupRecordRow");
