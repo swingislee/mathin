@@ -22,6 +22,7 @@ import { latestSessionCommunication, type SessionCommunications } from "./sessio
 import { useSessionCommunicationAutosave } from "./use-session-communication-autosave";
 import { sessionCommunicationMessages } from "./session-communication-messages";
 import { SessionCommunicationEntry } from "./SessionCommunicationEntry";
+import { finishSessionCommunications, recordSessionCommunication } from "./session-communication-actions";
 import { SessionCommunicationHistory } from "./SessionCommunicationHistory";
 import { PostclassLearningEditor } from "./PostclassLearningEditor";
 import type { PostclassLearning } from "./postclass-learning-contract";
@@ -34,6 +35,8 @@ export interface SessionStudentPostworkRow {
 }
 
 const GROUP_KEY = "class";
+// 保留上一版已打开页面的提交引用；发布时核对新旧 Server Action manifest。
+const retainedCommunicationActions = { recordSessionCommunication, finishSessionCommunications };
 
 export function SessionStudentPostworkTable({ sessionId, rows, initialReviews, resultStatus, canWriteReview, initialCommunications, locale, timeZone, today, onDirtyChange, onReviewsSaved, workspaceLink }: {
   sessionId: string; rows: SessionStudentPostworkRow[]; initialReviews: ReviewRecord[]; resultStatus: LearningResultStatus;
@@ -198,6 +201,7 @@ export function SessionStudentPostworkTable({ sessionId, rows, initialReviews, r
                 {row?.reviewSource?.at && <p className="text-xs text-muted">{row.reviewSource.author} · {new Intl.DateTimeFormat(locale, { timeZone, dateStyle: "medium", timeStyle: "short" }).format(new Date(row.reviewSource.at))}</p>}
                 {canWriteReview && review && <div><Label htmlFor={`review-${sessionId}-${key}`} className="text-xs">{m.teacherFeedback}</Label><Input id={`review-${sessionId}-${key}`} value={review.comment} maxLength={2000} onChange={event => updateComment(key, event.target.value)} placeholder={t("studentReviewInputPlaceholder")} /></div>}
                 {communications.canWrite && entry && <SessionCommunicationEntry draft={entry.draft} locale={locale} group={!row}
+                  retainedActions={retainedCommunicationActions}
                   error={entry.error} saving={entry.state === "saving"} saved={Boolean(entry.saved) && !entry.dirty}
                   onFlush={() => void autosave.flush(key)} onChange={patch => autosave.change(key, patch)}
                   onNext={keys.indexOf(key) < keys.length - 1 ? () => open(keys[keys.indexOf(key) + 1]) : undefined}

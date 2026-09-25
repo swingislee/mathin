@@ -7,10 +7,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { COMMUNICATION_CHANNELS, COMMUNICATION_OUTCOMES, type CommunicationDraft } from "./session-communication-contract";
 import { sessionCommunicationMessages } from "./session-communication-messages";
+import type { finishSessionCommunications, recordSessionCommunication } from "./session-communication-actions";
 
 export function SessionCommunicationEntry({ draft, onChange, onFlush, saving, saved, locale, error, onNext, onAddAnother, group }: {
   draft: CommunicationDraft; onChange: (patch: Partial<CommunicationDraft>) => void; onFlush: () => void;
   saving: boolean; saved: boolean; locale: string; error?: string; onNext?: () => void; onAddAnother?: () => void; group?: boolean;
+  retainedActions?: { recordSessionCommunication: typeof recordSessionCommunication; finishSessionCommunications: typeof finishSessionCommunications };
 }) {
   const m = sessionCommunicationMessages(locale);
   const id = `communication-${draft.id}`;
