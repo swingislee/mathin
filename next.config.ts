@@ -124,6 +124,11 @@ const nextConfig: NextConfig = {
           { key: "Content-Security-Policy-Report-Only", value: contentSecurityPolicy("'none'") },
         ],
       },
+      {
+        // 授权地址含短期 code/state；最后覆盖全站策略，避免同源跳转携带完整 Referer。
+        source: "/:locale(zh|en)/auth/:path*",
+        headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
+      },
     ];
   },
 };
