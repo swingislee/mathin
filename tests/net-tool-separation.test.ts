@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { tools } from "@/features/tools/registry";
 import { freezeToolScene, parseToolScene, toolSceneCatalogId } from "@/features/tools/scenes/contract";
-import { getToolSceneDefinition, toolCoursewareContractsForSurface } from "@/features/tools/scenes/registry";
+import { getToolSceneDefinition, SOLID_NETS_COMPLETE_COURSEWARE_VERSION, toolCoursewareContractsForSurface } from "@/features/tools/scenes/registry";
 import { toolSceneRuntime } from "@/features/tools/scenes/runtime";
 import { createClassroomToolState, parseClassroomToolState, coursewareToolOriginHash } from "@/features/tools/courseware/tool-classroom";
 import { createEmptyCoursewareCompositionPage, coursewareCompositionPageSchema } from "@/features/courseware-doc/composition-page-schema";
 import { addCoursewareCompositionTool } from "@/features/courseware-doc/composition-page-layout";
 import { CUBE_NET_EXPLORATION_VERSION, cubeNetExplorationInitialSchema, cubeNetExplorationToolSchema, cubeNetExplorationStateSchema, NET_TEACHING_VERSION, netTeachingToolSchema, netInitialState } from "@/features/tools/net-teaching/contract";
 import { createNetTeachingInitial } from "@/features/tools/net-teaching/defaults";
-import { createDefaultSolidNetsSnapshot, createDefaultSolidNetsTeachingSnapshot, solidNetsSnapshotSchema, solidNetsTeachingSnapshotSchema, solidNetsToolSchema, SOLID_NETS_LESSON_VERSION, SOLID_NETS_POLYHEDRA_LESSON_VERSION, SOLID_NET_KINDS } from "@/features/tools/solid-nets/contract";
+import { createDefaultSolidNetsSnapshot, createDefaultSolidNetsTeachingSnapshot, solidNetsSnapshotSchema, solidNetsTeachingSnapshotSchema, solidNetsToolSchema, SOLID_NETS_LESSON_VERSION, SOLID_NET_KINDS } from "@/features/tools/solid-nets/contract";
 import { solidNetGeometry } from "@/features/tools/solid-nets/geometry";
 import { resolveSolidNet, solidNetAllMotion } from "@/features/tools/solid-nets/model";
 import { createDefaultPaperFoldingSnapshot } from "@/features/tools/paper-folding/contract";
@@ -24,7 +24,7 @@ describe("independent cube exploration and solid-net tools", () => {
     expect(tools.filter((tool) => ["cube-net", "solid-nets"].includes(tool.id)).map((tool) => tool.id)).toEqual(["cube-net", "solid-nets"]);
     expect(new Set(tools.map((tool) => tool.no)).size).toBe(tools.length);
     expect(getToolSceneDefinition("cube-net")!.contentVersion).toBe(CUBE_NET_EXPLORATION_VERSION);
-    expect(getToolSceneDefinition("solid-nets")!.contentVersion).toBe(SOLID_NETS_POLYHEDRA_LESSON_VERSION);
+    expect(getToolSceneDefinition("solid-nets")!.contentVersion).toBe(SOLID_NETS_COMPLETE_COURSEWARE_VERSION);
     for (const surface of ["microcourse", "formal-courseware"] as const) {
       const definitions = toolCoursewareContractsForSurface(surface);
       expect(definitions.filter((entry) => entry.catalogId === "cube-net")).toHaveLength(1);
