@@ -252,6 +252,9 @@ export function useClassroomPointerRouter({
     };
 
     const lostPointerCapture = (event: PointerEvent) => {
+      // Smart 接管子节点的触点时，子节点也会发出 lostpointercapture。
+      // 只在舞台自身丢失捕获时收笔，让交接后的同一笔继续书写。
+      if (event.target !== stage) return;
       const active = gesture;
       if (!active || active.pointerId !== event.pointerId || state.kind !== "inking") return;
       inputPortRef.current?.finish(event.pointerId);
