@@ -4,6 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PlaneDissectionWorkspace } from "@/features/tools/plane-dissection/PlaneDissectionWorkspace";
 import { defaultPlaneDissection, type PlaneDissectionScene } from "@/features/tools/plane-dissection/model";
+import workbenchStyles from "@/features/tools/spatial-lab/CubeStructuresWorkbench.module.css";
 
 let root: Root, container: HTMLDivElement;
 let frames: Map<number, FrameRequestCallback>, clock: number, nextFrame: number;
@@ -35,6 +36,38 @@ const render = async (scene = { ...defaultPlaneDissection(), cut: true }, readOn
 };
 
 describe("plane paper direct manipulation", () => {
+  it("uses the 3D workbench buttons, semantic icons, docks and non-modal panels", async () => {
+    await render(defaultPlaneDissection());
+    for (const [label, action] of [["沿高剪开", "cut"], ["演示拼合", "play"], ["拼接吸附", "moveSnap"], ["调整原图", "dimensions"], ["观察设置", "settings"], ["撤销", "undo"], ["重做", "redo"], ["复原", "reset"]]) {
+      const control = button(label);
+      expect(control.dataset.spatialAction).toBe(action);
+      expect(control.querySelector("svg")?.getAttribute("data-spatial-icon")).toBe(action);
+      expect(control.classList.contains(workbenchStyles.icon)).toBe(true);
+      expect(control.closest('[role="toolbar"]')?.classList.contains(workbenchStyles.dock)).toBe(true);
+    }
+    expect(button("拼接吸附").getAttribute("aria-pressed")).toBe("true");
+    await act(async () => button("拼接吸附").click());
+    expect(button("拼接吸附").getAttribute("aria-pressed")).toBe("false");
+    await act(async () => button("调整原图").click());
+    const panel = container.querySelector('[data-cube-canvas-panel]');
+    expect(panel?.classList.contains(workbenchStyles.panel)).toBe(true);
+    expect(panel?.getAttribute("data-cube-panel-anchor")).toBe("meta");
+    expect(button("调整原图").getAttribute("aria-pressed")).toBe("true");
+    expect(button("收起").querySelector('[data-spatial-icon="close"]')).not.toBeNull();
+    await act(async () => button("调整原图").click());
+    expect(container.querySelector('[data-cube-canvas-panel]')).toBeNull();
+    await act(async () => button("观察设置").click());
+    await act(async () => button("收起").click());
+    expect(button("观察设置").getAttribute("aria-pressed")).toBe("false");
+    await act(async () => button("观察设置").click());
+    await act(async () => svg().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+    expect(container.querySelector('[data-cube-canvas-panel]')).toBeNull();
+    await act(async () => button("沿高剪开").click());
+    expect(button("停止动作").dataset.spatialAction).toBe("stop");
+    await act(async () => button("停止动作").click());
+    expect(current()?.cut).toBe(false);
+    expect(frames.size).toBe(0);
+  });
   it("drags a paper in X and Y with one endpoint and no replay on release", async () => {
     await render();
     await pointer(paper(), "pointerdown", 220, 420);
@@ -87,7 +120,11 @@ describe("plane paper direct manipulation", () => {
     await render();
     await pointer(paper(), "pointerdown", 220, 420); await pointer(svg(), "pointerup", 220, 420);
     expect(paper().getAttribute("aria-pressed")).toBe("true");
-    await pointer(svg(), "pointerdown", 50, 500);
+    // 释放后浏览器重定向到 SVG 的点击仍属于纸片手势，不取消选择。
+    await act(async () => svg().dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true })));
+    expect(paper().getAttribute("aria-pressed")).toBe("true");
+    await pointer(svg(), "pointerdown", 50, 500); await pointer(svg(), "pointerup", 50, 500);
+    await act(async () => svg().dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true })));
     expect(paper().getAttribute("aria-pressed")).toBe("false");
     await render({ ...defaultPlaneDissection(), cut: true }, true);
     expect(button("复原").disabled).toBe(true);

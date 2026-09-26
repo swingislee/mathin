@@ -3,7 +3,7 @@ import { SPATIAL_OBJECT_GESTURE_START } from "./spatial-object-gesture";
 export const SPATIAL_TAP_SLOP_PX = 5;
 
 /** 记录完整手势，而非只比较首尾；拖回起点、双指及取消均不产生涂色/删除等点击。 */
-export function bindSpatialPointerGuard(canvas: HTMLCanvasElement): () => void {
+export function bindSpatialPointerGuard(canvas: HTMLCanvasElement | SVGSVGElement): () => void {
   const pointers = new Map<number, { x: number; y: number }>();
   let blocked = false;
   const down = (event: PointerEvent) => {
@@ -19,8 +19,8 @@ export function bindSpatialPointerGuard(canvas: HTMLCanvasElement): () => void {
   const up = (event: PointerEvent) => { move(event); pointers.delete(event.pointerId); };
   const cancel = () => { blocked = true; pointers.clear(); };
   const claim = () => { blocked = true; };
-  const click = (event: MouseEvent) => {
-    if (blocked || event.button !== 0) { event.preventDefault(); event.stopImmediatePropagation(); }
+  const click: EventListener = (event) => {
+    if (blocked || (event as MouseEvent).button !== 0) { event.preventDefault(); event.stopImmediatePropagation(); }
   };
   const view = canvas.ownerDocument.defaultView;
   // Window capture 先于对象控制器；对象可以接管后续事件，记录仍完整。

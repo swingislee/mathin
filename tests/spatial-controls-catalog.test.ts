@@ -39,10 +39,18 @@ describe("shared spatial controls catalog", () => {
     const root = "src/features/tools";
     const files = readdirSync(root, { recursive: true }).filter((file): file is string => typeof file === "string" && /(?:Workspace|Workbench)\.tsx$/.test(file));
     const workspaces = files.map((file) => [file, source(file)]).filter(([, text]) => text.includes("useSpatialToolState"));
+    const planarFiles = new Set<string>(SPATIAL_WORKBENCH_INVENTORY.filter((stage) => "dimension" in stage && stage.dimension === "2d").flatMap((stage) => [...stage.files]));
     expect(workspaces.length).toBeGreaterThanOrEqual(8);
     for (const [file, text] of workspaces) {
-      expect(text, file).toContain("SpatialActionButton"); expect(text, file).toContain("SpatialViewButtons");
-      expect(text, file).not.toContain('from "lucide-react"'); expect(text, file).not.toContain("<svg");
+      expect(text, file).toContain("SpatialActionButton");
+      expect(text, file).not.toContain('from "lucide-react"');
+      if (planarFiles.has(file.replaceAll("\\", "/"))) {
+        // 二维 SVG 是教学图形本身；按钮仍由共用组件生成，无需添加 3D 视角栏。
+        expect(text, file).toContain("../planar-interaction/");
+        expect(text, file).not.toContain("SpatialViewButtons");
+      } else {
+        expect(text, file).toContain("SpatialViewButtons"); expect(text, file).not.toContain("<svg");
+      }
       expect(text, file).not.toContain("CubeWorkbenchControls");
     }
     for (const file of ["soma-cube/SomaWorkspace.tsx", "spatial-lab/CubeStructuresWorkbench.tsx", "spatial-lab/DiceTeachingWorkspace.tsx", "solid-geometry/SolidGeometryWorkspace.tsx"]) expect(source(file)).toContain("SpatialAxisSteps");
@@ -50,9 +58,11 @@ describe("shared spatial controls catalog", () => {
   it("builds the side-by-side comparison from the same components and source bindings", () => {
     const usages = Object.fromEntries(SPATIAL_WORKBENCH_INVENTORY.map((stage) => [stage.id, usedActions(stage.files.map(source).join("\n"))]));
     const html = renderSpatialControlsCatalog(usages);
-    expect(SPATIAL_WORKBENCH_INVENTORY).toHaveLength(11); expect(html).toContain("<svg");
+    expect(SPATIAL_WORKBENCH_INVENTORY).toHaveLength(12); expect(html).toContain("<svg");
     for (const action of keys) expect(html).toContain(`data-spatial-icon="${action}"`);
     expect(usages.dice).toContain("faceReveal"); expect(usages["cube-structures"]).toContain("move");
+    expect(usages["plane-dissection-preview"]).toEqual(expect.arrayContaining(["cut", "play", "stop", "moveSnap", "dimensions", "settings", "undo", "redo", "reset"]));
+    expect(source("plane-dissection/PlaneDissectionWorkspace.tsx")).not.toContain('from "lucide-react"');
     if (process.env.MATHIN_WRITE_SPATIAL_CATALOG === "1") {
       const output = resolve(".tmp/spatial-controls-comparison.html"); mkdirSync(resolve(".tmp"), { recursive: true }); writeFileSync(output, html, "utf8");
       console.log(`Spatial controls comparison: ${output}`);

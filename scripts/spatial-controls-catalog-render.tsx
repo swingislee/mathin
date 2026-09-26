@@ -14,7 +14,7 @@ const groups: Record<string, string> = { camera: "视角", object: "对象", dis
 /** 使用正式组件渲染 SVG；对照文档不维护第二份 path。 */
 export function renderSpatialControlsCatalog(usages: Record<string, readonly string[]>) {
   const body = renderToStaticMarkup(<main>
-    <header><p>Mathin · 3D 教具空间</p><h1>功能与 SVG 图标对照</h1><p>开发端整理 · 待人工视觉验收。所有新图由实际共用组件生成；这里的图不是功能按钮，不会修改场景。</p>
+    <header><p>Mathin · 平面与 3D 教具空间</p><h1>功能与 SVG 图标对照</h1><p>开发端整理 · 待人工视觉验收。所有新图由实际共用组件生成；这里的图不是功能按钮，不会修改场景。</p>
       <nav><a href="#changes">语义冲突</a><a href="#workbenches">舞台功能</a><a href="#icons">全部动作</a><a href="#parameters">参数图形</a></nav></header>
     <section id="changes"><h2>本轮图标含义调整</h2><table><thead><tr><th>功能</th><th>原图</th><th>统一后</th><th>区分依据</th></tr></thead><tbody>
       {SPATIAL_ICON_CHANGES.map((item) => <tr key={item.action}><th>{SPATIAL_ACTIONS[item.action].zh}</th><td>{item.previous.map((old) => <span className="sample" key={old}>{createElement(oldIcons[old])}<small>{old}</small></span>)}</td><td><span className="sample current"><SpatialActionIcon action={item.action} /><small>{item.action}</small></span></td><td>{item.note}</td></tr>)}
@@ -30,7 +30,7 @@ export function renderSpatialControlsCatalog(usages: Record<string, readonly str
       <p>合并的是操作入口和通用控件；剪棱拓扑、折叠路径、骰子点数与投掷、液体守恒、截面和测量仍由各领域负责。旧冻结课件的动作能力保持原边界。</p>
     </section><footer>生成命令：node scripts/spatial-controls-catalog.mjs · 图标权威：SpatialActionIcon + actions.ts</footer>
   </main>);
-  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>3D 功能与图标对照</title><style>
+  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>教具空间功能与图标对照</title><style>
   :root{--paper:#fffdf8;--ink:#29251f;--line:#e8e1d5;--muted:#766f65;--moon:#feedb9}*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.7 'Microsoft YaHei',sans-serif}main{max-width:1260px;margin:0 auto;padding:32px 24px}h1{font-size:30px}h2{font-size:23px;margin:0 0 12px}h3{margin:0}p{margin:8px 0 14px}section{margin:48px 0}nav{display:flex;gap:24px;flex-wrap:wrap}a{color:inherit;text-underline-offset:4px}table{border-collapse:collapse;width:100%;font-size:14px}th,td{text-align:left;padding:12px;border-bottom:1px solid var(--line);vertical-align:middle}thead{background:var(--paper);position:sticky;top:0}td:first-child{white-space:nowrap}svg{width:28px;height:28px;vertical-align:middle;flex-shrink:0}svg.small{width:18px;height:18px}.sample{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;margin:3px 8px;min-width:68px;font-size:12px}.current{background:var(--moon);border-radius:8px;padding:8px}.comparison{display:flex;align-items:center;gap:22px}.strip{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.strip .sample{min-width:100px}small{display:block;font-size:12px;color:var(--muted)}article{padding:20px 0;border-bottom:1px solid var(--line)}.muted,footer,details{color:var(--muted);font-size:13px}code{font-size:12px;overflow-wrap:anywhere}@media(max-width:700px){main{padding:20px 12px}th,td{padding:8px 4px;font-size:12px}.sample{margin:2px;min-width:50px}svg{width:24px;height:24px}.comparison{gap:8px}}@media print{thead{position:static}article,tr{break-inside:avoid}nav{display:none}}
   </style></head><body>${body}</body></html>`;
 }

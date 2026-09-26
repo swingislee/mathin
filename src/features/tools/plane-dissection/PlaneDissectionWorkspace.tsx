@@ -1,11 +1,15 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
-import { Eye, Magnet, MoveRight, Redo2, RotateCcw, Scissors, SlidersHorizontal, Square, Undo2, X, type LucideIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { bindSpatialPointerGuard } from "@/features/spatial-math/renderer-r3f/spatial-pointer-guard";
+import { beginSpatialObjectGesture } from "@/features/spatial-math/renderer-r3f/spatial-object-gesture";
+import { SpatialActionButton } from "../spatial-interaction/SpatialActionButton";
+import { SpatialCanvasPanel } from "../spatial-interaction/SpatialWorkbenchControls";
+import { useSpatialToolState } from "../spatial-interaction/useSpatialToolState";
+import workbenchStyles from "../spatial-lab/CubeStructuresWorkbench.module.css";
 import { usePlanarDrag, type PlanarDragFrame } from "../planar-interaction/usePlanarDrag";
 import { translatePolygon, type PlanePoint } from "../planar-interaction/geometry";
 import { closestPaperSnap, commitPaperScene, defaultPlaneDissection, interpolatePaperScene, movePaper, paperPolygons, planeDissectionSchema, stepPaperHistory, type PaperHistory, type PaperId, type PaperSnap, type PlaneDissectionScene } from "./model";
@@ -19,10 +23,6 @@ const numeric = (n: number) => Number(n.toFixed(2));
 type ShapeField = "base" | "height" | "slant";
 type DragData = { start: PlaneDissectionScene; kind: PaperId | "base" | "shape"; threshold: number };
 
-function Action({ icon: Icon, label, active, ...props }: { icon: LucideIcon; label: string; active?: boolean } & Omit<React.ComponentProps<typeof Button>, "children">) {
-  return <Button type="button" variant="secondary" className={styles.icon} title={label} aria-label={label} aria-pressed={active} {...props}><Icon size={18} aria-hidden /></Button>;
-}
-
 /** 交互试做与后续宿主共用原组件；准确起点/终点通过 onSnapshot 暴露，过程帧留在舞台。 */
 export function PlaneDissectionWorkspace({ locale = "zh", initial, readOnly = false, onSnapshot }: {
   locale?: string; initial?: PlaneDissectionScene; readOnly?: boolean; onSnapshot?: (scene: PlaneDissectionScene | null) => void;
@@ -32,7 +32,10 @@ export function PlaneDissectionWorkspace({ locale = "zh", initial, readOnly = fa
   const [preview, setPreview] = useState<PlaneDissectionScene | null>(null);
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState<PaperId | null>(null);
-  const [panel, setPanel] = useState<"shape" | "display" | null>(null);
+  const controls = useSpatialToolState<"direct", "shape" | "display">({
+    defaultTool: "direct", panels: { shape: "direct", display: "direct" }, onClearSelection: () => setSelected(null),
+  });
+  const { panel } = controls;
   const [landing, setLanding] = useState<{ id: PaperId; snap: PaperSnap } | null>(null);
   const [cutProgress, setCutProgress] = useState<number | null>(null);
   const svg = useRef<SVGSVGElement>(null);
@@ -42,6 +45,7 @@ export function PlaneDissectionWorkspace({ locale = "zh", initial, readOnly = fa
 
   useEffect(() => { onSnapshot?.(busy ? null : history.present); }, [history.present, busy, onSnapshot]);
   useEffect(() => () => { if (motion.current !== null) cancelAnimationFrame(motion.current); }, []);
+  useEffect(() => { if (svg.current) return bindSpatialPointerGuard(svg.current); }, []);
 
   function commit(next: PlaneDissectionScene) {
     setHistory((old) => commitPaperScene(old, next)); setPreview(null); setLanding(null); setBusy(false); setCutProgress(null);
@@ -94,12 +98,15 @@ export function PlaneDissectionWorkspace({ locale = "zh", initial, readOnly = fa
     if (readOnly || busy) return;
     const scale = svg.current?.getScreenCTM()?.a ?? 1;
     if (drag.start(event, { start: history.present, kind, threshold: 18 / (Math.abs(scale) * SCALE) })) {
+      if (svg.current) beginSpatialObjectGesture(svg.current);
+      controls.activateSelection();
       svg.current?.focus({ preventScroll: true });
       setBusy(true); setSelected(kind === "body" || kind === "offcut" ? kind : null);
     }
   }
-  function handleKey(event: KeyboardEvent) {
-    if (event.key === "Escape") { event.preventDefault(); drag.cancel(); stopMotion(); setSelected(null); setPanel(null); return; }
+  function handleKey(event: KeyboardEvent<HTMLDivElement>) {
+    controls.bindings.onKeyDown(event);
+    if (event.key === "Escape") { event.preventDefault(); drag.cancel(); stopMotion(); return; }
     if ((event.target as Element).closest("input, button, textarea, [role=checkbox]")) return;
     if (readOnly || busy) return;
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
@@ -115,10 +122,10 @@ export function PlaneDissectionWorkspace({ locale = "zh", initial, readOnly = fa
   const high = position({ x: scene.slant, y: -scene.height }), foot = position({ x: scene.slant, y: 0 }), end = position({ x: scene.base, y: 0 });
   const hint = panel === "shape" ? m.shapeHint : scene.cut ? m.dragHint : m.cutHint;
 
-  return <div className={styles.workspace} onKeyDown={handleKey} data-plane-dissection="preview-v1">
-    <div className={styles.stage}>
-      <svg ref={svg} className={styles.canvas} viewBox="0 0 960 720" tabIndex={-1} aria-label={m.title} {...drag.handlers} onPointerDown={(event) => {
-        if (event.target === event.currentTarget && event.button === 0 && !busy) { setSelected(null); svg.current?.focus({ preventScroll: true }); }
+  return <div className={cn(workbenchStyles.workspace, styles.workspace)} {...controls.bindings} onKeyDown={handleKey} data-plane-dissection="preview-v1">
+    <div className={workbenchStyles.canvas}>
+      <svg ref={svg} className={styles.canvas} viewBox="0 0 960 720" tabIndex={-1} aria-label={m.title} {...drag.handlers} onClick={(event) => {
+        if (event.target === event.currentTarget && event.button === 0 && !busy) { controls.onPointerMissed(event.nativeEvent); svg.current?.focus({ preventScroll: true }); }
       }}>
         <defs><pattern id={`${uid}-grid`} width={SCALE} height={SCALE} patternUnits="userSpaceOnUse" x={HOME.x} y={HOME.y}><path d={`M ${SCALE} 0 H 0 V ${SCALE}`} fill="none" stroke="var(--line)" strokeWidth="1" /></pattern></defs>
         {scene.showGrid && <rect width="960" height="720" fill={`url(#${uid}-grid)`} pointerEvents="none" />}
@@ -147,31 +154,31 @@ export function PlaneDissectionWorkspace({ locale = "zh", initial, readOnly = fa
           <circle cx={high.x} cy={high.y} r={8} className={styles.shapeHandle} pointerEvents="none" />
         </g>}
       </svg>
-      <div className={styles.topbar} role="toolbar" aria-label={m.tool}>
-        <Action icon={Undo2} label={m.undo} disabled={disabled || !history.past.length} onClick={() => { setHistory((old) => stepPaperHistory(old, "undo")); setSelected(null); }} />
-        <Action icon={Redo2} label={m.redo} disabled={disabled || !history.future.length} onClick={() => { setHistory((old) => stepPaperHistory(old, "redo")); setSelected(null); }} />
-        {busy && <Action icon={Square} label={m.cancel} onClick={() => { drag.cancel(); stopMotion(); }} />}
+      <div className={cn(workbenchStyles.dock, workbenchStyles.meta)} role="toolbar" aria-label={m.display}>
+        <SpatialActionButton action="dimensions" label={m.shape} active={panel === "shape"} disabled={disabled || scene.cut} onClick={() => { setSelected(null); controls.togglePanel("shape"); }} />
+        <SpatialActionButton action="settings" label={m.display} active={panel === "display"} disabled={disabled} onClick={() => { setSelected(null); controls.togglePanel("display"); }} />
       </div>
-      <div className={styles.toolbar} role="toolbar" aria-label={m.title}>
-        <Action icon={Scissors} label={m.cut} disabled={disabled || scene.cut} onClick={() => { setPanel(null); animate(scene, { ...scene, cut: true }, 460, true); }} />
-        <Action icon={MoveRight} label={m.assemble} disabled={disabled || !scene.cut} onClick={() => { setPanel(null); animate(scene, { ...scene, offcut: { x: scene.body.x + scene.base, y: scene.body.y } }, 1000); }} />
-        <Action icon={RotateCcw} label={m.reset} disabled={disabled} onClick={() => { setPanel(null); setSelected(null); animate(scene, { ...scene, cut: false, body: { x: 0, y: 0 }, offcut: { x: 0, y: 0 } }, 700); }} />
-        <span className={styles.divider} />
-        <Action icon={Magnet} label={m.snap} active={scene.snap} disabled={disabled} onClick={() => commit({ ...scene, snap: !scene.snap })} />
-        <Action icon={SlidersHorizontal} label={m.shape} active={panel === "shape"} disabled={disabled || scene.cut} onClick={() => { setSelected(null); setPanel(panel === "shape" ? null : "shape"); }} />
-        <Action icon={Eye} label={m.display} active={panel === "display"} disabled={disabled} onClick={() => { setSelected(null); setPanel(panel === "display" ? null : "display"); }} />
+      <div className={cn(workbenchStyles.dock, workbenchStyles.tools)} role="toolbar" aria-label={m.tool}>
+        <SpatialActionButton action="cut" label={m.cut} disabled={disabled || scene.cut} onClick={() => { controls.closePanel(); animate(scene, { ...scene, cut: true }, 460, true); }} />
+        <SpatialActionButton action="play" label={m.assemble} disabled={disabled || !scene.cut} onClick={() => { controls.closePanel(); animate(scene, { ...scene, offcut: { x: scene.body.x + scene.base, y: scene.body.y } }, 1000); }} />
+        {busy && <SpatialActionButton action="stop" label={m.cancel} onClick={() => { drag.cancel(); stopMotion(); }} />}
+        <span className={workbenchStyles.toolSeparator} />
+        <SpatialActionButton action="moveSnap" label={m.snap} active={scene.snap} disabled={disabled} onClick={() => commit({ ...scene, snap: !scene.snap })} />
+        <span className={workbenchStyles.toolSeparator} />
+        <SpatialActionButton action="undo" label={m.undo} disabled={disabled || !history.past.length} onClick={() => { setHistory((old) => stepPaperHistory(old, "undo")); setSelected(null); }} />
+        <SpatialActionButton action="redo" label={m.redo} disabled={disabled || !history.future.length} onClick={() => { setHistory((old) => stepPaperHistory(old, "redo")); setSelected(null); }} />
+        <SpatialActionButton action="reset" label={m.reset} disabled={disabled} onClick={() => { controls.closePanel(); setSelected(null); animate(scene, { ...scene, cut: false, body: { x: 0, y: 0 }, offcut: { x: 0, y: 0 } }, 700); }} />
       </div>
-      {panel && <section className={styles.panel} aria-label={panel === "shape" ? m.shape : m.display}>
-        <div className={styles.panelHeader}><h2>{panel === "shape" ? m.shape : m.display}</h2><Action icon={X} label={m.close} onClick={() => setPanel(null)} /></div>
+      {panel && <SpatialCanvasPanel title={panel === "shape" ? m.shape : m.display} anchor="meta" closeLabel={m.close} onClose={controls.closePanel}>
         {panel === "shape" ? <>
           {(["base", "height", "slant"] as const).map((field) => <label className={styles.field} key={field}><span>{m[field]} / {m.unit}</span><Input key={scene[field]} type="number" aria-label={m[field]} step="0.25" defaultValue={scene[field]} min={field === "base" ? 3 : field === "height" ? 1.5 : .5} max={field === "base" ? 8 : field === "height" ? 5 : 2.5} disabled={disabled}
             onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }}
             onBlur={(event) => { const value = event.currentTarget.valueAsNumber; if (Number.isFinite(value)) commit(shapeChange(history.present, field, value)); else event.currentTarget.value = String(history.present[field]); }} /></label>)}
-          <p>{m.shapeHint}</p>
+          <p className="mt-3 text-xs text-muted">{m.shapeHint}</p>
         </> : ([['showOrigin', m.origin], ['showMeasures', m.measures], ['showArea', m.area], ['showGrid', m.grid]] as const).map(([field, label]) => <label className={styles.field} key={field}><span>{label}</span><Checkbox checked={scene[field]} disabled={disabled} onCheckedChange={(checked) => commit({ ...scene, [field]: checked === true })} /></label>)}
-      </section>}
+      </SpatialCanvasPanel>}
       {scene.showArea && <output className={styles.area}>{scene.cut ? `${m.combinedArea} · ` : ""}{scene.base} × {scene.height} = {numeric(scene.base * scene.height)} {m.squareUnit}</output>}
-      <p className={styles.hint}>{hint}<br />{m.cancelHint}</p>
+      <p className={workbenchStyles.cutStatus}>{hint}<br />{m.cancelHint}</p>
     </div>
   </div>;
 }

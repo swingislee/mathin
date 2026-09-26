@@ -2,7 +2,7 @@
 
 - 教具用于备课和现场操作；新增能力先判断是已有工具的动作、显示开关还是独立工具。参数、备课、课堂与恢复起点使用 `scenes/` 的已有入口。
 - 空间工具的模式与参数面板使用 `spatial-interaction/useSpatialToolState`，在 `panels` 中穷尽声明每个面板需要的拾取方式。一次性命令与显示开关留在领域状态，不伪装成鼠标模式。
-- 3D 功能按钮用 `SpatialActionButton` 的动作 ID，带文字的按钮复用 `SpatialActionIcon`；SVG 与 zh/en 语义在 `spatial-interaction/actions.ts` / `SpatialActionIcon.tsx` 维护。先比对现有动作：同义复用，整体移动／移面、旋转视角／旋转对象、展开／复原、透明／液量、截面／剪棱保持区分。视角栏、XYZ 精确步进、颜色、透明度和浮窗复用共用组件；领域只提供状态与回调。新增动作同步 `control-inventory.ts`，用 `node scripts/spatial-controls-catalog.mjs` 生成实际 SVG 对照页，并运行 `tests/spatial-controls-catalog.test.ts`。
+- 平面与 3D 教具的功能按钮用 `SpatialActionButton` 的动作 ID，带文字的按钮复用 `SpatialActionIcon`；SVG 与 zh/en 语义在 `spatial-interaction/actions.ts` / `SpatialActionIcon.tsx` 维护。先比对现有动作：同义复用，整体移动／移面、旋转视角／旋转对象、展开／复原、透明／液量、截面／剪棱保持区分。工具栏样式、视角栏、XYZ 精确步进、颜色、透明度和浮窗复用共用实现；领域只提供状态与回调，二维画布保留自身几何和手势。新增动作或接入工作台同步 `control-inventory.ts`，用 `node scripts/spatial-controls-catalog.mjs` 生成实际 SVG 对照页，并运行 `tests/spatial-controls-catalog.test.ts`。
 - 参数面板与工具按钮一起切换；再点已启用的操作或关闭面板回到该工具的常规直接操作。截面等教学结果继续展示，专用调整手柄随操作退出而收起。收起参数并保留舞台确认流程时，显式使用 `hidePanel`。
 - 选中对象与显示变换手柄分开。常规观察、测量、标色与属性面板默认无手柄；右侧精确移动／旋转是统一显式入口，用 `transformPanels` 声明并将 `controls.transformMode` 传给画布。选择本身不激活手柄；关闭、重复点击、空白轻点或 Esc 退出。`showHandles` 默认关闭，显示和命中同步，收起后本体仍可沿 XZ 拖动。领域专用手柄也限定在对应操作；原教学坐标轴、标签和折痕由各自显示开关管理。
 - 命中对象/手柄才接管指针，空白手势交给 `SpatialCameraRig`。复用共用点击保护，不把拖回起点、双指操作、右键或取消当作点击命令；多个课件实例的操作状态相互隔离。

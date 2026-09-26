@@ -13,7 +13,8 @@
 
 ## 功能与图标共用（2026-09-21）
 
-- [功能清单](control-inventory.ts)覆盖 9 个工具入口、10 个操作现场，包含主工具栏、对象旁控件和参数功能。`actions.ts` 是动作名称与 SVG 语义的权威；`SpatialActionIcon` 唯一实现图形。`SpatialActionButton` 组合原有 shadcn 按钮，不复制按钮样式。
+- [功能清单](control-inventory.ts)包含主工具栏、对象旁控件和参数功能，当前覆盖范围由清单生成。`actions.ts` 是动作名称与 SVG 语义的权威；`SpatialActionIcon` 唯一实现图形。`SpatialActionButton` 组合原有 shadcn 按钮，不复制按钮样式。
+- 2026-09-26 平面拼剪试做复用同一按钮、工具栏 CSS、`SpatialCanvasPanel`、`useSpatialToolState` 与点击保护，不另存尺寸／选中态／窄屏规则；命名保留原入口以兼容现有 3D 调用。拼接吸附使用 `moveSnap`，演示拼合使用 `play`；二维 SVG 纸片与手势属于领域内容，不套用 3D 相机或刚体约束。实际绑定进入同一对照页和定向接入测试。
 - 对照页从实际组件与工作台绑定生成：`node scripts/spatial-controls-catalog.mjs` → `.tmp/spatial-controls-comparison.html`。同时列出旧图／新图、各舞台功能及所用图标、全部动作与视角／轴／标记参数图形。
 - 整体移动用三轴箭头；移面用纸面向外移出的立方体。对象旋转、视角旋转、视角平移各自独立。展开使用展开符号，复原保留回到起点；透明用半透明圆，液量用烧杯；截面使用穿过立体的切平面，剪刀用于剪棱／拆分。
 - 共用组件：`SpatialViewButtons`（视角与适合画面）、`SpatialAxisSteps`（移动／旋转 XYZ 准确步进）、`SpatialWorkbenchControls`（按钮、浮窗、颜色、轴与标记）、`SpatialOpacitySlider`（帧级预览与一次提交）、现有对象手柄／旋转／翻滚。原 Cube 命名入口仅 re-export 兼容，当前工作台直接引用共用层。

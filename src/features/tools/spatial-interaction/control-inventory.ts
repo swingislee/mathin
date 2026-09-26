@@ -1,5 +1,8 @@
 /** 面向维护与视觉核对的教学能力清单；不会被工作台加载，也不创建另一套功能开关。 */
 export const SPATIAL_WORKBENCH_INVENTORY = [
+  { id: "plane-dissection-preview", dimension: "2d", name: "平面拼剪（交互试做）", files: ["plane-dissection/PlaneDissectionWorkspace.tsx"],
+    features: "调整平行四边形；沿高剪开、二维直接拖纸片、落点吸附、拼合演示、撤销与复原。正式场景保存与课堂接入尚未开放。",
+    shared: "与 3D 工作台共用动作按钮、语义 SVG、工具栏样式、非模态浮窗、退出规则与点击保护；二维几何与纸片手势独立" },
   { id: "place-value", name: "数位积木", files: ["place-value/PlaceValueWorkspace.tsx"],
     features: "0–999 数位；五黄五蓝累积；十个一横卧成十，十个十逐条连成长百链；暂停、继续与拆组；同尺度比较；场景起点、撤销与复原。",
     shared: "单位块实例渲染、正交视角与相机、动作按钮、视角栏、非模态面板、动画调度、场景宿主和课堂语义时间线；进退位成员关系独立" },
