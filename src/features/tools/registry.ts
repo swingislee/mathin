@@ -1,4 +1,6 @@
 import type { LucideIcon } from "lucide-react";
+import { PLANAR_TOOLS } from "./planar-kit/catalog";
+import { Shapes } from "lucide-react";
 import { Box, Boxes, Cylinder, Dice5, FoldVertical, Orbit, PanelsTopLeft, Route, Ruler, UnfoldVertical } from "lucide-react";
 import {
   CLASSROOM_PARTITIONED_INPUT_PROVIDER_V1,
@@ -44,6 +46,7 @@ export const tools: ToolMeta[] = [
   { id: "solid-revolution", no: 11, category: "geometry", grades: [5, 9], icon: Orbit },
   { id: "soma-cube", no: 9, category: "geometry", grades: [1, 9], icon: Boxes },
   { id: "place-value", no: 12, category: "number", grades: [1, 3], icon: Boxes },
+  ...PLANAR_TOOLS.map((tool, index): ToolMeta => ({ id: tool.id, no: 13 + index, category: "geometry", grades: [1, 6], icon: Shapes })),
 ];
 
 export function getTool(id: string): ToolMeta | undefined {

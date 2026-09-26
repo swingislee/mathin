@@ -12,6 +12,7 @@ import { useSpatialToolState } from "../spatial-interaction/useSpatialToolState"
 import workbenchStyles from "../spatial-lab/CubeStructuresWorkbench.module.css";
 import { usePlanarDrag, type PlanarDragFrame } from "../planar-interaction/usePlanarDrag";
 import { translatePolygon, type PlanePoint } from "../planar-interaction/geometry";
+import { RightAngleMark } from "../planar-kit/geometry";
 import { closestPaperSnap, commitPaperScene, defaultPlaneDissection, interpolatePaperScene, movePaper, paperPolygons, planeDissectionSchema, stepPaperHistory, type PaperHistory, type PaperId, type PaperSnap, type PlaneDissectionScene } from "./model";
 import { planeDissectionMessages } from "./messages";
 import styles from "./PlaneDissectionWorkspace.module.css";
@@ -142,7 +143,7 @@ export function PlaneDissectionWorkspace({ locale = "zh", initial, readOnly = fa
           <path className={styles.dimension} d={`M ${HOME.x} ${HOME.y + 28} v 12 m 0 -6 h ${scene.base * SCALE} m 0 -6 v 12`} />
           <text x={(HOME.x + end.x) / 2} y={HOME.y + 64} textAnchor="middle">{m.base} {scene.base} {m.unit}</text>
           <path className={styles.dimension} strokeDasharray="4 4" d={`M ${high.x} ${high.y} V ${foot.y}`} />
-          <path className={styles.dimension} d={`M ${foot.x} ${foot.y - 16} h 16 v 16`} />
+          <RightAngleMark vertex={foot} along={end} toward={high} size={20} />
           <text x={high.x - 20} y={(high.y + foot.y) / 2} textAnchor="end">{m.height} {scene.height} {m.unit}</text>
           {scene.cut && <text x={(HOME.x + end.x) / 2} y={HOME.y + 89} textAnchor="middle" fontSize="14">{m.originalMeasures}</text>}
         </g>}

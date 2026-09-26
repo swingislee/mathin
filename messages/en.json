@@ -529,6 +529,90 @@
         "name": "Solids of revolution",
         "desc": "Drag a rectangle or right triangle around an edge, rotate slowly, pause and retain the swept shape to compare how cylinders and cones form."
       },
+      "plane-pieces": {
+        "name": "Shape pieces and tangrams",
+        "desc": "Move, turn, reflect and copy shape pieces; explore tangram arrangements."
+      },
+      "plane-geometry": {
+        "name": "Lines and angles",
+        "desc": "Explore segments, rays, angles, parallel and perpendicular lines by dragging their points."
+      },
+      "plane-polygons": {
+        "name": "Triangles and quadrilaterals",
+        "desc": "Build triangles and quadrilaterals with hinged sticks and vertices; compare angles, bases and heights."
+      },
+      "plane-perimeter": {
+        "name": "Exploring perimeter",
+        "desc": "Unroll boundaries and compare fixed ropes, joined shapes, steps and notches."
+      },
+      "plane-measurement": {
+        "name": "Area units",
+        "desc": "Tile with unit squares and subdivide grids to explore square centimetres and decimetres."
+      },
+      "plane-geoboard": {
+        "name": "Geoboards and lattice area",
+        "desc": "Move vertices on a geoboard and compare boundaries, interior points and area."
+      },
+      "plane-area": {
+        "name": "Dissection and area",
+        "desc": "Cut, move, turn and reassemble pieces while preserving their area and identity."
+      },
+      "plane-area-relations": {
+        "name": "Area relationships",
+        "desc": "Explore equal-height triangles, shared-angle and butterfly models, midpoints and similarity."
+      },
+      "plane-circle-area": {
+        "name": "Dissecting a circle",
+        "desc": "Cut a circle into curved sectors, rearrange them and increase the number of pieces."
+      },
+      "plane-overlap": {
+        "name": "Overlaps, circles and squares",
+        "desc": "Move overlapping shapes and compare lenses, circular segments and circle–square regions."
+      },
+      "plane-motion": {
+        "name": "Plane transformations",
+        "desc": "Set a center, direction or reflection axis; explore continuous transformations of a sheet."
+      },
+      "plane-folding": {
+        "name": "Paper folding and cutting",
+        "desc": "Fold paper, cut through its layers, then unfold to inspect matching holes."
+      },
+      "plane-tiling": {
+        "name": "Tiling and gaps",
+        "desc": "Copy, move and rotate polygons to explore gaps and overlaps in tilings."
+      },
+      "plane-patterns": {
+        "name": "Counting shapes",
+        "desc": "Select complete segments, angles, triangles or rectangles and keep enumeration marks."
+      },
+      "plane-matchsticks": {
+        "name": "Matchstick arrangements",
+        "desc": "Move, turn and add matchsticks to explore shared edges and changing shapes."
+      },
+      "plane-graph-path": {
+        "name": "Tracing connected paths",
+        "desc": "Trace connected edges, undo steps or lift the pen to explore graph structure."
+      },
+      "plane-grid-path": {
+        "name": "Lattice routes",
+        "desc": "Trace lattice routes, block edges and add required points; reveal local route counts."
+      },
+      "plane-reflection-path": {
+        "name": "Reflection and shortest routes",
+        "desc": "Drag a contact point and reflect an endpoint to compare broken and straight routes."
+      },
+      "plane-covering": {
+        "name": "Board colouring and covering",
+        "desc": "Place and turn dominoes, remove cells and inspect the colours covered by each piece."
+      },
+      "plane-rolling": {
+        "name": "Rolling circles",
+        "desc": "Roll one circle inside or outside another and compare orbital motion, spin and contact."
+      },
+      "plane-clock": {
+        "name": "Clock hands and angles",
+        "desc": "Scrub, play and pause continuously moving clock hands; keep a shadow to compare angles."
+      },
       "place-value": {
         "name": "Place-value blocks",
         "desc": "Count in yellow and blue groups of five. Turn ten ones into a ten, join ten tens into a hundred, unpack and compare numbers at the same scale."

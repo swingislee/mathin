@@ -7,6 +7,7 @@ import { SpatialActionButton } from "@/features/tools/spatial-interaction/Spatia
 import { SpatialActionIcon } from "@/features/tools/spatial-interaction/SpatialActionIcon";
 import { SPATIAL_ACTIONS, type SpatialActionId } from "@/features/tools/spatial-interaction/actions";
 import { SPATIAL_WORKBENCH_INVENTORY } from "@/features/tools/spatial-interaction/control-inventory";
+import { planarScenes } from "@/features/tools/planar-kit/scene-registry";
 import { renderSpatialControlsCatalog } from "../scripts/spatial-controls-catalog-render";
 
 const source = (file: string) => readFileSync(`src/features/tools/${file}`, "utf8");
@@ -56,9 +57,9 @@ describe("shared spatial controls catalog", () => {
     for (const file of ["soma-cube/SomaWorkspace.tsx", "spatial-lab/CubeStructuresWorkbench.tsx", "spatial-lab/DiceTeachingWorkspace.tsx", "solid-geometry/SolidGeometryWorkspace.tsx"]) expect(source(file)).toContain("SpatialAxisSteps");
   });
   it("builds the side-by-side comparison from the same components and source bindings", () => {
-    const usages = Object.fromEntries(SPATIAL_WORKBENCH_INVENTORY.map((stage) => [stage.id, usedActions(stage.files.map(source).join("\n"))]));
+    const usages = Object.fromEntries(SPATIAL_WORKBENCH_INVENTORY.map((stage) => [stage.id, [...new Set([...usedActions(stage.files.map(source).join("\n")), ...planarScenes.filter((scene) => scene.toolId === stage.id).flatMap((scene) => scene.actions?.map((action) => action.icon) ?? [])])]]));
     const html = renderSpatialControlsCatalog(usages);
-    expect(SPATIAL_WORKBENCH_INVENTORY).toHaveLength(12); expect(html).toContain("<svg");
+    expect(SPATIAL_WORKBENCH_INVENTORY).toHaveLength(33); expect(html).toContain("<svg");
     for (const action of keys) expect(html).toContain(`data-spatial-icon="${action}"`);
     expect(usages.dice).toContain("faceReveal"); expect(usages["cube-structures"]).toContain("move");
     expect(usages["plane-dissection-preview"]).toEqual(expect.arrayContaining(["cut", "play", "stop", "moveSnap", "dimensions", "settings", "undo", "redo", "reset"]));

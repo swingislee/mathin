@@ -16,12 +16,14 @@ import { solidCapacityTeachingSceneAdapter } from "../solid-capacity/scene-adapt
 import { solidGeometryExplorationSceneAdapter } from "../solid-geometry/exploration-scene-adapter";
 import { solidRevolutionSceneAdapter } from "../solid-revolution/scene-adapter";
 import { placeValueSceneAdapter } from "../place-value/scene-adapter";
+import { planarSceneAdapters } from "../planar-kit/scene-adapter";
 import { somaSceneAdapter, somaLegacySceneAdapter } from "../soma-cube/scene-adapter";
 import type { ToolSceneVersion } from "./contract";
 import type { ToolWorkbenchAdapter } from "./workbench-adapter";
 
 /** 仅客户端工作台加载接线；公开目录与服务端合同继续使用轻量 registry。 */
 const adapters = {
+  ...planarSceneAdapters,
   [placeValueSceneAdapter.contentVersion]: placeValueSceneAdapter,
   [solidNetsCompleteSceneAdapter.contentVersion]: solidNetsCompleteSceneAdapter,
   [solidCapacityTeachingSceneAdapter.contentVersion]: solidCapacityTeachingSceneAdapter,

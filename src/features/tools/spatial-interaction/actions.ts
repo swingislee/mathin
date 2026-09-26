@@ -1,4 +1,4 @@
-/** 3D 舞台按钮的语义目录。图标表示动作，不以所在教具或参数面板命名。 */
+/** 教具舞台按钮的语义目录。图标表示动作，不以所在教具或参数面板命名。 */
 export const SPATIAL_ACTIONS = {
   orbit: { zh: "旋转视角", en: "Orbit camera", icon: "Orbit", group: "camera" },
   pan: { zh: "平移视角", en: "Pan camera", icon: "Hand", group: "camera" },
@@ -17,14 +17,16 @@ export const SPATIAL_ACTIONS = {
   remove: { zh: "删除对象／单位块", en: "Remove object or block", icon: "Trash2", group: "object" },
   group: { zh: "编组", en: "Group", icon: "Group", group: "object" },
   ungroup: { zh: "取消编组", en: "Ungroup", icon: "Ungroup", group: "object" },
+  duplicate: { zh: "复制对象", en: "Duplicate object", icon: "CopyPlus", group: "object" },
+  mirror: { zh: "沿对称轴翻面", en: "Reflect across an axis", icon: "FlipHorizontal2", group: "object" },
   separate: { zh: "分开摆放", en: "Arrange apart", icon: "Separate", group: "object" },
   recenter: { zh: "移回原点", en: "Recenter", icon: "LocateFixed", group: "object" },
   objects: { zh: "对象与尺寸", en: "Objects and dimensions", icon: "Box", group: "object" },
   color: { zh: "整个对象标色", en: "Object color", icon: "PaintBucket", group: "surface" },
   faceColor: { zh: "给面标色", en: "Face color", icon: "Paintbrush", group: "surface" },
   opacity: { zh: "透明度", en: "Opacity", icon: "Opacity", group: "surface" },
-  mark: { zh: "面上标注", en: "Face marks", icon: "Stamp", group: "surface" },
-  number: { zh: "面上标数", en: "Face numbering", icon: "Hash", group: "surface" },
+  mark: { zh: "标注", en: "Mark", icon: "Stamp", group: "surface" },
+  number: { zh: "标数", en: "Number", icon: "Hash", group: "surface" },
   labels: { zh: "显示面标签", en: "Face labels", icon: "Tags", group: "display" },
   show: { zh: "显示", en: "Show", icon: "Eye", group: "display" },
   hide: { zh: "隐藏", en: "Hide", icon: "EyeOff", group: "display" },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
+import { useEffect, useEffectEvent, useRef, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
 import { planePointFromClient, type PlaneMatrix, type PlanePoint } from "./geometry";
 
 export interface PlanarDragFrame<T> { data: T; point: PlanePoint; delta: PlanePoint; moved: boolean }
@@ -26,6 +26,11 @@ export function usePlanarDrag<T>(svg: RefObject<SVGSVGElement | null>, callbacks
     return drag;
   };
   const cancel = () => { const drag = release(); if (drag) callbacks.onCancel(drag.data); };
+  const cancelOnBlur = useEffectEvent(cancel);
+  useEffect(() => {
+    window.addEventListener("blur", cancelOnBlur);
+    return () => { window.removeEventListener("blur", cancelOnBlur); cancelOnBlur(); };
+  }, []);
   return {
     cancel,
     start(event: ReactPointerEvent, data: T) {

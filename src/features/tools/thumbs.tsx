@@ -1,9 +1,12 @@
 import type { ReactNode } from "react";
 import { SomaPieceIcon } from "./soma-cube/SomaPieceIcon";
 import { SOMA_IDS } from "./soma-cube/pieces";
+import { PLANAR_TOOLS } from "./planar-kit/catalog";
+import { PlanarToolThumbnail } from "./planar-kit/PlanarToolThumbnail";
 
 /** 工具缩略图：几何线稿占位（素材就绪后可换成截图/手绘，颜色只用 token） */
 export const toolThumbs: Record<string, ReactNode> = {
+  ...Object.fromEntries(PLANAR_TOOLS.map((tool) => [tool.id, <PlanarToolThumbnail key={tool.id} sceneId={tool.scenes[0]} />])),
   "place-value": (
     <svg viewBox="0 0 200 120" className="h-full w-full" aria-hidden>
       <g stroke="var(--ink)" strokeWidth={1.1} strokeLinejoin="round">
