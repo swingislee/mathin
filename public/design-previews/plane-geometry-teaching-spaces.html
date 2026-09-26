@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>平面几何 · 教具空间场景审核 | Mathin</title>
+  <style>
+    :root { --paper:#fffdf8; --ink:#29251f; --muted:#766f65; --line:#e8e1d5; --card:#fff; --moon:#feedb9; --crater:#cbab8f; --leaf:#bbcf87; --leaf-deep:#526b36; --rose:#c94a4f; --cheek:#fbc9c3; --blue:#476f86; --blue-pale:#d9e7eb; --font:"LXGW WenKai","Kaiti SC","STKaiti","KaiTi",serif; }
+    * { box-sizing:border-box; }
+    html { scroll-padding-top:100px; }
+    body { margin:0; color:var(--ink); background:var(--paper); font:16px/1.7 var(--font); }
+    button,input,select,textarea { font:inherit; color:inherit; }
+    button,a,select,input { -webkit-tap-highlight-color:transparent; }
+    button,select,summary { cursor:pointer; }
+    a { color:inherit; text-underline-offset:4px; }
+    button { border:1px solid var(--crater); background:transparent; border-radius:99px; padding:7px 15px; }
+    button:hover { background:var(--moon); }
+    :focus-visible { outline:2px solid var(--blue); outline-offset:4px; }
+    [hidden] { display:none !important; }
+    h1,h2,h3,p,figure { margin:0; }
+    h1,h2,h3 { font-weight:400; }
+    .document { max-width:1480px; margin:auto; padding:28px 36px 70px; }
+    .masthead { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+    .wordmark { font:17px Georgia,serif; letter-spacing:.15em; }
+    .edition { color:var(--muted); font-size:13px; margin-left:14px; }
+    .actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; font-size:14px; }
+    .intro { padding:30px 0 22px; max-width:1040px; }
+    h1 { font-size:clamp(30px,3.3vw,44px); line-height:1.4; }
+    .subtitle { font-size:19px; margin-top:10px; }
+    .intro .note { margin-top:13px; }
+    .note,.small { color:var(--muted); font-size:14px; }
+    .principles { display:flex; gap:8px 25px; flex-wrap:wrap; margin:17px 0 0; font-size:14px; }
+    .principles span::before { content:"·"; padding-right:8px; color:var(--leaf-deep); }
+    .overview { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px 28px; margin:12px 0 26px; }
+    .tool-link { display:block; padding:12px 0; text-decoration:none; }
+    .tool-link:hover strong { text-decoration:underline; text-underline-offset:5px; }
+    .tool-link strong { display:block; font-size:19px; font-weight:400; }
+    .tool-link p { color:var(--muted); font-size:14px; margin-top:3px; }
+    .tool-code,.section-code { font:14px Georgia,serif; color:var(--leaf-deep); padding-right:10px; }
+    .filter-bar { position:sticky; top:0; z-index:5; display:flex; align-items:center; gap:10px 18px; flex-wrap:wrap; padding:13px 0; background:var(--paper); border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+    .filter-bar nav { display:flex; gap:3px; flex-wrap:wrap; }
+    .filter { border-color:transparent; font-size:14px; padding:5px 11px; }
+    .filter[aria-pressed="true"] { background:var(--moon); border-color:var(--crater); }
+    .filter-bar label { display:flex; gap:7px; align-items:center; font-size:14px; }
+    .count { margin-left:auto; color:var(--muted); font-size:14px; }
+    .section { padding-top:37px; }
+    .section-head { display:flex; justify-content:space-between; align-items:baseline; gap:18px; margin-bottom:18px; }
+    .section-head h2 { font-size:26px; }
+    .section-head p { color:var(--muted); font-size:14px; max-width:610px; }
+    .scenes { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:26px 22px; }
+    /* Each article is an independently reviewable model, not a product workspace panel. */
+    .scene { min-width:0; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:17px; display:flex; flex-direction:column; scroll-margin-top:100px; }
+    .scene-top { display:flex; gap:10px; align-items:center; justify-content:space-between; font-size:13px; color:var(--muted); }
+    .scene-id { color:var(--leaf-deep); font:16px Georgia,serif; }
+    h3 { font-size:21px; margin:5px 0 3px; }
+    .placement { font-size:13px; color:var(--muted); }
+    .model { margin:13px -3px 0; background:var(--paper); border-radius:10px; overflow:hidden; }
+    .model svg { display:block; width:100%; height:auto; aspect-ratio:360/220; }
+    .model .shape { stroke:var(--ink); stroke-width:1.8; stroke-linejoin:round; fill:var(--leaf); }
+    .model .secondary { fill:var(--moon); }
+    .model .tertiary { fill:var(--blue-pale); }
+    .model .pink { fill:var(--cheek); }
+    .model .plain { fill:var(--paper); }
+    .model .line { fill:none; stroke:var(--ink); stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+    .model .grid { fill:none; stroke:var(--line); stroke-width:1; }
+    .model .guide { fill:none; stroke:var(--muted); stroke-width:1.2; stroke-dasharray:4 4; }
+    .model .accent { stroke:var(--leaf-deep); }
+    .model .blue { stroke:var(--blue); }
+    .model .cut { stroke:var(--rose); stroke-dasharray:5 4; fill:none; stroke-width:1.6; }
+    .model text { fill:var(--ink); font-family:var(--font); font-size:14px; stroke:none; }
+    .model .minor { fill:var(--muted); font-size:12px; }
+    .model .point { fill:var(--ink); stroke:var(--paper); stroke-width:1; }
+    figcaption { padding:3px 10px 10px; min-height:33px; color:var(--muted); font-size:13px; text-align:center; }
+    .demo { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:11px 0 1px; font-size:13px; }
+    .demo button { padding:4px 11px; min-width:58px; }
+    .demo label { display:flex; align-items:center; gap:7px; flex:1; }
+    .demo input { width:100%; min-width:55px; accent-color:var(--leaf-deep); }
+    .demo select { border:1px solid var(--line); background:var(--paper); border-radius:7px; padding:3px; }
+    .demo output { min-width:32px; color:var(--muted); font-variant-numeric:tabular-nums; }
+    .proposal { margin:15px 0 0; display:grid; gap:8px; font-size:14px; }
+    .proposal div { display:grid; grid-template-columns:40px 1fr; gap:7px; }
+    .proposal dt { color:var(--leaf-deep); }
+    .proposal dd { margin:0; }
+    .scene-tail { padding-top:14px; margin-top:auto; }
+    .source-line { color:var(--muted); font-size:12px; margin-bottom:10px; }
+    .review-row { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .review-row label { display:flex; gap:7px; align-items:center; font-size:13px; }
+    .review-row select { background:var(--paper); border:1px solid var(--line); border-radius:8px; padding:4px 7px; }
+    .review-note { margin-top:7px; font-size:13px; }
+    .review-note summary { color:var(--muted); }
+    textarea { display:block; width:100%; min-height:68px; padding:8px; resize:vertical; border:1px solid var(--line); border-radius:8px; background:var(--paper); margin-top:7px; font-size:14px; }
+    .scene[data-decision="keep"] { border-color:var(--leaf-deep); }
+    .scene[data-decision="adjust"] { border-color:var(--crater); }
+    .scene[data-decision="later"] .scene-top::after { content:"暂缓"; }
+    .scope { margin-top:46px; }
+    .scope h2,.sources h2 { font-size:26px; margin-bottom:15px; }
+    .shared { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px 28px; }
+    .shared h3 { font-size:18px; }
+    .shared p { font-size:14px; color:var(--muted); margin-top:5px; }
+    .sources { margin-top:42px; padding-top:25px; border-top:1px solid var(--line); }
+    .sources ol { padding-left:23px; font-size:14px; }
+    .sources li { margin:12px 0; }
+    .sources small { display:block; color:var(--muted); }
+    .status { font-size:13px; color:var(--muted); min-height:22px; }
+    .empty { padding:35px 0; color:var(--muted); }
+    .footer { margin-top:30px; display:flex; justify-content:space-between; gap:20px; flex-wrap:wrap; color:var(--muted); font-size:13px; }
+    @media (max-width:1080px) { .scenes { grid-template-columns:repeat(2,minmax(0,1fr)); } .section-head { display:block; } .section-head p { margin-top:7px; } }
+    @media (max-width:700px) { .document { padding:20px 16px 40px; } .overview { grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px 16px; } .scenes,.shared { grid-template-columns:1fr; } .filter-bar { position:static; } .count { margin-left:0; } .edition { display:block; margin:3px 0 0; } .scene { padding:15px; } .intro { padding-top:23px; } .section { padding-top:28px; } }
+    @media (pointer:coarse) { button,select,summary { min-height:44px; } .filter { padding:8px 11px; } input[type="range"] { min-height:32px; } textarea { font-size:16px; } }
+    @media print { body { background:var(--card); } .document { max-width:none; padding:0; } .actions,.filter-bar,.demo,.review-row,.review-note,.status { display:none; } .scene { break-inside:avoid; } .scenes { grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; } .section { padding-top:20px; } .model svg { max-height:180px; } .sources a { overflow-wrap:anywhere; } }
+  </style>
+</head>
+<body>
+  <main class="document" id="plane-review">
+    <header class="masthead">
+      <div><span class="wordmark">MATHIN</span><span class="edition">教学现场研究 / 2026.09.26 / 审核稿 01</span></div>
+      <div class="actions"><button id="export-review" type="button">导出审核意见</button><button id="print-review" type="button">打印本页</button></div>
+    </header>
+    <section class="intro" aria-labelledby="page-title">
+      <h1 id="page-title">把平面几何，放到可操作的桌面上。</h1>
+      <p class="subtitle">小学数学 + 小学奥数 · 7 类候选教具 · 60 个教学现场</p>
+      <p class="note">本页用于审核范围和基本模型，尚未接入正式工具。31 项教材主干、5 项基础拓展、24 项奥数经典现场。每一项回答：摆什么、老师怎么操作、学生能看见什么变化。编号代表现场，不代表 60 个独立工具。</p>
+      <div class="principles"><span>老师自由组织教学</span><span>过程可以停下、倒回、比较</span><span>可备课、可插入、可恢复起点</span><span>不设题干、提交、判分流程</span></div>
+    </section>
+    <div class="overview" id="tool-overview" aria-label="候选工具入口"></div>
+    <div class="filter-bar">
+      <nav aria-label="按场景范围筛选">
+        <button class="filter" type="button" data-filter="all" aria-pressed="true">全部场景</button>
+        <button class="filter" type="button" data-filter="core" aria-pressed="false">主干 01–31</button>
+        <button class="filter" type="button" data-filter="extension" aria-pressed="false">拓展 32–36</button>
+        <button class="filter" type="button" data-filter="olympiad" aria-pressed="false">奥数 37–60</button>
+        <button class="filter" type="button" data-filter="interactive" aria-pressed="false">可动模型</button>
+        <button class="filter" type="button" data-filter="reviewed" aria-pressed="false">已标意见</button>
+      </nav>
+      <label><input id="show-details" type="checkbox" checked> 展开操作说明</label>
+      <span class="count" id="review-count" aria-live="polite"></span>
+    </div>
+    <p class="status" id="storage-status" role="status">意见只记在当前浏览器；导出后发回即可。可动模型是过程示意，滑块不是正式工具的交互定案。</p>
+    <div id="scene-sections"></div>
+    <p id="empty-message" class="empty" hidden>这个范围暂时没有场景。可切回“全部场景”继续审核。</p>
+    <section class="scope" aria-labelledby="shared-title">
+      <h2 id="shared-title">共用能力只做一套，教学现场各有侧重</h2>
+      <div class="shared">
+        <div><h3>01 / 平面操作底座</h3><p>纸片本体拖动；显式旋转、镜像和切割；空白轻点取消；桌面与触屏共用规则。常规观察不常驻操作手柄，工具条避开图形及尺寸。</p></div>
+        <div><h3>02 / 构造与测量</h3><p>点、线、圆、多边形；方格／钉板背景；直尺、三角板、量角器、圆规；单位、标色、标注、底高和轨迹。测量是可开关的观察层。</p></div>
+        <div><h3>03 / 动作与过程</h3><p>拖动与精确参数驱动同一数学结果。剪下的是独立纸片；运动保持形状，缩放才改变大小。支持暂停、回退、原位轮廓和对应点追踪。</p></div>
+        <div><h3>04 / 约束透明可见</h3><p>自由顶点、固定边长、平行、垂直、等底等高等约束明确显示。教师切换约束，学生观察变化；不把模型约束包装成答题对错。</p></div>
+        <div><h3>05 / 备课与课堂共用</h3><p>沿用 Tools 的场景保存、课件固定副本、课堂同步和恢复起点。保存图形、约束、标记及显隐，不要求教师先录制教学步骤。</p></div>
+        <div><h3>06 / 与已有工具的关系</h3><p>等分与分数含义复用分数工具；面积纸片共用切割内核。旋转成体、截面、立体展开继续留在 3D 工具；钟面借用行程的连续时间与角的显示，不另开入口。</p></div>
+      </div>
+      <p class="note" style="margin-top:20px">建议先审“七个入口是否合理”，再按编号保留、调整或暂缓。奥数面积模型补入 T03，弧形与滚动补入 T05；图形计数、连线与铺盖建议共用新增 T07。初步依赖顺序：平面底座 → 剪拼／运动／面积关系 → 计数与路径 → 其他预设；不代表已经确定开发批次。</p>
+    </section>
+    <section class="sources" aria-labelledby="sources-title">
+      <h2 id="sources-title">检索依据与范围说明</h2>
+      <p class="note">以中国大陆小学数学及小学奥数的教学现场为范围。学段标签仅建议使用范围，不锁定教材册次；奥数没有统一的年级进度，部分高阶模型需教师择取。资料用于核对主题与常见模型，入口划分及全部图示为本次产品设计提案，不复制原书题目，不将教辅目录直接当施工清单。</p>
+      <ol>
+        <li id="source-s1"><a href="https://www.moe.gov.cn/srcsite/A26/s8001/202204/W020220510531636118932.pdf" target="_blank" rel="noreferrer">S1 · 教育部《义务教育数学课程标准（2022 年版）》校正版</a><small>小学“图形与几何”相关条目，印刷页 27–36：认识与测量、位置与运动。用于核对小学范围；本页不摘录题目或评价要求。</small></li>
+        <li id="source-s2"><a href="https://www.pep.com.cn/xw/zt/hd/12/xjcjs/xx/202409/t20240920_1995566.html" target="_blank" rel="noreferrer">S2 · 人教社：义务教育数学（一～六年级）新教材简介，2024</a><small>参考操作、实验、探究的组织方式，以及拼图、图案设计等活动；不照搬其作业、评价模块。</small></li>
+        <li id="source-s3"><a href="https://yun.nxeduyun.com/index.php?cid=1209136&amp;id=2331252&amp;r=space%2Forg%2Fcontent%2Fview&amp;sid=fadda70ba7ba4540a20aae0e9d56e0c3" target="_blank" rel="noreferrer">S3 · 宁夏教育云：立岗小学《平行四边形的面积》信息技术教学案例，2023</a><small>一线教师发布的剪拼教学现场，参考其把割补与底高关系连接起来的演示需求。</small></li>
+        <li id="source-s4"><a href="https://m.pep.com.cn/jyx/ydjx/201501/t20150109_1227931.shtml" target="_blank" rel="noreferrer">S4 · 人教社：课堂教学中“过程与方法”目标的践行，2015</a><small>参考圆分成扇形后重排的教学过程。有限份数只接近长方形，模型保留真实弧边。</small></li>
+        <li id="source-s5"><a href="https://zxxszhjx.pep.com.cn/qkml/201903/szkt/201904/t20190412_1937303.html" target="_blank" rel="noreferrer">S5 · 人教社《中小学数字化教学》：利用信息技术促进小学数学深度学习，2019</a><small>参考动态操作呈现角、图形转化及变化中不变量的方式。本文只是研究依据，不构成逐项施工要求。</small></li>
+        <li id="source-s6"><a href="https://www.phei.com.cn/module/goods/wssd_content.jsp?bookid=58454" target="_blank" rel="noreferrer">S6 · 电子工业出版社：《小学奥数700题详解》公开目录，2021</a><small>核对小学奥数中的几何计数、燕尾与共边、圆与扇形、剪拼等专题；本页只借主题边界，不采用题目组织方式。</small></li>
+        <li id="source-s7"><a href="https://phei.com.cn/module/goods/wssd_content.jsp?bookid=59260" target="_blank" rel="noreferrer">S7 · 电子工业出版社：《奥数经典500例 几何》公开目录，2021</a><small>核对共角、共边、等积、阴影割补、圆滚动、格点等模型。原书范围比小学基础更宽，本稿有选择地改为小学可观察的模型，高阶内容明确标注。</small></li>
+        <li id="source-s8"><a href="https://phei.com.cn/module/goods/wssd_content.jsp?bookid=65130" target="_blank" rel="noreferrer">S8 · 电子工业出版社：《奥数经典500例 计数》公开目录，2024</a><small>核对几何图形计数、路线标数、区域分割与染色；计数结果由教师选择何时显示，不设置答案框。</small></li>
+        <li id="source-s9"><a href="https://app.ecnupress.com.cn/app/dt/skw/1552467744?k=%E5%A5%A5%E6%95%B0%E6%95%99%E7%A8%8B&amp;s=1" target="_blank" rel="noreferrer">S9 · 华东师范大学出版社：《奥数教程》配套资源目录</a><small>三年级公开目录含一笔画、多笔画等主题，用于核对低中段拓展现场的范围。</small></li>
+        <li id="source-s10"><a href="https://www.phei.com.cn/module/goods/wssd_content.jsp?bookid=40290" target="_blank" rel="noreferrer">S10 · 电子工业出版社：小学数学思维训练图书公开目录</a><small>核对折叠剪拼、火柴棒、图形计数与钟面等材料型场景。具体操作规则仍由老师决定。</small></li>
+      </ol>
+      <p class="note">32–36 为基础拓展，37–60 为奥数专题候选。模型别名在不同教材中可能不同，以图上的几何条件为准。暂不纳入：初中完整证明体系、三角函数、任意代数曲线、自动解题与判分。格点公式、相似面积比、勾股割补单独标为高阶选用，不当作小学课内前置。</p>
+    </section>
+    <footer class="footer"><span>审核稿 · 数学模型示意，非屏幕实物尺寸</span><span>本地意见不会自动发送或写入正式备课数据。</span></footer>
+    <noscript><p>本页模型需要 JavaScript。请启用后重新打开；审核稿无需登录，也不请求远程脚本。</p></noscript>
+  </main>
+  <script>
+  (() => {
+    'use strict';
+    const groups = [
+      { id:'construct', code:'T01', name:'图形认识与构造', desc:'用纸片、线、角、活动框架认识图形。', detail:'候选独立工具。角、平行垂直、三角形与四边形是其中的材料和场景，不拆成一排新工具。' },
+      { id:'measure', code:'T02', name:'周长与面积', desc:'沿着边量，向里面铺，比较不同的量。', detail:'候选独立工具。直尺、单位格、绕边和读数同时供其他教具调用；单位换算不是另一套画布。' },
+      { id:'dissect', code:'T03', name:'平面拼剪与面积转化', desc:'剪开、复制、移动、拼回，追踪每一片。', detail:'候选独立工具。平行四边形、三角形、梯形共用切割和纸片变换；公式由教师决定何时展示。' },
+      { id:'motion', code:'T04', name:'平面图形运动', desc:'平移、旋转、对折、缩放，保留对应关系。', detail:'候选独立工具。运动现场有中心、轴、方向与原位；和一般编辑器的“移动一下”区分。' },
+      { id:'circle', code:'T05', name:'圆与扇形探究', desc:'从圆规的轨迹，到滚动、分割与重排。', detail:'候选独立工具。圆是一组连续的教学现场；剪拼底层与 T03 共用，不复制一套纸片系统。' },
+      { id:'position', code:'T06', name:'位置与路线', desc:'用数对、方向、距离和比例尺定位。', detail:'候选独立工具。强调参照点与位置的表达；地图为可编辑示意图，不依赖真实地图服务。' },
+      { id:'counting', code:'T07', name:'图形计数与路径', desc:'连线、枚举、走路、铺盖，把思路摆在桌面上。', detail:'候选独立工具。线段／图形身份、访问记录、局部高亮与染色共用，具体现场见奥数 C 组。' },
+      { id:'extension', code:'＋', name:'基础拓展 · 拼摆与轨迹', desc:'小学可理解的延伸现场，逐项决定是否需要。', detail:'32–36 均补入以上工具；其中格点与轨迹可继续进入后面的奥数现场。' },
+      { id:'olympiad-area', code:'奥数 A', name:'等积、面积比与经典模型', detail:'37–42、59。以 T03 的关系预设为主，复用约束、辅助线、拆片与测量。别名不能代替成立条件。' },
+      { id:'olympiad-cut', code:'奥数 B', name:'周长巧算、阴影与割补', detail:'43–46、58。分别补入 T02／T03／T05。追踪边和面积从哪里来、移到哪里去，不自动列式求解。' },
+      { id:'olympiad-count', code:'奥数 C', name:'几何计数、路径与染色', detail:'47–54、57。新增 T07 的核心使用场景；反射最短路也可直接从 T04／T06 进入。' },
+      { id:'olympiad-more', code:'奥数 D', name:'圆滚动、格点与连续转角', detail:'55–56、60。分别补入圆、测量与角的工具，不为每种模型再建一个入口。' }
+    ];
+    // These are product proposals. The grade bands are broad, not textbook chapter assignments.
+    const scenes = [
+      { id:'01', group:'construct', title:'图形纸片：认一认、拼一拼', band:'1–2 年级起', kind:'场景 / 材料盘', model:'圆、三角形和四边形可换方向，仍是同一种图形。', act:'摆放、复制、转动不同大小的纸片；可重叠对照，也可组合成新图案。', see:'形状不由摆放方向决定；组合图形由哪些部分组成。', prepare:'纸片种类、数量、颜色；是否显示名称和顶点。', source:'s1 s2' },
+      { id:'02', group:'construct', title:'七巧板与开放拼摆', band:'1–6 年级', kind:'预设补充 / 共用纸片', model:'同一正方形拆成七片；保留每片身份，开放拼摆。', act:'拿起任意一片移动、旋转、翻面；可以保留原正方形轮廓作为参照。', see:'拼法、外轮廓可以改变，七片没有增减时总面积不变。', prepare:'是否散开、原位轮廓、边缘吸附；不设目标答案。', source:'s2' },
+      { id:'03', group:'construct', title:'线段、射线与直线', band:'3–4 年级起', kind:'共用构造功能', model:'端点的保留与延伸方向直接画在同一条线上。', act:'拖动端点，切换单端／双端延伸；在两个固定点之间拉出折线再拉直。', see:'有限长度与延伸的区别；相同两点间直线段更短。', prepare:'端点、延伸状态、辅助折线和长度读数。', source:'s1' },
+      { id:'04', group:'construct', title:'角的张合与量角器', band:'3–4 年级起', kind:'场景 / 共用测角', model:'绕同一个顶点张合；边长变化不改变张角。', act:'抓住一条边转动；量角器可搬动、对准、显隐；可另开精确角度。', see:'角的大小取决于张开程度，锐角、直角、钝角可以连续过渡。', prepare:'顶点、两边长度、起始角度、量角器和读数显隐。', source:'s1 s5', demo:true, initial:0.25 },
+      { id:'05', group:'construct', title:'平行、垂直与点到线的距离', band:'3–4 年级起', kind:'约束 / 测量功能', model:'一组等距平行线；另一处垂足可沿线移动。', act:'移动三角板或线；开启平行／垂直约束；比较点到线上不同位置的连线。', see:'平行线间距不变；垂直连线与斜连线的长度差别。', prepare:'线的位置、约束、垂足及辅助连线；不常驻所有标记。', source:'s1' },
+      { id:'06', group:'construct', title:'三根小棒与活动框架', band:'3–6 年级', kind:'场景 / 长度约束', model:'固定三边的三角形，与可以推斜的四边形框架。', act:'改变一根小棒长度，再尝试让三根棒首尾相接；锁定长度后推拉框架。', see:'什么情况下三边能合拢；三角形和四边形的稳定性差异。', prepare:'各边长、铰接关系、是否锁长；用形状过程展示，不报对错。', source:'s1 s2' },
+      { id:'07', group:'construct', title:'把三角形的三个角拼在一起', band:'5–6 年级为主', kind:'预设 / 复用剪拼', model:'三处角保留颜色，搬到同一个点拼成平角。', act:'拖动顶点改变三角形；复制或剪下三个角，再逐个转动拼到直线上。', see:'形状不同的三角形，其三个内角仍能拼成一个平角。', prepare:'三角形形状、角片颜色、角度显隐；可停在拼接中途。', source:'s1 s5' },
+      { id:'08', group:'construct', title:'四边形家族与底、高', band:'3–6 年级', kind:'场景 / 图形约束', model:'从活动四边形中保留平行、等边或直角等条件。', act:'拖动顶点；分别锁定对边平行、四边相等或直角；换一条底显示对应高。', see:'长方形、正方形、平行四边形的联系；高可以在图形内部或外部。', prepare:'约束和底边。梯形默认采用“只有一组对边平行”的教材口径。', source:'s1' },
+      { id:'09', group:'measure', title:'从单位接力到直尺测量', band:'1–4 年级', kind:'共用长度测量', model:'从 2 cm 到 7 cm 的线段，长度为 5 cm。', act:'用同长单位段首尾接力；搬动直尺，从零刻度或非零刻度开始量。', see:'统一单位的意义；端点刻度与线段长度不是一回事。', prepare:'单位、尺的零点、刻度显隐；比例仅作图示，非屏幕实物厘米。', source:'s1' },
+      { id:'10', group:'measure', title:'绕一周，再把边排成一条线', band:'3–4 年级起', kind:'场景 / 周长显示', model:'长 4、宽 3 的四条边，接成长为 14 的线。', act:'用线沿闭合边界走一圈；将带颜色的边逐段搬下、排直。', see:'周长测量的是边界，拐弯不会丢掉任何一段长度。', prepare:'图形尺寸、起点、边色；可切换规则多边形和折线边界。', source:'s1' },
+      { id:'11', group:'measure', title:'铺单位面与面积单位', band:'3–6 年级', kind:'共用面积测量', model:'铺满 12 个单位格；1 dm² 可细分成 100 cm²。', act:'逐块、逐行铺满；把一个大单位格细分；可放大观察细分过程。', see:'面积是覆盖了多少个单位面；边长单位换十倍，面积单位换一百倍。', prepare:'格子边长、物理单位、铺到哪一行及读数；扩展公顷、平方千米量感。', source:'s1' },
+      { id:'12', group:'measure', title:'同样长的围绳，围出不同面积', band:'3–6 年级', kind:'比较场景', model:'6 × 2 与 4 × 4：周长都是 16，面积不同。', act:'固定周长拖动长方形；或固定单位方块数，重新排列外形。', see:'等周长未必等面积；等面积也未必等周长。', prepare:'锁周长或锁面积、比较副本；不自动给出最优答案。', source:'s1', inference:true },
+      { id:'13', group:'measure', title:'拼接后，哪几条边不在外面了', band:'3–6 年级', kind:'场景 / 共用拼接', model:'两块 3 × 2 长方形拼合：共边不再属于外边界。', act:'移动两个图形，使部分边贴合；外边界与内部接缝分别高亮。', see:'无重叠时面积可相加，拼接后的周长要扣除贴合的两份边。', prepare:'纸片尺寸、初始间隔、边色；允许只贴合一部分。', source:'s1', inference:true },
+      { id:'14', group:'dissect', title:'平行四边形：剪下一角，补到另一边', band:'5–6 年级为主', kind:'核心预设 / 共用剪拼', model:'左侧三角片平移到右端，恰好补成长方形。', act:'老师选择切口，抓纸片搬到另一边；允许多种剪法，并保留原位轮廓。', see:'面积没有增减；原底和高分别对应新长方形的长和宽。', prepare:'底、高、倾斜量、切线；吸附只辅助对齐，不替老师完成探究。', source:'s1 s3', demo:true, initial:0.32 },
+      { id:'15', group:'dissect', title:'两个三角形，拼出一个平行四边形', band:'5–6 年级为主', kind:'核心预设 / 复制与旋转', model:'同一三角形的两个副本，一片转动后拼合。', act:'复制一片，绕选定点旋转再拼接；可换锐角、直角、钝角三角形。', see:'拼出的图形有原底和原高；一个三角形是两片总面积的一半。', prepare:'三角形尺寸、复制片样式、底高关联；复制时明确增加了一片。', source:'s1' },
+      { id:'16', group:'dissect', title:'两个梯形，拼出一个平行四边形', band:'5–6 年级为主', kind:'核心预设 / 复制与旋转', model:'第二片转半圈，长短底相接，总底长为 a + b。', act:'复制、转动、贴合；改变上下底和高，观察同一操作如何保持成立。', see:'新底由原来的两条底接成，高保持不变。', prepare:'上下底、高、斜边位置；两片可各自搬动和复原。', source:'s1' },
+      { id:'17', group:'dissect', title:'组合图形：分开看、补起来看', band:'4–6 年级', kind:'开放场景 / 共用切割', model:'同一个 L 形，既可分成两块，也可补成大长方形。', act:'画辅助切线、分块、移动或补片；支持两份现场并排比较不同分法。', see:'分割与补形之间的对应关系；同一块区域有不同的表示方式。', prepare:'组合纸片和尺寸；补入的片与原片区别标色，避免面积混算。', source:'s1 s3', inference:true },
+      { id:'18', group:'dissect', title:'等底等高：顶点走了，面积没走', band:'5–6 年级为主', kind:'约束预设', model:'底边不动，顶点沿着与底平行的直线滑动。', act:'直接拖顶点，锁定到底边的垂直距离；可换成平行四边形推拉。', see:'斜边、角度和外形在变，底、高和面积保持不变。', prepare:'两条平行线、固定底和高度；不要把斜边误标为高。', source:'s1 s3', demo:true, initial:0.4 },
+      { id:'19', group:'dissect', title:'不规则图形：铺格、分格、估一估', band:'5–6 年级为主', kind:'场景 / 复用面积网格', model:'整格与边界碎格分别观察，网格可继续细分。', act:'覆盖网格，标整格、搬碎片；调小单位格并比较估计范围。', see:'估计与精确值有区别；网格细化后边界带来的不确定性减小。', prepare:'不规则轮廓、格子尺度、内外覆盖；默认不直接揭示精确面积。', source:'s1' },
+      { id:'20', group:'motion', title:'平移：让对应点一起走', band:'3–6 年级', kind:'核心场景 / 平移', model:'每个点走同方向、同距离，留下平行的轨迹。', act:'直接拖图形；精确入口设置方向和距离；原图与对应点轨迹可开关。', see:'位置改变，形状、大小和朝向保持；不是只移动一个点。', prepare:'纸片、网格、平移向量和残影；可随时停下比较。', source:'s1 s2', demo:true, initial:0.45 },
+      { id:'21', group:'motion', title:'旋转：中心、方向、角度', band:'3–6 年级', kind:'核心场景 / 旋转', model:'中心固定，每个顶点各沿自己的圆弧移动。', act:'先放旋转中心，再抓图形转动；中心允许在内部、顶点或图形外部。', see:'换中心后运动路径不同；到中心的距离在旋转过程中不变。', prepare:'中心、方向、转角、对应点；钟面和风车作为可选材料。', source:'s1 s2', demo:true, initial:0.4 },
+      { id:'22', group:'motion', title:'轴对称：真的翻过去再对上', band:'3–6 年级', kind:'核心场景 / 镜像与折叠', model:'围绕轴翻折；中间窄下去的是纸片投影，不是缩放。', act:'搬动、转动对称轴，抓半边翻折；可在任意中间角度停下观察。', see:'对应点到轴等距，连线垂直于轴；对折是否重合由画面展示。', prepare:'纸片、轴、对应点与等距标记；显示折叠角度而非答题判定。', source:'s1 s2', demo:true, initial:0.65 },
+      { id:'23', group:'motion', title:'按比例放大与缩小', band:'5–6 年级为主', kind:'核心场景 / 缩放', model:'长宽同时按同一倍数变化，与任意拉伸区分。', act:'拖缩放把手或准确设倍率；并列保留原图，叠加单位格。', see:'形状保持，边长按倍率变；面积变化与边长变化不是同一倍数。', prepare:'比例、缩放中心、原图与单位格显隐；面积关系为可选观察。', source:'s1', demo:true, initial:0.5 },
+      { id:'24', group:'motion', title:'从一个基本图形设计图案', band:'3–6 年级', kind:'预设 / 组合运动', model:'一片花瓣绕中心重复旋转，再把整朵花平移。', act:'选择基本片，复制后平移、旋转或镜像；按动作逐步显示图案。', see:'复杂图案中的基本图形、重复方向与运动顺序。', prepare:'基本片、中心／轴、重复次数；老师自由创作，不设成品模板答案。', source:'s1 s2' },
+      { id:'25', group:'circle', title:'圆规成圆：一端不动，一端走', band:'5–6 年级为主', kind:'核心场景 / 共用圆规', model:'定点 O 与固定长度 r，一起决定笔尖轨迹。', act:'移动圆心、改变开口、转动圆规；把多条半径叠在同一个圆上。', see:'圆上各点到圆心等距；半径、直径与圆的大小之间的关系。', prepare:'圆心、半径、起始转角；笔迹、半径、直径、读数各自显隐。', source:'s1' },
+      { id:'26', group:'circle', title:'圆滚一周，周长留下来', band:'5–6 年级为主', kind:'核心场景 / 无滑动滚动', model:'圆上的起始点滚回地面，前进长度等于一圈。', act:'抓圆沿直线滚动，可暂停和倒回；换不同半径与直径对比。', see:'滚动距离与圆周对应；直径改变，周长与直径的比保持。', prepare:'半径、起始标记、地面刻度；严格无滑动，不用平移冒充滚动。', source:'s1 s5', demo:true, initial:0.3 },
+      { id:'27', group:'circle', title:'圆分成扇形，交错排起来', band:'5–6 年级为主', kind:'核心场景 / 复用 T03 纸片', model:'保持每一片的弧边；份数越多，越接近长方形。', act:'等分后逐片搬动、转向、交错；增加份数并比较，过程可反向回圆。', see:'上、下边各来自半周；高度接近半径，有限份数仍有弯边。', prepare:'半径、8／16／32 等分、原圆轮廓、片色；不用形变把扇形硬改成三角形。', source:'s1 s4 s5', demo:true, initial:0.9, pieces:16 },
+      { id:'28', group:'circle', title:'扇形与圆环：圆中的不同部分', band:'5–6 年级为主', kind:'材料与场景补充', model:'扇形保留圆心、半径和弧；圆环是两个同心圆之间的区域。', act:'转动半径改变扇形开口；移动内圆或调半径，比较圆环与一般挖空。', see:'角、半径、弧所围的扇形；同心与偏心带来的区别。', prepare:'半径、角度、内外圆；首期不强制展开扇形弧长公式。', source:'s1', inference:true },
+      { id:'29', group:'position', title:'数对定位：先列，再行', band:'5–6 年级为主', kind:'核心场景 / 方格坐标', model:'在方格上定位 (4, 3)，显示两次定位的过程。', act:'移动点、格子中的物体或座位；切换读数与定位线，不同时高亮整个网格。', see:'两个数分别控制两个方向；交换顺序会到另一个位置。', prepare:'行列范围、原点／编号规则、数对显隐；不引入负坐标前置。', source:'s1 s2' },
+      { id:'30', group:'position', title:'换一个参照点，方向也会变', band:'3–6 年级', kind:'核心场景 / 方向与距离', model:'北偏东 30°、300 m：方向与距离共同确定位置。', act:'移动参照点和地标；从东南西北过渡到角度和距离；沿路线逐段移动。', see:'同一地点相对不同参照点有不同描述；只给方向不能确定唯一位置。', prepare:'示意地图、参照点、北向、地标和路线；方位角与长度可隐藏。', source:'s1 s2' },
+      { id:'31', group:'position', title:'比例尺：地图变了，实地没变', band:'5–6 年级为主', kind:'场景 / 复用缩放与测量', model:'同为实地 300 m，1:10000 画 3 cm，1:5000 画 6 cm。', act:'改变比例尺，地图和图上尺同步缩放；实地距离作为固定参照。', see:'图上距离、实际距离与比例尺的对应；显示缩放与数学缩放须区别。', prepare:'比例尺、单位、地标距离；画布显示尺寸不当作真实厘米。', source:'s1' },
+      { id:'32', group:'extension', owner:'T04', title:'折纸与剪纸：打开后发生什么', band:'3–6 年级 · 择需', kind:'拓展预设 / 折叠与切割', model:'折叠后剪下一处，再逐层打开，观察重复与对称。', act:'老师设折线，逐次折叠、剪口、展开；允许停在半展开状态。', see:'一次切割影响了哪些层；对称轴和重复图案从何而来。', prepare:'纸张、折叠次序、剪口；真分层折叠比二维镜像复杂，单独评估。', source:'s1 s2', inference:true },
+      { id:'33', group:'extension', owner:'T03', title:'两个图形的重叠区域', band:'4–6 年级 · 择需', kind:'拓展显示功能', model:'两个透明方形重叠，交集单独标色。', act:'拖动或旋转其中一片；切换交集、并集、未覆盖部分的显示。', see:'重叠区域如何连续变化；两片面积相加为何可能重复计数。', prepare:'两片图形、透明度、区域显隐；不自动生成阴影面积题。', source:'s1', inference:true },
+      { id:'34', group:'extension', owner:'T02', title:'钉板上的面积与边界', band:'4–6 年级 · 择需', kind:'拓展预设 / 共用点阵', model:'边界格点、内部格点与单位面分别呈现。', act:'在点阵上围图形，拉动一个顶点；比较网格分割与边界变化。', see:'同一网格上的不同图形如何占据面积；格点数和面积不是同一个量。', prepare:'网格、橡皮筋轮廓、点的分类显隐；不把皮克定理列为基础要求。', source:'s1', inference:true },
+      { id:'35', group:'extension', owner:'T05', title:'滚动时，一个点走过的路', band:'5–6 年级 · 择需', kind:'拓展轨迹功能', model:'圆滚动时，圆周上的点与圆心留下不同轨迹。', act:'选择圆上的追踪点；慢滚、停下、回放；比较圆心与圆周点。', see:'物体前进不等于每个点都沿直线运动。', prepare:'半径、点的位置、轨迹显隐；只作直观观察，不加入摆线公式。', source:'s5', inference:true },
+      { id:'36', group:'extension', owner:'T04', title:'铺满桌面：镶嵌与空隙', band:'3–6 年级 · 择需', kind:'拓展预设 / 复制与吸附', model:'重复摆放三角片；再换材料，观察是否留缝或重叠。', act:'复制同一种或几种多边形，绕顶点旋转并贴边；允许自由尝试。', see:'局部角怎样围满一圈；局部拼接怎样延伸到整个平面。', prepare:'材料盘、边长、顶点吸附；不自动判定可铺满，也不涉及完整分类定理。', source:'s2', inference:true },
+      { id:'37', group:'olympiad-area', owner:'T03', title:'等高变底：面积比跟着底边走', band:'小学中高段 · 奥数', kind:'关系预设 / 约束', model:'顶点固定，底边上的分点改变两片面积比例。', act:'在同一底线上拖分点；也可固定底边，沿垂直方向改变顶点高度。', see:'等高时面积比由底边比决定；共底时面积比由高度比决定。', prepare:'共底／等高条件、分点与读数显隐；先看变化，再选择是否显示比例。', source:'s6 s7', demo:true, initial:0.4 },
+      { id:'38', group:'olympiad-area', owner:'T03', title:'共角与鸟头：两条边分开改变', band:'小学高段 · 奥数', kind:'关系预设 / 共角', model:'大小三角形共用一个角，另外两点分别沿角的两边移动。', act:'先只改变一条边，再改变另一条；补一条辅助线，看两次面积比例的叠加。', see:'共角不等于相似；两条夹边不必按同一倍数变化。', prepare:'固定公共顶点与两条射线，边上分点、辅助线和面积片；不先给套用公式。', source:'s7' },
+      { id:'39', group:'olympiad-area', owner:'T03', title:'燕尾：拖动内点，追踪两翼', band:'小学高段 · 奥数', kind:'关系预设 / 共线', model:'内点 P 始终留在 A 与底边分点 D 的连线上。', act:'拖动底边分点或让 P 沿 AD 移动；逐块高亮两翼及下面两片。', see:'哪些面积比跟底边分割有关，哪些随 P 的高度变化；共线条件不可丢。', prepare:'三角形、分点 D、内点 P、连线与面积颜色；可以暂时解除共线作对比。', source:'s6 s7', demo:true, initial:0.4 },
+      { id:'40', group:'olympiad-area', owner:'T03', title:'蝴蝶：对角线分出的四片', band:'小学高段 · 奥数', kind:'关系预设 / 四边形', model:'两条对角线相交；梯形约束下，两侧翅膀等面积。', act:'先在一般凸四边形中拖顶点，再锁定一组对边平行；追踪四片区域。', see:'一般四边形与梯形的关系不同；只有保留条件，特定等积关系才保留。', prepare:'顶点、对角线交点、平行约束、四片颜色与面积；不把所有形状都按梯形套用。', source:'s6 s7', demo:true, initial:0.55 },
+      { id:'41', group:'olympiad-area', owner:'T03', title:'共边：整块减去共同部分', band:'小学高段 · 奥数', kind:'关系预设 / 面积和差', model:'两个三角形共享底边，较小的一片嵌在大三角形中。', act:'显出共底与两条高；把共同区域移开，或只保留两侧余下的片。', see:'共边关系转成高度关系；等量减同一块后留下的面积怎样对应。', prepare:'以共底、共线、包含关系定义模型；共同部分与剩余部分分别显隐。', source:'s7' },
+      { id:'42', group:'olympiad-area', owner:'T03', title:'中点、一半与层层嵌套', band:'小学中高段 · 奥数', kind:'关系预设 / 中点锁定', model:'平行线间的三角形占半；三角形中点连线再分出小三角形。', act:'拖顶点而保留中点或平行线；拆出对应片，复制并重叠比较。', see:'一半从底高关系中来；继续取中点时，长度与面积的缩小倍数不同。', prepare:'中点、平行约束、嵌套层数；新增层逐步出现，避免满屏辅助线。', source:'s7' },
+      { id:'43', group:'olympiad-cut', owner:'T02', title:'台阶与凹口的周长巧算', band:'小学中高段 · 奥数', kind:'预设 / 边段平移', model:'单调台阶的横段、竖段分别排到外接框的宽和高上。', act:'给横竖边分色，选边平移拼接；再增加凹口，比较新增了哪些边。', see:'哪些台阶可以转成外框周长，哪些凹口、回折或孔洞会额外增加边界。', prepare:'正交多边形、边段身份、辅助外框；适用条件可见，不一律套外框周长。', source:'s7' },
+      { id:'44', group:'olympiad-cut', owner:'T05', title:'叶形、弓形与重叠阴影', band:'小学高段 · 奥数', kind:'材料预设 / 区域显示', model:'正方形内两段四分之一圆弧，围出一片叶形。', act:'显示圆心和半径，分出扇形、三角形和弓形；分别拿开、重叠比较。', see:'弯曲边界来自哪个圆；阴影可以拆成哪些已知区域。', prepare:'圆心、半径、角度、区域显隐；只依真实弧线分区，不把弧画成折线。', source:'s6 s7' },
+      { id:'45', group:'olympiad-cut', owner:'T05', title:'方中圆、圆中方与出入相补', band:'小学高段 · 奥数', kind:'材料预设 / 复用剪拼', model:'同一圆分别与外接正方形、内接正方形比较。', act:'显隐整个图形与局部差集；复制等价区域，再搬动、旋转、配对。', see:'总面积相减与局部割补之间的联系；相同曲边区域怎样抵消。', prepare:'圆方关联约束、原位轮廓、对应色；材料改变时不继续沿用失效关系。', source:'s7' },
+      { id:'46', group:'olympiad-cut', owner:'T03', title:'等面积分割，不必分成同一种形状', band:'小学中高段 · 奥数', kind:'开放切割 / 约束补充', model:'同一长方形分成一块长方形与两块三角形，三片等面积。', act:'老师画切线，移动切线端点；拆开后叠加、细分、重组比较。', see:'等面积与全等是不同要求；切口位置比纸片外观更可靠。', prepare:'分割材料、切线和面积显隐；等面积可作教师主动开启的约束，不变成评分。', source:'s6 s7' },
+      { id:'47', group:'olympiad-count', owner:'T07', title:'线段与角：把一个对象选完整', band:'小学低中段 · 奥数', kind:'计数场景 / 端点配对', model:'线段由一对端点确定；角由同一顶点的两条射线确定。', act:'点选一对端点或两条射线，完整高亮一个对象；把已观察对象放到旁边留痕。', see:'长线段、复合角也属于对象；用固定起点或大小分组减少重漏。', prepare:'点、射线、标记开关；不默认显示最终总数或正确答案。', source:'s6 s8' },
+      { id:'48', group:'olympiad-count', owner:'T07', title:'三角形计数：大小、朝向、组成层', band:'小学中高段 · 奥数', kind:'计数场景 / 区域组合', model:'射线与横线形成大小不同的三角形；完整轮廓单独高亮。', act:'选择三个顶点或连续边；按朝向、层数、顶点逐组观察，可抽出一片查看。', see:'小三角形之外还有跨层的组合；三个点不一定由现有完整边连接。', prepare:'放射形、三角网、金字塔预设；重叠高亮可独立关闭，不自动判题。', source:'s6 s8' },
+      { id:'49', group:'olympiad-count', owner:'T07', title:'正方形、长方形与复合网格', band:'小学低高段 · 奥数', kind:'计数场景 / 尺寸分层', model:'同一网格同时包含小格、跨格长方形与更大正方形。', act:'拖一个窗口框出对象；按宽高或边长分组；保留轮廓缩略图作枚举记录。', see:'按尺寸与位置组织可以看清重复；斜放的正方形要有独立预设。', prepare:'网格、缺边、倾斜网格、可选尺寸；计数辅助由老师开启。', source:'s6 s8' },
+      { id:'50', group:'olympiad-count', owner:'T07', title:'一条新线，怎样把区域分开', band:'小学中高段 · 奥数', kind:'区域分割 / 连线动作', model:'在纸面上增加一条线，追踪它跨过的已有区域。', act:'逐条添线，移动线或交点；比较平行、共点和分散相交的布局。', see:'新线被交点分成几段、又产生几块；重合与共点会改变增长。', prepare:'纸面边界、直线／闭合曲线材料；区域颜色与编号可显隐。', source:'s8' },
+      { id:'51', group:'olympiad-count', owner:'T07', title:'火柴棒与共用边', band:'小学低中段 · 奥数', kind:'材料盘 / 线段拼摆', model:'几根棒既是单个图形的边，也可以是两个图形的共边。', act:'直接拿起、旋转、放下一根棒；保留移动前的淡轮廓，逐步比较图形变化。', see:'增加一个小方形未必需要四根新棒；移动一根会影响哪些图形。', prepare:'棒的数量、等长／变长、端点吸附；没有“移动几根得到答案”的内置门槛。', source:'s10 s6' },
+      { id:'52', group:'olympiad-count', owner:'T07', title:'一笔画与多笔画', band:'小学中段 · 奥数', kind:'路径场景 / 点与边', model:'房子形连线图，走过的边保留颜色，起点与终点清楚可见。', act:'从任意点沿线走；回退一步、抬笔或重来；可显出每个点连着几条边。', see:'经过一个点的“进、出”如何配对；重边、断连与奇偶度数有什么影响。', prepare:'连线图、是否允许重走、抬笔留痕；路径规则由老师设置，不自动评分。', source:'s9 s8' },
+      { id:'53', group:'olympiad-count', owner:'T07', title:'格点最短路线与逐点标数', band:'小学中高段 · 奥数', kind:'路径场景 / 路网', model:'起终点相同，多条只向右、向上的路线长度相同。', act:'手指沿路走，保留不同路线；封闭一条边或加入必经点；逐点显出到达方法。', see:'最短不一定唯一；不同限制怎样改变可用路线，而不是只报一个总数。', prepare:'起终点、可走方向、障碍和标数层；与真实距离的最短路区分。', source:'s8' },
+      { id:'54', group:'olympiad-count', owner:'T06 / T04', title:'先到直线再去另一点：反射最短路', band:'小学高段 · 奥数', kind:'预设 / 复用镜像', model:'把终点翻到直线另一侧，折线路程与对应直线路程联系起来。', act:'拖动直线上的接触点；对比折线长度，再翻出终点镜像并连接。', see:'绕折的路线怎样转成直线；反射保留距离，最短位置由变化过程呈现。', prepare:'两点、反射线、接触点、镜像显隐；不自动替老师选最短点。', source:'s7', demo:true, initial:0.4 },
+      { id:'55', group:'olympiad-more', owner:'T05', title:'圆的内外滚动：自转与绕行分开看', band:'小学高段 · 奥数', kind:'预设 / 共用滚动', model:'小圆沿大圆外侧无滑动滚动；圆心和标记分别追踪。', act:'手动推进绕行，可停下；分别看小圆相对固定方向、自身接触线的转角。', see:'绕大圆一圈不等于自转一圈；圆心走的是偏移后的轨道。', prepare:'大小半径、内滚／外滚、接触点和方向标记；初版模型只演示外滚。', source:'s7', demo:true, initial:0.35 },
+      { id:'56', group:'olympiad-more', owner:'T02', title:'格点面积：从数点到拼补', band:'小学高段 · 奥数选用', kind:'高阶预设 / 接续 34', model:'边界点 B、内部点 I 与图形面积分别计量。', act:'拖动顶点但吸附格点，拆成长方形和三角形；再选择是否显示面积关系。', see:'点数与面积之间存在规律，边界点要按不同权重处理。', prepare:'限定简单、无孔格点多边形；皮克关系是高阶可选观察，不作为所有图形的通用公式。', source:'s7' },
+      { id:'57', group:'olympiad-count', owner:'T07', title:'棋盘染色与多米诺覆盖', band:'小学中高段 · 奥数', kind:'铺盖场景 / 染色开关', model:'一块 1 × 2 骨牌覆盖一深一浅两个相邻格。', act:'摆放、转动骨牌；移去部分格子；开启染色，比较每步覆盖的颜色数量。', see:'局部覆盖怎样形成整体限制；颜色数量满足条件也不总能保证可铺满。', prepare:'棋盘、缺格、骨牌形状、染色层；不自动宣判有解或无解。', source:'s8', inference:true },
+      { id:'58', group:'olympiad-cut', owner:'T03', title:'勾股弦图：同样四片，留下不同空白', band:'小学高段 · 奥数选用', kind:'高阶割补预设', model:'同一大正方形内，四个相同直角三角形重新摆放。', act:'逐片移位与旋转；在两种布局之间保留纸片身份，比较剩余正方形。', see:'外框和四片总面积不变，两种空白面积相等。', prepare:'直角与边长关联约束；先看面积拼补，定理名称与代数公式可后开。', source:'s7' },
+      { id:'59', group:'olympiad-area', owner:'T03 / T04', title:'沙漏与金字塔：平行条件下的缩放', band:'小学高段 · 奥数选用', kind:'相似关系预设', model:'沙漏两端保持平行；金字塔中的切线与底边平行。', act:'拖平行线，追踪对应边与面积；解除平行后比较哪些关系消失。', see:'对应长度按同一倍率变化时，面积按倍率的平方变化。', prepare:'共线顶点、平行条件、对应标记；与 38 的一般共角模型区分。', source:'s7' },
+      { id:'60', group:'olympiad-more', owner:'T01 / T04', title:'钟面追及与夹角的连续变化', band:'小学中高段 · 奥数', kind:'角的预设 / 复用时间播放', model:'从 2:00 开始，两根指针按真实速度连续运动一小时。', act:'拨动时间、慢放或暂停；保留某一时刻的指针影子，选择夹角观察。', see:'分针走时，时针也一直在走；追及与夹角有连续的变化过程。', prepare:'起始时刻、时间倍率、夹角显隐；与行程工具共用时间控制，不内置时钟题。', source:'s7 s10', demo:true, initial:0.4 }
+    ];
+    const esc = value => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+    const line = (x1,y1,x2,y2,cls='line') => `<line class="${cls}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`;
+    const poly = (points,cls='shape',extra='') => `<polygon class="${cls}" points="${points.map(p=>p.join(',')).join(' ')}" ${extra}/>`;
+    const rect = (x,y,w,h,cls='shape') => `<rect class="${cls}" x="${x}" y="${y}" width="${w}" height="${h}"/>`;
+    const circle = (x,y,r,cls='line') => `<circle class="${cls}" cx="${x}" cy="${y}" r="${r}"/>`;
+    const dot = (x,y) => circle(x,y,3.8,'point');
+    const text = (x,y,value,cls='',anchor='middle') => `<text class="${cls}" x="${x}" y="${y}" text-anchor="${anchor}">${esc(value)}</text>`;
+    const path = (d,cls='line',extra='') => `<path class="${cls}" d="${d}" ${extra}/>`;
+    const arrow = (x1,y1,x2,y2,id) => line(x1,y1,x2,y2).replace('/>',` marker-end="url(#arrow-${id})"/>`);
+    const grid = (x,y,cols,rows,size) => Array.from({length:cols+1},(_,i)=>line(x+i*size,y,x+i*size,y+rows*size,'grid')).join('') + Array.from({length:rows+1},(_,i)=>line(x,y+i*size,x+cols*size,y+i*size,'grid')).join('');
+    const polar = (x,y,r,a) => [x+r*Math.cos(a),y+r*Math.sin(a)];
+    const mix = (a,b,t) => a.map((v,i)=>v+(b[i]-v)*t);
+    const intersection = (a,b,c,d) => { const u=[b[0]-a[0],b[1]-a[1]],v=[d[0]-c[0],d[1]-c[1]],w=[c[0]-a[0],c[1]-a[1]];const cross=(p,q)=>p[0]*q[1]-p[1]*q[0];return mix(a,b,cross(w,v)/cross(u,v)); };
+    const arc = (x,y,r,a,b) => { const a0=polar(x,y,r,a),a1=polar(x,y,r,b); return `M ${a0} A ${r} ${r} 0 ${Math.abs(b-a)>Math.PI?1:0} ${b>a?1:0} ${a1}`; };
+    const wedge = (x,y,r,a,b,cls='shape') => path(`M ${x} ${y} L ${polar(x,y,r,a)} A ${r} ${r} 0 ${b-a>Math.PI?1:0} 1 ${polar(x,y,r,b)} Z`,cls);
+    const wrap = (scene,body) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" aria-label="${esc(scene.title+'：'+scene.model)}"><title>${esc(scene.title)}</title><defs><marker id="arrow-${scene.id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--ink)"/></marker></defs>${body}</svg>`;
+    function sketch(scene,t=0,n=16) {
+      const id=scene.id;
+      let s='';
+      switch(id) {
+        case '01':
+          s=poly([[32,126],[95,48],[128,143]])+rect(165,62,73,73,'shape secondary')+circle(297,105,37,'shape tertiary')+poly([[35,175],[101,165],[81,139]],'shape pink')+text(78,197,'换方向')+text(202,164,'看边与角')+text(297,164,'曲线边界'); break;
+        case '02': {
+          const pieces=[[[0,0],[4,0],[2,2]],[[0,0],[2,2],[0,4]],[[4,4],[4,2],[2,4]],[[2,2],[3,1],[4,2],[3,3]],[[4,0],[4,2],[3,1]],[[0,4],[2,4],[3,3],[1,3]],[[2,2],[1,3],[3,3]]];
+          const colors=['','secondary','tertiary','pink','secondary','','tertiary'];
+          s=pieces.map((p,i)=>poly(p.map(([x,y])=>[45+x*34,35+y*34]),`shape ${colors[i]}`)).join('')+arrow(197,105,225,105,id)+pieces.map((p,i)=>`<g transform="translate(${235+(i%2)*43},${35+Math.floor(i/2)*40}) rotate(${i*15}) scale(.24)">${poly(p.map(([x,y])=>[x*34,y*34]),`shape ${colors[i]}`)}</g>`).join('')+text(112,197,'同一正方形分成七片')+text(278,197,'散开示意（缩略）'); break;
+        }
+        case '03': s=line(75,55,280,55)+dot(75,55)+dot(280,55)+text(38,60,'线段')+arrow(75,107,312,107,id)+dot(75,107)+text(38,112,'射线')+arrow(65,158,316,158,id)+arrow(316,158,65,158,id)+text(38,163,'直线')+text(190,198,'端点数与延伸方向'); break;
+        case '04': {
+          const angle=(30+120*t)*Math.PI/180, p=polar(120,162,118,-angle);
+          s=path(arc(120,162,83,Math.PI,2*Math.PI),'grid')+Array.from({length:19},(_,i)=>{const a=Math.PI+i*Math.PI/18;const p0=polar(120,162,76,a),p1=polar(120,162,83,a);return line(...p0,...p1,'grid');}).join('')+wedge(120,162,36,-angle,0,'shape secondary')+line(120,162,286,162)+line(120,162,...p)+dot(120,162)+text(183,104,`${Math.round(angle*180/Math.PI)}°`)+text(120,65,'90°','minor')+text(215,180,'0°','minor')+text(27,180,'180°','minor')+text(182,206,'顶点固定，转动一条边'); break;
+        }
+        case '05': s=line(27,90,166,55)+line(39,150,178,115)+line(80,137,66,80,'blue line')+path('M 66 80 l 11 -3 l 3 11','blue line')+text(105,184,'间距固定')+line(218,154,332,154)+dot(253,55)+line(253,55,253,154,'blue line')+line(253,55,321,154,'guide')+path('M 253 142 h 12 v 12','blue line')+text(260,184,'垂直连线'); break;
+        case '06': s=poly([[33,157],[137,157],[137,79]],'shape tertiary')+text(77,178,'4')+text(153,123,'3')+text(73,105,'5')+text(95,204,'三边固定')+poly([[209,156],[303,156],[320,68],[226,68]],'guide')+poly([[209,156],[303,156],[286,68],[192,68]],'shape secondary')+[[209,156],[303,156],[286,68],[192,68]].map(p=>dot(...p)).join('')+text(260,204,'同边长，框架可推斜'); break;
+        case '07': { const alpha=Math.atan2(106,64),beta=Math.atan2(106,40);s=poly([[31,160],[135,160],[95,54]],'shape plain')+wedge(31,160,29,-alpha,0,'shape')+wedge(135,160,27,Math.PI,Math.PI+beta,'shape secondary')+wedge(95,54,26,beta,Math.PI-alpha,'shape tertiary')+arrow(166,115,198,115,id)+wedge(268,152,62,Math.PI,Math.PI+alpha,'shape')+wedge(268,152,62,Math.PI+alpha,Math.PI+alpha+beta,'shape secondary')+wedge(268,152,62,Math.PI+alpha+beta,2*Math.PI,'shape tertiary')+line(193,152,339,152)+text(268,181,'拼成 180°')+text(90,197,'三个角分别保留'); break; }
+        case '08': s=poly([[26,92],[124,92],[144,40],[46,40]])+text(85,120,'平行四边形')+rect(205,40,112,52,'shape secondary')+text(261,120,'长方形')+rect(60,144,48,48,'shape tertiary')+text(134,173,'正方形')+poly([[214,192],[319,192],[291,143],[237,143]],'shape pink')+text(264,216,'梯形'); break;
+        case '09': s=rect(36,117,288,43,'shape secondary')+Array.from({length:9},(_,i)=>line(40+i*35,118,40+i*35,133,'line')+text(40+i*35,150,i,'minor')).join('')+line(110,86,285,86,'blue line')+dot(110,86)+dot(285,86)+line(110,88,110,116,'guide')+line(285,88,285,116,'guide')+text(195,65,'7 − 2 = 5 cm')+text(180,193,'读端点的差，不把末端刻度当长度'); break;
+        case '10': s=rect(32,53,96,72)+text(80,41,'4')+text(145,95,'3')+text(81,153,'沿边界绕一周')+arrow(161,96,184,96,id)+line(194,79,234,79,'accent line')+line(234,79,264,79,'blue line')+line(264,79,304,79,'accent line')+line(304,79,334,79,'blue line')+[194,234,264,304,334].map(x=>dot(x,79)).join('')+text(214,65,'4','minor')+text(249,65,'3','minor')+text(284,65,'4','minor')+text(319,65,'3','minor')+text(263,119,'4 + 3 + 4 + 3')+text(263,148,'周长 14'); break;
+        case '11': s=rect(23,60,120,90)+grid(23,60,4,3,30)+text(83,178,'12 个 1 cm²')+rect(204,43,120,120,'shape secondary')+grid(204,43,10,10,12)+rect(204,151,12,12,'shape tertiary')+text(264,32,'1 dm × 1 dm')+text(264,189,'1 dm² = 100 cm²'); break;
+        case '12': s=rect(27,110,132,44)+grid(27,110,6,2,22)+text(93,89,'6 × 2')+rect(231,66,88,88,'shape secondary')+grid(231,66,4,4,22)+text(275,49,'4 × 4')+text(93,180,'周长 16 · 面积 12')+text(275,180,'周长 16 · 面积 16'); break;
+        case '13': s=rect(58,67,108,72)+rect(166,67,108,72,'shape secondary')+line(166,67,166,139,'cut')+text(164,52,'贴合边长 2')+text(111,112,'3 × 2')+text(219,112,'3 × 2')+text(168,171,'原周长 10 + 10')+text(168,199,'拼后 16，接缝留在内部'); break;
+        case '14': s=poly([[45,155],[225,155],[285,75],[105,75]],'guide')+poly([[105,75],[285,75],[225,155],[105,155]])+poly([[45+180*t,155],[105+180*t,155],[105+180*t,75]],'shape secondary')+line(105,75,105,155,'cut')+line(306,75,306,155,'guide')+text(320,118,'h')+text(173,192,'底 b 保持；切下的片只平移')+text(168,37,t>=0.99?'拼成长方形':`剪片移动 ${Math.round(t*100)}%`); break;
+        case '15': s=poly([[20,140],[75,140],[40,70]])+poly([[95,140],[150,140],[115,70]],'shape secondary')+text(89,184,'复制同一片')+arrow(167,104,203,104,id)+poly([[224,140],[279,140],[244,70]])+poly([[244,70],[279,140],[299,70]],'shape secondary')+text(263,184,'两片拼合'); break;
+        case '16': s=poly([[23,145],[103,145],[83,80],[53,80]])+text(68,66,'a')+text(63,169,'b')+arrow(123,110,158,110,id)+poly([[179,145],[259,145],[239,80],[209,80]])+poly([[319,80],[239,80],[259,145],[289,145]],'shape secondary')+text(244,177,'新底 a + b')+text(244,201,'第二片转 180° 后贴合'); break;
+        case '17': s=poly([[28,158],[142,158],[142,115],[80,115],[80,55],[28,55]])+line(28,115,80,115,'cut')+text(85,188,'分成两块')+poly([[216,158],[330,158],[330,115],[268,115],[268,55],[216,55]],'shape secondary')+rect(268,55,62,60,'guide')+text(280,188,'补成大块，再看补片'); break;
+        case '18': { const x=78+206*t; s=line(27,59,330,59,'guide')+line(27,159,330,159,'guide')+poly([[51,159],[295,159],[x,59]])+dot(x,59)+line(x,59,x,159,'blue line')+path(`M ${x} 148 h 11 v 11`,'blue line')+text(169,192,'同底、同高，形变而面积不变')+text(x+13,112,'h'); break; }
+        case '19': s=path('M 57 149 C 16 106 63 34 129 48 C 155 14 192 58 222 45 C 293 34 333 115 294 153 C 279 189 245 159 210 176 C 146 205 96 155 57 149 Z','shape tertiary')+grid(28,27,10,6,29)+rect(115,85,29,29)+rect(144,85,29,29)+rect(173,85,29,29)+text(170,213,'整格先看，边界碎格再合并'); break;
+        case '20': { const p=[[45,162],[108,162],[108,125],[75,98],[45,125]],q=p.map(([x,y])=>[x+175*t,y-53*t]);s=grid(20,20,10,6,30)+poly(p,'guide')+p.map(([x,y],i)=>line(x,y,q[i][0],q[i][1],'guide')).join('')+poly(q)+q.map(p=>dot(...p)).join('')+text(180,214,'对应点的方向和距离一致');break; }
+        case '21': { const degrees=-135*t, p=[[156,142],[237,142],[193,81]];s=poly(p,'guide')+`<g transform="rotate(${degrees} 156 142)">${poly(p)}${dot(237,142)}</g>`+path(arc(156,142,81,0,degrees*Math.PI/180),'blue line')+dot(156,142)+text(141,161,'O')+text(289,70,`${Math.round(135*t)}°`)+text(190,197,'中心 O 固定 · 逆时针');break; }
+        case '22': { const p=[[65,77],[128,61],[142,151],[75,162]], q=p.map(([x,y])=>[180+(x-180)*Math.cos(Math.PI*t),y]);s=poly(p,'guide')+poly(p.map(([x,y])=>[360-x,y]),'guide')+line(180,25,180,184,'blue line')+line(65,77,295,77,'guide')+poly(q,'shape secondary')+text(180,208,`翻折 ${Math.round(180*t)}° · 中间为侧向投影`);break; }
+        case '23': { const k=1+2*t;s=rect(36,122,50,35)+text(61,190,'原图')+rect(185,157-35*k,50*k,35*k,'shape secondary')+grid(185,157-35*k,5,0,10*k)+text(256,190,`边长 × ${k.toFixed(1)}`)+text(245,213,`面积 × ${(k*k).toFixed(2)}`);break; }
+        case '24': { const petal=[[0,0],[15,-39],[0,-61],[-15,-39]];s=poly(petal.map(([x,y])=>[x+46,y+134]))+arrow(70,108,98,108,id)+[145,273].map(cx=>[0,90,180,270].map((r,i)=>`<g transform="translate(${cx} 115) rotate(${r})">${poly(petal,`shape ${i%2?'secondary':''}`)}</g>`).join('')+dot(cx,115)).join('')+text(145,201,'绕中心复制')+text(273,201,'整组平移');break; }
+        case '25': s=circle(175,111,72,'shape tertiary')+line(103,111,247,111,'guide')+line(175,111,227,61,'accent line')+dot(175,111)+dot(227,61)+text(164,131,'O')+text(208,100,'r')+text(179,161,'d = 2r')+text(179,207,'固定圆心与开口，笔尖走出一圈');break;
+        case '26': { const r=27,x=48+2*Math.PI*r*t,y=109,a=2*Math.PI*t,p=[x-r*Math.sin(a),y+r*Math.cos(a)];s=line(24,136,332,136)+line(48,140,x,140,'blue line')+circle(x,y,r,'shape secondary')+line(x,y,...p,'line')+dot(...p)+dot(48,136)+line(48,176,48+2*r,176,'accent line')+text(75,199,'直径 d')+text(227,180,`${Math.round(t*360)}° · ${t.toFixed(2)} 圈`)+text(180,40,'无滑动：前进距离 = 滚过的弧长');break; }
+        case '27': {
+          const r=44,alpha=2*Math.PI/n,w=2*r*Math.sin(alpha/2),h=r*Math.cos(alpha/2);
+          s=circle(77,111,r,'guide');
+          for(let i=0;i<n;i++) { const down=i%2===0,k=Math.floor(i/2),a0=(i+.5)*360/n,target=down?90:270,delta=((target-a0+540)%360)-180;const tx=181+(down?.5:1)*w+k*w,ty=down?83:83+h;const cx=77+(tx-77)*t,cy=111+(ty-111)*t;s+=`<g transform="translate(${cx} ${cy}) rotate(${a0+delta*t})">${wedge(0,0,r,-alpha/2,alpha/2,`shape ${down?'secondary':''}`)}</g>`; }
+          s+=text(77,186,'原圆轮廓')+text(261,182,`${n} 片 · 弧边仍然存在`)+text(261,204,'有限份数 ≠ 精确长方形');break;
+        }
+        case '28': s=circle(98,107,61,'guide')+wedge(98,107,61,-Math.PI/2,0,'shape secondary')+line(98,107,98,46)+line(98,107,159,107)+dot(98,107)+text(98,189,'扇形：两条半径与弧')+circle(267,107,61,'shape')+circle(267,107,30,'shape plain')+dot(267,107)+line(267,107,328,107)+text(297,97,'R','minor')+text(267,189,'圆环：外圆减内圆');break;
+        case '29': s=grid(55,26,8,5,29)+Array.from({length:8},(_,i)=>text(55+i*29,190,i,'minor')).join('')+Array.from({length:5},(_,i)=>text(40,175-i*29,i,'minor')).join('')+line(171,84,171,171,'guide')+line(55,84,171,84,'guide')+dot(171,84)+text(206,70,'(4, 3)')+text(308,191,'列')+text(39,21,'行')+text(174,216,'先找到第 4 列，再到第 3 行');break;
+        case '30': s=arrow(106,169,106,28,id)+arrow(51,149,278,149,id)+text(105,20,'北')+text(298,154,'东')+line(106,149,173,33,'blue line')+path(arc(106,149,43,-Math.PI/2,-Math.PI/3),'line')+text(143,95,'30°')+dot(106,149)+dot(173,33)+text(163,135,'300 m')+text(201,36,'图书馆','', 'start')+text(104,179,'广场')+text(219,211,'示意地图 · 参照点可更换');break;
+        case '31': s=line(70,79,160,79,'accent line')+dot(70,79)+dot(160,79)+text(113,59,'图上 3 cm')+text(245,83,'1 : 10000')+line(70,147,250,147,'blue line')+dot(70,147)+dot(250,147)+text(162,132,'图上 6 cm')+text(296,151,'1 : 5000')+text(172,193,'同一段实地距离：300 m');break;
+        case '32': s=rect(32,64,81,81,'shape secondary')+poly([[113,64],[92,64],[113,86]],'shape plain')+line(113,64,113,145,'guide')+text(76,179,'折后剪角')+arrow(130,108,163,108,id)+rect(187,41,135,135,'shape secondary')+line(254.5,41,254.5,176,'guide')+line(187,108.5,322,108.5,'guide')+poly([[254.5,82],[281,108.5],[254.5,135],[228,108.5]],'shape plain')+text(253,204,'逐层打开，追踪剪口');break;
+        case '33': s=rect(55,46,113,113,'shape')+rect(133,89,113,113,'shape tertiary')+rect(133,89,35,70,'shape secondary')+line(166,122,277,55,'guide')+text(285,47,'重叠区域')+text(105,194,'A')+text(266,186,'B');break;
+        case '34': s=Array.from({length:7},(_,i)=>Array.from({length:5},(_,j)=>circle(51+i*38,31+j*38,2.4,'point')).join('')).join('')+poly([[51,145],[127,31],[279,69],[241,183],[127,183]],'shape tertiary')+[[51,145],[127,31],[279,69],[241,183],[127,183]].map(p=>circle(...p,5,'shape secondary')).join('')+text(180,212,'边界点 · 内部点 · 覆盖的面');break;
+        case '35': {const r=24,y=112,cx=47+2*Math.PI*r;const pts=Array.from({length:81},(_,i)=>{const a=i/80*2*Math.PI;return [47+r*a-r*Math.sin(a),y+r*Math.cos(a)];});s=line(24,136,332,136)+path('M '+pts.map(p=>p.join(' ')).join(' L '),'blue line')+line(47,y,cx,y,'guide')+circle(cx,y,r,'shape secondary')+dot(cx,136)+text(277,107,'圆心轨迹','minor')+text(174,183,'圆周点起落，圆心沿直线前进');break;}
+        case '36': {s='';const h=32;for(let row=0;row<3;row++) for(let col=0;col<4;col++){const x=22+col*40,y=48+row*h;s+=poly([[x,y+h],[x+20,y],[x+40,y+h]],`shape ${(row+col)%2?'secondary':''}`);if(row<2)s+=poly([[x+20,y],[x+40,y+h],[x+60,y]],'shape tertiary');}s+=poly(Array.from({length:5},(_,i)=>polar(277,105,48,-Math.PI/2+i*Math.PI*2/5)),'shape pink')+text(111,185,'边贴边，反复铺')+text(278,185,'换一种材料试试');break;}
+        case '37': {const a=[163,43],b=[43,163],c=[317,163],d=[75+210*t,163];const ratio=(d[0]-b[0])/(c[0]-b[0]);s=poly([a,b,d])+poly([a,d,c],'shape secondary')+line(163,43,163,163,'guide')+dot(...d)+text(d[0],184,'D')+text(163,28,'A')+text(39,183,'B')+text(326,183,'C')+text(180,210,`两片面积占比 ${(ratio*100).toFixed(1)}% : ${((1-ratio)*100).toFixed(1)}%`);break;}
+        case '38': {const a=[48,166],b=[307,166],c=[183,38],d=mix(a,b,.56),e=mix(a,c,.62);s=poly([a,b,c],'shape plain')+poly([a,d,e])+line(...b,...e,'guide')+dot(...a)+dot(...d)+dot(...e)+text(38,184,'A')+text(317,182,'B')+text(182,25,'C')+text(d[0],186,'D')+text(e[0]-12,e[1]-8,'E')+text(190,213,'固定共角 · D、E 分别沿两边移动');break;}
+        case '39': {const a=[178,32],b=[39,165],c=[319,165],d=[77+199*t,165],p=mix(a,d,.57);s=poly([a,b,p])+poly([a,p,c],'shape secondary')+poly([b,c,p],'shape tertiary')+line(...a,...d,'guide')+dot(...p)+dot(...d)+text(p[0]+13,p[1]-4,'P')+text(178,21,'A')+text(35,184,'B')+text(329,184,'C')+text(d[0],184,'D')+text(179,212,'保持 A、P、D 共线，再追踪面积');break;}
+        case '40': {const width=76+140*t,a=[178-width/2,48],b=[178+width/2,48],c=[321,169],d=[35,169],o=intersection(a,c,b,d);s=poly([a,b,o],'shape secondary')+poly([b,c,o],'shape tertiary')+poly([c,d,o],'shape pink')+poly([d,a,o])+dot(...o)+text(178,35,'上底 ∥ 下底')+text(178,75,'①')+text(269,138,'②')+text(180,151,'③')+text(81,138,'④')+text(o[0]+12,o[1]+4,'O')+text(178,207,'梯形中 ② 与 ④ 等积；四片都在变化');break;}
+        case '41': {const a=[46,166],b=[316,166],c=[180,33],p=[180,111];s=poly([a,b,c])+poly([a,b,p],'shape secondary')+line(180,33,180,166,'guide')+text(178,20,'C')+text(194,111,'P')+text(38,184,'A')+text(326,184,'B')+text(83,108,'剩余片','minor')+text(274,108,'剩余片','minor')+text(180,205,'AB 为共同底边 · 比较两条高');break;}
+        case '42': {const a=[245,42],b=[188,164],c=[323,164],d=mix(a,b,.5),e=mix(a,c,.5),f=mix(b,c,.5);s=rect(20,65,137,99,'shape plain')+poly([[20,164],[157,164],[102,65]])+text(91,197,'同底同高：占一半')+poly([a,b,c],'shape secondary')+poly([d,e,f],'shape tertiary')+[d,e,f].map(p=>dot(...p)).join('')+text(256,197,'连中点：四小片');break;}
+        case '43': {const p=[[44,47],[129,47],[129,81],[186,81],[186,121],[305,121],[305,171],[44,171]];s=rect(44,47,261,124,'guide')+poly(p,'shape plain')+line(44,47,129,47,'accent line')+line(129,81,186,81,'accent line')+line(186,121,305,121,'accent line')+line(129,47,129,81,'blue line')+line(186,81,186,121,'blue line')+line(305,121,305,171,'blue line')+text(218,70,'横段合宽','minor')+text(239,100,'竖段合高','minor')+text(180,205,'只对单调台阶成立；凹口另外追踪');break;}
+        case '44': s=rect(91,34,140,140,'shape plain')+path('M 91 174 A 140 140 0 0 0 231 34 A 140 140 0 0 0 91 174 Z','shape')+line(91,174,231,34,'guide')+dot(91,34)+dot(231,174)+text(73,35,'O₁')+text(252,179,'O₂')+text(287,94,'弧来自','minor')+text(287,117,'两个圆','minor')+text(169,207,'先分出扇形、三角形与弓形');break;
+        case '45': s=rect(28,50,122,122,'shape secondary')+circle(89,111,61,'shape plain')+circle(268,111,61,'shape secondary')+poly([[268,50],[329,111],[268,172],[207,111]],'shape plain')+text(89,204,'方中圆 · 看差集')+text(268,204,'圆中方 · 看差集');break;
+        case '46': s=rect(73,51,72,126,'shape')+poly([[145,51],[289,51],[289,177]],'shape secondary')+poly([[145,51],[289,177],[145,177]],'shape tertiary')+text(109,120,'①')+text(239,95,'②')+text(186,157,'③')+text(182,207,'① = ② = ③ 的面积；外形不同');break;
+        case '47': {const xs=[28,68,108,148];s=line(28,80,148,80)+xs.map((x,i)=>dot(x,80)+text(x,63,String.fromCharCode(65+i))).join('')+line(28,99,108,99,'blue line')+text(85,137,'选择 A、C')+text(85,177,'一条完整线段','minor');for(let i=0;i<4;i++)s+=line(203,160,...polar(203,160,123,-i*Math.PI/8));s+=wedge(203,160,35,-Math.PI/4,0,'shape secondary')+dot(203,160)+text(268,199,'两条射线确定一个角');break;}
+        case '48': {const a=[176,36],left=[41,174],right=[317,174];s=poly([a,[179,174],right],'shape secondary');for(let i=0;i<5;i++)s+=line(...a,41+i*69,174);s+=line(...left,...right)+line(...mix(a,left,.5),...mix(a,right,.5))+text(181,207,'逐次抽出完整三角形，不只数小片');break;}
+        case '49': s=rect(62,44,210,126,'shape plain')+rect(62,44,126,84,'shape secondary')+rect(188,86,84,84,'shape tertiary')+grid(62,44,5,3,42)+text(125,98,'3 × 2')+text(230,136,'2 × 2')+text(175,206,'固定尺寸，再改变位置；分组留痕');break;
+        case '50': {const a=[31,71],b=[325,151],c=[85,35],d=[266,180],e=[31,166],f=[325,64];s=rect(31,35,294,145,'shape plain')+line(...a,...b)+line(...c,...d)+line(...e,...f,'blue line')+dot(...intersection(a,b,e,f))+dot(...intersection(c,d,e,f))+text(185,206,'新线穿过已有区域 · 共点与错开作对照');break;}
+        case '51': {const edges=[[[61,47],[123,47]],[[123,47],[185,47]],[[61,47],[61,109]],[[123,47],[123,109]],[[185,47],[185,109]],[[61,109],[123,109]],[[123,109],[185,109]],[[123,109],[123,171]],[[185,109],[185,171]],[[123,171],[185,171]]];s=edges.map(([a,b],i)=>line(...a,...b,i===3?'blue line':'line')+dot(...a)+dot(...b)).join('')+arrow(151,77,246,86,id)+line(272,73,299,127,'blue line')+text(276,161,'拿起一根')+text(135,204,'共边属于几个图形？');break;}
+        case '52': {const a=[81,166],b=[279,166],c=[279,76],d=[81,76],e=[180,29];s=[[a,b],[b,c],[c,d],[d,a],[d,e],[e,c],[a,c],[d,b]].map(([p,q])=>line(...p,...q)).join('')+path('M 81 166 H 279 V 76 H 81','blue line')+[a,b,c,d,e].map(p=>dot(...p)).join('')+circle(...a,7,'shape secondary')+circle(...b,7,'shape secondary')+text(73,191,'A')+text(289,191,'B')+text(180,216,'经过点时，观察“进入—离开”的配对');break;}
+        case '53': s=grid(64,32,6,4,35)+path('M 64 172 H 169 V 102 H 274 V 32','blue line')+path('M 64 172 V 67 H 239 V 32 H 274','guide')+dot(64,172)+dot(274,32)+text(49,192,'起点')+text(294,24,'终点')+text(183,212,'方向一致，走法不同；逐点观察来源');break;
+        case '54': {const a=[64,39],b=[286,67],mirror=[286,177],p=[55+250*t,122];s=line(25,122,335,122)+path(`M ${a} L ${p} L ${b}`,'blue line')+line(...a,...mirror,'guide')+line(...b,...mirror,'guide')+[a,b,mirror,p].map(pt=>dot(...pt)).join('')+text(50,33,'A')+text(300,64,'B')+text(303,186,'B′')+text(p[0]-3,143,'P')+text(177,213,'把 B 镜像到 B′，比较 AP + PB');break;}
+        case '55': {const a=2*Math.PI*t,r=20,R=40,center=[176,107],c=polar(...center,R+r,a),p=polar(...c,r,Math.PI+(R+r)/r*a);s=circle(...center,R+r,'guide')+circle(...center,R,'shape tertiary')+circle(...c,r,'shape secondary')+line(...center,...c,'guide')+line(...c,...p,'blue line')+dot(...p)+dot(...center)+text(176,112,'R = 2r')+text(176,199,`绕行 ${Math.round(360*t)}° · 自转 ${Math.round(1080*t)}°`);break;}
+        case '56': {s=poly([[57,178],[237,178],[237,43],[102,43],[57,88]],'shape tertiary')+grid(57,43,4,3,45);for(let x=0;x<=4;x++)for(let y=0;y<=3;y++)s+=circle(57+45*x,178-45*y,(x>0&&x<4&&y>0&&y<3)?4:3,'point');s+=text(297,73,'I = 6')+text(297,109,'B = 13')+text(297,145,'S = 11.5')+text(178,210,'简单无孔格点图形；也可直接割补');break;}
+        case '57': {for(let x=0;x<6;x++)for(let y=0;y<4;y++){if((x===0&&y===0)||(x===5&&y===3))s+=rect(76+31*x,39+31*y,31,31,'guide');else s+=rect(76+31*x,39+31*y,31,31,`shape ${(x+y)%2?'plain':'tertiary'}`);}s+=rect(107,70,62,31,'shape secondary')+line(138,70,138,101,'guide')+text(177,193,'一块骨牌盖一深一浅；缺角后再比较');break;}
+        case '58': {const size=7,a=3,b=4,scale=17;const before=[[[0,0],[a,0],[0,b]],[[size,0],[size,a],[a,0]],[[size,size],[b,size],[size,a]],[[0,size],[0,b],[b,size]]];const after=[[[0,0],[a,0],[a,b]],[[0,0],[a,b],[0,b]],[[a,b],[size,b],[size,size]],[[a,b],[size,size],[a,size]]];s=rect(28,42,size*scale,size*scale,'shape plain')+rect(209,42,size*scale,size*scale,'shape plain');[before,after].forEach((triangles,g)=>{s+=triangles.map((p,i)=>poly(p.map(([x,y])=>[(g?209:28)+x*scale,42+y*scale]),`shape ${['','secondary','tertiary','pink'][i]}`)).join('');});s+=text(88,192,'中间剩一块正方形')+text(270,192,'剩两块正方形')+text(179,216,'外框相同 · 四片相同 · 只换位置');break;}
+        case '59': s=poly([[75,51],[115,51],[95,99]])+poly([[95,99],[55,195],[135,195]],'shape secondary')+text(95,32,'平行')+text(169,125,'1 : 2','minor')+poly([[255,43],[191,171],[319,171]],'shape plain')+poly([[255,43],[223,107],[287,107]],'shape tertiary')+line(223,107,287,107,'blue line')+text(268,196,'对应边成比例')+text(258,217,'面积按平方变化');break;
+        case '60': {const minute=t*60,ha=(60+minute*.5-90)*Math.PI/180,ma=(minute*6-90)*Math.PI/180;s=circle(137,111,78,'shape plain')+Array.from({length:12},(_,i)=>{const a=(i*30-90)*Math.PI/180;return line(...polar(137,111,70,a),...polar(137,111,76,a),'line')+text(...polar(137,115,59,a),i===0?12:i,'minor');}).join('')+line(137,111,...polar(137,111,42,ha),'accent line')+line(137,111,...polar(137,111,64,ma),'blue line')+dot(137,111)+text(281,92,`${minute>=60?'3':'2'}:${String(Math.floor(minute%60)).padStart(2,'0')}`)+text(281,120,'连续运动','minor')+text(180,214,'分针转一圈，时针转 30°');break;}
+      }
+      return wrap(scene,s);
+    }
+    const storageKey='mathin-plane-geometry-review-2026-09-26-v1';
+    const decisions={pending:'待审',keep:'保留',adjust:'调整',later:'暂缓'};
+    let review={}, storageAvailable=true, filter='all';
+    try { const saved=JSON.parse(localStorage.getItem(storageKey)||'{}'); if(saved && typeof saved==='object' && !Array.isArray(saved)) review=saved; } catch { storageAvailable=false; }
+    const sectionRoot=document.getElementById('scene-sections');
+    const overview=document.getElementById('tool-overview');
+    const frames=new Map(), timers=new Map();
+    for (const group of groups.filter(g=>/^T\d/.test(g.code))) {
+      overview.insertAdjacentHTML('beforeend',`<a class="tool-link" href="#group-${group.id==='counting'?'olympiad-count':group.id}"><strong><span class="tool-code">${group.code}</span>${group.name}</strong><p>${group.desc}</p></a>`);
+    }
+    for (const group of groups) {
+      if(!scenes.some(s=>s.group===group.id))continue;
+      const section=document.createElement('section'); section.className='section'; section.id='group-'+group.id; section.dataset.group=group.id;
+      section.innerHTML=`<header class="section-head"><h2><span class="section-code">${group.code}</span>${group.name}</h2><p>${group.detail}</p></header><div class="scenes"></div>`;
+      for (const scene of scenes.filter(s=>s.group===group.id)) {
+        const saved=review[scene.id]||{}, decision=Object.hasOwn(decisions,saved.decision)?saved.decision:'pending';
+        const card=document.createElement('article');card.className='scene';card.id='scene-'+scene.id;card.dataset.decision=decision;card.dataset.id=scene.id;card.setAttribute('aria-labelledby','title-'+scene.id);
+        frames.set(scene.id,{t:scene.initial||0,n:scene.pieces||16});
+        card.innerHTML=`<div class="scene-top"><span class="scene-id">${scene.id}</span><span>${scene.band}</span></div><h3 id="title-${scene.id}">${scene.title}</h3><p class="placement">${scene.owner?scene.owner+' 内补充 · ':''}${scene.kind}</p><figure class="model"><div class="drawing">${sketch(scene,scene.initial||0,scene.pieces||16)}</div><figcaption>${scene.model}</figcaption></figure>${scene.demo?`<div class="demo"><button type="button" data-play="${scene.id}" aria-label="播放${scene.title}的过程">播放</button><label><span>过程</span><input type="range" min="0" max="1000" step="1" value="${(scene.initial||0)*1000}" data-progress="${scene.id}" aria-label="${scene.title}过程进度"></label><output data-progress-label="${scene.id}">${Math.round((scene.initial||0)*100)}%</output>${scene.pieces?`<select data-pieces="${scene.id}" aria-label="圆的等分份数">${[8,16,32].map(n=>`<option value="${n}"${n===16?' selected':''}>${n} 片</option>`).join('')}</select>`:''}</div>`:''}<dl class="proposal"><div><dt>操作</dt><dd>${scene.act}</dd></div><div><dt>看见</dt><dd>${scene.see}</dd></div><div><dt>备课</dt><dd>${scene.prepare}</dd></div></dl><div class="scene-tail"><p class="source-line">${scene.inference?'设计延伸，相关依据':'范围依据'}：${scene.source.split(' ').map(s=>`<a href="#source-${s}">${s.toUpperCase()}</a>`).join(' / ')} · ${scene.demo?'可动模型示意':'静态模型示意'}</p><div class="review-row"><label for="decision-${scene.id}">审核意见 <select id="decision-${scene.id}" data-review="${scene.id}">${Object.entries(decisions).map(([key,label])=>`<option value="${key}"${key===decision?' selected':''}>${label}</option>`).join('')}</select></label><a class="small" href="#page-title">回到顶部</a></div><details class="review-note"${saved.note?' open':''}><summary>补充说明</summary><label><span class="small">${scene.id} 的调整意见</span><textarea data-note="${scene.id}" maxlength="1200" placeholder="例如：合并入口／缺少的操作／不在本轮范围">${esc(typeof saved.note==='string'?saved.note:'')}</textarea></label></details></div>`;
+        section.querySelector('.scenes').append(card);
+      }
+      sectionRoot.append(section);
+    }
+    function persist() {
+      try { localStorage.setItem(storageKey,JSON.stringify(review)); storageAvailable=true; } catch { storageAvailable=false; }
+      document.getElementById('storage-status').textContent=storageAvailable?'审核意见已记在当前浏览器。不会自动发送；完成后请导出意见。':'当前浏览器无法持久保存；本次意见仍在页面中，请在关闭前导出。';
+    }
+    function updateFilter() {
+      let visible=0;
+      for(const scene of scenes) {
+        const r=review[scene.id]||{}, reviewed=(r.decision && r.decision!=='pending')||Boolean(r.note);
+        const show=filter==='all'||(filter==='core'&&Number(scene.id)<=31)||(filter==='extension'&&scene.group==='extension')||(filter==='olympiad'&&scene.group.startsWith('olympiad-'))||(filter==='interactive'&&scene.demo)||(filter==='reviewed'&&reviewed);
+        document.getElementById('scene-'+scene.id).hidden=!show;
+        if(show) visible++;
+        if(!show) stop(scene.id);
+      }
+      for(const section of sectionRoot.children) section.hidden=![...section.querySelectorAll('.scene')].some(card=>!card.hidden);
+      const reviewed=scenes.filter(s=>{const r=review[s.id];return r&&((r.decision&&r.decision!=='pending')||r.note);}).length;
+      document.getElementById('review-count').textContent=`显示 ${visible} / ${scenes.length} · 已标意见 ${reviewed}`;
+      document.getElementById('empty-message').hidden=visible>0;
+    }
+    function stop(id) {
+      if(timers.has(id)) { cancelAnimationFrame(timers.get(id));timers.delete(id); }
+      const button=document.querySelector(`[data-play="${id}"]`);if(button){button.textContent='播放';button.setAttribute('aria-pressed','false');button.setAttribute('aria-label',`播放${scenes.find(s=>s.id===id).title}的过程`);}
+    }
+    function renderFrame(id,t) {
+      const scene=scenes.find(s=>s.id===id),state=frames.get(id);state.t=Math.max(0,Math.min(1,t));
+      document.querySelector(`#scene-${id} .drawing`).innerHTML=sketch(scene,state.t,state.n);
+      document.querySelector(`[data-progress="${id}"]`).value=String(Math.round(state.t*1000));
+      document.querySelector(`[data-progress-label="${id}"]`).textContent=Math.round(state.t*100)+'%';
+    }
+    document.querySelectorAll('[data-progress]').forEach(input=>input.addEventListener('input',()=>{const id=input.dataset.progress;stop(id);renderFrame(id,Number(input.value)/1000);}));
+    document.querySelectorAll('[data-pieces]').forEach(select=>select.addEventListener('change',()=>{const id=select.dataset.pieces;stop(id);frames.get(id).n=Number(select.value);renderFrame(id,frames.get(id).t);}));
+    document.querySelectorAll('[data-play]').forEach(button=>button.addEventListener('click',()=>{
+      const id=button.dataset.play;
+      if(timers.has(id)){stop(id);return;}
+      for(const other of [...timers.keys()]) stop(other);
+      // Motion is an explicit, teacher-controlled mathematical demonstration, never ambient animation.
+      let initial=frames.get(id).t;if(initial>=1){initial=0;renderFrame(id,0);}const start=performance.now();
+      button.textContent='暂停';button.setAttribute('aria-pressed','true');button.setAttribute('aria-label',`暂停${scenes.find(s=>s.id===id).title}的过程`);
+      const step=now=>{const t=Math.min(1,initial+(now-start)/5200);renderFrame(id,t);if(t<1)timers.set(id,requestAnimationFrame(step));else stop(id);};
+      timers.set(id,requestAnimationFrame(step));
+    }));
+    document.addEventListener('visibilitychange',()=>{if(document.hidden)for(const id of [...timers.keys()])stop(id);});
+    document.querySelectorAll('[data-review]').forEach(select=>select.addEventListener('change',()=>{const id=select.dataset.review;review[id]={...review[id],decision:select.value};document.getElementById('scene-'+id).dataset.decision=select.value;persist();updateFilter();}));
+    document.querySelectorAll('[data-note]').forEach(input=>input.addEventListener('input',()=>{const id=input.dataset.note;review[id]={...review[id],note:input.value};persist();updateFilter();}));
+    document.querySelectorAll('[data-filter]').forEach(button=>button.addEventListener('click',()=>{filter=button.dataset.filter;document.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));updateFilter();}));
+    document.querySelectorAll('.tool-link').forEach(link=>link.addEventListener('click',()=>{filter='all';document.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.filter==='all')));updateFilter();}));
+    document.getElementById('show-details').addEventListener('change',event=>{document.querySelectorAll('.proposal').forEach(el=>el.hidden=!event.target.checked);});
+    document.getElementById('print-review').addEventListener('click',()=>{for(const id of [...timers.keys()])stop(id);window.print();});
+    document.getElementById('export-review').addEventListener('click',()=>{
+      const rows=['# 平面几何教具空间 · 审核意见','', '审核稿：2026-09-26 / v1','说明：未填写的场景仍为待审，不代表同意。',''];
+      for(const scene of scenes){const r=review[scene.id]||{};rows.push(`## ${scene.id} ${scene.title} — ${decisions[r.decision]||'待审'}`,`归属：${scene.owner||groups.find(g=>g.id===scene.group).code} / ${scene.kind}`,r.note||'（未填写补充说明）','');}
+      const url=URL.createObjectURL(new Blob([rows.join('\n')],{type:'text/markdown;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='plane-geometry-review-2026-09-26.md';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+      document.getElementById('storage-status').textContent='已生成审核意见文件。请将文件或场景编号发回；页面不会自动提交。';
+    });
+    if(!storageAvailable)document.getElementById('storage-status').textContent='本地保存不可用；可照常审核，关闭前请导出意见。';
+    updateFilter();
+  })();
+  </script>
+</body>
+</html>
