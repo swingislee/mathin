@@ -25,6 +25,7 @@ const SolidNetsTool = dynamic(() => import("./solid-nets/SolidNetsCompleteWorksp
 const SolidCapacityTool = dynamic(() => import("./solid-capacity/SolidCapacityTeachingWorkspace").then((m) => m.SolidCapacityTeachingWorkspace), { loading: ToolSkeleton });
 const SolidRevolutionTool = dynamic(() => import("./solid-revolution/SolidRevolutionWorkspace").then((m) => m.SolidRevolutionWorkspace), { loading: ToolSkeleton });
 const SomaTool = dynamic(() => import("./soma-cube/SomaWorkspace").then((m) => m.SomaWorkspace), { loading: ToolSkeleton });
+const PlaceValueTool = dynamic(() => import("./place-value/PlaceValueWorkspace").then((m) => m.PlaceValueWorkspace), { loading: ToolSkeleton });
 export const CubeCoursewarePreview = dynamic(() => import("./courseware/CubeStructuresCourseware").then((m) => m.CubeStructuresCourseware), { loading: ToolSkeleton });
 const ToolScenePresentation = dynamic(() => import("./scenes/ToolScenePresentation").then((m) => m.ToolScenePresentation), { loading: ToolSkeleton });
 const PreparedToolWorkbench = dynamic(() => import("./scenes/PreparedToolWorkbench").then((m) => m.PreparedToolWorkbench), { loading: ToolSkeleton });
@@ -65,6 +66,8 @@ export function ToolView({ id, preparation = false, preparationHeader, ...props 
       return <SolidRevolutionTool />;
     case "soma-cube":
       return <SomaTool />;
+    case "place-value":
+      return <PlaceValueTool />;
     default:
       return null;
   }

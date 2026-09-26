@@ -4,6 +4,17 @@ import { SOMA_IDS } from "./soma-cube/pieces";
 
 /** 工具缩略图：几何线稿占位（素材就绪后可换成截图/手绘，颜色只用 token） */
 export const toolThumbs: Record<string, ReactNode> = {
+  "place-value": (
+    <svg viewBox="0 0 200 120" className="h-full w-full" aria-hidden>
+      <g stroke="var(--ink)" strokeWidth={1.1} strokeLinejoin="round">
+        {Array.from({ length: 10 }, (_, i) => <rect key={"one" + i} x={144} y={95 - i * 7} width={12} height={7} fill={i < 5 ? "var(--moon)" : "#7da9ce"} />)}
+        {[0, 1].flatMap((row) => Array.from({ length: 10 }, (_, i) => <path key={row + ":" + i} d={"M" + (69 + i * 3) + " " + (94 - i * 4 - row * 10) + "h12l3 -4h-12Z"} fill={i < 5 ? "var(--moon)" : "#7da9ce"} />))}
+        <path d="M69 84h12v20H69Z" fill="var(--moon)" />
+        <path d="m119 48 -5 6m5 -6 -7 -1m7 1c-4 16 -13 26 -26 29" fill="none" stroke="var(--crater)" strokeDasharray="3 3" />
+      </g>
+      <path d="M40 110h128" stroke="var(--crater)" strokeDasharray="2 5" />
+    </svg>
+  ),
   "soma-cube": <div className="flex h-full w-full flex-wrap items-center justify-center gap-1 p-4" aria-hidden>
     {SOMA_IDS.map((id) => <SomaPieceIcon key={id} id={id} />)}
   </div>,

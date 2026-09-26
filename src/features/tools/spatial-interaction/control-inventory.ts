@@ -1,5 +1,8 @@
 /** 面向维护与视觉核对的教学能力清单；不会被工作台加载，也不创建另一套功能开关。 */
 export const SPATIAL_WORKBENCH_INVENTORY = [
+  { id: "place-value", name: "数位积木", files: ["place-value/PlaceValueWorkspace.tsx"],
+    features: "0–999 数位；五黄五蓝累积；十个一横卧成十，十个十逐条连成长百链；暂停、继续与拆组；同尺度比较；场景起点、撤销与复原。",
+    shared: "单位块实例渲染、正交视角与相机、动作按钮、视角栏、非模态面板、动画调度、场景宿主和课堂语义时间线；进退位成员关系独立" },
   { id: "cube-structures", name: "立方体结构", files: ["spatial-lab/CubeStructuresWorkbench.tsx", "spatial-lab/CubeRecordingPanel.tsx", "spatial-lab/CubeDraftPanel.tsx"],
     features: "添加／挖除单位块；选择、编组／取消编组；整组移动、世界轴转动、翻滚；层显隐；对象／面标色、透明、符号与编号；拆分；指标；步骤录制、编辑、播放与撤销；教学起点。",
     shared: "动作按钮、视角栏、XYZ 步进、颜色／透明度、对象手柄、旋转／翻滚、非模态面板、场景宿主" },

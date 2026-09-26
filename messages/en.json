@@ -529,6 +529,10 @@
         "name": "Solids of revolution",
         "desc": "Drag a rectangle or right triangle around an edge, rotate slowly, pause and retain the swept shape to compare how cylinders and cones form."
       },
+      "place-value": {
+        "name": "Place-value blocks",
+        "desc": "Count in yellow and blue groups of five. Turn ten ones into a ten, join ten tens into a hundred, unpack and compare numbers at the same scale."
+      },
       "soma-cube": {
         "name": "Soma cube",
         "desc": "Observe the seven original Bao pieces. Choose any 1–7 pieces to move, rotate and build, and explore a 3×3×3 cube."

@@ -9,7 +9,7 @@ import { SPATIAL_ICON_CHANGES, SPATIAL_WORKBENCH_INVENTORY } from "../src/featur
 import { CUBE_MARK_SHAPES } from "../src/features/tools/spatial-lab/cube-structures-contract";
 
 const oldIcons = { Droplets, Eye, FoldHorizontal, Move, Move3D, Rotate3D, RotateCcw, RotateCw, Scissors, Shapes, Boxes };
-const groups: Record<string, string> = { camera: "视角", object: "对象", display: "显示", surface: "表面", inspect: "观察与测量", fold: "折叠", dice: "骰子", soma: "索玛", capacity: "容积", workspace: "场景", recording: "过程", parameter: "参数／通用命令" };
+const groups: Record<string, string> = { camera: "视角", object: "对象", display: "显示", surface: "表面", inspect: "观察与测量", fold: "折叠", dice: "骰子", soma: "索玛", capacity: "容积", "place-value": "数位", workspace: "场景", recording: "过程", parameter: "参数／通用命令" };
 
 /** 使用正式组件渲染 SVG；对照文档不维护第二份 path。 */
 export function renderSpatialControlsCatalog(usages: Record<string, readonly string[]>) {
@@ -19,7 +19,7 @@ export function renderSpatialControlsCatalog(usages: Record<string, readonly str
     <section id="changes"><h2>本轮图标含义调整</h2><table><thead><tr><th>功能</th><th>原图</th><th>统一后</th><th>区分依据</th></tr></thead><tbody>
       {SPATIAL_ICON_CHANGES.map((item) => <tr key={item.action}><th>{SPATIAL_ACTIONS[item.action].zh}</th><td>{item.previous.map((old) => <span className="sample" key={old}>{createElement(oldIcons[old])}<small>{old}</small></span>)}</td><td><span className="sample current"><SpatialActionIcon action={item.action} /><small>{item.action}</small></span></td><td>{item.note}</td></tr>)}
     </tbody></table></section>
-    <section id="workbenches"><h2>舞台功能与共用范围</h2><p>9 个操作现场覆盖工具库的 7 个独立 3D 工具；自由折纸、长方体／三棱柱展开位于展开图入口中。图标栏从对应源码提取，不另维护一份按钮表。</p>
+    <section id="workbenches"><h2>舞台功能与共用范围</h2><p>{SPATIAL_WORKBENCH_INVENTORY.length} 个操作现场，包括独立教具及其子工作台。图标栏从对应源码提取，不另维护一份按钮表。</p>
       {SPATIAL_WORKBENCH_INVENTORY.map((stage) => <article key={stage.id}><h3>{stage.name}</h3><p>{stage.features}</p><div className="strip">{(usages[stage.id] ?? []).map((action) => <span key={action} className="sample" title={SPATIAL_ACTIONS[action as SpatialActionId].zh}><SpatialActionIcon action={action as SpatialActionId} /><small>{SPATIAL_ACTIONS[action as SpatialActionId].zh}</small></span>)}</div><p className="muted">共用：{stage.shared}</p><details><summary>源码入口</summary>{stage.files.map((file) => <code key={file}>{file}<br /></code>)}</details></article>)}
     </section>
     <section id="icons"><h2>全部动作放在一起比较</h2><p>动作入口按语义统一。参数中的加减、方向箭头、关闭等基础符号可以复用；“整体移动／移面”“展开／复原”等不同教学动作使用不同图形。</p>
