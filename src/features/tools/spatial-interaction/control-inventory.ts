@@ -1,7 +1,7 @@
 /** 面向维护与视觉核对的教学能力清单；不会被工作台加载，也不创建另一套功能开关。 */
 export const SPATIAL_WORKBENCH_INVENTORY = [
-  { id: "plane-shapes", dimension: "2d", name: "基本图形认识", files: ["planar-kit/PlanarWorkbench.tsx", "plane-shapes/scene.tsx"],
-    features: "右侧按需添加基本图形与生活实例；观察边界、边、顶点与名称；生活外观渐隐显示对应轮廓；整体拖动、等比缩放、旋转、复制与移除。",
+  { id: "plane-shapes", dimension: "2d", name: "基本图形认识", files: ["planar-kit/PlanarWorkbench.tsx", "plane-construction/scenes.tsx"],
+    features: "右侧自由绘制长方形、圆、椭圆和多边形，或添加生活实例；编辑点与独立长宽；按需观察边界、顶点、名称、数量及测量；同一图形可平移、绕点旋转与沿轴对称。",
     shared: "唯一 PlanarWorkbench 宿主；与 3D 复用语义按钮、图标、面板、指针保护与 Tools 场景接入，领域提供数学模型" },
   { id: "plane-tangram", dimension: "2d", name: "七巧板拼摆", files: ["planar-kit/PlanarWorkbench.tsx", "plane-geometry/scenes.tsx"],
     features: "独立的七块拼摆舞台；直接拖动、转动与翻面；备课保存、课堂固定副本、撤销与恢复起点。",
@@ -33,8 +33,8 @@ export const SPATIAL_WORKBENCH_INVENTORY = [
   { id: "plane-overlap", dimension: "2d", name: "重叠与圆方", files: ["planar-kit/PlanarWorkbench.tsx", "plane-area/scenes.tsx"],
     features: "教学现场 33、44、45；直接操作、准确参数、动画、撤销与复原；备课保存和课堂固定副本。",
     shared: "唯一 PlanarWorkbench 宿主；与 3D 复用语义按钮、图标、面板、指针保护与 Tools 场景接入，领域提供数学模型" },
-  { id: "plane-motion", dimension: "2d", name: "平面图形运动", files: ["planar-kit/PlanarWorkbench.tsx", "plane-motion/scenes.tsx"],
-    features: "教学现场 20、21、22、24；直接操作、准确参数、动画、撤销与复原；备课保存和课堂固定副本。",
+  { id: "plane-motion", dimension: "2d", name: "平面图形运动", files: ["planar-kit/PlanarWorkbench.tsx", "plane-construction/scenes.tsx"],
+    features: "绘制或添加自己的图形；直接移动、编辑点、设定旋转中心与对称轴；同一材料连续平移／旋转／镜像、原位留影、暂停／继续、撤销与复原；旧预设版本保持可读。",
     shared: "唯一 PlanarWorkbench 宿主；与 3D 复用语义按钮、图标、面板、指针保护与 Tools 场景接入，领域提供数学模型" },
   { id: "plane-folding", dimension: "2d", name: "折纸与剪纸", files: ["planar-kit/PlanarWorkbench.tsx", "plane-motion/scenes.tsx"],
     features: "教学现场 32；直接操作、准确参数、动画、撤销与复原；备课保存和课堂固定副本。",

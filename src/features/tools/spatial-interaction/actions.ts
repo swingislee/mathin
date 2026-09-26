@@ -14,6 +14,8 @@ export const SPATIAL_ACTIONS = {
   roll: { zh: "沿支撑棱翻滚", en: "Roll over an edge", icon: "Footprints", group: "object" },
   moveSnap: { zh: "移动落点吸附", en: "Position snap", icon: "MoveSnap", group: "object" },
   add: { zh: "添加对象／单位块", en: "Add object or block", icon: "Plus", group: "object" },
+  drawShape: { zh: "绘制图形", en: "Draw shape", icon: "PenTool", group: "object" },
+  editShape: { zh: "编辑图形顶点", en: "Edit shape vertices", icon: "SquarePen", group: "object" },
   remove: { zh: "删除对象／单位块", en: "Remove object or block", icon: "Trash2", group: "object" },
   group: { zh: "编组", en: "Group", icon: "Group", group: "object" },
   ungroup: { zh: "取消编组", en: "Ungroup", icon: "Ungroup", group: "object" },

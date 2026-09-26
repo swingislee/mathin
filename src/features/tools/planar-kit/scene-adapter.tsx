@@ -13,11 +13,11 @@ function makeAdapter(tool: (typeof ALL_PLANAR_TOOLS)[number]) {
     const capture = useCallback((initial: PlanarState | null) => onChange(initial ? {
       toolId: tool.id, contentVersion: tool.version, payload: { title, initial },
     } : null), [title, onChange]);
-    return <ToolPreparationStage version={tool.version} fullHeight={fullHeight}><Workspace toolId={tool.id} initial={existing?.payload.initial} onSnapshot={capture} /></ToolPreparationStage>;
+    return <ToolPreparationStage version={tool.version} fullHeight={fullHeight}><Workspace toolId={tool.id} version={tool.version} initial={existing?.payload.initial} onSnapshot={capture} /></ToolPreparationStage>;
   }
   return defineToolWorkbenchAdapter({
     contentVersion: tool.version, Preparation,
-    Presentation: ({ scene, classroom }) => <Workspace toolId={tool.id} initial={scene.payload.initial} readOnly={!!(classroom && !classroom.onChange)} classroom={toolSceneRuntime<PlanarVersion>(scene, classroom)} />,
+    Presentation: ({ scene, classroom }) => <Workspace toolId={tool.id} version={tool.version} initial={scene.payload.initial} readOnly={!!(classroom && !classroom.onChange)} classroom={toolSceneRuntime<PlanarVersion>(scene, classroom)} />,
   });
 }
 /** 新的平面教具只登记一次目录；备课、课件编辑、课堂与独立工具页复用同一组件。 */

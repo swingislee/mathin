@@ -4,6 +4,7 @@ import { isValidPlaneAreaState } from "../plane-area/validation";
 import { isValidPlaneMotionState } from "../plane-motion/validation";
 import { isValidPlanePatternsState } from "../plane-patterns/validation";
 import { isValidPlaneShapesState } from "../plane-shapes/validation";
+import { isValidConstructionState } from "../plane-construction/validation";
 
 import { ALL_PLANAR_TOOLS, type PlanarToolId, type PlanarVersion } from "./catalog";
 export { PLANAR_TOOLS, ALL_PLANAR_TOOLS, type PlanarToolId, type PlanarVersion } from "./catalog";
@@ -20,16 +21,17 @@ const planarStateShape = z.object({
   phase: z.number().finite().min(0).max(1),
 }).strict();
 export type PlanarState = z.infer<typeof planarStateShape>;
-export const planarStateSchema = planarStateShape.refine((state) => isValidPlaneGeometryState(state) || isValidPlaneAreaState(state) || isValidPlaneMotionState(state) || isValidPlanePatternsState(state) || isValidPlaneShapesState(state), "INVALID_PLANAR_GEOMETRY");
+export const planarStateSchema = planarStateShape.refine((state) => isValidPlaneGeometryState(state) || isValidPlaneAreaState(state) || isValidPlaneMotionState(state) || isValidPlanePatternsState(state) || isValidPlaneShapesState(state) || isValidConstructionState(state), "INVALID_PLANAR_GEOMETRY");
 export function emptyPlanarState(sceneId: string): PlanarState {
   return { sceneId, params: {}, points: {}, flags: { grid: false, measures: true }, marks: [], phase: 0 };
 }
-export function stateBelongsToTool(toolId: PlanarToolId, state: PlanarState) {
-  return (ALL_PLANAR_TOOLS.find((tool) => tool.id === toolId)!.scenes as readonly string[]).includes(state.sceneId);
+export function stateBelongsToTool(toolId: PlanarToolId, state: PlanarState, version?: PlanarVersion) {
+  const tool = ALL_PLANAR_TOOLS.find((entry) => entry.id === toolId && (!version || entry.version === version));
+  return !!tool && (tool.scenes as readonly string[]).includes(state.sceneId);
 }
 function toolSchema<I extends PlanarToolId, V extends PlanarVersion>(toolId: I, version: V) {
   return z.object({ toolId: z.literal(toolId), contentVersion: z.literal(version), payload: z.object({
-    title: z.string().trim().min(1).max(80), initial: planarStateSchema.refine((state) => stateBelongsToTool(toolId, state), "SCENE_TOOL_MISMATCH"),
+    title: z.string().trim().min(1).max(80), initial: planarStateSchema.refine((state) => stateBelongsToTool(toolId, state, version), "SCENE_TOOL_MISMATCH"),
   }).strict() }).strict();
 }
 type PlanarSchemas<T extends readonly (typeof ALL_PLANAR_TOOLS)[number][]> = {
@@ -60,6 +62,6 @@ export type PlanarSnapshot = z.infer<typeof planarSnapshotSchema>;
 export function planarSnapshot(initial: PlanarState): PlanarSnapshot {
   return { current: planarStateSchema.parse(structuredClone(initial)), past: [], future: [], motion: null };
 }
-export function planarSnapshotForTool(tool: PlanarToolId) {
-  return planarSnapshotSchema.refine((snapshot) => [snapshot.current, ...snapshot.past, ...snapshot.future, ...(snapshot.motion ? [snapshot.motion.from, snapshot.motion.to] : [])].every((state) => stateBelongsToTool(tool, state)), "SNAPSHOT_TOOL_MISMATCH");
+export function planarSnapshotForTool(tool: PlanarToolId, version?: PlanarVersion) {
+  return planarSnapshotSchema.refine((snapshot) => [snapshot.current, ...snapshot.past, ...snapshot.future, ...(snapshot.motion ? [snapshot.motion.from, snapshot.motion.to] : [])].every((state) => stateBelongsToTool(tool, state, version)), "SNAPSHOT_TOOL_MISMATCH");
 }

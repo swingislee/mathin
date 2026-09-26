@@ -2,6 +2,8 @@
 .svg { width: 100%; height: 100%; display: block; touch-action: none; outline: none; user-select: none; -webkit-user-select: none; }
 .svg text { font-family: inherit; fill: var(--ink); font-size: 17px; }
 .svg [role="button"] { cursor: grab; touch-action: none; }
+.svg[data-drawing-tool], .svg[data-drawing-tool] [role="button"] { cursor: crosshair; }
+.hint { margin-block: 10px; color: var(--muted); font-size: 12px; line-height: 1.6; }
 .svg [role="button"]:focus-visible { outline: none; stroke: var(--rose); stroke-width: 3px; }
 .ghost { pointer-events: none; opacity: .6; }
 .ghost * { fill: none !important; stroke: var(--muted) !important; stroke-width: 1px !important; stroke-dasharray: 4 4 !important; vector-effect: non-scaling-stroke; }

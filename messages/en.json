@@ -535,7 +535,7 @@
       },
       "plane-shapes": {
         "name": "Exploring basic shapes",
-        "desc": "Add selected shapes or everyday examples, inspect sides, vertices and curves, and reveal plane outlines."
+        "desc": "Draw shapes, edit their points and dimensions, or add everyday examples; turn on boundaries, vertices, counts and measurements as needed."
       },
       "plane-tangram": {
         "name": "Tangram construction",
@@ -579,7 +579,7 @@
       },
       "plane-motion": {
         "name": "Plane transformations",
-        "desc": "Set a center, direction or reflection axis; explore continuous transformations of a sheet."
+        "desc": "Draw your own shapes, set rotation centers and reflection axes, then translate, rotate and reflect them on the same stage."
       },
       "plane-folding": {
         "name": "Paper folding and cutting",

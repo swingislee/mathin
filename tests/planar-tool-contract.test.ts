@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { PLANAR_TOOLS, planarSnapshot, planarStateSchema, planarSnapshotForTool } from "@/features/tools/planar-kit/contract";
+import { PLANAR_TOOLS, planarSnapshot, planarStateSchema, planarSnapshotForTool, type PlanarVersion } from "@/features/tools/planar-kit/contract";
 import { planarScenes, planarScene, scenesForPlanarTool } from "@/features/tools/planar-kit/scene-registry";
 import { planarCommit, planarFrame, planarPause, planarHistory } from "@/features/tools/planar-kit/presentation";
 import { perpendicularFoot, rightAnglePoints, HeightMark } from "@/features/tools/planar-kit/geometry";
@@ -19,19 +19,19 @@ import { resolveClassroomRendererInputProfile } from "@/features/classroom/input
 describe("approved planar scenes use one Tools registration path", () => {
   it("keeps historical SQL fixtures readable after splitting the recognition and tangram tools", () => {
     const sql = readFileSync("supabase/tests/planar_tool_scene_assertions.sql", "utf8");
-    const fixtures = JSON.parse(sql.split("$fixtures$")[1]) as { toolId: string; payload: { initial: ReturnType<typeof planarScene>["create"] extends () => infer S ? S : never } }[];
-    expect(fixtures).toHaveLength(planarScenes.length);
+    const fixtures = JSON.parse(sql.split("$fixtures$")[1]) as { toolId: string; contentVersion: PlanarVersion; payload: { initial: ReturnType<typeof planarScene>["create"] extends () => infer S ? S : never } }[];
+    expect(fixtures).toHaveLength(49);
     for (const fixture of fixtures) {
       const scene = planarScene(fixture.payload.initial.sceneId);
-      expect(scenesForPlanarTool(fixture.toolId as Parameters<typeof scenesForPlanarTool>[0]).map((entry) => entry.id)).toContain(scene.id);
+      expect(scenesForPlanarTool(fixture.toolId as Parameters<typeof scenesForPlanarTool>[0], fixture.contentVersion).map((entry) => entry.id)).toContain(scene.id);
       expect(fixture.payload.initial).toEqual(scene.create());
       expect(() => parseToolScene(fixture)).not.toThrow();
     }
   });
-  it("covers 49 approved or adjusted scenes once, under 22 teacher-facing tools", () => {
-    expect(PLANAR_TOOLS).toHaveLength(22); expect(planarScenes).toHaveLength(49);
+  it("composes the transformations on one editable stage, under 22 teacher-facing tools", () => {
+    expect(PLANAR_TOOLS).toHaveLength(22); expect(planarScenes).toHaveLength(46);
     const ids = PLANAR_TOOLS.flatMap((tool) => [...tool.scenes]);
-    expect(new Set(ids).size).toBe(49);
+    expect(new Set(ids).size).toBe(46);
     expect(planarScenes.map((scene) => scene.id).sort()).toEqual([...ids].sort());
     for (const id of ["09", "19", "23", "25", "26", "28", "29", "30", "31", "35", "50"]) expect(ids).not.toContain(id);
   });
@@ -44,7 +44,10 @@ describe("approved planar scenes use one Tools registration path", () => {
     }
   });
   it("separates teaching purposes while keeping old fixed copies and classroom events readable", () => {
-    expect(scenesForPlanarTool("plane-shapes").map((scene) => scene.id)).toEqual(["01-basic"]);
+    expect(scenesForPlanarTool("plane-shapes").map((scene) => scene.id)).toEqual(["01-create"]);
+    expect(scenesForPlanarTool("plane-shapes", "plane-shapes-lesson-v1").map((scene) => scene.id)).toEqual(["01-basic"]);
+    expect(scenesForPlanarTool("plane-motion").map((scene) => scene.id)).toEqual(["20-create"]);
+    expect(scenesForPlanarTool("plane-motion", "plane-motion-lesson-v1").map((scene) => scene.id)).toEqual(["20", "21", "22", "24"]);
     expect(scenesForPlanarTool("plane-tangram").map((scene) => scene.id)).toEqual(["02"]);
     expect(scenesForPlanarTool("plane-pieces").map((scene) => scene.id)).toEqual(["01", "02"]);
     for (const surface of ["microcourse", "formal-courseware"] as const) {
@@ -61,6 +64,23 @@ describe("approved planar scenes use one Tools registration path", () => {
     }
     expect(() => parseToolScene({ toolId: "plane-tangram", contentVersion: "plane-tangram-lesson-v1", payload: { title: "Wrong shape", initial: planarScene("01").create() } })).toThrow();
     expect(planarSnapshotForTool("plane-pieces").safeParse(planarSnapshot(planarScene("01-basic").create())).success).toBe(false);
+  });
+  it("binds old and editable materials to their explicit versions in saved copies and classroom events", () => {
+    for (const [id, oldScene, currentScene] of [["plane-shapes", "01-basic", "01-create"], ["plane-motion", "20", "20-create"]] as const) {
+      for (const [version, sceneId, other] of [[`${id}-lesson-v1`, oldScene, currentScene], [`${id}-lesson-v2`, currentScene, oldScene]] as const) {
+        const initial = planarScene(sceneId).create(), wrong = planarScene(other).create();
+        const scene = parseToolScene({ toolId: id, contentVersion: version, payload: { title: "Saved material", initial } });
+        expect(hasClassroomToolAdapter(scene)).toBe(true);
+        const event = createClassroomToolState("page", "doc", "instance", { toolId: id, contentVersion: version, state: planarSnapshot(initial) } as ClassroomToolUpdate, toolSceneOriginHash(scene.payload));
+        expect(parseClassroomToolState(event)).toEqual(event);
+        expect(parseClassroomToolState({ ...event, state: planarSnapshot(wrong) })).toBeNull();
+        expect(() => parseToolScene({ ...scene, payload: { ...scene.payload, initial: wrong } })).toThrow();
+      }
+      for (const surface of ["microcourse", "formal-courseware"] as const) {
+        const offered = toolCoursewareContractsForSurface(surface).filter((entry) => entry.catalogId === id);
+        expect(offered).toHaveLength(1); expect(offered[0].contentVersion).toBe(`${id}-lesson-v2`);
+      }
+    }
   });
   for (const tool of PLANAR_TOOLS) it(`${tool.id}: strict scene, both editors, frozen copy and classroom`, () => {
     expect(getTool(tool.id)).toBeDefined(); expect(getToolSceneDefinition(tool.id)?.contentVersion).toBe(tool.version);

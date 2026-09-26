@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PlanarWorkbench } from "../src/features/tools/planar-kit/PlanarWorkbench";
 import { planarSnapshot, planarStateSchema, type PlanarSnapshot, type PlanarState } from "../src/features/tools/planar-kit/contract";
 import { planarScene } from "../src/features/tools/planar-kit/scene-registry";
+import { constructionObjects } from "../src/features/tools/plane-construction/model";
 
 vi.mock("next-intl", () => ({ useLocale: () => "zh" }));
 let container: HTMLDivElement, root: Root, clock: number, nextFrame: number, frames: Map<number, FrameRequestCallback>;
@@ -270,5 +271,116 @@ describe("basic shapes: compose materials and capabilities on one stage", () => 
     await render({ toolId: "plane-tangram", initial: planarScene("02").create() });
     expect(current()?.params.count).toBe(7); expect(button("选择教学现场")).toBeNull();
     expect(button("添加图形或生活实例")).toBeNull(); expect(button("观察顶点")).toBeNull();
+  });
+});
+
+describe("shared teacher-created material", () => {
+  const initial = () => planarScene("01-create").create();
+  const constructionRender = (props: Partial<ComponentProps<typeof PlanarWorkbench>> = {}) => render({ toolId: "plane-shapes", initial: initial(), ...props });
+  const drawTool = async (label: string) => {
+    await act(async () => button("绘制图形").click());
+    await act(async () => button(`绘制${label}`).click());
+  };
+  it("keeps conclusions and edit handles off until explicitly requested", async () => {
+    await constructionRender();
+    expect(svg().textContent).not.toContain("条直边");
+    expect(container.querySelector("[data-construction-edit-handle]")).toBeNull();
+    await act(async () => button("显示边与顶点数量").click());
+    expect(svg().textContent).toContain("4 条直边");
+    await act(async () => button("显示边与顶点数量").click());
+    expect(svg().textContent).not.toContain("条直边");
+  });
+  it("draws a rectangle over existing material without moving it and commits only on release", async () => {
+    await constructionRender(); await drawTool("长方形");
+    const body = container.querySelector('[data-construction-object="0"] [role="button"]')!;
+    await pointer(body, "pointerdown", 350, 280); await pointer(svg(), "pointermove", 650, 480);
+    expect(current()).toBeNull(); expect(container.querySelector('[data-construction-draft="true"]')).not.toBeNull();
+    await pointer(svg(), "pointerup", 650, 480);
+    expect(constructionObjects(current()!)).toHaveLength(2);
+    expect(current()?.points["center.0"]).toEqual(initial().points["center.0"]);
+    expect(constructionObjects(current()!)[1].vertices).toHaveLength(4);
+    expect(container.querySelector('[data-construction-object="1"] [role="button"]')?.getAttribute("aria-pressed")).toBe("true");
+    await act(async () => button("撤销").click()); expect(current()).toEqual(initial());
+    await act(async () => button("重做").click()); expect(constructionObjects(current()!)).toHaveLength(2);
+  });
+  it("keeps the edit focus and actual active material together when duplicating or removing", async () => {
+    await constructionRender();
+    const body = container.querySelector('[data-construction-object="0"] [role="button"]')!;
+    await pointer(body, "pointerdown", 380, 340); await pointer(svg(), "pointerup", 380, 340);
+    await act(async () => button("编辑当前图形").click());
+    await act(async () => button("复制当前图形").click());
+    expect(current()?.params.active).toBe(1);
+    expect(container.querySelector('[data-construction-edit-handle="vertex.1.0"]')).not.toBeNull();
+    expect(container.querySelector('[data-construction-edit-handle="vertex.0.0"]')).toBeNull();
+    await act(async () => button("移去当前图形").click());
+    expect(current()?.params.active).toBe(0);
+    expect(container.querySelector('[data-construction-edit-handle="vertex.0.0"]')).not.toBeNull();
+  });
+  it("closes a teacher-defined polygon and edits its actual vertex, not a template scale", async () => {
+    await constructionRender(); await drawTool("多边形");
+    for (const [x, y] of [[80, 90], [270, 110], [200, 260], [100, 220]]) {
+      await pointer(svg(), "pointerdown", x, y); await pointer(svg(), "pointerup", x, y);
+      expect(current()).toBeNull();
+    }
+    await act(async () => button("完成绘制").click());
+    expect(constructionObjects(current()!)).toHaveLength(2);
+    const body = container.querySelector('[data-construction-object="1"] [role="button"]')!;
+    await pointer(body, "pointerdown", 150, 150); await pointer(svg(), "pointerup", 150, 150);
+    await act(async () => button("编辑当前图形").click());
+    const before = current()!, vertex = container.querySelector('[data-construction-edit-handle="vertex.1.0"]')!;
+    expect(vertex).not.toBeNull();
+    await pointer(vertex, "pointerdown", 80, 90); await pointer(svg(), "pointermove", 65, 60); await pointer(svg(), "pointerup", 65, 60);
+    expect(current()?.points["vertex.1.0"]).not.toEqual(before.points["vertex.1.0"]);
+    expect(current()?.points["vertex.1.1"]).toEqual(before.points["vertex.1.1"]);
+    expect(planarStateSchema.safeParse(current()).success).toBe(true);
+  });
+  it("keeps an invalid self-crossing draft out of history, and cancels pending points on Escape and blur", async () => {
+    await constructionRender(); await drawTool("多边形");
+    for (const [x, y] of [[100, 100], [240, 240], [100, 240], [240, 100]]) {
+      await pointer(svg(), "pointerdown", x, y); await pointer(svg(), "pointerup", x, y);
+    }
+    await act(async () => button("完成绘制").click());
+    expect(current()).toBeNull(); expect(container.querySelector('[data-cube-canvas-panel] [role="status"]')).not.toBeNull();
+    await act(async () => svg().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+    expect(current()).toEqual(initial()); expect(button("撤销").disabled).toBe(true);
+    await drawTool("多边形");
+    await pointer(svg(), "pointerdown", 100, 100); await pointer(svg(), "pointerup", 100, 100);
+    await act(async () => window.dispatchEvent(new Event("blur")));
+    expect(current()).toEqual(initial()); expect(svg().hasAttribute("data-drawing-tool")).toBe(false);
+  });
+  it("cancels drawing capture on a second touch and authority/permission replacement", async () => {
+    const start = initial(); await constructionRender({ initial: start }); await drawTool("圆");
+    await pointer(svg(), "pointerdown", 100, 100); await pointer(svg(), "pointermove", 180, 150);
+    await pointer(svg(), "pointerdown", 200, 200, 2, false); await pointer(svg(), "pointerup", 180, 150);
+    expect(current()).toEqual(start);
+    await pointer(svg(), "pointerdown", 100, 100); await pointer(svg(), "pointermove", 180, 150);
+    await constructionRender({ initial: start, readOnly: true });
+    await pointer(svg(), "pointerup", 180, 150);
+    expect(current()).toEqual(start); expect(button("绘制图形").disabled).toBe(true);
+    const source = planarSnapshot(start), onChange = vi.fn(async () => {});
+    await constructionRender({ initial: start, classroom: { state: source, onChange } });
+    // 权限改变保留面板可见性，但绘制模式已经退出。
+    if (!button("绘制多边形")) await act(async () => button("绘制图形").click());
+    await act(async () => button("绘制多边形").click());
+    await pointer(svg(), "pointerdown", 100, 100); await pointer(svg(), "pointerup", 100, 100);
+    const replacement = planarSnapshot({ ...start, flags: { ...start.flags, grid: true } });
+    await constructionRender({ initial: start, classroom: { state: replacement, onChange } });
+    expect(current()).toEqual(replacement.current); expect(onChange).not.toHaveBeenCalled();
+  });
+  it("opens operations without replacing material and animates an actual selected object", async () => {
+    const start = planarScene("20-create").create();
+    await render({ toolId: "plane-motion", initial: start });
+    expect(button("选择教学现场")).toBeNull();
+    await act(async () => button("绕点旋转").click());
+    expect(current()).toEqual(start); expect(container.querySelector('[data-construction-guide="rotate"]')).not.toBeNull();
+    await act(async () => button("播放旋转").click()); await tick(700);
+    expect(current()).toBeNull();
+    await act(async () => button("暂停过程").click());
+    expect(current()?.params["angle.0"]).not.toBe(start.params["angle.0"]);
+    const halfway = current(); await tick(700); expect(current()).toEqual(halfway);
+    await act(async () => button("继续过程").click()); await tick(700);
+    expect(current()?.params["angle.0"]).toBe(start.params["angle.0"] + start.params.turn);
+    await act(async () => button("绕点旋转").click());
+    expect(container.querySelector('[data-construction-guide="rotate"]')).toBeNull();
   });
 });

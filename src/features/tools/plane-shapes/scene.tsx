@@ -20,7 +20,7 @@ function Outline({ outline, ...props }: { outline: ShapeOutline } & SVGProps<SVG
 }
 
 /** 生活物体细节与被研究的同一个正面轮廓共用局部坐标，淡化时不更换模型。 */
-function LifeDetails({ kind, detail }: { kind: number; detail: number }) {
+export function LifeDetails({ kind, detail }: { kind: number; detail: number }) {
   if (!SHAPE_KINDS[kind].life || detail <= 0) return null;
   let drawing: ReactNode;
   if (kind === 7) drawing = <>

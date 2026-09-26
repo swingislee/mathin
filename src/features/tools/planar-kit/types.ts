@@ -27,10 +27,23 @@ export interface PlanarMaterial {
 }
 export interface PlanarDrawingApi {
   locale: string; selected: string | null; editable: boolean;
+  operation?: string | null;
+  ghostState?: PlanarState;
   bind: (target: string, label?: string) => {
     onPointerDown?: PointerEventHandler<SVGElement>; onKeyDown?: KeyboardEventHandler<SVGElement>;
     role: "button"; tabIndex: number; "aria-label": string; "aria-pressed": boolean; "aria-disabled": boolean;
   };
+}
+export interface PlanarOperation {
+  id: string; icon: SpatialActionId; label: PlanarText;
+  fields?: readonly PlanarField[]; actions?: readonly PlanarAction[];
+}
+/** 未闭合的绘制过程只存在宿主本机；准确几何才进入历史与课堂。 */
+export interface PlanarConstruction {
+  tools: readonly { id: string; label: PlanarText; kind: "drag" | "points" }[];
+  create: (state: PlanarState, toolId: string, points: readonly PlanarPoint[]) => PlanarState | null;
+  preview: (toolId: string, points: readonly PlanarPoint[]) => ReactNode;
+  maxPoints: number;
 }
 /** 共用宿主管按钮、指针、历史、动画、课堂；领域仅声明数学现场。坐标使用 960×720 舞台。 */
 export interface PlanarSceneDefinition {
@@ -39,6 +52,10 @@ export interface PlanarSceneDefinition {
   progress?: boolean;
   fields?: readonly PlanarField[]; toggles?: readonly PlanarToggle[]; actions?: readonly PlanarAction[];
   materials?: readonly PlanarMaterial[];
+  construction?: PlanarConstruction;
+  operations?: readonly PlanarOperation[];
+  /** 创建／复制／移除后让本机操作焦点跟随新材料；空白取消仍由宿主管理。 */
+  selectionAfterChange?: (before: PlanarState, after: PlanarState, selected: string | null) => string | null;
   setField?: (state: PlanarState, key: string, value: number) => PlanarState;
   setFlag?: (state: PlanarState, key: string, value: boolean) => PlanarState;
   draw: (state: PlanarState, api: PlanarDrawingApi) => ReactNode;

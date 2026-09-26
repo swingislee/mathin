@@ -20,7 +20,7 @@ export function interpolatePlanarState(from: PlanarState, to: PlanarState, progr
 export function planarFrame(snapshot: PlanarSnapshot, definition: PlanarSceneDefinition, now: number) {
   if (!snapshot.motion) return snapshot.current;
   const motion = snapshot.motion, progress = planarProgress(motion, now);
-  const action = definition.actions?.find((item) => item.id === motion.actionId);
+  const action = [...(definition.actions ?? []), ...(definition.operations?.flatMap((operation) => operation.actions ?? []) ?? [])].find((item) => item.id === motion.actionId);
   return (action?.interpolate ?? interpolatePlanarState)(motion.from, motion.to, progress);
 }
 export function planarCommit(snapshot: PlanarSnapshot, from: PlanarState, to: PlanarState, options?: { id: string; duration: number; now: number }): PlanarSnapshot {
