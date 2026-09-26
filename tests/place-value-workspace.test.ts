@@ -8,7 +8,11 @@ import { boardTotal, createDefaultPlaceValueInitial, createPlaceValueBoard, plac
 import { planPlaceValue } from "@/features/tools/place-value/model";
 
 const viewport = vi.hoisted(() => ({ current: null as PlaceValueCanvasProps | null }));
-vi.mock("next/dynamic", () => ({ default: () => function Viewport(props: PlaceValueCanvasProps) { viewport.current = props; return null; } }));
+vi.mock("next/dynamic", () => ({ default: () => function Viewport(props: PlaceValueCanvasProps) {
+  viewport.current = props;
+  return createElement("div", null, (props.snapshot.mode === "compare" ? ["left", "right"] as const : ["left"] as const).flatMap((side) =>
+    (["hundreds", "tens", "ones"] as const).map((place) => createElement("div", { key: side + place }, props.renderPlaceControl?.(side, place)))));
+} }));
 vi.mock("next-intl", () => ({ useLocale: () => "en" }));
 let root: Root, host: HTMLDivElement, serial = 0, now = 1000;
 const frames = new Map<number, FrameRequestCallback>();
@@ -23,13 +27,63 @@ beforeEach(() => {
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 const render = async (props: PlaceValueWorkspaceProps = {}) => act(async () => root.render(createElement(PlaceValueWorkspace, props)));
 function button(label: string) {
-  const found = [...host.querySelectorAll<HTMLButtonElement>("button")].find((item) => item.getAttribute("aria-label") === label || item.textContent === label);
+  const found = [...host.querySelectorAll<HTMLButtonElement>('button:not([aria-hidden="true"])')].find((item) => item.getAttribute("aria-label") === label || item.textContent === label);
   expect(found, label).toBeDefined(); return found!;
 }
 const click = async (label: string) => act(async () => button(label).click());
 async function tick(time: number) { now = time; const tasks = [...frames.values()]; frames.clear(); await act(async () => tasks.forEach((callback) => callback(time))); }
 
 describe("place-value workspace using common spatial controls", () => {
+  it("keeps SVG-only +/- immediately available, with an unchanged right toolbar and inline 9/+1", async () => {
+    await render();
+    const toolbar = () => [...host.querySelectorAll('[role="toolbar"] [data-spatial-action]')].map((node) => node.getAttribute("data-spatial-action"));
+    const before = toolbar();
+    expect(button("Add one unit").querySelector("svg")).not.toBeNull();
+    expect(button("Add one unit").textContent).toBe("");
+    await click("Add one unit");
+    expect(button("Add one unit").disabled).toBe(false); expect(button("Take away one unit").disabled).toBe(false);
+    expect(host.querySelector('[data-place-value-station="left:ones"] [data-place-value-numeral="after"]')!.textContent).toBe("9+1");
+    expect(toolbar()).toEqual(before); expect(host.textContent).not.toContain("Written number");
+    await click("Add one unit"); expect(viewport.current!.snapshot.left.ones).toHaveLength(11);
+    await click("Take away one unit"); expect(viewport.current!.snapshot.left.ones).toHaveLength(10);
+    await click("Ten ones make one ten"); expect(button("Add one unit").disabled).toBe(true);
+    expect(toolbar()).toEqual(before); await tick(2100); expect(viewport.current!.progress).toBe(.5);
+    expect(host.querySelector('[data-place-value-station="left:ones"] [data-place-value-numeral="before"]')!.textContent).toBe("9+1");
+    await tick(3200); expect(button("Add one unit").disabled).toBe(false);
+    expect(host.querySelector('[data-place-value-station="left:tens"] [data-place-value-numeral="after"]')!.textContent).toBe("1");
+    expect(toolbar()).toEqual(before);
+  });
+  it("edits a digit in its own position, preserves the other places, and supports escape to cancel", async () => {
+    await render({ initial: { ...createDefaultPlaceValueInitial(), left: createPlaceValueBoard(234) } });
+    const before = viewport.current!.snapshot.left;
+    await click("Edit Tens digit");
+    const input = host.querySelector<HTMLInputElement>('input[aria-label="Edit Tens digit"]')!;
+    expect(input).not.toBeNull();
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "6");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => input.blur());
+    expect(boardTotal(viewport.current!.snapshot.left)).toBe(264);
+    expect(viewport.current!.snapshot.left.ones).toEqual(before.ones); expect(viewport.current!.snapshot.left.hundreds).toEqual(before.hundreds);
+    await click("Edit Ones digit");
+    await act(async () => host.querySelector<HTMLInputElement>('input[aria-label="Edit Ones digit"]')!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+    expect(boardTotal(viewport.current!.snapshot.left)).toBe(264);
+  });
+  it("settles the terminal frame even when wall time is rounded just short, and resumes a scrubbed motion", async () => {
+    await render(); await click("Add one unit"); await tick(1000);
+    now = 1179;
+    const tasks = [...frames.values()]; frames.clear(); await act(async () => tasks.forEach((callback) => callback(1180)));
+    expect(viewport.current!.progress).toBe(1);
+    now = 1180; await click("Ten ones make one ten"); await tick(3380);
+    await click("Inspect a counting unit");
+    // A replayed, paused classroom command uses its own timeline, not the previous completed frame.
+    const paused = { ...viewport.current!.snapshot, motion: { ...viewport.current!.snapshot.motion!, startedAt: now, progress: .25, paused: true } };
+    await render({ classroom: { state: paused, onChange: async () => {} } }); expect(viewport.current!.progress).toBe(.25);
+    const resumed = { ...paused, motion: { ...paused.motion, paused: false } };
+    await render({ classroom: { state: resumed, onChange: async () => {} } }); await tick(3380);
+    expect(viewport.current!.progress).toBe(.25);
+  });
   it("automatically carries 99 + 1 in two separate motions, then keeps unpacking under teacher control", async () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     await render({ initial: { ...createDefaultPlaceValueInitial(), left: createPlaceValueBoard(99), autoCarry: true } });
@@ -74,7 +128,7 @@ describe("place-value workspace using common spatial controls", () => {
     expect(viewport.current!.selected).toBe(false);
     expect(viewport.current!.snapshot.right).toEqual(before.right);
     expect(host.querySelector("[data-spatial-transform]")?.getAttribute("data-spatial-transform")).toBe("none");
-    await click("Add one unit"); await tick(1600);
+    await act(async () => host.querySelector<HTMLButtonElement>('[data-place-value-station="right:ones"] button[aria-label="Add one unit"]')!.click()); await tick(1600);
     expect(boardTotal(viewport.current!.snapshot.left)).toBe(9); expect(boardTotal(viewport.current!.snapshot.right)).toBe(21);
   });
   it("classroom commands await authority, acknowledge once and converge when joining in mid-animation", async () => {

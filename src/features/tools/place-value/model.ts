@@ -6,13 +6,18 @@ import {
   type PlaceValueMotion, type PlaceValuePlace, type PlaceValueSide, type PlaceValueSnapshot,
 } from "./contract";
 
-export interface PlaceValueCube { id: number; x: number; y: number; z: number; place: PlaceValuePlace; opacity?: number }
+export interface PlaceValueCube { id: number; x: number; y: number; z: number; place: PlaceValuePlace; opacity?: number; band?: number }
 export interface PlaceValueRotation { ids: number[]; pivot: { x: number; y: number; z: number }; angle: number; local: PlaceValueCube[] }
 export const PLACE_VALUE_COLUMNS = { hundreds: -5, tens: 0, ones: 5 } as const;
+export const PLACE_VALUE_PLACES = ["hundreds", "tens", "ones"] as const;
+export const PLACE_VALUE_WEIGHTS = { hundreds: 100, tens: 10, ones: 1 } as const;
+/** 镜头以数位前沿的中间为锚点；百链加长也不改变旋转支点。 */
+export const PLACE_VALUE_CAMERA_TARGET = { x: 0, y: 4, z: 0 } as const;
+export const placeValueOffset = (mode: PlaceValueInitial["mode"], side: PlaceValueSide) => mode === "compare" ? side === "left" ? -9 : 9 : 0;
 export function placeValueLayout(board: PlaceValueBoard): PlaceValueCube[] {
   return [
-    ...board.hundreds.flatMap((hundred, index) => hundred.flat().map((id, depth) => ({ id, x: -5, y: index + .5, z: depth === 0 ? 0 : -depth, place: "hundreds" as const }))),
-    ...board.tens.flatMap((ten, index) => ten.map((id, depth) => ({ id, x: 0, y: index + .5, z: depth === 0 ? 0 : -depth, place: "tens" as const }))),
+    ...board.hundreds.flatMap((hundred, index) => hundred.flat().map((id, depth) => ({ id, x: -5, y: index + .5, z: depth === 0 ? 0 : -depth, place: "hundreds" as const, ...(depth === 0 ? { band: index % 10 < 5 ? 0 : 1 } : {}) }))),
+    ...board.tens.flatMap((ten, index) => ten.map((id, depth) => ({ id, x: 0, y: index + .5, z: depth === 0 ? 0 : -depth, place: "tens" as const, ...(depth === 0 ? { band: index % 10 < 5 ? 0 : 1 } : {}) }))),
     ...board.ones.map((id, index) => ({ id, x: 5, y: index + .5, z: 0, place: "ones" as const })),
   ];
 }
@@ -50,8 +55,10 @@ export function placeValueProgress(motion: PlaceValueMotion | null, now: number)
   return !motion ? 1 : motion.paused ? motion.progress : Math.min(1, motion.progress + Math.max(0, now - motion.startedAt) / motion.durationMs);
 }
 export function placeValueBusy(snapshot: PlaceValueSnapshot, now = Date.now()) { return placeValueProgress(snapshot.motion, now) < 1; }
+export function isPlaceValueRegrouping(kind?: PlaceValueAction) { return !!kind && (kind.startsWith("carry-") || kind.startsWith("unpack-")); }
+export function placeValueLocked(snapshot: PlaceValueSnapshot, now = Date.now()) { return isPlaceValueRegrouping(snapshot.motion?.kind) && placeValueBusy(snapshot, now); }
 export function placeValueDuration(kind: PlaceValueAction, speed: PlaceValueInitial["speed"]) {
-  return (kind === "carry-ten" || kind === "unpack-hundred" ? 7200 : kind === "add" || kind === "remove" ? 600 : 2200) * ({ slow: 1.5, normal: 1, fast: .6 }[speed]);
+  return (kind === "carry-ten" || kind === "unpack-hundred" ? 7200 : isPlaceValueRegrouping(kind) ? 2200 : 180) * ({ slow: 1.5, normal: 1, fast: .6 }[speed]);
 }
 export function applyPlaceValueChange(snapshot: PlaceValueSnapshot, change: PlaceValueChange, now = Date.now(), paused = false): PlaceValueSnapshot {
   const selection = snapshot.selection?.side === change.side && !boardUnits(change.after).includes(snapshot.selection.unit) ? null : snapshot.selection;
@@ -60,10 +67,41 @@ export function applyPlaceValueChange(snapshot: PlaceValueSnapshot, change: Plac
     past: [...snapshot.past, change].slice(-PLACE_VALUE_HISTORY_LIMIT), future: [] };
 }
 export function planPlaceValue(snapshot: PlaceValueSnapshot, action: PlaceValueAction, now = Date.now(), paused = false): PlaceValueSnapshot | null {
-  if (placeValueBusy(snapshot, now)) return null;
+  if (placeValueLocked(snapshot, now)) return null;
   const side = snapshot.mode === "single" ? "left" : snapshot.active;
   const next = changePlaceValueBoard(snapshot[side], action, snapshot.selection?.side === side ? snapshot.selection.unit : undefined);
   return next ? applyPlaceValueChange(snapshot, { side, before: snapshot[side], after: next, kind: action }, now, paused) : null;
+}
+/** 数位下的加减/输入只改变该数位的单位数，其他列的成员身份保持不变。 */
+export function planPlaceValueCount(snapshot: PlaceValueSnapshot, side: PlaceValueSide, place: PlaceValuePlace, count: number, now = Date.now()): PlaceValueSnapshot | null {
+  if (placeValueLocked(snapshot, now) || !Number.isInteger(count) || count < 0) return null;
+  const before = snapshot[side], current = before[place].length, weight = PLACE_VALUE_WEIGHTS[place];
+  if (count === current || boardTotal(before) + (count - current) * weight > PLACE_VALUE_LIMIT) return null;
+  if (place === "ones" && Math.abs(count - current) === 1) return planPlaceValue({ ...snapshot, active: side }, count > current ? "add" : "remove", now);
+  const after = structuredClone(before);
+  if (count < current) after[place].splice(count);
+  else {
+    if (after.nextId + (count - current) * weight > 1_000_000) return null;
+    for (let index = current; index < count; index++) {
+      const units = Array.from({ length: weight }, (_, depth) => after.nextId++ * 2 + ((place === "ones" ? index : depth) % 10 < 5 ? 0 : 1));
+      if (place === "ones") after.ones.push(units[0]);
+      else if (place === "tens") after.tens.push(units);
+      else after.hundreds.push(Array.from({ length: 10 }, (_, ten) => units.slice(ten * 10, ten * 10 + 10)));
+    }
+  }
+  return applyPlaceValueChange({ ...snapshot, active: side }, { side, kind: "replace", before, after: placeValueBoardSchema.parse(after) }, now);
+}
+
+export function placeValueNumeral(count: number) {
+  return { digit: Math.min(9, count), extra: Math.max(0, count - 9) };
+}
+/** 数字与几何读取同一个进度；尚未归组显示 9/+1，而非抢先显示高一位的 1。 */
+export function placeValueNotation(snapshot: PlaceValueSnapshot, side: PlaceValueSide, place: PlaceValuePlace, progress: number) {
+  const motion = snapshot.motion?.side === side ? snapshot.motion : null;
+  const after = placeValueNumeral(snapshot[side][place].length);
+  const before = motion && isPlaceValueRegrouping(motion.kind) ? placeValueNumeral(motion.before[place].length) : after;
+  const changing = before.digit !== after.digit || before.extra !== after.extra;
+  return { before, after, blend: changing ? spatialActionProgress(progress) : 1 };
 }
 export function pausePlaceValue(snapshot: PlaceValueSnapshot, now = Date.now()): PlaceValueSnapshot {
   if (!snapshot.motion) return snapshot;
@@ -75,7 +113,7 @@ export function resumePlaceValue(snapshot: PlaceValueSnapshot, now = Date.now())
 }
 const reverseKind: Record<PlaceValueAction, PlaceValueAction> = { add: "remove", remove: "add", "carry-one": "unpack-ten", "carry-ten": "unpack-hundred", "unpack-ten": "carry-one", "unpack-hundred": "carry-ten", replace: "replace" };
 export function historyPlaceValue(snapshot: PlaceValueSnapshot, direction: "undo" | "redo", now = Date.now()): PlaceValueSnapshot | null {
-  if (placeValueBusy(snapshot, now)) return null;
+  if (placeValueLocked(snapshot, now)) return null;
   const entry = (direction === "undo" ? snapshot.past : snapshot.future).at(-1); if (!entry) return null;
   // 增删的反向回放允许恢复原序号，使用 replace 保护严格的新增分配合同。
   const kind = entry.kind === "add" || entry.kind === "remove" ? "replace" : reverseKind[entry.kind];
@@ -118,10 +156,9 @@ export function placeValuePose(change: PlaceValueChange, progress: number): { cu
 export function placeValueFrame(snapshot: Pick<PlaceValueInitial, "left" | "right" | "mode" | "view">): PlaceValueInitial["frame"] {
   const sides: PlaceValueSide[] = snapshot.mode === "compare" ? ["left", "right"] : ["left"];
   const points = sides.flatMap((side) => placeValueLayout(snapshot[side]).map((p) => ({ ...p, x: p.x + (snapshot.mode === "compare" ? side === "left" ? -9 : 9 : 0) })));
-  const xs = points.map((p) => p.x), ys = points.map((p) => p.y), zs = points.map((p) => p.z);
-  const x = Math.max(snapshot.mode === "compare" ? 15 : 6, ...xs) - Math.min(snapshot.mode === "compare" ? -15 : -6, ...xs);
-  const y = Math.max(10, ...ys) + 3, z = Math.max(1, ...zs) - Math.min(-1, ...zs) + 1;
-  const center = { x: 0, y: y / 2 - 1, z: (Math.max(1, ...zs) + Math.min(-1, ...zs)) / 2 };
-  const radius = snapshot.view === "front" ? Math.max(x / 2 * .78, y / 2) : snapshot.view === "left" || snapshot.view === "right" ? Math.max(z / 2 * .78, y / 2) : Math.hypot(x, y, z) / 2;
-  return { center, radius: Math.max(7.5, radius) };
+  const x = Math.max(snapshot.mode === "compare" ? 15 : 6, ...points.map((p) => Math.abs(p.x) + 1));
+  const y = Math.max(8, ...points.map((p) => Math.abs(p.y - PLACE_VALUE_CAMERA_TARGET.y) + 2));
+  const z = Math.max(3, ...points.map((p) => Math.abs(p.z) + 2));
+  const radius = snapshot.view === "front" ? Math.max(x * .78, y) : snapshot.view === "left" || snapshot.view === "right" ? Math.max(z * .78, y) : Math.hypot(x, y, z);
+  return { center: { ...PLACE_VALUE_CAMERA_TARGET }, radius: Math.max(8.5, radius) };
 }

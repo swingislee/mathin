@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { boardTotal, boardUnits, createDefaultPlaceValueInitial, createPlaceValueBoard, PLACE_VALUE_VERSION, placeValueBoardSchema, placeValueInitial, placeValueSnapshot, placeValueSnapshotSchema, validPlaceValueChange, type PlaceValueChange } from "@/features/tools/place-value/contract";
-import { changePlaceValueBoard, historyPlaceValue, pausePlaceValue, placeValueCarry, placeValueFrame, placeValueLayout, placeValuePose, placeValueProgress, planPlaceValue, resumePlaceValue } from "@/features/tools/place-value/model";
+import { changePlaceValueBoard, historyPlaceValue, pausePlaceValue, PLACE_VALUE_CAMERA_TARGET, placeValueCarry, placeValueFrame, placeValueLayout, placeValueNotation, placeValuePose, placeValueProgress, planPlaceValue, planPlaceValueCount, resumePlaceValue } from "@/features/tools/place-value/model";
 import { freezeToolScene, parseToolScene, preparedToolDefinitions } from "@/features/tools/scenes/contract";
 import { createClassroomToolState, parseClassroomToolState } from "@/features/tools/courseware/tool-classroom";
 import { toolSceneOriginHash } from "@/features/tools/scenes/classroom-envelope";
@@ -24,6 +24,52 @@ const positions = (value: ReturnType<typeof placeValuePose>) => [
 ].sort((a, b) => a.id - b.id);
 
 describe("place-value counting and grouping", () => {
+  it("changes one place at a time, preserving other groups and identities through editing and undo", () => {
+    const source = placeValueSnapshot({ ...initial(), left: createPlaceValueBoard(234) });
+    let state = planPlaceValueCount(source, "left", "tens", 4, 1000)!;
+    expect(boardTotal(state.left)).toBe(244); expect(state.left.hundreds).toEqual(source.left.hundreds);
+    expect(state.left.ones).toEqual(source.left.ones); expect(state.left.tens.slice(0, 3)).toEqual(source.left.tens);
+    expect(state.left.tens[3].map((id) => id % 2)).toEqual([0, 0, 0, 0, 0, 1, 1, 1, 1, 1]);
+    expect(placeValueSnapshotSchema.safeParse(state).success).toBe(true);
+    state = planPlaceValueCount(state, "left", "hundreds", 6, 1010)!;
+    expect(boardTotal(state.left)).toBe(644); expect(placeValueSnapshotSchema.safeParse(state).success).toBe(true);
+    state = historyPlaceValue(state, "undo", 1020)!;
+    expect(boardTotal(state.left)).toBe(244);
+    expect(planPlaceValueCount(state, "left", "hundreds", 10)).toBeNull();
+    expect(planPlaceValueCount(state, "left", "tens", -1)).toBeNull();
+  });
+  it("keeps 9/+1 until regrouping, then animates notation on the same 9→10 and 99→100 timeline", () => {
+    for (const value of [9, 99]) {
+      let state = planPlaceValue(placeValueSnapshot({ ...initial(), left: createPlaceValueBoard(value) }), "add", 1000)!;
+      expect(placeValueNotation(state, "left", "ones", 1).after).toEqual({ digit: 9, extra: 1 });
+      expect(placeValueNotation(state, "left", "tens", 1).after).toEqual({ digit: value === 9 ? 0 : 9, extra: 0 });
+      state = planPlaceValue(state, "carry-one", 1100)!;
+      expect(placeValueNotation(state, "left", "ones", 0)).toMatchObject({ before: { digit: 9, extra: 1 }, after: { digit: 0, extra: 0 }, blend: 0 });
+      expect(placeValueNotation(state, "left", "ones", .5).blend).toBe(.5);
+      expect(placeValueNotation(state, "left", "tens", 1).after).toEqual(value === 9 ? { digit: 1, extra: 0 } : { digit: 9, extra: 1 });
+      if (value === 99) {
+        state = planPlaceValue(state, "carry-ten", 5000)!;
+        expect(placeValueNotation(state, "left", "hundreds", 0)).toMatchObject({ before: { digit: 0, extra: 0 }, after: { digit: 1, extra: 0 }, blend: 0 });
+        expect(placeValueNotation(state, "left", "tens", 1)).toMatchObject({ after: { digit: 0, extra: 0 }, blend: 1 });
+      }
+    }
+    const restored = placeValueSnapshot({ ...initial(), left: createPlaceValueBoard(10, "ones") });
+    expect(placeValueNotation(restored, "left", "ones", 1).after).toEqual({ digit: 9, extra: 1 });
+  });
+  it("provides five-yellow/five-blue front bands without recoloring the original unit blocks", () => {
+    for (const place of ["tens", "hundreds"] as const) {
+      const board = createPlaceValueBoard(place === "tens" ? 90 : 900), cubes = placeValueLayout(board);
+      expect(cubes.filter((p) => p.band !== undefined).map((p) => p.band)).toEqual([0, 0, 0, 0, 0, 1, 1, 1, 1]);
+      expect(cubes.filter((p) => p.band !== undefined).every((p) => p.z === 0 && p.place === place)).toBe(true);
+      expect(cubes.map((p) => p.id).sort((a, b) => a - b)).toEqual(boardUnits(board).sort((a, b) => a - b));
+    }
+  });
+  it("fits around the number-front anchor for all values and never recenters on a hundred chain", () => {
+    for (const value of [0, 9, 10, 99, 100, 999]) for (const view of ["front", "left", "angle", "top"] as const) {
+      const state = { ...initial(), view, left: createPlaceValueBoard(value) };
+      expect(placeValueFrame(state).center).toEqual(PLACE_VALUE_CAMERA_TARGET);
+    }
+  });
   it("keeps identities and five-yellow/five-blue colors through 9 → 10 and 99 → 100", () => {
     for (const value of [9, 19, 99, 199, 998]) {
       let state = placeValueSnapshot({ ...initial(), left: createPlaceValueBoard(value) });

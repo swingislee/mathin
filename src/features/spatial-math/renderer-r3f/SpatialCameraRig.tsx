@@ -63,10 +63,12 @@ function applyProjectionValue(camera: SpatialCamera, value: number) {
 }
 
 /** 体素、展开图、编辑预览和课堂舞台共用的表现层相机，不产生课堂语义写入。 */
-export function SpatialCameraRig({ bookmark, radius, interactive, navigationMode = "orbit", axisSnapEnabled = false, requestKey, minDistance = 0, maxDistance = Infinity, onTransitionStateChange }: {
+export function SpatialCameraRig({ bookmark, radius, interactive, navigationMode = "orbit", panEnabled = true, axisSnapEnabled = false, requestKey, minDistance = 0, maxDistance = Infinity, onTransitionStateChange }: {
   readonly bookmark: CameraBookmark;
   readonly radius: number;
   readonly interactive: boolean;
+  /** 数位等固定参照舞台保留旋转/缩放，所有输入方式使用同一个固定支点。 */
+  readonly panEnabled?: boolean;
   readonly navigationMode?: "orbit" | "pan" | "object";
   readonly axisSnapEnabled?: boolean;
   readonly requestKey?: string | number;
@@ -215,12 +217,12 @@ export function SpatialCameraRig({ bookmark, radius, interactive, navigationMode
       ref={attachControls}
       makeDefault
       camera={renderedCamera}
-      enablePan={interactive}
+      enablePan={interactive && panEnabled}
       // 物体手势在命中时捕获指针；空白处始终可以旋转，不设互斥的相机锁。
-      enableRotate={interactive && navigationMode !== "pan"}
+      enableRotate={interactive && (navigationMode !== "pan" || !panEnabled)}
       enableZoom={interactive}
-      mouseButtons={{ LEFT: navigationMode === "pan" ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN }}
-      touches={{ ONE: navigationMode === "pan" ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
+      mouseButtons={{ LEFT: navigationMode === "pan" && panEnabled ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: panEnabled ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE }}
+      touches={{ ONE: navigationMode === "pan" && panEnabled ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE, TWO: panEnabled ? THREE.TOUCH.DOLLY_PAN : THREE.TOUCH.DOLLY_ROTATE }}
       enableDamping={false}
       minDistance={minDistance}
       maxDistance={maxDistance}

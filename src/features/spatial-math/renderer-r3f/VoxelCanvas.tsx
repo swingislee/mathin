@@ -45,6 +45,7 @@ export interface VoxelCanvasProps {
   readonly axisSnapEnabled?: boolean;
   /** 编辑预览允许本地观察，模型选择与课堂只读合同保持独立。 */
   readonly cameraInteractive?: boolean;
+  readonly cameraPanEnabled?: boolean;
   readonly navigationMode?: "orbit" | "pan" | "object";
   readonly cameraRequestKey?: string | number;
   readonly onCellSelect?: (cellKey: string) => void;
@@ -451,6 +452,7 @@ function VoxelScene({
   axisSnapEnabled,
   navigationMode,
   cameraInteractive,
+  cameraPanEnabled,
   cameraRequestKey,
   onCameraTransitionStateChange,
 }: {
@@ -470,6 +472,7 @@ function VoxelScene({
   readonly axisSnapEnabled: boolean;
   readonly navigationMode?: "orbit" | "pan" | "object";
   readonly cameraInteractive: boolean;
+  readonly cameraPanEnabled?: boolean;
   readonly cameraRequestKey: string;
   readonly onCameraTransitionStateChange: (active: boolean) => void;
 }) {
@@ -480,6 +483,7 @@ function VoxelScene({
         bookmark={model.camera}
         radius={model.bounds.radius}
         interactive={cameraInteractive}
+        panEnabled={cameraPanEnabled}
         navigationMode={navigationMode}
         requestKey={cameraRequestKey}
         axisSnapEnabled={axisSnapEnabled}
@@ -519,6 +523,7 @@ export function VoxelModelCanvas({
   readOnly = false,
   axisSnapEnabled = false,
   cameraInteractive = !readOnly,
+  cameraPanEnabled = true,
   navigationMode = "orbit",
   cameraRequestKey,
   onCellSelect,
@@ -609,6 +614,7 @@ export function VoxelModelCanvas({
           preserveSelectedColors={preserveSelectedColors}
           axisSnapEnabled={axisSnapEnabled}
           cameraInteractive={cameraInteractive}
+          cameraPanEnabled={cameraPanEnabled}
           navigationMode={navigationMode}
           cameraRequestKey={String(cameraRequestKey ?? 0)}
           onCameraTransitionStateChange={setCameraTransitionState}

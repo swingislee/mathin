@@ -74,9 +74,9 @@ async function setupRig(reducedMotion = false, demand = false, initialBookmark: 
   const root = createRoot(canvas);
   await root.configure({ gl: renderer, size: { width: 800, height: 600, top: 0, left: 0 }, frameloop: demand ? "demand" : "never", dpr: 1 });
   const onTransitionStateChange = vi.fn();
-  const render = async (bookmark: Bookmark, requestKey = 0, navigationMode: "orbit" | "pan" | "object" = "orbit") => {
+  const render = async (bookmark: Bookmark, requestKey = 0, navigationMode: "orbit" | "pan" | "object" = "orbit", panEnabled = true) => {
     await act(async () => { root.render(createElement(SpatialCameraRig, {
-      bookmark, radius: 4, interactive: true, requestKey, navigationMode, onTransitionStateChange,
+      bookmark, radius: 4, interactive: true, requestKey, navigationMode, panEnabled, onTransitionStateChange,
     })); });
   };
   const state = () => _roots.get(canvas)!.store.getState();
@@ -98,6 +98,21 @@ async function setupRig(reducedMotion = false, demand = false, initialBookmark: 
 }
 
 describe("共享相机真实帧循环", () => {
+  it("数位舞台可固定支点，左右键和触摸都只旋转/缩放；其他舞台仍保留平移", async () => {
+    const target = { x: 0, y: 4, z: 0 }, bookmark = { ...front, target, position: { x: 0, y: 4, z: 240 } };
+    const rig = await setupRig(false, false, bookmark); await rig.render(bookmark, 0, "orbit", false);
+    const camera = rig.state().camera, controls = rig.state().controls as unknown as Orbit;
+    expect(controls.enablePan).toBe(false); expect(controls.enableZoom).toBe(true);
+    for (const [button, pointerType] of [[0, "mouse"], [2, "mouse"], [0, "touch"]] as const) {
+      const orientation = camera.quaternion.clone();
+      pointer(rig.surface, "pointerdown", 400, 300, button, pointerType);
+      pointer(rig.surface, "pointermove", 440, 325, button, pointerType);
+      pointer(rig.surface, "pointerup", 440, 325, button, pointerType);
+      expect(camera.quaternion.angleTo(orientation)).toBeGreaterThan(.01);
+      expect(controls.target.toArray()).toEqual([0, 4, 0]);
+    }
+    await rig.render(bookmark); expect(controls.enablePan).toBe(true);
+  });
   it("对象接管保留当前姿态，不触发 Orbit 的 up 重置或继续旧视角动画", async () => {
     const rig = await setupRig(); await rig.render(top); rig.frame(); rig.frame(720);
     const camera = rig.state().camera, before = camera.quaternion.clone(), up = camera.up.clone();

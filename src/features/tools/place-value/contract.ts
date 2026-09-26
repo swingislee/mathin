@@ -82,8 +82,8 @@ export function createPlaceValueBoard(value: number, grouping: "normal" | "ones"
 }
 export function createDefaultPlaceValueInitial(): PlaceValueInitial {
   return { mode: "single", left: createPlaceValueBoard(9), right: createPlaceValueBoard(20), active: "left", selection: null,
-    highlight: "all", comparison: "hidden", autoCarry: false, speed: "normal", showDigits: true, showLabels: true, grid: true, axes: false,
-    view: "front", frame: { center: { x: 0, y: 4, z: -3 }, radius: 8.5 } };
+    highlight: "all", comparison: "hidden", autoCarry: false, speed: "normal", showDigits: true, showLabels: true, grid: false, axes: false,
+    view: "front", frame: { center: { x: 0, y: 4, z: 0 }, radius: 8.5 } };
 }
 export function placeValueSnapshot(initial: PlaceValueInitial): PlaceValueSnapshot {
   return { ...placeValueInitialSchema.parse(structuredClone(initial)), cameraRevision: 0, motion: null, past: [], future: [] };
