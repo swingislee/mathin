@@ -17,11 +17,16 @@ const change = (value: number, kind: PlaceValueChange["kind"], grouping: "ones" 
 };
 const positions = (value: ReturnType<typeof placeValuePose>) => [
   ...value.cubes,
-  ...(value.rotation?.local.map((cube) => {
-    const { pivot, angle } = value.rotation!;
-    return { ...cube, x: cube.x + pivot.x, y: cube.y * Math.cos(angle) - cube.z * Math.sin(angle) + pivot.y, z: cube.y * Math.sin(angle) + cube.z * Math.cos(angle) + pivot.z };
-  }) ?? []),
+  ...value.rotations.flatMap(({ local, pivot, angle, axis }) => local.map((cube) => axis === "x"
+    ? { ...cube, x: cube.x + pivot.x, y: cube.y * Math.cos(angle) - cube.z * Math.sin(angle) + pivot.y, z: cube.y * Math.sin(angle) + cube.z * Math.cos(angle) + pivot.z }
+    : { ...cube, x: cube.x * Math.cos(angle) + cube.z * Math.sin(angle) + pivot.x, y: cube.y + pivot.y, z: -cube.x * Math.sin(angle) + cube.z * Math.cos(angle) + pivot.z })),
 ].sort((a, b) => a.id - b.id);
+const distance = (a: { x: number; y: number; z: number }, b: { x: number; y: number; z: number }) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+function expectRigid(units: ReturnType<typeof positions>, ids: number[]) {
+  const rod = ids.map((id) => units.find((p) => p.id === id)!);
+  expect(distance(rod[0], rod.at(-1)!)).toBeCloseTo(ids.length - 1, 9);
+  for (let index = 1; index < rod.length; index++) expect(distance(rod[index - 1], rod[index])).toBeCloseTo(1, 9);
+}
 
 describe("place-value counting and grouping", () => {
   it("changes one place at a time, preserving other groups and identities through editing and undo", () => {
@@ -56,13 +61,20 @@ describe("place-value counting and grouping", () => {
     const restored = placeValueSnapshot({ ...initial(), left: createPlaceValueBoard(10, "ones") });
     expect(placeValueNotation(restored, "left", "ones", 1).after).toEqual({ digit: 9, extra: 1 });
   });
-  it("provides five-yellow/five-blue front bands without recoloring the original unit blocks", () => {
+  it("faces the opposite end forward after five rods or chains without recoloring or reordering members", () => {
     for (const place of ["tens", "hundreds"] as const) {
       const board = createPlaceValueBoard(place === "tens" ? 90 : 900), cubes = placeValueLayout(board);
-      expect(cubes.filter((p) => p.band !== undefined).map((p) => p.band)).toEqual([0, 0, 0, 0, 0, 1, 1, 1, 1]);
-      expect(cubes.filter((p) => p.band !== undefined).every((p) => p.z === 0 && p.place === place)).toBe(true);
+      expect(cubes.filter((p) => p.z === 0).map((p) => p.id % 2)).toEqual([0, 0, 0, 0, 0, 1, 1, 1, 1]);
+      for (const [index, group] of board[place].entries()) {
+        const ids = group.flat(), front = cubes.find((p) => p.y === index + .5 && p.z === 0)!;
+        expect(front.id).toBe(index < 5 ? ids[0] : ids.at(-1));
+        expectRigid(cubes, ids);
+        expect(cubes.filter((p) => p.y === index + .5).map((p) => p.id)).toEqual(ids);
+      }
       expect(cubes.map((p) => p.id).sort((a, b) => a - b)).toEqual(boardUnits(board).sort((a, b) => a - b));
     }
+    const pending = placeValueLayout(createPlaceValueBoard(120, "tens"));
+    expect(pending.filter((p) => p.z === 0).map((p) => p.id % 2)).toEqual([0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0]);
   });
   it("fits around the number-front anchor for all values and never recenters on a hundred chain", () => {
     for (const value of [0, 9, 10, 99, 100, 999]) for (const view of ["front", "left", "angle", "top"] as const) {
@@ -129,14 +141,16 @@ describe("place-value counting and grouping", () => {
 });
 
 describe("visible conservation during animation", () => {
-  it("rotates one rigid ten to exactly the existing rod positions with no teleport or disappearance", () => {
-    const motion = change(19, "carry-one", "ones");
+  it.each([10, 20, 60, 100])("rotates the new ten at %i in the correct direction without teleport or disappearance", (value) => {
+    const before = changePlaceValueBoard(createPlaceValueBoard(value - 1), "add")!;
+    const motion: PlaceValueChange = { side: "left", kind: "carry-one", before, after: changePlaceValueBoard(before, "carry-one")! };
     expect(placeValuePose(motion, 0).cubes).toEqual(placeValueLayout(motion.before));
     for (const t of [.001, .25, .5, .75, .999]) {
       const pose = placeValuePose(motion, t), units = positions(pose);
-      expect(units).toHaveLength(19); expect(new Set(units.map((p) => p.id)).size).toBe(19);
-      const group = motion.after.tens[0].map((id) => units.find((p) => p.id === id)!);
-      for (let i = 1; i < 10; i++) expect(Math.hypot(group[i].x - group[i - 1].x, group[i].y - group[i - 1].y, group[i].z - group[i - 1].z)).toBeCloseTo(1, 9);
+      expect(units).toHaveLength(value); expect(new Set(units.map((p) => p.id)).size).toBe(value);
+      expectRigid(units, motion.after.tens.at(-1)!);
+      expect(pose.rotations[0].axis).toBe("x");
+      expect(Math.sign(pose.rotations[0].angle)).toBe(value <= 50 ? -1 : 1);
     }
     const end = positions(placeValuePose(motion, 1));
     expect(end).toEqual(placeValueLayout(motion.after).sort((a, b) => a.id - b.id));
@@ -145,27 +159,53 @@ describe("visible conservation during animation", () => {
       close.forEach((p, i) => expect(Math.hypot(p.x - exact[i].x, p.y - exact[i].y, p.z - exact[i].z)).toBeLessThan(.001));
     }
   });
-  it("joins ten rods sequentially into a true 100-unit chain, and unpack retraces the same process", () => {
-    const motion = change(100, "carry-ten", "tens"), from = placeValueLayout(motion.before), end = placeValuePose(motion, 1).cubes;
+  it.each([100, 600])("joins rods with visible rigid turns into the %i chain, and unpack retraces the process", (value) => {
+    const grouped = createPlaceValueBoard(value), before = { ...grouped, hundreds: grouped.hundreds.slice(0, -1), tens: grouped.hundreds.at(-1)! };
+    const motion: PlaceValueChange = { side: "left", kind: "carry-ten", before, after: changePlaceValueBoard(before, "carry-ten")! };
+    const from = placeValueLayout(motion.before), end = placeValuePose(motion, 1).cubes;
     expect(Math.max(...end.map((p) => p.z)) - Math.min(...end.map((p) => p.z))).toBe(99);
-    for (const progress of [.05, .35, .75]) {
-      const pose = placeValuePose(motion, progress).cubes;
-      expect(pose).toHaveLength(100);
+    const front = end.find((p) => p.z === 0 && p.y === value / 100 - .5)!;
+    expect(front.id % 2).toBe(value === 100 ? 0 : 1);
+    let turned = false;
+    for (const progress of [.05, .35, .75, .95]) {
+      const rendered = placeValuePose(motion, progress), pose = positions(rendered);
+      expect(pose).toHaveLength(value);
+      expect(new Set(pose.map((p) => p.id)).size).toBe(value);
+      if (rendered.rotations.length) { turned = true; expect(rendered.rotations[0].axis).toBe("y"); }
       const movingGroups = motion.before.tens.filter((group) => group.some((id) => {
         const p = pose.find((p) => p.id === id)!, a = from.find((p) => p.id === id)!, b = end.find((p) => p.id === id)!;
         return Math.hypot(p.x - a.x, p.y - a.y, p.z - a.z) > .001 && Math.hypot(p.x - b.x, p.y - b.y, p.z - b.z) > .001;
       }));
       expect(movingGroups).toHaveLength(1);
-      for (const group of motion.before.tens) {
-        const rod = group.map((id) => pose.find((p) => p.id === id)!);
-        expect(rod[0].z - rod[9].z).toBeCloseTo(9);
-      }
+      for (const group of motion.before.tens) expectRigid(pose, group);
       const reverse: PlaceValueChange = { ...motion, kind: "unpack-hundred", before: motion.after, after: motion.before };
-      placeValuePose(reverse, 1 - progress).cubes.forEach((p, i) => {
+      positions(placeValuePose(reverse, 1 - progress)).forEach((p, i) => {
         expect(p.id).toBe(pose[i].id);
         for (const axis of ["x", "y", "z"] as const) expect(p[axis]).toBeCloseTo(pose[i][axis], 9);
       });
     }
+    expect(turned).toBe(true);
+    for (const progress of [.000001, .999999]) {
+      const near = positions(placeValuePose(motion, progress)), exact = positions(placeValuePose(motion, progress < .5 ? 0 : 1));
+      near.forEach((p, index) => expect(distance(p, exact[index])).toBeLessThan(.001));
+    }
+  });
+  it.each(["tens", "hundreds"] as const)("turns surviving %s rigidly when a middle unpack crosses the five-group boundary", (place) => {
+    const before = createPlaceValueBoard(place === "tens" ? 70 : 700), selected = before[place][2].flat()[0];
+    const kind = place === "tens" ? "unpack-ten" : "unpack-hundred";
+    const motion: PlaceValueChange = { side: "left", kind, before, after: changePlaceValueBoard(before, kind, selected)! };
+    const shifted = before[place][5].flat();
+    for (const progress of [.001, .25, .5, .75, .999]) {
+      const pose = placeValuePose(motion, progress), units = positions(pose);
+      expect(units).toHaveLength(boardTotal(before));
+      expect(new Set(units.map((p) => p.id)).size).toBe(boardTotal(before));
+      expectRigid(units, shifted);
+      expect(pose.rotations.some((r) => r.axis === "y" && r.ids[0] === shifted[0])).toBe(true);
+    }
+    expect(positions(placeValuePose(motion, 1))).toEqual(placeValueLayout(motion.after).sort((a, b) => a.id - b.id));
+    const snapshot = placeValueSnapshot({ ...initial(), left: before, selection: { side: "left", unit: selected } });
+    const changed = planPlaceValue(snapshot, kind, 1000)!;
+    expect(historyPlaceValue(changed, "undo", 20000)!.left).toEqual(before);
   });
   it("pauses exactly, resumes by elapsed semantic time and leaves the common camera frame alone", () => {
     const state = planPlaceValue(placeValueSnapshot({ ...initial(), left: createPlaceValueBoard(10, "ones") }), "carry-one", 1000)!;
@@ -183,6 +223,19 @@ describe("visible conservation during animation", () => {
 });
 
 describe("common Tools scene and classroom contracts", () => {
+  it.each([60, 600])("replays the reversed placement at %i from a paused classroom snapshot", (value) => {
+    let state = placeValueSnapshot({ ...initial(), left: createPlaceValueBoard(value - 1) });
+    state = planPlaceValue(state, "add", 1000)!;
+    state = planPlaceValue(state, "carry-one", 2000)!;
+    if (value === 600) state = planPlaceValue(state, "carry-ten", 10000)!;
+    state = pausePlaceValue(state, state.motion!.startedAt + state.motion!.durationMs * .65);
+    const packet = createClassroomToolState("page", "doc", "reversed-placement", { toolId: "place-value", contentVersion: PLACE_VALUE_VERSION, state }, toolSceneOriginHash(scene()));
+    const restored = parseClassroomToolState(JSON.parse(JSON.stringify(packet)))!;
+    expect(restored).toEqual(packet);
+    const replay = placeValueSnapshotSchema.parse(restored.state);
+    expect(placeValuePose(replay.motion!, replay.motion!.progress)).toEqual(placeValuePose(state.motion!, .65));
+    expect(placeValueLayout(replay.left)).toEqual(placeValueLayout(state.left));
+  });
   it("registers both editors, freezes independent scenes and allows another insertion without private draft references", () => {
     for (const surface of ["microcourse", "formal-courseware"] as const) expect(preparedToolDefinitions(surface).some((d) => d.catalogId === "place-value")).toBe(true);
     const source = scene(), frozen = freezeToolScene(source);

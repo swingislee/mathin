@@ -11,7 +11,7 @@ import { cubeWorkbenchCamera } from "../spatial-lab/cube-workbench-camera";
 import type { PlaceValueSide, PlaceValueSnapshot } from "./contract";
 import { boardTotal } from "./contract";
 import { PLACE_VALUE_CAMERA_TARGET, placeValueGroup, placeValueLayout, placeValueOffset, placeValuePose, type PlaceValueCube } from "./model";
-import { PlaceValueBands, PlaceValueStage, type PlaceValueControlRenderer } from "./PlaceValueStage";
+import { PlaceValueStage, type PlaceValueControlRenderer } from "./PlaceValueStage";
 import { placeValueMessages } from "./messages";
 
 const empty = replayCubeHistory(createCubeHistory([]));
@@ -49,7 +49,7 @@ export function PlaceValueCanvas({ snapshot, progress, locale, navigation, axisS
     return { key: side + ":" + cube.id, x: cube.x + shift, y: cube.y, z: cube.z, materialToken: cube.id % 2 ? "blue" : "yellow", opacity: cube.opacity, selected: emphasized,
       emphasis: emphasized ? { color: CUBE_SELECTION_COLOR, faceOpacity: .08, priority: 2 } : undefined };
   });
-  const displayed = sides.map((side) => ({ side, pose: snapshot.motion?.side === side ? placeValuePose(snapshot.motion, progress) : { cubes: placeValueLayout(snapshot[side]), rotation: null } }));
+  const displayed = sides.map((side) => ({ side, pose: snapshot.motion?.side === side ? placeValuePose(snapshot.motion, progress) : { cubes: placeValueLayout(snapshot[side]), rotations: [] } }));
   const { left, right, mode } = snapshot;
   const projection = useMemo(() => {
     const boards = { left, right }, boardSides: PlaceValueSide[] = mode === "compare" ? ["left", "right"] : ["left"];
@@ -65,9 +65,8 @@ export function PlaceValueCanvas({ snapshot, progress, locale, navigation, axisS
     cameraRequestKey={snapshot.cameraRevision} onCellSelect={select} onPointerMissed={onPointerMissed}
     sceneOverlay={<>
       <PlaceValueStage snapshot={snapshot} progress={progress} locale={locale} renderPlaceControl={renderPlaceControl} />
-      {displayed.map(({ side, pose }) => <PlaceValueBands key={side} cubes={pose.cubes} shift={offset(side)} />)}
-      {displayed.map(({ side, pose }) => pose.rotation && <group key={side} position={[pose.rotation.pivot.x + offset(side), pose.rotation.pivot.y, pose.rotation.pivot.z]} rotation={[pose.rotation.angle, 0, 0]}>
-        <VoxelGeometry model={{ ...base, cells: cellsFor(pose.rotation.local, side) }} palette={{ leaf: colors.yellow, moon: CUBE_SELECTION_COLOR }} materialColors={colors} preserveSelectedColors readOnly />
-      </group>)}
+      {displayed.flatMap(({ side, pose }) => pose.rotations.map((rotation) => <group key={side + ":" + rotation.ids[0]} position={[rotation.pivot.x + offset(side), rotation.pivot.y, rotation.pivot.z]} rotation={rotation.axis === "x" ? [rotation.angle, 0, 0] : [0, rotation.angle, 0]}>
+        <VoxelGeometry model={{ ...base, cells: cellsFor(rotation.local, side) }} palette={{ leaf: colors.yellow, moon: CUBE_SELECTION_COLOR }} materialColors={colors} preserveSelectedColors readOnly />
+      </group>))}
     </>} />;
 }

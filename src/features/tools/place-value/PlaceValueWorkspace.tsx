@@ -139,7 +139,7 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
             <p>{selected ? m.group + " " + selected.ids.length + " " + m.units : m.groupHint}</p>
             <Button size="sm" disabled={disabled || !unpack} onClick={() => unpack && act(unpack)}>{unpack === "unpack-hundred" ? m.unpackHundred : m.unpackTen}</Button>
             <p className="text-muted">{m.fullHint}</p>
-            <p className="text-muted">{m.bands}</p>
+            <p className="text-muted">{m.orientation}</p>
             <div className="flex gap-2">
               <SpatialActionButton action={presentation.playing ? "pause" : "play"} label={presentation.playing ? m.pause : m.resume} disabled={publishing || !regrouping} onClick={toggleMotion} />
               <SpatialActionButton action="nextStep" label={m.step} disabled={publishing || !regrouping} onClick={() => updateProgress(Math.min(1, presentation.progress + .1))} />

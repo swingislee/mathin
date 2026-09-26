@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useRef, type CSSProperties, type ReactNode } from "react";
+import { useRef, type CSSProperties, type ReactNode } from "react";
 import { Html, Line } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import { DoubleSide, Path, Shape, Vector3, type Camera, type Group } from "three";
+import { Vector3, type Camera, type Group } from "three";
 import { CUBE_COLORS } from "../spatial-lab/cube-structures-contract";
 import type { PlaceValuePlace, PlaceValueSide, PlaceValueSnapshot } from "./contract";
-import { PLACE_VALUE_COLUMNS, PLACE_VALUE_PLACES, PLACE_VALUE_WEIGHTS, placeValueOffset, type PlaceValueCube } from "./model";
+import { PLACE_VALUE_COLUMNS, PLACE_VALUE_PLACES, PLACE_VALUE_WEIGHTS, placeValueOffset } from "./model";
 import { placeValueMessages } from "./messages";
 import styles from "./PlaceValueWorkspace.module.css";
 
@@ -27,18 +27,6 @@ export function placeValueControlPositions(camera: Camera, size: { width: number
   items.at(-1)!.x = Math.min(items.at(-1)!.x, max);
   for (let index = items.length - 2; index >= 0; index--) items[index].x = Math.min(items[index].x, items[index + 1].x - width - 8);
   return { width, positions: Object.fromEntries(items.map((item) => [item.key, [item.x, item.y] as [number, number]])) };
-}
-
-/** 正面端面边带表达五组一换色；中间和背后仍是原来十个/一百个单位块。 */
-export function PlaceValueBands({ cubes, shift = 0 }: { cubes: PlaceValueCube[]; shift?: number }) {
-  const band = useMemo(() => {
-    const shape = new Shape(); shape.moveTo(-.46, -.46); shape.lineTo(.46, -.46); shape.lineTo(.46, .46); shape.lineTo(-.46, .46); shape.closePath();
-    const hole = new Path(); hole.moveTo(-.29, -.29); hole.lineTo(-.29, .29); hole.lineTo(.29, .29); hole.lineTo(.29, -.29); hole.closePath(); shape.holes.push(hole);
-    return shape;
-  }, []);
-  return <group name="place-value-counting-bands">{cubes.filter((cube) => cube.band !== undefined).map((cube) => <mesh key={cube.id} position={[cube.x + shift, cube.y, cube.z + .502]} raycast={ignoreRaycast}>
-    <shapeGeometry args={[band]} /><meshBasicMaterial color={CUBE_COLORS[cube.band === 0 ? 2 : 3]} side={DoubleSide} toneMapped={false} transparent opacity={cube.opacity ?? 1} depthWrite={false} />
-  </mesh>)}</group>;
 }
 
 function DepthRuler({ x, length, locale }: { x: number; length: number; locale: "zh" | "en" }) {

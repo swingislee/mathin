@@ -6,18 +6,25 @@ import {
   type PlaceValueMotion, type PlaceValuePlace, type PlaceValueSide, type PlaceValueSnapshot,
 } from "./contract";
 
-export interface PlaceValueCube { id: number; x: number; y: number; z: number; place: PlaceValuePlace; opacity?: number; band?: number }
-export interface PlaceValueRotation { ids: number[]; pivot: { x: number; y: number; z: number }; angle: number; local: PlaceValueCube[] }
+export interface PlaceValueCube { id: number; x: number; y: number; z: number; place: PlaceValuePlace; opacity?: number }
+export interface PlaceValueRotation { ids: number[]; pivot: { x: number; y: number; z: number }; axis: "x" | "y"; angle: number; local: PlaceValueCube[] }
 export const PLACE_VALUE_COLUMNS = { hundreds: -5, tens: 0, ones: 5 } as const;
 export const PLACE_VALUE_PLACES = ["hundreds", "tens", "ones"] as const;
 export const PLACE_VALUE_WEIGHTS = { hundreds: 100, tens: 10, ones: 1 } as const;
 /** 镜头以数位前沿的中间为锚点；百链加长也不改变旋转支点。 */
 export const PLACE_VALUE_CAMERA_TARGET = { x: 0, y: 4, z: 0 } as const;
 export const placeValueOffset = (mode: PlaceValueInitial["mode"], side: PlaceValueSide) => mode === "compare" ? side === "left" ? -9 : 9 : 0;
+/** 第六至第十组反向摆放，用原来的另一端朝前；成员顺序和颜色不变。 */
+function laidOutRod(ids: number[], index: number, place: "tens" | "hundreds"): PlaceValueCube[] {
+  return ids.map((id, member) => {
+    const depth = index % 10 < 5 ? member : ids.length - 1 - member;
+    return { id, x: PLACE_VALUE_COLUMNS[place], y: index + .5, z: depth === 0 ? 0 : -depth, place };
+  });
+}
 export function placeValueLayout(board: PlaceValueBoard): PlaceValueCube[] {
   return [
-    ...board.hundreds.flatMap((hundred, index) => hundred.flat().map((id, depth) => ({ id, x: -5, y: index + .5, z: depth === 0 ? 0 : -depth, place: "hundreds" as const, ...(depth === 0 ? { band: index % 10 < 5 ? 0 : 1 } : {}) }))),
-    ...board.tens.flatMap((ten, index) => ten.map((id, depth) => ({ id, x: 0, y: index + .5, z: depth === 0 ? 0 : -depth, place: "tens" as const, ...(depth === 0 ? { band: index % 10 < 5 ? 0 : 1 } : {}) }))),
+    ...board.hundreds.flatMap((hundred, index) => laidOutRod(hundred.flat(), index, "hundreds")),
+    ...board.tens.flatMap((ten, index) => laidOutRod(ten, index, "tens")),
     ...board.ones.map((id, index) => ({ id, x: 5, y: index + .5, z: 0, place: "ones" as const })),
   ];
 }
@@ -122,36 +129,56 @@ export function historyPlaceValue(snapshot: PlaceValueSnapshot, direction: "undo
   return { ...next, past: direction === "undo" ? snapshot.past.slice(0, -1) : [...snapshot.past, entry].slice(-PLACE_VALUE_HISTORY_LIMIT),
     future: direction === "undo" ? [...snapshot.future, entry].slice(-PLACE_VALUE_HISTORY_LIMIT) : snapshot.future.slice(0, -1) };
 }
-/** 几何只读取成员身份；十条连接时每条自身保持刚性。 */
-export function placeValuePose(change: PlaceValueChange, progress: number): { cubes: PlaceValueCube[]; rotation: PlaceValueRotation | null } {
+/** 几何只读取成员身份；躺倒、掉头与首尾连接都保持每条积木刚性。 */
+export function placeValuePose(change: PlaceValueChange, progress: number): { cubes: PlaceValueCube[]; rotations: PlaceValueRotation[] } {
   if (change.kind === "unpack-ten" || change.kind === "unpack-hundred") return placeValuePose({ ...change, before: change.after, after: change.before, kind: reverseKind[change.kind] }, 1 - progress);
   const from = placeValueLayout(change.before), to = placeValueLayout(change.after);
-  if (progress <= 0) return { cubes: from, rotation: null };
-  if (progress >= 1) return { cubes: to, rotation: null };
+  if (progress <= 0) return { cubes: from, rotations: [] };
+  if (progress >= 1) return { cubes: to, rotations: [] };
   const start = new Map(from.map((p) => [p.id, p])), end = new Map(to.map((p) => [p.id, p]));
   const ids = new Set([...start.keys(), ...end.keys()]), t = spatialActionProgress(progress);
-  let rotation: PlaceValueRotation | null = null;
+  const cubes: PlaceValueCube[] = [], rotations: PlaceValueRotation[] = [], handled = new Set<number>();
+  const midpoint = (points: Map<number, PlaceValueCube>, members: number[]) => {
+    const first = points.get(members[0])!, last = points.get(members.at(-1)!)!;
+    return { x: (first.x + last.x) / 2, y: (first.y + last.y) / 2, z: (first.z + last.z) / 2 };
+  };
+  const moveRod = (members: number[], local: number, lift = 0, standToLie = false) => {
+    members.forEach((id) => handled.add(id));
+    const a = midpoint(start, members), b = midpoint(end, members);
+    const direction = (points: Map<number, PlaceValueCube>) => Math.sign(points.get(members.at(-1)!)!.z - points.get(members[0])!.z);
+    const angle = standToLie ? direction(end) * Math.PI / 2 : direction(start) !== direction(end) ? Math.PI : 0;
+    if (angle && local > 0 && local < 1) {
+      rotations.push({ ids: members, axis: standToLie ? "x" : "y", angle: angle * local,
+        pivot: { x: a.x + (b.x - a.x) * local, y: a.y + (b.y - a.y) * local + lift * Math.sin(Math.PI * local), z: a.z + (b.z - a.z) * local },
+        local: members.map((id) => { const p = start.get(id)!; return { ...end.get(id)!, x: p.x - a.x, y: p.y - a.y, z: p.z - a.z }; }) });
+    } else {
+      members.forEach((id) => { const p = start.get(id)!, q = end.get(id)!;
+        cubes.push({ ...q, x: p.x + (q.x - p.x) * local, y: p.y + (q.y - p.y) * local + lift * Math.sin(Math.PI * local), z: p.z + (q.z - p.z) * local });
+      });
+    }
+  };
   let tenIds: number[] = [], hundredIds: number[] = [];
   if (change.kind === "carry-one") tenIds = change.after.tens.find((group) => !change.before.tens.some((old) => old[0] === group[0])) ?? [];
   if (change.kind === "carry-ten") hundredIds = change.after.hundreds.find((group) => !change.before.hundreds.some((old) => old[0][0] === group[0][0]))?.flat() ?? [];
-  if (tenIds.length && progress > 0 && progress < 1) {
-    const a = start.get(tenIds[0])!, b = end.get(tenIds[0])!, angle = -Math.PI / 2 * t;
-    rotation = { ids: tenIds, angle, pivot: { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t + 1.5 * Math.sin(Math.PI * t), z: 0 },
-      local: tenIds.map((id, index) => ({ id, x: 0, y: index, z: 0, place: "tens" })) };
+  if (tenIds.length) moveRod(tenIds, t, 1.5, true);
+  for (let index = 0; index < hundredIds.length / 10; index++) {
+    const local = spatialActionProgress(Math.max(0, Math.min(1, progress * 10 - (9 - index))));
+    moveRod(hundredIds.slice(index * 10, index * 10 + 10), local, 2);
   }
-  const cubes: PlaceValueCube[] = [];
+  // 拆开中间一组后，上方组的顺位可能跨过第五组；整条转向，避免逐块插值时挤在一起。
+  for (const place of ["tens", "hundreds"] as const) for (const group of change.after[place]) {
+    const members = group.flat();
+    if (members.every((id) => !handled.has(id) && start.get(id)?.place === place)) moveRod(members, t);
+  }
   for (const id of ids) {
+    if (handled.has(id)) continue;
     const a = start.get(id), b = end.get(id);
     if (!a && b) { cubes.push({ ...b, y: b.y + (1 - t) * 2, opacity: progress === 0 ? .01 : Math.max(.1, t) }); continue; }
     if (!b && a) { if (progress < 1) cubes.push({ ...a, y: a.y + t * 2, opacity: Math.max(.01, 1 - t) }); continue; }
     if (!a || !b) continue;
-    if (rotation?.ids.includes(id)) continue;
-    let local = t;
-    const index = hundredIds.indexOf(id);
-    if (index >= 0) local = spatialActionProgress(Math.max(0, Math.min(1, progress * 10 - (9 - Math.floor(index / 10)))));
-    cubes.push({ ...b, x: a.x + (b.x - a.x) * local, y: a.y + (b.y - a.y) * local + (index >= 0 ? 2 * Math.sin(Math.PI * local) : 0), z: a.z + (b.z - a.z) * local });
+    cubes.push({ ...b, x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: a.z + (b.z - a.z) * t });
   }
-  return { cubes, rotation };
+  return { cubes, rotations };
 }
 export function placeValueFrame(snapshot: Pick<PlaceValueInitial, "left" | "right" | "mode" | "view">): PlaceValueInitial["frame"] {
   const sides: PlaceValueSide[] = snapshot.mode === "compare" ? ["left", "right"] : ["left"];

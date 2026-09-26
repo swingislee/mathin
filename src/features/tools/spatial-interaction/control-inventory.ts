@@ -70,7 +70,7 @@ export const SPATIAL_WORKBENCH_INVENTORY = [
     features: "调整平行四边形；沿高剪开、二维直接拖纸片、落点吸附、拼合演示、撤销与复原。正式场景保存与课堂接入尚未开放。",
     shared: "与 3D 工作台共用动作按钮、语义 SVG、工具栏样式、非模态浮窗、退出规则与点击保护；二维几何与纸片手势独立" },
   { id: "place-value", name: "数位积木", files: ["place-value/PlaceValueWorkspace.tsx", "place-value/PlaceValueStation.tsx"],
-    features: "0–999 数位；各列就地改数与 SVG 加减；积木与竖式同步进位；数位摆放槽、深度标尺与五组端面边带；固定前沿镜头支点；暂停、拆组、同尺度比较、撤销与复原。",
+    features: "0–999 数位；各列就地改数与 SVG 加减；积木与竖式同步进位；数位摆放槽、深度标尺与每五组反向摆放；固定前沿镜头支点；暂停、拆组、同尺度比较、撤销与复原。",
     shared: "单位块实例渲染、正交视角与相机、动作按钮、视角栏、非模态面板、动画调度、场景宿主和课堂语义时间线；进退位成员关系独立" },
   { id: "cube-structures", name: "立方体结构", files: ["spatial-lab/CubeStructuresWorkbench.tsx", "spatial-lab/CubeRecordingPanel.tsx", "spatial-lab/CubeDraftPanel.tsx"],
     features: "添加／挖除单位块；选择、编组／取消编组；整组移动、世界轴转动、翻滚；层显隐；对象／面标色、透明、符号与编号；拆分；指标；步骤录制、编辑、播放与撤销；教学起点。",

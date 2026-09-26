@@ -19,6 +19,14 @@ const draw = (patch: Partial<PlaceValueCanvasProps> = {}) => {
   renderToStaticMarkup(createElement(PlaceValueCanvas, props)); return rendered.props!;
 };
 describe("place-value uses the existing voxel canvas", () => {
+  it.each([90, 900])("renders original blue end blocks after the fifth group for %i", (value) => {
+    const snapshot = placeValueSnapshot({ ...createDefaultPlaceValueInitial(), left: createPlaceValueBoard(value) });
+    const { model } = draw({ snapshot });
+    expect(model.cells.filter((c) => c.z === 0).map((c) => c.materialToken)).toEqual(["yellow", "yellow", "yellow", "yellow", "yellow", "blue", "blue", "blue", "blue"]);
+    const last = (value === 90 ? snapshot.left.tens : snapshot.left.hundreds).at(-1)!.flat();
+    expect(model.cells.find((c) => c.key === "left:" + last.at(-1))!.z).toBe(0);
+    expect(model.cells.find((c) => c.key === "left:" + last[0])!.z).toBe(value === 90 ? -9 : -99);
+  });
   it("ignores old geometry-center frames and keeps the number-front orbit pivot", () => {
     const snapshot = placeValueSnapshot({ ...createDefaultPlaceValueInitial(), left: createPlaceValueBoard(104), grid: true, frame: { center: { x: 0, y: 8, z: -49 }, radius: 50 } });
     const rendered = draw({ snapshot });
