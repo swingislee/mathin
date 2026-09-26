@@ -530,8 +530,16 @@
         "desc": "Drag a rectangle or right triangle around an edge, rotate slowly, pause and retain the swept shape to compare how cylinders and cones form."
       },
       "plane-pieces": {
-        "name": "Shape pieces and tangrams",
-        "desc": "Move, turn, reflect and copy shape pieces; explore tangram arrangements."
+        "name": "Shape pieces (legacy)",
+        "desc": "Open previously saved shape-piece and tangram scenes. Use Exploring basic shapes or Tangram construction for new scenes."
+      },
+      "plane-shapes": {
+        "name": "Exploring basic shapes",
+        "desc": "Add selected shapes or everyday examples, inspect sides, vertices and curves, and reveal plane outlines."
+      },
+      "plane-tangram": {
+        "name": "Tangram construction",
+        "desc": "Move, rotate and flip the seven pieces on a dedicated tangram stage to explore different constructions."
       },
       "plane-geometry": {
         "name": "Lines and angles",

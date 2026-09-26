@@ -198,3 +198,77 @@ describe("the shared planar workbench", () => {
     expect(current()).toEqual(initial);
   });
 });
+
+describe("basic shapes: compose materials and capabilities on one stage", () => {
+  const initial = () => planarScene("01-basic").create();
+  it("adds from the right toolbar without a scene switch or replacing existing objects", async () => {
+    await render({ toolId: "plane-shapes", initial: initial() });
+    expect(container.querySelectorAll("[data-shape-object]")).toHaveLength(1);
+    expect(button("选择教学现场")).toBeNull();
+    expect(button("添加图形或生活实例").closest('[role="toolbar"]')?.getAttribute("aria-label")).toBe("操作工具");
+    await act(async () => button("添加图形或生活实例").click());
+    expect(container.querySelector('[data-cube-panel-anchor="tool"]')).not.toBeNull();
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    await act(async () => button("添加三角形").click());
+    expect(current()?.params.count).toBe(2);
+    expect(current()?.params.kind0).toBe(2); expect(current()?.points.object0).toEqual(initial().points.object0);
+    expect(container.querySelectorAll("[data-shape-object]")).toHaveLength(2);
+    await act(async () => button("撤销").click()); expect(current()).toEqual(initial());
+    await act(async () => button("重做").click()); expect(current()?.params.count).toBe(2);
+  });
+  it("composes boundary and vertex observation, preserves marked parts when adding, and drags the whole shape", async () => {
+    await render({ toolId: "plane-shapes", initial: initial() });
+    await act(async () => button("观察边界").click());
+    await act(async () => button("观察顶点").click());
+    expect(button("观察边界").getAttribute("aria-pressed")).toBe("true");
+    expect(button("观察顶点").getAttribute("aria-pressed")).toBe("true");
+    const edge = container.querySelector('[aria-label="长方形 · 边 1"]')!;
+    await act(async () => edge.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
+    expect(current()?.marks).toEqual(["edge.0.0"]);
+    await act(async () => button("添加图形或生活实例").click());
+    await act(async () => button("添加圆").click());
+    expect(current()?.marks).toEqual(["edge.0.0"]);
+    const body = container.querySelector('[data-shape-object="0"] [aria-label="1 · 长方形"]')!;
+    await pointer(body, "pointerdown", 480, 360); await pointer(svg(), "pointermove", 530, 380); await pointer(svg(), "pointerup", 530, 380);
+    expect(current()?.points.object0).toEqual({ x: 530, y: 380 });
+    expect(current()?.params.kind0).toBe(2); expect(current()?.marks).toEqual(["edge.0.0"]);
+    expect(frames.size).toBe(0); expect(container.querySelector('[role="alert"]')).toBeNull();
+  });
+  it("fades a life example on the same outline, pauses, and restores the prepared material", async () => {
+    await render({ toolId: "plane-shapes", initial: initial() });
+    await act(async () => button("添加图形或生活实例").click());
+    await act(async () => button("添加钟面").click());
+    await act(async () => button("生活实例：提取轮廓／还原细节").click());
+    await tick(450);
+    expect(Number(container.querySelector('[data-life-details="clock"]')?.getAttribute("opacity"))).toBeCloseTo(0.5);
+    expect(container.querySelectorAll("[data-shape-object]")).toHaveLength(2);
+    await act(async () => button("暂停过程").click());
+    expect(current()?.params.detail1).toBeCloseTo(0.5);
+    await tick(500); expect(current()?.params.detail1).toBeCloseTo(0.5);
+    await act(async () => button("继续过程").click()); await tick(450);
+    expect(current()?.params.detail1).toBe(0);
+    expect(container.querySelector('[data-shape-kind="clock"]')).not.toBeNull();
+    await act(async () => button("恢复备好的起点").click()); expect(current()).toEqual(initial());
+  });
+  it("allows an empty stage and reads precise fields from the current material", async () => {
+    await render({ toolId: "plane-shapes", initial: initial() });
+    await act(async () => button("移去当前图形").click());
+    expect(current()?.params.count).toBe(0); expect(button("移去当前图形").disabled).toBe(true);
+    await act(async () => button("添加图形或生活实例").click());
+    await act(async () => button("添加门板正面").click());
+    expect(current()?.params.kind0).toBe(9);
+    await act(async () => button("当前图形顺时针 45°").click()); await tick(450);
+    await act(async () => button("形状与准确参数").click());
+    const values = [...container.querySelectorAll<HTMLInputElement>('input[type="number"]')].map((input) => input.valueAsNumber);
+    expect(values).toEqual([1, 45, 1]);
+    expect(current()?.params).not.toHaveProperty("angle");
+  });
+  it("keeps materials inert for viewers and tangram independent from basic recognition", async () => {
+    await render({ toolId: "plane-shapes", initial: initial(), readOnly: true });
+    expect(button("添加图形或生活实例").disabled).toBe(true);
+    expect(button("观察边界").disabled).toBe(true);
+    await render({ toolId: "plane-tangram", initial: planarScene("02").create() });
+    expect(current()?.params.count).toBe(7); expect(button("选择教学现场")).toBeNull();
+    expect(button("添加图形或生活实例")).toBeNull(); expect(button("观察顶点")).toBeNull();
+  });
+});

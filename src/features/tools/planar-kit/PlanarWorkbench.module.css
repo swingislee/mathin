@@ -11,3 +11,9 @@
 .gallery { display: flex; flex-direction: column; gap: 4px; }
 .gallery button { white-space: normal; height: auto; min-height: 34px; justify-content: flex-start; text-align: left; font-size: 12px; }
 .progress { display: grid; gap: 8px; font-size: 12px; margin-block: 12px; }
+.materialGroup + .materialGroup { margin-top: 16px; }
+.materialGroup h3 { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+.materials { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+.materials button { min-height: 86px; height: auto; padding: 6px 2px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+.materials button > span:first-child { display: block; width: 64px; height: 48px; }
+.materials svg { width: 100%; height: 100%; }

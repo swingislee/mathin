@@ -4,7 +4,7 @@ import {
   type ClassroomInteractionSyncProvider,
 } from "@/features/classroom/sync/interaction-provider";
 import { FRACTION_COURSEWARE_VERSION, MOTION_COURSEWARE_VERSION } from "./numeric-teaching-content";
-import { PLANAR_TOOLS, type PlanarVersion } from "../planar-kit/catalog";
+import { PLANAR_TOOLS, LEGACY_PLANAR_TOOLS, type PlanarVersion } from "../planar-kit/catalog";
 
 export const TOOL_COURSEWARE_CONTENT_VERSION = "tool-embed-v1" as const;
 export const CUBE_COURSEWARE_LEGACY_VERSION = "cube-structures-lesson-v1" as const;
@@ -40,6 +40,7 @@ interface ToolCoursewareContractDefinition {
 
 export const TOOL_COURSEWARE_CONTRACTS = [
   ...PLANAR_TOOLS.map((tool) => ({ toolId: tool.id, contentVersion: tool.version, catalogId: tool.id, authoringSurfaces: ["microcourse", "formal-courseware"] as const, classroomSync: CLASSROOM_TOOL_STATE_SYNC_V1 })),
+  ...LEGACY_PLANAR_TOOLS.map((tool) => ({ toolId: tool.id, contentVersion: tool.version, catalogId: tool.id, authoringSurfaces: [] as const, classroomSync: CLASSROOM_TOOL_STATE_SYNC_V1 })),
   { toolId: "place-value", contentVersion: PLACE_VALUE_COURSEWARE_VERSION, catalogId: "place-value", authoringSurfaces: ["microcourse", "formal-courseware"] as const, classroomSync: CLASSROOM_TOOL_STATE_SYNC_V1 },
   { toolId: "solid-nets", contentVersion: SOLID_NETS_COMPLETE_COURSEWARE_VERSION, catalogId: "solid-nets", authoringSurfaces: ["microcourse", "formal-courseware"] as const, classroomSync: CLASSROOM_TOOL_STATE_SYNC_V1 },
   { toolId: "solid-geometry", contentVersion: SOLID_GEOMETRY_EXPLORATION_COURSEWARE_VERSION, catalogId: "solid-geometry", authoringSurfaces: ["microcourse", "formal-courseware"] as const, classroomSync: CLASSROOM_TOOL_STATE_SYNC_V1 },

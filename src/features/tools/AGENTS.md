@@ -1,6 +1,7 @@
 # 教具接入与空间操作
 
 - 教具用于备课和现场操作；新增能力先判断是已有工具的动作、显示开关还是独立工具。参数、备课、课堂与恢复起点使用 `scenes/` 的已有入口。
+- 按教学用途划分工具，不按共用代码或都能拖动来合并。同一教学现场的材料、观察和操作能力从右侧添加／开启并保留当前舞台；相近功能不做成左上角替换整个现场的模式选择。图形认识与七巧板拼摆分别独立。
 - 平面教具在 `planar-kit/catalog.ts` 登记教学入口，以领域描述符接入 `PlanarWorkbench`；备课与课堂适配由目录生成，不在编辑器另写工具分支。高使用共用 `HeightMark`／`RightAngleMark`，指针、动画和保存遵循 [平面工作台合同](planar-kit/README.md)。
 - 空间工具的模式与参数面板使用 `spatial-interaction/useSpatialToolState`，在 `panels` 中穷尽声明每个面板需要的拾取方式。一次性命令与显示开关留在领域状态，不伪装成鼠标模式。
 - 平面与 3D 教具的功能按钮用 `SpatialActionButton` 的动作 ID，带文字的按钮复用 `SpatialActionIcon`；SVG 与 zh/en 语义在 `spatial-interaction/actions.ts` / `SpatialActionIcon.tsx` 维护。先比对现有动作：同义复用，整体移动／移面、旋转视角／旋转对象、展开／复原、透明／液量、截面／剪棱保持区分。工具栏样式、视角栏、XYZ 精确步进、颜色、透明度和浮窗复用共用实现；领域只提供状态与回调，二维画布保留自身几何和手势。新增动作或接入工作台同步 `control-inventory.ts`，用 `node scripts/spatial-controls-catalog.mjs` 生成实际 SVG 对照页，并运行 `tests/spatial-controls-catalog.test.ts`。

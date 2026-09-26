@@ -56,8 +56,8 @@ function PlanarWorkbenchStage({ toolId, locale: suppliedLocale, initial, readOnl
     window.addEventListener("blur", cancelScrub);
     return () => { window.removeEventListener("blur", cancelScrub); scrubSource.current = null; };
   }, []);
-  const controls = useSpatialToolState<"direct", "scenes" | "parameters" | "display">({
-    defaultTool: "direct", panels: { scenes: "direct", parameters: "direct", display: "direct" }, onClearSelection: () => setSelected(null),
+  const controls = useSpatialToolState<"direct", "scenes" | "parameters" | "display" | "materials">({
+    defaultTool: "direct", panels: { scenes: "direct", parameters: "direct", display: "direct", materials: "direct" }, onClearSelection: () => setSelected(null),
   });
   const running = !!authority.motion && !authority.motion.paused && planarProgress(authority.motion, now) < 1;
   const frame = planarFrame(authority, definition, now), shown = preview ?? frame;
@@ -159,6 +159,7 @@ function PlanarWorkbenchStage({ toolId, locale: suppliedLocale, initial, readOnl
     }
   }
   const m = (zh: string, english: string) => en ? english : zh;
+  const materialGroups = [...new Map((definition.materials ?? []).map((material) => [material.group.en, material.group])).values()];
   const switches = [{ key: "grid", label: { zh: "参考网格", en: "Reference grid" } }, { key: "measures", label: { zh: "数值与测量标记", en: "Values and measurements" } }, ...(definition.toggles ?? [])].filter((entry, index, all) => all.findIndex((item) => item.key === entry.key) === index);
   return <div className={workbenchStyles.workspace} {...controls.bindings} onKeyDown={handleKey} data-planar-tool={toolId} data-planar-scene={definition.id}>
     <div className={styles.viewport}><div className={workbenchStyles.canvas}>
@@ -176,7 +177,8 @@ function PlanarWorkbenchStage({ toolId, locale: suppliedLocale, initial, readOnl
         <SpatialActionButton action="settings" label={m("显示设置", "Display settings")} active={controls.panel === "display"} onClick={() => controls.togglePanel("display")} />
       </div>
       <div role="toolbar" aria-label={m("操作工具", "Teaching actions")} className={`${workbenchStyles.dock} ${workbenchStyles.tools}`}>
-        {definition.actions?.map((action) => <SpatialActionButton key={action.id} action={action.icon} label={textFor(action.label, locale)} disabled={disabled || running || !frameIsExact || action.disabled?.(shown, { selected })} onClick={() => execute(action)} />)}
+        {!!definition.materials?.length && <SpatialActionButton action="add" label={m("添加图形或生活实例", "Add a shape or everyday example")} active={controls.panel === "materials"} disabled={disabled || running || !frameIsExact} onClick={() => controls.togglePanel("materials")} />}
+        {definition.actions?.map((action) => <SpatialActionButton key={action.id} action={action.icon} label={textFor(action.label, locale)} active={action.active?.(shown)} disabled={disabled || running || !frameIsExact || action.disabled?.(shown, { selected })} onClick={() => execute(action)} />)}
         {authority.motion && planarProgress(authority.motion, now) < 1 && <>
           <SpatialActionButton action={running ? "pause" : "play"} label={running ? m("暂停过程", "Pause motion") : m("继续过程", "Resume motion")} disabled={disabled} onClick={() => publish(planarPause(authority, planarEventTime(), running))} />
           <SpatialActionButton action="stop" label={m("停在当前位置", "Stop at the current position")} disabled={disabled} onClick={stopAtFrame} />
@@ -186,16 +188,25 @@ function PlanarWorkbenchStage({ toolId, locale: suppliedLocale, initial, readOnl
         <SpatialActionButton action="redo" label={m("重做", "Redo")} disabled={disabled || running || !authority.future.length} onClick={() => publish(planarHistory(authority, "redo"))} />
         <SpatialActionButton action="reset" label={m("恢复备好的起点", "Restore the prepared starting scene")} disabled={disabled} onClick={() => { commit(prepared.current, undefined, frameIsExact ? frame : authority.current); setSelected(null); }} />
       </div>
-      {controls.panel && <SpatialCanvasPanel title={controls.panel === "scenes" ? m("教学现场", "Teaching scenes") : controls.panel === "parameters" ? m("形状与准确参数", "Shape and precise parameters") : m("显示设置", "Display settings")} anchor="meta" closeLabel={m("关闭面板", "Close panel")} onClose={controls.closePanel}>
+      {controls.panel && <SpatialCanvasPanel title={controls.panel === "materials" ? m("添加到当前舞台", "Add to this stage") : controls.panel === "scenes" ? m("教学现场", "Teaching scenes") : controls.panel === "parameters" ? m("形状与准确参数", "Shape and precise parameters") : m("显示设置", "Display settings")} anchor={controls.panel === "materials" ? "tool" : "meta"} closeLabel={m("关闭面板", "Close panel")} onClose={controls.closePanel}>
+        {controls.panel === "materials" && materialGroups.map((group) => <section key={group.en} className={styles.materialGroup}>
+          <h3>{textFor(group, locale)}</h3>
+          <div className={styles.materials}>{definition.materials?.filter((material) => material.group.en === group.en).map((material) => <Button key={material.id} variant="ghost" aria-label={`${m("添加", "Add ")}${textFor(material.label, locale)}`} disabled={disabled || running || !frameIsExact || material.disabled?.(shown)} onClick={() => {
+            if (commit(material.add(shown))) { setSelected(null); controls.closePanel(); }
+          }}><span aria-hidden>{material.preview}</span><span>{textFor(material.label, locale)}</span></Button>)}</div>
+        </section>)}
         {controls.panel === "scenes" && <div className={styles.gallery}>{scenes.map((scene) => <Button key={scene.id} variant={scene.id === shown.sceneId ? "secondary" : "ghost"} disabled={disabled || running || !frameIsExact} onClick={() => { commit(scene.create()); setSelected(null); controls.closePanel(); }}>{textFor(scene.title, locale)}</Button>)}</div>}
-        {controls.panel === "parameters" && definition.fields?.map((field) => <label className={styles.field} key={field.key}>{textFor(field.label, locale)}{field.options ? <Select value={String(shown.params[field.key])} disabled={disabled || running || !frameIsExact} onValueChange={(value) => setField(field.key, Number(value))}><SelectTrigger className="w-36" aria-label={textFor(field.label, locale)}><SelectValue /></SelectTrigger><SelectContent>{field.options.map((option) => <SelectItem key={option.value} value={String(option.value)}>{textFor(option.label, locale)}</SelectItem>)}</SelectContent></Select> : <Input key={`${shown.sceneId}:${field.key}:${shown.params[field.key]}`} type="number" min={field.min} max={field.max} step={field.step ?? "any"} defaultValue={shown.params[field.key] ?? field.min} disabled={disabled || running || !frameIsExact} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} onBlur={(event) => {
-          const value = event.currentTarget.valueAsNumber; if (!Number.isFinite(value)) { event.currentTarget.value = String(shown.params[field.key] ?? field.min); return; }
-          const rounded = field.step ? field.min + Math.round((value - field.min) / field.step) * field.step : value;
-          const bounded = Math.min(field.max, Math.max(field.min, rounded));
-          setField(field.key, bounded);
-        }} />}</label>)}
+        {controls.panel === "parameters" && definition.fields?.map((field) => {
+          const currentValue = field.read?.(shown) ?? shown.params[field.key] ?? field.min;
+          const fieldDisabled = disabled || running || !frameIsExact || field.disabled?.(shown);
+          return <label className={styles.field} key={field.key}>{textFor(field.label, locale)}{field.options ? <Select value={String(currentValue)} disabled={fieldDisabled} onValueChange={(value) => setField(field.key, Number(value))}><SelectTrigger className="w-36" aria-label={textFor(field.label, locale)}><SelectValue /></SelectTrigger><SelectContent>{field.options.map((option) => <SelectItem key={option.value} value={String(option.value)}>{textFor(option.label, locale)}</SelectItem>)}</SelectContent></Select> : <Input key={`${shown.sceneId}:${field.key}:${currentValue}`} type="number" min={field.min} max={field.max} step={field.step ?? "any"} defaultValue={currentValue} disabled={fieldDisabled} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} onBlur={(event) => {
+            const value = event.currentTarget.valueAsNumber; if (!Number.isFinite(value)) { event.currentTarget.value = String(currentValue); return; }
+            const rounded = field.step ? field.min + Math.round((value - field.min) / field.step) * field.step : value;
+            setField(field.key, Math.min(field.max, Math.max(field.min, rounded)));
+          }} />}</label>;
+        })}
         {controls.panel === "display" && switches.map((flag) => <label className={styles.field} key={flag.key}>{textFor(flag.label, locale)}<Checkbox checked={!!shown.flags[flag.key]} disabled={disabled || running || !frameIsExact} onCheckedChange={(value) => commit(definition.setFlag?.(shown, flag.key, value === true) ?? { ...shown, flags: { ...shown.flags, [flag.key]: value === true } })} /></label>)}
-        {definition.progress && controls.panel !== "scenes" && <label className={styles.progress}>{m("演示位置", "Demonstration progress")} {Math.round(shown.phase * 100)}%
+        {definition.progress && controls.panel !== "scenes" && controls.panel !== "materials" && <label className={styles.progress}>{m("演示位置", "Demonstration progress")} {Math.round(shown.phase * 100)}%
           <Slider min={0} max={1} step={0.001} value={[shown.phase]} aria-label={m("演示位置", "Demonstration progress")} disabled={disabled || running || !frameIsExact}
             onValueChange={([value]) => {
               scrubSource.current ??= { source: snapshot, start: frame };

@@ -52,5 +52,6 @@ export const tools: ToolMeta[] = [
 export function getTool(id: string): ToolMeta | undefined {
   // 历史链接和冻结内容仍可解析；目录只展示独立教具。
   if (id === "spatial-lab") return { id, no: 3, category: "geometry", grades: [1, 9], icon: Boxes };
+  if (id === "plane-pieces") return { id, no: 13, category: "geometry", grades: [1, 6], icon: Shapes };
   return tools.find((t) => t.id === id);
 }

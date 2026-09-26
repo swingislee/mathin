@@ -6,7 +6,7 @@ import { isCubeCoursewareTool } from "./courseware/cube-structures-content";
 import type { CoursewareToolRuntime } from "./courseware/tool-classroom";
 import { isToolScene } from "./scenes/contract";
 import type { ToolScenePageHeader } from "./scenes/ToolSceneLibrary";
-import { PLANAR_TOOLS } from "./planar-kit/catalog";
+import { ALL_PLANAR_TOOLS } from "./planar-kit/catalog";
 
 // 工具按需加载：只有真正渲染某个工具的地方（工具页、概念页的内嵌演示、embed、课堂工具窗）才付它的 JS，
 // 且只付被点开的那一个——列表页、概念图谱与 sitemap 现在一份工具代码都不下载。
@@ -43,7 +43,7 @@ export function CoursewareToolView({ tool, classroom }: { tool: CoursewareCompos
 /** 按 id 分发工具。id 取自 `./registry` 的元数据，未知 id 渲染空。 */
 export function ToolView({ id, preparation = false, preparationHeader, ...props }: ToolComponentProps & { id: string; preparation?: boolean; preparationHeader?: ToolScenePageHeader }) {
   if (preparation && id !== "spatial-lab") return <PreparedToolWorkbench id={id} pageHeader={preparationHeader} />;
-  const planar = PLANAR_TOOLS.find((tool) => tool.id === id);
+  const planar = ALL_PLANAR_TOOLS.find((tool) => tool.id === id);
   if (planar) return <PlanarTool toolId={planar.id} />;
   switch (id) {
     case "fraction-line":

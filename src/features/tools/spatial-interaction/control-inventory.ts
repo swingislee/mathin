@@ -1,7 +1,10 @@
 /** 面向维护与视觉核对的教学能力清单；不会被工作台加载，也不创建另一套功能开关。 */
 export const SPATIAL_WORKBENCH_INVENTORY = [
-  { id: "plane-pieces", dimension: "2d", name: "图形纸片与七巧板", files: ["planar-kit/PlanarWorkbench.tsx", "plane-geometry/scenes.tsx"],
-    features: "教学现场 01、02；直接操作、准确参数、动画、撤销与复原；备课保存和课堂固定副本。",
+  { id: "plane-shapes", dimension: "2d", name: "基本图形认识", files: ["planar-kit/PlanarWorkbench.tsx", "plane-shapes/scene.tsx"],
+    features: "右侧按需添加基本图形与生活实例；观察边界、边、顶点与名称；生活外观渐隐显示对应轮廓；整体拖动、等比缩放、旋转、复制与移除。",
+    shared: "唯一 PlanarWorkbench 宿主；与 3D 复用语义按钮、图标、面板、指针保护与 Tools 场景接入，领域提供数学模型" },
+  { id: "plane-tangram", dimension: "2d", name: "七巧板拼摆", files: ["planar-kit/PlanarWorkbench.tsx", "plane-geometry/scenes.tsx"],
+    features: "独立的七块拼摆舞台；直接拖动、转动与翻面；备课保存、课堂固定副本、撤销与恢复起点。",
     shared: "唯一 PlanarWorkbench 宿主；与 3D 复用语义按钮、图标、面板、指针保护与 Tools 场景接入，领域提供数学模型" },
   { id: "plane-geometry", dimension: "2d", name: "线与角", files: ["planar-kit/PlanarWorkbench.tsx", "plane-geometry/scenes.tsx"],
     features: "教学现场 03、04、05；直接操作、准确参数、动画、撤销与复原；备课保存和课堂固定副本。",
