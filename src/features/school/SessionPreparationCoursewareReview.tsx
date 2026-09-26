@@ -45,12 +45,16 @@ export function SessionPreparationCoursewareReview({
   docs,
   overlayAssetUrls,
   prepStep,
+  readOnly = false,
+  unavailableLabel,
 }: {
   sessionId: string;
   pages: CoursewareTemplatePage[];
   docs: PreparationReviewCoursewareDoc[];
   overlayAssetUrls: Record<string, string>;
   prepStep: PrepStep;
+  readOnly?: boolean;
+  unavailableLabel?: string;
 }) {
   const t = useTranslations("school.session");
   const overlayT = useTranslations("school.overlay");
@@ -90,20 +94,20 @@ export function SessionPreparationCoursewareReview({
         className="size-full"
       />
     ) : (
-      <p className="grid size-full place-items-center text-sm text-muted">{overlayT("previewLoading")}</p>
+      <p className="grid size-full place-items-center text-sm text-muted">{unavailableLabel ?? overlayT("previewLoading")}</p>
     )
   ) : selectedPage.type === "image" ? (
     selectedAssetUrl ? (
       // eslint-disable-next-line @next/next/no-img-element -- short-lived private review URL
       <img src={selectedAssetUrl} alt={selectedPage.title} className="size-full object-contain" />
     ) : (
-      <p className="grid size-full place-items-center text-sm text-muted">{overlayT("previewLoading")}</p>
+      <p className="grid size-full place-items-center text-sm text-muted">{unavailableLabel ?? overlayT("previewLoading")}</p>
     )
   ) : selectedPage.type === "video" ? (
     selectedAssetUrl ? (
       <video src={selectedAssetUrl} controls playsInline className="size-full object-contain" />
     ) : (
-      <p className="grid size-full place-items-center text-sm text-muted">{overlayT("previewLoading")}</p>
+      <p className="grid size-full place-items-center text-sm text-muted">{unavailableLabel ?? overlayT("previewLoading")}</p>
     )
   ) : (
     <div className="grid size-full place-items-center bg-paper-lines p-8 text-center">
@@ -125,7 +129,7 @@ export function SessionPreparationCoursewareReview({
     >
       <div className="mb-2 flex min-h-8 items-center justify-between gap-3">
         <p className="text-xs font-medium text-muted">{t("prepReviewCoursewareTitle")}</p>
-        {selectedPage ? (
+        {selectedPage && !readOnly ? (
           <Link
             href={editHref(sessionId, prepStep, selectedPage)}
             className={cn(buttonVariants({ size: "sm", variant: "ghost" }), "h-7 gap-1.5 px-2 text-xs")}

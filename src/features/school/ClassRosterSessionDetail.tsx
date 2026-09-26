@@ -13,6 +13,7 @@ import type { TeachingRecords } from "./teaching-workbench/teaching-records-cont
 import { calendarDayKey } from "./schedule";
 import { AttendanceDrawer } from "./AttendanceDrawer";
 import { DashboardCommandActions, DashboardCommandPanel } from "./dashboard-page";
+import { SessionMaterialsReader } from "./SessionMaterialsReader";
 
 export function ClassRosterSessionDetail({ sessionId, classroomId, locale, timeZone, now, onDirtyChange, onReviewCountChange }: {
   sessionId: string; classroomId: string; locale: string; timeZone: string; now: number; onDirtyChange: (value: boolean) => void;
@@ -48,15 +49,17 @@ export function ClassRosterSessionDetail({ sessionId, classroomId, locale, timeZ
     return () => controller.abort();
   }, [locale, sessionId, page, pageSize, attempt, contactRequested]);
   if (!data) return failed ? <div role="alert" className="flex items-center gap-3 text-xs text-muted">{m.failed}<Button variant="ghost" size="sm" onClick={() => setAttempt(value => value + 1)}>{m.retry}</Button></div> : <FollowupDetailLoading>{m.loading}</FollowupDetailLoading>;
-  if (!("records" in data)) return <DashboardCommandPanel>
+  const materials = <SessionMaterialsReader key={sessionId} sessionId={sessionId} classroomId={classroomId} locale={locale} timeZone={timeZone} />;
+  if (!("records" in data)) return <div className="space-y-3">{materials}<DashboardCommandPanel>
     <DashboardCommandActions>
       <Link className={buttonVariants({ size: "sm", variant: "secondary" })} href={`/dashboard/sessions/${sessionId}?stage=pre`}>{data.canPrepare ? m.prepare : m.viewPreparation}</Link>
       {data.canMarkAttendance && <AttendanceDrawer sessionId={sessionId} appearance="secondary" />}
       {data.canEnterLive && <Link className={buttonVariants({ size: "sm" })} href={`/classroom/${classroomId}/session/${sessionId}/live?entry=prep`}>{m.enter}</Link>}
     </DashboardCommandActions>
-  </DashboardCommandPanel>;
+  </DashboardCommandPanel></div>;
   const work = classSessionStudentWork(data.records);
   return <div className="space-y-3">
+    {materials}
     {failed && <p role="alert" className="text-xs text-rose">{m.failed}<Button variant="ghost" size="sm" onClick={() => setAttempt(value => value + 1)}>{m.retry}</Button></p>}
     <TeachingSessionRecords data={contacts ? { ...data.records, contacts: contacts.contacts, contactPage: contacts.contactPage, contactTotal: contacts.contactTotal } : data.records} locale={locale} timeZone={timeZone} returnTo="" currentHref="" pageSize={pageSize}
       inline={{ onPageChange: value => { setContactRequested(true); setPage(value); }, onPageSizeChange: value => { setContactRequested(true); setPageSize(value); setPage(1); } }}
