@@ -119,6 +119,11 @@ export const LOCAL_SPATIAL_WORKBENCH_SYNC_PROVIDERS = {
   "dice-teaching-v1": CLASSROOM_SPATIAL_COMMAND_SYNC_REQUIRED_V1,
 } as const satisfies Record<string, ClassroomInteractionSyncProvider>;
 
+/** 平面剪拼先验收手感；未登记正式 Tools 场景前不宣称课堂同步。 */
+export const LOCAL_PLANE_WORKBENCH_SYNC_PROVIDERS = {
+  "plane-dissection-preview-v1": CLASSROOM_TOOL_STATE_SYNC_REQUIRED_V1,
+} as const satisfies Record<string, ClassroomInteractionSyncProvider>;
+
 function profile(
   surface: string,
   ownership: ClassroomInteractionAuditProfile["ownership"],
