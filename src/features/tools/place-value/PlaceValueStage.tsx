@@ -5,6 +5,7 @@ import { Html, Line } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { Vector3, type Camera, type Group } from "three";
 import { CUBE_COLORS } from "../spatial-lab/cube-structures-contract";
+import { SPATIAL_GROUND_LABEL_ROTATION, SpatialSurfaceLabel, spatialGroundVisible } from "../spatial-interaction/SpatialSurfaceLabel";
 import type { PlaceValuePlace, PlaceValueSide, PlaceValueSnapshot } from "./contract";
 import { PLACE_VALUE_COLUMNS, PLACE_VALUE_PLACES, PLACE_VALUE_WEIGHTS, placeValueOffset } from "./model";
 import { placeValueMessages } from "./messages";
@@ -22,7 +23,19 @@ export function placeValueControlPositions(camera: Camera, size: { width: number
     const p = new Vector3(PLACE_VALUE_COLUMNS[place] + placeValueOffset(mode, side), -.65, .8).project(camera);
     return { key: side + ":" + place, order: (side === "left" ? 0 : 3) + index,
       x: Math.max(half, Math.min(max, (p.x + 1) * size.width / 2)), y: Math.max(64, Math.min(size.height - 170, (1 - p.y) * size.height / 2)) };
-  })).sort((a, b) => Math.abs(a.x - b.x) < 1 ? a.order - b.order : a.x - b.x);
+  }));
+  // 侧视把数位前沿投成同一点时，以稳定的百／十／个顺序排列读数，避免微小角度变化反复换位。
+  const overlappingPlaces = sides.some((side) => {
+    const row = items.filter((item) => item.key.startsWith(side + ":"));
+    return Math.max(...row.map((item) => item.x)) - Math.min(...row.map((item) => item.x)) < 2 * (width + 8);
+  });
+  if (overlappingPlaces) {
+    const center = items.reduce((sum, item) => sum + item.x, 0) / items.length;
+    const baseline = Math.max(...items.map((item) => item.y));
+    const rowHalf = (items.length - 1) * (width + 8) / 2;
+    const start = Math.max(half, Math.min(max - 2 * rowHalf, center - rowHalf));
+    items.forEach((item, index) => { item.x = start + index * (width + 8); item.y = baseline; });
+  } else items.sort((a, b) => a.x - b.x);
   for (let index = 1; index < items.length; index++) items[index].x = Math.max(items[index].x, items[index - 1].x + width + 8);
   items.at(-1)!.x = Math.min(items.at(-1)!.x, max);
   for (let index = items.length - 2; index >= 0; index--) items[index].x = Math.min(items[index].x, items[index + 1].x - width - 8);
@@ -30,18 +43,15 @@ export function placeValueControlPositions(camera: Camera, size: { width: number
 }
 
 function DepthRuler({ x, length, locale }: { x: number; length: number; locale: "zh" | "en" }) {
-  const group = useRef<Group>(null), label = useRef<HTMLSpanElement>(null);
+  const group = useRef<Group>(null), direction = useRef(new Vector3());
   useFrame(({ camera }) => {
-    const direction = camera.getWorldDirection(new Vector3());
-    const visible = Math.abs(direction.z) < .985;
-    if (group.current) group.current.visible = visible;
-    if (label.current) label.current.style.visibility = visible ? "visible" : "hidden";
+    if (group.current) group.current.visible = spatialGroundVisible(camera.getWorldDirection(direction.current));
   });
   const step = length === 100 ? 10 : 1;
-  return <group ref={group} name="place-value-depth-ruler">
+  return <group ref={group} name="place-value-depth-ruler" visible={false}>
     <Line points={[[x, -.025, .5], [x, -.025, .5 - length]]} color={CUBE_COLORS[5]} transparent opacity={.7} lineWidth={1} raycast={ignoreRaycast} />
     {Array.from({ length: length / step + 1 }, (_, index) => <Line key={index} points={[[x - (index % 5 === 0 ? .22 : .12), -.025, .5 - index * step], [x + .12, -.025, .5 - index * step]]} color={CUBE_COLORS[5]} transparent opacity={.7} lineWidth={1} raycast={ignoreRaycast} />)}
-    <Html position={[x - .8, -.025, .5 - length / 2]} center zIndexRange={[3, 0]} style={{ pointerEvents: "none" }}><span ref={label} className={styles.ruler}>{placeValueMessages(locale).depth(length)}</span></Html>
+    <SpatialSurfaceLabel text={placeValueMessages(locale).depth(length)} position={[x - .6, -.025, .5 - length / 2]} rotation={SPATIAL_GROUND_LABEL_ROTATION} />
   </group>;
 }
 

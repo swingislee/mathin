@@ -6,7 +6,8 @@ import type { VoxelModelCanvasProps } from "@/features/spatial-math/renderer-r3f
 import { createDefaultPlaceValueInitial, createPlaceValueBoard, placeValueSnapshot } from "@/features/tools/place-value/contract";
 import { planPlaceValue } from "@/features/tools/place-value/model";
 import { placeValueControlPositions } from "@/features/tools/place-value/PlaceValueStage";
-import { OrthographicCamera } from "three";
+import { SPATIAL_GROUND_LABEL_ROTATION, spatialGroundVisible } from "@/features/tools/spatial-interaction/SpatialSurfaceLabel";
+import { Euler, OrthographicCamera, Vector3 } from "three";
 
 const rendered = vi.hoisted(() => ({ props: null as VoxelModelCanvasProps | null }));
 vi.mock("@/features/spatial-math/renderer-r3f/VoxelCanvas", () => ({
@@ -19,6 +20,34 @@ const draw = (patch: Partial<PlaceValueCanvasProps> = {}) => {
   renderToStaticMarkup(createElement(PlaceValueCanvas, props)); return rendered.props!;
 };
 describe("place-value uses the existing voxel canvas", () => {
+  it("hides the entire depth ruler at every horizontal or underside view, and shows it from above", () => {
+    const direction = new Vector3();
+    for (const position of [[0, 4, 240], [240, 4, 0], [-240, 4, 0], [0, 4, -240], [240, 4.1, 0], [100, -80, 100]]) {
+      const camera = new OrthographicCamera();
+      camera.position.set(...position as [number, number, number]); camera.lookAt(0, 4, 0); camera.updateMatrixWorld();
+      expect(spatialGroundVisible(camera.getWorldDirection(direction))).toBe(false);
+    }
+    for (const position of [[0, 240, 0], [240, 80, 0], [100, 80, 100], [-100, 80, -100]]) {
+      const camera = new OrthographicCamera();
+      camera.up.set(0, 0, -1); camera.position.set(...position as [number, number, number]); camera.lookAt(0, 4, 0); camera.updateMatrixWorld();
+      expect(spatialGroundVisible(camera.getWorldDirection(direction))).toBe(true);
+    }
+    const rotation = new Euler(...SPATIAL_GROUND_LABEL_ROTATION);
+    expect(new Vector3(0, 0, 1).applyEuler(rotation).distanceTo(new Vector3(0, 1, 0))).toBeLessThan(1e-9);
+    expect(new Vector3(1, 0, 0).applyEuler(rotation).distanceTo(new Vector3(0, 0, -1))).toBeLessThan(1e-9);
+  });
+  it("keeps a stable hundreds/tens/ones row at either side instead of reordering coincident labels", () => {
+    for (const x of [-240, 240]) for (const z of [-2, 0, 2]) for (const mode of ["single", "compare"] as const) {
+      const camera = new OrthographicCamera(-15, 15, 11.25, -11.25, .01, 1000);
+      camera.position.set(x, 4, z); camera.lookAt(0, 4, 0); camera.updateMatrixWorld();
+      const { positions } = placeValueControlPositions(camera, { width: 768, height: 576 }, mode);
+      const keys = (mode === "single" ? ["left"] : ["left", "right"]).flatMap((side) => ["hundreds", "tens", "ones"].map((place) => side + ":" + place));
+      for (let index = 1; index < keys.length; index++) {
+        expect(positions[keys[index]][0]).toBeGreaterThan(positions[keys[index - 1]][0]);
+        expect(positions[keys[index]][1]).toBe(positions[keys[index - 1]][1]);
+      }
+    }
+  });
   it.each([90, 900])("renders original blue end blocks after the fifth group for %i", (value) => {
     const snapshot = placeValueSnapshot({ ...createDefaultPlaceValueInitial(), left: createPlaceValueBoard(value) });
     const { model } = draw({ snapshot });
