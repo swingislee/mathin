@@ -34,24 +34,55 @@ const click = async (label: string) => act(async () => button(label).click());
 async function tick(time: number) { now = time; const tasks = [...frames.values()]; frames.clear(); await act(async () => tasks.forEach((callback) => callback(time))); }
 
 describe("place-value workspace using common spatial controls", () => {
-  it("keeps SVG-only +/- immediately available, with an unchanged right toolbar and inline 9/+1", async () => {
-    await render();
+  it("keeps SVG-only +/- responsive below ten, then protects 9/+1 until carrying without shifting the toolbar", async () => {
+    await render({ initial: { ...createDefaultPlaceValueInitial(), left: createPlaceValueBoard(7) } });
     const toolbar = () => [...host.querySelectorAll('[role="toolbar"] [data-spatial-action]')].map((node) => node.getAttribute("data-spatial-action"));
     const before = toolbar();
     expect(button("Add one unit").querySelector("svg")).not.toBeNull();
     expect(button("Add one unit").textContent).toBe("");
     await click("Add one unit");
     expect(button("Add one unit").disabled).toBe(false); expect(button("Take away one unit").disabled).toBe(false);
+    await click("Add one unit"); expect(viewport.current!.snapshot.left.ones).toHaveLength(9);
+    await click("Add one unit");
+    for (const label of ["Add one unit", "Take away one unit", "Add one Tens unit", "Add one Hundreds unit", "Edit Ones digit", "Edit Tens digit", "Edit Hundreds digit"]) expect(button(label).disabled).toBe(true);
+    expect(button("Ten ones make one ten").disabled).toBe(false);
     expect(host.querySelector('[data-place-value-station="left:ones"] [data-place-value-numeral="after"]')!.textContent).toBe("9+1");
     expect(toolbar()).toEqual(before); expect(host.textContent).not.toContain("Written number");
-    await click("Add one unit"); expect(viewport.current!.snapshot.left.ones).toHaveLength(11);
-    await click("Take away one unit"); expect(viewport.current!.snapshot.left.ones).toHaveLength(10);
+    await click("Add one unit"); await click("Take away one unit"); expect(viewport.current!.snapshot.left.ones).toHaveLength(10);
+    await click("Edit Ones digit"); expect(host.querySelector('input[aria-label="Edit Ones digit"]')).toBeNull();
     await click("Ten ones make one ten"); expect(button("Add one unit").disabled).toBe(true);
     expect(toolbar()).toEqual(before); await tick(2100); expect(viewport.current!.progress).toBe(.5);
     expect(host.querySelector('[data-place-value-station="left:ones"] [data-place-value-numeral="before"]')!.textContent).toBe("9+1");
     await tick(3200); expect(button("Add one unit").disabled).toBe(false);
     expect(host.querySelector('[data-place-value-station="left:tens"] [data-place-value-numeral="after"]')!.textContent).toBe("1");
     expect(toolbar()).toEqual(before);
+  });
+  it("keeps 99 + 1 protected across both carry steps and blocks panel quantity shortcuts", async () => {
+    await render({ initial: { ...createDefaultPlaceValueInitial(), left: createPlaceValueBoard(99) } });
+    await click("Add one unit");
+    expect(button("One ten becomes ten ones").disabled).toBe(true);
+    await click("Prepare number and groups");
+    expect(host.querySelector<HTMLInputElement>('input[aria-label="Set number"]')!.disabled).toBe(true);
+    expect(button("Arrange").disabled).toBe(true); expect(button("100").disabled).toBe(true);
+    await click("Ten ones make one ten");
+    await tick(3200);
+    expect(viewport.current!.snapshot.left.tens).toHaveLength(10);
+    expect(button("Add one unit").disabled).toBe(true); expect(button("Edit Tens digit").disabled).toBe(true);
+    expect(button("Ten tens make one hundred").disabled).toBe(false);
+    await click("Ten tens make one hundred"); await tick(6800);
+    expect(button("Add one unit").disabled).toBe(true); expect(button("Pause process").disabled).toBe(false);
+    await tick(10400);
+    expect(viewport.current!.snapshot.left.hundreds).toHaveLength(1);
+    expect(button("Add one unit").disabled).toBe(false); expect(button("Edit Tens digit").disabled).toBe(false);
+    expect(button("Arrange").disabled).toBe(false);
+  });
+  it("offers only the lowest required carry for a prepared scene with both places full", async () => {
+    const board = createPlaceValueBoard(110, "tens"), ten = board.tens.pop()!;
+    board.ones = ten;
+    await render({ initial: { ...createDefaultPlaceValueInitial(), left: board } });
+    expect(button("Ten ones make one ten").disabled).toBe(false);
+    expect(host.querySelector<HTMLButtonElement>('button[aria-label="Ten tens make one hundred"]')!.disabled).toBe(true);
+    expect(button("Add one unit").disabled).toBe(true);
   });
   it("edits a digit in its own position, preserves the other places, and supports escape to cancel", async () => {
     await render({ initial: { ...createDefaultPlaceValueInitial(), left: createPlaceValueBoard(234) } });
@@ -99,6 +130,9 @@ describe("place-value workspace using common spatial controls", () => {
     expect(viewport.current!.snapshot.autoCarry).toBe(false);
     await tick(18200); await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
     expect(viewport.current!.snapshot.left.tens).toHaveLength(10);
+    await click("One ten becomes ten ones"); await tick(20400);
+    expect(button("Take away one unit").disabled).toBe(false);
+    await click("Take away one unit"); expect(boardTotal(viewport.current!.snapshot.left)).toBe(99);
   });
   it("adds, carries, pauses for observation, resumes and restores the prepared scene", async () => {
     const capture = vi.fn(); await render({ onSnapshot: capture });

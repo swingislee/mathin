@@ -18,7 +18,7 @@ import { useToolSnapshot } from "../scenes/useToolSnapshot";
 import { useSceneCapture } from "../courseware/useSceneCapture";
 import { boardTotal, createDefaultPlaceValueInitial, createPlaceValueBoard, placeValueInitial, placeValueSnapshot, placeValueSnapshotSchema,
   type PlaceValueAction, type PlaceValueInitial, type PlaceValueSide, type PlaceValueSnapshot } from "./contract";
-import { applyPlaceValueChange, historyPlaceValue, isPlaceValueRegrouping, pausePlaceValue, placeValueCarry, placeValueFrame, placeValueGroup, planPlaceValue, planPlaceValueCount, resumePlaceValue } from "./model";
+import { applyPlaceValueChange, historyPlaceValue, isPlaceValueRegrouping, pausePlaceValue, placeValueCarry, placeValueFrame, placeValueGroup, placeValuePendingCarry, planPlaceValue, planPlaceValueCount, resumePlaceValue } from "./model";
 import { PlaceValueStation } from "./PlaceValueStation";
 import { usePlaceValuePresentation } from "./usePlaceValuePresentation";
 import { placeValueMessages } from "./messages";
@@ -48,6 +48,7 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
   const active: PlaceValueSide = snapshot.mode === "single" ? "left" : snapshot.active, board = snapshot[active];
   const selected = controls.selectionActive && snapshot.selection?.side === active ? placeValueGroup(board, snapshot.selection.unit) : null;
   const carry = placeValueCarry(board);
+  const quantityDisabled = disabled || !!placeValuePendingCarry(snapshot, active);
   const unpack = selected?.place === "hundreds" ? "unpack-hundred" : selected?.place === "tens" ? "unpack-ten" : board.tens.length ? "unpack-ten" : board.hundreds.length ? "unpack-hundred" : null;
   const update = host.update;
   const commit = useCallback((next: PlaceValueSnapshot) => {
@@ -75,7 +76,7 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
   }, [disabled, presentation.busy, snapshot, commandState, active, board, carry, host.failed, commit]);
   const configure = (patch: Partial<PlaceValueInitial>) => { if (!disabled) commit({ ...snapshot, ...patch, motion: null }); };
   const arrange = (value: number) => {
-    if (disabled) return;
+    if (quantityDisabled) return;
     if (!Number.isInteger(value) || value < 0 || value > 999) { setNotice(m.limit); return; }
     const next = applyPlaceValueChange(snapshot, { side: active, kind: "replace", before: board, after: createPlaceValueBoard(value, grouping) });
     next.motion = null; next.selection = null; next.frame = placeValueFrame(next); next.cameraRevision++;
@@ -113,7 +114,7 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
         <span className={styles.toolSeparator} />
         <SpatialActionButton action="prepare" label={m.prepare} active={controls.panel === "prepare"} disabled={viewer} onClick={() => { setDraft(String(boardTotal(board))); controls.togglePanel("prepare"); }} />
         <SpatialActionButton action="compareScenes" label={m.compare} active={controls.panel === "compare"} disabled={viewer} onClick={() => controls.togglePanel("compare")} />
-        <SpatialActionButton action="placeUnpack" label={unpack === "unpack-hundred" ? m.unpackHundred : unpack === "unpack-ten" ? m.unpackTen : m.unpack} disabled={disabled || !unpack} onClick={() => unpack && act(unpack)} />
+        <SpatialActionButton action="placeUnpack" label={unpack === "unpack-hundred" ? m.unpackHundred : unpack === "unpack-ten" ? m.unpackTen : m.unpack} disabled={quantityDisabled || !unpack} onClick={() => unpack && act(unpack)} />
         <SpatialActionButton action="observe" label={m.inspect} active={controls.panel === "inspect"} disabled={viewer} onClick={() => controls.togglePanel("inspect")} />
         <span className={styles.toolSeparator} />
         <SpatialActionButton action="showDigits" label={m.showDigits} active={snapshot.showDigits} disabled={publishing} onClick={() => commit({ ...snapshot, showDigits: !snapshot.showDigits })} />
@@ -126,10 +127,10 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
           {(controls.panel === "prepare" || controls.panel === "compare") && <>
             <div className="flex gap-1">{(["single", "compare"] as const).map((mode) => <Button key={mode} size="sm" variant={snapshot.mode === mode ? "secondary" : "ghost"} aria-pressed={snapshot.mode === mode} disabled={disabled} onClick={() => setMode(mode)}>{m[mode]}</Button>)}</div>
             {snapshot.mode === "compare" && <div className="flex gap-1">{(["left", "right"] as const).map((side) => <Button key={side} size="sm" variant={active === side ? "secondary" : "ghost"} aria-pressed={active === side} disabled={disabled} onClick={() => { configure({ active: side, selection: null }); setDraft(String(boardTotal(snapshot[side]))); }}>{m[side]} · {boardTotal(snapshot[side])}</Button>)}</div>}
-            <Label className="flex items-center justify-between gap-2 text-xs">{m.value}<Input aria-label={m.value} type="number" min={0} max={999} step={1} className="h-8 w-24" disabled={disabled} value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && draft.trim()) arrange(Number(draft)); }} /></Label>
-            <div className="flex flex-wrap gap-1">{(["normal", "ones", "tens"] as const).map((kind) => <Button key={kind} size="sm" variant={grouping === kind ? "secondary" : "ghost"} aria-pressed={grouping === kind} disabled={disabled} onClick={() => setGrouping(kind)}>{kind === "normal" ? m.normalGrouping : kind === "ones" ? m.allOnes : m.allTens}</Button>)}</div>
-            <Button size="sm" disabled={disabled || !draft.trim()} onClick={() => arrange(Number(draft))}>{m.apply}</Button>
-            <div className="flex flex-wrap gap-1">{[0, 9, 19, 99, 100, 101, 110, 200].map((value) => <Button key={value} size="sm" variant="ghost" disabled={disabled} onClick={() => arrange(value)}>{value}</Button>)}</div>
+            <Label className="flex items-center justify-between gap-2 text-xs">{m.value}<Input aria-label={m.value} type="number" min={0} max={999} step={1} className="h-8 w-24" disabled={quantityDisabled} value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && draft.trim()) arrange(Number(draft)); }} /></Label>
+            <div className="flex flex-wrap gap-1">{(["normal", "ones", "tens"] as const).map((kind) => <Button key={kind} size="sm" variant={grouping === kind ? "secondary" : "ghost"} aria-pressed={grouping === kind} disabled={quantityDisabled} onClick={() => setGrouping(kind)}>{kind === "normal" ? m.normalGrouping : kind === "ones" ? m.allOnes : m.allTens}</Button>)}</div>
+            <Button size="sm" disabled={quantityDisabled || !draft.trim()} onClick={() => arrange(Number(draft))}>{m.apply}</Button>
+            <div className="flex flex-wrap gap-1">{[0, 9, 19, 99, 100, 101, 110, 200].map((value) => <Button key={value} size="sm" variant="ghost" disabled={quantityDisabled} onClick={() => arrange(value)}>{value}</Button>)}</div>
             {controls.panel === "compare" && <>
               <div className="flex flex-wrap gap-1">{(["all", "hundreds", "tens", "ones"] as const).map((place) => <Button key={place} size="sm" variant={snapshot.highlight === place ? "secondary" : "ghost"} aria-pressed={snapshot.highlight === place} disabled={publishing} onClick={() => commit({ ...snapshot, highlight: place })}>{m[place]}</Button>)}</div>
               <Label className="text-xs">{m.comparison}</Label><div className="flex gap-1">{(["hidden", "<", "=", ">"] as const).map((symbol) => <Button key={symbol} size="sm" variant={snapshot.comparison === symbol ? "secondary" : "ghost"} aria-pressed={snapshot.comparison === symbol} disabled={publishing} onClick={() => commit({ ...snapshot, comparison: symbol })}>{symbol === "hidden" ? m.hidden : symbol}</Button>)}</div>
@@ -137,7 +138,7 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
           </>}
           {controls.panel === "inspect" && <>
             <p>{selected ? m.group + " " + selected.ids.length + " " + m.units : m.groupHint}</p>
-            <Button size="sm" disabled={disabled || !unpack} onClick={() => unpack && act(unpack)}>{unpack === "unpack-hundred" ? m.unpackHundred : m.unpackTen}</Button>
+            <Button size="sm" disabled={quantityDisabled || !unpack} onClick={() => unpack && act(unpack)}>{unpack === "unpack-hundred" ? m.unpackHundred : m.unpackTen}</Button>
             <p className="text-muted">{m.fullHint}</p>
             <p className="text-muted">{m.orientation}</p>
             <div className="flex gap-2">
@@ -149,7 +150,7 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
           {controls.panel === "settings" && <>
             {(["autoCarry", "showDigits", "showLabels", "axes"] as const).map((key) => <Label key={key} className="flex items-center gap-2 text-xs"><Checkbox checked={snapshot[key]} disabled={publishing} onCheckedChange={(value) => commit({ ...snapshot, [key]: value === true })} />{m[key]}</Label>)}
             <Label className="text-xs">{m.speed}</Label><div className="flex gap-1">{(["slow", "normal", "fast"] as const).map((speed) => <Button key={speed} size="sm" variant={snapshot.speed === speed ? "secondary" : "ghost"} aria-pressed={snapshot.speed === speed} disabled={disabled} onClick={() => configure({ speed })}>{m[speed]}</Button>)}</div>
-            <Button size="sm" variant="ghost" disabled={disabled} onClick={() => commit(applyPlaceValueChange(snapshot, { side: active, kind: "replace", before: board, after: createPlaceValueBoard(0) }))}>{m.clear}</Button>
+            <Button size="sm" variant="ghost" disabled={quantityDisabled} onClick={() => { if (!quantityDisabled) commit(applyPlaceValueChange(snapshot, { side: active, kind: "replace", before: board, after: createPlaceValueBoard(0) })); }}>{m.clear}</Button>
           </>}
         </div>
       </SpatialCanvasPanel>}

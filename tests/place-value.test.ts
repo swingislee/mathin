@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { boardTotal, boardUnits, createDefaultPlaceValueInitial, createPlaceValueBoard, PLACE_VALUE_VERSION, placeValueBoardSchema, placeValueInitial, placeValueSnapshot, placeValueSnapshotSchema, validPlaceValueChange, type PlaceValueChange } from "@/features/tools/place-value/contract";
-import { changePlaceValueBoard, historyPlaceValue, pausePlaceValue, PLACE_VALUE_CAMERA_TARGET, placeValueCarry, placeValueFrame, placeValueLayout, placeValueNotation, placeValuePose, placeValueProgress, planPlaceValue, planPlaceValueCount, resumePlaceValue } from "@/features/tools/place-value/model";
+import { changePlaceValueBoard, historyPlaceValue, pausePlaceValue, PLACE_VALUE_CAMERA_TARGET, placeValueCarry, placeValueFrame, placeValueLayout, placeValueNotation, placeValuePendingCarry, placeValuePose, placeValueProgress, planPlaceValue, planPlaceValueCount, resumePlaceValue } from "@/features/tools/place-value/model";
 import { freezeToolScene, parseToolScene, preparedToolDefinitions } from "@/features/tools/scenes/contract";
 import { createClassroomToolState, parseClassroomToolState } from "@/features/tools/courseware/tool-classroom";
 import { toolSceneOriginHash } from "@/features/tools/scenes/classroom-envelope";
@@ -29,6 +29,42 @@ function expectRigid(units: ReturnType<typeof positions>, ids: number[]) {
 }
 
 describe("place-value counting and grouping", () => {
+  it("rejects new counting and edits until the entire 99 + 1 carry chain finishes", () => {
+    let state = planPlaceValue(placeValueSnapshot({ ...initial(), left: createPlaceValueBoard(99) }), "add", 1000)!;
+    expect(placeValuePendingCarry(state, "left")).toBe("carry-one");
+    for (const action of ["add", "remove", "unpack-ten", "carry-ten"] as const) expect(planPlaceValue(state, action, 2000)).toBeNull();
+    for (const place of ["ones", "tens", "hundreds"] as const) expect(planPlaceValueCount(state, "left", place, 1, 2000)).toBeNull();
+    state = planPlaceValue(state, "carry-one", 2000)!;
+    expect(placeValuePendingCarry(state, "left")).toBe("carry-ten");
+    expect(planPlaceValue(state, "carry-ten", 3000)).toBeNull();
+    expect(planPlaceValueCount(state, "left", "ones", 1, 5000)).toBeNull();
+    state = planPlaceValue(state, "carry-ten", 5000)!;
+    expect(planPlaceValue(state, "add", 6000)).toBeNull();
+    expect(planPlaceValue(state, "add", 13000)!.left.ones).toHaveLength(1);
+  });
+  it("protects full tens created by their own plus button and retains independent comparison numbers", () => {
+    const source = placeValueSnapshot({ ...initial(), mode: "compare", left: createPlaceValueBoard(99), right: createPlaceValueBoard(23) });
+    let state = planPlaceValueCount(source, "left", "tens", 10, 1000)!;
+    expect(placeValuePendingCarry(state, "left")).toBe("carry-ten");
+    expect(planPlaceValueCount(state, "left", "tens", 11, 2000)).toBeNull();
+    expect(planPlaceValueCount(state, "left", "ones", 8, 2000)).toBeNull();
+    state = planPlaceValueCount(state, "right", "ones", 4, 2000)!;
+    expect(boardTotal(state.right)).toBe(24);
+    expect(placeValuePendingCarry(state, "left")).toBe("carry-ten");
+    expect(planPlaceValueCount(state, "left", "ones", 8, 3000)).toBeNull();
+  });
+  it("preserves deliberate unpacking for 100 → 99 instead of forcing an immediate carry back", () => {
+    let state = placeValueSnapshot({ ...initial(), left: createPlaceValueBoard(100) });
+    state = planPlaceValue(state, "unpack-hundred", 1000)!;
+    expect(placeValuePendingCarry(state, "left")).toBeNull();
+    state = planPlaceValue(state, "unpack-ten", 9000)!;
+    expect(placeValuePendingCarry(state, "left")).toBeNull();
+    state = planPlaceValue(state, "remove", 12000)!;
+    expect(boardTotal(state.left)).toBe(99);
+    expect(placeValuePendingCarry(state, "left")).toBeNull();
+    state = planPlaceValue(state, "add", 13000)!;
+    expect(placeValuePendingCarry(state, "left")).toBe("carry-one");
+  });
   it("changes one place at a time, preserving other groups and identities through editing and undo", () => {
     const source = placeValueSnapshot({ ...initial(), left: createPlaceValueBoard(234) });
     let state = planPlaceValueCount(source, "left", "tens", 4, 1000)!;

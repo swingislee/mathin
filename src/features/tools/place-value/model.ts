@@ -39,6 +39,12 @@ export function placeValueGroup(board: PlaceValueBoard, unit: number) {
 export function placeValueCarry(board: PlaceValueBoard): PlaceValueAction | null {
   return board.ones.length >= 10 ? "carry-one" : board.tens.length >= 10 ? "carry-ten" : null;
 }
+/** 数数形成的满十先完成进位；主动拆组及随后的减数保留退位演示。 */
+export function placeValuePendingCarry(snapshot: PlaceValueSnapshot, side: PlaceValueSide): PlaceValueAction | null {
+  const changes = snapshot.motion ? [...snapshot.past, snapshot.motion] : snapshot.past;
+  const intent = changes.findLast((change) => change.side === side && change.kind !== "remove");
+  return intent?.kind === "unpack-ten" || intent?.kind === "unpack-hundred" ? null : placeValueCarry(snapshot[side]);
+}
 export function changePlaceValueBoard(board: PlaceValueBoard, action: PlaceValueAction, selectedUnit?: number): PlaceValueBoard | null {
   const next = structuredClone(board);
   if (action === "add") {
@@ -76,12 +82,14 @@ export function applyPlaceValueChange(snapshot: PlaceValueSnapshot, change: Plac
 export function planPlaceValue(snapshot: PlaceValueSnapshot, action: PlaceValueAction, now = Date.now(), paused = false): PlaceValueSnapshot | null {
   if (placeValueLocked(snapshot, now)) return null;
   const side = snapshot.mode === "single" ? "left" : snapshot.active;
+  const pending = placeValuePendingCarry(snapshot, side);
+  if (pending && action !== pending) return null;
   const next = changePlaceValueBoard(snapshot[side], action, snapshot.selection?.side === side ? snapshot.selection.unit : undefined);
   return next ? applyPlaceValueChange(snapshot, { side, before: snapshot[side], after: next, kind: action }, now, paused) : null;
 }
 /** 数位下的加减/输入只改变该数位的单位数，其他列的成员身份保持不变。 */
 export function planPlaceValueCount(snapshot: PlaceValueSnapshot, side: PlaceValueSide, place: PlaceValuePlace, count: number, now = Date.now()): PlaceValueSnapshot | null {
-  if (placeValueLocked(snapshot, now) || !Number.isInteger(count) || count < 0) return null;
+  if (placeValueLocked(snapshot, now) || placeValuePendingCarry(snapshot, side) || !Number.isInteger(count) || count < 0) return null;
   const before = snapshot[side], current = before[place].length, weight = PLACE_VALUE_WEIGHTS[place];
   if (count === current || boardTotal(before) + (count - current) * weight > PLACE_VALUE_LIMIT) return null;
   if (place === "ones" && Math.abs(count - current) === 1) return planPlaceValue({ ...snapshot, active: side }, count > current ? "add" : "remove", now);
