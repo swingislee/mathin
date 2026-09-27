@@ -218,7 +218,7 @@ function appendObject(state: PlanarState, object: Omit<ConstructionObject, "id">
   return writeObject({ ...state, params: { ...state.params, nextId: id + 1, active: id } }, { ...object, id });
 }
 
-export function createConstructionState(sceneId: "01-create" | "20-create"): PlanarState {
+export function createConstructionState(sceneId: string): PlanarState {
   const initial: PlanarState = { sceneId, params: { nextId: 1, active: 0, dx: 180, dy: 0, turn: 90, axisAngle: 90 }, points: { pivot: { x: 480, y: 360 }, axis: { x: 480, y: 360 } }, flags: Object.fromEntries(FLAG_KEYS.map((key) => [key, sceneId === "20-create" && key === "ghost"])), marks: [], phase: 0 };
   return writeObject(initial, { id: 0, kind: 1, center: { x: 380, y: 340 }, vertices: [{ x: -130, y: -84 }, { x: 130, y: -84 }, { x: 130, y: 84 }, { x: -130, y: 84 }], angle: 0, rx: 0, ry: 0, life: 0, detail: 0, flip: 1 });
 }

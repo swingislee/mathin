@@ -29,9 +29,9 @@ describe("approved planar scenes use one Tools registration path", () => {
     }
   });
   it("composes the transformations on one editable stage, under 22 teacher-facing tools", () => {
-    expect(PLANAR_TOOLS).toHaveLength(22); expect(planarScenes).toHaveLength(46);
+    expect(PLANAR_TOOLS).toHaveLength(22); expect(planarScenes).toHaveLength(39);
     const ids = PLANAR_TOOLS.flatMap((tool) => [...tool.scenes]);
-    expect(new Set(ids).size).toBe(46);
+    expect(new Set(ids).size).toBe(39);
     expect(planarScenes.map((scene) => scene.id).sort()).toEqual([...ids].sort());
     for (const id of ["09", "19", "23", "25", "26", "28", "29", "30", "31", "35", "50"]) expect(ids).not.toContain(id);
   });
@@ -39,6 +39,11 @@ describe("approved planar scenes use one Tools registration path", () => {
     const sql = readFileSync("supabase/tests/plane_material_scene_assertions.sql", "utf8");
     for (const tag of ["shape", "tangram"]) {
       const fixture = JSON.parse(sql.split(`$${tag}$`)[1]);
+      expect(fixture.payload.initial).toEqual(planarScene(fixture.payload.initial.sceneId).create());
+      expect(parseToolScene(fixture)).toEqual(fixture);
+    }
+    const openMaterials = readFileSync("supabase/tests/plane_open_material_scene_assertions.sql", "utf8");
+    for (const fixture of JSON.parse(openMaterials.split("$fixtures$")[1])) {
       expect(fixture.payload.initial).toEqual(planarScene(fixture.payload.initial.sceneId).create());
       expect(parseToolScene(fixture)).toEqual(fixture);
     }
@@ -66,7 +71,7 @@ describe("approved planar scenes use one Tools registration path", () => {
     expect(planarSnapshotForTool("plane-pieces").safeParse(planarSnapshot(planarScene("01-basic").create())).success).toBe(false);
   });
   it("binds old and editable materials to their explicit versions in saved copies and classroom events", () => {
-    for (const [id, oldScene, currentScene] of [["plane-shapes", "01-basic", "01-create"], ["plane-motion", "20", "20-create"]] as const) {
+    for (const [id, oldScene, currentScene] of [["plane-shapes", "01-basic", "01-create"], ["plane-motion", "20", "20-create"], ["plane-area", "14", "14-create"], ["plane-folding", "32", "32-create"], ["plane-tiling", "36", "36-create"], ["plane-patterns", "47", "47-create"], ["plane-graph-path", "52", "52-create"]] as const) {
       for (const [version, sceneId, other] of [[`${id}-lesson-v1`, oldScene, currentScene], [`${id}-lesson-v2`, currentScene, oldScene]] as const) {
         const initial = planarScene(sceneId).create(), wrong = planarScene(other).create();
         const scene = parseToolScene({ toolId: id, contentVersion: version, payload: { title: "Saved material", initial } });

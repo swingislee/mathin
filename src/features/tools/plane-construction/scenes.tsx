@@ -1,5 +1,5 @@
 import type { ReactNode, SVGProps } from "react";
-import type { PlanarPoint, PlanarState } from "../planar-kit/contract";
+import type { PlanarPoint, PlanarState, PlanarToolId } from "../planar-kit/contract";
 import { textFor, type PlanarAction, type PlanarDrawingApi, type PlanarField, type PlanarMaterial, type PlanarSceneDefinition, type PlanarText } from "../planar-kit/types";
 import { LifeDetails } from "../plane-shapes/scene";
 import {
@@ -184,7 +184,8 @@ const materials: PlanarMaterial[] = CONSTRUCTION_PRESETS.map((preset, index) => 
     add: (state) => addPreset(state, index), disabled: (state) => constructionObjects(state).length >= MAX_CONSTRUCTION_OBJECTS || addPreset(state, index) === state,
   };
 });
-function definition(sceneId: "01-create" | "20-create", toolId: "plane-shapes" | "plane-motion", title: PlanarText): PlanarSceneDefinition {
+/** 材料编辑、选择与变换共享；各教具只补自己的数学观察和操作。 */
+export function createConstructionDefinition(sceneId: string, toolId: PlanarToolId, title: PlanarText): PlanarSceneDefinition {
   return {
     id: sceneId, toolId, title,
     description: t("右侧画图或添加材料；拖动图形摆放，按需开启编辑或运动。", "Draw or add shapes on the right. Drag to arrange, then enable editing or transformations when needed."),
@@ -219,6 +220,6 @@ function definition(sceneId: "01-create" | "20-create", toolId: "plane-shapes" |
 }
 
 export const planeConstructionScenes: PlanarSceneDefinition[] = [
-  definition("01-create", "plane-shapes", t("基本图形认识", "Exploring basic shapes")),
-  definition("20-create", "plane-motion", t("平面图形运动", "Plane transformations")),
+  createConstructionDefinition("01-create", "plane-shapes", t("基本图形认识", "Exploring basic shapes")),
+  createConstructionDefinition("20-create", "plane-motion", t("平面图形运动", "Plane transformations")),
 ];

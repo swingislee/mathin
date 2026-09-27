@@ -5,6 +5,10 @@ import { isValidPlaneMotionState } from "../plane-motion/validation";
 import { isValidPlanePatternsState } from "../plane-patterns/validation";
 import { isValidPlaneShapesState } from "../plane-shapes/validation";
 import { isValidConstructionState } from "../plane-construction/validation";
+import { isValidPaperState } from "../plane-paper/validation";
+import { isValidPaperFoldingState } from "../plane-paper-folding/validation";
+import { isValidTilingState } from "../plane-tiling/model";
+import { isValidPlaneNetworkState } from "../plane-network/validation";
 
 import { ALL_PLANAR_TOOLS, type PlanarToolId, type PlanarVersion } from "./catalog";
 export { PLANAR_TOOLS, ALL_PLANAR_TOOLS, type PlanarToolId, type PlanarVersion } from "./catalog";
@@ -21,7 +25,7 @@ const planarStateShape = z.object({
   phase: z.number().finite().min(0).max(1),
 }).strict();
 export type PlanarState = z.infer<typeof planarStateShape>;
-export const planarStateSchema = planarStateShape.refine((state) => isValidPlaneGeometryState(state) || isValidPlaneAreaState(state) || isValidPlaneMotionState(state) || isValidPlanePatternsState(state) || isValidPlaneShapesState(state) || isValidConstructionState(state), "INVALID_PLANAR_GEOMETRY");
+export const planarStateSchema = planarStateShape.refine((state) => isValidPlaneGeometryState(state) || isValidPlaneAreaState(state) || isValidPlaneMotionState(state) || isValidPlanePatternsState(state) || isValidPlaneShapesState(state) || isValidConstructionState(state) || isValidPaperState(state) || isValidPaperFoldingState(state) || isValidTilingState(state) || isValidPlaneNetworkState(state), "INVALID_PLANAR_GEOMETRY");
 export function emptyPlanarState(sceneId: string): PlanarState {
   return { sceneId, params: {}, points: {}, flags: { grid: false, measures: true }, marks: [], phase: 0 };
 }

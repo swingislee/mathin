@@ -29,7 +29,7 @@ interface Props {
   classroom?: { state?: PlanarSnapshot; onChange?: (next: PlanarSnapshot) => Promise<void> };
   onSnapshot?: (scene: PlanarState | null) => void;
 }
-type Drag = { start: PlanarState; target: string; source: PlanarSnapshot; construction?: { tool: string; kind: "drag" | "points"; points: readonly PlanarPoint[] } };
+type Drag = { start: PlanarState; target: string; source: PlanarSnapshot; construction?: { tool: string; kind: "point" | "drag" | "points"; points: readonly PlanarPoint[] } };
 type Panel = "scenes" | "parameters" | "display" | "materials" | "construction" | "operation";
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
@@ -70,6 +70,7 @@ function PlanarWorkbenchStage({ toolId, version, locale: suppliedLocale, initial
   });
   const activeOperation = controls.panel === "operation" ? definition.operations?.find((item) => item.id === operation) : undefined;
   const activeDrawingTool = definition.construction?.tools.find((tool) => tool.id === drawingTool);
+  const operationDrawingTool = definition.construction?.tools.find((tool) => tool.id === activeOperation?.constructionTool);
   const running = !!authority.motion && !authority.motion.paused && planarProgress(authority.motion, now) < 1;
   const frame = planarFrame(authority, definition, now), shown = preview ?? frame;
   const frameIsExact = planarStateSchema.safeParse(frame).success;
@@ -118,9 +119,11 @@ function PlanarWorkbenchStage({ toolId, version, locale: suppliedLocale, initial
   function clearDrag() { previousDrag.current = undefined; setPreview(null); setLanding(null); setDragging(false); }
   function clearDraft() { setDraftPoints([]); setDraftPreview(null); setDraftInvalid(false); }
   function finishConstruction(tool: string, points: readonly PlanarPoint[], start = shown) {
+    if (definition.construction?.tools.find((item) => item.id === tool)?.disabled?.(start)) return false;
     const next = definition.construction?.create(start, tool, points);
     if (!next || !planarStateSchema.safeParse(next).success) { setDraftInvalid(true); return false; }
     if (!commit(next, undefined, start)) return false;
+    if (definition.construction?.tools.find((item) => item.id === tool)?.once) setDrawingTool(null);
     clearDraft(); return true;
   }
   const drag = usePlanarDrag<Drag>(svg, {
@@ -128,7 +131,7 @@ function PlanarWorkbenchStage({ toolId, version, locale: suppliedLocale, initial
       if (!writable || data.data.source !== snapshot) { drag.cancel(); return; }
       if (data.data.construction) {
         const drawing = data.data.construction;
-        setDraftPreview(drawing.kind === "points" ? [...drawing.points, data.point] : [{ x: data.point.x - data.delta.x, y: data.point.y - data.delta.y }, data.point]);
+        setDraftPreview(drawing.kind === "point" ? [data.point] : drawing.kind === "points" ? [...drawing.points, data.point] : [{ x: data.point.x - data.delta.x, y: data.point.y - data.delta.y }, data.point]);
         return;
       }
       if (!data.moved) return;
@@ -139,7 +142,9 @@ function PlanarWorkbenchStage({ toolId, version, locale: suppliedLocale, initial
       if (data.data.construction) {
         const drawing = data.data.construction;
         setDraftPreview(null); setDragging(false);
-        if (drawing.kind === "drag") {
+        if (drawing.kind === "point") {
+          if (!data.moved) finishConstruction(drawing.tool, [data.point], data.data.start);
+        } else if (drawing.kind === "drag") {
           if (data.moved) finishConstruction(drawing.tool, [{ x: data.point.x - data.delta.x, y: data.point.y - data.delta.y }, data.point], data.data.start);
         } else if (drawing.points.length >= 3 && Math.hypot(data.point.x - drawing.points[0].x, data.point.y - drawing.points[0].y) <= 14) {
           finishConstruction(drawing.tool, drawing.points, data.data.start);
@@ -224,12 +229,12 @@ function PlanarWorkbenchStage({ toolId, version, locale: suppliedLocale, initial
     <div className={styles.viewport}><div className={workbenchStyles.canvas}>
       <svg ref={svg} className={styles.svg} viewBox="0 0 960 720" tabIndex={-1} aria-label={textFor(definition.title, locale)} data-drawing-tool={drawingTool ?? undefined} {...drag.handlers} onPointerDownCapture={(event) => {
         drag.handlers.onPointerDownCapture(event);
-        if (event.isPropagationStopped() || !activeDrawingTool || !writable || publishing || running || !frameIsExact) return;
+        if (event.isPropagationStopped() || !activeDrawingTool || activeDrawingTool.disabled?.(shown) || !writable || publishing || running || !frameIsExact) return;
         const matrix = svg.current?.getScreenCTM();
         const point = matrix && planePointFromClient({ x: event.clientX, y: event.clientY }, matrix);
         if (!point || !drag.start(event, { start: shown, target: "construction", source: snapshot, construction: { tool: activeDrawingTool.id, kind: activeDrawingTool.kind, points: draftPoints } })) return;
         beginSpatialObjectGesture(svg.current!); setDragging(true); setDraftInvalid(false);
-        setDraftPreview(activeDrawingTool.kind === "drag" ? [point] : [...draftPoints, point]);
+        setDraftPreview(activeDrawingTool.kind === "points" ? [...draftPoints, point] : [point]);
         svg.current?.focus({ preventScroll: true });
       }} onClick={(event) => {
         if (event.target === event.currentTarget && !dragging && !drawingTool) { controls.onPointerMissed(event.nativeEvent); svg.current?.focus({ preventScroll: true }); }
@@ -238,7 +243,7 @@ function PlanarWorkbenchStage({ toolId, version, locale: suppliedLocale, initial
         {shown.flags.grid && <rect width="960" height="720" fill={`url(#${uid}-grid)`} pointerEvents="none" />}
         {definition.draw(shown, api)}
         {landing && !same(landing, shown) && <g className={styles.ghost} aria-hidden>{definition.draw(landing, inertApi)}</g>}
-        {drawingTool && definition.construction?.preview(drawingTool, draftPreview ?? draftPoints)}
+        {drawingTool && definition.construction?.preview(drawingTool, draftPreview ?? draftPoints, shown)}
       </svg>
       <div role="toolbar" aria-label={m("现场与设置", "Scene and settings")} className={`${workbenchStyles.dock} ${workbenchStyles.meta}`}>
         {scenes.length > 1 && <SpatialActionButton action="pieces" label={m("选择教学现场", "Choose a teaching scene")} active={controls.panel === "scenes"} onClick={() => togglePanel("scenes")} />}
@@ -250,7 +255,10 @@ function PlanarWorkbenchStage({ toolId, version, locale: suppliedLocale, initial
         {!!definition.materials?.length && <SpatialActionButton action="add" label={m("添加图形或生活实例", "Add a shape or everyday example")} active={controls.panel === "materials"} disabled={disabled || running || !frameIsExact} onClick={() => togglePanel("materials")} />}
         {definition.operations?.map((item) => <SpatialActionButton key={item.id} action={item.icon} label={textFor(item.label, locale)} active={activeOperation?.id === item.id} disabled={disabled || running || !frameIsExact} onClick={() => {
           cancelConstruction(); setOperation(item.id);
-          if (activeOperation?.id === item.id) controls.closePanel(); else controls.setPanel("operation");
+          if (activeOperation?.id === item.id) controls.closePanel(); else {
+            controls.setPanel("operation");
+            if (item.constructionTool) setDrawingTool(item.constructionTool);
+          }
         }} />)}
         {definition.actions?.map((action) => <SpatialActionButton key={action.id} action={action.icon} label={textFor(action.label, locale)} active={action.active?.(shown)} disabled={disabled || running || !frameIsExact || action.disabled?.(shown, { selected })} onClick={() => execute(action)} />)}
         {authority.motion && planarProgress(authority.motion, now) < 1 && <>
@@ -264,16 +272,21 @@ function PlanarWorkbenchStage({ toolId, version, locale: suppliedLocale, initial
       </div>
       {controls.panel && <SpatialCanvasPanel title={controls.panel === "construction" ? m("绘制图形", "Draw shape") : activeOperation ? textFor(activeOperation.label, locale) : controls.panel === "materials" ? m("添加到当前舞台", "Add to this stage") : controls.panel === "scenes" ? m("教学现场", "Teaching scenes") : controls.panel === "parameters" ? m("形状与准确参数", "Shape and precise parameters") : m("显示设置", "Display settings")} anchor={["materials", "construction", "operation"].includes(controls.panel) ? "tool" : "meta"} closeLabel={m("关闭面板", "Close panel")} onClose={closePanel}>
         {controls.panel === "construction" && <div className={styles.gallery}>
-          {definition.construction?.tools.map((tool) => <Button key={tool.id} variant={drawingTool === tool.id ? "secondary" : "ghost"} aria-pressed={drawingTool === tool.id} aria-label={`${m("绘制", "Draw ")}${textFor(tool.label, locale)}`} disabled={!writable || publishing || running} onClick={() => {
+          {definition.construction?.tools.map((tool) => <Button key={tool.id} variant={drawingTool === tool.id ? "secondary" : "ghost"} aria-pressed={drawingTool === tool.id} aria-label={`${m("绘制", "Draw ")}${textFor(tool.label, locale)}`} disabled={!writable || publishing || running || tool.disabled?.(shown)} onClick={() => {
             drag.cancel(); clearDraft(); setDrawingTool(drawingTool === tool.id ? null : tool.id); setSelected(null); svg.current?.focus({ preventScroll: true });
           }}>{textFor(tool.label, locale)}</Button>)}
-          {activeDrawingTool && <p className={styles.hint}>{activeDrawingTool.kind === "points" ? m("依次点顶点，点回起点或点完成闭合；退格撤回一点，Esc 取消。", "Tap vertices, then the first vertex or Finish to close. Backspace removes one point; Esc cancels.") : activeDrawingTool.id === "circle" ? m("从圆心拖到圆周；松手完成，Esc 取消。", "Drag from the center to the circle boundary; release to finish, Esc to cancel.") : m("拖出两个对角点；松手完成，Esc 取消。", "Drag between two opposite corners; release to finish, Esc to cancel.")}</p>}
-          {activeDrawingTool?.kind === "points" && <Button aria-label={m("完成绘制", "Finish drawing")} disabled={!writable || publishing || dragging || draftPoints.length < 3} onClick={() => finishConstruction(activeDrawingTool.id, draftPoints)}><SpatialActionIcon action="confirm" className="size-4" />{m("完成绘制", "Finish drawing")}</Button>}
-          {draftInvalid && <p role="status" className={styles.hint}>{m("请调整顶点，围出不交叉且有面积的图形；也请检查材料数量是否已满。", "Adjust the points to enclose a non-crossing shape with area, and check the material limit.")}</p>}
         </div>}
         {activeOperation && <>
+          {operationDrawingTool && <Button aria-pressed={drawingTool === operationDrawingTool.id} aria-label={`${m("绘制", "Draw ")}${textFor(operationDrawingTool.label, locale)}`} disabled={!writable || publishing || running || !frameIsExact || operationDrawingTool.disabled?.(shown)} onClick={() => {
+            drag.cancel(); clearDraft(); setDrawingTool(drawingTool === operationDrawingTool.id ? null : operationDrawingTool.id); svg.current?.focus({ preventScroll: true });
+          }}><SpatialActionIcon action={activeOperation.icon} className="size-4" />{textFor(operationDrawingTool.label, locale)}</Button>}
           {activeOperation.fields?.map(renderField)}
           <div className={styles.gallery}>{activeOperation.actions?.map((action) => <Button key={action.id} aria-label={textFor(action.label, locale)} disabled={disabled || running || !frameIsExact || action.disabled?.(shown, { selected })} onClick={() => execute(action)}><SpatialActionIcon action={action.icon} className="size-4" />{textFor(action.label, locale)}</Button>)}</div>
+        </>}
+        {activeDrawingTool && <>
+          <p className={styles.hint}>{activeDrawingTool.hint ? textFor(activeDrawingTool.hint, locale) : activeDrawingTool.kind === "point" ? m("在舞台轻点放置；Esc 退出。", "Tap the stage to place; Esc exits.") : activeDrawingTool.kind === "points" ? m("依次点顶点，点回起点或点完成闭合；退格撤回一点，Esc 取消。", "Tap vertices, then the first vertex or Finish to close. Backspace removes one point; Esc cancels.") : activeDrawingTool.id === "circle" ? m("从圆心拖到圆周；松手完成，Esc 取消。", "Drag from the center to the circle boundary; release to finish, Esc to cancel.") : m("拖出两个对角点；松手完成，Esc 取消。", "Drag between two opposite corners; release to finish, Esc to cancel.")}</p>
+          {activeDrawingTool.kind === "points" && <Button aria-label={m("完成绘制", "Finish drawing")} disabled={!writable || publishing || dragging || draftPoints.length < 3} onClick={() => finishConstruction(activeDrawingTool.id, draftPoints)}><SpatialActionIcon action="confirm" className="size-4" />{m("完成绘制", "Finish drawing")}</Button>}
+          {draftInvalid && <p role="status" className={styles.hint}>{definition.construction?.invalidHint ? textFor(definition.construction.invalidHint, locale) : m("请调整顶点，围出不交叉且有面积的图形；也请检查材料数量是否已满。", "Adjust the points to enclose a non-crossing shape with area, and check the material limit.")}</p>}
         </>}
         {controls.panel === "materials" && materialGroups.map((group) => <section key={group.en} className={styles.materialGroup}>
           <h3>{textFor(group, locale)}</h3>

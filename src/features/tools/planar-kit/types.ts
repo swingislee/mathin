@@ -37,12 +37,15 @@ export interface PlanarDrawingApi {
 export interface PlanarOperation {
   id: string; icon: SpatialActionId; label: PlanarText;
   fields?: readonly PlanarField[]; actions?: readonly PlanarAction[];
+  /** 打开专用操作即使用共用绘制手势，例如剪刀直接拖切线。 */
+  constructionTool?: string;
 }
 /** 未闭合的绘制过程只存在宿主本机；准确几何才进入历史与课堂。 */
 export interface PlanarConstruction {
-  tools: readonly { id: string; label: PlanarText; kind: "drag" | "points" }[];
+  tools: readonly { id: string; label: PlanarText; kind: "point" | "drag" | "points"; hint?: PlanarText; disabled?: (state: PlanarState) => boolean; once?: boolean }[];
   create: (state: PlanarState, toolId: string, points: readonly PlanarPoint[]) => PlanarState | null;
-  preview: (toolId: string, points: readonly PlanarPoint[]) => ReactNode;
+  preview: (toolId: string, points: readonly PlanarPoint[], state?: PlanarState) => ReactNode;
+  invalidHint?: PlanarText;
   maxPoints: number;
 }
 /** 共用宿主管按钮、指针、历史、动画、课堂；领域仅声明数学现场。坐标使用 960×720 舞台。 */
