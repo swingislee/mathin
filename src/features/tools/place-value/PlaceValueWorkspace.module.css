@@ -12,14 +12,12 @@
 .numberButton:disabled { opacity: 1; }
 .numeralLayer { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 0; font-variant-numeric: tabular-nums; }
 .digit { font-size: 36px; font-weight: 600; line-height: 42px; }
-.addend { font-size: 23px; line-height: 26px; min-height: 26px; }
+.addend { font-size: 23px; line-height: 26px; min-height: 26px; color: var(--rose); }
 .digitInput { height: 48px; width: 58px; max-width: 100%; margin: 0 auto; padding: 0; text-align: center; font-size: 32px; }
 .counterButtons { display: flex; justify-content: center; gap: 4px; }
 .counterButton { min-width: 0; width: min(30px, calc((var(--place-control-width, 108px) - 4px) / 2)); height: 30px; padding: 0; color: var(--muted); }
 .counterButton svg { width: 16px; height: 16px; }
-.carryButton { height: 38px; min-width: 58px; transform: translate(-50%, 36px); padding: 0 7px; gap: 4px; font-size: 13px; color: var(--rose); border-color: var(--rose); background: var(--paper); pointer-events: auto; }
-.carryButton:hover { background: var(--paper); color: var(--rose-deep); border-color: var(--rose-deep); }
-.carryButton svg { width: 15px; height: 15px; flex-shrink: 0; }
+.carryButton { height: 40px; min-width: 72px; transform: translate(-50%, 36px); padding: 0 12px; font-size: 14px; line-height: 20px; font-weight: 600; white-space: nowrap; flex-shrink: 0; pointer-events: auto; }
 .carryButton[data-carry-visible="false"] { visibility: hidden; pointer-events: none; }
 .comparison { font-size: 30px; color: var(--ink); }
 .status {

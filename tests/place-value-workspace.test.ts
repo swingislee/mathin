@@ -46,6 +46,9 @@ describe("place-value workspace using common spatial controls", () => {
     await click("Add one unit");
     for (const label of ["Add one unit", "Take away one unit", "Add one Tens unit", "Add one Hundreds unit", "Edit Ones digit", "Edit Tens digit", "Edit Hundreds digit"]) expect(button(label).disabled).toBe(true);
     expect(button("Ten ones make one ten").disabled).toBe(false);
+    expect(button("Ten ones make one ten").querySelector("svg")).toBeNull();
+    expect(button("Ten ones make one ten").classList.contains("bg-rose")).toBe(true);
+    expect(button("Ten ones make one ten").textContent).toBe("Carry");
     expect(button("Ten ones make one ten").getAttribute("data-carry-between")).toBe("left:0:1");
     expect(button("Ten ones make one ten").closest("[data-place-value-station]")).toBeNull();
     expect(host.querySelector('[data-place-value-station="left:0"] [data-place-value-numeral="after"]')!.textContent).toBe("9+1");

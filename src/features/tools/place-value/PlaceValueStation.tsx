@@ -3,7 +3,6 @@
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { SpatialActionIcon } from "../spatial-interaction/SpatialActionIcon";
 import { SpatialActionButton } from "../spatial-interaction/SpatialActionButton";
 import { boardTotal, digitSymbol, parsePlaceValue, placeValueLimit, type PlaceValuePlace, type PlaceValueSide, type PlaceValueSnapshot } from "./radix-contract";
 import { isPlaceValueRegrouping, placeValueCarry, placeValueNotation, placeValuePendingCarry } from "./radix-model";
@@ -56,9 +55,9 @@ export function PlaceValueCarryControl({ snapshot, side, place, progress, locale
   const carrying = motion?.side === side && isPlaceValueRegrouping(motion.kind) && (motion.kind === "carry" ? motion.level : motion.level - 1) === place && progress < 1;
   const ready = placeValueCarry(snapshot[side]) === place;
   const label = carrying ? motion.paused ? m.resume : m.pause : placeValueCarryLabel(locale, place, snapshot[side].radix);
-  return <Button variant="secondary" className={styles.carryButton} data-carry-between={side + ":" + place + ":" + (place + 1)} data-carry-visible={ready || carrying}
+  return <Button variant="primary" className={styles.carryButton} data-carry-between={side + ":" + place + ":" + (place + 1)} data-carry-visible={ready || carrying}
     aria-hidden={!ready && !carrying} tabIndex={ready || carrying ? 0 : -1} disabled={carrying ? publishing : disabled || !ready} aria-label={label} title={label}
     onPointerDown={(event) => event.stopPropagation()} onClick={() => carrying ? onToggleMotion() : onCarry(side, place)}>
-    <SpatialActionIcon action={carrying ? motion.paused ? "play" : "pause" : "placeCarry"} />{carrying ? motion.paused ? m.resumeLabel : m.pauseLabel : m.carryLabel}
+    {carrying ? motion.paused ? m.resumeLabel : m.pauseLabel : m.carryLabel}
   </Button>;
 }
