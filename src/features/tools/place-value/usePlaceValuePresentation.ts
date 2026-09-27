@@ -8,7 +8,7 @@ import type { PlaceValueSnapshot } from "./radix-contract";
 export function usePlaceValuePresentation(snapshot: PlaceValueSnapshot) {
   const [frame, setFrame] = useState({ id: "", progress: 1 });
   const motion = snapshot.motion;
-  const timeline = motion ? [motion.id, motion.startedAt, motion.progress].join(":") : "";
+  const timeline = motion ? [motion.id, motion.boxStage, motion.startedAt, motion.progress].join(":") : "";
   useEffect(() => {
     if (!motion || motion.paused) return;
     const remaining = Math.max(0, motion.durationMs * (1 - motion.progress) - (Date.now() - motion.startedAt));
@@ -17,4 +17,17 @@ export function usePlaceValuePresentation(snapshot: PlaceValueSnapshot) {
   // 调度终帧明确落在 1，避免两套时钟的舍入差留下永久的“尚差一帧”。
   const progress = !motion ? 1 : motion.paused ? motion.progress : frame.id === timeline ? frame.progress : motion.progress;
   return { progress, busy: progress < 1, playing: progress < 1 && !motion?.paused };
+}
+
+/** 取出／收回只改变表示方式，仍通过课堂语义时间恢复，不改数或分组。 */
+export function usePlaceValueContentsPresentation(snapshot: PlaceValueSnapshot) {
+  const [frame, setFrame] = useState({ id: "", progress: 1 });
+  const motion = snapshot.contentsMotion;
+  useEffect(() => {
+    if (!motion) return;
+    const remaining = Math.max(0, motion.durationMs - (Date.now() - motion.startedAt));
+    return animateSpatialAction(remaining, (elapsed) => setFrame({ id: motion.id, progress: elapsed === 1 ? 1 : Math.min(1, Math.max(0, Date.now() - motion.startedAt) / motion.durationMs) }));
+  }, [motion]);
+  const progress = !motion ? 1 : frame.id === motion.id ? frame.progress : 0;
+  return { progress, busy: progress < 1 };
 }

@@ -6,6 +6,7 @@ import { PlaceValueWorkspace, type PlaceValueWorkspaceProps } from "@/features/t
 import type { PlaceValueCanvasProps } from "@/features/tools/place-value/PlaceValueCanvas";
 import { boardTotal, createDefaultPlaceValueInitial, createPlaceValueBoard, placeValueSnapshot, type PlaceValueSnapshot } from "@/features/tools/place-value/radix-contract";
 import { planPlaceValue } from "@/features/tools/place-value/radix-model";
+import { advancePlaceValueBoxCarry } from "@/features/tools/place-value/box-model";
 
 const viewport = vi.hoisted(() => ({ current: null as PlaceValueCanvasProps | null }));
 vi.mock("next/dynamic", () => ({ default: () => function Viewport(props: PlaceValueCanvasProps) {
@@ -34,6 +35,67 @@ const click = async (label: string) => act(async () => button(label).click());
 async function tick(time: number) { now = time; const tasks = [...frames.values()]; frames.clear(); await act(async () => tasks.forEach((callback) => callback(time))); }
 
 describe("place-value workspace using common spatial controls", () => {
+  it("restores a late-joined waiting pose and does not replay the same classroom phase", async () => {
+    const origin = placeValueSnapshot({ ...createDefaultPlaceValueInitial(), left: createPlaceValueBoard(10, "ones"), presentation: { strategy: "boxes", contents: "both" } });
+    const lay = planPlaceValue(origin, "carry", 1000)!;
+    now = 5000;
+    await render({ classroom: { state: lay } }); await tick(5000);
+    expect(viewport.current!.progress).toBe(1);
+    expect(button("Pack · Ten ones make one ten").disabled).toBe(true);
+    const pack = advancePlaceValueBoxCarry(lay, 5000)!;
+    now = 5900; await render({ classroom: { state: pack } }); await tick(5900);
+    expect(viewport.current!.progress).toBe(.5);
+    await render({ classroom: { state: structuredClone(pack) } });
+    expect(viewport.current!.progress).toBe(.5);
+    await tick(6800);
+    expect(viewport.current!.progress).toBe(1);
+    expect(button("Place · Ten ones make one ten").disabled).toBe(true);
+    expect(host.querySelector('[data-place-value-station="left:0"] [data-place-value-numeral="before"]')!.textContent).toBe("9+1");
+  });
+  it("adds an independent box strategy with explicit three-stage carry and safe capture", async () => {
+    const capture = vi.fn();
+    await render({ onSnapshot: capture });
+    await click("Presentation strategy"); await click("Box mapping");
+    expect(viewport.current!.snapshot.presentation).toEqual({ strategy: "boxes", contents: "both" });
+    expect(viewport.current!.snapshot.left.places[0]).toHaveLength(9);
+    await click("Add one unit"); await tick(1200);
+    await click("Lay down · Ten ones make one ten");
+    expect(viewport.current!.snapshot.motion!.boxStage).toBe("lay");
+    expect(button("Lay down · Ten ones make one ten").disabled).toBe(true);
+    await tick(3400);
+    expect(button("Pack · Ten ones make one ten").disabled).toBe(false);
+    expect(button("Add one unit").disabled).toBe(true); expect(button("Rod regrouping").disabled).toBe(true);
+    expect(capture.mock.lastCall![0]).toBeNull();
+    expect(host.querySelector('[data-place-value-station="left:0"] [data-place-value-numeral="before"]')!.textContent).toBe("9+1");
+    await click("Pack · Ten ones make one ten"); await tick(5200);
+    expect(button("Place · Ten ones make one ten").disabled).toBe(false);
+    expect(capture.mock.lastCall![0]).toBeNull();
+    await click("Place · Ten ones make one ten"); await tick(6300);
+    expect(button("Add one unit").disabled).toBe(false);
+    expect(capture.mock.lastCall![0].left.places[1]).toHaveLength(1);
+    expect(capture.mock.lastCall![0].presentation.strategy).toBe("boxes");
+    const board = viewport.current!.snapshot.left;
+    await click("Take out"); expect(button("Add one unit").disabled).toBe(true);
+    expect(capture.mock.lastCall![0]).toBeNull(); await tick(7800);
+    expect(viewport.current!.snapshot.left).toEqual(board);
+    expect(capture.mock.lastCall![0].presentation.contents).toBe("outside");
+    await click("Rod regrouping"); expect(viewport.current!.snapshot.left).toEqual(board);
+    await click("Restore starting scene"); expect(viewport.current!.snapshot.left.places[0]).toHaveLength(9);
+  });
+  it("keeps legacy workspaces on the original strategy", async () => {
+    await render({ allowBoxStrategy: false });
+    expect(host.querySelector('[data-spatial-action="placePresentation"]')).toBeNull();
+  });
+  it("disables automatic carry only in box mode", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const initial = { ...createDefaultPlaceValueInitial(), autoCarry: true, presentation: { strategy: "boxes" as const, contents: "both" as const } };
+    await render({ initial }); await click("Add one unit"); await tick(1500);
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+    expect(viewport.current!.snapshot.motion!.kind).toBe("add");
+    expect(button("Lay down · Ten ones make one ten").disabled).toBe(false);
+    await click("Structure and display");
+    expect(host.textContent).not.toContain("Automatically carry a full group");
+  });
   it("keeps SVG-only +/- responsive below ten, then protects 9/+1 until carrying without shifting the toolbar", async () => {
     await render({ initial: { ...createDefaultPlaceValueInitial(), left: createPlaceValueBoard(7) } });
     const toolbar = () => [...host.querySelectorAll('[role="toolbar"] [data-spatial-action]')].map((node) => node.getAttribute("data-spatial-action"));

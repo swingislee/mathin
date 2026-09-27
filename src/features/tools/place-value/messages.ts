@@ -1,5 +1,11 @@
 const zh = {
   title: "数位积木", tools: "数位积木工具", settings: "结构与显示设置", prepare: "准备数与分组", compare: "比较两个数", inspect: "观察计数单位",
+  presentation: "演示策略", rods: "长条进位", boxes: "装盒映射", inside: "放回盒内", outside: "取出展示", both: "内外同时展示",
+  boxHint: "先倒下或叠合，再装盒，最后归位。每一步结束后，点击数位间的按钮继续。取出展示只改变展示位置，不拆分计数单位。",
+  mappingHint: "前排开口盒表示一个计数单位，后方表示同一单位的组成，不重复计数。组成模型按完整单位等比缩放；不同数位的映射比例可能不同，比较数量请看组成与数位。",
+  boxColors: "前端颜色按本列每五个单位黄蓝交替，顶面与侧面分格显示内部组成。",
+  boxGroupHint: "点击前排盒子或后方组成模型，查看它们对应的同一个计数单位。",
+  lay: "倒下", stack: "叠合", pack: "装盒", place: "归位", waiting: "等待下一步", strategyLegacy: "已保存的旧版场景保留原演示。新建数位积木场景可选择装盒映射。",
   single: "一个数", left: "左边", right: "右边", close: "关闭", orbit: "旋转视角", pan: "平移视角", fit: "适合画面", reset: "恢复教学起点",
   undo: "撤销", redo: "重做", add: "加一个一", remove: "拿走一个一", carry: "满十进一", carryOne: "十个一合成一个十", carryTen: "十个十合成一个百",
   unpack: "拆开一个计数单位", unpackTen: "一个十拆成十个一", unpackHundred: "一个百拆成十个十",
@@ -25,6 +31,12 @@ const zh = {
 };
 const en: typeof zh = {
   title: "Place-value blocks", tools: "Place-value tools", settings: "Structure and display", prepare: "Prepare number and groups", compare: "Compare numbers", inspect: "Inspect a counting unit",
+  presentation: "Presentation strategy", rods: "Rod regrouping", boxes: "Box mapping", inside: "Return inside", outside: "Take out", both: "Show both",
+  boxHint: "Lay down or stack, pack, then place. Click the button between places to continue after each stage. Taking contents out changes the display, not the counting units.",
+  mappingHint: "Each front open box represents one counting unit. The rear model shows its composition, not an extra quantity. Each complete model is uniformly scaled; different places may use different scales. Compare quantities through composition and place values.",
+  boxColors: "Front colors alternate every five counting units. Top and side grids show the units inside.",
+  boxGroupHint: "Select a front box or rear model to inspect the same counting unit they represent.",
+  lay: "Lay down", stack: "Stack", pack: "Pack", place: "Place", waiting: "Ready for next stage", strategyLegacy: "Saved legacy scenes keep their original presentation. Create a new place-value scene to use box mapping.",
   single: "One number", left: "Left", right: "Right", close: "Close", orbit: "Orbit camera", pan: "Pan camera", fit: "Fit view", reset: "Restore starting scene",
   undo: "Undo", redo: "Redo", add: "Add one unit", remove: "Take away one unit", carry: "Regroup ten", carryOne: "Ten ones make one ten", carryTen: "Ten tens make one hundred",
   unpack: "Unpack a counting unit", unpackTen: "One ten becomes ten ones", unpackHundred: "One hundred becomes ten tens",

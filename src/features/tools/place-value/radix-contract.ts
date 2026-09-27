@@ -2,6 +2,12 @@ import { z } from "zod";
 import { PLACE_VALUE_COLOR_PERIOD, placeValueColorPhase } from "./color-policy";
 
 export const PLACE_VALUE_VERSION = "place-value-lesson-v2" as const;
+export const PLACE_VALUE_MAPPING_VERSION = "place-value-lesson-v3" as const;
+export const placeValuePresentationSchema = z.object({ strategy: z.enum(["rods", "boxes"]), contents: z.enum(["inside", "outside", "both"]) }).strict();
+export type PlaceValuePresentation = z.infer<typeof placeValuePresentationSchema>;
+export const DEFAULT_PLACE_VALUE_PRESENTATION: PlaceValuePresentation = { strategy: "rods", contents: "both" };
+export const placeValueBoxStageSchema = z.enum(["lay", "pack", "place"]);
+export type PlaceValueBoxStage = z.infer<typeof placeValueBoxStageSchema>;
 export const PLACE_VALUE_BASES = [2, 3, 4, 5, 7, 8, 9, 10, 16] as const;
 export const PLACE_VALUE_MAX_DIGITS = 6;
 export const PLACE_VALUE_HISTORY_LIMIT = 12;
@@ -88,14 +94,19 @@ function validateInitial(value: InitialFields, ctx: z.RefinementCtx) {
     || (value.selection && !boardHasUnit(value[value.selection.side], value.selection.unit))) ctx.addIssue({ code: "custom", message: "Mismatched base, places or selection" });
 }
 export const placeValueInitialSchema = z.object(fields).strict().superRefine(validateInitial);
-export type PlaceValueInitial = z.infer<typeof placeValueInitialSchema>;
+export const placeValueWorkspaceInitialSchema = placeValueInitialSchema.safeExtend({ presentation: placeValuePresentationSchema.optional() });
+export const placeValueMappingInitialSchema = placeValueInitialSchema.safeExtend({ presentation: placeValuePresentationSchema });
+export type PlaceValueInitial = z.infer<typeof placeValueWorkspaceInitialSchema>;
 const changeFields = { side, kind: z.enum(["add", "remove", "carry", "unpack", "replace"]), level,
   before: placeValueBoardSchema, after: placeValueBoardSchema };
 export const placeValueChangeSchema = z.object(changeFields).strict();
 export type PlaceValueChange = z.infer<typeof placeValueChangeSchema>;
 export const placeValueMotionSchema = z.object({ ...changeFields, id: z.string().uuid(), startedAt: z.number().int().min(0).max(10_000_000_000_000),
   durationMs: z.number().finite().min(1).max(60_000), progress: z.number().finite().min(0).max(1), paused: z.boolean() }).strict();
-export type PlaceValueMotion = z.infer<typeof placeValueMotionSchema>;
+const workspaceMotionSchema = placeValueMotionSchema.extend({ boxStage: placeValueBoxStageSchema.optional() });
+export type PlaceValueMotion = z.infer<typeof workspaceMotionSchema>;
+const contentsMotionSchema = z.object({ id: z.string().uuid(), from: placeValuePresentationSchema.shape.contents, to: placeValuePresentationSchema.shape.contents,
+  startedAt: z.number().int().min(0).max(10_000_000_000_000), durationMs: z.number().min(1).max(60_000) }).strict();
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 /** 不同压缩分段仍表示同一批单位；最多比较一个颜色周期，不展开长串。 */
 export function samePlaceValueGroup(a: PlaceValueGroup, b: PlaceValueGroup, base = PLACE_VALUE_COLOR_PERIOD) {
@@ -152,17 +163,30 @@ export const placeValueSnapshotSchema = z.object({ ...fields, cameraRevision: z.
   for (const change of [...value.past, ...value.future, ...(value.motion ? [value.motion] : [])]) if (!validPlaceValueChange(change)
     || change.after.radix !== value.left.radix || change.after.places.length !== value.left.places.length) ctx.addIssue({ code: "custom", message: "Invalid regrouping history" });
 });
-export type PlaceValueSnapshot = z.infer<typeof placeValueSnapshotSchema>;
+const workspaceSnapshotSchema = placeValueSnapshotSchema.safeExtend({ presentation: placeValuePresentationSchema.optional(),
+  motion: workspaceMotionSchema.nullable(), contentsMotion: contentsMotionSchema.optional() });
+function validatePresentation(value: z.infer<typeof workspaceSnapshotSchema>, ctx: z.RefinementCtx) {
+  if ((value.motion?.boxStage && (value.presentation?.strategy !== "boxes" || value.motion.kind !== "carry"))
+    || (value.contentsMotion && (value.presentation?.strategy !== "boxes" || value.contentsMotion.to !== value.presentation.contents))) {
+    ctx.addIssue({ code: "custom", message: "Presentation motion must match the active strategy" });
+  }
+}
+export const placeValueWorkspaceSnapshotSchema = workspaceSnapshotSchema.superRefine(validatePresentation);
+export const placeValueMappingSnapshotSchema = workspaceSnapshotSchema.safeExtend({ presentation: placeValuePresentationSchema }).superRefine(validatePresentation);
+export type PlaceValueSnapshot = z.infer<typeof placeValueWorkspaceSnapshotSchema>;
 export const placeValueToolSchema = z.object({ toolId: z.literal("place-value"), contentVersion: z.literal(PLACE_VALUE_VERSION),
   payload: z.object({ title: z.string().trim().min(1).max(80), initial: placeValueInitialSchema }).strict() }).strict();
+export const placeValueMappingToolSchema = z.object({ toolId: z.literal("place-value"), contentVersion: z.literal(PLACE_VALUE_MAPPING_VERSION),
+  payload: z.object({ title: z.string().trim().min(1).max(80), initial: placeValueMappingInitialSchema }).strict() }).strict();
 export function createDefaultPlaceValueInitial(): PlaceValueInitial {
   return { mode: "single", left: createPlaceValueBoard(9), right: createPlaceValueBoard(20), active: "left", selection: null,
     highlight: "all", comparison: "hidden", autoCarry: false, speed: "normal", showDigits: true, showLabels: true, grid: false, axes: false,
     view: "front", frame: { center: { x: 0, y: 4, z: 0 }, radius: 8.5 } };
 }
 export function placeValueSnapshot(initial: PlaceValueInitial): PlaceValueSnapshot {
-  return { ...placeValueInitialSchema.parse(structuredClone(initial)), cameraRevision: 0, motion: null, past: [], future: [] };
+  return { ...placeValueWorkspaceInitialSchema.parse(structuredClone(initial)), cameraRevision: 0, motion: null, past: [], future: [] };
 }
 export function placeValueInitial(snapshot: PlaceValueSnapshot): PlaceValueInitial {
-  return placeValueInitialSchema.parse(Object.fromEntries(Object.keys(fields).map((key) => [key, snapshot[key as keyof typeof fields]])));
+  const value = Object.fromEntries(Object.keys(fields).map((key) => [key, snapshot[key as keyof typeof fields]]));
+  return placeValueWorkspaceInitialSchema.parse(snapshot.presentation ? { ...value, presentation: snapshot.presentation } : value);
 }

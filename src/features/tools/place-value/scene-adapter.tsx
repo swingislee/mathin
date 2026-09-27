@@ -5,7 +5,7 @@ import { useCallback, useMemo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { defineToolWorkbenchAdapter, ToolPreparationStage, type ToolPreparationProps } from "../scenes/workbench-adapter";
 import { toolSceneRuntime } from "../scenes/runtime";
-import { PLACE_VALUE_VERSION, type PlaceValueInitial } from "./radix-contract";
+import { createDefaultPlaceValueInitial, DEFAULT_PLACE_VALUE_PRESENTATION, PLACE_VALUE_MAPPING_VERSION, PLACE_VALUE_VERSION, type PlaceValueInitial } from "./radix-contract";
 import { PLACE_VALUE_VERSION as LEGACY_VERSION, type PlaceValueInitial as LegacyInitial, type PlaceValueSnapshot as LegacySnapshot } from "./contract";
 import { downgradePlaceValueInitial, downgradePlaceValueSnapshot, upgradePlaceValueInitial, upgradePlaceValueSnapshot } from "./legacy-adapter";
 import type { PlaceValueWorkspaceProps } from "./PlaceValueWorkspace";
@@ -15,11 +15,28 @@ function Preparation({ existing, title, fullHeight, onChange }: ToolPreparationP
   const capture = useCallback((initial: PlaceValueInitial | null) => onChange(initial ? {
     toolId: "place-value", contentVersion: PLACE_VALUE_VERSION, payload: { title, initial },
   } : null), [title, onChange]);
-  return <ToolPreparationStage version={PLACE_VALUE_VERSION} fullHeight={fullHeight}><Workspace initial={existing?.payload.initial} onSnapshot={capture} /></ToolPreparationStage>;
+  return <ToolPreparationStage version={PLACE_VALUE_VERSION} fullHeight={fullHeight}><Workspace initial={existing?.payload.initial} onSnapshot={capture} allowBoxStrategy={false} /></ToolPreparationStage>;
 }
 export const placeValueSceneAdapter = defineToolWorkbenchAdapter({
   contentVersion: PLACE_VALUE_VERSION, Preparation,
-  Presentation: ({ scene, classroom }) => <Workspace initial={scene.payload.initial} readOnly={!!(classroom && !classroom.onChange)} classroom={toolSceneRuntime<typeof PLACE_VALUE_VERSION>(scene, classroom)} />,
+  Presentation: ({ scene, classroom }) => <Workspace initial={scene.payload.initial} readOnly={!!(classroom && !classroom.onChange)} classroom={toolSceneRuntime<typeof PLACE_VALUE_VERSION>(scene, classroom)} allowBoxStrategy={false} />,
+});
+const withPresentation = <T extends PlaceValueInitial>(value: T) => ({ ...value, presentation: value.presentation ?? { ...DEFAULT_PLACE_VALUE_PRESENTATION } });
+function MappingPreparation({ existing, title, fullHeight, onChange }: ToolPreparationProps<typeof PLACE_VALUE_MAPPING_VERSION>) {
+  const initial = useMemo(() => existing?.payload.initial ?? withPresentation(createDefaultPlaceValueInitial()), [existing]);
+  const capture = useCallback((initial: PlaceValueInitial | null) => onChange(initial ? {
+    toolId: "place-value", contentVersion: PLACE_VALUE_MAPPING_VERSION, payload: { title, initial: withPresentation(initial) },
+  } : null), [title, onChange]);
+  return <ToolPreparationStage version={PLACE_VALUE_MAPPING_VERSION} fullHeight={fullHeight}><Workspace initial={initial} onSnapshot={capture} /></ToolPreparationStage>;
+}
+export const placeValueMappingSceneAdapter = defineToolWorkbenchAdapter({
+  contentVersion: PLACE_VALUE_MAPPING_VERSION, Preparation: MappingPreparation,
+  Presentation: ({ scene, classroom }) => {
+    const runtime = toolSceneRuntime<typeof PLACE_VALUE_MAPPING_VERSION>(scene, classroom);
+    return <Workspace initial={scene.payload.initial} readOnly={!!(classroom && !classroom.onChange)} classroom={runtime ? {
+      state: runtime.state, onChange: runtime.onChange ? (next) => runtime.onChange!(withPresentation(next)) : undefined,
+    } : undefined} />;
+  },
 });
 function LegacyWorkspace({ initial, onSnapshot, classroom, readOnly }: { initial: LegacyInitial; onSnapshot?: (initial: LegacyInitial | null) => void;
   classroom?: { state?: LegacySnapshot; onChange?: (state: LegacySnapshot) => Promise<void> }; readOnly?: boolean }) {
@@ -29,7 +46,7 @@ function LegacyWorkspace({ initial, onSnapshot, classroom, readOnly }: { initial
     onChange: classroom.onChange ? (state) => classroom.onChange!(downgradePlaceValueSnapshot(state)) : undefined,
   } : undefined, [classroom]);
   const capture = useCallback((value: PlaceValueInitial | null) => onSnapshot?.(value ? downgradePlaceValueInitial(value) : null), [onSnapshot]);
-  return <Workspace initial={origin} onSnapshot={capture} classroom={runtime} readOnly={readOnly} legacy />;
+  return <Workspace initial={origin} onSnapshot={capture} classroom={runtime} readOnly={readOnly} legacy allowBoxStrategy={false} />;
 }
 function LegacyPreparation({ existing, title, fullHeight, onChange }: ToolPreparationProps<typeof LEGACY_VERSION>) {
   const capture = useCallback((initial: LegacyInitial | null) => onChange(initial ? { toolId: "place-value", contentVersion: LEGACY_VERSION, payload: { title, initial } } : null), [title, onChange]);

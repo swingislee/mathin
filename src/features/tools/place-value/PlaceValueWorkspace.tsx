@@ -16,31 +16,34 @@ import { SpatialCanvasPanel } from "../spatial-interaction/SpatialWorkbenchContr
 import { useSpatialToolState } from "../spatial-interaction/useSpatialToolState";
 import { useToolSnapshot } from "../scenes/useToolSnapshot";
 import { useSceneCapture } from "../courseware/useSceneCapture";
-import { boardTotal, createDefaultPlaceValueInitial, createPlaceValueBoard, formatPlaceValue, groupSize, parsePlaceValue, PLACE_VALUE_BASES, PLACE_VALUE_MAX_DIGITS, placeValueInitial, placeValueLimit, placeValueSnapshot, placeValueSnapshotSchema,
+import { boardTotal, createDefaultPlaceValueInitial, createPlaceValueBoard, formatPlaceValue, groupSize, parsePlaceValue, PLACE_VALUE_BASES, PLACE_VALUE_MAX_DIGITS, placeValueInitial, placeValueLimit, placeValueSnapshot, placeValueWorkspaceSnapshotSchema,
   type PlaceValueAction, type PlaceValueInitial, type PlaceValueSide, type PlaceValueSnapshot } from "./radix-contract";
-import { applyPlaceValueChange, configurePlaceValue, historyPlaceValue, isPlaceValueRegrouping, pausePlaceValue, placeValueCarry, placeValueFrame, placeValueGroup, placeValuePendingCarry, placeValuePlaces, planPlaceValue, planPlaceValueCount, resumePlaceValue } from "./radix-model";
+import { applyPlaceValueChange, configurePlaceValue, historyPlaceValue, isPlaceValueRegrouping, pausePlaceValue, placeValueBoxWaiting, placeValueCarry, placeValueFrame, placeValueGroup, placeValuePendingCarry, placeValuePlaces, planPlaceValue, planPlaceValueCount, resumePlaceValue } from "./radix-model";
 import { PlaceValueCarryControl, PlaceValueStation, type PlaceValueStationProps } from "./PlaceValueStation";
-import { usePlaceValuePresentation } from "./usePlaceValuePresentation";
+import { usePlaceValueContentsPresentation, usePlaceValuePresentation } from "./usePlaceValuePresentation";
+import { advancePlaceValueBoxCarry, changePlaceValueContents, changePlaceValueStrategy, placeValueBoxFrame } from "./box-model";
 import { placeValueCarryLabel, placeValueLabel, placeValueMessages } from "./messages";
 import styles from "../spatial-lab/CubeStructuresWorkbench.module.css";
 import local from "./PlaceValueWorkspace.module.css";
 
 const Viewport = dynamic(() => import("./PlaceValueCanvas").then((module) => module.PlaceValueCanvas), { ssr: false, loading: () => <Skeleton className="size-full" /> });
 export interface PlaceValueWorkspaceProps {
-  initial?: PlaceValueInitial; onSnapshot?: (initial: PlaceValueInitial | null) => void; readOnly?: boolean; legacy?: boolean;
+  initial?: PlaceValueInitial; onSnapshot?: (initial: PlaceValueInitial | null) => void; readOnly?: boolean; legacy?: boolean; allowBoxStrategy?: boolean;
   classroom?: { state?: PlaceValueSnapshot; onChange?: (next: PlaceValueSnapshot) => Promise<void> };
 }
-export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, classroom, legacy = false }: PlaceValueWorkspaceProps) {
+export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, classroom, legacy = false, allowBoxStrategy = true }: PlaceValueWorkspaceProps) {
   const locale = useLocale() === "en" ? "en" : "zh", m = placeValueMessages(locale);
   const origin = useMemo(() => placeValueSnapshot(initial ?? createDefaultPlaceValueInitial()), [initial]);
   const host = useToolSnapshot(origin, classroom), snapshot = host.snapshot, presentation = usePlaceValuePresentation(snapshot);
+  const contentsPresentation = usePlaceValueContentsPresentation(snapshot), boxes = snapshot.presentation?.strategy === "boxes", waiting = placeValueBoxWaiting(snapshot);
+  const frameFor = (state: PlaceValueInitial) => state.presentation?.strategy === "boxes" ? placeValueBoxFrame(state) : placeValueFrame(state);
   const commandState = useMemo(() => presentation.progress === 1 && snapshot.motion
     ? { ...snapshot, motion: { ...snapshot.motion, progress: 1 } } : snapshot, [snapshot, presentation.progress]);
   const [preview, setPreview] = useState<number | null>(null);
   const viewer = readOnly || !!(classroom && !classroom.onChange), publishing = viewer || host.publishing;
-  const regrouping = presentation.busy && isPlaceValueRegrouping(snapshot.motion?.kind), disabled = publishing || regrouping || preview !== null;
-  const controls = useSpatialToolState<"orbit", "prepare" | "compare" | "inspect" | "settings">({
-    defaultTool: "orbit", panels: { prepare: "orbit", compare: "orbit", inspect: "orbit", settings: "orbit" },
+  const regrouping = presentation.busy && isPlaceValueRegrouping(snapshot.motion?.kind), disabled = publishing || regrouping || waiting || contentsPresentation.busy || preview !== null;
+  const controls = useSpatialToolState<"orbit", "prepare" | "compare" | "inspect" | "settings" | "presentation">({
+    defaultTool: "orbit", panels: { prepare: "orbit", compare: "orbit", inspect: "orbit", settings: "orbit", presentation: "orbit" },
     onClearSelection: () => { if (!publishing && snapshot.selection) host.update({ ...snapshot, selection: null }); },
   });
   const axisSnap = useSpatialAxisSnap(), [notice, setNotice] = useState("");
@@ -55,19 +58,24 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
   const update = host.update;
   const commit = useCallback((next: PlaceValueSnapshot) => {
     if (publishing) return false;
-    const parsed = placeValueSnapshotSchema.safeParse(next);
+    const parsed = placeValueWorkspaceSnapshotSchema.safeParse(next);
     if (!parsed.success) { setNotice(m.failed); return false; }
     setNotice(""); return update(parsed.data);
   }, [publishing, update, m.failed]);
   const act = (action: PlaceValueAction, side = active, level = 0) => {
+    if (action === "carry" && waiting && snapshot.motion?.side === side && snapshot.motion.level === level) {
+      if (publishing || presentation.busy || contentsPresentation.busy || preview !== null) return;
+      const next = advancePlaceValueBoxCarry(commandState); if (next) commit(next);
+      return;
+    }
     if (disabled) return;
     const next = planPlaceValue({ ...commandState, active: side }, action, undefined, level); if (next) commit(action === "unpack" ? { ...next, autoCarry: false } : next);
   };
   const captureValue = useMemo(() => placeValueInitial(snapshot), [snapshot]);
-  const capture = useSceneCapture(publishing || presentation.busy || preview !== null ? null : captureValue, onSnapshot);
+  const capture = useSceneCapture(publishing || presentation.busy || waiting || contentsPresentation.busy || preview !== null ? null : captureValue, onSnapshot);
   const autoKey = useRef("");
   useEffect(() => {
-    if (disabled || presentation.busy || !snapshot.autoCarry || carry === null || host.failed) return;
+    if (disabled || presentation.busy || boxes || !snapshot.autoCarry || carry === null || host.failed) return;
     const key = [snapshot.motion?.id, active, board.nextId, ...board.places.map((groups) => groups.length)].join(":");
     if (autoKey.current === key) return;
     const timer = window.setTimeout(() => {
@@ -75,7 +83,7 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
       const next = planPlaceValue(commandState, "carry", Date.now(), carry); if (next) commit(next);
     }, 500);
     return () => window.clearTimeout(timer);
-  }, [disabled, presentation.busy, snapshot, commandState, active, board, carry, host.failed, commit]);
+  }, [disabled, presentation.busy, boxes, snapshot, commandState, active, board, carry, host.failed, commit]);
   const configure = (patch: Partial<PlaceValueInitial>) => { if (!disabled) commit({ ...snapshot, ...patch, motion: null }); };
   const arrange = (value: number) => {
     if (quantityDisabled) return;
@@ -83,7 +91,7 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
     let after;
     try { after = createPlaceValueBoard(value, grouping, base, digits); } catch { setNotice(m.groupsError); return; }
     const next = applyPlaceValueChange(snapshot, { side: active, kind: "replace", level: 0, before: board, after });
-    next.motion = null; next.selection = null; next.frame = placeValueFrame(next); next.cameraRevision++;
+    next.motion = null; next.selection = null; next.frame = frameFor(next); next.cameraRevision++;
     autoKey.current = "";
     commit(next); setDraft(formatPlaceValue(value, base));
   };
@@ -92,12 +100,12 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
     if (disabled || legacy) return;
     const next = configurePlaceValue(commandState, radix, places);
     if (!next) { setNotice(m.capacityError); return; }
-    if (commit(next)) { setDraft(formatPlaceValue(boardTotal(board), radix)); autoKey.current = ""; }
+    if (commit({ ...next, frame: frameFor(next) })) { setDraft(formatPlaceValue(boardTotal(board), radix)); autoKey.current = ""; }
   };
   const setMode = (mode: PlaceValueInitial["mode"]) => {
     if (disabled) return;
     const next = { ...snapshot, mode, active: "left" as const, selection: null, motion: null };
-    commit({ ...next, frame: placeValueFrame(next), cameraRevision: snapshot.cameraRevision + 1 });
+    commit({ ...next, frame: frameFor(next), cameraRevision: snapshot.cameraRevision + 1 });
   };
   const updateProgress = (progress: number) => {
     if (snapshot.motion) commit({ ...snapshot, motion: { ...snapshot.motion, progress, paused: true, startedAt: Date.now() } });
@@ -108,22 +116,23 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
     onCountChange: (side, place, count) => { if (!disabled) { const next = planPlaceValueCount(commandState, side, place, count); if (next) commit(next); } },
     onCarry: (side, place) => act("carry", side, place),
     onHighlight: (place) => commit({ ...snapshot, highlight: snapshot.highlight === place ? "all" : place }) });
-  return <section className={styles.workspace} data-workbench-mode="courseware" data-place-value-workspace="v2" aria-label={m.title} {...capture} {...controls.bindings}>
+  return <section className={styles.workspace} data-workbench-mode="courseware" data-place-value-workspace={allowBoxStrategy ? "v3" : "v2"} aria-label={m.title} {...capture} {...controls.bindings}>
     <div className={styles.viewport}><div className={styles.canvas}>
-      <Viewport snapshot={snapshot} progress={preview ?? presentation.progress} locale={locale} navigation={controls.tool} axisSnap={axisSnap} interactive={!viewer} selected={controls.selectionActive}
+      <Viewport snapshot={snapshot} progress={preview ?? presentation.progress} contentsProgress={contentsPresentation.progress} locale={locale} navigation={controls.tool} axisSnap={axisSnap} interactive={!viewer} selected={controls.selectionActive}
         onPointerMissed={controls.onPointerMissed} onSelect={(side, unit) => { if (!disabled) { controls.activateSelection(); commit({ ...snapshot, active: side, selection: { side, unit } }); } }}
         renderPlaceControl={(side, place) => <PlaceValueStation {...stationProps(side, place)} />}
         renderCarryControl={(side, place) => <PlaceValueCarryControl {...stationProps(side, place)} />} />
       <div className={styles.dock + " " + styles.views}>
         <SpatialViewButtons views={SPATIAL_STANDARD_VIEWS} value={snapshot.view} labels={m.views} disabled={publishing}
-          onChange={(view) => commit({ ...snapshot, view, cameraRevision: snapshot.cameraRevision + 1 })}
-          fit={{ label: m.fit, onClick: () => commit({ ...snapshot, frame: placeValueFrame(snapshot), cameraRevision: snapshot.cameraRevision + 1 }) }} />
+          onChange={(view) => commit({ ...snapshot, view, ...(boxes ? { frame: frameFor({ ...snapshot, view }) } : {}), cameraRevision: snapshot.cameraRevision + 1 })}
+          fit={{ label: m.fit, onClick: () => commit({ ...snapshot, frame: frameFor(snapshot), cameraRevision: snapshot.cameraRevision + 1 }) }} />
         <SpatialAxisSnapButton messages={m} disabled={viewer} iconOnly className={styles.icon} />
       </div>
       <div className={styles.dock + " " + styles.tools} role="toolbar" aria-label={m.tools}>
         <SpatialActionButton action="orbit" label={m.orbit} active={controls.tool === "orbit"} disabled={viewer} onClick={() => controls.chooseTool("orbit")} />
         <span className={styles.toolSeparator} />
         <SpatialActionButton action="prepare" label={m.prepare} active={controls.panel === "prepare"} disabled={viewer} onClick={() => { setDraft(formatPlaceValue(boardTotal(board), base)); controls.togglePanel("prepare"); }} />
+        {allowBoxStrategy && !legacy && <SpatialActionButton action="placePresentation" label={m.presentation} active={controls.panel === "presentation"} disabled={viewer} onClick={() => controls.togglePanel("presentation")} />}
         <SpatialActionButton action="compareScenes" label={m.compare} active={controls.panel === "compare"} disabled={viewer} onClick={() => controls.togglePanel("compare")} />
         <SpatialActionButton action="placeUnpack" label={unpackLabel} disabled={quantityDisabled || unpack < 1} onClick={() => unpack > 0 && act("unpack", active, unpack)} />
         <SpatialActionButton action="observe" label={m.inspect} active={controls.panel === "inspect"} disabled={viewer} onClick={() => controls.togglePanel("inspect")} />
@@ -136,6 +145,18 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
       </div>
       {controls.panel && <SpatialCanvasPanel title={m[controls.panel]} closeLabel={m.close} anchor="tool" onClose={controls.closePanel}>
         <div className="space-y-3 text-xs">
+          {controls.panel === "presentation" && <>
+            <div className="flex flex-wrap gap-1">{(["rods", "boxes"] as const).map((strategy) => <Button key={strategy} size="sm" variant={(snapshot.presentation?.strategy ?? "rods") === strategy ? "secondary" : "ghost"}
+              aria-pressed={(snapshot.presentation?.strategy ?? "rods") === strategy} disabled={disabled} onClick={() => {
+                const next = changePlaceValueStrategy(commandState, strategy); if (next) commit({ ...next, frame: frameFor(next), cameraRevision: snapshot.cameraRevision + 1 });
+              }}>{m[strategy]}</Button>)}</div>
+            {boxes ? <>
+              <p>{m.boxHint}</p>
+              <div className="flex flex-wrap gap-1">{(["inside", "outside", "both"] as const).map((contents) => <Button key={contents} size="sm" variant={snapshot.presentation?.contents === contents ? "secondary" : "ghost"}
+                aria-pressed={snapshot.presentation?.contents === contents} disabled={disabled} onClick={() => { const next = changePlaceValueContents(commandState, contents); if (next) commit(next); }}>{m[contents]}</Button>)}</div>
+              <p className="text-muted">{m.mappingHint}</p><p className="text-muted">{m.boxColors}</p>
+            </> : <p className="text-muted">{m.fullHint}</p>}
+          </>}
           {(controls.panel === "prepare" || controls.panel === "compare") && <>
             <div className="flex gap-1">{(["single", "compare"] as const).map((mode) => <Button key={mode} size="sm" variant={snapshot.mode === mode ? "secondary" : "ghost"} aria-pressed={snapshot.mode === mode} disabled={disabled} onClick={() => setMode(mode)}>{m[mode]}</Button>)}</div>
             {snapshot.mode === "compare" && <div className="flex gap-1">{(["left", "right"] as const).map((side) => <Button key={side} size="sm" variant={active === side ? "secondary" : "ghost"} aria-pressed={active === side} disabled={disabled} onClick={() => { configure({ active: side, selection: null }); setDraft(formatPlaceValue(boardTotal(snapshot[side]), base)); }}>{m[side]} · {formatPlaceValue(boardTotal(snapshot[side]), base)}<sub>{base}</sub></Button>)}</div>}
@@ -150,17 +171,19 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
             </>}
           </>}
           {controls.panel === "inspect" && <>
-            <p>{selected ? m.group + " " + groupSize(selected.group) + " " + m.units : m.groupHint}</p>
+            <p>{selected ? m.group + " " + groupSize(selected.group) + " " + m.units : boxes ? m.boxGroupHint : m.groupHint}</p>
             <Button size="sm" disabled={quantityDisabled || unpack < 1} onClick={() => unpack > 0 && act("unpack", active, unpack)}>{unpackLabel}</Button>
-            <p className="text-muted">{m.fullHint}</p>
-            <p className="text-muted">{m.orientation}</p>
-            <div className="flex gap-2">
+            <p className="text-muted">{boxes ? m.mappingHint : m.fullHint}</p>
+            <p className="text-muted">{boxes ? m.boxColors : m.orientation}</p>
+            {!boxes && <><div className="flex gap-2">
               <SpatialActionButton action={presentation.playing ? "pause" : "play"} label={presentation.playing ? m.pause : m.resume} disabled={publishing || !regrouping} onClick={toggleMotion} />
               <SpatialActionButton action="nextStep" label={m.step} disabled={publishing || !regrouping} onClick={() => updateProgress(Math.min(1, presentation.progress + .1))} />
             </div>
             {snapshot.motion && <><Label className="text-xs">{m.progress}</Label><Slider aria-label={m.progress} min={0} max={1} step={.01} value={[preview ?? presentation.progress]} disabled={publishing} onValueChange={([value]) => setPreview(value)} onValueCommit={([value]) => { updateProgress(value); setPreview(null); }} onPointerCancel={() => setPreview(null)} /></>}
+            </>}
           </>}
           {controls.panel === "settings" && <>
+            {!legacy && !allowBoxStrategy && <p className="text-muted">{m.strategyLegacy}</p>}
             {legacy ? <p className="text-muted">{m.legacyNote}</p> : <>
               <Label className="text-xs">{m.radix}</Label><div className="flex flex-wrap gap-1">{PLACE_VALUE_BASES.map((radix) => <Button key={radix} size="sm" variant={base === radix ? "secondary" : "ghost"} aria-label={m.radix + " " + radix} aria-pressed={base === radix}
                 disabled={disabled || ["left", "right"].some((side) => placeValuePendingCarry(snapshot, side as PlaceValueSide) !== null)}
@@ -168,13 +191,13 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
               <Label className="text-xs">{m.places}</Label><div className="flex gap-1">{[3, 4, 5, 6].map((places) => <Button key={places} size="sm" variant={digits === places ? "secondary" : "ghost"} aria-label={m.places + " " + places} aria-pressed={digits === places} disabled={quantityDisabled} onClick={() => setNumeration(base, places)}>{places}</Button>)}</div>
               <p className="text-muted">{m.baseNote}</p>
             </>}
-            {(["autoCarry", "showDigits", "showLabels", "axes"] as const).map((key) => <Label key={key} className="flex items-center gap-2 text-xs"><Checkbox checked={snapshot[key]} disabled={publishing} onCheckedChange={(value) => commit({ ...snapshot, [key]: value === true })} />{m[key]}</Label>)}
+            {(["autoCarry", "showDigits", "showLabels", "axes"] as const).filter((key) => key !== "autoCarry" || !boxes).map((key) => <Label key={key} className="flex items-center gap-2 text-xs"><Checkbox checked={snapshot[key]} disabled={publishing} onCheckedChange={(value) => commit({ ...snapshot, [key]: value === true })} />{m[key]}</Label>)}
             <Label className="text-xs">{m.speed}</Label><div className="flex gap-1">{(["slow", "normal", "fast"] as const).map((speed) => <Button key={speed} size="sm" variant={snapshot.speed === speed ? "secondary" : "ghost"} aria-pressed={snapshot.speed === speed} disabled={disabled} onClick={() => configure({ speed })}>{m[speed]}</Button>)}</div>
             <Button size="sm" variant="ghost" disabled={quantityDisabled} onClick={() => { if (!quantityDisabled) commit(applyPlaceValueChange(snapshot, { side: active, kind: "replace", level: 0, before: board, after: createPlaceValueBoard(0, "normal", base, digits) })); }}>{m.clear}</Button>
           </>}
         </div>
       </SpatialCanvasPanel>}
-      {regrouping && <div className={local.status} role="status"><span>{(presentation.playing ? m.moving : m.paused) + (actionLabel ? " · " + actionLabel : "")}</span></div>}
+      {(regrouping || waiting) && <div className={local.status} role="status"><span>{(waiting && !presentation.busy ? m.waiting : presentation.playing ? m.moving : m.paused) + (actionLabel ? " · " + actionLabel : "")}</span></div>}
       {(host.failed || notice) && <p className={styles.notice} role="alert">{host.failed ? m.failed : notice}</p>}
     </div></div>
   </section>;

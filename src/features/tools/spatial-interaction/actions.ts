@@ -64,6 +64,7 @@ export const SPATIAL_ACTIONS = {
   amounts: { zh: "显示容积数值", en: "Show amounts", icon: "Gauge", group: "capacity" },
   placeCarry: { zh: "进位合组", en: "Regroup into next place", icon: "Group", group: "place-value" },
   placeUnpack: { zh: "拆开一个计数单位", en: "Unpack a counting unit", icon: "Ungroup", group: "place-value" },
+  placePresentation: { zh: "数位演示策略", en: "Place-value presentation", icon: "PackageOpen", group: "place-value" },
   showDigits: { zh: "显示数位与数字", en: "Show place-value digits", icon: "Hash", group: "place-value" },
   emptyLiquid: { zh: "倒空容器", en: "Empty vessels", icon: "GlassWater", group: "capacity" },
   settings: { zh: "结构与显示设置", en: "Structure and display", icon: "Settings2", group: "workspace" },

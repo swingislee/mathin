@@ -20,6 +20,15 @@ const draw = (patch: Partial<PlaceValueCanvasProps> = {}) => {
   renderToStaticMarkup(createElement(PlaceValueCanvas, props)); return rendered.props!;
 };
 describe("place-value uses the existing voxel canvas", () => {
+  it("uses the same camera and true projection count for box mapping without duplicating rear units", () => {
+    const snapshot = placeValueSnapshot({ ...createDefaultPlaceValueInitial(), left: createPlaceValueBoard(3333, "normal", 10, 6), right: createPlaceValueBoard(0, "normal", 10, 6), presentation: { strategy: "boxes", contents: "both" } });
+    const rendered = draw({ snapshot });
+    expect(rendered.model.cells).toHaveLength(0);
+    expect(rendered.model.totalCellCount).toBe(3333);
+    expect(rendered.model.projection.cells).toHaveLength(12);
+    expect(rendered.model.camera.target).toEqual({ x: 0, y: 4, z: 0 });
+    expect(rendered.sceneOverlay).toBeTruthy(); expect(rendered.cameraInteractive).toBe(true);
+  });
   it("hides the entire depth ruler at every horizontal or underside view, and shows it from above", () => {
     const direction = new Vector3();
     for (const position of [[0, 4, 240], [240, 4, 0], [-240, 4, 0], [0, 4, -240], [240, 4.1, 0], [100, -80, 100]]) {

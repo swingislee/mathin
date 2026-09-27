@@ -15,18 +15,20 @@ import { PlaceValueClipDepth, PlaceValueRodMesh } from "./PlaceValueRodMesh";
 import { placeValueRenderPlan, PLACE_VALUE_CUBE_BUDGET } from "./render-plan";
 import { placeValueMessages } from "./messages";
 import { placeValueIsBlue } from "./color-policy";
+import { PlaceValueBoxScene } from "./PlaceValueBoxScene";
 
 const empty = replayCubeHistory(createCubeHistory([]));
 const colors = { yellow: CUBE_COLORS[2], blue: CUBE_COLORS[3], pending: CUBE_COLORS[1] };
 export interface PlaceValueCanvasProps {
-  snapshot: PlaceValueSnapshot; progress: number; locale: "zh" | "en"; navigation: "orbit" | "pan"; axisSnap: boolean;
+  snapshot: PlaceValueSnapshot; progress: number; contentsProgress?: number; locale: "zh" | "en"; navigation: "orbit" | "pan"; axisSnap: boolean;
   interactive: boolean; selected: boolean; onSelect: (side: PlaceValueSide, unit: number) => void;
   onPointerMissed: (event: MouseEvent) => void;
   renderPlaceControl?: PlaceValueControlRenderer; renderCarryControl?: PlaceValueControlRenderer;
 }
 /** 共用相机、体素轮廓和选择；数量大时只把连续长条换为带单位分格的等长网格。 */
-export function PlaceValueCanvas({ snapshot, progress, locale, navigation, axisSnap, interactive, selected, onSelect, onPointerMissed, renderPlaceControl, renderCarryControl }: PlaceValueCanvasProps) {
+export function PlaceValueCanvas({ snapshot, progress, contentsProgress = 1, locale, navigation, axisSnap, interactive, selected, onSelect, onPointerMissed, renderPlaceControl, renderCarryControl }: PlaceValueCanvasProps) {
   const m = placeValueMessages(locale), t = useTranslations("tools.spatialLab"), digits = snapshot.left.places.length;
+  const boxes = snapshot.presentation?.strategy === "boxes";
   const messages: VoxelRendererMessages = {
     webglUnavailable: t("renderer.webglUnavailable"), contextLost: t("renderer.contextLost"), unrevealedCount: t("renderer.unrevealedCount"),
     formatProjection: (view) => t("renderer.projections." + view),
@@ -46,7 +48,7 @@ export function PlaceValueCanvas({ snapshot, progress, locale, navigation, axisS
   const offset = (side: PlaceValueSide) => placeValueOffset(snapshot.mode, side, digits);
   const selection = selected && snapshot.selection ? { side: snapshot.selection.side, group: placeValueGroup(snapshot[snapshot.selection.side], snapshot.selection.unit) } : null;
   const emphasized = (rod: PlaceValueRod, side: PlaceValueSide) => (selection?.side === side && selection.group?.group[0].start === rod.key) || snapshot.highlight === rod.level;
-  const displayed = sides.map((side) => {
+  const displayed = (boxes ? [] : sides).map((side) => {
     const moving = snapshot.motion?.side === side && progress < 1;
     const rods = snapshot.motion?.side === side ? placeValuePose(snapshot.motion, progress) : placeValueLayout(snapshot[side]);
     const red = placeValueRedSpans(snapshot, side, progress);
@@ -80,6 +82,8 @@ export function PlaceValueCanvas({ snapshot, progress, locale, navigation, axisS
     sceneOverlay={<>
       <PlaceValueClipDepth depth={maxDepth} />
       <PlaceValueStage snapshot={snapshot} progress={progress} locale={locale} renderPlaceControl={renderPlaceControl} renderCarryControl={renderCarryControl} />
+      {boxes && <PlaceValueBoxScene snapshot={snapshot} progress={progress} contentsProgress={contentsProgress} interactive={interactive && progress >= 1 && contentsProgress >= 1}
+        selected={selected} locale={locale} onSelect={onSelect} />}
       {displayed.flatMap(({ side, plan, red, moving }) => [
         ...plan.compact.map((rod) => <PlaceValueRodMesh key={side + ":" + rod.key} rod={rod} red={red} offset={offset(side)} selected={emphasized(rod, side)}
           interactive={interactive && progress >= 1} onSelect={(unit) => onSelect(side, unit)} />),

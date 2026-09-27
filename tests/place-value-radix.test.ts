@@ -163,7 +163,7 @@ describe("radix place-value contract and classroom", () => {
     const payload = createClassroomToolState(newId(), newId(), newId(), { toolId: "place-value", contentVersion: PLACE_VALUE_VERSION, state: paused }, toolSceneOriginHash(scene));
     expect(parseClassroomToolState(JSON.parse(JSON.stringify(payload)))).toEqual(payload);
     expect(new TextEncoder().encode(JSON.stringify(payload)).length).toBeLessThan(512000);
-    expect(preparedToolDefinitions("formal-courseware").find((item) => item.catalogId === "place-value")!.contentVersion).toBe(PLACE_VALUE_VERSION);
+    expect(preparedToolDefinitions("formal-courseware").find((item) => item.catalogId === "place-value")!.contentVersion).toBe("place-value-lesson-v3");
     if (scene.contentVersion !== PLACE_VALUE_VERSION) throw new Error("Expected a v2 place-value scene");
     expect(placeValueInitialSchema.safeParse(scene.payload.initial).success).toBe(true);
     expect(samePlaceValueGroup([{ start: 0, count: 10, phase: 0 }], [{ start: 0, count: 5, phase: 0 }, { start: 5, count: 5, phase: 5 }], 10)).toBe(true);

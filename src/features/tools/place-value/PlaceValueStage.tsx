@@ -49,7 +49,7 @@ export function PlaceValueStage({ snapshot, progress, locale, renderPlaceControl
       return <group key={side + level}>
         <mesh position={[x, -.09, 0]} raycast={ignoreRaycast}><boxGeometry args={[1.6, .14, 1.6]} /><meshBasicMaterial color={CUBE_COLORS[5]} transparent opacity={.16} depthWrite={false} /></mesh>
         <Line points={[[x - .8, -.015, .8], [x + .8, -.015, .8], [x + .8, -.015, -.8], [x - .8, -.015, -.8], [x - .8, -.015, .8]]} color={CUBE_COLORS[5]} transparent opacity={.65} lineWidth={1.5} raycast={ignoreRaycast} />
-        {hasUnits && <DepthRuler x={x - 1.1} length={snapshot[side].radix ** level} radix={snapshot[side].radix} locale={locale} />}
+        {hasUnits && snapshot.presentation?.strategy !== "boxes" && <DepthRuler x={x - 1.1} length={snapshot[side].radix ** level} radix={snapshot[side].radix} locale={locale} />}
         {renderPlaceControl && <Html position={[x, -.65, .8]} zIndexRange={[6, 4]} calculatePosition={(_, liveCamera, liveSize) => placeValueControlPositions(liveCamera, liveSize, snapshot.mode, digits).positions[side + ":" + level]}
           style={{ pointerEvents: "none", "--place-control-width": width + "px" } as CSSProperties}>{renderPlaceControl(side, level)}</Html>}
         {level < digits - 1 && renderCarryControl && <Html position={[x - 2.5, -.65, .8]} zIndexRange={[7, 6]}

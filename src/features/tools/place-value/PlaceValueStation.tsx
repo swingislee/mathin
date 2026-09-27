@@ -51,12 +51,18 @@ export function PlaceValueStation({ snapshot, side, place, progress, locale, dis
 }
 export function PlaceValueCarryControl({ snapshot, side, place, progress, locale, disabled, publishing, onCarry }: PlaceValueStationProps) {
   const m = placeValueMessages(locale), motion = snapshot.motion;
+  const boxes = snapshot.presentation?.strategy === "boxes";
+  const boxMotion = boxes && motion?.side === side && motion.level === place && motion.boxStage ? motion : null;
+  const waiting = boxMotion && boxMotion.boxStage !== "place" && progress >= 1;
   const carrying = motion?.side === side && isPlaceValueRegrouping(motion.kind) && (motion.kind === "carry" ? motion.level : motion.level - 1) === place && progress < 1;
   const ready = placeValueCarry(snapshot[side]) === place;
   const label = placeValueCarryLabel(locale, place, snapshot[side].radix);
-  return <Button variant="primary" className={styles.carryButton} data-carry-between={side + ":" + place + ":" + (place + 1)} data-carry-visible={ready || carrying}
-    aria-hidden={!ready && !carrying} tabIndex={ready || carrying ? 0 : -1} disabled={publishing || disabled || carrying || !ready} aria-label={label} title={label}
+  const first = (place + 1) % 3 === 0 ? m.stack : m.lay;
+  const stageLabel = boxMotion && (progress < 1 || waiting) ? boxMotion.boxStage === "lay" ? progress < 1 ? first : m.pack : boxMotion.boxStage === "pack" ? progress < 1 ? m.pack : m.place : m.place : first;
+  const visible = !!(ready || carrying || waiting);
+  return <Button variant="primary" className={styles.carryButton} data-carry-between={side + ":" + place + ":" + (place + 1)} data-carry-visible={visible}
+    aria-hidden={!visible} tabIndex={visible ? 0 : -1} disabled={publishing || carrying || (!waiting && (disabled || !ready))} aria-label={boxes ? stageLabel + " · " + label : label} title={label}
     onPointerDown={(event) => event.stopPropagation()} onClick={() => onCarry(side, place)}>
-    {m.carryLabel}
+    {boxes ? stageLabel : m.carryLabel}
   </Button>;
 }
