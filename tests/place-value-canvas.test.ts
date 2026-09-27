@@ -56,6 +56,12 @@ describe("place-value uses the existing voxel canvas", () => {
     expect(model.cells.find((c) => c.key === "left:" + (last.start + last.count - 1))!.z).toBe(0);
     expect(model.cells.find((c) => c.key === "left:" + last.start)!.z).toBe(value === 90 ? -9 : -99);
   });
+  it.each([3, 6])("keeps hexadecimal front counting in five-color groups across %i places", (digits) => {
+    const snapshot = placeValueSnapshot({ ...createDefaultPlaceValueInitial(), left: createPlaceValueBoard(255, "normal", 16, digits), right: createPlaceValueBoard(0, "normal", 16, digits) });
+    const { model } = draw({ snapshot });
+    for (const level of [0, 1]) expect(model.cells.filter((cell) => cell.z === 0 && cell.x === placeValueColumn(level, digits)).map((cell) => cell.materialToken))
+      .toEqual(Array.from({ length: 15 }, (_, index) => index % 10 >= 5 ? "blue" : "yellow"));
+  });
   it("ignores old geometry-center frames and keeps the number-front orbit pivot", () => {
     const snapshot = placeValueSnapshot({ ...createDefaultPlaceValueInitial(), left: createPlaceValueBoard(104), grid: true, frame: { center: { x: 0, y: 8, z: -49 }, radius: 50 } });
     const rendered = draw({ snapshot });

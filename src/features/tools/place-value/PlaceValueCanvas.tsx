@@ -14,6 +14,7 @@ import { PlaceValueStage, type PlaceValueControlRenderer } from "./PlaceValueSta
 import { PlaceValueClipDepth, PlaceValueRodMesh } from "./PlaceValueRodMesh";
 import { placeValueRenderPlan, PLACE_VALUE_CUBE_BUDGET } from "./render-plan";
 import { placeValueMessages } from "./messages";
+import { placeValueIsBlue } from "./color-policy";
 
 const empty = replayCubeHistory(createCubeHistory([]));
 const colors = { yellow: CUBE_COLORS[2], blue: CUBE_COLORS[3], pending: CUBE_COLORS[1] };
@@ -25,7 +26,7 @@ export interface PlaceValueCanvasProps {
 }
 /** 共用相机、体素轮廓和选择；数量大时只把连续长条换为带单位分格的等长网格。 */
 export function PlaceValueCanvas({ snapshot, progress, locale, navigation, axisSnap, interactive, selected, onSelect, onPointerMissed, renderPlaceControl, renderCarryControl }: PlaceValueCanvasProps) {
-  const m = placeValueMessages(locale), t = useTranslations("tools.spatialLab"), radix = snapshot.left.radix, digits = snapshot.left.places.length;
+  const m = placeValueMessages(locale), t = useTranslations("tools.spatialLab"), digits = snapshot.left.places.length;
   const messages: VoxelRendererMessages = {
     webglUnavailable: t("renderer.webglUnavailable"), contextLost: t("renderer.contextLost"), unrevealedCount: t("renderer.unrevealedCount"),
     formatProjection: (view) => t("renderer.projections." + view),
@@ -49,11 +50,11 @@ export function PlaceValueCanvas({ snapshot, progress, locale, navigation, axisS
     const moving = snapshot.motion?.side === side && progress < 1;
     const rods = snapshot.motion?.side === side ? placeValuePose(snapshot.motion, progress) : placeValueLayout(snapshot[side]);
     const red = placeValueRedSpans(snapshot, side, progress);
-    return { side, rods, red, moving, plan: placeValueRenderPlan(rods, red, radix, Math.floor(PLACE_VALUE_CUBE_BUDGET / sides.length)) };
+    return { side, rods, red, moving, plan: placeValueRenderPlan(rods, red, Math.floor(PLACE_VALUE_CUBE_BUDGET / sides.length)) };
   });
   const cellFor = (cube: ReturnType<typeof placeValueRenderPlan>["cubes"][number], side: PlaceValueSide): VoxelRenderCell => {
     const selected = emphasized(cube.rod, side);
-    return { key: side + ":" + cube.id, x: cube.x + offset(side), y: cube.y, z: cube.z, materialToken: cube.red ? "pending" : cube.phase < Math.ceil(radix / 2) ? "yellow" : "blue", opacity: cube.rod.opacity,
+    return { key: side + ":" + cube.id, x: cube.x + offset(side), y: cube.y, z: cube.z, materialToken: cube.red ? "pending" : placeValueIsBlue(cube.phase) ? "blue" : "yellow", opacity: cube.rod.opacity,
       selected, emphasis: selected ? { color: CUBE_SELECTION_COLOR, faceOpacity: .08, priority: 2 } : undefined };
   };
   // 降级前视图按整条的真实单位数计算，不把抽样方块数当成数学数量。
@@ -80,7 +81,7 @@ export function PlaceValueCanvas({ snapshot, progress, locale, navigation, axisS
       <PlaceValueClipDepth depth={maxDepth} />
       <PlaceValueStage snapshot={snapshot} progress={progress} locale={locale} renderPlaceControl={renderPlaceControl} renderCarryControl={renderCarryControl} />
       {displayed.flatMap(({ side, plan, red, moving }) => [
-        ...plan.compact.map((rod) => <PlaceValueRodMesh key={side + ":" + rod.key} rod={rod} red={red} base={radix} offset={offset(side)} selected={emphasized(rod, side)}
+        ...plan.compact.map((rod) => <PlaceValueRodMesh key={side + ":" + rod.key} rod={rod} red={red} offset={offset(side)} selected={emphasized(rod, side)}
           interactive={interactive && progress >= 1} onSelect={(unit) => onSelect(side, unit)} />),
         ...(moving ? plan.detailed.map((rod) => <group key={side + ":" + rod.key} position={[rod.center.x + offset(side), rod.center.y, rod.center.z]} quaternion={rod.quaternion}>
           <VoxelGeometry model={{ ...base, cells: plan.cubes.filter((cube) => cube.rod.key === rod.key).map((cube, index) => ({ ...cellFor(cube, side), x: 0, y: 0, z: (rod.length - 1) / 2 - index })) }}

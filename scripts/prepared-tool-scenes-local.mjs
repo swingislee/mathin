@@ -7,6 +7,7 @@ const mode = process.argv[2];
 if (!['--preflight', '--check', '--apply'].includes(mode)) throw new Error('Use --preflight, --check or --apply');
 const increment = process.argv[3] ?? 'prepared';
 const increments = {
+  'place-value-five': { version: '20260927190000_place_value_five_color_groups', tests: ['place_value_scene_assertions', 'place_value_radix_scene_assertions', 'place_value_five_color_assertions'] },
   'place-value-radix': { version: '20260927180000_place_value_radix_scene', tests: ['place_value_scene_assertions', 'place_value_radix_scene_assertions'] },
   prepared: { version: '20260918000100_prepared_tool_scenes', tests: ['prepared_tool_scenes_assertions'] },
   projection: { version: '20260919000100_projection_tool_scene', tests: ['prepared_tool_scenes_assertions', 'projection_tool_scene_assertions'] },

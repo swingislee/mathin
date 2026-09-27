@@ -193,7 +193,11 @@ describe("place-value workspace using common spatial controls", () => {
     expect(button("Add one unit").disabled).toBe(true);
   });
   it("selects bases and six places without changing totals, and accepts hexadecimal digits in position", async () => {
-    await render(); await click("Structure and display");
+    await render();
+    expect(host.querySelectorAll('button[aria-label="Structure and display"]')).toHaveLength(1);
+    expect(button("Structure and display").closest('[role="toolbar"]')).not.toBeNull();
+    await click("Structure and display");
+    expect(host.querySelector('[data-cube-canvas-panel]')!.getAttribute("data-cube-panel-anchor")).toBe("tool");
     await click("Base 16"); await click("Number of places 6");
     expect(viewport.current!.snapshot.left.radix).toBe(16);
     expect(viewport.current!.snapshot.left.places).toHaveLength(6);

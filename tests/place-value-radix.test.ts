@@ -10,10 +10,33 @@ import { createClassroomToolState, parseClassroomToolState } from "@/features/to
 import { toolSceneOriginHash } from "@/features/tools/scenes/classroom-envelope";
 import { newId } from "@/lib/uuid";
 import { placeValueLabel } from "@/features/tools/place-value/messages";
+import { placeValueIsBlue } from "@/features/tools/place-value/color-policy";
 
 const initial = (base = 10, digits = 3, value = base - 1) => ({ ...createDefaultPlaceValueInitial(), left: createPlaceValueBoard(value, "normal", base, digits), right: createPlaceValueBoard(0, "normal", base, digits) });
 afterEach(() => vi.unstubAllGlobals());
 describe("radix place-value contract and classroom", () => {
+  it.each(PLACE_VALUE_BASES)("uses five-unit color bands in base %i for individual cubes and compact rods", (base) => {
+    const board = createPlaceValueBoard(15, "ones", base, 6);
+    expect(placeValueBoardSchema.safeParse(board).success).toBe(true);
+    const colors = placeValueRenderPlan(placeValueLayout(board), []).cubes.map((cube) => placeValueIsBlue(cube.phase));
+    expect(colors).toEqual(Array.from({ length: 15 }, (_, index) => index % 10 >= 5));
+    const rod = placeValueLayout(createPlaceValueBoard(base ** 5, "normal", base, 6))[0];
+    const compact = placeValueRenderPlan([rod], [], 0);
+    expect(compact.cubes).toHaveLength(0);
+    const segment = placeValueRodSegments(compact.compact[0], [])[0];
+    for (const index of [0, 4, 5, 9, 10, 14, 15, 19, 20]) {
+      expect(placeValueIsBlue(segment.phase + index)).toBe(index % 10 >= 5);
+      expect(placeValueIsBlue(rodUnitAt(rod, index).phase)).toBe(index % 10 >= 5);
+    }
+  });
+  it("still reads an earlier v2 classroom carry recorded with a radix-based color cycle", () => {
+    const start = placeValueSnapshot(initial(7, 3, 0));
+    const before = createPlaceValueBoard(49, "tens", 7, 3), after = createPlaceValueBoard(49, "normal", 7, 3);
+    const change = { side: "left" as const, kind: "carry" as const, level: 1, before, after };
+    const state = { ...start, left: after, past: [change], motion: { ...change, id: newId(), durationMs: 5040, startedAt: 1000, progress: .5, paused: true } };
+    expect(placeValueSnapshotSchema.safeParse(state).success).toBe(true);
+    expect(boardTotal(state.left)).toBe(49);
+  });
   it.each(PLACE_VALUE_BASES)("carries twice in base %i with protected commands, red overflow and conserved units", (base) => {
     let state = placeValueSnapshot(initial(base, 3, base ** 2 - 1));
     state = planPlaceValue(state, "add", 1000)!;
@@ -37,7 +60,7 @@ describe("radix place-value contract and classroom", () => {
     expect(planPlaceValue(state, "add", 5001)).toBeNull();
     expect(planPlaceValue(state, "add", 30000)).not.toBeNull();
   });
-  it.each(PLACE_VALUE_BASES)("retains true group lengths, rigid intermediate poses and five/half color reversals for base %i", (base) => {
+  it.each(PLACE_VALUE_BASES)("retains true group lengths, rigid poses and five-group reversals for base %i", (base) => {
     let state = planPlaceValue(placeValueSnapshot(initial(base, 3)), "add", 0)!;
     state = planPlaceValue(state, "carry", 1000)!;
     const a = placeValuePose(state.motion!, 0), b = placeValuePose(state.motion!, 1);
@@ -50,9 +73,9 @@ describe("radix place-value contract and classroom", () => {
     }
     const board = createPlaceValueBoard((base - 1) * base, "normal", base, 3);
     for (const rod of placeValueLayout(board)) {
-      const i = rod.index < Math.ceil(base / 2) ? 0 : rod.length - 1;
+      const i = placeValueIsBlue(rod.index) ? rod.length - 1 : 0;
       expect(rodUnitPosition(rod, i).z).toBe(0);
-      expect(rodUnitAt(rod, i).phase % base < Math.ceil(base / 2)).toBe(rod.index < Math.ceil(base / 2));
+      for (let index = 0; index < rod.length; index++) expect(placeValueIsBlue(rodUnitAt(rod, index).phase)).toBe(index % 10 >= 5);
     }
   });
   it("supports high-place carry and undo, preserves the fixed camera pivot, and bounds rendering independently of quantity", () => {
@@ -63,7 +86,7 @@ describe("radix place-value contract and classroom", () => {
       expect(placeValueSnapshotSchema.safeParse(state).success).toBe(true);
       const pose = placeValuePose(state.motion!, .43);
       expect(pose.reduce((sum, rod) => sum + rod.length, 0)).toBe(100_000);
-      expect(placeValueRenderPlan(pose, [], 10).cubes.length).toBeLessThanOrEqual(PLACE_VALUE_CUBE_BUDGET);
+      expect(placeValueRenderPlan(pose, []).cubes.length).toBeLessThanOrEqual(PLACE_VALUE_CUBE_BUDGET);
     }
     expect(state.left.places[5]).toHaveLength(1);
     const stable = placeValueLayout(state.left)[0]; expect(stable.length).toBe(100_000);
@@ -74,13 +97,13 @@ describe("radix place-value contract and classroom", () => {
     expect(placeValueSnapshotSchema.safeParse(undo).success).toBe(true);
   });
   it.each(PLACE_VALUE_BASES)("stores the maximum six-digit base %i number compactly and exposes exact endpoint IDs", (base) => {
-    const board = createPlaceValueBoard(placeValueLimit(base, 6), "normal", base, 6), rods = placeValueLayout(board), plan = placeValueRenderPlan(rods, [], base);
+    const board = createPlaceValueBoard(placeValueLimit(base, 6), "normal", base, 6), rods = placeValueLayout(board), plan = placeValueRenderPlan(rods, []);
     expect(boardTotal(board)).toBe(base ** 6 - 1);
     expect(JSON.stringify(board).length).toBeLessThan(8000);
     expect(plan.cubes.length).toBeLessThanOrEqual(PLACE_VALUE_CUBE_BUDGET);
     expect(plan.compact.length).toBeLessThanOrEqual(6 * (base - 1));
     expect(plan.compact.reduce((sum, rod) => sum + rod.length, 0) + plan.cubes.length).toBe(boardTotal(board));
-    for (const rod of plan.compact) expect(placeValueRodSegments(rod, [], base).reduce((sum, segment) => sum + segment.count, 0)).toBe(rod.length);
+    for (const rod of plan.compact) expect(placeValueRodSegments(rod, []).reduce((sum, segment) => sum + segment.count, 0)).toBe(rod.length);
   });
   it("rejects duplicate ranges, wrong weights, forged carry colors, unsupported bases and capacity loss", () => {
     const board = createPlaceValueBoard(20);

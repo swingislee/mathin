@@ -1,6 +1,7 @@
 import { Quaternion, Vector3 } from "three";
 import { newId } from "@/lib/uuid";
 import { spatialActionProgress } from "../spatial-interaction/policy";
+import { placeValueColorPhase, placeValueIsBlue } from "./color-policy";
 import { boardHasUnit, boardTotal, compactSpans, createPlaceValueBoard, groupSize, PLACE_VALUE_HISTORY_LIMIT, PLACE_VALUE_MAX_GROUPS,
   placeValueBoardSchema, placeValueLimit, sliceGroup, type PlaceValueAction, type PlaceValueBoard, type PlaceValueChange, type PlaceValueGroup,
   type PlaceValueInitial, type PlaceValueMotion, type PlaceValueSide, type PlaceValueSnapshot, type PlaceValueSpan } from "./radix-contract";
@@ -46,17 +47,17 @@ export function changePlaceValueBoard(board: PlaceValueBoard, action: PlaceValue
   const next = structuredClone(board), base = next.radix;
   if (action === "add") {
     if (boardTotal(next) >= placeValueLimit(base, next.places.length) || next.nextId >= 1_000_000_000_000) return null;
-    next.places[0].push([{ start: next.nextId++, count: 1, phase: next.places[0].length % base }]);
+    next.places[0].push([{ start: next.nextId++, count: 1, phase: placeValueColorPhase(next.places[0].length) }]);
   } else if (action === "remove") { if (!next.places[0].length) return null; next.places[0].pop(); }
   else if (action === "carry") {
     if (level < 0 || level >= next.places.length - 1 || next.places[level].length < base) return null;
-    next.places[level + 1].push(compactSpans(next.places[level].splice(-base).flat(), base));
+    next.places[level + 1].push(compactSpans(next.places[level].splice(-base).flat()));
   } else if (action === "unpack") {
     if (level < 1 || level >= next.places.length || !next.places[level].length) return null;
     const selected = unit === undefined ? null : placeValueGroup(next, unit);
     const index = selected?.level === level ? selected.index : next.places[level].length - 1;
     const group = next.places[level].splice(index, 1)[0], weight = base ** (level - 1);
-    next.places[level - 1].push(...Array.from({ length: base }, (_, i) => sliceGroup(group, i * weight, weight, base)));
+    next.places[level - 1].push(...Array.from({ length: base }, (_, i) => sliceGroup(group, i * weight, weight)));
   } else return null;
   const result = placeValueBoardSchema.safeParse(next);
   return result.success ? result.data : null;
@@ -77,7 +78,7 @@ export function planPlaceValueCount(snapshot: PlaceValueSnapshot, side: PlaceVal
   const after = structuredClone(before);
   if (count < current) after.places[level].splice(count);
   else for (let index = current; index < count; index++) {
-    after.places[level].push([{ start: after.nextId, count: weight, phase: level ? 0 : index % before.radix }]); after.nextId += weight;
+    after.places[level].push([{ start: after.nextId, count: weight, phase: level ? 0 : placeValueColorPhase(index) }]); after.nextId += weight;
   }
   const parsed = placeValueBoardSchema.safeParse(after);
   return parsed.success ? applyPlaceValueChange({ ...snapshot, active: side }, { side, kind: "replace", level, before, after: parsed.data }, now) : null;
@@ -122,7 +123,7 @@ const oppositeRotation: PlaceValueRod["quaternion"] = [0, 1, 0, 0];
 export function placeValueLayout(board: PlaceValueBoard): PlaceValueRod[] {
   return board.places.flatMap((groups, level) => groups.map((group, index) => ({ key: group[0].start, group, level, index, length: board.radix ** level,
     center: { x: placeValueColumn(level, board.places.length), y: index + .5, z: -(board.radix ** level - 1) / 2 },
-    quaternion: level > 0 && index % board.radix >= Math.ceil(board.radix / 2) ? oppositeRotation : normalRotation, opacity: 1 })));
+    quaternion: level > 0 && placeValueIsBlue(index) ? oppositeRotation : normalRotation, opacity: 1 })));
 }
 const blendRod = (a: PlaceValueRod, b: PlaceValueRod, t: number, lift = 0): PlaceValueRod => ({ ...b,
   center: { x: a.center.x + (b.center.x - a.center.x) * t, y: a.center.y + (b.center.y - a.center.y) * t + lift * Math.sin(Math.PI * t), z: a.center.z + (b.center.z - a.center.z) * t },

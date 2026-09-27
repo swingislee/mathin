@@ -114,7 +114,6 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
         onPointerMissed={controls.onPointerMissed} onSelect={(side, unit) => { if (!disabled) { controls.activateSelection(); commit({ ...snapshot, active: side, selection: { side, unit } }); } }}
         renderPlaceControl={(side, place) => <PlaceValueStation {...stationProps(side, place)} />}
         renderCarryControl={(side, place) => <PlaceValueCarryControl {...stationProps(side, place)} />} />
-      <div className={styles.dock + " " + styles.meta}><SpatialActionButton action="settings" label={m.settings} active={controls.panel === "settings"} disabled={viewer} onClick={() => controls.togglePanel("settings")} /></div>
       <div className={styles.dock + " " + styles.views}>
         <SpatialViewButtons views={SPATIAL_STANDARD_VIEWS} value={snapshot.view} labels={m.views} disabled={publishing}
           onChange={(view) => commit({ ...snapshot, view, cameraRevision: snapshot.cameraRevision + 1 })}
@@ -130,11 +129,12 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
         <SpatialActionButton action="observe" label={m.inspect} active={controls.panel === "inspect"} disabled={viewer} onClick={() => controls.togglePanel("inspect")} />
         <span className={styles.toolSeparator} />
         <SpatialActionButton action="showDigits" label={m.showDigits} active={snapshot.showDigits} disabled={publishing} onClick={() => commit({ ...snapshot, showDigits: !snapshot.showDigits })} />
+        <SpatialActionButton action="settings" label={m.settings} active={controls.panel === "settings"} disabled={viewer} onClick={() => controls.togglePanel("settings")} />
         <SpatialActionButton action="undo" label={m.undo} disabled={disabled || !snapshot.past.length} onClick={() => { const next = historyPlaceValue(commandState, "undo"); if (next) commit({ ...next, autoCarry: false }); }} />
         <SpatialActionButton action="redo" label={m.redo} disabled={disabled || !snapshot.future.length} onClick={() => { const next = historyPlaceValue(commandState, "redo"); if (next) commit({ ...next, autoCarry: false }); }} />
         <SpatialActionButton action="reset" label={m.reset} disabled={publishing} onClick={() => { autoKey.current = ""; setPreview(null); commit({ ...structuredClone(origin), cameraRevision: snapshot.cameraRevision + 1 }); controls.closePanel(); }} />
       </div>
-      {controls.panel && <SpatialCanvasPanel title={m[controls.panel]} closeLabel={m.close} anchor={controls.panel === "settings" ? "meta" : "tool"} onClose={controls.closePanel}>
+      {controls.panel && <SpatialCanvasPanel title={m[controls.panel]} closeLabel={m.close} anchor="tool" onClose={controls.closePanel}>
         <div className="space-y-3 text-xs">
           {(controls.panel === "prepare" || controls.panel === "compare") && <>
             <div className="flex gap-1">{(["single", "compare"] as const).map((mode) => <Button key={mode} size="sm" variant={snapshot.mode === mode ? "secondary" : "ghost"} aria-pressed={snapshot.mode === mode} disabled={disabled} onClick={() => setMode(mode)}>{m[mode]}</Button>)}</div>
