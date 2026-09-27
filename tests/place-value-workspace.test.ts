@@ -56,6 +56,13 @@ describe("place-value workspace using common spatial controls", () => {
     await click("Add one unit"); await click("Take away one unit"); expect(viewport.current!.snapshot.left.places[0]).toHaveLength(10);
     await click("Edit Ones digit"); expect(host.querySelector('input[aria-label="Edit Ones digit"]')).toBeNull();
     await click("Ten ones make one ten"); expect(button("Add one unit").disabled).toBe(true);
+    const motionId = viewport.current!.snapshot.motion!.id;
+    expect(button("Ten ones make one ten").disabled).toBe(true);
+    expect(button("Ten ones make one ten").textContent).toBe("Carry");
+    expect(host.querySelector('button[aria-label="Pause process"]')).toBeNull();
+    await click("Ten ones make one ten");
+    expect(viewport.current!.snapshot.motion!.id).toBe(motionId);
+    expect(viewport.current!.snapshot.motion!.paused).toBe(false);
     expect(toolbar()).toEqual(before); await tick(2100); expect(viewport.current!.progress).toBe(.5);
     expect(host.querySelector('[data-place-value-station="left:0"] [data-place-value-numeral="before"]')!.textContent).toBe("9+1");
     await tick(3200); expect(button("Add one unit").disabled).toBe(false);
@@ -75,7 +82,7 @@ describe("place-value workspace using common spatial controls", () => {
     expect(button("Add one unit").disabled).toBe(true); expect(button("Edit Tens digit").disabled).toBe(true);
     expect(button("Ten tens make one hundred").disabled).toBe(false);
     await click("Ten tens make one hundred"); await tick(6800);
-    expect(button("Add one unit").disabled).toBe(true); expect(button("Pause process").disabled).toBe(false);
+    expect(button("Add one unit").disabled).toBe(true); expect(button("Ten tens make one hundred").disabled).toBe(true);
     await tick(10400);
     expect(viewport.current!.snapshot.left.places[2]).toHaveLength(1);
     expect(button("Add one unit").disabled).toBe(false); expect(button("Edit Tens digit").disabled).toBe(false);
@@ -147,6 +154,7 @@ describe("place-value workspace using common spatial controls", () => {
     await tick(1600); expect(capture.mock.lastCall![0].left.places[0]).toHaveLength(10);
     await click("Ten ones make one ten"); await tick(2700);
     expect(viewport.current!.progress).toBe(.5);
+    await click("Inspect a counting unit");
     await click("Pause process"); await tick(9000); expect(viewport.current!.progress).toBe(.5);
     expect(capture.mock.lastCall![0]).toBeNull();
     await click("Left"); expect(viewport.current!.snapshot.view).toBe("left");
@@ -181,6 +189,7 @@ describe("place-value workspace using common spatial controls", () => {
     expect(viewport.current!.progress).toBe(.5);
     await render({ initial, classroom: { state: structuredClone(command), onChange: update } }); await tick(2650);
     expect(viewport.current!.progress).toBe(.75); expect(update).toHaveBeenCalledTimes(1);
+    await click("Inspect a counting unit");
     await click("Pause process"); expect(update.mock.lastCall![0].motion).toMatchObject({ progress: .75, paused: true });
     const late = planPlaceValue(state, "carry", 1000)!; now = 3200;
     await render({ initial, classroom: { state: late } }); await tick(3200);

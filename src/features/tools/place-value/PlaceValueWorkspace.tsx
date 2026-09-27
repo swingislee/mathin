@@ -106,7 +106,7 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
   const actionLabel = snapshot.motion && isPlaceValueRegrouping(snapshot.motion.kind) ? placeValueCarryLabel(locale, snapshot.motion.level - (snapshot.motion.kind === "unpack" ? 1 : 0), base, snapshot.motion.kind === "unpack") : "";
   const stationProps = (side: PlaceValueSide, place: number): PlaceValueStationProps => ({ snapshot, progress: preview ?? presentation.progress, side, place, locale, disabled, publishing,
     onCountChange: (side, place, count) => { if (!disabled) { const next = planPlaceValueCount(commandState, side, place, count); if (next) commit(next); } },
-    onCarry: (side, place) => act("carry", side, place), onToggleMotion: toggleMotion,
+    onCarry: (side, place) => act("carry", side, place),
     onHighlight: (place) => commit({ ...snapshot, highlight: snapshot.highlight === place ? "all" : place }) });
   return <section className={styles.workspace} data-workbench-mode="courseware" data-place-value-workspace="v2" aria-label={m.title} {...capture} {...controls.bindings}>
     <div className={styles.viewport}><div className={styles.canvas}>

@@ -14,7 +14,6 @@ export interface PlaceValueStationProps {
   disabled: boolean; publishing: boolean;
   onCountChange: (side: PlaceValueSide, place: PlaceValuePlace, count: number) => void;
   onCarry: (side: PlaceValueSide, place: PlaceValuePlace) => void;
-  onToggleMotion: () => void;
   onHighlight: (place: PlaceValuePlace) => void;
 }
 
@@ -50,14 +49,14 @@ export function PlaceValueStation({ snapshot, side, place, progress, locale, dis
     </div>
   </div>;
 }
-export function PlaceValueCarryControl({ snapshot, side, place, progress, locale, disabled, publishing, onCarry, onToggleMotion }: PlaceValueStationProps) {
+export function PlaceValueCarryControl({ snapshot, side, place, progress, locale, disabled, publishing, onCarry }: PlaceValueStationProps) {
   const m = placeValueMessages(locale), motion = snapshot.motion;
   const carrying = motion?.side === side && isPlaceValueRegrouping(motion.kind) && (motion.kind === "carry" ? motion.level : motion.level - 1) === place && progress < 1;
   const ready = placeValueCarry(snapshot[side]) === place;
-  const label = carrying ? motion.paused ? m.resume : m.pause : placeValueCarryLabel(locale, place, snapshot[side].radix);
+  const label = placeValueCarryLabel(locale, place, snapshot[side].radix);
   return <Button variant="primary" className={styles.carryButton} data-carry-between={side + ":" + place + ":" + (place + 1)} data-carry-visible={ready || carrying}
-    aria-hidden={!ready && !carrying} tabIndex={ready || carrying ? 0 : -1} disabled={carrying ? publishing : disabled || !ready} aria-label={label} title={label}
-    onPointerDown={(event) => event.stopPropagation()} onClick={() => carrying ? onToggleMotion() : onCarry(side, place)}>
-    {carrying ? motion.paused ? m.resumeLabel : m.pauseLabel : m.carryLabel}
+    aria-hidden={!ready && !carrying} tabIndex={ready || carrying ? 0 : -1} disabled={publishing || disabled || carrying || !ready} aria-label={label} title={label}
+    onPointerDown={(event) => event.stopPropagation()} onClick={() => onCarry(side, place)}>
+    {m.carryLabel}
   </Button>;
 }
