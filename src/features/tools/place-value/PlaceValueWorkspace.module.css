@@ -17,7 +17,8 @@
 .counterButtons { display: flex; justify-content: center; gap: 4px; }
 .counterButton { min-width: 0; width: min(30px, calc((var(--place-control-width, 108px) - 4px) / 2)); height: 30px; padding: 0; color: var(--muted); }
 .counterButton svg { width: 16px; height: 16px; }
-.carryButton { height: 32px; width: 100%; margin-top: 5px; padding: 0 3px; gap: 3px; font-size: 12px; background: var(--moon); }
+.carryButton { height: 38px; min-width: 58px; transform: translate(-50%, 36px); padding: 0 7px; gap: 4px; font-size: 13px; color: var(--rose); border-color: var(--rose); background: var(--paper); pointer-events: auto; }
+.carryButton:hover { background: var(--paper); color: var(--rose-deep); border-color: var(--rose-deep); }
 .carryButton svg { width: 15px; height: 15px; flex-shrink: 0; }
 .carryButton[data-carry-visible="false"] { visibility: hidden; pointer-events: none; }
 .comparison { font-size: 30px; color: var(--ink); }

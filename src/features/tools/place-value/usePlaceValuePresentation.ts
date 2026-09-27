@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import { animateSpatialAction } from "../spatial-interaction/policy";
-import { placeValueProgress } from "./model";
-import type { PlaceValueSnapshot } from "./contract";
+import { placeValueProgress } from "./radix-model";
+import type { PlaceValueSnapshot } from "./radix-contract";
 
 /** 使用共用调度器和语义时间，回执及晚加入不会从头播放。 */
 export function usePlaceValuePresentation(snapshot: PlaceValueSnapshot) {

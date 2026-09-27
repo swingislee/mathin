@@ -62,7 +62,7 @@ export const SPATIAL_ACTIONS = {
   pieces: { zh: "选择拼块", en: "Choose pieces", icon: "Shapes", group: "soma" },
   liquid: { zh: "液量与倒水", en: "Liquid and pouring", icon: "Beaker", group: "capacity" },
   amounts: { zh: "显示容积数值", en: "Show amounts", icon: "Gauge", group: "capacity" },
-  placeCarry: { zh: "满十进一", en: "Regroup ten", icon: "Group", group: "place-value" },
+  placeCarry: { zh: "进位合组", en: "Regroup into next place", icon: "Group", group: "place-value" },
   placeUnpack: { zh: "拆开一个计数单位", en: "Unpack a counting unit", icon: "Ungroup", group: "place-value" },
   showDigits: { zh: "显示数位与数字", en: "Show place-value digits", icon: "Hash", group: "place-value" },
   emptyLiquid: { zh: "倒空容器", en: "Empty vessels", icon: "GlassWater", group: "capacity" },

@@ -15,7 +15,7 @@ import { solidNetsCompleteSceneAdapter } from "../solid-nets/complete-scene-adap
 import { solidCapacityTeachingSceneAdapter } from "../solid-capacity/scene-adapter";
 import { solidGeometryExplorationSceneAdapter } from "../solid-geometry/exploration-scene-adapter";
 import { solidRevolutionSceneAdapter } from "../solid-revolution/scene-adapter";
-import { placeValueSceneAdapter } from "../place-value/scene-adapter";
+import { placeValueLegacySceneAdapter, placeValueSceneAdapter } from "../place-value/scene-adapter";
 import { planarSceneAdapters } from "../planar-kit/scene-adapter";
 import { somaSceneAdapter, somaLegacySceneAdapter } from "../soma-cube/scene-adapter";
 import type { ToolSceneVersion } from "./contract";
@@ -25,6 +25,7 @@ import type { ToolWorkbenchAdapter } from "./workbench-adapter";
 const adapters = {
   ...planarSceneAdapters,
   [placeValueSceneAdapter.contentVersion]: placeValueSceneAdapter,
+  [placeValueLegacySceneAdapter.contentVersion]: placeValueLegacySceneAdapter,
   [solidNetsCompleteSceneAdapter.contentVersion]: solidNetsCompleteSceneAdapter,
   [solidCapacityTeachingSceneAdapter.contentVersion]: solidCapacityTeachingSceneAdapter,
   [solidGeometryExplorationSceneAdapter.contentVersion]: solidGeometryExplorationSceneAdapter,

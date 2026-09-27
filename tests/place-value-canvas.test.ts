@@ -3,8 +3,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { PlaceValueCanvas, type PlaceValueCanvasProps } from "@/features/tools/place-value/PlaceValueCanvas";
 import type { VoxelModelCanvasProps } from "@/features/spatial-math/renderer-r3f/VoxelCanvas";
-import { createDefaultPlaceValueInitial, createPlaceValueBoard, placeValueSnapshot } from "@/features/tools/place-value/contract";
-import { planPlaceValue } from "@/features/tools/place-value/model";
+import { createDefaultPlaceValueInitial, createPlaceValueBoard, placeValueSnapshot } from "@/features/tools/place-value/radix-contract";
+import { placeValueColumn, placeValueOffset, planPlaceValue } from "@/features/tools/place-value/radix-model";
 import { placeValueControlPositions } from "@/features/tools/place-value/PlaceValueStage";
 import { SPATIAL_GROUND_LABEL_ROTATION, spatialGroundVisible } from "@/features/tools/spatial-interaction/SpatialSurfaceLabel";
 import { Euler, OrthographicCamera, Vector3 } from "three";
@@ -36,14 +36,14 @@ describe("place-value uses the existing voxel canvas", () => {
     expect(new Vector3(0, 0, 1).applyEuler(rotation).distanceTo(new Vector3(0, 1, 0))).toBeLessThan(1e-9);
     expect(new Vector3(1, 0, 0).applyEuler(rotation).distanceTo(new Vector3(0, 0, -1))).toBeLessThan(1e-9);
   });
-  it("keeps a stable hundreds/tens/ones row at either side instead of reordering coincident labels", () => {
-    for (const x of [-240, 240]) for (const z of [-2, 0, 2]) for (const mode of ["single", "compare"] as const) {
+  it("lets all place labels overlap at either true side view", () => {
+    for (const x of [-240, 240]) for (const mode of ["single", "compare"] as const) {
       const camera = new OrthographicCamera(-15, 15, 11.25, -11.25, .01, 1000);
-      camera.position.set(x, 4, z); camera.lookAt(0, 4, 0); camera.updateMatrixWorld();
+      camera.position.set(x, 4, 0); camera.lookAt(0, 4, 0); camera.updateMatrixWorld();
       const { positions } = placeValueControlPositions(camera, { width: 768, height: 576 }, mode);
-      const keys = (mode === "single" ? ["left"] : ["left", "right"]).flatMap((side) => ["hundreds", "tens", "ones"].map((place) => side + ":" + place));
+      const keys = (mode === "single" ? ["left"] : ["left", "right"]).flatMap((side) => [2, 1, 0].map((place) => side + ":" + place));
       for (let index = 1; index < keys.length; index++) {
-        expect(positions[keys[index]][0]).toBeGreaterThan(positions[keys[index - 1]][0]);
+        expect(positions[keys[index]][0]).toBeCloseTo(positions[keys[index - 1]][0], 9);
         expect(positions[keys[index]][1]).toBe(positions[keys[index - 1]][1]);
       }
     }
@@ -52,9 +52,9 @@ describe("place-value uses the existing voxel canvas", () => {
     const snapshot = placeValueSnapshot({ ...createDefaultPlaceValueInitial(), left: createPlaceValueBoard(value) });
     const { model } = draw({ snapshot });
     expect(model.cells.filter((c) => c.z === 0).map((c) => c.materialToken)).toEqual(["yellow", "yellow", "yellow", "yellow", "yellow", "blue", "blue", "blue", "blue"]);
-    const last = (value === 90 ? snapshot.left.tens : snapshot.left.hundreds).at(-1)!.flat();
-    expect(model.cells.find((c) => c.key === "left:" + last.at(-1))!.z).toBe(0);
-    expect(model.cells.find((c) => c.key === "left:" + last[0])!.z).toBe(value === 90 ? -9 : -99);
+    const last = (value === 90 ? snapshot.left.places[1] : snapshot.left.places[2]).at(-1)![0];
+    expect(model.cells.find((c) => c.key === "left:" + (last.start + last.count - 1))!.z).toBe(0);
+    expect(model.cells.find((c) => c.key === "left:" + last.start)!.z).toBe(value === 90 ? -9 : -99);
   });
   it("ignores old geometry-center frames and keeps the number-front orbit pivot", () => {
     const snapshot = placeValueSnapshot({ ...createDefaultPlaceValueInitial(), left: createPlaceValueBoard(104), grid: true, frame: { center: { x: 0, y: 8, z: -49 }, radius: 50 } });
@@ -63,15 +63,17 @@ describe("place-value uses the existing voxel canvas", () => {
     expect(rendered.model.bounds.center).toEqual({ x: 0, y: 4, z: 0 });
     expect(rendered.cameraPanEnabled).toBe(false);
   });
-  it("keeps place controls apart and inside the stage in front, side and fitted views", () => {
+  it("projects numbers on their real positions and carries exactly between adjacent places", () => {
     for (const width of [400, 768, 1200]) for (const mode of ["single", "compare"] as const) for (const position of [[0, 4, 240], [240, 4, 0], [160, 120, 160]]) {
       const camera = new OrthographicCamera(-15, 15, 11.25, -11.25, .01, 1000);
       camera.position.set(position[0], position[1], position[2]); camera.lookAt(0, 4, 0); camera.updateMatrixWorld();
       const arranged = placeValueControlPositions(camera, { width, height: width * .75 }, mode);
-      const xs = Object.values(arranged.positions).map(([x]) => x).sort((a, b) => a - b);
-      expect(xs[0]).toBeGreaterThanOrEqual(arranged.width / 2 + 7.999);
-      expect(xs.at(-1)!).toBeLessThanOrEqual(width - arranged.width / 2 - 56 + .001);
-      for (let index = 1; index < xs.length; index++) expect(xs[index] - xs[index - 1]).toBeGreaterThanOrEqual(arranged.width + 7.999);
+      for (const side of mode === "single" ? ["left"] as const : ["left", "right"] as const) for (const level of [0, 1, 2]) {
+        const p = new Vector3(placeValueColumn(level, 3) + placeValueOffset(mode, side), -.65, .8).project(camera);
+        expect(arranged.positions[side + ":" + level][0]).toBeCloseTo((p.x + 1) * width / 2, 9);
+        expect(arranged.positions[side + ":" + level][1]).toBeCloseTo((1 - p.y) * width * .75 / 2, 9);
+        if (level < 2) expect(arranged.carries[side + ":" + level][0]).toBeCloseTo((arranged.positions[side + ":" + level][0] + arranged.positions[side + ":" + (level + 1)][0]) / 2);
+      }
     }
   });
   it.each([0, 9, 10, 99, 100, 101, 110, 200, 999])("renders %i with a true unit scale and distinct shared cell keys", (value) => {
@@ -88,7 +90,7 @@ describe("place-value uses the existing voxel canvas", () => {
   });
   it("retains shared camera navigation, picking and empty-space deselection through mid-animation", () => {
     const start = placeValueSnapshot({ ...createDefaultPlaceValueInitial(), left: createPlaceValueBoard(10, "ones") });
-    const moving = planPlaceValue(start, "carry-one", 1000)!;
+    const moving = planPlaceValue(start, "carry", 1000)!;
     const onSelect = vi.fn(), onPointerMissed = vi.fn();
     const before = draw({ snapshot: start, onSelect, onPointerMissed });
     before.onCellSelect!("left:11"); expect(onSelect).toHaveBeenCalledExactlyOnceWith("left", 11);

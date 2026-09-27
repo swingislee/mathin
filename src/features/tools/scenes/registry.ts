@@ -19,7 +19,8 @@ export const SOLID_NETS_COMPLETE_COURSEWARE_VERSION = "solid-nets-lesson-v3" as 
 export const SOLID_GEOMETRY_EXPLORATION_COURSEWARE_VERSION = "solid-geometry-lesson-v2" as const;
 export const SOLID_CAPACITY_TEACHING_COURSEWARE_VERSION = "solid-capacity-lesson-v2" as const;
 export const SOLID_REVOLUTION_COURSEWARE_VERSION = "solid-revolution-lesson-v1" as const;
-export const PLACE_VALUE_COURSEWARE_VERSION = "place-value-lesson-v1" as const;
+export const PLACE_VALUE_COURSEWARE_VERSION = "place-value-lesson-v2" as const;
+export const PLACE_VALUE_LEGACY_COURSEWARE_VERSION = "place-value-lesson-v1" as const;
 export const DICE_COURSEWARE_VERSION = "dice-lesson-v1" as const;
 export const PROJECTION_COURSEWARE_VERSION = "projection-lesson-v1" as const;
 export const SOLID_GEOMETRY_COURSEWARE_VERSION = "solid-geometry-lesson-v1" as const;
@@ -33,7 +34,7 @@ export type ToolCoursewareAuthoringSurface = "microcourse" | "formal-courseware"
 interface ToolCoursewareContractDefinition {
   toolId: string;
   catalogId?: string;
-  contentVersion: typeof TOOL_COURSEWARE_CONTENT_VERSION | typeof CUBE_COURSEWARE_CONTENT_VERSION | typeof CUBE_ROTATION_COURSEWARE_VERSION | typeof CUBE_COURSEWARE_LEGACY_VERSION | typeof CUBE_NET_COURSEWARE_VERSION | typeof NET_TEACHING_COURSEWARE_VERSION | typeof CUBE_NET_EXPLORATION_COURSEWARE_VERSION | typeof SOLID_NETS_COURSEWARE_VERSION | typeof SOLID_NETS_POLYHEDRA_COURSEWARE_VERSION | typeof DICE_COURSEWARE_VERSION | typeof FRACTION_COURSEWARE_VERSION | typeof MOTION_COURSEWARE_VERSION | typeof PROJECTION_COURSEWARE_VERSION | typeof SOLID_GEOMETRY_COURSEWARE_VERSION | typeof SOLID_CAPACITY_COURSEWARE_VERSION | typeof SOMA_COURSEWARE_VERSION | typeof SOMA_COURSEWARE_LEGACY_VERSION | typeof SOLID_NETS_COMPLETE_COURSEWARE_VERSION | typeof SOLID_GEOMETRY_EXPLORATION_COURSEWARE_VERSION | typeof SOLID_CAPACITY_TEACHING_COURSEWARE_VERSION | typeof SOLID_REVOLUTION_COURSEWARE_VERSION | typeof PLACE_VALUE_COURSEWARE_VERSION | PlanarVersion;
+  contentVersion: typeof TOOL_COURSEWARE_CONTENT_VERSION | typeof CUBE_COURSEWARE_CONTENT_VERSION | typeof CUBE_ROTATION_COURSEWARE_VERSION | typeof CUBE_COURSEWARE_LEGACY_VERSION | typeof CUBE_NET_COURSEWARE_VERSION | typeof NET_TEACHING_COURSEWARE_VERSION | typeof CUBE_NET_EXPLORATION_COURSEWARE_VERSION | typeof SOLID_NETS_COURSEWARE_VERSION | typeof SOLID_NETS_POLYHEDRA_COURSEWARE_VERSION | typeof DICE_COURSEWARE_VERSION | typeof FRACTION_COURSEWARE_VERSION | typeof MOTION_COURSEWARE_VERSION | typeof PROJECTION_COURSEWARE_VERSION | typeof SOLID_GEOMETRY_COURSEWARE_VERSION | typeof SOLID_CAPACITY_COURSEWARE_VERSION | typeof SOMA_COURSEWARE_VERSION | typeof SOMA_COURSEWARE_LEGACY_VERSION | typeof SOLID_NETS_COMPLETE_COURSEWARE_VERSION | typeof SOLID_GEOMETRY_EXPLORATION_COURSEWARE_VERSION | typeof SOLID_CAPACITY_TEACHING_COURSEWARE_VERSION | typeof SOLID_REVOLUTION_COURSEWARE_VERSION | typeof PLACE_VALUE_COURSEWARE_VERSION | typeof PLACE_VALUE_LEGACY_COURSEWARE_VERSION | PlanarVersion;
   authoringSurfaces: readonly ToolCoursewareAuthoringSurface[];
   classroomSync: ClassroomInteractionSyncProvider;
 }
@@ -42,6 +43,7 @@ export const TOOL_COURSEWARE_CONTRACTS = [
   ...PLANAR_TOOLS.map((tool) => ({ toolId: tool.id, contentVersion: tool.version, catalogId: tool.id, authoringSurfaces: ["microcourse", "formal-courseware"] as const, classroomSync: CLASSROOM_TOOL_STATE_SYNC_V1 })),
   ...LEGACY_PLANAR_TOOLS.map((tool) => ({ toolId: tool.id, contentVersion: tool.version, catalogId: tool.id, authoringSurfaces: [] as const, classroomSync: CLASSROOM_TOOL_STATE_SYNC_V1 })),
   { toolId: "place-value", contentVersion: PLACE_VALUE_COURSEWARE_VERSION, catalogId: "place-value", authoringSurfaces: ["microcourse", "formal-courseware"] as const, classroomSync: CLASSROOM_TOOL_STATE_SYNC_V1 },
+  { toolId: "place-value", contentVersion: PLACE_VALUE_LEGACY_COURSEWARE_VERSION, catalogId: "place-value", authoringSurfaces: [] as const, classroomSync: CLASSROOM_TOOL_STATE_SYNC_V1 },
   { toolId: "solid-nets", contentVersion: SOLID_NETS_COMPLETE_COURSEWARE_VERSION, catalogId: "solid-nets", authoringSurfaces: ["microcourse", "formal-courseware"] as const, classroomSync: CLASSROOM_TOOL_STATE_SYNC_V1 },
   { toolId: "solid-geometry", contentVersion: SOLID_GEOMETRY_EXPLORATION_COURSEWARE_VERSION, catalogId: "solid-geometry", authoringSurfaces: ["microcourse", "formal-courseware"] as const, classroomSync: CLASSROOM_TOOL_STATE_SYNC_V1 },
   { toolId: "solid-capacity", contentVersion: SOLID_CAPACITY_TEACHING_COURSEWARE_VERSION, catalogId: "solid-capacity", authoringSurfaces: ["microcourse", "formal-courseware"] as const, classroomSync: CLASSROOM_TOOL_STATE_SYNC_V1 },
