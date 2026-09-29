@@ -2,24 +2,40 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { Line } from "@react-three/drei";
-import { BoxGeometry, Color, DoubleSide, InstancedBufferAttribute, Matrix4, Quaternion, Vector3, type InstancedMesh } from "three";
+import { BoxGeometry, Color, DataTexture, DoubleSide, FloatType, InstancedBufferAttribute, Matrix4, Quaternion, RGBAFormat, Vector3, type InstancedMesh, type ShaderMaterial } from "three";
 import { VOXEL_EDGE_COLOR } from "@/features/spatial-math/renderer-r3f/voxel-visual-model";
 import { CUBE_COLORS, CUBE_SELECTION_COLOR } from "../spatial-lab/cube-structures-contract";
 import { SpatialSurfaceLabel } from "../spatial-interaction/SpatialSurfaceLabel";
-import { groupSize, type PlaceValueSide, type PlaceValueSnapshot } from "./radix-contract";
+import { groupSize, type PlaceValueGroup, type PlaceValueSide, type PlaceValueSnapshot } from "./radix-contract";
 import { placeValueColumn, placeValueGroup, placeValueOffset, placeValueRedSpans } from "./radix-model";
-import { placeValueBoxPose, type PlaceValueBoxPart } from "./box-model";
+import { placeValueBoxPose, placeValueBoxRedSpans, type PlaceValueBoxPart } from "./box-model";
+import { writePlaceValueBoxColors } from "./box-colors";
 
 const ignoreRaycast = () => null;
 const vertexShader = `
-attribute vec3 divisions; attribute vec4 appearance;
-varying vec3 p; varying vec3 n; varying vec3 d; varying vec4 a;
-void main() { p = position + .5; n = normal; d = divisions; a = appearance;
+attribute vec3 divisions; attribute vec4 appearance; attribute float detail; attribute vec2 spanRange;
+varying vec3 p; varying vec3 n; varying vec3 d; varying vec4 a; varying float unpacked; varying vec2 spans;
+void main() { p = position + .5; n = normal; d = divisions; a = appearance; unpacked = detail; spans = spanRange;
   gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.);
 }`;
 const fragmentShader = `
-varying vec3 p; varying vec3 n; varying vec3 d; varying vec4 a;
+varying vec3 p; varying vec3 n; varying vec3 d; varying vec4 a; varying float unpacked; varying vec2 spans;
 uniform vec3 yellow; uniform vec3 blue; uniform vec3 warning; uniform vec3 edge; uniform vec3 selected; uniform vec3 neutral; uniform float shell;
+uniform sampler2D palette; uniform vec2 paletteSize;
+vec2 colorSpan(float index) {
+  return texture2D(palette, (vec2(mod(index, paletteSize.x), floor(index / paletteSize.x)) + .5) / paletteSize).rg;
+}
+float originalPhase(float number) {
+  float low = spans.x, high = spans.x + spans.y - 1.;
+  // 每组最多 2048 段；二分次数固定，不循环遍历单位数量。
+  for (int i = 0; i < 12; i++) {
+    if (low < high) {
+      float middle = floor((low + high) * .5);
+      if (number < colorSpan(middle).x) high = middle; else low = middle + 1.;
+    }
+  }
+  return number + colorSpan(low).y;
+}
 float lines(vec2 uv) {
   vec2 pixel = max(fwidth(uv), vec2(.00001));
   vec2 distance = min(fract(uv), 1. - fract(uv));
@@ -29,9 +45,9 @@ float lines(vec2 uv) {
 void main() {
   vec3 unit = floor(clamp(p * d, vec3(.00001), d - .00001));
   float number = unit.z + unit.x * d.z + unit.y * d.x * d.z;
-  float colorIndex = step(5., mod(number, 10.));
+  float colorIndex = shell > .5 ? 0. : step(5., mod(originalPhase(number), 10.));
   // 前端色带表示本列第几个单位；顶面/侧面格线表示这个单位的内部组成。
-  if (n.z > .5) colorIndex = a.w;
+  if (n.z > .5) colorIndex = mix(a.w, colorIndex, unpacked);
   float pixel = max(fwidth(number), .00001);
   vec3 face = mix(yellow, blue, n.z > .5 ? colorIndex : mix(colorIndex, .5, smoothstep(8., 24., pixel)));
   face = mix(face, warning, a.y);
@@ -39,7 +55,7 @@ void main() {
   vec2 uv = abs(n.x) > .5 ? p.yz : abs(n.y) > .5 ? p.xz : p.xy;
   vec2 count = abs(n.x) > .5 ? d.yz : abs(n.y) > .5 ? d.xz : d.xy;
   float outline = 1. - smoothstep(.016, .027, min(min(uv.x, 1. - uv.x), min(uv.y, 1. - uv.y)));
-  float grid = lines(uv * count);
+  float grid = lines(uv * count) * (n.z > .5 ? unpacked : 1.);
   vec3 color = shell > .5 ? mix(neutral, mix(edge, selected, a.z), outline) : mix(face, mix(edge, selected, a.z), max(grid * .7, outline));
   float alpha = shell > .5 ? mix(.13, .9, outline) * a.x : a.x;
   if (alpha < .005) discard;
@@ -53,6 +69,11 @@ function BoxInstances({ parts, offset, selected, red, interactive, onSelect, she
   red: ReturnType<typeof placeValueRedSpans>; interactive: boolean; onSelect: (unit: number) => void; shell: boolean;
 }) {
   const ref = useRef<InstancedMesh>(null), capacity = Math.max(1, parts.length);
+  const spanCount = Math.max(1, parts.reduce((count, part) => count + part.group.length, 0));
+  const width = Math.min(2048, spanCount), height = Math.ceil(spanCount / width);
+  const palette = useMemo(() => new DataTexture(new Float32Array(width * height * 4), width, height, RGBAFormat, FloatType), [width, height]);
+  const previousPalette = useRef<{ texture: DataTexture; groups: PlaceValueGroup[] } | null>(null);
+  useEffect(() => () => palette.dispose(), [palette]);
   const geometry = useMemo(() => {
     const result = new BoxGeometry(1, 1, 1);
     if (shell) {
@@ -62,25 +83,36 @@ function BoxInstances({ parts, offset, selected, red, interactive, onSelect, she
     }
     result.setAttribute("divisions", new InstancedBufferAttribute(new Float32Array(capacity * 3), 3));
     result.setAttribute("appearance", new InstancedBufferAttribute(new Float32Array(capacity * 4), 4));
+    result.setAttribute("detail", new InstancedBufferAttribute(new Float32Array(capacity), 1));
+    result.setAttribute("spanRange", new InstancedBufferAttribute(new Float32Array(capacity * 2), 2));
     return result;
   }, [capacity, shell]);
   useEffect(() => () => geometry.dispose(), [geometry]);
   const uniforms = useMemo(() => ({ yellow: { value: new Color(CUBE_COLORS[2]) }, blue: { value: new Color(CUBE_COLORS[3]) }, warning: { value: new Color(CUBE_COLORS[1]) },
-    edge: { value: new Color(VOXEL_EDGE_COLOR) }, selected: { value: new Color(CUBE_SELECTION_COLOR) }, neutral: { value: new Color(CUBE_COLORS[5]) }, shell: { value: Number(shell) } }), [shell]);
+    edge: { value: new Color(VOXEL_EDGE_COLOR) }, selected: { value: new Color(CUBE_SELECTION_COLOR) }, neutral: { value: new Color(CUBE_COLORS[5]) }, shell: { value: Number(shell) },
+    palette: { value: palette }, paletteSize: { value: [width, height] } }), [shell, palette, width, height]);
   useLayoutEffect(() => {
     const mesh = ref.current; if (!mesh) return;
+    const texture = (mesh.material as ShaderMaterial).uniforms.palette.value as DataTexture;
     const matrix = new Matrix4(), position = new Vector3(), scale = new Vector3(), rotation = new Quaternion();
-    const divisions = geometry.getAttribute("divisions"), appearance = geometry.getAttribute("appearance");
+    const divisions = geometry.getAttribute("divisions"), appearance = geometry.getAttribute("appearance"), detail = geometry.getAttribute("detail");
+    if (previousPalette.current?.texture !== texture || parts.length !== previousPalette.current.groups.length || parts.some((part, i) => part.group !== previousPalette.current!.groups[i])) {
+      const groups = parts.map((part) => part.group), ranges = writePlaceValueBoxColors(groups, texture.image.data as Float32Array);
+      const spanRange = geometry.getAttribute("spanRange");
+      ranges.forEach((range, i) => spanRange.setXY(i, ...range)); spanRange.needsUpdate = true;
+      texture.needsUpdate = true; previousPalette.current = { texture, groups };
+    }
     parts.forEach((part, i) => {
       position.set(part.position[0] + offset, part.position[1], part.position[2]);
       matrix.compose(position, rotation.fromArray(part.rotation), scale.fromArray(part.size)); mesh.setMatrixAt(i, matrix);
       divisions.setXYZ(i, ...part.divisions);
       const pending = part.group.some((member) => red.some((span) => member.start < span.start + span.count && span.start < member.start + member.count));
-      appearance.setXYZW(i, part.opacity, Number(pending), Number(selected(part)), Number(Math.floor(part.index / 5) % 2));
+      appearance.setXYZW(i, part.opacity, Number(pending), Number(selected(part)), part.frontTone);
+      detail.setX(i, part.detail);
     });
-    mesh.count = parts.length; mesh.instanceMatrix.needsUpdate = true; divisions.needsUpdate = true; appearance.needsUpdate = true;
+    mesh.count = parts.length; mesh.instanceMatrix.needsUpdate = true; divisions.needsUpdate = true; appearance.needsUpdate = true; detail.needsUpdate = true;
     mesh.computeBoundingSphere();
-  }, [parts, offset, geometry, red, selected]);
+  }, [parts, offset, geometry, red, selected, palette]);
   return <instancedMesh key={capacity} ref={ref} args={[geometry, undefined, capacity]} frustumCulled={false} renderOrder={shell ? 2 : 0}
     onClick={(event) => {
       if (!interactive || event.delta > 5 || event.button !== 0 || event.instanceId === undefined) return;
@@ -101,8 +133,8 @@ export function PlaceValueBoxScene({ snapshot, progress, contentsProgress, inter
     const offset = placeValueOffset(snapshot.mode, side, board.places.length);
     const choice = selected && snapshot.selection?.side === side ? placeValueGroup(board, snapshot.selection.unit) : null;
     const emphasis = (part: PlaceValueBoxPart) => choice?.group[0].start === part.unit || snapshot.highlight === part.level;
-    const red = placeValueRedSpans(snapshot, side, snapshot.motion?.boxStage && snapshot.motion.boxStage !== "place" ? 0 : progress);
-    const mapping = parts.find((part) => part.role === "mapping" && part.opacity > .5 && choice?.group[0].start === part.unit);
+    const red = placeValueBoxRedSpans(snapshot, side, progress);
+    const mapping = parts.find((part) => part.role !== "shell" && part.position[2] < -1 && part.opacity > .5 && choice?.group[0].start === part.unit);
     const front = mapping && parts.find((part) => part.role === "shell" && part.unit === mapping.unit);
     return <group key={side}>
       <BoxInstances parts={parts.filter((part) => part.role !== "shell" && part.opacity > .005)} offset={offset} red={red} selected={emphasis} interactive={interactive} onSelect={(unit) => onSelect(side, unit)} shell={false} />

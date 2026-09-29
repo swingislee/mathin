@@ -27,9 +27,7 @@ export function placeValuePendingCarry(snapshot: PlaceValueSnapshot, side: Place
 }
 export const placeValueProgress = (motion: PlaceValueMotion | null, now: number) => !motion ? 1 : motion.paused ? motion.progress : Math.min(1, motion.progress + Math.max(0, now - motion.startedAt) / motion.durationMs);
 export const isPlaceValueRegrouping = (kind?: PlaceValueAction) => kind === "carry" || kind === "unpack";
-export const placeValueBoxWaiting = (state: PlaceValueSnapshot) => !!state.motion?.boxStage && state.motion.boxStage !== "place";
-export const placeValueLocked = (state: PlaceValueSnapshot, now = Date.now()) => placeValueBoxWaiting(state)
-  || (!!state.contentsMotion && now < state.contentsMotion.startedAt + state.contentsMotion.durationMs)
+export const placeValueLocked = (state: PlaceValueSnapshot, now = Date.now()) => (!!state.contentsMotion && now < state.contentsMotion.startedAt + state.contentsMotion.durationMs)
   || (isPlaceValueRegrouping(state.motion?.kind) && placeValueProgress(state.motion, now) < 1);
 export function placeValueDuration(change: Pick<PlaceValueChange, "kind" | "level" | "before">, speed: PlaceValueInitial["speed"]) {
   const lower = change.kind === "unpack" ? change.level - 1 : change.level;
@@ -41,11 +39,12 @@ function boundedHistory(past: PlaceValueChange[]) {
   return entries;
 }
 export function applyPlaceValueChange(snapshot: PlaceValueSnapshot, change: PlaceValueChange, now = Date.now(), paused = false): PlaceValueSnapshot {
-  const boxed = snapshot.presentation?.strategy === "boxes" && change.kind === "carry";
+  const boxed = snapshot.presentation?.strategy === "boxes" && isPlaceValueRegrouping(change.kind);
+  const lostSelection = snapshot.selection?.side === change.side && !boardHasUnit(change.after, snapshot.selection.unit);
   return { ...snapshot, [change.side]: change.after,
-    selection: snapshot.selection?.side === change.side && !boardHasUnit(change.after, snapshot.selection.unit) ? null : snapshot.selection,
-    motion: { ...change, id: newId(), startedAt: now, durationMs: boxed ? 2200 * ({ slow: 1.5, normal: 1, fast: .6 }[snapshot.speed]) : placeValueDuration(change, snapshot.speed), progress: 0, paused,
-      ...(boxed ? { boxStage: "lay" as const } : {}) },
+    selection: lostSelection ? null : snapshot.selection,
+    ...(lostSelection && snapshot.presentation?.strategy === "boxes" ? { presentation: { ...snapshot.presentation, contents: "inside" as const }, contentsMotion: undefined } : {}),
+    motion: { ...change, id: newId(), startedAt: now, durationMs: boxed ? 4200 * ({ slow: 1.5, normal: 1, fast: .6 }[snapshot.speed]) : placeValueDuration(change, snapshot.speed), progress: 0, paused },
     past: boundedHistory([...snapshot.past, change]), future: [] };
 }
 export function changePlaceValueBoard(board: PlaceValueBoard, action: PlaceValueAction, level = 0, unit?: number) {
@@ -94,6 +93,8 @@ export function configurePlaceValue(snapshot: PlaceValueSnapshot, radix: number,
   try {
     const next = { ...snapshot, left: createPlaceValueBoard(boardTotal(snapshot.left), "normal", radix, digits), right: createPlaceValueBoard(boardTotal(snapshot.right), "normal", radix, digits),
       motion: null, selection: null, highlight: "all" as const, past: [], future: [], cameraRevision: snapshot.cameraRevision + 1 };
+    if (next.presentation?.strategy === "boxes") next.presentation = { ...next.presentation, contents: "inside" };
+    delete next.contentsMotion;
     return { ...next, frame: placeValueFrame(next) };
   } catch { return null; }
 }
@@ -102,7 +103,9 @@ export function placeValueNotation(snapshot: PlaceValueSnapshot, side: PlaceValu
   const motion = snapshot.motion?.side === side ? snapshot.motion : null, base = snapshot[side].radix;
   const after = placeValueNumeral(snapshot[side].places[level].length, base);
   const before = motion && isPlaceValueRegrouping(motion.kind) ? placeValueNumeral(motion.before.places[level].length, base) : after;
-  const numericProgress = motion?.boxStage && motion.boxStage !== "place" ? 0 : progress;
+  // 倒下／叠合时保留原竖式，装入目标盒的同一时间段完成数字进位。
+  const numericProgress = snapshot.presentation?.strategy === "boxes" && motion && isPlaceValueRegrouping(motion.kind)
+    ? motion.kind === "carry" ? Math.max(0, (progress - .6) / .4) : Math.min(1, progress / .4) : progress;
   return { before, after, blend: before.digit !== after.digit || before.extra !== after.extra ? spatialActionProgress(numericProgress) : 1 };
 }
 export function pausePlaceValue(snapshot: PlaceValueSnapshot, now = Date.now()) {

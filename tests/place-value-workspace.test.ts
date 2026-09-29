@@ -6,7 +6,6 @@ import { PlaceValueWorkspace, type PlaceValueWorkspaceProps } from "@/features/t
 import type { PlaceValueCanvasProps } from "@/features/tools/place-value/PlaceValueCanvas";
 import { boardTotal, createDefaultPlaceValueInitial, createPlaceValueBoard, placeValueSnapshot, type PlaceValueSnapshot } from "@/features/tools/place-value/radix-contract";
 import { planPlaceValue } from "@/features/tools/place-value/radix-model";
-import { advancePlaceValueBoxCarry } from "@/features/tools/place-value/box-model";
 
 const viewport = vi.hoisted(() => ({ current: null as PlaceValueCanvasProps | null }));
 vi.mock("next/dynamic", () => ({ default: () => function Viewport(props: PlaceValueCanvasProps) {
@@ -35,52 +34,119 @@ const click = async (label: string) => act(async () => button(label).click());
 async function tick(time: number) { now = time; const tasks = [...frames.values()]; frames.clear(); await act(async () => tasks.forEach((callback) => callback(time))); }
 
 describe("place-value workspace using common spatial controls", () => {
-  it("restores a late-joined waiting pose and does not replay the same classroom phase", async () => {
-    const origin = placeValueSnapshot({ ...createDefaultPlaceValueInitial(), left: createPlaceValueBoard(10, "ones"), presentation: { strategy: "boxes", contents: "both" } });
-    const lay = planPlaceValue(origin, "carry", 1000)!;
-    now = 5000;
-    await render({ classroom: { state: lay } }); await tick(5000);
-    expect(viewport.current!.progress).toBe(1);
-    expect(button("Pack · Ten ones make one ten").disabled).toBe(true);
-    const pack = advancePlaceValueBoxCarry(lay, 5000)!;
-    now = 5900; await render({ classroom: { state: pack } }); await tick(5900);
+  it("restores the continuous carry timeline and does not replay the same classroom command", async () => {
+    const origin = placeValueSnapshot({ ...createDefaultPlaceValueInitial(), left: createPlaceValueBoard(10, "ones"), presentation: { strategy: "boxes", contents: "inside" } });
+    const carry = planPlaceValue(origin, "carry", 1000)!;
+    now = 3100;
+    await render({ classroom: { state: carry } }); await tick(3100);
     expect(viewport.current!.progress).toBe(.5);
-    await render({ classroom: { state: structuredClone(pack) } });
+    expect(button("Ten ones make one ten").disabled).toBe(true);
+    await render({ classroom: { state: structuredClone(carry) } });
     expect(viewport.current!.progress).toBe(.5);
-    await tick(6800);
-    expect(viewport.current!.progress).toBe(1);
-    expect(button("Place · Ten ones make one ten").disabled).toBe(true);
     expect(host.querySelector('[data-place-value-station="left:0"] [data-place-value-numeral="before"]')!.textContent).toBe("9+1");
+    await tick(5200);
+    expect(viewport.current!.progress).toBe(1);
+    expect(host.querySelector('[data-place-value-station="left:1"] [data-place-value-numeral="after"]')!.textContent).toBe("1");
   });
-  it("adds an independent box strategy with explicit three-stage carry and safe capture", async () => {
+  it("carries with one button, keeps inspection separate, and captures only the completed state", async () => {
     const capture = vi.fn();
     await render({ onSnapshot: capture });
     await click("Presentation strategy"); await click("Box mapping");
-    expect(viewport.current!.snapshot.presentation).toEqual({ strategy: "boxes", contents: "both" });
+    expect(viewport.current!.snapshot.presentation).toEqual({ strategy: "boxes", contents: "inside" });
     expect(viewport.current!.snapshot.left.places[0]).toHaveLength(9);
     await click("Add one unit"); await tick(1200);
-    await click("Lay down · Ten ones make one ten");
-    expect(viewport.current!.snapshot.motion!.boxStage).toBe("lay");
-    expect(button("Lay down · Ten ones make one ten").disabled).toBe(true);
+    await click("Ten ones make one ten");
+    const id = viewport.current!.snapshot.motion!.id;
+    expect(viewport.current!.snapshot.motion!.boxStage).toBeUndefined();
+    expect(button("Ten ones make one ten").disabled).toBe(true);
+    expect(button("Ten ones make one ten").textContent).toBe("Carry");
     await tick(3400);
-    expect(button("Pack · Ten ones make one ten").disabled).toBe(false);
+    expect(button("Ten ones make one ten").disabled).toBe(true);
     expect(button("Add one unit").disabled).toBe(true); expect(button("Rod regrouping").disabled).toBe(true);
     expect(capture.mock.lastCall![0]).toBeNull();
     expect(host.querySelector('[data-place-value-station="left:0"] [data-place-value-numeral="before"]')!.textContent).toBe("9+1");
-    await click("Pack · Ten ones make one ten"); await tick(5200);
-    expect(button("Place · Ten ones make one ten").disabled).toBe(false);
-    expect(capture.mock.lastCall![0]).toBeNull();
-    await click("Place · Ten ones make one ten"); await tick(6300);
+    await click("Ten ones make one ten"); expect(viewport.current!.snapshot.motion!.id).toBe(id);
+    await tick(5400);
     expect(button("Add one unit").disabled).toBe(false);
     expect(capture.mock.lastCall![0].left.places[1]).toHaveLength(1);
     expect(capture.mock.lastCall![0].presentation.strategy).toBe("boxes");
     const board = viewport.current!.snapshot.left;
+    expect(host.querySelector('button[aria-label="Take out"]')).toBeNull();
+    await click("Inspect a counting unit");
+    expect(button("Take out").disabled).toBe(true);
+    await act(async () => viewport.current!.onSelect("left", board.places[1][0][0].start));
     await click("Take out"); expect(button("Add one unit").disabled).toBe(true);
-    expect(capture.mock.lastCall![0]).toBeNull(); await tick(7800);
+    expect(capture.mock.lastCall![0]).toBeNull(); await tick(6900);
     expect(viewport.current!.snapshot.left).toEqual(board);
     expect(capture.mock.lastCall![0].presentation.contents).toBe("outside");
-    await click("Rod regrouping"); expect(viewport.current!.snapshot.left).toEqual(board);
+    await click("Presentation strategy"); await click("Rod regrouping"); expect(viewport.current!.snapshot.left).toEqual(board);
     await click("Restore starting scene"); expect(viewport.current!.snapshot.left.places[0]).toHaveLength(9);
+  });
+  it("returns the previous inspected box before opening another and preserves number and history", async () => {
+    const initial = { ...createDefaultPlaceValueInitial(), left: createPlaceValueBoard(33), presentation: { strategy: "boxes" as const, contents: "inside" as const } };
+    const capture = vi.fn(); await render({ initial, onSnapshot: capture });
+    const first = initial.left.places[1][0][0].start, second = initial.left.places[1][1][0].start;
+    await act(async () => viewport.current!.onSelect("left", first));
+    await click("Inspect a counting unit"); await click("Take out"); await tick(2500);
+    await act(async () => viewport.current!.onSelect("left", second));
+    expect(viewport.current!.snapshot.selection!.unit).toBe(first);
+    expect(viewport.current!.snapshot.presentation!.contents).toBe("inside");
+    expect(capture.mock.lastCall![0]).toBeNull();
+    await tick(4000);
+    expect(viewport.current!.snapshot.selection!.unit).toBe(second);
+    expect(viewport.current!.snapshot.presentation!.contents).toBe("outside");
+    expect(capture.mock.lastCall![0]).toBeNull(); await tick(5500);
+    expect(viewport.current!.snapshot.left).toEqual(initial.left); expect(viewport.current!.snapshot.past).toEqual([]);
+    expect(capture.mock.lastCall![0].selection.unit).toBe(second);
+    await act(async () => viewport.current!.onPointerMissed(new MouseEvent("click", { button: 0 })));
+    expect(viewport.current!.snapshot.presentation!.contents).toBe("inside");
+    expect(viewport.current!.snapshot.selection!.unit).toBe(second); // 收回时保留原映射归属。
+    await tick(7000);
+    expect(viewport.current!.snapshot.left).toEqual(initial.left);
+  });
+  it("finishes an old phased classroom carry without a hidden waiting step", async () => {
+    const origin = placeValueSnapshot({ ...createDefaultPlaceValueInitial(), left: createPlaceValueBoard(10, "ones"), presentation: { strategy: "boxes", contents: "inside" } });
+    const carry = planPlaceValue(origin, "carry", 1000)!;
+    const old = { ...carry, motion: { ...carry.motion!, boxStage: "pack" as const, durationMs: 1800, progress: 0, startedAt: 5000 } };
+    now = 5900; await render({ classroom: { state: old } }); await tick(5900);
+    expect(viewport.current!.progress).toBeCloseTo(.8);
+    await tick(6800); expect(viewport.current!.progress).toBe(1);
+    expect(host.querySelector('[data-place-value-station="left:1"] [data-place-value-numeral="after"]')!.textContent).toBe("1");
+  });
+  it("waits for the classroom return echo before sending the next inspection command", async () => {
+    const board = createPlaceValueBoard(33), first = board.places[1][0][0].start, second = board.places[1][1][0].start;
+    const state = placeValueSnapshot({ ...createDefaultPlaceValueInitial(), left: board, selection: { side: "left", unit: first }, presentation: { strategy: "boxes", contents: "outside" } });
+    const onChange = vi.fn<(next: PlaceValueSnapshot) => Promise<void>>().mockResolvedValue(undefined);
+    await render({ classroom: { state, onChange } });
+    await act(async () => viewport.current!.onSelect("left", second));
+    expect(onChange).toHaveBeenCalledTimes(1);
+    const closing = onChange.mock.lastCall![0];
+    expect(closing.selection!.unit).toBe(first); expect(closing.presentation!.contents).toBe("inside");
+    await tick(1200); expect(onChange).toHaveBeenCalledTimes(1); // 写入已确认，权威回显尚未到达。
+    await render({ classroom: { state: closing, onChange } }); await tick(2500);
+    expect(onChange).toHaveBeenCalledTimes(2);
+    const opening = onChange.mock.lastCall![0];
+    expect(opening.selection!.unit).toBe(second); expect(opening.presentation!.contents).toBe("outside");
+    expect(opening.left).toEqual(board); expect(opening.past).toEqual([]);
+  });
+  it("releases a failed inspection handoff for a retry", async () => {
+    const board = createPlaceValueBoard(33), first = board.places[1][0][0].start, second = board.places[1][1][0].start;
+    const state = placeValueSnapshot({ ...createDefaultPlaceValueInitial(), left: board, selection: { side: "left", unit: first }, presentation: { strategy: "boxes", contents: "outside" } });
+    const onChange = vi.fn<(next: PlaceValueSnapshot) => Promise<void>>().mockRejectedValue(new Error("Unavailable"));
+    await render({ classroom: { state, onChange } });
+    await act(async () => viewport.current!.onSelect("left", second));
+    expect(host.querySelector('[role="alert"]')).not.toBeNull();
+    await act(async () => viewport.current!.onSelect("left", second));
+    expect(onChange).toHaveBeenCalledTimes(2);
+  });
+  it("resets without a stale queued inspection command", async () => {
+    const board = createPlaceValueBoard(33), first = board.places[1][0][0].start, second = board.places[1][1][0].start;
+    await render({ initial: { ...createDefaultPlaceValueInitial(), left: board, presentation: { strategy: "boxes", contents: "inside" } } });
+    await act(async () => viewport.current!.onSelect("left", first));
+    await click("Inspect a counting unit"); await click("Take out"); await tick(2500);
+    await act(async () => viewport.current!.onSelect("left", second));
+    await click("Restore starting scene"); await tick(10000);
+    expect(viewport.current!.snapshot.presentation!.contents).toBe("inside"); expect(viewport.current!.snapshot.selection).toBeNull();
   });
   it("keeps legacy workspaces on the original strategy", async () => {
     await render({ allowBoxStrategy: false });
@@ -92,7 +158,7 @@ describe("place-value workspace using common spatial controls", () => {
     await render({ initial }); await click("Add one unit"); await tick(1500);
     await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
     expect(viewport.current!.snapshot.motion!.kind).toBe("add");
-    expect(button("Lay down · Ten ones make one ten").disabled).toBe(false);
+    expect(button("Ten ones make one ten").disabled).toBe(false);
     await click("Structure and display");
     expect(host.textContent).not.toContain("Automatically carry a full group");
   });

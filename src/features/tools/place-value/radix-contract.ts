@@ -5,7 +5,8 @@ export const PLACE_VALUE_VERSION = "place-value-lesson-v2" as const;
 export const PLACE_VALUE_MAPPING_VERSION = "place-value-lesson-v3" as const;
 export const placeValuePresentationSchema = z.object({ strategy: z.enum(["rods", "boxes"]), contents: z.enum(["inside", "outside", "both"]) }).strict();
 export type PlaceValuePresentation = z.infer<typeof placeValuePresentationSchema>;
-export const DEFAULT_PLACE_VALUE_PRESENTATION: PlaceValuePresentation = { strategy: "rods", contents: "both" };
+export const DEFAULT_PLACE_VALUE_PRESENTATION: PlaceValuePresentation = { strategy: "rods", contents: "inside" };
+/** 读取早期 v3 课堂的分段命令；新进位使用一条连续时间线，不写入 boxStage。 */
 export const placeValueBoxStageSchema = z.enum(["lay", "pack", "place"]);
 export type PlaceValueBoxStage = z.infer<typeof placeValueBoxStageSchema>;
 export const PLACE_VALUE_BASES = [2, 3, 4, 5, 7, 8, 9, 10, 16] as const;

@@ -18,10 +18,10 @@ import { useToolSnapshot } from "../scenes/useToolSnapshot";
 import { useSceneCapture } from "../courseware/useSceneCapture";
 import { boardTotal, createDefaultPlaceValueInitial, createPlaceValueBoard, formatPlaceValue, groupSize, parsePlaceValue, PLACE_VALUE_BASES, PLACE_VALUE_MAX_DIGITS, placeValueInitial, placeValueLimit, placeValueSnapshot, placeValueWorkspaceSnapshotSchema,
   type PlaceValueAction, type PlaceValueInitial, type PlaceValueSide, type PlaceValueSnapshot } from "./radix-contract";
-import { applyPlaceValueChange, configurePlaceValue, historyPlaceValue, isPlaceValueRegrouping, pausePlaceValue, placeValueBoxWaiting, placeValueCarry, placeValueFrame, placeValueGroup, placeValuePendingCarry, placeValuePlaces, planPlaceValue, planPlaceValueCount, resumePlaceValue } from "./radix-model";
+import { applyPlaceValueChange, configurePlaceValue, historyPlaceValue, isPlaceValueRegrouping, pausePlaceValue, placeValueCarry, placeValueFrame, placeValueGroup, placeValuePendingCarry, placeValuePlaces, planPlaceValue, planPlaceValueCount, resumePlaceValue } from "./radix-model";
 import { PlaceValueCarryControl, PlaceValueStation, type PlaceValueStationProps } from "./PlaceValueStation";
 import { usePlaceValueContentsPresentation, usePlaceValuePresentation } from "./usePlaceValuePresentation";
-import { advancePlaceValueBoxCarry, changePlaceValueContents, changePlaceValueStrategy, placeValueBoxFrame } from "./box-model";
+import { changePlaceValueContents, changePlaceValueStrategy, normalizePlaceValueBoxSnapshot, placeValueBoxFrame } from "./box-model";
 import { placeValueCarryLabel, placeValueLabel, placeValueMessages } from "./messages";
 import styles from "../spatial-lab/CubeStructuresWorkbench.module.css";
 import local from "./PlaceValueWorkspace.module.css";
@@ -34,17 +34,26 @@ export interface PlaceValueWorkspaceProps {
 export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, classroom, legacy = false, allowBoxStrategy = true }: PlaceValueWorkspaceProps) {
   const locale = useLocale() === "en" ? "en" : "zh", m = placeValueMessages(locale);
   const origin = useMemo(() => placeValueSnapshot(initial ?? createDefaultPlaceValueInitial()), [initial]);
-  const host = useToolSnapshot(origin, classroom), snapshot = host.snapshot, presentation = usePlaceValuePresentation(snapshot);
-  const contentsPresentation = usePlaceValueContentsPresentation(snapshot), boxes = snapshot.presentation?.strategy === "boxes", waiting = placeValueBoxWaiting(snapshot);
+  const host = useToolSnapshot(origin, classroom), snapshot = useMemo(() => normalizePlaceValueBoxSnapshot(host.snapshot), [host.snapshot]), presentation = usePlaceValuePresentation(snapshot);
+  const contentsPresentation = usePlaceValueContentsPresentation(snapshot), boxes = snapshot.presentation?.strategy === "boxes";
   const frameFor = (state: PlaceValueInitial) => state.presentation?.strategy === "boxes" ? placeValueBoxFrame(state) : placeValueFrame(state);
-  const commandState = useMemo(() => presentation.progress === 1 && snapshot.motion
-    ? { ...snapshot, motion: { ...snapshot.motion, progress: 1 } } : snapshot, [snapshot, presentation.progress]);
+  const commandState = useMemo(() => {
+    const state = presentation.progress === 1 && snapshot.motion ? { ...snapshot, motion: { ...snapshot.motion, progress: 1 } } : { ...snapshot };
+    if (contentsPresentation.progress === 1) delete state.contentsMotion;
+    return state;
+  }, [snapshot, presentation.progress, contentsPresentation.progress]);
   const [preview, setPreview] = useState<number | null>(null);
+  const [pendingInspection, setPendingInspection] = useState<{ selection: NonNullable<PlaceValueSnapshot["selection"]>; mode: "outside" | "both"; returnId: string } | null>(null);
   const viewer = readOnly || !!(classroom && !classroom.onChange), publishing = viewer || host.publishing;
-  const regrouping = presentation.busy && isPlaceValueRegrouping(snapshot.motion?.kind), disabled = publishing || regrouping || waiting || contentsPresentation.busy || preview !== null;
+  const regrouping = presentation.busy && isPlaceValueRegrouping(snapshot.motion?.kind), disabled = publishing || regrouping || contentsPresentation.busy || pendingInspection !== null || preview !== null;
   const controls = useSpatialToolState<"orbit", "prepare" | "compare" | "inspect" | "settings" | "presentation">({
     defaultTool: "orbit", panels: { prepare: "orbit", compare: "orbit", inspect: "orbit", settings: "orbit", presentation: "orbit" },
-    onClearSelection: () => { if (!publishing && snapshot.selection) host.update({ ...snapshot, selection: null }); },
+    onClearSelection: () => {
+      if (publishing || disabled || !snapshot.selection) return;
+      if (boxes && snapshot.presentation?.contents !== "inside") {
+        const next = changePlaceValueContents(commandState, "inside"); if (next) host.update(next);
+      } else host.update({ ...snapshot, selection: null });
+    },
   });
   const axisSnap = useSpatialAxisSnap(), [notice, setNotice] = useState("");
   const [draft, setDraft] = useState("9"), [grouping, setGrouping] = useState<"normal" | "ones" | "tens">("normal");
@@ -63,16 +72,38 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
     setNotice(""); return update(parsed.data);
   }, [publishing, update, m.failed]);
   const act = (action: PlaceValueAction, side = active, level = 0) => {
-    if (action === "carry" && waiting && snapshot.motion?.side === side && snapshot.motion.level === level) {
-      if (publishing || presentation.busy || contentsPresentation.busy || preview !== null) return;
-      const next = advancePlaceValueBoxCarry(commandState); if (next) commit(next);
-      return;
-    }
     if (disabled) return;
     const next = planPlaceValue({ ...commandState, active: side }, action, undefined, level); if (next) commit(action === "unpack" ? { ...next, autoCarry: false } : next);
   };
   const captureValue = useMemo(() => placeValueInitial(snapshot), [snapshot]);
-  const capture = useSceneCapture(publishing || presentation.busy || waiting || contentsPresentation.busy || preview !== null ? null : captureValue, onSnapshot);
+  const capture = useSceneCapture(publishing || presentation.busy || contentsPresentation.busy || pendingInspection !== null || preview !== null ? null : captureValue, onSnapshot);
+  const selectUnit = (side: PlaceValueSide, unit: number) => {
+    if (disabled) return;
+    controls.activateSelection();
+    const mode = snapshot.presentation?.contents;
+    const current = snapshot.selection && placeValueGroup(snapshot[snapshot.selection.side], snapshot.selection.unit);
+    const target = placeValueGroup(snapshot[side], unit);
+    if (boxes && mode && mode !== "inside" && (snapshot.selection?.side !== side || current?.group[0].start !== target?.group[0].start)) {
+      const next = changePlaceValueContents(commandState, "inside");
+      if (next && commit(next)) setPendingInspection({ selection: { side, unit }, mode, returnId: next.contentsMotion!.id });
+    } else commit({ ...snapshot, active: side, selection: { side, unit } });
+  };
+  useEffect(() => {
+    if (!pendingInspection || publishing) return;
+    // 写入确认和权威快照可能先后到达；等到本次收回命令的回显再继续。
+    if (!host.failed && (contentsPresentation.busy || snapshot.contentsMotion?.id !== pendingInspection.returnId)) return;
+    let cancelled = false;
+    // 先完成旧盒的收回命令，再发送新盒的取出命令；课堂接收端可分别恢复两个过程。
+    queueMicrotask(() => {
+      if (cancelled) return;
+      if (!host.failed && snapshot.contentsMotion?.id === pendingInspection.returnId) {
+        const next = changePlaceValueContents({ ...commandState, active: pendingInspection.selection.side, selection: pendingInspection.selection }, pendingInspection.mode);
+        if (next) commit(next);
+      }
+      setPendingInspection(null);
+    });
+    return () => { cancelled = true; };
+  }, [pendingInspection, contentsPresentation.busy, publishing, host.failed, snapshot.contentsMotion?.id, commandState, commit]);
   const autoKey = useRef("");
   useEffect(() => {
     if (disabled || presentation.busy || boxes || !snapshot.autoCarry || carry === null || host.failed) return;
@@ -91,7 +122,10 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
     let after;
     try { after = createPlaceValueBoard(value, grouping, base, digits); } catch { setNotice(m.groupsError); return; }
     const next = applyPlaceValueChange(snapshot, { side: active, kind: "replace", level: 0, before: board, after });
-    next.motion = null; next.selection = null; next.frame = frameFor(next); next.cameraRevision++;
+    next.motion = null; next.selection = null;
+    if (next.presentation?.strategy === "boxes") next.presentation = { ...next.presentation, contents: "inside" };
+    delete next.contentsMotion;
+    next.frame = frameFor(next); next.cameraRevision++;
     autoKey.current = "";
     commit(next); setDraft(formatPlaceValue(value, base));
   };
@@ -105,6 +139,8 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
   const setMode = (mode: PlaceValueInitial["mode"]) => {
     if (disabled) return;
     const next = { ...snapshot, mode, active: "left" as const, selection: null, motion: null };
+    if (next.presentation?.strategy === "boxes") next.presentation = { ...next.presentation, contents: "inside" };
+    delete next.contentsMotion;
     commit({ ...next, frame: frameFor(next), cameraRevision: snapshot.cameraRevision + 1 });
   };
   const updateProgress = (progress: number) => {
@@ -119,7 +155,7 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
   return <section className={styles.workspace} data-workbench-mode="courseware" data-place-value-workspace={allowBoxStrategy ? "v3" : "v2"} aria-label={m.title} {...capture} {...controls.bindings}>
     <div className={styles.viewport}><div className={styles.canvas}>
       <Viewport snapshot={snapshot} progress={preview ?? presentation.progress} contentsProgress={contentsPresentation.progress} locale={locale} navigation={controls.tool} axisSnap={axisSnap} interactive={!viewer} selected={controls.selectionActive}
-        onPointerMissed={controls.onPointerMissed} onSelect={(side, unit) => { if (!disabled) { controls.activateSelection(); commit({ ...snapshot, active: side, selection: { side, unit } }); } }}
+        onPointerMissed={controls.onPointerMissed} onSelect={selectUnit}
         renderPlaceControl={(side, place) => <PlaceValueStation {...stationProps(side, place)} />}
         renderCarryControl={(side, place) => <PlaceValueCarryControl {...stationProps(side, place)} />} />
       <div className={styles.dock + " " + styles.views}>
@@ -141,7 +177,7 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
         <SpatialActionButton action="settings" label={m.settings} active={controls.panel === "settings"} disabled={viewer} onClick={() => controls.togglePanel("settings")} />
         <SpatialActionButton action="undo" label={m.undo} disabled={disabled || !snapshot.past.length} onClick={() => { const next = historyPlaceValue(commandState, "undo"); if (next) commit({ ...next, autoCarry: false }); }} />
         <SpatialActionButton action="redo" label={m.redo} disabled={disabled || !snapshot.future.length} onClick={() => { const next = historyPlaceValue(commandState, "redo"); if (next) commit({ ...next, autoCarry: false }); }} />
-        <SpatialActionButton action="reset" label={m.reset} disabled={publishing} onClick={() => { autoKey.current = ""; setPreview(null); commit({ ...structuredClone(origin), cameraRevision: snapshot.cameraRevision + 1 }); controls.closePanel(); }} />
+        <SpatialActionButton action="reset" label={m.reset} disabled={publishing} onClick={() => { autoKey.current = ""; setPreview(null); setPendingInspection(null); commit({ ...structuredClone(origin), cameraRevision: snapshot.cameraRevision + 1 }); controls.closePanel(); }} />
       </div>
       {controls.panel && <SpatialCanvasPanel title={m[controls.panel]} closeLabel={m.close} anchor="tool" onClose={controls.closePanel}>
         <div className="space-y-3 text-xs">
@@ -152,8 +188,6 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
               }}>{m[strategy]}</Button>)}</div>
             {boxes ? <>
               <p>{m.boxHint}</p>
-              <div className="flex flex-wrap gap-1">{(["inside", "outside", "both"] as const).map((contents) => <Button key={contents} size="sm" variant={snapshot.presentation?.contents === contents ? "secondary" : "ghost"}
-                aria-pressed={snapshot.presentation?.contents === contents} disabled={disabled} onClick={() => { const next = changePlaceValueContents(commandState, contents); if (next) commit(next); }}>{m[contents]}</Button>)}</div>
               <p className="text-muted">{m.mappingHint}</p><p className="text-muted">{m.boxColors}</p>
             </> : <p className="text-muted">{m.fullHint}</p>}
           </>}
@@ -172,6 +206,9 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
           </>}
           {controls.panel === "inspect" && <>
             <p>{selected ? m.group + " " + groupSize(selected.group) + " " + m.units : boxes ? m.boxGroupHint : m.groupHint}</p>
+            {boxes && <div className="flex flex-wrap gap-1">{(["inside", "outside", "both"] as const).map((contents) => <Button key={contents} size="sm" variant={snapshot.presentation?.contents === contents ? "secondary" : "ghost"}
+              aria-pressed={snapshot.presentation?.contents === contents} disabled={disabled || (contents !== "inside" && !selected)}
+              onClick={() => { const next = changePlaceValueContents(commandState, contents); if (next) commit(next); }}>{m[contents]}</Button>)}</div>}
             <Button size="sm" disabled={quantityDisabled || unpack < 1} onClick={() => unpack > 0 && act("unpack", active, unpack)}>{unpackLabel}</Button>
             <p className="text-muted">{boxes ? m.mappingHint : m.fullHint}</p>
             <p className="text-muted">{boxes ? m.boxColors : m.orientation}</p>
@@ -197,7 +234,7 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
           </>}
         </div>
       </SpatialCanvasPanel>}
-      {(regrouping || waiting) && <div className={local.status} role="status"><span>{(waiting && !presentation.busy ? m.waiting : presentation.playing ? m.moving : m.paused) + (actionLabel ? " · " + actionLabel : "")}</span></div>}
+      {regrouping && <div className={local.status} role="status"><span>{(presentation.playing ? m.moving : m.paused) + (actionLabel ? " · " + actionLabel : "")}</span></div>}
       {(host.failed || notice) && <p className={styles.notice} role="alert">{host.failed ? m.failed : notice}</p>}
     </div></div>
   </section>;
