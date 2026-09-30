@@ -3,7 +3,7 @@ import { newId } from "@/lib/uuid";
 import { spatialActionProgress } from "../spatial-interaction/policy";
 import { DEFAULT_PLACE_VALUE_PRESENTATION, type PlaceValueBoard, type PlaceValueChange, type PlaceValueGroup,
   type PlaceValueInitial, type PlaceValuePresentation, type PlaceValueSide, type PlaceValueSnapshot } from "./radix-contract";
-import { PLACE_VALUE_CAMERA_TARGET, isPlaceValueRegrouping, placeValueColumn, placeValueLocked, placeValueRedSpans } from "./radix-model";
+import { PLACE_VALUE_CAMERA_TARGET, isPlaceValueRegrouping, placeValueColumn, placeValueLocked, placeValueOffset, placeValueRedSpans } from "./radix-model";
 
 type Vec = [number, number, number];
 type Rotation = [number, number, number, number];
@@ -25,14 +25,15 @@ export function placeValueBoxDimensions(radix: number, level: number): Vec {
   return [unit * (remainder === 2 ? radix : 1), unit, unit * (remainder ? radix : 1)];
 }
 export function placeValueBoxMappingSize(radix: number, level: number): Vec {
-  const dimensions = placeValueBoxDimensions(radix, level), unit = radix ** Math.floor(level / 3);
-  // 完整体成为下一轮的一个单位。个位／千位同样大小，内部格线保留真实层次。
-  const scale = Math.min(1 / unit, 3.8 / Math.max(...dimensions));
-  return dimensions.map((value) => value * scale) as Vec;
+  // 只有计数盒内使用压缩表示；取出与拼合保留每个一的原始尺寸。
+  return placeValueBoxDimensions(radix, level);
 }
 export function placeValueBoxMappingPosition(board: PlaceValueBoard, level: number, index: number): Vec {
   const [, height, depth] = placeValueBoxMappingSize(board.radix, level);
-  return [placeValueColumn(level, board.places.length), height <= 1 ? index + .5 : height / 2 + index * (height + .16), -2.4 - depth / 2];
+  // 兼容旧场景的整列同时展开：各列沿深度错开，原尺寸的片／体互不穿插。
+  const precedingDepth = board.places.slice(0, level).reduce((sum, groups, previous) =>
+    sum + (groups.length ? placeValueBoxMappingSize(board.radix, previous)[2] + 1 : 0), 0);
+  return [placeValueColumn(level, board.places.length), height * (index + .5), -2.4 - precedingDepth - depth / 2];
 }
 function part(board: PlaceValueBoard, level: number, index: number, role: PlaceValueBoxPart["role"]): PlaceValueBoxPart {
   const group = board.places[level][index], unit = group[0].start, mapping = role === "mapping";
@@ -46,11 +47,9 @@ export function placeValueBoxLayout(board: PlaceValueBoard, contents: Contents =
   return board.places.flatMap((groups, level) => groups.flatMap((group, index) => {
     const mode = unit === undefined || contains(group, unit) ? contents : "inside";
     const inner = part(board, level, index, "contents"), outer = part(board, level, index, "mapping");
-    if (unit !== undefined && contains(group, unit) && level > 0) {
-      // 单盒观察适度放大组成细节，锚定这一盒的层高；其余计数盒保持原尺度。
-      const zoom = 3.8 / Math.max(...outer.size);
-      outer.size = outer.size.map((value) => value * zoom) as Vec;
-      outer.position = [outer.position[0], Math.max(outer.size[1] / 2, index + .5), -2.4 - outer.size[2] / 2];
+    if (unit !== undefined && contains(group, unit)) {
+      // 单盒取出留在这一盒后方，底部对齐其层高；其余计数盒保持原尺度。
+      outer.position = [outer.position[0], index + outer.size[1] / 2, -2.4 - outer.size[2] / 2];
     }
     return [part(board, level, index, "shell"),
       // 取出时移动同一份内容，盒子留空；只有明确选择「同时展示」才生成映射副本。
@@ -109,12 +108,8 @@ export function placeValueBoxCarryPose(change: PlaceValueChange, progress: numbe
   const base = change.before.radix, groups = change.before.places[change.level].slice(-base), sourceIds = new Set(groups.map((g) => g[0].start));
   const parentIndex = change.after.places[change.level + 1].findIndex((g) => contains(g, groups[0][0].start));
   if (parentIndex < 0) return before;
-  const parent = part(change.after, change.level + 1, parentIndex, "mapping");
-  // 片叠成体时先呈现完整大体，随后收成一个新的小单位，而不是在后排留下高塔。
-  if ((change.level + 1) % 3 === 0) {
-    const edge = Math.min(base, 3.8); parent.size = [edge, edge, edge];
-    parent.position = [parent.position[0], edge / 2 + parentIndex, -2.4 - edge / 2];
-  }
+  const parentUnit = change.after.places[change.level + 1][parentIndex][0].start;
+  const parent = after.find((item) => item.role === "mapping" && item.unit === parentUnit)!;
   const target = after.find((item) => item.role === "contents" && item.unit === parent.unit)!;
   const shell = after.find((item) => item.role === "shell" && item.unit === parent.unit)!;
   const mapping = after.find((item) => item.role === "mapping" && item.unit === parent.unit)!;
@@ -124,33 +119,38 @@ export function placeValueBoxCarryPose(change: PlaceValueChange, progress: numbe
   const sources = groups.map((_, i) => before.find((item) => item.role === "contents" && item.unit === groups[i][0].start)!);
   const expanded = sources.map((source) => ({ ...part(change.before, change.level, source.index, "mapping"), key: source.key, role: source.role }));
   const sourceCenter = vector(expanded[0].position, expanded.at(-1)!.position, .5);
+  const sourcePitch = expanded[1].position[1] - expanded[0].position[1];
   const starts = new Map(before.map((item) => [item.key, item]));
   const result = after.filter((item) => !(item.unit === parent.unit && item.level === parent.level)).map((item) => blend(starts.get(item.key) ?? item, item, t));
   const axis = (change.level + 1) % 3, rotationAxis = new Vector3(axis === 1 ? 1 : 0, 0, axis === 1 ? 0 : 1);
+  const targetAxis = axis === 1 ? 2 : axis === 2 ? 0 : 1;
+  const finalRotation = new Quaternion().setFromAxisAngle(rotationAxis, axis ? -Math.PI / 2 : 0);
+  const laidPose = (destination: PlaceValueBoxPart): PlaceValueBoxPart => {
+    const size = [...destination.size] as Vec;
+    if (axis) [size[1], size[targetAxis]] = [size[targetAxis], size[1]];
+    return { ...destination, size, rotation: finalRotation.toArray() as Rotation };
+  };
+  // 先移动／压缩拼好的整体，再由整体计算每块的位置与局部尺寸；装盒不再逐块转回。
+  const packed = blend(parent, target, pack, .7);
   for (let i = 0; i < groups.length; i++) {
     const source = sources[i], full = expanded[i];
     const laid = childDestination(parent, source, i, base, change.level);
-    const targetAxis = axis === 1 ? 2 : axis === 2 ? 0 : 1;
-    const finalRotation = new Quaternion().setFromAxisAngle(rotationAxis, axis ? -Math.PI / 2 : 0);
-    const rotatedSize = [...laid.size] as Vec;
-    if (axis) [rotatedSize[1], rotatedSize[targetAxis]] = [rotatedSize[targetAxis], rotatedSize[1]];
-    const laidPose = { ...laid, size: rotatedSize, rotation: finalRotation.toArray() as Rotation };
     let moving: PlaceValueBoxPart;
     if (progress < .16) moving = blend(source, full, open);
     else if (progress < .6) {
       const rotation = new Quaternion().slerp(finalRotation, fold);
-      const pitch = full.size[1] + (laid.size[targetAxis] - full.size[1]) * fold;
+      const pitch = sourcePitch + (laid.size[targetAxis] - sourcePitch) * fold;
       // 逐步收齐低位层间间距，各块共用转轴，保持整组倒下的关系。
-      const offset = (i - (base - 1) / 2) * (1 + (pitch - 1) * fold);
+      const offset = (i - (base - 1) / 2) * pitch;
       const local = new Vector3(0, offset, 0).applyQuaternion(rotation), center = vector(sourceCenter, parent.position, fold);
-      moving = { ...blend(full, laidPose, fold), rotation: rotation.toArray() as Rotation,
+      moving = { ...blend(full, laidPose(laid), fold), rotation: rotation.toArray() as Rotation,
         position: [center[0] + local.x, center[1] + local.y + .5 * Math.sin(Math.PI * fold), center[2] + local.z] };
-    } else moving = { ...blend(laidPose, childDestination(target, source, i, base, change.level), pack, .7), opacity: 1 - fuse };
+    } else moving = { ...laidPose(childDestination(packed, source, i, base, change.level)), opacity: 1 - fuse };
     result.push({ ...moving, key: "carrying:" + source.unit });
   }
   result.push(...before.filter((item) => sourceIds.has(item.unit) && item.role !== "contents").map((item) => ({ ...item, opacity: item.opacity * (1 - open) })));
   // 盒壳直接在高一位的最终位置出现，内容装好后不再有「归位」操作或后方残留。
-  result.push({ ...shell, opacity: spatialActionProgress(clamp((progress - .5) / .1)) }, { ...target, opacity: fuse }, { ...mapping, opacity: mapping.opacity * fuse });
+  result.push({ ...shell, opacity: spatialActionProgress(clamp((progress - .5) / .1)) }, { ...packed, opacity: fuse }, { ...mapping, opacity: mapping.opacity * fuse });
   return result;
 }
 
@@ -178,10 +178,18 @@ export function placeValueBoxRedSpans(snapshot: PlaceValueSnapshot, side: PlaceV
   return snapshot.motion?.side === side && isPlaceValueRegrouping(snapshot.motion.kind) && progress < 1 ? [] : placeValueRedSpans(snapshot, side, progress);
 }
 
-export function placeValueBoxFrame(snapshot: Pick<PlaceValueInitial, "left" | "right" | "mode" | "view">): PlaceValueInitial["frame"] {
+export function placeValueBoxFrame(snapshot: Pick<PlaceValueInitial, "left" | "right" | "mode" | "view"> & Partial<Pick<PlaceValueInitial, "presentation" | "selection">>): PlaceValueInitial["frame"] {
   const digits = snapshot.left.places.length, width = snapshot.mode === "compare" ? digits * 5 + 2 : (digits - 1) * 2.5 + 2;
-  const items = [snapshot.left, ...(snapshot.mode === "compare" ? [snapshot.right] : [])].flatMap((board) => placeValueBoxLayout(board, "both"));
-  const visible = snapshot.view === "front" ? items.filter((item) => item.role !== "mapping") : items;
-  const height = Math.max(8.5, snapshot.left.radix - 3, ...visible.map((item) => item.position[1] + item.size[1] / 2 - 3));
-  return { center: { ...PLACE_VALUE_CAMERA_TARGET }, radius: Math.max(8.5, width * .82, height, snapshot.view === "front" ? 0 : Math.hypot(width * .65, height, 6)) };
+  const sides: PlaceValueSide[] = snapshot.mode === "compare" ? ["left", "right"] : ["left"];
+  const visible = sides.flatMap((side) => {
+    const scope = snapshot.selection, contents = scope && scope.side !== side ? "inside" : snapshot.presentation?.contents ?? "inside";
+    return placeValueBoxLayout(snapshot[side], contents, scope?.side === side ? scope.unit : undefined)
+      .filter((item) => item.opacity > 0).map((item) => ({ ...item, position: [item.position[0] + placeValueOffset(snapshot.mode, side, digits), item.position[1], item.position[2]] as Vec }));
+  });
+  // 适应视图只包住当前可见内容，收纳时不因隐藏的原尺寸组成而拉远前排计数盒。
+  const x = Math.max(width * .65, ...visible.map((item) => Math.abs(item.position[0]) + item.size[0] / 2));
+  const y = Math.max(8.5, snapshot.left.radix - 3, ...visible.map((item) => Math.abs(item.position[1] - PLACE_VALUE_CAMERA_TARGET.y) + item.size[1] / 2));
+  const z = Math.max(6, ...visible.map((item) => Math.abs(item.position[2]) + item.size[2] / 2));
+  const radius = snapshot.view === "front" ? Math.max(x, y) : snapshot.view === "left" || snapshot.view === "right" ? Math.max(y, z) : snapshot.view === "top" ? Math.max(x, z) : Math.hypot(x, y, z);
+  return { center: { ...PLACE_VALUE_CAMERA_TARGET }, radius: Math.max(8.5, width * .82, radius) };
 }

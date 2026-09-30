@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { Quaternion, Vector3 } from "three";
 import { newId } from "@/lib/uuid";
 import { createClassroomToolState, parseClassroomToolState } from "@/features/tools/courseware/tool-classroom";
 import { freezeToolScene } from "@/features/tools/scenes/contract";
 import { toolSceneOriginHash } from "@/features/tools/scenes/classroom-envelope";
-import { changePlaceValueContents, changePlaceValueStrategy, normalizePlaceValueBoxSnapshot, placeValueBoxCarryPose, placeValueBoxDimensions, placeValueBoxFrame, placeValueBoxLayout, placeValueBoxMappingPosition, placeValueBoxMappingSize, placeValueBoxPose, placeValueBoxRedSpans } from "@/features/tools/place-value/box-model";
+import { changePlaceValueContents, changePlaceValueStrategy, normalizePlaceValueBoxSnapshot, placeValueBoxCarryPose, placeValueBoxDimensions, placeValueBoxFrame, placeValueBoxLayout, placeValueBoxMappingPosition, placeValueBoxMappingSize, placeValueBoxPose, placeValueBoxRedSpans, type PlaceValueBoxPart } from "@/features/tools/place-value/box-model";
 import { boardTotal, createDefaultPlaceValueInitial, createPlaceValueBoard, PLACE_VALUE_BASES, PLACE_VALUE_MAPPING_VERSION, placeValueInitial, placeValueInitialSchema, placeValueMappingInitialSchema, placeValueMappingSnapshotSchema, placeValueSnapshot, placeValueSnapshotSchema, type PlaceValueSnapshot } from "@/features/tools/place-value/radix-contract";
 import { configurePlaceValue, historyPlaceValue, placeValueLocked, placeValueNotation, planPlaceValue, planPlaceValueCount } from "@/features/tools/place-value/radix-model";
 import { writePlaceValueBoxColors } from "@/features/tools/place-value/box-colors";
@@ -11,6 +12,11 @@ import { writePlaceValueBoxColors } from "@/features/tools/place-value/box-color
 const initial = (base = 10, value = 10, grouping: "normal" | "ones" | "tens" = "ones") => ({ ...createDefaultPlaceValueInitial(),
   left: createPlaceValueBoard(value, grouping, base, 6), right: createPlaceValueBoard(0, "normal", base, 6), presentation: { strategy: "boxes" as const, contents: "inside" as const } });
 const finishStage = (snapshot: PlaceValueSnapshot) => ({ ...snapshot, motion: { ...snapshot.motion!, progress: 1 } });
+const worldSize = (part: PlaceValueBoxPart) => {
+  const rotation = new Quaternion(...part.rotation);
+  const axes = part.size.map((length, axis) => new Vector3().setComponent(axis, length).applyQuaternion(rotation));
+  return [0, 1, 2].map((axis) => axes.reduce((sum, edge) => sum + Math.abs(edge.getComponent(axis)), 0));
+};
 afterEach(() => vi.unstubAllGlobals());
 
 describe("independent place-value box mapping", () => {
@@ -36,18 +42,16 @@ describe("independent place-value box mapping", () => {
     expect(writePlaceValueBoxColors([[{ start: 0, count: 16 ** 5, phase: 5 }]], large)).toEqual([[0, 1]]);
     expect(large[0]).toBe(16 ** 5); expect(large[1]).toBe(5);
   });
-  it.each(PLACE_VALUE_BASES)("keeps exact composition weights with bounded geometry in base %i", (base) => {
+  it.each(PLACE_VALUE_BASES)("keeps original composition dimensions without adding per-unit geometry in base %i", (base) => {
     for (let level = 0; level < 6; level++) {
       const dimensions = placeValueBoxDimensions(base, level), size = placeValueBoxMappingSize(base, level);
       expect(dimensions.reduce((v, n) => v * n, 1)).toBe(base ** level);
-      expect(Math.max(...size)).toBeLessThanOrEqual(3.800001);
-      expect(size[0] / dimensions[0]).toBeCloseTo(size[1] / dimensions[1], 10);
-      expect(size[1] / dimensions[1]).toBeCloseTo(size[2] / dimensions[2], 10);
+      expect(size).toEqual(dimensions);
     }
     const board = createPlaceValueBoard(base ** 6 - 1, "normal", base, 6);
     expect(placeValueBoxLayout(board)).toHaveLength((base - 1) * 6 * 3);
   });
-  it("keeps ones and thousands as equal-sized units, with plate rows and non-overlapping compositions", () => {
+  it("keeps original-sized rows and non-overlapping columns when legacy scenes show every composition", () => {
     const board = createPlaceValueBoard(3333, "normal", 10, 6);
     for (const level of [0, 1, 2]) for (let index = 0; index < 3; index++) expect(placeValueBoxMappingPosition(board, level, index)[1]).toBe(index + .5);
     const mappings = placeValueBoxLayout(board).filter((item) => item.role === "mapping");
@@ -55,8 +59,8 @@ describe("independent place-value box mapping", () => {
       const a = mappings[i], b = mappings[j];
       expect(a.position.some((v, axis) => Math.abs(v - b.position[axis]) >= (a.size[axis] + b.size[axis]) / 2 - 1e-6)).toBe(true);
     }
-    expect(placeValueBoxMappingPosition(board, 3, 1)[1] - placeValueBoxMappingPosition(board, 3, 0)[1]).toBe(1);
-    expect(placeValueBoxMappingSize(10, 3)).toEqual(placeValueBoxMappingSize(10, 0));
+    expect(placeValueBoxMappingPosition(board, 3, 1)[1] - placeValueBoxMappingPosition(board, 3, 0)[1]).toBe(10);
+    expect(placeValueBoxMappingSize(10, 3)).toEqual([10, 10, 10]);
     expect(placeValueBoxFrame({ ...initial(), left: board, view: "angle" }).center).toEqual({ x: 0, y: 4, z: 0 });
   });
   it("uses one carry command through internal phases and updates digits as it packs directly into the final box", () => {
@@ -108,12 +112,37 @@ describe("independent place-value box mapping", () => {
     for (const part of outside.filter((part) => part.unit !== unit)) expect(part).toEqual(inside.find((p) => p.key === part.key));
     expect(outside.filter((part) => part.unit === unit && part.role !== "shell" && part.opacity > 0)).toHaveLength(1);
     expect(outside.find((part) => part.unit === unit && part.role === "contents")!.position[2]).toBeLessThan(-1);
-    expect(outside.find((part) => part.unit === unit && part.role === "contents")!.size).toEqual([3.8, 3.8, 3.8]);
+    expect(outside.find((part) => part.unit === unit && part.role === "contents")!.size).toEqual([10, 10, 10]);
     expect(placeValueBoxLayout(state.left, "both", unit).filter((part) => part.unit === unit && part.role !== "shell" && part.opacity > 0)).toHaveLength(2);
     state.selection = { side: "left", unit };
     const opening = changePlaceValueContents(state, "outside", 1000)!;
     const mid = placeValueBoxPose(opening, "left", 1, .5);
     for (const part of mid.filter((part) => part.unit !== unit && part.opacity > 0)) expect(part).toEqual(inside.find((p) => p.key === part.key));
+  });
+  it.each(PLACE_VALUE_BASES)("takes out every place at its original size and leaves the counting boxes unchanged in base %i", (base) => {
+    const board = createPlaceValueBoard(Array.from({ length: 6 }, (_, level) => base ** level).reduce((sum, value) => sum + value, 0), "normal", base, 6);
+    const stored = placeValueBoxLayout(board);
+    for (let level = 0; level < 6; level++) {
+      const unit = board.places[level][0][0].start;
+      for (const mode of ["outside", "both"] as const) {
+        const parts = placeValueBoxLayout(board, mode, unit);
+        const expanded = parts.find((part) => part.unit === unit && part.role === (mode === "outside" ? "contents" : "mapping"))!;
+        expect(expanded.size).toEqual(placeValueBoxDimensions(base, level));
+        expect(expanded.position[2] + expanded.size[2] / 2).toBeCloseTo(-2.4);
+        expect(parts.filter((part) => part.role === "shell")).toEqual(stored.filter((part) => part.role === "shell"));
+      }
+    }
+  });
+  it("fits only visible compositions and keeps the front counting frame compact while contents are stored", () => {
+    const state = { ...initial(16, 16 ** 5, "normal"), view: "angle" as const };
+    const stored = placeValueBoxFrame(state), unit = state.left.places[5][0][0].start;
+    expect(stored.radius).toBeLessThan(30);
+    const extracted = { ...state, selection: { side: "left" as const, unit }, presentation: { strategy: "boxes" as const, contents: "outside" as const } };
+    const part = placeValueBoxLayout(state.left, "outside", unit).find((part) => part.role === "contents")!;
+    const fitted = placeValueBoxFrame(extracted);
+    expect(fitted.center).toEqual(stored.center);
+    expect(fitted.radius).toBeGreaterThanOrEqual(Math.abs(part.position[2]) + part.size[2] / 2);
+    expect(placeValueBoxFrame({ ...extracted, presentation: { strategy: "boxes", contents: "inside" } })).toEqual(stored);
   });
   it("removes pending red at the start of carry and restores only the next pending group at its endpoint", () => {
     let state = placeValueSnapshot(initial(10, 99, "normal"));
@@ -138,13 +167,46 @@ describe("independent place-value box mapping", () => {
       state = planPlaceValueCount(state, "left", level, 10, 0)!;
       state = planPlaceValue(state, "carry", 1000, level)!;
       for (const boundary of [.16, .56, .6, .91]) {
-        const before = placeValueBoxCarryPose(state.motion!, boundary - 1e-7, "inside").filter((part) => part.key.startsWith("carrying:"));
-        const after = placeValueBoxCarryPose(state.motion!, boundary + 1e-7, "inside");
+        // 原尺寸长边可达 100；靠近边界取极限，避免把正常位移当成阶段跳变。
+        const before = placeValueBoxCarryPose(state.motion!, boundary - 1e-9, "inside").filter((part) => part.key.startsWith("carrying:"));
+        const after = placeValueBoxCarryPose(state.motion!, boundary + 1e-9, "inside");
         before.forEach((part) => {
           const next = after.find((candidate) => candidate.key === part.key)!;
           [...part.position, ...part.size, ...part.rotation].forEach((value, i) => expect(value).toBeCloseTo([...next.position, ...next.size, ...next.rotation][i], 4));
         });
       }
+    }
+  });
+  it.each([3, 10, 16])("assembles at original size, then packs one connected solid without rotating its pieces again in base %i", (base) => {
+    for (let level = 0; level < 5; level++) {
+      let state = planPlaceValueCount(placeValueSnapshot(initial(base, 0)), "left", level, base, 0)!;
+      state = planPlaceValue(state, "carry", 1000, level)!;
+      const motion = state.motion!, axis = (level + 1) % 3 === 1 ? 2 : (level + 1) % 3 === 2 ? 0 : 1;
+      const moving = (progress: number) => placeValueBoxCarryPose(motion, progress, "inside").filter((part) => part.key.startsWith("carrying:"));
+      for (const progress of [.16, .32, .56, .59]) for (const part of moving(progress)) expect(part.size).toEqual(placeValueBoxDimensions(base, level));
+      const assembled = moving(.6);
+      expect(assembled).toHaveLength(base);
+      for (const progress of [.61, .75, .91, .97]) {
+        const parts = moving(progress), sizes = parts.map(worldSize);
+        parts.forEach((part, index) => {
+          expect(new Quaternion(...part.rotation).angleTo(new Quaternion(...assembled[index].rotation))).toBeLessThan(1e-7);
+          if (!index) return;
+          for (let coordinate = 0; coordinate < 3; coordinate++) {
+            const distance = Math.abs(part.position[coordinate] - parts[index - 1].position[coordinate]);
+            expect(distance).toBeCloseTo(coordinate === axis ? (sizes[index][coordinate] + sizes[index - 1][coordinate]) / 2 : 0, 9);
+          }
+        });
+        // 融合后的单体与分块共用同一外轮廓，交接不出现两个错位模型。
+        const fused = placeValueBoxCarryPose(motion, progress, "inside").find((part) => part.role === "contents" && part.key.startsWith("contents:") && part.opacity > 0);
+        if (fused) for (let coordinate = 0; coordinate < 3; coordinate++) {
+          const min = Math.min(...parts.map((part, index) => part.position[coordinate] - sizes[index][coordinate] / 2));
+          const max = Math.max(...parts.map((part, index) => part.position[coordinate] + sizes[index][coordinate] / 2));
+          expect(fused.position[coordinate]).toBeCloseTo((min + max) / 2, 9);
+          expect(fused.size[coordinate]).toBeCloseTo(max - min, 9);
+        }
+      }
+      const unpack = planPlaceValue({ ...state, motion: null }, "unpack", 10000, level + 1)!;
+      for (const progress of [.2, .5, .8]) expect(placeValueBoxCarryPose(unpack.motion!, progress, "inside")).toEqual(placeValueBoxCarryPose(motion, 1 - progress, "inside"));
     }
   });
   it("returns inspection to storage when its selected group is removed or the numeration is rebuilt", () => {
