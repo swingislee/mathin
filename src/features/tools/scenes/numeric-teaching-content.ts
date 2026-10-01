@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DEFAULT_HEAD, DEFAULT_VEHICLE, MAX_RUNWAYS, VEHICLES } from "../motion-lab/shared";
+import { DEFAULT_HEAD, DEFAULT_VEHICLE, EMPTY_VEHICLE, MAX_RUNWAYS, VEHICLES } from "../motion-lab/shared";
 
 export const FRACTION_COURSEWARE_VERSION = "fraction-line-lesson-v1" as const;
 export const MOTION_COURSEWARE_VERSION = "motion-lab-lesson-v1" as const;
@@ -16,7 +16,7 @@ export function initialFractionScene(): FractionScene {
   return { rows: [], denomText: "2", zoomPow: Math.log10(120), showTicks: true, showGuides: true, zeroX: 56 };
 }
 const finiteAmount = z.number().min(0).max(1e9);
-const image = z.string().max(128_000).refine((src) => [DEFAULT_HEAD, ...VEHICLES].includes(src)
+const image = z.string().max(128_000).refine((src) => [DEFAULT_HEAD, EMPTY_VEHICLE, ...VEHICLES].includes(src)
   || /^data:image\/(?:png|jpeg|webp);base64,[a-zA-Z0-9+/=]+$/.test(src), "Only built-in or embedded raster images are supported");
 export const motionSceneSchema = z.object({
   length: z.number().positive().max(1e9),

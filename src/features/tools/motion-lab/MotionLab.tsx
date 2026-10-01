@@ -7,7 +7,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState, type SetStateAction } from "react";
 import { Button } from "@/components/ui/button";
 import type { ToolComponentProps } from "../types";
-import { ApplyField } from "./NumField";
+import { ApplyField, EditableNumber } from "./NumField";
 import { RunwayLane } from "./RunwayLane";
 import { RulerOverlay } from "./RulerOverlay";
 import { DEFAULT_HEAD, DEFAULT_VEHICLE, MAX_RUNWAYS, PANEL_W, POST_PAD, VEHICLE_SPEEDS, editField, fmt, recompute, type Runway, type SolveKey } from "./shared";
@@ -91,14 +91,15 @@ export function MotionLab({ embedded, initial, onSnapshot, readOnly = false, pre
     return () => cancelAnimationFrame(raf);
   }, [phase]);
 
-  const locked = phase === "running";
+  const locked = phase === "running" || readOnly;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" inert={readOnly} {...capture}>
       <div className={`flex flex-wrap items-center gap-x-3 gap-y-2 border-b px-4 ${embedded ? "py-2" : "py-2.5"}`}>
         <label className="flex items-center gap-1.5 text-xs text-muted">
           {t("length")}
-          <ApplyField value={length} disabled={locked} applyLabel={t("apply")} onApply={(v) => {
+          <EditableNumber value={length} disabled={locked} min={Number.MIN_VALUE}
+            longPressValue={100} longPressLabel={t("numberHint", { value: 100, unit: "m" })} onCommit={(v) => {
             if (v > 0) {
               setLength(fmt(v));
               setRunways((prev) => prev.map((r) => (r.x > v ? { ...r, x: v } : r)));
@@ -120,7 +121,7 @@ export function MotionLab({ embedded, initial, onSnapshot, readOnly = false, pre
         </span>
         <label className="flex items-center gap-1.5 text-xs text-muted">
           {t("allTime")}
-          <ApplyField value={allTime} disabled={locked} applyLabel={t("apply")} onApply={(v) => v > 0 && setAllTimes(v)} ariaLabel={t("allTime")} />
+          <ApplyField value={allTime} disabled={locked} min={Number.MIN_VALUE} applyLabel={t("apply")} onApply={(v) => v > 0 && setAllTimes(v)} ariaLabel={t("allTime")} />
           <span>s</span>
         </label>
         <label className="flex items-center gap-1.5 text-xs text-muted">
@@ -155,17 +156,7 @@ export function MotionLab({ embedded, initial, onSnapshot, readOnly = false, pre
               ppm={ppm}
               locked={locked}
               onMove={(id, x) => patchRunway(id, { x })}
-              onField={(id, field, value) => setRunways((prev) => prev.map((r) => (r.id === id ? recompute({ ...r, [field]: fmt(value) }) : r)))}
-              onFieldFocus={(id, field) =>
-                setRunways((prev) =>
-                  prev.map((r) => {
-                    if (r.id !== id || r.solve !== field) return r;
-                    // 原版手感：一碰「自动」框，求解目标立即轮转到下一个量
-                    const nextSolve: SolveKey = field === "distance" ? "time" : field === "time" ? "speed" : "distance";
-                    return recompute({ ...r, solve: nextSolve });
-                  }),
-                )
-              }
+              onField={(id, field, value) => setRunways((prev) => prev.map((r) => (r.id === id ? editField(r, field, value) : r)))}
               onSolve={(id, key: SolveKey) => patchRunway(id, { solve: key }, true)}
               onPatch={(id, patch) => patchRunway(id, patch)}
               onVehicle={(id, vehicle) =>

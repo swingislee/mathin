@@ -1,24 +1,37 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 import { Check } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { fmt } from "./shared";
+import { useMotionPress } from "./useMotionPress";
+
+function parseNumber(text: string, min = 0) {
+  if (!text.trim()) return null;
+  const value = Number(text);
+  return Number.isFinite(value) && value >= min && value <= 1e9 ? fmt(value) : null;
+}
 
 /** 数字输入：内部持有文本态，失焦/回车时提交，外部值变化时同步 */
-export function NumField({ value, onCommit, onFocusField, disabled, className, ariaLabel }: {
+type NumFieldProps = {
   value: number;
   onCommit: (v: number) => void;
-  /** 获得焦点时回调（行程工具用于立即轮转「自动」求解框） */
-  onFocusField?: () => void;
+  onFinish?: () => void;
   disabled?: boolean;
   className?: string;
   ariaLabel?: string;
-}) {
+  autoFocus?: boolean;
+  min?: number;
+};
+
+export function NumField({ value, onCommit, onFinish, disabled, className, ariaLabel, autoFocus, min = 0 }: NumFieldProps) {
   const [text, setText] = useState(String(value));
   const [focused, setFocused] = useState(false);
   const [prevValue, setPrevValue] = useState(value);
+  const cancelled = useRef(false);
   if (value !== prevValue) {
     setPrevValue(value);
     if (!focused) setText(String(value));
@@ -27,22 +40,33 @@ export function NumField({ value, onCommit, onFocusField, disabled, className, a
     <Input
       type="number"
       inputMode="decimal"
+      min={min}
+      max={1e9}
+      step="any"
+      autoFocus={autoFocus}
       value={text}
       disabled={disabled}
       aria-label={ariaLabel}
-      onFocus={() => {
+      onFocus={(event) => {
+        cancelled.current = false;
         setFocused(true);
-        onFocusField?.();
+        event.currentTarget.select();
       }}
       onChange={(e) => setText(e.target.value)}
       onBlur={() => {
         setFocused(false);
-        const v = Number(text);
-        if (Number.isFinite(v) && v >= 0) onCommit(v);
-        else setText(String(value));
+        const v = parseNumber(text, min);
+        setText(String(value));
+        if (!cancelled.current && v !== null) onCommit(v);
+        onFinish?.();
       }}
       onKeyDown={(e) => {
-        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+        if (e.key === "Enter" || e.key === "Escape") {
+          e.preventDefault();
+          e.stopPropagation();
+          cancelled.current = e.key === "Escape";
+          e.currentTarget.blur();
+        }
       }}
       className={cn(
         "w-16 rounded-md border bg-card px-1.5 py-0.5 text-right text-xs tabular-nums outline-none focus:ring-1 focus:ring-[var(--rose)] disabled:opacity-50",
@@ -52,13 +76,31 @@ export function NumField({ value, onCommit, onFocusField, disabled, className, a
   );
 }
 
+/** 沿用旧版数字区：短按进入编辑，长按直接恢复该字段的教学起点。 */
+export function EditableNumber({ longPressValue, longPressLabel, ...props }: NumFieldProps & {
+  longPressValue: number;
+  longPressLabel: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const press = useMotionPress(() => setEditing(true), () => props.onCommit(longPressValue), props.disabled);
+  if (editing) return <NumField {...props} autoFocus onFinish={() => setEditing(false)} />;
+  return (
+    <Button {...press} type="button" variant="ghost" disabled={props.disabled}
+      aria-label={props.ariaLabel} title={longPressLabel}
+      className={cn("w-16 touch-none select-none justify-end rounded-md border bg-card px-1.5 py-0.5 text-xs tabular-nums text-ink", props.className)}>
+      {props.value}
+    </Button>
+  );
+}
+
 /** 带「确认」按钮的数字输入：触摸屏友好（回车或点 ✓ 提交） */
-export function ApplyField({ value, onApply, disabled, ariaLabel, applyLabel }: {
+export function ApplyField({ value, onApply, disabled, ariaLabel, applyLabel, min = 0 }: {
   value: number;
   onApply: (v: number) => void;
   disabled?: boolean;
   ariaLabel?: string;
   applyLabel: string;
+  min?: number;
 }) {
   const [text, setText] = useState(String(value));
   const [prevValue, setPrevValue] = useState(value);
@@ -67,21 +109,30 @@ export function ApplyField({ value, onApply, disabled, ariaLabel, applyLabel }: 
     setText(String(value));
   }
   const apply = () => {
-    const v = Number(text);
-    if (Number.isFinite(v)) onApply(v);
-    else setText(String(value));
+    const v = parseNumber(text, min);
+    setText(String(v ?? value));
+    if (v !== null) onApply(v);
   };
   return (
     <span className="inline-flex items-center gap-1">
       <Input
         type="number"
         inputMode="decimal"
+        min={min}
+        max={1e9}
+        step="any"
         value={text}
         disabled={disabled}
         aria-label={ariaLabel}
+        onFocus={(event) => event.currentTarget.select()}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === "Enter") apply();
+          if (e.key === "Enter" || e.key === "Escape") {
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.key === "Enter") apply();
+            else setText(String(value));
+          }
         }}
         className="w-16 rounded-md border bg-card px-1.5 py-0.5 text-right text-xs tabular-nums outline-none focus:ring-1 focus:ring-[var(--rose)] disabled:opacity-50"
       />

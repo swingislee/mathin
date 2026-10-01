@@ -23,6 +23,8 @@ export const VEHICLES = ["01-walk", "02-bicycle", "03-car", "04-plane", "05-rock
 );
 export const DEFAULT_HEAD = "/assets/tools/motion/head.png";
 export const DEFAULT_VEHICLE = VEHICLES[0];
+/** 旧版长按载具恢复的上传占位图。 */
+export const EMPTY_VEHICLE = "/assets/tools/motion/08-upload.png";
 export const MAX_RUNWAYS = 12;
 
 /** 换载具＝换默认速度（m/s），可再手动修改；数值供教学用，可按需调整 */
