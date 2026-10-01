@@ -7,7 +7,7 @@
       "title": "Dashboard 共用手机滚动集成",
       "agent": "codex",
       "threadId": "01a0f6e7-2fca-7963-9be1-3ed3d2705ecc",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-DASHBOARD-MOBILE-20261002-INTEGRATION.md",
@@ -16,8 +16,8 @@
         ".ai/tasks/DEV-CLASS-LIST-20261001.md"
       ],
       "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
-      "checkpoint": "aa435bd514477ad5d662433b71762648278e7bf3",
-      "next": "沿用用户直接执行授权，集成同会话 worker 的共用滚动增量，核对开发页面启动并交付人工验收。"
+      "checkpoint": "2a2074e8e403973eb5332c320d4102d04f0c6804",
+      "next": "共用滚动修复已集成；修复损坏的本机生成清单后，健康接口及总览/沟通/学生/班级中英文页面均正常。开发端已交付，待人工手机滚动与视觉验收。"
     },
     {
       "id": "DEV-PARENT-PREVIEW-20261002-INTEGRATION",
@@ -230,7 +230,7 @@
       "title": "优化班级列表与手机端体验",
       "agent": "codex",
       "threadId": "01a0f6e7-2fca-7963-9be1-3ed3d2705ecc",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/class-roster-density-codex",
       "card": ".ai/tasks/DEV-CLASS-LIST-20261001.md",
@@ -271,8 +271,8 @@
       "sharedPaths": [
         "CHANGELOG.md"
       ],
-      "checkpoint": "ae808ff6d3373b5c7c38180e57694921a881f330",
-      "next": "用户确认班级修复成功；本轮统一 Dashboard 共用页头与窄屏滚动规则，覆盖总览及列表页，完成定向检查后直接集成开发端供人工验收。"
+      "checkpoint": "2a2074e8e403973eb5332c320d4102d04f0c6804",
+      "next": "用户确认班级修复成功；Dashboard 共用窄屏滚动已集成，五种视口的定向布局及代表路由启动通过，待用户手机验收，详见 codex-08 交接。"
     },
     {
       "id": "DEV-PLACE-VALUE-20261001",
