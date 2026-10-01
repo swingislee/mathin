@@ -46,56 +46,56 @@
       "title": "平面开放材料第二批集成",
       "agent": "codex",
       "threadId": "019ff05e-1218-7400-b966-4556b2c57173",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-PLANE-DEEP-20261002-INTEGRATION.md",
       "writePaths": ["src/features/tools/planar-kit/", "src/features/tools/spatial-interaction/control-inventory.ts", "src/lib/database.types.ts", "tests/planar-context-actions.test.ts", "tests/planar-workbench.test.ts", "tests/planar-tool-contract.test.ts", "tests/planar-deep-integration.test.ts", "supabase/migrations/20261002000400_tool_plane_deep_catalog.sql", "supabase/tests/tool_plane_deep.sql", "docs/evidence/tools-plane-deep-20261002.md", "docs/plan/prepared-teaching-tools.md", ".ai/tasks/DEV-PLANE-DEEP-20261002-INTEGRATION.md", ".ai/tasks/DEV-PLANE-PERIMETER-20261002.md", ".ai/tasks/DEV-PLANE-GRID-MEASURE-20261002.md", ".ai/tasks/DEV-PLANE-RELATIONS-20261002.md"],
       "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
-      "checkpoint": "d76024cfcc641b96757877eb6a624d8e15fa0b47",
-      "next": "用户授权直接修改；提交合同后将三组领域派到独立 worktree，统一对象旁动作、版本接入及本机合同检查，交付人工验收。"
+      "checkpoint": "5eb1b594874261615cedf89841e6448d6fb72392",
+      "next": "五工具 v2 与共用宿主已集成，本机 SQL 和定向检查通过；开发端交付待人工验收。继续点与局限见 tools-plane-deep-20261002 交付记录，生产和 Gate 未改。"
     },
     {
       "id": "DEV-PLANE-PERIMETER-20261002",
       "title": "周长开放材料与保长拉直",
       "agent": "codex",
       "threadId": null,
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/plane-perimeter-deep-codex",
       "card": ".ai/tasks/DEV-PLANE-PERIMETER-20261002.md",
       "writePaths": ["src/features/tools/plane-perimeter/", "tests/plane-perimeter.test.ts", "supabase/migrations/20261002000100_tool_plane_perimeter.sql", ".ai/handoffs/DEV-PLANE-PERIMETER-20261002-codex-01.md"],
       "sharedPaths": [],
-      "checkpoint": "d76024cfcc641b96757877eb6a624d8e15fa0b47",
-      "next": "按合同实现 10-create；领域测试和 SQL helper 由本任务交付，总目录与数据库执行由集成人处理。"
+      "checkpoint": "558f38fdbffd6ba9ed7d10f283d074ca1412804c",
+      "next": "root 已复核接收实现和交接，10-create 已接总合同；开发端待周长绕边、拉直同尺比较与编辑手感验收。"
     },
     {
       "id": "DEV-PLANE-GRID-MEASURE-20261002",
       "title": "可编辑钉板与真实面积单位覆盖",
       "agent": "codex",
       "threadId": null,
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/plane-grid-measure-deep-codex",
       "card": ".ai/tasks/DEV-PLANE-GRID-MEASURE-20261002.md",
       "writePaths": ["src/features/tools/plane-grid-measure/", "tests/plane-grid-measure.test.ts", "supabase/migrations/20261002000200_tool_plane_grid_measure.sql", ".ai/handoffs/DEV-PLANE-GRID-MEASURE-20261002-codex-01.md"],
       "sharedPaths": [],
-      "checkpoint": "d76024cfcc641b96757877eb6a624d8e15fa0b47",
-      "next": "实现 34-create 与 11-create：独立材料、格点约束和真实覆盖计算；旧 v1 保留，总接入由集成人处理。"
+      "checkpoint": "c341f01299ea9b66155e1a3a2ac9cbc1ec10778a",
+      "next": "root 已复核接收；34-create／11-create、草稿投影及本机保存合同接通，待钉点闭合、编辑分片与单位覆盖人工验收。"
     },
     {
       "id": "DEV-PLANE-RELATIONS-20261002",
       "title": "面积关系与凸纸片重叠开放构造",
       "agent": "codex",
       "threadId": null,
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/plane-relations-deep-codex",
       "card": ".ai/tasks/DEV-PLANE-RELATIONS-20261002.md",
       "writePaths": ["src/features/tools/plane-relations/", "src/features/tools/plane-overlap/", "tests/plane-relations.test.ts", "tests/plane-overlap.test.ts", "supabase/migrations/20261002000300_tool_plane_relations_overlap.sql", ".ai/handoffs/DEV-PLANE-RELATIONS-20261002-codex-01.md", ".ai/handoffs/DEV-PLANE-RELATIONS-20261002-codex-02.md"],
       "sharedPaths": [],
-      "checkpoint": "d76024cfcc641b96757877eb6a624d8e15fa0b47",
-      "next": "实现 18-create 与 33-create，保留斜底真实高、可编辑分点和凸纸片配对运算；圆弧维持旧准确现场。"
+      "checkpoint": "db643571352e081e82bdac3e5eb19b33057b1d45",
+      "next": "root 已复核接收领域及 A/B 面板补丁，18-create／33-create 已接总合同；旧未迁移动作和圆弧范围已说明，待人工验收。"
     },
     {
       "id": "DEV-DASHBOARD-MOBILE-20261002-INTEGRATION",

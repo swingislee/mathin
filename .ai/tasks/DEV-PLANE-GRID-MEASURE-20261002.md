@@ -8,3 +8,5 @@
 - 输出 `planeGridMeasureScenes` 与 `isValidGridMeasureState`，接现有 construction/operations 描述符，contextActions 引用已有动作 ID。SQL helper 与测试由本任务提交。
 - root 负责总目录/合同/SQL与数据库。worker 独立 worktree，仅写登记文件；不启动服务，不执行 DB。
 - 验收：凹形/半格面积、非法交叉、增删点、分割面积守恒、重叠/部分覆盖、单位转换、撤销/保存/课堂准确终点。人工手感待验收。
+
+- 集成接收：root 复核 `28cc98ea63410efe39e00d1f252a693cdb170eeb`，main `c341f012`；41 项领域检查、真实钉板宿主闭合／吸附及本批 SQL 检查通过。交接 `DEV-PLANE-GRID-MEASURE-20261002-codex-01.md` 已接收。开发端待人工验收。

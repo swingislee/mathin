@@ -7,3 +7,5 @@
 - 输出 `planeRelationsScene` / `isValidRelationsState`、`planeOverlapScene` / `isValidOverlapState`，字段/contextActions 使用已提交共用类型。保留旧 v1 合同。
 - 本任务交付 helper SQL、领域测试及交接；root 处理 catalog、总合同、SQL聚合、类型与本机执行。worker 不改共享文件，不启动服务/DB。
 - 验收：倾斜底、分点比例、解除约束、复制独立、相切/共边/包含/分离、面积守恒、撤销/保存。旧关系现场中的尚未迁移动作写清局限，不宣称全部替换。
+
+- 集成接收：root 复核 `81093ac1bc50dd46066e87df6bcc26f9d09040cb` 及补丁 `90290449e2146958b477e54764a9647805a1c7db`，main `5a271070`／`db643571`；A/B 动作已移入交并差面板，窄测试、共享版本和 SQL 检查通过。两次交接均已接收。范围保持严格凸三／四边形关系与凸直边布尔，开发端待人工验收。
