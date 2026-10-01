@@ -91,7 +91,7 @@
       "checkout": "worktree",
       "branch": "codex/plane-relations-deep-codex",
       "card": ".ai/tasks/DEV-PLANE-RELATIONS-20261002.md",
-      "writePaths": ["src/features/tools/plane-relations/", "src/features/tools/plane-overlap/", "tests/plane-relations.test.ts", "tests/plane-overlap.test.ts", "supabase/migrations/20261002000300_tool_plane_relations_overlap.sql", ".ai/handoffs/DEV-PLANE-RELATIONS-20261002-codex-01.md"],
+      "writePaths": ["src/features/tools/plane-relations/", "src/features/tools/plane-overlap/", "tests/plane-relations.test.ts", "tests/plane-overlap.test.ts", "supabase/migrations/20261002000300_tool_plane_relations_overlap.sql", ".ai/handoffs/DEV-PLANE-RELATIONS-20261002-codex-01.md", ".ai/handoffs/DEV-PLANE-RELATIONS-20261002-codex-02.md"],
       "sharedPaths": [],
       "checkpoint": "d76024cfcc641b96757877eb6a624d8e15fa0b47",
       "next": "实现 18-create 与 33-create，保留斜底真实高、可编辑分点和凸纸片配对运算；圆弧维持旧准确现场。"
