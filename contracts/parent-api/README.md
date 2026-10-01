@@ -72,6 +72,8 @@
 
 `coordinating_time`、`awaiting_teacher` 和 `awaiting_parent` 都表示待确认；其 `scheduledAt=null`。`proposedStartsAt` 仅在 `awaiting_parent` 表示已提出的预约时刻，允许为 `null`。`scheduledAt` 仅在 `confirmed` / `completed` 表示实际预约时刻；它不是确认操作发生时间。`cancelled` 的两项时间均为 `null`。`canConfirm` 只在等待家长、线索和教师仍有效且存在未来精确交集时为 `true`，最终写入仍重新核验这些事实。
 
+`completed` 表示邀约流程已结束，可能是老师刚进入测评登记；客户端可显示“已进入测评”，不据此显示测评结果已完成或报告已发出。结果是否可读继续以已发送报告的原接口为准。
+
 申请命令为 `{ action: "request", id, participantId, teacherId, parentTimeOptions }`。客户端提交稳定 UUID `id`，它成功后成为邀约 ID；Web 端使用 `@/lib/uuid` 的 `newId()`，原生端使用平台 UUID 能力。数据库把初始调用者和规范化输入保留在既有邀约行的不可变 metadata 中：同一调用者使用相同 ID 和相同输入重试会返回同一邀约的当前投影，即使学服已修改其安排；相同 ID 改变输入返回 `CONFLICT`。新申请只提交家长意向和真实教师，状态由数据库确定。
 
 确认命令为 `{ action: "confirm", id, participantId, timeOption, expectedUpdatedAt }`，其中 `id` 为邀约 UUID、`expectedUpdatedAt` 原样使用最近读取的值。数据库锁定邀约并重新检查版本、教师及双边未来精确交集；`after_school` 继续保留为意向，不能确定预约。已确认同一时段的重试返回同一邀约，即使当前时刻已超过预约时间；变更时段或过期版本返回 `CONFLICT`。申请和确认都返回单个 `ParentAssessmentRequest`，不代表测评已完成或报告已发出。
