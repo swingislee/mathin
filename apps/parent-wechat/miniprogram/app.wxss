@@ -195,30 +195,31 @@ button[disabled] { opacity: .48; }
 .parent-page { background: linear-gradient(158deg, var(--primary-soft), var(--paper) 45%); }
 .parent-page .portal-content { padding-top: 14rpx; }
 .parent-header { display: flex; align-items: center; gap: 18rpx; margin-bottom: 28rpx; min-height: 108rpx; }
-.parent-identity { display: flex; align-items: center; flex: 1; min-width: 0; gap: 16rpx; }
+/* 家长页按钮显式覆盖 style v2 的默认宽度、内边距和自动外边距。 */
+.parent-header .parent-identity { display: flex; align-items: center; flex: 1; min-width: 0; width: auto; margin: 0; padding: 0; gap: 16rpx; }
 .parent-avatar { width: 100rpx; height: 100rpx; flex-shrink: 0; }
 .parent-name { font-size: 33rpx; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .parent-identity .chevron { width: 13rpx; height: 13rpx; margin-left: 0; }
-.parent-header-action { border-radius: 42rpx; background: var(--primary); color: #fff; padding: 20rpx 22rpx; font-size: 25rpx; flex-shrink: 0; }
+.parent-header .parent-header-action { width: auto; margin: 0; border-radius: 42rpx; background: var(--primary); color: #fff; padding: 20rpx 22rpx; font-size: 25rpx; flex-shrink: 0; }
 .parent-feature-row { display: flex; align-items: stretch; gap: 22rpx; }
-.intake-tile { position: relative; overflow: hidden; flex: 0 0 39%; text-align: left; padding: 28rpx 24rpx; background: linear-gradient(150deg, var(--primary-pale), var(--card)); min-height: 212rpx; }
+.parent-feature-row .intake-tile { position: relative; overflow: hidden; flex: 0 0 39%; width: 39%; min-width: 0; margin: 0; text-align: left; padding: 28rpx 24rpx; background: linear-gradient(150deg, var(--primary-pale), var(--card)); min-height: 212rpx; }
 .intake-tile-title { position: relative; z-index: 1; display: block; font-size: 40rpx; line-height: 1.4; color: var(--primary); font-weight: 600; margin-bottom: 30rpx; }
 .intake-tile .small-pill { position: relative; z-index: 1; }
 .intake-watermark { position: absolute; width: 130rpx; height: 130rpx; right: -34rpx; bottom: -30rpx; opacity: .12; transform: rotate(-12deg); }
 .children-tile { flex: 1; min-width: 0; padding: 20rpx 28rpx; }
 .children-heading { display: flex; align-items: center; justify-content: space-between; gap: 10rpx; font-size: 28rpx; font-weight: 600; white-space: nowrap; }
-.children-heading .text-link { font-size: 22rpx; }
+.children-heading .text-link { width: auto; margin: 0; padding: 12rpx 0; font-size: 22rpx; }
 .children-row { display: flex; justify-content: space-around; gap: 18rpx; padding-top: 14rpx; }
-.child-entry { display: flex; align-items: center; flex-direction: column; gap: 8rpx; width: 50%; min-width: 0; font-size: 26rpx; font-weight: 500; }
+.children-row .child-entry { display: flex; align-items: center; flex-direction: column; flex: 1 1 0; gap: 8rpx; width: 0; min-width: 0; margin: 0; padding: 0; font-size: 26rpx; font-weight: 500; }
 .child-entry .child-avatar { width: 78rpx; height: 78rpx; }
 .child-entry text { width: 100%; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.children-empty { display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 6rpx; color: var(--muted); font-size: 23rpx; padding-top: 8rpx; }
+.children-tile .children-empty { display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 6rpx; width: 100%; margin: 0; color: var(--muted); font-size: 23rpx; padding: 8rpx 0 0; }
 .children-empty .child-avatar { width: 68rpx; height: 68rpx; }
 .booking-shortcuts { display: flex; margin-top: 28rpx; padding: 32rpx 14rpx; }
-.booking-shortcuts button { display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 22rpx; width: 25%; text-align: center; font-size: 26rpx; font-weight: 500; }
+.parent-page .booking-shortcuts button { display: flex; align-items: center; justify-content: center; flex-direction: column; flex: 0 0 25%; gap: 22rpx; width: 25%; margin: 0; padding: 0; text-align: center; font-size: 26rpx; font-weight: 500; }
 .services-card { margin-top: 28rpx; padding: 34rpx 30rpx 24rpx; }
 .service-grid { display: flex; flex-wrap: wrap; gap: 0; margin: 20rpx -12rpx 0; }
-.service-entry { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 20rpx; width: 25%; padding: 22rpx 4rpx; min-height: 136rpx; box-sizing: border-box; background: none; border: 0; border-radius: 0; font-size: 25rpx; line-height: 1.4; text-align: center; }
+.service-grid .service-entry { display: flex; flex-direction: column; justify-content: center; align-items: center; flex: 0 0 25%; gap: 20rpx; width: 25%; max-width: 25%; min-width: 0; margin: 0; padding: 22rpx 4rpx; min-height: 136rpx; box-sizing: border-box; background: none; border: 0; border-radius: 0; font-size: 25rpx; line-height: 1.4; text-align: center; }
 .tools-heading { margin-top: 28rpx; }
 .account-display-name { display: block; padding: 20rpx 0; font-size: 32rpx; }
 
@@ -321,5 +322,5 @@ button[disabled] { opacity: .48; }
   .parent-page { background: linear-gradient(160deg, #293528, var(--paper) 50%); }
   .timetable-page, .reservation-page { background: var(--paper); }
   .line-icon { filter: brightness(0) invert(.85); }
-  .primary, .small-pill, .switch-child, .parent-header-action, .week-day.selected, .step-number.active, .slot-option.selected { color: #1d2816; }
+  .primary, .small-pill, .switch-child, .parent-header .parent-header-action, .week-day.selected, .step-number.active, .slot-option.selected { color: #1d2816; }
 }

@@ -55,12 +55,15 @@ describe("家长端工程基础", () => {
     const setTabBarItem = vi.fn();
     const wx = {
       getAppBaseInfo: () => ({ language }),
+      getDeviceInfo: () => ({ platform: "ios" }),
       setNavigationBarTitle,
       setTabBarItem,
     };
     const locale = loadModule("lib/locale.ts", {});
     const copy = loadModule("lib/copy.ts", {});
-    const pageModule = loadModule("lib/page.ts", { wx }, { "./locale": locale, "./copy": copy, "./api": { ApiError: Error }, "./navigation": loadModule("lib/navigation.ts", { wx }) });
+    const simulatorIcons = loadModule("assets/tabs/simulator-icons.ts", {});
+    const dependencies = { "./locale": locale, "./copy": copy, "./api": { ApiError: Error }, "./navigation": loadModule("lib/navigation.ts", { wx }), "../assets/tabs/simulator-icons": simulatorIcons };
+    const pageModule = loadModule("lib/page.ts", { wx }, dependencies);
     const syncPage = pageModule.syncPage as (page: { data: { locale: string }; setData: typeof setData }, section: string) => string;
     const page = { data: { locale: "" }, setData };
     page.data.locale = syncPage(page, "homework");
@@ -70,5 +73,17 @@ describe("家长端工程基础", () => {
     syncPage(page, "homework");
     expect(setData).toHaveBeenCalledTimes(1);
     expect(setTabBarItem).toHaveBeenCalledTimes(3);
+    expect(setTabBarItem.mock.calls.every(([item]) => !("iconPath" in item))).toBe(true);
+    setTabBarItem.mockClear();
+    const simulatorPage = loadModule("lib/page.ts", { wx: { ...wx, getDeviceInfo: () => ({ platform: "devtools" }) } }, dependencies);
+    (simulatorPage.syncPage as typeof syncPage)({ data: { locale: "" }, setData }, "account");
+    const configuredTabs = JSON.parse(read(wechatRoot + "app.json")).tabBar.list;
+    expect(setTabBarItem.mock.calls.map(([item]) => item.text)).toEqual(tabs);
+    for (const [index, [item]] of setTabBarItem.mock.calls.entries()) {
+      for (const field of ["iconPath", "selectedIconPath"]) {
+        const bytes = readFileSync(path.join(root, wechatRoot, configuredTabs[index][field]));
+        expect(item[field]).toBe("data:image/png;base64," + bytes.toString("base64"));
+      }
+    }
   });
 });

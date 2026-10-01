@@ -3,13 +3,19 @@ import { copy,type Copy } from "./copy";
 import { ApiError } from "./api";
 import type { LocalizedText } from "./api-types";
 import { rememberReturn } from "./navigation";
+import { simulatorTabIcons } from "../assets/tabs/simulator-icons";
 let tabsLocale="";
 export function currentLocale(){return resolveLocale(wx.getAppBaseInfo().language);}
 export function pageData(section:Section){return {brandName,...messages.zh.sections[section],copy:copy.zh,locale:"" as string,error:"",loading:false};}
 export function syncPage(page:{data:{locale:string};setData:(data:Record<string,unknown>)=>void},section:Section,titleKey?:keyof Copy){
   const locale=currentLocale();
   if(page.data.locale!==locale){page.setData({...messages[locale].sections[section],copy:copy[locale],locale});wx.setNavigationBarTitle({title:titleKey?copy[locale][titleKey]:messages[locale].sections[section].title});}
-  if(tabsLocale!==locale){sections.forEach((key,index)=>wx.setTabBarItem({index,text:messages[locale].sections[key].tabLabel}));tabsLocale=locale;}
+  if(tabsLocale!==locale){
+    // 开发工具的底栏文件桥存在读图异常，真机继续使用 app.json 的包内资源。
+    const simulator=typeof wx.getDeviceInfo==="function" && wx.getDeviceInfo().platform==="devtools";
+    sections.forEach((key,index)=>wx.setTabBarItem({index,text:messages[locale].sections[key].tabLabel,
+      ...(simulator?simulatorTabIcons[key]:{})}));tabsLocale=locale;
+  }
   return locale;
 }
 export function text(value:LocalizedText){return value[currentLocale()]||value.zh;}
