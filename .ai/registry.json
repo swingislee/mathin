@@ -35,14 +35,14 @@
       "title": "优化班级列表与手机端体验",
       "agent": "codex",
       "threadId": "01a0f6e7-2fca-7963-9be1-3ed3d2705ecc",
-      "status": "integrated",
+      "status": "in_progress",
       "checkout": "worktree",
       "branch": "codex/class-roster-density-codex",
       "card": ".ai/tasks/DEV-CLASS-LIST-20261001.md",
-      "writePaths": ["src/features/school/EnrollmentPlacementWorkbench.tsx", "src/features/school/class-roster-header-contract.ts", "src/features/school/class-roster-layout.module.css", "src/features/school/class-roster-presentation-contract.ts", "src/features/school/ClassRosterClassSummary.tsx", "tests/enrollment-placement-drag-confirmation.test.ts", "tests/enrollment-placement-workbench.test.ts", "docs/plan/dashboard-work-entry-restructure.md", ".ai/handoffs/DEV-CLASS-LIST-20261001-codex-02.md"],
+      "writePaths": ["src/features/school/ClassRosterClassSummary.tsx", "tests/enrollment-placement-drag-confirmation.test.ts", "tests/enrollment-placement-workbench.test.ts", "docs/plan/dashboard-work-entry-restructure.md", ".ai/handoffs/DEV-CLASS-LIST-20261001-codex-03.md"],
       "sharedPaths": ["CHANGELOG.md"],
       "checkpoint": "ec92855f1b2ea1f847e2dfdc081217b0879ae275",
-      "next": "内容列宽与老师视图待分班表尾已集成，zh/en 页面读取通过，等待开发端人工验收；验证与既有类型错误见 DEV-CLASS-LIST-20261001-codex-02.md。"
+      "next": "按最新反馈将教室移入班级信息，主行仅显示校区并统一字体；沿用独立 worktree，完成定向检查后交付开发端人工验收。"
     },
     {
       "id": "DEV-PLACE-VALUE-20261001",
