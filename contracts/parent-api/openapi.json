@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "格致未来思维 · 家长端接口",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "description": "原生客户端通过版本化 HTTP 接入现有 Supabase 身份和业务数据。登记与活动浏览免登录；预约、结果及练习须核验账号和参与人权限。"
   },
   "servers": [
@@ -2244,6 +2244,293 @@
             "type": "string",
             "format": "uuid"
           }
+        }
+      },
+      "AssessmentState": {
+        "type": "string",
+        "enum": [
+          "coordinating_time",
+          "awaiting_teacher",
+          "awaiting_parent",
+          "confirmed",
+          "completed",
+          "cancelled"
+        ],
+        "description": "前三种状态均表示待确认；confirmed 由数据库检查双方时间交集后产生。"
+      },
+      "AssessmentTimeOption": {
+        "type": "string",
+        "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])@(09:50|10:00|14:00|16:00|17:00|17:30|19:20|after_school)$",
+        "description": "Asia/Shanghai 的真实日历日期及意向时段。日期另作有效性校验；after_school 为范围意向。它不代表全局教师空闲库存。"
+      },
+      "AssessmentExactTimeOption": {
+        "type": "string",
+        "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])@(09:50|10:00|14:00|16:00|17:00|17:30|19:20)$",
+        "description": "可确定预约时刻的精确选项；确认时必须仍位于该邀约双方的未来交集。"
+      },
+      "AssessmentTeacher": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "候选仅来自参与人当前有效报名班级的当前任课教师或负责人，并核验有效账号及 review.write。已有邀约教师仅随该邀约展示。",
+        "required": [
+          "id",
+          "displayName"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          }
+        }
+      },
+      "AssessmentEligibility": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "canRequest=true 时 reason=null；false 时返回明确原因。仅限制新申请，已有邀约仍按本人权限读取及确认。",
+        "required": [
+          "canRequest",
+          "reason"
+        ],
+        "properties": {
+          "canRequest": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              null,
+              "NO_LINKED_LEAD",
+              "AMBIGUOUS_LINKED_LEAD",
+              "LEAD_UNAVAILABLE",
+              "ACTIVE_INVITATION",
+              "NO_ELIGIBLE_TEACHER"
+            ]
+          }
+        }
+      },
+      "ParentAssessmentRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "一个孩子的一条既有 1 对 1 邀约投影，不返回内部线索、联系方式、沟通记录或审计 metadata。",
+        "required": [
+          "id",
+          "participantId",
+          "teacher",
+          "state",
+          "parentTimeOptions",
+          "teacherTimeOptions",
+          "sharedTimeOptions",
+          "proposedStartsAt",
+          "scheduledAt",
+          "updatedAt",
+          "canConfirm"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "participantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "teacher": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AssessmentTeacher"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "$ref": "#/components/schemas/AssessmentState"
+          },
+          "parentTimeOptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssessmentTimeOption"
+            },
+            "minItems": 0,
+            "maxItems": 84,
+            "uniqueItems": true
+          },
+          "teacherTimeOptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssessmentTimeOption"
+            },
+            "minItems": 0,
+            "maxItems": 84,
+            "uniqueItems": true
+          },
+          "sharedTimeOptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssessmentExactTimeOption"
+            },
+            "minItems": 0,
+            "maxItems": 84,
+            "uniqueItems": true,
+            "description": "排序去重的双方交集中未来精确时段，排除 after_school 和过期项。"
+          },
+          "proposedStartsAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "仅 awaiting_parent 时已提出的实际预约时刻，尚未提出时为 null；其他状态为 null。"
+          },
+          "scheduledAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "仅 confirmed/completed 的实际预约时刻；其他状态为 null。不是确认操作的发生时间。"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "canConfirm": {
+            "type": "boolean",
+            "description": "等待家长、线索及教师仍有效且存在未来精确交集；写入时仍重新核验。"
+          }
+        }
+      },
+      "ParentAssessmentOverview": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "participantId",
+          "timeZone",
+          "eligibility",
+          "teachers",
+          "requests"
+        ],
+        "properties": {
+          "participantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "timeZone": {
+            "type": "string",
+            "const": "Asia/Shanghai"
+          },
+          "eligibility": {
+            "$ref": "#/components/schemas/AssessmentEligibility"
+          },
+          "teachers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssessmentTeacher"
+            },
+            "maxItems": 100,
+            "description": "按 displayName、id 排序，最多 100 位授权候选。"
+          },
+          "requests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParentAssessmentRequest"
+            },
+            "maxItems": 100,
+            "description": "按 updatedAt、id 倒序，最多 100 条。"
+          }
+        }
+      },
+      "AssessmentRequestCommand": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action",
+          "id",
+          "participantId",
+          "teacherId",
+          "parentTimeOptions"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "const": "request"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "稳定客户端 UUID；成功后作为邀约 ID。同调用者同 ID 同规范化输入可重试，异输入为 CONFLICT。"
+          },
+          "participantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "teacherId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "parentTimeOptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssessmentTimeOption"
+            },
+            "minItems": 1,
+            "maxItems": 84,
+            "uniqueItems": true
+          }
+        }
+      },
+      "AssessmentConfirmCommand": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action",
+          "id",
+          "participantId",
+          "timeOption",
+          "expectedUpdatedAt"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "const": "confirm"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "待确认的邀约 UUID。"
+          },
+          "participantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "timeOption": {
+            "$ref": "#/components/schemas/AssessmentExactTimeOption"
+          },
+          "expectedUpdatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "原样提交最近读取的 updatedAt。版本变化返回 CONFLICT；已确认同一时段的重试返回当前邀约。"
+          }
+        }
+      },
+      "AssessmentCommand": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/AssessmentRequestCommand"
+          },
+          {
+            "$ref": "#/components/schemas/AssessmentConfirmCommand"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "action"
         }
       }
     }

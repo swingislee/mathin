@@ -80,6 +80,39 @@ export type ParentLearning = {
 export type LearningCommand =
   | { action: "leave"; sessionId: string; participantId: string; reason: string }
   | { action: "readNotification"; id: string };
+export type AssessmentState = "coordinating_time" | "awaiting_teacher" | "awaiting_parent"
+  | "confirmed" | "completed" | "cancelled";
+export type AssessmentEligibilityReason = "NO_LINKED_LEAD" | "AMBIGUOUS_LINKED_LEAD"
+  | "LEAD_UNAVAILABLE" | "ACTIVE_INVITATION" | "NO_ELIGIBLE_TEACHER";
+export type AssessmentTeacher = { id: string; displayName: string };
+/** 时间选项为 Asia/Shanghai 的 YYYY-MM-DD@时段；它表示协调意向，不表示教师空闲库存。 */
+export type ParentAssessmentRequest = {
+  id: string; participantId: string; teacher: AssessmentTeacher | null; state: AssessmentState;
+  parentTimeOptions: string[]; teacherTimeOptions: string[];
+  /** 双方交集中未来可确认的精确时段，排序去重；不含 after_school。 */
+  sharedTimeOptions: string[];
+  /** awaiting_parent 时已提出的预约时刻；尚未提出或其他状态为 null。 */
+  proposedStartsAt: string | null;
+  /** confirmed/completed 的实际预约时刻；不是确认操作发生时间。 */
+  scheduledAt: string | null;
+  updatedAt: string; canConfirm: boolean;
+};
+export type ParentAssessmentOverview = {
+  participantId: string; timeZone: "Asia/Shanghai";
+  eligibility: { canRequest: boolean; reason: AssessmentEligibilityReason | null };
+  teachers: AssessmentTeacher[]; requests: ParentAssessmentRequest[];
+};
+export type AssessmentRequestCommand = {
+  action: "request";
+  /** 客户端生成并在结果不明时保留的稳定 UUID；成功后作为邀约 ID。 */
+  id: string; participantId: string; teacherId: string; parentTimeOptions: string[];
+};
+export type AssessmentConfirmCommand = {
+  action: "confirm"; id: string; participantId: string;
+  /** 选择该邀约双边交集中的未来精确时段；after_school 只作为意向。 */
+  timeOption: string; expectedUpdatedAt: string;
+};
+export type AssessmentCommand = AssessmentRequestCommand | AssessmentConfirmCommand;
 export type ApiErrorCode = "VALIDATION" | "UNAUTHENTICATED" | "FORBIDDEN" | "ACCOUNT_SECURITY"
   | "NOT_FOUND" | "FORM_CHANGED" | "ACTIVITY_FULL" | "BOOKING_CLOSED" | "CONFLICT"
   | "TOO_LARGE" | "FILE_TYPE" | "RATE_LIMIT" | "UNAVAILABLE";

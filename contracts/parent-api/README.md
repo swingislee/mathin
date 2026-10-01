@@ -1,6 +1,6 @@
 # 家长端接口规范
 
-当前接口版本为 `0.3.0`。可调用能力以 [OpenAPI](openapi.json) 的 paths 为准，业务 DTO 维护在 [portal.ts](portal.ts)。微信、iOS 和 Android 使用同一份 HTTP 合同，各端按自己的页面接入已实现能力。
+当前接口版本为 `0.4.0`。可调用能力以 [OpenAPI](openapi.json) 的 paths 为准，业务 DTO 维护在 [portal.ts](portal.ts)。微信、iOS 和 Android 使用同一份 HTTP 合同，各端按自己的页面接入已实现能力。
 
 ## 接入方式
 
@@ -55,5 +55,25 @@
 `Report.participantId` 为新增的可空字段。课后反馈直接使用原 RPC 的 `student_id`；测评依赖 `20261001000100_parent_report_participant_identity.sql` 为原 `miniapp_assessment_reports` JSON 增加 `students.id`，保持同签名、发送状态和 `grades` 权限。本轮只交付 SQL 源码，未向任何数据库执行 migration；目标环境需要按其授权流程单独升级。
 
 未升级数据库的测评仍可通过原 `portal?resource=reports` 读取，其 `participantId` 为 `null`。`learning` 不按姓名猜测归属，只返回 ID 与所选孩子一致的报告，并通过 `unassignedReportCount` 告知当前账号存在无法归属的历史报告。原账号、预约、练习、提交及媒体接口的请求和已有字段保持兼容，微信 DTO 副本同步生成。
+
+## 1 对 1 测评稳定合同
+
+本节和 OpenAPI `components.schemas` 先固定跨端 DTO，`/api/v1/parent/assessments` 的 HTTP 实现待接入后加入 `paths`。本次合同提交不表示数据库 RPC 已安装或预约业务已可运行。
+
+独立测评复用已有 `lead_invitation_threads(kind=assessment_1v1)`，通过 `parent_assessment_overview`、`request_parent_assessment` 和 `confirm_parent_assessment` 读取和推进同一条邀约。HTTP 使用调用者的 Bearer Supabase client，数据库实时核验 `miniapp_can_participate(student, 'grades')`；学生 UUID 经现有 `leads.student_id` 对应业务线索。没有唯一可用线索时保留已有邀约读取和确认，新申请由 `eligibility` 说明限制。
+
+`ParentAssessmentOverview` 返回所选 `participantId`、固定时区 `Asia/Shanghai`、`eligibility`、`teachers` 和 `requests`。教师候选仅来自孩子当前有效报名班级的当前任课教师或负责人，并核验教师账号有效及 `review.write` 权限；字段只有 `id` 和 `displayName`。教师按名称、ID 排序，邀约按更新时间、ID 倒序，各最多 100 条。已有邀约的教师随该条邀约返回。没有可证明的候选范围时 `teachers=[]`，`eligibility.reason=NO_ELIGIBLE_TEACHER`；不将全校员工清单作为家长选项。
+
+`eligibility.canRequest` 为 `true` 时 `reason=null`；否则 `reason` 为 `NO_LINKED_LEAD`、`AMBIGUOUS_LINKED_LEAD`、`LEAD_UNAVAILABLE`、`ACTIVE_INVITATION` 或 `NO_ELIGIBLE_TEACHER`。空数组表示授权查询的真实结果；查询失败返回错误，不降级为空列表。
+
+时间意向 token 使用 `YYYY-MM-DD@时段`，有效时段为 `09:50`、`10:00`、`14:00`、`16:00`、`17:00`、`17:30`、`19:20`、`after_school`。每组最多 84 项并保持唯一。它们表示该邀约双方的协调意向，没有全局教师库存、占位或避免教师跨邀约时间冲突的承诺。`parentTimeOptions` 和 `teacherTimeOptions` 保留双方原有候选；`sharedTimeOptions` 只返回双方交集中未来可确认的精确时段，排序去重，排除 `after_school` 和过期项。
+
+`coordinating_time`、`awaiting_teacher` 和 `awaiting_parent` 都表示待确认；其 `scheduledAt=null`。`proposedStartsAt` 仅在 `awaiting_parent` 表示已提出的预约时刻，允许为 `null`。`scheduledAt` 仅在 `confirmed` / `completed` 表示实际预约时刻；它不是确认操作发生时间。`cancelled` 的两项时间均为 `null`。`canConfirm` 只在等待家长、线索和教师仍有效且存在未来精确交集时为 `true`，最终写入仍重新核验这些事实。
+
+申请命令为 `{ action: "request", id, participantId, teacherId, parentTimeOptions }`。客户端提交稳定 UUID `id`，它成功后成为邀约 ID；Web 端使用 `@/lib/uuid` 的 `newId()`，原生端使用平台 UUID 能力。数据库把初始调用者和规范化输入保留在既有邀约行的不可变 metadata 中：同一调用者使用相同 ID 和相同输入重试会返回同一邀约的当前投影，即使学服已修改其安排；相同 ID 改变输入返回 `CONFLICT`。新申请只提交家长意向和真实教师，状态由数据库确定。
+
+确认命令为 `{ action: "confirm", id, participantId, timeOption, expectedUpdatedAt }`，其中 `id` 为邀约 UUID、`expectedUpdatedAt` 原样使用最近读取的值。数据库锁定邀约并重新检查版本、教师及双边未来精确交集；`after_school` 继续保留为意向，不能确定预约。已确认同一时段的重试返回同一邀约，即使当前时刻已超过预约时间；变更时段或过期版本返回 `CONFLICT`。申请和确认都返回单个 `ParentAssessmentRequest`，不代表测评已完成或报告已发出。
+
+错误沿用 `{ "code": "..." }`：输入无效为 `VALIDATION` / 400，登录缺失为 `UNAUTHENTICATED` / 401，账号安全门或参与人授权失败为 `ACCOUNT_SECURITY` / `FORBIDDEN` / 403，不存在或不可见的邀约为 `NOT_FOUND` / 404。申请资格变化、时段变化、版本冲突和 `IDEMPOTENCY_CONFLICT` 对外统一为 `CONFLICT` / 409；RPC 缺失或不可用为 `UNAVAILABLE` / 503。冲突或网络结果不明时先刷新 overview 核对当前事实，保留原申请 ID；重试沿用原始输入，不换 ID 自动重复提交。
 
 OpenAPI 使用相对 server URL，各端本地配置选择 origin。`node scripts/sync-parent-contract.mjs` 生成微信 DTO 副本；`pnpm parents:check` 核对副本、工程边界和受影响测试。后端配置与本机验收步骤见[小程序业务配置说明](../../apps/parent-wechat/docs/portal.md)。
