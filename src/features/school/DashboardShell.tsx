@@ -275,7 +275,7 @@ export function DashboardShell({
       <MainFloatingControl className={cn("fixed left-4 top-4 z-40", sidebarMode !== "hidden" && "lg:hidden")}>
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
-            <Button type="button" variant="secondary" size="sm" className="size-11 rounded-full p-0 shadow-lg lg:hidden" aria-label={shellT("openNav")}>
+            <Button type="button" variant="secondary" size="sm" className="size-11 rounded-full bg-paper p-0 shadow-lg hover:bg-card lg:hidden" aria-label={shellT("openNav")}>
               <PanelLeftOpen size={18} />
             </Button>
           </SheetTrigger>
@@ -294,7 +294,7 @@ export function DashboardShell({
             variant="secondary"
             size="sm"
             data-dashboard-nav-floating
-            className="hidden size-11 rounded-full p-0 shadow-lg lg:inline-flex"
+            className="hidden size-11 rounded-full bg-paper p-0 shadow-lg hover:bg-card lg:inline-flex"
             aria-label={shellT("expandNav")}
             onClick={() => applySidebarMode(nextDashboardSidebarMode(sidebarMode))}
           >

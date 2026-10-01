@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DashboardCommandPanel, DashboardCommandState } from "./dashboard-page";
 import { MATERIAL_KINDS, materialMessages, materialSummarySchema, type MaterialContent, type MaterialKind, type MaterialSummary } from "./session-materials-contract";
+import { readClassSessionResource } from "./class-session-resource";
 
 const Content = dynamic(() => import("./SessionMaterialContent").then(module => module.SessionMaterialContent), {
   ssr: false, loading: () => <Skeleton className="h-32 w-full" />,
@@ -26,12 +27,7 @@ export function SessionMaterialsReader({ sessionId, classroomId, locale, timeZon
   const panels = useRef<Partial<Record<MaterialKind, HTMLDivElement | null>>>({});
   const scrolls = useRef<Partial<Record<MaterialKind, number>>>({});
   const read = useCallback(async (kind: MaterialKind | "summary", signal: AbortSignal) => {
-    const response = await fetch(`/${locale}/dashboard/classes/session-materials`, {
-      method: "POST", credentials: "same-origin", cache: "no-store", signal,
-      headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId, classroomId, kind }),
-    });
-    if (!response.ok) throw new Error(response.status === 403 ? "forbidden" : "failed");
-    return await response.json();
+    return readClassSessionResource<unknown>(`/${locale}/dashboard/classes/session-materials`, { sessionId, classroomId, kind }, signal);
   }, [classroomId, locale, sessionId]);
   useEffect(() => {
     const controller = new AbortController();

@@ -18,11 +18,16 @@ export function ClassRosterClassSummary({ row, locale, className, courseTitle, t
   return <div className="flex min-w-0 items-start gap-1">
     <span data-class-desktop>{disclosure}</span>
     <div className="min-w-0 flex-1">
-      <p data-class-mobile className="whitespace-normal break-words text-base font-medium leading-6 tabular-nums">{time}</p>
-      <Popover><PopoverTrigger asChild><Button data-class-info variant="ghost" size="sm" className="h-auto min-h-0 w-full justify-start whitespace-normal px-0 py-0 text-left text-xs font-normal hover:bg-transparent hover:underline" aria-label={`${m.info} · ${className}`}>
+      <div data-class-mobile>
+        <div className="flex items-center justify-between gap-2">
+          <p className="min-w-0 break-words text-sm font-medium leading-6 tabular-nums">{time}</p>
+          {row.classroom && <Link data-class-open href={`/dashboard/classes/${row.classroom.id}`} className="inline-flex min-h-10 shrink-0 items-center text-xs text-ink underline underline-offset-4">{m.openClass}</Link>}
+        </div>
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs leading-5 text-muted"><span>{location.campus}</span><span>{grade}</span><span>{m.level} {level}</span>{showTeacher && teacher && <span>{teacher}</span>}</p>
+      </div>
+      <span data-class-desktop><Popover><PopoverTrigger asChild><Button data-class-info variant="ghost" size="sm" className="h-auto min-h-0 w-full justify-start whitespace-normal px-0 py-0 text-left text-xs font-normal hover:bg-transparent hover:underline" aria-label={`${m.info} · ${className}`}>
         <span className="min-w-0 break-words">
-          <span data-class-desktop className="block leading-5 text-ink">{location.campus}</span>
-          <span data-class-mobile className="text-sm">{location.campus}</span>
+          <span className="block leading-5 text-ink">{location.campus}</span>
         </span>
       </Button></PopoverTrigger>
         <PopoverContent align="start" className="w-72 max-w-[calc(100vw-2rem)] space-y-2 p-3 text-sm">
@@ -33,14 +38,13 @@ export function ClassRosterClassSummary({ row, locale, className, courseTitle, t
           {row.historical && <p className="text-muted">{row.historical.registered_on || "—"} · {row.historical.amount ?? row.historical.amount_original}</p>}
           {row.classroom && <Link href={`/dashboard/classes/${row.classroom.id}`} className={buttonVariants({ variant: "secondary", size: "sm" })}>{m.details}</Link>}
         </PopoverContent>
-      </Popover>
-      <div data-class-mobile className="space-y-2">
-        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted"><span>{grade}</span><span>{m.level} {level}</span>{showTeacher && teacher && <span>{teacher}</span>}</p>
+      </Popover></span>
+      <div data-class-mobile>
         <div className="flex flex-wrap items-center gap-2 pt-1">
-          <Button variant={rosterOpen ? "secondary" : "ghost"} size="sm" className="min-h-10 px-3 text-sm" disabled={disabled}
+          <Button variant={rosterOpen ? "secondary" : "ghost"} size="sm" className="min-h-10 px-2 text-xs" disabled={disabled}
             data-class-roster-toggle={row.key} aria-expanded={rosterOpen} aria-controls={rosterId} aria-label={`${rosterOpen ? m.hideRoster : m.showRoster} · ${className}`}
             onClick={onRosterToggle}>{m.roster} <span className="tabular-nums">{count}</span></Button>
-          {lessonCount !== undefined && <Button variant={lessonsOpen ? "secondary" : "ghost"} size="sm" className="min-h-10 px-3 text-sm" disabled={disabled}
+          {lessonCount !== undefined && <Button data-class-lessons-toggle variant={lessonsOpen ? "secondary" : "ghost"} size="sm" className="min-h-10 px-2 text-xs" disabled={disabled}
             aria-expanded={lessonsOpen} onClick={onLessonsToggle}>{m.lessons} <span className="tabular-nums">{lessonCount}</span></Button>}
         </div>
       </div>

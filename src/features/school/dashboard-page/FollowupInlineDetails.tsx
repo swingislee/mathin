@@ -58,7 +58,7 @@ export function FollowupInlineDetails({
     }}>
     <TableCell colSpan={colSpan} className={cn("align-top whitespace-normal", flush ? "p-0" : "p-3")}>
       <DashboardInlineEntry title={title} hideTitle={hideTitle} closeLabel={closeLabel ?? t("close")} onClose={close} onSubmit={onSubmit} pending={pending} autoFocus={autoFocus} loadingLabel={loadingLabel} flush>
-        {() => <div className={cn("@container/followup-entry min-w-0 max-w-full space-y-3 break-words", !flush && "pt-2")}>{typeof children === "function" ? children() : children}</div>}
+        {() => <div data-followup-detail-content className={cn("@container/followup-entry min-w-0 max-w-full space-y-3 break-words", !flush && "pt-2")}>{typeof children === "function" ? children() : children}</div>}
       </DashboardInlineEntry>
     </TableCell>
   </TableRow>;
