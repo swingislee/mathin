@@ -16,6 +16,8 @@
 | --- | --- | --- |
 | `GET /api/health` | 服务存活；不连接数据库 | 无 |
 | `POST /api/v1/parent/auth` | `login` / `refresh` / `logout` | 退出须 Bearer |
+| `GET /api/v1/parent/auth/wechat` | 小程序微信配置可用性与本人绑定状态 | 读取本人状态须 Bearer |
+| `POST /api/v1/parent/auth/wechat` | `wx.login` code 登录、明确绑定现有账号 | `bind` 须 Bearer、原密码和确认 |
 | `GET /api/v1/parent/portal?resource=form&form=welcome` | 当前登记字段、选项、版本和信息使用说明 | 无 |
 | `GET /api/v1/parent/portal?resource=activities` | 已公开的未来活动、时间、地点及剩余名额 | 无 |
 | `GET /api/v1/parent/portal?resource=account` | 当前账号与已关联参与人 | 必须 |
@@ -68,6 +70,20 @@
 其他校验、过大请求、角色/账号限制、限流、平台故障沿用公共 `VALIDATION`、`TOO_LARGE`、`FORBIDDEN`、`ACCOUNT_SECURITY`、`RATE_LIMIT`、`UNAVAILABLE`。所有响应不缓存；微信上游错误仅映射固定码。服务端固定目标主机、超时和响应上限，凭据使用不记录 query 的受控传输。
 
 协议依据：[微信官方 API 类型中的 wx.login](https://github.com/wechat-miniprogram/api-typings/blob/master/types/wx/lib.wx.api.d.ts)、[code2Session](https://developers.weixin.qq.com/miniprogram/dev/OpenApiDoc/user-login/code2Session.html)。官方类型将 code 定义为五分钟临时凭证，并要求服务端兑换；实际平台响应和同开放平台 UnionID 下发仍需配置后验收。
+
+### 服务端配置与启用
+
+本增量交付时（2026-10-02）用户确认 AppSecret 尚未配置，入口保持关闭。配置写入部署目标的受控环境或已忽略私有文件，客户端配置只保留其 API origin；共享文件和日志不保存真实 AppID、AppSecret 或 broker 密钥。
+
+1. 为服务端设置 `WECHAT_MINIPROGRAM_APP_ID`、`WECHAT_MINIPROGRAM_APP_SECRET`，确认小程序和网站绑定同一开放平台；`WECHAT_OPEN_PLATFORM_NAMESPACE` 使用既有稳定值。
+2. 设置 `WECHAT_SITE_ORIGIN`、`WECHAT_SUPABASE_PUBLIC_ORIGIN` 和独立高熵 `WECHAT_BROKER_CLIENT_SECRET`。Auth origin 必须与 `NEXT_PUBLIC_SUPABASE_URL` 完全一致；同时需要既有 publishable key 与 `SUPABASE_SECRET_KEY`。生产 origin 使用 HTTPS；非生产可使用已登记的 `http://192.168.5.213:3130` 与本机 `http://127.0.0.1:35421`。
+3. 复用已有 `custom:wechat` OAuth2 provider 与 `mathin-wechat` client：authorization、token、userinfo URL 分别为站点 origin 下的 `/zh/auth/wechat/authorize`、`/zh/auth/wechat/token`、`/zh/auth/wechat/userinfo`，保持 `email_optional=true`、`pkce_enabled=true`、`scopes=[]`。给 Auth 的严格 redirect allowlist 增加站点 origin 下的 `/api/v1/parent/auth/wechat`；启用受控 manual linking，保持未知 OAuth 用户禁止自行注册。使用已有票据表、身份唯一约束和审计，维持过期票据清理。
+4. 在已授权开发目标验证邮箱/纯手机号的原 UUID、两段 PKCE、未知微信、冲突、会话切换、停用、MFA、原密码与解绑兼容后，按现有 runbook 设置 `WECHAT_AUTH_COMPATIBILITY_VERIFIED=true`；纯手机号兼容验证通过才设置 `WECHAT_PHONE_LINKING_VERIFIED=true`。再设置 `WECHAT_MINIPROGRAM_ENABLED=true` 并启用对应 provider。网站扫码入口仍单独由 `WECHAT_OAUTH_ENABLED` 控制。
+5. 真实微信往返核对 code 单次消费、同开放平台 UnionID 和既有账号绑定；由用户验收。当前代码的协议替身与 SDK 测试不表示真实微信往返、目标 Auth 配置或生产部署已通过。
+
+小程序 proof 在一次服务端请求内使用。外层 SDK verifier 保存在该请求的内存，内层复用原 broker 的 60 秒单次 grant/access 票据；固定校验 Auth、provider、最终返回 origin/path 与随机关联参数。客户端不接触 OAuth 跳转、Cookie 或 broker 票据。绑定完成只清除独立产生的验证/OAuth 会话，保留发起绑定的 session_id。小程序没有获取昵称/头像，本次不覆写网页微信资料快照，也不把空资料声明写入用户展示字段。
+
+来源限流使用代理覆盖的 `X-Real-IP`；没有可信来源时共用 `direct` 桶。绑定密码验证按账号计数，不随客户端 IP 变化；只存 HMAC。代理和服务日志只记录路径，不记录认证 query、请求体、Authorization、Cookie 或原始上游错误。
 
 ## 学习视图与现有业务复用
 

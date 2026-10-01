@@ -34,7 +34,7 @@ const userResponse = z.object({
   nickname: z.string().max(100).default(""), headimgurl: z.string().max(2048).optional(),
 });
 
-function privateWechatRequest(url: URL): Promise<Response> {
+export function privateWechatRequest(url: URL): Promise<Response> {
   // 绕过 Next 的 fetch 调试/跟踪层：微信协议把 AppSecret/access_token 放在 query 中。
   return new Promise((resolve, reject) => {
     const request = httpsRequest(url, { method: "GET", timeout: 10_000, signal: AbortSignal.timeout(10_000) }, (response) => {
@@ -89,5 +89,7 @@ export async function exchangeWechatCode(config: WechatConfig, code: string, fet
 
 /** 无邮箱、手机号或角色声明；Supabase 的原生 identity 是绑定关系权威。 */
 export function wechatClaims(identity: WechatIdentity) {
-  return { sub: identity.subject, name: identity.nickname, preferred_username: identity.nickname, picture: identity.avatarUrl };
+  return { sub: identity.subject,
+    ...(identity.nickname ? { name: identity.nickname, preferred_username: identity.nickname } : {}),
+    ...(identity.avatarUrl ? { picture: identity.avatarUrl } : {}) };
 }

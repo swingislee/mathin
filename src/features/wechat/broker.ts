@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { authReturnOrigin, requestPublicOrigin } from "@/lib/auth-return-origin";
 import { requireWechatConfig } from "./config";
+import { requireWechatTokenConfig } from "./broker-config";
 import { WECHAT_FLOW_COOKIE, WECHAT_GUEST_COOKIE, WECHAT_PROVIDER, opaqueTokenSchema, wechatError, type WechatIdentity } from "./contract";
 import { assertWechatFlowSession, setWechatCookie } from "./session";
 import {
@@ -115,7 +116,7 @@ const exchangeSchema = z.object({
 
 export async function exchangeBrokerToken(request: Request) {
   try {
-    const config = requireWechatConfig();
+    const config = requireWechatTokenConfig();
     if (!request.headers.get("content-type")?.startsWith("application/x-www-form-urlencoded")) return failure();
     const body = await request.text();
     if (body.length > 8192) return failure();
@@ -140,7 +141,7 @@ export async function exchangeBrokerToken(request: Request) {
 
 export async function brokerUserInfo(request: Request) {
   try {
-    const config = requireWechatConfig();
+    const config = requireWechatTokenConfig();
     const authorization = request.headers.get("authorization") ?? "";
     if (!authorization.startsWith("Bearer ")) return failure();
     const grant = await readTicket("access", authorization.slice(7), config.clientId, grantSchema, true);
