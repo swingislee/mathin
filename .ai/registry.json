@@ -11,8 +11,16 @@
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-PARENT-IOS-20261001-INTEGRATION.md",
-      "writePaths": [".ai/tasks/DEV-PARENT-IOS-20261001.md", ".ai/tasks/DEV-PARENT-IOS-20261001-INTEGRATION.md"],
-      "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
+      "writePaths": [
+        ".ai/tasks/DEV-PARENT-IOS-20261001.md",
+        ".ai/tasks/DEV-PARENT-IOS-20261001-INTEGRATION.md",
+        ".ai/tasks/DEV-PARENT-IOS-SUPABASE-20261001.md",
+        ".ai/tasks/DEV-PARENT-IOS-NEXT-20261001.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "CHANGELOG.md"
+      ],
       "checkpoint": null,
       "next": "登记独立 iOS worktree，完成定向检查后集成交互版。"
     },
@@ -25,10 +33,14 @@
       "checkout": "worktree",
       "branch": "codex/parent-ios-reference-codex",
       "card": ".ai/tasks/DEV-PARENT-IOS-20261001.md",
-      "writePaths": ["apps/parent-ios/", ".github/workflows/parent-clients.yml", ".ai/handoffs/DEV-PARENT-IOS-20261001-codex-01.md"],
+      "writePaths": [
+        "apps/parent-ios/",
+        ".github/workflows/parent-clients.yml",
+        ".ai/handoffs/DEV-PARENT-IOS-20261001-codex-01.md"
+      ],
       "sharedPaths": [],
       "checkpoint": null,
-      "next": "实现四个主入口及参考图对应的离线交互，静态检查后交付 Mac/Xcode 验收。"
+      "next": "复用既有 Supabase 与 HTTP 接口实现 iOS 家长端；接口升级由 Supabase 和 Next.js 子 agent 同步交付。"
     },
     {
       "id": "COLLAB-20261001-R2",
@@ -39,7 +51,16 @@
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/COLLAB-20261001-R2.md",
-      "writePaths": ["AGENTS.md", "CLAUDE.md", ".gitignore", ".ai/", "docs/agent/collaboration.md", "scripts/agent-context.mjs", "tests/agent-coordination.test.ts", ".claude/skills/mathin-verify/"],
+      "writePaths": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        ".gitignore",
+        ".ai/",
+        "docs/agent/collaboration.md",
+        "scripts/agent-context.mjs",
+        "tests/agent-coordination.test.ts",
+        ".claude/skills/mathin-verify/"
+      ],
       "sharedPaths": [],
       "checkpoint": "7fd2bc80ce5e3c9860b4ed7fa7681a80dd28702c",
       "next": "协作架构已交付；按用户新指派登记下一批任务和集成人，Claude 实际接入待回传。"
@@ -53,8 +74,13 @@
       "checkout": "worktree",
       "branch": "codex/motion-ruler-codex",
       "card": ".ai/tasks/DEV-MOTION-20261001.md",
-      "writePaths": ["src/features/tools/motion-lab/RulerOverlay.tsx", ".ai/handoffs/DEV-MOTION-20261001-codex-02.md"],
-      "sharedPaths": ["CHANGELOG.md"],
+      "writePaths": [
+        "src/features/tools/motion-lab/RulerOverlay.tsx",
+        ".ai/handoffs/DEV-MOTION-20261001-codex-02.md"
+      ],
+      "sharedPaths": [
+        "CHANGELOG.md"
+      ],
       "checkpoint": "a3501cb9c304a9c1d5cc672404b8687590dc2cb1",
       "next": "标尺误选数字修复已在独立 worktree 检查并集成，等待开发端拖动验收；交接见 DEV-MOTION-20261001-codex-02.md，环形菜单继续待人工验收。"
     },
@@ -67,8 +93,16 @@
       "checkout": "worktree",
       "branch": "codex/class-roster-density-codex",
       "card": ".ai/tasks/DEV-CLASS-LIST-20261001.md",
-      "writePaths": ["src/features/school/ClassRosterClassSummary.tsx", "tests/enrollment-placement-drag-confirmation.test.ts", "tests/enrollment-placement-workbench.test.ts", "docs/plan/dashboard-work-entry-restructure.md", ".ai/handoffs/DEV-CLASS-LIST-20261001-codex-03.md"],
-      "sharedPaths": ["CHANGELOG.md"],
+      "writePaths": [
+        "src/features/school/ClassRosterClassSummary.tsx",
+        "tests/enrollment-placement-drag-confirmation.test.ts",
+        "tests/enrollment-placement-workbench.test.ts",
+        "docs/plan/dashboard-work-entry-restructure.md",
+        ".ai/handoffs/DEV-CLASS-LIST-20261001-codex-03.md"
+      ],
+      "sharedPaths": [
+        "CHANGELOG.md"
+      ],
       "checkpoint": "ec92855f1b2ea1f847e2dfdc081217b0879ae275",
       "next": "按最新反馈将教室移入班级信息，主行仅显示校区并统一字体；沿用独立 worktree，完成定向检查后交付开发端人工验收。"
     },
@@ -81,10 +115,62 @@
       "checkout": "primary-transition",
       "branch": "main",
       "card": ".ai/tasks/DEV-PLACE-VALUE-20261001.md",
-      "writePaths": ["src/features/tools/place-value/", "src/features/tools/spatial-interaction/", "src/features/spatial-math/renderer-r3f/spatial-box-outline.ts", "tests/place-value-box-scene.test.ts", "tests/place-value-workspace.test.ts", "tests/spatial-box-outline.test.ts", "tests/spatial-context-actions.test.ts", "tests/spatial-toolbar-placement.test.ts"],
-      "sharedPaths": ["CHANGELOG.md", "src/features/tools/AGENTS.md"],
+      "writePaths": [
+        "src/features/tools/place-value/",
+        "src/features/tools/spatial-interaction/",
+        "src/features/spatial-math/renderer-r3f/spatial-box-outline.ts",
+        "tests/place-value-box-scene.test.ts",
+        "tests/place-value-workspace.test.ts",
+        "tests/spatial-box-outline.test.ts",
+        "tests/spatial-context-actions.test.ts",
+        "tests/spatial-toolbar-placement.test.ts"
+      ],
+      "sharedPaths": [
+        "CHANGELOG.md",
+        "src/features/tools/AGENTS.md"
+      ],
       "checkpoint": "e73269ba9a75b63ddc156d15ea08fefa1eddffd3",
       "next": "等待产品负责人验收数位积木样板；后续增量从独立 worktree 开始。本卡不表示生产发布。"
+    },
+    {
+      "id": "DEV-PARENT-IOS-SUPABASE-20261001",
+      "title": "iOS 家长端现有数据与权限复用",
+      "agent": "codex",
+      "threadId": null,
+      "status": "in_progress",
+      "checkout": "worktree",
+      "branch": "codex/parent-ios-supabase-codex",
+      "card": ".ai/tasks/DEV-PARENT-IOS-SUPABASE-20261001.md",
+      "writePaths": [
+        "supabase/migrations/",
+        "docs/evidence/parent-ios-data-map.md",
+        "tests/parent-ios-learning-rls.test.ts",
+        ".ai/handoffs/DEV-PARENT-IOS-SUPABASE-20261001-codex-01.md"
+      ],
+      "sharedPaths": [],
+      "checkpoint": null,
+      "next": "按主任务与用户补充要求，复用现有表，与另一子 agent 同步合同；禁止新建业务数据表。"
+    },
+    {
+      "id": "DEV-PARENT-IOS-NEXT-20261001",
+      "title": "iOS 家长端共用 Next.js 接口升级",
+      "agent": "codex",
+      "threadId": null,
+      "status": "in_progress",
+      "checkout": "worktree",
+      "branch": "codex/parent-ios-next-codex",
+      "card": ".ai/tasks/DEV-PARENT-IOS-NEXT-20261001.md",
+      "writePaths": [
+        "src/features/parent-portal/",
+        "src/app/api/v1/parent/learning/",
+        "contracts/parent-api/",
+        "apps/parent-wechat/miniprogram/lib/api-types.ts",
+        "tests/parent-ios-learning.test.ts",
+        ".ai/handoffs/DEV-PARENT-IOS-NEXT-20261001-codex-01.md"
+      ],
+      "sharedPaths": [],
+      "checkpoint": null,
+      "next": "按主任务与用户补充要求，复用现有表，与另一子 agent 同步合同；禁止新建业务数据表。"
     }
   ]
 }
