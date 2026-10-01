@@ -25,6 +25,8 @@
 | `GET /api/v1/parent/portal?resource=submission&id=...&participant=...` | 最新一次提交；未提交为 `null` | 必须 |
 | `GET /api/v1/parent/learning?participant=...` | 一个孩子的课表、考勤、学习摘要、请假进度、报告及当前账号通知 | 必须 |
 | `POST /api/v1/parent/learning` | `leave` 提交请假申请；`readNotification` 标记本人通知已读 | 必须 |
+| `GET /api/v1/parent/assessments?participant=...` | 一个孩子的 1 对 1 测评申请、资格和有限范围教师 | 必须 |
+| `POST /api/v1/parent/assessments` | `request` 提交测评意向；`confirm` 确认双方共同时间 | 必须 |
 | `POST /api/v1/parent/portal` | `intake` / `book` / `cancel` / `submit` | `intake` 免登录，其余必须 |
 | `POST /api/v1/parent/media` | multipart `file` 上传，附练习与参与人两个请求头 | 必须 |
 | `GET /api/v1/parent/media?id=...` | 获取 5 分钟有效的私有预览地址 | 必须 |
@@ -58,7 +60,7 @@
 
 ## 1 对 1 测评稳定合同
 
-本节和 OpenAPI `components.schemas` 先固定跨端 DTO，`/api/v1/parent/assessments` 的 HTTP 实现待接入后加入 `paths`。本次合同提交不表示数据库 RPC 已安装或预约业务已可运行。
+`/api/v1/parent/assessments` 的 HTTP 实现和 OpenAPI 已接入本节合同。GET 必填 `participant`；POST 的 `request`（含同 ID 幂等恢复）返回 HTTP 201，`confirm` 返回 HTTP 200。代码交付不表示数据库 RPC 已安装或预约业务已可运行；数据库尚未升级时返回 `UNAVAILABLE`，目标环境升级按各自授权流程执行。
 
 独立测评复用已有 `lead_invitation_threads(kind=assessment_1v1)`，通过 `parent_assessment_overview`、`request_parent_assessment` 和 `confirm_parent_assessment` 读取和推进同一条邀约。HTTP 使用调用者的 Bearer Supabase client，数据库实时核验 `miniapp_can_participate(student, 'grades')`；学生 UUID 经现有 `leads.student_id` 对应业务线索。没有唯一可用线索时保留已有邀约读取和确认，新申请由 `eligibility` 说明限制。
 

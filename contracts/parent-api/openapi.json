@@ -939,6 +939,194 @@
           }
         }
       }
+    },
+    "/api/v1/parent/assessments": {
+      "get": {
+        "operationId": "getParentAssessments",
+        "summary": "读取一个孩子的 1 对 1 测评申请和可选教师",
+        "description": "使用调用者身份核验参与人 grades 权限；教师仅来自当前有效报名班级的当前任课教师或负责人。既有邀约按稳定学生 UUID 读取。teachers 和 requests 各最多 100 条；返回时间协调事实，不提供全局可约库存。响应 private, no-store。",
+        "security": [
+          {
+            "parentBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "participant",
+            "in": "query",
+            "required": true,
+            "description": "本人可访问的学生 UUID；仅接受一个 participant 参数。",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "真实申请资格、有限范围教师和邀约。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentAssessmentOverview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "输入格式、字段内容或命令无效。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "需要有效 Bearer 令牌。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "账号安全门或当前参与人权限不足。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RPC 尚未安装、查询失败或响应不符合合同；不以空数据掩盖失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "submitParentAssessment",
+        "summary": "申请 1 对 1 测评或确认双方共同时间",
+        "description": "request 保留客户端稳定 UUID 和规范化初始输入，幂等重试返回当前同一邀约；confirm 锁定邀约并核验 expectedUpdatedAt、教师与未来精确交集。已确认同一时段可重试。所有资格、时段和幂等冲突统一返回 CONFLICT，客户端刷新概览后核对并保留原请求 ID。JSON 最多 32 KiB；不接受客户端写 state、teacherTimeOptions 或内部线索字段。响应 private, no-store。",
+        "security": [
+          {
+            "parentBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssessmentCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "确认成功或同一确认的幂等恢复，返回当前邀约。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentAssessmentRequest"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "申请成功或同 ID 同输入的幂等恢复，返回当前邀约；不表示测评已完成。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentAssessmentRequest"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "输入格式、字段内容或命令无效。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "需要有效 Bearer 令牌。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "账号安全门或当前参与人权限不足。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "邀约不存在或不可见。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "申请资格、活跃邀约、教师、时间、版本或幂等输入冲突；刷新概览核对。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "JSON 请求超过 32 KiB。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RPC 尚未安装、查询失败或响应不符合合同；不以空数据掩盖失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
