@@ -25,14 +25,14 @@
         "CHANGELOG.md"
       ],
       "checkpoint": "a718402b1a74a846d1a0dc8022b8881da59ecf06",
-      "next": "API/Supabase 已在 main；iOS 与微信已组成 codex/parent-clients-integration-codex 候选，自动审批拦截 main 批量合入，待用户在本会话明确批准。Mac 与小程序人工验收另记。"
+      "next": "iOS、共享 API/Supabase 已在 main；小程序候选保留，原会话正在请求具体提交合入批准。其他已回传增量待独立复核，Mac 与产品验收另记。"
     },
     {
       "id": "DEV-PARENT-IOS-20261001",
       "title": "参考截图构建 iOS 家长端",
       "agent": "codex",
       "threadId": "01a0f7b2-73aa-74b3-8cf6-b23207ece7d6",
-      "status": "in_review",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/parent-ios-reference-codex",
       "card": ".ai/tasks/DEV-PARENT-IOS-20261001.md",
@@ -43,7 +43,7 @@
       ],
       "sharedPaths": [],
       "checkpoint": "6483208bbd35d3d314ee1d33b871a55f8bf0f493",
-      "next": "原生四页和真实共享 API 接入已提交并复核；候选分支集成静态检查通过，待 main 合入批准及 Mac/Xcode 构建、人工验收。"
+      "next": "源码与交接已单独获准集成 main a4dc7fc9/a743aa51；定向静态检查与只读复核通过，待 Mac/Xcode 构建及人工验收。"
     },
     {
       "id": "COLLAB-20261001-R2",
@@ -213,7 +213,7 @@
       ],
       "sharedPaths": [],
       "checkpoint": "ebd4bc8c0d4fd8331afc1f3b8b106a36173d30e5",
-      "next": "源码、预约成功状态补丁与定向检查已交付；已接入家长端候选分支，main 合入等待本会话明确批准。模拟器及视觉待验收。"
+      "next": "源码及定向检查完成、候选已组装；原会话等待用户明确批准三提交合入 main。模拟器及视觉待验收。"
     }
   ]
 }

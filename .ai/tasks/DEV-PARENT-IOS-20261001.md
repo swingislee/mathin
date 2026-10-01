@@ -21,4 +21,4 @@
 - 机器检查、代码提交、Mac 构建和人工验收结果随交接单记录。
 - 生产操作与 Gate：不涉及。
 - 原生代码 `6483208b` 与交接 `e58366b5` 已完成；最终只读复核无明显阻断。Windows 静态检查通过，Swift/Xcode 和人工视觉仍待执行。
-- 原生与同步小程序已组成独立候选分支 `codex/parent-clients-integration-codex`，含本批已在 main 的共享 API。自动审批拒绝向 main 批量合入，等待本会话用户明确批准；候选路径可先供 Mac 构建使用。
+- 原生与同步小程序已组成独立候选分支 `codex/parent-clients-integration-codex`。自动审批拒绝跨会话小程序的批量合入后，明确排除小程序，已单独允许当前用户 iOS 请求集成：main `a4dc7fc9` / `a743aa51`。小程序继续在原会话等待明确授权；iOS 可从主工程供 Mac 构建使用。
