@@ -17,29 +17,28 @@
   position: relative;
   isolation: isolate;
   border-radius: var(--table-record-radius);
-  outline: none;
+  /* 原生轮廓不生成行子盒，固定布局表格保留原列数和跨列宽度。 */
+  outline: 1px solid var(--followup-side);
+  outline-offset: -1px;
 }
 .records > [data-slot="table"] > tbody > tr[data-followup-row-key][data-followup-expanded="true"]:not([data-followup-group]) {
   border-radius: var(--table-record-radius) var(--table-record-radius) 0 0;
+  /* 只去掉接缝的横线，两侧 1px 轮廓继续连接到详情。 */
+  clip-path: polygon(0 0, 100% 0, 100% 100%, calc(100% - 1px) 100%, calc(100% - 1px) calc(100% - 1px), 1px calc(100% - 1px), 1px 100%, 0 100%);
 }
 .records > [data-slot="table"] > tbody > tr[data-followup-inline-details] {
   border-radius: 0 0 var(--table-record-radius) var(--table-record-radius);
+  clip-path: polygon(0 0, 1px 0, 1px 1px, calc(100% - 1px) 1px, calc(100% - 1px) 0, 100% 0, 100% 100%, 0 100%);
 }
 .records > [data-slot="table"] > tbody > tr:is([data-followup-row-key], [data-followup-inline-details]) > [data-slot="table-cell"] {
   box-shadow: none;
 }
 .records > [data-slot="table"] > tbody > tr:is([data-followup-row-key], [data-followup-inline-details]) > .flush::after { content: none; }
-.records > [data-slot="table"] > tbody > tr:is([data-followup-row-key], [data-followup-inline-details])::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  /* 行内覆盖固定列与姓名格；行的独立绘制层使轮廓仍位于固定表头之下。 */
-  z-index: 30;
-  border: 1px solid;
-  border-color: var(--followup-top) var(--followup-side) var(--followup-bottom);
-  border-radius: inherit;
-  pointer-events: none;
-}
+
+/* 记录详情由摘要行展开与收起，释放重复关闭入口预留的空间。 */
+.records [data-followup-inline-details] > td > [data-inline-entry-compact="true"] { padding-right: 0; }
+.records [data-followup-inline-details] > td > [data-inline-entry-compact="true"] > [data-inline-entry-header],
+.records [data-followup-inline-details] > td > [data-dashboard-inline-entry] > [data-inline-entry-header] > [data-inline-entry-close] { display: none; }
 
 /* 记录表统一启用；矩阵和普通宽表继续使用原来的横向比较布局。 */
 @media (max-width: 63.999rem) {
@@ -87,9 +86,6 @@
   .records > [data-slot="table"] > tbody > tr[data-followup-row-key] > [data-slot="table-cell"] { background-color: inherit; }
   .records > [data-slot="table"] > tbody > tr[data-followup-inline-details] > [data-slot="table-cell"] { padding: 0.25rem; }
 
-  /* 详情复用原展开按钮和 Esc 收起，避免每层再次预留侧边关闭栏。 */
-  .records [data-inline-entry-compact="true"] { padding-right: 0; }
-  .records [data-inline-entry-compact="true"] > [data-inline-entry-header] { display: none; }
   .records [data-followup-detail-content] { padding-top: 0; }
   .records [data-dashboard-row-disclosure] { width: 2rem; height: 2.75rem; flex-shrink: 0; }
 }
