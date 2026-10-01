@@ -18,15 +18,17 @@ export function TableBody({ className,...props }:React.ComponentProps<"tbody">){
 export function TableRow({ className,...props }:React.ComponentProps<"tr">){return <tr className={cn("bg-card transition-colors hover:bg-table-hover",className)} {...props}/>;}
 export function TableHead({ className,...props }:React.ComponentProps<"th">){return <th className={cn("h-10 px-4 text-left align-middle text-xs font-medium text-muted",className)} {...props}/>;}
 type TableCellProps = React.ComponentProps<"td"> & {
+  /** 贴边内容使用零内边距，行轮廓保持在内容表面上方。 */
+  flush?: boolean;
   mobileLabel?: string;
   mobileHidden?: boolean;
   mobileEmpty?: boolean;
   mobileSpan?: "full";
 };
-export function TableCell({ className, mobileLabel, mobileHidden, mobileEmpty, mobileSpan, children, ...props }: TableCellProps) {
+export function TableCell({ className, flush = false, mobileLabel, mobileHidden, mobileEmpty, mobileSpan, children, ...props }: TableCellProps) {
   return <td data-slot="table-cell" data-table-mobile-hidden={mobileHidden || undefined}
     data-table-mobile-empty={mobileEmpty || undefined} data-table-mobile-span={mobileSpan}
-    data-table-mobile-labeled={Boolean(mobileLabel) || undefined} className={cn("px-4 py-3 align-middle", className)} {...props}>
+    data-table-mobile-labeled={Boolean(mobileLabel) || undefined} className={cn("px-4 py-3 align-middle", flush && "relative p-0", flush && styles.flush, className)} {...props}>
     {mobileLabel && <span data-table-mobile-label className={styles.label}>{mobileLabel}</span>}{children}
   </td>;
 }
