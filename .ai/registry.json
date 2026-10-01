@@ -100,7 +100,7 @@
       "title": "iOS 设置与二级页面对齐参考并接入开发数据",
       "agent": "codex",
       "threadId": "01a0f814-c4aa-73c0-8e9b-93481aa86ac2",
-      "status": "ready",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/parent-ios-details-codex",
       "card": ".ai/tasks/DEV-PARENT-IOS-DETAILS-20261002.md",
@@ -109,8 +109,8 @@
         ".ai/handoffs/DEV-PARENT-IOS-DETAILS-20261002-codex-01.md"
       ],
       "sharedPaths": [],
-      "checkpoint": "ba9e8bd3e62a4292ba929036bd8949f5aeeeee59",
-      "next": "按原会话人类授权，在独立worktree对齐最初参考截图的设置与二级页，并消费现有家长HTTP和固定开发数据；保留已可运行的iPad模板，真实设备新版本继续人工验证，不改后端合同或数据库。"
+      "checkpoint": "cb94390fef84327f7e1400c45f3df62b804cf9ad",
+      "next": "设置、二级页与真实数据V6导出已复核集成main 89afea53/d89583ba，源码与已检head一致；复用静态/导出/交付哈希检查。manifest三项LAN增量已记任务卡，V6 iPad编译、登录和视觉待人工验收，后端与数据库未改。"
     },
     {
       "id": "DEV-PARENT-IOS-20261001-INTEGRATION",
