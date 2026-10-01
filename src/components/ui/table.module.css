@@ -1,5 +1,16 @@
 .label { display: none; }
 
+/* 姓名网格等贴边内容可覆盖底层阴影，轮廓在内容之上复用当前行的同一阴影。 */
+.flush::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  box-shadow: inherit;
+  pointer-events: none;
+}
+
 /* 记录表统一启用；矩阵和普通宽表继续使用原来的横向比较布局。 */
 @media (max-width: 63.999rem) {
   .records { max-height: none; overflow: visible; }
