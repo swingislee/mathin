@@ -11,6 +11,33 @@
   pointer-events: none;
 }
 
+/* 嵌套记录共用微圆角轮廓，摘要与展开详情的接缝保持直边。 */
+.records .records > [data-slot="table"] > tbody > tr:is([data-followup-row-key], [data-followup-inline-details]) {
+  --table-record-radius: 0.25rem;
+  position: relative;
+  border-radius: var(--table-record-radius);
+  outline: none;
+}
+.records .records > [data-slot="table"] > tbody > tr[data-followup-row-key][data-followup-expanded="true"]:not([data-followup-group]) {
+  border-radius: var(--table-record-radius) var(--table-record-radius) 0 0;
+}
+.records .records > [data-slot="table"] > tbody > tr[data-followup-inline-details] {
+  border-radius: 0 0 var(--table-record-radius) var(--table-record-radius);
+}
+.records .records > [data-slot="table"] > tbody > tr:is([data-followup-row-key], [data-followup-inline-details]) > [data-slot="table-cell"] {
+  box-shadow: none;
+}
+.records .records > [data-slot="table"] > tbody > tr:is([data-followup-row-key], [data-followup-inline-details])::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border: 1px solid;
+  border-color: var(--followup-top) var(--followup-side) var(--followup-bottom);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
 /* 记录表统一启用；矩阵和普通宽表继续使用原来的横向比较布局。 */
 @media (max-width: 63.999rem) {
   .records { max-height: none; overflow: visible; }
