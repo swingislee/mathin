@@ -21,14 +21,14 @@
       "title": "恢复 Motion Lab 拖动与长按功能",
       "agent": "codex",
       "threadId": "01a0f6fc-745e-7fd0-9b15-ce58ff01a2b8",
-      "status": "integrated",
-      "checkout": "primary-transition",
-      "branch": "main",
+      "status": "in_progress",
+      "checkout": "worktree",
+      "branch": "codex/motion-ruler-codex",
       "card": ".ai/tasks/DEV-MOTION-20261001.md",
-      "writePaths": ["src/features/tools/motion-lab/", "tests/motion-lab-interactions.test.ts"],
-      "sharedPaths": ["CHANGELOG.md", "messages/en.json", "messages/zh.json"],
-      "checkpoint": "575e16e14e039971ff2005d63f87fb162547c061",
-      "next": "连续环形菜单已提交，等待产品视觉验收；下一独立批次使用 worktree。"
+      "writePaths": ["src/features/tools/motion-lab/RulerOverlay.tsx", ".ai/handoffs/DEV-MOTION-20261001-codex-02.md"],
+      "sharedPaths": ["CHANGELOG.md"],
+      "checkpoint": "bfc3f62c8bbb3e597b0f7a5c918b5c69e88a2b54",
+      "next": "按用户反馈修复拖拽标尺时误选数字，在独立 worktree 完成窄检查后集成开发页面；环形菜单继续待人工验收。"
     },
     {
       "id": "DEV-CLASS-LIST-20261001",
