@@ -2,6 +2,7 @@ import type { HistoricalEnrollment } from "./student-business-history-contract";
 import { placementHealth, type EnrollmentPlacementBoard, type PlacementClassroom, type PlacementStudent } from "./enrollment-workflow-contract";
 import { zonedDateParts } from "./schedule";
 import { followupTableMessages } from "./followup-table-messages";
+import { classRosterMessages } from "./class-roster-presentation-contract";
 import type { DashboardFieldDefinitions, DashboardFieldOption } from "./dashboard-page/dashboard-table-field-contract";
 
 export interface PlacementRosterRow {
@@ -13,6 +14,7 @@ export interface PlacementRosterRow {
 export const PLACEMENT_TABLE_COLUMNS = {
   grade: ["grade"], term: ["term"], course: ["course"], difficulty: ["difficulty"], classroom: ["classroom", "classText"],
   teacher: ["teacher", "teacherText"], time: ["weekday", "startTime", "endTime", "scheduleText"], health: ["student", "phone", "health"],
+  campus: ["campus", "room", "locationText"],
 } as const;
 type Translate = (key: string, values?: Record<string, string | number>) => string;
 const option = (value: string | null | undefined, label = value): DashboardFieldOption[] => value ? [{ value, label: label || value }] : [];
@@ -26,6 +28,7 @@ const related = { group: "class-session", rows: (row: PlacementRosterRow): Place
 export function placementTableFields(board: EnrollmentPlacementBoard, locale: string, timeZone: string, t: Translate,
   sourceNames: (row: PlacementRosterRow) => { names: string; phones: string }): DashboardFieldDefinitions<PlacementRosterRow> {
   const m = followupTableMessages(locale);
+  const rosterM = classRosterMessages(locale);
   const studentRelated = { group: "placement-student", rows: (row: PlacementRosterRow): PlacementRosterRow[] => row.students.length
     ? row.students.map(student => ({ ...row, students: [student], sourceEnrollments: [] }))
     : row.sourceEnrollments?.length ? row.sourceEnrollments.map(fact => ({ ...row, sourceEnrollments: [fact] })) : [row] };
@@ -47,6 +50,9 @@ export function placementTableFields(board: EnrollmentPlacementBoard, locale: st
   const weekdays = Array.from({ length: 7 }, (_, index) => ({ value: String(index + 1), label: new Intl.DateTimeFormat(locale, { weekday: "long", timeZone: "UTC" }).format(new Date(Date.UTC(2026, 8, 7 + index))) }));
   return {
     grade: { kind: "enum", label: m.grade, values: row => row.grade ? option(String(row.grade), t("grade", { grade: row.grade })) : [], sortValue: row => row.grade || null },
+    campus: { kind: "enum", label: rosterM.campus, related, values: row => classes(row).flatMap(item => option(item.location?.campusId, item.location?.campusName)), sortValue: row => row.classroom?.location?.campusName },
+    room: { kind: "text", label: rosterM.room, related, value: row => row.classroom?.location?.roomName ?? "" },
+    locationText: { kind: "text", label: rosterM.sourceLocation, value: row => row.historical?.room_label ?? "", sortable: false },
     term: { kind: "enum", label: t("term"), values: row => terms.has(row.termId) ? option(row.termId, terms.get(row.termId)) : [], sortValue: row => terms.get(row.termId) },
     course: { kind: "enum", label: m.course, related, values: row => [...new Set(row.classroom ? [row.classroom.courseId] : [...row.classrooms.map(item => item.courseId), ...row.students.map(item => item.courseId)])].flatMap(id => option(id, courses.get(id))), sortValue: row => courses.get(row.classroom?.courseId ?? "") },
     classroom: { kind: "enum", label: t("classroom"), related, values: row => classes(row).flatMap(item => option(item.id, item.name)), sortValue: row => row.classroom?.name },

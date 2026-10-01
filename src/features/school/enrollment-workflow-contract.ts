@@ -32,6 +32,7 @@ export const enrollmentWorkflowOptionsSchema = z.object({
     id: databaseUuid, name: z.string(), courseId: databaseUuid, termId: databaseUuid, capacity: z.number().int().nonnegative().nullable(),
     activeCount: z.number().int().nonnegative(), operationalStatus: z.enum(["planning", "active"]), teacherNames: z.string(),
     teachers: z.array(z.object({ id: databaseUuid, name: z.string() })).optional(),
+    location: z.object({ campusId: nullableId, campusName: z.string().nullable(), roomName: z.string().nullable() }).optional(),
     sessions: z.array(z.object({ at: z.string(), duration: z.number() })),
   })),
 });
@@ -80,6 +81,7 @@ export const placementAccessSchema = z.object({
 });
 
 export interface EnrollmentPlacementBoard {
+  locationsFailed?: boolean;
   access?: z.infer<typeof placementAccessSchema>;
   sessionTransfers?: import('./enrollment-placement-change-contract').SessionTransfer[];
   options: EnrollmentWorkflowOptions;

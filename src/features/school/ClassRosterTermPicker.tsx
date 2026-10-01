@@ -21,18 +21,27 @@ export function ClassRosterTermPicker({ terms, selectedId, onChange, disabled = 
   const term = options[selected];
   const label = term ? `${term.name}${term.startsOn && term.endsOn ? ` · ${term.startsOn} — ${term.endsOn}` : ""}` : m.allTerms;
   const choose = (id?: string) => { onChange(id); setOpen(false); };
-  return <div className="flex flex-wrap items-center gap-1" data-class-roster-period>
+  return <div className="flex min-w-0 max-w-full flex-wrap items-center gap-1" data-class-roster-period>
+    <div className="flex items-center gap-1">
     {([current, current - 1] as const).map((index, position) => <Button key={position} disabled={disabled || index < 0} size="sm"
       variant={selectedId && selected === index ? "secondary" : "ghost"} className="h-8 px-2 text-xs"
       aria-pressed={Boolean(selectedId && selected === index)} onClick={() => choose(options[index]?.id)}>{t(position ? "previous_term" : "current_term")}</Button>)}
-    <Button disabled={disabled || selected <= 0} variant="ghost" size="sm" className="size-8 p-0" aria-label={t("earlier_term")} onClick={() => choose(options[selected - 1]?.id)}><ChevronLeft className="size-4" /></Button>
+    </div>
+    <div className="flex min-w-0 max-w-full basis-full items-center gap-1 lg:basis-auto">
+    <Button disabled={disabled || selected <= 0} variant="ghost" size="sm" className="size-10 shrink-0 p-0 lg:size-8" aria-label={t("earlier_term")} onClick={() => choose(options[selected - 1]?.id)}><ChevronLeft className="size-4" /></Button>
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild><Button disabled={disabled} variant="secondary" size="sm" className="h-8 gap-1.5 px-2 text-xs tabular-nums" aria-label={`${t("choose")}：${label}`}><CalendarDays className="size-3.5" aria-hidden />{label}</Button></PopoverTrigger>
+      <PopoverTrigger asChild><Button disabled={disabled} variant="secondary" size="sm" className="h-auto min-h-10 min-w-0 flex-1 gap-1.5 px-2 py-1.5 text-xs tabular-nums lg:min-h-8 lg:flex-none lg:py-1" aria-label={`${t("choose")}：${label}`}>
+        <CalendarDays className="size-3.5 shrink-0" aria-hidden /><span className="flex min-w-0 flex-col items-start text-left lg:flex-row lg:items-center lg:gap-1">
+          <span className="whitespace-normal break-words">{term?.name ?? m.allTerms}</span>
+          {term?.startsOn && term.endsOn && <span className="whitespace-normal text-[10px] text-muted lg:text-xs"><span className="hidden lg:inline"> · </span>{term.startsOn} — {term.endsOn}</span>}
+        </span>
+      </Button></PopoverTrigger>
       <PopoverContent align="start" className="w-auto max-w-[calc(100vw-2rem)] p-3"><div className="flex max-h-64 min-w-64 flex-col gap-1 overflow-auto">
         <Button variant={!selectedId ? "secondary" : "ghost"} size="sm" className="justify-start" onClick={() => choose()}>{m.allTerms}</Button>
         {options.map(option => <Button key={option.id} variant={option.id === selectedId ? "secondary" : "ghost"} size="sm" className="justify-start" onClick={() => choose(option.id)}>{option.name}</Button>)}
       </div></PopoverContent>
     </Popover>
-    <Button disabled={disabled || selected < 0 || selected >= options.length - 1} variant="ghost" size="sm" className="size-8 p-0" aria-label={t("later_term")} onClick={() => choose(options[selected + 1]?.id)}><ChevronRight className="size-4" /></Button>
+    <Button disabled={disabled || selected < 0 || selected >= options.length - 1} variant="ghost" size="sm" className="size-10 shrink-0 p-0 lg:size-8" aria-label={t("later_term")} onClick={() => choose(options[selected + 1]?.id)}><ChevronRight className="size-4" /></Button>
+    </div>
   </div>;
 }

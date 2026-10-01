@@ -135,7 +135,7 @@ describe("enrollment placement class roster", () => {
     expect(row.cells[2].content).toContain("甲老师、乙老师");
     expect(row.cells[3].content).toContain("standard");
     expect(studentKeys(row.cells[4].content)).toEqual(["assigned-fourth", "paused-fourth"]);
-    expect(row.cells[0].content).toContain('href="/dashboard/classes/autumn-4"');
+    expect(row.cells[0].content).toContain('aria-label="班级信息 · autumn-4"');
     expect(row.cells[0].content).not.toContain('view=records');
     expect(rows.some(row => row.attributes.includes('data-class-session-strip'))).toBe(false);
     expect(row.cells[0].content).toContain('aria-label="展开autumn-4的课次"');
@@ -159,7 +159,7 @@ describe("enrollment placement class roster", () => {
     expect(columnClasses(historical)).toEqual(columnClasses(current));
     expect(studentKeys(historical.cells[4].content)).toEqual(['historical-enrollment']);
     expect(historical.content).toContain('原老师');
-    expect(historical.content).toContain('1200');
+    expect(historical.content).toContain('aria-label="班级信息 · 原寒假班"');
     expect(historical.content).not.toMatch(/data-placement-target|data-placement-select|touch-none/);
     for(const state of ['current','historical','all']){
       const visible=renderRoster(undefined,{initialBoard,history,workspaceQuery:{state}});
@@ -184,7 +184,46 @@ describe("enrollment placement class roster", () => {
     const shared = rows.filter(row => classroomId(row.attributes) === "autumn-4");
     expect(shared).toHaveLength(2);
     for (const row of shared) expect(studentKeys(row.cells[4].content)).toEqual(["assigned-fourth", "paused-fourth"]);
+    for (const row of shared) expect(row.cells[2].content).toContain("4 年级");
     expect(rows.flatMap(row => studentKeys(row.content)).filter(key => key === "pending-fourth")).toHaveLength(1);
+  });
+
+  it("uses grades for teacher groups and personal rosters, and teachers for all-classes grade groups", () => {
+    for (const [scope, group, identity] of [["all", "grade", "teacher"], ["all", "teacher", "grade"], ["mine", "grade", "grade"], ["mine", "teacher", "grade"]] as const) {
+      const markup = renderWorkbench({ initialBoard: teachingBoard(), workspace: "classes", workspaceQuery: { scope, group } });
+      expect(markup).toContain(`data-class-identity-column="${identity}"`);
+      const row = renderRoster(undefined, { initialBoard: teachingBoard(), workspace: "classes", workspaceQuery: { scope, group } }).find(row => classroomId(row.attributes) === "autumn-4")!;
+      expect(row.cells[2].content).toContain(identity === "grade" ? "4 年级" : "测试教师");
+    }
+  });
+
+  it("locates classes through canonical campus and room without putting names or textbooks in the desktop summary", () => {
+    const initialBoard = { ...board, options: { ...board.options, classrooms: board.options.classrooms.map(row => ({ ...row,
+      location: { campusId: "east", campusName: "东校区", roomName: "305" },
+    })) } };
+    const markup = renderWorkbench({ initialBoard, workspace: "classes" });
+    expect(markup).toMatch(/<thead[\s\S]*?校区/);
+    const row = renderRoster(undefined, { initialBoard, workspace: "classes" }).find(row => classroomId(row.attributes) === "autumn-4")!;
+    expect(row.cells[0].content).toContain("东校区");
+    expect(row.cells[0].content).toContain("305");
+    expect(row.cells[0].content).not.toContain("4年级数学");
+    expect(row.attributes).toContain('data-mobile-roster-open="false"');
+    expect(row.cells[0].content).toContain('data-class-roster-toggle="autumn-4"');
+    expect(row.cells[4].attributes).toContain("data-class-roster-members");
+    const searched = renderRoster(undefined, { initialBoard, workspace: "classes", initialQuery: "东校区" }).find(row => classroomId(row.attributes) === "autumn-4")!;
+    expect(searched.cells[4].content).not.toContain("opacity-35");
+    const focused = renderRoster(undefined, { initialBoard, workspace: "classes", focusStudentId: "student-assigned-fourth" }).find(row => classroomId(row.attributes) === "autumn-4")!;
+    expect(focused.attributes).toContain('data-mobile-roster-open="true"');
+  });
+
+  it("filters canonical campuses while preserving the underlying classroom and roster", () => {
+    const initialBoard = { ...board, options: { ...board.options, classrooms: board.options.classrooms.map(row => ({ ...row,
+      location: { campusId: row.id === "autumn-4" ? "east" : "west", campusName: row.id === "autumn-4" ? "东校区" : "西校区", roomName: "305" },
+    })) } };
+    const fields = JSON.stringify({ version: 2, filters: { campus: { kind: "enum", values: ["east"] } } });
+    const rows = renderRoster(undefined, { initialBoard, workspace: "classes", workspaceQuery: { fields } });
+    expect(rows.map(row => classroomId(row.attributes)).filter(Boolean)).toEqual(["autumn-4"]);
+    expect(studentKeys(rows.find(row => classroomId(row.attributes) === "autumn-4")!.cells[4].content)).toEqual(["assigned-fourth", "paused-fourth"]);
   });
 
   it("lets the explicit all-terms choice include every period even with a current term", () => {

@@ -87,3 +87,61 @@ it('blocks dragging between unrelated classes and keeps commercial withdrawal hi
   expect(document.querySelector('[role="dialog"]')).toBeNull();
   expect(calls.move).not.toHaveBeenCalled();expect(calls.change).not.toHaveBeenCalled();
 });
+
+async function mountRoster(canTeach = false) {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  calls.move.mockClear(); calls.change.mockClear();
+  HTMLElement.prototype.setPointerCapture = vi.fn();
+  const element = document.createElement('div'); document.body.append(element); const root = createRoot(element);
+  cleanup = async () => { await act(async () => root.unmount()); element.remove(); };
+  const initialBoard = { ...board, options: { ...board.options, classrooms: board.options.classrooms.map(row => ({ ...row,
+    location: { campusId: id(70), campusName: '东校区', roomName: '305' },
+  })) } };
+  const children = createElement(EnrollmentPlacementWorkbench, { initialBoard, canCreateClass: false, workspace: 'classes', canTeach });
+  const props = { locale: 'zh', messages, timeZone: 'Asia/Shanghai', children };
+  await act(async () => root.render(createElement(NextIntlClientProvider, props)));
+  return element;
+}
+
+it('opens the roster independently of lessons and keeps class information accessible', async () => {
+  const element = await mountRoster(true);
+  const row = element.querySelector<HTMLElement>(`[data-placement-classroom="${id(3)}"]`)!;
+  const roster = row.querySelector<HTMLButtonElement>('[data-class-roster-toggle]')!;
+  const lessons = [...row.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent?.startsWith('课次'))!;
+  await act(async () => roster.click());
+  expect(row.dataset.mobileRosterOpen).toBe('true');
+  expect(roster.getAttribute('aria-expanded')).toBe('true');
+  await act(async () => lessons.click());
+  expect(row.getAttribute('aria-expanded')).toBe('true');
+  await act(async () => roster.click());
+  expect(row.dataset.mobileRosterOpen).toBe('false');
+  expect(row.getAttribute('aria-expanded')).toBe('true');
+  expect(element.querySelectorAll(`[data-placement-student="${id(5)}"]`)).toHaveLength(1);
+  await act(async () => row.querySelector<HTMLButtonElement>('[data-class-info]')!.click());
+  const info = document.querySelector('[role="dialog"]')!;
+  expect(info.textContent).toContain('原班'); expect(info.textContent).toContain('数学'); expect(info.textContent).toContain('教师');
+  expect(info.querySelector('a')?.getAttribute('href')).toBe(`/dashboard/classes/${id(3)}`);
+  expect(calls.move).not.toHaveBeenCalled(); expect(calls.change).not.toHaveBeenCalled();
+});
+
+it('lets touch scroll through names and uses select-then-seat for a reviewed transfer', async () => {
+  const element = await mountRoster();
+  const source = element.querySelector<HTMLElement>(`[data-placement-student="${id(5)}"]`)!;
+  for (const type of ['pointerdown', 'pointermove', 'pointerup']) {
+    const event = new MouseEvent(type, { bubbles: true, button: 0, clientX: 20, clientY: type === 'pointerdown' ? 30 : 160 });
+    Object.defineProperties(event, { pointerId: { value: 1 }, isPrimary: { value: true }, pointerType: { value: 'touch' } });
+    await act(async () => source.dispatchEvent(event));
+    expect(event.defaultPrevented).toBe(false);
+  }
+  expect(HTMLElement.prototype.setPointerCapture).not.toHaveBeenCalled();
+  expect(document.querySelector('[data-placement-drag-preview]')).toBeNull();
+  await act(async () => source.querySelector<HTMLButtonElement>('[data-placement-select]')!.click());
+  const target = element.querySelector<HTMLElement>(`[data-placement-classroom="${id(4)}"]`)!;
+  await act(async () => target.querySelector<HTMLButtonElement>('[data-class-roster-toggle]')!.click());
+  const seat = target.querySelector<HTMLButtonElement>(`[data-placement-target="${id(4)}:1"] button`)!;
+  expect(seat.disabled).toBe(false);
+  await act(async () => seat.click());
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('确认调班');
+  expect(calls.move).not.toHaveBeenCalled(); expect(calls.change).not.toHaveBeenCalled();
+  expect(source.closest('[data-placement-classroom]')?.getAttribute('data-placement-classroom')).toBe(id(3));
+});
