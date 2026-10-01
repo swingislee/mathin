@@ -70,8 +70,11 @@ export function validateRegistry(registry) {
   for (const task of registry.tasks) {
     if (!task || typeof task.id !== "string" || !/^[A-Z0-9][A-Z0-9-]*$/.test(task.id) || ids.has(task.id)) throw new Error("任务 ID 无效或重复。");
     ids.add(task.id);
-    if (!["title", "agent", "threadId", "branch", "next"].every((key) => typeof task[key] === "string" && task[key].trim())) {
+    if (!["title", "agent", "branch", "next"].every((key) => typeof task[key] === "string" && task[key].trim())) {
       throw new Error(`${task.id} 缺少负责人、分支或任务说明。`);
+    }
+    if (task.threadId != null && (typeof task.threadId !== "string" || !task.threadId.trim())) {
+      throw new Error(`${task.id} 的会话 ID 应为有效字符串或 null；人工接入可只使用任务 ID。`);
     }
     if (!STATUSES.has(task.status) || !CHECKOUTS.has(task.checkout)) throw new Error(`${task.id} 的状态或 checkout 类型无效。`);
     if (!isRepoPath(task.card) || !task.card.startsWith(".ai/tasks/") || !task.card.endsWith(".md")) throw new Error(`${task.id} 的任务卡路径无效。`);

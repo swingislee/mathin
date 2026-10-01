@@ -15,6 +15,12 @@ function task(id: string, overrides = {}) {
 }
 
 describe("协作登记与归属", () => {
+  it("Claude 可在没有 Codex 会话 ID 时按任务 ID 接入", () => {
+    const registry = { version: 1, coordinatorTaskId: "A", tasks: [task("A", { agent: "claude", threadId: null })] };
+    expect(() => validateRegistry(registry)).not.toThrow();
+    expect(() => validateRegistry({ ...registry, tasks: [task("A", { threadId: 42 })] })).toThrow("会话 ID");
+  });
+
   it("按目录边界和 Windows 大小写匹配，把 locale 当字面路径", () => {
     expect(coversPath("src/app/[locale]/", "SRC/app/[locale]/page.tsx")).toBe(true);
     expect(coversPath("src/app/[locale]/", "src/app/zh/page.tsx")).toBe(false);
