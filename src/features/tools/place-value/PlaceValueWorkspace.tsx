@@ -11,6 +11,7 @@ import { Slider } from "@/components/ui/slider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SpatialAxisSnapButton, useSpatialAxisSnap } from "@/features/spatial-math/renderer-r3f/SpatialCameraControls";
 import { SpatialActionButton } from "../spatial-interaction/SpatialActionButton";
+import { SpatialContextActions } from "../spatial-interaction/SpatialContextActions";
 import { SpatialViewButtons, SPATIAL_STANDARD_VIEWS } from "../spatial-interaction/SpatialViewButtons";
 import { SpatialCanvasPanel } from "../spatial-interaction/SpatialWorkbenchControls";
 import { useSpatialToolState } from "../spatial-interaction/useSpatialToolState";
@@ -50,9 +51,8 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
     defaultTool: "orbit", panels: { prepare: "orbit", compare: "orbit", inspect: "orbit", settings: "orbit", presentation: "orbit" },
     onClearSelection: () => {
       if (publishing || disabled || !snapshot.selection) return;
-      if (boxes && snapshot.presentation?.contents !== "inside") {
-        const next = changePlaceValueContents(commandState, "inside"); if (next) host.update(next);
-      } else host.update({ ...snapshot, selection: null });
+      // 取消本机操作焦点时保留已取出的组成及其归属；“放回”由明确动作执行。
+      if (!boxes || snapshot.presentation?.contents === "inside") host.update({ ...snapshot, selection: null });
     },
   });
   const axisSnap = useSpatialAxisSnap(), [notice, setNotice] = useState("");
@@ -116,6 +116,10 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
     return () => window.clearTimeout(timer);
   }, [disabled, presentation.busy, boxes, snapshot, commandState, active, board, carry, host.failed, commit]);
   const configure = (patch: Partial<PlaceValueInitial>) => { if (!disabled) commit({ ...snapshot, ...patch, motion: null }); };
+  const setContents = (contents: "inside" | "outside" | "both") => {
+    if (disabled || (contents !== "inside" && !selected)) return;
+    const next = changePlaceValueContents(commandState, contents); if (next) commit(next);
+  };
   const arrange = (value: number) => {
     if (quantityDisabled) return;
     if (!Number.isInteger(value) || value < 0 || value > limit) { setNotice(m.capacityError); return; }
@@ -156,6 +160,11 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
     <div className={styles.viewport}><div className={styles.canvas}>
       <Viewport snapshot={snapshot} progress={preview ?? presentation.progress} contentsProgress={contentsPresentation.progress} locale={locale} navigation={controls.tool} axisSnap={axisSnap} interactive={!viewer} selected={controls.selectionActive}
         onPointerMissed={controls.onPointerMissed} onSelect={selectUnit}
+        selectionActions={!viewer && boxes && selected ? <SpatialContextActions label={m.boxActions} actions={[
+          { action: "extractContents", label: m.takeOut, title: m.outside, active: snapshot.presentation?.contents === "outside", disabled, onClick: () => setContents("outside") },
+          { action: "returnContents", label: m.putBack, title: m.inside, active: snapshot.presentation?.contents === "inside", disabled, onClick: () => setContents("inside") },
+          { action: "compareContents", label: m.compareContents, title: m.both, active: snapshot.presentation?.contents === "both", disabled, onClick: () => setContents("both") },
+        ]} /> : undefined}
         renderPlaceControl={(side, place) => <PlaceValueStation {...stationProps(side, place)} />}
         renderCarryControl={(side, place) => <PlaceValueCarryControl {...stationProps(side, place)} />} />
       <div className={styles.dock + " " + styles.views}>
@@ -208,7 +217,7 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
             <p>{selected ? m.group + " " + groupSize(selected.group) + " " + m.units : boxes ? m.boxGroupHint : m.groupHint}</p>
             {boxes && <div className="flex flex-wrap gap-1">{(["inside", "outside", "both"] as const).map((contents) => <Button key={contents} size="sm" variant={snapshot.presentation?.contents === contents ? "secondary" : "ghost"}
               aria-pressed={snapshot.presentation?.contents === contents} disabled={disabled || (contents !== "inside" && !selected)}
-              onClick={() => { const next = changePlaceValueContents(commandState, contents); if (next) commit(next); }}>{m[contents]}</Button>)}</div>}
+              onClick={() => setContents(contents)}>{m[contents]}</Button>)}</div>}
             <Button size="sm" disabled={quantityDisabled || unpack < 1} onClick={() => unpack > 0 && act("unpack", active, unpack)}>{unpackLabel}</Button>
             <p className="text-muted">{boxes ? m.mappingHint : m.fullHint}</p>
             <p className="text-muted">{boxes ? m.boxColors : m.orientation}</p>

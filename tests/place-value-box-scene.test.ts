@@ -1,4 +1,4 @@
-import { createElement, type ReactElement } from "react";
+import { createElement, type ReactElement, type ReactNode } from "react";
 import { act, createRoot, extend, _roots } from "@react-three/fiber";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as THREE from "three";
@@ -6,7 +6,7 @@ import { PlaceValueBoxScene } from "@/features/tools/place-value/PlaceValueBoxSc
 import { PlaceValueRodMesh } from "@/features/tools/place-value/PlaceValueRodMesh";
 import { VoxelGeometry } from "@/features/spatial-math/renderer-r3f/VoxelCanvas";
 import { createDefaultPlaceValueInitial, createPlaceValueBoard, placeValueSnapshot } from "@/features/tools/place-value/radix-contract";
-import { placeValueLayout } from "@/features/tools/place-value/radix-model";
+import { placeValueColumn, placeValueLayout, placeValueOffset } from "@/features/tools/place-value/radix-model";
 import { placeValueMessages } from "@/features/tools/place-value/messages";
 import { PLACE_VALUE_SELECTION_LIGHT, PLACE_VALUE_SELECTION_LIGHTENING } from "@/features/tools/place-value/color-policy";
 import { CUBE_AXIS_COLORS, CUBE_COLORS, CUBE_SELECTION_COLOR, buildCubeStructureRenderModel, createCubeHistory } from "@/features/tools/spatial-lab/cube-structures-contract";
@@ -19,6 +19,9 @@ vi.mock("three", async () => {
 vi.mock("@react-three/drei", () => ({ Line: (props: object) => createElement("group", { name: "case-line", userData: props }) }));
 vi.mock("@/features/tools/spatial-interaction/SpatialSurfaceLabel", () => ({
   SpatialSurfaceLabel: ({ text, position }: { text: string; position: [number, number, number] }) => createElement("group", { name: "case-label", position, userData: { text } }),
+}));
+vi.mock("@/features/tools/spatial-interaction/SpatialObjectToolbar", () => ({
+  SpatialObjectToolbar: ({ children, ...props }: { children?: ReactNode }) => createElement("group", { name: "object-toolbar", userData: props }, children),
 }));
 const cleanups: (() => Promise<void>)[] = [];
 afterEach(async () => { for (const cleanup of cleanups.splice(0)) await cleanup(); vi.unstubAllGlobals(); });
@@ -56,8 +59,8 @@ describe("place-value case capacity and selection rendering", () => {
         expect(back.position.y).toBe(capacity / 2);
         const frame = container.children.filter((object) => object.name === "case-line");
         expect(frame).toHaveLength(1);
-        expect(frame[0].userData).toMatchObject({ color: VOXEL_EDGE_COLOR, opacity: .45, lineWidth: 1.25, segments: true });
-        expect(frame[0].userData.points).toHaveLength(24); // 同一条线框覆盖全部十二条边，没有常驻短引线。
+        expect(frame[0].userData).toMatchObject({ color: VOXEL_EDGE_COLOR, opacity: .22, lineWidth: 1, segments: true });
+        expect(frame[0].userData.points).toHaveLength(16); // 八条柜边与原底座分开，省去重复的四条底边。
         expect(new Set(frame[0].userData.points.map((point: number[]) => point[1]))).toEqual(new Set([0, capacity]));
         expect(container.children.some((object) => object.name === "case-label")).toBe(false);
       }
@@ -71,6 +74,26 @@ describe("place-value case capacity and selection rendering", () => {
         expect(named(overflow[0], "case-label")[0].userData.text).toBe(placeValueMessages(locale).boxOverflow(count - capacity));
       }
     }
+  });
+
+  it("anchors context actions to the selected counting box across inside, outside and comparison views", async () => {
+    const render = await setup();
+    const state = placeValueSnapshot({ ...createDefaultPlaceValueInitial(), mode: "compare", active: "right", left: createPlaceValueBoard(33), right: createPlaceValueBoard(33), presentation: { strategy: "boxes", contents: "inside" } });
+    state.selection = { side: "right", unit: state.right.places[1][1][0].start };
+    const x = placeValueColumn(1, state.right.places.length) + placeValueOffset("compare", "right", state.right.places.length);
+    const center = { x, y: 1.5, z: 0 };
+    for (const contents of ["inside", "outside", "both"] as const) {
+      const scene = await render(createElement(PlaceValueBoxScene, { snapshot: { ...state, presentation: { strategy: "boxes", contents } }, locale: "zh", progress: 1, contentsProgress: 1,
+        selected: true, interactive: true, onSelect: vi.fn(), selectionActions: createElement("group", { name: "box-actions" }) }));
+      const toolbar = named(scene, "object-toolbar");
+      expect(toolbar).toHaveLength(1);
+      expect(toolbar[0].userData).toMatchObject({ center, preferredSide: "right", moveHandles: { center, axes: [] } });
+      expect(toolbar[0].userData.vertices).toHaveLength(24);
+      expect(Math.min(...toolbar[0].userData.vertices.map((point: { x: number }) => point.x))).toBe(x - .5);
+      expect(named(toolbar[0], "box-actions")).toHaveLength(1);
+    }
+    const cleared = await render(createElement(PlaceValueBoxScene, { snapshot: state, locale: "en", progress: 1, contentsProgress: 1, selected: false, interactive: true, onSelect: vi.fn(), selectionActions: createElement("group") }));
+    expect(named(cleared, "object-toolbar")).toHaveLength(0);
   });
 
   it("keeps selection and pending-red attributes separate while both box materials retain dark outlines", async () => {

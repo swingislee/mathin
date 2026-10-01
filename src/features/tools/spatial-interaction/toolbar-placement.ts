@@ -39,7 +39,10 @@ export function spatialToolbarPlacement(footprint: SpatialScreenRect, size: { wi
     top: { x, y: footprint.top - GAP - h, side: "top" }, bottom: { x, y: footprint.bottom + GAP + h, side: "bottom" },
     left: { x: footprint.left - GAP - w, y, side: "left" }, right: { x: footprint.right + GAP + w, y, side: "right" },
   };
-  for (const side of new Set([preferred, "top", "left", "right", "bottom"] as const)) {
+  // 横向任务条优先留在对象两侧，避免首选侧放不下时盖住同列相邻对象。
+  const order: readonly SpatialToolbarSide[] = preferred === "left" || preferred === "right"
+    ? [preferred, preferred === "left" ? "right" : "left", "top", "bottom"] : [preferred, "top", "left", "right", "bottom"];
+  for (const side of new Set(order)) {
     const p = candidates[side];
     if (p.x - w >= area.left && p.x + w <= area.right && p.y - h >= area.top && p.y + h <= area.bottom) return p;
   }

@@ -10,7 +10,7 @@ import { planPlaceValue } from "@/features/tools/place-value/radix-model";
 const viewport = vi.hoisted(() => ({ current: null as PlaceValueCanvasProps | null }));
 vi.mock("next/dynamic", () => ({ default: () => function Viewport(props: PlaceValueCanvasProps) {
   viewport.current = props;
-  return createElement("div", null, (props.snapshot.mode === "compare" ? ["left", "right"] as const : ["left"] as const).flatMap((side) =>
+  return createElement("div", null, props.selectionActions, (props.snapshot.mode === "compare" ? ["left", "right"] as const : ["left"] as const).flatMap((side) =>
     [...props.snapshot.left.places.keys()].reverse().map((place) => createElement("div", { key: side + place }, props.renderPlaceControl?.(side, place), place < props.snapshot.left.places.length - 1 ? props.renderCarryControl?.(side, place) : null))));
 } }));
 vi.mock("next-intl", () => ({ useLocale: () => "en" }));
@@ -34,6 +34,41 @@ const click = async (label: string) => act(async () => button(label).click());
 async function tick(time: number) { now = time; const tasks = [...frames.values()]; frames.clear(); await act(async () => tasks.forEach((callback) => callback(time))); }
 
 describe("place-value workspace using common spatial controls", () => {
+  it("offers nearby box actions without opening a panel and preserves the view when focus clears", async () => {
+    vi.stubGlobal("crypto", { getRandomValues: crypto.getRandomValues.bind(crypto) }); // 局域网 HTTP 不要求 randomUUID 或安全上下文。
+    const initial = { ...createDefaultPlaceValueInitial(), left: createPlaceValueBoard(33), presentation: { strategy: "boxes" as const, contents: "inside" as const } };
+    await render({ initial });
+    expect(host.querySelector("[data-spatial-context-actions]")).toBeNull();
+    await act(async () => viewport.current!.onSelect("left", initial.left.places[1][0][0].start));
+    expect(host.querySelector("[data-cube-canvas-panel]")).toBeNull();
+    expect(host.querySelector("[data-spatial-context-actions]")).not.toBeNull();
+    expect(button("Return inside").getAttribute("aria-pressed")).toBe("true");
+    await click("Take out");
+    expect(viewport.current!.snapshot.presentation!.contents).toBe("outside");
+    expect(button("Return inside").disabled).toBe(true);
+    await tick(2500);
+    await click("Show both"); await tick(4000);
+    expect(viewport.current!.snapshot.presentation!.contents).toBe("both");
+    const shown = structuredClone(viewport.current!.snapshot);
+    await act(async () => host.querySelector("section")!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+    expect(host.querySelector("[data-spatial-context-actions]")).toBeNull();
+    expect(viewport.current!.snapshot).toEqual(shown);
+    await act(async () => viewport.current!.onSelect("left", shown.selection!.unit));
+    expect(host.querySelector("[data-spatial-context-actions]")).not.toBeNull();
+    await click("Return inside"); await tick(5500);
+    expect(viewport.current!.snapshot.presentation!.contents).toBe("inside");
+    expect(viewport.current!.snapshot.left).toEqual(initial.left);
+    expect(viewport.current!.snapshot.past).toEqual([]);
+  });
+  it.each(["readOnly", "classroom"])("keeps nearby write actions out of the %s viewer", async (kind) => {
+    const initial = { ...createDefaultPlaceValueInitial(), selection: { side: "left" as const, unit: 0 }, presentation: { strategy: "boxes" as const, contents: "inside" as const } };
+    const state = placeValueSnapshot(initial);
+    await render(kind === "readOnly" ? { initial, readOnly: true } : { classroom: { state } });
+    expect(viewport.current!.selectionActions).toBeUndefined();
+    expect(host.querySelector("[data-spatial-context-actions]")).toBeNull();
+    await act(async () => viewport.current!.onSelect("left", 1));
+    expect(viewport.current!.snapshot).toEqual(state);
+  });
   it("restores the continuous carry timeline and does not replay the same classroom command", async () => {
     const origin = placeValueSnapshot({ ...createDefaultPlaceValueInitial(), left: createPlaceValueBoard(10, "ones"), presentation: { strategy: "boxes", contents: "inside" } });
     const carry = planPlaceValue(origin, "carry", 1000)!;
@@ -99,8 +134,9 @@ describe("place-value workspace using common spatial controls", () => {
     expect(viewport.current!.snapshot.left).toEqual(initial.left); expect(viewport.current!.snapshot.past).toEqual([]);
     expect(capture.mock.lastCall![0].selection.unit).toBe(second);
     await act(async () => viewport.current!.onPointerMissed(new MouseEvent("click", { button: 0 })));
-    expect(viewport.current!.snapshot.presentation!.contents).toBe("inside");
-    expect(viewport.current!.snapshot.selection!.unit).toBe(second); // 收回时保留原映射归属。
+    expect(viewport.current!.snapshot.presentation!.contents).toBe("outside");
+    expect(viewport.current!.snapshot.selection!.unit).toBe(second); // 收起任务条时保留组成及映射归属。
+    expect(host.querySelector("[data-spatial-context-actions]")).toBeNull();
     await tick(7000);
     expect(viewport.current!.snapshot.left).toEqual(initial.left);
   });

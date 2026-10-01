@@ -45,6 +45,12 @@ describe("shared object toolbar screen-space clearance", () => {
     expect(spatialToolbarPlacement({ left: -800, top: 100, right: -600, bottom: 300 }, size, toolbar)).toBeNull();
     expect(spatialToolbarPlacement({ left: 120, top: 140, right: 190, bottom: 210 }, { width: 260, height: 195 }, toolbar)).toBeNull();
   });
+  it("places a horizontal context bar on the opposite side before moving over the column", () => {
+    const position = spatialToolbarPlacement({ left: 460, right: 540, top: 230, bottom: 300 }, size, { width: 224, height: 44 }, "right")!;
+    expect(position.side).toBe("left");
+    expect(position.x + 112).toBeLessThan(460);
+    expect(position.y).toBe(265);
+  });
   it("accounts for zoom and leaves no shortcut for geometry behind the camera", () => {
     const vertices = unitCubeCorners([origin]), c = cameraAt([0, 0, 10]);
     const handles = { center: origin, axes: [] as const };

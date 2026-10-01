@@ -14,11 +14,11 @@ export interface SpatialObjectToolbarTarget {
   moveHandles?: SpatialToolbarHandles;
 }
 
-/** 旋转与翻滚共用屏幕避让；布局只影响 HTML，不移动模型或相机。 */
-export function SpatialObjectToolbar({ center, vertices, moveHandles, children }: SpatialObjectToolbarTarget & { children: ReactNode }) {
+/** 对象动作、旋转与翻滚共用屏幕避让；布局只影响 HTML，不移动模型或相机。 */
+export function SpatialObjectToolbar({ center, vertices, moveHandles, preferredSide = "top", children }: SpatialObjectToolbarTarget & { children: ReactNode; preferredSide?: SpatialToolbarSide }) {
   const invalidate = useThree((state) => state.invalidate);
   const element = useRef<HTMLDivElement | null>(null);
-  const measured = useRef({ width: 0, height: 0 }), side = useRef<SpatialToolbarSide>("top");
+  const measured = useRef({ width: 0, height: 0 }), side = useRef<SpatialToolbarSide>(preferredSide);
   const attach = useCallback((node: HTMLDivElement | null) => {
     element.current = node;
     if (!node) return;

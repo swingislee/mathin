@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from "react";
 import { Line } from "@react-three/drei";
 import { BoxGeometry, Color, DataTexture, DoubleSide, FloatType, InstancedBufferAttribute, Matrix4, Quaternion, RGBAFormat, Vector3, type InstancedMesh, type ShaderMaterial } from "three";
 import { VOXEL_EDGE_COLOR, VOXEL_SELECTION_EDGE_SCALE } from "@/features/spatial-math/renderer-r3f/voxel-visual-model";
 import { spatialBoxEdgePoints } from "@/features/spatial-math/renderer-r3f/spatial-box-outline";
 import { CUBE_AXIS_COLORS, CUBE_COLORS } from "../spatial-lab/cube-structures-contract";
 import { SpatialSurfaceLabel } from "../spatial-interaction/SpatialSurfaceLabel";
+import { SpatialObjectToolbar } from "../spatial-interaction/SpatialObjectToolbar";
 import { groupSize, type PlaceValueGroup, type PlaceValueSide, type PlaceValueSnapshot } from "./radix-contract";
 import { placeValueColumn, placeValueGroup, placeValueOffset, placeValueRedSpans } from "./radix-model";
 import { placeValueBoxCapacity, placeValueBoxPose, placeValueBoxRedSpans, type PlaceValueBoxPart } from "./box-model";
@@ -130,9 +131,10 @@ function BoxInstances({ parts, offset, selected, red, interactive, onSelect, she
   </instancedMesh>;
 }
 
-export function PlaceValueBoxScene({ snapshot, progress, contentsProgress, interactive, selected, locale, onSelect }: {
+export function PlaceValueBoxScene({ snapshot, progress, contentsProgress, interactive, selected, locale, onSelect, selectionActions }: {
   snapshot: PlaceValueSnapshot; progress: number; contentsProgress: number; interactive: boolean; selected: boolean; locale: "zh" | "en";
   onSelect: (side: PlaceValueSide, unit: number) => void;
+  selectionActions?: ReactNode;
 }) {
   const sides: PlaceValueSide[] = snapshot.mode === "compare" ? ["left", "right"] : ["left"], m = placeValueMessages(locale);
   return <group name="place-value-box-mapping">{sides.map((side) => {
@@ -143,6 +145,9 @@ export function PlaceValueBoxScene({ snapshot, progress, contentsProgress, inter
     const red = placeValueBoxRedSpans(snapshot, side, progress);
     const mapping = parts.find((part) => part.role !== "shell" && part.position[2] < -1 && part.opacity > .5 && choice?.group[0].start === part.unit);
     const front = mapping && parts.find((part) => part.role === "shell" && part.unit === mapping.unit);
+    // 工具条跟随前排计数盒；取出组成时保持在原盒旁，操作入口不随长条远移。
+    const target = choice && parts.find((part) => part.role === "shell" && part.unit === choice.group[0].start && part.opacity > .05);
+    const center = target && { x: target.position[0] + offset, y: target.position[1], z: target.position[2] };
     return <group key={side}>
       <BoxInstances parts={parts.filter((part) => part.role !== "shell" && part.opacity > .005)} offset={offset} red={red} selected={emphasis} interactive={interactive} onSelect={(unit) => onSelect(side, unit)} shell={false} />
       <BoxInstances parts={parts.filter((part) => part.role === "shell" && part.opacity > .005)} offset={offset} red={red} selected={emphasis} interactive={interactive} onSelect={(unit) => onSelect(side, unit)} shell />
@@ -150,9 +155,9 @@ export function PlaceValueBoxScene({ snapshot, progress, contentsProgress, inter
         const x = placeValueColumn(level, board.places.length) + offset;
         const { limit: height, overflow, opacity } = placeValueBoxCapacity(board, level, parts);
         return <group key={level} name="place-value-front-case">
-          <mesh position={[x, height / 2, -.82]} raycast={ignoreRaycast}><planeGeometry args={[1.64, height]} /><meshBasicMaterial color={CUBE_COLORS[5]} transparent opacity={.055} side={DoubleSide} depthWrite={false} /></mesh>
-          <Line points={spatialBoxEdgePoints([{ position: [x, height / 2, 0], size: [1.64, height, 1.64] }])}
-            segments color={VOXEL_EDGE_COLOR} transparent opacity={.45} lineWidth={1.25} raycast={ignoreRaycast} />
+          <mesh position={[x, height / 2, -.82]} raycast={ignoreRaycast}><planeGeometry args={[1.64, height]} /><meshBasicMaterial color={CUBE_COLORS[5]} transparent opacity={.025} side={DoubleSide} depthWrite={false} /></mesh>
+          <Line points={spatialBoxEdgePoints([{ position: [x, height / 2, 0], size: [1.64, height, 1.64], openBase: true }])}
+            segments color={VOXEL_EDGE_COLOR} transparent opacity={.22} lineWidth={1} raycast={ignoreRaycast} />
           {overflow > 0 && <group name="place-value-case-overflow">
             <Line points={[[x - .82, height, .82], [x + .82, height, .82], [x + .82, height, -.82], [x - .82, height, -.82], [x - .82, height, .82]]}
               color={CUBE_AXIS_COLORS.x} transparent opacity={opacity} lineWidth={2.5} raycast={ignoreRaycast} />
@@ -168,6 +173,10 @@ export function PlaceValueBoxScene({ snapshot, progress, contentsProgress, inter
         <SpatialSurfaceLabel text={(locale === "zh" ? "组成 · " : "Contains · ") + groupSize(mapping.group) + (locale === "zh" ? " 个一" : " ones")}
           position={[mapping.position[0] + offset, mapping.position[1] + mapping.size[1] / 2 + .3, mapping.position[2]]} rotation={[0, 0, 0]} />
       </>}
+      {selectionActions && target && center && <SpatialObjectToolbar center={center} preferredSide="right" moveHandles={{ center, axes: [] }}
+        vertices={spatialBoxEdgePoints([{ ...target, position: [center.x, center.y, center.z] }]).map(([x, y, z]) => ({ x, y, z }))}>
+        {selectionActions}
+      </SpatialObjectToolbar>}
     </group>;
   })}</group>;
 }

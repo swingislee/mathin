@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { createVoxelSet, projectVoxels } from "@/features/spatial-math/domain";
 import { VoxelGeometry, VoxelModelCanvas } from "@/features/spatial-math/renderer-r3f/VoxelCanvas";
@@ -24,9 +24,10 @@ export interface PlaceValueCanvasProps {
   interactive: boolean; selected: boolean; onSelect: (side: PlaceValueSide, unit: number) => void;
   onPointerMissed: (event: MouseEvent) => void;
   renderPlaceControl?: PlaceValueControlRenderer; renderCarryControl?: PlaceValueControlRenderer;
+  selectionActions?: ReactNode;
 }
 /** 共用相机、体素轮廓和选择；数量大时只把连续长条换为带单位分格的等长网格。 */
-export function PlaceValueCanvas({ snapshot, progress, contentsProgress = 1, locale, navigation, axisSnap, interactive, selected, onSelect, onPointerMissed, renderPlaceControl, renderCarryControl }: PlaceValueCanvasProps) {
+export function PlaceValueCanvas({ snapshot, progress, contentsProgress = 1, locale, navigation, axisSnap, interactive, selected, onSelect, onPointerMissed, renderPlaceControl, renderCarryControl, selectionActions }: PlaceValueCanvasProps) {
   const m = placeValueMessages(locale), t = useTranslations("tools.spatialLab"), digits = snapshot.left.places.length;
   const boxes = snapshot.presentation?.strategy === "boxes";
   const messages: VoxelRendererMessages = {
@@ -83,7 +84,7 @@ export function PlaceValueCanvas({ snapshot, progress, contentsProgress = 1, loc
       <PlaceValueClipDepth depth={maxDepth} />
       <PlaceValueStage snapshot={snapshot} progress={progress} locale={locale} renderPlaceControl={renderPlaceControl} renderCarryControl={renderCarryControl} />
       {boxes && <PlaceValueBoxScene snapshot={snapshot} progress={progress} contentsProgress={contentsProgress} interactive={interactive && progress >= 1 && contentsProgress >= 1}
-        selected={selected} locale={locale} onSelect={onSelect} />}
+        selected={selected} locale={locale} onSelect={onSelect} selectionActions={selectionActions} />}
       {displayed.flatMap(({ side, plan, red, moving }) => [
         ...plan.compact.map((rod) => <PlaceValueRodMesh key={side + ":" + rod.key} rod={rod} red={red} offset={offset(side)} selected={emphasized(rod, side)}
           interactive={interactive && progress >= 1} onSelect={(unit) => onSelect(side, unit)} />),

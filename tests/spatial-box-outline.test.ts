@@ -26,4 +26,17 @@ describe("spatial box frame", () => {
       expect(recovered.distanceTo(new Vector3(...local[index]))).toBeLessThan(1e-9);
     });
   });
+
+  it("leaves four bottom edges to the separate base while retaining the upright sides and rim", () => {
+    const points = spatialBoxEdgePoints([{ position: [3, 4.5, 0], size: [1.64, 9, 1.64], openBase: true }]);
+    expect(points).toHaveLength(16);
+    let verticals = 0, rim = 0;
+    for (let index = 0; index < points.length; index += 2) {
+      const [a, b] = [points[index], points[index + 1]];
+      expect(a[1] > 0 || b[1] > 0).toBe(true);
+      if (a[1] === b[1]) { expect(a[1]).toBe(9); rim++; }
+      else { expect([a[1], b[1]].sort((x, y) => x - y)).toEqual([0, 9]); verticals++; }
+    }
+    expect([verticals, rim]).toEqual([4, 4]);
+  });
 });
