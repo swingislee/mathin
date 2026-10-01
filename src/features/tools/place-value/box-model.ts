@@ -178,6 +178,13 @@ export function placeValueBoxRedSpans(snapshot: PlaceValueSnapshot, side: PlaceV
   return snapshot.motion?.side === side && isPlaceValueRegrouping(snapshot.motion.kind) && progress < 1 ? [] : placeValueRedSpans(snapshot, side, progress);
 }
 
+/** 数位槽只容纳 0～进制−1 个单位；溢出提示跟随仍在前排的盒壳，动画不提前跳到终点。 */
+export function placeValueBoxCapacity(board: PlaceValueBoard, level: number, parts: readonly PlaceValueBoxPart[]) {
+  const limit = board.radix - 1;
+  const excess = parts.filter((item) => item.role === "shell" && item.level === level && item.index >= limit && item.opacity > .005);
+  return { limit, overflow: Math.max(0, ...excess.map((item) => item.index + 1 - limit)), opacity: Math.max(0, ...excess.map((item) => item.opacity)) };
+}
+
 export function placeValueBoxFrame(snapshot: Pick<PlaceValueInitial, "left" | "right" | "mode" | "view"> & Partial<Pick<PlaceValueInitial, "presentation" | "selection">>): PlaceValueInitial["frame"] {
   const digits = snapshot.left.places.length, width = snapshot.mode === "compare" ? digits * 5 + 2 : (digits - 1) * 2.5 + 2;
   const sides: PlaceValueSide[] = snapshot.mode === "compare" ? ["left", "right"] : ["left"];

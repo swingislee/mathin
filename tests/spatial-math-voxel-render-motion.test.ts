@@ -9,6 +9,7 @@ import {
   VOXEL_EDGE_COLOR,
   VOXEL_EDGE_LENGTH,
   VOXEL_EDGE_THICKNESS,
+  VOXEL_SELECTION_EDGE_SCALE,
   VOXEL_PAINT_FACE_OFFSET,
   VOXEL_SOLID_SIZE,
   buildVoxelEdgeInstances,
@@ -51,13 +52,16 @@ describe("voxel solid visual and camera transition", () => {
       .toBe(20);
   });
 
-  it("recolors the existing full bars without adding or resizing edges", () => {
+  it("keeps selected edge bars dark and thickens them without adding edges or changing their centers", () => {
     const cell = { x: 0, y: 0, z: 0 };
     const baseline = buildVoxelEdgeInstances([cell]);
     const highlighted = buildVoxelEdgeInstances([{ ...cell, emphasis: { color: "#f2bd30", faceOpacity: 0.4, priority: 2 } }]);
     for (const axis of ["x", "y", "z"] as const) {
-      expect(highlighted[axis].map(({ key, center, scale }) => ({ key, center, scale }))).toEqual(baseline[axis]);
-      expect(highlighted[axis].every((edge) => edge.color === "#f2bd30")).toBe(true);
+      expect(highlighted[axis].map(({ key, center }) => ({ key, center }))).toEqual(baseline[axis].map(({ key, center }) => ({ key, center })));
+      expect(highlighted[axis].every((edge) => edge.color === VOXEL_EDGE_COLOR)).toBe(true);
+      for (const edge of highlighted[axis]) for (const dimension of ["x", "y", "z"] as const) {
+        expect(edge.scale[dimension]).toBe(dimension === axis ? VOXEL_EDGE_LENGTH : VOXEL_EDGE_THICKNESS * VOXEL_SELECTION_EDGE_SCALE);
+      }
       expect(baseline[axis].every((edge) => edge.color === undefined)).toBe(true);
     }
   });
@@ -70,7 +74,7 @@ describe("voxel solid visual and camera transition", () => {
     const groups = buildVoxelEdgeInstances(cells);
     const edges = [...groups.x, ...groups.y, ...groups.z];
     expect(edges).toHaveLength(20);
-    expect(edges.filter((edge) => edge.color === "#f2bd30")).toHaveLength(12);
+    expect(edges.filter((edge) => edge.color === VOXEL_EDGE_COLOR)).toHaveLength(12);
     expect(edges.filter((edge) => edge.color === "#dc4444")).toHaveLength(8);
     expect(buildVoxelEdgeInstances([...cells].reverse())).toEqual(groups);
   });

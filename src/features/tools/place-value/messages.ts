@@ -1,8 +1,9 @@
 const zh = {
   title: "数位积木", tools: "数位积木工具", settings: "结构与显示设置", prepare: "准备数与分组", compare: "比较两个数", inspect: "观察计数单位",
   presentation: "演示策略", rods: "长条进位", boxes: "装盒映射", inside: "放回盒内", outside: "取出展示", both: "内外同时展示",
+  boxCapacity: (count: number) => "上限 " + count, boxOverflow: (count: number) => "超出 " + count,
   boxHint: "点一次进位，连续完成倒下或叠合、装入高一位的盒子，数字同步完成。任何视角都保持收纳；查看组成从右侧「观察计数单位」开启。",
-  mappingHint: "先点选一盒，再取出查看；原盒留空，其他盒保持收纳。放回或内外同时展示只改变表示，不改变数量。切换盒子会先收回上一盒。组成模型按单位层级缩放，不用外形大小比较不同数位的数量。",
+  mappingHint: "先点选一盒，再取出查看；原盒留空，其他盒保持收纳。放回或内外同时展示只改变表示，不改变数量。切换盒子会先收回上一盒。盒内使用压缩表示，取出后按原始单位尺寸展示。",
   boxColors: "每盒前端都是完整的一个单位，按本列每五个黄蓝交替；顶面和侧面分格保留组成。完整体再次作为一个小单位，不在后排累成高塔。",
   boxGroupHint: "点选一盒，再选择取出或内外同时展示。旋转视角只改变观察方向，不改变装盒状态。",
   strategyLegacy: "已保存的旧版场景保留原演示。新建数位积木场景可选择装盒映射。",
@@ -32,8 +33,9 @@ const zh = {
 const en: typeof zh = {
   title: "Place-value blocks", tools: "Place-value tools", settings: "Structure and display", prepare: "Prepare number and groups", compare: "Compare numbers", inspect: "Inspect a counting unit",
   presentation: "Presentation strategy", rods: "Rod regrouping", boxes: "Box mapping", inside: "Return inside", outside: "Take out", both: "Show both",
+  boxCapacity: (count: number) => "Limit " + count, boxOverflow: (count: number) => count + " over",
   boxHint: "Click Carry once to lay down or stack, then pack directly into the next-place box as the digits change. Boxes stay packed from every angle. Open Inspect a counting unit to see inside.",
-  mappingHint: "Select one box to take out its contents, leaving that box empty and the others packed. Return inside or Show both changes the representation, not the quantity. Selecting another box first returns the previous one. Composition models use hierarchical scales, not comparable physical sizes across place values.",
+  mappingHint: "Select one box to take out its contents, leaving that box empty and the others packed. Return inside or Show both changes the representation, not the quantity. Selecting another box first returns the previous one. Contents are compressed inside the box and return to their original unit dimensions outside.",
   boxColors: "Each box has one whole front face; colors alternate every five boxes. Top and side grids retain its composition. A complete solid becomes a new small unit instead of a tall rear tower.",
   boxGroupHint: "Select one box, then take out its contents or show both. Orbiting changes the view, not the packing state.",
   strategyLegacy: "Saved legacy scenes keep their original presentation. Create a new place-value scene to use box mapping.",

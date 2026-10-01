@@ -4,7 +4,7 @@ import { newId } from "@/lib/uuid";
 import { createClassroomToolState, parseClassroomToolState } from "@/features/tools/courseware/tool-classroom";
 import { freezeToolScene } from "@/features/tools/scenes/contract";
 import { toolSceneOriginHash } from "@/features/tools/scenes/classroom-envelope";
-import { changePlaceValueContents, changePlaceValueStrategy, normalizePlaceValueBoxSnapshot, placeValueBoxCarryPose, placeValueBoxDimensions, placeValueBoxFrame, placeValueBoxLayout, placeValueBoxMappingPosition, placeValueBoxMappingSize, placeValueBoxPose, placeValueBoxRedSpans, type PlaceValueBoxPart } from "@/features/tools/place-value/box-model";
+import { changePlaceValueContents, changePlaceValueStrategy, normalizePlaceValueBoxSnapshot, placeValueBoxCapacity, placeValueBoxCarryPose, placeValueBoxDimensions, placeValueBoxFrame, placeValueBoxLayout, placeValueBoxMappingPosition, placeValueBoxMappingSize, placeValueBoxPose, placeValueBoxRedSpans, type PlaceValueBoxPart } from "@/features/tools/place-value/box-model";
 import { boardTotal, createDefaultPlaceValueInitial, createPlaceValueBoard, PLACE_VALUE_BASES, PLACE_VALUE_MAPPING_VERSION, placeValueInitial, placeValueInitialSchema, placeValueMappingInitialSchema, placeValueMappingSnapshotSchema, placeValueSnapshot, placeValueSnapshotSchema, type PlaceValueSnapshot } from "@/features/tools/place-value/radix-contract";
 import { configurePlaceValue, historyPlaceValue, placeValueLocked, placeValueNotation, planPlaceValue, planPlaceValueCount } from "@/features/tools/place-value/radix-model";
 import { writePlaceValueBoxColors } from "@/features/tools/place-value/box-colors";
@@ -20,6 +20,29 @@ const worldSize = (part: PlaceValueBoxPart) => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("independent place-value box mapping", () => {
+  it.each(PLACE_VALUE_BASES)("fixes each case at base minus one and counts units above its rim in base %i", (base) => {
+    for (const count of [base - 1, base, base + 3]) {
+      const state = placeValueSnapshot(initial(base, count));
+      const parts = placeValueBoxPose(state, "left", 1);
+      expect(placeValueBoxCapacity(state.left, 0, parts)).toEqual({ limit: base - 1, overflow: count - base + 1, opacity: count >= base ? 1 : 0 });
+      for (let level = 1; level < 6; level++) expect(placeValueBoxCapacity(state.left, level, parts)).toEqual({ limit: base - 1, overflow: 0, opacity: 0 });
+      for (const part of parts.filter((part) => part.role === "shell" && part.index >= base - 1)) expect(part.position[1] - .5).toBeGreaterThanOrEqual(base - 1);
+    }
+  });
+  it("keeps overflow attached to the visible counting boxes through carry, unpack and restore", () => {
+    const origin = placeValueSnapshot(initial());
+    const carried = planPlaceValue(origin, "carry", 1000)!;
+    const capacityAt = (snapshot: PlaceValueSnapshot, progress: number) => placeValueBoxCapacity(snapshot.left, 0, placeValueBoxPose(snapshot, "left", progress));
+    expect(carried.left.places[0]).toHaveLength(0);
+    expect(capacityAt(carried, 0)).toEqual({ limit: 9, overflow: 1, opacity: 1 });
+    expect(capacityAt(carried, .08)).toEqual({ limit: 9, overflow: 1, opacity: .5 });
+    for (const progress of [.2, .6, 1]) expect(capacityAt(carried, progress)).toEqual({ limit: 9, overflow: 0, opacity: 0 });
+    const unpacked = planPlaceValue({ ...carried, motion: null }, "unpack", 10000, 1)!;
+    expect(capacityAt(unpacked, 0).overflow).toBe(0);
+    expect(capacityAt(unpacked, 1)).toEqual(capacityAt(origin, 1));
+    const restored = historyPlaceValue({ ...carried, motion: null }, "undo", 10000)!;
+    expect(capacityAt(restored, 1)).toEqual(capacityAt(origin, 1));
+  });
   it.each([3, 10, 16])("keeps original yellow/blue phases through regrouping in base %i", (base) => {
     const state = planPlaceValueCount(placeValueSnapshot(initial(base, 0)), "left", 1, base, 0)!;
     const carried = planPlaceValue(state, "carry", 1000, 1)!;

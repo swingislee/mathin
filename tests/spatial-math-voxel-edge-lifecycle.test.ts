@@ -3,8 +3,8 @@ import { act, createRoot, extend, _roots } from "@react-three/fiber";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as THREE from "three";
 import { VoxelEdgeInstances } from "@/features/spatial-math/renderer-r3f/VoxelCanvas";
-import { buildVoxelEdgeInstances } from "@/features/spatial-math/renderer-r3f/voxel-visual-model";
-import { CUBE_COLORS, applyCubeOperation, buildCubeStructureRenderModel, createCubeHistory, cubeCutOperation, cubeGroupOutlineColor } from "@/features/tools/spatial-lab/cube-structures-contract";
+import { buildVoxelEdgeInstances, VOXEL_EDGE_COLOR, VOXEL_EDGE_THICKNESS, VOXEL_SELECTION_EDGE_SCALE } from "@/features/spatial-math/renderer-r3f/voxel-visual-model";
+import { CUBE_COLORS, CUBE_SELECTION_COLOR, applyCubeOperation, buildCubeStructureRenderModel, createCubeHistory, cubeCutOperation, cubeGroupOutlineColor } from "@/features/tools/spatial-lab/cube-structures-contract";
 import type { VoxelRenderModel } from "@/features/spatial-math/renderer-r3f/voxel-render-model";
 
 vi.mock("three", async () => {
@@ -61,6 +61,22 @@ describe("real R3F edge instances during separation", () => {
       for (const mesh of meshes) {
         const value = new THREE.Color(); mesh.getColorAt(0, value);
         expect("#" + value.getHexString()).toBe(edgeColor);
+      }
+    }
+  });
+
+  it("keeps dark outlines on yellow selection and restores their width on deselection", async () => {
+    const render = await setup();
+    const state = createCubeHistory([{ x: 0, y: 0, z: 0 }]).initial;
+    for (const selected of [false, true, false]) {
+      const model = buildCubeStructureRenderModel(state, selected ? [state.cubes[0].id] : [], "Edges");
+      if (selected) expect(model.cells[0].emphasis?.color).toBe(CUBE_SELECTION_COLOR);
+      const meshes = await render(model);
+      for (const [axis, mesh] of meshes.entries()) for (let index = 0; index < mesh.count; index++) {
+        const color = new THREE.Color(), matrix = new THREE.Matrix4();
+        mesh.getColorAt(index, color); mesh.getMatrixAt(index, matrix);
+        expect("#" + color.getHexString()).toBe(VOXEL_EDGE_COLOR);
+        expect(matrix.elements[axis === 0 ? 5 : 0]).toBeCloseTo(VOXEL_EDGE_THICKNESS * (selected ? VOXEL_SELECTION_EDGE_SCALE : 1));
       }
     }
   });

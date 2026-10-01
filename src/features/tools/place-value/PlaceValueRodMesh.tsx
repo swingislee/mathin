@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Color, OrthographicCamera, PerspectiveCamera } from "three";
 import { CUBE_COLORS, CUBE_SELECTION_COLOR } from "../spatial-lab/cube-structures-contract";
-import { VOXEL_EDGE_COLOR } from "@/features/spatial-math/renderer-r3f/voxel-visual-model";
+import { VOXEL_EDGE_COLOR, VOXEL_SELECTION_EDGE_SCALE } from "@/features/spatial-math/renderer-r3f/voxel-visual-model";
 import type { PlaceValueSpan } from "./radix-contract";
 import type { PlaceValueRod } from "./radix-model";
 import { placeValueRodSegments } from "./render-plan";
@@ -26,8 +26,10 @@ void main() {
   float gridDistance = min(fract(depth), 1. - fract(depth));
   float grid = (1. - smoothstep(.015, .025 + pixel * .5, gridDistance)) * (1. - smoothstep(.3, 1., pixel)) * (1. - abs(n.z));
   float sideEdge = abs(n.x) > .5 ? abs(p.y) : abs(n.y) > .5 ? abs(p.x) : max(abs(p.x), abs(p.y));
-  float outline = smoothstep(.47, .49, sideEdge);
-  vec3 color = mix(face, mix(edge, selected, emphasis), max(grid, outline));
+  float edgeScale = mix(1., ${VOXEL_SELECTION_EDGE_SCALE.toFixed(2)}, emphasis);
+  float outline = 1. - smoothstep(.01 * edgeScale, .03 * edgeScale, .5 - sideEdge);
+  float selectionBand = smoothstep(.43, .46, sideEdge) * emphasis * (1. - red);
+  vec3 color = mix(mix(face, selected, selectionBand), edge, max(grid, outline));
   gl_FragColor = vec4(color, opacity);
   #include <colorspace_fragment>
 }`;

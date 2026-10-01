@@ -1,0 +1,94 @@
+import { createElement, type ReactElement } from "react";
+import { act, createRoot, extend, _roots } from "@react-three/fiber";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import * as THREE from "three";
+import { PlaceValueBoxScene } from "@/features/tools/place-value/PlaceValueBoxScene";
+import { PlaceValueRodMesh } from "@/features/tools/place-value/PlaceValueRodMesh";
+import { createDefaultPlaceValueInitial, createPlaceValueBoard, placeValueSnapshot } from "@/features/tools/place-value/radix-contract";
+import { placeValueLayout } from "@/features/tools/place-value/radix-model";
+import { placeValueMessages } from "@/features/tools/place-value/messages";
+import { CUBE_AXIS_COLORS } from "@/features/tools/spatial-lab/cube-structures-contract";
+import { VOXEL_EDGE_COLOR } from "@/features/spatial-math/renderer-r3f/voxel-visual-model";
+
+vi.mock("three", async () => {
+  const { createRequire } = await import("node:module");
+  return createRequire(import.meta.url)("three");
+});
+vi.mock("@react-three/drei", () => ({ Line: (props: object) => createElement("group", { name: "case-line", userData: props }) }));
+vi.mock("@/features/tools/spatial-interaction/SpatialSurfaceLabel", () => ({
+  SpatialSurfaceLabel: ({ text, position }: { text: string; position: [number, number, number] }) => createElement("group", { name: "case-label", position, userData: { text } }),
+}));
+const cleanups: (() => Promise<void>)[] = [];
+afterEach(async () => { for (const cleanup of cleanups.splice(0)) await cleanup(); vi.unstubAllGlobals(); });
+async function setup() {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true); vi.stubGlobal("window", { devicePixelRatio: 1 });
+  vi.stubGlobal("requestAnimationFrame", () => 1); vi.stubGlobal("cancelAnimationFrame", () => undefined);
+  extend({ Group: THREE.Group, Mesh: THREE.Mesh, PlaneGeometry: THREE.PlaneGeometry, BoxGeometry: THREE.BoxGeometry,
+    InstancedMesh: THREE.InstancedMesh, MeshBasicMaterial: THREE.MeshBasicMaterial, ShaderMaterial: THREE.ShaderMaterial });
+  const surface = Object.assign(new EventTarget(), { style: {}, getBoundingClientRect: () => ({ width: 800, height: 600, left: 0, top: 0 }) }) as unknown as HTMLCanvasElement;
+  const gl = { domElement: surface, setSize() {}, setPixelRatio() {}, render() {}, xr: Object.assign(new EventTarget(), { isPresenting: false, setAnimationLoop() {} }) } as unknown as THREE.WebGLRenderer;
+  const root = createRoot(surface);
+  await root.configure({ gl, camera: new THREE.OrthographicCamera(-15, 15, 12, -12, .01, 1000), size: { width: 800, height: 600, left: 0, top: 0 }, frameloop: "never", dpr: 1 });
+  cleanups.push(async () => { await act(async () => root.unmount()); });
+  return async (element: ReactElement) => {
+    await act(async () => root.render(element));
+    return _roots.get(surface)!.store.getState().scene;
+  };
+}
+const initial = (base: number, count: number) => placeValueSnapshot({ ...createDefaultPlaceValueInitial(), left: createPlaceValueBoard(count, "ones", base, 6), right: createPlaceValueBoard(0, "normal", base, 6), presentation: { strategy: "boxes", contents: "inside" } });
+const sceneElement = (snapshot: ReturnType<typeof initial>, locale: "zh" | "en" = "zh") => createElement(PlaceValueBoxScene, { snapshot, locale, progress: 1, contentsProgress: 1, selected: true, interactive: true, onSelect: vi.fn() });
+const named = (parent: THREE.Object3D, name: string) => {
+  const result: THREE.Object3D[] = []; parent.traverse((object) => { if (object.name === name) result.push(object); }); return result;
+};
+
+describe("place-value case capacity and selection rendering", () => {
+  it.each([2, 10, 16])("keeps the case mesh at base minus one and labels the protruding units in base %i", async (base) => {
+    const render = await setup();
+    for (const locale of ["zh", "en"] as const) for (const count of [base - 1, base, base + 1]) {
+      const scene = await render(sceneElement(initial(base, count), locale));
+      const cases = named(scene, "place-value-front-case"), first = cases[0], capacity = base - 1;
+      expect(cases).toHaveLength(6);
+      for (const container of cases) {
+        const back = container.children.find((object) => object instanceof THREE.Mesh) as THREE.Mesh<THREE.PlaneGeometry>;
+        expect(back.geometry.parameters.height).toBe(capacity);
+        expect(back.position.y).toBe(capacity / 2);
+        expect(named(container, "case-label").map((object) => object.userData.text)).toContain(placeValueMessages(locale).boxCapacity(capacity));
+      }
+      const overflow = named(first, "place-value-case-overflow");
+      expect(overflow).toHaveLength(count >= base ? 1 : 0);
+      if (count >= base) {
+        const bracket = named(overflow[0], "case-line")[0].userData;
+        expect(bracket.color).toBe(CUBE_AXIS_COLORS.x);
+        expect(bracket.lineWidth).toBe(2.5);
+        expect(bracket.points.map((point: number[]) => point[1])).toEqual([capacity, capacity, count, count]);
+        expect(named(overflow[0], "case-label")[0].userData.text).toBe(placeValueMessages(locale).boxOverflow(count - capacity));
+      }
+    }
+  });
+
+  it("keeps selection and pending-red attributes separate while both box materials retain dark outlines", async () => {
+    const render = await setup(), state = initial(10, 10);
+    state.selection = { side: "left", unit: state.left.places[0][9][0].start };
+    const scene = await render(sceneElement(state));
+    for (const name of ["place-value-box-contents", "place-value-box-shells"]) {
+      const mesh = scene.getObjectByName(name) as THREE.InstancedMesh<THREE.BufferGeometry, THREE.ShaderMaterial>;
+      expect(mesh.geometry.getAttribute("appearance").getY(9)).toBe(1);
+      expect(mesh.geometry.getAttribute("appearance").getZ(9)).toBe(1);
+      expect("#" + mesh.material.uniforms.edge.value.getHexString()).toBe(VOXEL_EDGE_COLOR);
+      expect(mesh.material.fragmentShader).toContain("vec3 color = mix(surface, edge,");
+      expect(mesh.material.fragmentShader).toContain("* a.z * (1. - a.y)");
+      expect(mesh.material.fragmentShader).not.toContain("mix(edge, selected");
+    }
+  });
+
+  it("uses the same dark-outline policy for compact long rods", async () => {
+    const render = await setup(), rod = placeValueLayout(createPlaceValueBoard(1000, "normal", 10, 6))[0];
+    const scene = await render(createElement(PlaceValueRodMesh, { rod, red: [], offset: 0, selected: true, interactive: true, onSelect: vi.fn() }));
+    const group = scene.getObjectByName("place-value-compact-rod")!;
+    const mesh = group.children[0] as THREE.Mesh<THREE.BoxGeometry, THREE.ShaderMaterial>;
+    expect(mesh.material.uniforms.emphasis.value).toBe(1);
+    expect("#" + mesh.material.uniforms.edge.value.getHexString()).toBe(VOXEL_EDGE_COLOR);
+    expect(mesh.material.fragmentShader).toContain(", edge, max(grid, outline))");
+    expect(mesh.material.fragmentShader).not.toContain("mix(edge, selected");
+  });
+});

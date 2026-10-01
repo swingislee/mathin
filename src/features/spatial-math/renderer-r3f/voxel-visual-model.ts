@@ -4,6 +4,7 @@ import type { VoxelRenderCell } from "./voxel-render-model";
 
 export const VOXEL_SOLID_SIZE = 1;
 export const VOXEL_EDGE_THICKNESS = 0.055;
+export const VOXEL_SELECTION_EDGE_SCALE = 1.35;
 export const VOXEL_EDGE_LENGTH = 1.035;
 export const VOXEL_EDGE_COLOR = "#211e1a";
 export const VOXEL_PAINT_FACE_OFFSET = 0.501;
@@ -44,11 +45,12 @@ function edgeKey(
   return `${axis}:${coordinateKey(x)}:${coordinateKey(y)}:${coordinateKey(z)}`;
 }
 
-function edgeScale(axis: VoxelEdgeAxis) {
+function edgeScale(axis: VoxelEdgeAxis, selected = false) {
+  const thickness = VOXEL_EDGE_THICKNESS * (selected ? VOXEL_SELECTION_EDGE_SCALE : 1);
   return {
-    x: axis === "x" ? VOXEL_EDGE_LENGTH : VOXEL_EDGE_THICKNESS,
-    y: axis === "y" ? VOXEL_EDGE_LENGTH : VOXEL_EDGE_THICKNESS,
-    z: axis === "z" ? VOXEL_EDGE_LENGTH : VOXEL_EDGE_THICKNESS,
+    x: axis === "x" ? VOXEL_EDGE_LENGTH : thickness,
+    y: axis === "y" ? VOXEL_EDGE_LENGTH : thickness,
+    z: axis === "z" ? VOXEL_EDGE_LENGTH : thickness,
   };
 }
 
@@ -62,13 +64,14 @@ function insertEdge(
 ) {
   const key = edgeKey(axis, x, y, z);
   const existing = target.get(key);
-  // 相邻块仍共享同一条棱边，高亮替换原颜色而不增添几何；单独选择优先于分组。
+  // 相邻块共享一条棱；选中保留并加粗深色轮廓，面高亮与分组色各自保持。
   if (existing && (!emphasis || (existing.priority ?? 0) >= emphasis.priority)) return;
+  const selected = (emphasis?.priority ?? 0) >= 2;
   target.set(key, {
     key,
     center: { x, y, z },
-    scale: edgeScale(axis),
-    ...(emphasis ? { color: emphasis.edgeColor ?? emphasis.color, priority: emphasis.priority } : {}),
+    scale: edgeScale(axis, selected),
+    ...(emphasis ? { color: emphasis.edgeColor ?? (selected ? VOXEL_EDGE_COLOR : emphasis.color), priority: emphasis.priority } : {}),
   });
 }
 

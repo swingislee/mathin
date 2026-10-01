@@ -3,13 +3,14 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { Line } from "@react-three/drei";
 import { BoxGeometry, Color, DataTexture, DoubleSide, FloatType, InstancedBufferAttribute, Matrix4, Quaternion, RGBAFormat, Vector3, type InstancedMesh, type ShaderMaterial } from "three";
-import { VOXEL_EDGE_COLOR } from "@/features/spatial-math/renderer-r3f/voxel-visual-model";
-import { CUBE_COLORS, CUBE_SELECTION_COLOR } from "../spatial-lab/cube-structures-contract";
+import { VOXEL_EDGE_COLOR, VOXEL_SELECTION_EDGE_SCALE } from "@/features/spatial-math/renderer-r3f/voxel-visual-model";
+import { CUBE_AXIS_COLORS, CUBE_COLORS, CUBE_SELECTION_COLOR } from "../spatial-lab/cube-structures-contract";
 import { SpatialSurfaceLabel } from "../spatial-interaction/SpatialSurfaceLabel";
 import { groupSize, type PlaceValueGroup, type PlaceValueSide, type PlaceValueSnapshot } from "./radix-contract";
 import { placeValueColumn, placeValueGroup, placeValueOffset, placeValueRedSpans } from "./radix-model";
-import { placeValueBoxPose, placeValueBoxRedSpans, type PlaceValueBoxPart } from "./box-model";
+import { placeValueBoxCapacity, placeValueBoxPose, placeValueBoxRedSpans, type PlaceValueBoxPart } from "./box-model";
 import { writePlaceValueBoxColors } from "./box-colors";
+import { placeValueMessages } from "./messages";
 
 const ignoreRaycast = () => null;
 const vertexShader = `
@@ -54,10 +55,15 @@ void main() {
   face *= .88 + .12 * max(n.y, n.z * .65);
   vec2 uv = abs(n.x) > .5 ? p.yz : abs(n.y) > .5 ? p.xz : p.xy;
   vec2 count = abs(n.x) > .5 ? d.yz : abs(n.y) > .5 ? d.xz : d.xy;
-  float outline = 1. - smoothstep(.016, .027, min(min(uv.x, 1. - uv.x), min(uv.y, 1. - uv.y)));
+  float distance = min(min(uv.x, 1. - uv.x), min(uv.y, 1. - uv.y));
+  float edgeScale = mix(1., ${VOXEL_SELECTION_EDGE_SCALE.toFixed(2)}, a.z);
+  float outline = 1. - smoothstep(.016 * edgeScale, .027 * edgeScale, distance);
   float grid = lines(uv * count) * (n.z > .5 ? unpacked : 1.);
-  vec3 color = shell > .5 ? mix(neutral, mix(edge, selected, a.z), outline) : mix(face, mix(edge, selected, a.z), max(grid * .7, outline));
-  float alpha = shell > .5 ? mix(.13, .9, outline) * a.x : a.x;
+  // 黄色留在轮廓内侧；深色外棱和内部格线始终保留，待进位红色优先。
+  float selectionBand = (1. - smoothstep(.05, .065, distance)) * a.z * (1. - a.y);
+  vec3 surface = mix(shell > .5 ? neutral : face, selected, selectionBand);
+  vec3 color = mix(surface, edge, shell > .5 ? outline : max(grid * .7, outline));
+  float alpha = shell > .5 ? mix(.13, .9, max(outline, selectionBand * .6)) * a.x : a.x;
   if (alpha < .005) discard;
   gl_FragColor = vec4(color, alpha);
   #include <colorspace_fragment>
@@ -113,7 +119,7 @@ function BoxInstances({ parts, offset, selected, red, interactive, onSelect, she
     mesh.count = parts.length; mesh.instanceMatrix.needsUpdate = true; divisions.needsUpdate = true; appearance.needsUpdate = true; detail.needsUpdate = true;
     mesh.computeBoundingSphere();
   }, [parts, offset, geometry, red, selected, palette]);
-  return <instancedMesh key={capacity} ref={ref} args={[geometry, undefined, capacity]} frustumCulled={false} renderOrder={shell ? 2 : 0}
+  return <instancedMesh name={shell ? "place-value-box-shells" : "place-value-box-contents"} key={capacity} ref={ref} args={[geometry, undefined, capacity]} frustumCulled={false} renderOrder={shell ? 2 : 0}
     onClick={(event) => {
       if (!interactive || event.delta > 5 || event.button !== 0 || event.instanceId === undefined) return;
       const item = parts[event.instanceId]; if (!item || item.opacity < .05) return;
@@ -127,7 +133,7 @@ export function PlaceValueBoxScene({ snapshot, progress, contentsProgress, inter
   snapshot: PlaceValueSnapshot; progress: number; contentsProgress: number; interactive: boolean; selected: boolean; locale: "zh" | "en";
   onSelect: (side: PlaceValueSide, unit: number) => void;
 }) {
-  const sides: PlaceValueSide[] = snapshot.mode === "compare" ? ["left", "right"] : ["left"];
+  const sides: PlaceValueSide[] = snapshot.mode === "compare" ? ["left", "right"] : ["left"], m = placeValueMessages(locale);
   return <group name="place-value-box-mapping">{sides.map((side) => {
     const board = snapshot[side], parts = placeValueBoxPose(snapshot, side, progress, contentsProgress);
     const offset = placeValueOffset(snapshot.mode, side, board.places.length);
@@ -140,10 +146,22 @@ export function PlaceValueBoxScene({ snapshot, progress, contentsProgress, inter
       <BoxInstances parts={parts.filter((part) => part.role !== "shell" && part.opacity > .005)} offset={offset} red={red} selected={emphasis} interactive={interactive} onSelect={(unit) => onSelect(side, unit)} shell={false} />
       <BoxInstances parts={parts.filter((part) => part.role === "shell" && part.opacity > .005)} offset={offset} red={red} selected={emphasis} interactive={interactive} onSelect={(unit) => onSelect(side, unit)} shell />
       {board.places.map((_, level) => {
-        const x = placeValueColumn(level, board.places.length) + offset, height = Math.max(board.radix, board.places[level].length) + .4;
+        const x = placeValueColumn(level, board.places.length) + offset;
+        const { limit: height, overflow, opacity } = placeValueBoxCapacity(board, level, parts);
+        const rimColor = overflow ? CUBE_AXIS_COLORS.x : VOXEL_EDGE_COLOR;
         return <group key={level} name="place-value-front-case">
           <mesh position={[x, height / 2, -.76]} raycast={ignoreRaycast}><planeGeometry args={[1.5, height]} /><meshBasicMaterial color={CUBE_COLORS[3]} transparent opacity={.045} side={DoubleSide} depthWrite={false} /></mesh>
           {[-.76, .76].map((dx) => <Line key={dx} points={[[x + dx, 0, .76], [x + dx, height, .76], [x + dx, height, -.76], [x + dx, 0, -.76]]} color={CUBE_COLORS[3]} transparent opacity={.26} lineWidth={1} raycast={ignoreRaycast} />)}
+          <Line points={[[x - .82, height, .82], [x + .82, height, .82], [x + .82, height, -.82], [x - .82, height, -.82], [x - .82, height, .82]]}
+            color={rimColor} lineWidth={overflow ? 2.5 : 1.5} raycast={ignoreRaycast} />
+          <Line points={[[x + .82, height, .82], [x + 1.2, height, .82]]} color={rimColor} lineWidth={1.5} raycast={ignoreRaycast} />
+          <SpatialSurfaceLabel text={m.boxCapacity(height)} position={[x + 2.25, height - .2, .84]} rotation={[0, 0, 0]} height={.3} />
+          {overflow > 0 && <group name="place-value-case-overflow">
+            <mesh position={[x, height + overflow / 2, -.78]} raycast={ignoreRaycast}><planeGeometry args={[1.64, overflow]} /><meshBasicMaterial color={CUBE_AXIS_COLORS.x} transparent opacity={.12 * opacity} side={DoubleSide} depthWrite={false} /></mesh>
+            <Line points={[[x + .82, height, .82], [x + 1.05, height, .82], [x + 1.05, height + overflow, .82], [x + .82, height + overflow, .82]]}
+              color={CUBE_AXIS_COLORS.x} transparent opacity={opacity} lineWidth={2.5} raycast={ignoreRaycast} />
+            <SpatialSurfaceLabel text={m.boxOverflow(overflow)} position={[x + 2.25, height + overflow / 2, .84]} rotation={[0, 0, 0]} height={.3} />
+          </group>}
         </group>;
       })}
       {mapping && front && <>
