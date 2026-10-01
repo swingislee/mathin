@@ -7,7 +7,7 @@
       "title": "iOS 家长端集成",
       "agent": "codex",
       "threadId": "01a0f7b2-73aa-74b3-8cf6-b23207ece7d6",
-      "status": "integrated",
+      "status": "in_progress",
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-PARENT-IOS-20261001-INTEGRATION.md",
@@ -32,7 +32,7 @@
         "CHANGELOG.md"
       ],
       "checkpoint": "104eb856c2d29ee26c99e7192ae53361a20122f0",
-      "next": "家长端接收状态保留；Motion Lab一键1秒增量也已按原会话需求复核并集成2feb6110/104eb856，相关检查复用。原会话继续LAN与人工验收；生产与正式Gate未操作。"
+      "next": "已交付接口与Motion增量保持原状态；根据小程序用户截图反馈登记底部图标与家长页布局修复，接收交接05后复核并串行集成本地main。生产与正式Gate未操作。"
     },
     {
       "id": "DEV-PARENT-IOS-20261001",
@@ -278,7 +278,7 @@
       "title": "小程序家长发现与预约入口",
       "agent": "codex",
       "threadId": "01a0f7bd-4ca2-7370-a49c-a8f73fd4f5e9",
-      "status": "integrated",
+      "status": "in_progress",
       "checkout": "worktree",
       "branch": "codex/parent-wechat-discovery-codex",
       "card": ".ai/tasks/DEV-PARENT-WECHAT-20261001.md",
@@ -305,12 +305,13 @@
         "apps/parent-wechat/miniprogram/assets/",
         ".ai/handoffs/DEV-PARENT-WECHAT-20261001-codex-03.md",
         ".ai/handoffs/DEV-PARENT-WECHAT-20261001-codex-04.md",
+        ".ai/handoffs/DEV-PARENT-WECHAT-20261001-codex-05.md",
         "scripts/check-parent-foundation.mjs",
         "apps/parent-wechat/AGENTS.md"
       ],
       "sharedPaths": [],
       "checkpoint": "c06e8cd8e0ea2e05b2631893fe9af36f9989544a",
-      "next": "独立测评入口已集成83213842/c511b419；申请表单行文案修正c06e8cd8已集成50f3ba60。复用25项定向检查，主线微信测评页面启动通过。真实NO_LINKED_LEAD条件与完整预约闭环局限见交接，待人工验收。"
+      "next": "按原用户截图修复三个tabBar图标破图及家长服务布局，沿用原worktree，范围限app配置/WXSS/account/assets与相关窄检查。完成独立源码和交接05后复核集成；API与真实业务条件保持。"
     }
   ]
 }
