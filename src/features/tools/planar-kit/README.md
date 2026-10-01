@@ -38,6 +38,8 @@
 - 功能按钮、SVG 和浮窗沿用 `spatial-interaction` 的 `SpatialActionButton`、`SpatialActionIcon`、`SpatialCanvasPanel`。优先选已有动作；新增动作先由主任务确认语义归属，再在公共目录登记一次。
 - 材料声明在 `PlanarSceneDefinition.materials`，宿主用右侧 `add` 按钮及非模态浮窗加入当前状态；已有对象与观察标记继续保留。观察能力在 `actions` 声明 `active` 及纯状态变化，允许边界、顶点、名称同时开启。按当前材料读取准确值使用 `fields.read`，不复制一份容易过期的选中参数。
 - 参数使用公共 Input、Select、Checkbox、Slider；按钮图标保持单一含义。复制用 `duplicate`，镜像用 `mirror`，留影／标记用 `mark`；`record` 留给步骤录制。
+- `contextActions` 用当前材料外框和已有 action/operation ID 声明就近入口。宿主复用 `SpatialContextActions`、同一个操作终点、禁用态及对象外避让；无空间时保留右栏。只读隐藏，动画/拖动/发布中禁用，空白和 Esc 只取消本机选择。每条最多五个不同语义图标，避免重复按钮。
+- 专用格点由领域按数学单位绘制，并设 `referenceGrid: false` 收起宿主普通参考网格与其开关；显示网格不改变材料的坐标或约束。
 - 高通过 `HeightMark` 与 `RightAngleMark` 绘制，倾斜底边及底边延长线也必须是实际垂直关系。标记是清晰直角小方框，不用近似斜线代替。
 - 直接抓图形、顶点或可操作材料；点空白／Esc 取消选择。一般状态不覆盖额外移动轴；落位预览只画细虚线，不盖住原材料。
 - `usePlanarDrag` 冻结手势起点和屏幕变换，越过阈值才视为拖动。第二触点、失去捕获、窗口失焦和权限撤销取消本地手势。角度连续变化通过 previous 预览跨越 ±180°。

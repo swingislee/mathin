@@ -14,6 +14,7 @@ import { planePointFromClient } from "../planar-interaction/geometry";
 import { useToolSnapshot } from "../scenes/useToolSnapshot";
 import { SpatialActionButton } from "../spatial-interaction/SpatialActionButton";
 import { SpatialActionIcon } from "../spatial-interaction/SpatialActionIcon";
+import { SpatialContextActions } from "../spatial-interaction/SpatialContextActions";
 import { SpatialCanvasPanel } from "../spatial-interaction/SpatialWorkbenchControls";
 import { useSpatialDirectCommit } from "../spatial-interaction/useSpatialDirectCommit";
 import { useSpatialToolState } from "../spatial-interaction/useSpatialToolState";
@@ -21,7 +22,9 @@ import workbenchStyles from "../spatial-lab/CubeStructuresWorkbench.module.css";
 import { ALL_PLANAR_TOOLS, planarSnapshot, planarSnapshotForTool, planarStateSchema, type PlanarPoint, type PlanarSnapshot, type PlanarState, type PlanarToolId, type PlanarVersion } from "./contract";
 import { planarCommit, planarEventTime, planarFrame, planarHistory, planarPause, planarProgress } from "./presentation";
 import { planarScene, scenesForPlanarTool } from "./scene-registry";
-import { textFor, type PlanarAction, type PlanarDrawingApi, type PlanarField } from "./types";
+import { PlanarObjectToolbar } from "./PlanarObjectToolbar";
+import { resolvePlanarContextActions } from "./context-actions";
+import { textFor, type PlanarAction, type PlanarDrawingApi, type PlanarField, type PlanarOperation } from "./types";
 import styles from "./PlanarWorkbench.module.css";
 
 interface Props {
@@ -95,7 +98,7 @@ function PlanarWorkbenchStage({ toolId, version, locale: suppliedLocale, initial
     const checked = schema.safeParse(next);
     if (!checked.success || new TextEncoder().encode(JSON.stringify(next)).byteLength > 480_000) { setInvalid(true); return false; }
     if (!update(checked.data)) return false;
-    if (definition.selectionAfterChange) setSelected(definition.selectionAfterChange(authority.current, checked.data.current, selected));
+    if (definition.selectionAfterChange) setSelected((currentSelected) => definition.selectionAfterChange!(authority.current, checked.data.current, currentSelected));
     direct.hold(checked.data); setNow(planarEventTime()); setInvalid(false); return true;
   }
   function commit(to: PlanarState, action?: Pick<PlanarAction, "id" | "duration">, from = shown, base = authority) {
@@ -168,6 +171,14 @@ function PlanarWorkbenchStage({ toolId, version, locale: suppliedLocale, initial
   useEffect(() => { window.addEventListener("blur", cancelDraftOnBlur); return () => window.removeEventListener("blur", cancelDraftOnBlur); }, []);
   function togglePanel(panel: Panel) { cancelConstruction(); controls.togglePanel(panel); }
   function closePanel() { cancelConstruction(); controls.closePanel(); }
+  function toggleOperation(item: PlanarOperation) {
+    if (disabled || running || !frameIsExact) return;
+    cancelConstruction(); setOperation(item.id);
+    if (activeOperation?.id === item.id) controls.closePanel(); else {
+      controls.setPanel("operation");
+      if (item.constructionTool) setDrawingTool(item.constructionTool);
+    }
+  }
   useEffect(() => {
     // 外部权限/权威替换时必须同步撤销已捕获指针和本地预览，避免过期编辑留在舞台。
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -224,7 +235,8 @@ function PlanarWorkbenchStage({ toolId, version, locale: suppliedLocale, initial
       setField(field.key, Math.min(field.max, Math.max(field.min, rounded)));
     }} />}</label>;
   };
-  const switches = [{ key: "grid", label: { zh: "参考网格", en: "Reference grid" } }, { key: "measures", label: { zh: "数值与测量标记", en: "Values and measurements" } }, ...(definition.toggles ?? [])].filter((entry, index, all) => all.findIndex((item) => item.key === entry.key) === index);
+  const switches = [...(definition.referenceGrid === false ? [] : [{ key: "grid", label: { zh: "参考网格", en: "Reference grid" } }]), { key: "measures", label: { zh: "数值与测量标记", en: "Values and measurements" } }, ...(definition.toggles ?? [])].filter((entry, index, all) => all.findIndex((item) => item.key === entry.key) === index);
+  const context = writable && !drawingTool ? resolvePlanarContextActions(definition, shown, selected) : null;
   return <div className={workbenchStyles.workspace} {...controls.bindings} onKeyDown={handleKey} data-planar-tool={toolId} data-planar-scene={definition.id}>
     <div className={styles.viewport}><div className={workbenchStyles.canvas}>
       <svg ref={svg} className={styles.svg} viewBox="0 0 960 720" tabIndex={-1} aria-label={textFor(definition.title, locale)} data-drawing-tool={drawingTool ?? undefined} {...drag.handlers} onPointerDownCapture={(event) => {
@@ -240,11 +252,17 @@ function PlanarWorkbenchStage({ toolId, version, locale: suppliedLocale, initial
         if (event.target === event.currentTarget && !dragging && !drawingTool) { controls.onPointerMissed(event.nativeEvent); svg.current?.focus({ preventScroll: true }); }
       }}>
         <defs><pattern id={`${uid}-grid`} width="30" height="30" patternUnits="userSpaceOnUse"><path d="M 30 0 H 0 V 30" fill="none" stroke="var(--line)" strokeWidth="1" /></pattern></defs>
-        {shown.flags.grid && <rect width="960" height="720" fill={`url(#${uid}-grid)`} pointerEvents="none" />}
+        {definition.referenceGrid !== false && shown.flags.grid && <rect width="960" height="720" fill={`url(#${uid}-grid)`} pointerEvents="none" />}
         {definition.draw(shown, api)}
         {landing && !same(landing, shown) && <g className={styles.ghost} aria-hidden>{definition.draw(landing, inertApi)}</g>}
         {drawingTool && definition.construction?.preview(drawingTool, draftPreview ?? draftPoints, shown)}
       </svg>
+      {context && <PlanarObjectToolbar svg={svg} bounds={context.bounds}><SpatialContextActions label={m("选中材料的常用操作", "Selected material actions")} actions={context.items.map((entry) => ({
+        action: entry.item.icon, label: textFor(entry.item.label, locale),
+        active: entry.kind === "action" ? entry.item.active?.(shown) : activeOperation?.id === entry.item.id,
+        disabled: disabled || running || !frameIsExact || (entry.kind === "action" && entry.item.disabled?.(shown, { selected })),
+        onClick: () => entry.kind === "action" ? execute(entry.item) : toggleOperation(entry.item),
+      }))} /></PlanarObjectToolbar>}
       <div role="toolbar" aria-label={m("现场与设置", "Scene and settings")} className={`${workbenchStyles.dock} ${workbenchStyles.meta}`}>
         {scenes.length > 1 && <SpatialActionButton action="pieces" label={m("选择教学现场", "Choose a teaching scene")} active={controls.panel === "scenes"} onClick={() => togglePanel("scenes")} />}
         {!!definition.fields?.length && <SpatialActionButton action="dimensions" label={m("形状与准确参数", "Shape and precise parameters")} active={controls.panel === "parameters"} onClick={() => togglePanel("parameters")} />}
@@ -253,13 +271,7 @@ function PlanarWorkbenchStage({ toolId, version, locale: suppliedLocale, initial
       <div role="toolbar" aria-label={m("操作工具", "Teaching actions")} className={`${workbenchStyles.dock} ${workbenchStyles.tools}`}>
         {definition.construction && <SpatialActionButton action="drawShape" label={m("绘制图形", "Draw shape")} active={controls.panel === "construction"} disabled={!writable || publishing || running || !frameIsExact} onClick={() => togglePanel("construction")} />}
         {!!definition.materials?.length && <SpatialActionButton action="add" label={m("添加图形或生活实例", "Add a shape or everyday example")} active={controls.panel === "materials"} disabled={disabled || running || !frameIsExact} onClick={() => togglePanel("materials")} />}
-        {definition.operations?.map((item) => <SpatialActionButton key={item.id} action={item.icon} label={textFor(item.label, locale)} active={activeOperation?.id === item.id} disabled={disabled || running || !frameIsExact} onClick={() => {
-          cancelConstruction(); setOperation(item.id);
-          if (activeOperation?.id === item.id) controls.closePanel(); else {
-            controls.setPanel("operation");
-            if (item.constructionTool) setDrawingTool(item.constructionTool);
-          }
-        }} />)}
+        {definition.operations?.map((item) => <SpatialActionButton key={item.id} action={item.icon} label={textFor(item.label, locale)} active={activeOperation?.id === item.id} disabled={disabled || running || !frameIsExact} onClick={() => toggleOperation(item)} />)}
         {definition.actions?.map((action) => <SpatialActionButton key={action.id} action={action.icon} label={textFor(action.label, locale)} active={action.active?.(shown)} disabled={disabled || running || !frameIsExact || action.disabled?.(shown, { selected })} onClick={() => execute(action)} />)}
         {authority.motion && planarProgress(authority.motion, now) < 1 && <>
           <SpatialActionButton action={running ? "pause" : "play"} label={running ? m("暂停过程", "Pause motion") : m("继续过程", "Resume motion")} disabled={disabled} onClick={() => publish(planarPause(authority, planarEventTime(), running))} />

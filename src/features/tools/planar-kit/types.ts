@@ -57,6 +57,8 @@ export interface PlanarConstruction {
 export interface PlanarSceneDefinition {
   id: string; toolId: PlanarToolId; title: PlanarText; description: PlanarText;
   create: () => PlanarState;
+  /** 格点等专用领域自行绘制数学网格时关闭宿主参考网格。 */
+  referenceGrid?: boolean;
   progress?: boolean;
   fields?: readonly PlanarField[]; toggles?: readonly PlanarToggle[]; actions?: readonly PlanarAction[];
   materials?: readonly PlanarMaterial[];
