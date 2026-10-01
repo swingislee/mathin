@@ -219,7 +219,8 @@
         "apps/parent-wechat/miniprogram/theme.json",
         "apps/parent-wechat/miniprogram/components/",
         "apps/parent-wechat/miniprogram/assets/",
-        ".ai/handoffs/DEV-PARENT-WECHAT-20261001-codex-03.md"
+        ".ai/handoffs/DEV-PARENT-WECHAT-20261001-codex-03.md",
+        "scripts/check-parent-foundation.mjs"
       ],
       "sharedPaths": [],
       "checkpoint": "ebd4bc8c0d4fd8331afc1f3b8b106a36173d30e5",
