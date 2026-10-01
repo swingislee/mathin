@@ -95,7 +95,7 @@
       "title": "优化班级列表与手机端体验",
       "agent": "codex",
       "threadId": "01a0f6e7-2fca-7963-9be1-3ed3d2705ecc",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/class-roster-density-codex",
       "card": ".ai/tasks/DEV-CLASS-LIST-20261001.md",
@@ -129,8 +129,8 @@
       "sharedPaths": [
         "CHANGELOG.md"
       ],
-      "checkpoint": "e0da117b911fc9bfba356b7dbcd7578ae8d0cf14",
-      "next": "按最新反馈收紧年级列内边距与表头，将人数计数移到名单空位之后；沿用独立工作区做局部呈现增量，保留数据与名单交互。"
+      "checkpoint": "365e81aff101446555fa8b79d0b28e4652d78f53",
+      "next": "年级列间距收紧、人数计数移至名单空位后，已通过 cd4d6042 集成；相关名单测试、ESLint 与 CSS 解析通过，开发端待人工视觉验收，见 DEV-CLASS-LIST-20261001-codex-06.md。"
     },
     {
       "id": "DEV-PLACE-VALUE-20261001",
