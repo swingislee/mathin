@@ -11,6 +11,7 @@ import { Slider } from "@/components/ui/slider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SpatialAxisSnapButton, useSpatialAxisSnap } from "@/features/spatial-math/renderer-r3f/SpatialCameraControls";
 import { SpatialActionButton } from "../spatial-interaction/SpatialActionButton";
+import { SpatialActionIcon } from "../spatial-interaction/SpatialActionIcon";
 import { SpatialContextActions } from "../spatial-interaction/SpatialContextActions";
 import { SpatialViewButtons, SPATIAL_STANDARD_VIEWS } from "../spatial-interaction/SpatialViewButtons";
 import { SpatialCanvasPanel } from "../spatial-interaction/SpatialWorkbenchControls";
@@ -173,21 +174,29 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
           fit={{ label: m.fit, onClick: () => commit({ ...snapshot, frame: frameFor(snapshot), cameraRevision: snapshot.cameraRevision + 1 }) }} />
         <SpatialAxisSnapButton messages={m} disabled={viewer} iconOnly className={styles.icon} />
       </div>
-      <div className={styles.dock + " " + styles.tools} role="toolbar" aria-label={m.tools}>
-        <SpatialActionButton action="orbit" label={m.orbit} active={controls.tool === "orbit"} disabled={viewer} onClick={() => controls.chooseTool("orbit")} />
-        <SpatialActionButton action="pan" label={m.pan} active={controls.tool === "pan"} disabled={viewer} onClick={() => controls.chooseTool("pan")} />
-        <span className={styles.toolSeparator} />
-        <SpatialActionButton action="prepare" label={m.prepare} active={controls.panel === "prepare"} disabled={viewer} onClick={() => { setDraft(formatPlaceValue(boardTotal(board), base)); controls.togglePanel("prepare"); }} />
-        {allowBoxStrategy && !legacy && <SpatialActionButton action="placePresentation" label={m.presentation} active={controls.panel === "presentation"} disabled={viewer} onClick={() => controls.togglePanel("presentation")} />}
-        <SpatialActionButton action="compareScenes" label={m.compare} active={controls.panel === "compare"} disabled={viewer} onClick={() => controls.togglePanel("compare")} />
-        <SpatialActionButton action="placeUnpack" label={unpackLabel} disabled={quantityDisabled || unpack < 1} onClick={() => unpack > 0 && act("unpack", active, unpack)} />
-        <SpatialActionButton action="observe" label={m.inspect} active={controls.panel === "inspect"} disabled={viewer} onClick={() => controls.togglePanel("inspect")} />
-        <span className={styles.toolSeparator} />
-        <SpatialActionButton action="showDigits" label={m.showDigits} active={snapshot.showDigits} disabled={publishing} onClick={() => commit({ ...snapshot, showDigits: !snapshot.showDigits })} />
-        <SpatialActionButton action="settings" label={m.settings} active={controls.panel === "settings"} disabled={viewer} onClick={() => controls.togglePanel("settings")} />
-        <SpatialActionButton action="undo" label={m.undo} disabled={disabled || !snapshot.past.length} onClick={() => { const next = historyPlaceValue(commandState, "undo"); if (next) commit({ ...next, autoCarry: false }); }} />
-        <SpatialActionButton action="redo" label={m.redo} disabled={disabled || !snapshot.future.length} onClick={() => { const next = historyPlaceValue(commandState, "redo"); if (next) commit({ ...next, autoCarry: false }); }} />
-        <SpatialActionButton action="reset" label={m.reset} disabled={publishing} onClick={() => { autoKey.current = ""; setPreview(null); setPendingInspection(null); commit({ ...structuredClone(origin), cameraRevision: snapshot.cameraRevision + 1 }); controls.closePanel(); }} />
+      <div className={styles.dock + " " + styles.tools + " " + local.toolbar} role="toolbar" aria-label={m.tools} data-place-value-toolbar>
+        <div className={local.toolbarGroup} role="group" aria-label={m.toolbarGroups.camera} data-place-value-toolbar-group="camera">
+          <SpatialActionButton action="orbit" label={m.orbit} data-place-value-kind="mode" active={controls.tool === "orbit"} disabled={viewer} onClick={() => controls.chooseTool("orbit")} />
+          <SpatialActionButton action="pan" label={m.pan} data-place-value-kind="mode" active={controls.tool === "pan"} disabled={viewer} onClick={() => controls.chooseTool("pan")} />
+        </div>
+        <span className={styles.toolSeparator} aria-hidden />
+        <div className={local.toolbarGroup} role="group" aria-label={m.toolbarGroups.teaching} data-place-value-toolbar-group="teaching">
+          <SpatialActionButton action="placePrepare" label={m.prepare} data-place-value-kind="panel" active={controls.panel === "prepare"} aria-pressed={undefined} aria-expanded={controls.panel === "prepare"} disabled={viewer} onClick={() => { setDraft(formatPlaceValue(boardTotal(board), base)); controls.togglePanel("prepare"); }} />
+          {allowBoxStrategy && !legacy && <SpatialActionButton action="placePresentation" label={m.presentation} data-place-value-kind="panel" active={controls.panel === "presentation"} aria-pressed={undefined} aria-expanded={controls.panel === "presentation"} disabled={viewer} onClick={() => controls.togglePanel("presentation")} />}
+          <SpatialActionButton action="placeCompare" label={m.compare} data-place-value-kind="panel" active={controls.panel === "compare"} aria-pressed={undefined} aria-expanded={controls.panel === "compare"} disabled={viewer} onClick={() => controls.togglePanel("compare")} />
+          <SpatialActionButton action="placeInspect" label={m.inspect} data-place-value-kind="panel" active={controls.panel === "inspect"} aria-pressed={undefined} aria-expanded={controls.panel === "inspect"} disabled={viewer} onClick={() => controls.togglePanel("inspect")} />
+        </div>
+        <span className={styles.toolSeparator} aria-hidden />
+        <div className={local.toolbarGroup} role="group" aria-label={m.toolbarGroups.display} data-place-value-toolbar-group="display">
+          <SpatialActionButton action="showDigits" label={m.showDigits} data-place-value-kind="toggle" active={snapshot.showDigits} disabled={publishing} onClick={() => commit({ ...snapshot, showDigits: !snapshot.showDigits })} />
+          <SpatialActionButton action="settings" label={m.settings} data-place-value-kind="panel" active={controls.panel === "settings"} aria-pressed={undefined} aria-expanded={controls.panel === "settings"} disabled={viewer} onClick={() => controls.togglePanel("settings")} />
+        </div>
+        <span className={styles.toolSeparator} aria-hidden />
+        <div className={local.toolbarGroup} role="group" aria-label={m.toolbarGroups.history} data-place-value-toolbar-group="history">
+          <SpatialActionButton action="undo" label={m.undo} data-place-value-kind="command" disabled={disabled || !snapshot.past.length} onClick={() => { const next = historyPlaceValue(commandState, "undo"); if (next) commit({ ...next, autoCarry: false }); }} />
+          <SpatialActionButton action="redo" label={m.redo} data-place-value-kind="command" disabled={disabled || !snapshot.future.length} onClick={() => { const next = historyPlaceValue(commandState, "redo"); if (next) commit({ ...next, autoCarry: false }); }} />
+          <SpatialActionButton action="reset" label={m.reset} data-place-value-kind="command" disabled={publishing} onClick={() => { autoKey.current = ""; setPreview(null); setPendingInspection(null); commit({ ...structuredClone(origin), cameraRevision: snapshot.cameraRevision + 1 }); controls.closePanel(); }} />
+        </div>
       </div>
       {controls.panel && <SpatialCanvasPanel title={m[controls.panel]} closeLabel={m.close} anchor="tool" onClose={controls.closePanel}>
         <div className="space-y-3 text-xs">
@@ -219,7 +228,7 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
             {boxes && <div className="flex flex-wrap gap-1">{(["inside", "outside", "both"] as const).map((contents) => <Button key={contents} size="sm" variant={snapshot.presentation?.contents === contents ? "secondary" : "ghost"}
               aria-pressed={snapshot.presentation?.contents === contents} disabled={disabled || (contents !== "inside" && !selected)}
               onClick={() => setContents(contents)}>{m[contents]}</Button>)}</div>}
-            <Button size="sm" disabled={quantityDisabled || unpack < 1} onClick={() => unpack > 0 && act("unpack", active, unpack)}>{unpackLabel}</Button>
+            <Button size="sm" aria-label={unpackLabel} disabled={quantityDisabled || unpack < 1} onClick={() => unpack > 0 && act("unpack", active, unpack)}><SpatialActionIcon action="placeUnpack" className="size-4" />{unpackLabel}</Button>
             <p className="text-muted">{boxes ? m.mappingHint : m.fullHint}</p>
             <p className="text-muted">{boxes ? m.boxColors : m.orientation}</p>
             {!boxes && <><div className="flex gap-2">

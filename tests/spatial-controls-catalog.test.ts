@@ -36,6 +36,21 @@ describe("shared spatial controls catalog", () => {
     expect(source("spatial-lab/CubeNetFoldWorkspace.tsx")).toContain('action="faceReveal"');
     expect(source("spatial-lab/CubeStructuresWorkbench.tsx")).toContain('action={hidden ? "show" : "hide"}');
   });
+  it("gives place-value teaching panels dedicated icons while preserving other workspaces", () => {
+    expect(SPATIAL_ACTIONS.placePrepare.icon).toBe("Columns3");
+    expect(SPATIAL_ACTIONS.placePresentation.icon).toBe("Blocks");
+    expect(SPATIAL_ACTIONS.placeCompare.icon).toBe("Columns2");
+    expect(SPATIAL_ACTIONS.placeInspect.icon).toBe("ScanEye");
+    expect(SPATIAL_ACTIONS.placePresentation.icon).not.toBe(SPATIAL_ACTIONS.extractContents.icon);
+    expect(SPATIAL_ACTIONS.prepare.icon).toBe("PencilRuler");
+    expect(SPATIAL_ACTIONS.compareScenes.icon).toBe("GitCompare");
+    expect(SPATIAL_ACTIONS.observe.icon).toBe("Focus");
+    const workspace = source("place-value/PlaceValueWorkspace.tsx");
+    for (const action of ["placePrepare", "placePresentation", "placeCompare", "placeInspect", "placeUnpack"]) expect(workspace).toContain(`action="${action}"`);
+    expect(workspace).not.toContain('action="prepare"');
+    expect(workspace).not.toContain('action="compareScenes"');
+    expect(workspace).not.toContain('action="observe"');
+  });
   it("keeps current and future shared workspaces on semantic controls, without local SVG choices", () => {
     const root = "src/features/tools";
     const files = readdirSync(root, { recursive: true }).filter((file): file is string => typeof file === "string" && /(?:Workspace|Workbench)\.tsx$/.test(file));

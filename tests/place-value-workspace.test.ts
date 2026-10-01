@@ -7,16 +7,17 @@ import type { PlaceValueCanvasProps } from "@/features/tools/place-value/PlaceVa
 import { boardTotal, createDefaultPlaceValueInitial, createPlaceValueBoard, placeValueSnapshot, type PlaceValueSnapshot } from "@/features/tools/place-value/radix-contract";
 import { planPlaceValue } from "@/features/tools/place-value/radix-model";
 
-const viewport = vi.hoisted(() => ({ current: null as PlaceValueCanvasProps | null }));
+const viewport = vi.hoisted(() => ({ current: null as PlaceValueCanvasProps | null, locale: "en" as "zh" | "en" }));
 vi.mock("next/dynamic", () => ({ default: () => function Viewport(props: PlaceValueCanvasProps) {
   viewport.current = props;
   return createElement("div", null, props.selectionActions, (props.snapshot.mode === "compare" ? ["left", "right"] as const : ["left"] as const).flatMap((side) =>
     [...props.snapshot.left.places.keys()].reverse().map((place) => createElement("div", { key: side + place }, props.renderPlaceControl?.(side, place), place < props.snapshot.left.places.length - 1 ? props.renderCarryControl?.(side, place) : null))));
 } }));
-vi.mock("next-intl", () => ({ useLocale: () => "en" }));
+vi.mock("next-intl", () => ({ useLocale: () => viewport.locale }));
 let root: Root, host: HTMLDivElement, serial = 0, now = 1000;
 const frames = new Map<number, FrameRequestCallback>();
 beforeEach(() => {
+  viewport.locale = "en";
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
   vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => { frames.set(++serial, callback); return serial; });
@@ -34,6 +35,65 @@ const click = async (label: string) => act(async () => button(label).click());
 async function tick(time: number) { now = time; const tasks = [...frames.values()]; frames.clear(); await act(async () => tasks.forEach((callback) => callback(time))); }
 
 describe("place-value workspace using common spatial controls", () => {
+  it.each(["zh", "en"] as const)("keeps the %s toolbar in four groups and separates modes, panels, toggles and commands", async (locale) => {
+    viewport.locale = locale;
+    await render();
+    const toolbar = host.querySelector<HTMLElement>("[data-place-value-toolbar]")!;
+    const groups = [...toolbar.querySelectorAll<HTMLElement>("[data-place-value-toolbar-group]")];
+    expect(groups.map((group) => group.dataset.placeValueToolbarGroup)).toEqual(["camera", "teaching", "display", "history"]);
+    expect(groups.map((group) => group.getAttribute("aria-label"))).toEqual(locale === "zh" ? ["视角", "教学", "显示", "历史"] : ["Camera", "Teaching", "Display", "History"]);
+    const actions = [...toolbar.querySelectorAll<HTMLButtonElement>("[data-spatial-action]")];
+    expect(actions.map((node) => node.dataset.spatialAction)).toEqual(["orbit", "pan", "placePrepare", "placePresentation", "placeCompare", "placeInspect", "showDigits", "settings", "undo", "redo", "reset"]);
+    expect(actions.slice(2, 6).map((node) => node.getAttribute("aria-label"))).toEqual(locale === "zh" ? ["摆数", "表示方式", "比较两数", "观察单位"] : ["Arrange number", "Representation", "Compare numbers", "Inspect unit"]);
+    expect(actions.every((node) => node.querySelector("svg") && node.getAttribute("title"))).toBe(true);
+    expect(actions.filter((node) => node.dataset.placeValueKind === "command").every((node) => !node.hasAttribute("aria-pressed") && !node.hasAttribute("aria-expanded"))).toBe(true);
+    expect(toolbar.querySelector('[data-spatial-action="placeUnpack"]')).toBeNull();
+    const snapshot = structuredClone(viewport.current!.snapshot);
+    for (const panel of actions.filter((node) => node.dataset.placeValueKind === "panel")) {
+      expect(panel.hasAttribute("aria-pressed")).toBe(false);
+      expect(panel.getAttribute("aria-expanded")).toBe("false");
+      await act(async () => panel.click());
+      expect(panel.getAttribute("aria-expanded")).toBe("true");
+      expect(host.querySelector("[data-cube-canvas-panel]")!.getAttribute("data-cube-panel-anchor")).toBe("tool");
+      await act(async () => panel.click());
+      expect(panel.getAttribute("aria-expanded")).toBe("false");
+      expect(host.querySelector("[data-cube-canvas-panel]")).toBeNull();
+    }
+    expect(viewport.current!.snapshot).toEqual(snapshot);
+    const toggle = toolbar.querySelector<HTMLButtonElement>('[data-spatial-action="showDigits"]')!;
+    await act(async () => toggle.click());
+    expect(toggle.getAttribute("aria-pressed")).toBe("false");
+    expect(viewport.current!.snapshot.showDigits).toBe(false);
+    await act(async () => toggle.click());
+    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+    expect(viewport.current!.snapshot).toEqual(snapshot);
+  });
+  it("unpacks from the observation panel without moving the camera or losing undo and redo", async () => {
+    vi.stubGlobal("crypto", { getRandomValues: crypto.getRandomValues.bind(crypto) }); // 局域网 HTTP 无 randomUUID。
+    const initial = { ...createDefaultPlaceValueInitial(), left: createPlaceValueBoard(20), presentation: { strategy: "boxes" as const, contents: "inside" as const } };
+    await render({ initial });
+    const before = structuredClone(viewport.current!.snapshot);
+    expect(host.querySelector('button[aria-label="One ten becomes ten ones"]')).toBeNull();
+    await click("Inspect unit");
+    const unpack = button("One ten becomes ten ones");
+    expect(unpack.closest("[data-cube-canvas-panel]")).not.toBeNull();
+    expect(unpack.querySelector('[data-spatial-icon="placeUnpack"]')).not.toBeNull();
+    await act(async () => unpack.click());
+    expect(viewport.current!.snapshot.motion?.kind).toBe("unpack");
+    expect(boardTotal(viewport.current!.snapshot.left)).toBe(20);
+    await tick(10_000);
+    expect(viewport.current!.snapshot.left.places[0]).toHaveLength(10);
+    expect(viewport.current!.snapshot.left.places[1]).toHaveLength(1);
+    expect(viewport.current!.snapshot.view).toBe(before.view);
+    expect(viewport.current!.snapshot.cameraRevision).toBe(before.cameraRevision);
+    await click("Undo"); expect(viewport.current!.snapshot.left).toEqual(before.left);
+    expect(button("Redo").disabled).toBe(true);
+    await tick(20_000);
+    await click("Redo"); expect(viewport.current!.snapshot.left.places[0]).toHaveLength(10);
+    await tick(30_000);
+    await click("Restore starting scene"); expect(viewport.current!.snapshot.left).toEqual(before.left);
+    expect(host.querySelector("[data-cube-canvas-panel]")).toBeNull();
+  });
   it.each(["rods", "boxes"] as const)("switches the %s camera between orbit and pan without publishing a scene change", async (strategy) => {
     vi.stubGlobal("crypto", { getRandomValues: crypto.getRandomValues.bind(crypto) }); // 局域网 HTTP 无 randomUUID。
     const state = placeValueSnapshot({ ...createDefaultPlaceValueInitial(), presentation: { strategy, contents: "inside" } });
@@ -112,7 +172,7 @@ describe("place-value workspace using common spatial controls", () => {
   it("carries with one button, keeps inspection separate, and captures only the completed state", async () => {
     const capture = vi.fn();
     await render({ onSnapshot: capture });
-    await click("Presentation strategy"); await click("Box mapping");
+    await click("Representation"); await click("Box mapping");
     expect(viewport.current!.snapshot.presentation).toEqual({ strategy: "boxes", contents: "inside" });
     expect(viewport.current!.snapshot.left.places[0]).toHaveLength(9);
     await click("Add one unit"); await tick(1200);
@@ -133,14 +193,14 @@ describe("place-value workspace using common spatial controls", () => {
     expect(capture.mock.lastCall![0].presentation.strategy).toBe("boxes");
     const board = viewport.current!.snapshot.left;
     expect(host.querySelector('button[aria-label="Take out"]')).toBeNull();
-    await click("Inspect a counting unit");
+    await click("Inspect unit");
     expect(button("Take out").disabled).toBe(true);
     await act(async () => viewport.current!.onSelect("left", board.places[1][0][0].start));
     await click("Take out"); expect(button("Add one unit").disabled).toBe(true);
     expect(capture.mock.lastCall![0]).toBeNull(); await tick(6900);
     expect(viewport.current!.snapshot.left).toEqual(board);
     expect(capture.mock.lastCall![0].presentation.contents).toBe("outside");
-    await click("Presentation strategy"); await click("Rod regrouping"); expect(viewport.current!.snapshot.left).toEqual(board);
+    await click("Representation"); await click("Rod regrouping"); expect(viewport.current!.snapshot.left).toEqual(board);
     await click("Restore starting scene"); expect(viewport.current!.snapshot.left.places[0]).toHaveLength(9);
   });
   it("returns the previous inspected box before opening another and preserves number and history", async () => {
@@ -148,7 +208,7 @@ describe("place-value workspace using common spatial controls", () => {
     const capture = vi.fn(); await render({ initial, onSnapshot: capture });
     const first = initial.left.places[1][0][0].start, second = initial.left.places[1][1][0].start;
     await act(async () => viewport.current!.onSelect("left", first));
-    await click("Inspect a counting unit"); await click("Take out"); await tick(2500);
+    await click("Inspect unit"); await click("Take out"); await tick(2500);
     await act(async () => viewport.current!.onSelect("left", second));
     expect(viewport.current!.snapshot.selection!.unit).toBe(first);
     expect(viewport.current!.snapshot.presentation!.contents).toBe("inside");
@@ -205,7 +265,7 @@ describe("place-value workspace using common spatial controls", () => {
     const board = createPlaceValueBoard(33), first = board.places[1][0][0].start, second = board.places[1][1][0].start;
     await render({ initial: { ...createDefaultPlaceValueInitial(), left: board, presentation: { strategy: "boxes", contents: "inside" } } });
     await act(async () => viewport.current!.onSelect("left", first));
-    await click("Inspect a counting unit"); await click("Take out"); await tick(2500);
+    await click("Inspect unit"); await click("Take out"); await tick(2500);
     await act(async () => viewport.current!.onSelect("left", second));
     await click("Restore starting scene"); await tick(10000);
     expect(viewport.current!.snapshot.presentation!.contents).toBe("inside"); expect(viewport.current!.snapshot.selection).toBeNull();
@@ -262,8 +322,9 @@ describe("place-value workspace using common spatial controls", () => {
   it("keeps 99 + 1 protected across both carry steps and blocks panel quantity shortcuts", async () => {
     await render({ initial: { ...createDefaultPlaceValueInitial(), left: createPlaceValueBoard(99) } });
     await click("Add one unit");
+    await click("Inspect unit");
     expect(button("One ten becomes ten ones").disabled).toBe(true);
-    await click("Prepare number and groups");
+    await click("Arrange number");
     expect(host.querySelector<HTMLInputElement>('input[aria-label="Set number"]')!.disabled).toBe(true);
     expect(button("Arrange").disabled).toBe(true); expect(button("100").disabled).toBe(true);
     await click("Ten ones make one ten");
@@ -309,7 +370,7 @@ describe("place-value workspace using common spatial controls", () => {
     const tasks = [...frames.values()]; frames.clear(); await act(async () => tasks.forEach((callback) => callback(1180)));
     expect(viewport.current!.progress).toBe(1);
     now = 1180; await click("Ten ones make one ten"); await tick(3380);
-    await click("Inspect a counting unit");
+    await click("Inspect unit");
     // A replayed, paused classroom command uses its own timeline, not the previous completed frame.
     const paused = { ...viewport.current!.snapshot, motion: { ...viewport.current!.snapshot.motion!, startedAt: now, progress: .25, paused: true } };
     await render({ classroom: { state: paused, onChange: async () => {} } }); expect(viewport.current!.progress).toBe(.25);
@@ -328,6 +389,7 @@ describe("place-value workspace using common spatial controls", () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(501); });
     expect(viewport.current!.snapshot.motion?.kind).toBe("carry");
     await tick(11000); expect(viewport.current!.snapshot.left.places[2]).toHaveLength(1);
+    await click("Inspect unit");
     await click("One hundred becomes ten tens");
     expect(viewport.current!.snapshot.autoCarry).toBe(false);
     await tick(18200); await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
@@ -344,7 +406,7 @@ describe("place-value workspace using common spatial controls", () => {
     await tick(1600); expect(capture.mock.lastCall![0].left.places[0]).toHaveLength(10);
     await click("Ten ones make one ten"); await tick(2700);
     expect(viewport.current!.progress).toBe(.5);
-    await click("Inspect a counting unit");
+    await click("Inspect unit");
     await click("Pause process"); await tick(9000); expect(viewport.current!.progress).toBe(.5);
     expect(capture.mock.lastCall![0]).toBeNull();
     await click("Left"); expect(viewport.current!.snapshot.view).toBe("left");
@@ -379,7 +441,7 @@ describe("place-value workspace using common spatial controls", () => {
     expect(viewport.current!.progress).toBe(.5);
     await render({ initial, classroom: { state: structuredClone(command), onChange: update } }); await tick(2650);
     expect(viewport.current!.progress).toBe(.75); expect(update).toHaveBeenCalledTimes(1);
-    await click("Inspect a counting unit");
+    await click("Inspect unit");
     await click("Pause process"); expect(update.mock.lastCall![0].motion).toMatchObject({ progress: .75, paused: true });
     const late = planPlaceValue(state, "carry", 1000)!; now = 3200;
     await render({ initial, classroom: { state: late } }); await tick(3200);
