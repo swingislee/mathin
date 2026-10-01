@@ -60,7 +60,7 @@
 
 ## 1 对 1 测评稳定合同
 
-`/api/v1/parent/assessments` 的 HTTP 实现和 OpenAPI 已接入本节合同。GET 必填 `participant`；POST 的 `request`（含同 ID 幂等恢复）返回 HTTP 201，`confirm` 返回 HTTP 200。代码交付不表示数据库 RPC 已安装或预约业务已可运行；数据库尚未升级时返回 `UNAVAILABLE`，目标环境升级按各自授权流程执行。
+`/api/v1/parent/assessments` 的 HTTP 实现和 OpenAPI 已接入本节合同。GET 必填 `participant`；UUID 接受大小写输入并统一以小写传递和返回。POST 的 `request`（含同 ID 幂等恢复）返回 HTTP 201，`confirm` 返回 HTTP 200。代码交付不表示数据库 RPC 已安装或预约业务已可运行；数据库尚未升级时返回 `UNAVAILABLE`，目标环境升级按各自授权流程执行。
 
 独立测评复用已有 `lead_invitation_threads(kind=assessment_1v1)`，通过 `parent_assessment_overview`、`request_parent_assessment` 和 `confirm_parent_assessment` 读取和推进同一条邀约。HTTP 使用调用者的 Bearer Supabase client，数据库实时核验 `miniapp_can_participate(student, 'grades')`；学生 UUID 经现有 `leads.student_id` 对应业务线索。没有唯一可用线索时保留已有邀约读取和确认，新申请由 `eligibility` 说明限制。
 

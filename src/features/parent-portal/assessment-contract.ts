@@ -3,7 +3,7 @@ import type {
   AssessmentCommand, ParentAssessmentOverview, ParentAssessmentRequest,
 } from "../../../contracts/parent-api/portal";
 
-const uuid = z.string().uuid();
+const uuid = z.string().uuid().transform((value) => value.toLowerCase());
 const dateTime = z.iso.datetime({ offset: true });
 const calendarDate = z.iso.date();
 const optionPattern = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])@(09:50|10:00|14:00|16:00|17:00|17:30|19:20|after_school)$/;

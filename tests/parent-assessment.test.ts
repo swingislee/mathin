@@ -133,6 +133,32 @@ describe("家长独立 1 对 1 测评 HTTP 合同", () => {
     expect((await POST(postRequest(requestCommand()))).status).toBe(503);
   });
 
+  it("原生端的大写 UUID 在查询、申请和确认时统一规范化", async () => {
+    const canonicalChild = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const canonicalTeacher = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    const canonicalInvitation = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+    const row = requestRow({ id: canonicalInvitation, participantId: canonicalChild, teacher: { id: canonicalTeacher, displayName: "测评老师" } });
+    state.results.parent_assessment_overview = ok({ ...overview(), participantId: canonicalChild });
+    const read = await GET(getRequest(`participant=${canonicalChild.toUpperCase()}`));
+    expect(read.status).toBe(200);
+    expect((await read.json()).participantId).toBe(canonicalChild);
+    expect(state.rpc).toHaveBeenCalledWith("parent_assessment_overview", { p_student_id: canonicalChild });
+    state.results.request_parent_assessment = ok(row);
+    const requested = await POST(postRequest({ ...requestCommand(),
+      id: canonicalInvitation.toUpperCase(), participantId: canonicalChild.toUpperCase(), teacherId: canonicalTeacher.toUpperCase(),
+    }));
+    expect(requested.status).toBe(201);
+    expect(await requested.json()).toEqual(row);
+    expect(state.rpc).toHaveBeenCalledWith("request_parent_assessment", {
+      p_request_id: canonicalInvitation, p_student_id: canonicalChild, p_assessor_id: canonicalTeacher, p_parent_time_options: [option],
+    });
+    state.results.confirm_parent_assessment = ok({ ...row, state: "confirmed", scheduledAt: "2026-10-03T02:00:00Z" });
+    expect((await POST(postRequest({ ...confirmCommand(), id: canonicalInvitation.toUpperCase(), participantId: canonicalChild.toUpperCase() }))).status).toBe(200);
+    expect(state.rpc).toHaveBeenCalledWith("confirm_parent_assessment", {
+      p_invitation_id: canonicalInvitation, p_student_id: canonicalChild, p_time_option: option, p_expected_updated_at: updatedAt,
+    });
+  });
+
   it.each([
     "", "participant=not-a-uuid", `participant=${child}&extra=unsupported`, `participant=${child}&participant=${sibling}`,
   ])("拒绝缺失、畸形或含糊查询 %s", async (query) => {
