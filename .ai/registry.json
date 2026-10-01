@@ -96,16 +96,28 @@
       "card": ".ai/tasks/DEV-CLASS-LIST-20261001.md",
       "writePaths": [
         "src/features/school/ClassRosterClassSummary.tsx",
+        "src/features/school/ClassRosterTermPicker.tsx",
+        "src/features/school/ClassRosterSessionRow.tsx",
+        "src/features/school/ClassRosterSessionDetail.tsx",
+        "src/features/school/SessionMaterialsReader.tsx",
+        "src/features/school/SessionStudentPostworkTable.tsx",
+        "src/features/school/EnrollmentPlacementWorkbench.tsx",
+        "src/features/school/class-roster-layout.module.css",
+        "src/features/school/class-roster-presentation-contract.ts",
+        "src/features/school/class-session-resource.ts",
+        "src/features/school/DashboardShell.tsx",
         "tests/enrollment-placement-drag-confirmation.test.ts",
         "tests/enrollment-placement-workbench.test.ts",
+        "tests/class-session-registration.test.ts",
+        "tests/class-session-resource.test.ts",
         "docs/plan/dashboard-work-entry-restructure.md",
-        ".ai/handoffs/DEV-CLASS-LIST-20261001-codex-03.md"
+        ".ai/handoffs/DEV-CLASS-LIST-20261001-codex-04.md"
       ],
       "sharedPaths": [
         "CHANGELOG.md"
       ],
-      "checkpoint": "ec92855f1b2ea1f847e2dfdc081217b0879ae275",
-      "next": "按最新反馈将教室移入班级信息，主行仅显示校区并统一字体；沿用独立 worktree，完成定向检查后交付开发端人工验收。"
+      "checkpoint": "1a93ac97b91b5721138ad775bac9e897a30768d0",
+      "next": "修复手机班级筛选、名册与课次互斥、详情宽度、直接入口和选中边框；检查重复读取及请求取消。沿用独立 worktree，不涉及数据库或生产操作。"
     },
     {
       "id": "DEV-PLACE-VALUE-20261001",
