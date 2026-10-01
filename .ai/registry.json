@@ -35,14 +35,14 @@
       "title": "优化班级列表与手机端体验",
       "agent": "codex",
       "threadId": "01a0f6e7-2fca-7963-9be1-3ed3d2705ecc",
-      "status": "integrated",
-      "checkout": "primary-transition",
-      "branch": "main",
+      "status": "in_progress",
+      "checkout": "worktree",
+      "branch": "codex/class-roster-density-codex",
       "card": ".ai/tasks/DEV-CLASS-LIST-20261001.md",
-      "writePaths": ["src/features/school/", "tests/enrollment-completion-data.test.ts", "tests/enrollment-placement-drag-confirmation.test.ts", "tests/enrollment-placement-workbench.test.ts", "docs/plan/dashboard-work-entry-restructure.md"],
+      "writePaths": ["src/features/school/EnrollmentPlacementWorkbench.tsx", "src/features/school/class-roster-header-contract.ts", "src/features/school/class-roster-layout.module.css", "src/features/school/class-roster-presentation-contract.ts", "src/features/school/ClassRosterClassSummary.tsx", "tests/enrollment-placement-drag-confirmation.test.ts", "tests/enrollment-placement-workbench.test.ts", "docs/plan/dashboard-work-entry-restructure.md", ".ai/handoffs/DEV-CLASS-LIST-20261001-codex-02.md"],
       "sharedPaths": ["CHANGELOG.md"],
       "checkpoint": "b1095c73bdb8456fe361e2839b70c7d883559720",
-      "next": "班级信息与触屏入口已提交，等待开发端人工验收；下一独立批次使用 worktree。"
+      "next": "按新反馈改为内容列宽，并将按老师视图的待分班合并到末尾；在独立 worktree 完成窄检查后集成开发页面。"
     },
     {
       "id": "DEV-PLACE-VALUE-20261001",
