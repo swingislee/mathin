@@ -1,6 +1,6 @@
 <view class="page">
   <text class="eyebrow">{{brandName}}</text>
-  <view wx:if="{{submitted}}" class="empty"><text class="title">{{copy.registrationDone}}</text><text class="description">{{copy.registrationDoneNote}}</text><button class="primary" bindtap="explore">{{copy.seeActivities}}</button></view>
+  <view wx:if="{{submitted}}" class="empty"><text class="title">{{copy.registrationReceipt}}</text><text class="description">{{copy.registrationNext}}</text><button class="primary" bindtap="explore">{{copy.seeActivities}}</button></view>
   <block wx:else>
     <text wx:if="{{loading}}" class="empty">{{copy.loading}}</text>
     <block wx:elif="{{form}}"><text class="title">{{formTitle}}</text><text class="description">{{formDescription}}</text>

@@ -11,5 +11,5 @@ Page({
   check(e:WechatMiniprogram.CheckboxGroupChange){const index=Number(e.currentTarget.dataset.index),field=this.data.fields[index];this.setData({[`answers.${field.id}`]:e.detail.value,[`fields[${index}].options`]:field.options.map(option=>({...option,checked:e.detail.value.includes(option.id)}))});},
   consent(e:WechatMiniprogram.CheckboxGroupChange){this.setData({consent:e.detail.value.includes("agree")});},
   async submit(){if(this.data.busy||!this.data.form)return;const missing=this.data.fields.some(field=>{const value=this.data.answers[field.id];return field.required&&(!value||(typeof value==="string"?!value.trim():!value.length));});if(missing||!this.data.consent){this.setData({error:this.data.copy.missing});return;}this.setData({busy:true,error:""});try{await post({action:"intake",form:this.data.slug,version:this.data.form.version,requestId:this.data.requestId,source:this.data.source,answers:this.data.answers,consent:true},false);this.setData({submitted:true,answers:{},fields:[]});}catch(error){this.setData({error:errorText(error)});}finally{this.setData({busy:false});}},
-  explore(){wx.switchTab({url:"/pages/courses/index"});},
+  explore(){wx.switchTab({url:"/pages/discover/index"});},
 });

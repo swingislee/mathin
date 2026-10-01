@@ -1,9 +1,12 @@
 {
   "pages": [
+    "pages/discover/index",
+    "pages/reservations/index",
+    "pages/agenda/index",
+    "pages/account/index",
     "pages/courses/index",
     "pages/mistakes/index",
     "pages/homework/index",
-    "pages/account/index",
     "pages/register/index",
     "pages/activity/index",
     "pages/practice/index"
@@ -21,16 +24,16 @@
     "borderStyle": "@borderStyle",
     "list": [
       {
-        "pagePath": "pages/courses/index",
-        "text": "探索"
+        "pagePath": "pages/discover/index",
+        "text": "发现"
       },
       {
-        "pagePath": "pages/mistakes/index",
-        "text": "回顾"
+        "pagePath": "pages/reservations/index",
+        "text": "预约"
       },
       {
-        "pagePath": "pages/homework/index",
-        "text": "练习"
+        "pagePath": "pages/agenda/index",
+        "text": "安排"
       },
       {
         "pagePath": "pages/account/index",

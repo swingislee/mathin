@@ -1,5 +1,5 @@
 import { config } from "../config.local";
-import type { Session, Media } from "./api-types";
+import type { Session, Media, ParentLearning } from "./api-types";
 
 const sessionKey="gezhi.session.v1";
 let refreshing:Promise<Session>|null=null;
@@ -34,6 +34,10 @@ export async function get<T>(resource:string,query="",authenticated=true):Promis
 }
 export async function post<T>(data:object,authenticated=true):Promise<T>{
   return send<T>("portal","POST",data,authenticated?await accessToken():undefined);
+}
+export async function learning(participant:string,range:{from:string;to:string}):Promise<ParentLearning>{
+  const query=`participant=${encodeURIComponent(participant)}&from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}`;
+  return send<ParentLearning>("learning?"+query,"GET",undefined,await accessToken());
 }
 export async function login(identifier:string,password:string){const value=await send<Session>("auth","POST",{action:"login",identifier,password});saveSession(value);}
 export async function logout(){try{await send("auth","POST",{action:"logout"},await accessToken());}finally{clearSession();}}

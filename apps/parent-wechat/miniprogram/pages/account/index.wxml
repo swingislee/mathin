@@ -1,14 +1,26 @@
-<view class="page">
-  <text class="eyebrow">{{brandName}}</text><text class="title">{{title}}</text>
-  <view wx:if="{{!authenticated}}" class="form-section"><text class="description">{{copy.loginNote}}</text>
-    <label class="field-label">{{copy.identifier}}<input class="input" value="{{identifier}}" bindinput="identifierInput" maxlength="254" placeholder="{{copy.identifier}}" /></label>
-    <label class="field-label">{{copy.password}}<input class="input" value="{{password}}" bindinput="passwordInput" password maxlength="128" placeholder="{{copy.password}}" /></label>
-    <button class="primary" bindtap="signIn" loading="{{busy}}" disabled="{{busy || !identifier || !password}}">{{copy.login}}</button>
-  </view>
+<view class="page account-page">
+  <text class="brand">{{brandName}}</text>
+  <view class="profile-header"><view class="profile-avatar" aria-hidden="true">◉</view><view class="profile-heading"><text class="title">{{authenticated ? (account.displayName || copy.account) : copy.visitor}}</text><text class="small muted block">{{authenticated ? copy.signedIn : copy.visitorNote}}</text></view></view>
+  <block wx:if="{{!authenticated}}">
+    <view class="visitor-actions"><button class="secondary" data-url="/pages/discover/index" bindtap="open">{{copy.browseActivities}}</button><button class="secondary" data-url="/pages/register/index?source=account" bindtap="open">{{copy.intakeTitle}}</button></view>
+    <view class="signin-panel"><text class="row-title">{{copy.login}}</text><text class="small muted block">{{copy.loginNote}}</text>
+      <label class="field-label">{{copy.identifier}}<input class="input" value="{{identifier}}" bindinput="identifierInput" maxlength="254" placeholder="{{copy.identifier}}" disabled="{{busy}}" /></label>
+      <label class="field-label">{{copy.password}}<input class="input" value="{{password}}" bindinput="passwordInput" password maxlength="128" placeholder="{{copy.password}}" disabled="{{busy}}" /></label>
+      <button class="primary" bindtap="signIn" loading="{{busy}}" disabled="{{busy || !identifier || !password}}">{{copy.login}}</button>
+      <text class="small muted block">{{copy.newVisitorNote}}</text>
+    </view>
+  </block>
   <block wx:else>
-    <view class="account-heading"><text class="row-title">{{account.displayName}}</text><button class="text-button" bindtap="signOut" disabled="{{busy}}">{{copy.logout}}</button></view>
-    <text class="subheading">{{copy.participant}}</text><text wx:if="{{account && !account.participants.length}}" class="muted block">{{copy.noParticipants}}</text><text wx:for="{{account.participants}}" wx:key="id" class="participant-pill">{{item.name}}</text>
-    <view class="section-heading">{{copy.myBookings}}</view><text wx:if="{{loading}}" class="muted">{{copy.loading}}</text><text wx:elif="{{!bookings.length}}" class="empty">{{copy.noBookings}}</text>
-    <view wx:for="{{bookings}}" wx:key="id" class="list-row"><text class="tag">{{item.statusText}}</text><text class="row-title">{{item.label}}</text><text class="muted small block">{{item.participantName}} · {{item.when}}</text><text class="muted small block">{{item.location}}</text><button wx:if="{{item.status === 'booked'}}" class="text-button align-left" data-id="{{item.id}}" bindtap="cancel" disabled="{{busy}}">{{copy.cancelBooking}}</button></view>
-  </block><view wx:if="{{error}}" class="notice" role="alert">{{error}}<button wx:if="{{authenticated}}" class="text-button" bindtap="load">{{copy.retry}}</button></view>
+    <view class="section-heading"><text>{{copy.familyProfiles}}</text><text class="small muted">{{account.participants.length || 0}}</text></view><text class="small muted block">{{copy.familyProfilesNote}}</text>
+    <text wx:if="{{loading}}" class="empty compact">{{copy.loading}}</text>
+    <text wx:elif="{{account && !account.participants.length}}" class="empty compact">{{copy.noLinkNote}}</text>
+    <button wx:for="{{account.participants}}" wx:key="id" class="profile-member" data-id="{{item.id}}" bindtap="participant" hover-class="pressed"><view class="member-avatar" aria-hidden="true">◌</view><text class="member-name">{{item.name}}</text><text class="small muted">{{copy.viewAgenda}} →</text></button>
+    <text class="small muted block limit-note">{{copy.profileReadOnly}}</text>
+    <view class="section-heading">{{copy.commonServices}}</view>
+    <view class="service-grid"><button class="service-entry" data-url="/pages/reservations/index" bindtap="open"><text class="service-symbol" aria-hidden="true">◷</text><text>{{copy.myBookings}}</text></button><button class="service-entry" data-url="/pages/agenda/index" bindtap="open"><text class="service-symbol" aria-hidden="true">▦</text><text>{{copy.viewAgenda}}</text></button><button class="service-entry" data-url="/pages/mistakes/index" bindtap="open"><text class="service-symbol" aria-hidden="true">◇</text><text>{{copy.reportsEntry}}</text></button><button class="service-entry" data-url="/pages/homework/index" bindtap="open"><text class="service-symbol" aria-hidden="true">✎</text><text>{{copy.practiceEntry}}</text></button></view>
+    <button class="settings-row" data-url="/pages/register/index?source=account" bindtap="open"><text>{{copy.intakeTitle}}</text><text>→</text></button>
+  </block>
+  <button class="settings-row" bindtap="privacy"><text>{{copy.privacyEntry}}</text><text>→</text></button>
+  <button wx:if="{{authenticated}}" class="text-button signout-action" bindtap="signOut" disabled="{{busy}}">{{copy.logout}}</button>
+  <view wx:if="{{error}}" class="notice" role="alert">{{error}}<button wx:if="{{authenticated}}" class="text-button" bindtap="load" disabled="{{busy}}">{{copy.retry}}</button></view>
 </view>

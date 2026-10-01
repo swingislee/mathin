@@ -46,9 +46,9 @@ describe("家长端工程基础", () => {
   });
 
   it.each([
-    ["zh_CN", "每日练习", ["探索", "回顾", "练习", "我的"]],
-    ["en_US", "Daily Practice", ["Explore", "Reflect", "Practice", "Account"]],
-    ["fr", "每日练习", ["探索", "回顾", "练习", "我的"]],
+    ["zh_CN", "练习记录", ["发现", "预约", "安排", "我的"]],
+    ["en_US", "Practice records", ["Discover", "Bookings", "Schedule", "Account"]],
+    ["fr", "练习记录", ["发现", "预约", "安排", "我的"]],
   ])("微信 %s 同步页面、系统标题和底部导航，且不依赖浏览器 API", (language, title, tabs) => {
     const setData = vi.fn();
     const setNavigationBarTitle = vi.fn();
@@ -60,7 +60,7 @@ describe("家长端工程基础", () => {
     };
     const locale = loadModule("lib/locale.ts", {});
     const copy = loadModule("lib/copy.ts", {});
-    const pageModule = loadModule("lib/page.ts", { wx }, { "./locale": locale, "./copy": copy, "./api": { ApiError: Error } });
+    const pageModule = loadModule("lib/page.ts", { wx }, { "./locale": locale, "./copy": copy, "./api": { ApiError: Error }, "./navigation": loadModule("lib/navigation.ts", { wx }) });
     const syncPage = pageModule.syncPage as (page: { data: { locale: string }; setData: typeof setData }, section: string) => string;
     const page = { data: { locale: "" }, setData };
     page.data.locale = syncPage(page, "homework");

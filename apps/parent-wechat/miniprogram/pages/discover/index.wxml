@@ -1,0 +1,26 @@
+<view class="page discovery-page">
+  <view class="brand-row"><text class="brand">{{brandName}}</text><text class="small muted">{{title}}</text></view>
+  <view class="discovery-hero">
+    <text class="eyebrow">{{copy.discoverNote}}</text>
+    <text class="hero-title">{{copy.discoverHeading}}</text>
+    <text class="description">{{description}}</text>
+    <view class="hero-symbol" aria-hidden="true"><view class="orbit-ring"></view><text>✦</text></view>
+  </view>
+  <view class="quick-grid">
+    <button class="quick-entry form-entry" bindtap="register" hover-class="pressed"><text class="entry-symbol" aria-hidden="true">≡</text><text class="entry-title">{{copy.intakeTitle}}</text><text class="small muted">{{copy.intakeNote}}</text><text class="entry-action">{{copy.intakeAction}} ↗</text></button>
+    <button class="quick-entry" bindtap="reservations" hover-class="pressed"><text class="entry-symbol" aria-hidden="true">◷</text><text class="entry-title">{{copy.reservationEntry}}</text><text class="small muted">{{copy.reservationEntryNote}}</text><text class="entry-action">{{copy.details}} ↗</text></button>
+  </view>
+  <view class="section-heading"><text>{{copy.recentResults}}</text><text class="small muted" wx:if="{{loaded}}">{{activities.length}}</text></view>
+  <view class="search-field"><text class="search-symbol" aria-hidden="true">⌕</text><input class="search-input" value="{{search}}" bindinput="search" maxlength="100" placeholder="{{copy.searchActivities}}" aria-label="{{copy.searchActivities}}" /></view>
+  <view class="filter-row"><picker class="location-filter" range="{{locations}}" value="{{locationIndex}}" bindchange="location"><view class="filter-control">{{location || copy.allLocations}} <text>⌄</text></view></picker><label class="switch-filter"><switch checked="{{availableOnly}}" bindchange="available" type="checkbox" /><text>{{copy.availableOnly}}</text></label></view>
+  <view class="chips"><button class="chip {{period === 'all' ? 'selected' : ''}}" data-value="all" bindtap="period">{{copy.allDates}}</button><button class="chip {{period === 'week' ? 'selected' : ''}}" data-value="week" bindtap="period">{{copy.nextWeek}}</button><button class="chip {{period === 'month' ? 'selected' : ''}}" data-value="month" bindtap="period">{{copy.thisMonth}}</button></view>
+  <view wx:if="{{error}}" class="notice" role="alert">{{error}}<button class="text-button" bindtap="load">{{copy.retry}}</button></view>
+  <text wx:elif="{{loading && !loaded}}" class="empty">{{copy.loading}}</text>
+  <view wx:elif="{{loaded && !activities.length}}" class="empty-state"><text class="empty-symbol" aria-hidden="true">◌</text><text class="row-title">{{source.length ? copy.noMatches : copy.noActivities}}</text><text class="muted small block">{{source.length ? copy.noMatchesNote : copy.noActivitiesNote}}</text><button wx:if="{{source.length}}" class="text-button" bindtap="reset">{{copy.clearFilters}}</button></view>
+  <button wx:for="{{activities}}" wx:key="id" class="activity-card" data-id="{{item.id}}" bindtap="openActivity" hover-class="pressed">
+    <view class="row"><text class="tag {{item.open ? 'success' : ''}}">{{!item.bookable ? copy.closed : (item.remaining === 0 ? copy.full : copy.unlimited)}}</text><text class="small muted">{{item.when}}</text></view>
+    <text class="row-title">{{item.label}}</text><text class="activity-description muted small">{{item.body}}</text>
+    <view class="activity-footer"><view><text class="small muted block">{{item.location || copy.locationPending}}</text><text class="small muted block" wx:if="{{item.remaining !== null}}">{{copy.places}} · {{item.remaining}}</text></view><text class="entry-action">{{copy.viewActivity}} →</text></view>
+  </button>
+  <text wx:if="{{source.length >= 100}}" class="small muted block limit-note">{{copy.catalogLimit}}</text>
+</view>

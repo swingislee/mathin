@@ -5,6 +5,7 @@ page {
   --line: #e8e1d5;
   --card: #ffffff;
   --moon: #feedb9;
+  --leaf: #bbcf87;
   --leaf-deep: #6f8b48;
   --rose: #c94a4f;
   background: var(--paper);
@@ -19,6 +20,7 @@ page {
     --line: #333a4e;
     --card: #212637;
     --moon: #d9be7e;
+    --leaf: #8fa968;
     --leaf-deep: #a9c284;
     --rose: #e06a6e;
   }
@@ -79,3 +81,95 @@ button[disabled] { color: var(--muted); opacity: .65; }
 .media-remove { font-size: 24rpx; min-height: 64rpx; color: var(--muted); }
 .video-mark { position: absolute; top: 64rpx; left: 40%; color: var(--card); font-size: 38rpx; }
 .upload-status { margin: 28rpx 0; color: var(--muted); font-size: 24rpx; }
+
+/* 发现、预约、安排与个人服务共用纸白底与清晰的内容层次。 */
+.brand-row { display: flex; justify-content: space-between; align-items: center; gap: 24rpx; }
+.discovery-hero { position: relative; padding: 48rpx 0 44rpx; overflow: hidden; }
+.discovery-hero .hero-title { max-width: 520rpx; margin-top: 20rpx; font-size: 56rpx; }
+.discovery-hero .description { position: relative; z-index: 1; max-width: 520rpx; margin-top: 18rpx; font-size: 27rpx; color: var(--muted); }
+.hero-symbol { position: absolute; right: -24rpx; top: 50rpx; width: 170rpx; height: 180rpx; pointer-events: none; }
+.hero-symbol text { position: absolute; right: 20rpx; top: 28rpx; font-size: 68rpx; color: var(--moon); }
+.orbit-ring { position: absolute; top: 38rpx; right: -60rpx; width: 220rpx; height: 112rpx; border: 2rpx solid var(--line); border-radius: 50%; transform: rotate(-35deg); }
+.quick-grid { display: flex; gap: 20rpx; }
+.quick-entry { display: flex; flex: 1; min-width: 0; flex-direction: column; padding: 26rpx; border: 1rpx solid var(--line); border-radius: 26rpx; background: var(--card); }
+.form-entry { border-color: var(--leaf); }
+.quick-entry .entry-title { font-size: 30rpx; line-height: 1.5; margin: 16rpx 0 10rpx; }
+.entry-symbol { width: 54rpx; height: 54rpx; line-height: 54rpx; border-radius: 16rpx; text-align: center; background: var(--moon); color: var(--ink); font-size: 36rpx; }
+.form-entry .entry-symbol { background: var(--leaf); }
+.entry-action { display: block; font-size: 24rpx; color: var(--leaf-deep); line-height: 1.6; }
+.quick-entry .entry-action { margin-top: auto; padding-top: 22rpx; }
+.search-field { display: flex; align-items: center; gap: 16rpx; padding: 12rpx 24rpx; min-height: 70rpx; border: 1rpx solid var(--line); border-radius: 18rpx; background: var(--card); }
+.search-symbol { color: var(--muted); font-size: 36rpx; }
+.search-input { flex: 1; min-width: 0; height: 66rpx; font-size: 28rpx; }
+.filter-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 14rpx; margin: 16rpx 0; }
+.location-filter { flex: 1; min-width: 220rpx; max-width: 100%; }
+.filter-control { display: flex; justify-content: space-between; align-items: center; gap: 22rpx; padding: 20rpx 0; font-size: 26rpx; }
+.switch-filter { display: flex; align-items: center; font-size: 24rpx; color: var(--muted); min-height: 72rpx; }
+.switch-filter switch { transform: scale(.75); transform-origin: right center; margin-right: 12rpx; }
+.chips { display: flex; flex-wrap: wrap; gap: 14rpx; margin-bottom: 24rpx; }
+.chip { min-height: 64rpx; box-sizing: border-box; padding: 13rpx 24rpx; border-radius: 40rpx; border: 1rpx solid var(--line); color: var(--muted); font-size: 25rpx; }
+.chip.selected { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.activity-card, .reservation-card { display: block; width: 100%; box-sizing: border-box; margin-top: 22rpx; padding: 30rpx; border: 1rpx solid var(--line); border-radius: 24rpx; background: var(--card); }
+.activity-card .row { flex-wrap: wrap; gap: 10rpx; }
+.activity-card .row-title, .reservation-card .row-title { font-size: 34rpx; }
+.activity-description { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; }
+.activity-footer { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; border-top: 1rpx solid var(--line); margin-top: 24rpx; padding-top: 20rpx; }
+.activity-footer .entry-action { flex-shrink: 0; }
+.empty-state { padding: 64rpx 24rpx; text-align: center; }
+.empty-symbol { display: block; font-size: 84rpx; color: var(--muted); }
+.empty-state .secondary { width: auto; display: inline-block; padding-right: 40rpx; padding-left: 40rpx; }
+.compact { padding: 28rpx 0; }
+.limit-note { margin: 22rpx 0; }
+.signin-panel { margin-top: 36rpx; padding: 30rpx; background: var(--card); border: 1rpx solid var(--line); border-radius: 24rpx; }
+.signin-panel .description { margin-top: 0; font-size: 29rpx; }
+.member-filter { display: block; margin-top: 30rpx; }
+.segment-control { display: flex; margin: 32rpx 0 20rpx; border-bottom: 1rpx solid var(--line); }
+.segment { flex: 1; min-height: 84rpx; padding: 18rpx 10rpx; box-sizing: border-box; text-align: center; color: var(--muted); font-size: 29rpx; border-bottom: 4rpx solid transparent; }
+.segment.active { color: var(--ink); border-bottom-color: var(--leaf-deep); font-weight: 600; }
+.segment .small { margin-left: 12rpx; }
+.cancel-action { margin-top: 18rpx; padding-left: 0; }
+.detail-heading { padding-top: 36rpx; }
+.detail-heading .title { line-height: 1.4; font-size: 44rpx; }
+.detail-row > text:last-child { max-width: 76%; text-align: right; }
+.step-indicator { display: flex; align-items: center; gap: 16rpx; margin-top: 40rpx; color: var(--muted); font-size: 24rpx; }
+.step-line { flex: 1; height: 1rpx; background: var(--line); }
+.current-step { color: var(--leaf-deep); font-weight: 600; }
+.confirmation-panel, .success-panel { margin-top: 30rpx; padding: 32rpx; background: var(--card); border: 1rpx solid var(--line); border-radius: 24rpx; }
+.success-panel { text-align: center; border-color: var(--leaf); }
+.success-symbol { display: inline-block; height: 72rpx; width: 72rpx; border-radius: 50%; background: var(--leaf); color: var(--ink); font-size: 40rpx; line-height: 72rpx; }
+.member-selector, .profile-member { display: flex; align-items: center; gap: 22rpx; padding: 24rpx 0; }
+.member-name { flex: 1; min-width: 0; font-size: 30rpx; }
+.member-name .row-title { margin: 0; }
+.member-avatar { flex-shrink: 0; width: 72rpx; height: 72rpx; line-height: 72rpx; text-align: center; border-radius: 24rpx; background: var(--moon); color: var(--ink); font-size: 38rpx; }
+.calendar-panel { border-radius: 24rpx; background: var(--card); border: 1rpx solid var(--line); padding: 20rpx 16rpx 24rpx; }
+.calendar-toolbar { display: flex; justify-content: space-between; align-items: center; margin: 0 12rpx 16rpx; }
+.calendar-title { font-size: 32rpx; font-weight: 600; }
+.calendar-actions { display: flex; align-items: center; gap: 12rpx; }
+.calendar-arrow { width: 62rpx; min-height: 72rpx; font-size: 42rpx; text-align: center; }
+.calendar-grid { display: flex; flex-wrap: wrap; }
+.weekday, .calendar-day { width: calc(100% / 7); text-align: center; box-sizing: border-box; }
+.weekday { padding: 16rpx 0; color: var(--muted); font-size: 23rpx; }
+.calendar-day { position: relative; height: 82rpx; padding: 19rpx 0; font-size: 27rpx; border-radius: 20rpx; }
+.calendar-day.today { color: var(--leaf-deep); font-weight: 600; }
+.calendar-day.selected { background: var(--ink); color: var(--paper); }
+.calendar-dot { position: absolute; left: calc(50% - 3rpx); bottom: 10rpx; width: 6rpx; height: 6rpx; border-radius: 50%; background: var(--leaf-deep); }
+.calendar-day.selected .calendar-dot { background: var(--paper); }
+.schedule-row { display: flex; gap: 22rpx; padding: 22rpx 0; }
+.schedule-marker { margin-top: 12rpx; flex-shrink: 0; width: 10rpx; height: 10rpx; border-radius: 50%; background: var(--leaf-deep); }
+.schedule-content { flex: 1; min-width: 0; border-bottom: 1rpx solid var(--line); padding-bottom: 26rpx; }
+.schedule-content .row { flex-wrap: wrap; }
+.schedule-content .row-title { font-size: 31rpx; }
+.course-summary { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; padding: 20rpx 0; border-bottom: 1rpx solid var(--line); }
+.course-summary .tag { flex-shrink: 0; }
+.profile-header { display: flex; align-items: center; gap: 28rpx; margin: 48rpx 0 28rpx; }
+.profile-avatar { flex-shrink: 0; width: 112rpx; height: 112rpx; border-radius: 36rpx; background: var(--moon); color: var(--ink); font-size: 60rpx; text-align: center; line-height: 112rpx; }
+.profile-heading { flex: 1; min-width: 0; }
+.profile-heading .title { font-size: 40rpx; margin-top: 0; margin-bottom: 12rpx; line-height: 1.4; }
+.profile-member { width: 100%; border-bottom: 1rpx solid var(--line); }
+.visitor-actions { display: flex; gap: 16rpx; }
+.visitor-actions .secondary { margin: 12rpx 0; flex: 1; min-width: 0; font-size: 26rpx; }
+.service-grid { display: flex; flex-wrap: wrap; gap: 16rpx; margin: 24rpx 0 32rpx; }
+.service-entry { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12rpx; width: calc((100% - 16rpx) / 2); padding: 28rpx 16rpx; box-sizing: border-box; min-height: 138rpx; background: var(--card); border: 1rpx solid var(--line); border-radius: 20rpx; font-size: 27rpx; text-align: center; }
+.service-symbol { color: var(--leaf-deep); font-size: 36rpx; }
+.settings-row { display: flex; justify-content: space-between; align-items: center; gap: 22rpx; width: 100%; box-sizing: border-box; border-bottom: 1rpx solid var(--line); padding: 28rpx 0; font-size: 28rpx; }
+.signout-action { margin-top: 28rpx; }

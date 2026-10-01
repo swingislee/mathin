@@ -1,14 +1,57 @@
-import {get,post,login,logout,session} from "../../lib/api";
-import type {Account,Booking} from "../../lib/api-types";
-import {pageData,syncPage,date,text,errorText} from "../../lib/page";
+import { get, login, logout, session } from "../../lib/api";
+import type { Account } from "../../lib/api-types";
+import { clearNavigation, openPage, resumeAfterLogin, selectParticipant } from "../../lib/navigation";
+import { pageData, syncPage, errorText } from "../../lib/page";
+
 Page({
-  data:{...pageData("account"),authenticated:false,identifier:"",password:"",busy:false,account:null as Account|null,bookings:[] as (Booking&{label:string;when:string;statusText:string})[]},
-  onShow(){syncPage(this,"account");this.setData({authenticated:Boolean(session()),account:null,bookings:[]});if(session())void this.load();},
-  identifierInput(e:WechatMiniprogram.Input){this.setData({identifier:e.detail.value});},
-  passwordInput(e:WechatMiniprogram.Input){this.setData({password:e.detail.value});},
-  async signIn(){if(this.data.busy)return;this.setData({busy:true,error:""});try{await login(this.data.identifier,this.data.password);this.setData({authenticated:true,password:""});await this.load();}catch(error){this.setData({error:errorText(error)});}finally{this.setData({busy:false});}},
-  async signOut(){if(this.data.busy)return;this.setData({busy:true});try{await logout();}catch{}finally{this.setData({busy:false,authenticated:false,account:null,bookings:[],error:"",password:""});}},
-  async load(){this.setData({loading:true,error:""});try{const [account,bookings]=await Promise.all([get<Account>("account"),get<Booking[]>("bookings")]);const c=this.data.copy;const labels={booked:c.booked,attended:c.attended,no_show:c.noShow,cancelled:c.cancelled};this.setData({account,bookings:bookings.map(row=>({...row,label:text(row.title),when:date(row.startsAt),statusText:labels[row.status]}))});}catch(error){this.setData({error:errorText(error)});}finally{this.setData({loading:false});}},
-  cancel(e:WechatMiniprogram.TouchEvent){if(this.data.busy)return;const id=String(e.currentTarget.dataset.id);wx.showModal({title:this.data.copy.cancelBooking,content:this.data.copy.cancelConfirm,confirmText:this.data.locale==="en"?"Confirm":"确认取消",cancelText:this.data.locale==="en"?"Keep":"保留预约",success:result=>{if(result.confirm)void this.doCancel(id);}});},
-  async doCancel(id:string){this.setData({busy:true,error:""});try{await post({action:"cancel",id});await this.load();}catch(error){this.setData({error:errorText(error)});}finally{this.setData({busy:false});}},
+  data: { ...pageData("account"), authenticated: false, identifier: "", password: "", busy: false, account: null as Account | null },
+  loadVersion: 0,
+  onShow() {
+    syncPage(this, "account");
+    this.setData({ authenticated: Boolean(session()), account: null, error: "", password: "", loading: false });
+    if (session()) void this.load();
+  },
+  onHide() { this.loadVersion++; this.setData({ password: "" }); },
+  identifierInput(e: WechatMiniprogram.Input) { this.setData({ identifier: e.detail.value }); },
+  passwordInput(e: WechatMiniprogram.Input) { this.setData({ password: e.detail.value }); },
+  async signIn() {
+    if (this.data.busy || !this.data.identifier.trim() || !this.data.password) return;
+    this.setData({ busy: true, error: "" });
+    try {
+      await login(this.data.identifier.trim(), this.data.password);
+      this.setData({ authenticated: true, password: "" });
+      await this.load();
+    } catch (error) { this.setData({ error: errorText(error) }); }
+    finally { this.setData({ busy: false }); }
+  },
+  async signOut() {
+    if (this.data.busy) return;
+    this.loadVersion++;
+    this.setData({ busy: true });
+    try { await logout(); } catch { /* 本机会话由 API finally 清除。 */ }
+    finally {
+      clearNavigation();
+      this.setData({ busy: false, authenticated: false, account: null, error: "", password: "", identifier: "", loading: false });
+    }
+  },
+  async load() {
+    const version = ++this.loadVersion;
+    this.setData({ loading: true, error: "" });
+    try {
+      const account = await get<Account>("account");
+      if (version === this.loadVersion) {
+        this.setData({ account });
+        resumeAfterLogin();
+      }
+    } catch (error) {
+      if (version === this.loadVersion) this.setData({ error: errorText(error), authenticated: Boolean(session()) });
+    } finally { if (version === this.loadVersion) this.setData({ loading: false }); }
+  },
+  open(e: WechatMiniprogram.TouchEvent) { openPage(String(e.currentTarget.dataset.url)); },
+  participant(e: WechatMiniprogram.TouchEvent) {
+    const id = String(e.currentTarget.dataset.id);
+    if (!this.data.account?.participants.some(row => row.id === id)) return;
+    selectParticipant(id); wx.switchTab({ url: "/pages/agenda/index" });
+  },
+  privacy() { wx.showModal({ title: this.data.copy.privacyEntry, content: this.data.copy.privacySummary, showCancel: false }); },
 });

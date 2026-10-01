@@ -1,0 +1,20 @@
+<view class="page agenda-page">
+  <text class="brand">{{brandName}}</text><text class="title">{{title}}</text>
+  <view wx:if="{{!authenticated}}" class="signin-panel"><text class="description">{{copy.agendaLoginNote}}</text><button class="primary" bindtap="login">{{copy.login}}</button></view>
+  <block wx:else>
+    <picker wx:if="{{participants.length}}" class="member-filter" range="{{participants}}" range-key="name" value="{{selected}}" bindchange="participant"><view class="member-selector"><view class="member-avatar" aria-hidden="true">◉</view><view class="member-name"><text class="small muted block">{{copy.participant}}</text><text class="row-title">{{participants[selected].name}}</text></view><text>⌄</text></view></picker>
+    <text wx:elif="{{loaded}}" class="empty">{{copy.noLinkNote}}</text>
+    <block wx:if="{{participants.length}}">
+      <view class="calendar-panel"><view class="calendar-toolbar"><text class="calendar-title">{{month}}</text><view class="calendar-actions"><button class="text-button" bindtap="today" disabled="{{loading}}">{{copy.today}}</button><button class="calendar-arrow" data-offset="-1" bindtap="changeMonth" aria-label="{{copy.previousMonth}}">‹</button><button class="calendar-arrow" data-offset="1" bindtap="changeMonth" aria-label="{{copy.nextMonth}}">›</button></view></view>
+        <view class="calendar-grid"><text wx:for="{{weekdays}}" wx:key="key" class="weekday">{{item.label}}</text><button wx:for="{{days}}" wx:key="key" class="calendar-day {{item.selected ? 'selected' : ''}} {{item.today ? 'today' : ''}}" data-date="{{item.date}}" bindtap="day" disabled="{{!item.date}}" aria-label="{{item.date}} · {{item.count}}"><text>{{item.day}}</text><view wx:if="{{item.count}}" class="calendar-dot"></view></button></view>
+      </view>
+      <view class="section-heading"><text>{{copy.daySchedule}}</text><text class="small muted">{{selectedDate}}</text></view>
+      <text wx:if="{{loading}}" class="empty">{{copy.loading}}</text>
+      <view wx:elif="{{loaded && !dayEvents.length && !error}}" class="empty-state compact"><text class="row-title">{{copy.noDaySchedule}}</text><text class="small muted block">{{copy.noDayScheduleNote}}</text></view>
+      <view wx:for="{{dayEvents}}" wx:key="key" class="schedule-row"><view class="schedule-marker"></view><view class="schedule-content"><view class="row"><text class="tag">{{item.kind === 'activity' ? copy.activityArrangement : copy.courseArrangement}}</text><text class="small muted">{{item.when}}</text></view><text class="row-title">{{item.title}}</text><text class="small muted block">{{item.detail}}</text><text wx:if="{{item.teacher}}" class="small muted block">{{copy.facilitator}} · {{item.teacher}}</text></view></view>
+      <block wx:if="{{learning}}"><view class="section-heading">{{copy.thisMonthCourses}}</view><text class="small muted block">{{copy.courseWindowNote}}</text><text wx:if="{{!learning.courses.length}}" class="empty compact">{{copy.noCourses}}</text><view wx:for="{{learning.courses}}" wx:key="id" class="course-summary"><view><text class="row-title">{{item.name}}</text><text wx:if="{{item.teacherName}}" class="small muted block">{{item.teacherName}}</text></view><text class="tag">{{item.sessionCount}} {{copy.sessionsInMonth}}</text></view></block>
+    </block>
+    <text wx:if="{{loading && !participants.length}}" class="empty">{{copy.loading}}</text>
+  </block>
+  <view wx:if="{{error}}" class="notice" role="alert">{{error}}<button class="text-button" bindtap="retry" disabled="{{loading}}">{{copy.retry}}</button></view>
+</view>
