@@ -40,7 +40,7 @@ export function RulerOverlay({ xs, ppm, length }: {
   const gapY = bandTop + BAND_H + 14;
 
   return (
-    <div ref={ref} className="absolute inset-0">
+    <div ref={ref} className="absolute inset-0 select-none">
       <svg className="pointer-events-none absolute inset-0 h-full w-full">
         {/* 角色 → 尺子的投影参考线 */}
         {sorted.map((m, i) => (
@@ -69,6 +69,8 @@ export function RulerOverlay({ xs, ppm, length }: {
         className="pointer-events-auto absolute inset-x-0 cursor-grab touch-none rounded-lg border border-crater/50 bg-moon/30 backdrop-blur-[1px] active:cursor-grabbing"
         style={{ top: bandTop, height: BAND_H }}
         onPointerDown={(e) => {
+          if (e.button !== 0 || e.isPrimary === false) return;
+          e.preventDefault();
           (e.currentTarget as Element).setPointerCapture(e.pointerId);
           dragRef.current = { pointerY: e.clientY, y0: bandTop };
         }}
@@ -78,7 +80,7 @@ export function RulerOverlay({ xs, ppm, length }: {
         }}
         onPointerUp={() => (dragRef.current = null)}
       >
-        <svg className="h-full w-full">
+        <svg className="pointer-events-none h-full w-full">
           {marks.map((m) => (
             <g key={m} stroke="var(--crater)" fill="var(--ink)">
               <line x1={px(m)} x2={px(m)} y1={0} y2={12} strokeWidth={1.5} />
