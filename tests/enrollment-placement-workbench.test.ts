@@ -197,6 +197,45 @@ describe("enrollment placement class roster", () => {
     }
   });
 
+  it("puts pending students in one footer after all teacher classes and omits empty grade rows", () => {
+    const rows = renderRoster(undefined, { workspace: "classes", workspaceQuery: { group: "teacher" } });
+    const footer = rows.findIndex(row => row.attributes.includes("data-class-pending-section"));
+    expect(footer).toBeGreaterThan(0);
+    expect(rows.filter(row => row.attributes.includes("data-class-pending-section"))).toHaveLength(1);
+    expect(rows.filter(row => row.attributes.includes('data-class-roster-group="autumn:'))).toHaveLength(0);
+    expect(rows.every((row, index) => !classroomId(row.attributes) || index < footer)).toBe(true);
+    const pending = rows.filter(row => row.attributes.includes("data-placement-pending="));
+    expect(pending.map(row => row.attributes.match(/data-placement-pending="([^"]+)"/)?.[1])).toEqual(["autumn:4", "autumn:5"]);
+    expect(pending.flatMap(row => studentKeys(row.content))).toEqual(["pending-fourth", "pending-fifth"]);
+    expect(pending.map(row => row.cells[0].content)).toEqual([expect.stringContaining("4 年级"), expect.stringContaining("5 年级")]);
+    expect(rows.flatMap(row => studentKeys(row.content))).toContain("withdrawn-pending");
+  });
+
+  it("shows one empty pending footer instead of a zero-student row for every grade", () => {
+    const rows = renderRoster(undefined, { initialBoard: { ...board, enrollments: [] }, workspace: "classes", workspaceQuery: { group: "teacher" } });
+    expect(rows.filter(row => row.attributes.includes("data-class-pending-section"))).toHaveLength(1);
+    expect(rows.filter(row => row.attributes.includes("data-placement-pending="))).toHaveLength(0);
+    expect(rows.at(-1)?.content).toContain("暂无待分班学生");
+  });
+
+  it("keeps the complete pending footer available without consuming teacher class pagination", () => {
+    const initialBoard = { ...board, members: [], options: { ...board.options,
+      classrooms: Array.from({ length: 51 }, (_, index) => classroom(`class-${index}`)),
+    } };
+    const rows = renderRoster(undefined, { initialBoard, workspace: "classes", workspaceQuery: { group: "teacher" } });
+    expect(rows.filter(row => classroomId(row.attributes))).toHaveLength(50);
+    expect(rows.filter(row => row.attributes.includes("data-placement-pending=")).flatMap(row => studentKeys(row.content))).toEqual(["pending-fourth", "pending-fifth"]);
+    expect(rows.findIndex(row => row.attributes.includes("data-class-pending-section"))).toBeGreaterThan(rows.findLastIndex(row => classroomId(row.attributes)));
+  });
+
+  it("keeps each pending grade and term target, and applies the current search to the footer", () => {
+    const rows = renderRoster("all", { workspace: "classes", workspaceQuery: { group: "teacher" } });
+    const targets = rows.filter(row => row.attributes.includes("data-placement-pending="));
+    expect(targets.map(row => row.attributes.match(/data-placement-target="([^"]+)"/)?.[1])).toEqual(["autumn:4:pending", "autumn:5:pending", "spring:4:pending"]);
+    const searched = renderRoster(undefined, { workspace: "classes", workspaceQuery: { group: "teacher" }, initialQuery: "pending-fourth" });
+    expect(searched.filter(row => row.attributes.includes("data-placement-pending=")).flatMap(row => studentKeys(row.content))).toEqual(["pending-fourth"]);
+  });
+
   it("locates classes through canonical campus and room without putting names or textbooks in the desktop summary", () => {
     const initialBoard = { ...board, options: { ...board.options, classrooms: board.options.classrooms.map(row => ({ ...row,
       location: { campusId: "east", campusName: "东校区", roomName: "305" },
