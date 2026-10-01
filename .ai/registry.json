@@ -132,7 +132,7 @@
       "title": "[生产·待验收] 可备课数学教具与立体图形 (2)",
       "agent": "codex",
       "threadId": "01a0dd5d-20ad-7471-be26-43a53a68757d",
-      "status": "in_review",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/place-value-pan-codex",
       "card": ".ai/tasks/DEV-PLACE-VALUE-20261001.md",
@@ -148,7 +148,7 @@
         "CHANGELOG.md"
       ],
       "checkpoint": "9fc0079a3098ba77662adb64736bf5785932b05b",
-      "next": "9fc0079a 已完成集成人只读复核且无阻断，复用 worker 定向检查；等待原会话人类明确两提交合入许可，开发端手感待验收。"
+      "next": "9fc0079a 已只读复核并在原会话人类明确批准后集成 main cafb3092/e42873b3；机器结果复用，开发端平移手感待人工验收，未部署生产。"
     },
     {
       "id": "DEV-PARENT-IOS-SUPABASE-20261001",
