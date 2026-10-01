@@ -169,7 +169,7 @@ describe("Motion Lab legacy interaction boundaries", () => {
     await mount();
     await click(button(labels.chooseVehicle));
     expect(document.querySelector('[role="dialog"]')).toBeTruthy();
-    expect(document.activeElement).toBe(input(labels.position));
+    expect(document.activeElement).toBe(button(labels.vehicles.walk));
     await pointer(button(labels.vehicles.car), "pointerdown");
     await pointer(window, "pointermove", 350);
     await pointer(button(labels.vehicles.car), "pointerup", 350);
@@ -188,6 +188,7 @@ describe("Motion Lab legacy interaction boundaries", () => {
     expect(snapshot().runways[0].x).toBe(22.5);
     expect(document.querySelector('[role="dialog"]')).toBeNull();
     await click(button(labels.chooseVehicle));
+    expect(document.activeElement).toBe(button(labels.vehicles.car));
     await enter(input(labels.position), "");
     expect(snapshot().runways[0].x).toBe(22.5);
   });
