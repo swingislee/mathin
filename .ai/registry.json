@@ -15,7 +15,8 @@
         ".ai/tasks/DEV-PARENT-IOS-20261001.md",
         ".ai/tasks/DEV-PARENT-IOS-20261001-INTEGRATION.md",
         ".ai/tasks/DEV-PARENT-IOS-SUPABASE-20261001.md",
-        ".ai/tasks/DEV-PARENT-IOS-NEXT-20261001.md"
+        ".ai/tasks/DEV-PARENT-IOS-NEXT-20261001.md",
+        ".ai/tasks/DEV-PARENT-WECHAT-20261001.md"
       ],
       "sharedPaths": [
         ".ai/registry.json",
@@ -171,6 +172,35 @@
       "sharedPaths": [],
       "checkpoint": null,
       "next": "按主任务与用户补充要求，复用现有表，与另一子 agent 同步合同；禁止新建业务数据表。"
+    },
+    {
+      "id": "DEV-PARENT-WECHAT-20261001",
+      "title": "小程序家长发现与预约入口",
+      "agent": "codex",
+      "threadId": "01a0f7bd-4ca2-7370-a49c-a8f73fd4f5e9",
+      "status": "in_progress",
+      "checkout": "worktree",
+      "branch": "codex/parent-wechat-discovery-codex",
+      "card": ".ai/tasks/DEV-PARENT-WECHAT-20261001.md",
+      "writePaths": [
+        "apps/parent-wechat/miniprogram/pages/",
+        "apps/parent-wechat/miniprogram/app.json",
+        "apps/parent-wechat/miniprogram/app.wxss",
+        "apps/parent-wechat/miniprogram/lib/api.ts",
+        "apps/parent-wechat/miniprogram/lib/copy.ts",
+        "apps/parent-wechat/miniprogram/lib/locale.ts",
+        "apps/parent-wechat/miniprogram/lib/page.ts",
+        "apps/parent-wechat/miniprogram/lib/discovery.ts",
+        "apps/parent-wechat/miniprogram/lib/navigation.ts",
+        "apps/parent-wechat/README.md",
+        "apps/parent-wechat/docs/portal.md",
+        "tests/parent-wechat-discovery.test.ts",
+        "tests/parent-foundation.test.ts",
+        ".ai/handoffs/DEV-PARENT-WECHAT-20261001-codex-01.md"
+      ],
+      "sharedPaths": [],
+      "checkpoint": null,
+      "next": "复用 iOS 同批共享 learning API，独立构建发现/预约/安排/我的；保留旧路由兼容。"
     }
   ]
 }
