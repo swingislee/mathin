@@ -29,7 +29,7 @@
         "CHANGELOG.md"
       ],
       "checkpoint": "7769785de91996bfcac04b1e5e9390c88ff36a2f",
-      "next": "已交付的 iOS 与共享学习接口保持原验收状态；串行登记并接收家长独立1对1测评接口，与小程序三栏及独立预约入口协调。数据库执行和生产操作未授权。"
+      "next": "独立测评HTTP/SQL已互审集成；完成本机目标核对、事务回滚检查和两条精确增量安装，局域网鉴权读取通过。接收小程序测评页面；完整预约闭环和原生iOS仍待各自验收，生产未操作。"
     },
     {
       "id": "DEV-PARENT-IOS-20261001",
@@ -166,7 +166,7 @@
       "title": "数位积木右栏原位整理",
       "agent": "codex",
       "threadId": "01a0dd5d-20ad-7471-be26-43a53a68757d",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/place-value-toolbar-codex",
       "card": ".ai/tasks/DEV-PLACE-VALUE-TOOLBAR-20261001.md",
@@ -182,8 +182,8 @@
         ".ai/handoffs/DEV-PLACE-VALUE-TOOLBAR-20261001-codex-01.md"
       ],
       "sharedPaths": [],
-      "checkpoint": "c0b72c08b609d3b005f4e60ce212baa3620b860c",
-      "next": "从登记提交准备干净独立分支，按人类已确认的右栏原位整理方案实现；定向检查、只读复核后由当前集成人更新本地main与开发入口，生产未授权。"
+      "checkpoint": "99d537ba8adf674ee459682cbf41aaf1c7048ae5",
+      "next": "已按原会话人类授权复核并集成本地main f70a5ff7/e6109ecf；与检查head文件一致，定向结果复用，zh/en开发页HTTP200，待人工视觉和交互验收。"
     },
     {
       "id": "DEV-PARENT-IOS-SUPABASE-20261001",
@@ -202,7 +202,7 @@
       ],
       "sharedPaths": [],
       "checkpoint": "369a9729bde1f6f4cf9cb8e4dc9b5cb20088b5be",
-      "next": "已互审并集成 main；复用已通过定向检查。数据库迁移未执行，原生与产品验收待完成。"
+      "next": "已互审并集成 main；报告participantId增量现已通过本机事务回滚检查并安装，报告HTTP读取兼容。生产未迁移，原生与产品验收待完成。"
     },
     {
       "id": "DEV-PARENT-IOS-NEXT-20261001",
@@ -223,14 +223,14 @@
       ],
       "sharedPaths": [],
       "checkpoint": "54c3aa5ad93183a46fb3ee2f1ae1c8daaa97909c",
-      "next": "已互审并集成 main；复用已通过定向检查。数据库迁移未执行，原生与产品验收待完成。"
+      "next": "已互审并集成 main；依赖的报告participantId增量已在本机安装并验证HTTP读取。生产未迁移，原生与产品验收待完成。"
     },
     {
       "id": "DEV-PARENT-ASSESSMENT-SUPABASE-20261001",
       "title": "家长1对1测评数据与权限复用",
       "agent": "codex",
       "threadId": null,
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/parent-assessment-supabase-codex",
       "card": ".ai/tasks/DEV-PARENT-ASSESSMENT-SUPABASE-20261001.md",
@@ -241,15 +241,15 @@
         ".ai/handoffs/DEV-PARENT-ASSESSMENT-SUPABASE-20261001-codex-01.md"
       ],
       "sharedPaths": [],
-      "checkpoint": "2085dd7fdd1b12fbe33337b0323836f6e4cfdac1",
-      "next": "从登记基线复用干净工作区切新分支；先与Next lane固定DTO，扩展现有邀约表与三个窄RPC，不执行迁移。"
+      "checkpoint": "e5ffec41158f7cc75812daf749d47391f8c4fe30",
+      "next": "互审通过并集成cb38bce8/9ccae2f6/ae18b3f3；集成人完成本机DDL、ACL和权限拒绝事务检查及零残留核对后精确安装。缺少有效fixture关系，正向预约闭环待验收；无新表、造数或生产操作。"
     },
     {
       "id": "DEV-PARENT-ASSESSMENT-NEXT-20261001",
       "title": "家长1对1测评共用接口合同",
       "agent": "codex",
       "threadId": null,
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/parent-assessment-next-codex",
       "card": ".ai/tasks/DEV-PARENT-ASSESSMENT-NEXT-20261001.md",
@@ -265,8 +265,8 @@
         ".ai/handoffs/DEV-PARENT-ASSESSMENT-NEXT-20261001-codex-01.md"
       ],
       "sharedPaths": [],
-      "checkpoint": "2085dd7fdd1b12fbe33337b0323836f6e4cfdac1",
-      "next": "先提交独立DTO/OpenAPI/微信生成副本，供Supabase与小程序按同一合同实现；再接入三个窄RPC并完成定向HTTP/输入/投影检查。"
+      "checkpoint": "4e7f2ffe659199f22c8ee0cc2b4e0eaf823861b6",
+      "next": "合同与最终HTTP增量已互审集成，复用29项定向检查；本机局域网400/401/绑定家长200/未绑定403及报告200通过。客户端与完整预约体验待人工验收。"
     },
     {
       "id": "DEV-PARENT-WECHAT-20261001",
