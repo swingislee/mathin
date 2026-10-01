@@ -165,6 +165,12 @@ describe("convex paper intersection, union and difference", () => {
     const ids = new Set([...planeOverlapScene.actions!.map((entry) => entry.id), ...planeOverlapScene.operations!.map((entry) => entry.id)]);
     expect(near.items.every((entry) => ids.has(entry.id))).toBe(true);
     expect(action("overlap-pairB").active!(state)).toBe(true); expect(planeOverlapScene.contextActions!(state, null)).toBeNull();
+    const panel = planeOverlapScene.operations!.find((operation) => operation.id === "regions")!;
+    expect(panel.actions!.map((entry) => entry.id)).toEqual(["overlap-pairA", "overlap-pairB"]);
+    expect(planeOverlapScene.actions!.some((entry) => entry.id.startsWith("overlap-pair"))).toBe(false);
+    expect(near.items.map((entry) => entry.id)).toEqual(["regions", "construction-edit", "rotate", "construction-duplicate"]);
+    const icons = near.items.map((entry) => entry.kind === "operation" ? planeOverlapScene.operations!.find((operation) => operation.id === entry.id)!.icon : action(entry.id).icon);
+    expect(new Set(icons).size).toBe(icons.length);
   });
 
   it("delivers private SQL helpers with strict v2 shells without editing the shared dispatcher", () => {

@@ -32,9 +32,10 @@ export const planeOverlapScene: PlanarSceneDefinition = {
     preview: <svg viewBox="-175 -145 350 290" width="76" height="60" aria-hidden="true" focusable="false"><polygon points={coordinates(material.points)} fill="var(--moon)" stroke="var(--ink)" strokeWidth="2" /></svg>,
     add: (state) => addOverlapMaterial(state, material.id), disabled: (state) => addOverlapMaterial(state, material.id) === state,
   })),
-  actions: [...base.actions!.filter((action) => action.id !== "construction-life-outline").map(wrapAction), ...pairActions],
+  actions: base.actions!.filter((action) => action.id !== "construction-life-outline").map(wrapAction),
   operations: [
     { id: "regions", icon: "compareContents", label: t("观察 A / B 交并差", "Inspect A / B regions"),
+      actions: pairActions,
       fields: [{ key: "region", label: t("显示区域", "Region to show"), min: 0, max: 3, step: 1,
         options: names.map((label, value) => ({ value, label })), read: (state) => state.params.region,
         disabled: (state) => !overlapModel(state) }],
@@ -55,8 +56,8 @@ export const planeOverlapScene: PlanarSceneDefinition = {
   contextActions: (state, selected) => {
     const id = selected ? parseConstructionTarget(selected)?.id : undefined, object = id === undefined ? null : constructionObject(state, id);
     return object ? { bounds: constructionBounds(object), items: [
-      { kind: "action", id: "overlap-pairA" }, { kind: "action", id: "overlap-pairB" },
-      { kind: "operation", id: "regions" }, { kind: "operation", id: "rotate" },
+      { kind: "operation", id: "regions" }, { kind: "action", id: "construction-edit" },
+      { kind: "operation", id: "rotate" },
       { kind: "action", id: "construction-duplicate" },
     ] } : null;
   },
