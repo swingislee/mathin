@@ -220,11 +220,12 @@
         "apps/parent-wechat/miniprogram/components/",
         "apps/parent-wechat/miniprogram/assets/",
         ".ai/handoffs/DEV-PARENT-WECHAT-20261001-codex-03.md",
-        "scripts/check-parent-foundation.mjs"
+        "scripts/check-parent-foundation.mjs",
+        "apps/parent-wechat/AGENTS.md"
       ],
       "sharedPaths": [],
       "checkpoint": "ebd4bc8c0d4fd8331afc1f3b8b106a36173d30e5",
-      "next": "按用户新反馈尽可能复刻示例布局，底栏改为发现/课程/家长，仅适配主题色并清理无效说明；沿用原独立工作区及现有API，完成窄检查后交付人工视觉验收。"
+      "next": "继续按示例复刻三栏；测评新增独立1对1教师预约入口，pages/assessment已由pages目录覆盖；共享接口先由原Supabase/Next lane核对真实流程并交付稳定DTO。"
     }
   ]
 }
