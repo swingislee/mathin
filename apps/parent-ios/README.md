@@ -34,7 +34,7 @@ Debug 的传输例外仅用于 `MATHIN_DEV_HTTP_HOST` 指定的主机；客户�
 - `POST/GET /api/v1/parent/media`：上传所选作业图片、获取受保护附件访问地址。
 - `POST /api/v1/parent/portal`：提交作业，重试保留同一提交 ID；照片或文字变更后开始新提交。
 
-共用合同见 [`contracts/parent-api`](../../contracts/parent-api/README.md)，后台能力映射见 [`parent-ios-data-map.md`](../../docs/evidence/parent-ios-data-map.md)。现有测评报告 RPC 的兼容迁移 `20261001000100_parent_report_participant_identity.sql` 仅补充稳定孩子 ID，尚未执行；旧报告无 ID 时明确提示暂不可按孩子展示，避免同名混读。所有迁移执行遵循目标环境 preflight 和授权规则。
+共用合同见 [`contracts/parent-api`](../../contracts/parent-api/README.md)，后台能力映射见 [`parent-ios-data-map.md`](../../docs/evidence/parent-ios-data-map.md)。现有测评报告 RPC 的兼容迁移 `20261001000100_parent_report_participant_identity.sql` 仅补充稳定孩子 ID，已在本机隔离开发库安装；生产尚未执行。旧环境报告无 ID 时明确提示暂不可按孩子展示，避免同名混读。所有迁移执行遵循目标环境 preflight 和授权规则，运行摘要见[集成记录](../../.ai/tasks/DEV-PARENT-IOS-20261001-INTEGRATION.md#独立测评接口与本机运行接收)。
 
 ## 本轮功能与验收
 
@@ -64,4 +64,4 @@ xcodebuild -project apps/parent-ios/MathinParent.xcodeproj -scheme MathinParent 
 
 `Parent clients` CI 已接入 Swift 核心合同测试和 Xcode 模拟器构建。静态检查验证源文件、Xcode 资源、本地化及配置；Swift 测试覆盖孩子隔离、旧报告、输入长度、提交不确定状态和月份日期。静态检查不能替代 SwiftUI 编译。
 
-2026-10-01：Windows 上原生工程静态检查通过，共享 API 定向测试和双向复核通过。此环境没有 Swift/Xcode，Swift 测试、Xcode 构建、模拟器与真机人工验收待 Mac 执行；CI 尚未取得运行结果。没有执行数据库迁移或生产操作。
+2026-10-01：Windows 上原生工程静态检查通过，共享 API 定向测试和双向复核通过。此环境没有 Swift/Xcode，Swift 测试、Xcode 构建、模拟器与真机人工验收待 Mac 执行；CI 尚未取得运行结果。报告身份增量已在本机安装并通过 HTTP 兼容读取检查；未操作生产。

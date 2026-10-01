@@ -7,7 +7,7 @@
       "title": "iOS 家长端集成",
       "agent": "codex",
       "threadId": "01a0f7b2-73aa-74b3-8cf6-b23207ece7d6",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-PARENT-IOS-20261001-INTEGRATION.md",
@@ -22,14 +22,17 @@
         ".ai/tasks/DEV-PLACE-VALUE-20261001.md",
         ".ai/tasks/DEV-PLACE-VALUE-TOOLBAR-20261001.md",
         ".ai/tasks/DEV-MOTION-20261001.md",
+        "apps/parent-ios/README.md",
+        "contracts/parent-api/README.md",
+        "docs/evidence/parent-ios-data-map.md",
         "apps/AGENTS.md"
       ],
       "sharedPaths": [
         ".ai/registry.json",
         "CHANGELOG.md"
       ],
-      "checkpoint": "7769785de91996bfcac04b1e5e9390c88ff36a2f",
-      "next": "独立测评HTTP/SQL已互审集成；完成本机目标核对、事务回滚检查和两条精确增量安装，局域网鉴权读取通过。接收小程序测评页面；完整预约闭环和原生iOS仍待各自验收，生产未操作。"
+      "checkpoint": "c511b419bc031051f4fdd21c2a5806c55b73f948",
+      "next": "独立测评HTTP/SQL及小程序页面已互审集成；本机精确升级与局域网鉴权检查通过，原聊天打开主线原生入口供人工验收。完整预约闭环和iOS的Mac构建仍待完成，生产与正式Gate未操作。"
     },
     {
       "id": "DEV-PARENT-IOS-20261001",
@@ -273,7 +276,7 @@
       "title": "小程序家长发现与预约入口",
       "agent": "codex",
       "threadId": "01a0f7bd-4ca2-7370-a49c-a8f73fd4f5e9",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/parent-wechat-discovery-codex",
       "card": ".ai/tasks/DEV-PARENT-WECHAT-20261001.md",
@@ -304,8 +307,8 @@
         "apps/parent-wechat/AGENTS.md"
       ],
       "sharedPaths": [],
-      "checkpoint": "045a200134853b4b119871276ae54cb23a382fb9",
-      "next": "三栏参考布局已集成本地main 5b236f57/ca2f41cd，复用定向检查与已绑定复核，待视觉验收；继续独立1对1测评入口，消费新的assessment共享DTO，交接04已登记。"
+      "checkpoint": "310669515c80777c6b7cdfee0f186757b8508a0d",
+      "next": "独立测评入口与交接04已集成main 83213842/c511b419，应用及测试与复核head一致；复用25项定向检查和微信原生启动结果。原聊天打开主线供人工验收，真实NO_LINKED_LEAD条件与完整预约闭环局限见交接。"
     }
   ]
 }

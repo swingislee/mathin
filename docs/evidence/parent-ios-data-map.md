@@ -31,7 +31,7 @@ iOS、微信和 Next.js 继续使用 `auth.users.id` 作为账号主体，`stude
 
 `20261001000100_parent_report_participant_identity.sql` 只用 `create or replace function` 替换无参数、返回 jsonb 的 `miniapp_assessment_reports()`。唯一数据差异是 JSON 新增 `'participantId',s.id`；原字段、发送版本关联、排序、100 条上限、账户/学生/grades 校验均保留。没有表、列、RLS 策略或业务数据变化，无需重新生成数据库函数类型。
 
-旧微信客户端忽略新增字段。Next.js 为反馈报告补已有 `student_id`；升级前数据库的测评报告缺少 ID 时，新客户端采用明确缺失状态，按孩子筛选时不按姓名关联。迁移尚未执行，因此“含 participantId 的测评结果在真实数据库可读”仍待目标环境验证。
+旧微信客户端忽略新增字段。Next.js 为反馈报告补已有 `student_id`；升级前数据库的测评报告缺少 ID 时，新客户端采用明确缺失状态，按孩子筛选时不按姓名关联。本次源码核查时尚未执行迁移；后续集成人已在本机隔离开发库安装并检查报告 HTTP 兼容读取，运行范围与局限见[本机运行摘要](../../.ai/tasks/DEV-PARENT-IOS-20261001-INTEGRATION.md#独立测评接口与本机运行接收)。生产未迁移。
 
 代码回退可恢复原函数定义，保留原有 JSON 字段和授权即可；应用客户端同时保留对缺失 participantId 的兼容。任何开发数据库或生产数据库应用仍先执行对应目标核查和授权流程。
 

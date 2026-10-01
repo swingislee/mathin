@@ -54,13 +54,15 @@
 
 ### 报告字段兼容
 
-`Report.participantId` 为新增的可空字段。课后反馈直接使用原 RPC 的 `student_id`；测评依赖 `20261001000100_parent_report_participant_identity.sql` 为原 `miniapp_assessment_reports` JSON 增加 `students.id`，保持同签名、发送状态和 `grades` 权限。本轮只交付 SQL 源码，未向任何数据库执行 migration；目标环境需要按其授权流程单独升级。
+`Report.participantId` 为新增的可空字段。课后反馈直接使用原 RPC 的 `student_id`；测评依赖 `20261001000100_parent_report_participant_identity.sql` 为原 `miniapp_assessment_reports` JSON 增加 `students.id`，保持同签名、发送状态和 `grades` 权限。该增量已在本机隔离开发库安装，生产尚未升级；其他目标环境按其授权流程单独执行，详见[本机运行摘要](../../.ai/tasks/DEV-PARENT-IOS-20261001-INTEGRATION.md#独立测评接口与本机运行接收)。
 
 未升级数据库的测评仍可通过原 `portal?resource=reports` 读取，其 `participantId` 为 `null`。`learning` 不按姓名猜测归属，只返回 ID 与所选孩子一致的报告，并通过 `unassignedReportCount` 告知当前账号存在无法归属的历史报告。原账号、预约、练习、提交及媒体接口的请求和已有字段保持兼容，微信 DTO 副本同步生成。
 
 ## 1 对 1 测评稳定合同
 
 `/api/v1/parent/assessments` 的 HTTP 实现和 OpenAPI 已接入本节合同。GET 必填 `participant`；UUID 接受大小写输入并统一以小写传递和返回。POST 的 `request`（含同 ID 幂等恢复）返回 HTTP 201，`confirm` 返回 HTTP 200。代码交付不表示数据库 RPC 已安装或预约业务已可运行；数据库尚未升级时返回 `UNAVAILABLE`，目标环境升级按各自授权流程执行。
+
+2026-10-01：`20261001000200_parent_assessment_requests.sql` 已经由集成人在核验后的本机隔离开发库完成事务回滚检查、校验和绑定安装及鉴权 HTTP 读取检查。当前固定开发孩子缺少关联线索，真实返回 `NO_LINKED_LEAD`；完整预约闭环仍待业务条件齐备后验收，生产未迁移。
 
 独立测评复用已有 `lead_invitation_threads(kind=assessment_1v1)`，通过 `parent_assessment_overview`、`request_parent_assessment` 和 `confirm_parent_assessment` 读取和推进同一条邀约。HTTP 使用调用者的 Bearer Supabase client，数据库实时核验 `miniapp_can_participate(student, 'grades')`；学生 UUID 经现有 `leads.student_id` 对应业务线索。没有唯一可用线索时保留已有邀约读取和确认，新申请由 `eligibility` 说明限制。
 
