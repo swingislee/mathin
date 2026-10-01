@@ -7,7 +7,7 @@
       "title": "iOS 家长端集成",
       "agent": "codex",
       "threadId": "01a0f7b2-73aa-74b3-8cf6-b23207ece7d6",
-      "status": "in_progress",
+      "status": "in_review",
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-PARENT-IOS-20261001-INTEGRATION.md",
@@ -24,15 +24,15 @@
         ".ai/registry.json",
         "CHANGELOG.md"
       ],
-      "checkpoint": null,
-      "next": "登记独立 iOS worktree，完成定向检查后集成交互版。"
+      "checkpoint": "a718402b1a74a846d1a0dc8022b8881da59ecf06",
+      "next": "API/Supabase 已在 main；iOS 与微信已组成 codex/parent-clients-integration-codex 候选，自动审批拦截 main 批量合入，待用户在本会话明确批准。Mac 与小程序人工验收另记。"
     },
     {
       "id": "DEV-PARENT-IOS-20261001",
       "title": "参考截图构建 iOS 家长端",
       "agent": "codex",
       "threadId": "01a0f7b2-73aa-74b3-8cf6-b23207ece7d6",
-      "status": "in_progress",
+      "status": "in_review",
       "checkout": "worktree",
       "branch": "codex/parent-ios-reference-codex",
       "card": ".ai/tasks/DEV-PARENT-IOS-20261001.md",
@@ -42,8 +42,8 @@
         ".ai/handoffs/DEV-PARENT-IOS-20261001-codex-01.md"
       ],
       "sharedPaths": [],
-      "checkpoint": null,
-      "next": "复用既有 Supabase 与 HTTP 接口实现 iOS 家长端；接口升级由 Supabase 和 Next.js 子 agent 同步交付。"
+      "checkpoint": "6483208bbd35d3d314ee1d33b871a55f8bf0f493",
+      "next": "原生四页和真实共享 API 接入已提交并复核；候选分支集成静态检查通过，待 main 合入批准及 Mac/Xcode 构建、人工验收。"
     },
     {
       "id": "COLLAB-20261001-R2",
@@ -127,7 +127,7 @@
       "title": "[生产·待验收] 可备课数学教具与立体图形 (2)",
       "agent": "codex",
       "threadId": "01a0dd5d-20ad-7471-be26-43a53a68757d",
-      "status": "in_progress",
+      "status": "in_review",
       "checkout": "worktree",
       "branch": "codex/place-value-pan-codex",
       "card": ".ai/tasks/DEV-PLACE-VALUE-20261001.md",
@@ -142,15 +142,15 @@
       "sharedPaths": [
         "CHANGELOG.md"
       ],
-      "checkpoint": "e73269ba9a75b63ddc156d15ea08fefa1eddffd3",
-      "next": "此前 e73269ba 已集成；按用户新指令在独立 worktree 增加平移视角手形按钮，复用现有 pan 控制，完成定向检查后交付开发端。"
+      "checkpoint": "9fc0079a3098ba77662adb64736bf5785932b05b",
+      "next": "此前 e73269ba 已集成；平移按钮增量和交接已回传，待独立复核和 main 集成；不纳入家长端候选，开发端手感待验收。"
     },
     {
       "id": "DEV-PARENT-IOS-SUPABASE-20261001",
       "title": "iOS 家长端现有数据与权限复用",
       "agent": "codex",
       "threadId": null,
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/parent-ios-supabase-codex",
       "card": ".ai/tasks/DEV-PARENT-IOS-SUPABASE-20261001.md",
@@ -161,15 +161,15 @@
         ".ai/handoffs/DEV-PARENT-IOS-SUPABASE-20261001-codex-01.md"
       ],
       "sharedPaths": [],
-      "checkpoint": null,
-      "next": "按主任务与用户补充要求，复用现有表，与另一子 agent 同步合同；禁止新建业务数据表。"
+      "checkpoint": "369a9729bde1f6f4cf9cb8e4dc9b5cb20088b5be",
+      "next": "已互审并集成 main；复用已通过定向检查。数据库迁移未执行，原生与产品验收待完成。"
     },
     {
       "id": "DEV-PARENT-IOS-NEXT-20261001",
       "title": "iOS 家长端共用 Next.js 接口升级",
       "agent": "codex",
       "threadId": null,
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/parent-ios-next-codex",
       "card": ".ai/tasks/DEV-PARENT-IOS-NEXT-20261001.md",
@@ -182,15 +182,15 @@
         ".ai/handoffs/DEV-PARENT-IOS-NEXT-20261001-codex-01.md"
       ],
       "sharedPaths": [],
-      "checkpoint": null,
-      "next": "按主任务与用户补充要求，复用现有表，与另一子 agent 同步合同；禁止新建业务数据表。"
+      "checkpoint": "54c3aa5ad93183a46fb3ee2f1ae1c8daaa97909c",
+      "next": "已互审并集成 main；复用已通过定向检查。数据库迁移未执行，原生与产品验收待完成。"
     },
     {
       "id": "DEV-PARENT-WECHAT-20261001",
       "title": "小程序家长发现与预约入口",
       "agent": "codex",
       "threadId": "01a0f7bd-4ca2-7370-a49c-a8f73fd4f5e9",
-      "status": "in_progress",
+      "status": "in_review",
       "checkout": "worktree",
       "branch": "codex/parent-wechat-discovery-codex",
       "card": ".ai/tasks/DEV-PARENT-WECHAT-20261001.md",
@@ -208,11 +208,12 @@
         "apps/parent-wechat/docs/portal.md",
         "tests/parent-wechat-discovery.test.ts",
         "tests/parent-foundation.test.ts",
-        ".ai/handoffs/DEV-PARENT-WECHAT-20261001-codex-01.md"
+        ".ai/handoffs/DEV-PARENT-WECHAT-20261001-codex-01.md",
+        ".ai/handoffs/DEV-PARENT-WECHAT-20261001-codex-02.md"
       ],
       "sharedPaths": [],
-      "checkpoint": null,
-      "next": "复用 iOS 同批共享 learning API，独立构建发现/预约/安排/我的；保留旧路由兼容。"
+      "checkpoint": "ebd4bc8c0d4fd8331afc1f3b8b106a36173d30e5",
+      "next": "源码、预约成功状态补丁与定向检查已交付；已接入家长端候选分支，main 合入等待本会话明确批准。模拟器及视觉待验收。"
     }
   ]
 }
