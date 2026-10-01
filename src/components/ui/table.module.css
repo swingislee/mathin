@@ -11,27 +11,30 @@
   pointer-events: none;
 }
 
-/* 嵌套记录共用微圆角轮廓，摘要与展开详情的接缝保持直边。 */
-.records .records > [data-slot="table"] > tbody > tr:is([data-followup-row-key], [data-followup-inline-details]) {
-  --table-record-radius: 0.25rem;
+/* 记录表各层共用同一轮廓；圆角不随嵌套深度或屏幕宽度变化。 */
+.records { --table-record-radius: 0.25rem; }
+.records > [data-slot="table"] > tbody > tr:is([data-followup-row-key], [data-followup-inline-details]) {
   position: relative;
+  isolation: isolate;
   border-radius: var(--table-record-radius);
   outline: none;
 }
-.records .records > [data-slot="table"] > tbody > tr[data-followup-row-key][data-followup-expanded="true"]:not([data-followup-group]) {
+.records > [data-slot="table"] > tbody > tr[data-followup-row-key][data-followup-expanded="true"]:not([data-followup-group]) {
   border-radius: var(--table-record-radius) var(--table-record-radius) 0 0;
 }
-.records .records > [data-slot="table"] > tbody > tr[data-followup-inline-details] {
+.records > [data-slot="table"] > tbody > tr[data-followup-inline-details] {
   border-radius: 0 0 var(--table-record-radius) var(--table-record-radius);
 }
-.records .records > [data-slot="table"] > tbody > tr:is([data-followup-row-key], [data-followup-inline-details]) > [data-slot="table-cell"] {
+.records > [data-slot="table"] > tbody > tr:is([data-followup-row-key], [data-followup-inline-details]) > [data-slot="table-cell"] {
   box-shadow: none;
 }
-.records .records > [data-slot="table"] > tbody > tr:is([data-followup-row-key], [data-followup-inline-details])::after {
+.records > [data-slot="table"] > tbody > tr:is([data-followup-row-key], [data-followup-inline-details]) > .flush::after { content: none; }
+.records > [data-slot="table"] > tbody > tr:is([data-followup-row-key], [data-followup-inline-details])::after {
   content: "";
   position: absolute;
   inset: 0;
-  z-index: 1;
+  /* 行内覆盖固定列与姓名格；行的独立绘制层使轮廓仍位于固定表头之下。 */
+  z-index: 30;
   border: 1px solid;
   border-color: var(--followup-top) var(--followup-side) var(--followup-bottom);
   border-radius: inherit;
@@ -76,15 +79,11 @@
   }
   .records [data-table-mobile-only] { display: block; }
 
-  /* 选中轮廓归整行所有，避免隐藏列和嵌套单元格切断边框。 */
+  /* 移动端只调整内容排列，沿用上面的整行轮廓。 */
   .records > [data-slot="table"] > tbody > tr[data-followup-row-key],
   .records > [data-slot="table"] > tbody > tr[data-followup-inline-details] {
-    border-radius: 0.625rem;
-    outline: 1px solid transparent;
-    outline-offset: -1px;
     overflow: clip;
   }
-  .records > [data-slot="table"] > tbody > tr[data-followup-active="true"] { outline-color: var(--followup-outline); }
   .records > [data-slot="table"] > tbody > tr[data-followup-row-key] > [data-slot="table-cell"] { background-color: inherit; }
   .records > [data-slot="table"] > tbody > tr[data-followup-inline-details] > [data-slot="table-cell"] { padding: 0.25rem; }
 
