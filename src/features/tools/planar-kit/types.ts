@@ -40,6 +40,11 @@ export interface PlanarOperation {
   /** 打开专用操作即使用共用绘制手势，例如剪刀直接拖切线。 */
   constructionTool?: string;
 }
+/** 就近入口引用现有动作／面板；宿主解析同一回调、禁用态和动画。 */
+export interface PlanarContextActions {
+  bounds: { minX: number; minY: number; maxX: number; maxY: number };
+  items: readonly { kind: "action" | "operation"; id: string }[];
+}
 /** 未闭合的绘制过程只存在宿主本机；准确几何才进入历史与课堂。 */
 export interface PlanarConstruction {
   tools: readonly { id: string; label: PlanarText; kind: "point" | "drag" | "points"; hint?: PlanarText; disabled?: (state: PlanarState) => boolean; once?: boolean }[];
@@ -57,6 +62,7 @@ export interface PlanarSceneDefinition {
   materials?: readonly PlanarMaterial[];
   construction?: PlanarConstruction;
   operations?: readonly PlanarOperation[];
+  contextActions?: (state: PlanarState, selected: string | null) => PlanarContextActions | null;
   /** 创建／复制／移除后让本机操作焦点跟随新材料；空白取消仍由宿主管理。 */
   selectionAfterChange?: (before: PlanarState, after: PlanarState, selected: string | null) => string | null;
   setField?: (state: PlanarState, key: string, value: number) => PlanarState;
