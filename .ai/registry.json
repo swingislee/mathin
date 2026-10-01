@@ -7,7 +7,7 @@
       "title": "iOS 家长端集成",
       "agent": "codex",
       "threadId": "01a0f7b2-73aa-74b3-8cf6-b23207ece7d6",
-      "status": "integrated",
+      "status": "in_progress",
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-PARENT-IOS-20261001-INTEGRATION.md",
@@ -32,7 +32,7 @@
         "CHANGELOG.md"
       ],
       "checkpoint": "50f3ba6038eab7aaa6d68ae9f1df2de6ebaf86c2",
-      "next": "独立测评HTTP/SQL及小程序页面已互审集成；本机精确升级与局域网鉴权检查通过，原聊天打开主线原生入口供人工验收。完整预约闭环和iOS的Mac构建仍待完成，生产与正式Gate未操作。"
+      "next": "家长端本轮源码与本机接收完成，人工验收状态保留。按原会话新增需求串行登记Motion Lab一键1秒增量，接收精确代码与交接后复核；生产与正式Gate未操作。"
     },
     {
       "id": "DEV-PARENT-IOS-20261001",
@@ -80,24 +80,25 @@
       "title": "恢复 Motion Lab 拖动与长按功能",
       "agent": "codex",
       "threadId": "01a0f6fc-745e-7fd0-9b15-ce58ff01a2b8",
-      "status": "integrated",
+      "status": "in_progress",
       "checkout": "worktree",
-      "branch": "codex/motion-ruler-codex",
+      "branch": "codex/motion-one-second-codex",
       "card": ".ai/tasks/DEV-MOTION-20261001.md",
       "writePaths": [
         "src/features/tools/motion-lab/MotionLab.tsx",
-        "src/features/tools/motion-lab/NumField.tsx",
+        "src/features/tools/motion-lab/shared.ts",
         "src/features/tools/motion-lab/README.md",
         "tests/motion-lab-interactions.test.ts",
-        ".ai/handoffs/DEV-MOTION-20261001-codex-03.md"
+        "tests/motion-lab-values.test.ts",
+        ".ai/handoffs/DEV-MOTION-20261001-codex-04.md"
       ],
       "sharedPaths": [
         "CHANGELOG.md",
         "messages/zh.json",
         "messages/en.json"
       ],
-      "checkpoint": "745adf8f4ca29438561d16a2cb6d08e7ab83a602",
-      "next": "首行工具栏已按本轮人类授权集成本地main a413bead/f0493e95；实现文件与已复核745adf8f一致，复用定向检查，待开发端人工验收。既有标尺/环形菜单验收状态保留。"
+      "checkpoint": "4615aaf30adc444d5122bc5ad928982c70488214",
+      "next": "按用户新需求增加批量设为1秒，明确保护手动路程或速度及时间自动时的处理。复用干净motion工作区，新分支已从当前main准备；消息文件tools.motion片段独占本窗口，完成定向检查后交接04，冻结场景合同保持。"
     },
     {
       "id": "DEV-CLASS-LIST-20261001",
