@@ -92,7 +92,7 @@
       "title": "优化班级列表与手机端体验",
       "agent": "codex",
       "threadId": "01a0f6e7-2fca-7963-9be1-3ed3d2705ecc",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/class-roster-density-codex",
       "card": ".ai/tasks/DEV-CLASS-LIST-20261001.md",
@@ -125,8 +125,8 @@
       "sharedPaths": [
         "CHANGELOG.md"
       ],
-      "checkpoint": "380b9aa5a62508283294104cf41efd8e5ec2a1e1",
-      "next": "按最新名单截图修复姓名内容遮挡选中轮廓的问题；通用单元格提供贴边内容能力，班级名单复用。沿用独立工作区，保留人员数据和名单交互。"
+      "checkpoint": "e0da117b911fc9bfba356b7dbcd7578ae8d0cf14",
+      "next": "名单贴边内容遮挡选中线的修复已集成；定向交互与中英文页面启动检查通过，待名单视觉验收，见 codex-05。开发热更新首次读取曾报国际化上下文缺失，复查四个视图恢复 200；该启动问题未作已解决声明。"
     },
     {
       "id": "DEV-PLACE-VALUE-20261001",
