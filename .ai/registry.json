@@ -195,7 +195,7 @@
       "title": "优化班级列表与手机端体验",
       "agent": "codex",
       "threadId": "01a0f6e7-2fca-7963-9be1-3ed3d2705ecc",
-      "status": "integrated",
+      "status": "in_progress",
       "checkout": "worktree",
       "branch": "codex/class-roster-density-codex",
       "card": ".ai/tasks/DEV-CLASS-LIST-20261001.md",
@@ -232,7 +232,7 @@
         "CHANGELOG.md"
       ],
       "checkpoint": "3068d207d62e41a3a90dd751dd6453a179936941",
-      "next": "三层边框统一及固定列遮挡修复已直接集成 6b3e1448；三层样式回归与相关交互检查通过，开发端待人工视觉验收，见 DEV-CLASS-LIST-20261001-codex-07.md。"
+      "next": "修复行伪元素生成额外匿名列、挤窄嵌套详情的问题；共用原生行轮廓并去掉重复关闭按钮及右侧占位，保留箭头、点击行与 Esc 收起。"
     },
     {
       "id": "DEV-PLACE-VALUE-20261001",
