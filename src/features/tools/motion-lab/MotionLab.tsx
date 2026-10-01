@@ -1,12 +1,11 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
-
-import { Minus, Pause, Play, Plus, RotateCcw } from "lucide-react";
+import { CircleHelp, LocateFixed, Minus, Pause, Play, Plus, RotateCcw, Ruler, Timer } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState, type SetStateAction } from "react";
-import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { ToolComponentProps } from "../types";
+import { SpatialIconButton } from "../spatial-interaction/SpatialWorkbenchControls";
 import { ApplyField, EditableNumber } from "./NumField";
 import { RunwayLane } from "./RunwayLane";
 import { RulerOverlay } from "./RulerOverlay";
@@ -39,6 +38,7 @@ export function MotionLab({ embedded, initial, onSnapshot, readOnly = false, pre
   const capture = useSceneCapture(captured, onSnapshot);
   const [trackW, setTrackW] = useState(640);
   const trackRef = useRef<HTMLDivElement>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   useEffect(() => {
     const el = trackRef.current;
@@ -95,10 +95,11 @@ export function MotionLab({ embedded, initial, onSnapshot, readOnly = false, pre
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" inert={readOnly} {...capture}>
-      <div className={`flex flex-wrap items-center gap-x-3 gap-y-2 border-b px-4 ${embedded ? "py-2" : "py-2.5"}`}>
-        <label className="flex items-center gap-1.5 text-xs text-muted">
+      <div className={`flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line px-4 ${embedded ? "py-1.5" : "py-2"}`}>
+        <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs text-muted">
           {t("length")}
           <EditableNumber value={length} disabled={locked} min={Number.MIN_VALUE}
+            className="h-[30px] w-14 border-line py-0 shadow-none"
             longPressValue={100} longPressLabel={t("numberHint", { value: 100, unit: "m" })} onCommit={(v) => {
             if (v > 0) {
               setLength(fmt(v));
@@ -106,44 +107,47 @@ export function MotionLab({ embedded, initial, onSnapshot, readOnly = false, pre
             }
           }} ariaLabel={t("length")} />
           <span>m</span>
-        </label>
-        {phase === "running" ? (
-          <Button size="sm" onClick={pause}><Pause size={14} />{t("pause")}</Button>
-        ) : phase === "paused" ? (
-          <Button size="sm" onClick={resume}><Play size={14} />{t("resume")}</Button>
-        ) : (
-          <Button size="sm" onClick={go}><Play size={14} />{t("start")}</Button>
-        )}
-        <Button variant="secondary" size="sm" onClick={reset}><RotateCcw size={13} />{t("reset")}</Button>
-        {preparation && scene.playback.phase !== "idle" && <Button variant="secondary" size="sm" onClick={() => setRunways((current) => current)}>{t("useCurrentPosition")}</Button>}
-        <span className="rounded-full border px-3 py-1 text-xs tabular-nums text-muted">
-          {t("clock")} <span className="text-ink">{clock.toFixed(1)}</span> s
-        </span>
-        <label className="flex items-center gap-1.5 text-xs text-muted">
-          {t("allTime")}
-          <ApplyField value={allTime} disabled={locked} min={Number.MIN_VALUE} applyLabel={t("apply")} onApply={(v) => v > 0 && setAllTimes(v)} ariaLabel={t("allTime")} />
-          <span>s</span>
-        </label>
-        <label className="flex items-center gap-1.5 text-xs text-muted">
-          {t("allSpeed")}
-          <ApplyField value={allSpeed} disabled={locked} applyLabel={t("apply")} onApply={(v) => v >= 0 && setAllSpeeds(v)} ariaLabel={t("allSpeed")} />
-          <span>m/s</span>
-        </label>
-        <div className="ml-auto flex items-center gap-2.5">
-          <label className="flex items-center gap-1.5 text-xs text-muted">
-            <Input type="checkbox" checked={showRuler} onChange={(e) => setShowRuler(e.target.checked)} className="accent-(--p-accent)" />
-            {t("showRuler")}
-          </label>
-          <Button variant="ghost" size="sm" disabled={phase !== "idle" || runways.length >= MAX_RUNWAYS} onClick={() => setRunways((p) => [...p, makeRunway(Math.max(...p.map((r) => r.id)) + 1)])}>
-            <Plus size={14} />{t("addRunway")}
-          </Button>
-          <Button variant="ghost" size="sm" disabled={phase !== "idle" || runways.length <= 1} onClick={() => setRunways((p) => p.slice(0, -1))}>
-            <Minus size={14} />{t("removeRunway")}
-          </Button>
+        </div>
+        <div className="flex shrink-0 items-center gap-1 border-l border-line pl-3">
+          {phase === "running" ? (
+            <SpatialIconButton label={t("pause")} active onClick={pause}><Pause aria-hidden /></SpatialIconButton>
+          ) : phase === "paused" ? (
+            <SpatialIconButton label={t("resume")} onClick={resume}><Play aria-hidden /></SpatialIconButton>
+          ) : (
+            <SpatialIconButton label={t("start")} onClick={go}><Play aria-hidden /></SpatialIconButton>
+          )}
+          <SpatialIconButton label={t("reset")} onClick={reset}><RotateCcw aria-hidden /></SpatialIconButton>
+          {preparation && scene.playback.phase !== "idle" && <SpatialIconButton label={t("useCurrentPosition")} onClick={() => setRunways((current) => current)}><LocateFixed aria-hidden /></SpatialIconButton>}
+          <span aria-label={t("clock")} title={t("clock")} className="ml-1 flex h-[30px] items-center gap-1.5 whitespace-nowrap px-1 text-xs tabular-nums text-muted">
+            <Timer size={15} aria-hidden /><span className="min-w-7 text-right text-ink">{clock.toFixed(1)}</span> s
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-l border-line pl-3">
+          <div className="flex items-center gap-1.5 whitespace-nowrap text-xs text-muted">
+            <span>{t("allTime")}</span>
+            <ApplyField value={allTime} disabled={locked} min={Number.MIN_VALUE} unit="s" applyLabel={`${t("apply")} · ${t("allTime")}`} onApply={(v) => v > 0 && setAllTimes(v)} ariaLabel={t("allTime")} />
+          </div>
+          <div className="flex items-center gap-1.5 whitespace-nowrap text-xs text-muted">
+            <span>{t("allSpeed")}</span>
+            <ApplyField value={allSpeed} disabled={locked} unit="m/s" applyLabel={`${t("apply")} · ${t("allSpeed")}`} onApply={(v) => v >= 0 && setAllSpeeds(v)} ariaLabel={t("allSpeed")} />
+          </div>
+        </div>
+        <div className="ml-auto flex shrink-0 items-center gap-1">
+          <SpatialIconButton label={t("showRuler")} active={showRuler} onClick={() => setShowRuler(!showRuler)}><Ruler aria-hidden /></SpatialIconButton>
+          <div className="mx-1 h-5 border-l border-line" aria-hidden />
+          <SpatialIconButton label={t("addRunway")} disabled={phase !== "idle" || runways.length >= MAX_RUNWAYS} onClick={() => setRunways((p) => [...p, makeRunway(Math.max(...p.map((r) => r.id)) + 1)])}><Plus aria-hidden /></SpatialIconButton>
+          <SpatialIconButton label={t("removeRunway")} disabled={phase !== "idle" || runways.length <= 1} onClick={() => setRunways((p) => p.slice(0, -1))}><Minus aria-hidden /></SpatialIconButton>
+          <Popover open={helpOpen} onOpenChange={setHelpOpen}>
+            <PopoverTrigger asChild>
+              <SpatialIconButton label={t("help")} active={helpOpen}><CircleHelp aria-hidden /></SpatialIconButton>
+            </PopoverTrigger>
+            <PopoverContent align="end" sideOffset={8} aria-label={t("help")} className="w-80 space-y-2 bg-paper p-3 text-xs leading-relaxed text-muted">
+              <p className="font-medium text-ink">{t("help")}</p>
+              <p>{t("dragHint")}</p><p>{t("solveHint")}</p><p>{t("editHint")}</p>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
-      <p className="px-4 pt-2 text-xs text-muted">{t("dragHint")}；{t("solveHint")}</p>
-      <p className="px-4 pt-1 text-xs text-muted">{t("editHint")}</p>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-2">
         <div className="relative">

@@ -8,6 +8,7 @@ import { useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { fmt } from "./shared";
 import { useLongPress } from "@/hooks/use-long-press";
+import { SpatialIconButton } from "../spatial-interaction/SpatialWorkbenchControls";
 
 function parseNumber(text: string, min = 0) {
   if (!text.trim()) return null;
@@ -96,12 +97,13 @@ export function EditableNumber({ longPressValue, longPressLabel, ...props }: Num
 }
 
 /** 带「确认」按钮的数字输入：触摸屏友好（回车或点 ✓ 提交） */
-export function ApplyField({ value, onApply, disabled, ariaLabel, applyLabel, min = 0 }: {
+export function ApplyField({ value, onApply, disabled, ariaLabel, applyLabel, unit, min = 0 }: {
   value: number;
   onApply: (v: number) => void;
   disabled?: boolean;
   ariaLabel?: string;
   applyLabel: string;
+  unit: string;
   min?: number;
 }) {
   const [text, setText] = useState(String(value));
@@ -116,38 +118,32 @@ export function ApplyField({ value, onApply, disabled, ariaLabel, applyLabel, mi
     if (v !== null) onApply(v);
   };
   return (
-    <span className="inline-flex items-center gap-1">
-      <Input
-        type="number"
-        inputMode="decimal"
-        min={min}
-        max={1e9}
-        step="any"
-        value={text}
-        disabled={disabled}
-        aria-label={ariaLabel}
-        onFocus={(event) => event.currentTarget.select()}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === "Escape") {
-            e.preventDefault();
-            e.stopPropagation();
-            if (e.key === "Enter") apply();
-            else setText(String(value));
-          }
-        }}
-        className="w-16 rounded-md border bg-card px-1.5 py-0.5 text-right text-xs tabular-nums outline-none focus:ring-1 focus:ring-[var(--rose)] disabled:opacity-50"
-      />
-      <button
-        type="button"
-        aria-label={applyLabel}
-        title={applyLabel}
-        disabled={disabled}
-        onClick={apply}
-        className="grid size-6 shrink-0 place-items-center rounded-full border border-crater text-muted transition-colors duration-200 hover:bg-moon/50 hover:text-ink disabled:opacity-50"
-      >
-        <Check size={12} />
-      </button>
+    <span className="inline-flex shrink-0 items-center gap-1">
+      <span className="inline-flex h-[30px] items-center rounded-md border border-line bg-card pr-2 focus-within:border-crater focus-within:ring-1 focus-within:ring-crater/25">
+        <Input
+          type="number"
+          inputMode="decimal"
+          min={min}
+          max={1e9}
+          step="any"
+          value={text}
+          disabled={disabled}
+          aria-label={ariaLabel}
+          onFocus={(event) => event.currentTarget.select()}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === "Escape") {
+              e.preventDefault();
+              e.stopPropagation();
+              if (e.key === "Enter") apply();
+              else setText(String(value));
+            }
+          }}
+          className="h-full w-16 rounded-none border-0 bg-transparent px-2 py-0 text-right text-xs tabular-nums shadow-none focus-visible:ring-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        />
+        <span className="min-w-5 text-right text-[11px] text-muted" aria-hidden>{unit}</span>
+      </span>
+      <SpatialIconButton label={applyLabel} disabled={disabled} onClick={apply}><Check aria-hidden /></SpatialIconButton>
     </span>
   );
 }

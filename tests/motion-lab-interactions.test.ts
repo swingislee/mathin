@@ -228,4 +228,41 @@ describe("Motion Lab legacy interaction boundaries", () => {
     expect(snapshot().playback.phase).toBe("running");
     expect(snapshot().runways[0].vehicle).toBe(DEFAULT_VEHICLE);
   });
+
+  it("keeps batch inputs, ruler and track actions direct while help opens on demand", async () => {
+    await mount({ distance: 60, speed: 6 });
+    expect(input(labels.allTime)).toBeTruthy();
+    expect(input(labels.allSpeed)).toBeTruthy();
+    expect(host.textContent).not.toContain(labels.dragHint);
+    const rulerWasVisible = snapshot().showRuler;
+    await click(button(labels.showRuler));
+    expect(snapshot().showRuler).toBe(!rulerWasVisible);
+    expect(button(labels.showRuler).getAttribute("aria-pressed")).toBe(String(!rulerWasVisible));
+    await click(button(labels.addRunway));
+    expect(snapshot().runways).toHaveLength(2);
+    await click(button(labels.removeRunway));
+    expect(snapshot().runways).toHaveLength(1);
+    expect(button(labels.removeRunway).disabled).toBe(true);
+
+    await enter(input(labels.allTime), "20");
+    expect(snapshot().runways[0]).toMatchObject({ time: 20, speed: 3 });
+    await enter(input(labels.allSpeed), "5", "Tab");
+    await click(button(`${labels.apply} · ${labels.allSpeed}`));
+    expect(snapshot().runways[0]).toMatchObject({ time: 20, speed: 5, distance: 100 });
+    await enter(input(labels.allTime), "-1");
+    expect(snapshot().allTime).toBe(20);
+    await enter(input(labels.allTime), "99", "Escape");
+    expect(input(labels.allTime).value).toBe("20");
+    await click(button(labels.start));
+    expect(input(labels.allTime).disabled).toBe(true);
+    expect(input(labels.allSpeed).disabled).toBe(true);
+    expect(button(`${labels.apply} · ${labels.allTime}`).disabled).toBe(true);
+
+    await click(button(labels.help));
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain(labels.dragHint);
+    await act(async () => document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+    await advance(0);
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.activeElement).toBe(button(labels.help));
+  });
 });
