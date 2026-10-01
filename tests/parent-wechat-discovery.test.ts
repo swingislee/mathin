@@ -2,9 +2,17 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
 import ts from "typescript";
-import { describe, expect, it, vi } from "vitest";
-import type { Activity, Booking, ParentLearning } from "../contracts/parent-api/portal";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { Activity, Booking, ParentLearning, ParentAssessmentOverview, ParentAssessmentRequest } from "../contracts/parent-api/portal";
 import type { ActivityFilter } from "../apps/parent-wechat/miniprogram/lib/discovery";
+import type * as AssessmentCalendar from "../apps/parent-wechat/miniprogram/lib/assessment-calendar";
+type PendingRequest = { id: string; teacherId: string; parentTimeOptions: string[] };
+type AssessmentPending = {
+  pendingAssessment: (account: string, participant: string) => PendingRequest | null;
+  savePendingAssessment: (account: string, participant: string, value: PendingRequest) => void;
+  clearPendingAssessment: (account: string, participant: string) => void;
+};
+type Touch = { currentTarget: { dataset: Record<string, string | number> } };
 
 const miniRoot = path.resolve("apps/parent-wechat/miniprogram");
 type RuntimePage = {
@@ -12,6 +20,8 @@ type RuntimePage = {
     step: number; booked: boolean; uncertain: boolean; participants: { id: string; name: string }[];
     events: { key: string; title: string }[]; dayEvents: { title: string }[]; learning: ParentLearning | null;
     daySessions: { title: string; participantId: string }[];
+    requests: (ParentAssessmentRequest & { scheduledLabel: string; confirmOptions: { value: string }[] })[];
+    overview: ParentAssessmentOverview | null;
   };
   setData: (value: Record<string, unknown>) => void;
   book: () => Promise<void>; review: () => void; back: () => void; loadMonth: () => Promise<void>;
@@ -21,6 +31,9 @@ type RuntimePage = {
   location: (event: { currentTarget: { dataset: { value: string } } }) => void;
   chooseSlot: (event: { currentTarget: { dataset: { id: string } } }) => void;
   chooseParticipant: (event: { currentTarget: { dataset: { index: number } } }) => void;
+  openActivity: (event: Touch) => void; chooseTeacher: (event: Touch) => void; chooseTime: (event: Touch) => void;
+  submit: () => Promise<void>; retryPending: () => Promise<void>; loadParticipant: () => Promise<void>; startOver: () => void;
+  renderRequests: () => void; selectConfirmation: (event: Touch) => void; confirm: (event: Touch) => Promise<void>;
 };
 type DiscoveryModule = {
   canReserve: (activity: Activity) => boolean; canCancel: (booking: Booking, now: number) => boolean;
@@ -37,15 +50,21 @@ type NavigationModule = {
 };
 function runtime(api: Record<string, unknown> = {}, language = "zh_CN") {
   let page: RuntimePage;
+  const storage = new Map<string, unknown>();
   const wx = {
     getAppBaseInfo: () => ({ language }), setNavigationBarTitle: vi.fn(), setTabBarItem: vi.fn(),
     switchTab: vi.fn(), navigateTo: vi.fn(), showToast: vi.fn(),
     showModal: vi.fn((options: { success?: (value: { confirm: boolean }) => void }) => options.success?.({ confirm: true })),
+    getStorageSync: (key: string) => storage.get(key),
+    setStorageSync: (key: string, value: unknown) => storage.set(key, value),
+    removeStorageSync: (key: string) => storage.delete(key),
   };
   const cache = new Map<string, Record<string, unknown>>();
   const apiModule = { ApiError: class extends Error { constructor(public code: string) { super(code); } }, session: () => ({}), ...api };
   function load(relative: "lib/discovery.ts"): DiscoveryModule;
   function load(relative: "lib/navigation.ts"): NavigationModule;
+  function load(relative: "lib/assessment-calendar.ts"): typeof AssessmentCalendar;
+  function load(relative: "lib/assessment-pending.ts"): AssessmentPending;
   function load(relative: string): Record<string, unknown>;
   function load(relative: string): Record<string, unknown> {
     const file = path.resolve(miniRoot, relative);
@@ -85,8 +104,31 @@ const learning = (id: string, title = id): ParentLearning => ({ participantId: i
     title, startsAt: timestamp(3), durationMinutes: 60, teacherName: null }], attendance: [], notifications: [], leaveRequests: [], reports: [], unassignedReportCount: 0,
   capabilities: { leaveRequests: false, notificationRead: false, chat: false, rescheduling: false, wrongAnswers: false, profileEditing: false, payments: false } });
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(done => { resolve = done; }); return { promise, resolve }; }
+const assessorId = "00000000-0000-4000-8000-000000000002";
+const assessmentId = "00000000-0000-4000-8000-000000000001";
+const assessmentTime = "2026-10-03@14:00";
+const assessmentRequest = (patch: Partial<ParentAssessmentRequest> = {}): ParentAssessmentRequest => ({
+  id: assessmentId, participantId: "member-a", teacher: { id: assessorId, displayName: "Assessor" }, state: "awaiting_teacher",
+  parentTimeOptions: [assessmentTime], teacherTimeOptions: [], sharedTimeOptions: [], proposedStartsAt: null, scheduledAt: null,
+  updatedAt: timestamp(1), canConfirm: false, ...patch,
+});
+const assessmentOverview = (participantId = "member-a", requests: ParentAssessmentRequest[] = []): ParentAssessmentOverview => ({
+  participantId, timeZone: "Asia/Shanghai", eligibility: { canRequest: true, reason: null },
+  teachers: [{ id: assessorId, displayName: "Assessor" }], requests,
+});
+async function assessmentPage(postAssessment: ReturnType<typeof vi.fn>, overview = assessmentOverview()) {
+  const getAssessments = vi.fn().mockResolvedValue(overview);
+  const run = runtime({ postAssessment, getAssessments, requestId: () => assessmentId,
+    get: vi.fn().mockResolvedValue({ id: "account", participants: [{ id: "member-a", name: "A" }] }) });
+  run.load("pages/assessment/index.ts"); const page = run.page();
+  page.setData({ firstDay: "2026-10-01", lastDay: "2026-10-28", week: "2026-09-28" });
+  await page.load();
+  page.chooseTeacher({ currentTarget: { dataset: { id: assessorId } } });
+  return { run, page, getAssessments };
+}
 
 describe("小程序发现与参与合同", () => {
+  afterEach(() => vi.useRealTimers());
   it("在已返回活动中组合语言、地点、日期与名额筛选，保持实际标题", () => {
     const { load } = runtime();
     const { filterActivities, canReserve } = load("lib/discovery.ts");
@@ -128,6 +170,32 @@ describe("小程序发现与参与合同", () => {
     expect(days.filter(day => day.selected).map(day => day.date)).toEqual(["2026-10-01"]);
   });
 
+  it("测评意向时间使用上海日期，网格限制过去时间与开放日期范围", () => {
+    const { assessmentDay, assessmentWeek, assessmentGrid, assessmentTimeLabel } = runtime().load("lib/assessment-calendar.ts");
+    const instant = Date.parse("2026-10-01T02:00:00Z");
+    expect(assessmentDay(Date.parse("2026-10-01T16:01:00Z"))).toBe("2026-10-02");
+    const week = assessmentWeek("2026-10-01");
+    expect(week).toBe("2026-09-28");
+    const grid = assessmentGrid({ week, firstDay: "2026-10-01", lastDay: "2026-10-03", weekdays: ["一", "二", "三", "四", "五", "六", "日"],
+      definitions: [{ key: "09:50", label: "09:50" }, { key: "14:00", label: "14:00" }], selected: ["2026-10-02@14:00"], now: instant });
+    expect(grid.timeRows[0].cells.find(cell => cell.value === "2026-10-01@09:50")?.selectable).toBe(false);
+    expect(grid.timeRows[1].cells.find(cell => cell.value === "2026-10-02@14:00")).toMatchObject({ selectable: true, selected: true });
+    expect(grid.timeRows[1].cells.find(cell => cell.value === "2026-10-04@14:00")?.selectable).toBe(false);
+    expect(grid.canPrevious).toBe(false); expect(grid.canNext).toBe(false);
+    expect(assessmentTimeLabel("2026-10-02@after_school", "放学后")).toBe("2026.10.02 放学后");
+  });
+
+  it("测评未确认请求按账号与孩子隔离，保留原请求号供恢复重试", () => {
+    const { pendingAssessment, savePendingAssessment, clearPendingAssessment } = runtime().load("lib/assessment-pending.ts");
+    const draft = { id: "00000000-0000-4000-8000-000000000001", teacherId: "00000000-0000-4000-8000-000000000002", parentTimeOptions: ["2026-10-03@14:00"] };
+    savePendingAssessment("account-a", "child-a", draft);
+    expect(pendingAssessment("account-a", "child-a")).toEqual(draft);
+    expect(pendingAssessment("account-b", "child-a")).toBeNull();
+    expect(pendingAssessment("account-a", "child-b")).toBeNull();
+    clearPendingAssessment("account-a", "child-a");
+    expect(pendingAssessment("account-a", "child-a")).toBeNull();
+  });
+
   it("登录后返回原活动一次，清除账号时也清除成员选择和返回意图", () => {
     const run = runtime();
     const navigation = run.load("lib/navigation.ts");
@@ -149,6 +217,111 @@ describe("小程序发现与参与合同", () => {
     navigation.rememberReturn("/pages/agenda/index"); navigation.resumeAfterLogin();
     expect(run.wx.switchTab).toHaveBeenCalledExactlyOnceWith({ url: "/pages/courses/index" });
     expect(run.wx.navigateTo.mock.calls).toEqual([[{ url: "/pages/reservations/index?filter=cancelled" }], [{ url: "/pages/agenda/index" }]]);
+  });
+
+  it("测评为独立入口，普通活动仍使用其实际活动详情", () => {
+    const run = runtime(); run.load("pages/discover/index.ts"); const page = run.page();
+    void page.book(); page.openActivity({ currentTarget: { dataset: { id: "event" } } });
+    expect(run.wx.navigateTo.mock.calls).toEqual([[{ url: "/pages/assessment/index" }], [{ url: "/pages/activity/index?id=event" }]]);
+    const navigation = run.load("lib/navigation.ts");
+    navigation.rememberReturn("/pages/assessment/index?view=history"); navigation.resumeAfterLogin();
+    expect(run.wx.navigateTo).toHaveBeenLastCalledWith({ url: "/pages/assessment/index?view=history" });
+  });
+
+  it("测评选择老师和意向时间后提交一次申请，待老师回复不显示为已确认", async () => {
+    vi.useFakeTimers({ now });
+    const pending = deferred<ParentAssessmentRequest>();
+    const post = vi.fn(() => pending.promise);
+    const { page } = await assessmentPage(post);
+    await page.submit(); expect(post).not.toHaveBeenCalled();
+    page.review(); page.chooseTime({ currentTarget: { dataset: { value: assessmentTime } } });
+    const first = page.submit(); await page.submit();
+    expect(post).toHaveBeenCalledExactlyOnceWith({ action: "request", id: assessmentId, participantId: "member-a", teacherId: assessorId, parentTimeOptions: [assessmentTime] });
+    pending.resolve(assessmentRequest()); await first;
+    expect(page.data.requestSent).toBe(true);
+    expect(page.data.requests[0].state).toBe("awaiting_teacher");
+    expect(page.data.requests[0].scheduledLabel).toBe("");
+    expect(page.data.pending).toBeNull();
+  });
+
+  it("测评申请结果不明时保留原始输入，刷新后重试沿用同一 UUID", async () => {
+    vi.useFakeTimers({ now });
+    const post = vi.fn().mockRejectedValueOnce(new Error("connection lost")).mockResolvedValue(assessmentRequest());
+    const { page } = await assessmentPage(post);
+    page.review(); page.chooseTime({ currentTarget: { dataset: { value: assessmentTime } } });
+    await page.submit(); expect(page.data.uncertain).toBe(true);
+    await page.loadParticipant();
+    expect(page.data.uncertain).toBe(true);
+    await page.retryPending();
+    expect(post.mock.calls[1]).toEqual(post.mock.calls[0]);
+    expect(page.data.uncertain).toBe(false); expect(page.data.pending).toBeNull();
+  });
+
+  it("读取到同请求的真实测评邀约后解除不确定状态，不重复创建", async () => {
+    vi.useFakeTimers({ now });
+    const post = vi.fn().mockRejectedValue(new Error("connection lost"));
+    const { page, getAssessments } = await assessmentPage(post);
+    page.review(); page.chooseTime({ currentTarget: { dataset: { value: assessmentTime } } });
+    await page.submit();
+    getAssessments.mockResolvedValue(assessmentOverview("member-a", [assessmentRequest()]));
+    await page.loadParticipant();
+    expect(page.data.showHistory).toBe(true); expect(page.data.uncertain).toBe(false); expect(page.data.pending).toBeNull();
+    expect(post).toHaveBeenCalledTimes(1);
+  });
+
+  it("测评结果不明时先读取事实，确认未创建且仍可申请后才允许重新选择", async () => {
+    vi.useFakeTimers({ now });
+    const post = vi.fn().mockRejectedValue(new Error("connection lost"));
+    const { page } = await assessmentPage(post);
+    page.review(); page.chooseTime({ currentTarget: { dataset: { value: assessmentTime } } });
+    await page.submit(); page.startOver(); expect(page.data.pending).not.toBeNull();
+    await page.loadParticipant(); page.startOver();
+    expect(page.data.pending).toBeNull(); expect(page.data.uncertain).toBe(false);
+    expect(page.data.step).toBe(1); expect(page.data.teacherId).toBe("");
+    expect(post).toHaveBeenCalledTimes(1);
+  });
+
+  it("测评只确认双方未来具体交集，并携带最新版本，意向时刻不冒充已约", async () => {
+    vi.useFakeTimers({ now });
+    const request = assessmentRequest({ state: "awaiting_parent", teacherTimeOptions: [assessmentTime, "2026-10-03@after_school"],
+      sharedTimeOptions: [assessmentTime, "2026-10-03@after_school"], proposedStartsAt: "2026-10-03T06:00:00Z", canConfirm: true });
+    const post = vi.fn().mockResolvedValue({ ...request, state: "confirmed", canConfirm: false, scheduledAt: "2026-10-03T06:00:00Z" });
+    const { page } = await assessmentPage(post, assessmentOverview("member-a", [request]));
+    expect(page.data.requests[0].scheduledLabel).toBe("");
+    expect(page.data.requests[0].confirmOptions.map(option => option.value)).toEqual([assessmentTime]);
+    page.selectConfirmation({ currentTarget: { dataset: { id: assessmentId, value: "2026-10-03@after_school" } } });
+    await page.confirm({ currentTarget: { dataset: { id: assessmentId } } }); expect(post).not.toHaveBeenCalled();
+    page.selectConfirmation({ currentTarget: { dataset: { id: assessmentId, value: assessmentTime } } });
+    await page.confirm({ currentTarget: { dataset: { id: assessmentId } } });
+    expect(post).toHaveBeenCalledExactlyOnceWith({ action: "confirm", id: assessmentId, participantId: "member-a", timeOption: assessmentTime, expectedUpdatedAt: request.updatedAt });
+    expect(page.data.requests[0].scheduledLabel).toBe("2026.10.03 14:00");
+  });
+
+  it("旧申请结果不明也能确认新读取的另一条真实邀约", async () => {
+    vi.useFakeTimers({ now });
+    const otherId = "00000000-0000-4000-8000-000000000003";
+    const existing = assessmentRequest({ id: otherId, state: "awaiting_parent", teacherTimeOptions: [assessmentTime], sharedTimeOptions: [assessmentTime], canConfirm: true });
+    const post = vi.fn().mockRejectedValueOnce(new Error("connection lost")).mockResolvedValue({ ...existing, state: "confirmed", canConfirm: false, scheduledAt: "2026-10-03T06:00:00Z" });
+    const { page, getAssessments } = await assessmentPage(post);
+    page.review(); page.chooseTime({ currentTarget: { dataset: { value: assessmentTime } } }); await page.submit();
+    getAssessments.mockResolvedValue({ ...assessmentOverview("member-a", [existing]), eligibility: { canRequest: false, reason: "ACTIVE_INVITATION" } });
+    await page.loadParticipant();
+    expect(page.data.uncertain).toBe(true); expect(page.data.eligible).toBe(false);
+    page.selectConfirmation({ currentTarget: { dataset: { id: otherId, value: assessmentTime } } });
+    await page.confirm({ currentTarget: { dataset: { id: otherId } } });
+    expect(post).toHaveBeenLastCalledWith({ action: "confirm", id: otherId, participantId: "member-a", timeOption: assessmentTime, expectedUpdatedAt: existing.updatedAt });
+    expect(page.data.requests[0].state).toBe("confirmed");
+  });
+
+  it("测评快速切换孩子时丢弃旧邀约响应", async () => {
+    const slow = deferred<ParentAssessmentOverview>();
+    const run = runtime({ getAssessments: vi.fn((id: string) => id === "member-a" ? slow.promise : Promise.resolve(assessmentOverview(id, [assessmentRequest({ participantId: id })]))) });
+    run.load("pages/assessment/index.ts"); const page = run.page();
+    page.setData({ accountId: "account", participants: [{ id: "member-a", name: "Same" }, { id: "member-b", name: "Same" }] });
+    const old = page.loadParticipant(); page.setData({ selected: 1 }); await page.loadParticipant();
+    slow.resolve(assessmentOverview("member-a", [assessmentRequest()])); await old;
+    expect(page.data.overview?.participantId).toBe("member-b");
+    expect(page.data.requests.every(row => row.participantId === "member-b")).toBe(true);
   });
 
   it("预约需显式选择真实时段并确认，重复点击只提交一次", async () => {

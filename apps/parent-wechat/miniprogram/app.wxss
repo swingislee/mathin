@@ -297,6 +297,14 @@ button[disabled] { opacity: .48; }
 .slot-confirmation { display: flex; flex-wrap: wrap; gap: 12rpx 20rpx; border-top: 1rpx solid var(--line); padding-top: 22rpx; margin-top: 26rpx; font-size: 24rpx; color: var(--primary); }
 .booking-success { text-align: center; padding: 56rpx 28rpx; line-height: 1.9; }
 .booking-existing { display: flex; flex-wrap: wrap; align-items: center; gap: 8rpx 20rpx; margin-top: 20rpx; font-size: 25rpx; color: var(--muted); }
+.assessment-toolbar { display: flex; justify-content: flex-end; margin: -10rpx 0 12rpx; }
+.assessment-child { display: flex; align-items: center; gap: 16rpx; margin-bottom: 30rpx; font-size: 32rpx; font-weight: 600; }
+.assessment-child .child-avatar { width: 66rpx; height: 66rpx; }
+.assessment-child .switch-child { margin-left: 8rpx; }
+.assessment-record-line { display: block; font-size: 27rpx; line-height: 1.7; margin-top: 12rpx; }
+.assessment-confirm-options { margin-top: 24rpx; border-top: 1rpx solid var(--line); padding-top: 24rpx; }
+.assessment-confirm-options .option-grid { margin-top: 22rpx; }
+.assessment-time-hint { display: block; font-size: 24rpx; line-height: 1.6; margin-top: 22rpx; }
 .success-symbol { display: inline-block; width: 74rpx; height: 74rpx; line-height: 74rpx; border-radius: 50%; color: #fff; background: var(--primary); font-size: 42rpx; }
 .form-card { padding: 12rpx 30rpx 30rpx; }
 .form-card .field { margin: 0; padding-top: 14rpx; }

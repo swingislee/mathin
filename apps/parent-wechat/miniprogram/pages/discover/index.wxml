@@ -7,7 +7,7 @@
     </view>
     <button class="feature-entry surface" bindtap="book" hover-class="pressed">
       <image class="feature-art" src="/assets/appointment.png" mode="aspectFit" aria-hidden="true" />
-      <view class="feature-copy"><text class="feature-title">{{copy.activityBooking}}</text><text class="small-pill">{{copy.bookNow}}</text></view><view class="chevron"></view>
+      <view class="feature-copy"><text class="feature-title">{{copy.assessmentBooking}}</text><text class="small-pill">{{copy.bookNow}}</text></view><view class="chevron"></view>
     </button>
     <view wx:if="{{error}}" class="notice" role="alert">{{error}}<button class="text-button" bindtap="load">{{copy.retry}}</button></view>
     <text wx:elif="{{loading && !loaded}}" class="loading-line">{{copy.loading}}</text>

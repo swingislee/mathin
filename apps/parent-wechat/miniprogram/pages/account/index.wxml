@@ -23,6 +23,7 @@
       <text class="section-title tools-heading">{{copy.commonTools}}</text>
       <view class="service-grid">
         <button class="service-entry" data-url="/pages/register/index?source=account" bindtap="open"><image class="line-icon" src="/assets/icons/form.png" aria-hidden="true" /><text>{{copy.intakeTitle}}</text></button>
+        <button class="service-entry" data-url="/pages/assessment/index" bindtap="open"><image class="line-icon" src="/assets/icons/report.png" aria-hidden="true" /><text>{{copy.assessmentBooking}}</text></button>
         <button class="service-entry" data-url="/pages/activity/index" bindtap="open"><image class="line-icon" src="/assets/icons/activity.png" aria-hidden="true" /><text>{{copy.activityBooking}}</text></button>
         <button class="service-entry" bindtap="privacy"><image class="line-icon" src="/assets/icons/privacy.png" aria-hidden="true" /><text>{{copy.privacyEntry}}</text></button>
       </view>

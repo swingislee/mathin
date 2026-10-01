@@ -1,0 +1,47 @@
+<view class="portal-page booking-page">
+  <app-nav title="{{showHistory ? copy.myAssessments : copy.assessmentBooking}}" back />
+  <view class="portal-content has-fixed-actions">
+    <view class="assessment-toolbar"><button class="text-link" bindtap="toggleHistory">{{showHistory ? copy.assessmentBooking : copy.myAssessments}}<view class="chevron"></view></button></view>
+    <button wx:if="{{authenticated && participants.length}}" class="assessment-child" data-sheet="participant" bindtap="showSheet" disabled="{{busy}}"><image class="child-avatar" src="/assets/child.png" aria-hidden="true" /><text>{{participants[selected].name}}</text><text class="switch-child">{{copy.switchChild}}</text></button>
+    <text wx:if="{{loading}}" class="loading-line">{{copy.loading}}</text>
+    <block wx:elif="{{authenticated && loaded}}">
+      <block wx:if="{{showHistory}}">
+        <empty-state wx:if="{{!requests.length}}" label="{{copy.noAssessmentRequests}}" kind="box" />
+        <view wx:for="{{requests}}" wx:key="id" class="surface reservation-card">
+          <view class="card-heading"><text class="row-title">{{copy.assessmentKind}}</text><text class="booking-status">{{item.statusLabel}}</text></view>
+          <text class="assessment-record-line">{{copy.assessmentTeacher}} · {{item.teacherName}}</text>
+          <text wx:if="{{item.scheduledLabel}}" class="assessment-record-line">{{copy.assessmentTime}} · {{item.scheduledLabel}}</text>
+          <text wx:elif="{{item.preferredLabel}}" class="assessment-record-line muted">{{copy.preferredTimes}} · {{item.preferredLabel}}</text>
+          <view wx:if="{{item.confirmOptions.length}}" class="assessment-confirm-options"><text class="section-title">{{copy.confirmAssessmentTime}}</text><view class="option-grid"><button wx:for="{{item.confirmOptions}}" wx:for-item="option" wx:key="value" class="option-pill {{confirmationId === item.id && confirmationTime === option.value ? 'selected' : ''}}" data-id="{{item.id}}" data-value="{{option.value}}" bindtap="selectConfirmation" disabled="{{busy || confirmUncertain}}">{{option.label}}</button></view><button class="primary" data-id="{{item.id}}" bindtap="confirm" loading="{{busy && busyId === item.id}}" disabled="{{busy || confirmUncertain || confirmationId !== item.id || !confirmationTime}}">{{copy.confirmAssessmentTime}}</button></view>
+        </view>
+      </block>
+      <block wx:elif="{{requestSent}}">
+        <view class="surface booking-success"><text class="success-symbol">✓</text><text class="row-title block">{{copy.assessmentRequested}}</text><text class="muted block">{{requestSentStatus}}</text><button class="text-link centered" bindtap="toggleHistory">{{copy.myAssessments}}</button></view>
+      </block>
+      <block wx:else>
+        <view class="booking-steps"><view><text class="step-number active">1</text><text>{{copy.bookingStepOne}}</text></view><view class="step-connector"></view><view><text class="step-number {{step === 2 ? 'active' : ''}}">2</text><text>{{copy.bookingStepTwo}}</text></view></view>
+        <view wx:if="{{step === 1}}" class="surface form-list">
+          <button class="form-row" data-sheet="participant" bindtap="showSheet" disabled="{{busy || !participants.length}}"><text class="form-row-label">{{copy.chooseChild}}</text><text class="form-row-value {{participants.length ? '' : 'placeholder'}}">{{participants[selected].name || copy.select}}</text><view class="chevron down"></view></button>
+          <view class="form-row"><text class="form-row-label">{{copy.assessment}}</text><text class="form-row-value">{{copy.assessmentKind}}</text></view>
+          <button class="form-row" data-sheet="teacher" bindtap="showSheet" disabled="{{busy || !teachers.length}}"><text class="form-row-label">{{copy.assessmentTeacher}}</text><text class="form-row-value {{teacherId ? '' : 'placeholder'}}">{{teacherName || copy.chooseTeacher}}</text><view class="chevron down"></view></button>
+          <view class="form-row"><text class="form-row-label">{{copy.assessmentLocation}}</text><text class="form-row-value">{{copy.toBeConfirmed}}</text></view>
+        </view>
+        <view wx:else class="surface booking-options">
+          <view class="card-heading slot-heading"><text class="section-title">{{copy.preferredTimes}}</text><view class="week-navigation"><button data-offset="-1" bindtap="moveWeek" disabled="{{busy || !canPrevious}}" aria-label="{{copy.previousWeek}}">‹</button><text>{{weekLabel}}</text><button data-offset="1" bindtap="moveWeek" disabled="{{busy || !canNext}}" aria-label="{{copy.nextWeek}}">›</button></view></view>
+          <view class="slot-table"><view class="slot-table-row slot-table-header"><text class="slot-time-heading">{{copy.time}}</text><view wx:for="{{days}}" wx:key="date" class="slot-table-cell"><text>{{item.label}}</text><text>{{item.weekday}}</text></view></view><view wx:for="{{timeRows}}" wx:for-item="row" wx:key="key" class="slot-table-row"><view class="slot-time-heading"><text>{{row.label}}</text></view><view wx:for="{{row.cells}}" wx:for-item="cell" wx:key="value" class="slot-table-cell"><button class="slot-option {{cell.selected ? 'selected' : ''}}" data-value="{{cell.value}}" bindtap="chooseTime" disabled="{{busy || uncertain || (!cell.selectable && !cell.selected)}}">{{cell.selected ? '✓' : (cell.selectable ? copy.select : '—')}}</button></view></view></view>
+          <text class="assessment-time-hint muted">{{copy.choosePreferredTimes}} · {{copy.selectHint}}</text>
+          <view wx:if="{{selectedLabels.length}}" class="slot-confirmation"><text wx:for="{{selectedLabels}}" wx:key="*this">{{item}}</text></view>
+        </view>
+        <text wx:if="{{eligibilityHint}}" class="muted small block limit-note">{{eligibilityHint}}</text>
+        <text wx:elif="{{eligible && !teachers.length}}" class="muted small block limit-note">{{copy.noAssessors}}</text>
+      </block>
+    </block>
+    <view wx:if="{{error}}" class="notice" role="alert">{{error}}<block wx:if="{{uncertain}}"><button class="text-button" bindtap="viewHistory" disabled="{{busy}}">{{copy.myAssessments}}</button><button wx:if="{{pending}}" class="text-button" bindtap="retryPending" disabled="{{busy}}">{{copy.retryAssessment}}</button><button wx:if="{{pending && pendingChecked && eligible}}" class="text-button" bindtap="startOver" disabled="{{busy}}">{{copy.restartAssessment}}</button></block><button wx:else class="text-button" bindtap="load" disabled="{{busy}}">{{copy.retry}}</button></view>
+    <view wx:if="{{!authenticated}}" class="surface inline-signin"><text class="row-title block">{{copy.assessmentKind}}</text><button class="primary" bindtap="login">{{copy.loginToBook}}</button><button class="text-link centered" bindtap="register">{{copy.intakeTitle}}</button></view>
+  </view>
+  <view wx:if="{{authenticated && loaded && !loading && !showHistory && !requestSent}}" class="fixed-actions {{step === 1 ? 'transparent-actions' : ''}}">
+    <button wx:if="{{step === 1}}" class="primary" bindtap="review" disabled="{{busy || uncertain || !eligible || !teacherId}}">{{copy.nextStep}}</button>
+    <block wx:else><button class="reset-action" bindtap="resetTimes" disabled="{{busy || uncertain}}">↻ {{copy.resetSelection}}</button><view class="action-pair"><button class="secondary" bindtap="back" disabled="{{busy || uncertain}}">{{copy.backStep}}</button><button class="primary" bindtap="submit" loading="{{busy}}" disabled="{{busy || uncertain || !selectedTimes.length}}">{{copy.submitAssessment}}</button></view></block>
+  </view>
+  <view wx:if="{{sheet}}" class="sheet-mask" bindtap="closeSheet" catchtouchmove="noop"><view class="bottom-sheet" catchtap="noop"><view class="sheet-heading"><text>{{sheet === 'participant' ? copy.chooseChild : copy.chooseTeacher}}</text><button class="sheet-close" bindtap="closeSheet" aria-label="{{copy.close}}">×</button></view><scroll-view scroll-y class="sheet-scroll"><block wx:if="{{sheet === 'participant'}}"><button wx:for="{{participants}}" wx:key="id" class="member-option {{selected === index ? 'selected' : ''}}" data-index="{{index}}" bindtap="chooseParticipant"><image class="child-avatar" src="/assets/child.png" aria-hidden="true" /><text>{{item.name}}</text><text wx:if="{{selected === index}}" class="member-check">✓</text></button></block><block wx:else><button wx:for="{{teachers}}" wx:key="id" class="member-option {{teacherId === item.id ? 'selected' : ''}}" data-id="{{item.id}}" bindtap="chooseTeacher"><image class="child-avatar" src="/assets/parent.png" aria-hidden="true" /><text>{{item.name}}</text><text wx:if="{{teacherId === item.id}}" class="member-check">✓</text></button></block></scroll-view></view></view>
+</view>

@@ -42,7 +42,7 @@ Page({
   showAll() { this.setData({ showAll: !this.data.showAll }); },
   register() { wx.navigateTo({ url: "/pages/register/index?source=discover" }); },
   reservations() { wx.navigateTo({ url: "/pages/reservations/index" }); },
-  book() { wx.navigateTo({ url: "/pages/activity/index" }); },
+  book() { wx.navigateTo({ url: "/pages/assessment/index" }); },
   openActivity(e: WechatMiniprogram.TouchEvent) {
     wx.navigateTo({ url: "/pages/activity/index?id=" + encodeURIComponent(String(e.currentTarget.dataset.id)) });
   },
