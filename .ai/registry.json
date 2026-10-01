@@ -31,8 +31,8 @@
         ".ai/registry.json",
         "CHANGELOG.md"
       ],
-      "checkpoint": "104eb856c2d29ee26c99e7192ae53361a20122f0",
-      "next": "已交付接口与计算规则保持原状态；协调小程序图标/家长页布局和Motion一秒按钮辨识度两个验收修正，分别接收交接05后复核集成本地main。生产与正式Gate未操作。"
+      "checkpoint": "3a68738cc27eaf113565c6d3f0fae8e7b46b52e4",
+      "next": "Motion一秒按钮图形修正已复核集成，原会话继续视觉验收；继续接收小程序图标/家长页布局交接05。已交付接口和计算规则保持，生产与正式Gate未操作。"
     },
     {
       "id": "DEV-PARENT-IOS-20261001",
@@ -80,7 +80,7 @@
       "title": "恢复 Motion Lab 拖动与长按功能",
       "agent": "codex",
       "threadId": "01a0f6fc-745e-7fd0-9b15-ce58ff01a2b8",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/motion-one-second-codex",
       "card": ".ai/tasks/DEV-MOTION-20261001.md",
@@ -95,8 +95,8 @@
         "messages/zh.json",
         "messages/en.json"
       ],
-      "checkpoint": "3156585417a3f2902a3a56a625c36f2831dbe71a",
-      "next": "按用户最新反馈改善1秒按钮辨识度，保持简洁，以图标/轮廓/间距呈现，不新增可见说明文字。沿用原分支，消息tools.motion及既有CHANGELOG功能行由本端占用编辑窗口，完成后交接05；数学与持久合同保持。"
+      "checkpoint": "6cfc5e734ea73b1eb9de458278c11ea67cf4e22d",
+      "next": "数字1秒表图形与交接05已复核集成main e2a741a4/3a68738c；六个源码/文案文件与检查head一致，复用13项交互与类型/lint结果。消息编辑窗口释放，原会话核对LAN资源并交付视觉验收；计算与持久合同保持。"
     },
     {
       "id": "DEV-CLASS-LIST-20261001",
