@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 import { getMiniappWechatConfig } from "@/features/wechat/miniapp-config";
+import { requireWechatConfig } from "@/features/wechat/config";
+import { requireWechatTokenConfig } from "@/features/wechat/broker-config";
 import { exchangeMiniappWechatCode, MiniappWechatError } from "@/features/wechat/miniapp-provider";
 import { wechatClaims } from "@/features/wechat/provider";
 
@@ -11,6 +13,7 @@ const config = { appId, appSecret: "unit-test-only", namespace: "mathin", client
   completionUrl: "https://app.example.test/api/v1/parent/auth/wechat", phoneLinking: true };
 
 function configure() {
+  vi.stubEnv("WECHAT_OAUTH_ENABLED", "false");
   vi.stubEnv("WECHAT_MINIPROGRAM_ENABLED", "true");
   vi.stubEnv("WECHAT_AUTH_COMPATIBILITY_VERIFIED", "true");
   vi.stubEnv("WECHAT_MINIPROGRAM_APP_ID", appId);
@@ -33,6 +36,8 @@ describe("mini program configuration", () => {
     vi.stubEnv("WECHAT_WEB_APP_ID", "website-fixture");
     vi.stubEnv("WECHAT_WEB_APP_SECRET", "website-fixture");
     expect(getMiniappWechatConfig()).toEqual(config);
+    expect(requireWechatTokenConfig()).toEqual(config);
+    expect(() => requireWechatConfig()).toThrow("unavailable");
   });
   it.each(["WECHAT_MINIPROGRAM_APP_ID", "WECHAT_MINIPROGRAM_APP_SECRET", "WECHAT_OPEN_PLATFORM_NAMESPACE",
     "WECHAT_BROKER_CLIENT_SECRET", "WECHAT_SITE_ORIGIN", "WECHAT_SUPABASE_PUBLIC_ORIGIN", "SUPABASE_SECRET_KEY"]) ("closes when %s is missing", (key) => {
