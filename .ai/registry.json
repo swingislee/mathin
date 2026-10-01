@@ -16,7 +16,9 @@
         ".ai/tasks/DEV-PARENT-IOS-20261001-INTEGRATION.md",
         ".ai/tasks/DEV-PARENT-IOS-SUPABASE-20261001.md",
         ".ai/tasks/DEV-PARENT-IOS-NEXT-20261001.md",
-        ".ai/tasks/DEV-PARENT-WECHAT-20261001.md"
+        ".ai/tasks/DEV-PARENT-WECHAT-20261001.md",
+        ".ai/tasks/DEV-PLACE-VALUE-20261001.md",
+        "apps/AGENTS.md"
       ],
       "sharedPaths": [
         ".ai/registry.json",
@@ -124,26 +126,23 @@
       "title": "[生产·待验收] 可备课数学教具与立体图形 (2)",
       "agent": "codex",
       "threadId": "01a0dd5d-20ad-7471-be26-43a53a68757d",
-      "status": "integrated",
-      "checkout": "primary-transition",
-      "branch": "main",
+      "status": "in_progress",
+      "checkout": "worktree",
+      "branch": "codex/place-value-pan-codex",
       "card": ".ai/tasks/DEV-PLACE-VALUE-20261001.md",
       "writePaths": [
-        "src/features/tools/place-value/",
-        "src/features/tools/spatial-interaction/",
-        "src/features/spatial-math/renderer-r3f/spatial-box-outline.ts",
-        "tests/place-value-box-scene.test.ts",
+        "src/features/tools/place-value/PlaceValueWorkspace.tsx",
+        "src/features/tools/place-value/PlaceValueCanvas.tsx",
         "tests/place-value-workspace.test.ts",
-        "tests/spatial-box-outline.test.ts",
-        "tests/spatial-context-actions.test.ts",
-        "tests/spatial-toolbar-placement.test.ts"
+        "tests/place-value-canvas.test.ts",
+        "src/features/tools/spatial-interaction/control-inventory.ts",
+        ".ai/handoffs/DEV-PLACE-VALUE-20261001-codex-02.md"
       ],
       "sharedPaths": [
-        "CHANGELOG.md",
-        "src/features/tools/AGENTS.md"
+        "CHANGELOG.md"
       ],
       "checkpoint": "e73269ba9a75b63ddc156d15ea08fefa1eddffd3",
-      "next": "等待产品负责人验收数位积木样板；后续增量从独立 worktree 开始。本卡不表示生产发布。"
+      "next": "此前 e73269ba 已集成；按用户新指令在独立 worktree 增加平移视角手形按钮，复用现有 pan 控制，完成定向检查后交付开发端。"
     },
     {
       "id": "DEV-PARENT-IOS-SUPABASE-20261001",
