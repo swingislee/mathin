@@ -134,7 +134,9 @@ function PlanarWorkbenchStage({ toolId, version, locale: suppliedLocale, initial
       if (!writable || data.data.source !== snapshot) { drag.cancel(); return; }
       if (data.data.construction) {
         const drawing = data.data.construction;
-        setDraftPreview(drawing.kind === "point" ? [data.point] : drawing.kind === "points" ? [...drawing.points, data.point] : [{ x: data.point.x - data.delta.x, y: data.point.y - data.delta.y }, data.point]);
+        const project = (point: PlanarPoint) => definition.construction?.projectPoint?.(point, data.data.start) ?? point;
+        const point = project(data.point);
+        setDraftPreview(drawing.kind === "point" ? [point] : drawing.kind === "points" ? [...drawing.points, point] : [project({ x: data.point.x - data.delta.x, y: data.point.y - data.delta.y }), point]);
         return;
       }
       if (!data.moved) return;
@@ -144,15 +146,17 @@ function PlanarWorkbenchStage({ toolId, version, locale: suppliedLocale, initial
       if (!writable || data.data.source !== snapshot) { clearDrag(); clearDraft(); return; }
       if (data.data.construction) {
         const drawing = data.data.construction;
+        const project = (point: PlanarPoint) => definition.construction?.projectPoint?.(point, data.data.start) ?? point;
+        const point = project(data.point);
         setDraftPreview(null); setDragging(false);
         if (drawing.kind === "point") {
-          if (!data.moved) finishConstruction(drawing.tool, [data.point], data.data.start);
+          if (!data.moved) finishConstruction(drawing.tool, [point], data.data.start);
         } else if (drawing.kind === "drag") {
-          if (data.moved) finishConstruction(drawing.tool, [{ x: data.point.x - data.delta.x, y: data.point.y - data.delta.y }, data.point], data.data.start);
-        } else if (drawing.points.length >= 3 && Math.hypot(data.point.x - drawing.points[0].x, data.point.y - drawing.points[0].y) <= 14) {
+          if (data.moved) finishConstruction(drawing.tool, [project({ x: data.point.x - data.delta.x, y: data.point.y - data.delta.y }), point], data.data.start);
+        } else if (drawing.points.length >= 3 && Math.hypot(point.x - drawing.points[0].x, point.y - drawing.points[0].y) <= 14) {
           finishConstruction(drawing.tool, drawing.points, data.data.start);
         } else if (drawing.points.length < (definition.construction?.maxPoints ?? 32)) {
-          setDraftPoints([...drawing.points, data.point]); setDraftInvalid(false);
+          setDraftPoints([...drawing.points, point]); setDraftInvalid(false);
         }
         return;
       }
@@ -246,7 +250,8 @@ function PlanarWorkbenchStage({ toolId, version, locale: suppliedLocale, initial
         const point = matrix && planePointFromClient({ x: event.clientX, y: event.clientY }, matrix);
         if (!point || !drag.start(event, { start: shown, target: "construction", source: snapshot, construction: { tool: activeDrawingTool.id, kind: activeDrawingTool.kind, points: draftPoints } })) return;
         beginSpatialObjectGesture(svg.current!); setDragging(true); setDraftInvalid(false);
-        setDraftPreview(activeDrawingTool.kind === "points" ? [...draftPoints, point] : [point]);
+        const projected = definition.construction?.projectPoint?.(point, shown) ?? point;
+        setDraftPreview(activeDrawingTool.kind === "points" ? [...draftPoints, projected] : [projected]);
         svg.current?.focus({ preventScroll: true });
       }} onClick={(event) => {
         if (event.target === event.currentTarget && !dragging && !drawingTool) { controls.onPointerMissed(event.nativeEvent); svg.current?.focus({ preventScroll: true }); }

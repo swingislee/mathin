@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PlanarWorkbench } from "../src/features/tools/planar-kit/PlanarWorkbench";
 import { planarSnapshot, planarStateSchema, type PlanarSnapshot, type PlanarState } from "../src/features/tools/planar-kit/contract";
 import { planarScene } from "../src/features/tools/planar-kit/scene-registry";
-import { constructionObjects } from "../src/features/tools/plane-construction/model";
+import { constructionObjects, worldVertices } from "../src/features/tools/plane-construction/model";
 
 vi.mock("next-intl", () => ({ useLocale: () => "zh" }));
 let container: HTMLDivElement, root: Root, clock: number, nextFrame: number, frames: Map<number, FrameRequestCallback>;
@@ -347,6 +347,27 @@ describe("shared teacher-created material", () => {
     await pointer(svg(), "pointerdown", 100, 100); await pointer(svg(), "pointerup", 100, 100);
     await act(async () => window.dispatchEvent(new Event("blur")));
     expect(current()).toEqual(initial()); expect(svg().hasAttribute("data-drawing-tool")).toBe(false);
+  });
+  it("uses the same projected first point for drawing, closing and the saved material", async () => {
+    const construction = planarScene("01-create").construction!;
+    const original = construction.projectPoint;
+    construction.projectPoint = (point) => ({ x: Math.round(point.x / 40) * 40, y: Math.round(point.y / 40) * 40 });
+    try {
+      await constructionRender(); await drawTool("多边形");
+      for (const [x, y] of [[139, 139], [280, 120], [280, 280]]) {
+        await pointer(svg(), "pointerdown", x, y); await pointer(svg(), "pointerup", x, y);
+        expect(current()).toBeNull();
+      }
+      await pointer(svg(), "pointerdown", 120, 120); await pointer(svg(), "pointerup", 120, 120);
+      const objects = constructionObjects(current()!);
+      expect(objects).toHaveLength(2);
+      expect(worldVertices(objects[1])).toEqual([{ x: 120, y: 120 }, { x: 280, y: 120 }, { x: 280, y: 280 }]);
+      expect(container.querySelector('[data-construction-draft="true"]')).toBeNull();
+      expect(container.querySelector('[role="alert"]')).toBeNull();
+      expect(planarStateSchema.safeParse(current()).success).toBe(true);
+    } finally {
+      construction.projectPoint = original;
+    }
   });
   it("cancels drawing capture on a second touch and authority/permission replacement", async () => {
     const start = initial(); await constructionRender({ initial: start }); await drawTool("圆");

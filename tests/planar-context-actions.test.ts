@@ -81,6 +81,19 @@ describe("shared planar object actions", () => {
     await act(async () => root.render(createElement(PlanarWorkbench, { toolId: "plane-shapes", initial, classroom: { state: planarSnapshot(initial) } })));
     await selectShape(); expect(context()).toBeNull();
   });
+  it("disables the same object actions while a classroom write is pending", async () => {
+    await render(); await selectShape();
+    let complete: (() => void) | undefined;
+    const onChange = vi.fn(() => new Promise<void>((resolve) => { complete = resolve; }));
+    const initial = definition.create();
+    await act(async () => root.render(createElement(PlanarWorkbench, { toolId: "plane-shapes", initial, classroom: { state: planarSnapshot(initial), onChange } })));
+    await act(async () => context()!.querySelector<HTMLButtonElement>('[data-spatial-action="duplicate"]')!.click());
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect([...context()!.querySelectorAll("button")].every((button) => button.disabled)).toBe(true);
+    await act(async () => context()!.querySelector<HTMLButtonElement>('[data-spatial-action="duplicate"]')!.click());
+    expect(onChange).toHaveBeenCalledTimes(1);
+    await act(async () => complete!());
+  });
   it("lets mathematical grids replace the host reference grid", async () => {
     definition.referenceGrid = false;
     await render();

@@ -47,6 +47,8 @@ export interface PlanarContextActions {
 }
 /** 未闭合的绘制过程只存在宿主本机；准确几何才进入历史与课堂。 */
 export interface PlanarConstruction {
+  /** 绘制预览、追加点与闭合命中共用领域投影，格点吸附不留下两套首点。 */
+  projectPoint?: (point: PlanarPoint, state: PlanarState) => PlanarPoint;
   tools: readonly { id: string; label: PlanarText; kind: "point" | "drag" | "points"; hint?: PlanarText; disabled?: (state: PlanarState) => boolean; once?: boolean }[];
   create: (state: PlanarState, toolId: string, points: readonly PlanarPoint[]) => PlanarState | null;
   preview: (toolId: string, points: readonly PlanarPoint[], state?: PlanarState) => ReactNode;
