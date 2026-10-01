@@ -1,7 +1,99 @@
 {
   "version": 1,
-  "coordinatorTaskId": "DEV-PARENT-IOS-20261001-INTEGRATION",
+  "coordinatorTaskId": "DEV-PARENT-PREVIEW-20261002-INTEGRATION",
   "tasks": [
+    {
+      "id": "DEV-PARENT-PREVIEW-20261002-INTEGRATION",
+      "title": "小程序开发数据与微信登录集成",
+      "agent": "codex",
+      "threadId": "01a0f7b2-73aa-74b3-8cf6-b23207ece7d6",
+      "status": "in_progress",
+      "checkout": "integration",
+      "branch": "main",
+      "card": ".ai/tasks/DEV-PARENT-PREVIEW-20261002-INTEGRATION.md",
+      "writePaths": [
+        ".ai/tasks/DEV-PARENT-PREVIEW-20261002-INTEGRATION.md",
+        ".ai/tasks/DEV-PARENT-PREVIEW-SUPABASE-20261002.md",
+        ".ai/tasks/DEV-PARENT-WECHAT-AUTH-NEXT-20261002.md",
+        ".ai/tasks/DEV-PARENT-WECHAT-AUTH-UI-20261002.md"
+      ],
+      "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
+      "checkpoint": "e9274eaec8c3a295650f8808e459c7597c053625",
+      "next": "核验本机开发目标，接收开发fixture与微信登录/绑定合同及小程序入口；root唯一执行数据库写入，集成后按真实HTTP与原生运行状态交付。"
+    },
+    {
+      "id": "DEV-PARENT-PREVIEW-SUPABASE-20261002",
+      "title": "小程序可操作开发数据",
+      "agent": "codex",
+      "threadId": null,
+      "status": "in_progress",
+      "checkout": "worktree",
+      "branch": "codex/parent-preview-supabase-codex",
+      "card": ".ai/tasks/DEV-PARENT-PREVIEW-SUPABASE-20261002.md",
+      "writePaths": [
+        "scripts/parent-assessment-fixtures-local.mjs",
+        "supabase/fixtures/parent-assessment-local.sql",
+        "supabase/tests/parent_assessment_fixtures.sql",
+        "tests/parent-assessment-fixtures.test.ts",
+        ".ai/handoffs/DEV-PARENT-PREVIEW-SUPABASE-20261002-codex-01.md"
+      ],
+      "sharedPaths": [],
+      "checkpoint": "e9274eaec8c3a295650f8808e459c7597c053625",
+      "next": "复用固定家长/孩子/教师与test班，首次补测评档案、教师关联、预约确认样例及未来活动/课表/登记；脚本自带只读preflight、事务检查和幂等保护，由root复核后串行执行。"
+    },
+    {
+      "id": "DEV-PARENT-WECHAT-AUTH-NEXT-20261002",
+      "title": "微信小程序登录与已有账号绑定接口",
+      "agent": "codex",
+      "threadId": null,
+      "status": "in_progress",
+      "checkout": "worktree",
+      "branch": "codex/parent-wechat-auth-next-codex",
+      "card": ".ai/tasks/DEV-PARENT-WECHAT-AUTH-NEXT-20261002.md",
+      "writePaths": [
+        "contracts/parent-api/",
+        "apps/parent-wechat/miniprogram/lib/api-types.ts",
+        "src/app/api/v1/parent/auth/wechat/route.ts",
+        "src/features/parent-portal/wechat-contract.ts",
+        "src/features/parent-portal/wechat-server.ts",
+        "src/features/parent-portal/server.ts",
+        "src/features/wechat/",
+        ".env.example",
+        "tests/parent-wechat-auth.test.ts",
+        "tests/wechat-miniapp-provider.test.ts",
+        "tests/wechat-miniapp-session.test.ts",
+        "tests/wechat-oauth-provider.test.ts",
+        "tests/wechat-oauth.test.ts",
+        ".ai/handoffs/DEV-PARENT-WECHAT-AUTH-NEXT-20261002-codex-01.md"
+      ],
+      "sharedPaths": [],
+      "checkpoint": "e9274eaec8c3a295650f8808e459c7597c053625",
+      "next": "先提交GET能力与POST登录/绑定DTO，再实现真实code兑换、既有账号凭据/MFA及原生identity/PKCE复用；缺配置关闭。Supabase复核数据与权限合同，root接入UI。"
+    },
+    {
+      "id": "DEV-PARENT-WECHAT-AUTH-UI-20261002",
+      "title": "小程序微信登录与绑定入口",
+      "agent": "codex",
+      "threadId": "01a0f7b2-73aa-74b3-8cf6-b23207ece7d6",
+      "status": "in_progress",
+      "checkout": "worktree",
+      "branch": "codex/parent-wechat-auth-ui-codex",
+      "card": ".ai/tasks/DEV-PARENT-WECHAT-AUTH-UI-20261002.md",
+      "writePaths": [
+        "apps/parent-wechat/miniprogram/pages/account/",
+        "apps/parent-wechat/miniprogram/lib/api.ts",
+        "apps/parent-wechat/miniprogram/lib/copy.ts",
+        "apps/parent-wechat/miniprogram/app.wxss",
+        "apps/parent-wechat/README.md",
+        "apps/parent-wechat/docs/portal.md",
+        "tests/parent-wechat-auth-client.test.ts",
+        "tests/parent-foundation.test.ts",
+        ".ai/handoffs/DEV-PARENT-WECHAT-AUTH-UI-20261002-codex-01.md"
+      ],
+      "sharedPaths": [],
+      "checkpoint": "e9274eaec8c3a295650f8808e459c7597c053625",
+      "next": "消费已提交鉴权合同，账号页增加微信登录及登录后的绑定，缺配置显示准确状态；密码和微信会话并用同一账号权限。"
+    },
     {
       "id": "DEV-PARENT-IOS-20261001-INTEGRATION",
       "title": "iOS 家长端集成",
