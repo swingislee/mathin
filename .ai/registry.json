@@ -195,7 +195,7 @@
       "title": "优化班级列表与手机端体验",
       "agent": "codex",
       "threadId": "01a0f6e7-2fca-7963-9be1-3ed3d2705ecc",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/class-roster-density-codex",
       "card": ".ai/tasks/DEV-CLASS-LIST-20261001.md",
@@ -231,8 +231,8 @@
       "sharedPaths": [
         "CHANGELOG.md"
       ],
-      "checkpoint": "3068d207d62e41a3a90dd751dd6453a179936941",
-      "next": "修复行伪元素生成额外匿名列、挤窄嵌套详情的问题；共用原生行轮廓并去掉重复关闭按钮及右侧占位，保留箭头、点击行与 Esc 收起。"
+      "checkpoint": "ae808ff6d3373b5c7c38180e57694921a881f330",
+      "next": "嵌套宽度和重复关闭入口已集成 81ed44f8；最小布局在两种屏宽下三层均铺满，定向交互检查通过，开发端待人工视觉验收，见 DEV-CLASS-LIST-20261001-codex-07.md 的宽度修正记录。"
     },
     {
       "id": "DEV-PLACE-VALUE-20261001",
