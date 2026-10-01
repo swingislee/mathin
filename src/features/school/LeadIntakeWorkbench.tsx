@@ -96,8 +96,8 @@ export function LeadIntakeWorkbench({ leads, locale, canAssign = false, canManag
           }
           if (followupKeyboardCommand(event)?.type === "close" && open) { event.preventDefault(); event.stopPropagation(); changeDetails(lead.id, false); restoreCollapsedRow(event.currentTarget, detailsId); }
         }}>
-        {canAssign ? <TableCell className="sticky left-0 z-10"><Checkbox checked={selection.selected.has(lead.id)} disabled={selection.assignmentPending || ["invalid", "converted"].includes(lead.status)} onClick={(event) => { rangeRef.current = event.shiftKey; }} onCheckedChange={(checked) => { selection.toggleLead(lead.id, checked === true, visibleIds, rangeRef.current); rangeRef.current = false; }} aria-label={t("selectLead", { name: lead.provisionalStudentName })} /></TableCell> : null}
-        <TableCell className={cn("sticky z-10 border-r border-line", canAssign ? "left-8" : "left-0")}>
+        {canAssign ? <TableCell mobileSpan="secondary" className="sticky left-0 z-10"><Checkbox checked={selection.selected.has(lead.id)} disabled={selection.assignmentPending || ["invalid", "converted"].includes(lead.status)} onClick={(event) => { rangeRef.current = event.shiftKey; }} onCheckedChange={(checked) => { selection.toggleLead(lead.id, checked === true, visibleIds, rangeRef.current); rangeRef.current = false; }} aria-label={t("selectLead", { name: lead.provisionalStudentName })} /></TableCell> : null}
+        <TableCell mobileSpan="primary" className={cn("sticky z-10 border-r border-line", canAssign ? "left-8" : "left-0")}>
           <div className="flex min-w-0 items-center gap-1" data-followup-person>
             <Button type="button" size="sm" variant="ghost" data-lead-details-trigger className="size-5 shrink-0 rounded-sm p-0" aria-label={`${t("sourceDetails")} · ${lead.provisionalStudentName}`} title={t("sourceDetails")} aria-expanded={open} aria-controls={detailsId} disabled={selection.assignmentPending} onClick={() => changeDetails(lead.id, !open)}>{open ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}</Button>
             <Student360Trigger subject={{ leadId: lead.id, studentId: lead.studentId ?? null }} fallback={{ name: lead.provisionalStudentName, phone: lead.phone, grade: lead.gradeHint, gradeText: gradeOf(lead) }} className="truncate">{lead.provisionalStudentName}</Student360Trigger>
@@ -105,13 +105,13 @@ export function LeadIntakeWorkbench({ leads, locale, canAssign = false, canManag
           </div>
           <PossibleDuplicateBadge count={lead.possibleDuplicateCount} subject={{ studentId: lead.studentId ?? null, leadId: lead.id }} name={lead.provisionalStudentName} locale={locale} />
         </TableCell>
-        <TableCell><a className="font-mono text-[11px] hover:underline" href={`tel:${lead.phone}`}>{lead.phone || "—"}</a></TableCell>
-        <TableCell className="truncate text-muted" title={gradeOf(lead)}>{gradeOf(lead)}</TableCell>
-        <TableCell className="truncate" title={[lead.acquisitionLocation, sourceAttribution, lead.interests.join(" / ")].filter(Boolean).join(" · ")}>{lead.acquisitionLocation || t("acquisitionLocationMissing")}</TableCell>
-        <TableCell className="tabular-nums text-muted" title={lead.acquiredAt ? formatAt(lead.acquiredAt) : lead.acquiredDateLabel}>{lead.acquiredAt ? formatAt(lead.acquiredAt, true) : lead.acquiredDateLabel || formatAt(null, true)}</TableCell>
-        <TableCell className="truncate" title={lead.ownerName}>{lead.ownerName || t("unassignedOwner")}</TableCell>
-        <TableCell><Badge variant="outline" className={cn("max-w-full truncate px-1.5 py-0 text-[11px] leading-5", followupToneClasses[toneOf(lead)])} title={[progressOf(lead), lead.activeInvitation ? invitationT(`kind_${lead.activeInvitation.kind}`) : "", lead.lastContactNote].filter(Boolean).join(" · ")}>{progressOf(lead)}</Badge></TableCell>
-        <TableCell><Link href={`/dashboard/communication?lead=${lead.id}`} className={cn(buttonVariants({ size: "sm", variant: "ghost" }), "size-7 p-0")} title={communicationLabel} aria-label={`${communicationLabel} · ${lead.provisionalStudentName}`}><ArrowRight className="size-3.5" /></Link></TableCell>
+        <TableCell mobileLabel={tableT("fieldPhone")}><a className="font-mono text-[11px] hover:underline" href={`tel:${lead.phone}`}>{lead.phone || "—"}</a></TableCell>
+        <TableCell mobileLabel={t("grade")} className="truncate text-muted" title={gradeOf(lead)}>{gradeOf(lead)}</TableCell>
+        <TableCell mobileLabel={t("acquisitionLocation")} className="truncate" title={[lead.acquisitionLocation, sourceAttribution, lead.interests.join(" / ")].filter(Boolean).join(" · ")}>{lead.acquisitionLocation || t("acquisitionLocationMissing")}</TableCell>
+        <TableCell mobileLabel={t("acquiredAt")} className="tabular-nums text-muted" title={lead.acquiredAt ? formatAt(lead.acquiredAt) : lead.acquiredDateLabel}>{lead.acquiredAt ? formatAt(lead.acquiredAt, true) : lead.acquiredDateLabel || formatAt(null, true)}</TableCell>
+        <TableCell mobileLabel={t("owner")} className="truncate" title={lead.ownerName}>{lead.ownerName || t("unassignedOwner")}</TableCell>
+        <TableCell mobileLabel={t("intakeProgress")}><Badge variant="outline" className={cn("max-w-full truncate px-1.5 py-0 text-[11px] leading-5", followupToneClasses[toneOf(lead)])} title={[progressOf(lead), lead.activeInvitation ? invitationT(`kind_${lead.activeInvitation.kind}`) : "", lead.lastContactNote].filter(Boolean).join(" · ")}>{progressOf(lead)}</Badge></TableCell>
+        <TableCell mobileLabel={t("actions")} data-table-mobile-actions><Link href={`/dashboard/communication?lead=${lead.id}`} className={cn(buttonVariants({ size: "sm", variant: "ghost" }), "size-7 p-0")} title={communicationLabel} aria-label={`${communicationLabel} · ${lead.provisionalStudentName}`}><ArrowRight className="size-3.5" /></Link></TableCell>
       </TableRow>
       <FollowupInlineDetails open={open} hideTitle pending={selection.assignmentPending} onOpenChange={(value) => changeDetails(lead.id, value)} title={`${lead.provisionalStudentName} · ${t("sourceDetails")}`} colSpan={colSpan} id={detailsId}>
         {() => <FollowupEntryLayout data-lead-intake-details>
@@ -140,10 +140,10 @@ export function LeadIntakeWorkbench({ leads, locale, canAssign = false, canManag
         </FollowupEntryLayout>}
       </FollowupInlineDetails>
     </Fragment>;
-  }, [canAssign, canManageIdentity, changeDetails, colSpan, formatAt, gradeOf, invitationT, locale, progressOf, selection, t, toneOf, visibleIds]);
+  }, [canAssign, canManageIdentity, changeDetails, colSpan, formatAt, gradeOf, invitationT, locale, progressOf, selection, t, tableT, toneOf, visibleIds]);
 
   return <SchoolSupportTableEntry workspace="leads" enabled={canAdd} columns={[...(canAssign ? ["blank" as const] : []),"name","phone","grade","blank","blank","blank","blank","blank"]}><DashboardTableShell data-lead-intake-workbench data-followup-workbench data-followup-scroll>
-    <Table className="w-full min-w-[58rem] table-fixed text-xs" containerClassName="overflow-auto [scrollbar-gutter:stable]">
+    <Table mobileLayout="stacked" className="w-full min-w-[58rem] table-fixed text-xs" containerClassName="overflow-auto [scrollbar-gutter:stable]">
     <colgroup>{canAssign ? <col className="w-8" /> : null}<col className="w-44" /><col className="w-32" /><col className="w-20" /><col /><col className="w-28" /><col className="w-28" /><col className="w-32" /><col className="w-10" /></colgroup>
     <TableHeader inert={selection.assignmentPending || undefined}><TableRow className="[&>th]:h-9 [&>th]:px-2">
       {canAssign ? <TableHead className="sticky left-0 top-0 z-30 bg-card"><Checkbox checked={visibleIds.length > 0 && selectedCount === visibleIds.length ? true : selectedCount > 0 ? "indeterminate" : false} disabled={!visibleIds.length || selection.assignmentPending} onCheckedChange={(checked) => selection.setVisibleSelection(visibleIds, checked === true)} aria-label={t("selectPage")} title={t("rangeSelectionHint")} /></TableHead> : null}

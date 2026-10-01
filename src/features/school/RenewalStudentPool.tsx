@@ -191,7 +191,7 @@ export function RenewalStudentPool({ data, supplement, canWrite, canReview, canE
   </FollowupCommandPanel>} footer={<LeadPoolPagination baseHref="/dashboard/renewals" currentPage={pagination.page} totalPages={pagination.totalPages} totalCount={pagination.count}
     pageSize={pagination.pageSize} disabled={entryBusy} onPageChange={(page, size) => { setRetainedView(null); setActiveId(null); pagination.onPageChange(page, size); }} />}>
     <SchoolSupportTableEntry workspace="renewals" enabled={canWrite && !sampleMode} columns={["name","blank","blank","blank","blank","blank","blank"]} initialWork={{cycleId:cycle?.status!=="closed"?cycle?.id??null:null,termId:cycle?.targetTermId??null}}><DashboardTableShell data-renewal-workbench data-followup-workbench data-followup-scroll>
-      <Table className="w-full min-w-[70rem] table-fixed text-xs" containerClassName="overflow-auto [scrollbar-gutter:stable]">
+      <Table mobileLayout="stacked" className="w-full min-w-[70rem] table-fixed text-xs" containerClassName="overflow-auto [scrollbar-gutter:stable]">
         <colgroup><col className="w-48" /><col className="w-48" /><col className="w-28" /><col /><col className="w-32" /><col className="w-40" /><col className="w-36" /></colgroup>
         <TableHeader className="sticky top-0 z-20 bg-card" inert={entryBusy || undefined}><TableRow className="[&>th]:h-9 [&>th]:px-2">
           <TableHead className="sticky left-0 z-30 border-r border-line bg-card"><DashboardTableColumnHeader label={`${pool("student")} / ${pool("owner")}`} {...table.columnProps("name")} /></TableHead>

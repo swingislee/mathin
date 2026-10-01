@@ -841,20 +841,20 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
           if (event.target === event.currentTarget && event.key === "Enter" && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) { event.preventDefault(); changeDetails(canonicalKey, !expanded); }
           if (followupKeyboardCommand(event, followupKeyContext(event))?.type === "close" && expanded) { event.preventDefault(); event.stopPropagation(); changeDetails(canonicalKey, false); restoreCollapsedRow(event.currentTarget, detailsId); }
         }}>
-        <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-1.5">
+        <TableCell mobileSpan="primary" className="sticky left-0 z-10 border-r border-line bg-card px-2 py-1.5">
           <FollowupPersonCell nameOnly name={nameOf(row)} phone={row.value.phone} grade={row.value.gradeText || t("gradePending")}
             subject={{ studentId: row.source === "invitation" ? leadById.get(row.value.leadId)?.studentId ?? null : row.value.studentId, leadId: row.value.leadId }} studentGrade={row.source === "invitation" ? row.value.gradeHint : row.value.grade}
             selection={leadingSelectionFor(row)} expanded={expanded}
             detailsId={detailsId} onToggle={() => changeDetails(canonicalKey, !expanded)} />
         </TableCell>
-        <TableCell className="px-2 py-1.5"><a className="block truncate font-mono text-[11px] hover:underline" href={`tel:${row.value.phone}`} title={row.value.phone}>{row.value.phone || "—"}</a></TableCell>
-        <TableCell className="px-2 py-1.5"><p className="truncate text-[11px] text-muted" title={row.value.gradeText}>{row.value.gradeText || t("gradePending")}</p></TableCell>
-        <TableCell className="px-2 py-1.5"><p className="truncate text-xs" title={ownerName}>{ownerName || "—"}</p></TableCell>
-        <TableCell className="px-2 py-1.5">{historicalSummary ? historicalSummary.state : <FirstContactStatusTags
+        <TableCell mobileLabel={rowM.phone} className="px-2 py-1.5"><a className="block truncate font-mono text-[11px] hover:underline" href={`tel:${row.value.phone}`} title={row.value.phone}>{row.value.phone || "—"}</a></TableCell>
+        <TableCell mobileLabel={rowM.grade} className="px-2 py-1.5"><p className="truncate text-[11px] text-muted" title={row.value.gradeText}>{row.value.gradeText || t("gradePending")}</p></TableCell>
+        <TableCell mobileLabel={rowM.owner} className="px-2 py-1.5"><p className="truncate text-xs" title={ownerName}>{ownerName || "—"}</p></TableCell>
+        <TableCell mobileSpan="secondary" className="px-2 py-1.5">{historicalSummary ? historicalSummary.state : <FirstContactStatusTags
           label={laterContact?.lastContactOutcome ? leadT(`contactOutcome_${laterContact.lastContactOutcome}`) : rowAction}
           tone={tone} facts={contactFacts} locale={locale} dirty={row.source === "invitation" && Boolean(entryDrafts[row.id]?.note.trim())} />}</TableCell>
-        <TableCell className="px-2 py-1.5">{historicalSummary ? historicalSummary.details : <p className="line-clamp-2 whitespace-normal break-words text-xs leading-5" title={noteOf(row)}>{noteOf(row) || "—"}</p>}</TableCell>
-        <TableCell className="px-2 py-1.5 text-[11px] text-muted">{historicalSummary ? historicalSummary.updated : <p className="truncate" title={updatedOf(row) ? formatAt(updatedOf(row)!) : undefined}>{updatedOf(row) ? formatAt(updatedOf(row)!) : recordM.unknown}</p>}</TableCell>
+        <TableCell mobileLabel={recordsMode ? workT("dayCommunicationColumn") : rowM.notes} mobileEmpty={!historicalSummary && !noteOf(row)} className="px-2 py-1.5">{historicalSummary ? historicalSummary.details : <p className="line-clamp-2 whitespace-normal break-words text-xs leading-5" title={noteOf(row)}>{noteOf(row) || "—"}</p>}</TableCell>
+        <TableCell mobileLabel={recordsMode ? workT("occurredAtColumn") : rowM.updated} className="px-2 py-1.5 text-[11px] text-muted">{historicalSummary ? historicalSummary.updated : <p className="truncate" title={updatedOf(row) ? formatAt(updatedOf(row)!) : undefined}>{updatedOf(row) ? formatAt(updatedOf(row)!) : recordM.unknown}</p>}</TableCell>
       </TableRow>
       <FollowupInlineDetails id={detailsId} open={expanded} onOpenChange={(open) => changeDetails(canonicalKey, open)} title={nameOf(row)} hideTitle={row.source === "invitation"} colSpan={7} pending={pending}>
         {() => <>
@@ -872,11 +872,11 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
         </>}
       </FollowupInlineDetails>
     </Fragment>;
-  }, [activities, advanceAfter, arrangementOf, assessors, beginSave, canContact, canManageIdentity, canManageInvitation, changeDetails, contactPending, currentUserId, endSave, entryDrafts, formatAt, gradeOf, historicalSummaryFor, historyFor, laterContactFor, leadById, leadT, leadingSelectionFor, locale, nameOf, noteOf, onSaved, recordM.unknown, recordsMode, saveContact, saveContactReminder, savePost, stateOf, t, updateEntryDraft, updatedOf, workMode, workT, workday]);
+  }, [activities, advanceAfter, arrangementOf, assessors, beginSave, canContact, canManageIdentity, canManageInvitation, changeDetails, contactPending, currentUserId, endSave, entryDrafts, formatAt, gradeOf, historicalSummaryFor, historyFor, laterContactFor, leadById, leadT, leadingSelectionFor, locale, nameOf, noteOf, onSaved, recordM.unknown, recordsMode, rowM.grade, rowM.notes, rowM.owner, rowM.phone, rowM.updated, saveContact, saveContactReminder, savePost, stateOf, t, updateEntryDraft, updatedOf, workMode, workT, workday]);
 
 
   return <SchoolSupportTableEntry workspace="communication" enabled={canContact} columns={["name","phone","grade","blank","blank","note","blank"]} initialWork={{date:workday?.date??worklist?.date,worklistId:worklist?.id??null}}><DashboardTableShell data-followup-workbench data-communication-scroll>
-    <Table className="w-full min-w-[55rem] table-fixed text-xs" containerClassName="overflow-auto [scrollbar-gutter:stable]">
+    <Table mobileLayout="stacked" className="w-full min-w-[55rem] table-fixed text-xs" containerClassName="overflow-auto [scrollbar-gutter:stable]">
       <colgroup><col style={{ width: "7rem" }} /><col style={{ width: "6rem" }} /><col style={{ width: "3.75rem" }} /><col style={{ width: "6rem" }} /><col style={{ width: "12rem" }} /><col /><col style={{ width: "8rem" }} /></colgroup>
       <TableHeader><TableRow>
         <TableHead className="sticky left-0 top-0 z-30 h-9 border-r border-line bg-card px-2"><div className="flex min-w-0 items-center gap-1.5">

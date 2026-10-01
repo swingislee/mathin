@@ -1,4 +1,5 @@
 .label { display: none; }
+.value { display: contents; }
 
 /* 姓名网格等贴边内容可覆盖底层阴影，轮廓在内容之上复用当前行的同一阴影。 */
 .flush::after {
@@ -42,22 +43,23 @@
 
 /* 记录表统一启用；矩阵和普通宽表继续使用原来的横向比较布局。 */
 @media (max-width: 63.999rem) {
-  .records { max-height: none; overflow: visible; }
-  .records > [data-slot="table"],
-  .records > [data-slot="table"] > tbody { display: block; width: 100%; min-width: 0; }
-  .records > [data-slot="table"] > colgroup { display: none; }
+  :is(.records, .stacked) { max-height: none; overflow: visible; }
+  :is(.records, .stacked) > [data-slot="table"],
+  :is(.records, .stacked) > [data-slot="table"] > tbody { display: block; width: 100%; min-width: 0; }
+  :is(.records, .stacked) > [data-slot="table"] > colgroup { display: none; }
   /* 表头继续提供语义，移动字段名由 TableCell 的元数据呈现。 */
   .records > [data-slot="table"] > thead {
     position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
     overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
   }
-  .records > [data-slot="table"] > tbody > tr:not([hidden]) {
+  :is(.records, .stacked) > [data-slot="table"] > tbody > tr:not([hidden]) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) fit-content(42%);
     width: 100%;
     min-width: 0;
+    height: auto;
   }
-  .records > [data-slot="table"] > tbody > tr > [data-slot="table-cell"] {
+  :is(.records, .stacked) > [data-slot="table"] > tbody > tr > [data-slot="table-cell"] {
     position: relative; left: auto; top: auto; z-index: auto;
     width: auto; min-width: 0; max-width: none;
     border-right: 0; padding: 0.375rem 0.5rem;
@@ -66,14 +68,14 @@
   .records > [data-slot="table"] > tbody > tr > [data-slot="table-cell"]:nth-child(n + 3),
   .records > [data-slot="table"] > tbody > tr > [colspan],
   .records > [data-slot="table"] > tbody > tr > [data-table-mobile-span="full"] { grid-column: 1 / -1; }
-  .records > [data-slot="table"] > tbody > tr > [data-table-mobile-hidden="true"],
-  .records > [data-slot="table"] > tbody > tr > [data-table-mobile-empty="true"] { display: none; }
-  .records > [data-slot="table"] > tbody > tr > [data-slot="table-cell"] p { white-space: normal; }
-  .records > [data-slot="table"] > tbody > tr > [data-table-mobile-labeled],
-  .records > [data-slot="table"] > tbody > tr > [data-table-mobile-labeled] > p { white-space: pre-wrap; }
-  .records > [data-slot="table"] > tbody > tr > [data-table-mobile-labeled] > p,
-  .records > [data-slot="table"] > tbody > tr > [data-table-mobile-labeled] > div { max-width: none; }
-  .records > [data-slot="table"] > tbody > tr > [data-slot="table-cell"] > .label {
+  :is(.records, .stacked) > [data-slot="table"] > tbody > tr > [data-table-mobile-hidden="true"],
+  :is(.records, .stacked) > [data-slot="table"] > tbody > tr > [data-table-mobile-empty="true"] { display: none; }
+  :is(.records, .stacked) > [data-slot="table"] > tbody > tr > [data-slot="table-cell"] p { white-space: normal; }
+  :is(.records, .stacked) > [data-slot="table"] > tbody > tr > [data-table-mobile-labeled],
+  :is(.records, .stacked) > [data-slot="table"] > tbody > tr > [data-table-mobile-labeled] > .value > p { white-space: pre-wrap; }
+  :is(.records, .stacked) > [data-slot="table"] > tbody > tr > [data-table-mobile-labeled] > .value > p,
+  :is(.records, .stacked) > [data-slot="table"] > tbody > tr > [data-table-mobile-labeled] > .value > div { max-width: none; }
+  :is(.records, .stacked) > [data-slot="table"] > tbody > tr > [data-slot="table-cell"] > .label {
     display: inline; margin-right: 0.5rem; color: var(--muted); font-size: 0.6875rem;
   }
   .records [data-table-mobile-only] { display: block; }
@@ -88,4 +90,32 @@
 
   .records [data-followup-detail-content] { padding-top: 0; }
   .records [data-dashboard-row-disclosure] { width: 2rem; height: 2.75rem; flex-shrink: 0; }
+
+  /* 连续工作表：表头变成可换行的列操作区，保留同一套筛选、排序与全选。 */
+  .stacked > [data-slot="table"] > thead { display: block; position: static; width: 100%; }
+  .stacked > [data-slot="table"] > thead > tr { display: flex; flex-wrap: wrap; gap: 0.125rem 0.25rem; padding: 0.25rem; }
+  .stacked > [data-slot="table"] > thead > tr > th {
+    position: static; display: flex; align-items: center; width: auto; min-width: 0;
+    max-width: 100%; height: auto; min-height: 2.25rem; border: 0; padding: 0 0.25rem;
+  }
+  .stacked > [data-slot="table"] > thead > tr > th:not(:has(button, input, select, [role="checkbox"])) { display: none; }
+  .stacked > [data-slot="table"] > thead [data-dashboard-table-menu] { min-height: 2.25rem; height: auto; padding-inline: 0.375rem; }
+  .stacked > [data-slot="table"] > tbody > tr > [data-slot="table-cell"] { grid-column: 1 / -1; }
+  .stacked > [data-slot="table"] > tbody > tr > [data-table-mobile-span="primary"] { grid-column: 1; grid-row: 1; }
+  .stacked > [data-slot="table"] > tbody > tr > [data-table-mobile-span="secondary"] { grid-column: 2; grid-row: 1; }
+  .stacked > [data-slot="table"] > tbody > tr > [data-table-mobile-span="secondary"] .flex { flex-wrap: wrap; }
+  .stacked > [data-slot="table"] > tbody > tr > [data-table-mobile-labeled] {
+    display: grid; grid-template-columns: minmax(4.5rem, 25%) minmax(0, 1fr); gap: 0.5rem; align-items: start;
+  }
+  .stacked > [data-slot="table"] > tbody > tr > [data-table-mobile-labeled] > .label { margin: 0; padding-top: 0.125rem; }
+  .stacked > [data-slot="table"] > tbody > tr > [data-table-mobile-labeled] > .value { display: block; min-width: 0; }
+  .stacked > [data-slot="table"] > tbody > tr > [data-table-mobile-labeled]:is([data-table-mobile-empty="true"], [data-table-mobile-hidden="true"]) { display: none; }
+  .stacked > [data-slot="table"] > tbody > tr > [data-table-mobile-actions] :is([data-table-mobile-value], [data-table-mobile-value] > div) { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 0.375rem; }
+  .stacked > [data-slot="table"] > tbody > tr > [data-table-mobile-actions] :is(button, a) { min-height: 2.25rem; white-space: normal; }
+  .stacked > [data-slot="table"] > tbody > tr :is(.truncate, .line-clamp-2) { overflow: visible; white-space: normal; overflow-wrap: anywhere; text-overflow: clip; -webkit-line-clamp: unset; }
+  .stacked > [data-slot="table"] > tbody > tr:is([data-followup-row-key], [aria-expanded], [data-followup-inline-details]) {
+    outline: 1px solid var(--followup-side); outline-offset: -1px;
+  }
+  .stacked > [data-slot="table"] > tbody > tr[data-followup-inline-details] > [data-slot="table-cell"] { padding: 0.25rem; }
+  .stacked [data-dashboard-row-disclosure] { width: 2rem; height: 2.75rem; flex-shrink: 0; }
 }

@@ -230,7 +230,7 @@ function SupportInlineForm({ workspace, columns, initialWork, onClose, onSaved, 
       <Button size="sm" disabled={!canSave} onClick={() => void save()}>{pending ? m.loading : initialWork?.classroomId ? (en ? 'Save and place student' : '保存并补入此座位') : m.save}</Button></div>
   </div>;
   return panel ? details : <>
-    <TableRow data-support-entry-summary onKeyDown={event=>{if((event.ctrlKey||event.metaKey)&&event.key==="Enter"&&!event.nativeEvent.isComposing){event.preventDefault();void save();}}} className="bg-moon/25 [&>td]:px-2 [&>td]:py-1">{columns.map((column, index) => <TableCell key={index}>{field(column)}</TableCell>)}</TableRow>
+    <TableRow data-support-entry-summary onKeyDown={event=>{if((event.ctrlKey||event.metaKey)&&event.key==="Enter"&&!event.nativeEvent.isComposing){event.preventDefault();void save();}}} className="bg-moon/25 [&>td]:px-2 [&>td]:py-1">{columns.map((column, index) => <TableCell key={index} mobileHidden={column === 'blank'} mobileSpan={column === 'name' ? 'primary' : undefined} mobileLabel={column === 'blank' || column === 'name' ? undefined : m[column]}>{field(column)}</TableCell>)}</TableRow>
     <FollowupInlineDetails open colSpan={columns.length} title={contextLabel ?? m.add} hideTitle flush pending={busy} closeLabel={m.cancel}
       onOpenChange={open=>{if(!open)cancel();}} onSubmit={()=>void save()}>{details}</FollowupInlineDetails>
   </>;

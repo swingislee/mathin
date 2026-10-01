@@ -247,7 +247,7 @@ function ParticipationTable({
     actions={canRegister ? <StudentSearch activity={activity} pending={pending} run={run} /> : undefined}
   >
     <DashboardTableShell>
-      <Table className="min-w-[58rem]">
+      <Table mobileLayout="stacked" className="min-w-[58rem]">
         <TableHeader><TableRow>
           <TableHead><DashboardTableColumnHeader label={t("student")} {...table.columnProps("student")} /></TableHead>
           <TableHead>{t("participation")}</TableHead>
@@ -258,7 +258,7 @@ function ParticipationTable({
         <TableBody>
           {table.visibleRows.map((registration) => <TableRow key={registration.id}>
             <StudentCell registration={registration} />
-            <TableCell>
+            <TableCell mobileSpan="secondary">
               {canRegister ? <Select
                 value={registration.status}
                 disabled={pending || statusPendingIds.has(registration.id)}
@@ -273,11 +273,11 @@ function ParticipationTable({
                 </SelectContent>
               </Select> : <Badge variant="outline">{t(`status_${registration.status}`)}</Badge>}
             </TableCell>
-            <TableCell className="max-w-80 whitespace-normal text-sm text-muted">{registration.outcome || "—"}</TableCell>
-            <TableCell>{registration.assessment
+            <TableCell mobileLabel={t("onSiteNote")} mobileEmpty={!registration.outcome} className="max-w-80 whitespace-normal text-sm text-muted">{registration.outcome || "—"}</TableCell>
+            <TableCell mobileLabel={t("assessment")}>{registration.assessment
               ? <Badge variant="secondary">{registration.assessment.assessmentBand ? t(`band_${registration.assessment.assessmentBand}`) : t("assessmentEntered")}</Badge>
               : <span className="text-xs text-muted">{t("notEntered")}</span>}</TableCell>
-            <TableCell>{registration.route
+            <TableCell mobileLabel={t("routingResult")}>{registration.route
               ? <Badge variant="outline">{t(`route_${registration.route.route}`)}</Badge>
               : <span className="text-xs text-muted">{t("route_pending")}</span>}</TableCell>
           </TableRow>)}
@@ -398,7 +398,7 @@ function AssessmentTable({
     actions={<span className="text-xs text-muted">{t("entryKeyboardHint")}</span>}
   >
     <DashboardTableShell>
-      <Table className="min-w-[117rem] table-fixed">
+      <Table mobileLayout="stacked" className="min-w-[117rem] table-fixed">
         <TableHeader className="bg-card">
           <TableRow className="border-b border-line/60 hover:bg-transparent">
             <TableHead rowSpan={2} className="sticky left-0 z-30 w-44 border-r border-line bg-card"><DashboardTableColumnHeader label={t("student")} {...table.columnProps("student")} /></TableHead>
@@ -499,8 +499,8 @@ function AssessmentRow({
 
   return <TableRow className="group">
     <StudentCell registration={registration} sticky />
-    <TableCell className="sticky left-44 z-20 border-r border-line bg-card group-hover:bg-moon/15"><Badge variant={registration.status === "attended" ? "secondary" : "outline"}>{t(`status_${registration.status}`)}</Badge></TableCell>
-    <TableCell className="p-2"><Select
+    <TableCell mobileSpan="secondary" className="sticky left-44 z-20 border-r border-line bg-card group-hover:bg-moon/15"><Badge variant={registration.status === "attended" ? "secondary" : "outline"}>{t(`status_${registration.status}`)}</Badge></TableCell>
+    <TableCell mobileLabel={t("assessmentBand")} className="p-2"><Select
       value={assessmentAutosave.draft.assessmentBand ?? "none"}
       disabled={disabled}
       onValueChange={(value) => update("assessmentBand", value === "none" ? null : value as AssessmentBand)}
@@ -514,7 +514,7 @@ function AssessmentRow({
         {ASSESSMENT_BANDS.map((band) => <SelectItem key={band} value={band}>{t(`band_${band}`)}</SelectItem>)}
       </SelectContent>
     </Select></TableCell>
-    <TableCell className="p-2"><Input
+    <TableCell mobileLabel={t("scoreShort")} className="p-2"><Input
       aria-label={t("scoreShort")}
       type="number"
       min={0}
@@ -524,12 +524,12 @@ function AssessmentRow({
       onChange={(event) => update("score", event.target.value === "" ? null : Number(event.target.value))}
       className="h-9"
     /></TableCell>
-    <TableCell className="p-2"><CellTextarea value={assessmentAutosave.draft.strengths} disabled={disabled} label={t("strengths")} onChange={(value) => update("strengths", value)} /></TableCell>
-    <TableCell className="p-2"><CellTextarea value={assessmentAutosave.draft.focusAreas} disabled={disabled} label={t("focusAreas")} onChange={(value) => update("focusAreas", value)} /></TableCell>
-    <TableCell className="p-2"><CellTextarea value={assessmentAutosave.draft.parentConcerns} disabled={disabled} label={t("parentConcerns")} onChange={(value) => update("parentConcerns", value)} /></TableCell>
-    <TableCell className="p-2"><CellTextarea value={assessmentAutosave.draft.teacherRecommendation} disabled={disabled} label={t("teacherRecommendation")} onChange={(value) => update("teacherRecommendation", value)} /></TableCell>
+    <TableCell mobileLabel={t("strengths")} className="p-2"><CellTextarea value={assessmentAutosave.draft.strengths} disabled={disabled} label={t("strengths")} onChange={(value) => update("strengths", value)} /></TableCell>
+    <TableCell mobileLabel={t("focusAreas")} className="p-2"><CellTextarea value={assessmentAutosave.draft.focusAreas} disabled={disabled} label={t("focusAreas")} onChange={(value) => update("focusAreas", value)} /></TableCell>
+    <TableCell mobileLabel={t("parentConcerns")} className="p-2"><CellTextarea value={assessmentAutosave.draft.parentConcerns} disabled={disabled} label={t("parentConcerns")} onChange={(value) => update("parentConcerns", value)} /></TableCell>
+    <TableCell mobileLabel={t("teacherRecommendation")} className="p-2"><CellTextarea value={assessmentAutosave.draft.teacherRecommendation} disabled={disabled} label={t("teacherRecommendation")} onChange={(value) => update("teacherRecommendation", value)} /></TableCell>
     {canViewOutcome ? <>
-      <TableCell className="p-2"><Select
+      <TableCell mobileLabel={t("routingResult")} className="p-2"><Select
         value={routeAutosave.draft.route || "pending"}
         disabled={outcomeDisabled}
         onValueChange={(value) => routeAutosave.update("route", value === "pending" ? "" : value as ActivityRouteKind)}
@@ -542,14 +542,14 @@ function AssessmentRow({
       </Select>
         <div className="mt-2"><EnrollmentHandoffButton source={{ registrationId: registration.id, invitationId: null }} name={registration.studentName} disabled={outcomeDisabled} /></div>
       </TableCell>
-      <TableCell className="p-2"><CellTextarea
+      <TableCell mobileLabel={t("routingNote")} className="p-2"><CellTextarea
         value={routeAutosave.draft.note}
         disabled={outcomeDisabled || !routeAutosave.draft.route}
         label={t("routingNote")}
         onChange={(value) => routeAutosave.update("note", value)}
       /></TableCell>
     </> : null}
-    <TableCell className="p-2"><AutosaveState
+    <TableCell mobileLabel={t("saveState")} className="p-2"><AutosaveState
       state={saveState}
       retry={() => saveEntries.filter((entry) => entry.state === "error").forEach((entry) => entry.retry())}
     /></TableCell>
@@ -558,7 +558,7 @@ function AssessmentRow({
 
 function StudentCell({ registration, sticky = false }: { registration: ActivityRegistration; sticky?: boolean }) {
   const t = useTranslations("school.activities");
-  return <TableCell className={cn(sticky && "sticky left-0 z-20 border-r border-line bg-card group-hover:bg-moon/15")}>
+  return <TableCell mobileSpan="primary" className={cn(sticky && "sticky left-0 z-20 border-r border-line bg-card group-hover:bg-moon/15")}>
     <Link href={`/dashboard/students/${registration.studentId}`} className="font-medium text-ink hover:underline">{registration.studentName}</Link>
     {registration.studentGrade ? <p className="mt-0.5 text-xs text-muted">{t("gradeValue", { grade: registration.studentGrade })}</p> : null}
   </TableCell>;

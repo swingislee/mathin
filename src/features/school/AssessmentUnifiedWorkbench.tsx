@@ -279,7 +279,7 @@ export function AssessmentUnifiedWorkbench({
           }}
           data-assessment-workbench-row={row.id}
         >
-          <TableCell
+          <TableCell mobileSpan="primary"
             className="sticky left-0 z-10 border-r border-line bg-card px-2 py-2"
           >
             <FollowupPersonCell name={row.name} phone={row.phone}
@@ -288,13 +288,13 @@ export function AssessmentUnifiedWorkbench({
               onToggle={() => changeDetails(row.id, !expanded)}
               subject={{ studentId: row.studentId, leadId: row.leadId }} />
           </TableCell>
-          <TableCell data-assessment-state-kind className="px-2 py-2">
+          <TableCell mobileSpan="secondary" data-assessment-state-kind className="px-2 py-2">
             <div className="flex min-w-0 flex-col items-start gap-1">
               <AssessmentStatusTags row={row} locale={locale} showStatus={current || closed || Boolean(row.sourceEnrollmentFacts?.confirmed)} />
               {row.assessmentKind !== "one_to_one" ? <Badge variant="outline" className="whitespace-nowrap border-line bg-line/20 text-muted">{t(`type_${row.assessmentKind}`)}</Badge> : null}
             </div>
           </TableCell>
-          <TableCell data-assessment-arrangement className="px-2 py-2">
+          <TableCell mobileLabel={t("arrangementColumn")} data-assessment-arrangement className="px-2 py-2">
             <p className="truncate font-medium text-ink"><time dateTime={scheduledAt ?? undefined} aria-label={formatDashboardDate(scheduledAt, dateContext, { time: true, full: true })}>{formatDashboardDate(scheduledAt, dateContext, { time: true })}</time></p>
             <div className="mt-1 flex min-w-0 items-center gap-1.5 text-[11px] text-muted" data-assessment-support-owner>
               <span className="max-w-[50%] truncate font-medium text-ink" title={fieldM.supportOwner}
@@ -303,7 +303,7 @@ export function AssessmentUnifiedWorkbench({
               <span className="truncate" title={row.location || undefined}>{row.location || "—"}</span>
             </div>
           </TableCell>
-          <TableCell className="px-2 py-2">
+          <TableCell mobileLabel={t("resultColumn")} className="px-2 py-2">
             {closed?<p className="text-muted">—</p>:completed && row.assessment && (score.score !== null || band) ? (
               <div className="flex min-w-0 items-center gap-2">
                 {score.score !== null ? <span className={cn("shrink-0 text-sm font-semibold tabular-nums", score.invalid ? "text-rose" : "text-ink")}
@@ -328,12 +328,12 @@ export function AssessmentUnifiedWorkbench({
             {current && row.assessment?.resultSource && row.assessment.resultSource !== "legacy" ? <p className="mt-1 text-[11px] text-muted">
               {quickT(row.assessment.resultSource === "quick_entry" ? "quickResult" : "teacherResult")}{row.assessment.recordedByName ? ` · ${row.assessment.recordedByName}` : ""}</p> : null}
           </TableCell>
-          <TableCell className="px-2 py-2">
+          <TableCell mobileLabel={t("teacherColumn")} className="px-2 py-2">
             <p className={cn("line-clamp-2 whitespace-normal leading-5", conclusion ? "text-ink" : "text-muted")} title={conclusion || undefined}>
               {conclusion || (closed ? "—" : completed ? t("conclusionPending") : t("stageAssessmentPending"))}
             </p>
           </TableCell>
-          <TableCell data-assessment-current-work className="px-2 py-2">
+          <TableCell mobileLabel={t("statusColumn")} data-assessment-current-work className="px-2 py-2">
             {current && !closed && row.workflow?.nextContactAt ? <p className="mb-1 text-[11px] text-crater" data-assessment-next-contact>
               <time dateTime={row.workflow.nextContactAt}>{formatDashboardDate(row.workflow.nextContactAt, dateContext, { time: true })}</time>
             </p> : null}
@@ -350,7 +350,7 @@ export function AssessmentUnifiedWorkbench({
               <TeacherAssessmentEntryButton registrationId={row.registrationId} invitationId={row.invitationId} />
             </div> : null}
           </TableCell>
-          <TableCell data-assessment-latest-update className="px-2 py-2 text-[11px] text-muted">
+          <TableCell mobileLabel={fieldM.recordedAt} data-assessment-latest-update className="px-2 py-2 text-[11px] text-muted">
             <p className="truncate tabular-nums"><time dateTime={recordedAt ?? undefined} title={formatDashboardDate(recordedAt, dateContext, { time: true, full: true })} aria-label={formatDashboardDate(recordedAt, dateContext, { time: true, full: true })}>{formatDashboardDate(recordedAt, dateContext, { time: true })}</time></p>
             {current && latestContext?.trim() ? <p data-current-situation className="mt-0.5 truncate leading-4">{latestContext}</p> : null}
           </TableCell>
@@ -380,7 +380,7 @@ export function AssessmentUnifiedWorkbench({
         </FollowupInlineDetails>
       </ActivityAssessmentDraftProvider>
     );
-  }, [advanceFrom, assessmentT, assessors, canAssess, canManageAssessor, canQuickEntry, canSupport, changeDetails, dateContext, drafts, fieldM.supportOwner, locale, quickT, reassignAssessor, reassigningId, saveQuickFollowUp, saveRow, sourceM.closedHint, t, teacherT, timeZone, updateDraft, visibleRows]);
+  }, [advanceFrom, assessmentT, assessors, canAssess, canManageAssessor, canQuickEntry, canSupport, changeDetails, dateContext, drafts, fieldM.recordedAt, fieldM.supportOwner, locale, quickT, reassignAssessor, reassigningId, saveQuickFollowUp, saveRow, sourceM.closedHint, t, teacherT, timeZone, updateDraft, visibleRows]);
 
   return (
     <DashboardPage
@@ -410,7 +410,7 @@ export function AssessmentUnifiedWorkbench({
     >
       {
         <SchoolSupportTableEntry workspace="assessments" enabled={canSupport} columns={["name","blank","blank","blank","blank","blank","blank"]}><DashboardTableShell data-assessment-unified-workbench data-followup-workbench data-followup-scroll aria-busy={pageControl?.pending}>
-          <Table className="w-full min-w-[68rem] table-fixed text-xs" containerClassName="overflow-auto [scrollbar-gutter:stable]">
+          <Table mobileLayout="stacked" className="w-full min-w-[68rem] table-fixed text-xs" containerClassName="overflow-auto [scrollbar-gutter:stable]">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead className="sticky left-0 top-0 z-30 h-9 w-48 border-r border-line bg-card px-2"><DashboardTableColumnHeader label={t("studentColumn")} {...assessmentTable.columnProps("student")} /></TableHead>

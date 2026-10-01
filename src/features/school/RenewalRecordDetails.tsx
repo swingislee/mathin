@@ -194,29 +194,29 @@ export function RenewalEntryRow({ row, cycleId, cycleName, targetTerm, health, h
       data-followup-active={active} data-followup-expanded={active} tabIndex={0} aria-expanded={active} aria-controls={detailId}
       className="cursor-pointer [&>td]:px-2 [&>td]:py-2" onKeyDown={keyDown}
       onClick={event => { if (!(event.target as HTMLElement).closest("button,a,input,textarea,select,[role='combobox']")) open(); }}>
-      <TableCell className="sticky left-0 z-10 border-r border-line align-top">
+      <TableCell mobileSpan="primary" className="sticky left-0 z-10 border-r border-line align-top">
         {sampleMode ? <Button size="sm" variant="ghost" className="h-auto whitespace-normal px-1 text-xs" aria-expanded={active} onClick={open}>{row.name}</Button>
           : <FollowupPersonCell name={row.name} phone={row.phone} grade={grade} owner={row.owner} expanded={active} detailsId={detailId} onToggle={open}
             subject={{ studentId: row.studentId, leadId: null }} studentGrade={row.grade} />}
         {historical ? <HistoricalRecordBadge locale={locale} /> : null}
       </TableCell>
-      <TableCell className="align-top"><p className="line-clamp-2 leading-5" title={row.classroom}>{row.classroom || "—"}</p><p className="mt-1 truncate text-[11px] text-muted">{row.teacher || t("teacherMissing")}</p></TableCell>
-      <TableCell className="align-top"><p className="leading-5">{row.record?.seasons.length ? row.record.seasons.map(value => t(`season_${value}`)).join(" / ") : "—"}</p><p className="mt-1 text-[11px] text-muted">{row.record?.contactMethod ? t(`contact_${row.record.contactMethod}`) : "—"}</p></TableCell>
-      <TableCell className="align-top"><Button type="button" size="sm" variant="ghost" disabled={pending} className="h-auto w-full justify-start whitespace-normal px-0 text-left text-xs" onClick={() => show("learning")}>
+      <TableCell mobileLabel={`${pool("classroom")} / ${t("teacher")}`} className="align-top"><p className="line-clamp-2 leading-5" title={row.classroom}>{row.classroom || "—"}</p><p className="mt-1 truncate text-[11px] text-muted">{row.teacher || t("teacherMissing")}</p></TableCell>
+      <TableCell mobileLabel={t("arrangement")} className="align-top"><p className="leading-5">{row.record?.seasons.length ? row.record.seasons.map(value => t(`season_${value}`)).join(" / ") : "—"}</p><p className="mt-1 text-[11px] text-muted">{row.record?.contactMethod ? t(`contact_${row.record.contactMethod}`) : "—"}</p></TableCell>
+      <TableCell mobileLabel={t("learning")} className="align-top"><Button type="button" size="sm" variant="ghost" disabled={pending} className="h-auto w-full justify-start whitespace-normal px-0 text-left text-xs" onClick={() => show("learning")}>
         <span className="line-clamp-2 leading-5">{currentObservation || (historical ? "—" : pool("noObservation"))}</span></Button>
         {!historical ? <p className={cn("mt-1 text-[11px]", followupToneClasses[healthTone(renewalHealthLevel(health))])}>{healthAvailable ? pool(renewalHealthLevel(health)) : pool("unavailable")}</p> : null}
       </TableCell>
-      <TableCell className="align-top"><Badge variant="outline" className={cn("max-w-full whitespace-normal text-[11px]", followupToneClasses[renewalResultTone(savedResult)])}>{resultLabel}</Badge>
+      <TableCell mobileSpan="secondary" className="align-top"><Badge variant="outline" className={cn("max-w-full whitespace-normal text-[11px]", followupToneClasses[renewalResultTone(savedResult)])}>{resultLabel}</Badge>
         {!historical ? <div className="mt-1.5 flex items-center gap-1" aria-label={t("progress")}>
           {RENEWAL_PANELS.map((value, index) => <Button key={value} type="button" size="sm" variant="ghost" className="size-6 rounded-full p-0 text-[10px]" disabled={pending}
             title={t(`panel_${value}`)} aria-label={t(`panel_${value}`)} onClick={() => show(value)}>
             <span className={cn("flex size-4 items-center justify-center rounded-full border", active && section === value ? "border-crater bg-moon/60" : "border-line text-muted")}>{index + 1}</span>
           </Button>)}
         </div> : null}</TableCell>
-      <TableCell className="align-top">{row.payment ? <><p className="font-medium tabular-nums text-leaf-deep">{pool("paidSummary", { periods: row.payment.period_count, amount: Number(row.payment.paid_amount).toFixed(2) })}</p>
+      <TableCell mobileLabel={t("paymentFacts")} mobileEmpty={!row.payment && savedResult !== "registered"} className="align-top">{row.payment ? <><p className="font-medium tabular-nums text-leaf-deep">{pool("paidSummary", { periods: row.payment.period_count, amount: Number(row.payment.paid_amount).toFixed(2) })}</p>
         <p className="mt-1 text-[11px] text-muted">{row.record?.paidOn ? formatDashboardDate(row.record.paidOn, { locale, timeZone, now }) : t("paymentDateMissing")}</p><p className="mt-0.5 text-[11px] text-muted">{row.record?.paymentMethod ? t(`payment_${row.record.paymentMethod}`) : t("paymentMethodMissing")}</p></>
         : <span className="text-muted">{savedResult === "registered" ? t("paymentNotRecorded") : "—"}</span>}</TableCell>
-      <TableCell className="align-top"><p className={cn("text-[11px] tabular-nums", row.nextContactAt && Date.parse(row.nextContactAt) <= now ? "text-rose" : "text-muted")}>{formatDashboardDate(row.nextContactAt, { locale, timeZone, now }, { time: true })}</p>
+      <TableCell mobileLabel={t("nextContact")} mobileEmpty={!row.nextContactAt && !row.payment?.note && !row.note} className="align-top"><p className={cn("text-[11px] tabular-nums", row.nextContactAt && Date.parse(row.nextContactAt) <= now ? "text-rose" : "text-muted")}>{formatDashboardDate(row.nextContactAt, { locale, timeZone, now }, { time: true })}</p>
         <p className="mt-1 line-clamp-2 whitespace-pre-wrap text-[11px] leading-5 text-muted" title={row.payment?.note ?? row.note}>{row.payment?.note ?? row.note}</p>
       </TableCell>
     </TableRow>

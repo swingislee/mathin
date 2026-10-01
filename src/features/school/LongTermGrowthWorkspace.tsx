@@ -80,17 +80,17 @@ export function LongTermGrowthWorkspace({ data, owners, canWrite }: {
 
 
     <DashboardSection>
-      <DashboardTableShell><Table className="min-w-[62rem] table-fixed text-xs" containerClassName="max-h-[calc(100dvh-12rem)] overflow-auto">
+      <DashboardTableShell><Table mobileLayout="stacked" className="min-w-[62rem] table-fixed text-xs" containerClassName="max-h-[calc(100dvh-12rem)] overflow-auto">
         <TableHeader className="sticky top-0 z-20 bg-card"><TableRow><TableHead>{t("student")}</TableHead><TableHead>{t("targetProduct")}</TableHead><TableHead>{t("stage")}</TableHead><TableHead>{t("owner")}</TableHead><TableHead>{t("nextAction")}</TableHead><TableHead>{t("nextActionAt")}</TableHead><TableHead className="text-right">{t("details")}</TableHead></TableRow></TableHeader>
         <TableBody>
           {reactivationRows.map((row) => <TableRow key={row.id} className="h-10 [&>td]:px-2 [&>td]:py-1 [&>td]:truncate">
-            <TableCell className="font-medium text-ink">{row.studentName}</TableCell>
-            <TableCell><p>{row.courseTitle}</p><p className="text-xs text-muted">{row.termName}</p></TableCell>
-            <TableCell><Badge variant="outline">{t(`stage_${row.stage}`)}</Badge></TableCell>
-            <TableCell>{row.ownerName}</TableCell>
-            <TableCell className="max-w-72 whitespace-normal">{row.nextAction || "—"}</TableCell>
-            <TableCell>{localDateTime(row.nextActionAt, locale)}</TableCell>
-            <TableCell className="text-right"><Link className={cn(buttonVariants({ size: "sm", variant: "ghost" }))} href={`/dashboard/renewals/${row.id}`}>{t("openDetail")}</Link></TableCell>
+            <TableCell mobileSpan="primary" className="font-medium text-ink">{row.studentName}</TableCell>
+            <TableCell mobileLabel={t("targetProduct")}><p>{row.courseTitle}</p><p className="text-xs text-muted">{row.termName}</p></TableCell>
+            <TableCell mobileSpan="secondary"><Badge variant="outline">{t(`stage_${row.stage}`)}</Badge></TableCell>
+            <TableCell mobileLabel={t("owner")}>{row.ownerName}</TableCell>
+            <TableCell mobileLabel={t("nextAction")} mobileEmpty={!row.nextAction} className="max-w-72 whitespace-normal">{row.nextAction || "—"}</TableCell>
+            <TableCell mobileLabel={t("nextActionAt")}>{localDateTime(row.nextActionAt, locale)}</TableCell>
+            <TableCell mobileLabel={t("details")} data-table-mobile-actions className="text-right"><Link className={cn(buttonVariants({ size: "sm", variant: "ghost" }))} href={`/dashboard/renewals/${row.id}`}>{t("openDetail")}</Link></TableCell>
           </TableRow>)}
           {reactivationRows.length === 0 ? <TableRow><TableCell colSpan={7} className="h-36 text-center text-muted">{t("emptyReactivations")}</TableCell></TableRow> : null}
         </TableBody>
@@ -98,17 +98,17 @@ export function LongTermGrowthWorkspace({ data, owners, canWrite }: {
     </DashboardSection>
 
     <DashboardSection>
-      <DashboardTableShell><Table className="min-w-[76rem] table-fixed text-xs" containerClassName="max-h-[calc(100dvh-12rem)] overflow-auto">
+      <DashboardTableShell><Table mobileLayout="stacked" className="min-w-[76rem] table-fixed text-xs" containerClassName="max-h-[calc(100dvh-12rem)] overflow-auto">
         <TableHeader className="sticky top-0 z-20 bg-card"><TableRow><TableHead>{t("referrer")}</TableHead><TableHead>{t("referredLead")}</TableHead><TableHead>{t("relationship")}</TableHead><TableHead>{t("leadOwner")}</TableHead><TableHead>{t("leadStatus")}</TableHead><TableHead>{t("note")}</TableHead><TableHead className="text-right">{t("actions")}</TableHead></TableRow></TableHeader>
         <TableBody>
           {referralRows.map((referral) => <TableRow key={referral.id} className="h-10 [&>td]:px-2 [&>td]:py-1 [&>td]:truncate">
-            <TableCell><p className="font-medium text-ink">{referral.referrerStudentName}</p><p className="text-xs text-muted">{referral.referrerContactName || referral.referrerFamilyName || "—"}</p></TableCell>
-            <TableCell><p>{referral.referredLeadName}</p><p className="text-xs text-muted">{t(`leadStatus_${referral.referredLeadStatus}`)}</p></TableCell>
-            <TableCell>{referral.relationship || "—"}</TableCell>
-            <TableCell>{referral.leadOwnerName || t("unassigned")}</TableCell>
-            <TableCell><Badge variant={referral.referredLeadStatus === "intent_confirmed" ? "secondary" : "outline"}>{t(`leadStatus_${referral.referredLeadStatus}`)}</Badge></TableCell>
-            <TableCell className="max-w-72 whitespace-normal">{referral.note || "—"}</TableCell>
-            <TableCell className="text-right"><div className="flex justify-end gap-1">
+            <TableCell mobileSpan="primary"><p className="font-medium text-ink">{referral.referrerStudentName}</p><p className="text-xs text-muted">{referral.referrerContactName || referral.referrerFamilyName || "—"}</p></TableCell>
+            <TableCell mobileLabel={t("referredLead")}><p>{referral.referredLeadName}</p><p className="text-xs text-muted">{t(`leadStatus_${referral.referredLeadStatus}`)}</p></TableCell>
+            <TableCell mobileLabel={t("relationship")} mobileEmpty={!referral.relationship}>{referral.relationship || "—"}</TableCell>
+            <TableCell mobileLabel={t("leadOwner")}>{referral.leadOwnerName || t("unassigned")}</TableCell>
+            <TableCell mobileSpan="secondary"><Badge variant={referral.referredLeadStatus === "intent_confirmed" ? "secondary" : "outline"}>{t(`leadStatus_${referral.referredLeadStatus}`)}</Badge></TableCell>
+            <TableCell mobileLabel={t("note")} mobileEmpty={!referral.note} className="max-w-72 whitespace-normal">{referral.note || "—"}</TableCell>
+            <TableCell mobileLabel={t("actions")} data-table-mobile-actions className="text-right"><div className="flex justify-end gap-1">
               {canWrite && !referral.opportunityId && referral.referredLeadStatus === "converted" ? <ConvertReferralDialog referral={referral} data={data} owners={owners} onSaved={() => router.refresh()} /> : null}
               {referral.opportunityId ? <Link className={cn(buttonVariants({ size: "sm", variant: "ghost" }))} href={`/dashboard/renewals/${referral.opportunityId}`}>{t("openOpportunity")}</Link> : <Link className={cn(buttonVariants({ size: "sm", variant: "ghost" }))} href="/dashboard/leads">{t("openLead")}</Link>}
             </div></TableCell>

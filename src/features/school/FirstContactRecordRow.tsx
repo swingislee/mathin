@@ -8,6 +8,7 @@ import { businessRecordMessages, type BusinessRecordState } from "./business-rec
 import { FollowupEntryFields } from "./FollowupEntryFields";
 import { type FollowupTone } from "./dashboard-page/FollowupChoice";
 import { FirstContactStatusTags, type FirstContactFacts } from "./FirstContactStatusTags";
+import { firstContactRowMessages } from "./first-contact-row-messages";
 import { FollowupInlineDetails } from "./dashboard-page/FollowupInlineDetails";
 import { FollowupPersonCell } from "./dashboard-page/FollowupPersonCell";
 import { FollowupRecordRow } from "./dashboard-page/FollowupRecordRow";
@@ -57,6 +58,7 @@ export function FirstContactRecordRow({
   onSave?: () => void;
 }) {
   const m = businessRecordMessages(locale);
+  const fields = firstContactRowMessages(locale);
   return <FollowupRecordRow rowKey={record.key} active={active} selected={selected} expanded={expanded} pending={pending}
     focusOnActivate={Boolean(rowRef)}
     rowRef={rowRef} onActivate={onActivate} onExpandedChange={onExpandedChange} onKeyDown={onKeyDown} onOutcomeChange={onOutcomeChange} onSave={onSave}
@@ -67,21 +69,21 @@ export function FirstContactRecordRow({
       "data-followup-success": record.visitCommitted === true,
       className: cn("focus-visible:outline-none [&>td]:min-w-0", layout === "communication" ? "h-11" : "h-16") }}
     summary={layout === "communication" ? <>
-        <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-1.5">
+        <TableCell mobileSpan="primary" className="sticky left-0 z-10 border-r border-line bg-card px-2 py-1.5">
           <FollowupPersonCell {...record.person} nameOnly selection={selection} expanded={expanded} detailsId={detailsId} onToggle={() => onExpandedChange(!expanded)} />
           {identityHint}
         </TableCell>
-        <TableCell className="px-2 py-1.5"><a className="block truncate font-mono text-[11px] hover:underline" href={`tel:${record.person.phone}`} title={record.person.phone}>{record.person.phone || "—"}</a></TableCell>
-        <TableCell className="px-2 py-1.5"><p className="truncate text-[11px] text-muted" title={record.person.grade}>{record.person.grade || "—"}</p></TableCell>
-        <TableCell className="px-2 py-1.5"><p className="truncate text-xs" title={record.person.owner}>{record.person.owner || "—"}</p></TableCell>
-        <TableCell className="px-2 py-1.5">{historicalSummary ? historicalSummary.state : <>
+        <TableCell mobileLabel={fields.phone} className="px-2 py-1.5"><a className="block truncate font-mono text-[11px] hover:underline" href={`tel:${record.person.phone}`} title={record.person.phone}>{record.person.phone || "—"}</a></TableCell>
+        <TableCell mobileLabel={fields.grade} className="px-2 py-1.5"><p className="truncate text-[11px] text-muted" title={record.person.grade}>{record.person.grade || "—"}</p></TableCell>
+        <TableCell mobileLabel={fields.owner} className="px-2 py-1.5"><p className="truncate text-xs" title={record.person.owner}>{record.person.owner || "—"}</p></TableCell>
+        <TableCell mobileSpan="secondary" className="px-2 py-1.5">{historicalSummary ? historicalSummary.state : <>
           <FirstContactStatusTags label={record.status.label} tone={record.status.tone} facts={record.contactFacts} locale={locale} dirty={record.pendingChanges} />
           {record.state === "historical" ? <HistoricalRecordBadge locale={locale} /> : null}
         </>}</TableCell>
-        <TableCell className="px-2 py-1.5">{historicalSummary ? historicalSummary.details : <p className="line-clamp-2 whitespace-normal break-words text-xs leading-5" title={record.missingFirstContact ? undefined : record.note}>
+        <TableCell mobileLabel={fields.notes} mobileEmpty={!historicalSummary && (record.missingFirstContact || !record.note)} className="px-2 py-1.5">{historicalSummary ? historicalSummary.details : <p className="line-clamp-2 whitespace-normal break-words text-xs leading-5" title={record.missingFirstContact ? undefined : record.note}>
           {record.missingFirstContact ? "—" : record.note || "—"}
         </p>}</TableCell>
-        <TableCell className="px-2 py-1.5 text-[11px] text-muted">{historicalSummary ? historicalSummary.updated : <>
+        <TableCell mobileLabel={fields.updated} className="px-2 py-1.5 text-[11px] text-muted">{historicalSummary ? historicalSummary.updated : <>
           <span className="block truncate" title={record.updated}>{record.updated}</span>{record.countLabel ? <p className="mt-0.5 truncate">{record.countLabel}</p> : null}
         </>}</TableCell>
       </> : defaultCells}>

@@ -477,7 +477,7 @@ function ReviewOverview({ data, recordedParticipants, canFollowUp }: { data: Pub
     <TeachingPostworkSection title={t("reviewTitle")} description={t("reviewHint")}>
       <div className="mt-4">
         <DashboardTableShell>
-          <Table className="min-w-[52rem] table-fixed text-xs">
+          <Table mobileLayout="stacked" className="min-w-[52rem] table-fixed text-xs">
             <TableHeader><TableRow>
               <TableHead className="h-9 w-56 px-2"><DashboardTableColumnHeader label={t("participant")} {...table.columnProps("participant")} /></TableHead>
               <TableHead className="h-9 w-28 px-2"><DashboardTableColumnHeader label={t("attendanceResult")} {...table.columnProps("attendance")} /></TableHead>
@@ -491,7 +491,7 @@ function ReviewOverview({ data, recordedParticipants, canFollowUp }: { data: Pub
                 const talkRecord = talkId ? recordFor(participant, talkId) : null;
                 const attended = participantAttended(participant);
                 return <TableRow key={participant.registrationId}>
-                  <TableCell className="px-2 py-2">
+                  <TableCell mobileSpan="primary" className="px-2 py-2">
                     <Student360Trigger
                       subject={{ studentId: participant.studentId, leadId: participant.leadId }}
                       fallback={{ name: participant.name, grade: participant.grade, gradeText: participant.gradeText, phone: participant.phone }}
@@ -501,10 +501,10 @@ function ReviewOverview({ data, recordedParticipants, canFollowUp }: { data: Pub
                     </Student360Trigger>
                     <p className="mt-0.5 truncate text-[11px] text-muted">{participant.gradeText || (participant.grade ? t("gradeValue", { grade: participant.grade }) : t("gradePending"))}</p>
                   </TableCell>
-                  <TableCell className="px-2 py-2"><Badge variant={attended ? "secondary" : "outline"}>{attended ? t("presence_attended") : t("presence_expected")}</Badge></TableCell>
-                  <TableCell className="truncate px-2 py-2 text-muted">{assessmentRecord?.assessmentSummary || assessmentRecord?.learningObservation || "—"}</TableCell>
-                  <TableCell className="truncate px-2 py-2 text-muted">{talkRecord?.parentFeedback || assessmentRecord?.parentFeedback || "—"}</TableCell>
-                  <TableCell className="px-2 py-2 text-muted"><p className="truncate">{assessmentRecord?.recommendation || talkRecord?.recommendation || "—"}</p>{canFollowUp && attended ? <div className="mt-2"><EnrollmentHandoffButton source={{ registrationId: participant.registrationId, invitationId: null }} name={participant.name} /></div> : null}</TableCell>
+                  <TableCell mobileSpan="secondary" className="px-2 py-2"><Badge variant={attended ? "secondary" : "outline"}>{attended ? t("presence_attended") : t("presence_expected")}</Badge></TableCell>
+                  <TableCell mobileLabel={t("assessmentSummary")} mobileEmpty={!assessmentRecord?.assessmentSummary && !assessmentRecord?.learningObservation} className="truncate px-2 py-2 text-muted">{assessmentRecord?.assessmentSummary || assessmentRecord?.learningObservation || "—"}</TableCell>
+                  <TableCell mobileLabel={t("parentFeedback")} mobileEmpty={!talkRecord?.parentFeedback && !assessmentRecord?.parentFeedback} className="truncate px-2 py-2 text-muted">{talkRecord?.parentFeedback || assessmentRecord?.parentFeedback || "—"}</TableCell>
+                  <TableCell mobileLabel={t("recommendation")} className="px-2 py-2 text-muted"><p className="truncate">{assessmentRecord?.recommendation || talkRecord?.recommendation || "—"}</p>{canFollowUp && attended ? <div className="mt-2"><EnrollmentHandoffButton source={{ registrationId: participant.registrationId, invitationId: null }} name={participant.name} /></div> : null}</TableCell>
                 </TableRow>;
               })}
               {table.visibleRows.length === 0 ? <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted">{active.length === 0 ? t("emptyRoster") : tableT("filteredEmpty")}</TableCell></TableRow> : null}
@@ -724,7 +724,7 @@ function PublicClassRosterTable({
       actions={<div className="flex items-center gap-2 text-xs text-muted"><UsersRound className="size-4" />{t("attendanceSummary", { attended, total: active.length })}</div>}
     >
       <DashboardTableShell>
-        <Table className="min-w-[68rem] table-fixed text-xs" containerClassName="max-h-[calc(100dvh-15rem)] overflow-auto">
+        <Table mobileLayout="stacked" className="min-w-[68rem] table-fixed text-xs" containerClassName="max-h-[calc(100dvh-15rem)] overflow-auto">
           <TableHeader><TableRow>
             <TableHead className="sticky left-0 top-0 z-30 h-9 w-60 border-r border-line bg-card px-2"><DashboardTableColumnHeader label={t("participant")} {...table.columnProps("participant")} /></TableHead>
             <TableHead className="sticky top-0 z-20 h-9 w-72 bg-card px-2">{segment.kind === "parent_talk" ? t("guardianAttendance") : t("studentAttendance")}</TableHead>
@@ -800,7 +800,7 @@ function ParticipantRows({
   const summary = [assessmentSummary, learningObservation, parentFeedback, recommendation].find((value) => value.trim()) ?? "";
   return <Fragment>
     <TableRow aria-expanded={expanded} className={cn(expanded && "bg-moon/10 hover:bg-moon/10")}>
-      <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-2">
+      <TableCell mobileSpan="primary" className="sticky left-0 z-10 border-r border-line bg-card px-2 py-2">
         <div className="flex w-full items-start gap-2 text-left">
           <button
             type="button"
@@ -831,7 +831,7 @@ function ParticipantRows({
           </span>
         </div>
       </TableCell>
-      <TableCell className="px-2 py-2">
+      <TableCell mobileLabel={segment.kind === "parent_talk" ? t("guardianAttendance") : t("studentAttendance")} data-table-mobile-actions className="px-2 py-2">
         <div className="flex gap-1" role="radiogroup" aria-label={segment.kind === "parent_talk" ? t("guardianAttendance") : t("studentAttendance")}>
           {(["expected", "attended", "late", "absent"] as const).map((value) => <Button
             key={value}
@@ -845,8 +845,8 @@ function ParticipantRows({
           >{t(`presence_${value}`)}</Button>)}
         </div>
       </TableCell>
-      <TableCell className="truncate px-2 py-2 text-muted">{summary || t("recordEmpty")}</TableCell>
-      <TableCell className="px-2 py-2">{summary ? <Badge variant="secondary">{t("recorded")}</Badge> : <Badge variant="outline">{t("notRecorded")}</Badge>}</TableCell>
+      <TableCell mobileLabel={t("recordSummary")} mobileEmpty={!summary} className="truncate px-2 py-2 text-muted">{summary || t("recordEmpty")}</TableCell>
+      <TableCell mobileSpan="secondary" className="px-2 py-2">{summary ? <Badge variant="secondary">{t("recorded")}</Badge> : <Badge variant="outline">{t("notRecorded")}</Badge>}</TableCell>
     </TableRow>
     <FollowupInlineDetails open={expanded} onOpenChange={setExpanded} colSpan={4} title={participant.name} hideTitle pending={pending} onSubmit={canRecord ? save : undefined}>
         <div className="grid gap-3 @3xl/page:grid-cols-2">

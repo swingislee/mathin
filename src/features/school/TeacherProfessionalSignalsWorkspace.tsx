@@ -108,7 +108,7 @@ export function TeacherProfessionalSignalsWorkspace({
 
     <DashboardSection>
       <DashboardTableShell>
-        <Table className="min-w-[76rem] table-fixed text-xs" containerClassName="max-h-[calc(100dvh-12rem)] overflow-auto">
+        <Table mobileLayout="stacked" className="min-w-[76rem] table-fixed text-xs" containerClassName="max-h-[calc(100dvh-12rem)] overflow-auto">
           <TableHeader className="sticky top-0 z-20 bg-card"><TableRow>
             <TableHead><DashboardTableColumnHeader label={t("student")} {...table.columnProps("student")} /></TableHead>
             <TableHead><DashboardTableColumnHeader label={t("signalType")} {...table.columnProps("type")} /></TableHead>
@@ -121,14 +121,14 @@ export function TeacherProfessionalSignalsWorkspace({
           </TableRow></TableHeader>
           <TableBody>
             {table.visibleRows.map((signal) => <TableRow key={signal.id} className="h-10 [&>td]:px-2 [&>td]:py-1 [&>td]:truncate">
-              <TableCell><p className="font-medium text-ink">{signal.studentName}</p>{signal.grade !== null ? <p className="text-xs text-muted">{t("grade", { grade: signal.grade })}</p> : null}</TableCell>
-              <TableCell><Badge variant="outline" className={followupToneClasses[signal.signalType === "churn_risk" ? "unhealthy" : "healthy"]}>{t(`signalType_${signal.signalType}`)}</Badge></TableCell>
-              <TableCell><p>{signal.sourceClassroomName}</p><p className="text-xs text-muted">{signal.sourceSessionTitle || t("classLevelSignal")}</p></TableCell>
-              <TableCell className="max-w-80 whitespace-normal"><p>{signal.recommendation}</p><p className="mt-1 text-xs text-muted">{localDateTime(signal.occurredAt, locale)}</p></TableCell>
-              <TableCell><p>{signal.suggestedCourseTitle || "—"}</p><p className="text-xs text-muted">{signal.targetTermName || "—"}</p></TableCell>
-              <TableCell>{signal.sourceTeacherName}</TableCell>
-              <TableCell><Badge variant="outline" className={followupToneClasses[signal.status === "accepted" ? "healthy" : signal.status === "dismissed" ? "unhealthy" : "attention"]}>{t(`signalStatus_${signal.status}`)}</Badge></TableCell>
-              <TableCell className="text-right">
+              <TableCell mobileSpan="primary"><p className="font-medium text-ink">{signal.studentName}</p>{signal.grade !== null ? <p className="text-xs text-muted">{t("grade", { grade: signal.grade })}</p> : null}</TableCell>
+              <TableCell mobileLabel={t("signalType")}><Badge variant="outline" className={followupToneClasses[signal.signalType === "churn_risk" ? "unhealthy" : "healthy"]}>{t(`signalType_${signal.signalType}`)}</Badge></TableCell>
+              <TableCell mobileLabel={t("sourceContext")}><p>{signal.sourceClassroomName}</p><p className="text-xs text-muted">{signal.sourceSessionTitle || t("classLevelSignal")}</p></TableCell>
+              <TableCell mobileLabel={t("recommendation")} className="max-w-80 whitespace-normal"><p>{signal.recommendation}</p><p className="mt-1 text-xs text-muted">{localDateTime(signal.occurredAt, locale)}</p></TableCell>
+              <TableCell mobileLabel={t("suggestedTarget")}><p>{signal.suggestedCourseTitle || "—"}</p><p className="text-xs text-muted">{signal.targetTermName || "—"}</p></TableCell>
+              <TableCell mobileLabel={t("signalSourceTeacher")}>{signal.sourceTeacherName}</TableCell>
+              <TableCell mobileSpan="secondary"><Badge variant="outline" className={followupToneClasses[signal.status === "accepted" ? "healthy" : signal.status === "dismissed" ? "unhealthy" : "attention"]}>{t(`signalStatus_${signal.status}`)}</Badge></TableCell>
+              <TableCell mobileLabel={t("actions")} data-table-mobile-actions className="text-right">
                 {signal.status === "pending" && canResolve ? <ResolveSignalDialog signal={signal} data={data} owners={owners} onSaved={() => router.refresh()} /> : null}
                 {signal.opportunityId ? <Link className={cn(buttonVariants({ size: "sm", variant: "ghost" }))} href={signal.signalType === "upsell_recommendation" ? "/dashboard/communication" : `/dashboard/renewals/${signal.opportunityId}`}>{t("openOpportunity")}</Link> : null}
                 {signal.status !== "pending" && !signal.opportunityId ? <span className="text-xs text-muted">{signal.handledByName || "—"}</span> : null}

@@ -164,7 +164,7 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
         ...(presentation === "communication" ? {} : { population: filters.population ?? "work", reason: filters.reason ?? "" }) }}
       disabled={busy} onPageChange={(page, pageSize) => navigate({ page, pageSize })} />}>
     {firstContactContent ?? <SchoolSupportTableEntry workspace="students" enabled={canPlan} columns={[...(canSelect?["blank" as const]:[]),"name","phone","blank","blank",...(showBackground?["blank" as const,"blank" as const]:[]),"note","blank"]}><DashboardTableShell data-followup-workbench aria-busy={server?.pending}>
-      <Table className={`table-fixed text-xs [&_th]:px-2 ${showBackground ? "min-w-[73rem]" : "min-w-[57rem]"}`}>
+      <Table mobileLayout="stacked" className={`table-fixed text-xs [&_th]:px-2 ${showBackground ? "min-w-[73rem]" : "min-w-[57rem]"}`}>
         <TableHeader className="sticky top-0 z-20 bg-paper text-xs text-muted"><TableRow>
           {canSelect ? <TableHead className="w-9"><Checkbox aria-label={m.selectPage} disabled={busy || !selectableRows.length}
             checked={Boolean(selectableRows.length) && selectedRows.length === selectableRows.length ? true : selectedRows.length ? "indeterminate" : false}
@@ -197,33 +197,33 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
             rowProps={{ "data-student-stage-row": row.key, "data-student-stage": row.stage,
               className: "h-10 cursor-pointer focus-visible:outline-none [&>td]:px-2 [&>td]:py-1 [&>td]:align-middle [&>td]:whitespace-nowrap" }}
             summary={<>
-            {canSelect ? <TableCell><Checkbox aria-label={`${m.selectStudent} · ${row.name}`} disabled={busy || !canAssign && !row.canContact} checked={selectedKeys.has(row.key)}
+            {canSelect ? <TableCell mobileSpan="secondary"><Checkbox aria-label={`${m.selectStudent} · ${row.name}`} disabled={busy || !canAssign && !row.canContact} checked={selectedKeys.has(row.key)}
               onCheckedChange={checked => setSelectedKeys(current => { const next = new Set(current); if (checked === true) next.add(row.key); else next.delete(row.key); return next; })} /></TableCell> : null}
-            <TableCell><FollowupPersonCell name={row.name} phone={row.phone} grade={grade} studentGrade={row.grade} nameOnly inlineGrade
+            <TableCell mobileSpan="primary"><FollowupPersonCell name={row.name} phone={row.phone} grade={grade} studentGrade={row.grade} nameOnly inlineGrade
               subject={{ studentId: row.studentId, leadId: row.leadId }} expanded={expanded} detailsId={`student-stage-details-${row.key}`}
               onToggle={() => { if (!busy) { if (expanded) setActive(null); else open(row); } }} />
               <PossibleDuplicateBadge count={row.possibleDuplicateCount} subject={{ studentId: row.studentId, leadId: row.leadId }} name={row.name} locale={locale} /></TableCell>
-            <TableCell title={row.phone || undefined}><p className="truncate tabular-nums text-muted">{row.phone || "—"}</p>
+            <TableCell mobileLabel={m.phone} title={row.phone || undefined}><p className="truncate tabular-nums text-muted">{row.phone || "—"}</p>
               {recontact && (row.sharedPhoneCount ?? 0) > 1 ? <span className="text-[10px] text-muted">{m.sharedPhone} · {row.sharedPhoneCount}</span> : null}</TableCell>
-            <TableCell title={`${m.stages[row.stage]} · ${situation}`}><div className="flex min-w-0 items-center gap-1.5">
+            <TableCell mobileSpan={canSelect ? undefined : "secondary"} mobileLabel={canSelect ? m.state : undefined} title={`${m.stages[row.stage]} · ${situation}`}><div className="flex min-w-0 items-center gap-1.5">
               <Badge variant="outline" className="min-w-0 max-w-full whitespace-normal rounded-md px-1.5 py-0 text-left leading-4">{showStage ? `${m.stages[row.stage]} · ` : ""}{situation}</Badge>
               {handled.has(row.key) ? <span role="img" aria-label={m.retained} title={m.retained} className="shrink-0 text-leaf-deep"><Check className="size-3.5" aria-hidden="true" /></span> : null}
             </div>
               {row.sourceArrangement ? <p title={row.sourceArrangement} className="mt-0.5 truncate text-[11px] text-muted">{locale.startsWith("en") ? "Planned · " : "拟入班 · "}{row.sourceArrangement}</p> : null}
               {(row.sourceReviewCount ?? 0) > 0 ? <Student360Trigger subject={{ studentId: row.studentId, leadId: row.leadId }} fallback={{ name: row.name, phone: row.phone, grade: row.grade }} className="text-[11px] text-primary">{locale.startsWith("en") ? "Source review" : "资料待核对"} · {row.sourceReviewCount}</Student360Trigger> : null}
             </TableCell>
-            <TableCell><div title={row.ownerName || m.unassigned}>{canAssign && !collaboration?.canManage && !recontact
+            <TableCell mobileLabel={m.owner}><div title={row.ownerName || m.unassigned}>{canAssign && !collaboration?.canManage && !recontact
                 ? <StudentStageOwnerControl row={row} assignees={assignees} locale={locale} disabled={busy} onBusyChange={setBusy} onAssigned={assigned} />
                 : <span className="block whitespace-normal text-muted">{row.ownerName || m.unassigned}</span>}</div>
               {row.groups?.length ? <p className="whitespace-normal text-[11px] leading-4 text-muted">{m.relatedGroups}{row.groups.map(group => group.name).join(locale.startsWith("en") ? ", " : "、")}</p> : null}</TableCell>
-            {showBackground ? <TableCell title={[background, row.assessmentAt ? formatAt(row.assessmentAt) : ""].filter(Boolean).join(" · ")}><p className="truncate">{background}</p>
+            {showBackground ? <TableCell mobileLabel={m.background} title={[background, row.assessmentAt ? formatAt(row.assessmentAt) : ""].filter(Boolean).join(" · ")}><p className="truncate">{background}</p>
               <StudentAssessmentCompletionHint row={row} locale={locale} />
               {row.inferredSourceIds?.length && row.studentId ? <Link href={`/dashboard/students/${row.studentId}?tab=history#student-source-records`}><Badge variant="outline" className="mt-0.5 px-1 text-[10px]">{locale.startsWith("en") ? "Inferred · check when needed" : "资料待核对"}</Badge></Link>
                 : Boolean(row.assessmentCandidateCount) ? <Student360Trigger subject={{ studentId: row.studentId, leadId: row.leadId }} fallback={{ name: row.name, phone: row.phone, grade: row.grade }} className="text-xs text-primary">{m.assessmentCandidates} {row.assessmentCandidateCount}</Student360Trigger> : null}</TableCell> : null}
-            {showBackground ? <TableCell title={row.teacherName || m.unassigned}><p className="truncate">{row.teacherName || m.unassigned}</p></TableCell> : null}
-            <TableCell title={[row.note || m.noNote, row.lastContactAt ? formatAt(row.lastContactAt) : ""].filter(Boolean).join("\n")}><p className="truncate">{row.note || m.noNote}</p>
+            {showBackground ? <TableCell mobileLabel={m.teacher} title={row.teacherName || m.unassigned}><p className="truncate">{row.teacherName || m.unassigned}</p></TableCell> : null}
+            <TableCell mobileLabel={m.recent} mobileEmpty={!row.note && !row.lastContactAt} title={[row.note || m.noNote, row.lastContactAt ? formatAt(row.lastContactAt) : ""].filter(Boolean).join("\n")}><p className="truncate">{row.note || m.noNote}</p>
               {recontact && row.lastContactAt ? <p className="text-[10px] text-muted">{formatDashboardDate(row.lastContactAt, context, { time: false })}</p> : null}</TableCell>
-            <TableCell><div className="flex items-center justify-end gap-1">
+            <TableCell mobileLabel={m.actions} data-table-mobile-actions><div className="flex items-center justify-end gap-1">
               {collaboration?.canManage ? <SchoolCollaboratorControl row={row} settings={collaboration} locale={locale} disabled={busy}
                 onSaved={subject => setRows(current => replaceSavedStudent(current, row.key, subject))} /> : null}
               {row.canWrite ? <Button size="sm" variant="ghost" className="h-7 shrink-0 px-2 text-xs" disabled={busy} onClick={() => open(row, contactMode)}>{contactMode === "contact" ? m.contact : m.note}</Button> : null}

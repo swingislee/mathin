@@ -4,12 +4,12 @@ import styles from "./table.module.css";
 
 type TableProps = React.ComponentProps<"table"> & {
   containerClassName?: string;
-  /** 窄屏将前两列作为摘要，其余字段纵向排列；沿用原行、详情和输入状态。 */
-  mobileLayout?: "records";
+  /** records 沿用嵌套记录外观；stacked 只在窄屏重排连续表格，桌面保持原样。 */
+  mobileLayout?: "records" | "stacked";
 };
 export function Table({ className, containerClassName, mobileLayout, ...props }: TableProps) {
   return <div data-slot="table-container" data-table-mobile-layout={mobileLayout}
-    className={cn("relative w-full overflow-x-auto", containerClassName, mobileLayout === "records" && styles.records)}>
+    className={cn("relative w-full overflow-x-auto", containerClassName, mobileLayout === "records" && styles.records, mobileLayout === "stacked" && styles.stacked)}>
     <table data-slot="table" className={cn("w-full bg-card caption-bottom text-sm", className)} {...props} />
   </div>;
 }
@@ -23,13 +23,14 @@ type TableCellProps = React.ComponentProps<"td"> & {
   mobileLabel?: string;
   mobileHidden?: boolean;
   mobileEmpty?: boolean;
-  mobileSpan?: "full";
+  /** primary/secondary 组成手机摘要行，其余字段按原顺序排列。 */
+  mobileSpan?: "full" | "primary" | "secondary";
 };
 export function TableCell({ className, flush = false, mobileLabel, mobileHidden, mobileEmpty, mobileSpan, children, ...props }: TableCellProps) {
   return <td data-slot="table-cell" data-table-mobile-hidden={mobileHidden || undefined}
     data-table-mobile-empty={mobileEmpty || undefined} data-table-mobile-span={mobileSpan}
     data-table-mobile-labeled={Boolean(mobileLabel) || undefined} className={cn("px-4 py-3 align-middle", flush && "relative p-0", flush && styles.flush, className)} {...props}>
-    {mobileLabel && <span data-table-mobile-label className={styles.label}>{mobileLabel}</span>}{children}
+    {mobileLabel ? <><span data-table-mobile-label className={styles.label}>{mobileLabel}</span><div data-table-mobile-value className={styles.value}>{children}</div></> : children}
   </td>;
 }
 export function TableCaption({ className,...props }:React.ComponentProps<"caption">){return <caption className={cn("mt-4 text-sm text-muted",className)} {...props}/>;}

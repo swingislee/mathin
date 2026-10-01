@@ -211,7 +211,7 @@ export function ActivitiesManager({
         ]}
       />
       <DashboardTableShell>
-        <Table containerClassName="max-h-[calc(100dvh-15rem)] overflow-auto">
+        <Table mobileLayout="stacked" containerClassName="max-h-[calc(100dvh-15rem)] overflow-auto">
           <TableHeader className="sticky top-0 z-30 bg-card">
             <TableRow>
               <TableHead><DashboardTableColumnHeader label={t("time")} {...activityTable.columnProps("time")} /></TableHead>
@@ -231,10 +231,10 @@ export function ActivitiesManager({
               const canRegister = current && publicClass;
               const registrationFacts = activity.registrations.filter(row => row.registeredOn || row.reportedResult || row.assessment?.assessmentBand && row.assessment.score === null);
               return <Fragment key={activity.id}><TableRow data-record-state={activity.recordState ?? 'current'} data-activity-row={activity.id} aria-expanded={canRegister ? expanded : undefined} className={canRegister ? `cursor-pointer ${expanded ? "bg-moon/10 hover:bg-moon/10" : ""}` : undefined} onClick={canRegister ? () => toggleActivity(activity.id) : undefined}>
-                <TableCell className="whitespace-nowrap text-sm">
+                <TableCell mobileLabel={t("time")} className="whitespace-nowrap text-sm">
                   {businessDisplayDate(activity.scheduledAt,activity.occurredOn,locale)}
                 </TableCell>
-                <TableCell>
+                <TableCell mobileSpan="primary">
                   {canRegister ? <Button size="sm" variant="ghost" className="h-auto justify-start gap-1 p-0 text-left text-ink" onClick={(event) => { event.stopPropagation(); toggleActivity(activity.id); }}>{expanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}{activity.title}</Button> : current ? <Link href={`/dashboard/activities/${activity.id}`} className="font-medium text-ink hover:underline">
                     {activity.title}
                   </Link> : <span className="font-medium text-ink">{activity.title}</span>}
@@ -246,10 +246,10 @@ export function ActivitiesManager({
                       ? activity.targetGrades.map((grade) => gradeT("grade", { grade })).join("、") : gradeT("all")}</span>
                   </div>
                 </TableCell>
-                <TableCell className="tabular-nums">{t("participationCounts", { booked, attended })}{registrationFacts.map(row => <div key={row.id} className="mt-1 text-xs"><p>{row.studentName}</p>{row.registeredOn ? <p className="text-muted">{recordM.registeredOn} {row.registeredOn}</p> : null}</div>)}</TableCell>
-                <TableCell className="tabular-nums">{assessed}{registrationFacts.map(row => row.assessment?.assessmentBand ? <p key={row.id} className="mt-1 text-xs">{assessmentT(`band_${row.assessment.assessmentBand}`)}</p> : null)}</TableCell>
-                <TableCell className="tabular-nums">{current ? awaitingRoute : '—'}{registrationFacts.map(row => row.reportedResult ? <div key={row.id} className="mt-1 text-xs"><p>{row.reportedResult}</p>{row.resultLinkStatus === 'edition_unconfirmed' ? <p className="text-muted">{getStudentBusinessHistoryMessages(locale).reportedResult} · {getStudentBusinessHistoryMessages(locale).editionPending}</p> : null}</div> : null)}</TableCell>
-                <TableCell>
+                <TableCell mobileLabel={t("participation")} className="tabular-nums">{t("participationCounts", { booked, attended })}{registrationFacts.map(row => <div key={row.id} className="mt-1 text-xs"><p>{row.studentName}</p>{row.registeredOn ? <p className="text-muted">{recordM.registeredOn} {row.registeredOn}</p> : null}</div>)}</TableCell>
+                <TableCell mobileLabel={t("assessment")} className="tabular-nums">{assessed}{registrationFacts.map(row => row.assessment?.assessmentBand ? <p key={row.id} className="mt-1 text-xs">{assessmentT(`band_${row.assessment.assessmentBand}`)}</p> : null)}</TableCell>
+                <TableCell mobileLabel={`${t("awaitingRoute")} / ${getStudentBusinessHistoryMessages(locale).result}`} className="tabular-nums">{current ? awaitingRoute : '—'}{registrationFacts.map(row => row.reportedResult ? <div key={row.id} className="mt-1 text-xs"><p>{row.reportedResult}</p>{row.resultLinkStatus === 'edition_unconfirmed' ? <p className="text-muted">{getStudentBusinessHistoryMessages(locale).reportedResult} · {getStudentBusinessHistoryMessages(locale).editionPending}</p> : null}</div> : null)}</TableCell>
+                <TableCell mobileLabel={t("actions")} data-table-mobile-actions>
                   <div className="flex justify-end gap-1" onClick={(event) => event.stopPropagation()}>
                     {current && canManage ? <>
                       <Button size="sm" variant="ghost" onClick={() => setEditing(activity)}>{t("edit")}</Button>

@@ -35,7 +35,7 @@ export function PostActivityFollowupTable({ initialRows, query = "" }: { initial
   const table = useDashboardTableView({ rows, columns, locale, persistenceKey: "school.followup.post-activity" });
   const save = (next: ActivityEnrollmentContext) => setOverrides((values) => ({ ...values, [next.registrationId]: next }));
   return <DashboardTableShell>
-    <Table className="w-full min-w-[88rem] table-fixed text-xs" containerClassName="max-h-[calc(100dvh-13rem)] overflow-auto">
+    <Table mobileLayout="stacked" className="w-full min-w-[88rem] table-fixed text-xs" containerClassName="max-h-[calc(100dvh-13rem)] overflow-auto">
       <colgroup><col style={{ width: "15rem" }} /><col style={{ width: "16rem" }} /><col style={{ width: "9rem" }} /><col style={{ width: "9rem" }} /><col style={{ width: "15rem" }} /><col style={{ width: "29rem" }} /></colgroup>
       <TableHeader><TableRow>
         <TableHead className="sticky left-0 top-0 z-30 min-w-48 border-r border-line bg-card"><DashboardTableColumnHeader label={t("student")} {...table.columnProps("student")} /></TableHead>
@@ -51,14 +51,14 @@ export function PostActivityFollowupTable({ initialRows, query = "" }: { initial
             setExpandedId((current) => current === row.registrationId ? null : row.registrationId);
           }
         }}>
-          <TableCell className="sticky left-0 z-10 border-r border-line bg-card"><Student360Trigger subject={{ studentId: row.studentId, leadId: row.leadId }} fallback={row}>{row.name}</Student360Trigger><p className="mt-1 text-muted">{row.phone}</p></TableCell>
-          <TableCell><Link href={`/dashboard/activities/${row.activityId}?view=review&node=assessment`} className="block truncate hover:underline">{row.activityTitle}</Link><p className="mt-1 text-muted">{formatAt(row.activityAt)}</p></TableCell>
-          <TableCell><Badge variant="outline" className={followupToneClasses[followupState(row) === "enrolled" ? "healthy" : ["closed", "unreachable"].includes(followupState(row)) ? "unhealthy" : "attention"]}>{t(`state_${followupState(row)}`)}</Badge></TableCell>
-          <TableCell className={cn(row.contacts[0]?.nextContactAt && new Date(row.contacts[0].nextContactAt).getTime() < now && !row.enrollmentId && row.route !== "closed" && "text-rose")}>
+          <TableCell mobileSpan="primary" className="sticky left-0 z-10 border-r border-line bg-card"><Student360Trigger subject={{ studentId: row.studentId, leadId: row.leadId }} fallback={row}>{row.name}</Student360Trigger><p className="mt-1 text-muted">{row.phone}</p></TableCell>
+          <TableCell mobileLabel={t("source")}><Link href={`/dashboard/activities/${row.activityId}?view=review&node=assessment`} className="block truncate hover:underline">{row.activityTitle}</Link><p className="mt-1 text-muted">{formatAt(row.activityAt)}</p></TableCell>
+          <TableCell mobileSpan="secondary"><Badge variant="outline" className={followupToneClasses[followupState(row) === "enrolled" ? "healthy" : ["closed", "unreachable"].includes(followupState(row)) ? "unhealthy" : "attention"]}>{t(`state_${followupState(row)}`)}</Badge></TableCell>
+          <TableCell mobileLabel={t("nextContact")} className={cn(row.contacts[0]?.nextContactAt && new Date(row.contacts[0].nextContactAt).getTime() < now && !row.enrollmentId && row.route !== "closed" && "text-rose")}>
             {row.contacts[0]?.nextContactAt ? formatAt(row.contacts[0].nextContactAt) : t("unscheduled")}
           </TableCell>
-          <TableCell className="max-w-80"><p className="truncate" title={row.contacts[0]?.note || row.routeNote}>{row.contacts[0]?.note || row.routeNote || "—"}</p></TableCell>
-          <TableCell><PostActivityQuickContact row={row} onSaved={save} expanded={expandedId === row.registrationId} detailsId={`post-activity-details-${row.registrationId}`} onDetails={() => setExpandedId((current) => current === row.registrationId ? null : row.registrationId)} /></TableCell>
+          <TableCell mobileLabel={t("latestContact")} mobileEmpty={!row.contacts[0]?.note && !row.routeNote} className="max-w-80"><p className="truncate" title={row.contacts[0]?.note || row.routeNote}>{row.contacts[0]?.note || row.routeNote || "—"}</p></TableCell>
+          <TableCell mobileLabel={t("action")} data-table-mobile-actions><PostActivityQuickContact row={row} onSaved={save} expanded={expandedId === row.registrationId} detailsId={`post-activity-details-${row.registrationId}`} onDetails={() => setExpandedId((current) => current === row.registrationId ? null : row.registrationId)} /></TableCell>
         </TableRow><FollowupInlineDetails open={expandedId === row.registrationId} onOpenChange={(open) => setExpandedId(open ? row.registrationId : null)} title={row.name} colSpan={6} id={`post-activity-details-${row.registrationId}`}>
           <PostActivityHandoff source={{ registrationId: row.registrationId, invitationId: null }} initialContext={row} onSaved={save} />
         </FollowupInlineDetails></Fragment>)}
