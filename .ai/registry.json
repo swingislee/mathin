@@ -287,6 +287,8 @@
         "apps/parent-wechat/miniprogram/lib/page.ts",
         "apps/parent-wechat/miniprogram/lib/discovery.ts",
         "apps/parent-wechat/miniprogram/lib/navigation.ts",
+        "apps/parent-wechat/miniprogram/lib/assessment-calendar.ts",
+        "apps/parent-wechat/miniprogram/lib/assessment-pending.ts",
         "apps/parent-wechat/README.md",
         "apps/parent-wechat/docs/portal.md",
         "tests/parent-wechat-discovery.test.ts",
