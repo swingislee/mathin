@@ -1,6 +1,6 @@
 # 家长端接口规范
 
-当前接口版本为 `0.2.0`。可调用能力以 [OpenAPI](openapi.json) 的 paths 为准，业务 DTO 维护在 [portal.ts](portal.ts)。微信小程序已接入下列能力；iOS、Android 保留工程基础，可复用此 HTTP 合同。
+当前接口版本为 `0.3.0`。可调用能力以 [OpenAPI](openapi.json) 的 paths 为准，业务 DTO 维护在 [portal.ts](portal.ts)。微信、iOS 和 Android 使用同一份 HTTP 合同，各端按自己的页面接入已实现能力。
 
 ## 接入方式
 
@@ -23,6 +23,8 @@
 | `GET /api/v1/parent/portal?resource=reports` | 已发送测评及已发布课后反馈 | 必须 |
 | `GET /api/v1/parent/portal?resource=practices` | 当前参与人可提交的练习 | 必须 |
 | `GET /api/v1/parent/portal?resource=submission&id=...&participant=...` | 最新一次提交；未提交为 `null` | 必须 |
+| `GET /api/v1/parent/learning?participant=...` | 一个孩子的课表、考勤、学习摘要、请假进度、报告及当前账号通知 | 必须 |
+| `POST /api/v1/parent/learning` | `leave` 提交请假申请；`readNotification` 标记本人通知已读 | 必须 |
 | `POST /api/v1/parent/portal` | `intake` / `book` / `cancel` / `submit` | `intake` 免登录，其余必须 |
 | `POST /api/v1/parent/media` | multipart `file` 上传，附练习与参与人两个请求头 | 必须 |
 | `GET /api/v1/parent/media?id=...` | 获取 5 分钟有效的私有预览地址 | 必须 |
@@ -35,5 +37,23 @@
 照片上限 12 MiB、视频 64 MiB，每次提交 1～9 个附件，单账号预留空间上限 1 GiB。根据文件签名识别 JPEG/PNG/WebP/HEIC/MP4/MOV，视频额外核验 `video` 权限。附件只存入私有 `miniapp-practice` bucket；签名 URL 经同一 API origin 代理，手机无需访问 Supabase 内网地址。失败重试会复用客户端已完成的上传；未确认上传响应时可能留下预留文件，目前保留供后台核对，没有新增自动清理任务。
 
 列表上限：活动、预约、练习各 100 条，结果合计 200 条；课后反馈范围为最近 366 天。业务结果按原始发布语言展示。错误体统一为 `{ "code": "..." }`，含 `FORM_CHANGED`、`ACTIVITY_FULL`、`ACCOUNT_SECURITY` 等可处理原因。JSON 请求最多 32 KiB；登录/刷新、匿名登记和上传有数据库计数限流。正式反向代理须覆盖客户端传入的 `X-Forwarded-For`，使来源限流使用可信地址。
+
+## 学习视图与现有业务复用
+
+`learning` 使用调用者的 Bearer Supabase client，先核验 `get_my_students` 中的孩子 ID，再读取现有 `get_my_schedule`、`get_my_attendance`、`get_my_learning_summary`、`list_my_session_leave_requests` 和已发布报告；不建立 App 专用业务表。每个孩子的课表、考勤、报告和申请按稳定 `student_id` 切片，同名孩子保持独立。
+
+`participant` 必填。可选 `from` / `to` 接受含时区的 ISO 时间，默认当前时刻前 30 天至后 90 天，左闭右开，跨度最多 366 天。这个窗口只约束课表及考勤；报告沿用原接口的查询窗口。`courses` 是窗口中有课次的班级投影，`sessionCount` 是窗口内课次数。它不代表已购买课程目录或剩余课时，窗口之外的班级可通过调整窗口读取。摘要只返回年级、下一课时间、本周课次数和星星数；未输出原 RPC 中的财务及最近作业成绩字段。
+
+`notifications` 是账号本人最新 100 条未归档通知，含已读及未读，覆盖所有孩子；不随当前孩子筛选。只返回通知键、时间、已读状态、安全的本站工作区相对路径，以及孩子/班级/课次的白名单文字字段。`type` 不是封闭枚举，客户端为未知类型提供通用通知标题。通知只在 `mark_notification_read` 成功后显示已读。
+
+请假使用 `{ action: "leave", participantId, sessionId, reason }`，复用 `submit_session_leave_request`，成功返回 HTTP 201 和申请 ID。原 RPC 检查当前亲子关系、在读报名和未来未结束的课次。成功表示申请已提交，审批及补课进度从 `leaveRequests` 读取。请假期间保持提交按钮忙碌，网络结果不明时先刷新申请列表再由用户核对，避免自动重复 POST；原 RPC 没有请求幂等键。已开始或结束的课次返回 `CONFLICT`，目标不存在返回 `NOT_FOUND`，未报名返回 `FORBIDDEN`。
+
+`capabilities` 明确列出可执行能力：当前支持请假申请与通知已读；聊天、家长自行调课、错题、资料编辑和支付为 `false`。空列表表示本次授权查询没有可见数据；所需查询失败返回错误，不以空列表掩盖服务不可用。错题目前没有可供家长读取的权威 RPC；课堂学习表现检查是学生端合同，不能改名为家长错题。
+
+### 报告字段兼容
+
+`Report.participantId` 为新增的可空字段。课后反馈直接使用原 RPC 的 `student_id`；测评依赖 `20261001000100_parent_report_participant_identity.sql` 为原 `miniapp_assessment_reports` JSON 增加 `students.id`，保持同签名、发送状态和 `grades` 权限。本轮只交付 SQL 源码，未向任何数据库执行 migration；目标环境需要按其授权流程单独升级。
+
+未升级数据库的测评仍可通过原 `portal?resource=reports` 读取，其 `participantId` 为 `null`。`learning` 不按姓名猜测归属，只返回 ID 与所选孩子一致的报告，并通过 `unassignedReportCount` 告知当前账号存在无法归属的历史报告。原账号、预约、练习、提交及媒体接口的请求和已有字段保持兼容，微信 DTO 副本同步生成。
 
 OpenAPI 使用相对 server URL，各端本地配置选择 origin。`node scripts/sync-parent-contract.mjs` 生成微信 DTO 副本；`pnpm parents:check` 核对副本、工程边界和受影响测试。后端配置与本机验收步骤见[小程序业务配置说明](../../apps/parent-wechat/docs/portal.md)。

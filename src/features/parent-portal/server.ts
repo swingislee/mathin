@@ -20,7 +20,7 @@ export function failure(error: unknown) {
   const code = error instanceof PortalError ? error.code : error instanceof z.ZodError ? "VALIDATION" : "UNAVAILABLE";
   return response({ code }, status[code]);
 }
-function requireResult<T>(result: { data:T; error:{ message:string; code?:string } | null }): T {
+export function requireResult<T>(result: { data:T; error:{ message:string; code?:string } | null }): T {
   if (result.error) throw new PortalError(result.error.message in status ? result.error.message as ApiErrorCode
     : result.error.code === "42501" ? "FORBIDDEN" : "UNAVAILABLE");
   return result.data;
@@ -112,17 +112,7 @@ export async function portalGet(request:Request) {
     participants:requireResult(await db.rpc("get_my_students"))?.map((row:{id:string;name:string})=>({id:row.id,name:row.name}))??[]});
   if(resource==="bookings")return response(requireResult(await db.rpc("miniapp_my_bookings")));
   if(resource==="practices")return response(requireResult(await db.rpc("miniapp_my_practices")));
-  if(resource==="reports") {
-    const [assessments,reviews]=await Promise.all([
-      db.rpc("miniapp_assessment_reports"),
-      db.rpc("get_my_session_reviews",{p_from:new Date(Date.now()-366*86400000).toISOString(),p_to:new Date(Date.now()+86400000).toISOString()}),
-    ]);
-    const reports:Report[]=[...(requireResult(assessments)??[]),...(requireResult(reviews)??[]).map((row:{session_id:string;student_id:string;lecture_name:string;student_name:string;scheduled_at:string;comment:string;exit_score:number|null})=>({
-      id:row.session_id+":"+row.student_id,kind:"feedback" as const,title:row.lecture_name,participantName:row.student_name,date:row.scheduled_at,
-      summary:row.comment,strengths:"",focusAreas:"",recommendation:"",score:row.exit_score,totalScore:null,
-    }))];
-    return response(reports.sort((a,b)=>b.date.localeCompare(a.date)).slice(0,200));
-  }
+  if(resource==="reports")return response(await readReports(db));
   if(resource==="submission") {
     const assignment=uuid.parse(query.get("id")),student=uuid.parse(query.get("participant"));
     if(!requireResult(await db.rpc("miniapp_can_practice",{p_assignment:assignment,p_student:student})))throw new PortalError("FORBIDDEN");
@@ -133,6 +123,23 @@ export async function portalGet(request:Request) {
     return response(result);
   }
   throw new PortalError("NOT_FOUND");
+}
+export async function readReports(db: SupabaseClient, now = Date.now()): Promise<Report[]> {
+  const [assessments,reviews]=await Promise.all([
+    db.rpc("miniapp_assessment_reports"),
+    db.rpc("get_my_session_reviews",{p_from:new Date(now-366*86400000).toISOString(),p_to:new Date(now+86400000).toISOString()}),
+  ]);
+  const reports:Report[]=[
+    ...(requireResult(assessments)??[]).map((row:Omit<Report,"participantId"> & {participantId?:string|null})=>({
+      ...row,participantId:uuid.safeParse(row.participantId).success?row.participantId!:null,
+    })),
+    ...(requireResult(reviews)??[]).map((row:{session_id:string;student_id:string;lecture_name:string;student_name:string;scheduled_at:string;comment:string;exit_score:number|null})=>({
+      id:row.session_id+":"+row.student_id,kind:"feedback" as const,title:row.lecture_name,
+      participantId:row.student_id,participantName:row.student_name,date:row.scheduled_at,
+      summary:row.comment,strengths:"",focusAreas:"",recommendation:"",score:row.exit_score,totalScore:null,
+    })),
+  ];
+  return reports.sort((a,b)=>b.date.localeCompare(a.date)).slice(0,200);
 }
 const commandSchema=z.discriminatedUnion("action",[
   z.object({action:z.literal("book"),activityId:uuid,participantId:uuid}).strict(),

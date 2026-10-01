@@ -26,6 +26,8 @@ export type Booking = {
 };
 export type Report = {
   id: string; kind: "assessment" | "feedback"; title: string;
+  /** 旧版 assessment RPC 尚未升级时为 null；客户端仅使用 ID 关联孩子。 */
+  participantId: string | null;
   participantName: string; date: string; summary: string; strengths: string;
   focusAreas: string; recommendation: string; score: number | null; totalScore: number | null;
 };
@@ -37,6 +39,47 @@ export type Media = { id: string; kind: "image" | "video"; name: string; bytes: 
 export type PracticeSubmission = { id: string; submittedAt: string; note: string; media: Media[] };
 export type Session = { accessToken: string; refreshToken: string; expiresAt: number };
 export type Account = { id: string; displayName: string; participants: Participant[] };
+export type LearningSummary = {
+  grade: number | null; nextSessionAt: string | null; weekSessionCount: number; starTotal: number;
+};
+/** 当前课表窗口内的班级投影；sessionCount 表示窗口内课次，不表示已购或剩余课时。 */
+export type LearningCourse = {
+  id: string; name: string; teacherName: string | null; nextSessionAt: string | null; sessionCount: number;
+};
+export type LearningSession = {
+  id: string; participantId: string; classroomId: string; classroomName: string; title: string;
+  startsAt: string; durationMinutes: number | null; teacherName: string | null;
+};
+export type LearningAttendance = {
+  sessionId: string; participantId: string; classroomName: string; title: string; startsAt: string;
+  status: "present" | "absent" | "late" | "leave"; note: string;
+};
+/** 当前账号的通知；其中 participantId=null 表示通知未指定孩子。 */
+export type LearningNotification = {
+  id: string; type: string; occurredAt: string; readAt: string | null; link: string | null;
+  participantId: string | null; studentName: string | null; classroomName: string | null; sessionTitle: string | null;
+};
+export type LearningLeaveRequest = {
+  id: string; sessionId: string; participantId: string; sessionTitle: string; reason: string;
+  status: "pending" | "approved" | "rejected" | "cancelled"; createdAt: string; decidedAt: string | null;
+  makeupSessionId: string | null; makeupSessionTitle: string | null; makeupClassroomName: string | null;
+  makeupStartsAt: string | null; makeupStatus: "to_schedule" | "scheduled" | "completed" | "cancelled" | null;
+};
+export type LearningCapabilities = {
+  leaveRequests: boolean; notificationRead: boolean; chat: boolean; rescheduling: boolean;
+  wrongAnswers: boolean; profileEditing: boolean; payments: boolean;
+};
+export type ParentLearning = {
+  participantId: string; generatedAt: string; range: { from: string; to: string };
+  summary: LearningSummary | null; courses: LearningCourse[]; schedule: LearningSession[];
+  attendance: LearningAttendance[]; notifications: LearningNotification[];
+  leaveRequests: LearningLeaveRequest[]; reports: Report[];
+  /** 当前账号中旧接口缺少孩子 ID 的报告数；不把它们归入任意孩子。 */
+  unassignedReportCount: number; capabilities: LearningCapabilities;
+};
+export type LearningCommand =
+  | { action: "leave"; sessionId: string; participantId: string; reason: string }
+  | { action: "readNotification"; id: string };
 export type ApiErrorCode = "VALIDATION" | "UNAUTHENTICATED" | "FORBIDDEN" | "ACCOUNT_SECURITY"
   | "NOT_FOUND" | "FORM_CHANGED" | "ACTIVITY_FULL" | "BOOKING_CLOSED" | "CONFLICT"
   | "TOO_LARGE" | "FILE_TYPE" | "RATE_LIMIT" | "UNAVAILABLE";

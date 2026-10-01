@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "格致未来思维 · 家长端接口",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "description": "原生客户端通过版本化 HTTP 接入现有 Supabase 身份和业务数据。登记与活动浏览免登录；预约、结果及练习须核验账号和参与人权限。"
   },
   "servers": [
@@ -726,6 +726,219 @@
           }
         }
       }
+    },
+    "/api/v1/parent/learning": {
+      "get": {
+        "operationId": "getParentLearning",
+        "summary": "读取一个孩子的课表、考勤、报告及本人通知",
+        "description": "使用现有 Supabase RPC 和 RLS。participant 必填，按稳定 ID 检查关系和筛选数据。from/to 为含时区的 ISO 时间，默认当前时间前 30 天至后 90 天，左闭右开且跨度最多 366 天。range 只约束课表及考勤。报告沿用最近 366 天课后反馈及最新 100 条已发送测评，总上限 200；旧 RPC 无 participantId 的报告只计入 unassignedReportCount。通知为账号本人最新 100 条未归档通知，覆盖所有孩子。任一所需查询失败返回错误，不把服务不可用表示为空结果。",
+        "security": [
+          {
+            "parentBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "participant",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "学习视图",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentLearning"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION：字段或时间窗口无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED：需要有效 Bearer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN 或 ACCOUNT_SECURITY：账号、孩子关系或业务权限不允许",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "UNAVAILABLE：服务或所需查询不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "updateParentLearning",
+        "summary": "申请请假或标记本人通知已读",
+        "description": "leave 复用 submit_session_leave_request，检查亲子关系、在读报名和未来未结束课次；成功仅表示申请已提交，不表示批准或已调课。readNotification 复用 mark_notification_read，仅允许操作本人未归档通知。JSON 请求最多 32 KiB。请假 RPC 无请求幂等键，网络结果不明时先刷新申请列表。",
+        "security": [
+          {
+            "parentBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/LearningLeaveCommand"
+                  },
+                  {
+                    "$ref": "#/components/schemas/LearningReadNotificationCommand"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "action"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "通知已读",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "请假申请已提交",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION：字段或时间窗口无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED：需要有效 Bearer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN 或 ACCOUNT_SECURITY：账号、孩子关系或业务权限不允许",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND：课次或本人通知不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CONFLICT：课次已开始或已结束，不能请假",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "TOO_LARGE：JSON 请求超过 32 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "UNAVAILABLE：服务或所需查询不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1091,7 +1304,8 @@
           "focusAreas",
           "recommendation",
           "score",
-          "totalScore"
+          "totalScore",
+          "participantId"
         ],
         "properties": {
           "id": {
@@ -1145,6 +1359,14 @@
                 "type": "null"
               }
             ]
+          },
+          "participantId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "稳定孩子 ID；旧 assessment RPC 尚未升级时为 null，客户端不按姓名推测归属。"
           }
         }
       },
@@ -1500,6 +1722,527 @@
             "minItems": 1,
             "maxItems": 9,
             "uniqueItems": true
+          }
+        }
+      },
+      "LearningSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "grade",
+          "nextSessionAt",
+          "weekSessionCount",
+          "starTotal"
+        ],
+        "properties": {
+          "grade": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "nextSessionAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "weekSessionCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "starTotal": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "LearningCourse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "teacherName",
+          "nextSessionAt",
+          "sessionCount"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "teacherName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "nextSessionAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "sessionCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "description": "查询时间窗口内的真实班级投影。sessionCount 是窗口内课次，非已购、剩余课时或完整课程目录。"
+      },
+      "LearningSession": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "participantId",
+          "classroomId",
+          "classroomName",
+          "title",
+          "startsAt",
+          "durationMinutes",
+          "teacherName"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "participantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "classroomId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "classroomName": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "durationMinutes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "teacherName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "LearningAttendance": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sessionId",
+          "participantId",
+          "classroomName",
+          "title",
+          "startsAt",
+          "status",
+          "note"
+        ],
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "participantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "classroomName": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "present",
+              "absent",
+              "late",
+              "leave"
+            ]
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "LearningNotification": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "type",
+          "occurredAt",
+          "readAt",
+          "link",
+          "participantId",
+          "studentName",
+          "classroomName",
+          "sessionTitle"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "readAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "link": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "安全的本站 dashboard 相对路径，移动端决定对应原生页面。"
+          },
+          "participantId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "studentName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "classroomName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sessionTitle": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "description": "账号本人通知，含所有孩子及未指定孩子的通知；不按当前 participant 筛选。"
+      },
+      "LearningLeaveRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "sessionId",
+          "participantId",
+          "sessionTitle",
+          "reason",
+          "status",
+          "createdAt",
+          "decidedAt",
+          "makeupSessionId",
+          "makeupSessionTitle",
+          "makeupClassroomName",
+          "makeupStartsAt",
+          "makeupStatus"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "participantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sessionTitle": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected",
+              "cancelled"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "decidedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "makeupSessionId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "makeupSessionTitle": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "makeupClassroomName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "makeupStartsAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "makeupStatus": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "to_schedule",
+              "scheduled",
+              "completed",
+              "cancelled",
+              null
+            ]
+          }
+        }
+      },
+      "LearningCapabilities": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "leaveRequests",
+          "notificationRead",
+          "chat",
+          "rescheduling",
+          "wrongAnswers",
+          "profileEditing",
+          "payments"
+        ],
+        "properties": {
+          "leaveRequests": {
+            "type": "boolean"
+          },
+          "notificationRead": {
+            "type": "boolean"
+          },
+          "chat": {
+            "type": "boolean"
+          },
+          "rescheduling": {
+            "type": "boolean"
+          },
+          "wrongAnswers": {
+            "type": "boolean"
+          },
+          "profileEditing": {
+            "type": "boolean"
+          },
+          "payments": {
+            "type": "boolean"
+          }
+        },
+        "description": "可执行能力由后端明确返回，当前没有的聊天、调课、错题、资料编辑、支付能力为 false。"
+      },
+      "ParentLearning": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "participantId",
+          "generatedAt",
+          "range",
+          "summary",
+          "courses",
+          "schedule",
+          "attendance",
+          "notifications",
+          "leaveRequests",
+          "reports",
+          "unassignedReportCount",
+          "capabilities"
+        ],
+        "properties": {
+          "participantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "range": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "from",
+              "to"
+            ],
+            "properties": {
+              "from": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "to": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LearningSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "courses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LearningCourse"
+            }
+          },
+          "schedule": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LearningSession"
+            }
+          },
+          "attendance": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LearningAttendance"
+            }
+          },
+          "notifications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LearningNotification"
+            },
+            "maxItems": 100
+          },
+          "leaveRequests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LearningLeaveRequest"
+            },
+            "maxItems": 100
+          },
+          "reports": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Report"
+            },
+            "maxItems": 200
+          },
+          "unassignedReportCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "当前账号中旧 RPC 未提供孩子 ID 的报告数；这些报告不会按姓名分配到孩子。"
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/LearningCapabilities"
+          }
+        }
+      },
+      "LearningLeaveCommand": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action",
+          "sessionId",
+          "participantId",
+          "reason"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "const": "leave"
+          },
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "participantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          }
+        },
+        "description": "沿用现有请假申请 RPC，提交中禁重。网络结果不明时先重新拉取申请列表，避免重复创建。"
+      },
+      "LearningReadNotificationCommand": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action",
+          "id"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "const": "readNotification"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       }
