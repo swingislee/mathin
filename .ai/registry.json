@@ -7,7 +7,7 @@
       "title": "iOS 家长端集成",
       "agent": "codex",
       "threadId": "01a0f7b2-73aa-74b3-8cf6-b23207ece7d6",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-PARENT-IOS-20261001-INTEGRATION.md",
@@ -31,8 +31,8 @@
         ".ai/registry.json",
         "CHANGELOG.md"
       ],
-      "checkpoint": "50f3ba6038eab7aaa6d68ae9f1df2de6ebaf86c2",
-      "next": "家长端本轮源码与本机接收完成，人工验收状态保留。按原会话新增需求串行登记Motion Lab一键1秒增量，接收精确代码与交接后复核；生产与正式Gate未操作。"
+      "checkpoint": "104eb856c2d29ee26c99e7192ae53361a20122f0",
+      "next": "家长端接收状态保留；Motion Lab一键1秒增量也已按原会话需求复核并集成2feb6110/104eb856，相关检查复用。原会话继续LAN与人工验收；生产与正式Gate未操作。"
     },
     {
       "id": "DEV-PARENT-IOS-20261001",
@@ -80,7 +80,7 @@
       "title": "恢复 Motion Lab 拖动与长按功能",
       "agent": "codex",
       "threadId": "01a0f6fc-745e-7fd0-9b15-ce58ff01a2b8",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/motion-one-second-codex",
       "card": ".ai/tasks/DEV-MOTION-20261001.md",
@@ -98,8 +98,8 @@
         "messages/zh.json",
         "messages/en.json"
       ],
-      "checkpoint": "4615aaf30adc444d5122bc5ad928982c70488214",
-      "next": "按用户新需求增加批量设为1秒，明确保护手动路程或速度及时间自动时的处理。复用干净motion工作区，新分支已从当前main准备；消息文件tools.motion片段独占本窗口，完成定向检查后交接04，冻结场景合同保持。"
+      "checkpoint": "3156585417a3f2902a3a56a625c36f2831dbe71a",
+      "next": "一键1秒源码与交接04已复核并集成main 2feb6110/104eb856，九个实现/测试/说明文件与已检head一致。复用32项检查和定向类型/lint，消息编辑窗口释放；原会话继续LAN核对及人工验收。"
     },
     {
       "id": "DEV-CLASS-LIST-20261001",
