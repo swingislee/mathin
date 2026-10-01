@@ -77,7 +77,7 @@
       "title": "恢复 Motion Lab 拖动与长按功能",
       "agent": "codex",
       "threadId": "01a0f6fc-745e-7fd0-9b15-ce58ff01a2b8",
-      "status": "in_review",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/motion-ruler-codex",
       "card": ".ai/tasks/DEV-MOTION-20261001.md",
@@ -94,7 +94,7 @@
         "messages/en.json"
       ],
       "checkpoint": "745adf8f4ca29438561d16a2cb6d08e7ab83a602",
-      "next": "原会话人类已明确授权本次首行工具栏合入；集成人已只读核对代码和交接03，复用定向检查，待串行集成本地main。既有标尺/环形菜单的人工验收状态保留。"
+      "next": "首行工具栏已按本轮人类授权集成本地main a413bead/f0493e95；实现文件与已复核745adf8f一致，复用定向检查，待开发端人工验收。既有标尺/环形菜单验收状态保留。"
     },
     {
       "id": "DEV-CLASS-LIST-20261001",
