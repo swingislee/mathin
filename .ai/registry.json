@@ -7,7 +7,7 @@
       "title": "iOS 家长端集成",
       "agent": "codex",
       "threadId": "01a0f7b2-73aa-74b3-8cf6-b23207ece7d6",
-      "status": "in_review",
+      "status": "integrated",
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-PARENT-IOS-20261001-INTEGRATION.md",
@@ -24,8 +24,8 @@
         ".ai/registry.json",
         "CHANGELOG.md"
       ],
-      "checkpoint": "a718402b1a74a846d1a0dc8022b8881da59ecf06",
-      "next": "iOS、共享 API/Supabase 已在 main；小程序候选保留，原会话正在请求具体提交合入批准。其他已回传增量待独立复核，Mac 与产品验收另记。"
+      "checkpoint": "7769785de91996bfcac04b1e5e9390c88ff36a2f",
+      "next": "iOS、微信与共享 API/Supabase 均已集成 main；各平台构建和人工验收待完成。其他任务后续接收按独立授权处理，不改变本批交付事实。"
     },
     {
       "id": "DEV-PARENT-IOS-20261001",
@@ -148,7 +148,7 @@
         "CHANGELOG.md"
       ],
       "checkpoint": "9fc0079a3098ba77662adb64736bf5785932b05b",
-      "next": "此前 e73269ba 已集成；平移按钮增量和交接已回传，待独立复核和 main 集成；不纳入家长端候选，开发端手感待验收。"
+      "next": "9fc0079a 已完成集成人只读复核且无阻断，复用 worker 定向检查；等待原会话人类明确两提交合入许可，开发端手感待验收。"
     },
     {
       "id": "DEV-PARENT-IOS-SUPABASE-20261001",
@@ -195,7 +195,7 @@
       "title": "小程序家长发现与预约入口",
       "agent": "codex",
       "threadId": "01a0f7bd-4ca2-7370-a49c-a8f73fd4f5e9",
-      "status": "in_review",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/parent-wechat-discovery-codex",
       "card": ".ai/tasks/DEV-PARENT-WECHAT-20261001.md",
@@ -218,7 +218,7 @@
       ],
       "sharedPaths": [],
       "checkpoint": "ebd4bc8c0d4fd8331afc1f3b8b106a36173d30e5",
-      "next": "源码及定向检查完成、候选已组装；原会话等待用户明确批准三提交合入 main。模拟器及视觉待验收。"
+      "next": "已核验原会话人类明确批准，并将三提交及补充交接串行集成 main；定向检查通过，模拟器与人工视觉/业务验收待完成。"
     }
   ]
 }
