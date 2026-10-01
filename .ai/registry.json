@@ -20,6 +20,7 @@
         ".ai/tasks/DEV-PARENT-ASSESSMENT-NEXT-20261001.md",
         ".ai/tasks/DEV-PARENT-WECHAT-20261001.md",
         ".ai/tasks/DEV-PLACE-VALUE-20261001.md",
+        ".ai/tasks/DEV-PLACE-VALUE-TOOLBAR-20261001.md",
         "apps/AGENTS.md"
       ],
       "sharedPaths": [
@@ -152,6 +153,30 @@
       ],
       "checkpoint": "9fc0079a3098ba77662adb64736bf5785932b05b",
       "next": "9fc0079a 已只读复核并在原会话人类明确批准后集成 main cafb3092/e42873b3；机器结果复用，开发端平移手感待人工验收，未部署生产。"
+    },
+    {
+      "id": "DEV-PLACE-VALUE-TOOLBAR-20261001",
+      "title": "数位积木右栏原位整理",
+      "agent": "codex",
+      "threadId": "01a0dd5d-20ad-7471-be26-43a53a68757d",
+      "status": "in_progress",
+      "checkout": "worktree",
+      "branch": "codex/place-value-toolbar-codex",
+      "card": ".ai/tasks/DEV-PLACE-VALUE-TOOLBAR-20261001.md",
+      "writePaths": [
+        "src/features/tools/place-value/PlaceValueWorkspace.tsx",
+        "src/features/tools/place-value/PlaceValueWorkspace.module.css",
+        "src/features/tools/place-value/messages.ts",
+        "src/features/tools/spatial-interaction/actions.ts",
+        "src/features/tools/spatial-interaction/SpatialActionIcon.tsx",
+        "src/features/tools/spatial-interaction/control-inventory.ts",
+        "tests/place-value-workspace.test.ts",
+        "tests/spatial-controls-catalog.test.ts",
+        ".ai/handoffs/DEV-PLACE-VALUE-TOOLBAR-20261001-codex-01.md"
+      ],
+      "sharedPaths": [],
+      "checkpoint": "c0b72c08b609d3b005f4e60ce212baa3620b860c",
+      "next": "从登记提交准备干净独立分支，按人类已确认的右栏原位整理方案实现；定向检查、只读复核后由当前集成人更新本地main与开发入口，生产未授权。"
     },
     {
       "id": "DEV-PARENT-IOS-SUPABASE-20261001",
