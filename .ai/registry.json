@@ -7,7 +7,7 @@
       "title": "iOS 家长端集成",
       "agent": "codex",
       "threadId": "01a0f7b2-73aa-74b3-8cf6-b23207ece7d6",
-      "status": "integrated",
+      "status": "in_progress",
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-PARENT-IOS-20261001-INTEGRATION.md",
@@ -16,6 +16,8 @@
         ".ai/tasks/DEV-PARENT-IOS-20261001-INTEGRATION.md",
         ".ai/tasks/DEV-PARENT-IOS-SUPABASE-20261001.md",
         ".ai/tasks/DEV-PARENT-IOS-NEXT-20261001.md",
+        ".ai/tasks/DEV-PARENT-ASSESSMENT-SUPABASE-20261001.md",
+        ".ai/tasks/DEV-PARENT-ASSESSMENT-NEXT-20261001.md",
         ".ai/tasks/DEV-PARENT-WECHAT-20261001.md",
         ".ai/tasks/DEV-PLACE-VALUE-20261001.md",
         "apps/AGENTS.md"
@@ -25,7 +27,7 @@
         "CHANGELOG.md"
       ],
       "checkpoint": "7769785de91996bfcac04b1e5e9390c88ff36a2f",
-      "next": "iOS、微信与共享 API/Supabase 均已集成 main；各平台构建和人工验收待完成。其他任务后续接收按独立授权处理，不改变本批交付事实。"
+      "next": "已交付的 iOS 与共享学习接口保持原验收状态；串行登记并接收家长独立1对1测评接口，与小程序三栏及独立预约入口协调。数据库执行和生产操作未授权。"
     },
     {
       "id": "DEV-PARENT-IOS-20261001",
@@ -192,6 +194,49 @@
       "next": "已互审并集成 main；复用已通过定向检查。数据库迁移未执行，原生与产品验收待完成。"
     },
     {
+      "id": "DEV-PARENT-ASSESSMENT-SUPABASE-20261001",
+      "title": "家长1对1测评数据与权限复用",
+      "agent": "codex",
+      "threadId": null,
+      "status": "in_progress",
+      "checkout": "worktree",
+      "branch": "codex/parent-assessment-supabase-codex",
+      "card": ".ai/tasks/DEV-PARENT-ASSESSMENT-SUPABASE-20261001.md",
+      "writePaths": [
+        "supabase/migrations/20261001000200_parent_assessment_requests.sql",
+        "tests/parent-assessment-rls.test.ts",
+        "docs/evidence/parent-assessment-data-map.md",
+        ".ai/handoffs/DEV-PARENT-ASSESSMENT-SUPABASE-20261001-codex-01.md"
+      ],
+      "sharedPaths": [],
+      "checkpoint": "2085dd7fdd1b12fbe33337b0323836f6e4cfdac1",
+      "next": "从登记基线复用干净工作区切新分支；先与Next lane固定DTO，扩展现有邀约表与三个窄RPC，不执行迁移。"
+    },
+    {
+      "id": "DEV-PARENT-ASSESSMENT-NEXT-20261001",
+      "title": "家长1对1测评共用接口合同",
+      "agent": "codex",
+      "threadId": null,
+      "status": "in_progress",
+      "checkout": "worktree",
+      "branch": "codex/parent-assessment-next-codex",
+      "card": ".ai/tasks/DEV-PARENT-ASSESSMENT-NEXT-20261001.md",
+      "writePaths": [
+        "contracts/parent-api/portal.ts",
+        "contracts/parent-api/openapi.json",
+        "contracts/parent-api/README.md",
+        "apps/parent-wechat/miniprogram/lib/api-types.ts",
+        "src/app/api/v1/parent/assessments/route.ts",
+        "src/features/parent-portal/assessment-contract.ts",
+        "src/features/parent-portal/assessment-server.ts",
+        "tests/parent-assessment.test.ts",
+        ".ai/handoffs/DEV-PARENT-ASSESSMENT-NEXT-20261001-codex-01.md"
+      ],
+      "sharedPaths": [],
+      "checkpoint": "2085dd7fdd1b12fbe33337b0323836f6e4cfdac1",
+      "next": "先提交独立DTO/OpenAPI/微信生成副本，供Supabase与小程序按同一合同实现；再接入三个窄RPC并完成定向HTTP/输入/投影检查。"
+    },
+    {
       "id": "DEV-PARENT-WECHAT-20261001",
       "title": "小程序家长发现与预约入口",
       "agent": "codex",
@@ -220,6 +265,7 @@
         "apps/parent-wechat/miniprogram/components/",
         "apps/parent-wechat/miniprogram/assets/",
         ".ai/handoffs/DEV-PARENT-WECHAT-20261001-codex-03.md",
+        ".ai/handoffs/DEV-PARENT-WECHAT-20261001-codex-04.md",
         "scripts/check-parent-foundation.mjs",
         "apps/parent-wechat/AGENTS.md"
       ],
