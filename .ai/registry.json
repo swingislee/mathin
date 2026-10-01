@@ -7,7 +7,7 @@
       "title": "iOS 家长端集成",
       "agent": "codex",
       "threadId": "01a0f7b2-73aa-74b3-8cf6-b23207ece7d6",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-PARENT-IOS-20261001-INTEGRATION.md",
@@ -31,8 +31,8 @@
         ".ai/registry.json",
         "CHANGELOG.md"
       ],
-      "checkpoint": "3a68738cc27eaf113565c6d3f0fae8e7b46b52e4",
-      "next": "Motion一秒按钮图形修正已复核集成，原会话继续视觉验收；继续接收小程序图标/家长页布局交接05。已交付接口和计算规则保持，生产与正式Gate未操作。"
+      "checkpoint": "fa49b1e80e966b9cffb8fb657b6514c7c5685d92",
+      "next": "Motion按钮与小程序图标/家长页布局两个视觉修正均已复核集成；小程序原会话重开主项目供人工验收。已交付接口和计算规则保持，生产与正式Gate未操作。"
     },
     {
       "id": "DEV-PARENT-IOS-20261001",
@@ -275,7 +275,7 @@
       "title": "小程序家长发现与预约入口",
       "agent": "codex",
       "threadId": "01a0f7bd-4ca2-7370-a49c-a8f73fd4f5e9",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/parent-wechat-discovery-codex",
       "card": ".ai/tasks/DEV-PARENT-WECHAT-20261001.md",
@@ -307,8 +307,8 @@
         "apps/parent-wechat/AGENTS.md"
       ],
       "sharedPaths": [],
-      "checkpoint": "c06e8cd8e0ea2e05b2631893fe9af36f9989544a",
-      "next": "按原用户截图修复三个tabBar图标破图及家长服务布局，沿用原worktree，范围限app配置/WXSS/account/assets与相关窄检查。完成独立源码和交接05后复核集成；API与真实业务条件保持。"
+      "checkpoint": "5dab892d4e2471d858c24e82f80f62c0508c3631",
+      "next": "底栏图标与家长页布局修复已集成main a5f46e60/fa49b1e8；四文件与已检head一致，复用29项及微信原生检查。原会话重开主项目家长页供人工验收；API与真实业务条件保持。"
     }
   ]
 }
