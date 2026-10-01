@@ -1,4 +1,7 @@
+MATHIN_API_ORIGIN =
+MATHIN_DEV_HTTP_HOST = localhost
 #include? "Local.xcconfig"
+INFOPLIST_FILE = MathinParent/Info-Debug.plist
 PRODUCT_BUNDLE_IDENTIFIER = club.mathin.parent.dev
 SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG
 SWIFT_OPTIMIZATION_LEVEL = -Onone

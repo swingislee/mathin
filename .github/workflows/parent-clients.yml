@@ -89,7 +89,9 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v5
-      - run: plutil -lint apps/parent-ios/MathinParent.xcodeproj/project.pbxproj apps/parent-ios/MathinParent/Info.plist
+      - run: node apps/parent-ios/scripts/check.mjs
+      - run: swift test --package-path apps/parent-ios
+      - run: plutil -lint apps/parent-ios/MathinParent.xcodeproj/project.pbxproj apps/parent-ios/MathinParent/Info.plist apps/parent-ios/MathinParent/Info-Debug.plist
       - name: Build iOS simulator
         run: >-
           xcodebuild -project apps/parent-ios/MathinParent.xcodeproj

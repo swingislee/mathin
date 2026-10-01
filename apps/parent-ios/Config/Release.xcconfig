@@ -1,3 +1,6 @@
+// Set MATHIN_API_ORIGIN to the approved HTTPS service in the release build configuration.
+MATHIN_API_ORIGIN =
+INFOPLIST_FILE = MathinParent/Info.plist
 PRODUCT_BUNDLE_IDENTIFIER = club.mathin.parent
 SWIFT_COMPILATION_MODE = wholemodule
 SWIFT_OPTIMIZATION_LEVEL = -O
