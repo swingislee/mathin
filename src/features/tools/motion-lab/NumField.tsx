@@ -7,7 +7,7 @@ import { Check } from "lucide-react";
 import { useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { fmt } from "./shared";
-import { useMotionPress } from "./useMotionPress";
+import { useLongPress } from "@/hooks/use-long-press";
 
 function parseNumber(text: string, min = 0) {
   if (!text.trim()) return null;
@@ -82,7 +82,9 @@ export function EditableNumber({ longPressValue, longPressLabel, ...props }: Num
   longPressLabel: string;
 }) {
   const [editing, setEditing] = useState(false);
-  const press = useMotionPress(() => setEditing(true), () => props.onCommit(longPressValue), props.disabled);
+  const press = useLongPress({
+    onClick: () => setEditing(true), onLongPress: () => props.onCommit(longPressValue), disabled: props.disabled,
+  });
   if (editing) return <NumField {...props} autoFocus onFinish={() => setEditing(false)} />;
   return (
     <Button {...press} type="button" variant="ghost" disabled={props.disabled}

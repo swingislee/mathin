@@ -26,6 +26,7 @@
 
 ## 组件与客户端边界
 
+- 需要识别长按的 React 控件复用 `@/hooks/use-long-press`；业务只提供点击／长按动作、时长、移动容差和禁用状态。手势与拖动区域、滚动及视觉反馈分别设置，接入示例与取消规则见[共用客户端 Hooks](../../src/hooks/README.md)。
 - 业务代码不得新增原生 `<input>`、`<select>`、`<table>` 等控件；优先复用 `components/ui/`，缺失时先检查 shadcn/ui。底层无障碍封装可以使用原生元素。
 - 禁止 `window.confirm()`，也不得为单页重复手搓已有 badge、card、dialog、drawer、table 等组件。
 - 页面、布局和区块默认是 Server Component。`"use client"` 只放在确实使用 hook 或 DOM 事件的交互叶子；白板、课堂实时、编辑器、three.js、游戏棋盘等整块交互体除外。

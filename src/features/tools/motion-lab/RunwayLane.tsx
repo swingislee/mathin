@@ -8,10 +8,10 @@ import { ImageCropDialog } from "@/components/image-crop-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useLongPress } from "@/hooks/use-long-press";
 import { cn } from "@/lib/utils";
 import { EditableNumber, NumField } from "./NumField";
 import { DEFAULT_HEAD, EMPTY_VEHICLE, PANEL_W, POST_PAD, VEHICLES, VEHICLE_SPEEDS, fmt, type Runway, type SolveKey } from "./shared";
-import { MOTION_DRAG_THRESHOLD, useMotionPress } from "./useMotionPress";
 
 function readImageFile(file: File | undefined, cb: (dataUrl: string) => void) {
   if (!file) return;
@@ -21,6 +21,7 @@ function readImageFile(file: File | undefined, cb: (dataUrl: string) => void) {
 }
 
 const VEHICLE_NAMES = ["walk", "bicycle", "car", "plane", "rocket", "cloud", "wormhole"] as const;
+const CHARACTER_DRAG_THRESHOLD_PX = 3;
 // 旧版 CircleUpload 的八个方位；中心留给方向与位置输入。
 const MENU_POSITIONS = [[0, -75], [53, -53], [75, 0], [53, 53], [0, 75], [-53, 53], [-75, 0], [-53, -53]];
 const menuPosition = (index: number) => ({ transform: `translate(-50%, -50%) translate(${MENU_POSITIONS[index][0]}px, ${MENU_POSITIONS[index][1]}px)` });
@@ -52,8 +53,10 @@ export function RunwayLane({ runway, length, ppm, locked, onMove, onField, onSol
     return () => stopDrag.current?.();
   }, [locked]);
 
-  const headPress = useMotionPress(() => headInputRef.current?.click(), () => onPatch(runway.id, { head: DEFAULT_HEAD }), locked);
-  const vehiclePress = useMotionPress(undefined, () => onPatch(runway.id, { vehicle: EMPTY_VEHICLE }), locked);
+  const headPress = useLongPress({
+    onClick: () => headInputRef.current?.click(), onLongPress: () => onPatch(runway.id, { head: DEFAULT_HEAD }), disabled: locked,
+  });
+  const vehiclePress = useLongPress({ onLongPress: () => onPatch(runway.id, { vehicle: EMPTY_VEHICLE }), disabled: locked });
   const charX = POST_PAD + runway.x * ppm;
   const flip = !(dragFacingRight ?? runway.facingRight);
 
@@ -67,7 +70,7 @@ export function RunwayLane({ runway, length, ppm, locked, onMove, onField, onSol
     const move = (next: PointerEvent) => {
       if (next.pointerId !== pointerId) return;
       if (!drag.moved) {
-        if (Math.abs(next.clientX - clientX) <= MOTION_DRAG_THRESHOLD) return;
+        if (Math.abs(next.clientX - clientX) <= CHARACTER_DRAG_THRESHOLD_PX) return;
         drag.moved = true;
         drag.startedAt = performance.now();
       }
@@ -142,19 +145,19 @@ export function RunwayLane({ runway, length, ppm, locked, onMove, onField, onSol
         <div aria-hidden className="absolute bottom-3 w-[2.5px] rounded-full bg-crater" style={{ left: POST_PAD - 2, height: 56 }} />
         <div aria-hidden className="absolute bottom-3 w-[2.5px] rounded-full bg-crater" style={{ right: POST_PAD - 2, height: 56 }} />
 
-        {/* 旧版三段造型：48×48 头像、48×24 载具、48×24 位置手柄。前两段只处理点击/长按。 */}
+        {/* 旧版三段造型：前两段只处理点击/长按；播放锁定时保持教学对象的原色与不透明度。 */}
         <div className="absolute bottom-7 z-10 flex w-12 -translate-x-1/2 flex-col items-center select-none"
           style={{ left: charX }} onDragStart={(event) => event.preventDefault()}>
           <Button {...headPress} type="button" variant="ghost" disabled={locked}
             aria-label={t("avatar")} title={t("avatarHint")}
-            className="size-12 shrink-0 touch-none overflow-hidden rounded-full bg-card bg-cover bg-center p-0 transition-none"
+            className="size-12 shrink-0 touch-none overflow-hidden rounded-full bg-card bg-cover bg-center p-0 transition-none disabled:opacity-100"
             style={{ backgroundImage: `url(${runway.head})`, transform: flip ? "scaleX(-1)" : undefined, WebkitTouchCallout: "none" }} />
 
           <Popover open={!locked && vehicleOpen} onOpenChange={setVehicleOpen}>
             <PopoverTrigger asChild>
               <Button {...vehiclePress} type="button" variant="ghost" disabled={locked}
                 aria-label={t("chooseVehicle")} title={t("vehicleHint")}
-                className="h-6 w-12 shrink-0 touch-none rounded-none bg-card p-0 transition-none"
+                className="h-6 w-12 shrink-0 touch-none rounded-none bg-card p-0 transition-none disabled:opacity-100"
                 style={{ transform: flip ? "scaleX(-1)" : undefined, WebkitTouchCallout: "none" }}>
                 <Image src={runway.vehicle} alt="" width={48} height={24} unoptimized draggable={false} className="h-6 w-12 object-contain" />
               </Button>
@@ -202,7 +205,7 @@ export function RunwayLane({ runway, length, ppm, locked, onMove, onField, onSol
               const step = event.shiftKey ? 0.1 : 1;
               onMove(runway.id, fmt(Math.max(0, Math.min(length, runway.x + (event.key === "ArrowRight" ? step : -step)))));
             }}
-            className="h-6 w-12 shrink-0 cursor-grab touch-none rounded-none bg-card p-0 text-xs tabular-nums text-ink active:cursor-grabbing">
+            className="h-6 w-12 shrink-0 cursor-grab touch-none rounded-none bg-card p-0 text-xs tabular-nums text-ink active:cursor-grabbing disabled:opacity-100">
             {fmt(runway.x)}
           </Button>
         </div>

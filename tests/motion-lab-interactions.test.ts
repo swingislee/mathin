@@ -5,7 +5,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import en from "../messages/en.json";
 import { MotionLab } from "@/features/tools/motion-lab/MotionLab";
-import { MOTION_LONG_PRESS_MS } from "@/features/tools/motion-lab/useMotionPress";
+import { DEFAULT_LONG_PRESS_DELAY_MS } from "@/hooks/use-long-press";
 import { DEFAULT_HEAD, DEFAULT_VEHICLE, EMPTY_VEHICLE, VEHICLES, type Runway } from "@/features/tools/motion-lab/shared";
 import { initialMotionScene, motionSceneSchema, type MotionScene } from "@/features/tools/scenes/numeric-teaching-content";
 
@@ -50,7 +50,7 @@ const advance = (ms: number) => act(async () => { vi.advanceTimersByTime(ms); })
 const click = (target: HTMLElement) => act(async () => { target.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, detail: 1 })); });
 async function hold(target: HTMLElement) {
   await pointer(target, "pointerdown");
-  await advance(MOTION_LONG_PRESS_MS);
+  await advance(DEFAULT_LONG_PRESS_DELAY_MS);
   await pointer(target, "pointerup");
   await click(target);
 }

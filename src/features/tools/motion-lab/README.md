@@ -26,8 +26,10 @@
 | 路程／时间／速度数字 | 短按编辑并选中文本，回车或失焦提交。长按路程设为全程，长按时间／速度归零；提交被求解的字段时轮转求解目标 |
 | 全程数字 | 短按编辑，长按恢复 100 m，同时保留角色的位置范围约束 |
 
-原版的头像和载具在 `useLongPress.startPress` 阻止事件向外传播，底部位置读数单独标记 `cursor-grab`。迁移使用统一 Pointer Events，并将起拖监听明确放在底部手柄；窗口级监听只跟随该手柄起始的指针。移动、取消、失焦及卸载清理长按，长按后的松手不再触发短按。
+原版的头像和载具在 `useLongPress.startPress` 阻止事件向外传播，底部位置读数单独标记 `cursor-grab`。迁移使用统一 Pointer Events，并将起拖监听明确放在底部手柄；窗口级监听只跟随该手柄起始的指针。长按识别已提取为仓库共用的 [`useLongPress`](../../../hooks/use-long-press.ts)，调用及取消规则见[共用客户端 Hooks](../../../hooks/README.md)，Motion Lab 只提供各区域的业务动作。
 
 Mathin 继续保留载具速度预设、有限非负数、轨道范围限制、播放暂停与现有场景合同。拖动中的朝向只保留在本地表现层，持久场景仍使用 `motion-lab-lesson-v1` 的 `facingRight` 表示出发方向；新增的 `08-upload.png` 来自上述旧工程并纳入现有内置图片校验。键盘左右键移动手柄，Shift 加左右键微调；Esc 取消数字草稿／关闭菜单。
+
+播放时头像、载具和位置手柄继续保持原色与不透明度。三个区域保留禁用语义，播放状态由工具栏的暂停／继续和计时显示；参数区继续提示暂时不可编辑。
 
 定向回归：`tests/motion-lab-interactions.test.ts` 验证分区、折返、长按取消、菜单编辑、数值快捷操作与播放锁定；`numeric-teaching-workspaces.test.ts`、`prepared-tool-scenes.test.ts` 验证既有场景与恢复边界。机器结果不替代人工手感验收。
