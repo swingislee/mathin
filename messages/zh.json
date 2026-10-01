@@ -484,6 +484,19 @@
       "motion": "行程",
       "misc": "其他"
     },
+    "desk": {
+      "shelfLabel": "工具分类",
+      "shelves": {
+        "all": "全部工具",
+        "number": "数与运算",
+        "plane": "平面图形",
+        "solid": "立体空间",
+        "motion": "运动与测量"
+      },
+      "count": "{count} 件",
+      "grades": "{from}–{to} 年级",
+      "noteHint": "指向工具，便签显示编号与年级"
+    },
     "items": {
       "fraction-line": {
         "name": "分数数轴",

@@ -484,6 +484,19 @@
       "motion": "Motion",
       "misc": "Misc"
     },
+    "desk": {
+      "shelfLabel": "Tool categories",
+      "shelves": {
+        "all": "All tools",
+        "number": "Number",
+        "plane": "Plane shapes",
+        "solid": "Solids & space",
+        "motion": "Motion & measure"
+      },
+      "count": "{count, plural, one {# tool} other {# tools}}",
+      "grades": "Grades {from}–{to}",
+      "noteHint": "Point at a tool for its number and grades"
+    },
     "items": {
       "fraction-line": {
         "name": "Fraction number line",

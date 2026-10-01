@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
-import { ArrowUpRight } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { SiteHeader } from "@/components/site-header";
-import { ThemePageIdentity } from "@/components/theme-page-identity";
+import { ToolDesk, type ToolDeskItem, type ToolDeskShelfOption } from "@/features/tools/desk/ToolDesk";
+import { TOOL_SHELVES, toolShelf } from "@/features/tools/desk/shelves";
 import { tools } from "@/features/tools/registry";
 import { toolThumbs } from "@/features/tools/thumbs";
-import { Link } from "@/i18n/navigation";
 import { buildMetadata } from "@/lib/seo";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
@@ -21,45 +20,50 @@ export default async function ToolsPage({ params }: { params: Promise<{ locale: 
   const t = await getTranslations("tools");
   const nav = await getTranslations("nav");
 
+  // 按格架自上而下排序，同层保留 registry 顺序。
+  const items: ToolDeskItem[] = tools
+    .map(({ id, no, category, grades: [from, to] }) => ({
+      id,
+      no,
+      shelf: toolShelf({ id, category }),
+      name: t(`items.${id}.name`),
+      desc: t(`items.${id}.desc`),
+      grades: t("desk.grades", { from, to }),
+      thumb: toolThumbs[id],
+    }))
+    .sort((a, b) => TOOL_SHELVES.indexOf(a.shelf) - TOOL_SHELVES.indexOf(b.shelf));
+  const shelves: ToolDeskShelfOption[] = [
+    { id: "all", label: t("desk.shelves.all"), count: t("desk.count", { count: items.length }) },
+    ...TOOL_SHELVES.map((shelf) => ({
+      id: shelf,
+      label: t(`desk.shelves.${shelf}`),
+      count: t("desk.count", { count: items.filter((item) => item.shelf === shelf).length }),
+    })),
+  ];
+
   return (
     <div className="scene-day scene-adaptive scene-tools min-h-dvh" data-planet="businessman">
       <SiteHeader />
-      <main className="relative min-h-[920px] overflow-x-clip text-[var(--scene-ink)] md:min-h-[max(650px,100dvh)]">
-        <div className="pointer-events-none fixed inset-0" aria-hidden>
+      <main className="tool-desk text-[var(--scene-ink)]">
+        <div className="tool-desk-backdrop" aria-hidden>
           <div className="scene-illustration" />
           <div className="scene-illustration-wash" />
         </div>
-
-        <ThemePageIdentity
-          sectionName={nav("tools")}
-          planetName={nav("planetNames.tools")}
-          description={t("intro")}
-          tone="tools"
+        <ToolDesk
+          shelves={shelves}
+          items={items}
+          shelfLabel={t("desk.shelfLabel")}
+          noteHint={t("desk.noteHint")}
+          header={
+            <header data-scene-tone="tools" className="tool-desk-header scene-enter">
+              <p className="theme-page-eyebrow text-xs uppercase tracking-[0.22em]">{nav("planetNames.tools")}</p>
+              <div className="tool-desk-heading">
+                <h1 className="theme-page-title font-display leading-tight">{nav("tools")}</h1>
+                <p className="theme-page-description text-sm leading-6">{t("intro")}</p>
+              </div>
+            </header>
+          }
         />
-
-        {/* 目录随工具数量增高，由页面滚动；背景保留视口构图。 */}
-        <section className="relative z-10 grid gap-5 px-6 pb-20 pt-72 sm:grid-cols-2 md:mx-[27%] md:px-0 md:pt-[max(12rem,29dvh)]" aria-label={nav("tools")}>
-          {tools.map(({ id, no }, index) => (
-            <Link
-              key={id}
-              href={`/tools/${id}`}
-              className="scene-enter group mx-auto w-full max-w-[300px] rounded-2xl border border-[#b88e59]/70 bg-[#fffaf0]/90 p-3 text-[#473827] shadow-[0_15px_38px_rgba(7,11,25,0.26)] backdrop-blur-[2px] transition duration-300 hover:-translate-y-2"
-              style={{ animationDelay: `${140 + index * 130}ms` }}
-            >
-              <div className="relative aspect-[5/3] overflow-hidden rounded-xl border border-[#c9a87b] bg-[#f5ead5]">
-                {toolThumbs[id]}
-                <span className="absolute right-2 top-1.5 text-xs tracking-[0.12em] text-[#8d6a43]">Nº {String(no).padStart(2, "0")}</span>
-              </div>
-              <div className="flex items-start gap-3 px-1 pb-1 pt-3">
-                <div className="min-w-0 flex-1">
-                  <h2 className="font-display text-lg">{t(`items.${id}.name`)}</h2>
-                  <p className="mt-1 text-xs leading-5 text-[#75634f]">{t(`items.${id}.desc`)}</p>
-                </div>
-                <ArrowUpRight size={17} className="mt-1 shrink-0 text-[#866647] transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
-              </div>
-            </Link>
-          ))}
-        </section>
       </main>
     </div>
   );
