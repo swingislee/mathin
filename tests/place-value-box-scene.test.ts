@@ -4,10 +4,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import * as THREE from "three";
 import { PlaceValueBoxScene } from "@/features/tools/place-value/PlaceValueBoxScene";
 import { PlaceValueRodMesh } from "@/features/tools/place-value/PlaceValueRodMesh";
+import { VoxelGeometry } from "@/features/spatial-math/renderer-r3f/VoxelCanvas";
 import { createDefaultPlaceValueInitial, createPlaceValueBoard, placeValueSnapshot } from "@/features/tools/place-value/radix-contract";
 import { placeValueLayout } from "@/features/tools/place-value/radix-model";
 import { placeValueMessages } from "@/features/tools/place-value/messages";
-import { CUBE_AXIS_COLORS } from "@/features/tools/spatial-lab/cube-structures-contract";
+import { PLACE_VALUE_SELECTION_LIGHT, PLACE_VALUE_SELECTION_LIGHTENING } from "@/features/tools/place-value/color-policy";
+import { CUBE_AXIS_COLORS, CUBE_COLORS, CUBE_SELECTION_COLOR, buildCubeStructureRenderModel, createCubeHistory } from "@/features/tools/spatial-lab/cube-structures-contract";
 import { VOXEL_EDGE_COLOR } from "@/features/spatial-math/renderer-r3f/voxel-visual-model";
 
 vi.mock("three", async () => {
@@ -52,12 +54,17 @@ describe("place-value case capacity and selection rendering", () => {
         const back = container.children.find((object) => object instanceof THREE.Mesh) as THREE.Mesh<THREE.PlaneGeometry>;
         expect(back.geometry.parameters.height).toBe(capacity);
         expect(back.position.y).toBe(capacity / 2);
-        expect(named(container, "case-label").map((object) => object.userData.text)).toContain(placeValueMessages(locale).boxCapacity(capacity));
+        const frame = container.children.filter((object) => object.name === "case-line");
+        expect(frame).toHaveLength(1);
+        expect(frame[0].userData).toMatchObject({ color: VOXEL_EDGE_COLOR, opacity: .45, lineWidth: 1.25, segments: true });
+        expect(frame[0].userData.points).toHaveLength(24); // 同一条线框覆盖全部十二条边，没有常驻短引线。
+        expect(new Set(frame[0].userData.points.map((point: number[]) => point[1]))).toEqual(new Set([0, capacity]));
+        expect(container.children.some((object) => object.name === "case-label")).toBe(false);
       }
       const overflow = named(first, "place-value-case-overflow");
       expect(overflow).toHaveLength(count >= base ? 1 : 0);
       if (count >= base) {
-        const bracket = named(overflow[0], "case-line")[0].userData;
+        const bracket = named(overflow[0], "case-line").find((line) => line.userData.points.length === 4)!.userData;
         expect(bracket.color).toBe(CUBE_AXIS_COLORS.x);
         expect(bracket.lineWidth).toBe(2.5);
         expect(bracket.points.map((point: number[]) => point[1])).toEqual([capacity, capacity, count, count]);
@@ -76,19 +83,47 @@ describe("place-value case capacity and selection rendering", () => {
       expect(mesh.geometry.getAttribute("appearance").getZ(9)).toBe(1);
       expect("#" + mesh.material.uniforms.edge.value.getHexString()).toBe(VOXEL_EDGE_COLOR);
       expect(mesh.material.fragmentShader).toContain("vec3 color = mix(surface, edge,");
-      expect(mesh.material.fragmentShader).toContain("* a.z * (1. - a.y)");
+      expect("#" + mesh.material.uniforms.selectionLight.value.getHexString()).toBe(PLACE_VALUE_SELECTION_LIGHT);
+      expect(mesh.material.fragmentShader).toContain(`selectionLight, ${PLACE_VALUE_SELECTION_LIGHTENING.toFixed(2)} * a.z`);
+      expect(mesh.material.fragmentShader).not.toContain("selectionBand");
       expect(mesh.material.fragmentShader).not.toContain("mix(edge, selected");
     }
+    expect(named(scene, "spatial-selection-outline")).toHaveLength(0);
+    const box = scene.getObjectByName("place-value-box-shells") as THREE.InstancedMesh;
+    const selectedMatrix = new THREE.Matrix4(); box.getMatrixAt(9, selectedMatrix);
+    const cleared = await render(createElement(PlaceValueBoxScene, { snapshot: state, locale: "zh", progress: 1, contentsProgress: 1, selected: false, interactive: true, onSelect: vi.fn() }));
+    expect(named(cleared, "spatial-selection-outline")).toHaveLength(0);
+    const clearedBox = cleared.getObjectByName("place-value-box-shells") as THREE.InstancedMesh;
+    expect(clearedBox.geometry.getAttribute("appearance").getZ(9)).toBe(0);
+    expect(clearedBox.geometry.getAttribute("appearance").getY(9)).toBe(1);
+    const clearedMatrix = new THREE.Matrix4(); clearedBox.getMatrixAt(9, clearedMatrix);
+    expect(clearedMatrix.toArray()).toEqual(selectedMatrix.toArray());
   });
 
   it("uses the same dark-outline policy for compact long rods", async () => {
     const render = await setup(), rod = placeValueLayout(createPlaceValueBoard(1000, "normal", 10, 6))[0];
-    const scene = await render(createElement(PlaceValueRodMesh, { rod, red: [], offset: 0, selected: true, interactive: true, onSelect: vi.fn() }));
-    const group = scene.getObjectByName("place-value-compact-rod")!;
-    const mesh = group.children[0] as THREE.Mesh<THREE.BoxGeometry, THREE.ShaderMaterial>;
-    expect(mesh.material.uniforms.emphasis.value).toBe(1);
-    expect("#" + mesh.material.uniforms.edge.value.getHexString()).toBe(VOXEL_EDGE_COLOR);
-    expect(mesh.material.fragmentShader).toContain(", edge, max(grid, outline))");
-    expect(mesh.material.fragmentShader).not.toContain("mix(edge, selected");
+    for (const selected of [false, true, false]) {
+      const scene = await render(createElement(PlaceValueRodMesh, { rod, red: [], offset: 0, selected, interactive: true, onSelect: vi.fn() }));
+      const group = scene.getObjectByName("place-value-compact-rod")!;
+      const mesh = group.children[0] as THREE.Mesh<THREE.BoxGeometry, THREE.ShaderMaterial>;
+      expect(mesh.material.uniforms.emphasis.value).toBe(Number(selected));
+      expect("#" + mesh.material.uniforms.edge.value.getHexString()).toBe(VOXEL_EDGE_COLOR);
+      expect("#" + mesh.material.uniforms.selectionLight.value.getHexString()).toBe(PLACE_VALUE_SELECTION_LIGHT);
+      expect(mesh.material.fragmentShader).toContain(`selectionLight, ${PLACE_VALUE_SELECTION_LIGHTENING.toFixed(2)} * emphasis`);
+      expect(mesh.material.fragmentShader).toContain(", edge, max(grid, outline))");
+      expect(mesh.material.fragmentShader).not.toContain("mix(edge, selected");
+      expect(named(group, "spatial-selection-outline")).toHaveLength(0);
+      expect(mesh.geometry.parameters).toMatchObject({ width: 1, height: 1, depth: rod.length });
+    }
+  });
+
+  it("keeps shared cube selection on the original geometry without an extra line frame", async () => {
+    const render = await setup(), state = createCubeHistory([{ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }]).initial;
+    for (const selected of [false, true, false]) {
+      const model = buildCubeStructureRenderModel(state, selected ? [state.cubes[0].id] : [], "Selection");
+      const scene = await render(createElement(VoxelGeometry, { model, palette: { leaf: CUBE_COLORS[0], moon: CUBE_SELECTION_COLOR }, readOnly: false, preserveSelectedColors: true }));
+      expect(named(scene, "spatial-selection-outline")).toHaveLength(0);
+      expect(named(scene, "case-line")).toHaveLength(0);
+    }
   });
 });

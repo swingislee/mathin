@@ -14,7 +14,7 @@ import { PlaceValueStage, type PlaceValueControlRenderer } from "./PlaceValueSta
 import { PlaceValueClipDepth, PlaceValueRodMesh } from "./PlaceValueRodMesh";
 import { placeValueRenderPlan, PLACE_VALUE_CUBE_BUDGET } from "./render-plan";
 import { placeValueMessages } from "./messages";
-import { placeValueIsBlue } from "./color-policy";
+import { placeValueIsBlue, PLACE_VALUE_SELECTION_LIGHT, PLACE_VALUE_SELECTION_LIGHTENING } from "./color-policy";
 import { PlaceValueBoxScene } from "./PlaceValueBoxScene";
 
 const empty = replayCubeHistory(createCubeHistory([]));
@@ -57,7 +57,7 @@ export function PlaceValueCanvas({ snapshot, progress, contentsProgress = 1, loc
   const cellFor = (cube: ReturnType<typeof placeValueRenderPlan>["cubes"][number], side: PlaceValueSide): VoxelRenderCell => {
     const selected = emphasized(cube.rod, side);
     return { key: side + ":" + cube.id, x: cube.x + offset(side), y: cube.y, z: cube.z, materialToken: cube.red ? "pending" : placeValueIsBlue(cube.phase) ? "blue" : "yellow", opacity: cube.rod.opacity,
-      selected, emphasis: selected ? { color: CUBE_SELECTION_COLOR, faceOpacity: .08, priority: 2 } : undefined };
+      selected, emphasis: selected ? { color: PLACE_VALUE_SELECTION_LIGHT, faceOpacity: PLACE_VALUE_SELECTION_LIGHTENING, priority: 2 } : undefined };
   };
   // 降级前视图按整条的真实单位数计算，不把抽样方块数当成数学数量。
   const { left, right, mode } = snapshot;

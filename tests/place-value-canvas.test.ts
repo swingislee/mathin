@@ -6,6 +6,7 @@ import type { VoxelModelCanvasProps } from "@/features/spatial-math/renderer-r3f
 import { createDefaultPlaceValueInitial, createPlaceValueBoard, placeValueSnapshot } from "@/features/tools/place-value/radix-contract";
 import { placeValueColumn, placeValueOffset, planPlaceValue } from "@/features/tools/place-value/radix-model";
 import { placeValueControlPositions } from "@/features/tools/place-value/PlaceValueStage";
+import { PLACE_VALUE_SELECTION_LIGHT, PLACE_VALUE_SELECTION_LIGHTENING } from "@/features/tools/place-value/color-policy";
 import { SPATIAL_GROUND_LABEL_ROTATION, spatialGroundVisible } from "@/features/tools/spatial-interaction/SpatialSurfaceLabel";
 import { Euler, OrthographicCamera, Vector3 } from "three";
 
@@ -28,6 +29,19 @@ describe("place-value uses the existing voxel canvas", () => {
     expect(rendered.model.projection.cells).toHaveLength(12);
     expect(rendered.model.camera.target).toEqual({ x: 0, y: 4, z: 0 });
     expect(rendered.sceneOverlay).toBeTruthy(); expect(rendered.cameraInteractive).toBe(true);
+  });
+  it.each([[3, 0, "yellow"], [8, 5, "blue"], [10, 9, "pending"]] as const)("lightens selection while preserving the authored %s-unit counting state", (count, index, color) => {
+    const snapshot = placeValueSnapshot({ ...createDefaultPlaceValueInitial(), left: createPlaceValueBoard(count, "ones", 10, 6), right: createPlaceValueBoard(0, "normal", 10, 6) });
+    snapshot.selection = { side: "left", unit: snapshot.left.places[0][index][0].start };
+    const { model } = draw({ snapshot });
+    const selected = model.cells.filter((cell) => cell.selected);
+    expect(selected).toHaveLength(1);
+    expect(selected[0].emphasis).toEqual({ color: PLACE_VALUE_SELECTION_LIGHT, faceOpacity: PLACE_VALUE_SELECTION_LIGHTENING, priority: 2 });
+    expect(selected[0].materialToken).toBe(color);
+    const cleared = draw({ snapshot, selected: false }).model.cells.find((cell) => cell.key === selected[0].key)!;
+    expect(cleared.selected).toBe(false);
+    expect(cleared.emphasis).toBeUndefined();
+    expect(cleared.materialToken).toBe(color);
   });
   it("hides the entire depth ruler at every horizontal or underside view, and shows it from above", () => {
     const direction = new Vector3();
