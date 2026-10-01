@@ -13,9 +13,9 @@ const labels = en.tools.motion;
 let host: HTMLDivElement, root: Root;
 const snapshots = vi.fn<(scene: MotionScene | null) => void>();
 
-function button(label: string) {
+function button(label: string, index = 0) {
   const found = [...document.querySelectorAll<HTMLButtonElement>("button")]
-    .find((element) => element.getAttribute("aria-label") === label || element.textContent === label);
+    .filter((element) => element.getAttribute("aria-label") === label || element.textContent === label)[index];
   expect(found, label).toBeTruthy();
   return found!;
 }
@@ -30,12 +30,12 @@ function snapshot() {
   expect(motionSceneSchema.safeParse(value).success).toBe(true);
   return value!;
 }
-async function mount(runway: Partial<Runway> = {}, scene: Partial<MotionScene> = {}) {
-  const initial = { ...initialMotionScene(), ...scene, runways: [{ ...initialMotionScene().runways[0], x: 50, ...runway }] };
+async function mount(runway: Partial<Runway> = {}, scene: Partial<MotionScene> = {}, readOnly = false) {
+  const initial = { ...initialMotionScene(), ...scene, runways: scene.runways ?? [{ ...initialMotionScene().runways[0], x: 50, ...runway }] };
   await act(async () => {
     // eslint-disable-next-line react/no-children-prop
     root.render(createElement(NextIntlClientProvider, { locale: "en", messages: en, timeZone: "UTC", children:
-      createElement(MotionLab, { initial, onSnapshot: snapshots }) }));
+      createElement(MotionLab, { initial, onSnapshot: snapshots, readOnly }) }));
   });
   return initial;
 }
@@ -220,7 +220,7 @@ describe("Motion Lab legacy interaction boundaries", () => {
   it("locks every character and numeric control during playback", async () => {
     await mount();
     await click(button(labels.start));
-    for (const label of [labels.avatar, labels.chooseVehicle, labels.dragHandle, labels.distance, labels.time, labels.speed, labels.length]) {
+    for (const label of [labels.avatar, labels.chooseVehicle, labels.dragHandle, labels.distance, labels.time, labels.speed, labels.length, labels.allTimeOneSecond]) {
       expect(button(label).disabled).toBe(true);
     }
     expect(button(`${labels.distance} · ${labels.auto}`).disabled).toBe(true);
@@ -264,5 +264,79 @@ describe("Motion Lab legacy interaction boundaries", () => {
     await advance(0);
     expect(document.querySelector('[role="dialog"]')).toBeNull();
     expect(document.activeElement).toBe(button(labels.help));
+  });
+
+  it("sets mixed existing tracks to one second without changing their positions or saved source", async () => {
+    const base = { ...initialMotionScene().runways[0], distance: 60, time: 10, speed: 6 };
+    const initial = await mount({}, { runways: [
+      { ...base, id: 1, x: 20, solve: "speed" },
+      { ...base, id: 2, x: 40, solve: "distance", facingRight: false },
+      { ...base, id: 3, x: 60, solve: "time" },
+    ] });
+    await click(button(labels.allTimeOneSecond));
+    expect(snapshot().runways).toEqual([
+      { ...initial.runways[0], time: 1, speed: 60 },
+      { ...initial.runways[1], time: 1, distance: 6 },
+      { ...initial.runways[2], time: 1, speed: 60, solve: "speed" },
+    ]);
+    expect(snapshot().allTime).toBe(1);
+    expect(initial.runways.map((r) => r.time)).toEqual([10, 10, 10]);
+  });
+
+  it("remembers each track's latest distance or speed input and shares the rule with typed batch time", async () => {
+    const base = { ...initialMotionScene().runways[0], distance: 60, time: 10, speed: 6, solve: "time" as const };
+    await mount({}, { runways: [{ ...base, id: 1 }, { ...base, id: 2 }] });
+    await click(button(labels.speed)); await enter(input(labels.speed), "8");
+    await click(button(labels.distance)); await enter(input(labels.distance), "80");
+    await click(button(labels.speed)); await enter(input(labels.speed), "13", "Escape");
+    await click(button(labels.distance, 1)); await enter(input(labels.distance), "90");
+    await click(button(labels.speed, 1)); await enter(input(labels.speed), "9");
+    await enter(input(labels.allTime), "2");
+    expect(snapshot().runways[0]).toMatchObject({ time: 2, distance: 80, speed: 40, solve: "speed" });
+    expect(snapshot().runways[1]).toMatchObject({ time: 2, distance: 18, speed: 9, solve: "distance" });
+    await click(button(labels.allTimeOneSecond));
+    expect(snapshot().runways[0]).toMatchObject({ time: 1, distance: 80, speed: 80 });
+    expect(snapshot().runways[1]).toMatchObject({ time: 1, distance: 9, speed: 9 });
+    await enter(input(labels.allTime), "27", "Tab");
+    await click(button(labels.allTimeOneSecond));
+    expect(input(labels.allTime).value).toBe("1");
+    expect(snapshot().runways.map((r) => r.time)).toEqual([1, 1]);
+  });
+
+  it("treats batch speed and chosen vehicle presets as explicit speed inputs", async () => {
+    await mount({ solve: "time", distance: 60, time: 10, speed: 6 });
+    await enter(input(labels.allSpeed), "12");
+    await click(button(labels.allTimeOneSecond));
+    expect(snapshot().runways[0]).toMatchObject({ time: 1, distance: 12, speed: 12, solve: "distance" });
+    await click(button(labels.distance)); await enter(input(labels.distance), "60");
+    await click(button(labels.chooseVehicle)); await click(button(labels.vehicles.car));
+    await act(async () => document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+    await click(button(labels.time)); await enter(input(labels.time), "1");
+    expect(snapshot().runways[0]).toMatchObject({ time: 1, distance: 15, speed: 15, solve: "distance" });
+  });
+
+  it("clears previous input preferences after measuring or removing a track", async () => {
+    await mount({ solve: "time", distance: 60, time: 10, speed: 6 });
+    await click(button(labels.speed)); await enter(input(labels.speed), "8");
+    const handle = button(labels.dragHandle);
+    await pointer(handle, "pointerdown"); await pointer(window, "pointermove", 330);
+    await advance(2000); await pointer(window, "pointerup", 330);
+    const measured = snapshot().runways[0];
+    await click(button(labels.allTimeOneSecond));
+    expect(snapshot().runways[0]).toMatchObject({ time: 1, distance: measured.distance, speed: measured.distance });
+    await click(button(labels.addRunway));
+    await click(button(`${labels.time} · ${labels.auto}`, 1));
+    await click(button(labels.speed, 1)); await enter(input(labels.speed), "7");
+    await click(button(labels.removeRunway)); await click(button(labels.addRunway));
+    await click(button(`${labels.time} · ${labels.auto}`, 1));
+    await click(button(labels.allTimeOneSecond));
+    expect(snapshot().runways[1]).toMatchObject({ id: 2, time: 1, distance: 100, speed: 100, solve: "speed" });
+  });
+
+  it("keeps the one-second shortcut disabled in a read-only scene", async () => {
+    const initial = await mount({}, {}, true);
+    expect(button(labels.allTimeOneSecond).disabled).toBe(true);
+    await click(button(labels.allTimeOneSecond));
+    expect(snapshot()).toEqual(initial);
   });
 });

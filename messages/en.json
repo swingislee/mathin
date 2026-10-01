@@ -699,6 +699,8 @@
       "help": "How to use",
       "clock": "Clock",
       "allTime": "Set all times",
+      "allTimeOneSecond": "Set all times to 1 second",
+      "allTimeHint": "Click “1 s” to set every track to one second. Setting time keeps the distance or speed that is not automatic. If time was automatic, it keeps whichever you entered most recently in this editing session, including vehicle presets and batch speed. With no edit history, it keeps distance.",
       "allSpeed": "Set all speeds",
       "apply": "Apply",
       "cancel": "Cancel",

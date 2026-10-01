@@ -9,7 +9,7 @@ import { SpatialIconButton } from "../spatial-interaction/SpatialWorkbenchContro
 import { ApplyField, EditableNumber } from "./NumField";
 import { RunwayLane } from "./RunwayLane";
 import { RulerOverlay } from "./RulerOverlay";
-import { DEFAULT_HEAD, DEFAULT_VEHICLE, MAX_RUNWAYS, PANEL_W, POST_PAD, VEHICLE_SPEEDS, editField, fmt, recompute, type Runway, type SolveKey } from "./shared";
+import { DEFAULT_HEAD, DEFAULT_VEHICLE, MAX_RUNWAYS, PANEL_W, POST_PAD, VEHICLE_SPEEDS, editField, fmt, recompute, type Runway, type SolveKey, type TimeAnchor } from "./shared";
 import { initialMotionScene, motionFrame, type MotionScene } from "../courseware/numeric-teaching-content";
 import { useSceneCapture } from "../courseware/useSceneCapture";
 
@@ -39,6 +39,8 @@ export function MotionLab({ embedded, initial, onSnapshot, readOnly = false, pre
   const [trackW, setTrackW] = useState(640);
   const trackRef = useRef<HTMLDivElement>(null);
   const [helpOpen, setHelpOpen] = useState(false);
+  // 编辑先后只辅助本次操作；快照继续保存既有的数值与自动求解项。
+  const lastInputs = useRef(new Map<number, TimeAnchor>());
 
   useEffect(() => {
     const el = trackRef.current;
@@ -53,18 +55,26 @@ export function MotionLab({ embedded, initial, onSnapshot, readOnly = false, pre
   const patchRunway = (id: number, patch: Partial<Runway>, solveAgain = false) =>
     setRunways((prev) => prev.map((r) => (r.id === id ? (solveAgain ? recompute({ ...r, ...patch }) : { ...r, ...patch }) : r)));
 
+  const setField = (id: number, field: SolveKey, value: number) => {
+    const anchor = lastInputs.current.get(id);
+    if (field !== "time") lastInputs.current.set(id, field);
+    setRunways((prev) => prev.map((r) => r.id === id ? editField(r, field, value, anchor) : r));
+  };
+
   /** 统一时间：全班一起跑 t 秒（原 Timer 的 handleTimeSet） */
   const setAllTimes = (v: number) => {
+    const anchors = new Map(lastInputs.current);
     setAllTime(v);
     setRunways((prev) =>
-      prev.map((r) => recompute({ ...r, time: fmt(v), solve: r.solve === "time" ? "speed" : r.solve })),
+      prev.map((r) => editField(r, "time", v, anchors.get(r.id))),
     );
   };
   /** 统一速度 */
   const setAllSpeeds = (v: number) => {
+    runways.forEach((r) => lastInputs.current.set(r.id, "speed"));
     setAllSpeed(v);
     setRunways((prev) =>
-      prev.map((r) => recompute({ ...r, speed: fmt(v), solve: r.solve === "speed" ? "distance" : r.solve })),
+      prev.map((r) => editField(r, "speed", v)),
     );
   };
 
@@ -125,7 +135,7 @@ export function MotionLab({ embedded, initial, onSnapshot, readOnly = false, pre
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-l border-line pl-3">
           <div className="flex items-center gap-1.5 whitespace-nowrap text-xs text-muted">
             <span>{t("allTime")}</span>
-            <ApplyField value={allTime} disabled={locked} min={Number.MIN_VALUE} unit="s" applyLabel={`${t("apply")} · ${t("allTime")}`} onApply={(v) => v > 0 && setAllTimes(v)} ariaLabel={t("allTime")} />
+            <ApplyField value={allTime} disabled={locked} min={Number.MIN_VALUE} unit="s" applyLabel={`${t("apply")} · ${t("allTime")}`} shortcut={{ value: 1, label: t("allTimeOneSecond") }} onApply={(v) => v > 0 && setAllTimes(v)} ariaLabel={t("allTime")} />
           </div>
           <div className="flex items-center gap-1.5 whitespace-nowrap text-xs text-muted">
             <span>{t("allSpeed")}</span>
@@ -136,7 +146,10 @@ export function MotionLab({ embedded, initial, onSnapshot, readOnly = false, pre
           <SpatialIconButton label={t("showRuler")} active={showRuler} onClick={() => setShowRuler(!showRuler)}><Ruler aria-hidden /></SpatialIconButton>
           <div className="mx-1 h-5 border-l border-line" aria-hidden />
           <SpatialIconButton label={t("addRunway")} disabled={phase !== "idle" || runways.length >= MAX_RUNWAYS} onClick={() => setRunways((p) => [...p, makeRunway(Math.max(...p.map((r) => r.id)) + 1)])}><Plus aria-hidden /></SpatialIconButton>
-          <SpatialIconButton label={t("removeRunway")} disabled={phase !== "idle" || runways.length <= 1} onClick={() => setRunways((p) => p.slice(0, -1))}><Minus aria-hidden /></SpatialIconButton>
+          <SpatialIconButton label={t("removeRunway")} disabled={phase !== "idle" || runways.length <= 1} onClick={() => {
+            lastInputs.current.delete(runways[runways.length - 1].id);
+            setRunways((p) => p.slice(0, -1));
+          }}><Minus aria-hidden /></SpatialIconButton>
           <Popover open={helpOpen} onOpenChange={setHelpOpen}>
             <PopoverTrigger asChild>
               <SpatialIconButton label={t("help")} active={helpOpen}><CircleHelp aria-hidden /></SpatialIconButton>
@@ -144,6 +157,7 @@ export function MotionLab({ embedded, initial, onSnapshot, readOnly = false, pre
             <PopoverContent align="end" sideOffset={8} aria-label={t("help")} className="w-80 space-y-2 bg-paper p-3 text-xs leading-relaxed text-muted">
               <p className="font-medium text-ink">{t("help")}</p>
               <p>{t("dragHint")}</p><p>{t("solveHint")}</p><p>{t("editHint")}</p>
+              <p>{t("allTimeHint")}</p>
             </PopoverContent>
           </Popover>
         </div>
@@ -160,20 +174,24 @@ export function MotionLab({ embedded, initial, onSnapshot, readOnly = false, pre
               ppm={ppm}
               locked={locked}
               onMove={(id, x) => patchRunway(id, { x })}
-              onField={(id, field, value) => setRunways((prev) => prev.map((r) => (r.id === id ? editField(r, field, value) : r)))}
+              onField={setField}
               onSolve={(id, key: SolveKey) => patchRunway(id, { solve: key }, true)}
               onPatch={(id, patch) => patchRunway(id, patch)}
-              onVehicle={(id, vehicle) =>
+              onVehicle={(id, vehicle) => {
+                const preset = VEHICLE_SPEEDS[vehicle];
+                if (preset !== undefined) lastInputs.current.set(id, "speed");
                 setRunways((prev) =>
                   prev.map((r) => {
                     if (r.id !== id) return r;
-                    const preset = VEHICLE_SPEEDS[vehicle];
                     const next = { ...r, vehicle };
-                    return preset ? editField(next, "speed", preset) : next;
+                    return preset !== undefined ? editField(next, "speed", preset) : next;
                   }),
-                )
-              }
-              onMeasure={(id, dist, dur) => patchRunway(id, { distance: fmt(dist), time: fmt(dur), speed: fmt(dist / dur) })}
+                );
+              }}
+              onMeasure={(id, dist, dur) => {
+                lastInputs.current.delete(id);
+                patchRunway(id, { distance: fmt(dist), time: fmt(dur), speed: fmt(dist / dur) });
+              }}
             />
           ))}
           <div aria-hidden className="h-16" />

@@ -1,4 +1,5 @@
 export type SolveKey = "distance" | "time" | "speed";
+export type TimeAnchor = Exclude<SolveKey, "time">;
 
 export interface Runway {
   id: number;
@@ -64,12 +65,14 @@ export function recompute(r: Runway): Runway {
 
 /**
  * 原版交互逻辑：任意字段都可编辑；若编辑的恰是当前被求解的量，
- * 求解目标自动轮转（路程→时间→速度→路程），随后重算。
+ * 求解目标自动轮转。时间原本自动时，保留最近明确输入的路程或速度；
+ * 没有本次编辑记录时沿用保留路程的规则。其他求解模式优先于编辑记录。
  */
-export function editField(r: Runway, field: SolveKey, value: number): Runway {
+export function editField(r: Runway, field: SolveKey, value: number, timeAnchor?: TimeAnchor): Runway {
   const next: Runway = { ...r, [field]: fmt(value) };
   if (r.solve === field) {
-    next.solve = field === "distance" ? "time" : field === "time" ? "speed" : "distance";
+    next.solve = field === "distance" ? "time"
+      : field === "time" && timeAnchor !== "speed" ? "speed" : "distance";
   }
   return recompute(next);
 }

@@ -97,13 +97,14 @@ export function EditableNumber({ longPressValue, longPressLabel, ...props }: Num
 }
 
 /** 带「确认」按钮的数字输入：触摸屏友好（回车或点 ✓ 提交） */
-export function ApplyField({ value, onApply, disabled, ariaLabel, applyLabel, unit, min = 0 }: {
+export function ApplyField({ value, onApply, disabled, ariaLabel, applyLabel, unit, shortcut, min = 0 }: {
   value: number;
   onApply: (v: number) => void;
   disabled?: boolean;
   ariaLabel?: string;
   applyLabel: string;
   unit: string;
+  shortcut?: { value: number; label: string };
   min?: number;
 }) {
   const [text, setText] = useState(String(value));
@@ -144,6 +145,10 @@ export function ApplyField({ value, onApply, disabled, ariaLabel, applyLabel, un
         <span className="min-w-5 text-right text-[11px] text-muted" aria-hidden>{unit}</span>
       </span>
       <SpatialIconButton label={applyLabel} disabled={disabled} onClick={apply}><Check aria-hidden /></SpatialIconButton>
+      {shortcut && <SpatialIconButton label={shortcut.label} disabled={disabled} onClick={() => {
+        setText(String(shortcut.value));
+        onApply(shortcut.value);
+      }}><span className="text-[11px] font-medium tabular-nums" aria-hidden>{shortcut.value} {unit}</span></SpatialIconButton>}
     </span>
   );
 }
