@@ -1,40 +1,4 @@
 .toolbarGroup { display: flex; flex-direction: column; flex-shrink: 0; gap: 2px; }
-.toolbar [data-spatial-action] { position: relative; }
-.toolbar [data-spatial-icon] { width: 20px; height: 20px; stroke-width: 1.7; }
-.toolbar [data-place-value-kind="panel"]::after {
-  content: "";
-  position: absolute;
-  right: 3px;
-  bottom: 3px;
-  border-bottom: 4px solid currentColor;
-  border-left: 4px solid transparent;
-  opacity: .8;
-}
-.toolbar [data-place-value-kind="panel"][aria-expanded="true"] {
-  background: color-mix(in oklab, var(--ink) 6%, var(--paper));
-  color: var(--ink);
-}
-.toolbar [data-place-value-kind="panel"][aria-expanded="true"]::before {
-  content: "";
-  position: absolute;
-  left: 1px;
-  top: 7px;
-  bottom: 7px;
-  width: 2px;
-  border-radius: 1px;
-  background: currentColor;
-}
-.toolbar [data-place-value-kind="toggle"]::after {
-  content: "";
-  position: absolute;
-  right: 2px;
-  top: 2px;
-  width: 4px;
-  height: 4px;
-  border: 1px solid currentColor;
-  border-radius: 50%;
-}
-.toolbar [data-place-value-kind="toggle"][aria-pressed="true"]::after { background: currentColor; }
 @media (orientation: portrait) {
   .toolbarGroup { flex-direction: row; }
 }

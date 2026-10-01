@@ -6,6 +6,7 @@ import { PlaceValueWorkspace, type PlaceValueWorkspaceProps } from "@/features/t
 import type { PlaceValueCanvasProps } from "@/features/tools/place-value/PlaceValueCanvas";
 import { boardTotal, createDefaultPlaceValueInitial, createPlaceValueBoard, placeValueSnapshot, type PlaceValueSnapshot } from "@/features/tools/place-value/radix-contract";
 import { planPlaceValue } from "@/features/tools/place-value/radix-model";
+import workbenchStyles from "@/features/tools/spatial-lab/CubeStructuresWorkbench.module.css";
 
 const viewport = vi.hoisted(() => ({ current: null as PlaceValueCanvasProps | null, locale: "en" as "zh" | "en" }));
 vi.mock("next/dynamic", () => ({ default: () => function Viewport(props: PlaceValueCanvasProps) {
@@ -39,6 +40,7 @@ describe("place-value workspace using common spatial controls", () => {
     viewport.locale = locale;
     await render();
     const toolbar = host.querySelector<HTMLElement>("[data-place-value-toolbar]")!;
+    expect([...toolbar.classList]).toEqual([workbenchStyles.dock, workbenchStyles.tools]);
     const groups = [...toolbar.querySelectorAll<HTMLElement>("[data-place-value-toolbar-group]")];
     expect(groups.map((group) => group.dataset.placeValueToolbarGroup)).toEqual(["camera", "teaching", "display", "history"]);
     expect(groups.map((group) => group.getAttribute("aria-label"))).toEqual(locale === "zh" ? ["视角", "教学", "显示", "历史"] : ["Camera", "Teaching", "Display", "History"]);
@@ -46,17 +48,21 @@ describe("place-value workspace using common spatial controls", () => {
     expect(actions.map((node) => node.dataset.spatialAction)).toEqual(["orbit", "pan", "placePrepare", "placePresentation", "placeCompare", "placeInspect", "showDigits", "settings", "undo", "redo", "reset"]);
     expect(actions.slice(2, 6).map((node) => node.getAttribute("aria-label"))).toEqual(locale === "zh" ? ["摆数", "表示方式", "比较两数", "观察单位"] : ["Arrange number", "Representation", "Compare numbers", "Inspect unit"]);
     expect(actions.every((node) => node.querySelector("svg") && node.getAttribute("title"))).toBe(true);
+    expect(actions.every((node) => node.classList.contains(workbenchStyles.icon))).toBe(true);
     expect(actions.filter((node) => node.dataset.placeValueKind === "command").every((node) => !node.hasAttribute("aria-pressed") && !node.hasAttribute("aria-expanded"))).toBe(true);
     expect(toolbar.querySelector('[data-spatial-action="placeUnpack"]')).toBeNull();
     const snapshot = structuredClone(viewport.current!.snapshot);
     for (const panel of actions.filter((node) => node.dataset.placeValueKind === "panel")) {
       expect(panel.hasAttribute("aria-pressed")).toBe(false);
       expect(panel.getAttribute("aria-expanded")).toBe("false");
+      expect(panel.classList.contains("bg-moon/40")).toBe(false);
       await act(async () => panel.click());
       expect(panel.getAttribute("aria-expanded")).toBe("true");
+      expect(panel.classList.contains("bg-moon/40")).toBe(true);
       expect(host.querySelector("[data-cube-canvas-panel]")!.getAttribute("data-cube-panel-anchor")).toBe("tool");
       await act(async () => panel.click());
       expect(panel.getAttribute("aria-expanded")).toBe("false");
+      expect(panel.classList.contains("bg-moon/40")).toBe(false);
       expect(host.querySelector("[data-cube-canvas-panel]")).toBeNull();
     }
     expect(viewport.current!.snapshot).toEqual(snapshot);

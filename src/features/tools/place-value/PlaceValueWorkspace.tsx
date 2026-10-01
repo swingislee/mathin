@@ -174,7 +174,7 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
           fit={{ label: m.fit, onClick: () => commit({ ...snapshot, frame: frameFor(snapshot), cameraRevision: snapshot.cameraRevision + 1 }) }} />
         <SpatialAxisSnapButton messages={m} disabled={viewer} iconOnly className={styles.icon} />
       </div>
-      <div className={styles.dock + " " + styles.tools + " " + local.toolbar} role="toolbar" aria-label={m.tools} data-place-value-toolbar>
+      <div className={styles.dock + " " + styles.tools} role="toolbar" aria-label={m.tools} data-place-value-toolbar>
         <div className={local.toolbarGroup} role="group" aria-label={m.toolbarGroups.camera} data-place-value-toolbar-group="camera">
           <SpatialActionButton action="orbit" label={m.orbit} data-place-value-kind="mode" active={controls.tool === "orbit"} disabled={viewer} onClick={() => controls.chooseTool("orbit")} />
           <SpatialActionButton action="pan" label={m.pan} data-place-value-kind="mode" active={controls.tool === "pan"} disabled={viewer} onClick={() => controls.chooseTool("pan")} />
