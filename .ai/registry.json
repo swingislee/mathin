@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "coordinatorTaskId": "COLLAB-20261001-R2",
+  "tasks": [
+    {
+      "id": "COLLAB-20261001-R2",
+      "title": "设计 Codex 与 Claude 协作方案",
+      "agent": "codex",
+      "threadId": "01a0f759-ae3b-73c3-87cf-8b5ca81fc67d",
+      "status": "done",
+      "checkout": "integration",
+      "branch": "main",
+      "card": ".ai/tasks/COLLAB-20261001-R2.md",
+      "writePaths": ["AGENTS.md", "CLAUDE.md", ".gitignore", ".ai/", "docs/agent/collaboration.md", "scripts/agent-context.mjs", "tests/agent-coordination.test.ts", ".claude/skills/mathin-verify/"],
+      "sharedPaths": [],
+      "checkpoint": "381809f3fd17db5381909f547fb4e0bf4d253a43",
+      "next": "协作架构已交付；按用户新指派登记下一批任务和集成人，Claude 实际接入待回传。"
+    },
+    {
+      "id": "DEV-MOTION-20261001",
+      "title": "恢复 Motion Lab 拖动与长按功能",
+      "agent": "codex",
+      "threadId": "01a0f6fc-745e-7fd0-9b15-ce58ff01a2b8",
+      "status": "integrated",
+      "checkout": "primary-transition",
+      "branch": "main",
+      "card": ".ai/tasks/DEV-MOTION-20261001.md",
+      "writePaths": ["src/features/tools/motion-lab/", "tests/motion-lab-interactions.test.ts"],
+      "sharedPaths": ["CHANGELOG.md", "messages/en.json", "messages/zh.json"],
+      "checkpoint": "575e16e14e039971ff2005d63f87fb162547c061",
+      "next": "连续环形菜单已提交，等待产品视觉验收；下一独立批次使用 worktree。"
+    },
+    {
+      "id": "DEV-CLASS-LIST-20261001",
+      "title": "优化班级列表与手机端体验",
+      "agent": "codex",
+      "threadId": "01a0f6e7-2fca-7963-9be1-3ed3d2705ecc",
+      "status": "integrated",
+      "checkout": "primary-transition",
+      "branch": "main",
+      "card": ".ai/tasks/DEV-CLASS-LIST-20261001.md",
+      "writePaths": ["src/features/school/", "tests/enrollment-completion-data.test.ts", "tests/enrollment-placement-drag-confirmation.test.ts", "tests/enrollment-placement-workbench.test.ts", "docs/plan/dashboard-work-entry-restructure.md"],
+      "sharedPaths": ["CHANGELOG.md"],
+      "checkpoint": "b1095c73bdb8456fe361e2839b70c7d883559720",
+      "next": "班级信息与触屏入口已提交，等待开发端人工验收；下一独立批次使用 worktree。"
+    },
+    {
+      "id": "DEV-PLACE-VALUE-20261001",
+      "title": "[生产·待验收] 可备课数学教具与立体图形 (2)",
+      "agent": "codex",
+      "threadId": "01a0dd5d-20ad-7471-be26-43a53a68757d",
+      "status": "integrated",
+      "checkout": "primary-transition",
+      "branch": "main",
+      "card": ".ai/tasks/DEV-PLACE-VALUE-20261001.md",
+      "writePaths": ["src/features/tools/place-value/", "src/features/tools/spatial-interaction/", "src/features/spatial-math/renderer-r3f/spatial-box-outline.ts", "tests/place-value-box-scene.test.ts", "tests/place-value-workspace.test.ts", "tests/spatial-box-outline.test.ts", "tests/spatial-context-actions.test.ts", "tests/spatial-toolbar-placement.test.ts"],
+      "sharedPaths": ["CHANGELOG.md", "src/features/tools/AGENTS.md"],
+      "checkpoint": "e73269ba9a75b63ddc156d15ea08fefa1eddffd3",
+      "next": "等待产品负责人验收数位积木样板；后续增量从独立 worktree 开始。本卡不表示生产发布。"
+    }
+  ]
+}

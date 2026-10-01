@@ -54,6 +54,14 @@ next-env.d.ts
 
 # Claude Code personal settings and reference material
 .claude/
+# Versioned project adapter; all other Claude files stay private.
+!/.claude/
+/.claude/*
+!/.claude/skills/
+/.claude/skills/*
+!/.claude/skills/mathin-verify/
+/.claude/skills/mathin-verify/*
+!/.claude/skills/mathin-verify/SKILL.md
 
 # Codex local worktrees and task state
 .codex/
