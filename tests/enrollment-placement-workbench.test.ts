@@ -236,7 +236,7 @@ describe("enrollment placement class roster", () => {
     expect(searched.filter(row => row.attributes.includes("data-placement-pending=")).flatMap(row => studentKeys(row.content))).toEqual(["pending-fourth"]);
   });
 
-  it("locates classes through canonical campus and room without putting names or textbooks in the desktop summary", () => {
+  it("locates classes through canonical campus without putting rooms, names or textbooks in the summary", () => {
     const initialBoard = { ...board, options: { ...board.options, classrooms: board.options.classrooms.map(row => ({ ...row,
       location: { campusId: "east", campusName: "东校区", roomName: "305" },
     })) } };
@@ -244,7 +244,7 @@ describe("enrollment placement class roster", () => {
     expect(markup).toMatch(/<thead[\s\S]*?校区/);
     const row = renderRoster(undefined, { initialBoard, workspace: "classes" }).find(row => classroomId(row.attributes) === "autumn-4")!;
     expect(row.cells[0].content).toContain("东校区");
-    expect(row.cells[0].content).toContain("305");
+    expect(row.cells[0].content).not.toContain("305");
     expect(row.cells[0].content).not.toContain("4年级数学");
     expect(row.attributes).toContain('data-mobile-roster-open="false"');
     expect(row.cells[0].content).toContain('data-class-roster-toggle="autumn-4"');
