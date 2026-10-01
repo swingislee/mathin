@@ -7,7 +7,7 @@
       "title": "小程序开发数据与微信登录集成",
       "agent": "codex",
       "threadId": "01a0f7b2-73aa-74b3-8cf6-b23207ece7d6",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-PARENT-PREVIEW-20261002-INTEGRATION.md",
@@ -15,18 +15,19 @@
         ".ai/tasks/DEV-PARENT-PREVIEW-20261002-INTEGRATION.md",
         ".ai/tasks/DEV-PARENT-PREVIEW-SUPABASE-20261002.md",
         ".ai/tasks/DEV-PARENT-WECHAT-AUTH-NEXT-20261002.md",
-        ".ai/tasks/DEV-PARENT-WECHAT-AUTH-UI-20261002.md"
+        ".ai/tasks/DEV-PARENT-WECHAT-AUTH-UI-20261002.md",
+        ".ai/tasks/DEV-PARENT-IOS-DETAILS-20261002.md"
       ],
       "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
-      "checkpoint": "e9274eaec8c3a295650f8808e459c7597c053625",
-      "next": "核验本机开发目标，接收开发fixture与微信登录/绑定合同及小程序入口；root唯一执行数据库写入，集成后按真实HTTP与原生运行状态交付。"
+      "checkpoint": "ba9e8bd3e62a4292ba929036bd8949f5aeeeee59",
+      "next": "开发数据已核验并装载，真实HTTP与原生测评申请页读取通过；源码及交接已集成。待人工体验申请/确认、活动、登记和课表；真实微信待私有配置及平台往返验证，生产与正式Gate未执行。"
     },
     {
       "id": "DEV-PARENT-PREVIEW-SUPABASE-20261002",
       "title": "小程序可操作开发数据",
       "agent": "codex",
       "threadId": null,
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/parent-preview-supabase-codex",
       "card": ".ai/tasks/DEV-PARENT-PREVIEW-SUPABASE-20261002.md",
@@ -38,15 +39,15 @@
         ".ai/handoffs/DEV-PARENT-PREVIEW-SUPABASE-20261002-codex-01.md"
       ],
       "sharedPaths": [],
-      "checkpoint": "e9274eaec8c3a295650f8808e459c7597c053625",
-      "next": "复用固定家长/孩子/教师与test班，首次补测评档案、教师关联、预约确认样例及未来活动/课表/登记；脚本自带只读preflight、事务检查和幂等保护，由root复核后串行执行。"
+      "checkpoint": "767407b0163994ee155a0d7dc9a7a7d1e7c24093",
+      "next": "源码、修正及交接已集成；root完成最终事务检查、回滚摘要核对和本机装载，真实HTTP权限读取通过。人工继续操作两个孩子的不同测评流程；后续样例检查先用只读inventory并保留实际操作。"
     },
     {
       "id": "DEV-PARENT-WECHAT-AUTH-NEXT-20261002",
       "title": "微信小程序登录与已有账号绑定接口",
       "agent": "codex",
       "threadId": null,
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/parent-wechat-auth-next-codex",
       "card": ".ai/tasks/DEV-PARENT-WECHAT-AUTH-NEXT-20261002.md",
@@ -67,15 +68,15 @@
         ".ai/handoffs/DEV-PARENT-WECHAT-AUTH-NEXT-20261002-codex-01.md"
       ],
       "sharedPaths": [],
-      "checkpoint": "e9274eaec8c3a295650f8808e459c7597c053625",
-      "next": "先提交GET能力与POST登录/绑定DTO，再实现真实code兑换、既有账号凭据/MFA及原生identity/PKCE复用；缺配置关闭。Supabase复核数据与权限合同，root接入UI。"
+      "checkpoint": "5e71e6de6c2bdc794ffc52494e60ffa2f9e24fd2",
+      "next": "合同、源码、补充测试及交接已互审集成；93项相关检查与定向类型/lint通过，集成HTTP确认微信关闭、无效会话拒绝及原密码登录正常。待AppSecret/平台配置、真实GoTrue新路径和微信往返验证后启用。"
     },
     {
       "id": "DEV-PARENT-WECHAT-AUTH-UI-20261002",
       "title": "小程序微信登录与绑定入口",
       "agent": "codex",
       "threadId": "01a0f7b2-73aa-74b3-8cf6-b23207ece7d6",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/parent-wechat-auth-ui-codex",
       "card": ".ai/tasks/DEV-PARENT-WECHAT-AUTH-UI-20261002.md",
@@ -91,8 +92,25 @@
         ".ai/handoffs/DEV-PARENT-WECHAT-AUTH-UI-20261002-codex-01.md"
       ],
       "sharedPaths": [],
-      "checkpoint": "e9274eaec8c3a295650f8808e459c7597c053625",
-      "next": "消费已提交鉴权合同，账号页增加微信登录及登录后的绑定，缺配置显示准确状态；密码和微信会话并用同一账号权限。"
+      "checkpoint": "d1d908c1acf44d64021d47c665e644afc1b264e4",
+      "next": "源码和交接已复核集成；46项相关检查通过，模拟器加载两名孩子及微信未开通状态，并停在可新申请的测评页。开发数据操作说明已交付，待人工视觉/业务验收和配置后的真实微信验证。"
+    },
+    {
+      "id": "DEV-PARENT-IOS-DETAILS-20261002",
+      "title": "iOS 设置与二级页面对齐参考并接入开发数据",
+      "agent": "codex",
+      "threadId": "01a0f814-c4aa-73c0-8e9b-93481aa86ac2",
+      "status": "ready",
+      "checkout": "worktree",
+      "branch": "codex/parent-ios-details-codex",
+      "card": ".ai/tasks/DEV-PARENT-IOS-DETAILS-20261002.md",
+      "writePaths": [
+        "apps/parent-ios/",
+        ".ai/handoffs/DEV-PARENT-IOS-DETAILS-20261002-codex-01.md"
+      ],
+      "sharedPaths": [],
+      "checkpoint": "ba9e8bd3e62a4292ba929036bd8949f5aeeeee59",
+      "next": "按原会话人类授权，在独立worktree对齐最初参考截图的设置与二级页，并消费现有家长HTTP和固定开发数据；保留已可运行的iPad模板，真实设备新版本继续人工验证，不改后端合同或数据库。"
     },
     {
       "id": "DEV-PARENT-IOS-20261001-INTEGRATION",

@@ -11,10 +11,15 @@
 
 - 既有数据与HTTP合同基线 main e9274eae；新增鉴权合同由 Next.js 子 agent 先提交，Supabase 同步只读复核。
 - root 为集成人和唯一数据库写入执行者，其他实现者使用独立 worktree。开发端复用主 checkout 既有服务，不创建第二套共享端口。
-- 本次只读 preflight 已核对 Windows 主机、应用 Supabase origin、Next/Docker 监听、隔离网络和 PostgreSQL 指纹；结果保留于忽略的本机目录。所有写入执行时重新验证目标。
-- 开发工具已登录且 Skill 版本匹配；本机有小程序 AppID，服务端尚未发现微信密钥配置，已询问用户私有配置路径。AppID、密钥及固定身份数据不进入提交或日志。
+- 本次只读 preflight 已核对 Windows 主机、应用 Supabase origin、Next/Docker 监听、隔离网络和 PostgreSQL 指纹；结果保留于忽略的本机目录。最终代码事务检查与装载时均重新验证目标。
+- 开发工具已登录且 Skill 版本匹配；本机有小程序 AppID，用户明确确认 AppSecret 未配置。微信入口如实关闭，私有配置与真实平台往返待完成。
 
 ## 交付状态
 
-- 数据与鉴权实现进行中；按受影响合同运行定向检查和真实开发HTTP验证。
-- 用户视觉/业务验收待完成。生产操作与正式 Gate 不在本轮授权范围。
+- Supabase、Next.js 和 UI 源码及交接已只读互审并集成。开发数据最终源提交 `54ef0eca` 对应 main `2ccb417d`；微信合同 `8756dba5`、实现 `a54a0f7f`、补充测试 `b9a1d817` 对应 main `0f8fe44b` / `eb052911` / `70a4a583`；UI `b927e8ae` 对应 main `bf8a5f9e`。
+- root 已执行最终开发数据 `--check` 并确认事务回滚、原数据摘要一致与重复装载保留状态，随后 `--apply` 成功。复用固定六个身份，补两名孩子的测评档案、可选教师、一个待家长确认邀约、一场未来活动、两节未来课程与一份登记样例。第一名孩子保留可新申请状态。
+- 局域网真实 HTTP 已验证登记表四字段、可预约活动、家长两名孩子、两种测评状态、课表、报告与练习；未关联家长读取两类孩子资源均为 403。原有密码登录正常。微信匿名 / 本人能力 GET 为 200 且 available=false，无效 Bearer 为 401，登录 POST 为 503 / WECHAT_NOT_CONFIGURED。
+- 原生模拟器已保存固定开发家长的真实密码会话；家长页显示两名孩子、微信关闭状态且无加载错误。刷新完成后已打开测评申请页，eligible=true 且无页面错误，供用户直接体验。
+- 复用最终源码的定向检查：开发数据 4 项，微信后端及受影响网站鉴权 93 项，客户端及受影响既有检查 46 项；相关类型 / lint 检查按各交接的覆盖范围通过。全库类型检查仍有既有 agent-coordination 测试选项错误，未将局部通过描述为全库通过。
+- 详细边界和复核依据见 [数据交接](../handoffs/DEV-PARENT-PREVIEW-SUPABASE-20261002-codex-01.md)、[后端交接](../handoffs/DEV-PARENT-WECHAT-AUTH-NEXT-20261002-codex-01.md) 与 [UI 交接](../handoffs/DEV-PARENT-WECHAT-AUTH-UI-20261002-codex-01.md)。原始执行资料保留于忽略的本机临时目录。
+- 开发端已交付，待人工视觉、交互和业务验收。真实 GoTrue 新路径与微信往返需平台配置后验证；生产操作与正式 Gate 本轮未执行。
