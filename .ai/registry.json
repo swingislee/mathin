@@ -195,7 +195,7 @@
       "title": "小程序家长发现与预约入口",
       "agent": "codex",
       "threadId": "01a0f7bd-4ca2-7370-a49c-a8f73fd4f5e9",
-      "status": "integrated",
+      "status": "in_progress",
       "checkout": "worktree",
       "branch": "codex/parent-wechat-discovery-codex",
       "card": ".ai/tasks/DEV-PARENT-WECHAT-20261001.md",
@@ -214,11 +214,15 @@
         "tests/parent-wechat-discovery.test.ts",
         "tests/parent-foundation.test.ts",
         ".ai/handoffs/DEV-PARENT-WECHAT-20261001-codex-01.md",
-        ".ai/handoffs/DEV-PARENT-WECHAT-20261001-codex-02.md"
+        ".ai/handoffs/DEV-PARENT-WECHAT-20261001-codex-02.md",
+        "apps/parent-wechat/miniprogram/theme.json",
+        "apps/parent-wechat/miniprogram/components/",
+        "apps/parent-wechat/miniprogram/assets/",
+        ".ai/handoffs/DEV-PARENT-WECHAT-20261001-codex-03.md"
       ],
       "sharedPaths": [],
       "checkpoint": "ebd4bc8c0d4fd8331afc1f3b8b106a36173d30e5",
-      "next": "已核验原会话人类明确批准，并将三提交及补充交接串行集成 main；定向检查通过，模拟器与人工视觉/业务验收待完成。"
+      "next": "按用户新反馈尽可能复刻示例布局，底栏改为发现/课程/家长，仅适配主题色并清理无效说明；沿用原独立工作区及现有API，完成窄检查后交付人工视觉验收。"
     }
   ]
 }
