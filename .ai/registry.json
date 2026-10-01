@@ -92,7 +92,7 @@
       "title": "优化班级列表与手机端体验",
       "agent": "codex",
       "threadId": "01a0f6e7-2fca-7963-9be1-3ed3d2705ecc",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/class-roster-density-codex",
       "card": ".ai/tasks/DEV-CLASS-LIST-20261001.md",
@@ -124,8 +124,8 @@
       "sharedPaths": [
         "CHANGELOG.md"
       ],
-      "checkpoint": "1a93ac97b91b5721138ad775bac9e897a30768d0",
-      "next": "修复手机班级筛选、名册与课次互斥、详情宽度、直接入口和选中边框；检查重复读取及请求取消。沿用独立 worktree，不涉及数据库或生产操作。"
+      "checkpoint": "380b9aa5a62508283294104cf41efd8e5ec2a1e1",
+      "next": "共享移动记录表、紧凑筛选、直接入口、名册与课次互斥及开发重复读取修复已集成；定向检查和局域网中英文页面启动通过，待人工视觉验收。交接见 codex-04；首次启动曾返回 500，复查未再复现，原因未确认。"
     },
     {
       "id": "DEV-PLACE-VALUE-20261001",
