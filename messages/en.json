@@ -714,6 +714,7 @@
       "avatar": "Avatar",
       "flip": "Flip direction",
       "position": "Position",
+      "direction": "Facing",
       "dragHint": "Drag the position handle below the character to move and measure. The character faces the drag direction, then returns to its chosen direction on release; distance, time and speed fill in automatically.",
       "editHint": "Click or hold the avatar and vehicle. Click the vehicle for the circular menu; enter a position or choose a travel direction with ◀ ▶ in its center. Click distance, time or speed to edit; hold distance to use the full track, or time/speed to set zero. Hold track length to reset to 100 m.",
       "dragHandle": "Position drag handle (arrow keys to move; Shift + arrow keys for smaller steps)",

@@ -22,8 +22,8 @@ function readImageFile(file: File | undefined, cb: (dataUrl: string) => void) {
 
 const VEHICLE_NAMES = ["walk", "bicycle", "car", "plane", "rocket", "cloud", "wormhole"] as const;
 const CHARACTER_DRAG_THRESHOLD_PX = 3;
-// 旧版 CircleUpload 的八个方位；中心留给方向与位置输入。
-const MENU_POSITIONS = [[0, -75], [53, -53], [75, 0], [53, 53], [0, 75], [-53, 53], [-75, 0], [-53, -53]];
+// 保留旧版八个方位，扩大半径给中心的位置和方向控件留白。
+const MENU_POSITIONS = [[0, -96], [68, -68], [96, 0], [68, 68], [0, 96], [-68, 68], [-96, 0], [-68, -68]];
 const menuPosition = (index: number) => ({ transform: `translate(-50%, -50%) translate(${MENU_POSITIONS[index][0]}px, ${MENU_POSITIONS[index][1]}px)` });
 
 export function RunwayLane({ runway, length, ppm, locked, onMove, onField, onSolve, onPatch, onVehicle, onMeasure }: {
@@ -159,39 +159,52 @@ export function RunwayLane({ runway, length, ppm, locked, onMove, onField, onSol
                 aria-label={t("chooseVehicle")} title={t("vehicleHint")}
                 className="h-6 w-12 shrink-0 touch-none rounded-none bg-card p-0 transition-none disabled:opacity-100"
                 style={{ transform: flip ? "scaleX(-1)" : undefined, WebkitTouchCallout: "none" }}>
-                <Image src={runway.vehicle} alt="" width={48} height={24} unoptimized draggable={false} className="h-6 w-12 object-contain" />
+                <span className="relative block h-6 w-12 shrink-0">
+                  <Image src={runway.vehicle} alt="" fill sizes="48px" unoptimized draggable={false} className="object-contain" />
+                </span>
               </Button>
             </PopoverTrigger>
-            <PopoverContent side="bottom" sideOffset={-96} collisionPadding={12} aria-label={t("chooseVehicle")}
-              className="size-48 rounded-full border-0 bg-transparent p-0 shadow-none data-[state=open]:animate-none data-[state=closed]:animate-none"
+            <PopoverContent side="bottom" sideOffset={12} collisionPadding={12} aria-label={t("chooseVehicle")}
+              className="size-64 rounded-full border-line bg-card p-0 shadow-sm data-[state=open]:animate-none data-[state=closed]:animate-none"
               onPointerDown={(event) => event.stopPropagation()} onContextMenu={(event) => event.preventDefault()}>
               {VEHICLES.map((vehicle, index) => (
                 <Button key={vehicle} type="button" variant="ghost" disabled={locked}
                   aria-label={t(`vehicles.${VEHICLE_NAMES[index]}`)} aria-pressed={runway.vehicle === vehicle}
                   title={`${t(`vehicles.${VEHICLE_NAMES[index]}`)} · ${VEHICLE_SPEEDS[vehicle]} m/s`}
                   onClick={() => onVehicle(runway.id, vehicle)} style={menuPosition(index)}
-                  className={cn("absolute left-1/2 top-1/2 size-10 rounded-full border bg-card p-0 hover:bg-moon", runway.vehicle === vehicle && "border-rose")}>
-                  <Image src={vehicle} alt="" width={40} height={20} unoptimized draggable={false} className="h-5 w-10 object-contain" />
+                  className={cn("absolute left-1/2 top-1/2 size-11 rounded-full border p-0 hover:bg-moon/40",
+                    runway.vehicle === vehicle ? "border-crater bg-moon/50" : "border-transparent bg-transparent hover:border-line")}>
+                  <span className="relative block h-5 w-10 shrink-0">
+                    <Image src={vehicle} alt="" fill sizes="40px" unoptimized draggable={false} className="object-contain" />
+                  </span>
                 </Button>
               ))}
               <Button type="button" variant="ghost" disabled={locked} aria-label={t("uploadImage")} title={t("uploadImage")}
                 onClick={() => vehicleInputRef.current?.click()} style={menuPosition(7)}
-                className="absolute left-1/2 top-1/2 size-10 rounded-full border border-dashed bg-card p-0 hover:bg-moon">
+                className="absolute left-1/2 top-1/2 size-11 rounded-full border border-dashed border-line p-0 text-muted hover:border-crater hover:bg-moon/40">
                 <ImageUp size={20} strokeWidth={1.75} />
               </Button>
-              <div className="absolute left-1/2 top-[106px] flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-full bg-card px-1 py-0.5">
-                <Button type="button" variant="ghost" disabled={locked} aria-label={`${t("flip")} ←`} aria-pressed={!runway.facingRight}
-                  onClick={() => onPatch(runway.id, { facingRight: false })}
-                  className={cn("size-5 p-0", !runway.facingRight ? "text-rose" : "text-crater hover:text-ink")}>
-                  <Play size={11} className="rotate-180 fill-current" />
-                </Button>
-                <NumField value={fmt(runway.x)} disabled={locked} autoFocus
-                  onCommit={(value) => onMove(runway.id, Math.max(0, Math.min(length, value)))} className="w-12" ariaLabel={t("position")} />
-                <Button type="button" variant="ghost" disabled={locked} aria-label={`${t("flip")} →`} aria-pressed={runway.facingRight}
-                  onClick={() => onPatch(runway.id, { facingRight: true })}
-                  className={cn("size-5 p-0", runway.facingRight ? "text-rose" : "text-crater hover:text-ink")}>
-                  <Play size={11} className="fill-current" />
-                </Button>
+              <div className="absolute left-1/2 top-1/2 flex w-[116px] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1">
+                <span className="text-[11px] leading-4 text-muted">{t("position")}</span>
+                <div className="flex items-baseline gap-1">
+                  <NumField value={fmt(runway.x)} disabled={locked} autoFocus
+                    onCommit={(value) => onMove(runway.id, Math.max(0, Math.min(length, value)))} ariaLabel={t("position")}
+                    className="h-8 w-24 rounded-lg border-line bg-paper text-center text-base shadow-none focus:ring-crater/30 focus-visible:ring-1 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" />
+                  <span className="text-xs text-muted">m</span>
+                </div>
+                <div role="group" aria-label={t("direction")} className="flex items-center gap-1">
+                  <Button type="button" variant="ghost" disabled={locked} aria-label={`${t("flip")} ←`} title={`${t("flip")} ←`} aria-pressed={!runway.facingRight}
+                    onClick={() => onPatch(runway.id, { facingRight: false })}
+                    className={cn("size-7 border p-0", !runway.facingRight ? "border-crater bg-moon/50 text-ink" : "border-transparent text-muted hover:bg-moon/40")}>
+                    <Play size={12} className="rotate-180 fill-current" />
+                  </Button>
+                  <span className="text-[11px] leading-4 text-muted">{t("direction")}</span>
+                  <Button type="button" variant="ghost" disabled={locked} aria-label={`${t("flip")} →`} title={`${t("flip")} →`} aria-pressed={runway.facingRight}
+                    onClick={() => onPatch(runway.id, { facingRight: true })}
+                    className={cn("size-7 border p-0", runway.facingRight ? "border-crater bg-moon/50 text-ink" : "border-transparent text-muted hover:bg-moon/40")}>
+                    <Play size={12} className="fill-current" />
+                  </Button>
+                </div>
               </div>
             </PopoverContent>
           </Popover>
