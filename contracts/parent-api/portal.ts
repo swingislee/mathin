@@ -37,6 +37,19 @@ export type Practice = {
 export type Media = { id: string; kind: "image" | "video"; name: string; bytes: number; url?: string };
 export type PracticeSubmission = { id: string; submittedAt: string; note: string; media: Media[] };
 export type Session = { accessToken: string; refreshToken: string; expiresAt: number };
+/** available 表示服务端配置就绪；真实微信往返仍由登录操作核验。 */
+export type ParentWechatAuthStatus = { available: boolean; linked: boolean | null; canBind: boolean };
+export type ParentWechatAuthCommand =
+  | { action: "login"; code: string }
+  | { action: "bind"; code: string; password: string; confirm: true };
+export type ParentWechatAuthResult =
+  | { state: "authenticated"; session: Session }
+  | { state: "binding_required" }
+  | { state: "bound" };
+export type ParentWechatAuthErrorReason = "WECHAT_NOT_CONFIGURED" | "WECHAT_CODE_INVALID"
+  | "WECHAT_UNIONID_REQUIRED" | "WECHAT_CREDENTIALS_INVALID" | "WECHAT_MFA_REQUIRED"
+  | "WECHAT_PHONE_LINKING_UNAVAILABLE";
+export type ParentWechatAuthError = { code: ApiErrorCode; reason?: ParentWechatAuthErrorReason };
 export type Account = { id: string; displayName: string; participants: Participant[] };
 export type LearningSummary = {
   grade: number | null; nextSessionAt: string | null; weekSessionCount: number; starTotal: number;

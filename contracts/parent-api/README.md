@@ -1,6 +1,6 @@
 # 家长端接口规范
 
-当前接口版本为 `0.4.0`。可调用能力以 [OpenAPI](openapi.json) 的 paths 为准，业务 DTO 维护在 [portal.ts](portal.ts)。微信、iOS 和 Android 使用同一份 HTTP 合同，各端按自己的页面接入已实现能力。
+当前接口版本为 `0.5.0`。可调用能力以 [OpenAPI](openapi.json) 的 paths 为准，业务 DTO 维护在 [portal.ts](portal.ts)。微信、iOS 和 Android 使用同一份 HTTP 合同，各端按自己的页面接入已实现能力。
 
 ## 接入方式
 
@@ -32,13 +32,42 @@
 | `GET /api/v1/parent/media?id=...` | 获取 5 分钟有效的私有预览地址 | 必须 |
 | `GET /api/v1/parent/media?download=...&token=...` | 流式读取签名附件，支持 Range | 临时签名 |
 
-账号登录使用已有手机号或邮箱及密码。微信登录兑换尚未接入。微信 AppSecret、Supabase service role 等服务端密钥保留在服务端，客户端只持有自己的会话令牌。
+账号登录使用已有手机号或邮箱及密码。微信小程序登录与绑定遵循下节合同；配置与真实平台往返单独验收。微信 AppSecret、Supabase service role 等服务端密钥保留在服务端，客户端只持有自己的会话令牌。
 
 登记按后端字段 ID 和选项 ID 校验，保存配置快照及同意时间。`requestId` / 提交 `id` 用于重试去重，相同请求号更换内容会返回 `CONFLICT`。预约在数据库内锁定活动并检查实时名额，使用原有 `activity_registrations`。
 
 照片上限 12 MiB、视频 64 MiB，每次提交 1～9 个附件，单账号预留空间上限 1 GiB。根据文件签名识别 JPEG/PNG/WebP/HEIC/MP4/MOV，视频额外核验 `video` 权限。附件只存入私有 `miniapp-practice` bucket；签名 URL 经同一 API origin 代理，手机无需访问 Supabase 内网地址。失败重试会复用客户端已完成的上传；未确认上传响应时可能留下预留文件，目前保留供后台核对，没有新增自动清理任务。
 
 列表上限：活动、预约、练习各 100 条，结果合计 200 条；课后反馈范围为最近 366 天。业务结果按原始发布语言展示。错误体统一为 `{ "code": "..." }`，含 `FORM_CHANGED`、`ACTIVITY_FULL`、`ACCOUNT_SECURITY` 等可处理原因。JSON 请求最多 32 KiB；登录/刷新、匿名登记和上传有数据库计数限流。正式反向代理须覆盖客户端传入的 `X-Forwarded-For`，使来源限流使用可信地址。
+
+## 微信小程序登录与绑定合同
+
+`GET /api/v1/parent/auth/wechat` 返回 `{ available, linked, canBind }`。`available` 仅表示服务端配置就绪，不表示真实微信登录已验收。匿名请求的 `linked=null`、`canBind=false`；携带 Bearer 时验证当前账号，按原生 `auth.identities` 返回绑定状态。`canBind` 表示配置、账号现有登录方式与 MFA 等已知条件允许发起绑定，最终操作仍重新校验。
+
+`POST /api/v1/parent/auth/wechat` 接受 JSON（最多 32 KiB），使用 `wx.login()` 新取得的临时 `code`：
+
+- `{ action: "login", code }`：已绑定微信返回 `{ state: "authenticated", session }`，`session` 与密码登录合同一致；未知微信返回 `{ state: "binding_required" }`，没有会话、身份标识或临时游客账号。客户端引导登录现有账号，然后重新取得微信 code 进行绑定。
+- `{ action: "bind", code, password, confirm: true }`：必须携带当前 Bearer。服务端从当前账号选择真实邮箱/手机号，复核原密码、账号状态及 MFA，检查微信归属与账号唯一绑定后使用 Supabase 原生手动绑定。成功返回 `{ state: "bound" }`，客户端保留当前会话。密码不保存；不能用任意号码、姓名或微信昵称自动合并账号。
+
+两种成功都返回 HTTP 200。微信 code 使用一次；过期、失败或结果不明时先刷新绑定状态，再由用户重新发起 `wx.login()`，不自动重放 POST。服务端使用小程序 AppID/AppSecret 调用 `code2Session`，不使用网站扫码 OAuth code。`session_key`、OpenID、UnionID、上游原始错误和认证 URL 均不返回客户端或写入日志。
+
+身份继续使用同一开放平台命名空间和真实 UnionID（`namespace:unionid`）对应 `custom:wechat`。小程序须绑定与网站相同的开放平台，且真实响应须包含 UnionID；缺失时返回明确错误，不以 OpenID 或客户端提交字段替代。未知微信不会创建 Auth 用户、资料、学生或亲子关系。AppSecret 未配置时能力关闭；完成受控配置与原生 Auth 联调后再开放。
+
+错误返回 `{ code, reason? }`。`code` 沿用公共错误码；`reason` 为小程序微信专用、可供界面翻译的稳定原因：
+
+| HTTP / code | reason | 客户端处理 |
+| --- | --- | --- |
+| 503 / `UNAVAILABLE` | `WECHAT_NOT_CONFIGURED` | 当前未开放，继续使用账号密码 |
+| 401 / `UNAUTHENTICATED` | `WECHAT_CODE_INVALID` | 重新发起微信登录 |
+| 503 / `UNAVAILABLE` | `WECHAT_UNIONID_REQUIRED` | 请管理员完成同开放平台关联后重试 |
+| 401 / `UNAUTHENTICATED` | `WECHAT_CREDENTIALS_INVALID` | 核对当前账号的原密码 |
+| 403 / `ACCOUNT_SECURITY` | `WECHAT_MFA_REQUIRED` | 完成现有账号的二次验证后再绑定 |
+| 503 / `UNAVAILABLE` | `WECHAT_PHONE_LINKING_UNAVAILABLE` | 当前纯手机号绑定兼容性尚未开放 |
+| 409 / `CONFLICT` | 省略 | 微信或当前账号已有其他绑定，刷新状态；不披露另一账号 |
+
+其他校验、过大请求、角色/账号限制、限流、平台故障沿用公共 `VALIDATION`、`TOO_LARGE`、`FORBIDDEN`、`ACCOUNT_SECURITY`、`RATE_LIMIT`、`UNAVAILABLE`。所有响应不缓存；微信上游错误仅映射固定码。服务端固定目标主机、超时和响应上限，凭据使用不记录 query 的受控传输。
+
+协议依据：[微信官方 API 类型中的 wx.login](https://github.com/wechat-miniprogram/api-typings/blob/master/types/wx/lib.wx.api.d.ts)、[code2Session](https://developers.weixin.qq.com/miniprogram/dev/OpenApiDoc/user-login/code2Session.html)。官方类型将 code 定义为五分钟临时凭证，并要求服务端兑换；实际平台响应和同开放平台 UnionID 下发仍需配置后验收。
 
 ## 学习视图与现有业务复用
 

@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "格致未来思维 · 家长端接口",
-    "version": "0.4.0",
+    "version": "0.5.0",
     "description": "原生客户端通过版本化 HTTP 接入现有 Supabase 身份和业务数据。登记与活动浏览免登录；预约、结果及练习须核验账号和参与人权限。"
   },
   "servers": [
@@ -1121,6 +1121,174 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/parent/auth/wechat": {
+      "get": {
+        "operationId": "getParentWechatAuthStatus",
+        "summary": "微信小程序登录可用性与本人绑定状态",
+        "description": "匿名 linked=null、canBind=false；带 Bearer 时校验当前账号并读取原生身份。available 表示配置就绪，真实平台往返另行校验。",
+        "security": [
+          {},
+          {
+            "parentBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "配置状态和本人绑定状态",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentWechatAuthStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "有效会话、微信 code 或原账号密码验证失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentWechatAuthError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "账号角色、安全状态、同意或 MFA 门禁未满足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentWechatAuthError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "未配置、缺少 UnionID、平台或身份服务不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentWechatAuthError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "parentWechatAuth",
+        "summary": "用 wx.login code 登录或绑定现有账号",
+        "description": "login 无需 Bearer；未知微信返回 binding_required，无 Auth 会话。bind 必须 Bearer、原账号密码和 confirm=true；成功 bound 保留当前会话。仅服务端 code2Session，沿用 namespace:UnionID 身份；缺配置或 UnionID 时关闭。32 KiB 上限；响应不缓存；不输出微信标识、session_key、原始上游错误或认证 URL。",
+        "security": [
+          {},
+          {
+            "parentBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/ParentWechatAuthLogin"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ParentWechatAuthBind"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "action"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "authenticated 含 Session；binding_required 和 bound 均无 Session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentWechatAuthResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "输入字段或格式无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentWechatAuthError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "有效会话、微信 code 或原账号密码验证失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentWechatAuthError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "账号角色、安全状态、同意或 MFA 门禁未满足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentWechatAuthError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "微信或账号存在其他绑定；不返回另一账号",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentWechatAuthError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "JSON 请求超过 32 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentWechatAuthError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "请求频率受限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentWechatAuthError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "未配置、缺少 UnionID、平台或身份服务不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentWechatAuthError"
                 }
               }
             }
@@ -2719,6 +2887,168 @@
         ],
         "discriminator": {
           "propertyName": "action"
+        }
+      },
+      "ParentWechatAuthStatus": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "available",
+          "linked",
+          "canBind"
+        ],
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "linked": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "canBind": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ParentWechatAuthLogin": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action",
+          "code"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "const": "login"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          }
+        }
+      },
+      "ParentWechatAuthBind": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action",
+          "code",
+          "password",
+          "confirm"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "const": "bind"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 6,
+            "maxLength": 128
+          },
+          "confirm": {
+            "type": "boolean",
+            "const": true
+          }
+        }
+      },
+      "ParentWechatAuthResult": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "state",
+              "session"
+            ],
+            "properties": {
+              "state": {
+                "type": "string",
+                "const": "authenticated"
+              },
+              "session": {
+                "$ref": "#/components/schemas/Session"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "state"
+            ],
+            "properties": {
+              "state": {
+                "type": "string",
+                "const": "binding_required"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "state"
+            ],
+            "properties": {
+              "state": {
+                "type": "string",
+                "const": "bound"
+              }
+            }
+          }
+        ],
+        "discriminator": {
+          "propertyName": "state"
+        }
+      },
+      "ParentWechatAuthError": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "VALIDATION",
+              "UNAUTHENTICATED",
+              "FORBIDDEN",
+              "ACCOUNT_SECURITY",
+              "NOT_FOUND",
+              "FORM_CHANGED",
+              "ACTIVITY_FULL",
+              "BOOKING_CLOSED",
+              "CONFLICT",
+              "TOO_LARGE",
+              "FILE_TYPE",
+              "RATE_LIMIT",
+              "UNAVAILABLE"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "WECHAT_NOT_CONFIGURED",
+              "WECHAT_CODE_INVALID",
+              "WECHAT_UNIONID_REQUIRED",
+              "WECHAT_CREDENTIALS_INVALID",
+              "WECHAT_MFA_REQUIRED",
+              "WECHAT_PHONE_LINKING_UNAVAILABLE"
+            ]
+          }
         }
       }
     }
