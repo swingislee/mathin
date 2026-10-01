@@ -19,14 +19,15 @@ export function ClassRosterClassSummary({ row, locale, className, courseTitle, t
     <span data-class-desktop>{disclosure}</span>
     <div className="min-w-0 flex-1">
       <p data-class-mobile className="whitespace-normal break-words text-base font-medium leading-6 tabular-nums">{time}</p>
-      <Popover><PopoverTrigger asChild><Button data-class-info variant="ghost" size="sm" className="h-auto min-h-0 w-full justify-start whitespace-normal px-0 py-0 text-left font-normal hover:bg-transparent hover:underline" aria-label={`${m.info} · ${className}`}>
+      <Popover><PopoverTrigger asChild><Button data-class-info variant="ghost" size="sm" className="h-auto min-h-0 w-full justify-start whitespace-normal px-0 py-0 text-left text-xs font-normal hover:bg-transparent hover:underline" aria-label={`${m.info} · ${className}`}>
         <span className="min-w-0 break-words">
-          <span data-class-desktop><span className="block font-medium leading-5">{location.campus}</span>{location.room && <span className="block text-[11px] leading-5 text-muted">{location.room}</span>}</span>
-          <span data-class-mobile className="text-sm">{location.campus}{location.room && <span className="text-muted"> · {location.room}</span>}</span>
+          <span data-class-desktop className="block leading-5 text-ink">{location.campus}</span>
+          <span data-class-mobile className="text-sm">{location.campus}</span>
         </span>
       </Button></PopoverTrigger>
         <PopoverContent align="start" className="w-72 max-w-[calc(100vw-2rem)] space-y-2 p-3 text-sm">
           <p className="break-words font-medium">{className}</p><p className="break-words text-muted">{courseTitle}</p>
+          <p className="break-words text-muted">{m.campus} {location.campus}{location.room && <> · {m.room} {location.room}</>}</p>
           <p className="break-words text-muted">{grade} · {m.level} {level}{teacher ? ` · ${teacher}` : ""}</p>
           <p className="text-muted">{m.roster} {count}</p>
           {row.historical && <p className="text-muted">{row.historical.registered_on || "—"} · {row.historical.amount ?? row.historical.amount_original}</p>}

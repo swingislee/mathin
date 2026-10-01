@@ -119,9 +119,11 @@ it('opens the roster independently of lessons and keeps class information access
   expect(element.querySelectorAll(`[data-placement-student="${id(5)}"]`)).toHaveLength(1);
   const location = row.querySelector<HTMLButtonElement>('[data-class-info]')!;
   expect(location.textContent).toContain('东校区');
+  expect(location.textContent).not.toContain('305');
   await act(async () => location.click());
   const info = document.querySelector('[role="dialog"]')!;
   expect(info.textContent).toContain('原班'); expect(info.textContent).toContain('数学'); expect(info.textContent).toContain('教师');
+  expect(info.textContent).toContain('校区 东校区'); expect(info.textContent).toContain('教室 305');
   expect(info.querySelector('a')?.getAttribute('href')).toBe(`/dashboard/classes/${id(3)}`);
   expect(calls.move).not.toHaveBeenCalled(); expect(calls.change).not.toHaveBeenCalled();
 });
