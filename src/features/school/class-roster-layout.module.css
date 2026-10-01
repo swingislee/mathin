@@ -1,10 +1,15 @@
 .workspace { display: contents; }
 .workspace [data-class-mobile] { display: none; }
 .workspace [data-class-roster-table] > thead [data-dashboard-table-menu] { width: max-content; }
-.workspace [data-class-level-header] { padding-inline: 0; }
-.workspace [data-class-level-header] > div { margin-left: 0; }
-.workspace [data-class-level-header] [data-dashboard-table-menu] { gap: 0.125rem; padding-inline: 0.125rem; font-size: 0.6875rem; }
-.workspace [data-class-level-header] [data-dashboard-table-menu] > svg { width: 0.625rem; height: 0.625rem; }
+.workspace [data-class-level-header],
+.workspace [data-class-identity-column="grade"] { padding-inline: 0; }
+.workspace [data-class-level-header] > div,
+.workspace [data-class-identity-column="grade"] > div { margin-left: 0; }
+.workspace [data-class-level-header] [data-dashboard-table-menu],
+.workspace [data-class-identity-column="grade"] [data-dashboard-table-menu] { gap: 0.125rem; padding-inline: 0.125rem; font-size: 0.6875rem; }
+.workspace [data-class-level-header] [data-dashboard-table-menu] > svg,
+.workspace [data-class-identity-column="grade"] [data-dashboard-table-menu] > svg { width: 0.625rem; height: 0.625rem; }
+.workspace [data-class-column="grade"] { padding-inline: 0.125rem; }
 
 /* 定位字段按内容占宽，剩余宽度交给名册；手机摘要继续允许换行。 */
 @media (min-width: 64rem) {
