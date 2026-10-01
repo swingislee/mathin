@@ -101,7 +101,7 @@
       "title": "优化班级列表与手机端体验",
       "agent": "codex",
       "threadId": "01a0f6e7-2fca-7963-9be1-3ed3d2705ecc",
-      "status": "integrated",
+      "status": "in_progress",
       "checkout": "worktree",
       "branch": "codex/class-roster-density-codex",
       "card": ".ai/tasks/DEV-CLASS-LIST-20261001.md",
@@ -136,7 +136,7 @@
         "CHANGELOG.md"
       ],
       "checkpoint": "365e81aff101446555fa8b79d0b28e4652d78f53",
-      "next": "年级列间距收紧、人数计数移至名单空位后，已通过 cd4d6042 集成；相关名单测试、ESLint 与 CSS 解析通过，开发端待人工视觉验收，见 DEV-CLASS-LIST-20261001-codex-06.md。"
+      "next": "按用户要求直接调整通用嵌套记录表的金色轮廓为 4px 小圆角，保留展开边界连续；完成定向检查后直接集成本地开发端，无需另一 Agent 审批。"
     },
     {
       "id": "DEV-PLACE-VALUE-20261001",
