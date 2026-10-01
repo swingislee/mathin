@@ -34,6 +34,28 @@ const click = async (label: string) => act(async () => button(label).click());
 async function tick(time: number) { now = time; const tasks = [...frames.values()]; frames.clear(); await act(async () => tasks.forEach((callback) => callback(time))); }
 
 describe("place-value workspace using common spatial controls", () => {
+  it.each(["rods", "boxes"] as const)("switches the %s camera between orbit and pan without publishing a scene change", async (strategy) => {
+    vi.stubGlobal("crypto", { getRandomValues: crypto.getRandomValues.bind(crypto) }); // 局域网 HTTP 无 randomUUID。
+    const state = placeValueSnapshot({ ...createDefaultPlaceValueInitial(), presentation: { strategy, contents: "inside" } });
+    const onChange = vi.fn<(next: PlaceValueSnapshot) => Promise<void>>().mockResolvedValue(undefined);
+    await render({ classroom: { state, onChange } });
+    expect(viewport.current!.navigation).toBe("orbit");
+    expect(button("Pan camera").querySelector('[data-spatial-icon="pan"]')).not.toBeNull();
+    await click("Pan camera");
+    expect(viewport.current!.navigation).toBe("pan");
+    expect(button("Pan camera").getAttribute("aria-pressed")).toBe("true");
+    expect(button("Orbit camera").getAttribute("aria-pressed")).toBe("false");
+    await click("Pan camera"); expect(viewport.current!.navigation).toBe("orbit");
+    await click("Pan camera"); await click("Orbit camera"); expect(viewport.current!.navigation).toBe("orbit");
+    await click("Structure and display"); await click("Pan camera");
+    expect(viewport.current!.navigation).toBe("pan");
+    expect(host.querySelector("[data-cube-canvas-panel]")).toBeNull();
+    await act(async () => host.querySelector("section")!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+    expect(viewport.current!.navigation).toBe("orbit");
+    expect(button("Pan camera").getAttribute("aria-pressed")).toBe("false");
+    expect(viewport.current!.snapshot).toEqual(state);
+    expect(onChange).not.toHaveBeenCalled();
+  });
   it("offers nearby box actions without opening a panel and preserves the view when focus clears", async () => {
     vi.stubGlobal("crypto", { getRandomValues: crypto.getRandomValues.bind(crypto) }); // 局域网 HTTP 不要求 randomUUID 或安全上下文。
     const initial = { ...createDefaultPlaceValueInitial(), left: createPlaceValueBoard(33), presentation: { strategy: "boxes" as const, contents: "inside" as const } };
@@ -64,6 +86,10 @@ describe("place-value workspace using common spatial controls", () => {
     const initial = { ...createDefaultPlaceValueInitial(), selection: { side: "left" as const, unit: 0 }, presentation: { strategy: "boxes" as const, contents: "inside" as const } };
     const state = placeValueSnapshot(initial);
     await render(kind === "readOnly" ? { initial, readOnly: true } : { classroom: { state } });
+    expect(button("Pan camera").disabled).toBe(true);
+    await click("Pan camera");
+    expect(viewport.current!.navigation).toBe("orbit");
+    expect(viewport.current!.interactive).toBe(false);
     expect(viewport.current!.selectionActions).toBeUndefined();
     expect(host.querySelector("[data-spatial-context-actions]")).toBeNull();
     await act(async () => viewport.current!.onSelect("left", 1));

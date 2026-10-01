@@ -47,7 +47,7 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
   const [pendingInspection, setPendingInspection] = useState<{ selection: NonNullable<PlaceValueSnapshot["selection"]>; mode: "outside" | "both"; returnId: string } | null>(null);
   const viewer = readOnly || !!(classroom && !classroom.onChange), publishing = viewer || host.publishing;
   const regrouping = presentation.busy && isPlaceValueRegrouping(snapshot.motion?.kind), disabled = publishing || regrouping || contentsPresentation.busy || pendingInspection !== null || preview !== null;
-  const controls = useSpatialToolState<"orbit", "prepare" | "compare" | "inspect" | "settings" | "presentation">({
+  const controls = useSpatialToolState<"orbit" | "pan", "prepare" | "compare" | "inspect" | "settings" | "presentation">({
     defaultTool: "orbit", panels: { prepare: "orbit", compare: "orbit", inspect: "orbit", settings: "orbit", presentation: "orbit" },
     onClearSelection: () => {
       if (publishing || disabled || !snapshot.selection) return;
@@ -175,6 +175,7 @@ export function PlaceValueWorkspace({ initial, onSnapshot, readOnly = false, cla
       </div>
       <div className={styles.dock + " " + styles.tools} role="toolbar" aria-label={m.tools}>
         <SpatialActionButton action="orbit" label={m.orbit} active={controls.tool === "orbit"} disabled={viewer} onClick={() => controls.chooseTool("orbit")} />
+        <SpatialActionButton action="pan" label={m.pan} active={controls.tool === "pan"} disabled={viewer} onClick={() => controls.chooseTool("pan")} />
         <span className={styles.toolSeparator} />
         <SpatialActionButton action="prepare" label={m.prepare} active={controls.panel === "prepare"} disabled={viewer} onClick={() => { setDraft(formatPlaceValue(boardTotal(board), base)); controls.togglePanel("prepare"); }} />
         {allowBoxStrategy && !legacy && <SpatialActionButton action="placePresentation" label={m.presentation} active={controls.panel === "presentation"} disabled={viewer} onClick={() => controls.togglePanel("presentation")} />}

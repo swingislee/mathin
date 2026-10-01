@@ -78,7 +78,7 @@ export function PlaceValueCanvas({ snapshot, progress, contentsProgress = 1, loc
   const select = (key: string) => { const [side, unit] = key.split(":"); if (side === "left" || side === "right") onSelect(side, Number(unit)); };
   const maxDepth = Math.max(100, ...displayed.flatMap(({ rods }) => rods.map((rod) => rod.length + Math.abs(rod.center.z))));
   return <VoxelModelCanvas model={model} messages={messages} materialColors={colors} preserveSelectedColors
-    readOnly={!interactive || progress < 1} cameraInteractive={interactive} cameraPanEnabled={false} navigationMode={navigation} axisSnapEnabled={axisSnap}
+    readOnly={!interactive || progress < 1} cameraInteractive={interactive} cameraPanEnabled={interactive && navigation === "pan"} navigationMode={navigation} axisSnapEnabled={axisSnap}
     cameraRequestKey={snapshot.cameraRevision} onCellSelect={select} onPointerMissed={onPointerMissed}
     sceneOverlay={<>
       <PlaceValueClipDepth depth={maxDepth} />

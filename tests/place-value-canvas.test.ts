@@ -92,6 +92,15 @@ describe("place-value uses the existing voxel canvas", () => {
     expect(rendered.model.bounds.center).toEqual({ x: 0, y: 4, z: 0 });
     expect(rendered.cameraPanEnabled).toBe(false);
   });
+  it.each([
+    ["orbit", true, false], ["pan", true, true], ["orbit", false, false], ["pan", false, false],
+  ] as const)("enables shared panning only for an interactive pan tool (%s, %s)", (navigation, interactive, enabled) => {
+    const rendered = draw({ navigation, interactive });
+    expect(rendered.navigationMode).toBe(navigation);
+    expect(rendered.cameraInteractive).toBe(interactive);
+    expect(rendered.cameraPanEnabled).toBe(enabled);
+    expect(rendered.model.camera.target).toEqual({ x: 0, y: 4, z: 0 });
+  });
   it("projects numbers on their real positions and carries exactly between adjacent places", () => {
     for (const width of [400, 768, 1200]) for (const mode of ["single", "compare"] as const) for (const position of [[0, 4, 240], [240, 4, 0], [160, 120, 160]]) {
       const camera = new OrthographicCamera(-15, 15, 11.25, -11.25, .01, 1000);
@@ -123,9 +132,10 @@ describe("place-value uses the existing voxel canvas", () => {
     const onSelect = vi.fn(), onPointerMissed = vi.fn();
     const before = draw({ snapshot: start, onSelect, onPointerMissed });
     before.onCellSelect!("left:11"); expect(onSelect).toHaveBeenCalledExactlyOnceWith("left", 11);
-    const during = draw({ snapshot: moving, progress: .5, onPointerMissed });
+    const during = draw({ snapshot: moving, progress: .5, navigation: "pan", onPointerMissed });
     expect(during.model.cells).toHaveLength(0); expect(during.sceneOverlay).toBeTruthy();
     expect(during.cameraInteractive).toBe(true); expect(during.readOnly).toBe(true);
+    expect(during.navigationMode).toBe("pan"); expect(during.cameraPanEnabled).toBe(true);
     expect(during.model.camera).toEqual(before.model.camera); expect(during.model.bounds).toEqual(before.model.bounds);
     expect(during.onPointerMissed).toBe(onPointerMissed); expect(during.axisSnapEnabled).toBe(true);
     const finished = draw({ snapshot: moving, progress: 1 });
