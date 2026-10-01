@@ -1,7 +1,35 @@
 {
   "version": 1,
-  "coordinatorTaskId": "COLLAB-20261001-R2",
+  "coordinatorTaskId": "DEV-PARENT-IOS-20261001-INTEGRATION",
   "tasks": [
+    {
+      "id": "DEV-PARENT-IOS-20261001-INTEGRATION",
+      "title": "iOS 家长端集成",
+      "agent": "codex",
+      "threadId": "01a0f7b2-73aa-74b3-8cf6-b23207ece7d6",
+      "status": "in_progress",
+      "checkout": "integration",
+      "branch": "main",
+      "card": ".ai/tasks/DEV-PARENT-IOS-20261001-INTEGRATION.md",
+      "writePaths": [".ai/tasks/DEV-PARENT-IOS-20261001.md", ".ai/tasks/DEV-PARENT-IOS-20261001-INTEGRATION.md"],
+      "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
+      "checkpoint": null,
+      "next": "登记独立 iOS worktree，完成定向检查后集成交互版。"
+    },
+    {
+      "id": "DEV-PARENT-IOS-20261001",
+      "title": "参考截图构建 iOS 家长端",
+      "agent": "codex",
+      "threadId": "01a0f7b2-73aa-74b3-8cf6-b23207ece7d6",
+      "status": "in_progress",
+      "checkout": "worktree",
+      "branch": "codex/parent-ios-reference-codex",
+      "card": ".ai/tasks/DEV-PARENT-IOS-20261001.md",
+      "writePaths": ["apps/parent-ios/", ".github/workflows/parent-clients.yml", ".ai/handoffs/DEV-PARENT-IOS-20261001-codex-01.md"],
+      "sharedPaths": [],
+      "checkpoint": null,
+      "next": "实现四个主入口及参考图对应的离线交互，静态检查后交付 Mac/Xcode 验收。"
+    },
     {
       "id": "COLLAB-20261001-R2",
       "title": "设计 Codex 与 Claude 协作方案",
