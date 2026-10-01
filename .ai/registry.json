@@ -31,7 +31,7 @@
         ".ai/registry.json",
         "CHANGELOG.md"
       ],
-      "checkpoint": "c511b419bc031051f4fdd21c2a5806c55b73f948",
+      "checkpoint": "50f3ba6038eab7aaa6d68ae9f1df2de6ebaf86c2",
       "next": "独立测评HTTP/SQL及小程序页面已互审集成；本机精确升级与局域网鉴权检查通过，原聊天打开主线原生入口供人工验收。完整预约闭环和iOS的Mac构建仍待完成，生产与正式Gate未操作。"
     },
     {
@@ -307,8 +307,8 @@
         "apps/parent-wechat/AGENTS.md"
       ],
       "sharedPaths": [],
-      "checkpoint": "310669515c80777c6b7cdfee0f186757b8508a0d",
-      "next": "独立测评入口与交接04已集成main 83213842/c511b419，应用及测试与复核head一致；复用25项定向检查和微信原生启动结果。原聊天打开主线供人工验收，真实NO_LINKED_LEAD条件与完整预约闭环局限见交接。"
+      "checkpoint": "c06e8cd8e0ea2e05b2631893fe9af36f9989544a",
+      "next": "独立测评入口已集成83213842/c511b419；申请表单行文案修正c06e8cd8已集成50f3ba60。复用25项定向检查，主线微信测评页面启动通过。真实NO_LINKED_LEAD条件与完整预约闭环局限见交接，待人工验收。"
     }
   ]
 }
