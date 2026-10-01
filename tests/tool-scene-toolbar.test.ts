@@ -38,7 +38,7 @@ async function render(existing: ToolScene = initial, pageHeader?: Parameters<typ
   await act(async () => root.render(createElement(NextIntlClientProvider, { locale: "en", messages: en, timeZone: "UTC", children: createElement(ToolSceneEditor, { version: existing.contentVersion, existing, fullHeight: true, pageHeader }) })));
 }
 function button(label: string, scope: ParentNode = host) {
-  const result = [...scope.querySelectorAll<HTMLButtonElement>("button")].find((item) => item.textContent === label);
+  const result = [...scope.querySelectorAll<HTMLButtonElement>("button")].find((item) => item.getAttribute("aria-label") === label || item.textContent === label);
   expect(result).toBeDefined(); return result!;
 }
 async function click(label: string, scope: ParentNode = host) { await act(async () => button(label, scope).click()); }
@@ -68,7 +68,6 @@ describe("single-row Tools preparation toolbar", () => {
     await click(en.tools.preparation.library);
     expect(host.querySelector('[role="combobox"]')?.closest("[data-tool-scene-toolbar]")).toBe(toolbar);
     expect(button(en.tools.preparation.open).closest("[data-tool-scene-toolbar]")).toBe(toolbar);
-    expect(button(en.tools.preparation.open).classList.contains("whitespace-nowrap")).toBe(true);
     await click(en.tools.preparation.save);
     expect(store.save).toHaveBeenCalledExactlyOnceWith(initial, undefined);
     const configuration = host.querySelector("[data-tool-scene-configuration]")!;
@@ -94,7 +93,7 @@ describe("single-row Tools preparation toolbar", () => {
     expect(host.querySelector("input")).toBeNull();
   });
 
-  it("right-aligns scene actions with embed and shares compact icon-only responsive styling", async () => {
+  it("right-aligns scene actions with embed and keeps labels in tooltips and accessible names", async () => {
     await render(initial, { start: createElement("a", { href: "/en/tools" }, "Tools"), end: createElement(CopyEmbedButton, { toolId: "projection", locale: "en" }) });
     const actions = host.querySelector("[data-tool-scene-actions]")!;
     expect(actions.classList.contains("ml-auto")).toBe(true);
@@ -110,9 +109,9 @@ describe("single-row Tools preparation toolbar", () => {
       expect(action.className).toBe(button(en.tools.copyEmbed).className);
       expect(action.getAttribute("aria-label")).toBe(label);
       expect(action.title).toBe(label);
-      expect(action.querySelector("svg")?.getAttribute("width")).toBe("13");
+      expect(action.querySelector("svg")?.getAttribute("width")).toBe("16");
       expect(action.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
-      expect(action.querySelector("span")!.className).toBe("hidden @5xl/tool-toolbar:inline");
+      expect(action.textContent).toBe("");
     }
   });
 
