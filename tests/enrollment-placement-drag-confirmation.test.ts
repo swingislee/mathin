@@ -88,7 +88,7 @@ it('blocks dragging between unrelated classes and keeps commercial withdrawal hi
   expect(calls.move).not.toHaveBeenCalled();expect(calls.change).not.toHaveBeenCalled();
 });
 
-async function mountRoster(canTeach = false, canAdd = false) {
+async function mountRoster(canTeach = false, canAdd = false, group: "grade" | "teacher" = "grade") {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   calls.move.mockClear(); calls.change.mockClear();
   HTMLElement.prototype.setPointerCapture = vi.fn();
@@ -97,7 +97,7 @@ async function mountRoster(canTeach = false, canAdd = false) {
   const initialBoard = { ...board, options: { ...board.options, classrooms: board.options.classrooms.map(row => ({ ...row,
     location: { campusId: id(70), campusName: '东校区', roomName: '305' },
   })) } };
-  const children = createElement(EnrollmentPlacementWorkbench, { initialBoard, canCreateClass: false, workspace: 'classes', canTeach, canAdd });
+  const children = createElement(EnrollmentPlacementWorkbench, { initialBoard, canCreateClass: false, workspace: 'classes', canTeach, canAdd, workspaceQuery: { group } });
   const props = { locale: 'zh', messages, timeZone: 'Asia/Shanghai', children };
   await act(async () => root.render(createElement(NextIntlClientProvider, props)));
   return element;
@@ -166,4 +166,18 @@ it('lets touch scroll through names and uses select-then-seat for a reviewed tra
   expect(document.querySelector('[role="dialog"]')?.textContent).toContain('确认调班');
   expect(calls.move).not.toHaveBeenCalled(); expect(calls.change).not.toHaveBeenCalled();
   expect(source.closest('[data-placement-classroom]')?.getAttribute('data-placement-classroom')).toBe(id(3));
+});
+
+it('reveals the matching empty pending grade in the teacher footer when returning a selected student', async () => {
+  const element = await mountRoster(false, false, 'teacher');
+  expect(element.querySelector('[data-placement-pending]')).toBeNull();
+  const source = element.querySelector<HTMLElement>(`[data-placement-student="${id(5)}"]`)!;
+  await act(async () => source.querySelector<HTMLButtonElement>('[data-placement-select]')!.click());
+  const pendingRow = element.querySelector<HTMLElement>(`[data-placement-pending="${id(2)}:3"]`)!;
+  expect(pendingRow).not.toBeNull();
+  expect(element.querySelectorAll('[data-placement-pending]')).toHaveLength(1);
+  expect(pendingRow.textContent).toContain('3 年级');
+  calls.move.mockResolvedValueOnce({ ok: false, code: 'PERMISSION' });
+  await act(async () => pendingRow.querySelector<HTMLButtonElement>('button')!.click());
+  expect(calls.move).toHaveBeenCalledWith(expect.objectContaining({ membershipId: id(5), fromClassroomId: id(3), toClassroomId: null, seat: null, expectedSeat: 1 }));
 });

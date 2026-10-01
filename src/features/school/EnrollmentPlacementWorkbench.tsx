@@ -228,17 +228,18 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
       return board.options.terms.findIndex((term) => term.id === left.termId) - board.options.terms.findIndex((term) => term.id === right.termId) || left.grade - right.grade;
     });
   }
+  const teacherPendingRows = groupBy === "teacher" ? allGroups.flatMap(group => matchedRows.filter(row => row.group === group && !row.classroom && !row.historical)) : [];
   const orderedRows = allGroups.flatMap(group => {
-    const groupRows = matchedRows.filter(row => row.group === group);
+    const groupRows = matchedRows.filter(row => row.group === group && (groupBy !== "teacher" || row.classroom || row.historical));
     return table.sort ? groupRows : groupRows.sort((a, b) => (!a.classroom && !a.historical ? -1 : !b.classroom && !b.historical ? 1
       : (a.classroom?.name ?? a.historical?.class_label ?? "").localeCompare(b.classroom?.name ?? b.historical?.class_label ?? "", locale, { numeric: true })));
   });
   if (groupBy === "teacher") orderedRows.sort((a, b) =>
-    Number(Boolean(a.classroom || a.historical)) - Number(Boolean(b.classroom || b.historical))
-    || (a.classroom?.teacherNames ?? a.historical?.teacher_label ?? "").localeCompare(b.classroom?.teacherNames ?? b.historical?.teacher_label ?? "", locale));
+    (a.classroom?.teacherNames ?? a.historical?.teacher_label ?? "").localeCompare(b.classroom?.teacherNames ?? b.historical?.teacher_label ?? "", locale));
   const pagination = useFollowupPagination(orderedRows, JSON.stringify([query, groupBy, effectiveWorkFilter, table.filters, table.sort]));
   const visibleRows = pagination.rows;
-  const sections = classRosterSections(visibleRows, groupBy, locale);
+  // 老师班级独立分页；待分班只在表尾出现一次，换页后仍能选人、退回和调班。
+  const sections = classRosterSections([...visibleRows, ...teacherPendingRows], groupBy, locale);
   const focusSection = focusSessionId ? sections.find(section => section.rows.some(row => row.classroom?.id === focusClassroomId)) : undefined;
   const expandedSessionRow = openSessionRow === undefined && focusSection ? `${focusSection.key}:${focusClassroomId}` : openSessionRow;
   const queryText = query.trim().toLocaleLowerCase(locale);
@@ -387,6 +388,25 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
     </TooltipContent></Tooltip>;
   };
   const retiredRow = (retired: PlacementStudent[], label: string) => retired.length ? <TableRow className="hover:bg-transparent"><TableCell colSpan={4} className="sticky left-0 z-10 border-r border-line bg-card px-2 py-1 text-[11px] text-muted">{label}</TableCell><TableCell className="p-0"><div className={NAME_GRID}>{retired.map((student) => studentTile(studentTileRecord(student)))}</div></TableCell></TableRow> : null;
+  const pendingStudentsFor = (scope: RosterRow) => scope.students.filter(student => !student.classroomId && student.status !== "withdrawn" && enumMatches("course", student.courseId));
+  const pendingTargetFor = (scope: RosterRow): SeatTarget => ({ classroom: null, termId: scope.termId, grade: scope.grade, seat: null });
+  const canReturnTo = (scope: RosterRow) => Boolean(selected?.classroomId && accepts(selected, pendingTargetFor(scope)));
+  const pendingRow = (scope: RosterRow, footer = false) => {
+    const pendingStudents = pendingStudentsFor(scope), canReturn = canReturnTo(scope);
+    if (footer && !pendingStudents.length && !canReturn) return null;
+    const pendingTarget = pendingTargetFor(scope), pendingTargetKey = `${scope.group}:pending`;
+    return <TableRow data-placement-pending={scope.group} className="hover:bg-transparent" {...registerTarget(pendingTargetKey, pendingTarget)}>
+      <TableCell colSpan={4} className="relative border-r border-line bg-card px-2 py-1"><div className="flex flex-wrap items-center justify-between gap-1">
+        <span>{footer ? `${scope.grade ? t("grade", { grade: scope.grade }) : t("gradePending")} · ${rosterM.studentCount(pendingStudents.length)}` : t("pendingRow", { count: pendingStudents.length })}</span>
+        {canReturn && <Button size="sm" variant="ghost" className="h-7 px-1 text-[11px]" onClick={() => { if (selected) move(selected, pendingTarget); }}>{t("returnPending")}</Button>}
+        {footer && new Set(teacherPendingRows.map(row => row.termId)).size > 1 && <span className="basis-full text-[11px] text-muted">{terms.get(scope.termId) ?? "—"}</span>}
+      </div></TableCell>
+      <TableCell className={cn("relative p-0", canReturn && "ring-1 ring-inset ring-crater/50")}>
+        {hovered === pendingTargetKey && dragging && <span aria-hidden="true" data-placement-drop-state={canReturn ? "allowed" : "blocked"} className={cn("pointer-events-none absolute inset-0 z-20 border-[3px]", canReturn ? "border-crater bg-moon/45" : "border-rose bg-rose/25")} />}
+        <div className={cn(NAME_GRID, "min-h-9")}>{pendingStudents.map(student => studentTile(studentTileRecord(student)))}{!pendingStudents.length && <span className="col-span-full px-2 py-2 text-[11px] text-muted">{t("noPending")}</span>}</div>
+      </TableCell>
+    </TableRow>;
+  };
   const selectedTermId = table.filters.term?.kind === "enum" && table.filters.term.values.length === 1 ? table.filters.term.values[0] : undefined;
   const selectedClassroomId = table.filters.classroom?.kind === "enum" && table.filters.classroom.values.length === 1 ? table.filters.classroom.values[0] : undefined;
   const rosterQuery: WorkEntryQuery = { ...workspaceQuery, scope: rosterScope, group: groupBy, term: selectedTermId ?? "all", classroom: selectedClassroomId,
@@ -447,30 +467,31 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
     {board.locationsFailed && <p role="alert" className="text-xs text-rose">{rosterM.locationsFailed}<Button variant="ghost" size="sm" onClick={() => router.refresh()}>{sessionM.retry}</Button></p>}
     {!sessionsFailed && focusSessionId && !sessions.some(session => session.id === focusSessionId) && <p role="status" className="text-xs text-muted">{sessionM.noAccess}</p>}
     <div ref={root} className="flex min-h-0 flex-1 flex-col" onPointerMove={pointer.onPointerMove} onPointerUp={pointer.onPointerUp} onPointerCancel={pointer.onPointerCancel} onLostPointerCapture={pointer.onLostPointerCapture} onClickCapture={pointer.onClickCapture} onKeyDown={(event) => { if (event.key === "Escape" && !event.defaultPrevented) { pointer.cancel(); setSelectedKey(null); } }}>
-      <TooltipProvider delayDuration={350}><DashboardTableShell data-followup-scroll data-class-roster={workspace === "classes" || undefined}><Table data-class-roster-table className="lg:min-w-[44rem] table-fixed text-xs" containerClassName="overflow-auto" aria-busy={pending}>
-        <colgroup><col className="w-32" /><col className="w-32" /><col className={identityColumn === "grade" ? "w-18" : "w-24"} /><col className="w-10" /><col /></colgroup>
+      <TooltipProvider delayDuration={350}><DashboardTableShell data-followup-scroll data-class-roster={workspace === "classes" || undefined}><Table data-class-roster-table className="table-auto text-xs" containerClassName="overflow-auto" aria-busy={pending}>
         <TableHeader><TableRow className="[&>th]:h-8 [&>th]:px-2 [&>th:nth-child(3)]:px-1 [&>th:nth-child(4)]:px-1">
-          <TableHead className="sticky left-0 top-0 z-30 border-r border-line bg-card"><DashboardTableColumnHeader label={rosterM.campus} {...table.columnProps("campus")} /></TableHead>
-          <TableHead className="sticky left-32 top-0 z-30 border-r border-line bg-card"><DashboardTableColumnHeader label={t("timeLabel")} {...table.columnProps("time")} /></TableHead>
-          <TableHead data-class-identity-column={identityColumn} className="sticky left-64 top-0 z-30 border-r border-line bg-card"><DashboardTableColumnHeader label={identityColumn === "grade" ? rosterM.grade : t("teacherLabel")} {...table.columnProps(identityColumn)} /></TableHead>
-          <TableHead data-class-level-header className={cn("sticky top-0 z-30 border-r border-line bg-card px-1", identityColumn === "grade" ? "left-82" : "left-88")}><DashboardTableColumnHeader label={rosterM.level} {...table.columnProps("difficulty")} /></TableHead>
-          <TableHead className="sticky top-0 z-20 bg-card"><DashboardTableColumnHeader label={t("student")} {...table.columnProps("health")} /></TableHead>
+          <TableHead className="sticky top-0 z-30 whitespace-nowrap border-r border-line bg-card"><DashboardTableColumnHeader label={rosterM.campus} {...table.columnProps("campus")} /></TableHead>
+          <TableHead className="sticky top-0 z-30 whitespace-nowrap border-r border-line bg-card"><DashboardTableColumnHeader label={t("timeLabel")} {...table.columnProps("time")} /></TableHead>
+          <TableHead data-class-identity-column={identityColumn} className="sticky top-0 z-30 whitespace-nowrap border-r border-line bg-card"><DashboardTableColumnHeader label={identityColumn === "grade" ? rosterM.grade : t("teacherLabel")} {...table.columnProps(identityColumn)} /></TableHead>
+          <TableHead data-class-level-header className="sticky top-0 z-30 whitespace-nowrap border-r border-line bg-card px-1"><DashboardTableColumnHeader label={rosterM.level} {...table.columnProps("difficulty")} /></TableHead>
+          <TableHead className="sticky top-0 z-20 w-full bg-card"><DashboardTableColumnHeader label={t("student")} {...table.columnProps("health")} /></TableHead>
         </TableRow></TableHeader>
         <FollowupTableBody navigation="tree" onNavigate={key => { setActiveRecordKey(key); return true; }}>{rosterScope === "all" && board.access?.canManageEnrollments!==false?<SchoolSupportPendingRows workspace="enrollments" colSpan={5} />:null}{sections.map((section) => {
           const group = section.key;
+          if (section.pending) return <Fragment key={group}>
+            <TableRow data-class-roster-group={group} data-class-pending-section className="hover:bg-transparent"><TableCell colSpan={5} className="h-8 bg-paper px-2 py-1 font-medium">{rosterM.pendingRoster}<span className="ml-3 text-[11px] font-normal text-muted">{rosterM.studentCount(section.rows.reduce((count, row) => count + pendingStudentsFor(row).length, 0))}</span></TableCell></TableRow>
+            {!section.rows.some(row => pendingStudentsFor(row).length || canReturnTo(row)) && <TableRow className="hover:bg-transparent"><TableCell colSpan={5} className="px-2 py-2 text-[11px] text-muted">{rosterM.noPending}</TableCell></TableRow>}
+            {section.rows.map(scope => <Fragment key={scope.key}>
+              {pendingRow(scope, true)}
+              {retiredRow(scope.students.filter(student => !student.classroomId && student.status === "withdrawn"), t("status_withdrawn"))}
+              {retiredRow(scope.students.filter(student => student.classroomId && !scope.classrooms.some(classroom => classroom.id === student.classroomId)), t("unavailableClass"))}
+            </Fragment>)}
+          </Fragment>;
           const first = section.rows[0];
           const scope = section.teacherName !== undefined ? first : rows.find((row) => row.group === group && !row.classroom)!;
-          const pendingStudents = scope.students.filter((student) => !student.classroomId && student.status !== "withdrawn" && enumMatches("course", student.courseId));
           const classrooms = section.rows.filter((row) => row.classroom || row.historical);
-          const pendingTarget: SeatTarget = { classroom: null, termId: scope.termId, grade: scope.grade, seat: null };
-          const canReturn = Boolean(selected?.classroomId && accepts(selected, pendingTarget));
-          const pendingTargetKey = `${group}:pending`;
           return <Fragment key={group}>
             <TableRow data-class-roster-group={group} className="hover:bg-transparent"><TableCell colSpan={5} className="h-8 bg-paper px-2 py-1 font-medium"><span className="sticky left-2">{section.teacherName !== undefined ? section.teacherName || teachingT("unassigned") : scope.grade ? t("grade", { grade: scope.grade }) : t("gradePending")}<span className="ml-3 text-[11px] font-normal text-muted">{scope.historical?.period_label ?? terms.get(scope.termId) ?? "—"}</span></span></TableCell></TableRow>
-            {!scope.historical && section.rows.some(row => row.key === `${group}:pending`) ? <TableRow data-placement-pending={group} className="hover:bg-transparent" {...registerTarget(pendingTargetKey, pendingTarget)}>
-              <TableCell colSpan={4} className="sticky left-0 z-10 border-r border-line bg-card px-2 py-1"><div className="flex items-center justify-between gap-1"><span>{t("pendingRow", { count: pendingStudents.length })}</span>{canReturn ? <Button size="sm" variant="ghost" className="h-7 px-1 text-[11px]" onClick={() => { if (selected) move(selected, pendingTarget); }}>{t("returnPending")}</Button> : null}</div></TableCell>
-              <TableCell className={cn("relative p-0", canReturn && "ring-1 ring-inset ring-crater/50")} >{hovered === pendingTargetKey && dragging ? <span aria-hidden="true" data-placement-drop-state={canReturn ? "allowed" : "blocked"} className={cn("pointer-events-none absolute inset-0 z-20 border-[3px]",canReturn ? "border-crater bg-moon/45" : "border-rose bg-rose/25")} /> : null}<div className={cn(NAME_GRID, "min-h-9")}>{pendingStudents.map((student) => studentTile(studentTileRecord(student)))}{!pendingStudents.length ? <span className="col-span-full px-2 py-2 text-[11px] text-muted">{t("noPending")}</span> : null}</div></TableCell>
-            </TableRow> : null}
+            {!scope.historical && section.rows.some(row => row.key === `${group}:pending`) ? pendingRow(scope) : null}
             {classrooms.map((row) => {
               const classroom = row.classroom;
               const fact = row.historical;
@@ -507,17 +528,17 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
               const classRowProps = { "data-record-state": fact ? fact.record_state ?? "historical" : "current", "data-placement-classroom": classroom?.id,
                 ...(classroom ? registerTarget(`class:${classroom.id}`, classTarget) : {}), "data-placement-record": row.key, "data-mobile-roster-open": rosterOpen, className: "hover:bg-transparent" };
               const classCells = (disclosure?: ReactNode) => <>
-                <TableCell {...classCell("campus")} className={cn(PLACEMENT_CELL_HOVER,"sticky left-0 z-10 border-r border-line bg-card px-2 py-1")}>
+                <TableCell {...classCell("campus")} className={cn(PLACEMENT_CELL_HOVER,"relative z-10 border-r border-line bg-card px-2 py-1")}>
                   <ClassRosterClassSummary row={row} locale={locale} className={className} courseTitle={courseTitle} time={time} teacher={teacher} showTeacher={identityColumn === "teacher"}
                     grade={gradeLabel} level={level} disclosure={disclosure} rosterId={rosterId} rosterOpen={rosterOpen} disabled={pending || hasSessionDraft}
                     onRosterToggle={() => setMobileRosters(current => ({ ...current, [rosterKey]: !rosterOpen }))}
                     lessonCount={classroom && canTeach && !sessionsFailed ? classSessions.length : undefined} lessonsOpen={lessonsOpen}
                     onLessonsToggle={() => { if (canChangeSession()) { setOpenSessionRow(lessonsOpen ? null : `${group}:${classroom?.id}`); setActiveRecordKey(`class:${group}:${classroom?.id}`); } }} />
                 </TableCell>
-                <TableCell data-class-column="time" {...classCell("time")} className={cn(PLACEMENT_CELL_HOVER,"sticky left-32 z-10 border-r border-line bg-card px-2 py-1 text-[11px]")} title={time}><span className="block whitespace-normal break-words leading-5">{time}</span></TableCell>
-                <TableCell data-class-column={identityColumn} {...classCell(identityColumn)} className={cn(PLACEMENT_CELL_HOVER,"sticky left-64 z-10 border-r border-line bg-card px-1 py-1")}><span className="block whitespace-normal break-words leading-5">{identityColumn === "grade" ? gradeLabel : teacher || "—"}</span></TableCell>
-                <TableCell data-class-column="difficulty" {...classCell("difficulty")} className={cn(PLACEMENT_CELL_HOVER,"sticky z-10 border-r border-line bg-card px-1 py-1 whitespace-normal break-words text-center text-[11px]", identityColumn === "grade" ? "left-82" : "left-88")}>{level}</TableCell>
-                <TableCell id={rosterId} data-class-roster-members className="relative bg-paper/50 p-0"><div className="flex items-center"><span data-class-desktop className="w-10 shrink-0 px-1 text-center text-[10px] tabular-nums text-muted">{classroom ? `${classroom.activeCount}/${classroom.capacity ?? "∞"}` : row.sourceEnrollments?.length}</span><div className={cn(NAME_GRID, "min-w-0 flex-1")}>{(row.sourceEnrollments??[]).map(item=>studentTile({key:item.id,studentId:item.student_id,name:history?.students[businessSubjectKey(item)]??recordM.unknown,phone:history?.subjects[businessSubjectKey(item)]?.phone??'',grade:history?.subjects[businessSubjectKey(item)]?.grade??0,status:null,courseTitle:item.period_label,recommendation:'',note:item.note??'',sourceEnrollment:item}))}{classroom ? visibleSlots.map(({ seat, student }) => {
+                <TableCell data-class-column="time" {...classCell("time")} className={cn(PLACEMENT_CELL_HOVER,"relative z-10 border-r border-line bg-card px-2 py-1 text-[11px]")} title={time}><span className="block whitespace-nowrap leading-5">{time}</span></TableCell>
+                <TableCell data-class-column={identityColumn} {...classCell(identityColumn)} className={cn(PLACEMENT_CELL_HOVER,"relative z-10 border-r border-line bg-card px-1 py-1")}><span className="block whitespace-nowrap leading-5">{identityColumn === "grade" ? gradeLabel : teacher || "—"}</span></TableCell>
+                <TableCell data-class-column="difficulty" {...classCell("difficulty")} className={cn(PLACEMENT_CELL_HOVER,"relative z-10 border-r border-line bg-card px-1 py-1 whitespace-nowrap text-center text-[11px]")}>{level}</TableCell>
+                <TableCell id={rosterId} data-class-roster-members className="relative bg-paper/50 p-0"><div className="flex items-center"><span data-class-desktop className="shrink-0 px-1 text-center text-[10px] tabular-nums text-muted">{classroom ? `${classroom.activeCount}/${classroom.capacity ?? "∞"}` : row.sourceEnrollments?.length}</span><div className={cn(NAME_GRID, "min-w-0 flex-1")}>{(row.sourceEnrollments??[]).map(item=>studentTile({key:item.id,studentId:item.student_id,name:history?.students[businessSubjectKey(item)]??recordM.unknown,phone:history?.subjects[businessSubjectKey(item)]?.phone??'',grade:history?.subjects[businessSubjectKey(item)]?.grade??0,status:null,courseTitle:item.period_label,recommendation:'',note:item.note??'',sourceEnrollment:item}))}{classroom ? visibleSlots.map(({ seat, student }) => {
                   const target = { classroom, termId: row.termId, grade: row.grade, seat };
                   const key = `${classroom.id}:${seat}`;
                   const eligible = accepts(selected, target);
