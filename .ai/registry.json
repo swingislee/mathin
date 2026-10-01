@@ -103,6 +103,7 @@
         "src/features/school/ClassRosterSessionDetail.tsx",
         "src/features/school/SessionMaterialsReader.tsx",
         "src/features/school/SessionStudentPostworkTable.tsx",
+        "src/features/school/teaching-workbench/TeachingSessionRecords.tsx",
         "src/features/school/EnrollmentPlacementWorkbench.tsx",
         "src/features/school/class-roster-layout.module.css",
         "src/features/school/class-roster-presentation-contract.ts",
