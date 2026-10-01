@@ -7,7 +7,7 @@
       "title": "学科运营表格手机连续记录排列",
       "agent": "codex",
       "threadId": "01a0f6e7-2fca-7963-9be1-3ed3d2705ecc",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/school-ops-mobile-codex",
       "card": ".ai/tasks/DEV-SCHOOL-OPS-MOBILE-20261002.md",
@@ -16,6 +16,7 @@
         "src/components/ui/table.module.css",
         "src/features/school/LeadIntakeWorkbench.tsx",
         "src/features/school/InvitationCoordinationWorkbench.tsx",
+        "src/features/school/FirstContactRecordRow.tsx",
         "src/features/school/StudentStageWorkspace.tsx",
         "src/features/school/AssessmentUnifiedWorkbench.tsx",
         "src/features/school/ActivitiesManager.tsx",
@@ -37,8 +38,8 @@
         ".ai/handoffs/DEV-SCHOOL-OPS-MOBILE-20261002-codex-01.md"
       ],
       "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
-      "checkpoint": null,
-      "next": "用户授权学科运营各子页手机表格纵向排列，并明确首联仅调整手机布局；沿用连续工作区、原输入和表头操作。与平面教具批次路径独立，保留其 main 修改。"
+      "checkpoint": "dfbd310009f7e7ccf034aa20d87afef85c02a1c1",
+      "next": "手机连续记录排列已集成 main；布局与原交互定向检查通过，既有源码断言和全库测试类型错误已记入交接。开发端待人工视觉验收，无数据库或生产操作。"
     },
     {
       "id": "DEV-PLANE-DEEP-20261002-INTEGRATION",

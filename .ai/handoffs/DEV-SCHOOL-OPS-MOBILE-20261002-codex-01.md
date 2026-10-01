@@ -14,5 +14,6 @@
 - 无账号、无业务数据的浏览器 CSS 样例覆盖 320×740、390×844、844×390、820×1180、1440×900：窄屏无表格横向溢出，摘要与字段位置正确，表头控件可达，内层表宽度正确，窗口变化保留同一输入与草稿；桌面移除手机元数据前后几何与样式一致。
 - `school-ops-table-header-controls.test.ts` 的一个旧源码断言失败：仍要求在 InvitationCoordinationWorkbench 中找到 `group: tableT("fieldName")`，但当前基线已将字段定义迁出；本批未改动该逻辑。
 - 全库类型检查仍报既有测试错误：`agent-coordination.test.ts` 的四处 `taskId` 参数，以及 `parent-assessment-fixtures.test.ts` 的 `admin` 属性。未发现本批实现文件类型错误。保留这些问题，不扩大本批修改范围。
+- 已集成 `main` 的 `dfbd3100`。复用固定开发账号只读访问上述五个中文入口，均为 HTTP 200，返回内容包含新的手机排列标记。财务直读返回 HTTP 500，其 RSC 错误为 `NEXT_REDIRECT` 指向总览；未将其记为财务页面通过，也未修改财务逻辑。
 
 机器检查不替代手机视觉与交互验收。状态为 **DEVELOPMENT READY / AWAITING USER ACCEPTANCE**；无数据库写入、生产发布或正式 Gate 关闭。
