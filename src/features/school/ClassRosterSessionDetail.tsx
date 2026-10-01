@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
-import { readDashboardDetail } from "./dashboard-page/readDashboardDetail";
+import { readClassSessionResource } from "./class-session-resource";
 import { FollowupDetailLoading } from "./dashboard-page/FollowupInlineDetails";
 import { classSessionDetailSchema, classSessionMessages, classSessionStudentWork, type ClassSessionDetail } from "./class-roster-session-contract";
 import { SessionStudentPostworkTable } from "./SessionStudentPostworkTable";
@@ -31,7 +31,7 @@ export function ClassRosterSessionDetail({ sessionId, classroomId, locale, timeZ
   const reviewedStudents = useRef(new Set<string>());
   useEffect(() => {
     const controller = new AbortController();
-    void readDashboardDetail<unknown>(`/${locale}/dashboard/classes/session-detail`, { sessionId, classroomId }, controller.signal)
+    void readClassSessionResource<unknown>(`/${locale}/dashboard/classes/session-detail`, { sessionId, classroomId }, controller.signal)
       .then(value => { if (!controller.signal.aborted) {
         const parsed = classSessionDetailSchema.parse(value);
         reviewedStudents.current = new Set("records" in parsed ? parsed.records.reviews.map(review => review.studentId) : []);
@@ -50,13 +50,13 @@ export function ClassRosterSessionDetail({ sessionId, classroomId, locale, timeZ
   }, [locale, sessionId, page, pageSize, attempt, contactRequested]);
   if (!data) return failed ? <div role="alert" className="flex items-center gap-3 text-xs text-muted">{m.failed}<Button variant="ghost" size="sm" onClick={() => setAttempt(value => value + 1)}>{m.retry}</Button></div> : <FollowupDetailLoading>{m.loading}</FollowupDetailLoading>;
   const materials = <SessionMaterialsReader key={sessionId} sessionId={sessionId} classroomId={classroomId} locale={locale} timeZone={timeZone} />;
-  if (!("records" in data)) return <div className="space-y-3">{materials}<DashboardCommandPanel>
+  if (!("records" in data)) return <div className="space-y-3"><DashboardCommandPanel>
     <DashboardCommandActions>
       <Link className={buttonVariants({ size: "sm", variant: "secondary" })} href={`/dashboard/sessions/${sessionId}?stage=pre`}>{data.canPrepare ? m.prepare : m.viewPreparation}</Link>
       {data.canMarkAttendance && <AttendanceDrawer sessionId={sessionId} appearance="secondary" />}
       {data.canEnterLive && <Link className={buttonVariants({ size: "sm" })} href={`/classroom/${classroomId}/session/${sessionId}/live?entry=prep`}>{m.enter}</Link>}
     </DashboardCommandActions>
-  </DashboardCommandPanel></div>;
+  </DashboardCommandPanel>{materials}</div>;
   const work = classSessionStudentWork(data.records);
   return <div className="space-y-3">
     {materials}

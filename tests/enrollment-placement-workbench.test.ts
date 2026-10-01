@@ -90,8 +90,8 @@ describe("enrollment placement class roster", () => {
     expect(mine.some(row => row.attributes.includes("data-placement-pending"))).toBe(false);
     expect(mine.flatMap(row => studentKeys(row.content))).not.toContain("assigned-fifth");
     const markup = renderWorkbench(props);
-    expect(markup).toMatch(/aria-current="page"[^>]*>我的班级<\/a>/);
-    expect(markup).toContain("全部可见班级");
+    expect(markup).toMatch(/aria-current="page"[^>]*>我的<\/a>/);
+    expect(markup).toMatch(/>全部<\/a>/);
     const all = renderRoster(undefined, { ...props, workspaceQuery: { scope: "all" } });
     expect(all.map(row => classroomId(row.attributes)).filter(Boolean).sort()).toEqual(board.options.classrooms.filter(row => row.termId === "autumn").map(row => row.id).sort());
     expect(all.flatMap(row => studentKeys(row.content))).toContain("pending-fourth");
@@ -100,7 +100,7 @@ describe("enrollment placement class roster", () => {
   it("shows no personal tab without an available taught class, even with class permissions or stale memory", () => {
     for (const initialBoard of [board, teachingBoard([]), teachingBoard(["removed-class"])]) {
       const props = { initialBoard, workspace: "classes" as const, canTeach: true, workspaceQuery: { scope: "mine" } };
-      expect(renderWorkbench(props)).not.toContain("我的班级");
+      expect(renderWorkbench(props)).not.toMatch(/>我的<\/a>/);
       expect(renderRoster(undefined, props).map(row => classroomId(row.attributes)).filter(Boolean)).toContain("autumn-5");
     }
   });

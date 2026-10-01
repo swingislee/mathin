@@ -88,34 +88,41 @@ it('blocks dragging between unrelated classes and keeps commercial withdrawal hi
   expect(calls.move).not.toHaveBeenCalled();expect(calls.change).not.toHaveBeenCalled();
 });
 
-async function mountRoster(canTeach = false, canAdd = false, group: "grade" | "teacher" = "grade") {
+async function mountRoster(canTeach = false, canAdd = false, group: "grade" | "teacher" = "grade", focusStudentId?: string) {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   calls.move.mockClear(); calls.change.mockClear();
   HTMLElement.prototype.setPointerCapture = vi.fn();
+  HTMLElement.prototype.scrollIntoView = vi.fn();
   const element = document.createElement('div'); document.body.append(element); const root = createRoot(element);
   cleanup = async () => { await act(async () => root.unmount()); element.remove(); };
   const initialBoard = { ...board, options: { ...board.options, classrooms: board.options.classrooms.map(row => ({ ...row,
     location: { campusId: id(70), campusName: '东校区', roomName: '305' },
   })) } };
-  const children = createElement(EnrollmentPlacementWorkbench, { initialBoard, canCreateClass: false, workspace: 'classes', canTeach, canAdd, workspaceQuery: { group } });
+  const children = createElement(EnrollmentPlacementWorkbench, { initialBoard, canCreateClass: false, workspace: 'classes', canTeach, canAdd, workspaceQuery: { group }, focusStudentId });
   const props = { locale: 'zh', messages, timeZone: 'Asia/Shanghai', children };
   await act(async () => root.render(createElement(NextIntlClientProvider, props)));
   return element;
 }
 
-it('opens the roster independently of lessons and keeps class information accessible', async () => {
-  const element = await mountRoster(true);
+it.each([undefined, id(6)])('switches between the mobile roster and lessons, including a focused student: %s', async focusStudentId => {
+  const element = await mountRoster(true, false, 'grade', focusStudentId);
   const row = element.querySelector<HTMLElement>(`[data-placement-classroom="${id(3)}"]`)!;
   const roster = row.querySelector<HTMLButtonElement>('[data-class-roster-toggle]')!;
   const lessons = [...row.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent?.startsWith('课次'))!;
-  await act(async () => roster.click());
+  if (!focusStudentId) await act(async () => roster.click());
   expect(row.dataset.mobileRosterOpen).toBe('true');
   expect(roster.getAttribute('aria-expanded')).toBe('true');
   await act(async () => lessons.click());
   expect(row.getAttribute('aria-expanded')).toBe('true');
+  expect(row.dataset.mobileRosterOpen).toBe('false');
+  expect(row.querySelector('[data-class-roster-members]')?.getAttribute('data-table-mobile-hidden')).toBe('true');
+  await act(async () => roster.click());
+  expect(row.dataset.mobileRosterOpen).toBe('true');
+  expect(row.querySelector('[data-class-roster-members]')?.hasAttribute('data-table-mobile-hidden')).toBe(false);
+  expect(row.getAttribute('aria-expanded')).toBe('false');
+  expect(row.querySelector('[data-class-open]')?.getAttribute('href')).toBe(`/dashboard/classes/${id(3)}`);
   await act(async () => roster.click());
   expect(row.dataset.mobileRosterOpen).toBe('false');
-  expect(row.getAttribute('aria-expanded')).toBe('true');
   expect(element.querySelectorAll(`[data-placement-student="${id(5)}"]`)).toHaveLength(1);
   const location = row.querySelector<HTMLButtonElement>('[data-class-info]')!;
   expect(location.textContent).toContain('东校区');

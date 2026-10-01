@@ -113,15 +113,15 @@ export function TeachingSessionRecords({ data, locale, timeZone, returnTo, curre
     </DashboardSection>}
     <DashboardSection title={t("contacts")} description={replay ? workT("replay.contactsHint") : t("contactsHint")}>
       {!data.canReadContacts ? <p className="text-sm text-muted">{t("contactsRestricted")}</p> : <>
-        <DashboardTableShell className={inline ? "rounded-none border-0" : undefined}><Table className={inline ? "text-xs [&_th]:h-9 [&_th]:px-2 [&_td]:px-2 [&_td]:py-1.5" : undefined} containerClassName={inline ? undefined : "max-h-[60vh] overflow-auto"}>
+        <DashboardTableShell className={inline ? "rounded-none border-0" : undefined}><Table mobileLayout="records" className={inline ? "text-xs [&_th]:h-9 [&_th]:px-2 [&_td]:px-2 [&_td]:py-1.5" : undefined} containerClassName={inline ? undefined : "max-h-[60vh] overflow-auto"}>
           <TableHeader className={inline ? "bg-card" : "sticky top-0 z-10 bg-card"}><TableRow>
             <TableHead>{reportT("student")}</TableHead><TableHead>{t("author")}</TableHead><TableHead>{t("time")}</TableHead><TableHead>{t("content")}</TableHead>
           </TableRow></TableHeader>
           <TableBody>{data.contacts.length === 0 ? <TableRow><TableCell colSpan={4}>{t("noContacts")}</TableCell></TableRow> : data.contacts.map(contact => <TableRow key={contact.id}>
             <TableCell className="align-top">{students.get(contact.studentId)}</TableCell>
-            <TableCell className="align-top">{contact.author || t("unknownAuthor")}</TableCell>
-            <TableCell className="align-top text-xs text-muted"><p>{contact.occurredOn || t("unknownContactDate")}</p><p className="mt-1">{t("enteredAt", { date: date(contact.createdAt) })}</p></TableCell>
-            <TableCell className="min-w-64 max-w-2xl whitespace-pre-wrap break-words align-top">{contact.content}</TableCell>
+            <TableCell mobileLabel={t("author")} className="align-top">{contact.author || t("unknownAuthor")}</TableCell>
+            <TableCell mobileLabel={t("time")} className="align-top text-xs text-muted"><p>{contact.occurredOn || t("unknownContactDate")}</p><p className="mt-1">{t("enteredAt", { date: date(contact.createdAt) })}</p></TableCell>
+            <TableCell mobileLabel={t("content")} className="min-w-64 max-w-2xl whitespace-pre-wrap break-words align-top">{contact.content}</TableCell>
           </TableRow>)}</TableBody>
         </Table></DashboardTableShell>
         {inline ? <div className="mt-1.5"><DashboardTablePagination currentPage={data.contactPage} totalPages={pages} totalCount={data.contactTotal}

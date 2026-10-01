@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, createElement as h, useState, type ReactNode } from "react";
+import { act, createElement as h, StrictMode, useState, type ComponentType, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -12,14 +12,17 @@ import type { ClassRosterSession, ClassSessionDetail } from "@/features/school/c
 const deps = vi.hoisted(() => ({ save: vi.fn(), record: vi.fn(), refresh: vi.fn(), fetch: vi.fn() }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/features/school/review-actions", () => ({ saveSessionReviewsAction: deps.save }));
-vi.mock("@/features/school/session-communication-actions", () => ({ saveSessionCommunication: deps.record }));
+vi.mock("@/features/school/session-communication-actions", () => ({ saveSessionCommunication: deps.record, recordSessionCommunication: vi.fn(), finishSessionCommunications: vi.fn() }));
 vi.mock("@/features/school/AttendanceDrawer", () => ({ AttendanceDrawer: () => h("button", {}, "点名") }));
 vi.mock("@/features/school/learning-result-actions", () => ({ publishSessionReviewsAction: vi.fn() }));
 vi.mock("@/features/school/LearningResultWithdrawButton", () => ({ LearningResultWithdrawButton: () => null }));
 vi.mock("@/i18n/navigation", () => ({ useRouter: () => ({ refresh: deps.refresh }), Link: ({ children }: { children: ReactNode }) => h("span", {}, children) }));
 // 这里覆盖行下登记；原教学汇总、作业和联系分页由各自合同覆盖。
 vi.mock("@/features/school/teaching-workbench/TeachingSessionRecords", () => ({ TeachingSessionRecords: ({ studentWork }: { studentWork: ReactNode }) => studentWork }));
-vi.mock("next/dynamic", () => ({ default: () => ClassRosterSessionDetail }));
+vi.mock("next/dynamic", async () => {
+  const { lazy } = await import("react");
+  return { default: (load: () => Promise<ComponentType>) => lazy(async () => ({ default: await load() })) };
+});
 const first = "12345678-1234-4234-9234-123456789abc", second = "12345678-1234-4234-9234-123456789def";
 const communications = { canRead: true, canWrite: true, completed: false, records: [] };
 const observations = { explained: 2, independent: 7, prompted: 3, imitated: 1, incomplete: 0, recordedChecks: 3, totalChecks: 8, focusChecks: [] };
@@ -64,6 +67,8 @@ beforeEach(async () => {
   vi.clearAllMocks();
   deps.fetch.mockImplementation(async (url: string, options: RequestInit) => ({ ok: true, json: async () => {
     const input = JSON.parse(String(options.body));
+    if (url.endsWith("session-materials")) return { kind: "summary", title: "本课", classroomName: "示例班", scheduledAt: null,
+      lessonPlanCount: 0, solutionCount: 0, hasSolutionNotes: false, hasVideo: false };
     return url.endsWith("session-observations") ? input.sessionIds.map(summary) : detail(input.sessionId);
   } }));
   deps.save.mockResolvedValue({ ok: true });
@@ -75,6 +80,20 @@ beforeEach(async () => {
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe("班级下直接连续登记", () => {
+  it("Strict Mode 只发起一次详情与材料摘要读取，重渲染不重复请求", async () => {
+    deps.fetch.mockImplementation(async (url: string, options: RequestInit) => ({ ok: true, json: async () => url.endsWith("session-materials")
+      ? { kind: "summary", title: "本课", classroomName: "示例班", scheduledAt: null, lessonPlanCount: 0, solutionCount: 0, hasSolutionNotes: false, hasVideo: false }
+      : detail(JSON.parse(String(options.body)).sessionId) }));
+    const render = () => h(NextIntlClientProvider, { locale: "zh", messages, timeZone: "Asia/Shanghai", children: h(StrictMode, {},
+      h(ClassRosterSessionDetail, { sessionId: "today", classroomId: "class", locale: "zh", timeZone: "Asia/Shanghai", now: 0, onDirtyChange: vi.fn() })) });
+    await act(async () => root.render(render()));
+    expect(deps.fetch.mock.calls.map(call => call[0])).toEqual(["/zh/dashboard/classes/session-detail", "/zh/dashboard/classes/session-materials"]);
+    expect(deps.fetch.mock.calls.every(call => !(call[1].signal as AbortSignal).aborted)).toBe(true);
+    await act(async () => root.render(render()));
+    expect(deps.fetch).toHaveBeenCalledTimes(2);
+    expect(container.querySelector('[data-session-postwork-table]')).not.toBeNull();
+  });
+
   it("输入后自动保存，失败保留并阻止切课，重试后可以继续下一位", async () => {
     expect(deps.fetch).not.toHaveBeenCalled();
     expect(container.querySelectorAll("tr")).toHaveLength(1);
@@ -86,7 +105,7 @@ describe("班级下直接连续登记", () => {
     expect(sessionRow("today").textContent).toContain("考勤 1");
     expect(sessionRow("today").textContent).toContain("已填课评 1 人次");
     await click(sessionRow("today"));
-    expect(deps.fetch.mock.calls.at(-1)![0]).toContain("/classes/session-detail");
+    expect(deps.fetch.mock.calls.some(call => call[0].endsWith("/classes/session-detail"))).toBe(true);
     expect(container.querySelector('[data-session-id="today"]')).not.toBeNull();
     await click(container.querySelector<HTMLElement>(`[data-followup-row-key="${first}"]`)!);
     vi.useFakeTimers();

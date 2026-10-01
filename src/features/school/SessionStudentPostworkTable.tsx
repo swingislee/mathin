@@ -168,7 +168,7 @@ export function SessionStudentPostworkTable({ sessionId, rows, initialReviews, r
       </DashboardCommandActions>
     </DashboardCommandPanel>
     {!communications.canRead && <p className="text-xs text-muted">{m.noPermission}</p>}
-    <DashboardTableShell data-followup-workbench data-session-postwork-table><Table className="min-w-[800px] text-xs" containerClassName="max-h-[70vh] overflow-auto">
+    <DashboardTableShell data-followup-workbench data-session-postwork-table><Table mobileLayout="records" className="min-w-[800px] text-xs" containerClassName="max-h-[70vh] overflow-auto">
       <TableHeader><TableRow><TableHead className="sticky left-0 z-20 min-w-32 bg-card">{m.student}</TableHead>
         <TableHead>{reportT("attendance")}</TableHead><TableHead>{m.learning}</TableHead><TableHead>{m.teacherFeedback}</TableHead>
         <TableHead>{m.outcome}</TableHead><TableHead>{m.nextAction}</TableHead></TableRow></TableHeader>
@@ -188,11 +188,11 @@ export function SessionStudentPostworkTable({ sessionId, rows, initialReviews, r
             detailsId={detailsId} title={title} colSpan={6} summary={<>
               <TableCell className="sticky left-0 z-10 bg-inherit"><div className="flex items-center gap-1"><DashboardRowDisclosure expanded={expanded === key} controls={detailsId} label={title} onToggle={() => open(key, expanded !== key)} />
                 <span className="font-medium">{title}</span></div>{entry?.dirty && <p className="text-[11px] text-muted">{entry.error ? m.needsAttention : m.saving}</p>}</TableCell>
-              <TableCell>{row ? row.attendanceStatus ? reportT(`attendance_${row.attendanceStatus}`) : reportT("notCaptured") : m.allStudents}{row?.attendanceNote && <p className="mt-1 max-w-40 whitespace-pre-wrap text-muted">{row.attendanceNote}</p>}</TableCell>
-              <TableCell><div className="flex max-w-40 flex-wrap gap-1">{row?.checks.map(check => <LearningCheckStatusMark key={check.id} status={check.status} detail={check.title} solid />)}</div></TableCell>
-              <TableCell className="max-w-56"><p className="line-clamp-2 whitespace-pre-wrap">{review?.comment || "—"}</p></TableCell>
-              <TableCell><span>{communications.canRead ? latest ? m.outcomes[latest.outcome] : m.pending : "—"}</span><p className="mt-1 max-w-56 line-clamp-2 text-muted">{latest?.content}</p></TableCell>
-              <TableCell className="max-w-56"><p className="line-clamp-2">{latest?.nextAction}</p><p className="text-muted">{latest?.nextFollowUpOn}</p></TableCell>
+              <TableCell mobileLabel={reportT("attendance")}>{row ? row.attendanceStatus ? reportT(`attendance_${row.attendanceStatus}`) : reportT("notCaptured") : m.allStudents}{row?.attendanceNote && <p className="mt-1 max-w-40 whitespace-pre-wrap text-muted">{row.attendanceNote}</p>}</TableCell>
+              <TableCell mobileLabel={m.learning} mobileEmpty={!row?.checks.length}><div className="flex max-w-40 flex-wrap gap-1">{row?.checks.map(check => <LearningCheckStatusMark key={check.id} status={check.status} detail={check.title} solid />)}</div></TableCell>
+              <TableCell mobileLabel={m.teacherFeedback} mobileEmpty={!review?.comment} className="max-w-56"><p className="line-clamp-2 whitespace-pre-wrap">{review?.comment || "—"}</p></TableCell>
+              <TableCell mobileLabel={m.outcome}><span>{communications.canRead ? latest ? m.outcomes[latest.outcome] : m.pending : "—"}</span><p className="mt-1 max-w-56 line-clamp-2 text-muted">{latest?.content}</p></TableCell>
+              <TableCell mobileLabel={m.nextAction} mobileEmpty={!latest?.nextAction && !latest?.nextFollowUpOn} className="max-w-56"><p className="line-clamp-2">{latest?.nextAction}</p><p className="text-muted">{latest?.nextFollowUpOn}</p></TableCell>
             </>}>
             <div className="grid gap-4 @4xl/followup-entry:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
               <div className="space-y-3">

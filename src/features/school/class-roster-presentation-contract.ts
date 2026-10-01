@@ -5,6 +5,9 @@ export function classRosterMessages(locale: string) {
   return {
     campus: en ? "Campus" : "校区",
     room: en ? "Room" : "教室",
+    mine: en ? "Mine" : "我的",
+    all: en ? "All" : "全部",
+    openClass: en ? "Open class" : "进入班级",
     campusPending: en ? "Unset" : "待设置",
     campusUnknown: en ? "Unrecorded" : "未记录",
     locationUnavailable: en ? "Unavailable" : "未读取",
@@ -22,7 +25,7 @@ export function classRosterMessages(locale: string) {
     info: en ? "Class information" : "班级信息",
     showRoster: en ? "Show roster" : "展开名册",
     hideRoster: en ? "Hide roster" : "收起名册",
-    filter: en ? "Filter classes" : "筛选班级",
+    filter: en ? "Filters" : "筛选",
   };
 }
 
