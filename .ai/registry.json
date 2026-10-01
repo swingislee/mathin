@@ -32,7 +32,7 @@
         "CHANGELOG.md"
       ],
       "checkpoint": "104eb856c2d29ee26c99e7192ae53361a20122f0",
-      "next": "已交付接口与Motion增量保持原状态；根据小程序用户截图反馈登记底部图标与家长页布局修复，接收交接05后复核并串行集成本地main。生产与正式Gate未操作。"
+      "next": "已交付接口与计算规则保持原状态；协调小程序图标/家长页布局和Motion一秒按钮辨识度两个验收修正，分别接收交接05后复核集成本地main。生产与正式Gate未操作。"
     },
     {
       "id": "DEV-PARENT-IOS-20261001",
@@ -80,18 +80,15 @@
       "title": "恢复 Motion Lab 拖动与长按功能",
       "agent": "codex",
       "threadId": "01a0f6fc-745e-7fd0-9b15-ce58ff01a2b8",
-      "status": "integrated",
+      "status": "in_progress",
       "checkout": "worktree",
       "branch": "codex/motion-one-second-codex",
       "card": ".ai/tasks/DEV-MOTION-20261001.md",
       "writePaths": [
         "src/features/tools/motion-lab/MotionLab.tsx",
         "src/features/tools/motion-lab/NumField.tsx",
-        "src/features/tools/motion-lab/shared.ts",
         "src/features/tools/motion-lab/README.md",
-        "tests/motion-lab-interactions.test.ts",
-        "tests/motion-lab-values.test.ts",
-        ".ai/handoffs/DEV-MOTION-20261001-codex-04.md"
+        ".ai/handoffs/DEV-MOTION-20261001-codex-05.md"
       ],
       "sharedPaths": [
         "CHANGELOG.md",
@@ -99,7 +96,7 @@
         "messages/en.json"
       ],
       "checkpoint": "3156585417a3f2902a3a56a625c36f2831dbe71a",
-      "next": "一键1秒源码与交接04已复核并集成main 2feb6110/104eb856，九个实现/测试/说明文件与已检head一致。复用32项检查和定向类型/lint，消息编辑窗口释放；原会话继续LAN核对及人工验收。"
+      "next": "按用户最新反馈改善1秒按钮辨识度，保持简洁，以图标/轮廓/间距呈现，不新增可见说明文字。沿用原分支，消息tools.motion及既有CHANGELOG功能行由本端占用编辑窗口，完成后交接05；数学与持久合同保持。"
     },
     {
       "id": "DEV-CLASS-LIST-20261001",
