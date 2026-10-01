@@ -98,6 +98,8 @@ git show main:docs/plan/04-roadmap.md
 
 将任务 ID、分支、代码 head 与交接路径提供给另一方。统筹可用 `git show <branch>:<handoff-path>`读取尚未合并的交接，复核以登记的代码 head 为准；接收确认前状态写为“待接收”。文件交接不等于自动唤醒另一工具，本轮只有明确运行并返回结果的 Agent 才登记为已参与。
 
+接收方可以在自己的新交接单确认，也可以在已获用户授权沟通的原会话中只读回传，由集成人建立新的接收记录并注明来源。接收确认表示已理解分工与基线，不能替代代码复核或产品验收。
+
 ## 5. 本机技能接入
 
 保留既有 `.agents/skills/` 作为共享源。Claude 的版本化薄入口 [.claude/skills/mathin-verify/SKILL.md](../../.claude/skills/mathin-verify/SKILL.md) 仅引用 [共享 verify](../../.agents/skills/verify/SKILL.md)，因此新 clone/worktree 可获得相同入口，无需复制正文、创建符号链接或同步私人配置。菜单尚未刷新时可直接读取源文件。
