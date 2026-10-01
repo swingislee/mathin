@@ -1,0 +1,6 @@
+:host { display: block; }
+.empty-art { padding: 115rpx 0 70rpx; text-align: center; }
+.empty-art-image { display: block; width: 430rpx; height: 300rpx; margin: 0 auto; }
+.empty-art-label { display: block; margin-top: 24rpx; color: var(--empty-ink, #97ac75); font-size: 28rpx; line-height: 1.6; }
+.empty-art-compact { padding: 46rpx 0 28rpx; }
+.empty-art-compact .empty-art-image { width: 260rpx; height: 175rpx; }

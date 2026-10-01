@@ -46,9 +46,9 @@ describe("家长端工程基础", () => {
   });
 
   it.each([
-    ["zh_CN", "练习记录", ["发现", "预约", "安排", "我的"]],
-    ["en_US", "Practice records", ["Discover", "Bookings", "Schedule", "Account"]],
-    ["fr", "练习记录", ["发现", "预约", "安排", "我的"]],
+    ["zh_CN", "练习记录", ["发现", "课程", "家长"]],
+    ["en_US", "Practice records", ["Discover", "Courses", "Parent"]],
+    ["fr", "练习记录", ["发现", "课程", "家长"]],
   ])("微信 %s 同步页面、系统标题和底部导航，且不依赖浏览器 API", (language, title, tabs) => {
     const setData = vi.fn();
     const setNavigationBarTitle = vi.fn();
@@ -69,6 +69,6 @@ describe("家长端工程基础", () => {
     expect(setTabBarItem.mock.calls.map(([item]) => item.text)).toEqual(tabs);
     syncPage(page, "homework");
     expect(setData).toHaveBeenCalledTimes(1);
-    expect(setTabBarItem).toHaveBeenCalledTimes(4);
+    expect(setTabBarItem).toHaveBeenCalledTimes(3);
   });
 });

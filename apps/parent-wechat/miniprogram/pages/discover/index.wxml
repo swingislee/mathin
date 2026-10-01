@@ -1,26 +1,34 @@
-<view class="page discovery-page">
-  <view class="brand-row"><text class="brand">{{brandName}}</text><text class="small muted">{{title}}</text></view>
-  <view class="discovery-hero">
-    <text class="eyebrow">{{copy.discoverNote}}</text>
-    <text class="hero-title">{{copy.discoverHeading}}</text>
-    <text class="description">{{description}}</text>
-    <view class="hero-symbol" aria-hidden="true"><view class="orbit-ring"></view><text>✦</text></view>
+<view class="portal-page discover-page">
+  <app-nav title="{{brandName}}" brand />
+  <view class="portal-content">
+    <view class="discovery-filters">
+      <button class="filter-pill" data-sheet="location" bindtap="showFilter"><text>{{location || copy.allLocations}}</text><view class="chevron down"></view></button>
+      <button class="filter-pill" data-sheet="period" bindtap="showFilter"><text>{{period === 'week' ? copy.nextSevenDays : (period === 'month' ? copy.thisMonth : copy.allDates)}}</text><view class="chevron down"></view></button>
+    </view>
+    <button class="feature-entry surface" bindtap="book" hover-class="pressed">
+      <image class="feature-art" src="/assets/appointment.png" mode="aspectFit" aria-hidden="true" />
+      <view class="feature-copy"><text class="feature-title">{{copy.activityBooking}}</text><text class="small-pill">{{copy.bookNow}}</text></view><view class="chevron"></view>
+    </button>
+    <view wx:if="{{error}}" class="notice" role="alert">{{error}}<button class="text-button" bindtap="load">{{copy.retry}}</button></view>
+    <text wx:elif="{{loading && !loaded}}" class="loading-line">{{copy.loading}}</text>
+    <block wx:elif="{{loaded && !activities.length}}">
+      <empty-state label="{{source.length ? copy.noMatches : copy.noActivities}}" />
+      <button class="reset-action" bindtap="reset"><text class="reset-symbol">↻</text>{{copy.clearFilters}}</button>
+    </block>
+    <view wx:else class="surface activity-list" hidden="{{!activities.length}}">
+      <view class="card-heading"><text class="section-title">{{copy.activities}}</text><button class="text-link" bindtap="showAll">{{showAll ? copy.collapse : copy.viewAll}}<view class="chevron"></view></button></view>
+      <block wx:for="{{activities}}" wx:key="id">
+        <button wx:if="{{showAll || index < 3}}" class="activity-row" data-id="{{item.id}}" bindtap="openActivity" hover-class="pressed">
+          <view class="activity-tile"><image src="/assets/icons/activity.png" class="activity-tile-icon" aria-hidden="true" /></view>
+          <view class="activity-row-content"><text class="activity-row-title">{{item.label}}</text><text class="activity-row-meta">{{item.when}}</text><view class="activity-row-bottom"><text class="activity-location">{{item.location || copy.locationPending}}</text><text class="small-pill {{item.open ? '' : 'unavailable'}}">{{!item.bookable ? copy.closed : (item.remaining === 0 ? copy.full : copy.bookNow)}}</text></view></view>
+        </button>
+      </block>
+    </view>
+    <text wx:if="{{source.length >= 100}}" class="small muted block limit-note">{{copy.catalogLimit}}</text>
   </view>
-  <view class="quick-grid">
-    <button class="quick-entry form-entry" bindtap="register" hover-class="pressed"><text class="entry-symbol" aria-hidden="true">≡</text><text class="entry-title">{{copy.intakeTitle}}</text><text class="small muted">{{copy.intakeNote}}</text><text class="entry-action">{{copy.intakeAction}} ↗</text></button>
-    <button class="quick-entry" bindtap="reservations" hover-class="pressed"><text class="entry-symbol" aria-hidden="true">◷</text><text class="entry-title">{{copy.reservationEntry}}</text><text class="small muted">{{copy.reservationEntryNote}}</text><text class="entry-action">{{copy.details}} ↗</text></button>
-  </view>
-  <view class="section-heading"><text>{{copy.recentResults}}</text><text class="small muted" wx:if="{{loaded}}">{{activities.length}}</text></view>
-  <view class="search-field"><text class="search-symbol" aria-hidden="true">⌕</text><input class="search-input" value="{{search}}" bindinput="search" maxlength="100" placeholder="{{copy.searchActivities}}" aria-label="{{copy.searchActivities}}" /></view>
-  <view class="filter-row"><picker class="location-filter" range="{{locations}}" value="{{locationIndex}}" bindchange="location"><view class="filter-control">{{location || copy.allLocations}} <text>⌄</text></view></picker><label class="switch-filter"><switch checked="{{availableOnly}}" bindchange="available" type="checkbox" /><text>{{copy.availableOnly}}</text></label></view>
-  <view class="chips"><button class="chip {{period === 'all' ? 'selected' : ''}}" data-value="all" bindtap="period">{{copy.allDates}}</button><button class="chip {{period === 'week' ? 'selected' : ''}}" data-value="week" bindtap="period">{{copy.nextWeek}}</button><button class="chip {{period === 'month' ? 'selected' : ''}}" data-value="month" bindtap="period">{{copy.thisMonth}}</button></view>
-  <view wx:if="{{error}}" class="notice" role="alert">{{error}}<button class="text-button" bindtap="load">{{copy.retry}}</button></view>
-  <text wx:elif="{{loading && !loaded}}" class="empty">{{copy.loading}}</text>
-  <view wx:elif="{{loaded && !activities.length}}" class="empty-state"><text class="empty-symbol" aria-hidden="true">◌</text><text class="row-title">{{source.length ? copy.noMatches : copy.noActivities}}</text><text class="muted small block">{{source.length ? copy.noMatchesNote : copy.noActivitiesNote}}</text><button wx:if="{{source.length}}" class="text-button" bindtap="reset">{{copy.clearFilters}}</button></view>
-  <button wx:for="{{activities}}" wx:key="id" class="activity-card" data-id="{{item.id}}" bindtap="openActivity" hover-class="pressed">
-    <view class="row"><text class="tag {{item.open ? 'success' : ''}}">{{!item.bookable ? copy.closed : (item.remaining === 0 ? copy.full : copy.unlimited)}}</text><text class="small muted">{{item.when}}</text></view>
-    <text class="row-title">{{item.label}}</text><text class="activity-description muted small">{{item.body}}</text>
-    <view class="activity-footer"><view><text class="small muted block">{{item.location || copy.locationPending}}</text><text class="small muted block" wx:if="{{item.remaining !== null}}">{{copy.places}} · {{item.remaining}}</text></view><text class="entry-action">{{copy.viewActivity}} →</text></view>
-  </button>
-  <text wx:if="{{source.length >= 100}}" class="small muted block limit-note">{{copy.catalogLimit}}</text>
+  <view class="floating-services surface"><button bindtap="register"><image class="line-icon" src="/assets/icons/form.png" aria-hidden="true" /><text>{{copy.intakeTitle}}</text></button><button bindtap="reservations"><image class="line-icon" src="/assets/icons/reservations.png" aria-hidden="true" /><text>{{copy.myBookings}}</text></button></view>
+  <view wx:if="{{sheet}}" class="sheet-mask" bindtap="closeSheet" catchtouchmove="noop"><view class="bottom-sheet" catchtap="noop"><view class="sheet-heading"><text>{{sheet === 'location' ? copy.chooseLocation : copy.chooseDate}}</text><button class="sheet-close" bindtap="closeSheet" aria-label="{{copy.close}}">×</button></view><view class="option-grid">
+    <block wx:if="{{sheet === 'location'}}"><button class="option-pill {{!location ? 'selected' : ''}}" data-value="" bindtap="location">{{copy.allLocations}}</button><button wx:for="{{locations}}" wx:key="*this" class="option-pill {{location === item ? 'selected' : ''}}" data-value="{{item}}" bindtap="location">{{item}}</button></block>
+    <block wx:else><button class="option-pill {{period === 'all' ? 'selected' : ''}}" data-value="all" bindtap="period">{{copy.allDates}}</button><button class="option-pill {{period === 'week' ? 'selected' : ''}}" data-value="week" bindtap="period">{{copy.nextSevenDays}}</button><button class="option-pill {{period === 'month' ? 'selected' : ''}}" data-value="month" bindtap="period">{{copy.thisMonth}}</button></block>
+  </view></view></view>
 </view>

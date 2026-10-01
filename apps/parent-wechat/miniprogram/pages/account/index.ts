@@ -1,25 +1,31 @@
 import { get, login, logout, session } from "../../lib/api";
 import type { Account } from "../../lib/api-types";
-import { clearNavigation, openPage, resumeAfterLogin, selectParticipant } from "../../lib/navigation";
+import { clearNavigation, hasReturn, openPage, resumeAfterLogin, selectParticipant } from "../../lib/navigation";
 import { pageData, syncPage, errorText } from "../../lib/page";
 
 Page({
-  data: { ...pageData("account"), authenticated: false, identifier: "", password: "", busy: false, account: null as Account | null },
+  data: { ...pageData("account"), authenticated: false, identifier: "", password: "", busy: false,
+    account: null as Account | null, sheet: "" },
   loadVersion: 0,
   onShow() {
     syncPage(this, "account");
-    this.setData({ authenticated: Boolean(session()), account: null, error: "", password: "", loading: false });
+    this.setData({ authenticated: Boolean(session()), account: null, error: "", password: "", loading: false,
+      sheet: !session() && hasReturn() ? "login" : "" });
     if (session()) void this.load();
   },
-  onHide() { this.loadVersion++; this.setData({ password: "" }); },
+  onHide() { this.loadVersion++; this.setData({ password: "", sheet: "" }); },
   identifierInput(e: WechatMiniprogram.Input) { this.setData({ identifier: e.detail.value }); },
   passwordInput(e: WechatMiniprogram.Input) { this.setData({ password: e.detail.value }); },
+  showAccount() { this.setData({ sheet: this.data.authenticated ? "account" : "login" }); },
+  showChildren() { this.setData({ sheet: this.data.authenticated ? "children" : "login" }); },
+  closeSheet() { if (!this.data.busy) this.setData({ sheet: "", password: "", error: "" }); },
+  noop() {},
   async signIn() {
     if (this.data.busy || !this.data.identifier.trim() || !this.data.password) return;
     this.setData({ busy: true, error: "" });
     try {
       await login(this.data.identifier.trim(), this.data.password);
-      this.setData({ authenticated: true, password: "" });
+      this.setData({ authenticated: true, password: "", sheet: "" });
       await this.load();
     } catch (error) { this.setData({ error: errorText(error) }); }
     finally { this.setData({ busy: false }); }
@@ -31,7 +37,7 @@ Page({
     try { await logout(); } catch { /* 本机会话由 API finally 清除。 */ }
     finally {
       clearNavigation();
-      this.setData({ busy: false, authenticated: false, account: null, error: "", password: "", identifier: "", loading: false });
+      this.setData({ busy: false, authenticated: false, account: null, error: "", password: "", identifier: "", loading: false, sheet: "" });
     }
   },
   async load() {
@@ -51,7 +57,7 @@ Page({
   participant(e: WechatMiniprogram.TouchEvent) {
     const id = String(e.currentTarget.dataset.id);
     if (!this.data.account?.participants.some(row => row.id === id)) return;
-    selectParticipant(id); wx.switchTab({ url: "/pages/agenda/index" });
+    selectParticipant(id); this.setData({ sheet: "" }); wx.switchTab({ url: "/pages/courses/index" });
   },
   privacy() { wx.showModal({ title: this.data.copy.privacyEntry, content: this.data.copy.privacySummary, showCancel: false }); },
 });

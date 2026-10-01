@@ -1,8 +1,8 @@
 // 只在当前运行中保存返回位置和所选 ID，账号退出时一起清除。
 let returnPath = "";
 let participantId = "";
-const tabs = ["discover", "reservations", "agenda", "account"];
-const destinations = /^(?:\/pages\/(?:activity|register|mistakes|homework|practice)\/index(?:\?[^#]*)?|\/pages\/(?:discover|reservations|agenda)\/index)$/;
+const tabs = ["discover", "courses", "account"];
+const destinations = /^(?:\/pages\/(?:activity|register|mistakes|homework|practice|reservations|agenda)\/index(?:\?[^#]*)?|\/pages\/(?:discover|courses|account)\/index)$/;
 
 export function openPage(url: string) {
   if (tabs.some(tab => url === `/pages/${tab}/index`)) wx.switchTab({ url });
@@ -17,5 +17,6 @@ export function resumeAfterLogin() {
   if (target) openPage(target);
 }
 export function selectedParticipant() { return participantId; }
+export function hasReturn() { return Boolean(returnPath); }
 export function selectParticipant(id: string) { participantId = id; }
 export function clearNavigation() { returnPath = ""; participantId = ""; }

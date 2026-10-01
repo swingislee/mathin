@@ -1,10 +1,10 @@
 import { get, learning, session } from "../../lib/api";
 import type { Account, Booking, ParentLearning, Participant } from "../../lib/api-types";
-import { calendarDays, dateKey, monthRange, shiftMonth } from "../../lib/discovery";
+import { calendarDays, dateKey, monthRange, shiftMonth, sessionTimes } from "../../lib/discovery";
 import { selectedParticipant, selectParticipant } from "../../lib/navigation";
 import { pageData, syncPage, date, text, errorText, loginPage } from "../../lib/page";
 
-type AgendaItem = { key: string; kind: "activity" | "session"; title: string; startsAt: string; when: string; detail: string; teacher: string };
+type AgendaItem = { key: string; kind: "activity" | "session"; title: string; startsAt: string; when: string; detail: string; teacher: string } & ReturnType<typeof sessionTimes>;
 Page({
   data: { ...pageData("agenda"), authenticated: false, participants: [] as Participant[], selected: 0,
     month: dateKey(new Date()).slice(0, 7), selectedDate: dateKey(new Date()),
@@ -54,11 +54,11 @@ Page({
       if (info && info.participantId !== participant.id) throw new Error("Unexpected participant");
       const sessions: AgendaItem[] = (info?.schedule || []).filter(row => row.participantId === participant.id && dateKey(row.startsAt).startsWith(month))
         .map(row => ({ key: "session-" + row.id, kind: "session", title: row.title, startsAt: row.startsAt,
-          when: date(row.startsAt), detail: row.classroomName, teacher: row.teacherName || "" }));
+          when: date(row.startsAt), detail: row.classroomName, teacher: row.teacherName || "", ...sessionTimes(row) }));
       const reservations: AgendaItem[] = bookingResult.value.filter(row => row.participantId === participant.id
         && row.status !== "cancelled" && dateKey(row.startsAt).startsWith(month))
         .map(row => ({ key: "activity-" + row.id, kind: "activity", title: text(row.title), startsAt: row.startsAt,
-          when: date(row.startsAt), detail: row.location || this.data.copy.locationPending, teacher: "" }));
+          when: date(row.startsAt), detail: row.location || this.data.copy.locationPending, teacher: "", ...sessionTimes({ startsAt: row.startsAt, durationMinutes: null }) }));
       const events = [...sessions, ...reservations].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
       this.setData({ learning: info, events, loaded: true, error: learningResult.error || bookingResult.error });
       this.renderCalendar();
@@ -74,9 +74,9 @@ Page({
     const offset = Number(e.currentTarget.dataset.offset);
     if (offset !== 1 && offset !== -1) return;
     const month = shiftMonth(this.data.month, offset);
-    this.setData({ month, selectedDate: month + "-01" }); void this.loadMonth();
+    this.setData({ month, selectedDate: month + "-01" }); this.renderCalendar(); void this.loadMonth();
   },
-  today() { const selectedDate = dateKey(new Date()); this.setData({ month: selectedDate.slice(0, 7), selectedDate }); void this.loadMonth(); },
+  today() { const selectedDate = dateKey(new Date()); this.setData({ month: selectedDate.slice(0, 7), selectedDate }); this.renderCalendar(); void this.loadMonth(); },
   day(e: WechatMiniprogram.TouchEvent) {
     const value = String(e.currentTarget.dataset.date || "");
     if (value && value.startsWith(this.data.month)) { this.setData({ selectedDate: value }); this.renderCalendar(); }

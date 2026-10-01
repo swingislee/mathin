@@ -1,10 +1,10 @@
 {
   "pages": [
     "pages/discover/index",
+    "pages/courses/index",
+    "pages/account/index",
     "pages/reservations/index",
     "pages/agenda/index",
-    "pages/account/index",
-    "pages/courses/index",
     "pages/mistakes/index",
     "pages/homework/index",
     "pages/register/index",
@@ -19,27 +19,33 @@
   },
   "tabBar": {
     "color": "@muted",
-    "selectedColor": "@ink",
-    "backgroundColor": "@paper",
+    "selectedColor": "@primary",
+    "backgroundColor": "@card",
     "borderStyle": "@borderStyle",
     "list": [
       {
         "pagePath": "pages/discover/index",
-        "text": "发现"
+        "text": "发现",
+        "iconPath": "assets/tabs/discover.png",
+        "selectedIconPath": "assets/tabs/discover-active.png"
       },
       {
-        "pagePath": "pages/reservations/index",
-        "text": "预约"
-      },
-      {
-        "pagePath": "pages/agenda/index",
-        "text": "安排"
+        "pagePath": "pages/courses/index",
+        "text": "课程",
+        "iconPath": "assets/tabs/courses.png",
+        "selectedIconPath": "assets/tabs/courses-active.png"
       },
       {
         "pagePath": "pages/account/index",
-        "text": "我的"
+        "text": "家长",
+        "iconPath": "assets/tabs/account.png",
+        "selectedIconPath": "assets/tabs/account-active.png"
       }
     ]
+  },
+  "usingComponents": {
+    "app-nav": "/components/app-nav/index",
+    "empty-state": "/components/empty-state/index"
   },
   "darkmode": true,
   "themeLocation": "theme.json",

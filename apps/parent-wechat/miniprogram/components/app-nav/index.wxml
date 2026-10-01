@@ -1,0 +1,6 @@
+<view class="app-nav" style="padding-top: {{top}}px;">
+  <view class="app-nav-row {{brand ? 'app-nav-brand' : ''}}" style="height: {{height}}px; padding-right: {{inset}}px; padding-left: {{brand ? 16 : inset}}px;">
+    <button wx:if="{{back}}" class="app-nav-back" bindtap="goBack" aria-label="{{backLabel}}"><view class="app-nav-chevron"></view></button>
+    <text class="app-nav-title">{{title}}</text>
+  </view>
+</view>

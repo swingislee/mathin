@@ -6,17 +6,19 @@
 2. 微信开发者工具选择“导入项目”，目录指向当前文件夹（包含 project.config.json）。
 3. 共享配置使用 `touristappid`。在已忽略的 `project.private.config.json` 顶层填写自己的 `appid`，并登录具有该小程序开发权限的微信账号；保留已有的 `setting` 等本机偏好。
 4. 启动本机 Next.js 和隔离 Supabase；将 `miniprogram/config.example.ts` 复制为已忽略的 `config.local.ts`，填写开发 API origin。
-5. 使用工具内置 TypeScript 编译，打开“发现、预约、安排、我的”。后台字段设置、接口依赖和验收操作见[业务配置说明](docs/portal.md)。
+5. 使用工具内置 TypeScript 编译，打开“发现、课程、家长”。后台字段设置、接口依赖和验收操作见[业务配置说明](docs/portal.md)。
 
 文案跟随微信语言：英文使用 en，其他语言回退中文；页面首次进入或语言变化时同步标题与 tabBar。后台发布内容保留原文，主题跟随系统外观。
 
 ## 对外文案
 
-小程序对外品牌统一为“格致未来思维”，中英文界面保留这一专有名称。首屏围绕填写信息、问卷和活动预约组织，底部入口为“发现、预约、安排、我的”。界面使用“参与人”“参与档案”等符合实际用途的表达；课程安排、测评结果、老师反馈与练习详情仍准确展示业务内容。中英文同步维护，不因提审而隐藏实际服务或变更权限。
+小程序对外品牌统一为“格致未来思维”，中英文界面保留这一专有名称。底部入口按参考图采用“发现、课程、家长”。发现页提供公开活动与信息登记；课程页显示孩子的本周课程；家长页提供孩子、预约状态和服务入口。活动、课程、测评结果、老师反馈与练习详情按真实发布内容展示，中英文同步维护。
 
-首层路由与视图采用 `discover`、`reservations`、`agenda`、`account`。旧 `courses` 链接跳转发现页；`mistakes`、`homework`、`practice` 保留为“我的”中的服务入口。公共文案集中维护在 `miniprogram/lib/locale.ts` 和 `copy.ts`，默认中文导航同步维护在 `app.json`。登记字段及活动展示内容继续由现有 Supabase 数据提供。
+首层路由采用 `discover`、`courses`、`account`；`reservations` 与月课表 `agenda` 为二级页面。`mistakes`、`homework`、`practice` 保留为家长页中的服务入口。公共文案集中维护在 `miniprogram/lib/locale.ts` 和 `copy.ts`，默认中文导航同步维护在 `app.json`。登记字段及公开项目继续由现有 Supabase 数据提供。
 
-“安排”复用 iOS 同批的 `/api/v1/parent/learning` 与版本化 DTO，按参与人 ID 读取月度课表；不新增小程序专用课程、家庭或预约表。`api-types.ts` 由共用合同生成，调整接口时同时核对 Next.js、iOS 和小程序调用方。当前手机端视觉与交互需产品负责人验收。
+周课表与月课表复用 iOS 同批的 `/api/v1/parent/learning` 与版本化 DTO，按参与人 ID 和时间范围读取；不新增小程序专用课程、家庭或预约表。活动预约采用“基础信息 → 选择时间”，按真实场次展示地点与周时段，确认后提交所选场次 ID。`api-types.ts` 由共用合同生成，调整接口时同时核对 Next.js、iOS 和小程序调用方。当前手机端视觉与交互需产品负责人验收。
+
+“测评预约”对应项目现有的 `assessment_1v1`：预约真实老师做 1 对 1 测评，是独立于活动的入口。其家长端接口正在衔接既有邀约协调流程，按实际教师回复与家长确认状态推进。
 
 ```sh
 corepack pnpm parents:wechat:typecheck

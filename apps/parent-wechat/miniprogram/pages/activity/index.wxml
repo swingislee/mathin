@@ -1,18 +1,40 @@
-<view class="page activity-detail">
-  <text class="brand">{{brandName}}</text><text wx:if="{{loading && !activity}}" class="empty">{{copy.loading}}</text>
-  <block wx:if="{{activity}}">
-    <view class="detail-heading"><text class="tag">{{copy.activityDetail}}</text><text class="title">{{activity.label}}</text><text class="prose description muted">{{activity.body}}</text></view>
-    <view class="detail-list"><view class="detail-row"><text class="muted">{{copy.time}}</text><text>{{activity.when}}</text></view><view class="detail-row"><text class="muted">{{copy.place}}</text><text>{{activity.location || copy.locationPending}}</text></view><view wx:if="{{activity.durationMinutes}}" class="detail-row"><text>{{activity.durationMinutes}} {{copy.minutes}}</text></view><view class="detail-row"><text class="muted">{{copy.places}}</text><text>{{activity.remaining === null ? copy.unlimited : activity.remaining}}</text></view></view>
-    <view wx:if="{{authenticated && participants.length}}"><text class="field-label">{{copy.participant}}</text><picker wx:if="{{participants.length}}" range="{{participants}}" range-key="name" value="{{selected}}" bindchange="change" disabled="{{busy || loading || uncertain}}"><view class="input row"><text>{{participants[selected].name}}</text><text>⌄</text></view></picker></view>
-    <view wx:if="{{booked}}" class="success-panel" role="status"><text class="success-symbol" aria-hidden="true">✓</text><text class="row-title">{{copy.reservationSaved}}</text><text class="small muted block">{{participants[selected].name}}</text><text class="small muted block">{{copy.reservationSavedNote}}</text><button class="primary" bindtap="reservations">{{copy.viewReservations}}</button></view>
-    <block wx:elif="{{authenticated}}">
-      <view class="step-indicator"><text class="{{step === 1 ? 'current-step' : ''}}">{{copy.bookingStepOne}}</text><view class="step-line"></view><text class="{{step === 2 ? 'current-step' : ''}}">{{copy.bookingStepTwo}}</text></view>
-      <block wx:if="{{step === 1}}"><text wx:if="{{!participants.length}}" class="muted prose">{{loading ? copy.loading : copy.noLinkNote}}</text>
-        <button class="primary" bindtap="review" disabled="{{busy || loading || uncertain || !loaded || !participants.length || !activity.bookable || activity.remaining === 0}}">{{!activity.bookable ? copy.closed : (activity.remaining === 0 ? copy.full : copy.nextStep)}}</button>
+<view class="portal-page booking-page">
+  <app-nav title="{{copy.activityBooking}}" back />
+  <view class="portal-content has-fixed-actions">
+    <view class="booking-steps"><view><text class="step-number active">1</text><text>{{copy.bookingStepOne}}</text></view><view class="step-connector"></view><view><text class="step-number {{step === 2 ? 'active' : ''}}">2</text><text>{{copy.bookingStepTwo}}</text></view></view>
+    <text wx:if="{{loading && !activity}}" class="loading-line">{{copy.loading}}</text>
+    <empty-state wx:elif="{{loaded && !activity && !error}}" label="{{copy.noActivities}}" />
+    <block wx:if="{{activity}}">
+      <view wx:if="{{reservationConfirmed}}" class="surface booking-success"><text class="success-symbol">✓</text><text class="row-title">{{copy.reservationSaved}}</text><text class="block">{{participants[selected].name}}</text><text class="muted block">{{activity.when}}</text><text class="muted block">{{activity.location || copy.locationPending}}</text><button class="text-link centered" bindtap="startAgain">{{copy.continueBooking}}</button></view>
+      <block wx:elif="{{step === 1}}">
+        <view class="surface form-list">
+          <button class="form-row" data-sheet="participant" bindtap="showSheet" disabled="{{!authenticated || loading}}"><text class="form-row-label">{{copy.participant}}</text><text class="form-row-value {{participants.length ? '' : 'placeholder'}}">{{participants[selected].name || copy.chooseParticipant}}</text><view class="chevron down"></view></button>
+          <button class="form-row" data-sheet="activity" bindtap="showSheet" disabled="{{loading}}"><text class="form-row-label">{{copy.activityName}}</text><text class="form-row-value">{{activity.label}}</text><view class="chevron down"></view></button>
+          <view class="form-row"><text class="form-row-label">{{copy.place}}</text><text class="form-row-value">{{activity.location || copy.locationPending}}</text></view>
+          <view class="form-row"><text class="form-row-label">{{copy.duration}}</text><text class="form-row-value">{{activity.durationMinutes ? activity.durationMinutes + ' ' + copy.minutes : copy.toBeConfirmed}}</text></view>
+        </view>
+        <view wx:if="{{activity.body}}" class="surface activity-introduction"><text class="section-title">{{copy.activityDetail}}</text><text class="prose">{{activity.body}}</text></view>
+        <text wx:if="{{authenticated && loaded && !participants.length}}" class="muted small block limit-note">{{copy.noLinkNote}}</text>
+        <view wx:if="{{booked}}" class="booking-existing"><text>{{copy.reservationExists}}</text><button class="text-link" bindtap="reservations">{{copy.myBookings}}</button></view>
       </block>
-      <block wx:else><view class="confirmation-panel"><text class="eyebrow">{{copy.selectedParticipant}}</text><text class="row-title">{{participants[selected].name}}</text><text class="small muted block">{{copy.confirmReservationNote}}</text></view><button class="primary" bindtap="book" loading="{{busy}}" disabled="{{busy || uncertain || !loaded}}">{{copy.confirmReservation}}</button><button class="secondary" bindtap="back" disabled="{{busy || uncertain}}">{{copy.backStep}}</button></block>
+      <view wx:else class="surface booking-options">
+        <text class="section-title">{{copy.place}}</text><view class="option-grid location-options"><button wx:for="{{locations}}" wx:key="*this" class="option-pill {{location === item ? 'selected' : ''}}" data-value="{{item}}" bindtap="location" disabled="{{busy || uncertain}}">{{item || copy.locationPending}}</button></view>
+        <view class="card-heading slot-heading"><text class="section-title">{{copy.chooseTime}}</text><view class="week-navigation"><button data-offset="-1" bindtap="moveWeek" disabled="{{busy || uncertain}}" aria-label="{{copy.previousWeek}}">‹</button><text>{{slotWeekLabel}}</text><button data-offset="1" bindtap="moveWeek" disabled="{{busy || uncertain}}" aria-label="{{copy.nextWeek}}">›</button></view></view>
+        <view class="slot-table">
+          <view class="slot-table-row slot-table-header"><text class="slot-time-heading">{{copy.time}}</text><view wx:for="{{slotDays}}" wx:key="date" class="slot-table-cell"><text>{{item.label}}</text><text>{{item.weekday}}</text></view></view>
+          <view wx:for="{{slotRows}}" wx:for-item="row" wx:key="key" class="slot-table-row"><view class="slot-time-heading"><text>{{row.start}}</text><text wx:if="{{row.end}}">~{{row.end}}</text></view><view wx:for="{{row.cells}}" wx:for-item="cell" wx:key="date" class="slot-table-cell"><button wx:for="{{cell.options}}" wx:for-item="option" wx:key="id" class="slot-option {{option.selected ? 'selected' : ''}}" data-id="{{option.id}}" bindtap="chooseSlot" disabled="{{busy || uncertain || !option.available}}">{{option.reserved ? copy.booked : (option.available ? copy.availableSlot : copy.unavailableSlot)}}</button></view></view>
+        </view>
+        <text wx:if="{{!slotRows.length}}" class="loading-line">{{copy.noSlots}}</text>
+        <view wx:if="{{selectedSlot}}" class="slot-confirmation"><text>{{participants[selected].name}}</text><text>{{activity.when}}</text><text>{{activity.location || copy.locationPending}}</text></view>
+      </view>
     </block>
-    <view wx:else class="signin-panel"><text class="small muted block">{{copy.reservationLoginNote}}</text><button class="primary" bindtap="login">{{copy.loginToBook}}</button><text class="subheading">{{copy.newVisitor}}</text><text class="small muted block">{{copy.newVisitorNote}}</text><button class="text-button" bindtap="register">{{copy.intakeAction}} →</button></view>
-  </block>
-  <view wx:if="{{error}}" class="notice" role="alert">{{error}}<button wx:if="{{uncertain}}" class="text-button" bindtap="reservations">{{copy.viewReservations}}</button><button wx:else class="text-button" bindtap="load" disabled="{{busy}}">{{copy.retry}}</button></view>
+    <view wx:if="{{error}}" class="notice" role="alert">{{error}}<button wx:if="{{uncertain}}" class="text-button" bindtap="reservations">{{copy.viewReservations}}</button><button wx:else class="text-button" bindtap="load" disabled="{{busy}}">{{copy.retry}}</button></view>
+  </view>
+  <view wx:if="{{activity}}" class="fixed-actions {{step === 1 ? 'transparent-actions' : ''}}">
+    <button wx:if="{{reservationConfirmed}}" class="primary" bindtap="reservations">{{copy.viewReservations}}</button>
+    <block wx:elif="{{!authenticated}}"><button class="primary" bindtap="login">{{copy.loginToBook}}</button><button class="text-link centered" bindtap="register">{{copy.intakeTitle}}</button></block>
+    <button wx:elif="{{step === 1}}" class="primary" bindtap="review" disabled="{{busy || loading || uncertain || !loaded || !participants.length || !hasAvailableSlots}}">{{hasAvailableSlots ? copy.nextStep : copy.noAvailableSlots}}</button>
+    <block wx:else><button class="reset-action" bindtap="resetSlots" disabled="{{busy || uncertain}}">↻ {{copy.resetSelection}}</button><view class="action-pair"><button class="secondary" bindtap="back" disabled="{{busy || uncertain}}">{{copy.backStep}}</button><button class="primary" bindtap="book" loading="{{busy}}" disabled="{{busy || uncertain || !loaded || !selectedSlot}}">{{copy.confirmReservation}}</button></view></block>
+  </view>
+  <view wx:if="{{sheet}}" class="sheet-mask" bindtap="closeSheet" catchtouchmove="noop"><view class="bottom-sheet" catchtap="noop"><view class="sheet-heading"><text>{{sheet === 'participant' ? copy.chooseParticipant : copy.chooseActivity}}</text><button class="sheet-close" bindtap="closeSheet" aria-label="{{copy.close}}">×</button></view><scroll-view scroll-y class="sheet-scroll"><block wx:if="{{sheet === 'participant'}}"><button wx:for="{{participants}}" wx:key="id" class="member-option {{selected === index ? 'selected' : ''}}" data-index="{{index}}" bindtap="chooseParticipant"><image class="child-avatar" src="/assets/child.png" aria-hidden="true" /><text>{{item.name}}</text><text wx:if="{{selected === index}}" class="member-check">✓</text></button><text wx:if="{{!participants.length}}" class="muted small">{{copy.noLinkNote}}</text></block><view wx:else class="option-grid"><button wx:for="{{choices}}" wx:key="id" class="option-pill wide" data-id="{{item.id}}" bindtap="chooseActivity">{{item.label}}</button></view></scroll-view></view></view>
 </view>

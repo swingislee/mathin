@@ -6,9 +6,9 @@ import { pageData, syncPage, text, date, errorText, currentLocale } from "../../
 Page({
   data: {
     ...pageData("discover"), source: [] as Activity[],
-    activities: [] as (Activity & { label: string; body: string; when: string; open: boolean })[],
-    search: "", location: "", locationIndex: 0, locations: [] as string[],
-    period: "all" as DateFilter, availableOnly: false, loaded: false,
+    activities: [] as (Activity & { label: string; when: string; open: boolean })[],
+    search: "", location: "", locations: [] as string[], period: "all" as DateFilter,
+    availableOnly: false, loaded: false, sheet: "", showAll: false,
   },
   onShow() { syncPage(this, "discover"); this.applyFilters(); void this.load(); },
   async load() {
@@ -16,30 +16,33 @@ Page({
     this.setData({ loading: true, error: "" });
     try {
       const rows = await get<Activity[]>("activities", "", false);
-      const locations = [this.data.copy.allLocations, ...Array.from(new Set(rows.map(row => row.location).filter(Boolean)))];
-      const locationIndex = Math.max(0, locations.indexOf(this.data.location));
-      this.setData({ source: rows, locations, locationIndex, location: locationIndex ? locations[locationIndex] : "", loaded: true });
+      const locations = Array.from(new Set(rows.map(row => row.location).filter(Boolean)));
+      this.setData({ source: rows, locations, location: locations.includes(this.data.location) ? this.data.location : "", loaded: true });
       this.applyFilters();
     } catch (error) { this.setData({ error: errorText(error) }); }
     finally { this.setData({ loading: false }); }
   },
   applyFilters() {
     const rows = filterActivities(this.data.source, this.data, currentLocale());
-    this.setData({ activities: rows.map(row => ({ ...row, label: text(row.title), body: text(row.description), when: date(row.startsAt), open: canReserve(row) })) });
+    this.setData({ activities: rows.map(row => ({ ...row, label: text(row.title), when: date(row.startsAt), open: canReserve(row) })) });
   },
-  search(e: WechatMiniprogram.Input) { this.setData({ search: e.detail.value }); this.applyFilters(); },
-  location(e: WechatMiniprogram.PickerChange) {
-    const index = Number(e.detail.value);
-    this.setData({ locationIndex: index, location: index ? this.data.locations[index] : "" }); this.applyFilters();
+  showFilter(e: WechatMiniprogram.TouchEvent) { this.setData({ sheet: String(e.currentTarget.dataset.sheet) }); },
+  closeSheet() { this.setData({ sheet: "" }); },
+  noop() {},
+  location(e: WechatMiniprogram.TouchEvent) {
+    const location = String(e.currentTarget.dataset.value || "");
+    if (location && !this.data.locations.includes(location)) return;
+    this.setData({ location, sheet: "" }); this.applyFilters();
   },
   period(e: WechatMiniprogram.TouchEvent) {
-    const value = e.currentTarget.dataset.value as DateFilter;
-    if (["all", "week", "month"].includes(value)) { this.setData({ period: value }); this.applyFilters(); }
+    const period = e.currentTarget.dataset.value as DateFilter;
+    if (["all", "week", "month"].includes(period)) { this.setData({ period, sheet: "" }); this.applyFilters(); }
   },
-  available(e: WechatMiniprogram.SwitchChange) { this.setData({ availableOnly: e.detail.value }); this.applyFilters(); },
-  reset() { this.setData({ search: "", location: "", locationIndex: 0, period: "all", availableOnly: false }); this.applyFilters(); },
+  reset() { this.setData({ search: "", location: "", period: "all", availableOnly: false }); this.applyFilters(); },
+  showAll() { this.setData({ showAll: !this.data.showAll }); },
   register() { wx.navigateTo({ url: "/pages/register/index?source=discover" }); },
-  reservations() { wx.switchTab({ url: "/pages/reservations/index" }); },
+  reservations() { wx.navigateTo({ url: "/pages/reservations/index" }); },
+  book() { wx.navigateTo({ url: "/pages/activity/index" }); },
   openActivity(e: WechatMiniprogram.TouchEvent) {
     wx.navigateTo({ url: "/pages/activity/index?id=" + encodeURIComponent(String(e.currentTarget.dataset.id)) });
   },

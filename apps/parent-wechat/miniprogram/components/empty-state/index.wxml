@@ -1,0 +1,4 @@
+<view class="empty-art {{compact ? 'empty-art-compact' : ''}}">
+  <image class="empty-art-image" src="/assets/empty-{{kind}}.png" mode="aspectFit" aria-hidden="true" />
+  <text class="empty-art-label">{{label}}</text>
+</view>

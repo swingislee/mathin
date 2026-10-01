@@ -3,8 +3,12 @@ import type {IntakeForm} from "../../lib/api-types";
 import {pageData,syncPage,text,errorText} from "../../lib/page";
 type FieldView={id:string;type:string;label:string;required:boolean;value:string;index:number;options:{id:string;label:string;checked:boolean}[]};
 Page({
-  data:{...pageData("courses"),slug:"welcome",source:"",requestId:"",form:null as IntakeForm|null,formTitle:"",formDescription:"",privacy:"",fields:[] as FieldView[],answers:{} as Record<string,string|string[]>,consent:false,busy:false,submitted:false},
+  data:{...pageData("courses"),slug:"welcome",source:"",requestId:"",form:null as IntakeForm|null,formTitle:"",formDescription:"",privacy:"",fields:[] as FieldView[],answers:{} as Record<string,string|string[]>,consent:false,busy:false,submitted:false,optionField:-1},
   onLoad(query:Record<string,string>){this.setData({slug:query.form||"welcome",source:(query.source||query.scene||"").slice(0,120),requestId:requestId()});syncPage(this,"courses","source");void this.load();},
+  showOptions(e:WechatMiniprogram.TouchEvent){if(!this.data.busy)this.setData({optionField:Number(e.currentTarget.dataset.index)});},
+  closeOptions(){this.setData({optionField:-1});},
+  noop(){},
+  chooseOption(e:WechatMiniprogram.TouchEvent){const index=this.data.optionField,field=this.data.fields[index],selected=Number(e.currentTarget.dataset.value),option=field?.options[selected];if(option){this.setData({[`answers.${field.id}`]:option.id,[`fields[${index}].value`]:option.label,[`fields[${index}].index`]:selected,optionField:-1});}},
   async load(){this.setData({loading:true,error:""});try{const form=await get<IntakeForm>("form","&form="+encodeURIComponent(this.data.slug),false);this.setData({form,formTitle:text(form.title),formDescription:text(form.description),privacy:text(form.privacyNotice),fields:form.fields.map(field=>({id:field.id,type:field.type,label:text(field.label),required:field.required,value:"",index:0,options:(field.options||[]).map(option=>({id:option.id,label:text(option.label),checked:false}))})),answers:{},consent:false});}catch(error){this.setData({error:errorText(error)});}finally{this.setData({loading:false});}},
   input(e:WechatMiniprogram.Input){const index=Number(e.currentTarget.dataset.index),field=this.data.fields[index];this.setData({[`answers.${field.id}`]:e.detail.value,[`fields[${index}].value`]:e.detail.value});},
   select(e:WechatMiniprogram.PickerChange){const index=Number(e.currentTarget.dataset.index),field=this.data.fields[index],selected=Number(e.detail.value),option=field.options[selected];if(option)this.setData({[`answers.${field.id}`]:option.id,[`fields[${index}].value`]:option.label,[`fields[${index}].index`]:selected});},

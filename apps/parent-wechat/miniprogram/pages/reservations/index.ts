@@ -9,6 +9,9 @@ Page({
     source: [] as Booking[], bookings: [] as BookingView[], participants: [] as Participant[],
     participantNames: [] as string[], participantIndex: 0, participantId: "", filter: "upcoming", upcomingCount: 0, historyCount: 0 },
   loadVersion: 0,
+  onLoad(query: Record<string, string>) {
+    if (["upcoming", "attended", "cancelled", "all"].includes(query.filter)) this.setData({ filter: query.filter });
+  },
   onShow() {
     syncPage(this, "reservations");
     this.setData({ authenticated: Boolean(session()), source: [], bookings: [], participants: [], participantNames: [],
@@ -37,17 +40,21 @@ Page({
     const rows = this.data.source.filter(row => !this.data.participantId || row.participantId === this.data.participantId);
     const upcoming = rows.filter(row => canCancel(row));
     const history = rows.filter(row => !canCancel(row));
-    const visible = this.data.filter === "upcoming" ? upcoming : history;
+    const visible = this.data.filter === "upcoming" ? upcoming : this.data.filter === "all" ? rows
+      : rows.filter(row => row.status === this.data.filter);
     visible.sort((a, b) => (Date.parse(a.startsAt) - Date.parse(b.startsAt)) * (this.data.filter === "upcoming" ? 1 : -1));
     this.setData({ upcomingCount: upcoming.length, historyCount: history.length,
       bookings: visible.map(row => ({ ...row, label: text(row.title), when: date(row.startsAt), statusText: labels[row.status], cancellable: canCancel(row) })) });
   },
-  filter(e: WechatMiniprogram.TouchEvent) { this.setData({ filter: e.currentTarget.dataset.value === "history" ? "history" : "upcoming" }); this.applyFilter(); },
+  filter(e: WechatMiniprogram.TouchEvent) {
+    const filter = String(e.currentTarget.dataset.value);
+    if (["upcoming", "attended", "cancelled", "all"].includes(filter)) { this.setData({ filter }); this.applyFilter(); }
+  },
   participant(e: WechatMiniprogram.PickerChange) {
     const index = Number(e.detail.value);
     this.setData({ participantIndex: index, participantId: this.data.participants[index - 1]?.id || "" }); this.applyFilter();
   },
-  login() { loginPage("/pages/reservations/index"); },
+  login() { loginPage("/pages/reservations/index?filter=" + this.data.filter); },
   discover() { wx.switchTab({ url: "/pages/discover/index" }); },
   register() { wx.navigateTo({ url: "/pages/register/index?source=reservations" }); },
   cancel(e: WechatMiniprogram.TouchEvent) {

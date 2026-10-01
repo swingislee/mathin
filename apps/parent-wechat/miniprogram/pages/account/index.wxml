@@ -1,26 +1,39 @@
-<view class="page account-page">
-  <text class="brand">{{brandName}}</text>
-  <view class="profile-header"><view class="profile-avatar" aria-hidden="true">◉</view><view class="profile-heading"><text class="title">{{authenticated ? (account.displayName || copy.account) : copy.visitor}}</text><text class="small muted block">{{authenticated ? copy.signedIn : copy.visitorNote}}</text></view></view>
-  <block wx:if="{{!authenticated}}">
-    <view class="visitor-actions"><button class="secondary" data-url="/pages/discover/index" bindtap="open">{{copy.browseActivities}}</button><button class="secondary" data-url="/pages/register/index?source=account" bindtap="open">{{copy.intakeTitle}}</button></view>
-    <view class="signin-panel"><text class="row-title">{{copy.login}}</text><text class="small muted block">{{copy.loginNote}}</text>
-      <label class="field-label">{{copy.identifier}}<input class="input" value="{{identifier}}" bindinput="identifierInput" maxlength="254" placeholder="{{copy.identifier}}" disabled="{{busy}}" /></label>
-      <label class="field-label">{{copy.password}}<input class="input" value="{{password}}" bindinput="passwordInput" password maxlength="128" placeholder="{{copy.password}}" disabled="{{busy}}" /></label>
-      <button class="primary" bindtap="signIn" loading="{{busy}}" disabled="{{busy || !identifier || !password}}">{{copy.login}}</button>
-      <text class="small muted block">{{copy.newVisitorNote}}</text>
+<view class="portal-page parent-page">
+  <app-nav />
+  <view class="portal-content">
+    <view class="parent-header"><button class="parent-identity" bindtap="showAccount"><image class="parent-avatar" src="/assets/parent.png" aria-hidden="true" /><text class="parent-name">{{authenticated ? (account.displayName || copy.parentAccount) : copy.signInNow}}</text><view class="chevron"></view></button><button class="parent-header-action" data-url="/pages/reservations/index" bindtap="open">{{copy.myBookings}}</button></view>
+    <view class="parent-feature-row">
+      <button class="intake-tile surface" data-url="/pages/register/index?source=account" bindtap="open"><text class="intake-tile-title">{{copy.intakeTitle}}</text><text class="small-pill">{{copy.intakeAction}}</text><image class="intake-watermark" src="/assets/icons/form.png" aria-hidden="true" /></button>
+      <view class="children-tile surface"><view class="children-heading"><text>{{copy.myChildren}}</text><button class="text-link" bindtap="showChildren">{{copy.view}}<view class="chevron"></view></button></view><view wx:if="{{account.participants.length}}" class="children-row"><button wx:for="{{account.participants}}" wx:key="id" wx:if="{{index < 2}}" class="child-entry" data-id="{{item.id}}" bindtap="participant"><image class="child-avatar" src="/assets/child.png" aria-hidden="true" /><text>{{item.name}}</text></button></view><button wx:else class="children-empty" bindtap="showChildren"><image class="child-avatar" src="/assets/child.png" aria-hidden="true" /><text>{{authenticated ? copy.noChildren : copy.signInNow}}</text></button></view>
     </view>
-  </block>
-  <block wx:else>
-    <view class="section-heading"><text>{{copy.familyProfiles}}</text><text class="small muted">{{account.participants.length || 0}}</text></view><text class="small muted block">{{copy.familyProfilesNote}}</text>
-    <text wx:if="{{loading}}" class="empty compact">{{copy.loading}}</text>
-    <text wx:elif="{{account && !account.participants.length}}" class="empty compact">{{copy.noLinkNote}}</text>
-    <button wx:for="{{account.participants}}" wx:key="id" class="profile-member" data-id="{{item.id}}" bindtap="participant" hover-class="pressed"><view class="member-avatar" aria-hidden="true">◌</view><text class="member-name">{{item.name}}</text><text class="small muted">{{copy.viewAgenda}} →</text></button>
-    <text class="small muted block limit-note">{{copy.profileReadOnly}}</text>
-    <view class="section-heading">{{copy.commonServices}}</view>
-    <view class="service-grid"><button class="service-entry" data-url="/pages/reservations/index" bindtap="open"><text class="service-symbol" aria-hidden="true">◷</text><text>{{copy.myBookings}}</text></button><button class="service-entry" data-url="/pages/agenda/index" bindtap="open"><text class="service-symbol" aria-hidden="true">▦</text><text>{{copy.viewAgenda}}</text></button><button class="service-entry" data-url="/pages/mistakes/index" bindtap="open"><text class="service-symbol" aria-hidden="true">◇</text><text>{{copy.reportsEntry}}</text></button><button class="service-entry" data-url="/pages/homework/index" bindtap="open"><text class="service-symbol" aria-hidden="true">✎</text><text>{{copy.practiceEntry}}</text></button></view>
-    <button class="settings-row" data-url="/pages/register/index?source=account" bindtap="open"><text>{{copy.intakeTitle}}</text><text>→</text></button>
-  </block>
-  <button class="settings-row" bindtap="privacy"><text>{{copy.privacyEntry}}</text><text>→</text></button>
-  <button wx:if="{{authenticated}}" class="text-button signout-action" bindtap="signOut" disabled="{{busy}}">{{copy.logout}}</button>
-  <view wx:if="{{error}}" class="notice" role="alert">{{error}}<button wx:if="{{authenticated}}" class="text-button" bindtap="load" disabled="{{busy}}">{{copy.retry}}</button></view>
+    <view class="surface booking-shortcuts">
+      <button data-url="/pages/reservations/index?filter=upcoming" bindtap="open"><image class="line-icon" src="/assets/icons/reservations.png" aria-hidden="true" /><text>{{copy.upcoming}}</text></button>
+      <button data-url="/pages/reservations/index?filter=attended" bindtap="open"><image class="line-icon" src="/assets/icons/complete.png" aria-hidden="true" /><text>{{copy.attended}}</text></button>
+      <button data-url="/pages/reservations/index?filter=cancelled" bindtap="open"><image class="line-icon" src="/assets/icons/cancel.png" aria-hidden="true" /><text>{{copy.cancelled}}</text></button>
+      <button data-url="/pages/reservations/index?filter=all" bindtap="open"><image class="line-icon" src="/assets/icons/ticket.png" aria-hidden="true" /><text>{{copy.allBookings}}</text></button>
+    </view>
+    <view class="surface services-card">
+      <text class="section-title">{{copy.courseServices}}</text>
+      <view class="service-grid">
+        <button class="service-entry" data-url="/pages/agenda/index" bindtap="open"><image class="line-icon" src="/assets/icons/calendar.png" aria-hidden="true" /><text>{{copy.allSchedule}}</text></button>
+        <button class="service-entry" data-url="/pages/courses/index" bindtap="open"><image class="line-icon" src="/assets/icons/book.png" aria-hidden="true" /><text>{{copy.weekCourses}}</text></button>
+        <button class="service-entry" data-url="/pages/mistakes/index" bindtap="open"><image class="line-icon" src="/assets/icons/report.png" aria-hidden="true" /><text>{{copy.reportsEntry}}</text></button>
+        <button class="service-entry" data-url="/pages/homework/index" bindtap="open"><image class="line-icon" src="/assets/icons/practice.png" aria-hidden="true" /><text>{{copy.practiceEntry}}</text></button>
+      </view>
+      <text class="section-title tools-heading">{{copy.commonTools}}</text>
+      <view class="service-grid">
+        <button class="service-entry" data-url="/pages/register/index?source=account" bindtap="open"><image class="line-icon" src="/assets/icons/form.png" aria-hidden="true" /><text>{{copy.intakeTitle}}</text></button>
+        <button class="service-entry" data-url="/pages/activity/index" bindtap="open"><image class="line-icon" src="/assets/icons/activity.png" aria-hidden="true" /><text>{{copy.activityBooking}}</text></button>
+        <button class="service-entry" bindtap="privacy"><image class="line-icon" src="/assets/icons/privacy.png" aria-hidden="true" /><text>{{copy.privacyEntry}}</text></button>
+      </view>
+    </view>
+    <view wx:if="{{error && !sheet}}" class="notice" role="alert">{{error}}<button wx:if="{{authenticated}}" class="text-button" bindtap="load" disabled="{{busy}}">{{copy.retry}}</button></view>
+  </view>
+  <view wx:if="{{sheet}}" class="sheet-mask" bindtap="closeSheet" catchtouchmove="noop"><view class="bottom-sheet" catchtap="noop">
+    <view class="sheet-heading"><text>{{sheet === 'login' ? copy.login : (sheet === 'children' ? copy.myChildren : copy.parentAccount)}}</text><button class="sheet-close" bindtap="closeSheet" disabled="{{busy}}" aria-label="{{copy.close}}">×</button></view>
+    <block wx:if="{{sheet === 'login'}}"><label class="field-label">{{copy.identifier}}</label><input class="input" value="{{identifier}}" bindinput="identifierInput" maxlength="254" placeholder="{{copy.identifier}}" disabled="{{busy}}" /><label class="field-label">{{copy.password}}</label><input class="input" value="{{password}}" bindinput="passwordInput" password maxlength="128" placeholder="{{copy.password}}" disabled="{{busy}}" /><button class="primary" bindtap="signIn" loading="{{busy}}" disabled="{{busy || !identifier || !password}}">{{copy.login}}</button></block>
+    <block wx:elif="{{sheet === 'children'}}"><button wx:for="{{account.participants}}" wx:key="id" class="member-option" data-id="{{item.id}}" bindtap="participant"><image src="/assets/child.png" class="child-avatar" aria-hidden="true" /><text>{{item.name}}</text><view class="chevron"></view></button><text wx:if="{{!account.participants.length}}" class="muted small">{{copy.noLinkNote}}</text></block>
+    <block wx:else><text class="account-display-name">{{account.displayName || copy.parentAccount}}</text><button class="secondary" bindtap="signOut" disabled="{{busy}}">{{copy.logout}}</button></block>
+    <view wx:if="{{error}}" class="notice" role="alert">{{error}}</view>
+  </view></view>
 </view>

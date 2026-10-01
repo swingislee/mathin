@@ -3,6 +3,8 @@
     "paper": "#FFFDF8",
     "ink": "#29251F",
     "muted": "#766F65",
+    "primary": "#6F8B48",
+    "card": "#FFFFFF",
     "navigationText": "black",
     "borderStyle": "white"
   },
@@ -10,6 +12,8 @@
     "paper": "#191D2B",
     "ink": "#F2EDDF",
     "muted": "#9BA0B0",
+    "primary": "#A9C284",
+    "card": "#212637",
     "navigationText": "white",
     "borderStyle": "black"
   }

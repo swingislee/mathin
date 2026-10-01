@@ -11,21 +11,29 @@ type RuntimePage = {
   data: Record<string, unknown> & {
     step: number; booked: boolean; uncertain: boolean; participants: { id: string; name: string }[];
     events: { key: string; title: string }[]; dayEvents: { title: string }[]; learning: ParentLearning | null;
+    daySessions: { title: string; participantId: string }[];
   };
   setData: (value: Record<string, unknown>) => void;
   book: () => Promise<void>; review: () => void; back: () => void; loadMonth: () => Promise<void>;
   signIn: () => Promise<void>; load: () => Promise<void>; participant: (event: { detail: { value: string } }) => void;
   onShow: () => void; onHide: () => void; updateSelection: () => void;
+  selectActivity: (activity: Activity) => void; startAgain: () => void; loadWeek: () => Promise<void>;
+  location: (event: { currentTarget: { dataset: { value: string } } }) => void;
+  chooseSlot: (event: { currentTarget: { dataset: { id: string } } }) => void;
+  chooseParticipant: (event: { currentTarget: { dataset: { index: number } } }) => void;
 };
 type DiscoveryModule = {
   canReserve: (activity: Activity) => boolean; canCancel: (booking: Booking, now: number) => boolean;
   filterActivities: (rows: Activity[], filter: ActivityFilter, locale: "zh" | "en", now: number) => Activity[];
   calendarDays: (month: string, events: string[], selected: string, now: Date) => { date: string; day: string; count: number; selected: boolean; today: boolean }[];
   shiftMonth: (month: string, offset: number) => string; monthRange: (month: string) => { from: string; to: string };
+  weekRange: (date: string) => { from: string; to: string };
+  weekDays: (date: string, events: string[], now: Date) => { date: string; count: number; selected: boolean }[];
 };
 type NavigationModule = {
   rememberReturn: (url: string) => void; resumeAfterLogin: () => void; clearNavigation: () => void;
   selectParticipant: (id: string) => void; selectedParticipant: () => string;
+  openPage: (url: string) => void;
 };
 function runtime(api: Record<string, unknown> = {}, language = "zh_CN") {
   let page: RuntimePage;
@@ -109,6 +117,17 @@ describe("小程序发现与参与合同", () => {
     expect(new Date(monthRange("2026-12").to).getFullYear()).toBe(2027);
   });
 
+  it("本周课程覆盖跨月的周一至周日", () => {
+    const { weekRange, weekDays } = runtime().load("lib/discovery.ts");
+    const range = weekRange("2026-10-01");
+    const days = weekDays("2026-10-01", [timestamp(3)], new Date(2026, 9, 1));
+    expect(new Date(range.from).getDay()).toBe(1);
+    expect(new Date(range.to).getDay()).toBe(1);
+    expect(days.map(day => day.date)).toEqual(["2026-09-28", "2026-09-29", "2026-09-30", "2026-10-01", "2026-10-02", "2026-10-03", "2026-10-04"]);
+    expect(days.find(day => day.date === "2026-10-03")?.count).toBe(1);
+    expect(days.filter(day => day.selected).map(day => day.date)).toEqual(["2026-10-01"]);
+  });
+
   it("登录后返回原活动一次，清除账号时也清除成员选择和返回意图", () => {
     const run = runtime();
     const navigation = run.load("lib/navigation.ts");
@@ -122,14 +141,27 @@ describe("小程序发现与参与合同", () => {
     expect(run.wx.navigateTo).toHaveBeenCalledTimes(1);
   });
 
-  it("预约需显式确认，重复点击只提交一次，名额为零不进入确认", async () => {
+  it("三栏页面使用系统页签，预约与月课表保留二级返回路径", () => {
+    const run = runtime();
+    const navigation = run.load("lib/navigation.ts");
+    navigation.openPage("/pages/courses/index");
+    navigation.openPage("/pages/reservations/index?filter=cancelled");
+    navigation.rememberReturn("/pages/agenda/index"); navigation.resumeAfterLogin();
+    expect(run.wx.switchTab).toHaveBeenCalledExactlyOnceWith({ url: "/pages/courses/index" });
+    expect(run.wx.navigateTo.mock.calls).toEqual([[{ url: "/pages/reservations/index?filter=cancelled" }], [{ url: "/pages/agenda/index" }]]);
+  });
+
+  it("预约需显式选择真实时段并确认，重复点击只提交一次", async () => {
     const pending = deferred<{ id: string }>();
     const post = vi.fn(() => pending.promise);
     const run = runtime({ post }); run.load("pages/activity/index.ts");
     const page = run.page();
-    page.setData({ loaded: true, id: "event", activity: activity("event"), participants: [{ id: "member-a", name: "A" }] });
+    page.setData({ loaded: true, source: [activity("event")], participants: [{ id: "member-a", name: "A" }] });
+    page.selectActivity(activity("event"));
     await page.book(); expect(post).not.toHaveBeenCalled();
     page.review(); expect(page.data.step).toBe(2);
+    await page.book(); expect(post).not.toHaveBeenCalled();
+    page.chooseSlot({ currentTarget: { dataset: { id: "event" } } });
     const first = page.book(); await page.book(); expect(post).toHaveBeenCalledTimes(1);
     expect(post).toHaveBeenCalledWith({ action: "book", activityId: "event", participantId: "member-a" });
     page.onHide(); page.onShow();
@@ -137,15 +169,40 @@ describe("小程序发现与参与合同", () => {
     expect(page.data.loaded).toBe(true);
     pending.resolve({ id: "booking" }); await first;
     expect(page.data.booked).toBe(true);
-    page.updateSelection(); expect(page.data.booked).toBe(true);
-    page.setData({ booked: false, step: 1, activity: activity("event", { remaining: 0 }) });
+    expect(page.data.reservationConfirmed).toBe(true);
+    page.startAgain(); expect(page.data.booked).toBe(true);
+    expect(page.data.reservationConfirmed).toBe(false);
+    expect(page.data.step).toBe(1);
+    page.setData({ booked: false, source: [activity("event", { remaining: 0 })], activity: activity("event", { remaining: 0 }) });
     page.review(); expect(page.data.step).toBe(1);
+  });
+
+  it("满额场次仍可进入同组其他地点，并提交所选场次 ID", async () => {
+    const post = vi.fn().mockResolvedValue({ id: "booking" });
+    const run = runtime({ post }); run.load("pages/activity/index.ts"); const page = run.page();
+    const full = activity("full", { remaining: 0 });
+    const available = activity("south", { location: "South" });
+    page.setData({ loaded: true, source: [full, available], participants: [{ id: "member-a", name: "Same" }, { id: "member-b", name: "Same" }] });
+    page.selectActivity(full); page.review(); expect(page.data.step).toBe(2);
+    page.chooseSlot({ currentTarget: { dataset: { id: "full" } } });
+    expect(page.data.selectedSlot).toBe("");
+    page.location({ currentTarget: { dataset: { value: "South" } } });
+    page.chooseSlot({ currentTarget: { dataset: { id: "south" } } });
+    await page.book();
+    expect(post).toHaveBeenCalledExactlyOnceWith({ action: "book", activityId: "south", participantId: "member-a" });
+    page.startAgain(); page.review(); expect(page.data.step).toBe(1);
+    page.chooseParticipant({ currentTarget: { dataset: { index: 1 } } }); page.review();
+    expect(page.data.step).toBe(2);
+    expect(page.data.booked).toBe(false);
+    page.chooseSlot({ currentTarget: { dataset: { id: "south" } } });
+    await page.book();
+    expect(post).toHaveBeenLastCalledWith({ action: "book", activityId: "south", participantId: "member-b" });
   });
 
   it("预约结果不明时引导查记录，页面不会直接再次提交", async () => {
     const post = vi.fn().mockRejectedValue(new Error("connection lost"));
     const run = runtime({ post }); run.load("pages/activity/index.ts"); const page = run.page();
-    page.setData({ loaded: true, id: "event", step: 2, activity: activity("event"), participants: [{ id: "member-a", name: "A" }] });
+    page.setData({ loaded: true, id: "event", selectedSlot: "event", step: 2, activity: activity("event"), participants: [{ id: "member-a", name: "A" }] });
     await page.book(); await page.book();
     expect(page.data.uncertain).toBe(true); expect(post).toHaveBeenCalledTimes(1);
     const error = page.data.error;
@@ -206,5 +263,18 @@ describe("小程序发现与参与合同", () => {
     const old = page.loadMonth(); page.setData({ month: "2026-10" }); await page.loadMonth();
     slow.resolve(learning("member-a", "Old month")); await old;
     expect(page.data.learning?.schedule[0].title).toBe("New month");
+  });
+
+  it("周课表切换同名孩子后，保留新孩子的课次并丢弃旧响应", async () => {
+    const slow = deferred<ParentLearning>();
+    const request = vi.fn((id: string) => id === "member-a" ? slow.promise : Promise.resolve({ ...learning(id, "B schedule"),
+      schedule: [...learning(id, "B schedule").schedule, ...learning("other", "Other schedule").schedule] }));
+    const run = runtime({ learning: request }); run.load("pages/courses/index.ts"); const page = run.page();
+    page.setData({ participants: [{ id: "member-a", name: "Same" }, { id: "member-b", name: "Same" }], selectedDate: "2026-10-03" });
+    const old = page.loadWeek();
+    page.setData({ selected: 1 }); await page.loadWeek();
+    slow.resolve(learning("member-a", "A schedule")); await old;
+    expect(page.data.daySessions.map(row => row.title)).toEqual(["B schedule"]);
+    expect(page.data.daySessions[0].participantId).toBe("member-b");
   });
 });

@@ -1,19 +1,23 @@
-<view class="page">
-  <text class="eyebrow">{{brandName}}</text>
-  <view wx:if="{{submitted}}" class="empty"><text class="title">{{copy.registrationReceipt}}</text><text class="description">{{copy.registrationNext}}</text><button class="primary" bindtap="explore">{{copy.seeActivities}}</button></view>
-  <block wx:else>
-    <text wx:if="{{loading}}" class="empty">{{copy.loading}}</text>
-    <block wx:elif="{{form}}"><text class="title">{{formTitle}}</text><text class="description">{{formDescription}}</text>
-      <view wx:for="{{fields}}" wx:key="id" class="field">
-        <text class="field-label">{{item.label}} <text class="muted small">{{item.required ? copy.required : copy.optional}}</text></text>
-        <input wx:if="{{item.type === 'text' || item.type === 'phone'}}" class="input" type="text" value="{{item.value}}" data-index="{{index}}" bindinput="input" maxlength="{{item.type === 'phone' ? 30 : 200}}" placeholder="{{item.label}}" disabled="{{busy}}" />
-        <textarea wx:elif="{{item.type === 'textarea'}}" class="input textarea" value="{{item.value}}" data-index="{{index}}" bindinput="input" maxlength="2000" placeholder="{{item.label}}" disabled="{{busy}}" />
-        <picker wx:elif="{{item.type === 'select'}}" range="{{item.options}}" range-key="label" value="{{item.index}}" data-index="{{index}}" bindchange="select" disabled="{{busy}}"><view class="input row"><text>{{item.value || copy.select}}</text><text>⌄</text></view></picker>
-        <checkbox-group wx:elif="{{item.type === 'multiselect'}}" data-index="{{index}}" bindchange="check"><label wx:for="{{item.options}}" wx:for-item="option" wx:key="id" class="check-option"><checkbox value="{{option.id}}" checked="{{option.checked}}" disabled="{{busy}}" />{{option.label}}</label></checkbox-group>
-      </view>
-      <view class="privacy"><text class="subheading">{{copy.privacy}}</text><text class="muted prose">{{privacy}}</text><checkbox-group bindchange="consent"><label class="check-option"><checkbox value="agree" checked="{{consent}}" disabled="{{busy}}" /><text>{{copy.consent}}</text></label></checkbox-group></view>
-      <button class="primary" bindtap="submit" loading="{{busy}}" disabled="{{busy}}">{{busy ? copy.submitting : copy.submit}}</button>
+<view class="portal-page">
+  <app-nav title="{{formTitle || copy.intakeTitle}}" back />
+  <view class="portal-content has-fixed-actions">
+    <view wx:if="{{submitted}}" class="surface booking-success"><text class="success-symbol">✓</text><text class="row-title">{{copy.registrationReceipt}}</text><button class="primary" bindtap="explore">{{copy.seeActivities}}</button></view>
+    <block wx:else>
+      <text wx:if="{{loading}}" class="loading-line">{{copy.loading}}</text>
+      <block wx:elif="{{form}}">
+        <text wx:if="{{formDescription}}" class="form-help block">{{formDescription}}</text>
+        <view class="surface form-card"><view wx:for="{{fields}}" wx:key="id" class="field">
+          <text class="field-label"><text>{{item.label}}</text><text class="muted small">{{item.required ? copy.required : copy.optional}}</text></text>
+          <input wx:if="{{item.type === 'text' || item.type === 'phone'}}" class="input" type="text" value="{{item.value}}" data-index="{{index}}" bindinput="input" maxlength="{{item.type === 'phone' ? 30 : 200}}" placeholder="{{item.label}}" disabled="{{busy}}" />
+          <textarea wx:elif="{{item.type === 'textarea'}}" class="input textarea" value="{{item.value}}" data-index="{{index}}" bindinput="input" maxlength="2000" placeholder="{{item.label}}" disabled="{{busy}}" />
+          <button wx:elif="{{item.type === 'select'}}" class="input row" data-index="{{index}}" bindtap="showOptions" disabled="{{busy}}"><text>{{item.value || copy.select}}</text><view class="chevron down"></view></button>
+          <checkbox-group wx:elif="{{item.type === 'multiselect'}}" data-index="{{index}}" bindchange="check"><label wx:for="{{item.options}}" wx:for-item="option" wx:key="id" class="check-option"><checkbox value="{{option.id}}" checked="{{option.checked}}" disabled="{{busy}}" />{{option.label}}</label></checkbox-group>
+        </view></view>
+        <view class="form-privacy"><text class="subheading">{{copy.privacy}}</text><text class="muted prose">{{privacy}}</text><checkbox-group bindchange="consent"><label class="check-option"><checkbox value="agree" checked="{{consent}}" disabled="{{busy}}" /><text>{{copy.consent}}</text></label></checkbox-group></view>
+      </block>
+      <view wx:if="{{error}}" class="notice" role="alert">{{error}}<button wx:if="{{!form}}" class="text-button" bindtap="load" disabled="{{busy}}">{{copy.retry}}</button></view>
     </block>
-    <view wx:if="{{error}}" class="notice" role="alert">{{error}}<button class="text-button" bindtap="load" disabled="{{busy}}">{{copy.retry}}</button></view>
-  </block>
+  </view>
+  <view wx:if="{{form && !submitted}}" class="fixed-actions"><button class="primary" bindtap="submit" loading="{{busy}}" disabled="{{busy}}">{{busy ? copy.submitting : copy.submit}}</button></view>
+  <view wx:if="{{optionField >= 0}}" class="sheet-mask" bindtap="closeOptions" catchtouchmove="noop"><view class="bottom-sheet" catchtap="noop"><view class="sheet-heading"><text>{{fields[optionField].label}}</text><button class="sheet-close" bindtap="closeOptions" aria-label="{{copy.close}}">×</button></view><scroll-view scroll-y class="sheet-scroll"><view class="option-grid"><button wx:for="{{fields[optionField].options}}" wx:key="id" class="option-pill {{fields[optionField].index === index && fields[optionField].value ? 'selected' : ''}}" data-value="{{index}}" bindtap="chooseOption">{{item.label}}</button></view></scroll-view></view></view>
 </view>
