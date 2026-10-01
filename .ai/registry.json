@@ -270,8 +270,8 @@
         "apps/parent-wechat/AGENTS.md"
       ],
       "sharedPaths": [],
-      "checkpoint": "ebd4bc8c0d4fd8331afc1f3b8b106a36173d30e5",
-      "next": "继续按示例复刻三栏；测评新增独立1对1教师预约入口，pages/assessment已由pages目录覆盖；共享接口先由原Supabase/Next lane核对真实流程并交付稳定DTO。"
+      "checkpoint": "045a200134853b4b119871276ae54cb23a382fb9",
+      "next": "三栏参考布局已集成本地main 5b236f57/ca2f41cd，复用定向检查与已绑定复核，待视觉验收；继续独立1对1测评入口，消费新的assessment共享DTO，交接04已登记。"
     }
   ]
 }
