@@ -32,6 +32,8 @@
 
 仅在既有 `lead_invitation_threads` 增加两个 nullable 列：`parent_request_actor` 和 `parent_request_payload`。payload 保存版本、学生 ID、初选教师 ID 和规范排序后的初始候选。约束要求两列同时存在或同时为空；触发器使其创建后不可修改。业务协调继续使用原本的可修改字段，家长输出不暴露这份元数据、线索联系方式、内部摘要或事件备注。
 
+元数据不冻结原有邀约类型。学服仍可按原入口把邀约转换为活动或待匹配活动，初始家长请求的留痕保留；家长测评接口对该原请求的重放返回 `CONFLICT`，引导刷新，不把其他业务类型投影成测评。
+
 客户端请求 UUID 同时作为邀约主键。请求级 advisory lock 串行化同一 UUID；只有当前有权访问该孩子的同一账号，以相同规范化输入重试才返回现有邀约。原请求判断先于新的申请资格和时效检查，因此学服修改当前字段、教师关系变化或时间经过不会产生第二条请求。其他账号或变更输入复用 ID 返回 `IDEMPOTENCY_CONFLICT`。
 
 新建采用学生 → 线索行锁，并保留原有每条 lead 仅一个未关闭邀约的唯一索引；并发学服新建冲突转换为 `ACTIVE_INVITATION`。确认采用线索共享锁 → 邀约行锁，不在持有邀约锁后取得学生锁。首次确认要求 `expectedUpdatedAt` 与当前版本相同、状态为 `awaiting_parent`。相同已确认时刻的重试先返回现态，再跳过首次确认的时间与版本检查；不同时间或失效版本返回 `CONFLICT`。审计沿用 `lead_invitation_events` 和 `emit_domain_event`。

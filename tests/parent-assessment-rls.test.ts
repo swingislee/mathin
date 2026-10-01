@@ -76,6 +76,8 @@ describe("家长独立测评 SQL 权限与协调合同（源码检查）", () =>
   it("初始内容独立保存且不可变；重放在时效与新建资格检查之前", () => {
     expect(sql).toContain("parent_request_actor uuid references public.profiles(id) on delete restrict");
     expect(sql).toContain("add column parent_request_payload jsonb");
+    const metadataConstraint = sql.slice(sql.indexOf("add constraint lead_invitation_threads_parent_request_check"), sql.indexOf("comment on column"));
+    expect(metadataConstraint).not.toContain("kind");
     const guard = source("guard_parent_assessment_request_metadata");
     expect(guard).toContain("new.parent_request_actor is distinct from old.parent_request_actor");
     expect(guard).toContain("new.parent_request_payload is distinct from old.parent_request_payload");
@@ -84,6 +86,7 @@ describe("家长独立测评 SQL 权限与协调合同（源码检查）", () =>
     expect(request).toContain("v_invitation.parent_request_actor is distinct from v_uid");
     expect(request).toContain("v_invitation.parent_request_payload is distinct from v_payload");
     expect(request).toContain("raise exception 'IDEMPOTENCY_CONFLICT'");
+    expect(request).toContain("if v_invitation.kind<>'assessment_1v1' then raise exception 'CONFLICT'");
     const replay = request.indexOf("return public.parent_assessment_request_projection(v_invitation.id,p_student_id)");
     expect(replay).toBeLessThan(request.indexOf("v_blocker :="));
     expect(replay).toBeLessThan(request.indexOf("foreach v_option"));

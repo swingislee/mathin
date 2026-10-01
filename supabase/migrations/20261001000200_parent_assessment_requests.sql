@@ -7,7 +7,6 @@ alter table public.lead_invitation_threads
     (parent_request_actor is null and parent_request_payload is null)
     or (
       parent_request_actor is not null and parent_request_payload is not null
-      and kind = 'assessment_1v1'
       and jsonb_typeof(parent_request_payload) = 'object'
       and parent_request_payload ?& array['version','studentId','assessorId','parentTimeOptions']
       and parent_request_payload->>'version' = '1'
@@ -171,6 +170,8 @@ begin
     -- 已保存的请求先重放；后续协调修改、教师调岗或时间经过均不创建第二条邀约。
     if not exists(select 1 from public.leads where id=v_invitation.lead_id and student_id=p_student_id)
       then raise exception 'NOT_FOUND'; end if;
+    -- 学服可沿原流程改变邀约类型；家长测评接口对此要求刷新，不返回其他业务投影。
+    if v_invitation.kind<>'assessment_1v1' then raise exception 'CONFLICT'; end if;
     return public.parent_assessment_request_projection(v_invitation.id,p_student_id);
   end if;
 
