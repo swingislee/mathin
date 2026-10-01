@@ -22,7 +22,7 @@
         <view class="booking-steps"><view><text class="step-number active">1</text><text>{{copy.bookingStepOne}}</text></view><view class="step-connector"></view><view><text class="step-number {{step === 2 ? 'active' : ''}}">2</text><text>{{copy.bookingStepTwo}}</text></view></view>
         <view wx:if="{{step === 1}}" class="surface form-list">
           <button class="form-row" data-sheet="participant" bindtap="showSheet" disabled="{{busy || !participants.length}}"><text class="form-row-label">{{copy.chooseChild}}</text><text class="form-row-value {{participants.length ? '' : 'placeholder'}}">{{participants[selected].name || copy.select}}</text><view class="chevron down"></view></button>
-          <view class="form-row"><text class="form-row-label">{{copy.assessment}}</text><text class="form-row-value">{{copy.assessmentKind}}</text></view>
+          <view class="form-row"><text class="form-row-label">{{copy.assessmentBooking}}</text><text class="form-row-value">{{copy.assessmentKind}}</text></view>
           <button class="form-row" data-sheet="teacher" bindtap="showSheet" disabled="{{busy || !teachers.length}}"><text class="form-row-label">{{copy.assessmentTeacher}}</text><text class="form-row-value {{teacherId ? '' : 'placeholder'}}">{{teacherName || copy.chooseTeacher}}</text><view class="chevron down"></view></button>
           <view class="form-row"><text class="form-row-label">{{copy.assessmentLocation}}</text><text class="form-row-value">{{copy.toBeConfirmed}}</text></view>
         </view>
