@@ -216,6 +216,19 @@ describe("enrollment placement class roster", () => {
     expect(focused.attributes).toContain('data-mobile-roster-open="true"');
   });
 
+  it("keeps unset locations and schedules terse in the class summary", () => {
+    const initialBoard = { ...board, options: { ...board.options, classrooms: board.options.classrooms.map(row => ({ ...row,
+      location: { campusId: null, campusName: null, roomName: null },
+    })) } };
+    const row = renderRoster(undefined, { initialBoard, workspace: "classes" }).find(row => classroomId(row.attributes) === "autumn-4")!;
+    expect(row.cells[0].content).toContain("待设置");
+    expect(row.cells[0].content).toContain("待安排");
+    expect(row.cells[0].content).not.toContain("校区待设置");
+    expect(row.cells[0].content).not.toContain("后续上课时间待安排");
+    expect(row.cells[1].content).toContain("待安排");
+    expect(renderWorkbench({ initialBoard, workspace: "classes", workspaceQuery: { group: "teacher" } })).not.toContain("报读年级");
+  });
+
   it("filters canonical campuses while preserving the underlying classroom and roster", () => {
     const initialBoard = { ...board, options: { ...board.options, classrooms: board.options.classrooms.map(row => ({ ...row,
       location: { campusId: row.id === "autumn-4" ? "east" : "west", campusName: row.id === "autumn-4" ? "东校区" : "西校区", roomName: "305" },

@@ -9,7 +9,7 @@ import type { EnrollmentPlacementBoard } from '@/features/school/enrollment-work
 const calls=vi.hoisted(()=>({move:vi.fn(),change:vi.fn(),preview:vi.fn(),open:vi.fn()}));
 vi.mock('@/features/school/enrollment-workflow-actions',()=>({moveEnrollmentSeatAction:calls.move}));
 vi.mock('@/features/school/enrollment-placement-change-actions',()=>({changeEnrollmentPlacementAction:calls.change,previewEnrollmentSessionTransferAction:calls.preview}));
-vi.mock('@/features/school/SchoolSupportInlineEntry',()=>({SchoolSupportSeatEntry:()=>null}));
+vi.mock('@/features/school/SchoolSupportInlineEntry',()=>({SchoolSupportSeatEntry:({classroomId,seat}:{classroomId:string;seat:number})=>createElement('div',{'data-test-seat-entry':`${classroomId}:${seat}`})}));
 vi.mock('@/features/school/SchoolSupportPendingRows',()=>({SchoolSupportPendingRows:()=>null}));
 vi.mock('@/features/school/SourceEnrollmentPlacementDialog',()=>({SourceEnrollmentPlacementDialog:()=>null}));
 vi.mock('@/features/school/Student360Sheet',()=>({Student360Trigger:({children,className}:{children:ReactNode;className?:string})=>createElement('button',{type:'button',className,onClick:(event:{stopPropagation():void})=>{event.stopPropagation();calls.open();}},children)}));
@@ -88,7 +88,7 @@ it('blocks dragging between unrelated classes and keeps commercial withdrawal hi
   expect(calls.move).not.toHaveBeenCalled();expect(calls.change).not.toHaveBeenCalled();
 });
 
-async function mountRoster(canTeach = false) {
+async function mountRoster(canTeach = false, canAdd = false) {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   calls.move.mockClear(); calls.change.mockClear();
   HTMLElement.prototype.setPointerCapture = vi.fn();
@@ -97,7 +97,7 @@ async function mountRoster(canTeach = false) {
   const initialBoard = { ...board, options: { ...board.options, classrooms: board.options.classrooms.map(row => ({ ...row,
     location: { campusId: id(70), campusName: '东校区', roomName: '305' },
   })) } };
-  const children = createElement(EnrollmentPlacementWorkbench, { initialBoard, canCreateClass: false, workspace: 'classes', canTeach });
+  const children = createElement(EnrollmentPlacementWorkbench, { initialBoard, canCreateClass: false, workspace: 'classes', canTeach, canAdd });
   const props = { locale: 'zh', messages, timeZone: 'Asia/Shanghai', children };
   await act(async () => root.render(createElement(NextIntlClientProvider, props)));
   return element;
@@ -117,11 +117,33 @@ it('opens the roster independently of lessons and keeps class information access
   expect(row.dataset.mobileRosterOpen).toBe('false');
   expect(row.getAttribute('aria-expanded')).toBe('true');
   expect(element.querySelectorAll(`[data-placement-student="${id(5)}"]`)).toHaveLength(1);
-  await act(async () => row.querySelector<HTMLButtonElement>('[data-class-info]')!.click());
+  const location = row.querySelector<HTMLButtonElement>('[data-class-info]')!;
+  expect(location.textContent).toContain('东校区');
+  await act(async () => location.click());
   const info = document.querySelector('[role="dialog"]')!;
   expect(info.textContent).toContain('原班'); expect(info.textContent).toContain('数学'); expect(info.textContent).toContain('教师');
   expect(info.querySelector('a')?.getAttribute('href')).toBe(`/dashboard/classes/${id(3)}`);
   expect(calls.move).not.toHaveBeenCalled(); expect(calls.change).not.toHaveBeenCalled();
+});
+
+it('opens the first real vacancy by tapping its visible plus, and preserves add permissions', async () => {
+  const element = await mountRoster(false, true);
+  const row = element.querySelector<HTMLElement>(`[data-placement-classroom="${id(3)}"]`)!;
+  await act(async () => row.querySelector<HTMLButtonElement>('[data-class-roster-toggle]')!.click());
+  const vacancy = row.querySelector<HTMLButtonElement>('[data-placement-vacancy]')!;
+  const plus = vacancy.querySelector<SVGElement>('[data-placement-vacancy-icon]')!;
+  expect(vacancy.disabled).toBe(false);
+  expect(vacancy.textContent).toContain('空 2 位');
+  await act(async () => plus.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+  expect(element.querySelector('[data-test-seat-entry]')?.getAttribute('data-test-seat-entry')).toBe(`${id(3)}:2`);
+  expect(calls.move).not.toHaveBeenCalled(); expect(calls.change).not.toHaveBeenCalled();
+  await cleanup();
+  const restricted = await mountRoster();
+  const disabled = restricted.querySelector<HTMLButtonElement>('[data-placement-vacancy]')!;
+  expect(disabled.disabled).toBe(true);
+  expect(disabled.querySelector('[data-placement-vacancy-icon]')).toBeNull();
+  await act(async () => disabled.click());
+  expect(restricted.querySelector('[data-test-seat-entry]')).toBeNull();
 });
 
 it('lets touch scroll through names and uses select-then-seat for a reviewed transfer', async () => {

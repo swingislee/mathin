@@ -1,5 +1,15 @@
 .workspace { display: contents; }
 .workspace [data-class-mobile] { display: none; }
+.workspace [data-class-level-header] { padding-inline: 0; }
+.workspace [data-class-level-header] > div { margin-left: 0; }
+.workspace [data-class-level-header] [data-dashboard-table-menu] { gap: 0.125rem; padding-inline: 0.125rem; font-size: 0.6875rem; }
+.workspace [data-class-level-header] [data-dashboard-table-menu] > svg { width: 0.625rem; height: 0.625rem; }
+
+/* 触屏上的空位入口常显加号；支持悬浮的宽屏保留原悬浮提示。 */
+@media (hover: none), (pointer: coarse) {
+  .workspace [data-placement-vacancy-icon] { position: static; transform: none; opacity: 1; }
+  .workspace [data-placement-vacancy] { min-height: 2.75rem; }
+}
 
 /* 窄屏共用原记录与详情状态，使用纵向摘要浏览；桌面固定列留在宽屏。 */
 @media (max-width: 63.999rem) {
@@ -60,7 +70,8 @@
   .workspace [data-class-roster-group] > td > span > span { margin-left: 0; }
   .workspace [data-placement-student], .workspace [data-class-roster-members] button { min-height: 2.75rem; }
   .workspace [data-placement-select] { width: 1.25rem; opacity: 1; }
-  .workspace [data-class-info] { width: 2.75rem; height: 2.75rem; }
+  .workspace [data-class-info] { min-height: 2.75rem; }
+  .workspace [data-placement-vacancy-icon] { position: static; transform: none; opacity: 1; }
 
   /* 课次继续原位展开，标题与状态先呈现，学情摘要占下一行。 */
   .workspace [data-class-session-list], .workspace [data-class-session-list] > tbody { display: block; }

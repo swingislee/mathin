@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { Info } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Link } from "@/i18n/navigation";
@@ -19,10 +18,22 @@ export function ClassRosterClassSummary({ row, locale, className, courseTitle, t
   return <div className="flex min-w-0 items-start gap-1">
     <span data-class-desktop>{disclosure}</span>
     <div className="min-w-0 flex-1">
-      <div data-class-desktop><p className="break-words font-medium leading-5">{location.campus}</p>{location.room && <p className="break-words text-[11px] leading-5 text-muted">{location.room}</p>}</div>
+      <p data-class-mobile className="whitespace-normal break-words text-base font-medium leading-6 tabular-nums">{time}</p>
+      <Popover><PopoverTrigger asChild><Button data-class-info variant="ghost" size="sm" className="h-auto min-h-0 w-full justify-start whitespace-normal px-0 py-0 text-left font-normal hover:bg-transparent hover:underline" aria-label={`${m.info} · ${className}`}>
+        <span className="min-w-0 break-words">
+          <span data-class-desktop><span className="block font-medium leading-5">{location.campus}</span>{location.room && <span className="block text-[11px] leading-5 text-muted">{location.room}</span>}</span>
+          <span data-class-mobile className="text-sm">{location.campus}{location.room && <span className="text-muted"> · {location.room}</span>}</span>
+        </span>
+      </Button></PopoverTrigger>
+        <PopoverContent align="start" className="w-72 max-w-[calc(100vw-2rem)] space-y-2 p-3 text-sm">
+          <p className="break-words font-medium">{className}</p><p className="break-words text-muted">{courseTitle}</p>
+          <p className="break-words text-muted">{grade} · {m.level} {level}{teacher ? ` · ${teacher}` : ""}</p>
+          <p className="text-muted">{m.roster} {count}</p>
+          {row.historical && <p className="text-muted">{row.historical.registered_on || "—"} · {row.historical.amount ?? row.historical.amount_original}</p>}
+          {row.classroom && <Link href={`/dashboard/classes/${row.classroom.id}`} className={buttonVariants({ variant: "secondary", size: "sm" })}>{m.details}</Link>}
+        </PopoverContent>
+      </Popover>
       <div data-class-mobile className="space-y-2">
-        <p className="whitespace-normal break-words text-base font-medium leading-6 tabular-nums">{time}</p>
-        <p className="break-words text-sm">{location.campus}{location.room && <span className="text-muted"> · {location.room}</span>}</p>
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted"><span>{grade}</span><span>{m.level} {level}</span>{showTeacher && teacher && <span>{teacher}</span>}</p>
         <div className="flex flex-wrap items-center gap-2 pt-1">
           <Button variant={rosterOpen ? "secondary" : "ghost"} size="sm" className="min-h-10 px-3 text-sm" disabled={disabled}
@@ -33,14 +44,5 @@ export function ClassRosterClassSummary({ row, locale, className, courseTitle, t
         </div>
       </div>
     </div>
-    <Popover><PopoverTrigger asChild><Button data-class-info variant="ghost" size="sm" className="size-7 shrink-0 p-0" aria-label={`${m.info} · ${className}`}><Info className="size-3.5" /></Button></PopoverTrigger>
-      <PopoverContent align="start" className="w-72 max-w-[calc(100vw-2rem)] space-y-2 p-3 text-sm">
-        <p className="break-words font-medium">{className}</p><p className="break-words text-muted">{courseTitle}</p>
-        <p className="break-words text-muted">{grade} · {m.level} {level}{teacher ? ` · ${teacher}` : ""}</p>
-        <p className="text-muted">{m.roster} {count}</p>
-        {row.historical && <p className="text-muted">{row.historical.registered_on || "—"} · {row.historical.amount ?? row.historical.amount_original}</p>}
-        {row.classroom && <Link href={`/dashboard/classes/${row.classroom.id}`} className={buttonVariants({ variant: "secondary", size: "sm" })}>{m.details}</Link>}
-      </PopoverContent>
-    </Popover>
   </div>;
 }
