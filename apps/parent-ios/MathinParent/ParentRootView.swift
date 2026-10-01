@@ -4,16 +4,18 @@ enum ParentRoute: Hashable {
     case notification(String), contacts, calls, courses, course(String), lesson(LearningSession), schedule, reports, report(String)
     case assessments, levels, practices, practice(String), mistakes, reading, checkins
     case children, settings, service(String), feedback, mailbox, address, invite, support, growth
+    case accountSecurity, permissions, about, privacy, thirdPartyServices, feedbackCompose, web(String, String)
 }
 
 struct ParentRootView: View {
     @State private var store = ParentStore()
     @State private var selectedTab = 1
+    @AppStorage("parent.messageBadges") private var messageBadges = true
     var body: some View {
         Group {
             if store.signedIn {
                 TabView(selection: $selectedTab) {
-                    tab("messages", symbol: "bubble.left.and.bubble.right", tag: 0) { MessagesView() }.badge(store.unread)
+                    tab("messages", symbol: "bubble.left.and.bubble.right", tag: 0) { MessagesView() }.badge(messageBadges ? store.unread : 0)
                     tab("courses", symbol: "book.closed", tag: 1) { CoursesHomeView() }
                     tab("tasks", symbol: "checklist", tag: 2) { TasksHomeView() }.badge(store.pending)
                     tab("parent", symbol: "person.crop.circle", tag: 3) { ParentAccountView() }
@@ -59,9 +61,16 @@ struct ParentDestination: View {
             case .checkins: ServiceAvailabilityView(kind: "checkins")
             case .children: ChildrenView()
             case .settings: ParentSettingsView()
+            case .accountSecurity: ParentAccountSecurityView()
+            case .permissions: ParentPermissionsView()
+            case .about: ParentAboutView()
+            case .privacy: ParentPrivacyView()
+            case .thirdPartyServices: ParentThirdPartyServicesView()
+            case .feedbackCompose: ParentFeedbackComposeView()
+            case .web(let title, let path): ParentWebPageView(title: title, path: path)
             case .service(let kind): CourseServiceView(kind: kind)
-            case .feedback: ServiceAvailabilityView(kind: "feedback")
-            case .mailbox: ServiceAvailabilityView(kind: "mailbox")
+            case .feedback: ParentFeedbackView()
+            case .mailbox: ParentMailboxView()
             case .address: ServiceAvailabilityView(kind: "address")
             case .invite: ServiceAvailabilityView(kind: "invite")
             case .support: ContactsView()
@@ -103,6 +112,9 @@ struct ParentLoginView: View {
                     } label: { if busy { ProgressView().tint(.white) } else { Text(tr("login")) } }
                         .buttonStyle(PrimaryButton()).disabled(busy || identifier.trimmingCharacters(in: .whitespaces).isEmpty || password.isEmpty || store.api.origin == nil)
                     if store.api.origin == nil { Text(tr("configuration_detail")).font(.footnote).foregroundStyle(ParentTheme.muted) }
+                    if store.api.origin?.scheme == "http" {
+                        Text(tr("development_login_detail")).font(.footnote).foregroundStyle(ParentTheme.muted)
+                    }
                 }
                 Button(tr("preview_action")) { store.startPreview() }.frame(maxWidth: .infinity, minHeight: 44)
                 Text(tr("preview_detail")).font(.caption).foregroundStyle(ParentTheme.muted).multilineTextAlignment(.center).frame(maxWidth: .infinity)

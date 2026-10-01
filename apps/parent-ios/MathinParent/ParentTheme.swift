@@ -123,7 +123,9 @@ struct ChipPicker: View {
 
 func tr(_ key: String) -> String {
     let value = Bundle.main.localizedString(forKey: key, value: nil, table: "Parent")
-    if value == key && key.hasPrefix("error_") { return tr("error_unavailable") }
+    if value == key && key.hasPrefix("error_") {
+        return Bundle.main.localizedString(forKey: "error_unavailable", value: "Please try again.", table: "Parent")
+    }
     return value
 }
 

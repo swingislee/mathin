@@ -49,7 +49,7 @@ struct ParentAccountView: View {
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 22) {
                     Shortcut(title: "address", symbol: "mappin.and.ellipse", route: .address, color: ParentTheme.rose)
                     Shortcut(title: "invite", symbol: "person.badge.plus", route: .invite, color: ParentTheme.leaf)
-                    Shortcut(title: "feedback", symbol: "bubble.left", route: .feedback)
+                    Shortcut(title: "app_feedback", symbol: "bubble.left", route: .feedback)
                     Shortcut(title: "settings", symbol: "gearshape", route: .settings, color: ParentTheme.muted)
                 }
             }
@@ -79,41 +79,6 @@ struct ChildrenView: View {
             Text(tr("family_record_detail")).font(.footnote).foregroundStyle(ParentTheme.muted)
             NavigationLink(value: ParentRoute.invite) { Label(tr("invite"), systemImage: "person.badge.plus") }
         }.navigationTitle(tr("my_children"))
-    }
-}
-
-struct ParentSettingsView: View {
-    @Environment(ParentStore.self) private var store
-    @State private var confirmLogout = false
-    var body: some View {
-        ParentPage {
-            ParentCard {
-                SectionTitle(key: "account_security")
-                Text(store.account?.displayName ?? tr("parent"))
-                Text(tr("account_security_detail")).font(.footnote).foregroundStyle(ParentTheme.muted)
-            }
-            ParentCard {
-                SectionTitle(key: "notifications_settings")
-                Text(tr("notifications_detail")).font(.subheadline).foregroundStyle(ParentTheme.muted)
-            }
-            ParentCard {
-                SectionTitle(key: "privacy")
-                Text(tr("privacy_detail")).font(.subheadline).foregroundStyle(ParentTheme.muted)
-                Button(tr("refresh_data")) { Task { await store.loadAccount() } }.disabled(store.loading)
-            }
-            ParentCard {
-                HStack { Text(tr("about")); Spacer(); Text("Mathin · 0.2.0").foregroundStyle(ParentTheme.muted) }
-                Text(tr("about_detail")).font(.footnote).foregroundStyle(ParentTheme.muted)
-                #if DEBUG
-                Text(store.api.origin?.host ?? tr("preview_mode")).font(.caption).foregroundStyle(ParentTheme.muted)
-                #endif
-            }
-            Button(tr(store.preview ? "exit_preview" : "logout")) { confirmLogout = true }.buttonStyle(PrimaryButton())
-        }.navigationTitle(tr("settings"))
-            .confirmationDialog(tr(store.preview ? "exit_preview" : "logout"), isPresented: $confirmLogout, titleVisibility: .visible) {
-                Button(tr("confirm"), role: .destructive) { Task { await store.logout() } }
-                Button(tr("cancel"), role: .cancel) { }
-            } message: { Text(tr("logout_detail")) }
     }
 }
 

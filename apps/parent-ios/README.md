@@ -11,6 +11,24 @@ Swift + SwiftUI，最低 iOS 17，使用 Xcode 16 或更新版本。此增量把
 
 Debug 使用 `club.mathin.parent.dev`，Release 使用 `club.mathin.parent`，均为暂定标识。品牌图标、签名、TestFlight 与上架属于后续发布增量。
 
+## 在 iPad Swift Playgrounds 上查看
+
+使用 iPad 上已经确认能运行的原生 `.swiftpm` 空白工程作为模板。导出器保留模板的产品名、最低系统版本、图标、`MyApp.swift` 入口和工作区元数据；因此输出工程的最低版本以模板为准。原始模板与旧副本保留。
+
+在受控本机环境中设置 `MATHIN_API_ORIGIN` 为开发服务 origin，然后运行：
+
+```sh
+node apps/parent-ios/scripts/export-playground.mjs --template /path/to/native.swiftpm --output /path/to/new-folder
+```
+
+输出目录内的工程可直接复制到“我的 iPad”，在 Swift Playgrounds 中打开并点击运行。进入欢迎页后使用已有开发家长账号登录；“预览界面”仍是单独的离线示例入口。工程中没有预置账号或会话。局域网模式需要两端网络可互通，并允许本地网络访问。
+
+导出器只增加开发网络 plist、对应 manifest 引用和 `DEBUG` 标记；HTTP 例外仅指定当前主机，HTTPS 保留系统默认传输限制。manifest 修改后让 Playgrounds 重建缓存。文案直接写入生成的 Swift 字典，延续 V5 已运行的无资源 bundle 方式。导出目录必须不存在，避免覆盖正在使用的版本。
+
+设置页采用参考图的分组列表。账号安全与第三方账号绑定打开现有账号中心并重新登录；权限可打开系统设置；消息开关控制应用内角标；清理缓存只清本机网络缓存。问题反馈可填写文字、选择最多三张图片并主动分享，在线接收与记录尚未开通。信箱提供实际教师联系入口。
+
+导出检查：`node apps/parent-ios/scripts/export-playground.test.mjs`。Windows 上通过静态与导出检查后，仍需在 iPad 确认新包编译、真实登录、数据和页面效果。原 V5 编译成功与新版通过是两个状态。
+
 ## 连接现有账号与数据
 
 复制 `Config/Local.example.xcconfig` 为同目录被忽略的 `Local.xcconfig`，在本机填写：
