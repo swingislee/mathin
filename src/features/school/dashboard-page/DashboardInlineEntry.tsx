@@ -63,7 +63,7 @@ export function DashboardInlineEntry({
     >
       {title || onClose ? <div data-inline-entry-header className={cn("flex items-center justify-between gap-3", hideTitle && "absolute right-0 top-0")}>
         {title && !hideTitle ? <h3 className="text-xs font-medium text-ink">{title}</h3> : null}
-        {onClose ? <Button type="button" size="sm" variant="ghost" className="size-7 p-0" disabled={pending} aria-label={closeLabel} onClick={onClose}><X className="size-3.5" /></Button> : null}
+        {onClose ? <Button data-inline-entry-close type="button" size="sm" variant="ghost" className="size-7 p-0" disabled={pending} aria-label={closeLabel} onClick={onClose}><X className="size-3.5" /></Button> : null}
       </div> : null}
       <DashboardInlineDetailBoundary loadingLabel={loadingLabel}>{children}</DashboardInlineDetailBoundary>
     </div>
