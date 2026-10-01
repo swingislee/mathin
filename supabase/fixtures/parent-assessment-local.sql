@@ -68,15 +68,16 @@ begin
     end if;
   end loop;
 
+  select * into v_request from public.lead_invitation_threads where id=v_request_id for update;
   if exists(select 1 from public.classroom_members where classroom_id=v_class.id and user_id=v_teacher and role<>'teacher')
     then raise exception 'PREVIEW_TEACHER_MEMBERSHIP_CONFLICT';end if;
   if not exists(select 1 from public.classroom_staff_assignments where classroom_id=v_class.id and user_id=v_teacher and responsibility='assistant_teacher')
     or not exists(select 1 from public.classroom_members where classroom_id=v_class.id and user_id=v_teacher and role='teacher') then
+    if v_request.id is not null then raise exception 'PREVIEW_TEACHER_ASSIGNMENT_CHANGED';end if;
     perform public.assign_classroom_staff(v_class.id,v_teacher,'assistant_teacher');
   end if;
 
   -- 孩子一留给人工新申请；孩子二首次经真实申请与教师回复路径进入待确认。
-  select * into v_request from public.lead_invitation_threads where id=v_request_id for update;
   if v_request.id is not null then
     if v_request.lead_id<>'b39b0b02-7000-4000-8000-000000000002'::uuid
       or v_request.parent_request_actor is distinct from v_parent
@@ -92,7 +93,7 @@ begin
 
   perform set_config('request.jwt.claims',jsonb_build_object('sub',v_admin,'role','authenticated','aal','aal2')::text,true);
   if exists(select 1 from public.activities where id=v_activity_id and (created_by is distinct from v_admin
-      or kind<>'lecture' or remark<>'parent-preview-20261002 · 开发演示')) then raise exception 'PREVIEW_ACTIVITY_OWNERSHIP_CONFLICT';end if;
+      or kind<>'lecture' or remark is distinct from 'parent-preview-20261002 · 开发演示')) then raise exception 'PREVIEW_ACTIVITY_OWNERSHIP_CONFLICT';end if;
   insert into public.activities(id,kind,title,scheduled_at,duration_min,location,capacity,remark,created_by)
     values(v_activity_id,'lecture','开发演示 · 思维探索活动',(v_day+time '16:00') at time zone 'Asia/Shanghai',45,
       '开发演示教室',8,'parent-preview-20261002 · 开发演示',v_admin) on conflict(id) do nothing;

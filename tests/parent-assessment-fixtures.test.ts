@@ -52,6 +52,7 @@ describe("local parent preview safety boundary", () => {
     expect(sql).toContain("v_class.purpose<>'test'");
     expect(sql).toContain("PREVIEW_LINKED_LEAD_CONFLICT");
     expect(sql).toContain("PREVIEW_REQUEST_OWNERSHIP_CONFLICT");
+    expect(sql).toContain("if v_request.id is not null then raise exception 'PREVIEW_TEACHER_ASSIGNMENT_CHANGED'");
     expect(sql).toContain("public.request_parent_assessment(v_request_id,v_second,v_teacher,v_options)");
     expect(sql).toContain("public.set_invitation_assessor_availability(v_request_id,v_options)");
     expect(sql).toContain("public.miniapp_submit_intake(v_intake_request,'welcome',v_form.version");
