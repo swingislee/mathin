@@ -137,6 +137,7 @@ describe("小程序发现与参与合同", () => {
     expect(page.data.loaded).toBe(true);
     pending.resolve({ id: "booking" }); await first;
     expect(page.data.booked).toBe(true);
+    page.updateSelection(); expect(page.data.booked).toBe(true);
     page.setData({ booked: false, step: 1, activity: activity("event", { remaining: 0 }) });
     page.review(); expect(page.data.step).toBe(1);
   });

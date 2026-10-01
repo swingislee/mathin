@@ -60,12 +60,15 @@ Page({
   reservations() { wx.switchTab({ url: "/pages/reservations/index" }); },
   async book() {
     const participant = this.data.participants[this.data.selected];
+    const activity = this.data.activity;
     if (this.data.busy || this.data.booked || this.data.uncertain || !participant || this.data.step !== 2
-      || !this.data.activity || !canReserve(this.data.activity)) return;
+      || !activity || !canReserve(activity)) return;
     this.setData({ busy: true, error: "" });
     try {
-      await post({ action: "book", activityId: this.data.id, participantId: participant.id });
-      this.setData({ booked: true });
+      const result = await post<{ id: string }>({ action: "book", activityId: this.data.id, participantId: participant.id });
+      const confirmed: Booking = { id: result.id, activityId: activity.id, participantId: participant.id,
+        participantName: participant.name, title: activity.title, startsAt: activity.startsAt, location: activity.location, status: "booked" };
+      this.setData({ booked: true, bookings: [...this.data.bookings.filter(row => row.id !== result.id), confirmed] });
       wx.showToast({ title: this.data.copy.confirmed, icon: "success" });
     } catch (error) {
       const uncertain = !(error instanceof ApiError) || ["NETWORK", "UNAVAILABLE"].includes(error.code);
