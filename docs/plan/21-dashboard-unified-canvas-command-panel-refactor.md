@@ -781,9 +781,11 @@ export function MainFloatingControlSafeArea() {
 
 ## 13. `DashboardPageChrome`
 
-### 13.1 统一 sticky 栈
+### 13.1 共用页头滚动栈
 
-推荐：
+2026-10-02 根据手机滚动反馈更新：普通页面与对象工作区共用 `DashboardPageChrome`。窄屏和矮屏页头随正文滚动；视口宽度至少 `64rem` 且高度至少 `36rem` 时，页头固定与学服表内滚动同时启用，断点集中在 `globals.css`。页面沿用共用规则，班级的局部固定例外已移除。
+
+组件保持自然高度，由共用样式决定固定条件：
 
 ```tsx
 export function DashboardPageChrome({
@@ -794,7 +796,7 @@ export function DashboardPageChrome({
   return (
     <div
       data-dashboard-page-chrome
-      className="sticky top-0 z-30 w-full min-w-0"
+      className="relative z-30 min-w-0"
     >
       {children}
     </div>
@@ -802,7 +804,7 @@ export function DashboardPageChrome({
 }
 ```
 
-页头与命令面板共同 sticky，避免：
+宽屏页头与命令面板共同 sticky，避免：
 
 - 分别计算 top；
 - 层级冲突；
@@ -821,12 +823,12 @@ export function DashboardPageChrome({
 总高度约 116–136px
 ```
 
-移动端：
+窄屏与矮屏：
 
-- 标题信息简化；
-- 描述可隐藏；
-- 面板最多两行；
-- sticky 总高度不超过视口约四分之一。
+- 标题、状态、筛选和操作区随正文滚出视口；
+- 命令面板按可用宽度自然换行，保留全部可用入口；
+- 普通页面与 ambient 对象工作区的表格按内容自然展开，纵向滚动交给 canvas；宽表保留横向查看；
+- 弹层与内部编辑工作区保持自己的滚动边界。
 
 ---
 

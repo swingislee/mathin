@@ -2,10 +2,10 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * 页头与命令面板共用的 sticky 栈（docs/plan/21 §13）。
+ * 页头与命令面板共用的滚动栈（docs/plan/21 §13）。
  *
- * 两者一起 sticky 而不是各自 sticky：分开做就要为第二条手算 top 偏移，而那个偏移
- * 随标题行数、面包屑、描述换行不断变化，最终必然出现滚动缝隙或面板被标题压住。
+ * 窄屏与矮屏随正文滚动，宽屏的固定条件由 globals.css 与列表内滚动共用。
+ * 宽屏将两者一起固定，标题或筛选换行后仍共用自然高度，保持滚动时的对齐。
  *
  * 负外边距把背景铺满整条 canvas（A→D），内边距再把内容推回统一左右边线（B→C），
  * 两者都读同一个 --dashboard-gutter，所以 chrome 与正文永远对齐。
@@ -19,7 +19,7 @@ export function DashboardPageChrome({ children, className }: { children: ReactNo
         // 往左推，右边线反而少一个 gutter。让它作为普通块级元素由外边距撑开。
         // Chrome 自身不画边：唯一结构线由 PageHeader 负责，命令面板与正文位于线下的
         // 同一工作区。滚动时的层次由 bg-paper/95 + backdrop-blur 给出。
-        "@container/chrome sticky top-0 z-30 min-w-0 bg-paper/95 backdrop-blur-md",
+        "@container/chrome relative z-30 min-w-0 bg-paper/95 backdrop-blur-md",
         "mx-[calc(var(--dashboard-gutter,0px)*-1)] px-[var(--dashboard-gutter,0px)]",
         className,
       )}

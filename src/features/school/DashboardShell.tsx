@@ -313,7 +313,7 @@ export function DashboardShell({
         <main
           data-dashboard-canvas
           className={cn(
-            "flex min-w-0 flex-1 flex-col overflow-y-auto pb-5 [--dashboard-gutter:1rem] px-(--dashboard-gutter) md:[--dashboard-gutter:1.5rem] lg:pb-6 lg:[--dashboard-gutter:2rem] 2xl:[--dashboard-gutter:2.5rem]",
+            "flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto pb-5 [--dashboard-gutter:1rem] px-(--dashboard-gutter) md:[--dashboard-gutter:1.5rem] lg:pb-6 lg:[--dashboard-gutter:2rem] 2xl:[--dashboard-gutter:2.5rem]",
             // panel 工作区的"定高不滚动"需要一份够用的宽度，而不是一个够大的视口；
             // 阈值随侧栏状态变化，规则写在 globals.css 的 .panel-canvas-* 里（doc 27 §3 D4）。
             workspace && "panel-canvas-clip",

@@ -362,8 +362,21 @@ body:has([data-dashboard-canvas], [data-followup-workbench])::after { display: n
 [data-dashboard-canvas]:has(.followup-command-panel) { padding-bottom: 0.375rem; }
 [data-dashboard-page]:has(.followup-command-panel) [data-dashboard-page-body] { row-gap: 0.25rem; }
 
-/* 学服页由表格使用剩余高度滚动；页头和分页保持原位，滚动条出现时列宽不变。 */
-@media (min-width: 48rem) and (min-height: 36rem) {
+/* 普通页面与对象总览在窄屏/矮屏由 canvas 连续滚动；宽表仍可横向查看。
+   弹层通过 portal 渲染在 canvas 外，内部编辑工作区继续使用自身的滚动布局。 */
+@media (max-width: 63.999rem), (max-height: 35.999rem) {
+  [data-dashboard-canvas] :is([data-dashboard-page], [data-object-workspace="ambient"]) [data-slot="table-container"] {
+    height: auto;
+    max-height: none;
+  }
+}
+
+/* 共用页头和学服表内滚动在同一宽屏条件下启用，给正文保留可用高度。 */
+@media (min-width: 64rem) and (min-height: 36rem) {
+  [data-dashboard-page-chrome] {
+    position: sticky;
+    top: 0;
+  }
   [data-dashboard-canvas]:has([data-communication-scroll], [data-followup-scroll]) {
     min-height: 0;
     overflow: hidden;

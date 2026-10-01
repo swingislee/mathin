@@ -25,7 +25,6 @@
 
 /* 班级筛选和名册操作的业务样式；记录与嵌套详情排列由通用 Table 承担。 */
 @media (max-width: 63.999rem) {
-  .workspace [data-dashboard-page-chrome] { position: static; }
   .workspace [data-dashboard-page-chrome] > [data-dashboard-command-panel] {
     display: flex;
     flex-wrap: wrap;

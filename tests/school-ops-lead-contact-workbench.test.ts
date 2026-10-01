@@ -38,7 +38,7 @@ const read = (...segments: string[]) => fs.readFileSync(path.join(root, ...segme
 describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
   it("keeps first contact within the shared communication/assessment single-scroll layout", () => {
     const css = read("src", "app", "globals.css");
-    expect(css).toContain("@media (min-width: 48rem) and (min-height: 36rem)");
+    expect(css).toContain("@media (min-width: 64rem) and (min-height: 36rem)");
     expect(css).toMatch(/\[data-dashboard-canvas\]:has\(\[data-communication-scroll\], \[data-followup-scroll\]\)\s*\{[^}]*overflow: hidden/);
     expect(css).toMatch(/\[data-dashboard-page-body\]:has\(\[data-communication-scroll\], \[data-followup-scroll\]\)\s*\{[^}]*min-height: 0;[^}]*flex: 1;/);
     expect(css).toContain(':is([data-communication-scroll], [data-followup-scroll]) > [data-slot="table-container"] { height: 100%; }');
