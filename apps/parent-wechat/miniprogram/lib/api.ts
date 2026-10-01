@@ -1,12 +1,13 @@
 import { config } from "../config.local";
-import type { Session, Media, ParentLearning, ParentAssessmentOverview, ParentAssessmentRequest, AssessmentCommand } from "./api-types";
+import type { Session, Media, ParentLearning, ParentAssessmentOverview, ParentAssessmentRequest, AssessmentCommand, ParentWechatAuthStatus, ParentWechatAuthResult } from "./api-types";
 
 const sessionKey="gezhi.session.v1";
 let refreshing:Promise<Session>|null=null;
-export class ApiError extends Error { constructor(public code:string){super(code);} }
+let sessionVersion=0;
+export class ApiError extends Error { constructor(public code:string,public reason?:string){super(code);} }
 export function session():Session|null {return wx.getStorageSync(sessionKey)||null;}
-export function clearSession(){wx.removeStorageSync(sessionKey);}
-export function saveSession(value:Session){wx.setStorageSync(sessionKey,value);}
+export function clearSession(){sessionVersion++;wx.removeStorageSync(sessionKey);}
+export function saveSession(value:Session){sessionVersion++;wx.setStorageSync(sessionKey,value);}
 export function configured(){return Boolean(config.apiOrigin);}
 function origin(){const value=String(config.apiOrigin);if(!value)throw new ApiError("CONFIG_REQUIRED");return value.replace(/\/$/,"");}
 function send<T>(path:string,method:"GET"|"POST",data?:object,token?:string):Promise<T> {
@@ -16,7 +17,10 @@ function send<T>(path:string,method:"GET"|"POST",data?:object,token?:string):Pro
       success:result=>{
         if(token&&session()?.accessToken!==token){reject(new ApiError("UNAUTHENTICATED"));return;}
         if(result.statusCode>=200&&result.statusCode<300)resolve(result.data as T);
-        else reject(new ApiError((result.data as {code?:string})?.code||"UNAVAILABLE"));
+        else {
+          const error=result.data as {code?:string;reason?:string};
+          reject(new ApiError(error?.code||"UNAVAILABLE",typeof error?.reason==="string"?error.reason:undefined));
+        }
       },fail:error=>{console.warn("Portal request failed:",error.errMsg);reject(new ApiError("NETWORK"));},
     });
   });
@@ -46,6 +50,31 @@ export async function postAssessment(data:AssessmentCommand):Promise<ParentAsses
   return send<ParentAssessmentRequest>("assessments","POST",data,await accessToken());
 }
 export async function login(identifier:string,password:string){const value=await send<Session>("auth","POST",{action:"login",identifier,password});saveSession(value);}
+export async function wechatAuthStatus():Promise<ParentWechatAuthStatus>{
+  return send<ParentWechatAuthStatus>("auth/wechat","GET",undefined,session()?await accessToken():undefined);
+}
+function wechatCode():Promise<string>{
+  return new Promise((resolve,reject)=>wx.login({timeout:10000,
+    success:result=>result.code?resolve(result.code):reject(new ApiError("UNAUTHENTICATED","WECHAT_CODE_INVALID")),
+    fail:()=>reject(new ApiError("UNAUTHENTICATED","WECHAT_CODE_INVALID")),
+  }));
+}
+export async function loginWithWechat():Promise<ParentWechatAuthResult>{
+  const version=sessionVersion;
+  const code=await wechatCode();
+  if(version!==sessionVersion)throw new ApiError("UNAUTHENTICATED");
+  const result=await send<ParentWechatAuthResult>("auth/wechat","POST",{action:"login",code});
+  if(version!==sessionVersion)throw new ApiError("UNAUTHENTICATED");
+  if(result.state==="authenticated")saveSession(result.session);
+  return result;
+}
+export async function bindWechat(password:string):Promise<void>{
+  const token=await accessToken();
+  const code=await wechatCode();
+  if(session()?.accessToken!==token)throw new ApiError("UNAUTHENTICATED");
+  const result=await send<ParentWechatAuthResult>("auth/wechat","POST",{action:"bind",code,password,confirm:true},token);
+  if(result.state!=="bound")throw new ApiError("UNAVAILABLE");
+}
 export async function logout(){try{await send("auth","POST",{action:"logout"},await accessToken());}finally{clearSession();}}
 export function upload(filePath:string,assignmentId:string,participantId:string,onProgress:(progress:number)=>void):Promise<Media>{
   return accessToken().then(token=>new Promise<Media>((resolve,reject)=>{

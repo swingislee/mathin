@@ -31,10 +31,43 @@
     <view wx:if="{{error && !sheet}}" class="notice" role="alert">{{error}}<button wx:if="{{authenticated}}" class="text-button" bindtap="load" disabled="{{busy}}">{{copy.retry}}</button></view>
   </view>
   <view wx:if="{{sheet}}" class="sheet-mask" bindtap="closeSheet" catchtouchmove="noop"><view class="bottom-sheet" catchtap="noop">
-    <view class="sheet-heading"><text>{{sheet === 'login' ? copy.login : (sheet === 'children' ? copy.myChildren : copy.parentAccount)}}</text><button class="sheet-close" bindtap="closeSheet" disabled="{{busy}}" aria-label="{{copy.close}}">×</button></view>
-    <block wx:if="{{sheet === 'login'}}"><label class="field-label">{{copy.identifier}}</label><input class="input" value="{{identifier}}" bindinput="identifierInput" maxlength="254" placeholder="{{copy.identifier}}" disabled="{{busy}}" /><label class="field-label">{{copy.password}}</label><input class="input" value="{{password}}" bindinput="passwordInput" password maxlength="128" placeholder="{{copy.password}}" disabled="{{busy}}" /><button class="primary" bindtap="signIn" loading="{{busy}}" disabled="{{busy || !identifier || !password}}">{{copy.login}}</button></block>
+    <view class="sheet-heading"><text>{{sheet === 'login' ? copy.login : (sheet === 'bind' ? copy.wechatBindTitle : (sheet === 'children' ? copy.myChildren : copy.parentAccount))}}</text><button class="sheet-close" bindtap="closeSheet" disabled="{{busy}}" aria-label="{{copy.close}}">×</button></view>
+    <view wx:if="{{info}}" class="auth-info" role="status">{{info}}</view>
+    <block wx:if="{{sheet === 'login'}}">
+      <text wx:if="{{wechatLoading}}" class="auth-hint">{{copy.wechatStatusLoading}}</text>
+      <view wx:elif="{{wechatStatusFailed}}" class="auth-hint">{{copy.wechatStatusFailed}}<button class="text-button" bindtap="loadWechat" disabled="{{busy}}">{{copy.retry}}</button></view>
+      <button wx:elif="{{wechat.available}}" class="primary" bindtap="signInWithWechat" loading="{{busy}}" disabled="{{busy}}">{{copy.wechatLogin}}</button>
+      <text wx:else class="auth-hint">{{copy.wechatUnavailable}}</text>
+      <text class="auth-password-note">{{copy.loginNote}}</text>
+      <label class="field-label">{{copy.identifier}}</label><input class="input" value="{{identifier}}" bindinput="identifierInput" maxlength="254" placeholder="{{copy.identifier}}" disabled="{{busy}}" />
+      <label class="field-label">{{copy.password}}</label><input class="input" value="{{password}}" bindinput="passwordInput" password maxlength="128" placeholder="{{copy.password}}" disabled="{{busy}}" />
+      <button class="secondary" bindtap="signIn" loading="{{busy}}" disabled="{{busy || !identifier || !password}}">{{copy.login}}</button>
+    </block>
+    <block wx:elif="{{sheet === 'bind'}}">
+      <text class="account-display-name">{{account.displayName || copy.parentAccount}}</text>
+      <text wx:if="{{wechatLoading}}" class="auth-hint">{{copy.wechatStatusLoading}}</text>
+      <view wx:elif="{{wechatStatusFailed}}" class="auth-hint">{{copy.wechatStatusFailed}}<button class="text-button" bindtap="loadWechat" disabled="{{busy}}">{{copy.retry}}</button></view>
+      <text wx:elif="{{wechat.linked}}" class="auth-hint">{{copy.wechatBound}}</text>
+      <block wx:elif="{{wechat.available && wechat.canBind}}">
+        <text class="auth-hint">{{copy.wechatBindNote}}</text>
+        <label class="field-label">{{copy.password}}</label><input class="input" value="{{password}}" bindinput="passwordInput" password maxlength="128" placeholder="{{copy.password}}" disabled="{{busy}}" />
+        <button class="primary" bindtap="confirmWechatBinding" loading="{{busy}}" disabled="{{busy || !account || !password}}">{{copy.wechatBindConfirm}}</button>
+      </block>
+      <text wx:else class="auth-hint">{{wechat.available ? copy.wechatBindUnavailable : copy.wechatUnavailable}}</text>
+      <button class="text-button auth-later" bindtap="skipWechatBinding" disabled="{{busy}}">{{copy.wechatLater}}</button>
+    </block>
     <block wx:elif="{{sheet === 'children'}}"><button wx:for="{{account.participants}}" wx:key="id" class="member-option" data-id="{{item.id}}" bindtap="participant"><image src="/assets/child.png" class="child-avatar" aria-hidden="true" /><text>{{item.name}}</text><view class="chevron"></view></button><text wx:if="{{!account.participants.length}}" class="muted small">{{copy.noLinkNote}}</text></block>
-    <block wx:else><text class="account-display-name">{{account.displayName || copy.parentAccount}}</text><button class="secondary" bindtap="signOut" disabled="{{busy}}">{{copy.logout}}</button></block>
+    <block wx:else>
+      <text class="account-display-name">{{account.displayName || copy.parentAccount}}</text>
+      <text wx:if="{{wechatLoading}}" class="auth-hint">{{copy.wechatStatusLoading}}</text>
+      <view wx:elif="{{wechatStatusFailed}}" class="auth-hint">{{copy.wechatStatusFailed}}<button class="text-button" bindtap="loadWechat" disabled="{{busy}}">{{copy.retry}}</button></view>
+      <block wx:else>
+        <text class="auth-hint">{{wechat.linked ? copy.wechatBound : (wechat.available ? copy.wechatUnlinked : copy.wechatUnavailable)}}</text>
+        <button wx:if="{{wechat.canBind}}" class="primary" bindtap="showWechatBinding" disabled="{{busy}}">{{copy.wechatBindTitle}}</button>
+        <text wx:elif="{{wechat.available && !wechat.linked}}" class="auth-hint">{{copy.wechatBindUnavailable}}</text>
+      </block>
+      <button class="secondary" bindtap="signOut" disabled="{{busy}}">{{copy.logout}}</button>
+    </block>
     <view wx:if="{{error}}" class="notice" role="alert">{{error}}</view>
   </view></view>
 </view>

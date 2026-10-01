@@ -158,6 +158,10 @@ button[disabled] { opacity: .48; }
 .option-pill.selected { color: var(--primary); border-color: var(--primary); background: var(--primary-soft); }
 .option-pill.wide { width: 100%; }
 .sheet-scroll { max-height: 55vh; }
+.auth-hint, .auth-password-note { display: block; margin-top: 22rpx; color: var(--muted); font-size: 25rpx; line-height: 1.7; }
+.auth-password-note { padding-top: 24rpx; border-top: 1rpx solid var(--line); }
+.auth-info { padding: 18rpx 22rpx; background: var(--primary-soft); color: var(--primary); border-radius: 18rpx; font-size: 25rpx; line-height: 1.7; }
+.auth-later { margin: 28rpx auto 0; }
 .member-option { display: flex; align-items: center; gap: 22rpx; padding: 20rpx 0; width: 100%; border-bottom: 1rpx solid var(--quiet); }
 .member-option .child-avatar { width: 78rpx; height: 78rpx; }
 .member-option.selected { color: var(--primary); }
