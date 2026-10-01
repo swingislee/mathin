@@ -1,7 +1,24 @@
 {
   "version": 1,
-  "coordinatorTaskId": "DEV-PARENT-PREVIEW-20261002-INTEGRATION",
+  "coordinatorTaskId": "DEV-DASHBOARD-MOBILE-20261002-INTEGRATION",
   "tasks": [
+    {
+      "id": "DEV-DASHBOARD-MOBILE-20261002-INTEGRATION",
+      "title": "Dashboard 共用手机滚动集成",
+      "agent": "codex",
+      "threadId": "01a0f6e7-2fca-7963-9be1-3ed3d2705ecc",
+      "status": "in_progress",
+      "checkout": "integration",
+      "branch": "main",
+      "card": ".ai/tasks/DEV-DASHBOARD-MOBILE-20261002-INTEGRATION.md",
+      "writePaths": [
+        ".ai/tasks/DEV-DASHBOARD-MOBILE-20261002-INTEGRATION.md",
+        ".ai/tasks/DEV-CLASS-LIST-20261001.md"
+      ],
+      "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
+      "checkpoint": "aa435bd514477ad5d662433b71762648278e7bf3",
+      "next": "沿用用户直接执行授权，集成同会话 worker 的共用滚动增量，核对开发页面启动并交付人工验收。"
+    },
     {
       "id": "DEV-PARENT-PREVIEW-20261002-INTEGRATION",
       "title": "小程序开发数据与微信登录集成",
@@ -213,7 +230,7 @@
       "title": "优化班级列表与手机端体验",
       "agent": "codex",
       "threadId": "01a0f6e7-2fca-7963-9be1-3ed3d2705ecc",
-      "status": "integrated",
+      "status": "in_progress",
       "checkout": "worktree",
       "branch": "codex/class-roster-density-codex",
       "card": ".ai/tasks/DEV-CLASS-LIST-20261001.md",
@@ -230,6 +247,8 @@
         "src/features/school/class-roster-presentation-contract.ts",
         "src/features/school/class-session-resource.ts",
         "src/features/school/DashboardShell.tsx",
+        "src/features/school/dashboard-page/DashboardPageChrome.tsx",
+        "src/app/globals.css",
         "src/components/ui/table.tsx",
         "src/components/ui/table.module.css",
         "src/features/school/dashboard-page/DashboardInlineEntry.tsx",
@@ -240,17 +259,20 @@
         "tests/class-session-registration.test.ts",
         "tests/class-session-resource.test.ts",
         "tests/table-record-outline.test.ts",
+        "tests/school-ops-lead-contact-workbench.test.ts",
+        "docs/plan/21-dashboard-unified-canvas-command-panel-refactor.md",
         "docs/plan/dashboard-work-entry-restructure.md",
         ".ai/handoffs/DEV-CLASS-LIST-20261001-codex-04.md",
         ".ai/handoffs/DEV-CLASS-LIST-20261001-codex-05.md",
         ".ai/handoffs/DEV-CLASS-LIST-20261001-codex-06.md",
-        ".ai/handoffs/DEV-CLASS-LIST-20261001-codex-07.md"
+        ".ai/handoffs/DEV-CLASS-LIST-20261001-codex-07.md",
+        ".ai/handoffs/DEV-CLASS-LIST-20261001-codex-08.md"
       ],
       "sharedPaths": [
         "CHANGELOG.md"
       ],
       "checkpoint": "ae808ff6d3373b5c7c38180e57694921a881f330",
-      "next": "嵌套宽度和重复关闭入口已集成 81ed44f8；最小布局在两种屏宽下三层均铺满，定向交互检查通过，开发端待人工视觉验收，见 DEV-CLASS-LIST-20261001-codex-07.md 的宽度修正记录。"
+      "next": "用户确认班级修复成功；本轮统一 Dashboard 共用页头与窄屏滚动规则，覆盖总览及列表页，完成定向检查后直接集成开发端供人工验收。"
     },
     {
       "id": "DEV-PLACE-VALUE-20261001",
