@@ -17,6 +17,14 @@ function makeRunway(id: number): Runway {
   return { id, head: DEFAULT_HEAD, vehicle: DEFAULT_VEHICLE, facingRight: true, x: 0, solve: "speed", distance: 100, time: 10, speed: 10 };
 }
 
+function OneSecondIcon() {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }} aria-hidden>
+    <path d="M9 2h6m-3 0v4" />
+    <circle cx="12" cy="14" r="8" />
+    <path d="m9.8 11.5 2.7-2v9m-2.7 0h5.4" strokeWidth="2" />
+  </svg>;
+}
+
 export function MotionLab({ embedded, initial, onSnapshot, readOnly = false, preparation = false }: ToolComponentProps & {
   initial?: MotionScene; onSnapshot?: (snapshot: MotionScene | null) => void; readOnly?: boolean; preparation?: boolean;
 }) {
@@ -135,7 +143,7 @@ export function MotionLab({ embedded, initial, onSnapshot, readOnly = false, pre
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-l border-line pl-3">
           <div className="flex items-center gap-1.5 whitespace-nowrap text-xs text-muted">
             <span>{t("allTime")}</span>
-            <ApplyField value={allTime} disabled={locked} min={Number.MIN_VALUE} unit="s" applyLabel={`${t("apply")} · ${t("allTime")}`} shortcut={{ value: 1, label: t("allTimeOneSecond") }} onApply={(v) => v > 0 && setAllTimes(v)} ariaLabel={t("allTime")} />
+            <ApplyField value={allTime} disabled={locked} min={Number.MIN_VALUE} unit="s" applyLabel={`${t("apply")} · ${t("allTime")}`} shortcut={{ value: 1, label: t("allTimeOneSecond"), icon: <OneSecondIcon /> }} onApply={(v) => v > 0 && setAllTimes(v)} ariaLabel={t("allTime")} />
           </div>
           <div className="flex items-center gap-1.5 whitespace-nowrap text-xs text-muted">
             <span>{t("allSpeed")}</span>

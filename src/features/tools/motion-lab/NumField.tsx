@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 import { Check } from "lucide-react";
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { fmt } from "./shared";
 import { useLongPress } from "@/hooks/use-long-press";
@@ -104,7 +104,7 @@ export function ApplyField({ value, onApply, disabled, ariaLabel, applyLabel, un
   ariaLabel?: string;
   applyLabel: string;
   unit: string;
-  shortcut?: { value: number; label: string };
+  shortcut?: { value: number; label: string; icon: ReactNode };
   min?: number;
 }) {
   const [text, setText] = useState(String(value));
@@ -145,10 +145,10 @@ export function ApplyField({ value, onApply, disabled, ariaLabel, applyLabel, un
         <span className="min-w-5 text-right text-[11px] text-muted" aria-hidden>{unit}</span>
       </span>
       <SpatialIconButton label={applyLabel} disabled={disabled} onClick={apply}><Check aria-hidden /></SpatialIconButton>
-      {shortcut && <SpatialIconButton label={shortcut.label} disabled={disabled} onClick={() => {
+      {shortcut && <SpatialIconButton label={shortcut.label} className="text-ink" disabled={disabled} onClick={() => {
         setText(String(shortcut.value));
         onApply(shortcut.value);
-      }}><span className="text-[11px] font-medium tabular-nums" aria-hidden>{shortcut.value} {unit}</span></SpatialIconButton>}
+      }}>{shortcut.icon}</SpatialIconButton>}
     </span>
   );
 }
