@@ -6,6 +6,8 @@
 
 - `docs/plan/04-roadmap.md` 顶部“当前施工阶段”是唯一阶段入口；历史编号、旧正文和未勾选项不能覆盖它。
 - 开始前检查工作树。既有修改和未跟踪文件均视为用户或其他任务所有；不得覆盖、回滚、移动或顺手格式化。
+- 开工时核对 `main` 分支的 [协作索引](.ai/STATUS.md) 中已有任务与文件归属；并行施工、接手或互审按 [协作协议](docs/agent/collaboration.md) 执行。索引只记录任务执行，不替代 doc 04 的阶段入口。
+- 项目共享技能以 Git 跟踪的 `.agents/skills/` 为唯一源。调用同名本机技能前读取共享版本；`.claude/skills/` 中的历史副本按共享版本执行，运行时权限与私人记忆仍由各工具独立管理。
 - Windows 文本默认按无 BOM UTF-8 处理；PowerShell 读取必须显式 `-Encoding UTF8`。乱码先按解码问题调查，不得据此重写文件。
 - 连接脚本从环境变量或已忽略的私有配置读取凭据；脚本、命令、URL 和日志不写入真实密码、Token、Cookie 或个人数据。临时取证放 `.tmp/`，提交前扫描实际暂存内容；操作按 [`operations.md`](docs/agent/operations.md) 的脚本隐私边界执行。
 - 开发验收使用局域网 HTTP，浏览器代码及其共享模块生成 UUID 统一调用 `@/lib/uuid` 的 `newId()`；不得直接调用 `crypto.randomUUID()` 或假定安全上下文 API 可用。相关交互检查覆盖 `randomUUID` 缺失的环境；纯服务端需要原生 UUID 时从 `node:crypto` 导入。
@@ -24,6 +26,7 @@
 | --- | --- |
 | 任意实现 | `docs/plan/00-overview.md` 的状态头、§5 和与目标直接相关的产品章节；`docs/plan/04-roadmap.md` 的状态头与对应当前 work item；最近目录中的 `AGENTS.md`（若存在） |
 | 规划、阶段或 Gate | [`docs/agent/planning.md`](docs/agent/planning.md)；按其中规则读取 00/04/25 和专题文档 |
+| 多 Agent 协作、任务拆分、交接或互审 | [`docs/agent/collaboration.md`](docs/agent/collaboration.md)；`main` 的 `.ai/STATUS.md` 与对应任务卡 |
 | UI、路由、视觉、交互、Next.js | [`docs/agent/frontend.md`](docs/agent/frontend.md)；`docs/plan/01-design-system.md`，按需读取 `docs/plan/02-pages.md`、`docs/plan/05-planet-themes.md` 与相关专题 |
 | 数据库、鉴权、RLS、Server Action、测试身份 | [`docs/agent/data-and-classroom.md`](docs/agent/data-and-classroom.md)；`docs/plan/03-data-and-tech.md` 的相关章节 |
 | 游戏、H5、空间/3D、课堂 renderer | [`docs/agent/data-and-classroom.md`](docs/agent/data-and-classroom.md) 的课堂同步章节；最近目录的局部 `AGENTS.md` |
