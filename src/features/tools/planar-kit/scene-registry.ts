@@ -8,10 +8,14 @@ import { planePaperScenes } from "../plane-paper/scenes";
 import { planePaperFoldingScene } from "../plane-paper-folding/scenes";
 import { planeTilingScene } from "../plane-tiling/scenes";
 import { planeNetworkScenes } from "../plane-network/scenes";
+import { planePerimeterScene } from "../plane-perimeter/scenes";
+import { planeGridMeasureScenes } from "../plane-grid-measure/scenes";
+import { planeRelationsScene } from "../plane-relations/scenes";
+import { planeOverlapScene } from "../plane-overlap/scenes";
 import { PLANAR_TOOLS, ALL_PLANAR_TOOLS, type PlanarToolId, type PlanarVersion } from "./contract";
 import type { PlanarSceneDefinition } from "./types";
 
-const domains = [...planePaperScenes, planePaperFoldingScene, planeTilingScene, ...planeNetworkScenes, ...planeConstructionScenes, planeShapesScene, ...planeGeometryScenes, ...planeAreaScenes, ...planeMotionScenes, ...planePatternsScenes];
+const domains = [planePerimeterScene, ...planeGridMeasureScenes, planeRelationsScene, planeOverlapScene, ...planePaperScenes, planePaperFoldingScene, planeTilingScene, ...planeNetworkScenes, ...planeConstructionScenes, planeShapesScene, ...planeGeometryScenes, ...planeAreaScenes, ...planeMotionScenes, ...planePatternsScenes];
 /** 工程目录按共用数学能力分工，教师入口按教学用途归类，二者相互独立。 */
 const allScenes: readonly PlanarSceneDefinition[] = domains.map((scene) => {
   const tool = ALL_PLANAR_TOOLS.find((item) => (item.scenes as readonly string[]).includes(scene.id));

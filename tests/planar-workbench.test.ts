@@ -423,6 +423,34 @@ describe("shared teacher-created material", () => {
     await act(async () => button("撤销").click()); expect(current()).toEqual(cut);
     await act(async () => button("撤销").click()); expect(current()).toEqual(start);
   });
+  it("closes at the visible geoboard peg and saves a snapped drag through the shared host", async () => {
+    const start = planarScene("34-create").create();
+    await render({ toolId: "plane-geoboard", initial: start }); await drawTool("逐点围多边形");
+    for (const [x, y] of [[259, 239], [400, 220], [400, 380], [240, 220]]) {
+      await pointer(svg(), "pointerdown", x, y); await pointer(svg(), "pointerup", x, y);
+    }
+    expect(current()?.points["v.2.0"]).toEqual({ x: 3, y: 3 });
+    expect(current()?.params["count.2"]).toBe(3);
+    expect(container.querySelector('[data-grid-draft="true"]')).toBeNull();
+    await act(async () => button("关闭面板").click());
+    const body = container.querySelector('[data-grid-polygon="2"] [role="button"]')!;
+    await pointer(body, "pointerdown", 360, 260); await pointer(svg(), "pointermove", 378, 282); await pointer(svg(), "pointerup", 378, 282);
+    await tick(500);
+    expect(current()?.points["v.2.0"]).toEqual({ x: 3, y: 4 });
+    expect(planarStateSchema.safeParse(current()).success).toBe(true);
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+  });
+  it("keeps both A and B assignment actions reachable in the overlap region panel", async () => {
+    const definition = planarScene("33-create"), start = definition.materials![0].add(definition.create());
+    await render({ toolId: "plane-overlap", initial: start });
+    await act(async () => button("观察 A / B 交并差").click());
+    expect(button("当前纸片作为 A")).not.toBeNull();
+    await act(async () => button("当前纸片作为 B").click());
+    expect(current()?.params.pairA).toBe(start.params.pairA);
+    expect(current()?.params.pairB).toBe(start.params.active);
+    expect(constructionObjects(current()!)).toHaveLength(3);
+    expect(planarStateSchema.safeParse(current()).success).toBe(true);
+  });
   it("adds network nodes on a tap, not on a drag, and leaves drawing before tracing", async () => {
     const start = planarScene("52-create").create();
     await render({ toolId: "plane-graph-path", initial: start });

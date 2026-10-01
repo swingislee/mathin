@@ -9,6 +9,10 @@ import { isValidPaperState } from "../plane-paper/validation";
 import { isValidPaperFoldingState } from "../plane-paper-folding/validation";
 import { isValidTilingState } from "../plane-tiling/model";
 import { isValidPlaneNetworkState } from "../plane-network/validation";
+import { isValidPerimeterState } from "../plane-perimeter/validation";
+import { isValidGridMeasureState } from "../plane-grid-measure/validation";
+import { isValidRelationsState } from "../plane-relations/validation";
+import { isValidOverlapState } from "../plane-overlap/validation";
 
 import { ALL_PLANAR_TOOLS, type PlanarToolId, type PlanarVersion } from "./catalog";
 export { PLANAR_TOOLS, ALL_PLANAR_TOOLS, type PlanarToolId, type PlanarVersion } from "./catalog";
@@ -25,7 +29,7 @@ const planarStateShape = z.object({
   phase: z.number().finite().min(0).max(1),
 }).strict();
 export type PlanarState = z.infer<typeof planarStateShape>;
-export const planarStateSchema = planarStateShape.refine((state) => isValidPlaneGeometryState(state) || isValidPlaneAreaState(state) || isValidPlaneMotionState(state) || isValidPlanePatternsState(state) || isValidPlaneShapesState(state) || isValidConstructionState(state) || isValidPaperState(state) || isValidPaperFoldingState(state) || isValidTilingState(state) || isValidPlaneNetworkState(state), "INVALID_PLANAR_GEOMETRY");
+export const planarStateSchema = planarStateShape.refine((state) => isValidPlaneGeometryState(state) || isValidPlaneAreaState(state) || isValidPlaneMotionState(state) || isValidPlanePatternsState(state) || isValidPlaneShapesState(state) || isValidConstructionState(state) || isValidPaperState(state) || isValidPaperFoldingState(state) || isValidTilingState(state) || isValidPlaneNetworkState(state) || isValidPerimeterState(state) || isValidGridMeasureState(state) || isValidRelationsState(state) || isValidOverlapState(state), "INVALID_PLANAR_GEOMETRY");
 export function emptyPlanarState(sceneId: string): PlanarState {
   return { sceneId, params: {}, points: {}, flags: { grid: false, measures: true }, marks: [], phase: 0 };
 }
