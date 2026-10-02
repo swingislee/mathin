@@ -45,7 +45,7 @@
   .workspace [data-dashboard-page-chrome] [data-dashboard-command-slot="state"],
   .workspace [data-dashboard-page-chrome] [data-dashboard-command-slot="filters"],
   .workspace [data-class-roster-period="all"] { display: contents; }
-  .workspace [data-class-roster-period="all"] [data-class-term-selector] { display: none; }
+  .workspace[data-class-content="arrange"] [data-class-roster-period="all"] [data-class-term-selector] { display: none; }
   .workspace [data-dashboard-page-chrome] [data-dashboard-command-slot="state"] nav > div { padding: 0.125rem; gap: 0; }
   .workspace [data-dashboard-page-chrome] [data-dashboard-command-slot="state"] nav a {
     justify-content: center;

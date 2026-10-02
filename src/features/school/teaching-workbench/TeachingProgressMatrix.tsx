@@ -23,7 +23,7 @@ import { DashboardTablePagination } from "../dashboard-page/DashboardTablePagina
 import { useDashboardFieldView } from "../dashboard-page/useDashboardFieldView";
 import type { DashboardFieldDefinitions } from "../dashboard-page/dashboard-table-field-contract";
 import {
-  TEACHING_PROGRESS_ITEMS, TEACHING_PROGRESS_TONES, TEACHING_PROGRESS_BLOCK_TONES, teachingMatrixColumns, teachingMatrixMessages, teachingMatrixSessions, teachingMatrixTeachers,
+  TEACHING_PROGRESS_ITEMS, TEACHING_PROGRESS_STATES, TEACHING_PROGRESS_TONES, TEACHING_PROGRESS_BLOCK_TONES, teachingMatrixColumns, teachingMatrixMessages, teachingMatrixSessions, teachingMatrixTeachers,
   type TeachingProgressClass, type TeachingProgressMatrixData, type TeachingProgressSession, type TeachingProgressTerm,
 } from "./teaching-progress-matrix-contract";
 
@@ -141,7 +141,7 @@ export function TeachingProgressMatrix({ data, terms, termId, query, locale, tim
     <div ref={root} className="min-w-0 space-y-3" data-teaching-progress-matrix>
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] text-muted" aria-label={m.title}>
         <div className="flex flex-wrap gap-x-3 gap-y-1">{TEACHING_PROGRESS_ITEMS.map(kind => { const Icon = icons[kind]; return <span key={kind} className="inline-flex items-center gap-1"><Icon size={14} aria-hidden />{m.items[kind]}</span>; })}</div>
-        <div className="flex items-center gap-3">{(["incomplete", "review", "archived"] as const).map(state => <span key={state} className="inline-flex items-center gap-1.5"><span aria-hidden className={cn("size-3 rounded-sm border", TEACHING_PROGRESS_BLOCK_TONES[state])} />{m.states[state]}</span>)}</div>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">{TEACHING_PROGRESS_STATES.map(state => <span key={state} className="inline-flex items-center gap-1.5"><span aria-hidden className={cn("size-3 rounded-sm border", TEACHING_PROGRESS_BLOCK_TONES[state])} />{m.states[state]}</span>)}</div>
       </div>
       {hasUnavailable && <p role="status" className="text-xs text-muted">{m.partial}</p>}
       <TooltipProvider delayDuration={250}><DashboardTableShell><Table data-class-identity-table className={cn("w-full table-auto text-xs", DETAILS_LAYOUT)} containerClassName="max-h-[75dvh] overflow-auto" aria-label={m.title}>
@@ -188,7 +188,10 @@ export function TeachingProgressMatrix({ data, terms, termId, query, locale, tim
                           const Icon = icons[kind], progress = session.progress[kind];
                           return <Tooltip key={kind}><TooltipTrigger asChild><span className={cn("inline-flex size-6 items-center justify-center rounded-md border", TEACHING_PROGRESS_BLOCK_TONES[progress.state])}>
                             <Icon size={15} strokeWidth={1.8} aria-hidden />
-                          </span></TooltipTrigger><TooltipContent>{m.items[kind]} · {m.states[progress.state]}<span className="ml-1 text-[11px]">{m.reasons[progress.reason]}</span></TooltipContent></Tooltip>;
+                          </span></TooltipTrigger><TooltipContent>{m.items[kind]} · {m.states[progress.state]}<span className="ml-1 text-[11px]">{m.reasons[progress.reason]}</span>
+                            {progress.dueAt && <span className="mt-1 block text-[11px]">{m.due}：{date(progress.dueAt)}</span>}
+                            {progress.completedAt && <span className="block text-[11px]">{m.completed}：{date(progress.completedAt)}</span>}
+                          </TooltipContent></Tooltip>;
                         })}</span>
                       </button>) : <span className="block px-3 py-3 text-center text-muted" aria-label={m.noLessons}>—</span>}
                     </TableCell>;
@@ -202,7 +205,9 @@ export function TeachingProgressMatrix({ data, terms, termId, query, locale, tim
                     const Icon = icons[kind], progress = currentSession.progress[kind];
                     return <TableRow key={kind}><TableCell mobileSpan="primary" mobileLabel={m.item}><span className="inline-flex items-center gap-2"><span className={cn("inline-flex size-6 items-center justify-center rounded-md border", TEACHING_PROGRESS_BLOCK_TONES[progress.state])}><Icon size={15} aria-hidden /></span>{m.items[kind]}</span></TableCell>
                       <TableCell mobileLabel={m.status} className={TEACHING_PROGRESS_TONES[progress.state]}>{m.states[progress.state]}</TableCell>
-                      <TableCell mobileLabel={m.record}><span>{m.reasons[progress.reason]}</span><span className="ml-3 text-[11px] text-muted">{m.sources[kind]}</span></TableCell></TableRow>;
+                      <TableCell mobileLabel={m.record}><span>{m.reasons[progress.reason]}</span><span className="ml-3 text-[11px] text-muted">{m.sources[kind]}</span>
+                        {(progress.dueAt || progress.completedAt) && <span className="mt-1 block text-[11px] text-muted">{progress.dueAt && `${m.due}：${date(progress.dueAt)}`}{progress.dueAt && progress.completedAt && " · "}{progress.completedAt && `${m.completed}：${date(progress.completedAt)}`}</span>}
+                      </TableCell></TableRow>;
                   })}</TableBody></Table></DashboardTableShell>
                   <h3 className="text-sm font-medium">{m.details}</h3>
                   <SessionDetail key={currentSession.id} sessionId={currentSession.id} classroomId={row.id} locale={locale} timeZone={timeZone} now={now} onDirtyChange={onDirtyChange} />

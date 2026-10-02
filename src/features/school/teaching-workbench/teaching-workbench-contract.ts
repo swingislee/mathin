@@ -56,7 +56,7 @@ export function preparationSubmitted(session: TeachingSession) {
   return ARTIFACT_KINDS.every(kind => ["pending", "approved"].includes(session.artifacts[kind].status));
 }
 
-export function preparationDueAt(session: TeachingSession) {
+export function preparationDueAt(session: Pick<TeachingSession, "scheduledAt">) {
   return new Date(new Date(session.scheduledAt).getTime() - 7 * 86_400_000);
 }
 

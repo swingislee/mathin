@@ -6,6 +6,7 @@ import { afterEach,expect,it,vi } from 'vitest';
 import messages from '../messages/zh.json';
 import { EnrollmentPlacementWorkbench } from '@/features/school/EnrollmentPlacementWorkbench';
 import type { EnrollmentPlacementBoard } from '@/features/school/enrollment-workflow-contract';
+import { TEACHING_PROGRESS_ITEMS } from '@/features/school/teaching-workbench/teaching-progress-matrix-contract';
 const calls=vi.hoisted(()=>({move:vi.fn(),change:vi.fn(),preview:vi.fn(),open:vi.fn()}));
 vi.mock('@/features/school/enrollment-workflow-actions',()=>({moveEnrollmentSeatAction:calls.move}));
 vi.mock('@/features/school/enrollment-placement-change-actions',()=>({changeEnrollmentPlacementAction:calls.change,previewEnrollmentSessionTransferAction:calls.preview}));
@@ -103,6 +104,36 @@ async function mountRoster(canTeach = false, canAdd = false, group: "grade" | "t
   await act(async () => root.render(createElement(NextIntlClientProvider, props)));
   return element;
 }
+
+it('switches only roster cell contents while retaining the original table, class rows and identity cells', async () => {
+  const progress = Object.fromEntries(TEACHING_PROGRESS_ITEMS.map(kind => [kind, { state: 'review', reason: 'pending' }]));
+  const fetchProgress = vi.fn<typeof fetch>(async () => new Response(JSON.stringify({ classrooms: [], sessions: [{
+    id: id(80), classroomId: id(3), title: '第一讲', lectureNo: 1, scheduledAt: null, duration: 60,
+    startedAt: null, endedAt: null, teacherOverride: null, progress,
+  }] }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+  vi.stubGlobal('fetch', fetchProgress);
+  const element = await mountRoster(true);
+  const table = element.querySelector('[data-class-roster-table]');
+  const row = element.querySelector(`[data-placement-classroom="${id(3)}"]`)!;
+  const identity = [...row.querySelectorAll('td')].slice(0, 4);
+  const desktopIdentity = identity.map(cell => [...cell.querySelectorAll('[data-class-desktop]')].map(item => item.textContent));
+  const switchButtons = [...element.querySelectorAll<HTMLButtonElement>('[data-class-content-switch] button')];
+  await act(async () => switchButtons.find(button => button.textContent === '学情进度')!.click());
+  expect(fetchProgress).toHaveBeenCalledOnce();
+  expect(fetchProgress.mock.calls[0]?.[0]).toBe('/zh/dashboard/classes/progress-facts');
+  expect(element.querySelector('[data-class-roster-table]')).toBe(table);
+  expect(element.querySelector(`[data-placement-classroom="${id(3)}"]`)).toBe(row);
+  expect([...row.querySelectorAll('td')].slice(0, 4)).toEqual(identity);
+  expect(identity.map(cell => [...cell.querySelectorAll('[data-class-desktop]')].map(item => item.textContent))).toEqual(desktopIdentity);
+  expect(row.querySelector('[data-placement-student]')).toBeNull();
+  expect(row.querySelector(`[data-teaching-session="${id(80)}"]`)).not.toBeNull();
+  expect(row.querySelector('[data-class-roster-toggle]')?.textContent).toBe('学情进度 1');
+  await act(async () => switchButtons.find(button => button.textContent === '全部学生')!.click());
+  expect(element.querySelector('[data-class-roster-table]')).toBe(table);
+  expect(row.querySelector(`[data-placement-student="${id(5)}"]`)).not.toBeNull();
+  expect(row.querySelector('[data-teaching-session]')).toBeNull();
+  expect(calls.move).not.toHaveBeenCalled(); expect(calls.change).not.toHaveBeenCalled();
+});
 
 it.each([undefined, id(6)])('switches between the mobile roster and lessons, including a focused student: %s', async focusStudentId => {
   const element = await mountRoster(true, false, 'grade', focusStudentId);

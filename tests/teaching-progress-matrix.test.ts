@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createLessonPlanTemplateV1 } from "../src/features/school/teacher-preparation-contract";
 import { classWorkHref } from "../src/features/school/work-entry-contract";
 import {
-  TEACHING_PROGRESS_ITEMS, artifactProgress, classFeedbackProgress, completionProgress, hasLessonReflection, learningProgress,
+  TEACHING_PROGRESS_ITEMS, TEACHING_PROGRESS_STATES, artifactProgress, classFeedbackProgress, completionProgress, hasLessonReflection, learningProgress, timedTeachingProgress,
   reflectionProgress, teachingMatrixColumns, teachingMatrixMessages, teachingMatrixSessions, teachingMatrixTeachers, type TeachingProgressSession,
 } from "../src/features/school/teaching-workbench/teaching-progress-matrix-contract";
 
@@ -14,6 +14,28 @@ const session = (overrides: Partial<TeachingProgressSession> = {}): TeachingProg
 });
 
 describe("teaching matrix projection", () => {
+  it("distinguishes all six stages using completion time instead of review waiting time", () => {
+    const dueAt = "2026-10-01T00:00:00Z", now = Date.parse("2026-10-03T00:00:00Z");
+    const before = "2026-09-30T23:59:59Z", after = "2026-10-01T00:00:01Z";
+    const state = (status: string | undefined, completedAt: string | null, clock = now) => timedTeachingProgress(artifactProgress(status), { dueAt, completedAt, now: clock }).state;
+    expect([
+      state(undefined, null, Date.parse(dueAt)), state(undefined, null), state("pending", after),
+      state("approved", after), state("pending", before), state("approved", before),
+    ]).toEqual(TEACHING_PROGRESS_STATES);
+    expect(state("pending", dueAt)).toBe("review");
+    expect(state("approved", dueAt)).toBe("archived");
+    expect(state("changes_requested", before)).toBe("overdue");
+  });
+
+  it("keeps missing timing and restricted data explicit, and does not invent a deadline", () => {
+    const now = Date.parse("2026-10-03T00:00:00Z");
+    expect(timedTeachingProgress(artifactProgress("approved"), { dueAt: "2026-10-01T00:00:00Z", now }).reason).toBe("timing_missing");
+    expect(timedTeachingProgress(artifactProgress(), { dueAt: "invalid", now }).state).toBe("unavailable");
+    expect(timedTeachingProgress(artifactProgress(), { now }).state).toBe("incomplete");
+    expect(timedTeachingProgress(artifactProgress("approved"), { now }).state).toBe("archived");
+    expect(timedTeachingProgress({ state: "unavailable", reason: "forbidden" }, { dueAt: "2026-10-01T00:00:00Z", now }).state).toBe("unavailable");
+  });
+
   it("archives learning only when every roster student has a published result", () => {
     for (const statuses of [[], ["missing"], ["published", "missing"], ["published", "draft"], ["withdrawn"], ["revised"]]) expect(learningProgress(statuses).state).toBe("incomplete");
     expect(learningProgress(["review", "published"]).state).toBe("review");
@@ -46,10 +68,10 @@ describe("teaching matrix projection", () => {
     expect(artifactProgress().state).toBe("incomplete");
   });
 
-  it("does not count skipped or missing tasks and unresolved class feedback as archived", () => {
-    expect(completionProgress("done").state).toBe("archived");
+  it("keeps completion separate from approval and does not count skipped or unresolved records as completed", () => {
+    expect(completionProgress("done").state).toBe("review");
     expect(completionProgress("skipped")).toEqual({ state: "incomplete", reason: "skipped" });
-    expect(classFeedbackProgress("contacted").state).toBe("archived");
+    expect(classFeedbackProgress("contacted").state).toBe("review");
     expect(classFeedbackProgress("follow_up")).toEqual({ state: "incomplete", reason: "follow_up" });
     expect(classFeedbackProgress("not_needed").state).toBe("incomplete");
   });

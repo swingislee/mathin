@@ -27,7 +27,7 @@ async function ProgressContent({ locale, searchParams }: { locale: string; searc
   const requestedTerm = typeof query.term === "string" ? query.term : undefined;
   const termId = requestedTerm === "all" ? undefined : terms.find(term => term.id === requestedTerm)?.id ?? terms.find(term => term.isCurrent)?.id;
   let data;
-  try { data = await getTeachingProgressMatrix({ userId: user.id, canViewTeam: permissions.has("class.view.all"), canReadCommunication: permissions.has("followup.view"), termId }); }
+  try { data = await getTeachingProgressMatrix({ userId: user.id, canViewTeam: permissions.has("class.view.all"), canReadCommunication: permissions.has("followup.view"), termId, now: now.getTime() }); }
   catch {
     return <ClassRosterWorkspace view="progress" query={query} canTeach>
       <p role="alert" className="py-6 text-sm text-muted">{teachingMatrixMessages(locale).failed}</p>

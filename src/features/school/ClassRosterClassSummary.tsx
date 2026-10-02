@@ -7,10 +7,11 @@ import type { PlacementRosterRow } from "./placement-table-fields";
 
 /** 同一班级在宽屏按列比较，窄屏先定位时间与地点，再打开名单和课次。 */
 export function ClassRosterClassSummary({ row, locale, className, courseTitle, time, teacher, showTeacher, grade, level, disclosure,
-  rosterId, rosterOpen, onRosterToggle, lessonCount, lessonsOpen, onLessonsToggle, disabled }: {
+  rosterId, rosterOpen, onRosterToggle, lessonCount, lessonsOpen, onLessonsToggle, disabled, contentLabel, contentCount }: {
   row: PlacementRosterRow; locale: string; className: string; courseTitle?: string; time: string; teacher: string; showTeacher: boolean; grade: string; level: string;
   disclosure?: ReactNode; rosterId: string; rosterOpen: boolean; onRosterToggle: () => void;
   lessonCount?: number; lessonsOpen: boolean; onLessonsToggle: () => void; disabled: boolean;
+  contentLabel?: string; contentCount?: number;
 }) {
   const m = classRosterMessages(locale);
   const location = classRosterLocation(row, locale);
@@ -42,8 +43,8 @@ export function ClassRosterClassSummary({ row, locale, className, courseTitle, t
       <div data-class-mobile>
         <div className="flex flex-wrap items-center gap-2 pt-1">
           <Button variant={rosterOpen ? "secondary" : "ghost"} size="sm" className="min-h-10 px-2 text-xs" disabled={disabled}
-            data-class-roster-toggle={row.key} aria-expanded={rosterOpen} aria-controls={rosterId} aria-label={`${rosterOpen ? m.hideRoster : m.showRoster} · ${className}`}
-            onClick={onRosterToggle}>{m.roster} <span className="tabular-nums">{count}</span></Button>
+            data-class-roster-toggle={row.key} aria-expanded={rosterOpen} aria-controls={rosterId} aria-label={`${contentLabel ? `${locale.startsWith("en") ? rosterOpen ? "Hide" : "Show" : rosterOpen ? "收起" : "展开"}${locale.startsWith("en") ? " " : ""}${contentLabel}` : rosterOpen ? m.hideRoster : m.showRoster} · ${className}`}
+            onClick={onRosterToggle}>{contentLabel ?? m.roster} <span className="tabular-nums">{contentCount ?? count}</span></Button>
           {lessonCount !== undefined && <Button data-class-lessons-toggle variant={lessonsOpen ? "secondary" : "ghost"} size="sm" className="min-h-10 px-2 text-xs" disabled={disabled}
             aria-expanded={lessonsOpen} onClick={onLessonsToggle}>{m.lessons} <span className="tabular-nums">{lessonCount}</span></Button>}
         </div>

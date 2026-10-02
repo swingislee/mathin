@@ -17,12 +17,13 @@ import type { TeachingObservations } from "./teaching-workbench/teaching-learnin
 const ClassRosterSessionDetail = dynamic(() => import("./ClassRosterSessionDetail").then(module => module.ClassRosterSessionDetail));
 
 /** 复用教学记录的两层展开：班级名册主行 → 课次行 → 该课连续登记。 */
-export function ClassRosterSessionRow({ classroomId, classroomName, sessions, locale, timeZone, now, requestedId, expanded, canChange, onExpandedChange, onDirtyChange, rowProps, children, recordKey, activeKey, onActivate }: {
+export function ClassRosterSessionRow({ classroomId, classroomName, sessions, locale, timeZone, now, requestedId, expanded, canChange, onExpandedChange, onDirtyChange, rowProps, children, recordKey, activeKey, onActivate, inlineDetails }: {
   classroomId: string; classroomName: string; sessions: ClassRosterSession[]; locale: string; timeZone: string; now: number; requestedId?: string;
   expanded: boolean; canChange: () => boolean; onExpandedChange: (value: boolean) => void; onDirtyChange: (value: boolean) => void;
   rowProps?: ComponentProps<typeof TableRow> & { [key: `data-${string}`]: unknown };
   children: (disclosure: ReactNode) => ReactNode;
   recordKey: string; activeKey: string | null; onActivate: (key: string) => void;
+  inlineDetails?: ReactNode;
 }) {
   const m = classSessionMessages(locale);
   const t = useTranslations("school.teachingWorkbench");
@@ -34,7 +35,7 @@ export function ClassRosterSessionRow({ classroomId, classroomName, sessions, lo
   const [attempt, setAttempt] = useState(0);
   const sessionIds = sessions.filter(hasClassSessionStarted).map(session => session.id).join(",");
   useEffect(() => {
-    if (!expanded) return;
+    if (!expanded || inlineDetails) return;
     const ids = sessionIds.split(",").filter(id => id && !Object.hasOwn(observationCache.current, id));
     if (!ids.length) return;
     const controller = new AbortController();
@@ -56,7 +57,7 @@ export function ClassRosterSessionRow({ classroomId, classroomName, sessions, lo
       }
     })();
     return () => controller.abort();
-  }, [expanded, classroomId, locale, sessionIds, attempt]);
+  }, [expanded, classroomId, locale, sessionIds, attempt, inlineDetails]);
   const retryObservation = (id: string) => {
     const next = { ...observationCache.current };
     delete next[id]; observationCache.current = next; setObservations(next); setAttempt(value => value + 1);
@@ -78,7 +79,7 @@ export function ClassRosterSessionRow({ classroomId, classroomName, sessions, lo
     onExpandedChange={changeClass} detailsId={detailId} title={classroomName} colSpan={5} hideTitle
     summary={children(<DashboardRowDisclosure expanded={expanded} controls={detailId}
       label={t(expanded ? "overview.collapseClass" : "overview.expandClass", { name: classroomName })} onToggle={() => changeClass(!expanded)} />)}>
-    {() => sessions.length ? <Table mobileLayout="records" data-class-session-list={classroomId} aria-label={t("overview.classLessons", { name: classroomName })} className="table-fixed text-xs" containerClassName="overflow-visible">
+    {() => inlineDetails ?? (sessions.length ? <Table mobileLayout="records" data-class-session-list={classroomId} aria-label={t("overview.classLessons", { name: classroomName })} className="table-fixed text-xs" containerClassName="overflow-visible">
       <colgroup><col /><col className="w-24" /><col className="w-56" /><col className="w-32" /></colgroup>
       <TableHeader className="sr-only"><TableRow><TableHead>{m.session}</TableHead><TableHead>{t("observations.sessionState")}</TableHead><TableHead>{t("observations.performance")}</TableHead><TableHead>{t("observations.coverageTitle")}</TableHead></TableRow></TableHeader>
       <TableBody>
@@ -111,6 +112,6 @@ export function ClassRosterSessionRow({ classroomId, classroomName, sessions, lo
           </FollowupRecordRow>;
         })}
       </TableBody>
-    </Table> : <p className="py-2 text-xs text-muted">{m.noSessions}</p>}
+    </Table> : <p className="py-2 text-xs text-muted">{m.noSessions}</p>)}
   </FollowupRecordRow>;
 }

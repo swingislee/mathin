@@ -12,6 +12,7 @@ import { getClassRosterSessions } from "./class-roster-session-read";
 import { ClassWorkspaceActions } from "./ClassWorkspaceActions";
 import { ClassWorkspaceMemory } from "./ClassWorkspaceMemory";
 import { type WorkEntryQuery } from "./work-entry-contract";
+import TeachingProgressPage from "./teaching-workbench/TeachingProgressPage";
 
 export default async function CourseEnrollmentsPage({
   params,
@@ -26,6 +27,7 @@ export default async function CourseEnrollmentsPage({
   const permissions = await getMyPerms(user.id);
   const canTeach = permissions.has("class.view.mine") || permissions.has("class.view.all");
   if (await enrollmentWorkflowRpc('can_access_enrollment_placement') !== true) {
+    if (canTeach && query.view === "progress") return <TeachingProgressPage params={params} searchParams={searchParams} />;
     if (!await isTeacherWorkspaceViewer(user.id)) redirect({ locale, href: '/dashboard' });
     const t = await getTranslations("school.followupWorkspace");
     return <ClassRosterWorkspace view="arrange" query={query} canTeach={canTeach}
