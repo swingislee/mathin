@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
-import { exchangeWechatCode, verifyPkce, wechatAuthorizationUrl, wechatClaims } from "@/features/wechat/provider";
+import { exchangeWechatCode, verifyPkce, wechatAuthorizationChannel, wechatAuthorizationUrl, wechatClaims } from "@/features/wechat/provider";
 import { safeWechatAvatar } from "@/features/wechat/contract";
 import { getWechatConfig, type WechatConfig } from "@/features/wechat/config";
 
@@ -96,5 +96,84 @@ describe("WeChat enablement", () => {
     expect(getWechatConfig()).toMatchObject({ callbackUrl: "https://app.example.com/zh/auth/wechat/callback", phoneLinking: false });
     vi.stubEnv("WECHAT_SITE_ORIGIN", "http://192.168.5.213:3130");
     expect(getWechatConfig()).toBeNull();
+  });
+});
+
+describe("WeChat official account protocol", () => {
+  const officialAccount = { appId: "official-account-fixture", appSecret: "official-fixture-secret" };
+  const both = { ...config, officialAccount };
+
+  it.each([
+    ["Mozilla/5.0 (iPhone; CPU iPhone OS 18_0) Mobile/15E148 MicroMessenger/8.0.63", "officialAccount"],
+    ["Mozilla/5.0 (Linux; Android 15) Chrome/130.0 Mobile MicroMessenger/8.0.63", "officialAccount"],
+    ["Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130.0", "website"],
+    ["Mozilla/5.0 (iPhone; CPU iPhone OS 18_0) Mobile/15E148 Safari/604.1", "website"],
+    [null, "website"],
+  ])("selects the supported entry for user agent %s", (agent, channel) => {
+    expect(wechatAuthorizationChannel(agent)).toBe(channel);
+  });
+
+  it("requests direct authorization with the official account and canonical callback", () => {
+    const url = new URL(wechatAuthorizationUrl(both, "a".repeat(64), "en", "officialAccount"));
+    expect(url.origin + url.pathname).toBe("https://open.weixin.qq.com/connect/oauth2/authorize");
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      appid: officialAccount.appId, redirect_uri: config.callbackUrl, response_type: "code",
+      scope: "snsapi_userinfo", state: "a".repeat(64),
+    });
+    expect(url.hash).toBe("#wechat_redirect");
+    expect(url.toString()).not.toContain(officialAccount.appSecret);
+  });
+
+  it("exchanges with the official credentials and preserves the website UnionID subject", async () => {
+    const fetcher = provider({ scope: "snsapi_userinfo", openid: "official-user" }, { openid: "official-user" });
+    const direct = await exchangeWechatCode(both, "official-code", fetcher, "officialAccount");
+    const website = await exchangeWechatCode(both, "website-code", provider());
+    expect(direct.subject).toBe(website.subject);
+    expect(direct.openid).not.toBe(website.openid);
+    const token = new URL(String(fetcher.mock.calls[0][0]));
+    expect(token.searchParams.get("appid")).toBe(officialAccount.appId);
+    expect(token.searchParams.get("secret")).toBe(officialAccount.appSecret);
+    expect(token.searchParams.get("code")).toBe("official-code");
+    expect(new URL(String(fetcher.mock.calls[1][0])).searchParams.get("openid")).toBe("official-user");
+    expect(direct).not.toHaveProperty("access_token");
+  });
+
+  it.each([
+    [{ scope: "snsapi_login" }, {}], [{ scope: "snsapi_base" }, {}],
+    [{ is_snapshotuser: 1 }, {}], [{}, { is_snapshotuser: 1 }],
+    [{}, { unionid: undefined }], [{ unionid: "other-union" }, {}], [{}, { openid: "other-user" }],
+  ])("rejects wrong scopes, virtual users and mismatched identity proofs", async (token, info) => {
+    const fetcher = provider({ scope: "snsapi_userinfo", ...token }, info);
+    await expect(exchangeWechatCode(both, "official-code", fetcher, "officialAccount")).rejects.toThrow(/^failed$/);
+  });
+
+  it("keeps direct login unavailable without official credentials and makes no request", async () => {
+    const fetcher = provider();
+    expect(() => wechatAuthorizationUrl(config, "a".repeat(64), "zh", "officialAccount")).toThrow("officialAccountUnavailable");
+    await expect(exchangeWechatCode(config, "official-code", fetcher, "officialAccount")).rejects.toThrow("officialAccountUnavailable");
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(new URL(wechatAuthorizationUrl(config, "a".repeat(64), "zh")).pathname).toBe("/connect/qrconnect");
+  });
+
+  it.each([
+    ["false", "official-account-fixture", "official-fixture-secret", false],
+    ["true", "", "official-fixture-secret", false],
+    ["true", "official-account-fixture", "", false],
+    ["true", "touristappid", "official-fixture-secret", false],
+    ["true", "official-account-fixture", "official-fixture-secret", true],
+  ])("loads official credentials only after separate enablement (%s, %s)", (enabled, appId, appSecret, available) => {
+    const env = {
+      WECHAT_OAUTH_ENABLED: "true", WECHAT_AUTH_COMPATIBILITY_VERIFIED: "true",
+      WECHAT_WEB_APP_ID: config.appId, WECHAT_WEB_APP_SECRET: config.appSecret,
+      WECHAT_BROKER_CLIENT_SECRET: "x".repeat(48), WECHAT_OPEN_PLATFORM_NAMESPACE: config.namespace,
+      WECHAT_SITE_ORIGIN: config.siteOrigin, WECHAT_SUPABASE_PUBLIC_ORIGIN: "https://auth.example.com",
+      WECHAT_OFFICIAL_ACCOUNT_ENABLED: enabled, WECHAT_OFFICIAL_ACCOUNT_APP_ID: appId,
+      WECHAT_OFFICIAL_ACCOUNT_APP_SECRET: appSecret,
+    };
+    for (const [key, value] of Object.entries(env)) vi.stubEnv(key, value);
+    const actual = getWechatConfig();
+    expect(actual?.appId).toBe(config.appId);
+    expect(Boolean(actual?.officialAccount)).toBe(available);
+    if (available) expect(actual?.officialAccount).toEqual(officialAccount);
   });
 });

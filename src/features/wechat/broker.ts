@@ -12,13 +12,13 @@ import {
   assertAccountActive, brokerRequestSchema, completionSchema, findWechatUser, flowSchema, grantSchema,
   issueTicket, readGuest, readTicket, recordWechatConflict, stateSchema,
 } from "./store";
-import { equalSecret, exchangeWechatCode, randomToken, tokenHash, verifyPkce, wechatAuthorizationUrl, wechatClaims } from "./provider";
+import { equalSecret, exchangeWechatCode, randomToken, tokenHash, verifyPkce, wechatAuthorizationChannel, wechatAuthorizationUrl, wechatClaims } from "./provider";
 
 const privateHeaders = { "Cache-Control": "no-store, max-age=0", "Pragma": "no-cache", "Referrer-Policy": "no-referrer" };
 export const privateRedirect = (url: string | URL) => NextResponse.redirect(url, { status: 303, headers: privateHeaders });
 const failure = () => NextResponse.json({ error: "invalid_request" }, { status: 400, headers: privateHeaders });
 
-async function finishWechatAuthorization(state: z.infer<typeof stateSchema>, identity: WechatIdentity, browser: string) {
+async function finishWechatAuthorization(state: Pick<z.infer<typeof stateSchema>, "flow" | "broker">, identity: WechatIdentity, browser: string) {
   const config = requireWechatConfig();
   const owner = await findWechatUser(identity.subject);
   const { flow, broker } = state;
@@ -75,8 +75,12 @@ export async function authorizeWechat(request: Request) {
       await setWechatCookie(WECHAT_GUEST_COOKIE, "", 0);
       return await finishWechatAuthorization({ flow, broker }, guest, browser);
     }
-    const state = await issueTicket("state", { flow, broker }, browser, 600);
-    return privateRedirect(wechatAuthorizationUrl(config, state, flow.locale));
+    const channel = wechatAuthorizationChannel(request.headers.get("user-agent"));
+    const state = randomToken();
+    const destination = wechatAuthorizationUrl(config, state, flow.locale, channel);
+    // 渠道只从已校验的服务端 state 取回；回调参数或浏览器变化不切换凭据。
+    await issueTicket("state", { flow, broker, channel }, browser, 600, state);
+    return privateRedirect(destination);
   } catch (error) {
     return wechatFailureRedirect(request, locale, mode, error);
   }
@@ -105,7 +109,7 @@ export async function completeWechatAuthorization(request: Request) {
     locale = state.flow.locale;
     mode = state.flow.mode;
     await assertWechatFlowSession(state.flow);
-    const identity = await exchangeWechatCode(config, url.searchParams.get("code") ?? "");
+    const identity = await exchangeWechatCode(config, url.searchParams.get("code") ?? "", undefined, state.channel);
     return await finishWechatAuthorization(state, identity, browser);
   } catch (error) {
     return wechatFailureRedirect(request, locale, mode, error);

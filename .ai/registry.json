@@ -25,7 +25,7 @@
       "checkout": "worktree",
       "branch": "codex/release-v030-codex",
       "card": ".ai/tasks/OPS-RELEASE-V030-20261002.md",
-      "writePaths": ["package.json", ".ai/tasks/OPS-RELEASE-V030-20261002.md", "docs/evidence/r1/release-v030-20261002.md"],
+      "writePaths": ["package.json", "scripts/agent-context.mjs", "tests/spatial-lab-tool.test.ts", "tests/school-ops-lead-contact-workbench.test.ts", "tests/enrollment-placement-drag-confirmation.test.ts", "tests/parent-assessment-fixtures.test.ts", "tests/table-stacked-layout.test.ts", ".ai/tasks/OPS-RELEASE-V030-20261002.md", "docs/evidence/r1/release-v030-20261002.md"],
       "sharedPaths": [".ai/registry.json", "CHANGELOG.md", "docs/evidence/r1/README.md"],
       "checkpoint": "4a2cff0dac14047203b2dbe9b200a206102558dc",
       "next": "冻结当前主线候选；核对生产差异、备份、迁移回滚演练与原子发布，保留现有微信扫码登录配置。"
@@ -35,7 +35,7 @@
       "title": "微信内直接授权登录",
       "agent": "codex",
       "threadId": null,
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/wechat-login-enable",
       "card": ".ai/tasks/DEV-WECHAT-INAPP-20261002.md",
@@ -51,8 +51,8 @@
         ".ai/tasks/DEV-WECHAT-INAPP-20261002.md"
       ],
       "sharedPaths": [".ai/registry.json", ".env.example", "messages/zh.json", "messages/en.json", "CHANGELOG.md"],
-      "checkpoint": "a8d805588951928d3dd39ace7c894e83d1c452ce",
-      "next": "实现公众号网页授权与扫码分流、固定授权渠道和身份安全回归。用户尚未确认已有公众号，真实启用等待公众号权限、同平台绑定及私有凭据。"
+      "checkpoint": "e0b7aa8ba4d0e8d14c604b953f31714cc75a9db6",
+      "next": "公众号直接授权与网站扫码分流已实现；132 项相关检查、定向类型/lint/双语及 7 场景 Next HTTPS 协议检查通过。用户尚未确认已有公众号，待权限、同平台绑定、域名与私有凭据完成后部署并验收真实授权。生产保持既有扫码版本。"
     },
     {
       "id": "OPS-WECHAT-ENABLE-20261002",
