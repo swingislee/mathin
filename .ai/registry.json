@@ -1,7 +1,21 @@
 {
   "version": 1,
-  "coordinatorTaskId": "DEV-TOOLBAR-CLEARANCE-20261002",
+  "coordinatorTaskId": "DEV-TOOLBAR-CLEARANCE-20261002-INTEGRATION",
   "tasks": [
+    {
+      "id": "DEV-TOOLBAR-CLEARANCE-20261002-INTEGRATION",
+      "title": "工具条避让集成与开发交付",
+      "agent": "codex",
+      "threadId": "019ff05e-1218-7400-b966-4556b2c57173",
+      "status": "in_progress",
+      "checkout": "integration",
+      "branch": "main",
+      "card": ".ai/tasks/DEV-TOOLBAR-CLEARANCE-20261002-INTEGRATION.md",
+      "writePaths": [".ai/tasks/DEV-TOOLBAR-CLEARANCE-20261002-INTEGRATION.md"],
+      "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
+      "checkpoint": "2e9db3de3c7bf677b608493e644b7639bf861221",
+      "next": "串行登记、复核并集成工具条避让增量，保留既有 3130 开发入口。"
+    },
     {
       "id": "DEV-TOOLBAR-CLEARANCE-20261002",
       "title": "对象旁工具条避让文字与模型",
@@ -13,7 +27,7 @@
       "card": ".ai/tasks/DEV-TOOLBAR-CLEARANCE-20261002.md",
       "writePaths": ["src/features/tools/spatial-interaction/toolbar-placement.ts", "src/features/tools/spatial-interaction/toolbar-obstacles.ts", "src/features/tools/spatial-interaction/SpatialObjectToolbar.tsx", "src/features/tools/spatial-interaction/SpatialSurfaceLabel.tsx", "src/features/tools/spatial-interaction/README.md", "src/features/tools/planar-kit/PlanarObjectToolbar.tsx", "src/features/tools/planar-kit/PlanarWorkbench.tsx", "src/features/tools/place-value/PlaceValueBoxScene.tsx", "src/features/spatial-math/renderer-r3f/VoxelCanvas.tsx", "tests/spatial-toolbar-placement.test.ts", "tests/spatial-toolbar-obstacles.test.ts", "tests/planar-context-actions.test.ts", ".ai/tasks/DEV-TOOLBAR-CLEARANCE-20261002.md", ".ai/handoffs/DEV-TOOLBAR-CLEARANCE-20261002-codex-01.md", ".ai/handoffs/DEV-TOOLBAR-CLEARANCE-20261002-review-01.md"],
       "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
-      "checkpoint": "2e9db3de",
+      "checkpoint": "2e9db3de3c7bf677b608493e644b7639bf861221",
       "next": "先处理用户反馈的共用工具条遮挡；完成定向检查与共享定位复核后回到开发端人工验收，不涉及数据库、生产或 Gate。"
     },
     {
