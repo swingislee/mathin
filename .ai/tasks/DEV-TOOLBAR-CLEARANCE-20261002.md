@@ -21,4 +21,4 @@
 - 机器检查：定向几何、DOM、原按钮／工作台策略、装盒及积木渲染合同通过；12 入口递归类型检查与相关 lint 通过。相同代码下通过的结果复用。
 - 只读复核：多行读数／截面 SVG 与等值属性导致的持续刷新两项 P2 已修正并复核关闭；最终 head 未发现新的 P1/P2。
 - 交接与检查局限见 [实现交接](../handoffs/DEV-TOOLBAR-CLEARANCE-20261002-codex-01.md) 和 [复核记录](../handoffs/DEV-TOOLBAR-CLEARANCE-20261002-review-01.md)。
-- 开发端：待主 checkout 集成后确认入口；人工视觉和真实帧率待验收。生产：不涉及。正式 Gate：不涉及。
+- 开发端：已集成，六个中英文代表入口 HTTP 200，接收记录见 [集成任务](DEV-TOOLBAR-CLEARANCE-20261002-INTEGRATION.md)；人工视觉和真实帧率待验收。生产：不涉及。正式 Gate：不涉及。
