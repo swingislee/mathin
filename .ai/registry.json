@@ -1,7 +1,35 @@
 {
   "version": 1,
-  "coordinatorTaskId": "DEV-PLANE-COVER-MATCH-20261002-INTEGRATION",
+  "coordinatorTaskId": "DEV-TEACHING-MATRIX-20261002-INTEGRATION",
   "tasks": [
+    {
+      "id": "DEV-TEACHING-MATRIX-20261002-INTEGRATION",
+      "title": "班级教学进度矩阵开发交付",
+      "agent": "codex",
+      "threadId": "01a0dd69-e287-7773-b4f5-3489276ea15e",
+      "status": "in_progress",
+      "checkout": "integration",
+      "branch": "main",
+      "card": ".ai/tasks/DEV-TEACHING-MATRIX-20261002-INTEGRATION.md",
+      "writePaths": [".ai/tasks/DEV-TEACHING-MATRIX-20261002-INTEGRATION.md"],
+      "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
+      "checkpoint": null,
+      "next": "集成班级 × 讲次教学进度矩阵，定向检查后交付开发端人工验收。"
+    },
+    {
+      "id": "DEV-TEACHING-MATRIX-20261002",
+      "title": "八项教学进度与课次嵌套详情",
+      "agent": "codex",
+      "threadId": "01a0dd69-e287-7773-b4f5-3489276ea15e",
+      "status": "in_progress",
+      "checkout": "worktree",
+      "branch": "codex/teaching-matrix-codex",
+      "card": ".ai/tasks/DEV-TEACHING-MATRIX-20261002.md",
+      "writePaths": ["src/features/school/teaching-workbench/TeachingProgressMatrix.tsx", "src/features/school/teaching-workbench/TeachingProgressPage.tsx", "src/features/school/teaching-workbench/teaching-progress-matrix-contract.ts", "src/features/school/teaching-workbench/teaching-progress-matrix-read.ts", "src/features/school/work-entry-contract.ts", "src/app/[locale]/dashboard/classes/page.tsx", "tests/teaching-progress-matrix.test.ts", "tests/teaching-progress-matrix-read.test.ts", ".ai/tasks/DEV-TEACHING-MATRIX-20261002.md", ".ai/handoffs/DEV-TEACHING-MATRIX-20261002-codex-01.md"],
+      "sharedPaths": [],
+      "checkpoint": null,
+      "next": "沿用班级表前四列、当前主题色和真实课次状态，实现全部老师同表及原位课程详情。"
+    },
     {
       "id": "DEV-PLANE-COVER-MATCH-20261002-INTEGRATION",
       "title": "棋盘覆盖与火柴棒开放材料集成",
