@@ -25,7 +25,7 @@
       "checkout": "worktree",
       "branch": "codex/release-v030-codex",
       "card": ".ai/tasks/OPS-RELEASE-V030-20261002.md",
-      "writePaths": ["package.json", ".ai/tasks/OPS-RELEASE-V030-20261002.md", "docs/evidence/r1/release-v030-20261002.md"],
+      "writePaths": ["package.json", "scripts/agent-context.mjs", "tests/spatial-lab-tool.test.ts", "tests/school-ops-lead-contact-workbench.test.ts", "tests/enrollment-placement-drag-confirmation.test.ts", "tests/parent-assessment-fixtures.test.ts", "tests/table-stacked-layout.test.ts", ".ai/tasks/OPS-RELEASE-V030-20261002.md", "docs/evidence/r1/release-v030-20261002.md"],
       "sharedPaths": [".ai/registry.json", "CHANGELOG.md", "docs/evidence/r1/README.md"],
       "checkpoint": "4a2cff0dac14047203b2dbe9b200a206102558dc",
       "next": "冻结当前主线候选；核对生产差异、备份、迁移回滚演练与原子发布，保留现有微信扫码登录配置。"
