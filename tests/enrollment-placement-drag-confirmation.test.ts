@@ -159,11 +159,14 @@ it('rereads progress after a server refresh without remounting the roster or req
   vi.stubGlobal('fetch', fetchProgress);
   const element = document.createElement('div'); document.body.append(element); const root = createRoot(element);
   cleanup = async () => { await act(async () => root.unmount()); element.remove(); };
-  const render = async (now: number) => act(async () => root.render(createElement(NextIntlClientProvider, {
-    locale: 'zh', messages, timeZone: 'Asia/Shanghai',
-  }, createElement(EnrollmentPlacementWorkbench, {
+  const render = async (now: number) => {
+    const props = { locale: 'zh', messages, timeZone: 'Asia/Shanghai',
+      children: createElement(EnrollmentPlacementWorkbench, {
       initialBoard: board, canCreateClass: false, workspace: 'classes', canTeach: true, workspaceQuery: { view: 'progress' }, now,
-  }))));
+      }),
+    };
+    await act(async () => root.render(createElement(NextIntlClientProvider, props)));
+  };
   const serverNow = Date.parse('2026-10-02T00:00:00Z');
   await render(serverNow);
   const table = element.querySelector('[data-class-roster-table]');

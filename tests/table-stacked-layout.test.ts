@@ -37,7 +37,7 @@ function mount() {
         h(TableCell, { mobileSpan: "secondary", id: "status" }, "Pending"),
         h(TableCell, { mobileLabel: "Note", mobileEmpty: true, id: "empty" }, "—"),
         h(TableCell, { mobileHidden: true, id: "hidden" }),
-        h(TableCell, { mobileLabel: "Actions", "data-table-mobile-actions": true, id: "actions" }, h("div", null, h("button", null, "Save")))),
+        h(TableCell, { mobileLabel: "Actions", ...{ "data-table-mobile-actions": true }, id: "actions" }, h("div", null, h("button", null, "Save")))),
       h(TableRow, null, h(TableCell, { colSpan: 6, id: "details" },
         h(Table, { mobileLayout: "stacked" }, h(TableBody, null, h(TableRow, null,
           h(TableCell, { mobileSpan: "primary" }, "Nested record"),

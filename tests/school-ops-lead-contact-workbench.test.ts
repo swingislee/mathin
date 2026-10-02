@@ -113,7 +113,8 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
       "migrations",
       "20260903001100_school_ops_invitation_coordination.sql",
     );
-    const page = read("src", "app", "[locale]", "dashboard", "followups", "communication", "page.tsx");
+    const page = read("src", "app", "[locale]", "dashboard", "communication", "page.tsx");
+    const worklistPage = read("src", "features", "school", "CommunicationWorklistPage.tsx");
     const workbench = read("src", "features", "school", "InvitationCoordinationWorkbench.tsx");
     const draftFields = read("src", "features", "school", "InvitationDraftFields.tsx");
     const availabilityGrid = read("src", "features", "school", "AssessmentAvailabilityGrid.tsx");
@@ -149,10 +150,10 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(reminderMigration).toContain("'invitation_followup'");
     expect(reminderMigration).toContain("p_remind_at is not null and p_remind_at <= now()");
     expect(reminderMigration).toContain("lead_invitation_threads_close_reminder");
-    expect(page).toContain("InvitationCoordinationWorkbench");
-    expect(page).toContain("FollowupTabs");
-    expect(page).toContain("loadCommunicationWorkbench");
-    expect(page).toContain("contactLeads={data.contactLeads}");
+    expect(page).toContain("CommunicationWorklistPage");
+    expect(worklistPage).toContain("InvitationCoordinationWorkbench");
+    expect(worklistPage).toContain("loadCommunicationWorkbench");
+    expect(worklistPage).toContain("contactLeads={data.contactLeads}");
     expect(page).not.toContain("COORDINATION_STAGES");
     expect(workbench).toContain("copyWithFallback");
     expect(workbench).toContain("copyRelay");
@@ -192,14 +193,14 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
   });
 
   it("keeps intake in leads and moves editable contact rows into communication", () => {
-    const page = read("src", "app", "[locale]", "dashboard", "followups", "leads", "page.tsx");
+    const page = read("src", "app", "[locale]", "dashboard", "leads", "page.tsx");
     const workbench = read("src", "features", "school", "LeadFirstContactWorkbench.tsx");
     const selection = read("src", "features", "school", "LeadPoolSelection.tsx");
     const actions = read("src", "features", "school", "actions", "leads.ts");
     const query = read("src", "features", "school", "leads.ts");
     expect(page).toContain("LeadIntakeWorkbench");
     expect(page).not.toContain("LeadFirstContactWorkbench");
-    expect(page).toContain("FollowupTabs");
+    expect(page).toContain("LeadIntakeScopeFilter");
     expect(page).toContain("LeadPoolSelectionProvider");
     expect(page).toContain("LeadPoolBatchActions");
     expect(page).toContain("FilterSearchInput");
@@ -531,9 +532,10 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
   });
 
   it("uses client-safe contracts and explicit configurable shadcn pagination", () => {
-    const page = read("src", "app", "[locale]", "dashboard", "followups", "leads", "page.tsx");
+    const page = read("src", "app", "[locale]", "dashboard", "leads", "page.tsx");
     const query = read("src", "features", "school", "leads.ts");
     const pagination = read("src", "features", "school", "LeadPoolPagination.tsx");
+    const sharedPagination = read("src", "features", "school", "dashboard-page", "DashboardTablePagination.tsx");
     const shadcnPagination = read("src", "components", "ui", "pagination.tsx");
 
     expect(query).toContain('import "server-only"');
@@ -542,9 +544,11 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(LEAD_PAGE_SIZES).toEqual([20, 50, 100]);
     expect(page).toContain("LeadPoolPagination");
     expect(page).toContain('name="pageSize"');
-    expect(pagination).toContain("PaginationContent");
-    expect(pagination).toContain("PaginationEllipsis");
-    expect(pagination).toContain("LEAD_PAGE_SIZES.map");
+    expect(pagination).toContain("DashboardTablePagination");
+    expect(pagination).toContain("pageSizes={LEAD_PAGE_SIZES}");
+    expect(sharedPagination).toContain("PaginationContent");
+    expect(sharedPagination).toContain("PaginationEllipsis");
+    expect(sharedPagination).toContain("pageSizes.map");
     expect(pagination).toContain("router.replace(hrefFor(1, nextPageSize))");
     expect(pagination).not.toContain('from "./leads"');
     expect(shadcnPagination).toContain('data-slot="pagination"');

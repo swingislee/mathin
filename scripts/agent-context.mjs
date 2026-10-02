@@ -114,6 +114,7 @@ export function ownersForPath(file, tasks) {
     && [...task.writePaths, ...task.sharedPaths].some((scope) => coversPath(scope, file))).map((task) => task.id);
 }
 
+/** @param {string} cwd @param {{taskId?: string, working?: boolean}} options */
 export function readContext(cwd = process.cwd(), { taskId, working = false } = {}) {
   const root = git(["rev-parse", "--show-toplevel"], cwd).trim();
   const head = git(["rev-parse", "HEAD"], root).trim();

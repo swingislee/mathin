@@ -17,7 +17,7 @@ describe("local parent preview safety boundary", () => {
   it("resolves exactly the six existing manifest roles without carrying credentials", () => {
     const actors = fixedPreviewActors(manifest);
     expect(Object.keys(actors)).toHaveLength(6);
-    expect(actors.admin).toBe("demo_admin@mathin.local");
+    expect(actors).toMatchObject({ admin: "demo_admin@mathin.local" });
     const sql = previewIdentitySql(actors);
     expect(sql).toContain("from auth.users where lower(email)=");
     expect(sql).toContain("test.parent_preview.second_student_user_id");
