@@ -5,8 +5,7 @@ import { DashboardPage } from "../dashboard-page";
 import { listSchoolTerms } from "../courses";
 import { getOrganizationTimezoneV2 } from "../organization-locations";
 import { workEntryMessages, type WorkEntryQuery } from "../work-entry-contract";
-import { ClassWorkspaceTabs } from "../ClassWorkspaceTabs";
-import { ClassWorkspaceCommandPanel } from "../ClassWorkspaceCommandPanel";
+import { ClassRosterWorkspace } from "../ClassRosterWorkspace";
 import { TEACHING_WORKBENCH_PERMISSIONS } from "./teaching-workbench-access";
 import { getTeachingProgressMatrix } from "./teaching-progress-matrix-read";
 import { teachingMatrixMessages } from "./teaching-progress-matrix-contract";
@@ -30,9 +29,9 @@ async function ProgressContent({ locale, searchParams }: { locale: string; searc
   let data;
   try { data = await getTeachingProgressMatrix({ userId: user.id, canViewTeam: permissions.has("class.view.all"), canReadCommunication: permissions.has("followup.view"), termId }); }
   catch {
-    return <DashboardPage title={workEntryMessages(locale).classes} commandPanel={<ClassWorkspaceCommandPanel navigation={<ClassWorkspaceTabs active="progress" canTeach query={query} />} />}>
+    return <ClassRosterWorkspace view="progress" query={query} canTeach>
       <p role="alert" className="py-6 text-sm text-muted">{teachingMatrixMessages(locale).failed}</p>
-    </DashboardPage>;
+    </ClassRosterWorkspace>;
   }
   return <TeachingProgressMatrix key={`${termId ?? "all"}:${query.teacher ?? ""}`} data={data} terms={terms} termId={termId} query={query} locale={locale} timeZone={timeZone} now={now.getTime()} />;
 }

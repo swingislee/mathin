@@ -14,7 +14,7 @@ export function ClassWorkspaceActions({ canTeach, query, canCreateClass = false,
 }) {
   const m = workEntryMessages(useLocale());
   const t = useTranslations("school.enrollmentWorkflow");
-  const views: ClassWorkView[] = [...(canTeach ? ["progress", "tasks"] as const : []), "directory"];
+  const views: ClassWorkView[] = [...(canTeach ? ["tasks"] as const : []), "directory"];
   return <Popover><PopoverTrigger asChild><Button variant="ghost" size="sm" className={mobileLabel ? "relative h-10 gap-1 px-2 lg:size-8 lg:p-0" : "relative size-8 p-0"} aria-label={filtered ? `${m.classActions} · ${m.filteredRoster}` : m.classActions} title={m.classActions}>
     {mobileLabel ? <><ListFilter className="size-4 lg:hidden" aria-hidden /><span className="text-xs lg:hidden">{mobileLabel}</span><Ellipsis className="hidden size-4 lg:block" aria-hidden /></> : <Ellipsis className="size-4" aria-hidden />}
     {filtered ? <span aria-hidden className="absolute right-0.5 top-0.5 size-1.5 rounded-full bg-rose" /> : null}</Button></PopoverTrigger>

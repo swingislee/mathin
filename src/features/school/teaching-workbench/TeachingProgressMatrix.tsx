@@ -12,19 +12,18 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Link, useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { ClassRosterTermPicker } from "../ClassRosterTermPicker";
-import { ClassWorkspaceTabs } from "../ClassWorkspaceTabs";
+import { ClassRosterWorkspace } from "../ClassRosterWorkspace";
 import { ClassWorkspaceMemory } from "../ClassWorkspaceMemory";
 import { ClassWorkspaceActions } from "../ClassWorkspaceActions";
-import { ClassWorkspaceCommandPanel } from "../ClassWorkspaceCommandPanel";
 import { classSessionMessages } from "../class-roster-session-contract";
-import { workEntryHref, workEntryMessages, type WorkEntryQuery } from "../work-entry-contract";
-import { DashboardPage, DashboardTableColumnHeader, DashboardTableShell } from "../dashboard-page";
+import { workEntryHref, type WorkEntryQuery } from "../work-entry-contract";
+import { DashboardTableColumnHeader, DashboardTableShell } from "../dashboard-page";
 import { FollowupRecordRow, FollowupTableBody } from "../dashboard-page/FollowupRecordRow";
 import { DashboardTablePagination } from "../dashboard-page/DashboardTablePagination";
 import { useDashboardFieldView } from "../dashboard-page/useDashboardFieldView";
 import type { DashboardFieldDefinitions } from "../dashboard-page/dashboard-table-field-contract";
 import {
-  TEACHING_PROGRESS_ITEMS, TEACHING_PROGRESS_TONES, teachingMatrixColumns, teachingMatrixMessages, teachingMatrixSessions, teachingMatrixTeachers,
+  TEACHING_PROGRESS_ITEMS, TEACHING_PROGRESS_TONES, TEACHING_PROGRESS_BLOCK_TONES, teachingMatrixColumns, teachingMatrixMessages, teachingMatrixSessions, teachingMatrixTeachers,
   type TeachingProgressClass, type TeachingProgressMatrixData, type TeachingProgressSession, type TeachingProgressTerm,
 } from "./teaching-progress-matrix-contract";
 
@@ -40,7 +39,7 @@ export function TeachingProgressMatrix({ data, terms, termId, query, locale, tim
   data: TeachingProgressMatrixData; terms: TeachingProgressTerm[]; termId?: string; query: WorkEntryQuery;
   locale: string; timeZone: string; now: number;
 }) {
-  const m = teachingMatrixMessages(locale), sessionM = classSessionMessages(locale), workM = workEntryMessages(locale);
+  const m = teachingMatrixMessages(locale), sessionM = classSessionMessages(locale);
   const router = useRouter();
   const root = useRef<HTMLDivElement>(null);
   const dirtyRef = useRef(false);
@@ -126,8 +125,8 @@ export function TeachingProgressMatrix({ data, terms, termId, query, locale, tim
   };
   const date = (at: string | null) => at ? new Intl.DateTimeFormat(locale, { timeZone, month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(at)) : m.unscheduled;
   const hasUnavailable = data.sessions.some(session => TEACHING_PROGRESS_ITEMS.some(kind => session.progress[kind].state === "unavailable"));
-  return <DashboardPage title={workM.classes} density="compact" commandPanel={<ClassWorkspaceCommandPanel
-    navigation={<><ClassWorkspaceMemory query={workspaceQuery} /><ClassWorkspaceTabs active="progress" canTeach query={workspaceQuery} /></>}
+  return <ClassRosterWorkspace view="progress" query={workspaceQuery} canTeach disabled={dirty}
+    navigation={<ClassWorkspaceMemory query={workspaceQuery} />}
     period={<ClassRosterTermPicker terms={terms} selectedId={termId} disabled={dirty} onChange={id => {
       if (canLeave()) router.replace(workEntryHref("/dashboard/classes", query, { view: "progress", term: id ?? "all", session: undefined, classroom: undefined, period: undefined, date: undefined }));
     }} />}
@@ -136,19 +135,21 @@ export function TeachingProgressMatrix({ data, terms, termId, query, locale, tim
       <Button size="sm" variant="ghost" disabled={dirty} onClick={() => router.refresh()} aria-label={m.refresh}><RefreshCw size={14} /><span className="hidden sm:inline">{m.refresh}</span></Button>
       <ClassWorkspaceActions canTeach query={workspaceQuery} filters={<div className="flex flex-wrap gap-2">{(Object.keys(columns) as (keyof typeof columns)[]).map(column => <DashboardTableColumnHeader key={column} label={m[column]} {...columnProps(column)} />)}</div>} />
     </>}
-  />}>
+    footer={<DashboardTablePagination currentPage={currentPage} totalPages={pages} totalCount={sorted.length} pageSize={pageSize} pageSizes={[20, 50, 100]} disabled={dirty}
+      onPageChange={value => { if (canLeave()) { setPage(value); setSelected(null); } }} onPageSizeChange={value => { if (canLeave()) { setPageSize(value); setPage(1); setSelected(null); } }} />}
+  >
     <div ref={root} className="min-w-0 space-y-3" data-teaching-progress-matrix>
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] text-muted" aria-label={m.title}>
         <div className="flex flex-wrap gap-x-3 gap-y-1">{TEACHING_PROGRESS_ITEMS.map(kind => { const Icon = icons[kind]; return <span key={kind} className="inline-flex items-center gap-1"><Icon size={14} aria-hidden />{m.items[kind]}</span>; })}</div>
-        <div className="flex items-center gap-3">{(["incomplete", "review", "archived"] as const).map(state => <span key={state} className={cn("inline-flex items-center gap-1.5", TEACHING_PROGRESS_TONES[state])}><span aria-hidden className="size-1.5 rounded-full bg-current" />{m.states[state]}</span>)}</div>
+        <div className="flex items-center gap-3">{(["incomplete", "review", "archived"] as const).map(state => <span key={state} className="inline-flex items-center gap-1.5"><span aria-hidden className={cn("size-3 rounded-sm border", TEACHING_PROGRESS_BLOCK_TONES[state])} />{m.states[state]}</span>)}</div>
       </div>
       {hasUnavailable && <p role="status" className="text-xs text-muted">{m.partial}</p>}
-      <TooltipProvider delayDuration={250}><DashboardTableShell><Table className={cn("w-full table-auto text-xs", DETAILS_LAYOUT)} containerClassName="max-h-[75dvh] overflow-auto" aria-label={m.title}>
+      <TooltipProvider delayDuration={250}><DashboardTableShell><Table data-class-identity-table className={cn("w-full table-auto text-xs", DETAILS_LAYOUT)} containerClassName="max-h-[75dvh] overflow-auto" aria-label={m.title}>
         <TableHeader><TableRow className="[&>th]:h-9 [&>th]:px-2">
-          <TableHead className="sticky left-0 top-0 z-30 min-w-40 border-r border-line bg-card lg:min-w-24"><DashboardTableColumnHeader label={m.campus} {...columnProps("campus")} /></TableHead>
-          <TableHead className="sticky top-0 z-20 hidden min-w-36 border-r border-line bg-card lg:table-cell"><DashboardTableColumnHeader label={m.time} {...columnProps("time")} /></TableHead>
-          <TableHead className="sticky top-0 z-20 hidden min-w-20 border-r border-line bg-card lg:table-cell"><DashboardTableColumnHeader label={m.teacher} {...columnProps("teacher")} /></TableHead>
-          <TableHead className="sticky top-0 z-20 hidden border-r border-line bg-card lg:table-cell"><DashboardTableColumnHeader label={m.level} {...columnProps("level")} /></TableHead>
+          <TableHead data-class-sticky="1" className="sticky left-0 top-0 z-30 min-w-40 border-r border-line bg-card lg:min-w-24"><DashboardTableColumnHeader label={m.campus} {...columnProps("campus")} /></TableHead>
+          <TableHead data-class-sticky="2" className="sticky top-0 z-20 hidden min-w-36 border-r border-line bg-card lg:table-cell"><DashboardTableColumnHeader label={m.time} {...columnProps("time")} /></TableHead>
+          <TableHead data-class-sticky="3" className="sticky top-0 z-20 hidden min-w-20 border-r border-line bg-card lg:table-cell"><DashboardTableColumnHeader label={m.teacher} {...columnProps("teacher")} /></TableHead>
+          <TableHead data-class-sticky="4" className="sticky top-0 z-20 hidden border-r border-line bg-card lg:table-cell"><DashboardTableColumnHeader label={m.level} {...columnProps("level")} /></TableHead>
           {lessonColumns.length ? lessonColumns.map(column => <TableHead key={column.key} className="sticky top-0 z-20 min-w-28 border-r border-line bg-card text-center font-medium last:border-r-0">{column.lectureNo === null ? m.unspecified : m.lesson(column.lectureNo)}</TableHead>)
             : <TableHead className="sticky top-0 z-20 bg-card">{m.noLessons}</TableHead>}
         </TableRow></TableHeader>
@@ -166,27 +167,27 @@ export function TeachingProgressMatrix({ data, terms, termId, query, locale, tim
                 onExpandedChange={open => { if (!canLeave()) return; setSelected(open ? classSessions[0]?.id ?? null : null); }}
                 rowProps={{ "data-teaching-class": row.id }} detailsId={detailsId} title={`${row.name} · ${currentSession?.title || m.untitled}`} colSpan={columnCount}
                 summary={<>
-                  <TableCell className="sticky left-0 z-10 border-r border-line bg-card px-2 py-1">
+                  <TableCell data-class-sticky="1" className="sticky left-0 z-10 border-r border-line bg-card px-2 py-1">
                     <Popover><PopoverTrigger asChild><Button size="sm" variant="ghost" className="h-auto min-h-8 justify-start px-0 py-1 text-xs font-normal" aria-label={`${m.classroom} · ${row.name}`}>
                       <span className="text-left"><span className="block">{row.campus || m.unset}</span><span className="mt-1 block max-w-40 text-[11px] leading-5 text-muted lg:hidden">{schedule(row)}<br />{teacherNames(row)} · {row.level || "—"}</span></span>
                     </Button></PopoverTrigger><PopoverContent align="start" className="w-72 space-y-2 p-3 text-xs"><p className="font-medium">{row.name}</p><p>{row.courseTitle}</p><p className="text-muted">{row.campus || m.unset} · {row.room || "—"}</p><Link href={`/dashboard/classes/${row.id}`} className="underline underline-offset-4">{m.classroom}</Link></PopoverContent></Popover>
                   </TableCell>
-                  <TableCell className="hidden border-r border-line px-2 py-1 text-[11px] lg:table-cell"><span className="block max-w-56 whitespace-normal leading-5">{schedule(row)}</span></TableCell>
-                  <TableCell className="hidden border-r border-line px-2 py-1 lg:table-cell"><span className="block max-w-32 whitespace-normal leading-5">{teacherNames(row)}</span></TableCell>
-                  <TableCell className="hidden border-r border-line px-1 py-1 text-center lg:table-cell">{row.level || "—"}</TableCell>
+                  <TableCell data-class-sticky="2" className="hidden border-r border-line px-2 py-1 text-[11px] lg:table-cell"><span className="block max-w-56 whitespace-normal leading-5">{schedule(row)}</span></TableCell>
+                  <TableCell data-class-sticky="3" className="hidden border-r border-line px-2 py-1 lg:table-cell"><span className="block max-w-32 whitespace-normal leading-5">{teacherNames(row)}</span></TableCell>
+                  <TableCell data-class-sticky="4" className="hidden border-r border-line px-1 py-1 text-center lg:table-cell">{row.level || "—"}</TableCell>
                   {lessonColumns.length ? lessonColumns.map(column => {
                     const lessons = teachingMatrixSessions(classSessions, row.id, column.lectureNo);
                     return <TableCell key={column.key} className="border-r border-line p-0 last:border-r-0">
                       {lessons.length ? lessons.map(session => <button key={session.id} type="button" data-teaching-session={session.id}
                         aria-expanded={selected === session.id} aria-controls={detailsId} disabled={dirty && selected !== session.id}
                         aria-label={`${m.open} · ${row.name} · ${column.lectureNo === null ? session.title || m.untitled : m.lesson(column.lectureNo)} · ${TEACHING_PROGRESS_ITEMS.map(kind => `${m.items[kind]}：${m.states[session.progress[kind].state]}`).join("；")}`}
-                        className={cn("block w-full px-3 py-2 text-left hover:bg-moon/20 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-crater", selected === session.id && "bg-moon/25")}
+                        className={cn("block w-full px-2 py-2 text-left hover:bg-moon/20 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-crater", selected === session.id && "bg-moon/25")}
                         onClick={() => choose(session)}>
                         {(lessons.length > 1 || column.lectureNo === null) && <span className="mb-1 block max-w-32 truncate text-[10px] text-muted" title={session.title}>{column.lectureNo === null ? session.title || m.untitled : date(session.scheduledAt)}</span>}
-                        <span className="grid grid-cols-4 justify-items-center gap-x-2 gap-y-2">{TEACHING_PROGRESS_ITEMS.map(kind => {
+                        <span className="grid grid-cols-4 justify-items-center gap-1">{TEACHING_PROGRESS_ITEMS.map(kind => {
                           const Icon = icons[kind], progress = session.progress[kind];
-                          return <Tooltip key={kind}><TooltipTrigger asChild><span className={cn("inline-flex size-4 items-center justify-center", TEACHING_PROGRESS_TONES[progress.state])}>
-                            <Icon size={16} strokeWidth={1.7} aria-hidden />
+                          return <Tooltip key={kind}><TooltipTrigger asChild><span className={cn("inline-flex size-6 items-center justify-center rounded-md border", TEACHING_PROGRESS_BLOCK_TONES[progress.state])}>
+                            <Icon size={15} strokeWidth={1.8} aria-hidden />
                           </span></TooltipTrigger><TooltipContent>{m.items[kind]} · {m.states[progress.state]}<span className="ml-1 text-[11px]">{m.reasons[progress.reason]}</span></TooltipContent></Tooltip>;
                         })}</span>
                       </button>) : <span className="block px-3 py-3 text-center text-muted" aria-label={m.noLessons}>—</span>}
@@ -199,7 +200,7 @@ export function TeachingProgressMatrix({ data, terms, termId, query, locale, tim
                     <TableHead>{m.item}</TableHead><TableHead>{m.status}</TableHead><TableHead>{m.record}</TableHead>
                   </TableRow></TableHeader><TableBody>{TEACHING_PROGRESS_ITEMS.map(kind => {
                     const Icon = icons[kind], progress = currentSession.progress[kind];
-                    return <TableRow key={kind}><TableCell mobileSpan="primary" mobileLabel={m.item}><span className="inline-flex items-center gap-2"><Icon size={15} className={TEACHING_PROGRESS_TONES[progress.state]} aria-hidden />{m.items[kind]}</span></TableCell>
+                    return <TableRow key={kind}><TableCell mobileSpan="primary" mobileLabel={m.item}><span className="inline-flex items-center gap-2"><span className={cn("inline-flex size-6 items-center justify-center rounded-md border", TEACHING_PROGRESS_BLOCK_TONES[progress.state])}><Icon size={15} aria-hidden /></span>{m.items[kind]}</span></TableCell>
                       <TableCell mobileLabel={m.status} className={TEACHING_PROGRESS_TONES[progress.state]}>{m.states[progress.state]}</TableCell>
                       <TableCell mobileLabel={m.record}><span>{m.reasons[progress.reason]}</span><span className="ml-3 text-[11px] text-muted">{m.sources[kind]}</span></TableCell></TableRow>;
                   })}</TableBody></Table></DashboardTableShell>
@@ -211,8 +212,6 @@ export function TeachingProgressMatrix({ data, terms, termId, query, locale, tim
           })}
         </FollowupTableBody>
       </Table></DashboardTableShell></TooltipProvider>
-      <DashboardTablePagination currentPage={currentPage} totalPages={pages} totalCount={sorted.length} pageSize={pageSize} pageSizes={[20, 50, 100]} disabled={dirty}
-        onPageChange={value => { if (canLeave()) { setPage(value); setSelected(null); } }} onPageSizeChange={value => { if (canLeave()) { setPageSize(value); setPage(1); setSelected(null); } }} />
     </div>
-  </DashboardPage>;
+  </ClassRosterWorkspace>;
 }

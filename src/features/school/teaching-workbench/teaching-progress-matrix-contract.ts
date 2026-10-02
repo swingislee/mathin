@@ -1,3 +1,5 @@
+import { LEARNING_CHECK_STATUS_STYLE } from "../session-learning-visual";
+
 export const TEACHING_PROGRESS_ITEMS = [
   "solution", "lesson_plan", "rehearsal_video", "learning", "class_feedback", "homework", "communication", "reflection",
 ] as const;
@@ -17,9 +19,14 @@ export type TeachingProgressSession = {
 export type TeachingProgressMatrixData = { classrooms: TeachingProgressClass[]; sessions: TeachingProgressSession[] };
 export type TeachingProgressTerm = { id: string; name: string; isCurrent: boolean; startsOn: string | null; endsOn: string | null };
 
-/** 颜色与现有备课流程一致，显式深色与系统深色由主题 token 承担。 */
+/** 图标文字与填充色块复用现有班级学情色。 */
 export const TEACHING_PROGRESS_TONES: Record<TeachingProgressState, string> = {
-  incomplete: "text-muted", review: "text-crater", archived: "text-leaf-deep", unavailable: "text-muted",
+  incomplete: LEARNING_CHECK_STATUS_STYLE.incomplete.icon, review: LEARNING_CHECK_STATUS_STYLE.prompted.icon,
+  archived: LEARNING_CHECK_STATUS_STYLE.independent.icon, unavailable: LEARNING_CHECK_STATUS_STYLE.unchecked.icon,
+};
+export const TEACHING_PROGRESS_BLOCK_TONES: Record<TeachingProgressState, string> = {
+  incomplete: LEARNING_CHECK_STATUS_STYLE.incomplete.active, review: LEARNING_CHECK_STATUS_STYLE.prompted.active,
+  archived: LEARNING_CHECK_STATUS_STYLE.independent.active, unavailable: LEARNING_CHECK_STATUS_STYLE.unchecked.active,
 };
 
 export function artifactProgress(status?: string | null): TeachingProgress {

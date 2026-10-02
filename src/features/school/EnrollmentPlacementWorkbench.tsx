@@ -17,18 +17,17 @@ import { ClassWorkspaceMemory } from "./ClassWorkspaceMemory";
 import { classRosterScope, myRosterClassroomIds } from "./class-workspace-preferences";
 import { ClassRosterSessionRow } from "./ClassRosterSessionRow";
 import { classSessionMessages, orderedClassSessions, type ClassRosterSession } from "./class-roster-session-contract";
-import { ClassWorkspaceCommandPanel } from "./ClassWorkspaceCommandPanel";
+import { ClassRosterWorkspace } from "./ClassRosterWorkspace";
 import { ClassRosterTermPicker } from "./ClassRosterTermPicker";
 import { ClassRosterClassSummary } from "./ClassRosterClassSummary";
 import { classRosterMessages } from "./class-roster-presentation-contract";
-import rosterLayout from "./class-roster-layout.module.css";
 import { classRosterSections } from "./class-roster-header-contract";
 import { teachingGrouping } from "./teaching-workbench/teaching-grouping-contract";
 import { RouteTabs } from "./navigation/RouteTabs";
 import { classWorkHref, workEntryMessages, type WorkEntryQuery } from "./work-entry-contract";
 import { FollowupPrimaryFilter, useFollowupWorkFilter } from "./FollowupPrimaryFilter";
 import { PLACEMENT_WORK_FILTERS, placementClassMatchesWorkFilter, type PlacementWorkFilter } from "./followup-primary-filter-contract";
-import { DashboardPage, DashboardTableColumnHeader, DashboardTableShell } from "./dashboard-page";
+import { DashboardTableColumnHeader, DashboardTableShell } from "./dashboard-page";
 import { FollowupTableBody } from "./dashboard-page/FollowupRecordRow";
 import { useDashboardFieldView } from "./dashboard-page/useDashboardFieldView";
 import { normalizeDashboardFieldQuery } from "./dashboard-page/dashboard-table-field-contract";
@@ -447,10 +446,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
       pointer.cancel(); setSelectedKey(null); setQuery(""); setWorkFilter("all"); table.columnProps("classroom").onClearAll?.();
     }}>{workM.clearRosterFilters}</Button> : null}
   </>;
-  return <div data-class-workspace className={rosterLayout.workspace}>
-    {workspace === "classes" ? <ClassWorkspaceMemory query={{ ...rosterQuery, session: workspaceQuery.session, student: workspaceQuery.student,
-      fields: JSON.stringify({ version: 2, filters: table.filters, sort: table.sort }) }} /> : null}
-    <DashboardPage title={workM.classes} density="compact" commandPanel={<ClassWorkspaceCommandPanel
+  return <ClassRosterWorkspace view="arrange" query={rosterQuery} canTeach={workspace === "classes" && canTeach} disabled={pending || hasSessionDraft}
     navigation={workspace === "classes" && myClassroomIds.size > 0 ? <RouteTabs ariaLabel={workM.classScope} activeValue={rosterScope} activeTone="accent" items={(["mine", "all"] as const).map(scope => ({
       value: scope, label: scope === "mine" ? rosterM.mine : rosterM.all,
       href: classWorkHref("arrange", { ...rosterQuery, scope, classroom: undefined, session: undefined, student: undefined }),
@@ -464,18 +460,20 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
       {selected ? <span role="status" className="flex max-w-32 items-center justify-end gap-1 text-xs text-muted" title={t("selectedHint", { name: selected.name })}><span className="truncate">{selected.name}</span><Button size="sm" variant="ghost" className="size-7 shrink-0 p-0" aria-label={t("clearSelection")} disabled={pending} onClick={() => setSelectedKey(null)}>{pending ? <LoaderCircle className="size-3 animate-spin" /> : <X className="size-3" />}</Button></span> : null}
       <ClassWorkspaceActions canTeach={canTeach} query={rosterQuery} canCreateClass={canCreateClass} filters={rosterFilters} filtered={hasFilters} mobileLabel={rosterM.filter} />
     </>}
-  />} footer={<LeadPoolPagination baseHref="/dashboard/classes" currentPage={pagination.page} totalPages={pagination.totalPages} totalCount={pagination.count}
+    footer={<LeadPoolPagination baseHref="/dashboard/classes" currentPage={pagination.page} totalPages={pagination.totalPages} totalCount={pagination.count}
     pageSize={pagination.pageSize} disabled={pending || hasSessionDraft} onPageChange={(page, size) => { if (!canChangeSession()) return; pointer.cancel(); setSelectedKey(null); pagination.onPageChange(page, size); }} />}>
+    {workspace === "classes" ? <ClassWorkspaceMemory query={{ ...rosterQuery, session: workspaceQuery.session, student: workspaceQuery.student,
+      fields: JSON.stringify({ version: 2, filters: table.filters, sort: table.sort }) }} /> : null}
     {sessionsFailed && <p role="alert" className="text-xs text-rose">{sessionM.failed}<Button variant="ghost" size="sm" onClick={() => router.refresh()}>{sessionM.retry}</Button></p>}
     {board.locationsFailed && <p role="alert" className="text-xs text-rose">{rosterM.locationsFailed}<Button variant="ghost" size="sm" onClick={() => router.refresh()}>{sessionM.retry}</Button></p>}
     {!sessionsFailed && focusSessionId && !sessions.some(session => session.id === focusSessionId) && <p role="status" className="text-xs text-muted">{sessionM.noAccess}</p>}
     <div ref={root} className="flex min-h-0 flex-1 flex-col" onPointerMove={pointer.onPointerMove} onPointerUp={pointer.onPointerUp} onPointerCancel={pointer.onPointerCancel} onLostPointerCapture={pointer.onLostPointerCapture} onClickCapture={pointer.onClickCapture} onKeyDown={(event) => { if (event.key === "Escape" && !event.defaultPrevented) { pointer.cancel(); setSelectedKey(null); } }}>
-      <TooltipProvider delayDuration={350}><DashboardTableShell data-followup-scroll data-class-roster={workspace === "classes" || undefined}><Table mobileLayout="records" data-class-roster-table className="table-auto text-xs" containerClassName="overflow-auto" aria-busy={pending}>
+      <TooltipProvider delayDuration={350}><DashboardTableShell data-followup-scroll data-class-roster={workspace === "classes" || undefined}><Table mobileLayout="records" data-class-roster-table data-class-identity-table className="table-auto text-xs" containerClassName="overflow-auto" aria-busy={pending}>
         <TableHeader><TableRow className="[&>th]:h-8 [&>th]:px-2 [&>th:nth-child(3)]:px-1 [&>th:nth-child(4)]:px-1">
-          <TableHead className="sticky top-0 z-30 whitespace-nowrap border-r border-line bg-card"><DashboardTableColumnHeader label={rosterM.campus} {...table.columnProps("campus")} /></TableHead>
-          <TableHead className="sticky top-0 z-30 whitespace-nowrap border-r border-line bg-card"><DashboardTableColumnHeader label={t("timeLabel")} {...table.columnProps("time")} /></TableHead>
-          <TableHead data-class-identity-column={identityColumn} className="sticky top-0 z-30 whitespace-nowrap border-r border-line bg-card"><DashboardTableColumnHeader label={identityColumn === "grade" ? rosterM.grade : t("teacherLabel")} {...table.columnProps(identityColumn)} /></TableHead>
-          <TableHead data-class-level-header className="sticky top-0 z-30 whitespace-nowrap border-r border-line bg-card px-1"><DashboardTableColumnHeader label={rosterM.level} {...table.columnProps("difficulty")} /></TableHead>
+          <TableHead data-class-sticky="1" className="sticky top-0 z-30 whitespace-nowrap border-r border-line bg-card"><DashboardTableColumnHeader label={rosterM.campus} {...table.columnProps("campus")} /></TableHead>
+          <TableHead data-class-sticky="2" className="sticky top-0 z-30 whitespace-nowrap border-r border-line bg-card"><DashboardTableColumnHeader label={t("timeLabel")} {...table.columnProps("time")} /></TableHead>
+          <TableHead data-class-sticky="3" data-class-identity-column={identityColumn} className="sticky top-0 z-30 whitespace-nowrap border-r border-line bg-card"><DashboardTableColumnHeader label={identityColumn === "grade" ? rosterM.grade : t("teacherLabel")} {...table.columnProps(identityColumn)} /></TableHead>
+          <TableHead data-class-sticky="4" data-class-level-header className="sticky top-0 z-30 whitespace-nowrap border-r border-line bg-card px-1"><DashboardTableColumnHeader label={rosterM.level} {...table.columnProps("difficulty")} /></TableHead>
           <TableHead className="sticky top-0 z-20 w-full bg-card"><DashboardTableColumnHeader label={t("student")} {...table.columnProps("health")} /></TableHead>
         </TableRow></TableHeader>
         <FollowupTableBody navigation="tree" onNavigate={key => { setActiveRecordKey(key); return true; }}>{rosterScope === "all" && board.access?.canManageEnrollments!==false?<SchoolSupportPendingRows workspace="enrollments" colSpan={5} />:null}{sections.map((section) => {
@@ -531,7 +529,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
               const classRowProps = { "data-record-state": fact ? fact.record_state ?? "historical" : "current", "data-placement-classroom": classroom?.id,
                 ...(classroom ? registerTarget(`class:${classroom.id}`, classTarget) : {}), "data-placement-record": row.key, "data-mobile-roster-open": rosterOpen, className: "hover:bg-transparent" };
               const classCells = (disclosure?: ReactNode) => <>
-                <TableCell mobileSpan="full" {...classCell("campus")} className={cn(PLACEMENT_CELL_HOVER,"relative z-10 border-r border-line bg-card px-2 py-1")}>
+                <TableCell data-class-sticky="1" mobileSpan="full" {...classCell("campus")} className={cn(PLACEMENT_CELL_HOVER,"relative z-10 border-r border-line bg-card px-2 py-1")}>
                   <ClassRosterClassSummary row={row} locale={locale} className={className} courseTitle={courseTitle} time={time} teacher={teacher} showTeacher={identityColumn === "teacher"}
                     grade={gradeLabel} level={level} disclosure={disclosure} rosterId={rosterId} rosterOpen={rosterOpen} disabled={pending || hasSessionDraft}
                     onRosterToggle={() => { if (canChangeSession()) {
@@ -541,9 +539,9 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
                     lessonCount={classroom && canTeach && !sessionsFailed ? classSessions.length : undefined} lessonsOpen={lessonsOpen}
                     onLessonsToggle={() => { if (canChangeSession()) { setMobileRosters({}); setOpenSessionRow(lessonsOpen ? null : `${group}:${classroom?.id}`); setActiveRecordKey(`class:${group}:${classroom?.id}`); } }} />
                 </TableCell>
-                <TableCell mobileHidden data-class-column="time" {...classCell("time")} className={cn(PLACEMENT_CELL_HOVER,"relative z-10 border-r border-line bg-card px-2 py-1 text-[11px]")} title={time}><span className="block whitespace-nowrap leading-5">{time}</span></TableCell>
-                <TableCell mobileHidden data-class-column={identityColumn} {...classCell(identityColumn)} className={cn(PLACEMENT_CELL_HOVER,"relative z-10 border-r border-line bg-card px-1 py-1")}><span className="block whitespace-nowrap leading-5">{identityColumn === "grade" ? gradeLabel : teacher || "—"}</span></TableCell>
-                <TableCell mobileHidden data-class-column="difficulty" {...classCell("difficulty")} className={cn(PLACEMENT_CELL_HOVER,"relative z-10 border-r border-line bg-card px-1 py-1 whitespace-nowrap text-center text-[11px]")}>{level}</TableCell>
+                <TableCell data-class-sticky="2" mobileHidden data-class-column="time" {...classCell("time")} className={cn(PLACEMENT_CELL_HOVER,"relative z-10 border-r border-line bg-card px-2 py-1 text-[11px]")} title={time}><span className="block whitespace-nowrap leading-5">{time}</span></TableCell>
+                <TableCell data-class-sticky="3" mobileHidden data-class-column={identityColumn} {...classCell(identityColumn)} className={cn(PLACEMENT_CELL_HOVER,"relative z-10 border-r border-line bg-card px-1 py-1")}><span className="block whitespace-nowrap leading-5">{identityColumn === "grade" ? gradeLabel : teacher || "—"}</span></TableCell>
+                <TableCell data-class-sticky="4" mobileHidden data-class-column="difficulty" {...classCell("difficulty")} className={cn(PLACEMENT_CELL_HOVER,"relative z-10 border-r border-line bg-card px-1 py-1 whitespace-nowrap text-center text-[11px]")}>{level}</TableCell>
                 <TableCell flush mobileHidden={!rosterOpen} mobileSpan="full" id={rosterId} data-class-roster-members className="bg-paper/50"><div className={cn(NAME_GRID, "min-w-0")}>{(row.sourceEnrollments??[]).map(item=>studentTile({key:item.id,studentId:item.student_id,name:history?.students[businessSubjectKey(item)]??recordM.unknown,phone:history?.subjects[businessSubjectKey(item)]?.phone??'',grade:history?.subjects[businessSubjectKey(item)]?.grade??0,status:null,courseTitle:item.period_label,recommendation:'',note:item.note??'',sourceEnrollment:item}))}{classroom ? visibleSlots.map(({ seat, student }) => {
                   const target = { classroom, termId: row.termId, grade: row.grade, seat };
                   const key = `${classroom.id}:${seat}`;
@@ -571,5 +569,5 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
       {sourceEnrollment?<SourceEnrollmentPlacementDialog record={sourceEnrollment} name={history?.students[businessSubjectKey(sourceEnrollment)]??recordM.unknown} options={board.options} locale={locale} onClose={()=>setSourceEnrollment(null)} onSaved={value=>{setSavedBoard({base:initialBoard,value});setSourceEnrollment(null);router.refresh();}}/>:null}
       {dragPreview()}
     </div>
-  </DashboardPage></div>;
+  </ClassRosterWorkspace>;
 }

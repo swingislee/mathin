@@ -15,6 +15,16 @@
 @media (min-width: 64rem) {
   .workspace [data-class-info] { width: max-content; }
   .workspace [data-class-info] [data-class-desktop] { white-space: nowrap; }
+  .workspace [data-class-identity-table] > :is(thead, tbody) > tr > [data-class-sticky] {
+    position: sticky;
+    background-color: var(--card);
+  }
+  .workspace [data-class-sticky="1"] { left: 0; }
+  .workspace [data-class-sticky="2"] { left: var(--class-column-2-left, 0px); }
+  .workspace [data-class-sticky="3"] { left: var(--class-column-3-left, 0px); }
+  .workspace [data-class-sticky="4"] { left: var(--class-column-4-left, 0px); box-shadow: 3px 0 4px -3px var(--crater); }
+  .workspace [data-class-identity-table] > thead > tr > [data-class-sticky] { z-index: 30; }
+  .workspace [data-class-identity-table] > tbody > tr > [data-class-sticky] { z-index: 10; }
 }
 
 /* 触屏上的空位入口常显加号；支持悬浮的宽屏保留原悬浮提示。 */
