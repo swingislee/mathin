@@ -80,74 +80,77 @@ export function ToolDesk({ header, shelves, items, shelfLabel, noteHint, canMana
   return (
     <ToolGroupContext.Provider value={canManage ? { pending, move } : null}>
       <div className="tool-desk-stage" data-pending={pending || undefined}>
-        <div className="tool-desk-art" aria-hidden>
-          <div className="scene-illustration" />
-          <div className="scene-illustration-wash" />
-        </div>
-
-        <nav className="tool-desk-shelf" aria-label={shelfLabel}>
-          {shelves.map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              data-slot={option.id}
-              data-drop={dropSlot === option.id || undefined}
-              aria-pressed={shelf === option.id}
-              className="tool-desk-shelf-item"
-              onClick={() => setShelf(option.id)}
-              onDragOver={(event) => {
-                if (!accepts(option.id)) return;
-                event.preventDefault();
-                setDropSlot(option.id);
-              }}
-              onDragLeave={() => setDropSlot((slot) => (slot === option.id ? null : slot))}
-              onDrop={(event) => {
-                event.preventDefault();
-                if (dragged && accepts(option.id)) move(dragged.id, option.id === "draft");
-                endDrag();
-              }}
-            >
-              <span className="tool-desk-shelf-label">
-                {option.label}
-                <span className="tool-desk-shelf-count">{option.count}</span>
-              </span>
-            </button>
-          ))}
-        </nav>
-
-        <section className="tool-desk-paper" aria-label={current?.label}>
-          {header}
-          {/* 切换分类时重挂列表，让卡片重新播放入场。 */}
-          <div
-            key={shelf}
-            className="tool-desk-list"
-            data-shelf={shelf}
-            onPointerOver={(event: PointerEvent) => setPointedId(toolCard(event.target)?.dataset.toolId ?? null)}
-            onPointerLeave={() => setPointedId(null)}
-            onFocus={(event: FocusEvent) => setPointedId(toolCard(event.target)?.dataset.toolId ?? null)}
-            onBlur={() => setPointedId(null)}
-            onDragStart={startDrag}
-            onDragEnd={endDrag}
-          >
-            {children}
+        {/* 横屏时 frame 按原图铺开，stage 只露出台面所在的裁切窗口。 */}
+        <div className="tool-desk-frame">
+          <div className="tool-desk-art" aria-hidden>
+            <div className="scene-illustration" />
+            <div className="scene-illustration-wash" />
           </div>
-        </section>
 
-        <aside className="tool-desk-note" aria-live="polite">
-          {pointed ? (
-            <>
-              <span className="tool-desk-note-no">Nº {String(pointed.no).padStart(2, "0")}</span>
-              <strong className="font-display">{pointed.name}</strong>
-              <span>{pointed.grades}</span>
-            </>
-          ) : (
-            <>
-              <strong className="font-display">{current?.label}</strong>
-              <span>{current?.count}</span>
-              <span className="tool-desk-note-hint">{noteHint}</span>
-            </>
-          )}
-        </aside>
+          <nav className="tool-desk-shelf" aria-label={shelfLabel}>
+            {shelves.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                data-slot={option.id}
+                data-drop={dropSlot === option.id || undefined}
+                aria-pressed={shelf === option.id}
+                className="tool-desk-shelf-item"
+                onClick={() => setShelf(option.id)}
+                onDragOver={(event) => {
+                  if (!accepts(option.id)) return;
+                  event.preventDefault();
+                  setDropSlot(option.id);
+                }}
+                onDragLeave={() => setDropSlot((slot) => (slot === option.id ? null : slot))}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  if (dragged && accepts(option.id)) move(dragged.id, option.id === "draft");
+                  endDrag();
+                }}
+              >
+                <span className="tool-desk-shelf-label">
+                  {option.label}
+                  <span className="tool-desk-shelf-count">{option.count}</span>
+                </span>
+              </button>
+            ))}
+          </nav>
+
+          <section className="tool-desk-paper" aria-label={current?.label}>
+            {header}
+            {/* 切换分类时重挂列表，让卡片重新播放入场。 */}
+            <div
+              key={shelf}
+              className="tool-desk-list"
+              data-shelf={shelf}
+              onPointerOver={(event: PointerEvent) => setPointedId(toolCard(event.target)?.dataset.toolId ?? null)}
+              onPointerLeave={() => setPointedId(null)}
+              onFocus={(event: FocusEvent) => setPointedId(toolCard(event.target)?.dataset.toolId ?? null)}
+              onBlur={() => setPointedId(null)}
+              onDragStart={startDrag}
+              onDragEnd={endDrag}
+            >
+              {children}
+            </div>
+          </section>
+
+          <aside className="tool-desk-note" aria-live="polite">
+            {pointed ? (
+              <>
+                <span className="tool-desk-note-no">Nº {String(pointed.no).padStart(2, "0")}</span>
+                <strong className="font-display">{pointed.name}</strong>
+                <span>{pointed.grades}</span>
+              </>
+            ) : (
+              <>
+                <strong className="font-display">{current?.label}</strong>
+                <span>{current?.count}</span>
+                <span className="tool-desk-note-hint">{noteHint}</span>
+              </>
+            )}
+          </aside>
+        </div>
       </div>
     </ToolGroupContext.Provider>
   );

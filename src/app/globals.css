@@ -721,6 +721,8 @@ html:lang(zh-CN) {
   --scene-description-night: #cbc8c1;
   --scene-wash-day: linear-gradient(to bottom, rgb(255 244 217 / 10%), transparent 50%, rgb(75 47 23 / 10%));
   --scene-wash-night: linear-gradient(to bottom, rgb(5 10 24 / 4%), transparent 55%, rgb(2 6 17 / 18%));
+  --tool-desk-edge-day: #f0e2c9;
+  --tool-desk-edge-night: #020e24;
 }
 
 /*
@@ -731,6 +733,7 @@ html:lang(zh-CN) {
 .tool-desk { position: relative; min-height: 100dvh; padding: 6.5rem 1.25rem 4rem; }
 .tool-desk-backdrop { position: fixed; inset: 0; pointer-events: none; }
 .tool-desk-stage { position: relative; z-index: 10; max-width: 56rem; margin-inline: auto; }
+.tool-desk-frame { display: contents; }
 .tool-desk-art, .tool-desk-note { display: none; }
 .tool-desk-header { margin-bottom: 1.25rem; }
 .tool-desk-heading h1 { font-size: 2.25rem; }
@@ -812,15 +815,23 @@ html:lang(zh-CN) {
 }
 
 @media (min-width: 1024px) and (min-aspect-ratio: 5/4) {
-  .tool-desk { display: grid; place-items: center; height: 100dvh; min-height: 0; padding: 0; overflow: hidden; }
+  .tool-desk { display: grid; place-items: center; height: 100dvh; min-height: 0; padding: 1rem 0 0; overflow: hidden; background-color: var(--tool-desk-edge-day); }
+  .dark .tool-desk { background-color: var(--tool-desk-edge-night); }
   .tool-desk-backdrop { display: none; }
+  /*
+   * The art leaves ~13% empty paper above the desk. The stage shows only the crop window
+   * x 40–1640, y 50–941 (1600×891); with the 1rem top padding the desk clears the site header.
+   * The frame keeps full-art coordinates, so every percentage below stays measured on 1672×941.
+   */
   .tool-desk-stage {
-    width: min(100vw, calc(100dvh * 1672 / 941));
+    width: min(100vw, calc((100dvh - 1rem) * 1600 / 891));
     max-width: none;
-    aspect-ratio: 1672 / 941;
+    aspect-ratio: 1600 / 891;
     margin: 0;
+    overflow: clip;
     container-type: size;
   }
+  .tool-desk-frame { display: block; position: absolute; left: -2.5%; top: -5.612%; width: 104.5%; height: 105.612%; }
   .tool-desk-art { display: block; position: absolute; inset: 0; pointer-events: none; }
 
   /* Left shelf: the lidded box holds "all", the four compartments hold the categories. */
@@ -905,6 +916,9 @@ html:lang(zh-CN) {
   .tool-desk-note strong { font-size: 1.15em; line-height: 1.25; }
   .tool-desk-note-no { color: #8d6a43; letter-spacing: 0.12em; }
   .tool-desk-note-hint { margin-top: auto; color: #75634f; }
+}
+@media (min-width: 1024px) and (min-aspect-ratio: 5/4) and (prefers-color-scheme: dark) {
+  :root:not(.light) .tool-desk { background-color: var(--tool-desk-edge-night); }
 }
 
 .dark .scene-day.scene-adaptive {
