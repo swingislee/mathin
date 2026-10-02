@@ -10,7 +10,7 @@ import { parseToolScene, freezeToolScene } from "@/features/tools/scenes/contrac
 import { toolCoursewareContractsForSurface } from "@/features/tools/scenes/registry";
 import { createClassroomToolState, parseClassroomToolState, type ClassroomToolUpdate } from "@/features/tools/courseware/tool-classroom";
 import { toolSceneOriginHash } from "@/features/tools/scenes/classroom-envelope";
-import { constructionMeasurements, constructionObject, constructionObjects } from "@/features/tools/plane-construction/model";
+import { constructionArea, constructionMeasurements, constructionObject, constructionObjects } from "@/features/tools/plane-construction/model";
 import { createPerimeterState, perimeterInvariantHandle, perimeterRectangle } from "@/features/tools/plane-perimeter/model";
 import { createRelationsState, relationModel, setRelationFlag } from "@/features/tools/plane-relations/model";
 import { createInteriorState, interiorModel, toggleInterior } from "@/features/tools/plane-relations/interior-model";
@@ -143,6 +143,84 @@ describe("new material actions in the shared planar workbench", () => {
     const endpoint = changed.mock.calls[0][0]; expect(endpoint.motion).toBeNull(); expect(endpoint.past).toHaveLength(1);
     expect(interiorModel(endpoint.current)!.point.x).toBeCloseTo(at.x + 25, 8);
     await act(async () => { acknowledge!(); }); await render({ toolId: "plane-area-relations", initial, classroom: { state: endpoint, onChange: changed } });
+    expect(current()).toEqual(endpoint.current); await tick(2000); expect(current()).toEqual(endpoint.current); expect(changed).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps split, remainder and separation results within the existing v3 save and classroom contract", () => {
+    const definition = planarScene("18-interior"), initial = toggleInterior(definition.create());
+    const prepared = parseToolScene({ toolId: "plane-area-relations", contentVersion: "plane-area-relations-lesson-v3", payload: { title: "Common and remaining parts", initial } });
+    const frozen = freezeToolScene(prepared), saved = JSON.stringify(frozen);
+    vi.stubGlobal("crypto", { getRandomValues: crypto.getRandomValues.bind(crypto) });
+    for (const id of ["relations-split-common", "relations-separate-common", "relations-keep-wings"]) {
+      const action = definition.operations!.flatMap((operation) => operation.actions ?? []).find((entry) => entry.id === id)!;
+      const result = action.run(initial, { selected: `object.${initial.params.active}` });
+      const snapshot = planarCommit(planarSnapshot(initial), initial, result, action.duration ? { id, duration: action.duration, now: 100 } : undefined);
+      expect(planarSnapshotForTool("plane-area-relations", "plane-area-relations-lesson-v3").safeParse(snapshot).success).toBe(true);
+      expect(snapshot.past).toEqual([initial]);
+      expect(() => parseToolScene({ toolId: "plane-area-relations", contentVersion: "plane-area-relations-lesson-v3", payload: { title: "Result", initial: result } })).not.toThrow();
+      const event = createClassroomToolState("page", "doc", "instance", { toolId: "plane-area-relations", contentVersion: "plane-area-relations-lesson-v3", state: snapshot }, toolSceneOriginHash(frozen.payload));
+      expect(parseClassroomToolState(JSON.parse(JSON.stringify(event)))).toEqual(event);
+      if (snapshot.motion) {
+        expect(snapshot.motion.id).toMatch(/^[a-f0-9-]{36}$/);
+        expect(planarFrame(JSON.parse(JSON.stringify(snapshot)), definition, 500)).toEqual(planarFrame(snapshot, definition, 500));
+        expect(planarFrame(snapshot, definition, 2000)).toEqual(result);
+      }
+    }
+    expect(JSON.stringify(frozen)).toBe(saved);
+  });
+
+  it("selects and moves a real split piece, then restores the whole source with shared history", async () => {
+    const initial = toggleInterior(createInteriorState()), id = initial.params.active;
+    await render({ toolId: "plane-area-relations", initial }); await select(id);
+    await act(async () => button("内点与两翼").click());
+    await act(async () => button("拆成共同片与两翼").click());
+    const split = current()!, common = constructionObject(split)!;
+    expect(constructionObjects(split)).toHaveLength(3); expect(constructionObject(split, id)).toBeNull();
+    expect(shape(common.id).getAttribute("aria-pressed")).toBe("true"); expect(container.querySelector("[data-interior-point]")).toBeNull();
+    await pointer(shape(common.id), "pointerdown", common.center.x, common.center.y);
+    await pointer(stage(), "pointermove", common.center.x + 40, common.center.y + 30);
+    await pointer(stage(), "pointerup", common.center.x + 40, common.center.y + 30);
+    expect(constructionObject(current()!)!.center).toEqual({ x: common.center.x + 40, y: common.center.y + 30 });
+    constructionObjects(split).slice(1).forEach((piece) => expect(constructionObject(current()!, piece.id)).toEqual(piece));
+    await act(async () => button("撤销").click()); expect(current()).toEqual(split);
+    await act(async () => button("撤销").click()); expect(current()).toEqual(initial);
+    await act(async () => button("只保留两翼余片").click()); expect(constructionObjects(current()!)).toHaveLength(2);
+    expect(constructionObjects(current()!).reduce((sum, piece) => sum + constructionArea(piece.vertices), 0)).toBeCloseTo(interiorModel(initial)!.area * (1 - interiorModel(initial)!.v), 7);
+    await act(async () => button("恢复备好的起点").click()); expect(current()).toEqual(initial);
+    await render({ toolId: "plane-area-relations", initial, readOnly: true });
+    expect(button("内点与两翼").disabled).toBe(true); expect(button("移开共同片").disabled).toBe(true);
+    await act(async () => button("只保留两翼余片").click()); expect(current()).toEqual(initial);
+  });
+
+  it("pauses and continues a rigid common-piece separation with conserved area and one undo", async () => {
+    const initial = toggleInterior(createInteriorState()), id = initial.params.active, total = interiorModel(initial)!.area;
+    await render({ toolId: "plane-area-relations", initial }); await select(id);
+    await act(async () => button("内点与两翼").click()); await act(async () => button("移开共同片").click());
+    expect(current()).toBeNull(); await tick(500); await act(async () => button("暂停过程").click());
+    const paused = current()!, common = constructionObject(paused)!;
+    expect(constructionObjects(paused)).toHaveLength(3);
+    expect(constructionObjects(paused).reduce((sum, piece) => sum + constructionArea(piece.vertices), 0)).toBeCloseTo(total, 7);
+    expect(() => parseToolScene({ toolId: "plane-area-relations", contentVersion: "plane-area-relations-lesson-v3", payload: { title: "Paused pieces", initial: paused } })).not.toThrow();
+    await act(async () => button("继续过程").click()); await tick(901);
+    const completed = current()!;
+    expect(constructionObject(completed)!.center.y).toBeGreaterThan(common.center.y);
+    expect(constructionObject(completed)!.vertices).toEqual(common.vertices);
+    constructionObjects(paused).slice(1).forEach((piece) => expect(constructionObject(completed, piece.id)).toEqual(piece));
+    expect(container.textContent).not.toContain("当前几何无法保存");
+    await act(async () => button("撤销").click()); expect(current()).toEqual(initial);
+  });
+
+  it("publishes one separation endpoint and the acknowledged classroom display keeps its original time anchor", async () => {
+    const initial = toggleInterior(createInteriorState()), snapshot = planarSnapshot(initial);
+    let acknowledge: (() => void) | undefined;
+    const changed = vi.fn<(_: PlanarSnapshot) => Promise<void>>(() => new Promise((resolve) => { acknowledge = resolve; }));
+    await render({ toolId: "plane-area-relations", initial, classroom: { state: snapshot, onChange: changed } }); await select(initial.params.active);
+    await act(async () => button("内点与两翼").click()); await act(async () => button("移开共同片").click());
+    expect(changed).toHaveBeenCalledTimes(1);
+    const endpoint = changed.mock.calls[0][0]; expect(endpoint.past).toEqual([initial]);
+    expect(endpoint.motion?.actionId).toBe("relations-separate-common"); expect(constructionObjects(endpoint.current)).toHaveLength(3);
+    await tick(1600); await act(async () => { acknowledge!(); });
+    await render({ toolId: "plane-area-relations", initial, classroom: { state: endpoint, onChange: changed } });
     expect(current()).toEqual(endpoint.current); await tick(2000); expect(current()).toEqual(endpoint.current); expect(changed).toHaveBeenCalledTimes(1);
   });
 

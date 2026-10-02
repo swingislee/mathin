@@ -4,7 +4,7 @@ import type { PlanarAction, PlanarSceneDefinition } from "../planar-kit/types";
 import { constructionArea, constructionObjects, parseConstructionTarget } from "../plane-construction/model";
 import { relationFlag } from "./model";
 import { planeRelationsScene } from "./scenes";
-import { applyInteriorBase, copyInteriorParts, createInteriorState, dragInterior, interiorModel, setInteriorField, tapInterior, toggleInterior } from "./interior-model";
+import { applyInteriorBase, copyInteriorParts, createInteriorState, dragInterior, interiorModel, interpolateInteriorSeparation, setInteriorField, splitInteriorMaterial, tapInterior, toggleInterior } from "./interior-model";
 import { INTERIOR_SCENE_ID, interiorBaseState } from "./interior-validation";
 
 const t = (zh: string, en: string) => ({ zh, en });
@@ -26,7 +26,7 @@ const unavailable = (state: PlanarState) => !interiorModel(state) || !relationFl
 
 export const planeInteriorScene: PlanarSceneDefinition = {
   ...planeRelationsScene, id: INTERIOR_SCENE_ID,
-  description: t("在自己的三角形内添加 P，拖动 P 和底边分点 D，比较四个分区与两翼面积；可以保持或解除顶点、P、D 共线。换底保持 P 原位；极靠边时保留原底，可先把 P 移回内部再换底。原有底、高、对角线和中点材料继续保留。", "Add P inside your own triangle and move P and base division D to compare four regions and the two wings. Keep or release apex–P–D collinearity. Changing the base preserves P; if it is too close to an edge, move P inward before changing the base. Existing base, altitude, diagonal and midpoint tools remain."),
+  description: t("在自己的三角形内添加 P，拖动 P 和底边分点 D，比较四个分区与两翼面积；可以保持或解除顶点、P、D 共线。底边与 P 围成共同片，可把整张材料拆开、移开共同片或只保留两翼，撤销可恢复整片。换底保持 P 原位；极靠边时保留原底，可先把 P 移回内部再换底。原有底、高、对角线和中点材料继续保留。", "Add P inside your triangle and move P and base division D to compare four regions and the two wings. Keep or release apex–P–D collinearity. The base and P enclose the common triangle: split the paper, move that triangle aside, or keep only the wings; undo restores the whole paper. Changing the base preserves P; if it is too close to an edge, move P inward first. Existing base, altitude, diagonal and midpoint tools remain."),
   create: createInteriorState, setField: setInteriorField,
   setFlag: planeRelationsScene.setFlag ? (state, key, value) => applyInteriorBase(state, (base) => planeRelationsScene.setFlag!(base, key, value)) : undefined,
   actions: planeRelationsScene.actions?.map(wrapAction),
@@ -50,6 +50,13 @@ export const planeInteriorScene: PlanarSceneDefinition = {
         { id: "relations-interior-point", icon: "vertex", label: t("显示内点与四个分区", "Show the interior point and four regions"),
           active: (state) => relationFlag(state, "interior"), disabled: (state) => !interiorModel(state), run: toggleInterior },
         copyAction,
+        { id: "relations-split-common", icon: "cut", label: t("拆成共同片与两翼", "Split the common triangle and wings"),
+          disabled: (state) => splitInteriorMaterial(state, "pieces") === state, run: (state) => splitInteriorMaterial(state, "pieces") },
+        { id: "relations-separate-common", icon: "separate", label: t("移开共同片", "Move the common triangle aside"), duration: 1400,
+          disabled: (state) => splitInteriorMaterial(state, "separate") === state, run: (state) => splitInteriorMaterial(state, "separate"),
+          interpolate: interpolateInteriorSeparation },
+        { id: "relations-keep-wings", icon: "remove", label: t("只保留两翼余片", "Keep only the two wings"),
+          disabled: (state) => splitInteriorMaterial(state, "wings") === state, run: (state) => splitInteriorMaterial(state, "wings") },
       ] },
     ...planeRelationsScene.operations!.map((operation) => ({ ...operation, actions: operation.actions?.map(wrapAction) })),
   ],

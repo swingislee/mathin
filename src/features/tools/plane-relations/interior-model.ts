@@ -1,7 +1,7 @@
 import type { PlanarPoint as Point, PlanarState } from "../planar-kit/contract";
-import { constructionObject, constructionObjects } from "../plane-construction/model";
+import { constructionObject, constructionObjects, removeConstruction } from "../plane-construction/model";
 import { between, crossAt } from "./geometry";
-import { createRelationGeometry, createRelationsState, dragRelation, relationFlag, relationModel, setRelationField, tapRelation } from "./model";
+import { createRelationGeometry, createRelationsState, dragRelation, relationFlag, relationModel, setRelationField, syncRelations, tapRelation } from "./model";
 import { INTERIOR_FLAGS, INTERIOR_PARAMS, INTERIOR_SCENE_ID, interiorBaseState, isValidInteriorState } from "./interior-validation";
 
 const clamp = (value: number) => Math.max(0.05, Math.min(0.95, value));
@@ -113,4 +113,47 @@ export function copyInteriorParts(state: PlanarState): PlanarState {
     if (next === before) return state;
   }
   return { ...next, flags: { ...next.flags, snap: state.flags.snap } };
+}
+
+export type InteriorSplit = "pieces" | "separate" | "wings";
+
+function commonOffset(model: NonNullable<ReturnType<typeof interiorModel>>): Point {
+  const sign = Math.sign(crossAt(model.a, model.b, model.c));
+  const distance = model.heights[0].amount * model.v + 36;
+  return { x: sign * (model.b.y - model.a.y) / model.length * distance, y: -sign * (model.b.x - model.a.x) / model.length * distance };
+}
+
+/** 当前整片换成真实余片；先释放原片容量，全部材料合法后才交给共用历史。 */
+export function splitInteriorMaterial(state: PlanarState, mode: InteriorSplit): PlanarState {
+  const model = interiorModel(state);
+  if (!model || !relationFlag(state, "interior")) return state;
+  const pieces = mode === "wings" ? model.parts.slice(2) : [model.common, ...model.parts.slice(2)];
+  const firstId = state.params.nextId;
+  let next = applyInteriorBase(state, (base) => syncRelations(base, removeConstruction(base)));
+  if (next === state) return state;
+  next = { ...next, flags: { ...next.flags, snap: false } };
+  for (const points of pieces) {
+    const added = applyInteriorBase(next, (base) => createRelationGeometry(base, "polygon", points) ?? base);
+    if (added === next) return state;
+    next = added;
+  }
+  if (mode === "separate") {
+    const offset = commonOffset(model), center = next.points[`center.${firstId}`];
+    next = { ...next, points: { ...next.points, [`center.${firstId}`]: { x: center.x + offset.x, y: center.y + offset.y } } };
+  }
+  const candidate = { ...next, params: { ...next.params, active: firstId }, flags: { ...next.flags, snap: state.flags.snap } };
+  return isValidInteriorState(candidate) ? candidate : state;
+}
+
+/** 只平移已经拆出的共同片；两翼原位，过程帧与终点都使用同一份准确几何。 */
+export function interpolateInteriorSeparation(from: PlanarState, to: PlanarState, progress: number): PlanarState {
+  if (!Number.isFinite(progress) || progress <= 0) return from;
+  if (progress >= 1 || from === to) return to;
+  const model = interiorModel(from), common = constructionObject(to, from.params.nextId);
+  if (!model || !common) return from;
+  const offset = commonOffset(model);
+  const candidate = { ...to, points: { ...to.points, [`center.${common.id}`]: {
+    x: common.center.x - offset.x * (1 - progress), y: common.center.y - offset.y * (1 - progress),
+  } } };
+  return isValidInteriorState(candidate) ? candidate : from;
 }
