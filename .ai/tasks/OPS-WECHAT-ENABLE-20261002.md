@@ -19,3 +19,10 @@
 - [2026-10-02 生产启用记录](../../docs/evidence/r1/wechat-oauth-activation-20261002.md)。
 - 原应用、Auth 镜像以及独立通过记录没有变化，复用兼容证据；本次没有源码发布或数据库迁移。
 - 已部署可验收：`https://mathin.club/zh/login`、`https://mathin.club/en/login`。二维码机器检查通过；真实扫码、原账号绑定及再次微信登录由用户验收，正式 Gate 状态保持。
+
+## 2026-10-02 绑定错误修复
+
+- 用户反馈：已登录账号点击绑定后直接出现 `wechatError=expired`，尚未显示二维码。
+- 脱敏生产时间线显示 state 已在绑定 POST 返回前生成，随后浏览器 GET 授权端读不到 flow。Next 当前实现会在 Server Action 同源跳转时先发 RSC GET，消费一次性 flow 后再由浏览器导航。
+- 本增量在授权端延后 RSC 预读的消费，保留正式导航中的原会话、PKCE、单次消费和冲突校验；补充定向回归及真实 Next Action HTTP 检查。
+- 发布候选从当前生产 `aaed7e54` 只追加已验证补丁，沿用本次微信启用与错误修复范围，保留旧 release 回退；不发布 main 的其他开发功能。

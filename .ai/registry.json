@@ -7,20 +7,22 @@
       "title": "开启生产微信登录",
       "agent": "codex",
       "threadId": null,
-      "status": "integrated",
+      "status": "in_progress",
       "checkout": "worktree",
       "branch": "codex/wechat-login-enable",
       "card": ".ai/tasks/OPS-WECHAT-ENABLE-20261002.md",
       "writePaths": [
         ".ai/tasks/OPS-WECHAT-ENABLE-20261002.md",
         "docs/evidence/r1/wechat-oauth-activation-20261002.md",
-        "docs/runbooks/wechat-website-oauth.md"
+        "docs/runbooks/wechat-website-oauth.md",
+        "src/features/wechat/broker.ts",
+        "tests/wechat-broker.test.ts"
       ],
       "sharedPaths": [
         ".ai/registry.json"
       ],
-      "checkpoint": "0e8edb9b973a8b99033e7312c3fec3abdc8195d1",
-      "next": "用户修正回调域后，生产应用与 provider 已重新开启；中英文真实授权链均生成微信二维码，服务健康、日志脱敏及业务计数核对通过。已部署待真实扫码、原账号绑定与再次登录验收，正式 Gate 保持。"
+      "checkpoint": "8db0b651e31876681d96369da8286c6dcf85e0fd",
+      "next": "用户报告已登录账号点击绑定即 expired；已定位 Next Server Action 同源预读提前消费 flow。修复授权端预读处理，验证真实 Action 传输和单次消费后，在本次生产微信任务内发布最小补丁供重试。"
     },
     {
       "id": "DEV-PLANE-REMAINDERS-20261002-INTEGRATION",
