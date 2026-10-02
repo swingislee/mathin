@@ -13,17 +13,19 @@ export const PLANAR_TOOLS = [
   { id: "plane-folding", version: "plane-folding-lesson-v2", scenes: ["32-create"], zh: "折纸与剪纸", en: "Paper folding and cutting" },
   { id: "plane-tiling", version: "plane-tiling-lesson-v2", scenes: ["36-create"], zh: "镶嵌与空隙", en: "Tiling and gaps" },
   { id: "plane-patterns", version: "plane-patterns-lesson-v2", scenes: ["47-create"], zh: "图形计数", en: "Counting shapes" },
-  { id: "plane-matchsticks", version: "plane-matchsticks-lesson-v1", scenes: ["51"], zh: "火柴棒拼摆", en: "Matchstick arrangements" },
+  { id: "plane-matchsticks", version: "plane-matchsticks-lesson-v2", scenes: ["51-create"], zh: "火柴棒拼摆", en: "Matchstick arrangements" },
   { id: "plane-graph-path", version: "plane-graph-path-lesson-v2", scenes: ["52-create"], zh: "一笔画与多笔画", en: "Tracing connected paths" },
   { id: "plane-grid-path", version: "plane-grid-path-lesson-v1", scenes: ["53"], zh: "格点路线", en: "Lattice routes" },
   { id: "plane-reflection-path", version: "plane-reflection-path-lesson-v1", scenes: ["54"], zh: "反射最短路", en: "Reflection and shortest routes" },
-  { id: "plane-covering", version: "plane-covering-lesson-v1", scenes: ["57"], zh: "棋盘染色与覆盖", en: "Board colouring and covering" },
+  { id: "plane-covering", version: "plane-covering-lesson-v2", scenes: ["57-create"], zh: "棋盘染色与覆盖", en: "Board colouring and covering" },
   { id: "plane-rolling", version: "plane-rolling-lesson-v1", scenes: ["55"], zh: "圆的内外滚动", en: "Rolling circles" },
   { id: "plane-clock", version: "plane-clock-lesson-v1", scenes: ["60"], zh: "钟面与夹角", en: "Clock hands and angles" },
   { id: "plane-tangram", version: "plane-tangram-lesson-v1", scenes: ["02"], zh: "七巧板拼摆", en: "Tangram construction" },
 ] as const;
 /** 历史备课和发布副本继续按原身份打开，新建入口不再提供合并工具。 */
 export const LEGACY_PLANAR_TOOLS = [
+  { id: "plane-matchsticks", version: "plane-matchsticks-lesson-v1", scenes: ["51"], zh: "火柴棒拼摆（旧版）", en: "Matchstick arrangements (legacy)" },
+  { id: "plane-covering", version: "plane-covering-lesson-v1", scenes: ["57"], zh: "棋盘染色与覆盖（旧版）", en: "Board colouring and covering (legacy)" },
   { id: "plane-perimeter", version: "plane-perimeter-lesson-v1", scenes: ["10", "12", "13", "43"], zh: "周长探究（旧版）", en: "Exploring perimeter (legacy)" },
   { id: "plane-measurement", version: "plane-measurement-lesson-v1", scenes: ["11"], zh: "面积单位（旧版）", en: "Area units (legacy)" },
   { id: "plane-geoboard", version: "plane-geoboard-lesson-v1", scenes: ["34", "56"], zh: "钉板与格点面积（旧版）", en: "Geoboards and lattice area (legacy)" },
