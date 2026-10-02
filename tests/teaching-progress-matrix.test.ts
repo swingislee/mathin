@@ -18,6 +18,9 @@ describe("teaching matrix projection", () => {
     for (const statuses of [[], ["missing"], ["published", "missing"], ["published", "draft"], ["withdrawn"], ["revised"]]) expect(learningProgress(statuses).state).toBe("incomplete");
     expect(learningProgress(["review", "published"]).state).toBe("review");
     expect(learningProgress(["published", "published"]).state).toBe("archived");
+    expect(learningProgress([]).reason).toBe("missing");
+    expect(learningProgress(["published", "missing"]).reason).toBe("missing");
+    expect(learningProgress(["withdrawn"]).reason).toBe("unpublished");
   });
   it("preserves the explicit all-terms scope when linking to progress", () => {
     expect(classWorkHref("progress", { term: "all", teacher: "teacher-b" })).toContain("term=all");
