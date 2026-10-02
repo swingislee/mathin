@@ -11,11 +11,18 @@ import { GAME_SUIT_GLYPH, type GameParadeCard, type GameParadeLabels } from "./p
 const VISIBLE_SIDE = 3;
 /** 横向拖动超过该距离才算换牌，避免点击时的轻微抖动。 */
 const SWIPE_THRESHOLD = 48;
+/** 指针离中线超过牌阵半宽的该比例后开始向两侧让牌。 */
+const EDGE_START = 0.45;
+
+function resetTilt(card: HTMLElement) {
+  for (const name of ["--tilt-x", "--tilt-y", "--glare-x", "--glare-y"]) card.style.removeProperty(name);
+}
 
 /**
  * 扑克侍卫牌阵：每个游戏是一张站在红毯上的扑克牌，沿弧线首尾相接排开。
  * 正中一张正对玩家并可翻面看战绩；两侧的牌侧转、压暗，点一下即走到中间。
  * 每张牌的位置只写入 `--d`（相对正中的偏移），排布、侧转与翻面由 globals.css 的 `.game-parade` 维护。
+ * 鼠标悬浮另写 `--lean`（靠边让牌）与 `--tilt-*` / `--glare-*`（当前牌倾斜与反光），触屏不启用。
  */
 export function GameParade({ cards, labels, signedIn }: {
   cards: GameParadeCard[];
@@ -25,6 +32,7 @@ export function GameParade({ cards, labels, signedIn }: {
   const [active, setActive] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const swipe = useRef<{ x: number; moved: boolean } | null>(null);
+  const tilted = useRef<HTMLElement | null>(null);
   const count = cards.length;
 
   const go = (index: number) => {
@@ -44,6 +52,33 @@ export function GameParade({ cards, labels, signedIn }: {
     else if (event.key === "ArrowRight") go(active + 1);
     else return;
     event.preventDefault();
+  };
+  // 鼠标悬浮：当前牌跟随指针倾斜并移动反光；指针靠近牌阵两侧时整列牌向该侧让出下一张。
+  // 直接写 CSS 变量，不触发重渲染。
+  const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === "touch") return;
+    const track = event.currentTarget;
+    const bounds = track.getBoundingClientRect();
+    const x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
+    const lean = Math.sign(x) * Math.min(1, Math.max(0, (Math.abs(x) - EDGE_START) / (1 - EDGE_START)));
+    track.style.setProperty("--lean", lean.toFixed(3));
+
+    const card = event.target instanceof Element ? event.target.closest<HTMLElement>(".game-card[data-active]") : null;
+    if (tilted.current && tilted.current !== card) resetTilt(tilted.current);
+    tilted.current = card;
+    if (!card) return;
+    const rect = card.getBoundingClientRect();
+    const px = (event.clientX - rect.left) / rect.width;
+    const py = (event.clientY - rect.top) / rect.height;
+    card.style.setProperty("--tilt-x", `${((0.5 - py) * 12).toFixed(2)}deg`);
+    card.style.setProperty("--tilt-y", `${((px - 0.5) * 16).toFixed(2)}deg`);
+    card.style.setProperty("--glare-x", `${(px * 100).toFixed(1)}%`);
+    card.style.setProperty("--glare-y", `${(py * 100).toFixed(1)}%`);
+  };
+  const onPointerLeave = (event: PointerEvent<HTMLDivElement>) => {
+    event.currentTarget.style.setProperty("--lean", "0");
+    if (tilted.current) resetTilt(tilted.current);
+    tilted.current = null;
   };
   const onPointerDown = (event: PointerEvent) => {
     if (event.button === 0) swipe.current = { x: event.clientX, moved: false };
@@ -71,6 +106,8 @@ export function GameParade({ cards, labels, signedIn }: {
     <section className="game-parade" aria-label={labels.region} aria-roledescription="carousel" onKeyDown={onKeyDown}>
       <div
         className="game-parade-track"
+        onPointerMove={onPointerMove}
+        onPointerLeave={onPointerLeave}
         onPointerDown={onPointerDown}
         onPointerUp={onPointerUp}
         onPointerCancel={() => (swipe.current = null)}
@@ -95,53 +132,56 @@ export function GameParade({ cards, labels, signedIn }: {
               data-flipped={(isActive && flipped) || undefined}
               style={{ "--d": d, "--abs": abs, zIndex: 20 - abs } as CSSProperties}
             >
-              <div className="game-card-inner" inert={!isActive}>
-                <div className="game-card-face game-card-front" inert={isActive && flipped}>
-                  <span className="game-card-corner" aria-hidden>
-                    {String(card.no).padStart(2, "0")}
-                    <span>{glyph}</span>
-                  </span>
-                  <span className="game-card-corner game-card-corner-end" aria-hidden>
-                    {String(card.no).padStart(2, "0")}
-                    <span>{glyph}</span>
-                  </span>
-                  <span className="game-card-medallion">{card.icon}</span>
-                  <span className="game-card-suit">{glyph} {card.suitLabel}</span>
-                  <h2 className="game-card-name font-display">{card.name}</h2>
-                  <p className="game-card-desc">{card.desc}</p>
-                  <span className="game-card-crowns" role="img" aria-label={`${labels.difficultyLabel} ${card.crowns}/3`}>
-                    {Array.from({ length: 3 }, (_, i) => (
-                      <Crown key={i} fill={i < card.crowns ? "currentColor" : "none"} data-lit={i < card.crowns || undefined} />
-                    ))}
-                  </span>
-                  <div className="game-card-actions">
-                    <Link href={`/games/${card.id}`} className={cn(buttonVariants({ size: "sm" }), "game-card-start")}>{labels.start}</Link>
-                    <button type="button" className="game-card-flip" onClick={() => setFlipped(true)}>
-                      <RotateCcw aria-hidden />
-                      {labels.flip}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="game-card-face game-card-back" inert={!(isActive && flipped)}>
-                  <div className="game-card-back-panel">
-                    <span className="game-card-back-eyebrow">{labels.records}</span>
-                    <strong className="game-card-back-name font-display">{card.name}</strong>
-                    <dl className="game-card-records">
-                      {card.records.map((record) => (
-                        <div key={record.difficulty} data-cleared={record.best !== null || undefined}>
-                          <dt>{record.label}</dt>
-                          <dd>{record.best ?? labels.noRecord}</dd>
-                        </div>
+              <div className="game-card-tilt">
+                <div className="game-card-inner" inert={!isActive}>
+                  <div className="game-card-face game-card-front" inert={isActive && flipped}>
+                    <span className="game-card-glare" aria-hidden />
+                    <span className="game-card-corner" aria-hidden>
+                      {String(card.no).padStart(2, "0")}
+                      <span>{glyph}</span>
+                    </span>
+                    <span className="game-card-corner game-card-corner-end" aria-hidden>
+                      {String(card.no).padStart(2, "0")}
+                      <span>{glyph}</span>
+                    </span>
+                    <span className="game-card-medallion">{card.icon}</span>
+                    <span className="game-card-suit">{glyph} {card.suitLabel}</span>
+                    <h2 className="game-card-name font-display">{card.name}</h2>
+                    <p className="game-card-desc">{card.desc}</p>
+                    <span className="game-card-crowns" role="img" aria-label={`${labels.difficultyLabel} ${card.crowns}/3`}>
+                      {Array.from({ length: 3 }, (_, i) => (
+                        <Crown key={i} fill={i < card.crowns ? "currentColor" : "none"} data-lit={i < card.crowns || undefined} />
                       ))}
-                    </dl>
-                    {signedIn ? null : <p className="game-card-login">{labels.loginToRank}</p>}
+                    </span>
                     <div className="game-card-actions">
-                      <Link href={`/games/${card.id}/ranks`} className={cn(buttonVariants({ size: "sm" }), "game-card-start")}>{labels.ranks}</Link>
-                      <button type="button" className="game-card-flip" onClick={() => setFlipped(false)}>
+                      <Link href={`/games/${card.id}`} className={cn(buttonVariants({ size: "sm" }), "game-card-start")}>{labels.start}</Link>
+                      <button type="button" className="game-card-flip" onClick={() => setFlipped(true)}>
                         <RotateCcw aria-hidden />
-                        {labels.flipBack}
+                        {labels.flip}
                       </button>
+                    </div>
+                  </div>
+
+                  <div className="game-card-face game-card-back" inert={!(isActive && flipped)}>
+                    <div className="game-card-back-panel">
+                      <span className="game-card-back-eyebrow">{labels.records}</span>
+                      <strong className="game-card-back-name font-display">{card.name}</strong>
+                      <dl className="game-card-records">
+                        {card.records.map((record) => (
+                          <div key={record.difficulty} data-cleared={record.best !== null || undefined}>
+                            <dt>{record.label}</dt>
+                            <dd>{record.best ?? labels.noRecord}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                      {signedIn ? null : <p className="game-card-login">{labels.loginToRank}</p>}
+                      <div className="game-card-actions">
+                        <Link href={`/games/${card.id}/ranks`} className={cn(buttonVariants({ size: "sm" }), "game-card-start")}>{labels.ranks}</Link>
+                        <button type="button" className="game-card-flip" onClick={() => setFlipped(false)}>
+                          <RotateCcw aria-hidden />
+                          {labels.flipBack}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
