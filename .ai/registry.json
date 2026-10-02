@@ -25,10 +25,10 @@
       "checkout": "worktree",
       "branch": "codex/teaching-matrix-codex",
       "card": ".ai/tasks/DEV-TEACHING-MATRIX-20261002.md",
-      "writePaths": ["src/features/school/teaching-workbench/TeachingProgressMatrix.tsx", "src/features/school/teaching-workbench/TeachingProgressPage.tsx", "src/features/school/teaching-workbench/teaching-progress-matrix-contract.ts", "src/features/school/teaching-workbench/teaching-progress-matrix-read.ts", "src/features/school/work-entry-contract.ts", "src/app/[locale]/dashboard/classes/page.tsx", "tests/teaching-progress-matrix.test.ts", "tests/teaching-progress-matrix-read.test.ts", ".ai/tasks/DEV-TEACHING-MATRIX-20261002.md", ".ai/handoffs/DEV-TEACHING-MATRIX-20261002-codex-01.md"],
+      "writePaths": ["src/features/school/teaching-workbench/TeachingProgressMatrix.tsx", "src/features/school/teaching-workbench/TeachingProgressPage.tsx", "src/features/school/teaching-workbench/teaching-progress-matrix-contract.ts", "src/features/school/teaching-workbench/teaching-progress-matrix-read.ts", "src/lib/database.types.ts", "supabase/migrations/20261002160000_teaching_progress_facts.sql", "supabase/tests/teaching_progress_facts.sql", "src/features/school/work-entry-contract.ts", "src/app/[locale]/dashboard/classes/page.tsx", "tests/teaching-progress-matrix.test.ts", "tests/teaching-progress-matrix-read.test.ts", ".ai/tasks/DEV-TEACHING-MATRIX-20261002.md", ".ai/handoffs/DEV-TEACHING-MATRIX-20261002-codex-01.md"],
       "sharedPaths": [],
       "checkpoint": null,
-      "next": "沿用班级表前四列、当前主题色和真实课次状态，实现全部老师同表及原位课程详情。"
+      "next": "独立复核发现逐表 RLS 空集与合并沟通任务不适用；增加只读状态 RPC 与本机事务检查，沿用原班级和实际任课范围。"
     },
     {
       "id": "DEV-PLANE-COVER-MATCH-20261002-INTEGRATION",
