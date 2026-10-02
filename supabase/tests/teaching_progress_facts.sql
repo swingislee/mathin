@@ -14,6 +14,8 @@ begin
   select id into term from public.school_terms order by is_current desc,id limit 1;
   if manager is null or teacher is null or outsider is null or term is null then raise exception 'PROGRESS_FIXED_IDENTITIES_REQUIRED'; end if;
   if has_function_privilege('anon','public.get_teaching_progress_facts(uuid[])','execute') then raise exception 'PROGRESS_ANON_EXECUTE'; end if;
+  if not has_column_privilege('authenticated','public.classrooms','term_id','select') then raise exception 'PROGRESS_TERM_READ_MISSING'; end if;
+  if has_column_privilege('anon','public.classrooms','term_id','select') then raise exception 'PROGRESS_ANON_TERM_READ'; end if;
   perform set_config('request.jwt.claim.sub',manager::text,true);
   insert into public.classrooms(id,owner_id,name,invite_code,term_id,purpose) values
     (c1,manager,'Progress assertion A',c1::text,term,'production'),(c2,manager,'Progress assertion B',c2::text,term,'production');
