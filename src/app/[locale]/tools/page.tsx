@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { ArrowUpRight } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { SiteHeader } from "@/components/site-header";
-import { ToolDesk, type ToolDeskItem, type ToolDeskShelfOption } from "@/features/tools/desk/ToolDesk";
+import { ToolDesk, type ToolDeskShelfOption } from "@/features/tools/desk/ToolDesk";
 import { TOOL_SHELVES, toolShelf } from "@/features/tools/desk/shelves";
 import { tools } from "@/features/tools/registry";
 import { toolThumbs } from "@/features/tools/thumbs";
+import { Link } from "@/i18n/navigation";
 import { buildMetadata } from "@/lib/seo";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
@@ -21,15 +23,13 @@ export default async function ToolsPage({ params }: { params: Promise<{ locale: 
   const nav = await getTranslations("nav");
 
   // 按格架自上而下排序，同层保留 registry 顺序。
-  const items: ToolDeskItem[] = tools
+  const items = tools
     .map(({ id, no, category, grades: [from, to] }) => ({
       id,
       no,
       shelf: toolShelf({ id, category }),
       name: t(`items.${id}.name`),
-      desc: t(`items.${id}.desc`),
       grades: t("desk.grades", { from, to }),
-      thumb: toolThumbs[id],
     }))
     .sort((a, b) => TOOL_SHELVES.indexOf(a.shelf) - TOOL_SHELVES.indexOf(b.shelf));
   const shelves: ToolDeskShelfOption[] = [
@@ -51,7 +51,7 @@ export default async function ToolsPage({ params }: { params: Promise<{ locale: 
         </div>
         <ToolDesk
           shelves={shelves}
-          items={items}
+          items={items.map(({ id, no, name, grades }) => ({ id, no, name, grades }))}
           shelfLabel={t("desk.shelfLabel")}
           noteHint={t("desk.noteHint")}
           header={
@@ -63,7 +63,30 @@ export default async function ToolsPage({ params }: { params: Promise<{ locale: 
               </div>
             </header>
           }
-        />
+        >
+          {items.map(({ id, no, shelf, name }, index) => (
+            <Link
+              key={id}
+              href={`/tools/${id}`}
+              data-tool-id={id}
+              data-shelf={shelf}
+              className="tool-desk-card scene-enter group"
+              style={{ animationDelay: `${Math.min(index, 10) * 45}ms` }}
+            >
+              <div className="relative aspect-[5/3] overflow-hidden rounded-lg border border-[#c9a87b] bg-[#f5ead5]">
+                {toolThumbs[id]}
+                <span className="absolute right-1.5 top-1 text-[0.65rem] tracking-[0.12em] text-[#8d6a43]">Nº {String(no).padStart(2, "0")}</span>
+              </div>
+              <div className="flex items-start gap-1.5 px-0.5 pt-2">
+                <div className="min-w-0 flex-1">
+                  <h2 className="tool-desk-card-name font-display">{name}</h2>
+                  <p className="tool-desk-card-desc line-clamp-2">{t(`items.${id}.desc`)}</p>
+                </div>
+                <ArrowUpRight size={15} className="mt-0.5 shrink-0 text-[#866647] transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden />
+              </div>
+            </Link>
+          ))}
+        </ToolDesk>
       </main>
     </div>
   );

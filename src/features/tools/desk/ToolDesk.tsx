@@ -1,18 +1,14 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { ArrowUpRight } from "lucide-react";
-import { Link } from "@/i18n/navigation";
+import { useState, type FocusEvent, type PointerEvent, type ReactNode } from "react";
 import type { ToolShelf } from "./shelves";
 
-export interface ToolDeskItem {
+/** 便签只需要文字信息；卡片与缩略图由服务端渲染后作为 children 传入。 */
+export interface ToolDeskNoteItem {
   id: string;
   no: number;
-  shelf: ToolShelf;
   name: string;
-  desc: string;
   grades: string;
-  thumb: ReactNode;
 }
 
 export interface ToolDeskShelfOption {
@@ -21,20 +17,24 @@ export interface ToolDeskShelfOption {
   count: string;
 }
 
+function pointedToolId(target: EventTarget) {
+  return target instanceof Element ? target.closest<HTMLElement>("[data-tool-id]")?.dataset.toolId ?? null : null;
+}
+
 /**
  * 工具台目录：左侧木格架选分类，中间纸面列出工具，右侧夹子便签显示指向中的工具。
- * 台面坐标与窄屏排列由 globals.css 的 `.tool-desk` 维护。
+ * 卡片带 `data-tool-id` / `data-shelf`，分类筛选与台面坐标由 globals.css 的 `.tool-desk` 维护。
  */
-export function ToolDesk({ header, shelves, items, shelfLabel, noteHint }: {
+export function ToolDesk({ header, shelves, items, shelfLabel, noteHint, children }: {
   header: ReactNode;
   shelves: ToolDeskShelfOption[];
-  items: ToolDeskItem[];
+  items: ToolDeskNoteItem[];
   shelfLabel: string;
   noteHint: string;
+  children: ReactNode;
 }) {
   const [shelf, setShelf] = useState<ToolDeskShelfOption["id"]>("all");
   const [pointedId, setPointedId] = useState<string | null>(null);
-  const visible = shelf === "all" ? items : items.filter((item) => item.shelf === shelf);
   const pointed = items.find((item) => item.id === pointedId);
   const current = shelves.find((option) => option.id === shelf);
 
@@ -65,30 +65,17 @@ export function ToolDesk({ header, shelves, items, shelfLabel, noteHint }: {
 
       <section className="tool-desk-paper" aria-label={current?.label}>
         {header}
-        <div key={shelf} className="tool-desk-list" onPointerLeave={() => setPointedId(null)}>
-          {visible.map((item, index) => (
-            <Link
-              key={item.id}
-              href={`/tools/${item.id}`}
-              className="tool-desk-card scene-enter group"
-              style={{ animationDelay: `${Math.min(index, 10) * 45}ms` }}
-              onPointerEnter={() => setPointedId(item.id)}
-              onFocus={() => setPointedId(item.id)}
-              onBlur={() => setPointedId(null)}
-            >
-              <div className="relative aspect-[5/3] overflow-hidden rounded-lg border border-[#c9a87b] bg-[#f5ead5]">
-                {item.thumb}
-                <span className="absolute right-1.5 top-1 text-[0.65rem] tracking-[0.12em] text-[#8d6a43]">Nº {String(item.no).padStart(2, "0")}</span>
-              </div>
-              <div className="flex items-start gap-1.5 px-0.5 pt-2">
-                <div className="min-w-0 flex-1">
-                  <h2 className="tool-desk-card-name font-display">{item.name}</h2>
-                  <p className="tool-desk-card-desc line-clamp-2">{item.desc}</p>
-                </div>
-                <ArrowUpRight size={15} className="mt-0.5 shrink-0 text-[#866647] transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden />
-              </div>
-            </Link>
-          ))}
+        {/* 切换分类时重挂列表，让卡片重新播放入场。 */}
+        <div
+          key={shelf}
+          className="tool-desk-list"
+          data-shelf={shelf}
+          onPointerOver={(event: PointerEvent) => setPointedId(pointedToolId(event.target))}
+          onPointerLeave={() => setPointedId(null)}
+          onFocus={(event: FocusEvent) => setPointedId(pointedToolId(event.target))}
+          onBlur={() => setPointedId(null)}
+        >
+          {children}
         </div>
       </section>
 
