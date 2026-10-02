@@ -7,28 +7,28 @@
       "title": "三角形内点与两翼开发交付",
       "agent": "codex",
       "threadId": "019ff05e-1218-7400-b966-4556b2c57173",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-PLANE-INTERIOR-20261002-INTEGRATION.md",
       "writePaths": [".ai/tasks/DEV-PLANE-INTERIOR-20261002-INTEGRATION.md"],
       "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
-      "checkpoint": "865b2b7f381dee39145b6f0755369d6f23e154fe",
-      "next": "前一班级批次已登记 integrated 且主工作区无未提交跟踪内容；本批串行接收内点 v3、精确生成类型和本机校验迁移，开发端待人工验收。"
+      "checkpoint": "fff5205f5615df10c201b1078527316806087b8e",
+      "next": "内点 v3、精确生成类型和交接已集成；独立复核、定向机器检查、本机保存校验与中英文开发页启动通过。开发端已交付，待人工视觉与教学手感验收；生产与正式 Gate 未改。"
     },
     {
       "id": "DEV-PLANE-INTERIOR-20261002",
       "title": "三角形内点与两翼开放材料",
       "agent": "codex",
       "threadId": "019ff05e-1218-7400-b966-4556b2c57173",
-      "status": "in_review",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/plane-interior-codex",
       "card": ".ai/tasks/DEV-PLANE-INTERIOR-20261002.md",
       "writePaths": ["src/features/tools/plane-relations/interior-model.ts", "src/features/tools/plane-relations/interior-validation.ts", "src/features/tools/plane-relations/interior-scene.tsx", "src/features/tools/plane-relations/README.md", "src/features/tools/planar-kit/catalog.ts", "src/features/tools/planar-kit/contract.ts", "src/features/tools/planar-kit/scene-registry.ts", "src/features/tools/planar-kit/README.md", "src/features/tools/spatial-interaction/control-inventory.ts", "src/lib/database.types.ts", "supabase/migrations/20261002170000_tool_plane_interior.sql", "supabase/tests/tool_plane_interior.sql", "tests/plane-interior.test.ts", "tests/fixtures/plane-interior-cases.ts", "tests/plane-invariants-integration.test.ts", "tests/planar-deep-integration.test.ts", "tests/planar-tool-contract.test.ts", "docs/evidence/tools-plane-interior-20261002.md", ".ai/tasks/DEV-PLANE-INTERIOR-20261002.md", ".ai/handoffs/DEV-PLANE-INTERIOR-20261002-codex-01.md", ".ai/handoffs/DEV-PLANE-INTERIOR-20261002-review-01.md"],
       "sharedPaths": [],
-      "checkpoint": "a3488cae27ac2447656c277f61ace90724bb6944",
-      "next": "内点、四区、两翼、共线与真实复制已实现；定向检查和 SQL 回滚检查通过，换底保点修复待最终只读复核。本机正式安装及生成类型在当前串行窗口完成。"
+      "checkpoint": "445bedeb191c634608ff9f2f9f89d12115c203b6",
+      "next": "main 已接收内点、四区、两翼、共线及四片复制；换底保点与跨材料归属复核问题已关闭。本机校验与匹配 ledger 已安装，旧版合同保留；开发端待人工验收。"
     },
     {
       "id": "DEV-PLANE-INVARIANTS-20261002-INTEGRATION",
