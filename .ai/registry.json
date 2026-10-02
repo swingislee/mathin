@@ -21,14 +21,14 @@
       "title": "可变棋盘与火柴棒材料生命周期",
       "agent": "codex",
       "threadId": "019ff05e-1218-7400-b966-4556b2c57173",
-      "status": "in_progress",
+      "status": "in_review",
       "checkout": "worktree",
       "branch": "codex/plane-cover-match-codex",
       "card": ".ai/tasks/DEV-PLANE-COVER-MATCH-20261002.md",
       "writePaths": ["src/features/tools/plane-covering/", "src/features/tools/plane-matchsticks/", "src/features/tools/planar-kit/catalog.ts", "src/features/tools/planar-kit/contract.ts", "src/features/tools/planar-kit/scene-registry.ts", "src/features/tools/planar-kit/README.md", "src/features/tools/spatial-interaction/control-inventory.ts", "supabase/migrations/20261002130000_tool_plane_cover_match.sql", "supabase/tests/tool_plane_cover_match.sql", "src/lib/database.types.ts", "tests/plane-covering.test.ts", "tests/plane-matchsticks.test.ts", "tests/plane-cover-match-integration.test.ts", "tests/fixtures/plane-cover-match-cases.ts", "docs/evidence/tools-plane-cover-match-20261002.md", ".ai/tasks/DEV-PLANE-COVER-MATCH-20261002.md", ".ai/handoffs/DEV-PLANE-COVER-MATCH-20261002-codex-01.md", ".ai/handoffs/DEV-PLANE-COVER-MATCH-20261002-review-01.md"],
       "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
-      "checkpoint": "96148bd5146f984a79c49cb1c1ad5d354fca29eb",
-      "next": "实现可变行列／挖空棋盘及骨牌生命周期、等长火柴棒增删复制／连续旋转与自选留影；新建 v2、保留 v1。共享版本合同完成后独立只读复核。"
+      "checkpoint": "ef6a5367c1acab9403bd1c468a916518d96e9c6e",
+      "next": "两个 v2 及定向检查、本机回滚对照通过；cover_match_contract_review 正在独立只读复核。随后安装已检本机校验、合入实际生成类型并交付统一开发入口；人工验收待完成。"
     },
     {
       "id": "DEV-TOOLBAR-CLEARANCE-20261002-INTEGRATION",
