@@ -815,23 +815,23 @@ html:lang(zh-CN) {
 }
 
 @media (min-width: 1024px) and (min-aspect-ratio: 5/4) {
-  .tool-desk { display: grid; place-items: center; height: 100dvh; min-height: 0; padding: 1rem 0 0; overflow: hidden; background-color: var(--tool-desk-edge-day); }
+  .tool-desk { display: grid; place-items: center; height: 100dvh; min-height: 0; padding: 3.75rem 0 0; overflow: hidden; background-color: var(--tool-desk-edge-day); }
   .dark .tool-desk { background-color: var(--tool-desk-edge-night); }
   .tool-desk-backdrop { display: none; }
   /*
    * The art leaves ~13% empty paper above the desk. The stage shows only the crop window
-   * x 40–1640, y 50–941 (1600×891); with the 1rem top padding the desk clears the site header.
+   * x 40–1640, y 115–941 (1600×826); the top padding keeps one header row above the desk.
    * The frame keeps full-art coordinates, so every percentage below stays measured on 1672×941.
    */
   .tool-desk-stage {
-    width: min(100vw, calc((100dvh - 1rem) * 1600 / 891));
+    width: min(100vw, calc((100dvh - 3.75rem) * 1600 / 826));
     max-width: none;
-    aspect-ratio: 1600 / 891;
+    aspect-ratio: 1600 / 826;
     margin: 0;
     overflow: clip;
     container-type: size;
   }
-  .tool-desk-frame { display: block; position: absolute; left: -2.5%; top: -5.612%; width: 104.5%; height: 105.612%; }
+  .tool-desk-frame { display: block; position: absolute; left: -2.5%; top: -13.923%; width: 104.5%; height: 113.923%; }
   .tool-desk-art { display: block; position: absolute; inset: 0; pointer-events: none; }
 
   /* Left shelf: the lidded box holds "all", the four compartments hold the categories. */
