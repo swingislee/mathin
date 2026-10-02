@@ -491,11 +491,17 @@
         "number": "数与运算",
         "plane": "平面图形",
         "solid": "立体空间",
-        "motion": "运动与测量"
+        "motion": "运动与测量",
+        "draft": "草稿"
       },
       "count": "{count} 件",
       "grades": "{from}–{to} 年级",
-      "noteHint": "指向工具，便签显示编号与年级"
+      "noteHint": "指向工具，便签显示编号与年级",
+      "draftStamp": "草稿",
+      "moveToDraft": "移入草稿",
+      "publish": "转为正式",
+      "moveFailed": "分组调整失败，请刷新后重试。",
+      "manageHint": "拖动卡片到草稿格或分类格调整分组"
     },
     "items": {
       "fraction-line": {

@@ -491,11 +491,17 @@
         "number": "Number",
         "plane": "Plane shapes",
         "solid": "Solids & space",
-        "motion": "Motion & measure"
+        "motion": "Motion & measure",
+        "draft": "Drafts"
       },
       "count": "{count, plural, one {# tool} other {# tools}}",
       "grades": "Grades {from}–{to}",
-      "noteHint": "Point at a tool for its number and grades"
+      "noteHint": "Point at a tool for its number and grades",
+      "draftStamp": "Draft",
+      "moveToDraft": "Move to drafts",
+      "publish": "Publish",
+      "moveFailed": "Couldn't move the tool. Refresh and try again.",
+      "manageHint": "Drag cards onto the drafts or a category to regroup"
     },
     "items": {
       "fraction-line": {
