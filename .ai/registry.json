@@ -7,28 +7,28 @@
       "title": "共同部分与两翼余片开发交付",
       "agent": "codex",
       "threadId": "019ff05e-1218-7400-b966-4556b2c57173",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-PLANE-REMAINDERS-20261002-INTEGRATION.md",
       "writePaths": [".ai/tasks/DEV-PLANE-REMAINDERS-20261002-INTEGRATION.md"],
       "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
-      "checkpoint": "5a5dd0a587c81ee7d0e5ebace86b7b15381c0d16",
-      "next": "在已完成的内点批次后串行接收共同片拆分、移开与两翼余片；保留现有 v3 字段和保存合同，交付开发入口供人工验收。"
+      "checkpoint": "81d681b23f6747db395695219bade1c0341e89c1",
+      "next": "共同片拆分、移开过程及保留两翼已集成；定向机器检查和中英文工具路由 HTTP 检查通过。开发端已交付，待人工视觉与教学手感验收；数据库、生产和正式 Gate 未改。"
     },
     {
       "id": "DEV-PLANE-REMAINDERS-20261002",
       "title": "共底小三角形与真实两翼余片",
       "agent": "codex",
       "threadId": "019ff05e-1218-7400-b966-4556b2c57173",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/plane-remainders-codex",
       "card": ".ai/tasks/DEV-PLANE-REMAINDERS-20261002.md",
       "writePaths": ["src/features/tools/plane-relations/interior-model.ts", "src/features/tools/plane-relations/interior-scene.tsx", "src/features/tools/plane-relations/README.md", "src/features/tools/planar-kit/README.md", "src/features/tools/spatial-interaction/control-inventory.ts", "tests/plane-remainders.test.ts", "tests/plane-invariants-integration.test.ts", "docs/evidence/tools-plane-remainders-20261002.md", ".ai/tasks/DEV-PLANE-REMAINDERS-20261002.md", ".ai/handoffs/DEV-PLANE-REMAINDERS-20261002-codex-01.md"],
       "sharedPaths": [],
-      "checkpoint": "5a5dd0a587c81ee7d0e5ebace86b7b15381c0d16",
-      "next": "实现三角形原位拆成共底小三角形与两翼、共同片移开过程及只保留余片；使用既有准确几何，补守恒、容量、历史和课堂回放定向检查。"
+      "checkpoint": "cfdf24293a413a49c1e7b268980a7095d46ef00a",
+      "next": "main 已接收三片拆分、共同片刚体外移和两翼余片；面积守恒、容量、选中归属、历史与课堂回放检查通过。沿用 v3 几何，无持久合同或数据库变更，待人工验收。"
     },
     {
       "id": "DEV-PLANE-INTERIOR-20261002-INTEGRATION",
