@@ -135,6 +135,35 @@ it('switches only roster cell contents while retaining the original table, class
   expect(calls.move).not.toHaveBeenCalled(); expect(calls.change).not.toHaveBeenCalled();
 });
 
+it('rereads progress after a server refresh without remounting the roster or requiring a dirty draft', async () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  let learningState = 'review';
+  const fetchProgress = vi.fn<typeof fetch>(async () => new Response(JSON.stringify({ classrooms: [], sessions: [{
+    id: id(80), classroomId: id(3), title: '第一讲', lectureNo: 1, scheduledAt: null, duration: 60,
+    startedAt: null, endedAt: null, teacherOverride: null,
+    progress: Object.fromEntries(TEACHING_PROGRESS_ITEMS.map(kind => [kind, { state: kind === 'learning' ? learningState : 'review', reason: 'pending' }])),
+  }] }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+  vi.stubGlobal('fetch', fetchProgress);
+  const element = document.createElement('div'); document.body.append(element); const root = createRoot(element);
+  cleanup = async () => { await act(async () => root.unmount()); element.remove(); };
+  const render = async (now: number) => act(async () => root.render(createElement(NextIntlClientProvider, {
+    locale: 'zh', messages, timeZone: 'Asia/Shanghai',
+  }, createElement(EnrollmentPlacementWorkbench, {
+      initialBoard: board, canCreateClass: false, workspace: 'classes', canTeach: true, workspaceQuery: { view: 'progress' }, now,
+  }))));
+  const serverNow = Date.parse('2026-10-02T00:00:00Z');
+  await render(serverNow);
+  const table = element.querySelector('[data-class-roster-table]');
+  expect(element.querySelector('[data-teaching-session]')?.getAttribute('aria-label')).toContain('学情：完成待审核');
+  await render(serverNow);
+  expect(fetchProgress).toHaveBeenCalledOnce();
+  learningState = 'incomplete';
+  await render(serverNow + 1);
+  expect(fetchProgress).toHaveBeenCalledTimes(2);
+  expect(element.querySelector('[data-class-roster-table]')).toBe(table);
+  expect(element.querySelector('[data-teaching-session]')?.getAttribute('aria-label')).toContain('学情：未开始');
+});
+
 it.each([undefined, id(6)])('switches between the mobile roster and lessons, including a focused student: %s', async focusStudentId => {
   const element = await mountRoster(true, false, 'grade', focusStudentId);
   const row = element.querySelector<HTMLElement>(`[data-placement-classroom="${id(3)}"]`)!;

@@ -140,4 +140,14 @@ describe("teaching matrix reads", () => {
       content: [{ type: "heading", props: { level: 1 }, content: "课后反思" }, { type: "paragraph", content: "下次增加实物演示" }] });
     expect((await getTeachingProgressMatrix(options)).sessions[0].progress.reflection).toMatchObject({ state: "review", reason: "reflection_unreviewed" });
   });
+
+  it("keeps directly published learning pending review until an actual approval is recorded", async () => {
+    const source = { ...fact("s1"), learningResults: [{ status: "published", completedAt: "2026-10-01T02:00:00Z", reviewedAt: null as string | null, requiresReview: false }] };
+    client.rpc.mockResolvedValue({ data: [source], error: null });
+    expect((await getTeachingProgressMatrix(options)).sessions[0].progress.learning).toMatchObject({ state: "review", reason: "published" });
+    source.taskTiming.find(row => row.kind === "reviews")!.dueAt = "2026-10-01T01:30:00Z";
+    expect((await getTeachingProgressMatrix(options)).sessions[0].progress.learning.state).toBe("overdue_review");
+    source.learningResults[0].reviewedAt = "2026-10-02T00:00:00Z";
+    expect((await getTeachingProgressMatrix(options)).sessions[0].progress.learning.state).toBe("overdue_archived");
+  });
 });

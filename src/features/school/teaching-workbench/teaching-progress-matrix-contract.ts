@@ -73,11 +73,12 @@ export function classFeedbackProgress(outcome?: string | null): TeachingProgress
     : { state: "incomplete", reason: outcome === "follow_up" ? "follow_up" : outcome === "not_needed" ? "skipped" : "missing" };
 }
 
-/** 每个名单学生都有已发布成果才归档；旧 reviews 任务的 done 不代表全班覆盖。 */
-export function learningProgress(statuses: readonly string[], reviewed = true): TeachingProgress {
+/** 全名单成果发布后完成，真实审核记录决定已审核；旧 reviews 任务不代表逐生覆盖。 */
+export function learningProgress(statuses: readonly string[], reviewed = false): TeachingProgress {
   if (!statuses.length || statuses.includes("missing")) return { state: "incomplete", reason: "missing" };
   if (statuses.some(status => !["published", "review"].includes(status))) return { state: "incomplete", reason: "unpublished" };
-  return statuses.includes("review") || !reviewed ? { state: "review", reason: "pending" } : { state: "archived", reason: "published" };
+  if (statuses.includes("review")) return { state: "review", reason: "pending" };
+  return { state: reviewed ? "archived" : "review", reason: "published" };
 }
 
 function blockText(value: unknown): string {

@@ -100,7 +100,7 @@ export async function getTeachingProgressMatrix({ userId, canViewTeam, canReadCo
       const learningCompletedAt = fact?.learningResults.length && fact.learningResults.every(row => row.completedAt)
         ? fact.learningResults.map(row => row.completedAt!).sort((a, b) => Date.parse(b) - Date.parse(a))[0] : null;
       const learning = fact ? postwork(learningProgress(fact.learningResults.map(row => row.status), fact.learningResults.every(row =>
-        row.status === "published" && (!row.requiresReview || Boolean(row.reviewedAt)))), "reviews", learningCompletedAt) : unavailable();
+        row.status === "published" && Boolean(row.reviewedAt))), "reviews", learningCompletedAt) : unavailable();
       const planReview = reviewMap.get(session.id)?.find(row => row.artifact_kind === "lesson_plan");
       let reflection = plans.error || reviews.error ? unavailable() : reflectionProgress(session.ended_at, plan);
       const submittedAfterClass = Boolean(session.ended_at && planReview && Date.parse(planReview.submitted_at) >= Date.parse(session.ended_at));

@@ -135,7 +135,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   const progressMode = contentView === "progress";
   const progressM = teachingMatrixMessages(locale);
   const [progressAttempt, setProgressAttempt] = useState(0);
-  const [progressResult, setProgressResult] = useState<{ attempt: number; data: TeachingProgressMatrixData | null } | null>(null);
+  const [progressResult, setProgressResult] = useState<{ attempt: number; revision: number | undefined; data: TeachingProgressMatrixData | null } | null>(null);
   const [progressLesson, setProgressLesson] = useState<string | null>(focusSessionId ?? null);
   const draftRef = useRef(false);
   const onSessionDirtyChange = useCallback((value: boolean) => {
@@ -143,14 +143,15 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
     draftRef.current = value; setHasSessionDraft(value);
   }, []);
   useEffect(() => {
-    if (!progressMode || progressResult?.attempt === progressAttempt) return;
+    // 发布、撤回等无草稿操作会刷新服务器时间；据此重读当前记录。
+    if (!progressMode || progressResult?.attempt === progressAttempt && progressResult.revision === now) return;
     const controller = new AbortController();
     void readClassSessionResource<TeachingProgressMatrixData>(`/${locale}/dashboard/classes/progress-facts`, {}, controller.signal)
-      .then(data => { if (!controller.signal.aborted) setProgressResult({ attempt: progressAttempt, data }); })
-      .catch(() => { if (!controller.signal.aborted) setProgressResult({ attempt: progressAttempt, data: null }); });
+      .then(data => { if (!controller.signal.aborted) setProgressResult({ attempt: progressAttempt, revision: now, data }); })
+      .catch(() => { if (!controller.signal.aborted) setProgressResult({ attempt: progressAttempt, revision: now, data: null }); });
     return () => controller.abort();
-  }, [progressMode, progressAttempt, progressResult?.attempt, locale]);
-  const progressLoading = progressResult?.attempt !== progressAttempt;
+  }, [progressMode, progressAttempt, progressResult?.attempt, progressResult?.revision, locale, now]);
+  const progressLoading = progressResult?.attempt !== progressAttempt || progressResult.revision !== now;
   const progressSessions = progressResult?.data?.sessions ?? [];
   const sessionM = classSessionMessages(locale);
   const canChangeSession = () => { if (hasSessionDraft) toast.info(sessionM.draft); return !hasSessionDraft; };

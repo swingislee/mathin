@@ -36,10 +36,11 @@ describe("teaching matrix projection", () => {
     expect(timedTeachingProgress({ state: "unavailable", reason: "forbidden" }, { dueAt: "2026-10-01T00:00:00Z", now }).state).toBe("unavailable");
   });
 
-  it("archives learning only when every roster student has a published result", () => {
+  it("requires both complete published coverage and review evidence for approved learning", () => {
     for (const statuses of [[], ["missing"], ["published", "missing"], ["published", "draft"], ["withdrawn"], ["revised"]]) expect(learningProgress(statuses).state).toBe("incomplete");
     expect(learningProgress(["review", "published"]).state).toBe("review");
-    expect(learningProgress(["published", "published"]).state).toBe("archived");
+    expect(learningProgress(["published", "published"])).toEqual({ state: "review", reason: "published" });
+    expect(learningProgress(["published", "published"], true).state).toBe("archived");
     expect(learningProgress([]).reason).toBe("missing");
     expect(learningProgress(["published", "missing"]).reason).toBe("missing");
     expect(learningProgress(["withdrawn"]).reason).toBe("unpublished");
