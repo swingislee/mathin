@@ -3,6 +3,26 @@
   "coordinatorTaskId": "DEV-TEACHING-MATRIX-20261002-INTEGRATION",
   "tasks": [
     {
+      "id": "OPS-WECHAT-ENABLE-20261002",
+      "title": "开启生产微信登录",
+      "agent": "codex",
+      "threadId": null,
+      "status": "blocked",
+      "checkout": "worktree",
+      "branch": "codex/wechat-login-enable",
+      "card": ".ai/tasks/OPS-WECHAT-ENABLE-20261002.md",
+      "writePaths": [
+        ".ai/tasks/OPS-WECHAT-ENABLE-20261002.md",
+        "docs/evidence/r1/wechat-oauth-activation-20261002.md",
+        "docs/runbooks/wechat-website-oauth.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": "2c7bf8d95c6264cda5e6d533c12b1a95062290a6",
+      "next": "生产配置及本站授权链已验证；微信平台返回 redirect_uri 参数错误，应用和 provider 入口已关闭。待用户确认网站应用授权回调域为 mathin.club 后，沿用本次授权复查二维码并重新开启入口。"
+    },
+    {
       "id": "DEV-PLANE-REMAINDERS-20261002-INTEGRATION",
       "title": "共同部分与两翼余片开发交付",
       "agent": "codex",
