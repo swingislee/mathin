@@ -101,6 +101,18 @@ describe("interior-point material geometry", () => {
       expect(tapInterior(state, `edge.${state.params.active}.2`)).toBe(state);
     }
   });
+  it("selects the touched material even when its requested base change is outside the legal range", () => {
+    const initial = createInteriorState(), first = initial.params.active;
+    let state = applyInteriorBase(initial, (base) => addRelationMaterial(base, "triangle"));
+    const second = state.params.active;
+    state = setInteriorField(setInteriorField(toggleInterior(state), "innerBase", 0.05), "innerHeight", 0.95);
+    const before = state, source = interiorModel(state)!;
+    state = tapInterior(state, `object.${first}`); expect(state.params.active).toBe(first);
+    const touched = tapInterior(state, `edge.${second}.1`); valid(touched);
+    expect(touched).toEqual(before); expect(interiorModel(touched)!.point).toEqual(source.point);
+    const removed = action("construction-remove").run(touched, context); valid(removed);
+    expect(constructionObject(removed, first)).not.toBeNull(); expect(constructionObject(removed, second)).toBeNull();
+  });
   it("copies four exact independent regions atomically, preserving the original and grid setting", () => {
     let state = toggleInterior(setInteriorField(createInteriorState(), "angle", 33));
     state = { ...state, flags: { ...state.flags, snap: true } };
