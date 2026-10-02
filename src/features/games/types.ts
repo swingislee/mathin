@@ -4,6 +4,9 @@ import type { ClassroomInputCapabilityProvider } from "@/features/classroom/inpu
 
 export type Difficulty = "easy" | "medium" | "hard";
 
+/** 游戏大厅扑克牌的花色，表示游戏类型：♠ 逻辑、♥ 数感、♦ 计算、♣ 策略。 */
+export type GameSuit = "spade" | "heart" | "diamond" | "club";
+
 export type SudokuHighlightTool = "cell" | "box" | "row" | "column" | "digit";
 
 export interface SudokuCellHighlightRegion {
@@ -87,6 +90,8 @@ export interface GameMeta {
   no: number;
   /** 游戏整体难度星级 1–3（国王星球用王冠呈现） */
   crowns: 1 | 2 | 3;
+  /** 游戏大厅牌面花色 */
+  suit: GameSuit;
   icon: LucideIcon;
   difficulties: readonly Difficulty[];
   /** Present only when the board implements the versioned classroom input provider contract. */

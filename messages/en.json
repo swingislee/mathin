@@ -372,6 +372,23 @@
   },
   "games": {
     "intro": "The royal arena: every game is a \"reasonable order\". Pick a crown and beat the clock.",
+    "parade": {
+      "label": "Game cards",
+      "slide": "game card",
+      "position": "Card {index} of {total}",
+      "prev": "Previous card",
+      "next": "Next card",
+      "flip": "My records",
+      "flipBack": "Card face",
+      "records": "Royal records",
+      "noRecord": "Not cleared",
+      "suits": {
+        "spade": "Logic",
+        "heart": "Number sense",
+        "diamond": "Arithmetic",
+        "club": "Strategy"
+      }
+    },
     "start": "Start",
     "restart": "Restart",
     "backToGames": "Game hall",

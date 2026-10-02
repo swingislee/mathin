@@ -372,6 +372,23 @@
   },
   "games": {
     "intro": "御前竞技场：每个游戏都是一道「合理的敕令」。挑一顶王冠，开始计时。",
+    "parade": {
+      "label": "游戏牌阵",
+      "slide": "游戏牌",
+      "position": "第 {index} 张，共 {total} 张",
+      "prev": "上一张",
+      "next": "下一张",
+      "flip": "翻看战绩",
+      "flipBack": "翻回牌面",
+      "records": "御前战绩",
+      "noRecord": "未通关",
+      "suits": {
+        "spade": "逻辑",
+        "heart": "数感",
+        "diamond": "计算",
+        "club": "策略"
+      }
+    },
     "start": "开始",
     "restart": "重开",
     "backToGames": "游戏大厅",

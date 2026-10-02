@@ -921,6 +921,255 @@ html:lang(zh-CN) {
   :root:not(.light) .tool-desk { background-color: var(--tool-desk-edge-night); }
 }
 
+/* 游戏大殿：扑克侍卫牌阵。每张牌只带 --d（相对正中的偏移）与 --abs，排布、侧转和翻面都在这里计算。 */
+.game-hall {
+  position: relative;
+  min-height: 100dvh;
+  overflow: clip;
+}
+.game-parade {
+  --card-w: min(66vw, 17rem, calc((100dvh - 24rem) * 0.714));
+  --step: calc(var(--card-w) * 0.86);
+  position: relative;
+  z-index: 10;
+  display: flex;
+  min-height: 100dvh;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 17rem 0 1.5rem;
+}
+@media (min-width: 768px) {
+  .game-parade {
+    --card-w: clamp(12rem, calc((100dvh - 19rem) * 0.68), 18rem);
+    --step: calc(var(--card-w) * 0.92);
+    padding: 13rem 0 4dvh;
+  }
+}
+.game-parade-track {
+  position: relative;
+  width: 100%;
+  height: calc(var(--card-w) * 1.4 + 1.5rem);
+  perspective: 1600px;
+  touch-action: pan-y;
+  user-select: none;
+}
+.game-card {
+  --suit: #2f2b3a;
+  position: absolute;
+  bottom: 1.5rem;
+  left: 50%;
+  width: var(--card-w);
+  aspect-ratio: 5 / 7;
+  container-type: inline-size;
+  perspective: 1400px;
+  transform: translateX(-50%) translateX(calc(var(--d) * var(--step))) translateZ(calc(var(--abs) * -8rem)) rotateY(calc(var(--d) * -14deg));
+  transition: transform 0.55s cubic-bezier(0.22, 0.8, 0.26, 1), opacity 0.3s, visibility 0.3s;
+}
+.game-card[data-suit="heart"],
+.game-card[data-suit="diamond"],
+.game-parade-pip[data-suit="heart"],
+.game-parade-pip[data-suit="diamond"] { --suit: #a8323e; }
+.game-card[data-far] { opacity: 0; visibility: hidden; }
+/* 落在红毯上的投影 */
+.game-card::before {
+  content: "";
+  position: absolute;
+  right: 6%;
+  bottom: -5%;
+  left: 6%;
+  z-index: -1;
+  height: 9%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(46 14 16 / 38%), transparent);
+}
+/* 侧位的牌逐张压暗，正中一张保持原色 */
+.game-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: 6cqw;
+  background: rgb(36 18 24 / calc(min(var(--abs), 3) * 0.16));
+  pointer-events: none;
+  transition: background 0.3s, opacity 0.2s;
+}
+.game-card:has(.game-card-pick:hover)::after { opacity: 0.45; }
+.game-card-inner {
+  position: relative;
+  height: 100%;
+  border-radius: 6cqw;
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+.game-card[data-flipped] .game-card-inner { transform: rotateY(180deg); }
+.game-card-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  border-radius: inherit;
+  text-align: center;
+  color: #44372d;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.game-card-front {
+  padding: 13cqw 9cqw 8cqw;
+  border: 1px solid #b98b50;
+  background: #fffaf0;
+  box-shadow:
+    inset 0 0 0 3cqw #fffaf0,
+    inset 0 0 0 calc(3cqw + 1px) #d4b27a,
+    0 1.2rem 2.4rem rgb(46 16 18 / 30%);
+}
+.game-card-corner {
+  position: absolute;
+  top: 4.5cqw;
+  left: 5.5cqw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--suit);
+  font-size: max(0.7rem, 6.5cqw);
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.game-card-corner > span { margin-top: 1cqw; font-size: max(0.7rem, 6cqw); }
+.game-card-corner-end { top: auto; right: 5.5cqw; bottom: 4.5cqw; left: auto; rotate: 180deg; }
+.game-card-medallion {
+  display: grid;
+  width: 30cqw;
+  flex: none;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px solid #c49c68;
+  border-radius: 50% 50% 46% 46%;
+  background: radial-gradient(circle at 50% 35%, #fbf0da, #efdcb8);
+  box-shadow: inset 0 0 0 2cqw #fbf3e2, inset 0 0 0 calc(2cqw + 1px) #d9bb88;
+  color: var(--suit);
+}
+.game-card-medallion svg { width: 13cqw; height: 13cqw; }
+.game-card-suit {
+  margin-top: 4cqw;
+  color: var(--suit);
+  font-size: max(0.68rem, 4.2cqw);
+  letter-spacing: 0.16em;
+}
+.game-card-name { margin-top: 1.5cqw; font-size: max(1.15rem, 9.5cqw); line-height: 1.2; }
+.game-card-desc {
+  display: -webkit-box;
+  margin-top: 2.5cqw;
+  overflow: hidden;
+  color: #746255;
+  font-size: max(0.75rem, 4.6cqw);
+  line-height: 1.55;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+.game-card-crowns { display: flex; margin-top: auto; padding-top: 3cqw; gap: 1.5cqw; color: #b58b37; }
+.game-card-crowns svg { width: max(0.75rem, 5.5cqw); height: max(0.75rem, 5.5cqw); opacity: 0.45; }
+.game-card-crowns svg[data-lit] { opacity: 1; }
+.game-card-actions { display: flex; margin-top: 4cqw; align-items: center; justify-content: center; gap: 3cqw; }
+.game-card-start {
+  border-radius: 999px;
+  background: #8b3841;
+  padding-inline: max(0.9rem, 6cqw);
+  color: #fff8e7;
+}
+.game-card-start:hover { background: #76303a; }
+.game-card-flip {
+  display: inline-flex;
+  align-items: center;
+  gap: 1.5cqw;
+  color: #756455;
+  font-size: max(0.72rem, 4.2cqw);
+  text-underline-offset: 3px;
+}
+.game-card-flip:hover { text-decoration: underline; }
+.game-card-flip svg { width: max(0.75rem, 4cqw); height: max(0.75rem, 4cqw); }
+.game-card-back {
+  padding: 7cqw;
+  border: 1px solid #6e2832;
+  background-color: #8b3841;
+  background-image:
+    repeating-linear-gradient(45deg, rgb(232 196 124 / 30%) 0 1px, transparent 1px 7cqw),
+    repeating-linear-gradient(-45deg, rgb(232 196 124 / 30%) 0 1px, transparent 1px 7cqw);
+  box-shadow: 0 1.2rem 2.4rem rgb(46 16 18 / 30%);
+  transform: rotateY(180deg);
+}
+.game-card-back-panel {
+  display: flex;
+  width: 100%;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  border: 1px solid #d4b27a;
+  border-radius: 4cqw;
+  background: rgb(255 249 235 / 95%);
+  padding: 7cqw 7cqw 6cqw;
+}
+.game-card-back-eyebrow { color: #8b3841; font-size: max(0.68rem, 4cqw); letter-spacing: 0.2em; }
+.game-card-back-name { margin-top: 1.5cqw; font-size: max(1.1rem, 8.5cqw); line-height: 1.2; }
+.game-card-records { display: grid; width: 100%; margin-top: 5cqw; gap: 2.5cqw; }
+.game-card-records > div {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px dashed #d8c09a;
+  padding-bottom: 2cqw;
+  font-size: max(0.8rem, 4.8cqw);
+}
+.game-card-records dd { color: #9d8a78; font-variant-numeric: tabular-nums; }
+.game-card-records [data-cleared] dd { color: #8b3841; font-weight: 600; }
+.game-card-login { margin-top: 3cqw; color: #8a7563; font-size: max(0.7rem, 3.8cqw); line-height: 1.5; }
+.game-card-back .game-card-actions { margin-top: auto; }
+.game-card-pick {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  border-radius: 6cqw;
+  cursor: pointer;
+}
+.game-parade-controls { display: flex; align-items: center; gap: 0.75rem; }
+.game-parade-arrow {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  border: 1px solid #c49c68;
+  border-radius: 999px;
+  background: rgb(255 249 235 / 88%);
+  color: #6b4a3a;
+}
+.game-parade-arrow:hover { background: #fff8e7; }
+.game-parade-arrow svg { width: 1.1rem; height: 1.1rem; }
+.game-parade-pips { display: flex; gap: 0.4rem; }
+.game-parade-pip {
+  --suit: #2f2b3a;
+  width: 1.6rem;
+  height: 2.2rem;
+  border: 1px solid #c9a87b;
+  border-radius: 0.3rem;
+  background: #fffaf0;
+  color: var(--suit);
+  font-size: 0.85rem;
+  transition: translate 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+.game-parade-pip[aria-current] {
+  border-color: #8b3841;
+  box-shadow: 0 0 0 2px rgb(139 56 65 / 25%);
+  translate: 0 -0.25rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .game-card,
+  .game-card-inner,
+  .game-parade-pip { transition: none; }
+}
+
 .dark .scene-day.scene-adaptive {
   color-scheme: dark;
   --paper: #191d2b;
