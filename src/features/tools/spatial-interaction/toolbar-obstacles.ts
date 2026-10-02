@@ -44,9 +44,11 @@ export function spatialSceneObstacles(scene: Object3D, camera: Camera, size: { w
 /** 范围限定在当前工作台；DOM 坐标统一换算成画布的屏幕像素。 */
 export function toolbarDomObstacles(scope: Element, toolbar: HTMLElement, origin: { left: number; top: number }, overlay?: Element): SpatialScreenRect[] {
   const candidates = new Set(scope.querySelectorAll(`${DOM_OBSTACLES}, ${SVG_CONTENT}`));
-  // drei Html 标签没有统一外壳；读取当前 Canvas 内实际显示的叶文本。
+  // drei Html 也承载含换行的标签和截面 SVG；按实际文字容器／图元取边界。
   overlay?.querySelectorAll("*").forEach((node) => {
-    if (node instanceof HTMLElement && !node.children.length && node.textContent?.trim()) candidates.add(node);
+    const text = node instanceof HTMLElement && [...node.childNodes].some((child) => child.nodeType === Node.TEXT_NODE && child.textContent?.trim());
+    const graphic = node.namespaceURI === "http://www.w3.org/2000/svg" && node.matches("path, rect, polygon, polyline, circle, ellipse, line, text, image");
+    if (text || graphic) candidates.add(node);
   });
   const result: SpatialScreenRect[] = [];
   for (const node of candidates) {
@@ -77,10 +79,13 @@ export function watchToolbarLayout(scope: Element, excluded: Element, refresh: (
   };
   observeContent();
   const mutation = new MutationObserver((records) => {
-    if (records.every((record) => excluded.contains(record.target))) return;
+    // 部分投影注解每帧重写相同属性；等值写入不产生新的 demand 帧。
+    const changed = records.some((record) => !excluded.contains(record.target) && (record.type !== "attributes"
+      || (record.target as Element).getAttribute(record.attributeName!) !== record.oldValue));
+    if (!changed) return;
     observeContent(); refresh();
   });
-  mutation.observe(scope, { subtree: true, childList: true, characterData: true, attributes: true });
+  mutation.observe(scope, { subtree: true, childList: true, characterData: true, attributes: true, attributeOldValue: true });
   document.fonts?.addEventListener("loadingdone", refresh);
   return () => { resize.disconnect(); mutation.disconnect(); document.fonts?.removeEventListener("loadingdone", refresh); };
 }

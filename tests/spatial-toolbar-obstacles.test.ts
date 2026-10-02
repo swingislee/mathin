@@ -84,4 +84,25 @@ describe("local DOM layout obstacles", () => {
     fonts.dispatchEvent(new Event("loadingdone"));
     expect(refresh).toHaveBeenCalledTimes(3);
   });
+  it("includes multiline solid readouts and projected section SVG without counting the full overlay", () => {
+    const { scope, toolbar, overlay } = stage();
+    overlay.innerHTML = '<span>Area 6<br/>Volume 4</span><svg><defs><path/></defs><polyline/><text>AB = 3</text></svg>';
+    rect(overlay, 0, 0, 800, 600);
+    overlay.querySelectorAll("span, polyline, text").forEach((node) => rect(node, 120, 140, 100, 40));
+    const obstacles = toolbarDomObstacles(scope, toolbar, { left: 0, top: 0 }, overlay);
+    expect(obstacles).toHaveLength(3);
+    expect(obstacles.every((item) => item.left === 116 && item.right === 224)).toBe(true);
+  });
+  it("does not sustain demand frames when section readouts rewrite unchanged attributes", async () => {
+    vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
+    const { scope, toolbar, overlay } = stage(), refresh = vi.fn();
+    overlay.innerHTML = '<svg><polyline points="0,0 10,10"/></svg>';
+    const line = overlay.querySelector("polyline")!, stop = watchToolbarLayout(scope, toolbar, refresh);
+    for (let frame = 0; frame < 5; frame++) { line.setAttribute("points", "0,0 10,10"); await Promise.resolve(); }
+    expect(refresh).not.toHaveBeenCalled();
+    line.setAttribute("points", "0,0 20,20"); await Promise.resolve();
+    expect(refresh).toHaveBeenCalledTimes(1);
+    line.setAttribute("points", "0,0 20,20"); await Promise.resolve();
+    expect(refresh).toHaveBeenCalledTimes(1); stop();
+  });
 });
