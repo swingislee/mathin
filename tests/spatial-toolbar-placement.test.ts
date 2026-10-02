@@ -60,4 +60,30 @@ describe("shared object toolbar screen-space clearance", () => {
     expect(after.right - after.left - 52).toBeCloseTo(2 * (before.right - before.left - 52));
     expect(spatialToolbarFootprint(unitCubeCorners([{ x: 0, y: 0, z: 20 }]), handles, c, size)).toBeNull();
   });
+  it("slides along the same side to leave a label readable", () => {
+    const target = { left: 220, top: 240, right: 480, bottom: 380 };
+    const bar = { width: 100, height: 44 }, label = { left: 365, top: 140, right: 460, bottom: 220 };
+    const position = spatialToolbarPlacement(target, size, bar, "top", [label])!;
+    expect(position.side).toBe("top");
+    expect(position.x).toBeLessThan(350);
+    expect(position.x + bar.width / 2 + 12).toBeLessThanOrEqual(label.left);
+    expect(position.x).toBeGreaterThanOrEqual(target.left);
+  });
+  it("switches sides for neighbouring models and collapses only if every side is blocked", () => {
+    const target = { left: 280, top: 260, right: 430, bottom: 360 };
+    const above = { left: 0, top: 0, right: 800, bottom: 245 };
+    expect(spatialToolbarPlacement(target, size, toolbar, "top", [above])!.side).toBe("left");
+    expect(spatialToolbarPlacement(target, size, toolbar, "top", [{ left: 0, top: 0, right: 800, bottom: 600 }])).toBeNull();
+    expect(spatialToolbarPlacement(target, size, { width: NaN, height: 44 })).toBeNull();
+  });
+  it("keeps every returned layout clear of models and panels across narrow/large stages", () => {
+    for (const width of [360, 800, 1200]) for (const height of [270, 600, 900]) {
+      const target = { left: width * .3, right: width * .5, top: height * .4, bottom: height * .6 };
+      const blockers = [{ left: width * .6, right: width, top: 70, bottom: height - 60 },
+        { left: width * .15, right: width * .45, top: height * .2, bottom: height * .3 }];
+      const p = spatialToolbarPlacement(target, { width, height }, toolbar, "top", blockers);
+      if (!p) continue;
+      for (const rect of [target, ...blockers]) expect(p.x + 112 <= rect.left || p.x - 112 >= rect.right || p.y + 27 <= rect.top || p.y - 27 >= rect.bottom).toBe(true);
+    }
+  });
 });

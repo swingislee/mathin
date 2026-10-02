@@ -26,8 +26,11 @@ beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   capture.mockClear();
   definition.contextActions = () => ({ bounds, items: [{ kind: "operation", id: "rotate" }, { kind: "action", id: "construction-duplicate" }] });
-  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
-  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({ x: 0, y: 0, left: 0, top: 0, right: 960, bottom: 720, width: 960, height: 720, toJSON: () => ({}) });
+  vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+    const stage = !!this.querySelector('svg[viewBox="0 0 960 720"]'), width = stage ? 960 : 0, height = stage ? 720 : 0;
+    return { x: 0, y: 0, left: 0, top: 0, right: width, bottom: height, width, height, toJSON: () => ({}) };
+  });
   vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(260);
   vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(44);
   Object.defineProperty(SVGSVGElement.prototype, "getScreenCTM", { configurable: true, value: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }) });
@@ -56,6 +59,20 @@ describe("shared planar object actions", () => {
   it("maps actual SVG scaling and letterboxing without changing mathematical coordinates", () => {
     expect(planarToolbarFootprint({ minX: 100, minY: 200, maxX: 300, maxY: 400 }, { a: 0.5, b: 0, c: 0, d: 0.5, e: 100, f: 50 }, { left: 20, top: 10 }))
       .toEqual({ left: 116, top: 126, right: 244, bottom: 254 });
+  });
+  it("repositions for visible text and hides/restores for a panel without clearing selection", async () => {
+    await render(); await selectShape();
+    const bar = container.querySelector<HTMLElement>("[data-planar-object-toolbar]")!, originalTop = bar.style.top;
+    const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    vi.spyOn(label, "getBoundingClientRect").mockReturnValue({ x: 0, y: 0, left: 0, top: 0, right: 960, bottom: 230, width: 960, height: 230, toJSON: () => ({}) });
+    await act(async () => container.querySelector("[data-spatial-toolbar-content]")!.append(label));
+    expect(bar.style.top).not.toBe(originalTop); expect(bar.style.visibility).toBe("visible");
+    const panel = document.createElement("aside"); panel.dataset.cubeCanvasPanel = "";
+    Object.defineProperty(panel, "getBoundingClientRect", { value: () => ({ x: 0, y: 0, left: 0, top: 0, right: 960, bottom: 720, width: 960, height: 720, toJSON: () => ({}) }) });
+    await act(async () => bar.parentElement!.append(panel));
+    expect(bar.style.visibility).toBe("hidden"); expect(context()).not.toBeNull();
+    await act(async () => panel.remove());
+    expect(bar.style.visibility).toBe("visible");
   });
   it("shares operations and undo with the sidebar, and blank/Escape clears only local selection", async () => {
     await render(); expect(context()).toBeNull();

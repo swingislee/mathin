@@ -209,7 +209,7 @@ function VoxelMaterialInstances({
     onFaceHover({ cell: { x: cell.x, y: cell.y, z: cell.z }, direction }, event.point);
   };
   return (
-    <instancedMesh ref={mesh} args={[undefined, undefined, cells.length]} onClick={select}
+    <instancedMesh ref={mesh} args={[undefined, undefined, cells.length]} userData={{ spatialToolbarObstacle: true }} onClick={select}
       onPointerMove={hover} onPointerOut={() => onFaceHover?.(null)}>
       <boxGeometry args={[VOXEL_SOLID_SIZE, VOXEL_SOLID_SIZE, VOXEL_SOLID_SIZE]} />
       <meshBasicMaterial color={color} toneMapped={false} />
@@ -379,7 +379,7 @@ function VoxelTranslucentCube({ cell, color, paint, readOnly, onFaceSelect, onFa
     const base = new THREE.Color(paint[direction] ?? color);
     return cell.emphasis ? base.lerp(new THREE.Color(cell.emphasis.color), cell.emphasis.faceOpacity) : base;
   }), [cell.emphasis, color, paint]);
-  return <mesh position={[cell.x, cell.y, cell.z]}
+  return <mesh position={[cell.x, cell.y, cell.z]} userData={{ spatialToolbarObstacle: true }}
     onClick={(event) => {
       if (readOnly || event.delta > 5) return;
       const direction = event.face && voxelFaceDirectionFromNormal(event.face.normal);

@@ -27,9 +27,10 @@ export function spatialToolbarFootprint(vertices: readonly VoxelCoordinate[], ha
 }
 
 /** 在对象外寻找完整空位。没有空位时收起快捷栏，保留工作台侧栏入口。 */
-export function spatialToolbarPlacement(footprint: SpatialScreenRect, size: { width: number; height: number }, toolbar: { width: number; height: number }, preferred: SpatialToolbarSide = "top"): SpatialToolbarPlacement | null {
+export function spatialToolbarPlacement(footprint: SpatialScreenRect, size: { width: number; height: number }, toolbar: { width: number; height: number }, preferred: SpatialToolbarSide = "top", obstacles: readonly SpatialScreenRect[] = []): SpatialToolbarPlacement | null {
   // 为顶部视角栏、右侧操作栏和底部拼块栏留出边界；竖屏底栏也使用相同余量。
   const area = { left: 8, top: 56, right: size.width - 56, bottom: size.height - 56 };
+  if (![...Object.values(footprint), size.width, size.height, toolbar.width, toolbar.height].every(Number.isFinite)) return null;
   if (toolbar.width <= 0 || toolbar.height <= 0 || toolbar.width > area.right - area.left || toolbar.height > area.bottom - area.top) return null;
   if (footprint.right < area.left || footprint.left > area.right || footprint.bottom < area.top || footprint.top > area.bottom) return null;
   const w = toolbar.width / 2, h = toolbar.height / 2;
@@ -42,9 +43,22 @@ export function spatialToolbarPlacement(footprint: SpatialScreenRect, size: { wi
   // 横向任务条优先留在对象两侧，避免首选侧放不下时盖住同列相邻对象。
   const order: readonly SpatialToolbarSide[] = preferred === "left" || preferred === "right"
     ? [preferred, preferred === "left" ? "right" : "left", "top", "bottom"] : [preferred, "top", "left", "right", "bottom"];
+  const blockers = obstacles.filter((rect) => Object.values(rect).every(Number.isFinite) && rect.right >= rect.left && rect.bottom >= rect.top);
+  const clear = (p: SpatialToolbarPlacement) => p.x - w >= area.left && p.x + w <= area.right && p.y - h >= area.top && p.y + h <= area.bottom
+    && blockers.every((rect) => p.x + w + GAP <= rect.left || p.x - w - GAP >= rect.right || p.y + h + GAP <= rect.top || p.y - h - GAP >= rect.bottom);
   for (const side of new Set(order)) {
     const p = candidates[side];
-    if (p.x - w >= area.left && p.x + w <= area.right && p.y - h >= area.top && p.y + h <= area.bottom) return p;
+    if (clear(p)) return p;
+    // 沿同一侧小幅错开文字或相邻材料；中心仍对着目标，不跳到舞台远端。
+    const horizontal = side === "top" || side === "bottom";
+    const min = horizontal ? Math.max(area.left + w, footprint.left) : Math.max(area.top + h, footprint.top);
+    const max = horizontal ? Math.min(area.right - w, footprint.right) : Math.min(area.bottom - h, footprint.bottom);
+    const shifts = [min, max, ...blockers.flatMap((rect) => horizontal ? [rect.left - GAP - w, rect.right + GAP + w] : [rect.top - GAP - h, rect.bottom + GAP + h])]
+      .filter((value) => value >= min && value <= max).sort((a, b) => Math.abs(a - (horizontal ? p.x : p.y)) - Math.abs(b - (horizontal ? p.x : p.y)));
+    for (const value of shifts) {
+      const shifted = { ...p, ...(horizontal ? { x: value } : { y: value }) };
+      if (clear(shifted)) return shifted;
+    }
   }
   return null;
 }

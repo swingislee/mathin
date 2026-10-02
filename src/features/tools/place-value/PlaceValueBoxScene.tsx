@@ -137,7 +137,7 @@ export function PlaceValueBoxScene({ snapshot, progress, contentsProgress, inter
   selectionActions?: ReactNode;
 }) {
   const sides: PlaceValueSide[] = snapshot.mode === "compare" ? ["left", "right"] : ["left"], m = placeValueMessages(locale);
-  return <group name="place-value-box-mapping">{sides.map((side) => {
+  return <group name="place-value-box-mapping" userData={{ spatialToolbarObstacle: true }}>{sides.map((side) => {
     const board = snapshot[side], parts = placeValueBoxPose(snapshot, side, progress, contentsProgress);
     const offset = placeValueOffset(snapshot.mode, side, board.places.length);
     const choice = selected && snapshot.selection?.side === side ? placeValueGroup(board, snapshot.selection.unit) : null;

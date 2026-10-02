@@ -49,7 +49,7 @@ export function SpatialSurfaceLabel({ text, position, rotation, height = .6 }: {
       texture.dispose();
     };
   }, [gl, height, invalidate, text]);
-  return <mesh ref={mesh} position={position} rotation={rotation} raycast={ignoreRaycast} name="spatial-surface-label" visible={false}>
+  return <mesh ref={mesh} position={position} rotation={rotation} raycast={ignoreRaycast} name="spatial-surface-label" userData={{ spatialToolbarObstacle: true }} visible={false}>
     <planeGeometry args={[1, 1]} />
     <meshBasicMaterial ref={material} transparent side={FrontSide} depthTest depthWrite={false} toneMapped={false} />
   </mesh>;

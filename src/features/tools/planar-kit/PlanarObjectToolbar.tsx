@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useRef, type ReactNode, type RefObject } from "react";
 import { spatialToolbarPlacement } from "../spatial-interaction/toolbar-placement";
+import { toolbarDomObstacles, watchToolbarLayout } from "../spatial-interaction/toolbar-obstacles";
 import type { PlanarContextActions } from "./types";
 
 type Bounds = PlanarContextActions["bounds"];
@@ -26,15 +27,16 @@ export function PlanarObjectToolbar({ svg, bounds, children }: { svg: RefObject<
     const position = () => {
       const matrix = canvas.getScreenCTM(), area = parent.getBoundingClientRect();
       const footprint = matrix && planarToolbarFootprint(bounds, matrix, area);
-      const placement = footprint && spatialToolbarPlacement(footprint, area, { width: node.offsetWidth, height: node.offsetHeight });
+      const placement = footprint && spatialToolbarPlacement(footprint, area, { width: node.offsetWidth, height: node.offsetHeight }, "top", toolbarDomObstacles(parent, node, area));
       node.style.visibility = placement ? "visible" : "hidden";
       if (placement) { node.style.left = `${placement.x}px`; node.style.top = `${placement.y}px`; }
     };
     position();
     const observer = new ResizeObserver(position);
     observer.observe(node); observer.observe(canvas); observer.observe(parent);
+    const stop = watchToolbarLayout(parent, node, position);
     window.addEventListener("resize", position);
-    return () => { observer.disconnect(); window.removeEventListener("resize", position); };
+    return () => { observer.disconnect(); stop(); window.removeEventListener("resize", position); };
   }, [svg, bounds]);
   return <div ref={element} data-planar-object-toolbar style={{ position: "absolute", zIndex: 7, visibility: "hidden", width: "max-content", transform: "translate(-50%, -50%)" }}>{children}</div>;
 }

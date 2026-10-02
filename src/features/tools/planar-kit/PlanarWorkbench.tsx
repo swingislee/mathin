@@ -258,7 +258,7 @@ function PlanarWorkbenchStage({ toolId, version, locale: suppliedLocale, initial
       }}>
         <defs><pattern id={`${uid}-grid`} width="30" height="30" patternUnits="userSpaceOnUse"><path d="M 30 0 H 0 V 30" fill="none" stroke="var(--line)" strokeWidth="1" /></pattern></defs>
         {definition.referenceGrid !== false && shown.flags.grid && <rect width="960" height="720" fill={`url(#${uid}-grid)`} pointerEvents="none" />}
-        {definition.draw(shown, api)}
+        <g data-spatial-toolbar-content>{definition.draw(shown, api)}</g>
         {landing && !same(landing, shown) && <g className={styles.ghost} aria-hidden>{definition.draw(landing, inertApi)}</g>}
         {drawingTool && definition.construction?.preview(drawingTool, draftPreview ?? draftPoints, shown)}
       </svg>
