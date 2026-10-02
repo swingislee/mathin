@@ -4,7 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PlanarWorkbench } from "@/features/tools/planar-kit/PlanarWorkbench";
 import { planarScene, scenesForPlanarTool } from "@/features/tools/planar-kit/scene-registry";
-import { planarSnapshot, planarSnapshotForTool, type PlanarSnapshot, type PlanarState } from "@/features/tools/planar-kit/contract";
+import { PLANAR_TOOLS, planarSnapshot, planarSnapshotForTool, type PlanarSnapshot, type PlanarState } from "@/features/tools/planar-kit/contract";
 import { planarCommit, planarFrame } from "@/features/tools/planar-kit/presentation";
 import { parseToolScene, freezeToolScene } from "@/features/tools/scenes/contract";
 import { toolCoursewareContractsForSurface } from "@/features/tools/scenes/registry";
@@ -13,6 +13,7 @@ import { toolSceneOriginHash } from "@/features/tools/scenes/classroom-envelope"
 import { constructionMeasurements, constructionObject, constructionObjects } from "@/features/tools/plane-construction/model";
 import { createPerimeterState, perimeterInvariantHandle, perimeterRectangle } from "@/features/tools/plane-perimeter/model";
 import { createRelationsState, relationModel, setRelationFlag } from "@/features/tools/plane-relations/model";
+import { createInteriorState, interiorModel, toggleInterior } from "@/features/tools/plane-relations/interior-model";
 
 vi.mock("next-intl", () => ({ useLocale: () => "zh" }));
 const tools = [["plane-perimeter", "10-create", ["perimeter-square-perimeter", "perimeter-square-area"]], ["plane-area-relations", "18-create", ["relations-copy-parts", "relations-nest-midpoints"]]] as const;
@@ -42,7 +43,7 @@ describe("invariant operations retain the existing geometry and classroom contra
     } finally { vi.unstubAllGlobals(); }
     expect(JSON.stringify(frozen)).toBe(saved);
     for (const surface of ["microcourse", "formal-courseware"] as const) {
-      expect(toolCoursewareContractsForSurface(surface).filter((entry) => entry.catalogId === toolId).map((entry) => entry.contentVersion)).toEqual([version]);
+      expect(toolCoursewareContractsForSurface(surface).filter((entry) => entry.catalogId === toolId).map((entry) => entry.contentVersion)).toEqual([PLANAR_TOOLS.find((tool) => tool.id === toolId)!.version]);
     }
     for (const legacy of scenesForPlanarTool(toolId, `${toolId}-lesson-v1`)) {
       expect(() => parseToolScene({ toolId, contentVersion: `${toolId}-lesson-v1`, payload: { title: "Historical scene", initial: legacy.create() } })).not.toThrow();
@@ -84,6 +85,66 @@ describe("new material actions in the shared planar workbench", () => {
     container = document.createElement("div"); document.body.append(container); root = createRoot(container);
   });
   afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+
+  it("offers v3 interior geometry while preserving v1/v2 copies, frozen starts and classroom replay", () => {
+    const definition = planarScene("18-interior"), initial = toggleInterior(definition.create());
+    const scene = parseToolScene({ toolId: "plane-area-relations", contentVersion: "plane-area-relations-lesson-v3", payload: { title: "Interior", initial } });
+    const frozen = freezeToolScene(scene), saved = JSON.stringify(frozen);
+    for (const surface of ["microcourse", "formal-courseware"] as const) expect(toolCoursewareContractsForSurface(surface).filter((entry) => entry.catalogId === "plane-area-relations").map((entry) => entry.contentVersion)).toEqual(["plane-area-relations-lesson-v3"]);
+    vi.stubGlobal("crypto", { getRandomValues: crypto.getRandomValues.bind(crypto) });
+    const rotate = definition.operations!.flatMap((operation) => operation.actions ?? []).find((action) => action.id === "construction-rotate")!;
+    const endpoint = rotate.run(initial, { selected: `object.${initial.params.active}` });
+    const snapshot = planarCommit(planarSnapshot(initial), initial, endpoint, { id: rotate.id, duration: rotate.duration!, now: 100 });
+    expect(planarSnapshotForTool("plane-area-relations", "plane-area-relations-lesson-v3").safeParse(snapshot).success).toBe(true);
+    expect(planarSnapshotForTool("plane-area-relations", "plane-area-relations-lesson-v2").safeParse(snapshot).success).toBe(false);
+    const event = createClassroomToolState("page", "doc", "instance", { toolId: "plane-area-relations", contentVersion: "plane-area-relations-lesson-v3", state: snapshot }, toolSceneOriginHash(frozen.payload));
+    expect(parseClassroomToolState(JSON.parse(JSON.stringify(event)))).toEqual(event);
+    expect(planarFrame(snapshot, definition, 350)).toEqual(planarFrame(JSON.parse(JSON.stringify(snapshot)), definition, 350));
+    expect(interiorModel(planarFrame(snapshot, definition, 350))!.area).toBeCloseTo(interiorModel(initial)!.area, 7);
+    expect(JSON.stringify(frozen)).toBe(saved);
+    for (const version of ["plane-area-relations-lesson-v1", "plane-area-relations-lesson-v2"] as const) for (const legacy of scenesForPlanarTool("plane-area-relations", version)) {
+      expect(() => parseToolScene({ toolId: "plane-area-relations", contentVersion: version, payload: { title: "Historical", initial: legacy.create() } })).not.toThrow();
+      expect(() => parseToolScene({ toolId: "plane-area-relations", contentVersion: version, payload: { title: "Foreign", initial } })).toThrow();
+    }
+  });
+
+  it("edits and drags interior P with cancellation, exact save, copied pieces, undo and panel exit", async () => {
+    await render({ toolId: "plane-area-relations" }); const initial = current()!, id = initial.params.active;
+    expect(initial.sceneId).toBe("18-interior"); await select(id);
+    await act(async () => button("内点与两翼").click());
+    await act(async () => button("显示内点与四个分区").click());
+    const input = container.querySelector<HTMLInputElement>('input[aria-label="内点的高度比例"]')!;
+    await act(async () => { input.value = "0.65"; input.dispatchEvent(new FocusEvent("focusout", { bubbles: true })); });
+    expect(interiorModel(current()!)!.v).toBe(0.65);
+    const before = current()!, at = interiorModel(before)!.point;
+    const handle = () => container.querySelector('[data-interior-point="P"]')!;
+    await pointer(handle(), "pointerdown", at.x, at.y); await pointer(stage(), "pointermove", at.x + 24, at.y + 15); expect(current()).toBeNull();
+    await pointer(stage(), "pointercancel", at.x + 24, at.y + 15); expect(current()).toEqual(before);
+    await pointer(handle(), "pointerdown", at.x, at.y); await pointer(stage(), "pointermove", at.x + 24, at.y + 15); await pointer(stage(), "pointerup", at.x + 24, at.y + 15);
+    expect(interiorModel(current()!)!.point.x).toBeCloseTo(at.x + 24, 8); expect(interiorModel(current()!)!.point.y).toBeCloseTo(at.y + 15, 8);
+    await act(async () => button("复制当前分区为独立材料").click()); expect(constructionObjects(current()!)).toHaveLength(5);
+    await act(async () => button("撤销").click()); expect(constructionObjects(current()!)).toHaveLength(1);
+    await act(async () => button("关闭面板").click()); expect(handle().getAttribute("role")).toBeNull(); expect(container.querySelectorAll("[data-interior-part]")).toHaveLength(4);
+    await act(async () => button("内点与两翼").click());
+    await act(async () => stage().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))); expect(handle().getAttribute("role")).toBeNull();
+    await act(async () => button("恢复备好的起点").click()); expect(current()).toEqual(initial);
+    await render({ toolId: "plane-area-relations", initial: before, readOnly: true }); expect(handle().getAttribute("role")).toBeNull(); expect(button("内点与两翼").disabled).toBe(true);
+  });
+
+  it("sends only the exact interior endpoint and keeps an acknowledged display from replaying the drag", async () => {
+    const initial = toggleInterior(createInteriorState()), snapshot = planarSnapshot(initial), id = initial.params.active;
+    let acknowledge: (() => void) | undefined;
+    const changed = vi.fn<(_: PlanarSnapshot) => Promise<void>>(() => new Promise((resolve) => { acknowledge = resolve; }));
+    await render({ toolId: "plane-area-relations", initial, classroom: { state: snapshot, onChange: changed } }); await select(id);
+    await act(async () => button("内点与两翼").click()); const at = interiorModel(initial)!.point;
+    await pointer(container.querySelector('[data-interior-point="P"]')!, "pointerdown", at.x, at.y);
+    await pointer(stage(), "pointermove", at.x + 25, at.y - 20); expect(changed).not.toHaveBeenCalled();
+    await pointer(stage(), "pointerup", at.x + 25, at.y - 20); expect(changed).toHaveBeenCalledTimes(1);
+    const endpoint = changed.mock.calls[0][0]; expect(endpoint.motion).toBeNull(); expect(endpoint.past).toHaveLength(1);
+    expect(interiorModel(endpoint.current)!.point.x).toBeCloseTo(at.x + 25, 8);
+    await act(async () => { acknowledge!(); }); await render({ toolId: "plane-area-relations", initial, classroom: { state: endpoint, onChange: changed } });
+    expect(current()).toEqual(endpoint.current); await tick(2000); expect(current()).toEqual(endpoint.current); expect(changed).toHaveBeenCalledTimes(1);
+  });
 
   it("shares accurate inputs and direct deformation, cancels without saving and exits on close or Escape", async () => {
     await render(); await select(0); const initial = current()!;

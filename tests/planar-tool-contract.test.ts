@@ -83,7 +83,7 @@ describe("approved planar scenes use one Tools registration path", () => {
       }
       for (const surface of ["microcourse", "formal-courseware"] as const) {
         const offered = toolCoursewareContractsForSurface(surface).filter((entry) => entry.catalogId === id);
-        expect(offered).toHaveLength(1); expect(offered[0].contentVersion).toBe(`${id}-lesson-v2`);
+        expect(offered).toHaveLength(1); expect(offered[0].contentVersion).toBe(PLANAR_TOOLS.find((tool) => tool.id === id)!.version);
       }
     }
   });

@@ -15,7 +15,7 @@ const upgrades = [
 describe("the next five editable plane tools keep one versioned save/classroom contract", () => {
   for (const [toolId, oldId, newId] of upgrades) it(`${toolId}: exact defaults, independent legacy version and classroom identity`, () => {
     const definition = planarScene(newId), initial = definition.create(), old = planarScene(oldId).create();
-    expect(scenesForPlanarTool(toolId).map((scene) => scene.id)).toContain(newId);
+    expect(scenesForPlanarTool(toolId, `${toolId}-lesson-v2`).map((scene) => scene.id)).toContain(newId);
     expect(scenesForPlanarTool(toolId, `${toolId}-lesson-v1`).map((scene) => scene.id)).toContain(oldId);
     const contentVersion = `${toolId}-lesson-v2` as PlanarVersion;
     const scene = parseToolScene({ toolId, contentVersion, payload: { title: "Editable material", initial } });
