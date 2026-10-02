@@ -26,7 +26,7 @@ const unavailable = (state: PlanarState) => !interiorModel(state) || !relationFl
 
 export const planeInteriorScene: PlanarSceneDefinition = {
   ...planeRelationsScene, id: INTERIOR_SCENE_ID,
-  description: t("在自己的三角形内添加 P，拖动 P 和底边分点 D，比较四个分区与两翼面积；可以保持或解除顶点、P、D 共线。原有底、高、对角线和中点材料继续保留。", "Add P inside your own triangle and move P and base division D to compare four regions and the two wings. Keep or release apex–P–D collinearity; existing base, altitude, diagonal and midpoint tools remain."),
+  description: t("在自己的三角形内添加 P，拖动 P 和底边分点 D，比较四个分区与两翼面积；可以保持或解除顶点、P、D 共线。换底保持 P 原位；极靠边时保留原底，可先把 P 移回内部再换底。原有底、高、对角线和中点材料继续保留。", "Add P inside your own triangle and move P and base division D to compare four regions and the two wings. Keep or release apex–P–D collinearity. Changing the base preserves P; if it is too close to an edge, move P inward before changing the base. Existing base, altitude, diagonal and midpoint tools remain."),
   create: createInteriorState, setField: setInteriorField,
   setFlag: planeRelationsScene.setFlag ? (state, key, value) => applyInteriorBase(state, (base) => planeRelationsScene.setFlag!(base, key, value)) : undefined,
   actions: planeRelationsScene.actions?.map(wrapAction),

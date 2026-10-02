@@ -73,6 +73,34 @@ describe("interior-point material geometry", () => {
     expect(relationFlag(moved, "division")).toBe(false); expect(interiorModel(moved)!.v).toBe(before.v);
     expect(crossAt(interiorModel(moved)!.c, interiorModel(moved)!.division, interiorModel(moved)!.point)).toBeCloseTo(0, 8);
   });
+  it("changes the base without moving P, including rotated, mirrored and collinear materials", () => {
+    for (const angle of [0, 37]) for (const flip of [1, -1]) for (const constrained of [false, true]) {
+      let state = setInteriorField(setInteriorField(setInteriorField(toggleInterior(createInteriorState()), "angle", angle), "innerBase", 0.31), "innerHeight", 0.44);
+      state = setInteriorField(state, "divisionRatio", 0.3);
+      state = { ...state, params: { ...state.params, [`flip.${state.params.active}`]: flip } };
+      if (constrained) state = setInteriorField(state, "innerConstraint", 1);
+      const original = interiorModel(state)!, id = state.params.active;
+      for (const edge of [1, 2, 0]) {
+        state = tapInterior(state, `edge.${id}.${edge}`); valid(state);
+        const model = interiorModel(state)!;
+        expect(state.params[`base.${id}`]).toBe(edge); expect(model.object).toEqual(original.object);
+        expect(model.point.x).toBeCloseTo(original.point.x, 8); expect(model.point.y).toBeCloseTo(original.point.y, 8);
+        expect(model.parts.reduce((sum, part) => sum + constructionArea(part), 0)).toBeCloseTo(original.area, 7);
+        if (constrained) {
+          expect(model.u).toBe(model.fraction); expect(crossAt(model.c, model.division, model.point)).toBeCloseTo(0, 7);
+        } else expect(model.fraction).toBe(original.fraction);
+      }
+    }
+  });
+  it("keeps the original base and geometry when preserving P would exceed the new base's legal range", () => {
+    for (const constrained of [false, true]) {
+      let state = setInteriorField(setInteriorField(toggleInterior(createInteriorState()), "innerBase", 0.05), "innerHeight", 0.95);
+      if (constrained) state = setInteriorField(setInteriorField(state, "divisionRatio", 0.05), "innerConstraint", 1);
+      valid(state);
+      expect(tapInterior(state, `edge.${state.params.active}.1`)).toBe(state);
+      expect(tapInterior(state, `edge.${state.params.active}.2`)).toBe(state);
+    }
+  });
   it("copies four exact independent regions atomically, preserving the original and grid setting", () => {
     let state = toggleInterior(setInteriorField(createInteriorState(), "angle", 33));
     state = { ...state, flags: { ...state.flags, snap: true } };

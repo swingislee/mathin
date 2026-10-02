@@ -56,7 +56,20 @@ export function toggleInterior(state: PlanarState): PlanarState {
 export function tapInterior(state: PlanarState, target: string): PlanarState {
   const match = /^interior\.(0|[1-9]\d{0,4})$/.exec(target);
   if (match) return interiorModel(state, Number(match[1])) ? { ...state, params: { ...state.params, active: Number(match[1]) } } : state;
-  return applyInteriorBase(state, (base) => tapRelation(base, target));
+  const next = applyInteriorBase(state, (base) => tapRelation(base, target)), id = next.params.active;
+  const before = interiorModel(state, id), after = interiorModel(next, id);
+  if (!before || !after || state.params[`base.${id}`] === next.params[`base.${id}`]) return next;
+  // 换底只改变观察基准；按原 P 重算比例，共线时同步新底上的 D。
+  const v = crossAt(after.a, after.b, before.point) / crossAt(after.a, after.b, after.c);
+  const basePoint = { x: (before.point.x - v * after.c.x) / (1 - v), y: (before.point.y - v * after.c.y) / (1 - v) };
+  const dx = after.b.x - after.a.x, dy = after.b.y - after.a.y;
+  const u = ((basePoint.x - after.a.x) * dx + (basePoint.y - after.a.y) * dy) / (dx * dx + dy * dy);
+  // 新基准超出持久化合法域时保持整次原状；仅吸收边界的浮点舍入误差。
+  if (![u, v].every((value) => Number.isFinite(value) && value >= 0.05 - 1e-10 && value <= 0.95 + 1e-10)) return state;
+  const params = { ...next.params, [`innerBase.${id}`]: clamp(u), [`innerHeight.${id}`]: clamp(v) };
+  if (before.collinear) params[`fraction.${id}`] = clamp(u);
+  const candidate = { ...next, params };
+  return isValidInteriorState(candidate) ? candidate : state;
 }
 
 export function dragInterior(state: PlanarState, target: string, point: Point, delta: Point): PlanarState {
