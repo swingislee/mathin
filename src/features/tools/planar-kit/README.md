@@ -68,4 +68,6 @@
 
 后续锁量与面积材料增量沿用上述两个 v2 合同：矩形定量变形、实际分区复制和逐层中点材料都保存为既有准确几何，不新增持久字段或数据库迁移。中点材料相互独立，修改父材料不会自动改变已生成的内层。
 
-其余预设限制按独立增量继续处理：任意多边形锁量、旧面积关系的方格条、共角／内点／共同部分和相似联动等，以及任意凹形／圆弧布尔仍待后续。钟面、圆的滚动及七巧板保留本身必要的材料约束。棋盘仍用两格骨牌，火柴不自动计数图形或判题。当前范围与检查见 `docs/evidence/tools-plane-invariants-20261002.md`、`docs/evidence/tools-plane-cover-match-20261002.md` 和 `docs/evidence/tools-plane-deep-20261002.md`；此前记录见 `docs/evidence/tools-plane-open-materials-20260927.md` 和 `docs/evidence/tools-plane-construction-20260927.md`。机器检查与人工视觉／教学手感验收分开登记。
+内点增量将面积关系新建切换为 `18-interior` / `lesson-v3`，原 `18-create` / v2 保持可读。自绘三角形可添加内点与四个真实分区，准确比例与直接手柄支持保持或解除顶点—P—D 共线，分区可以整体复制；点位与面积从材料及比例派生。新旧版本分别使用严格状态与保存校验，入口和活动描述符数量不变。
+
+其余预设限制按独立增量继续处理：任意多边形锁量、旧面积关系的方格条、共角／共同纸片移除和相似联动等，以及任意凹形／圆弧布尔仍待后续。钟面、圆的滚动及七巧板保留本身必要的材料约束。棋盘仍用两格骨牌，火柴不自动计数图形或判题。当前范围与检查见 `docs/evidence/tools-plane-interior-20261002.md`、`docs/evidence/tools-plane-invariants-20261002.md`、`docs/evidence/tools-plane-cover-match-20261002.md` 和 `docs/evidence/tools-plane-deep-20261002.md`；此前记录见 `docs/evidence/tools-plane-open-materials-20260927.md` 和 `docs/evidence/tools-plane-construction-20260927.md`。机器检查与人工视觉／教学手感验收分开登记。
