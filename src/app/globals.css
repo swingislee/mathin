@@ -936,16 +936,21 @@ html:lang(zh-CN) {
   min-height: 100dvh;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
+  /* 牌阵在标题下方的剩余高度里居中，让正中的牌站进拱门、顶到皇冠下方。 */
+  justify-content: center;
   gap: 1rem;
-  padding: 17rem 0 1.5rem;
+  padding: 14rem 0 1.5rem;
 }
 @media (min-width: 768px) {
   .game-parade {
-    --card-w: clamp(12rem, calc((100dvh - 19rem) * 0.68), 18rem);
+    --card-w: clamp(12rem, 37dvh, 20rem);
     --step: calc(var(--card-w) * 0.92);
-    padding: 13rem 0 4dvh;
+    padding: 9rem 0 1.5rem;
   }
+}
+/* 矮屏上居中余量不足，侧牌会压到页面标题的说明文字，整体让到说明文字下方。 */
+@media (min-width: 768px) and (max-height: 740px) {
+  .game-parade { padding-top: 12.75rem; }
 }
 .game-parade-track {
   position: relative;

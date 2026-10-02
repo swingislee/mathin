@@ -8,7 +8,7 @@ export function ClassWorkspaceTabs({ active, query }: { active: ClassWorkView; c
   const locale = useLocale();
   const m = workEntryMessages(locale);
   const values = query ?? {};
-  if (active === "arrange" || active === "records") return null;
+  if (active === "arrange" || active === "records" || active === "progress") return null;
   return <DashboardCommandTabs ariaLabel={m.classes} activeValue={active} activeTone="accent"
     items={[{ value: "arrange", label: m.classes, href: classWorkHref("arrange", values) }, { value: active, label: m[active], href: classWorkHref(active, values) }]} />;
 }

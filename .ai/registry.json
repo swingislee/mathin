@@ -1,7 +1,35 @@
 {
   "version": 1,
-  "coordinatorTaskId": "DEV-TEACHING-MATRIX-20261002-INTEGRATION",
+  "coordinatorTaskId": "DEV-PLANE-INTERIOR-20261002-INTEGRATION",
   "tasks": [
+    {
+      "id": "DEV-PLANE-INTERIOR-20261002-INTEGRATION",
+      "title": "三角形内点与两翼开发交付",
+      "agent": "codex",
+      "threadId": "019ff05e-1218-7400-b966-4556b2c57173",
+      "status": "in_progress",
+      "checkout": "integration",
+      "branch": "main",
+      "card": ".ai/tasks/DEV-PLANE-INTERIOR-20261002-INTEGRATION.md",
+      "writePaths": [".ai/tasks/DEV-PLANE-INTERIOR-20261002-INTEGRATION.md"],
+      "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
+      "checkpoint": "865b2b7f381dee39145b6f0755369d6f23e154fe",
+      "next": "前一班级批次已登记 integrated 且主工作区无未提交跟踪内容；本批串行接收内点 v3、精确生成类型和本机校验迁移，开发端待人工验收。"
+    },
+    {
+      "id": "DEV-PLANE-INTERIOR-20261002",
+      "title": "三角形内点与两翼开放材料",
+      "agent": "codex",
+      "threadId": "019ff05e-1218-7400-b966-4556b2c57173",
+      "status": "in_review",
+      "checkout": "worktree",
+      "branch": "codex/plane-interior-codex",
+      "card": ".ai/tasks/DEV-PLANE-INTERIOR-20261002.md",
+      "writePaths": ["src/features/tools/plane-relations/interior-model.ts", "src/features/tools/plane-relations/interior-validation.ts", "src/features/tools/plane-relations/interior-scene.tsx", "src/features/tools/plane-relations/README.md", "src/features/tools/planar-kit/catalog.ts", "src/features/tools/planar-kit/contract.ts", "src/features/tools/planar-kit/scene-registry.ts", "src/features/tools/planar-kit/README.md", "src/features/tools/spatial-interaction/control-inventory.ts", "src/lib/database.types.ts", "supabase/migrations/20261002170000_tool_plane_interior.sql", "supabase/tests/tool_plane_interior.sql", "tests/plane-interior.test.ts", "tests/fixtures/plane-interior-cases.ts", "tests/plane-invariants-integration.test.ts", "tests/planar-deep-integration.test.ts", "tests/planar-tool-contract.test.ts", "docs/evidence/tools-plane-interior-20261002.md", ".ai/tasks/DEV-PLANE-INTERIOR-20261002.md", ".ai/handoffs/DEV-PLANE-INTERIOR-20261002-codex-01.md", ".ai/handoffs/DEV-PLANE-INTERIOR-20261002-review-01.md"],
+      "sharedPaths": [],
+      "checkpoint": "a3488cae27ac2447656c277f61ace90724bb6944",
+      "next": "内点、四区、两翼、共线与真实复制已实现；定向检查和 SQL 回滚检查通过，换底保点修复待最终只读复核。本机正式安装及生成类型在当前串行窗口完成。"
+    },
     {
       "id": "DEV-PLANE-INVARIANTS-20261002-INTEGRATION",
       "title": "周长锁量与面积材料开发交付",
@@ -35,28 +63,28 @@
       "title": "班级教学进度矩阵开发交付",
       "agent": "codex",
       "threadId": "01a0dd69-e287-7773-b4f5-3489276ea15e",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-TEACHING-MATRIX-20261002-INTEGRATION.md",
       "writePaths": [".ai/tasks/DEV-TEACHING-MATRIX-20261002-INTEGRATION.md"],
       "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
-      "checkpoint": "d28ff50c6d960dface045194aea70f06984b21e5",
-      "next": "接收本轮班级共用卡片、右上角内容切换、状态填充色块与宽屏四列固定增量；独立 worktree 实现后串行集成至开发入口。"
+      "checkpoint": "09399b32d6bd6ab9671db76a640e422743bcc22c",
+      "next": "原班级表单元格切换、四列固定及六色真实进度已集成；定向检查、独立复核与中英文入口/接口检查通过。开发端已交付，待人工验收；生产与正式 Gate 未改。"
     },
     {
       "id": "DEV-TEACHING-MATRIX-20261002",
       "title": "八项教学进度与课次嵌套详情",
       "agent": "codex",
       "threadId": "01a0dd69-e287-7773-b4f5-3489276ea15e",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/teaching-matrix-codex",
       "card": ".ai/tasks/DEV-TEACHING-MATRIX-20261002.md",
-      "writePaths": ["src/features/school/ClassRosterWorkspace.tsx", "src/features/school/ClassWorkspaceActions.tsx", "src/features/school/ClassWorkspaceTabs.tsx", "src/features/school/ClassPlacementPage.tsx", "src/features/school/EnrollmentPlacementWorkbench.tsx", "src/features/school/class-roster-layout.module.css", "src/features/school/teaching-workbench/TeachingProgressMatrix.tsx", "src/features/school/teaching-workbench/TeachingProgressPage.tsx", "src/features/school/teaching-workbench/teaching-progress-matrix-contract.ts", ".ai/tasks/DEV-TEACHING-MATRIX-20261002.md", ".ai/handoffs/DEV-TEACHING-MATRIX-20261002-codex-02.md"],
+      "writePaths": ["src/features/school/ClassRosterWorkspace.tsx", "src/features/school/ClassWorkspaceActions.tsx", "src/features/school/ClassWorkspaceTabs.tsx", "src/features/school/ClassPlacementPage.tsx", "src/features/school/EnrollmentPlacementWorkbench.tsx", "src/features/school/ClassRosterSessionRow.tsx", "src/features/school/ClassRosterClassSummary.tsx", "src/features/school/class-roster-layout.module.css", "src/features/school/teaching-workbench/TeachingProgressCells.tsx", "src/features/school/teaching-workbench/TeachingProgressMatrix.tsx", "src/features/school/teaching-workbench/TeachingProgressPage.tsx", "src/features/school/teaching-workbench/teaching-progress-matrix-contract.ts", "src/features/school/teaching-workbench/teaching-progress-matrix-read.ts", "src/features/school/teaching-workbench/teaching-workbench-contract.ts", "src/app/[locale]/dashboard/classes/page.tsx", "src/app/[locale]/dashboard/classes/progress-facts/route.ts", "tests/teaching-progress-matrix.test.ts", "tests/teaching-progress-matrix-read.test.ts", "tests/enrollment-placement-drag-confirmation.test.ts", "src/lib/database.types.ts", "supabase/migrations/20261002163000_teaching_progress_timing.sql", "supabase/tests/teaching_progress_facts.sql", ".ai/tasks/DEV-TEACHING-MATRIX-20261002.md", ".ai/handoffs/DEV-TEACHING-MATRIX-20261002-codex-02.md"],
       "sharedPaths": [],
-      "checkpoint": "2652a358a43e6f409ccf7b1e8209b9a0c3ef620a",
-      "next": "按用户本轮反馈统一班级卡片和内容切换，复用学情填充色，固定宽屏全部班级信息列；仅 UI 增量，复用原数据合同与检查证据。"
+      "checkpoint": "85c2a66963d58c53535f602fde222fe7656055f4",
+      "next": "原表、筛选与分页保留，切换只替换名单单元格；真实审核与刷新缓存复核问题已关闭，代码及交接 02 已被 main 接收。本机只读时间迁移已安装，待用户刷新开发页面验收。"
     },
     {
       "id": "DEV-PLANE-COVER-MATCH-20261002-INTEGRATION",

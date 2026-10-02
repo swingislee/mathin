@@ -6,12 +6,13 @@ import { getMyPerms, requireDashboardEnvironment } from "@/lib/auth";
 import { redirect } from '@/i18n/navigation';
 import { loadStudentBusinessHistory } from '@/features/school/student-business-history-data';
 import { isTeacherWorkspaceViewer } from "@/features/school/teacher-workspace";
-import { DashboardEmptyCard, DashboardPage } from "@/features/school/dashboard-page";
-import { ClassWorkspaceCommandPanel } from "./ClassWorkspaceCommandPanel";
+import { DashboardEmptyCard } from "@/features/school/dashboard-page";
+import { ClassRosterWorkspace } from "./ClassRosterWorkspace";
 import { getClassRosterSessions } from "./class-roster-session-read";
 import { ClassWorkspaceActions } from "./ClassWorkspaceActions";
 import { ClassWorkspaceMemory } from "./ClassWorkspaceMemory";
-import { workEntryMessages, type WorkEntryQuery } from "./work-entry-contract";
+import { type WorkEntryQuery } from "./work-entry-contract";
+import TeachingProgressPage from "./teaching-workbench/TeachingProgressPage";
 
 export default async function CourseEnrollmentsPage({
   params,
@@ -25,14 +26,14 @@ export default async function CourseEnrollmentsPage({
   const { user } = await requireDashboardEnvironment(locale, ['staff']);
   const permissions = await getMyPerms(user.id);
   const canTeach = permissions.has("class.view.mine") || permissions.has("class.view.all");
-  const m = workEntryMessages(locale);
   if (await enrollmentWorkflowRpc('can_access_enrollment_placement') !== true) {
+    if (canTeach && query.view === "progress") return <TeachingProgressPage params={params} searchParams={searchParams} />;
     if (!await isTeacherWorkspaceViewer(user.id)) redirect({ locale, href: '/dashboard' });
     const t = await getTranslations("school.followupWorkspace");
-    return <DashboardPage title={m.classes} density="compact" commandPanel={<ClassWorkspaceCommandPanel
+    return <ClassRosterWorkspace view="arrange" query={query} canTeach={canTeach}
       navigation={<ClassWorkspaceMemory query={{ ...query, view: "arrange", scope: "all" }} />}
       actions={<ClassWorkspaceActions canTeach={canTeach} query={query} />}
-    />}><DashboardEmptyCard>{t("noTeachingClassForPlacement")}</DashboardEmptyCard></DashboardPage>;
+    ><DashboardEmptyCard>{t("noTeachingClassForPlacement")}</DashboardEmptyCard></ClassRosterWorkspace>;
   }
   const [{ board, sessions, sessionsFailed }, timeZone, now, history] = await Promise.all([
     loadEnrollmentPlacementBoard().then(async board => {

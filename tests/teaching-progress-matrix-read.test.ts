@@ -12,7 +12,14 @@ const session = (id: string, classroom: string, override: string | null = null) 
   started_at: "2026-10-01T00:00:00Z", ended_at: "2026-10-01T01:00:00Z", teacher_override: override,
   deleted_at: null, voided_at: null, cancelled_by: null,
 });
-const options = { userId: "teacher-a", canViewTeam: true, canReadCommunication: true, termId: "term" };
+const options = { userId: "teacher-a", canViewTeam: true, canReadCommunication: true, termId: "term", now: Date.parse("2026-10-02T00:00:00Z") };
+const fact = (sessionId: string) => ({ sessionId,
+  tasks: sessionId === "s1" ? [{ kind: "reviews", status: "done" }, { kind: "assignment", status: "done" }] : [],
+  taskTiming: ["reviews", "summary", "assignment", "followup"].map(kind => ({ kind, dueAt: "2026-10-03T00:00:00Z", completedAt: "2026-10-01T02:00:00Z" })),
+  learningResults: sessionId === "s1" ? [{ status: "review", completedAt: "2026-10-01T02:00:00Z", reviewedAt: null, requiresReview: true }] : [],
+  classFeedback: sessionId === "s1" ? "contacted" : "missing", classFeedbackCompletedAt: sessionId === "s1" ? "2026-10-01T02:00:00Z" : null,
+  communication: "pending", communicationCompletedAt: null,
+});
 
 beforeEach(() => {
   client.from.mockClear();
@@ -24,7 +31,10 @@ beforeEach(() => {
     classroom_staff_assignments: ["a", "b", "c"].map(id => ({ classroom_id: id, user_id: `teacher-${id}`, responsibility: "primary_teacher", profile: { display_name: id } })),
     class_sessions: [session("s1", "a"), session("s2", "a", "teacher-b"), session("s3", "b"), session("s4", "b", "teacher-a"),
       { ...session("cancelled", "a"), cancelled_by: "admin" }],
-    session_preparation_reviews: [{ session_id: "s1", artifact_kind: "solution", status: "approved" }, { session_id: "s1", artifact_kind: "lesson_plan", status: "pending" }],
+    session_preparation_reviews: [
+      { session_id: "s1", artifact_kind: "solution", status: "approved", submitted_at: "2026-09-23T00:00:00Z", reviewed_at: "2026-09-24T00:00:00Z" },
+      { session_id: "s1", artifact_kind: "lesson_plan", status: "pending", submitted_at: "2026-09-23T00:00:00Z", reviewed_at: null },
+    ],
     lesson_plans: [],
     profiles: [{ id: "teacher-a", display_name: "A" }, { id: "teacher-b", display_name: "B" }],
   };
@@ -46,11 +56,7 @@ beforeEach(() => {
   });
   client.rpc.mockImplementation(async (_name: string, args: { p_session_ids: string[] }) => failures.has("facts")
     ? { data: null, error: { message: "unavailable" } }
-    : { data: args.p_session_ids.map(sessionId => ({ sessionId,
-      tasks: sessionId === "s1" ? [{ kind: "reviews", status: "done" }, { kind: "assignment", status: "done" }] : [],
-      learningStatuses: sessionId === "s1" ? ["review"] : [],
-      classFeedback: sessionId === "s1" ? "contacted" : "missing", communication: "pending",
-    })), error: null });
+    : { data: args.p_session_ids.map(fact), error: null });
 });
 
 describe("teaching matrix reads", () => {
@@ -62,8 +68,8 @@ describe("teaching matrix reads", () => {
     expect(lesson.progress.solution.state).toBe("archived");
     expect(lesson.progress.lesson_plan.state).toBe("review");
     expect(lesson.progress.learning.state).toBe("review");
-    expect(lesson.progress.homework.state).toBe("archived");
-    expect(lesson.progress.class_feedback.state).toBe("archived");
+    expect(lesson.progress.homework.state).toBe("review");
+    expect(lesson.progress.class_feedback.state).toBe("review");
     expect(lesson.progress.communication.state).toBe("incomplete");
   });
 
@@ -83,12 +89,14 @@ describe("teaching matrix reads", () => {
   });
 
   it("keeps failed progress reads unknown while retaining available records", async () => {
-    failures.add("session_preparation_reviews"); failures.add("lesson_plans");
+    failures.add("session_preparation_reviews");
+    tables.lesson_plans.push({ session_id: "s1", status: "approved", updated_at: "2026-10-01T02:00:00Z",
+      content: [{ type: "heading", props: { level: 1 }, content: "课后反思" }, { type: "paragraph", content: "下次增加实物演示" }] });
     const data = await getTeachingProgressMatrix(options);
     expect(data.sessions[0].progress.solution.state).toBe("unavailable");
     expect(data.sessions[0].progress.reflection.state).toBe("unavailable");
-    expect(data.sessions[0].progress.class_feedback.state).toBe("archived");
-    expect(data.sessions[0].progress.homework.state).toBe("archived");
+    expect(data.sessions[0].progress.class_feedback.state).toBe("review");
+    expect(data.sessions[0].progress.homework.state).toBe("review");
   });
 
   it("does not infer completion when facts are failed, malformed or absent", async () => {
@@ -109,5 +117,37 @@ describe("teaching matrix reads", () => {
   it("fails the page instead of silently dropping classes when the authorized session read fails", async () => {
     failures.add("class_sessions");
     await expect(getTeachingProgressMatrix(options)).rejects.toThrow("TEACHING_MATRIX_UNAVAILABLE");
+  });
+
+  it("uses the actual material submission and task completion times for late colors", async () => {
+    tables.session_preparation_reviews[0].submitted_at = "2026-09-25T00:00:00Z";
+    tables.session_preparation_reviews[1].submitted_at = "2026-09-25T00:00:00Z";
+    const source = fact("s1");
+    source.taskTiming.forEach(row => { row.dueAt = "2026-10-01T01:30:00Z"; });
+    client.rpc.mockResolvedValue({ data: [source], error: null });
+    const progress = (await getTeachingProgressMatrix(options)).sessions[0].progress;
+    expect(progress.solution.state).toBe("overdue_archived");
+    expect(progress.lesson_plan.state).toBe("overdue_review");
+    expect(progress.rehearsal_video.state).toBe("overdue");
+    for (const key of ["homework", "learning", "class_feedback"] as const) expect(progress[key].state).toBe("overdue_review");
+    expect(progress.communication.state).toBe("overdue");
+  });
+
+  it("does not use a pre-class plan approval as approval of the post-class reflection", async () => {
+    tables.session_preparation_reviews[1].status = "approved";
+    tables.session_preparation_reviews[1].reviewed_at = "2026-09-24T00:00:00Z";
+    tables.lesson_plans.push({ session_id: "s1", status: "approved", updated_at: "2026-10-01T02:00:00Z",
+      content: [{ type: "heading", props: { level: 1 }, content: "课后反思" }, { type: "paragraph", content: "下次增加实物演示" }] });
+    expect((await getTeachingProgressMatrix(options)).sessions[0].progress.reflection).toMatchObject({ state: "review", reason: "reflection_unreviewed" });
+  });
+
+  it("keeps directly published learning pending review until an actual approval is recorded", async () => {
+    const source = { ...fact("s1"), learningResults: [{ status: "published", completedAt: "2026-10-01T02:00:00Z", reviewedAt: null as string | null, requiresReview: false }] };
+    client.rpc.mockResolvedValue({ data: [source], error: null });
+    expect((await getTeachingProgressMatrix(options)).sessions[0].progress.learning).toMatchObject({ state: "review", reason: "published" });
+    source.taskTiming.find(row => row.kind === "reviews")!.dueAt = "2026-10-01T01:30:00Z";
+    expect((await getTeachingProgressMatrix(options)).sessions[0].progress.learning.state).toBe("overdue_review");
+    source.learningResults[0].reviewedAt = "2026-10-02T00:00:00Z";
+    expect((await getTeachingProgressMatrix(options)).sessions[0].progress.learning.state).toBe("overdue_archived");
   });
 });
