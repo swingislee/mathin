@@ -3,7 +3,7 @@ import { HeightMark } from "../planar-kit/geometry";
 import type { PlanarAction, PlanarSceneDefinition, PlanarText } from "../planar-kit/types";
 import { constructionArea, constructionBounds, constructionObject, constructionObjects, parseConstructionTarget } from "../plane-construction/model";
 import { createConstructionDefinition } from "../plane-construction/scenes";
-import { RELATION_MATERIALS, RELATIONS_SCENE_ID, addRelationMaterial, copyMidpointTriangle, createRelationGeometry, createRelationsState, dragRelation, relationFlag, relationModel, setRelationField, setRelationFlag, syncRelations, tapRelation } from "./model";
+import { RELATION_MATERIALS, RELATIONS_SCENE_ID, addRelationMaterial, copyMidpointTriangle, copyRelationParts, createRelationGeometry, createRelationsState, dragRelation, nestMidpointTriangle, relationFlag, relationModel, setRelationField, setRelationFlag, syncRelations, tapRelation } from "./model";
 
 const t = (zh: string, en: string): PlanarText => ({ zh, en });
 const base = createConstructionDefinition(RELATIONS_SCENE_ID, "plane-area-relations", t("面积关系", "Area relationships"));
@@ -28,11 +28,15 @@ const relationActions: PlanarAction[] = [
   toggle("midpoints", "vertex", t("连接三个中点", "Join the three midpoints")),
   { id: "relations-copy-midpoints", icon: "duplicate", label: t("复制中点三角形", "Copy the midpoint triangle"),
     disabled: (state) => copyMidpointTriangle(state) === state, run: copyMidpointTriangle },
+  { id: "relations-copy-parts", icon: "duplicate", label: t("复制当前分区为独立材料", "Copy current partitions as independent pieces"),
+    disabled: (state) => copyRelationParts(state) === state, run: copyRelationParts },
+  { id: "relations-nest-midpoints", icon: "add", label: t("原位添加一层中点三角形", "Add one nested midpoint triangle"),
+    disabled: (state) => nestMidpointTriangle(state) === state, run: nestMidpointTriangle },
 ];
 
 export const planeRelationsScene: PlanarSceneDefinition = {
   ...base,
-  description: t("画出或添加三角形、凸四边形。打开面积关系后点一条边作底，添加分点、高或对角线；已有材料与观察保留在同一舞台。", "Draw or add triangles and convex quadrilaterals. Open Area relationships, choose a base edge, and add division points, altitudes or diagonals. Existing materials and observations stay on the stage."),
+  description: t("画出或添加三角形、凸四边形，选底并添加分点、高或对角线。当前分区可复制成独立材料，中点三角形可逐层原位添加；原材料与观察保留。", "Draw or add triangles and convex quadrilaterals, choose a base and add division points, altitudes or diagonals. Copy partitions as independent pieces and add nested midpoint triangles; original materials and observations remain."),
   create: createRelationsState,
   fields: base.fields?.filter((field) => field.key !== "detail").map((field) => ({ ...field,
     disabled: (state) => !!field.disabled?.(state) || (["width", "height"].includes(field.key) && relationFlag(state, "parallel")),

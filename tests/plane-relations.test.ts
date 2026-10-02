@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { PlanarDrawingApi } from "@/features/tools/planar-kit/types";
 import { perpendicularFoot } from "@/features/tools/planar-kit/geometry";
 import { constructionArea, constructionObject, constructionObjects, worldVertices } from "@/features/tools/plane-construction/model";
-import { addRelationMaterial, copyMidpointTriangle, createRelationGeometry, createRelationsState, dragRelation, relationModel, setRelationField, setRelationFlag, tapRelation } from "@/features/tools/plane-relations/model";
+import { addRelationMaterial, copyMidpointTriangle, copyRelationParts, createRelationGeometry, createRelationsState, dragRelation, nestMidpointTriangle, relationModel, setRelationField, setRelationFlag, tapRelation } from "@/features/tools/plane-relations/model";
 import { isValidRelationsState } from "@/features/tools/plane-relations/validation";
 import { planeRelationsScene } from "@/features/tools/plane-relations/scenes";
 
@@ -99,6 +99,73 @@ describe("constructible area relationships", () => {
     const moved = dragRelation(state, `vertex.${originalId}.2`, { x: 0, y: 0 }, { x: 100, y: -20 }); valid(moved);
     expect(constructionObject(moved, copyId)).toEqual(copy);
     expect(relationModel(moved, originalId)!.area).not.toBeCloseTo(originalArea);
+  });
+
+  it("copies true triangle partitions with exact area ratios even when the material is rotated and grid snap is enabled", () => {
+    let state = setRelationField(setRelationField(setRelationFlag(createRelationsState(), "division", true), "divisionRatio", 0.31), "angle", 33);
+    state = { ...state, flags: { ...state.flags, snap: true } };
+    const before = structuredClone(state), model = relationModel(state)!, id = state.params.active;
+    const copied = copyRelationParts(state), pieces = constructionObjects(copied).filter((object) => object.id !== id);
+    valid(copied); expect(pieces).toHaveLength(2); expect(copied.flags.snap).toBe(true);
+    expect(constructionObject(copied, id)).toEqual(model.object);
+    expect(copied.flags[`division.${id}`]).toBe(true); expect(copied.params[`fraction.${id}`]).toBe(0.31);
+    pieces.forEach((piece, index) => {
+      expect(constructionArea(piece.vertices)).toBeCloseTo(constructionArea(model.parts[index]), 7);
+      worldVertices(piece).forEach((point, vertex) => {
+        expect(point.x).toBeCloseTo(model.parts[index][vertex].x + 65, 8);
+        expect(point.y).toBeCloseTo(model.parts[index][vertex].y + 65, 8);
+      });
+    });
+    expect(pieces.reduce((sum, piece) => sum + constructionArea(piece.vertices), 0)).toBeCloseTo(model.area, 7);
+    const moved = dragRelation(copied, `object.${pieces[0].id}`, pieces[0].center, { x: -30, y: 60 }); valid(moved);
+    expect(constructionObject(moved, id)).toEqual(model.object); expect(constructionObject(moved, pieces[1].id)).toEqual(pieces[1]);
+    expect(state).toEqual(before);
+  });
+
+  it("copies all four diagonal pieces atomically and keeps the original intact when capacity or IDs run out", () => {
+    let state = setRelationFlag(addRelationMaterial(empty(), "quadrilateral"), "diagonals", true);
+    const sourceId = state.params.active, model = relationModel(state)!, copied = copyRelationParts(state);
+    valid(copied); expect(constructionObjects(copied)).toHaveLength(5);
+    expect(constructionObjects(copied).filter((object) => object.id !== sourceId).reduce((sum, piece) => sum + constructionArea(piece.vertices), 0)).toBeCloseTo(model.area, 7);
+    for (let i = 0; i < 12; i++) state = addRelationMaterial(state, "triangle");
+    state = tapRelation(state, `object.${sourceId}`);
+    expect(constructionObjects(state)).toHaveLength(13); const saved = structuredClone(state);
+    expect(copyRelationParts(state)).toBe(state); expect(state).toEqual(saved);
+    expect(action("relations-copy-parts").disabled!(state, context)).toBe(true);
+    const exhausted = { ...setRelationFlag(createRelationsState(), "division", true), params: { ...createRelationsState().params, nextId: 99998 } };
+    valid(exhausted); expect(copyRelationParts(exhausted)).toBe(exhausted);
+    expect(copyRelationParts(createRelationsState())).toEqual(createRelationsState());
+  });
+
+  it("adds repeated exact midpoint layers in place and keeps each material independent", () => {
+    let state = setRelationField(createRelationsState(), "angle", 27);
+    state = { ...state, flags: { ...state.flags, snap: true } };
+    for (let depth = 0; depth < 5; depth++) {
+      const model = relationModel(state)!, parents = constructionObjects(state), nested = nestMidpointTriangle(state);
+      valid(nested); expect(nested.flags.snap).toBe(true);
+      expect(constructionObjects(nested)).toHaveLength(parents.length + 1);
+      const child = constructionObject(nested)!;
+      expect(constructionArea(child.vertices)).toBeCloseTo(model.area / 4, 7);
+      worldVertices(child).forEach((point, index) => {
+        expect(point.x).toBeCloseTo(model.inner[index].x, 8); expect(point.y).toBeCloseTo(model.inner[index].y, 8);
+      });
+      parents.forEach((parent) => expect(constructionObject(nested, parent.id)).toEqual(parent));
+      state = nested;
+    }
+    const childId = state.params.active, parents = constructionObjects(state).filter((object) => object.id !== childId);
+    const moved = dragRelation(state, `object.${childId}`, constructionObject(state)!.center, { x: 60, y: 30 }); valid(moved);
+    parents.forEach((parent) => expect(constructionObject(moved, parent.id)).toEqual(parent));
+    expect(planeRelationsScene.selectionAfterChange!(state, nestMidpointTriangle(state), `object.${childId}`)).toBe(`object.${state.params.nextId}`);
+  });
+
+  it("keeps midpoint copying exact under snap and stops nesting at valid geometry or material limits", () => {
+    let state = setRelationFlag(setRelationField(createRelationsState(), "angle", 31), "midpoints", true);
+    state = { ...state, flags: { ...state.flags, snap: true } };
+    expect(relationModel(copyMidpointTriangle(state))!.area).toBeCloseTo(relationModel(state)!.area / 4, 7);
+    for (let i = 0; i < 24; i++) { const next = nestMidpointTriangle(state); valid(next); if (next === state) break; state = next; }
+    expect(nestMidpointTriangle(state)).toBe(state); expect(action("relations-nest-midpoints").disabled!(state, context)).toBe(true);
+    expect(constructionObjects(state).length).toBeLessThanOrEqual(16);
+    const quad = addRelationMaterial(empty(), "quadrilateral"); expect(nestMidpointTriangle(quad)).toBe(quad);
   });
 
   it("duplicates observation parameters independently and removes only the deleted owner's metadata", () => {

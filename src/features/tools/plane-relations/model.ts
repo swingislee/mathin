@@ -132,5 +132,32 @@ export function copyMidpointTriangle(state: PlanarState): PlanarState {
   const model = relationModel(state);
   if (!model || model.points.length !== 3 || !relationFlag(state, "midpoints") || !isConvexMaterial(model.inner, true)) return state;
   const points = model.inner.map((point) => ({ x: point.x + 65, y: point.y + 65 }));
-  return createRelationGeometry(state, "polygon", points) ?? state;
+  return appendExactRelationMaterials(state, [points]);
+}
+
+/** 数学派生材料沿用真实点位；全部成功才提交，网格只作用于教师自由绘制。 */
+function appendExactRelationMaterials(state: PlanarState, materials: readonly (readonly Point[])[]): PlanarState {
+  if (!materials.length) return state;
+  let next: PlanarState = { ...state, flags: { ...state.flags, snap: false } };
+  for (const points of materials) {
+    const added = addConstruction(next, "polygon", points);
+    if (added === next) return state;
+    const synced = syncRelations(next, added);
+    if (synced === next) return state;
+    next = synced;
+  }
+  return { ...next, flags: { ...next.flags, snap: state.flags.snap } };
+}
+
+/** 复制当前实际分区，不改变原材料或观察；各副本之后可独立搬动、旋转和编辑。 */
+export function copyRelationParts(state: PlanarState): PlanarState {
+  const model = relationModel(state);
+  if (!model?.parts.length) return state;
+  return appendExactRelationMaterials(state, model.parts.map((points) => points.map((point) => ({ x: point.x + 65, y: point.y + 65 }))));
+}
+
+/** 每次从当前三角形取真实中点；新材料原位保留，可再次嵌套，也可独立搬开。 */
+export function nestMidpointTriangle(state: PlanarState): PlanarState {
+  const model = relationModel(state);
+  return model?.points.length === 3 ? appendExactRelationMaterials(state, [model.inner]) : state;
 }

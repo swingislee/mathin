@@ -6,14 +6,14 @@ import type { PlanarPoint, PlanarSnapshot, PlanarState } from "@/features/tools/
 import type { PlanarAction, PlanarDrawingApi } from "@/features/tools/planar-kit/types";
 import { planarCommit, planarFrame, planarHistory, planarPause } from "@/features/tools/planar-kit/presentation";
 import {
-  addConstruction, constructionObject, constructionObjects, duplicateConstruction, removeConstruction, worldVertices,
+  addConstruction, constructionMeasurements, constructionObject, constructionObjects, duplicateConstruction, removeConstruction, worldVertices,
 } from "@/features/tools/plane-construction/model";
 import { distance, polygonSegments } from "@/features/tools/plane-geometry/model";
 import { planeGeometryScenes } from "@/features/tools/plane-geometry/scenes";
 import { isValidPlaneGeometryState } from "@/features/tools/plane-geometry/validation";
 import {
   PERIMETER_UNIT, createPerimeterGeometry, createPerimeterState, perimeterComparison, perimeterLength,
-  perimeterVertices, setPerimeterField, setPerimeterProgress, straightenPerimeter, syncPerimeterGeometry, walkPerimeter,
+  deformPerimeterRectangle, dragPerimeterInvariant, perimeterInvariantHandle, perimeterRectangle, perimeterVertices, setPerimeterField, setPerimeterProgress, straightenPerimeter, syncPerimeterGeometry, walkPerimeter,
 } from "@/features/tools/plane-perimeter/model";
 import { planePerimeterScene as scene } from "@/features/tools/plane-perimeter/scenes";
 import { isValidPerimeterState } from "@/features/tools/plane-perimeter/validation";
@@ -318,7 +318,7 @@ describe("perimeter descriptor, rendering and helper contract", () => {
   it("reuses declared actions and bounds for the contextual toolbar without activating edit handles", () => {
     const state = createPerimeterState(), context = scene.contextActions!(state, "object.0")!;
     expect(context.bounds).toMatchObject({ minX: 290, maxX: 470, minY: 210, maxY: 330 });
-    expect(context.items).toEqual([{ kind: "operation", id: "perimeter" }, { kind: "action", id: "construction-edit" }, { kind: "action", id: "construction-duplicate" }]);
+    expect(context.items).toEqual([{ kind: "operation", id: "perimeter" }, { kind: "action", id: "construction-edit" }, { kind: "action", id: "construction-duplicate" }, { kind: "operation", id: "perimeter-fixed-perimeter" }]);
     for (const item of context.items) expect((item.kind === "action" ? scene.actions : scene.operations)!.some((entry) => entry.id === item.id)).toBe(true);
     expect(scene.contextActions!(state, null)).toBeNull(); expect(scene.contextActions!(state, "object.999")).toBeNull();
     expect(draw(state, { selected: "object.0" }).querySelectorAll("[data-construction-edit-handle]")).toHaveLength(0);
@@ -342,5 +342,104 @@ describe("perimeter descriptor, rendering and helper contract", () => {
     expect(sql.match(/exception when others then return false/g)).toHaveLength(2);
     expect(sql.match(/from public,anon,authenticated,service_role/g)).toHaveLength(2);
     expect(sql).not.toMatch(/create or replace|notify pgrst|insert into|delete from/i);
+  });
+});
+
+describe("rectangle reshaping at a fixed quantity", () => {
+  it("solves both dimensions atomically, keeps the center and resets only the changed material's demonstration", () => {
+    const state = completed(run("construction-duplicate", completed())), original = structuredClone(state);
+    const id = state.params.active, before = constructionMeasurements(constructionObject(state)!);
+    const fixedPerimeter = setPerimeterField(state, "perimeter-width", 8);
+    expect(perimeterRectangle(fixedPerimeter)).toMatchObject({ width: 240, height: 60 });
+    expect(constructionMeasurements(constructionObject(fixedPerimeter)!).perimeter).toBeCloseTo(before.perimeter, 9);
+    const fixedArea = setPerimeterField(state, "area-height", 8);
+    expect(perimeterRectangle(fixedArea)).toMatchObject({ width: 90, height: 240 });
+    expect(constructionMeasurements(constructionObject(fixedArea)!).area).toBeCloseTo(before.area, 8);
+    for (const result of [fixedPerimeter, fixedArea]) {
+      expect(isValidPerimeterState(result)).toBe(true);
+      expect(constructionObject(result)!.center).toEqual(constructionObject(state)!.center);
+      expect(constructionObject(result, 0)).toEqual(constructionObject(state, 0));
+      expect(result.params[`walk.${id}`]).toBe(0); expect(result.params[`straight.${id}`]).toBe(0);
+      expect(result.params["walk.0"]).toBe(1); expect(result.params["straight.0"]).toBe(1);
+      expect(Object.keys(result.params)).toEqual(Object.keys(state.params));
+    }
+    expect(state).toEqual(original);
+  });
+
+  it("uses the frozen true edge direction for a rotated or reflected handle even when the grid is on", () => {
+    let state = setPerimeterField(createPerimeterState(), "angle", 37);
+    state = { ...state, params: { ...state.params, "flip.0": -1 }, flags: { ...state.flags, snap: true } };
+    for (const invariant of ["perimeter", "area"] as const) for (const dimension of ["width", "height"] as const) {
+      const handle = perimeterInvariantHandle(state, dimension)!, u = handle.direction;
+      const delta = { x: u.x * 23 - u.y * 90, y: u.y * 23 + u.x * 90 };
+      const next = dragPerimeterInvariant(state, `invariant.${invariant}.${dimension}.0`, delta);
+      const accurate = deformPerimeterRectangle(state, invariant, dimension, perimeterRectangle(state)![dimension] + 46);
+      expect(isValidPerimeterState(next)).toBe(true);
+      const actual = constructionMeasurements(constructionObject(next)!), initial = constructionMeasurements(constructionObject(state)!);
+      expect(actual[invariant]).toBeCloseTo(initial[invariant], 7);
+      expect(perimeterRectangle(next)!.width).toBeCloseTo(perimeterRectangle(accurate)!.width, 9);
+      expect(perimeterRectangle(next)!.height).toBeCloseTo(perimeterRectangle(accurate)!.height, 9);
+      expect(next.flags.snap).toBe(true); expect(constructionObject(next)!.angle).toBe(37); expect(constructionObject(next)!.flip).toBe(-1);
+    }
+  });
+
+  it("accepts a rotated rectangle drawn as a polygon while retaining its vertex identities", () => {
+    const state = createPerimeterGeometry(empty(), "polygon", [{ x: 150, y: 100 }, { x: 270, y: 260 }, { x: 190, y: 320 }, { x: 70, y: 160 }])!;
+    const id = state.params.active;
+    expect(perimeterRectangle(state)).toMatchObject({ width: 200, height: 100 });
+    const next = setPerimeterField(state, "perimeter-width", 5);
+    expect(perimeterRectangle(next)).toMatchObject({ width: 150, height: 150 });
+    expect(isValidPerimeterState(next)).toBe(true);
+    expect(next.params[`kind.${id}`]).toBe(0); expect(Object.keys(next.points)).toEqual(Object.keys(state.points));
+  });
+
+  it("preserves the invariant at limits and leaves unsupported or non-finite requests untouched", () => {
+    const state = createPerimeterState(), other = createPerimeterGeometry(state, "polygon", concave)!;
+    for (const invariant of ["perimeter", "area"] as const) for (const value of [-100, 0, 10000]) {
+      const next = deformPerimeterRectangle(state, invariant, "width", value);
+      expect(isValidPerimeterState(next)).toBe(true);
+      expect(constructionMeasurements(constructionObject(next)!)[invariant]).toBeCloseTo(constructionMeasurements(constructionObject(state)!)[invariant], 7);
+      expect(perimeterRectangle(next)!.width).toBeGreaterThanOrEqual(1); expect(perimeterRectangle(next)!.height).toBeGreaterThanOrEqual(1);
+    }
+    expect(setPerimeterField(other, "area-width", 7)).toBe(other);
+    expect(setPerimeterField(state, "area-width", NaN)).toBe(state);
+    expect(setPerimeterField(state, "perimeter-height", Infinity)).toBe(state);
+    expect(dragPerimeterInvariant(state, "invariant.area.width.999", { x: 30, y: 0 })).toBe(state);
+    expect(dragPerimeterInvariant(state, "invariant.area.width.0", { x: NaN, y: 0 })).toBe(state);
+    expect(dragPerimeterInvariant(state, "invariant.area.width.000", { x: 30, y: 0 })).toBe(state);
+  });
+
+  it("keeps the same quantity through every square-making animation frame and shared history", () => {
+    for (const invariant of ["perimeter", "area"] as const) {
+      const start = createPerimeterState(), command = action(`perimeter-square-${invariant}`), end = command.run(start, { selected: "object.0" });
+      const snapshot: PlanarSnapshot = { current: start, past: [], future: [], motion: null };
+      const playback = planarCommit(snapshot, start, end, { id: command.id, duration: command.duration!, now: 100 });
+      for (const progress of [0, 0.1, 0.5, 0.9, 1]) {
+        const frame = command.interpolate!(start, end, progress);
+        expect(isValidPerimeterState(frame)).toBe(true);
+        expect(constructionMeasurements(constructionObject(frame)!)[invariant]).toBeCloseTo(constructionMeasurements(constructionObject(start)!)[invariant], 7);
+      }
+      expect(perimeterRectangle(end)!.width).toBeCloseTo(perimeterRectangle(end)!.height, 9);
+      const paused = planarPause(playback, 900, true), replay = JSON.parse(JSON.stringify(paused));
+      expect(planarFrame(replay, scene, 5000)).toEqual(planarFrame(paused, scene, 900));
+      expect(planarHistory(playback, "undo").current).toEqual(start);
+      expect(planarHistory(planarHistory(playback, "undo"), "redo").current).toEqual(end);
+    }
+  });
+
+  it("shows deformation handles only in their explicit editable operation and restores ordinary editing on exit", () => {
+    const state = run("construction-edit", createPerimeterState());
+    for (const operation of ["perimeter-fixed-perimeter", "perimeter-fixed-area"]) {
+      const active = draw(state, { selected: "object.0", operation });
+      expect(active.querySelectorAll("[data-perimeter-invariant-handle]")).toHaveLength(2);
+      expect(active.querySelectorAll("[data-construction-edit-handle]")).toHaveLength(0);
+      expect(draw(state, { selected: "object.0", operation, editable: false }).querySelectorAll("[data-perimeter-invariant-handle]")).toHaveLength(0);
+      expect(draw(state, { selected: null, operation }).querySelectorAll("[data-perimeter-invariant-handle]")).toHaveLength(0);
+    }
+    expect(draw(state, { selected: "object.0" }).querySelectorAll("[data-construction-edit-handle]")).toHaveLength(4);
+    expect(draw(state, { selected: "object.0" }).querySelectorAll("[data-perimeter-invariant-handle]")).toHaveLength(0);
+    const observed = run("construction-measures", state);
+    expect(draw(observed, { selected: "object.0", operation: "perimeter-fixed-area" }).textContent).toContain("S = 24 u²");
+    expect(scene.contextActions!(state, "invariant.area.height.0")!.items).toEqual(scene.contextActions!(state, "object.0")!.items);
   });
 });

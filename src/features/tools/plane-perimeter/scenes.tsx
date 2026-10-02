@@ -1,13 +1,14 @@
 import type { ReactNode } from "react";
 import type { PlanarPoint, PlanarState } from "../planar-kit/contract";
-import { textFor, type PlanarAction, type PlanarDrawingApi, type PlanarSceneDefinition, type PlanarText } from "../planar-kit/types";
+import { textFor, type PlanarAction, type PlanarDrawingApi, type PlanarOperation, type PlanarSceneDefinition, type PlanarText } from "../planar-kit/types";
 import { constructionBounds, constructionObject, constructionObjects, parseConstructionTarget } from "../plane-construction/model";
 import { createConstructionDefinition } from "../plane-construction/scenes";
 import { distance, polygonSegments } from "../plane-geometry/model";
 import {
-  PERIMETER_SCENE_ID, PERIMETER_UNIT, createPerimeterGeometry, createPerimeterState,
+  PERIMETER_SCENE_ID, PERIMETER_UNIT, createPerimeterGeometry, createPerimeterState, dragPerimeterInvariant, interpolatePerimeterInvariant,
+  parsePerimeterHandle, perimeterInvariantHandle, perimeterRectangle, squarePerimeterRectangle,
   perimeterComparison, perimeterLength, perimeterVertices, setPerimeterField, setPerimeterProgress,
-  syncPerimeterGeometry, walkPerimeter, type PerimeterProgress,
+  syncPerimeterGeometry, walkPerimeter, type PerimeterInvariant, type PerimeterProgress,
 } from "./model";
 
 const t = (zh: string, en: string): PlanarText => ({ zh, en });
@@ -16,6 +17,11 @@ const coordinates = (points: readonly PlanarPoint[]) => points.map((point) => `$
 const fmt = (value: number) => Number(value.toFixed(2)).toString();
 const base = createConstructionDefinition(PERIMETER_SCENE_ID, "plane-perimeter", t("周长探究", "Exploring perimeter"));
 const noObject = (state: PlanarState) => !constructionObject(state);
+const objectTarget = (target: string | null) => {
+  const handle = target ? parsePerimeterHandle(target) : null;
+  return handle ? `object.${handle.id}` : target;
+};
+const operationInvariant = (operation?: string | null): PerimeterInvariant | null => operation === "perimeter-fixed-perimeter" ? "perimeter" : operation === "perimeter-fixed-area" ? "area" : null;
 const withProgress = (action: PlanarAction): PlanarAction => ({ ...action, run: (state, context) => syncPerimeterGeometry(state, action.run(state, context)) });
 
 function Caption({ at, children, size = 14, anchor = "middle" }: { at: PlanarPoint; children: ReactNode; size?: number; anchor?: "start" | "middle" | "end" }) {
@@ -28,6 +34,44 @@ function progressAction(kind: PerimeterProgress, label: PlanarText): PlanarActio
     disabled: noObject,
     run: (state) => setPerimeterProgress(state, kind, state.params[`${kind}.${state.params.active}`] >= 1 ? 0 : 1),
   };
+}
+
+function invariantOperation(invariant: PerimeterInvariant): PlanarOperation {
+  const preservingPerimeter = invariant === "perimeter";
+  return {
+    id: `perimeter-fixed-${invariant}`, icon: "dimensions",
+    label: preservingPerimeter ? t("定周长变形（矩形）", "Reshape at fixed perimeter (rectangle)") : t("定面积变形（矩形）", "Reshape at fixed area (rectangle)"),
+    fields: (["width", "height"] as const).map((dimension) => ({
+      key: `${invariant}-${dimension}`, min: 1 / PERIMETER_UNIT, max: 1600 / PERIMETER_UNIT,
+      label: dimension === "width" ? t("矩形宽（u）", "Rectangle width (u)") : t("矩形高（u）", "Rectangle height (u)"),
+      read: (state: PlanarState) => (perimeterRectangle(state)?.[dimension] ?? 0) / PERIMETER_UNIT,
+      disabled: (state: PlanarState) => !perimeterRectangle(state),
+    })),
+    actions: [{
+      id: `perimeter-square-${invariant}`, icon: "dimensions", duration: 1600,
+      label: preservingPerimeter ? t("同周长变为正方形", "Make a square with the same perimeter") : t("同面积变为正方形", "Make a square with the same area"),
+      disabled: (state) => squarePerimeterRectangle(state, invariant) === state,
+      run: (state) => squarePerimeterRectangle(state, invariant),
+      interpolate: (from, to, progress) => interpolatePerimeterInvariant(from, to, progress, invariant),
+    }],
+  };
+}
+
+function InvariantHandles({ state, api }: { state: PlanarState; api: PlanarDrawingApi }) {
+  const invariant = operationInvariant(api.operation), selected = objectTarget(api.selected);
+  const id = selected ? parseConstructionTarget(selected)?.id : undefined;
+  const rectangle = id === undefined ? null : perimeterRectangle(state, id);
+  if (!invariant || !rectangle || !api.editable) return null;
+  return <g data-perimeter-invariant={invariant}>
+    {(["width", "height"] as const).map((dimension) => {
+      const handle = perimeterInvariantHandle(state, dimension, id)!;
+      const label = dimension === "width" ? t("沿矩形宽方向变形", "Reshape along the rectangle width") : t("沿矩形高方向变形", "Reshape along the rectangle height");
+      return <g key={dimension} {...api.bind(`invariant.${invariant}.${dimension}.${id}`, textFor(label, api.locale))} data-perimeter-invariant-handle={dimension} style={{ cursor: "grab" }}>
+        <circle cx={handle.at.x} cy={handle.at.y} r="18" fill="transparent" />
+        <rect x={handle.at.x - 6} y={handle.at.y - 6} width="12" height="12" rx="2" fill="var(--paper)" stroke="var(--rose)" strokeWidth="2" pointerEvents="none" />
+      </g>;
+    })}
+  </g>;
 }
 
 function BoundaryComparison({ state, api }: { state: PlanarState; api: PlanarDrawingApi }) {
@@ -62,7 +106,7 @@ const actions = base.actions!.filter((action) => !["construction-life-outline", 
 
 export const planePerimeterScene: PlanarSceneDefinition = {
   ...base,
-  description: t("画出或添加图形，编辑点和尺寸；沿真实边界绕一周，将边界副本保长拉直并用同一比例尺比较。", "Draw or add shapes and edit their vertices or dimensions. Trace their real boundaries, straighten boundary copies without changing edge lengths, and compare at one shared scale."),
+  description: t("画出或添加图形，沿真实边界绕一周、保长拉直并同尺比较。矩形可定周长或定面积变形；专用操作关闭后继续普通编辑。", "Draw or add shapes, trace and straighten their real boundaries, and compare at one shared scale. Reshape rectangles at fixed perimeter or area; close the operation to resume ordinary editing."),
   create: createPerimeterState,
   fields: base.fields!.filter((field) => field.key !== "detail").map((field) => field.key === "width" || field.key === "height" ? {
     ...field, label: field.key === "width" ? t("当前图形宽（u）", "Current shape width (u)") : t("当前图形高（u）", "Current shape height (u)"),
@@ -84,18 +128,24 @@ export const planePerimeterScene: PlanarSceneDefinition = {
       ],
       actions: [progressAction("walk", t("绕一周／沿边退回", "Trace once around / retrace")), progressAction("straight", t("拉直边界／围回", "Straighten boundary / restore"))],
     },
+    invariantOperation("perimeter"), invariantOperation("area"),
     ...base.operations!.filter((operation) => operation.id !== "reflect").map((operation) => ({ ...operation, actions: operation.actions?.map(withProgress) })),
   ],
   setField: setPerimeterField,
+  tap: (state, target) => base.tap!(state, objectTarget(target)!),
+  selectionAfterChange: (before, after, selected) => base.selectionAfterChange!(before, after, objectTarget(selected)),
   contextActions: (state, selected) => {
-    const target = selected ? parseConstructionTarget(selected) : null;
+    const normalized = objectTarget(selected), target = normalized ? parseConstructionTarget(normalized) : null;
     const object = target?.id === undefined ? null : constructionObject(state, target.id);
     return object ? { bounds: constructionBounds(object), items: [
       { kind: "operation", id: "perimeter" }, { kind: "action", id: "construction-edit" }, { kind: "action", id: "construction-duplicate" },
+      ...(perimeterRectangle(state, object.id) ? [{ kind: "operation" as const, id: "perimeter-fixed-perimeter" }] : []),
     ] } : null;
   },
   draw: (state, api) => <>
-    {base.draw({ ...state, flags: { ...state.flags, measures: false } }, api)}
+    {base.draw({ ...state, flags: { ...state.flags, measures: false,
+      ...(operationInvariant(api.operation) ? { edit: false, vertices: false, edges: false } : {}),
+    } }, { ...api, selected: objectTarget(api.selected) })}
     {constructionObjects(state).map((object) => {
       const walk = state.params[`walk.${object.id}`], straight = state.params[`straight.${object.id}`];
       const vertices = perimeterVertices(object), bounds = constructionBounds(object), traced = walkPerimeter(object, walk);
@@ -108,14 +158,20 @@ export const planePerimeterScene: PlanarSceneDefinition = {
         </g>}
         {state.flags.measures && <>
           {polygonSegments(vertices).map((edge, index) => <Caption key={index} at={{ x: (edge.a.x + edge.b.x) / 2, y: (edge.a.y + edge.b.y) / 2 - 10 }}>{fmt(distance(edge.a, edge.b) / PERIMETER_UNIT)} u</Caption>)}
-          <Caption at={{ x: object.center.x, y: bounds.maxY + 23 }}>P = {fmt(perimeterLength(object) / PERIMETER_UNIT)} u</Caption>
+          <Caption at={{ x: object.center.x, y: bounds.maxY + 23 }}>P = {fmt(perimeterLength(object) / PERIMETER_UNIT)} u{operationInvariant(api.operation) && state.params.active === object.id && perimeterRectangle(state, object.id)
+            ? ` · S = ${fmt(perimeterRectangle(state, object.id)!.width * perimeterRectangle(state, object.id)!.height / PERIMETER_UNIT ** 2)} u²` : ""}</Caption>
         </>}
         {(straight > 0 || api.operation === "perimeter" && state.params.active === object.id) && <Caption at={{ x: object.center.x, y: bounds.minY - 22 }}>{textFor(t(`材料 ${object.id + 1}`, `Shape ${object.id + 1}`), api.locale)}</Caption>}
+        {operationInvariant(api.operation) && state.params.active === object.id && <Caption at={{ x: object.center.x, y: bounds.minY - 43 }} size={13}>{textFor(perimeterRectangle(state, object.id)
+          ? api.operation === "perimeter-fixed-perimeter" ? t("拖动方柄 · 周长保持不变", "Drag a square handle · perimeter stays fixed") : t("拖动方柄 · 面积保持不变", "Drag a square handle · area stays fixed")
+          : t("选择长方形进行定量变形", "Select a rectangle for fixed-quantity reshaping"), api.locale)}</Caption>}
       </g>;
     })}
     <BoundaryComparison state={state} api={api} />
+    <InvariantHandles state={state} api={api} />
   </>,
   drag: (start, target, point, delta, context) => {
+    if (parsePerimeterHandle(target)) return Number.isFinite(point.x) && Number.isFinite(point.y) ? dragPerimeterInvariant(start, target, delta) : start;
     const parsed = parseConstructionTarget(target);
     const object = parsed?.type === "edge" && parsed.id !== undefined ? constructionObject(start, parsed.id) : null;
     const dragTarget = !start.flags.edit && object && parsed?.part !== undefined && parsed.part < object.vertices.length ? `object.${object.id}` : target;
