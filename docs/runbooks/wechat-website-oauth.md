@@ -1,5 +1,7 @@
 # 微信网站应用 OAuth 与已有账号绑定
 
+> **2026-10-02 微信内授权开发状态**：增加公众号网页授权分支，微信内直接确认，普通浏览器保留网站扫码。代码与协议替身检查已完成；用户尚未确认已有公众号，真实启用仍待公众号权限、同开放平台绑定、域名验证和私有凭据。本条不改变下方已部署的扫码版本及其验收状态。
+
 > **2026-10-02 生产状态**：用户已填写网站应用凭据，并将开放平台授权回调域修正为 `mathin.club`。22:14（Asia/Shanghai）应用、manual linking 与 `custom:wechat` 均已开启；中英文入口到微信二维码的真实协议链、PKCE/Cookie、日志脱敏和受保护数据核对通过。状态为**已部署，待真实扫码与原账号绑定验收**。22:52 已修复绑定时 Next 预读提前消费一次性凭据的问题，最小补丁 `4a9e3b5f` 已上线，Auth 镜像保持；用户可刷新账号安全页重新绑定。详见[生产启用记录](../evidence/r1/wechat-oauth-activation-20261002.md)。
 
 > 2026-09-24 开发实现。用户已确认：首次扫码为游客，只浏览公开内容并绑定已有账号；游客不创建独立 Auth 用户，不保存笔记或成绩。该日期的记录为开发依据，最新生产状态见上方。
@@ -48,7 +50,7 @@
 - [用户资料与 UnionID](https://developers.weixin.qq.com/doc/oplatform/Website_App/WeChat_Login/Authorized_Interface_Calling_UnionID.html)：返回 OpenID、UnionID、昵称、头像等；**没有手机号字段**。该页明确说明性别和地区已停止返回，旧 JSON 示例中的相关字段不构成可用性保证。
 - [小程序手机号](https://developers.weixin.qq.com/miniprogram/dev/framework/open-ability/getPhoneNumber.html)：手机号授权是另一项能力，需要相应主体、认证和接口权限。以后接入时使用独立的手机号 code、主动同意和同一绑定事务；它不是网站 OAuth 的参数，也不能当作按号码自动合并账号的依据。
 
-身份主键固定为 `<开放平台命名空间>:<UnionID>`，缺失 UnionID 时失败重试，不回退 OpenID。网站与将来的小程序使用同一开放平台和命名空间；跨不同开放平台的标识不相互等价，迁移需单列映射方案。
+身份主键固定为 `<开放平台命名空间>:<UnionID>`，缺失 UnionID 时失败重试，不回退 OpenID。网站、公众号与小程序使用同一开放平台和命名空间；跨不同开放平台的标识不相互等价，迁移需单列映射方案。
 
 保存授权来源需要的 OpenID、UnionID、昵称、头像 URL 和授权时间；不保存微信 access_token/refresh_token、密码、性别或地区。已登录账号的快照仅本人和受信服务端可读。昵称/头像用于展示微信登录方式，不覆盖自己编辑的个人资料、员工姓名或学生档案。
 
@@ -72,7 +74,9 @@
 
 应用服务端变量见 `.env.example`：
 
-- `WECHAT_WEB_APP_ID` / `WECHAT_WEB_APP_SECRET`：网站应用凭据，不使用小程序 AppID。
+- `WECHAT_WEB_APP_ID` / `WECHAT_WEB_APP_SECRET`：网站应用凭据，不使用公众号或小程序 AppID。
+- `WECHAT_OFFICIAL_ACCOUNT_ENABLED`：公众号网页授权独立开关，默认 false。
+- `WECHAT_OFFICIAL_ACCOUNT_APP_ID` / `WECHAT_OFFICIAL_ACCOUNT_APP_SECRET`：公众号自己的服务端凭据；与网站应用使用不同 AppID，绑定同一开放平台。
 - `WECHAT_OPEN_PLATFORM_NAMESPACE=mathin`：固定跨应用身份命名空间，启用后保持稳定。
 - `WECHAT_SITE_ORIGIN=https://mathin.club`。
 - `NEXT_PUBLIC_SITE_URL` 与 `WECHAT_SITE_ORIGIN` 使用同一公开站点源，避免最终回调跳到不同域。
@@ -81,6 +85,25 @@
 - `WECHAT_OAUTH_ENABLED`：默认 false。
 - `WECHAT_AUTH_COMPATIBILITY_VERIFIED`：默认 false；只有当前版本完整两段 PKCE、原 UUID 绑定、回调、MFA 等验证通过后才开启。
 - `WECHAT_PHONE_LINKING_VERIFIED`：默认 false；纯手机号兼容修复实测后才开启。
+
+### 微信内直接授权的配置与验收
+
+1. 在微信公众平台确认公众号拥有“网页授权获取用户基本信息”权限（`snsapi_userinfo`）。该权限需要以公众号后台实际显示为准；网站应用审核通过不会自动开通公众号权限。尚未准备公众号时先保留开关为 false。
+2. 在微信开放平台把公众号绑定到现有网站应用所属的同一个开放平台账号，继续使用现有 `WECHAT_OPEN_PLATFORM_NAMESPACE`。两个 AppID 的 OpenID 不同，同一用户应返回同一个 UnionID。
+3. 在公众号后台将“网页授权域名”设为 `mathin.club`，按平台要求将 `MP_verify_*.txt` 校验文件提供在该域名根目录并完成验证。此处是公众号的独立配置；网站应用的授权回调域仍保持 `mathin.club`。微信回调继续是 `https://mathin.club/zh/auth/wechat/callback`。
+4. 在服务器 `/home/swing/services/mathin/config/.env.production.local` 填写公众号的 `WECHAT_OFFICIAL_ACCOUNT_APP_ID` 和 `WECHAT_OFFICIAL_ACCOUNT_APP_SECRET`，先保持 `WECHAT_OFFICIAL_ACCOUNT_ENABLED=false`。文件维持受控权限，密钥不进入聊天、Git 或命令参数。
+5. 代码晋级和开关加载前，按 [生产写目标策略](r1-write-target-policy.md) 核对本次授权、目标、当前版本、配置备份和回退。无需新增数据库迁移或 Auth provider。部署代码并在配置核对后开启公众号开关，再由本人完成手机微信内真实登录／绑定。
+6. 验收微信内中文、英文登录以及原账号主动绑定；电脑扫码继续工作。同一微信通过两条入口应回到同一 UUID；首次未知微信进入游客页。账号密码、MFA、员工／家庭关系及权限保持原规则。
+
+实现依据：[微信公众号网页授权](https://developers.weixin.qq.com/doc/offiaccount/OA_Web_Apps/Wechat_webpage_authorization.html)、[腾讯 CloudBase 公众号接入说明](https://docs.cloudbase.net/integration/wechat-official-oauth)。网页授权入口固定为 `https://open.weixin.qq.com/connect/oauth2/authorize`，scope 固定 `snsapi_userinfo`；不会把网站 AppID 改用公众号 scope。
+
+服务端在微信内浏览器发起授权时选择公众号，并将渠道写入已有的一次性 state 票据；回调只读取该已验证票据，忽略请求中自报的渠道或 AppID。发布前旧票据继续按网站扫码处理。两种渠道共用浏览器 Cookie、原会话、PKCE、UnionID identity、游客和原账号绑定逻辑；缺少 UnionID、标识不一致、权限不足或 `is_snapshotuser=1` 的虚拟快照用户均拒绝登录。
+
+公众号未开通／凭据不全时，微信内返回原登录页或账号安全页的双语说明，提供密码登录或电脑扫码方式。已存在且有效的游客证明仍能在原账号明确确认后复用。微信资料快照中的 OpenID 可随最近授权渠道更新；账号归属始终由稳定 UnionID subject 与原生 identity 决定。
+
+单独关闭公众号时，将 `WECHAT_OFFICIAL_ACCOUNT_ENABLED=false` 并按已授权运维流程加载配置；电脑扫码、密码登录与现有绑定保持。尚未完成的公众号授权需重新发起或使用密码登录，身份与业务数据不删除。
+
+### Supabase provider
 
 Supabase custom OAuth2 provider 参数：
 

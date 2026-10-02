@@ -3,6 +3,7 @@ import "server-only";
 export type WechatConfig = {
   appId: string;
   appSecret: string;
+  officialAccount?: { appId: string; appSecret: string };
   namespace: string;
   siteOrigin: string;
   callbackUrl: string;
@@ -34,8 +35,13 @@ export function getWechatConfig(): WechatConfig | null {
     const authOrigin = httpsOrigin(process.env.WECHAT_SUPABASE_PUBLIC_ORIGIN);
     // Auth 升级与 provider 联调通过后才启用入口；避免仅凭 AppID 就显示可用。
     if (process.env.WECHAT_AUTH_COMPATIBILITY_VERIFIED !== "true") return null;
+    const officialAppId = process.env.WECHAT_OFFICIAL_ACCOUNT_APP_ID?.trim();
+    const officialAppSecret = process.env.WECHAT_OFFICIAL_ACCOUNT_APP_SECRET?.trim();
+    const officialAccount = process.env.WECHAT_OFFICIAL_ACCOUNT_ENABLED === "true"
+      && officialAppId && officialAppSecret && officialAppId !== appId
+      ? { appId: officialAppId, appSecret: officialAppSecret } : undefined;
     return {
-      appId, appSecret, namespace, clientSecret, siteOrigin,
+      appId, appSecret, officialAccount, namespace, clientSecret, siteOrigin,
       clientId: "mathin-wechat",
       callbackUrl: `${siteOrigin}/zh/auth/wechat/callback`,
       authCallbackUrl: `${authOrigin}/auth/v1/callback`,

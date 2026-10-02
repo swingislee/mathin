@@ -1,10 +1,13 @@
 import { createHash } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { z } from "zod";
+import type { WechatConfig } from "@/features/wechat/config";
+import type { WechatChannel, WechatIdentity } from "@/features/wechat/contract";
 vi.mock("server-only", () => ({}));
 const h = vi.hoisted(() => ({
   cookies: new Map<string, string>(), tickets: new Map<string, { kind: string; payload: object; browser: string }>(),
   owner: null as string | null, userId: null as string | null, sessionId: null as string | null,
+  channel: "website" as WechatChannel, guest: null as WechatIdentity | null,
   existing: false, active: true, conflict: vi.fn(), exchange: vi.fn(), serial: 0,
 }));
 const userId = "11111111-1111-4111-8111-111111111111";
@@ -12,7 +15,7 @@ const otherId = "22222222-2222-4222-8222-222222222222";
 const sessionId = "33333333-3333-4333-8333-333333333333";
 const browser = "a".repeat(64);
 const verifier = "v".repeat(64);
-const config = {
+const config: WechatConfig = {
   appId: "touristappid", appSecret: "not-a-secret", namespace: "mathin", clientId: "mathin-wechat", clientSecret: "not-a-secret",
   siteOrigin: "https://app.example.com", callbackUrl: "https://app.example.com/zh/auth/wechat/callback", authCallbackUrl: "https://auth.example.com/auth/v1/callback", phoneLinking: true,
 };
@@ -40,7 +43,7 @@ vi.mock("@/features/wechat/store", async (original) => ({
     if (consume) h.tickets.delete(token);
     return schema.parse(ticket.payload);
   },
-  readGuest: async () => null,
+  readGuest: async () => h.guest,
   findWechatUser: async () => h.owner,
   assertAccountActive: async () => { if (!h.active) throw new Error("failed"); },
   recordWechatConflict: (...args: unknown[]) => h.conflict(...args),
@@ -52,6 +55,8 @@ const profile = { subject: "mathin:union-user", openid: "website-user", unionid:
 beforeEach(() => {
   h.cookies.clear(); h.tickets.clear(); h.serial = 0; h.owner = null; h.userId = null; h.sessionId = null; h.existing = false; h.active = true;
   h.exchange.mockReset().mockResolvedValue(profile); h.conflict.mockReset();
+  h.channel = "website"; h.guest = null;
+  config.officialAccount = { appId: "official-account-fixture", appSecret: "official-fixture-secret" };
 });
 
 function authorizationRequest(patch = {}, headers?: HeadersInit) {
@@ -59,7 +64,9 @@ function authorizationRequest(patch = {}, headers?: HeadersInit) {
     client_id: config.clientId, redirect_uri: config.authCallbackUrl, response_type: "code", state: "supabase-state",
     code_challenge: createHash("sha256").update(verifier).digest("base64url"), code_challenge_method: "S256", mathin_flow: tokenHash(browser), ...patch,
   });
-  return new Request(`${config.siteOrigin}/zh/auth/wechat/authorize?${query}`, { headers });
+  const requestHeaders = new Headers(headers);
+  if (!requestHeaders.has("user-agent") && h.channel === "officialAccount") requestHeaders.set("user-agent", "MicroMessenger/8.0.63");
+  return new Request(`${config.siteOrigin}/zh/auth/wechat/authorize?${query}`, { headers: requestHeaders });
 }
 async function authorize(mode = "login", patch = {}, headers?: HeadersInit) {
   h.cookies.set("mathin_wechat_flow", browser);
@@ -67,8 +74,9 @@ async function authorize(mode = "login", patch = {}, headers?: HeadersInit) {
   h.tickets.set(browser, { kind: "flow", browser, payload: { mode, userId: h.userId, sessionId: h.sessionId, locale: "zh", next: "/zh/dashboard" } });
   return authorizeWechat(authorizationRequest(patch, headers));
 }
-async function callback(state: string) {
-  return completeWechatAuthorization(new Request(`${config.callbackUrl}?code=wechat-code&state=${state}`));
+async function callback(state: string, patch = {}, headers?: HeadersInit) {
+  const query = new URLSearchParams({ code: "wechat-code", state, ...patch });
+  return completeWechatAuthorization(new Request(`${config.callbackUrl}?${query}`, { headers }));
 }
 async function grantFor(mode = "login") {
   const start = await authorize(mode);
@@ -83,7 +91,8 @@ function tokenRequest(code: string, override = {}) {
   });
 }
 
-describe("WeChat broker security boundaries", () => {
+describe.each(["website", "officialAccount"] as const)("WeChat %s broker security boundaries", (channel) => {
+  beforeEach(() => { h.channel = channel; });
   it.each(["login", "link"])("keeps the %s ticket through RSC pre-reads and consumes it only on navigation", async (mode) => {
     const preRead = await authorize(mode, {}, { rsc: "1" });
     expect(preRead.status).toBe(204);
@@ -100,6 +109,7 @@ describe("WeChat broker security boundaries", () => {
     const navigation = await authorizeWechat(authorizationRequest());
     expect(navigation.status).toBe(303);
     expect(new URL(navigation.headers.get("location")!).hostname).toBe("open.weixin.qq.com");
+    expect(new URL(navigation.headers.get("location")!).pathname).toBe(channel === "website" ? "/connect/qrconnect" : "/connect/oauth2/authorize");
     expect(h.tickets.has(browser)).toBe(false);
     expect([...h.tickets.values()].map((ticket) => ticket.kind)).toEqual(["state"]);
     const replay = await authorizeWechat(authorizationRequest());
@@ -173,5 +183,48 @@ describe("WeChat broker security boundaries", () => {
     const data = await (await exchangeBrokerToken(tokenRequest(issued.code))).json();
     h.owner = null;
     expect((await brokerUserInfo(new Request(`${config.siteOrigin}/zh/auth/wechat/userinfo`, { headers: { authorization: `Bearer ${data.access_token}` } }))).status).toBe(400);
+  });
+});
+
+describe("WeChat authorization channel binding", () => {
+  it.each(["login", "link"])("pins the %s channel despite callback parameters or a changed user agent", async (mode) => {
+    const start = await authorize(mode, {}, { "user-agent": "MicroMessenger/8.0.63" });
+    const destination = new URL(start.headers.get("location")!);
+    expect(destination.pathname).toBe("/connect/oauth2/authorize");
+    const state = destination.searchParams.get("state")!;
+    expect(h.tickets.get(state)?.payload).toHaveProperty("channel", "officialAccount");
+    const result = await callback(state, { channel: "website", appid: config.appId }, { "user-agent": "Chrome/130" });
+    expect(h.exchange).toHaveBeenCalledWith(config, "wechat-code", undefined, "officialAccount");
+    expect(result.headers.get("location")).not.toContain("wechatError");
+  });
+
+  it("completes an existing website ticket issued before channel support", async () => {
+    const start = await authorize();
+    const state = new URL(start.headers.get("location")!).searchParams.get("state")!;
+    const payload = h.tickets.get(state)!.payload as { channel?: WechatChannel };
+    delete payload.channel;
+    await callback(state, { channel: "officialAccount" }, { "user-agent": "MicroMessenger/8.0.63" });
+    expect(h.exchange).toHaveBeenCalledWith(config, "wechat-code", undefined, "website");
+  });
+
+  it.each(["login", "link"])("returns the %s availability message instead of a QR when the official account is absent", async (mode) => {
+    config.officialAccount = undefined;
+    const result = await authorize(mode, {}, { "user-agent": "MicroMessenger/8.0.63" });
+    const destination = new URL(result.headers.get("location")!);
+    expect(destination.origin).toBe(config.siteOrigin);
+    expect(destination.pathname).toBe(mode === "link" ? "/zh/dashboard/account-security" : "/zh/login");
+    expect(destination.searchParams.get("wechatError")).toBe("officialAccountUnavailable");
+    expect(result.headers.get("cache-control")).toContain("no-store");
+    expect(result.headers.get("referrer-policy")).toBe("no-referrer");
+    expect(h.tickets.size).toBe(0);
+    expect(h.exchange).not.toHaveBeenCalled();
+  });
+
+  it("reuses an already proven guest identity for explicit linking without new authorization", async () => {
+    config.officialAccount = undefined; h.guest = profile;
+    const result = await authorize("link", {}, { "user-agent": "MicroMessenger/8.0.63" });
+    expect(new URL(result.headers.get("location")!).origin).toBe("https://auth.example.com");
+    expect(h.exchange).not.toHaveBeenCalled();
+    expect([...h.tickets.values()].map((ticket) => ticket.kind).sort()).toEqual(["completion", "grant"]);
   });
 });

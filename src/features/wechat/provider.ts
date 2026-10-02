@@ -2,7 +2,7 @@ import "server-only";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { request as httpsRequest } from "node:https";
 import { z } from "zod";
-import { safeWechatAvatar, type WechatIdentity } from "./contract";
+import { safeWechatAvatar, type WechatChannel, type WechatIdentity } from "./contract";
 import type { WechatConfig } from "./config";
 
 export const randomToken = () => randomBytes(32).toString("hex");
@@ -15,11 +15,25 @@ export function verifyPkce(verifier: string, challenge: string): boolean {
     && equalSecret(createHash("sha256").update(verifier).digest("base64url"), challenge);
 }
 
-export function wechatAuthorizationUrl(config: WechatConfig, state: string, locale: string): string {
-  const url = new URL("https://open.weixin.qq.com/connect/qrconnect");
+export function wechatAuthorizationChannel(userAgent: string | null): WechatChannel {
+  return /MicroMessenger\//i.test(userAgent ?? "") ? "officialAccount" : "website";
+}
+
+function authorizationSettings(config: WechatConfig, channel: WechatChannel) {
+  if (channel === "website") return { appId: config.appId, appSecret: config.appSecret, scope: "snsapi_login" };
+  const official = config.officialAccount;
+  if (!official?.appId || !official.appSecret || official.appId === config.appId) throw new Error("officialAccountUnavailable");
+  return { ...official, scope: "snsapi_userinfo" };
+}
+
+export function wechatAuthorizationUrl(config: WechatConfig, state: string, locale: string, channel: WechatChannel = "website"): string {
+  const settings = authorizationSettings(config, channel);
+  const url = new URL(channel === "officialAccount"
+    ? "https://open.weixin.qq.com/connect/oauth2/authorize" : "https://open.weixin.qq.com/connect/qrconnect");
   url.search = new URLSearchParams({
-    appid: config.appId, redirect_uri: config.callbackUrl, response_type: "code",
-    scope: "snsapi_login", state, lang: locale === "en" ? "en" : "cn",
+    appid: settings.appId, redirect_uri: config.callbackUrl, response_type: "code",
+    scope: settings.scope, state,
+    ...(channel === "website" ? { lang: locale === "en" ? "en" : "cn" } : {}),
   }).toString();
   url.hash = "wechat_redirect";
   return url.toString();
@@ -27,9 +41,11 @@ export function wechatAuthorizationUrl(config: WechatConfig, state: string, loca
 
 const tokenResponse = z.object({
   access_token: z.string().min(1).max(2048), openid: z.string().min(1).max(128),
+  is_snapshotuser: z.literal(0).optional(),
   scope: z.string().max(200), unionid: z.string().min(1).max(128).optional(),
 });
 const userResponse = z.object({
+  is_snapshotuser: z.literal(0).optional(),
   openid: z.string().min(1).max(128), unionid: z.string().min(1).max(128),
   nickname: z.string().max(100).default(""), headimgurl: z.string().max(2048).optional(),
 });
@@ -68,12 +84,13 @@ async function wechatJson(url: URL, fetcher?: typeof fetch): Promise<unknown> {
   } catch { throw new Error("failed"); }
 }
 
-export async function exchangeWechatCode(config: WechatConfig, code: string, fetcher?: typeof fetch): Promise<WechatIdentity> {
+export async function exchangeWechatCode(config: WechatConfig, code: string, fetcher?: typeof fetch, channel: WechatChannel = "website"): Promise<WechatIdentity> {
   if (!/^[A-Za-z0-9_-]{1,256}$/.test(code)) throw new Error("expired");
+  const settings = authorizationSettings(config, channel);
   const tokenUrl = new URL("https://api.weixin.qq.com/sns/oauth2/access_token");
-  tokenUrl.search = new URLSearchParams({ appid: config.appId, secret: config.appSecret, code, grant_type: "authorization_code" }).toString();
+  tokenUrl.search = new URLSearchParams({ appid: settings.appId, secret: settings.appSecret, code, grant_type: "authorization_code" }).toString();
   const token = tokenResponse.safeParse(await wechatJson(tokenUrl, fetcher));
-  if (!token.success || !token.data.scope.split(",").includes("snsapi_login")) throw new Error("failed");
+  if (!token.success || !token.data.scope.split(",").includes(settings.scope)) throw new Error("failed");
   const infoUrl = new URL("https://api.weixin.qq.com/sns/userinfo");
   infoUrl.search = new URLSearchParams({ access_token: token.data.access_token, openid: token.data.openid, lang: "zh_CN" }).toString();
   const info = userResponse.safeParse(await wechatJson(infoUrl, fetcher));

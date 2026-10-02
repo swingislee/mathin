@@ -2,7 +2,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { WECHAT_GUEST_COOKIE, opaqueTokenSchema, wechatIdentitySchema, type WechatIdentity } from "./contract";
+import { WECHAT_GUEST_COOKIE, opaqueTokenSchema, wechatChannelSchema, wechatIdentitySchema, type WechatIdentity } from "./contract";
 import { randomToken, tokenHash } from "./provider";
 
 export type TicketKind = "flow" | "state" | "guest" | "grant" | "access" | "completion";
@@ -17,7 +17,11 @@ export const brokerRequestSchema = z.object({
   code_challenge: z.string().regex(/^[A-Za-z0-9_-]{43}$/), code_challenge_method: z.literal("S256"),
   mathin_flow: opaqueTokenSchema,
 });
-export const stateSchema = z.object({ flow: flowSchema, broker: brokerRequestSchema });
+export const stateSchema = z.object({
+  flow: flowSchema, broker: brokerRequestSchema,
+  // 发布前已发出的票据继续按网站扫码协议完成。
+  channel: wechatChannelSchema.default("website"),
+});
 export const completionSchema = z.object({ flow: flowSchema, userId: z.string().uuid(), identity: wechatIdentitySchema });
 export const grantSchema = completionSchema.extend({ broker: brokerRequestSchema });
 

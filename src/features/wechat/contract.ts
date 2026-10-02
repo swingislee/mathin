@@ -3,8 +3,10 @@ import { z } from "zod";
 export const WECHAT_PROVIDER = "custom:wechat" as const;
 export const WECHAT_FLOW_COOKIE = "mathin_wechat_flow";
 export const WECHAT_GUEST_COOKIE = "mathin_wechat_guest";
-export const WECHAT_ERRORS = ["unavailable", "expired", "conflict", "credentials", "phoneCompatibility", "rateLimited", "failed"] as const;
+export const WECHAT_ERRORS = ["unavailable", "officialAccountUnavailable", "expired", "conflict", "credentials", "phoneCompatibility", "rateLimited", "failed"] as const;
 export type WechatError = (typeof WECHAT_ERRORS)[number];
+export const wechatChannelSchema = z.enum(["website", "officialAccount"]);
+export type WechatChannel = z.infer<typeof wechatChannelSchema>;
 export const opaqueTokenSchema = z.string().regex(/^[a-f0-9]{64}$/);
 export const wechatIdentitySchema = z.object({
   subject: z.string().min(1).max(200),
