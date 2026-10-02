@@ -7,7 +7,7 @@
       "title": "开启生产微信登录",
       "agent": "codex",
       "threadId": null,
-      "status": "blocked",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/wechat-login-enable",
       "card": ".ai/tasks/OPS-WECHAT-ENABLE-20261002.md",
@@ -19,8 +19,8 @@
       "sharedPaths": [
         ".ai/registry.json"
       ],
-      "checkpoint": "2c7bf8d95c6264cda5e6d533c12b1a95062290a6",
-      "next": "生产配置及本站授权链已验证；微信平台返回 redirect_uri 参数错误，应用和 provider 入口已关闭。待用户确认网站应用授权回调域为 mathin.club 后，沿用本次授权复查二维码并重新开启入口。"
+      "checkpoint": "0e8edb9b973a8b99033e7312c3fec3abdc8195d1",
+      "next": "用户修正回调域后，生产应用与 provider 已重新开启；中英文真实授权链均生成微信二维码，服务健康、日志脱敏及业务计数核对通过。已部署待真实扫码、原账号绑定与再次登录验收，正式 Gate 保持。"
     },
     {
       "id": "DEV-PLANE-REMAINDERS-20261002-INTEGRATION",
