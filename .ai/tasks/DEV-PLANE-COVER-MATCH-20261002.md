@@ -24,5 +24,6 @@
 
 ## 交付状态
 
-- 当前：已登记，待实现与定向检查。
+- 当前：实现、定向检查、本机保存校验安装及独立只读复核完成；代码 head `3e88e3c3aa9aaa605bee545aae0a1c8feea57afa`，待 main 接收。
+- 复核与局限见 [交接](../handoffs/DEV-PLANE-COVER-MATCH-20261002-codex-01.md) 及 [本批证据](../../docs/evidence/tools-plane-cover-match-20261002.md)。
 - 用户验收待完成；生产操作、阶段与正式 Gate 均不涉及。
