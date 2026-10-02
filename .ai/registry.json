@@ -91,28 +91,28 @@
       "title": "班级教学进度矩阵开发交付",
       "agent": "codex",
       "threadId": "01a0dd69-e287-7773-b4f5-3489276ea15e",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-TEACHING-MATRIX-20261002-INTEGRATION.md",
       "writePaths": [".ai/tasks/DEV-TEACHING-MATRIX-20261002-INTEGRATION.md"],
       "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
-      "checkpoint": "09399b32d6bd6ab9671db76a640e422743bcc22c",
-      "next": "串行接收用户本轮要求的紧凑行高、统一讲次表头、底部滚动条及悬浮说明；复用通过的定向检查，核对开发入口后交付人工验收。"
+      "checkpoint": "96b395fcc4c819516f0a4a903a87f969682bdd4c",
+      "next": "紧凑行高、统一讲次表头、单个底部滚动条及悬浮说明已集成；定向交互、类型与中英文页面启动检查通过。开发端已交付，待人工视觉验收。"
     },
     {
       "id": "DEV-TEACHING-MATRIX-20261002",
       "title": "八项教学进度与课次嵌套详情",
       "agent": "codex",
       "threadId": "01a0dd69-e287-7773-b4f5-3489276ea15e",
-      "status": "in_review",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/teaching-matrix-codex",
       "card": ".ai/tasks/DEV-TEACHING-MATRIX-20261002.md",
       "writePaths": ["src/features/school/EnrollmentPlacementWorkbench.tsx", "src/features/school/class-roster-layout.module.css", "src/features/school/teaching-workbench/TeachingProgressCells.tsx", "tests/enrollment-placement-drag-confirmation.test.ts", ".ai/tasks/DEV-TEACHING-MATRIX-20261002.md", ".ai/handoffs/DEV-TEACHING-MATRIX-20261002-codex-03.md"],
       "sharedPaths": [],
       "checkpoint": "97570b889a8ce4598eba4661a388c87ef06e88ca",
-      "next": "本轮紧凑布局已在原表完成并通过定向交互、类型闭包与 ESLint；待串行集成和开发入口核对。仅调整既有 UI，不改读取、数据库或权限合同。"
+      "next": "本轮紧凑布局及交接 03 已被 main 接收，原表节点和行高保留、讲次与滚动统一；机器检查通过，待用户刷新开发页面验收。仅调整既有 UI，数据和权限合同保持。"
     },
     {
       "id": "DEV-PLANE-COVER-MATCH-20261002-INTEGRATION",
