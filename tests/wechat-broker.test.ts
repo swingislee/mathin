@@ -54,15 +54,18 @@ beforeEach(() => {
   h.exchange.mockReset().mockResolvedValue(profile); h.conflict.mockReset();
 });
 
-async function authorize(mode = "login", patch = {}) {
-  h.cookies.set("mathin_wechat_flow", browser);
-  if (mode === "link") { h.userId = userId; h.sessionId = sessionId; }
-  h.tickets.set(browser, { kind: "flow", browser, payload: { mode, userId: h.userId, sessionId: h.sessionId, locale: "zh", next: "/zh/dashboard" } });
+function authorizationRequest(patch = {}, headers?: HeadersInit) {
   const query = new URLSearchParams({
     client_id: config.clientId, redirect_uri: config.authCallbackUrl, response_type: "code", state: "supabase-state",
     code_challenge: createHash("sha256").update(verifier).digest("base64url"), code_challenge_method: "S256", mathin_flow: tokenHash(browser), ...patch,
   });
-  return authorizeWechat(new Request(`${config.siteOrigin}/zh/auth/wechat/authorize?${query}`));
+  return new Request(`${config.siteOrigin}/zh/auth/wechat/authorize?${query}`, { headers });
+}
+async function authorize(mode = "login", patch = {}, headers?: HeadersInit) {
+  h.cookies.set("mathin_wechat_flow", browser);
+  if (mode === "link") { h.userId = userId; h.sessionId = sessionId; }
+  h.tickets.set(browser, { kind: "flow", browser, payload: { mode, userId: h.userId, sessionId: h.sessionId, locale: "zh", next: "/zh/dashboard" } });
+  return authorizeWechat(authorizationRequest(patch, headers));
 }
 async function callback(state: string) {
   return completeWechatAuthorization(new Request(`${config.callbackUrl}?code=wechat-code&state=${state}`));
@@ -81,6 +84,28 @@ function tokenRequest(code: string, override = {}) {
 }
 
 describe("WeChat broker security boundaries", () => {
+  it.each(["login", "link"])("keeps the %s ticket through RSC pre-reads and consumes it only on navigation", async (mode) => {
+    const preRead = await authorize(mode, {}, { rsc: "1" });
+    expect(preRead.status).toBe(204);
+    expect(preRead.headers.get("cache-control")).toContain("no-store");
+    expect(preRead.headers.get("location")).toBeNull();
+    expect(h.tickets.has(browser)).toBe(true);
+    expect([...h.tickets.values()].map((ticket) => ticket.kind)).toEqual(["flow"]);
+
+    const prefetch = await authorizeWechat(authorizationRequest({}, { rsc: "1", "next-router-prefetch": "1" }));
+    expect(prefetch.status).toBe(204);
+    expect(h.tickets.has(browser)).toBe(true);
+    expect(h.exchange).not.toHaveBeenCalled();
+
+    const navigation = await authorizeWechat(authorizationRequest());
+    expect(navigation.status).toBe(303);
+    expect(new URL(navigation.headers.get("location")!).hostname).toBe("open.weixin.qq.com");
+    expect(h.tickets.has(browser)).toBe(false);
+    expect([...h.tickets.values()].map((ticket) => ticket.kind)).toEqual(["state"]);
+    const replay = await authorizeWechat(authorizationRequest());
+    expect(replay.headers.get("location")).toContain("wechatError=expired");
+    expect([...h.tickets.values()].map((ticket) => ticket.kind)).toEqual(["state"]);
+  });
   it("gives unknown identities a guest proof and never releases an Auth grant", async () => {
     const { response } = await grantFor();
     expect(response.headers.get("location")).toBe(`${config.siteOrigin}/zh/auth/wechat/guest`);

@@ -51,6 +51,10 @@ async function finishWechatAuthorization(state: z.infer<typeof stateSchema>, ide
 
 /** Supabase 标准 OAuth → 微信非标准 token/userinfo 接口的最小适配。 */
 export async function authorizeWechat(request: Request) {
+  // Server Action 的同源跳转会先请求 RSC；授权票据留给随后完整导航。
+  if (request.headers.get("rsc") === "1") {
+    return new NextResponse(null, { status: 204, headers: privateHeaders });
+  }
   let locale = "zh";
   let mode = "login";
   try {
