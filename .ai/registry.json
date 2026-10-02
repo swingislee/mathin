@@ -7,7 +7,7 @@
       "title": "开启生产微信登录",
       "agent": "codex",
       "threadId": null,
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/wechat-login-enable",
       "card": ".ai/tasks/OPS-WECHAT-ENABLE-20261002.md",
@@ -21,8 +21,8 @@
       "sharedPaths": [
         ".ai/registry.json"
       ],
-      "checkpoint": "8db0b651e31876681d96369da8286c6dcf85e0fd",
-      "next": "用户报告已登录账号点击绑定即 expired；已定位 Next Server Action 同源预读提前消费 flow。修复授权端预读处理，验证真实 Action 传输和单次消费后，在本次生产微信任务内发布最小补丁供重试。"
+      "checkpoint": "21c16d6d08ead4af15d675ac5d103d91fa3eb427",
+      "next": "绑定预读修复已发布为 20261002-144508 / 4a9e3b5f。真实 Next Action 前后对照、定向测试、生产构建及中英文 RSC 预读后二维码检查通过，配置和业务数据保持；待用户刷新账号安全页重试真实绑定。"
     },
     {
       "id": "DEV-PLANE-REMAINDERS-20261002-INTEGRATION",
