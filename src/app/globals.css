@@ -955,6 +955,28 @@ html:lang(zh-CN) {
   touch-action: pan-y;
   user-select: none;
 }
+/* 指针靠近一侧时，该侧亮起金色微光，提示那边还有牌。 */
+.game-parade-track::before,
+.game-parade-track::after {
+  content: "";
+  position: absolute;
+  top: 10%;
+  bottom: 0;
+  z-index: 30;
+  width: 14%;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+.game-parade-track::before {
+  left: 0;
+  background: radial-gradient(ellipse at 0% 60%, rgb(240 200 120 / 45%), transparent 70%);
+  opacity: max(0, calc(var(--lean, 0) * -1));
+}
+.game-parade-track::after {
+  right: 0;
+  background: radial-gradient(ellipse at 100% 60%, rgb(240 200 120 / 45%), transparent 70%);
+  opacity: max(0, var(--lean, 0));
+}
 .game-card {
   --suit: #2f2b3a;
   position: absolute;
@@ -963,10 +985,19 @@ html:lang(zh-CN) {
   width: var(--card-w);
   aspect-ratio: 5 / 7;
   container-type: inline-size;
-  perspective: 1400px;
-  transform: translateX(-50%) translateX(calc(var(--d) * var(--step))) translateZ(calc(var(--abs) * -8rem)) rotateY(calc(var(--d) * -14deg));
+  perspective: 800px;
+  --lift: 0;
+  /* --lean 由指针靠近两侧时写入（-1…1），整列牌向反方向让出；--lift 是悬浮时的探身程度。 */
+  transform:
+    translateX(-50%)
+    translateX(calc((var(--d) - var(--lean, 0) * 0.22) * var(--step)))
+    translateY(calc(var(--lift) * -0.75rem))
+    translateZ(calc(var(--abs) * -8rem + var(--lift) * 2.5rem))
+    rotateY(calc(var(--d) * -14deg * (1 - var(--lift) * 0.45)));
   transition: transform 0.55s cubic-bezier(0.22, 0.8, 0.26, 1), opacity 0.3s, visibility 0.3s;
 }
+.game-card[data-active]:hover { --lift: 0.4; }
+.game-card:has(.game-card-pick:hover) { --lift: 1; }
 .game-card[data-suit="heart"],
 .game-card[data-suit="diamond"],
 .game-parade-pip[data-suit="heart"],
@@ -996,6 +1027,14 @@ html:lang(zh-CN) {
   transition: background 0.3s, opacity 0.2s;
 }
 .game-card:has(.game-card-pick:hover)::after { opacity: 0.45; }
+/* 当前牌跟随指针倾斜；变量由 GameParade 在鼠标移动时写入。 */
+.game-card-tilt {
+  height: 100%;
+  border-radius: 6cqw;
+  transform: rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
+  transform-style: preserve-3d;
+  transition: transform 0.18s ease-out;
+}
 .game-card-inner {
   position: relative;
   height: 100%;
@@ -1026,6 +1065,18 @@ html:lang(zh-CN) {
     inset 0 0 0 calc(3cqw + 1px) #d4b27a,
     0 1.2rem 2.4rem rgb(46 16 18 / 30%);
 }
+.game-card-glare {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  background: radial-gradient(circle at var(--glare-x, 50%) var(--glare-y, 30%), rgb(255 255 255 / 55%), transparent 48%);
+  mix-blend-mode: soft-light;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+.game-card[data-active]:hover .game-card-glare { opacity: 1; }
 .game-card-corner {
   position: absolute;
   top: 4.5cqw;
@@ -1164,10 +1215,11 @@ html:lang(zh-CN) {
   box-shadow: 0 0 0 2px rgb(139 56 65 / 25%);
   translate: 0 -0.25rem;
 }
+/* 减少动态效果时保留倾斜、翻牌和换牌，只收小幅度并缩短时长。 */
 @media (prefers-reduced-motion: reduce) {
-  .game-card,
-  .game-card-inner,
-  .game-parade-pip { transition: none; }
+  .game-card { transition-duration: 0.3s; }
+  .game-card-tilt { transform: rotateX(calc(var(--tilt-x, 0deg) * 0.5)) rotateY(calc(var(--tilt-y, 0deg) * 0.5)); }
+  .game-card-inner { transition-duration: 0.35s; }
 }
 
 .dark .scene-day.scene-adaptive {
