@@ -1,7 +1,35 @@
 {
   "version": 1,
-  "coordinatorTaskId": "DEV-PLANE-INTERIOR-20261002-INTEGRATION",
+  "coordinatorTaskId": "DEV-PLANE-REMAINDERS-20261002-INTEGRATION",
   "tasks": [
+    {
+      "id": "DEV-PLANE-REMAINDERS-20261002-INTEGRATION",
+      "title": "共同部分与两翼余片开发交付",
+      "agent": "codex",
+      "threadId": "019ff05e-1218-7400-b966-4556b2c57173",
+      "status": "in_progress",
+      "checkout": "integration",
+      "branch": "main",
+      "card": ".ai/tasks/DEV-PLANE-REMAINDERS-20261002-INTEGRATION.md",
+      "writePaths": [".ai/tasks/DEV-PLANE-REMAINDERS-20261002-INTEGRATION.md"],
+      "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
+      "checkpoint": "5a5dd0a587c81ee7d0e5ebace86b7b15381c0d16",
+      "next": "在已完成的内点批次后串行接收共同片拆分、移开与两翼余片；保留现有 v3 字段和保存合同，交付开发入口供人工验收。"
+    },
+    {
+      "id": "DEV-PLANE-REMAINDERS-20261002",
+      "title": "共底小三角形与真实两翼余片",
+      "agent": "codex",
+      "threadId": "019ff05e-1218-7400-b966-4556b2c57173",
+      "status": "in_progress",
+      "checkout": "worktree",
+      "branch": "codex/plane-remainders-codex",
+      "card": ".ai/tasks/DEV-PLANE-REMAINDERS-20261002.md",
+      "writePaths": ["src/features/tools/plane-relations/interior-model.ts", "src/features/tools/plane-relations/interior-scene.tsx", "src/features/tools/plane-relations/README.md", "src/features/tools/planar-kit/README.md", "src/features/tools/spatial-interaction/control-inventory.ts", "tests/plane-remainders.test.ts", "tests/plane-invariants-integration.test.ts", "docs/evidence/tools-plane-remainders-20261002.md", ".ai/tasks/DEV-PLANE-REMAINDERS-20261002.md", ".ai/handoffs/DEV-PLANE-REMAINDERS-20261002-codex-01.md"],
+      "sharedPaths": [],
+      "checkpoint": "5a5dd0a587c81ee7d0e5ebace86b7b15381c0d16",
+      "next": "实现三角形原位拆成共底小三角形与两翼、共同片移开过程及只保留余片；使用既有准确几何，补守恒、容量、历史和课堂回放定向检查。"
+    },
     {
       "id": "DEV-PLANE-INTERIOR-20261002-INTEGRATION",
       "title": "三角形内点与两翼开发交付",
