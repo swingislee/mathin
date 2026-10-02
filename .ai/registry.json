@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "coordinatorTaskId": "DEV-PLANE-INVARIANTS-20261002-INTEGRATION",
+  "coordinatorTaskId": "DEV-TEACHING-MATRIX-20261002-INTEGRATION",
   "tasks": [
     {
       "id": "DEV-PLANE-INVARIANTS-20261002-INTEGRATION",
@@ -35,28 +35,28 @@
       "title": "班级教学进度矩阵开发交付",
       "agent": "codex",
       "threadId": "01a0dd69-e287-7773-b4f5-3489276ea15e",
-      "status": "integrated",
+      "status": "in_progress",
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-TEACHING-MATRIX-20261002-INTEGRATION.md",
       "writePaths": [".ai/tasks/DEV-TEACHING-MATRIX-20261002-INTEGRATION.md"],
       "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
       "checkpoint": "d28ff50c6d960dface045194aea70f06984b21e5",
-      "next": "已集成八项教学进度矩阵与只读状态汇总；定向检查、独立复核和中英文真实账号 HTTP 通过。开发端已交付，待人工视觉与交互验收；生产与 Gate 未改。"
+      "next": "接收本轮班级共用卡片、右上角内容切换、状态填充色块与宽屏四列固定增量；独立 worktree 实现后串行集成至开发入口。"
     },
     {
       "id": "DEV-TEACHING-MATRIX-20261002",
       "title": "八项教学进度与课次嵌套详情",
       "agent": "codex",
       "threadId": "01a0dd69-e287-7773-b4f5-3489276ea15e",
-      "status": "integrated",
+      "status": "in_progress",
       "checkout": "worktree",
       "branch": "codex/teaching-matrix-codex",
       "card": ".ai/tasks/DEV-TEACHING-MATRIX-20261002.md",
-      "writePaths": ["src/features/school/teaching-workbench/TeachingProgressMatrix.tsx", "src/features/school/teaching-workbench/TeachingProgressPage.tsx", "src/features/school/teaching-workbench/teaching-progress-matrix-contract.ts", "src/features/school/teaching-workbench/teaching-progress-matrix-read.ts", "src/lib/database.types.ts", "supabase/migrations/20261002160000_teaching_progress_facts.sql", "supabase/migrations/20261002161000_teaching_progress_learning_coverage.sql", "supabase/migrations/20261002162000_teaching_progress_term_read.sql", "supabase/tests/teaching_progress_facts.sql", "src/features/school/work-entry-contract.ts", "src/app/[locale]/dashboard/classes/page.tsx", "tests/teaching-progress-matrix.test.ts", "tests/teaching-progress-matrix-read.test.ts", ".ai/tasks/DEV-TEACHING-MATRIX-20261002.md", ".ai/handoffs/DEV-TEACHING-MATRIX-20261002-codex-01.md"],
+      "writePaths": ["src/features/school/ClassRosterWorkspace.tsx", "src/features/school/ClassWorkspaceActions.tsx", "src/features/school/ClassWorkspaceTabs.tsx", "src/features/school/ClassPlacementPage.tsx", "src/features/school/EnrollmentPlacementWorkbench.tsx", "src/features/school/class-roster-layout.module.css", "src/features/school/teaching-workbench/TeachingProgressMatrix.tsx", "src/features/school/teaching-workbench/TeachingProgressPage.tsx", "src/features/school/teaching-workbench/teaching-progress-matrix-contract.ts", ".ai/tasks/DEV-TEACHING-MATRIX-20261002.md", ".ai/handoffs/DEV-TEACHING-MATRIX-20261002-codex-02.md"],
       "sharedPaths": [],
       "checkpoint": "2652a358a43e6f409ccf7b1e8209b9a0c3ef620a",
-      "next": "已集成八项教学进度矩阵与只读状态汇总；定向检查、独立复核和中英文真实账号 HTTP 通过。开发端已交付，待人工视觉与交互验收；生产与 Gate 未改。"
+      "next": "按用户本轮反馈统一班级卡片和内容切换，复用学情填充色，固定宽屏全部班级信息列；仅 UI 增量，复用原数据合同与检查证据。"
     },
     {
       "id": "DEV-PLANE-COVER-MATCH-20261002-INTEGRATION",
