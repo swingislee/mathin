@@ -4,6 +4,7 @@ import ClassPlacementPage from "@/features/school/ClassPlacementPage";
 import ClassDirectoryPage from "@/features/school/ClassDirectoryPage";
 import { ClassWorkspaceEntry } from "@/features/school/ClassWorkspaceMemory";
 import TeachingWorkspacePage from "@/features/school/teaching-workbench/TeachingWorkspacePage";
+import TeachingProgressPage from "@/features/school/teaching-workbench/TeachingProgressPage";
 import type { WorkEntryQuery } from "@/features/school/work-entry-contract";
 
 export default async function ClassesPage({ params, searchParams }: {
@@ -17,7 +18,8 @@ export default async function ClassesPage({ params, searchParams }: {
   const canTeach = permissions.has("class.view.mine") || permissions.has("class.view.all");
   const view = typeof query.view === "string" ? query.view : "arrange";
   if (view === "directory" || !query.view && query.scope === "test") return <ClassDirectoryPage params={params} searchParams={searchParams} />;
-  if (canTeach && ["progress", "tasks"].includes(String(view))) {
+  if (canTeach && view === "progress") return <TeachingProgressPage params={params} searchParams={searchParams} />;
+  if (canTeach && view === "tasks") {
     return <TeachingWorkspacePage params={params} searchParams={Promise.resolve({ ...query, view: String(view) })} />;
   }
   return <ClassPlacementPage params={params} searchParams={searchParams} />;
