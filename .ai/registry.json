@@ -7,28 +7,28 @@
       "title": "周长锁量与面积材料开发交付",
       "agent": "codex",
       "threadId": "019ff05e-1218-7400-b966-4556b2c57173",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-PLANE-INVARIANTS-20261002-INTEGRATION.md",
       "writePaths": [".ai/tasks/DEV-PLANE-INVARIANTS-20261002-INTEGRATION.md"],
       "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
-      "checkpoint": "e0ee91beaf52327b682fbf2e99a991425175ce97",
-      "next": "独立实现和定向检查完成；既有批次已完成登记，候选纳入最新 main 且本批代码保持已检版本，待串行快进集成和中英文开发页启动检查。"
+      "checkpoint": "9bcb566666961ca627fe5a01fc3ea815063bf467",
+      "next": "矩形定量变形与真实面积材料已集成；定向机器检查和两个工具的四个中英文开发页 HTTP 检查通过。开发端已交付，待人工视觉与教学手感验收；数据库、生产和正式 Gate 未改。"
     },
     {
       "id": "DEV-PLANE-INVARIANTS-20261002",
       "title": "矩形定量变形与真实面积材料",
       "agent": "codex",
       "threadId": "019ff05e-1218-7400-b966-4556b2c57173",
-      "status": "in_review",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/plane-invariants-codex",
       "card": ".ai/tasks/DEV-PLANE-INVARIANTS-20261002.md",
       "writePaths": ["src/features/tools/plane-perimeter/model.ts", "src/features/tools/plane-perimeter/scenes.tsx", "src/features/tools/plane-relations/model.ts", "src/features/tools/plane-relations/scenes.tsx", "src/features/tools/plane-relations/README.md", "src/features/tools/planar-kit/README.md", "src/features/tools/spatial-interaction/control-inventory.ts", "tests/plane-perimeter.test.ts", "tests/plane-relations.test.ts", "tests/plane-invariants-integration.test.ts", "docs/evidence/tools-plane-invariants-20261002.md", ".ai/tasks/DEV-PLANE-INVARIANTS-20261002.md", ".ai/handoffs/DEV-PLANE-INVARIANTS-20261002-codex-01.md"],
       "sharedPaths": [],
       "checkpoint": "4ada8f42a743cc4532a43d52782b26cf364342e2",
-      "next": "现有 v2 合同内的定量输入／手柄／正方形过程、分区复制和逐层中点材料已检查；主分支接收与开发端人工验收待完成。本批无数据库、共享宿主或生产变更。"
+      "next": "main 已接收现有 v2 合同内的定量输入／手柄／正方形过程、分区复制和逐层中点材料，开发入口检查通过。开发端已交付，待人工验收；本批无数据库、共享宿主或生产变更。"
     },
     {
       "id": "DEV-TEACHING-MATRIX-20261002-INTEGRATION",

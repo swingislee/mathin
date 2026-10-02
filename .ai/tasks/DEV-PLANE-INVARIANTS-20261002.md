@@ -20,4 +20,4 @@
 - 定向检查覆盖矩形不变量、方向与边界、真实分区、材料上限、历史和现有序列化合同；使用受影响 lint／TypeScript 和中英文页面启动检查。
 - 本批按仓库 verify 配方复用开发入口；视觉与教学手感由用户实际验收。
 - 实现检查点 `4ada8f42a743cc4532a43d52782b26cf364342e2`；领域、真实共享宿主及仓库要求的按钮／版本定向检查通过，TypeScript 和受影响 lint 通过。详见 [交付证据](../../docs/evidence/tools-plane-invariants-20261002.md) 与 [交接单](../handoffs/DEV-PLANE-INVARIANTS-20261002-codex-01.md)。
-- main 接收及页面启动检查待串行窗口完成；用户视觉与教学手感待验收。
+- main 已在串行窗口接收本批，两个工具的四个 zh/en 开发页面均通过 HTTP 启动检查，见 [集成记录](DEV-PLANE-INVARIANTS-20261002-INTEGRATION.md)。开发端已交付，待人工视觉与教学手感验收。
