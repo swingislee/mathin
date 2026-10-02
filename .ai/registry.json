@@ -3,6 +3,30 @@
   "coordinatorTaskId": "DEV-TEACHING-MATRIX-20261002-INTEGRATION",
   "tasks": [
     {
+      "id": "DEV-WECHAT-INAPP-20261002",
+      "title": "微信内直接授权登录",
+      "agent": "codex",
+      "threadId": null,
+      "status": "in_progress",
+      "checkout": "worktree",
+      "branch": "codex/wechat-login-enable",
+      "card": ".ai/tasks/DEV-WECHAT-INAPP-20261002.md",
+      "writePaths": [
+        "src/features/wechat/config.ts",
+        "src/features/wechat/contract.ts",
+        "src/features/wechat/provider.ts",
+        "src/features/wechat/store.ts",
+        "src/features/wechat/broker.ts",
+        "tests/wechat-provider.test.ts",
+        "tests/wechat-broker.test.ts",
+        "docs/runbooks/wechat-website-oauth.md",
+        ".ai/tasks/DEV-WECHAT-INAPP-20261002.md"
+      ],
+      "sharedPaths": [".ai/registry.json", ".env.example", "messages/zh.json", "messages/en.json", "CHANGELOG.md"],
+      "checkpoint": "a8d805588951928d3dd39ace7c894e83d1c452ce",
+      "next": "实现公众号网页授权与扫码分流、固定授权渠道和身份安全回归。用户尚未确认已有公众号，真实启用等待公众号权限、同平台绑定及私有凭据。"
+    },
+    {
       "id": "OPS-WECHAT-ENABLE-20261002",
       "title": "开启生产微信登录",
       "agent": "codex",
