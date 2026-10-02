@@ -985,7 +985,7 @@ html:lang(zh-CN) {
   width: var(--card-w);
   aspect-ratio: 5 / 7;
   container-type: inline-size;
-  perspective: 1400px;
+  perspective: 800px;
   --lift: 0;
   /* --lean 由指针靠近两侧时写入（-1…1），整列牌向反方向让出；--lift 是悬浮时的探身程度。 */
   transform:
@@ -1033,7 +1033,7 @@ html:lang(zh-CN) {
   border-radius: 6cqw;
   transform: rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
   transform-style: preserve-3d;
-  transition: transform 0.25s ease-out;
+  transition: transform 0.18s ease-out;
 }
 .game-card-inner {
   position: relative;

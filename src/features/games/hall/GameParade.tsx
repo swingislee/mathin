@@ -13,6 +13,9 @@ const VISIBLE_SIDE = 3;
 const SWIPE_THRESHOLD = 48;
 /** 指针离中线超过牌阵半宽的该比例后开始向两侧让牌。 */
 const EDGE_START = 0.45;
+/** 指针在牌角时的最大倾斜角（度）。 */
+const MAX_TILT_X = 12;
+const MAX_TILT_Y = 16;
 
 function resetTilt(card: HTMLElement) {
   for (const name of ["--tilt-x", "--tilt-y", "--glare-x", "--glare-y"]) card.style.removeProperty(name);
@@ -70,8 +73,8 @@ export function GameParade({ cards, labels, signedIn }: {
     const rect = card.getBoundingClientRect();
     const px = (event.clientX - rect.left) / rect.width;
     const py = (event.clientY - rect.top) / rect.height;
-    card.style.setProperty("--tilt-x", `${((0.5 - py) * 12).toFixed(2)}deg`);
-    card.style.setProperty("--tilt-y", `${((px - 0.5) * 16).toFixed(2)}deg`);
+    card.style.setProperty("--tilt-x", `${((0.5 - py) * 2 * MAX_TILT_X).toFixed(2)}deg`);
+    card.style.setProperty("--tilt-y", `${((px - 0.5) * 2 * MAX_TILT_Y).toFixed(2)}deg`);
     card.style.setProperty("--glare-x", `${(px * 100).toFixed(1)}%`);
     card.style.setProperty("--glare-y", `${(py * 100).toFixed(1)}%`);
   };
