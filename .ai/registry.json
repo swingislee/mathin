@@ -1,7 +1,21 @@
 {
   "version": 1,
-  "coordinatorTaskId": "OPS-RELEASE-V030-20261002",
+  "coordinatorTaskId": "OPS-RELEASE-V030-20261002-INTEGRATION",
   "tasks": [
+    {
+      "id": "OPS-RELEASE-V030-20261002-INTEGRATION",
+      "title": "v0.3.0 发布集成登记",
+      "agent": "codex",
+      "threadId": "01a0b885-a6ac-7e23-94b4-dab4753acd35",
+      "status": "in_progress",
+      "checkout": "integration",
+      "branch": "main",
+      "card": ".ai/tasks/OPS-RELEASE-V030-20261002.md",
+      "writePaths": [],
+      "sharedPaths": [".ai/registry.json", "CHANGELOG.md", "docs/evidence/r1/README.md"],
+      "checkpoint": "4a2cff0dac14047203b2dbe9b200a206102558dc",
+      "next": "串行维护发布范围和最终主线集成，保持另一微信开发任务的文件归属。"
+    },
     {
       "id": "OPS-RELEASE-V030-20261002",
       "title": "v0.3.0 主线生产发布与团队版本说明",
