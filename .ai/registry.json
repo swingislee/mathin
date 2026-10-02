@@ -7,28 +7,28 @@
       "title": "棋盘覆盖与火柴棒开放材料集成",
       "agent": "codex",
       "threadId": "019ff05e-1218-7400-b966-4556b2c57173",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-PLANE-COVER-MATCH-20261002-INTEGRATION.md",
       "writePaths": [".ai/tasks/DEV-PLANE-COVER-MATCH-20261002-INTEGRATION.md"],
       "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
-      "checkpoint": "96148bd5146f984a79c49cb1c1ad5d354fca29eb",
-      "next": "登记独立实现 worktree，串行集成两个工具 v2 与本机持久化校验；复用 3130 服务，生产与正式 Gate 不涉及。"
+      "checkpoint": "5d54da14beb120c386a61508c07da9f8efea2a38",
+      "next": "两个工具 v2、生成类型和交接已精确集成；本机保存校验、独立复核及四个中英文页面 HTTP 检查通过。开发端已交付，待人工视觉与手感验收；生产与正式 Gate 未改。"
     },
     {
       "id": "DEV-PLANE-COVER-MATCH-20261002",
       "title": "可变棋盘与火柴棒材料生命周期",
       "agent": "codex",
       "threadId": "019ff05e-1218-7400-b966-4556b2c57173",
-      "status": "in_review",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/plane-cover-match-codex",
       "card": ".ai/tasks/DEV-PLANE-COVER-MATCH-20261002.md",
       "writePaths": ["src/features/tools/plane-covering/", "src/features/tools/plane-matchsticks/", "src/features/tools/planar-kit/catalog.ts", "src/features/tools/planar-kit/contract.ts", "src/features/tools/planar-kit/scene-registry.ts", "src/features/tools/planar-kit/README.md", "src/features/tools/spatial-interaction/control-inventory.ts", "supabase/migrations/20261002130000_tool_plane_cover_match.sql", "supabase/tests/tool_plane_cover_match.sql", "src/lib/database.types.ts", "tests/plane-covering.test.ts", "tests/plane-matchsticks.test.ts", "tests/plane-cover-match-integration.test.ts", "tests/fixtures/plane-cover-match-cases.ts", "docs/evidence/tools-plane-cover-match-20261002.md", ".ai/tasks/DEV-PLANE-COVER-MATCH-20261002.md", ".ai/handoffs/DEV-PLANE-COVER-MATCH-20261002-codex-01.md", ".ai/handoffs/DEV-PLANE-COVER-MATCH-20261002-review-01.md"],
       "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
-      "checkpoint": "ef6a5367c1acab9403bd1c468a916518d96e9c6e",
-      "next": "两个 v2 及定向检查、本机回滚对照通过；cover_match_contract_review 正在独立只读复核。随后安装已检本机校验、合入实际生成类型并交付统一开发入口；人工验收待完成。"
+      "checkpoint": "3e88e3c3aa9aaa605bee545aae0a1c8feea57afa",
+      "next": "独立复核无 P1/P2，main 已接收实现、生成类型和交接；本机校验迁移已安装，开发端交付待人工验收。覆盖保持双格骨牌范围，火柴棒保持等长材料与手动留影；其他能力按后续批次推进。"
     },
     {
       "id": "DEV-TOOLBAR-CLEARANCE-20261002-INTEGRATION",
