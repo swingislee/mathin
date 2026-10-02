@@ -112,9 +112,10 @@ it('switches only roster cell contents while retaining the original table, class
     startedAt: null, endedAt: null, teacherOverride: null, progress,
   }] }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
   vi.stubGlobal('fetch', fetchProgress);
-  const element = await mountRoster(true);
+  const element = await mountRoster(true, false, 'teacher');
   const table = element.querySelector('[data-class-roster-table]');
   const row = element.querySelector(`[data-placement-classroom="${id(3)}"]`)!;
+  vi.spyOn(row, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 500, 44));
   const identity = [...row.querySelectorAll('td')].slice(0, 4);
   const desktopIdentity = identity.map(cell => [...cell.querySelectorAll('[data-class-desktop]')].map(item => item.textContent));
   const switchButtons = [...element.querySelectorAll<HTMLButtonElement>('[data-class-content-switch] button')];
@@ -128,10 +129,22 @@ it('switches only roster cell contents while retaining the original table, class
   expect(row.querySelector('[data-placement-student]')).toBeNull();
   expect(row.querySelector(`[data-teaching-session="${id(80)}"]`)).not.toBeNull();
   expect(row.querySelector('[data-class-roster-toggle]')?.textContent).toBe('学情进度 1');
+  expect((row as HTMLElement).style.height).toBe('44px');
+  expect(element.querySelector('thead [data-teaching-progress-header]')?.textContent).toContain('第 1 讲');
+  expect(row.querySelector('[data-teaching-progress-cells]')?.textContent).not.toContain('第 1 讲');
+  expect([...element.querySelectorAll('[data-class-roster-group]:not([data-class-pending-section])')].every(group => !group.textContent?.includes('秋季'))).toBe(true);
+  expect(element.querySelector('[data-teaching-progress-legend]')).toBeNull();
+  const scrollbar = element.querySelector<HTMLElement>('[data-teaching-progress-scrollbar]')!;
+  expect(element.querySelectorAll('[data-teaching-progress-scrollbar]')).toHaveLength(1);
+  await act(async () => { scrollbar.scrollLeft = 80; scrollbar.dispatchEvent(new Event('scroll')); });
+  expect([...element.querySelectorAll<HTMLElement>('[data-teaching-progress-viewport]')].every(viewport => viewport.scrollLeft === 80)).toBe(true);
+  await act(async () => element.querySelector<HTMLButtonElement>('[data-teaching-progress-help]')!.click());
+  expect(document.querySelector('[data-teaching-progress-legend]')).not.toBeNull();
   await act(async () => switchButtons.find(button => button.textContent === '全部学生')!.click());
   expect(element.querySelector('[data-class-roster-table]')).toBe(table);
   expect(row.querySelector(`[data-placement-student="${id(5)}"]`)).not.toBeNull();
   expect(row.querySelector('[data-teaching-session]')).toBeNull();
+  expect((row as HTMLElement).style.height).toBe('');
   expect(calls.move).not.toHaveBeenCalled(); expect(calls.change).not.toHaveBeenCalled();
 });
 

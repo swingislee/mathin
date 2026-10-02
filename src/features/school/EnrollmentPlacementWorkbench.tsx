@@ -46,7 +46,7 @@ import { SchoolSupportSeatEntry } from "./SchoolSupportInlineEntry";
 import { SchoolSupportPendingRows } from './SchoolSupportPendingRows';
 import { EnrollmentPlacementChangeDialog } from './EnrollmentPlacementChangeDialog';
 import { readClassSessionResource } from "./class-session-resource";
-import { TeachingProgressCells, TeachingProgressDetails, TeachingProgressLegend } from "./teaching-workbench/TeachingProgressCells";
+import { TeachingProgressCells, TeachingProgressDetails, TeachingProgressHeader, TeachingProgressHelp } from "./teaching-workbench/TeachingProgressCells";
 import { teachingMatrixColumns, teachingMatrixMessages, type TeachingProgressMatrixData } from "./teaching-workbench/teaching-progress-matrix-contract";
 import { placementChangeError } from './enrollment-placement-change-contract';
 
@@ -173,6 +173,8 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   const context = useMemo(() => ({ locale, timeZone, now: clockNow }), [locale, timeZone, clockNow]);
   const router = useRouter();
   const root = useRef<HTMLDivElement>(null);
+  const progressScrollbar = useRef<HTMLDivElement>(null);
+  const [rosterRowHeights, setRosterRowHeights] = useState<Record<string, number>>({});
   const pointerPosition = useRef<{ clientX: number; clientY: number } | null>(null);
   const [savedBoard, setSavedBoard] = useState<{ base: EnrollmentPlacementBoard; value: EnrollmentPlacementBoard } | null>(null);
   const board = savedBoard?.base === initialBoard ? savedBoard.value : initialBoard;
@@ -435,6 +437,30 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   const selectedTermId = table.filters.term?.kind === "enum" && table.filters.term.values.length === 1 ? table.filters.term.values[0] : undefined;
   const selectedClassroomId = table.filters.classroom?.kind === "enum" && table.filters.classroom.values.length === 1 ? table.filters.classroom.values[0] : undefined;
   const progressColumns = teachingMatrixColumns(progressSessions.filter(session => matchedRows.some(row => row.classroom?.id === session.classroomId)));
+  const progressViewportKey = JSON.stringify([progressColumns.map(column => column.key), visibleRows.map(row => row.key), groupBy]);
+  const syncProgressScroll = (source: HTMLElement) => {
+    root.current?.querySelectorAll<HTMLElement>("[data-teaching-progress-viewport], [data-teaching-progress-scrollbar]").forEach(viewport => {
+      if (viewport !== source && Math.abs(viewport.scrollLeft - source.scrollLeft) > 1) viewport.scrollLeft = source.scrollLeft;
+    });
+  };
+  useEffect(() => {
+    if (!progressMode || !root.current || !progressScrollbar.current) return;
+    const surface = root.current, scrollbar = progressScrollbar.current;
+    const viewports = [...surface.querySelectorAll<HTMLElement>("[data-teaching-progress-viewport]")];
+    const syncSize = () => {
+      const viewport = viewports.find(item => item.clientWidth > 0);
+      if (!viewport) return;
+      scrollbar.parentElement!.style.paddingInlineStart = `${Math.max(0, viewport.getBoundingClientRect().left - surface.getBoundingClientRect().left)}px`;
+      scrollbar.style.width = `${viewport.clientWidth}px`;
+      (scrollbar.firstElementChild as HTMLElement).style.width = `${viewport.scrollWidth}px`;
+      viewports.forEach(item => { item.scrollLeft = scrollbar.scrollLeft; });
+    };
+    syncSize();
+    window.addEventListener("resize", syncSize);
+    const observer = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(syncSize);
+    viewports.forEach(viewport => observer?.observe(viewport));
+    return () => { observer?.disconnect(); window.removeEventListener("resize", syncSize); };
+  }, [progressMode, progressViewportKey, progressResult?.data, mobileRosters]);
   const rosterQuery: WorkEntryQuery = { ...workspaceQuery, view: contentView, scope: rosterScope, group: groupBy, term: selectedTermId ?? "all", classroom: selectedClassroomId,
     session: expandedSessionRow && selectedClassroomId === focusClassroomId ? focusSessionId : undefined,
     period: "term", date: undefined, state: undefined, q: query || undefined };
@@ -475,7 +501,15 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   </>;
   return <ClassRosterWorkspace view={contentView} query={rosterQuery} canTeach={workspace === "classes" && canTeach} disabled={pending || hasSessionDraft}
     onViewChange={value => {
-      if (!canChangeSession() || pending) return;
+      if (value === contentView || !canChangeSession() || pending) return;
+      if (value === "progress") {
+        const heights: Record<string, number> = {};
+        root.current?.querySelectorAll<HTMLElement>("[data-placement-record]").forEach(row => {
+          const height = row.getBoundingClientRect().height;
+          if (row.dataset.placementRecord && height > 0) heights[row.dataset.placementRecord] = height;
+        });
+        setRosterRowHeights(heights);
+      }
       pointer.cancel(); setSelectedKey(null); setLocalView({ query: workspaceQuery.view, value });
       const url = new URL(window.location.href); url.searchParams.set("view", value); window.history.replaceState(null, "", url);
     }}
@@ -488,7 +522,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
     }))} />}
     period={<ClassRosterTermPicker terms={board.options.terms} selectedId={selectedTermId} disabled={pending || hasSessionDraft} onChange={changeTerm} />}
     actions={<>
-      {progressMode && <Button size="sm" variant="ghost" disabled={pending || hasSessionDraft || progressLoading} onClick={() => setProgressAttempt(attempt => attempt + 1)} aria-label={progressM.refresh}><RefreshCw size={14} /></Button>}
+      {progressMode && <><TeachingProgressHelp locale={locale} /><Button size="sm" variant="ghost" disabled={pending || hasSessionDraft || progressLoading} onClick={() => setProgressAttempt(attempt => attempt + 1)} aria-label={progressM.refresh}><RefreshCw size={14} /></Button></>}
       {board.access?.canManageEnrollments!==false&&selected&&selected.status!=="withdrawn"?<Button variant="ghost" size="sm" disabled={pending} onClick={()=>setPlacementChange({student:selected,withdraw:true})}>{locale==="en"?"Withdraw":"退课"}</Button>:null}
       {selected ? <span role="status" className="flex max-w-32 items-center justify-end gap-1 text-xs text-muted" title={t("selectedHint", { name: selected.name })}><span className="truncate">{selected.name}</span><Button size="sm" variant="ghost" className="size-7 shrink-0 p-0" aria-label={t("clearSelection")} disabled={pending} onClick={() => setSelectedKey(null)}>{pending ? <LoaderCircle className="size-3 animate-spin" /> : <X className="size-3" />}</Button></span> : null}
       <ClassWorkspaceActions canTeach={canTeach} query={rosterQuery} canCreateClass={canCreateClass} filters={rosterFilters} filtered={hasFilters} mobileLabel={rosterM.filter} />
@@ -497,17 +531,12 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
     pageSize={pagination.pageSize} disabled={pending || hasSessionDraft} onPageChange={(page, size) => { if (!canChangeSession()) return; pointer.cancel(); setSelectedKey(null); pagination.onPageChange(page, size); }} />}>
     {workspace === "classes" ? <ClassWorkspaceMemory query={{ ...rosterQuery, session: workspaceQuery.session, student: workspaceQuery.student,
       fields: JSON.stringify({ version: 2, filters: table.filters, sort: table.sort }) }} /> : null}
-    {progressMode && <TeachingProgressLegend locale={locale} />}
     {sessionsFailed && <p role="alert" className="text-xs text-rose">{sessionM.failed}<Button variant="ghost" size="sm" onClick={() => router.refresh()}>{sessionM.retry}</Button></p>}
     {board.locationsFailed && <p role="alert" className="text-xs text-rose">{rosterM.locationsFailed}<Button variant="ghost" size="sm" onClick={() => router.refresh()}>{sessionM.retry}</Button></p>}
     {!sessionsFailed && focusSessionId && !sessions.some(session => session.id === focusSessionId) && <p role="status" className="text-xs text-muted">{sessionM.noAccess}</p>}
     <div ref={root} className="flex min-h-0 flex-1 flex-col" onScrollCapture={event => {
       const source = event.target;
-      if (!(source instanceof HTMLElement) || !source.hasAttribute("data-teaching-progress-cells")) return;
-      // 同一原表的名单单元格同步横向位置，跨班级比较始终对齐讲次。
-      root.current?.querySelectorAll<HTMLElement>("[data-teaching-progress-cells]").forEach(cell => {
-        if (cell !== source && Math.abs(cell.scrollLeft - source.scrollLeft) > 1) cell.scrollLeft = source.scrollLeft;
-      });
+      if (source instanceof HTMLElement && source.matches("[data-teaching-progress-viewport], [data-teaching-progress-scrollbar]")) syncProgressScroll(source);
     }} onPointerMove={pointer.onPointerMove} onPointerUp={pointer.onPointerUp} onPointerCancel={pointer.onPointerCancel} onLostPointerCapture={pointer.onLostPointerCapture} onClickCapture={pointer.onClickCapture} onKeyDown={(event) => { if (event.key === "Escape" && !event.defaultPrevented) { pointer.cancel(); setSelectedKey(null); } }}>
       <TooltipProvider delayDuration={350}><DashboardTableShell data-followup-scroll data-class-roster={workspace === "classes" || undefined}><Table mobileLayout="records" data-class-roster-table data-class-identity-table className="table-auto text-xs" containerClassName="overflow-auto" aria-busy={pending}>
         <TableHeader><TableRow className="[&>th]:h-8 [&>th]:px-2 [&>th:nth-child(3)]:px-1 [&>th:nth-child(4)]:px-1">
@@ -515,7 +544,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
           <TableHead data-class-sticky="2" className="sticky top-0 z-30 whitespace-nowrap border-r border-line bg-card"><DashboardTableColumnHeader label={t("timeLabel")} {...table.columnProps("time")} /></TableHead>
           <TableHead data-class-sticky="3" data-class-identity-column={identityColumn} className="sticky top-0 z-30 whitespace-nowrap border-r border-line bg-card"><DashboardTableColumnHeader label={identityColumn === "grade" ? rosterM.grade : t("teacherLabel")} {...table.columnProps(identityColumn)} /></TableHead>
           <TableHead data-class-sticky="4" data-class-level-header className="sticky top-0 z-30 whitespace-nowrap border-r border-line bg-card px-1"><DashboardTableColumnHeader label={rosterM.level} {...table.columnProps("difficulty")} /></TableHead>
-          <TableHead className="sticky top-0 z-20 w-full bg-card"><DashboardTableColumnHeader label={progressMode ? progressM.title : t("student")} {...table.columnProps("health")} /></TableHead>
+          <TableHead data-class-progress-heading={progressMode || undefined} className="sticky top-0 z-20 w-full bg-card">{progressMode ? <TeachingProgressHeader columns={progressColumns} locale={locale} /> : <DashboardTableColumnHeader label={t("student")} {...table.columnProps("health")} />}</TableHead>
         </TableRow></TableHeader>
         <FollowupTableBody navigation="tree" onNavigate={key => { setActiveRecordKey(key); return true; }}>{rosterScope === "all" && board.access?.canManageEnrollments!==false?<SchoolSupportPendingRows workspace="enrollments" colSpan={5} />:null}{sections.map((section) => {
           const group = section.key;
@@ -532,7 +561,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
           const scope = section.teacherName !== undefined ? first : rows.find((row) => row.group === group && !row.classroom)!;
           const classrooms = section.rows.filter((row) => row.classroom || row.historical);
           return <Fragment key={group}>
-            <TableRow data-class-roster-group={group} className="hover:bg-transparent"><TableCell colSpan={5} className="h-8 bg-paper px-2 py-1 font-medium"><span className="sticky left-2">{section.teacherName !== undefined ? section.teacherName || teachingT("unassigned") : scope.grade ? t("grade", { grade: scope.grade }) : t("gradePending")}<span className="ml-3 text-[11px] font-normal text-muted">{scope.historical?.period_label ?? terms.get(scope.termId) ?? "—"}</span></span></TableCell></TableRow>
+            <TableRow data-class-roster-group={group} className="hover:bg-transparent"><TableCell colSpan={5} className="h-8 bg-paper px-2 py-1 font-medium"><span className="sticky left-2">{section.teacherName !== undefined ? section.teacherName || teachingT("unassigned") : scope.grade ? t("grade", { grade: scope.grade }) : t("gradePending")}{section.teacherName === undefined && <span className="ml-3 text-[11px] font-normal text-muted">{scope.historical?.period_label ?? terms.get(scope.termId) ?? "—"}</span>}</span></TableCell></TableRow>
             {!scope.historical && section.rows.some(row => row.key === `${group}:pending`) ? pendingRow(scope) : null}
             {classrooms.map((row) => {
               const classroom = row.classroom;
@@ -568,6 +597,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
               if(availableSlots[0])visibleSlots.push(availableSlots[0]);
               const vacancyLabel=classroom?.capacity===null?t("availableSeat"):t("availableSeats",{count:availableSlots.length});
               const classRowProps = { "data-record-state": fact ? fact.record_state ?? "historical" : "current", "data-placement-classroom": classroom?.id,
+                style: progressMode ? { height: rosterRowHeights[row.key] ?? 36 } : undefined,
                 ...(classroom ? registerTarget(`class:${classroom.id}`, classTarget) : {}), "data-placement-record": row.key, "data-mobile-roster-open": rosterOpen, className: "hover:bg-transparent" };
               const classCells = (disclosure?: ReactNode) => <>
                 <TableCell data-class-sticky="1" mobileSpan="full" {...classCell("campus")} className={cn(PLACEMENT_CELL_HOVER,"relative z-10 border-r border-line bg-card px-2 py-1")}>
@@ -584,7 +614,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
                 <TableCell data-class-sticky="2" mobileHidden data-class-column="time" {...classCell("time")} className={cn(PLACEMENT_CELL_HOVER,"relative z-10 border-r border-line bg-card px-2 py-1 text-[11px]")} title={time}><span className="block whitespace-nowrap leading-5">{time}</span></TableCell>
                 <TableCell data-class-sticky="3" mobileHidden data-class-column={identityColumn} {...classCell(identityColumn)} className={cn(PLACEMENT_CELL_HOVER,"relative z-10 border-r border-line bg-card px-1 py-1")}><span className="block whitespace-nowrap leading-5">{identityColumn === "grade" ? gradeLabel : teacher || "—"}</span></TableCell>
                 <TableCell data-class-sticky="4" mobileHidden data-class-column="difficulty" {...classCell("difficulty")} className={cn(PLACEMENT_CELL_HOVER,"relative z-10 border-r border-line bg-card px-1 py-1 whitespace-nowrap text-center text-[11px]")}>{level}</TableCell>
-                <TableCell flush mobileHidden={!rosterOpen} mobileSpan="full" id={rosterId} data-class-roster-members data-class-roster-content={contentView} className="bg-paper/50">{progressMode ? progressLoading ? <p role="status" className="px-2 py-3 text-xs text-muted">{sessionM.loading}</p> : !progressResult?.data ? <p role="alert" className="px-2 py-3 text-xs text-muted">{progressM.failed}</p> : <TeachingProgressCells sessions={progressSessions} classroomId={classroom?.id ?? ""} columns={classroom ? progressColumns : []} locale={locale} timeZone={timeZone} selectedId={lessonsOpen ? progressLesson : null} disabled={pending || hasSessionDraft} onSelect={session => {
+                <TableCell flush mobileHidden={!rosterOpen} mobileSpan="full" id={rosterId} data-class-roster-members data-class-roster-content={contentView} className="bg-paper/50">{progressMode ? progressLoading ? <p role="status" className="flex h-9 items-center px-2 text-xs text-muted">{sessionM.loading}</p> : !progressResult?.data ? <p role="alert" className="flex h-9 items-center px-2 text-xs text-muted">{progressM.failed}</p> : <TeachingProgressCells sessions={progressSessions} classroomId={classroom?.id ?? ""} columns={classroom ? progressColumns : []} locale={locale} timeZone={timeZone} selectedId={lessonsOpen ? progressLesson : null} disabled={pending || hasSessionDraft} onSelect={session => {
                   if (!canChangeSession()) return;
                   const closing = lessonsOpen && progressLesson === session.id;
                   setProgressLesson(closing ? null : session.id); setMobileRosters({});
@@ -612,6 +642,9 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
           </Fragment>;
         })}{!sections.length ? <TableRow><TableCell colSpan={5} className="h-40 text-center text-muted">{t("emptyPlacement")}</TableCell></TableRow> : null}</FollowupTableBody>
       </Table></DashboardTableShell></TooltipProvider>
+      {workspace === "classes" && canTeach && <div data-teaching-progress-scrollbar-shell className={cn(!progressMode && "invisible")} aria-hidden={!progressMode}>
+        <div ref={progressScrollbar} data-teaching-progress-scrollbar tabIndex={progressMode ? 0 : -1} role="region" aria-label={locale.startsWith("en") ? "Scroll lesson progress" : "横向滚动课次进度"}><div data-teaching-progress-scroll-track /></div>
+      </div>}
       {placementChange?<EnrollmentPlacementChangeDialog {...placementChange} transfers={(board.sessionTransfers??[]).filter(t=>t.membershipId===placementChange.student.membershipId)} onClose={()=>setPlacementChange(null)} onSaved={value=>{setSavedBoard({base:initialBoard,value});setPlacementChange(null);setSelectedKey(null);window.dispatchEvent(new Event(STUDENT_360_REFRESH_EVENT));router.refresh();}}/>:null}
       {seatEntry?<SchoolSupportSeatEntry open onClose={()=>setSeatEntry(null)} classroomName={seatEntry.classroom.name} classroomId={seatEntry.classroom.id} courseId={seatEntry.classroom.courseId} termId={seatEntry.classroom.termId} seat={seatEntry.seat}/>:null}
       {sourceEnrollment?<SourceEnrollmentPlacementDialog record={sourceEnrollment} name={history?.students[businessSubjectKey(sourceEnrollment)]??recordM.unknown} options={board.options} locale={locale} onClose={()=>setSourceEnrollment(null)} onSaved={value=>{setSavedBoard({base:initialBoard,value});setSourceEnrollment(null);router.refresh();}}/>:null}

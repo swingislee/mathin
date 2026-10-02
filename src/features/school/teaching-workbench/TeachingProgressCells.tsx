@@ -1,11 +1,14 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { BookOpenCheck, ClipboardList, FilePenLine, Lightbulb, Megaphone, MessagesSquare, Users, Video } from "lucide-react";
+import { useState } from "react";
+import { BookOpenCheck, CircleHelp, ClipboardList, FilePenLine, Lightbulb, Megaphone, MessagesSquare, Users, Video } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { DashboardTableShell } from "../dashboard-page";
+import rosterLayout from "../class-roster-layout.module.css";
 import {
   TEACHING_PROGRESS_ITEMS, TEACHING_PROGRESS_STATES, TEACHING_PROGRESS_BLOCK_TONES, TEACHING_PROGRESS_TONES,
   teachingMatrixMessages, teachingMatrixSessions, type TeachingProgressSession,
@@ -30,35 +33,55 @@ export function TeachingProgressLegend({ locale }: { locale: string }) {
   </div>;
 }
 
+export function TeachingProgressHelp({ locale }: { locale: string }) {
+  const [open, setOpen] = useState(false);
+  const label = locale.startsWith("en") ? "Progress icons and colors" : "进度图标与颜色说明";
+  return <TooltipProvider delayDuration={250}><Tooltip open={open} onOpenChange={setOpen}><TooltipTrigger asChild>
+    <Button variant="ghost" size="sm" className="size-7 p-0" data-teaching-progress-help aria-label={label}
+      onClick={event => { event.preventDefault(); setOpen(value => !value); }}><CircleHelp size={14} /></Button>
+  </TooltipTrigger><TooltipContent side="bottom" align="end" className="max-w-[min(24rem,calc(100vw-2rem))] border border-line bg-card p-3 text-ink shadow-md">
+    <TeachingProgressLegend locale={locale} />
+  </TooltipContent></Tooltip></TooltipProvider>;
+}
+
+export function TeachingProgressHeader({ columns, locale }: { columns: readonly { key: string; lectureNo: number | null }[]; locale: string }) {
+  const m = teachingMatrixMessages(locale);
+  return <div data-teaching-progress-viewport data-teaching-progress-header className={rosterLayout.progressViewport}>
+    <div className="flex min-w-full">{columns.length ? columns.map(column =>
+      <span key={column.key} className="flex h-8 min-w-20 flex-1 items-center justify-center border-r border-line px-1 text-[11px] font-normal last:border-r-0">
+        {column.lectureNo === null ? m.unspecified : m.lesson(column.lectureNo)}
+      </span>) : <span className="flex h-8 items-center px-2 text-[11px] font-normal">{m.title}</span>}
+    </div>
+  </div>;
+}
+
 /** 只填充原班级表的名单单元格，不拥有班级行、左侧列、筛选或分页。 */
 export function TeachingProgressCells({ sessions, classroomId, columns, locale, timeZone, selectedId, disabled, onSelect }: {
   sessions: TeachingProgressSession[]; classroomId: string; columns: readonly { key: string; lectureNo: number | null }[];
   locale: string; timeZone: string; selectedId?: string | null; disabled: boolean; onSelect: (session: TeachingProgressSession) => void;
 }) {
   const m = teachingMatrixMessages(locale);
-  return <div data-teaching-progress-cells className="w-0 min-w-full overflow-x-auto">
+  return <div data-teaching-progress-cells data-teaching-progress-viewport className={rosterLayout.progressViewport}>
     {columns.length ? <div className="flex min-w-full">{columns.map(column => {
       const lessons = teachingMatrixSessions(sessions, classroomId, column.lectureNo);
-      return <div key={column.key} className="min-w-32 flex-1 border-r border-line last:border-r-0">
-        <p className="border-b border-line bg-paper/50 px-2 py-1 text-center text-[11px] text-muted">{column.lectureNo === null ? m.unspecified : m.lesson(column.lectureNo)}</p>
+      return <div key={column.key} className="min-w-20 flex-1 border-r border-line last:border-r-0">
         {lessons.length ? lessons.map(session => <button key={session.id} type="button" data-teaching-session={session.id}
           aria-expanded={selectedId === session.id} disabled={disabled}
           aria-label={`${m.open} · ${session.title || m.untitled} · ${TEACHING_PROGRESS_ITEMS.map(kind => `${m.items[kind]}：${m.states[session.progress[kind].state]}`).join("；")}`}
-          className={cn("block w-full px-2 py-2 text-left hover:bg-moon/20 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-crater", selectedId === session.id && "bg-moon/25")}
+          className={cn("flex h-9 w-full items-center justify-center px-1 text-left hover:bg-moon/20 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-crater", selectedId === session.id && "bg-moon/25")}
           onClick={() => onSelect(session)}>
-          {(lessons.length > 1 || column.lectureNo === null) && <span className="mb-1 block max-w-32 truncate text-[10px] text-muted">{column.lectureNo === null ? session.title : session.scheduledAt && lessonDate(session.scheduledAt, locale, timeZone)}</span>}
-          <span className="grid grid-cols-4 justify-items-center gap-1">{TEACHING_PROGRESS_ITEMS.map(kind => {
+          <span className="grid grid-cols-4 justify-items-center gap-0.5">{TEACHING_PROGRESS_ITEMS.map(kind => {
             const Icon = icons[kind], progress = session.progress[kind];
-            return <Tooltip key={kind}><TooltipTrigger asChild><span className={cn("inline-flex size-6 items-center justify-center rounded-md border", TEACHING_PROGRESS_BLOCK_TONES[progress.state])}>
-              <Icon size={15} strokeWidth={1.8} aria-hidden />
-            </span></TooltipTrigger><TooltipContent>{m.items[kind]} · {m.states[progress.state]}<span className="ml-1 text-[11px]">{m.reasons[progress.reason]}</span>
+            return <Tooltip key={kind}><TooltipTrigger asChild><span className={cn("inline-flex size-4 items-center justify-center rounded-[3px] border", TEACHING_PROGRESS_BLOCK_TONES[progress.state])}>
+              <Icon size={12} strokeWidth={1.8} aria-hidden />
+            </span></TooltipTrigger><TooltipContent><span className="mb-1 block text-[11px]">{column.lectureNo === null ? session.title || m.unspecified : m.lesson(column.lectureNo)}{session.scheduledAt && ` · ${lessonDate(session.scheduledAt, locale, timeZone)}`}</span>{m.items[kind]} · {m.states[progress.state]}<span className="ml-1 text-[11px]">{m.reasons[progress.reason]}</span>
               {progress.dueAt && <span className="mt-1 block text-[11px]">{m.due}：{lessonDate(progress.dueAt, locale, timeZone)}</span>}
               {progress.completedAt && <span className="block text-[11px]">{m.completed}：{lessonDate(progress.completedAt, locale, timeZone)}</span>}
             </TooltipContent></Tooltip>;
           })}</span>
-        </button>) : <span className="block px-2 py-4 text-center text-muted">—</span>}
+        </button>) : <span className="flex h-9 items-center justify-center px-1 text-muted">—</span>}
       </div>;
-    })}</div> : <p className="px-2 py-3 text-xs text-muted">{m.noLessons}</p>}
+    })}</div> : <p className="flex h-9 items-center px-2 text-xs text-muted">{m.noLessons}</p>}
   </div>;
 }
 

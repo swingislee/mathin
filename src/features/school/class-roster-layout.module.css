@@ -11,6 +11,14 @@
 .workspace [data-class-identity-column="grade"] [data-dashboard-table-menu] > svg { width: 0.625rem; height: 0.625rem; }
 .workspace [data-class-column="grade"] { padding-inline: 0.125rem; }
 
+/* 名册单元格保留原宽度，讲次表头与记录共享底部滚动条。 */
+.progressViewport { width: 0; min-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.progressViewport::-webkit-scrollbar { display: none; }
+.workspace [data-teaching-progress-scrollbar-shell] { height: 0.75rem; flex-shrink: 0; }
+.workspace [data-teaching-progress-scrollbar] { height: 100%; max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+.workspace [data-teaching-progress-scroll-track] { height: 1px; }
+.workspace [data-class-roster-table] > thead > tr > [data-class-progress-heading] { padding-inline: 0; }
+
 /* 定位字段按内容占宽，剩余宽度交给名册；手机摘要继续允许换行。 */
 @media (min-width: 64rem) {
   .workspace [data-class-info] { width: max-content; }
