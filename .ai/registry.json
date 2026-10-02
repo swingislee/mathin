@@ -53,10 +53,10 @@
       "checkout": "worktree",
       "branch": "codex/teaching-matrix-codex",
       "card": ".ai/tasks/DEV-TEACHING-MATRIX-20261002.md",
-      "writePaths": ["src/features/school/ClassRosterWorkspace.tsx", "src/features/school/ClassWorkspaceActions.tsx", "src/features/school/ClassWorkspaceTabs.tsx", "src/features/school/ClassPlacementPage.tsx", "src/features/school/EnrollmentPlacementWorkbench.tsx", "src/features/school/class-roster-layout.module.css", "src/features/school/teaching-workbench/TeachingProgressMatrix.tsx", "src/features/school/teaching-workbench/TeachingProgressPage.tsx", "src/features/school/teaching-workbench/teaching-progress-matrix-contract.ts", ".ai/tasks/DEV-TEACHING-MATRIX-20261002.md", ".ai/handoffs/DEV-TEACHING-MATRIX-20261002-codex-02.md"],
+      "writePaths": ["src/features/school/ClassRosterWorkspace.tsx", "src/features/school/ClassWorkspaceActions.tsx", "src/features/school/ClassWorkspaceTabs.tsx", "src/features/school/ClassPlacementPage.tsx", "src/features/school/EnrollmentPlacementWorkbench.tsx", "src/features/school/class-roster-layout.module.css", "src/features/school/teaching-workbench/TeachingProgressMatrix.tsx", "src/features/school/teaching-workbench/TeachingProgressPage.tsx", "src/features/school/teaching-workbench/teaching-progress-matrix-contract.ts", "src/features/school/teaching-workbench/teaching-progress-matrix-read.ts", "src/features/school/teaching-workbench/teaching-workbench-contract.ts", "tests/teaching-progress-matrix.test.ts", "tests/teaching-progress-matrix-read.test.ts", "src/lib/database.types.ts", "supabase/migrations/20261002163000_teaching_progress_timing.sql", "supabase/tests/teaching_progress_facts.sql", ".ai/tasks/DEV-TEACHING-MATRIX-20261002.md", ".ai/handoffs/DEV-TEACHING-MATRIX-20261002-codex-02.md"],
       "sharedPaths": [],
       "checkpoint": "2652a358a43e6f409ccf7b1e8209b9a0c3ef620a",
-      "next": "按用户本轮反馈统一班级卡片和内容切换，复用学情填充色，固定宽屏全部班级信息列；仅 UI 增量，复用原数据合同与检查证据。"
+      "next": "共用卡片与固定列增量已通过定向检查；继续用户新指定的六色状态，按实际截止与完成时刻区分迟交，补充现有只读 RPC 的时间事实。"
     },
     {
       "id": "DEV-PLANE-COVER-MATCH-20261002-INTEGRATION",
