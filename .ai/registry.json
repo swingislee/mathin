@@ -35,28 +35,28 @@
       "title": "班级教学进度矩阵开发交付",
       "agent": "codex",
       "threadId": "01a0dd69-e287-7773-b4f5-3489276ea15e",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-TEACHING-MATRIX-20261002-INTEGRATION.md",
       "writePaths": [".ai/tasks/DEV-TEACHING-MATRIX-20261002-INTEGRATION.md"],
       "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
-      "checkpoint": "d28ff50c6d960dface045194aea70f06984b21e5",
-      "next": "接收本轮班级共用卡片、右上角内容切换、状态填充色块与宽屏四列固定增量；独立 worktree 实现后串行集成至开发入口。"
+      "checkpoint": "09399b32d6bd6ab9671db76a640e422743bcc22c",
+      "next": "原班级表单元格切换、四列固定及六色真实进度已集成；定向检查、独立复核与中英文入口/接口检查通过。开发端已交付，待人工验收；生产与正式 Gate 未改。"
     },
     {
       "id": "DEV-TEACHING-MATRIX-20261002",
       "title": "八项教学进度与课次嵌套详情",
       "agent": "codex",
       "threadId": "01a0dd69-e287-7773-b4f5-3489276ea15e",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/teaching-matrix-codex",
       "card": ".ai/tasks/DEV-TEACHING-MATRIX-20261002.md",
       "writePaths": ["src/features/school/ClassRosterWorkspace.tsx", "src/features/school/ClassWorkspaceActions.tsx", "src/features/school/ClassWorkspaceTabs.tsx", "src/features/school/ClassPlacementPage.tsx", "src/features/school/EnrollmentPlacementWorkbench.tsx", "src/features/school/ClassRosterSessionRow.tsx", "src/features/school/ClassRosterClassSummary.tsx", "src/features/school/class-roster-layout.module.css", "src/features/school/teaching-workbench/TeachingProgressCells.tsx", "src/features/school/teaching-workbench/TeachingProgressMatrix.tsx", "src/features/school/teaching-workbench/TeachingProgressPage.tsx", "src/features/school/teaching-workbench/teaching-progress-matrix-contract.ts", "src/features/school/teaching-workbench/teaching-progress-matrix-read.ts", "src/features/school/teaching-workbench/teaching-workbench-contract.ts", "src/app/[locale]/dashboard/classes/page.tsx", "src/app/[locale]/dashboard/classes/progress-facts/route.ts", "tests/teaching-progress-matrix.test.ts", "tests/teaching-progress-matrix-read.test.ts", "tests/enrollment-placement-drag-confirmation.test.ts", "src/lib/database.types.ts", "supabase/migrations/20261002163000_teaching_progress_timing.sql", "supabase/tests/teaching_progress_facts.sql", ".ai/tasks/DEV-TEACHING-MATRIX-20261002.md", ".ai/handoffs/DEV-TEACHING-MATRIX-20261002-codex-02.md"],
       "sharedPaths": [],
-      "checkpoint": "2652a358a43e6f409ccf7b1e8209b9a0c3ef620a",
-      "next": "共用卡片与固定列增量已通过定向检查；继续用户新指定的六色状态，按实际截止与完成时刻区分迟交，补充现有只读 RPC 的时间事实。"
+      "checkpoint": "85c2a66963d58c53535f602fde222fe7656055f4",
+      "next": "原表、筛选与分页保留，切换只替换名单单元格；真实审核与刷新缓存复核问题已关闭，代码及交接 02 已被 main 接收。本机只读时间迁移已安装，待用户刷新开发页面验收。"
     },
     {
       "id": "DEV-PLANE-COVER-MATCH-20261002-INTEGRATION",
