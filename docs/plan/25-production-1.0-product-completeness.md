@@ -4,7 +4,7 @@
 >
 > **用途**：记录 Production 1.0 的仓库事实、M0～M4 成熟度、业务合同、量化发布门和生产初始化步骤；R1-Live 的当前 Gate 与施工顺序由 doc 04 管理。
 >
-> **基线日期**：2026-09-03；每次验收另记 commit、migration head、环境和数据 manifest。`DEV-CW-1` 窄范围 schema/app 已发布生产并通过机器 postflight；产品人工验收仍 pending。其他开发轨不因本次发布改变状态。
+> **事实核对日期**：2026-10-03；以 main `0a24493d` 的已提交实现、任务卡及最新归档发布证据对账。当前交付与人工验收集中在 [§1.1.1 当前事实账本](#current-facts)；生产运行结论来自相应发布记录，本次未重新连接生产取证。
 >
 > **删除限制**：R1-15 只操作生产快照副本；R1-18 经人工批准后也只能处理 manifest 明确标记的测试对象。R1-Live 产生的正式身份、班级、课次、学生、业务记录及课次引用的 immutable release/snapshot/object 永久排除在测试清理之外。
 
@@ -18,43 +18,64 @@
 | Story | `/story` 路由和场景壳存在；未发现完整独立章节内容目录 | 至少 1 个从入口到结尾的章节；阅读/交互 10～20 分钟或达到产品签收的完整最小章节 |
 | Games | registry 3 个游戏 | 3/3 可玩；需要排名的客户端成绩经服务端验证后入榜 |
 | Minds | `content/zh/minds` 2 篇 MDX | 2/2 发布，并关联稳定 Terms ID |
-| Tools | 分数、行程与立体教具已有实现；2026-09-18 按[可备课数学教具](prepared-teaching-tools.md)统一接入，当前仍是开发轨 | 独立教具与既定 embed 可用；配置好的教学起点可保存到课件并在课堂操作、恢复；不要求题型库、判题或检查点 |
+| Tools | 分数、行程、立体教具、数位积木与 22 个平面教具入口已纳入 v0.3.0 网站发布；教学手感与完整使用验收见[当前事实账本](#current-facts) | 独立教具与既定 embed 可用；配置好的教学起点可保存到课件并在课堂操作、恢复；不要求题型库、判题或检查点 |
 | Notebook | 私有列表、编辑、公开详情路由存在；commit `11885f7` 已关闭发布归属与互动隐私边界，commits `8c9cb8c`、`ffe3ec6` 已在开发库建立可追溯审核发布生命周期、平台锁、归档删除守卫和源笔记快照绑定 | 私人写作、完整审核状态机、发布/撤回/修订、公开阅读和互动完成权限/E2E 验收 |
 | 学校运营 | 学生、监护关系、员工权限、课程、班级、排课、考勤、作业、订单/支付/退款等迁移和 UI 已存在 | 管理员、教务、教师、学服、教研/内容、学生、家长及启用时的财务旅程闭环 |
 | 内容发布 | Terms/Minds 文件内容、Notebook、课程研发和 release 机制分别存在 | Terms/Story/Minds/Notebook 共用草稿/审核/发布/撤回/版本合同；课堂只读取不可变课件 release |
 | E 系列 | 开发数据有 1135 讲、16:9/4:3 双轨资源和 release 机制；课程目录版本层已就位（2025旧版 54 门 / 2026新版 36 门） | 保留 1135×2 源资源；正式基线包含 2270 条 `release_no=1`，见 §5.1.1 |
 | 爱学习 G+/X+/A+ 秋季 | G+ 苏教版 56 讲、X+ 苏教版 84 讲、A+ 全国版 30 讲；16:9/4:3 双轨资源和 release 机制 | 保留 170×2 源资源；正式基线包含 340 条 `release_no=1`；另有 10 条教学计划第 7/15 讲补充占位（G+ 5/6年级、X+ 2/5/6年级），占位无 release 且准备状态为“未发布” |
-| 语言 | `messages/zh.json` 与 `messages/en.json` 各 4069 个 key；`content/en` 仅 README | UI 永久 zh/en；英文课程/文章可延期，缺失内容显示明确回退或“尚未发布”状态 |
+| 语言 | v0.3.0 双语检查通过；10 月 3 日顺延增量记录 zh/en 各 9944 个 key；`content/en` 仍仅 README | UI 永久 zh/en；英文课程/文章可延期，缺失内容显示明确回退或“尚未发布”状态 |
 | 视觉 | `public/Main.png`、五星球 token/场景、`dashboard-observatory.webp` 和公开场景插画已在仓库使用 | 小王子作为全站视觉基础；公开场景、内容/Notebook、运营工作区按三档强度验收 |
 
 Terms 使用稳定 ID 接收 Story、Minds、Games、Tools、Notebook 和课程的关联。修改 slug 或删除内容前检查反向引用、重定向、canonical 和 sitemap。
 
-### 1.1.1 2026-08-23 施工顺序
+### 1.1.1 当前事实与验收账本
 
-当前唯一施工阶段为 `R1-Live-2 · 生产单老师试用`。R1-Live 只保留两个结果 Gate：Gate 1 合并正式目标/身份、当前备份、防误清、可识别的 current/previous 与错误查询位置；Gate 2 合并真实点名闭环和首次真实教师验收。原范围冻结成为永久规则，完整恢复/rollback、错误 release 标签、独立观察和 14 天 RC 回到 Production 1.0。
+<a id="current-facts"></a>
 
-- Gate 1 当前 `PASS`：Xiaomi 目标指纹、危险写拒绝、唯一正式 admin MFA、首名真实教师及双岗位、active 8 条 protected/0 条 purge manifest、current/previous、健康探针和错误查询位置均已确认。2026-09-03 统一课件工作区窄范围发布后，生产数据库 ledger/head=`242 / 20260903000700_courseware_page_insertions`；应用 current/previous=`20260903-115645` / `8c50b48…` 与 `20260903-100016` / `750bd607…`。最近 PostgreSQL 写前备份为 `mathin-db-prechange-20260903T114653Z-courseware-workspace-8c50b48a8c4d`，既有 PostgreSQL+Storage 同批次全量备份 `mathin-20260828T052842Z-teacher-microcourse-variant-087b497` 继续作为 Storage 回退基线；本轮迁移与应用发布没有改写存量页面、binding、课程 release、审核快照、冻结会话或 Storage，未执行 restore 或 prune。
-- Gate 2 当前仍为 `BLOCKED`，但生产单老师试用已经启动：本机隔离固定账号 Golden Path 已完成未完整课程建班、自动课次、`lead` 报名、教师点名保存和换页再读。生产现有 1 个长期正式班/15 个课次/1 条 active 报名和 1 个短期专题班/3 个课次/0 报名；另有 2 个 test 长期班合计 1 个课次，当前总数为班级/课次=`4/19`。学年迁移把春季边界修正为 `2026-06-29`，并只把原长期正式班/课次/报名改挂到 `2026–2027` 秋季，2026 学年仍为 planning，学生仍为5年级。正式点名仍为 0；退出前仍由该教师完成点名保存、刷新/重登再读，再做管理员读取和无权限拒绝。
-- 生产轨保持 1 名正式教师小范围使用，真实反馈按 P0/核心 P1 优先；“试用已启动”只表示执行阶段变化，不代表 Gate 2、某项功能或 Production 1.0 已验收通过。
-- 开发轨允许产品负责人并行尝试新功能。每项功能须先在隔离开发目标完成相关机器检查和产品负责人初步验收，再以独立可回退提交登记精确 commit/migration，经过生产目标、备份/current/previous、数据影响与回退 preflight 后小增量发布；postflight 须核对健康、错误增量、核心 Smoke 和受影响业务不变量。开发通过、已部署待验收与生产通过分别记账。
-- `DEV-SCHOOL-OPS-1` 当前为 `PHASE 2 / DEVELOPMENT READY / AWAITING PRODUCT OWNER UI AND INTERACTION ACCEPTANCE`：提交 `207d6e5` 已交付真实活动列表／漏斗、单次活动参与与测评工作台、课程意向列表；本机 migration `20260902000200_school_ops_phase2_activity_funnel` 新增 AssessmentResult／Opportunity、RLS、到场前置、测评前置和下一动作投影合同。本地使用明确标记的“Phase 2 验收 · 1v1 测评”及“Phase 2 验收学生”作为可删除验收数据；这不改变 R1-Live 生产基线，当前没有生产 migration、业务数据写入、Storage 或发布动作。二进制 `.xlsx`、逐行合并决定与 Family／Contact／Lead 分表仍未施工并保留为后续项。
-- `DEV-STAFF-ONBOARD-1` 当前为 `DEVELOPMENT READY / AWAITING PRODUCT OWNER UI AND INTERACTION ACCEPTANCE`：本机 migrations `20260902000700_staff_bulk_onboarding`、`20260902001000_staff_direct_provisioning`、`20260902001100_staff_initial_password_hardening` 与 `20260902001200_staff_initial_password_reissue` 让员工页接受中文三列模板及魔法校 Tab 四列名单，逐行预检后由主管及以上直接创建 Auth 账号、员工档案和岗位；成功档案立即可用于排课，首次登录密码只在本次下载响应出现，建档触发完成后同事务清除 Auth 临时元数据键。新员工本人首次登录必须输入并二次确认不同的新密码，完成前 staff 权限/RLS fail closed；此期间主管可在员工行重新生成一次性显示的新密码，旧密码立即失效，完成改密后重签入口关闭。系统不伪造联系方式验证或隐私同意。`staff.invite` 只开放建档和待首次改密密码重签，停用、改岗和既有顾客身份提升仍要求 `staff.manage`，含 `permission.configure` 的岗位仍只允许顶层 admin 预授。失败行可在同一批次重试，数据库与 Auth 元数据均不保存明文密码。迁移回滚演练、正式本机应用、数据库回滚行为断言、相关 Vitest 17/17、受影响 ESLint、TypeScript、双语键与类型摘要检查通过；固定测试管理员角色与既有权限保留，新重签账本为空。当前没有 Xiaomi／生产 migration、身份创建或业务写入，页面、首次登录、密码重签和交接操作仍待产品负责人人工验收。
-- `DEV-CW-1` 当前为 `STEP 8E PRODUCTION DEPLOYED / MACHINE POSTFLIGHT PASSED / PENDING PRODUCT ACCEPTANCE`：Step 7C 三端视觉与源码复用、Step 8A 双轨 typed-patch 草稿及 Step 8B 共享插入均已获开发端人工确认。最终窄范围候选 `8c50b48…` 已完成 6 条 production migration 和应用原子发布；ledger/head=`242 / 20260903000700_courseware_page_insertions`，current/previous=`20260903-115645` / `8c50b48…` 与 `20260903-100016` / `750bd607…`。77,224 个页面及资源、release、冻结会话和 Storage 计数不变；机器 postflight 已通过，真实生产工作流验收仍 pending。
-- 普通教师微课开发轨 `DEV-TMC-1` 的课次编辑、草稿试讲、审核/release、来源导入、H5 和游戏页能力已部署，但 2026-08-29 确认目录聚合与浏览模型均错误：教师微课应以自由班为根，同班多个课节的已选课件共同组成一门多讲 `microcourse`；一个来源课节只产生一个稳定讲次，同课节的并行方案发布为该讲次的不同 immutable release。来源班级的年级、班型和运营学期用于追溯与可选筛选，不唯一决定微课，课程还可按单次/短系列/系列场次、完成度、标题、讲次、主题和关键词发现。教师微课课程族页使用同页目录—详情工作区，选择另一门微课不要求退回版本矩阵。旧实现把每个课次方案各投影成一门单讲课程，并套用教材课程的三维唯一寻址页面。生产当前正有 1 个自由班/3 个课节/3 个已选方案被拆成 3 门草稿，尚未发布 release。课次内容与课堂冻结链保留；班级级归并、专用共享目录和多讲建班必须重新完成隔离迁移、产品验收并另行取得生产授权。
-- `DEV-TMC-2` 已获明确授权并部署生产：自由课次允许任课教师与教研直接建立并行课件方案，编辑他人方案时派生新 head，主讲在开课前选择本节使用方案；课次使用不经过审核。该课次级协作与课堂选用合同继续有效，但校内共享改为由班级保存动作读取各课节的“本节使用”方案，一班一课、多课节多讲；同课节并行方案不得各自隐式成为课程或讲次，审核发布后只增加该稳定讲次的 release 版本。既有 SQL、定向测试、固定账号旅程和生产 postflight 只证明课次级能力，不证明班级级教师微课已经实现或验收。
-- `DEV-TMC-4` 当前为 `PRODUCTION APP/SCHEMA DETECTED / PREVIOUS DEPLOYMENT EVIDENCE RECONCILIATION PENDING / PRODUCT ACCEPTANCE PENDING`。2026-08-30 本 hotfix 写前 preflight 已检出生产应用 `76f0f9a…` 与数据库 ledger/head=`236 / 20260830000700_teacher_microcourse_editor_unification`，说明 doc 29 的使用场景、学术维度、适用范围、课程浏览/维护与 composition 统一 schema/app 已在本轮前进入生产。本轮没有执行这些 migration、归并、开关或写态验收，也不把此前部署记为产品通过；课程切换卡顿仍按 `POST-LIVE-PERF-01` 收集。现有课次方案、review/release 和课堂冻结继续作为权威。
-- `HOTFIX-20260829` 已获明确授权并完成应用-only 发布：`557fc51` 修复来源 H5 透明层，`7601c86` 让自由班复用每周几、教学日历自动排期、逐讲时间覆盖和冲突检查。生产 current=`20260828-190055` / `7601c86…`，previous=`20260828-174731` / `34f07e8…`；双 production build、HTTP/鉴权、systemd/journal 和业务不变量 postflight 通过。两讲暑期 A+ 不重导，数据库、课程 release 与 Storage 零写入；localhost-only 来源工具 `26adab7` 没有独立生产运行面。产品负责人仍需自行完成生产页面验收。
-- `HOTFIX-20260829-ADMIN-SELF-ROLE` 已获明确授权并完成 schema/app 发布：顶层 admin 可以管理自己的员工岗位，普通 staff 仍不能自授岗，管理员自身停用仍不开放。首个 rollback rehearsal 发现现网显式 anon execute 并 fail closed，独立零残留后由 `ba98a8e` 收紧 ACL；最终 migration `20260829000200_admin_self_staff_roles` 经新鲜 PostgreSQL-only 备份、rollback/零残留/formal 把 ledger 推到 `220`，应用 current/previous=`20260828-195733` / `ba98a8e…` 与 `20260828-190055` / `7601c86…`。HTTP/systemd/journal、数据库、业务、Storage 与备份 postflight 通过；管理员岗位成员仍为 0，等待产品负责人实际自授岗验收。
-- `HOTFIX-20260829-TMC-RESEARCH-ENTRY` 已完成 app-only 发布：DEV-TMC-2 的 schema、feature flag 与 research 权限原已在生产生效，问题来自普通课次页仍要求任课教师 `canPrepare` 才显示“编辑课件”。`bf81aa4` 允许具备 `courseware.review + courseware.microcourse.author` 的教研直接打开其他老师自由课次的方案工作区，并继续隐藏试讲、完成备课、点名、课堂控制和“本节使用”。本机定向 Vitest 9/9、固定账号 Playwright 1/1、双 production build、原子切换和无登录 postflight 通过；current/previous=`20260829-031327` / `bf81aa4…` 与 `20260828-195733` / `ba98a8e…`，生产人工页面验收仍 pending。
-- `HOTFIX-20260829-TMC-SOURCE-PREVIEW` 已完成 app-only 发布：空 kind 的来源绑定此前跳过 pinned H5 对象 kind/hash，误走普通资源签名；通用讲次审核入口又只看已发布 release。`6185352` 以钉死对象为权威解析来源 package，并将 active 教师微课审核转到不可变提交快照。生产既有待审作品保持 32 页、283/283 个绑定；定向 Vitest 17/17、固定账号 Playwright 2/2、双 production build、原子切换和独立 postflight 通过。current/previous=`20260829-045135` / `6185352…` 与 `20260829-033955` / `59cc342…`，数据库、审核快照和 Storage 零写入，生产人工页面验收仍 pending。
-- `HOTFIX-20260830-COURSEWARE-PREVIEW-PAGING` 已完成 app-only 发布：来源提交 `50a1648…` 以生产 `76f0f9a…` 适配为候选 `a165004…`，让讲次只读预览按页读取、生命周期缓存、相邻预取并只同步 History API 页码，来源 runtime 按 package/entry 复用 iframe，教师微课同讲资源签名批量解析。定向 Vitest 10/10、messages 5205×2、全库 ESLint/TypeScript、双 production build、原子切换及健康/鉴权/bundle/数据不变量 postflight 通过；current/previous=`20260830-080555` / `a165004…` 与 `20260830-045421` / `76f0f9a…`，数据库和 Storage 零写入。真实课程冷／热翻页待产品验收；教师微课课程切换是另一条 quick-preview 路径，继续 pending。
-- `HOTFIX-20260829-CLASSROOM-INTERACTION-SYNC` 当前为 `DEPLOYED / MACHINE POSTFLIGHT PASSED / PENDING REAL IPAD ACCEPTANCE`：新式 `game-page-v1` 数独适配链补齐 `GameMirrorState` 的采集、100ms 合并广播与 viewer replay；统一 `ClassroomInteractionSyncProvider` 对每个 Mathin 自研 docVersion、微课 mode 和游戏 registry 项做穷尽审计。定向 Vitest 72/72、独立审计 4/4、本地 Chromium 正式课次控制页→展示页同步用例及生产 app-only postflight 通过，代码继续包含在 current `a165004…`；自研 H5 与空间页在版本化状态/语义命令协议接入前保持课堂只读。本项不含 schema、数据库或 Storage 写入；真实 iPad Safari、跨设备局域网和产品验收仍 pending。
-- 课堂可扩展互动在开发轨使用版本化 capability provider 和统一 conformance；普通 renderer 复用既有输入原语时不逐个重复人工 Gate。新增原语、输入路由/所有权算法、跨 iframe 协议和真实设备回归仍单独人工验收；未声明或不匹配 provider 的 renderer 继续 fail closed。M0–M4 开发端已整体关闭，M5 Stage B1/B2 已由产品负责人确认。Stage B3 的共同 bridge、按不可变 package SHA-256 登记的 `cw_h5_input_profiles`、单一 Smart 开关与工具派生回退锁已通过隔离提交 `964ca5e` 和 migration `20260826000100_classroom_h5_input_profiles` 部署；入口为外层透明无边框、强调色 SVG + 滑轨的 `112×44px` 二态开关。生产表为空，H5 继续 version 3 / false，未声明或不匹配 package 仍 fail closed；该状态为 `DEPLOYED / PENDING USER ACCEPTANCE`，不能记为 H5 pointer、M5 或 Gate 2 生产通过。
-- 班级启用是运营决定。正式自由班、未完整课程、教师冲突、备课产物/审核/检查项、点名前置、资源预载和无 release 都只提示；创建时的权限、主讲/学期、course/family/lecture 引用、状态和不可变历史继续硬阻断。无 release 课次可冻结 `releaseId=null` 的空白/本次覆盖快照。
-- 现有 purge 只接受 active manifest 明确的 `purge_allowed` test 根，当前准删数为 0。日常新增正式学生、班级、课次和考勤不要求逐行替换 manifest；只有未来授权具体清理根时才按当时删除闭包生成 replacement。
-- 原 R1 暂停在 R1-9。P6-AIX-2、G+/X+/A+ 170 讲和 102 门/1305 讲/2610 条目标 release-1 合同保留；真实全量 inventory、Storage/H5 审计、Terms/Story/其他公开模块、完整视觉/E2E/恢复门转入 R1-Live 后继续。
-- SML-0 为独立并行轨道；普通教师默认不可见未完成能力，只有破坏共享认证、授权、数据或点名黄金路径时才阻塞 R1-Live。
-- R1-Live 的正式业务事实及课次引用的 immutable release/snapshot/object 不得在后续 R1-15/R1-18 中删除或改写。现有两个数据库 purge RPC 已接入正式对象保护合同；旧全库 planner 尚未接入同一合同，在完成 schema 修订并于隔离副本重新验收前保持 plan-only、不可执行。
+本节是近期交付的当前状态汇总；原始实现、运行与人工确认继续保留在对应证据中。核对时间为 **2026-10-03**，代码基线为 main `0a24493d`。任务登记中的 `integrated` 只表示 main 接收实现，开发环境结果、生产发布和人工验收各自取证。历史章节与旧任务卡中的版本、数量和“未部署”描述按当时日期解释。
+
+| 记录维度 | 成立条件 | 必须写明 |
+| --- | --- | --- |
+| **已实现** | 有已提交代码或已执行的数据更正，并有相应检查记录；部分实现注明边界 | 功能范围、提交／任务卡、机器检查范围及已知缺口 |
+| **已部署** | 目标环境已应用精确版本并有部署后核验；代码部署与功能启用分别记录 | 开发／生产／客户端平台、应用与迁移版本、发布证据 |
+| **待验收** | 可操作范围尚缺指定角色、设备或业务场景的人工确认 | 待操作路径、环境、预期结果与依赖；未实现能力先列开发候选 |
+| **已验收** | 产品负责人或真实使用者有明确确认记录 | 确认日期、版本、环境与具体范围；后续增量另行验收 |
+
+四个维度同时记录。同一功能可以“已实现、已部署、待验收”；授权上线、机器通过、旧版设备运行确认均按各自事实保存。正式 Gate 继续只使用 doc 04 的 `PASS / BLOCKED / UNKNOWN / NOT REQUIRED`，本次对账不提升业务 Gate 或 M0～M4 成熟度。
+
+**最近生产基线。** [v0.3.0 发布记录](../evidence/r1/release-v030-20261002.md)确认 2026-10-03 00:23（Asia/Shanghai）完成网站与后端切换：源码 `4ea559922bfff101458c33c2495e24dbe57aeb01`，current / previous 为 `20261002-161234 / 20261002-144508`，ledger/head 为 `472 / 20261002170000_tool_plane_interior`。26 项迁移、备份、回滚零残留、生产构建与机器 postflight 已通过。此后的班级教材更正只改变获准业务引用；教材管理与连续顺延仍是开发端增量。客户端安装／平台发布及公众号能力启用分别办理。
+
+| 业务范围 | 已实现 | 已部署 | 待验收 | 已验收 | 证据 |
+| --- | --- | --- | --- | --- | --- |
+| 首个真实教师点名闭环 | 点名 UI/RPC、持久化与权限合同已实现，隔离开发旅程通过 | 网站链路已在生产；本次没有新增运行取证 | 正式教师保存整班点名后刷新／重登再读，管理员可见，匿名及既有无权限主体拒绝 | Gate 2 尚无完整人工闭环记录，保持 BLOCKED | [doc 04 §2～3](04-roadmap.md#2-r1-live-gate-状态) |
+| 备课、课后记录与教学进度 | 交互作业、课后修订／自动保存、八项教学进度及本课材料已集成 | v0.2.1 / v0.3.0 网站与后端已发布 | 一节课中的备课、保存重开、课堂、作业／课评连续办理与手机布局 | 尚无当前版本整体验收记录 | [v0.2.1](../evidence/r1/version-0.2.1-production-20260925.md)、[v0.3.0](../evidence/r1/release-v030-20261002.md) |
+| 可备课教具 | 场景保存、课件固定副本、课堂操作与恢复，含数位积木和 22 个平面入口 | 当前批已随 v0.3.0 发布 | 高频教具的数学展示、拖动手感、保存重开、展示端同步与恢复 | 尚无全批人工教学验收记录 | [教具合同](prepared-teaching-tools.md)、[v0.3.0](../evidence/r1/release-v030-20261002.md) |
+| 指定班级教材更正 | 运维更正已执行并记录审计 | 生产 3 班／45 课次已由 B 对应到 A；应用与 schema 不变 | 教师核对 A 教材页面、保留教案、原页面批注与待审内容 | 尚无页面和备课验收记录 | [更正证据](../evidence/r1/class-material-correction-20261003.md) |
+| 班级教材与班型规则入口 | `edf64c76` 已经 `39b68b11` 集成，版本规则、逐班预览和续班沿用已交付 | 本机两条迁移与开发入口已验证；**未发布生产** | 班级设置→教材与难度、班型对应规则、沿用原班设置新建 | 待人工视觉与业务验收 | [任务与入口](../../.ai/tasks/DEV-CLASS-MATERIAL-20261003.md)、[交接](../../.ai/handoffs/DEV-CLASS-MATERIAL-20261003-codex-01.md) |
+| 本节及后续课次顺延 | `501be891` 已经 `b395a952` 集成，预览、事务保存与历史保护已交付 | 本机 `20261003020000_session_schedule_postpone` 与开发入口已验证；**未发布生产** | 班级／课表预览后顺延 7 天、刷新再读，核对范围外及冻结课次保留 | 待人工视觉与业务验收 | [任务](../../.ai/tasks/DEV-SESSION-POSTPONE-20261003.md)、[交接及既有测试失败边界](../../.ai/handoffs/DEV-SESSION-POSTPONE-20261003-codex-01.md) |
+| 总览汇总、列表读取与编辑连续性 | 聚合／分页多批已实现；跨发布完整草稿恢复仍有缺口 | 总览汇总等已发布，后续网站增量见版本说明 | 总览、班级、沟通实际冷／热可操作时间；整页首次 1 秒目标及保存／恢复 | 尚无完整性能与跨发布草稿验收记录 | [汇总发布](../evidence/r1/overview-summary-production-20260922.md)、[版本说明](../../CHANGELOG.md) |
+
+| 账号、客户端与公开内容 | 已实现 | 已部署 | 待验收 | 已验收 | 证据 |
+| --- | --- | --- | --- | --- | --- |
+| 网站微信扫码登录／绑定 | 授权与绑定、一次性凭据预读保护已实现 | 10 月 2 日生产已开启，修复包含于 v0.3.0 | 真实扫码回站、原账号绑定及再次登录原身份 | 尚无完整真实扫码／绑定确认记录 | [启用记录](../evidence/r1/wechat-oauth-activation-20261002.md) |
+| 微信内公众号直接授权 | 双渠道分流及缺配置提示已实现，协议检查通过 | 代码随 v0.3.0 部署；**公众号配置尚未启用** | 公众号权限、同平台绑定、域名和私有配置齐备后验证真实往返 | 尚无真实公众号授权验收 | [任务](../../.ai/tasks/DEV-WECHAT-INAPP-20261002.md)、[发布边界](../evidence/r1/release-v030-20261002.md) |
+| 共用家长 API | 账号、课表／报告、通知、作业、请假与测评申请／确认已接入 | v0.3.0 后端和两条家长迁移已发布 | 实际家庭完成测评申请→教师回复→家长确认，以及作业／报告链路 | 尚无生产完整业务闭环签收 | [API 合同](../../contracts/parent-api/README.md)、[发布](../evidence/r1/release-v030-20261002.md) |
+| 微信小程序 | 发现／课程／家长三栏、测评与活动、数据接入和微信登录／绑定代码已集成 | 开发模拟器与固定开发数据可用；平台发布未登记，真实小程序微信仍待私有配置 | 开发业务与手机体验、配置后的真实微信往返及平台发布 | 尚无本批整体验收记录 | [集成与运行](../../.ai/tasks/DEV-PARENT-PREVIEW-20261002-INTEGRATION.md)、[工程](../../apps/parent-wechat/README.md) |
+| iOS | 四页签、账号／真实数据、设置与二级页已集成；V6 已交付 | 开发包已交付；正式安装／TestFlight／上架未登记 | V6 在 iPad 编译、Keychain 会话、局域网登录、数据与视觉；Xcode 旅程另验 | V5 可运行有用户确认，仅证明旧包运行；V6 仍待验收 | [V6 任务](../../.ai/tasks/DEV-PARENT-IOS-DETAILS-20261002.md)、[工程](../../apps/parent-ios/README.md) |
+| Android | 离线四入口工程外壳；历史 Debug 构建／Lint 通过 | 正式客户端发布未登记 | 外壳设备体验；业务接入先由产品负责人选入开发 | 尚无业务验收记录 | [工程](../../apps/parent-android/README.md)、[客户端总览](../../apps/README.md) |
+| Terms／Minds／Story／Notebook | 71 篇 Terms、2 篇 Minds；Story 仍为展示壳；Notebook 已有开发生命周期与权限子门 | 网站路由存在；完整 1.0 内容发布与验收仍按下文合同执行 | Story 完整章节、稳定内容关系、英文回退与各模块完整旅程 | 尚无六模块整体 1.0 验收 | [§3 成熟度基线](#3-成熟度矩阵)、[§5 发布门](#5-production-10-量化发布门) |
+
+**已验收的明确范围。** 下表保留已有人工确认，新增版本、页面和设备继续单独登记。
+
+| 日期／环境 | 已验收对象 | 版本与依据 | 后续边界 |
+| --- | --- | --- | --- |
+| 2026-09-06／开发端 | 首联摘要、详情、填写保存、快捷键与对应 360 侧栏行为 | `07c555de`；[首联保护基线 §10](school-support-followup-panel-contract.md#10-首联已验收保护基线) | 保护该范围；其他面板、后续改动、生产发布和整个学服 Phase 各自验收 |
+| 2026-08-25／开发端；08-26／生产 B1–B2 | 课堂 M0–M4；M5 B1 主板书恢复／Smart 输入、B2 整体布局 | 开发基线 `95ed9f1`、M5 候选 `8c303a2`；[课堂验收记录](mathin-classroom-experience-upgrade-plan.md) | B3、后续课堂补丁、教具与真实设备新场景继续按各自证据；Gate 2 保持 |
+| 2026-08-31～09-03／开发端逐步确认 | 统一课件工作区的共用工作台、双轨草稿与共享插入等 Step 7C／8A／8B 范围 | [doc 16 §14](16-p6-courseware-platform.md#14-dev-cw-1-课程产品统一课件工作区待产品逐步确认)；生产候选后续为 `8c50b48` | 保留逐步开发确认；Step 8E 发布后的真实生产工作流仍待验收 |
+| 2026-10-02／开发端反馈 | 班级局部修复“成功”的用户确认 | [班级列表任务记录](../../.ai/tasks/DEV-CLASS-LIST-20261001.md) | 记录没有逐项扩展验收范围；其后共用手机滚动与嵌套宽度增量仍待用户确认 |
+
+下一批候选与依赖由 [doc 04 §5.3](04-roadmap.md#53-下一批候选与启动条件)维护；本账本不自动启动开发、发布或生产写入。
 
 ### 1.1.2 R1-Live 与本文件硬门的关系
 
@@ -67,6 +88,8 @@ Terms 使用稳定 ID 接收 Story、Minds、Games、Tools、Notebook 和课程�
 | 观察 | 1 名真实教师完成首个闭环 | 独立观察、R1-Live 后连续 14 天/至少 5 节真实课堂，作为扩大范围和 `v1.0.0` 证据 |
 
 ### 1.2 工程与验证基线
+
+以下保留 8 月历史检查点，用于追溯已覆盖的合同。当前框架版本、测试数量、运行部署与人工状态按指定提交及[当前事实账本](#current-facts)读取；不将历史数量用作本轮通过结果。
 
 | 对象 | 最近可核对事实（截至 2026-08-13） | 尚不能支持的结论 |
 | --- | --- | --- |
@@ -141,7 +164,7 @@ command_or_runbook, artifact_url_or_path, artifact_hash, failure_ticket
 
 ## 3. 成熟度矩阵
 
-当前等级截至 2026-08-15，并按已登记的阶段或子门证据更新；本矩阵衡量 Production 1.0，不是 R1-Live 的前置清单。R1-Live 只提升实际覆盖的身份、点名和最小运维证据，不能据此把整个领域提升至 M4。
+本矩阵保存 2026-08-15 起各阶段及子门的成熟度基线，表内运行数值和版本属于相应历史证据；近期实际实现、部署及待验收范围统一见[当前事实账本](#current-facts)。本次只校准交付事实，不重新评定 M0～M4，也不把已部署或局部人工确认提升为整个领域 M4。
 
 | 领域 | 当前 | 1.0 | 已知缺口 | R1 |
 | --- | --- | --- | --- | --- |
@@ -172,6 +195,8 @@ command_or_runbook, artifact_url_or_path, artifact_hash, failure_ticket
 | 真实运营 RC | M0 | M4 | R1-Live Gate 2 先取得 1 名真实教师闭环；独立观察及开放后连续 14 天/至少 5 节真实课堂形成扩围和 Production 1.0 证据 | Live/17 |
 
 ## 4. 业务合同
+
+本节保留产品合同与历次实施记录，具体运行数值／版本按所标日期解释。近期交付状态见[当前事实账本](#current-facts)；课堂运行时的硬门与提示以 [doc 04 §1.2](04-roadmap.md#12-运行时检查分类)为准，备课、点名及资源完整度继续作为质量信号。
 
 ### 4.1 Work-items：现状、缺口与决定
 
@@ -569,32 +594,26 @@ R1-0 已完成责任角色到 `swingislee` 的映射。增加人员或发生交�
 
 ### 7.2 发布风险
 
-| 风险 | 当前证据 | 影响 | Owner | 关闭阶段 |
-| --- | --- | --- | --- | --- |
-| R1-Live 正式目标 Golden Path 未完成 | 本机隔离 Golden Path 1/1 已通过并关闭 `lead → enrolled` 合同冲突；生产已有 1 个长期正式班/15 个课次/1 条 active 报名和 1 个短期专题班/3 个课次/0 报名，学年/秋季归属修复已上线；仍缺正式教师点名保存与刷新或重登再读、管理员对照和越权对照 | 班级、课次和报名存在只能证明闭环前半段；尚不能证明正式教师能完成持久点名及权限闭环 | 教学运营+QA/发布 | R1-Live Gate 2 |
-| Production 1.0 运维成熟度未完成 | current/previous、原子切换、健康门、错误查询位置和当前同批次备份已知；备份仍是同机外置 exFAT 明文工件，尚无恢复抽查/异机副本，previous 未做受控切回，1,950 条历史错误的 release 为空 | 不阻止第一名内部教师开始使用，但会阻止扩大范围和 `v1.0.0` | 运维+安全+QA | R1-16～18 |
-| Story 无完整章节 | 路由存在；无完整独立章节内容目录 | 对外 1.0 缺一模块 | 内容+产品 | R1-10 |
-| R1-9 来源实物证据未完成 | P6-AIX-2 开发库证据与 v4 只读导出/对象校验核心、受控 runner 已通过；批准副本配置、外部 provenance、真实 1305 行 inventory、Storage/H5 审计与非执行者复核仍 pending | Production 1.0 release 清单可能缺对象或 snapshot 漂移；不影响 R1-Live 所选课次已读验证 | 产品+课程研发+QA/发布 | R1-Live 后恢复 R1-9，并在 R1-18 前重跑最终证据 |
-| 英文正文缺失 | `content/en` 仅 README | `/en` 可能空白或混排 | 内容+前端 | R1-9～12 |
-| 平台运行内核尚无完整生产验收 | R1-2 开发合同及 Web Push P5 底座保留；2026-09-09 P6 员工测试已启用，生产 WNS 201、专用 Worker、独立告警恢复、备份/迁移与业务不变量通过，详见专题证据 | Windows 人工体验、完整共享电脑旅程、真实容量/成功率、最终保留期与支持签收和持续观察尚未完成；继续保留完整 G5/P7 与 M4 缺口，不把运行状态当作正式验收 | 平台+运维+安全+QA | DEV-WEB-PUSH-1/R1-14/16/17 |
-| 全站视觉强度合同刚固定 | doc 05 曾把工作区排除在星球主题外 | 公开站与后台品牌断裂或装饰侵入控件 | 设计+前端 | R1-12 |
-| 机构配置尚无生产验收 | R1-1 已完成显式默认、版本/RLS/回滚和开发环境验证（M3） | 开发合同不等于生产配置、正式角色旅程和发布初始化正确 | 产品+数据库+发布 | R1-15～18 |
-| 账户安全尚无生产验收 | R1-3 已完成账户/同意/支持的空库重放、负向断言与开发浏览器验证（M3） | 开发门控不证明正式唯一管理员、生产 MFA=100%、速率限制与恢复演练 | 安全+发布+QA | R1-14/16/17/18 |
-| Work-items 尚无生产候选/RC 负载证据 | R1-4 已在开发/一次性库完成 30,000 条持久项、300 名员工、40 次采样，p95≤18.87ms、p99≤20.71ms（M3） | 开发合成负载不能证明生产长尾、并发与 14 天稳定性 | 学校产品+数据库+QA | R1-14/17 |
-| 财务安全关闭尚无生产复核 | R1-8 已完成发布门、数据、任务/审批、通知、指标和 job 的开发/一次性库关闭证据（M3） | 开发环境关闭不变量不能证明生产初始化或正式清理后仍保持关闭 | 产品+财务+数据库+发布 | R1-15/18 |
-| Vitest 基线需在最终 build 复验 | 全量既有基线为 93 个测试文件、625 项通过、1 项条件跳过；当前两 Gate 源码合同 52/52；历史 R1 回归 179/179；空间数学/SML-0 专项 279/279 | 后续实现可能重新引入合同回归；这些计数都不是生产运行证据 | 技术+QA | 已执行套件保持通过；发布前补齐条件跳过对应的真实包证据 |
-| 正式 Playwright 发布门尚未完成 | 正式配置、target policy 和 fail-closed release runner 已落地；9 条非五模块本地 Chromium 旅程分别取绿 | 尚无明确非生产 release target 的单次 9/9 零 skip、写态、zh/en、跨浏览器和连续 3 次无 flaky 证据 | QA/发布 | R1-14 |
-| 清理/release 未演练且旧 planner 会误删正式 Live 数据 | 两个现有 purge RPC 已接入目标绑定 manifest；旧“唯一管理员/运营数据为零”全库 planner 仍未修订 | 若绕过现有 RPC 或直接使用旧 planner，仍可能删除真实教师、班级、考勤及课次引用 release，也可能损失 4:3 资源 | 数据库+课程研发 | R1-Live 后修订全库合同，再在 R1-15 隔离演练 |
-| 生产恢复未实操 | Linux 目标与 fail-closed preflight 已定；当前树与 Git 历史 secret scan 为 0，当前 PostgreSQL+Storage 同批次备份及独立 SHA/可读性复核已完成，但恢复 E3 仍为 pending | 尚无独立环境、运行时 secret 复核、告警链路、RPO/RTO、异机/静态加密副本、数据库/Storage 恢复或应用回滚的实操证据 | 运维+安全 | R1-16 |
-| 无连续真实运行观察 | 生产单老师试用阶段已启动，但尚无正式点名持久再读与权限对照，Gate 2 仍未通过；独立观察、14 天/5 节课堂和支持指标均无 E4 | 不阻止当前单老师试用或开发端新功能预演，但会阻止扩大用户范围和 `v1.0.0` | 教学运营+发布 | Gate 2 后启动正式观察，R1-17 汇总 |
+本表按 2026-10-03 的归档证据更新；逐项四维状态与来源见[当前事实账本](#current-facts)。
+
+| 风险／缺口 | 已有证据及实际差距 | 责任角色 | 下一步／关闭依据 |
+| --- | --- | --- | --- |
+| 首个正式教师闭环待验收 | 网站与隔离点名合同已实现；仍缺正式教师持久再读、管理员与无权限对照的完整记录 | 教学运营＋QA/发布 | doc 04 Gate 2 独立验收；通过后开放首批内部教师 |
+| 教材更正后的备课一致性 | 生产 3 班／45 课次引用已更正并保留关联；教案、原页批注和待审内容仍需教师核对 | 任课教师＋教学运营 | 验收 A 教材及保留资料；需要修改时另记实际业务动作 |
+| 新管理入口尚未生产化 | 教材管理与连续顺延仅开发端交付 | 产品＋教务＋发布 | 逐项人工初验，再按获准范围发布与 postflight |
+| 家长端真实闭环与平台配置 | 后端已发布；小程序真实微信、公众号授权、iOS V6 设备运行及客户端平台发布各有待办 | 产品＋客户端＋发布 | 分开验收账号、家庭业务、设备和平台；复用已通过接口结果 |
+| 高频体验与草稿连续性 | 读取优化已多批发布；整页首次 1 秒、跨发布完整草稿恢复仍未确认 | 产品＋前端＋数据库 | 固定版本与真实角色测量，按受影响动作补齐保存／恢复 |
+| 公开产品与正式课程基线 | Story 完整章节、跨模块发布／回退、真实 1305 行 inventory 及对象审计仍有缺口 | 内容＋课程研发＋QA | 内部试用后按 §5.1 与来源 manifest 合同选批推进 |
+| 恢复与持续运营证据 | v0.3.0 有当前数据库写前备份、迁移回滚零残留、应用指针往返及机器 postflight；未据此完成全量隔离恢复、异机／加密备份或 RC | 运维＋安全＋QA | Production 1.0 按 §5.4 完成 RPO/RTO、恢复复核与 14 天／至少 5 节真实课堂证据 |
+| 全角色／浏览器／容量验收 | 已发布版本定向机器结果可复用；没有据此签收完整 1.0 矩阵 | QA＋产品 | 到相应合并／发布批次运行适用 Gate，按 §5 汇总；日常小增量做定向检查 |
 
 ### 7.3 当前专题与 1.0 后处理
 
-- `POST-LIVE-AUTH-01` 已由产品负责人在 R1-Live 期间提前选入独立热修轨：student/parent/staff/admin 及 learning/family/staff 环境沿用同一入口，以传统设置页组织个人资料、登录方式、安全与恢复、隐私与数据。第一阶段 migration `20260825000800` 与应用 `72d8127` 已部署 Xiaomi，机器 postflight 通过，待人工验收；账号级只编辑头像、全站显示名称和语言，业务档案只读关联。验证码、邮箱/手机号自助绑定与微信/QQ 尚未启用；该项不追加为 R1-Live blocker。
+- 统一账号中心、员工密码流程与网站微信扫码已有生产增量。网站扫码、公众号直接授权和小程序微信各自记录配置与验收，见[当前事实账本](#current-facts)；验证码、邮箱／手机号自助绑定与 QQ 继续按身份专题后续选择，保持单账号主体合同。
 - 历史 SML-0 暂停记录保留；2026-09-18 当前教具方向由[可备课数学教具](prepared-teaching-tools.md)接替。复用数学内核、发布冻结和课堂共用层；不自动施工学生作答／判题／检查点，不因本轨交付关闭生产 Gate。
 - 补齐英文课程、Minds 和 Story 正文；UI、路由和回退已在 1.0 完成。
 - 执行 `cacheComponents` + `use cache` 专项；继续禁止 `unstable_cache`。
-- 评估原生 App、更多游戏/章节、复杂营销和高级 BI。
+- 家长原生客户端已提前进入开发，当前范围与发布限制见[当前事实账本](#current-facts)；更多游戏／章节、复杂营销和高级 BI 继续作为后续候选。
 - 查询优化无法使 work-items 达到 PERF-04 时，再评估物化投影。
 
 ## 8. 证据与文档维护

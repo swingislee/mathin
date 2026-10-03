@@ -7,7 +7,7 @@
       "title": "当前事实与发布验收状态对齐",
       "agent": "codex",
       "threadId": null,
-      "status": "in_progress",
+      "status": "done",
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DOC-STATUS-ALIGNMENT-20261003.md",
@@ -27,7 +27,7 @@
       ],
       "sharedPaths": [".ai/registry.json"],
       "checkpoint": null,
-      "next": "按最新已归档证据核对实现、部署和人工验收，更新唯一事实账本与下一批候选；保持业务 Gate。"
+      "next": "当前事实账本、下一批候选及客户端／接口摘要已对齐；文档检查通过。教材管理与顺延先人工验收，Gate 2 按真实教师闭环独立推进。"
     },
     {
       "id": "DEV-SESSION-POSTPONE-20261003-REVIEW",

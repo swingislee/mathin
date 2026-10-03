@@ -1,6 +1,8 @@
 # R1-Live · 真实教师首个可用闭环差距表
 
-## 结论
+> 本文件保留 2026-08-26 及此前的差距和环境证据。当前 Gate 以 [doc 04](../../plan/04-roadmap.md#2-r1-live-gate-状态)为准，最新发布与四维交付状态见 [doc 25 当前事实账本](../../plan/25-production-1.0-product-completeness.md#current-facts)。2026-10-03 的文档对账没有新增生产运行或真实教师验收证据。
+
+## 历史结论（2026-08-26）
 
 截至 2026-08-26，Xiaomi 已固定为 `mathin.club` / `supabase.mathin.club` 生产目标，危险开发写入继续 fail-closed。数据库账本为 194 条、head=`20260826000100_classroom_h5_input_profiles`；应用 current/previous 为 `20260826-125052` / `964ca5e…` 与 `20260825-085754` / `8c303a2…`，服务、Supabase、loopback、Caddy 与公网健康均正常。课堂 Stage A、B1 与 B2 已通过，生产 checkpoint version/chunk/head=`2/2/2`；Stage B3 共同 bridge、权威档案表与单一 Smart 开关已部署，但 H5 保持 version 3 / false，空档案表不授权现有 package。手机号/password P0 与账号中心第一阶段也已部署。真实手机号邀请注册/login 与正式点名闭环均尚未完成，因此 Gate 2 保持 `BLOCKED`。
 

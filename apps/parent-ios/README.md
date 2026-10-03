@@ -1,5 +1,7 @@
 # iOS 原生家长端
 
+> 2026-10-03 状态核对：四页签、真实数据、设置与二级页已集成，V6 开发包已交付；V6 设备编译、会话、登录及视觉仍待用户验收。V5 可运行确认限定于旧包。共用后端及报告身份迁移已随 v0.3.0 发布；客户端正式安装／TestFlight／上架另行办理。当前状态见 [doc 25](../../docs/plan/25-production-1.0-product-completeness.md#current-facts)与[V6 任务](../../.ai/tasks/DEV-PARENT-IOS-DETAILS-20261002.md)。
+
 Swift + SwiftUI，最低 iOS 17，使用 Xcode 16 或更新版本。此增量把离线外壳扩展为消息、课程、任务、家长四个原生页签，按参考截图的淡紫色、圆角卡片、孩子切换和入口层级组织。中英文、深浅外观及系统字号共用原生组件。
 
 ## 在 Mac 上查看
@@ -52,7 +54,7 @@ Debug 的传输例外仅用于 `MATHIN_DEV_HTTP_HOST` 指定的主机；客户�
 - `POST/GET /api/v1/parent/media`：上传所选作业图片、获取受保护附件访问地址。
 - `POST /api/v1/parent/portal`：提交作业，重试保留同一提交 ID；照片或文字变更后开始新提交。
 
-共用合同见 [`contracts/parent-api`](../../contracts/parent-api/README.md)，后台能力映射见 [`parent-ios-data-map.md`](../../docs/evidence/parent-ios-data-map.md)。现有测评报告 RPC 的兼容迁移 `20261001000100_parent_report_participant_identity.sql` 仅补充稳定孩子 ID，已在本机隔离开发库安装；生产尚未执行。旧环境报告无 ID 时明确提示暂不可按孩子展示，避免同名混读。所有迁移执行遵循目标环境 preflight 和授权规则，运行摘要见[集成记录](../../.ai/tasks/DEV-PARENT-IOS-20261001-INTEGRATION.md#独立测评接口与本机运行接收)。
+共用合同见 [`contracts/parent-api`](../../contracts/parent-api/README.md)，后台能力映射见 [`parent-ios-data-map.md`](../../docs/evidence/parent-ios-data-map.md)。测评报告兼容迁移 `20261001000100_parent_report_participant_identity.sql` 补充稳定孩子 ID，已在本机安装，并随[v0.3.0 发布](../../docs/evidence/r1/release-v030-20261002.md)应用生产。其他未升级环境的无 ID 报告继续明确提示暂不可按孩子展示，避免同名混读；该兼容行为与目标环境升级状态分别记录。
 
 ## 本轮功能与验收
 

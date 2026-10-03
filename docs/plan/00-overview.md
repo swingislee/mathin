@@ -6,9 +6,11 @@
 >
 > **阶段来源**：`04-roadmap.md` 顶部的“当前施工阶段”。
 >
-> **核对日期**：2026-09-03；依据代码、迁移、内容目录、CI、R1-Live 差距审阅、产品负责人阶段指令与 doc 00～30。产品负责人已要求 `DEV-SCHOOL-OPS-1` 先以真实小地推种子验收 Phase 1C 的批量分配与初次电联，再继续后续业务节点；该开发预演不改变生产事实或当前施工阶段。
-
-> **2026-09-19 开发端工作入口更新**：按产品负责人要求，日常工作上升为线索、沟通、测评、学生、班级、续班一级入口，课表紧随总览，学年归入组织管理。学生改为已建档学生的密集卡片名录，支持分组、看档案与选人进入沟通；五阶段继续服务沟通登记，在学生页成为筛选与标记。沟通内嵌首联，班级整合分班与教学登记；旧入口退役。开发端已交付、待人工验收，实施范围见[仪表盘工作入口重组](dashboard-work-entry-restructure.md)，不改变生产事实或 Gate 状态。
+> **核对日期**：2026-10-03；以 main 已提交实现、任务卡及最新发布记录校准事实，未重新连接生产取证。已实现、已部署、待验收和已验收的唯一汇总入口为 [doc 25 当前事实账本](25-production-1.0-product-completeness.md#current-facts)。
+>
+> **当前交付摘要**：v0.3.0 网站与后端已部署、待团队人工验收；班级教材管理与本节及后续课次顺延已交付开发端、尚未发布生产。家长 API、各原生客户端和不同微信授权渠道分别记账。当前仍处于 doc 04 的 R1-Live-2，Gate 2 保持。
+>
+> **既有人工确认**：首联保护基线、课堂 M0–M4／M5 B1–B2 及班级局部修复按原日期、版本和范围保留；后续增量单独验收。具体依据与边界见上述账本。
 
 ## 1. 1.0 产品合同
 
@@ -134,28 +136,13 @@ R1-Live 不缩减 1.0 产品合同。它只保留两个结果 Gate：原范围�
 | `27-small-screen-workspace-adaptation.md` | active | 1024–1280px 窄屏与平板横屏的侧栏三态、工作区可拖拽分栏、4:3 全屏与容器查询收敛 |
 | `28-spatial-mathematics-lab.md` | reference | 历史数学内核与 SML 设计；当前教具目标及施工范围由[可备课数学教具](prepared-teaching-tools.md)接替，不以题型、判题和检查点为默认目标 |
 | `29-teacher-microcourse-browser-redesign.md` | active | DEV-TMC-4 schema/app 已在 2026-08-30 生产 preflight 中检出，先前部署证据待对账、产品验收 pending；教师微课课程切换性能缺口继续进入 `POST-LIVE-PERF-01` |
-| `30-mathin_school_ops_architecture_plan.md` | active | `DEV-SCHOOL-OPS-1` 的 Phase 0～6 里程碑；当前为 Phase 1C Leads 种子批量分配与初次电联，Phase 2 活动参与／本场测评登记保留既有开发成果；交付物是可操作业务页面而非规划页面 |
+| `30-mathin_school_ops_architecture_plan.md` | active | `DEV-SCHOOL-OPS-1` 的 Phase 0～6 业务里程碑与历史分批记录；近期交付以 doc 25 当前事实账本及任务证据为准，首联已验收范围单独保护 |
 
 ## 7. 当前发布纪律
 
-- 当前子阶段以 doc 04 顶部为准；2026-08-23 进入 `R1-Live-2 · 生产单老师试用`，首个 Gate 2 闭环仍固定为正式教师整班点名、持久再读和权限对照。
-- 当前采用双轨执行：生产端只由 1 名正式教师在既有正式数据上小范围试用，开发端可并行尝试产品负责人选中的新功能。新功能须在隔离开发目标完成相关机器检查和产品负责人初步验收，再以独立可回退提交经过生产 preflight、发布与 postflight；开发通过、已部署待验收和生产通过必须分别记录。
-- `DEV-CW-1` 当前为 `STEP 8E PRODUCTION DEPLOYED / MACHINE POSTFLIGHT PASSED / PENDING PRODUCT ACCEPTANCE`：产品负责人明确授权生产发布后，最终窄范围候选 `8c50b48…` 已从实际生产基线 `750bd607…` 发布。6 条 migration 先完成 PostgreSQL 写前备份与 `SERIALIZABLE` 回滚／零残留演练，再正式把 ledger/head 推进为 `242 / 20260903000700_courseware_page_insertions`；应用 current/previous=`20260903-115645` / `8c50b48…` 与 `20260903-100016` / `750bd607…`。77,224 个页面及资源、release、冻结会话和 Storage 计数均未改变；服务、健康、鉴权、canonical 路由和错误增量 postflight 通过。本批没有全量备份／测试或 Storage 写入，真实用户工作流仍待产品负责人在生产验收。
-- `DEV-SCHOOL-OPS-1` 的首联部分已于 2026-09-06 用户验收通过；代码版本、保护边界及后续升级参考统一见 [首联已验收保护基线](school-support-followup-panel-contract.md#10-首联已验收保护基线)。其他学服切片继续按 doc 30 分别建设和验收；本次确认不关闭整个 Phase 或 R1-Live Gate，也不表示获准部署或已部署生产。
-- `DEV-STAFF-ONBOARD-1` 的管理员密码重置当前为 `PRODUCTION DEPLOYED / PENDING USER ACCEPTANCE`：主管及以上可从员工页批量建立员工档案，首次登录与补发初始密码沿用既有流程。2026-09-24 已按产品负责人授权将管理员为已完成首次改密的在职 staff 重置密码部署生产；生成的临时密码仅显示一次，员工下次登录须设置新密码，主管仍不能代改已启用账号密码。两条追加迁移、备份、回滚零残留、生产构建与发布后检查完成；此前单账号临时恢复已自行改密结束，当前密码保持不变。管理员真实重置和员工改密旅程待用户验收，见[生产发布记录](../evidence/r1/staff-password-reset-production-20260924.md)。
-- `DEV-ORG-1` 当前为 `DEPLOYED / PENDING USER ACCEPTANCE`：机构资料、校区/教室目录、课表学年/日历/排课默认和系统能力发布已按工作对象拆分；7 个兼容 migration 与应用 `34f07e8…` 已在 Xiaomi 通过备份、完整回滚/零残留演练、正式迁移和机器 postflight。生产唯一旧教室文本 `3305` 已在唯一活跃校区内生成结构化教室，并回填 1 个班级和 15 个课次；兼容字段与旧 RPC 继续保留一个回退窗口。登录态 Chrome 刷新超时，生产页面人工验收仍 pending；本项不修改 R1-Live Gate 2。
-- `DEV-DASH-1` 当前为 `DEPLOYED / PENDING USER ACCEPTANCE`：后台侧栏改为总览、学科运营、教学、教研、组织管理和系统管理；学年、教学日历和唯一一项排课默认合并到 `/dashboard/academic-years`，旧设置与旧排课子路径直接退役且不重定向；个人班级默认优先、全部班级使用分页表格，课件资源库每页只读取并签名 10 条。定向合同 22/22、固定账号 Playwright 2/2 与 production build 已通过，生产 route manifest 已确认新路径存在、旧设置路径不存在；生产页面人工验收仍 pending。
-- `DEV-DASH-2` 当前为 `DEPLOYED / PENDING USER ACCEPTANCE`：Dashboard 顶层数据表统一使用完整圆角、完整描边和卡片底色的 shadcn `Table` 外壳；页面只在标题之后保留一条页头结构线，横向状态导航与正文保持同一语义区；普通设置字段依靠留白、标签和局部底色组织，逐项分割线退出。定向合同 14/14、TypeScript、全量 ESLint、Dashboard 设计审计、固定管理员 zh/en/390px Playwright 与 production build 已通过；生产视觉人工验收仍 pending。
-- `HOTFIX-20260829` 当前为 `DEPLOYED / PENDING PRODUCTION USER ACCEPTANCE`：Mathin `557fc51` 修复来源 H5 容器透明层，`7601c86` 让自由班复用每周几、教学日历自动排期、逐讲手动时间覆盖和冲突检查。应用-only release 已通过双 production build 与无浏览器 postflight；两讲课程不重导，数据库、release 与 Storage 零写入。来源工具 `26adab7` 是 localhost-only 私有 CLI，无独立生产部署目标。
-- `HOTFIX-20260829-ADMIN-SELF-ROLE` 当前为 `DEPLOYED / PENDING PRODUCTION USER ACCEPTANCE`：顶层管理员可以在员工页给自己授予或撤销教师、教研等员工岗位，普通 staff 的自授岗保护和管理员自停用保护保持不变。migration `20260829000200_admin_self_staff_roles` 与应用 `ba98a8e…` 已通过写前备份、rollback/零残留/formal、双 production build 和独立 postflight；发布没有替管理员实际新增岗位，真实自授岗与短期专题班课件制作仍待产品负责人操作验收。
-- `HOTFIX-20260829-TMC-RESEARCH-ENTRY` 当前为 `DEPLOYED / PENDING PRODUCTION USER ACCEPTANCE`：DEV-TMC-2 的数据库权限原已允许教研跨班创建/派生课件方案，但课次页把“编辑课件”错误绑定到任课教师 `canPrepare`。应用 `bf81aa4…` 已把入口改为同时接受教研 `courseware.review + courseware.microcourse.author`，备课定稿、试讲、点名、课堂控制和“本节使用”仍只属于任课教师；定向 Vitest、固定账号 Playwright、双 production build、原子发布与无登录 postflight 通过，生产登录页人工刷新验收仍 pending。
-- `HOTFIX-20260829-TMC-SOURCE-PREVIEW` 当前为 `DEPLOYED / MACHINE POSTFLIGHT PASSED / PENDING PRODUCTION USER ACCEPTANCE`：来源运行时绑定的 kind 可为空，旧解析器因此跳过钉死 H5 对象的权威 kind/hash，并按普通资源签名；通用讲次审核页又只预览已发布 release，首次发布前的待审作品显示空白。应用 `6185352…` 已按 pinned object 解析 H5 package，并把教师微课 active review 转到不可变审核快照；现有 32 页、283/283 个绑定未改动。定向 Vitest 17/17、固定账号 Playwright 2/2、双 production build、原子发布与独立 postflight 通过，生产页面刷新验收仍 pending。
-- `HOTFIX-20260830-COURSEWARE-PREVIEW-PAGING` 当前为 `DEPLOYED / MACHINE POSTFLIGHT PASSED / PENDING PRODUCTION USER ACCEPTANCE`：来源提交 `50a1648…` 以生产 `76f0f9a…` 基线适配为 `a165004…`，让讲次只读预览按页读取、缓存并预取相邻页，复用来源 runtime iframe，并批量解析教师微课 binding/signed URL。双 production build、原子切换、健康/鉴权/bundle/业务不变量 postflight 通过；数据库和 Storage 零写入，真实多页课程冷／热翻页仍待产品验收。本项不关闭教师微课课程族 quick-preview 卡顿样本。
-- `HOTFIX-20260829-CLASSROOM-INTERACTION-SYNC` 当前为 `DEPLOYED / MACHINE POSTFLIGHT PASSED / PENDING REAL IPAD ACCEPTANCE`：`game-page-v1` 补齐自编数独从教师端到全班事件流的 `GameMirrorState` 链路；版本化 `ClassroomInteractionSyncProvider` 要求未来 Mathin 自研游戏、H5 和 3D 明确声明 snapshot、语义 command 或课堂只读。定向 Vitest 72/72、同步审计 4/4、本地 Chromium 控制页→展示页填数/突出行与既有 H5 合同 2/2 及生产 app-only postflight 通过；自研 H5/空间页在同步协议完成前 fail closed。本项没有数据库或 Storage 写入，不改变 R1-Live Gate 2；这些结果不证明真实 iPad Safari 或跨设备局域网已验收。
-- `DEV-TMC-4` 当前为 `PRODUCTION APP/SCHEMA DETECTED / PREVIOUS DEPLOYMENT EVIDENCE RECONCILIATION PENDING / PRODUCT ACCEPTANCE PENDING`：2026-08-30 本 hotfix preflight 已检出生产 `76f0f9a…` 与 ledger/head=`236 / 20260830000700_teacher_microcourse_editor_unification`，说明使用场景树、学术维度、适用范围、课程表格/预览和维护体系相关 schema/app 已在本轮前进入生产；本轮未执行这些 migration，也不把先前部署记为已验收。课程切换卡顿继续按 doc 15 §6.5 收集。
-- 原 R1 暂停在 R1-9。P6-AIX-2、来源 manifest 和导出器结果保留；1305 讲全量对象证据及 R1-10～18 进入 Production 1.0/上线后池，不再阻塞第一名教师开始工作。SML-0 作为独立并行轨道保留暂停点。
-- R1 实际责任映射由 doc 25 §7.1 维护；阶段证据统一从 `docs/evidence/r1/README.md` 索引，Agent 只能作为执行者，不能代替人员 owner 或批准人。
-- R1-Live 已建立只绑定 `127.0.0.1` 且关闭自助注册的本机隔离开发目标；11 个固定开发身份已从 gitignored manifest 初始化并通过密码登录。Xiaomi 上首名真实教师已通过邮箱绑定的一次性员工邀请完成注册并持有工作岗位；正式管理员 verified MFA=`1`；active manifest 仍为 8 条 protected、0 条 purge。2026-09-03 统一课件工作区发布后，生产数据库 ledger/head=`242 / 20260903000700_courseware_page_insertions`，应用 current/previous=`20260903-115645` / `8c50b48…` 与 `20260903-100016` / `750bd607…`。最近 PostgreSQL 写前备份为 `mathin-db-prechange-20260903T114653Z-courseware-workspace-8c50b48a8c4d`，最近 PostgreSQL+Storage 同批次全量备份仍为 `mathin-20260828T052842Z-teacher-microcourse-variant-087b497`；本轮窄范围发布不改存量页面、binding、课程 release、审核快照、冻结会话或 Storage。Gate 1 `PASS`；Gate 2 继续 `BLOCKED`，退出差距仍是正式教师点名持久再读和权限对照；统一课件工作区及其他生产页面、真实设备与性能手感验收单独保持 pending。生产写入继续保留精确目标、只读 preflight、fail-closed 断言和证据登记。
-- R1-15 的旧 planner 仍只允许生产快照隔离副本；其“只保留管理员”假设在保护 R1-Live 正式身份/业务 manifest 前不得用于后续正式清理。R1-18 即使经人工批准也只能删除 manifest 明确标记的测试对象，禁止删除真实试运行数据。
-- 阶段关闭时更新实现证据、专题文档状态头、doc 04、doc 25 和 README，并运行 `pnpm plan:audit`。
-- R1-Live 只硬保留正式身份/授权、数据持久化、当前备份、防误清、可识别的应用 previous/回退命令和错误查询位置。完整恢复/rollback 演练、错误 release 标签、独立观察以及不影响首个点名闭环的内容、视觉和完整性工作进入上线后；六个对外模块、全站小王子视觉与完整 Production 1.0 门仍须在 `v1.0.0` 前完成。
+- 当前唯一阶段与退出条件见 [doc 04](04-roadmap.md)。Gate 2 继续要求正式教师整班点名、保存／刷新／重登再读及权限对照；新功能的开发与发布按各自批次推进。
+- 具体交付状态只汇总在 [doc 25 当前事实账本](25-production-1.0-product-completeness.md#current-facts)，生产版本来自 [R1 发布证据索引](../evidence/r1/README.md)。实现、环境部署、待验收和人工已验收分别记录；日期和版本限制随证据保留。
+- 原 R1 暂停在 R1-9。来源 manifest、课程资源和既有导出结果保留；1305 讲全量审计、公开内容、完整恢复／视觉／E2E 与 RC 继续按 doc 25 的 Production 1.0 合同选批推进。
+- 正式身份、班级、课次及其冻结内容持续保护，清理与生产写入按根规则和对应 runbook 执行。后续发布从当时实际生产基线核对目标、备份、影响与回退，不沿用历史版本号推断现网。
+- 下一批建议及启动条件见 [doc 04 §5.3](04-roadmap.md#53-下一批候选与启动条件)。文档对账与业务验收分别完成；本次未关闭业务阶段或正式 Gate。
+- 阶段真正关闭时按[规划治理规则](../agent/planning.md)更新对应证据与状态；普通增量复用未受影响的机器检查，尽早交付用户验收。
