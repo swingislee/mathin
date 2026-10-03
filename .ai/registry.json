@@ -7,42 +7,42 @@
       "title": "课次连续顺延合同只读复核",
       "agent": "codex",
       "threadId": null,
-      "status": "in_progress",
+      "status": "done",
       "checkout": "worktree",
       "branch": "codex/session-postpone-codex",
       "card": ".ai/tasks/DEV-SESSION-POSTPONE-20261003.md",
       "writePaths": [],
       "sharedPaths": [],
-      "checkpoint": "71036e89",
-      "next": "只读复核新增批量排期的权限、事务、范围和前端交互；以最终实现提交绑定结论。"
+      "checkpoint": "501be8910fb4827b518b2d7a634b2028253f3c7b",
+      "next": "独立只读复核通过，已绑定实现提交；人工业务与视觉验收仍待完成。"
     },
     {
       "id": "DEV-SESSION-POSTPONE-20261003-INTEGRATION",
       "title": "课次连续顺延集成登记",
       "agent": "codex",
       "threadId": "01a100c5-5e6a-7ea0-a110-baf7f62d0d46",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-SESSION-POSTPONE-20261003.md",
       "writePaths": [],
       "sharedPaths": [".ai/registry.json", ".ai/tasks/DEV-SESSION-POSTPONE-20261003.md", "messages/zh.json", "messages/en.json", "src/lib/database.types.ts", "CHANGELOG.md"],
-      "checkpoint": "f75116c8650b918c199e84c973224d6bdc23f94a",
-      "next": "实现课次顺延预览和事务保存，完成本机窄检查后集成开发端。"
+      "checkpoint": "b395a952",
+      "next": "功能已集成 main，本机迁移及双语开发入口检查通过；待人工验收，生产与 Gate 保持。"
     },
     {
       "id": "DEV-SESSION-POSTPONE-20261003",
       "title": "从本节起后续课次顺延",
       "agent": "codex",
       "threadId": "01a100c5-5e6a-7ea0-a110-baf7f62d0d46",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/session-postpone-codex",
       "card": ".ai/tasks/DEV-SESSION-POSTPONE-20261003.md",
       "writePaths": ["src/features/school/session-postpone-contract.ts", "src/features/school/actions/session-postpone.ts", "src/features/school/SessionPostponeDialog.tsx", "src/features/school/SessionManagementDrawer.tsx", "supabase/migrations/20261003020000_session_schedule_postpone.sql", "scripts/session-postpone-local.mjs", "scripts/sql/session-postpone-assertions.sql", "tests/session-postpone-actions.test.ts", "tests/session-postpone-dialog.test.ts", "src/features/school/ScheduleWeekView.tsx", "src/app/[locale]/dashboard/schedule/page.tsx", ".ai/handoffs/DEV-SESSION-POSTPONE-20261003-codex-01.md"],
       "sharedPaths": ["messages/zh.json", "messages/en.json", "src/lib/database.types.ts", "CHANGELOG.md"],
-      "checkpoint": "f75116c8650b918c199e84c973224d6bdc23f94a",
-      "next": "在独立 worktree 实现批量顺延；共享文件由本任务串行维护。"
+      "checkpoint": "501be8910fb4827b518b2d7a634b2028253f3c7b",
+      "next": "实现、定向检查和独立复核完成；交接单已集成，按班级/课表入口验收连续顺延。"
     },
     {
       "id": "DEV-CLASS-MATERIAL-20261003-REVIEW",
