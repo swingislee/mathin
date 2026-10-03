@@ -13,8 +13,8 @@
       "card": ".ai/tasks/DEV-CLASS-MATERIAL-20261003.md",
       "writePaths": [],
       "sharedPaths": [],
-      "checkpoint": "50e24949cac60768662d7078cee15dc5aef6eb54",
-      "next": "独立只读复核教材规则、版本沿用、权限与课堂历史保护，回传具体问题。"
+      "checkpoint": "edf64c765658ce8d2cc245dba8d0a794e96c2d8f",
+      "next": "复核已修复的继承独立、规则切换、未排期课次和保留草稿补切合同。"
     },
     {
       "id": "DEV-CLASS-MATERIAL-20261003-INTEGRATION",
@@ -43,7 +43,7 @@
       "threadId": "01a0ff54-28c3-7a33-b2e5-7cbe09c27469",
       "status": "in_review",
       "card": ".ai/tasks/DEV-CLASS-MATERIAL-20261003.md",
-      "checkpoint": "50e24949cac60768662d7078cee15dc5aef6eb54",
+      "checkpoint": "edf64c765658ce8d2cc245dba8d0a794e96c2d8f",
       "checkout": "worktree",
       "branch": "codex/class-material-admin",
       "writePaths": [
