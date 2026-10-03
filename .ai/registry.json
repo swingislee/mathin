@@ -25,7 +25,7 @@
       "checkout": "worktree",
       "branch": "codex/session-postpone-codex",
       "card": ".ai/tasks/DEV-SESSION-POSTPONE-20261003.md",
-      "writePaths": ["src/features/school/session-postpone-contract.ts", "src/features/school/actions/session-postpone.ts", "src/features/school/SessionPostponeDialog.tsx", "src/features/school/SessionManagementDrawer.tsx", "supabase/migrations/20261003020000_session_schedule_postpone.sql", "scripts/session-postpone-local.mjs", "scripts/sql/session-postpone-assertions.sql", "tests/session-postpone-actions.test.ts", "tests/session-postpone-dialog.test.tsx", ".ai/handoffs/DEV-SESSION-POSTPONE-20261003-codex-01.md"],
+      "writePaths": ["src/features/school/session-postpone-contract.ts", "src/features/school/actions/session-postpone.ts", "src/features/school/SessionPostponeDialog.tsx", "src/features/school/SessionManagementDrawer.tsx", "supabase/migrations/20261003020000_session_schedule_postpone.sql", "scripts/session-postpone-local.mjs", "scripts/sql/session-postpone-assertions.sql", "tests/session-postpone-actions.test.ts", "tests/session-postpone-dialog.test.ts", "src/features/school/ScheduleWeekView.tsx", "src/app/[locale]/dashboard/schedule/page.tsx", ".ai/handoffs/DEV-SESSION-POSTPONE-20261003-codex-01.md"],
       "sharedPaths": ["messages/zh.json", "messages/en.json", "src/lib/database.types.ts", "CHANGELOG.md"],
       "checkpoint": "f75116c8650b918c199e84c973224d6bdc23f94a",
       "next": "在独立 worktree 实现批量顺延；共享文件由本任务串行维护。"
