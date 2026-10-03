@@ -398,11 +398,11 @@ export function canonicalMofaxiaoRosterClassType(source: ParsedMofaxiaoRosterCla
   return source.classType.trim().toUpperCase();
 }
 
-/** Mofaxiao E-series A+ is the business class type but uses the B textbook. */
+/** E 系列 A+ 新老班教材不同；未知开班批次时由管理员明确选择。 */
 export function mofaxiaoRosterCourseClassType(source: ParsedMofaxiaoRosterClass): string {
   const classType = canonicalMofaxiaoRosterClassType(source);
   return isMofaxiaoESeriesRosterSource(source) && classType === "A+"
-    ? "B"
+    ? ""
     : classType;
 }
 
@@ -479,7 +479,7 @@ export function buildMofaxiaoRosterDefaultClass(
   const gradeText = compactNamePart(normalizeGradeLabel(source.gradeText), "待定年级");
   const seasonText = compactNamePart(source.seasonText, source.season === 2 ? "秋季" : "待定季节");
   const classType = compactNamePart(canonicalMofaxiaoRosterClassType(source), "待定班型");
-  const courseClassType = compactNamePart(mofaxiaoRosterCourseClassType(source), classType);
+  const courseClassType = mofaxiaoRosterCourseClassType(source);
   const campusName = canonicalRosterCampusName(source.campus);
   const teacherInitials = teacherInitialsForClassName(source.teacher) || "待定老师";
   const weekday = compactNamePart(source.weekday, "待定星期");
@@ -520,8 +520,9 @@ function targetMatchesSourceSystem(source: ParsedMofaxiaoRosterClass, target: Cl
       && INTEGRATED_THINKING_LEVELS.has(target.courseClassType.trim().toUpperCase());
   }
   if (isMofaxiaoESeriesRosterSource(source)) {
+    const expected = mofaxiaoRosterCourseClassType(source);
     return target.courseFamilySlug === MOFAXIAO_E_SERIES_FAMILY
-      && target.courseClassType.trim().toUpperCase() === mofaxiaoRosterCourseClassType(source);
+      && (!expected || target.courseClassType.trim().toUpperCase() === expected);
   }
   return true;
 }
@@ -539,6 +540,8 @@ function isHighConfidenceTarget(source: ParsedMofaxiaoRosterClass, target: Class
     && targetMatchesSourceCampus(source, target)
     && (!eSeries || targetMatchesSourceSchedule(source, target))
     && (integratedThinking
+      || (eSeries && !mofaxiaoRosterCourseClassType(source)
+        && normalizeRosterText(target.name).includes(normalizeRosterText(canonicalMofaxiaoRosterClassType(source))))
       || normalizeRosterText(target.courseClassType) === normalizeRosterText(mofaxiaoRosterCourseClassType(source)));
 }
 

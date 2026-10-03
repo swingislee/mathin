@@ -2,6 +2,7 @@
 // 客户端组件可以安全 import，不会把服务端代码拖进浏览器 bundle。
 
 import type { AttendanceStatus } from "../learning";
+import type { MaterialSelection } from "../class-material-contract";
 
 export interface StudentSearchResult {
   id: string;
@@ -30,6 +31,7 @@ export interface BuildClassInput {
   purpose: "production" | "test";
   offeringType: "long_term_formal" | "short_term_topic";
   activateNow: boolean;
+  materialSelection?: MaterialSelection | null;
   sessions: BuildClassSession[];
 }
 

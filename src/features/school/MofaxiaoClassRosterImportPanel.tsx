@@ -12,7 +12,10 @@ import {
   Upload,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { getCourseMaterialOptionsAction } from "./actions/class-material";
+import { MaterialSelect } from "./ClassMaterialFields";
+import { mofaxiaoRosterCourseClassType } from "./mofaxiao-class-roster-import";
 import { useAction } from "@/components/action-form";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -172,6 +175,7 @@ export function MofaxiaoClassRosterImportPanel({
 }) {
   const t = useTranslations("school.classRosterImport");
   const locale = useLocale();
+  const materialT = useTranslations("school.classMaterial");
   const router = useRouter();
   const [fileName, setFileName] = useState("");
   const [fileHash, setFileHash] = useState("");
@@ -180,9 +184,19 @@ export function MofaxiaoClassRosterImportPanel({
   const [parseError, setParseError] = useState<string | null>(null);
   const [reading, setReading] = useState(false);
   const [classMappings, setClassMappings] = useState<Record<string, string>>({});
+  const [materialOverrides, setMaterialOverrides] = useState<Record<string, string>>({});
+  const [materialTypes, setMaterialTypes] = useState<string[]>([]);
   const [decisions, setDecisions] = useState<Record<string, DecisionState>>({});
   const [batch, setBatch] = useState<MofaxiaoClassRosterImportBatchResult | null>(initialBatch);
   const [idempotencyKey, setIdempotencyKey] = useState(newId);
+  useEffect(() => {
+    if (!canCreateClasses) return;
+    let active = true;
+    void getCourseMaterialOptionsAction("production").then((result) => {
+      if (active && result.ok) setMaterialTypes(result.data.families.find((family) => family.slug === "xueersi-e-primary-math-cn")?.materialTypes ?? []);
+    }).catch(() => { /* 未加载选项时保留未选状态；现有班级仍可继续匹配。 */ });
+    return () => { active = false; };
+  }, [canCreateClasses]);
 
   const resetServerBatch = () => {
     setBatch(null);
@@ -231,11 +245,13 @@ export function MofaxiaoClassRosterImportPanel({
   const defaultClasses = useMemo(() => new Map<string, MofaxiaoClassRosterDefaultClass>(
     (parsed?.classes ?? []).map((sourceClass) => [
       sourceClass.sourceClassKey,
-      buildMofaxiaoRosterDefaultClass(sourceClass, parsed?.schoolYear ?? 2026),
+      { ...buildMofaxiaoRosterDefaultClass(sourceClass, parsed?.schoolYear ?? 2026),
+        courseClassType: materialOverrides[sourceClass.sourceClassKey] ?? mofaxiaoRosterCourseClassType(sourceClass) },
     ]),
-  ), [parsed]);
+  ), [parsed, materialOverrides]);
 
   const initialize = (next: ParsedMofaxiaoClassRosterWorkbook) => {
+    setMaterialOverrides({});
     const saved = new Map(savedMappings.map((item) => [item.sourceClassKey, item.classroomId]));
     const nextClassMappings: Record<string, string> = {};
     for (const sourceClass of next.classes) {
@@ -335,7 +351,9 @@ export function MofaxiaoClassRosterImportPanel({
   }).length;
   const unresolvedClassMembershipCount = membershipViews.filter((item) => {
     const state = decisions[item.key];
-    return state?.decision !== "skip" && !classMappings[item.sourceClass.sourceClassKey];
+    return state?.decision !== "skip" && (!classMappings[item.sourceClass.sourceClassKey]
+      || (classMappings[item.sourceClass.sourceClassKey] === CREATE_DEFAULT_CLASS
+        && !defaultClasses.get(item.sourceClass.sourceClassKey)?.courseClassType));
   }).length;
   const defaultClassCount = new Set((parsed?.classes ?? [])
     .filter((item) => classMappings[item.sourceClassKey] === CREATE_DEFAULT_CLASS)
@@ -436,6 +454,11 @@ export function MofaxiaoClassRosterImportPanel({
                           {candidates.map((target) => <SelectItem key={target.id} value={target.id}>{target.name} · {target.primaryTeacherNames.join("/") || t("noTeacher")} · {target.activeEnrollmentCount}/{target.capacity ?? "∞"}</SelectItem>)}
                         </SelectContent>
                       </Select>
+                      {value === CREATE_DEFAULT_CLASS && !mofaxiaoRosterCourseClassType(sourceClass) && <div className="mt-2">
+                        <MaterialSelect label={materialT("importMaterial")} value={materialOverrides[sourceClass.sourceClassKey] ?? ""} disabled={pending}
+                          options={materialTypes.map((value) => ({ value, label: value }))}
+                          onChange={(next) => { setMaterialOverrides((current) => ({ ...current, [sourceClass.sourceClassKey]: next })); resetServerBatch(); }} />
+                      </div>}
                     </TableCell>
                   </TableRow>;
                 })}</TableBody>

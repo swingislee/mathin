@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { materialSelectionSchema } from "../class-material-contract";
 import { datetime, intInRange, requiredText, text, uuid } from "./schemas";
 
 // Optional Select fields may arrive as either the explicit null used by the
@@ -20,6 +21,7 @@ export const buildClassSchema = z.object({
   purpose: z.enum(["production", "test"]),
   offeringType: z.enum(["long_term_formal", "short_term_topic"]),
   activateNow: z.boolean(),
+  materialSelection: materialSelectionSchema.nullable().optional(),
   sessions: z
     .array(
       z.object({
@@ -33,6 +35,9 @@ export const buildClassSchema = z.object({
     )
     .max(200),
 }).superRefine((value, ctx) => {
+  if (value.courseId === null && value.materialSelection) {
+    ctx.addIssue({ code: "custom", path: ["materialSelection"], message: "MATERIAL_REQUIRES_COURSE" });
+  }
   const invalidSessionBinding = value.sessions.some((session) => value.courseId === null
     ? session.lectureId !== null || session.no !== null
     : session.lectureId === null || session.no === null);

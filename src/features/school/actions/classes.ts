@@ -407,7 +407,9 @@ export async function buildClass(input: BuildClassInput): Promise<string> {
     duration_min: session.durationMin,
     closed_day_reason: session.closedDayReason,
   }));
-  const { data: cid, error: rpcError } = value.courseId === null
+  const { data: cid, error: rpcError } = value.materialSelection
+    ? await supabase.rpc("create_class_with_material", { p_input: value, p_selection: value.materialSelection })
+    : value.courseId === null
     ? await rpc(supabase)("create_free_class_with_sessions_v2", {
         p_name: value.name,
         p_capacity: value.capacity,
