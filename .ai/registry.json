@@ -1,7 +1,41 @@
 {
   "version": 1,
-  "coordinatorTaskId": "OPS-RELEASE-V030-20261002-INTEGRATION",
+  "coordinatorTaskId": "OPS-CLASS-MATERIAL-20261003-INTEGRATION",
   "tasks": [
+    {
+      "id": "OPS-CLASS-MATERIAL-20261003-INTEGRATION",
+      "title": "班级教材更正执行登记",
+      "agent": "codex",
+      "threadId": "01a0ff54-28c3-7a33-b2e5-7cbe09c27469",
+      "status": "in_progress",
+      "checkout": "integration",
+      "branch": "main",
+      "card": ".ai/tasks/OPS-CLASS-MATERIAL-20261003.md",
+      "writePaths": [],
+      "sharedPaths": [".ai/registry.json", ".ai/tasks/OPS-CLASS-MATERIAL-20261003.md", "docs/evidence/r1/README.md"],
+      "checkpoint": null,
+      "next": "登记已授权教材更正与独立只读复核结果，生产页面待用户验收。"
+    },
+    {
+      "id": "OPS-CLASS-MATERIAL-20261003",
+      "title": "班级教材更正与配置入口核查",
+      "agent": "codex",
+      "threadId": "01a0ff54-28c3-7a33-b2e5-7cbe09c27469",
+      "status": "in_progress",
+      "checkout": "worktree",
+      "branch": "codex/class-material-20261003",
+      "card": ".ai/tasks/OPS-CLASS-MATERIAL-20261003.md",
+      "writePaths": [
+        "docs/evidence/r1/class-material-correction-20261003.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        ".ai/tasks/OPS-CLASS-MATERIAL-20261003.md",
+        "docs/evidence/r1/README.md"
+      ],
+      "checkpoint": null,
+      "next": "完成已授权三个班的教材更正、原记录保留及独立复核，记录管理员配置缺口。"
+    },
     {
       "id": "OPS-RELEASE-V030-20261002-INTEGRATION",
       "title": "v0.3.0 发布集成登记",
