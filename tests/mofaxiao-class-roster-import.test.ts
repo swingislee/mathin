@@ -176,7 +176,7 @@ describe("魔法校班级学员花名册导入", () => {
     expect(buildMofaxiaoRosterDefaultClass(source).system).toBe("贯通思维");
   });
 
-  it("E 系列保留 A+ 班型和班名，同时映射 B 版教材", () => {
+  it("E 系列保留 A+ 班型，兼容已确认的 A/B 教材，并要求新班明确选择", () => {
     const source = parseMofaxiaoClassRosterWorkbook([{
       sheet: "26年暑秋在读学员",
       data: [
@@ -196,7 +196,9 @@ describe("魔法校班级学员花名册导入", () => {
       base,
       { ...base, id: "e-a", courseTitle: "E系列数学三年级秋季A[全国版]", courseClassType: "A" },
       { ...base, id: "aix-a", courseTitle: "爱学习 A+ 全国版数学 · 三年级秋季", courseFamilySlug: "aixuexi-primary-math", courseClassType: "A+" },
-    ]).map((candidate) => candidate.id)).toEqual(["e-b"]);
+    ]).map((candidate) => candidate.id)).toEqual(["e-b", "e-a"]);
+    expect(preferredMofaxiaoRosterClassCandidate(source, [{ ...base, id: "corrected-a", courseClassType: "A" }])?.id).toBe("corrected-a");
+    expect(preferredMofaxiaoRosterClassCandidate(source, [base, { ...base, id: "ambiguous-a", courseClassType: "A" }])).toBeNull();
     expect(preferredMofaxiaoRosterClassCandidate(source, [base])?.id).toBe("e-b");
     expect(preferredMofaxiaoRosterClassCandidate(source, [{ ...base, name: "【培优思维】三年级秋季A+|紫辰XLZ周六17:00" }])?.id).toBe("e-b");
     expect(preferredMofaxiaoRosterClassCandidate(source, [{ ...base, name: "三年级秋季A+周六17:00", campusName: "紫辰阁" }])?.id).toBe("e-b");
@@ -211,7 +213,7 @@ describe("魔法校班级学员花名册导入", () => {
       name: "【科学思维】3年级秋季A+|紫辰阁XLZ周六17:00",
       system: "科学思维",
       classType: "A+",
-      courseClassType: "B",
+      courseClassType: "",
       campusName: "紫辰阁",
       teacherName: "薛立志",
       teacherInitials: "XLZ",

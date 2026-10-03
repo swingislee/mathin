@@ -391,6 +391,14 @@ export const DASHBOARD_ROUTES = {
     createSurface: "none",
     parent: "courses",
   },
+  courseMaterialRules: {
+    href: "/dashboard/courses/material-rules",
+    kind: "singleton",
+    environments: STAFF_ONLY,
+    permission: "course.manage",
+    createSurface: "none",
+    parent: "courses",
+  },
   courseFamilyDetail: {
     // 只接受 Course Family ID；旧 Course Variant ID 兼容已删除（§5.16）。
     hrefPattern: "/dashboard/courses/[courseFamilyId]",

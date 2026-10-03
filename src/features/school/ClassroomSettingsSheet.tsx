@@ -20,6 +20,7 @@ import { ClassroomEditor } from "./ClassroomEditor";
 import { ClassroomStaffDialog } from "./ClassroomStaffDialog";
 import type { ClassroomDetail, StaffOption, TeachingReadinessRow } from "./classes";
 import { ConsumeRuleDialog } from "./ConsumeRuleDialog";
+import { ClassMaterialEditor } from "./ClassMaterialEditor";
 import { hasTeachingReadinessRisk } from "./teaching-operations/readiness";
 import type { RoomOptionV2 } from "./organization-locations";
 
@@ -40,12 +41,14 @@ export function ClassroomSettingsSheet({
   teachingReadiness,
   roomOptions,
   setupHref,
+  canManageMaterials,
 }: {
   classroom: ClassroomDetail;
   staffOptions: StaffOption[];
   teachingReadiness: TeachingReadinessRow[];
   roomOptions: RoomOptionV2[];
   setupHref: string;
+  canManageMaterials: boolean;
 }) {
   const t = useTranslations("school.classes");
   const router = useRouter();
@@ -111,6 +114,7 @@ export function ClassroomSettingsSheet({
                 <Sparkles size={15} />{t("openTeachingSetup")}
               </Link>
               <ClassroomEditor classroom={classroom} roomOptions={roomOptions} />
+              {canManageMaterials && <ClassMaterialEditor classroomId={classroom.id} />}
               <ClassroomStaffDialog classroomId={classroom.id} staffAssignments={classroom.staffAssignments} staffOptions={staffOptions} />
               <ConsumeRuleDialog classroomId={classroom.id} />
             </div>

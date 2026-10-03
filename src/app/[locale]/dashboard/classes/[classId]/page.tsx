@@ -100,9 +100,9 @@ async function ClassroomRiskSummary({ classroom, returnTo }: { classroom: Classr
   return <ClassroomRisks needsAttention={groups.needsAttention} returnTo={returnTo} />;
 }
 
-async function ClassroomSettings({ classroom, setupHref }: { classroom: ClassroomDetail; setupHref: string }) {
+async function ClassroomSettings({ classroom, setupHref, canManageMaterials }: { classroom: ClassroomDetail; setupHref: string; canManageMaterials: boolean }) {
   const settings = await readClassroomSettings(classroom);
-  return <ClassroomSettingsSheet classroom={classroom} {...settings} setupHref={setupHref} />;
+  return <ClassroomSettingsSheet classroom={classroom} {...settings} setupHref={setupHref} canManageMaterials={canManageMaterials} />;
 }
 
 async function ClassroomPublicSources({ classroomId, locale }: { classroomId: string; locale: string }) {
@@ -262,7 +262,7 @@ async function ClassDetailBody({
                 {primaryAction}
                 {isManagementView ? (
                   <Suspense fallback={<span aria-label={t("settings")} className="size-8 animate-pulse rounded-md bg-muted/10" />}>
-                    <ClassroomSettings classroom={classroom} setupHref={tabHref("setup")} />
+                    <ClassroomSettings classroom={classroom} setupHref={tabHref("setup")} canManageMaterials={perms.has("class.manage")} />
                   </Suspense>
                 ) : null}
               </DashboardCommandActions>

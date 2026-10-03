@@ -34,6 +34,9 @@ import { RoomPicker } from "./RoomPicker";
 import { formatRoomLocation } from "./location-format";
 import type { RoomOptionV2 } from "./organization-locations";
 import { CoursePicker } from "./teaching-operations/CoursePicker";
+import { ClassMaterialFields } from "./ClassMaterialFields";
+import { getCourseMaterialOptionsAction } from "./actions/class-material";
+import { emptyMaterialSelection, materialSelectionSchema, materialErrorCode, type MaterialOptions, type MaterialSelection } from "./class-material-contract";
 import type { ClassBuildCourseDetail, ClassBuildLecture, ClassBuildPurpose, ClassBuildScheduleConflict } from "./teaching-operations/course-picker-types";
 import type { ClassroomOfferingType } from "./teaching-operations/types";
 import { calendarDayKey, dateTimeInputToInstant, zonedDateTimeInputValue } from "./schedule";
@@ -61,6 +64,8 @@ export function ClassBuildWizard({
   defaultDurationMinutes,
   timeZone,
   initialCourseId,
+  initialMaterialOptions,
+  inheritMaterialFrom,
 }: {
   schoolTerms: SchoolTermRow[];
   teachers: StaffOption[];
@@ -68,8 +73,11 @@ export function ClassBuildWizard({
   defaultDurationMinutes: number;
   timeZone: string;
   initialCourseId?: string;
+  initialMaterialOptions?: MaterialOptions;
+  inheritMaterialFrom?: string;
 }) {
   const t = useTranslations("school.classBuild");
+  const materialT = useTranslations("school.classMaterial");
   const locale = useLocale();
   const scheduleT = useTranslations("school.schedule");
   const router = useRouter();
@@ -78,6 +86,12 @@ export function ClassBuildWizard({
   const [step, setStep] = useState(1);
   const [mode, setMode] = useState<"course" | "free">("course");
   const [purpose, setPurpose] = useState<ClassBuildPurpose>("production");
+  const [materialOptions, setMaterialOptions] = useState(initialMaterialOptions);
+  const [materialSelection, setMaterialSelection] = useState<MaterialSelection>(() => initialMaterialOptions?.inheritedSelection && inheritMaterialFrom
+    ? { ...initialMaterialOptions.inheritedSelection, inheritedFromClassroomId: inheritMaterialFrom }
+    : emptyMaterialSelection);
+  const [materialLoading, setMaterialLoading] = useState(false);
+  const initialPurposeHandled = useRef(false);
   const [offeringType, setOfferingType] = useState<ClassroomOfferingType>("long_term_formal");
   const [course, setCourse] = useState<ClassBuildCourseDetail | null>(null);
   const [courseSessions, setCourseSessions] = useState<ClassBuildLecture[]>([]);
@@ -108,6 +122,22 @@ export function ClassBuildWizard({
   const [createdClassroomId, setCreatedClassroomId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [attemptedSteps, setAttemptedSteps] = useState<Set<number>>(() => new Set());
+
+  useEffect(() => {
+    if (!initialPurposeHandled.current && initialMaterialOptions) { initialPurposeHandled.current = true; return; }
+    initialPurposeHandled.current = true;
+    let active = true;
+    const timer = setTimeout(() => {
+      setMaterialLoading(true);
+      void getCourseMaterialOptionsAction(purpose, inheritMaterialFrom ?? null).then((result) => {
+        if (!active) return;
+        if (result.ok) setMaterialOptions(result.data);
+        else setError(materialT("errors." + materialErrorCode(result.code)));
+      }).catch(() => { if (active) setError(materialT("errors.UNKNOWN")); })
+        .finally(() => { if (active) setMaterialLoading(false); });
+    }, 0);
+    return () => { active = false; clearTimeout(timer); };
+  }, [purpose, inheritMaterialFrom, initialMaterialOptions, materialT]);
 
   useEffect(() => {
     if (!initialCourseId || initialCourseHandled.current) return;
@@ -204,7 +234,8 @@ export function ClassBuildWizard({
   const visibleConflicts = conflictsRelevant ? conflicts : [];
   const visibleConflictsLoading = conflictsRelevant && conflictsLoading;
   const scheduleRequired = mode === "course" || freeSessions.length > 0;
-  const step1Complete = mode === "free" || (course !== null && courseSessions.length > 0);
+  const materialValid = course?.courseKind !== "curriculum" || materialSelectionSchema.safeParse(materialSelection).success;
+  const step1Complete = mode === "free" || (course !== null && courseSessions.length > 0 && materialValid && !materialLoading);
   const step2Complete = classNameValid && primaryTeacherValid && capacityValid && learningSupportValid;
   const step3Complete = Boolean(schoolTermId) && (!scheduleRequired || (
     scheduleInputsValid
@@ -241,6 +272,10 @@ export function ClassBuildWizard({
   const updateCourse = (next: ClassBuildCourseDetail) => {
     if (course && course.id !== next.id && Object.keys(overrides).length > 0) setNotice(t("overridesCleared"));
     setCourse(next);
+    const pinnedRule = materialOptions?.rules.find((rule) => rule.revisionId === materialSelection.ruleRevisionId);
+    if (pinnedRule && (pinnedRule.familyId !== next.familyId || pinnedRule.materialClassType !== next.classType)) {
+      setMaterialSelection((current) => ({ ...current, ruleRevisionId: null, inheritedFromClassroomId: null }));
+    }
     setCourseSessions(next.lectures);
     setMode("course");
     setOverrides({});
@@ -367,8 +402,9 @@ export function ClassBuildWizard({
           if (window.location.pathname !== localizedHref) window.location.assign(localizedHref);
         }, 1_200);
       });
-    } catch {
-      setError(t("submitFailed"));
+    } catch (error) {
+      const code = materialErrorCode(error instanceof Error ? error.message : "");
+      setError(code === "UNKNOWN" ? t("submitFailed") : materialT("errors." + code));
       setSubmitting(false);
     }
   };
@@ -414,6 +450,7 @@ export function ClassBuildWizard({
         purpose,
         offeringType,
         activateNow,
+        materialSelection: mode === "course" && course?.courseKind === "curriculum" ? materialSelection : null,
         sessions: keyedSessions.map((item) => item.session),
       };
       const calendarRows = await getClassBuildCalendarPreviewAction(
@@ -480,8 +517,18 @@ export function ClassBuildWizard({
         <p className="mt-2 text-xs text-muted">{t(offeringType === "long_term_formal" ? "offeringLongTermHint" : "offeringShortTermHint")}</p>
       </div>
       <div className="mt-5"><Label className="text-xs font-normal text-muted">{t("course")}</Label><div className="mt-1"><CoursePicker purpose={purpose} selected={course} onSelect={updateCourse} onClear={clearCourse} /></div></div>
+      {course?.courseKind === "curriculum" && materialOptions && <div className="mt-5 border-t border-line pt-4">
+        <ClassMaterialFields options={materialOptions} courseId={course.id} value={materialSelection} onChange={setMaterialSelection} disabled={materialLoading}
+          onApplyRule={(nextId, nextSelection) => {
+            setMaterialLoading(true);
+            void getClassBuildCourseDetailAction(nextId, purpose).then((detail) => {
+              updateCourse(detail); setMaterialSelection(nextSelection);
+            }).catch(() => setError(materialT("errors.MATERIAL_COURSE_UNAVAILABLE"))).finally(() => setMaterialLoading(false));
+          }} />
+      </div>}
+      {step1Attempted && !materialValid && <p role="alert" className="mt-3 text-xs text-rose">{materialT("errors.VALIDATION")}</p>}
       <div className="mt-4 flex items-center gap-3 border-t border-line pt-4"><span className="text-sm text-muted">{t("or")}</span><Button type="button" variant={mode === "free" ? "secondary" : "ghost"} onClick={() => { clearCourse(); setMode("free"); }}>{t("modeFree")}</Button></div>
-      {step1Attempted && !step1Complete && <p role="alert" className="mt-3 text-xs text-rose">{t(course ? "lecturesRequired" : "courseRequired")}</p>}
+      {step1Attempted && (!course || courseSessions.length === 0) && <p role="alert" className="mt-3 text-xs text-rose">{t(course ? "lecturesRequired" : "courseRequired")}</p>}
       {mode === "free" && <p className="mt-3 rounded-xl bg-moon/30 px-3 py-2 text-sm text-muted">{t("freeClassHint")}</p>}
       {course && <div className="mt-5 rounded-xl border border-line p-4">
         <div className="flex flex-wrap items-center gap-2"><h3 className="font-medium">{course.familyTitle} · {course.title}</h3>{isReady ? <Badge variant="secondary">{t("ready")}</Badge> : <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300">{t("incomplete")}</Badge>}</div>

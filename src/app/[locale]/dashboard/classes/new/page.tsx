@@ -5,16 +5,18 @@ import { listSchoolTerms } from "@/features/school/courses";
 import { DashboardContentGrid, DashboardMainColumn, DashboardPage } from "@/features/school/dashboard-page";
 import { getOrganizationTimezoneV2, getScheduleDefaultsV2, listActiveRoomOptionsV2 } from "@/features/school/organization-locations";
 import { requirePerm } from "@/lib/auth";
+import { getCourseMaterialOptions } from "@/features/school/class-material";
+import { z } from "zod";
 
 export default async function NewClassPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ courseId?: string | string[] }>;
+  searchParams: Promise<{ courseId?: string | string[]; inheritMaterialFrom?: string | string[] }>;
 }) {
   const { locale } = await params;
-  const { courseId } = await searchParams;
+  const { courseId, inheritMaterialFrom } = await searchParams;
   setRequestLocale(locale);
   await requirePerm(locale, "class.create");
 
@@ -28,6 +30,9 @@ export default async function NewClassPage({
     getOrganizationTimezoneV2(),
   ]);
   const initialCourseId = typeof courseId === "string" ? courseId : undefined;
+  const inheritance = z.string().uuid().safeParse(inheritMaterialFrom);
+  const sourceId = inheritance.success ? inheritance.data : undefined;
+  const materialOptions = await getCourseMaterialOptions("production", sourceId ?? null);
 
   return (
     <DashboardPage
@@ -46,6 +51,8 @@ export default async function NewClassPage({
             defaultDurationMinutes={scheduleDefaults.defaultDurationMinutes}
             timeZone={timeZone}
             initialCourseId={initialCourseId}
+            initialMaterialOptions={materialOptions}
+            inheritMaterialFrom={sourceId}
           />
         </DashboardMainColumn>
       </DashboardContentGrid>
