@@ -48,6 +48,7 @@
         "src/features/school/MofaxiaoClassRosterImportPanel.tsx",
         "src/features/school/actions/mofaxiao-class-roster-imports.ts",
         "src/app/[locale]/dashboard/classes/new/page.tsx",
+        "src/app/[locale]/dashboard/classes/[classId]/page.tsx",
         "src/app/[locale]/dashboard/courses/page.tsx",
         "src/app/[locale]/dashboard/courses/material-rules/",
         "src/features/school/dashboard-routes.ts",
