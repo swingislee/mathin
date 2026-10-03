@@ -3,6 +3,20 @@
   "coordinatorTaskId": "DEV-SESSION-POSTPONE-20261003-INTEGRATION",
   "tasks": [
     {
+      "id": "DEV-SESSION-POSTPONE-20261003-REVIEW",
+      "title": "课次连续顺延合同只读复核",
+      "agent": "codex",
+      "threadId": null,
+      "status": "in_progress",
+      "checkout": "worktree",
+      "branch": "codex/session-postpone-codex",
+      "card": ".ai/tasks/DEV-SESSION-POSTPONE-20261003.md",
+      "writePaths": [],
+      "sharedPaths": [],
+      "checkpoint": "71036e89",
+      "next": "只读复核新增批量排期的权限、事务、范围和前端交互；以最终实现提交绑定结论。"
+    },
+    {
       "id": "DEV-SESSION-POSTPONE-20261003-INTEGRATION",
       "title": "课次连续顺延集成登记",
       "agent": "codex",
