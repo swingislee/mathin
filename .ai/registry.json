@@ -7,21 +7,21 @@
       "title": "班级教材更正执行登记",
       "agent": "codex",
       "threadId": "01a0ff54-28c3-7a33-b2e5-7cbe09c27469",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/OPS-CLASS-MATERIAL-20261003.md",
       "writePaths": [],
       "sharedPaths": [".ai/registry.json", ".ai/tasks/OPS-CLASS-MATERIAL-20261003.md", "docs/evidence/r1/README.md"],
-      "checkpoint": null,
-      "next": "登记已授权教材更正与独立只读复核结果，生产页面待用户验收。"
+      "checkpoint": "e4510d1990ff858abba1f80cbe1c0e17c8b19828",
+      "next": "生产3班/45课次已更正为A教材；回滚零残留、45组关联保留及教师RLS只读复核通过。待页面与备课验收；管理员教材配置入口尚未实现。"
     },
     {
       "id": "OPS-CLASS-MATERIAL-20261003",
       "title": "班级教材更正与配置入口核查",
       "agent": "codex",
       "threadId": "01a0ff54-28c3-7a33-b2e5-7cbe09c27469",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/class-material-20261003",
       "card": ".ai/tasks/OPS-CLASS-MATERIAL-20261003.md",
@@ -33,8 +33,8 @@
         ".ai/tasks/OPS-CLASS-MATERIAL-20261003.md",
         "docs/evidence/r1/README.md"
       ],
-      "checkpoint": null,
-      "next": "完成已授权三个班的教材更正、原记录保留及独立复核，记录管理员配置缺口。"
+      "checkpoint": "e4510d1990ff858abba1f80cbe1c0e17c8b19828",
+      "next": "生产3班/45课次已更正为A教材；回滚零残留、45组关联保留及教师RLS只读复核通过。待页面与备课验收；管理员教材配置入口尚未实现。"
     },
     {
       "id": "OPS-RELEASE-V030-20261002-INTEGRATION",
