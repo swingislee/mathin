@@ -68,6 +68,7 @@
         "src/features/school/dashboard-routes.ts",
         "src/features/school/teaching-operations/CoursePicker.tsx",
         "supabase/migrations/20261003010000_class_material_rules.sql",
+        "supabase/migrations/20261003010100_class_material_inheritance.sql",
         "scripts/class-material-local.mjs",
         "scripts/sql/class-material-assertions.sql",
         "tests/class-material.test.ts",
