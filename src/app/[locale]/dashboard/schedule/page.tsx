@@ -39,6 +39,7 @@ export default async function SchedulePage({
       {/* 页壳由 ScheduleWeekView 自己渲染：周次切换与筛选是它的客户端状态，
           必须住在命令面板里（docs/plan/21 §14）。 */}
       <ScheduleWeekView
+        refreshKey={quickRow ? [quickRow.id, quickRow.scheduledAt, quickRow.durationMin, quickRow.roomId, quickRow.state].join(":") : ""}
         title={t("title")}
         canFilterAll={perms.has("schedule.view.all")}
         roomOptions={roomOptions}

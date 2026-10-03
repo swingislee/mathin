@@ -118,12 +118,14 @@ export function ScheduleWeekView({
   timeZone,
   roomOptions,
   termManager,
+  refreshKey,
 }: {
   title: string;
   canFilterAll: boolean;
   timeZone: string;
   roomOptions: RoomOptionV2[];
   termManager?: ReactNode;
+  refreshKey?: string;
 }) {
   const t = useTranslations("school.schedule");
   const locale = useLocale();
@@ -151,7 +153,7 @@ export function ScheduleWeekView({
     return () => {
       cancelled = true;
     };
-  }, [campusFilter, roomFilter, weekStart, weekEnd]);
+  }, [campusFilter, roomFilter, weekStart, weekEnd, refreshKey]);
 
   const jumpWeek = (days: number) => {
     setLoading(true);

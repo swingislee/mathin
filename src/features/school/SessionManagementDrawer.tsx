@@ -23,6 +23,7 @@ import {
 import type { SessionRow } from "./classes";
 import { withReturnTo } from "./object-workspace/return-target";
 import { SessionChangeDialog } from "./SessionChangeDialog";
+import { SessionPostponeDialog } from "./SessionPostponeDialog";
 import { SubstituteTeacherDialog } from "./SubstituteTeacherDialog";
 import { RoomPicker } from "./RoomPicker";
 import { formatRoomLocation } from "./location-format";
@@ -140,6 +141,7 @@ export function SessionManagementDrawer({
               <h3 className="text-xs font-medium uppercase text-muted">{t("zoneSchedule")}</h3>
               {capabilities.canReschedule ? (
                 <div className="grid gap-3">
+                  <p className="text-xs text-muted">{t("postpone.singleHint")}</p>
                   <div>
                     <Label htmlFor="edit-session-title" className="text-xs font-normal text-muted">{t("sessionTitle")}</Label>
                     <Input id="edit-session-title" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={100} disabled={pending} className="mt-1" />
@@ -174,6 +176,7 @@ export function SessionManagementDrawer({
                   >
                     {t("saveSession")}
                   </Button>
+                  <SessionPostponeDialog sessionId={session.id} disabled={pending || !session.scheduledAt} onSaved={() => { close(); router.refresh(); }} />
                 </div>
               ) : (
                 <p className="text-sm text-muted">{session.scheduledAt ? new Intl.DateTimeFormat(undefined, { timeZone, dateStyle: "short", timeStyle: "short" }).format(new Date(session.scheduledAt)) : t("notApplicable")}</p>
