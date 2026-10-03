@@ -402,8 +402,9 @@ export function ClassBuildWizard({
           if (window.location.pathname !== localizedHref) window.location.assign(localizedHref);
         }, 1_200);
       });
-    } catch {
-      setError(t("submitFailed"));
+    } catch (error) {
+      const code = materialErrorCode(error instanceof Error ? error.message : "");
+      setError(code === "UNKNOWN" ? t("submitFailed") : materialT("errors." + code));
       setSubmitting(false);
     }
   };

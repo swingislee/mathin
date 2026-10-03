@@ -56,7 +56,7 @@ export const materialOptionsSchema = z.object({
 });
 export type MaterialOptions = z.infer<typeof materialOptionsSchema>;
 export const materialSessionSchema = z.object({
-  id: uuid, no: z.number().nullable(), title: z.string(), scheduledAt: z.string(),
+  id: uuid, no: z.number().nullable(), title: z.string(), scheduledAt: z.string().nullable(),
   beforeLectureId: uuid.nullable(), afterLectureId: uuid.nullable(), afterTitle: z.string().nullable(),
   status: z.enum(["unchanged", "change", "preserve_history", "preserve_override", "preserve_review", "preserve_draft", "missing_lecture"]),
   hasDraft: z.boolean(),
@@ -101,6 +101,14 @@ export function materialRuleCourses(options: MaterialOptions, course: MaterialCo
   return options.courses.filter((candidate) => candidate.familyId === course.familyId
     && candidate.grade === course.grade && candidate.season === course.season
     && candidate.catalogVersionId === course.catalogVersionId && candidate.classType === rule.materialClassType);
+}
+
+/** 明确采用其他规则版本后，新班配置独立于原班来源。 */
+export function adoptMaterialRule(selection: MaterialSelection, revisionId: string): MaterialSelection {
+  return {
+    ...selection, ruleRevisionId: revisionId,
+    inheritedFromClassroomId: revisionId === selection.ruleRevisionId ? selection.inheritedFromClassroomId : null,
+  };
 }
 
 export const MATERIAL_ERROR_CODES = [

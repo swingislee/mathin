@@ -41,6 +41,8 @@ begin
     if lecture.no=6 then insert into public.session_preparation_reviews(session_id,artifact_kind,status,submitted_by)
       values(session_id,'lesson_plan','pending',admin_id); end if;
   end loop;
+  insert into public.class_sessions(classroom_id,title,scheduled_at)
+    values(classroom_id,'Unscheduled independent lesson',null);
 end;
 $$;
 
@@ -66,7 +68,7 @@ begin
   selection:=jsonb_build_object('businessClassType','ASSERT','cohortYear',2026,'cohortSeason',1,
     'cohortGrade',1,'ruleRevisionId',first_rule->>'revisionId','inheritedFromClassroomId',null);
   preview:=public.preview_classroom_material_change(class_id,target_id,selection,false);
-  if (preview->>'changeCount')::int<>1 or (preview->>'preserveCount')::int<>5
+  if (preview->>'changeCount')::int<>1 or (preview->>'preserveCount')::int<>6
     then raise exception 'DEFAULT_PROTECTION_FAILED: %',preview; end if;
   if (public.preview_classroom_material_change(class_id,target_id,selection,true)->>'changeCount')::int<>2
     then raise exception 'DRAFT_OPT_IN_FAILED'; end if;
@@ -79,6 +81,19 @@ begin
   old_snapshot:=public.get_classroom_material_workspace(class_id);
   if old_snapshot->>'courseId'<>target_id::text or jsonb_array_length(old_snapshot->'history')<>1
     then raise exception 'WORKSPACE_HISTORY_FAILED'; end if;
+  -- 上次默认保留的草稿可以稍后明确补切。
+  preview:=public.preview_classroom_material_change(class_id,target_id,selection,true);
+  if (preview->>'changeCount')::int<>1 then raise exception 'DEFERRED_DRAFT_UNREACHABLE'; end if;
+  result:=public.apply_classroom_material_change(class_id,target_id,selection,true,preview->>'token','include deferred draft');
+  if (result->>'changedSessions')::int<>1 then raise exception 'DEFERRED_DRAFT_NOT_SWITCHED'; end if;
+  if exists(select 1 from public.classroom_material_settings where classroom_id=class_id
+    and deferred_sources ? current_setting('material.test.session3')) then raise exception 'DEFERRED_SOURCE_NOT_CLEARED'; end if;
+  -- 后来逐课独立选回旧教材时，批量操作继续保留该明确选择。
+  update public.class_sessions set lecture_id=(select id from public.course_lectures
+    where course_id=current_setting('material.test.old')::uuid and no=3)
+    where id=current_setting('material.test.session3')::uuid;
+  preview:=public.preview_classroom_material_change(class_id,target_id,selection,true);
+  if (preview->>'changeCount')::int<>0 then raise exception 'INDEPENDENT_SOURCE_OVERWRITTEN'; end if;
   second_rule:=public.save_course_material_rule((first_rule->>'id')::uuid,1,input||jsonb_build_object('materialClassType','B'));
   if (second_rule->>'version')::int<>2 then raise exception 'RULE_VERSION_FAILED'; end if;
   if (public.get_classroom_material_workspace(class_id)->'selection') is distinct from (old_snapshot->'selection')
@@ -106,6 +121,14 @@ begin
     update public.course_material_rule_revisions set title='tamper' where id=(first_rule->>'revisionId')::uuid;
     raise exception 'DIRECT_REVISION_WRITE_ALLOWED';
   exception when insufficient_privilege then null; end;
+  -- 原班修改设置后，续班继续独立保留自己采用的旧版。
+  selection:=selection||'{"ruleRevisionId":null}';
+  preview:=public.preview_classroom_material_change(class_id,target_id,selection,false);
+  perform public.apply_classroom_material_change(class_id,target_id,selection,false,preview->>'token','source now manual');
+  preview:=public.preview_classroom_material_change(built_id,target_id,inherited,false);
+  perform public.apply_classroom_material_change(built_id,target_id,inherited,false,preview->>'token','keep inherited revision');
+  if (public.get_classroom_material_workspace(built_id)#>>'{selection,ruleRevisionId}')<>first_rule->>'revisionId'
+    then raise exception 'INHERITED_CLASS_DEPENDS_ON_SOURCE'; end if;
   perform set_config('material.test.preview',(public.preview_classroom_material_change(class_id,target_id,selection,false))->>'token',true);
   perform set_config('material.test.selection',selection::text,true);
 end;
@@ -164,4 +187,4 @@ begin
 end;
 $$;
 reset role;
-select 'PASS: rule revisions, cohorts, inheritance, preview, history/draft/review preservation, stale writes, ACL and RLS';
+select 'PASS: rule revisions, cohorts, independent inheritance, nullable schedule, deferred drafts, independent lesson sources, preview, history/review preservation, stale writes, ACL and RLS';

@@ -41,7 +41,11 @@ export function CourseMaterialRulesWorkspace({ options }: { options: MaterialOpt
     setBusy(true); setError("");
     try {
       const result = await saveCourseMaterialRuleAction(editing?.id ?? null, editing?.version ?? 0, input);
-      if (!result.ok) { setError(t("errors." + materialErrorCode(result.code))); return; }
+      if (!result.ok) {
+        setError(t("errors." + materialErrorCode(result.code)));
+        if (result.code === "MATERIAL_STALE") router.refresh();
+        return;
+      }
       setOpen(false); router.refresh();
     } catch { setError(t("errors.UNKNOWN")); } finally { setBusy(false); }
   };
@@ -89,7 +93,7 @@ export function CourseMaterialRulesWorkspace({ options }: { options: MaterialOpt
           <p className="text-sm text-muted">{t("rangeHelp")}</p>
           <div className="flex items-center gap-2"><Checkbox id={id + "-enabled"} checked={input.enabled} disabled={busy} onCheckedChange={(v) => patch({ enabled: v === true })} /><Label htmlFor={id + "-enabled"}>{t("enabled")}</Label></div>
         </fieldset>
-        {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+        {error && <p role="alert" className="text-sm text-rose">{error}</p>}
         <DialogFooter><Button variant="secondary" disabled={busy} onClick={() => setOpen(false)}>{t("cancel")}</Button><Button disabled={busy || !materialRuleInputSchema.safeParse(input).success} onClick={() => void save()}>{t(busy ? "working" : "saveRule")}</Button></DialogFooter>
       </DialogContent>
     </Dialog>

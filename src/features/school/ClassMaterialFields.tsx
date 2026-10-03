@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  compatibleMaterialRules, materialRuleCourses, type MaterialOptions, type MaterialSelection,
+  adoptMaterialRule, compatibleMaterialRules, materialRuleCourses, type MaterialOptions, type MaterialSelection,
 } from "./class-material-contract";
 
 export function MaterialSelect({ label, value, options, onChange, disabled = false }: {
@@ -41,7 +41,7 @@ export function ClassMaterialFields({ options, courseId, value, onChange, onAppl
     if (revisionId === "manual") { patch({}); return; }
     const rule = matches.find((item) => item.revisionId === revisionId);
     const target = course && rule ? materialRuleCourses(options, course, rule)[0] : null;
-    if (target && rule) onApplyRule(target.id, { ...value, ruleRevisionId: rule.revisionId });
+    if (target && rule) onApplyRule(target.id, adoptMaterialRule(value, rule.revisionId));
   };
   return <fieldset disabled={disabled} className="grid gap-4">
     <legend className="mb-3 text-sm font-medium">{t("selectionTitle")}</legend>

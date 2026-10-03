@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  compatibleMaterialRules, emptyMaterialSelection, materialRuleCourses, materialRuleInputSchema,
+  adoptMaterialRule, compatibleMaterialRules, emptyMaterialSelection, materialRuleCourses, materialRuleInputSchema,
   materialRuleMatches, materialSelectionSchema, type MaterialCourse, type MaterialOptions, type MaterialRule,
 } from "../src/features/school/class-material-contract";
 
@@ -41,6 +41,12 @@ describe("class material cohort and version contract", () => {
       { ...options.courses[1], catalogVersionId: "other" }, { ...options.courses[1], familyId: "other" },
     ];
     expect(materialRuleCourses({ ...options, courses: unsuitable }, course, rule)).toEqual([]);
+  });
+  it("releases inheritance when a continued class explicitly adopts a new revision", () => {
+    const inherited = { ...selection, ruleRevisionId: rule.revisionId, inheritedFromClassroomId: course.id };
+    expect(adoptMaterialRule(inherited, rule.revisionId).inheritedFromClassroomId).toBe(course.id);
+    expect(adoptMaterialRule(inherited, "00000000-0000-0000-0000-000000000007").inheritedFromClassroomId).toBeNull();
+    expect(adoptMaterialRule(inherited, "00000000-0000-0000-0000-000000000007").cohortGrade).toBe(1);
   });
   it("accepts an explicit manual selection and requires complete cohorts for rules", () => {
     expect(materialSelectionSchema.safeParse({ ...emptyMaterialSelection, businessClassType: " a+ " }).success).toBe(true);

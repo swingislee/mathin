@@ -62,8 +62,8 @@ export function ClassMaterialEditor({ classroomId }: { classroomId: string }) {
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader><DialogTitle>{t("title")}</DialogTitle><DialogDescription>{t("editorHelp")}</DialogDescription></DialogHeader>
         {busy && <p role="status" className="flex items-center gap-2 text-sm text-muted"><LoaderCircle size={16} className="animate-spin" />{t("working")}</p>}
-        {error && <p role="alert" className="text-sm text-danger">{error}</p>}
-        {saved && <p role="status" className="text-sm text-success">{t("saved")}</p>}
+        {error && <p role="alert" className="text-sm text-rose">{error}</p>}
+        {saved && <p role="status" className="text-sm text-leaf-deep">{t("saved")}</p>}
         {workspace && <div className="grid gap-6">
           <p className="text-sm">{t("currentCourse", { title: workspace.courseTitle ?? t("unknown") })}</p>
           {workspace.editable ? <>
@@ -79,7 +79,7 @@ export function ClassMaterialEditor({ classroomId }: { classroomId: string }) {
             <Button type="button" variant="secondary" className="justify-self-start" disabled={busy || !courseId || !materialSelectionSchema.safeParse(selection).success} onClick={() => void handlePreview()}>{t("preview")}</Button>
             {preview && <section className="grid gap-4 border-t border-line pt-4" aria-label={t("preview")}>
               <p className="text-sm font-medium">{t("impact", { change: preview.changeCount, preserve: preview.preserveCount, missing: preview.missingCount })}</p>
-              {preview.draftChangeCount > 0 && <p className="text-sm text-warning">{t("draftImpact", { count: preview.draftChangeCount })}</p>}
+              {preview.draftChangeCount > 0 && <p className="text-sm text-amber-700">{t("draftImpact", { count: preview.draftChangeCount })}</p>}
               <div className="max-h-72 overflow-auto"><Table>
                 <TableHeader className="sticky top-0 bg-card"><TableRow><TableHead>{t("lecture")}</TableHead><TableHead>{t("result")}</TableHead></TableRow></TableHeader>
                 <TableBody>{preview.sessions.map((session) => <TableRow key={session.id}><TableCell>{session.no}. {session.title}</TableCell><TableCell>{t("status." + session.status)}</TableCell></TableRow>)}</TableBody>

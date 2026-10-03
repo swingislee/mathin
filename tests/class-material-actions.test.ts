@@ -36,4 +36,13 @@ describe("material action boundaries", () => {
     expect(mocks.authorize).toHaveBeenCalledWith("course.manage");
     expect(mocks.rpc).toHaveBeenCalledWith("save_course_material_rule", { p_rule_id: id, p_expected_version: 2, p_input: input });
   });
+  it("accepts existing unscheduled lessons in an impact preview", async () => {
+    mocks.rpc.mockResolvedValue({ error: null, data: {
+      token: "a".repeat(32), selection: change.selection, changeCount: 0, preserveCount: 1, missingCount: 0, draftChangeCount: 0,
+      sessions: [{ id, no: 1, title: "Unscheduled", scheduledAt: null, beforeLectureId: id, afterLectureId: id, afterTitle: "Target", status: "preserve_history", hasDraft: false }],
+    } });
+    const result = await previewClassroomMaterialChangeAction(change);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data.sessions[0].scheduledAt).toBeNull();
+  });
 });
