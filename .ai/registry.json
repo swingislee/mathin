@@ -3,6 +3,20 @@
   "coordinatorTaskId": "DEV-CLASS-MATERIAL-20261003-INTEGRATION",
   "tasks": [
     {
+      "id": "DEV-CLASS-MATERIAL-20261003-REVIEW",
+      "title": "教材管理共享合同只读复核",
+      "agent": "codex",
+      "threadId": null,
+      "status": "in_progress",
+      "checkout": "worktree",
+      "branch": "codex/class-material-review",
+      "card": ".ai/tasks/DEV-CLASS-MATERIAL-20261003.md",
+      "writePaths": [],
+      "sharedPaths": [],
+      "checkpoint": "50e24949cac60768662d7078cee15dc5aef6eb54",
+      "next": "独立只读复核教材规则、版本沿用、权限与课堂历史保护，回传具体问题。"
+    },
+    {
       "id": "DEV-CLASS-MATERIAL-20261003-INTEGRATION",
       "title": "班级教材管理入口集成登记",
       "agent": "codex",
@@ -27,9 +41,9 @@
       "title": "班级教材与班型对应规则",
       "agent": "codex",
       "threadId": "01a0ff54-28c3-7a33-b2e5-7cbe09c27469",
-      "status": "in_progress",
+      "status": "in_review",
       "card": ".ai/tasks/DEV-CLASS-MATERIAL-20261003.md",
-      "checkpoint": null,
+      "checkpoint": "50e24949cac60768662d7078cee15dc5aef6eb54",
       "checkout": "worktree",
       "branch": "codex/class-material-admin",
       "writePaths": [
@@ -68,7 +82,7 @@
         "messages/en.json",
         "src/lib/database.types.ts"
       ],
-      "next": "实现持久化规则版本、逐班预览保存、新建班消费与定向检查。"
+      "next": "定向检查与本机事务通过，等待共享合同独立只读复核和页面构建。"
     },
     {
       "id": "OPS-CLASS-MATERIAL-20261003-INTEGRATION",
