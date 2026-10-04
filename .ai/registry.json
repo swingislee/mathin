@@ -20,6 +20,7 @@
         ".ai/tasks/DEV-PLANE-NETWORK-20261004.md",
         ".ai/tasks/DEV-PLANE-FOLD-LAYERS-20261004.md",
         "src/features/tools/plane-lines/",
+        "src/features/tools/plane-circle-dissection/",
         "src/features/tools/plane-construction/model.ts",
         "src/features/tools/plane-construction/scenes.tsx",
         "src/features/tools/plane-tiling/model.ts",
@@ -37,9 +38,14 @@
         "supabase/migrations/20261004030300_tool_plane_foundation_catalog.sql",
         "supabase/migrations/20261004030500_tool_plane_polygon_catalog.sql",
         "supabase/migrations/20261004030600_tool_plane_foundation_titles.sql",
+        "supabase/migrations/20261004030700_tool_plane_circle_dissection.sql",
+        "supabase/migrations/20261004030800_tool_plane_circle_dissection_catalog.sql",
         "supabase/migrations/20261004031100_tool_plane_paper_layers_catalog.sql",
         "scripts/plane-foundation-local.mjs",
         "tests/plane-lines.test.ts",
+        "tests/plane-circle-dissection.test.ts",
+        "tests/plane-circle-dissection-integration.test.ts",
+        "tests/fixtures/plane-circle-dissection-cases.ts",
         "tests/plane-foundation-integration.test.ts",
         "tests/planar-tool-contract.test.ts",
         "tests/planar-deep-integration.test.ts",
@@ -148,7 +154,7 @@
       "card": ".ai/tasks/DEV-PLANE-NETWORK-20261004.md",
       "writePaths": ["src/features/tools/plane-network/model.ts", "src/features/tools/plane-network/scenes.tsx", "src/features/tools/plane-network/README.md", "tests/plane-network-model.test.ts", "tests/plane-network-integration.test.ts", "tests/fixtures/plane-network-cases.ts", ".ai/handoffs/DEV-PLANE-NETWORK-20261004-codex-01.md"],
       "sharedPaths": [],
-      "checkpoint": "77bbfaf6",
+      "checkpoint": "77bbfaf6ee6a55d652f361c2b3bf1f8ca7f8f4ce",
       "next": "路线批次已提交后复用干净工作树新分支；沿用 v2 准确点线、连通分量变换、单条观察与笔迹操作，无新 SQL。"
     },
     {
@@ -162,7 +168,7 @@
       "card": ".ai/tasks/DEV-PLANE-FOLD-LAYERS-20261004.md",
       "writePaths": ["src/features/tools/plane-paper-layers/", "tests/plane-paper-layers.test.ts", "tests/plane-paper-layers-integration.test.ts", "tests/fixtures/plane-paper-layers-cases.ts", "supabase/migrations/20261004031000_tool_plane_paper_layers.sql", ".ai/handoffs/DEV-PLANE-FOLD-LAYERS-20261004-codex-01.md"],
       "sharedPaths": [],
-      "checkpoint": "74d602e0",
+      "checkpoint": "74d602e091b017f4fa148510767b07a2f6d46ca5",
       "next": "沿用面积工作树的新分支，新增32-layers/v3，按实际叠层及来源映射补双折与独立剪口，旧版保持。"
     },
     {
