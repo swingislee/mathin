@@ -7,28 +7,42 @@
       "title": "方格条细分开发交付",
       "agent": "codex",
       "threadId": "019ff05e-1218-7400-b966-4556b2c57173",
-      "status": "in_progress",
+      "status": "blocked",
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-PLANE-STRIPS-20261004.md",
       "writePaths": [".ai/tasks/DEV-PLANE-STRIPS-20261004.md", "docs/evidence/tools-plane-strips-20261004.md"],
       "sharedPaths": [".ai/registry.json", "CHANGELOG.md", "src/features/tools/planar-kit/README.md", "src/lib/database.types.ts"],
-      "checkpoint": null,
-      "next": "串行登记、复核及集成面积关系 v4；只在确认的本机隔离目标安装新增保存校验，复用 3130 服务交付人工验收。"
+      "checkpoint": "f6bc0ba75ef768792d50abd189990263a5a9162d",
+      "next": "源码 3ec8964 与交接 e6af4bc0 已接收，独立复核通过；本机 Docker 未运行，等待用户确认启动后完成目标核对、事务保存检查与精确迁移，再集成开发入口。生产和 Gate 保持。"
     },
     {
       "id": "DEV-PLANE-STRIPS-20261004",
       "title": "真实正方形条带与逐级细分",
       "agent": "codex",
       "threadId": "019ff05e-1218-7400-b966-4556b2c57173",
-      "status": "in_review",
+      "status": "blocked",
       "checkout": "worktree",
       "branch": "codex/plane-strips-codex",
       "card": ".ai/tasks/DEV-PLANE-STRIPS-20261004.md",
       "writePaths": ["src/features/tools/plane-relations/strips-model.ts", "src/features/tools/plane-relations/strips-scene.tsx", "src/features/tools/plane-relations/strips-validation.ts", "src/features/tools/plane-relations/README.md", "src/features/tools/planar-kit/catalog.ts", "src/features/tools/planar-kit/contract.ts", "src/features/tools/planar-kit/scene-registry.ts", "src/features/tools/spatial-interaction/control-inventory.ts", "tests/plane-strips.test.ts", "tests/plane-strips-integration.test.ts", "tests/fixtures/plane-strips-cases.ts", "tests/plane-invariants-integration.test.ts", "supabase/migrations/20261004010000_tool_plane_strips.sql", "scripts/plane-strips-local.mjs", ".ai/handoffs/DEV-PLANE-STRIPS-20261004-codex-01.md"],
       "sharedPaths": [],
-      "checkpoint": "7521b307587c2a4e21b37fbb4c61d0dbab249de3",
-      "next": "实现与定向检查已提交，独立只读复核进行中；本机 Docker 未运行，保存校验演练与安装等待启动确认。尚未集成新建 v4 到开发入口。"
+      "checkpoint": "e6af4bc0db988e2abc89cbd107513deba2f4f696",
+      "next": "源码 3ec8964 已通过定向检查与独立复核，交接 01 已提交；数据库运行时检查及新建 v4 开发入口集成等待本机 Docker 启动确认。复用现有机器结果，继续点见任务卡。"
+    },
+    {
+      "id": "DEV-PLANE-STRIPS-20261004-REVIEW",
+      "title": "方格条共享合同只读复核",
+      "agent": "codex",
+      "threadId": null,
+      "status": "done",
+      "checkout": "worktree",
+      "branch": "codex/plane-strips-codex",
+      "card": ".ai/tasks/DEV-PLANE-STRIPS-20261004.md",
+      "writePaths": [],
+      "sharedPaths": [],
+      "checkpoint": "3ec8964dcfcc548ad8f2fe8b9767e01ba9958520",
+      "next": "独立复核及最后两文件补丁复核均通过，未发现 P1/P2；未连接数据库。SQL 运行时、保存闭环及产品人工验收保持待完成。"
     },
     {
       "id": "DEV-PLANE-ANGLE-20261004-INTEGRATION",
