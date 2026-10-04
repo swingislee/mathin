@@ -109,7 +109,8 @@ function PlanarWorkbenchStage({ toolId, version, locale: suppliedLocale, initial
     commit(action.run(shown, { selected }), action);
   }
   function setField(key: string, value: number) {
-    commit(definition.setField?.(shown, key, value) ?? { ...shown, params: { ...shown.params, [key]: value } });
+    const next = definition.setField?.(shown, key, value) ?? { ...shown, params: { ...shown.params, [key]: value } };
+    return commit(next) ? next : shown;
   }
   function stopAtFrame() {
     const current = planarFrame(authority, definition, planarEventTime());
@@ -238,8 +239,10 @@ function PlanarWorkbenchStage({ toolId, version, locale: suppliedLocale, initial
     return <label className={styles.field} key={field.key}>{textFor(field.label, locale)}{field.options ? <Select value={String(currentValue)} disabled={fieldDisabled} onValueChange={(value) => setField(field.key, Number(value))}><SelectTrigger className="w-36" aria-label={textFor(field.label, locale)}><SelectValue /></SelectTrigger><SelectContent>{field.options.map((option) => <SelectItem key={option.value} value={String(option.value)}>{textFor(option.label, locale)}</SelectItem>)}</SelectContent></Select> : <Input key={`${shown.sceneId}:${field.key}:${currentValue}`} aria-label={textFor(field.label, locale)} type="number" min={field.min} max={field.max} step={field.step ?? "any"} defaultValue={currentValue} disabled={fieldDisabled} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} onBlur={(event) => {
       if (fieldDisabled) return;
       const value = event.currentTarget.valueAsNumber; if (!Number.isFinite(value)) { event.currentTarget.value = String(currentValue); return; }
-      const rounded = field.step ? field.min + Math.round((value - field.min) / field.step) * field.step : value;
-      setField(field.key, Math.min(field.max, Math.max(field.min, rounded)));
+      if (value === currentValue) return;
+      // step 只提供增减幅度；连续量保持精确，格点和计数由领域合同决定。
+      const accepted = setField(field.key, Math.min(field.max, Math.max(field.min, value)));
+      event.currentTarget.value = String(field.read?.(accepted) ?? accepted.params[field.key] ?? field.min);
     }} />}</label>;
   };
   const switches = [...(definition.referenceGrid === false ? [] : [{ key: "grid", label: { zh: "参考网格", en: "Reference grid" } }]), { key: "measures", label: { zh: "数值与测量标记", en: "Values and measurements" } }, ...(definition.toggles ?? [])].filter((entry, index, all) => all.findIndex((item) => item.key === entry.key) === index);

@@ -3,7 +3,8 @@ import { act, createElement, type ComponentProps } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PlanarWorkbench } from "@/features/tools/planar-kit/PlanarWorkbench";
-import { planarSnapshot, type PlanarState } from "@/features/tools/planar-kit/contract";
+import { planarSnapshot, planarStateSchema, type PlanarState } from "@/features/tools/planar-kit/contract";
+import { planarScene } from "@/features/tools/planar-kit/scene-registry";
 import { addLineMaterial, lineMaterial, lineMetrics } from "@/features/tools/plane-lines/model";
 import { emptyLinesState } from "@/features/tools/plane-lines/model";
 import { createClassroomToolState, parseClassroomToolState, type ClassroomToolUpdate } from "@/features/tools/courseware/tool-classroom";
@@ -149,5 +150,51 @@ describe("two-fold paper through the shared host", () => {
       expect(current()).toEqual(initial); expect(container.querySelector("[data-paper-handle]")).toBeNull();
       if (label === "four-layer-circle") expect(button("慢慢展开一层").disabled).toBe(true);
     }
+  });
+});
+
+describe("precise numeric fields keep their domain semantics", () => {
+  it.each([
+    ["11-create", "move", "x", 6.123456789],
+    ["18-coverage", "relations-common-angle", "angle-a", 8.123456789],
+    ["18-coverage", "relations-interior", "innerHeight", 0.4123456789],
+    ["51-create", "rotate", "angle", 23.123456789],
+    ["55", "", "largeRadius", 141.23456789],
+  ] as const)("preserves fractional %s/%s/%s through blur, edit and one undo", async (id, operationId, key, value) => {
+    const definition = planarScene(id), operation = definition.operations?.find((entry) => entry.id === operationId);
+    const field = (operation?.fields ?? definition.fields)!.find((entry) => entry.key === key)!;
+    let base = definition.create(); if (id === "11-create") base = { ...base, flags: { ...base.flags, snap: false } };
+    if (operationId === "relations-interior") base = operation!.actions!.find((action) => action.id === "relations-interior-point")!.run(base, { selected: null });
+    const initial = definition.setField?.(base, key, value) ?? { ...base, params: { ...base.params, [key]: value } };
+    expect(planarStateSchema.safeParse(initial).success).toBe(true);
+    await render({ toolId: definition.toolId, initial }); await act(async () => button(operation?.label.zh ?? "形状与准确参数").click());
+    const input = () => container.querySelector<HTMLInputElement>(`input[aria-label="${field.label.zh}"]`)!;
+    expect(input().disabled).toBe(false); expect(input().getAttribute("step")).toBe(String(field.step));
+    const read = (state: PlanarState) => field.read?.(state) ?? state.params[key];
+    expect(read(current()!)).toBeCloseTo(value, 8);
+    await act(async () => input().dispatchEvent(new FocusEvent("focusout", { bubbles: true })));
+    expect(current()).toEqual(initial); expect(button("撤销").disabled).toBe(true);
+    await act(async () => { input().value = String(value + 0.017); input().dispatchEvent(new FocusEvent("focusout", { bubbles: true })); });
+    expect(read(current()!)).toBeCloseTo(value + 0.017, 8); expect(input().valueAsNumber).toBeCloseTo(read(current()!), 8);
+    expect(planarStateSchema.safeParse(current()).success).toBe(true);
+    await act(async () => button("撤销").click()); expect(current()).toEqual(initial); expect(button("撤销").disabled).toBe(true);
+  });
+  it.each([["57-create", "board", "columns"], ["48", "", "levels"]] as const)("rejects fractional counts in %s and restores the actual input value", async (id, operationId, key) => {
+    const definition = planarScene(id), initial = definition.create(), operation = definition.operations?.find((entry) => entry.id === operationId);
+    const field = (operation?.fields ?? definition.fields)!.find((entry) => entry.key === key)!;
+    await render({ toolId: definition.toolId, initial }); await act(async () => button(operation?.label.zh ?? "形状与准确参数").click());
+    const input = () => container.querySelector<HTMLInputElement>(`input[aria-label="${field.label.zh}"]`)!;
+    await act(async () => { input().value = "2.5"; input().dispatchEvent(new FocusEvent("focusout", { bubbles: true })); });
+    expect(current()).toEqual(initial); expect(input().valueAsNumber).toBe(initial.params[key]); expect(button("撤销").disabled).toBe(true);
+  });
+  it("retains peg quantization and restores a cleared numeric input without changing geometry", async () => {
+    const definition = planarScene("34-create"), initial = definition.create(); await render({ toolId: "plane-geoboard", initial });
+    await act(async () => button("准确摆放").click());
+    const input = () => container.querySelector<HTMLInputElement>('input[aria-label="左端 X（格）"]')!;
+    await act(async () => { input().value = "4.25"; input().dispatchEvent(new FocusEvent("focusout", { bubbles: true })); });
+    expect(input().valueAsNumber).toBe(4); const placed = current()!;
+    expect(planarStateSchema.safeParse(placed).success).toBe(true);
+    await act(async () => { input().value = ""; input().dispatchEvent(new FocusEvent("focusout", { bubbles: true })); });
+    expect(input().valueAsNumber).toBe(4); expect(current()).toEqual(placed);
   });
 });

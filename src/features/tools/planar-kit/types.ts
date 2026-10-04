@@ -5,7 +5,9 @@ import type { PlanarPoint, PlanarState, PlanarToolId } from "./contract";
 export interface PlanarText { zh: string; en: string }
 export const textFor = (text: PlanarText, locale: string) => locale === "en" ? text.en : text.zh;
 export interface PlanarField {
-  key: string; label: PlanarText; min: number; max: number; step?: number;
+  key: string; label: PlanarText; min: number; max: number;
+  /** 数字框增减幅度；离散合法值由领域 setter／validator 维护，提交时不按此取整。 */
+  step?: number;
   options?: readonly { value: number; label: PlanarText }[];
   read?: (state: PlanarState) => number;
   disabled?: (state: PlanarState) => boolean;
