@@ -8,3 +8,5 @@
 - worker 独占登记的新目录、两份定向测试、fixture、`20261004031400_tool_plane_perimeter_boundary.sql` 和交接。SQL helper 前缀 `tool_plane_perimeter_boundary_`，导出 state/scene 校验，全部私有；title 使用现有 trim／UTF-16 语义。
 - 复用干净的 `.worktrees/plane-invariants-codex`，从本登记后的 main 创建 `codex/plane-perimeter-boundary-codex`；原双折分支与提交保留。旧 perimeter/construction 不改。catalog、contract、宿主、0315 分发、本地 DB、类型和交付由 root 接管。
 - 只做本增量所需的几何／交互合同检查，不连接数据库、生产、服务或浏览器；开发端交付与人工教学验收分别记录。
+
+2026-10-05：领域 `4de290a2`、共享接线 `1bbd4425` 已集成main。复用18项领域检查；真实宿主已覆盖独立边段拖动、准确小数位移、原纸保持、暂停继续、只读，以及旧v2／新v3课堂一次回执。53项新保存夹具在本机TS/SQL通过，0314/0315已安装，实际生成2个helper类型。zh/en开发入口可启动；人工教学验收与生产发布待后续确认。

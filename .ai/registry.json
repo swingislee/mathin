@@ -7,7 +7,7 @@
       "title": "全部现有平面工具深修与线角同台建构",
       "agent": "codex",
       "threadId": "019ff05e-1218-7400-b966-4556b2c57173",
-      "status": "in_progress",
+      "status": "done",
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-PLANE-ALL-20261004.md",
@@ -67,8 +67,8 @@
         ".ai/registry.json",
         "CHANGELOG.md"
       ],
-      "checkpoint": "76f6c4ff",
-      "next": "曲线重叠及精确输入已交付开发代码与本地保存合同；继续真实组合周长边界与开放滚动接线。人工教学验收待确认，尚未全部完成。"
+      "checkpoint": "1bbd442524389ee82e2ac86440055e59ae1748ee",
+      "next": "本轮22入口／49获批能力的实现及本机开发交付完成，11暂缓保持。源码覆盖、定向合同及本地保存通过；产品负责人继续人工教学验收，生产发布另行授权。"
     },
     {
       "id": "DEV-PLANE-EXACT-MOTION-20261004",
@@ -209,28 +209,28 @@
       "title": "组合纸片真实边界与边段平移",
       "agent": "codex",
       "threadId": null,
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/plane-perimeter-boundary-codex",
       "card": ".ai/tasks/DEV-PLANE-PERIMETER-BOUNDARY-20261004.md",
       "writePaths": ["src/features/tools/plane-perimeter-boundary/", "tests/plane-perimeter-boundary.test.ts", "tests/plane-perimeter-boundary-integration.test.ts", "tests/fixtures/plane-perimeter-boundary-cases.ts", "supabase/migrations/20261004031400_tool_plane_perimeter_boundary.sql", ".ai/handoffs/DEV-PLANE-PERIMETER-BOUNDARY-20261004-codex-01.md"],
       "sharedPaths": [],
       "checkpoint": "493953bb29aa06af6f39d6a5a1cdeb3f4b730a48",
-      "next": "保留 v2 并新增 10-boundary/v3，真实推导旋转凹凸纸片组合的外环、孔洞、公共边，以及原纸不动的独立边段纯平移。"
+      "next": "领域4de290a2和接线1bbd4425已交付main，本地0314/0315安装、53夹具及真实宿主边段/课堂检查通过。开发端待人工确认，生产保持。"
     },
     {
       "id": "DEV-PLANE-ROLLING-20261005",
       "title": "圆对同台建构与双向连续滚动",
       "agent": "codex",
       "threadId": null,
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/plane-rolling-workbench-codex",
       "card": ".ai/tasks/DEV-PLANE-ROLLING-20261005.md",
       "writePaths": ["src/features/tools/plane-rolling-workbench/", "tests/plane-rolling.test.ts", "tests/plane-rolling-integration.test.ts", "tests/fixtures/plane-rolling-cases.ts", "supabase/migrations/20261004031600_tool_plane_rolling_workbench.sql", ".ai/handoffs/DEV-PLANE-ROLLING-20261005-codex-01.md"],
       "sharedPaths": [],
       "checkpoint": "9420bb0da5e486dcca2123bca1212acca1a84952",
-      "next": "55-create/v2 接入最多四组独立圆对、可移动圆心与准确半径、双向累计绕行和可选观察；旧55/v1保持。"
+      "next": "领域f1038473、正零修正1c8264b7和接线1bbd4425已交付main，本地0316/0317安装、52夹具及7项真实宿主检查通过。开发端待人工确认，生产保持。"
     },
     {
       "id": "REPO-DIRECTION-CLEANUP-20261004",

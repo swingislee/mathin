@@ -8,3 +8,5 @@
 - worker 独占登记的新目录、两份测试、夹具、`20261004031600_tool_plane_rolling_workbench.sql` 及交接。helper 前缀 `tool_plane_rolling_workbench_`，严格 state/scene、私有权限与现有 trim／UTF-16 title 语义。root 负责 0317 分发与共享接线、类型和开发库。
 - 复用干净 `.worktrees/plane-grid-measure-deep-codex`，保留运动分支，从登记后的 main 创建 `codex/plane-rolling-workbench-codex`。不修改旧模型或共享宿主，不连接 DB、生产、服务或浏览器。
 - 按实际增量检查无滑动、跨圈／反向、独立材料、精确参数及保存边界。开发可用与人工教学验收分别记录；全范围审计发现的宿主数字框问题由 root 另行处理。
+
+2026-10-05：领域 `f1038473`、默认正零修正 `1c8264b7`、共享接线 `1bbd4425` 已集成main。35项领域结果复用；7项真实宿主／版本检查通过，覆盖反向与多圈、一手势一撤销、取消、精确半径、观察保留、准确暂停继续、只读与课堂回执。52项保存夹具在本机TS/SQL通过，0316/0317已安装，仅合入2个实际生成helper类型。zh/en开发入口可启动；人工教学手感待确认，生产未发布。
