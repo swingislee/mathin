@@ -1,13 +1,161 @@
 {
   "version": 1,
-  "coordinatorTaskId": "DEV-PLANE-STRIPS-20261004-INTEGRATION",
+  "coordinatorTaskId": "DEV-PLANE-DEPTH-20261004-INTEGRATION",
   "tasks": [
+    {
+      "id": "DEV-PLANE-DEPTH-20261004-INTEGRATION",
+      "title": "平面教具三项深修并行集成",
+      "agent": "codex",
+      "threadId": "019ff05e-1218-7400-b966-4556b2c57173",
+      "status": "in_progress",
+      "checkout": "integration",
+      "branch": "main",
+      "card": ".ai/tasks/DEV-PLANE-DEPTH-20261004-INTEGRATION.md",
+      "writePaths": [
+        ".ai/tasks/DEV-PLANE-DEPTH-20261004-INTEGRATION.md",
+        ".ai/tasks/DEV-OVERLAP-CONCAVE-20261004.md",
+        ".ai/tasks/DEV-PERIMETER-VERTEX-20261004.md",
+        ".ai/tasks/DEV-PLANE-CELL-COVERAGE-20261004.md",
+        "src/features/tools/planar-kit/catalog.ts",
+        "src/features/tools/planar-kit/contract.ts",
+        "src/features/tools/planar-kit/scene-registry.ts",
+        "src/features/tools/planar-kit/README.md",
+        "src/features/tools/spatial-interaction/control-inventory.ts",
+        "src/lib/database.types.ts",
+        "supabase/migrations/20261004020200_tool_plane_depth_catalog.sql",
+        "scripts/plane-depth-local.mjs",
+        "tests/plane-depth-integration.test.ts",
+        "tests/plane-invariants-integration.test.ts",
+        "tests/plane-strips-integration.test.ts",
+        "tests/planar-deep-integration.test.ts",
+        "tests/planar-tool-contract.test.ts",
+        "docs/evidence/tools-plane-depth-20261004.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "CHANGELOG.md"
+      ],
+      "checkpoint": "5f6a60e49f2f33305252c55b82fb8ca4349ba8cf",
+      "next": "已按用户并行深修授权拆为凹多边形区域、逐顶点定量编辑和完整格／边界格覆盖；主任务统一共享版本、SQL 分发及本机验证，不操作生产。"
+    },
+    {
+      "id": "DEV-OVERLAP-CONCAVE-20261004",
+      "title": "凹多边形交并差与真实区域",
+      "agent": "codex",
+      "threadId": null,
+      "status": "in_progress",
+      "checkout": "worktree",
+      "branch": "codex/overlap-concave-codex",
+      "card": ".ai/tasks/DEV-OVERLAP-CONCAVE-20261004.md",
+      "writePaths": [
+        "src/features/tools/plane-overlap/",
+        "tests/plane-overlap-concave.test.ts",
+        "tests/plane-overlap-concave-integration.test.ts",
+        "tests/fixtures/plane-overlap-concave-cases.ts",
+        "supabase/migrations/20261004020000_tool_plane_overlap_concave.sql",
+        ".ai/handoffs/DEV-OVERLAP-CONCAVE-20261004-codex-01.md",
+        ".ai/handoffs/DEV-OVERLAP-CONCAVE-20261004-review-01.md"
+      ],
+      "sharedPaths": [],
+      "checkpoint": "5f6a60e49f2f33305252c55b82fb8ca4349ba8cf",
+      "next": "实现 33-concave / overlap v3，保留 v2 凸形校验与旧描述符；提供严格 helper、fixtures、领域与工作台定向测试。"
+    },
+    {
+      "id": "DEV-PERIMETER-VERTEX-20261004",
+      "title": "单顶点定周长与定面积编辑",
+      "agent": "codex",
+      "threadId": null,
+      "status": "in_progress",
+      "checkout": "worktree",
+      "branch": "codex/perimeter-vertex-codex",
+      "card": ".ai/tasks/DEV-PERIMETER-VERTEX-20261004.md",
+      "writePaths": [
+        "src/features/tools/plane-perimeter/",
+        "tests/plane-perimeter-vertex.test.ts",
+        "tests/plane-perimeter-vertex-integration.test.ts",
+        ".ai/handoffs/DEV-PERIMETER-VERTEX-20261004-codex-01.md",
+        ".ai/handoffs/DEV-PERIMETER-VERTEX-20261004-codex-02.md",
+        ".ai/handoffs/DEV-PERIMETER-VERTEX-20261004-review-01.md"
+      ],
+      "sharedPaths": [],
+      "checkpoint": "5f6a60e49f2f33305252c55b82fb8ca4349ba8cf",
+      "next": "在显式操作中支持单顶点保量拖动，其余顶点保持；沿用 perimeter v2，不新增持久字段或永久约束。"
+    },
+    {
+      "id": "DEV-PLANE-CELL-COVERAGE-20261004",
+      "title": "完整方格与边界方格面积夹逼",
+      "agent": "codex",
+      "threadId": null,
+      "status": "in_progress",
+      "checkout": "worktree",
+      "branch": "codex/plane-cell-coverage-codex",
+      "card": ".ai/tasks/DEV-PLANE-CELL-COVERAGE-20261004.md",
+      "writePaths": [
+        "src/features/tools/plane-relations/coverage-model.ts",
+        "src/features/tools/plane-relations/coverage-scene.tsx",
+        "src/features/tools/plane-relations/coverage-validation.ts",
+        "src/features/tools/plane-relations/README.md",
+        "tests/plane-cell-coverage.test.ts",
+        "tests/plane-cell-coverage-integration.test.ts",
+        "tests/fixtures/plane-cell-coverage-cases.ts",
+        "supabase/migrations/20261004020100_tool_plane_cell_coverage.sql",
+        ".ai/handoffs/DEV-PLANE-CELL-COVERAGE-20261004-codex-01.md",
+        ".ai/handoffs/DEV-PLANE-CELL-COVERAGE-20261004-review-01.md"
+      ],
+      "sharedPaths": [],
+      "checkpoint": "5f6a60e49f2f33305252c55b82fb8ca4349ba8cf",
+      "next": "实现 18-coverage / relations v5 的内外覆盖观察和逐级细分，沿用 v4 条带及既有操作；严格区分完整格、正面积边界格与接触，提供 helper 和 fixtures。"
+    },
+    {
+      "id": "DEV-PERIMETER-STRETCH-20261004-INTEGRATION",
+      "title": "凹凸多边形定量拉伸开发交付",
+      "agent": "codex",
+      "threadId": "019ff05e-1218-7400-b966-4556b2c57173",
+      "status": "integrated",
+      "checkout": "integration",
+      "branch": "main",
+      "card": ".ai/tasks/DEV-PERIMETER-STRETCH-20261004.md",
+      "writePaths": [
+        ".ai/tasks/DEV-PERIMETER-STRETCH-20261004.md",
+        "docs/evidence/tools-perimeter-stretch-20261004.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "CHANGELOG.md",
+        "src/features/tools/planar-kit/README.md"
+      ],
+      "checkpoint": "48dbe689520b6ab09a8a17f07995b002d8f3688e",
+      "next": "定量拉伸已快进集成 main，源码与已检 head 一致；定向模型／工作台／课堂检查及中英文 HTTP 启动通过。开发端已交付，待人工视觉与教学手感验收；数据库、生产和 Gate 保持。"
+    },
+    {
+      "id": "DEV-PERIMETER-STRETCH-20261004",
+      "title": "自绘凹凸多边形定周长与定面积拉伸",
+      "agent": "codex",
+      "threadId": "019ff05e-1218-7400-b966-4556b2c57173",
+      "status": "integrated",
+      "checkout": "worktree",
+      "branch": "codex/perimeter-stretch-codex",
+      "card": ".ai/tasks/DEV-PERIMETER-STRETCH-20261004.md",
+      "writePaths": [
+        "src/features/tools/plane-perimeter/model.ts",
+        "src/features/tools/plane-perimeter/scenes.tsx",
+        "src/features/tools/plane-perimeter/README.md",
+        "src/features/tools/spatial-interaction/control-inventory.ts",
+        "tests/plane-perimeter.test.ts",
+        "tests/plane-perimeter-stretch.test.ts",
+        "tests/plane-invariants-integration.test.ts",
+        ".ai/handoffs/DEV-PERIMETER-STRETCH-20261004-codex-01.md"
+      ],
+      "sharedPaths": [],
+      "checkpoint": "a200a8478f55f7240bce4a094faba99fae19dd85",
+      "next": "七个实现／测试文件与交接 01 已接收；自绘凹凸多边形支持定周长／定面积整体拉伸，测量在关闭操作后保留。相同代码机器结果复用，待开发页人工验收。"
+    },
     {
       "id": "DEV-PLANE-STRIPS-20261004-INTEGRATION",
       "title": "方格条细分开发交付",
       "agent": "codex",
       "threadId": "019ff05e-1218-7400-b966-4556b2c57173",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-PLANE-STRIPS-20261004.md",
@@ -21,15 +169,15 @@
         "src/features/tools/planar-kit/README.md",
         "src/lib/database.types.ts"
       ],
-      "checkpoint": null,
-      "next": "串行登记、复核及集成面积关系 v4；只在确认的本机隔离目标安装新增保存校验，复用 3130 服务交付人工验收。"
+      "checkpoint": "b053eb47432aa89b43b2d2f533cc1406633f1eaa",
+      "next": "方格条 v4 已精确集成 main；本机事务保存／回读、ACL、回滚核对、迁移安装与实际生成类型完成，中英文开发入口 HTTP 200。开发端已交付，待人工视觉和教学手感验收；生产和 Gate 保持。"
     },
     {
       "id": "DEV-PLANE-STRIPS-20261004",
       "title": "真实正方形条带与逐级细分",
       "agent": "codex",
       "threadId": "019ff05e-1218-7400-b966-4556b2c57173",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/plane-strips-codex",
       "card": ".ai/tasks/DEV-PLANE-STRIPS-20261004.md",
@@ -51,8 +199,22 @@
         ".ai/handoffs/DEV-PLANE-STRIPS-20261004-codex-01.md"
       ],
       "sharedPaths": [],
-      "checkpoint": null,
-      "next": "沿 v3 描述符包裹新增方格条状态；补定向几何、版本、保存与课堂检查，旧版本保持可读。"
+      "checkpoint": "e6af4bc0db988e2abc89cbd107513deba2f4f696",
+      "next": "源码 3ec8964 与交接 01 已集成，14 个代码／测试／迁移文件与已检 head 一致；复用定向检查和独立复核，集成人补齐本机保存闭环及开发入口检查。待方格条、细分与独立材料人工验收。"
+    },
+    {
+      "id": "DEV-PLANE-STRIPS-20261004-REVIEW",
+      "title": "方格条共享合同只读复核",
+      "agent": "codex",
+      "threadId": null,
+      "status": "done",
+      "checkout": "worktree",
+      "branch": "codex/plane-strips-codex",
+      "card": ".ai/tasks/DEV-PLANE-STRIPS-20261004.md",
+      "writePaths": [],
+      "sharedPaths": [],
+      "checkpoint": "3ec8964dcfcc548ad8f2fe8b9767e01ba9958520",
+      "next": "独立复核及最后两文件补丁复核均通过，未发现 P1/P2；复核者未连接数据库。后续本机 SQL 与保存闭环由集成人补齐，产品人工验收待完成。"
     },
     {
       "id": "DEV-PLANE-ANGLE-20261004-INTEGRATION",

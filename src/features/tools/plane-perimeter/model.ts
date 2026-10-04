@@ -53,7 +53,7 @@ export function setPerimeterProgress(state: PlanarState, kind: PerimeterProgress
 export function setPerimeterField(state: PlanarState, key: string, value: number): PlanarState {
   if (key === "walk" || key === "straight") return setPerimeterProgress(state, key, value / 100);
   const invariantField = /^(perimeter|area)-(width|height)$/.exec(key);
-  if (invariantField) return deformPerimeterRectangle(state, invariantField[1] as PerimeterInvariant, invariantField[2] as RectangleDimension, value * PERIMETER_UNIT);
+  if (invariantField) return deformPerimeterShape(state, invariantField[1] as PerimeterInvariant, invariantField[2] as RectangleDimension, value * PERIMETER_UNIT);
   return syncPerimeterGeometry(state, setConstructionField(state, key, key === "width" || key === "height" ? value * PERIMETER_UNIT : value));
 }
 
@@ -92,6 +92,65 @@ export function deformPerimeterRectangle(state: PlanarState, invariant: Perimete
   return syncPerimeterGeometry(state, { ...state, params: { ...state.params, active: id }, points });
 }
 
+/** 矩形沿实际两边；其余多边形沿材料本地宽高，随材料旋转和镜像。 */
+export function perimeterStretchFrame(state: PlanarState, id = state.params.active) {
+  const rectangle = perimeterRectangle(state, id);
+  if (rectangle) return rectangle;
+  const object = constructionObject(state, id);
+  if (!object || object.kind !== 0 || !isValidConstructionObject(object)) return null;
+  const xs = object.vertices.map((point) => point.x), ys = object.vertices.map((point) => point.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+  return { object, width: maxX - minX, height: maxY - minY,
+    center: { x: (minX + maxX) / 2, y: (minY + maxY) / 2 }, u: { x: 1, y: 0 }, v: { x: 0, y: 1 } };
+}
+
+function solveIncreasing(low: number, high: number, target: number, measure: (value: number) => number) {
+  for (let iteration = 0; iteration < 64; iteration++) {
+    const middle = (low + high) / 2;
+    if (measure(middle) < target) low = middle; else high = middle;
+  }
+  return (low + high) / 2;
+}
+
+/** 正轴缩放保留简单多边形的凹凸与顶点次序；另一轴按真实面积或逐边长度求解。 */
+export function deformPerimeterShape(state: PlanarState, invariant: PerimeterInvariant, dimension: RectangleDimension, value: number, id = state.params.active): PlanarState {
+  if (!Number.isFinite(value) || !["perimeter", "area"].includes(invariant) || !["width", "height"].includes(dimension)) return state;
+  if (perimeterRectangle(state, id)) return deformPerimeterRectangle(state, invariant, dimension, value, id);
+  const frame = perimeterStretchFrame(state, id);
+  if (!frame) return state;
+  const { object, width, height, center } = frame, otherDimension = dimension === "width" ? "height" : "width";
+  const minimum = { width: Math.min(1, width), height: Math.min(1, height) };
+  // 保持当前局部包围框中心；预先纳入逐坐标 ±800 的存档边界。
+  const maximum = { width: Math.min(1600, 2 * (800 - Math.abs(center.x))), height: Math.min(1600, 2 * (800 - Math.abs(center.y))) };
+  const otherLow = minimum[otherDimension], otherHigh = maximum[otherDimension];
+  let low = minimum[dimension], high = maximum[dimension], chosen: number, other: number;
+  if (invariant === "area") {
+    const product = width * height;
+    low = Math.max(low, product / otherHigh); high = Math.min(high, product / otherLow);
+    if (low > high) return state;
+    chosen = Math.max(low, Math.min(high, value)); other = product / chosen;
+  } else {
+    const edges = object.vertices.map((point, index) => ({ x: object.vertices[(index + 1) % object.vertices.length].x - point.x, y: object.vertices[(index + 1) % object.vertices.length].y - point.y }));
+    const target = edges.reduce((sum, edge) => sum + Math.hypot(edge.x, edge.y), 0);
+    const measure = (span: number, across: number) => {
+      const x = (dimension === "width" ? span : across) / width, y = (dimension === "height" ? span : across) / height;
+      return edges.reduce((sum, edge) => sum + Math.hypot(edge.x * x, edge.y * y), 0);
+    };
+    if (measure(low, otherHigh) < target) low = solveIncreasing(low, high, target, (span) => measure(span, otherHigh));
+    if (measure(high, otherLow) > target) high = solveIncreasing(low, high, target, (span) => measure(span, otherLow));
+    if (low > high) return state;
+    chosen = Math.max(low, Math.min(high, value));
+    other = solveIncreasing(otherLow, otherHigh, target, (across) => measure(chosen, across));
+  }
+  if (Math.abs(chosen - frame[dimension]) < 1e-9 && Math.abs(other - frame[otherDimension]) < 1e-9) return state;
+  const x = (dimension === "width" ? chosen : other) / width, y = (dimension === "height" ? chosen : other) / height;
+  const vertices = object.vertices.map((point) => ({ x: center.x + (point.x - center.x) * x, y: center.y + (point.y - center.y) * y }));
+  if (!isValidConstructionObject({ ...object, vertices })) return state;
+  const points = { ...state.points };
+  vertices.forEach((point, index) => { points[`vertex.${id}.${index}`] = point; });
+  return syncPerimeterGeometry(state, { ...state, params: { ...state.params, active: id }, points });
+}
+
 export function squarePerimeterRectangle(state: PlanarState, invariant: PerimeterInvariant): PlanarState {
   const rectangle = perimeterRectangle(state);
   return rectangle ? deformPerimeterRectangle(state, invariant, "width", invariant === "perimeter"
@@ -112,21 +171,21 @@ export function parsePerimeterHandle(target: string) {
 }
 
 export function perimeterInvariantHandle(state: PlanarState, dimension: RectangleDimension, id = state.params.active) {
-  const rectangle = perimeterRectangle(state, id);
-  if (!rectangle) return null;
-  const { object, center } = rectangle, direction = dimension === "width" ? rectangle.u : rectangle.v;
-  const local = { x: center.x + direction.x * rectangle[dimension] / 2, y: center.y + direction.y * rectangle[dimension] / 2 };
+  const frame = perimeterStretchFrame(state, id);
+  if (!frame) return null;
+  const { object, center } = frame, direction = dimension === "width" ? frame.u : frame.v;
+  const local = { x: center.x + direction.x * frame[dimension] / 2, y: center.y + direction.y * frame[dimension] / 2 };
   const [a, b, c, d, x, y] = constructionMatrix(object);
   return { at: { x: a * local.x + c * local.y + x, y: b * local.x + d * local.y + y }, direction: { x: a * direction.x + c * direction.y, y: b * direction.x + d * direction.y } };
 }
 
-/** 起拖矩形和方向冻结；柄沿真实边方向变化，矩形中心保持不动。 */
+/** 起拖材料和方向冻结；矩形沿真实边，其余材料沿本地宽高，包围框中心保持不动。 */
 export function dragPerimeterInvariant(state: PlanarState, target: string, delta: PlanarPoint): PlanarState {
   const parsed = parsePerimeterHandle(target);
   if (!parsed || !Number.isFinite(delta.x) || !Number.isFinite(delta.y)) return state;
-  const rectangle = perimeterRectangle(state, parsed.id), handle = perimeterInvariantHandle(state, parsed.dimension, parsed.id);
-  return rectangle && handle ? deformPerimeterRectangle(state, parsed.invariant, parsed.dimension,
-    rectangle[parsed.dimension] + 2 * (delta.x * handle.direction.x + delta.y * handle.direction.y), parsed.id) : state;
+  const frame = perimeterStretchFrame(state, parsed.id), handle = perimeterInvariantHandle(state, parsed.dimension, parsed.id);
+  return frame && handle ? deformPerimeterShape(state, parsed.invariant, parsed.dimension,
+    frame[parsed.dimension] + 2 * (delta.x * handle.direction.x + delta.y * handle.direction.y), parsed.id) : state;
 }
 
 export function createPerimeterGeometry(state: PlanarState, tool: string, points: readonly PlanarPoint[]): PlanarState | null {
