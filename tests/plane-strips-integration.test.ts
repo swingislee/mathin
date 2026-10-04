@@ -21,9 +21,11 @@ const definition = planarScene("18-strips"), version = "plane-area-relations-les
 const shown = () => toggleStrips(setStripCount(createStripsState(), 8));
 
 describe("square-strip version and shared classroom contract", () => {
-  it("registers only v4 for new insertion and keeps every older version readable", () => {
-    expect(PLANAR_TOOLS.find((tool) => tool.id === "plane-area-relations")!.version).toBe(version);
-    for (const surface of ["microcourse", "formal-courseware"] as const) expect(toolCoursewareContractsForSurface(surface).filter((entry) => entry.catalogId === "plane-area-relations").map((entry) => entry.contentVersion)).toEqual([version]);
+  it("keeps v4 readable without offering it as the new-insertion version", () => {
+    const currentVersion = PLANAR_TOOLS.find((tool) => tool.id === "plane-area-relations")!.version;
+    expect(currentVersion).toBe("plane-area-relations-lesson-v5");
+    expect(scenesForPlanarTool("plane-area-relations", version).map((scene) => scene.id)).toEqual(["18-strips"]);
+    for (const surface of ["microcourse", "formal-courseware"] as const) expect(toolCoursewareContractsForSurface(surface).filter((entry) => entry.catalogId === "plane-area-relations").map((entry) => entry.contentVersion)).toEqual([currentVersion]);
     for (const legacy of ALL_PLANAR_TOOLS.filter((tool) => tool.id === "plane-area-relations" && tool.version !== version)) for (const scene of scenesForPlanarTool(legacy.id, legacy.version)) {
       const state = scene.create();
       expect(() => parseToolScene({ toolId: legacy.id, contentVersion: legacy.version, payload: { title: "Historical", initial: state } })).not.toThrow();
@@ -63,7 +65,7 @@ async function pointer(target: Element, type: string, x: number, y: number) {
   await act(async () => target.dispatchEvent(Object.assign(new Event(type, { bubbles: true, cancelable: true }), { clientX: x, clientY: y, pointerId: 1, isPrimary: true, button: 0 })));
 }
 const render = async (props: Partial<ComponentProps<typeof PlanarWorkbench>> = {}) => {
-  await act(async () => root.render(createElement(PlanarWorkbench, { toolId: "plane-area-relations", locale: "zh", onSnapshot: capture, ...props })));
+  await act(async () => root.render(createElement(PlanarWorkbench, { toolId: "plane-area-relations", version, locale: "zh", onSnapshot: capture, ...props })));
 };
 async function select(id: number) {
   const at = constructionObject(current()!, id)!.center;

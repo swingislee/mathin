@@ -6,9 +6,9 @@ export const PLANAR_TOOLS = [
   { id: "plane-measurement", version: "plane-measurement-lesson-v2", scenes: ["11-create"], zh: "面积单位", en: "Area units" },
   { id: "plane-geoboard", version: "plane-geoboard-lesson-v2", scenes: ["34-create"], zh: "钉板与格点面积", en: "Geoboards and lattice area" },
   { id: "plane-area", version: "plane-area-lesson-v2", scenes: ["14-create"], zh: "剪拼与面积转化", en: "Dissection and area" },
-  { id: "plane-area-relations", version: "plane-area-relations-lesson-v4", scenes: ["18-strips"], zh: "面积关系", en: "Area relationships" },
+  { id: "plane-area-relations", version: "plane-area-relations-lesson-v5", scenes: ["18-coverage"], zh: "面积关系", en: "Area relationships" },
   { id: "plane-circle-area", version: "plane-circle-area-lesson-v1", scenes: ["27"], zh: "圆面积割补", en: "Dissecting a circle" },
-  { id: "plane-overlap", version: "plane-overlap-lesson-v2", scenes: ["33-create"], zh: "重叠与区域", en: "Overlap and regions" },
+  { id: "plane-overlap", version: "plane-overlap-lesson-v3", scenes: ["33-concave"], zh: "重叠与区域", en: "Overlap and regions" },
   { id: "plane-motion", version: "plane-motion-lesson-v2", scenes: ["20-create"], zh: "平面图形运动", en: "Plane transformations" },
   { id: "plane-folding", version: "plane-folding-lesson-v2", scenes: ["32-create"], zh: "折纸与剪纸", en: "Paper folding and cutting" },
   { id: "plane-tiling", version: "plane-tiling-lesson-v2", scenes: ["36-create"], zh: "镶嵌与空隙", en: "Tiling and gaps" },
@@ -24,6 +24,8 @@ export const PLANAR_TOOLS = [
 ] as const;
 /** 历史备课和发布副本继续按原身份打开，新建入口不再提供合并工具。 */
 export const LEGACY_PLANAR_TOOLS = [
+  { id: "plane-area-relations", version: "plane-area-relations-lesson-v4", scenes: ["18-strips"], zh: "面积关系（方格条旧版）", en: "Area relationships (previous square-strip version)" },
+  { id: "plane-overlap", version: "plane-overlap-lesson-v2", scenes: ["33-create"], zh: "重叠与区域（凸纸片旧版）", en: "Overlap and regions (previous convex papers)" },
   { id: "plane-area-relations", version: "plane-area-relations-lesson-v3", scenes: ["18-interior"], zh: "面积关系（内点旧版）", en: "Area relationships (previous interior version)" },
   { id: "plane-area-relations", version: "plane-area-relations-lesson-v2", scenes: ["18-create"], zh: "面积关系（开放材料旧版）", en: "Area relationships (previous materials)" },
   { id: "plane-matchsticks", version: "plane-matchsticks-lesson-v1", scenes: ["51"], zh: "火柴棒拼摆（旧版）", en: "Matchstick arrangements (legacy)" },
