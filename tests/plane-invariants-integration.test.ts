@@ -14,6 +14,7 @@ import { constructionArea, constructionMeasurements, constructionObject, constru
 import { createPerimeterState, perimeterInvariantHandle, perimeterRectangle } from "@/features/tools/plane-perimeter/model";
 import { createRelationsState, relationModel, setRelationFlag } from "@/features/tools/plane-relations/model";
 import { createInteriorState, interiorModel, toggleInterior } from "@/features/tools/plane-relations/interior-model";
+import { angleComparison, angleTriangle, copyAngleTriangle, setAngleLength } from "@/features/tools/plane-relations/angle-model";
 
 vi.mock("next-intl", () => ({ useLocale: () => "zh" }));
 const tools = [["plane-perimeter", "10-create", ["perimeter-square-perimeter", "perimeter-square-area"]], ["plane-area-relations", "18-create", ["relations-copy-parts", "relations-nest-midpoints"]]] as const;
@@ -221,6 +222,88 @@ describe("new material actions in the shared planar workbench", () => {
     expect(endpoint.motion?.actionId).toBe("relations-separate-common"); expect(constructionObjects(endpoint.current)).toHaveLength(3);
     await tick(1600); await act(async () => { acknowledge!(); });
     await render({ toolId: "plane-area-relations", initial, classroom: { state: endpoint, onChange: changed } });
+    expect(current()).toEqual(endpoint.current); await tick(2000); expect(current()).toEqual(endpoint.current); expect(changed).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps common-angle copies, ray edits and scaling in the existing v3 frozen and classroom contracts", () => {
+    const definition = planarScene("18-interior"), initial = copyAngleTriangle(definition.create());
+    const prepared = parseToolScene({ toolId: "plane-area-relations", contentVersion: "plane-area-relations-lesson-v3", payload: { title: "Common angle", initial } });
+    const frozen = freezeToolScene(prepared), saved = JSON.stringify(frozen);
+    vi.stubGlobal("crypto", { getRandomValues: crypto.getRandomValues.bind(crypto) });
+    for (const id of ["relations-copy-nested-angle", "relations-copy-hourglass", "relations-align-similar", "relations-scale-half", "relations-scale-double"]) {
+      const start = id === "relations-align-similar" ? setAngleLength(initial, "independent", "b", angleTriangle(initial)!.bLength * 0.7) : initial;
+      const action = definition.operations!.flatMap((operation) => operation.actions ?? []).find((entry) => entry.id === id)!;
+      const endpoint = action.run(start, { selected: `object.${start.params.active}` }); expect(endpoint).not.toBe(start);
+      const snapshot = planarCommit(planarSnapshot(start), start, endpoint, action.duration ? { id, duration: action.duration, now: 100 } : undefined);
+      expect(snapshot.past).toEqual([start]); expect(planarSnapshotForTool("plane-area-relations", "plane-area-relations-lesson-v3").safeParse(snapshot).success).toBe(true);
+      expect(() => parseToolScene({ toolId: "plane-area-relations", contentVersion: "plane-area-relations-lesson-v3", payload: { title: "Result", initial: endpoint } })).not.toThrow();
+      const event = createClassroomToolState("page", "doc", "instance", { toolId: "plane-area-relations", contentVersion: "plane-area-relations-lesson-v3", state: snapshot }, toolSceneOriginHash(frozen.payload));
+      expect(parseClassroomToolState(JSON.parse(JSON.stringify(event)))).toEqual(event);
+      if (snapshot.motion) {
+        expect(snapshot.motion.id).toMatch(/^[a-f0-9-]{36}$/);
+        expect(planarFrame(JSON.parse(JSON.stringify(snapshot)), definition, 500)).toEqual(planarFrame(snapshot, definition, 500));
+        expect(planarFrame(snapshot, definition, 2000)).toEqual(endpoint);
+      }
+    }
+    expect(JSON.stringify(frozen)).toBe(saved);
+  });
+
+  it("selects the added common-angle copy and uses independent ray inputs and cancellable handles", async () => {
+    const initial = createInteriorState(), sourceId = initial.params.active;
+    await render({ toolId: "plane-area-relations", initial }); await select(sourceId);
+    await act(async () => button("共角分别调边").click()); await act(async () => button("添加同向共角副本").click());
+    const copied = current()!, id = copied.params.active;
+    expect(constructionObjects(copied)).toHaveLength(2); expect(shape(id).getAttribute("aria-pressed")).toBe("true");
+    expect(container.querySelectorAll("[data-angle-handle]")).toHaveLength(2);
+    const field = container.querySelector<HTMLInputElement>('input[aria-label="OA 长度（u）"]')!;
+    await act(async () => { field.value = "123"; field.dispatchEvent(new FocusEvent("focusout", { bubbles: true })); });
+    expect(angleTriangle(current()!)!.aLength).toBeCloseTo(123, 8); expect(angleComparison(current()!)!.parallel).toBe(false);
+    const before = current()!, model = angleTriangle(before)!, at = model.b;
+    const end = { x: at.x + (at.x - model.origin.x) * 0.2, y: at.y + (at.y - model.origin.y) * 0.2 };
+    const handle = () => container.querySelector('[data-angle-handle="b"]')!;
+    await pointer(handle(), "pointerdown", at.x, at.y); await pointer(stage(), "pointermove", end.x, end.y); expect(current()).toBeNull();
+    await pointer(stage(), "pointercancel", end.x, end.y); expect(current()).toEqual(before);
+    await pointer(handle(), "pointerdown", at.x, at.y); await pointer(stage(), "pointermove", end.x, end.y); await pointer(stage(), "pointerup", end.x, end.y);
+    expect(angleTriangle(current()!)!.bLength).toBeCloseTo(model.bLength * 1.2, 8); expect(angleTriangle(current()!)!.aLength).toBeCloseTo(123, 8);
+    expect(constructionObject(current()!, sourceId)).toEqual(constructionObject(initial));
+    await act(async () => button("撤销").click()); expect(current()).toEqual(before);
+    await act(async () => button("关闭面板").click()); expect(container.querySelector("[data-angle-handle]")).toBeNull();
+    await act(async () => button("共角分别调边").click()); await act(async () => stage().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+    expect(container.querySelector("[data-angle-handle]")).toBeNull(); expect(current()).toEqual(before);
+    await act(async () => button("恢复备好的起点").click()); expect(current()).toEqual(initial);
+  });
+
+  it("pauses and resumes scaling about O, saves the legal intermediate geometry and undoes once", async () => {
+    const initial = copyAngleTriangle(createInteriorState(), true), before = angleTriangle(initial)!;
+    await render({ toolId: "plane-area-relations", initial }); await select(initial.params.active);
+    await act(async () => button("定点等比伸缩").click()); await act(async () => button("两边缩为一半").click());
+    expect(current()).toBeNull(); await tick(500); await act(async () => button("暂停过程").click());
+    const paused = current()!, model = angleTriangle(paused)!;
+    expect(model.aLength).toBeLessThan(before.aLength); expect(model.aLength).toBeGreaterThan(before.aLength / 2);
+    expect(model.origin.x).toBeCloseTo(before.origin.x, 8); expect(model.origin.y).toBeCloseTo(before.origin.y, 8);
+    expect(model.area / before.area).toBeCloseTo((model.aLength / before.aLength) ** 2, 8);
+    expect(() => parseToolScene({ toolId: "plane-area-relations", contentVersion: "plane-area-relations-lesson-v3", payload: { title: "Paused similar triangle", initial: paused } })).not.toThrow();
+    await act(async () => button("继续过程").click()); await tick(901);
+    const completed = current()!; expect(angleTriangle(completed)!.area).toBeCloseTo(before.area / 4, 7);
+    await act(async () => button("撤销").click()); expect(current()).toEqual(initial);
+    await render({ toolId: "plane-area-relations", initial: completed, readOnly: true });
+    expect(button("定点等比伸缩").disabled).toBe(true); const grow = button("两边放大一倍"); expect(!grow || grow.disabled).toBe(true);
+    expect(container.querySelector("[data-angle-handle]")).toBeNull(); await act(async () => grow?.click()); expect(current()).toEqual(completed);
+  });
+
+  it("publishes one linked-ray endpoint, then keeps the acknowledged geometry without replaying a drag", async () => {
+    const initial = copyAngleTriangle(createInteriorState()), snapshot = planarSnapshot(initial), model = angleTriangle(initial)!;
+    let acknowledge: (() => void) | undefined;
+    const changed = vi.fn<(_: PlanarSnapshot) => Promise<void>>(() => new Promise<void>((resolve) => { acknowledge = resolve; }));
+    await render({ toolId: "plane-area-relations", initial, classroom: { state: snapshot, onChange: changed } }); await select(initial.params.active);
+    await act(async () => button("定点等比伸缩").click());
+    const end = { x: model.a.x + (model.a.x - model.origin.x) * 0.2, y: model.a.y + (model.a.y - model.origin.y) * 0.2 };
+    await pointer(container.querySelector('[data-angle-handle="a"]')!, "pointerdown", model.a.x, model.a.y);
+    await pointer(stage(), "pointermove", end.x, end.y); expect(changed).not.toHaveBeenCalled();
+    await pointer(stage(), "pointerup", end.x, end.y); expect(changed).toHaveBeenCalledTimes(1);
+    const endpoint = changed.mock.calls[0][0]; expect(endpoint.motion).toBeNull(); expect(endpoint.past).toEqual([initial]);
+    expect(angleTriangle(endpoint.current)!.area).toBeCloseTo(model.area * 1.2 ** 2, 7);
+    await act(async () => { acknowledge!(); }); await render({ toolId: "plane-area-relations", initial, classroom: { state: endpoint, onChange: changed } });
     expect(current()).toEqual(endpoint.current); await tick(2000); expect(current()).toEqual(endpoint.current); expect(changed).toHaveBeenCalledTimes(1);
   });
 
