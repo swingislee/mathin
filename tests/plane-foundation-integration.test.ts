@@ -15,6 +15,9 @@ import { firstFoldState, planePaperLayersCases, twoFoldState } from "./fixtures/
 import { createCurveOverlapState, curveMaterial, curveMaterials, extractCurveRegion, setCurveField } from "@/features/tools/plane-overlap-curves/model";
 import { regionArea } from "@/features/tools/plane-overlap-curves/geometry";
 import { planeOverlapCurvesCases } from "./fixtures/plane-overlap-curves-cases";
+import { constructionObjects } from "@/features/tools/plane-construction/model";
+import { addStaircaseMaterial, createPerimeterBoundaryState, edgeCopies, extractEdgeCopies, perimeterBaseState } from "@/features/tools/plane-perimeter-boundary/model";
+import { planePerimeterBoundaryCases } from "./fixtures/plane-perimeter-boundary-cases";
 
 vi.mock("next-intl", () => ({ useLocale: () => "zh" }));
 let container: HTMLDivElement, root: Root;
@@ -264,6 +267,56 @@ describe("curved regions through the shared host", () => {
         expect(current()).toEqual(initial);
       }
     }
+  });
+});
+
+describe("perimeter boundaries through the shared host", () => {
+  it("preserves versioned fixtures and exposes the current default with optional union observations", async () => {
+    for (const entry of planePerimeterBoundaryCases()) expect(toolSceneSchema.safeParse(entry.scene).success, entry.label).toBe(entry.accepted);
+    await render({ toolId: "plane-perimeter" }); const initial = current()!;
+    expect(initial.sceneId).toBe("10-boundary"); expect(container.querySelector("[data-boundary-kind]")).toBeNull();
+    await act(async () => button("显示设置").click());
+    const toggle = [...container.querySelectorAll("label")].find((label) => label.textContent === "显示组合外环")!.querySelector<HTMLButtonElement>('[role="checkbox"]')!;
+    await act(async () => toggle.click()); await act(async () => button("关闭面板").click());
+    expect(container.querySelector('[data-boundary-kind="outer"]')).not.toBeNull(); expect(constructionObjects(current()!)).toEqual(constructionObjects(initial));
+    const prepared = parseToolScene({ toolId: "plane-perimeter", contentVersion: "plane-perimeter-lesson-v3", payload: { title: "Union boundary", initial: current()! } });
+    const event = createClassroomToolState("page", "doc", "instance", { toolId: "plane-perimeter", contentVersion: "plane-perimeter-lesson-v3", state: planarSnapshot(current()!) }, toolSceneOriginHash(prepared.payload));
+    expect(parseClassroomToolState(event)).toEqual(event);
+  });
+  it("moves one true edge without moving the source paper and accepts an exact decimal displacement", async () => {
+    const initial = addStaircaseMaterial(createPerimeterBoundaryState(), true); await render({ toolId: "plane-perimeter", initial });
+    await act(async () => button("取出当前纸片的边段副本").click()); const extracted = current()!, original = edgeCopies(extracted);
+    const edge = original[3], center = { x: (edge.a.x + edge.b.x) / 2, y: (edge.a.y + edge.b.y) / 2 };
+    await pointer(container.querySelector('[data-edge-copy="3"]')!, "pointerdown", center.x, center.y);
+    await pointer(svg(), "pointermove", center.x + 37.25, center.y - 15.125); expect(current()).toBeNull();
+    await pointer(svg(), "pointerup", center.x + 37.25, center.y - 15.125); const moved = current()!;
+    expect(edgeCopies(moved)[3].offset.x).toBeCloseTo(37.25, 9); expect(edgeCopies(moved)[3].length).toBeCloseTo(edge.length, 9);
+    expect(constructionObjects(moved)).toEqual(constructionObjects(initial));
+    for (const other of original.filter((item) => item.index !== 3)) expect(edgeCopies(moved)[other.index]).toEqual(other);
+    await act(async () => button("独立边段平移").click());
+    const input = container.querySelector<HTMLInputElement>('input[aria-label="向右位移（u）"]')!;
+    await act(async () => { input.value = "1.123456789"; input.dispatchEvent(new FocusEvent("focusout", { bubbles: true })); });
+    expect(edgeCopies(current()!)[3].offset.x).toBeCloseTo(1.123456789 * 30, 9);
+    await act(async () => button("撤销").click()); expect(current()).toEqual(moved);
+    await act(async () => button("撤销").click()); expect(current()).toEqual(extracted);
+    await act(async () => button("撤销").click()); expect(current()).toEqual(initial);
+  });
+  it("pauses pure edge translations and resumes without altering original material or readonly copies", async () => {
+    let time = 1000; vi.spyOn(Date, "now").mockImplementation(() => time);
+    const initial = extractEdgeCopies(addStaircaseMaterial(createPerimeterBoundaryState(), true)); await render({ toolId: "plane-perimeter", initial });
+    await act(async () => button("两组边段分别平移排齐").click()); expect(current()).toBeNull();
+    time += 450; await act(async () => button("暂停过程").click()); const paused = current()!;
+    expect(paused).not.toBeNull(); expect(perimeterBaseState(paused)).toEqual(perimeterBaseState(initial));
+    edgeCopies(paused).forEach((edge, index) => expect(edge.length).toBeCloseTo(edgeCopies(initial)[index].length, 9));
+    expect(planarStateSchema.safeParse(paused).success).toBe(true);
+    await act(async () => button("继续过程").click()); time += 1500;
+    await act(async () => button("停在当前位置").click()); expect(perimeterBaseState(current()!)).toEqual(perimeterBaseState(initial));
+    await act(async () => button("撤销").click()); expect(current()).toEqual(initial);
+    await render({ toolId: "plane-perimeter", initial: paused, readOnly: true });
+    expect(button("两组边段分别平移排齐").disabled).toBe(true); expect(container.querySelector("[data-edge-copy-handle]")).toBeNull();
+    const edge = edgeCopies(paused)[0]; await pointer(container.querySelector('[data-edge-copy="0"]')!, "pointerdown", edge.a.x, edge.a.y);
+    await pointer(svg(), "pointermove", edge.a.x + 30, edge.a.y + 30); await pointer(svg(), "pointerup", edge.a.x + 30, edge.a.y + 30);
+    expect(current()).toEqual(paused);
   });
 });
 

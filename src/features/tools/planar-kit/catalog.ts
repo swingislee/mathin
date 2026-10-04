@@ -2,7 +2,7 @@ export const PLANAR_TOOLS = [
   { id: "plane-shapes", version: "plane-shapes-lesson-v2", scenes: ["01-create"], zh: "基本图形认识", en: "Exploring basic shapes" },
   { id: "plane-geometry", version: "plane-geometry-lesson-v2", scenes: ["03-create"], zh: "线与角", en: "Lines and angles" },
   { id: "plane-polygons", version: "plane-polygons-lesson-v2", scenes: ["06-create"], zh: "三角形与四边形", en: "Triangles and quadrilaterals" },
-  { id: "plane-perimeter", version: "plane-perimeter-lesson-v2", scenes: ["10-create"], zh: "周长探究", en: "Exploring perimeter" },
+  { id: "plane-perimeter", version: "plane-perimeter-lesson-v3", scenes: ["10-boundary"], zh: "周长探究", en: "Exploring perimeter" },
   { id: "plane-measurement", version: "plane-measurement-lesson-v2", scenes: ["11-create"], zh: "面积单位", en: "Area units" },
   { id: "plane-geoboard", version: "plane-geoboard-lesson-v2", scenes: ["34-create"], zh: "钉板与格点面积", en: "Geoboards and lattice area" },
   { id: "plane-area", version: "plane-area-lesson-v3", scenes: ["14-lessons"], zh: "剪拼与面积转化", en: "Dissection and area" },
@@ -18,12 +18,14 @@ export const PLANAR_TOOLS = [
   { id: "plane-grid-path", version: "plane-grid-path-lesson-v2", scenes: ["53-create"], zh: "格点路线", en: "Lattice routes" },
   { id: "plane-reflection-path", version: "plane-reflection-path-lesson-v2", scenes: ["54-create"], zh: "反射最短路", en: "Reflection and shortest routes" },
   { id: "plane-covering", version: "plane-covering-lesson-v2", scenes: ["57-create"], zh: "棋盘染色与覆盖", en: "Board colouring and covering" },
-  { id: "plane-rolling", version: "plane-rolling-lesson-v1", scenes: ["55"], zh: "圆的内外滚动", en: "Rolling circles" },
+  { id: "plane-rolling", version: "plane-rolling-lesson-v2", scenes: ["55-create"], zh: "圆的内外滚动", en: "Rolling circles" },
   { id: "plane-clock", version: "plane-clock-lesson-v1", scenes: ["60"], zh: "钟面与夹角", en: "Clock hands and angles" },
   { id: "plane-tangram", version: "plane-tangram-lesson-v1", scenes: ["02"], zh: "七巧板拼摆", en: "Tangram construction" },
 ] as const;
 /** 历史备课和发布副本继续按原身份打开，新建入口不再提供合并工具。 */
 export const LEGACY_PLANAR_TOOLS = [
+  { id: "plane-perimeter", version: "plane-perimeter-lesson-v2", scenes: ["10-create"], zh: "周长探究（独立纸片旧版）", en: "Exploring perimeter (previous individual papers)" },
+  { id: "plane-rolling", version: "plane-rolling-lesson-v1", scenes: ["55"], zh: "圆的内外滚动（旧版）", en: "Rolling circles (legacy)" },
   { id: "plane-overlap", version: "plane-overlap-lesson-v3", scenes: ["33-concave"], zh: "重叠与区域（直边凹形旧版）", en: "Overlap and regions (previous straight boundaries)" },
   { id: "plane-folding", version: "plane-folding-lesson-v2", scenes: ["32-create"], zh: "折纸与剪纸（单折旧版）", en: "Paper folding and cutting (previous single fold)" },
   { id: "plane-polygons", version: "plane-polygons-lesson-v1", scenes: ["06", "07", "08"], zh: "三角形与四边形（旧版）", en: "Triangles and quadrilaterals (legacy)" },

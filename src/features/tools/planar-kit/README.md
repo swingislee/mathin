@@ -88,4 +88,8 @@
 
 2026-10-05 重叠新建入口为 `33-curves` / v4：圆和凹凸直边纸片共享真实解析边界，区域以直线／圆弧闭环保存，孔洞与连通片独立表达；叶形沿公共弦拆片、圆方补集及任意直线剪开均生成可继续操作的材料。刚性运动暂停仍是准确圆弧状态，可以保存和继续；旧 v1/v2/v3 保持独立读取。0312 私有区域／状态／场景校验与 0313 总分发接入原保存 API。
 
+周长新建 `10-boundary` / v3 在原教学描述符外增加真实组合边界和边段副本：参与组合的原纸独立保存，外环、孔、接缝与遮挡边实时推导；各边段仅存同向位移，原纸不动，正交台阶可按两方向排齐。旧 v1/v2 保留，0314/0315 接入相同保存边界。
+
+滚动新建 `55-create` / v2 支持最多四组独立圆对，精确圆心／两半径／有符号累计角，直接双向跨圈滚动与相对播放。圆心、自转与接触从无滑动关系派生，观察默认关闭；任意暂停帧可保存，旧 `55` / v1 保持。0316/0317 增加私有校验与分发；各新版的历史、只读与课堂仍复用同一宿主。
+
 通用圆弧布尔另批处理。钟面、圆的滚动及七巧板保留本身必要的材料约束。棋盘仍用两格骨牌，火柴不自动计数图形或判题。当前增量见 `docs/evidence/tools-plane-depth-20261004.md`；此前范围与检查见 `docs/evidence/tools-plane-strips-20261004.md`、`docs/evidence/tools-plane-angle-20261004.md`、`docs/evidence/tools-plane-remainders-20261002.md`、`docs/evidence/tools-plane-interior-20261002.md`、`docs/evidence/tools-plane-invariants-20261002.md`、`docs/evidence/tools-plane-cover-match-20261002.md` 和 `docs/evidence/tools-plane-deep-20261002.md`；更早记录见 `docs/evidence/tools-plane-open-materials-20260927.md` 和 `docs/evidence/tools-plane-construction-20260927.md`。机器检查与人工视觉／教学手感验收分开登记。

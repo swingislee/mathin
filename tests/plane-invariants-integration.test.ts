@@ -419,11 +419,11 @@ describe("new material actions in the shared planar workbench", () => {
     expect(button("选底与面积关系").disabled).toBe(true); expect(current()).toEqual(initial);
   });
 
-  it("publishes one exact classroom drag endpoint and does not replay it after acknowledgement", async () => {
-    const initial = createPerimeterState(), snapshot = planarSnapshot(initial);
+  it.each(["10-create", "10-boundary"])("%s publishes one exact classroom drag endpoint and does not replay it after acknowledgement", async (sceneId) => {
+    const initial = planarScene(sceneId).create(), snapshot = planarSnapshot(initial);
     let acknowledge: (() => void) | undefined;
     const changed = vi.fn<(_: PlanarSnapshot) => Promise<void>>(() => new Promise((resolve) => { acknowledge = resolve; }));
-    await render({ classroom: { state: snapshot, onChange: changed } }); await select(0);
+    await render({ initial, classroom: { state: snapshot, onChange: changed } }); await select(0);
     await act(async () => button("定面积拉伸").click());
     const at = perimeterInvariantHandle(initial, "width")!.at;
     await pointer(container.querySelector('[data-perimeter-invariant-handle="width"]')!, "pointerdown", at.x, at.y);
@@ -433,7 +433,7 @@ describe("new material actions in the shared planar workbench", () => {
     expect(endpoint.motion).toBeNull(); expect(endpoint.past).toHaveLength(1);
     expect(perimeterRectangle(endpoint.current)).toMatchObject({ width: 240, height: 90 });
     await act(async () => { acknowledge!(); });
-    await render({ classroom: { state: endpoint, onChange: changed } });
+    await render({ initial, classroom: { state: endpoint, onChange: changed } });
     expect(current()).toEqual(endpoint.current); await tick(3000); expect(current()).toEqual(endpoint.current); expect(changed).toHaveBeenCalledTimes(1);
   });
 });
