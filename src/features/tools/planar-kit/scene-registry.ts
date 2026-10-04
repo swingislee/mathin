@@ -24,10 +24,11 @@ import { planeRouteScenes } from "../plane-route-workbench/scenes";
 import { planePolygonWorkbenchScene } from "../plane-polygons/scenes";
 import { planeCircleDissectionScene } from "../plane-circle-dissection/scenes";
 import { planePaperLayersScene } from "../plane-paper-layers/scenes";
+import { planeCurveOverlapScene } from "../plane-overlap-curves/scenes";
 import { PLANAR_TOOLS, ALL_PLANAR_TOOLS, type PlanarToolId, type PlanarVersion } from "./contract";
 import type { PlanarSceneDefinition } from "./types";
 
-const domains = [planePaperLayersScene, planePolygonWorkbenchScene, planeCircleDissectionScene, planeLinesScene, planeAreaLessonScene, ...planeRouteScenes, planeMatchsticksScene, planeCoveringScene, planePerimeterScene, ...planeGridMeasureScenes, planeCoverageScene, planeStripsScene, planeInteriorScene, planeRelationsScene, planeConcaveOverlapScene, planeOverlapScene, ...planePaperScenes, planePaperFoldingScene, planeTilingScene, ...planeNetworkScenes, ...planeConstructionScenes, planeShapesScene, ...planeGeometryScenes, ...planeAreaScenes, ...planeMotionScenes, ...planePatternsScenes];
+const domains = [planeCurveOverlapScene, planePaperLayersScene, planePolygonWorkbenchScene, planeCircleDissectionScene, planeLinesScene, planeAreaLessonScene, ...planeRouteScenes, planeMatchsticksScene, planeCoveringScene, planePerimeterScene, ...planeGridMeasureScenes, planeCoverageScene, planeStripsScene, planeInteriorScene, planeRelationsScene, planeConcaveOverlapScene, planeOverlapScene, ...planePaperScenes, planePaperFoldingScene, planeTilingScene, ...planeNetworkScenes, ...planeConstructionScenes, planeShapesScene, ...planeGeometryScenes, ...planeAreaScenes, ...planeMotionScenes, ...planePatternsScenes];
 /** 工程目录按共用数学能力分工，教师入口按教学用途归类，二者相互独立。 */
 const allScenes: readonly PlanarSceneDefinition[] = domains.map((scene) => {
   const tool = ALL_PLANAR_TOOLS.find((item) => (item.scenes as readonly string[]).includes(scene.id));

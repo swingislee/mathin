@@ -11,7 +11,7 @@ import { planeOverlapConcaveCases } from "./fixtures/plane-overlap-concave-cases
 import { planeCellCoverageCases } from "./fixtures/plane-cell-coverage-cases";
 
 const upgrades = [
-  { id: "plane-overlap", version: "plane-overlap-lesson-v3", scene: "33-concave" },
+  { id: "plane-overlap", version: "plane-overlap-lesson-v4", scene: "33-curves" },
   { id: "plane-area-relations", version: "plane-area-relations-lesson-v5", scene: "18-coverage" },
 ] as const;
 
@@ -77,7 +77,7 @@ describe("parallel planar deepening uses isolated versioned content", () => {
   it("adds only strict helper dispatch and leaves the saved-scene API and access policies intact", () => {
     const migration = readFileSync("supabase/migrations/20261004020200_tool_plane_depth_catalog.sql", "utf8");
     for (const helper of ["tool_plane_overlap_concave_scene_is_valid", "tool_plane_cell_coverage_scene_is_valid"]) expect(migration).toContain(`or public.${helper}(p_scene)`);
-    for (const tool of upgrades) expect(migration).toContain(`when ''${tool.version}'' then ''${tool.id}''`);
+    for (const [id, version] of [["plane-overlap", "plane-overlap-lesson-v3"], ["plane-area-relations", "plane-area-relations-lesson-v5"]]) expect(migration).toContain(`when ''${version}'' then ''${id}''`);
     expect(migration).toContain("PLANE_DEPTH_DISPATCH_PRECONDITION");
     expect(migration).toContain("PLANE_DEPTH_CATALOG_PRECONDITION");
     expect(migration).not.toMatch(/\b(?:delete\s+from|update\s+public\.|alter\s+table|create\s+policy|save_tool_scene_draft)\b/i);

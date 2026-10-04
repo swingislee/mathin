@@ -12,6 +12,9 @@ import { parseToolScene, toolSceneSchema } from "@/features/tools/scenes/contrac
 import { toolSceneOriginHash } from "@/features/tools/scenes/classroom-envelope";
 import { constructPaperLayers, foldStep, paperCuts } from "@/features/tools/plane-paper-layers/model";
 import { firstFoldState, planePaperLayersCases, twoFoldState } from "./fixtures/plane-paper-layers-cases";
+import { createCurveOverlapState, curveMaterial, curveMaterials, extractCurveRegion, setCurveField } from "@/features/tools/plane-overlap-curves/model";
+import { regionArea } from "@/features/tools/plane-overlap-curves/geometry";
+import { planeOverlapCurvesCases } from "./fixtures/plane-overlap-curves-cases";
 
 vi.mock("next-intl", () => ({ useLocale: () => "zh" }));
 let container: HTMLDivElement, root: Root;
@@ -196,6 +199,71 @@ describe("precise numeric fields keep their domain semantics", () => {
     expect(planarStateSchema.safeParse(placed).success).toBe(true);
     await act(async () => { input().value = ""; input().dispatchEvent(new FocusEvent("focusout", { bubbles: true })); });
     expect(input().valueAsNumber).toBe(4); expect(current()).toEqual(placed);
+  });
+});
+
+describe("curved regions through the shared host", () => {
+  it("accepts the exact versioned fixtures and keeps radius decimals through numeric editing", async () => {
+    for (const entry of planeOverlapCurvesCases()) expect(toolSceneSchema.safeParse(entry.scene).success, entry.label).toBe(entry.accepted);
+    const initial = createCurveOverlapState(); await render({ toolId: "plane-overlap", initial });
+    expect(container.querySelector('[data-plane-overlap="curves"]')).not.toBeNull();
+    expect(container.querySelector("[data-curve-guides]")).toBeNull(); expect(container.querySelector("[data-curve-region-measures]")).toBeNull();
+    await act(async () => button("形状与准确参数").click());
+    const input = () => container.querySelector<HTMLInputElement>('input[aria-label="圆半径（u）"]')!;
+    await act(async () => { input().value = "137.123456789"; input().dispatchEvent(new FocusEvent("focusout", { bubbles: true })); });
+    expect(curveMaterial(current()!)!.region.loops[0][0].circle!.radius).toBe(137.123456789);
+    const resized = structuredClone(current()); await act(async () => input().dispatchEvent(new FocusEvent("focusout", { bubbles: true })));
+    expect(current()).toEqual(resized);
+    await act(async () => button("撤销").click()); expect(current()).toEqual(initial); expect(button("撤销").disabled).toBe(true);
+  });
+  it("drags one extracted curved paper independently, commits once and cancels the next gesture", async () => {
+    const initial = extractCurveRegion(setCurveField(createCurveOverlapState(), "region", 1));
+    const id = initial.params.active, material = curveMaterial(initial)!;
+    await render({ toolId: "plane-overlap", initial });
+    const body = () => container.querySelector(`[data-curve-material="${id}"] [data-curve-body]`)!;
+    await pointer(body(), "pointerdown", material.origin.x, material.origin.y);
+    await pointer(svg(), "pointermove", material.origin.x + 80.25, material.origin.y + 45.5); expect(current()).toBeNull();
+    await pointer(svg(), "pointerup", material.origin.x + 80.25, material.origin.y + 45.5);
+    const moved = current()!; expect(curveMaterial(moved)!.origin).toEqual({ x: material.origin.x + 80.25, y: material.origin.y + 45.5 });
+    expect(curveMaterial(moved)!.region).toEqual(material.region);
+    for (const source of curveMaterials(initial).filter((entry) => entry.id !== id)) expect(curveMaterial(moved, source.id)).toEqual(source);
+    await pointer(body(), "pointerdown", 400, 400); await pointer(svg(), "pointermove", 480, 440);
+    await pointer(svg(), "pointercancel", 480, 440); expect(current()).toEqual(moved);
+    await act(async () => button("撤销").click()); expect(current()).toEqual(initial); expect(button("撤销").disabled).toBe(true);
+  });
+  it("preserves true arcs and area in a saveable paused rigid turn, then resumes to the endpoint", async () => {
+    let time = 1000, nextFrame = 0; const frames = new Map<number, FrameRequestCallback>();
+    vi.spyOn(Date, "now").mockImplementation(() => time);
+    vi.stubGlobal("requestAnimationFrame", (frame: FrameRequestCallback) => { frames.set(++nextFrame, frame); return nextFrame; });
+    vi.stubGlobal("cancelAnimationFrame", (id: number) => frames.delete(id));
+    const tick = async (ms: number) => { time += ms; const pending = [...frames.values()]; frames.clear(); await act(async () => pending.forEach((frame) => frame(time))); };
+    const initial = extractCurveRegion(setCurveField(createCurveOverlapState(), "region", 1));
+    await render({ toolId: "plane-overlap", initial });
+    await act(async () => button("移动、转动与复位").click()); await act(async () => button("当前材料转过 90°").click());
+    await tick(360); expect(current()).toBeNull();
+    await act(async () => button("暂停过程").click()); const paused = current()!;
+    expect(paused).not.toBeNull(); expect(curveMaterial(paused)!.angle).toBeGreaterThan(0); expect(curveMaterial(paused)!.angle).toBeLessThan(90);
+    expect(curveMaterial(paused)!.region).toEqual(curveMaterial(initial)!.region);
+    expect(regionArea(curveMaterial(paused)!.region)).toBeCloseTo(regionArea(curveMaterial(initial)!.region), 9);
+    expect(() => parseToolScene({ toolId: "plane-overlap", contentVersion: "plane-overlap-lesson-v4", payload: { title: "Paused curved paper", initial: paused } })).not.toThrow();
+    await act(async () => button("继续过程").click()); await tick(1000); expect(curveMaterial(current()!)!.angle).toBe(90);
+    await act(async () => button("撤销").click()); expect(current()).toEqual(initial);
+  });
+  it("keeps v4 and earlier v3 scenes readable and readonly in classroom late joins", async () => {
+    for (const [version, id] of [["plane-overlap-lesson-v4", "33-curves"], ["plane-overlap-lesson-v3", "33-concave"]] as const) {
+      const initial = planarScene(id).create(), prepared = parseToolScene({ toolId: "plane-overlap", contentVersion: version, payload: { title: "Prepared overlap", initial } });
+      const update = { toolId: "plane-overlap", contentVersion: version, state: planarSnapshot(initial) } as ClassroomToolUpdate;
+      const event = createClassroomToolState("page", "doc", "instance", update, toolSceneOriginHash(prepared.payload));
+      expect(parseClassroomToolState(event)).toEqual(event);
+      await render({ toolId: "plane-overlap", version, initial, readOnly: true, classroom: { state: planarSnapshot(initial) } });
+      expect(current()).toEqual(initial); expect(container.querySelector("[data-curve-handle]")).toBeNull();
+      if (id === "33-curves") {
+        expect(button("复制当前材料").disabled).toBe(true);
+        const body = container.querySelector('[data-curve-material="1"] [data-curve-body]')!;
+        await pointer(body, "pointerdown", 465, 345); await pointer(svg(), "pointermove", 565, 400); await pointer(svg(), "pointerup", 565, 400);
+        expect(current()).toEqual(initial);
+      }
+    }
   });
 });
 
