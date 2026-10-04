@@ -22,6 +22,7 @@
         ".ai/tasks/DEV-PLANE-MOTION-20261004.md",
         ".ai/tasks/DEV-PLANE-OVERLAP-CURVES-20261004.md",
         ".ai/tasks/DEV-PLANE-PERIMETER-BOUNDARY-20261004.md",
+        ".ai/tasks/DEV-PLANE-ROLLING-20261005.md",
         "src/features/tools/plane-lines/",
         "src/features/tools/plane-circle-dissection/",
         "src/features/tools/plane-tiling/model.ts",
@@ -44,6 +45,7 @@
         "supabase/migrations/20261004031100_tool_plane_paper_layers_catalog.sql",
         "supabase/migrations/20261004031300_tool_plane_overlap_curves_catalog.sql",
         "supabase/migrations/20261004031500_tool_plane_perimeter_boundary_catalog.sql",
+        "supabase/migrations/20261004031700_tool_plane_rolling_catalog.sql",
         "scripts/plane-foundation-local.mjs",
         "tests/plane-lines.test.ts",
         "tests/plane-circle-dissection.test.ts",
@@ -215,6 +217,20 @@
       "sharedPaths": [],
       "checkpoint": "493953bb29aa06af6f39d6a5a1cdeb3f4b730a48",
       "next": "保留 v2 并新增 10-boundary/v3，真实推导旋转凹凸纸片组合的外环、孔洞、公共边，以及原纸不动的独立边段纯平移。"
+    },
+    {
+      "id": "DEV-PLANE-ROLLING-20261005",
+      "title": "圆对同台建构与双向连续滚动",
+      "agent": "codex",
+      "threadId": null,
+      "status": "in_progress",
+      "checkout": "worktree",
+      "branch": "codex/plane-rolling-workbench-codex",
+      "card": ".ai/tasks/DEV-PLANE-ROLLING-20261005.md",
+      "writePaths": ["src/features/tools/plane-rolling-workbench/", "tests/plane-rolling.test.ts", "tests/plane-rolling-integration.test.ts", "tests/fixtures/plane-rolling-cases.ts", "supabase/migrations/20261004031600_tool_plane_rolling_workbench.sql", ".ai/handoffs/DEV-PLANE-ROLLING-20261005-codex-01.md"],
+      "sharedPaths": [],
+      "checkpoint": "9420bb0da5e486dcca2123bca1212acca1a84952",
+      "next": "55-create/v2 接入最多四组独立圆对、可移动圆心与准确半径、双向累计绕行和可选观察；旧55/v1保持。"
     },
     {
       "id": "REPO-DIRECTION-CLEANUP-20261004",
