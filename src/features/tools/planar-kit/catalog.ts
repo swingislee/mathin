@@ -5,7 +5,7 @@ export const PLANAR_TOOLS = [
   { id: "plane-perimeter", version: "plane-perimeter-lesson-v2", scenes: ["10-create"], zh: "周长探究", en: "Exploring perimeter" },
   { id: "plane-measurement", version: "plane-measurement-lesson-v2", scenes: ["11-create"], zh: "面积单位", en: "Area units" },
   { id: "plane-geoboard", version: "plane-geoboard-lesson-v2", scenes: ["34-create"], zh: "钉板与格点面积", en: "Geoboards and lattice area" },
-  { id: "plane-area", version: "plane-area-lesson-v2", scenes: ["14-create"], zh: "剪拼与面积转化", en: "Dissection and area" },
+  { id: "plane-area", version: "plane-area-lesson-v3", scenes: ["14-lessons"], zh: "剪拼与面积转化", en: "Dissection and area" },
   { id: "plane-area-relations", version: "plane-area-relations-lesson-v5", scenes: ["18-coverage"], zh: "面积关系", en: "Area relationships" },
   { id: "plane-circle-area", version: "plane-circle-area-lesson-v1", scenes: ["27"], zh: "圆面积割补", en: "Dissecting a circle" },
   { id: "plane-overlap", version: "plane-overlap-lesson-v3", scenes: ["33-concave"], zh: "重叠与区域", en: "Overlap and regions" },
@@ -15,8 +15,8 @@ export const PLANAR_TOOLS = [
   { id: "plane-patterns", version: "plane-patterns-lesson-v2", scenes: ["47-create"], zh: "图形计数", en: "Counting shapes" },
   { id: "plane-matchsticks", version: "plane-matchsticks-lesson-v2", scenes: ["51-create"], zh: "火柴棒拼摆", en: "Matchstick arrangements" },
   { id: "plane-graph-path", version: "plane-graph-path-lesson-v2", scenes: ["52-create"], zh: "一笔画与多笔画", en: "Tracing connected paths" },
-  { id: "plane-grid-path", version: "plane-grid-path-lesson-v1", scenes: ["53"], zh: "格点路线", en: "Lattice routes" },
-  { id: "plane-reflection-path", version: "plane-reflection-path-lesson-v1", scenes: ["54"], zh: "反射最短路", en: "Reflection and shortest routes" },
+  { id: "plane-grid-path", version: "plane-grid-path-lesson-v2", scenes: ["53-create"], zh: "格点路线", en: "Lattice routes" },
+  { id: "plane-reflection-path", version: "plane-reflection-path-lesson-v2", scenes: ["54-create"], zh: "反射最短路", en: "Reflection and shortest routes" },
   { id: "plane-covering", version: "plane-covering-lesson-v2", scenes: ["57-create"], zh: "棋盘染色与覆盖", en: "Board colouring and covering" },
   { id: "plane-rolling", version: "plane-rolling-lesson-v1", scenes: ["55"], zh: "圆的内外滚动", en: "Rolling circles" },
   { id: "plane-clock", version: "plane-clock-lesson-v1", scenes: ["60"], zh: "钟面与夹角", en: "Clock hands and angles" },
@@ -24,6 +24,9 @@ export const PLANAR_TOOLS = [
 ] as const;
 /** 历史备课和发布副本继续按原身份打开，新建入口不再提供合并工具。 */
 export const LEGACY_PLANAR_TOOLS = [
+  { id: "plane-area", version: "plane-area-lesson-v2", scenes: ["14-create"], zh: "剪拼与面积转化（自由纸片旧版）", en: "Dissection and area (previous free papers)" },
+  { id: "plane-grid-path", version: "plane-grid-path-lesson-v1", scenes: ["53"], zh: "格点路线（旧版）", en: "Lattice routes (legacy)" },
+  { id: "plane-reflection-path", version: "plane-reflection-path-lesson-v1", scenes: ["54"], zh: "反射最短路（旧版）", en: "Reflection and shortest routes (legacy)" },
   { id: "plane-geometry", version: "plane-geometry-lesson-v1", scenes: ["03", "04", "05"], zh: "线与角（旧版）", en: "Lines and angles (legacy)" },
   { id: "plane-area-relations", version: "plane-area-relations-lesson-v4", scenes: ["18-strips"], zh: "面积关系（方格条旧版）", en: "Area relationships (previous square-strip version)" },
   { id: "plane-overlap", version: "plane-overlap-lesson-v2", scenes: ["33-create"], zh: "重叠与区域（凸纸片旧版）", en: "Overlap and regions (previous convex papers)" },
