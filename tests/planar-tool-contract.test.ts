@@ -29,9 +29,9 @@ describe("approved planar scenes use one Tools registration path", () => {
     }
   });
   it("composes the transformations on one editable stage, under 22 teacher-facing tools", () => {
-    expect(PLANAR_TOOLS).toHaveLength(22); expect(planarScenes).toHaveLength(26);
+    expect(PLANAR_TOOLS).toHaveLength(22); expect(planarScenes).toHaveLength(24);
     const ids = PLANAR_TOOLS.flatMap((tool) => [...tool.scenes]);
-    expect(new Set(ids).size).toBe(26);
+    expect(new Set(ids).size).toBe(24);
     expect(planarScenes.map((scene) => scene.id).sort()).toEqual([...ids].sort());
     for (const id of ["09", "19", "23", "25", "26", "28", "29", "30", "31", "35", "50"]) expect(ids).not.toContain(id);
   });

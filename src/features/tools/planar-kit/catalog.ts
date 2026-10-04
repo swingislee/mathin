@@ -1,6 +1,6 @@
 export const PLANAR_TOOLS = [
   { id: "plane-shapes", version: "plane-shapes-lesson-v2", scenes: ["01-create"], zh: "基本图形认识", en: "Exploring basic shapes" },
-  { id: "plane-geometry", version: "plane-geometry-lesson-v1", scenes: ["03", "04", "05"], zh: "线与角", en: "Lines and angles" },
+  { id: "plane-geometry", version: "plane-geometry-lesson-v2", scenes: ["03-create"], zh: "线与角", en: "Lines and angles" },
   { id: "plane-polygons", version: "plane-polygons-lesson-v1", scenes: ["06", "07", "08"], zh: "三角形与四边形", en: "Triangles and quadrilaterals" },
   { id: "plane-perimeter", version: "plane-perimeter-lesson-v2", scenes: ["10-create"], zh: "周长探究", en: "Exploring perimeter" },
   { id: "plane-measurement", version: "plane-measurement-lesson-v2", scenes: ["11-create"], zh: "面积单位", en: "Area units" },
@@ -24,6 +24,7 @@ export const PLANAR_TOOLS = [
 ] as const;
 /** 历史备课和发布副本继续按原身份打开，新建入口不再提供合并工具。 */
 export const LEGACY_PLANAR_TOOLS = [
+  { id: "plane-geometry", version: "plane-geometry-lesson-v1", scenes: ["03", "04", "05"], zh: "线与角（旧版）", en: "Lines and angles (legacy)" },
   { id: "plane-area-relations", version: "plane-area-relations-lesson-v4", scenes: ["18-strips"], zh: "面积关系（方格条旧版）", en: "Area relationships (previous square-strip version)" },
   { id: "plane-overlap", version: "plane-overlap-lesson-v2", scenes: ["33-create"], zh: "重叠与区域（凸纸片旧版）", en: "Overlap and regions (previous convex papers)" },
   { id: "plane-area-relations", version: "plane-area-relations-lesson-v3", scenes: ["18-interior"], zh: "面积关系（内点旧版）", en: "Area relationships (previous interior version)" },

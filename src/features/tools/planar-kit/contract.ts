@@ -19,6 +19,7 @@ import { isValidOverlapState } from "../plane-overlap/validation";
 import { isValidConcaveOverlapState } from "../plane-overlap/concave-validation";
 import { isValidMatchState } from "../plane-matchsticks/validation";
 import { isValidCoverState } from "../plane-covering/validation";
+import { isValidLinesState } from "../plane-lines/validation";
 
 import { ALL_PLANAR_TOOLS, type PlanarToolId, type PlanarVersion } from "./catalog";
 export { PLANAR_TOOLS, ALL_PLANAR_TOOLS, type PlanarToolId, type PlanarVersion } from "./catalog";
@@ -35,7 +36,7 @@ const planarStateShape = z.object({
   phase: z.number().finite().min(0).max(1),
 }).strict();
 export type PlanarState = z.infer<typeof planarStateShape>;
-export const planarStateSchema = planarStateShape.refine((state) => isValidPlaneGeometryState(state) || isValidPlaneAreaState(state) || isValidPlaneMotionState(state) || isValidPlanePatternsState(state) || isValidPlaneShapesState(state) || isValidConstructionState(state) || isValidPaperState(state) || isValidPaperFoldingState(state) || isValidTilingState(state) || isValidPlaneNetworkState(state) || isValidPerimeterState(state) || isValidGridMeasureState(state) || isValidRelationsState(state) || isValidInteriorState(state) || isValidStripsState(state) || isValidCoverageState(state) || isValidOverlapState(state) || isValidConcaveOverlapState(state) || isValidMatchState(state) || isValidCoverState(state), "INVALID_PLANAR_GEOMETRY");
+export const planarStateSchema = planarStateShape.refine((state) => isValidPlaneGeometryState(state) || isValidPlaneAreaState(state) || isValidPlaneMotionState(state) || isValidPlanePatternsState(state) || isValidPlaneShapesState(state) || isValidConstructionState(state) || isValidPaperState(state) || isValidPaperFoldingState(state) || isValidTilingState(state) || isValidPlaneNetworkState(state) || isValidPerimeterState(state) || isValidGridMeasureState(state) || isValidRelationsState(state) || isValidInteriorState(state) || isValidStripsState(state) || isValidCoverageState(state) || isValidOverlapState(state) || isValidConcaveOverlapState(state) || isValidMatchState(state) || isValidCoverState(state) || isValidLinesState(state), "INVALID_PLANAR_GEOMETRY");
 export function emptyPlanarState(sceneId: string): PlanarState {
   return { sceneId, params: {}, points: {}, flags: { grid: false, measures: true }, marks: [], phase: 0 };
 }
