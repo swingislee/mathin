@@ -105,7 +105,7 @@ function useNowMarker(days: Date[], timeZone: string) {
 }
 
 /**
- * 课表整页（docs/plan/21 §9）。它自己渲染 DashboardPage 而不是由 page.tsx 渲染：
+ * 课表整页（历史设计：archive/2026-10-04/docs/plan/21-dashboard-unified-canvas-command-panel-refactor.md §9）。它自己渲染 DashboardPage 而不是由 page.tsx 渲染：
  * 周次切换和三个筛选都是本组件的客户端状态，只有住在这里才能进命令面板。
  * DashboardPage 是同步组件，Client Component 可以直接渲染（同 TileWorkspace）。
  *

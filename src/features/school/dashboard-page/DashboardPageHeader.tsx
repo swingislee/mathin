@@ -6,7 +6,7 @@ import { DashboardPageIdentity } from "./DashboardPageIdentity";
 import type { DashboardPageBreadcrumb } from "./dashboard-page.types";
 
 /**
- * 普通 Dashboard 页面的页头（docs/plan/21 §11）。
+ * 普通 Dashboard 页面的页头（历史设计：archive/2026-10-04/docs/plan/21-dashboard-unified-canvas-command-panel-refactor.md §11）。
  *
  * 左右两侧是真实参与 Grid 的透明占位，而不是写死的 pl-20 / pr-32 / lg:pr-24。
  * 因此标题区可用范围 = C − 右上悬浮控件安全区，悬浮控件怎么变都不用回来改页面。

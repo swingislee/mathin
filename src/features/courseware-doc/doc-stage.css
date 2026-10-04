@@ -1,5 +1,5 @@
 /*
- * Tailwind preflight 中和层（docs/plan/16 §3 D5 排版基准）。
+ * Tailwind preflight 中和层（历史设计：archive/2026-10-04/docs/plan/16-p6-courseware-platform.md §3 D5 排版基准）。
  *
  * 舞台内注入的是镜像端导出的历史课件 HTML,其排版基线是镜像查看器:
  * 除 `*{box-sizing:border-box}` 与 Inter/微软雅黑外零重置,内容元素全按

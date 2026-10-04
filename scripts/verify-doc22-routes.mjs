@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * docs/plan/22 §14：Dashboard 路由信息架构的防回流检查。
+ * 历史设计：archive/2026-10-04/docs/plan/22-dashboard-route-information-architecture-refactor.md §14：Dashboard 路由信息架构的防回流检查。
  *
  * doc 22 是一次性 hard cut——旧 URL 不留重定向、不留 alias、直接 404。这类清理最容易
  * 回流的地方不是页面本身，而是散在 revalidatePath、router.push、面包屑和文档里的字符串。

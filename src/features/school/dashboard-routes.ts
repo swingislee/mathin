@@ -2,7 +2,7 @@ import type { PermissionKey } from "./permissions";
 import type { UserEnvironment } from "@/lib/environment";
 
 /**
- * Dashboard 路由合同（docs/plan/22 §3）。
+ * Dashboard 路由合同（历史设计：archive/2026-10-04/docs/plan/22-dashboard-route-information-architecture-refactor.md §3）。
  *
  * 存在的理由只有一个：**阻止后续 agent 靠目录对称性推断产品结构**。
  * 看到 `students/[studentId]` 旁边没有 `new`、`classes/[classId]` 旁边有，

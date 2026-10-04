@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ToolView } from "@/features/tools/components";
 import { getTool } from "@/features/tools/registry";
 
-/** 纯净嵌入路由（docs/plan/03-§6）：无站点导航，供 iframe 插入课件与教室 */
+/** 纯净嵌入路由（历史设计：archive/2026-10-04/docs/plan/03-data-and-tech.md §6）：无站点导航，供 iframe 插入课件与教室 */
 export default async function EmbedToolPage({ params, searchParams }: {
   params: Promise<{ tool: string }>;
   searchParams: Promise<{ locale?: string }>;

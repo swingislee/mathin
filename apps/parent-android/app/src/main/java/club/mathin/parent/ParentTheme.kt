@@ -7,7 +7,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-// 色值沿用 docs/plan/01-design-system.md。
+// 色值沿用 docs/design.md。
 private val LightColors = lightColorScheme(
     primary = Color(0xFF29251F),
     onPrimary = Color(0xFFFFFDF8),

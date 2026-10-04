@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * 页面命令面板（docs/plan/21 §14）：状态切换、搜索筛选、页面业务操作的唯一落点。
+ * 页面命令面板（历史设计：archive/2026-10-04/docs/plan/21-dashboard-unified-canvas-command-panel-refactor.md §14）：状态切换、搜索筛选、页面业务操作的唯一落点。
  *
  * 它只负责编排与响应式，不拥有 URL 查询参数、业务状态、权限、数据请求或选择状态本身
  * ——那些留在页面和各自的控件里，面板换掉也不会带走业务。

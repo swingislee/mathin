@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 /**
- * 普通 Dashboard 页面的公开契约（docs/plan/21 §8）。
+ * 普通 Dashboard 页面的公开契约（历史设计：archive/2026-10-04/docs/plan/21-dashboard-unified-canvas-command-panel-refactor.md §8）。
  *
  * 这里**故意没有** `width`。页面宽度的唯一决定者是 DashboardShell；一旦把
  * narrow/form/detail/list 这类宽度语义写进类型，历史上那套"按页面打宽度补丁"

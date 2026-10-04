@@ -7,11 +7,11 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
 /**
- * 全屏工具壳层（docs/plan/19-p4i-final.md §12.2 Studio 壳层）：顶部单工具栏
+ * 全屏工具壳层（历史设计：archive/2026-10-04/docs/plan/19-p4i-final.md §12.2 Studio 壳层）：顶部单工具栏
  * + 左侧 220px 页面列表 + 中间舞台（调用方自行用 `StageViewport` 包 children）
  * + 右侧 320px 属性栏 + 底部状态栏，固定宽度、不做可拖拽分栏（§12.2 未要求）。
  *
- * 两栏的常驻档位不同（docs/plan/27 §5.1 H5）：左栏 `lg` 起常驻，右栏推到 `xl`。
+ * 两栏的常驻档位不同（历史设计：archive/2026-10-04/docs/plan/27-small-screen-workspace-adaptation.md §5.1 H5）：左栏 `lg` 起常驻，右栏推到 `xl`。
  * 原先两者共用 `lg`，1024 视口上一次吃掉 540px，舞台只剩 484px 承载 1280–1920 宽的
  * 课件画布；而收起入口又恰好在同一档 `lg:hidden` 消失，没有任何逃生口。
  * 现在两栏在各自的常驻档里都能手动收起，收起后按钮换成抽屉入口。

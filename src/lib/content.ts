@@ -3,10 +3,10 @@ import path from "node:path";
 import matter from "gray-matter";
 import { cache } from "react";
 
-/** 学段（docs/plan/02-3.3）：1=1–2年级，2=3–4年级，3=5–6年级（中学/大学后续扩展） */
+/** 学段（历史设计：archive/2026-10-04/docs/plan/02-pages.md §3.3）：1=1–2年级，2=3–4年级，3=5–6年级（中学/大学后续扩展） */
 export type Stage = 1 | 2 | 3;
 
-/** 正文语言。中文是骨架语言，永远存在；英文按篇补齐（docs/plan/15-§3.1）。 */
+/** 正文语言。中文是骨架语言，永远存在；英文按篇补齐（历史设计：archive/2026-10-04/docs/plan/15-discoverability-and-delivery.md §3.1）。 */
 export type ContentLocale = "zh" | "en";
 const BASE_LOCALE: ContentLocale = "zh";
 
@@ -25,7 +25,7 @@ export interface TermEntry {
   stage: Stage;
   topic: string;
   order: number;
-  /** 前置概念 slug 列表，图谱关系完全由此推导（docs/plan/02-3.3） */
+  /** 前置概念 slug 列表，图谱关系完全由此推导（历史设计：archive/2026-10-04/docs/plan/02-pages.md §3.3） */
   deps: string[];
   /** 「看见它」交互演示：工具注册表 id */
   interactive?: string;
@@ -72,7 +72,7 @@ function readDir(locale: ContentLocale, sub: string): { slug: string; data: Reco
 }
 
 /** 译文只覆写展示层：标题、摘要、正文、测验。结构字段（uid/deps/星球/编号…）一律以中文骨架为准
- *  ——uid 是语言中立的锚点，缺一篇英文不该把图谱或编号打断（docs/plan/15-§3.1）。 */
+ *  ——uid 是语言中立的锚点，缺一篇英文不该把图谱或编号打断（历史设计：archive/2026-10-04/docs/plan/15-discoverability-and-delivery.md §3.1）。 */
 interface Overlay {
   title?: string;
   summary?: string;
@@ -174,7 +174,7 @@ export const getTermByUid = (locale: string, uid: string) => getTerms(locale).fi
 export const getMind = (locale: string, slug: string) => getMinds(locale).find((m) => m.slug === slug);
 
 /** 该篇正文真实存在的语言。供 canonical / hreflang / sitemap 判断是否有英文版
- *  （见 lib/seo 的 contentLocales：没有英文正文就不宣称有 en 版本，docs/plan/15-§2.4）。 */
+ *  （见 lib/seo 的 contentLocales：没有英文正文就不宣称有 en 版本，历史设计：archive/2026-10-04/docs/plan/15-discoverability-and-delivery.md §2.4）。 */
 export function termContentLocales(slug: string): ContentLocale[] {
   return getOverlays("en", "terms").has(slug) ? ["zh", "en"] : ["zh"];
 }

@@ -8,7 +8,7 @@ export { DashboardSearch as FilterSearchInput } from "./DashboardSearch";
 
 /**
  * 不带任何外边距：筛选条现在住在 DashboardCommandPanel 的 filters 槽里，
- * 纵向节奏由面板统一给出（docs/plan/21 §19.2）。原来的默认 `mt-4` 是页面一级
+ * 纵向节奏由面板统一给出（历史设计：archive/2026-10-04/docs/plan/21-dashboard-unified-canvas-command-panel-refactor.md §19.2）。原来的默认 `mt-4` 是页面一级
  * 外边距散落在组件里的典型例子，会让每个调用方的上下间距各差一点。
  *
  * `relative`：FilterBarMore 的浮层以**筛选条本身**为定位参照，而不是那颗"更多筛选"
@@ -67,7 +67,7 @@ export function FilterBarReset({ href, label, className }: { href: string; label
  * 高级条件留在 form DOM 子树内，确保 Radix Select 的隐藏字段能随 GET 表单提交；
  * 面板绝对定位，不会把列表向下顶开。
  *
- * 多于一个 Select 的页面一律走这里而不是平铺（docs/plan/21 §14.5）：命令面板在
+ * 多于一个 Select 的页面一律走这里而不是平铺（历史设计：archive/2026-10-04/docs/plan/21-dashboard-unified-canvas-command-panel-refactor.md §14.5）：命令面板在
  * 窄容器下只有两行预算，平铺四五个 Select 会把 sticky 顶部撑到小半个视口。
  * `activeCount` 把"当前有几个条件生效"显式说出来，否则条件收起来之后用户无从判断
  * 列表为什么是空的。

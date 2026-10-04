@@ -1,5 +1,5 @@
 /**
- * 知识宇宙注册表（docs/plan/06-knowledge-universe.md）
+ * 知识宇宙注册表（历史设计：archive/2026-10-04/docs/plan/06-knowledge-universe.md）
  * 星系看领域 → 星球看主题 → 岛屿看路径 → 节点学概念 → 图谱看关系。
  * 名称与文案在 messages 的 termsUniverse 命名空间；此处只有结构与 3D 场景参数。
  * 注：以下 hex 为 three.js 场景材质色（非 CSS token），统一高亮为暖金 GOLD。

@@ -120,7 +120,7 @@
 
 /* P4C-4b §5.8a 磁贴真二维定位：服务端算好 lg(6列)/md(4列) 两套坐标写进 CSS 变量，
    媒体查询选用——SSR 首屏两断点都不闪；sm 单列时变量不生效，按 DOM 序纵排。 */
-/* 判据换成正文容器宽度（docs/plan/27 §3 D4）：1024 视口下正文只有 720–960px，
+/* 判据换成正文容器宽度（历史设计：archive/2026-10-04/docs/plan/27-small-screen-workspace-adaptation.md §3 D4）：1024 视口下正文只有 720–960px，
    按视口切到六列会让每格只剩约 110px，磁贴文案必然截断。容器名 page 由
    DashboardPageBody / WorkspaceMain 的 @container/page 提供，与 Tailwind 的
    @3xl/page（768px）、@6xl/page（1152px）两档对齐。 */
@@ -231,13 +231,13 @@ body {
 button, a { -webkit-tap-highlight-color: transparent; }
 
 /*
- * 悬浮控制安全区（docs/plan/21 §12）。这些值只是 SSR 首屏与测量前的默认值，
+ * 悬浮控制安全区（历史设计：archive/2026-10-04/docs/plan/21-dashboard-unified-canvas-command-panel-refactor.md §12）。这些值只是 SSR 首屏与测量前的默认值，
  * 挂载后由 useFloatingControlMetrics 的 ResizeObserver 写入真实测量结果，
  * 因此按钮增减、身份切换、缩放和断点变化都不需要人工调 pr-*。
  *
  * 默认值按当前实现取整：右上是两个 44px 圆形控件 + gap-2 + 视口内边距 + 12px 呼吸；
  * 左上主入口在 lg 以下始终存在（无常驻侧栏），在 lg 及以上只有侧栏被隐藏时才出现
- * （docs/plan/27 §3 D2）。因此 lg 起的归零要跟着侧栏状态走，不能按断点一刀切——
+ * （历史设计：archive/2026-10-04/docs/plan/27-small-screen-workspace-adaptation.md §3 D2）。因此 lg 起的归零要跟着侧栏状态走，不能按断点一刀切——
  * 否则隐藏侧栏后，恢复按钮会压住页头标题。
  *
  * 判据用 :has() 而不是给 Shell 加一层 class：这些变量必须留在 :root，运行时由
@@ -257,7 +257,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 }
 
 /*
- * panel 工作区的"定高不滚动"开关（docs/plan/27 §3 D4）。
+ * panel 工作区的"定高不滚动"开关（历史设计：archive/2026-10-04/docs/plan/27-small-screen-workspace-adaptation.md §3 D4）。
  *
  * 这条判据从来不是"视口够不够宽"，而是"工作区拿到的宽度够不够"。侧栏展开时
  * 1280 视口只留 976px，1280 是合理阈值；侧栏收起到图标或隐藏之后，1024 视口就有
@@ -276,7 +276,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
   :root:not(:has([data-dashboard-sidebar="expanded"])) .panel-canvas-clip { overflow: hidden; }
 }
 
-/* 纸纹：极轻的灰度噪点覆盖全页（docs/plan/01：纸感） */
+/* 纸纹：极轻的灰度噪点覆盖全页（历史设计：archive/2026-10-04/docs/plan/01-design-system.md：纸感） */
 body::after {
   content: "";
   position: fixed;
@@ -411,7 +411,7 @@ body:has([data-dashboard-canvas], [data-followup-workbench])::after { display: n
 }
 
 /*
- * 五星球主题作用域变量（docs/plan/05）：
+ * 五星球主题作用域变量（历史设计：archive/2026-10-04/docs/plan/05-planet-themes.md）：
  * 页面骨架输出 data-planet，星球色值只出现在这里，组件一律引用 --p-*。
  */
 [data-planet="earth"] {
@@ -425,7 +425,7 @@ body:has([data-dashboard-canvas], [data-followup-workbench])::after { display: n
   --p-accent-2: #d8b266;
   --p-wash: #f9ebe7;
   --p-line: #e3c9bc;
-  /* 御前名册前三名星徽：金/银/铜（docs/plan/05-3.2） */
+  /* 御前名册前三名星徽：金/银/铜（历史设计：archive/2026-10-04/docs/plan/05-planet-themes.md §3.2） */
   --medal-1: #d8b266;
   --medal-2: #9aa3ad;
   --medal-3: #b78a66;

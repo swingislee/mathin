@@ -3,7 +3,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
 /**
  * service role 客户端：绕过 RLS，仅用于服务端经校验后的受信写入
- * （如游戏开局/成绩落库，docs/plan/03-3.2）。绝不能被客户端代码 import。
+ * （如游戏开局/成绩落库，历史设计：archive/2026-10-04/docs/plan/03-data-and-tech.md §3.2）。绝不能被客户端代码 import。
  */
 export function createAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

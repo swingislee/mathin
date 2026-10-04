@@ -32,7 +32,7 @@ function supabaseImagePatterns(): URL[] {
   }
 }
 
-/** docs/plan/15-§7.1。CSP 先以 Report-Only 上线观察，确认无误报再切强制。 */
+/** 历史设计：archive/2026-10-04/docs/plan/15-discoverability-and-delivery.md §7.1。CSP 先以 Report-Only 上线观察，确认无误报再切强制。 */
 function contentSecurityPolicy(frameAncestors: string): string {
   const supabase = supabaseOrigins();
   const directives: Record<string, string[]> = {

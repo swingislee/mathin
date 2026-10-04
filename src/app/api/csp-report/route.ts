@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-/** CSP Report-Only 的违规收集端点（docs/plan/15-§7.1）。
+/** CSP Report-Only 的违规收集端点（历史设计：archive/2026-10-04/docs/plan/15-discoverability-and-delivery.md §7.1）。
  *
  *  刻意**不写数据库**：这是一个匿名可 POST 的端点，落 `operational_errors` 等于给
  *  任何人一把灌满审计表的勺子。违规只走结构化 stdout（与 instrumentation.ts 同一

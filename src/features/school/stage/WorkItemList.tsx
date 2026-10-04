@@ -20,7 +20,7 @@ function groupByBucketThenKey(items: readonly WorkItemRow[]) {
 }
 
 /**
- * 今日工作的统一工作项列表（docs/plan/19-p4i-final.md §6.4/§7.4）：先按
+ * 今日工作的统一工作项列表（历史设计：archive/2026-10-04/docs/plan/19-p4i-final.md §6.4/§7.4）：先按
  * `urgencyBucket` 固定顺序分节，节内再按 `groupKey` 聚合成 `WorkItemGroup`。
  * `groupBy="none"` 时每个事项各自成组（不做对象合并），用于不需要分组的
  * 简单列表场景。桶内组的先后顺序沿用传入数组的顺序（真正的优先级排序由

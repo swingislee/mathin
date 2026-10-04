@@ -39,7 +39,7 @@ import {
   type StaffHomeWeekSummaryData,
 } from "./staff-overview-data";
 
-// P4I-17（docs/plan/19-p4i-final.md §22）：今日工作从 P4I-8 的只读试用页
+// P4I-17（历史设计：archive/2026-10-04/docs/plan/19-p4i-final.md §22）：今日工作从 P4I-8 的只读试用页
 // 转正为 staff 默认首页，接入 5 个真实动作（已读/稍后处理/置顶/确认/关注，
 // P4I-6 建的 RPC，见 WorkItemActions.tsx）。分区结构/数据推导原样沿用
 // P4I-8（`selectSpotlightGroups`/`partitionByOwnership`/`selectTodaySchedule`）。
@@ -289,7 +289,7 @@ export async function TodayWorkHome({
       )}
       statusStrip={<StatusStrip items={statusItems} />}
     >
-      {/* 不再 mx-auto + max-w-[96rem]：宽度由 DashboardShell 唯一决定（docs/plan/21 §3.2）。
+      {/* 不再 mx-auto + max-w-[96rem]：宽度由 DashboardShell 唯一决定（历史设计：archive/2026-10-04/docs/plan/21-dashboard-unified-canvas-command-panel-refactor.md §3.2）。
           页面级重新居中会让总览在宽屏上比其他页窄一截，切页时横向跳动。 */}
       <div className="space-y-6">
         <NotificationFocus target={focusTarget} />

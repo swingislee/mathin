@@ -37,5 +37,5 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
-// embed 为无 locale 前缀的纯净嵌入路由（docs/plan/03-§6），不经过 intl/auth 中间件
+// embed 为无 locale 前缀的纯净嵌入路由（历史设计：archive/2026-10-04/docs/plan/03-data-and-tech.md §6），不经过 intl/auth 中间件
 export const config = { matcher: ["/((?!api|embed|_next|_vercel|.*\\..*).*)"] };

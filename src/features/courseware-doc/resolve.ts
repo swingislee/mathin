@@ -2,7 +2,7 @@ import { ASSET_BINDING_URL_PREFIX } from "./schema";
 import { H5_POINTER_RUNTIME_VERSION } from "./h5-pointer-protocol";
 
 /**
- * bindingKey → URL 的解析结果。来源可注入(docs/plan/16 §3 D5):
+ * bindingKey → URL 的解析结果。来源可注入(历史设计：archive/2026-10-04/docs/plan/16-p6-courseware-platform.md §3 D5):
  * - 中台/备课预览:staff 用自身 token 批签 cw-objects signed URL(服务端完成);
  * - 课堂:候课预载的 IndexedDB blob URL(P6-5 接入);
  * - H5:一律为垫片入口 URL(已拼回 launch query)。

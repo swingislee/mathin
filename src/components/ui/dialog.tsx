@@ -39,7 +39,7 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        // docs/plan/24 §5.3：默认就带高度上限与内部滚动。原来这里只有居中变换，没有任何
+        // 历史设计：archive/2026-10-04/docs/plan/24-dashboard-visual-interaction-closeout.md §5.3：默认就带高度上限与内部滚动。原来这里只有居中变换，没有任何
         // 高度约束——内容一长，弹窗会同时溢出视口上下沿，而 `fixed` + `translate-y(-50%)`
         // 让溢出的部分**滚不到**：390×844 上"新建订单""建班向导"的保存按钮直接够不着。
         // 各调用点此前只能各自补 max-h-[90vh] / h-[min(94vh,58rem)]，于是同一个弹窗族有

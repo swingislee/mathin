@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isPermissionKey, type PermissionKey } from "./permissions";
 import { normalizeStaffRoleName } from "./staff-role-input";
 
-// P4C-3（docs/plan/11 §8）：员工页与岗位权限页的读侧。
+// P4C-3（历史设计：archive/2026-10-04/docs/plan/11-p4c-dashboard-refit.md §8）：员工页与岗位权限页的读侧。
 
 export interface StaffMember {
   userId: string;

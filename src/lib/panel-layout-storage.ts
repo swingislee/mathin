@@ -1,7 +1,7 @@
 import type { LayoutStorage } from "react-resizable-panels";
 
 /**
- * `useDefaultLayout` 的存储实现（docs/plan/27 §3 D3）。
+ * `useDefaultLayout` 的存储实现（历史设计：archive/2026-10-04/docs/plan/27-small-screen-workspace-adaptation.md §3 D3）。
  *
  * 库的默认实现在渲染期直接读 `localStorage`。客户端组件同样要在服务端渲染一次，
  * 那一次没有 `localStorage`，React 会把整棵子树标记为"服务端渲染出错、改用客户端渲染"，

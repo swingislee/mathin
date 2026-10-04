@@ -109,7 +109,7 @@ export async function revokeStaffRoleAction(target: string, roleId: string): Pro
   }
 }
 
-/** 提升为员工身份：双闸——UI 仅 admin 可见，RPC 本身也仅 admin（docs/plan/11 §10 员工页层）。 */
+/** 提升为员工身份：双闸——UI 仅 admin 可见，RPC 本身也仅 admin（历史设计：archive/2026-10-04/docs/plan/11-p4c-dashboard-refit.md §10 员工页层）。 */
 export async function promoteToStaffAction(target: string): Promise<ActionResult> {
   try {
     const targetId = parse(uuid, target);

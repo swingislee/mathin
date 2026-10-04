@@ -5,7 +5,7 @@ import { useDefaultLayout, useGroupRef } from "react-resizable-panels";
 import { panelLayoutStorage } from "@/lib/panel-layout-storage";
 
 /**
- * 可拖拽分栏的布局持久化（docs/plan/27 §3 D3）。
+ * 可拖拽分栏的布局持久化（历史设计：archive/2026-10-04/docs/plan/27-small-screen-workspace-adaptation.md §3 D3）。
  *
  * 存档要走命令式回填，而不是 Group 的 `defaultLayout` prop，原因有两层：
  *

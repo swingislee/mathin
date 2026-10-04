@@ -1,5 +1,5 @@
 /**
- * 悬浮控制安全区的 CSS 变量契约（docs/plan/21 §12）。
+ * 悬浮控制安全区的 CSS 变量契约（历史设计：archive/2026-10-04/docs/plan/21-dashboard-unified-canvas-command-panel-refactor.md §12）。
  *
  * 变量写在 `document.documentElement` 上，读在页头的透明占位元素里；两侧都只认
  * 这几个名字，这样"控件长什么样"和"页头要让出多少"彻底解耦——控件增减一个按钮、

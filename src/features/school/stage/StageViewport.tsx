@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * 通用"舞台 contain"缩放容器（docs/plan/19-p4i-final.md §12.2/§17.4）。
+ * 通用"舞台 contain"缩放容器（历史设计：archive/2026-10-04/docs/plan/19-p4i-final.md §12.2/§17.4）。
  * 与 `DocStage.tsx`（按容器宽度撑满、纵横比跟随）不同——这里宽高都可能
  * 是瓶颈，按 `min(容器宽/内容宽, 容器高/内容高)` 缩放并居中，默认不放大
  * 超过 100%。`DocStage` 是课件渲染专用逻辑，不在本组件里泛化两种模式。

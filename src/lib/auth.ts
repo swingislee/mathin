@@ -110,7 +110,7 @@ export const getActiveEnvironment = cache(async (userId: string): Promise<UserEn
 });
 
 /**
- * 环境闸门（docs/plan/22 §10）：路由先按使用环境放行，再按权限键放行。
+ * 环境闸门（历史设计：archive/2026-10-04/docs/plan/22-dashboard-route-information-architecture-refactor.md §10）：路由先按使用环境放行，再按权限键放行。
  *
  * 两者管的不是一回事。权限键回答"这个人能不能做这件事"，使用环境回答"他现在是以
  * 什么身份在看后台"——员工兼家长切到家庭视角时，侧栏已经换成家庭导航，直接敲

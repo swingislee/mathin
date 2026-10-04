@@ -14,5 +14,6 @@
 | [协作](agent/collaboration.md) / [规划](agent/planning.md) | 并行、接手、记录状态时 |
 | [操作规则](agent/operations.md) | 验证、Git、数据和部署的适用条件 |
 | [发布](ops/deployment.md) / [数据操作](ops/data-operations.md) / [备份恢复](ops/backup-recovery.md) / [课程导入](ops/courseware-import.md) | 执行对应动作时 |
+| [微信登录配置](ops/wechat-oauth.md) | 配置网站扫码、公众号授权或 Auth 桥接时 |
 
 旧的编号规划、阶段 Gate、验收证据和退出默认流程的脚本集中保存在 [历史归档](../archive/README.md)。现行规范已提取到上面的设计与业务文档。测试及执行依赖保留原位、按需运行。历史文件中的“当前”“必须”“下一阶段”按文件当时的背景理解，需要追溯时再读。

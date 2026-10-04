@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import type { DashboardPageDensity } from "./dashboard-page.types";
 
 /**
- * 页面正文（docs/plan/21 §10）。三条硬规矩：不 mx-auto、不 max-w-*、不重复水平内边距。
+ * 页面正文（历史设计：archive/2026-10-04/docs/plan/21-dashboard-unified-canvas-command-panel-refactor.md §10）。三条硬规矩：不 mx-auto、不 max-w-*、不重复水平内边距。
  *
  * 它同时是页面的容器查询根。固定侧栏应用里"浏览器宽度 ≠ 页面可用宽度"，用视口断点
  * 排内部网格会在 1024–1280 之间反复判错，所以内部布局一律按 page 容器查询响应。

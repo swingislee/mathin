@@ -4,7 +4,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import type { QuizItem } from "@/lib/content";
 
-/** 「试一试」：轻量前端自测，选错可再选（docs/plan/02-3.3） */
+/** 「试一试」：轻量前端自测，选错可再选（历史设计：archive/2026-10-04/docs/plan/02-pages.md §3.3） */
 export function Quiz({ items, correctLabel, wrongLabel }: { items: QuizItem[]; correctLabel: string; wrongLabel: string }) {
   const [picked, setPicked] = useState<Record<number, number>>({});
   return (

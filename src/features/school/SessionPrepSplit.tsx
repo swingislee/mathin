@@ -6,7 +6,7 @@ import { usePanelLayout } from "@/hooks/use-panel-layout";
 import { useSplitOrientation } from "@/hooks/use-split-orientation";
 
 /**
- * 备课工作区的左右分栏：备课流程条 | 课件区（docs/plan/27 §3 D3）。
+ * 备课工作区的左右分栏：备课流程条 | 课件区（历史设计：archive/2026-10-04/docs/plan/27-small-screen-workspace-adaptation.md §3 D3）。
  *
  * 替代原来的 `xl:grid-cols-[minmax(24rem,30rem)_minmax(0,1fr)]`。那份写法有两个下限：
  * 流程条 384px 不可压缩，右栏又要再切出 272px 的课件目录，1280 视口下 4:3 舞台

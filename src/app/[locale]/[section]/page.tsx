@@ -5,7 +5,7 @@ import { EmptyState } from "@/components/empty-state";
 import { SectionShell, type Section } from "@/components/section-shell";
 import { buildMetadata } from "@/lib/seo";
 
-// 其余板块均已建成真实路由；story 待 P5（docs/plan/03-§6）
+// 其余板块均已建成真实路由；story 待 P5（历史设计：archive/2026-10-04/docs/plan/03-data-and-tech.md §6）
 const publicSections = ["story"] as const;
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string; section: string }> }): Promise<Metadata> {

@@ -1,5 +1,5 @@
 /**
- * H5 垫片纯逻辑（docs/plan/16 §3 D3）。
+ * H5 垫片纯逻辑（历史设计：archive/2026-10-04/docs/plan/16-p6-courseware-platform.md §3 D3）。
  *
  * 背景:storage-api 有意把 text/html 降级为 text/plain(自托管无开关),
  * 故 H5 包的 HTML 由 mathin Route Handler 直出,其余子资源 308 回 storage

@@ -1,7 +1,7 @@
 import type { Planet } from "./section-shell";
 
 /**
- * 迷你星球（docs/plan/05-§4）：24px 内、accent 30% 罩染 + 陨石棕描边 + 一个
+ * 迷你星球（历史设计：archive/2026-10-04/docs/plan/05-planet-themes.md §4）：24px 内、accent 30% 罩染 + 陨石棕描边 + 一个
  * 「凑近才认出」的特征细节。外层 data-planet 使 --p-* 在任何页面可解析。
  */
 export function MiniPlanet({ planet }: { planet: Planet }) {

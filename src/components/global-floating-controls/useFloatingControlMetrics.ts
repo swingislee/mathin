@@ -9,7 +9,7 @@ import {
 } from "./floating-controls.constants";
 
 /**
- * 测量视口边缘悬浮控件的实际占位，并写进根元素的 CSS 变量（docs/plan/21 §12.3）。
+ * 测量视口边缘悬浮控件的实际占位，并写进根元素的 CSS 变量（历史设计：archive/2026-10-04/docs/plan/21-dashboard-unified-canvas-command-panel-refactor.md §12.3）。
  *
  * 用 `getBoundingClientRect` 而不是 `offsetWidth`：需要的是"控件离视口边缘多远"，
  * 这一项同时包含控件宽度与它自身的外边距/内边距，断点切换或浏览器缩放时会一起变。

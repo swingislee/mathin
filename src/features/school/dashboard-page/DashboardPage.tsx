@@ -7,7 +7,7 @@ import { DashboardPageSummary } from "./DashboardPageSummary";
 import type { DashboardPageProps } from "./dashboard-page.types";
 
 /**
- * 所有普通 Dashboard 页面的统一外壳（docs/plan/21 §9）。
+ * 所有普通 Dashboard 页面的统一外壳（历史设计：archive/2026-10-04/docs/plan/21-dashboard-unified-canvas-command-panel-refactor.md §9）。
  *
  * 页面根部只有 `w-full min-w-0`：没有 mx-auto，没有 max-w-*，也没有宽度参数。
  * 左右边线 B/C 全部由 DashboardShell 的 gutter 决定，因此在页面之间切换时标题、
