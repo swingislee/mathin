@@ -1,0 +1,9 @@
+export const ROLLING_SCENE = "55-create";
+export const ROLLING_LIMIT = 4;
+export const ROLLING_GLOBALS = ["nextId", "active", "rollBy", "viewX", "viewY", "viewSpan"] as const;
+export const ROLLING_PARAMS = ["R", "r", "angle"] as const;
+export const ROLLING_FLAGS = ["grid", "measures", "names"] as const;
+export const ROLLING_OBSERVATIONS = ["inside", "orbit", "links", "trace"] as const;
+export const ROLLING_ANGLE_LIMIT = 100_000;
+export const ROLLING_RADIUS_MIN = 0.1;
+export const ROLLING_RADIUS_MAX = 1000;
