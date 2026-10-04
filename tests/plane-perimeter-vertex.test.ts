@@ -75,6 +75,33 @@ describe("single-vertex fixed-quantity trajectories", () => {
     }
   });
 
+  it("recognizes slanted collinear points despite a positive rounded semiminor-square", () => {
+    const state = create([{ x: 100, y: 100 }, { x: 106, y: 115 }, { x: 120, y: 150 }, { x: 420, y: 150 }, { x: 420, y: 100 }]);
+    const object = constructionObject(state)!, origin = object.vertices[1], span = Math.hypot(20, 50);
+    const target = plus(origin, { x: 20 / span * 15, y: 50 / span * 15 });
+    for (const quantity of ["area", "perimeter"] as const) {
+      const result = movePerimeterVertex(state, quantity, 1, target), point = constructionObject(result)!.vertices[1];
+      expect(result).not.toBe(state); expect(isValidPerimeterState(result)).toBe(true);
+      expect(point.x).toBeCloseTo(target.x, 9); expect(point.y).toBeCloseTo(target.y, 9);
+      expect(amount(result, quantity)).toBeCloseTo(amount(state, quantity), 8); unchangedOthers(state, result, 1);
+    }
+  });
+
+  it("preserves resolvable near-collinear ellipse height instead of treating it as a line", () => {
+    const span = Math.hypot(20, 50), u = { x: 20 / span, y: 50 / span }, normal = { x: -u.y, y: u.x };
+    for (const height of [1e-3, 1e-5, 1e-7]) {
+      const state = create([{ x: 100, y: 100 }, { x: 106 + normal.x * height, y: 115 + normal.y * height }, { x: 120, y: 150 }, { x: 420, y: 150 }, { x: 420, y: 100 }]);
+      const object = constructionObject(state)!, a = object.vertices[0], b = object.vertices[2];
+      const center = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      const result = movePerimeterVertex(state, "perimeter", 1, plus(center, { x: normal.x * height * 2, y: normal.y * height * 2 }));
+      const point = constructionObject(result)!.vertices[1], newHeight = (point.x - a.x) * normal.x + (point.y - a.y) * normal.y;
+      expect(result).not.toBe(state); expect(isValidPerimeterState(result)).toBe(true);
+      expect(newHeight).toBeGreaterThan(height * 1.05);
+      expect(Math.abs(newHeight / height - 1 / Math.sqrt(0.84))).toBeLessThan(1e-5);
+      expect(amount(result, "perimeter")).toBeCloseTo(amount(state, "perimeter"), 8); unchangedOthers(state, result, 1);
+    }
+  });
+
   it("stops before arbitrarily narrow self-contact intervals even when both requested endpoints are legal", () => {
     for (const invariant of ["area", "perimeter"] as const) {
       const tipY = (invariant === "area" ? 100 : Math.sqrt(10000 * (1 - 3600 / 20000))) - 1e-7;
