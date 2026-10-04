@@ -5,6 +5,7 @@ import { interpolatePlanarState } from "../planar-kit/presentation";
 import { textFor, type PlanarAction, type PlanarDrawingApi, type PlanarField, type PlanarSceneDefinition, type PlanarText, type PlanarToggle } from "../planar-kit/types";
 import { polygonArea } from "../planar-interaction/geometry";
 import { add, clamp, clockHands, degrees, distance, hingedFrame, latticeCounts, perpendicularFoot, pointInPolygon, polar, polygonAltitude, polygonPerimeter, polygonSegments, quadrilateral, rectanglePoints, rectangleUnion, rotatePoint, sameAreaRectangle, samePerimeterRectangle, sharedRectangleSeams, simplePolygon, staircasePolygon, straightenBoundary, tangramPiece, threeRodGeometry, triangleAngles, triangulatePolygon, type Point, type QuadrilateralFamily, type Rectangle } from "./model";
+import { dragClockState, isExactTangramState } from "./exact-state";
 
 const colors = ["var(--leaf)", "var(--moon)", "var(--cheek)", "var(--crater)", "var(--star)", "var(--leaf-deep)", "var(--rose)"];
 const t = (zh: string, en: string): PlanarText => ({ zh, en });
@@ -85,6 +86,7 @@ function materialScene(tangram: boolean) {
         return state(tangram ? "02" : "01", { active: 0, rotation: 0, count, ...Object.fromEntries(Array.from({ length: count }, (_, i) => [[`reflection${i}`, 1], [`angle${i}`, 0]]).flat()) },
           Object.fromEntries(Array.from({ length: count }, (_, i) => [`piece${i}`, tangram ? { x: 290, y: 180 } : { x: 160 + i % 4 * 160, y: 260 + Math.floor(i / 4) * 150 }])), { outline: tangram });
       },
+      ...(tangram ? { isExact: isExactTangramState } : {}),
       fields: [field("rotation", "选中纸片转角（°）", "Selected piece angle (°)", -360, 360, 1)],
       setField: (s, key, value) => key === "rotation" ? { ...s, params: { ...s.params, [`angle${activePiece(s)}`]: value, rotation: value } } : setNumber(s, key, value),
       toggles: [...(tangram ? [toggle("outline", "保留原正方形轮廓", "Original square outline")] : []), toggle("names", "显示纸片编号", "Show piece numbers")],
@@ -474,14 +476,7 @@ const clockScene = scene("60", t("钟面追及与夹角", "Clock hands and chang
       {label({ x: 480, y: 615 }, `${hourText}:${minuteText}${s.flags.measures ? ` · ${fmt(s.flags.reflex ? angles.largerAngle : angles.smallerAngle)}°` : ""}`)}
     </>;
   },
-  drag: (s, target, point) => {
-    if (!["minute", "hour"].includes(target)) return s;
-    const angle = (degrees(Math.atan2(point.y - 350, point.x - 480)) + 450) % 360, current = n(s, "minutes", 120, 0, 1440);
-    if (target === "hour") { const candidates = [angle * 2, angle * 2 + 720]; return setNumber(s, "minutes", candidates.sort((a, b) => Math.abs(a - current) - Math.abs(b - current))[0]); }
-    const withinHour = angle / 6, baseHour = Math.floor(current / 60) * 60;
-    const candidates = [baseHour - 60 + withinHour, baseHour + withinHour, baseHour + 60 + withinHour].filter((value) => value >= 0 && value <= 1440);
-    return setNumber(s, "minutes", candidates.sort((a, b) => Math.abs(a - current) - Math.abs(b - current))[0]);
-  },
+  drag: (s, target, point, delta, context) => dragClockState(s, target, point, delta, context?.previous),
 });
 
 export const planeGeometryScenes: readonly PlanarSceneDefinition[] = [
