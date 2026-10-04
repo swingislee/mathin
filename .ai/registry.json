@@ -19,10 +19,9 @@
         ".ai/tasks/DEV-PLANE-POLYGONS-20261004.md",
         ".ai/tasks/DEV-PLANE-NETWORK-20261004.md",
         ".ai/tasks/DEV-PLANE-FOLD-LAYERS-20261004.md",
+        ".ai/tasks/DEV-PLANE-MOTION-20261004.md",
         "src/features/tools/plane-lines/",
         "src/features/tools/plane-circle-dissection/",
-        "src/features/tools/plane-construction/model.ts",
-        "src/features/tools/plane-construction/scenes.tsx",
         "src/features/tools/plane-tiling/model.ts",
         "tests/plane-construction-observations.test.ts",
         "tests/plane-tiling-interaction.test.ts",
@@ -170,6 +169,20 @@
       "sharedPaths": [],
       "checkpoint": "74d602e091b017f4fa148510767b07a2f6d46ca5",
       "next": "沿用面积工作树的新分支，新增32-layers/v3，按实际叠层及来源映射补双折与独立剪口，旧版保持。"
+    },
+    {
+      "id": "DEV-PLANE-MOTION-20261004",
+      "title": "绕点重复与对应点连续操作",
+      "agent": "codex",
+      "threadId": null,
+      "status": "in_progress",
+      "checkout": "worktree",
+      "branch": "codex/plane-motion-repeat-codex",
+      "card": ".ai/tasks/DEV-PLANE-MOTION-20261004.md",
+      "writePaths": ["src/features/tools/plane-construction/model.ts", "src/features/tools/plane-construction/scenes.tsx", "src/features/tools/plane-construction/motion.ts", "src/features/tools/plane-construction/README.md", "tests/plane-construction-motion.test.ts", "tests/plane-construction-motion-integration.test.ts", "tests/fixtures/plane-construction-motion-cases.ts", ".ai/handoffs/DEV-PLANE-MOTION-20261004-codex-01.md"],
+      "sharedPaths": [],
+      "checkpoint": "5c6b58cc716b264b166cbc8736258bd6bfd13589",
+      "next": "从 main 新分支实现按份数绕点重复、真实对应点与操作手势；保持既有 v2 与形状修复，独立副本不缓存组关系。"
     },
     {
       "id": "REPO-DIRECTION-CLEANUP-20261004",
