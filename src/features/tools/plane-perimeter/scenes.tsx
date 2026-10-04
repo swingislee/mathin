@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { PlanarPoint, PlanarState } from "../planar-kit/contract";
 import { textFor, type PlanarAction, type PlanarDrawingApi, type PlanarOperation, type PlanarSceneDefinition, type PlanarText } from "../planar-kit/types";
-import { constructionBounds, constructionMeasurements, constructionObject, constructionObjects, parseConstructionTarget } from "../plane-construction/model";
+import { constructionBounds, constructionMeasurements, constructionObject, constructionObjects, parseConstructionTarget, worldVertices } from "../plane-construction/model";
 import { createConstructionDefinition } from "../plane-construction/scenes";
 import { distance, polygonSegments } from "../plane-geometry/model";
 import {
@@ -10,6 +10,7 @@ import {
   perimeterComparison, perimeterLength, perimeterVertices, setPerimeterField, setPerimeterProgress,
   syncPerimeterGeometry, walkPerimeter, type PerimeterInvariant, type PerimeterProgress,
 } from "./model";
+import { dragPerimeterVertex, parsePerimeterVertexHandle, perimeterVertexObject } from "./vertex-model";
 
 const t = (zh: string, en: string): PlanarText => ({ zh, en });
 const colors = ["var(--leaf-deep)", "var(--crater)", "var(--rose)", "var(--muted)"];
@@ -18,10 +19,11 @@ const fmt = (value: number) => Number(value.toFixed(2)).toString();
 const base = createConstructionDefinition(PERIMETER_SCENE_ID, "plane-perimeter", t("周长探究", "Exploring perimeter"));
 const noObject = (state: PlanarState) => !constructionObject(state);
 const objectTarget = (target: string | null) => {
-  const handle = target ? parsePerimeterHandle(target) : null;
+  const handle = target ? parsePerimeterHandle(target) ?? parsePerimeterVertexHandle(target) : null;
   return handle ? `object.${handle.id}` : target;
 };
 const operationInvariant = (operation?: string | null): PerimeterInvariant | null => operation === "perimeter-fixed-perimeter" ? "perimeter" : operation === "perimeter-fixed-area" ? "area" : null;
+const vertexInvariant = (operation?: string | null): PerimeterInvariant | null => operation === "perimeter-vertex-perimeter" ? "perimeter" : operation === "perimeter-vertex-area" ? "area" : null;
 const withProgress = (action: PlanarAction): PlanarAction => ({ ...action, run: (state, context) => syncPerimeterGeometry(state, action.run(state, context)) });
 
 function Caption({ at, children, size = 14, anchor = "middle" }: { at: PlanarPoint; children: ReactNode; size?: number; anchor?: "start" | "middle" | "end" }) {
@@ -74,6 +76,23 @@ function InvariantHandles({ state, api }: { state: PlanarState; api: PlanarDrawi
   </g>;
 }
 
+function VertexInvariantHandles({ state, api }: { state: PlanarState; api: PlanarDrawingApi }) {
+  const invariant = vertexInvariant(api.operation), selected = objectTarget(api.selected);
+  const id = selected ? parseConstructionTarget(selected)?.id : undefined;
+  const object = id === undefined ? null : perimeterVertexObject(state, id);
+  if (!invariant || !object || !api.editable) return null;
+  return <g data-perimeter-vertex-invariant={invariant}>
+    {worldVertices(object).map((at, index) => <g key={index}
+      {...api.bind(`invariant-vertex.${invariant}.${id}.${index}`, textFor(invariant === "perimeter"
+        ? t(`定周长调整编辑点 ${index + 1}`, `Move edit point ${index + 1} at fixed perimeter`)
+        : t(`定面积调整编辑点 ${index + 1}`, `Move edit point ${index + 1} at fixed area`), api.locale))}
+      data-perimeter-vertex-handle={index} style={{ cursor: "grab" }}>
+      <circle cx={at.x} cy={at.y} r="16" fill="transparent" />
+      <circle cx={at.x} cy={at.y} r="5.5" fill="var(--paper)" stroke="var(--rose)" strokeWidth="2" pointerEvents="none" />
+    </g>)}
+  </g>;
+}
+
 function BoundaryComparison({ state, api }: { state: PlanarState; api: PlanarDrawingApi }) {
   const comparison = perimeterComparison(state, api.operation === "perimeter");
   if (!comparison) return null;
@@ -106,7 +125,7 @@ const actions = base.actions!.filter((action) => !["construction-life-outline", 
 
 export const planePerimeterScene: PlanarSceneDefinition = {
   ...base,
-  description: t("画出或添加凹凸多边形，沿真实边界绕一周、保长拉直并同尺比较。宽高可定周长或定面积联动拉伸；关闭操作后继续普通编辑，矩形还可变为同量正方形。", "Draw or add convex or concave polygons, trace and straighten real boundaries, and compare at one shared scale. Stretch linked dimensions at fixed perimeter or area; close the operation to resume ordinary editing. Rectangles can also become equal-quantity squares."),
+  description: t("画出或添加凹凸多边形，沿真实边界绕一周、保长拉直并同尺比较。定周长或定面积时可整体拉伸，也可只拖一个顶点；关闭操作恢复普通编辑。", "Draw or add convex or concave polygons, trace and straighten real boundaries, and compare at one shared scale. Stretch the whole shape or move one vertex at fixed perimeter or area; close the operation to resume ordinary editing."),
   create: createPerimeterState,
   fields: base.fields!.filter((field) => field.key !== "detail").map((field) => field.key === "width" || field.key === "height" ? {
     ...field, label: field.key === "width" ? t("当前图形宽（u）", "Current shape width (u)") : t("当前图形高（u）", "Current shape height (u)"),
@@ -129,6 +148,11 @@ export const planePerimeterScene: PlanarSceneDefinition = {
       actions: [progressAction("walk", t("绕一周／沿边退回", "Trace once around / retrace")), progressAction("straight", t("拉直边界／围回", "Straighten boundary / restore"))],
     },
     invariantOperation("perimeter"), invariantOperation("area"),
+    ...(["perimeter", "area"] as const).map((invariant): PlanarOperation => ({
+      id: `perimeter-vertex-${invariant}`, icon: "editShape",
+      label: invariant === "perimeter" ? t("定周长调顶点", "Move a vertex at fixed perimeter") : t("定面积调顶点", "Move a vertex at fixed area"),
+      actions: actions.filter((action) => action.id === "construction-measures"),
+    })),
     ...base.operations!.filter((operation) => operation.id !== "reflect").map((operation) => ({ ...operation, actions: operation.actions?.map(withProgress) })),
   ],
   setField: setPerimeterField,
@@ -144,7 +168,7 @@ export const planePerimeterScene: PlanarSceneDefinition = {
   },
   draw: (state, api) => <>
     {base.draw({ ...state, flags: { ...state.flags, measures: false,
-      ...(operationInvariant(api.operation) ? { edit: false, vertices: false, edges: false } : {}),
+      ...(operationInvariant(api.operation) || vertexInvariant(api.operation) ? { edit: false, vertices: false, edges: false } : {}),
     } }, { ...api, selected: objectTarget(api.selected) })}
     {constructionObjects(state).map((object) => {
       const walk = state.params[`walk.${object.id}`], straight = state.params[`straight.${object.id}`];
@@ -164,13 +188,18 @@ export const planePerimeterScene: PlanarSceneDefinition = {
         {operationInvariant(api.operation) && state.params.active === object.id && <Caption at={{ x: object.center.x, y: bounds.minY - 43 }} size={13}>{textFor(perimeterStretchFrame(state, object.id)
           ? api.operation === "perimeter-fixed-perimeter" ? t("拖动方柄 · 周长保持不变", "Drag a square handle · perimeter stays fixed") : t("拖动方柄 · 面积保持不变", "Drag a square handle · area stays fixed")
           : t("选择直边图形进行定量拉伸", "Select a polygon for fixed-quantity stretching"), api.locale)}</Caption>}
+        {vertexInvariant(api.operation) && state.params.active === object.id && <Caption at={{ x: object.center.x, y: bounds.minY - 43 }} size={13}>{textFor(vertexInvariant(api.operation) === "perimeter"
+          ? t("拖一个圆柄 · 两邻边总长不变 · 其余点保持", "Drag one round handle · adjacent length sum stays fixed · other points stay")
+          : t("拖一个圆柄 · 沿等面积直线移动 · 其余点保持", "Drag one round handle · follow the equal-area line · other points stay"), api.locale)}</Caption>}
       </g>;
     })}
     <BoundaryComparison state={state} api={api} />
     <InvariantHandles state={state} api={api} />
+    <VertexInvariantHandles state={state} api={api} />
   </>,
   drag: (start, target, point, delta, context) => {
     if (parsePerimeterHandle(target)) return Number.isFinite(point.x) && Number.isFinite(point.y) ? dragPerimeterInvariant(start, target, delta) : start;
+    if (parsePerimeterVertexHandle(target)) return Number.isFinite(point.x) && Number.isFinite(point.y) ? dragPerimeterVertex(start, target, delta, context?.previous) : start;
     const parsed = parseConstructionTarget(target);
     const object = parsed?.type === "edge" && parsed.id !== undefined ? constructionObject(start, parsed.id) : null;
     const dragTarget = !start.flags.edit && object && parsed?.part !== undefined && parsed.part < object.vertices.length ? `object.${object.id}` : target;
