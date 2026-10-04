@@ -35,6 +35,7 @@
         "supabase/migrations/20261004030000_tool_plane_lines.sql",
         "supabase/migrations/20261004030300_tool_plane_foundation_catalog.sql",
         "supabase/migrations/20261004030500_tool_plane_polygon_catalog.sql",
+        "supabase/migrations/20261004030600_tool_plane_foundation_titles.sql",
         "scripts/plane-foundation-local.mjs",
         "tests/plane-lines.test.ts",
         "tests/plane-foundation-integration.test.ts",
