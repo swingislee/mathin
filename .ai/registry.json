@@ -24,6 +24,7 @@
         ".ai/tasks/DEV-PLANE-PERIMETER-BOUNDARY-20261004.md",
         ".ai/tasks/DEV-PLANE-ROLLING-20261005.md",
         "src/features/tools/plane-lines/",
+        "src/features/tools/plane-geometry/scenes.tsx",
         "src/features/tools/plane-circle-dissection/",
         "src/features/tools/plane-tiling/model.ts",
         "tests/plane-construction-observations.test.ts",
@@ -79,7 +80,6 @@
       "branch": "codex/plane-exact-motion-codex",
       "card": ".ai/tasks/DEV-PLANE-EXACT-MOTION-20261004.md",
       "writePaths": [
-        "src/features/tools/plane-geometry/scenes.tsx",
         "src/features/tools/plane-geometry/exact-state.ts",
         "tests/plane-exact-motion.test.ts",
         "tests/plane-exact-motion-workbench.test.ts",
