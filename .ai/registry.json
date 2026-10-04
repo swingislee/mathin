@@ -59,7 +59,7 @@
         "src/features/tools/plane-geometry/scenes.tsx",
         "src/features/tools/plane-geometry/exact-state.ts",
         "tests/plane-exact-motion.test.ts",
-        "tests/plane-exact-motion-workbench.test.tsx",
+        "tests/plane-exact-motion-workbench.test.ts",
         ".ai/handoffs/DEV-PLANE-EXACT-MOTION-20261004-codex-01.md",
         ".ai/handoffs/DEV-PLANE-EXACT-MOTION-20261004-review-01.md"
       ],
