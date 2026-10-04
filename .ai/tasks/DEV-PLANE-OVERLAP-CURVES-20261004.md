@@ -7,3 +7,5 @@
 - 导出：createCurveOverlapState、isValidCurveOverlapState、planeCurveOverlapScene、planeOverlapCurvesCases。
 - SQL：worker 独占 0312，私有 region/state/scene helper；JS trim 与 UTF-16 标题边界一致。root 独占 0313 分发、catalog、contract、场景注册、类型和本地数据库。
 - 交付：真实解析线圆／圆圆求交、布尔区域及面积积分；圆弓／补集拆片面积守恒与相切退化定向检查。只读展示与准确状态保持。人工教学手感待确认。
+
+2026-10-05：领域 `98d12ef0`、共享接线 `76f6c4ff` 已集成。复用领域28项结果；共享宿主／目录／旧版本62项通过，依赖类型0诊断、ESLint通过。本机真实目标复核后，495项TS/SQL（含57曲线夹具）、49旧场景、9保存／读取／更新及私有helper权限通过，事务回滚前后受保护数量与函数一致；仅安装0312/0313。实际生成并仅合入3个新函数类型。开发入口 `/zh/tools/plane-overlap`；待人工数学表达与手感确认，生产保持。
