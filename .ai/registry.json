@@ -7,28 +7,28 @@
       "title": "共角与相似材料开发交付",
       "agent": "codex",
       "threadId": "019ff05e-1218-7400-b966-4556b2c57173",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-PLANE-ANGLE-20261004.md",
       "writePaths": [".ai/tasks/DEV-PLANE-ANGLE-20261004.md", "docs/evidence/tools-plane-angle-20261004.md"],
       "sharedPaths": [".ai/registry.json", "CHANGELOG.md", "src/features/tools/planar-kit/README.md"],
-      "checkpoint": null,
-      "next": "登记单人领域增量；复用干净 worker，定向检查后集成开发端，供人工验收。"
+      "checkpoint": "cddbe797ee83454901fb0937d0aaf89b48142ee3",
+      "next": "共角调边、等比伸缩和两类副本已精确集成 main；定向测试、领域类型／lint 和中英文局域网入口检查通过。开发端已交付，待人工视觉与教学手感验收；生产和 Gate 保持。"
     },
     {
       "id": "DEV-PLANE-ANGLE-20261004",
       "title": "共角调边与相似伸缩开放材料",
       "agent": "codex",
       "threadId": "019ff05e-1218-7400-b966-4556b2c57173",
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/plane-angle-codex",
       "card": ".ai/tasks/DEV-PLANE-ANGLE-20261004.md",
       "writePaths": ["src/features/tools/plane-relations/angle-model.ts", "src/features/tools/plane-relations/angle-scene.tsx", "src/features/tools/plane-relations/interior-scene.tsx", "src/features/tools/plane-relations/README.md", "tests/plane-angle.test.ts", "tests/plane-invariants-integration.test.ts", "src/features/tools/spatial-interaction/control-inventory.ts", ".ai/handoffs/DEV-PLANE-ANGLE-20261004-codex-01.md"],
       "sharedPaths": [],
-      "checkpoint": null,
-      "next": "在既有 v3 几何内实现同向／反向副本、独立调边、等比伸缩及实际比例比较；不改持久合同、数据库、共用宿主或生产。"
+      "checkpoint": "03d6e40f2607e33d57ecf605a098f293387be07c",
+      "next": "main 已接收实现与交接，源文件与已检 head 一致；当前三角形两端可独立调节或联动伸缩，参照按真实几何比较。既有集成类型诊断已登记，未新增字段、迁移或跨材料绑定。"
     },
     {
       "id": "DOC-STATUS-ALIGNMENT-20261003",
