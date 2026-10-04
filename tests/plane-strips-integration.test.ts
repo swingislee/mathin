@@ -97,8 +97,9 @@ describe("square strips in the shared workbench", () => {
     await act(async () => { field.value = "8"; field.dispatchEvent(new FocusEvent("focusout", { bubbles: true })); });
     expect(squareStripModel(current()!)!.divisions).toBe(8);
     await act(async () => button("继续细分方格条").click()); expect(squareStripModel(current()!)!.divisions).toBe(16);
+    await act(async () => button("显示长度与面积").click()); expect(container.querySelector("[data-square-strip-measures]")).not.toBeNull();
     const beforeClose = current()!, rows = container.querySelectorAll("[data-square-strip]").length;
-    await act(async () => button("关闭面板").click()); expect(current()).toEqual(beforeClose); expect(container.querySelectorAll("[data-square-strip]")).toHaveLength(rows);
+    await act(async () => button("关闭面板").click()); expect(current()).toEqual(beforeClose); expect(container.querySelectorAll("[data-square-strip]")).toHaveLength(rows); expect(container.querySelector("[data-square-strip-measures]")).not.toBeNull();
     await act(async () => button("正方形条带与细分").click());
     await act(async () => stage().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))); expect(current()).toEqual(beforeClose);
     await act(async () => button("恢复备好的起点").click()); expect(current()).toEqual(initial); expect(container.querySelector("[data-square-strip]")).toBeNull();

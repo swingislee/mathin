@@ -49,16 +49,18 @@ export function SquareStripsOverlay({ state, api }: { state: PlanarState; api: P
         <polygon points={coordinates(model.points)} fill="none" stroke="var(--ink)" strokeWidth="2" data-square-strip-outline />
       </g>;
     })}
-    {operating && <g fill="var(--ink)" stroke="var(--paper)" strokeWidth="4" paintOrder="stroke" fontSize="14" data-square-strip-caption>
-      <text x="28" y="32">{textFor(t("正方形条带是阶梯近似，不是三角形的精确切片或完整内覆盖。", "Square strips form an approximation, not an exact dissection or an inner cover."), api.locale)}</text>
-      <text x="28" y="56">{textFor(t("底和高固定时，沿等高线移动对顶点，各条只平移。", "With base and height fixed, moving the apex along its parallel line only slides the strips."), api.locale)}</text>
-      {observing && state.flags.measures && <>
-        <text x="28" y="80" data-square-strip-measures>{textFor(t(`材料 ${active.object.id + 1}`, `Shape ${active.object.id + 1}`), api.locale)} · {textFor(t("方格边长", "Square side"), api.locale)} ≈ {fmt(active.size)} u · {active.squareCount} {textFor(t("格", "squares"), api.locale)} · S{ textFor(t("条", " strips"), api.locale)} ≈ {fmt(active.approximateArea)} u² · S△ ≈ {fmt(active.area)} u²</text>
+    {(operating || observing && state.flags.measures) && <g fill="var(--ink)" stroke="var(--paper)" strokeWidth="4" paintOrder="stroke" fontSize="14" data-square-strip-caption>
+      {operating && <>
+        <text x="28" y="32">{textFor(t("正方形条带是阶梯近似，不是三角形的精确切片或完整内覆盖。", "Square strips form an approximation, not an exact dissection or an inner cover."), api.locale)}</text>
+        <text x="28" y="56">{textFor(t("底和高固定时，沿等高线移动对顶点，各条只平移。", "With base and height fixed, moving the apex along its parallel line only slides the strips."), api.locale)}</text>
       </>}
-      <text x="28" y={observing && state.flags.measures ? 104 : 80}>{textFor(!active ? t("选中三角形以开启条带；凸四边形保留原有操作。", "Select a triangle to add strips. Quadrilaterals keep their existing operations.")
+      {observing && state.flags.measures && <>
+        <text x="28" y={operating ? 80 : 32} data-square-strip-measures>{textFor(t(`材料 ${active.object.id + 1}`, `Shape ${active.object.id + 1}`), api.locale)} · {textFor(t("方格边长", "Square side"), api.locale)} ≈ {fmt(active.size)} u · {active.squareCount} {textFor(t("格", "squares"), api.locale)} · {textFor(t("近似条面积", "Strip approximation"), api.locale)} ≈ {fmt(active.approximateArea)} u² · S△ ≈ {fmt(active.area)} u²</text>
+      </>}
+      {operating && <text x="28" y={observing && state.flags.measures ? 104 : 80}>{textFor(!active ? t("选中三角形以开启条带；凸四边形保留原有操作。", "Select a triangle to add strips. Quadrilaterals keep their existing operations.")
         : !observing ? t("开启正方形条带后，可继续细分或复制独立条片。", "Show square strips, then refine or copy them as independent materials.")
           : !active.strips.length ? t("当前密度还不能形成完整方格条，请继续细分。", "This density yields no complete square strips. Refine further.")
-            : t("复制时每条成为一张材料；容量不足时降低密度或移去材料。", "Each copied strip uses one material slot. Reduce density or remove materials if full."), api.locale)}</text>
+            : t("复制时每条成为一张材料；容量不足时降低密度或移去材料。", "Each copied strip uses one material slot. Reduce density or remove materials if full."), api.locale)}</text>}
     </g>}
   </g>;
 }
