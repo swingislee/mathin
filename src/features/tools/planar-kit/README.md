@@ -74,4 +74,6 @@
 
 2026-10-04 共角增量继续沿用面积关系 v3：选定底边的对顶点 O，沿两射线分别调边，或围绕 O 同时伸缩当前两边；添加同向嵌套／反向沙漏副本，按真实材料比较两边比例与面积关系，并将对应底边调整为平行。动画、精确输入、直接手柄和保存继续复用宿主；专用约束只在该操作中生效，不新增跨材料永久绑定。
 
-其余预设限制按独立增量继续处理：任意多边形锁量、旧面积关系的方格条，以及任意凹形／圆弧布尔仍待后续。钟面、圆的滚动及七巧板保留本身必要的材料约束。棋盘仍用两格骨牌，火柴不自动计数图形或判题。当前范围与检查见 `docs/evidence/tools-plane-angle-20261004.md`、`docs/evidence/tools-plane-remainders-20261002.md`、`docs/evidence/tools-plane-interior-20261002.md`、`docs/evidence/tools-plane-invariants-20261002.md`、`docs/evidence/tools-plane-cover-match-20261002.md` 和 `docs/evidence/tools-plane-deep-20261002.md`；此前记录见 `docs/evidence/tools-plane-open-materials-20260927.md` 和 `docs/evidence/tools-plane-construction-20260927.md`。机器检查与人工视觉／教学手感验收分开登记。
+2026-10-04 方格条增量将面积关系新建切换为 `18-strips` / `lesson-v4`，旧 v1/v2/v3 保持可读。三角形按所选底边生成正交方格条，逐对象保存开关及 4～48 的整数密度，支持逐级细分；保持底和高移动对顶点时，各行只平移。条带是截面中点取整的阶梯近似，不表示内覆盖或原形精确切片；可整组复制为独立矩形材料，容量、尺寸、ID 或坐标不允许时整次保留原状。原形和既有观察均保留；新旧内容、保存和课堂继续按版本派发。
+
+其余预设限制按独立增量继续处理：任意多边形锁量，以及任意凹形／圆弧布尔仍待后续。钟面、圆的滚动及七巧板保留本身必要的材料约束。棋盘仍用两格骨牌，火柴不自动计数图形或判题。当前范围与检查见 `docs/evidence/tools-plane-strips-20261004.md`、`docs/evidence/tools-plane-angle-20261004.md`、`docs/evidence/tools-plane-remainders-20261002.md`、`docs/evidence/tools-plane-interior-20261002.md`、`docs/evidence/tools-plane-invariants-20261002.md`、`docs/evidence/tools-plane-cover-match-20261002.md` 和 `docs/evidence/tools-plane-deep-20261002.md`；此前记录见 `docs/evidence/tools-plane-open-materials-20260927.md` 和 `docs/evidence/tools-plane-construction-20260927.md`。机器检查与人工视觉／教学手感验收分开登记。
