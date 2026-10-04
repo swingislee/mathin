@@ -5,20 +5,21 @@ import { planarSnapshot, planarSnapshotForTool, planarStateSchema } from "@/feat
 import { planarHistory, planarCommit } from "@/features/tools/planar-kit/presentation";
 import { planarScene, scenesForPlanarTool } from "@/features/tools/planar-kit/scene-registry";
 import type { PlanarDrawingApi } from "@/features/tools/planar-kit/types";
-import { addLineMaterial, activateLine, createLineGeometry, createLinesState, dragLine, duplicateLine, lineMaterial, lineMaterials, lineMetrics, removeLine, setLineField, type LineKind } from "@/features/tools/plane-lines/model";
+import { addLineMaterial, activateLine, createLineGeometry, createLinesState, emptyLinesState, dragLine, duplicateLine, lineMaterial, lineMaterials, lineMetrics, removeLine, setLineField, type LineKind } from "@/features/tools/plane-lines/model";
 import { isValidLinesState, LINE_LIMIT } from "@/features/tools/plane-lines/validation";
 import { planeLinesScene as scene } from "@/features/tools/plane-lines/scenes";
 import { freezeToolScene, parseToolScene } from "@/features/tools/scenes/contract";
 
 const api = (locale = "zh", operation: string | null = null, editable = true): PlanarDrawingApi => ({ locale, selected: "line.0.body", operation, editable,
   bind: (target, label) => ({ role: "button", tabIndex: editable ? 0 : -1, "aria-label": label ?? target, "aria-pressed": false, "aria-disabled": !editable }) });
-const one = (kind: LineKind = 0) => addLineMaterial(createLinesState(), kind);
+const one = (kind: LineKind = 0) => addLineMaterial(emptyLinesState(), kind);
 const metrics = (state: PlanarState) => lineMetrics(lineMaterial(state)!);
 const closePoint = (a: { x: number; y: number }, b: { x: number; y: number }) => { expect(a.x).toBeCloseTo(b.x, 8); expect(a.y).toBeCloseTo(b.y, 8); };
 
 describe("lines and angles on one teaching stage", () => {
   it("starts without revealed conclusions and adds seven independent material types", () => {
-    let state = createLinesState(); expect(isValidLinesState(state)).toBe(true);
+    expect(createLinesState().params.count).toBe(2); expect(isValidLinesState(createLinesState())).toBe(true);
+    let state = emptyLinesState(); expect(isValidLinesState(state)).toBe(true);
     expect(Object.values(state.flags).every((flag) => flag === false)).toBe(true);
     for (let kind = 0; kind < 7; kind++) {
       const previous = structuredClone(state); state = addLineMaterial(state, kind as LineKind);
@@ -74,6 +75,24 @@ describe("lines and angles on one teaching stage", () => {
     expect(metrics(state).orientation).toBeCloseTo(-70); expect(metrics(state).length).toBeCloseTo(240);
     expect(setLineField(state, "length", .9)).toBe(state); expect(setLineField(state, "length", 11)).toBe(state);
     const html = renderToStaticMarkup(scene.draw(state, api())); expect(html).toContain("data-line-protractor"); expect(html).toContain("rotate(-70)");
+  });
+  it("rotates the minimum and maximum protractor sizes without rejecting floating-point endpoints", () => {
+    for (const radius of [1, 10]) for (const direction of [-173, -115, 45, 60, 135]) {
+      const sized = setLineField(one(4), "length", radius), rotated = setLineField(sized, "orientation", direction);
+      expect(metrics(rotated).orientation).toBeCloseTo(direction, 9);
+      expect(metrics(rotated).length).toBeCloseTo(radius * 40, 9); expect(isValidLinesState(rotated)).toBe(true);
+    }
+    expect(setLineField(one(4), "length", 1 - .000001)).toEqual(one(4));
+    expect(setLineField(one(4), "length", 10 + .000001)).toEqual(one(4));
+  });
+  it("distinguishes true zero and straight angles from genuine near-zero openings after rotating", () => {
+    const state = addLineMaterial(emptyLinesState(), 3, [{ x: 330, y: 250 }, { x: 570, y: 250 }, { x: 330, y: 442 }]);
+    for (const direction of [-179, -115, 35, 173]) {
+      const rotated = setLineField(state, "orientation", direction);
+      for (const angle of [0, .0001, 179.9999, 180, 359.9999]) expect(metrics(setLineField(rotated, "angle", angle)).angle).toBeCloseTo(angle, 8);
+      const closed = { ...setLineField(rotated, "angle", 0), flags: { ...rotated.flags, measures: true } };
+      expect(renderToStaticMarkup(scene.draw(closed, api()))).not.toContain("360°");
+    }
   });
   it("duplicates and deletes complete materials and refuses overflow atomically", () => {
     let state = setLineField(one(5), "q", -2.5); state = duplicateLine(state);

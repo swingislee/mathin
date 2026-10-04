@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PlanarWorkbench } from "@/features/tools/planar-kit/PlanarWorkbench";
 import { planarSnapshot, type PlanarState } from "@/features/tools/planar-kit/contract";
 import { addLineMaterial, lineMaterial, lineMetrics } from "@/features/tools/plane-lines/model";
-import { createLinesState } from "@/features/tools/plane-lines/model";
+import { emptyLinesState } from "@/features/tools/plane-lines/model";
 import { createClassroomToolState, parseClassroomToolState, type ClassroomToolUpdate } from "@/features/tools/courseware/tool-classroom";
 import { parseToolScene } from "@/features/tools/scenes/contract";
 import { toolSceneOriginHash } from "@/features/tools/scenes/classroom-envelope";
@@ -37,7 +37,7 @@ afterEach(async () => { await act(async () => root.unmount()); container.remove(
 
 describe("open line and angle host", () => {
   it("adds multiple materials in one workspace and undoes exactly one addition", async () => {
-    await render(); expect(container.querySelector('[aria-label="教学现场"]')).toBeNull();
+    await render({ initial: emptyLinesState() }); expect(container.querySelector('[aria-label="教学现场"]')).toBeNull();
     await act(async () => button("添加图形或生活实例").click());
     await act(async () => button("添加线段").click()); expect(current()?.params.count).toBe(1);
     const first = structuredClone(current());
@@ -47,7 +47,7 @@ describe("open line and angle host", () => {
     await act(async () => button("撤销").click()); expect(current()).toEqual(first);
   });
   it("directly grabs an unselected material, commits only on release and cancels a second touch", async () => {
-    const initial = addLineMaterial(addLineMaterial(createLinesState(), 3), 0); await render({ initial });
+    const initial = addLineMaterial(addLineMaterial(emptyLinesState(), 3), 0); await render({ initial });
     const body = () => container.querySelector('[data-line-material="0"] > g[role="button"]')!;
     await pointer(body(), "pointerdown", 180, 250); await pointer(svg(), "pointermove", 240, 280); expect(current()).toBeNull();
     await pointer(svg(), "pointerup", 240, 280); const moved = current()!;
@@ -58,7 +58,7 @@ describe("open line and angle host", () => {
     await act(async () => button("撤销").click()); expect(current()).toEqual(initial);
   });
   it("shows endpoint handles only in the chosen operation and keeps a changed angle after closing it", async () => {
-    const initial = addLineMaterial(createLinesState(), 3); await render({ initial });
+    const initial = addLineMaterial(emptyLinesState(), 3); await render({ initial });
     const body = container.querySelector('[data-line-material="0"] > g[role="button"]')!;
     await pointer(body, "pointerdown", 180, 250); await pointer(svg(), "pointerup", 180, 250);
     expect(container.querySelector("[data-line-handle]")).toBeNull();
@@ -70,7 +70,7 @@ describe("open line and angle host", () => {
     expect(container.querySelector("[data-line-handle]")).toBeNull(); expect(current()).toEqual(changed);
   });
   it("keeps read-only geometry and classroom late-join state on the exact same version", async () => {
-    const initial = addLineMaterial(createLinesState(), 6), saved = parseToolScene({ toolId: "plane-geometry", contentVersion: "plane-geometry-lesson-v2", payload: { title: "Parallel", initial } });
+    const initial = addLineMaterial(emptyLinesState(), 6), saved = parseToolScene({ toolId: "plane-geometry", contentVersion: "plane-geometry-lesson-v2", payload: { title: "Parallel", initial } });
     const update = { toolId: "plane-geometry", contentVersion: "plane-geometry-lesson-v2", state: planarSnapshot(initial) } as ClassroomToolUpdate;
     const event = createClassroomToolState("page", "doc", "instance", update, toolSceneOriginHash(saved.payload));
     expect(parseClassroomToolState(event)).toEqual(event);
@@ -80,5 +80,18 @@ describe("open line and angle host", () => {
     expect(current()).toEqual(initial); expect(container.querySelector("[data-line-handle]")).toBeNull();
     await render({ initial, classroom: { state: update.state as ReturnType<typeof planarSnapshot> } });
     expect(button("移除当前材料").disabled).toBe(true); expect(current()).toEqual(initial);
+  });
+  it("keeps precise lengths on blur instead of offsetting them by the minimum", async () => {
+    const initial = addLineMaterial(emptyLinesState(), 3); await render({ initial });
+    await act(async () => button("形状与准确参数").click());
+    const input = () => container.querySelector<HTMLInputElement>('input[aria-label="AB／量角器半径（u）"]')!;
+    await act(async () => input().dispatchEvent(new FocusEvent("focusout", { bubbles: true })));
+    expect(lineMetrics(lineMaterial(current()!)!).length).toBeCloseTo(240, 9);
+    await act(async () => { input().value = "6"; input().dispatchEvent(new FocusEvent("focusout", { bubbles: true })); });
+    expect(lineMetrics(lineMaterial(current()!)!).length).toBeCloseTo(240, 9);
+    await act(async () => button("准确张角").click());
+    const arm = container.querySelector<HTMLInputElement>('input[aria-label="第二臂长（u）"]')!;
+    await act(async () => { arm.value = "3.25"; arm.dispatchEvent(new FocusEvent("focusout", { bubbles: true })); });
+    expect(lineMetrics(lineMaterial(current()!)!).secondLength).toBeCloseTo(130, 9);
   });
 });

@@ -10,8 +10,12 @@ const length = (p: Point) => Math.hypot(p.x, p.y);
 export const lineAngle = (p: Point) => Math.atan2(p.y, p.x) * 180 / Math.PI;
 export const linePolar = (radius: number, degrees: number): Point => ({ x: radius * Math.cos(degrees * Math.PI / 180), y: radius * Math.sin(degrees * Math.PI / 180) });
 const valid = (previous: PlanarState, next: PlanarState) => isValidLinesState(next) ? next : previous;
-export function createLinesState(): PlanarState {
+export function emptyLinesState(): PlanarState {
   return { sceneId: LINE_SCENE, params: { count: 0, active: -1, vertex: 0 }, points: {}, flags: { grid: false, measures: false, names: false, detour: false, foot: false }, marks: [], phase: 0 };
+}
+export function createLinesState(): PlanarState {
+  const segment = addLineMaterial(emptyLinesState(), 0, [{ x: 180, y: 230 }, { x: 400, y: 230 }, { x: 300, y: 140 }]);
+  return addLineMaterial(segment, 3, [{ x: 550, y: 300 }, { x: 750, y: 240 }, { x: 660, y: 465 }]);
 }
 export function lineMaterial(state: PlanarState, id = state.params.active): LineMaterial | null {
   if (!Number.isInteger(id) || id < 0 || id >= state.params.count) return null;
@@ -21,7 +25,9 @@ export const lineMaterials = (state: PlanarState) => Array.from({ length: state.
 export function lineMetrics(object: LineMaterial) {
   const ab = minus(object.b, object.a), ac = minus(object.c, object.a), abLength = length(ab), unit = scale(ab, 1 / abLength);
   const projection = ac.x * unit.x + ac.y * unit.y, foot = plus(object.a, scale(unit, projection)), via = plus(foot, scale(unit, object.q));
-  const angle = ((lineAngle(ac) - lineAngle(ab)) % 360 + 360) % 360;
+  const cross = ab.x * ac.y - ab.y * ac.x, dot = ab.x * ac.x + ab.y * ac.y;
+  // 同向/反向共线消除刚性转动的机器舍入；真实的小角度仍按有向叉积读出。
+  const angle = Math.abs(cross) <= 1e-12 * abLength * length(ac) ? dot >= 0 ? 0 : 180 : (Math.atan2(cross, dot) * 180 / Math.PI + 360) % 360;
   return { unit, foot, via, angle, orientation: lineAngle(ab), length: abLength, secondLength: length(ac), height: length(minus(object.c, foot)), slant: length(minus(object.c, via)), detour: length(ac) + length(minus(object.c, object.b)) };
 }
 function replace(state: PlanarState, object: LineMaterial): PlanarState {
@@ -47,7 +53,7 @@ export function duplicateLine(state: PlanarState): PlanarState {
 }
 export function removeLine(state: PlanarState): PlanarState {
   if (!lineMaterial(state)) return state;
-  let next = { ...createLinesState(), flags: { ...state.flags } };
+  let next = { ...emptyLinesState(), flags: { ...state.flags } };
   for (const object of lineMaterials(state).filter((item) => item.id !== state.params.active)) {
     next = addLineMaterial(next, object.kind, [object.a, object.b, object.c]); next.params[`q.${next.params.active}`] = object.q;
   }

@@ -21,8 +21,8 @@ export function isValidLinesState(state: PlanarState | undefined): state is Plan
       if (!ownKeys(at, ["x", "y"]) || !number(at.x, -LINE_BOUND, LINE_BOUND) || !number(at.y, -LINE_BOUND, LINE_BOUND)) return false;
     }
     const a = state.points[`a.${id}`], b = state.points[`b.${id}`], c = state.points[`c.${id}`], length = Math.hypot(b.x - a.x, b.y - a.y);
-    if (length < 1 || (p[`kind.${id}`] === 3 && Math.hypot(c.x - a.x, c.y - a.y) < 1)
-      || (p[`kind.${id}`] === 4 && (length < 40 || length > 400))) return false;
+    if (length < 1 - 1e-8 || (p[`kind.${id}`] === 3 && Math.hypot(c.x - a.x, c.y - a.y) < 1 - 1e-8)
+      || (p[`kind.${id}`] === 4 && (length < 40 - 1e-8 || length > 400 + 1e-8))) return false;
   }
   return ownKeys(p, paramKeys) && ownKeys(state.points, pointKeys);
 }

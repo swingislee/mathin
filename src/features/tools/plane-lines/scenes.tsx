@@ -82,7 +82,7 @@ export const planeLinesScene: PlanarSceneDefinition = {
     field("x", t("基点 X（u）", "Anchor X (u)"), -100, 100, (s) => (at(s)?.a.x ?? 0) / LINE_UNIT),
     field("y", t("基点 Y（u）", "Anchor Y (u)"), -100, 100, (s) => (at(s)?.a.y ?? 0) / LINE_UNIT),
     field("orientation", t("整体方向（°）", "Orientation (°)"), -180, 180, (s) => at(s) ? lineMetrics(at(s)!).orientation : 0),
-    field("length", t("AB／量角器半径（u）", "AB / protractor radius (u)"), .025, 200, (s) => at(s) ? lineMetrics(at(s)!).length / LINE_UNIT : 0),
+    field("length", t("AB／量角器半径（u）", "AB / protractor radius (u)"), .025, 200, (s) => at(s) ? lineMetrics(at(s)!).length / LINE_UNIT : 0, absent, .025),
   ],
   operations: [
     { id: "line-edit", icon: "editShape", label: t("编辑当前材料定位点", "Edit current defining points"), fields: [
@@ -93,7 +93,7 @@ export const planeLinesScene: PlanarSceneDefinition = {
     ] },
     { id: "line-angle", icon: "rotate", label: t("准确张角", "Set the opening angle"), fields: [
       field("angle", t("顺时针张角（°）", "Clockwise opening (°)"), 0, 359.9, (s) => at(s) ? lineMetrics(at(s)!).angle : 0, (s) => at(s)?.kind !== 3),
-      field("secondLength", t("第二臂长（u）", "Second arm length (u)"), .025, 200, (s) => at(s) ? lineMetrics(at(s)!).secondLength / LINE_UNIT : 0, (s) => at(s)?.kind !== 3),
+      field("secondLength", t("第二臂长（u）", "Second arm length (u)"), .025, 200, (s) => at(s) ? lineMetrics(at(s)!).secondLength / LINE_UNIT : 0, (s) => at(s)?.kind !== 3, .025),
     ] },
     { id: "line-distance", icon: "measure", label: t("移动斜线落点", "Move the oblique endpoint"), fields: [
       field("q", t("落点距垂足（u）", "Endpoint from perpendicular foot (u)"), -100, 100, (s) => (at(s)?.q ?? 0) / LINE_UNIT, (s) => !at(s) || at(s)!.kind < 5),

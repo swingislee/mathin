@@ -26,8 +26,8 @@ begin
     end loop;
     a:=pts->('a.'||i); b:=pts->('b.'||i); c:=pts->('c.'||i);
     length_value:=sqrt(power((b->>'x')::double precision-(a->>'x')::double precision,2)+power((b->>'y')::double precision-(a->>'y')::double precision,2));
-    if length_value<1 or (kind=4 and (length_value<40 or length_value>400)) then return false; end if;
-    if kind=3 and sqrt(power((c->>'x')::double precision-(a->>'x')::double precision,2)+power((c->>'y')::double precision-(a->>'y')::double precision,2))<1 then return false; end if;
+    if length_value<1-1e-8 or (kind=4 and (length_value<40-1e-8 or length_value>400+1e-8)) then return false; end if;
+    if kind=3 and sqrt(power((c->>'x')::double precision-(a->>'x')::double precision,2)+power((c->>'y')::double precision-(a->>'y')::double precision,2))<1-1e-8 then return false; end if;
   end loop; end if;
   return public.tool_space_keys(p,keys_p,keys_p) and public.tool_space_keys(pts,keys_pt,keys_pt);
 exception when others then return false; end;
