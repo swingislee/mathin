@@ -451,7 +451,7 @@ const staircaseScene = scene("43", t("台阶、凹口与周长", "Staircases, no
 });
 
 const clockScene = scene("60", t("钟面追及与夹角", "Clock hands and changing angles"), t("拨分针或调整分钟数；分针每分走 6°，时针同时走 0.5°，可保留起点影子。", "Drag the minute hand or set the time. The minute hand advances 6° per minute while the hour hand advances 0.5°. Keep a starting-time ghost."), {
-  create: () => state("60", { minutes: 120, start: 120, span: 60 }, {}, { ghost: true, reflex: false }),
+  create: () => state("60", { minutes: 120, start: 120, span: 60 }, {}, { measures: false, ghost: false, reflex: false }),
   fields: [field("minutes", "从 0:00 起的分钟数", "Minutes from 0:00", 0, 1440, 0.1), field("span", "每次演示经过分钟数", "Minutes advanced per demonstration", 1, 120, 1)],
   toggles: [toggle("ghost", "保留起始指针影子", "Keep starting-hand ghosts"), toggle("reflex", "观察较大夹角", "Observe the larger angle"), measures],
   actions: [
@@ -469,10 +469,9 @@ const clockScene = scene("60", t("钟面追及与夹角", "Clock hands and chang
     return <><circle cx={center.x} cy={center.y} r="215" fill="var(--paper)" stroke="var(--crater)" strokeWidth="2" />
       {Array.from({ length: 60 }, (_, i) => <g key={i}>{line(polar(center, i % 5 ? 209 : 201, i * 6 - 90), polar(center, 215, i * 6 - 90), "var(--muted)", false, i % 5 ? 1 : 2)}{i % 5 === 0 && label(polar(center, 184, i * 6 - 90), i === 0 ? 12 : i / 5)}</g>)}
       {s.flags.ghost && <g opacity="0.25">{line(center, polar(center, 125, ghost.hour - 90), "var(--ink)", true, 4)}{line(center, polar(center, 180, ghost.minute - 90), "var(--rose)", true, 3)}</g>}
-      {Math.abs(sweep) > 0.01 && Math.abs(sweep) < 359.99 && <path d={wedge(center, 64, angles.hour - 90, sweep)} fill="var(--moon)" fillOpacity="0.6" stroke="var(--crater)" />}
+      {s.flags.measures && <g data-clock-angle="true">{Math.abs(sweep) > 0.01 && Math.abs(sweep) < 359.99 && <path d={wedge(center, 64, angles.hour - 90, sweep)} fill="var(--moon)" fillOpacity="0.6" stroke="var(--crater)" />}<RightAngleMark vertex={center} along={hour} toward={minute} /></g>}
       {line(center, hour, "var(--ink)", false, 7)}{line(center, minute, "var(--rose)", false, 4)}{dot(api, "minute", minute, undefined, "var(--rose)")}{dot(api, "hour", hour, undefined, "var(--ink)")}
       <circle cx={center.x} cy={center.y} r="7" fill="var(--crater)" />
-      <RightAngleMark vertex={center} along={hour} toward={minute} />
       {label({ x: 480, y: 615 }, `${hourText}:${minuteText}${s.flags.measures ? ` · ${fmt(s.flags.reflex ? angles.largerAngle : angles.smallerAngle)}°` : ""}`)}
     </>;
   },

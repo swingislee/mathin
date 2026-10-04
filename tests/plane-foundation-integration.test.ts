@@ -198,3 +198,20 @@ describe("precise numeric fields keep their domain semantics", () => {
     expect(input().valueAsNumber).toBe(4); expect(current()).toEqual(placed);
   });
 });
+
+describe("clock observations remain optional", () => {
+  it("starts quietly, keeps enabled observations when the panel closes, and reads old settings unchanged", async () => {
+    await render({ toolId: "plane-clock" }); const initial = current()!;
+    expect(initial.flags.measures).toBe(false); expect(initial.flags.ghost).toBe(false);
+    expect(svg().textContent).toContain("02:00"); expect(svg().textContent).not.toContain("°"); expect(container.querySelector("[data-clock-angle]")).toBeNull();
+    await act(async () => button("显示设置").click());
+    const measures = () => [...container.querySelectorAll("label")].find((label) => label.textContent === "数值与测量标记")!.querySelector<HTMLButtonElement>('[role="checkbox"]')!;
+    await act(async () => measures().click()); expect(svg().textContent).toContain("60°"); expect(container.querySelector("[data-clock-angle]")).not.toBeNull();
+    await act(async () => button("关闭面板").click()); expect(current()!.flags.measures).toBe(true); expect(container.querySelector("[data-clock-angle]")).not.toBeNull();
+    await act(async () => button("显示设置").click()); await act(async () => measures().click());
+    expect(svg().textContent).not.toContain("°"); expect(container.querySelector("[data-clock-angle]")).toBeNull(); expect(current()!.params).toEqual(initial.params);
+    const legacy = { ...initial, flags: { ...initial.flags, measures: true, ghost: true } };
+    expect(() => parseToolScene({ toolId: "plane-clock", contentVersion: "plane-clock-lesson-v1", payload: { title: "Prepared clock", initial: legacy } })).not.toThrow();
+    await render({ toolId: "plane-clock", initial: legacy, readOnly: true }); expect(current()).toEqual(legacy); expect(svg().textContent).toContain("60°");
+  });
+});

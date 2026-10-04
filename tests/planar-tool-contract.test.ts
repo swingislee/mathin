@@ -24,7 +24,9 @@ describe("approved planar scenes use one Tools registration path", () => {
     for (const fixture of fixtures) {
       const scene = planarScene(fixture.payload.initial.sceneId);
       expect(scenesForPlanarTool(fixture.toolId as Parameters<typeof scenesForPlanarTool>[0], fixture.contentVersion).map((entry) => entry.id)).toContain(scene.id);
-      expect(fixture.payload.initial).toEqual(scene.create());
+      // 原存档保持其观察设置；仅钟面的新建默认改为按需观察。
+      const defaults = scene.create();
+      expect(fixture.payload.initial).toEqual(scene.id === "60" ? { ...defaults, flags: { ...defaults.flags, measures: true, ghost: true } } : defaults);
       expect(() => parseToolScene(fixture)).not.toThrow();
     }
   });
