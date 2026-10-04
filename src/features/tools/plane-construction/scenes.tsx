@@ -10,12 +10,16 @@ import {
   removeConstructionVertex, setConstructionField, tapConstruction, toggleConstructionFlag,
   transformConstruction, worldVertices, type ConstructionObject, type ConstructionTool,
 } from "./model";
+import {
+  constructionCorrespondences, constructionMotionOrigin, constructionRepeatParts, dragConstructionMotion,
+  interpolateConstructionRepeat, parseConstructionMotionTarget, repeatConstruction, setConstructionRepeatParts, snapConstructionMotion,
+} from "./motion";
 
 const t = (zh: string, en: string): PlanarText => ({ zh, en });
 const colors = ["var(--leaf)", "var(--moon)", "var(--cheek)", "var(--crater)"];
 const coordinates = (points: readonly PlanarPoint[]) => points.map((point) => `${point.x},${point.y}`).join(" ");
 const transform = (object: ConstructionObject) => `matrix(${constructionMatrix(object).join(" ")})`;
-const selectedId = (target: string | null) => target ? parseConstructionTarget(target)?.id : undefined;
+const selectedId = (target: string | null) => target ? parseConstructionMotionTarget(target)?.id ?? parseConstructionTarget(target)?.id : undefined;
 const shapeLabels = { triangle: t("三角形", "Triangle"), square: t("正方形", "Square"), rectangle: t("长方形", "Rectangle"),
   circle: t("圆", "Circle"), ellipse: t("椭圆", "Ellipse"), rhombus: t("菱形", "Rhombus"),
   parallelogram: t("平行四边形", "Parallelogram"), trapezoid: t("梯形", "Trapezoid"), quadrilateral: t("四边形", "Quadrilateral"), polygon: t("多边形", "Polygon") };
@@ -84,9 +88,15 @@ function Observations({ state, object, api, editing }: { state: PlanarState; obj
 }
 function OperationGuides({ state, api }: { state: PlanarState; api: PlanarDrawingApi }) {
   if (api.operation === "rotate") {
-    const pivot = state.points.pivot;
+    const pivot = state.points.pivot, object = state.sceneId === "20-create" ? constructionObject(state) : null;
+    const bounds = object ? constructionBounds(object) : null;
+    const distance = object ? Math.hypot(object.center.x - pivot.x, object.center.y - pivot.y) : 0;
+    const angle = object ? distance > 20 ? Math.atan2(object.center.y - pivot.y, object.center.x - pivot.x) : object.angle * Math.PI / 180 : 0;
+    const radius = Math.max(65, distance, bounds ? Math.max(bounds.width, bounds.height) / 2 + 30 : 0);
+    const handle = { x: pivot.x + radius * Math.cos(angle), y: pivot.y + radius * Math.sin(angle) };
     return <g data-construction-guide="rotate"><EditingHandle target="pivot" at={pivot} api={api} label={t("拖动旋转中心", "Move rotation center")} />
       <g pointerEvents="none" stroke="var(--rose)" strokeWidth="1.5"><line x1={pivot.x - 11} y1={pivot.y} x2={pivot.x + 11} y2={pivot.y} /><line x1={pivot.x} y1={pivot.y - 11} x2={pivot.x} y2={pivot.y + 11} /></g>
+      {object && <><line x1={pivot.x} y1={pivot.y} x2={handle.x} y2={handle.y} stroke="var(--rose)" strokeWidth="1.2" strokeDasharray="5 5" pointerEvents="none" /><EditingHandle target={`motion-rotate.${object.id}`} at={handle} api={api} label={t("抓住手柄绕旋转中心转动当前图形", "Turn the current shape around the pivot")} /></>}
     </g>;
   }
   if (api.operation === "reflect") {
@@ -102,30 +112,60 @@ function OperationGuides({ state, api }: { state: PlanarState; api: PlanarDrawin
   return null;
 }
 
+function Correspondences({ state, api }: { state: PlanarState; api: PlanarDrawingApi }) {
+  if (state.sceneId !== "20-create" || !state.flags.ghost || !state.flags.vertices) return null;
+  const id = selectedId(api.selected) ?? state.params.active;
+  if (!constructionObject(state, id)) return null;
+  let before = constructionMotionOrigin(state) ?? api.ghostState, after = state, planned = false;
+  let pairs = before ? constructionCorrespondences(before, after, id) : [];
+  if (!pairs.length) {
+    const operation = api.operation === "move" ? "translate" : api.operation === "rotate" ? "rotate" : api.operation === "reflect" ? "reflect" : null;
+    if (!operation) return null;
+    before = { ...state, params: { ...state.params, active: id } };
+    after = transformConstruction(before, operation); pairs = constructionCorrespondences(before, after, id); planned = true;
+  }
+  if (!pairs.length) return null;
+  return <g data-construction-correspondences={planned ? "planned" : "actual"} pointerEvents="none">
+    {planned && <g data-construction-target-outline={id}><ObjectDrawing object={constructionObject(after, id)!} ghost /></g>}
+    {pairs.map((pair) => <g key={pair.label} data-construction-correspondence={pair.label}>
+      <line x1={pair.from.x} y1={pair.from.y} x2={pair.to.x} y2={pair.to.y} stroke="var(--muted)" strokeWidth="1.2" strokeDasharray="4 4" />
+      <circle cx={pair.from.x} cy={pair.from.y} r="3" fill="var(--paper)" stroke="var(--muted)" strokeWidth="1.5" />
+      <circle cx={pair.to.x} cy={pair.to.y} r="4" fill="var(--rose)" />
+      <Caption at={{ x: pair.from.x - 12, y: pair.from.y - 11 }} size={12}>{pair.label}</Caption>
+      <Caption at={{ x: pair.to.x + 12, y: pair.to.y + 19 }} size={12}>{pair.label}′</Caption>
+    </g>)}
+  </g>;
+}
+
 function drawConstruction(state: PlanarState, api: PlanarDrawingApi) {
   const selected = selectedId(api.selected);
-  const ghosts = state.flags.ghost && api.ghostState ? constructionObjects(api.ghostState).filter((before) => {
+  const origin = constructionMotionOrigin(state) ?? api.ghostState;
+  const motion = state.sceneId === "20-create" ? api.operation === "move" ? "translate" : api.operation === "rotate" || api.operation === "reflect" ? api.operation : null : null;
+  const ghosts = state.flags.ghost && origin ? constructionObjects(origin).filter((before) => {
     const current = constructionObject(state, before.id);
     return current && JSON.stringify({ ...before, detail: 0 }) !== JSON.stringify({ ...current, detail: 0 });
   }) : [];
   return <>
     {ghosts.map((object) => <g key={object.id} data-construction-ghost={object.id} pointerEvents="none"><ObjectDrawing object={object} ghost /></g>)}
     {constructionObjects(state).map((object) => {
-      const chosen = selected === object.id, editing = state.flags.edit && chosen;
+      const chosen = selected === object.id, editing = state.flags.edit && chosen && !motion;
+      const target = motion ? `motion-${motion}.${object.id}` : `object.${object.id}`;
+      const objectApi = motion ? { ...api, bind: (_target: string, label?: string) => api.bind(target, label) } : api;
       const bounds = constructionBounds(object), measurements = state.flags.measures || state.flags.counts ? constructionMeasurements(object) : null;
       const captions: ReactNode[] = [];
       if (state.flags.names) captions.push(textFor(objectLabel(object), api.locale));
       if (state.flags.counts && measurements) captions.push(api.locale === "en" ? `${measurements.straightEdges} straight sides · ${measurements.vertices} vertices` : `${measurements.straightEdges} 条直边 · ${measurements.vertices} 个顶点`);
       if (state.flags.measures && measurements) captions.push(api.locale === "en" ? `Perimeter ${measurements.perimeterApproximate ? "≈ " : ""}${measurements.perimeter.toFixed(1)} u · Area ${measurements.area.toFixed(1)} u²` : `周长${measurements.perimeterApproximate ? "约 " : " "}${measurements.perimeter.toFixed(1)} u · 面积 ${measurements.area.toFixed(1)} u²`);
       return <g key={object.id} data-construction-object={object.id}>
-        <g {...api.bind(`object.${object.id}`, textFor(objectLabel(object), api.locale))} style={{ cursor: "grab" }}>
+        <g data-construction-body={target} {...api.bind(target, textFor(objectLabel(object), api.locale))} style={{ cursor: "grab" }}>
           <ObjectDrawing object={object} />
           {chosen && <g transform={transform(object)}><Outline object={object} fill="none" stroke="var(--rose)" strokeWidth="1.4" strokeDasharray="5 5" vectorEffect="non-scaling-stroke" pointerEvents="none" /></g>}
         </g>
-        <Observations state={state} object={object} api={api} editing={editing} />
+        <Observations state={state} object={object} api={objectApi} editing={editing} />
         {captions.map((caption, index) => <Caption key={index} at={{ x: object.center.x, y: bounds.maxY + 27 + index * 23 }}>{caption}</Caption>)}
       </g>;
     })}
+    <Correspondences state={state} api={api} />
     <OperationGuides state={state} api={api} />
   </>;
 }
@@ -171,6 +211,20 @@ const operations: NonNullable<PlanarSceneDefinition["operations"]> = [
   { id: "rotate", icon: "rotate", label: t("绕点旋转", "Rotate around a point"), fields: [...auxiliary("pivot", t("旋转中心", "Pivot")), scalar("turn", t("顺时针转角（°）", "Clockwise turn (°)"), -360, 360)], actions: [operationAction("rotate", "play", t("播放旋转", "Play rotation"))] },
   { id: "reflect", icon: "mirror", label: t("沿轴镜像", "Reflect across an axis"), fields: [...auxiliary("axis", t("对称轴经过点", "Axis point")), scalar("axisAngle", t("对称轴方向（°）", "Axis direction (°)"), -180, 180)], actions: [operationAction("reflect", "mirror", t("翻到对称位置", "Fold to the reflected position"))] },
 ];
+const correspondenceAction: PlanarAction = {
+  id: "construction-correspondence", icon: "vertex", label: t("观察变换前后的对应点", "Observe corresponding points before and after a transformation"),
+  active: (state) => state.flags.ghost && state.flags.vertices,
+  run: (state) => { const value = !(state.flags.ghost && state.flags.vertices); return { ...state, flags: { ...state.flags, ghost: value, vertices: value } }; },
+};
+const repeatAction: PlanarAction = {
+  id: "construction-repeat", icon: "duplicate", label: t("按总份数绕中心生成独立副本（含原片）", "Repeat around the pivot as independent copies (including the original)"),
+  disabled: (state) => repeatConstruction(state) === state, run: (state) => repeatConstruction(state), duration: 1600, interpolate: interpolateConstructionRepeat,
+};
+const motionOperations = operations.map((operation) => ({ ...operation, fields: operation.fields?.map((field) => ({ ...field, step: undefined })) })).map((operation) => operation.id !== "rotate" ? operation : { ...operation,
+  fields: [...operation.fields!, { key: "repeatParts", label: t("绕一周的总份数（含原片）", "Total parts around one turn (including the original)"), min: 0, max: MAX_CONSTRUCTION_OBJECTS, step: 1,
+    options: [{ value: 0, label: t("按份数设定转角", "Choose parts to set the turn") }, ...Array.from({ length: MAX_CONSTRUCTION_OBJECTS - 1 }, (_, index) => ({ value: index + 2, label: t(`${index + 2} 份`, `${index + 2} parts`) }))],
+    read: constructionRepeatParts, disabled: noObject }], actions: [...operation.actions!, repeatAction],
+});
 function constructionPreview(toolId: string, draft: readonly PlanarPoint[]) {
   if (!isConstructionTool(toolId)) return null;
   const empty = removeConstruction(createConstructionState("01-create")), next = addConstruction(empty, toolId, [...draft]);
@@ -190,13 +244,16 @@ const materials: PlanarMaterial[] = CONSTRUCTION_PRESETS.map((preset, index) => 
 });
 /** 材料编辑、选择与变换共享；各教具只补自己的数学观察和操作。 */
 export function createConstructionDefinition(sceneId: string, toolId: PlanarToolId, title: PlanarText): PlanarSceneDefinition {
+  const motion = sceneId === "20-create";
   return {
     id: sceneId, toolId, title,
     description: t("右侧画图或添加材料；拖动图形摆放，按需开启编辑或运动。", "Draw or add shapes on the right. Drag to arrange, then enable editing or transformations when needed."),
-    create: () => createConstructionState(sceneId), materials, actions, operations,
+    create: () => createConstructionState(sceneId), materials, actions: motion ? [...actions, correspondenceAction] : actions, operations: motion ? motionOperations : operations,
     selectionAfterChange: (before, after, selected) => {
       if (after.params.active === -1) return null;
       if (before.params.active !== after.params.active) return `object.${after.params.active}`;
+      const direct = parseConstructionMotionTarget(selected);
+      if (direct) return constructionObject(after, direct.id) ? `object.${direct.id}` : null;
       const target = selected ? parseConstructionTarget(selected) : null;
       if (target?.id !== undefined) {
         const object = constructionObject(after, target.id);
@@ -218,8 +275,13 @@ export function createConstructionDefinition(sceneId: string, toolId: PlanarTool
       create: (state, toolId, draft) => { if (!isConstructionTool(toolId)) return null; const next = addConstruction(state, toolId, draft); return next === state ? null : next; },
       preview: constructionPreview,
     },
-    setField: setConstructionField, setFlag: toggleConstructionFlag, draw: drawConstruction,
-    drag: (start, target, point, delta) => moveConstruction(start, target, point, delta), tap: tapConstruction,
+    setField: (state, key, value) => motion && key === "repeatParts" ? setConstructionRepeatParts(state, value) : setConstructionField(state, key, value), setFlag: toggleConstructionFlag, draw: drawConstruction,
+    drag: (start, target, point, delta, context) => motion && parseConstructionMotionTarget(target) ? dragConstructionMotion(start, target, point, delta, context?.previous) : moveConstruction(start, target, point, delta),
+    tap: (state, target) => { const direct = motion ? parseConstructionMotionTarget(target) : null; return tapConstruction(state, direct ? `object.${direct.id}` : target); },
+    ...(motion ? { snap: snapConstructionMotion, contextActions: (state: PlanarState, selected: string | null) => {
+      const id = selectedId(selected), object = id === undefined ? null : constructionObject(state, id);
+      return object ? { bounds: constructionBounds(object), items: [{ kind: "operation" as const, id: "move" }, { kind: "operation" as const, id: "rotate" }, { kind: "operation" as const, id: "reflect" }, { kind: "action" as const, id: "construction-duplicate" }, { kind: "action" as const, id: "construction-remove" }] } : null;
+    } } : {}),
   };
 }
 

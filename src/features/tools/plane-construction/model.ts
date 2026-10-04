@@ -233,6 +233,20 @@ function appendObject(state: PlanarState, object: Omit<ConstructionObject, "id">
   return writeObject({ ...state, params: { ...state.params, nextId: id + 1, active: id } }, { ...object, id });
 }
 
+/** 同次生成先核对整批容量、身份和材料；任一副本无法容纳时保留完整原现场。 */
+export function appendConstructionBatch(state: PlanarState, input: readonly Omit<ConstructionObject, "id">[]): PlanarState {
+  if (!input.length) return state;
+  const existing = constructionObjects(state), first = state.params.nextId;
+  const objects = input.map((object, index) => ({ ...object, id: first + index }));
+  if (!Number.isInteger(first) || first < 1 || first + objects.length > 99999 || existing.length + objects.length > MAX_CONSTRUCTION_OBJECTS
+    || [...existing, ...objects].reduce((sum, object) => sum + object.vertices.length, 0) > MAX_CONSTRUCTION_VERTICES
+    || objects.some((object) => !isValidConstructionObject(object))) return state;
+  return objects.reduce(writeObject, { ...state, params: { ...state.params, nextId: first + objects.length, active: objects.at(-1)!.id } });
+}
+
+/** 表现帧写入器；调用方只在动画里使用，准确保存仍经过完整状态校验。 */
+export const constructionFrameWithObject = writeObject;
+
 export function createConstructionState(sceneId: string): PlanarState {
   const initial: PlanarState = { sceneId, params: { nextId: 1, active: 0, dx: 180, dy: 0, turn: 90, axisAngle: 90 }, points: { pivot: { x: 480, y: 360 }, axis: { x: 480, y: 360 } }, flags: Object.fromEntries(FLAG_KEYS.map((key) => [key, sceneId === "20-create" && key === "ghost"])), marks: [], phase: 0 };
   return writeObject(initial, { id: 0, kind: 1, center: { x: 380, y: 340 }, vertices: [{ x: -130, y: -84 }, { x: 130, y: -84 }, { x: 130, y: 84 }, { x: -130, y: 84 }], angle: 0, rx: 0, ry: 0, life: 0, detail: 0, flip: 1 });
