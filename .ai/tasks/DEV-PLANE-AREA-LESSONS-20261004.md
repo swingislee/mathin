@@ -6,3 +6,5 @@
 - SQL `20261004030100_tool_plane_area_lessons.sql` 提供严格 `tool_plane_area_lessons_state_is_valid(jsonb)` / `tool_plane_area_lessons_scene_is_valid(jsonb)`，TS/SQL 接受边界一致。root 写总分发、共享目录、集成和实际类型。
 - worktree 复用 `.worktrees/plane-invariants-codex`。定向测试覆盖各获批操作、数学不变量、参数极端、手势、课堂/保存和旧版隔离；不连接 DB 或启动服务。
 - 先提交实现与领域测试，再提交交接。教学操作若不能在本批安全完成，准确列未完成项继续同任务推进，不把普通剪刀原语当作已完成全部教学闭环。
+
+交付：代码 `9791365d` 已集成 main `74d602e0`；新建入口与本地保存合同已接通，26 项领域结果复用，共享合同及 SQL 对照通过。开发端待人工教学手感确认，生产未变更。

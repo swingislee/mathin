@@ -18,6 +18,7 @@
         ".ai/tasks/DEV-PLANE-ROUTES-20261004.md",
         ".ai/tasks/DEV-PLANE-POLYGONS-20261004.md",
         ".ai/tasks/DEV-PLANE-NETWORK-20261004.md",
+        ".ai/tasks/DEV-PLANE-FOLD-LAYERS-20261004.md",
         "src/features/tools/plane-lines/",
         "src/features/tools/plane-construction/model.ts",
         "src/features/tools/plane-construction/scenes.tsx",
@@ -36,6 +37,7 @@
         "supabase/migrations/20261004030300_tool_plane_foundation_catalog.sql",
         "supabase/migrations/20261004030500_tool_plane_polygon_catalog.sql",
         "supabase/migrations/20261004030600_tool_plane_foundation_titles.sql",
+        "supabase/migrations/20261004031100_tool_plane_paper_layers_catalog.sql",
         "scripts/plane-foundation-local.mjs",
         "tests/plane-lines.test.ts",
         "tests/plane-foundation-integration.test.ts",
@@ -46,6 +48,7 @@
         "tests/plane-strips-integration.test.ts",
         "docs/evidence/tools-plane-all-20261004.md",
         "docs/evidence/tools-plane-foundation-20261004.md",
+        "docs/current.md",
         ".ai/handoffs/DEV-PLANE-ALL-20261004-review-01.md"
       ],
       "sharedPaths": [
@@ -53,7 +56,7 @@
         "CHANGELOG.md"
       ],
       "checkpoint": "819a6061b0831e3f83c2403d5948b32b52056d0b",
-      "next": "已按22个当前工具及49项获批教学能力审计；本批实现线与角并集成三个独立领域，后续缺口逐项保留在总卡。尚未宣称全部完成。"
+      "next": "main 74d602e0 已交付线角/面积/路线、形状辨识/镶嵌修复，开发库保存合同与 zh/en 页面已接通。继续多边形、线网、双折及剩余领域；待人工教学验收，尚未全部完成。"
     },
     {
       "id": "DEV-PLANE-EXACT-MOTION-20261004",
@@ -81,7 +84,7 @@
       "title": "剪拼面积获批教学操作与同台比较",
       "agent": "codex",
       "threadId": null,
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/plane-area-lessons-codex",
       "card": ".ai/tasks/DEV-PLANE-AREA-LESSONS-20261004.md",
@@ -96,14 +99,14 @@
       ],
       "sharedPaths": [],
       "checkpoint": "819a6061b0831e3f83c2403d5948b32b52056d0b",
-      "next": "登记后复用不变量工作树新分支；获批14/15/16/17/46/58以同台材料与准确操作补齐，不改原14-create及旧场景。"
+      "next": "代码9791365d已集成main74d602e0；26领域检查、共享接线、TS/SQL及本地保存已通过。开发端可使用，待人工教学确认；生产保持。"
     },
     {
       "id": "DEV-PLANE-ROUTES-20261004",
       "title": "格点与反射路线教师建构和同台比较",
       "agent": "codex",
       "threadId": null,
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/plane-routes-codex",
       "card": ".ai/tasks/DEV-PLANE-ROUTES-20261004.md",
@@ -118,14 +121,14 @@
       ],
       "sharedPaths": [],
       "checkpoint": "819a6061b0831e3f83c2403d5948b32b52056d0b",
-      "next": "登记后复用格点工作树新分支；53允许路线复用边与可编辑起终点，54保留任意角度反射轴并提供累计比较，分别严格新版合同。"
+      "next": "代码499eec78已集成main74d602e0；45领域检查、共享接线、TS/SQL及本地保存已通过。两个入口已可使用，待人工教学确认；生产保持。"
     },
     {
       "id": "DEV-PLANE-POLYGONS-20261004",
       "title": "三角形四边形与活动框架同台建构",
       "agent": "codex",
       "threadId": null,
-      "status": "ready",
+      "status": "in_progress",
       "checkout": "worktree",
       "branch": "codex/plane-polygons-open-codex",
       "card": ".ai/tasks/DEV-PLANE-POLYGONS-20261004.md",
@@ -147,6 +150,20 @@
       "sharedPaths": [],
       "checkpoint": "77bbfaf6",
       "next": "路线批次已提交后复用干净工作树新分支；沿用 v2 准确点线、连通分量变换、单条观察与笔迹操作，无新 SQL。"
+    },
+    {
+      "id": "DEV-PLANE-FOLD-LAYERS-20261004",
+      "title": "双折逐层展开与独立剪口编辑",
+      "agent": "codex",
+      "threadId": null,
+      "status": "in_progress",
+      "checkout": "worktree",
+      "branch": "codex/plane-fold-layers-codex",
+      "card": ".ai/tasks/DEV-PLANE-FOLD-LAYERS-20261004.md",
+      "writePaths": ["src/features/tools/plane-paper-layers/", "tests/plane-paper-layers.test.ts", "tests/plane-paper-layers-integration.test.ts", "tests/fixtures/plane-paper-layers-cases.ts", "supabase/migrations/20261004031000_tool_plane_paper_layers.sql", ".ai/handoffs/DEV-PLANE-FOLD-LAYERS-20261004-codex-01.md"],
+      "sharedPaths": [],
+      "checkpoint": "74d602e0",
+      "next": "沿用面积工作树的新分支，新增32-layers/v3，按实际叠层及来源映射补双折与独立剪口，旧版保持。"
     },
     {
       "id": "REPO-DIRECTION-CLEANUP-20261004",

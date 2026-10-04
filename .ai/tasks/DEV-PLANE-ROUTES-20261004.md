@@ -6,3 +6,5 @@
 - 复用统一宿主、撤销/只读/课堂，不另写交互平台。旧 v1 保持原可读版本。
 - SQL `20261004030200_tool_plane_routes.sql` 只添加严格 `tool_plane_routes_state_is_valid(jsonb)` / `tool_plane_routes_scene_is_valid(jsonb)`；root 写总分发与类型。
 - worktree 复用 `.worktrees/plane-grid-measure-deep-codex`。定向覆盖复用边、候选独立、可编辑起终点、任意轴、共线/退化边界、反射最短值、保存/课堂和历史；无 DB/服务/浏览器操作。
+
+交付：代码 `499eec78` 已集成 main `74d602e0`；两个新建入口与本地保存合同已接通，45 项领域结果复用，共享合同及 SQL 对照通过。zh/en 页面可打开，教学手感待人工确认，生产未变更。
