@@ -39,7 +39,7 @@
       "checkout": "worktree",
       "branch": "codex/perimeter-vertex-codex",
       "card": ".ai/tasks/DEV-PERIMETER-VERTEX-20261004.md",
-      "writePaths": ["src/features/tools/plane-perimeter/", "tests/plane-perimeter-vertex.test.ts", "tests/plane-perimeter-vertex-integration.test.ts", ".ai/handoffs/DEV-PERIMETER-VERTEX-20261004-codex-01.md", ".ai/handoffs/DEV-PERIMETER-VERTEX-20261004-review-01.md"],
+      "writePaths": ["src/features/tools/plane-perimeter/", "tests/plane-perimeter-vertex.test.ts", "tests/plane-perimeter-vertex-integration.test.ts", ".ai/handoffs/DEV-PERIMETER-VERTEX-20261004-codex-01.md", ".ai/handoffs/DEV-PERIMETER-VERTEX-20261004-codex-02.md", ".ai/handoffs/DEV-PERIMETER-VERTEX-20261004-review-01.md"],
       "sharedPaths": [],
       "checkpoint": "5f6a60e49f2f33305252c55b82fb8ca4349ba8cf",
       "next": "在显式操作中支持单顶点保量拖动，其余顶点保持；沿用 perimeter v2，不新增持久字段或永久约束。"
