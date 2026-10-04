@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PlanarState } from "../src/features/tools/planar-kit/contract";
-import { addNetworkMaterial, addNetworkPoint, addNetworkSegment, appendNetworkVisit, clearNetworkRecords, createNetworkState, dragNetworkTarget, liftNetworkPen, moveNetworkTarget, networkCoveredNodes, networkFigureValid, networkGraph, networkPicks, networkRecords, recordNetworkFigure, removeNetworkTarget, setNetworkField, setNetworkFlag, tapNetworkTarget } from "../src/features/tools/plane-network/model";
+import { addNetworkMaterial, addNetworkPoint, addNetworkSegment, appendNetworkVisit, clearNetworkRecords, continueNetworkStroke, createNetworkState, dragNetworkTarget, liftNetworkPen, moveNetworkTarget, networkComponent, networkCoveredNodes, networkDistance, networkFigureValid, networkGraph, networkPicks, networkRecords, readNetworkPrecision, recordNetworkFigure, removeNetworkRecord, removeNetworkTarget, rotateNetworkComponent, setNetworkField, setNetworkFlag, tapNetworkTarget, translateNetworkComponent } from "../src/features/tools/plane-network/model";
 import { isValidPlaneNetworkState } from "../src/features/tools/plane-network/validation";
 import { planeNetworkScenes } from "../src/features/tools/plane-network/scenes";
 
@@ -13,7 +13,7 @@ const segment = (state: PlanarState, ax: number, ay: number, bx: number, by: num
 const square = (scene: "47-create" | "52-create" = "47-create") => [[100, 100, 300, 100], [300, 100, 300, 300], [300, 300, 100, 300], [100, 300, 100, 100]].reduce((state, [ax, ay, bx, by]) => segment(state, ax, ay, bx, by), blank(scene));
 
 describe("editable planar network geometry", () => {
-  it.each(["47-create", "52-create"] as const)("starts with only one real segment for %s", (scene) => {
+  it.each(["47-create", "52-create"] as const)("starts with only one real segment for %s", (scene: "47-create" | "52-create") => {
     const state = createNetworkState(scene);
     expect(isValidPlaneNetworkState(state)).toBe(true);
     expect(networkGraph(state).nodes).toHaveLength(2);
@@ -53,7 +53,7 @@ describe("editable planar network geometry", () => {
     expect(state.points[`node.${edge.a}`]).toEqual({ x: a.x + 20, y: a.y - 30 });
     expect(networkGraph(state).edges).toHaveLength(4); expect(isValidPlaneNetworkState(state)).toBe(true);
   });
-  it.each(["segment", "rays", "triangle", "grid"] as const)("%s material appends without replacing the first segment", (material) => {
+  it.each(["segment", "rays", "triangle", "grid"] as const)("%s material appends without replacing the first segment", (material: "segment" | "rays" | "triangle" | "grid") => {
     const before = createNetworkState("47-create"), after = addNetworkMaterial(before, material);
     expect(after.points["node.0"]).toEqual(before.points["node.0"]);
     expect(networkGraph(after).nodes.length).toBeGreaterThan(2);
@@ -226,5 +226,97 @@ describe("strict persisted network contract", () => {
       const state = setNetworkField(createNetworkState("47-create"), key, value);
       for (const material of ["grid", "rays", "triangle", "segment"] as const) expect(isValidPlaneNetworkState(addNetworkMaterial(state, material)), `${key}=${value}/${material}`).toBe(true);
     }
+  });
+});
+
+describe("precise network material editing without changing v2", () => {
+  it("edits exact node coordinates independently of the drag snapping switch", () => {
+    const selected = tapNetworkTarget(setNetworkFlag(createNetworkState("47-create"), "snap", true), "node.0");
+    const moved = setNetworkField(setNetworkField(selected, "nodeX", 280.125), "nodeY", 350.375);
+    expect(moved.points["node.0"]).toEqual({ x: 280.125, y: 350.375 }); expect(moved.points["node.1"]).toEqual(selected.points["node.1"]);
+    expect(Object.keys(moved.params)).toEqual(Object.keys(selected.params)); expect(isValidPlaneNetworkState(moved)).toBe(true);
+  });
+  it("edits both endpoint coordinates and anchors exact length/direction at A", () => {
+    const selected = tapNetworkTarget(createNetworkState("47-create"), "edge.0");
+    const a = selected.points["node.0"], sized = setNetworkField(selected, "edgeLength", 10.25), rotated = setNetworkField(sized, "edgeAngle", 90);
+    expect(rotated.points["node.0"]).toEqual(a); expect(rotated.points["node.1"].x).toBeCloseTo(a.x); expect(rotated.points["node.1"].y).toBeCloseTo(a.y - 307.5);
+    expect(readNetworkPrecision(rotated, "edgeLength")).toBeCloseTo(10.25); expect(readNetworkPrecision(rotated, "edgeAngle")).toBeCloseTo(90);
+    const precise = setNetworkField(setNetworkField(rotated, "edgeAX", 281.123), "edgeBY", 60.375);
+    expect(precise.points["node.0"].x).toBe(281.123); expect(precise.points["node.1"].y).toBe(60.375); expect(isValidPlaneNetworkState(precise)).toBe(true);
+  });
+  it("rejects zero-length, colliding, crossing and out-of-bounds exact edits atomically", () => {
+    const selected = tapNetworkTarget(createNetworkState("47-create"), "edge.0");
+    for (const [key, value] of [["edgeLength", 0], ["edgeBX", 280], ["edgeBX", 2001], ["edgeAngle", 181], ["edgeLength", Infinity]] as const) expect(setNetworkField(selected, key, value)).toBe(selected);
+    const crossing = tapNetworkTarget(segment(selected, 800, 300, 800, 500), "edge.0");
+    expect(setNetworkField(crossing, "edgeBX", 900)).toBe(crossing);
+    const point = tapNetworkTarget(addNetworkPoint(selected, { x: 280, y: 200 }), "node.0");
+    expect(setNetworkField(point, "nodeY", 200)).toBe(point); expect(setNetworkField(point, "nodeY", -1001)).toBe(point);
+  });
+  it("finds true connected groups through crossings instead of using a bounding box", () => {
+    const crossed = segment(createNetworkState("47-create"), 440, 200, 440, 500), withIsolated = addNetworkPoint(crossed, { x: 400, y: 300 });
+    expect(networkComponent(withIsolated, "edge.0")!.nodes).toHaveLength(5); expect(networkComponent(withIsolated, "node.0")!.edges).toHaveLength(4);
+    const isolated = nodeAt(withIsolated, 400, 300);
+    expect(networkComponent(withIsolated, `node.${isolated}`)!.nodes).toHaveLength(1); expect(networkComponent(withIsolated, `node.${isolated}`)!.angle).toBeNull();
+  });
+  it("translates every connected node together while preserving another component and records", () => {
+    let state = square(); state = setNetworkField(state, "figureMode", 2);
+    for (const node of networkGraph(state).nodes) state = tapNetworkTarget(state, `node.${node.id}`);
+    state = recordNetworkFigure(state); state = addNetworkPoint(state, { x: 700, y: 500 });
+    const selected = `node.${nodeAt(state, 100, 100)}`, component = networkComponent(state, selected)!, moved = translateNetworkComponent(state, selected, { x: 13.125, y: -7.375 });
+    for (const node of component.nodes) expect(moved.points[`node.${node.id}`]).toEqual({ x: node.x + 13.125, y: node.y - 7.375 });
+    expect(moved.points[`node.${nodeAt(state, 700, 500)}`]).toEqual({ x: 700, y: 500 });
+    expect(networkGraph(moved).edges).toEqual(networkGraph(state).edges); expect(networkRecords(moved)).toEqual(networkRecords(state)); expect(isValidPlaneNetworkState(moved)).toBe(true);
+  });
+  it("rotates a whole component about its mean center and preserves every pairwise distance", () => {
+    const state = addNetworkPoint(square(), { x: 750, y: 500 }), target = `node.${nodeAt(state, 100, 100)}`, component = networkComponent(state, target)!, rotated = rotateNetworkComponent(state, target, 37.25);
+    for (const a of component.nodes) for (const b of component.nodes) expect(networkDistance(rotated.points[`node.${a.id}`], rotated.points[`node.${b.id}`])).toBeCloseTo(networkDistance(a, b), 8);
+    expect(networkComponent(rotated, target)!.center.x).toBeCloseTo(component.center.x); expect(networkComponent(rotated, target)!.center.y).toBeCloseTo(component.center.y);
+    expect(rotated.points[`node.${nodeAt(state, 750, 500)}`]).toEqual({ x: 750, y: 500 }); expect(isValidPlaneNetworkState(rotated)).toBe(true);
+  });
+  it("keeps an entire group unchanged at collision or coordinate bounds", () => {
+    const state = segment(segment(blank(), 100, 100, 300, 100), 100, 200, 300, 200), target = `node.${nodeAt(state, 100, 100)}`;
+    expect(translateNetworkComponent(state, target, { x: 0, y: 100 })).toBe(state); expect(translateNetworkComponent(state, target, { x: 1901, y: 0 })).toBe(state);
+    const blockedRotation = addNetworkPoint(state, { x: 200, y: 0 }); expect(rotateNetworkComponent(blockedRotation, target, 90)).toBe(blockedRotation);
+  });
+  it("uses the same precise geometry for component fields and frozen direct handles", () => {
+    const state = tapNetworkTarget(createNetworkState("47-create"), "node.0"), component = networkComponent(state)!;
+    const exact = setNetworkField(state, "componentX", component.center.x + 24.375);
+    expect(dragNetworkTarget(state, "component-move.node.0", { x: component.center.x + 24.375, y: component.center.y }, { x: 24.375, y: 0 })).toEqual(exact);
+    const direct = dragNetworkTarget(state, "component-turn.node.0", { x: component.center.x, y: component.center.y - 76 }, { x: -76, y: -76 });
+    expect(direct).toEqual(setNetworkField(state, "componentAngle", 90)); expect(isValidPlaneNetworkState(direct)).toBe(true);
+  });
+});
+
+describe("individual observation and stroke identity", () => {
+  it("removes one observation, preserves pending picks and never changes geometry or the identity counter", () => {
+    let state = addNetworkPoint(createNetworkState("47-create"), { x: 440, y: 360 });
+    state = recordNetworkFigure(tapNetworkTarget(tapNetworkTarget(state, "node.0"), "node.1"));
+    state = recordNetworkFigure(tapNetworkTarget(tapNetworkTarget(state, "node.0"), "node.2"));
+    state = tapNetworkTarget(state, "node.1");
+    const removed = removeNetworkRecord(state, 1);
+    expect(networkRecords(removed).map((record) => record.id)).toEqual([2]); expect(networkPicks(removed)).toEqual(networkPicks(state));
+    expect(removed.points).toEqual(state.points); expect(removed.params).toEqual(state.params); expect(removeNetworkRecord(removed, 1)).toBe(removed); expect(isValidPlaneNetworkState(removed)).toBe(true);
+  });
+  it("deletes exactly one pen stroke and keeps surviving IDs, endpoints and current continuation", () => {
+    let state = square("52-create"); const [a, b, c, d] = [[100, 100], [300, 100], [300, 300], [100, 300]].map(([x, y]) => nodeAt(state, x, y));
+    state = appendNetworkVisit(appendNetworkVisit(state, a), b); state = appendNetworkVisit(appendNetworkVisit(liftNetworkPen(state), c), d);
+    const removed = removeNetworkRecord(state, 1);
+    expect(networkRecords(removed)).toEqual([networkRecords(state)[1]]); expect(removed.params.currentStroke).toBe(2); expect(removed.params.nextStroke).toBe(3);
+    const added = appendNetworkVisit(liftNetworkPen(removed), a); expect(networkRecords(added).map((record) => record.id)).toEqual([2, 3]);
+    expect(removeNetworkRecord(added, 3).params.currentStroke).toBe(-1); expect(isValidPlaneNetworkState(added)).toBe(true);
+  });
+  it("can continue an earlier named stroke without borrowing or repeating another pen's edges", () => {
+    let state = square("52-create"); const [a, b, c, d] = [[100, 100], [300, 100], [300, 300], [100, 300]].map(([x, y]) => nodeAt(state, x, y));
+    state = appendNetworkVisit(appendNetworkVisit(state, a), b); state = appendNetworkVisit(appendNetworkVisit(liftNetworkPen(state), c), d);
+    const continued = continueNetworkStroke(setNetworkFlag(state, "edit", true), 1), appended = appendNetworkVisit(continued, c);
+    expect(continued.flags.edit).toBe(false); expect(networkRecords(appended)).toEqual([{ kind: "stroke", id: 1, nodes: [a, b, c] }, { kind: "stroke", id: 2, nodes: [c, d] }]);
+    expect(appendNetworkVisit(appended, d)).toBe(appended); expect(isValidPlaneNetworkState(appended)).toBe(true);
+  });
+  it("keeps record selection local and lets the shared host clear removed identities", () => {
+    const definition = planeNetworkScenes[1], state = appendNetworkVisit(createNetworkState("52-create"), 0);
+    const selected = definition.tap!(state, "record.1"); expect(selected.params.currentStroke).toBe(1); expect(Object.keys(selected.params)).toEqual(Object.keys(state.params));
+    expect(definition.selectionAfterChange!(state, selected, "record.1")).toBe("record.1");
+    expect(definition.selectionAfterChange!(selected, removeNetworkRecord(selected, 1), "record.1")).toBeNull();
+    expect(definition.selectionAfterChange!(state, state, "component-move.node.0")).toBe("node.0");
   });
 });

@@ -21,6 +21,18 @@ export function parseNetworkTarget(target: string | null) {
   const match = target?.match(targetPattern);
   return match && Number(match[2]) <= 99998 ? { kind: match[1] as "node" | "edge", id: Number(match[2]) } : null;
 }
+export function networkRecordTarget(target: string | null): number | null {
+  const match = target?.match(new RegExp(`^record\\.${idPattern}$`));
+  return match && Number(match[1]) <= 99998 ? Number(match[1]) : null;
+}
+export function networkComponentTarget(target: string | null): string | null {
+  const match = target?.match(new RegExp(`^component-(?:move|turn)\\.((?:node|edge)\\.${idPattern})$`));
+  return match ? match[1] : null;
+}
+export function activeNetworkTarget(state: PlanarState): string | null {
+  if (state.points[`node.${state.params.activeNode}`]) return `node.${state.params.activeNode}`;
+  return state.params[`a.${state.params.activeEdge}`] !== undefined ? `edge.${state.params.activeEdge}` : null;
+}
 export function createNetworkState(sceneId: NetworkSceneId): PlanarState {
   return {
     sceneId, params: { nextNode: 2, nextEdge: 1, nextRecord: 1, nextStroke: 1, activeNode: -1, activeEdge: -1, currentStroke: -1, figureMode: 0, rays: 5, columns: 3, rows: 2, levels: 3, "a.0": 0, "b.0": 1 },
@@ -212,6 +224,88 @@ function commitGraph(state: PlanarState, source: NetworkGraph, selection?: { nod
   for (const edge of graph.edges) { params[`a.${edge.id}`] = edge.a; params[`b.${edge.id}`] = edge.b; }
   return cleanNetworkRecords({ ...state, params, points: Object.fromEntries(graph.nodes.map(({ id, x, y }) => [`node.${id}`, { x, y }])), phase: 1 }, graph, remap);
 }
+/** 精确输入及整组变换保留真实节点／边身份；越界、相碰或出现未分裂交点时整次保留原现场。 */
+function commitExactNetworkPoints(state: PlanarState, nodes: NetworkNode[], target: string | null): PlanarState {
+  const graph = networkGraph(state), selected = parseNetworkTarget(target);
+  if (!selected || nodes.some((node) => !Number.isFinite(node.x) || !Number.isFinite(node.y) || node.x < -1000 || node.x > 2000 || node.y < -1000 || node.y > 1720)
+    || !networkTopologyValid({ ...graph, nodes }) || nodes.every((node, index) => node.x === graph.nodes[index].x && node.y === graph.nodes[index].y)) return state;
+  return commitGraph(state, { ...graph, nodes }, { node: selected.kind === "node" ? selected.id : -1, edge: selected.kind === "edge" ? selected.id : -1 });
+}
+export interface NetworkComponent {
+  target: string; nodes: NetworkNode[]; edges: NetworkEdge[]; center: PlanarPoint; angle: number | null;
+}
+/** 组来自实际边的可达关系；交点已经是图节点，孤立点也能独立平移。 */
+export function networkComponent(state: PlanarState, target: string | null = activeNetworkTarget(state)): NetworkComponent | null {
+  const seedTarget = networkComponentTarget(target) ?? target, parsed = parseNetworkTarget(seedTarget), graph = networkGraph(state);
+  if (!parsed) return null;
+  const selectedEdge = parsed.kind === "edge" ? graph.edges.find((edge) => edge.id === parsed.id) : undefined;
+  const first = parsed.kind === "node" ? parsed.id : selectedEdge?.a;
+  if (first === undefined || !graph.nodes.some((node) => node.id === first)) return null;
+  const ids = new Set([first]), queue = [first];
+  for (let at = 0; at < queue.length; at++) for (const edge of graph.edges) {
+    const other = edge.a === queue[at] ? edge.b : edge.b === queue[at] ? edge.a : undefined;
+    if (other !== undefined && !ids.has(other)) { ids.add(other); queue.push(other); }
+  }
+  const nodes = graph.nodes.filter((node) => ids.has(node.id)), edges = graph.edges.filter((edge) => ids.has(edge.a));
+  const center = { x: nodes.reduce((sum, node) => sum + node.x, 0) / nodes.length, y: nodes.reduce((sum, node) => sum + node.y, 0) / nodes.length };
+  const reference = selectedEdge ?? edges[0], a = reference ? state.points[`node.${reference.a}`] : undefined, b = reference ? state.points[`node.${reference.b}`] : undefined;
+  return { target: seedTarget!, nodes, edges, center, angle: a && b ? Math.atan2(a.y - b.y, b.x - a.x) * 180 / Math.PI : null };
+}
+export function translateNetworkComponent(state: PlanarState, target: string | null, delta: PlanarPoint): PlanarState {
+  const component = networkComponent(state, target);
+  if (!component || !Number.isFinite(delta.x) || !Number.isFinite(delta.y)) return state;
+  const ids = new Set(component.nodes.map((node) => node.id));
+  return commitExactNetworkPoints(state, networkGraph(state).nodes.map((node) => ids.has(node.id) ? { ...node, x: node.x + delta.x, y: node.y + delta.y } : node), component.target);
+}
+export function rotateNetworkComponent(state: PlanarState, target: string | null, degrees: number): PlanarState {
+  const component = networkComponent(state, target);
+  if (!component || component.angle === null || !Number.isFinite(degrees) || degrees % 360 === 0) return state;
+  const ids = new Set(component.nodes.map((node) => node.id)), angle = degrees * Math.PI / 180, cosine = Math.cos(angle), sine = Math.sin(angle), center = component.center;
+  return commitExactNetworkPoints(state, networkGraph(state).nodes.map((node) => {
+    if (!ids.has(node.id)) return node;
+    const x = node.x - center.x, y = node.y - center.y;
+    return { ...node, x: center.x + x * cosine + y * sine, y: center.y - x * sine + y * cosine };
+  }), component.target);
+}
+export function readNetworkPrecision(state: PlanarState, key: string): number {
+  const graph = networkGraph(state), node = state.points[`node.${state.params.activeNode}`], edge = graph.edges.find((entry) => entry.id === state.params.activeEdge);
+  const a = edge && state.points[`node.${edge.a}`], b = edge && state.points[`node.${edge.b}`];
+  if (key === "nodeX" || key === "nodeY") return node?.[key === "nodeX" ? "x" : "y"] ?? 0;
+  const coordinate = /^edge([AB])([XY])$/.exec(key);
+  if (coordinate) return (coordinate[1] === "A" ? a : b)?.[coordinate[2] === "X" ? "x" : "y"] ?? 0;
+  if (key === "edgeLength") return a && b ? networkDistance(a, b) / 30 : 0;
+  if (key === "edgeAngle") return a && b ? Math.atan2(a.y - b.y, b.x - a.x) * 180 / Math.PI : 0;
+  const component = networkComponent(state);
+  return key === "componentX" ? component?.center.x ?? 0 : key === "componentY" ? component?.center.y ?? 0 : key === "componentAngle" ? component?.angle ?? 0 : 0;
+}
+function setNetworkPrecision(state: PlanarState, key: string, value: number): PlanarState {
+  if (!Number.isFinite(value)) return state;
+  const target = activeNetworkTarget(state), graph = networkGraph(state), points = new Map<number, PlanarPoint>();
+  if (key.startsWith("component")) {
+    const component = networkComponent(state);
+    if (!component) return state;
+    if (key === "componentX" || key === "componentY") return translateNetworkComponent(state, target, { x: key === "componentX" ? value - component.center.x : 0, y: key === "componentY" ? value - component.center.y : 0 });
+    return key === "componentAngle" && Math.abs(value) <= 180 && component.angle !== null ? rotateNetworkComponent(state, target, value - component.angle) : state;
+  }
+  if (key === "nodeX" || key === "nodeY") {
+    const node = state.points[`node.${state.params.activeNode}`];
+    if (!node) return state;
+    points.set(state.params.activeNode, { ...node, [key === "nodeX" ? "x" : "y"]: value });
+  } else {
+    const edge = graph.edges.find((entry) => entry.id === state.params.activeEdge);
+    if (!edge) return state;
+    const a = state.points[`node.${edge.a}`], b = state.points[`node.${edge.b}`], coordinate = /^edge([AB])([XY])$/.exec(key);
+    if (coordinate) {
+      const id = coordinate[1] === "A" ? edge.a : edge.b;
+      points.set(id, { ...state.points[`node.${id}`], [coordinate[2] === "X" ? "x" : "y"]: value });
+    } else if (key === "edgeLength" || key === "edgeAngle") {
+      if ((key === "edgeLength" && value <= NETWORK_EPSILON / 30) || (key === "edgeAngle" && Math.abs(value) > 180)) return state;
+      const length = key === "edgeLength" ? value * 30 : networkDistance(a, b), angle = (key === "edgeAngle" ? value : readNetworkPrecision(state, "edgeAngle")) * Math.PI / 180;
+      points.set(edge.b, { x: a.x + length * Math.cos(angle), y: a.y - length * Math.sin(angle) });
+    } else return state;
+  }
+  return commitExactNetworkPoints(state, graph.nodes.map((node) => points.has(node.id) ? { ...node, ...points.get(node.id)! } : node), target);
+}
 const boundedPoint = (point: PlanarPoint): PlanarPoint => ({ x: Math.max(-1000, Math.min(2000, point.x)), y: Math.max(-1000, Math.min(1720, point.y)) });
 function snapPoint(state: PlanarState, point: PlanarPoint, except: readonly number[] = []): PlanarPoint {
   const safe = boundedPoint(point);
@@ -298,6 +392,8 @@ export function appendNetworkVisit(state: PlanarState, node: number): PlanarStat
   return { ...state, marks: networkMarks([], strokes.map((stroke) => stroke === current ? { ...stroke, nodes } : stroke)), phase: 1 };
 }
 export function tapNetworkTarget(state: PlanarState, target: string): PlanarState {
+  const record = networkRecordTarget(target);
+  if (record !== null && networkRecords(state).some((entry) => entry.id === record)) return state.params.activeNode === -1 && state.params.activeEdge === -1 ? state : { ...state, params: { ...state.params, activeNode: -1, activeEdge: -1 } };
   const parsed = parseNetworkTarget(target), graph = networkGraph(state);
   if (!parsed || (parsed.kind === "node" ? !graph.nodes.some((node) => node.id === parsed.id) : !graph.edges.some((edge) => edge.id === parsed.id))) return state;
   const selected = { ...state, params: { ...state.params, activeNode: parsed.kind === "node" ? parsed.id : -1, activeEdge: parsed.kind === "edge" ? parsed.id : -1 } };
@@ -308,6 +404,15 @@ export function tapNetworkTarget(state: PlanarState, target: string): PlanarStat
   return { ...selected, marks: networkMarks(next, networkRecords(state)) };
 }
 export function dragNetworkTarget(start: PlanarState, target: string, point: PlanarPoint, delta: PlanarPoint, previous?: PlanarState): PlanarState {
+  const componentTarget = networkComponentTarget(target);
+  if (componentTarget) {
+    if (target.startsWith("component-move.")) return translateNetworkComponent(start, componentTarget, delta);
+    const component = networkComponent(start, componentTarget);
+    if (!component || component.angle === null || networkDistance(point, component.center) <= NETWORK_EPSILON) return start;
+    const before = { x: point.x - delta.x, y: point.y - delta.y };
+    const angle = Math.atan2(component.center.y - point.y, point.x - component.center.x) - Math.atan2(component.center.y - before.y, before.x - component.center.x);
+    return rotateNetworkComponent(start, componentTarget, angle * 180 / Math.PI);
+  }
   if (start.flags.edit) return moveNetworkTarget(start, target, delta);
   if (start.sceneId !== "52-create") return start;
   const parsed = parseNetworkTarget(target);
@@ -326,7 +431,17 @@ export function recordNetworkFigure(state: PlanarState): PlanarState {
 }
 export const liftNetworkPen = (state: PlanarState): PlanarState => ({ ...state, params: { ...state.params, currentStroke: -1 } });
 export const clearNetworkRecords = (state: PlanarState): PlanarState => ({ ...state, marks: [], params: { ...state.params, currentStroke: -1 }, phase: 1 });
+export function removeNetworkRecord(state: PlanarState, id: number): PlanarState {
+  const records = networkRecords(state);
+  if (!records.some((record) => record.id === id)) return state;
+  return { ...state, marks: networkMarks(networkPicks(state), records.filter((record) => record.id !== id)), params: { ...state.params, currentStroke: state.params.currentStroke === id ? -1 : state.params.currentStroke }, phase: 1 };
+}
+export function continueNetworkStroke(state: PlanarState, id: number): PlanarState {
+  return state.sceneId === "52-create" && networkRecords(state).some((record) => record.kind === "stroke" && record.id === id)
+    ? { ...state, params: { ...state.params, currentStroke: id }, flags: { ...state.flags, edit: false }, phase: 1 } : state;
+}
 export function setNetworkField(state: PlanarState, key: string, value: number): PlanarState {
+  if (/^(node[XY]|edge(?:[AB][XY]|Length|Angle)|component(?:[XY]|Angle))$/.test(key)) return setNetworkPrecision(state, key, value);
   const ranges: Record<string, [number, number]> = { figureMode: [0, 2], rays: [2, 8], columns: [1, 5], rows: [1, 4], levels: [1, 4] };
   const range = ranges[key];
   if (!range || !Number.isInteger(value) || value < range[0] || value > range[1]) return state;

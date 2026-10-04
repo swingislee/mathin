@@ -1,16 +1,20 @@
 import type { PlanarPoint, PlanarState } from "../planar-kit/contract";
-import { textFor, type PlanarAction, type PlanarDrawingApi, type PlanarMaterial, type PlanarSceneDefinition, type PlanarText } from "../planar-kit/types";
-import { NETWORK_LIMIT, addNetworkMaterial, addNetworkPoint, addNetworkSegment, clearNetworkRecords, createNetworkState, dragNetworkTarget, liftNetworkPen, networkDegree, networkFigureValid, networkGraph, networkPicks, networkRecords, parseNetworkTarget, recordNetworkFigure, removeNetworkTarget, setNetworkField, setNetworkFlag, tapNetworkTarget, type NetworkMaterial, type NetworkSceneId } from "./model";
+import { textFor, type PlanarAction, type PlanarDrawingApi, type PlanarField, type PlanarMaterial, type PlanarOperation, type PlanarSceneDefinition, type PlanarText } from "../planar-kit/types";
+import { NETWORK_LIMIT, addNetworkMaterial, addNetworkPoint, addNetworkSegment, clearNetworkRecords, continueNetworkStroke, createNetworkState, dragNetworkTarget, liftNetworkPen, networkComponent, networkComponentTarget, networkDegree, networkFigureValid, networkGraph, networkPicks, networkRecordTarget, networkRecords, parseNetworkTarget, readNetworkPrecision, recordNetworkFigure, removeNetworkRecord, removeNetworkTarget, rotateNetworkComponent, setNetworkField, setNetworkFlag, tapNetworkTarget, translateNetworkComponent, type NetworkMaterial, type NetworkSceneId } from "./model";
 
 const text = (zh: string, en: string): PlanarText => ({ zh, en });
 const linePoints = (points: readonly PlanarPoint[]) => points.map((point) => `${point.x},${point.y}`).join(" ");
 const colors = ["var(--rose)", "var(--leaf-deep)", "var(--crater)", "var(--muted)"];
 const labelStyle = { fill: "var(--ink)", stroke: "var(--paper)", strokeWidth: 5, paintOrder: "stroke" as const, fontSize: 16 };
 const hasTarget = (state: PlanarState, target: string | null) => { const parsed = parseNetworkTarget(target); return parsed && (parsed.kind === "node" ? state.points[`node.${parsed.id}`] !== undefined : state.params[`a.${parsed.id}`] !== undefined); };
+const selectedRecord = (state: PlanarState, target: string | null) => networkRecords(state).find((record) => record.id === networkRecordTarget(target));
+const bounds = (points: readonly PlanarPoint[]) => ({ minX: Math.min(...points.map((point) => point.x)) - 14, maxX: Math.max(...points.map((point) => point.x)) + 14, minY: Math.min(...points.map((point) => point.y)) - 14, maxY: Math.max(...points.map((point) => point.y)) + 14 });
 
 function NetworkDrawing({ state, api }: { state: PlanarState; api: PlanarDrawingApi }) {
   const graph = networkGraph(state), lookup = new Map(graph.nodes.map((node) => [node.id, node])), picks = networkPicks(state), records = networkRecords(state);
   const activeStroke = records.find((record) => record.kind === "stroke" && record.id === state.params.currentStroke);
+  const component = api.editable && api.operation === "network-component" ? networkComponent(state, api.selected) : null;
+  const editEdge = api.operation === "network-edge-precision" ? graph.edges.find((edge) => edge.id === state.params.activeEdge) : undefined;
   const steps = records.filter((record) => record.kind === "stroke").reduce((sum, stroke) => sum + Math.max(0, stroke.nodes.length - 1), 0);
   let offset = 0;
   return <g>
@@ -23,14 +27,25 @@ function NetworkDrawing({ state, api }: { state: PlanarState; api: PlanarDrawing
       </g>;
     })}
     {state.flags.highlights && records.filter((record) => record.kind !== "stroke").map((record, index) => {
-      const points = record.nodes.map((id) => lookup.get(id)!);
-      return record.kind === "figure" ? <polygon key={`record-${record.id}`} points={linePoints(points)} fill={colors[index % colors.length]} fillOpacity={0.12} stroke={colors[index % colors.length]} strokeWidth={4} pointerEvents="none" /> : <polyline key={`record-${record.id}`} points={linePoints(points)} fill="none" stroke={colors[index % colors.length]} strokeWidth={6} opacity={0.75} pointerEvents="none" />;
+      const points = record.nodes.map((id) => lookup.get(id)!), chosen = api.selected === `record.${record.id}`;
+      return <g key={`record-${record.id}`} data-network-observation={record.id} pointerEvents={state.flags.edit ? "none" : undefined} {...(!state.flags.edit ? api.bind(`record.${record.id}`, `${textFor(text("选择观察", "Select observation"), api.locale)} ${record.id}`) : {})}>
+        {record.kind === "figure" ? <polygon points={linePoints(points)} fill={colors[index % colors.length]} fillOpacity={chosen ? 0.23 : 0.12} stroke={colors[index % colors.length]} strokeWidth={chosen ? 6 : 4} /> : <polyline points={linePoints(points)} fill="none" stroke={colors[index % colors.length]} strokeWidth={chosen ? 9 : 6} opacity={0.75} />}
+      </g>;
     })}
     {picks.length > 1 && <polyline points={linePoints(picks.map((id) => lookup.get(id)!))} stroke="var(--rose)" strokeWidth={2} strokeDasharray="5 5" fill="none" pointerEvents="none" />}
     {state.flags.highlights && records.filter((record) => record.kind === "stroke").flatMap((stroke, index) => stroke.nodes.slice(1).map((node, step) => {
       const from = lookup.get(stroke.nodes[step])!, to = lookup.get(node)!, progress = Math.max(0, Math.min(1, state.phase * steps - offset++));
-      return <line key={`stroke-${stroke.id}-${step}`} x1={from.x} y1={from.y} x2={from.x + (to.x - from.x) * progress} y2={from.y + (to.y - from.y) * progress} stroke={colors[index % colors.length]} strokeWidth={7} opacity={0.85} strokeLinecap="round" pointerEvents="none" />;
+      return <line key={`stroke-${stroke.id}-${step}`} data-network-stroke={stroke.id} x1={from.x} y1={from.y} x2={from.x + (to.x - from.x) * progress} y2={from.y + (to.y - from.y) * progress} stroke={colors[index % colors.length]} strokeWidth={api.selected === `record.${stroke.id}` ? 10 : 7} opacity={0.85} strokeLinecap="round" pointerEvents="none" />;
     }))}
+    {state.flags.highlights && records.filter((record) => record.kind === "stroke").map((stroke, index) => {
+      const first = lookup.get(stroke.nodes[0])!, last = lookup.get(stroke.nodes.at(-1)!)!, color = colors[index % colors.length];
+      return <g key={`ends-${stroke.id}`} data-network-stroke-ends={stroke.id} pointerEvents="none">
+        <circle cx={first.x} cy={first.y} r={13} fill="none" stroke={color} strokeWidth={2} />
+        <rect x={last.x - 10} y={last.y - 10} width={20} height={20} fill="none" stroke={color} strokeWidth={2} />
+        <text x={first.x - 16} y={first.y - 16} textAnchor="end" style={{ ...labelStyle, fill: color, fontSize: 12 }}>S{stroke.id}</text>
+        <text x={last.x + 15} y={last.y + 23} style={{ ...labelStyle, fill: color, fontSize: 12 }}>E{stroke.id}</text>
+      </g>;
+    })}
     {graph.nodes.map((node) => {
       const picked = picks.indexOf(node.id), degree = networkDegree(graph, node.id), current = activeStroke?.nodes.at(-1) === node.id;
       return <g key={`node-${node.id}`} {...api.bind(`node.${node.id}`, `${textFor(text("节点", "Node"), api.locale)} ${node.id + 1}`)} style={{ cursor: state.flags.edit ? "grab" : "pointer" }}>
@@ -39,8 +54,32 @@ function NetworkDrawing({ state, api }: { state: PlanarState; api: PlanarDrawing
         <circle cx={node.x} cy={node.y} r={picked >= 0 || current || (state.flags.edit && api.selected === `node.${node.id}`) ? 7 : 4.5} fill={picked >= 0 || current ? "var(--rose)" : "var(--ink)"} />
         {current && <circle cx={node.x} cy={node.y} r={13} stroke="var(--rose)" strokeWidth={2} fill="none" />}
         {(state.flags.names || state.flags.degrees || picked >= 0) && <text x={node.x + 12} y={node.y - 12} style={labelStyle}>{picked >= 0 ? picked + 1 : state.flags.names ? `P${node.id + 1}` : ""}{state.flags.degrees ? `${picked >= 0 || state.flags.names ? " · " : ""}${degree}` : ""}</text>}
+        {editEdge && (editEdge.a === node.id || editEdge.b === node.id) && <text x={node.x - 13} y={node.y + 24} style={labelStyle} pointerEvents="none">{editEdge.a === node.id ? "A" : "B"}</text>}
       </g>;
     })}
+    {component && <g data-network-component-handles="true">
+      {component.edges.map((edge) => <line key={edge.id} x1={lookup.get(edge.a)!.x} y1={lookup.get(edge.a)!.y} x2={lookup.get(edge.b)!.x} y2={lookup.get(edge.b)!.y} stroke="var(--rose)" strokeWidth={2} strokeDasharray="5 5" pointerEvents="none" />)}
+      <g {...api.bind(`component-move.${component.target}`, textFor(text("平移整个连通组", "Move the whole connected component"), api.locale))}>
+        <circle cx={component.center.x} cy={component.center.y} r={21} fill="transparent" />
+        <circle cx={component.center.x} cy={component.center.y} r={11} fill="var(--paper)" stroke="var(--rose)" strokeWidth={2} />
+        <path d={`M${component.center.x - 7} ${component.center.y}h14M${component.center.x} ${component.center.y - 7}v14`} stroke="var(--rose)" strokeWidth={2} pointerEvents="none" />
+      </g>
+      {component.angle !== null && (() => { const angle = component.angle * Math.PI / 180, at = { x: component.center.x + Math.cos(angle) * 76, y: component.center.y - Math.sin(angle) * 76 }; return <g {...api.bind(`component-turn.${component.target}`, textFor(text("绕节点平均中心旋转整组", "Rotate the component about its mean node center"), api.locale))}>
+        <line x1={component.center.x} y1={component.center.y} x2={at.x} y2={at.y} stroke="var(--rose)" strokeDasharray="4 4" pointerEvents="none" />
+        <circle cx={at.x} cy={at.y} r={20} fill="transparent" /><circle cx={at.x} cy={at.y} r={8} fill="var(--rose)" stroke="var(--paper)" strokeWidth={2} />
+      </g>; })()}
+    </g>}
+    {records.length > 0 && <g data-network-record-tray="true">
+      {records.map((record, index) => {
+        const stroke = record.kind === "stroke", selected = api.selected === `record.${record.id}`;
+        const label = stroke ? text(`选择第 ${record.id} 笔，起点 P${record.nodes[0] + 1}，终点 P${record.nodes.at(-1)! + 1}`, `Select stroke ${record.id}, start P${record.nodes[0] + 1}, end P${record.nodes.at(-1)! + 1}`) : text(`选择观察 ${record.id}`, `Select observation ${record.id}`);
+        return <g key={record.id} data-network-record-label={record.id} transform={`translate(${105 + index % 8 * 94} ${591 + Math.floor(index / 8) * 27})`} {...api.bind(`record.${record.id}`, textFor(label, api.locale))}>
+          <rect width={85} height={23} rx={3} fill="var(--paper)" fillOpacity={0.95} stroke={selected ? "var(--rose)" : "var(--line)"} strokeWidth={selected ? 2 : 1} />
+          <path d="M7 12H21" stroke={colors[index % colors.length]} strokeWidth={3} pointerEvents="none" />
+          <text x={27} y={16} style={{ ...labelStyle, fontSize: 12 }} pointerEvents="none">{stroke ? api.locale === "en" ? "T" : "笔" : "R"}{record.id}</text>
+        </g>;
+      })}
+    </g>}
   </g>;
 }
 function MaterialPreview({ kind }: { kind: NetworkMaterial }) {
@@ -59,6 +98,24 @@ const sharedActions: PlanarAction[] = [
   { id: "network-remove", icon: "remove", label: text("删除所选点或线", "Remove the selected node or edge"), disabled: (state, context) => !hasTarget(state, context.selected), run: (state, context) => removeNetworkTarget(state, context.selected) },
 ];
 const clearAction: PlanarAction = { id: "network-clear-records", icon: "clear", label: text("清空留痕，保留点和线", "Clear records, keep the network"), disabled: (state) => state.marks.length === 0, run: clearNetworkRecords };
+const removeRecord: PlanarAction = { id: "network-remove-record", icon: "remove", label: text("只移除所选留痕，保留点线", "Remove only the selected record, keeping the network"), disabled: (state, context) => !selectedRecord(state, context.selected), run: (state, context) => removeNetworkRecord(state, networkRecordTarget(context.selected) ?? -1) };
+const continueStroke: PlanarAction = { id: "network-continue-stroke", icon: "play", label: text("从所选笔迹的终点继续", "Continue from the selected stroke endpoint"), disabled: (state, context) => selectedRecord(state, context.selected)?.kind !== "stroke", run: (state, context) => continueNetworkStroke(state, networkRecordTarget(context.selected) ?? -1) };
+function precisionField(key: string, label: PlanarText, min: number, max: number, kind: "node" | "edge" | "component"): PlanarField {
+  return { key, label, min, max, read: (state) => readNetworkPrecision(state, key), disabled: (state) => kind === "node" ? !state.points[`node.${state.params.activeNode}`] : kind === "edge" ? state.params[`a.${state.params.activeEdge}`] === undefined : !networkComponent(state) || (key === "componentAngle" && networkComponent(state)!.angle === null) };
+}
+const precisionOperations: PlanarOperation[] = [
+  { id: "network-node-precision", icon: "vertex", label: text("节点的准确舞台坐标", "Exact node stage coordinates"), fields: [precisionField("nodeX", text("节点 X（舞台坐标）", "Node X (stage coordinates)"), -1000, 2000, "node"), precisionField("nodeY", text("节点 Y（向下为正）", "Node Y (positive downward)"), -1000, 1720, "node")] },
+  { id: "network-edge-precision", icon: "dimensions", label: text("边的准确端点、长度和方向", "Exact edge endpoints, length and direction"), fields: [
+    ...(["A", "B"] as const).flatMap((end) => (["X", "Y"] as const).map((axis) => precisionField(`edge${end}${axis}`, text(`端点 ${end} ${axis}（舞台坐标）`, `Endpoint ${end} ${axis} (stage coordinates)`), -1000, axis === "X" ? 2000 : 1720, "edge"))),
+    precisionField("edgeLength", text("边长（u，30 舞台单位为 1 u；固定 A）", "Length (u, 30 stage units = 1 u; fix A)"), 0, 140, "edge"), precisionField("edgeAngle", text("方向（°，逆时针为正；固定 A）", "Direction (°, counterclockwise; fix A)"), -180, 180, "edge"),
+  ] },
+  { id: "network-component", icon: "group", label: text("平移或旋转整个连通组", "Move or rotate the connected component"), fields: [
+    precisionField("componentX", text("节点平均中心 X", "Mean node center X"), -1000, 2000, "component"), precisionField("componentY", text("节点平均中心 Y", "Mean node center Y"), -1000, 1720, "component"), precisionField("componentAngle", text("参考边方向（°，所选边或组内最早边）", "Reference edge direction (°, selected or first edge)"), -180, 180, "component"),
+  ], actions: [
+    ...([-15, 15] as const).map((angle): PlanarAction => ({ id: angle > 0 ? "network-component-positive-turn" : "network-component-negative-turn", icon: angle > 0 ? "positiveTurn" : "negativeTurn", label: angle > 0 ? text("整组逆时针转 15°", "Turn the component 15° counterclockwise") : text("整组顺时针转 15°", "Turn the component 15° clockwise"), disabled: (state, context) => rotateNetworkComponent(state, context.selected, angle) === state, run: (state, context) => rotateNetworkComponent(state, context.selected, angle) })),
+    ...([{ id: "left", x: -30, y: 0 }, { id: "right", x: 30, y: 0 }, { id: "up", x: 0, y: -30 }, { id: "down", x: 0, y: 30 }] as const).map((step): PlanarAction => ({ id: `network-component-${step.id}`, icon: step.id, label: text(`整组${step.id === "left" ? "左" : step.id === "right" ? "右" : step.id === "up" ? "上" : "下"}移 1 u`, `Move the component ${step.id} by 1 u`), disabled: (state, context) => translateNetworkComponent(state, context.selected, step) === state, run: (state, context) => translateNetworkComponent(state, context.selected, step) })),
+  ] },
+];
 const figureMode = { key: "figureMode", label: text("本次圈选对象", "Object to record"), min: 0, max: 2, step: 1, options: [{ value: 0, label: text("线段：选两个端点", "Segment: select two endpoints") }, { value: 1, label: text("角：端点—顶点—端点", "Angle: endpoint–vertex–endpoint") }, { value: 2, label: text("闭合图形：依次选顶点", "Closed figure: select vertices in order") }] };
 
 function scene(id: NetworkSceneId): PlanarSceneDefinition {
@@ -67,6 +124,7 @@ function scene(id: NetworkSceneId): PlanarSceneDefinition {
     id, toolId: paths ? "plane-graph-path" : "plane-patterns", title: paths ? text("一笔画与多笔画", "One-stroke and multi-stroke paths") : text("图形计数", "Counting geometric figures"),
     description: paths ? text("画出自己的线网络，再从一个点沿真实连线走访；需要时抬笔、继续与回放。", "Draw your own network and trace its real connections. Lift the pen, continue, and replay when needed.") : text("自己画线或添加网格，依次选择端点、顶点，留下完整图形的观察痕迹。", "Draw lines or add grids, then select endpoints or vertices to record whole figures."),
     create: () => createNetworkState(id), progress: paths, materials,
+    operations: [...precisionOperations, { id: "network-records", icon: "layers", label: paths ? text("逐笔选择、继续与移除", "Select, continue or remove individual strokes") : text("选择与移除单条观察", "Select or remove one observation"), actions: paths ? [continueStroke, removeRecord] : [removeRecord] }],
     fields: [
       ...(!paths ? [figureMode] : []),
       { key: "rays", label: text("新射线扇的射线数", "Rays in the next fan"), min: 2, max: 8, step: 1 },
@@ -96,7 +154,15 @@ function scene(id: NetworkSceneId): PlanarSceneDefinition {
     draw: (state, api) => <NetworkDrawing state={state} api={api} />,
     tap: tapNetworkTarget,
     drag: (start, target, point, delta, context) => dragNetworkTarget(start, target, point, delta, context?.previous),
-    selectionAfterChange: (_before, after, selected) => hasTarget(after, selected) ? selected : null,
+    selectionAfterChange: (_before, after, selected) => { const target = networkComponentTarget(selected) ?? selected; return hasTarget(after, target) || selectedRecord(after, target) ? target : null; },
+    contextActions: (state, selected) => {
+      const record = selectedRecord(state, selected);
+      if (record) return { bounds: bounds(record.nodes.map((node) => state.points[`node.${node}`])), items: [...(paths ? [{ kind: "action" as const, id: "network-continue-stroke" }] : []), { kind: "action", id: "network-remove-record" }] };
+      const target = networkComponentTarget(selected) ?? selected, parsed = parseNetworkTarget(target);
+      if (!parsed || !hasTarget(state, target)) return null;
+      const points = parsed.kind === "node" ? [state.points[`node.${parsed.id}`]] : [state.points[`node.${state.params[`a.${parsed.id}`]}`], state.points[`node.${state.params[`b.${parsed.id}`]}`]];
+      return { bounds: bounds(points), items: [{ kind: "operation", id: parsed.kind === "node" ? "network-node-precision" : "network-edge-precision" }, { kind: "operation", id: "network-component" }, { kind: "action", id: "network-remove" }] };
+    },
   };
 }
 export const planeNetworkScenes: PlanarSceneDefinition[] = [scene("47-create"), scene("52-create")];
