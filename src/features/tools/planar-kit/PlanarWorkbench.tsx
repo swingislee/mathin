@@ -76,7 +76,7 @@ function PlanarWorkbenchStage({ toolId, version, locale: suppliedLocale, initial
   const operationDrawingTool = definition.construction?.tools.find((tool) => tool.id === activeOperation?.constructionTool);
   const running = !!authority.motion && !authority.motion.paused && planarProgress(authority.motion, now) < 1;
   const frame = planarFrame(authority, definition, now), shown = preview ?? frame;
-  const frameIsExact = planarStateSchema.safeParse(frame).success;
+  const frameIsExact = planarStateSchema.safeParse(frame).success && (definition.isExact?.(frame) ?? true);
   const writable = !readOnly && (!classroom || !!classroom.onChange);
   const disabled = !writable || publishing || dragging || draftPoints.length > 0;
   const stable = !running && !dragging && !preview && !publishing && !draftPoints.length;
@@ -113,7 +113,8 @@ function PlanarWorkbenchStage({ toolId, version, locale: suppliedLocale, initial
   }
   function stopAtFrame() {
     const current = planarFrame(authority, definition, planarEventTime());
-    publish(planarStateSchema.safeParse(current).success ? { ...authority, current, motion: null } : planarPause(authority, planarEventTime(), true));
+    const exact = planarStateSchema.safeParse(current).success && (definition.isExact?.(current) ?? true);
+    publish(exact ? { ...authority, current, motion: null } : planarPause(authority, planarEventTime(), true));
   }
   function dragFrame(data: PlanarDragFrame<Drag>) {
     const next = definition.drag?.(data.data.start, data.data.target, data.point, data.delta, { previous: previousDrag.current }) ?? data.data.start;

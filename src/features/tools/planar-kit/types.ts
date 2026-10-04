@@ -59,6 +59,8 @@ export interface PlanarConstruction {
 export interface PlanarSceneDefinition {
   id: string; toolId: PlanarToolId; title: PlanarText; description: PlanarText;
   create: () => PlanarState;
+  /** 展示投影可保留旧版可读性；只有领域准确几何才供编辑和新保存。 */
+  isExact?: (state: PlanarState) => boolean;
   /** 格点等专用领域自行绘制数学网格时关闭宿主参考网格。 */
   referenceGrid?: boolean;
   progress?: boolean;
