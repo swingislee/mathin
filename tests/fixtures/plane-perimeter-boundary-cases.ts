@@ -1,0 +1,57 @@
+import type { PlanarState } from "../../src/features/tools/planar-kit/contract";
+import { constructionObject, constructionObjects, removeConstruction } from "../../src/features/tools/plane-construction/model";
+import { createPerimeterState, syncPerimeterGeometry } from "../../src/features/tools/plane-perimeter/model";
+import { addStaircaseMaterial, changePerimeterBase, collectEdgeCopies, createBoundaryGeometry, createPerimeterBoundaryState, dragEdgeCopy, extractEdgeCopies, setAllUnionMembers, setPerimeterBoundaryField } from "../../src/features/tools/plane-perimeter-boundary/model";
+
+export function planePerimeterBoundaryCases() {
+  const cases: { label: string; accepted: boolean; scene: { toolId: string; contentVersion: string; payload: { title: string; initial: PlanarState } } }[] = [];
+  const add = (label: string, initial: PlanarState, accepted = true, version = "plane-perimeter-lesson-v3") => {
+    const entry = { label, accepted, scene: { toolId: "plane-perimeter", contentVersion: version, payload: { title: "Teacher-built boundaries", initial } } }; cases.push(entry); return entry;
+  };
+  const bad = (label: string, initial: PlanarState, change: (state: PlanarState) => void) => { const state = structuredClone(initial); change(state); add(label, state, false); };
+  const initial = createPerimeterBoundaryState(), source = extractEdgeCopies(addStaircaseMaterial(initial, true)), moved = dragEdgeCopy(source, "edge-copy.3", { x: 27.125, y: -52.875 });
+  add("default-quiet", initial); add("copies-on-source", source); add("single-edge-decimal-offset", moved); add("notched-collection", collectEdgeCopies(source));
+  add("rotated-collection", collectEdgeCopies(setPerimeterBoundaryField(source, "angle", 37.25)));
+  add("mirrored-collection", collectEdgeCopies({ ...source, params: { ...source.params, [`flip.${source.params.edgeSource}`]: -1 } }));
+  add("union-all-observations", { ...setAllUnionMembers(source, true), flags: { ...source.flags, unionBoundary: true, unionHoles: true, unionSeams: true, unionCovered: true, measures: true } });
+  add("union-empty-choice", setAllUnionMembers(source, false));
+  const localLimit = structuredClone(source); localLimit.points["edgeMove.0"] = { x: 50000, y: -50000 }; add("local-offset-boundary", localLimit);
+  const empty = changePerimeterBase(initial, (state) => syncPerimeterGeometry(state, removeConstruction(state))); add("empty-material-stage", empty);
+  const polygon = (count: number) => Array.from({ length: count }, (_, i) => ({ x: 420 + (i % 2 ? 100 : 140) * Math.cos(i * 2 * Math.PI / count), y: 310 + (i % 2 ? 100 : 140) * Math.sin(i * 2 * Math.PI / count) }));
+  let full = empty; for (let i = 0; i < 16; i++) full = createBoundaryGeometry(full, "polygon", polygon(12))!;
+  add("capacity-16-papers-192-vertices-with-copies", extractEdgeCopies(full));
+  let maximum = empty; for (let i = 0; i < 6; i++) maximum = createBoundaryGeometry(maximum, "polygon", polygon(32))!;
+  add("capacity-32-edge-copies", extractEdgeCopies(maximum));
+  let budget = createBoundaryGeometry(empty, "polygon", polygon(32))!; const firstId = budget.params.active;
+  for (let i = 0; i < 14; i++) budget = createBoundaryGeometry(budget, "polygon", polygon(10))!;
+  budget = createBoundaryGeometry(budget, "polygon", polygon(20))!;
+  add("capacity-242-point-keys", extractEdgeCopies({ ...budget, params: { ...budget.params, active: firstId } }));
+  add("old-v2-readable", createPerimeterState(), true, "plane-perimeter-lesson-v2");
+  add("old-v2-as-v3", createPerimeterState(), false); add("new-v3-as-v2", source, false, "plane-perimeter-lesson-v2");
+  for (const [key, value] of [["edgeSource", 0.5], ["edgeSource", 99998], ["edgeActive", 0.5], ["edgeActive", -1], ["edgeActive", 32], [`unionMember.${source.params.edgeSource}`, 0.5]] as const) bad(`bad-${key}-${value}`, source, (s) => { s.params[key] = value; });
+  for (const [label, key, value] of [["null-source", "edgeSource", null], ["string-source", "edgeSource", "1"], ["string-member", `unionMember.${source.params.edgeSource}`, "1"]] as const) bad(label, source, (s) => { Object.assign(s.params, { [key]: value }); });
+  bad("missing-member", source, (s) => { delete s.params[`unionMember.${s.params.active}`]; });
+  bad("orphan-member", source, (s) => { s.params["unionMember.99998"] = 1; });
+  bad("noncanonical-member", source, (s) => { s.params["unionMember.00"] = 1; });
+  bad("missing-offset", source, (s) => { delete s.points["edgeMove.0"]; });
+  bad("orphan-offset", source, (s) => { s.points["edgeMove.32"] = { x: 1, y: 1 }; });
+  bad("noncanonical-offset", source, (s) => { s.points["edgeMove.00"] = { x: 1, y: 1 }; });
+  bad("offset-without-source", source, (s) => { s.params.edgeSource = -1; s.params.edgeActive = -1; });
+  bad("selection-without-source", initial, (s) => { s.params.edgeActive = 0; });
+  bad("offset-range", source, (s) => { s.points["edgeMove.0"].x = 50000.001; });
+  bad("offset-nonfinite", source, (s) => { s.points["edgeMove.0"].x = Infinity; });
+  bad("offset-extra-key", source, (s) => { Object.assign(s.points["edgeMove.0"], { z: 2 }); });
+  bad("missing-observation", source, (s) => { delete s.flags.unionHoles; });
+  bad("nonboolean-observation", source, (s) => { Object.assign(s.flags, { unionHoles: 1 }); });
+  bad("derived-perimeter", source, (s) => { s.params.unionLength = 100; });
+  bad("derived-boundary", source, (s) => { s.points.unionVertex = { x: 1, y: 1 }; });
+  bad("unknown-flag", source, (s) => { s.flags.answer = true; });
+  bad("unknown-state-key", source, (s) => { Object.assign(s, { answer: 40 }); });
+  bad("missing-old-progress", source, (s) => { delete s.params[`walk.${s.params.active}`]; });
+  bad("circle-source", source, (s) => { s.params[`kind.${s.params.active}`] = 2; });
+  bad("phase-nonzero", source, (s) => { s.phase = 0.1; });
+  bad("over-192-vertices", full, (s) => { const object = constructionObjects(s)[0]; s.params[`count.${object.id}`]++; s.points[`vertex.${object.id}.12`] = { x: (object.vertices[11].x + object.vertices[0].x) / 2, y: (object.vertices[11].y + object.vertices[0].y) / 2 }; });
+  bad("self-crossing-source", source, (s) => { const object = constructionObject(s)!; [s.points[`vertex.${object.id}.1`], s.points[`vertex.${object.id}.3`]] = [s.points[`vertex.${object.id}.3`], s.points[`vertex.${object.id}.1`]]; });
+  for (const [title, accepted, label] of [["\t　\n", false, "empty-title"], ["字".repeat(80), true, "title-80-units"], ["字".repeat(81), false, "title-81-units"], ["😀".repeat(40), true, "title-80-utf16"], ["😀".repeat(41), false, "title-82-utf16"], ["\uFEFF　Boundary\t\n", true, "trimmed-title"]] as const) add(label, initial, accepted).scene.payload.title = title;
+  return cases;
+}
