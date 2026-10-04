@@ -1,5 +1,5 @@
 -- ============================================================================
--- CI 平台垫片（docs/plan/15-§5）。
+-- CI 平台垫片（历史设计：archive/2026-10-04/docs/plan/15-discoverability-and-delivery.md §5）。
 --
 -- 自托管 Supabase 的 auth / storage / realtime schema 由各服务容器自行建表，不在
 -- supabase/migrations/ 里。CI 要验证「从零重建库」这条路径，就必须先把 migrations
