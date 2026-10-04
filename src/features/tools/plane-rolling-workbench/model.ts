@@ -38,7 +38,7 @@ export function addRollingPair(state: PlanarState, source?: RollingPair): Planar
   const id = state.params.nextId, count = rollingIds(state).length;
   if (count >= ROLLING_LIMIT || id >= 99999) return state;
   const pair = source ? { ...source, id, center: { x: source.center.x + (source.center.x <= 992 ? 8 : -8), y: source.center.y } }
-    : { id, center: { x: count % 2 * 12, y: -Math.floor(count / 2) * 12 }, R: 3.5, r: 1.1, angle: 0, inside: false };
+    : { id, center: { x: count % 2 * 12, y: 0 - Math.floor(count / 2) * 12 }, R: 3.5, r: 1.1, angle: 0, inside: false };
   const next = writePair({ ...state, params: { ...state.params, nextId: id + 1 } }, pair);
   for (const key of ROLLING_OBSERVATIONS) next.flags[`${key}.${id}`] = key === "inside" ? pair.inside : source ? state.flags[`${key}.${source.id}`] : false;
   return checked(state, fitRollingView(next));

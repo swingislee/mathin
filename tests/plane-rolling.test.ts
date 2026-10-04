@@ -23,6 +23,7 @@ function gesture(initial: PlanarState, angles: number[]) {
 describe("open rolling materials", () => {
   it("starts with one exact pair and no observations", () => {
     const state = createRollingWorkbenchState(); expect(isValidRollingWorkbenchState(state)).toBe(true);
+    expect(state).toEqual(JSON.parse(JSON.stringify(state)));
     expect(rollingIds(state)).toEqual([0]); expect(Object.values(state.flags).every((flag) => !flag)).toBe(true);
     expect(markup(state)).not.toMatch(/data-rolling-(orbit|links|trace|measures|names)=/);
     expect(markup(state)).toContain("双向滚动小圆 1");
