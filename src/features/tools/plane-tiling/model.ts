@@ -29,13 +29,18 @@ export function isValidTilingState(state: PlanarState): boolean {
 }
 
 /** 本体始终连续移动，松手才吸附到其它纸片顶点，不在拖动中跳网格。 */
+function tileDragTarget(state: PlanarState, target: string) {
+  const parsed = parseConstructionTarget(target), tile = parsed?.id === undefined ? null : constructionObject(state, parsed.id);
+  return tile && parsed?.part !== undefined && parsed.part < tile.vertices.length
+    && (parsed.type === "edge" || parsed.type === "vertex" && !state.flags.edit) ? `object.${tile.id}` : target;
+}
 export function moveTile(state: PlanarState, target: string, at: PlanarPoint, delta: PlanarPoint): PlanarState {
-  const next = moveConstruction({ ...state, flags: { ...state.flags, snap: false } }, target, at, delta);
+  const next = moveConstruction({ ...state, flags: { ...state.flags, snap: false } }, tileDragTarget(state, target), at, delta);
   return { ...next, flags: state.flags };
 }
 
 export function snapTile(state: PlanarState, target: string): PlanarState | null {
-  const parsed = parseConstructionTarget(target);
+  const parsed = parseConstructionTarget(tileDragTarget(state, target));
   if (!state.flags.snap || parsed?.type !== "object") return null;
   const tile = constructionObject(state, parsed.id);
   if (!tile) return null;

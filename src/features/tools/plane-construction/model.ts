@@ -127,6 +127,21 @@ export function constructionCorners(object: ConstructionObject): { point: Planar
   const world = worldVertices(object), count = object.vertices.length;
   return object.vertices.flatMap((point, index) => Math.abs(cross(object.vertices[(index + count - 1) % count], point, object.vertices[(index + 1) % count])) > EPS ? [{ point: world[index], index }] : []);
 }
+/** 名称由当前材料的真实轮廓确定；动画投影、旋转及新增共线编辑点不改变分类。 */
+export function constructionShapeKind(object: ConstructionObject) {
+  if (object.kind >= 2) return Math.abs(object.rx - object.ry) <= 1e-8 * Math.max(object.rx, object.ry) ? "circle" : "ellipse";
+  const vertices = constructionCorners(object).map(({ index }) => object.vertices[index]);
+  if (vertices.length === 3) return "triangle";
+  if (vertices.length !== 4) return "polygon";
+  const edges = vertices.map((point, index) => subtract(vertices[(index + 1) % 4], point));
+  const lengths = edges.map((edge) => Math.hypot(edge.x, edge.y));
+  const parallel = (a: number, b: number) => Math.abs(edges[a].x * edges[b].y - edges[a].y * edges[b].x) <= 1e-8 * lengths[a] * lengths[b];
+  const right = edges.every((edge, index) => Math.abs(edge.x * edges[(index + 1) % 4].x + edge.y * edges[(index + 1) % 4].y) <= 1e-8 * lengths[index] * lengths[(index + 1) % 4]);
+  const equal = lengths.every((length) => Math.abs(length - lengths[0]) <= 1e-8 * Math.max(length, lengths[0]));
+  if (right) return equal ? "square" : "rectangle";
+  const first = parallel(0, 2), second = parallel(1, 3);
+  return first && second ? equal ? "rhombus" : "parallelogram" : first || second ? "trapezoid" : "quadrilateral";
+}
 function toLocal(object: ConstructionObject, point: PlanarPoint): PlanarPoint | null {
   const [a, b, c, d, x, y] = constructionMatrix(object), det = a * d - b * c;
   return Math.abs(det) < 1e-9 ? null : { x: (d * (point.x - x) - c * (point.y - y)) / det, y: (-b * (point.x - x) + a * (point.y - y)) / det };

@@ -5,7 +5,7 @@ import { LifeDetails } from "../plane-shapes/scene";
 import {
   CONSTRUCTION_PRESETS, MAX_CONSTRUCTION_OBJECTS, MAX_OBJECT_VERTICES,
   addConstruction, addPreset, constructionBounds, constructionCorners, constructionDimensions, constructionLifeMatrix, constructionMatrix, constructionMeasurements,
-  constructionObject, constructionObjects, createConstructionState, duplicateConstruction,
+  constructionObject, constructionObjects, constructionShapeKind, createConstructionState, duplicateConstruction,
   insertConstructionVertex, interpolateConstruction, moveConstruction, parseConstructionTarget, removeConstruction,
   removeConstructionVertex, setConstructionField, tapConstruction, toggleConstructionFlag,
   transformConstruction, worldVertices, type ConstructionObject, type ConstructionTool,
@@ -16,10 +16,14 @@ const colors = ["var(--leaf)", "var(--moon)", "var(--cheek)", "var(--crater)"];
 const coordinates = (points: readonly PlanarPoint[]) => points.map((point) => `${point.x},${point.y}`).join(" ");
 const transform = (object: ConstructionObject) => `matrix(${constructionMatrix(object).join(" ")})`;
 const selectedId = (target: string | null) => target ? parseConstructionTarget(target)?.id : undefined;
-const objectLabel = (object: ConstructionObject): PlanarText => object.life > 0
-  ? t(CONSTRUCTION_PRESETS[object.life + 6].zh, CONSTRUCTION_PRESETS[object.life + 6].en)
-  : object.kind === 1 ? t("长方形", "Rectangle") : object.kind === 2 ? t("圆", "Circle") : object.kind === 3 ? t("椭圆", "Ellipse")
-    : object.vertices.length === 3 ? t("三角形", "Triangle") : t("多边形", "Polygon");
+const shapeLabels = { triangle: t("三角形", "Triangle"), square: t("正方形", "Square"), rectangle: t("长方形", "Rectangle"),
+  circle: t("圆", "Circle"), ellipse: t("椭圆", "Ellipse"), rhombus: t("菱形", "Rhombus"),
+  parallelogram: t("平行四边形", "Parallelogram"), trapezoid: t("梯形", "Trapezoid"), quadrilateral: t("四边形", "Quadrilateral"), polygon: t("多边形", "Polygon") };
+const lifeLabels = [t("路牌正面", "Sign face"), t("窗框外轮廓", "Window outline"), t("门板正面", "Door panel face"), t("钟面", "Clock face"), t("镜面", "Mirror surface")];
+const objectLabel = (object: ConstructionObject): PlanarText => {
+  const shape = shapeLabels[constructionShapeKind(object)], life = lifeLabels[object.life - 1];
+  return life ? t(`${life.zh} → ${shape.zh}`, `${life.en} → ${shape.en}`) : shape;
+};
 const noObject = (state: PlanarState) => !constructionObject(state);
 const isConstructionTool = (id: string): id is ConstructionTool => ["rectangle", "circle", "ellipse", "polygon"].includes(id);
 
@@ -112,7 +116,7 @@ function drawConstruction(state: PlanarState, api: PlanarDrawingApi) {
       const captions: ReactNode[] = [];
       if (state.flags.names) captions.push(textFor(objectLabel(object), api.locale));
       if (state.flags.counts && measurements) captions.push(api.locale === "en" ? `${measurements.straightEdges} straight sides · ${measurements.vertices} vertices` : `${measurements.straightEdges} 条直边 · ${measurements.vertices} 个顶点`);
-      if (state.flags.measures && measurements) captions.push(api.locale === "en" ? `Perimeter ${measurements.perimeter.toFixed(1)} u · Area ${measurements.area.toFixed(1)} u²` : `周长 ${measurements.perimeter.toFixed(1)} u · 面积 ${measurements.area.toFixed(1)} u²`);
+      if (state.flags.measures && measurements) captions.push(api.locale === "en" ? `Perimeter ${measurements.perimeterApproximate ? "≈ " : ""}${measurements.perimeter.toFixed(1)} u · Area ${measurements.area.toFixed(1)} u²` : `周长${measurements.perimeterApproximate ? "约 " : " "}${measurements.perimeter.toFixed(1)} u · 面积 ${measurements.area.toFixed(1)} u²`);
       return <g key={object.id} data-construction-object={object.id}>
         <g {...api.bind(`object.${object.id}`, textFor(objectLabel(object), api.locale))} style={{ cursor: "grab" }}>
           <ObjectDrawing object={object} />
