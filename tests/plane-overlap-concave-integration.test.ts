@@ -18,7 +18,7 @@ import { planeOverlapConcaveCases } from "./fixtures/plane-overlap-concave-cases
 
 vi.mock("next-intl", () => ({ useLocale: () => "zh" }));
 const version = "plane-overlap-lesson-v3";
-const shown = () => {
+const shown = (): PlanarState => {
   const state = setConcaveOverlapField(createConcaveOverlapState(), "region", 3);
   return { ...state, flags: { ...state.flags, measures: true }, params: { ...state.params, active: state.params.pairA } };
 };
