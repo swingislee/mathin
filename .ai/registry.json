@@ -1,7 +1,35 @@
 {
   "version": 1,
-  "coordinatorTaskId": "DEV-PLANE-STRIPS-20261004-INTEGRATION",
+  "coordinatorTaskId": "DEV-PERIMETER-STRETCH-20261004-INTEGRATION",
   "tasks": [
+    {
+      "id": "DEV-PERIMETER-STRETCH-20261004-INTEGRATION",
+      "title": "凹凸多边形定量拉伸开发交付",
+      "agent": "codex",
+      "threadId": "019ff05e-1218-7400-b966-4556b2c57173",
+      "status": "in_progress",
+      "checkout": "integration",
+      "branch": "main",
+      "card": ".ai/tasks/DEV-PERIMETER-STRETCH-20261004.md",
+      "writePaths": [".ai/tasks/DEV-PERIMETER-STRETCH-20261004.md", "docs/evidence/tools-perimeter-stretch-20261004.md"],
+      "sharedPaths": [".ai/registry.json", "CHANGELOG.md", "src/features/tools/planar-kit/README.md"],
+      "checkpoint": null,
+      "next": "串行登记与集成周长教具的凹凸多边形定周长／定面积拉伸；沿用 v2 几何与课堂合同，不改数据库，复用现有开发服务交付人工验收。"
+    },
+    {
+      "id": "DEV-PERIMETER-STRETCH-20261004",
+      "title": "自绘凹凸多边形定周长与定面积拉伸",
+      "agent": "codex",
+      "threadId": "019ff05e-1218-7400-b966-4556b2c57173",
+      "status": "in_progress",
+      "checkout": "worktree",
+      "branch": "codex/perimeter-stretch-codex",
+      "card": ".ai/tasks/DEV-PERIMETER-STRETCH-20261004.md",
+      "writePaths": ["src/features/tools/plane-perimeter/model.ts", "src/features/tools/plane-perimeter/scenes.tsx", "src/features/tools/plane-perimeter/README.md", "src/features/tools/spatial-interaction/control-inventory.ts", "tests/plane-perimeter.test.ts", "tests/plane-perimeter-stretch.test.ts", "tests/plane-invariants-integration.test.ts", ".ai/handoffs/DEV-PERIMETER-STRETCH-20261004-codex-01.md"],
+      "sharedPaths": [],
+      "checkpoint": null,
+      "next": "复用本会话干净 worker，从登记提交开新分支；实现整体宽高联动、准确输入与方向手柄，验证凹凸／镜像／旋转、不变量、材料归属、既有保存与课堂恢复。"
+    },
     {
       "id": "DEV-PLANE-STRIPS-20261004-INTEGRATION",
       "title": "方格条细分开发交付",
